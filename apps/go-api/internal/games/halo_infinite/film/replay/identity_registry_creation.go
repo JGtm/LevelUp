@@ -56,7 +56,9 @@ package replay
 // corps de bots d'index 8 de `b1ad85eb` y passent de `index_hors_table` a `direct`.
 
 import (
+	"cmp"
 	"log/slog"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/canonical"
@@ -364,12 +366,11 @@ func corpsParSlot(creations []grammar.BipedCreation) map[uint32]corpsLu {
 		// L'ORDRE EST IMPOSE : l'artefact doit etre reproductible a l'octet, et l'ordre des
 		// records d'un chunk n'est pas garanti stable entre deux lectures. La GENERATION
 		// departage deux records de meme date — sans elle, deux corps du meme siege pourraient
-		// s'echanger leur rang d'une cuisson a l'autre.
-		sort.Slice(e.dates, func(i, j int) bool {
-			if e.dates[i].tUS != e.dates[j].tUS {
-				return e.dates[i].tUS < e.dates[j].tUS
-			}
-			return e.dates[i].gen < e.dates[j].gen
+		// s echanger leur rang d une cuisson a l autre. L INDEX termine la chaine (lot J10.1,
+		// 2026-09-27, DT-9) : deux records de meme date et de meme generation qui divergent sur
+		// l index restaient ex aequo ; restes egaux, ils sont identiques.
+		slices.SortFunc(e.dates, func(a, b dateDeCreation) int {
+			return cmp.Or(cmp.Compare(a.tUS, b.tUS), cmp.Compare(a.gen, b.gen), cmp.Compare(a.index, b.index))
 		})
 		sort.Slice(e.index, func(i, j int) bool { return e.index[i] < e.index[j] })
 		out[s] = e

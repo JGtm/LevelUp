@@ -1,9 +1,11 @@
 package grammar
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
+	"strings"
 
 	"levelup/go-api/internal/domain/highlightevent"
 
@@ -145,6 +147,17 @@ func ScanDeaths(film *source.Film) ([]types.Death, error) {
 	if len(out) == 0 {
 		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, ErrFilDesMortsSansMort)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].TimeMS < out[j].TimeMS })
+	trierMortsDuFil(out)
 	return out, nil
+}
+
+// trierMortsDuFil range le fil des morts dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9) :
+// instant, puis xuid, puis gamertag. Deux morts de la meme milliseconde (un double a la grenade)
+// ne se departageaient pas : leur rang, qui ordonne le journal publie et les appariements aux
+// vies, dependait du tri. Deux morts que ce comparateur ne separe pas sont identiques.
+func trierMortsDuFil(out []types.Death) {
+	slices.SortFunc(out, func(a, b types.Death) int {
+		return cmp.Or(cmp.Compare(a.TimeMS, b.TimeMS), cmp.Compare(a.XUID, b.XUID),
+			strings.Compare(a.Gamertag, b.Gamertag))
+	})
 }

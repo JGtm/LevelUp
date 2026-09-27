@@ -38,8 +38,9 @@ package replay
 //	          sur les deux films CTF de la même carte (le sous-mode arme le socle).
 
 import (
+	"cmp"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
@@ -325,10 +326,16 @@ func gwBuildPad(
 	return out, picks
 }
 
-// gwMembersByTime rend les membres d'un socle dans l'ordre de leur apparition.
+// gwMembersByTime rend les membres d un socle dans l ordre de leur apparition, les ex aequo par leur
+// INDICE dans `objs` (lot J10.1, 2026-09-27, DT-9) — unique, et lui-meme rang d un ordre total
+// ([gwPickupLess]). Le PREMIER membre donne l identifiant publie du socle ([gwPadWeaponID]) : deux
+// apparitions au meme instant le laissaient au tri. Seul ordre des membres : les ecarts
+// ([gwPickupPadGaps]) le reprennent.
 func gwMembersByTime(objs []gwPickupObject, members []int) []int {
 	ms := append([]int(nil), members...)
-	sort.Slice(ms, func(i, j int) bool { return objs[ms[i]].Appar.TUS < objs[ms[j]].Appar.TUS })
+	slices.SortFunc(ms, func(a, b int) int {
+		return cmp.Or(cmp.Compare(objs[a].Appar.TUS, objs[b].Appar.TUS), cmp.Compare(a, b))
+	})
 	return ms
 }
 

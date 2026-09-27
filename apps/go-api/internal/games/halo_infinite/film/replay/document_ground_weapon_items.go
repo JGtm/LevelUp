@@ -249,12 +249,7 @@ func buildGroundWeaponItems(
 		out = append(out, g)
 		cov.Published++
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].T0 != out[j].T0 {
-			return out[i].T0 < out[j].T0
-		}
-		return out[i].W < out[j].W
-	})
+	trierArmesAuSol(out)
 	if len(out) == 0 {
 		return nil, cov
 	}

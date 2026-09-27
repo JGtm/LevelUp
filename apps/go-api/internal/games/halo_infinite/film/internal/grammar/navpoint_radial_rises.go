@@ -65,7 +65,7 @@ func NavpointContiguousRises(reads []types.NavpointRadialRead) []NavpointRise {
 	}
 	out := make([]NavpointRise, 0, len(series))
 	for slot, s := range series {
-		sort.Slice(s, func(i, j int) bool { return s[i].TMS < s[j].TMS })
+		trierSerieNavpoint(s)
 		out = append(out, navpointRisesOfSeries(slot, s)...)
 	}
 	sort.Slice(out, func(i, j int) bool { return lessNavpointRise(out[i], out[j]) })

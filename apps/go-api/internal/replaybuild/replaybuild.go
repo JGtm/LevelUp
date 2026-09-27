@@ -21,12 +21,14 @@
 package replaybuild
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain/title"
@@ -499,7 +501,7 @@ func botSuccessions(matchID string, facts port.MatchFacts, res *decfilm.Result) 
 			BotName: ref.name, FilmIndex: ref.idx, SwitchMatchMS: *p.JoinMatchMS,
 		})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].SwitchMatchMS < out[j].SwitchMatchMS })
+	trierSuccessions(out)
 	return out
 }
 
@@ -550,3 +552,13 @@ var (
 	// servi avant de comparer les octets qu elle a produits (lot 4.1.2).
 	BuildBytesStepsAfter = []string{EtapeRejeuDepuisLesFaits, "artifact"}
 )
+
+// trierSuccessions range les relais de bots dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9) :
+// instant de bascule, index de film, nom. Deux bots rejoignant a la MEME milliseconde restaient ex
+// aequo ; le nom est unique parmi les bots du roster du film.
+func trierSuccessions(out []replay.Succession) {
+	slices.SortFunc(out, func(a, b replay.Succession) int {
+		return cmp.Or(cmp.Compare(a.SwitchMatchMS, b.SwitchMatchMS), cmp.Compare(a.FilmIndex, b.FilmIndex),
+			strings.Compare(a.BotName, b.BotName))
+	})
+}

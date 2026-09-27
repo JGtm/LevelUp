@@ -34,6 +34,12 @@ package objectives
 // AUCUNE SORTIE NE CHANGE : ce rang pose la constante, son golden et son gate. Les calques qu elle
 // date portaient jusqu ici la valeur de `facts.Rev` (`killsource-2026-09-24`) dans `layers` : ils
 // portent desormais la sienne, et c est ce que la montee de schema du meme lot publie.
+//
+// COMPLEMENT DU 2026-09-27 (lot J10.1, REVISION CONSTANTE : serie nee sur cette branche, jamais
+// publiee) : le tri du pied de film (`scanTh10Events`) devient TOTAL (instant, puis position du
+// XUID dans le chunk, DT-9). Deux evenements th=10 de la meme milliseconde ordonnent les actions
+// publiees (numero `Seq` dense) et `captureScorer` garde le premier du plus grand instant : leur
+// rang tenait au tri. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-26"

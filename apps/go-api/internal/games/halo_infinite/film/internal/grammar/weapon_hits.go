@@ -17,7 +17,9 @@ package grammar
 // (detonation estimee) est HORS de ce Lot (Phase 2, plan §9).
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -112,7 +114,7 @@ func PairWeaponHits(shots []WeaponShot, damages []WeaponDamage, window uint64, d
 	}
 	for k := range byResp {
 		s := byResp[k]
-		sort.Slice(s, func(a, b int) bool { return s[a].ts < s[b].ts })
+		trierDegatsParInstant(s)
 		byResp[k] = s
 	}
 
@@ -273,4 +275,12 @@ func scanChunkDamages(pks []FilmPacket, data []byte, out []WeaponDamage) []Weapo
 		out = append(out, d)
 	}
 	return out
+}
+
+// trierDegatsParInstant range les degats d un responsable par instant, les ex aequo dans l ORDRE DU
+// FILM (lot J10.1, 2026-09-27, DT-9) : deux degats du meme attaquant au meme instant (plusieurs
+// victimes d une meme rafale) n ont pas d autre cle unique que leur rang de balayage, et
+// [nearestDamage] rend l un d eux — sa victime donne la distance publiee.
+func trierDegatsParInstant(s []dmgSlot) {
+	slices.SortStableFunc(s, func(a, b dmgSlot) int { return cmp.Compare(a.ts, b.ts) })
 }

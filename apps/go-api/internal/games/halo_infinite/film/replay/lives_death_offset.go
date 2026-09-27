@@ -11,6 +11,8 @@ package replay
 // est ici. Aucune ligne n a change : memes constantes, memes fonctions, meme ordre.
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -335,11 +337,11 @@ func apparierMortsEtVies(lives []lifeSpan, deaths []types.Death, off int64) []de
 			}
 		}
 	}
-	sort.Slice(ps, func(i, j int) bool {
-		if ps[i].d != ps[j].d {
-			return ps[i].d < ps[j].d
-		}
-		return ps[i].li < ps[j].li // départage stable : jamais l'ordre de la map
+	// ORDRE TOTAL (lot J10.1, 2026-09-27, DT-9) : distance, vie, PUIS mort. Le couple (distance,
+	// vie) ne separait pas deux morts a egale distance de la meme fin de vie (un double, ou deux morts
+	// symetriques) : la PREMIERE de la liste prend la vie, et son rang tenait au tri.
+	slices.SortFunc(ps, func(a, b candidat) int {
+		return cmp.Or(cmp.Compare(a.d, b.d), cmp.Compare(a.li, b.li), cmp.Compare(a.di, b.di))
 	})
 	usedD := make([]bool, len(deaths))
 	usedL := make([]bool, len(lives))

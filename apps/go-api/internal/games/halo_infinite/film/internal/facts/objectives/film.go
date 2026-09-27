@@ -40,9 +40,10 @@ package objectives
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -231,7 +232,7 @@ func FooterEvents(film *source.Film) []FooterEvent {
 // t=BE@b48-51, slot@b36, équipe@b37. Filtré sur th==10 et dédupliqué par bloc.
 func scanTh10Events(data []byte) []FooterEvent {
 	total := len(data) * 8
-	var out []FooterEvent
+	var lus []piedLu
 	seen := map[int]bool{}
 	for ms := 8; ms <= total-8; ms++ {
 		if source.OctetAuBit(data, ms) != 0xc0 {
@@ -255,10 +256,17 @@ func scanTh10Events(data []byte) []FooterEvent {
 		seen[xstart] = true
 		if ev, ok := decodeTh10Block(data, xstart, total); ok {
 			ev.XUID = x
-			out = append(out, ev)
+			lus = append(lus, piedLu{ev: ev, bit: xstart})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].TimeMS < out[j].TimeMS })
+	trierPied(lus)
+	if len(lus) == 0 {
+		return nil // nil, comme avant : aucun evenement lu
+	}
+	out := make([]FooterEvent, 0, len(lus))
+	for _, l := range lus {
+		out = append(out, l.ev)
+	}
 	return out
 }
 
@@ -351,4 +359,20 @@ func scanCaptureBursts(frames []types.Packet, startMS int) []captureBurst {
 		}
 	}
 	return out
+}
+
+// piedLu est un evenement du pied et la position de bit de son XUID dans le chunk.
+type piedLu struct {
+	ev  FooterEvent
+	bit int
+}
+
+// trierPied range les evenements du pied dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9) : instant,
+// puis position du XUID dans le chunk — unique (`seen`). Deux evenements de la meme milliseconde
+// ordonnent les actions publiees (numero `Seq` dense) et `captureScorer` garde le PREMIER du plus
+// grand instant : leur rang doit tenir au film, pas au tri.
+func trierPied(lus []piedLu) {
+	slices.SortFunc(lus, func(a, b piedLu) int {
+		return cmp.Or(cmp.Compare(a.ev.TimeMS, b.ev.TimeMS), cmp.Compare(a.bit, b.bit))
+	})
 }

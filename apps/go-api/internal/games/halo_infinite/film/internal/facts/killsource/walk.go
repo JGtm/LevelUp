@@ -29,8 +29,6 @@ package killsource
 // film, dont un double kill).
 
 import (
-	"sort"
-
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -149,7 +147,7 @@ func runWalk(f *film, tl *timeline, r *roster, views int, prof grammar.ProfilDeB
 		}
 		res.deads = append(res.deads, walkPacket(p, w, cfg, start, views, f.ms(p))...)
 	}
-	sort.Slice(res.deads, func(i, j int) bool { return res.deads[i].ms < res.deads[j].ms })
+	trierMortsDeLaMarche(res.deads)
 	res.selectCredible(r)
 	return res
 }

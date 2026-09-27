@@ -29,8 +29,6 @@ package killsource
 // conserve tel quel : `film.Chunk(i)` de `source` est indexe par la meme position.
 
 import (
-	"sort"
-
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -97,7 +95,7 @@ func loadFilm(src *source.Film) (*film, error) {
 	if len(f.t0) == 0 {
 		return nil, ErrNoPacket
 	}
-	sort.Slice(f.t0, func(i, j int) bool { return f.t0[i].ts < f.t0[j].ts })
+	trierPaquetsT0(f.t0)
 	f.tsBase = f.t0[0].ts
 	return f, nil
 }

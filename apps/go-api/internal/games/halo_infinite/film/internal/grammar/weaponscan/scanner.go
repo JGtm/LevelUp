@@ -31,6 +31,8 @@ package weaponscan
 
 import (
 	"bytes"
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/weapons/filmshell"
@@ -287,7 +289,7 @@ func ScanFireEventsB5(data []byte, estimateTS func(int) float64) []FireEvent {
 	}
 
 	// Dédupliquation par proximité byte_pos
-	sort.Slice(events, func(i, j int) bool { return events[i].BytePos < events[j].BytePos })
+	trierParPositionDOctet(events)
 	var deduped []FireEvent
 	lastPos := -999
 	for _, ev := range events {
@@ -298,7 +300,7 @@ func ScanFireEventsB5(data []byte, estimateTS func(int) float64) []FireEvent {
 	}
 
 	// Retrier par timestamp
-	sort.Slice(deduped, func(i, j int) bool { return deduped[i].TimestampMS < deduped[j].TimestampMS })
+	trierParInstant(deduped)
 	return deduped
 }
 
@@ -414,4 +416,23 @@ func readBitsUint8(data []byte, bitPos, n int) uint8 {
 // hasSuffix vérifie si les 4 derniers bytes correspondent.
 func hasSuffix(wb [8]byte, suffix [4]byte) bool {
 	return wb[4] == suffix[0] && wb[5] == suffix[1] && wb[6] == suffix[2] && wb[7] == suffix[3]
+}
+
+// trierParPositionDOctet range les evenements de tir par position d octet, les ex aequo dans l ORDRE
+// DU BALAYAGE (lot J10.1, 2026-09-27, DT-9) — c est-a-dire par position de BIT, la cle unique : le
+// balayage avance bit a bit. Plusieurs marqueurs peuvent commencer dans le MEME octet, et la
+// deduplication qui suit garde le PREMIER d un amas : son arme est celle que
+// `match_weapon_shots` compte. Sous `sort.Slice`, ce premier etait tire par le tri.
+func trierParPositionDOctet(events []FireEvent) {
+	slices.SortStableFunc(events, func(a, b FireEvent) int { return cmp.Compare(a.BytePos, b.BytePos) })
+}
+
+// trierParInstant range les evenements dedoublonnes dans un ordre TOTAL (lot J10.1, 2026-09-27,
+// DT-9) : instant estime, puis position d octet — unique apres la deduplication, qui ecarte tout
+// evenement a moins de `b5DedupProximity` octets du precedent. L estimateur peut rendre le MEME
+// instant a toute la liste (celui de la ventilation des tirs rend zero).
+func trierParInstant(deduped []FireEvent) {
+	slices.SortFunc(deduped, func(a, b FireEvent) int {
+		return cmp.Or(cmp.Compare(a.TimestampMS, b.TimestampMS), cmp.Compare(a.BytePos, b.BytePos))
+	})
 }

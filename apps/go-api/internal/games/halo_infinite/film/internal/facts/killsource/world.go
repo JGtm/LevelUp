@@ -69,7 +69,7 @@ func newTimeline(f *film) (*timeline, error) {
 			tl.events = append(tl.events, keyframeEvent{f.packets[i].ts, keyframeRecs(f.packets[i].payload, marche)})
 		}
 	}
-	sort.Slice(tl.events, func(i, j int) bool { return tl.events[i].ts < tl.events[j].ts })
+	trierImagesCles(tl.events)
 	tl.w = grammar.NewWorld(reg)
 	tl.preload()
 	tl.buildGapWindows()

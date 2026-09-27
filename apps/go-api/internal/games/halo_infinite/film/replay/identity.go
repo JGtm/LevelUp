@@ -14,10 +14,10 @@ package replay
 // lit comme une certitude, un identifiant brut non.
 
 import (
+	"cmp"
 	"fmt"
 	"log/slog"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -278,11 +278,13 @@ func buildRoster(idx types.PlayerIndexTable, names map[uint64]string, bots []Bot
 		e.Team = equipes.equipeDuRoster(e)
 		out = append(out, e)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].FilmIndex != out[j].FilmIndex {
-			return out[i].FilmIndex < out[j].FilmIndex
-		}
-		return out[i].XUID < out[j].XUID
+	// ORDRE TOTAL (RA2-5, lot J10.1, 2026-09-27, DT-9) : index, xuid, PUIS nom. Deux bots d un meme
+	// index n ont pas de xuid : le couple (index, xuid) les laissait ex aequo, et leur rang suivait
+	// l ordre des declarations. Le nom est unique parmi les bots (`seen`), le xuid parmi les humains :
+	// la chaine est totale — la meme que `admettreLesBotsSuccesseurs`.
+	slices.SortFunc(out, func(a, b RosterEntry) int {
+		return cmp.Or(cmp.Compare(a.FilmIndex, b.FilmIndex), strings.Compare(a.XUID, b.XUID),
+			strings.Compare(a.Name, b.Name))
 	})
 	return out
 }

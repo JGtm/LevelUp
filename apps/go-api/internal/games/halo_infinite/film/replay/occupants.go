@@ -48,7 +48,8 @@ package replay
 // donc pas partir : un mort qui attend sa reapparition garde sa fiche jusqu'a l'image-cle.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
@@ -179,7 +180,11 @@ func viesParIdentite(tracks []Track) map[string][][2]int {
 		}
 	}
 	for cle, vs := range out {
-		sort.Slice(vs, func(a, b int) bool { return vs[a][0] < vs[b][0] })
+		// ORDRE TOTAL (lot J10.1, 2026-09-27, DT-9) : debut, puis fin — deux vies d une identite
+		// (sur deux sieges) peuvent s ouvrir a la meme frame ; restees egales, elles sont identiques.
+		slices.SortFunc(vs, func(a, b [2]int) int {
+			return cmp.Or(cmp.Compare(a[0], b[0]), cmp.Compare(a[1], b[1]))
+		})
 		out[cle] = vs
 	}
 	return out

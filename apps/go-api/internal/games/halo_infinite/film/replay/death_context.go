@@ -289,7 +289,7 @@ func indexerParXUID(e EntreeContexteMorts) positionsParXUID {
 		})
 	}
 	for _, v := range out {
-		sort.Slice(v, func(i, j int) bool { return v[i].tMS < v[j].tMS })
+		trierPointsParInstant(v)
 	}
 	return out
 }

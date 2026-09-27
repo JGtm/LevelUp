@@ -27,10 +27,13 @@ package grammar
 // restent dans la limite de CLAUDE.md (<= 2), l instrument gardant en plus ses mesures de recherche.
 
 import (
+	"cmp"
 	"fmt"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"math"
+	"slices"
 	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 // WeaponHitPosToleranceUS est l ecart temporel maximal entre le ts d un degat et l echantillon de
@@ -89,7 +92,7 @@ func BuildBipedTracks(dir string, entry profile.MapQuantEntry, n int) (map[uint3
 	}
 	for s := range tr {
 		ss := tr[s]
-		sort.Slice(ss, func(i, j int) bool { return ss[i].ts < ss[j].ts })
+		trierEchantillonsDePosition(ss)
 		tr[s] = ss
 	}
 	return tr, nil
@@ -209,4 +212,12 @@ func nearestSample(track []hitPosSample, T uint64) (hitPosSample, bool) {
 func sampleDist(a, b hitPosSample) float64 {
 	dx, dy, dz := float64(b.x-a.x), float64(b.y-a.y), float64(b.z-a.z)
 	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+}
+
+// trierEchantillonsDePosition range les echantillons d un slot par instant, les ex aequo dans l ORDRE
+// DU FILM (lot J10.1, 2026-09-27, DT-9) : deux positions d un slot au meme horodatage n ont pas
+// d autre cle unique que leur rang de balayage, et c est l echantillon le plus proche d un degat —
+// donc l un d eux — qui donne sa distance a la touche.
+func trierEchantillonsDePosition(ss []hitPosSample) {
+	slices.SortStableFunc(ss, func(a, b hitPosSample) int { return cmp.Compare(a.ts, b.ts) })
 }

@@ -22,6 +22,8 @@ package replay
 // composant `object-dead-state` la DATE. Ce fichier ne fait que poser la fenetre et appeler.
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -170,11 +172,9 @@ func vehicleLives(
 		l.goneByUS = firstTimeAfter(kf.TimesUS, l.lastUS)
 		out = append(out, l)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].key.Slot != out[j].key.Slot {
-			return out[i].key.Slot < out[j].key.Slot
-		}
-		return out[i].firstUS < out[j].firstUS
+	// ORDRE TOTAL (J10.1, DT-9) : la generation termine la cle (liste batie en iterant une MAP).
+	slices.SortFunc(out, func(a, b vehicleLife) int {
+		return cmp.Or(cmp.Compare(a.key.Slot, b.key.Slot), cmp.Compare(a.firstUS, b.firstUS), cmp.Compare(a.key.Gen, b.key.Gen))
 	})
 	assignVehicleWindows(out)
 	return out, assignVehicleDeaths(out, deaths)

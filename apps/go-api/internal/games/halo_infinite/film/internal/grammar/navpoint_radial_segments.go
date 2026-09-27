@@ -37,8 +37,11 @@ package grammar
 // pour que le gate juge le code livre et non une copie qui derivera.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"cmp"
+	"slices"
 	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -79,7 +82,7 @@ func NavpointSegments(reads []types.NavpointRadialRead) []NavpointSegment {
 	}
 	out := make([]NavpointSegment, 0, len(series))
 	for slot, s := range series {
-		sort.Slice(s, func(i, j int) bool { return s[i].TMS < s[j].TMS })
+		trierSerieNavpoint(s)
 		out = append(out, navpointSegmentsOfSeries(slot, s)...)
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -145,4 +148,13 @@ func (g NavpointSegment) IsDisarmHold() bool {
 		return false
 	}
 	return float64(int(g.QStart)-int(g.QEnd))/durS < NavpointPauseMaxSlopeQS
+}
+
+// trierSerieNavpoint range la serie d UN slot par instant, les ex aequo dans l ORDRE DU FILM (lot
+// J10.1, 2026-09-27, DT-9). Deux lectures d un slot a la meme milliseconde sont frequentes (cf.
+// [lessNavpointRise]) et elles ne portent aucun champ qui les distingue en dehors de leur valeur :
+// la seule cle unique est leur rang dans le balayage, que le tri STABLE conserve. Sous `sort.Slice`
+// leur rang etait tire par le tri — et avec lui le quantum de depart ou de fin d un segment.
+func trierSerieNavpoint(s []types.NavpointRadialRead) {
+	slices.SortStableFunc(s, func(a, b types.NavpointRadialRead) int { return cmp.Compare(a.TMS, b.TMS) })
 }

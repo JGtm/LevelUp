@@ -1,6 +1,8 @@
 package replay
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -133,7 +135,12 @@ func trackFrameWindows(tracks []Track, closedByDeath map[int]bool) map[uint32][]
 	}
 	for s := range out {
 		w := out[s]
-		sort.Slice(w, func(i, j int) bool { return w[i].from < w[j].from })
+		// ORDRE TOTAL (lot J10.1, 2026-09-27, DT-9) : deux vies d un slot peuvent s ouvrir a la meme
+		// frame, et `windowFor` garde la PREMIERE des fenetres de recouvrement egal. La fin departage,
+		// puis l ordre des pistes publiees (tri stable) : deux fenetres restees ex aequo sont identiques.
+		slices.SortStableFunc(w, func(a, b lifeWindow) int {
+			return cmp.Or(cmp.Compare(a.from, b.from), cmp.Compare(a.to, b.to))
+		})
 	}
 	return out
 }
