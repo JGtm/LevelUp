@@ -26,7 +26,10 @@ package killsource
 //
 // LES SLOTS DE BOT SONT EPINGLES et sortent de l espace de recherche : voir roster.go.
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 // nearIndex : pour chaque candidat, les indices des morts du feed dans sa fenetre. Cette liste ne
 // depend PAS de la permutation ; la calculer une fois rend la montee locale utilisable a
@@ -375,17 +378,15 @@ func (st *hungarianState) step(j0 int) int {
 	return j1
 }
 
-// sortCandidates : ordre stable des candidats, pour que deux passes rendent la meme chose.
+// sortCandidates : ordre TOTAL des candidats, pour que deux passes rendent la meme chose — chunk,
+// paquet, bit, PUIS le contenu du dead-state (lot J10.1, 2026-09-27, DT-9). Un candidat de la
+// marche sans position enregistree porte `bit = -1` : deux d un meme paquet ne se separaient pas, et
+// leur rang alimentait la population de la bijection. Apres `dedup`, (chunk, paquet, tag, victime,
+// tueur, categorie) est unique : la chaine est totale.
 func sortCandidates(cs []candidate) {
-	sort.Slice(cs, func(i, j int) bool {
-		a, b := cs[i], cs[j]
-		switch {
-		case a.chunk != b.chunk:
-			return a.chunk < b.chunk
-		case a.pidx != b.pidx:
-			return a.pidx < b.pidx
-		default:
-			return a.bit < b.bit
-		}
+	slices.SortFunc(cs, func(a, b candidate) int {
+		return cmp.Or(cmp.Compare(a.chunk, b.chunk), cmp.Compare(a.pidx, b.pidx), cmp.Compare(a.bit, b.bit),
+			cmp.Compare(a.victim, b.victim), cmp.Compare(a.killer, b.killer), cmp.Compare(a.tag, b.tag),
+			cmp.Compare(a.cat, b.cat), cmp.Compare(a.ms, b.ms))
 	})
 }

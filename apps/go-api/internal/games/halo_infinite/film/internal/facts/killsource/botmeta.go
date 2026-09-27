@@ -148,7 +148,7 @@ func loadBotMeta(f *film) botMeta {
 		i := rang[k]
 		m.Bots[i].declarations = append(m.Bots[i].declarations, BotDeclaration{FromUS: ouverts[k]})
 	}
-	sort.Slice(m.Bots, func(i, j int) bool { return m.Bots[i].Slot < m.Bots[j].Slot })
+	trierBotsParSlot(m.Bots)
 	return m
 }
 

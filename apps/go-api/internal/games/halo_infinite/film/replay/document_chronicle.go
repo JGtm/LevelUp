@@ -2734,3 +2734,33 @@ package replay
 //	LE PARC         un artefact 74 porte `objectives-2026-09-26` sur ses calques d objectif :
 //	                verdict `redecoder` (ses faits persistes portent l ancienne revision
 //	                d objectifs, et un rapport de replis sans les noms neufs).
+
+// v76 (2026-09-27, jalon J10 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, lot J10.7 ; constats GB-3,
+// RA2-5, RB2-6, RB2-7, GA1-4, GA1-5 et faiblesse 9 de l audit du 2026-09-24) : DETERMINISME ET
+// CORRECTIFS RESIDUELS. La FORME du document ne change pas (aucun champ) ; son CONTENU peut changer,
+// et un artefact 75 doit se lire « a redecoder ». Ecrite sur J10 comme v75, renumerotee v76 a la
+// fusion : J8, fusionne avant dans la branche de suite d audit, avait pris le 75 ; elle le suit.
+//
+//	ordre des      les tris qui decident d une sortie sont TOTAUX (DT-9, lot J10.1) : `roster` (deux
+//	tranches       bots d un meme index par nom, RA2-5), `equipmentChanges` (GB-3 : la liste n est
+//	publiees       plus rangee dans l ordre d iteration d une map), `groundWeapons`, `grenades`,
+//	               `shots`, `skullCarries`, le fil des morts, les relais de bots ; ex aequo dans
+//	               l ordre du film pour les series (positions, degats, navpoints, creations d objet,
+//	               lunette). Seuls les ex aequo que l ancien tri departageait au hasard peuvent
+//	               changer de rang, ou changer un « premier gagne » (appariement mort -> vie,
+//	               identifiant d un socle, fenetre de vie, rentree de drapeau, assistant d une mort,
+//	               tir retenu d un amas).
+//	`vehicles`     la tolerance de siege est une duree (`vehicleSeatTol` 2 s, RB2-6, J10.3) : plus
+//	               de division d une duree en ms par un pas en us.
+//	`groundWeapons` le lien prise -> arme au sol respecte `LowUS` (RB2-7, J10.4).
+//	calques de la  la table des datums d image-cle (GA1-4, J10.5) et la table des joueurs (GA1-5,
+//	grammaire      J10.6 : le recul sur les vacants de tete decide a completude egale).
+//
+//	CE QUI MONTE    `SchemaVersion` 75 -> 76 ; `grammar.Rev` `grammar-2026-09-27.2` ->
+//	AVEC ELLE       `grammar-2026-09-27.3`. `killsource.Rev` (`killsource-2026-09-27`) et
+//	                `objectives.Rev` (`objectives-2026-09-27`, montee par v75) gardent leur valeur :
+//	                series jamais publiees, goldens regeneres a revision constante (leurs tris
+//	                changent aussi). `killcollector.IsolationDecoderRev` n est pas touchee par ce lot.
+//
+//	LE PARC         un artefact 75 porte `grammar-2026-09-27.2` sur ses calques de grammaire :
+//	                verdict `redecoder`.

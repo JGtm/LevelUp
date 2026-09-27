@@ -129,7 +129,7 @@ func flagFreeLives(scan WorldObjectScan, flags map[uint32]Label) []flagFreeLife 
 	tracks := gwTracksByKey(scan.Tracks)
 	out := make([]flagFreeLife, 0, len(scan.Creations))
 	for k, list := range byKey {
-		sort.Slice(list, func(i, j int) bool { return list[i].TimestampUS < list[j].TimestampUS })
+		trierCreationsParInstant(list)
 		for i, c := range list {
 			lifeEnd := uint64(math.MaxUint64)
 			if i+1 < len(list) {
@@ -463,7 +463,7 @@ func flagObjectHomecomings(scan FlagCarryScan, ctx flagCarryCtx) []flagHomecomin
 		at := ctx.matchMSOfFrame(frameOf(l.T0US, ctx.origin, ctx.step))
 		out = append(out, flagHomecoming{flag: f, at: at, x: x, y: y})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].at < out[j].at })
+	trierRentrees(out)
 	return out
 }
 

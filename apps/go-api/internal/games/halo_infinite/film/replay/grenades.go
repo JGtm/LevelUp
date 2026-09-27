@@ -123,23 +123,7 @@ func buildGrenades(pos []grammar.BipedPosition, throws []grammar.GrenadeThrow,
 		gr.Rank = rank
 		out = append(out, gr)
 	}
-	// Tri TOTAL : deux lancers tombent souvent sur la même frame de la grille (10 Hz), et un
-	// départage arbitraire suffit à changer l'artefact d'un octet à l'autre.
-	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		switch {
-		case a.T != b.T:
-			return a.T < b.T
-		case a.Idx != b.Idx:
-			return a.Idx < b.Idx
-		case a.Slot != b.Slot:
-			return a.Slot < b.Slot
-		case a.X != b.X:
-			return a.X < b.X
-		default:
-			return a.Y < b.Y
-		}
-	})
+	trierGrenades(out)
 	return out, cov
 }
 

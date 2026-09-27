@@ -174,7 +174,7 @@ func padObjects(
 	parSlot := naissancesProuvees(scan, rule)
 	out := make([]gwPickupObject, 0, kept)
 	for k, list := range byKey {
-		sort.Slice(list, func(i, j int) bool { return list[i].TimestampUS < list[j].TimestampUS })
+		trierCreationsParInstant(list)
 		for i, c := range list {
 			lifeEnd := filmEnd
 			if i+1 < len(list) {
@@ -385,8 +385,7 @@ func gwFilmEndUS(scan WorldObjectScan, positions []grammar.BipedPosition) uint64
 // mesurer l'horloge d'apparition sous un autre nom, et c'est précisément celle que la mesure a
 // écartée (4 socles établis sur 57, contre 24 depuis le ramassage).
 func gwPickupPadGaps(objs []gwPickupObject, members []int) ([]float64, int) {
-	ms := append([]int(nil), members...)
-	sort.Slice(ms, func(i, j int) bool { return objs[ms[i]].Appar.TUS < objs[ms[j]].Appar.TUS })
+	ms := gwMembersByTime(objs, members)
 	var gaps []float64
 	manques := 0
 	for i := 0; i+1 < len(ms); i++ {

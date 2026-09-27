@@ -128,20 +128,15 @@ func (c *KillSourceCollector) buildHitsBatches(
 	ctx context.Context, matchID, dir string, chunks []haloclient.FilmChunk, parts MatchIdentities,
 ) ([]persist.WeaponAccuracyInsert, persist.WeaponHitDistanceBatch, bool) {
 
-	raw, err := decfilm.ReadFilmChunk(dir, 0)
-	if err != nil {
-		return c.hitsScanFailed(ctx, matchID, "chunk_00 illisible", err)
-	}
-	reg, err := decfilm.ParseRegistryChunk(raw)
-	if err != nil {
-		return c.hitsScanFailed(ctx, matchID, "registre illisible", err)
-	}
+	// Le registre de chunk_00 n'est plus analyse ici (J10.2, 2026-09-27) : il ne servait qu'au
+	// monde que `ScanFilmWeaponDamages` rejouait pour une base d'atterrissage que personne ne
+	// lisait.
 	n := decfilm.CountFilmChunks(dir)
 	shots, err := decfilm.ScanFilmWeaponShots(dir, n)
 	if err != nil {
 		return c.hitsScanFailed(ctx, matchID, "collecte des tirs", err)
 	}
-	damages, _, err := decfilm.ScanFilmWeaponDamages(dir, reg, n)
+	damages, err := decfilm.ScanFilmWeaponDamages(dir, n)
 	if err != nil {
 		return c.hitsScanFailed(ctx, matchID, "collecte des degats", err)
 	}

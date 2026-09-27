@@ -53,7 +53,8 @@ package grammar
 // chantier PLAN_PERCER_TRAME_FILM.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -135,8 +136,17 @@ func ScanTranslocatorTeleports(film *source.Film, entry *profile.MapQuantEntry) 
 			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].TimestampUS < out[j].TimestampUS })
+	trierTeleportations(out)
 	return out
+}
+
+// trierTeleportations range les teleportations dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9) :
+// instant, puis slot — deux paquets de la famille peuvent porter le meme horodatage —, les ex
+// aequo restants (meme instant, meme slot) dans l ORDRE DU FILM, seule cle qui les distingue.
+func trierTeleportations(out []types.TranslocatorTeleport) {
+	slices.SortStableFunc(out, func(a, b types.TranslocatorTeleport) int {
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Slot, b.Slot))
+	})
 }
 
 // decodeTranslocHead lit l'événement de tête d'un paquet de la famille et rend la

@@ -36,8 +36,9 @@ package grammar
 // +23 = fin du champ direction de 19 bits. Un i0 trop court ou trop long désaligne tout.
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -166,12 +167,7 @@ func profileI0(samples []i0Sample) I0LayoutReport {
 		}
 	}
 	for _, ss := range bySlot {
-		sort.Slice(ss, func(i, j int) bool {
-			if ss[i].chunk != ss[j].chunk {
-				return ss[i].chunk < ss[j].chunk
-			}
-			return ss[i].pkt < ss[j].pkt
-		})
+		trierEchantillonsI0(ss)
 		for i := 1; i < len(ss); i++ {
 			a, b := ss[i-1], ss[i]
 			if a.chunk != b.chunk || b.pkt <= a.pkt || b.pkt-a.pkt > detectMaxPktGap {
@@ -215,4 +211,14 @@ func i0Boundaries(flip []float64) []int {
 		}
 	}
 	return out
+}
+
+// trierEchantillonsI0 range les echantillons d un slot dans l ordre du film (chunk, paquet), les ex
+// aequo dans l ORDRE DU BALAYAGE (lot J10.1, 2026-09-27, DT-9). Deux records d un meme slot dans
+// un meme paquet ne forment jamais une paire (`b.pkt <= a.pkt`), mais LEQUEL precede le paquet
+// suivant decide de la paire comptee : leur rang ne doit pas tenir au tri.
+func trierEchantillonsI0(ss []i0Sample) {
+	slices.SortStableFunc(ss, func(a, b i0Sample) int {
+		return cmp.Or(cmp.Compare(a.chunk, b.chunk), cmp.Compare(a.pkt, b.pkt))
+	})
 }

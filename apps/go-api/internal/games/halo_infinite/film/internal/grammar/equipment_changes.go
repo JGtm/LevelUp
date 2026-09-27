@@ -35,7 +35,8 @@ package grammar
 // HORS LIGNE par construction (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -132,7 +133,7 @@ func assembleEquipmentChanges(
 	strict []abilityEmission, recovered []equipRecovered, bornAt func(uint32) (uint64, bool),
 ) ([]types.EquipmentChange, types.EquipmentChangeStats) {
 	var st types.EquipmentChangeStats
-	var out []types.EquipmentChange
+	var ordonnes []changementOrdonne
 	for _, list := range mergeEquipEmissions(strict, recovered, &st) {
 		st.Lives++
 		if list[0].Counter != equipmentFirstCounter {
@@ -161,12 +162,42 @@ func assembleEquipmentChanges(
 			default:
 				st.Taken++
 			}
-			out = append(out, ch)
+			ordonnes = append(ordonnes, changementOrdonne{ch: ch, gen: e.Gen, off: e.off, bit: e.Bit})
 			rank, seen = e.Rank, true
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return equipmentChangeFilmOrderLess(out[i], out[j]) })
+	// LA LISTE EST BATIE EN ITERANT UNE MAP (les vies) : c est le tri, et lui seul, qui fixe l ordre
+	// publie. Il doit donc etre TOTAL (GB-3, lot J10.1) — cf. [cmpChangementDuFilm].
+	slices.SortFunc(ordonnes, cmpChangementDuFilm)
+	if len(ordonnes) == 0 {
+		return nil, st // nil, comme avant : aucune emission
+	}
+	out := make([]types.EquipmentChange, 0, len(ordonnes))
+	for _, o := range ordonnes {
+		out = append(out, o.ch)
+	}
 	return out, st
+}
+
+// changementOrdonne porte un changement assemble et ce qui le situe SANS AMBIGUITE dans le film :
+// la generation de sa vie, l offset de l emission recuperee (-1 pour une stricte) et la position
+// du record strict. Ces trois champs ne sont pas publies : ils ne servent qu a l ordre.
+type changementOrdonne struct {
+	ch       types.EquipmentChange
+	gen      uint32
+	off, bit int
+}
+
+// cmpChangementDuFilm est l ordre TOTAL des changements publies (GB-3, lot J10.1, 2026-09-27) :
+// instant, chunk, paquet, slot, PUIS la vie (generation) et la place de l emission dans son
+// paquet. L ancien ordre s arretait au slot : deux vies d un meme slot (generations distinctes)
+// emettant dans le meme paquet — ou deux emissions d une meme vie dans un meme paquet — gardaient
+// le rang de l iteration de la map des vies, donc changeaient de rang d une execution a l autre.
+func cmpChangementDuFilm(a, b changementOrdonne) int {
+	return cmp.Or(
+		cmp.Compare(a.ch.TimestampUS, b.ch.TimestampUS), cmp.Compare(a.ch.Chunk, b.ch.Chunk),
+		cmp.Compare(a.ch.PacketIndex, b.ch.PacketIndex), cmp.Compare(a.ch.Slot, b.ch.Slot),
+		cmp.Compare(a.gen, b.gen), cmp.Compare(a.off, b.off), cmp.Compare(a.bit, b.bit))
 }
 
 // mergeEquipEmissions fusionne les deux sources par vie — la clé (slot, génération du handle), lot J5.3 —, dans l'ordre total du film (offset
@@ -191,7 +222,7 @@ func mergeEquipEmissions(
 		}
 	}
 	for vie, list := range merged {
-		sort.Slice(list, func(i, j int) bool { return equipEmissionLess(list[i], list[j]) })
+		slices.SortFunc(list, cmpEquipEmission)
 		list = pruneRecoveredViolations(list, hasHead[vie])
 		merged[vie] = list
 		for _, e := range list {
@@ -203,21 +234,15 @@ func mergeEquipEmissions(
 	return merged
 }
 
-// equipEmissionLess est l'ordre TOTAL de la fusion : instant, chunk, paquet, puis offset de
-// bit — la stricte (-1) avant toute récupérée du même paquet, deux récupérées par leur
-// position dans le flux. Sans ce dernier critère, sort.Slice (non stable) rendait un ordre
-// dépendant de l'exécution au paquet frontière (revue ronde 1, F3).
-func equipEmissionLess(a, b equipEmission) bool {
-	if a.TimestampUS != b.TimestampUS {
-		return a.TimestampUS < b.TimestampUS
-	}
-	if a.Chunk != b.Chunk {
-		return a.Chunk < b.Chunk
-	}
-	if a.PacketIndex != b.PacketIndex {
-		return a.PacketIndex < b.PacketIndex
-	}
-	return a.off < b.off
+// cmpEquipEmission est l ordre TOTAL de la fusion : instant, chunk, paquet, puis offset de bit —
+// la stricte (-1) avant toute recuperee du meme paquet, deux recuperees par leur position dans le
+// flux (revue ronde 1, F3) —, puis la position du record STRICT (lot J10.1, 2026-09-27, GB-3) :
+// deux emissions strictes d une meme vie dans un meme paquet portaient toutes deux l offset -1,
+// et leur rang dans la chaine — donc le compteur juge « precedent » — tenait au tri.
+func cmpEquipEmission(a, b equipEmission) int {
+	return cmp.Or(
+		cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Chunk, b.Chunk),
+		cmp.Compare(a.PacketIndex, b.PacketIndex), cmp.Compare(a.off, b.off), cmp.Compare(a.Bit, b.Bit))
 }
 
 // pruneRecoveredViolations est LE VERROU FINAL (revue ronde 1, F3) : l'invariant « une
@@ -271,36 +296,15 @@ func chainViolations(list []equipEmission, head bool) (repeats, jumps int) {
 	return repeats, jumps
 }
 
-// sortEmissionsByFilmOrder trie des émissions dans l'ordre du film (instant, puis
-// localisation) — l'ordre dans lequel le balayage strict les produisait déjà.
+// sortEmissionsByFilmOrder trie des émissions dans l ordre du film — instant, chunk, paquet, puis
+// la position du record dans le paquet : un ordre TOTAL (lot J10.1, 2026-09-27, GB-3 ; l ancien
+// s arretait au paquet, et deux emissions d une vie dans un meme paquet s y echangeaient).
 func sortEmissionsByFilmOrder(list []abilityEmission) {
-	sort.Slice(list, func(i, j int) bool { return emissionFilmOrderLess(list[i], list[j]) })
-}
-
-// emissionFilmOrderLess ordonne deux émissions par instant, puis par localisation dans le
-// film — un ordre TOTAL, pour une sortie déterministe.
-func emissionFilmOrderLess(a, b abilityEmission) bool {
-	if a.TimestampUS != b.TimestampUS {
-		return a.TimestampUS < b.TimestampUS
-	}
-	if a.Chunk != b.Chunk {
-		return a.Chunk < b.Chunk
-	}
-	return a.PacketIndex < b.PacketIndex
-}
-
-// equipmentChangeFilmOrderLess est le même ordre total, sur les changements assemblés.
-func equipmentChangeFilmOrderLess(a, b types.EquipmentChange) bool {
-	if a.TimestampUS != b.TimestampUS {
-		return a.TimestampUS < b.TimestampUS
-	}
-	if a.Chunk != b.Chunk {
-		return a.Chunk < b.Chunk
-	}
-	if a.PacketIndex != b.PacketIndex {
-		return a.PacketIndex < b.PacketIndex
-	}
-	return a.Slot < b.Slot
+	slices.SortFunc(list, func(a, b abilityEmission) int {
+		return cmp.Or(
+			cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Chunk, b.Chunk),
+			cmp.Compare(a.PacketIndex, b.PacketIndex), cmp.Compare(a.Bit, b.Bit))
+	})
 }
 
 // counterStep rend l'avance du compteur R(3) entre deux émissions, MODULO 8 — LE SEUL

@@ -32,4 +32,3 @@ keyframeLoadouts	30	1c6ac856b1cb74bef5271b0b29afe1071ca97ce04ee254bbf3ed78a86ce9
 keyframeGroundWeapons	32	e1ce056c91c18456959fa427fd3e8ca6f3cf980ea368c59d84bbba3e620ce7aa	{TimestampUS:4517903407 Chunk:1 PacketIndex:1 Slot:1346 Gen:1 Families:[3924295545]}
 weaponShots	45	d99cb487b59c4572da14279a0f94e3fe4b9f07b66d380f2a94b53dff96e62823	{TimestampUS:4551737292 Attacker:4 WeaponID:9564847282609285023 FilmIndex:4 HasPair:true}
 weaponDamages	46	ca6255f40deeda294486bd43bb7fa2339117d2c98bf44973775412dfcdbfbadd	{TimestampUS:4552522451 VictimIdx:3 ResponsibleIdx:4 Source:4004011046 HasSource:true Negative:false MagClear:4 MagRaw:8}
-weaponDamagesBaseSlot	512	94f8607915dff25f013e45fc0642fb9830b0fb25ab0ab46d477eaf1061def379	512

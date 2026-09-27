@@ -88,7 +88,7 @@ func buildScopedLookup(
 		clore(slot, p, borneFin(p.debut, 0, finApres(fins[slot], p.debut), holdUS))
 	}
 	for slot, ps := range parSlot {
-		sort.Slice(ps, func(i, j int) bool { return ps[i].debut < ps[j].debut })
+		trierPeriodesDeLunette(ps)
 		parSlot[slot] = ps
 	}
 	return func(slot uint32, ts uint64) int {

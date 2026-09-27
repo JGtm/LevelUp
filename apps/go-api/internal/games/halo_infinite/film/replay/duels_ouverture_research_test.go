@@ -100,7 +100,7 @@ func TestSondeDuelsOuverture(t *testing.T) {
 	tracks := indexBySlot(positions)
 	lives := buildLifeSpans(tracks)
 	morts := duelsMorts(t, film, lives)
-	brut, _ := duelsScanDegats(t, dir)
+	brut := duelsScanDegats(t, dir)
 	_, dmg := duelsResoudreBase(t, brut, duelsViesParSlot(lives))
 
 	cas := ouvPopulation(morts, dmg, tracks)

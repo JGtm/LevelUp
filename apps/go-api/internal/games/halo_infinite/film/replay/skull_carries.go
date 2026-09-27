@@ -400,15 +400,7 @@ func skullCarryIntervals(recs []types.StatRecord, identity objectives.RoundIdent
 			out = append(out, skullRawCarry{xuid: xuid, round: round, t0MS: start, t1MS: last})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].t0MS != out[j].t0MS {
-			return out[i].t0MS < out[j].t0MS
-		}
-		if out[i].round != out[j].round {
-			return out[i].round < out[j].round
-		}
-		return out[i].xuid < out[j].xuid
-	})
+	trierPortagesDeCrane(out)
 	return out
 }
 

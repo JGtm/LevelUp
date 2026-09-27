@@ -110,13 +110,13 @@ func TestSondeDuels(t *testing.T) {
 
 	lives := buildLifeSpans(tracks)
 	morts := duelsMorts(t, film, lives)
-	brut, baseScan := duelsScanDegats(t, dir)
+	brut := duelsScanDegats(t, dir)
 	base, dmg := duelsResoudreBase(t, brut, duelsViesParSlot(lives))
 
 	t.Logf("FILM %s (%s) : %d positions, %d slots, %d morts appariees, %d degats bruts",
 		filepath.Base(dir), carte, len(positions), len(tracks), len(morts), len(brut))
-	t.Logf("M0 pont d'index : base %d (argmax du scan : %d) — %d/%d degats resolus = %s",
-		base, baseScan, len(dmg), len(brut), duelsPct(len(dmg), len(brut)))
+	t.Logf("M0 pont d'index : base %d — %d/%d degats resolus = %s",
+		base, len(dmg), len(brut), duelsPct(len(dmg), len(brut)))
 
 	duelsRecensementC0(t, dir)
 	duelsMesureReciprocite(t, morts, dmg)
@@ -169,22 +169,14 @@ func duelsMorts(t *testing.T, film *source.Film, lives []lifeSpan) []duelMort {
 }
 
 // duelsScanDegats decode les damage_aftermath du film. Le decodage est PRODUCTIONISE
-// (ScanFilmWeaponDamages) : cet adaptateur ne fait que fournir le registre et le nombre de chunks.
-func duelsScanDegats(t *testing.T, dir string) ([]grammar.WeaponDamage, int) {
+// (ScanFilmWeaponDamages) : cet adaptateur ne fait que fournir le nombre de chunks.
+func duelsScanDegats(t *testing.T, dir string) []grammar.WeaponDamage {
 	t.Helper()
-	raw, err := grammar.ReadFilmChunk(dir, 0)
-	if err != nil {
-		t.Fatalf("chunk_00 illisible : %v", err)
-	}
-	reg, err := grammar.ParseRegistryChunk(raw)
-	if err != nil {
-		t.Fatalf("registre illisible : %v", err)
-	}
-	dmg, base, err := grammar.ScanFilmWeaponDamages(dir, reg, grammar.CountFilmChunks(dir))
+	dmg, err := grammar.ScanFilmWeaponDamages(dir, grammar.CountFilmChunks(dir))
 	if err != nil {
 		t.Fatalf("collecte des degats : %v", err)
 	}
-	return dmg, base
+	return dmg
 }
 
 // duelsViesParSlot indexe les vies par slot, pour repondre a « ce slot etait-il VIVANT a t ».

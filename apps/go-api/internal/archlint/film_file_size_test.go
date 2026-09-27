@@ -217,7 +217,11 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 74 -> 75 (2026-09-27, jalon J8 du PLAN_SUITE_AUDIT_DECODEUR_FILM), +32 : l entree v75
 	// (les replis D-10 : compteurs branches, datation des socles, voie du residu, pont par morts sur
 	// la serie publiee, `objectives.Rev`). Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2736,
+	// SCHEMA 75 -> 76 (2026-09-27, lot J10.7 du PLAN_SUITE_AUDIT_DECODEUR_FILM, fusionne apres J8),
+	// +30 : l entree v76 (le determinisme des tris, la tolerance de siege, le lien prise -> arme au
+	// sol, les tables de la grammaire, les revisions qui montent ou non, l effet au parc ; ecrite v75
+	// sur J10, renumerotee a la fusion). Exception ecrite, dans le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2766,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -302,7 +306,9 @@ var plafondsParFichier = map[string]int{
 	// justification de la montee (l identite par vie, GB-1).
 	// SCHEMA 74 -> 75 (2026-09-27, jalon J8 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : 1363 -> 1369, la
 	// justification de la montee (les replis D-10, un contenu qui change sans champ neuf).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1369,
+	// SCHEMA 75 -> 76 (2026-09-27, lot J10.7 du PLAN_SUITE_AUDIT_DECODEUR_FILM, fusionne apres J8) :
+	// 1369 -> 1374, la justification de la montee (le determinisme des tris).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1374,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

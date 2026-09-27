@@ -24,7 +24,9 @@ package replay
 // PUR (aucune I/O).
 
 import (
+	"cmp"
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -252,15 +254,15 @@ func (c naissancesDObjetParSlot) ajouter(slot uint32, n naissanceDObjet) {
 	c[slot] = append(c[slot], n)
 }
 
-// trier ordonne chaque slot par date (puis generation : l'ordre est total).
+// trier ordonne chaque slot par date, puis generation, les ex aequo restants dans l ORDRE DU FILM
+// (lot J10.1, 2026-09-27, DT-9). L ancien commentaire disait l ordre total : il ne l etait pas — une
+// cle peut porter deux creations au meme instant (cf. [flagFreeLess]), et leurs lectures
+// (`retenue`, `recensee`) peuvent differer. Leur seule cle unique est leur rang d ajout, que le
+// tri STABLE conserve.
 func (c naissancesDObjetParSlot) trier() {
 	for s := range c {
-		l := c[s]
-		sort.Slice(l, func(i, j int) bool {
-			if l[i].tUS != l[j].tUS {
-				return l[i].tUS < l[j].tUS
-			}
-			return l[i].gen < l[j].gen
+		slices.SortStableFunc(c[s], func(a, b naissanceDObjet) int {
+			return cmp.Or(cmp.Compare(a.tUS, b.tUS), cmp.Compare(a.gen, b.gen))
 		})
 	}
 }

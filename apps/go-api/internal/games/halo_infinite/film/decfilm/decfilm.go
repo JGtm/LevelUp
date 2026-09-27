@@ -213,8 +213,8 @@ func ScanPlayerIndices(film *source.Film, roster []uint64) (types.PlayerIndexTab
 
 type ScanFilmOptions = grammar.ScanFilmOptions
 
-func ScanFilmWeaponDamages(dir string, reg *grammar.Registry, n int) ([]grammar.WeaponDamage, int, error) {
-	return grammar.ScanFilmWeaponDamages(dir, reg, n)
+func ScanFilmWeaponDamages(dir string, n int) ([]grammar.WeaponDamage, error) {
+	return grammar.ScanFilmWeaponDamages(dir, n)
 }
 func ScanFilmWeaponShots(dir string, n int) ([]grammar.WeaponShot, error) {
 	return grammar.ScanFilmWeaponShots(dir, n)

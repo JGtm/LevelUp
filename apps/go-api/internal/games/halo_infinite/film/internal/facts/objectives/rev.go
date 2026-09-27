@@ -47,6 +47,15 @@ package objectives
 // persistes de la couche deviennent `redecoder` ; aucun backlog killsource ne s ouvre. Le MEME
 // rang porte le lot J8.6 (constat FO-4), neutre : les deux gardes `len(kept) == 0` de
 // `cumulateRounds` et de `SeriesByRound`, inatteignables, sont retirees.
+//
+// COMPLEMENT DU 2026-09-27 (lot J10.1, REVISION CONSTANTE : serie nee sur cette branche, jamais
+// publiee) : le tri du pied de film (`scanTh10Events`) devient TOTAL (instant, puis position du
+// XUID dans le chunk, DT-9). Deux evenements th=10 de la meme milliseconde ordonnent les actions
+// publiees (numero `Seq` dense) et `captureScorer` garde le premier du plus grand instant : leur
+// rang tenait au tri. Ecrit sur J10 sous `objectives-2026-09-26`, il rejoint ce rang a la fusion
+// de J10 dans la branche de suite d audit (J8 l avait deja monte) ; golden regenere a revision
+// constante. A la meme fusion, le tri de `roundStartsOfCompte` (ne de J8) s ecrit en `cmp.Or` :
+// son comparateur etait deja total, aucune sortie ne change.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

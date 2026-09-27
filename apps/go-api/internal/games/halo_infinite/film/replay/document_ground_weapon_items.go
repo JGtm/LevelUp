@@ -250,12 +250,7 @@ func buildGroundWeaponItems(
 		out = append(out, g)
 		cov.Published++
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].T0 != out[j].T0 {
-			return out[i].T0 < out[j].T0
-		}
-		return out[i].W < out[j].W
-	})
+	trierArmesAuSol(out)
 	if len(out) == 0 {
 		return nil, cov
 	}
@@ -321,6 +316,9 @@ type gwItemPick struct {
 // proche » et une prise de DRAPEAU (qui occupe un emplacement d'arme mais n'a pas d'objet
 // ti=42) volait le lien de l'arme voisine — 27 mauvaises familles sur 33 liens. On ne lie que
 // l'arme que la prise NOMME.
+//
+// LA FENETRE PART DE `Bounds.LowUS`, PAS DE L APPARITION (J10.4, RB2-7 de l audit du 2026-09-24) :
+// voir [gwItemTakeInWindow].
 func gwItemLinkPickups(
 	objs []gwPickupObject, changes []types.HeldWeaponChange,
 	bySlot map[uint32][]grammar.BipedPosition, cov *GroundWeaponItemsCoverage, fb *fallback.Compteur,
@@ -347,7 +345,7 @@ func gwItemLinkPickups(
 		best, bestD := -1, float64(gwItemLinkMaxDist)
 		for i, o := range objs {
 			if out[i].found || o.FamilyID != ch.Family ||
-				ch.TimestampUS < o.Appar.TUS || ch.TimestampUS > o.Bounds.HighUS {
+				!gwItemTakeInWindow(o.Bounds, o.Appar.TUS, ch.TimestampUS) {
 				continue
 			}
 			d := dist3(actor, o.Pos)
@@ -362,6 +360,14 @@ func gwItemLinkPickups(
 		cov.PickupLinked++
 	}
 	return out
+}
+
+// gwItemTakeInWindow dit si une prise a l instant `tUS` peut avoir consomme l objet : APRES sa
+// naissance, PAS AVANT le dernier instant ou une image-cle le prouve encore au sol (`LowUS`), et
+// pas apres le premier instant ou son absence est prouvee (`HighUS`). Une prise anterieure a
+// `LowUS` a pris une autre arme : l objet etait encore la.
+func gwItemTakeInWindow(b gwPickupBounds, apparUS, tUS uint64) bool {
+	return tUS >= apparUS && tUS >= b.LowUS && tUS <= b.HighUS
 }
 
 // logGroundWeaponItems journalise le calque avec ses dénominateurs.

@@ -18,10 +18,11 @@ import (
 // simplement la sortie de production vers le type sondeDmgEvt de la sonde — une seule copie du scan.
 func sondeScanDamage(t *testing.T, dir string, reg *Registry, n int) ([]sondeDmgEvt, int) {
 	t.Helper()
-	dmgs, base, err := ScanFilmWeaponDamages(dir, reg, n)
+	dmgs, err := ScanFilmWeaponDamages(dir, n)
 	if err != nil {
 		t.Fatalf("collecte des degats : %v", err)
 	}
+	base := lot1BaseAtterrissageDegats(t, dir, reg, n)
 	evs := make([]sondeDmgEvt, len(dmgs))
 	for i, d := range dmgs {
 		evs[i] = sondeDmgEvt{

@@ -47,6 +47,8 @@ package grammar
 // prochain palier, et il est suivi au plan `PLAN_PERCER_TRAME_FILM_2026-08-30.md`.
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -125,8 +127,17 @@ func ScanZoomEvents(film *source.Film) []ZoomEvent {
 			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].TimestampUS < out[j].TimestampUS })
+	trierBasculesDeLunette(out)
 	return out
+}
+
+// trierBasculesDeLunette range les bascules dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9) :
+// instant, puis slot, les ex aequo restants dans l ORDRE DU FILM. Cet ordre est PERSISTE (faits du
+// film, `encodeZoomEvents`) : il ne doit pas tenir au tri.
+func trierBasculesDeLunette(out []ZoomEvent) {
+	slices.SortStableFunc(out, func(a, b ZoomEvent) int {
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Slot, b.Slot))
+	})
 }
 
 // decodeZoomHead lit l'événement de tête d'un paquet de la famille et rend sa bascule.

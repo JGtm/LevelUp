@@ -17,7 +17,9 @@ package replay
 // 496 -> 475 tirs publiés, et 4 -> 0 désaccords.
 
 import (
+	"cmp"
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -113,7 +115,7 @@ func buildShots(pos []grammar.BipedPosition, events []grammar.FireEvent, origin,
 		cov.count(reasonAttached)
 		out = append(out, tirPose(e, slot, p, origin, step))
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].T < out[j].T })
+	trierTirs(out)
 	return out, orphans, cov
 }
 
@@ -159,7 +161,11 @@ func indexBySlot(pos []grammar.BipedPosition) map[uint32]slotTrack {
 	}
 	out := make(map[uint32]slotTrack, len(m))
 	for s, ps := range m {
-		sort.Slice(ps, func(i, j int) bool { return ps[i].TimestampUS < ps[j].TimestampUS })
+		// Les ex aequo (deux positions d un slot au meme horodatage) gardent l ORDRE DU FILM (lot J10.1,
+		// 2026-09-27, DT-9) : `at` rend la plus proche, donc l une d elles, et c est elle qu un tir recoit.
+		slices.SortStableFunc(ps, func(a, b grammar.BipedPosition) int {
+			return cmp.Compare(a.TimestampUS, b.TimestampUS)
+		})
 		out[s] = slotTrack{pts: ps}
 	}
 	return out

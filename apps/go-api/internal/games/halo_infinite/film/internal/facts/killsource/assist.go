@@ -52,8 +52,6 @@ package killsource
 // mauvais, c est la marge de bijection NULLE du BTB : les lignes y sont exactes en AGREGAT et
 // fausses individuellement.
 
-import "sort"
-
 // DamageShare : une part de degats en POURCENTAGE ENTIER, avec son etat de mesure.
 //
 // TROIS ETATS, JAMAIS DEUX — exactement comme [types.Assist.Known], et pour la meme raison : NULL n est
@@ -175,7 +173,7 @@ func scanKillEvents(f *film) *assistScan {
 			s.recs = append(s.recs, r)
 		}
 	}
-	sort.Slice(s.recs, func(i, j int) bool { return s.recs[i].ms < s.recs[j].ms })
+	trierKillEvents(s.recs)
 	return s
 }
 

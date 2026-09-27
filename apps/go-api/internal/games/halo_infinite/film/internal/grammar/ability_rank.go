@@ -88,6 +88,11 @@ type abilityEmission struct {
 	Gen         uint32
 	Chunk       int
 	PacketIndex int
+	// Bit est la position, dans le payload du paquet, du composant i0 du record porteur (lot
+	// J10.1, 2026-09-27). Un record occupe une position : c'est la CLE UNIQUE qui departage deux
+	// emissions strictes d'un meme paquet (DT-9). Zero sur une emission recuperee, que son
+	// offset d'en-tete ([equipRecovered.off]) departage deja.
+	Bit         int
 	TimestampUS uint64
 	Counter     uint32
 	// Rank vaut AbilitySetNoRank quand la porte est ouverte : le joueur ne porte PAS de
@@ -190,7 +195,7 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) t
 			st.Gated++
 		}
 		visit(abilityEmission{
-			Slot: r.Slot, Gen: r.Gen, Chunk: r.Chunk, PacketIndex: r.Packet.Index,
+			Slot: r.Slot, Gen: r.Gen, Chunk: r.Chunk, PacketIndex: r.Packet.Index, Bit: r.I0,
 			TimestampUS: r.Packet.TimestampUS,
 			Counter:     last.counter, Rank: last.rank,
 		})

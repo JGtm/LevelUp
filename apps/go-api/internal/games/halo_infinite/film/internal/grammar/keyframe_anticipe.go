@@ -57,7 +57,10 @@ package grammar
 //
 // HORS LIGNE — jamais depuis un chemin de requete.
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 // cleAnticipee est la cle que `FUN_1406caad8` compare : le slot (30 bits bas de l eid) et sa
 // TETE (les deux bits 30-31). Les deux ensemble sont le mot de 32 bits.
@@ -159,7 +162,7 @@ func (t *TableAnticipee) AjouterChunk(num int, data []byte, pks []FilmPacket) {
 // fois la passe finie ; [ConstruireTableAnticipee] s en charge.
 func (t *TableAnticipee) Clore() {
 	for cle, decls := range t.entrees {
-		sort.Slice(decls, func(a, b int) bool { return decls[a].chunk < decls[b].chunk })
+		trierDeclarationsAnticipees(decls)
 		t.entrees[cle] = decls
 		for i := 1; i < len(decls); i++ {
 			if decls[i].ti != decls[0].ti {
@@ -245,4 +248,12 @@ func (t *TableAnticipee) Tetes() map[uint8]int {
 		return nil
 	}
 	return t.tetes
+}
+
+// trierDeclarationsAnticipees range les declarations d une cle par chunk, les ex aequo dans l ORDRE
+// DU BALAYAGE (lot J10.1, 2026-09-27, DT-9) : une cle declaree deux fois par la meme image-cle
+// (archetypes divergents — c est un conflit, compte par [TableAnticipee.Clore]) n a pas d autre cle
+// unique que ce rang, et c est la PREMIERE de la liste que [TableAnticipee.ArchetypeApres] rend.
+func trierDeclarationsAnticipees(decls []declarationAnticipee) {
+	slices.SortStableFunc(decls, func(a, b declarationAnticipee) int { return cmp.Compare(a.chunk, b.chunk) })
 }

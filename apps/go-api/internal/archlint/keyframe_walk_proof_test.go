@@ -15,7 +15,8 @@ package archlint
 // Deux balayages d'un meme payload qui ne marcheraient pas pareil liraient deux tables differentes
 // — un occupant present pour l'un, absent pour l'autre. CE GARDE-RAIL TIENT L'UNIFORMITE : dans les
 // paquets de la chaine de cuisson, une forme SANS preuve ne s'appelle que depuis l'allowlist
-// ci-dessous (instruments, enveloppes D2, et la chaine de precision par arme, a revision propre),
+// ci-dessous (instruments et enveloppes D2 ; la chaine de precision par arme n y figure plus depuis
+// J10.2, 2026-09-27 : elle ne rejoue plus de monde),
 // et la valeur ZERO de `MarcheDImageCle` ne s'ecrit NULLE PART : les deux entrees des instruments
 // marchent par `walkKeyframeWorldStats`, qui ne prend pas de preuve.
 //
@@ -75,10 +76,6 @@ var appelsSansPreuveAutorises = map[string]string{
 	"keyframe_record_spans.go/KeyframeRecordSpans -> WalkKeyframeWorld": "instrument (emprise du lot " +
 		"V5), aucun appelant de production (2026-09-24)",
 	"keyframe_world.go/WorldFromKeyframe -> WalkKeyframeWorld": "aucun appelant de production (2026-09-24)",
-	"weapon_hits.go/ScanFilmWeaponDamages -> WalkKeyframeWorld": "chaine de PRECISION PAR ARME " +
-		"(`sync/killcollector/hits.go`) : revision propre `WeaponHitDistanceDecoderRev`, cadre par " +
-		"defaut, film relu depuis le disque. Y brancher la preuve change ses lignes en base — decision " +
-		"de backfill hors de la campagne des retours du rejeu (decouverte du lot D-fix, 2026-09-24)",
 	"inventory_decode.go/keyframeInventories -> invRecordSpans": "forme instrument ; la cuisson passe par " +
 		"`keyframeInventoriesDe` et `invRecordSpansDe` sur les records de la marche du film",
 	"inventory_decode.go/invRecordSpans -> WalkKeyframeWorld": "forme instrument (cf. ci-dessus)",

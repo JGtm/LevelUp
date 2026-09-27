@@ -379,10 +379,11 @@ func TestLot1AttribArmeTir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("collecte des tirs : %v", err)
 	}
-	dmg, base, err := ScanFilmWeaponDamages(dir, reg, n)
+	dmg, err := ScanFilmWeaponDamages(dir, n)
 	if err != nil {
 		t.Fatalf("collecte des degats : %v", err)
 	}
+	base := lot1BaseAtterrissageDegats(t, dir, reg, n)
 	t.Logf("collecte : %d tirs longs (0xD2 t36) · %d degats (0xC0 t0) · base bipede %d", len(shots), len(dmg), base)
 
 	attribM1(t, shots, dmg)

@@ -1362,8 +1362,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `residu_de_manche` se publie sous son nom, et le pont par instants de mort deroule la serie
 	//   publiee (`objectives.Rev` monte) : un v74 doit se lire « a redecoder ». Detail :
 	//   `document_chronicle.go`.
-	if SchemaVersion != 75 {
-		t.Fatalf("SchemaVersion = %d, attendu 75 : incrémenter exige une raison écrite ci-dessus "+
+	// - 76 (2026-09-27, jalon J10 du PLAN_SUITE_AUDIT_DECODEUR_FILM, lot J10.7) : DETERMINISME. Aucun
+	//   champ neuf ; les tris qui decident d une sortie deviennent totaux (roster, equipement, armes au
+	//   sol, lancers, tirs, fil des morts), la tolerance de siege est une duree, le lien prise -> arme
+	//   au sol respecte `LowUS`. `grammar.Rev` monte avec elle : un v75 doit se lire « a redecoder ».
+	//   Ecrite v75 sur J10, renumerotee a la fusion : J8, fusionne avant, avait pris le 75.
+	if SchemaVersion != 76 {
+		t.Fatalf("SchemaVersion = %d, attendu 76 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

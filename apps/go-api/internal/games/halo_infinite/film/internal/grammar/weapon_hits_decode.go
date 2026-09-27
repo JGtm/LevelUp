@@ -10,8 +10,9 @@ package grammar
 // Contenu :
 //   - references d'en-tete du descripteur 0x1451f98d0 (lot1RefDom / lot1RefDom1) et leurs largeurs ;
 //   - la charge damage_aftermath (0xC0 type 0) : lot1DecodeDamageAftermath + dequantification ;
-//   - la resolution slot base-512 des index bruts vers les slots bipedes (lot1chBases,
-//     lot1chIsBiped, lot1ArgmaxBase).
+//   - le jeu de bases candidates de la resolution slot des index bruts (lot1chBases).
+//     `lot1chIsBiped` et `lot1ArgmaxBase` sont retournes en test le 2026-09-27 (J10.2) : leur
+//     seul appelant de production rendait une base que personne ne lisait.
 
 // (La table des largeurs par domaine `lot1RefDomWidths` vivait ici en copie de celle du
 // descripteur 0x1451f98d0, avec `3: 8` la ou la mesure dit 7. Supprimee le 2026-09-05, lot E,
@@ -129,28 +130,3 @@ func lot1DecodeDamageAftermath(br *Lecteur) lot1DmgResult {
 // lot1chBases : jeu de bases candidat pour la resolution slot (identique a victime_slot pour
 // comparabilite). La bande bipede se resout typiquement a 512.
 var lot1chBases = []int{0, 128, 256, 384, 448, 480, 500, 508, 510, 512, 514, 516, 520, 544, 576}
-
-// lot1chIsBiped indique si l'index brut idx, rapporte a la base, atterrit sur un slot lie a un
-// bipede dans le monde reconstruit w.
-func lot1chIsBiped(w *World, base, idx int) bool {
-	if idx < 0 {
-		return false
-	}
-	slot := base + idx
-	if slot < 0 || slot >= 8192 {
-		return false
-	}
-	ti, ok := w.ArchetypeForSlot(uint32(slot))
-	return ok && ti == BipedTypeIndex
-}
-
-// lot1ArgmaxBase rend la base a l'atterrissage bipede maximal (base la plus basse en cas d'egalite).
-func lot1ArgmaxBase(hits map[int]int) int {
-	best, bestN := lot1chBases[0], -1
-	for _, b := range lot1chBases {
-		if hits[b] > bestN {
-			best, bestN = b, hits[b]
-		}
-	}
-	return best
-}

@@ -1,8 +1,11 @@
 package objectives
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"cmp"
+	"slices"
 	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // slotidentity_rounds.go — L'IDENTITE slot d'entite -> joueur PAR MANCHE.
@@ -193,12 +196,12 @@ func roundStartsOfCompte(recs []types.StatRecord, byRound map[int]map[int]string
 	// `sort.Slice` n'est pas stable, et deux manches peuvent porter le MEME instant de debut
 	// (une manche vide, ou deux enregistrements au meme horodatage). Sans ce departage, l'ordre
 	// des ex aequo changeait a chaque execution (meme defaut que lessTrack, filmdec/projectiles.go
-	// — correction du 2026-09-02, item 0.4bis de PLAN_CUISSON_PERF).
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].startMS != out[j].startMS {
-			return out[i].startMS < out[j].startMS
-		}
-		return out[i].round < out[j].round
+	// — correction du 2026-09-02, item 0.4bis de PLAN_CUISSON_PERF). Le comparateur etait deja
+	// TOTAL (le numero de manche est une cle de map, donc unique) ; il s ecrit en `cmp.Or` depuis
+	// la fusion de J10 apres J8 (2026-09-27) : J8 avait deplace l appel dans `roundStartsOfCompte`,
+	// que le cliquet DT-9 (`archlint/film_tri_total_test.go`) ne tolere pas. Aucune sortie ne change.
+	slices.SortFunc(out, func(a, b roundStart) int {
+		return cmp.Or(cmp.Compare(a.startMS, b.startMS), cmp.Compare(a.round, b.round))
 	})
 	return out
 }
