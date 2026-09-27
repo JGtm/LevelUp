@@ -158,6 +158,11 @@ const (
 	MethodDeathInstants LinkMethod = "instants_de_mort"
 	// MethodSheetTriplet : le triplet K/D/A confronte a la feuille de match.
 	MethodSheetTriplet LinkMethod = "triplet_feuille"
+	// MethodRoundResidue : le RESIDU de la feuille sur une manche (son total moins ce que les autres
+	// manches lui attribuent), apparie a un seul slot muet quand l appariement est unique des deux
+	// cotes (pont statborg par manche, lot 6.7-B1). Publiee sous son nom depuis le lot J8.4
+	// (2026-09-27, constats FO-1 / RA2-4) : elle sortait `MethodNone`, une voie deduite sans voie.
+	MethodRoundResidue LinkMethod = "residu_de_manche"
 	// MethodContested : deux candidats subsistent, rien ne les departage. Va toujours avec
 	// [LinkUnresolved] : l'identite n'est pas absente, elle est INDECIDABLE.
 	MethodContested LinkMethod = "conteste"

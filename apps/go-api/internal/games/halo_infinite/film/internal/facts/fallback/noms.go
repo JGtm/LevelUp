@@ -114,4 +114,8 @@ const (
 	// NomOrigineAuSolLacheeParFenetre : `replay/ground_weapon_rules.go`, `gwPadsClass` ; compte par
 	// `replay/ground_weapon_pads.go`, `buildWeaponPads` (lot J8.3, constat RB2-8).
 	NomOrigineAuSolLacheeParFenetre Nom = "repli_origine_au_sol_lachee_par_fenetre"
+	// NomIdentiteDeSlotParResiduDeManche : `objectives/slotidentity_residue.go`,
+	// `CompletedByRoundResidue` ; compte par `replay/identity_registry_section.go`,
+	// `compterLesSlotsParResidu` (lot J8.4, constats FO-1 / RA2-4).
+	NomIdentiteDeSlotParResiduDeManche Nom = "repli_identite_de_slot_par_residu_de_manche"
 )

@@ -422,4 +422,27 @@ var registreObjectifsEtConstruction = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   "le lot qui passera le compteur de la cuisson a grammar.ScanDeaths (descendue de replay au lot J4.2 ; appelee deux fois par cuisson, sans match_id) ; d ici la, chaque declenchement en cuisson est journalise en WARN par replaybuild.jugerFilmSansManifeste",
 	},
+	{
+		// LOT J8.4 DU PLAN DE SUITE D AUDIT (2026-09-27), CONSTATS FO-1 / RA2-4 : la voie etait
+		// publiee `deduit` SANS voie (`method` vide) et son compteur de retrait etait aveugle —
+		// connu depuis l audit 0.E (13/09), jamais route vers un lot. Elle se publie desormais
+		// sous `residu_de_manche` (`canonical.MethodRoundResidue`) et se compte ici.
+		Nom:  "repli_identite_de_slot_par_residu_de_manche",
+		Fait: "le joueur d un slot statborg MUET dans une manche (ni les instants de mort ni la feuille ne l ont nomme), qui porte les compteurs et les actions d objectif de ce slot",
+		Mecanisme: "le residu de la feuille sur la manche (le total du joueur moins ce que les autres manches lui attribuent) est apparie au segment K/D/A du slot quand l appariement est unique DES DEUX COTES, " +
+			"segment nul refuse, jamais contre une voie plus forte ; compte = couples (manche, slot) publies sous cette voie",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgObjectiveEvents + "slotidentity_residue.go",
+			Ancre:   "out.origins[round][slot] = OriginRoundResidue",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/identity_registry_section.go",
+			Ancre:   "fb.Declenche(fallback.NomIdentiteDeSlotParResiduDeManche)",
+		}},
+		DatePose:        "2026-09-27",
+		CibleRetrait:    "retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27) ; sinon une lecture du film qui nomme le slot muet (instant de mort ou table d identite de la manche)",
+		CritereRetrait:  "0 couple (manche, slot) publie sous `residu_de_manche` sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
 }
