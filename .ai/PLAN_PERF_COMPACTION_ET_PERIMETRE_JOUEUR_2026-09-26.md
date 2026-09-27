@@ -722,12 +722,21 @@ Journal B (2026-09-27, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
 
 ## 4. Étape F — Clôture (superviseur)
 
-- [ ] F.1 gates rejoués par le superviseur sur la tête de la branche
+- [x] F.1 gates rejoués par le superviseur sur la tête de la branche — sur `ba03a0be4`
+      (PowerShell, GOCACHE privé) : gofmt vide, build 0, vet 0, `go test -tags=integration -p 1
+      -timeout 30m ./...` COMPLET code de sortie 0, golangci-lint `--new-from-rev=ea5682373` 0 issue
+      avec et sans `--build-tags=integration` ; `go test ./...` : un seul rouge, le test à seuil de
+      temps connu `TestLUSRV2Shadow_RafalesBornees_300Candidats` (machine chargée), vert dans le run
+      d'intégration complet du même arbre. Revues : C (L1 anti-ART, L6 tests, ronde 2 sur C.8 / C.9,
+      relecture de la méthode sous verrou C.10), B (SQL / parité) : 0 P0 ; le P1 de la ronde 2 a
+      conduit au changement de méthode validé par l'utilisateur (C.10) ; tous les P2 corrigés (C.8,
+      C.9, C.11). Variante POSIX de la réécriture non compilable sur ce poste : prouvée par la CI
+      seulement.
 - [ ] F.2 compaction de la base LOCALE réelle, après accord de l'utilisateur : serveur arrêté,
       `--dry-run` puis compaction avec sauvegarde, vues vérifiées, serveur relancé ; taille du
       fichier et durées des pages avant / après (l'utilisateur ouvre Carrière, Relations, une vue
       match ; durées lues dans `logs/http.log`)
-- [ ] F.3 changelog 7.5.0 EN + FR complété (chiffres C et B) ; handoff et thought_log
+- [x] F.3 changelog 7.5.0 EN + FR complété (chiffres C et B) ; handoff et thought_log
 - [ ] F.4 push de la branche et CI : sur signal de l'utilisateur
 - [ ] F.5 fusion dans `feat/v75` : sur signal de l'utilisateur ; la compaction PROD reste son geste,
       dans la séquence Ops de la v7.5, après les recuissons
@@ -814,3 +823,13 @@ case non statuée de l'étape courante (C, puis B, puis F).
 
 - 2026-09-26 : mesure des passes supersédées sur copie (tableau §0) ; lot C passé d'« abandonné »
   à « à faire » et lot B restreint au bornage (sans cache) sur décision de l'utilisateur ; plan écrit.
+- 2026-09-27 : étape C close (C.1 à C.11) après trois revues ; la ronde 2 (P1 : écritures d'un tiers
+  perdues sans erreur pendant `--rewrite-file`) a conduit, sur accord de l'utilisateur, à la
+  méthode « verrou DuckDB tenu du début à la fin » ; Windows refusant de remplacer un fichier tenu,
+  décision du superviseur : fermeture puis rename immédiat sous Windows (un tiers qui ouvre dans
+  l'intervalle fait échouer le rename : refus, rien de perdu), rename sous verrou ailleurs. Régression
+  de test du lot A (fixture Relations sans `gamertag`) trouvée par le gate complet de C, corrigée
+  (`9b9ae4062`). Étape B close (B.0 à B.6), revue sans constat ; écart assumé : Campagne Halo 5 hors
+  des frags échangés. F.1 et F.3 faits ; restent F.2 (compaction locale, avec l'utilisateur), F.4,
+  F.5 (sur son signal). Proposé à l'utilisateur, non lancé : lier aussi les listes de l'annuaire des
+  noms en un paramètre tableau (découverte (12) : 0,8-0,9 s des Relations de Nuzzles).
