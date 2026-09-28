@@ -59,7 +59,7 @@ import "log/slog"
 // attachBombStats calcule les cinq statistiques d'Assaut et les faits datés, et les pose sur le
 // document.
 //
-// GARDE DE MODE : `opt.Bomb.CarryScanned`, posée par l'appelant (`replaybuild.isBombVariant`)
+// GARDE DE MODE : `opt.Bomb.CarryScanned`, posée par l'appelant (`GardesDeLaVariante`)
 // sur TOUTE la famille bomb, One Bomb comprise. Hors de la famille : ni calque, ni couverture —
 // la même règle que les autres calques d'objectif.
 func attachBombStats(doc *ReplayDocument, opt Options, reg IdentityRegistry, carry HeldObjectCarry) {

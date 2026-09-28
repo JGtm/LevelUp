@@ -91,7 +91,7 @@ func TestIdentifiedEventsSansFamilleNeNommeRien(t *testing.T) {
 		t.Run(nom, func(t *testing.T) {
 			got, _, _ := identifiedEvents(context.Background(), "m",
 				filmDeaths{err: errors.New("film absent")}, recs,
-				port.MatchFacts{GameVariantName: variant}, &pontParManche{recs: recs})
+				port.MatchFacts{GameVariantName: variant}, replay.NouveauPontParManche(recs, nil, nil))
 			if got != nil {
 				t.Errorf("%d action(s), attendu nil : un mode sans table nommee ne nomme rien", len(got))
 			}
@@ -157,7 +157,7 @@ func TestIdentifyRoundEventsMultiManche(t *testing.T) {
 	// (`CompletedByLines`) refuse de toute façon le multi-manche — cf.
 	// `objectives.TestCompletedByLinesRefuseLeMultiManche`, qui le prouve à sa source.
 	got, _ := decfilm.IdentifyNamedEventsByRound(named,
-		(&pontParManche{recs: recs, deaths: deaths}).identite())
+		replay.NouveauPontParManche(recs, deaths, nil).Identite())
 	var capX string
 	for _, e := range got {
 		if e.Stat == decfilm.StatFlagCaptures {

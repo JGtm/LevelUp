@@ -355,19 +355,25 @@ décision de l'utilisateur (§3). Aucun repli choisi, aucun seuil ajusté.
 Périmètre : `games/halo_infinite/film/replay/placement_des_vies.go` (+ tests), à côté de
 `ContextesDesMorts` ; lecture des porteurs retenue en V0.2 (fonction pure, entrée du calcul).
 
-- [ ] V1.1 `PlacementDesVies(entree) []PlacementVie` : entrée = registre, positions, vies nommées,
+- [x] V1.1 `PlacementDesVies(entree) []PlacementVie` : entrée = registre, positions, vies nommées,
   camps, morts du journal (tueur, victime, instant, publiable), intervalles de port, portée du
   radar ; sortie = une ligne par vie (V3). Réutilise `visibleA` / `vivantA` (aucune copie).
-- [ ] V1.2 Tests unitaires synthétiques, un par règle : ordre des causes ; équipe à terre ;
+  → `film/replay/placement_des_vies.go` ; signature `PlacementDesVies(EntreePlacement)
+  ([]PlacementVie, BilanPlacement)` (le second retour porte les frags écartés, dont « avant la
+  première vie » que la décision V3 veut comptés). Journal V1 ci-dessous.
+- [x] V1.2 Tests unitaires synthétiques, un par règle : ordre des causes ; équipe à terre ;
   porteur ; joueur non situé ; coéquipier non situé ; médiane ; `beyond_ms` ; vie de moins de
   2 000 ms mesurées ; frag posthume rattaché à la vie finie ; frag avant la première vie ; trahison
   exclue ; frag non publiable exclu ; variante sans portée. Chaque test vu ROUGE sous une mutation
   nommée dans le journal du lot.
-- [ ] V1.3 Test témoin sur deux films du 22/09 (sauté sans cache) : nombre de vies = celui de
+  → 14 tests (les 13 règles + le refus du pont non publiable), 14 mutations vues rouges (M1 à M14).
+- [x] V1.3 Test témoin sur deux films du 22/09 (sauté sans cache) : nombre de vies = celui de
   `match_lives_latest` pour ces matchs ; ≥ 97 % des frags publiables rattachés ; pour les vies
   finies par une mort, distance du dernier instant mesuré à moins de 1 m de celle du contexte de
   mort (`match_death_context`) sur ≥ 90 % d'entre elles.
-- [ ] V1.4 Intervalles de port depuis les entrées du sync (voie (b), V6) : une entrée EXPORTÉE de
+  → `sync/killcollector/emprise_v1_temoin_research_test.go`, `8e376cb1` et `2b50122a` : 102/102 et
+  88/88 vies, 100 % des frags, 100 % des fins (écart max 0,26 m).
+- [x] V1.4 Intervalles de port depuis les entrées du sync (voie (b), V6) : une entrée EXPORTÉE de
   `film/replay` qui rend, pour un film et le registre du collecteur, les intervalles de port par
   xuid (drapeau, crâne, bombe, VIP) en produisant les calques par l'assembleur de production — la
   même chaîne que l'instrument `emprise_v0_porteurs_research_test.go` a mesurée, sans recopier la
@@ -376,7 +382,142 @@ Périmètre : `games/halo_infinite/film/replay/placement_des_vies.go` (+ tests),
   (`archlint/film_facade_surface_test.go`, compteurs `replay.X`) mis à jour avec justification
   datée. Tests : intervalles identiques à ceux du document de rejeu sur les 9 films à porteur de V0
   (sauté sans cache), et une garde de mode testée (aucune lecture hors mode à porteur).
+  → `replay.PortagesAuSync` (`film/replay/porteurs_au_sync.go`) ; le pont par manche, les gardes
+  de mode et les entrées des quatre calques DÉPLACÉS de `replaybuild` vers `film/replay`
+  (`pont_par_manche.go`, `porteurs_entrees.go`), `replaybuild` les appelle ; 9 films sur 9
+  identiques à l'union près, ratchet compagnon 278 → 291 daté.
 - Gate : tests cités + gate commun (Go).
+
+#### Journal V1 (exécuteur, 2026-09-28)
+
+**Fichiers.** Neufs dans `apps/go-api/internal/games/halo_infinite/film/replay/` :
+`placement_des_vies.go` (+ `_test.go`), `porteurs_au_sync.go` (+ `_test.go`),
+`porteurs_entrees.go`, `pont_par_manche.go`, `emprise_v1_porteurs_research_test.go`, et quatre
+tests DÉPLACÉS de `replaybuild` avec le code qu'ils testent (`porteurs_drapeau_identite_test.go` ←
+`flagidentity_test.go` sauf `TestScoreboardTeamsEstUnControle`, resté ; `porteurs_crane_identite_test.go`
+← `skullidentity_test.go` ; `pont_par_manche_residu_test.go` ← `pontresidu_test.go` ;
+`porteurs_gardes_test.go` ← `bombvariant_test.go`, dont le ratchet « one bomb » balaie désormais
+`replay`, où vit la garde). Modifiés : `death_context.go` (`indexerParXUID(positions, registre)` et
+`distanceHorizontale`, partagés par les deux lecteurs — aucune copie de `visibleA`/`vivantA`, appelés
+tels quels), `replaybuild/matchfacts.go` et `zones.go` (copies supprimées : `pontParManche`,
+`withFlagIdentity`, `flagInput`, `skullInput`, `vipInput`, `bombInput`, `isVipVariant`,
+`isSkullVariant`, `isBombVariant`), trois tests de `replaybuild` (`replay.NouveauPontParManche`),
+six commentaires de `replay` qui nommaient les anciens emplacements, et
+`archlint/film_facade_surface_test.go` (plafond compagnon 278 → 291, 13 symboles nommés, 0
+retrait ; façade `decfilm` intacte à 166). Témoin : `sync/killcollector/emprise_v1_temoin_research_test.go`.
+
+**Décisions prises dans le cadre de V3 (à relire par le superviseur).**
+- Grille FERMÉE `[start_ms, end_ms]` (texte de V3) : une vie compte `⌊durée/100⌋ + 1` instants de
+  100 ms, si bien que la somme des cinq cumuls dépasse `duration_ms` d'au plus un pas (témoin :
+  3 176 900 ms cumulés pour 3 171 602 ms de durée sur `8e376cb1`). `beyond_ms / measured_ms` n'en
+  est pas affecté.
+- Médiane d'un nombre pair d'instants = moyenne des deux centraux ; arrondie à deux décimales comme
+  toute distance publiée (`arrondiMetres`). « Dépasse la portée » = strictement supérieur.
+- Un joueur SANS camp en base n'a aucun coéquipier : ses instants non portés sont « équipe à terre ».
+- Frag dont un camp est inconnu (victime bot ou non résolue) : ni frag ni trahison prouvés, écarté et
+  compté (`FragsCampInconnu`) ; tueur non résolu : écarté et compté. Témoin : 0 et 0.
+- Registre au pont non publiable (`PontPubliable` faux) : AUCUNE ligne, `BilanPlacement.PontNonPubliable`
+  — même refus et même raison que `ContextesDesMorts` (règle ajoutée, non écrite en V3 : §7).
+- `PlacementVie.DerniereMesure` (dernier instant mesuré et sa distance) est la valeur que le critère 3
+  de V1.3 confronte au contexte de mort ; V2.1 ne la persiste pas.
+- Porteurs : seul l'état `carried` du drapeau compte ; `carried_open` (borne haute, aucun lâcher daté)
+  est écarté et compté (`BilanPortages.DrapeauOuverts`) — 0 sur les 9 films. Garde du SYNC pour le
+  drapeau : la famille CTF de la variante (`GardesDesPorteurs.Drapeau`), puis les trois signaux du
+  film comme à la cuisson (§7).
+
+**Mutations V1.2** (appliquées une à une sur `placement_des_vies.go`, test ciblé rouge, fichier
+restauré par copie depuis le scratchpad, restauration vérifiée par `cmp`) :
+
+| # | Test | Mutation | Rouge |
+|---|---|---|---|
+| M1 | `OrdreDesCauses` | « équipe à terre » examinée AVANT « porteur » | porteur 0 ms / à terre 6 000 |
+| M2 | `EquipeATerre` | règle « équipe à terre » retirée | mesure 10 100 ms (distance infinie mesurée) |
+| M3 | `Porteur` | borne de fin exclue dans `porteA` | porteur 900 ms |
+| M4 | `JoueurNonSitue` | joueur non situé classé « coéquipier non situé » | non situé 0 |
+| M5 | `CoequipierNonSitue` | coéquipier non situé sauté (`continue`) | mesure 10 100 ms |
+| M6 | `Mediane` | valeur centrale haute sans moyenne | 10 m au lieu de 6,5 |
+| M7 | `HorsRadar` | `>=` au lieu de `>` | 10 100 ms au lieu de 5 100 |
+| M8 | `VieCourteNonMesuree` | seuil `<=` au lieu de `<` | médiane nil à 2 000 ms |
+| M9 | `FragPosthume` | vie bornée par sa fin (`[début, fin]`) | 0 frag rattaché |
+| M10 | `FragAvantLaPremiereVie` | frag rattaché à la première vie | 1 frag sur la vie |
+| M11 | `TrahisonExclue` | test de camp retiré | 1 frag, 0 trahison |
+| M12 | `FragNonPubliableExclu` | test de publiabilité retiré | 1 frag |
+| M13 | `VarianteSansPortee` | `HorsRadarMS` posé sans portée | hors radar 0 au lieu de nil |
+| M14 | `PontNonPubliable` | refus du pont retiré | 3 vies rendues |
+
+Mutations de l'entrée des porteurs (`porteurs_au_sync.go`) : G1 retour anticipé de la garde retiré
+(rouge : un assemblage a lieu, `SansCalage`), G2 `carried_open` compté (rouge), G3 pas de frame en
+ms au lieu de µs (rouge), G4 statborg lu hors drapeau/crâne/VIP (rouge sur la bombe), G5 lectures du
+drapeau hors CTF (rouge sur VIP et Oddball), G6 armes tenues hors bombe (rouge). Premier essai de
+G1 NON rouge : chaque lecture était déjà gardée par famille, le retour anticipé n'évitait que
+l'assemblage — le test exige désormais un bilan vierge.
+
+**Témoin V1.3** (`EMPRISE_V1_FILMS=8e376cb1…,2b50122a…` Team Slayer du 22/09, copie de base,
+cache de films ; porteurs non nourris : la garde de V1.4 ne lit rien en Team Slayer ; portée non
+nourrie : V2.5, aucun critère ne la lit) :
+
+| Film | Vies calculées / base | Avec médiane | Frags rattachés / éligibles | Fins comparées à < 1 m | Écart max |
+|---|---|---|---|---|---|
+| `8e376cb1` | 102 / 102 | 102 | 98 / 98 (100 %) | 98 / 98 (100 %) | 0,20 m |
+| `2b50122a` | 88 / 88 | 86 | 83 / 83 (100 %) | 80 / 80 (100 %), 1 vie sans contexte à distance | 0,26 m |
+
+Ventilation (ms) `8e376cb1` : durée 3 171 602, mesuré 2 997 200, porteur 0, équipe à terre 36 800,
+non situé 102 400, coéquipier non situé 40 500 ; `2b50122a` : 3 127 986 / 3 023 000 / 0 / 24 700 /
+26 800 / 58 100. Écartés par règle : 0 partout (non publiables, tueur inconnu, camp inconnu,
+trahisons).
+
+**Fidélité V1.4** (`TestEmpriseV1Porteurs`, protocole et références du V0, registre rejoué contrôlé
+conforme à la passe) : 9 films sur 9, joueurs à l'union des portages IDENTIQUE, 100,00 % à ±100 ms,
+rien en trop.
+
+| Film | Famille | Lectures | Intervalles | Joueurs identiques | Référence | Durée de l'entrée |
+|---|---|---|---|---|---|---|
+| `6fe2acb7` | drapeau | statborg, équipes, monde | 144 | 8/8 | 83 400 ms | 12 150 ms |
+| `0ffebf8b` | drapeau | statborg, équipes, monde | 48 | 8/8 | 48 000 ms | 6 058 ms |
+| `81c0fc99` | drapeau | statborg, équipes, monde | 44 | 7/7 | 127 600 ms | 7 704 ms |
+| `ab526724` | drapeau | statborg, équipes, monde | 31 | 7/7 | 124 300 ms | 17 181 ms |
+| `d6918972` | drapeau | statborg, équipes, monde | 25 | 6/6 | 127 600 ms | 14 746 ms |
+| `f9e99ca4` | crâne | statborg | 45 | 7/7 | 444 100 ms | 1 730 ms |
+| `b4f9064c` | crâne | statborg | 33 | 6/6 | 254 400 ms | 1 169 ms |
+| `69b16f5d` | bombe | armes tenues | 24 | 4/4 | 125 300 ms | 2 319 ms |
+| `00761d27` | VIP | statborg | 13 | 7/7 | 517 600 ms | 699 ms |
+
+(La durée est celle d'un tour unique, pont par manche et assemblage compris, cache chaud ; les
+coûts de V0.2 restent la mesure de référence.)
+
+**Gate** (depuis `apps/go-api`, `CGO_ENABLED=1`, `GOCACHE` du worktree) : `go test` par trois lots
+(games+sync+replaybuild+archlint : 48 ok ; reste d'`internal` : 108 ok ; `cmd` : 34 ok) — un premier
+passage du lot 1 a vu `sync/skill` `TestLUSRV2Shadow_RafalesBornees_300Candidats` dépasser son seuil
+de 2 s sous charge (2,02 s), vert seul puis vert au second passage entier (§7) ; `go vet` et
+`golangci-lint run` sur `replay`, `replaybuild`, `killcollector`, `archlint` : 0 problème ;
+`go test ./internal/archlint/...` vert ; `gofmt -l` vide. Commandes des tests à données :
+
+```bash
+export CGO_ENABLED=1 GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-emprise/.gocache
+EMPRISE_V1_FILMS=8e376cb1-8885-4ed5-a942-fca601e86620,2b50122a-b4e0-43a4-a46b-16f28279bb40 \
+EMPRISE_V1_DB=$SP/shared_copy.duckdb EMPRISE_V1_CACHE=C:/Users/Guillaume/Projects/LevelUp/data/cache \
+  go test ./internal/sync/killcollector/ -run '^TestEmpriseV1Temoin$' -v -count=1
+EMPRISE_V0_FILMS=<9 films a porteur, deux lots> EMPRISE_V0_DIR=$SP/emprise_v0 \
+EMPRISE_V0_CACHE=C:/Users/Guillaume/Projects/LevelUp/data/cache \
+  go test ./internal/games/halo_infinite/film/replay/ -run '^TestEmpriseV1Porteurs$' -v -count=1
+```
+
+**Ce que V2 doit câbler.**
+- `replay.PlacementDesVies(EntreePlacement{Positions: mat.positions, Registre: mat.registre,
+  Equipes: equipesNumeriques(ids.Equipes), Journal, Portages, RadarM})` APRÈS
+  `projeterFaitsDIsolement`, même matériau. `Journal` = la liste `fusionnees` ET la publiabilité de
+  la passe fusionnée : `write` ne rend aujourd'hui que `batch.Deaths` — il doit rendre aussi
+  `Publishable`. Compteurs : `BilanPlacement` (frags avant la première vie, sans vie, écartés par
+  règle, pont non publiable) et les vies à `MedianeM` nil (non mesurées).
+- `replay.PortagesAuSync(ctx, EntreePorteursAuSync{…})` : le film, le `FilmContext` ouvert par
+  `buildPositionRows` (aujourd'hui local — `materiauDIsolement` doit le porter), l'entrée de carte,
+  `game_variant_name` (le collecteur ne le lit pas encore), `&res.ProfilCalibre`, l'`IdentityInput`
+  de `entreeDuRegistre` (à porter aussi), la feuille du match (frags, morts, assistances par xuid),
+  les socles de drapeau du catalogue d'objectifs par `map_id` (la projection de
+  `replaybuild.flagSpawns`/`flagSpawnTeam` est à PARTAGER, pas à recopier) et le catalogue de
+  libellés (`replaylabels.Load`). La garde de mode est DANS l'entrée (`GardesDeLaVariante`) : hors
+  mode à porteur elle rend avant toute lecture ; `BilanPortages.Lectures` dit ce qui a été payé.
+- `RadarM` : portée de la variante injectée (V2.5), nil si absente.
 
 ### V2 — Écriture au sync (Go, persistance — lot sensible) · lourd
 
@@ -510,6 +651,25 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
   `TestReglageDuDecodageForceNAQuUnAppelant` qui n'existe pas ; le garde réel est
   `archlint/un_seul_forcage_du_decodage_test.go` (`TestUnSeulForcageDuDecodage`), qui exclut les
   tests — trois tests de recherche appellent le réglage, le godoc dit « un appelant ».
+- (V1, 2026-09-28) `PlacementDesVies` refuse un registre au pont non publiable (`PontPubliable`
+  faux) : aucune ligne, refus au bilan. Règle NON écrite en V3, ajoutée par cohérence avec
+  `ContextesDesMorts` (mêmes positions attribuées par les mêmes vies). Conséquence : sur un tel film,
+  `match_lives` aura des lignes et `match_life_placement` aucune. À confirmer par le superviseur.
+- (V1) Garde du drapeau au sync : la cuisson pose l'entrée du drapeau sur TOUT film et laisse les
+  trois signaux du film trancher ; le sync ne paie les lectures du drapeau que si la variante est de
+  la famille CTF (`GardesDesPorteurs.Drapeau`), puis les mêmes signaux tranchent. Un film que ses
+  signaux disent CTF sous une variante non reconnue CTF aurait des portages au rejeu et aucun au
+  sync. Non observé sur les 9 films ; non mesuré sur le parc.
+- (V1) `replaybuild.deathInstantsOf` et `replay.deathInstantsOf` sont deux copies identiques
+  (antérieures au lot). Le pont déplacé prend des `DeathInstant` (les tests de `replaybuild` y
+  mettent des xuids non numériques) : les deux copies restent. Deux copies, sous le seuil de la
+  règle 6 ; non traité.
+- (V1) `document_chronicle.go:808` (chronique append-only du schéma) cite
+  `internal/replaybuild/matchfacts.go (pontParManche)`, déplacé le 2026-09-28. La chronique ne se
+  réécrit pas ; le pointeur est désormais historique.
+- (V1) `sync/skill` `TestLUSRV2Shadow_RafalesBornees_300Candidats` a dépassé son seuil de 2 s
+  (2,02 s) au premier passage du gate par lot (paquets en parallèle), vert seul et au passage
+  suivant : test chronométré sensible à la charge.
 - (V0) L'en-tête de `film/internal/grammar/e192_i0_catalogue_mesure_research_test.go` donne une
   commande sur `./internal/games/halo_infinite/film/filmdec/`, paquet qui n'existe plus ; le plan
   (§4 V0) cite le fichier sous `filmdec/`.

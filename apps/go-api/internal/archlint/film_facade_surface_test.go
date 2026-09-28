@@ -246,7 +246,23 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `UnitOtherIndex`, `ShotsByUnit`, `TirsParPlace` n en
 //	                                           ajoutent aucun. RE-MESURE A L ENTREE du lot : 275 sur
 //	                                           `c9ef97ec6` (feat/rr-vague-d).
-const plafondSurfaceReplay = 278 // 2026-09-24 — rr(m4b) sur c9ef97ec6 : 275 + 3 (FireBurst, FireBurstHole, ContinuousFireCoverage)
+//	291  emprise-vies V1 (2026-09-28)           +13, le placement des vies et les porteurs lus au
+//	                                           sync (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`).
+//	                                           HUIT par `replaybuild`, qui appelle desormais le pont
+//	                                           par manche, les gardes de mode et les entrees des
+//	                                           calques de porteur DEPLACES dans `replay` pour que
+//	                                           le sync les partage sans copie : `PontParManche`,
+//	                                           `NouveauPontParManche`, `GardesDeLaVariante`,
+//	                                           `EntreeDuDrapeau`, `EntreeDuCrane`,
+//	                                           `EntreeDeLaCouronne`, `EntreeDeLaBombe`, et
+//	                                           `PortagesAuSync` (nomme dans le commentaire de
+//	                                           `matchfacts.go`). CINQ par le temoin du collecteur
+//	                                           (`sync/killcollector/emprise_v1_temoin_research_test.go`) :
+//	                                           `PlacementDesVies`, `EntreePlacement`,
+//	                                           `FragDuJournal`, `PlacementVie`, `BilanPlacement`.
+//	                                           RE-MESURE A L ENTREE du lot : 278 sur `6466b11ef`
+//	                                           (`comm` des deux inventaires : 13 ajouts, 0 retrait).
+const plafondSurfaceReplay = 291 // 2026-09-28 — emprise-vies V1 sur 6466b11ef : 278 + 13 (cf. l historique ci-dessus)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

@@ -1,4 +1,4 @@
-package replaybuild
+package replay
 
 import (
 	"os"
@@ -7,7 +7,10 @@ import (
 	"testing"
 )
 
-// bombvariant_test.go — LA GARDE DE MODE de la bombe : la FAMILLE, et rien d'autre.
+// porteurs_gardes_test.go — DEPLACE de `replaybuild/bombvariant_test.go` le 2026-09-28 (lot V1.4 du
+// plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`) avec la garde qu'il teste (`GardesDeLaVariante`).
+//
+// LA GARDE DE MODE de la bombe : la FAMILLE, et rien d'autre.
 //
 // IL Y AVAIT DEUX GARDES ICI. `isArmableBombVariant` excluait One Bomb PAR SON NOM parce que
 // la lecture SIMPLE de l'anneau (montee contigue, meche fixe de 4,93 s) y etait REFUTEE
@@ -16,10 +19,10 @@ import (
 // 16,18 s, CV 0,017, 0/1000) sans toucher aux temoins Neutral Bomb (13/13) ni Husky Raid
 // (4/4) : LA GARDE DE NOM EST LEVEE, et ce fichier garde qu'elle ne revienne pas.
 
-// TestIsBombVariant — LA GARDE DE FAMILLE, unique, pour l'ARMEMENT (`replay.BombInput.Scanned`)
+// TestGardesDeLaVariante_Bombe — LA GARDE DE FAMILLE, unique, pour l'ARMEMENT (`BombInput.Scanned`)
 // comme pour le PORTAGE (`CarryScanned`) : les 4 formes du registre (releve du 2026-08-31)
 // posent la garde, One Bomb COMPRISE ; hors famille, jamais.
-func TestIsBombVariant(t *testing.T) {
+func TestGardesDeLaVariante_Bombe(t *testing.T) {
 	cases := []struct {
 		variant string
 		want    bool
@@ -39,8 +42,8 @@ func TestIsBombVariant(t *testing.T) {
 		{"", false},
 	}
 	for _, c := range cases {
-		if got := isBombVariant(c.variant); got != c.want {
-			t.Errorf("isBombVariant(%q) = %v, attendu %v", c.variant, got, c.want)
+		if got := GardesDeLaVariante(c.variant).Bombe; got != c.want {
+			t.Errorf("GardesDeLaVariante(%q).Bombe = %v, attendu %v", c.variant, got, c.want)
 		}
 	}
 }

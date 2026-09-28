@@ -1,12 +1,15 @@
-package replaybuild
+package replay
 
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// skullidentity_test.go — LE PONT D'IDENTITE DESCEND JUSQU'AU PORTEUR DU CRANE d'Oddball.
+// porteurs_crane_identite_test.go — DEPLACE de `replaybuild/skullidentity_test.go` le 2026-09-28 (lot
+// V1.4 du plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`) avec le code qu'il teste.
+//
+// LE PONT D'IDENTITE DESCEND JUSQU'AU PORTEUR DU CRANE d'Oddball.
 //
 // CE QUI EST EN JEU, ET COMBIEN IL COUTAIT. Le calque du crane nommait son porteur par les SEULS
 // instants de mort, qui en exigent TROIS coincidents : un joueur qui meurt moins de trois fois
@@ -25,20 +28,20 @@ import (
 //	slot 10  3 morts -> LE PONT PAR MORTS LE NOMME ("aaa") ;
 //	slot 12  2 morts -> il lui ECHAPPE, et c'est LE PORTEUR (il porte les tics de score de mode) ;
 //	slot 14  compteurs AGREGES (9/5/4) qui ne designent AUCUNE ligne : personne ne le nomme.
-func monoRoundOddballFixture() ([]decfilm.StatRecord, []decfilm.DeathInstant,
-	[]decfilm.PlayerLine) {
+func monoRoundOddballFixture() ([]types.StatRecord, []types.DeathInstant,
+	[]types.PlayerLine) {
 	// LES DEUX CANAUX D'UNE EMISSION SORTENT ENSEMBLE : le composant 2 porte les frags en A et
 	// les morts en B, dans le MEME enregistrement (n'ecrire qu'un canal poserait un zero sur
 	// l'autre, et la plus longue suite non decroissante du canal muet ecraserait la vraie serie).
-	tueMort := func(t, slot int, kills, deaths int64) decfilm.StatRecord {
-		return decfilm.StatRecord{TimeMS: t, Slot: slot, Round: 0,
-			Comps: map[int]decfilm.StatValue{2: {A: kills, B: deaths}}}
+	tueMort := func(t, slot int, kills, deaths int64) types.StatRecord {
+		return types.StatRecord{TimeMS: t, Slot: slot, Round: 0,
+			Comps: map[int]types.StatValue{2: {A: kills, B: deaths}}}
 	}
-	sideA := func(t, slot, comp int, v int64) decfilm.StatRecord {
-		return decfilm.StatRecord{TimeMS: t, Slot: slot, Round: 0,
-			Comps: map[int]decfilm.StatValue{comp: {A: v}}}
+	sideA := func(t, slot, comp int, v int64) types.StatRecord {
+		return types.StatRecord{TimeMS: t, Slot: slot, Round: 0,
+			Comps: map[int]types.StatValue{comp: {A: v}}}
 	}
-	recs := []decfilm.StatRecord{
+	recs := []types.StatRecord{
 		// Slot 10 = "aaa" : 4 frags, 3 morts, 1 assistance — nomme par les morts seules.
 		tueMort(500, 10, 1, 0), tueMort(1000, 10, 1, 1), tueMort(2000, 10, 2, 2),
 		tueMort(3000, 10, 3, 3), tueMort(3500, 10, 4, 3),
@@ -52,26 +55,26 @@ func monoRoundOddballFixture() ([]decfilm.StatRecord, []decfilm.DeathInstant,
 		tueMort(20000, 14, 9, 5),
 		sideA(20500, 14, 3, 4),
 	}
-	deaths := []decfilm.DeathInstant{
+	deaths := []types.DeathInstant{
 		{XUID: "aaa", TimeMS: 1000}, {XUID: "aaa", TimeMS: 2000}, {XUID: "aaa", TimeMS: 3000},
 		{XUID: "bbb", TimeMS: 5000}, {XUID: "bbb", TimeMS: 6000},
 	}
-	lines := []decfilm.PlayerLine{
+	lines := []types.PlayerLine{
 		{XUID: "aaa", Kills: 4, Deaths: 3, Assists: 1},
 		{XUID: "bbb", Kills: 7, Deaths: 2, Assists: 1},
 	}
 	return recs, deaths, lines
 }
 
-// TestSkullInputPoseLePontCompleteSurUnFilmOddball — LE CŒUR DU LOT.
+// TestEntreeDuCranePoseLePontCompleteSurUnFilmOddball — LE CŒUR DU LOT.
 //
 // Le porteur (slot 12, 2 morts) est nomme, le slot que les morts nommaient deja garde son nom,
 // et le slot agrege reste muet. LA MUTATION EST DANS LE TEST : sans lignes de match, le meme
 // appel laisse le slot 12 sans nom — c'est bien la completion qui le nomme, pas autre chose.
-func TestSkullInputPoseLePontCompleteSurUnFilmOddball(t *testing.T) {
+func TestEntreeDuCranePoseLePontCompleteSurUnFilmOddball(t *testing.T) {
 	recs, deaths, lines := monoRoundOddballFixture()
 
-	got := skullInput(recs, true, &pontParManche{recs: recs, deaths: deaths, lines: lines})
+	got := EntreeDuCrane(recs, true, NouveauPontParManche(recs, deaths, lines))
 	if !got.Scanned {
 		t.Fatalf("entree non balayee sur un film Oddball : le calque ne serait pas construit")
 	}
@@ -90,7 +93,7 @@ func TestSkullInputPoseLePontCompleteSurUnFilmOddball(t *testing.T) {
 	}
 
 	// MUTATION — sans lignes, la completion s'abstient et le trou se rouvre.
-	sansLignes := skullInput(recs, true, &pontParManche{recs: recs, deaths: deaths})
+	sansLignes := EntreeDuCrane(recs, true, NouveauPontParManche(recs, deaths, nil))
 	if x := sansLignes.Identity.AtRound(0, 12); x != "" {
 		t.Errorf("sans lignes de match, slot 12 = %q, attendu vide : ce test ne prouverait rien "+
 			"si le pont par morts savait deja le nommer", x)
@@ -100,20 +103,20 @@ func TestSkullInputPoseLePontCompleteSurUnFilmOddball(t *testing.T) {
 	}
 }
 
-// TestSkullInputHorsOddballNeResoutRien — LA GARDE DE MODE EST DANS CETTE FONCTION, pas chez
+// TestEntreeDuCraneHorsOddballNeResoutRien — LA GARDE DE MODE EST DANS CETTE FONCTION, pas chez
 // son appelant.
 //
 // Hors Oddball, l'entree est VIDE et le pont n'est meme pas DEMANDE : le resolveur paresseux
-// reste non resolu. La propriete tient pour elle-meme — dans `readFilmStats`, `statborgIdentity`
-// reveille de toute facon le resolveur, tous modes confondus — et elle protege le jour ou un
-// autre appelant assemblera une entree de crane sans avoir cette raison-la. Le deroulage du
-// compteur de morts sur un film d'une autre grammaire a coute 19-22 Go le 2026-08-18 : une
-// fonction qui le declenche « au cas ou » est un piege qu'on ne pose pas.
-func TestSkullInputHorsOddballNeResoutRien(t *testing.T) {
+// reste non resolu. La propriete tient pour elle-meme — dans `replaybuild.assemblerFilmStats`,
+// `statborgIdentity` reveille de toute facon le resolveur, tous modes confondus — et elle protege
+// le jour ou un autre appelant assemblera une entree de crane sans avoir cette raison-la. Le
+// deroulage du compteur de morts sur un film d'une autre grammaire a coute 19-22 Go le
+// 2026-08-18 : une fonction qui le declenche « au cas ou » est un piege qu'on ne pose pas.
+func TestEntreeDuCraneHorsOddballNeResoutRien(t *testing.T) {
 	recs, deaths, lines := monoRoundOddballFixture()
-	pont := &pontParManche{recs: recs, deaths: deaths, lines: lines}
+	pont := NouveauPontParManche(recs, deaths, lines)
 
-	got := skullInput(recs, false, pont)
+	got := EntreeDuCrane(recs, false, pont)
 	if got.Scanned || got.Records != nil || got.Identity.Resolved() {
 		t.Errorf("hors Oddball : entree = %+v, attendue vide (ni balayage, ni records, ni pont)", got)
 	}
