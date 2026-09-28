@@ -78,9 +78,14 @@
   `radar_m` diffère de la portée courante du match est écartée, comptée et journalisée en `Warn`
   (la table a changé : un rattrapage est dû).
 - **V6 — Porteur d'objectif.** Exclu du dénominateur (V3). Sa lecture au sync est la seule pièce
-  neuve du décodage : elle se décide sur mesure en V0.2 (règle de décision écrite avant la mesure).
-  Familles couvertes : drapeau, crâne, bombe, VIP (celles que le rejeu publie). Stockpile et
-  autres : non couverts, ce que dit l'infobulle de couverture.
+  neuve du décodage : décidée sur mesure en V0.2, puis par l'utilisateur le 2026-09-28 : **voie (b)**,
+  les lectures de la cuisson (enregistrements d'entité, bursts de capture, pont par manche, objets du
+  monde pour le drapeau) appelées depuis le film que le collecteur a déjà ouvert, calques produits
+  par l'assembleur de PRODUCTION du rejeu (aucune copie de sa logique), sous la même garde de mode
+  que la cuisson. Surcoût accepté (×2 environ sur le Drapeau). Familles couvertes : drapeau, crâne,
+  bombe, VIP (celles que le rejeu publie). Stockpile et autres : non couverts, ce que dit l'infobulle
+  de couverture. Limite connue, non traitée ici (§7) : le calque du drapeau ne publie aucun portage
+  en Big Team Battle CTF (`flagFilm = false`), la cause `carrier` y reste donc muette.
 - **V7 — Synergies : le nuage « Frags non ripostés » disparaît, la carte Riposte reste.** Vérifié
   sur pièces le 2026-09-28 : le titre « Frags non ripostés » est `squad.isolement.card_title`
   (`lib/i18n/manifests/squad.toml:977-979`), celui de `SquadIsolementNuageCard`
@@ -208,7 +213,7 @@ l'exécuteur).
   **Seuil : ≥ 95 %.** Atteint : la cause `unplaced` couvre le véhicule, libellée « en véhicule ou
   position non lue ». Manqué : STOP.
   → **Atteint** : 96,27 % agrégé (96,87 / 95,48 / 95,26 % par film), journal V0 ci-dessous.
-- [!] V0.2 **Porteurs d'objectif au sync.** Deux voies à mesurer, dans cet ordre : (a) le canal des
+- [x] V0.2 **Porteurs d'objectif au sync.** Deux voies à mesurer, dans cet ordre : (a) le canal des
   armes tenues déjà balayé (le portage de la bombe n'y lit « aucune donnée de plus »,
   `replaybuild/matchfacts.go:180-190`) ; (b) les lectures de la cuisson (`replaybuild/matchfacts.go`
   `flagInput` / `skullInput` / `bombInput` / `vipInput`, enregistrements d'entité, bursts de capture,
@@ -224,8 +229,13 @@ l'exécuteur).
   → **Manqué par les deux voies — STOP V0.2** (décision à l'utilisateur, aucun repli choisi) :
   (a) fidélité 61,95 % < 98 % et surcoût moyen 31,4 % > 25 % ; (b) fidélité 100,00 %, mémoire
   1,44 × ≤ 1,5 ×, mais surcoût moyen 59,9 % > 25 %. Chiffres au journal V0 ci-dessous.
+  → **Levé par décision utilisateur du 2026-09-28** (question posée par le superviseur avec les
+  chiffres : ×2 environ sur le Drapeau, +5 à +11 s par match, +34 % sur la Bombe, +6 à 8 % sur
+  Oddball et VIP, rien ailleurs ; réponse « Accepter le coût ») : **voie (b) retenue**, surcoût
+  accepté. Le seuil de 25 % n'est pas réécrit : il reste la trace de ce qui a été mesuré et décidé.
 - [x] V0.3 Rapport de mesure collé dans ce plan (tableaux, films, commandes), voie retenue en V0.2.
-  → Rapport collé ci-dessous ; voie retenue : **aucune** (STOP V0.2).
+  → Rapport collé ci-dessous ; voie retenue par l'exécuteur : aucune (STOP V0.2) ; voie retenue
+  après la décision utilisateur : **(b)**.
 - Gate : les tests de recherche passent sur le poste, sautés sans données (`go test ./...` vert sans
   cache de films) ; gate commun côté Go.
 
@@ -357,6 +367,15 @@ Périmètre : `games/halo_infinite/film/replay/placement_des_vies.go` (+ tests),
   `match_lives_latest` pour ces matchs ; ≥ 97 % des frags publiables rattachés ; pour les vies
   finies par une mort, distance du dernier instant mesuré à moins de 1 m de celle du contexte de
   mort (`match_death_context`) sur ≥ 90 % d'entre elles.
+- [ ] V1.4 Intervalles de port depuis les entrées du sync (voie (b), V6) : une entrée EXPORTÉE de
+  `film/replay` qui rend, pour un film et le registre du collecteur, les intervalles de port par
+  xuid (drapeau, crâne, bombe, VIP) en produisant les calques par l'assembleur de production — la
+  même chaîne que l'instrument `emprise_v0_porteurs_research_test.go` a mesurée, sans recopier la
+  logique des calques ni celle du pont par manche (si le pont vit dans `replaybuild`, il est déplacé
+  ou partagé, jamais dupliqué). Garde de mode identique à la cuisson. Ratchets de surface
+  (`archlint/film_facade_surface_test.go`, compteurs `replay.X`) mis à jour avec justification
+  datée. Tests : intervalles identiques à ceux du document de rejeu sur les 9 films à porteur de V0
+  (sauté sans cache), et une garde de mode testée (aucune lecture hors mode à porteur).
 - Gate : tests cités + gate commun (Go).
 
 ### V2 — Écriture au sync (Go, persistance — lot sensible) · lourd
@@ -459,6 +478,12 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
   match, horloge du match) et n'a aucun lecteur de page ; aucune mesure par vie n'existe ; 97,6 %
   des frags du 22/09 tombent dans une vie du tueur, 1,5 % dans les 250 ms qui suivent sa fin ; la
   portée du radar est câblée côté lecture ; le porteur d'objectif n'existe qu'à la cuisson.
+- 2026-09-28 : GO utilisateur (« oui go », puis « fais tout ça en autonomie »). V0 clos
+  (`0ab34fe83`) : V0.1 atteint (96,27 %) ; STOP V0.2 (voie (a) infidèle, voie (b) fidèle mais
+  +59,9 % en moyenne sur les matchs à porteur) ; le superviseur a vérifié le rapport sur pièces
+  (tableaux du journal V0, commit, tests de recherche sautés sans données) et posé la question avec
+  les chiffres ; l'utilisateur accepte le coût : voie (b), V6 réécrite, item V1.4 ajouté pour
+  l'entrée exportée des porteurs.
 
 ## 7. Découvertes (à consigner ici, pas à traiter)
 
