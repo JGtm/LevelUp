@@ -55,7 +55,7 @@ func TestDownloadBlob_304PuisSucces(t *testing.T) {
 	defer srv.Close()
 
 	avant := observability.LoadCounter(metricBlobRetrySuccess)
-	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 	if err != nil {
 		t.Fatalf("downloadBlob: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestDownloadBlob_304Epuise(t *testing.T) {
 	defer srv.Close()
 
 	avant := observability.LoadCounter(metricBlobRetryExhausted)
-	_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+	_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 	var blobErr *BlobHTTPError
 	if !errors.As(err, &blobErr) {
 		t.Fatalf("err = %v (%T), attendu *BlobHTTPError", err, err)
@@ -114,7 +114,7 @@ func TestDownloadBlob_404SansRetry(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+	_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 	var blobErr *BlobHTTPError
 	if !errors.As(err, &blobErr) {
 		t.Fatalf("err = %v (%T), attendu *BlobHTTPError", err, err)
@@ -138,7 +138,7 @@ func TestDownloadBlob_403SansRetry(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+	_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 	var blobErr *BlobHTTPError
 	if !errors.As(err, &blobErr) {
 		t.Fatalf("err = %v (%T), attendu *BlobHTTPError", err, err)
@@ -174,7 +174,7 @@ func TestDownloadBlob_503PuisSucces(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 	if err != nil {
 		t.Fatalf("downloadBlob: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestDownloadBlob_EchecReseauRetente(t *testing.T) {
 	client := clientBlobTest(srv)
 	srv.Close() // le serveur ne répond plus : c.http.Do échoue
 
-	_, err := client.downloadBlob(context.Background(), url)
+	_, err := client.downloadBlob(context.Background(), url, 0)
 	if err == nil {
 		t.Fatal("attendu une erreur sur serveur fermé")
 	}
@@ -220,7 +220,7 @@ func TestDownloadBlob_ContexteAnnulePendantBackoff(t *testing.T) {
 		cancel()
 	}()
 	debut := time.Now()
-	_, err := clientBlobTest(srv).downloadBlob(ctx, srv.URL+"/filmChunk16")
+	_, err := clientBlobTest(srv).downloadBlob(ctx, srv.URL+"/filmChunk16", 0)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, attendu context.Canceled", err)
 	}
@@ -286,7 +286,7 @@ func TestDownloadBlob_CorpsCoupeEstRetente(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 	if err != nil {
 		t.Fatalf("downloadBlob: %v (un corps coupé doit être retenté, pas fatal)", err)
 	}
@@ -324,7 +324,7 @@ func TestDownloadBlob_NoCacheCollantApres304(t *testing.T) {
 	defer srv.Close()
 
 	avant := observability.LoadCounter(metricBlobRetrySuccess)
-	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 	if err != nil {
 		t.Fatalf("downloadBlob: %v", err)
 	}
@@ -371,7 +371,7 @@ func TestDownloadBlob_RetryAfterHonore(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+	out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 	if err != nil {
 		t.Fatalf("downloadBlob: %v", err)
 	}
@@ -412,7 +412,7 @@ func TestDownloadBlob_TableDesStatuts(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+			out, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 			if err != nil {
 				t.Fatalf("statut %d : downloadBlob = %v, attendu un succès après retry", statut, err)
 			}
@@ -438,7 +438,7 @@ func TestDownloadBlob_TableDesStatuts(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+			_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 			var blobErr *BlobHTTPError
 			if !errors.As(err, &blobErr) {
 				t.Fatalf("statut %d : err = %v (%T), attendu *BlobHTTPError", statut, err, err)
@@ -467,7 +467,7 @@ func TestDownloadBlob_200CorpsNonZlib(t *testing.T) {
 
 	avantSucces := observability.LoadCounter(metricBlobRetrySuccess)
 	avantEpuise := observability.LoadCounter(metricBlobRetryExhausted)
-	_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16")
+	_, err := clientBlobTest(srv).downloadBlob(context.Background(), srv.URL+"/filmChunk16", 0)
 	if err == nil {
 		t.Fatal("attendu une erreur sur un corps non-zlib")
 	}
@@ -529,7 +529,7 @@ func TestDownloadBlob_AbandonNonMasqueParUnCtxExpire(t *testing.T) {
 	client := &HaloAPIClient{http: &http.Client{Transport: tr}, limiter: fastLimiter()}
 
 	avant := observability.LoadCounter(metricBlobRetryExhausted)
-	_, err := client.downloadBlob(ctx, "https://cdn.exemple.invalid/filmChunk16")
+	_, err := client.downloadBlob(ctx, "https://cdn.exemple.invalid/filmChunk16", 0)
 	var blobErr *BlobHTTPError
 	if !errors.As(err, &blobErr) {
 		t.Fatalf("err = %v (%T), attendu *BlobHTTPError — l'abandon ne doit plus être masqué "+

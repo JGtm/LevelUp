@@ -10,81 +10,109 @@
 
 ---
 
-### [scheduler/leaderboard] Le cron du classement mondial tire à boot+30 s et perd son snapshot sur expiration du B-swap
+### [data/h5] Les player DB Halo 5 sont hors de la boucle de migration du boot
 
-Noté le 2026-09-20 (diagnostic des anomalies de boot). `world_leaderboard_cron` démarre 30 s
-après le boot ; sa persistance demande le basculement RO→RW de `shared_matches_v2.duckdb`
-(`sharedprovider`, drain des lecteurs borné à 5 s) au moment où le boot tient encore des
-lecteurs (sync, killsource, data_health). Constaté deux fois le 2026-09-20 dans `logs/` :
-`provider: drain timeout, rollback vers RO` (label `world_leaderboard_snapshot`) puis
-`world_leaderboard_cron: persistance échouée — sharedprovider: drain inflight readers: context
-deadline exceeded`. Le crash qui suivait ce timeout (WaitGroup réutilisée, deux fois le 16/09)
-est corrigé (`reader_drain.go`, lot du 2026-09-20) ; le timeout lui-même et la perte du
-snapshot du jour ne le sont pas. Le cron ne réessaie qu'au cycle suivant (24 h).
-
-**Impact utilisateur : un jour de classement mondial manqué** à chaque boot qui tombe ainsi.
-**Correctif** : différer le premier tir du cron (après le boot chaud, ou sur signal de fin de
-sync initiale) ET/OU réessayer la persistance sur `ErrDrainTimeout` avec un délai borné
-(2-3 tentatives), en gardant le scrape déjà fait en mémoire pour ne pas re-solliciter Waypoint.
-**Effort : S.**
+Noté le 2026-09-27 (plan backlog du 2026-09-26, lot B3.9, DB-20). Une copie de
+`data/titles/halo_5/players/JGtm/stats.duckdb` avait **12 étapes de migration de retard**
+(`player_dominance_flag_reset_none_v1`, `drop_arc_titles`, etc.). Les player DB Halo 5 ne passent
+donc par aucune migration au démarrage du serveur. Seul le soin d'`EnsurePlayerSchema`, rejoué à
+chaque ouverture, les atteint : c'est par lui que les index ART retirés le 2026-09-27 y sont
+enlevés. **Impact** : toute évolution de schéma player livrée par une étape de migration (et non
+par l'autorité DDL) n'arrive jamais sur Halo 5. **À instruire** : pourquoi la boucle du boot saute
+ces bases (multi-titre, profils), puis rattraper les 12 étapes. **Effort : S-M.**
 
 ---
 
-### [data/ART] `match_skill_rank` garde ses index secondaires ART — même défaut que `personal_score_awards`
+### [demo] Routes de mutation encore ouvertes en démo, et deux contrats de refus
 
-Noté le 2026-09-20 (lot « retrait des index ART de personal_score_awards »). Le bug DuckDB
-#23645 désynchronise les index ART des player DB sur les insertions COURANTES : sur
-`personal_score_awards`, les clés en écart du 20/09 étaient des match_id de septembre, et les
-trois index ont été retirés (`drop_psa_secondary_art_indexes_v1`) après preuve que les six
-lecteurs passent par la vue `_latest`, dont la fonction de fenêtre impose un scan séquentiel
-(0,800 ms avec index / 0,841 ms sans, même plan). `match_skill_rank` porte encore les siens
-(`idx_msr_playlist` mesuré désynchronisé le 2026-09-13 sur JGtm), avec sa sonde
-`data_health_msr_index.go`, `cmd/repair_msr_index` et le paquet `platform/duckdb/indexcheck`
-conservés pour lui seul.
+Noté le 2026-09-27 (plan backlog, lots B5 et B-C, DB-28/34/35/36/38/39/41). Le mode démo est
+désormais hermétique côté fichiers : la preuve de bout en bout du 2026-09-27 donne 0 écriture dans
+le vrai checkout. Quatre mutations y répondent 403 `demo_mode_forbidden` : création de profil,
+purge d'un titre, abonnements du watcher, sauvegarde. Restent :
+- **ouvertes en démo** : `PATCH /profiles/{p}/titles/{t}/sync` (écrit le `db_profiles.json` de la
+  fixture), `POST /watcher/auth/start` (magasin de tokens enraciné sur le dépôt ; sortie réseau non
+  vérifiée) et, plus largement, les actions admin (`RequireAdmin` est transparent en démo) ;
+- **deux contrats de refus** qui coexistent : 403 `demo_mode_forbidden` et 422
+  `demo_mode_unsupported` (`handlers/settings.go`) ;
+- **fuites de lecture et affichage** : overlay des socles lu au dépôt ; section Identités avec
+  `dir_exists`/`db_exists` à false en démo ; une CLI lancée avec `LEVELUP_DEMO_MODE=true` écrit
+  dans les bases de la fixture.
 
-**Impact utilisateur** : lookups indexés amputés en silence sur cette table tant que la sonde
-n'a pas alerté, réparation manuelle serveur arrêté. **Correctif** : reproduire l'instruction
-faite pour PSA — inventaire des lecteurs (passent-ils tous par `match_skill_rank_latest` ?),
-`EXPLAIN` avec et sans index, mesure sur DB fichier ; si le plan est un scan dans les deux cas,
-retirer les index par migration idempotente, supprimer sonde + outil + `indexcheck` (plus aucun
-consommateur) et étendre le ratchet `noSecondaryIndexTables` ; sinon consigner pourquoi ils
-restent. **Effort : S-M** (la recette existe, commits `ceea58b39`).
-
----
-
-### [migration/sync] Deux découpeurs SQL divergents — `sync.splitSQL` n'est pas `migration.splitSQL`
-
-Noté le 2026-09-20 (rouge CI attrapé sur le lot PSA). `migration.splitSQL` ignore un fragment
-purement commentaire après le dernier `;` d'un script ; `sync.splitSQL`
-(`internal/sync/schema.go`, ~L532) le passe tel quel à DuckDB → `execScript: empty query`.
-Or `sync.EnsurePlayerSchema` rejoue le DDL d'autorité à CHAQUE `OpenPlayerDB` : un commentaire
-mal placé dans `PlayerPersonalScoreAwardsDDL` cassait l'ouverture des player DB en prod, pas
-seulement un test (corrigé en déplaçant le commentaire, commit `84f2c8620`). `sync` importe
-déjà `migration`.
-
-**Correctif** : faire consommer `migration.ExecScript` (ou son découpeur exporté) par `sync`
-et supprimer `sync.splitSQL` avec ses tests (0 copie), plus un test qui prouve qu'un
-commentaire de fin de script passe sur le chemin `EnsurePlayerSchema`. **Effort : XS-S.**
+**Décision à prendre (contrat d'API)** : une garde « démo en lecture seule » générale, avec une
+liste des POST de lecture autorisés (compare, filters/resolve…), plutôt que des refus route par
+route. **Effort : M.**
 
 ---
 
-### [garde-rail/campagne] `TestCampaignExclusionStructuralCoverage` ne voit pas le SQL local
+### [data/campagne] Lecteurs encore sans exclusion de la campagne, hors du garde-rail
 
-Noté le 2026-09-19 (lot d'hygiène compare/armes, découverte non traitée). Le balayage AST de
-`apps/go-api/internal/platform/duckdb/campaign_exclusion_guard_test.go` ne scanne que les
-constantes/vars de paquet nommées `Q<...>` ; toute requête construite dans un `q :=` local à
-la fonction lui échappe, sans signalement ni dispense. `GetLocalStats` ET l'ancien
-`GetCrossMatchSample` (`compare_repo.go`) étaient dans ce cas : c'est ce qui a laissé vivre une
-lecture de `match_participants` SANS exclusion campagne (le repli « échantillon croisé »,
-supprimé le 2026-09-19 après preuve qu'il servait des stats de campagne coop Halo 5 comme
-échantillon matchmade). Le commentaire du test annonce « TOUTES les constantes de requête » :
-il n'est pas exhaustif.
+Noté le 2026-09-27 (plan backlog, lot B4 et revue, DB-25/26/27). Le garde-rail
+`archlint/campaign_exclusion_guard_test.go` couvre désormais toutes les déclarations de
+`platform/duckdb/**`, `progression/**`, `api/wire`, `service/**` et `analysis/**`. Restent hors de
+son critère :
+- **56 lecteurs** de `internal/sync` (17), `internal/ops` (10) et `cmd/` (29), dont la liste est au
+  journal du lot B4 dans `.ai/PLAN_BACKLOG_2026-09-26.md` ;
+- **`QKillsBetweenPlayers`**, qui lit `killer_victim_pairs` sans exclusion : des frags de Campagne
+  Halo 5 peuvent compter dans un duel, alors que le nombre de rencontres les exclut ;
+- **les lecteurs agrégés de `medals_earned`** (`Q36aMedalTotals`, `queries_citations.go:38`) et
+  `loadEarnedMedalIDs` (`SnapshotPlayerState`).
 
-**Impact utilisateur : aucun aujourd'hui** (plus de lecteur fautif connu). **Intérêt : c'est le
-garde-rail qui aurait dû attraper la fuite.** **Correctif** : étendre le balayage aux
-littéraux SQL locaux des méthodes de repo qui lisent `match_participants` / `mv_player_matches`
-avec un filtre `xuid`, puis statuer chaque nouvel entrant (exclusion ou allowlist justifiée).
-**Effort : S-M** (la partie coûteuse est le triage des entrants, pas le scan).
+**Travail** : étendre le critère (tables `killer_victim_pairs`, `medals_earned`) et les racines,
+puis trier chaque entrant, comme pour B4. **Effort : M.**
+
+---
+
+### [data/ART] Autres index secondaires des player DB à réexaminer avec la recette MSR
+
+Noté le 2026-09-27 (plan backlog, lot B3, DB-13/14/15/16).
+- `steps_player_lusr_components_append_only.go:17-20` justifie `idx_lch_*` par « le même
+  raisonnement que les idx_msr_* », raisonnement désormais réfuté. Même question pour
+  `idx_pme_match_lookup` et `idx_pcs_lookup`.
+- `cmd/purge_foreign_lusr_chain` rejoue tous les index présents au moment de son swap, y compris
+  des `idx_msr_*` qu'un binaire plus ancien aurait recréés (le soin d'`EnsurePlayerSchema` les
+  retire ensuite).
+- Sept fixtures de test créent encore des `idx_msr_*` dans leur DDL locale.
+- **Méthode** : en DuckDB 1.5.5, `EXPLAIN` seul ne montre JAMAIS l'index. Seul `EXPLAIN ANALYZE`
+  fait foi ; le banc `psa_index_repro_msr_planprobe_test.go` (tag `psarepro`) est le modèle.
+
+**Effort : S par table.**
+
+---
+
+### [rejeu/données] Vues match sans tableau des scores : ni écran ni son de fin
+
+Noté le 2026-09-27 (plan backlog, lot A1.5, DA-5). Sur ce poste, plusieurs matchs du cache
+(`000d5950`, `28c9b538`, `4f77afc1`, `94a28b8b`) ont une vue match partielle
+(`scoreboard_empty`). Sans tableau des scores, `endMatchSoundSpec` et l'écran de fin ne peuvent
+rien conclure, et le rejeu se termine muet. **À instruire** : pourquoi ces matchs n'ont pas de
+participants dans la base partagée locale (synchronisation partielle, rattrapage manquant), et si
+la production est touchée. Même lot : la fixture démo lève une ERROR au boot sur
+`titles/halo_5/warehouse/metadata.duckdb` (requête sur une table ou colonne absente).
+**Effort : S** (diagnostic).
+
+---
+
+### [go/hygiène] Petites dettes relevées par le lot backlog du 2026-09-26
+
+Noté le 2026-09-27 (DB-1/2/8/9/18/22/23/24, limite B2, revue ronde 2). Chaque point est à
+traiter à la prochaine retouche du fichier :
+- `cmd/levelup/cmd_restore_csr.go:101` fait un DELETE sur une table append-only (ADR 0026) ;
+- `api/wire/post_sync_deltas_snapshot.go:238` : nombre magique `outcome = 2` ;
+- `cmd/diag_exec` ouvre la base en écriture par un `sql.Open` direct, hors du modèle mono-écrivain ;
+- `service.FanoutService` n'a aucun appelant de production (code mort) ;
+- `LoadAxisSamples` et `ListRecentPvPMatchIDs` lisent `start_time` brut (règle n°8) et avalent des
+  erreurs de `Scan` ;
+- aucune CLI ne migre une player DB désignée ;
+- `migration.SplitSQL` ignore les chaînes `'…'` et les commentaires `/* */` (limite écrite dans
+  son godoc) ;
+- le paramètre `title_slug` de `GET /squads` n'a plus d'effet (le titre vient du `PlayerDB`) : le
+  retirer change le contrat OpenAPI ;
+- `api/wire/prestige_lazy_service.go` est passé de 519 à 525 lignes (commentaire), au-dessus du
+  seuil de 500 ;
+- `TestLUSRV2Shadow_RafalesBornees_300Candidats` mesure du temps réel et échoue quand le poste est
+  chargé.
+
+**Effort : XS à S chacun.**
 
 ---
 
@@ -147,24 +175,6 @@ manifeste + garde-rail) + un déclenchement au départ de la lecture, symétriqu
 déclenchement de fin du lot C. **Effort : S** (~20 min une fois le lot C en place).
 À faire seulement si l'envie revient à l'usage — le statu quo (départ silencieux,
 sons diégétiques seuls) est le choix par défaut assumé.
-
----
-
-### [ops/demo] Hermétisme FICHIERS du mode démo — racine démo autonome
-
-Noté le 2026-08-05 (vague 2, chantier fixture démo). Le mode démo est hermétique côté
-RÉSEAU (`internal/platform/netguard`, ratchet de couverture) et côté ENTREPÔTS (bascule
-inconditionnelle des 4 DB vers la fixture, `cmd/server/demo_paths.go` + ratchet). Restent
-des fuites périphériques sur le `repoRoot` réel :
-
-- cache d'assets écrit sous `{repoRoot}/data/cache/` (au lieu de la racine démo) ;
-- fichiers de session HTTP sous `{repoRoot}/data/sessions/` ;
-- lecture du `data/auth/` réel (tokens inutilisés depuis netguard, mais lus).
-
-**Cible** : une racine démo totalement autonome — tout chemin d'écriture/lecture dérivé
-de la racine fixture quand `LEVELUP_DEMO_MODE=true`. S'appuyer sur l'audit des chemins
-qui existera pour la migration AppData Tauri (même besoin d'inventaire exhaustif).
-**Risque actuel : faible** (écritures anodines, aucune donnée métier). **Effort : S-M.**
 
 ---
 
@@ -263,7 +273,7 @@ resolver) — elle ne suit pas le sort du maillon de nom. **Effort : S** (le rel
    - **Flux SISU natif** : POST vers `sisu.xboxlive.com/authorize` (AccessToken + AppId + DeviceToken + SessionId) — utilisé par les apps Xbox/mobiles natives, potentiellement plus rapide/fluide (moins d'allers-retours navigateur), mais suppose un contexte natif (device token, app registrée côté Xbox) plus contraignant à mettre en place que l'OAuth desktop classique.
    - Point technique à noter : **WAM (Web Account Manager)**, le broker d'auth Windows utilisé par MSAL pour du SSO silencieux avec le compte Windows courant, n'est **pas disponible pour Xbox** — donc pas de raccourci via WAM, il faudra creuser SISU directement ou rester sur l'OAuth desktop existant amélioré (moins d'allers-retours navigateur, SSO local dans la coque Tauri).
    - À trancher au moment venu : est-ce que le gain (fluidité) justifie l'effort d'implémentation SISU vs. optimiser l'OAuth desktop actuel dans la coque Tauri.
-3. **Stockage local — migration vers AppData** : tout ce qui est aujourd'hui stocké sur disque à côté de l'app (DuckDB `data/titles/`, `data/auth/`, `data/global/`, `data/sessions/`, config `db_profiles.json`/`app_settings.json`/`.env.local`) ne peut pas rester dans le bundle applicatif Tauri — l'app doit pouvoir être mise à jour/réinstallée sans perdre ces données. Il faut cadrer un chemin utilisateur type `%APPDATA%/LevelUp/` (Windows) et équivalents autres OS, cohérent avec `PathResolver`, sans hardcoder de chemin machine. **À ce moment-là : faire un audit exhaustif de tout ce qui est écrit sur disque** (pas seulement `data/` — logs, caches, fichiers temporaires, médias indexés, tout chemin actuellement dérivé de `REPO_ROOT`) pour ne rien oublier dans la bascule vers AppData.
+3. **Stockage local — migration vers AppData** : tout ce qui est aujourd'hui stocké sur disque à côté de l'app (DuckDB `data/titles/`, `data/auth/`, `data/global/`, `data/sessions/`, config `db_profiles.json`/`app_settings.json`/`.env.local`) ne peut pas rester dans le bundle applicatif Tauri — l'app doit pouvoir être mise à jour/réinstallée sans perdre ces données. Il faut cadrer un chemin utilisateur type `%APPDATA%/LevelUp/` (Windows) et équivalents autres OS, cohérent avec `PathResolver`, sans hardcoder de chemin machine. **À ce moment-là : faire un audit exhaustif de tout ce qui est écrit sur disque** (pas seulement `data/` — logs, caches, fichiers temporaires, médias indexés, tout chemin actuellement dérivé de `REPO_ROOT`) pour ne rien oublier dans la bascule vers AppData. **Précision (2026-09-27, plan backlog du 2026-09-26)** : l'inventaire des chemins d'état existe désormais (journal du lot B5 du plan, et `config.LoadServer` / `RuntimePaths`). `PathResolver` n'a qu'une racine, qui sert à la fois la configuration versionnée et les données d'exécution. Une racine de données distincte (environ 70 fichiers, 121 appels de `NewPathResolver`) est le préalable technique de cette bascule.
 
 ---
 
@@ -290,6 +300,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-09-27 | **[lot backlog du 2026-09-26] Musique de fin et son du rejeu, classement mondial, découpeur SQL, index ART de `match_skill_rank`, garde-rail d'exclusion de la campagne, mode démo hermétique** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, un exécutant Opus à la fois, deux relectures adversariales puis une ronde 2 sur les corrections : 8 constats en ronde 1, dont 2 P1, et 0 P1 en ronde 2). **Musique de fin (11)** : la conclusion échappe au plafond de 8 voix dans la page, comme dans l'export (`soundOccupiesVoice`, `a373539d9`). **Son au rechargement (12)** : le lecteur s'ouvre au premier clic ou à la première touche, ou dès l'affichage si le document a déjà reçu un geste (`useAudioUnlock`, `89f311191`) ; la cause était la lecture automatique. **Classement mondial (1)** : `ErrDrainTimeout`, 3 essais espacés de 30 s sans nouveau scrape, premier tir à +2 min (`cd47936fc`). **Découpeur SQL (3)** : cœur unique `migration.ExecScriptContext`, 3 copies supprimées, garde-rail AST (`edd0054d5`). **Index de `match_skill_rank` (2)** : les trois `idx_msr_*` sont retirés par une migration et par un soin convergent rejoué à chaque ouverture (MSR et PSA) ; ratchet étendu à `sync/schema.go` ; sonde, `repair_msr_index` et `indexcheck` supprimés ; critère D-4 amendé (relatif, `EXPLAIN ANALYZE`) ; copies réelles vérifiées (`7e9ef7c15`, `0b6c11f73`). **Exclusion de la campagne (4)** : garde AST multi-racines (83 lecteurs, 21 dispenses datées), 12 lecteurs corrigés ; les chiffres Halo 5 qui comptaient la campagne changent (`a9e2192ac`, `c61c60761`). **Mode démo (8)** : tâches de fond coupées et chemins d'état redirigés par le SEUL serveur démo (`config.LoadServer`), 4 mutations en 403 `demo_mode_forbidden`. La preuve de bout en bout sur le vrai checkout donne 0 écriture (`3de419efe`, corrections B-C1 à B-C10). Écoutes de l'utilisateur (11, 12) faites après la fusion. Découvertes versées en 6 entrées ci-dessus. |
 | 2026-09-19 | **[hygiène] Lot compare / armes / frontières** (branche `feat/hygiene-compare-armes`, 4 commits `e4238dea6`→`aa1a8dc2c`, exécuté par Opus sous pilotage) — **A** champ `filters` de `CompareRequest` retiré (Go + `types.ts` ; le fragment OpenAPI manuel ne le déclarait déjà pas, `FilterContextInput` conservé : 7 autres consommateurs). **B** repli « échantillon croisé » SUPPRIMÉ — mais la prémisse du backlog était fausse : la branche n'était pas morte, elle était FAUTIVE. `GetCrossMatchSample` n'excluait pas la campagne alors que `GetLocalStats` le fait ; mesuré sur copie du shared Halo 5 : pour un B présent uniquement en coop campagne, `GetLocalStats` rend 0 ligne et l'échantillon croisé rend 1 match (stats de campagne servies sous un service record matchmade). Exclusion alignée ⇒ branche morte par construction ⇒ retrait complet (service, repo, port + noop, `domain.CrossMatchSample`, `IsLocalSample`/`is_local_sample` régénéré par Huma, 2 tests, 8 lignes de baseline). **C** `buildTopWeapons` des séries temporelles délègue à `topWeaponKillRows` (départage sur le libellé) ; garde-rail étendu au motif `WeaponID <` sans propriétaire ; changement assumé : une arme sans libellé résolu n'est plus publiée (barre anonyme avant). **D** `SynthesisCards` → `components/ui/section-primitives.tsx`, `SynthesisWeaponAccuracyChart` → `components/charts/WeaponAccuracyChart.tsx` ; DEUX dérogations retirées (`timeseries=>synthesis` et `session-detail=>synthesis`) ; le ratchet du script compte les violations non déclarées (7/7, inchangé), pas les dérogations. Gates : Go build/vet/test 22 paquets, openapi-gen -check, types frais, tsc -b (cache purgé), eslint 0 erreur, lint inter-features, vitest 7984 tests — tous verts, rejoués par le pilote. Découvertes → 2 items backlog ci-dessus. |
 | 2026-08-03 | **[ops/deps] Bump `echarts` 5.6.0 → 6.1.0** (CVE-2026-45249, XSS) — livré par `545b870de` (lot B4 echarts6, diff visuel joint). L'entrée « REPORTÉ » du backlog était restée après la livraison ; retirée le 2026-09-19. |
 | 2026-07-26 | **[ops/prod] Écritures `app_settings.json` dans le conteneur (bind-mount fichier → rename EBUSY)** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — point d'écriture unique `internal/platform/atomicfile.WriteFile` : atomique (temp + rename) d'abord, repli **in-place** (truncate + un seul Write + fsync) quand le rename répond EBUSY ou que le répertoire parent refuse le temporaire. Toute AUTRE erreur de rename reste remontée (le repli couvre une contrainte d'environnement connue, pas un diagnostic manquant). Audit des écritures runtime de settings : **3 call sites**, tous migrés — `settings.Store.Save` (chemin de TOUS les toggles admin `PATCH /settings`, qui faisait un `os.WriteFile` nu, donc jamais atomique), `settings.Store.SaveTitleOverlay`, `notify.writeLastNotifiedVersion` (le bug d'origine : notif Discord « nouvelle version » rejouée à chaque redémarrage). Limite ASSUMÉE et documentée : le repli n'est pas atomique — risque borné (contenu déjà sérialisé en mémoire, un seul Write, fsync, fichiers reconstructibles). Garde-rail `archlint/no_bare_settings_write_test.go` (interdit `os.WriteFile`/`os.Rename` nus dans les packages writers de settings). Tests : rename EBUSY → repli, rename ENOSPC → erreur non masquée, temporaire impossible → repli, troncature, création. |

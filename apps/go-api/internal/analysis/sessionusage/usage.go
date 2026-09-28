@@ -60,6 +60,13 @@ type PlayerRow struct {
 	GrapplePulls       int
 	CamoEpisodes       int
 	OvershieldEpisodes int
+	// CamoMS / CamoKills / OvershieldMS / OvershieldKills : durée cumulée des épisodes actifs
+	// (ms réelles, 0 si l'artefact n'a pas d'échelle de temps) et frags du porteur PENDANT
+	// ces épisodes. Lus pour l'Emprise (D11 : production des bonus), jamais avant.
+	CamoMS             int64
+	CamoKills          int
+	OvershieldMS       int64
+	OvershieldKills    int
 	DroppedObjects     int
 	PadPickups         int
 	DeployedByFamily   map[string]int

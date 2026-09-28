@@ -57,7 +57,6 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"time"
 
@@ -147,7 +146,12 @@ func runArchiveFilms(cfg *config.AppConfig, args []string) error {
 			"s obtient par identifiant de MATCH, pas par joueur)")
 	}
 
-	ctx := context.Background()
+	// ARRET DOUX (J2.5, 2026-09-26) : un Ctrl-C arrete la distribution des films ; le film en
+	// cours de telechargement va au bout sous `travail` (non annulable) et s ecrit entier. Un
+	// second Ctrl-C tue le processus (cf. `contexteDArret`).
+	ctx, stop := contexteDArret()
+	defer stop()
+	travail := context.WithoutCancel(ctx)
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
 	if err := filmcache.EnsureDirs(cacheRoot); err != nil {
 		return err
@@ -165,44 +169,62 @@ func runArchiveFilms(cfg *config.AppConfig, args []string) error {
 
 	// Les chunks de film sont un endpoint PUBLIC : n'importe quel token du parc les sert
 	// (PolicyAnyPublic, D1 du plan 2026-09-16). Le gamertag n'est plus un preteur de token.
-	client, closePool, err := newPooledClient(ctx, cfg, o.rps)
+	client, closePool, err := newPooledClient(travail, cfg, o.rps)
 	if err != nil {
 		return fmt.Errorf("archive-films (%s): %w", o.gamertag, err)
 	}
 	defer closePool()
 
 	debut := time.Now()
-	var sauves, expires, erreurs, chunks int
+	b := archiverLesFilms(ctx, travail, client, cacheRoot, manquants)
+	fmt.Printf("archive-films : %d films sauves (%d chunks), %d expires cote serveur, %d erreurs — %s\n",
+		b.sauves, b.chunks, b.expires, b.erreurs, time.Since(debut).Round(time.Second))
+	if b.expires > 0 {
+		fmt.Printf("  %d films sont DEFINITIVEMENT perdus : 343 ne les sert plus, et un film expire "+
+			"ne se retelecharge jamais.\n", b.expires)
+	}
+	if cause := causeDArret(ctx); cause != "" {
+		fmt.Printf("  passe interrompue (%s) : relancer la meme commande reprend les films encore "+
+			"manquants.\n", cause)
+	}
+	return nil
+}
+
+// bilanArchive : les comptes d'une passe d'archivage.
+type bilanArchive struct {
+	sauves, expires, erreurs, chunks int
+}
+
+// archiverLesFilms archive les films un par un. `ctx` (annulable par signal) ne sert qu'a ne plus
+// en DISTRIBUER ; `travail` (non annulable) porte le film en cours jusqu'au bout.
+func archiverLesFilms(ctx, travail context.Context, client telechargeurDeFilm, cacheRoot string,
+	manquants []string) bilanArchive {
+	debut := time.Now()
+	var b bilanArchive
 	for i, id := range manquants {
 		if ctx.Err() != nil {
 			break
 		}
-		n, etat := archiverUnFilm(ctx, client, cacheRoot, id)
+		n, etat := archiverUnFilm(travail, client, cacheRoot, id)
 		switch etat {
 		case "sauve":
-			sauves++
-			chunks += n
+			b.sauves++
+			b.chunks += n
 			observability.IncCounter(compteurArchiveSauves)
 			observability.AddInt(compteurArchiveChunks, int64(n))
 		case "expire":
-			expires++
+			b.expires++
 			observability.IncCounter(compteurArchiveExpires)
 		default:
-			erreurs++
+			b.erreurs++
 			observability.IncCounter(compteurArchiveErreurs)
 		}
 		if (i+1)%25 == 0 {
 			fmt.Printf("  [%d/%d] %d sauves, %d expires, %d erreurs — %s\n",
-				i+1, len(manquants), sauves, expires, erreurs, time.Since(debut).Round(time.Second))
+				i+1, len(manquants), b.sauves, b.expires, b.erreurs, time.Since(debut).Round(time.Second))
 		}
 	}
-	fmt.Printf("archive-films : %d films sauves (%d chunks), %d expires cote serveur, %d erreurs — %s\n",
-		sauves, chunks, expires, erreurs, time.Since(debut).Round(time.Second))
-	if expires > 0 {
-		fmt.Printf("  %d films sont DEFINITIVEMENT perdus : 343 ne les sert plus, et un film expire "+
-			"ne se retelecharge jamais.\n", expires)
-	}
-	return nil
+	return b
 }
 
 // archiverUnFilm telecharge la sequence COMPLETE (en-tete + replication + kill-feed) et l ecrit
@@ -233,7 +255,7 @@ func archiverUnFilm(ctx context.Context, client telechargeurDeFilm, cacheRoot, m
 			Data: c.Data,
 		})
 	}
-	if err := filmcache.Write(cacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
+	if err := filmcache.Write(ctx, cacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
 		slog.ErrorContext(ctx, "archive-films: ecriture au cache echouee", "match_id", matchID, "err", err)
 		return 0, "erreur"
 	}
@@ -243,8 +265,9 @@ func archiverUnFilm(ctx context.Context, client telechargeurDeFilm, cacheRoot, m
 // filmsManquants : les matchs du registre dont AUCUN film n est en cache, du plus vieux au plus
 // recent (cf. l en-tete : l archivage court apres l expiration).
 //
-// La presence se juge sur le MANIFESTE, qui est le marqueur de commit de `filmcache.Write` :
-// des chunks orphelins sans manifeste ne sont pas lisibles, donc ne comptent pas comme archives.
+// La presence se juge sur un film COMPLET ([filmDejaEnCache]) : le manifeste est le marqueur de
+// commit de `filmcache.Write` (des chunks orphelins sans manifeste ne sont pas lisibles), et un
+// manifeste partiel ou un chunk tronque ne valent pas un film archive (J2.5, 2026-09-26).
 //
 // LECTURE SEULE sur la base partagee — `OpenReadForQuery`, jamais `OpenReadOnly` force : la base
 // peut etre tenue en ecriture par le serveur, et cette commande doit pouvoir tourner quand meme.
@@ -276,7 +299,7 @@ func filmsManquants(ctx context.Context, cfg *config.AppConfig, o archiveOptions
 		if err := rows.Scan(&id); err != nil {
 			return nil, fmt.Errorf("registre des matchs (scan): %w", err)
 		}
-		if !matchCible(o.matchs, id) || filmDejaEnCache(cacheRoot, id) {
+		if !matchCible(o.matchs, id) || filmDejaEnCache(ctx, cacheRoot, id) {
 			continue
 		}
 		out = append(out, id)
@@ -287,8 +310,16 @@ func filmsManquants(ctx context.Context, cfg *config.AppConfig, o archiveOptions
 	return out, rows.Err()
 }
 
-// filmDejaEnCache : le manifeste existe-t-il ? Le chemin vient de `filmcache`, jamais recopie.
-func filmDejaEnCache(cacheRoot, matchID string) bool {
-	_, err := os.Stat(filmcache.ManifestPath(cacheRoot, titlePkg.FilmShortMatchID(matchID)))
-	return err == nil
+// filmDejaEnCache : le film est-il COMPLET au cache (`filmcache.FilmComplet` : manifeste
+// finalise, chaque chunk present a la taille declaree) ? « Present » n'est pas « complet »
+// (J2.5, 2026-09-26) : un manifeste partiel ou un chunk tronque laissent le film a archiver, et
+// `filmcache.Write` le repare. Un cache illisible est journalise et le film retente.
+func filmDejaEnCache(ctx context.Context, cacheRoot, matchID string) bool {
+	complet, err := filmcache.FilmComplet(cacheRoot, titlePkg.FilmShortMatchID(matchID))
+	if err != nil {
+		slog.WarnContext(ctx, "archive-films: etat du film au cache illisible, film retente",
+			"match_id", matchID, "err", err)
+		return false
+	}
+	return complet
 }

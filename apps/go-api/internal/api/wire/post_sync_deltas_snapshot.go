@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 )
@@ -226,13 +227,16 @@ func SnapshotPlayerState(
 		if sharedErr != nil {
 			slog.DebugContext(ctx, "snapshot: shared reader unavailable", "err", sharedErr)
 		} else {
+			// Campagne exclue des trois lectures (D-5, backlog B4 ; no-op pour un titre sans
+			// variante de Campagne) : les deltas notifiés suivent les agrégats affichés.
+			campagneExclue := analysis.SQLExcludeCampaignByMatchID(pdb.TitleSlug, "match_id")
 			var kd, winrate sql.NullFloat64
 			err := sharedDB.QueryRowContext(ctx, `
 				SELECT
 					CAST(SUM(kills) AS DOUBLE) / NULLIF(SUM(deaths), 0)        AS kd_ratio,
 					AVG(CASE WHEN outcome = 2 THEN 1.0 ELSE 0.0 END)            AS winrate
 				FROM match_participants
-				WHERE xuid = ?`, pdb.XUID).Scan(&kd, &winrate)
+				WHERE xuid = ?`+campagneExclue, pdb.XUID).Scan(&kd, &winrate)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				slog.DebugContext(ctx, "snapshot: kd/winrate", "err", err)
 			}
@@ -261,7 +265,7 @@ func SnapshotPlayerState(
 					CAST(kills + assists AS DOUBLE) / GREATEST(deaths, 1) AS kda,
 					match_id
 				FROM match_participants
-				WHERE xuid = ?
+				WHERE xuid = ?`+campagneExclue+`
 				ORDER BY kda DESC
 				LIMIT 1`, pdb.XUID).Scan(&bestKDA, &matchID)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -282,7 +286,7 @@ func SnapshotPlayerState(
 				SELECT MAX(`+duckdb.StartTimeCanonicalSQL("r")+`)
 				FROM match_participants p
 				JOIN match_registry r ON r.match_id = p.match_id
-				WHERE p.xuid = ?`, pdb.XUID).Scan(&lastStart)
+				WHERE p.xuid = ?`+analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "r"), pdb.XUID).Scan(&lastStart)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				slog.DebugContext(ctx, "snapshot: last_match_start", "err", err)
 			}

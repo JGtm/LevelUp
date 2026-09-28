@@ -149,9 +149,9 @@ func (h *SettingsHandler) handleGetSettings(ctx context.Context, _ *struct{}) (*
 	}
 
 	// PMT-4 PR-3c : résout l'overlay per-titre (ShowProgression / OutcomeExclude*).
-	// Titre par défaut sans overlay ⇒ == Load() (byte-identique).
-	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
-	cfg, err := h.settingsStore.ResolveForTitle(pr.TitleSettingsPath(ctxkeys.TitleSlug(ctx)))
+	// Titre par défaut sans overlay ⇒ == Load() (byte-identique). Overlay : cfg.TitleSettingsPath
+	// (celui de la fixture en démo, lot B5).
+	cfg, err := h.settingsStore.ResolveForTitle(h.cfg.TitleSettingsPath(ctxkeys.TitleSlug(ctx)))
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
@@ -278,7 +278,6 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	// chemin global byte-identique. Détection via le flag IsDefault (jamais une
 	// comparaison de slug littérale — archlint no_slug_comparison).
 	titleSlug := ctxkeys.TitleSlug(ctx)
-	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
 	var perTitleOverlay map[string]json.RawMessage
 	if desc := titlePkg.DefaultRegistry().Get(titleSlug); desc != nil && !desc.IsDefault {
 		perTitleOverlay = extractPerTitleOverlay(&req)
@@ -306,7 +305,7 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 
 	// PMT-4 PR-3c : persiste l'overlay per-titre (après le Save global réussi).
 	if len(perTitleOverlay) > 0 {
-		if err := h.settingsStore.SaveTitleOverlay(pr.TitleSettingsPath(titleSlug), perTitleOverlay); err != nil {
+		if err := h.settingsStore.SaveTitleOverlay(h.cfg.TitleSettingsPath(titleSlug), perTitleOverlay); err != nil {
 			return nil, humacore.NewError(http.StatusInternalServerError, "settings_overlay_save_error",
 				"Impossible de sauvegarder l'overlay du titre.")
 		}
@@ -314,7 +313,7 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 
 	// Réponse : settings RÉSOLUS pour le titre (global + overlay). Titre par défaut
 	// sans overlay ⇒ == cfg global (byte-identique).
-	resolved, rerr := h.settingsStore.ResolveForTitle(pr.TitleSettingsPath(titleSlug))
+	resolved, rerr := h.settingsStore.ResolveForTitle(h.cfg.TitleSettingsPath(titleSlug))
 	if rerr != nil {
 		resolved = cfg
 	}
@@ -500,11 +499,12 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 // via l'overlay PMT-4 (SessionGapMinutes / split / team-change sont per-titre :
 // le rythme de session dépend du titre). Overlay absent ⇒ valeurs globales
 // byte-identiques ; store nil ou erreur ⇒ Defaults(). Extrait pour rester
-// testable hors de la goroutine de PostRecalculateSessions.
-func sessionComputeOptionsFor(store *settings_platform.Store, pr *titlePkg.PathResolver, titleSlug string) domain.SessionComputeOptions {
+// testable hors de la goroutine de PostRecalculateSessions. overlayPath rend le chemin de
+// l'overlay d'un titre (cfg.TitleSettingsPath : celui de la fixture en démo, lot B5).
+func sessionComputeOptionsFor(store *settings_platform.Store, overlayPath func(string) string, titleSlug string) domain.SessionComputeOptions {
 	cfg := settings_platform.Defaults()
 	if store != nil {
-		if resolved, err := store.ResolveForTitle(pr.TitleSettingsPath(titleSlug)); err == nil && resolved != nil {
+		if resolved, err := store.ResolveForTitle(overlayPath(titleSlug)); err == nil && resolved != nil {
 			cfg = resolved
 		}
 	}
@@ -533,7 +533,6 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot := *job
 
-	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
 	sharedDBPath := config.SharedDBPath(h.cfg, "")
 
 	go func() {
@@ -548,7 +547,7 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 			// SessionGapMinutes / split / team-change sont per-titre (overlay
 			// PMT-4 : le rythme de session dépend du titre). Overlay absent ⇒
 			// valeurs globales byte-identiques.
-			opts := sessionComputeOptionsFor(h.settingsStore, pr, p.TitleSlug)
+			opts := sessionComputeOptionsFor(h.settingsStore, h.cfg.TitleSettingsPath, p.TitleSlug)
 			// Amis DU joueur recalculé (data/global/player_friends.json) : les
 			// sessions d'escouade de chacun se calculent sur SA liste. Store absent
 			// ou lecture en échec → aucun ami (log avant dégradation).

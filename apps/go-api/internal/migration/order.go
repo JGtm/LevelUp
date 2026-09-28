@@ -97,6 +97,7 @@ var canonicalOrder = []string{
 	"player_msr_view_lusr_over_v2_v1",                // player
 	"player_msr_view_priority_csr_v1",                // player
 	"player_msr_view_latest_by_type_v1",              // player (2026-09-13 : vue par (match_id, rating_type))
+	"drop_msr_secondary_art_indexes_v1",              // player (2026-09-27 : les 3 index de match_skill_rank — DERNIER de la chaîne MSR, suit la baseline et lusr_chain_rework_v1 qui les posaient)
 	"create_notifications_in_shared_social",          // shared_social
 	"drop_notifications_from_player_db",              // player
 	"drop_idx_pn_xuid_unread",                        // shared_social

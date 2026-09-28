@@ -32,6 +32,13 @@ package killcollector
 // La source est [RemoteFilms] : disque d abord, reseau ensuite, et le reseau ecrit au cache.
 // L etape 1.58 (artefacts de rejeu), qui telechargeait le film complet pour son propre pont
 // disque, le trouve donc DEJA sur disque.
+//
+// # UNE SEULE PASSE PAR (PROCESSUS, TITRE) A LA FOIS
+//
+// Le cycle v2 appelle [RunPostSync] une fois PAR JOUEUR, en parallele, et l arriere est GLOBAL.
+// C est l exclusivite de `postsync_exclusivite.go` qui garde la boucle en serie a l echelle du
+// processus : le premier appel d un titre prend la passe, les autres se retirent (rendent 0,
+// [CompteurPostSyncPasseDejaEnCours]). Sans elle, N joueurs decodaient N fois les memes films.
 
 import (
 	"context"
@@ -59,6 +66,11 @@ import (
 // matchs, et decoder des centaines de films dans le post-sync bloquerait le cycle pendant des
 // heures. Le solde est repris au cycle suivant (l etape est idempotente, `decoder_rev` fait
 // foi) ou par `levelup backfill-killsource --online`.
+//
+// C EST UNE BORNE PAR CYCLE ET PAR TITRE, PAS PAR JOUEUR. Elle ne l est que parce qu une seule
+// passe tourne par (processus, titre) — cf. `postsync_exclusivite.go`. Avant cette exclusivite
+// (OPS-3), chaque joueur du cycle lancait sa propre passe sur le meme arriere, et la borne
+// valait N x 8 films pour N joueurs synchronises ensemble.
 const DefaultPostSyncPerCycle = 8
 
 // PostSyncBudget : LE GARDE-FOU DE DUREE DU CYCLE, et il n est pas negociable.
@@ -85,6 +97,10 @@ const (
 	// CompteurPostSyncClientSansFilm : le client injecte ne porte pas GetFilmChunks, donc
 	// l etape ne peut rien faire. C EST UN DEFAUT DE CABLAGE, PAS UN ETAT NORMAL.
 	CompteurPostSyncClientSansFilm = "killsource_postsync_client_sans_film"
+	// CompteurPostSyncPasseDejaEnCours : un appel a trouve une passe du MEME titre en cours
+	// dans le process et s est retire (cf. postsync_exclusivite.go). CE N EST PAS UN DEFAUT :
+	// c est le cas normal d un cycle qui synchronise plusieurs joueurs a la fois.
+	CompteurPostSyncPasseDejaEnCours = "killsource_postsync_passe_deja_en_cours"
 )
 
 // FilmChunkFetcher : la SEULE capacite que l etape demande au client Halo.
@@ -234,7 +250,8 @@ type PostSyncDeps struct {
 // Elle REND le nombre de matchs ecrits, et ce n est pas cosmetique : la trace de cycle du
 // post-sync (`clock.lap`) codait un zero en dur, de sorte que « a tourne et ecrit 8 » et
 // « n a jamais tourne » etaient indistinguables sur la surface meme construite pour lever
-// l ambiguite.
+// l ambiguite. Un appel retire parce qu une passe du meme titre tourne deja rend aussi 0 :
+// c est [CompteurPostSyncPasseDejaEnCours] qui le distingue.
 func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedIDs []string) (ecrits int) {
 	if h == nil || d.Fetcher == nil || d.WithRead == nil || d.AcquireWriter == nil {
 		return 0
@@ -248,6 +265,14 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	if !caps.Has(games.CapFilmKillSource) {
 		return 0 // titre sans decodeur : etape vide, proprement.
 	}
+	// UNE PASSE PAR (PROCESSUS, TITRE) : prise ICI, apres les gardes et avant la lecture de
+	// l arriere global (OPS-3, cf. postsync_exclusivite.go).
+	passe := verrouDePasse(d.TitleSlug)
+	if !passe.TryLock() {
+		signalerPasseDejaEnCours(ctx, d)
+		return 0
+	}
+	defer passe.Unlock()
 
 	var (
 		backlog []string

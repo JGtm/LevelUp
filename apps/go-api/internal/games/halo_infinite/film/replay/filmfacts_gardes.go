@@ -62,7 +62,7 @@ func decodeGardesDeMode(r *greader, in *FilmInputs) {
 	in.ZoneScanned = r.bool8()
 	in.FlagGauge = decodeManagedPropertyReads(r)
 	in.FlagGaugeScanned = r.bool8()
-	n := int(r.u())
+	n := r.compte(4)
 	in.BombReads = make([]types.NavpointRadialRead, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		in.BombReads = append(in.BombReads, types.NavpointRadialRead{
@@ -98,7 +98,7 @@ func encodeCarrierMarkScan(w *gwriter, s grammar.CarrierMarkScan) {
 
 func decodeCarrierMarkScan(r *greader) grammar.CarrierMarkScan {
 	var s grammar.CarrierMarkScan
-	n := int(r.u())
+	n := r.compte(2)
 	s.Marks = make([]grammar.CarrierMark, 0, n)
 	var last uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -108,7 +108,7 @@ func decodeCarrierMarkScan(r *greader) grammar.CarrierMarkScan {
 	if len(s.Marks) == 0 {
 		s.Marks = nil
 	}
-	n = int(r.u())
+	n = r.compte(1)
 	s.KeyframeUS = make([]uint64, 0, n)
 	last = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -141,7 +141,7 @@ func encodeManagedPropertyReads(w *gwriter, rs []grammar.ManagedPropertyRead) {
 }
 
 func decodeManagedPropertyReads(r *greader) []grammar.ManagedPropertyRead {
-	n := int(r.u())
+	n := r.compte(8)
 	out := make([]grammar.ManagedPropertyRead, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		out = append(out, grammar.ManagedPropertyRead{

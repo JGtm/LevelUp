@@ -128,6 +128,30 @@ func parsePeak(line string) (uint64, bool) {
 	return v, true
 }
 
+// raisonMarker : la ligne de protocole par laquelle l'enfant rend la RAISON d'un refus (lot
+// J2.12, constat OPS-5, decision DT-5, 2026-09-26).
+//
+// LE CODE DE SORTIE DIT « ECARTE », PAS POURQUOI : le parent rangeait donc tout refus sous une
+// seule cause, et classait ce qu'il en savait en cherchant du TEXTE dans une erreur. La raison
+// voyage desormais comme le pic memoire : une ligne du tube, interceptee, jamais relayee. Le
+// JETON EST OPAQUE pour ce paquet — un mot, sans espace — et son vocabulaire vit chez l'appelant
+// qui le produit et le lit (`replaychild`) : `filmproc` reste un lanceur generique.
+const raisonMarker = "__levelup_raison__="
+
+// EmitRaison ecrit la ligne de protocole de la raison d'un refus. Appelee par l'ENFANT, AVANT sa
+// sortie en [CodeSkipped]. `jeton` est un mot sans espace (cf. [raisonMarker]).
+func EmitRaison(jeton string) { fmt.Printf("%s%s\n", raisonMarker, jeton) }
+
+// parseRaison reconnait la ligne de protocole de la raison. Appelee par le PARENT. Un jeton vide
+// ou fait de plusieurs mots n'est pas du protocole.
+func parseRaison(line string) (string, bool) {
+	jeton, ok := strings.CutPrefix(strings.TrimSpace(line), raisonMarker)
+	if !ok || jeton == "" || strings.ContainsAny(jeton, " \t") {
+		return "", false
+	}
+	return jeton, true
+}
+
 // Result : ce que le parent retient d'un enfant.
 type Result struct {
 	Code  int
@@ -135,6 +159,9 @@ type Result struct {
 	Dur   time.Duration
 	// Peak vaut 0 quand l'enfant est mort avant d'avoir pu se mesurer.
 	Peak uint64
+	// Raison : le jeton de la raison d'un refus, tel que l'enfant l'a rendu par [EmitRaison]. Vide
+	// quand l'enfant n'en a pas donne. Ce paquet ne l'interprete pas.
+	Raison string
 	// Err est un echec de LANCEMENT, pas un echec du film.
 	Err error
 }
@@ -199,10 +226,10 @@ func (r *Runner) Run(ctx context.Context, args []string) Result {
 	// Le parent relache SA copie du bout ecrivain : sans cela le scanner ne verrait jamais
 	// l'EOF, meme apres la mort de l'enfant.
 	_ = write.Close()
-	peak := r.relay(read)
+	peak, raison := r.relay(read)
 	_ = read.Close()
 
-	res := Result{Peak: peak, Dur: time.Since(start)}
+	res := Result{Peak: peak, Raison: raison, Dur: time.Since(start)}
 	res.Code, res.Err = exitCode(cmd.Wait())
 	res.Issue = IssueForCode(res.Code)
 	if res.Err != nil {
@@ -225,9 +252,11 @@ func exitCode(werr error) (int, error) {
 }
 
 // relay recopie la sortie de l'enfant vers celle du parent, en INTERCEPTANT les lignes de
-// protocole. Rend le pic memoire si l'enfant a eu le temps de le rendre.
-func (r *Runner) relay(src io.Reader) uint64 {
+// protocole. Rend le pic memoire si l'enfant a eu le temps de le rendre, et la raison de son
+// refus s'il en a donne une.
+func (r *Runner) relay(src io.Reader) (uint64, string) {
 	var peak uint64
+	var raison string
 	sc := bufio.NewScanner(src)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for sc.Scan() {
@@ -236,11 +265,15 @@ func (r *Runner) relay(src io.Reader) uint64 {
 			peak = v
 			continue // protocole : jamais relaye
 		}
+		if j, ok := parseRaison(line); ok {
+			raison = j
+			continue // protocole : jamais relaye
+		}
 		// L'ERREUR D'ECRITURE EST ECARTEE, ET C'EST LE SEUL ENDROIT OU C'EST LEGITIME : cette
 		// sortie EST le canal de rapport du parent. S'il est rompu, un log de l'incident partirait
 		// vers le meme tube casse. Le relais continue de vider le tube de l'enfant — s'arreter ici
 		// bloquerait l'enfant sur son ecriture suivante, ce qui serait pire que la ligne perdue.
 		_, _ = fmt.Fprintln(r.out, line)
 	}
-	return peak
+	return peak, raison
 }

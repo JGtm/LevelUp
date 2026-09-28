@@ -101,6 +101,10 @@ func FuzzFilmRecordReaders(f *testing.F) {
 		// graine de troncature a trois octets d un payload de tir (seed_04, produite par
 		// collectFuzzSeeds) est l entree de crash conservee en regression.
 		_, _ = decodeFireEvent(payload)
+		// Les lecteurs de REFERENCES D EVENEMENT (lot J2.9, constats GA1-1/GB-2) : appeles comme le
+		// font `ScanVehicleEvents` et `ScanEquipmentSpawnEvents`, sans autre garde que la leur.
+		_, _ = decodeVehicleEvent(payload, 0, NewSlotBand(nil))
+		_, _, _ = decodeEquipmentSpawnEvent(payload)
 	})
 }
 
@@ -169,7 +173,7 @@ func collectFuzzSeeds() ([][]byte, error) {
 	head := seeds[0]
 	seeds = append(seeds, append([]byte(nil), head[:len(head)/2]...))
 	seeds = append(seeds, append([]byte(nil), head[:min(3, len(head))]...))
-	return seeds, nil
+	return append(seeds, grainesDEvenementsDeReference(chunk, packets)...), nil
 }
 
 func clampSeed(b []byte) []byte {

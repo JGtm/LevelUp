@@ -148,3 +148,28 @@ func TestLusrChainForOtherUsesSharedList(t *testing.T) {
 		}
 	}
 }
+
+// TestIsNeutralFlagSubMode — le drapeau neutre, lu dans LA liste (décision D6 du plan
+// PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : la forme inversée que l'API produit, la forme
+// normalisée, et les voisins CTF qui ne le sont pas.
+func TestIsNeutralFlagSubMode(t *testing.T) {
+	cases := []struct {
+		pairName string
+		want     bool
+	}{
+		{"CTF:Arena Neutral Flag on Cliffhanger", true},
+		{"neutral flag ctf", true},
+		{"Arena:CTF on Recharge", false},
+		{"one flag ctf", false},
+		{"Ranked:Strongholds on Live Fire", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		if got := IsNeutralFlagSubMode(c.pairName); got != c.want {
+			t.Errorf("IsNeutralFlagSubMode(%q) = %v, attendu %v", c.pairName, got, c.want)
+		}
+		if c.want && !IsObjectiveSubMode(c.pairName) {
+			t.Errorf("%q : un drapeau neutre reste un sous-mode d'objectif", c.pairName)
+		}
+	}
+}

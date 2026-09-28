@@ -1,10 +1,10 @@
 /**
- * FormesRetenuesSection.test.tsx — LA SECTION ENTIÈRE, DANS SES DEUX CONTEXTES.
+ * FormesRetenuesSection.test.tsx — LA SECTION ENTIÈRE, contexte SOLO (Séries temporelles).
  *
  * CE TEST EXISTE POUR UNE RAISON PRÉCISE : le lot a été demandé parce que ce qui
  * avait été livré ne portait PAS les cartes de l'artefact. Le test vérifie donc la LISTE —
- * les dix-neuf titres, répartis entre le contexte SOLO (neuf cartes, page Timeseries) et
- * le contexte ESCOUADE (dix cartes, page Escouade) depuis le 2026-09-19 — et les trois
+ * les neuf titres du contexte solo (le contexte escouade a été retiré au lot L5.4 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : l'onglet Emprise le remplace) — et les trois
  * blocs.
  *
  * MIS À JOUR LE 2026-09-21 (lot A1) : le titre de section et le bandeau de couverture sont
@@ -26,40 +26,21 @@ const frCards = FORMES_CARDS_TEXT.fr
 const ALL_CARDS = Object.keys(frCards.cards) as FormesCardKey[]
 
 describe('FormesRetenuesSection', () => {
-  it('les DIX-NEUF cartes de l’artefact se répartissent entre les deux contextes', () => {
-    expect(ALL_CARDS).toHaveLength(19)
-    const { container: solo } = render(
-      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
-    )
-    const { container: squad } = render(
-      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="squad" />,
-    )
-    const textes = `${solo.textContent ?? ''}${squad.textContent ?? ''}`
+  // NEUF depuis le lot L5.4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 (les huit
+  // cartes du contexte escouade sont retirées avec l'ancien onglet Usages ; les deux cartes
+  // d'objectif de l'escouade l'avaient été au lot L3).
+  it('les NEUF cartes de l’artefact sont toutes montées', () => {
+    expect(ALL_CARDS).toHaveLength(9)
+    const { container } = render(<FormesRetenuesSection block={formesFixture()} locale="fr" />)
+    const texte = container.textContent ?? ''
     for (const key of ALL_CARDS) {
-      expect(textes).toContain(frCards.cards[key].title)
+      expect(texte).toContain(frCards.cards[key].title)
     }
-  })
-
-  it('le contexte SOLO ne monte AUCUNE carte du contexte escouade, et réciproquement', () => {
-    const { container: solo } = render(
-      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
-    )
-    const texteSolo = solo.textContent ?? ''
-    expect(texteSolo).toContain(frCards.cards.equipmentShares.title)
-    expect(texteSolo).not.toContain(frCards.cards.equipmentSquadGrid.title)
-    expect(texteSolo).not.toContain(frCards.cards.padsTwoFriezes.title)
-
-    const { container: squad } = render(
-      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="squad" />,
-    )
-    const texteSquad = squad.textContent ?? ''
-    expect(texteSquad).toContain(frCards.cards.equipmentSquadGrid.title)
-    expect(texteSquad).not.toContain(frCards.cards.equipmentShares.title)
   })
 
   it('rend les trois blocs, chacun avec son titre — plus aucun intertitre de contexte', () => {
     const { container } = render(
-      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+      <FormesRetenuesSection block={formesFixture()} locale="fr" />,
     )
     expect(screen.getByText(fr.blocks.equipment.title)).toBeInTheDocument()
     expect(screen.getByText(fr.blocks.weapons.title)).toBeInTheDocument()
@@ -71,7 +52,7 @@ describe('FormesRetenuesSection', () => {
 
   it('l’aide de chaque bloc reste CONCISE (trois phrases au plus) et n’est plus un pavé à l’écran', () => {
     const { container } = render(
-      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+      <FormesRetenuesSection block={formesFixture()} locale="fr" />,
     )
     const texte = container.textContent ?? ''
     // Les deux pavés (constat, lexique) ont quitté l'écran : l'aide vit dans l'infobulle.
@@ -83,21 +64,9 @@ describe('FormesRetenuesSection', () => {
     }
   })
 
-  // LA RÉSERVE QUITTE LA CARTE DES FRISES (arbitrage utilisateur 2026-09-21) : elle vivait
-  // sous la piste, en gris. Ce que la barre porte vraiment est désormais dit par la note de
-  // méthode de la carte, dans son infobulle ⓘ.
-  it('ne pose plus la réserve des occupations sans nom sous les frises', () => {
-    const { container } = render(
-      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="squad" />,
-    )
-    const text = container.textContent ?? ''
-    expect(text).not.toContain('5 occupations de socle')
-    expect(text).not.toContain('9 prises sur 14')
-  })
-
   it('nomme les cinq usages d’équipement, et JAMAIS les grenades', () => {
     const { container } = render(
-      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+      <FormesRetenuesSection block={formesFixture()} locale="fr" />,
     )
     const text = container.textContent ?? ''
     for (const label of Object.values(fr.axes)) expect(text).toContain(label)
@@ -108,7 +77,7 @@ describe('FormesRetenuesSection', () => {
   // section ne vit plus que dans l'ARIA — trois intertitres se suivaient à l'écran.
   it('ne rend NI titre de section NI bandeau de couverture', () => {
     const { container } = render(
-      <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
+      <FormesRetenuesSection block={formesFixture()} locale="fr" />,
     )
     expect(screen.getByLabelText(fr.sectionTitle)).toBeInTheDocument()
     expect(container.textContent ?? '').not.toContain(fr.sectionTitle)
@@ -117,14 +86,14 @@ describe('FormesRetenuesSection', () => {
 
   it('se retire quand le bloc est absent ou indisponible', () => {
     const { container: empty } = render(
-      <FormesRetenuesSection block={undefined} locale="fr" contexte="solo" />,
+      <FormesRetenuesSection block={undefined} locale="fr" />,
     )
     expect(empty).toBeEmptyDOMElement()
     const { container: down } = render(
       <FormesRetenuesSection
         block={{ available: false, matches_total: 3, matches_measured: 0 }}
         locale="fr"
-        contexte="solo"
+       
       />,
     )
     expect(down).toBeEmptyDOMElement()
@@ -146,10 +115,8 @@ describe('FormesRetenuesSection', () => {
     ]
     block.matches_total = block.matches.length
     block.matches_measured = block.matches.filter((m) => m.measured).length
-    render(<FormesRetenuesSection block={block} locale="fr" contexte="squad" />)
-    // Une ligne par match mesuré affiché, jamais une par match du scope.
-    const grip = screen.getByLabelText(frCards.cards.padsSquadByMatch.title)
-    expect(grip.querySelectorAll('[role="img"][aria-label*="Prises de socle"]').length).toBe(0)
+    render(<FormesRetenuesSection block={block} locale="fr" />)
+    const grip = screen.getByLabelText(frCards.cards.equipmentByMatch.title)
     // LA PORTÉE SE DIT DANS L'INFOBULLE ⓘ DU TITRE, plus sous la forme (2026-09-21) :
     // hors survol, la phrase n'est nulle part dans le corps de la carte.
     expect(grip.textContent).not.toContain('Affichés : les 20 derniers matchs à film décodé')
@@ -162,7 +129,7 @@ describe('FormesRetenuesSection', () => {
   })
 
   it('rend aussi en anglais, sans clé manquante', () => {
-    render(<FormesRetenuesSection block={formesFixture()} locale="en" contexte="solo" />)
+    render(<FormesRetenuesSection block={formesFixture()} locale="en" />)
     expect(screen.getByText(FORMES_TEXT.en.blocks.weapons.title)).toBeInTheDocument()
     expect(
       screen.getAllByText(FORMES_CARDS_TEXT.en.cards.equipmentShares.title).length,
@@ -174,7 +141,7 @@ describe('FormesRetenuesSection', () => {
   it('masque le bloc d’objectif ENTIER — intertitre compris — quand aucun match n’en porte', () => {
     const block = formesFixture()
     block.matches = (block.matches ?? []).map((m) => ({ ...m, objective: undefined }))
-    render(<FormesRetenuesSection block={block} locale="fr" contexte="solo" />)
+    render(<FormesRetenuesSection block={block} locale="fr" />)
     expect(screen.queryByText(fr.blocks.objectives.title)).not.toBeInTheDocument()
     expect(screen.queryByText(frCards.cards.objectivesGapRole.title)).not.toBeInTheDocument()
   })
@@ -184,7 +151,7 @@ describe('FormesRetenuesSection', () => {
     const block = formesFixture()
     block.matches = (block.matches ?? []).map((m) => ({ ...m, measured: false }))
     block.matches_measured = 0
-    render(<FormesRetenuesSection block={block} locale="fr" contexte="squad" />)
+    render(<FormesRetenuesSection block={block} locale="fr" />)
     expect(screen.getByText(fr.blocks.equipment.title)).toBeInTheDocument()
     expect(screen.getByText(fr.blocks.weapons.title)).toBeInTheDocument()
     expect(screen.getAllByTestId('formes-block-empty').length).toBe(2)

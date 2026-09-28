@@ -102,30 +102,6 @@ type SquadMatchSeriesPoint struct {
 	SessionLabel     *string  `json:"session_label,omitempty"`
 }
 
-// SquadWeaponBar est une ligne du chart kills par arme teammates.09 :
-// 1 arme avec ses kills par joueur de l'escouade + total cumulé.
-type SquadWeaponBar struct {
-	WeaponID int64  `json:"weapon_id"`
-	Label    string `json:"label"`
-	// Class : classe d'arme du registre (axe manipulation : shoulder/sidearm/heavy/
-	// melee/grenade/…) résolue via ResolveRoles. Omise ("") si non résolue (dont les
-	// sentinels grenade/mêlée, absents du registre) — omitempty : classe vide == absente,
-	// cohérent avec SynthesisWeaponKillEntry.class. Sert au split gun/non-gun côté front
-	// (buildSquadFragTools → « Outils de destruction »).
-	Class          string         `json:"class,omitempty"`
-	IsGrenadeMelee bool           `json:"is_grenade_melee,omitempty"`
-	KillsByPlayer  map[string]int `json:"kills_by_player"` // gamertag → kills
-	TotalSquad     int            `json:"total_squad"`
-}
-
-// SquadWeaponKills alimente teammates.09 (barres horizontales groupées par
-// arme, 1 trace par joueur). Players est l'ordre canonique (main puis
-// teammates) ; Bars est trié par TotalSquad ASC (peu utilisées en haut).
-type SquadWeaponKills struct {
-	Players []string         `json:"players"`
-	Bars    []SquadWeaponBar `json:"bars"`
-}
-
 // SquadWeaponAccuracyBar est une ligne du comparatif « Précision par rôle » de la page
 // Escouade : agrégat PAR RÔLE d'arme (precision/automatic/sniper/…) — les ~30 armes sont
 // regroupées par rôle pour la lisibilité — avec sa précision (0..1) par joueur, le volume
@@ -553,10 +529,9 @@ type TeammatesPageResponse struct {
 	// par-joueur ici → pas de classe spartan_ability (hasMechanics=false, cf. §6
 	// D-P6-2). Nil si aucune donnée d'arme.
 	FragClasses map[string][]FragClassEntry `json:"frag_classes,omitempty"`
-	// WeaponKills alimente teammates.09 (kills par arme, comparatif multi-joueurs).
-	// Nil si aucune donnée weapon_kills disponible (capability absente ou shared
-	// match_ids vides).
-	WeaponKills *SquadWeaponKills `json:"weapon_kills,omitempty"`
+	// WeaponTools alimente « Outils de destruction » (frags par outil et par joueur,
+	// D8). Nil si aucune donnée d'arme (capability absente ou matchs partagés vides).
+	WeaponTools *SquadWeaponTools `json:"weapon_tools,omitempty"`
 	// WeaponAccuracy alimente la comparaison « Précision par arme » multi-joueurs
 	// (heatmap joueurs×armes + dot plot). Précision NATIVE Halo 5 ; OMISE sur Infinite
 	// (capability weapon_accuracy absente) ou si aucune arme à précision pertinente.
@@ -613,23 +588,24 @@ type TeammatesPageResponse struct {
 	// de la page. Non vide = les nombres affichés sont partiels ; le front DOIT le
 	// signaler (fin des chiffres non reproductibles). Vide/absent = page complète.
 	DataIssues []DataIssue `json:"data_issues,omitempty"`
-	// EquipmentUsage : le bloc « servi ou gâché » de l'équipement (étape E6.1bis du
-	// PLAN_EQUIPEMENT_GACHIS_2026-09-09) sur le scope FILTRÉ de la page (période +
-	// cascade + sessions déjà appliquées, même population que Options/MatchHistory) —
-	// une ligne pour le joueur principal + une par coéquipier SÉLECTIONNÉ
-	// (SelectedGamertags). Remplace la publication initiale (E6.1) sur
-	// SquadPageV2Response, jamais fetché par la page Escouade réelle (corrigé
-	// E6.1bis : c'est POST /pages/teammates que SquadLayout appelle). Nil si le
-	// scope filtré n'a aucun match ; Available=false avec raison machine pour un
-	// titre sans film.usage_summary.
-	EquipmentUsage *EquipmentUsageBlock `json:"equipment_usage,omitempty"`
-
-	// SquadFormes : le bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du
-	// 2026-09-13) — la matière des dix-neuf cartes des trois blocs (usages
-	// d'équipement, contrôle des armes spéciales, objectifs) sur le MÊME scope
-	// filtré que EquipmentUsage. Nil si le scope filtré n'a aucun match ;
-	// Available=false avec raison machine pour un titre sans film.usage_summary.
+	// SquadFormes : le bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) sur
+	// le périmètre D2 de la page (PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : composition
+	// exacte ∩ scope filtré, scope filtré seul sans coéquipier) ; lu par les cartes d'objectif de
+	// Contributions (le bloc « servi ou gâché », `equipment_usage`, a quitté cette réponse au lot
+	// L5.4 : plus de lecteur). Nil si le périmètre n'a aucun match ; Available=false avec raison
+	// machine pour un titre sans film.usage_summary.
 	SquadFormes *SquadFormesBlock `json:"formes_retenues,omitempty"`
+
+	// SquadObjectiveHistory : le rapport de force à l'objectif, soirée après soirée (lot L3 du
+	// plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, D6/D7) — la soirée affichée (le
+	// périmètre D2) et les dix soirées précédentes de la composition d'au moins trois matchs à
+	// objectif. Nil sans coéquipier sélectionné, sans stats d'objectif (titre) ou sur lecture
+	// en échec.
+	SquadObjectiveHistory *SquadObjectiveHistory `json:"squad_objective_history,omitempty"`
+
+	// SquadEmprise : l'onglet « Emprise » (lot L4 du même plan) — qui a tenu la carte, par
+	// ressource, sur le périmètre D2 (cf. squad_emprise.go). Nil si le périmètre n'a aucun match.
+	SquadEmprise *SquadEmpriseBlock `json:"squad_emprise,omitempty"`
 }
 
 // DataIssue décrit un chargement dégradé (best-effort) d'une page.

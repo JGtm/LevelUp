@@ -125,7 +125,13 @@ func decodeEquipmentSpawnEvent(pay []byte) (ev types.EquipmentSpawnEvent, presen
 	// Domaines {0, 0, 7} : trois références SANS sonde, index de dom7RefWidth bits.
 	r0 := readPlainRef(pay, eventPayloadStartBit, dom7RefWidth)
 	r1 := readPlainRef(pay, r0.EndBit, dom7RefWidth)
-	ev.Ref2Present = readPlainRef(pay, r1.EndBit, dom7RefWidth).Present
+	r2 := readPlainRef(pay, r1.EndBit, dom7RefWidth)
+	if r2.Tronquee {
+		// Une référence a débordé du payload (lot J2.9) : la liste est bien là (`present`), mais
+		// l'événement est REFUSÉ — une source ou un objet absents seraient des faits faux.
+		return types.EquipmentSpawnEvent{}, true, false
+	}
+	ev.Ref2Present = r2.Present
 	if r0.Present {
 		ev.Source, ev.SourceValid = spawnLifeKey(r0), true
 	}

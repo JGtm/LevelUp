@@ -433,11 +433,14 @@ func filmManifestJSON(prefix string, chunks []map[string]any) map[string]any {
 	}
 }
 
+// filmChunkEntry : une entree de manifeste SANS `ChunkSize` (taille non annoncee, aucun controle).
+// La valeur arbitraire d'avant (4) ne correspondait a aucun blob servi ; depuis J2.4 le client
+// compare la taille annoncee au blob recu (cf. halo_client_film_taille_test.go, qui l'annonce).
 func filmChunkEntry(index, chunkType int, path string) map[string]any {
 	return map[string]any{
 		"Index": index, "ChunkType": chunkType,
-		"ChunkSize": 4, "ChunkStartTimeOffsetMilliseconds": index * 500,
-		"DurationMilliseconds": 500, "FileRelativePath": path,
+		"ChunkStartTimeOffsetMilliseconds": index * 500,
+		"DurationMilliseconds":             500, "FileRelativePath": path,
 	}
 }
 

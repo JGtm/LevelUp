@@ -271,6 +271,15 @@
   --ac-heatmap-divergent-high: #00DC82;
   --ac-heatmap-freq-low:       #1E3A5F;
   --ac-heatmap-freq-high:      #60A5FA;
+  /* Ressources de la carte (onglet Emprise, 2026-09-26) */
+  --ac-resource-powerup:       #0D9488;
+  --ac-resource-power-weapon:  #7C3AED;
+  --ac-resource-vehicle:       #D55E00;
+  --ac-resource-rack:          #0072B2;
+  /* Rôles d'objectif — Prendre / Défendre / Tenir */
+  --ac-objective-role-take:    #6366F1;
+  --ac-objective-role-defend:  #0891B2;
+  --ac-objective-role-hold:    #A924BD;
 }
 
 /* ─── Teintes d'EFFET DE TIR du rejeu 2D (--replay-fx-*) ────────────────────── */

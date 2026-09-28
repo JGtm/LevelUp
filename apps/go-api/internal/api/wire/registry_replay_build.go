@@ -1,11 +1,17 @@
 // Package api — registry_replay_build.go : runner de l'action admin « construire le
 // rejeu 2D d'un match ».
 //
-// IN-PROCESS PAR LA LIBRAIRIE internal/replaybuild — JAMAIS un exec de CLI (règle
-// admin_actions : conflit DuckDB mono-process, et un exec échapperait au verrou process
-// filmdec partagé avec killsource). Single-flight : le décodage d'un film sature un
-// coeur pendant des secondes à minutes ; deux jobs simultanés s'entasseraient de toute
-// façon derrière le verrou grammar.
+// LE DÉCODAGE PART HORS DU PROCESSUS SERVEUR (lot J2.13, constat OPS-2, 2026-09-26), par le
+// chemin de l'étape 1.58 du post-sync : `replayartifacts.ConstruireEtRanger` avec la stratégie
+// `replayartifacts.SpawnBuildOne` — un ENFANT borne (sentinelle mémoire, priorité basse) qui
+// prend le verrou solo `filmproc.AcquireSolo` en refus immédiat et rend les octets, que
+// `replaybuild.StoreArtifact` range ICI (garde anti-régression, notification). L'action
+// décodait auparavant dans le serveur, hors verrou et sans plafond : le septième point
+// d'entrée du décodage, que l'ADR 0034 ne comptait pas. Les faits du match sont lus en base par
+// le parent, jamais par l'enfant (modèle mono-processus DuckDB).
+//
+// Single-flight (`replayBuildMu`) : une seule construction admin à la fois dans ce processus ;
+// le verrou solo, lui, arbitre ENTRE les processus (post-sync, passes, outils).
 package wire
 
 import (
@@ -20,7 +26,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // replayBuildMu sérialise l'action replay-build (single-flight, pattern registryNamesMu).
@@ -59,24 +65,32 @@ func (r *ServiceRegistry) RunReplayBuild(ctx context.Context, titleSlug, matchID
 		return nil, fmt.Errorf("film absent du cache local pour %s — cette action est hors ligne, elle ne télécharge rien", fullID)
 	}
 
-	builder, err := replaybuild.NewBuilder(r.cfg.RepoRoot, titleSlug)
-	if err != nil {
-		return nil, err
-	}
-	out, err := builder.BuildMatch(fullID, names, filmcache.ChunkDir(cacheRoot, short), facts)
+	return construireRejeuAdmin(ctx, replayartifacts.SpawnBuildOne, replayartifacts.BuildOneRequest{
+		MatchID: fullID, TitleSlug: titleSlug, RepoRoot: r.cfg.RepoRoot,
+		MapNames: names, FilmDir: filmcache.ChunkDir(cacheRoot, short), Facts: facts,
+	})
+}
+
+// construireRejeuAdmin construit et range l'artefact d'UN match pour l'action admin, par le
+// chemin de l'etape 1.58 : `build` (en production l'enfant borne) rend les octets, et
+// `StoreArtifact` les range ici. Le decodage ne se fait JAMAIS dans ce processus.
+func construireRejeuAdmin(ctx context.Context, build replayartifacts.BuildOneFunc,
+	req replayartifacts.BuildOneRequest,
+) (map[string]any, error) {
+	stored, res, err := replayartifacts.ConstruireEtRanger(ctx, build, req)
 	if err != nil {
 		return nil, err
 	}
 	monitoringLog.InfoContext(ctx, "admin_actions: rejeu 2D construit",
-		"title", titleSlug, "match_id", fullID, "tracks", out.Tracks,
-		"bytes", out.Bytes, "module", out.Module)
+		"title", req.TitleSlug, "match_id", req.MatchID, "tracks", stored.Tracks,
+		"bytes", stored.Bytes, "duration", res.Dur, "pic_octets", res.Peak)
 	observability.IncCounter("admin_action_replay_build_total")
 	return map[string]any{
-		"match_id": fullID,
-		"module":   out.Module,
-		"tracks":   out.Tracks,
-		"bytes":    out.Bytes,
-		"path":     out.ArtifactPath,
+		"match_id":       req.MatchID,
+		"tracks":         stored.Tracks,
+		"bytes":          stored.Bytes,
+		"schema_version": stored.SchemaVersion,
+		"path":           stored.Path,
 	}, nil
 }
 

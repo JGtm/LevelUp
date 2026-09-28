@@ -1,67 +1,134 @@
-// Package teammates — teammates_service_usage.go : LE BLOC « SERVI OU GÂCHÉ »
-// DE L'ÉQUIPEMENT SUR LA PAGE TEAMMATES (étape E6.1bis du
-// PLAN_EQUIPEMENT_GACHIS_2026-09-09).
+// Package teammates — teammates_service_usage.go : LES BLOCS D'USAGE DE LA PAGE TEAMMATES —
+// « formes retenues » (lot D2), l'historique d'objectif (lot L3 du plan
+// PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) et l'Emprise (lot L4).
 //
-// CORRIGE LA PUBLICATION E6.1 : le lot E6.1 avait posé ce bloc sur
-// domain.SquadPageV2Response (GET /pages/squad/v2), une réponse que la page
-// Escouade réellement servie en production ne fetch jamais (elle appelle
-// POST /pages/teammates — cf. SquadLayout.tsx / features/squad/queries.ts).
-// Ce fichier corrige le tir : même assemblage (squadagg.BuildEquipmentUsageBlock,
-// partagé avec la Synthèse), mais attaché à TeammatesPageResponse.
+// Le bloc « servi ou gâché » de l'équipement (`equipment_usage`, étape E6.1bis du
+// PLAN_EQUIPEMENT_GACHIS_2026-09-09) n'est PLUS publié ici depuis le lot L5.4 du même plan :
+// son seul lecteur était l'ancien onglet Usages de l'Escouade, remplacé par l'onglet Emprise.
+// Il reste servi au solo (Séries temporelles, Synthèse) par son producteur
+// (squadagg.BuildEquipmentUsageBlock).
 //
-// SCOPE ET AMIS (décision E6.1bis) : le scope est `filteredMatches` de GetPage —
-// les matchs du joueur principal après période/cascade/sessions, LA MÊME
-// population que Options/MatchHistory/TotalMatches — jamais l'intersection
-// escouade (allSquadRows) : cette page reste utile même sans coéquipier
-// sélectionné. Les « amis » du bloc sont les coéquipiers SÉLECTIONNÉS
-// (req.SelectedGamertags), exactement comme le faisait E6.1 sur SquadV2 — pas les
-// amis globalement configurés (app_settings), qui sont la définition retenue par
-// la Synthèse pour une raison différente (aucune sélection UI sur cette page-là).
+// PÉRIMÈTRE (décision D2 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, qui remplace
+// celle d'E6.1bis) : les matchs de la COMPOSITION EXACTE intersectés avec les matchs filtrés
+// — allSquadRows (population escouade, option composition exacte comprise :
+// filterExactComposition s'y applique dans GetPage) ∩ filteredMatches (période, cascade,
+// sessions). Sans coéquipier sélectionné, filteredMatches seul : la page reste utile en solo.
+// Avant D2, le périmètre était filteredMatches même avec une escouade : les cartes d'usage
+// comptaient des matchs joués sans les coéquipiers affichés. Les « amis » des blocs sont les
+// coéquipiers SÉLECTIONNÉS (req.SelectedGamertags), pas les amis configurés (app_settings).
 package teammates
 
 import (
 	"context"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
 
-// WithEquipmentUsage injecte la source du résumé d'usage (vues _latest) — le MÊME
-// repo que les pages Sessions, Synthèse et (jusqu'à E6.1bis) Squad V2. Câblé
-// gated par film.usage_summary (registry, jamais slug==) ; nil ⇒ bloc servi avec
-// Available=false et raison machine, réponse partielle propre.
-func (s *TeammatesService) WithEquipmentUsage(repo port.SessionUsageRepository) *TeammatesService {
+// WithUsageSummary injecte la source du résumé d'usage (vues _latest) — le MÊME repo que les
+// pages Sessions et Synthèse : lectures communes des blocs d'usage et de l'Emprise. Câblé gated
+// par film.usage_summary (registry, jamais slug==) ; nil ⇒ l'Emprise publie la seule feuille de
+// match (film_unsupported), réponse partielle propre.
+func (s *TeammatesService) WithUsageSummary(repo port.SessionUsageRepository) *TeammatesService {
 	s.sessionUsageRepo = repo
 	return s
 }
 
-// loadUsageBlocks publie les deux blocs du résumé d'usage — « servi ou gâché » et « formes
-// retenues » — sur le MÊME scope (filteredMatches) : leurs trois lectures communes (films,
-// joueurs, participants) sont faites une fois pour les deux (D2.6, lot perf L2). Chaque étape
-// est sautée dès que la requête est annulée (D2.7) : GetPage rend alors l'erreur.
+// porteeUsage — ce que GetPage donne aux blocs d'usage : les deux populations dont le
+// périmètre D2 est l'intersection, l'historique de la composition et son camp par match
+// (historique d'objectif), l'historique de matchs de la page (libellés) et les sessions de la
+// composition (compte de matchs d'une soirée, ADR 0033 — habitude de l'Emprise).
+type porteeUsage struct {
+	filtered        []legacymatch.SynthesisMatchRow
+	squadRows       []domain.SquadMatchRow
+	timelineRows    []domain.SquadMatchRow
+	mainTeamByMatch map[string]map[string]struct{}
+	history         []domain.SquadMatchHistoryRow
+	// pairNames : match_id -> pair_name BRUT, lu sur les lignes canoniques du joueur. LA source
+	// unique du mode écarté (drapeau neutre, D6) pour le fil de la session ET l'historique : la
+	// fin du fil doit tomber sur le point « ce soir ».
+	pairNames           map[string]string
+	compositionSessions []domain.CompositionSessionEntry
+}
+
+// blocsUsage — les trois blocs publiés.
+type blocsUsage struct {
+	formes   *domain.SquadFormesBlock
+	objectif *domain.SquadObjectiveHistory
+	emprise  *domain.SquadEmpriseBlock
+}
+
+// loadUsageBlocks publie les blocs du résumé d'usage — « formes retenues » et l'Emprise — sur
+// le MÊME périmètre D2 : leurs trois lectures communes (films, joueurs, participants) sont
+// faites une fois (D2.6, lot perf L2). Puis l'historique d'objectif, sur le même périmètre
+// comme soirée affichée. Chaque étape est sautée dès que la requête est annulée (D2.7) :
+// GetPage rend alors l'erreur.
 func (s *TeammatesService) loadUsageBlocks(
-	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
-	history []domain.SquadMatchHistoryRow, req domain.TeammatesQueryRequest,
-) (*domain.EquipmentUsageBlock, *domain.SquadFormesBlock) {
+	ctx context.Context, playerXUID string, p porteeUsage, req domain.TeammatesQueryRequest,
+) blocsUsage {
+	selection := len(req.SelectedGamertags) > 0
+	scope := perimetreEscouade(p.filtered, p.squadRows, selection)
 	var lectures *squadagg.LecturesUsage
-	var equipement *domain.EquipmentUsageBlock
-	var formes *domain.SquadFormesBlock
-	siVivante(ctx, func() { lectures = s.lireUsagePartage(ctx, playerXUID, filteredMatches) })
-	siVivante(ctx, func() {
-		equipement = s.loadEquipmentUsage(ctx, playerXUID, filteredMatches, req.SelectedGamertags, req.Locale, lectures)
-	})
-	siVivante(ctx, func() { formes = s.loadSquadFormes(ctx, playerXUID, filteredMatches, history, req, lectures) })
-	return equipement, formes
+	var out blocsUsage
+	siVivante(ctx, func() { lectures = s.lireUsagePartage(ctx, playerXUID, scope) })
+	siVivante(ctx, func() { out.formes = s.loadSquadFormes(ctx, playerXUID, scope, p, req, lectures) })
+	if selection {
+		siVivante(ctx, func() {
+			out.objectif = s.loadObjectiveHistory(ctx, lignesDuPerimetre(p.squadRows, scope), p.timelineRows, p.mainTeamByMatch, p.pairNames)
+		})
+	}
+	// L'Emprise (lot L4) : ses propres lectures, le même périmètre (teammates_service_emprise.go).
+	siVivante(ctx, func() { out.emprise = s.loadEmprise(ctx, playerXUID, p, req, perimetreLu{scope, lectures}) })
+	return out
+}
+
+// perimetreEscouade — le périmètre D2 : filteredMatches restreint aux matchs de la population
+// escouade (allSquadRows, déjà passée par filterExactComposition sous l'option), dans l'ordre
+// de filteredMatches. Sans sélection : filteredMatches tel quel.
+func perimetreEscouade(
+	filtered []legacymatch.SynthesisMatchRow, squadRows []domain.SquadMatchRow, selection bool,
+) []legacymatch.SynthesisMatchRow {
+	if !selection {
+		return filtered
+	}
+	garde := make(map[string]struct{}, len(squadRows))
+	for _, r := range squadRows {
+		garde[r.MatchID] = struct{}{}
+	}
+	out := make([]legacymatch.SynthesisMatchRow, 0, len(squadRows))
+	for _, m := range filtered {
+		if _, ok := garde[m.MatchID]; ok {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// lignesDuPerimetre — les lignes escouade des matchs du périmètre (une par match).
+func lignesDuPerimetre(squadRows []domain.SquadMatchRow, scope []legacymatch.SynthesisMatchRow) []domain.SquadMatchRow {
+	dans := make(map[string]bool, len(scope))
+	for _, m := range scope {
+		dans[m.MatchID] = true
+	}
+	out := make([]domain.SquadMatchRow, 0, len(scope))
+	for _, r := range squadRows {
+		if dans[r.MatchID] {
+			dans[r.MatchID] = false
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // lireUsagePartage fait les trois lectures communes, sous la section `usage_shared`, quand au
 // moins un des deux blocs les ferait : scope non vide, joueur connu, un résumé d'usage câblé.
 // Sinon nil, et chaque bloc garde sa dégradation (scope vide ⇒ nil, source absente ⇒
 // indisponible). Les deux sources sont le MÊME lecteur (duckdb.SessionUsageRepo, câblé deux
-// fois sur la base du joueur) : la lecture passe par celle du bloc « servi ou gâché ».
+// fois sur la base du joueur) : la lecture passe par celle du résumé d'usage.
 func (s *TeammatesService) lireUsagePartage(
 	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
 ) *squadagg.LecturesUsage {
@@ -76,31 +143,21 @@ func (s *TeammatesService) lireUsagePartage(
 	return squadagg.LireUsage(ctx, repo, teammatesMatchIDs(filteredMatches))
 }
 
-// loadEquipmentUsage publie le bloc sur le scope FILTRÉ de la page (voir
-// commentaire de fichier). playerXUID est le sujet de la page (le joueur
-// principal, paramètre de route de GetPage) ; selectedGamertags sont les
-// coéquipiers sélectionnés dans l'UI, qui deviennent les « amis » du bloc.
-// lectures : les lectures communes déjà faites (nil ⇒ le bloc les fait).
-func (s *TeammatesService) loadEquipmentUsage(
-	ctx context.Context, playerXUID string,
-	filteredMatches []legacymatch.SynthesisMatchRow, selectedGamertags []string, locale string,
-	lectures *squadagg.LecturesUsage,
-) *domain.EquipmentUsageBlock {
-	defer timing.FromContext(ctx).Section("equipment_usage")()
-	return squadagg.BuildEquipmentUsageBlock(ctx, squadagg.EquipmentUsageQuery{
-		Repo:            s.sessionUsageRepo,
-		PlayerXUID:      playerXUID,
-		MatchIDs:        teammatesMatchIDs(filteredMatches),
-		FriendGamertags: selectedGamertags,
-		Lectures:        lectures,
-		// De quoi NOMMER les armes du detail par niveau, DANS LA LANGUE DE LA REQUETE. La
-		// locale etait oubliee (revue 2026-09-14) : sans elle, `q.Locale != "en"` rendait vrai
-		// par accident sur la chaine vide — le FR sortait, mais par hasard, et un titre dont le
-		// defaut serait l anglais aurait recu du francais.
-		RepoRoot:  s.repoRoot,
-		TitleSlug: s.titleSlug,
-		Locale:    locale,
-	})
+// pairNamesOf — match_id -> pair_name brut : celui des lignes canoniques du joueur d'abord,
+// celui des lignes escouade (même colonne du registre) pour les matchs qui n'en portent pas.
+func pairNamesOf(rows []canonical.PlayerMatchRow, squadRows []domain.SquadMatchRow) map[string]string {
+	out := make(map[string]string, len(rows))
+	for _, r := range rows {
+		if r.Enrichment.PairName != nil && *r.Enrichment.PairName != "" {
+			out[r.Summary.MatchID] = *r.Enrichment.PairName
+		}
+	}
+	for _, r := range squadRows {
+		if _, ok := out[r.MatchID]; !ok && r.PairName != "" {
+			out[r.MatchID] = r.PairName
+		}
+	}
+	return out
 }
 
 // teammatesMatchIDs — les identifiants d'un scope de SynthesisMatchRow, dans

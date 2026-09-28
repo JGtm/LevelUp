@@ -59,7 +59,7 @@ func encodeBipedCreations(w *gwriter, creations []grammar.BipedCreation) {
 }
 
 func decodeBipedCreations(r *greader) []grammar.BipedCreation {
-	n := int(r.u())
+	n := r.compte(5)
 	out := make([]grammar.BipedCreation, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -98,7 +98,7 @@ func encodeWeaponChanges(w *gwriter, changes []types.HeldWeaponChange) {
 }
 
 func decodeWeaponChanges(r *greader) []types.HeldWeaponChange {
-	n := int(r.u())
+	n := r.compte(7)
 	out := make([]types.HeldWeaponChange, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -146,7 +146,7 @@ func encodePickups(w *gwriter, pickups []types.BipedPickup, st types.BipedPickup
 }
 
 func decodePickups(r *greader) ([]types.BipedPickup, types.BipedPickupStats) {
-	n := int(r.u())
+	n := r.compte(4)
 	out := make([]types.BipedPickup, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -203,7 +203,7 @@ func encodeEquipmentChanges(w *gwriter, changes []types.EquipmentChange, st type
 }
 
 func decodeEquipmentChanges(r *greader) ([]types.EquipmentChange, types.EquipmentChangeStats) {
-	n := int(r.u())
+	n := r.compte(8)
 	out := make([]types.EquipmentChange, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -255,7 +255,7 @@ func encodeZoomEvents(w *gwriter, events []grammar.ZoomEvent) {
 }
 
 func decodeZoomEvents(r *greader) []grammar.ZoomEvent {
-	n := int(r.u())
+	n := r.compte(3)
 	out := make([]grammar.ZoomEvent, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -330,7 +330,7 @@ func encodeVehicleOccupancy(w *gwriter, occ []types.VehicleOccupancy) {
 }
 
 func decodeVehicleOccupancy(r *greader) []types.VehicleOccupancy {
-	n := int(r.u())
+	n := r.compte(8)
 	out := make([]types.VehicleOccupancy, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -374,7 +374,7 @@ func encodeVehicleEvents(w *gwriter, events []types.VehicleEvent) {
 }
 
 func decodeVehicleEvents(r *greader) []types.VehicleEvent {
-	n := int(r.u())
+	n := r.compte(11)
 	out := make([]types.VehicleEvent, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -410,7 +410,7 @@ func encodeVehicleAims(w *gwriter, aims []grammar.BipedAim) {
 }
 
 func decodeVehicleAims(r *greader) []grammar.BipedAim {
-	n := int(r.u())
+	n := r.compte(4)
 	out := make([]grammar.BipedAim, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {

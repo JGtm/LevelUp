@@ -119,7 +119,7 @@ func verifierCleDeCuisson(mapModule string, axisW [3]uint, layoutDetected bool,
 // decodeEvenements relit tirs, equipements de depart, lancers et projectiles.
 func decodeEvenements(r *greader, g *FilmFacts) {
 	var lastTS uint64
-	n := int(r.u())
+	n := r.compte(6)
 	g.Fire = make([]grammar.FireEvent, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -142,7 +142,7 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 		g.Fire = append(g.Fire, e)
 	}
 
-	n = int(r.u())
+	n = r.compte(3)
 	g.Loadouts = make([]types.KeyframeLoadout, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		l := types.KeyframeLoadout{TimestampUS: r.u(), Slot: uint32(r.u())}
@@ -153,7 +153,7 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 		g.Loadouts = append(g.Loadouts, l)
 	}
 
-	n = int(r.u())
+	n = r.compte(3)
 	g.Grenades = make([]grammar.GrenadeThrow, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		g.Grenades = append(g.Grenades, grammar.GrenadeThrow{
@@ -168,7 +168,7 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 // decodeInventaire relit les inventaires d image-cle et leurs deltas.
 func decodeInventaire(r *greader, g *FilmFacts) {
 	var lastTS uint64
-	n := int(r.u())
+	n := r.compte(8 + 6*invGrenadeSlots)
 	g.Inventory = make([]KeyframeInventory, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		inv := KeyframeInventory{TimestampUS: r.u(), Slot: uint32(r.u())}
@@ -187,13 +187,13 @@ func decodeInventaire(r *greader, g *FilmFacts) {
 		g.Inventory = append(g.Inventory, inv)
 	}
 
-	n = int(r.u())
+	n = r.compte(6)
 	g.InventoryDeltas = make([]types.InventoryDelta, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
 		d := types.InventoryDelta{TimestampUS: lastTS, Slot: uint32(r.u())}
-		if gn := int(r.u()); gn > 0 {
+		if gn := r.compte(1); gn > 0 {
 			d.Grenades = make([]uint32, 0, gn)
 			for j := 0; j < gn && r.err == nil; j++ {
 				d.Grenades = append(d.Grenades, uint32(r.u()))
@@ -210,7 +210,7 @@ func decodeInventaire(r *greader, g *FilmFacts) {
 // decodeCanauxDelta relit rangs de capacite, camouflage, grappin et translocations.
 func decodeCanauxDelta(r *greader, g *FilmFacts) {
 	var lastTS uint64
-	n := int(r.u())
+	n := r.compte(3)
 	g.AbilityRanks = make([]types.AbilityRank, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -219,7 +219,7 @@ func decodeCanauxDelta(r *greader, g *FilmFacts) {
 			types.AbilityRank{TimestampUS: lastTS, Slot: uint32(r.u()), Rank: int(r.i())})
 	}
 
-	n = int(r.u())
+	n = r.compte(3)
 	g.CamoStates = make([]types.CamoRead, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -228,7 +228,7 @@ func decodeCanauxDelta(r *greader, g *FilmFacts) {
 			types.CamoRead{TimestampUS: lastTS, Slot: uint32(r.u()), Q: uint16(r.u())})
 	}
 
-	n = int(r.u())
+	n = r.compte(6)
 	g.GrappleReads = make([]types.GrappleRead, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -240,7 +240,7 @@ func decodeCanauxDelta(r *greader, g *FilmFacts) {
 		g.GrappleReads = append(g.GrappleReads, gr)
 	}
 
-	n = int(r.u())
+	n = r.compte(27)
 	g.Translocations = make([]types.TranslocatorTeleport, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -261,7 +261,7 @@ func decodeCanauxDelta(r *greader, g *FilmFacts) {
 // decodeCapacites relit les impulsions et les charges de capacite, stats comprises.
 func decodeCapacites(r *greader, g *FilmFacts) {
 	var lastTS uint64
-	n := int(r.u())
+	n := r.compte(3)
 	g.AbilityImpulses = make([]types.AbilityImpulse, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -275,7 +275,7 @@ func decodeCapacites(r *greader, g *FilmFacts) {
 		Scanned: r.bool8(),
 	}
 
-	n = int(r.u())
+	n = r.compte(5)
 	g.AbilityCharges = make([]types.AbilityCharge, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -294,7 +294,7 @@ func decodeCapacites(r *greader, g *FilmFacts) {
 
 // decodeEtatsDeMouvement relit les ETATS DE MOUVEMENT (v24), stats comprises.
 func decodeEtatsDeMouvement(r *greader, g *FilmFacts) {
-	n := int(r.u())
+	n := r.compte(7)
 	g.MovementStates = make([]types.MovementStateRead, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -328,7 +328,7 @@ func decodeEtatsDeMouvement(r *greader, g *FilmFacts) {
 // decodeMonde relit les poses d equipement et les deux voies de socles.
 func decodeMonde(r *greader, g *FilmFacts) {
 	var lastTS uint64
-	n := int(r.u())
+	n := r.compte(18)
 	g.Placements = make([]types.EquipmentPlacement, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -350,7 +350,7 @@ func decodeMonde(r *greader, g *FilmFacts) {
 
 // decodeSpawnEvents relit les evenements 103 et leurs denominateurs.
 func decodeSpawnEvents(r *greader, g *FilmFacts) {
-	n := int(r.u())
+	n := r.compte(10)
 	g.SpawnEvents = make([]types.EquipmentSpawnEvent, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
@@ -372,7 +372,7 @@ func decodeSpawnEvents(r *greader, g *FilmFacts) {
 
 // decodeQueue relit les morts et la table des index de joueur.
 func decodeQueue(r *greader, g *FilmFacts) {
-	n := int(r.u())
+	n := r.compte(3)
 	g.Deaths = make([]Death, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		g.Deaths = append(g.Deaths, Death{XUID: r.u(), Gamertag: r.str(), TimeMS: r.i()})
@@ -381,7 +381,7 @@ func decodeQueue(r *greader, g *FilmFacts) {
 	g.PlayerIndices = PlayerIndexTable{ByXUID: map[uint64]int{}}
 	g.PlayerIndices.Readings = int(r.u())
 	g.PlayerIndices.Disagreements = int(r.u())
-	n = int(r.u())
+	n = r.compte(2)
 	for k := 0; k < n && r.err == nil; k++ {
 		x := r.u()
 		g.PlayerIndices.ByXUID[x] = int(r.i())
@@ -394,7 +394,7 @@ func decodeQueue(r *greader, g *FilmFacts) {
 // decodePlayerTeams relit l EQUIPE DE CHAQUE JOUEUR et le rapport de sa lecture (v21, lot 1.7).
 func decodePlayerTeams(r *greader) (map[int]int, grammar.TeamScanReport) {
 	var teams map[int]int
-	if n := int(r.u()); n > 0 {
+	if n := r.compte(2); n > 0 {
 		teams = make(map[int]int, n)
 		for k := 0; k < n && r.err == nil; k++ {
 			i := int(r.i())
@@ -441,7 +441,7 @@ func decodeFilmTable(r *greader) FilmPlayerTable {
 	t := FilmPlayerTable{Build: r.str(), Refusal: FilmTableRefusal(r.str())}
 	t.Occupied, t.Vacant = int(r.u()), int(r.u())
 	t.InterleavedVacant = r.bool8()
-	n := int(r.u())
+	n := r.compte(3)
 	if n == 0 {
 		return t
 	}

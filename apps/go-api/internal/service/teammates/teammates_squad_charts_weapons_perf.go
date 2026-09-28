@@ -84,7 +84,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 	perf map[string][]domain.SquadPerformanceSeriesPoint,
-) (*domain.SquadWeaponKills, map[string][]domain.FragClassEntry) {
+) (*domain.SquadWeaponTools, map[string][]domain.FragClassEntry) {
 	defer timing.FromContext(ctx).Section("weapon_kills")()
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		slog.DebugContext(ctx, "teammates_weapon_kills_skipped",
@@ -126,16 +126,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		return nil, nil
 	}
 
-	out := aggregateSquadWeaponBars(rows, gtByXUID)
-	if len(out) == 0 {
-		return nil, nil
-	}
-
-	weaponKills := &domain.SquadWeaponKills{
-		Players: playersOrdered,
-		Bars:    out,
-	}
-	// 7. Ventilation PAR CLASSE par gamertag (D8) — réutilise les rows déjà chargées.
+	// Ventilation PAR CLASSE par gamertag — réutilise les rows déjà chargées.
 	// hasMechanics capability-gated (native_kill_mechanics, jamais slug==) : sur H5 on
 	// charge les mécaniques natives par joueur (assassinats + capacités spartanes) pour
 	// alimenter le split Mêlée et la classe « Capacités spartanes » (D-P6-2 résolu). Sur
@@ -155,74 +146,11 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	// distinct des marqueurs du helper (garde-rail TestFragDistributionLoggingCentralized).
 	slog.DebugContext(ctx, "teammates_frag_distribution_built",
 		"title", s.titleSlug, "players_with_classes", len(fragClasses), "has_mechanics", hasMechanics)
-	return weaponKills, fragClasses
-}
 
-// aggregateSquadWeaponBars regroupe les weapon_kills par weapon_id en barres empilées
-// par gamertag, triées ASC par total escouade (peu utilisées en haut, tie-break label).
-// Retourne nil si aucune arme agrégeable.
-func aggregateSquadWeaponBars(rows []port.WeaponKillRow, gtByXUID map[string]string) []domain.SquadWeaponBar {
-	type barAgg struct {
-		weaponID       int64
-		label          string
-		class          string
-		isGrenadeMelee bool
-		kills          map[string]int
-		total          int
-	}
-	// Cle d arme : le COUPLE (identifiant, cle de registre) — cf.
-	// port.WeaponKillRow.AggregateKey.
-	bars := make(map[string]*barAgg)
-	for _, r := range rows {
-		gt, ok := gtByXUID[r.XUID]
-		if !ok {
-			continue
-		}
-		cleArme := r.AggregateKey()
-		b, exists := bars[cleArme]
-		if !exists {
-			b = &barAgg{
-				weaponID:       r.WeaponID,
-				label:          r.Label,
-				class:          r.Class,
-				isGrenadeMelee: r.IsGrenadeMelee,
-				kills:          make(map[string]int),
-			}
-			bars[cleArme] = b
-		}
-		b.kills[gt] += r.Kills
-		b.total += r.Kills
-		// Privilégier un label non-vide.
-		if b.label == "" && r.Label != "" {
-			b.label = r.Label
-		}
-		// Privilégier une classe non-vide (résolue via ResolveRoles ; les sentinels
-		// grenade/mêlée restent "" — leur détail vient de la FragDistribution côté front).
-		if b.class == "" && r.Class != "" {
-			b.class = r.Class
-		}
-	}
-	if len(bars) == 0 {
-		return nil
-	}
-	out := make([]domain.SquadWeaponBar, 0, len(bars))
-	for _, b := range bars {
-		out = append(out, domain.SquadWeaponBar{
-			WeaponID:       b.weaponID,
-			Label:          b.label,
-			Class:          b.class,
-			IsGrenadeMelee: b.isGrenadeMelee,
-			KillsByPlayer:  b.kills,
-			TotalSquad:     b.total,
-		})
-	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].TotalSquad != out[j].TotalSquad {
-			return out[i].TotalSquad < out[j].TotalSquad
-		}
-		return out[i].Label < out[j].Label
-	})
-	return out
+	// « Outils de destruction » (D8) : builder PROPRE à l'Escouade, sur les MÊMES rows,
+	// la feuille de match par joueur et les catégories de source du film.
+	tools := s.buildSquadToolsSection(ctx, sc, rows, squadSheet(playersOrdered, perf, mechByGT), hasMechanics)
+	return tools, fragClasses
 }
 
 // titleHasNativeKillMechanics indique si le titre fournit NATIVEMENT le détail des kills
@@ -326,13 +254,8 @@ func squadFragClassesByPlayer(in squadFragInputs) map[string][]domain.FragClassE
 	}
 	out := make(map[string][]domain.FragClassEntry, len(in.playersOrdered))
 	for _, gt := range in.playersOrdered {
-		counts := aggregateFragCounts(in.perf[gt])
-		if m, ok := in.mechByGT[gt]; ok {
-			counts.Assassination = m.Assassinations
-			counts.GroundPound = m.GroundPound
-			counts.ShoulderBash = m.ShoulderBash
-		}
-		fd := fragdist.Build(rowsByGT[gt], counts, in.hasMechanics)
+		m, ok := in.mechByGT[gt]
+		fd := fragdist.Build(rowsByGT[gt], playerFragCounts(in.perf[gt], m, ok), in.hasMechanics)
 		if len(fd.Classes) > 0 {
 			out[gt] = fd.Classes
 		}

@@ -308,7 +308,7 @@ func DecodeFilmFactsEntete(blob []byte) (FilmFactsEntete, error) {
 		return e, fmt.Errorf("%w : codec %d schema %d, ce binaire lit codec %d schema %d",
 			ErrFilmFactsVersion, e.VersionCodec, e.Schema, VersionCodecFaits, SchemaDesFaits)
 	}
-	if r.off+longueur > len(r.b) {
+	if longueur < 0 || longueur > len(r.b)-r.off {
 		return e, fmt.Errorf("%w : en-tete annonce %d octets, %d disponibles",
 			ErrFilmFactsVersion, longueur, len(r.b)-r.off)
 	}

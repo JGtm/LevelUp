@@ -117,20 +117,15 @@ func RunChild(args []string) int {
 		return filmproc.CodePreparation
 	}
 	built, err := builder.BuildBytes(req.MatchID, req.MapNames, req.FilmDir, req.Facts)
-	switch {
-	case err == nil:
-	case strings.Contains(err.Error(), replaybuild.ErrMapNotInCatalog.Error()):
-		// ECHEC VOULU : carte hors catalogue (Forge). Le parent le journalise en debug.
-		fmt.Fprintf(os.Stderr, "enfant de cuisson : carte hors catalogue (%v)\n", req.MapNames)
-		return filmproc.CodeSkipped
-	case strings.Contains(err.Error(), replaybuild.ErrUnknownFilmKey.Error()):
-		// FILM MIS DE COTE : la cle ecrite dans le film est absente de la table de profil
-		// (lot 3.1.1, D-4 d ADR 0034). C est un refus VOULU, du meme rang que la carte hors
-		// catalogue : le film est la et lisible, c est le depot qui n a pas encore sa ligne.
-		// `CodeFailed` ferait chercher une panne la ou il faut ecrire une ligne de table.
-		fmt.Fprintf(os.Stderr, "enfant de cuisson : cle du film absente de la table de profil (%v)\n", err)
-		return filmproc.CodeSkipped
-	default:
+	if err != nil {
+		// UN REFUS VOULU (carte hors catalogue, cle de film inconnue, film non finalise) sort en
+		// `CodeSkipped` AVEC SA RAISON, classee par `errors.Is` (cf. raison.go) : `CodeFailed`
+		// ferait chercher une panne la ou il faut une ligne de table ou un film complet.
+		if jeton := raisonDuRefus(err); jeton != "" {
+			filmproc.EmitRaison(jeton)
+			fmt.Fprintf(os.Stderr, "enfant de cuisson : film ecarte (%s, cartes %v) : %v\n", jeton, req.MapNames, err)
+			return filmproc.CodeSkipped
+		}
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : construction en echec : %v\n", err)
 		return filmproc.CodeFailed
 	}
@@ -230,7 +225,9 @@ func Spawn(ctx context.Context, req Request) (Result, error) {
 	switch res.Issue {
 	case filmproc.IssueOK:
 	case filmproc.IssueSkipped:
-		return Result{}, fmt.Errorf("%w (candidats: %v)", replaybuild.ErrMapNotInCatalog, req.MapNames)
+		// LA RAISON VIENT DE L'ENFANT (jeton de protocole), jamais d'une supposition : tout refus
+		// n'est pas une carte hors catalogue.
+		return Result{}, fmt.Errorf("%w (candidats: %v)", erreurDuRefus(res.Raison, req.MatchID), req.MapNames)
 	case filmproc.IssueMemory:
 		return Result{}, fmt.Errorf("cuisson abandonnee : plafond memoire depasse (pic %d octets)", res.Peak)
 	default:

@@ -23,7 +23,7 @@ export interface SquadText {
     synergies: string
     contributions: string
     dynamique: string
-    usages: string
+    emprise: string
   }
   /**
    * Titres de section transverses (lot 3 « sections », 2026-09-22) — un titre coiffe
@@ -32,7 +32,6 @@ export interface SquadText {
   sections: {
     historique: string
     fragsArmes: string
-    equipement: string
   }
   selection: {
     placeholder: (count: number) => string
@@ -95,7 +94,7 @@ export interface SquadText {
     noDataDescription: string
     /** Message court pour un bloc non-graphe vide (tape, table, scoreboard). */
     noBlockData: string
-    /** Onglet Usages sans aucun bloc à montrer (aucun film décodé sur la sélection). */
+    /** Onglet Emprise (ex-Usages) sans rien à montrer (aucun film décodé sur la sélection). */
     noDecodedFilmTitle: string
     noDecodedFilmDescription: string
   }
@@ -315,12 +314,16 @@ export interface SquadText {
     rankTitle: string
     mmrLabel: string
     fragBreakdownTitle: string
+    /** Aide ⓘ de « Répartition des frags » (texte de la maquette C3EW). */
+    fragBreakdownInfo: string
+    /** Infobulle d'un segment : joueur, classe, compte et total du joueur. */
+    fragBreakdownSegment: (player: string, className: string, kills: number, total: number) => string
+    /** Nom accessible de la barre d'un joueur. */
+    fragBreakdownBarAria: (player: string, total: number) => string
   }
   /** « Écart cumulé au FDA attendu » (D3/D7 — différentiel FDA réel vs attendu par joueur). */
   fdaGap: {
     title: string
-    /** Caption de la rangée de pastilles KPI (écart moyen par match). */
-    averageCaption: string
   }
   /** « Balance des dégâts cumulée » (P3 — dégâts nets ÷ PV-pour-tuer, cumulé par joueur). */
   netLives: {
@@ -337,10 +340,14 @@ export interface SquadText {
   weaponKills: {
     title: string
     description: string
-    /** Ligne agrégée des armes gun au-delà du top-N dans « Outils de destruction ». */
-    otherWeapons: string
-    /** Ligne agrégée des frags NON-arme (mêlée, grenade, engins) au-delà du top-N. */
-    otherKills: string
+    /** Aide ⓘ de « Outils de destruction » (texte de la maquette C3EW). */
+    info: string
+    /** Ligne des objets explosifs du décor (catégorie de source du film, D8). */
+    explosiveObject: string
+    /** Ligne de la chute et de l'environnement (catégorie de source du film, D8). */
+    environment: string
+    /** Infobulle d'une barre : compte de frags et part du total du joueur (en %, déjà arrondie). */
+    killsShare: (kills: number, sharePct: number) => string
   }
   /** Comparatif « Précision par rôle » multi-joueurs (Halo 5) : barres groupées horizontales (1 barre/joueur/rôle, longueur = précision %). */
   weaponAccuracy: {
@@ -378,19 +385,6 @@ export interface SquadText {
   errors: {
     loadError: (message: string) => string
   }
-  /** KPI objectifs cumulés de l'escouade (CTF/Zones/Oddball) — V72-03. */
-  objectives: {
-    title: string
-    flagCaptures: string
-    flagReturns: string
-    flagSteals: string
-    flagCarrierTime: string
-    zoneCaptures: string
-    zoneSecures: string
-    zoneTime: string
-    skullGrabs: string
-    skullCarrierTime: string
-  }
 }
 
 const FR_TEXT: SquadText = {
@@ -403,12 +397,11 @@ const FR_TEXT: SquadText = {
     synergies: 'Synergies',
     contributions: 'Contributions',
     dynamique: 'Dynamique',
-    usages: 'Usages',
+    emprise: 'Emprise',
   },
   sections: {
     historique: 'Historique',
     fragsArmes: 'Frags et armes',
-    equipement: 'Équipement et armes de socle',
   },
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
@@ -688,10 +681,14 @@ const FR_TEXT: SquadText = {
     rankTitle: 'Rang & MMR équipe',
     mmrLabel: 'MMR équipe',
     fragBreakdownTitle: 'Répartition des frags',
+    fragBreakdownInfo:
+      'Les frags de chacun sur la soirée, par classe d\'arme. Le nombre écrit dans un segment est son compte de frags ; le total est au bout de la barre.',
+    fragBreakdownSegment: (player, className, kills, total) =>
+      `${player} · ${className} : ${kills} frag${kills > 1 ? 's' : ''} sur ${total}`,
+    fragBreakdownBarAria: (player, total) => `${player} : ${total} frag${total > 1 ? 's' : ''}`,
   },
   fdaGap: {
     title: 'Écart cumulé au FDA attendu',
-    averageCaption: 'Écart moyen par match',
   },
   netLives: {
     title: 'Balance des dégâts cumulée',
@@ -704,8 +701,10 @@ const FR_TEXT: SquadText = {
   weaponKills: {
     title: 'Outils de destruction',
     description: 'Frags cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
-    otherWeapons: 'Autres armes',
-    otherKills: 'Autres frags',
+    info: 'Les frags de chacun, arme par arme, sur la soirée. La pastille devant l\'arme est la couleur de sa classe dans la Répartition des frags.',
+    explosiveObject: 'Objet explosif (bidon)',
+    environment: 'Chute, environnement',
+    killsShare: (kills, sharePct) => `${kills} frag${kills > 1 ? 's' : ''} (${sharePct} % des siens)`,
   },
   weaponAccuracy: {
     title: 'Précision par rôle',
@@ -741,18 +740,7 @@ const FR_TEXT: SquadText = {
   errors: {
     loadError: (message) => `Erreur : ${message}`,
   },
-  objectives: {
-    title: 'Objectifs de l’escouade',
-    flagCaptures: 'Captures de drapeau',
-    flagReturns: 'Retours de drapeau',
-    flagSteals: 'Vols de drapeau',
-    flagCarrierTime: 'Temps porteur (drapeau)',
-    zoneCaptures: 'Zones capturées',
-    zoneSecures: 'Zones sécurisées',
-    zoneTime: 'Temps en zone',
-    skullGrabs: 'Récupérations du crâne',
-    skullCarrierTime: 'Temps porteur (crâne)',
-  },
+
 }
 
 const EN_TEXT: SquadText = {
@@ -765,12 +753,11 @@ const EN_TEXT: SquadText = {
     synergies: 'Synergies',
     contributions: 'Contributions',
     dynamique: 'Dynamics',
-    usages: 'Usage',
+    emprise: 'Map control',
   },
   sections: {
     historique: 'History',
     fragsArmes: 'Kills and weapons',
-    equipement: 'Equipment and pad weapons',
   },
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,
@@ -1049,10 +1036,14 @@ const EN_TEXT: SquadText = {
     rankTitle: 'Rank & Team MMR',
     mmrLabel: 'Team MMR',
     fragBreakdownTitle: 'Kill type distribution',
+    fragBreakdownInfo:
+      'Everyone\'s kills over the evening, by weapon class. The number written in a segment is its kill count; the total sits at the end of the bar.',
+    fragBreakdownSegment: (player, className, kills, total) =>
+      `${player} · ${className}: ${kills} of ${total} kill${total > 1 ? 's' : ''}`,
+    fragBreakdownBarAria: (player, total) => `${player}: ${total} kill${total > 1 ? 's' : ''}`,
   },
   fdaGap: {
     title: 'Cumulative KDA gap to expected',
-    averageCaption: 'Average gap per match',
   },
   netLives: {
     title: 'Cumulative damage balance',
@@ -1065,8 +1056,10 @@ const EN_TEXT: SquadText = {
   weaponKills: {
     title: 'Tools of destruction',
     description: 'Cumulative kills per weapon over shared matches. Sorted ASC: rare weapons on top, primaries at the bottom.',
-    otherWeapons: 'Other weapons',
-    otherKills: 'Other kills',
+    info: 'Everyone\'s kills, weapon by weapon, over the evening. The swatch before the weapon is the colour of its class in the Kill type distribution.',
+    explosiveObject: 'Explosive object (barrel)',
+    environment: 'Fall, environment',
+    killsShare: (kills, sharePct) => `${kills} kill${kills > 1 ? 's' : ''} (${sharePct}% of theirs)`,
   },
   weaponAccuracy: {
     title: 'Accuracy by role',
@@ -1102,18 +1095,7 @@ const EN_TEXT: SquadText = {
   errors: {
     loadError: (message) => `Error: ${message}`,
   },
-  objectives: {
-    title: 'Squad objectives',
-    flagCaptures: 'Flag captures',
-    flagReturns: 'Flag returns',
-    flagSteals: 'Flag steals',
-    flagCarrierTime: 'Flag carrier time',
-    zoneCaptures: 'Zones captured',
-    zoneSecures: 'Zones secured',
-    zoneTime: 'Time in zones',
-    skullGrabs: 'Skull grabs',
-    skullCarrierTime: 'Skull carrier time',
-  },
+
 }
 
 const DICTS: Record<Locale, SquadText> = {

@@ -108,8 +108,8 @@ func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3R
 		var p grammar.BipedPosition
 		lastTS += r.u()
 		p.TimestampUS = lastTS
-		si := int(r.u())
-		if si >= len(slots) {
+		si := r.u()
+		if si >= uint64(len(slots)) {
 			r.err = fmt.Errorf("index de slot %d hors table (%d)", si, len(slots))
 			return out
 		}
@@ -303,7 +303,7 @@ func decodeCreations(r *greader) []types.EquipmentCreation {
 			c.MPPVal[i] = r.u()
 		}
 		c.X, c.Y, c.Z = r.f32(), r.f32(), r.f32()
-		if nm := int(r.u()); nm > 0 {
+		if nm := r.compte(1); nm > 0 {
 			c.Mask = make([]int, 0, nm)
 			for j := 0; j < nm && r.err == nil; j++ {
 				c.Mask = append(c.Mask, int(r.i()))
@@ -379,14 +379,14 @@ func encodeKeyframes(w *gwriter, kf grammar.WorldObjectKeyframes) {
 
 func decodeKeyframes(r *greader) grammar.WorldObjectKeyframes {
 	var kf grammar.WorldObjectKeyframes
-	n := int(r.u())
+	n := r.compte(1)
 	kf.TimesUS = make([]uint64, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
 		kf.TimesUS = append(kf.TimesUS, lastTS)
 	}
-	n = int(r.u())
+	n = r.compte(3) // cle (slot, gen) + compte d instants
 	kf.SeenUS = make(map[types.EquipmentLifeKey][]uint64, n)
 	for k := 0; k < n && r.err == nil; k++ {
 		key := types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}

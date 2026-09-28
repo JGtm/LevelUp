@@ -29,13 +29,23 @@ package filmproc
 // refus est le bon comportement pour un outil d'operateur — il rend la main tout de suite, avec
 // le nom du processus qui travaille deja.
 //
-// # POURQUOI UN BATTEMENT DE COEUR PLUTOT QU'UN TEST DE PID
+// # UN VERROU DU NOYAU, PAS UN BATTEMENT DE COEUR (OPS-1, DT-2, 2026-09-26)
 //
-// Un verrou pose par un processus TUE (c'est le cas nominal ici : la sentinelle memoire tue, et
-// l'operateur aussi) doit pouvoir etre repris. Tester si un PID est vivant n'est pas portable —
-// sur Windows `os.FindProcess` reussit toujours. Le detenteur reecrit donc un horodatage toutes
-// les [soloHeartbeat] ; un verrou dont le battement date de plus de [soloStale] est MORT et se
-// reprend, en le journalisant. Aucune intervention manuelle n'est jamais requise.
+// Jusqu'ici le verrou etait un FICHIER : present = tenu, un horodatage reecrit toutes les deux
+// secondes, et un verrou dont le battement datait de plus de six secondes etait tenu pour mort et
+// repris. La regle se trompait dans les deux sens : un detenteur GELE (pause, veille, disque
+// lent) se faisait deposseder pendant qu'il decodait encore, puis son Release EFFACAIT le fichier
+// de son successeur — et un troisieme decodait en parallele du second.
+//
+// Le verrou est desormais celui du NOYAU (`platform/filelock` : `LockFileEx` / `flock`) sur
+// `film_decode.lock` : exclusif tant que le processus vit, rendu par le systeme a sa mort — la
+// sentinelle memoire et l'operateur tuent, c'est le cas nominal — et a aucun autre moment. Ni
+// battement, ni reprise de verrou perime, ni intervention manuelle.
+//
+// Le DETENTEUR est decrit a part, dans `film_decode.lock.json` (outil, pid, match, debut),
+// ecrit ATOMIQUEMENT une fois le verrou pris et retire AVANT qu'il soit rendu : tant que le
+// verrou est tenu, la description est celle de son detenteur, et un refus nomme donc le
+// detenteur ACTUEL. Le fichier de verrou lui-meme n'est jamais supprime (cf. `filelock`).
 
 import (
 	"encoding/json"
@@ -46,37 +56,35 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"levelup/go-api/internal/platform/atomicfile"
+	"levelup/go-api/internal/platform/filelock"
 )
 
 const (
-	// soloHeartbeat : cadence de reecriture de l'horodatage par le detenteur.
-	soloHeartbeat = 2 * time.Second
-	// soloStale : au-dela, le verrou est tenu pour MORT et repris. Trois battements — de quoi
-	// absorber une pause de GC ou un disque lent sans laisser un verrou orphelin bloquer
-	// l'operateur plus de quelques secondes.
-	soloStale = 3 * soloHeartbeat
-	// soloFileName : le nom du fichier de verrou, sous la racine du cache film.
+	// soloFileName : le fichier du verrou OS, sous la racine du cache film. Il reste en place.
 	soloFileName = "film_decode.lock"
+	// soloHolderFileName : la description du detenteur, presente tant que le verrou est tenu.
+	soloHolderFileName = soloFileName + ".json"
 )
 
 // ErrDecodeBusy : un autre decodage de film tient deja la machine. C'est un REFUS attendu, pas
 // une panne — l'appelant le presente a l'operateur et sort proprement.
 var ErrDecodeBusy = errors.New("un decodage de film est deja en cours sur cette machine")
 
-// soloHolder : ce qu'un detenteur ecrit dans le fichier de verrou.
+// soloHolder : ce qu'un detenteur ecrit dans sa description.
 type soloHolder struct {
 	Tool      string `json:"tool"`
 	PID       int    `json:"pid"`
 	MatchID   string `json:"matchId,omitempty"`
 	StartedAt string `json:"startedAt"`
-	BeatAt    string `json:"beatAt"`
 }
 
 // SoloLock : le verrou tenu. [SoloLock.Release] le rend ; il est sur d'appeler Release deux fois.
 type SoloLock struct {
-	path string
-	stop chan struct{}
-	once sync.Once
+	lock       *filelock.Lock
+	holderPath string
+	once       sync.Once
 }
 
 // AcquireSolo prend le verrou de decodage pour cette machine, ou rend [ErrDecodeBusy].
@@ -95,102 +103,73 @@ func AcquireSolo(cacheRoot, tool, matchID string) (*SoloLock, error) {
 	if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
 		return nil, fmt.Errorf("filmproc: creation de %s: %w", cacheRoot, err)
 	}
-	path := filepath.Join(cacheRoot, soloFileName)
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
-	if err != nil {
-		if !os.IsExist(err) {
-			return nil, fmt.Errorf("filmproc: ouverture du verrou %s: %w", path, err)
-		}
-		if !soloStealIfDead(path) {
-			return nil, soloBusyError(path)
-		}
-		if f, err = os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644); err != nil {
-			// Course perdue contre un autre candidat qui vient de reprendre le verrou mort :
-			// c'est un refus ordinaire, pas une panne.
-			return nil, soloBusyError(path)
-		}
+	holderPath := filepath.Join(cacheRoot, soloHolderFileName)
+	lock, err := filelock.TryLock(filepath.Join(cacheRoot, soloFileName))
+	if errors.Is(err, filelock.ErrLocked) {
+		return nil, soloBusyError(holderPath)
 	}
-	l := &SoloLock{path: path, stop: make(chan struct{})}
-	if err := soloWrite(f, tool, matchID); err != nil {
-		_ = f.Close()
-		_ = os.Remove(path)
+	if err != nil {
+		return nil, fmt.Errorf("filmproc: verrou de decodage: %w", err)
+	}
+	if err := soloWriteHolder(holderPath, tool, matchID); err != nil {
+		if uErr := lock.Unlock(); uErr != nil {
+			slog.Warn("verrou de decodage non rendu apres un echec d'ecriture du detenteur",
+				"err", uErr, "verrou", cacheRoot)
+		}
 		return nil, err
 	}
-	_ = f.Close()
-	slog.Info("verrou de decodage pris", "outil", tool, "match_id", matchID, "verrou", path)
-	go l.beat(tool, matchID)
-	return l, nil
+	slog.Info("verrou de decodage pris", "outil", tool, "match_id", matchID, "verrou", holderPath)
+	return &SoloLock{lock: lock, holderPath: holderPath}, nil
 }
 
 // Release rend le verrou. Sur d'etre appele plusieurs fois (defer + chemin d'erreur).
+//
+// La description est retiree AVANT que le verrou soit rendu : tant qu'on le tient, personne
+// d'autre n'a pu l'ecrire, donc c'est bien la notre qu'on retire.
 func (l *SoloLock) Release() {
 	if l == nil {
 		return
 	}
 	l.once.Do(func() {
-		close(l.stop)
-		if err := os.Remove(l.path); err != nil && !os.IsNotExist(err) {
-			slog.Warn("verrou de decodage non rendu — il expirera de lui-meme",
-				"err", err, "verrou", l.path, "expiration_s", int(soloStale.Seconds()))
+		if err := os.Remove(l.holderPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			slog.Warn("description du detenteur non retiree — le prochain detenteur la reecrira",
+				"err", err, "fichier", l.holderPath)
+		}
+		if err := l.lock.Unlock(); err != nil {
+			slog.Warn("verrou de decodage non rendu — le systeme le rendra a la fin du processus",
+				"err", err, "fichier", l.holderPath)
 		}
 	})
 }
 
-// beat reecrit l'horodatage tant que le verrou est tenu.
-func (l *SoloLock) beat(tool, matchID string) {
-	t := time.NewTicker(soloHeartbeat)
-	defer t.Stop()
-	for {
-		select {
-		case <-l.stop:
-			return
-		case <-t.C:
-			f, err := os.OpenFile(l.path, os.O_WRONLY|os.O_TRUNC, 0o644)
-			if err != nil {
-				continue // le verrou a ete repris ou efface : rien a sauver, le decodage finit
-			}
-			_ = soloWrite(f, tool, matchID)
-			_ = f.Close()
-		}
-	}
-}
-
-// soloWrite ecrit l'etat du detenteur dans un fichier deja ouvert en ecriture.
-func soloWrite(f *os.File, tool, matchID string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	h := soloHolder{Tool: tool, PID: os.Getpid(), MatchID: matchID, StartedAt: now, BeatAt: now}
+// soloWriteHolder decrit le detenteur, ATOMIQUEMENT (`atomicfile.WriteFileStrict`) : un refus ne
+// lit jamais une description a moitie ecrite. `StartedAt` est pose ici, une seule fois.
+func soloWriteHolder(path, tool, matchID string) error {
+	h := soloHolder{Tool: tool, PID: os.Getpid(), MatchID: matchID,
+		StartedAt: time.Now().UTC().Format(time.RFC3339)}
 	b, err := json.Marshal(h)
 	if err != nil {
-		return fmt.Errorf("filmproc: serialisation du verrou: %w", err)
+		return fmt.Errorf("filmproc: serialisation du detenteur: %w", err)
 	}
-	if _, err := f.Write(b); err != nil {
-		return fmt.Errorf("filmproc: ecriture du verrou: %w", err)
+	if err := atomicfile.WriteFileStrict(path, b, 0o644); err != nil {
+		return fmt.Errorf("filmproc: ecriture du detenteur: %w", err)
 	}
 	return nil
 }
 
-// soloStealIfDead reprend un verrou dont le battement est perime. Rend vrai s'il a ete efface.
-func soloStealIfDead(path string) bool {
-	st, err := os.Stat(path)
-	if err != nil {
-		return os.IsNotExist(err) // deja parti : la voie est libre
-	}
-	if time.Since(st.ModTime()) < soloStale {
-		return false
-	}
-	slog.Warn("verrou de decodage PERIME — repris",
-		"verrou", path, "dernier_battement", st.ModTime().UTC().Format(time.RFC3339),
-		"seuil_s", int(soloStale.Seconds()))
-	return os.Remove(path) == nil
-}
-
 // soloBusyError nomme le detenteur dans le message — sans lui, l'operateur ne sait pas quoi
-// attendre ni quoi arreter.
-func soloBusyError(path string) error {
+// attendre ni quoi arreter. Une description illisible (detenteur qui vient de prendre le verrou
+// et ne l'a pas encore ecrite) est dite comme telle.
+func soloBusyError(holderPath string) error {
 	var h soloHolder
-	if b, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(b, &h)
+	b, err := os.ReadFile(holderPath) //nolint:gosec // chemin compose sous la racine du cache
+	if err == nil {
+		err = json.Unmarshal(b, &h)
+	}
+	if err != nil {
+		return fmt.Errorf("%w : detenteur non decrit (%v). Attendre la fin. Description : %s",
+			ErrDecodeBusy, err, holderPath)
 	}
 	return fmt.Errorf("%w : %s (pid %d) decode %q depuis %s. Attendre la fin, ou arreter ce "+
-		"processus. Verrou : %s", ErrDecodeBusy, h.Tool, h.PID, h.MatchID, h.StartedAt, path)
+		"processus. Description : %s", ErrDecodeBusy, h.Tool, h.PID, h.MatchID, h.StartedAt, holderPath)
 }

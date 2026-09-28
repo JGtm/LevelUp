@@ -216,6 +216,8 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 
 	// 2 queries shared-only via SharedReader. PMT-5 : winrate ally/enemy title-aware
 	// (fallback "a.outcome = 2" byte-identique Halo).
+	// Campagne exclue (D-5, backlog B4) : les rencontres ne comptent que les matchs affichés
+	// ailleurs ; titre = celui de la base partagée lue. No-op pour un titre sans Campagne.
 	winExpr := outcomeSQLEq(ctx, "a.outcome", canonical.OutcomeWin, "a.outcome = 2")
 	qMatches := `
 		SELECT
@@ -228,7 +230,7 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 				NULLIF(COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id THEN 1 END), 0) AS winrate_vs_enemy
 		FROM match_participants a
 		JOIN match_participants b ON b.match_id = a.match_id AND b.xuid = ?
-		WHERE a.xuid = ?`
+		WHERE a.xuid = ?` + excludeCampaignByMatchID(pdbTitleSlug(r.pdb), "a.match_id")
 
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {

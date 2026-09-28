@@ -8,6 +8,10 @@
  * entry.emblem_url (chargé en parallèle côté Go via career_progression).
  * Fallback : initiale dans un cercle à la couleur du joueur.
  *
+ * La coquille de la fiche (liseré, emblème, pastille dominante, sections, pied) vit dans
+ * `SquadPlayerSheet` depuis le lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 :
+ * elle est partagée avec les fiches de l'objectif et des prises.
+ *
  * Grille adaptative : N joueurs → N colonnes égales (repeat(N, 1fr)).
  */
 import { useState } from 'react'
@@ -20,6 +24,7 @@ import {
   SQUAD_TEAMMATE_COLOR_TOKENS,
 } from './colors'
 import type { SquadText } from './i18n'
+import { SquadPlayerSheet, SquadSheetAvatar, SquadSheetSection } from './SquadPlayerSheet'
 
 interface MedalDigestProps {
   entries: MedalDigestEntry[]
@@ -37,29 +42,6 @@ function playerColorVar(mainPlayer: string, player: string, allPlayers: string[]
 function medalTooltip(item: MedalDigestItem): string {
   const name = item.label || `#${item.medal_id}`
   return item.description ? `${name}: ${item.description}` : name
-}
-
-/** Emblème rond du joueur — utilise l'URL fournie par le backend (career_progression). */
-function PlayerAvatar({ gamertag, color, emblemUrl }: { gamertag: string; color: string; emblemUrl?: string }) {
-  if (emblemUrl) {
-    return (
-      <img
-        src={emblemUrl}
-        alt={gamertag}
-        className="h-8 w-8 rounded-full object-cover flex-shrink-0"
-        style={{ boxShadow: `0 0 0 2px ${color}` }}
-      />
-    )
-  }
-
-  return (
-    <span
-      className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
-      style={{ background: color, color: '#fff' }} // color-allow: blanc structurel sur fond joueur
-    >
-      {gamertag.charAt(0).toUpperCase()}
-    </span>
-  )
 }
 
 function MedalChip({ item }: { item: MedalDigestItem }) {
@@ -227,72 +209,63 @@ function PlayerMedalCard({
     : null
 
   return (
-    <div
-      className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4"
-      style={{ borderLeft: `4px solid ${color}` }}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <PlayerAvatar gamertag={entry.player} color={color} emblemUrl={entry.emblem_url} />
-          <span className="font-semibold text-sm text-foreground truncate">{entry.player}</span>
-        </div>
-        {domCatLabel && (
-          <div className="flex flex-col items-end shrink-0">
-            <span className="text-[9px] uppercase tracking-wider text-muted-foreground leading-none">
-              {t.dominantCategory}
-            </span>
-            <span
-              className="text-xs font-semibold mt-0.5 rounded px-1.5 py-0.5"
-              style={{ background: `${color}22`, color }}
+    <SquadPlayerSheet
+      color={color}
+      name={entry.player}
+      avatar={<SquadSheetAvatar label={entry.player} color={color} emblemUrl={entry.emblem_url} />}
+      dominant={
+        domCatLabel
+          ? {
+              caption: t.dominantCategory,
+              label: domCatLabel,
+              // Fond d'origine des fiches de médailles, gardé tel quel à l'extraction de la
+              // coquille (lot L3) : leur rendu ne change pas. Voir « Découvertes » du plan.
+              background: `${color}22`,
+            }
+          : undefined
+      }
+      afterFooter={
+        allMedals.length > topMedals.length && (
+          <>
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline text-left"
+              onClick={onToggle}
             >
-              {domCatLabel}
-            </span>
-          </div>
-        )}
-      </div>
-
+              {expanded ? t.collapseLabel : `${t.expandLabel} (${allMedals.length})`}
+            </button>
+            {expanded && (
+              <MedalExpandedGrid medals={allMedals} categoryLabels={t.categoryLabels} />
+            )}
+          </>
+        )
+      }
+      footer={
+        <>
+          <span>
+            <span className="font-medium text-foreground">{entry.distinct_types}</span>{' '}
+            {t.statsDistinct}
+          </span>
+          <span>
+            <span className="font-medium text-foreground">{entry.avg_per_match.toFixed(1)}</span>{' '}
+            {t.statsAvg}
+          </span>
+          <span>
+            <span className="font-medium text-foreground">{entry.peak_in_match}</span> {t.statsPeak}
+          </span>
+        </>
+      }
+    >
       {topMedals.length > 0 && (
-        <div>
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-1.5">
-            {t.topMedals}
-          </p>
+        <SquadSheetSection label={t.topMedals}>
           <div className="flex flex-wrap gap-1.5">
             {topMedals.map((m) => (
               <MedalChip key={m.medal_id} item={m} />
             ))}
           </div>
-        </div>
+        </SquadSheetSection>
       )}
-
-      <div className="flex gap-4 text-xs text-muted-foreground border-t border-border pt-2">
-        <span>
-          <span className="font-medium text-foreground">{entry.distinct_types}</span>{' '}
-          {t.statsDistinct}
-        </span>
-        <span>
-          <span className="font-medium text-foreground">{entry.avg_per_match.toFixed(1)}</span>{' '}
-          {t.statsAvg}
-        </span>
-        <span>
-          <span className="font-medium text-foreground">{entry.peak_in_match}</span> {t.statsPeak}
-        </span>
-      </div>
-
-      {allMedals.length > topMedals.length && (
-        <>
-          <button
-            type="button"
-            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline text-left"
-            onClick={onToggle}
-          >
-            {expanded ? t.collapseLabel : `${t.expandLabel} (${allMedals.length})`}
-          </button>
-          {expanded && (
-            <MedalExpandedGrid medals={allMedals} categoryLabels={t.categoryLabels} />
-          )}
-        </>
-      )}
-    </div>
+    </SquadPlayerSheet>
   )
 }
 

@@ -21,6 +21,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/haloclient"
 )
 
@@ -189,20 +190,31 @@ func (fetcherFinalise) GetFilmChunks(context.Context, string) ([]haloclient.Film
 	}, true, nil
 }
 
-// TestCuireUnMatch_RefusNonFinaliseDeLEnfant_CompteEcarte : L3.5 vu du cycle. La cuisson (dans un
-// ENFANT) refuse un film non finalise ; le parent ne recoit que le TEXTE de l'erreur, et le classe
-// en ECARTE — jamais en echec, qui ferait chercher une panne.
-func TestCuireUnMatch_RefusNonFinaliseDeLEnfant_CompteEcarte(t *testing.T) {
-	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
-		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
-			// La frontiere de processus : seul le texte survit.
-			return BuildOneResult{}, errors.New("enfant : cuisson m1 : " + filmcache.ErrFilmNonFinalise.Error())
-		},
-	}
-	var b bilanCuisson
-	cuireUnMatch(context.Background(), d, buildWork{matchID: "m1"}, &b, time.Minute)
-	if b.ecartes != 1 || b.echecs != 0 {
-		t.Errorf("bilan = %+v, attendu 1 ecarte et 0 echec", b)
+// refusDontLeTexteNeDitRien : une erreur que `errors.Is` reconnait comme `cible` mais dont le
+// texte ne la cite pas. C'est la forme qui separe un classement par TYPE d'un classement par
+// TEXTE : seul le premier la range correctement.
+type refusDontLeTexteNeDitRien struct{ cible error }
+
+func (r refusDontLeTexteNeDitRien) Error() string        { return "refus de l'enfant" }
+func (r refusDontLeTexteNeDitRien) Is(target error) bool { return target == r.cible }
+
+// TestReplayArtifacts_FilmNonFinaliseReporteSansEchec : L3.5 vu du cycle (lot J2.12, DT-5). La
+// cuisson (dans un ENFANT) refuse un film non finalise ; la raison traverse le tube en JETON et
+// `replaychild` rend l'erreur typee enveloppee. Le cycle la classe par `errors.Is` en ECARTE —
+// jamais en echec, qui ferait chercher une panne. Il ne lit pas le texte : l'erreur injectee ne
+// cite pas la sentinelle.
+func TestReplayArtifacts_FilmNonFinaliseReporteSansEchec(t *testing.T) {
+	for _, cible := range []error{filmcache.ErrFilmNonFinalise, replaybuild.ErrUnknownFilmKey} {
+		d := Deps{
+			RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+			BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
+				return BuildOneResult{}, fmt.Errorf("cuisson m1 : %w", refusDontLeTexteNeDitRien{cible})
+			},
+		}
+		var b bilanCuisson
+		cuireUnMatch(context.Background(), d, buildWork{matchID: "m1"}, &b, time.Minute)
+		if b.ecartes != 1 || b.echecs != 0 {
+			t.Errorf("%v : bilan = %+v, attendu 1 ecarte et 0 echec", cible, b)
+		}
 	}
 }

@@ -237,7 +237,14 @@ func (h *WatcherHandler) handleGetAuthStatus(ctx context.Context, in *watcherAut
 
 // handlePatchSubscriptions met à jour les joueurs surveillés.
 // PATCH /api/v1/watcher/subscriptions
+//
+// REFUSÉE EN DÉMO (403, lot B-C1 du backlog 2026-09-26) : app_settings.json vise la
+// fixture, montée en écriture dans le conteneur de production ; RequireAdmin étant
+// transparent en démo, un visiteur y persistait ses écritures.
 func (h *WatcherHandler) handlePatchSubscriptions(ctx context.Context, in *watcherSubscriptionsInput) (*watcherSubscriptionsOutput, error) {
+	if err := refuseInDemo(h.cfg != nil && h.cfg.DemoMode, "watcher subscriptions update"); err != nil {
+		return nil, err
+	}
 	var req watcherSubscriptionsRequest
 	// Body OPTIONNEL (MarkRequestBodyOptional) : corps absent → req zéro (défaut
 	// ["all"] plus bas). Corps présent mais malformé → 400 invalid_body (parse

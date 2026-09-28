@@ -13,24 +13,35 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
-const cache = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950`
+// Le film etudie, lu par `filmcache.LireChunk` (J2.3, 2026-09-26) : la disposition n'est plus recopiee.
+const racineCache, filmEtudie = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache`, "000d5950"
 
-func inflate(p string) []byte {
-	raw, _ := os.ReadFile(p)
+// chunk rend le chunk `numero` du film etudie, decompresse ; un chunk illisible arrete l'outil.
+func chunk(numero int) []byte {
+	raw, err := filmcache.LireChunk(racineCache, filmEtudie, numero)
+	if err != nil {
+		panic(err)
+	}
 	return decfilm.Inflate(raw)
+}
+
+func worldDumpPath() string {
+	return filepath.Join(filmcache.ChunkDir(racineCache, filmEtudie), "world_dump.txt")
 }
 
 // loadWorld parses world_dump.txt -> slot:typeIndex map and typeIndex->slots.
 func loadWorld() (map[int]int, map[int][]int) {
-	f, err := os.Open(cache + "/world_dump.txt")
+	f, err := os.Open(worldDumpPath())
 	if err != nil {
 		panic(err)
 	}
@@ -122,8 +133,7 @@ func listPackets(d []byte) []packet {
 // type de paquet + par arme. But : où les armes COMPLÈTES apparaissent-elles dans le
 // flux gameplay (records NEW d'entité-arme / WST keyframe-style) ?
 func litScan(chunkIdx int) {
-	chunkPath := fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx)
-	d := inflate(chunkPath)
+	d := chunk(chunkIdx)
 	pkts := listPackets(d)
 	byType := map[uint16]int{}     // paquets par type
 	hitsByType := map[uint16]int{} // littéraux complets par type de paquet
@@ -199,7 +209,7 @@ func litScan(chunkIdx int) {
 // vivent-elles dans des records NEW d'entité-arme (ti=42) ou loadout (ti=5), ou dans
 // les bipeds (ti=35), ou hors de tout record décodé ?
 func litLoc(reg *decfilm.Registry, worldPath string, chunkIdx, maxPkts int) {
-	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	d := chunk(chunkIdx)
 	pkts := listPackets(d)
 	cfg := decfilm.FrameConfig{HasExtraFields: false, IDLowBits: 11,
 		Profil: decfilm.ProfilDeBalayageParDefaut()}
@@ -320,7 +330,7 @@ func litLoc(reg *decfilm.Registry, worldPath string, chunkIdx, maxPkts int) {
 // plausible en amont, et la distribution des distances (révèle la structure du record
 // biped : header -> ... -> WST). Test du POC "attribution par remontée".
 func upstreamScan(chunkIdx int) {
-	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	d := chunk(chunkIdx)
 	pkts := listPackets(d)
 	bip := map[uint32]bool{512: true, 513: true, 514: true, 515: true, 516: true, 517: true, 518: true, 519: true}
 	totalWST := 0
@@ -397,7 +407,7 @@ func upstreamScan(chunkIdx int) {
 // de voir l'ÉVOLUTION TEMPORELLE de l'arme par joueur sur le chunk. Le 1er record d'un
 // paquet biped tombe sur 512-519 = le joueur "propriétaire" du paquet.
 func litPlayer(chunkIdx int) {
-	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	d := chunk(chunkIdx)
 	pkts := listPackets(d)
 	bipedSlot := map[uint32]bool{512: true, 513: true, 514: true, 515: true, 516: true, 517: true, 518: true, 519: true}
 	pktIdx := 0
@@ -484,7 +494,7 @@ func litPattern(chunks []int) {
 	total := 0
 	pairWithin := 0 // littéraux ayant un autre littéral dans [+64, +64+512] (paire arme)
 	for _, chunkIdx := range chunks {
-		d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+		d := chunk(chunkIdx)
 		pkts := listPackets(d)
 		for _, p := range pkts {
 			if p.typ != 0 {
@@ -535,7 +545,7 @@ func pct(a, b int) float64 {
 // littéraux d'armes complets de chacun. Hypothèse : les GROS paquets type-0 sont des
 // mini-keyframes (re-sync full-state des bipeds) qui retransmettent ~8 armes (1/joueur).
 func sizesMode(chunkIdx int) {
-	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	d := chunk(chunkIdx)
 	pkts := listPackets(d)
 	type info struct {
 		idx, size, lits int
@@ -607,7 +617,7 @@ func ratio(a, b int) float64 {
 // bits avant le high32, le high32, le low32, et les bits après) pour comprendre la
 // structure du record qui le porte (NEW d'entité-arme ? autre ?).
 func litCtx(reg *decfilm.Registry, chunkIdx, pktIdx int) {
-	d := inflate(fmt.Sprintf("%s/chunk_%02d.bin", cache, chunkIdx))
+	d := chunk(chunkIdx)
 	pkts := listPackets(d)
 	var t0 []packet
 	for _, p := range pkts {
@@ -730,7 +740,7 @@ func main() {
 	// Mode litctx : dump du contexte de bits autour des littéraux d'un paquet précis.
 	// usage: litctx <chunk> <pktIndex>
 	if len(os.Args) >= 2 && os.Args[1] == "litctx" {
-		reg, _ := decfilm.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+		reg, _ := decfilm.ParseRegistryChunk(chunk(0))
 		chunkIdx, _ := strconv.Atoi(os.Args[2])
 		pktIdx, _ := strconv.Atoi(os.Args[3])
 		litCtx(reg, chunkIdx, pktIdx)
@@ -739,7 +749,7 @@ func main() {
 
 	// Mode litloc : localise les littéraux dans les records décodés.
 	if len(os.Args) >= 2 && os.Args[1] == "litloc" {
-		reg, err := decfilm.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+		reg, err := decfilm.ParseRegistryChunk(chunk(0))
 		if err != nil {
 			panic(err)
 		}
@@ -750,7 +760,7 @@ func main() {
 		if len(os.Args) >= 4 {
 			maxPkts, _ = strconv.Atoi(os.Args[3])
 		}
-		litLoc(reg, cache+"/world_dump.txt", chunkIdx, maxPkts)
+		litLoc(reg, worldDumpPath(), chunkIdx, maxPkts)
 		return
 	}
 
@@ -772,7 +782,7 @@ func main() {
 		return
 	}
 
-	reg, err := decfilm.ParseRegistryChunk(inflate(cache + "/chunk_00.bin"))
+	reg, err := decfilm.ParseRegistryChunk(chunk(0))
 	if err != nil {
 		panic(err)
 	}

@@ -31,6 +31,10 @@ var codeAideEnfant = flag.Int("filmproc-aide-code", -1,
 // picAideEnfant : le pic que l'enfant annonce par la ligne de protocole.
 const picAideEnfant = 4242
 
+// raisonAideEnfant : le jeton de raison que l'enfant annonce, s'il en a un (lot J2.12).
+var raisonAideEnfant = flag.String("filmproc-aide-raison", "",
+	"usage interne des tests : jeton de raison que l'enfant re-execute annonce")
+
 // TestAideEnfantFilmproc EST L'ENFANT. Il ecrit sur les DEUX flux (le parent les fusionne),
 // emet sa ligne de protocole, et meurt sur le code demande.
 func TestAideEnfantFilmproc(t *testing.T) {
@@ -40,6 +44,9 @@ func TestAideEnfantFilmproc(t *testing.T) {
 	fmt.Println("journal de l'enfant sur la sortie standard")
 	fmt.Fprintln(os.Stderr, "journal de l'enfant sur l'erreur standard")
 	EmitPeak(picAideEnfant)
+	if *raisonAideEnfant != "" {
+		EmitRaison(*raisonAideEnfant)
+	}
 	os.Exit(*codeAideEnfant)
 }
 
@@ -126,7 +133,7 @@ func TestRelayNeCoupePasLesLignesLongues(t *testing.T) {
 	var out strings.Builder
 	r := &Runner{out: &out}
 	longue := strings.Repeat("x", 200*1024)
-	if pic := r.relay(strings.NewReader(longue + "\n" + peakMarker + "7\n")); pic != 7 {
+	if pic, _ := r.relay(strings.NewReader(longue + "\n" + peakMarker + "7\n")); pic != 7 {
 		t.Fatalf("pic = %d, attendu 7 — le scanner s'est arrete sur la ligne longue", pic)
 	}
 	if !strings.Contains(out.String(), longue) {

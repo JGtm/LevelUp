@@ -32,10 +32,10 @@ package replayartifacts
 //
 // LA DIFFERENCE : la projection a besoin de DEUX CHOSES QUI VIVENT EN BASE — le `map_id` du
 // match (quelle carte croiser) et son `pair_name` (le mode est-il a departs aleatoires). Les
-// prises nettes, elles, se projettent du seul document. Le segment writer sert donc AUSSI a
-// lire ces deux colonnes de `match_registry`, juste avant d'ecrire. Le segment reste COURT :
-// une requete indexee sur quelques dizaines d'identifiants, puis des projections qui sont du
-// calcul pur sur des documents deja en memoire. Aucun decodage n'a lieu sous le writer.
+// prises nettes, elles, se projettent du seul document. Ces deux colonnes se lisent par un
+// segment de LECTURE court, AVANT la premiere famille qui ecrit (padtiers_preparation.go : la
+// panne du 2026-09-14 au 2026-09-27 et pourquoi l'ordre compte). Aucun decodage, aucune lecture
+// n'a lieu sous le writer.
 //
 // # DEUX PORTES, ET ELLES NE PESENT PAS PAREIL
 //
@@ -58,15 +58,11 @@ package replayartifacts
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"log/slog"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"levelup/go-api/internal/analysis/weapontier"
-	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
@@ -126,13 +122,10 @@ func ProjeterNiveauxDArmes(
 	matchID string, doc *replay.ReplayDocument,
 	ref *ReferenceEmplacements, id IdentiteMatchNiveaux, randomStarts bool,
 ) persist.PadTiersBatch {
-	if doc == nil || doc.SchemaVersion < PadTiersMinSchema {
+	if !projetableNiveaux(doc) {
 		return persist.PadTiersBatch{}
 	}
 	humains := humainsDuRoster(doc)
-	if len(humains) == 0 {
-		return persist.PadTiersBatch{}
-	}
 	// LA MEME JOINTURE QUE LA VUE MATCH, littéralement : un socle du match confirme un
 	// emplacement de la carte a moins d'un metre, le plus proche l'emporte et est ensuite pris.
 	var cross *replay.MapWeaponPads
@@ -156,6 +149,12 @@ func ProjeterNiveauxDArmes(
 	}
 	out.Rows = lignesDeNiveaux(doc, m, humains)
 	return out
+}
+
+// projetableNiveaux dit si un document PEUT donner une passe : ramasseur nomme (schema 30) et au
+// moins un humain au roster. Le lot n'a besoin de l'identite en base QUE de ceux-la.
+func projetableNiveaux(doc *replay.ReplayDocument) bool {
+	return doc != nil && doc.SchemaVersion >= PadTiersMinSchema && len(humainsDuRoster(doc)) > 0
 }
 
 // humainsDuRoster rend les xuid des joueurs HUMAINS du film, tries.
@@ -285,117 +284,15 @@ func DepartsAleatoires(reg *mappings.RegulationSet, pairName string) bool {
 	return reg.HasRandomStarts(pairName)
 }
 
-// persisterNiveauxDArmes projette puis ecrit les niveaux d'armes des artefacts ranges du lot.
-// Best-effort de bout en bout : aucun echec ne remonte au cycle, aucun ne se tait.
-//
-// ─── CETTE FAMILLE S ABSTIENT SEULE, ELLE NE PRIVE JAMAIS LES AUTRES DE LEUR MARQUE ───────
-//
-// Correctif de revue du 2026-09-14. La version precedente appelait b.echecLot(lus) des que SA
-// reference de cartes ou SON regulation.toml etait illisible : le lot entier passait alors pour
-// non derive, et les QUATRE autres familles — deja ECRITES — n etaient jamais marquees. Le
-// rattrapage rejouait le meme lot indefiniment, et la fixture d integration
-// TestRun_SelectionDeCuissonVide_RattrapeQuandMeme le prouvait en rouge.
-//
-// La regle est desormais celle de toute famille a reference : elle se tait, elle compte son
-// echec, et elle laisse le lot suivre son cours. Une reference manquante est une installation
-// incomplete de CETTE famille, jamais un defaut des autres.
-func persisterNiveauxDArmes(ctx context.Context, d Deps, b *bilanDerivations, lus []artefactLu) {
-	if len(lus) == 0 {
-		return
-	}
-	titre := ctxkeys.TitleSlug(ctx)
-	armee, incident := capabiliteNiveauxArmee(ctx, d)
-	if !armee {
-		if incident {
-			observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(len(lus)))
-		}
-		return
-	}
-	ref, reg, ok := referencesDuTitre(ctx, d, titre, len(lus))
-	if !ok {
-		return
-	}
-	// L IDENTITE DES MATCHS SE LIT AVANT LE WRITER, par un segment de LECTURE (correctif de
-	// revue) : la projection doit se faire hors du lease d ecriture, comme l en-tete de ce
-	// fichier le promet et comme flaggrabsnet.go le fait.
-	identites, ok := identitesDuLot(ctx, d, lus)
-	if !ok {
-		// IDENTITE ILLISIBLE = LOT NON PROJETE. Projeter avec un pair_name vide ferait rendre
-		// "departs non aleatoires" a tous les matchs, donc ecrire un niveau "base" sur des
-		// Fiesta. Le cycle suivant reessaiera ; ces matchs gardent la marque des autres
-		// familles et n auront simplement pas encore de niveaux.
-		slog.WarnContext(ctx, "post-sync: niveaux d'armes — identites de match illisibles, "+
-			"lot NON projete (un pair_name vide ecrirait un niveau de base sur des Fiesta)",
-			"titleSlug", d.TitleSlug, "matchs", len(lus))
-		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(len(lus)))
-		return
-	}
-	prets := projeterNiveauxDuLot(ctx, lus, ref, reg, identites)
-	if len(prets) == 0 {
-		return
-	}
-	ecrireNiveauxDArmes(ctx, d, b, titre, prets)
-}
-
-// referencesDuTitre charge la reference des emplacements et les regles du titre. Rend
-// (nil, nil, false) quand l une des deux manque — cette famille s abstient SEULE, sans toucher
-// au bilan des autres.
-func referencesDuTitre(ctx context.Context, d Deps, titre string, n int) (
-	*ReferenceEmplacements, *mappings.RegulationSet, bool,
-) {
-	ref, err := ChargerReferenceEmplacements(d.RepoRoot, d.TitleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: niveaux d'armes — reference des emplacements illisible, "+
-			"cette famille s'abstient (les autres gardent leur marque)",
-			"titleSlug", d.TitleSlug, "err", err)
-		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(n))
-		return nil, nil, false
-	}
-	reg, err := ReglesDepartsAleatoires(d.RepoRoot, d.TitleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: niveaux d'armes — regulation.toml illisible, "+
-			"cette famille s'abstient (les autres gardent leur marque)",
-			"titleSlug", d.TitleSlug, "err", err)
-		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(n))
-		return nil, nil, false
-	}
-	return ref, reg, true
-}
-
-// identitesDuLot lit map_id et pair_name du lot par un SEGMENT DE LECTURE court.
-//
-// Rend (nil, false) quand la lecture est impossible OU incomplete : un match dont le registre
-// ne rend pas la ligne n a pas d identite, et le projeter sans elle reviendrait a lui preter un
-// mode regulier. Sans segment de lecture cable, meme verdict — on ne devine pas.
-func identitesDuLot(ctx context.Context, d Deps, lus []artefactLu) (map[string]IdentiteMatchNiveaux, bool) {
-	if d.WithRead == nil {
-		return nil, false
-	}
-	ids := matchIDsDuLot(lus)
-	var out map[string]IdentiteMatchNiveaux
-	var lecture error
-	d.WithRead(ctx, "niveaux d'armes", func(sharedDB *sql.DB) {
-		out, lecture = IdentitesDesMatchs(ctx, sharedDB, ids)
-	})
-	if lecture != nil || out == nil {
-		return nil, false
-	}
-	for _, id := range ids {
-		if _, connu := out[id]; !connu {
-			return nil, false
-		}
-	}
-	return out, true
-}
-
 // ecrireNiveauxDArmes acquiert le writer et ecrit les passes DEJA projetees.
 //
 // LE SEGMENT NE CONTIENT QUE DES ECRITURES : la lecture des identites et la projection ont eu
-// lieu avant (cf. persisterNiveauxDArmes) — c est le motif de flaggrabsnet.go, et l en-tete de
-// ce fichier le promet.
-func ecrireNiveauxDArmes(
-	ctx context.Context, d Deps, b *bilanDerivations, titre string, prets []passeNiveauxPrete,
-) {
+// lieu avant, avant meme la premiere famille qui ecrit (cf. padtiers_preparation.go).
+func ecrireNiveauxDArmes(ctx context.Context, d Deps, b *bilanDerivations, prep preparationNiveaux) {
+	titre, prets := prep.titre, prep.prets
+	if len(prets) == 0 {
+		return
+	}
 	if d.AcquireWriter == nil {
 		slog.WarnContext(ctx, "post-sync: niveaux d'armes NON persistes (aucun writer shared cable sur ce chemin)",
 			"gamertag", d.Gamertag, "matchs", len(prets))
@@ -458,45 +355,6 @@ func echecNiveauxDArmes(b *bilanDerivations, prets []passeNiveauxPrete) {
 		ids = append(ids, prets[i].matchID)
 	}
 	echecFauteDeWriter(b, ids)
-}
-
-// matchIDsDuLot rend les identifiants d un lot d artefacts lus.
-func matchIDsDuLot(lus []artefactLu) []string {
-	ids := make([]string, 0, len(lus))
-	for i := range lus {
-		ids = append(ids, lus[i].matchID)
-	}
-	return ids
-}
-
-// IdentitesDesMatchs lit `map_id` et `pair_name` pour un lot de matchs.
-//
-// EXPORTEE pour le backfill. Requete indexee sur la cle primaire du registre : quelques
-// millisecondes sur un lot de cycle.
-func IdentitesDesMatchs(ctx context.Context, db *sql.DB, ids []string) (map[string]IdentiteMatchNiveaux, error) {
-	out := make(map[string]IdentiteMatchNiveaux, len(ids))
-	if len(ids) == 0 {
-		return out, nil
-	}
-	args := make([]any, 0, len(ids))
-	for _, id := range ids {
-		args = append(args, id)
-	}
-	q := `SELECT match_id, COALESCE(map_id, ''), COALESCE(pair_name, '')
-	      FROM match_registry WHERE match_id IN (?` + strings.Repeat(",?", len(ids)-1) + `)`
-	rows, err := db.QueryContext(ctx, q, args...)
-	if err != nil {
-		return nil, fmt.Errorf("niveaux d'armes: lecture match_registry: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var id, mapID, pair string
-		if err := rows.Scan(&id, &mapID, &pair); err != nil {
-			return nil, fmt.Errorf("niveaux d'armes: scan match_registry: %w", err)
-		}
-		out[id] = IdentiteMatchNiveaux{MapID: mapID, PairName: pair}
-	}
-	return out, rows.Err()
 }
 
 // soclesPour traduit les socles du film vers le vocabulaire du paquet de niveaux. L INDEX EST

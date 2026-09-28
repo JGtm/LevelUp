@@ -28,9 +28,10 @@ package main
 //   - `lockRoot` : ou vit le verrou de decodage partage (filmproc.AcquireSolo/Wait). Par
 //     defaut, CacheRootDir() du PARC — le MEME chemin que tout autre outil de cuisson de ce
 //     depot (cmd/replay-build, backfill-replay) y pose deja le sien : deux cuissons lancees
-//     depuis deux checkouts differents s'excluent donc mutuellement, comme demande. Un fichier
-//     `film_decode.lock` y est cree puis retire A CHAQUE cuisson (bake.go) — c'est le SEUL
-//     ecrit que ce gate fait sous le parc, et il est voulu.
+//     depuis deux checkouts differents s'excluent donc mutuellement, comme demande. Le verrou
+//     OS `film_decode.lock` y reste en place, et la description du detenteur
+//     `film_decode.lock.json` y est ecrite puis retiree A CHAQUE cuisson (bake.go, J2.6 du
+//     2026-09-26) — ce sont les SEULS ecrits que ce gate fait sous le parc, et ils sont voulus.
 //
 // AUCUNE DE CES RACINES N'EST LA RACINE DE TRAVAIL DE LA CUISSON : celle-la (`workRoot`) est
 // temporaire et jetable, batie par staging.go a partir des deux premieres — cf. son en-tete.

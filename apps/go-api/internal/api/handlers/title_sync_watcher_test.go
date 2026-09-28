@@ -53,7 +53,7 @@ func newTitleSyncFixture(t *testing.T) (*TitleSyncHandler, *fakeTitleWatcher) {
 	}
 	cfg := &config.AppConfig{RepoRoot: root, DBProfilesPath: profilesPath}
 	w := &fakeTitleWatcher{running: true}
-	h := NewTitleSyncHandler(service.NewProfileService(profilesPath, root)).
+	h := NewTitleSyncHandler(service.NewProfileService(profilesPath, root), false).
 		WithWatcher(func() TitleWatcher { return w }).
 		WithPlayerLookup(func(titleSlug, playerSlug string) (domain.PlayerSummary, bool) {
 			players, err := cfg.LoadPlayers(titleSlug)
@@ -141,7 +141,7 @@ func TestTitleSync_WatcherAbsentOuEnEchec_NonBloquant(t *testing.T) {
 	}
 
 	sans := NewTitleSyncHandler(service.NewProfileService(
-		filepath.Join(t.TempDir(), "db_profiles.json"), t.TempDir()))
+		filepath.Join(t.TempDir(), "db_profiles.json"), t.TempDir()), false)
 	if sans.watcher != nil {
 		t.Fatal("sans WithWatcher, aucun resolveur")
 	}

@@ -1,6 +1,8 @@
 /**
- * EquipmentCards.tsx — LES SEPT CARTES DU BLOC « USAGES D'ÉQUIPEMENTS »
- * (artefact 2ec1b8eb) : trois en contexte Solo, quatre en contexte Escouade.
+ * EquipmentCards.tsx — LES TROIS CARTES DU BLOC « USAGES D'ÉQUIPEMENTS »
+ * (artefact 2ec1b8eb), contexte Solo (Séries temporelles). Les quatre cartes du contexte
+ * Escouade ont été retirées avec l'ancien onglet Usages (lot L5.4 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : l'onglet Emprise les remplace.
  *
  * LES CINQ GESTES SONT CEUX QUE LA PÉRIODE MESURE — camouflage, mur de
  * protection, surbouclier, grappin, objets lâchés au sol. Les grenades n'en sont
@@ -13,12 +15,10 @@
 import { equipmentFamilyLabel, USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 
 import { FormesCard } from '../FormesCard'
-import { MINUS_INK, PLUS_INK, SPREAD_INK, TEAM_REST_INK, axisInk } from '../colors'
-import { BandeForm, type BandeRow } from '../forms/BandeForm'
+import { SPREAD_INK, axisInk } from '../colors'
 import { BatonMinMaxForm } from '../forms/BatonMinMaxForm'
 import { GrilleForm, type GrilleColumn, type GrilleRow } from '../forms/GrilleForm'
 import { JaugeDoubleForm, type JaugeRow } from '../forms/JaugeDoubleForm'
-import { Piste100Form, type PisteRow } from '../forms/Piste100Form'
 import {
   EQUIPMENT_AXES,
   droppedFamiliesOf,
@@ -27,15 +27,8 @@ import {
   type EquipmentAxis,
 } from '../model/access'
 import { measuredWindow } from '../model/display'
-import {
-  aggregateAxis,
-  lobbyParts,
-  playerSpread,
-  playerTotal,
-  teamShareOfMatch,
-} from '../model/aggregates'
+import { aggregateAxis, playerSpread, playerTotal } from '../model/aggregates'
 import type { FormesViewModel } from '../viewModel'
-import { lobbyTrackRow, matchColumns, squadSegments } from './shared'
 
 /**
  * La colonne des noms d'une grille PAR MATCH : « 22:51 · Assassin en équipe » et
@@ -220,152 +213,6 @@ export function EquipmentSpreadCard({ vm }: { vm: FormesViewModel }) {
         rangeTipFmt={t.common.rangeTipFmt}
         meanTipFmt={t.common.meanTipFmt}
         axisTitle={t.common.spreadAxis}
-      />
-    </FormesCard>
-  )
-}
-
-/** Carte 4 — « Régularité match par match » (bande, part de mon camp vs 50 %). */
-export function EquipmentRegularityCard({ vm }: { vm: FormesViewModel }) {
-  const { t, ct } = vm
-  const shown = measuredWindow(vm.block)
-  const rows: BandeRow[] = EQUIPMENT_AXES.map((axis) => ({
-    key: axis,
-    label: t.axes[axis],
-    cells: shown.rows.map((m) => {
-      const pct = teamShareOfMatch(m, vm.mainXuid, axis)
-      const label = `${vm.matchLabel(m)} · ${vm.matchMap(m)}`
-      return {
-        key: m.match_id,
-        pct,
-        tooltip:
-          pct == null
-            ? `${label} — ${m.measured ? t.common.noMeasureOnAxis : t.common.noFilm}`
-            : t.common.matchTipFmt(
-                label,
-                t.axes[axis],
-                vm.fmtPct(pct),
-                vm.fmtSigned(pct - 50),
-              ),
-      }
-    }),
-  }))
-  return (
-    <FormesCard
-      title={ct.cards.equipmentRegularity.title}
-      note={ct.cards.equipmentRegularity.note}
-      help={[t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)]}
-      legend={[
-        { label: t.common.moreThanOpponent, ink: PLUS_INK },
-        { label: t.common.less, ink: MINUS_INK },
-        { label: t.common.noMeasureOnAxis, unmeasured: true },
-      ]}
-    >
-      <BandeForm
-        rows={rows}
-        columns={matchColumns(vm, shown.rows)}
-        parity={50}
-        axisTitle={t.common.matchesAxis}
-      />
-    </FormesCard>
-  )
-}
-
-/** Carte 5 — « Ce que mon camp prend du lobby » (piste 100 avec parité). */
-export function EquipmentLobbyTrackCard({ vm }: { vm: FormesViewModel }) {
-  const { t, ct } = vm
-  const rows: PisteRow[] = EQUIPMENT_AXES.map((axis) => {
-    const parts = lobbyParts(vm.measured, vm.squad.map((s) => s.xuid), axis)
-    return lobbyTrackRow(vm, axis, t.axes[axis], parts)
-  })
-  return (
-    <FormesCard
-      title={ct.cards.equipmentLobbyTrack.title}
-      note={ct.cards.equipmentLobbyTrack.note}
-      legend={[
-        ...vm.squad.map((s) => ({ label: s.label, ink: s.ink })),
-        { label: t.common.teamRest, ink: TEAM_REST_INK },
-        { label: t.common.enemyTeamCounted, hatch: true },
-        { label: t.common.parity, line: true },
-      ]}
-    >
-      <Piste100Form
-        rows={rows}
-        showParity
-        axisTitle={t.common.lobbyShareAxis}
-        parityLabel={t.common.parityFmt('50 %')}
-        emptyLabel={t.common.noMeasure}
-        formatCount={(v) => vm.fmtCount(v)}
-        segmentTipFmt={t.common.segmentTipFmt}
-      />
-    </FormesCard>
-  )
-}
-
-/** Carte 6 — « Cadence de chacun sur la période » (grille, une ligne par joueur). */
-export function EquipmentSquadGridCard({ vm }: { vm: FormesViewModel }) {
-  const { t, ct } = vm
-  const measured = vm.measured.length
-  const rows: GrilleRow[] = vm.squad.map((s) => ({ key: s.xuid, label: s.label, accent: s.ink }))
-  const columns: GrilleColumn[] = EQUIPMENT_AXES.map((axis) => ({
-    key: axis,
-    label: t.axes[axis],
-    total: t.common.totalFmt(
-      vm.fmtCount(vm.squad.reduce((a, s) => a + playerTotal(vm.block, s.xuid, axis), 0)),
-    ),
-  }))
-  const inkByXuid = new Map(vm.squad.map((s) => [s.xuid, s.ink]))
-  return (
-    <FormesCard
-      title={ct.cards.equipmentSquadGrid.title}
-      note={ct.cards.equipmentSquadGrid.note}
-      legend={vm.squad.map((s) => ({ label: s.label, ink: s.ink }))}
-    >
-      <GrilleForm
-        rows={rows}
-        columns={columns}
-        value={(row, col) =>
-          measured === 0
-            ? null
-            : playerTotal(vm.block, row.key, col.key as EquipmentAxis) / measured
-        }
-        ink={(row) => inkByXuid.get(row.key) ?? ''}
-        format={(v) => vm.fmtCount(v)}
-        tooltip={(row, col, text) => t.common.valueTipFmt(row.label, col.label, text)}
-        notMeasuredLabel={t.common.notMeasured}
-        axisTitle={t.common.gesturesPerMatchAxis}
-      />
-    </FormesCard>
-  )
-}
-
-/** Carte 7 — « Qui porte quel geste dans l'escouade » (piste 100 SANS parité). */
-export function EquipmentSquadTrackCard({ vm }: { vm: FormesViewModel }) {
-  const { t, ct } = vm
-  const rows: PisteRow[] = EQUIPMENT_AXES.map((axis) => {
-    const segments = squadSegments(vm, (xuid) => playerTotal(vm.block, xuid, axis))
-    const total = segments.reduce((a, s) => a + s.value, 0)
-    return {
-      key: axis,
-      label: t.axes[axis],
-      sublabel: t.common.inSquadFmt(total),
-      segments,
-    }
-  })
-  return (
-    <FormesCard
-      title={ct.cards.equipmentSquadTrack.title}
-      note={ct.cards.equipmentSquadTrack.note}
-      legend={vm.squad.map((s) => ({ label: s.label, ink: s.ink }))}
-    >
-      <Piste100Form
-        rows={rows}
-        showParity={false}
-        axisTitle={t.common.squadShareAxis}
-        parityLabel=""
-        emptyLabel={t.common.noMeasure}
-        formatCount={(v) => vm.fmtCount(v)}
-        segmentTipFmt={t.common.segmentTipFmt}
       />
     </FormesCard>
   )

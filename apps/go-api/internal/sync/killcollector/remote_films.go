@@ -97,6 +97,13 @@ func (r *RemoteFilms) GetFilmChunks(
 		// reparer, pas une panne : INFO, deja compte par `LocalCacheFilms`.
 		slog.InfoContext(ctx, "killsource_cache_non_finalise_repli_reseau",
 			"match_id", matchID, "err", err)
+	} else if estChunkTronque(err) {
+		// UN CHUNK TRONQUE VAUT UN FILM ABSENT DU DISQUE (J2.3, 2026-09-26) : ecrit en place par
+		// un writer d avant l ecriture atomique puis interrompu. Le reseau sert le film, et
+		// l archivage ci-dessous remplace le chunk (`filmcache.Write` ne garde un chunk present
+		// qu a la bonne taille). Un etat a reparer, pas une panne : INFO.
+		slog.InfoContext(ctx, "killsource_cache_chunk_tronque_repli_reseau",
+			"match_id", matchID, "err", err)
 	} else if err != nil {
 		// Un cache illisible (manifeste corrompu) ne doit pas empecher le reseau de servir :
 		// on le signale et on continue, plutot que de faire echouer tout le match.
@@ -133,10 +140,17 @@ func (r *RemoteFilms) archiver(ctx context.Context, matchID string, chunks []hal
 			Data: c.Data,
 		})
 	}
-	if err := filmcache.Write(r.cacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
+	if err := filmcache.Write(ctx, r.cacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
 		observability.IncCounter(CompteurArchiveErreurs)
 		slog.ErrorContext(ctx, "killsource_film_archive_echec", "match_id", matchID, "err", err)
 		return
 	}
 	observability.IncCounter(CompteurFilmsArchives)
+}
+
+// estChunkTronque dit si l erreur du cache disque est un chunk dont le fichier n a pas la taille
+// declaree par son manifeste.
+func estChunkTronque(err error) bool {
+	var tronque *filmcache.ErrChunkTronque
+	return errors.As(err, &tronque)
 }

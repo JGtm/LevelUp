@@ -234,34 +234,3 @@ export function aggregateRole(block: SquadFormesBlock, role: ObjectiveRole): Obj
   }
   return aggregateColumns(matches, block.main_xuid ?? '', [...columns.values()])
 }
-
-/** Les segments de la piste du lobby pour un rôle (escouade / reste / adverse). */
-export function roleLobbyParts(
-  block: SquadFormesBlock,
-  role: ObjectiveRole,
-  squadXuids: string[],
-): { bySquad: Record<string, number>; teamRest: number; opponents: number } {
-  const bySquad: Record<string, number> = {}
-  for (const x of squadXuids) bySquad[x] = 0
-  let teamRest = 0
-  let opponents = 0
-  for (const match of objectiveMatches(block)) {
-    // MÊME RÈGLE QUE aggregateRole : les grandeurs optionnelles restent dehors.
-    // La piste du lobby est une répartition à 100 % — y verser une grandeur que
-    // certains matchs ne mesurent pas décalerait les segments sans le dire.
-    const cols = (match.objective?.columns ?? [])
-      .filter((c) => c.role === role && !c.optional)
-      .map((c) => c.key)
-    if (cols.length === 0) continue
-    for (const row of match.objective?.players ?? []) {
-      const v = cols.reduce((a, c) => a + (row.values?.[c] ?? 0), 0)
-      if (match.player_team == null || row.team_id !== match.player_team) {
-        opponents += v
-        continue
-      }
-      if (row.xuid in bySquad) bySquad[row.xuid] += v
-      else teamRest += v
-    }
-  }
-  return { bySquad, teamRest, opponents }
-}

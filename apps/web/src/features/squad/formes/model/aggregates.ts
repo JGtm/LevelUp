@@ -73,14 +73,14 @@ export interface ShareSide {
   measured: number
 }
 
-/** L'agrégat d'un axe : les deux dénominateurs, et la part de mon camp. */
+/**
+ * L'agrégat d'un axe : les deux dénominateurs. (La part du lobby que mon camp prend n'avait de
+ * lecteur que dans les cartes du contexte escouade, retirées au lot L5.4 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.)
+ */
 export interface AxisAggregate {
   team: ShareSide
   lobby: ShareSide
-  /** La part du LOBBY que mon camp prend (le rapport de force). */
-  teamShareOfLobbyPct: number | null
-  teamTotal: number
-  lobbyTotal: number
 }
 
 interface SideAccumulator {
@@ -114,12 +114,8 @@ export function aggregateAxis(block: SquadFormesBlock, axis: ShareAxis): AxisAgg
   const main = block.main_xuid ?? ''
   const team = newSide()
   const lobby = newSide()
-  let teamTotal = 0
-  let lobbyTotal = 0
   for (const match of measuredMatches(block)) {
     const m = matchMeasure(match, main, axis)
-    teamTotal += m.team
-    lobbyTotal += m.lobby
     team.value += m.me
     team.total += m.team
     team.sizes.push(m.teamSize)
@@ -139,31 +135,13 @@ export function aggregateAxis(block: SquadFormesBlock, axis: ShareAxis): AxisAgg
       if (parity != null && pct >= parity) lobby.above += 1
     }
   }
-  return {
-    team: closeSide(team),
-    lobby: closeSide(lobby),
-    teamShareOfLobbyPct: sharePct(teamTotal, lobbyTotal),
-    teamTotal,
-    lobbyTotal,
-  }
+  return { team: closeSide(team), lobby: closeSide(lobby) }
 }
 
 /**
- * La part de MON CAMP dans le lobby sur un match — la valeur de la bande de
- * régularité. `null` quand personne n'a touché l'axe : une case « non mesurée »,
- * jamais une case à zéro pour cent.
+ * La part du joueur dans le lobby sur un match. `null` quand personne n'a touché l'axe :
+ * une case « non mesurée », jamais une case à zéro pour cent.
  */
-export function teamShareOfMatch(
-  match: SquadFormesMatch,
-  mainXuid: string,
-  axis: ShareAxis,
-): number | null {
-  if (!match.measured) return null
-  const m = matchMeasure(match, mainXuid, axis)
-  return sharePct(m.team, m.lobby)
-}
-
-/** La part du joueur dans le lobby sur un match (même règle de `null`). */
 export function myShareOfMatch(
   match: SquadFormesMatch,
   mainXuid: string,
@@ -210,40 +188,4 @@ export function playerSpread(
     mean: sum / values.length,
     matches: values.length,
   }
-}
-
-/**
- * La répartition d'un axe entre l'escouade, le reste de mon camp et l'adversaire
- * — les segments de la piste du lobby.
- *
- * L'ADVERSAIRE EST COMPTÉ, JAMAIS NOMMÉ : il n'a ni couleur d'équipe ni
- * gamertag, seulement une hachure et un total. C'est la règle du bloc.
- */
-export interface LobbyParts {
-  bySquad: Record<string, number>
-  /** Coéquipier de mon camp qui n'est pas dans l'escouade sélectionnée. */
-  teamRest: number
-  opponents: number
-}
-
-export function lobbyParts(
-  matches: SquadFormesMatch[],
-  squadXuids: string[],
-  axis: ShareAxis,
-): LobbyParts {
-  const bySquad: Record<string, number> = {}
-  for (const x of squadXuids) bySquad[x] = 0
-  const out: LobbyParts = { bySquad, teamRest: 0, opponents: 0 }
-  for (const match of matches) {
-    for (const p of lobbyOf(match)) {
-      const v = axisValue(p, axis)
-      if (!isMySide(match, p)) {
-        out.opponents += v
-        continue
-      }
-      if (p.xuid in out.bySquad) out.bySquad[p.xuid] += v
-      else out.teamRest += v
-    }
-  }
-  return out
 }

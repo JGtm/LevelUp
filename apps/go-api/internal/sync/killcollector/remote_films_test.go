@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -146,5 +147,60 @@ func TestRemoteFilms_EchecArchivageNonFatal_MaisCOMPTE(t *testing.T) {
 	if apres := observability.LoadCounter(CompteurArchiveErreurs); apres != avant+1 {
 		t.Errorf("%s = %d, attendu %d — un echec d archivage avale est le defaut qu on corrige",
 			CompteurArchiveErreurs, apres, avant+1)
+	}
+}
+
+// TestRemoteFilms_ChunkTronqueSurDisqueRetelecharge — un chunk tronque au cache (ecriture en
+// place interrompue d'avant J2.2) n'est PAS servi : le film repart au reseau comme s'il etait
+// absent du disque, et son archivage remplace le chunk tronque. La lecture suivante vient du
+// disque.
+func TestRemoteFilms_ChunkTronqueSurDisqueRetelecharge(t *testing.T) {
+	racine := cacheVide(t)
+	court := titlePkg.FilmShortMatchID(matchRemote)
+	var aEcrire []filmcache.WriteChunk
+	for _, c := range chunksTemoins() {
+		aEcrire = append(aEcrire, filmcache.WriteChunk{Index: c.Index, ChunkType: c.ChunkType,
+			StartMS: c.StartMS, DurationMS: c.DurationMS, Data: c.Data})
+	}
+	if err := filmcache.Write(t.Context(), racine, court, aEcrire); err != nil {
+		t.Fatal(err)
+	}
+	// Le nom des fichiers de chunks n est declare que dans `filmcache` : deuxieme entree du
+	// dossier (tri par nom), sans recopier la convention.
+	entrees, err := os.ReadDir(filmcache.ChunkDir(racine, court))
+	if err != nil || len(entrees) != 3 {
+		t.Fatalf("chunks ecrits = %d (err %v), attendu 3", len(entrees), err)
+	}
+	tronque := filepath.Join(filmcache.ChunkDir(racine, court), entrees[1].Name())
+	if err := os.WriteFile(tronque, []byte("repl"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	distant := &filmsEnMemoire{chunks: map[string][]haloclient.FilmChunk{matchRemote: chunksTemoins()}}
+	src := NewRemoteFilms(NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine)), distant, racine)
+	journal := journalDuTestNonFinalise(t)
+
+	got, found, err := src.GetFilmChunks(context.Background(), matchRemote)
+	if err != nil || !found || len(got) != 3 {
+		t.Fatalf("GetFilmChunks = (%d, %v, %v), attendu (3, true, nil)", len(got), found, err)
+	}
+	// Un chunk tronque est un etat a reparer, pas un cache illisible.
+	if strings.Contains(journal.String(), "killsource_cache_illisible_repli_reseau") ||
+		!strings.Contains(journal.String(), "killsource_cache_chunk_tronque_repli_reseau") {
+		t.Errorf("repli reseau d'un chunk tronque mal journalise :\n%s", journal)
+	}
+	if string(got[1].Data) != "replication" {
+		t.Errorf("chunk 1 servi = %q, attendu replication (le chunk tronque a ete servi)", got[1].Data)
+	}
+	if distant.appels != 1 {
+		t.Errorf("appels reseau = %d, attendu 1 — un chunk tronque vaut un film absent du disque", distant.appels)
+	}
+	if disque, err := os.ReadFile(tronque); err != nil || string(disque) != "replication" {
+		t.Errorf("chunk sur disque = %q (err %v), attendu replication (repare par l archivage)", disque, err)
+	}
+	if _, found, err := src.GetFilmChunks(context.Background(), matchRemote); err != nil || !found {
+		t.Fatalf("seconde lecture = (%v, %v)", found, err)
+	}
+	if distant.appels != 1 {
+		t.Errorf("appels reseau = %d apres reparation, attendu 1 — le disque doit servir", distant.appels)
 	}
 }

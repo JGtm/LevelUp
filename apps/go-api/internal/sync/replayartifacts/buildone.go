@@ -110,24 +110,41 @@ type storedOne struct {
 // qu'on peut ranger sans avoir délégué, ou déléguer sans ranger.
 func buildAndStoreOne(ctx context.Context, d Deps, w buildWork, filmDir string,
 ) (storedOne, error) {
-	if d.BuildOne == nil {
-		return storedOne{}, ErrNoBuilder
-	}
-	res, err := d.BuildOne(ctx, BuildOneRequest{
+	stored, res, err := ConstruireEtRanger(ctx, d.BuildOne, BuildOneRequest{
 		MatchID: w.matchID, TitleSlug: d.TitleSlug, RepoRoot: d.RepoRoot,
 		MapNames: w.mapNames, FilmDir: filmDir, Facts: w.facts,
 	})
 	if err != nil {
 		return storedOne{}, err
 	}
+	return storedOne{stored: stored, dur: res.Dur, peak: res.Peak}, nil
+}
+
+// ConstruireEtRanger est LE chemin de construction d'UN artefact hors du processus du serveur :
+// `build` rend les octets (en production [SpawnBuildOne], l'enfant borne), puis
+// `replaybuild.StoreArtifact` les RANGE chez l'appelant. Rend l'artefact range et la mesure de la
+// construction.
+//
+// EXPORTE POUR L'ACTION ADMIN « construire le rejeu » (lot J2.13, constat OPS-2, 2026-09-26),
+// qui decodait DANS le serveur, hors du verrou solo et sans sentinelle memoire. Une seule
+// fonction pour l'etape 1.58 et pour l'action : une copie aurait diverge au premier refus ajoute.
+func ConstruireEtRanger(ctx context.Context, build BuildOneFunc, req BuildOneRequest,
+) (replaybuild.StoredArtifact, BuildOneResult, error) {
+	if build == nil {
+		return replaybuild.StoredArtifact{}, BuildOneResult{}, ErrNoBuilder
+	}
+	res, err := build(ctx, req)
+	if err != nil {
+		return replaybuild.StoredArtifact{}, BuildOneResult{}, err
+	}
 	// L'ÉCRITURE RESTE CHEZ LE PARENT : `StoreArtifact` valide, applique le garde
 	// anti-régression et publie l'événement « artefact rangé » — les trois au même endroit
 	// qu'avant ce lot.
-	stored, err := replaybuild.StoreArtifact(d.RepoRoot, d.TitleSlug, w.matchID, res.Blob)
+	stored, err := replaybuild.StoreArtifact(req.RepoRoot, req.TitleSlug, req.MatchID, res.Blob)
 	if err != nil {
-		return storedOne{}, err
+		return replaybuild.StoredArtifact{}, BuildOneResult{}, err
 	}
-	return storedOne{stored: stored, dur: res.Dur, peak: res.Peak}, nil
+	return stored, res, nil
 }
 
 // SpawnBuildOne est la strategie de PRODUCTION : elle delegue a un enfant borne (plafond

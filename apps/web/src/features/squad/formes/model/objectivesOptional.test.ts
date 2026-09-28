@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { SquadFormesBlock } from '@/lib/api/types'
 
-import { aggregateColumns, aggregateRole, roleLobbyParts } from './objectives'
+import { aggregateColumns, aggregateRole } from './objectives'
 
 const MOI = 'x-moi'
 const ALLIE = 'x-allie'
@@ -86,12 +86,6 @@ describe('agrégats et grandeurs optionnelles', () => {
     // flag_captures seul : moi 1 + 5 = 6, mon camp 1+2+5+1 = 9.
     expect(take.me).toBe(6)
     expect(take.team).toBe(9)
-  })
-
-  it("la piste du lobby d'un rôle ignore elle aussi la grandeur optionnelle", () => {
-    const parts = roleLobbyParts(blocDeuxMatchs(), 'take', [MOI])
-    expect(parts.bySquad[MOI]).toBe(6)
-    expect(parts.teamRest).toBe(3)
   })
 
   it("agrégée SEULE, la grandeur optionnelle ne compte QUE les matchs mesurés", () => {

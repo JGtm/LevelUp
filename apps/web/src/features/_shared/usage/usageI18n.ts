@@ -220,9 +220,7 @@ export interface UsageText {
   cardHintWeaponCounts: string
   /** Titre de la carte donut, équipement puis armes spéciales, solo vs escouade. */
   viewEquipmentPartsSolo: string
-  viewEquipmentPartsSquad: string
   viewWeaponPartsSolo: string
-  viewWeaponPartsSquad: string
   /** Valeur de barre : le compte, jamais un pourcentage (P9). */
   countTakenFmt: (n: string) => string
   countPickupsFmt: (n: string) => string
@@ -347,9 +345,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     cardHintWeaponCounts:
       "Chaque barre est le nombre de prises de socle d'arme sur la période. Le tir n'est pas mesuré à ce grain : la barre est un compte simple, pas ce qui a été fait de la prise.",
     viewEquipmentPartsSolo: "Ma part de l'équipement du lobby",
-    viewEquipmentPartsSquad: "Notre part de l'équipement du lobby",
     viewWeaponPartsSolo: 'Ma part des armes spéciales du lobby',
-    viewWeaponPartsSquad: 'Notre part des armes spéciales du lobby',
     countTakenFmt: (n) => `${n} pris`,
     countPickupsFmt: (n) => `${n} prises`,
     axisEquipmentTakenFmt: (n) => `${n} objets pris`,
@@ -466,9 +462,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     cardHintWeaponCounts:
       "Each bar is the number of power weapon pad pickups over the period. Firing isn't measured at this grain: the bar is a plain count, not what became of the pickup.",
     viewEquipmentPartsSolo: "My share of the lobby's equipment",
-    viewEquipmentPartsSquad: "Our share of the lobby's equipment",
     viewWeaponPartsSolo: "My share of the lobby's power weapons",
-    viewWeaponPartsSquad: "Our share of the lobby's power weapons",
     countTakenFmt: (n) => `${n} taken`,
     countPickupsFmt: (n) => `${n} pickups`,
     axisEquipmentTakenFmt: (n) => `${n} items taken`,

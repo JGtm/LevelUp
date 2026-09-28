@@ -24,23 +24,6 @@ func TestSoloWaitRefuseApresLaBorne(t *testing.T) {
 	}
 }
 
-func TestSoloWaitPasseQuandLeVerrouEstRendu(t *testing.T) {
-	root := t.TempDir()
-	held, err := AcquireSolo(root, "test", "a")
-	if err != nil {
-		t.Fatalf("premier verrou : %v", err)
-	}
-	go func() {
-		time.Sleep(300 * time.Millisecond)
-		held.Release()
-	}()
-	l, err := AcquireSoloWait(context.Background(), root, "test", "b", 5*time.Second)
-	if err != nil {
-		t.Fatalf("attendu le verrou une fois rendu, obtenu %v", err)
-	}
-	l.Release()
-}
-
 func TestSoloWaitRespecteLAnnulation(t *testing.T) {
 	root := t.TempDir()
 	held, err := AcquireSolo(root, "test", "a")

@@ -49,7 +49,7 @@ func encodeTirContinu(w *gwriter, rs []types.ContinuousFireBurst, st types.Conti
 
 // decodeTirContinu relit ce que [encodeTirContinu] a ecrit, dans le meme ordre.
 func decodeTirContinu(r *greader) ([]types.ContinuousFireBurst, types.ContinuousFireStats) {
-	n := int(r.u()) //nolint:gosec // compte ecrit positif
+	n := r.compte(11)
 	out := make([]types.ContinuousFireBurst, 0, n)
 	var lastTS uint64
 	for k := 0; k < n && r.err == nil; k++ {

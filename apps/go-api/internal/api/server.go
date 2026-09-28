@@ -682,13 +682,13 @@ func NewRouter(
 	// prennent leur valeur sûre (verrouillé / sans auto-provisioning).
 	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath).
 		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode))
-	jobsPath := titlePkg.NewPathResolver(cfg.RepoRoot).JobsCachePath()
+	jobsPath := cfg.RuntimePaths().JobsCachePath() // démo : sous `<démo>/runtime/` (lot B5.5)
 	jobStore := jobs_platform.NewStore(jobsPath)
 	// Amis PAR JOUEUR (data/global/player_friends.json) : remplace l'ancien réglage
 	// global des amis dans app_settings. Même pattern que settingsStore ci-dessus
 	// (le boot en construit une seconde instance pour sa migration : fichier commun,
 	// écritures sérialisées par le rename atomique du store).
-	friendStore := friendstore.NewFriendStore(titlePkg.NewPathResolver(cfg.RepoRoot).PlayerFriendsPath())
+	friendStore := friendstore.NewFriendStore(cfg.RuntimePaths().PlayerFriendsPath())
 
 	// Auth locale : user store + invite store (mode password).
 	usersPath := cfg.UsersFilePath()

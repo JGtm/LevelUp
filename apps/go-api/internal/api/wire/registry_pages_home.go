@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
@@ -152,11 +153,6 @@ func (r *ServiceRegistry) SquadV2Ctx(ctx context.Context, slug string) (port.Squ
 	// player ; on lui propage le gamertag de la session courante (chunk S11).
 	loader.SetDefaultGamertag(pdb.Gamertag)
 	svc := service.NewSquadServiceV2(loader)
-	// KPI objectifs par xuid (CTF/Zones/Oddball) : gated par la capability
-	// match.objective.stats (Infinite ; absente pour Halo 5). Jamais slug==.
-	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
-		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
-	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -236,20 +232,23 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// et la page Sessions. Câblage INCONDITIONNEL — le repo rend
 		// games.ErrCapabilityNotSupported pour un titre sans positions par kill et le
 		// service omet le bloc. Jamais une comparaison de slug.
-		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
+		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
+		// Onglet « Emprise » (lot L4) : la feuille de match (frags aux armes spéciales) est
+		// écrite par tous les titres — câblage INCONDITIONNEL ; ses grandeurs du film passent par
+		// le résumé d'usage ci-dessous, gated par film.usage_summary (D10). Jamais slug==.
+		WithEmprise(duckdb.NewSquadEmpriseRepo(pdb))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb))
 	}
-	// Bloc « servi ou gâché » de l'équipement (étape E6.1bis) : MÊME repo que les
-	// pages Sessions, Synthèse et Squad V2, sur le scope FILTRÉ de cette page
-	// (filteredMatches — cf. teammates_service_usage.go). Gated par
-	// film.usage_summary (Infinite ; absente pour Halo 5 → bloc Available=false
-	// avec raison machine). Jamais slug==.
+	// Résumé d'usage (lectures communes des blocs d'usage et de l'Emprise) : MÊME repo que les
+	// pages Sessions et Synthèse, sur le périmètre D2 de cette page (cf.
+	// teammates_service_usage.go). Gated par film.usage_summary (Infinite ; absente pour Halo 5
+	// → l'Emprise ne publie que la feuille de match, film_unsupported). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb))
+		svc = svc.WithUsageSummary(duckdb.NewSessionUsageRepo(pdb))
 		// Bloc « formes retenues » (lot D2, 2026-09-13) : MÊME repo d'usage, plus les
 		// colonnes d'objectif quand le titre les publie — deux gates indépendantes, la
 		// seconde ne retirant que les cartes d'objectif. Le catalogue d'armes du titre
@@ -259,6 +258,13 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 			objectives = duckdb.NewObjectiveStatsRepo(pdb)
 		}
 		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives, r.cfg.RepoRoot)
+	}
+	// Historique d'objectif (« Rapport de force, soirée après soirée », D6) : le titre qui
+	// publie les stats d'objectif dit aussi quels modes l'historique écarte (le drapeau neutre,
+	// lu dans la source unique des sous-modes objectif). Même gate que les colonnes d'objectif
+	// qu'il lit ; jamais une comparaison de slug. Sans lui, l'historique n'écarte aucun mode.
+	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+		svc = svc.WithObjectiveHistory(skillchain.IsNeutralFlagSubMode)
 	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

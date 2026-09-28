@@ -244,7 +244,7 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	if err != nil {
 		return "", err
 	}
-	if err := filmcache.Write(w.workDir, p.ShortID, chunks); err != nil {
+	if err := filmcache.Write(ctx, w.workDir, p.ShortID, chunks); err != nil {
 		return "", fmt.Errorf("écriture du cache film : %w", err)
 	}
 

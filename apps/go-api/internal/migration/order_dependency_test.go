@@ -48,6 +48,11 @@ var stepDependencies = map[string]string{
 	// un no-op, et une DB provisionnée dans cet ordre garderait les index si une autorité
 	// venait à les reposer.
 	"drop_psa_secondary_art_indexes_v1": "create_personal_score_awards_player_v1",
+	// drop_msr_secondary_art_indexes_v1 (2026-09-27, plan backlog lot B3) ne crée pas
+	// match_skill_rank : il retire ses 3 index secondaires. Il DOIT suivre le dernier step
+	// qui les posait, lusr_chain_rework_v1 (rebuild CTAS qui reposait les 3 index jusqu'au
+	// 2026-09-27) — même raisonnement que drop_psa_secondary_art_indexes_v1.
+	"drop_msr_secondary_art_indexes_v1": "lusr_chain_rework_v1",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

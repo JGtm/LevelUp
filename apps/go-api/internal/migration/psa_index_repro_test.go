@@ -10,13 +10,18 @@
 // « lookup indexe < scan sequentiel » avec exactement le controle qu'appliquait
 // cmd/repair_psa_index/diag.go (outil supprime le 2026-09-20).
 //
-// POURQUOI CE HARNAIS SURVIT A SON SUJET (2026-09-20). personal_score_awards n'a
-// plus d'index secondaire : la cible d'origine a disparu. Le harnais reste parce
-// que le DEFAUT, lui, est toujours ouvert (duckdb#23645, 1.5.5 embarquee) et
-// toujours ARME sur match_skill_rank, qui garde ses index (idx_msr_playlist
-// mesure desynchronise le 2026-09-13). La table interrogee ici est le VEHICULE de
-// la reproduction, pas son sujet : c'est le banc d'essai du defaut. A retirer le
-// jour ou plus aucune table d'une player DB ne porte d'index secondaire.
+// POURQUOI CE HARNAIS SURVIT A SON SUJET (reecrit le 2026-09-27, plan backlog lot B3).
+// Ni personal_score_awards (2026-09-20) ni match_skill_rank (2026-09-27) n'ont plus
+// d'index secondaire : les deux tables append-only ou la desynchronisation a ete
+// MESUREE en prod sont soldees. Le DEFAUT, lui, reste ouvert (duckdb#23645, 1.5.5
+// embarquee), et d'autres tables des player DB gardent des index secondaires : entre
+// autres challenge_snapshots et battlepass_snapshots, lusr_component_history
+// (idx_lch_*), player_match_enrichment (idx_pme_match_lookup), player_csr_snapshots
+// (idx_pcs_lookup). Ce harnais est le VEHICULE de reproduction pour ces index restants :
+// personal_score_awards y sert de table d'essai (index poses par le harnais lui-meme),
+// pas de sujet. La mesure D-4 du retrait MSR vit a cote
+// (psa_index_repro_msr_planprobe_test.go). A retirer le jour ou plus aucune table d'une
+// player DB ne porte d'index secondaire.
 package migration
 
 import (
@@ -151,7 +156,7 @@ func reproTombstone(t *testing.T, db *sql.DB, xuid string, matchIDs []string) {
 }
 
 // ── controle (copie fidele du diagnostic de cmd/repair_psa_index/diag.go,
-//    outil supprime le 2026-09-20 — la regle, elle, vit dans indexcheck) ───────
+//    outil supprime le 2026-09-20 ; indexcheck, qui portait la regle, le 2026-09-27) ──
 
 type reproAxis struct {
 	name        string

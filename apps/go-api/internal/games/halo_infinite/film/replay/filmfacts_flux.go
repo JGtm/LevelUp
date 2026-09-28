@@ -146,7 +146,7 @@ func (r *greader) str() string {
 	if r.err != nil {
 		return ""
 	}
-	if r.off+n > len(r.b) {
+	if n < 0 || n > len(r.b)-r.off {
 		r.err = fmt.Errorf("chaine tronquee a l offset %d", r.off)
 		return ""
 	}
@@ -189,6 +189,11 @@ func (r *greader) tranche(n int) []byte {
 // decodeur doit rendre une ERREUR, jamais tomber. `coutMinimal` est le nombre d octets qu un
 // element consomme AU MINIMUM (un varint vaut 1) : au-dela de ce que le flux porte encore, le
 // compte est faux par construction.
+//
+// TOUT COMPTE QUI DIMENSIONNE UNE ALLOCATION PASSE ICI (lot J2.7, constat RA1-5, 2026-09-26) :
+// 34 sites lisaient encore `int(r.u())` avant un `make`. `coutMinimal` y vaut le nombre de
+// lectures INCONDITIONNELLES d un element (une chaine ou un varint : 1, un float32 : 4). Ratchet :
+// `filmfacts_comptes_ratchet_test.go` ; harnais : `filmfacts_fuzz_test.go`.
 func (r *greader) compte(coutMinimal int) int {
 	n := int(r.u())
 	if r.err != nil {

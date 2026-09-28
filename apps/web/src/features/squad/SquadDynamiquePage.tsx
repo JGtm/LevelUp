@@ -4,7 +4,9 @@
  * Consomme le contexte SquadContext fourni par SquadLayout (même mécanisme de
  * données que Contributions : aucune query key propre). Regroupe les charts
  * d'intensité, de rendement/résistance, le « Premier frag / première mort » et
- * la section engagement — déplacés depuis SquadContributionsPage.
+ * la section engagement — déplacés depuis SquadContributionsPage. « Écart cumulé au
+ * FDA attendu » y rejoint « Balance des dégâts cumulée » sur la même rangée (lot L1
+ * du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 ; elle vivait sur Usages).
  *
  * Multi-titres : strings UI via getSquadText ; SquadEngagementSection gardée
  * derrière FeatureGate capability="engagement".
@@ -13,12 +15,14 @@ import { useMemo } from 'react'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
 import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
 import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
+import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
-import { getSquadText } from './i18n'
+import { getSquadText, type SquadText } from './i18n'
 import { SquadIntensityProfileChart } from './SquadIntensityProfileChart'
 import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadNetLivesChart } from './SquadNetLivesChart'
+import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { SquadEngagementGapChart } from './SquadEngagementGapChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
@@ -120,34 +124,100 @@ export function SquadDynamiquePage() {
         labels={t.efficiencySeries}
       />
 
-      <SquadNetLivesChart
+      <CumulativeRow
         rowsByPlayer={perfSeriesByPlayer}
         playerOrder={playerOrder}
         colorByPlayer={playerColors}
         t={t}
-        emptyMessage={t.empty.noBlockData}
       />
 
-      <FeatureGate capability="engagement">
-        {/* Engagement + Écart d'engagement cumulé côte à côte sur desktop (empilés
-            en mobile). */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <SquadEngagementSection
-            playerSlug={playerSlug}
-            matchIds={engagementMatchIds}
-            teammates={engagementTeammates}
-            colorByPlayer={playerColors}
-          />
-          <SquadEngagementGapChart
-            playerSlug={playerSlug}
-            matchIds={engagementMatchIds}
-            teammates={engagementTeammates}
-            colorByPlayer={playerColors}
-            t={t}
-            emptyMessage={t.empty.noBlockData}
-          />
-        </div>
-      </FeatureGate>
+      <EngagementRow
+        playerSlug={playerSlug}
+        matchIds={engagementMatchIds}
+        teammates={engagementTeammates}
+        colorByPlayer={playerColors}
+        t={t}
+      />
     </div>
+  )
+}
+
+/**
+ * Deux cumuls au fil de la soirée, MÊME ABSCISSE (#1..#n, match_order) et même hauteur, côte à
+ * côte sur desktop (empilés en mobile). Chaque carte se masque d'elle-même sans sa capability
+ * (dégâts subis / FDA attendu) : la survivante prend alors toute la rangée (`only-child`), et la
+ * rangée vide disparaît (`empty:hidden`) — jamais une demi-rangée orpheline. Sorti de la page à
+ * la revue L6.1 (taille de la fonction), rendu inchangé.
+ */
+function CumulativeRow({
+  rowsByPlayer,
+  playerOrder,
+  colorByPlayer,
+  t,
+}: {
+  rowsByPlayer: Record<string, SquadPerformanceSeriesPoint[]>
+  playerOrder: string[]
+  colorByPlayer: Record<string, string>
+  t: SquadText
+}) {
+  return (
+    <div
+      className="grid gap-4 empty:hidden md:grid-cols-2 md:[&>*:only-child]:col-span-2"
+      data-testid="squad-cumulative-row"
+    >
+      <SquadNetLivesChart
+        rowsByPlayer={rowsByPlayer}
+        playerOrder={playerOrder}
+        colorByPlayer={colorByPlayer}
+        t={t}
+        emptyMessage={t.empty.noBlockData}
+      />
+      <SquadFdaGapCumulativeCard
+        rowsByPlayer={rowsByPlayer}
+        playerOrder={playerOrder}
+        colorByPlayer={colorByPlayer}
+        t={t}
+        emptyMessage={t.empty.noBlockData}
+      />
+    </div>
+  )
+}
+
+/**
+ * Engagement + Écart d'engagement cumulé côte à côte sur desktop (empilés en mobile), derrière la
+ * capability `engagement`. Sorti de la page à la revue L6.1 (taille de la fonction).
+ */
+function EngagementRow({
+  playerSlug,
+  matchIds,
+  teammates,
+  colorByPlayer,
+  t,
+}: {
+  playerSlug: string
+  matchIds: string[]
+  teammates: SquadTeammateEntry[]
+  colorByPlayer: Record<string, string>
+  t: SquadText
+}) {
+  return (
+    <FeatureGate capability="engagement">
+      <div className="grid gap-4 md:grid-cols-2">
+        <SquadEngagementSection
+          playerSlug={playerSlug}
+          matchIds={matchIds}
+          teammates={teammates}
+          colorByPlayer={colorByPlayer}
+        />
+        <SquadEngagementGapChart
+          playerSlug={playerSlug}
+          matchIds={matchIds}
+          teammates={teammates}
+          colorByPlayer={colorByPlayer}
+          t={t}
+          emptyMessage={t.empty.noBlockData}
+        />
+      </div>
+    </FeatureGate>
   )
 }

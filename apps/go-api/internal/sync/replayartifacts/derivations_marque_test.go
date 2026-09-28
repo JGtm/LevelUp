@@ -29,6 +29,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	_ "github.com/duckdb/duckdb-go/v2"
+
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -98,7 +100,9 @@ func TestDeriver_WriterIndisponible_NeMarquePas(t *testing.T) {
 			chemin := artefactADeriver(t, dir, "marqueA")
 			Deriver(context.Background(), DerivationsDeps{
 				RepoRoot: racineDepot(t), TitleSlug: "halo_infinite", Gamertag: "testeur",
-				AcquireWriter: acquerir,
+				// Un segment de LECTURE qui répond (lot L4.1) : sans lui, les niveaux d'armes
+				// échoueraient d'eux-mêmes et ce test ne dirait plus rien du WRITER (revue L4).
+				WithRead: lectureRegistre(t, "marqueA"), AcquireWriter: acquerir,
 			}, []ArtefactRange{{MatchID: "marqueA", Path: chemin}})
 
 			if _, ok := replaybuild.ReadDerivationsMark(chemin); ok {
@@ -145,4 +149,24 @@ func TestDeriver_RienAEcrire_MarqueQuandMeme(t *testing.T) {
 		t.Fatalf("marque ABSENTE alors qu'il n'y avait rien a ecrire : le rattrapage rejouerait " +
 			"ce match a chaque cycle, indefiniment")
 	}
+}
+
+// lectureRegistre : un segment de lecture sur un registre EN MÉMOIRE qui connaît ces matchs —
+// de quoi lire l'identité des niveaux d'armes sans base migrée.
+func lectureRegistre(t *testing.T, ids ...string) func(context.Context, string, func(*sql.DB)) {
+	t.Helper()
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("duckdb en mémoire: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if _, err := db.Exec(`CREATE TABLE match_registry (match_id VARCHAR, map_id VARCHAR, pair_name VARCHAR)`); err != nil {
+		t.Fatalf("registre: %v", err)
+	}
+	for _, id := range ids {
+		if _, err := db.Exec(`INSERT INTO match_registry VALUES (?, '', 'Arena:Slayer')`, id); err != nil {
+			t.Fatalf("registre %s: %v", id, err)
+		}
+	}
+	return func(_ context.Context, _ string, fn func(*sql.DB)) { fn(db) }
 }

@@ -47,8 +47,9 @@ package replaybuild
 // positions au lieu des captures nommees) — c'est le mode qui la decide, pas le catalogue.
 
 import (
+	"errors"
+	"io/fs"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -221,7 +222,9 @@ func (b *Builder) objectiveRoles() *mappings.ObjectiveRoleSet {
 		objectiveRolesFilename)
 	set, err := mappings.LoadObjectiveRolesFromFile(path)
 	switch {
-	case os.IsNotExist(err):
+	// errors.Is ET NON os.IsNotExist : le chargeur ENVELOPPE l erreur de lecture (`%w`), et
+	// os.IsNotExist ne deroule pas l enveloppe (lot J2.11, constat CONV-1, 2026-09-26).
+	case errors.Is(err, fs.ErrNotExist):
 		slog.Debug("replaybuild: titre sans table d'objectifs — rejeu sans etat de zone",
 			"titleSlug", b.titleSlug)
 		return nil

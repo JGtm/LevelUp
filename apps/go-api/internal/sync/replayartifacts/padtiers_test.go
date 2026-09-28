@@ -195,7 +195,7 @@ func TestProjeterNiveaux_DepartsAleatoires(t *testing.T) {
 // TestPorteCapabiliteNiveaux_EstCABLEE — LE GARDE-RAIL DE LA PORTE.
 //
 // Il ne teste pas une fonction : il teste que le CABLAGE existe. Debrancher
-// `capabiliteNiveauxArmee` de `persisterNiveauxDArmes`, ou la remplacer par un `true` en dur,
+// `capabiliteNiveauxArmee` de `preparerNiveauxDArmes`, ou la remplacer par un `true` en dur,
 // fait rougir ce test — c'est exactement le defaut que la revue des prises nettes a releve
 // (constats C1/M6/M7 : une porte ecrite mais jamais franchie).
 func TestPorteCapabiliteNiveaux_EstCABLEE(t *testing.T) {
@@ -203,31 +203,45 @@ func TestPorteCapabiliteNiveaux_EstCABLEE(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lecture de padtiers.go : %v", err)
 	}
-	txt := string(src)
-	for _, attendu := range []string{
+	prep, err := os.ReadFile("padtiers_preparation.go")
+	if err != nil {
+		t.Fatalf("lecture de padtiers_preparation.go : %v", err)
+	}
+	for fichier, attendus := range map[string][]string{
 		// la porte est declaree...
-		"porteCapability(ctx, d, games.CapFilmWeaponTiers,",
+		string(src): {"porteCapability(ctx, d, games.CapFilmWeaponTiers,"},
 		// ...et elle est FRANCHIE avant toute lecture de reference ou ecriture.
-		"armee, incident := capabiliteNiveauxArmee(ctx, d)",
-		"if !armee {",
+		string(prep): {"armee, incident := capabiliteNiveauxArmee(ctx, d)", "if !armee {"},
 	} {
-		if !strings.Contains(txt, attendu) {
-			t.Errorf("la porte de capability des niveaux d'armes n'est plus cablee : %q absent "+
-				"de padtiers.go — la projection ecrirait sur un titre qui ne la declare pas", attendu)
+		for _, attendu := range attendus {
+			if !strings.Contains(fichier, attendu) {
+				t.Errorf("la porte de capability des niveaux d'armes n'est plus cablee : %q absent "+
+					"— la projection ecrirait sur un titre qui ne la declare pas", attendu)
+			}
 		}
 	}
 	// La capability doit etre au vocabulaire canonique, sinon le TOML ne peut pas l'armer.
 	if !games.IsKnownCapabilityKey(games.CapFilmWeaponTiers) {
 		t.Error("film.weapon_tiers absente de AllCapabilityKeys() : le TOML du titre ne peut pas l'armer")
 	}
-	// Et la derivation doit etre appelee par l'orchestrateur.
+	// Et la derivation doit etre appelee par l'orchestrateur : preparee AVANT la premiere famille
+	// qui ecrit (lot L4.1 — une lecture sous le segment d'ecriture tenu attend un swap qu'il
+	// empeche), ecrite ensuite.
 	der, err := os.ReadFile("derivations.go")
 	if err != nil {
 		t.Fatalf("lecture de derivations.go : %v", err)
 	}
-	if !strings.Contains(string(der), "persisterNiveauxDArmes(ctx, d, b, lus)") {
-		t.Error("persisterNiveauxDArmes n'est plus appelee par Deriver : la grandeur ne serait " +
-			"JAMAIS produite au fil de l'eau, et rien d'autre ne rougirait")
+	txt := string(der)
+	iPrep := strings.Index(txt, "niveaux := preparerNiveauxDArmes(ctx, d, b, lus)")
+	iT0 := strings.Index(txt, "reporterT0Film(ctx, d, b, rapportsT0(lus))")
+	if iPrep < 0 || !strings.Contains(txt, "ecrireNiveauxDArmes(ctx, d, b, niveaux)") {
+		t.Error("les niveaux d'armes ne sont plus prepares puis ecrits par Deriver : la grandeur ne " +
+			"serait JAMAIS produite au fil de l'eau, et rien d'autre ne rougirait")
+	}
+	if iT0 < 0 || (iPrep >= 0 && iPrep > iT0) {
+		t.Error("la preparation des niveaux d'armes (lecture des identites) doit preceder la " +
+			"premiere famille qui ecrit (reporterT0Film) : le segment d'ecriture memoise est tenu " +
+			"jusqu'a la fin de la passe (lot L4.1)")
 	}
 }
 
@@ -280,3 +294,20 @@ func validerPasse(b persist.PadTiersBatch) error {
 
 // mapvarVec : une position d emplacement sur l axe X, les deux autres a zero.
 func mapvarVec(x float64) mapvar.Vec3 { return mapvar.Vec3{X: x} }
+
+// TestDeriver_LesAppelantsTransmettentLeSegmentDeLecture — les deux appelants de ce paquet
+// passent leur segment de lecture à Deriver (lot L4.1 ; le troisième, le dépôt d'ouvrier, est
+// gardé dans api/wire). Retirer le champ ramènerait la panne sans qu'aucun autre test ne rougisse
+// sur le chemin de la cuisson locale (revue du lot L4, constat C-2).
+func TestDeriver_LesAppelantsTransmettentLeSegmentDeLecture(t *testing.T) {
+	for _, f := range []string{"artifacts.go", "derivations_backlog.go"} {
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("lecture de %s : %v", f, err)
+		}
+		if !strings.Contains(string(src), "WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,") {
+			t.Errorf("%s n'appelle plus Deriver avec son segment de lecture : les niveaux d'armes ne "+
+				"liraient plus l'identite des matchs, et ne seraient ni ecrits ni marques", f)
+		}
+	}
+}

@@ -71,7 +71,7 @@ func repertoireDuTemoin(t *testing.T, entrees []filmcache.WriteChunk) (string, *
 		filmcache.WriteChunk{Index: 36, ChunkType: filmcache.ChunkTypeTempsForts, StartMS: 681909,
 			DurationMS: 3, Data: []byte("c36")},
 	)
-	if err := filmcache.Write(racine, "ab526724", complet); err != nil {
+	if err := filmcache.Write(t.Context(), racine, "ab526724", complet); err != nil {
 		t.Fatalf("archivage du film complet : %v", err)
 	}
 	type entree struct {

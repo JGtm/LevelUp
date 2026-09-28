@@ -16,8 +16,8 @@ import (
 	"time"
 )
 
-// soloWaitPoll : cadence des nouvelles tentatives. Plus court que le battement du detenteur,
-// pour qu'un verrou rendu soit vu au plus tard une demi-seconde apres.
+// soloWaitPoll : cadence des nouvelles tentatives — un verrou rendu est vu au plus tard une
+// demi-seconde apres ([AcquireSolo] ne bloque jamais : le verrou OS est tente, pas attendu).
 const soloWaitPoll = 500 * time.Millisecond
 
 // AcquireSoloWait prend le verrou de decodage comme [AcquireSolo], mais attend jusqu'a `max`

@@ -57,6 +57,9 @@ type Source struct {
 	root   string
 	short  string
 	chunks []types.ChunkMeta
+	// tailles : `size_bytes` de chaque entree, a la meme position que `chunks` (0 = inconnue,
+	// manifeste historique). Cf. chunk.go.
+	tailles []int64
 }
 
 // Source implemente la source de film canonique du depot. C'est ce que verifie cette ligne,
@@ -65,9 +68,10 @@ var _ source.Source = (*Source)(nil)
 
 type manifestJSON struct {
 	Chunks []struct {
-		Index     int `json:"index"`
-		ChunkType int `json:"chunk_type"`
-		StartMS   int `json:"start_ms"`
+		Index     int   `json:"index"`
+		ChunkType int   `json:"chunk_type"`
+		StartMS   int   `json:"start_ms"`
+		SizeBytes int64 `json:"size_bytes"`
 	} `json:"chunks"`
 }
 
@@ -89,11 +93,13 @@ func Open(root, shortID string) (*Source, bool, error) {
 	if err := json.Unmarshal(raw, &mf); err != nil {
 		return nil, false, fmt.Errorf("manifeste de film invalide (%s) : %w", path, err)
 	}
-	src := &Source{root: root, short: shortID, chunks: make([]types.ChunkMeta, 0, len(mf.Chunks))}
+	src := &Source{root: root, short: shortID, chunks: make([]types.ChunkMeta, 0, len(mf.Chunks)),
+		tailles: make([]int64, 0, len(mf.Chunks))}
 	for _, c := range mf.Chunks {
 		src.chunks = append(src.chunks, types.ChunkMeta{
 			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS,
 		})
+		src.tailles = append(src.tailles, c.SizeBytes)
 	}
 	return src, true, nil
 }
@@ -109,13 +115,14 @@ func (s *Source) NumChunks() int { return len(s.chunks) }
 // Chunk implemente [source.Source] : les octets BRUTS (compresses) du chunk d'INDICE `i`,
 // lu au fichier que le manifeste lui donne. Un chunk manquant au cache est une ERREUR ici —
 // l'appelant qui veut la degradation gracieuse d'un cache partiel passe par [LoadFilm], qui
-// charge les FICHIERS PRESENTS et non les entrees du manifeste.
+// charge les FICHIERS PRESENTS et non les entrees du manifeste. Quand le manifeste porte la
+// taille du chunk, un fichier d'une autre taille rend [ErrChunkTronque].
 func (s *Source) Chunk(i int) ([]byte, error) {
 	if i < 0 || i >= len(s.chunks) {
 		return nil, fmt.Errorf("filmcache: chunk %d hors bornes (%d au manifeste de %s)", i, len(s.chunks), s.short)
 	}
-	path := filepath.Join(ChunkDir(s.root, s.short), chunkName(s.chunks[i].Index))
-	raw, err := os.ReadFile(path)
+	path := CheminDuChunk(ChunkDir(s.root, s.short), s.chunks[i].Index)
+	raw, err := lireChunkValide(path, s.chunks[i].Index, s.tailles[i])
 	if err != nil {
 		return nil, fmt.Errorf("filmcache: chunk %d de %s (%s) : %w", s.chunks[i].Index, s.short, path, err)
 	}
@@ -131,11 +138,16 @@ func (s *Source) Chunk(i int) ([]byte, error) {
 // ampute plutot qu'une erreur, exactement comme avant ce lot, ou chaque chunk absent etait
 // saute en silence.
 //
-// (nil, false, nil) quand le manifeste n'est pas la — meme contrat qu'[Open].
+// (nil, false, nil) quand le manifeste n'est pas la — meme contrat qu'[Open]. Quand le manifeste
+// porte les tailles, un fichier PRESENT d'une autre taille rend [ErrChunkTronque] (found = true)
+// avant tout chargement : un chunk tronque n'est jamais decode.
 func LoadFilm(root, shortID string) (*source.Film, bool, error) {
 	src, ok, err := Open(root, shortID)
 	if err != nil || !ok {
 		return nil, ok, err
+	}
+	if _, err := src.controlerFichiers(); err != nil {
+		return nil, true, fmt.Errorf("filmcache: film %s : %w", shortID, err)
 	}
 	film, err := source.LoadDir(ChunkDir(root, shortID), src.Meta())
 	if err != nil {
