@@ -124,13 +124,19 @@ const (
 // donc d'un nom ARBITRAIRE (celui du premier occupant, par ordre des vies) sur ces slots-la. Le
 // troisieme retour rend l'ensemble des slots ambigus, pour que « ce slot a eu deux occupants »
 // cesse d'etre indiscernable de « ce slot appartient a ce joueur ».
+//
+// UN SIEGE RECYCLE N'EST PLUS UNE COLLISION (lot R2, 2026-09-28, constat C3). Deux joueurs nommes
+// dans deux CORPS etablis distincts du slot (`corps`, les records de creation) sont deux occupants
+// successifs : le slot sort dans le QUATRIEME retour (le pont aplati s'y tait, ses lecteurs lisent
+// par corps), pas dans le troisieme, que le verdict du pont compte (cf. [classerLeSlot]). Sans
+// corps connus (`corps` nil), toute divergence reste une collision : c'est la regle d'avant.
 func ownersFromLives(
-	lives []lifeSpan, xuidToIndex map[uint64]int,
-) (map[uint32]int, map[uint32]uint64, map[uint32]bool) {
+	lives []lifeSpan, xuidToIndex map[uint64]int, corps map[uint32]corpsLu,
+) (map[uint32]int, map[uint32]uint64, map[uint32]bool, map[uint32]bool) {
 	out := map[uint32]int{}
 	byXUID := map[uint32]uint64{}
-	ambigus := map[uint32]bool{}
-	for _, l := range lives {
+	nommees := map[uint32][]int{}
+	for i, l := range lives {
 		if l.xuid == 0 {
 			continue
 		}
@@ -138,14 +144,23 @@ func ownersFromLives(
 		if !ok {
 			continue
 		}
+		nommees[l.slot] = append(nommees[l.slot], i)
 		if prev, seen := out[l.slot]; seen && prev != idx {
-			ambigus[l.slot] = true
-			continue // conflit : on ne tranche pas, on ne publie pas
+			continue // conflit : on ne tranche pas, on ne publie pas (le slot est classe ci-dessous)
 		}
 		out[l.slot] = idx
 		byXUID[l.slot] = l.xuid
 	}
-	return out, byXUID, ambigus
+	ambigus, recycles := map[uint32]bool{}, map[uint32]bool{}
+	for slot, vies := range nommees {
+		collision, recycle := classerLeSlot(lives, vies, corps)
+		if collision {
+			ambigus[slot] = true
+		} else if recycle {
+			recycles[slot] = true
+		}
+	}
+	return out, byXUID, ambigus, recycles
 }
 
 func absI64(v int64) int64 {

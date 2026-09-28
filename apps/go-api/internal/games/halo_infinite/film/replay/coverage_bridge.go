@@ -58,8 +58,11 @@ type BridgeHealth struct {
 	// IndexDisagreements : identités lues différemment d'un chunk à l'autre. Non nul, la
 	// lecture est fausse.
 	IndexDisagreements int `json:"indexDisagreements"`
-	// SlotCollisions : slots dont les vies nommées désignent des joueurs différents. Non
-	// nul, la table slot -> joueur n'est pas représentable et le verdict le dit.
+	// SlotCollisions : slots dont les vies nommées désignent des joueurs différents DANS UN MÊME
+	// CORPS (slot, génération) — ou dans un corps que rien n établit. Non nul, la table slot ->
+	// joueur n est pas représentable et le verdict le dit. Un SIÈGE RECYCLÉ (deux corps établis
+	// distincts, deux joueurs) n en est pas une depuis le lot R2 (2026-09-28, constat C3) : la
+	// donnée par vie y est juste, seul le pont aplati s y tait.
 	SlotCollisions int `json:"slotCollisions"`
 	// Concordant / Discordant : LE PONT PAR MORTS EN TÉMOIN (lot E2, 2026-09-08). Depuis que le
 	// record de création du bipède ÉCRIT le propriétaire du corps, le pont ne nomme plus : il
@@ -260,6 +263,8 @@ func verdictOfBridge(b BridgeHealth) string {
 	switch {
 	case b.Slots == 0:
 		return "non publiable : aucun pont"
+	// UNE COLLISION, PAS UN SIEGE RECYCLE (lot R2) : deux vies de corps distincts portees par deux
+	// joueurs sont deux occupants successifs, lus par corps ; seules deux vies d un meme corps le sont.
 	case b.SlotCollisions > 0:
 		return "non publiable : un slot change de porteur"
 	case b.FromReading+b.ClosedByShot+b.ClosedByRespawn != b.Slots:
