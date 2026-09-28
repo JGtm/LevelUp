@@ -1,82 +1,162 @@
 package replaydiff
 
-// polarite.go — LES COMPTEURS D'ECHEC SE LISENT A L'ENVERS.
+// polarite.go — CHAQUE MESURE DE COUVERTURE A UNE POLARITE DECLAREE.
 //
-// `classerNombres` nomme « perte » toute mesure qui BAISSE : c'est juste pour tout ce qui
-// mesure une richesse (vies nommees, actions rattachees, portages, durees). C'est faux pour les
-// compteurs que la couverture publie pour dire ce que la cuisson N'A PAS su faire : une action
-// d'objectif `unpublished`, une vie `unnamedLives`, un tir `noSlot`, un desaccord d'index. Pour
-// eux, une baisse est le gain que le chantier cherche (plan v2 §1 : « compteur d'echec qui
-// baisse = gain »), et une hausse est la perte a instruire.
+// `classerNombres` nomme « perte » toute mesure qui BAISSE : c'est juste pour ce qui mesure une
+// richesse (vies nommees, actions rattachees, portages, durees), faux pour les compteurs que la
+// couverture publie pour dire ce que la cuisson N'A PAS su faire, et faux encore pour un
+// denominateur, qui ne dit ni l'un ni l'autre.
 //
-// Constate le 2026-09-08 sur le lot P2 (registre des joueurs) : `coverage.objectives.unpublished`
-// 35 -> 0 et `coverage.shots.noSlot` 35 -> 15 sortaient en PERTE, et le gate refusait exactement
-// le progres qu'il devait garder. La liste est FERMEE et nommee : un compteur absent d'ici garde
-// la lecture generique (plus = mieux), et un nouveau compteur d'echec s'ajoute ici avec sa date.
+// HISTORIQUE DU DEFAUT. Jusqu'au 2026-09-28 une liste FERMEE de derniers segments (`noSlot`,
+// `unpublished`...) designait les compteurs d'echec, et toute autre mesure gardait la lecture
+// « plus = mieux ». Le G-corpus J11 (`.ai/V7.5/film_re/G_CORPUS_J11_2026-09-28.md` §4) en a
+// chiffre le cout : environ 110 des 390 lignes « perte » etaient des compteurs d'echec qui
+// BAISSAIENT (`holes*`, `*Unlocated`, `no_owner`, `desync`, `uncovered`...), et 70 compteurs
+// d'echec qui MONTAIENT sortaient en « gain », donc absents du rapport. Une liste fermee se
+// periment au premier compteur neuf, dans le sens qui cache la perte.
 //
-// `deathOffsetRunnerUp` n'y est PAS : c'est un nombre de voix, pas un echec — sa marge se lit
-// contre `deathOffsetMatched`, et une lecture inversee en ferait une perte a chaque voix
-// de plus.
+// LA REGLE (lot R4). La classification est TOTALE : chaque feuille numerique de `coverage.*` et de
+// `bombStats.coverage.*` a une polarite declaree dans `polarite_table.go`, et un ratchet
+// (`polarite_ratchet_test.go`) derive l'inventaire des feuilles de la forme du document et rougit
+// sur toute feuille non classee. Une feuille de couverture INCONNUE a l'execution (artefact d'un
+// schema que la table ne connait pas) se lit en CHANGEMENT : ni gain ni perte presumes, mais
+// visible et bloquante au gate de corpus — jamais un gain silencieux.
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
-// prefixeCouverture : seules les mesures de l'axe `coverage` sont candidates a l'inversion.
-const prefixeCouverture = "coverage."
+// Polarite est le sens de lecture d'une mesure de couverture.
+type Polarite int
 
-// compteursDEchec : dernier segment de cle -> compteur d'echec (une baisse est un gain).
-// Ajouts dates : 2026-09-08 (lot P2) ; `noTrack` le 2026-09-08 (P2-bis, `flagCarries.noTrack`).
-var compteursDEchec = map[string]bool{
-	"unpublished":           true,
-	"unnamedLives":          true,
-	"unnamedLivesContested": true,
-	"noSlot":                true,
-	"noTrack":               true,
-	"outOfWindow":           true,
-	"ambiguous":             true,
-	"closedRefused":         true,
-	"closedContested":       true,
-	"indexDisagreements":    true,
-	"slotCollisions":        true,
-	// `noBridge` le 2026-09-08 (lot E2) : `coverage.bombCarries.noBridge` compte les portages de
-	// bombe qu AUCUN pont ne nommait. Le lien direct corps -> joueur le ramene de 2 a 0 sur
-	// `c75f33b8`, et le gate lisait cette disparition comme une perte — le meme defaut que
-	// `noTrack` la veille, sur un compteur dont le NOM dit qu il est un echec.
-	"noBridge": true,
-	// 2026-09-08 (lot E2-bis) : `coverage.flagCarries.ambiguousReturns` / `ambiguousSlot` et
-	// `coverage.vehicles.shotsNoRide` — des ECHECS que le lien direct fait baisser (3 -> 2, 1 -> 0,
-	// 2768 -> 2265 sur `084a804d`) et que le gate lisait en perte.
-	"ambiguousReturns": true,
-	"ambiguousSlot":    true,
-	"shotsNoRide":      true,
-	// `bombStats.coverage.periodsNoBridge` (E2-bis) : periodes de portage de bombe sans pont, 2 -> 0.
-	"periodsNoBridge": true,
-	// 2026-09-24 (integration de la vague D des retours du rejeu, lot M2.3) : `coverage.seats`,
-	// les places et les presences du roster. Trois familles d echec, chacune lue a l envers :
-	// ce que la pose des places n a pas su faire (`sansPlace`, `sansEquipe`,
-	// `identitesHorsRoster`), ce qui viole la regle des places de l utilisateur (`depassements`,
-	// `placesEnTrop` : 0 attendu), les contradictions et trous de la liaison aux entites ti=9
-	// (`chevauchements`, `tirsContestes`, `entitesNonLiees`, `entitesContestees`,
-	// `trousDEntite`), et les deux REPLIS NOMMES qu une lecture fait baisser
-	// (`placesOuvertes` = `repli_place_ouverte_sous_la_capacite_estimee`, `presencesParLesVies` =
-	// `repli_presence_d_une_entree_par_ses_vies`). `apparies` (chainage, repli anterieur) et les
-	// compteurs de richesse (`lus`, `placesTirs`, `relaisBornes`, `botsSuccesseurs`) n y sont pas.
-	"sansPlace":           true,
-	"sansEquipe":          true,
-	"identitesHorsRoster": true,
-	"depassements":        true,
-	"placesEnTrop":        true,
-	"chevauchements":      true,
-	"tirsContestes":       true,
-	"entitesNonLiees":     true,
-	"entitesContestees":   true,
-	"trousDEntite":        true,
-	"placesOuvertes":      true,
-	"presencesParLesVies": true,
-	// 2026-09-24 (lot D-fix des retours du rejeu) : les deux compteurs de la SANTE DES IMAGES-CLES
-	// du balayage des entites ti=9 — une absence que la marche ne prouve pas ne conclut rien, et ces
-	// deux comptes (0 attendus) montent quand la marche perd des occupants.
-	"imagesClesDouteuses": true,
-	"bornesDifferees":     true,
+// Les classes de polarite (critere dans l'en-tete de `polarite_table.go`).
+const (
+	// PolariteInconnue : feuille de couverture absente de la table (ratchet rouge a la forme
+	// courante ; lue en changement a l'execution).
+	PolariteInconnue Polarite = iota
+	// PolariteEchec : plus = pire. Sens generique inverse.
+	PolariteEchec
+	// PolariteSucces : plus = mieux. Sens generique.
+	PolariteSucces
+	// PolariteNeutre : denominateur, population, ventilation : un changement.
+	PolariteNeutre
+	// PolariteTelemetrie : reglage ou forme de l'outil : un changement, que le verdict du gate
+	// de corpus affiche sans le compter.
+	PolariteTelemetrie
+)
+
+// jokerCle designe, dans la table, toute cle d'une map de la couverture.
+const jokerCle = "*"
+
+// indexPolarites : la table depliee, cle complete (ou motif a joker) -> polarite.
+type indexPolarites struct {
+	exactes map[string]Polarite
+	motifs  []motifPolarite
+	// doublons : cles declarees deux fois — le ratchet exige qu'il n'y en ait aucune.
+	doublons []string
+}
+
+// motifPolarite : une entree a joker, decoupee autour de `*`.
+type motifPolarite struct {
+	cle, avant, apres string
+	pol               Polarite
+}
+
+var (
+	indexUnique sync.Once
+	indexTable  indexPolarites
+)
+
+// polarites rend l'index de la table courante et des feuilles heritees, construit une fois.
+func polarites() *indexPolarites {
+	indexUnique.Do(func() {
+		indexTable = construireIndex(append(append([]blocPolarites{}, tablePolarites...),
+			polaritesHeritees...))
+	})
+	return &indexTable
+}
+
+// construireIndex deplie des lignes de table en index. Une cle declaree deux fois garde sa
+// premiere polarite et entre dans `doublons`.
+func construireIndex(lignes []blocPolarites) indexPolarites {
+	idx := indexPolarites{exactes: map[string]Polarite{}}
+	for _, l := range lignes {
+		for _, bloc := range l.Blocs {
+			for _, c := range []struct {
+				liste string
+				pol   Polarite
+			}{{l.Echecs, PolariteEchec}, {l.Succes, PolariteSucces}, {l.Neutres, PolariteNeutre},
+				{l.Telemetrie, PolariteTelemetrie}} {
+				for _, f := range strings.Fields(c.liste) {
+					idx.ajouter(bloc+f, c.pol)
+				}
+			}
+		}
+	}
+	return idx
+}
+
+func (idx *indexPolarites) ajouter(cle string, pol Polarite) {
+	if _, deja := idx.exactes[cle]; deja {
+		idx.doublons = append(idx.doublons, cle)
+		return
+	}
+	idx.exactes[cle] = pol
+	if i := strings.Index(cle, jokerCle); i >= 0 {
+		idx.motifs = append(idx.motifs, motifPolarite{cle: cle, avant: cle[:i],
+			apres: cle[i+len(jokerCle):], pol: pol})
+	}
+}
+
+// lire rend la polarite d'un chemin : entree exacte d'abord, sinon le motif a joker le plus
+// precis (le plus long litteral) qui l'accepte.
+func (idx *indexPolarites) lire(chemin string) Polarite {
+	if p, ok := idx.exactes[chemin]; ok {
+		return p
+	}
+	meilleur, longueur := PolariteInconnue, -1
+	for _, m := range idx.motifs {
+		if len(chemin) <= len(m.avant)+len(m.apres) ||
+			!strings.HasPrefix(chemin, m.avant) || !strings.HasSuffix(chemin, m.apres) {
+			continue
+		}
+		if n := len(m.avant) + len(m.apres); n > longueur {
+			meilleur, longueur = m.pol, n
+		}
+	}
+	return meilleur
+}
+
+// estCouverture dit si un chemin aplati appartient a la couverture (tete ou calque d'Assaut).
+func estCouverture(chemin string) bool {
+	return strings.HasPrefix(chemin, racineCouverture) || strings.HasPrefix(chemin, racineAssaut)
+}
+
+// PolariteDe rend la polarite d'une metrique d'ecart (`Difference.Metrique`, chemin aplati sans
+// axe) et si elle est une mesure de couverture. Hors couverture : (PolariteInconnue, false).
+func PolariteDe(metrique string) (Polarite, bool) {
+	if !estCouverture(metrique) {
+		return PolariteInconnue, false
+	}
+	return polarites().lire(metrique), true
+}
+
+// sensSelonPolarite applique la polarite d'une mesure de couverture (chemin aplati, sans axe)
+// au sens generique mesure par `classer`. Hors couverture, le sens generique est rendu tel quel.
+func sensSelonPolarite(chemin, sens string) string {
+	pol, couverture := PolariteDe(chemin)
+	if !couverture || sens == SensChangement {
+		return sens
+	}
+	switch pol {
+	case PolariteEchec:
+		return inverserSens(sens)
+	case PolariteSucces:
+		return sens
+	default: // neutre, telemetrie, inconnue
+		return SensChangement
+	}
 }
 
 // marqueurParXUID / marqueurParSlot : segments des cles ventilees par joueur
@@ -141,52 +221,6 @@ func estReattribution(k string, conserves map[string]bool) bool {
 	return ok && conserves[g]
 }
 
-// prefixesMethode : les compteurs `coverage.bridge.namedBy*` disent PAR QUELLE VOIE une vie a ete
-// nommee (fil des morts, vie voisine, fermeture, exclusion...). Ils se deplacent entre eux quand
-// une voie plus sure prend le pas sur une voie de repli (P2-bis, 2026-09-08 : `namedByNextLife`
-// 13 -> 8 sur `d9781168` parce que l'exclusion temporelle nomme d'abord) : ni gain ni perte, un
-// CHANGEMENT. La richesse, elle, se lit sur `livesNamed` / `unnamedLives`.
-//
-// `coverage.bridge.closedBy*` (2026-09-08, lot E2) EST LA MEME FAMILLE, et pour la meme raison :
-// `closedByShot` et `closedByRespawn` disent par quelle preuve une FERMETURE a comble le pont —
-// une DEDUCTION, qui ne s'applique par construction qu'aux slots que la lecture n'a pas nommes.
-// Quand le lien direct corps -> joueur nomme 100 % des corps (mesure du lot : 5 films sur 5), les
-// fermetures n'ont plus rien a fermer et ces deux compteurs tombent a ZERO. Ce n'est pas une
-// richesse perdue — c'est une voie de repli devenue inutile, et `livesNamed` / `unnamedLives` le
-// disent a leur place.
-//
-// `coverage.flagCarries.homeBy*` / `assignedBy*` (2026-09-08, lot E2-bis) : par quelle voie un
-// retour ou une attribution de drapeau a ete tranche (objet, marqueur, jeu...) — meme famille.
-var prefixesMethode = []string{
-	"coverage.bridge.namedBy", "coverage.bridge.closedBy",
-	"coverage.flagCarries.homeBy", "coverage.flagCarries.assignedBy",
-}
-
-// estCompteurDeMethode dit si la mesure `k` est un compteur de voie de nommage.
-func estCompteurDeMethode(k string) bool {
-	_, chemin := decouper(k)
-	for _, p := range prefixesMethode {
-		if strings.HasPrefix(chemin, p) {
-			return true
-		}
-	}
-	return false
-}
-
-// estCompteurDEchec dit si la mesure `k` (cle d'empreinte `axe/chemin`, ex.
-// `couverture/coverage.objectives.unpublished`, cf. `cle()`) est un compteur d'echec de la
-// couverture. L'axe est ignore : c'est le chemin aplati qui porte le sens.
-func estCompteurDEchec(k string) bool {
-	_, chemin := decouper(k)
-	// La couverture vit en tete du document (`coverage.*`) ou dans un calque qui porte la
-	// sienne (`bombStats.coverage.*`) : c'est le SEGMENT `coverage` qui compte, pas sa position.
-	if !strings.HasPrefix(chemin, prefixeCouverture) && !strings.Contains(chemin, "."+prefixeCouverture) {
-		return false
-	}
-	i := strings.LastIndexByte(chemin, '.')
-	return compteursDEchec[chemin[i+1:]]
-}
-
 // inverserSens retourne le sens d'un ecart pour un compteur d'echec : une baisse (perte
 // generique) devient un gain, une hausse une perte ; un compteur qui apparait (> 0) est une
 // perte, un compteur qui disparait est un gain. Un changement textuel reste un changement.
@@ -202,4 +236,19 @@ func inverserSens(sens string) string {
 		return SensGain
 	}
 	return sens
+}
+
+// String nomme la classe, pour les messages et les rapports.
+func (p Polarite) String() string {
+	switch p {
+	case PolariteEchec:
+		return "echec"
+	case PolariteSucces:
+		return "succes"
+	case PolariteNeutre:
+		return "neutre"
+	case PolariteTelemetrie:
+		return "telemetrie"
+	}
+	return "inconnue"
 }

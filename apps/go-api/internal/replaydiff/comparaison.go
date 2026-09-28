@@ -106,12 +106,10 @@ func (r *Rapport) ajouter(k string, a, b *Mesure) {
 	}
 	d.Axe, d.Metrique = axe, metrique
 	switch {
-	case estCompteurDEchec(k):
-		// Un compteur d'echec se lit a l'envers (polarite.go) : sa baisse est le gain cherche.
-		d.Sens = inverserSens(d.Sens)
-	case estCompteurDeMethode(k):
-		// Une voie de nommage qui cede a une autre n'est ni un gain ni une perte (polarite.go).
-		d.Sens = SensChangement
+	case estCouverture(metrique) && estNumerique(a, b):
+		// Une mesure de couverture se lit selon sa polarite declaree (polarite.go) : un compteur
+		// d'echec a l'envers, un denominateur ou une voie en changement.
+		d.Sens = sensSelonPolarite(metrique, d.Sens)
 	case (d.Sens == SensPerte || d.Sens == SensDisparu) && estReattribution(k, r.conserves):
 		// Une BAISSE chez un joueur, dans un groupe dont la somme ne baisse pas, a change de
 		// main, pas de valeur : une REATTRIBUTION (polarite.go, `groupesConserves`). Les
@@ -174,6 +172,12 @@ func classerNombres(na, nb float64) (Difference, bool) {
 	return Difference{
 		Ancien: formater(na), Nouveau: formater(nb), Sens: sens, Delta: nb - na,
 	}, true
+}
+
+// estNumerique dit si l'ecart porte sur une mesure numerique (au moins un cote). Une feuille
+// textuelle de la couverture (verdict, revision) garde la lecture generique.
+func estNumerique(a, b *Mesure) bool {
+	return (a != nil && a.EstNum) || (b != nil && b.EstNum)
 }
 
 func deltaDe(m *Mesure) float64 {

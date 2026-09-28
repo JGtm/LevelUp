@@ -50,9 +50,13 @@ func ligneDepuisLaPaireReelle(t *testing.T) ligneRapport {
 // TestRapportDuGateSurUnePaireReelle — LE TABLEAU ET SES DEUX SECTIONS, sur la vraie paire.
 func TestRapportDuGateSurUnePaireReelle(t *testing.T) {
 	l := ligneDepuisLaPaireReelle(t)
-	if l.Gains != 60 || l.Pertes != 13 || l.Changements != 2 {
-		t.Fatalf("%d gains / %d pertes / %d changements, 60 / 13 / 2 attendus (les colonnes que "+
-			"le corpus gate avait ecrites pour ce temoin)", l.Gains, l.Pertes, l.Changements)
+	// 60 gains a la cloture M1 ; 59 depuis le lot R4 (2026-09-28) : `coverage.tracks.minPoints`
+	// (apparu, 1) est le SEUIL applique, une feuille de telemetrie que le verdict affiche sans
+	// la compter (`estTelemetrie`).
+	if l.Gains != 59 || l.Pertes != 13 || l.Changements != 2 || len(l.TelemetrieDetail) != 1 {
+		t.Fatalf("%d gains / %d pertes / %d changements / %d telemetrie, 59 / 13 / 2 / 1 attendus "+
+			"(les colonnes du corpus gate pour ce temoin, moins le seuil `tracks.minPoints`)",
+			l.Gains, l.Pertes, l.Changements, len(l.TelemetrieDetail))
 	}
 	if got := l.statut(); got != statutPerte {
 		t.Errorf("statut = %q, %q attendu : 13 pertes priment sur 2 changements", got, statutPerte)
@@ -117,8 +121,9 @@ func TestRapportJSONDuGateSurUnePaireReelle(t *testing.T) {
 	if lj.Statut != statutPerte {
 		t.Errorf("statut JSON = %q, %q attendu", lj.Statut, statutPerte)
 	}
-	if lj.Gains != 60 || lj.Pertes != 13 || lj.Changements != 2 {
-		t.Errorf("comptes JSON = %d / %d / %d, 60 / 13 / 2 attendus", lj.Gains, lj.Pertes, lj.Changements)
+	if lj.Gains != 59 || lj.Pertes != 13 || lj.Changements != 2 {
+		t.Errorf("comptes JSON = %d / %d / %d, 59 / 13 / 2 attendus (lot R4 : le seuil en telemetrie)",
+			lj.Gains, lj.Pertes, lj.Changements)
 	}
 	if len(lj.PertesDetail) != 13 {
 		t.Errorf("%d entree(s) de pertesDetail, 13 attendues", len(lj.PertesDetail))
