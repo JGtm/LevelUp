@@ -85,7 +85,7 @@ func bobineFilm(t *testing.T, film string) *source.Film {
 // TestScanPlayerTeamsSurLesBobines execute E-LUE, E-DOM et le gel des comptes.
 func TestScanPlayerTeamsSurLesBobines(t *testing.T) {
 	for _, b := range bobinesEquipes() {
-		teams, rep, _ := ScanPlayerTeams(NewFilmContext(bobineFilm(t, b.film)))
+		teams, rep, _ := equipesMemo(t, b.film) // decodage partage (bobines_memo_test.go)
 		if !rep.Lu() {
 			t.Fatalf("%s : lecture refusee (archetypeAbsent=%v composant=%q)", b.film,
 				rep.ArchetypeAbsent, rep.Component)

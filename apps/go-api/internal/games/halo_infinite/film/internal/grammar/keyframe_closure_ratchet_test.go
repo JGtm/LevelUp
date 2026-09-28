@@ -44,8 +44,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // updateFermeture : LA PORTE DE REGENERATION DE CE GOLDEN, ET D AUCUN AUTRE.
@@ -362,19 +360,17 @@ func mesurerFermetureBobines(t *testing.T) string {
 	return b.String()
 }
 
-// fermetureDUneBobine charge une bobine et rend sa fermeture par archetype.
+// fermetureDUneBobine charge une bobine et rend sa fermeture par archetype. Le decodage est fait
+// UNE fois par processus de test et partage avec `TestTI9FermeSurLesSeptBobines`
+// (`bobines_memo_test.go`) ; chaque appelant recoit sa copie.
 func fermetureDUneBobine(t *testing.T, dir string) map[uint32]KeyframeClosureStat {
 	t.Helper()
 	if _, err := os.Stat(dir); err != nil {
 		t.Fatalf("bobine absente (%s) : %v — regenerer les bobines du lot 0.A.2", dir, err)
 	}
-	film, err := source.LoadDir(dir, nil)
+	stats, err := fermetureMemo(dir)
 	if err != nil {
-		t.Fatalf("LoadDir %s : %v", dir, err)
-	}
-	stats, err := KeyframeClosure(NewFilmContext(film))
-	if err != nil {
-		t.Fatalf("KeyframeClosure %s : %v", dir, err)
+		t.Fatalf("%v", err)
 	}
 	return stats
 }
