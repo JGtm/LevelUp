@@ -1,10 +1,11 @@
 package grammar
 
-// lecteur_position_exceptions.go — LES TROIS SITES DE `FUN_14076e524` QUI GARDENT LEUR ANCIEN
+// lecteur_position_exceptions.go — LES SIX SITES DE `FUN_14076e524` QUI GARDENT LEUR ANCIEN
 // LECTEUR (lot J6.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision du superviseur du
-// 2026-09-27).
+// 2026-09-27 pour les trois premiers ; lot J6-bis du 2026-09-28 pour flock-destination,
+// tacmap-poiicon et player-desired-respawn-location, meme situation, meme format).
 //
-// Le portage unique (`lecteur_position.go`) lit ces trois sites comme le jeu les ecrit — releve
+// Le portage unique (`lecteur_position.go`) lit ces six sites comme le jeu les ecrit — releve
 // Ghidra du 2026-09-27 — et la FERMETURE DES BOBINES baisse sur chacun : la lecture du jeu y est
 // donc contredite par une mesure que ce lot ne sait pas expliquer. Chaque site garde ici son
 // lecteur d AVANT le lot, et figure comme EXCEPTION DATEE dans la table des sites
@@ -95,4 +96,90 @@ func consumeGenericRigidBodyTransforms(br *Lecteur) {
 			}
 		}
 	}
+}
+
+// consumeFlockDestination lit ti=21 i2-i11 flock-destination (`FUN_140fb8af0`, CALL 140fb8b3e,
+// niveau 0x10 en 140fb8b33) avec le lecteur d AVANT le lot J6.3 : R(1), le vecteur au niveau du
+// registre ([lireVecteurAncienAuNiveauDuRegistre]), puis R(2) quand ce niveau depasse 1.
+//
+// EXCEPTION (lot J6-bis, 2026-09-28) : chez le jeu, R(1), la garde, `FUN_14076e524(0x10)` et R(2)
+// (`FUN_1424e268c`, `param_4 > 1`). Portee ainsi, deux listes d evenements de `11de8353`
+// (HI_1_9_0) que l ancien lecteur fermait au bit pres ne se localisent plus : chunk 19 paquet
+// 494 (16 entrees de controle) et chunk 9 paquet 1146 (22 entrees) — l ancien lit ce composant sur
+// 29 et 4 bits, la lecture du jeu sur 52 et 70. Elle en ferme une autre, `000d5950` (HI_1_13_0) chunk 20
+// paquet 1322 (8 entrees) : le format depend du build ou du contenu, ce que ce lot n etablit pas.
+func consumeFlockDestination(br *Lecteur, level uint32) {
+	br.ReadBit()
+	lireVecteurAncienAuNiveauDuRegistre(br, level)
+	if level > 1 {
+		br.ReadBits(2) // FUN_1424e268c
+	}
+}
+
+// consumeTacmapPoiIcon lit ti=30 i0 tacmap-poiicon (`FUN_142ed8418`, CALL 142ed86d7, le thunk
+// `FUN_1424e0e38` au niveau 0x10) avec le lecteur d AVANT le lot J6.3 : le bloc de l icone, le
+// vecteur au niveau du registre ([lireVecteurAncienAuNiveauDuRegistre]), puis la queue.
+//
+// EXCEPTION (lot J6-bis, 2026-09-28) : chez le jeu, le vecteur est `FUN_14076e494(0x10)`. Porte
+// ainsi, la liste d evenements du chunk 21 paquet 1032 de `11de8353` (HI_1_9_0), que l ancien
+// lecteur fermait au bit pres (0 entree de controle), ne se localise plus : le composant passe de
+// 239 a 264 bits ; aucune fermeture ne monte sur les huit builds.
+func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
+	br.ReadBits(32) // icon-id
+	br.ReadBits(32) // icon-missionid
+	br.ReadBit()
+	br.ReadBits(3)
+	br.ReadBits(32) // icon-text
+	br.ReadBits(32) // icon-bitmapbg
+	br.ReadBits(9)
+	br.ReadBits(9)
+	lireVecteurAncienAuNiveauDuRegistre(br, level)
+	br.ReadBits(32) // string-id
+	br.ReadBit()
+	br.ReadBits(8)
+	br.ReadBits(8)
+	br.ReadBits(8)
+	br.ReadBits(8)
+}
+
+// consumePlayerDesiredRespawnLocation lit ti=5 i12 player-desired-respawn-location (`FUN_142f03ec8`,
+// descripteur 143d0f2f8 + 0x28, `FUN_14076e494(0x10)` chez le jeu) avec le lecteur d AVANT le lot
+// J6.3 : R(1) porte ; si 1, le vecteur au niveau du registre, puis R(19) (`FUN_14076dc04`,
+// l identifiant de reapparition). Publie `[qx, qy, qz, identifiant, niveau]` — le niveau parce que
+// la largeur des quanta en depend ; precHigh leve : l identifiant seul, `present` faux ; porte
+// fermee : rien.
+//
+// EXCEPTION (lot J6-bis, 2026-09-28) : portee comme le jeu, la liste d evenements du chunk 25
+// paquet 344 de `e5adf7b2` (HI_1_11_0, 14 entrees de controle), que l ancien lecteur fermait au bit
+// pres, ne se localise plus (le composant passe de 44 a 71 bits) ; elle en ferme deux autres
+// (`e5adf7b2` chunk 6 paquet 50, 4 entrees ; `111fa685` chunk 14 paquet 552, 2 entrees).
+func consumePlayerDesiredRespawnLocation(br *Lecteur, level uint32) {
+	if !br.ReadBit() {
+		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
+		return
+	}
+	q, ok := lireVecteurAncienAuNiveauDuRegistre(br, level)
+	id := br.ReadBits(19)
+	if !ok {
+		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false, id)
+		return
+	}
+	br.obs.publishPlayerState(PlayerDesiredRespawnLocation, true, q[0], q[1], q[2], id, uint64(level))
+}
+
+// lireVecteurAncienAuNiveauDuRegistre est le vecteur que ces sites lisaient avant le lot J6.3
+// (`consumeQuantVec3Values`) : un bit precHigh — a 1, le vecteur par defaut, 0 bit, et ok faux —,
+// la porte, un index fige a 1 bit, puis trois axes a `min(26, 6 + niveau du registre)`.
+func lireVecteurAncienAuNiveauDuRegistre(br *Lecteur, level uint32) (q [3]uint64, ok bool) {
+	if br.ReadBit() { // precHigh
+		return q, false
+	}
+	if !br.ReadBit() { // porte ; 0 -> l index est present
+		br.ReadBits(1)
+	}
+	w := largeurAncienneDuFlock(uint(level))
+	for axe := range q {
+		q[axe] = br.ReadBits(w)
+	}
+	return q, true
 }
