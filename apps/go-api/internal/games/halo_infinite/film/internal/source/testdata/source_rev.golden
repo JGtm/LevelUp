@@ -68,5 +68,13 @@
 #               ...) entrent par leurs jetons, et les valeurs amont sont celles que la fermeture
 #               rencontre. AUCUNE source ne change dans ce lot : la sortie est identique a l octet,
 #               rien n est candidat a un redecodage.
+#
+#   2026-09-28  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (temps CI du paquet `grammar`).
+#               DEUX PRIMITIVES NEUVES, AUCUNE LECTURE CHANGEE : `motif64.go` porte
+#               [PremierMotif64] (la premiere fenetre de 64 bits qui passe un motif, par blocs de
+#               huit positions) et [SuiteDeUns] (la longueur d une suite de bits a 1). Aucun
+#               lecteur existant ne change ; la recherche d ancres d image-cle de `grammar` les
+#               appelle et rend les memes positions (differentiel `keyframe_world_motif_test.go`,
+#               `replay-equiv` sur les 20 films).
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	ab4eb689925e7888b36f87fe20fa8c17b385dc030eb06e5bda8dd09e8ee219c2
+source-2026-09-16.2	2c882d05bb03278a92783f64b30ea4622474cdfd4c9cf8236f835661e2031916

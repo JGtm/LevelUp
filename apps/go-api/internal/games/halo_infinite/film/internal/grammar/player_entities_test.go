@@ -72,7 +72,7 @@ func TestAccumulateurDEntites(t *testing.T) {
 // TestEntitesTi9SurLesBobines execute ENT-BOBINE et ENT-REPRISE.
 func TestEntitesTi9SurLesBobines(t *testing.T) {
 	for _, b := range bobinesEquipes() {
-		teams, rep, ents := ScanPlayerTeams(NewFilmContext(bobineFilm(t, b.film)))
+		teams, rep, ents := equipesMemo(t, b.film) // decodage partage (bobines_memo_test.go)
 		if !ents.Scanned {
 			t.Fatalf("%s : entites non balayees alors que la table est lue", b.film)
 		}

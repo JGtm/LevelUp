@@ -96,7 +96,13 @@ func (c *FilmContext) PreuveDImageCle() *PreuveDImageCle {
 // MarcheDImageCle rend la marche d'ancres de ce film : elle refuse une élection contredite par un
 // record prouvé. Sans registre, c'est la marche sans preuve.
 func (c *FilmContext) MarcheDImageCle() MarcheDImageCle {
-	return MarcheDImageCle{preuve: c.PreuveDImageCle()}
+	if c == nil { // pas de contexte, pas de memoire : la marche d avant, sans preuve
+		return MarcheDImageCle{preuve: c.PreuveDImageCle()}
+	}
+	if c.marches == nil {
+		c.marches = &memoireDesMarches{preuve: c.PreuveDImageCle(), parPayload: map[clePayload]MarcheDePayload{}}
+	}
+	return MarcheDImageCle{preuve: c.marches.preuve, memoire: c.marches}
 }
 
 // prouve dit si le candidat de `bit` et de `slot` est un record PROUVÉ par la grammaire du film

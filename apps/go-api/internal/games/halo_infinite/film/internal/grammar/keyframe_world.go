@@ -14,7 +14,11 @@ package grammar
 // WorldFromKeyframe binde chaque record via World.BindFull(fullID, ti). Aucun input CE :
 // seul le payload de frame type-2 du chunk (pay) est lu.
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
+import (
+	"math/bits"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
 
 const (
 	kfSent     = 0xFFFFFFFF // id sentinelle
@@ -79,6 +83,34 @@ func kfAnchorFromID(buf []byte, q int, id uint64, prevSlot, total int) (slot, ti
 	ti = int(source.BitsBourres(buf, q+keyframeRecordTIBit, 6)) // extraction durcie (== mot 32-bit quand field26==0)
 	ok = true
 	return
+}
+
+// motifDAncre decrit, pour [source.PremierMotif64], le SUR-ENSEMBLE des positions ou la boucle de
+// [kfRecherche.suivante] fait autre chose que remettre sa trainee de sentinelles a zero : une
+// SENTINELLE (les 32 bits d identifiant valent [kfSent]), ou une fenetre qui passe, en plus
+// large, les gardes de [kfAnchorFromID] :
+//
+//	generation non nulle         un des bits 63-62 a 1
+//	slot < kfTableCap            les bits de slot au-dessus de la puissance de deux qui couvre
+//	                             kfTableCap a 0
+//	slot > prevSlot              si prevSlot+1 >= 1, un bit de slot de rang >= log2(prevSlot+1) a 1
+//	                             (slot >= prevSlot+1 >= 2^k)
+//	mot d archetype < kfArchMax  les bits du second mot au-dessus de la puissance de deux qui
+//	                             couvre kfArchMax a 0
+//
+// A chaque position retenue la boucle rejoue le test COMPLET : le motif ne decide rien, il saute
+// ce qui ne peut pas decider. Differentiel contre la boucle d avant : `keyframe_world_motif_test.go`.
+func motifDAncre(prevSlot int) source.Motif64 {
+	const slotBits = 0x3FFFFFFF
+	slotHaut := uint64(slotBits&^(1<<bits.Len(uint(kfTableCap-1))-1)) << 32
+	archHaut := uint64(0xFFFFFFFF &^ (1<<bits.Len(uint(kfArchMax-1)) - 1))
+	var auDessus uint64 // 0 : aucune borne basse de slot
+	if prevSlot >= 0 {
+		k := bits.Len(uint(prevSlot+1)) - 1
+		auDessus = uint64(slotBits&^(1<<k-1)) << 32
+	}
+	return source.Motif64{Nuls: slotHaut | archHaut, AuMoinsUn: [2]uint64{3 << 62, auDessus},
+		Tete: kfSent, AvecTete: true}
 }
 
 // kfCand est une ancre candidate en cours d'évaluation. Les quatre champs sont exactement les
@@ -195,10 +227,23 @@ func (r *kfRecherche) suivante(from, prevSlot int) kfIssue {
 	end := min(from+r.maxWin, r.total)
 	r.cands = r.cands[:0]
 	sentStreak := 0
-	for q := from; q < end && q+64 <= r.total; q++ {
+	lim := min(end, r.total-63) // q < end ET q+64 <= r.total
+	motif := motifDAncre(prevSlot)
+	for q := from; q < lim; q++ {
+		// SAUT aux seules positions qui peuvent decider (cf. [motifDAncre]) : les autres ne font
+		// que remettre la trainee de sentinelles a zero, ce que `p != q` rejoue.
+		p := source.PremierMotif64(r.buf, q, lim, motif)
+		if p != q {
+			sentStreak = 0
+		}
+		if p < 0 {
+			break
+		}
+		q = p
 		id := source.BitsBourres(r.buf, q, 32)
 		if id == kfSent {
-			if sentStreak++; sentStreak >= 2048 {
+			var fin bool
+			if q, sentStreak, fin = r.sentinelles(q, lim, sentStreak); fin {
 				iss.fin = true
 				break
 			}
@@ -242,6 +287,23 @@ func (r *kfRecherche) suivante(from, prevSlot int) kfIssue {
 		iss.traine = sentStreak
 	}
 	return iss
+}
+
+// kfFinDeTable : le nombre de positions de sentinelle CONSECUTIVES qui disent la fin de table.
+const kfFinDeTable = 2048
+
+// sentinelles consomme D UN COUP la suite de sentinelles qui commence a `q` (l appelant y a lu
+// une sentinelle) : une plage de `s` bits a 1 en porte une a chacune de ses `s - 31` premieres
+// positions, bornees a `lim`. C est ce que la boucle de [kfRecherche.suivante] faisait une
+// position a la fois — allonger la trainee, et s arreter sur la fin de table a la
+// [kfFinDeTable]-ieme — en un appel a [source.SuiteDeUns]. Rend la DERNIERE position consommee
+// (la boucle repart de la suivante), la trainee et la fin de table.
+func (r *kfRecherche) sentinelles(q, lim, trainee int) (int, int, bool) {
+	n := min(source.SuiteDeUns(r.buf, q, lim-q+31)-31, lim-q)
+	if trainee+n >= kfFinDeTable {
+		return q + kfFinDeTable - trainee - 1, kfFinDeTable, true
+	}
+	return q + n - 1, trainee + n, false
 }
 
 // glissante est [kfRecherche.suivante] dont une fenêtre SANS AUCUN candidat n'arrête plus la
