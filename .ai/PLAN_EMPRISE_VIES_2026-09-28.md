@@ -625,6 +625,13 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
   (tableaux du journal V0, commit, tests de recherche sautés sans données) et posé la question avec
   les chiffres ; l'utilisateur accepte le coût : voie (b), V6 réécrite, item V1.4 ajouté pour
   l'entrée exportée des porteurs.
+- 2026-09-29 : V1 clos (`5d061da28`). Vérifié sur pièces : diff relu (règles V3 dans `classer` et
+  `rattacherLesFrags`), tests de `film/replay`, `replaybuild` et `archlint` rejoués verts par le
+  superviseur. Décisions de l'exécuteur ACCEPTÉES (dans le cadre de V3) : grille fermée
+  `[start, end]` (le plan l'écrit ainsi) ; pont non publiable → aucune ligne (comme
+  `ContextesDesMorts`) ; frag à camp inconnu écarté et compté ; joueur sans camp = équipe à terre ;
+  drapeau : seul l'état `carried`. Témoin : 100 % des frags rattachés, 100 % des fins de vie à
+  moins de 1 m du contexte de mort ; porteurs identiques au rejeu sur les 9 films.
 
 ## 7. Découvertes (à consigner ici, pas à traiter)
 
