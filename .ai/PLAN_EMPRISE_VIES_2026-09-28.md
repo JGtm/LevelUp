@@ -201,13 +201,14 @@ Aucun code livré hors tests de recherche (`*_research_test.go`, sautés sans do
 manqué = STOP et rapport au superviseur, qui remonte à l'utilisateur (aucun repli choisi par
 l'exécuteur).
 
-- [ ] V0.1 **Le joueur en véhicule n'est pas situé.** Sur au moins deux films Big Team Battle du
+- [x] V0.1 **Le joueur en véhicule n'est pas situé.** Sur au moins deux films Big Team Battle du
   cache dont l'occupation se lit (épisodes `src = film` du calque véhicules, schéma ≥ 67, construits
   en mémoire par le constructeur du rejeu), mesurer la part du temps à bord (épisodes lus) où le
   joueur n'a aucune position de moins d'une seconde dans `ScanBipedPositions`.
   **Seuil : ≥ 95 %.** Atteint : la cause `unplaced` couvre le véhicule, libellée « en véhicule ou
   position non lue ». Manqué : STOP.
-- [ ] V0.2 **Porteurs d'objectif au sync.** Deux voies à mesurer, dans cet ordre : (a) le canal des
+  → **Atteint** : 96,27 % agrégé (96,87 / 95,48 / 95,26 % par film), journal V0 ci-dessous.
+- [!] V0.2 **Porteurs d'objectif au sync.** Deux voies à mesurer, dans cet ordre : (a) le canal des
   armes tenues déjà balayé (le portage de la bombe n'y lit « aucune donnée de plus »,
   `replaybuild/matchfacts.go:180-190`) ; (b) les lectures de la cuisson (`replaybuild/matchfacts.go`
   `flagInput` / `skullInput` / `bombInput` / `vipInput`, enregistrements d'entité, bursts de capture,
@@ -220,9 +221,124 @@ l'exécuteur).
   temps actuel de la passe du collecteur sur les matchs à porteur ; pic de mémoire ≤ 1,5 × celui de
   la passe actuelle ; aucune révision de décodage à monter.** La voie (a) est retenue si elle passe,
   sinon (b). Aucune ne passe : STOP.
-- [ ] V0.3 Rapport de mesure collé dans ce plan (tableaux, films, commandes), voie retenue en V0.2.
+  → **Manqué par les deux voies — STOP V0.2** (décision à l'utilisateur, aucun repli choisi) :
+  (a) fidélité 61,95 % < 98 % et surcoût moyen 31,4 % > 25 % ; (b) fidélité 100,00 %, mémoire
+  1,44 × ≤ 1,5 ×, mais surcoût moyen 59,9 % > 25 %. Chiffres au journal V0 ci-dessous.
+- [x] V0.3 Rapport de mesure collé dans ce plan (tableaux, films, commandes), voie retenue en V0.2.
+  → Rapport collé ci-dessous ; voie retenue : **aucune** (STOP V0.2).
 - Gate : les tests de recherche passent sur le poste, sautés sans données (`go test ./...` vert sans
   cache de films) ; gate commun côté Go.
+
+#### Journal V0 (exécuteur, 2026-09-28)
+
+**Instruments** (tests de recherche, sautés sans leurs variables d'environnement ; aucun code de
+production modifié ; aucune écriture dans `data/`) :
+
+| Fichier | Rôle |
+|---|---|
+| `apps/go-api/internal/sync/killcollector/emprise_v0_passe_research_test.go` | `TestEmpriseV0Identites` (noms de carte par `ReplayMapRepo`, faits par `ReplayFactsRepo`, sur la copie de base en lecture seule) ; `TestEmpriseV0Passe` : la passe ACTUELLE (`CollectMatch`, câblage de production : trois capabilities, cache disque, roster par défaut sur la copie, `CaptureDepuisCatalogue`, écritures dans une base temporaire migrée), 3 tours, médiane et pic ; puis une passe instrumentée (`decfilm.Decode`, `IdentitiesForMatch`, `BuildKillSourceBatch`, `buildPositionRows`) qui garde registre et positions |
+| `apps/go-api/internal/sync/killcollector/emprise_v0_vehicules_research_test.go` | V0.1 : sondes à bord passées par `replay.ContextesDesMorts` (la seule porte exportée vers `visibleA`, sans recopie) |
+| `apps/go-api/internal/replaybuild/emprise_v0_reference_research_test.go` | `TestEmpriseV0Reference` : le document de rejeu construit EN MÉMOIRE par le code actuel (les étapes de `BuildBytes`, faits de film ni relus ni rangés), calques véhicules et porteurs, horloge de l'axe |
+| `apps/go-api/internal/games/halo_infinite/film/replay/emprise_v0_porteurs_research_test.go` + `emprise_v0_rapport_research_test.go` | `TestEmpriseV0Porteurs` : la base de la passe rejouée (registre contrôlé contre celui de la vraie passe), puis les deux voies, chronométrées (3 tours, médiane) et comparées à la référence |
+| `apps/go-api/internal/games/halo_infinite/film/replay/emprise_v0_synthese_research_test.go` | `TestEmpriseV0Rapport` : tableaux agrégés ci-dessous |
+
+**Commandes** (bash, depuis `apps/go-api`, une commande `go` à la fois ; `SP` = scratchpad de la
+session ; lots de films découpés pour tenir sous 10 min par commande) :
+
+```bash
+export CGO_ENABLED=1 GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-emprise/.gocache
+export EMPRISE_V0_DIR=$SP/emprise_v0 EMPRISE_V0_DB=$SP/shared_copy.duckdb \
+       EMPRISE_V0_CACHE=C:/Users/Guillaume/Projects/LevelUp/data/cache
+EMPRISE_V0_FILMS=<22 match_id> go test ./internal/sync/killcollector/ -run '^TestEmpriseV0Identites$' -v -count=1
+EMPRISE_V0_FILMS=<lot> go test ./internal/replaybuild/ -run '^TestEmpriseV0Reference$' -v -count=1 -timeout 9m30s
+EMPRISE_V0_FILMS=<lot> go test ./internal/sync/killcollector/ -run '^TestEmpriseV0Passe$' -v -count=1 -timeout 9m45s
+EMPRISE_V0_FILMS=<lot> go test ./internal/games/halo_infinite/film/replay/ -run '^TestEmpriseV0Porteurs$' -v -count=1 -timeout 9m45s
+go test ./internal/games/halo_infinite/film/replay/ -run '^TestEmpriseV0Rapport$' -v -count=1
+```
+
+**Films** (22, tous au schéma 71 en mémoire) : V0.1 — `4f77afc1` (BTB:CTF, Flood Gulch), `879a4dba`
+(BTB:CTF, Fortitude), `5676a9ba` (BTB:Total Control, Insolence). V0.2 — CTF `6fe2acb7` (Ranked:CTF,
+Aquarius), `0ffebf8b` (Ranked:CTF 3 Captures, Origin), `81c0fc99` (CTF:Arena, Catalyst) ; Oddball
+`f9e99ca4` (Live Fire), `b4f9064c` (Streets) ; Assaut `69b16f5d` (Neutral Bomb, Origin) ; VIP
+`00761d27` (Arena:VIP, Bazaar) ; les 12 du 22/09 de JGtm : `50256dd2`, `d3249f8a`, `43e96765`,
+`859da825`, `fc3dcb49`, `39910eb1` (Super Fiesta), `ab526724`, `d6918972` (CTF:Arena), `8e376cb1`,
+`316eff0c`, `5eb5d3b3`, `2b50122a` (Team Slayer). Registre rejoué = registre de la vraie passe
+(calage et vies nommées identiques) sur les 22.
+
+**Horloges (V0.1).** Frame `f` d'un épisode → film µs = `origineUs + f × 100 000`, où `origineUs`
+est le premier paquet de position de la cuisson (minimum des positions qu'elle a balayées ;
+contrôle : premier paquet du collecteur, écart 0 µs sur les trois films) ; puis horloge du MATCH du
+collecteur = film µs / 1000 − `DeathOffsetMS()` de son registre — l'horloge de `visibleA`. Une
+sonde par frame `[T0, T1]` (bornes incluses) d'un épisode `src = film`.
+
+**V0.1 — part du temps à bord (épisodes lus) sans position de moins d'une seconde** :
+
+| Film | Épisodes lus (écartés : proximité / sans xuid) | Sondes (100 ms) | Non situées | Part | 1re seconde non située |
+|---|---|---|---|---|---|
+| `4f77afc1` | 67 (44 / 2) | 14 004 | 13 566 | 96,87 % | 237 / 650 |
+| `879a4dba` | 32 (14 / 0) | 5 326 | 5 085 | 95,48 % | 90 / 317 |
+| `5676a9ba` | 22 (41 / 0) | 4 047 | 3 855 | 95,26 % | 40 / 220 |
+| **Agrégé** | **121** | **23 377** | **22 506** | **96,27 %** | 367 / 1 187 |
+
+Verdict : seuil ≥ 95 % **atteint** (et par film). Les instants situés à bord sont surtout la
+première seconde après la montée (la fenêtre de visibilité d'une seconde garde la dernière
+position au sol).
+
+**V0.2 — méthode.** Référence : calques `FlagCarries` (état `carried`), `SkullCarries`,
+`BombCarries`, `VipCrown` du document construit en mémoire, convertis en ms du match avec l'origine
+et le calage (`coverage.bridge.deathOffsetMs`) de ce document. Fidélité par joueur : `identique` =
+|R ∩ dilatation(C, 100 ms)|, `en trop` = |C| − |C ∩ dilatation(R, 100 ms)|, taux = identique /
+(référence + en trop), agrégé en sommes. Voie (a) : chaîne de `balayerPortage` (images-clés d'armes,
+dotations de naissance, `ScanHeldWeaponChanges`), portages par famille (drapeau `0x2a392328`, crâne
+`0x0017592c`, bombe `0x3fee4fcf`) par `BuildHeldObjectCarry` ponté par le registre du collecteur ; la
+couronne VIP n'est pas un objet tenu (aucune source). Voie (b) : `StatRecordsCtx`,
+`CaptureBurstTimes`, pont par manche (morts, triplet, élimination, résidu), plus ce que chaque calque
+exige (drapeau : équipes du film et objets du monde — poses puis socles, d'où les vies libres ;
+bombe : le canal de (a)), calques produits par l'assembleur de production (`BuildFromPositions`)
+nourri des seules entrées du sync (positions et registre du collecteur, garde de mode par la
+variante). Le profil calibré par le kill-feed est posé sur le contexte avant les lectures
+supplémentaires (ordre de la cuisson). Coût : médiane de 3 tours de chaque lecture supplémentaire,
+rapportée à la médiane de 3 tours de `CollectMatch` (même film, cache disque chaud après le premier
+tour, écritures dans une base temporaire). Mémoire : pic de `filmproc.Footprint` échantillonné à
+10 ms, après `runtime.GC` + `FreeOSMemory` en début de phase ; rapport = max(base, lectures) / base,
+la base (passe rejouée : décodage, positions, fil des morts, index, créations, registre) restant
+vivante pendant les lectures.
+
+**V0.2 — par match à porteur** (passe = médiane `CollectMatch`) :
+
+| Film | Mode | Passe | (a) coût | (a) % | (b) coût | (b) % | Pic passe / base / (a) / (b) Gio | (a) fidélité | (b) fidélité |
+|---|---|---|---|---|---|---|---|---|---|
+| `6fe2acb7` | drapeau | 11 607 ms | 3 537 ms | 30,5 | 11 708 ms | 100,9 | 0,29 / 0,28 / 0,28 / 0,38 | 70,76 % | 100,00 % |
+| `0ffebf8b` | drapeau | 5 706 ms | 1 814 ms | 31,8 | 5 636 ms | 98,8 | 0,15 / 0,14 / 0,14 / 0,19 | 89,57 % | 100,00 % |
+| `81c0fc99` | drapeau | 7 613 ms | 2 105 ms | 27,6 | 6 756 ms | 88,7 | 0,18 / 0,16 / 0,16 / 0,21 | 84,35 % | 100,00 % |
+| `ab526724` | drapeau | 13 167 ms | 5 106 ms | 38,8 | 13 425 ms | 102,0 | 0,36 / 0,30 / 0,30 / 0,39 | 73,14 % | 100,00 % |
+| `d6918972` | drapeau | 12 771 ms | 3 905 ms | 30,6 | 12 237 ms | 95,8 | 0,31 / 0,33 / 0,33 / 0,39 | 94,02 % | 100,00 % |
+| `f9e99ca4` | crâne | 28 294 ms | 8 166 ms | 28,9 | 1 769 ms | 6,3 | 0,46 / 0,43 / 0,43 / 0,62 | 80,88 % | 100,00 % |
+| `b4f9064c` | crâne | 19 224 ms | 4 916 ms | 25,6 | 1 075 ms | 5,6 | 0,37 / 0,36 / 0,36 / 0,47 | 85,61 % | 100,00 % |
+| `69b16f5d` | bombe | 5 619 ms | 1 808 ms | 32,2 | 1 899 ms | 33,8 | 0,14 / 0,12 / 0,12 / 0,15 | 100,00 % | 100,00 % |
+| `00761d27` | VIP | 8 117 ms | 2 979 ms | 36,7 | 620 ms | 7,6 | 0,22 / 0,22 / 0,22 / 0,27 | 0,00 % | 100,00 % |
+
+Les 10 autres films du 22/09 (Super Fiesta, Team Slayer) ne sont pas d'un mode à porteur : la
+garde de mode ne lit rien, aucune voie ne paie (passes de 7 266 à 9 534 ms, pics 0,19 à 0,28 Gio).
+
+Détail du coût (b) sur le drapeau (statborg / pont / équipes / objets du monde / assemblage, ms) :
+`6fe2acb7` 596 / 1 / 1 154 / 9 654 / 303 ; `0ffebf8b` 282 / 1 / 473 / 4 744 / 138 ; `81c0fc99`
+337 / 0 / 572 / 5 697 / 150 ; `ab526724` 610 / 0 / 1 323 / 11 204 / 287 ; `d6918972` 622 / 1 /
+1 088 / 10 253 / 273. Les objets du monde (poses puis socles) font 82 à 85 % du coût (b) du drapeau.
+Sensibilité mesurée, PAS une voie : le drapeau sans objets du monde coûterait 13,9 à 17,7 % de la
+passe, mais sa fidélité tombe à 55,41 % (portages non fermés au lâcher : 411 100 ms en trop).
+
+**V0.2 — agrégats et verdict par seuil :**
+
+| Seuil | Voie (a) | Voie (b) |
+|---|---|---|
+| Fidélité ±100 ms ≥ 98 % du temps porté | **61,95 %** — manqué (drapeau 81,87 %, crâne 82,53 %, bombe 100 %, VIP 0 % : 517 600 ms sans source) | **100,00 %** — atteint (drapeau 510 900 ms, crâne 698 500 ms, bombe 125 300 ms, VIP 517 600 ms, rien en trop) |
+| Surcoût moyen ≤ 25 % (9 matchs à porteur) | **31,4 %** — manqué | **59,9 %** — manqué (drapeau 88,7 à 102,0 %, bombe 33,8 %, crâne 5,6 et 6,3 %, VIP 7,6 %) |
+| Pic mémoire ≤ 1,5 × la passe | 1,00 × — atteint | 1,44 × (pire : `f9e99ca4`) — atteint |
+| Aucune révision de décodage | atteint : aucune sortie décodée existante ne change (`decfilm.Rev`, `facts.Rev` intacts) ; mais le canal des armes tenues n'est pas exposé par la façade `decfilm` (lecture de `film/internal/grammar`) : un symbole de façade à ajouter (ratchet 166, justification datée) | atteint : `StatRecordsCtx`, `CaptureBurstTimes`, `ResolveRoundIdentity` sont déjà à la façade ; les calques sont privés à `film/replay` (une entrée exportée à créer) |
+
+**Conclusion : aucune voie ne passe tous les seuils → STOP V0.2.** Le plan s'arrête jusqu'à la
+décision de l'utilisateur (§3). Aucun repli choisi, aucun seuil ajusté.
 
 ### V1 — Calcul pur (Go) · moyen
 
@@ -350,3 +466,25 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
 - Les ressources de l'Emprise (bonus, armes spéciales) viennent de dérivations de l'artefact de
   rejeu (`sync/replayartifacts/derivations.go`) : leur population est celle des matchs cuits, pas
   celle du sync. Écart à la décision du 2026-09-07, à statuer hors de ce plan.
+- (V0, 2026-09-28) `f3061ab7` (22/09, Team Slayer, Detachment) A UN FILM au cache local : 32 morceaux
+  et un manifeste finalisé (morceau des temps forts présent). Le brief du lot disait le contraire ;
+  le lot a mesuré les 12 autres films comme demandé. Film sans porteur : sans effet sur V0.2.
+- (V0) Sur les deux BTB:CTF mesurés (`4f77afc1`, `879a4dba`), le calque du drapeau du rejeu ne
+  publie AUCUN portage : `coverage.flagCarries.flagFilm = false`, `bursts = 0` (captures 1 et 3,
+  vols 2 et 4, socles 6). Le signal de mode par les bursts ne reconnaît pas ces films ; toute voie
+  qui reprend ce calque laisserait la cause `carrier` muette sur le CTF en BTB.
+- (V0) Le collecteur balaie positions et créations de bipède SANS le profil calibré par le
+  kill-feed (`buildPositionRows` : `NewFilmContextForMap(film, &entry, nil)`, aucun
+  `PoserProfilDeBalayage`), alors que la cuisson le pose avant TOUS ses balayages
+  (`poserProfilPuisCarte`). Deux producteurs du même fait sous deux profils ; effet sur les
+  positions non mesuré (les registres rejoués du lot sont conformes à la passe, tous deux sans profil).
+- (V0) `BuildHeldObjectCarry` suppose un seul exemplaire de l'objet (« une prise par un autre slot
+  borne la période ouverte ») : juste pour la bombe et le crâne, faux pour le CTF à deux drapeaux —
+  une des causes de la fidélité de 81,87 % de la voie (a) sur le drapeau.
+- (V0) Le godoc de `replaybuild.SansFaitsPersistes` cite un garde-rail
+  `TestReglageDuDecodageForceNAQuUnAppelant` qui n'existe pas ; le garde réel est
+  `archlint/un_seul_forcage_du_decodage_test.go` (`TestUnSeulForcageDuDecodage`), qui exclut les
+  tests — trois tests de recherche appellent le réglage, le godoc dit « un appelant ».
+- (V0) L'en-tête de `film/internal/grammar/e192_i0_catalogue_mesure_research_test.go` donne une
+  commande sur `./internal/games/halo_infinite/film/filmdec/`, paquet qui n'existe plus ; le plan
+  (§4 V0) cite le fichier sous `filmdec/`.
