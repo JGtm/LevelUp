@@ -1606,3 +1606,16 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   (trois de J6, quatre de J6-bis) ; la cause commune (grammaire dépendante du contenu) sort du
   plan vers une campagne de recherche (§8.27, registre des reports). Arbre fusionné vérifié :
   `TestGoldenInputsFidelite` 8/8, `go test -p 1` film et replaybuild verts avec films réels.
+- 2026-09-28 : **J11.1 NON TENU**. G-corpus contre `origin/feat/v75` : 19 témoins en perte.
+  Attribution par bissection de toutes les lignes (`6676dcabd`,
+  `.ai/V7.5/film_re/G_CORPUS_J11_2026-09-28.md`) : la majorité est expliquée (J8.2 doubles
+  crédits de socles ; faux supprimés GB-1 prouvés mais NON DÉCLARÉS — trajets en véhicule,
+  ramassages, tirs embarqués — déclarés ici ; gains que la polarité du gate lit à l'envers),
+  mais six familles ne le sont pas : C1 objectifs donnés à un joueur absent (J8.5), C2 positions
+  aberrantes publiées et C3 verdict du pont faussé par les slots rebouclés et C6 place d'un
+  arrivant (GB-1), C4/C5 lectures de grammaire en baisse (J6, J6-bis). Le serveur dev tournait
+  pendant le gate (lecture par `OpenReadForQuery`, sans erreur) contre le cadre §4.3 : le gate
+  final se jouera serveur arrêté, après avoir prévenu l'utilisateur. **Décision superviseur** :
+  quatre lots correctifs en parallèle — R1 (C1, objectifs bornés par la présence), R2 (C2, C3,
+  C6, GB-1), R3 (C4, C5, grammaire, doctrine J6-bis), R4 (outil : polarité TOTALE des métriques
+  du gate, ratchet sur clé non classée) — puis G-corpus rejoué.
