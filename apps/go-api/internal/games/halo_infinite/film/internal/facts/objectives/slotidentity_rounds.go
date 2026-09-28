@@ -324,7 +324,11 @@ func (ri RoundIdentity) completedByTriplet(recs []types.StatRecord, lines []type
 	abandonnes := 0 // `repli_slot_abandonne_au_premier_arrive` (lot J8.7) : un accord n en est pas un
 	for _, slot := range slots {
 		xuid := triplet[slot]
-		if prev, deja := fusion[slot]; deja || pris[xuid] || ri.occupantAilleurs(round, slot, xuid) {
+		if ri.occupantAilleurs(round, slot, xuid) && fusion[slot] != xuid {
+			abandonnes++ // meme garde que ci-dessous (aucun xuid deux fois) : il occupe un siege recycle (lot R1)
+			continue
+		}
+		if prev, deja := fusion[slot]; deja || pris[xuid] {
 			if prev != xuid {
 				abandonnes++
 			}
