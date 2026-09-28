@@ -116,19 +116,6 @@ traiter à la prochaine retouche du fichier :
 
 ---
 
-### [web/lint] Deux inexactitudes mineures relevées au lot d'hygiène du 2026-09-19
-
-- `personal-stats=>synthesis` dans `ALLOWED_CROSS_IMPORTS` (`tools/lint-cross-feature-imports.mjs`)
-  est une dérogation morte : aucun fichier de `features/personal-stats/` n'importe
-  `@/features/synthesis`. À retirer à la prochaine retouche du script.
-- `apps/web/src/components/charts/README.md` : la note « Wrappers 10–11 are kept in
-  `features/timeseries/` » est fausse pour `FirstBloodLanes` (#11), qui vit dans
-  `components/charts/`.
-
-**Effort : XS** chacune, à grouper avec la prochaine retouche de ces fichiers.
-
----
-
 ### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur
 
 Noté le 2026-08-27 (chantier rejeu 2D, plan `.ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md`,
@@ -145,36 +132,23 @@ identifiée par transcription locale des packs annonceur :
   green `1010879786`, purple `100056384`, yellow `927455187`, orange `564119611`,
   lime `92374`, cyan `256805823` (pack `English(US)/…`).
 
-**Cible** : sur un match 3+ équipes, écran de fin aux couleurs de l'équipe gagnante et
-réplique de SA couleur. La correspondance `team_id` → couleur officielle existe déjà
-(`apps/web/src/lib/halo/teamNames.ts`, TEAM_COLORS/TEAM_NAMES 0-8) — il reste à VÉRIFIER
-sur pièces le mapping team_id ↔ couleur annoncée (au moins un match multi-équipes réel).
-Extraction/normalisation : rejouer la recette du lot C (transcriptions et outillage
-conservés sous `Desktop/Halo Infinite - Sons armes/_fin_partie/`). **Effort : S-M**
-(gros du travail = l'écran multi-équipes, les sons suivent). Dépendance : aucune —
-s'appuie sur l'overlay et le canal son de fin livrés en v7.5.
+**BLOQUÉ FAUTE DE DONNÉE (plan backlog du 2026-09-26, lot A5, statué `[!]` le 2026-09-27).**
+Le plan d'exécution est prêt dans `.ai/PLAN_BACKLOG_2026-09-26.md`, section A5 : pièces, items
+A5.0 à A5.7, et décision D-9. D-9 garde l'écran du joueur regardé, ajoute « Victoire de l'équipe
+<Nom> » en défaite, et fait jouer la réplique de la couleur du gagnant pour tous. Deux faits établis
+en lisant les données le 2026-09-26 bloquent le lot :
+- **aucun match multi-équipes jouable** : il n'y a qu'un seul match à 3 équipes ou plus, de 2
+  joueurs ou plus chacune, dans toute la base partagée locale (2025-08-13, aucun joueur suivi).
+  Aucun des 111 artefacts de rejeu ne porte d'équipe au-delà de 1 ;
+- **la table équipe → couleur annoncée n'existe nulle part** : les couleurs de `teamNames.ts`
+  ne correspondent pas aux 8 couleurs de l'annonceur (magenta, doublon orange-rouge).
 
----
-
-### [replay/sons] Musique d'intro au lancement du rejeu — queue du build-up, sans attente
-
-Noté le 2026-08-27 (chantier rejeu 2D, suite du lot C sons de fin). La piste `402178411`
-(16,00 s, pack `SFX/sb_130_mus_multiplayer_global.pck`, extraite et convertie sous
-`Desktop/Halo Infinite - Sons armes/_fin_partie/mus_mp_global_wav/`) est très
-probablement la musique d'INTRO de match (le build-up du countdown, écrit pour se
-résoudre au coup d'envoi). Le cadrage v7.5 démarre la lecture pile au coup d'envoi :
-il n'y a plus de place pour la jouer entière, et retarder le départ de 3-4 s a été
-REFUSÉ (décision utilisateur 2026-08-27 — pas d'attente imposée, syndrome de l'intro
-non skippable).
-
-**Cible si repris** : ne garder que la QUEUE du build-up (les 2-3 dernières secondes,
-celles qui se résolvent au coup d'envoi) et la jouer PAR-DESSUS les premières secondes
-de lecture, à volume musique (−18 LUFS, comme les fanfares de fin) — zéro attente,
-l'anticipation en plus. Coupe d'asset (recette du lot C : fondu, normalisation,
-manifeste + garde-rail) + un déclenchement au départ de la lecture, symétrique du
-déclenchement de fin du lot C. **Effort : S** (~20 min une fois le lot C en place).
-À faire seulement si l'envie revient à l'usage — le statu quo (départ silencieux,
-sons diégétiques seuls) est le choix par défaut assumé.
+**Condition de reprise** : l'utilisateur joue une partie à 3 équipes ou plus (matchmaking ou
+partie personnalisée), la synchronise, et note la couleur annoncée pour l'équipe gagnante. Le lot
+peut alors partir, en commençant par la recherche hors ligne de la table dans les fichiers du jeu
+installé (A5.0). Les 16 répliques sont déjà extraites et converties sous
+`Desktop/Halo Infinite - Sons armes/_fin_partie/annonceur_{fr,en}_wav/` (non normalisées ; les
+copies de `livraison/` y sont restées en 4 canaux). **Effort : M.**
 
 ---
 
@@ -300,6 +274,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-09-27 | **[lot backlog du 2026-09-26, fusion 3] Dérogations mortes du lint inter-features, musique d'intro du rejeu, niveau des fanfares de fin** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, lots A3 et A4). **Lint (5)** : 16 dérogations mortes retirées ; le script échoue désormais sur toute dérogation qui ne sert plus ; README des graphes corrigé (12 wrappers, `FirstBloodLanes` dans `components/charts/`) ; lint ajouté au job web de la CI (`1ea900034`). **Musique d'intro (7)** : les 3 dernières secondes de la montée de la piste `402178411`, résolution R = 3,19 s calée sur le coup d'envoi, −18 LUFS, jouée au clic sur « Lecture » ou « Recommencer » depuis le préambule, jamais à la reprise, au saut ni dans l'export. Au premier « Lecture » après un rechargement, l'intro attend son décodage et part avec un décalage borné par la durée du préambule (`6bac387b8`, `eb57ec3c2`). **Niveau des fanfares (suite de l'item 11)** : les trois fanfares de fin mesuraient −25 LUFS au lieu des −18 prévus (réduction stéréo du 28/08 faite après la normalisation). Remises à −18 LUFS par un gain linéaire, avec un garde-rail de niveau sur les échantillons PCM (`e93c19ed9`). Fins multi-équipes (6) : `[!]`, faute de donnée (entrée ci-dessus). Écoutes de l'utilisateur après la fusion. |
 | 2026-09-27 | **[lot backlog du 2026-09-26] Musique de fin et son du rejeu, classement mondial, découpeur SQL, index ART de `match_skill_rank`, garde-rail d'exclusion de la campagne, mode démo hermétique** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, un exécutant Opus à la fois, deux relectures adversariales puis une ronde 2 sur les corrections : 8 constats en ronde 1, dont 2 P1, et 0 P1 en ronde 2). **Musique de fin (11)** : la conclusion échappe au plafond de 8 voix dans la page, comme dans l'export (`soundOccupiesVoice`, `a373539d9`). **Son au rechargement (12)** : le lecteur s'ouvre au premier clic ou à la première touche, ou dès l'affichage si le document a déjà reçu un geste (`useAudioUnlock`, `89f311191`) ; la cause était la lecture automatique. **Classement mondial (1)** : `ErrDrainTimeout`, 3 essais espacés de 30 s sans nouveau scrape, premier tir à +2 min (`cd47936fc`). **Découpeur SQL (3)** : cœur unique `migration.ExecScriptContext`, 3 copies supprimées, garde-rail AST (`edd0054d5`). **Index de `match_skill_rank` (2)** : les trois `idx_msr_*` sont retirés par une migration et par un soin convergent rejoué à chaque ouverture (MSR et PSA) ; ratchet étendu à `sync/schema.go` ; sonde, `repair_msr_index` et `indexcheck` supprimés ; critère D-4 amendé (relatif, `EXPLAIN ANALYZE`) ; copies réelles vérifiées (`7e9ef7c15`, `0b6c11f73`). **Exclusion de la campagne (4)** : garde AST multi-racines (83 lecteurs, 21 dispenses datées), 12 lecteurs corrigés ; les chiffres Halo 5 qui comptaient la campagne changent (`a9e2192ac`, `c61c60761`). **Mode démo (8)** : tâches de fond coupées et chemins d'état redirigés par le SEUL serveur démo (`config.LoadServer`), 4 mutations en 403 `demo_mode_forbidden`. La preuve de bout en bout sur le vrai checkout donne 0 écriture (`3de419efe`, corrections B-C1 à B-C10). Écoutes de l'utilisateur (11, 12) faites après la fusion. Découvertes versées en 6 entrées ci-dessus. |
 | 2026-09-19 | **[hygiène] Lot compare / armes / frontières** (branche `feat/hygiene-compare-armes`, 4 commits `e4238dea6`→`aa1a8dc2c`, exécuté par Opus sous pilotage) — **A** champ `filters` de `CompareRequest` retiré (Go + `types.ts` ; le fragment OpenAPI manuel ne le déclarait déjà pas, `FilterContextInput` conservé : 7 autres consommateurs). **B** repli « échantillon croisé » SUPPRIMÉ — mais la prémisse du backlog était fausse : la branche n'était pas morte, elle était FAUTIVE. `GetCrossMatchSample` n'excluait pas la campagne alors que `GetLocalStats` le fait ; mesuré sur copie du shared Halo 5 : pour un B présent uniquement en coop campagne, `GetLocalStats` rend 0 ligne et l'échantillon croisé rend 1 match (stats de campagne servies sous un service record matchmade). Exclusion alignée ⇒ branche morte par construction ⇒ retrait complet (service, repo, port + noop, `domain.CrossMatchSample`, `IsLocalSample`/`is_local_sample` régénéré par Huma, 2 tests, 8 lignes de baseline). **C** `buildTopWeapons` des séries temporelles délègue à `topWeaponKillRows` (départage sur le libellé) ; garde-rail étendu au motif `WeaponID <` sans propriétaire ; changement assumé : une arme sans libellé résolu n'est plus publiée (barre anonyme avant). **D** `SynthesisCards` → `components/ui/section-primitives.tsx`, `SynthesisWeaponAccuracyChart` → `components/charts/WeaponAccuracyChart.tsx` ; DEUX dérogations retirées (`timeseries=>synthesis` et `session-detail=>synthesis`) ; le ratchet du script compte les violations non déclarées (7/7, inchangé), pas les dérogations. Gates : Go build/vet/test 22 paquets, openapi-gen -check, types frais, tsc -b (cache purgé), eslint 0 erreur, lint inter-features, vitest 7984 tests — tous verts, rejoués par le pilote. Découvertes → 2 items backlog ci-dessus. |
 | 2026-08-03 | **[ops/deps] Bump `echarts` 5.6.0 → 6.1.0** (CVE-2026-45249, XSS) — livré par `545b870de` (lot B4 echarts6, diff visuel joint). L'entrée « REPORTÉ » du backlog était restée après la livraison ; retirée le 2026-09-19. |

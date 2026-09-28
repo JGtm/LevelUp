@@ -89,6 +89,14 @@ jobs:
       - name: Lint couleurs (tokens semantiques uniquement)
         run: npm run lint:colors
 
+      # A3.4 (backlog 2026-09-26, item 5) : ce lint ne tournait qu'au pre-commit
+      # (lefthook.yml), jamais en CI ni dans `gate-push` — une branche jamais
+      # repassée par le hook local pouvait dériver sans que rien ne le voie. Chemin
+      # relatif depuis `working-directory: apps/web` (l.66), même patron que le
+      # ratchet knip juste en dessous.
+      - name: Lint cross-feature imports (frontières features/ et components/)
+        run: node ../../tools/lint-cross-feature-imports.mjs
+
       # Ratchet knip — SANS condition de chemin, et c'est tout l'objet du step.
       # Le hook pre-push homonyme (lefthook.yml) est glob-gaté sur
       # `apps/web/src/**/*.{ts,tsx}` : il ne s'exécute que si le push CONTIENT des
