@@ -930,3 +930,13 @@ case non statuée de l'étape courante (C, puis B, puis F).
   identique (128 objets), relecture de contrôle (9 170 matchs, 412 216 morts servies) ; sauvegardes
   `*.halo_infinite.avant-compaction-20260927T163336Z.duckdb` et `*.avant-reecriture-20260927T163443Z.duckdb`.
   Mesure des pages : après la fusion dans `feat/v75` (consigne utilisateur).
+- 2026-09-28 : fusion dans `feat/v75` (go utilisateur). Trois rattrapages de `origin/feat/v75` dans la
+  branche (backlog du 2026-09-26 fusions 2 et 3, Emprise, suite de l'audit J1 / J2, plan backlog
+  clos) ; conflit unique dans `.ai/thought_log.md`, les deux côtés gardés. Seul rouge sur l'arbre
+  fusionné : le nouveau garde d'exclusion de la Campagne (backlog item 4) signalait deux dispenses
+  PÉRIMÉES (`AnnuaireNomsSQL`, `matchsDesParticipants`) depuis la liaison en un paramètre de B.7 —
+  retirées (`cb4dc9f25`). Gates superviseur sur l'arbre fusionné : gofmt, build, vet,
+  `go test ./...`, intégration `-p 1 -timeout 30m ./...` complète, lint `--new-from-merge-base=origin/main`
+  0 issue. Poussé sur `feat/v75` en avance rapide. F.4 / F.5 faits ; mesure des pages après
+  relance du serveur sur `feat/v75` (consigne utilisateur) ; compaction PROD dans la séquence Ops
+  de la v7.5.
