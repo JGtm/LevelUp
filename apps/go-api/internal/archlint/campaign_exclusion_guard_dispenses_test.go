@@ -54,9 +54,6 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 		"appariement clip → match par fenêtre de capture (media_repo_filters.go:255) : un clip tourné en Campagne doit pouvoir se rattacher à son match."},
 	"internal/api/wire/registry_monitoring_freshness.go:ServiceRegistry.lastMatchByXUID": {dispenseSemantique, "2026-09-27",
 		"fraîcheur admin, dernier match persisté par joueur (registry_monitoring_freshness.go:173) : la Campagne est une activité réelle du compte."},
-	"internal/analysis/identity_annuaire.go:AnnuaireNomsSQL": {dispenseSemantique, "2026-09-27",
-		"faux positif : résolution de NOMS (niveau participant) restreinte aux matchs de la lecture (identity_annuaire.go:98), fournis par " +
-			"l'appelant (platform/duckdb/squad_repo_annuaire.go:234) ; aucun agrégat de matchs."},
 	"internal/analysis/match_filter.go:BuildNeighborsWhereClause": {dispenseCallSite, "2026-09-27",
 		"faux positif : fragment WithPlayerXuid (match_filter.go:196) injecté dans /*EXTRA_WHERE*/ avec excludeCampaignClause " +
 			"(platform/duckdb/match_view_repo_neighbors_skill.go:72)."},
@@ -78,8 +75,6 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 			"aucune ligne de Campagne. partnerClause (:112) = joueurs d'UN match."},
 	"internal/platform/duckdb/replay_facts_repo.go:ReplayFactsRepo.LinkTargetsForMatches": {dispenseEnsembleFourni, "2026-09-27",
 		"lien vers la page de rejeu des matchs dont le film vient d'être cuit (api/wire/registry_replay_notify.go:208, b.MatchIDs) ; aucun agrégat."},
-	"internal/platform/duckdb/squad_repo_annuaire.go:matchsDesParticipants": {dispenseEnsembleFourni, "2026-09-27",
-		"annuaire de noms restreint aux matchs de la lecture (squad_repo_annuaire.go:116, l.matchIDs) ; aucun agrégat."},
 	"internal/platform/duckdb/tactical_repo_univers.go:clauseCoequipier": {dispenseCallSite, "2026-09-27",
 		"fragment ajouté par clausePerimetre à QTacticalUnivers / QTacticalMaps, dont le jeton est résolu (tactical_repo_univers.go:215, tactical_repo.go:118)."},
 }
