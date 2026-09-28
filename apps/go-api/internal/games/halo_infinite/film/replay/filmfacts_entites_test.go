@@ -3,8 +3,8 @@ package replay
 // filmfacts_entites_test.go — LES OCCUPANTS DU MATCH TRAVERSENT LE FICHIER DE FAITS A L IDENTIQUE
 // (lot M2.2, 2026-09-23).
 //
-// `TestCodecCouvreFilmInputs` ne demande qu une chose d un champ : qu il ne se relise pas VIDE.
-// Ce test-ci demande l EGALITE : chaque entite (slot, index, designateur, rangs, trous comptes,
+// `TestCodecCouvreFilmInputs` exige l egalite feuille a feuille (depuis le 2026-09-28), mais sur UN
+// element par tranche et sans cas limite. Ce test-ci exerce des CAS : chaque entite (slot, index, designateur, rangs, trous comptes,
 // instabilite), les instants des images-cles porteuses et le temoin `Scanned` — y compris le cas
 // « balaye, personne », qui ne doit pas se relire « non balaye ».
 
