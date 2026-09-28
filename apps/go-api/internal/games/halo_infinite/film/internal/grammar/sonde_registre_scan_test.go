@@ -59,7 +59,7 @@ const (
 // Les composants qui NOMMENT chaque archetype interroge. Un nom, jamais un numero.
 const (
 	compTacmapWaypointState = "tacmap-waypointstate" // ti=34 i7
-	compTacmapPOIIcon       = "tacmap-poiicon"       // ti=30 i0
+	// compTacmapPOIIcon (ti=30 i0) vit dans dispatch_player.go depuis le lot J6-bis.
 )
 
 // probeRole designe le role d'un archetype dans ce balayage.

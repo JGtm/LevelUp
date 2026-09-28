@@ -127,35 +127,8 @@ func consumePlayerEngineLoadout(br *Lecteur) {
 	}
 }
 
-// consumePlayerDesiredRespawnLocation porte ti=5 i12, `FUN_142f03ec8` (descripteur 143d0f2f8 +
-// 0x28, resolu en lecture seule le 2026-09-27) : R(1) porte ; si 1, `FUN_14076e494(..., 0x10, 0,
-// p5, 0)` puis `FUN_14076dc04` = R(19), l identifiant de reapparition.
-//
-// LE VEC3 EST PUBLIE BRUT, ET SA PLAGE AVEC LUI. Aucune dequantification ici : les largeurs
-// d axe dependent de la table que la porte choisit, et le lot qui mesure en a besoin pour
-// interpreter les trois quanta. `values` = [qx, qy, qz, identifiant, plage], ou `plage` vaut 0
-// quand la porte est posee (table DEFAUT, +/-20000, 22 bits par axe au niveau 0x10) et `n + 1`
-// pour la plage `n` de la carte. JUSQU AU LOT J6.3 le dernier champ etait le niveau du
-// registre, qui servait a une largeur `6 + niveau` que le jeu ne lit pas (releve du 2026-09-27).
-//
-// PORTE FERMEE (bit == 0) : `present` est faux et `values` est vide — le composant etait au
-// masque, il n'a transmis aucune position. Ce n'est pas une position a l'origine.
-func consumePlayerDesiredRespawnLocation(br *Lecteur) {
-	if !br.ReadBit() {
-		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
-		return
-	}
-	pos := lireE494(br, niveauPosition)
-	id := br.ReadBits(19)
-	if pos.brute {
-		// Garde de pleine precision : R(96) brut, pas de quanta. L'identifiant a bien ete lu,
-		// lui : on publie ce qui existe et on ne fabrique pas de coordonnees.
-		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false, id)
-		return
-	}
-	br.obs.publishPlayerState(PlayerDesiredRespawnLocation, true, pos.q[0], pos.q[1], pos.q[2], id,
-		uint64(pos.idx+1))
-}
+// consumePlayerDesiredRespawnLocation (ti=5 i12) vit dans `lecteur_position_exceptions.go` : EXCEPTION
+// DATEE du portage unique (lot J6-bis, 2026-09-28).
 
 // consumePlayerLivesRemaining porte ti=5 i14 (FUN_141055734) : R(7).
 func consumePlayerLivesRemaining(br *Lecteur) {

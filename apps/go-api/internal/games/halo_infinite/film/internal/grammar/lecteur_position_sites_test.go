@@ -222,7 +222,8 @@ func casDesObjetsDuMonde() []casDeSite {
 func casDesTacmaps() []casDeSite {
 	return []casDeSite{
 		// ti=30 i0 tacmap-poiicon : FUN_142ed8418, CALL 142ed86d7 (thunk, param_6 = 0 : pas de precHigh).
-		{nom: "tacmap-poiicon", indexW: 1,
+		// EXCEPTION DATEE (lot J6-bis, 2026-09-28) : le site garde son ancien lecteur.
+		{nom: "tacmap-poiicon", indexW: 1, exception: "tacmap-poiicon",
 			flux: concat(seul(fixe(32), fixe(32), bit(true), fixe(3), fixe(32), fixe(32), fixe(9), fixe(9)),
 				e524(0, 1, axesCarteNiveau16),
 				seul(fixe(32), bit(false), fixe(8), fixe(8), fixe(8), fixe(8))),
@@ -270,12 +271,14 @@ func casDesVecteursDeJoueur() []casDeSite {
 			lire: parNom("crew-order-component", 14, 0)},
 		// ti=21 flock-destination : FUN_140fb8af0 (descripteur 143c96c50 + 0x28), CALL 140fb8b3e,
 		// niveau 0x10 ; R(1), garde f91c + e524, R(2) quand le niveau du registre depasse 1.
-		{nom: "flock-destination niveau registre 2", indexW: 1,
+		// EXCEPTION DATEE (lot J6-bis, 2026-09-28) : le site garde son ancien lecteur.
+		{nom: "flock-destination niveau registre 2", indexW: 1, exception: "flock-destination",
 			flux: concat(seul(bit(true)), e524(-1, 1, axesDefautNiveau16), seul(fixe(2))),
 			lire: parNom("flock-destination-component", 21, 2)},
 		// ti=5 i12 player-desired-respawn-location : FUN_142f03ec8 (descripteur 143d0f2f8 + 0x28),
 		// CALL 142f03f0d ; porte, e494, FUN_14076dc04 = R(19).
-		{nom: "player-desired-respawn-location", indexW: 1,
+		// EXCEPTION DATEE (lot J6-bis, 2026-09-28) : le site garde son ancien lecteur.
+		{nom: "player-desired-respawn-location", indexW: 1, exception: "respawn-location",
 			flux: concat(seul(bit(true)), e524(0, 1, axesCarteNiveau16), seul(fixe(19))),
 			lire: parNom(compPlayerDesiredRespawnLoc, 5, 0)},
 	}

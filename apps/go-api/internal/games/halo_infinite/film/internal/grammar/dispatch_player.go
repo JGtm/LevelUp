@@ -81,6 +81,10 @@ func consumePlayerAndSceneComponent(br *Lecteur, name string, typeIndex uint32, 
 	}
 }
 
+// compTacmapPOIIcon est l etiquette de registre de ti=30 i0 (declaree ici depuis le lot J6-bis ; la
+// sonde de registre la lisait deja sous ce nom).
+const compTacmapPOIIcon = "tacmap-poiicon"
+
 // consumeCrewFlockAndMusicComponent porte les composants d'EQUIPAGE (ti=14), de NUEE (ti=21),
 // de MUSIQUE (ti=17) et d'EFFET (ti=18) — la tranche ou se concentrent les vec3 quantifies
 // (portage unique depuis le lot J6.3) — plus les premiers arms du moteur de partie (ti=0).
@@ -96,11 +100,12 @@ func consumeCrewFlockAndMusicComponent(br *Lecteur, name string, typeIndex uint3
 	// LOW-confidence : largeur quantifiee runtime data-dependent sur la branche gate==1.
 	// On porte le cas commun (gate==0) et on desync PROPREMENT sur la branche data-dependent
 	// (jamais de bit-guess = pas de corruption silencieuse en aval).
-	// LES QUATRE VECTEURS CI-DESSOUS PASSENT PAR LE PORTAGE UNIQUE (lot J6.3, releve du
-	// 2026-09-27) : aucun site du jeu ne transmet le niveau du registre au lecteur, et aucun des
-	// quatre ne lit de bit precHigh. Ils lisaient `6 + niveau du registre` par axe, un index fige
-	// a 1 bit et un precHigh de trop ; le jeu lit la garde, la porte, l index sur `DAT_144632be0`
-	// bits et trois axes a la ligne 0x10.
+	// LES QUATRE VECTEURS CI-DESSOUS SONT, CHEZ LE JEU, LE LECTEUR `FUN_14076e494(0x10)` (releve du
+	// 2026-09-27) : aucun site ne transmet le niveau du registre au lecteur, et aucun des quatre ne
+	// lit de bit precHigh. crew-order et tacmap-poiiconoffset passent par le portage unique (lot
+	// J6.3) ; tacmap-poiicon et flock-destination gardent leur ancien lecteur (`6 + niveau du
+	// registre`, precHigh, index fige a 1 bit) en EXCEPTIONS DATEES du lot J6-bis (2026-09-28) : la
+	// lecture du jeu y fait baisser la fermeture de `11de8353` (lecteur_position_exceptions.go).
 	case "crew-order-component": // ti=14 i0 (FUN_142ed4274 -> FUN_142ed9120) — R(3)+R(1)gate1[si1: e494(0x10)]
 		br.ReadBits(3)    // FUN_142b1cf3c
 		if br.ReadBit() { // gate1 == présence du vecteur
@@ -110,31 +115,13 @@ func consumeCrewFlockAndMusicComponent(br *Lecteur, name string, typeIndex uint3
 	case "tacmap-poiiconoffset": // ti=30 i1 (FUN_142ed485c, descripteur 143d06b00 + 0x28) — e494(0x10) seul
 		lireE494(br, niveauPosition) // FUN_1424e0e38(..., 0x10)
 		return variant, nil, true
-	case "tacmap-poiicon": // ti=30 i0 (FUN_142ed8418) — bloc + e494(0x10) au milieu
-		br.ReadBits(32) // icon-id
-		br.ReadBits(32) // icon-missionid
-		br.ReadBit()
-		br.ReadBits(3)
-		br.ReadBits(32) // icon-text
-		br.ReadBits(32) // icon-bitmapbg
-		br.ReadBits(9)
-		br.ReadBits(9)
-		lireE494(br, niveauPosition) // FUN_1424e0e38(..., 0x10), CALL 142ed86d7
-		br.ReadBits(32)              // string-id
-		br.ReadBit()
-		br.ReadBits(8)
-		br.ReadBits(8)
-		br.ReadBits(8)
-		br.ReadBits(8)
+	case compTacmapPOIIcon: // ti=30 i0 (FUN_142ed8418) — bloc + e494(0x10) au milieu
+		// EXCEPTION DU PORTAGE UNIQUE (lot J6-bis, 2026-09-28) : [consumeTacmapPoiIcon].
+		consumeTacmapPoiIcon(br, level)
 		return variant, nil, true
 	case "flock-destination-component": // ti=21 i2-i11 (FUN_140fb8af0, descripteur 143c96c50 + 0x28)
-		// R(1), garde + FUN_14076e524(0x10) (CALL 140fb8b3e), puis FUN_1424e268c = R(2) quand
-		// `param_4` (le niveau du registre) depasse 1.
-		br.ReadBit()
-		lireE494(br, niveauPosition)
-		if level > 1 {
-			br.ReadBits(2)
-		}
+		// EXCEPTION DU PORTAGE UNIQUE (lot J6-bis, 2026-09-28) : [consumeFlockDestination].
+		consumeFlockDestination(br, level)
 		return variant, nil, true
 	case "crew-marked-objects-component": // ti=14 i1 (FUN_142ed421c) — R(1); gate==1 -> R(W)+R(2) W runtime
 		if br.ReadBit() {
@@ -240,7 +227,7 @@ func consumePlayerTailAndGameEngineComponent(br *Lecteur, name string, typeIndex
 		}
 		return variant, nil, true
 	case compPlayerDesiredRespawnLoc: // ti=5 i12 (FUN_142f03ec8) — R(1)[si1: e494(0x10) + R(19)], publie
-		consumePlayerDesiredRespawnLocation(br)
+		consumePlayerDesiredRespawnLocation(br, level) // EXCEPTION DATEE (lot J6-bis, 2026-09-28)
 		return variant, nil, true
 	// --- lot 3 workflow filmdec-port-component-desers (2026-06-30) ---
 	case compPlayerLastBetrayer: // ti=5 i15 (FUN_142f04158) — R(6), publie

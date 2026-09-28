@@ -115,6 +115,8 @@ func TraverseEntity(br *Lecteur, reg *Registry, defaultStateBits int) EntityTrac
 		// Le projectile : `FUN_1408efb58` depend du cinquieme argument, que le lecteur de record NEW
 		// pose a 1 (default_state_ti41.go) ; la marche d image-cle garde son cadre.
 		consumeDefaultStateTI41(br, true)
+	} else if t.TypeIndex == archetypeProprieteGeree && br.p.Grammaire.DeserEtatParArchetype {
+		consumeDefaultStateTI13RecordNeuf(br) // EXCEPTION DATEE (lot J6-bis) : default_state_ti13_neuf.go
 	} else if fn, ok := defaultStateDeserByTI[t.TypeIndex]; ok && br.p.Grammaire.DeserEtatParArchetype {
 		fn(br) // deser vtable[0x60] porté bit-exact (cf. default_state_arch.go)
 	} else {

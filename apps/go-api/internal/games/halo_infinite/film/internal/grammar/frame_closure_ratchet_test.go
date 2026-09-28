@@ -220,4 +220,10 @@ const enteteCarteDeFermeture = "" +
 	"#     vue B (`fin de payload` 6 -> 7, `ti=23 i1 selectable-zone-data` 0 -> 1). Ligne NEUVE :\n" +
 	"#     ks_000d5950 `ti=23` 0/1 (un record de l archetype des zones atteint). Le flock-position,\n" +
 	"#     dont la lecture du jeu faisait monter ks_000d5950 mais baisser ks_e5adf7b2, reste en\n" +
-	"#     exception datee (`lecteur_position_exceptions.go`). 0 ligne `fermes` ne descend.\n"
+	"#     exception datee (`lecteur_position_exceptions.go`). 0 ligne `fermes` ne descend.\n" +
+	"#   2026-09-28 lot J6-bis : quatre exceptions datees de plus (flock-destination, tacmap-poiicon,\n" +
+	"#     player-desired-respawn-location, etat par defaut de ti=13 dans un record NEW). AUCUN compte\n" +
+	"#     `fermes` ne bouge. ks_000d5950 retrouve ses comptes d avant J6.3 en vue B (3 485 terminees,\n" +
+	"#     plus d arret `ti=23 i1 selectable-zone-data`) et en vue C (3 485 atteintes, 3 388\n" +
+	"#     terminees contre 3 387 avant J6.3) ; la ligne `ti=23` 0/1 que J6.3 avait fait naitre\n" +
+	"#     disparait (0 ferme). 0 ligne `fermes` ne descend.\n"

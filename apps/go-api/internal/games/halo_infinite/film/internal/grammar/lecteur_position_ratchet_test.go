@@ -63,9 +63,6 @@ func tableDesSitesDePosition() []siteDePosition {
 		{"consumeBipedDefaultStateMediaFrame", "", "lireE494", n10, 1, "trame media : FUN_140f44c38, CALL 142451b5d"},
 		{"consumeCrewFlockAndMusicComponent", "crew-order-component", "lireE494", n10, 1, "ti=14 i0 : FUN_142ed9120, CALL 142ed918e"},
 		{"consumeCrewFlockAndMusicComponent", "tacmap-poiiconoffset", "lireE494", n10, 1, "ti=30 i1 : FUN_142ed485c -> FUN_1424e0e38(0x10) (descripteur 143d06b00)"},
-		{"consumeCrewFlockAndMusicComponent", "tacmap-poiicon", "lireE494", n10, 1, "ti=30 i0 : FUN_142ed8418, CALL 142ed86d7 (thunk)"},
-		{"consumeCrewFlockAndMusicComponent", "flock-destination-component", "lireE494", n10, 1, "ti=21 : FUN_140fb8af0, CALL 140fb8b3e (descripteur 143c96c50)"},
-		{"consumePlayerDesiredRespawnLocation", "", "lireE494", n10, 1, "ti=5 i12 : FUN_142f03ec8 (descripteur 143d0f2f8)"},
 		{"consumeTacmapWaypointState", "", "lireE494", n10, 1, "ti=34 i7 : FUN_140f04d88, CALL 140f04de0 (140f04dd5)"},
 		{"consumeTacmapAreaOfInterest", "", "lireE494", n10, 1, "ti=32 i0 : FUN_142ed7764, CALL 142ed7853 (thunk)"},
 		{"consumeTacmapDisplayAsset", "", "lireE494", n10, 1, "ti=33 i0 : FUN_142ed7d38, CALL 142ed7edf (thunk)"},
@@ -103,7 +100,7 @@ var lecteursLocauxInterdits = []*regexp.Regexp{
 // fichierDesExceptions porte les sites qui gardent leur ancien lecteur ([exceptionsDuPortage]).
 const fichierDesExceptions = "lecteur_position_exceptions.go"
 
-// critereDeRetraitDesExceptions : le meme pour les trois (decision du superviseur, 2026-09-27).
+// critereDeRetraitDesExceptions : le meme pour les six (decision du superviseur, 2026-09-27 ; lot J6-bis, 2026-09-28).
 const critereDeRetraitDesExceptions = "la lecture du jeu fait monter la fermeture sans aucune baisse " +
 	"sur les bobines, ou la grammaire dependante du build est etablie"
 
@@ -128,6 +125,16 @@ func exceptionsDuPortage() map[string]exceptionDuPortage {
 				"11de8353 3 -> 2, 111fa685 2 -> 1 (hausses sur les builds recents)"},
 		"ti38-i18": {"consumeGenericRigidBodyTransforms", 0x10, "ti=38 i18 : FUN_142f036f0, CALL 142f03837",
 			"image-cle ti=38 fb1a1a72 317 -> 245, 111fa685 72 -> 30, 11de8353 99 -> 19, sans aucune hausse"},
+		// Lot J6-bis (2026-09-28), meme situation, meme format.
+		"flock-destination": {"consumeFlockDestination", 0x10, "ti=21 i2-i11 : FUN_140fb8af0, CALL 140fb8b3e (140fb8b33)",
+			"marche des trames de 11de8353 : listes chunk 19 paquet 494 (16 entrees de controle) et chunk 9 " +
+				"paquet 1146 (22 entrees) fermees -> non localisees ; hausse sur 000d5950 chunk 20 paquet 1322 (8 entrees)"},
+		"respawn-location": {"consumePlayerDesiredRespawnLocation", 0x10, "ti=5 i12 : FUN_142f03ec8 (descripteur 143d0f2f8)",
+			"marche des trames de e5adf7b2 : liste chunk 25 paquet 344 (14 entrees) fermee -> non localisee ; " +
+				"hausses sur e5adf7b2 chunk 6 paquet 50 (4 entrees) et 111fa685 chunk 14 paquet 552 (2 entrees)"},
+		"tacmap-poiicon": {"consumeTacmapPoiIcon", 0x10, "ti=30 i0 : FUN_142ed8418, CALL 142ed86d7 (thunk FUN_1424e0e38)",
+			"marche des trames de 11de8353 : liste chunk 21 paquet 1032 fermee -> non localisee, sans " +
+				"aucune hausse sur les huit builds"},
 	}
 }
 
@@ -139,8 +146,8 @@ var exemptionsDeLecteurLocal = map[string]string{
 		"largeurs de la carte selon une grammaire MESUREE ; chez l ecrivain `FUN_142f25e90`, " +
 		"l appel a `FUN_14076e494(0x10)` (CALL 142f2605d) est dans les etiquettes 4 et 5, pas dans la " +
 		"3 que ce port lit — ce n est donc pas un site du lecteur. Decouverte consignee au rapport J6.3.",
-	fichierDesExceptions: "2026-09-27 (lot J6.3, decision du superviseur) : les trois exceptions datees " +
-		"du portage unique (`exceptionsDuPortage`), critere de retrait : " + critereDeRetraitDesExceptions,
+	fichierDesExceptions: "2026-09-27 (lot J6.3, decision du superviseur) et 2026-09-28 (lot J6-bis) : les six " +
+		"exceptions datees du portage unique (`exceptionsDuPortage`), critere de retrait : " + critereDeRetraitDesExceptions,
 }
 
 // TestLesExceptionsDuPortageSontEnPlace : chaque exception vit dans son fichier, n appelle PAS le
@@ -154,7 +161,7 @@ func TestLesExceptionsDuPortageSontEnPlace(t *testing.T) {
 			declarees[fd.Name.Name] = true
 		}
 	}
-	attendues := map[string]bool{"largeurAncienneDuFlock": true}
+	attendues := map[string]bool{"largeurAncienneDuFlock": true, "lireVecteurAncienAuNiveauDuRegistre": true}
 	for cle, e := range exceptionsDuPortage() {
 		attendues[e.fonction] = true
 		if !declarees[e.fonction] {

@@ -347,3 +347,15 @@ package grammar
 // rang couvre aussi les comptes de repli de J8.7 (treize replis de la grammaire comptes par le
 // rapport porte par le `FilmContext`, sans changer une lecture), que J8 avait figes a revision
 // constante sous `.2`. La ligne `.2` du golden garde sa valeur de fusion J6.
+//
+// A REVISION CONSTANTE, LOT J6-bis (2026-09-28, serie jamais publiee) : les baisses que la
+// regeneration des entrees figees attribuait a J6, remontees au paquet (marche des trames des huit
+// builds, J6 contre son parent). Quatre sites gardent leur lecture d AVANT J6, en EXCEPTIONS
+// DATEES au format de J6 (la lecture du jeu y fait baisser une fermeture) : flock-destination
+// (`11de8353`, deux listes, 38 entrees de controle), tacmap-poiicon (`11de8353`, une liste),
+// player-desired-respawn-location (`e5adf7b2`, une liste, 14 entrees) et l etat par defaut de
+// ti=13 DANS UN RECORD NEW (`fb1a1a72` et `60ae07c4`, quatre listes, 9 entrees ;
+// `default_state_ti13_neuf.go` — l image-cle garde la lecture du jeu). Plus aucune liste fermee avant
+// J6 ne se perd sur les huit builds ; les fermetures que la lecture du jeu apportait a ces seuls
+// sites (six listes de `60ae07c4`, une de `000d5950`, `111fa685` et `e5adf7b2`) attendent le
+// critere de retrait.
