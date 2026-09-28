@@ -1,0 +1,352 @@
+# Plan : Emprise — « Placement et rendement de chaque vie » et « Part des vies par placement » (2026-09-28)
+
+> Sources, à lire avant tout lot, et qui FONT FOI pour le rendu :
+> - `.ai/HANDOFF_EMPRISE_CLOTURE_2026-09-27.md` §5 (décision utilisateur du 2026-09-27, spécification
+>   de rendu reprise au §2 ci-dessous) ;
+> - artefact « Écart à l'équipe » https://claude.ai/artifact/TtJstMS6cBuCo4jP7tyRzo, proposition 2
+>   (graphes `c2b` et `c2c`, tableau des grains, notes « Ce qu'on lit » / « Mon avis », tableau des
+>   pièges) ;
+> - `.ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md` (onglet Emprise : §1 D2 périmètre, §2
+>   spécification commune, §4 organisation) ;
+> - `.ai/V7.5/PLAN_TACTIQUE_2026-09-06.md:104` (décision utilisateur du 2026-09-07 : « les données
+>   d'un match en base sont complètes au sync ; seul le rejeu peut attendre la cuisson »).
+>
+> Contrat d'exécution : skill `plan-execution` (ordre strict, aucun item sans statut, zéro fix hors
+> périmètre, découvertes consignées au §7). Statuts : `[x]` fait, `[~]` couvert ailleurs (réf),
+> `[!]` non fait (justification écrite). Aucune case vide à la clôture d'un lot.
+>
+> Statut : **GO utilisateur le 2026-09-28** (« oui go »). Exécution en cours.
+
+## 0. Hors périmètre
+
+- Propositions 1, 3, 4, 5 et 6 de l'artefact (bilan loin / près, frise d'écart, rendement par
+  distance, tendance sur la soirée, profil d'écart) : non retenues.
+- « Isolement, soirée après soirée » (colonne droite du bloc « Par rapport à d'habitude ») : non
+  reprise (décision du 2026-09-27). La colonne reste vide, comme aujourd'hui.
+- La carte Riposte de Synergies (« Morts ripostées », « Temps de riposte », frise « Riposte ») et
+  l'en-tête « Coordination » : CONSERVÉS (voir V7).
+- Halo 5 : pas de film, donc pas de vies (V10).
+- Véhicules comme ressource de l'Emprise : plan séparé `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`.
+- Rattrapage de la prod : fait par l'utilisateur après le déploiement de la v7.5 (V5.6).
+
+## 1. Décisions tranchées (ne pas rediscuter pendant l'exécution)
+
+- **V1 — Lieu du calcul : AU SYNC, par le collecteur de kills.** Troisième projection du matériau
+  que la passe de positions a déjà lu (`sync/killcollector/isolation_facts.go`,
+  `materiauDIsolement` : registre d'identité + positions des bipèdes), après `match_lives` et
+  `match_death_context`. Fondement : décision utilisateur du 2026-09-07, « les données d'un match
+  en base sont complètes au sync ; seul le rejeu peut attendre la cuisson », qui a placé les faits
+  d'isolement au sync ; le placement d'une vie EST un fait d'isolement. Aucune lecture d'artefact
+  de rejeu, aucune révision de décodage montée (`decfilm.Rev`, `facts.Rev` : interdits).
+- **V2 — Grain et stockage.** Une vie = une vie nommée du registre (la même que la ligne de
+  `match_lives`, clé `(match_id, xuid, start_ms)`), tout le lobby. Table append-only NEUVE
+  `match_life_placement` + vue `match_life_placement_latest` (dernière passe entière par match,
+  modèle `migration/steps_shared_match_lives.go`), écrite par un persister INSERT-only sous son
+  propre lease court, APRÈS les vies et sans jamais les bloquer (même doctrine que
+  `projeterFaitsDIsolement` : échec journalisé et compté, jamais propagé). Révision propre
+  `PlacementRev` dans `decoder_rev` ; `IsolationDecoderRev` NE BOUGE PAS (le contenu de
+  `match_lives` ne change pas).
+- **V3 — Mesure d'une vie.** Grille de 100 ms sur `[start_ms, end_ms]`, horloge du match.
+  - Coéquipier = même `team_id` (base, `ids.Equipes`), autre xuid. Vivant = dans une de ses vies.
+    Situé = position de moins d'une seconde (`visibleA` de `film/replay/death_context.go:361`,
+    RÉUTILISÉE, jamais recopiée — `vivantA` idem, `:328`). Distance = 2D horizontale en mètres,
+    même calcul que le contexte de mort.
+  - Chaque instant reçoit UNE cause, dans cet ordre : `carrier` (le joueur porte l'objectif) >
+    `team_down` (aucun coéquipier vivant) > `unplaced` (le joueur n'est pas situé : en véhicule ou
+    position non lue, cf. V0.1) > `teammate_unplaced` (un coéquipier vivant n'est pas situé) >
+    MESURÉ. Seuls les instants mesurés entrent dans la médiane et la part hors radar ; chaque
+    cause est cumulée en ms sur la ligne de la vie et publiée.
+  - `median_m` = médiane, sur les instants mesurés, de la distance au coéquipier vivant le plus
+    proche ; NULL si moins de 2 000 ms mesurées (« vie non mesurée »).
+  - `beyond_ms` = ms mesurées où cette distance dépasse la portée du radar (V5).
+  - `kills` = frags du joueur rattachés à la vie : frag publiable (`publishable`), tueur et victime
+    de camps différents (trahisons exclues), instant dans `[début de la vie, début de sa vie
+    suivante)` — un frag posthume (grenade, échange) appartient à la vie qui vient de finir
+    (1,5 % des frags du 22/09). Frags antérieurs à la première vie : comptés (compteur + journal),
+    non rattachés.
+  - `duration_ms` = `end_ms − start_ms`.
+- **V4 — Quarts.** Isolé = `median_m / radar_m ≥ 1,0` ; rentable = `kills ≥ 1`. Quatre quarts :
+  à portée et rentable, isolé et rentable, à portée et coûteux, isolé et coûteux. Une vie non
+  mesurée n'est ni tracée ni classée ; elle est comptée et publiée. Classement calculé en Go
+  (`analysis/`), jamais dans un composant React.
+- **V5 — Portée du radar.** Table `[radar_range_m]` de `config/titles/halo_infinite/mappings/regulation.toml`
+  (clé = nom de variante), résolue À L'ÉCRITURE par la même source que la lecture
+  (`wire/registry.go` `radarRangeFor`, `teammates_squad_isolement.go` `rayonParMatchDuScope`),
+  injectée dans le collecteur (option de câblage, aucune comparaison de slug), stockée par ligne
+  (`radar_m`). Variante absente : `radar_m` et `beyond_ms` NULL ; le lecteur sort le match de
+  l'univers et le compte (`matchs_sans_rayon`, motif existant). À la lecture, une ligne dont
+  `radar_m` diffère de la portée courante du match est écartée, comptée et journalisée en `Warn`
+  (la table a changé : un rattrapage est dû).
+- **V6 — Porteur d'objectif.** Exclu du dénominateur (V3). Sa lecture au sync est la seule pièce
+  neuve du décodage : elle se décide sur mesure en V0.2 (règle de décision écrite avant la mesure).
+  Familles couvertes : drapeau, crâne, bombe, VIP (celles que le rejeu publie). Stockpile et
+  autres : non couverts, ce que dit l'infobulle de couverture.
+- **V7 — Synergies : le nuage « Frags non ripostés » disparaît, la carte Riposte reste.** Vérifié
+  sur pièces le 2026-09-28 : le titre « Frags non ripostés » est `squad.isolement.card_title`
+  (`lib/i18n/manifests/squad.toml:977-979`), celui de `SquadIsolementNuageCard`
+  (`SquadSynergiesPage.tsx:171`), pas celui de `SquadRiposteCard`. L'artefact, source de la
+  décision, dit « Le nuage « Frags non ripostés » actuel disparaît, celui-ci prend sa place » ; le
+  handoff §5 a nommé `SquadRiposteCard` par confusion des deux cartes. Rangée 1 de Synergies :
+  « Appui » seul, règle actuelle de la grille inchangée (la carte présente garde sa colonne) —
+  point soumis au gate visuel.
+- **V8 — Emplacement.** Onglet Emprise, nouveau bloc « Groupés ou isolés » (EN « Grouped or
+  isolated »), entre « Prendre, et s'en servir » et « Par rapport à d'habitude » (position du bloc
+  dans la maquette de l'onglet, `MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html:435`) : le nuage
+  pleine largeur, la barre des quarts dessous. Périmètre = D2 de l'Emprise (composition exacte ∩
+  matchs filtrés). Joueurs tracés = ceux de la composition (JGtm et coéquipiers sélectionnés), dans
+  l'ordre des fiches de l'Emprise ; « reste du camp » non tracé.
+- **V9 — Rendu** : §2, à la lettre.
+- **V10 — Capacité.** Même porte que les vies : `games.CapFilmKillPositions` (`film.kill_positions`,
+  déclarée pour Halo Infinite seul). Absente : pas de projection au sync, pas de lecture, bloc
+  absent du contrat, `ErrCapabilityNotSupported` journalisé en Debug comme les positions. Le
+  prédicat de contenu de l'onglet (`empriseHasContent`) compte le bloc.
+- **V11 — Lecture bornée (ADR 0036).** Un seul chargement par requête, borné par la liste des
+  matchs du périmètre ET les xuids de la composition (paramètre liste, `platform/duckdb/perimetre_liste.go`),
+  sur la vue `_latest` uniquement ; aucune lecture de `v_gamertag_lookup`.
+- **V12 — Rattrapage.** `matchsAJour` (`cmd/levelup/cmd_backfill_killsource_selection.go:106`) exige
+  en plus une passe de `match_life_placement_latest` à `PlacementRev` pour les matchs qui ont des
+  vies. Le backlog automatique du post-sync (`killcollector/postsync.go`, `conditionBacklog`) NE
+  CHANGE PAS : il ne regarde que `decfilm.Rev`, si bien que le déploiement ne relance aucun
+  redécodage de lui-même.
+
+## 2. Spécification de rendu (NON NÉGOCIABLE — handoff §5, artefact proposition 2)
+
+Règles communes de l'Emprise (plan de l'onglet §2) : légendes en bas et centrées ; graphe centré
+verticalement dans son bloc ; titres factuels ; FR et EN ; jetons de couleur seulement (skill
+`color-tokens`), aucune valeur hex ni classe Tailwind couleur.
+
+### 2.1 « Placement et rendement de chaque vie » (EN « Placement and yield of each life ») — nuage, hauteur 420
+
+- Un point par vie, couleur du joueur (couleurs d'escouade, `getSquadPlayerColors`), liseré 1 px
+  couleur de carte. Taille = durée : `6 + min(durée_s, 90) / 9`.
+- X : « distance médiane au coéquipier le plus proche pendant la vie, en portées de radar » (EN
+  « median distance to the nearest teammate during the life, in radar ranges »), titre d'axe centré
+  sous l'axe, bornes 0 à 2, pas de 0,25, libellés à deux décimales avec virgule (point en EN). Une
+  vie au-delà de 2 est posée à 2 (l'infobulle garde sa vraie valeur).
+- Y : « frags dans la vie » (EN « kills in the life »), −0,5 à 5,5, pas de 1, libellés négatifs
+  masqués ; décalage vertical ±0,25 pour décoller les points de même compte, DÉTERMINISTE (dérivé
+  de `(match_id, xuid, start_ms)`, pas de `Math.random`), affichage seulement ; une vie à plus de 5
+  frags est posée à 5 (l'infobulle garde sa vraie valeur).
+- Repère du radar : trait vertical pointillé à 1,0, couleur d'accent, étiquette « portée du radar »
+  (EN « radar range ») en haut à l'intérieur (11 px) ; PAS de zone « isolé » teintée sur ce graphe.
+- Frontière horizontale pointillée (gris discret) à 0,5 : « au moins un frag dans la vie ».
+- Quatre quarts nommés, texte gris discret 12 px, titre en capitales + sous-titre :
+  - haut gauche « À PORTÉE ET RENTABLE » / « sûr » ;
+  - haut droite « ISOLÉ ET RENTABLE » / « flanqueur, surveiller la régularité » ;
+  - bas gauche « À PORTÉE ET COÛTEUX » / « duel à travailler, pas le placement » ;
+  - bas droite « ISOLÉ ET COÛTEUX » / « vie donnée pour rien, seul » — le SEUL quart teinté (couleur
+    `perf-tier-5` à 10 %, son texte dans cette couleur). Les quarts ne se classent pas du bon au
+    mauvais.
+  - EN : « IN RANGE AND PRODUCTIVE » / « safe » ; « ISOLATED AND PRODUCTIVE » / « flanker, watch the
+    consistency » ; « IN RANGE AND COSTLY » / « a duel to work on, not the placement » ; « ISOLATED
+    AND COSTLY » / « a life given away, alone ».
+- Gros point par joueur : médiane X × médiane des frags de ses vies mesurées, taille
+  `18 + min(nombre de vies, 200) / 10`, couleur du joueur, cerclé 2 px couleur de texte, au-dessus
+  du semis.
+- Infobulle d'une vie : « **Joueur** · une vie de m:ss » / « distance médiane X radar · P % de la
+  vie hors radar · k frag(s) ». Infobulle du gros point : « **Joueur** · N vies » / « médiane X
+  radar · k frag(s) par vie » / « P % des vies isolées et sans frag ». EN parallèles (« a life of
+  m:ss », « median distance X radar · P% of the life out of radar · k kill(s) », « N lives »,
+  « median X radar · k kill(s) per life », « P% of lives isolated and without a kill »).
+- Légende ECharts en bas, centrée, un item par joueur ; un clic isole le semis ET le gros point du
+  joueur (même nom de série). Choix délibéré de la légende native (l'isolement par nom de série
+  en fait partie), et non de la légende DOM des autres cartes.
+- Infobulle de la carte (titre, 3 phrases au plus) : ce qu'est une vie et la mesure ; les instants
+  hors mesure (porteur d'objectif, équipe à terre, joueur ou coéquipier non situé) ; N vies
+  mesurées sur N vies, matchs sans portée de radar connue.
+
+### 2.2 « Part des vies par placement » (EN « Share of lives by placement ») — barres, hauteur 230
+
+- Une barre horizontale empilée à 100 % par joueur (premier joueur en haut), épaisseur 22,
+  séparateur 1 px couleur de carte entre segments. Axe X de 0 à 100 %, noms des joueurs en gras.
+- Quatre segments, dans cet ordre et ces couleurs : « à portée et rentable » `perf-tier-1`,
+  « isolé et rentable » `perf-tier-2`, « à portée et coûteux » `perf-tier-4`, « isolé et coûteux »
+  `perf-tier-5` (`perf-tier-3` inutilisé ; mêmes couleurs pour les quarts du nuage ; jamais une même
+  teinte à deux opacités).
+- Valeur « v % » écrite DANS le segment (11 px, gras, encre sombre), seulement à partir de 8 %.
+- Infobulle : « **Joueur** · N vies » puis une ligne par quart « nom : v % ».
+- Légende en bas, centrée.
+
+## 3. Organisation
+
+- Worktree : `C:\Users\Guillaume\Projects\LevelUp-wt-emprise`, branche `wt/emprise` (chantier
+  Emprise), rebasé en avance rapide sur `feat/v75` avant V0. Un exécuteur Opus par lot, lots
+  SÉQUENTIELS. Le plan de référence est la copie du WORKTREE.
+- Superviseur : vérifie chaque clôture sur pièces (gates rejoués, diff relu, découvertes
+  requalifiées), fusionne `wt/emprise` dans `feat/v75` à la fin (verdict = CI de `feat/v75`, les
+  branches `wt/**` n'ont pas de CI). Pas de push par les agents ; commits `feat(emprise-vies/<lot>)`.
+- Environnement (tous lots) : une commande `go` à la fois ; CGO avec le gcc winlibs ; `GOCACHE`
+  isolé au worktree ; données réelles = `C:\Users\Guillaume\Projects\LevelUp\data` en LECTURE SEULE
+  (films du cache, copies de base dans le scratchpad si le serveur tient la base) ; aucun serveur,
+  navigateur, backfill ni ouverture RW d'une base réelle par un agent ; vitest hors sandbox ; gates
+  en avant-plan.
+- Gate commun de clôture de lot (en plus du gate propre) :
+  `cd apps/go-api && go test ./...` ; `make go-api-lint` ; `make check-types` ; `make test-web` ;
+  `cd apps/web && npm run lint` ; `node tools/knip-ratchet.mjs` ;
+  `node tools/lint-cross-feature-imports.mjs` ; `node tools/lint-no-hardcoded-colors.mjs` ;
+  si le contrat change : `make openapi-gen && make generate-types && make openapi-check` ;
+  lots web et lot de clôture : `lefthook run pre-push` (leçon L6.3 : deux garde-rails n'échouaient
+  qu'au push).
+- Clôture de lot = gate vert + items statués + section du lot mise à jour ici + entrée
+  `.ai/thought_log.md` du worktree + commit du lot + rapport (fait / non fait / découvertes).
+- Ordre : un lot ne commence qu'une fois le précédent CLOS au sens ci-dessus et vérifié par le
+  superviseur. Un STOP de V0 arrête le plan entier jusqu'à la décision de l'utilisateur.
+
+## 4. Lots
+
+### V0 — Mesures préalables (Go, recherche) · moyen
+
+Aucun code livré hors tests de recherche (`*_research_test.go`, sautés sans données, même motif que
+`filmdec/e192_i0_catalogue_mesure_research_test.go`). Seuils écrits ICI, avant la mesure ; un seuil
+manqué = STOP et rapport au superviseur, qui remonte à l'utilisateur (aucun repli choisi par
+l'exécuteur).
+
+- [ ] V0.1 **Le joueur en véhicule n'est pas situé.** Sur au moins deux films Big Team Battle du
+  cache dont l'occupation se lit (épisodes `src = film` du calque véhicules, schéma ≥ 67, construits
+  en mémoire par le constructeur du rejeu), mesurer la part du temps à bord (épisodes lus) où le
+  joueur n'a aucune position de moins d'une seconde dans `ScanBipedPositions`.
+  **Seuil : ≥ 95 %.** Atteint : la cause `unplaced` couvre le véhicule, libellée « en véhicule ou
+  position non lue ». Manqué : STOP.
+- [ ] V0.2 **Porteurs d'objectif au sync.** Deux voies à mesurer, dans cet ordre : (a) le canal des
+  armes tenues déjà balayé (le portage de la bombe n'y lit « aucune donnée de plus »,
+  `replaybuild/matchfacts.go:180-190`) ; (b) les lectures de la cuisson (`replaybuild/matchfacts.go`
+  `flagInput` / `skullInput` / `bombInput` / `vipInput`, enregistrements d'entité, bursts de capture,
+  pont par manche), appelées depuis le film que le collecteur a déjà ouvert. Films : trois de CTF,
+  deux d'Oddball, un d'Assaut, un de VIP s'il en existe, et les 12 films du 22/09 (seuls ceux d'un
+  mode à porteur paient la lecture). Pour chaque voie : intervalles de port comparés à ceux de
+  l'artefact du même match, surcoût de temps par match, pic de mémoire (les lectures d'entité ont
+  déjà monté à 19-22 Go sur un film d'une autre grammaire).
+  **Seuils : intervalles identiques à ±100 ms sur ≥ 98 % du temps porté ; surcoût moyen ≤ 25 % du
+  temps actuel de la passe du collecteur sur les matchs à porteur ; pic de mémoire ≤ 1,5 × celui de
+  la passe actuelle ; aucune révision de décodage à monter.** La voie (a) est retenue si elle passe,
+  sinon (b). Aucune ne passe : STOP.
+- [ ] V0.3 Rapport de mesure collé dans ce plan (tableaux, films, commandes), voie retenue en V0.2.
+- Gate : les tests de recherche passent sur le poste, sautés sans données (`go test ./...` vert sans
+  cache de films) ; gate commun côté Go.
+
+### V1 — Calcul pur (Go) · moyen
+
+Périmètre : `games/halo_infinite/film/replay/placement_des_vies.go` (+ tests), à côté de
+`ContextesDesMorts` ; lecture des porteurs retenue en V0.2 (fonction pure, entrée du calcul).
+
+- [ ] V1.1 `PlacementDesVies(entree) []PlacementVie` : entrée = registre, positions, vies nommées,
+  camps, morts du journal (tueur, victime, instant, publiable), intervalles de port, portée du
+  radar ; sortie = une ligne par vie (V3). Réutilise `visibleA` / `vivantA` (aucune copie).
+- [ ] V1.2 Tests unitaires synthétiques, un par règle : ordre des causes ; équipe à terre ;
+  porteur ; joueur non situé ; coéquipier non situé ; médiane ; `beyond_ms` ; vie de moins de
+  2 000 ms mesurées ; frag posthume rattaché à la vie finie ; frag avant la première vie ; trahison
+  exclue ; frag non publiable exclu ; variante sans portée. Chaque test vu ROUGE sous une mutation
+  nommée dans le journal du lot.
+- [ ] V1.3 Test témoin sur deux films du 22/09 (sauté sans cache) : nombre de vies = celui de
+  `match_lives_latest` pour ces matchs ; ≥ 97 % des frags publiables rattachés ; pour les vies
+  finies par une mort, distance du dernier instant mesuré à moins de 1 m de celle du contexte de
+  mort (`match_death_context`) sur ≥ 90 % d'entre elles.
+- Gate : tests cités + gate commun (Go).
+
+### V2 — Écriture au sync (Go, persistance — lot sensible) · lourd
+
+Périmètre : migration de la table, persister, câblage du collecteur, révision, rattrapage.
+
+- [ ] V2.1 Migration `match_life_placement` (séquence `id`, `match_id`, `decode_pass`, `decoder_rev`,
+  `written_at`, `xuid`, `start_ms`, `end_ms`, `duration_ms`, `measured_ms`, `median_m`, `beyond_ms`,
+  `radar_m`, `carrier_ms`, `team_down_ms`, `unplaced_ms`, `teammate_unplaced_ms`, `kills`), un seul
+  index, vue `match_life_placement_latest` (dernière passe entière par match). Inscrite à l'ordre
+  des migrations (`migration/order.go`).
+- [ ] V2.2 `persist.LifePlacementPersister` INSERT-only, une transaction par passe, validation des
+  lignes (modèle `persist/lives_persister.go`) ; tests d'intégration (`-tags=integration`).
+- [ ] V2.3 Garde-rails : `sync/no_art_patterns_test.go`, `sync/append_only_state_guard_test.go`,
+  `migration/compaction_registry.go` (+ `games/halo_infinite/migrations/compaction_e2e_test.go`).
+  Aucune entrée d'allowlist sans justification datée.
+- [ ] V2.4 Collecteur : `projeterPlacementDesVies` appelée APRÈS `projeterFaitsDIsolement`, jamais
+  bloquante, sous son propre lease ; compteurs ADR 0009 (matchs couverts, vies écrites, vies non
+  mesurées, frags hors vie, échecs d'écriture, matchs sans portée) ; `slog` structuré (Info au
+  succès, Error sur échec d'écriture, Debug sans capability). Lecture des porteurs (voie V0.2) sous
+  la même garde de mode que la cuisson.
+- [ ] V2.5 Portée du radar injectée au collecteur (option de câblage dans `api/wire`), même source
+  que la lecture ; test de câblage qui lit l'arbre syntaxique (modèle
+  `api/wire/registry_pages_home_teammates_wiring_test.go`).
+- [ ] V2.6 `PlacementRev` + `matchsAJour` étendu (V12) ; `conditionBacklog` du post-sync inchangé,
+  avec un test qui le vérifie.
+- [ ] V2.7 Test d'intégration du collecteur sur un film témoin (sauté sans cache) : les lignes
+  écrites égalent le calcul pur de V1.3.
+- [ ] V2.8 Skill `db-schema` : la table et sa vue ajoutées.
+- Gate : gate commun + `cd apps/go-api && go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/migration/... ./internal/games/halo_infinite/migrations/...`.
+
+### V3 — Lecture et contrat (Go) · moyen
+
+- [ ] V3.1 Dépôt `platform/duckdb/squad_life_placement_repo.go` : un chargement borné (V11) ; test
+  DuckDB `:memory:` (lecture `_latest` seulement, bornes respectées, ligne à portée périmée écartée).
+  Le service le consomme par une interface déclarée comme celle du dépôt de l'Emprise (même paquet,
+  même motif d'injection `With…`), testée avec un dépôt simulé.
+- [ ] V3.2 Calcul pur `analysis/squademprise/placement.go` (+ tests) : par joueur de la composition,
+  les vies mesurées (X = `median_m / radar_m`, part hors radar = `beyond_ms / measured_ms`, frags,
+  durée, identifiants), médianes, comptes des quatre quarts ; couverture (matchs mesurés, matchs
+  sans portée, lignes à portée périmée, vies non mesurées, ms par cause d'exclusion).
+- [ ] V3.3 Bloc `placement` dans `squad_emprise` (domaine, service `teammates_service_emprise.go`,
+  câblage sous `CapFilmKillPositions`) ; `ErrCapabilityNotSupported` → bloc absent, testé.
+- [ ] V3.4 Suppression Go du nuage de Synergies (V7) : champ `SquadEchange.nuage_isolement`,
+  `domain/squad_isolement.go`, producteur `service/teammates/teammates_squad_isolement.go` (la
+  résolution de portée `rayonParMatchDuScope` et le câblage radar de `TeammatesService` sont
+  GARDÉS et déplacés vers leur nouveau lecteur), appel `teammates_squad_echange.go:155`, garde-rail
+  `TestSquadNuageIsolement_Contrat` et tests dédiés. `analysis/coordination/` et
+  `match_death_context` intouchés (lus par l'onglet Tactique et la vue match).
+- [ ] V3.5 Contrat régénéré (`openapi.yaml`, `generated.ts`), instantané de surface et ratchet de
+  contrat à jour.
+- Gate : gate commun + `go test -tags=integration -p 1 ./internal/service/teammates/... ./internal/platform/duckdb/...`.
+
+### V4 — Cartes (web) · moyen
+
+- [ ] V4.1 `features/squad/emprise/placementCharts.ts` : deux constructeurs d'option (§2.1, §2.2),
+  en portant les motifs de `squadIsolementNuageOption.ts` (repère du radar, gros point) avant sa
+  suppression ; tests des options (bornes, repères, tailles, couleurs par jeton, seuil de 8 %,
+  décalage déterministe, plafonds à 2 et à 5).
+- [ ] V4.2 Cartes `PlacementVieCard.tsx` et `PlacementQuartsCard.tsx`, bloc « Groupés ou isolés »
+  monté dans `SquadEmprisePage.tsx` (V8), `empriseSections` / `empriseHasContent` étendus.
+- [ ] V4.3 Textes FR / EN dans un fichier neuf `emprise/placementStrings.ts`
+  (`Record<Locale, …>`) : `empriseStrings.ts` est à 490 lignes, seuil 500.
+- [ ] V4.4 Suppression web du nuage de Synergies : `SquadIsolementNuageCard.tsx`,
+  `squadIsolementNuageOption.ts`, `squadIsolementStrings.ts`, clés `squad.isolement.*` du manifeste
+  `squad.toml`, leurs tests, montage `SquadSynergiesPage.tsx:167-176` ; commentaire de section de
+  Synergies mis à jour (rangée 1 = « Appui »).
+- [ ] V4.5 Tests de page : bloc présent sur la soirée témoin (fixture), absent sans le bloc, onglet
+  toujours masqué sans aucun contenu.
+- Gate : gate commun web + `lefthook run pre-push`.
+
+### V5 — Clôture (superviseur) · moyen
+
+- [ ] V5.1 Revue adversariale du diff cumulé (skill `adversarial-review` : lot sync / persistance),
+  correctifs par lot rouvert, un test de non-régression rouge sous mutation par correction.
+- [ ] V5.2 Rattrapage local (serveur arrêté, binaire du worktree, `LEVELUP_REPO_ROOT` = dossier
+  principal) : `levelup backfill-killsource --films-only --dry-run` d'abord, la liste doit contenir
+  les 12 matchs filmés du 22/09 ; puis la passe réelle, bornée par `--limit` si la liste dépasse la
+  soirée témoin et le mois qui la précède.
+- [ ] V5.3 Vérification sur données réelles, soirée du 22/09 : ~146 vies pour JGtm, 80 pour
+  Madina97294, 73 pour Chocoboflor (relevé du 2026-09-28 sur `match_lives_latest`) ; part des vies
+  mesurées et répartition des causes d'exclusion relevées et collées ici.
+- [ ] V5.4 Fusion `wt/emprise` → `feat/v75` (sur accord), CI verte au niveau job.
+- [ ] V5.5 Gate visuel par l'utilisateur APRÈS la fusion (onglet Emprise, soirée du 22/09 ; rangée
+  « Appui » seule sur Synergies) ; il nomme les témoins.
+- [!] V5.6 Rattrapage prod : fait par l'utilisateur après le déploiement de la v7.5. Coût à lui
+  annoncer : `backfill-killsource` redécode chaque film éligible (mesure consignée : 2 films en
+  2 min 13 s, serveur arrêté).
+- [ ] V5.7 `CHANGELOG` et `RELEASE_NOTES` (EN et FR) de la 7.5 ; journal ; mémoire.
+
+## 5. Reprise de session
+
+Lire ce fichier (statuts), puis `git -C ../LevelUp-wt-emprise log --oneline -15`, puis l'entrée la
+plus récente du journal. Reprendre au premier item non statué du premier lot non clos.
+
+## 6. Journal (superviseur)
+
+- 2026-09-28 : plan écrit sur deux relevés en lecture seule (vies et trajectoires ; véhicules).
+  Faits établis : la table des vies existe (`match_lives`, 1 519 matchs en local, ~107 vies par
+  match, horloge du match) et n'a aucun lecteur de page ; aucune mesure par vie n'existe ; 97,6 %
+  des frags du 22/09 tombent dans une vie du tueur, 1,5 % dans les 250 ms qui suivent sa fin ; la
+  portée du radar est câblée côté lecture ; le porteur d'objectif n'existe qu'à la cuisson.
+
+## 7. Découvertes (à consigner ici, pas à traiter)
+
+- `CLAUDE.md` cite `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` ; le fichier vit sous `.ai/V7.5/`.
+- Les ressources de l'Emprise (bonus, armes spéciales) viennent de dérivations de l'artefact de
+  rejeu (`sync/replayartifacts/derivations.go`) : leur population est celle des matchs cuits, pas
+  celle du sync. Écart à la décision du 2026-09-07, à statuer hors de ce plan.
