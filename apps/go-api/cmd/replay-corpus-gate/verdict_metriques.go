@@ -73,6 +73,19 @@ var metriquesDeTelemetrie = map[string]bool{
 	"coverage.decoder.registry.fingerprint": true,
 }
 
+// estTelemetrie dit si une metrique est de la telemetrie : une des feuilles textuelles de
+// `metriquesDeTelemetrie`, ou une feuille numerique de couverture que `replaydiff` classe
+// `PolariteTelemetrie` (reglage ou forme de l outil, lot R4 du 2026-09-28 : `tracks.minPoints`,
+// `stances.mapWidths/n`). `replaydiff` les rend en changement ; le verdict les affiche sans les
+// compter, comme les revisions.
+func estTelemetrie(metrique string) bool {
+	if metriquesDeTelemetrie[metrique] {
+		return true
+	}
+	p, _ := replaydiff.PolariteDe(metrique)
+	return p == replaydiff.PolariteTelemetrie
+}
+
 // LES TROIS LITTERAUX QUE LA TABLE REPETE, NOMMES UNE FOIS (CLAUDE.md n 6). Une table de
 // donnees repete par nature ses suffixes ; les nommer garde la table lisible ET tient le seuil
 // des trois copies.
@@ -256,7 +269,7 @@ func denominateurDe(metrique string) (string, bool) {
 // et elle reste juste.
 func classerPourLeVerdict(d replaydiff.Difference,
 	parMetrique map[string]replaydiff.Difference) string {
-	if metriquesDeTelemetrie[d.Metrique] {
+	if estTelemetrie(d.Metrique) {
 		return sensTelemetrie
 	}
 	if d.Sens != replaydiff.SensPerte && d.Sens != replaydiff.SensDisparu {

@@ -52,7 +52,7 @@ func TestComparer_ReattributionASommeConservee(t *testing.T) {
 	}
 
 	// `bombStats.coverage.periodsNoBridge` : un compteur d'echec porte par un calque.
-	if !estCompteurDEchec(cle("assaut", "bombStats.coverage.periodsNoBridge")) {
+	if p, _ := PolariteDe("bombStats.coverage.periodsNoBridge"); p != PolariteEchec {
 		t.Fatal("periodsNoBridge sous bombStats.coverage est un compteur d'echec")
 	}
 
