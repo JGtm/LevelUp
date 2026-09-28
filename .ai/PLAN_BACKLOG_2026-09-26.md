@@ -1,7 +1,9 @@
 # PLAN — Lot backlog du 2026-09-26 : musique de fin et son du rejeu + sept entrées du backlog
 
-> **Statut : GO donné par l'utilisateur le 2026-09-26, avec UN SEUL agent à la fois, supervisé,
-> dans le worktree dédié du plan.** Contrat d'exécution : skill `plan-execution`,
+> **Statut : CLOS le 2026-09-28** (fusions `9d4e0cf34` et `e4fad0f1d` dans `feat/v75`, CI verte
+> au niveau job ; A5 `[!]` faute de donnée ; écoutes de l'utilisateur après la fusion).
+> GO donné le 2026-09-26, avec UN SEUL agent à la fois, supervisé, dans le worktree dédié du
+> plan. Contrat d'exécution : skill `plan-execution`,
 > précisé au §3 (en cas de divergence, ce plan fait foi).
 >
 > **Source** : `.ai/BACKLOG.md` (entrées numérotées 1 à 8 par l'utilisateur, dans l'ordre du
@@ -721,6 +723,29 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
 - A4.7 et A5 : statués `[!]` (justifications à leurs sections).
 - **Gates utilisateur APRÈS la fusion** (décision de l'utilisateur du 2026-09-27) : écoutes A1.6,
   A2.5 et A4, listées dans le compte rendu de fusion.
+
+**Fusion 3 FAITE (2026-09-28)** : `e4fad0f1d` (A3, A4, docs).
+- Le premier push a été refusé : le jeton `gh` n'avait pas le scope `workflow`, requis parce que
+  A3.4 modifie `ci.yml`. L'utilisateur l'a ajouté.
+- CI verte au niveau job sur la branche temporaire `feat/backlog-fusion` (run `36388866286`,
+  l'étape du lint inter-features comprise), puis fast-forward de `feat/v75` et suppression de la
+  branche temporaire.
+
+**Vérification sur données réelles (superviseur, 2026-09-28, 09 h 42)** :
+- Checkout principal avancé en fast-forward sur `e4fad0f1d`. Ses modifications locales d'autres
+  sessions (`thought_log`, `CLAUDE.md`, `CONTRIBUTING`) n'étaient pas touchées par les commits
+  entrants.
+- Serveur `air` relancé (`/health` 200 en 76 s), puis Vite sur :5173.
+- Logs de démarrage (`apps/go-api/logs/`) :
+  - `drop_msr_secondary_art_indexes_v1` appliquée aux 4 player DB `halo_infinite` ;
+  - sur la player DB Halo 5 de JGtm, hors boucle de migration, le soin a retiré les 6 index
+    (3 MSR et 3 PSA), avec 6 `schema_drift_healed` ;
+  - WAL du 23/09 rejoués sans erreur ;
+  - 0 ERROR au démarrage. Les WARN de jetons morts existaient déjà (présents depuis le 22/09).
+- Cron du classement mondial, sur le vrai scénario de l'item 1 :
+  - démarré à 09:43:26, premier cycle à 09:45:29 (+2 min) ;
+  - vidange expirée à 09:45:48, puis à 09:46:23 : deux nouvelles tentatives ;
+  - `cycle terminé` à 09:46:55. Avant le correctif, le classement du jour était perdu.
 
 ---
 
