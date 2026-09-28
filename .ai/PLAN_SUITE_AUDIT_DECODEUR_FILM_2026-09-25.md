@@ -959,7 +959,7 @@ consigne à son rapport : ce site entre dans J6.
       prouvée ; GA2-4 tranché par J6.1 ; GA2-5 aligné sur `absAxisWFor` ; `ti=38 i18` traité avec la
       fermeture d'image-clé `ti=38` du golden comme garde (aucune baisse) ; test en table des sites
       et de leurs immédiats (ratchet).
-- [ ] J6.4 (ROUVERT le 2026-09-28 : baisses non expliquées trouvées par la régénération des entrées figées, lot J6-bis, §9) `grammar.Rev` monté ; G-corpus : rejets en baisse (`bfecd02b`), `ti=21` lu en entier
+- [x] J6.4 (ROUVERT puis CLOS le 2026-09-28 : lots J6-bis et J6-ter, quatre exceptions datées de plus, §9) `grammar.Rev` monté ; G-corpus : rejets en baisse (`bfecd02b`), `ti=21` lu en entier
       sur les cinq bobines, fermeture d'image-clé sans baisse, zéro perte ; carte de fermeture
       (J4.0) rejouée : delta par vue et par archétype contre la référence, golden
       `frame_closure.golden` régénéré en hausse seulement.
@@ -1306,6 +1306,15 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
     « fermées » sont fausses à 100 % (0/9 et 0/7 concordent avec la première image-clé de la vie)
     mais comptées dans `birthLoadouts.closed` et publiées : hors périmètre du plan (non introduit
     par lui), à instruire dans un lot dédié.
+27. (2026-09-28, J6-ter) Porte du record NEW : la règle du jeu (`FUN_1408f1aa4` : porte lue
+    seulement si le masque `vtable[0x30]` est non vide hors mode rejeu avec `DAT_144c232e1`)
+    fait baisser 3 films sur 8 ; le flux porte pourtant une porte et un masque après l'état par
+    défaut de ti=13 dans les paquets de l'exception (soit `DAT_144c232e1` n'est pas nul en
+    rejeu, contre la NOTE 5.18 §4, soit ce lecteur n'est pas celui de ces records) ;
+    `equipment_creation.go:370` lit le masque même sur une porte à 0 ; l'exception GA2-2
+    rendue à la lecture du jeu gagne +293 paquets sur `e5adf7b2` mais en perd 1 sur `11de8353`.
+    Campagne de recherche à ouvrir (registre des reports) : les sept exceptions datées de J6
+    et J6-bis tomberont avec la grammaire dépendante du contenu.
 
 ---
 
@@ -1591,3 +1600,9 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   dans chaque exception). Piste de cause trouvée par J6-bis (porte du record NEW lue par le jeu
   seulement si le masque `vtable[0x30]` est non vide ; le Go la lit toujours) → **lot J6-ter**
   (décision superviseur, règle « la cause, pas le pis-aller »). J6.4 reste ouvert jusqu'à J6-ter.
+- 2026-09-28 : **J6-ter** fusionné : la piste « porte sous masque » est RÉFUTÉE par la mesure
+  (baisse sur `11de8353`, `e5adf7b2`, `60ae07c4` ; aucune fermeture abandonnée rendue) ;
+  l'exception ti=13 reste, en-tête chiffré. **J6.4 clos** avec sept exceptions datées au total
+  (trois de J6, quatre de J6-bis) ; la cause commune (grammaire dépendante du contenu) sort du
+  plan vers une campagne de recherche (§8.27, registre des reports). Arbre fusionné vérifié :
+  `TestGoldenInputsFidelite` 8/8, `go test -p 1` film et replaybuild verts avec films réels.
