@@ -233,7 +233,14 @@ import (
 // version, deux compteurs a la queue de `MovementStateStats` : les listes qui commencent a un record
 // NEW de tete (`EventPacketsNewRecordStart`) et les lectures de `ti=40 i34` a porte supposee
 // (`VehicleTypePhysicsAssumed`, le repli `repli_physique_de_type_de_vehicule_supposee`).
-const filmFactsMagic = "REPLAYINPUTS27\n"
+//
+// v28 (2026-09-28, jalon J11.0 de la suite d audit) : cinq compteurs de `MovementStateStats` que le
+// blob ne portait pas entrent a la queue de la section : `VelocityReads`, `DatumBindings`,
+// `DatumAmbiguous` (J10.5), `JumpEpisodes` et `JumpsDerived` (lot 5.9.2-5.9.5, schema 66). Les deux
+// derniers sont PUBLIES (`coverage.stances`) : depuis `a9fa54784`, un artefact rejoue depuis les
+// faits les perdait (`TestGoldenInputsFidelite` rouge sur les huit builds). Garde :
+// `TestCodecTransporteToutesLesStatsDeMouvement` (egalite profonde, sans liste).
+const filmFactsMagic = "REPLAYINPUTS28\n"
 
 // ---------------------------------------------------------------------------
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :

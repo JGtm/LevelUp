@@ -332,6 +332,10 @@ func decodeEtatsDeMouvement(r *greader, g *FilmFacts) {
 	for i := range st.MapWidths {
 		st.MapWidths[i] = uint(r.u())
 	}
+	for _, p := range []*int{&st.VelocityReads, &st.DatumBindings, &st.DatumAmbiguous,
+		&st.JumpEpisodes, &st.JumpsDerived} { // v28 (J11.0)
+		*p = int(r.u()) //nolint:gosec // compteurs ecrits positifs
+	}
 	g.MovementStateStats = st
 }
 

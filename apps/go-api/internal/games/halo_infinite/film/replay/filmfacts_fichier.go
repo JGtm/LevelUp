@@ -163,6 +163,10 @@ const VersionCodecFaits = 2
 // du fil des morts, le TEMOIN DE L INVENTAIRE (nul = illisible, lot J3.6) SOUS LA MONTEE DU CODEC 2 (plan, J3.6 :
 // « meme montee que J3.4 ») — le codec 2 n a jamais ete PUBLIE sans lui (les etats intermediaires du lot n ont ecrit aucun fait dans un dossier de donnees), et un fichier du codec 1
 // est refuse sur son prefixe.
+// LE MEME SCHEMA 4 AU JALON J11.0 (2026-09-28) : le blob passe en v28 (cinq compteurs de
+// `MovementStateStats` que le blob ne portait pas, dont les deux publies du saut) SOUS LA MEME
+// MONTEE DU CODEC 2, toujours non publiee. Un fichier ecrit par un binaire de la branche avant
+// J11.0 porte le blob v27 : il est refuse a la magie du blob, et redecode.
 const SchemaDesFaits = 4
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon

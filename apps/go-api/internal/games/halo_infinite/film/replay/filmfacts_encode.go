@@ -307,6 +307,12 @@ func encodeEtatsDeMouvement(w *gwriter, g *FilmFacts) {
 	for _, x := range st.MapWidths {
 		w.u(uint64(x))
 	}
+	// v28 (J11.0) : les cinq compteurs que le blob ne portait pas — le document publie les deux
+	// derniers (`coverage.stances.jumpEpisodes` / `.jumpsDerived`).
+	for _, v := range []int{st.VelocityReads, st.DatumBindings, st.DatumAmbiguous,
+		st.JumpEpisodes, st.JumpsDerived} {
+		w.u(uint64(v)) //nolint:gosec // compteurs positifs
+	}
 }
 
 // encodeMonde ecrit les poses d equipement et les deux voies de socles.
