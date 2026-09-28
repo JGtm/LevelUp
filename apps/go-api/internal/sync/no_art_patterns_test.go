@@ -199,6 +199,12 @@ var tablesProtegees = []string{
 	// une passe plus courte laisserait survivre les lignes de la précédente.
 	"match_lives",
 	"match_death_context",
+	// match_life_placement (plan Emprise vies, lot V2, 2026-09-29) : table append-only
+	// NET-NEUVE, troisième projection de la passe de positions (placement et rendement de chaque
+	// vie). Writer unique : internal/persist/life_placement_persister.go, INSERT purs dans une
+	// transaction unique — aucune entrée d'allowlist, ni ici ni dans allowlistRawDelete. Vue
+	// _latest par DERNIÈRE PASSE ENTIÈRE par match, comme match_lives.
+	"match_life_placement",
 	// NB (2026-08-03) : `media_likes_history` et `media_match_associations_history` sont
 	// append-only elles aussi mais N'ONT PAS leur place ICI — même raison que
 	// `player_records_history` ci-dessus : elles co-résident dans

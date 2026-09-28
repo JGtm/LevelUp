@@ -260,7 +260,7 @@ func mesurerUnFilm(t *testing.T, ctx context.Context, db *sql.DB, film string) *
 
 	batch := BuildKillSourceBatch(film, res, ids)
 	debut = time.Now()
-	fusionnees, err := col.write(ctx, batch)
+	fusionne, err := col.write(ctx, batch)
 	c.ecriture = time.Since(debut)
 	if err != nil {
 		t.Fatalf("ecriture %s: %v", film, err)
@@ -268,7 +268,7 @@ func mesurerUnFilm(t *testing.T, ctx context.Context, db *sql.DB, film string) *
 
 	debut = time.Now()
 	col.collectShots(ctx, film, chunks, ids)
-	col.collectPositions(ctx, film, decode, res, ids, batch.Deaths, fusionnees)
+	col.collectPositions(ctx, film, decode, res, ids, batch.Deaths, fusionne)
 	col.collectHits(ctx, film, chunks, ids)
 	c.annexes = time.Since(debut)
 

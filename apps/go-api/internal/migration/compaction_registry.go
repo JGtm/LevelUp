@@ -84,6 +84,9 @@ var tablesCompactables = []compactable{
 	dernierePasse("match_kill_events", "decode_pass"),
 	dernierePasse("match_lives", "decode_pass"),
 	dernierePasse("match_death_context", "decode_pass"),
+	// match_life_placement (plan Emprise vies V2, 2026-09-29) : ses passes supersédées n'ont
+	// aucun lecteur — la lecture de l'onglet Emprise passe par la vue `_latest` seule (V11).
+	dernierePasse("match_life_placement", "decode_pass"),
 	dernierePasse("kill_openings", "decode_pass"),
 	dernierePasse("kill_positions", "decode_pass"),
 	dernierePasse("match_weapon_shots", "decode_pass"),

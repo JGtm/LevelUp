@@ -56,7 +56,9 @@ func TestNoRawAppendOnlyReads(t *testing.T) {
 	// lecture brute. Sans cet ajout le motif ne matchait PAS `_latest_by_type` du tout
 	// (la frontière de mot échouait devant `_`) : la lecture passait, mais par accident
 	// plutôt que par décision — et un renommage futur l'aurait rendue invisible au garde.
-	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context|match_kill_events|kill_positions|match_bomb_stats|match_flag_grabs_net|match_pad_pickups_by_tier)(_latest(?:_by_type)?)?\b`)
+	// `match_life_placement` AJOUTÉE LE 2026-09-29 (plan Emprise vies, lot V2) : append-only,
+	// vue `_latest` PAR PASSE, comme `match_lives` ; enrôlée à sa création, avant tout lecteur.
+	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context|match_life_placement|match_kill_events|kill_positions|match_bomb_stats|match_flag_grabs_net|match_pad_pickups_by_tier)(_latest(?:_by_type)?)?\b`)
 
 	// Allowlist datée (2026-07-02) — lectures brutes VOLONTAIRES et documentées.
 	// 2026-09-13 (lot finitions LUSR, C.3 bis) : `queries_career.go` RETIRÉ de l'allowlist.

@@ -213,6 +213,7 @@ var canonicalOrder = []string{
 	// steps_shared_match_lives.go : init() suit le nom de fichier, donc APRES les trois
 	// steps_shared_kill_events*.go — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_match_lives_v1",             // shared (vies nommées du film + contexte de voisinage d une mort, append-only + vues _latest par passe)
+	"shared_match_life_placement_v1",    // shared (placement de chaque vie, append-only + vue _latest par passe ; steps_shared_match_lives_placement.go trie juste apres steps_shared_match_lives.go)
 	"shared_objective_events_v1",        // shared
 	"shared_objective_score_v1_drop",    // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
 	"shared_create_pad_pickups_by_tier", // shared

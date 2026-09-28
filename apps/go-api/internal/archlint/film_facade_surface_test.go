@@ -262,7 +262,17 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `FragDuJournal`, `PlacementVie`, `BilanPlacement`.
 //	                                           RE-MESURE A L ENTREE du lot : 278 sur `6466b11ef`
 //	                                           (`comm` des deux inventaires : 13 ajouts, 0 retrait).
-const plafondSurfaceReplay = 291 // 2026-09-28 — emprise-vies V1 sur 6466b11ef : 278 + 13 (cf. l historique ci-dessus)
+//	293  emprise-vies V2 (2026-09-29)           +3 -1, le placement des vies ecrit par le collecteur
+//	                                           (`sync/killcollector/placement_des_vies.go`), qui
+//	                                           lit les porteurs au sync : `EntreePorteursAuSync`,
+//	                                           `BilanPortages`, `IntervalleDePort`. UN RETRAIT :
+//	                                           `PointObjective`, que `replaybuild/flagspawns.go` et
+//	                                           son test ne citent plus — la projection des socles
+//	                                           vit dans `replay` (`MapObjectivesEntry.SoclesDeDrapeau`,
+//	                                           une methode : aucun identifiant compte en plus).
+//	                                           RE-MESURE A L ENTREE du lot : 291 sur `e893ed8dd`
+//	                                           (`comm` des deux inventaires : 3 ajouts, 1 retrait).
+const plafondSurfaceReplay = 293 // 2026-09-29 — emprise-vies V2 sur e893ed8dd : 291 + 3 - 1 (cf. l historique ci-dessus)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

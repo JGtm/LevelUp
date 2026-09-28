@@ -42,7 +42,6 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 )
 
 // flagSpawns rend TOUS les socles de drapeau de la carte du match, en coordonnees monde — les
@@ -64,39 +63,10 @@ func (b *Builder) flagSpawns(matchID, mapID string) []replay.FlagSpawn {
 			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
 		return nil
 	}
-	out := make([]replay.FlagSpawn, 0, 3)
-	for _, p := range entry.PointsOfRole(mapvar.RoleFlagSpawn) {
-		out = append(out, replay.FlagSpawn{
-			Team: flagSpawnTeam(p), Neutral: p.Neutral,
-			X: float32(p.Center.X), Y: float32(p.Center.Y),
-		})
-	}
-	return out
-}
-
-// flagSpawnTeam rend l'equipe proprietaire d'un socle de drapeau : celle du fichier de
-// carte, SAUF si le socle porte le label de la variante « drapeau neutre » — auquel cas il
-// est neutre, quoi que dise son `team_index`.
-//
-// LE LABEL PRIME SUR LE `team_index`, ET CE N'EST PAS UNE PRECAUTION THEORIQUE. Le socle
-// central d'Illusion (`9e821f5e`, object_index 201, au point (0, 0)) porte
-// `ctf_neutral_include` ET `team_index = 0` : lu par son team_index, il devenait un
-// TROISIEME drapeau d'equipe 0 fige au milieu de la carte, et il creait la plus grande zone
-// aveugle du parc. Corrige le 2026-09-13 (rapport 6.11, decouverte D1). Le recensement du
-// catalogue est dans le godoc de [mapvar.Objective.IsCTFNeutral] : sur 63 socles neutres,
-// le label est juste 63 fois, le team_index 62.
-//
-// CE QUE CETTE FONCTION NE DIT PAS, ET CE QUI LE DIT (2026-09-13, decouverte D-B2). Elle
-// rend une EQUIPE, pas une variante : `TeamNeutral` y signifie tantot « socle neutre »,
-// tantot « equipe inconnue » — huit socles du catalogue portent `team_index = -1` sans
-// etre neutres. La neutralite voyage donc dans son propre champ,
-// [replay.FlagSpawn.Neutral], pose depuis le meme label, et c'est LUI que le tri du calque
-// lit (`flag_neutral.go`).
-func flagSpawnTeam(p replay.PointObjective) int {
-	if p.Neutral {
-		return replay.TeamNeutral
-	}
-	return p.TeamIndex
+	// LA PROJECTION VIT DANS `replay` DEPUIS LE 2026-09-29 (lot V2 du plan Emprise vies) : le
+	// collecteur de kills la lit aussi, pour les porteurs du drapeau au sync. Une seule regle du
+	// socle neutre, deux appelants.
+	return entry.SoclesDeDrapeau()
 }
 
 // objectivesCatalog charge (une fois par Builder) le catalogue versionne d'objectifs de carte.

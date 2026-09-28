@@ -131,6 +131,10 @@ type KillSourceCollector struct {
 	// arretDoux : le contexte dont l annulation arrete la DISTRIBUTION des films, jamais un film
 	// en cours (lot 5.24.4, cf. AvecArretDoux). nil = pas d arret doux.
 	arretDoux context.Context
+	// placement : ce que le PLACEMENT DES VIES demande en plus du materiau de la passe (libelles
+	// et objectifs par AvecCapture, portee du radar par AvecPorteeDuRadar) — cf.
+	// placement_des_vies.go. Vide = porteurs du drapeau sans socles, lignes sans portee.
+	placement depsDuPlacement
 }
 
 // FilmDirResolver rend le repertoire disque des chunks d un film (chunk_NN.bin, format

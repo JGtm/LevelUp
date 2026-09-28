@@ -59,10 +59,14 @@ const (
 // Son echec ne doit couter ni le journal des morts ni les positions : ce sont deux ecritures
 // deja faites, et beaucoup plus centrales au produit. Tout refus se journalise et se compte, et
 // la passe continue. C'est la raison pour laquelle elle ne rend pas d'erreur a son appelant.
+//
+// ELLE REND SEULEMENT « LES VIES SONT ECRITES » (plan Emprise vies, lot V2) : le placement des
+// vies ne s'ecrit qu'apres elles, et jamais pour des vies que la base n'a pas recues — une
+// ligne de placement se lit contre SA vie de `match_lives`.
 func (c *KillSourceCollector) projeterFaitsDIsolement(
 	ctx context.Context, matchID string, mat materiauDIsolement, ids MatchIdentities,
 	deaths []persist.KillEventInsert,
-) {
+) bool {
 	if len(ids.Equipes) == 0 {
 		// SANS EQUIPES, LA QUESTION N'A PAS DE SENS : « isole » se mesure entre coequipiers, et
 		// le film ne porte aucun camp. Un match dont `match_participants.team_id` est vide sort
@@ -70,14 +74,14 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 		observability.AddInt(metricIsolationNoTeams, 1)
 		slog.InfoContext(ctx, "killsource: isolement — aucune equipe en base, passe ignoree",
 			"match_id", matchID)
-		return
+		return false
 	}
 
 	lives := toLifeRows(mat.registre.ViesNommees())
 	if len(lives) == 0 {
 		slog.DebugContext(ctx, "killsource: isolement — aucune vie nommee, rien a projeter",
 			"match_id", matchID)
-		return
+		return false
 	}
 	contexts, ecarts := toDeathContextRows(mat, ids, deaths)
 	observability.AddInt(metricIsolationVictimeNonResolue, int64(ecarts.victimeNonResolue))
@@ -91,7 +95,7 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 		observability.AddInt(metricIsolationWriteFail, 1)
 		slog.ErrorContext(ctx, "killsource: isolement — ecriture echouee (le journal et les "+
 			"positions restent ecrits)", "match_id", matchID, "err", err)
-		return
+		return false
 	}
 	observability.AddInt(metricIsolationMatches, 1)
 	observability.AddInt(metricIsolationLives, int64(len(lives)))
@@ -101,6 +105,7 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 		"morts_journal", len(deaths), "victimes_non_resolues", ecarts.victimeNonResolue,
 		"morts_sans_equipe", ecarts.sansEquipe, "morts_sans_lieu", ecarts.sansLieu,
 		"pont_non_publicable", ecarts.pontNonPublicable)
+	return true
 }
 
 // writeIsolationFacts : l'ecriture, sous son PROPRE lease court — meme raison que writePositions
@@ -210,9 +215,20 @@ const IsolationDecoderRev = "isolement-2026-09-15-decoupage-du-catalogue"
 // LE REGISTRE SUFFIT : il porte le pont, les vies nommees et le calage d horloge. Une version
 // precedente recopiait aussi `SlotXUID` — un doublon du pont du registre, et surtout le pont
 // APLATI que la correction P0-2 a cesse d'employer.
+//
+// LE RESTE SERT AU PLACEMENT DES VIES (plan Emprise vies, lot V2), et seulement a la lecture des
+// PORTEURS d'objectif qu'il demande : le film deja charge, le contexte que le balayage des
+// positions a ouvert dessus, l'entree de carte, le profil que `killsource` a calibre et
+// l'entree du registre (les lectures qui l'ont construit). `replay.PortagesAuSync` en refait le
+// MEME registre par l'assembleur de la cuisson, sans relire ce que la passe a deja lu.
 type materiauDIsolement struct {
 	registre  replay.IdentityRegistry
 	positions []decfilm.BipedPosition
+	film      *decfilm.Film
+	contexte  *decfilm.FilmContext
+	carte     decfilm.MapQuantEntry
+	profil    *decfilm.ProfilDeBalayage
+	identite  replay.IdentityInput
 }
 
 // toLifeRows traduit les vies pures en lignes ecrivables.

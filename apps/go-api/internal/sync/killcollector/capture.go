@@ -22,9 +22,12 @@ package killcollector
 
 import (
 	"fmt"
+	"log/slog"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/port"
 )
 
@@ -34,6 +37,13 @@ import (
 type DepsCapture struct {
 	MapNames port.ReplayMapNameRepo
 	Bounds   *decfilm.MapQuantCatalog
+	// Libelles et Objectifs : ce que la lecture des PORTEURS du placement des vies demande (plan
+	// Emprise vies, lot V2) — le catalogue de libelles du titre (objets d'objectif du drapeau) et
+	// le catalogue d'objectifs de carte (socles de drapeau), les MEMES fichiers que la cuisson.
+	// OPTIONNELS, a la difference des deux premiers : leur absence degrade le calque du drapeau
+	// comme a la cuisson, jamais les positions.
+	Libelles  replay.LabelCatalog
+	Objectifs *replay.MapObjectivesCatalog
 }
 
 // Cablee dit si les deux dependances sont la.
@@ -60,7 +70,28 @@ func CaptureDepuisCatalogue(repoRoot, titleSlug string, mapNames port.ReplayMapN
 		return DepsCapture{}, fmt.Errorf("capture positions %s: catalogue de bornes (%s): %w",
 			titleSlug, chemin, err)
 	}
-	return DepsCapture{MapNames: mapNames, Bounds: catalogue}, nil
+	deps := DepsCapture{MapNames: mapNames, Bounds: catalogue}
+	deps.Libelles, deps.Objectifs = cataloguesDuPlacement(repoRoot, titleSlug)
+	return deps, nil
+}
+
+// cataloguesDuPlacement charge les deux catalogues des porteurs, BEST-EFFORT : un fichier
+// illisible se JOURNALISE (installation incomplete — ils sont versionnes) puis degrade, comme a la
+// cuisson (`replaybuild.objectivesCatalog`). Les positions et les vies n'en dependent pas.
+func cataloguesDuPlacement(repoRoot, titleSlug string) (replay.LabelCatalog, *replay.MapObjectivesCatalog) {
+	libelles, err := replaylabels.Load(repoRoot, titleSlug)
+	if err != nil {
+		slog.Warn("killsource: placement — catalogue de libelles illisible, porteurs du drapeau "+
+			"sans objets d'objectif nommes", "titleSlug", titleSlug, "err", err)
+	}
+	chemin := titlePkg.NewPathResolver(repoRoot).MapObjectivesPath(titleSlug)
+	objectifs, err := replay.LoadMapObjectives(chemin)
+	if err != nil {
+		slog.Warn("killsource: placement — catalogue d'objectifs illisible, drapeaux sans equipe "+
+			"proprietaire", "titleSlug", titleSlug, "path", chemin, "err", err)
+		objectifs = nil
+	}
+	return libelles, objectifs
 }
 
 // AvecCapture applique les deps au collecteur si elles sont completes. Chainable, no-op sinon —
@@ -69,6 +100,7 @@ func (c *KillSourceCollector) AvecCapture(d DepsCapture) *KillSourceCollector {
 	if !d.Cablee() {
 		return c
 	}
+	c.placement.libelles, c.placement.objectifs = d.Libelles, d.Objectifs
 	return c.WithPositionCapture(d.MapNames, d.Bounds)
 }
 

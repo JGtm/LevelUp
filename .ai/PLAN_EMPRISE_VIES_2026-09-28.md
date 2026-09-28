@@ -523,30 +523,191 @@ EMPRISE_V0_CACHE=C:/Users/Guillaume/Projects/LevelUp/data/cache \
 
 Périmètre : migration de la table, persister, câblage du collecteur, révision, rattrapage.
 
-- [ ] V2.1 Migration `match_life_placement` (séquence `id`, `match_id`, `decode_pass`, `decoder_rev`,
+- [x] V2.1 Migration `match_life_placement` (séquence `id`, `match_id`, `decode_pass`, `decoder_rev`,
   `written_at`, `xuid`, `start_ms`, `end_ms`, `duration_ms`, `measured_ms`, `median_m`, `beyond_ms`,
   `radar_m`, `carrier_ms`, `team_down_ms`, `unplaced_ms`, `teammate_unplaced_ms`, `kills`), un seul
   index, vue `match_life_placement_latest` (dernière passe entière par match). Inscrite à l'ordre
   des migrations (`migration/order.go`).
-- [ ] V2.2 `persist.LifePlacementPersister` INSERT-only, une transaction par passe, validation des
+  → `migration/steps_shared_match_lives_placement.go`, step `shared_match_life_placement_v1`
+  (global, comme `shared_match_lives_v1`), inscrit juste après lui dans `canonicalOrder` (le nom du
+  fichier trie juste après `steps_shared_match_lives.go`). Colonnes du plan, noms tels quels ; index
+  unique `idx_match_life_placement_lookup (match_id, xuid, start_ms, written_at)`.
+- [x] V2.2 `persist.LifePlacementPersister` INSERT-only, une transaction par passe, validation des
   lignes (modèle `persist/lives_persister.go`) ; tests d'intégration (`-tags=integration`).
-- [ ] V2.3 Garde-rails : `sync/no_art_patterns_test.go`, `sync/append_only_state_guard_test.go`,
+  → `persist/life_placement_persister.go` (+ `_integration_test.go`, 4 tests).
+- [x] V2.3 Garde-rails : `sync/no_art_patterns_test.go`, `sync/append_only_state_guard_test.go`,
   `migration/compaction_registry.go` (+ `games/halo_infinite/migrations/compaction_e2e_test.go`).
   Aucune entrée d'allowlist sans justification datée.
-- [ ] V2.4 Collecteur : `projeterPlacementDesVies` appelée APRÈS `projeterFaitsDIsolement`, jamais
+  → les quatre inscrits, AUCUNE entrée d'allowlist ; en plus, la table est enrôlée au garde de
+  lecture brute (`platform/duckdb/no_raw_rating_reads_test.go`, ADR 0030 D-4) avant tout lecteur.
+- [x] V2.4 Collecteur : `projeterPlacementDesVies` appelée APRÈS `projeterFaitsDIsolement`, jamais
   bloquante, sous son propre lease ; compteurs ADR 0009 (matchs couverts, vies écrites, vies non
   mesurées, frags hors vie, échecs d'écriture, matchs sans portée) ; `slog` structuré (Info au
   succès, Error sur échec d'écriture, Debug sans capability). Lecture des porteurs (voie V0.2) sous
   la même garde de mode que la cuisson.
-- [ ] V2.5 Portée du radar injectée au collecteur (option de câblage dans `api/wire`), même source
+  → `sync/killcollector/placement_des_vies.go`. Appelée seulement si les vies sont ÉCRITES
+  (`projeterFaitsDIsolement` rend désormais ce booléen), sous `CapFilmKillPositions` (même porte
+  que les positions, message Debug élargi). Journal détaillé ci-dessous.
+- [!] V2.5 Portée du radar injectée au collecteur (option de câblage dans `api/wire`), même source
   que la lecture ; test de câblage qui lit l'arbre syntaxique (modèle
   `api/wire/registry_pages_home_teammates_wiring_test.go`).
-- [ ] V2.6 `PlacementRev` + `matchsAJour` étendu (V12) ; `conditionBacklog` du post-sync inchangé,
+  → **INAPPLICABLE TELLE QU'ÉCRITE — ARRÊT et rapport (consigne du brief)** : `api/wire` ne
+  construit NI le collecteur NI le moteur de sync qui le porte (vérifié : aucune référence à
+  `killcollector` sous `internal/api`). Le collecteur naît en trois lieux : `killcollector.RunPostSync`
+  (le hook est créé par `sync.NewSyncEngineForTitle` lui-même, « pas au wiring », pour qu'aucun
+  site ne l'oublie ; les moteurs serveur sont construits par `scheduler.BuildEngine` et
+  `cmd/server/sync_v2_wiring.go`), `cmd/levelup` `backfill-killsource` et `--online` — dont la passe
+  de rattrapage V5.2, qui ne passe par aucun `api/wire`. Fait côté collecteur : l'option de
+  RÉCEPTION `AvecPorteeDuRadar(PorteeDuRadar)` (testée, `RadarM` nil sans elle, compteur
+  `killsource_placement_matchs_sans_portee`). NON FAIT : l'appel de production (aucun appelant :
+  en l'état, toute ligne s'écrit `radar_m`/`beyond_ms` NULL) et le test de câblage par AST.
+  Décision à prendre (superviseur/utilisateur), voir le journal V2.
+- [x] V2.6 `PlacementRev` + `matchsAJour` étendu (V12) ; `conditionBacklog` du post-sync inchangé,
   avec un test qui le vérifie.
-- [ ] V2.7 Test d'intégration du collecteur sur un film témoin (sauté sans cache) : les lignes
+  → `killcollector.PlacementRev = "placement-2026-09-29-v1"` ; `IsolationDecoderRev`, `decfilm.Rev`,
+  `facts.Rev` intactes (diff vide sur leurs constantes) ; `postsync.go` non modifié ;
+  `TestBacklogAJour_IgnoreLePlacementDesVies` et `TestMatchsAJour_ExigeLePlacementDesVies`.
+- [x] V2.7 Test d'intégration du collecteur sur un film témoin (sauté sans cache) : les lignes
   écrites égalent le calcul pur de V1.3.
-- [ ] V2.8 Skill `db-schema` : la table et sa vue ajoutées.
+  → `TestEmpriseV2Temoin` : `8e376cb1` (Team Slayer) 102/102 et `ab526724` (CTF, 31 portages lus)
+  150/150 lignes égales champ à champ.
+- [x] V2.8 Skill `db-schema` : la table et sa vue ajoutées.
+  → section `match_life_placement` + mention des tables à `decode_pass` dans la règle append-only.
 - Gate : gate commun + `cd apps/go-api && go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/migration/... ./internal/games/halo_infinite/migrations/...`.
+  → vert (commandes et sorties au journal V2). Gate web non joué : lot Go seul, aucun fichier web.
+
+#### Journal V2 (exécuteur, 2026-09-29)
+
+**Fichiers.** Neufs : `migration/steps_shared_match_lives_placement.go` ;
+`persist/life_placement_persister.go` (+ `_integration_test.go`) ;
+`sync/killcollector/placement_des_vies.go` (+ `_test.go`, `_integration_test.go`) ;
+`games/halo_infinite/film/replay/socles_de_drapeau.go` ;
+`cmd/levelup/cmd_backfill_killsource_selection_placement_integration_test.go`. DÉPLACÉ :
+`replaybuild/flagspawns_test.go` → `replay/socles_de_drapeau_test.go` (avec la projection qu'il
+teste ; son second test appelait une copie de la projection, il appelle désormais la projection).
+Modifiés : `migration/order.go`, `migration/compaction_registry.go` (+ commentaires « 14 tables » de
+`compaction_test.go` et `compaction_e2e_test.go`), `sync/no_art_patterns_test.go`,
+`sync/append_only_state_guard_test.go`, `platform/duckdb/no_raw_rating_reads_test.go`,
+`games/halo_infinite/migrations/compaction_e2e_test.go`, `replaybuild/flagspawns.go` (appelle
+`MapObjectivesEntry.SoclesDeDrapeau`, `flagSpawnTeam` retirée), collecteur (`identities.go`,
+`roster.go`, `isolation_facts.go`, `positions.go`, `collector.go`, `collector_run.go`,
+`capture.go`), tests du collecteur ajustés aux signatures (`positions_test.go`,
+`positions_openings_integration_test.go`, `backfill_cout_integration_test.go`),
+`emprise_v1_temoin_research_test.go` (sa copie `v1Journal` remplacée par `journalDuPlacement` de
+production), `collector_ouvriers_integration_test.go` (la vue du placement comparée entre 1 et
+3 ouvriers : 200 lignes identiques), `cmd/levelup/cmd_backfill_killsource_selection.go`,
+`archlint/film_facade_surface_test.go` (compagnon 291 → 293 daté : +`EntreePorteursAuSync`,
+`BilanPortages`, `IntervalleDePort`, −`PointObjective`), `.claude/skills/db-schema/SKILL.md`.
+
+**Câblage.** `collect` → `write` rend désormais la PASSE FUSIONNÉE (`persist.KillSourceBatch` :
+morts ET publiabilité) → `collectPositions(…, batch.Deaths, fusionne)` → `ecrireLesDeuxPasses` :
+positions, puis `projeterFaitsDIsolement` (rend « vies écrites »), puis SI les vies sont écrites
+`projeterPlacementDesVies` → `replay.PortagesAuSync` (garde de mode dans l'entrée) →
+`replay.PlacementDesVies` → `persist.LifePlacementPersister` sous son propre lease. Le matériau
+(`materiauDIsolement`) porte en plus le film, le contexte du balayage, l'entrée de carte, le profil
+calibré et l'`IdentityInput` du registre. Variante, `map_id` et feuille (frags, morts, assistances)
+viennent de la MÊME lecture du roster que les équipes (`participantsForMatch`, porte de la base et
+segment de lecture inchangés). Libellés (`replaylabels.Load`) et catalogue d'objectifs chargés par
+`CaptureDepuisCatalogue`, le chemin commun aux trois appelants (post-sync, backfill, `--online`),
+best-effort journalisé. Portée : option `AvecPorteeDuRadar(PorteeDuRadar)` SANS appelant de
+production (V2.5 [!]).
+
+**V2.5 — pourquoi l'arrêt, et les deux voies à trancher.** `api/wire` ne construit ni le
+collecteur ni le moteur de sync : le hook de l'étape 1.57 est créé par `sync.NewSyncEngineForTitle`
+(volontairement « pas au wiring »), les moteurs du serveur par `scheduler.BuildEngine` et
+`cmd/server/sync_v2_wiring.go`, et les deux passes CLI (dont le rattrapage V5.2) construisent leur
+collecteur dans `cmd/levelup`. La table vient bien de `regulation.toml` (`[radar_range_m]`,
+`mappings.RegulationSet.RadarRangeMap`), chargée pour la lecture par `api/server_apiv1.go` puis
+`ServiceRegistry.WithRadarRange`. Deux voies, aucune choisie :
+(a) `CaptureDepuisCatalogue` (chemin commun aux trois collecteurs, où libellés et objectifs sont
+déjà chargés) charge aussi `regulation.toml` par le même chargeur et pose la portée ; test AST sur
+les sites de construction du collecteur (`killcollector`, `cmd/levelup`) plutôt que sur `api/wire` ;
+(b) faire descendre la table depuis `server_apiv1` jusqu'aux deux fabriques de moteur puis au hook,
+et la charger à part pour la CLI. Dans les deux cas, la résolution « variante nettoyée, portée > 0 »
+existe déjà en DEUX copies (`TacticalService.rayonsParMatch`, `teammates.rayonParMatchDuScope`) :
+un troisième site impose de la centraliser avec un garde-rail (règle 6 du dépôt).
+
+**Décisions prises dans le cadre du lot (à relire).**
+- Le placement ne s'écrit que si les vies viennent d'être écrites : jamais une ligne contre une
+  vie absente de `match_lives` (échec d'écriture des vies, match sans équipes).
+- Pont non publiable : refus AVANT la lecture des porteurs (aucun coût payé), compteur
+  `killsource_placement_pont_non_publiable` en plus des six du plan.
+- Compteurs (ADR 0009) : `killsource_placement_matchs_couverts`, `_vies_ecrites`,
+  `_vies_non_mesurees`, `_frags_hors_vie` (avant la première vie + tueur sans vie),
+  `_erreurs_ecriture`, `_matchs_sans_portee`, `_pont_non_publiable`, `_porteurs_lus`,
+  `_porteurs_sans_calage`. Info au succès (bilan complet des frags et des porteurs), Error sur
+  échec d'écriture, Debug sans capability (message de la porte `CapFilmKillPositions` élargi).
+- Validation du persister : bornes et durée cohérentes, cumuls non négatifs couvrant la vie
+  (grille fermée), médiane seulement avec du temps mesuré, `radar_m` et `beyond_ms` nuls ENSEMBLE,
+  hors radar ≤ mesuré, frags ≥ 0.
+- Tueur d'un frag = `FeedKillerXUID` (le fil), comme le témoin V1.
+
+**Témoin V2.7** (copie de base recopiée et migrée dans le dossier du test, cache de films,
+câblage de production `CollectMatch`, portée lue dans `regulation.toml` ; calcul pur nourri
+INDÉPENDAMMENT : faits de match par `ReplayFactsRepo`, catalogues relus) :
+
+| Film | Variante | Vies écrites / `match_lives_latest` | Non mesurées | Porteur (ms) | Portages lus | Égalité |
+|---|---|---|---|---|---|---|
+| `8e376cb1` | Team Slayer:Arena | 102 / 102 | 0 | 0 | aucune lecture | 102 lignes, champ à champ |
+| `ab526724` | CTF:Arena | 150 / 150 | 5 | 124 100 | statborg, équipes, objets du monde : 31 | 150 lignes, champ à champ |
+
+```bash
+export CGO_ENABLED=1 GOCACHE=C:/Users/Guillaume/Projects/LevelUp-wt-emprise/.gocache
+EMPRISE_V2_FILMS=8e376cb1-8885-4ed5-a942-fca601e86620,ab526724-3684-4335-b759-a18edcccc137 \
+EMPRISE_V2_DB=$SP/shared_copy.duckdb EMPRISE_V2_CACHE=C:/Users/Guillaume/Projects/LevelUp/data/cache \
+  go test -tags=integration ./internal/sync/killcollector/ -run '^TestEmpriseV2Temoin$' -v -count=1   # PASS 99,2 s
+```
+
+**Mutations** (appliquées une à une par copie dans le scratchpad, test ciblé, restauration par
+copie vérifiée par `cmp`) :
+
+| # | Test | Mutation | Rouge |
+|---|---|---|---|
+| P1 | `LifePlacementPersister_AllerRetour` | un pointeur nil s'écrit 0 | « les nil doivent se relire NULL » |
+| P2 | `…_LaVueRendLaDernierePasseEntiere` | vue partitionnée par (match, xuid, début) | m1 = 3 lignes au lieu de 1 |
+| P3 | `…_PasseVide_RienNEstEcrit` | passe vide refusée | erreur « passe vide » |
+| P4 | `…_Refus` | contrôle de couverture des cumuls retiré | « cumuls courts » acceptés, 1 ligne écrite |
+| G1 | `TestNoRawDeleteOnAppendOnlyTables`, `TestNoMutationOnAppendOnlyStateTables` | `DELETE FROM match_life_placement` dans le persister | 1 violation chacun |
+| G1b | `TestNoARTPatternsOnProtectedTables` | `ON CONFLICT (id) DO UPDATE` sur l'INSERT | 1 violation |
+| G2 | `TestCompaction_SchemaReel_BoutABout` | entrée retirée du registre de compaction | rouge |
+| G3 | `TestNoRawAppendOnlyReads` | lecture brute `FROM match_life_placement` en `platform/duckdb` | rouge |
+| C1 | `ProjeterPlacementDesVies_PontNonPubliable_…` | garde du pont retirée | panique du writer |
+| C2 | `…_EchecDEcriture_NEstPasBloquant` | compteur d'échec retiré | 0 au lieu de 1 |
+| C3 | `PortagesDuMatch_HorsModeAPorteur_RienNEstLu` | retour anticipé de la garde de `PortagesAuSync` retiré | bilan « sans calage » |
+| C4 | `ToPlacementRows_…` | non situé / coéquipier non situé croisés | ligne 111 fausse |
+| C5 / C5b | `JournalDuPlacement_…` | publiabilité forcée / tueur = assistant | frag publiable d'une passe non publiable / tueur 999 |
+| C6 | `PorteeDe` | `connue` ignoré | portée d'une variante inconnue |
+| C7 | `SoclesDe_…` | liste vide au lieu de nil hors catalogue | `[]` |
+| C8 | `ProjeterPlacementDesVies_EcritUneLigneParVie` | `RadarM: nil` | portée NULL |
+| C9a / C9b | `TestEmpriseV2Temoin` (`ab526724`) | appel du placement retiré / variante vide transmise | 0 ligne pour 150 vies / porteur 0 contre 1 800 ms (ligne 5) |
+| C10 | `BacklogAJour_IgnoreLePlacementDesVies` | le backlog lit le placement | 2 matchs au backlog |
+| C11 | `MatchsAJour_ExigeLePlacementDesVies` | clause du placement retirée | 2 matchs dits à jour |
+| C12 / C12b | `EntreeDesPorteurs_PorteCeQueLaPasseALu` | feuille / variante non transmises | rouge |
+| C13 / C13b | `SharedRoster_LitVarianteCarteEtFeuille` | `map_id` non nettoyé / feuille non remplie | rouge |
+| S1 | `EquipeDuSocle_…`, `SoclesDeDrapeau…` | label neutre ignoré | équipe 0 au lieu de −1 |
+
+Premier essai de C10 NON rouge : la mutation écrite excluait les matchs au lieu de les ajouter ;
+réécrite dans le bon sens. Premier essai d'une mutation de la feuille (`Lignes: nil`) sur le témoin
+NON rouge, ni sur `ab526724` ni sur `b4f9064c` (Oddball) : le pont par manche rend les mêmes
+portages sans le triplet sur ces films. D'où la couture `entreeDesPorteurs` et son test (C12),
+motif d'`entreeDuRegistre`.
+
+**Gate** (depuis `apps/go-api`, `CGO_ENABLED=1`, `GOCACHE` du worktree, une commande `go` à la
+fois) :
+- `go test` en trois lots (état final) : `./internal/sync/... ./internal/games/...
+  ./internal/replaybuild/... ./internal/archlint/...` 50 ok ; reste d'`internal` 102 ok ; hors
+  `internal` 38 ok ; aucun FAIL. Au premier passage (avant la couture), `api/handlers`
+  `TestSettingsHandler_PostMediaReset_OK` a dépassé son délai de 200 ms sous charge, vert seul et
+  5 fois de suite, puis vert au passage final (§7).
+- `go test -tags=integration -p 1 ./internal/sync/...` : 11 ok (9 min 57 s, premier passage ;
+  seul `killcollector` a changé depuis, rejoué seul : ok) ; `./internal/persist/...
+  ./internal/migration/... ./internal/games/halo_infinite/migrations/... ./internal/api/wire/...
+  ./cmd/levelup/...` : 5 ok. Au passage final, `killcollector`
+  `TestRosterDesFilms_AnnuaireContreJointure` a rendu un facteur 9,86 pour un seuil de 10 ; rejoué
+  3 fois vert (10,1 à 12,0), et 3 fois sur le roster D'ORIGINE (10,4 à 12,9) : banc à la limite
+  de son seuil avant le lot (§7) ; paquet rejoué entier : ok.
+- `make go-api-lint` (golangci-lint présent, `--new-from-merge-base=origin/main`) : 0 issues.
+- `go test ./internal/archlint/...` : ok. `gofmt -l internal cmd` : vide.
 
 ### V3 — Lecture et contrat (Go) · moyen
 
@@ -680,3 +841,30 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
 - (V0) L'en-tête de `film/internal/grammar/e192_i0_catalogue_mesure_research_test.go` donne une
   commande sur `./internal/games/halo_infinite/film/filmdec/`, paquet qui n'existe plus ; le plan
   (§4 V0) cite le fichier sous `filmdec/`.
+- (V2, 2026-09-29) **V2.5 inapplicable telle qu'écrite** : `api/wire` ne construit ni le collecteur
+  ni le moteur de sync (détail et deux voies au journal V2). Tant que V2.5 n'est pas tranchée,
+  toute ligne de `match_life_placement` s'écrit `radar_m` / `beyond_ms` NULL.
+- (V2) La résolution « variante nettoyée → portée > 0 » vit en DEUX copies
+  (`service/tactical_service*.go` `rayonsParMatch`, `service/teammates/teammates_squad_isolement.go`
+  `rayonParMatchDuScope`, qui le dit dans son godoc) ; le câblage V2.5 en ferait une troisième. Le
+  témoin V2.7 en porte une copie de test (`v2Portee`).
+- (V2) Rattrapage : un match dont le pont slot->xuid n'est pas publiable a des vies et aucun
+  placement (même refus que le contexte des morts), donc `matchsAJour` le garde candidat à chaque
+  passe manuelle. Mesuré sur la copie du 2026-09-28 : 3 matchs sur 1 519 à vies n'ont aucun
+  contexte de mort (le signe de ce refus). Le backlog automatique n'est pas touché.
+- (V2) La feuille du match (triplet frags / morts / assistances) n'a changé AUCUN portage sur les
+  films témoins `ab526724` (CTF) et `b4f9064c` (Oddball) : le pont par manche s'en passe sur eux.
+  Seul le test de couture `TestEntreeDesPorteurs_PorteCeQueLaPasseALu` en garde la transmission.
+- (V2) `CaptureDepuisCatalogue` charge désormais aussi `replay_labels.toml` / `weapon_names.toml`
+  et `map_objectives.json` (2,8 Mo) à CHAQUE cycle post-sync qui a du travail (comme le catalogue de
+  bornes l'était déjà) ; coût non mesuré, aucune mémorisation dans le hook.
+- (V2) `killcollector` `TestRosterDesFilms_AnnuaireContreJointure` (seuil de facteur 10) est à la
+  limite : facteur 9,86 au passage final du gate, 10,4 à 12,9 sur le roster d'origine. Banc
+  chronométré sensible à la charge, antérieur au lot.
+- (V2) `api/handlers` `TestSettingsHandler_PostMediaReset_OK` (délai de 200 ms) a échoué une fois
+  sous la charge du gate par lots ; vert seul, 5 fois, et au passage final.
+- (V2) Sous `golangci-lint --build-tags=integration` (hors cible `make`), deux signalements
+  antérieurs au lot : `goimports` sur le bloc d'import de
+  `sync/killcollector/postsync_backlog_integration_test.go` (bloc d'import intact ; le lot n'a
+  ajouté qu'un test en fin de fichier), `goconst` `name_fr` dans
+  `migration/steps_metadata_purge_weapon_families_labels.go`.

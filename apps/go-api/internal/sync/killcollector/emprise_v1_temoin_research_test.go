@@ -89,7 +89,7 @@ func TestEmpriseV1Temoin(t *testing.T) {
 			Positions: p.mat.positions,
 			Registre:  p.mat.registre,
 			Equipes:   equipesNumeriques(p.ids.Equipes),
-			Journal:   v1Journal(p.fusionne),
+			Journal:   journalDuPlacement(p.fusionne),
 		})
 		v1CritereDesVies(t, ctx, lecture, id, vies)
 		v1CritereDesFrags(t, id, bilan)
@@ -138,20 +138,6 @@ func v1RejouerLaPasse(t *testing.T, ctx context.Context, col *KillSourceCollecto
 		t.Fatalf("%s : positions : %v", id, err)
 	}
 	return v1Passe{mat: mat, ids: ids, fusionne: fusionne}
-}
-
-// v1Journal traduit la passe fusionnée : un xuid illisible (bot, nom non résolu) devient 0.
-func v1Journal(b persist.KillSourceBatch) []replay.FragDuJournal {
-	out := make([]replay.FragDuJournal, 0, len(b.Deaths))
-	for i := range b.Deaths {
-		d := &b.Deaths[i]
-		tueur, _ := parseXUID(d.FeedKillerXUID)
-		victime, _ := parseXUID(d.VictimXUID)
-		out = append(out, replay.FragDuJournal{
-			TueurXUID: tueur, VictimeXUID: victime, TempsMS: int64(d.TimeMS), Publiable: b.Publishable,
-		})
-	}
-	return out
 }
 
 // v1CritereDesVies : critère 1.

@@ -157,3 +157,33 @@ func TestBacklogAJour_BaseVide(t *testing.T) {
 		t.Errorf("liste = %v, total = %d ; attendu vide", ids, total)
 	}
 }
+
+// TestBacklogAJour_IgnoreLePlacementDesVies — DECISION V12 du plan Emprise vies (2026-09-29) : le
+// backlog AUTOMATIQUE du post-sync ne regarde que la revision du decodeur (`decfilm.Rev`). Un
+// match dont le journal est a jour, qui a des vies ecrites mais AUCUN placement (ou un placement
+// a une revision perimee), NE REVIENT PAS au backlog : le deploiement du placement ne relance
+// aucun redecodage de lui-meme — seul `levelup backfill-killsource` (`matchsAJour`) le fait.
+func TestBacklogAJour_IgnoreLePlacementDesVies(t *testing.T) {
+	db := baseBacklog(t)
+	quand := time.Date(2026, 9, 22, 21, 0, 0, 0, time.UTC)
+	for _, id := range []string{"vies-sans-placement", "placement-perime"} {
+		inscrireMatch(t, db, id, quand, 0)
+		inscrirePasseFilm(t, db, id, decfilm.Rev, killscope.ReadPathFilmWalk, "p1", quand)
+		if _, err := db.Exec(`INSERT INTO match_lives (match_id, decode_pass, decoder_rev, xuid,
+			start_ms, end_ms, end_cause, named_by) VALUES (?, 'v1', ?, '111', 0, 10000, 'death', 'death')`,
+			id, IsolationDecoderRev); err != nil {
+			t.Fatalf("vies %s: %v", id, err)
+		}
+	}
+	if _, err := db.Exec(`INSERT INTO match_life_placement (match_id, decode_pass, decoder_rev, xuid,
+		start_ms, end_ms, duration_ms, measured_ms, carrier_ms, team_down_ms, unplaced_ms,
+		teammate_unplaced_ms, kills) VALUES ('placement-perime', 'pl1', 'placement-perime-rev', '111',
+		0, 10000, 10000, 10100, 0, 0, 0, 0, 0)`); err != nil {
+		t.Fatalf("placement perime: %v", err)
+	}
+
+	if ids, total := backlogAJour(context.Background(), db, 10); total != 0 || len(ids) != 0 {
+		t.Errorf("liste = %v (total %d) ; le backlog automatique ne doit PAS lire le placement "+
+			"des vies (decision V12 : aucun redecodage ne part de lui-meme)", ids, total)
+	}
+}

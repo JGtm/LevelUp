@@ -78,7 +78,7 @@ func filmsACollecter(
 }
 
 // matchsAJour : les matchs dont TOUTES les passes courantes portent leur revision de decodeur
-// courante — le journal des morts ET les faits d isolement.
+// courante — le journal des morts, les faits d isolement ET le placement des vies.
 //
 // La lecture passe par les VUES `_latest` (ADR 0026) : une passe ancienne, deja supplantee, ne
 // doit pas faire sauter un match. `read_path` distingue les deux producteurs — un match couvert
@@ -102,6 +102,19 @@ func filmsACollecter(
 //
 // SANS LA SECONDE, LA PASSE NE CONVERGE PAS : un match a positions mais sans equipe serait
 // redecode a CHAQUE passe, indefiniment, pour reproduire le meme refus (constat de revue).
+//
+// ─── LE PLACEMENT DES VIES A LA SIENNE (plan Emprise vies, decision V12, 2026-09-29) ─────
+//
+// Tout match qui A DES VIES doit porter une passe de `match_life_placement_latest` a
+// [killcollector.PlacementRev] : c est la seule population ou le placement peut naitre (il ne
+// s ecrit qu apres des vies ecrites). Sans cette condition, le corpus deja collecte resterait
+// sans placement, son journal et ses vies portant deja leurs revisions courantes.
+//
+// LIMITE CONNUE, MESUREE : un match dont le pont slot->xuid n est pas publiable a des vies mais
+// aucun placement (meme refus que le contexte des morts) — il reste candidat a chaque passe
+// manuelle. 3 matchs sur 1 519 a vies sur la copie du 2026-09-28 (vies sans aucun contexte de
+// mort, le signe de ce refus). Le backlog AUTOMATIQUE du post-sync ne lit pas cette condition
+// (`conditionBacklog`, inchange) : aucun redecodage ne part de lui-meme.
 func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT DISTINCT e.match_id FROM match_kill_events_latest e
@@ -112,9 +125,14 @@ func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 		               WHERE l.match_id = e.match_id AND l.decoder_rev = ?)
 		    OR NOT EXISTS (SELECT 1 FROM match_participants mp
 		                   WHERE mp.match_id = e.match_id AND mp.team_id IS NOT NULL)
+		  )
+		  AND (
+		    NOT EXISTS (SELECT 1 FROM match_lives_latest l WHERE l.match_id = e.match_id)
+		    OR EXISTS (SELECT 1 FROM match_life_placement_latest pl
+		               WHERE pl.match_id = e.match_id AND pl.decoder_rev = ?)
 		  )`,
 		decfilm.Rev, killscope.ReadPathCreditBackfill,
-		killcollector.IsolationDecoderRev)
+		killcollector.IsolationDecoderRev, killcollector.PlacementRev)
 	if err != nil {
 		return nil, fmt.Errorf("matchs deja a jour: %w", err)
 	}

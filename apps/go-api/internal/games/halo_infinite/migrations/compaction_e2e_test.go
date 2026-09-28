@@ -1,7 +1,7 @@
 //go:build cgo
 
 // compaction_e2e_test.go — LA COMPACTION DES PASSES SUPERSÉDÉES sur le schéma partagé RÉEL
-// (chaîne de migration complète, provider title-owned câblé : les 13 tables du registre, leurs
+// (chaîne de migration complète, provider title-owned câblé : les 14 tables du registre, leurs
 // vues, index et séquences tels que la production les porte).
 //
 // Ce qui est verrouillé ici, table par table : passes multiples, match à une seule passe, passe
@@ -38,7 +38,8 @@ const (
 // clé (match_id, xuid).
 var colonneDePasse = map[string]string{
 	"match_kill_events": passeDeDecodage, "match_lives": passeDeDecodage,
-	"match_death_context": passeDeDecodage, "kill_openings": passeDeDecodage,
+	"match_death_context": passeDeDecodage, "match_life_placement": passeDeDecodage,
+	"kill_openings":    passeDeDecodage,
 	tableKillPositions: passeDeDecodage, "match_weapon_shots": passeDeDecodage,
 	"match_player_positions": "positions_pass", "match_usage_films": "summary_pass",
 	"match_usage_players": "summary_pass", "match_pad_pickups_by_tier": passeDeDecodage,

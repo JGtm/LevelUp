@@ -55,6 +55,10 @@ var appendOnlyStateTables = []string{
 	// purs dans une transaction unique.
 	"match_lives",
 	"match_death_context",
+	// match_life_placement (plan Emprise vies, lot V2, 2026-09-29) : append-only NET-NEUVE, vue
+	// _latest PAR PASSE. Etape 5 de la recette ADR 0026. Writer unique :
+	// persist/life_placement_persister.go, INSERT purs dans une transaction unique.
+	"match_life_placement",
 	// pve_match_stats : append-only in-place (id PK + vue pve_match_stats_latest).
 	// L'écriture passe par un guard SELECT-then-INSERT idempotent (pve_persister.go) ;
 	// l'ancien INSERT OR IGNORE est interdit (audit adversarial 2026-06-21).
