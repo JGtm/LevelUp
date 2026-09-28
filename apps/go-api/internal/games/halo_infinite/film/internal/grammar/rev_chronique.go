@@ -359,3 +359,14 @@ package grammar
 // J6 ne se perd sur les huit builds ; les fermetures que la lecture du jeu apportait a ces seuls
 // sites (six listes de `60ae07c4`, une de `000d5950`, `111fa685` et `e5adf7b2`) attendent le
 // critere de retrait.
+//
+// A REVISION CONSTANTE, LOT R2 (2026-09-28, serie jamais publiee ; constat C2 du G-corpus J11.1) :
+// le filtre de generation vivante de J5.2 est DATE pour le balayage des positions
+// (`generations_vivantes.go`, [GenerationsVivantes.A]). Un en-tete delta dont le handle designe un
+// corps AVANT le record de creation de ce corps n est la replication d aucun corps : il est refuse,
+// sauf pour le premier corps de generation 1 d un slot (regle R-B1 du rejeu, inchangee). Mesure :
+// 14, 6, 5 et 28 positions de production aberrantes retirees sur `084a804d`, `a349fea8`,
+// `4f77afc1`, `1c4c63c2` (z de -937 m, borne de carte, saut de 3,3 s) ; les records reels que ces
+// faux ancrages masquaient reviennent (+15 sur `a349fea8`). Films sans slot reboucle : aucun record
+// concerne. Les huit canaux delta, l arme tenue et la recuperation d equipement gardent le filtre
+// atemporel (hors du lot : decouverte au rapport R2).

@@ -158,7 +158,11 @@ func scanBipedChunks(film *source.Film, chunks []int, band SlotBand, lay profile
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, r := range ScanBipedRecords(pk.Payload(data), band, lay, opt, ctx) {
+			// LE FILTRE DE GENERATION EST DATE A L INSTANT DU PAQUET (lot R2) : un corps n est pas
+			// lu avant son record de creation (generations_vivantes.go).
+			o := opt
+			o.Generations = opt.Generations.A(pk.TimestampUS)
+			for _, r := range ScanBipedRecords(pk.Payload(data), band, lay, o, ctx) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}
