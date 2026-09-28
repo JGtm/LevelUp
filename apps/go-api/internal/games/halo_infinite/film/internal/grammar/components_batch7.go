@@ -74,12 +74,8 @@ func consumeTacmapQueuedReplayMission(br *Lecteur) {
 	}
 }
 
-// tacmap-cooptetherarea (FUN_142ed4198): pos(e524) + R(12) + R(12).
-func consumeTacmapCoopTetherArea(br *Lecteur) {
-	lireE494(br, niveauPosition) // FUN_142ed4198 -> FUN_1424e0e38(0x10), CALL 142ed41ba
-	br.ReadBits(12)
-	br.ReadBits(12)
-}
+// tacmap-cooptetherarea (ti=34 i11) est une EXCEPTION DATEE du portage unique (lot R3,
+// 2026-09-29) : son lecteur vit dans `lecteur_position_exceptions.go`.
 
 // equipment-tracked-object-handles-stack-component (FUN_140f72dec): R(4)=count, then
 // (count+1) entries, each R(1) present [si1: readQuantStat(1,13) + handle resolve 0-bit].

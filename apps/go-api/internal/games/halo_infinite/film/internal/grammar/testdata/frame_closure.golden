@@ -36,6 +36,11 @@
 #     plus d arret `ti=23 i1 selectable-zone-data`) et en vue C (3 485 atteintes, 3 388
 #     terminees contre 3 387 avant J6.3) ; la ligne `ti=23` 0/1 que J6.3 avait fait naitre
 #     disparait (0 ferme). 0 ligne `fermes` ne descend.
+#   2026-09-29 lot R3 : cinq exceptions datees de plus (tacmap-displayasset, tacmap-areaofinterest,
+#     tacmap-cooptetherarea, crew-order, precHigh = 1 de l i0 absolu du bipede). AUCUN compte
+#     `fermes` ne bouge. ks_000d5950 vue=C : 3 388 -> 3 387 terminees, son compte d avant J6.3
+#     (un paquet non ferme s arrete sur le bloc 0xbc et non sur le terminateur). 0 ligne `fermes`
+#     ne descend.
 a521164d	paquets	0	0		listes_non_localisees=0
 a521164d	vue=A	0	0		terminees=0 arrets=
 a521164d	vue=B	0	0		terminees=0 arrets=
@@ -75,7 +80,7 @@ fb1a1a72	utiles	0	0		entrees_controle_fermees=0
 ks_000d5950	paquets	1823	5957	ti=43 i35 device-animation-layer-state-component	listes_non_localisees=27
 ks_000d5950	vue=A	1700	5484		terminees=5484 arrets=
 ks_000d5950	vue=B	1823	5930	ti=43 i35 device-animation-layer-state-component	terminees=3485 arrets=ti=0 i13 game-engine-disabled-kill-volume-flags-component:1;ti=10 i2 managed-object-navpoint-component:2;ti=10 i3 managed-object-navpoint-component:1;ti=10 i6 managed-object-navpoint-component:1;ti=11 i4 managed-objective-interaction-filter-component:1;ti=18 i1 effect-state-data-component:4;ti=18 i2 effect-state-data-component:2;ti=19 i1 sound-placement-state-data-component:1;ti=19 i4 sound-placement-state-data-component:1;ti=2 i11 game-engine-soft-ceilings-component:6;ti=2 i13 game-engine-disabled-kill-volume-flags-component:1;ti=2 i14 GameEngineComposerLetterboxComponent:1;ti=2 i17 matchflow-isplaying-flags-component:3;ti=26 i0 supply-lines-blocked-status-component:2;ti=34 i10 tacmap-mapdismissallock:3;ti=34 i12 tacmap-backmenulocked-state:6;ti=35 i59 biped-spartan-ability-non-predicted-state:4;ti=43 i34 device-animation-layer-settings-component:2;ti=43 i35 device-animation-layer-state-component:2365;ti=43 i39 device-machine-flags-component:1;ti=45 i0 matchflow-sequence-data-component:1;ti=45 i1 matchflow-focus-data-component:1;ti=5 i10 player-primary-respawn-object-component:1;ti=50 archetype hors registre:5;ti=51 archetype hors registre:1;ti=52 archetype hors registre:1;ti=58 archetype hors registre:9;ti=59 archetype hors registre:4;ti=60 archetype hors registre:7;ti=61 archetype hors registre:1;vue B : fin de payload:6
-ks_000d5950	vue=C	1823	3485	vue C : terminateur hors cadre	terminees=3388 arrets=vue C : bloc 0xbc non porte:25;vue C : debordement:1;vue C : kind non porte:71;vue C : terminateur hors cadre:1565
+ks_000d5950	vue=C	1823	3485	vue C : terminateur hors cadre	terminees=3387 arrets=vue C : bloc 0xbc non porte:26;vue C : debordement:1;vue C : kind non porte:71;vue C : terminateur hors cadre:1564
 ks_000d5950	utiles	5889	30428		entrees_controle_fermees=11735
 ks_000d5950	ti=0	0	2	ti=0 i13 game-engine-disabled-kill-volume-flags-component	neufs=0/2 deltas=0/0 utiles=0/0
 ks_000d5950	ti=1	0	1	vue C : terminateur hors cadre	neufs=0/1 deltas=0/0 utiles=0/0

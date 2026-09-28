@@ -216,22 +216,26 @@ func deltaAxisW(br *Lecteur, pd profile.PrecisionDescriptor, i int) uint {
 }
 
 // consumeAbsoluteWithGate porte la BRANCHE ABSOLUE de `FUN_1406cfe44` (bUsePred = 0, bDelta = 0) :
-// precHigh R(1), la garde de pleine precision, puis `FUN_14076e524(0x10)` (CALL 1406d009d, niveau
-// en 1406d008a) ou, precHigh a 1, `FUN_141f85880` — c est la forme de `FUN_14076e420`, recopiee
-// en ligne par le jeu, et le portage unique la lit ([lireE420]).
+// precHigh R(1) (`FUN_1406cf008`, 1406d005f), la garde de pleine precision (1406d0076), puis
+// `FUN_14076e524(0x10)` (CALL 1406d009d, niveau en 1406d008a) — lu par le portage unique
+// ([lireE524]) — ou, precHigh a 1, `FUN_141f85880(&DAT_143b8c6d0, 0x10)` (1406d0093 -> 1422f4cb7).
 //
-// PRECHIGH A 1 LIT TROIS AXES (lot J6.3, releve du 2026-09-27, §2.c) : `FUN_141f85880` n est
-// PAS « le vecteur par defaut, 0 bit » que ce lecteur disait — elle applique la loi au niveau
-// 0x10 aux bornes +/-100 de `DAT_143b8c6d0`, soit 3 x 14 = 42 bits. La position qu elle ecrit
-// est finie : le R(2) de queue suit.
+// PRECHIGH A 1 EST UNE EXCEPTION DATEE (lot R3, 2026-09-29) : chez le jeu, trois axes de 14 bits
+// sur +/-100 puis le R(2) ; le flux ne porte RIEN apres le bit dans les paquets que cette lecture
+// ferme (`consumePrecHautDuBipede`, `lecteur_position_exceptions.go`).
 func consumeAbsoluteWithGate(br *Lecteur) {
-	_, pos := lireE420(br, niveauPosition)
-	if pos.brute {
+	precHigh := br.ReadBit() // FUN_1406cf008
+	if fullPrecisionGate(br) {
 		// FUN_1411b259c = R(96) BRUT. Le R(2) de `LAB_1406cffd7` depend de la finitude des
 		// flottants lus ; ce chemin ne le lit pas (comportement conserve, hors production).
+		br.ReadBits(rawVec3Bits)
 		return
 	}
-	semerPositionAbsolue(br, pos, kindDuCheminAbsolu(br))
+	if precHigh {
+		consumePrecHautDuBipede(br)
+		return
+	}
+	semerPositionAbsolue(br, lireE524(br, niveauPosition), kindDuCheminAbsolu(br))
 	// Champ « fini » de 2 bits — FUN_14076e304, appelé en LAB_1406cffd7 sous un prédicat
 	// (FUN_140492128) qui ne consomme AUCUN bit : il est donc lu systématiquement.
 	//

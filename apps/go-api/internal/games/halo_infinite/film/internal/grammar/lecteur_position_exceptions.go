@@ -1,11 +1,13 @@
 package grammar
 
-// lecteur_position_exceptions.go — LES SIX SITES DE `FUN_14076e524` QUI GARDENT LEUR ANCIEN
+// lecteur_position_exceptions.go — LES ONZE SITES DE `FUN_14076e524` QUI GARDENT LEUR ANCIEN
 // LECTEUR (lot J6.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision du superviseur du
 // 2026-09-27 pour les trois premiers ; lot J6-bis du 2026-09-28 pour flock-destination,
-// tacmap-poiicon et player-desired-respawn-location, meme situation, meme format).
+// tacmap-poiicon et player-desired-respawn-location ; lot R3 du 2026-09-29 pour
+// tacmap-displayasset, tacmap-areaofinterest, tacmap-cooptetherarea, crew-order et le precHigh de
+// la branche absolue d i0 du bipede — meme situation, meme format).
 //
-// Le portage unique (`lecteur_position.go`) lit ces six sites comme le jeu les ecrit — releve
+// Le portage unique (`lecteur_position.go`) lit ces onze sites comme le jeu les ecrit — releve
 // Ghidra du 2026-09-27 — et la FERMETURE DES BOBINES baisse sur chacun : la lecture du jeu y est
 // donc contredite par une mesure que ce lot ne sait pas expliquer. Chaque site garde ici son
 // lecteur d AVANT le lot, et figure comme EXCEPTION DATEE dans la table des sites
@@ -182,4 +184,105 @@ func lireVecteurAncienAuNiveauDuRegistre(br *Lecteur, level uint32) (q [3]uint64
 		q[axe] = br.ReadBits(w)
 	}
 	return q, true
+}
+
+// LOT R3 (2026-09-29) — CINQ SITES DE PLUS, LOCALISES AU PAQUET.
+//
+// Methode : marche des trames (carte de fermeture) du parent du lot J6.3 (`56299bdc3~1`, la
+// reference J4.0.5) contre la tete du plan, paquet par paquet, sur douze films ; puis chaque site
+// rendu SEUL a son lecteur d avant sur la tete. Les chiffres « ancien » sont ceux de ce site seul
+// contre la tete : ce qu il ferme de plus, et ce que la lecture du jeu fermait et qu il rend.
+
+// consumeTacmapDisplayAsset lit ti=33 i0 tacmap-displayasset (`FUN_142ed433c`) : R(32), R(32), R(2),
+// la position au lecteur d AVANT le lot J6.3 ([lireCorpsDeTraverseeAncien]), R(96), R(96), R(1).
+//
+// EXCEPTION (lot R3, 2026-09-29) : chez le jeu, `FUN_142ed7d38` -> thunk `FUN_1424e0e38` (CALL
+// 142ed7edf, `LEA R8D,[R9+0x10]` en 142ed7edb ; le thunk pose p5 = p6 = 0) -> `FUN_14076e494(0x10)`.
+// Portee ainsi (porte posee : 22 bits par axe au lieu de 6), dix paquets de `51ebbc0f` que l ancien
+// lecteur fermait au bit pres ne ferment plus (chunk 7 paquets 2336, 2338, 2340, 2356, 2358, 2362,
+// 2382 ; chunk 8 paquets 70, 74, 118 : 61 entrees de controle, 41 records ti=35 dont le saut du
+// slot 526 a 7:2358). Elle en ferme cinq autres : `51ebbc0f` 14:42 (5 entrees), `084a804d` 46:10
+// (20), `11de8353` 29:208 (16), `fb1a1a72` 7:2380 (0), `60ae07c4` 32:2062 (7). Scindee par la porte,
+// aucune forme ne ferme les deux familles : l ancien lecteur sur la seule porte posee ferme les dix
+// et perd 14:42, 7:2380 et 32:2062 ; sur la seule porte a 0, il perd 46:10 et 29:208 sans rien fermer.
+func consumeTacmapDisplayAsset(br *Lecteur) {
+	br.ReadBits(32)
+	br.ReadBits(32)
+	br.ReadBits(2)
+	lireCorpsDeTraverseeAncien(br)
+	br.ReadBits(64)
+	br.ReadBits(32)
+	br.ReadBits(64)
+	br.ReadBits(32)
+	br.ReadBits(1)
+}
+
+// consumeTacmapAreaOfInterest lit ti=32 i0 tacmap-areaofinterest (`FUN_142ed3c50`) : R(32), R(3), la
+// position au lecteur d AVANT le lot J6.3 ([lireCorpsDeTraverseeAncien]), R(12).
+//
+// EXCEPTION (lot R3, 2026-09-29) : chez le jeu, `FUN_142ed7764` -> thunk `FUN_1424e0e38(0x10)` (CALL
+// 142ed7853). Portee ainsi, le paquet 12:608 de `51ebbc0f` (6 entrees), que l ancien lecteur fermait
+// au bit pres, ne ferme plus (le composant passe de 67 a 96 bits). Elle en ferme trois autres :
+// `11de8353` 19:394 (liste, 13 entrees), `fb1a1a72` 38:8 (6), `60ae07c4` 3:1790 (0) ; scindee par la
+// porte, aucune forme ne ferme les deux familles.
+func consumeTacmapAreaOfInterest(br *Lecteur) {
+	br.ReadBits(32)
+	br.ReadBits(3)
+	lireCorpsDeTraverseeAncien(br)
+	br.ReadBits(12)
+}
+
+// consumeTacmapCoopTetherArea lit ti=34 i11 tacmap-cooptetherarea (`FUN_142ed4198`) : la position au
+// lecteur d AVANT le lot J6.3 ([lireCorpsDeTraverseeAncien]), R(12), R(12).
+//
+// EXCEPTION (lot R3, 2026-09-29) : chez le jeu, thunk `FUN_1424e0e38(0x10)` (CALL 142ed41ba). Portee
+// ainsi, la liste d evenements du chunk 21 paquet 1012 de `c75f33b8` (HI_1_13_0), que l ancien lecteur
+// fermait au bit pres, ne se localise plus (+48 bits, porte posee) ; aucune fermeture ne monte sur
+// les douze films.
+func consumeTacmapCoopTetherArea(br *Lecteur) {
+	lireCorpsDeTraverseeAncien(br)
+	br.ReadBits(12)
+	br.ReadBits(12)
+}
+
+// consumeCrewOrder lit ti=14 i0 crew-order (`FUN_142ed4274` -> `FUN_142ed9120`) : `FUN_142b1cf3c`
+// R(3), la porte de presence, puis le vecteur au lecteur d AVANT le lot J6.3
+// ([lireVecteurAncienAuNiveauDuRegistre] : precHigh, porte, index fige a 1 bit, 6 + niveau du
+// registre par axe).
+//
+// EXCEPTION (lot R3, 2026-09-29) : chez le jeu, `FUN_14076e494(..., 0x10, 0, param_3, 0)` (CALL
+// 142ed918e), sans bit precHigh. Portee ainsi, la liste d evenements du chunk 22 paquet 538 de
+// `084a804d` (HI_1_10_0, 14 entrees), que l ancien lecteur fermait au bit pres, ne se localise plus
+// (+26 bits) ; elle en ferme une autre, `e5adf7b2` chunk 4 paquet 900 (liste, 12 entrees).
+func consumeCrewOrder(br *Lecteur, level uint32) {
+	br.ReadBits(3)    // FUN_142b1cf3c
+	if br.ReadBit() { // presence du vecteur
+		lireVecteurAncienAuNiveauDuRegistre(br, level)
+	}
+}
+
+// consumePrecHautDuBipede lit la branche precHigh = 1 de l i0 ABSOLU du bipede (`FUN_1406cfe44`,
+// bUsePred = 0, bDelta = 0) comme avant le lot J6.3 : RIEN apres le bit — ni axes, ni le R(2) de
+// `LAB_1406cffd7`.
+//
+// EXCEPTION (lot R3, 2026-09-29) : chez le jeu, precHigh a 1 mene (1406d0093 -> 1422f4cb7) a
+// `FUN_141f85880(&DAT_143b8c6d0, 0x10)`, trois axes de 14 bits sur +/-100, puis le R(2) : 44 bits.
+// Portee ainsi, trois listes d evenements que l ancien lecteur fermait au bit pres ne se localisent
+// plus — `0797ce72` chunk 9 paquet 138 (6 entrees ; record NEW ti=35 slot 530), `084a804d` chunk 25
+// paquet 356 (21 entrees ; delta du slot 685, dont la lecture d accroupi) et chunk 37 paquet 22 (10
+// entrees ; NEW ti=35 slot 527) ; aucune fermeture ne monte sur les douze films. Les deux autres
+// sites a precHigh (grammaire d ecrivain d i0, delta predit a cVar1 = 1) gardent la lecture du jeu.
+func consumePrecHautDuBipede(_ *Lecteur) {}
+
+// lireCorpsDeTraverseeAncien est la position que les sites tacmap lisaient avant le lot J6.3
+// (`consumeE524PositionBody`) : la porte, l index sur la largeur du descripteur de TRAVERSEE, puis
+// trois axes a ses largeurs (index 1 bit, 6/6/6 : la valeur du profil pour tous les builds), sans
+// garde.
+func lireCorpsDeTraverseeAncien(br *Lecteur) {
+	if !br.ReadBit() { // porte ; 0 -> l index est present
+		br.ReadBits(br.traversal().IndexW)
+	}
+	for axe := 0; axe < 3; axe++ {
+		br.ReadBits(br.traversal().AxisW[axe])
+	}
 }

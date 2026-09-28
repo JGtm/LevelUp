@@ -226,4 +226,9 @@ const enteteCarteDeFermeture = "" +
 	"#     `fermes` ne bouge. ks_000d5950 retrouve ses comptes d avant J6.3 en vue B (3 485 terminees,\n" +
 	"#     plus d arret `ti=23 i1 selectable-zone-data`) et en vue C (3 485 atteintes, 3 388\n" +
 	"#     terminees contre 3 387 avant J6.3) ; la ligne `ti=23` 0/1 que J6.3 avait fait naitre\n" +
-	"#     disparait (0 ferme). 0 ligne `fermes` ne descend.\n"
+	"#     disparait (0 ferme). 0 ligne `fermes` ne descend.\n" +
+	"#   2026-09-29 lot R3 : cinq exceptions datees de plus (tacmap-displayasset, tacmap-areaofinterest,\n" +
+	"#     tacmap-cooptetherarea, crew-order, precHigh = 1 de l i0 absolu du bipede). AUCUN compte\n" +
+	"#     `fermes` ne bouge. ks_000d5950 vue=C : 3 388 -> 3 387 terminees, son compte d avant J6.3\n" +
+	"#     (un paquet non ferme s arrete sur le bloc 0xbc et non sur le terminateur). 0 ligne `fermes`\n" +
+	"#     ne descend.\n"
