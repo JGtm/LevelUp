@@ -134,13 +134,13 @@ func exceptionsDuPortage() map[string]exceptionDuPortage {
 				"aucune hausse sur les huit builds"},
 		// Lot R3 (2026-09-29), meme situation, meme format ; chiffres = le site seul rendu a son
 		// ancien lecteur sur la tete du plan, carte de fermeture de douze films.
-		"tacmap-displayasset": {"consumeTacmapDisplayAsset", 0x10, "ti=33 i0 : FUN_142ed7d38, CALL 142ed7edf (thunk FUN_1424e0e38)",
+		"displayasset": {"consumeTacmapDisplayAsset", 0x10, "ti=33 i0 : FUN_142ed7d38, CALL 142ed7edf (thunk FUN_1424e0e38)",
 			"marche des trames de 51ebbc0f : dix paquets fermes (chunk 7 et 8, 61 entrees de controle) -> " +
 				"non fermes ; hausses sur 51ebbc0f 14:42, 084a804d 46:10, 11de8353 29:208, fb1a1a72 7:2380, 60ae07c4 32:2062"},
-		"tacmap-areaofinterest": {"consumeTacmapAreaOfInterest", 0x10, "ti=32 i0 : FUN_142ed7764, CALL 142ed7853 (thunk FUN_1424e0e38)",
+		"areaofinterest": {"consumeTacmapAreaOfInterest", 0x10, "ti=32 i0 : FUN_142ed7764, CALL 142ed7853 (thunk FUN_1424e0e38)",
 			"marche des trames de 51ebbc0f : paquet 12:608 (6 entrees) ferme -> non ferme ; hausses sur " +
 				"11de8353 19:394, fb1a1a72 38:8, 60ae07c4 3:1790"},
-		"tacmap-cooptetherarea": {"consumeTacmapCoopTetherArea", 0x10, "ti=34 i11 : FUN_142ed4198, CALL 142ed41ba (thunk FUN_1424e0e38)",
+		"cooptetherarea": {"consumeTacmapCoopTetherArea", 0x10, "ti=34 i11 : FUN_142ed4198, CALL 142ed41ba (thunk FUN_1424e0e38)",
 			"marche des trames de c75f33b8 : liste chunk 21 paquet 1012 fermee -> non localisee, sans aucune " +
 				"hausse sur les douze films"},
 		"crew-order": {"consumeCrewOrder", 0x10, "ti=14 i0 : FUN_142ed9120, CALL 142ed918e",

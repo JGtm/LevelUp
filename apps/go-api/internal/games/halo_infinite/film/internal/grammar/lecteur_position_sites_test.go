@@ -238,18 +238,18 @@ func casDesTacmaps() []casDeSite {
 			lire: parNom("tacmap-waypointstate", 34, 2)},
 		// ti=32 i0 tacmap-areaofinterest : FUN_142ed7764, CALL 142ed7853 (thunk).
 		// EXCEPTION DATEE (lot R3, 2026-09-29) : le site garde son ancien lecteur.
-		{nom: "tacmap-areaofinterest", indexW: 1, exception: "tacmap-areaofinterest",
+		{nom: "tacmap-areaofinterest", indexW: 1, exception: "areaofinterest",
 			flux: concat(seul(fixe(32), fixe(3)), e524(0, 1, axesCarteNiveau16), seul(fixe(12))),
 			lire: parNom("tacmap-areaofinterest", 32, 0)},
 		// ti=33 i0 tacmap-displayasset : FUN_142ed7d38, CALL 142ed7edf (thunk).
 		// EXCEPTION DATEE (lot R3, 2026-09-29) : le site garde son ancien lecteur.
-		{nom: "tacmap-displayasset", indexW: 1, exception: "tacmap-displayasset",
+		{nom: "tacmap-displayasset", indexW: 1, exception: "displayasset",
 			flux: concat(seul(fixe(32), fixe(32), fixe(2)), e524(-1, 1, axesDefautNiveau16),
 				seul(fixe(64), fixe(32), fixe(64), fixe(32), bit(true))),
 			lire: parNom("tacmap-displayasset", 33, 0)},
 		// ti=34 i11 tacmap-cooptetherarea : FUN_142ed4198, CALL 142ed41ba (thunk).
 		// EXCEPTION DATEE (lot R3, 2026-09-29) : le site garde son ancien lecteur.
-		{nom: "tacmap-cooptetherarea", indexW: 1, exception: "tacmap-cooptetherarea",
+		{nom: "tacmap-cooptetherarea", indexW: 1, exception: "cooptetherarea",
 			flux: concat(e524(0, 1, axesCarteNiveau16), seul(fixe(12), fixe(12))),
 			lire: parNom("tacmap-cooptetherarea", 34, 0)},
 		// ti=20 i0 spawn-filter-type, etiquette 3 : FUN_142b6eeec, CALL 142b6ef31.
