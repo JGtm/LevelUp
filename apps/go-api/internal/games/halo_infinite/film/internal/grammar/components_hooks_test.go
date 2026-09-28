@@ -277,12 +277,8 @@ func TestPlayerStateHookValues(t *testing.T) {
 	})
 }
 
-// TestPlayerDesiredRespawnLocationHook — ti=5 i12, LES TROIS BRANCHES.
-//
-// EXCEPTION DATEE (lot J6-bis, 2026-09-28) : le site garde son lecteur d AVANT le lot J6.3
-// (`lecteur_position_exceptions.go`, `consumePlayerDesiredRespawnLocation`) ; ces flux sont ceux
-// de ce lecteur.
-//
+// TestPlayerDesiredRespawnLocationHook — ti=5 i12, LES TROIS BRANCHES (exception datee J6-bis :
+// le lecteur d avant J6.3, `lecteur_position_exceptions.go`).
 // Le composant a deux portes imbriquees, et leurs trois issues ne se confondent pas : porte de
 // tete fermee (aucun champ), `precHigh` leve (l'identifiant seul, le vecteur par defaut ne
 // coutant aucun bit), et le cas complet. Publier une position a l'origine dans l'un des deux
