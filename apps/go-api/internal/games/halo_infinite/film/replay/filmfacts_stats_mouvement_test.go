@@ -12,10 +12,11 @@ package replay
 // FAITS perdait donc ces deux compteurs (39 octets sur `000d5950` : 1 498 montees examinees, 295
 // sauts derives), la ou le decodage du film les publie.
 //
-// `TestCodecCouvreFilmInputs` ne pouvait pas le voir : il juge un champ de [FilmInputs] transporte
-// des qu UNE de ses feuilles revient non nulle, et une structure de vingt compteurs passait sur le
-// premier. Le meme trou laissait `VelocityReads`, `DatumBindings` et `DatumAmbiguous` (J10.5) hors
-// du blob.
+// `TestCodecCouvreFilmInputs` ne pouvait pas le voir : il jugeait alors un champ de [FilmInputs]
+// transporte des qu UNE de ses feuilles revenait non nulle, et une structure de vingt compteurs
+// passait sur le premier. Le meme trou laissait `VelocityReads`, `DatumBindings` et
+// `DatumAmbiguous` (J10.5) hors du blob. Il est ferme au jalon J11.0-bis (chaque feuille comparee a
+// l octet) ; ce test reste le temoin NOMME du defaut.
 //
 // CE TEST EXIGE L EGALITE PROFONDE, champ par champ, et SANS LISTE : chaque feuille recoit une
 // valeur non nulle DISTINCTE (un compteur recopie dans son voisin ne passe pas), et un compteur

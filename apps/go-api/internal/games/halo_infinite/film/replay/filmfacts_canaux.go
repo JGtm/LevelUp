@@ -24,8 +24,9 @@ package replay
 // ensemble.
 //
 // L INVENTAIRE DU TYPE, LUI, EST UN TEST : [TestCodecCouvreFilmInputs]
-// (`golden_inputs_canaux_test.go`) exige que tout champ de [FilmInputs] soit soit serialise ici,
-// soit nomme comme deliberement absent.
+// (`golden_inputs_canaux_test.go`) exige que TOUTE FEUILLE de [FilmInputs] fasse l aller-retour a
+// l octet, soit nommee, avec sa preuve, dans `feuillesNonTransportees`
+// (`filmfacts_feuilles_exceptions_test.go`).
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -276,10 +277,8 @@ func decodeZoomEvents(r *greader) []grammar.ZoomEvent {
 // `Scanned` OUVRE LA SECTION, et c est le temoin qui distingue « aucun vehicule sur cette carte »
 // de « le calque n a pas ete lu » : `buildVehicleTracks` se tait entierement quand il est faux.
 //
-// `Stats` (`EquipmentCreationStats`) N EST PAS TRANSPORTE : aucun assemblage ne le lit — la
-// couverture du calque se calcule sur les vies, les creations et les episodes. Le fixture porte
-// ce que l assemblage consomme, ni plus ni moins ; [TestCodecCouvreFilmInputs] tient la liste des
-// champs deliberement absents.
+// Le fixture porte ce que l assemblage consomme ; ce qu il ne porte pas est nomme, feuille par
+// feuille et avec sa preuve, dans `feuillesNonTransportees` (tenue par [TestCodecCouvreFilmInputs]).
 func encodeVehicleScan(w *gwriter, s VehicleScan) {
 	w.bool8(s.Scanned)
 	encodeKeyframes(w, s.Keyframes)

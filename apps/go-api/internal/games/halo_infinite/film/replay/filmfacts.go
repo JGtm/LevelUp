@@ -292,8 +292,8 @@ func imposeAxisW(impose *profile.I0Layout) any {
 // porte desormais un [FilmInputs], c est-a-dire EXACTEMENT le type que l etage de balayage rend
 // et que l assemblage consomme, plus les trois champs d en-tete qui n en font pas partie (le
 // film, sa carte, son decoupage d i0). Un canal ajoute a `FilmInputs` apparait ici tout seul —
-// et [TestCodecCouvreFilmInputs] exige qu il soit soit serialise, soit NOMME comme non
-// transporte.
+// et [TestCodecCouvreFilmInputs] exige que chacune de ses feuilles soit serialisee, soit NOMMEE,
+// avec sa preuve, dans `feuillesNonTransportees`.
 type FilmFacts struct {
 	// Film est le court identifiant du match (`FilmShortMatchID`) dont ces faits sortent.
 	Film string

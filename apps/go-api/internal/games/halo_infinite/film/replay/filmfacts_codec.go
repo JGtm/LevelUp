@@ -248,9 +248,9 @@ func decodeWorldObjectScan(r *greader) WorldObjectScan {
 // de couverture avec — sur les dix films du gate S8, sans une ligne pour le dire.
 //
 // LA REGLE EST DESORMAIS SIMPLE, ET C EST UN TEST QUI LA TIENT : ce codec porte TOUT le record.
-// `TestCodecCouvreFilmInputs` remplit chaque champ de chaque structure imbriquee (et non plus le
-// premier seulement, le trou par lequel ce defaut est passe) : un champ ajoute a
-// `types.EquipmentCreation` et non porte ici le fait rougir.
+// `TestCodecCouvreFilmInputs` remplit chaque feuille de chaque structure imbriquee (et non plus le
+// premier champ seulement, le trou par lequel ce defaut est passe) et la compare a l octet apres
+// l aller-retour : un champ ajoute a `types.EquipmentCreation` et non porte ici le fait rougir.
 func encodeCreations(w *gwriter, creations []types.EquipmentCreation) {
 	w.u(uint64(len(creations)))
 	var lastTS uint64
