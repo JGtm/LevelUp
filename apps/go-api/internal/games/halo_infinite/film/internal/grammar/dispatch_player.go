@@ -102,15 +102,13 @@ func consumeCrewFlockAndMusicComponent(br *Lecteur, name string, typeIndex uint3
 	// (jamais de bit-guess = pas de corruption silencieuse en aval).
 	// LES QUATRE VECTEURS CI-DESSOUS SONT, CHEZ LE JEU, LE LECTEUR `FUN_14076e494(0x10)` (releve du
 	// 2026-09-27) : aucun site ne transmet le niveau du registre au lecteur, et aucun des quatre ne
-	// lit de bit precHigh. crew-order et tacmap-poiiconoffset passent par le portage unique (lot
-	// J6.3) ; tacmap-poiicon et flock-destination gardent leur ancien lecteur (`6 + niveau du
-	// registre`, precHigh, index fige a 1 bit) en EXCEPTIONS DATEES du lot J6-bis (2026-09-28) : la
-	// lecture du jeu y fait baisser la fermeture de `11de8353` (lecteur_position_exceptions.go).
-	case "crew-order-component": // ti=14 i0 (FUN_142ed4274 -> FUN_142ed9120) — R(3)+R(1)gate1[si1: e494(0x10)]
-		br.ReadBits(3)    // FUN_142b1cf3c
-		if br.ReadBit() { // gate1 == présence du vecteur
-			lireE494(br, niveauPosition) // FUN_14076e494(..., 0x10, 0, param_3, 0), CALL 142ed918e
-		}
+	// lit de bit precHigh. tacmap-poiiconoffset passe par le portage unique (lot J6.3) ;
+	// tacmap-poiicon et flock-destination gardent leur ancien lecteur (`6 + niveau du registre`,
+	// precHigh, index fige a 1 bit) en EXCEPTIONS DATEES du lot J6-bis (2026-09-28), crew-order du
+	// lot R3 (2026-09-29) : la lecture du jeu y fait baisser la fermeture des bobines
+	// (lecteur_position_exceptions.go).
+	case "crew-order-component": // ti=14 i0 (FUN_142ed4274 -> FUN_142ed9120) — R(3)+R(1)gate1[si1: vec3]
+		consumeCrewOrder(br, level)
 		return variant, nil, true
 	case "tacmap-poiiconoffset": // ti=30 i1 (FUN_142ed485c, descripteur 143d06b00 + 0x28) — e494(0x10) seul
 		lireE494(br, niveauPosition) // FUN_1424e0e38(..., 0x10)

@@ -359,3 +359,13 @@ package grammar
 // J6 ne se perd sur les huit builds ; les fermetures que la lecture du jeu apportait a ces seuls
 // sites (six listes de `60ae07c4`, une de `000d5950`, `111fa685` et `e5adf7b2`) attendent le
 // critere de retrait.
+//
+// A REVISION CONSTANTE, LOT R3 (2026-09-29, serie jamais publiee) : les baisses que le G-corpus de
+// J11.1 attribuait a J6 (C4) et a J6-bis (C5), remontees au paquet (marche des trames de douze films,
+// parent de J6 contre la tete du plan). Cinq sites de plus gardent leur lecture d AVANT J6, en
+// EXCEPTIONS DATEES au meme format : tacmap-displayasset (`51ebbc0f`, dix paquets, 61 entrees de
+// controle), tacmap-areaofinterest (`51ebbc0f`, un paquet), tacmap-cooptetherarea (`c75f33b8`, une
+// liste), crew-order (`084a804d`, une liste, 14 entrees) et la branche precHigh = 1 de l i0 absolu
+// du bipede (`0797ce72` et `084a804d`, trois listes, 37 entrees). C5 n est pas un site de plus :
+// l exception ti=13 de J6-bis rend a `51ebbc0f` des fermetures gagnees par J6, sans rien prendre a
+// la reference. Plus aucun paquet ferme avant J6 ne se perd sur les douze films.

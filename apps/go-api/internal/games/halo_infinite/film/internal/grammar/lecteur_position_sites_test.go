@@ -237,16 +237,19 @@ func casDesTacmaps() []casDeSite {
 			flux: concat(seul(bit(true), fixe(32)), e524(0, 1, axesCarteNiveau16), seul(bit(true))),
 			lire: parNom("tacmap-waypointstate", 34, 2)},
 		// ti=32 i0 tacmap-areaofinterest : FUN_142ed7764, CALL 142ed7853 (thunk).
-		{nom: "tacmap-areaofinterest", indexW: 1,
+		// EXCEPTION DATEE (lot R3, 2026-09-29) : le site garde son ancien lecteur.
+		{nom: "tacmap-areaofinterest", indexW: 1, exception: "tacmap-areaofinterest",
 			flux: concat(seul(fixe(32), fixe(3)), e524(0, 1, axesCarteNiveau16), seul(fixe(12))),
 			lire: parNom("tacmap-areaofinterest", 32, 0)},
 		// ti=33 i0 tacmap-displayasset : FUN_142ed7d38, CALL 142ed7edf (thunk).
-		{nom: "tacmap-displayasset", indexW: 1,
+		// EXCEPTION DATEE (lot R3, 2026-09-29) : le site garde son ancien lecteur.
+		{nom: "tacmap-displayasset", indexW: 1, exception: "tacmap-displayasset",
 			flux: concat(seul(fixe(32), fixe(32), fixe(2)), e524(-1, 1, axesDefautNiveau16),
 				seul(fixe(64), fixe(32), fixe(64), fixe(32), bit(true))),
 			lire: parNom("tacmap-displayasset", 33, 0)},
 		// ti=34 i11 tacmap-cooptetherarea : FUN_142ed4198, CALL 142ed41ba (thunk).
-		{nom: "tacmap-cooptetherarea", indexW: 1,
+		// EXCEPTION DATEE (lot R3, 2026-09-29) : le site garde son ancien lecteur.
+		{nom: "tacmap-cooptetherarea", indexW: 1, exception: "tacmap-cooptetherarea",
 			flux: concat(e524(0, 1, axesCarteNiveau16), seul(fixe(12), fixe(12))),
 			lire: parNom("tacmap-cooptetherarea", 34, 0)},
 		// ti=20 i0 spawn-filter-type, etiquette 3 : FUN_142b6eeec, CALL 142b6ef31.
@@ -266,7 +269,8 @@ func casDesVecteursDeJoueur() []casDeSite {
 	return []casDeSite{
 		// ti=14 i0 crew-order : FUN_142ed9120, CALL 142ed918e ; FUN_142b1cf3c, porte, e494 —
 		// AUCUN bit precHigh.
-		{nom: "crew-order", indexW: 1,
+		// EXCEPTION DATEE (lot R3, 2026-09-29) : le site garde son ancien lecteur.
+		{nom: "crew-order", indexW: 1, exception: "crew-order",
 			flux: concat(seul(fixe(3), bit(true)), e524(0, 1, axesCarteNiveau16)),
 			lire: parNom("crew-order-component", 14, 0)},
 		// ti=21 flock-destination : FUN_140fb8af0 (descripteur 143c96c50 + 0x28), CALL 140fb8b3e,
@@ -287,31 +291,35 @@ func casDesVecteursDeJoueur() []casDeSite {
 // TestChaqueSiteDePositionLitCeQueLeJeuEcrit — J6.2 : un flux par site d appel.
 func TestChaqueSiteDePositionLitCeQueLeJeuEcrit(t *testing.T) {
 	for _, c := range casDesSitesDePosition() {
-		t.Run(c.nom, func(t *testing.T) {
-			buf, total := ecrireFlux(c.flux)
-			br := lecteurDeSite(buf, c.indexW)
-			c.lire(br)
-			got := br.BitPos()
-			if c.exception == "" {
-				if got != total {
-					t.Fatalf("%s : %d bits lus, l ecrivain du jeu en pose %d", c.nom, got, total)
-				}
-				return
-			}
-			// ECART ATTENDU : le site est une exception datee du portage. Il ne doit PAS lire le
-			// flux du jeu tant qu elle tient ; et une cle d exception retiree rend le cas strict.
-			if _, tient := exceptionsDuPortage()[c.exception]; !tient {
-				if got != total {
-					t.Fatalf("%s : exception %q retiree mais le site ne lit pas comme le jeu (%d bits lus, %d "+
-						"poses) — migrer le site vers le portage", c.nom, c.exception, got, total)
-				}
-				return
-			}
-			if got == total {
-				t.Fatalf("%s : le site lit desormais comme le jeu (%d bits) alors que l exception %q tient — "+
-					"retirer l exception de `exceptionsDuPortage`", c.nom, got, c.exception)
-			}
-		})
+		t.Run(c.nom, func(t *testing.T) { verifierCasDeSite(t, c) })
+	}
+}
+
+// verifierCasDeSite exige qu un site lise le flux du jeu au bit pres — sauf exception datee.
+func verifierCasDeSite(t *testing.T, c casDeSite) {
+	t.Helper()
+	buf, total := ecrireFlux(c.flux)
+	br := lecteurDeSite(buf, c.indexW)
+	c.lire(br)
+	got := br.BitPos()
+	if c.exception == "" {
+		if got != total {
+			t.Fatalf("%s : %d bits lus, l ecrivain du jeu en pose %d", c.nom, got, total)
+		}
+		return
+	}
+	// ECART ATTENDU : le site est une exception datee du portage. Il ne doit PAS lire le
+	// flux du jeu tant qu elle tient ; et une cle d exception retiree rend le cas strict.
+	if _, tient := exceptionsDuPortage()[c.exception]; !tient {
+		if got != total {
+			t.Fatalf("%s : exception %q retiree mais le site ne lit pas comme le jeu (%d bits lus, %d "+
+				"poses) — migrer le site vers le portage", c.nom, c.exception, got, total)
+		}
+		return
+	}
+	if got == total {
+		t.Fatalf("%s : le site lit desormais comme le jeu (%d bits) alors que l exception %q tient — "+
+			"retirer l exception de `exceptionsDuPortage`", c.nom, got, c.exception)
 	}
 }
 
@@ -323,7 +331,8 @@ func casDuCheminI0DuBipede() []casDeSite {
 	return []casDeSite{
 		// Branche absolue de FUN_1406cfe44 (CALL 1406d009d, niveau 0x10 en 1406d008a) : precHigh = 1
 		// -> FUN_141f85880, trois axes de 14 bits sur +/-100, puis le R(2) de LAB_1406cffd7.
-		{nom: "i0 absolu precHigh=1", indexW: 1,
+		// EXCEPTION DATEE (lot R3, 2026-09-29) : cette branche garde son ancien lecteur (0 bit).
+		{nom: "i0 absolu precHigh=1", indexW: 1, exception: "i0-bipede-prechigh",
 			flux: concat(seul(bit(true)), axesSeuls(axesPrecHautNiveau16), seul(fixe(2))),
 			lire: consumeAbsoluteWithGate},
 		// FUN_140f7ea14 -> FUN_14076e4ec(0x10, cVar1 ? &DAT_143b8c6d0 : 0), CALL 140f7ea5c.
@@ -342,14 +351,7 @@ func casDuCheminI0DuBipede() []casDeSite {
 // TestLeCheminI0DuBipedeLitCeQueLeJeuEcrit — J6.2 : les sous-lecteurs d i0 qui portent e524.
 func TestLeCheminI0DuBipedeLitCeQueLeJeuEcrit(t *testing.T) {
 	for _, c := range casDuCheminI0DuBipede() {
-		t.Run(c.nom, func(t *testing.T) {
-			buf, total := ecrireFlux(c.flux)
-			br := lecteurDeSite(buf, c.indexW)
-			c.lire(br)
-			if got := br.BitPos(); got != total {
-				t.Fatalf("%s : %d bits lus, l ecrivain du jeu en pose %d", c.nom, got, total)
-			}
-		})
+		t.Run(c.nom, func(t *testing.T) { verifierCasDeSite(t, c) })
 	}
 }
 

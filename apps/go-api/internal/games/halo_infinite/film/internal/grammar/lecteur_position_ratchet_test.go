@@ -53,7 +53,7 @@ type siteDePosition struct {
 func tableDesSitesDePosition() []siteDePosition {
 	const n10, n1e = 0x10, 0x1e
 	return []siteDePosition{
-		{"consumeAbsoluteWithGate", "", "lireE420", n10, 1, "FUN_1406cfe44 branche absolue, CALL 1406d009d (MOV R9D,0x10 en 1406d008a)"},
+		{"consumeAbsoluteWithGate", "", "lireE524", n10, 1, "FUN_1406cfe44 branche absolue, precHigh = 0, CALL 1406d009d (MOV R9D,0x10 en 1406d008a)"},
 		{"consumePredictedDelta", "", "lireE524", n10, 1, "FUN_14076f3ec repli, CALL 14226a6c7 (14226a6b8)"},
 		{"consumePredictedAbsolute", "", "lireE420", n10, 1, "FUN_140f7ea14 -> FUN_14076e4ec, CALL 140f7ea5c"},
 		{"consumeObjectPositionDynamicPrecisionD", "", "lireE420", n10, 1, "grammaire d ecrivain d i0 : FUN_14076e29c -> FUN_14076e420, CALL 14076e2c0"},
@@ -61,12 +61,8 @@ func tableDesSitesDePosition() []siteDePosition {
 		{"consumeManagedAndObjectiveComponent", "asset-transform-component", "lireE494", n1e, 1, "ti=44 i0 : FUN_142ed9530, CALL 142ed9556 (x5 par FUN_142ed3c64)"},
 		{"consume14058c058", "", "lireE494", n10, 2, "unit-actor-state : FUN_14058c058, CALLs 1422cddc1 et 1422cde0e"},
 		{"consumeBipedDefaultStateMediaFrame", "", "lireE494", n10, 1, "trame media : FUN_140f44c38, CALL 142451b5d"},
-		{"consumeCrewFlockAndMusicComponent", "crew-order-component", "lireE494", n10, 1, "ti=14 i0 : FUN_142ed9120, CALL 142ed918e"},
 		{"consumeCrewFlockAndMusicComponent", "tacmap-poiiconoffset", "lireE494", n10, 1, "ti=30 i1 : FUN_142ed485c -> FUN_1424e0e38(0x10) (descripteur 143d06b00)"},
 		{"consumeTacmapWaypointState", "", "lireE494", n10, 1, "ti=34 i7 : FUN_140f04d88, CALL 140f04de0 (140f04dd5)"},
-		{"consumeTacmapAreaOfInterest", "", "lireE494", n10, 1, "ti=32 i0 : FUN_142ed7764, CALL 142ed7853 (thunk)"},
-		{"consumeTacmapDisplayAsset", "", "lireE494", n10, 1, "ti=33 i0 : FUN_142ed7d38, CALL 142ed7edf (thunk)"},
-		{"consumeTacmapCoopTetherArea", "", "lireE494", n10, 1, "ti=34 i11 : FUN_142ed4198, CALL 142ed41ba (thunk)"},
 		{"consumeSpawnFilterType", "", "lireE494", n10, 1, "ti=20 i0 etiquette 3 : FUN_142b6eeec, CALL 142b6ef31"},
 		{"consumeSelectableZoneData", "", "lireE494", n10, 1, "selectable-zone-data : FUN_141454340, CALL 14145437e"},
 		{"readTranslocVec", "", "lireE494Sur", n10, 1, "EquipmentTranslocatorTeleportEffects : FUN_140f04fb8, CALLs 140f04ff0 et 140f05023"},
@@ -100,7 +96,8 @@ var lecteursLocauxInterdits = []*regexp.Regexp{
 // fichierDesExceptions porte les sites qui gardent leur ancien lecteur ([exceptionsDuPortage]).
 const fichierDesExceptions = "lecteur_position_exceptions.go"
 
-// critereDeRetraitDesExceptions : le meme pour les six (decision du superviseur, 2026-09-27 ; lot J6-bis, 2026-09-28).
+// critereDeRetraitDesExceptions : le meme pour les onze (decision du superviseur, 2026-09-27 ; lot
+// J6-bis, 2026-09-28 ; lot R3, 2026-09-29).
 const critereDeRetraitDesExceptions = "la lecture du jeu fait monter la fermeture sans aucune baisse " +
 	"sur les bobines, ou la grammaire dependante du build est etablie"
 
@@ -135,6 +132,24 @@ func exceptionsDuPortage() map[string]exceptionDuPortage {
 		"tacmap-poiicon": {"consumeTacmapPoiIcon", 0x10, "ti=30 i0 : FUN_142ed8418, CALL 142ed86d7 (thunk FUN_1424e0e38)",
 			"marche des trames de 11de8353 : liste chunk 21 paquet 1032 fermee -> non localisee, sans " +
 				"aucune hausse sur les huit builds"},
+		// Lot R3 (2026-09-29), meme situation, meme format ; chiffres = le site seul rendu a son
+		// ancien lecteur sur la tete du plan, carte de fermeture de douze films.
+		"tacmap-displayasset": {"consumeTacmapDisplayAsset", 0x10, "ti=33 i0 : FUN_142ed7d38, CALL 142ed7edf (thunk FUN_1424e0e38)",
+			"marche des trames de 51ebbc0f : dix paquets fermes (chunk 7 et 8, 61 entrees de controle) -> " +
+				"non fermes ; hausses sur 51ebbc0f 14:42, 084a804d 46:10, 11de8353 29:208, fb1a1a72 7:2380, 60ae07c4 32:2062"},
+		"tacmap-areaofinterest": {"consumeTacmapAreaOfInterest", 0x10, "ti=32 i0 : FUN_142ed7764, CALL 142ed7853 (thunk FUN_1424e0e38)",
+			"marche des trames de 51ebbc0f : paquet 12:608 (6 entrees) ferme -> non ferme ; hausses sur " +
+				"11de8353 19:394, fb1a1a72 38:8, 60ae07c4 3:1790"},
+		"tacmap-cooptetherarea": {"consumeTacmapCoopTetherArea", 0x10, "ti=34 i11 : FUN_142ed4198, CALL 142ed41ba (thunk FUN_1424e0e38)",
+			"marche des trames de c75f33b8 : liste chunk 21 paquet 1012 fermee -> non localisee, sans aucune " +
+				"hausse sur les douze films"},
+		"crew-order": {"consumeCrewOrder", 0x10, "ti=14 i0 : FUN_142ed9120, CALL 142ed918e",
+			"marche des trames de 084a804d : liste chunk 22 paquet 538 (14 entrees) fermee -> non localisee ; " +
+				"hausse sur e5adf7b2 chunk 4 paquet 900 (12 entrees)"},
+		"i0-bipede-prechigh": {"consumePrecHautDuBipede", 0x10, "i0 du bipede, branche absolue precHigh = 1 : FUN_1406cfe44 " +
+			"1406d0093 -> 1422f4cb7, FUN_141f85880(&DAT_143b8c6d0, 0x10)",
+			"marche des trames : listes 0797ce72 9:138 (6 entrees), 084a804d 25:356 (21) et 37:22 (10) " +
+				"fermees -> non localisees, sans aucune hausse sur les douze films"},
 	}
 }
 
@@ -146,8 +161,8 @@ var exemptionsDeLecteurLocal = map[string]string{
 		"largeurs de la carte selon une grammaire MESUREE ; chez l ecrivain `FUN_142f25e90`, " +
 		"l appel a `FUN_14076e494(0x10)` (CALL 142f2605d) est dans les etiquettes 4 et 5, pas dans la " +
 		"3 que ce port lit — ce n est donc pas un site du lecteur. Decouverte consignee au rapport J6.3.",
-	fichierDesExceptions: "2026-09-27 (lot J6.3, decision du superviseur) et 2026-09-28 (lot J6-bis) : les six " +
-		"exceptions datees du portage unique (`exceptionsDuPortage`), critere de retrait : " + critereDeRetraitDesExceptions,
+	fichierDesExceptions: "2026-09-27 (lot J6.3, decision du superviseur), 2026-09-28 (lot J6-bis) et " +
+		"2026-09-29 (lot R3) : les onze exceptions datees du portage unique (`exceptionsDuPortage`), critere de retrait : " + critereDeRetraitDesExceptions,
 }
 
 // TestLesExceptionsDuPortageSontEnPlace : chaque exception vit dans son fichier, n appelle PAS le
@@ -161,7 +176,8 @@ func TestLesExceptionsDuPortageSontEnPlace(t *testing.T) {
 			declarees[fd.Name.Name] = true
 		}
 	}
-	attendues := map[string]bool{"largeurAncienneDuFlock": true, "lireVecteurAncienAuNiveauDuRegistre": true}
+	attendues := map[string]bool{"largeurAncienneDuFlock": true, "lireVecteurAncienAuNiveauDuRegistre": true,
+		"lireCorpsDeTraverseeAncien": true}
 	for cle, e := range exceptionsDuPortage() {
 		attendues[e.fonction] = true
 		if !declarees[e.fonction] {

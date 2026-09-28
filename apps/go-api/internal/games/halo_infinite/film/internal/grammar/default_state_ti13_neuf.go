@@ -55,6 +55,17 @@ package grammar
 // donc `DAT_144c232e1 == 0` en rejeu, ou ce lecteur n est pas celui de ces records : non tranche.
 // Les trois exceptions de site du lot J6-bis ne tombent pas non plus sous la regle (11de8353 9:1146,
 // 19:494, 21:1032 et e5adf7b2 25:344 restent non localises).
+//
+// # LE PRIX SUR 51ebbc0f (lot R3, 2026-09-29)
+//
+// Marche des trames de `51ebbc0f` (HI_1_13_0), parent de cette exception (`0fc3277b5~1`) contre
+// elle, paquet par paquet : huit listes d evenements, toutes avec un record NEW de ti=13 dans leur
+// chaine, changent — six que la lecture du jeu fermait ne se localisent plus (7:656, 7 entrees de
+// controle ; 17:86, 0 ; 18:406, 8 ; 20:1166, 7 ; 22:1180, 5 ; 25:2274, 6) et deux que l ancienne
+// lecture ferme reviennent (17:84, 0 ; 17:1144, 5) : paquets fermes 9 841 -> 9 837, entrees
+// 55 524 -> 55 496, vue C atteinte 26 912 -> 26 908, records ti=35 74 790 -> 74 789. Contre la
+// reference J4.0.5 (parent du lot J6.3), ces huit paquets sont IDENTIQUES : l exception rend a
+// `51ebbc0f` des fermetures que J6.3 lui avait fait gagner, elle n en prend aucune a la reference.
 
 // consumeDefaultStateTI13RecordNeuf lit l etat par defaut de ti=13 d un record NEW avec la lecture
 // d AVANT le lot J6.3 : la version, « propertyName », g, puis 1 ou 32 etiquettes R(4) sans charge.

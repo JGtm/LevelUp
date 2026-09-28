@@ -18,12 +18,12 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 0	game-engine (le moteur de partie)	2	game-engine-current-state-component	1	porte	FUN_14116d1d0	R(3)	3	components_game_engine.go:84		aucun	l'etat courant de la partie (avant-match, en cours, terminee)	Le DEBUT REEL du jeu : le rejeu cale aujourd'hui son origine sur le premier paquet, pas sur le coup d'envoi.	haute	
 0	game-engine (le moteur de partie)	3	game-engine-game-finished-component	1	porte	FUN_142f035e0			dispatch_player.go:28		aucun	inconnu		aucune	
 0	game-engine (le moteur de partie)	4	game-engine-current-round-component	1	porte	FUN_14116fc70	R(1) [si 0 : R(5)]	1-6	components_game_engine.go:90		aucun	la manche en cours	Decouper le rejeu PAR MANCHE (CTF, Strongholds a manches). Aujourd'hui le rejeu est une seule bande continue.	haute	
-0	game-engine (le moteur de partie)	5	game-engine-round-timer-component	1	porte	FUN_1407ee790	R(16) + R(16) + R(5)	37	dispatch_player.go:171		aucun — la valeur est capturee et aucun champ du document ne la porte	L'HORLOGE DE MANCHE (le chrono affiche a l'ecran)	Le CHRONO OFFICIEL du match. Le rejeu affiche aujourd'hui un temps derive de l'horloge des paquets ; l'horloge du jeu est deja decodee et jetee. C'est aussi le recalage qui reglerait le decalage originMs signale au registre (3,6 s a 50,8 s sur le calque d'objectifs).	haute	
+0	game-engine (le moteur de partie)	5	game-engine-round-timer-component	1	porte	FUN_1407ee790	R(16) + R(16) + R(5)	37	dispatch_player.go:169		aucun — la valeur est capturee et aucun champ du document ne la porte	L'HORLOGE DE MANCHE (le chrono affiche a l'ecran)	Le CHRONO OFFICIEL du match. Le rejeu affiche aujourd'hui un temps derive de l'horloge des paquets ; l'horloge du jeu est deja decodee et jetee. C'est aussi le recalage qui reglerait le decalage originMs signale au registre (3,6 s a 50,8 s sur le calque d'objectifs).	haute	
 0	game-engine (le moteur de partie)	6	game-engine-sudden-death-time-left-component	1	porte	FUN_14116d3a4	R(16) + R(16) + R(5)	37	components_game_engine.go:103		aucun	le temps restant en MORT SUBITE	Marquer la mort subite sur la frise du rejeu : un moment de match a fort enjeu, jamais signale.	haute	
 0	game-engine (le moteur de partie)	7	game-engine-grace-period-time-left-component	1	porte	FUN_141165d24	R(16) + R(16) + R(5)	37	components_game_engine.go:112		aucun	le temps restant du delai de grace	idem i6	haute	
 0	game-engine (le moteur de partie)	8	game-engine-round-condition-flags-component	1	porte	FUN_141132dc0	R(10)	10	components_game_engine.go:120		aucun	les conditions de fin de manche	Dire POURQUOI une manche s'est terminee (temps ecoule, score atteint, forfait).	haute	
-0	game-engine (le moteur de partie)	9	game-engine-screen-sequence-component	1	porte	FUN_14101d118	R(4) + R(8)	12	dispatch_player.go:180		aucun	la sequence d'ecran (cinematique, tableau des scores)	inconnu	haute	
-0	game-engine (le moteur de partie)	10	game-engine-alliance-component	1	porte	FUN_140a24968	R(32) masque + popcount x (R(32) + R(32))	32+	dispatch_player.go:283		aucun	les alliances entre equipes	inconnu	haute	
+0	game-engine (le moteur de partie)	9	game-engine-screen-sequence-component	1	porte	FUN_14101d118	R(4) + R(8)	12	dispatch_player.go:178		aucun	la sequence d'ecran (cinematique, tableau des scores)	inconnu	haute	
+0	game-engine (le moteur de partie)	10	game-engine-alliance-component	1	porte	FUN_140a24968	R(32) masque + popcount x (R(32) + R(32))	32+	dispatch_player.go:281		aucun	les alliances entre equipes	inconnu	haute	
 0	game-engine (le moteur de partie)	11	game-engine-soft-ceilings-component	1	non_porte						aucun	inconnu		aucune	
 0	game-engine (le moteur de partie)	12	game-engine-campaign-timer-component	1	porte	FUN_1407ee764			dispatch_biped.go:108		aucun	inconnu		aucune	
 0	game-engine (le moteur de partie)	13	game-engine-disabled-kill-volume-flags-component	1	non_porte						aucun	inconnu		aucune	
@@ -44,13 +44,13 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 1	inconnu	1	game-engine-shared-team-lives-component	1	porte	FUN_142f03600			dispatch_item.go:30		aucun	inconnu		aucune	
 1	inconnu	2	game-engine-current-state-component	1	porte	FUN_14116d1d0			dispatch_player.go:25		aucun	inconnu		aucune	
 1	inconnu	3	game-engine-game-finished-component	1	porte	FUN_142f035e0			dispatch_player.go:28		aucun	inconnu		aucune	
-1	inconnu	4	game-engine-current-round-component	1	porte	FUN_14116fc70			dispatch_player.go:292		aucun	inconnu		aucune	
-1	inconnu	5	game-engine-round-timer-component	1	porte	FUN_1407ee790			dispatch_player.go:171		aucun	inconnu		aucune	
-1	inconnu	6	game-engine-sudden-death-time-left-component	1	porte	FUN_14116d3a4			dispatch_player.go:175		aucun	inconnu		aucune	
-1	inconnu	7	game-engine-grace-period-time-left-component	1	porte	FUN_141165d24			dispatch_player.go:275		aucun	inconnu		aucune	
-1	inconnu	8	game-engine-round-condition-flags-component	1	porte	FUN_141132dc0			dispatch_player.go:280		aucun	inconnu		aucune	
-1	inconnu	9	game-engine-screen-sequence-component	1	porte	FUN_14101d118			dispatch_player.go:180		aucun	inconnu		aucune	
-1	inconnu	10	game-engine-alliance-component	1	porte	FUN_140a24968			dispatch_player.go:283		aucun	inconnu		aucune	
+1	inconnu	4	game-engine-current-round-component	1	porte	FUN_14116fc70			dispatch_player.go:290		aucun	inconnu		aucune	
+1	inconnu	5	game-engine-round-timer-component	1	porte	FUN_1407ee790			dispatch_player.go:169		aucun	inconnu		aucune	
+1	inconnu	6	game-engine-sudden-death-time-left-component	1	porte	FUN_14116d3a4			dispatch_player.go:173		aucun	inconnu		aucune	
+1	inconnu	7	game-engine-grace-period-time-left-component	1	porte	FUN_141165d24			dispatch_player.go:273		aucun	inconnu		aucune	
+1	inconnu	8	game-engine-round-condition-flags-component	1	porte	FUN_141132dc0			dispatch_player.go:278		aucun	inconnu		aucune	
+1	inconnu	9	game-engine-screen-sequence-component	1	porte	FUN_14101d118			dispatch_player.go:178		aucun	inconnu		aucune	
+1	inconnu	10	game-engine-alliance-component	1	porte	FUN_140a24968			dispatch_player.go:281		aucun	inconnu		aucune	
 1	inconnu	11	game-engine-soft-ceilings-component	1	non_porte						aucun	inconnu		aucune	
 1	inconnu	12	game-engine-campaign-timer-component	1	porte	FUN_1407ee764			dispatch_biped.go:108		aucun	inconnu		aucune	
 1	inconnu	13	game-engine-disabled-kill-volume-flags-component	1	non_porte						aucun	inconnu		aucune	
@@ -59,13 +59,13 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 2	game-engine-campaign	1	game-engine-shared-team-lives-component	1	porte	FUN_142f03600			dispatch_item.go:30		aucun	inconnu		aucune	
 2	game-engine-campaign	2	game-engine-current-state-component	1	porte	FUN_14116d1d0			dispatch_player.go:25		aucun	inconnu		aucune	
 2	game-engine-campaign	3	game-engine-game-finished-component	1	porte	FUN_142f035e0	R(1)	1	dispatch_player.go:28		aucun	LA PARTIE EST TERMINEE	Le bit qui dit que le match est fini : bornerait proprement la fin du rejeu, aujourd'hui calee sur le dernier paquet.	haute	
-2	game-engine-campaign	4	game-engine-current-round-component	1	porte	FUN_14116fc70			dispatch_player.go:292		aucun	inconnu		aucune	
-2	game-engine-campaign	5	game-engine-round-timer-component	1	porte	FUN_1407ee790			dispatch_player.go:171		aucun	inconnu		aucune	
-2	game-engine-campaign	6	game-engine-sudden-death-time-left-component	1	porte	FUN_14116d3a4			dispatch_player.go:175		aucun	inconnu		aucune	
-2	game-engine-campaign	7	game-engine-grace-period-time-left-component	1	porte	FUN_141165d24			dispatch_player.go:275		aucun	inconnu		aucune	
-2	game-engine-campaign	8	game-engine-round-condition-flags-component	1	porte	FUN_141132dc0			dispatch_player.go:280		aucun	inconnu		aucune	
-2	game-engine-campaign	9	game-engine-screen-sequence-component	1	porte	FUN_14101d118			dispatch_player.go:180		aucun	inconnu		aucune	
-2	game-engine-campaign	10	game-engine-alliance-component	1	porte	FUN_140a24968			dispatch_player.go:283		aucun	inconnu		aucune	
+2	game-engine-campaign	4	game-engine-current-round-component	1	porte	FUN_14116fc70			dispatch_player.go:290		aucun	inconnu		aucune	
+2	game-engine-campaign	5	game-engine-round-timer-component	1	porte	FUN_1407ee790			dispatch_player.go:169		aucun	inconnu		aucune	
+2	game-engine-campaign	6	game-engine-sudden-death-time-left-component	1	porte	FUN_14116d3a4			dispatch_player.go:173		aucun	inconnu		aucune	
+2	game-engine-campaign	7	game-engine-grace-period-time-left-component	1	porte	FUN_141165d24			dispatch_player.go:273		aucun	inconnu		aucune	
+2	game-engine-campaign	8	game-engine-round-condition-flags-component	1	porte	FUN_141132dc0			dispatch_player.go:278		aucun	inconnu		aucune	
+2	game-engine-campaign	9	game-engine-screen-sequence-component	1	porte	FUN_14101d118			dispatch_player.go:178		aucun	inconnu		aucune	
+2	game-engine-campaign	10	game-engine-alliance-component	1	porte	FUN_140a24968			dispatch_player.go:281		aucun	inconnu		aucune	
 2	game-engine-campaign	11	game-engine-soft-ceilings-component	1	non_porte						aucun	inconnu		aucune	
 2	game-engine-campaign	12	game-engine-campaign-timer-component	1	porte	FUN_1407ee764			dispatch_biped.go:108		aucun	inconnu		aucune	
 2	game-engine-campaign	13	game-engine-disabled-kill-volume-flags-component	1	non_porte						aucun	inconnu		aucune	
@@ -86,23 +86,23 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 5	player (le JOUEUR, pas son corps)	7	player-desired-respawn-seat-component	1	partiel	FUN_142f03f34	R(1) [si 1 : largeur RUNTIME -> desync propre] + R(7)	8+	dispatch_player.go:111		aucun	sur quel SIEGE de vehicule le joueur veut reapparaitre	inconnu	haute	
 5	player (le JOUEUR, pas son corps)	8	player-early-respawn-requested-component	1	porte	FUN_142f04034	R(1)	1	dispatch_player.go:37		aucun	le joueur a demande a reapparaitre plus tot	inconnu	haute	
 5	player (le JOUEUR, pas son corps)	9	player-engine-loadout-index-component	1	porte	FUN_142f04054	R(3)	3	dispatch_player.go:40		aucun	l'index du chargement choisi	inconnu	haute	
-5	player (le JOUEUR, pas son corps)	10	player-primary-respawn-object-component	1	partiel	FUN_142f043e8	R(1) [si 1 : largeur RUNTIME -> desync propre]	1+	dispatch_player.go:185		aucun	l'objet de reapparition principal (balise, base)	inconnu	haute	
+5	player (le JOUEUR, pas son corps)	10	player-primary-respawn-object-component	1	partiel	FUN_142f043e8	R(1) [si 1 : largeur RUNTIME -> desync propre]	1+	dispatch_player.go:183		aucun	l'objet de reapparition principal (balise, base)	inconnu	haute	
 5	player (le JOUEUR, pas son corps)	11	player-engine-loadout-component	1	porte	FUN_141044428	8 x R(8) = 64	64	components_player.go:120		aucun	le CHARGEMENT complet du joueur	8 octets de chargement, jamais lus : c'est peut-etre l'equipement de depart en clair, la ou le rejeu le devine aujourd'hui par i48.	haute	
-5	player (le JOUEUR, pas son corps)	12	player-desired-respawn-location-component	1	porte	FUN_14076dc04	R(1) [si 1 : vec3 quantifie (6+niveau) + R(19)]	1-40	lecteur_position_exceptions.go:156		aucun	l'endroit ou le joueur veut reapparaitre	Une POSITION lisible, avec la seule quantification du registre (pas de bornes de carte a resoudre) : le choix de reapparition, sur la carte.	haute	
-5	player (le JOUEUR, pas son corps)	13	player-fade-properties-component	1	porte	FUN_141020bac	6 x R(12) = 72	72	dispatch_player.go:163		aucun	les proprietes de fondu de l'ecran	Habillage d'interface : sans valeur produit.	haute	
+5	player (le JOUEUR, pas son corps)	12	player-desired-respawn-location-component	1	porte	FUN_14076dc04	R(1) [si 1 : vec3 quantifie (6+niveau) + R(19)]	1-40	lecteur_position_exceptions.go:158		aucun	l'endroit ou le joueur veut reapparaitre	Une POSITION lisible, avec la seule quantification du registre (pas de bornes de carte a resoudre) : le choix de reapparition, sur la carte.	haute	
+5	player (le JOUEUR, pas son corps)	13	player-fade-properties-component	1	porte	FUN_141020bac	6 x R(12) = 72	72	dispatch_player.go:161		aucun	les proprietes de fondu de l'ecran	Habillage d'interface : sans valeur produit.	haute	
 5	player (le JOUEUR, pas son corps)	14	player-lives-remaining-component	1	porte	FUN_141055734	R(7)	7	components_player.go:134		aucun	le nombre de VIES restantes (modes a vies limitees)	Les modes a elimination (Attrition) : le compte de vies par equipe, image par image. Decode, jete.	haute	
 5	player (le JOUEUR, pas son corps)	15	player-last-betrayer-component	1	porte	FUN_142f04158	R(6)	6	components_player.go:135		aucun	qui a TRAHI le joueur en dernier (tir ami fatal)	Les trahisons nommees, sur 6 bits. Le rejeu ne distingue pas aujourd'hui un tir ami d'un kill adverse dans certaines lignes.	haute	
-5	player (le JOUEUR, pas son corps)	16	player-vehicle-entrance-ban-component	1	porte	FUN_142f04610	R(1)	1	dispatch_player.go:200		aucun	interdiction d'entrer dans un vehicule	inconnu	haute	
+5	player (le JOUEUR, pas son corps)	16	player-vehicle-entrance-ban-component	1	porte	FUN_142f04610	R(1)	1	dispatch_player.go:198		aucun	interdiction d'entrer dans un vehicule	inconnu	haute	
 5	player (le JOUEUR, pas son corps)	17	player-control-aiming-component	1	porte	FUN_142f03ea4	R(19) direction cubemap	19	components_player.go:142		aucun	la direction de visee cate contrale joueur	Une SECONDE source de visee, portee par l'entite JOUEUR et non par le corps : elle pourrait combler les 56 % de points sans cap (Point.H absent).	haute	
 5	player (le JOUEUR, pas son corps)	18	player-active-in-game-component	1	porte	FUN_1411615d8	R(1)	1	components_player.go:147		aucun	le joueur est ACTIF dans la partie	Les ABANDONS et les arrivees en cours de partie, dates au bit : aujourd'hui deduits de l'absence de trajectoire.	haute	
 5	player (le JOUEUR, pas son corps)	19	player-pending-join-in-progress-spawn-component	1	porte	FUN_1411615b8	R(1)	1	components_player.go:152		aucun	le joueur rejoint la partie en cours	idem i18	haute	
 5	player (le JOUEUR, pas son corps)	20	player-malleable-properties-simulation-component	1	porte	FUN_1407f0518	3 x R(1) + 6 x (R(1) [+ R(12)]) + 9 x R(1)	18-90	components_player.go:163		aucun	les modificateurs appliques au joueur	Six valeurs de 12 bits sous porte : c'est la forme d'une table de modificateurs (vitesse, degats, sauts). Jamais mesuree.	haute	
-5	player (le JOUEUR, pas son corps)	21	player-representation-component	1	porte	FUN_14111ec64	R(32)	32	dispatch_player.go:236		aucun	la representation du joueur (son apparence / son modele)	inconnu	haute	
+5	player (le JOUEUR, pas son corps)	21	player-representation-component	1	porte	FUN_14111ec64	R(32)	32	dispatch_player.go:234		aucun	la representation du joueur (son apparence / son modele)	inconnu	haute	
 5	player (le JOUEUR, pas son corps)	22	player-aim-assist-component	1	porte	FUN_141139f30	FUN_1408f0ac4 categorie 1 (porte R(1) + entier a largeur variable) puis R(1)	variable	composants_vue_b_m4b.go:157		aucun	inconnu	inconnu	haute	lot M4b 2026-09-25 : descripteur 143d0dd18, deser a +0x28
-5	player (le JOUEUR, pas son corps)	23	player-power-frame-points-component	1	porte	FUN_142f04240	R(16) + R(16)	32	dispatch_player.go:239		aucun	des points de « power frame » (economie de mode)	inconnu	haute	
+5	player (le JOUEUR, pas son corps)	23	player-power-frame-points-component	1	porte	FUN_142f04240	R(16) + R(16)	32	dispatch_player.go:237		aucun	des points de « power frame » (economie de mode)	inconnu	haute	
 5	player (le JOUEUR, pas son corps)	24	player-desired-frame-configuration-component	1	porte	FUN_1410dcb34	FUN_1407f0550 (consume1407f0550, bloc de trois elements)	variable	composants_vue_b_m4b.go:159		aucun	inconnu	inconnu	haute	lot M4b 2026-09-25 : descripteur 143d0dcc8
-5	player (le JOUEUR, pas son corps)	25	player-supply-lines-currency-simulation-component	1	porte	FUN_142f04408	R(16)	16	dispatch_player.go:243		aucun	la monnaie de « lignes de ravitaillement »	Mode campagne / PvE : sans objet en multijoueur competitif.	haute	
-5	player (le JOUEUR, pas son corps)	26	player-allowed-to-quit-component	1	porte	FUN_142f04138	R(1)	1	dispatch_player.go:246		aucun	le joueur a le droit de quitter	inconnu	haute	
+5	player (le JOUEUR, pas son corps)	25	player-supply-lines-currency-simulation-component	1	porte	FUN_142f04408	R(16)	16	dispatch_player.go:241		aucun	la monnaie de « lignes de ravitaillement »	Mode campagne / PvE : sans objet en multijoueur competitif.	haute	
+5	player (le JOUEUR, pas son corps)	26	player-allowed-to-quit-component	1	porte	FUN_142f04138	R(1)	1	dispatch_player.go:244		aucun	le joueur a le droit de quitter	inconnu	haute	
 6	statborg (les compteurs de score)	0	statborg-current-round-value-stat-component	1	porte	FUN_140c18794	FUN_140c18794 ; getter natif : value = *(int32*)(world + slot*0x88 + equipe*0x1DF0 + 0x38 + manche*4), affiche = brut x echelle	inconnu	dispatch_object.go:124		aucun	LA VALEUR DE STAT DE LA MANCHE EN COURS — le score vivant, par equipe	LA COURBE DE SCORE DES DEUX EQUIPES, image par image, pour TOUS les modes. Aujourd'hui le score dans le temps n'existe qu'en CTF (par les captures) et de facon experimentale non branchee en Strongholds/KOTH. Le composant est porte, sa valeur est jetee, et les deux statlines existent.	haute	
 6	statborg (les compteurs de score)	1	statborg-current-round-value-stat-component	1	porte	FUN_140c18794			dispatch_object.go:124		aucun	inconnu		aucune	
 6	statborg (les compteurs de score)	2	statborg-current-round-value-stat-component	1	porte	FUN_140c18794			dispatch_object.go:124		aucun	inconnu		aucune	
@@ -159,7 +159,7 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 6	statborg (les compteurs de score)	53	statborg-finalized-rounds-values-stat-component	1	porte	FUN_142ed3c50			dispatch_item.go:24		aucun	inconnu		aucune	
 6	statborg (les compteurs de score)	54	statborg-finalized-rounds-values-stat-component	1	porte	FUN_142ed3c50			dispatch_item.go:24		aucun	inconnu		aucune	
 6	statborg (les compteurs de score)	55	statborg-finalized-rounds-values-stat-component	1	porte	FUN_142ed3c50			dispatch_item.go:24		aucun	inconnu		aucune	
-6	statborg (les compteurs de score)	56	statborg-round-outcomes-component	1	porte	FUN_142ed71a4	32 x R(2)	64	dispatch_player.go:321		aucun	l'ISSUE de chaque manche (gagnee, perdue, nulle)	32 issues de manche sur 2 bits chacune : directement lisible, jamais lu.	haute	
+6	statborg (les compteurs de score)	56	statborg-round-outcomes-component	1	porte	FUN_142ed71a4	32 x R(2)	64	dispatch_player.go:319		aucun	l'ISSUE de chaque manche (gagnee, perdue, nulle)	32 issues de manche sur 2 bits chacune : directement lisible, jamais lu.	haute	
 6	statborg (les compteurs de score)	57	statborg-entry-index-and-type-component	1	porte	FUN_1410be614	R(32) + R(8)	40	dispatch_item.go:133		aucun	quel COMPTEUR est decrit (son index et son type)	C'est la CLE de lecture d'i0 : sans elle on ne sait pas quel compteur on lit. Portee, jetee — c'est exactement le « cadrage » qui manque pour brancher le parser statborg.	haute	
 7	forge-sim-generic-*	0	forge-sim-generic-component	1	non_porte						aucun	inconnu		aucune	
 7	forge-sim-generic-*	1	forge-sim-generic-component	1	non_porte						aucun	inconnu		aucune	
@@ -225,16 +225,16 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 7	forge-sim-generic-*	61	forge-sim-generic-component	1	non_porte						aucun	inconnu		aucune	
 7	forge-sim-generic-*	62	forge-sim-generic-component	1	non_porte						aucun	inconnu		aucune	
 7	forge-sim-generic-*	63	forge-sim-generic-component	1	non_porte						aucun	inconnu		aucune	
-9	managed-player (le profil du joueur)	0	managed-player-team-designator-component	1	porte	FUN_140f581e8	R(4)	4	dispatch_player.go:337		aucun — l'equipe du rejeu vient de la base	L'EQUIPE du joueur	4 bits qui donnent l'equipe. Un rejeu autonome de la base pour la composition d'equipe, et un controle croise gratuit.	haute	
-9	managed-player (le profil du joueur)	1	managed-player-color-override-component	1	porte	FUN_142ed5b54	8 x R(8) = 64	64	dispatch_player.go:340		aucun	les COULEURS d'armure du joueur (2 couleurs RGBA quantifiees)	Colorer chaque marqueur du rejeu avec la VRAIE couleur d'armure du joueur, au lieu d'une teinte d'equipe. Decode, jete.	haute	
-9	managed-player (le profil du joueur)	2	managed-player-flags-component	1	porte	FUN_142ed5bac	R(4)	4	dispatch_player.go:345		aucun	drapeaux de profil	inconnu	haute	
-9	managed-player (le profil du joueur)	3	managed-player-back-button-scoreboard-flair-component	1	porte	FUN_142ed5af4	R(32)	32	dispatch_player.go:348		aucun	l'ornement de tableau des scores	cosmetique	haute	
-9	managed-player (le profil du joueur)	4	managed-player-forge-weather-effect-overrides-component	1	porte	FUN_142ed5bc8	R(32) + R(32)	64	dispatch_player.go:351		aucun	les DEUX remplacements d'effet meteo de Forge pour ce joueur (deux mots de 32 bits)	aucun pour le rejeu — donnee de Forge, decodee puis jetee ; ce qui compte est que son port DEBLOQUE l'archetype ti=9 en image-cle, et avec lui les cinq composants qui le suivent au registre	haute	grammaire relevee chez l'ecrivain FUN_142ed5bc8 (NOTE_3_6_TI9_2026-09-16.md §2) : 64 bits inconditionnels, aucune porte, aucune dependance de configuration
-9	managed-player (le profil du joueur)	5	managed-player-active-mission-name-component	1	porte	FUN_142ed5ab0	R(32) + R(32)	64	dispatch_player.go:354		aucun	le nom de la mission active	campagne	haute	
-9	managed-player (le profil du joueur)	6	managed-player-show-active-mission-name-in-hud-component	1	porte	FUN_142ed5d68	R(1)	1	dispatch_player.go:358		aucun	afficher le nom de mission	campagne	haute	
-9	managed-player (le profil du joueur)	7	managed-player-campaign-progress-component	1	porte	FUN_142ed5b18	R(8)	8	dispatch_player.go:361		aucun	la progression de campagne	campagne	haute	
-9	managed-player (le profil du joueur)	8	managed-player-current-season-component	1	porte	FUN_142ed5b88	R(32)	32	dispatch_player.go:364		aucun	la saison en cours	La saison du jeu au moment du match, lue dans le film : datation independante.	haute	
-9	managed-player (le profil du joueur)	9	managed-player-custom-input-prompt-widget	1	porte	FUN_141fcf160	R(1)[1 -> R(2) + R(1)[1 -> R(32) + n=R(3) + n x (R(3) + corps)]]	1	dispatch_player.go:367		aucun	le widget d'invite personnalisee	aucun pour le rejeu — le widget d'invite est de l'interface, decode puis jete ; ce qui compte est que sa boucle a etiquette ne desynchronise plus	haute	boucle a etiquette decidable hors ligne, 5 corps a largeurs LITTERALES (NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md §1, verifiee par sceptique) ; `bits_typ` fige le cas commun `present = 0`, la largeur est gardee par le flux ; absent du registre avant HI_1_12_0
+9	managed-player (le profil du joueur)	0	managed-player-team-designator-component	1	porte	FUN_140f581e8	R(4)	4	dispatch_player.go:335		aucun — l'equipe du rejeu vient de la base	L'EQUIPE du joueur	4 bits qui donnent l'equipe. Un rejeu autonome de la base pour la composition d'equipe, et un controle croise gratuit.	haute	
+9	managed-player (le profil du joueur)	1	managed-player-color-override-component	1	porte	FUN_142ed5b54	8 x R(8) = 64	64	dispatch_player.go:338		aucun	les COULEURS d'armure du joueur (2 couleurs RGBA quantifiees)	Colorer chaque marqueur du rejeu avec la VRAIE couleur d'armure du joueur, au lieu d'une teinte d'equipe. Decode, jete.	haute	
+9	managed-player (le profil du joueur)	2	managed-player-flags-component	1	porte	FUN_142ed5bac	R(4)	4	dispatch_player.go:343		aucun	drapeaux de profil	inconnu	haute	
+9	managed-player (le profil du joueur)	3	managed-player-back-button-scoreboard-flair-component	1	porte	FUN_142ed5af4	R(32)	32	dispatch_player.go:346		aucun	l'ornement de tableau des scores	cosmetique	haute	
+9	managed-player (le profil du joueur)	4	managed-player-forge-weather-effect-overrides-component	1	porte	FUN_142ed5bc8	R(32) + R(32)	64	dispatch_player.go:349		aucun	les DEUX remplacements d'effet meteo de Forge pour ce joueur (deux mots de 32 bits)	aucun pour le rejeu — donnee de Forge, decodee puis jetee ; ce qui compte est que son port DEBLOQUE l'archetype ti=9 en image-cle, et avec lui les cinq composants qui le suivent au registre	haute	grammaire relevee chez l'ecrivain FUN_142ed5bc8 (NOTE_3_6_TI9_2026-09-16.md §2) : 64 bits inconditionnels, aucune porte, aucune dependance de configuration
+9	managed-player (le profil du joueur)	5	managed-player-active-mission-name-component	1	porte	FUN_142ed5ab0	R(32) + R(32)	64	dispatch_player.go:352		aucun	le nom de la mission active	campagne	haute	
+9	managed-player (le profil du joueur)	6	managed-player-show-active-mission-name-in-hud-component	1	porte	FUN_142ed5d68	R(1)	1	dispatch_player.go:356		aucun	afficher le nom de mission	campagne	haute	
+9	managed-player (le profil du joueur)	7	managed-player-campaign-progress-component	1	porte	FUN_142ed5b18	R(8)	8	dispatch_player.go:359		aucun	la progression de campagne	campagne	haute	
+9	managed-player (le profil du joueur)	8	managed-player-current-season-component	1	porte	FUN_142ed5b88	R(32)	32	dispatch_player.go:362		aucun	la saison en cours	La saison du jeu au moment du match, lue dans le film : datation independante.	haute	
+9	managed-player (le profil du joueur)	9	managed-player-custom-input-prompt-widget	1	porte	FUN_141fcf160	R(1)[1 -> R(2) + R(1)[1 -> R(32) + n=R(3) + n x (R(3) + corps)]]	1	dispatch_player.go:365		aucun	le widget d'invite personnalisee	aucun pour le rejeu — le widget d'invite est de l'interface, decode puis jete ; ce qui compte est que sa boucle a etiquette ne desynchronise plus	haute	boucle a etiquette decidable hors ligne, 5 corps a largeurs LITTERALES (NOTE_3_6_TI9_TI35_RESTES_2026-09-17.md §1, verifiee par sceptique) ; `bits_typ` fige le cas commun `present = 0`, la largeur est gardee par le flux ; absent du registre avant HI_1_12_0
 10	managed-object-boundary (limites d'objet)	0	managed-object-boundary-visibility-component	1	porte	FUN_141169e90	32 x R(1)	32	components_walk_batch9.go:27		aucun	32 drapeaux de visibilite de limite	inconnu	haute	
 10	managed-object-boundary (limites d'objet)	1	managed-object-boundary-color-component	2	porte	FUN_142ed52b4	4 x R(8) dequantifies dans [0,1] (RGBA)	32	components_managed_object.go:85		aucun	la COULEUR de la limite de zone, RGBA sur 8 bits par canal	teinter une zone par son proprietaire ; 10 347 annonces sur 10 films (lot C phase 0), premier octet a 4 niveaux (55/119/183/247) non explique	haute	
 10	managed-object-boundary (limites d'objet)	2	managed-object-navpoint-component	1	non_porte						aucun	inconnu		aucune	
@@ -364,50 +364,50 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 14	crew (escouade IA)	0	crew-order-component	1	porte	FUN_142ed4274	R(3) + R(1) [si 1 : vec3 quantifie 6+niveau]	4-40	dispatch_player.go:52		aucun	l'ordre donne (avec un point de destination)	campagne	haute	
 14	crew (escouade IA)	1	crew-marked-objects-component	1	partiel	FUN_142ed421c	R(1) ; si 1 -> largeur runtime, desync propre	1+	dispatch_player.go:100		aucun	les objets marques par l'escouade	campagne	haute	
 14	crew (escouade IA)	2	crew-orders-off-flags-component	1	porte	FUN_142ed428c	R(8)	8	dispatch_item.go:130		aucun	les ordres desactives	campagne	haute	
-15	nav-cutscene	0	nav-cutscene-flag-component	1	partiel	FUN_142ed69b8	R(1) ; si 1 -> bloc vec3 runtime, desync propre	1+	dispatch_player.go:131		aucun	drapeau de cinematique de navigation	campagne	haute	
-15	nav-cutscene	1	nav-cutscene-flag-component	1	partiel	FUN_142ed69b8			dispatch_player.go:131		aucun	inconnu		aucune	
-15	nav-cutscene	2	nav-cutscene-flag-component	1	partiel	FUN_142ed69b8			dispatch_player.go:131		aucun	inconnu		aucune	
-15	nav-cutscene	3	nav-cutscene-flag-component	1	partiel	FUN_142ed69b8			dispatch_player.go:131		aucun	inconnu		aucune	
+15	nav-cutscene	0	nav-cutscene-flag-component	1	partiel	FUN_142ed69b8	R(1) ; si 1 -> bloc vec3 runtime, desync propre	1+	dispatch_player.go:129		aucun	drapeau de cinematique de navigation	campagne	haute	
+15	nav-cutscene	1	nav-cutscene-flag-component	1	partiel	FUN_142ed69b8			dispatch_player.go:129		aucun	inconnu		aucune	
+15	nav-cutscene	2	nav-cutscene-flag-component	1	partiel	FUN_142ed69b8			dispatch_player.go:129		aucun	inconnu		aucune	
+15	nav-cutscene	3	nav-cutscene-flag-component	1	partiel	FUN_142ed69b8			dispatch_player.go:129		aucun	inconnu		aucune	
 16	scene / script	0	change-scene-component	1	porte	FUN_142ed3fcc	FUN_142ed3fcc	inconnu	dispatch_object.go:118		aucun	un changement de scene	inconnu	haute	
 16	scene / script	1	branch-script-results-component	1	porte	FUN_142ed3dcc	R(6) + R(32)	38	dispatch_item.go:75		aucun	le resultat d'un script de branchement	inconnu	haute	
 16	scene / script	2	branch-script-results-component	1	porte	FUN_142ed3dcc			dispatch_item.go:75		aucun	inconnu		aucune	
 16	scene / script	3	branch-script-results-component	1	porte	FUN_142ed3dcc			dispatch_item.go:75		aucun	inconnu		aucune	
 16	scene / script	4	branch-script-results-component	1	porte	FUN_142ed3dcc			dispatch_item.go:75		aucun	inconnu		aucune	
-16	scene / script	5	track-frame-component	1	porte	FUN_142ed740c	FUN_142ed740c	inconnu	dispatch_player.go:318		aucun	l'image d'une piste de cinematique	campagne	haute	
+16	scene / script	5	track-frame-component	1	porte	FUN_142ed740c	FUN_142ed740c	inconnu	dispatch_player.go:316		aucun	l'image d'une piste de cinematique	campagne	haute	
 17	music (la musique)	0	music-variables-component	1	porte	FUN_142ed66bc	32 x (R(1) ; si 0 : R(2) + R(32) + R(32))	32-2 176	dispatch_player.go:13		aucun	32 variables de mixage musical	L'INTENSITE musicale que le jeu calcule est une mesure de TENSION deja faite par le moteur : un indicateur de moment fort, gratuit, jamais lu.	haute	
-17	music (la musique)	1	music-state-component	1	porte	FUN_142ed5ef0	R(1)+R(32)+R(32)+R(1)+R(32)+R(1)+portes...	100-200	dispatch_player.go:141		aucun	l'etat de la piste musicale	idem i0	haute	
-18	effect (effet visuel)	0	effect-state-data-component	2	partiel	FUN_142ed438c	R(1) [+ R(32) tag] ; puis marqueurs a largeur RUNTIME -> desync propre	1-66 avant desync	dispatch_player.go:117		aucun	l'etat d'un effet visuel (explosion, fumee, etincelles) et son tag	Le tag R(32) de l'effet est LISIBLE avant le mur : il nommerait les explosions et les impacts, la ou le rejeu les reconstruit aujourd'hui a partir des tirs et des grenades. Jamais sonde.	moyenne	
-18	effect (effet visuel)	1	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	2	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	3	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	4	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	5	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	6	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	7	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	8	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	9	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	10	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	11	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	12	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	13	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	14	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	15	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	16	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	17	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	18	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	19	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	20	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	21	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	22	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	23	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	24	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	25	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	26	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	27	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	28	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	29	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	30	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
-18	effect (effet visuel)	31	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:117		aucun	inconnu		aucune	
+17	music (la musique)	1	music-state-component	1	porte	FUN_142ed5ef0	R(1)+R(32)+R(32)+R(1)+R(32)+R(1)+portes...	100-200	dispatch_player.go:139		aucun	l'etat de la piste musicale	idem i0	haute	
+18	effect (effet visuel)	0	effect-state-data-component	2	partiel	FUN_142ed438c	R(1) [+ R(32) tag] ; puis marqueurs a largeur RUNTIME -> desync propre	1-66 avant desync	dispatch_player.go:115		aucun	l'etat d'un effet visuel (explosion, fumee, etincelles) et son tag	Le tag R(32) de l'effet est LISIBLE avant le mur : il nommerait les explosions et les impacts, la ou le rejeu les reconstruit aujourd'hui a partir des tirs et des grenades. Jamais sonde.	moyenne	
+18	effect (effet visuel)	1	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	2	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	3	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	4	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	5	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	6	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	7	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	8	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	9	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	10	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	11	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	12	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	13	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	14	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	15	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	16	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	17	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	18	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	19	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	20	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	21	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	22	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	23	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	24	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	25	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	26	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	27	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	28	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	29	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	30	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
+18	effect (effet visuel)	31	effect-state-data-component	2	partiel	FUN_142ed438c			dispatch_player.go:115		aucun	inconnu		aucune	
 19	sound-placement-state-*	0	sound-placement-state-data-component	1	non_porte						aucun	inconnu		aucune	
 19	sound-placement-state-*	1	sound-placement-state-data-component	1	non_porte						aucun	inconnu		aucune	
 19	sound-placement-state-*	2	sound-placement-state-data-component	1	non_porte						aucun	inconnu		aucune	
@@ -444,56 +444,56 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 20	spawn-filter (filtre de reapparition)	1	spawn-filter-weight-component	1	porte	FUN_14076ce9c	R(16)	16	dispatch_biped.go:171		aucun	le poids du filtre (a quel point ce point de reapparition est prefere)	idem i0	haute	
 20	spawn-filter (filtre de reapparition)	2	spawn-filter-filters-component	2	non_porte						aucun	inconnu		aucune	
 21	flock (nuee)	0	flock-emitting-component	1	porte	FUN_142ed46c8			dispatch_item.go:143		aucun	inconnu		aucune	
-21	flock (nuee)	1	flock-destroying-component	1	porte	FUN_142ed468c			dispatch_player.go:162		aucun	inconnu		aucune	
-21	flock (nuee)	2	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	3	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	4	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	5	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	6	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	7	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	8	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	9	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	10	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	11	flock-destination-component	2	porte				lecteur_position_exceptions.go:111		aucun	inconnu		aucune	
-21	flock (nuee)	12	flock-forced-respawn-component	0	porte	FUN_142ed4740			dispatch_player.go:165		aucun	inconnu		aucune	
-21	flock (nuee)	13	flock-relevancy-component	0	porte	FUN_14110d2fc			dispatch_player.go:168		aucun	inconnu		aucune	
+21	flock (nuee)	1	flock-destroying-component	1	porte	FUN_142ed468c			dispatch_player.go:160		aucun	inconnu		aucune	
+21	flock (nuee)	2	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	3	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	4	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	5	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	6	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	7	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	8	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	9	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	10	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	11	flock-destination-component	2	porte				lecteur_position_exceptions.go:113		aucun	inconnu		aucune	
+21	flock (nuee)	12	flock-forced-respawn-component	0	porte	FUN_142ed4740			dispatch_player.go:163		aucun	inconnu		aucune	
+21	flock (nuee)	13	flock-relevancy-component	0	porte	FUN_14110d2fc			dispatch_player.go:166		aucun	inconnu		aucune	
 21	flock (nuee)	14	flock-fleeing-component	0	porte	FUN_142ed4704			dispatch_biped.go:70		aucun	inconnu		aucune	
 21	flock (nuee)	15	flock-remembered-danger-component	0	porte	FUN_142ed477c			dispatch_biped.go:67		aucun	inconnu		aucune	
 21	flock (nuee)	16	flock-position-component	0	porte	FUN_140ee7270	FUN_140ee7270 -> FUN_14076e524 (position quantifiee au niveau du registre)	variable	dispatch_biped.go:61		aucun	la position de la nuee	rien de plus (decor)	haute	
 21	flock (nuee)	17	flock-current-destination-component	0	porte	FUN_142ed4668			dispatch_biped.go:64		aucun	inconnu		aucune	
 22	physics-state (etat physique)	0	physics-state-component	1	porte	FUN_142ed6c20	R(32) + R(1) [si 1 : R(32)]	33-65	dispatch_item.go:137		aucun	un etat physique global	inconnu	moyenne	
-23	zones (selectable-zone-data)	0	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec	R(32) + position + R(1) [+ R(5)] (FUN_142ed6cec) — deser ecrit, non branche	inconnu	components_world.go:106		aucun — les zones publiees (mapObjectives) viennent des fichiers de CARTE, pas du film	une ZONE de mode : son identifiant, sa POSITION, son etat	C'est la reponse a « quelle base est tenue par qui, a quel instant » : le containment de zones se fait aujourd'hui par proximite geometrique contre le catalogue de carte, sans jamais lire l'etat que le film transporte. Le deser existe deja.	haute	
-23	zones (selectable-zone-data)	1	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	2	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	3	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	4	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	5	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	6	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	7	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	8	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	9	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	10	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	11	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	12	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	13	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	14	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	15	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	16	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	17	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	18	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	19	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	20	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	21	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	22	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	23	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	24	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	25	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	26	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	27	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	28	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	29	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	30	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
-23	zones (selectable-zone-data)	31	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:106		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	0	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec	R(32) + position + R(1) [+ R(5)] (FUN_142ed6cec) — deser ecrit, non branche	inconnu	components_world.go:89		aucun — les zones publiees (mapObjectives) viennent des fichiers de CARTE, pas du film	une ZONE de mode : son identifiant, sa POSITION, son etat	C'est la reponse a « quelle base est tenue par qui, a quel instant » : le containment de zones se fait aujourd'hui par proximite geometrique contre le catalogue de carte, sans jamais lire l'etat que le film transporte. Le deser existe deja.	haute	
+23	zones (selectable-zone-data)	1	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	2	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	3	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	4	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	5	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	6	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	7	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	8	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	9	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	10	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	11	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	12	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	13	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	14	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	15	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	16	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	17	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	18	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	19	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	20	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	21	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	22	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	23	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	24	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	25	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	26	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	27	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	28	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	29	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	30	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
+23	zones (selectable-zone-data)	31	selectable-zone-data-component	1	deser_non_cable	FUN_142ed6cec			components_world.go:89		aucun	inconnu		aucune	
 23	zones (selectable-zone-data)	32	participant-spawn-availability-mask-data-component	1	non_porte						aucun	inconnu		aucune	
 24	inconnu	0	state-checksum-component	1	non_porte						aucun	inconnu		aucune	
 24	inconnu	1	persistence-state-bucket-component	1	non_porte						aucun	inconnu		aucune	
@@ -653,9 +653,9 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 29	respawn-block	29	managed-object-participant-respawn-block-component	1	porte	FUN_142ed6a20			dispatch_object.go:127		aucun	inconnu		aucune	
 29	respawn-block	30	managed-object-participant-respawn-block-component	1	porte	FUN_142ed6a20			dispatch_object.go:127		aucun	inconnu		aucune	
 29	respawn-block	31	managed-object-participant-respawn-block-component	1	porte	FUN_142ed6a20			dispatch_object.go:127		aucun	inconnu		aucune	
-30	tacmap-poi (point d'interet)	0	tacmap-poiicon	1	porte	FUN_142ed8418	R(32) icane + R(32) mission + R(1) + R(3) + R(32) texte + R(32) fond + R(9) + R(9) + vec3 quantifie + R(32) + R(1) + 4 x R(8)	~230	lecteur_position_exceptions.go:127		aucun	l'icane du point d'interet, son texte et SA POSITION	Une position d'interet AVEC son libelle, entierement portee et jetee. Deuxieme voie (avec ti=34 i7 et ti=12) pour poser des marqueurs d'objectif sans franchir le mur de ti=11.	haute	
+30	tacmap-poi (point d'interet)	0	tacmap-poiicon	1	porte	FUN_142ed8418	R(32) icane + R(32) mission + R(1) + R(3) + R(32) texte + R(32) fond + R(9) + R(9) + vec3 quantifie + R(32) + R(1) + 4 x R(8)	~230	lecteur_position_exceptions.go:129		aucun	l'icane du point d'interet, son texte et SA POSITION	Une position d'interet AVEC son libelle, entierement portee et jetee. Deuxieme voie (avec ti=34 i7 et ti=12) pour poser des marqueurs d'objectif sans franchir le mur de ti=11.	haute	
 30	tacmap-poi (point d'interet)	1	tacmap-poiiconoffset	1	porte	FUN_142ed8418	vec3 quantifie (6 + niveau)	~21	dispatch_player.go:58		aucun	le decalage de l'icane	idem i0	haute	
-30	tacmap-poi (point d'interet)	2	tacmap-poiisgoldenpath	1	porte	FUN_142ed4800	R(1) + R(1)	2	dispatch_player.go:156		aucun	le point est-il sur le chemin principal	campagne	haute	
+30	tacmap-poi (point d'interet)	2	tacmap-poiisgoldenpath	1	porte	FUN_142ed4800	R(1) + R(1)	2	dispatch_player.go:154		aucun	le point est-il sur le chemin principal	campagne	haute	
 31	tacmap-*	0	tacmap-category	1	non_porte						aucun	inconnu		aucune	
 31	tacmap-*	1	tacmap-mission	1	non_porte						aucun	inconnu		aucune	
 31	tacmap-*	2	tacmap-visiblity	1	non_porte						aucun	inconnu		aucune	
@@ -668,7 +668,7 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 31	tacmap-*	9	tacmap-collectibles	1	non_porte						aucun	inconnu		aucune	
 31	tacmap-*	10	tacmap-missioninfo	1	non_porte						aucun	inconnu		aucune	
 32	tacmap-areaofinterest	0	tacmap-areaofinterest	1	porte	FUN_142ed3c50	FUN_142ed3c50	inconnu	dispatch_item.go:27		aucun	une ZONE d'interet declaree sur la carte	Une zone declaree par le jeu : a comparer aux zones du catalogue de carte utilisees par le containment.	moyenne	
-33	tacmap-displayasset	0	tacmap-displayasset	1	porte	FUN_142ed433c	FUN_142ed433c	inconnu	dispatch_player.go:306		aucun	l'asset affiche sur la carte tactique	inconnu	haute	
+33	tacmap-displayasset	0	tacmap-displayasset	1	porte	FUN_142ed433c	FUN_142ed433c	inconnu	dispatch_player.go:304		aucun	l'asset affiche sur la carte tactique	inconnu	haute	
 34	tacmap (la carte tactique)	0	tacmap-mapscale	1	porte	FUN_142ed5dd8	R(32)	32	dispatch_item.go:15		aucun	l'echelle de la carte tactique	Une echelle de carte LUE DANS LE FILM : un controle croise des bornes de carte du catalogue.	haute	
 34	tacmap (la carte tactique)	1	tacmap-settingstag	1	porte	FUN_142ed6d0c	R(32)	32	dispatch_item.go:18		aucun	le tag de reglages de la carte tactique	Un identifiant de tag 32 bits, resolvable dans les modules du jeu : pourrait nommer la carte sans passer par le catalogue.	moyenne	
 34	tacmap (la carte tactique)	2	tacmap-iconlodthresholds	1	porte	FUN_142ed4848	R(5) = N puis N x R(12)	5-65	dispatch_object.go:156		aucun	les seuils d'affichage des icanes	habillage : sans valeur produit	haute	
@@ -678,26 +678,26 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 34	tacmap (la carte tactique)	6	tacmap-fasttravelstate	1	porte	FUN_14116fc90	R(1)	1	dispatch_item.go:88		aucun	l'etat du voyage rapide	campagne	haute	
 34	tacmap (la carte tactique)	7	tacmap-waypointstate	2	porte	FUN_140f04d74	R(1) + R(32) + une position (chemin FUN_14076e524)	33 + position	dispatch_item.go:61		aucun	l'etat d'un POINT DE PASSAGE — avec sa POSITION	UNE POSITION D'OBJECTIF LISIBLE, sur un chemin de position deja porte, dans un archetype deja traverse. C'est la seule voie du depot qui porte une position d'objectif sans passer par le mur de ti=11. Jamais sondee.	moyenne	
 34	tacmap (la carte tactique)	8	tacmap-missionmarkerstate	1	porte	FUN_142ed5e90	R(32) + R(32)	64	dispatch_item.go:48		aucun	l'etat du marqueur de mission	campagne	haute	
-34	tacmap (la carte tactique)	9	tacmap-queuedreplaymission	1	porte	FUN_1407f24f8	FUN_1407f24f8	inconnu	dispatch_player.go:300		aucun	mission de rejeu en file	campagne	haute	
+34	tacmap (la carte tactique)	9	tacmap-queuedreplaymission	1	porte	FUN_1407f24f8	FUN_1407f24f8	inconnu	dispatch_player.go:298		aucun	mission de rejeu en file	campagne	haute	
 34	tacmap (la carte tactique)	10	tacmap-mapdismissallock	1	non_porte						aucun	inconnu		aucune	
-34	tacmap (la carte tactique)	11	tacmap-cooptetherarea	1	porte	FUN_142ed4198	FUN_142ed4198	inconnu	dispatch_player.go:303		aucun	la zone de laisse cooperative	campagne	haute	
+34	tacmap (la carte tactique)	11	tacmap-cooptetherarea	1	porte	FUN_142ed4198	FUN_142ed4198	inconnu	dispatch_player.go:301		aucun	la zone de laisse cooperative	campagne	haute	
 34	tacmap (la carte tactique)	12	tacmap-backmenulocked-state	1	non_porte						aucun	inconnu		aucune	
-34	tacmap (la carte tactique)	13	tacmap-backmenu-openoverride	1	porte	FUN_142ed3d64	FUN_142ed3d64	inconnu	dispatch_player.go:297		aucun	forcage d'ouverture du menu	interface	haute	
+34	tacmap (la carte tactique)	13	tacmap-backmenu-openoverride	1	porte	FUN_142ed3d64	FUN_142ed3d64	inconnu	dispatch_player.go:295		aucun	forcage d'ouverture du menu	interface	haute	
 34	tacmap (la carte tactique)	14	tacmap-playercontrol	1	non_porte						aucun	inconnu		aucune	
 34	tacmap (la carte tactique)	15	tacmap-tooltip-state	1	non_porte						aucun	inconnu		aucune	
 34	tacmap (la carte tactique)	16	tacmap-missioncount	1	porte	FUN_142ed5e68	R(9)	9	dispatch_item.go:91		aucun	le nombre de missions	campagne	haute	
 35	biped-spartan	0	object-position-dynamic-precision-component	1	porte		3 encodages : keep-baseline (position inchangee, 101 b) / absolu quantifie / delta predit. Porte R(5) puis 3 axes puis R(2) de queue	47 en delta (mesure live, 134 767 relevees) ; 117 en image-cle (chemin brut, vec3 IEEE 96 b)	dispatch_object.go:49	Track.Points;Point.X;Point.Y;Point.Z	rejeu : tracks[].points[].x/y/z (marqueur, trainee), bounds ; carte de chaleur ; killpos ; containment de zones	la POSITION 3D du joueur	En image-cle la position est stockee en PLEINE PRECISION (117 b, chemin brut) et personne ne la lit : ce serait une ancre exacte toutes les ~20 s, sans dependre des bornes de carte.	haute	
 35	biped-spartan	1	object-translational-velocity-dynamic-precision-component	1	porte		R(1) outer ; si 1 -> R(96) copie brute ; si 0 -> R(1) absent ; si present -> R(19) direction cubemap + R(10) magnitude log/exp	31	dispatch_object.go:52		aucun — la valeur est capturee mais sert seulement d'oracle interne pour valider le cap	la VITESSE de deplacement (direction + intensite)	La VITESSE de chaque joueur a chaque image est deja decodee puis jetee : sprint / marche / immobile, metres parcourus par vie, zones ou l'on court contre zones ou l'on campe, detection du rush.	haute	
-35	biped-spartan	2	object-forward-and-up-component	1	porte	FUN_14076e278	R(1) porte ; si 0 -> R(19) direction cubemap ; puis R(8)	9	dispatch_player.go:333		aucun — le cap publie (Point.H) vient d'i21, la visee, pas d'i2	l'orientation du CORPS (vers ou le joueur est tourne)	L'ecart entre le corps (i2) et le regard (i21) dit le strafe, le recul en tirant, et le dos tourne (assassinat). Decode, jamais publie.	haute	
+35	biped-spartan	2	object-forward-and-up-component	1	porte	FUN_14076e278	R(1) porte ; si 0 -> R(19) direction cubemap ; puis R(8)	9	dispatch_player.go:331		aucun — le cap publie (Point.H) vient d'i21, la visee, pas d'i2	l'orientation du CORPS (vers ou le joueur est tourne)	L'ecart entre le corps (i2) et le regard (i21) dit le strafe, le recul en tirant, et le dos tourne (assassinat). Decode, jamais publie.	haute	
 35	biped-spartan	3	object-angular-velocity-component	1	porte	FUN_140d70998	R(1) porte ; si 0 -> R(19) direction + R(8) magnitude (le double-gate historique etait FAUX et sur-lisait 96 bits)	9-28	dispatch_object.go:63		aucun	la vitesse de ROTATION du joueur	Vivacite de visee : reperer un demi-tour brusque juste avant un tir, indicateur de reflexe croisable avec shots[].	haute	
-35	biped-spartan	4	object-body-vitality-component	1	porte	FUN_140fb8978	R(8) valeur + 3 x R(1)	11	dispatch_player.go:336	Point.Hp	rejeu : Point.Hp — publie mais avec 0,6 % de couverture, donc jamais affiche en barre	la SANTE (la barre rouge sous le bouclier)	Rien de plus : le film ne retransmet la sante que tres rarement. Le decodage est credible (mediane 0,79 en vie contre 0,55 avant la mort) mais la couverture interdit toute barre.	haute	
-35	biped-spartan	5	object-shield-vitality-component	1	porte	FUN_140d50cbc	largeurs litterales 8/16/12 dans FUN_140d50cbc, aucune dependance runtime	29	dispatch_player.go:339	Point.Sh	rejeu : Point.Sh (16 % des points, barre de fiche) ; equipmentEpisodes famille overshield ; effet plein-fiche du surbouclier	le BOUCLIER (la barre bleue) — et, non clampe, le SURBOUCLIER	La RECHARGE n'est pas lisible (temoin de remontee monotone en echec) : l'echantillonnage est trop laache. Rien de plus a en tirer.	haute	
+35	biped-spartan	4	object-body-vitality-component	1	porte	FUN_140fb8978	R(8) valeur + 3 x R(1)	11	dispatch_player.go:334	Point.Hp	rejeu : Point.Hp — publie mais avec 0,6 % de couverture, donc jamais affiche en barre	la SANTE (la barre rouge sous le bouclier)	Rien de plus : le film ne retransmet la sante que tres rarement. Le decodage est credible (mediane 0,79 en vie contre 0,55 avant la mort) mais la couverture interdit toute barre.	haute	
+35	biped-spartan	5	object-shield-vitality-component	1	porte	FUN_140d50cbc	largeurs litterales 8/16/12 dans FUN_140d50cbc, aucune dependance runtime	29	dispatch_player.go:337	Point.Sh	rejeu : Point.Sh (16 % des points, barre de fiche) ; equipmentEpisodes famille overshield ; effet plein-fiche du surbouclier	le BOUCLIER (la barre bleue) — et, non clampe, le SURBOUCLIER	La RECHARGE n'est pas lisible (temoin de remontee monotone en echec) : l'echantillonnage est trop laache. Rien de plus a en tirer.	haute	
 35	biped-spartan	6	object-region-state-component	1	porte	FUN_140e1bfa0	boucle de regions	358	dispatch_object.go:78		aucun	l'etat des REGIONS du corps (quelle partie a ete abimee)	C'est le plus gros composant du bipede (358 bits) et il est integralement jete : la localisation des degats sur le corps n'a jamais ete mesuree une seule fois.	moyenne	
 35	biped-spartan	7	object-damage-sections-component	1	porte	FUN_142f03c80	boucle de sections	inconnu	dispatch_object.go:81		aucun	les SECTIONS de degats de l'objet	Meme veine qu'i6 : ou le joueur encaisse. Non mesure.	moyenne	
 35	biped-spartan	8	object-constraint-component	1	porte	FUN_142f039cc	inconnue en detail	inconnu	dispatch_object.go:84		aucun	les CONTRAINTES physiques (objet attache ou lie a un autre)	inconnu	basse	
-35	biped-spartan	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94	R(1) porte + R(5) type + flux TLV octet par octet jusqu'au terminateur. LE CORPS EST SAUTE, JAMAIS INTERPRETE (78 % du temps CPU du decodage y passait avant optimisation)	334	dispatch_player.go:327		aucun	le bloc d'IDENTITE multijoueur de l'entite (le fameux 'obje')	DEUX choses. (1) Le corps TLV porte l'identite et la variante de l'entite ; il est saute sans etre lu. (2) ALERTE PRODUCTION : le lot R7-b a etabli sur decompile que le jeu lit ce bloc quand le bit vaut ZERO ; ce worktree fait l'INVERSE (components_batch7.go:27). Corrige seulement dans LevelUp-wt-kfloop.	haute	
+35	biped-spartan	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94	R(1) porte + R(5) type + flux TLV octet par octet jusqu'au terminateur. LE CORPS EST SAUTE, JAMAIS INTERPRETE (78 % du temps CPU du decodage y passait avant optimisation)	334	dispatch_player.go:325		aucun	le bloc d'IDENTITE multijoueur de l'entite (le fameux 'obje')	DEUX choses. (1) Le corps TLV porte l'identite et la variante de l'entite ; il est saute sans etre lu. (2) ALERTE PRODUCTION : le lot R7-b a etabli sur decompile que le jeu lit ce bloc quand le bit vaut ZERO ; ce worktree fait l'INVERSE (components_batch7.go:27). Corrige seulement dans LevelUp-wt-kfloop.	haute	
 35	biped-spartan	10	object-parent-state-component	3	porte	FUN_140c1e4d0	branche sur param_4 (largeur runtime)	variable	dispatch_object.go:49		aucun	le PARENT de l'entite (porte par un vehicule, attache a un autre objet)	Dire qu'un joueur est DANS un vehicule ou porte un objet, sans passer par les evenements. Non mesure.	moyenne	
-35	biped-spartan	11	object-dead-state-component	1	porte	FUN_140c1dce0	forme LOURDE reservee aux ti 0x23 (bipede) et 0x28 ; ailleurs UN seul bit. Corps : drapeau + sous-bloc d'anim + global-id R(32) + 2 handles readOpt(1+32)	191	dispatch_player.go:342	ReplayDocument.NeutralDeaths;ReplayDocument.WeaponLabels;ReplayDocument.KillEffects	arme du kill (paquet killsource du titre, 97,6 % de couverture) -> kill feed + icone d'arme ; neutralDeaths (morts que personne ne revendique) ; killpos (positions de mort)	LA MORT : le drapeau de deces et la reference vers la SOURCE du degat fatal	SrcTag0 et SrcTag4c sont deux handles runtime capturees et non resolues (0 sur 786 tombent sur une famille d'arme). Elles ne redeviendront exploitables qu'avec un liage d'entites.	haute	
+35	biped-spartan	11	object-dead-state-component	1	porte	FUN_140c1dce0	forme LOURDE reservee aux ti 0x23 (bipede) et 0x28 ; ailleurs UN seul bit. Corps : drapeau + sous-bloc d'anim + global-id R(32) + 2 handles readOpt(1+32)	191	dispatch_player.go:340	ReplayDocument.NeutralDeaths;ReplayDocument.WeaponLabels;ReplayDocument.KillEffects	arme du kill (paquet killsource du titre, 97,6 % de couverture) -> kill feed + icone d'arme ; neutralDeaths (morts que personne ne revendique) ; killpos (positions de mort)	LA MORT : le drapeau de deces et la reference vers la SOURCE du degat fatal	SrcTag0 et SrcTag4c sont deux handles runtime capturees et non resolues (0 sur 786 tombent sur une famille d'arme). Elles ne redeviendront exploitables qu'avec un liage d'entites.	haute	
 35	biped-spartan	12	object-scale-component	2	porte	FUN_1407dc6e4	champ court	inconnu	dispatch_object.go:52		aucun	l'ECHELLE de l'objet	rien de plus (les joueurs sont a l'echelle 1)	moyenne	
 35	biped-spartan	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054	champ court, param_4 = 3	8 (3 valeurs distinctes seulement)	dispatch_object.go:55		aucun	les MAXIMA de sante et de bouclier	Enumerable a 3 valeurs : normaliserait Hp/Sh et donnerait un second temoin du surbouclier, independant de la regle q > 64 employee aujourd'hui.	moyenne	
 35	biped-spartan	14	object-dissolver-component	1	porte	FUN_140dd9f9c	champ court	4 (3 valeurs)	dispatch_object.go:58		aucun	la DISSOLUTION du corps (l'effet de disparition du cadavre)	Daterait la disparition du corps. Faible valeur produit.	moyenne	
@@ -729,10 +729,10 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 35	biped-spartan	40	weapon-state-rounds-inventory	1	porte		meme deser qu'i31	11	dispatch_biped.go:28		rejeu : inventory[].am[3]	reserve du 4e emplacement	idem i31	moyenne	
 35	biped-spartan	41	weapon-state-overheated	1	porte		meme deser qu'i32	9	dispatch_biped.go:31		aucun	surchauffe du 4e emplacement	idem i32	moyenne	
 35	biped-spartan	42	biped-desired-weapon-set	1	porte	FUN_140c6a638	FUN_14109d298	7 (7 valeurs)	dispatch_biped.go:34		aucun	l'emplacement d'arme SELECTIONNE (quelle arme est en main)	Quelle arme est EN MAIN a chaque image. Aujourd'hui le rejeu le DEDUIT de l'image-cle et du fil des tirs. Enumerable, decode, jete.	haute	
-35	biped-spartan	43	weapon-state-type-info	2	porte	FUN_1407f06bc	FUN_1407f06bc ; rend un variant-name 32 bits ; param_4 = 2	15 (11 largeurs distinctes)	dispatch_player.go:330	ReplayDocument.Loadouts;ReplayDocument.Inventory	rejeu : loadouts[].w (armes portees par vie) ; weaponLabels ; icone d'arme des fiches	l'IDENTITE de la 1re arme portee (sa famille)	L'identifiant 64 bits complet (famille + variante) n'est lu qu'en moitie haute sur les films recents : les variantes d'une meme famille ne se distinguent pas.	haute	
-35	biped-spartan	44	weapon-state-type-info	2	porte	FUN_1407f06bc	meme deser qu'i43	15	dispatch_player.go:330	ReplayDocument.Loadouts;ReplayDocument.Inventory	rejeu : loadouts[].w[1]	identite de la 2e arme portee	idem i43	haute	
-35	biped-spartan	45	weapon-state-type-info	2	porte	FUN_1407f06bc	meme deser qu'i43	17	dispatch_player.go:330	ReplayDocument.Loadouts;ReplayDocument.Inventory	rejeu : loadouts[].w[2]	identite du 3e emplacement d'arme	idem i43	haute	
-35	biped-spartan	46	weapon-state-type-info	2	porte	FUN_1407f06bc	meme deser qu'i43	17	dispatch_player.go:330	ReplayDocument.Loadouts;ReplayDocument.Inventory	rejeu : loadouts[].w[3]	identite du 4e emplacement d'arme	idem i43	haute	
+35	biped-spartan	43	weapon-state-type-info	2	porte	FUN_1407f06bc	FUN_1407f06bc ; rend un variant-name 32 bits ; param_4 = 2	15 (11 largeurs distinctes)	dispatch_player.go:328	ReplayDocument.Loadouts;ReplayDocument.Inventory	rejeu : loadouts[].w (armes portees par vie) ; weaponLabels ; icone d'arme des fiches	l'IDENTITE de la 1re arme portee (sa famille)	L'identifiant 64 bits complet (famille + variante) n'est lu qu'en moitie haute sur les films recents : les variantes d'une meme famille ne se distinguent pas.	haute	
+35	biped-spartan	44	weapon-state-type-info	2	porte	FUN_1407f06bc	meme deser qu'i43	15	dispatch_player.go:328	ReplayDocument.Loadouts;ReplayDocument.Inventory	rejeu : loadouts[].w[1]	identite de la 2e arme portee	idem i43	haute	
+35	biped-spartan	45	weapon-state-type-info	2	porte	FUN_1407f06bc	meme deser qu'i43	17	dispatch_player.go:328	ReplayDocument.Loadouts;ReplayDocument.Inventory	rejeu : loadouts[].w[2]	identite du 3e emplacement d'arme	idem i43	haute	
+35	biped-spartan	46	weapon-state-type-info	2	porte	FUN_1407f06bc	meme deser qu'i43	17	dispatch_player.go:328	ReplayDocument.Loadouts;ReplayDocument.Inventory	rejeu : loadouts[].w[3]	identite du 4e emplacement d'arme	idem i43	haute	
 35	biped-spartan	47	biped-desired-grenade-set-component	1	porte	FUN_140c6a638	FUN_140c6a638	9 (8 valeurs)	dispatch_biped.go:37		rejeu : inventory[].gs -> icone de grenade des fiches ; corrige les desaccords entre le lancer et le compteur	le TYPE DE GRENADE selectionne (celui qui partira au prochain lancer)	rien de plus	haute	
 35	biped-spartan	48	biped-desired-ability-set-component	1	porte	FUN_1406d0ff0	FUN_1406d0ff0 ; le rang est un index dans la palette sofd du match, pas un identifiant universel	10 (13 valeurs)	dispatch_biped.go:40	ReplayDocument.Abilities;ReplayDocument.AbilityLabels	rejeu : abilities[] (src = i48, rang COMPLET) + abilityLabels ; nom de la capacite sur la fiche joueur ; equipmentChanges[] (schema 26) : ramassages et consommations d equipement, le composant n entrant au masque que sur CHANGEMENT	la CAPACITE D'ARMURE equipee (rang dans la palette du match)	Le rang 10 de la famille A (observe 67 fois) et les rangs 19 et 22 de la famille B (mur, capteur) restent NON NOMMES : il manque une chaine sofd -> eqip ou un releve Theater.	haute	
 35	biped-spartan	49	biped-control-context-component	1	porte	FUN_14107166c	FUN_14107166c	3 (5 valeurs)	dispatch_biped.go:43		aucun	le CONTEXTE de contrale (ce que le joueur peut faire a cet instant)	Enumerable a 5 valeurs, donc classable immediatement : candidat serieux pour distinguer au sol / en vehicule / en echelle / en interaction.	moyenne	
@@ -752,16 +752,16 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 35	biped-spartan	63	biped-action-component	0	porte	FUN_142f027f4	boucle 1 sur les etiquettes 0..5 (tout tag >= 6 consomme 0 bit, verite EXE 2026-06-13) ; boucle 2 dont le compteur est le POPCOUNT DES 73 PREMIERS BITS DU MASQUE DE TETE (3 x R(32) que FUN_142f21b10 lit ET STOCKE dans *param_3, popcompte par FUN_1409fe718(etat, 0x49) = p[0] + p[1] + (p[2] & 0x1ff)) ; corps du tour 2 = R(1) gate + R(2) si pose. Le compteur EST dans le flux : le lot 5.11.0-a (2026-09-21) corrige la lecture qui le croyait en RAM	196 (masque nul) a 196 + 3 x popcount(masque)	dispatch_biped.go:98		aucun	l'ACTION en cours du bipede (le plus large des composants de queue)	PLUS DE LIMITE HORS LIGNE : le masque de tete est le premier champ du composant, pas un etat de RAM. Mesure du 5.11.0-a : masque NUL sur 54 des 73 declarations de bfecd02b, sur 37 des 299 de 4f77afc1, et sur la seule declaration du film temoin dad793c7 (un bipede, zero desync). Les masques DENSES (cloche centree sur 31 bits sur 73, profil de bits aleatoires) correlent avec l etalon du film - ce sont des StartBit deja decales en amont, que i63, dernier et plus large composant, ABSORBAIT en silence. Effet net de la correction sur l oracle de contenu de bfecd02b : records ti=35 97 345 -> 97 343 (perte de 2), desyncs 6 -> 6, etalon inchange. Garde-rail : components_biped_action_loop2_test.go	haute	lot 5.11.0-a (2026-09-21) : compteur du second tour porte depuis le flux
 36	inconnu	0	object-position-component	1	porte	FUN_14076e29c			dispatch_object.go:82		aucun	inconnu		aucune	
 36	inconnu	1	object-translational-velocity-component	1	porte	FUN_14076e228			dispatch_object.go:112		aucun	inconnu		aucune	
-36	inconnu	2	object-forward-and-up-component	1	porte	FUN_14076e278			dispatch_player.go:333		aucun	inconnu		aucune	
+36	inconnu	2	object-forward-and-up-component	1	porte	FUN_14076e278			dispatch_player.go:331		aucun	inconnu		aucune	
 36	inconnu	3	object-angular-velocity-component	1	porte	FUN_140d70998			dispatch_object.go:63		aucun	inconnu		aucune	
-36	inconnu	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:336		aucun	inconnu		aucune	
-36	inconnu	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:339		aucun	inconnu		aucune	
+36	inconnu	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:334		aucun	inconnu		aucune	
+36	inconnu	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:337		aucun	inconnu		aucune	
 36	inconnu	6	object-region-state-component	1	porte	FUN_140e1bfa0			dispatch_object.go:78		aucun	inconnu		aucune	
 36	inconnu	7	object-damage-sections-component	1	porte	FUN_142f03c80			dispatch_object.go:81		aucun	inconnu		aucune	
 36	inconnu	8	object-constraint-component	1	porte	FUN_142f039cc			dispatch_object.go:84		aucun	inconnu		aucune	
-36	inconnu	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:327		aucun	inconnu		aucune	
+36	inconnu	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:325		aucun	inconnu		aucune	
 36	inconnu	10	object-parent-state-component	3	porte	FUN_140c1e4d0			dispatch_object.go:49		aucun	inconnu		aucune	
-36	inconnu	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:342		aucun	inconnu		aucune	
+36	inconnu	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:340		aucun	inconnu		aucune	
 36	inconnu	12	object-scale-component	2	porte	FUN_1407dc6e4			dispatch_object.go:52		aucun	inconnu		aucune	
 36	inconnu	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			dispatch_object.go:55		aucun	inconnu		aucune	
 36	inconnu	14	object-dissolver-component	1	porte	FUN_140dd9f9c			dispatch_object.go:58		aucun	inconnu		aucune	
@@ -772,16 +772,16 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 36	inconnu	19	item-ignore-player-component	1	porte	FUN_141101120			dispatch_object.go:130		aucun	inconnu		aucune	
 37	equipment / item (objet du monde)	0	object-position-component	1	porte	FUN_14076e29c	R(1) precHigh ; si 0 -> R(1) index-sel [+ R(1) index de region] + 3 axes aux largeurs de la CARTE + R(2) de queue ; si 1 -> 59 bits (AABB + queue)	45 (porte 3 bits + 13/13/14 sur Cliffhanger + 2)	dispatch_object.go:82		rejeu : equipmentPlacements[].x/y/z (schema 9) — les poses de mur, de capteur et des objets du monde	la POSITION de l'objet dans le monde (chemin world-object : position ABSOLUE a chaque image, pas de delta)	Controle passe : 97,2 % de 628 368 echantillons dans l'emprise des joueurs du meme film, 12 films sur 12. C'est l'acquis solide de l'archetype.	haute	
 37	equipment / item (objet du monde)	1	object-translational-velocity-component	1	porte	FUN_14076e228	R(1) [+ R(19) direction + R(10) magnitude]	1-30	dispatch_object.go:112		aucun	la vitesse de l'objet (un objet pose ne bouge pas ; un objet lance, si)	Distinguer un objet EN VOL d'un objet POSE : daterait l'instant exact ou une pose se fige, sans passer par equipment-deployed.	moyenne	
-37	equipment / item (objet du monde)	2	object-forward-and-up-component	1	porte	FUN_14076e278	R(1) porte ; si 0 : R(19) direction ; puis R(8) INCONDITIONNEL (FUN_14076e278 -> FUN_140c5f938 -> FUN_140c5fa84)	9	dispatch_player.go:333		aucun	l'orientation de l'objet	Le lot des poses a mesure que le record de CREATION ne porte AUCUNE orientation d'objet (le cap dessine vient du POSEUR). Si ce composant en porte une en delta, l'arc du mur serait oriente par l'objet et non par le geste. NON VERIFIE.	basse	
+37	equipment / item (objet du monde)	2	object-forward-and-up-component	1	porte	FUN_14076e278	R(1) porte ; si 0 : R(19) direction ; puis R(8) INCONDITIONNEL (FUN_14076e278 -> FUN_140c5f938 -> FUN_140c5fa84)	9	dispatch_player.go:331		aucun	l'orientation de l'objet	Le lot des poses a mesure que le record de CREATION ne porte AUCUNE orientation d'objet (le cap dessine vient du POSEUR). Si ce composant en porte une en delta, l'arc du mur serait oriente par l'objet et non par le geste. NON VERIFIE.	basse	
 37	equipment / item (objet du monde)	3	object-angular-velocity-component	1	porte	FUN_140d70998	meme deser que le bipede i3	9-28	dispatch_object.go:63		aucun	vitesse de rotation de l'objet	inconnu	basse	
-37	equipment / item (objet du monde)	4	object-body-vitality-component	1	porte	FUN_140fb8978	R(8) dequantifie + 3 x R(1) (FUN_140fb8978, largeur 8 en argument litteral)	11	dispatch_player.go:336		aucun	les points de vie de l'objet (un mur se detruit)	La SANTE d'un mur de protection : combien de degats il a absorbe avant de tomber. Une metrique produit directe, jamais mesuree.	basse	
-37	equipment / item (objet du monde)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc	R(8) dequantifie + R(1)[si 1 : 2 x (R(1)[si 1 : R(12)])] + R(16) + 4 x R(1) (FUN_140d50cbc)	29	dispatch_player.go:339		aucun	bouclier de l'objet	idem i4	basse	
+37	equipment / item (objet du monde)	4	object-body-vitality-component	1	porte	FUN_140fb8978	R(8) dequantifie + 3 x R(1) (FUN_140fb8978, largeur 8 en argument litteral)	11	dispatch_player.go:334		aucun	les points de vie de l'objet (un mur se detruit)	La SANTE d'un mur de protection : combien de degats il a absorbe avant de tomber. Une metrique produit directe, jamais mesuree.	basse	
+37	equipment / item (objet du monde)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc	R(8) dequantifie + R(1)[si 1 : 2 x (R(1)[si 1 : R(12)])] + R(16) + 4 x R(1) (FUN_140d50cbc)	29	dispatch_player.go:337		aucun	bouclier de l'objet	idem i4	basse	
 37	equipment / item (objet du monde)	6	object-region-state-component	1	porte	FUN_140e1bfa0	R(1) present + R(6) compte + compte x R(3) [si present : compte x R(10)] (FUN_140e1bfa0)	7 a 826 (relu 2026-09-15)	dispatch_object.go:78		aucun	etat des regions de l'objet	inconnu	basse	
 37	equipment / item (objet du monde)	7	object-damage-sections-component	1	porte	FUN_142f03c80	R(6) compte + compte x (R(1) [si 1 : R(7) dequant + R(16)]) (FUN_142f03c80)	6 a 1518 (relu 2026-09-15)	dispatch_object.go:81		aucun	sections de degats de l'objet	inconnu	basse	
 37	equipment / item (objet du monde)	8	object-constraint-component	1	porte	FUN_142f039cc	R(5) n [si n != 0 : 2 x R(n)] (FUN_142f039cc ; le jeu marque n > 16 comme invalide)	5 a 67 (relu 2026-09-15)	dispatch_object.go:84		aucun	contraintes physiques	inconnu	basse	
-37	equipment / item (objet du monde)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94	R(1) [si 0 : R(5) etiquette + sous-message TLV mode 2] (FUN_140f53308 -> FUN_1407d4c94)	variable	dispatch_player.go:327		aucun	identite multijoueur de l'objet (bloc TLV)	Meme alerte de polarite qu'au bipede. Le variant-name de ce bloc a ete probe par le lot R3 (voie H1) et REFUTE : 0 record bit-exact sur 1 226 en image-cle.	basse	
+37	equipment / item (objet du monde)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94	R(1) [si 0 : R(5) etiquette + sous-message TLV mode 2] (FUN_140f53308 -> FUN_1407d4c94)	variable	dispatch_player.go:325		aucun	identite multijoueur de l'objet (bloc TLV)	Meme alerte de polarite qu'au bipede. Le variant-name de ce bloc a ete probe par le lot R3 (voie H1) et REFUTE : 0 record bit-exact sur 1 226 en image-cle.	basse	
 37	equipment / item (objet du monde)	10	object-parent-state-component	3	porte	FUN_140c1e4d0	R(1) attache ; si 1 : FUN_1406d3140(param_3=1, SONDE lue) + R(16) + R(1)[si 1 : R(16)] + 2 x R(1) + 3 x R(16) + R(1)[si 0 : R(19)] + R(8) + R(1) ; si 0 et param_4 < 2 : FUN_1408f0ac4(param_3=0) + R(1)[si 1 : R(11)] ; queue commune (FUN_140c1e4d0)	variable	dispatch_object.go:49		aucun	l'objet est-il attache a une autre entite	Un lien objet -> porteur serait exactement le pont manquant entre une pose et son poseur (aujourd'hui devine par proximite a moins de 3 m). NON VERIFIE.	basse	
-37	equipment / item (objet du monde)	11	object-dead-state-component	1	porte	FUN_140c1dce0	forme LEGERE (UN seul bit) : la forme lourde est reservee aux ti 0x23 et 0x28	1	dispatch_player.go:342		aucun	la DESTRUCTION de l'objet	Daterait la destruction d'un mur ou d'un capteur au bit pres, la ou les poses se ferment aujourd'hui a la fin de la vie d'objet.	moyenne	
+37	equipment / item (objet du monde)	11	object-dead-state-component	1	porte	FUN_140c1dce0	forme LEGERE (UN seul bit) : la forme lourde est reservee aux ti 0x23 et 0x28	1	dispatch_player.go:340		aucun	la DESTRUCTION de l'objet	Daterait la destruction d'un mur ou d'un capteur au bit pres, la ou les poses se ferment aujourd'hui a la fin de la vie d'objet.	moyenne	
 37	equipment / item (objet du monde)	12	object-scale-component	2	porte	FUN_1407dc6e4	R(1)[si 0 : R(15) + R(1)[si 1 : R(15) + R(12) + R(5)]] (FUN_1407dc6e4)	1 a 48 (relu 2026-09-15)	dispatch_object.go:52		aucun	echelle de l'objet	La TAILLE de la pose (rayon de l'arc dessine aujourd'hui en dur). Non verifie.	basse	
 37	equipment / item (objet du monde)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054	R(5) drapeaux + blocs 1411b1ac0 gardes + 3 x R(1) (FUN_1407ee054 -> FUN_1407eef08)	8	dispatch_object.go:55		aucun	maxima de vie de l'objet	Normaliserait i4/i5 de l'objet. Non verifie.	basse	
 37	equipment / item (objet du monde)	14	object-dissolver-component	1	porte	FUN_140dd9f9c	R(4) etat [si etat != 13 : R(96) + R(12) dequant + R(1)] (FUN_140dd9f9c)	4	dispatch_object.go:58		aucun	dissolution de l'objet	inconnu	basse	PAS UNE LARGEUR UNIQUE : consumeObjectDissolver (components_object_state.go) lit R(4), puis SI cette valeur n'est pas 13 il lit R(96)+R(12)+R(1) — soit 4 bits (cas v==13, celui que bits_typ fige) ou 113 bits sinon. La largeur est gardee par la VALEUR lue, pas par un bit de porte. Mesure tenue par le controle G5 : 113/113/113 sur les motifs 0x00/0xFF/0xAA, qui manquent tous la valeur 13 (note du 2026-09-06, item E.9)
@@ -798,21 +798,21 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 37	equipment / item (objet du monde)	25	equipment-being-hacked-component	0	porte	FUN_142ed441c	R(8)	8	dispatch_item.go:94		aucun	l'equipement est en train d'etre PIRATE par l'adversaire	Un adversaire qui neutralise votre capteur : un fait de jeu, decode, jamais lu.	haute	
 37	equipment / item (objet du monde)	26	equipment-energy-delay-ticks-left-component	0	porte	FUN_140dda128	R(10)	10	equipment_state.go:128		aucun	le COMPTE A REBOURS avant que l'equipement reprenne de l'energie	10 608 annonces au masque sur 12 films — DEUX FOIS l'energie, CINQ FOIS l'activation. C'est le 2e canal le plus bavard de l'archetype, il est PORTE, et il n'a jamais ete lu. Report ouvert au registre.	haute	
 37	equipment / item (objet du monde)	27	equipment-charges-remaining-component	0	porte	FUN_142ed4518	R(8)	8	equipment_state.go:134		aucun	le nombre de CHARGES restantes de l'equipement	16 125 annonces au masque sur 12 films : le canal LE PLUS bavard de ti=37 (3,1 fois l'energie, 7,6 fois l'activation). PORTE, jamais lu. Une charge qui decroit DATE un usage — c'est la voie encore ouverte pour dater l'activation, mise EN RESERVE par decision utilisateur le 16/08. Report ouvert au registre.	haute	
-37	equipment / item (objet du monde)	28	equipment-tracked-object-handles-stack-component	0	porte	FUN_140f72dec	FUN_140f72dec (pile de handles)	variable	dispatch_player.go:309		aucun	la pile des objets SUIVIS par l'equipement (ce que le capteur a detecte)	Litteralement « qui le capteur de menaces a repere ». Ce sont des handles runtime, donc non resolus en joueurs — mais leur NOMBRE dirait deja combien d'ennemis le capteur voyait. Jamais mesure.	moyenne	
-37	equipment / item (objet du monde)	29	equipment-command-tick-component	1	porte	FUN_140e0a564	FUN_140e0a564 (table ECS live)	inconnu	dispatch_player.go:312		aucun	le tick de commande de l'equipement	Horloge interne : utile a un recalage, pas au produit.	moyenne	
-37	equipment / item (objet du monde)	30	equipment-has-infinite-uses-component	0	porte	FUN_142ed4640	R(1)	1	dispatch_player.go:315		aucun	l'equipement a des usages ILLIMITES (socle de carte contre equipement de joueur)	UN BIT qui separerait probablement le mobilier de carte de l'equipement pose par un joueur — exactement la question laissee ouverte par le verdict 0.6 (« sept equipements ou deployables seuls ? »). Jamais lu.	haute	
+37	equipment / item (objet du monde)	28	equipment-tracked-object-handles-stack-component	0	porte	FUN_140f72dec	FUN_140f72dec (pile de handles)	variable	dispatch_player.go:307		aucun	la pile des objets SUIVIS par l'equipement (ce que le capteur a detecte)	Litteralement « qui le capteur de menaces a repere ». Ce sont des handles runtime, donc non resolus en joueurs — mais leur NOMBRE dirait deja combien d'ennemis le capteur voyait. Jamais mesure.	moyenne	
+37	equipment / item (objet du monde)	29	equipment-command-tick-component	1	porte	FUN_140e0a564	FUN_140e0a564 (table ECS live)	inconnu	dispatch_player.go:310		aucun	le tick de commande de l'equipement	Horloge interne : utile a un recalage, pas au produit.	moyenne	
+37	equipment / item (objet du monde)	30	equipment-has-infinite-uses-component	0	porte	FUN_142ed4640	R(1)	1	dispatch_player.go:313		aucun	l'equipement a des usages ILLIMITES (socle de carte contre equipement de joueur)	UN BIT qui separerait probablement le mobilier de carte de l'equipement pose par un joueur — exactement la question laissee ouverte par le verdict 0.6 (« sept equipements ou deployables seuls ? »). Jamais lu.	haute	
 38	generic-rigid-body (corps rigide)	0	object-position-component	1	porte	FUN_14076e29c	chemin world-object	45	dispatch_object.go:82		aucun	position du corps rigide	Les BIDONS A FUSION explosifs de la carte sont des corps rigides : leur position et leur destruction expliqueraient une partie des morts « sans revendication ».	moyenne	
 38	generic-rigid-body (corps rigide)	1	object-translational-velocity-component	1	porte	FUN_14076e228	R(1) [+ R(19) + R(10)]	1-30	dispatch_object.go:112		aucun	vitesse du corps rigide	inconnu	moyenne	
 38	generic-rigid-body (corps rigide)	2	object-forward-and-up-dynamic-precision-component	2	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	dispatch_object.go:133		aucun	orientation du corps rigide	inconnu	haute	deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 38	generic-rigid-body (corps rigide)	3	object-angular-velocity-component	1	porte	FUN_140d70998			dispatch_object.go:63		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:336		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:339		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:334		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:337		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	6	object-region-state-component	1	porte	FUN_140e1bfa0			dispatch_object.go:78		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	7	object-damage-sections-component	1	porte	FUN_142f03c80			dispatch_object.go:81		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	8	object-constraint-component	1	porte	FUN_142f039cc			dispatch_object.go:84		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:327		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:325		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	10	object-parent-state-component	3	porte	FUN_140c1e4d0			dispatch_object.go:49		aucun	inconnu		aucune	
-38	generic-rigid-body (corps rigide)	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:342		aucun	inconnu		aucune	
+38	generic-rigid-body (corps rigide)	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:340		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	12	object-scale-component	2	porte	FUN_1407dc6e4			dispatch_object.go:52		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			dispatch_object.go:55		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	14	object-dissolver-component	1	porte	FUN_140dd9f9c			dispatch_object.go:58		aucun	inconnu		aucune	
@@ -825,14 +825,14 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 39	inconnu	1	object-translational-velocity-component	1	porte	FUN_14076e228			dispatch_object.go:112		aucun	inconnu		aucune	
 39	inconnu	2	object-forward-and-up-dynamic-precision-component	2	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	dispatch_object.go:133		aucun	inconnu		haute	deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 39	inconnu	3	object-angular-velocity-component	1	porte	FUN_140d70998			dispatch_object.go:63		aucun	inconnu		aucune	
-39	inconnu	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:336		aucun	inconnu		aucune	
-39	inconnu	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:339		aucun	inconnu		aucune	
+39	inconnu	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:334		aucun	inconnu		aucune	
+39	inconnu	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:337		aucun	inconnu		aucune	
 39	inconnu	6	object-region-state-component	1	porte	FUN_140e1bfa0			dispatch_object.go:78		aucun	inconnu		aucune	
 39	inconnu	7	object-damage-sections-component	1	porte	FUN_142f03c80			dispatch_object.go:81		aucun	inconnu		aucune	
 39	inconnu	8	object-constraint-component	1	porte	FUN_142f039cc			dispatch_object.go:84		aucun	inconnu		aucune	
-39	inconnu	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:327		aucun	inconnu		aucune	
+39	inconnu	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:325		aucun	inconnu		aucune	
 39	inconnu	10	object-parent-state-component	3	porte	FUN_140c1e4d0			dispatch_object.go:49		aucun	inconnu		aucune	
-39	inconnu	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:342		aucun	inconnu		aucune	
+39	inconnu	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:340		aucun	inconnu		aucune	
 39	inconnu	12	object-scale-component	2	porte	FUN_1407dc6e4			dispatch_object.go:52		aucun	inconnu		aucune	
 39	inconnu	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			dispatch_object.go:55		aucun	inconnu		aucune	
 39	inconnu	14	object-dissolver-component	1	porte	FUN_140dd9f9c			dispatch_object.go:58		aucun	inconnu		aucune	
@@ -845,14 +845,14 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 40	vehicule (presume)	1	object-translational-velocity-dynamic-precision-component	1	porte				dispatch_object.go:52		aucun	inconnu		aucune	
 40	vehicule (presume)	2	object-forward-and-up-dynamic-precision-component	2	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) R(1)[+R(30)]+R(30), porte	11-30	dispatch_object.go:133		aucun	inconnu		haute	deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 40	vehicule (presume)	3	object-angular-velocity-dynamic-precision-component	1	porte	FUN_140d87740	R(1) outer ; si 1 -> R(96) ; sinon R(1) present [+R(19)+R(8)]	2-97	dispatch_object.go:55		aucun	inconnu		haute	deser resolu statiquement 2026-09-03 : FUN_140d87740, distinct du FUN_140d70998 du composant sans dyn.-prec.
-40	vehicule (presume)	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:336		aucun	inconnu		aucune	
-40	vehicule (presume)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:339		aucun	inconnu		aucune	
+40	vehicule (presume)	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:334		aucun	inconnu		aucune	
+40	vehicule (presume)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:337		aucun	inconnu		aucune	
 40	vehicule (presume)	6	object-region-state-component	1	porte	FUN_140e1bfa0			dispatch_object.go:78		aucun	inconnu		aucune	
 40	vehicule (presume)	7	object-damage-sections-component	1	porte	FUN_142f03c80			dispatch_object.go:81		aucun	inconnu		aucune	
 40	vehicule (presume)	8	object-constraint-component	1	porte	FUN_142f039cc			dispatch_object.go:84		aucun	inconnu		aucune	
-40	vehicule (presume)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:327		aucun	inconnu		aucune	
+40	vehicule (presume)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:325		aucun	inconnu		aucune	
 40	vehicule (presume)	10	object-parent-state-component	3	porte	FUN_140c1e4d0			dispatch_object.go:49		aucun	inconnu		aucune	
-40	vehicule (presume)	11	object-dead-state-component	1	porte	FUN_140c1dce0	forme LOURDE, la meme que le bipede	191	dispatch_player.go:342		aucun	la destruction du vehicule + la source du degat fatal	L'arme qui a detruit un vehicule, avec la meme grammaire qui a resolu l'arme du kill a 97,6 %. Jamais exploite (les vehicules sont rares dans le corpus d'arene).	moyenne	
+40	vehicule (presume)	11	object-dead-state-component	1	porte	FUN_140c1dce0	forme LOURDE, la meme que le bipede	191	dispatch_player.go:340		aucun	la destruction du vehicule + la source du degat fatal	L'arme qui a detruit un vehicule, avec la meme grammaire qui a resolu l'arme du kill a 97,6 %. Jamais exploite (les vehicules sont rares dans le corpus d'arene).	moyenne	
 40	vehicule (presume)	12	object-scale-component	2	porte	FUN_1407dc6e4			dispatch_object.go:52		aucun	inconnu		aucune	
 40	vehicule (presume)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			dispatch_object.go:55		aucun	inconnu		aucune	
 40	vehicule (presume)	14	object-dissolver-component	1	porte	FUN_140dd9f9c			dispatch_object.go:58		aucun	inconnu		aucune	
@@ -891,16 +891,16 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 40	vehicule (presume)	47	vehicle-low-frequency-component	1	non_porte						aucun	inconnu		aucune	
 41	projectile	0	object-position-component	1	porte	FUN_14076e29c	chemin world-object : position ABSOLUE quantifiee aux largeurs de la carte	45	dispatch_object.go:82		rejeu : projectiles[].p (trajectoires, schema) et grenades[].proj (le point de repos du vol d'une grenade)	la position du projectile a chaque image	Correctif de 2026-08-15 : avant, TOUTES les cartes dequantifiaient aux largeurs de Cliffhanger (part des projectiles dans l'emprise des joueurs : 0,09 a 65 %). Avec les largeurs du catalogue : 98,96 a 99,79 %.	haute	
 41	projectile	1	object-translational-velocity-component	1	porte	FUN_14076e228	R(1) [+ R(19) + R(10)]	1-30	dispatch_object.go:112		aucun	la vitesse du projectile	Vitesse initiale d'un projectile : distinguerait une roquette d'une balle sans lire l'arme.	moyenne	
-41	projectile	2	object-forward-and-up-component	1	porte	FUN_14076e278			dispatch_player.go:333		aucun	inconnu		aucune	
+41	projectile	2	object-forward-and-up-component	1	porte	FUN_14076e278			dispatch_player.go:331		aucun	inconnu		aucune	
 41	projectile	3	object-angular-velocity-component	1	porte	FUN_140d70998			dispatch_object.go:63		aucun	inconnu		aucune	
-41	projectile	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:336		aucun	inconnu		aucune	
-41	projectile	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:339		aucun	inconnu		aucune	
+41	projectile	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:334		aucun	inconnu		aucune	
+41	projectile	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:337		aucun	inconnu		aucune	
 41	projectile	6	object-region-state-component	1	porte	FUN_140e1bfa0			dispatch_object.go:78		aucun	inconnu		aucune	
 41	projectile	7	object-damage-sections-component	1	porte	FUN_142f03c80			dispatch_object.go:81		aucun	inconnu		aucune	
 41	projectile	8	object-constraint-component	1	porte	FUN_142f039cc			dispatch_object.go:84		aucun	inconnu		aucune	
-41	projectile	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:327		aucun	inconnu		aucune	
+41	projectile	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:325		aucun	inconnu		aucune	
 41	projectile	10	object-parent-state-component	3	porte	FUN_140c1e4d0			dispatch_object.go:49		aucun	inconnu		aucune	
-41	projectile	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:342		aucun	inconnu		aucune	
+41	projectile	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:340		aucun	inconnu		aucune	
 41	projectile	12	object-scale-component	2	porte	FUN_1407dc6e4			dispatch_object.go:52		aucun	inconnu		aucune	
 41	projectile	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			dispatch_object.go:55		aucun	inconnu		aucune	
 41	projectile	14	object-dissolver-component	1	porte	FUN_140dd9f9c			dispatch_object.go:58		aucun	inconnu		aucune	
@@ -913,16 +913,16 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 41	projectile	21	projectile-deceleration-disabled-state	0	porte	FUN_142f04630	R(1) drapeau	1	dispatch_object.go:147		aucun	le projectile ne ralentit pas	inconnu	moyenne	
 42	ground-weapon (arme au sol)	0	object-position-component	1	porte	FUN_14076e29c	chemin world-object	45	dispatch_object.go:82		aucun — refuse a la publication (55 % de positions fantomes)	la position de l'arme au sol	Debloquerait le calque « armes au sol » du rejeu : ou est le fusil de sniper, qui le ramasse et quand. Conditionne par la grammaire du corps d'image-cle.	haute	
 42	ground-weapon (arme au sol)	1	object-translational-velocity-component	1	porte	FUN_14076e228			dispatch_object.go:112		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	2	object-forward-and-up-component	1	porte	FUN_14076e278			dispatch_player.go:333		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	2	object-forward-and-up-component	1	porte	FUN_14076e278			dispatch_player.go:331		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	3	object-angular-velocity-component	1	porte	FUN_140d70998			dispatch_object.go:63		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:336		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:339		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:334		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:337		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	6	object-region-state-component	1	porte	FUN_140e1bfa0			dispatch_object.go:78		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	7	object-damage-sections-component	1	porte	FUN_142f03c80			dispatch_object.go:81		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	8	object-constraint-component	1	porte	FUN_142f039cc			dispatch_object.go:84		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:327		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:325		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	10	object-parent-state-component	3	porte	FUN_140c1e4d0			dispatch_object.go:49		aucun	inconnu		aucune	
-42	ground-weapon (arme au sol)	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:342		aucun	inconnu		aucune	
+42	ground-weapon (arme au sol)	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:340		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	12	object-scale-component	2	porte	FUN_1407dc6e4			dispatch_object.go:52		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			dispatch_object.go:55		aucun	inconnu		aucune	
 42	ground-weapon (arme au sol)	14	object-dissolver-component	1	porte	FUN_140dd9f9c			dispatch_object.go:58		aucun	inconnu		aucune	
@@ -936,14 +936,14 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 43	device (dispositif de carte)	1	object-translational-velocity-component	1	porte	FUN_14076e228			dispatch_object.go:112		aucun	inconnu		aucune	
 43	device (dispositif de carte)	2	object-forward-and-up-dynamic-precision-component	2	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	dispatch_object.go:133		aucun	inconnu		haute	deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 43	device (dispositif de carte)	3	object-angular-velocity-component	1	porte	FUN_140d70998			dispatch_object.go:63		aucun	inconnu		aucune	
-43	device (dispositif de carte)	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:336		aucun	inconnu		aucune	
-43	device (dispositif de carte)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:339		aucun	inconnu		aucune	
+43	device (dispositif de carte)	4	object-body-vitality-component	1	porte	FUN_140fb8978			dispatch_player.go:334		aucun	inconnu		aucune	
+43	device (dispositif de carte)	5	object-shield-vitality-component	1	porte	FUN_140d50cbc			dispatch_player.go:337		aucun	inconnu		aucune	
 43	device (dispositif de carte)	6	object-region-state-component	1	porte	FUN_140e1bfa0			dispatch_object.go:78		aucun	inconnu		aucune	
 43	device (dispositif de carte)	7	object-damage-sections-component	1	porte	FUN_142f03c80			dispatch_object.go:81		aucun	inconnu		aucune	
 43	device (dispositif de carte)	8	object-constraint-component	1	porte	FUN_142f039cc			dispatch_object.go:84		aucun	inconnu		aucune	
-43	device (dispositif de carte)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:327		aucun	inconnu		aucune	
+43	device (dispositif de carte)	9	object-multiplayer-properties-component	1	porte	FUN_140f53308 -> FUN_1407d4c94			dispatch_player.go:325		aucun	inconnu		aucune	
 43	device (dispositif de carte)	10	object-parent-state-component	3	porte	FUN_140c1e4d0			dispatch_object.go:49		aucun	inconnu		aucune	
-43	device (dispositif de carte)	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:342		aucun	inconnu		aucune	
+43	device (dispositif de carte)	11	object-dead-state-component	1	porte	FUN_140c1dce0			dispatch_player.go:340		aucun	inconnu		aucune	
 43	device (dispositif de carte)	12	object-scale-component	2	porte	FUN_1407dc6e4			dispatch_object.go:52		aucun	inconnu		aucune	
 43	device (dispositif de carte)	13	object-maximum-vitalities-component	3	porte	FUN_1407ee054			dispatch_object.go:55		aucun	inconnu		aucune	
 43	device (dispositif de carte)	14	object-dissolver-component	1	porte	FUN_140dd9f9c			dispatch_object.go:58		aucun	inconnu		aucune	
@@ -1040,7 +1040,7 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 46	state-broker-state-*	61	state-broker-state-changed-data-component	0	non_porte						aucun	inconnu		aucune	
 46	state-broker-state-*	62	state-broker-state-changed-data-component	0	non_porte						aucun	inconnu		aucune	
 46	state-broker-state-*	63	state-broker-state-changed-data-component	0	non_porte						aucun	inconnu		aucune	
-47	splash-message (message plein ecran)	0	managed-object-networked-splash-message-static-component	1	porte	FUN_141085d50	FUN_141085d50	inconnu	dispatch_player.go:301		aucun	le message plein ecran, partie fixe	Les messages du jeu (« Drapeau capture ! », « Mort subite ») sont des faits de match dates, decodes et jetes.	haute	
+47	splash-message (message plein ecran)	0	managed-object-networked-splash-message-static-component	1	porte	FUN_141085d50	FUN_141085d50	inconnu	dispatch_player.go:299		aucun	le message plein ecran, partie fixe	Les messages du jeu (« Drapeau capture ! », « Mort subite ») sont des faits de match dates, decodes et jetes.	haute	
 47	splash-message (message plein ecran)	1	managed-object-networked-splash-message-dynamic-component	1	porte	FUN_140daebd0	R(24)	24	dispatch_player.go:44		aucun	le message plein ecran, partie variable	idem i0	haute	
 47	splash-message (message plein ecran)	2	personal-ai-data-component	1	porte	FUN_142ed6c04	FUN_142c5d614 : R(32) ; si != 0xffffffff : R(1) ; si 1 : R(12)	32/33/45	composants_vue_b_m4b.go:155		aucun	inconnu		haute	lot M4b 2026-09-25 : descripteur 143e0c1e8 ; les largeurs du lot F2 expliquees
 48	forge-player-data-*	0	forge-player-data-edited-objects-ids-component	1	non_porte						aucun	inconnu		aucune	

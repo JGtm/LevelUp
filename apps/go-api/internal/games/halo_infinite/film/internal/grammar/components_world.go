@@ -75,26 +75,9 @@ func consumeStatborgValueStat(br *Lecteur) {
 	}
 }
 
-// tacmap-areaofinterest (FUN_142ed3c50): R(32)+R(3)+pos+R(12).
-func consumeTacmapAreaOfInterest(br *Lecteur) {
-	br.ReadBits(32)
-	br.ReadBits(3)
-	lireE494(br, niveauPosition) // FUN_142ed7764 -> FUN_1424e0e38(0x10), CALL 142ed7853
-	br.ReadBits(12)
-}
-
-// tacmap-displayasset (FUN_142ed433c): R(32)+R(32)+R(2)+pos+R(96)+R(96)+R(1).
-func consumeTacmapDisplayAsset(br *Lecteur) {
-	br.ReadBits(32)
-	br.ReadBits(32)
-	br.ReadBits(2)
-	lireE494(br, niveauPosition) // FUN_142ed7d38 -> FUN_1424e0e38(0x10), CALL 142ed7edf
-	br.ReadBits(64)
-	br.ReadBits(32)
-	br.ReadBits(64)
-	br.ReadBits(32)
-	br.ReadBits(1)
-}
+// tacmap-areaofinterest (ti=32 i0) et tacmap-displayasset (ti=33 i0) sont des EXCEPTIONS DATEES
+// du portage unique (lot R3, 2026-09-29) : leurs lecteurs vivent dans
+// `lecteur_position_exceptions.go`.
 
 // selectable-zone-data-component (FUN_142ed6cec): R(32)+pos+R(1)[+R(5)].
 // C'est le lecteur des composants i0..i31 de ti=23 — l'archétype ZONES, couvert 0/33 par le
