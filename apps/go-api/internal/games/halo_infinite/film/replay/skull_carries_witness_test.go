@@ -39,7 +39,7 @@ const skullOracleEnv = "SKULL_ORACLE"
 // temoin doit precisement verifier.
 func skullCarrySecondsByXUID(recs []types.StatRecord, identity objectives.RoundIdentity) map[string]float64 {
 	out := map[string]float64{}
-	for _, r := range skullCarryIntervals(recs, identity) {
+	for _, r := range skullCarryIntervals(recs, identity, nil) {
 		if r.xuid == "" {
 			continue
 		}
@@ -79,14 +79,14 @@ func TestSkullCarrierWitness(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
-	identity := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
+	identity := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths), nil)
 	carry := skullCarrySecondsByXUID(recs, identity)
 	gamertags := skullGamertags(deaths)
 
 	// PORTEUR PRINCIPAL reconstruit vs oracle.
 	recX, recMax := argmaxFloat(carry)
 	oraX, oraMax := skullOracleArgmax(oracle)
-	grabsRec, grabsOra := skullGrabCount(recs), skullOracleGrabs(oracle)
+	grabsRec, grabsOra := skullGrabCount(recs, nil), skullOracleGrabs(oracle)
 
 	t.Logf("%s : %d manche(s) resolue(s), %d joueur(s) porteur(s) reconstruit(s) ; prises "+
 		"reconstruites=%d oracle=%d", id, len(identity.Rounds()), len(carry), grabsRec, grabsOra)

@@ -127,7 +127,7 @@ func TestSkullCarriesPontFourniPublieLePortage(t *testing.T) {
 			"0 sans pont", len(carries), *cov)
 	}
 	// Bornes = tics +/- la demi-fenetre de tic mesuree sur ce film (lot 6.7-B1, item 2).
-	demi := skullHalfTickFrames(recs, clock)
+	demi := skullHalfTickFrames(recs, clock, nil)
 	if carries[0].XUID != "222" || carries[0].T0 != 7000-demi || carries[0].T1 != 9000+demi {
 		t.Errorf("portage = %+v, attendu {222 %d %d}", carries[0], 7000-demi, 9000+demi)
 	}

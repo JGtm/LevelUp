@@ -72,8 +72,8 @@ func kothTicksVerdict(
 			XUID: j.xuid, Kills: j.kills, Deaths: j.deaths, Assists: j.assists,
 		})
 	}
-	identity := objectives.SlotIdentityFrom(recs, lines)
-	series := objectives.SeriesTotal(recs, holdTicksComponent, false)
+	identity := objectives.SlotIdentityFrom(recs, lines, nil)
+	series := objectives.SeriesTotal(recs, holdTicksComponent, false, nil)
 	slots := make([]int, 0, len(identity))
 	for s := range identity {
 		slots = append(slots, s)

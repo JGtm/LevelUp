@@ -252,7 +252,7 @@ func TestIdentiteParMancheSuitLeDebutConsensuel(t *testing.T) {
 		t.Fatalf("minimum declare de la manche 1 = %d, attendu %d", minDeclare, identiteEgarePre)
 	}
 
-	ri := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
+	ri := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths), nil)
 	// Le slot reattribue doit etre nomme dans les DEUX manches, sinon le test ne mesure rien.
 	if got := ri.AtRound(0, identiteSlotReattribue); got != identiteXUIDManche0 {
 		t.Fatalf("manche 0, slot %d : %q, attendu %q", identiteSlotReattribue, got, identiteXUIDManche0)

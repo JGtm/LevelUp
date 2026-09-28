@@ -97,8 +97,8 @@ func TestVIPPeriodes(t *testing.T) {
 	// l'identite PAR MANCHE. Sur ces films VIP mono-manche les deux coincident ; le temoin reste
 	// donc exactement celui du protocole.
 	flat := objectives.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
-	identity := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
-	events := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeVip)
+	identity := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths), nil)
+	events := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeVip, nil)
 	t.Logf("%s : %d record(s), %d selection(s) VIP, %d slot(s) nomme(s), %d mort(s), oracle sur "+
 		"%d joueur(s)", id, len(recs), vipCompte(events), identity.NamedCount(), len(deaths), len(oracle))
 

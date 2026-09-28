@@ -197,8 +197,8 @@ func attachVipCrown(doc *ReplayDocument, opt Options, reg IdentityRegistry, cloc
 	}
 	scan := VipCrownScan{
 		Scanned:  true,
-		Events:   objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeVip),
-		Identity: objectives.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths)),
+		Events:   objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeVip, opt.consultations()),
+		Identity: objectives.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths), opt.consultations()),
 		Deaths:   opt.Deaths,
 	}
 	periods, cov := buildVipCrown(scan, matchClock{

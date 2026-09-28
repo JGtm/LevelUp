@@ -60,7 +60,7 @@ func deathBridgeFixture(emis func(i int) int) ([]types.StatRecord, []types.Playe
 // resultat doit etre EXACTEMENT celui du pont par totaux.
 func TestSlotIdentityResolvedFilmComplet(t *testing.T) {
 	recs, lines, deaths := deathBridgeFixture(func(i int) int { return i + 6 })
-	attendu := SlotIdentityFrom(recs, lines)
+	attendu := SlotIdentityFrom(recs, lines, nil)
 	if len(attendu) != 8 {
 		t.Fatalf("fixture invalide : le pont par totaux nomme %d slots sur 8", len(attendu))
 	}
@@ -86,7 +86,7 @@ func TestSlotIdentityResolvedFilmComplet(t *testing.T) {
 // pont par instants nomme les huit.
 func TestSlotIdentityResolvedFilmTronque(t *testing.T) {
 	recs, lines, deaths := deathBridgeFixture(func(i int) int { return i + 3 })
-	if n := len(SlotIdentityFrom(recs, lines)); n != 0 {
+	if n := len(SlotIdentityFrom(recs, lines, nil)); n != 0 {
 		t.Fatalf("fixture invalide : le pont par totaux nomme %d slots sur un film tronque", n)
 	}
 	got, st := slotIdentityResolvedFrom(recs, lines, deaths)

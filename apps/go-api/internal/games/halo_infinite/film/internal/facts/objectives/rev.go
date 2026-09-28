@@ -56,6 +56,13 @@ package objectives
 // de J10 dans la branche de suite d audit (J8 l avait deja monte) ; golden regenere a revision
 // constante. A la meme fusion, le tri de `roundStartsOfCompte` (ne de J8) s ecrit en `cmp.Or` :
 // son comparateur etait deja total, aucune sortie ne change.
+//
+// COMPLEMENT DU 2026-09-28 (lot J8.7-bis, REVISION CONSTANTE) : les deux replis qui se declenchent a
+// la LECTURE (`repli_emission_hors_domaine_jetee`, `repli_instant_sur_la_premiere_manche`) se notent
+// dans un enregistreur par document ([ReplisALaConsultation]) passe aux lectures publiques ; le filtre
+// des deux marches des series devient une fonction ([emissionHorsDomaine]). Aucune serie, aucune
+// identite, aucune action ne change (`replay-equiv` sur les 20 films de reference : seul
+// `coverage.fallbacks` bouge, et il est publie par `replay`) ; golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

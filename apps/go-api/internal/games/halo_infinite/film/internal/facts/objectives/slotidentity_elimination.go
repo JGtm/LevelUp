@@ -86,7 +86,7 @@ func (ri RoundIdentity) CompletedByElimination(recs []types.StatRecord, lines []
 	if len(lines) == 0 || len(ri.byRound) == 0 {
 		return ri
 	}
-	seg := segmentsParManche(recs)
+	seg := segmentsParManche(recs, ri.consultations)
 	out := ri.copieProfonde()
 	for _, round := range ri.Rounds() {
 		slot, xuid, ok := candidatUniqueDeManche(out.byRound, recs, lines, round)
@@ -135,10 +135,10 @@ type segmentKDA struct{ kills, deaths, assists int }
 // segmentsParManche rend, par manche et par slot de joueur, le segment (frags, morts,
 // assistances) de la manche — la DERNIERE valeur emise, les compteurs repartant de zero a
 // chaque manche.
-func segmentsParManche(recs []types.StatRecord) map[int]map[int]segmentKDA {
+func segmentsParManche(recs []types.StatRecord, cons *ReplisALaConsultation) map[int]map[int]segmentKDA {
 	out := map[int]map[int]segmentKDA{}
 	poser := func(c StatComponent, set func(*segmentKDA, int)) {
-		for slot, byRound := range SeriesByRound(recs, c, false) {
+		for slot, byRound := range SeriesByRound(recs, c, false, cons) {
 			for round, pts := range byRound {
 				if len(pts) == 0 {
 					continue
@@ -195,6 +195,8 @@ func (ri RoundIdentity) copieProfonde() RoundIdentity {
 		origins: make(map[int]map[int]string, len(ri.byRound)),
 		starts:  ri.starts,
 		replis:  ri.replis,
+		// l enregistreur du document se PARTAGE (lot J8.7-bis) : la copie consulte ce que l original consulte.
+		consultations: ri.consultations,
 	}
 	for round, m := range ri.byRound {
 		copie := make(map[int]string, len(m))

@@ -46,7 +46,7 @@ import (
 func buildPlayerScores(recs []types.StatRecord, flat map[int]string,
 	lines []types.PlayerLine, deaths []types.Death, c scoreClock) []PlayerScore {
 	if len(objectives.RealRounds(recs)) > 1 {
-		round := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths)).
+		round := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths), c.cons).
 			CompletedByElimination(recs, lines).
 			CompletedByRoundResidue(recs, lines)
 		return buildPlayerScoresByRound(recs, round, c)
@@ -60,10 +60,10 @@ func buildPlayerScoresFlat(recs []types.StatRecord, identity map[int]string, c s
 	if len(identity) == 0 {
 		return nil
 	}
-	personal := loadScoreSeries(recs, objectives.PersonalScoreComponent, false)
-	kills := loadScoreSeries(recs, objectives.KillsComponent, false)
-	deaths := loadScoreSeries(recs, objectives.DeathsComponent, false)
-	assists := loadScoreSeries(recs, objectives.AssistsComponent, false)
+	personal := loadScoreSeries(recs, objectives.PersonalScoreComponent, false, c.cons)
+	kills := loadScoreSeries(recs, objectives.KillsComponent, false, c.cons)
+	deaths := loadScoreSeries(recs, objectives.DeathsComponent, false, c.cons)
+	assists := loadScoreSeries(recs, objectives.AssistsComponent, false, c.cons)
 
 	slots := make([]int, 0, len(identity))
 	for slot := range identity {
@@ -97,10 +97,10 @@ func buildPlayerScoresFlat(recs []types.StatRecord, identity map[int]string, c s
 // fusionnes en une entree — courbe recomposee dans l'ordre du temps.
 func buildPlayerScoresByRound(recs []types.StatRecord,
 	round objectives.RoundIdentity, c scoreClock) []PlayerScore {
-	personal := playerRoundsByXUID(recs, objectives.PersonalScoreComponent, round)
-	kills := playerRoundsByXUID(recs, objectives.KillsComponent, round)
-	deaths := playerRoundsByXUID(recs, objectives.DeathsComponent, round)
-	assists := playerRoundsByXUID(recs, objectives.AssistsComponent, round)
+	personal := playerRoundsByXUID(recs, objectives.PersonalScoreComponent, round, c.cons)
+	kills := playerRoundsByXUID(recs, objectives.KillsComponent, round, c.cons)
+	deaths := playerRoundsByXUID(recs, objectives.DeathsComponent, round, c.cons)
+	assists := playerRoundsByXUID(recs, objectives.AssistsComponent, round, c.cons)
 
 	out := make([]PlayerScore, 0)
 	for _, xuid := range sortedXUIDs(personal, kills, deaths, assists) {
@@ -128,9 +128,9 @@ func buildPlayerScoresByRound(recs []types.StatRecord,
 // `SeriesByRound`). L'identite par manche garantit qu'aucun xuid n'est revendique par deux slots
 // dans la meme manche (`withoutContestedXUID`) : chaque (xuid, manche) recoit au plus un segment.
 func playerRoundsByXUID(recs []types.StatRecord, comp objectives.StatComponent,
-	round objectives.RoundIdentity) map[string]map[int][]types.ScorePoint {
+	round objectives.RoundIdentity, cons *objectives.ReplisALaConsultation) map[string]map[int][]types.ScorePoint {
 	out := map[string]map[int][]types.ScorePoint{}
-	for slot, byRound := range objectives.SeriesByRound(recs, comp, false) {
+	for slot, byRound := range objectives.SeriesByRound(recs, comp, false, cons) {
 		for r, pts := range byRound {
 			xuid := round.AtRound(r, slot)
 			if xuid == "" {

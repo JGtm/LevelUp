@@ -94,7 +94,7 @@ func TestSlotIdentityByRoundReassignedSlot(t *testing.T) {
 // TestRoundIdentityResolveByTime — le resolveur place un evenement dans sa manche par son instant.
 func TestRoundIdentityResolveByTime(t *testing.T) {
 	recs, deaths := twoRoundReassignedFixture()
-	ri := ResolveRoundIdentity(recs, deaths)
+	ri := ResolveRoundIdentity(recs, deaths, nil)
 
 	if got := ri.At(22, 2000); got != "A" {
 		t.Errorf("At(22, 2000 ms, manche 0) = %q, attendu \"A\"", got)
@@ -118,7 +118,7 @@ func TestRoundIdentityResolveByTime(t *testing.T) {
 // faits par (manche, slot) les rangerait dans une manche et les nommerait dans une autre.
 func TestRoundAtSuitLaMancheDeAt(t *testing.T) {
 	recs, deaths := twoRoundReassignedFixture()
-	ri := ResolveRoundIdentity(recs, deaths)
+	ri := ResolveRoundIdentity(recs, deaths, nil)
 	for _, cas := range []struct{ t, veut int }{{2000, 0}, {9000, 0}, {12000, 1}, {40000, 1}} {
 		if got := ri.RoundAt(cas.t); got != cas.veut {
 			t.Errorf("RoundAt(%d) = %d, attendu %d", cas.t, got, cas.veut)
@@ -147,7 +147,7 @@ func TestIdentifyNamedEventsByRoundReassignedSlot(t *testing.T) {
 		{TimeMS: 12000, Slot: 22, Stat: StatFlagCaptures}, // manche 1 -> B
 	}
 
-	byRound, _ := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths))
+	byRound, _ := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths, nil))
 	if len(byRound) != 2 {
 		t.Fatalf("pont par manche : %d action(s) identifiee(s), attendu 2 : %+v", len(byRound), byRound)
 	}
@@ -186,7 +186,7 @@ func TestIdentifyNamedEventsByRoundMonoNeutral(t *testing.T) {
 		{TimeMS: 2000, Slot: 22, Stat: StatFlagCaptures},
 		{TimeMS: 2500, Slot: 20, Stat: StatFlagReturns},
 	}
-	byRound, _ := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths))
+	byRound, _ := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths, nil))
 	flat := IdentifyNamedEvents(named, SlotIdentityByDeaths(recs, deaths))
 	if !reflect.DeepEqual(byRound, flat) {
 		t.Errorf("mono-manche : par manche %+v != pont plat %+v", byRound, flat)
@@ -218,7 +218,7 @@ func TestSlotIdentityByRoundMonoRoundNeutral(t *testing.T) {
 	}
 
 	// Le resolveur d'une manche ignore le temps : At rend l'unique table quel que soit l'instant.
-	ri := ResolveRoundIdentity(recs, deaths)
+	ri := ResolveRoundIdentity(recs, deaths, nil)
 	if ri.At(22, 999999) != flat[22] {
 		t.Errorf("mono-manche : At ne rend pas le pont plat")
 	}

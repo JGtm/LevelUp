@@ -371,7 +371,7 @@ func (s *filmScan) balayerMonde() {
 func (s *filmScan) balayerCalquesGardes() {
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
-	s.in.FlagMarks = decodeFilmCarrierMarks(s.fc, s.matchID, s.opt.Flag)
+	s.in.FlagMarks = decodeFilmCarrierMarks(s.fc, s.matchID, s.opt.Flag, s.opt.consultations())
 	s.opt.observe("carrierMarks", s.in.FlagMarks)
 	// PROPRIETES RESEAU ti=13 : UN SEUL BALAYAGE, DEUX CONSOMMATEURS ET DEUX GARDES. L'etat des
 	// zones (jauge de capture, proprietaire) le veut sur les matchs dont l'appelant a fourni le

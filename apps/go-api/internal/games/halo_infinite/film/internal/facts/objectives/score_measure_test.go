@@ -216,7 +216,7 @@ func writePlayers(m *measureRows, recs []types.StatRecord, or oracleMatch) (map[
 	deaths := lastBySlot(recs, statSlotKey{coreKillsComp, sideB})
 	assists := lastBySlot(recs, statSlotKey{coreAssistsComp, sideA})
 
-	triplet := SlotIdentityFrom(recs, or.Lines)
+	triplet := SlotIdentityFrom(recs, or.Lines, nil)
 	noncirc := identityByDeathsAssists(deaths, assists, or.Lines)
 
 	byXUID := map[string]types.PlayerLine{}
@@ -397,7 +397,7 @@ func lastValueOfSlot(recs []types.StatRecord, slot int, key statSlotKey) int64 {
 // lastBySlot rend, par slot de JOUEUR, la derniere valeur retenue d'un emplacement.
 func lastBySlot(recs []types.StatRecord, key statSlotKey) map[int]int64 {
 	out := map[int]int64{}
-	for slot, pts := range seriesBySlot(recs, key) {
+	for slot, pts := range seriesBySlot(recs, key, nil) {
 		if len(pts) > 0 {
 			out[slot] = pts[len(pts)-1].Value
 		}

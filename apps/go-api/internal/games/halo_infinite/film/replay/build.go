@@ -136,6 +136,8 @@ type assemblage struct {
 func (a *assemblage) ouvrir(titleSlug string) bool {
 	a.interval = a.opt.frameIntervalMS()
 	a.opt.Fallbacks = a.opt.compteurDeReplis() // cf. Options.Fallbacks (D14) : jamais nil a partir d'ici
+	// L ENREGISTREUR DES REPLIS A LA CONSULTATION, jamais nil non plus (lot J8.7-bis).
+	a.opt.ReplisHorsBalayage.Consultations = a.opt.enregistreurDesConsultations()
 	a.doc = ReplayDocument{
 		SchemaVersion:   SchemaVersion,
 		MatchID:         a.matchID,

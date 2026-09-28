@@ -35,6 +35,10 @@ package replay
 //	                        a CHAQUE cuisson, et ils ne sont jamais dans le rapport persiste du
 //	                        balayage : versees ici, ils comptent une fois sur les deux chemins.
 //
+//	LES REPLIS A LA CONSULTATION ([ReplisHorsBalayage.Consultations], lot J8.7-bis) suivent le
+//	second chemin : l enregistreur du document se remplit PENDANT l assemblage (et la construction
+//	de la cuisson), et il est lu ICI, une fois, a la cloture.
+//
 // Une source absente vaut zero : `DeclencheN` ignore un compte nul, le rapport ne porte que ce qui
 // s est declenche.
 
@@ -58,6 +62,11 @@ type ReplisHorsBalayage struct {
 	// elle-meme, sous leurs noms de registre (morts neutres, relais de bot, feuille de match, zones,
 	// resolution des frags). Recalcule a chaque cuisson, sur les deux chemins.
 	Construction []fallback.Declenchement
+	// Consultations : l enregistreur des replis qui se declenchent a la LECTURE des series nommees et
+	// du resolveur d identite par manche (lot J8.7-bis, 2026-09-28), partage par tout le document —
+	// la construction de la cuisson et chaque calque y notent les evenements DISTINCTS qu ils
+	// consultent. Nil : l assemblage en ouvre un ([assemblage.ouvrir]).
+	Consultations *objectives.ReplisALaConsultation
 }
 
 // sourcesDeReplis porte les comptes qu une passe de la table lit. Un champ nul ne verse rien.
@@ -130,6 +139,8 @@ var versementsDesReplis = []ligneDeVersement{
 	{fallback.NomMortSansXuidIgnoree, func(s sourcesDeReplis) int { return s.objectifs.MortsSansXUID }},
 	{fallback.NomDebutDeMancheAuMinimum, func(s sourcesDeReplis) int { return s.objectifs.DebutsDeMancheAuMinimum }},
 	{fallback.NomSlotAbandonneAuPremierArrive, func(s sourcesDeReplis) int { return s.objectifs.SlotsAbandonnes }},
+	{fallback.NomEmissionHorsDomaineJetee, func(s sourcesDeReplis) int { return s.objectifs.EmissionsHorsDomaineJetees }},
+	{fallback.NomInstantSurLaPremiereManche, func(s sourcesDeReplis) int { return s.objectifs.InstantsSurLaPremiereManche }},
 }
 
 // verserLesReplis joue la table sur `s` : chaque ligne verse son champ au compteur sous son nom.
@@ -150,11 +161,28 @@ func versementDuBalayage(fb *fallback.Compteur, fc *grammar.FilmContext) {
 // ([Options.ReplisHorsBalayage]). Appelee UNE fois, en fin d assemblage, juste avant la publication
 // de `coverage.fallbacks` ([assemblage.clore]) — sur les DEUX chemins, film et faits.
 func versementDeLAssemblage(fb *fallback.Compteur, r ReplisHorsBalayage) {
-	s := sourcesDeReplis{objectifs: r.Objectifs}
+	s := sourcesDeReplis{objectifs: r.Objectifs.Plus(r.Consultations.ComptesDesReplis())}
 	if r.KillSource != nil {
 		s.killsource = r.KillSource.Stats
 		s.bijectionInferee = r.KillSource.Roster.FilmTable.Inferred
 	}
 	verserLesReplis(fb, s)
 	fb.Cumuler(r.Construction)
+}
+
+// consultations rend l enregistreur des replis a la consultation du document
+// ([ReplisHorsBalayage.Consultations]) : c est lui que chaque lecture de series nommees ou
+// d identite par manche du rejeu recoit.
+func (o Options) consultations() *objectives.ReplisALaConsultation {
+	return o.ReplisHorsBalayage.Consultations
+}
+
+// enregistreurDesConsultations rend l enregistreur que l appelant a fourni, ou en ouvre un : sans lui,
+// un document construit hors de la cuisson (outil, test) consulterait ses series sans rien compter.
+// Appelee UNE fois, a l ouverture de l assemblage — les calques recoivent ensuite la meme valeur.
+func (o Options) enregistreurDesConsultations() *objectives.ReplisALaConsultation {
+	if o.ReplisHorsBalayage.Consultations != nil {
+		return o.ReplisHorsBalayage.Consultations
+	}
+	return &objectives.ReplisALaConsultation{}
 }

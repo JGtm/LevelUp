@@ -380,7 +380,7 @@ func TestAssautPointsDeModeParJoueur(t *testing.T) {
 		t.Logf("=== %s (%s) — manches retenues %v", f.id, f.libelle,
 			amTriRetenues(objectives.RealRounds(recs)))
 		byRound := objectives.SeriesByRound(recs,
-			objectives.StatComponent{Comp: 0, SideB: false}, false)
+			objectives.StatComponent{Comp: 0, SideB: false}, false, nil)
 		rounds := make([]int, 0, len(byRound))
 		for r := range byRound {
 			rounds = append(rounds, r)
@@ -402,7 +402,7 @@ func TestAssautPointsDeModeParJoueur(t *testing.T) {
 			}
 		}
 		// Ce que la production publierait.
-		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
+		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb, nil)
 		t.Logf("  -> %d evenement(s) nomme(s) publie(s) :", len(named))
 		for _, n := range named {
 			t.Logf("     slot %2d a %d ms (%s)", n.Slot, n.TimeMS, n.Stat)
@@ -503,7 +503,7 @@ func TestAssautParasiteCe083875(t *testing.T) {
 		t.Logf("  %d ms slot %2d manche %d : comp0 A=%d B=%d (%d composants)",
 			r.TimeMS, r.Slot, r.Round, v.A, v.B, len(r.Comps))
 	}
-	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
+	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb, nil)
 	t.Logf("%d evenements nommes ; les 8 premiers :", len(named))
 	for i, n := range named {
 		if i >= 8 {
@@ -603,8 +603,8 @@ func TestAssautPontIdentite(t *testing.T) {
 			di = append(di, types.DeathInstant{
 				XUID: fmt.Sprint(d.XUID), TimeMS: int(d.TimeMS)})
 		}
-		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
-		identity := objectives.ResolveRoundIdentity(recs, di)
+		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb, nil)
+		identity := objectives.ResolveRoundIdentity(recs, di, nil)
 		ident, _ := objectives.IdentifyNamedEventsByRound(named, identity)
 		nomme := 0
 		for _, e := range ident {

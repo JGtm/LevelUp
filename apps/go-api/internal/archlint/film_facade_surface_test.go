@@ -146,7 +146,13 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // Sans carte du match, `killsource.Decode` refuse le film au lieu de le decoder aux largeurs d une
 // autre carte (regle utilisateur « pas de repli ») ; le collecteur doit NOMMER cette erreur pour
 // classer le film « mis de cote » et non « panne », comme la cle de film inconnue.
-const plafondSurfaceFacade = 186 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 (objectives) + 18 (noms de replis de la construction et du collecteur) ; fusion J7 : + 1 (ErrCarteAbsente, carte obligatoire)
+// 187 LE 2026-09-28 (lot J8.7-bis, base `48f7fb143` re-mesuree : 186) : UN alias neuf, `ReplisALaConsultation`
+// (famille `objectives`). Les deux replis qui se declenchent a la LECTURE des series nommees et du resolveur
+// d identite par manche se comptent par evenement distinct dans un enregistreur PAR DOCUMENT ; la cuisson
+// (`replaybuild`) le cree — ses propres lectures (actions nommees, signaux du drapeau, pont par manche) y
+// notent deja — et le passe aux options du rejeu : elle doit NOMMER le type. Aucune constante `Nom*` n entre
+// dans la facade (les trois noms neufs sont verses par `replay`).
+const plafondSurfaceFacade = 187 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 (objectives) + 18 (noms de replis de la construction et du collecteur) ; fusion J7 : + 1 (ErrCarteAbsente, carte obligatoire) ; J8.7-bis : + 1 (ReplisALaConsultation)
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -316,7 +322,7 @@ const plafondSurfaceReplay = 277 // 2026-09-27 — audit(J8.7) sur 5fad0cc93 : 2
 // de l autre. La ventilation nomme alors la couche qui a grossi.
 var plafondsParFamilleFacade = map[string]int{
 	"grammar":    46, // 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
-	"objectives": 39, // 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs)
+	"objectives": 40, // 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs) ; 2026-09-28 — J8.7-bis : +1 (ReplisALaConsultation)
 	"killsource": 37, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire (J7) : +1 (`ErrCarteAbsente`)
 	"fallback":   29, // 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector)
 	"types":      10,

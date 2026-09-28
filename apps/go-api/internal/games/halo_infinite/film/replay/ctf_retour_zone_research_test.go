@@ -243,7 +243,7 @@ func ctfzVarianteStr(neutre bool) string {
 // reviendrait a confronter la chaine objet a elle-meme. On repart donc des evenements bruts.
 func ctfzRetoursCredites(src *objDiskFilm, offsetMS int64, originUS, step uint64) []int {
 	var out []int
-	evs := objectives.NamedEventsFrom(objectives.StatRecords(src), objectives.ObjectiveTypeFlag)
+	evs := objectives.NamedEventsFrom(objectives.StatRecords(src), objectives.ObjectiveTypeFlag, nil)
 	for _, e := range evs {
 		if e.Stat != objectives.StatFlagReturns {
 			continue

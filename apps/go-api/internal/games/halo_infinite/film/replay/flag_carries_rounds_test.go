@@ -22,7 +22,7 @@ import (
 func flagRoundsScan(t *testing.T, suite ...objectives.NamedEvent) FlagCarryScan {
 	t.Helper()
 	recs, deaths := identiteFixture()
-	ri := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
+	ri := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths), nil)
 	if ri.At(identiteSlotReattribue, 150_000) != identiteXUIDManche0 ||
 		ri.At(identiteSlotReattribue, identiteDebutR1+1_000) != identiteXUIDManche1 {
 		t.Fatalf("la fixture ne reattribue plus le slot %d d une manche a l autre", identiteSlotReattribue)

@@ -61,7 +61,7 @@ func objIdentites(film *source.Film, deaths []types.Death) map[int]string {
 // objRoundIdentites rend le pont slot statborg -> xuid PAR MANCHE, tel que la production le
 // calcule desormais pour les calques d'objectifs vivants (drapeau, couronne, porteur du crane).
 func objRoundIdentites(film *source.Film, deaths []types.Death) objectives.RoundIdentity {
-	return objectives.ResolveRoundIdentity(objectives.StatRecords(film), objDeathInstants(deaths))
+	return objectives.ResolveRoundIdentity(objectives.StatRecords(film), objDeathInstants(deaths), nil)
 }
 
 // objTriplets rend, par slot statborg, le triplet final (frags, morts, assistances).

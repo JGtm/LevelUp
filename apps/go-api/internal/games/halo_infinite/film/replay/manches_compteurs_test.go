@@ -124,7 +124,7 @@ func manchesMorts() []types.Death {
 // assistsDuSlot rend la serie d'assistances par manche d'un slot, telle que la production la
 // decoupe.
 func assistsDuSlot(recs []types.StatRecord, slot int) map[int][]types.ScorePoint {
-	return objectives.SeriesByRound(recs, objectives.AssistsComponent, false)[slot]
+	return objectives.SeriesByRound(recs, objectives.AssistsComponent, false, nil)[slot]
 }
 
 // dernierPoint rend l'instant et la valeur du dernier point d'une suite, ou (-1, -1).
@@ -227,7 +227,7 @@ func TestSerieCumuleeParSlotResteChronologique(t *testing.T) {
 	recs := manchesCorps(0, 30_000)
 	recs = append(recs, manchesCorps(1, manchesDebutR0)...)
 
-	series := objectives.SeriesTotal(recs, objectives.AssistsComponent, false)
+	series := objectives.SeriesTotal(recs, objectives.AssistsComponent, false, nil)
 	if len(series) == 0 {
 		t.Fatal("aucune serie cumulee : le corpus ne prouve rien")
 	}
@@ -390,7 +390,7 @@ func TestEchantillonEgareNeNommeAucuneAction(t *testing.T) {
 	recs = append(recs, statRec(14_000, 12, 0, map[int]types.StatValue{24: {A: 58}}))
 
 	vols := 0
-	for _, e := range objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeFlag) {
+	for _, e := range objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeFlag, nil) {
 		if e.Stat == objectives.StatFlagSteals {
 			vols++
 		}

@@ -120,8 +120,9 @@ type FlagInput struct {
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
 // HORS LIGNE — appelee par BuildFromFilm.
-func decodeFilmCarrierMarks(fc *grammar.FilmContext, matchID string, in FlagInput) grammar.CarrierMarkScan {
-	if !drapeauBalayable(in) {
+func decodeFilmCarrierMarks(fc *grammar.FilmContext, matchID string, in FlagInput,
+	cons *objectives.ReplisALaConsultation) grammar.CarrierMarkScan {
+	if !drapeauBalayable(in, cons) {
 		return grammar.CarrierMarkScan{}
 	}
 	marks, err := grammar.ScanCarrierMarks(fc)
@@ -134,9 +135,9 @@ func decodeFilmCarrierMarks(fc *grammar.FilmContext, matchID string, in FlagInpu
 }
 
 // flagFilmSignalsOf rend le verdict de mode a partir des SEULES lectures deja faites. Pur.
-func flagFilmSignalsOf(in FlagInput) objectives.FlagFilmSignals {
+func flagFilmSignalsOf(in FlagInput, cons *objectives.ReplisALaConsultation) objectives.FlagFilmSignals {
 	return objectives.FlagFilmSignalsFrom(in.Bursts,
-		objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeFlag))
+		objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeFlag, cons))
 }
 
 // attachFlagCarries pose la vie des drapeaux sur le document, avec sa couverture et son journal.
@@ -148,11 +149,11 @@ func flagFilmSignalsOf(in FlagInput) objectives.FlagFilmSignals {
 func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
 	equipes teamPublication) {
 	in := opt.Flag
-	signals := flagFilmSignalsOf(in)
+	signals := flagFilmSignalsOf(in, opt.consultations())
 	scan := FlagCarryScan{
 		Scanned: in.Scanned,
 		Signals: signals,
-		Events:  objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeFlag),
+		Events:  objectives.NamedEventsFrom(in.Records, objectives.ObjectiveTypeFlag, opt.consultations()),
 		Spawns:  in.Spawns,
 		// L'EQUIPE DU PORTEUR VIENT DU FILM (lot 1.7, decision utilisateur V4) : elle ne descend
 		// plus de l'appelant, donc l'invariant « jamais son propre drapeau » tient sur une
@@ -222,7 +223,7 @@ func flagIdentityOf(in FlagInput, opt Options) objectives.RoundIdentity {
 	if in.Identity.Resolved() {
 		return in.Identity
 	}
-	return objectives.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths))
+	return objectives.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths), opt.consultations())
 }
 
 // attachFlagReturnZone publie la REGLE de retour du mode — et se tait des qu'il manque quoi que

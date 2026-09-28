@@ -133,7 +133,7 @@ func twoRoundFlagFixture() ([]decfilm.NamedEvent, []decfilm.StatRecord, []decfil
 		{XUID: "C", TimeMS: 1500}, {XUID: "C", TimeMS: 2500}, {XUID: "C", TimeMS: 3500},
 		{XUID: "C", TimeMS: 11500}, {XUID: "C", TimeMS: 12500}, {XUID: "C", TimeMS: 13500},
 	}
-	named := decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeFlag)
+	named := decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeFlag, nil)
 	return named, recs, deaths
 }
 

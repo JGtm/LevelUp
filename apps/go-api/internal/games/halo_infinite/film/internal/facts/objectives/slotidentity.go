@@ -63,7 +63,7 @@ const (
 // repliquees quel que soit le type de partie. L'appariement fonctionne donc aussi en
 // Slayer, KOTH ou Oddball, ou aucun emplacement d'objectif n'est nomme.
 func SlotIdentity(film *source.Film, lines []types.PlayerLine) map[int]string {
-	return SlotIdentityFrom(StatRecords(film), lines)
+	return SlotIdentityFrom(StatRecords(film), lines, nil) // outil hors production : aucun document
 }
 
 // SlotIdentityFrom est le coeur pur : il travaille sur des enregistrements deja decodes.
@@ -71,13 +71,16 @@ func SlotIdentity(film *source.Film, lines []types.PlayerLine) map[int]string {
 // EXPORTE POUR LA PRODUCTION (meme raison que [NamedEventsFrom]) : le constructeur
 // d'artefact decode le film une seule fois et fait servir les memes enregistrements a la
 // courbe de score, a l'identite des slots et aux evenements nommes.
-func SlotIdentityFrom(recs []types.StatRecord, lines []types.PlayerLine) map[int]string {
+//
+// `cons` : l enregistreur des replis a la consultation du document ([ReplisALaConsultation], lot
+// J8.7-bis) ; nil hors production.
+func SlotIdentityFrom(recs []types.StatRecord, lines []types.PlayerLine, cons *ReplisALaConsultation) map[int]string {
 	// UN budget pour les trois compteurs (lot 4b) : ce pont deroule lui aussi des compteurs,
 	// et les bornes qui protegent le nommage doivent le proteger de la meme facon.
 	b := newEventBudget("slot_identity")
-	kills := countsOf(recs, statSlotKey{coreKillsComp, sideA}, b)
-	deaths := countsOf(recs, statSlotKey{coreKillsComp, sideB}, b)
-	assists := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b)
+	kills := countsOf(recs, statSlotKey{coreKillsComp, sideA}, b, cons)
+	deaths := countsOf(recs, statSlotKey{coreKillsComp, sideB}, b, cons)
+	assists := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b, cons)
 	b.resume()
 
 	// Premiere passe : les slots dont le triplet designe UNE seule ligne de match.

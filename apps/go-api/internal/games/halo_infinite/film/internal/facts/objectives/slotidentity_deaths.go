@@ -93,7 +93,7 @@ func SlotIdentityResolved(film *source.Film, lines []types.PlayerLine, deaths []
 // slotIdentityResolvedFrom est le coeur pur : il travaille sur des enregistrements deja
 // decodes, donc testable sans film.
 func slotIdentityResolvedFrom(recs []types.StatRecord, lines []types.PlayerLine, deaths []types.DeathInstant) (map[int]string, IdentityStats) {
-	byTotals := SlotIdentityFrom(recs, lines)
+	byTotals := SlotIdentityFrom(recs, lines, nil) // outil hors production (SlotIdentityResolved)
 	byDeaths := slotIdentityFromDeaths(recs, deaths)
 	st := IdentityStats{ByTotals: len(byTotals), ByDeaths: len(byDeaths), Source: IdentitySourceTotals}
 	if len(byDeaths) <= len(byTotals) {
@@ -129,12 +129,13 @@ func SlotIdentityByDeaths(recs []types.StatRecord, deaths []types.DeathInstant) 
 
 // slotIdentityFromDeaths est le coeur pur du pont par instants.
 func slotIdentityFromDeaths(recs []types.StatRecord, deaths []types.DeathInstant) map[int]string {
-	return slotIdentityFromDeathsCompte(recs, deaths, nil)
+	return slotIdentityFromDeathsCompte(recs, deaths, nil, nil)
 }
 
 // slotIdentityFromDeathsCompte est [slotIdentityFromDeaths], qui compte ses deux replis dans `c`
 // (nil : rien) — la table vide faute de morts, les morts sans xuid (lot J8.7).
-func slotIdentityFromDeathsCompte(recs []types.StatRecord, deaths []types.DeathInstant, c *ComptesDesReplis) map[int]string {
+func slotIdentityFromDeathsCompte(recs []types.StatRecord, deaths []types.DeathInstant, c *ComptesDesReplis,
+	cons *ReplisALaConsultation) map[int]string {
 	if len(deaths) == 0 {
 		if c != nil {
 			c.TablesIdentiteVides++
@@ -143,7 +144,7 @@ func slotIdentityFromDeathsCompte(recs []types.StatRecord, deaths []types.DeathI
 	}
 	thread := deathThreadByXUIDCompte(deaths, c)
 	claim := map[int]string{}
-	for slot, pts := range deathProgressions(recs) {
+	for slot, pts := range deathProgressions(recs, cons) {
 		if xuid, ok := bestDeathClaim(pts, thread); ok {
 			claim[slot] = xuid
 		}
@@ -185,16 +186,16 @@ func deathThreadByXUIDCompte(deaths []types.DeathInstant, c *ComptesDesReplis) m
 // `maxUnrollPerStep` n y laisse aucune unite ([boundSteps]), donc une emission aberrante (des
 // centaines de millions) ne deroule rien. Le plafond propre au pont (`maxDeathsPerSlot`, 1 000) a
 // disparu avec ses gardes : il bornait une valeur que la serie publiee ne laisse plus passer.
-func deathProgressions(recs []types.StatRecord) map[int][]int {
-	return instantsDesMorts(SeriesTotal(recs, DeathsComponent, false))
+func deathProgressions(recs []types.StatRecord, cons *ReplisALaConsultation) map[int][]int {
+	return instantsDesMorts(SeriesTotal(recs, DeathsComponent, false, cons))
 }
 
 // deathProgressionsByRound est [deathProgressions] MANCHE PAR MANCHE : `manche -> slot ->
 // instants`, deroule depuis la serie PAR MANCHE publiee ([SeriesByRound]), dont les valeurs
 // repartent de zero a chaque manche comme le compteur du jeu.
-func deathProgressionsByRound(recs []types.StatRecord) map[int]map[int][]int {
+func deathProgressionsByRound(recs []types.StatRecord, cons *ReplisALaConsultation) map[int]map[int][]int {
 	parManche := map[int]map[int][]types.ScorePoint{}
-	for slot, byRound := range SeriesByRound(recs, DeathsComponent, false) {
+	for slot, byRound := range SeriesByRound(recs, DeathsComponent, false, cons) {
 		for round, pts := range byRound {
 			if parManche[round] == nil {
 				parManche[round] = map[int][]types.ScorePoint{}

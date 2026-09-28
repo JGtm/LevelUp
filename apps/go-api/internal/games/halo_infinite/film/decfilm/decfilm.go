@@ -343,8 +343,8 @@ type NamedEvent = objectives.NamedEvent
 func NamedEvents(film *source.Film, objectiveType string) []objectives.NamedEvent {
 	return objectives.NamedEvents(film, objectiveType)
 }
-func NamedEventsFrom(recs []types.StatRecord, objectiveType string) []objectives.NamedEvent {
-	return objectives.NamedEventsFrom(recs, objectiveType)
+func NamedEventsFrom(recs []types.StatRecord, objectiveType string, cons *objectives.ReplisALaConsultation) []objectives.NamedEvent {
+	return objectives.NamedEventsFrom(recs, objectiveType, cons)
 }
 func NetFlagGrabs(tracks []types.FlagTrack, window time.Duration) objectives.FlagGrabsNetResult {
 	return objectives.NetFlagGrabs(tracks, window)
@@ -365,8 +365,8 @@ const OriginRoundResidue = objectives.OriginRoundResidue
 type PlayerLine = types.PlayerLine
 
 func RealRounds(recs []types.StatRecord) map[int]bool { return objectives.RealRounds(recs) }
-func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant) objectives.RoundIdentity {
-	return objectives.ResolveRoundIdentity(recs, deaths)
+func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant, cons *objectives.ReplisALaConsultation) objectives.RoundIdentity {
+	return objectives.ResolveRoundIdentity(recs, deaths, cons)
 }
 
 const RoleScorer = objectives.RoleScorer
@@ -376,11 +376,11 @@ func RosterFitsStatborg(n int) bool { return objectives.RosterFitsStatborg(n) }
 type RoundIdentity = objectives.RoundIdentity
 type ScorePoint = types.ScorePoint
 
-func SeriesByRound(recs []types.StatRecord, c objectives.StatComponent, teams bool) map[int]map[int][]types.ScorePoint {
-	return objectives.SeriesByRound(recs, c, teams)
+func SeriesByRound(recs []types.StatRecord, c objectives.StatComponent, teams bool, cons *objectives.ReplisALaConsultation) map[int]map[int][]types.ScorePoint {
+	return objectives.SeriesByRound(recs, c, teams, cons)
 }
-func SeriesTotal(recs []types.StatRecord, c objectives.StatComponent, teams bool) map[int][]types.ScorePoint {
-	return objectives.SeriesTotal(recs, c, teams)
+func SeriesTotal(recs []types.StatRecord, c objectives.StatComponent, teams bool, cons *objectives.ReplisALaConsultation) map[int][]types.ScorePoint {
+	return objectives.SeriesTotal(recs, c, teams, cons)
 }
 func SlotIdentityByDeaths(recs []types.StatRecord, deaths []types.DeathInstant) map[int]string {
 	return objectives.SlotIdentityByDeaths(recs, deaths)
@@ -405,6 +405,10 @@ func StatRecordsAvecReplis(ctx context.Context, film *source.Film, matchID strin
 }
 
 type ComptesDesReplisObjectifs = objectives.ComptesDesReplis
+
+// ReplisALaConsultation : l enregistreur des replis a la consultation d un document (lot J8.7-bis,
+// 2026-09-28) — la cuisson le cree et le passe a ses lectures et aux options du rejeu.
+type ReplisALaConsultation = objectives.ReplisALaConsultation
 
 type StatValue = types.StatValue
 

@@ -127,10 +127,14 @@ func (c StatComponent) key() statSlotKey {
 // des pas que voit [countsOf] sur la suite cumulee, puisque le decalage d'une manche vaut le
 // total de la precedente (le pas de sa premiere emission y vaut donc sa valeur brute). Les deux
 // lectures jugent le meme pas.
-func SeriesByRound(recs []types.StatRecord, c StatComponent, teams bool) map[int]map[int][]types.ScorePoint {
+//
+// `cons` : l enregistreur des replis a la consultation du document ([ReplisALaConsultation], lot
+// J8.7-bis) ; nil hors production.
+func SeriesByRound(recs []types.StatRecord, c StatComponent, teams bool,
+	cons *ReplisALaConsultation) map[int]map[int][]types.ScorePoint {
 	real := RealRounds(recs)
 	out := map[int]map[int][]types.ScorePoint{}
-	for slot, byRound := range rawSeriesByRound(recs, c.key(), teams) {
+	for slot, byRound := range rawSeriesByRound(recs, c.key(), teams, cons) {
 		for round, pts := range byRound {
 			if !real[round] {
 				continue
@@ -161,8 +165,11 @@ func SeriesByRound(recs []types.StatRecord, c StatComponent, teams bool) map[int
 // UN COMPTEUR `Unitary` PASSE PAR [boundedSeries] (correctif 6.R), sur la suite CUMULEE et donc
 // sur les memes pas que [countsOf] : le total publie vaut exactement le compte que la cle
 // d'appariement a lu.
-func SeriesTotal(recs []types.StatRecord, c StatComponent, teams bool) map[int][]types.ScorePoint {
-	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams), RealRounds(recs))
+//
+// `cons` : l enregistreur des replis a la consultation du document ([ReplisALaConsultation], lot
+// J8.7-bis) ; nil hors production.
+func SeriesTotal(recs []types.StatRecord, c StatComponent, teams bool, cons *ReplisALaConsultation) map[int][]types.ScorePoint {
+	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams, cons), RealRounds(recs))
 	for slot, pts := range out {
 		if c.Unitary {
 			pts = boundedSeries(pts)

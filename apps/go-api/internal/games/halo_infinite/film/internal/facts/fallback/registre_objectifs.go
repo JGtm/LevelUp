@@ -10,20 +10,14 @@ package fallback
 // ici et leur compteur n'est pas câblé depuis ce paquet. DEPUIS LE LOT J8.7 (2026-09-27, décision 1
 // du superviseur), ils se comptent EN DONNÉES dans ce que le paquet rend déjà — le balayage du
 // statborg et le résolveur d'identité par manche (`objectives.ComptesDesReplis`) — et la table de
-// `replay` les verse ([siteDeVersement]). Deux entrées font exception, écrites dans leur
-// CibleComptage (`comptageALaConsultation`).
+// `replay` les verse ([siteDeVersement]). Les deux qui se déclenchent à la CONSULTATION
+// (`repli_emission_hors_domaine_jetee`, `repli_instant_sur_la_premiere_manche`) se comptent depuis le
+// lot J8.7-bis (2026-09-28) par ÉVÉNEMENT DISTINCT, dans l enregistreur partagé du document
+// (`objectives.ReplisALaConsultation`), versé par la même table.
 
 const (
 	pkgObjectiveEvents = "internal/games/halo_infinite/film/internal/facts/objectives/"
 	pkgReplaybuild     = "internal/replaybuild/"
-	// comptageALaConsultation : la raison, ecrite une fois, des DEUX replis d `objectives` que le lot
-	// J8.7 (2026-09-27) n a PAS cables — ils se declenchent a la CONSULTATION, dans une fonction pure
-	// que chaque calque de `replay` appelle sur sa propre copie, et aucun resultat unique ne les porte
-	// en donnees (decision 1 du superviseur). Cf. `objectives/replis_des_objectifs.go`.
-	comptageALaConsultation = "DECISION D ARCHITECTURE ATTENDUE (lot J8.7, 2026-09-27) : le repli se declenche A LA CONSULTATION, " +
-		"dans une fonction pure appelee par une dizaine de calques de replay sur leurs propres copies ; aucun resultat " +
-		"unique ne le porte en donnees. Le compter demande un port injecte a chaque calque, ou un parametre de comptage " +
-		"sur les entrees publiques qui l atteignent — arbitrage du superviseur"
 )
 
 var registreObjectifsEtConstruction = []Repli{
@@ -96,18 +90,24 @@ var registreObjectifsEtConstruction = []Repli{
 	{
 		Nom:       "repli_emission_hors_domaine_jetee",
 		Fait:      "quelles emissions d'un compteur nomme entrent dans la serie, ET depuis le lot J8.5 (2026-09-27) dans la progression du compteur de morts que le pont par instants de mort deroule",
-		Mecanisme: "valeur negative, ou canal B hors domaine du score de mode : l'emission est jetee par un `continue`",
+		Mecanisme: "valeur negative, ou canal B hors domaine du score de mode : l emission est jetee par un `continue`, dans les DEUX marches des series (par emplacement `rawSeriesByRound`, par table `rawSeriesByKey`, meme filtre `emissionHorsDomaine`) ; compte = emissions DISTINCTES (serie, instant) consultees par le document, quel que soit le nombre de lectures (lot J8.7-bis, 2026-09-28)",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgObjectiveEvents + "named_series.go",
-			Ancre:   "if val < 0 {",
-		}},
+			Ancre:   "func emissionHorsDomaine(key statSlotKey, v types.StatValue, val int64) bool {",
+		}, {
+			// LES DEUX MARCHES (`rawSeriesByRound`, `rawSeriesByKey`) notent la meme ligne.
+			Fichier: pkgObjectiveEvents + "named_series.go",
+			Ancre:   "cons.noterEmissionJetee(key, r)",
+		}, {
+			Fichier: pkgObjectiveEvents + "replis_a_la_consultation.go",
+			Ancre:   "EmissionsHorsDomaineJetees:  len(r.emissions),",
+		}, siteDeVersement("NomEmissionHorsDomaineJetee")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "la conversion des series nommees ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "emissions jetees comptees par cause ; une emission negative est un defaut d'alignement, pas une donnee a filtrer",
-		CompteurBranche: false,
-		CibleComptage:   comptageALaConsultation,
+		CompteurBranche: true,
 	},
 	// `repli_manche_du_slot_sautee` (pose le 2026-09-13) A QUITTE LE REGISTRE AU LOT J8.6 DU PLAN DE
 	// SUITE D AUDIT (2026-09-27, constat FO-4), AVEC SON CODE : la branche `len(kept) == 0` de
@@ -202,16 +202,22 @@ var registreObjectifsEtConstruction = []Repli{
 		Sites: []Site{{
 			Fichier: pkgObjectiveEvents + "slotidentity_rounds.go",
 			Ancre:   "round := ri.starts[0].round",
-		}},
+		}, {
+			Fichier: pkgObjectiveEvents + "slotidentity_rounds.go",
+			Ancre:   "ri.consultations.noterInstantAvantLesManches(timeMS)",
+		}, {
+			Fichier: pkgObjectiveEvents + "replis_a_la_consultation.go",
+			Ancre:   "InstantsSurLaPremiereManche: len(r.instants),",
+		}, siteDeVersement("NomInstantSurLaPremiereManche")},
 		DatePose: dateAudit0E,
 		// RECIBLE PAR LE LOT 1.9.11 (2026-09-16) : ce plancher est dans une LECTURE ponctuelle
-		// (`RoundIdentity.roundOfTime`), pas dans la resolution des manches. Le compter
-		// demanderait un compteur par APPEL, donc un parametre de plus a `buildPlayerScores`,
-		// qui en porte deja cinq — le plafond du depot. Il suit la chaine des bornes.
+		// (`RoundIdentity.roundOfTime`), pas dans la resolution des manches. Il suit la chaine des
+		// bornes. COMPTE DEPUIS LE LOT J8.7-bis (2026-09-28) : par instant DISTINCT, dans l enregistreur
+		// du document que le resolveur et ses copies partagent — pas par appel (le compte ne depend ni
+		// du nombre de calques qui lisent l instant, ni de leur ordre).
 		CibleRetrait:    "la chaine des bornes de manche lue au consensus ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 instant anterieur a la premiere manche une fois les bornes lues au consensus",
-		CompteurBranche: false,
-		CibleComptage:   comptageALaConsultation,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_famille_objectif_vide",

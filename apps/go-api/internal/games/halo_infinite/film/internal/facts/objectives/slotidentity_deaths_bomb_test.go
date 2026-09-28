@@ -39,7 +39,7 @@ func TestUneLectureAberranteNeDerouleRien(t *testing.T) {
 	var avant, apres runtime.MemStats
 	runtime.GC()
 	runtime.ReadMemStats(&avant)
-	got := deathProgressions(recs)
+	got := deathProgressions(recs, nil)
 	runtime.ReadMemStats(&apres)
 
 	if n := len(got[10]); n != 3 {
@@ -64,7 +64,7 @@ func TestUneProgressionNormaleSeDerouleEncore(t *testing.T) {
 		bombRecord(10, 1000, 1), bombRecord(10, 2000, 2), bombRecord(10, 5000, 4),
 		bombRecord(12, 1500, 1),
 	}
-	got := deathProgressions(recs)
+	got := deathProgressions(recs, nil)
 	if want := []int{1000, 2000, 5000, 5000}; len(got[10]) != len(want) {
 		t.Fatalf("slot 10 : %v, attendu %v — une progression ordinaire doit se derouler", got[10], want)
 	}
@@ -87,12 +87,12 @@ func TestUneProgressionNormaleSeDerouleEncore(t *testing.T) {
 // deroule [SeriesTotal], dont la borne porte sur le PAS ([boundSteps], `maxUnrollPerStep`) et non
 // plus sur la valeur (`maxDeathsPerSlot`, 1 000, retire avec les gardes propres du pont).
 func TestLePlafondEstAuBordEtPasEnDessous(t *testing.T) {
-	got := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxUnrollPerStep)})
+	got := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxUnrollPerStep)}, nil)
 	if n := len(got[10]); n != maxUnrollPerStep {
 		t.Errorf("%d instants pour un pas a la valeur du plafond, attendu %d — le plafond "+
 			"doit etre INCLUS", n, maxUnrollPerStep)
 	}
-	auDela := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxUnrollPerStep+1)})
+	auDela := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxUnrollPerStep+1)}, nil)
 	if n := len(auDela[10]); n != 0 {
 		t.Errorf("%d instants pour un pas JUSTE au-dessus du plafond, attendu 0", n)
 	}

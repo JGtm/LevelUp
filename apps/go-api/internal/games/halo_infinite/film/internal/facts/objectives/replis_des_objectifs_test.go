@@ -64,11 +64,11 @@ func TestLeBalayageDuStatborgCompteSesAbandons(t *testing.T) {
 // debut de manche au minimum — chacun au resolveur qui en est ne.
 func TestLeResolveurPorteLesComptesDeSaConstruction(t *testing.T) {
 	recs, deaths, _ := filmUneMancheDeuxMortsFixture()
-	if got := ResolveRoundIdentity(recs, nil).ComptesDesReplis().TablesIdentiteVides; got != 1 {
+	if got := ResolveRoundIdentity(recs, nil, nil).ComptesDesReplis().TablesIdentiteVides; got != 1 {
 		t.Errorf("pont sans mort : %d table(s) vide(s) comptee(s), attendu 1", got)
 	}
 	avecAnonyme := append(append([]types.DeathInstant(nil), deaths...), types.DeathInstant{TimeMS: 1})
-	if got := ResolveRoundIdentity(recs, avecAnonyme).ComptesDesReplis().MortsSansXUID; got != 1 {
+	if got := ResolveRoundIdentity(recs, avecAnonyme, nil).ComptesDesReplis().MortsSansXUID; got != 1 {
 		t.Errorf("mort sans xuid : %d comptee(s), attendu 1", got)
 	}
 	var c ComptesDesReplis
@@ -87,7 +87,7 @@ func TestLesComptesSuiventLaCompletionDuPont(t *testing.T) {
 	// TestCompletedByLinesNAttribueJamaisUnXUIDDejaPris).
 	lines := []types.PlayerLine{{XUID: "D", Kills: 7, Deaths: 2, Assists: 1}}
 	_, deaths, _ := filmUneMancheDeuxMortsFixture()
-	complete := ResolveRoundIdentity(recs, deaths).CompletedByLines(recs, lines)
+	complete := ResolveRoundIdentity(recs, deaths, nil).CompletedByLines(recs, lines)
 	if got := complete.ComptesDesReplis().SlotsAbandonnes; got != 1 {
 		t.Fatalf("attribution abandonnee au premier arrive : %d comptee(s), attendu 1", got)
 	}

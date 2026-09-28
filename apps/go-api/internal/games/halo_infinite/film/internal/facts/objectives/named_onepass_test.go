@@ -29,7 +29,7 @@ func refNamedEventsFrom(recs []types.StatRecord, objectiveType string) []NamedEv
 		if slot.Redundant {
 			continue
 		}
-		for entity, pts := range seriesBySlot(recs, key) {
+		for entity, pts := range seriesBySlot(recs, key, nil) {
 			for _, t := range incrementTimes(pts, key, b) {
 				out = append(out, NamedEvent{
 					TimeMS: t, Slot: entity, Stat: slot.Stat, Comp: key.Comp, Side: key.Side,
@@ -94,14 +94,14 @@ func TestNamedEventsFromOnePassMatchesReference(t *testing.T) {
 		ObjectiveTypeFlag, ObjectiveTypeZone, ObjectiveTypeVip, ObjectiveTypeBomb, "koth",
 	} {
 		want := refNamedEventsFrom(recs, mode)
-		got := NamedEventsFrom(recs, mode)
+		got := NamedEventsFrom(recs, mode, nil)
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("mode %s : %d evenements, la reference en donne %d\n got=%v\nwant=%v",
 				mode, len(got), len(want), got, want)
 		}
 	}
 	// Le corpus doit reellement produire des evenements, sinon le test ne prouve rien.
-	if n := len(NamedEventsFrom(recs, ObjectiveTypeFlag)); n == 0 {
+	if n := len(NamedEventsFrom(recs, ObjectiveTypeFlag, nil)); n == 0 {
 		t.Fatal("corpus vide d'evenements : le differentiel serait vacant")
 	}
 }
