@@ -959,7 +959,7 @@ consigne à son rapport : ce site entre dans J6.
       prouvée ; GA2-4 tranché par J6.1 ; GA2-5 aligné sur `absAxisWFor` ; `ti=38 i18` traité avec la
       fermeture d'image-clé `ti=38` du golden comme garde (aucune baisse) ; test en table des sites
       et de leurs immédiats (ratchet).
-- [x] J6.4 `grammar.Rev` monté ; G-corpus : rejets en baisse (`bfecd02b`), `ti=21` lu en entier
+- [ ] J6.4 (ROUVERT le 2026-09-28 : baisses non expliquées trouvées par la régénération des entrées figées, lot J6-bis, §9) `grammar.Rev` monté ; G-corpus : rejets en baisse (`bfecd02b`), `ti=21` lu en entier
       sur les cinq bobines, fermeture d'image-clé sans baisse, zéro perte ; carte de fermeture
       (J4.0) rejouée : delta par vue et par archétype contre la référence, golden
       `frame_closure.golden` régénéré en hausse seulement.
@@ -1292,6 +1292,16 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
 23. (2026-09-27, J10 et J7) Énumération périmée dans un test d'isolement ; commentaire de
     `calibrate.go` qui décrit l'ancien comportement ; texte du registre des replis qui cite des
     comptes d'avant J8 : J12.5 (documentation), sans effet de sortie.
+24. (2026-09-28, J11.0) `TestGoldenInputsFidelite` rouge depuis `a9fa54784` (21/09, AVANT le plan,
+    présent sur `feat/v75`) : le codec des faits ne transportait pas cinq compteurs de
+    `MovementStateStats` (un document rejoué depuis les faits perdait `jumpEpisodes`/`jumpsDerived`) ;
+    TRAITÉ parce qu'il bloque un gate du plan (`56edb6c8b`, blob v28). Le test de couverture du codec
+    ne voyait pas les feuilles perdues : lot « codec des faits » (inventaire exhaustif, preuve S8 sur
+    20 films).
+25. (2026-09-28, J11.0) Paquet `grammar` au-delà du délai CI de 900 s sous couverture (`feat/v75`
+    déjà à 901 s en local) : 77 % du temps dans la recherche d'ancres d'image-clé (lecture de 32 bits
+    à chaque position, refaite plusieurs fois par film). Lot « perf grammar » (fenêtre glissante,
+    neutralité prouvée) ; le workflow CI ne change pas.
 
 ---
 
@@ -1553,3 +1563,16 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   disparaît ; la bombe reçoit son propre nom de repli si la porte partagée la compte sous le
   nom du crâne ; `rawSeriesByKey` devient un site du repli d'émission hors domaine. Schéma 76
   non publié : régénération à révision constante.
+- 2026-09-28 : **J11.0 commencé**. `feat/v75` fusionné dans la branche (`65e0fd254`, conflit du
+  seul thought_log) ; six gates verts sur l'arbre fusionné (deux paquets sensibles à la charge,
+  verts seuls). **J8.7-bis** fusionné (`511a3d964`) : J8.7 clos, liste des replis en attente
+  vide, bombe comptée sous son nom ; G-equiv : seul `coverage.fallbacks` change (14 films
+  gagnent `repli_emission_hors_domaine_jetee`, 1 à 40), façade 187. **CI rouge** : paquet
+  `grammar` au-delà de 900 s (§8.25) → lot perf, décision superviseur : optimiser la production
+  (neutralité prouvée), pas le workflow. **`TestGoldenInputsFidelite`** rouge depuis avant le
+  plan (§8.24) : corrigé (`56edb6c8b`) ; la régénération des entrées figées révèle des BAISSES
+  de lecture attribuées à J6 non expliquées (tir continu −9 sur `11de8353`, −2 sur `fb1a1a72`,
+  une liste d'événements non localisée de plus, `birthLoadouts.closed` −1 sur deux films) :
+  **J6.4 rouvert**, lot J6-bis (règle utilisateur « pas de repli, lecture affaiblie = cause à
+  trouver »). Les entrées figées de `56edb6c8b` portent ces baisses le temps du lot : elles
+  seront régénérées par J6-bis. L'utilisateur garde J12 en entier (2026-09-28).
