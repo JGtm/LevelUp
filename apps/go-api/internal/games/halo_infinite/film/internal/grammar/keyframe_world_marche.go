@@ -7,6 +7,11 @@ package grammar
 // ([FilmContext.MarcheDImageCle], qui refuse l'élu qu'un record prouvé contredit) et celle des
 // INSTRUMENTS ([WalkKeyframeWorld], sans preuve).
 
+import (
+	"slices"
+	"sync"
+)
+
 // MarcheDePayload est ce que la marche d'ancres rend pour UN payload d'image-clé.
 type MarcheDePayload struct {
 	// Records : les ancres, dans l'ordre de la marche (bits et slots croissants).
@@ -26,6 +31,42 @@ type MarcheDePayload struct {
 // l'élu qu'un record prouvé par la grammaire du film contredit. Sa valeur zéro marche SANS preuve.
 type MarcheDImageCle struct {
 	preuve *PreuveDImageCle
+	// memoire : les marches deja faites de CE film ([FilmContext.MarcheDImageCle]) ; nil pour la
+	// valeur zero, qui ne se souvient de rien.
+	memoire *memoireDesMarches
+}
+
+// memoireDesMarches garde, pour UN film, la marche de chaque payload d image-cle deja marche.
+//
+// POURQUOI : une quinzaine de balayages d un meme film marchent les MEMES payloads (table
+// anticipee, liaison au monde, generations vivantes, equipes, fermeture...) ; la marche est une
+// fonction pure des octets du payload et de la preuve du film, tous deux fixes pour un contexte.
+// Elle est donc faite UNE fois par payload et par contexte (2026-09-28, temps CI du paquet).
+//
+// LA CLE EST L IDENTITE DU PAYLOAD (adresse de son premier octet, longueur) : un payload est une
+// sous-tranche du chunk du film ([source.Film]), jamais une copie, et la cle retient le tableau
+// vivant — une adresse ne peut pas etre reutilisee par un autre tampon tant qu elle est gardee.
+// Un tampon qui n est pas celui du film (payload tronque, fabrique) a une autre cle. Le memo vit
+// et meurt avec son [FilmContext] : il ne traverse jamais deux films. Chaque lecture rend une
+// COPIE (un appelant trie ses records en place, cf. [keyframeBornesDe]).
+//
+// PRECONDITION, deja celle du contexte : les octets du film ne changent pas sous un contexte qui
+// les a lus (les tests qui reecrivent un film en memoire construisent un contexte neuf).
+type memoireDesMarches struct {
+	mu         sync.Mutex
+	preuve     *PreuveDImageCle
+	parPayload map[clePayload]MarcheDePayload
+}
+
+// clePayload : l identite d un payload (cf. [memoireDesMarches]).
+type clePayload struct {
+	debut *byte
+	n     int
+}
+
+// copie rend une marche dont les tranches ne sont partagees avec personne.
+func (mp MarcheDePayload) copie() MarcheDePayload {
+	return MarcheDePayload{Records: slices.Clone(mp.Records), Ecartes: slices.Clone(mp.Ecartes), Stats: mp.Stats}
 }
 
 // Records rend les records d'un payload d'image-clé.
@@ -41,8 +82,29 @@ func (m MarcheDImageCle) RecordsStats(pay []byte) ([]KeyframeRec, KeyframeWalkSt
 
 // Marcher rend tout ce que la marche d'un payload d'image-clé a lu et décidé.
 func (m MarcheDImageCle) Marcher(pay []byte) MarcheDePayload {
-	return marcherLaTable(&kfRecherche{buf: pay, total: len(pay) * 8, maxWin: kfScanFenetreBits,
+	mem := m.memoire
+	if len(pay) == 0 {
+		mem = nil
+	}
+	var cle clePayload
+	if mem != nil {
+		cle = clePayload{debut: &pay[0], n: len(pay)}
+		mem.mu.Lock()
+		mp, ok := mem.parPayload[cle]
+		mem.mu.Unlock()
+		if ok {
+			return mp.copie()
+		}
+	}
+	mp := marcherLaTable(&kfRecherche{buf: pay, total: len(pay) * 8, maxWin: kfScanFenetreBits,
 		preuve: m.preuve})
+	if mem != nil {
+		mem.mu.Lock()
+		mem.parPayload[cle] = mp
+		mem.mu.Unlock()
+		return mp.copie()
+	}
+	return mp
 }
 
 // WalkKeyframeWorld porte la logique durcie de walkOffline (cmd/tmp_kfworldpos) : il parcourt

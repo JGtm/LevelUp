@@ -151,6 +151,8 @@ type FilmContext struct {
 	obs *Observation
 	// replis : le RAPPORT des replis de `grammar` et `profile` sur ce film (replis_du_film.go, lot J8.7).
 	replis replisDuContexte
+	// marches : la marche d ancres de chaque payload d image-cle, faite une fois ([memoireDesMarches]).
+	marches *memoireDesMarches
 }
 
 // Observation rend l observateur de ce contexte. Jamais nil.
