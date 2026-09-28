@@ -1302,6 +1302,10 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
     déjà à 901 s en local) : 77 % du temps dans la recherche d'ancres d'image-clé (lecture de 32 bits
     à chaque position, refaite plusieurs fois par film). Lot « perf grammar » (fenêtre glissante,
     neutralité prouvée) ; le workflow CI ne change pas.
+26. (2026-09-28, J6-bis) Sur les builds antérieurs à HI_1_12_0, les dotations de naissance
+    « fermées » sont fausses à 100 % (0/9 et 0/7 concordent avec la première image-clé de la vie)
+    mais comptées dans `birthLoadouts.closed` et publiées : hors périmètre du plan (non introduit
+    par lui), à instruire dans un lot dédié.
 
 ---
 
@@ -1576,3 +1580,14 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   **J6.4 rouvert**, lot J6-bis (règle utilisateur « pas de repli, lecture affaiblie = cause à
   trouver »). Les entrées figées de `56edb6c8b` portent ces baisses le temps du lot : elles
   seront régénérées par J6-bis. L'utilisateur garde J12 en entier (2026-09-28).
+- 2026-09-28 : **perf grammar** fusionnée (`3a4c5a9da`) : `grammar` 1 334 s → 370 s sous
+  couverture, 61 étapes identiques à l'octet sur 20 films ; CI de `3a4c5a9da` VERTE au niveau job.
+  **Codec des faits** fusionné (`4e2af8ac7`) : aucune feuille perdue n'est lue par l'assemblage,
+  test durci feuille à feuille, S8 20/20 à l'octet. **J6-bis** fusionné (`876312171`) : chaque
+  baisse localisée au paquet ; quatre exceptions datées de plus au format de J6 (ti=13 en record
+  NEW, flock-destination `FUN_140fb8af0`, tacmap-poiicon, lieu de réapparition ti=5 i12) ;
+  dotations de naissance « perdues » = faux supprimés ; plus aucune baisse contre la référence
+  J4.0.5 sur les 7 films touchés, au prix de fermetures gagnées par J6 et rendues (chiffrées
+  dans chaque exception). Piste de cause trouvée par J6-bis (porte du record NEW lue par le jeu
+  seulement si le masque `vtable[0x30]` est non vide ; le Go la lit toujours) → **lot J6-ter**
+  (décision superviseur, règle « la cause, pas le pis-aller »). J6.4 reste ouvert jusqu'à J6-ter.
