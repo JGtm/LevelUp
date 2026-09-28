@@ -562,6 +562,14 @@ Périmètre : migration de la table, persister, câblage du collecteur, révisio
   `killsource_placement_matchs_sans_portee`). NON FAIT : l'appel de production (aucun appelant :
   en l'état, toute ligne s'écrit `radar_m`/`beyond_ms` NULL) et le test de câblage par AST.
   Décision à prendre (superviseur/utilisateur), voir le journal V2.
+  → **Tranché par le superviseur le 2026-09-29 (décision technique, lot V2b ci-dessous)** : voie (a).
+  La portée voyage par `CaptureDepuisCatalogue`, le chemin commun aux trois lieux de naissance du
+  collecteur (il y charge déjà libellés et objectifs), qui charge `regulation.toml` du titre par le
+  MÊME chargeur que `api/server_apiv1.go:1233-1238` ; la résolution variante → mètres est
+  CENTRALISÉE (règle 6 : troisième site) dans un seul helper de `games/mappings`, les deux copies
+  existantes (`TacticalService.rayonsParMatch`, `rayonParMatchDuScope`) y migrent, et un garde-rail
+  interdit toute autre résolution. Le test de câblage porte sur l'application de la capture au
+  collecteur, pas sur `api/wire`.
 - [x] V2.6 `PlacementRev` + `matchsAJour` étendu (V12) ; `conditionBacklog` du post-sync inchangé,
   avec un test qui le vérifie.
   → `killcollector.PlacementRev = "placement-2026-09-29-v1"` ; `IsolationDecoderRev`, `decfilm.Rev`,
@@ -708,6 +716,26 @@ fois) :
   de son seuil avant le lot (§7) ; paquet rejoué entier : ok.
 - `make go-api-lint` (golangci-lint présent, `--new-from-merge-base=origin/main`) : 0 issues.
 - `go test ./internal/archlint/...` : ok. `gofmt -l internal cmd` : vide.
+
+### V2b — Corrections du lot V2 (Go, superviseur → exécuteur) · moyen
+
+Décisions du superviseur du 2026-09-29, sur le rapport V2 vérifié sur pièces :
+
+- [ ] V2b.1 **Portée du radar par la capture** (V2.5 tranchée, voie (a)) :
+  - helper unique dans `games/mappings` (ex. `PorteeDuRadar(table map[string]int, variante string) (float64, bool)` : clé nettoyée par `strings.TrimSpace`, valeur > 0) ;
+  - `TacticalService.rayonsParMatch` et `teammates.rayonParMatchDuScope` l'appellent (comportement inchangé, leurs tests verts sans retouche) ;
+  - garde-rail (test grep, auto-testé sur les deux anciennes copies) : aucune autre lecture de la table des portées par variante hors du helper ;
+  - `CaptureDepuisCatalogue` charge `regulation.toml` du titre par le même chargeur que `api/server_apiv1.go:1233-1238` (best-effort journalisé, comme libellés et objectifs) et l'application de la capture pose `AvecPorteeDuRadar` : les trois lieux de naissance du collecteur l'ont sans code de plus ;
+  - tests : la capture sur la configuration réelle du dépôt rend 18 m pour une variante d'Arène et 24 m pour une variante BTB ; un test qui échoue si l'application de la capture cesse de poser la portée ; variante absente → `radar_m` NULL (déjà couvert en V2, vérifier).
+- [ ] V2b.2 **Rattrapage convergent** : un match au pont non publiable écrit quand même ses lignes
+  (V1 amendée) — chaque instant de la vie compte en `unplaced` (les positions ne s'attribuent à
+  personne : le joueur n'est pas situé), `measured_ms = 0`, médiane NULL, frags rattachés comme
+  ailleurs ; le compteur `killsource_placement_pont_non_publiable` reste. `matchsAJour` converge
+  alors sans règle de plus. Test de la règle (rouge sous mutation) et test de convergence de
+  `matchsAJour` sur ce cas.
+- [ ] V2b.3 Gate du lot V2 rejoué en entier (commandes du journal V2), dont le témoin V2.7 : les
+  lignes du 22/09 portent désormais `radar_m` (18 m en Arène).
+- Gate : celui de V2.
 
 ### V3 — Lecture et contrat (Go) · moyen
 
