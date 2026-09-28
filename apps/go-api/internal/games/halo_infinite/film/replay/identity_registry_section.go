@@ -135,7 +135,7 @@ func buildIdentitySection(r IdentityRegistry, in IdentityInput) IdentitySection 
 	s := IdentitySection{
 		Players:       identityPlayers(r, in),
 		BipedSlots:    identityBipedSlots(r, in.Clock),
-		StatborgSlots: identityStatborgSlots(in),
+		StatborgSlots: identityStatborgSlots(in, r.CalageSiConnu()),
 	}
 	// LA VOIE DU RESIDU EST UN REPLI COMPTE (lot J8.4, constats FO-1 / RA2-4) : un couple nomme
 	// par elle est un couple que les instants de mort et la feuille n ont pas tranche.
@@ -297,7 +297,7 @@ func methodeDeNommage(nomPar string) canonical.LinkMethod {
 // LE DENOMINATEUR EST L'EMISSION, PAS LE NOMMAGE : un slot qui parle et qu'on ne sait pas
 // nommer est exactement ce que la couverture doit montrer. Le compter hors du total ferait
 // disparaitre le trou que le lot R4 a mesure (8 couples perdus sur 3 films).
-func identityStatborgSlots(in IdentityInput) []IdentityStatborgSlot {
+func identityStatborgSlots(in IdentityInput, calage *int64) []IdentityStatborgSlot {
 	id := in.Statborg.Identity
 	if !id.Resolved() || len(in.Statborg.Records) == 0 {
 		return nil
@@ -305,6 +305,11 @@ func identityStatborgSlots(in IdentityInput) []IdentityStatborgSlot {
 	var out []IdentityStatborgSlot
 	for _, round := range id.Rounds() {
 		for _, slot := range objectives.EmittingPlayerSlots(in.Statborg.Records, round) {
+			if occ := id.Occupations(round, slot); occ != nil {
+				// SIEGE RECYCLE (lot R1) : une ligne PAR OCCUPATION, bornee par le changement de siege.
+				out = append(out, lignesDesOccupations(slot, round, occ, in.Clock, calage)...)
+				continue
+			}
 			xuid := id.AtRound(round, slot)
 			lien := canonical.Link{From: 0, To: in.Clock.lastFrame()}
 			if xuid == "" {

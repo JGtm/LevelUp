@@ -118,6 +118,25 @@ type RoundIdentity struct {
 	// manche connue ; les completions y notent les emissions jetees des series qu elles lisent. Nil
 	// ([FlatRoundIdentity], outils) : rien n est note.
 	consultations *ReplisALaConsultation
+	// occupations : manche -> slot -> occupations d un siege RECYCLE (lot R1, cf.
+	// slotidentity_occupations.go). Un slot qui y figure repond PAR INSTANT ([RoundIdentity.At]) ;
+	// `byRound` garde son lien de manche entiere pour [RoundIdentity.AtRound]. Nil : aucun siege
+	// recycle.
+	occupations map[int]map[int][]Occupation
+}
+
+// roundOfInstant rend la manche qui repond pour un instant : l unique manche sans regarder le temps
+// (et sans rien noter), sinon celle que [RoundIdentity.roundOfTime] place. Faux : resolveur vide.
+func (ri RoundIdentity) roundOfInstant(timeMS int) (int, bool) {
+	if len(ri.byRound) == 0 {
+		return 0, false
+	}
+	if len(ri.byRound) == 1 {
+		for r := range ri.byRound {
+			return r, true
+		}
+	}
+	return ri.roundOfTime(timeMS), true
 }
 
 // roundStart associe une manche a son premier instant sur l'horloge des enregistrements.
@@ -146,7 +165,11 @@ func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant, 
 		origins[round] = o
 	}
 	starts := roundStartsOfCompte(recs, byRound, &replis)
-	return RoundIdentity{byRound: byRound, origins: origins, starts: starts, replis: replis, consultations: cons}
+	// LES SIEGES RECYCLES (lot R1) : un lien par occupation prouvee, sur le meme fil des morts (sans
+	// recompter ses replis : la resolution ci-dessus l a deja fait).
+	occupations := seatOccupations(recs, deathThreadByXUIDCompte(deaths, nil), byRound)
+	return RoundIdentity{byRound: byRound, origins: origins, starts: starts, replis: replis, consultations: cons,
+		occupations: occupations}
 }
 
 // FlatRoundIdentity fabrique un resolveur d'UNE seule manche a partir d'une table plate. Sert aux
@@ -220,15 +243,14 @@ func roundStartsOfCompte(recs []types.StatRecord, byRound map[int]map[int]string
 // At rend le xuid du slot A L'INSTANT donne (horloge des enregistrements / du match). L'instant
 // choisit la manche ; hors multi-manche, l'unique manche repond sans regarder le temps.
 func (ri RoundIdentity) At(slot, timeMS int) string {
-	if len(ri.byRound) == 0 {
+	round, ok := ri.roundOfInstant(timeMS)
+	if !ok {
 		return ""
 	}
-	if len(ri.byRound) == 1 {
-		for _, m := range ri.byRound {
-			return m[slot]
-		}
+	if occ := ri.occupations[round][slot]; occ != nil {
+		return occupantAt(occ, timeMS) // siege recycle : l occupant de L INSTANT (lot R1)
 	}
-	return ri.byRound[ri.roundOfTime(timeMS)][slot]
+	return ri.byRound[round][slot]
 }
 
 // CompletedByLines COMPLETE l'identite par manche avec le pont par TRIPLET
@@ -268,6 +290,14 @@ func (ri RoundIdentity) CompletedByLines(recs []types.StatRecord, lines []types.
 	if len(lines) == 0 || len(ri.byRound) != 1 {
 		return ri
 	}
+	// LES SIEGES RECYCLES APRES LES SLOTS ENTIERS (lot R1) : leur derniere occupation se nomme par le
+	// triplet de SON segment (cf. [RoundIdentity.withLastOccupantsByLines]).
+	return ri.completedByTriplet(recs, lines).withLastOccupantsByLines(recs, lines)
+}
+
+// completedByTriplet est le corps de [RoundIdentity.CompletedByLines] pour les liens de manche
+// entiere, inchange depuis le correctif du 2026-09-06.
+func (ri RoundIdentity) completedByTriplet(recs []types.StatRecord, lines []types.PlayerLine) RoundIdentity {
 	triplet := SlotIdentityFrom(recs, lines, ri.consultations)
 	if len(triplet) == 0 {
 		return ri
@@ -294,6 +324,10 @@ func (ri RoundIdentity) CompletedByLines(recs []types.StatRecord, lines []types.
 	abandonnes := 0 // `repli_slot_abandonne_au_premier_arrive` (lot J8.7) : un accord n en est pas un
 	for _, slot := range slots {
 		xuid := triplet[slot]
+		if ri.occupantAilleurs(round, slot, xuid) && fusion[slot] != xuid {
+			abandonnes++ // meme garde que ci-dessous (aucun xuid deux fois) : il occupe un siege recycle (lot R1)
+			continue
+		}
 		if prev, deja := fusion[slot]; deja || pris[xuid] {
 			if prev != xuid {
 				abandonnes++
@@ -306,7 +340,8 @@ func (ri RoundIdentity) CompletedByLines(recs []types.StatRecord, lines []types.
 	}
 	return RoundIdentity{byRound: map[int]map[int]string{round: fusion},
 		origins: map[int]map[int]string{round: origins}, starts: ri.starts,
-		replis: ri.replis.Plus(ComptesDesReplis{SlotsAbandonnes: abandonnes}), consultations: ri.consultations}
+		replis: ri.replis.Plus(ComptesDesReplis{SlotsAbandonnes: abandonnes}), consultations: ri.consultations,
+		occupations: ri.occupations}
 }
 
 // AtRound rend le xuid du slot POUR UNE MANCHE connue — la voie du porteur, qui itere deja les

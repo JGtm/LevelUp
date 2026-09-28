@@ -93,8 +93,8 @@ func (ri RoundIdentity) CompletedByElimination(recs []types.StatRecord, lines []
 		if !ok {
 			continue
 		}
-		if !residuConcorde(seg, out.byRound, lines, round, slot, xuid) {
-			continue
+		if !residuConcorde(seg, out.byRound, lines, round, slot, xuid) || out.occupantsDeManche(round)[xuid] {
+			continue // un occupant d un siege recycle ne se donne pas en plus a un autre slot (lot R1)
 		}
 		out.byRound[round][slot] = xuid
 		out.origins[round][slot] = OriginElimination
@@ -197,6 +197,7 @@ func (ri RoundIdentity) copieProfonde() RoundIdentity {
 		replis:  ri.replis,
 		// l enregistreur du document se PARTAGE (lot J8.7-bis) : la copie consulte ce que l original consulte.
 		consultations: ri.consultations,
+		occupations:   copieDesOccupations(ri.occupations),
 	}
 	for round, m := range ri.byRound {
 		copie := make(map[int]string, len(m))
