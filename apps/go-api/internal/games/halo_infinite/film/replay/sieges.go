@@ -202,6 +202,10 @@ type SeatCoverage struct {
 type entreesDesPlaces struct {
 	table grammar.FilmPlayerTable
 	fire  []FireEventRef
+	// tireurs : ALIGNE sur `fire`, l identite (`cleDePiste`) de la VIE qui a tire — la piste publiee
+	// que l unite du tir (reference 0) designe a son instant ([tireursDesTirs]) ; vide quand l unite ne
+	// designe aucune piste. Nil : aucune lecture de l unite (lot R2).
+	tireurs []string
 	// horloge porte la grille du document et le compteur de replis de la cuisson.
 	horloge replayClock
 }
@@ -229,7 +233,7 @@ func poserLesSieges(roster []RosterEntry, occ occupants, in entreesDesPlaces) Se
 		pp.poserLesOrigines()
 		pp.ouvrirAuCoupDEnvoi()
 		pp.estimerLaCapacite()
-		cov.PlacesTirs, cov.TirsContestes, cov.TirsIndexTronque = pp.lireLesPlacesDansLesTirs(in.fire)
+		cov.PlacesTirs, cov.TirsContestes, cov.TirsIndexTronque = pp.lireLesPlacesDansLesTirs(in.fire, in.tireurs)
 		cov.Apparies, cov.PlacesOuvertes, cov.SansPlace = pp.chainerLesArrivants()
 		in.horloge.fb.DeclencheN(fallback.NomPlaceDuRemplacantParChainageDEquipe, cov.Apparies)
 		in.horloge.fb.DeclencheN(fallback.NomPlaceOuverteSousLaCapaciteEstimee, cov.PlacesOuvertes)

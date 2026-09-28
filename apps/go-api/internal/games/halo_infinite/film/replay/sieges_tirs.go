@@ -25,7 +25,12 @@ package replay
 // reste pour un film qui porterait un index au-dela de la largeur lue. Les bots n'ecrivent aucun
 // tir long (sonde P4) : leur place passe par le chainage.
 
-import "sort"
+import (
+	"log/slog"
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+)
 
 // placesLisiblesParLesTirs : le nombre de places que l'index de tireur persiste distingue — 1 << 5,
 // la largeur de `grammar.FireEvent.FilmIndex` (cf. l'en-tete). Ce n'est pas un seuil mesure : c'est
@@ -34,7 +39,7 @@ const placesLisiblesParLesTirs = 1 << 5
 
 // lireLesPlacesDansLesTirs : la LECTURE `tirs` (cf. l'en-tete). Rend les places lues, les arrivants
 // contestes, et si la lecture s'est abstenue faute d'un index de tireur assez large.
-func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(fire []FireEventRef) (lues, contestes int, tronque bool) {
+func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(fire []FireEventRef, tireurs []string) (lues, contestes int, tronque bool) {
 	if pp.indexDeTireurTronque() {
 		return 0, 0, true
 	}
@@ -43,7 +48,8 @@ func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(fire []FireEventRef) (lues, co
 		return 0, 0, false
 	}
 	votes := map[int]map[int]int{} // entree -> place -> tirs
-	for _, f := range fire {
+	contredits := 0
+	for k, f := range fire {
 		p := pp.places[f.FilmIndex]
 		if p == nil {
 			continue
@@ -53,6 +59,11 @@ func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(fire []FireEventRef) (lues, co
 			continue
 		}
 		if c, ok := pp.arrivantUnique(candidats, p, fr); ok {
+			if k < len(tireurs) && tireurs[k] != "" && tireurs[k] != cleDeRoster(pp.roster[c]) {
+				// LA VIE QUI A TIRE EST LUE, ET CE N EST PAS L ARRIVANT DEDUIT (lot R2) : le tir ne vote pas.
+				contredits++
+				continue
+			}
 			if votes[c] == nil {
 				votes[c] = map[int]int{}
 			}
@@ -71,6 +82,10 @@ func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(fire []FireEventRef) (lues, co
 		}
 		pp.asseoir(c, p, SeatSourceTirs)
 		lues++
+	}
+	if contredits > 0 {
+		slog.Info("rejeu : tirs de place dont la vie qui tire n est pas l arrivant deduit — sans vote",
+			"tirs", contredits)
 	}
 	return lues, contestes, false
 }
@@ -219,4 +234,39 @@ func balayerLesBornes(bornes []borneDAffichage, plafond int) (maxi, au int) {
 		}
 	}
 	return maxi, au
+}
+
+// tireursDesTirs rend, ALIGNEE sur `fire`, l'identite de la VIE qui a tire chaque tir : la piste
+// publiee du slot que l'unite du tir (reference 0) designe, qui couvre la frame du tir (lot R2,
+// 2026-09-28, constat C6 du G-corpus J11.1). Vide quand l'unite est absente, n'est pas un bipede
+// publie (vehicule, piece montee) ou que la piste n'a pas d'identite.
+//
+// # POURQUOI (constat C6, `4f77afc1`)
+//
+// La lecture des places deduit l'auteur d'un tir « hors table » : l'unique arrivant present
+// d'equipe compatible. Depuis J5.2, `Truly Elusive` (index 1 de la table) a une presence tardive
+// (frame 10144), et la place 1 prend son equipe ; les 42 tirs d'index 1 des frames 1091 a 1833 —
+// tires par les corps de `King Kai` (slots 544 [814..1487] et 573 [1588..1834], equipe adverse,
+// donc ecarte par l'equipe) — votaient pour `E3D`, qui n'avait AUCUN corps avant la frame 1833.
+// `E3D` perdait sa place 14, lue par ses 19 tirs, en « tirs contestes ». L'unite du tir EST une
+// lecture de la vie qui tire : elle refuse la deduction qu'elle contredit.
+func tireursDesTirs(fire []grammar.FireEvent, tracks []Track, h replayClock) []string {
+	parSlot := map[uint32][]int{}
+	for i := range tracks {
+		parSlot[tracks[i].Slot] = append(parSlot[tracks[i].Slot], i)
+	}
+	out := make([]string, len(fire))
+	for k, e := range fire {
+		if !e.Unit.Present {
+			continue
+		}
+		fr := frameDInstant(h, e.TimestampUS)
+		for _, i := range parSlot[e.Unit.Slot] {
+			if tracks[i].StartFrame <= fr && fr <= tracks[i].EndFrame {
+				out[k] = cleDePiste(tracks[i])
+				break
+			}
+		}
+	}
+	return out
 }
