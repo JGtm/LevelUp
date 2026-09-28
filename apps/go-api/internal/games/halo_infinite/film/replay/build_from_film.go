@@ -77,6 +77,10 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 	if opt.Fallbacks == nil {
 		opt.Fallbacks = fallback.NouveauCompteur()
 	}
+	// L ENREGISTREUR DES REPLIS A LA CONSULTATION AUSSI (lot J8.7-bis) : le balayage lit deja les series
+	// nommees du drapeau (`drapeauBalayable`), et ses lectures tombent dans le meme ensemble que celles
+	// de l assemblage.
+	opt.ReplisHorsBalayage.Consultations = opt.enregistreurDesConsultations()
 	// L AVERTISSEMENT UNIQUE PAR FILM quand la version de format de `chunk_00` est inconnue de
 	// la table de profil (lot 1.9.1 ter) : ici, avant tout balayage, pour que la ligne PRECEDE
 	// les consequences qu elle explique. Les COMPTEURS, eux, tombent aux deux sites du repli.

@@ -46,7 +46,7 @@ func TestVipCrownRoundReassignedSlot(t *testing.T) {
 	}
 
 	// PAR MANCHE (production) : la selection de la manche 1 nomme B.
-	byRound := vipReconstructPeriods(events, objectives.ResolveRoundIdentity(recs, deaths), nil, 20000)
+	byRound := vipReconstructPeriods(events, objectives.ResolveRoundIdentity(recs, deaths, nil), nil, 20000)
 	if len(byRound) != 2 {
 		t.Fatalf("periodes par manche : %d, attendu 2", len(byRound))
 	}

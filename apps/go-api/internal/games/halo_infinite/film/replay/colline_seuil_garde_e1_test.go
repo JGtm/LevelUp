@@ -155,7 +155,7 @@ func TestCollineSeuilGardeE1(t *testing.T) {
 	ownerSlot := d.slot + 1
 
 	recs := objectives.StatRecords(p2aBobine(t, dir))
-	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true)
+	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true, nil)
 	slots := d2ScoreSlots(score)
 	if len(slots) != 2 {
 		t.Logf("ECARTE   %s (%s) : %d slot(s) d'equipe au score de mode — sans les deux camps, "+

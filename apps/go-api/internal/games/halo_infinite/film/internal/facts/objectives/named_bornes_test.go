@@ -189,7 +189,7 @@ func TestBudgetTraverseLesAppels(t *testing.T) {
 // exploser la memoire. C'est la propriete qui rend les quatre films-bombes cuisables.
 func TestNamedEventsFromNeutraliseUneBombe(t *testing.T) {
 	sain := onePassCorpus()
-	avant := NamedEventsFrom(sain, ObjectiveTypeFlag)
+	avant := NamedEventsFrom(sain, ObjectiveTypeFlag, nil)
 	if len(avant) == 0 {
 		t.Fatal("corpus sans evenement : le test serait vacant")
 	}
@@ -200,7 +200,7 @@ func TestNamedEventsFromNeutraliseUneBombe(t *testing.T) {
 		types.StatRecord{TimeMS: 9000, Slot: 12, Round: 0,
 			Comps: map[int]types.StatValue{20: {A: 0, B: 2163333610}}})
 
-	apres := NamedEventsFrom(bombe, ObjectiveTypeFlag)
+	apres := NamedEventsFrom(bombe, ObjectiveTypeFlag, nil)
 	if len(apres) != len(avant) {
 		t.Fatalf("%d evenements avec la bombe, %d sans — le deroulage aberrant a ete emis",
 			len(apres), len(avant))

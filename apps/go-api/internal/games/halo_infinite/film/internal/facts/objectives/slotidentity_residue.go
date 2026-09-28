@@ -58,7 +58,7 @@ func (ri RoundIdentity) CompletedByRoundResidue(recs []types.StatRecord, lines [
 	if len(lines) == 0 || len(ri.byRound) <= 1 {
 		return ri
 	}
-	seg := segmentsParManche(recs)
+	seg := segmentsParManche(recs, ri.consultations)
 	out := ri.copieProfonde()
 	for _, round := range ri.Rounds() {
 		for slot, xuid := range appariementsParResidu(seg, out.byRound, recs, lines, round) {

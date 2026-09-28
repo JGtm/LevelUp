@@ -122,7 +122,7 @@ func TestCollineProprietaireD2Ter(t *testing.T) {
 			"peut rien trancher", e.short, len(slotTeam))
 	}
 
-	perso := objectives.SeriesTotal(recs, objectives.PersonalScoreComponent, false)
+	perso := objectives.SeriesTotal(recs, objectives.PersonalScoreComponent, false, nil)
 	minFrames := d2tMinRunSec * 1000 / max(e.doc.FrameIntervalMS, 1)
 	runs := d2Runs(ser.owner[ownerSlot], e.doc.FrameCount, minFrames)
 	sig := d2tConfronte(runs, perso, slotTeam, e)

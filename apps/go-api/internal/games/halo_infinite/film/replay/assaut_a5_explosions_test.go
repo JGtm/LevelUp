@@ -96,7 +96,7 @@ func TestAssautA5Explosions(t *testing.T) {
 		datees += len(a5Explosions[id])
 
 		publies := map[int]bool{}
-		for _, e := range objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb) {
+		for _, e := range objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb, nil) {
 			if e.Stat != objectives.StatBombDetonations {
 				t.Errorf("%s : statistique inattendue %q", id, e.Stat)
 				continue
@@ -189,9 +189,9 @@ func TestAssautA5PontIdentite(t *testing.T) {
 			instants = append(instants, types.DeathInstant{
 				XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
 		}
-		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
+		named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb, nil)
 		ident, _ := objectives.IdentifyNamedEventsByRound(named,
-			objectives.ResolveRoundIdentity(recs, instants))
+			objectives.ResolveRoundIdentity(recs, instants, nil))
 		nommees += len(named)
 		publiees += len(ident)
 		t.Logf("%s : %d nommee(s) -> %d publiee(s)", id, len(named), len(ident))

@@ -57,6 +57,10 @@ type scoreClock struct {
 	// dates depuis le premier paquet du film, la grille compte depuis le premier paquet de
 	// POSITION : sans cette soustraction, toute la courbe glisse de 3,6 s a 50,8 s.
 	originMS int
+	// cons est l enregistreur des replis a la consultation du document (lot J8.7-bis) : chaque serie
+	// que le calque de score lit y note ses emissions jetees. Meme place que `replayClock.fb` : ce
+	// que les passes du calque se transmettent. Nil (tests) : rien n est note.
+	cons *objectives.ReplisALaConsultation
 }
 
 // frameOf pose un instant du film sur la grille, ou dit qu'il n'y tient pas.
@@ -79,10 +83,11 @@ type scoreSeriesSet struct {
 }
 
 // loadScoreSeries decode les deux formes d'un emplacement.
-func loadScoreSeries(recs []types.StatRecord, comp objectives.StatComponent, teams bool) scoreSeriesSet {
+func loadScoreSeries(recs []types.StatRecord, comp objectives.StatComponent, teams bool,
+	cons *objectives.ReplisALaConsultation) scoreSeriesSet {
 	return scoreSeriesSet{
-		byRound: objectives.SeriesByRound(recs, comp, teams),
-		total:   objectives.SeriesTotal(recs, comp, teams),
+		byRound: objectives.SeriesByRound(recs, comp, teams, cons),
+		total:   objectives.SeriesTotal(recs, comp, teams, cons),
 	}
 }
 
@@ -176,14 +181,14 @@ func buildScoreTimeline(in *ScoreInput, deaths []types.Death, c scoreClock,
 		return nil, nil
 	}
 	recs := in.Records
-	teamScore := loadScoreSeries(recs, objectives.ModeScoreComponent, true)
-	teamFrags := loadScoreSeries(recs, objectives.KillsComponent, true)
-	playerFrags := loadScoreSeries(recs, objectives.KillsComponent, false)
+	teamScore := loadScoreSeries(recs, objectives.ModeScoreComponent, true, c.cons)
+	teamFrags := loadScoreSeries(recs, objectives.KillsComponent, true, c.cons)
+	playerFrags := loadScoreSeries(recs, objectives.KillsComponent, false, c.cons)
 	// L'identite PLATE par TOTAUX reste la source de la preuve (b) d'identite des CAMPS
 	// (`resolveTeamIdentity`) : les courbes d'equipe ne bougent pas. En MONO-MANCHE elle nomme
 	// aussi les joueurs (le slot n'est pas reattribue) ; en MULTI-MANCHE, `buildPlayerScores`
 	// passe par l'identite PAR MANCHE (les instants de mort). Cf. buildPlayerScores.
-	identity := objectives.SlotIdentityFrom(recs, in.Lines)
+	identity := objectives.SlotIdentityFrom(recs, in.Lines, c.cons)
 
 	slots := teamSlotsOf(teamScore, teamFrags)
 	teamID, method := resolveTeamIdentity(in, slots, teamScore, teamFrags, playerFrags, identity)

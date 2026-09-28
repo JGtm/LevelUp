@@ -65,7 +65,7 @@ func buildHoldTicks(recs []types.StatRecord, identity map[int]string,
 	if len(slotsParCamp) == 0 {
 		return nil
 	}
-	series := objectives.SeriesTotal(recs, holdTicksComponent, false)
+	series := objectives.SeriesTotal(recs, holdTicksComponent, false, c.cons)
 	instants := holdInstants(series, slotsParCamp)
 	if len(instants) == 0 {
 		return nil

@@ -63,7 +63,7 @@ func (b *Builder) buildReplayOptions(
 		// et le rapport de la construction. Ils sont recalcules a chaque cuisson et l ASSEMBLAGE les
 		// verse une fois — jamais le compteur des options, que les faits persistes capturent.
 		ReplisHorsBalayage: replay.ReplisHorsBalayage{KillSource: cat.killsource, Objectifs: stats.replisObjectifs,
-			Construction: cat.replis.Rapport()},
+			Construction: cat.replis.Rapport(), Consultations: stats.consultations},
 		MapQuant:         &entry,
 		Observe:          b.observe,
 		SpawnPoints:      cat.spawnPts,

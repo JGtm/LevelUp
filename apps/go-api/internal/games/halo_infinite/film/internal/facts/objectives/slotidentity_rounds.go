@@ -45,22 +45,23 @@ import (
 // Pour <= 1 manche reelle, retourne `{manche: SlotIdentityByDeaths(recs, deaths)}` : le pont
 // plat, mot pour mot (cf. l'en-tete, NEUTRALITE MONO-MANCHE).
 func SlotIdentityByRound(recs []types.StatRecord, deaths []types.DeathInstant) map[int]map[int]string {
-	return slotIdentityByRoundCompte(recs, deaths, nil)
+	return slotIdentityByRoundCompte(recs, deaths, nil, nil)
 }
 
 // slotIdentityByRoundCompte est [SlotIdentityByRound], qui compte les replis du pont par instants
 // dans `c` (nil : rien) — c est la porte de [ResolveRoundIdentity] (lot J8.7).
-func slotIdentityByRoundCompte(recs []types.StatRecord, deaths []types.DeathInstant, c *ComptesDesReplis) map[int]map[int]string {
+func slotIdentityByRoundCompte(recs []types.StatRecord, deaths []types.DeathInstant, c *ComptesDesReplis,
+	cons *ReplisALaConsultation) map[int]map[int]string {
 	rounds := realRoundsSorted(recs)
 	if len(rounds) <= 1 {
 		r := 0
 		if len(rounds) == 1 {
 			r = rounds[0]
 		}
-		return map[int]map[int]string{r: slotIdentityFromDeathsCompte(recs, deaths, c)}
+		return map[int]map[int]string{r: slotIdentityFromDeathsCompte(recs, deaths, c, cons)}
 	}
 	thread := deathThreadByXUIDCompte(deaths, c)
-	parManche := deathProgressionsByRound(recs)
+	parManche := deathProgressionsByRound(recs, cons)
 	out := make(map[int]map[int]string, len(rounds))
 	for _, round := range rounds {
 		claim := map[int]string{}
@@ -111,6 +112,12 @@ type RoundIdentity struct {
 	// replis : les comptes des replis de la CONSTRUCTION du resolveur (lot J8.7), recopies par
 	// chaque completion ([RoundIdentity.ComptesDesReplis]).
 	replis ComptesDesReplis
+	// consultations : l enregistreur du DOCUMENT (lot J8.7-bis), partage par pointeur entre toutes
+	// les copies du resolveur — completions comprises — et avec les series que les calques lisent.
+	// [RoundIdentity.roundOfTime] y note l instant qu il range dans la premiere manche faute de
+	// manche connue ; les completions y notent les emissions jetees des series qu elles lisent. Nil
+	// ([FlatRoundIdentity], outils) : rien n est note.
+	consultations *ReplisALaConsultation
 }
 
 // roundStart associe une manche a son premier instant sur l'horloge des enregistrements.
@@ -121,9 +128,13 @@ type roundStart struct {
 
 // ResolveRoundIdentity construit le resolveur : l'identite par manche PLUS les bornes de manche
 // (en ms) qui permettent de placer un instant dans sa manche.
-func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant) RoundIdentity {
+//
+// `cons` est l enregistreur des replis a la consultation du DOCUMENT ([ReplisALaConsultation]) :
+// la construction y note les emissions jetees des series de morts qu elle deroule, et le resolveur
+// rendu le porte, pour ses lectures et celles de ses copies. Nil : outils hors production.
+func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant, cons *ReplisALaConsultation) RoundIdentity {
 	var replis ComptesDesReplis
-	byRound := slotIdentityByRoundCompte(recs, deaths, &replis)
+	byRound := slotIdentityByRoundCompte(recs, deaths, &replis, cons)
 	// TOUT CE QUE CETTE VOIE NOMME VIENT DES INSTANTS DE MORT — mono-manche comprise, ou elle
 	// delegue au pont plat, qui apparie lui aussi des instants (`slotIdentityFromDeaths`).
 	origins := make(map[int]map[int]string, len(byRound))
@@ -135,7 +146,7 @@ func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant) 
 		origins[round] = o
 	}
 	starts := roundStartsOfCompte(recs, byRound, &replis)
-	return RoundIdentity{byRound: byRound, origins: origins, starts: starts, replis: replis}
+	return RoundIdentity{byRound: byRound, origins: origins, starts: starts, replis: replis, consultations: cons}
 }
 
 // FlatRoundIdentity fabrique un resolveur d'UNE seule manche a partir d'une table plate. Sert aux
@@ -257,7 +268,7 @@ func (ri RoundIdentity) CompletedByLines(recs []types.StatRecord, lines []types.
 	if len(lines) == 0 || len(ri.byRound) != 1 {
 		return ri
 	}
-	triplet := SlotIdentityFrom(recs, lines)
+	triplet := SlotIdentityFrom(recs, lines, ri.consultations)
 	if len(triplet) == 0 {
 		return ri
 	}
@@ -295,7 +306,7 @@ func (ri RoundIdentity) CompletedByLines(recs []types.StatRecord, lines []types.
 	}
 	return RoundIdentity{byRound: map[int]map[int]string{round: fusion},
 		origins: map[int]map[int]string{round: origins}, starts: ri.starts,
-		replis: ri.replis.Plus(ComptesDesReplis{SlotsAbandonnes: abandonnes})}
+		replis: ri.replis.Plus(ComptesDesReplis{SlotsAbandonnes: abandonnes}), consultations: ri.consultations}
 }
 
 // AtRound rend le xuid du slot POUR UNE MANCHE connue — la voie du porteur, qui itere deja les
@@ -361,7 +372,14 @@ func (ri RoundIdentity) RoundAt(timeMS int) int {
 // roundOfTime rend la manche dont le debut est le plus grand qui ne depasse pas `timeMS`. Un
 // instant anterieur a toute manche connue retombe sur la premiere (les manches se jouent dans
 // l'ordre : rien avant la premiere).
+//
+// CE PLANCHER EST `repli_instant_sur_la_premiere_manche` (lot J8.7-bis, 2026-09-28) : l instant est
+// note dans l enregistreur du document, qui le compte UNE fois quel que soit le nombre de calques qui
+// le consultent.
 func (ri RoundIdentity) roundOfTime(timeMS int) int {
+	if timeMS < ri.starts[0].startMS {
+		ri.consultations.noterInstantAvantLesManches(timeMS)
+	}
 	round := ri.starts[0].round
 	for _, s := range ri.starts {
 		if s.startMS > timeMS {

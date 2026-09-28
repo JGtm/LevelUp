@@ -79,7 +79,7 @@ func TestSeriePublieeEtCleAppariementSAccordent(t *testing.T) {
 
 	// LA CLE : ce que le pont d'identite compte comme increments.
 	b := newEventBudget("test")
-	cle := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b)
+	cle := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b, nil)
 	if cle[12] != 0 {
 		t.Fatalf("la cle compte %d assistance(s) pour le slot 12, attendu 0 — la borne par pas "+
 			"ne joue plus, le vecteur du test ne prouve rien", cle[12])
@@ -89,7 +89,7 @@ func TestSeriePublieeEtCleAppariementSAccordent(t *testing.T) {
 	}
 
 	// LA SERIE : ce que le document publie.
-	serie := SeriesTotal(recs, AssistsComponent, false)
+	serie := SeriesTotal(recs, AssistsComponent, false, nil)
 	if got := finalDe(serie[12]); got != int64(cle[12]) {
 		t.Errorf("SERIE PUBLIEE ≠ CLE D'APPARIEMENT pour le slot 12 : la serie finit a %d "+
 			"assistances, la cle en compte %d — la borne par pas ne descend pas dans la serie",
@@ -102,14 +102,14 @@ func TestSeriePublieeEtCleAppariementSAccordent(t *testing.T) {
 
 	// La forme par MANCHE doit dire la meme chose que le total : c'est elle que le chemin
 	// multi-manche (`replay.buildPlayerScoresByRound`) recompose.
-	parManche := SeriesByRound(recs, AssistsComponent, false)
+	parManche := SeriesByRound(recs, AssistsComponent, false, nil)
 	if got := finalDe(parManche[12][0]); got != 0 {
 		t.Errorf("serie PAR MANCHE du slot 12 : finit a %d, attendu 0", got)
 	}
 
 	// ET LE PONT NOMME LE JOUEUR : c'est ce qui rend l'ecart VISIBLE a l'ecran depuis la
 	// vague 6 — un slot non ponte n'etait pas publie du tout.
-	if id := SlotIdentityFrom(recs, derivFeuille); id[12] != "bbb" {
+	if id := SlotIdentityFrom(recs, derivFeuille, nil); id[12] != "bbb" {
 		t.Errorf("le slot 12 est apparie a %q, attendu \"bbb\" : le vecteur ne reproduit plus "+
 			"la situation du defaut", id[12])
 	}
@@ -123,14 +123,14 @@ func TestSerieSaineTraverseLaDerivationIntacte(t *testing.T) {
 	recs := derivRecs(sain)
 
 	b := newEventBudget("test")
-	cle := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b)
+	cle := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b, nil)
 	if b.rejetes != 0 {
 		t.Fatalf("%d rejet(s) sur un vecteur SAIN", b.rejetes)
 	}
 	if cle[12] != sain {
 		t.Fatalf("la cle compte %d, attendu %d", cle[12], sain)
 	}
-	if got := finalDe(SeriesTotal(recs, AssistsComponent, false)[12]); got != sain {
+	if got := finalDe(SeriesTotal(recs, AssistsComponent, false, nil)[12]); got != sain {
 		t.Errorf("la serie finit a %d, attendu %d — la borne a coupe un compteur sain", got, sain)
 	}
 }

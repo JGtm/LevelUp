@@ -22,7 +22,7 @@ package replay
 func (s *filmScan) balayerProprietesTi13() {
 	// LES MEMES PREDICATS QUE [GardesDe] (lot J3.4) : les faits disent exactement ce qui a ete lu.
 	zones := zonesBalayables(s.opt.Zone)
-	jauge := drapeauBalayable(s.opt.Flag)
+	jauge := drapeauBalayable(s.opt.Flag, s.opt.consultations())
 	partage := ti13Partage{fc: s.fc, matchID: s.matchID}
 	s.in.ZoneReads = decodeFilmZoneReads(&partage, zones)
 	s.in.ZoneScanned = zones

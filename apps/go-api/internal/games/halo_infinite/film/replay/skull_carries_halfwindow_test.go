@@ -26,10 +26,10 @@ const (
 func TestSkullTickWidthMesureeSurLeFilm(t *testing.T) {
 	recs, _ := skullFixture()
 	ctx := matchClock{origin: 0, step: 1000, frames: 100000}
-	if got := skullTickWidthFrames(recs, ctx); got != testTickWidthFrames {
+	if got := skullTickWidthFrames(recs, ctx, nil); got != testTickWidthFrames {
 		t.Errorf("largeur de tic = %d images, attendu %d", got, testTickWidthFrames)
 	}
-	if got := skullHalfTickFrames(recs, ctx); got != testHalfTickFrames {
+	if got := skullHalfTickFrames(recs, ctx, nil); got != testHalfTickFrames {
 		t.Errorf("demi-fenetre = %d images, attendu %d", got, testHalfTickFrames)
 	}
 }
@@ -104,7 +104,7 @@ func TestSkullCarriesSansCadenceMesurableNeDeplaceRien(t *testing.T) {
 		{XUID: "A", TimeMS: 30000}, {XUID: "A", TimeMS: 30100}, {XUID: "A", TimeMS: 30200},
 	}
 	ctx := matchClock{origin: 0, step: 1000, frames: 100000}
-	if got := skullHalfTickFrames(recs, ctx); got != 0 {
+	if got := skullHalfTickFrames(recs, ctx, nil); got != 0 {
 		t.Fatalf("demi-fenetre = %d, attendu 0 (aucune cadence mesurable)", got)
 	}
 	carries, _ := buildSkullCarries(skullTestScan(recs, deaths), ctx, carrierPresence{})

@@ -121,7 +121,7 @@ func emitSeries(id string, recs []decfilm.StatRecord) {
 	for comp := 0; comp <= sweepMaxComp; comp++ {
 		for _, sideB := range []bool{false, true} {
 			c := decfilm.StatComponent{Comp: comp, SideB: sideB}
-			byslot := decfilm.SeriesByRound(recs, c, false)
+			byslot := decfilm.SeriesByRound(recs, c, false, nil)
 			for _, slot := range sortedSeriesSlots(byslot) {
 				for _, round := range sortedKeysInt2(byslot[slot]) {
 					pts := byslot[slot][round]

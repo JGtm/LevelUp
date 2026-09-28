@@ -80,6 +80,9 @@ type filmStats struct {
 	// replisObjectifs : les comptes des replis d `objectives` — le balayage du statborg (relus dans sa
 	// section) et la construction du pont ci-dessus (lot J8.7) ; l assemblage les verse.
 	replisObjectifs decfilm.ComptesDesReplisObjectifs
+	// consultations : l enregistreur des replis a la consultation du document (lot J8.7-bis), que les
+	// lectures de cet etage ont deja rempli et que les calques du rejeu completeront.
+	consultations *decfilm.ReplisALaConsultation
 }
 
 // statborgDuFilm LIT la section statborg d un film : les enregistrements d entite, les instants
@@ -128,7 +131,11 @@ func assemblerFilmStats(ctx context.Context, matchID string, sb replay.FilmStatb
 	}
 	// UN SEUL PONT D'IDENTITE POUR LES DEUX CALQUES QUI EN VIVENT (actions d'objectif et
 	// drapeau vivant) : la meme table slot -> xuid, resolue AU PLUS UNE FOIS par cuisson.
-	pont := &pontParManche{recs: recs, deaths: deathInstantsOf(deaths.list), lines: lines}
+	// L ENREGISTREUR DES REPLIS A LA CONSULTATION DU DOCUMENT (lot J8.7-bis) : il nait ici, sur les deux
+	// chemins (film et faits), voyage avec le pont — que les lectures de cet etage recoivent — puis dans
+	// les options du rejeu, dont les calques lisent les memes series.
+	cons := &decfilm.ReplisALaConsultation{}
+	pont := &pontParManche{recs: recs, deaths: deathInstantsOf(deaths.list), lines: lines, cons: cons}
 	objectifs, nonNommes, refuses := identifiedEvents(ctx, matchID, deaths, recs, facts, pont)
 	return filmStats{
 		score: &replay.ScoreInput{
@@ -147,6 +154,7 @@ func assemblerFilmStats(ctx context.Context, matchID string, sb replay.FilmStatb
 		bomb:              bombInput(sb.ChunkStartMS, isBombVariant(facts.GameVariantName)),
 		statborgIdentity:  pont.identite(),
 		replisObjectifs:   sb.Replis.Plus(pont.identite().ComptesDesReplis()),
+		consultations:     cons,
 	}
 }
 
@@ -274,7 +282,7 @@ func flagInput(recs []decfilm.StatRecord, bursts []int,
 // les trois signaux reconnaissent comme du CTF. Coeur PUR, sans film : c'est la regle, seule.
 func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput {
 	signals := decfilm.FlagFilmSignalsFrom(in.Bursts,
-		decfilm.NamedEventsFrom(in.Records, decfilm.ObjectiveTypeFlag))
+		decfilm.NamedEventsFrom(in.Records, decfilm.ObjectiveTypeFlag, pont.cons))
 	if signals.IsFlagFilm() {
 		in.Identity = pont.identite()
 	}
@@ -322,7 +330,7 @@ func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput
 func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 	recs []decfilm.StatRecord, facts port.MatchFacts,
 	pont *pontParManche) ([]decfilm.IdentifiedEvent, int, int) {
-	named := decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeOf(facts.GameVariantName))
+	named := decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeOf(facts.GameVariantName), pont.cons)
 	if len(named) == 0 {
 		return nil, 0, 0
 	}
@@ -385,6 +393,10 @@ type pontParManche struct {
 	lines  []decfilm.PlayerLine
 	resolu bool
 	id     decfilm.RoundIdentity
+	// cons : l enregistreur des replis a la consultation du document (lot J8.7-bis) — le pont le passe
+	// a sa resolution, et les lectures de series de cet etage le recoivent de lui. Nil (tests) : rien
+	// n est note.
+	cons *decfilm.ReplisALaConsultation
 }
 
 // identite rend le pont, en le resolvant au premier appel.
@@ -400,7 +412,7 @@ type pontParManche struct {
 // lecteurs du meme pont n'auraient plus dit la meme chose du meme match.
 func (p *pontParManche) identite() decfilm.RoundIdentity {
 	if !p.resolu {
-		p.id = decfilm.ResolveRoundIdentity(p.recs, p.deaths).
+		p.id = decfilm.ResolveRoundIdentity(p.recs, p.deaths, p.cons).
 			CompletedByLines(p.recs, p.lines).
 			CompletedByElimination(p.recs, p.lines).
 			CompletedByRoundResidue(p.recs, p.lines)

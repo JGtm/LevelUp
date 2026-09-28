@@ -121,7 +121,7 @@ func sweepEmplacements(id string, recs []decfilm.StatRecord, identity map[int]st
 	for comp := 0; comp <= sweepMaxComp; comp++ {
 		for _, sideB := range []bool{false, true} {
 			c := decfilm.StatComponent{Comp: comp, SideB: sideB}
-			series := decfilm.SeriesTotal(recs, c, false)
+			series := decfilm.SeriesTotal(recs, c, false, nil)
 			for _, slot := range sortedSeriesSlots(series) {
 				pts := series[slot]
 				if len(pts) == 0 {

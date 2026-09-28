@@ -221,16 +221,30 @@ var registreReplayObjectifs = []Repli{
 		Mecanisme: "le joueur n'a AUCUNE vie nommee : la porte laisse passer sans rien verifier",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "skull_carries.go",
-			Ancre:   "func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {",
-		}, {
-			Fichier: pkgReplay + "skull_carries.go",
-			Ancre:   "p.fbCrane.Declenche(fallback.NomCranePorteurSansVieNommee)",
-		}},
+		// LA PORTE EST PARTAGEE AVEC LA BOMBE (`carrier_presence.go`, lot J8.7-bis) : elle compte, le calque
+		// du crane nomme et verse ; la bombe a son entree, `repli_bombe_porteur_sans_vie_nommee`.
+		Sites: sitesDeLaPorteDePresence("skull_carries.go",
+			"clock.fb.DeclencheN(fallback.NomCranePorteurSansVieNommee, presence.porteursSansVieNommee())"),
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "le porteur du crane lu au canal des armes tenues ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 porteur sans vie nommee sur les films Oddball du corpus",
+		CompteurBranche: true,
+	},
+	{
+		// POSE AU LOT J8.7-bis (2026-09-28) : la bombe traverse la MEME porte de presence que le crane
+		// (`buildBombCarries` -> `carrierPresence.gate`), mais son calque lui passait un compteur nil —
+		// un portage de bombe sans vie nommee passait la porte SANS ETRE COMPTE, ni sous son nom ni sous
+		// celui du crane (preuve : `bomb_carries_presence_repli_test.go`).
+		Nom:       "repli_bombe_porteur_sans_vie_nommee",
+		Fait:      "un portage de bombe est-il refuse faute de porteur present",
+		Mecanisme: "le joueur n'a AUCUNE vie nommee : la porte laisse passer sans rien verifier (premiere abstention de la porte partagee avec le crane)",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: sitesDeLaPorteDePresence("bomb_carries.go",
+			"clock.fb.DeclencheN(fallback.NomBombePorteurSansVieNommee, presence.porteursSansVieNommee())"),
+		DatePose:        "2026-09-28",
+		CibleRetrait:    retraitRegle4 + " ; sinon le porteur de la bombe nomme par une vie publiee (pont bipede -> joueur complet sur les films Assaut)",
+		CritereRetrait:  "0 portage de bombe sans vie nommee du porteur sur les films Assaut du corpus gate de J11",
 		CompteurBranche: true,
 	},
 	{
@@ -248,4 +262,20 @@ var registreReplayObjectifs = []Repli{
 		CritereRetrait:  "0 armement anterieur a la frame 0 sur les films d'Assaut du corpus",
 		CompteurBranche: true,
 	},
+}
+
+// sitesDeLaPorteDePresence : les sites d un repli de la PORTE DE PRESENCE partagee (crane, bombe) —
+// la decision et le compte dans `carrier_presence.go`, une seule copie, puis le versement sous le
+// nom du repli par le calque `fichier` (lot J8.7-bis, 2026-09-28).
+func sitesDeLaPorteDePresence(fichier, versement string) []Site {
+	return []Site{{
+		Fichier: pkgReplay + "carrier_presence.go",
+		Ancre:   "func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {",
+	}, {
+		Fichier: pkgReplay + "carrier_presence.go",
+		Ancre:   "*p.sansVieNommee++",
+	}, {
+		Fichier: pkgReplay + fichier,
+		Ancre:   versement,
+	}}
 }

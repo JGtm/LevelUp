@@ -126,8 +126,12 @@ const (
 	NomMortEcarteeHorsEquipeDeBase Nom = "repli_mort_ecartee_hors_equipe_de_base"
 	// NomCoequipierHorsDeVueParDefaut : compte par `death_context.go` (lot J8.7).
 	NomCoequipierHorsDeVueParDefaut Nom = "repli_coequipier_hors_de_vue_par_defaut"
-	// NomCranePorteurSansVieNommee : compte par `skull_carries.go` (lot J8.7).
+	// NomCranePorteurSansVieNommee : compte par `skull_carries.go` (lot J8.7, nom passe par le calque
+	// du crane depuis le lot J8.7-bis).
 	NomCranePorteurSansVieNommee Nom = "repli_crane_porteur_sans_vie_nommee"
+	// NomBombePorteurSansVieNommee : compte par `bomb_carries.go` (lot J8.7-bis, 2026-09-28) — la
+	// MEME porte de presence que le crane (`skull_carries.go`), sous le nom de la bombe.
+	NomBombePorteurSansVieNommee Nom = "repli_bombe_porteur_sans_vie_nommee"
 	// NomIndexDrapeauZeroPourTous : compte par `flag_assign.go` (lot J8.7).
 	NomIndexDrapeauZeroPourTous Nom = "repli_index_drapeau_zero_pour_tous"
 	// NomInvariantPropreDrapeauMuet : compte par `flag_assign.go` (lot J8.7).
@@ -252,6 +256,12 @@ const (
 	NomDebutDeMancheAuMinimum Nom = "repli_debut_de_manche_au_minimum"
 	// NomSlotAbandonneAuPremierArrive : `objectives/slotidentity_rounds.go`.
 	NomSlotAbandonneAuPremierArrive Nom = "repli_slot_abandonne_au_premier_arrive"
+	// NomEmissionHorsDomaineJetee : `objectives/named_series.go`, releve a la CONSULTATION par
+	// evenement distinct (`objectives.ReplisALaConsultation`, lot J8.7-bis, 2026-09-28).
+	NomEmissionHorsDomaineJetee Nom = "repli_emission_hors_domaine_jetee"
+	// NomInstantSurLaPremiereManche : `objectives/slotidentity_rounds.go`, releve a la CONSULTATION
+	// par instant distinct (lot J8.7-bis, 2026-09-28).
+	NomInstantSurLaPremiereManche Nom = "repli_instant_sur_la_premiere_manche"
 
 	// LES REPLIS DE LA CONSTRUCTION (`internal/replaybuild`, sous-lot replaybuild du lot J8.7,
 	// 2026-09-27) : `Declenche` au site, sur le compteur de la construction de la cuisson, dont le

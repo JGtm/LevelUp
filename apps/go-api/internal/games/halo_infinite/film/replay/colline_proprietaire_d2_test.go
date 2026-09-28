@@ -111,14 +111,14 @@ func TestCollineProprietaireD2(t *testing.T) {
 		e.doc.FrameCount, e.doc.FrameIntervalMS)
 
 	recs := objectives.StatRecords(p2aBobine(t, e.dir))
-	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true)
+	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true, nil)
 	slots := d2ScoreSlots(score)
 	// DIAGNOSTIC DE L'ORACLE, pose AVANT de s'en servir. Un slot d'equipe manquant peut venir
 	// de DEUX causes tres differentes : le film ne replique pas la serie de ce camp, ou notre
 	// filtre de stricte croissance (`longestRun`) l'a jetee. La lecture NON STRICTE du meme
 	// emplacement les separe, et sans elle le negatif resterait vague.
 	brut := objectives.SeriesTotal(recs,
-		objectives.StatComponent{Comp: 0, SideB: false, Strict: false}, true)
+		objectives.StatComponent{Comp: 0, SideB: false, Strict: false}, true, nil)
 	t.Logf("%s : oracle — slots STRICTS %v, slots BRUTS %v", e.short, slots, d2ScoreSlots(brut))
 	if len(slots) != 2 {
 		t.Logf("NEGATIF  %s : %d slot(s) d'equipe seulement au score de mode — l'oracle ne peut "+

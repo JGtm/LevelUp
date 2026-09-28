@@ -246,7 +246,7 @@ func fsVerdict(
 	recs []types.StatRecord, identity map[int]string,
 	c objectives.StatComponent, cible map[string]int,
 ) fsCandidat {
-	series := objectives.SeriesTotal(recs, c, false)
+	series := objectives.SeriesTotal(recs, c, false, nil)
 	v := fsCandidat{nom: fmt.Sprintf("comp %d %s%s", c.Comp, fsSide(c.SideB), fsStrict(c.Strict))}
 	for slot, xuid := range identity {
 		publie := 0
@@ -301,7 +301,7 @@ func fsIdentity(recs []types.StatRecord, oracle []fsJoueur,
 			XUID: j.xuid, Kills: j.kills, Deaths: j.deaths, Assists: j.assists,
 		})
 	}
-	return objectives.SlotIdentityFrom(recs, lines), par
+	return objectives.SlotIdentityFrom(recs, lines, nil), par
 }
 
 // TestFlagSecuresSweep — LE BALAYAGE. Un film par processus, via `ZONE_FILM`.

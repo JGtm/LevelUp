@@ -43,7 +43,7 @@ func recordsCTFAvecFragsDeTest() []decfilm.StatRecord {
 // l'une des trois -> le compte remonte au total nomme, rouge.
 func TestComptesDeCouvertureNeGardentQueLesObjectifs(t *testing.T) {
 	recs := recordsCTFAvecFragsDeTest()
-	nommees := decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeFlag)
+	nommees := decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeFlag, nil)
 	objectifs := decfilm.CountObjectiveFamily(nommees)
 	if objectifs == 0 || objectifs == len(nommees) {
 		t.Fatalf("fixture non discriminante : %d objectif(s) sur %d nommee(s)",

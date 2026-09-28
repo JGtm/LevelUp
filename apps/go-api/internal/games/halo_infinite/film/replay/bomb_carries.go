@@ -143,10 +143,14 @@ func attachBombCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 		// LES DEUX REPLIS DE LA RECONSTRUCTION DES PERIODES, comptes pour la cuisson (lot J8.7).
 		clock.fb.DeclencheN(fallback.NomPortageFermeALaPriseSuivante, carry.replis.priseSuivante)
 		clock.fb.DeclencheN(fallback.NomPorteurAnonymeSansFinParMort, carry.replis.porteurAnonyme)
+		presence := carrierPresenceOf(doc.Tracks, deduced)
 		carries, cov = buildBombCarries(carry, matchClock{
 			origin: clock.origin, step: clock.step, frames: clock.frames,
 			deathOffsetMS: reg.DeathOffsetMS(),
-		}, carrierPresenceOf(doc.Tracks, deduced, nil))
+		}, presence)
+		// LA MEME PORTE QUE LE CRANE ([carrierPresence.gate]), SOUS LE NOM DE LA BOMBE (lot J8.7-bis) : sans ce
+		// versement, un portage de bombe sans vie nommee passait sans etre compte.
+		clock.fb.DeclencheN(fallback.NomBombePorteurSansVieNommee, presence.porteursSansVieNommee())
 	}
 	doc.BombCarries = carries
 	if doc.Coverage != nil {

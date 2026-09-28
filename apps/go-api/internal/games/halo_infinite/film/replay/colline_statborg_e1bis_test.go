@@ -205,9 +205,9 @@ func e1bPhase2(t *testing.T, short string, recs []types.StatRecord, oracle []e1b
 			XUID: j.xuid, Kills: j.kills, Deaths: j.deaths, Assists: j.assists,
 		})
 	}
-	identity := objectives.SlotIdentityFrom(recs, lines)
+	identity := objectives.SlotIdentityFrom(recs, lines, nil)
 	series := objectives.SeriesTotal(recs,
-		objectives.StatComponent{Comp: 23, SideB: false}, false)
+		objectives.StatComponent{Comp: 23, SideB: false}, false, nil)
 
 	justes, faux, sansSerie := 0, 0, 0
 	for slot, xuid := range identity {
@@ -256,7 +256,7 @@ func e1bParPoint(t *testing.T, short string, recs []types.StatRecord, oracle []e
 	for _, j := range oracle {
 		team[j.xuid] = j.team
 	}
-	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true)
+	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true, nil)
 	var pts []types.ScorePoint
 	slots := make([]int, 0, len(score))
 	for s := range score {
@@ -363,7 +363,7 @@ func e1cUnion(identity map[int]string, team map[string]int,
 // serie, manches sommees (`SeriesTotal` s'en charge). Les slots d'equipe sont exclus — l'oracle
 // est par joueur.
 func e1bTotaux(recs []types.StatRecord, c objectives.StatComponent) []int {
-	series := objectives.SeriesTotal(recs, c, false)
+	series := objectives.SeriesTotal(recs, c, false, nil)
 	out := make([]int, 0, len(series))
 	for _, pts := range series {
 		if len(pts) == 0 {

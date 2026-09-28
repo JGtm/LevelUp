@@ -45,7 +45,7 @@ func ScoreCurve(film *source.Film) []types.ScorePoint {
 func ScoreCurveFrom(recs []types.StatRecord) []types.ScorePoint {
 	var all []types.ScorePoint
 	for _, teams := range []bool{true, false} {
-		for _, pts := range SeriesTotal(recs, ModeScoreComponent, teams) {
+		for _, pts := range SeriesTotal(recs, ModeScoreComponent, teams, nil) {
 			all = append(all, pts...)
 		}
 	}

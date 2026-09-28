@@ -36,7 +36,7 @@ func TestGardeDEffectifRefuseUnFilmAuDelaDeHuitJoueurs(t *testing.T) {
 	recs := recordsCTFDeTest()
 	pont := func() *pontParManche { return &pontParManche{recs: recs} }
 
-	nommees := len(decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeFlag))
+	nommees := len(decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeFlag, nil))
 	if nommees == 0 {
 		t.Fatal("la fixture ne nomme aucune action : le test ne prouverait rien")
 	}

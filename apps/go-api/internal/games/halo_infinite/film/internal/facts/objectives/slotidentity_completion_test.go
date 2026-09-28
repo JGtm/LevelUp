@@ -60,7 +60,7 @@ func filmUneMancheDeuxMortsFixture() ([]types.StatRecord, []types.DeathInstant, 
 func TestCompletedByLinesRattrapeLeJoueurQuiMeurtPeu(t *testing.T) {
 	recs, deaths, lines := filmUneMancheDeuxMortsFixture()
 
-	nu := ResolveRoundIdentity(recs, deaths)
+	nu := ResolveRoundIdentity(recs, deaths, nil)
 	if got := nu.At(20, 1500); got != "D" {
 		t.Fatalf("pont par morts, slot 20 : %q, attendu \"D\" (trois morts, a sa portee)", got)
 	}
@@ -85,7 +85,7 @@ func TestCompletedByLinesRattrapeLeJoueurQuiMeurtPeu(t *testing.T) {
 // TestCompletedByLinesSansLignesNeChangeRien : le calque reste publiable hors ligne.
 func TestCompletedByLinesSansLignesNeChangeRien(t *testing.T) {
 	recs, deaths, _ := filmUneMancheDeuxMortsFixture()
-	nu := ResolveRoundIdentity(recs, deaths)
+	nu := ResolveRoundIdentity(recs, deaths, nil)
 	for _, lignes := range [][]types.PlayerLine{nil, {}} {
 		complete := nu.CompletedByLines(recs, lignes)
 		if complete.NamedCount() != nu.NamedCount() || complete.At(22, 1000) != "" {
@@ -105,7 +105,7 @@ func TestCompletedByLinesRefuseLeMultiManche(t *testing.T) {
 		{XUID: "B", Kills: 0, Deaths: 3, Assists: 0},
 		{XUID: "C", Kills: 0, Deaths: 6, Assists: 0},
 	}
-	nu := ResolveRoundIdentity(recs, deaths)
+	nu := ResolveRoundIdentity(recs, deaths, nil)
 	complete := nu.CompletedByLines(recs, lines)
 	if complete.NamedCount() != nu.NamedCount() {
 		t.Errorf("film MULTI-MANCHE : la completion par totaux doit se taire (nommes %d -> %d)",
@@ -128,7 +128,7 @@ func TestCompletedByLinesNAttribueJamaisUnXUIDDejaPris(t *testing.T) {
 	recs, deaths, _ := filmUneMancheDeuxMortsFixture()
 	// Le triplet du slot 22 (7,2,1) est ici celui de "D" — deja nomme par les morts sur le slot 20.
 	lines := []types.PlayerLine{{XUID: "D", Kills: 7, Deaths: 2, Assists: 1}}
-	nu := ResolveRoundIdentity(recs, deaths)
+	nu := ResolveRoundIdentity(recs, deaths, nil)
 	complete := nu.CompletedByLines(recs, lines)
 	if got := complete.At(22, 1000); got != "" {
 		t.Errorf("slot 22 = %q : « D » est deja porte par le slot 20, la completion devait se taire", got)
@@ -200,11 +200,11 @@ func TestCompletedByLinesRefuseLeMultiMancheQuandLeTripletAUneReponse(t *testing
 	recs, deaths, lines := deuxManchesTripletResoluFixture()
 
 	// PRE-REQUIS DU TEST : sans lui, le test sortirait au garde precedent et ne prouverait rien.
-	triplet := SlotIdentityFrom(recs, lines)
+	triplet := SlotIdentityFrom(recs, lines, nil)
 	if triplet[24] != "E" {
 		t.Fatalf("la fixture ne prouve rien : le triplet rend %v, il doit nommer le slot 24 \"E\"", triplet)
 	}
-	nu := ResolveRoundIdentity(recs, deaths)
+	nu := ResolveRoundIdentity(recs, deaths, nil)
 	if len(nu.Rounds()) < 2 {
 		t.Fatalf("la fixture ne porte pas plusieurs manches : %v", nu.Rounds())
 	}
@@ -271,11 +271,11 @@ func TestCompletedByLinesNeContreditJamaisLePontParMorts(t *testing.T) {
 	recs, deaths, lines := contradictionFixture()
 
 	// PRE-REQUIS : les deux ponts doivent bien se contredire sur le slot 20, et "Q" etre libre.
-	triplet := SlotIdentityFrom(recs, lines)
+	triplet := SlotIdentityFrom(recs, lines, nil)
 	if triplet[20] != "Q" {
 		t.Fatalf("la fixture ne prouve rien : le triplet rend %v, il doit nommer le slot 20 \"Q\"", triplet)
 	}
-	nu := ResolveRoundIdentity(recs, deaths)
+	nu := ResolveRoundIdentity(recs, deaths, nil)
 	if got := nu.At(20, 1500); got != "P" {
 		t.Fatalf("la fixture ne prouve rien : le pont par morts rend %q pour le slot 20, attendu \"P\"", got)
 	}

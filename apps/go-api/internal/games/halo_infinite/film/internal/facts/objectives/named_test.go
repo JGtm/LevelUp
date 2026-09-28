@@ -99,11 +99,11 @@ func checkAgainstOracle8(t *testing.T, film, objectiveType string) {
 		t.Skipf("film %s absent du cache (%s=%q)", film, filmCacheEnv, cacheRoot())
 	}
 	recs := StatRecords(bobine)
-	identity := SlotIdentityFrom(recs, linesOf(film))
+	identity := SlotIdentityFrom(recs, linesOf(film), nil)
 	if len(identity) != 8 {
 		t.Fatalf("%s : %d slots apparies, attendu 8", film, len(identity))
 	}
-	counts := CountsBySlot(NamedEventsFrom(recs, objectiveType))
+	counts := CountsBySlot(NamedEventsFrom(recs, objectiveType, nil))
 
 	byXUID := map[string]map[string]int{}
 	for _, p := range oracle8[film] {
@@ -211,7 +211,7 @@ func TestNamedEventsCrossCheck(t *testing.T) {
 func TestNamedEventsUnknownModeIsSilent(t *testing.T) {
 	recs := []types.StatRecord{{TimeMS: 1000, Slot: 10, Comps: map[int]types.StatValue{20: {A: 0, B: 3}}}}
 	for _, mode := range []string{ObjectiveTypeHill, ObjectiveTypeSkull, "", "slayer"} {
-		if got := NamedEventsFrom(recs, mode); got != nil {
+		if got := NamedEventsFrom(recs, mode, nil); got != nil {
 			t.Errorf("mode %q : %d evenements rendus, attendu aucun", mode, len(got))
 		}
 	}
@@ -228,7 +228,7 @@ func TestNamedEventsIgnoresNegativeValues(t *testing.T) {
 		{TimeMS: 2000, Slot: 10, Comps: map[int]types.StatValue{23: {A: -115}}},
 		{TimeMS: 3000, Slot: 10, Comps: map[int]types.StatValue{23: {A: 1}}},
 	}
-	got := NamedEventsFrom(recs, ObjectiveTypeFlag)
+	got := NamedEventsFrom(recs, ObjectiveTypeFlag, nil)
 	if len(got) != 1 {
 		t.Fatalf("%d evenements rendus, attendu 1 (la valeur negative est un parasite)", len(got))
 	}
@@ -245,7 +245,7 @@ func TestNamedEventsRedundantSlotsDoNotDoubleCount(t *testing.T) {
 		TimeMS: 1000, Slot: 10,
 		Comps: map[int]types.StatValue{2: {A: 3}, 12: {A: 3, B: 2}, 3: {A: 2}},
 	}}
-	counts := CountsBySlot(NamedEventsFrom(recs, ObjectiveTypeZone))
+	counts := CountsBySlot(NamedEventsFrom(recs, ObjectiveTypeZone, nil))
 	if got := counts[10][StatKills]; got != 3 {
 		t.Errorf("kills = %d, attendu 3 (comp 12 A redouble comp 2 A)", got)
 	}
@@ -262,7 +262,7 @@ func TestNamedEventsRepeatedValueIsNotAnEvent(t *testing.T) {
 		{TimeMS: 2000, Slot: 10, Comps: map[int]types.StatValue{20: {B: 1}}},
 		{TimeMS: 3000, Slot: 10, Comps: map[int]types.StatValue{20: {B: 2}}},
 	}
-	got := NamedEventsFrom(recs, ObjectiveTypeZone)
+	got := NamedEventsFrom(recs, ObjectiveTypeZone, nil)
 	if len(got) != 2 {
 		t.Fatalf("%d evenements rendus, attendu 2 (la reemission a valeur egale n'en est pas un)",
 			len(got))

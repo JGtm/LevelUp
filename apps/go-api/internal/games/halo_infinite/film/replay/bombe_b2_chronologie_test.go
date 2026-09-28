@@ -179,7 +179,7 @@ func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 		t.Fatalf("%s : film absent du cache : %v", id, err)
 	}
 	recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
-	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
+	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb, nil)
 	dir := filepath.Join(cache, "film_chunks", id)
 	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
@@ -190,7 +190,7 @@ func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 		di = append(di, types.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
 	}
-	identity := objectives.ResolveRoundIdentity(recs, di)
+	identity := objectives.ResolveRoundIdentity(recs, di, nil)
 	out := map[int]string{}
 	ident, _ := objectives.IdentifyNamedEventsByRound(named, identity)
 	for _, e := range ident {

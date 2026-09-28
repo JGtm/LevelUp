@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
@@ -54,7 +55,7 @@ type GardesDeCuisson struct {
 // GardesDe rend les gardes qu une cuisson sous `opt` commande — LE point de derivation.
 func GardesDe(opt Options) GardesDeCuisson {
 	return GardesDeCuisson{
-		Drapeau: drapeauBalayable(opt.Flag),
+		Drapeau: drapeauBalayable(opt.Flag, opt.consultations()),
 		Zones:   zonesBalayables(opt.Zone),
 		Bombe:   bombeBalayable(opt.Bomb),
 		Roster:  empreinteDuRoster(opt.RosterXUIDs),
@@ -62,8 +63,8 @@ func GardesDe(opt Options) GardesDeCuisson {
 }
 
 // drapeauBalayable : le calque du drapeau est demande ET les trois signaux du film disent CTF.
-func drapeauBalayable(in FlagInput) bool {
-	return in.Scanned && flagFilmSignalsOf(in).IsFlagFilm()
+func drapeauBalayable(in FlagInput, cons *objectives.ReplisALaConsultation) bool {
+	return in.Scanned && flagFilmSignalsOf(in, cons).IsFlagFilm()
 }
 
 // zonesBalayables : l appelant a fourni un catalogue de zones (Bastion, colline de KOTH).

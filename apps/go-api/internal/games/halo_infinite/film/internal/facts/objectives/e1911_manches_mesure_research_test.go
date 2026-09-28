@@ -341,7 +341,7 @@ func e1911PistesEquipe(recs []types.StatRecord) ([]int, map[int]map[int][]types.
 		slots = append(slots, s)
 	}
 	sort.Ints(slots)
-	raw := rawSeriesByRound(recs, ModeScoreComponent.key(), true)
+	raw := rawSeriesByRound(recs, ModeScoreComponent.key(), true, nil)
 	out := make(map[int]map[int][]types.ScorePoint, len(slots))
 	for _, s := range slots {
 		parManche := map[int][]types.ScorePoint{}

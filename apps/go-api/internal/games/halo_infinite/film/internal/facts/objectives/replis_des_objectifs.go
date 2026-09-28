@@ -13,14 +13,13 @@ package objectives
 // ([RoundIdentity.ComptesDesReplis]). La cuisson les verse par sa table
 // (`replay/versement_des_replis.go`).
 //
-// # DEUX REPLIS N Y SONT PAS, ET C EST ECRIT
+// # DEUX REPLIS SE COMPTENT A LA CONSULTATION (lot J8.7-bis, 2026-09-28)
 //
 // `repli_emission_hors_domaine_jetee` (series nommees, `named_series.go`) et
 // `repli_instant_sur_la_premiere_manche` (`RoundIdentity.roundOfTime`) se DECLENCHENT A LA
-// CONSULTATION : dans des fonctions pures appelees par une dizaine de calques de `replay`, chacun sur
-// SA copie des enregistrements ou SON resolveur. Aucun resultat unique ne les porte ; les compter
-// demande soit un port injecte a chaque calque, soit un parametre de comptage sur six entrees
-// publiques — une decision d architecture que le lot n a pas recue. Leur compteur reste non branche.
+// CONSULTATION, dans des lectures que plusieurs calques refont : ils se comptent par EVENEMENT
+// DISTINCT dans un enregistreur partage par le document ([ReplisALaConsultation]), dont
+// [ReplisALaConsultation.ComptesDesReplis] rend les deux derniers champs ci-dessous.
 
 // ComptesDesReplis compte les declenchements des replis d `objectives` portes par un resultat.
 type ComptesDesReplis struct {
@@ -43,6 +42,14 @@ type ComptesDesReplis struct {
 	// SlotsAbandonnes : `repli_slot_abandonne_au_premier_arrive` — attributions de la feuille
 	// abandonnees parce que le slot ou le joueur etait deja pris (`slotidentity_rounds.go`).
 	SlotsAbandonnes int
+	// EmissionsHorsDomaineJetees : `repli_emission_hors_domaine_jetee` — emissions DISTINCTES
+	// (serie, instant) jetees par le filtre de domaine des series nommees (`named_series.go`),
+	// relevees par un [ReplisALaConsultation].
+	EmissionsHorsDomaineJetees int
+	// InstantsSurLaPremiereManche : `repli_instant_sur_la_premiere_manche` — instants DISTINCTS
+	// anterieurs a toute manche connue, ranges dans la premiere (`slotidentity_rounds.go`),
+	// releves par un [ReplisALaConsultation].
+	InstantsSurLaPremiereManche int
 }
 
 // Plus rend la somme champ a champ des deux rapports. Elle nomme chaque champ :
@@ -55,6 +62,9 @@ func (c ComptesDesReplis) Plus(d ComptesDesReplis) ComptesDesReplis {
 		MortsSansXUID:             c.MortsSansXUID + d.MortsSansXUID,
 		DebutsDeMancheAuMinimum:   c.DebutsDeMancheAuMinimum + d.DebutsDeMancheAuMinimum,
 		SlotsAbandonnes:           c.SlotsAbandonnes + d.SlotsAbandonnes,
+
+		EmissionsHorsDomaineJetees:  c.EmissionsHorsDomaineJetees + d.EmissionsHorsDomaineJetees,
+		InstantsSurLaPremiereManche: c.InstantsSurLaPremiereManche + d.InstantsSurLaPremiereManche,
 	}
 }
 

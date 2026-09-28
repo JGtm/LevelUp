@@ -217,7 +217,7 @@ type NamedEvent struct {
 // emplacements de `hill` et `ball` n'ont pas encore ete nommes : le balayage est le meme,
 // c'est le corpus qui manque.
 func NamedEvents(film *source.Film, objectiveType string) []NamedEvent {
-	return NamedEventsFrom(StatRecords(film), objectiveType)
+	return NamedEventsFrom(StatRecords(film), objectiveType, nil) // outil hors production : aucun document
 }
 
 // NamedEventsFrom est le coeur pur : il travaille sur des enregistrements deja decodes, ce
@@ -227,7 +227,10 @@ func NamedEvents(film *source.Film, objectiveType string) []NamedEvent {
 // decode le film UNE fois (`StatRecordsCtx`) puis en tire la courbe de score, l'identite des
 // slots ET les evenements nommes. Passer par [NamedEvents] rejouerait le decodage complet a
 // chaque appel — trois fois le cout sur une machine qui paie deja le decodage des positions.
-func NamedEventsFrom(recs []types.StatRecord, objectiveType string) []NamedEvent {
+//
+// `cons` : l enregistreur des replis a la consultation du document ([ReplisALaConsultation], lot
+// J8.7-bis) ; nil hors production.
+func NamedEventsFrom(recs []types.StatRecord, objectiveType string, cons *ReplisALaConsultation) []NamedEvent {
 	table, ok := namedStatSlots[objectiveType]
 	if !ok {
 		return nil
@@ -238,7 +241,7 @@ func NamedEventsFrom(recs []types.StatRecord, objectiveType string) []NamedEvent
 	// (huit emplacements non redondants) cela faisait seize marches completes de la liste
 	// d'enregistrements pour en tirer huit series.
 	real := RealRounds(recs)
-	byKey := rawSeriesByKey(recs, table)
+	byKey := rawSeriesByKey(recs, table, cons)
 	// LE BUDGET EST OUVERT ICI, ET LE PARCOURS EST TRIE POUR LUI. Le plafond total appartient
 	// a cette fonction (D13) ; le solde, lui, descend jusqu'a [incrementTimes] pour qu'aucun
 	// appel isole ne le depasse. Des qu'un budget peut s'epuiser, l'ORDRE de parcours devient
@@ -354,7 +357,7 @@ func crossCheckFrom(recs []types.StatRecord, objectiveType string) map[int]map[s
 		if !slot.Redundant || !hasRef {
 			continue
 		}
-		dupCounts, refCounts := countsOf(recs, key, b), countsOf(recs, ref, b)
+		dupCounts, refCounts := countsOf(recs, key, b, nil), countsOf(recs, ref, b, nil) // outil hors production
 		for entity, got := range dupCounts {
 			want := refCounts[entity]
 			if got == want {
@@ -375,9 +378,9 @@ func crossCheckFrom(recs []types.StatRecord, objectiveType string) map[int]map[s
 // [incrementTimes], et le laisser hors budget aurait laisse une porte ouverte a l'explosion
 // memoire que les bornes ferment chez [NamedEventsFrom]. Le budget vient de l'appelant :
 // le pont d'identite en ouvre un pour ses trois compteurs, le controle croise un pour sa passe.
-func countsOf(recs []types.StatRecord, key statSlotKey, b *eventBudget) map[int]int {
+func countsOf(recs []types.StatRecord, key statSlotKey, b *eventBudget, cons *ReplisALaConsultation) map[int]int {
 	out := map[int]int{}
-	series := seriesBySlot(recs, key)
+	series := seriesBySlot(recs, key, cons)
 	for _, slot := range sortedIntKeys(series) {
 		out[slot] = len(incrementTimes(series[slot], key, b))
 	}

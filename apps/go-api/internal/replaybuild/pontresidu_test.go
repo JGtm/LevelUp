@@ -102,7 +102,7 @@ func TestPontParMancheNommeParResiduCeQueLEliminationLaisse(t *testing.T) {
 	}
 
 	// MUTATION : la chaine d'AVANT ce lot (trois voies) laisse les deux slots muets.
-	avant := decfilm.ResolveRoundIdentity(recs, deaths).
+	avant := decfilm.ResolveRoundIdentity(recs, deaths, nil).
 		CompletedByLines(recs, lines).
 		CompletedByElimination(recs, lines)
 	if x := avant.AtRound(0, 14); x != "" {

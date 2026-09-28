@@ -22,7 +22,12 @@ import (
 //
 // Les emplacements redondants sont ecartes ICI : ils n'emettent aucun evenement, et les
 // grouper serait du travail jete.
-func rawSeriesByKey(recs []types.StatRecord, table map[statSlotKey]statSlot) map[statSlotKey]map[int]map[int][]types.ScorePoint {
+//
+// SITE DE `repli_emission_hors_domaine_jetee` (lot J8.7-bis, 2026-09-28) : meme filtre
+// ([emissionHorsDomaine]), meme repli, meme enregistreur que [rawSeriesByRound] — une emission que
+// les deux marches jettent compte une fois.
+func rawSeriesByKey(recs []types.StatRecord, table map[statSlotKey]statSlot,
+	cons *ReplisALaConsultation) map[statSlotKey]map[int]map[int][]types.ScorePoint {
 	bornes := ResolveRoundBounds(recs)
 	out := make(map[statSlotKey]map[int]map[int][]types.ScorePoint, len(table))
 	for key, slot := range table {
@@ -49,7 +54,8 @@ func rawSeriesByKey(recs []types.StatRecord, table map[statSlotKey]statSlot) map
 			// Memes deux rejets que [rawSeriesByRound], et pour les memes raisons : une
 			// emission negative est un ancrage parasite, et un score de mode hors domaine
 			// denonce une emission mal alignee sur ses DEUX canaux.
-			if val < 0 || (key.Comp == modeScoreComp && !modeScoreInDomain(v)) {
+			if emissionHorsDomaine(key, v, val) {
+				cons.noterEmissionJetee(key, r)
 				continue
 			}
 			if raw[r.Slot] == nil {
@@ -77,8 +83,8 @@ func rawSeriesByKey(recs []types.StatRecord, table map[statSlotKey]statSlot) map
 // facon que la manche 1. Chaque manche est donc filtree separement, puis DECALEE du total des
 // manches precedentes : la suite rendue est croissante sur tout le match et son dernier point
 // est le total du match. Mesure : les frags d'un Oddball passent de 48 a 87 sur 88 attendus.
-func seriesBySlot(recs []types.StatRecord, key statSlotKey) map[int][]types.ScorePoint {
-	return cumulateRounds(rawSeriesByRound(recs, key, false), RealRounds(recs))
+func seriesBySlot(recs []types.StatRecord, key statSlotKey, cons *ReplisALaConsultation) map[int][]types.ScorePoint {
+	return cumulateRounds(rawSeriesByRound(recs, key, false, cons), RealRounds(recs))
 }
 
 // rawSeriesByRound groupe les emissions par slot puis par manche, en jetant les ancrages
@@ -89,7 +95,11 @@ func seriesBySlot(recs []types.StatRecord, key statSlotKey) map[int][]types.Scor
 // declare a une manche mal lue et n'alimente aucune serie. C'est le filtre qui manquait pour
 // que [longestRun] ne soit pas trompe — une valeur mal lue mais PLUS GRANDE prolonge la suite
 // non decroissante au lieu de la rompre.
-func rawSeriesByRound(recs []types.StatRecord, key statSlotKey, teams bool) map[int]map[int][]types.ScorePoint {
+//
+// Une emission que [emissionHorsDomaine] jette est notee dans `cons`
+// (`repli_emission_hors_domaine_jetee`, lot J8.7-bis) ; nil ne note rien.
+func rawSeriesByRound(recs []types.StatRecord, key statSlotKey, teams bool,
+	cons *ReplisALaConsultation) map[int]map[int][]types.ScorePoint {
 	bornes := ResolveRoundBounds(recs)
 	raw := map[int]map[int][]types.ScorePoint{}
 	for _, r := range recs {
@@ -104,23 +114,8 @@ func rawSeriesByRound(recs []types.StatRecord, key statSlotKey, teams bool) map[
 		if key.Side == sideB {
 			val = v.B
 		}
-		// Une emission NEGATIVE est un ancrage parasite : un compteur de recompense est
-		// positif. Elle est jetee ICI, avant le choix de la sous-suite, et pas apres —
-		// sinon elle fausse ce choix. Mesure : sur la suite (1, -115, 1), la plus longue
-		// sous-suite non decroissante retenue devenait (-115, 1), ce qui datait
-		// l'evenement de la DERNIERE emission au lieu de la premiere.
-		if val < 0 {
-			continue
-		}
-		// LE SCORE DE MODE EST BORNE SUR SES DEUX CANAUX, pas seulement sur celui qu'on lit.
-		// Les deux valeurs d'un composant sortent de la MEME emission : un canal aberrant
-		// prouve que l'emission etait mal alignee, et la valeur de l'autre ne vaut rien non
-		// plus. Mesure du 2026-08-31 sur 65 films (3 986 enregistrements joueur porteurs du
-		// composant 0) : le canal B vaut ZERO dans 98,3 % des cas, et l'enregistrement
-		// `ce083875` slot 16 a 219075 ms porte A=66 avec B=16635 — un saut de 66 unites que
-		// [incrementTimes] transformait en 66 explosions publiees au meme instant. Sa seule
-		// marque distinctive est ce B hors domaine ; son A passait la borne.
-		if key.Comp == modeScoreComp && !modeScoreInDomain(v) {
+		if emissionHorsDomaine(key, v, val) {
+			cons.noterEmissionJetee(key, r)
 			continue
 		}
 		if raw[r.Slot] == nil {
@@ -130,6 +125,25 @@ func rawSeriesByRound(recs []types.StatRecord, key statSlotKey, teams bool) map[
 			types.ScorePoint{TimeMS: r.TimeMS, Slot: r.Slot, Value: val})
 	}
 	return raw
+}
+
+// emissionHorsDomaine dit qu une emission de l emplacement `key` (valeur lue `val`, composant `v`)
+// est jetee avant toute serie — LE filtre des deux marches ([rawSeriesByRound], [rawSeriesByKey]).
+//
+// Une emission NEGATIVE est un ancrage parasite : un compteur de recompense est positif. Elle est
+// jetee ICI, avant le choix de la sous-suite, et pas apres — sinon elle fausse ce choix. Mesure :
+// sur la suite (1, -115, 1), la plus longue sous-suite non decroissante retenue devenait (-115, 1),
+// ce qui datait l'evenement de la DERNIERE emission au lieu de la premiere.
+//
+// LE SCORE DE MODE EST BORNE SUR SES DEUX CANAUX, pas seulement sur celui qu'on lit. Les deux
+// valeurs d'un composant sortent de la MEME emission : un canal aberrant prouve que l'emission etait
+// mal alignee, et la valeur de l'autre ne vaut rien non plus. Mesure du 2026-08-31 sur 65 films
+// (3 986 enregistrements joueur porteurs du composant 0) : le canal B vaut ZERO dans 98,3 % des cas,
+// et l'enregistrement `ce083875` slot 16 a 219075 ms porte A=66 avec B=16635 — un saut de 66 unites
+// que [incrementTimes] transformait en 66 explosions publiees au meme instant. Sa seule marque
+// distinctive est ce B hors domaine ; son A passait la borne.
+func emissionHorsDomaine(key statSlotKey, v types.StatValue, val int64) bool {
+	return val < 0 || (key.Comp == modeScoreComp && !modeScoreInDomain(v))
 }
 
 // cumulateRounds filtre chaque manche par la plus longue sous-suite non decroissante, puis
