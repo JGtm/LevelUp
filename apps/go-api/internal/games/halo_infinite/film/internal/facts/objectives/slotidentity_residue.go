@@ -61,7 +61,11 @@ func (ri RoundIdentity) CompletedByRoundResidue(recs []types.StatRecord, lines [
 	seg := segmentsParManche(recs, ri.consultations)
 	out := ri.copieProfonde()
 	for _, round := range ri.Rounds() {
+		occupants := out.occupantsDeManche(round)
 		for slot, xuid := range appariementsParResidu(seg, out.byRound, recs, lines, round) {
+			if occupants[xuid] {
+				continue // un occupant d un siege recycle ne se donne pas en plus a un autre slot (lot R1)
+			}
 			out.byRound[round][slot] = xuid
 			out.origins[round][slot] = OriginRoundResidue
 		}

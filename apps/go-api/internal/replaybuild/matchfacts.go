@@ -349,11 +349,13 @@ func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 			"err", deaths.err, "match_id", matchID, "nommees", len(named))
 		return nil, decfilm.CountObjectiveFamily(named), 0
 	}
-	out, _ := decfilm.IdentifyNamedEventsByRound(named, pont.identite())
+	id := pont.identite()
+	out, _ := decfilm.IdentifyNamedEventsByRound(named, id)
 	nonNommes := decfilm.CountObjectiveFamily(named) - decfilm.CountObjectiveFamily(out)
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
 		"match_id", matchID, "nommees", len(named), "identifiees", len(out),
-		"nonNommees", nonNommes, "lignes", len(facts.Players))
+		"nonNommees", nonNommes, "siegeNonProuve", actionsSurSiegeNonProuve(named, id),
+		"lignes", len(facts.Players))
 	return out, nonNommes, 0
 }
 
@@ -458,4 +460,18 @@ func rosterXUIDs(facts port.MatchFacts) []uint64 {
 		xuids = append(xuids, p.XUID)
 	}
 	return replay.RosterXUIDsOf(xuids)
+}
+
+// actionsSurSiegeNonProuve compte les actions nommees (toutes familles) qui tombent sur un siege
+// statborg RECYCLE, dans une occupation que le pont n'a pas nommee (lot R1) : le pont s'y abstient.
+// Les actions d'objectif parmi elles entrent deja dans `coverage.objectives.noSlot` ; ce compte-ci
+// dit au journal lesquelles viennent d'un changement de siege, frags et assistances compris.
+func actionsSurSiegeNonProuve(named []decfilm.NamedEvent, id decfilm.RoundIdentity) int {
+	n := 0
+	for _, e := range named {
+		if id.UnprovenOccupantAt(e.Slot, e.TimeMS) {
+			n++
+		}
+	}
+	return n
 }

@@ -63,6 +63,21 @@ package objectives
 // des deux marches des series devient une fonction ([emissionHorsDomaine]). Aucune serie, aucune
 // identite, aucune action ne change (`replay-equiv` sur les 20 films de reference : seul
 // `coverage.fallbacks` bouge, et il est publie par `replay`) ; golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-09-28 (lot R1 du plan de suite d audit, constat C1 du rapport G-corpus J11,
+// REVISION CONSTANTE : rang ne sur cette branche, jamais publie) : LE SIEGE RECYCLE PORTE UN LIEN PAR
+// OCCUPATION (slotidentity_occupations.go). Un slot statborg dont les compteurs de base retombent a
+// zero puis reprennent (un joueur part, un autre prend son siege) est decoupe en occupations, chacune
+// nommee par les instants de mort de SON segment (meme regle que le pont plat) ou, pour la derniere,
+// par le triplet de son segment ; une occupation que rien ne prouve reste vide et le pont s y
+// abstient. LA SORTIE CHANGE, sur les seuls films a siege recycle (68 changements de siege sur 128
+// films du parc) : `RoundIdentity.At` rend l occupant de l INSTANT — donc les actions d objectif et
+// les portages de drapeau —, `identity.statborgSlots` publie une ligne bornee par occupation (non
+// resolue quand elle n est pas nommee). `AtRound` et la courbe de score ne bougent pas, sauf
+// qu aucune completion de manche entiere (triplet, elimination, residu) ne donne plus un occupant de
+// siege recycle a un second slot. Mesure : 7 temoins objectifs + 11de8353 + 4f77afc1, seuls les films
+// a siege recycle bougent, et seulement sur ces deux sorties. `bcb6d393` : le frag de 70 706 ms revient a son auteur (2535460750735339) au lieu du
+// remplacant arrive 2 min 30 plus tard.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"
