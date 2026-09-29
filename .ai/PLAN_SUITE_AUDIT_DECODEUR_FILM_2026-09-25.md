@@ -1315,6 +1315,16 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
     rendue à la lecture du jeu gagne +293 paquets sur `e5adf7b2` mais en perd 1 sur `11de8353`.
     Campagne de recherche à ouvrir (registre des reports) : les sept exceptions datées de J6
     et J6-bis tomberont avec la grammaire dépendante du contenu.
+28. (2026-09-29, R3) Un intervalle d'état de mouvement qu'aucune lecture ne ferme court jusqu'à la
+    fin de vie (`084a804d` slot 685 : accroupi de 59 s alors que le joueur saute puis resprinte) ;
+    des états lus dans des paquets non fermés sont publiés (`111fa685` slot 536, record 8:642,
+    masque aberrant). Antérieurs au plan : construction des intervalles côté rejeu, lot dédié.
+29. (2026-09-29, R2) Deux points isolés publiés AVANT GB-1 (faux ancrages de génération 1 pendant
+    la vie du corps : `084a804d` slot 602 frame 8159, `1c4c63c2` slot 666 frame 3551), que GB-1
+    masquait par accident : porte grammaticale (option 2, cible de retrait déjà au registre).
+30. (2026-09-29, R1) Sur un siège statborg recyclé, `AtRound` (manches du crâne, courbes de score
+    multi-manche) et la courbe mono-manche restent liés à la manche entière ; les heures
+    d'arrivée/départ de l'API ne sont pas sur l'horloge du film (écart jusqu'à 25 s).
 
 ---
 
@@ -1619,3 +1629,17 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   quatre lots correctifs en parallèle — R1 (C1, objectifs bornés par la présence), R2 (C2, C3,
   C6, GB-1), R3 (C4, C5, grammaire, doctrine J6-bis), R4 (outil : polarité TOTALE des métriques
   du gate, ratchet sur clé non classée) — puis G-corpus rejoué.
+- 2026-09-29 : lots correctifs de J11.1 fusionnés. **R4** (`51d1b417f`) : polarité totale des
+  505 métriques de couverture (176 échec, 170 succès, 157 neutres, 2 télémétrie), ratchet sur
+  clé non classée ; sur le rapport J11, 124 lignes changent de camp. **R1** (`5b115c918`) : un
+  siège statborg recyclé se découpe en occupations nommées chacune par ses propres morts,
+  abstention comptée sinon ; l'action de 70,7 s de `bcb6d393` revient à son auteur ; 6 autres
+  témoins objectifs identiques. **R3** (`3e5aeb3ad`) : C4/C5 localisés au paquet, cinq exceptions
+  datées de plus (douze au total, même cause de fond §8.27), le saut de `51ebbc0f` rétabli ;
+  plus aucun paquet fermé de la référence J4.0.5 perdu sur 12 films. **R2** (`e87a275de`) :
+  filtre de génération vivante DATÉ pour les positions (C2 : 14/6/5/28 positions aberrantes
+  retirées), verdict du pont par corps (C3 : collisions 114/66/244 → 0, verdicts nominaux),
+  place d'un arrivant lue par l'unité du tir (C6) ; cibles J5.5 tenues. **R2-bis** lancé : le
+  même filtre daté pour les huit canaux delta, l'arme tenue et la récupération d'équipement
+  (lectures antérieures au corps encore acceptées), et `TestKillSourceFaitsDIsolementFilmReel`
+  rouge depuis avant `6676dcabd` ; gates complets de l'arbre fusionné.
