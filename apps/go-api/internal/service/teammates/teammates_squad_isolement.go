@@ -44,10 +44,10 @@ import (
 	"context"
 	"log/slog"
 	"sort"
-	"strings"
 
 	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // buildSquadIsolementNuage assemble le nuage. `scope` est la lecture d'echange DEJA
@@ -277,11 +277,12 @@ func medianeDelai(points []domain.SquadIsolementMort) *int64 {
 }
 
 // rayonParMatchDuScope resout la portee du radar de chaque match MESURE du perimetre, par sa
-// variante — MEME logique que `TacticalService.rayonsParMatch` (service Tactique), reprise
-// ici parce que la source (`s.radarRange map[string]int`) vit sur un service DIFFERENT, avec
-// sa propre injection (cf. WithRadarRange). Un match dont la variante n'a pas de rayon SORT
-// de l'univers de la lecture, pas seulement de son numerateur (correction G2, doctrine
-// reprise telle quelle).
+// variante — MEME univers que `TacticalService.rayonsParMatch` (service Tactique), la source
+// (`s.radarRange map[string]int`) vivant sur un service DIFFERENT, avec sa propre injection
+// (cf. WithRadarRange). La resolution d'une variante est `mappings.PorteeDuRadar`, la seule du
+// depot (plan Emprise vies, lot V2b). Un match dont la variante n'a pas de rayon SORT de
+// l'univers de la lecture, pas seulement de son numerateur (correction G2, doctrine reprise
+// telle quelle).
 func rayonParMatchDuScope(matchs []domain.TacticalMatch, radar map[string]int) (map[string]float64, int) {
 	out := make(map[string]float64, len(matchs))
 	sans := 0
@@ -289,12 +290,12 @@ func rayonParMatchDuScope(matchs []domain.TacticalMatch, radar map[string]int) (
 		if !m.Mesure {
 			continue
 		}
-		metres, ok := radar[strings.TrimSpace(m.GameVariantName)]
-		if !ok || metres <= 0 {
+		metres, ok := mappings.PorteeDuRadar(radar, m.GameVariantName)
+		if !ok {
 			sans++
 			continue
 		}
-		out[m.MatchID] = float64(metres)
+		out[m.MatchID] = metres
 	}
 	return out, sans
 }

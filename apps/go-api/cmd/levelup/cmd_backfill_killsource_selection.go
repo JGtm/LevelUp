@@ -110,11 +110,12 @@ func filmsACollecter(
 // s ecrit qu apres des vies ecrites). Sans cette condition, le corpus deja collecte resterait
 // sans placement, son journal et ses vies portant deja leurs revisions courantes.
 //
-// LIMITE CONNUE, MESUREE : un match dont le pont slot->xuid n est pas publiable a des vies mais
-// aucun placement (meme refus que le contexte des morts) — il reste candidat a chaque passe
-// manuelle. 3 matchs sur 1 519 a vies sur la copie du 2026-09-28 (vies sans aucun contexte de
-// mort, le signe de ce refus). Le backlog AUTOMATIQUE du post-sync ne lit pas cette condition
-// (`conditionBacklog`, inchange) : aucun redecodage ne part de lui-meme.
+// LA PASSE CONVERGE AUSSI SUR UN PONT NON PUBLIABLE (lot V2b, 2026-09-29) : un tel match a des
+// vies, et le collecteur lui ecrit desormais une ligne de placement par vie (chaque vie entiere
+// « non situee », rien de mesure) au lieu d'aucune — il sort donc de la liste des candidats
+// comme les autres, sans regle de plus (3 matchs sur 1 519 a vies sur la copie du 2026-09-28
+// etaient re-selectionnes a chaque passe avant ce lot). Le backlog AUTOMATIQUE du post-sync ne
+// lit pas cette condition (`conditionBacklog`, inchange) : aucun redecodage ne part de lui-meme.
 func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT DISTINCT e.match_id FROM match_kill_events_latest e

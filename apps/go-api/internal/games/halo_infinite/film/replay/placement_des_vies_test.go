@@ -286,15 +286,35 @@ func TestPlacementDesVies_VarianteSansPortee(t *testing.T) {
 	}
 }
 
-// TestPlacementDesVies_PontNonPubliable — même refus que le contexte des morts : une identité lue
-// de deux façons rend le nommage faux, aucune ligne ne sort.
+// TestPlacementDesVies_PontNonPubliable — décision V1 amendée le 2026-09-29 (lot V2b) : une
+// identité lue de deux façons rend l'attribution des positions fausse, donc RIEN n'est mesuré,
+// mais chaque vie nommée est RENDUE, entière « non située » (même le portage, qui s'attribue lui
+// aussi par le pont), la portée recopiée, les frags rattachés comme ailleurs, le refus dit.
 func TestPlacementDesVies_PontNonPubliable(t *testing.T) {
 	e := decorNominal()
 	e.Registre.own.IndexDisagreements = 1
+	r := 18.0
+	e.RadarM = &r
+	e.Portages = map[uint64][]IntervalleDePort{111: {{DebutMS: 5_000, FinMS: 5_900}}}
+	e.Journal = []FragDuJournal{{TueurXUID: 111, VictimeXUID: 999, TempsMS: 5_000, Publiable: true}}
 	vies, bilan := PlacementDesVies(e)
-	if len(vies) != 0 || !bilan.PontNonPubliable {
-		t.Fatalf("%d vies, pont non publiable = %v : attendu aucune vie et le refus dit",
-			len(vies), bilan.PontNonPubliable)
+	if len(vies) != len(e.Registre.ViesNommees()) || len(vies) == 0 || !bilan.PontNonPubliable {
+		t.Fatalf("%d vies pour %d vies nommees, pont non publiable = %v : attendu une ligne par vie "+
+			"et le refus dit", len(vies), len(e.Registre.ViesNommees()), bilan.PontNonPubliable)
+	}
+	for _, v := range vies {
+		grille := ((v.FinMS-v.DebutMS)/PasDeLaGrilleDesViesMs + 1) * PasDeLaGrilleDesViesMs
+		if v.NonSitueMS != grille || v.MesureMS != 0 || v.PorteurMS != 0 || v.EquipeATerreMS != 0 ||
+			v.CoequipierNonSitueMS != 0 || v.MedianeM != nil || v.DerniereMesure != nil {
+			t.Fatalf("vie %+v : attendu %d ms non situees, rien d'autre, aucune mediane", v, grille)
+		}
+		if v.RadarM == nil || *v.RadarM != 18 || v.HorsRadarMS == nil || *v.HorsRadarMS != 0 {
+			t.Fatalf("vie de %d : portee %s / hors radar %s, attendu 18 / 0", v.XUID,
+				enClair(v.RadarM), enClair(v.HorsRadarMS))
+		}
+	}
+	if v := placementDe(t, vies, 111, 0); v.Frags != 1 || bilan.FragsRattaches != 1 {
+		t.Fatalf("frags de la vie %d / rattaches %d, attendu 1 / 1", v.Frags, bilan.FragsRattaches)
 	}
 }
 

@@ -45,8 +45,9 @@ const (
 	metricPlacementFragsHorsVie = "killsource_placement_frags_hors_vie"
 	metricPlacementWriteFail    = "killsource_placement_erreurs_ecriture"
 	metricPlacementSansPortee   = "killsource_placement_matchs_sans_portee"
-	// metricPlacementPontRefuse : le pont slot->xuid n'est pas publiable — aucune ligne, meme
-	// refus et meme raison que le contexte des morts.
+	// metricPlacementPontRefuse : le pont slot->xuid n'est pas publiable — les lignes s'ecrivent,
+	// chaque vie entiere « non situee », rien n'est mesure (decision V1 amendee le 2026-09-29,
+	// lot V2b : sans ligne, le rattrapage re-selectionnerait le match a chaque passe).
 	metricPlacementPontRefuse = "killsource_placement_pont_non_publiable"
 	// metricPlacementPorteursLus : matchs dont la garde de mode a fait PAYER une lecture de
 	// porteurs (le surcout accepte). metricPlacementSansCalage : le document assemble n'avait pas
@@ -78,7 +79,9 @@ type depsDuPlacement struct {
 	portee    PorteeDuRadar
 }
 
-// AvecPorteeDuRadar injecte la portee du radar par variante. Chainable.
+// AvecPorteeDuRadar injecte la portee du radar par variante. Chainable. En production, c'est
+// [KillSourceCollector.AvecCapture] qui l'appelle, avec la portee que
+// [CaptureDepuisCatalogue] a chargee (plan Emprise vies, lot V2b).
 func (c *KillSourceCollector) AvecPorteeDuRadar(p PorteeDuRadar) *KillSourceCollector {
 	c.placement.portee = p
 	return c
@@ -92,13 +95,6 @@ func (c *KillSourceCollector) projeterPlacementDesVies(
 	ctx context.Context, matchID string, mat materiauDIsolement, ids MatchIdentities,
 	journal persist.KillSourceBatch,
 ) {
-	if !mat.registre.PontPubliable() {
-		// REFUSE AVANT DE PAYER LES PORTEURS : `replay.PlacementDesVies` ne rendrait aucune ligne.
-		observability.AddInt(metricPlacementPontRefuse, 1)
-		slog.InfoContext(ctx, "killsource: placement — pont slot->xuid non publiable, aucune ligne "+
-			"(meme refus que le contexte des morts)", "match_id", matchID)
-		return
-	}
 	portages, lus := c.portagesDuMatch(ctx, matchID, mat, ids)
 	radar := c.placement.porteeDe(ids.Variante)
 	vies, bilan := replay.PlacementDesVies(replay.EntreePlacement{
@@ -120,9 +116,16 @@ func (c *KillSourceCollector) projeterPlacementDesVies(
 }
 
 // portagesDuMatch lit les intervalles de port d'objectif, sous la garde de mode de l'entree.
+//
+// PONT NON PUBLIABLE : AUCUNE LECTURE PAYEE. `replay.PlacementDesVies` classe alors chaque instant
+// « non situe », portage compris (un portage s'attribue par le meme pont) : le lire ne changerait
+// aucune ligne.
 func (c *KillSourceCollector) portagesDuMatch(
 	ctx context.Context, matchID string, mat materiauDIsolement, ids MatchIdentities,
 ) (map[uint64][]replay.IntervalleDePort, replay.BilanPortages) {
+	if !mat.registre.PontPubliable() {
+		return nil, replay.BilanPortages{}
+	}
 	return replay.PortagesAuSync(ctx, c.placement.entreeDesPorteurs(ctx, matchID, mat, ids))
 }
 
@@ -235,6 +238,9 @@ func publierLePlacement(ctx context.Context, matchID string, b bilanDuPlacement)
 	if b.radar == nil {
 		observability.AddInt(metricPlacementSansPortee, 1)
 	}
+	if b.frags.PontNonPubliable {
+		observability.AddInt(metricPlacementPontRefuse, 1)
+	}
 	l := b.porteurs.Lectures
 	if l.Statborg || l.Equipes || l.ObjetsDuMonde || l.ArmesTenues {
 		observability.AddInt(metricPlacementPorteursLus, 1)
@@ -244,7 +250,8 @@ func publierLePlacement(ctx context.Context, matchID string, b bilanDuPlacement)
 	}
 	slog.InfoContext(ctx, "killsource: placement des vies ecrit",
 		"match_id", matchID, "vies", b.vies, "vies_non_mesurees", b.nonMesurees,
-		"portee_connue", b.radar != nil, "frags_rattaches", b.frags.FragsRattaches,
+		"portee_connue", b.radar != nil, "pont_non_publiable", b.frags.PontNonPubliable,
+		"frags_rattaches", b.frags.FragsRattaches,
 		"frags_avant_premiere_vie", b.frags.FragsAvantLaPremiereVie,
 		"frags_sans_vie", b.frags.FragsSansVie, "frags_non_publiables", b.frags.FragsNonPubliables,
 		"frags_tueur_inconnu", b.frags.FragsTueurInconnu, "frags_camp_inconnu", b.frags.FragsCampInconnu,

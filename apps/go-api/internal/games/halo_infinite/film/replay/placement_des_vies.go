@@ -41,12 +41,17 @@ package replay
 // est celui de la vie qui vient de finir. Un frag antérieur à la première vie du tueur n'est
 // rattaché à aucune : il est compté dans le bilan, que l'appelant journalise.
 //
-// # CE QUE CE FICHIER REFUSE
+// # CE QUE CE FICHIER NE MESURE PAS : LE PONT NON PUBLIABLE
 //
 // Un registre dont le pont n'est pas publiable (`PontPubliable`) : les positions s'attribuent par
-// les vies, et une identité lue de deux façons rend le nommage lui-même faux. Même refus, même
-// raison que [ContextesDesMorts] — une ligne écrite en base n'a pas d'écran pour montrer sa
-// réserve.
+// le pont slot -> xuid, et une identité lue de deux façons rend l'attribution fausse. Même raison
+// que le refus de [ContextesDesMorts]. MAIS LA VIE EST RENDUE (décision V1 amendée le 2026-09-29,
+// lot V2b du plan) : les vies elles-mêmes sont écrites dans `match_lives`, et un match à vies sans
+// placement resterait candidat au rattrapage à chaque passe. Chaque instant de la vie est donc
+// « non situé » — les positions ne s'attribuent à personne, le joueur n'est pas situé —, rien
+// n'est mesuré (médiane nulle, temps mesuré nul), la portée est recopiée, et les frags se
+// rattachent comme ailleurs : le rattachement ne lit que les vies et le journal. Le bilan le dit
+// (`PontNonPubliable`) pour que l'appelant le compte.
 
 import (
 	"math"
@@ -135,7 +140,8 @@ type PlacementVie struct {
 
 // BilanPlacement dit ce que la passe a écarté, pour que l'appelant le compte et le journalise.
 type BilanPlacement struct {
-	// PontNonPubliable : le registre refuse son pont — aucune ligne n'est rendue.
+	// PontNonPubliable : le registre refuse son pont — chaque vie est rendue entière « non
+	// située », rien n'est mesuré (cf. l'en-tête).
 	PontNonPubliable bool
 	// FragsRattaches : frags attribués à une vie.
 	FragsRattaches int
@@ -157,26 +163,26 @@ type BilanPlacement struct {
 // PlacementDesVies mesure chaque vie nommée du registre, dans l'ordre de `ViesNommees` (celui
 // des lignes de `match_lives`).
 func PlacementDesVies(e EntreePlacement) ([]PlacementVie, BilanPlacement) {
-	if !e.Registre.PontPubliable() {
-		return nil, BilanPlacement{PontNonPubliable: true}
-	}
+	pontPubliable := e.Registre.PontPubliable()
 	vies := e.Registre.ViesNommees()
 	if len(vies) == 0 {
-		return nil, BilanPlacement{}
+		return nil, BilanPlacement{PontNonPubliable: !pontPubliable}
 	}
-	m := mesureDesVies{
-		pos:         indexerParXUID(e.Positions, e.Registre),
-		vivantes:    viesParXUID(e.Registre),
-		equipes:     e.Equipes,
-		coequipiers: coequipiersParCamp(e.Equipes),
-		portages:    e.Portages,
-		radar:       e.RadarM,
+	m := mesureDesVies{radar: e.RadarM, sansPont: !pontPubliable}
+	if pontPubliable {
+		m.pos = indexerParXUID(e.Positions, e.Registre)
+		m.vivantes = viesParXUID(e.Registre)
+		m.equipes = e.Equipes
+		m.coequipiers = coequipiersParCamp(e.Equipes)
+		m.portages = e.Portages
 	}
 	out := make([]PlacementVie, 0, len(vies))
 	for _, v := range vies {
 		out = append(out, m.mesurer(v))
 	}
-	return out, rattacherLesFrags(out, e.Journal, e.Equipes)
+	bilan := rattacherLesFrags(out, e.Journal, e.Equipes)
+	bilan.PontNonPubliable = !pontPubliable
+	return out, bilan
 }
 
 // causeDInstant : la cause attribuée à un instant de la grille.
@@ -198,6 +204,9 @@ type mesureDesVies struct {
 	coequipiers map[int][]uint64
 	portages    map[uint64][]IntervalleDePort
 	radar       *float64
+	// sansPont : le pont slot -> xuid n'est pas publiable, aucune position ne s'attribue — chaque
+	// instant est « non situé », avant toute autre cause (cf. l'en-tête).
+	sansPont bool
 }
 
 // mesurer parcourt la grille d'une vie et cumule ses causes.
@@ -238,8 +247,12 @@ func (m mesureDesVies) mesurer(v VieNommee) PlacementVie {
 }
 
 // classer rend la cause d'un instant, dans l'ordre de l'en-tête, et la distance quand il est
-// mesuré.
+// mesuré. Sans pont publiable, tout instant est « non situé » : ni le portage ni la vitalité des
+// coéquipiers ne se lisent sans attribuer des positions.
 func (m mesureDesVies) classer(xuid uint64, t int64) (causeDInstant, float64) {
+	if m.sansPont {
+		return instantNonSitue, 0
+	}
 	if porteA(m.portages[xuid], t) {
 		return instantPorteur, 0
 	}

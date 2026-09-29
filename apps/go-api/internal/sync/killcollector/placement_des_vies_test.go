@@ -17,16 +17,32 @@ import (
 	"levelup/go-api/internal/persist"
 )
 
-// TestProjeterPlacementDesVies_PontNonPubliable_NeTenteAucuneEcriture — un pont refuse ne rend
-// aucune ligne (meme refus que le contexte des morts), et la garde coupe AVANT le lease.
-func TestProjeterPlacementDesVies_PontNonPubliable_NeTenteAucuneEcriture(t *testing.T) {
-	c := &KillSourceCollector{acquireShared: panicWriterIso}
-	avant := observability.LoadCounter(metricPlacementPontRefuse)
-	mat := materiauDIsolement{registre: registreDeTest(positionsDUneVie(), 1)}
-	c.projeterPlacementDesVies(context.Background(), "m1", mat,
-		MatchIdentities{Equipes: map[string]int{"111": 0}}, persist.KillSourceBatch{})
-	if got := observability.LoadCounter(metricPlacementPontRefuse) - avant; got != 1 {
-		t.Fatalf("%s a bouge de %d, attendu 1", metricPlacementPontRefuse, got)
+// TestProjeterPlacementDesVies_PontNonPubliable_EcritSansLireLesPorteurs — decision V1 amendee le
+// 2026-09-29 (lot V2b) : un pont refuse ECRIT ses lignes (le writer est sollicite — ici il
+// echoue, et l'echec se compte), mais ne paie AUCUNE lecture de porteurs : sur une variante a
+// porteur (CTF), le bilan des porteurs reste VIERGE — ni garde posee, ni lecture. Les lignes
+// elles-memes sont verifiees sur une vraie base (`..._integration_test.go`).
+func TestProjeterPlacementDesVies_PontNonPubliable_EcritSansLireLesPorteurs(t *testing.T) {
+	c := &KillSourceCollector{
+		acquireShared: func(context.Context) (*sql.DB, func(), error) {
+			return nil, nil, errors.New("lease indisponible")
+		},
+	}
+	pos := positionsDUneVie()
+	mat := materiauDIsolement{registre: registreDeTest(pos, 1), positions: pos}
+	ids := MatchIdentities{Equipes: map[string]int{"111": 0}, Variante: "CTF:Arena"}
+	if replay.GardesDeLaVariante(ids.Variante).Aucune() {
+		t.Fatal("fixture : la variante devait etre a porteur")
+	}
+	if portages, lus := c.portagesDuMatch(context.Background(), "m1", mat, ids); portages != nil ||
+		lus != (replay.BilanPortages{}) {
+		t.Fatalf("pont refuse : portages %v, bilan %+v — attendu aucune lecture", portages, lus)
+	}
+	avant := observability.LoadCounter(metricPlacementWriteFail)
+	c.projeterPlacementDesVies(context.Background(), "m1", mat, ids, persist.KillSourceBatch{})
+	if got := observability.LoadCounter(metricPlacementWriteFail) - avant; got != 1 {
+		t.Fatalf("%s a bouge de %d, attendu 1 : l'ecriture d'un pont refuse doit etre tentee",
+			metricPlacementWriteFail, got)
 	}
 }
 

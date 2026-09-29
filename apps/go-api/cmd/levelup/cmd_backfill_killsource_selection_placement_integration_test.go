@@ -7,7 +7,8 @@ package main
 //
 // `matchsAJour` exige, pour tout match qui a des vies, une passe de `match_life_placement_latest`
 // a `killcollector.PlacementRev`. La requete tourne ici sur une vraie base migree : les quatre
-// cas ci-dessous ne peuvent pas mentir sur la syntaxe ni sur l'ensemble selectionne.
+// cas ci-dessous ne peuvent pas mentir sur la syntaxe ni sur l'ensemble selectionne. Le cinquieme
+// (lot V2b) : la convergence sur un match au pont slot->xuid non publiable.
 
 import (
 	"context"
@@ -19,8 +20,10 @@ import (
 
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/killcollector"
 )
 
@@ -99,5 +102,62 @@ func TestMatchsAJour_ExigeLePlacementDesVies(t *testing.T) {
 		if aJour[id] != attendu[id] {
 			t.Errorf("%s : a jour = %v, attendu %v", id, aJour[id], attendu[id])
 		}
+	}
+}
+
+// TestMatchsAJour_PontNonPubliable_Converge — lot V2b.2 (2026-09-29). Un match dont le pont
+// slot->xuid n'est pas publiable a des vies ; avant le lot, le placement n'ecrivait AUCUNE ligne
+// et `matchsAJour` le re-selectionnait a chaque passe. La chaine de production est jouee : le
+// calcul pur (`replay.PlacementDesVies`) sur un registre au pont refuse, puis le persister de
+// production (qui valide les lignes) a `killcollector.PlacementRev`. Le match est candidat avant,
+// a jour apres — sans regle de plus dans `matchsAJour`.
+func TestMatchsAJour_PontNonPubliable_Converge(t *testing.T) {
+	db := baseDeSelection(t)
+	const id = "pont-refuse"
+	matchAJourDeSesVies(t, db, id)
+	ctx := context.Background()
+	if aJour, err := matchsAJour(ctx, db); err != nil || aJour[id] {
+		t.Fatalf("avant le placement : a jour = %v (%v), attendu candidat", aJour[id], err)
+	}
+
+	pos := make([]decfilm.BipedPosition, 0, 101)
+	for ms := int64(0); ms <= 10_000; ms += 100 {
+		pos = append(pos, decfilm.BipedPosition{Slot: 1, TimestampUS: uint64(ms) * 1000, HasWorld: true})
+	}
+	reg := replay.BuildIdentityRegistry(replay.IdentityInput{
+		Positions: pos, Deaths: []replay.Death{{XUID: 111, TimeMS: 10_000}},
+		PlayerIndices: replay.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26, Disagreements: 1},
+	})
+	if reg.PontPubliable() {
+		t.Fatal("fixture : le pont devait etre refuse")
+	}
+	vies, bilan := replay.PlacementDesVies(replay.EntreePlacement{
+		Positions: pos, Registre: reg, Equipes: map[uint64]int{111: 0},
+	})
+	if !bilan.PontNonPubliable || len(vies) == 0 {
+		t.Fatalf("calcul pur : %d vies, pont non publiable %v — attendu des vies et le refus dit",
+			len(vies), bilan.PontNonPubliable)
+	}
+	rows := make([]persist.LifePlacementInsert, 0, len(vies))
+	for _, v := range vies {
+		rows = append(rows, persist.LifePlacementInsert{
+			XUID: "111", StartMS: v.DebutMS, EndMS: v.FinMS, DurationMS: v.DureeMS,
+			MeasuredMS: v.MesureMS, MedianM: v.MedianeM, UnplacedMS: v.NonSitueMS,
+			CarrierMS: v.PorteurMS, TeamDownMS: v.EquipeATerreMS,
+			TeammateUnplacedMS: v.CoequipierNonSitueMS, Kills: v.Frags,
+		})
+	}
+	if err := persist.NewLifePlacementPersister(db).PersistPass(ctx, persist.LifePlacementBatch{
+		MatchID: id, DecoderRev: killcollector.PlacementRev, Rows: rows,
+	}); err != nil {
+		t.Fatalf("le persister refuse les lignes d'un pont non publiable : %v", err)
+	}
+
+	aJour, err := matchsAJour(ctx, db)
+	if err != nil {
+		t.Fatalf("matchsAJour: %v", err)
+	}
+	if !aJour[id] {
+		t.Fatalf("%s reste candidat apres son placement : le rattrapage ne converge pas", id)
 	}
 }

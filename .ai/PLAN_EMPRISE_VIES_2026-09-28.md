@@ -418,6 +418,10 @@ retrait ; façade `decfilm` intacte à 166). Témoin : `sync/killcollector/empri
   compté (`FragsCampInconnu`) ; tueur non résolu : écarté et compté. Témoin : 0 et 0.
 - Registre au pont non publiable (`PontPubliable` faux) : AUCUNE ligne, `BilanPlacement.PontNonPubliable`
   — même refus et même raison que `ContextesDesMorts` (règle ajoutée, non écrite en V3 : §7).
+  **Décision amendée le 2026-09-29 (superviseur, lot V2b.2)** : une ligne PAR VIE nommée, chaque
+  instant « non situé » (`unplaced`), `measured_ms = 0`, médiane NULL, portée recopiée (hors radar
+  0), frags rattachés comme ailleurs, `PontNonPubliable` toujours dit au bilan — sans ligne, un
+  match à vies restait candidat au rattrapage à chaque passe.
 - `PlacementVie.DerniereMesure` (dernier instant mesuré et sa distance) est la valeur que le critère 3
   de V1.3 confronte au contexte de mort ; V2.1 ne la persiste pas.
 - Porteurs : seul l'état `carried` du drapeau compte ; `carried_open` (borne haute, aucun lâcher daté)
@@ -548,7 +552,7 @@ Périmètre : migration de la table, persister, câblage du collecteur, révisio
   → `sync/killcollector/placement_des_vies.go`. Appelée seulement si les vies sont ÉCRITES
   (`projeterFaitsDIsolement` rend désormais ce booléen), sous `CapFilmKillPositions` (même porte
   que les positions, message Debug élargi). Journal détaillé ci-dessous.
-- [!] V2.5 Portée du radar injectée au collecteur (option de câblage dans `api/wire`), même source
+- [~] V2.5 Portée du radar injectée au collecteur (option de câblage dans `api/wire`), même source
   que la lecture ; test de câblage qui lit l'arbre syntaxique (modèle
   `api/wire/registry_pages_home_teammates_wiring_test.go`).
   → **INAPPLICABLE TELLE QU'ÉCRITE — ARRÊT et rapport (consigne du brief)** : `api/wire` ne
@@ -570,6 +574,8 @@ Périmètre : migration de la table, persister, câblage du collecteur, révisio
   existantes (`TacticalService.rayonsParMatch`, `rayonParMatchDuScope`) y migrent, et un garde-rail
   interdit toute autre résolution. Le test de câblage porte sur l'application de la capture au
   collecteur, pas sur `api/wire`.
+  → **`[~]` couvert par V2b.1** (2026-09-29, journal V2b) : la portée voyage par la capture, les
+  trois lieux de naissance l'ont ; le test de câblage est `TestAvecCapture_PoseLaPorteeDuRadar`.
 - [x] V2.6 `PlacementRev` + `matchsAJour` étendu (V12) ; `conditionBacklog` du post-sync inchangé,
   avec un test qui le vérifie.
   → `killcollector.PlacementRev = "placement-2026-09-29-v1"` ; `IsolationDecoderRev`, `decfilm.Rev`,
@@ -721,21 +727,122 @@ fois) :
 
 Décisions du superviseur du 2026-09-29, sur le rapport V2 vérifié sur pièces :
 
-- [ ] V2b.1 **Portée du radar par la capture** (V2.5 tranchée, voie (a)) :
+- [x] V2b.1 **Portée du radar par la capture** (V2.5 tranchée, voie (a)) :
   - helper unique dans `games/mappings` (ex. `PorteeDuRadar(table map[string]int, variante string) (float64, bool)` : clé nettoyée par `strings.TrimSpace`, valeur > 0) ;
   - `TacticalService.rayonsParMatch` et `teammates.rayonParMatchDuScope` l'appellent (comportement inchangé, leurs tests verts sans retouche) ;
   - garde-rail (test grep, auto-testé sur les deux anciennes copies) : aucune autre lecture de la table des portées par variante hors du helper ;
   - `CaptureDepuisCatalogue` charge `regulation.toml` du titre par le même chargeur que `api/server_apiv1.go:1233-1238` (best-effort journalisé, comme libellés et objectifs) et l'application de la capture pose `AvecPorteeDuRadar` : les trois lieux de naissance du collecteur l'ont sans code de plus ;
   - tests : la capture sur la configuration réelle du dépôt rend 18 m pour une variante d'Arène et 24 m pour une variante BTB ; un test qui échoue si l'application de la capture cesse de poser la portée ; variante absente → `radar_m` NULL (déjà couvert en V2, vérifier).
-- [ ] V2b.2 **Rattrapage convergent** : un match au pont non publiable écrit quand même ses lignes
+  → helper `mappings.PorteeDuRadar` (`games/mappings/portee_du_radar.go`), les deux copies migrées
+  (tests des services verts sans retouche), garde-rail `archlint/no_local_radar_range_lookup_test.go`
+  (auto-testé sur les trois anciennes formes, copie de test du témoin comprise), chargeur
+  `mappings.LoadRegulationForTitle` (celui du registre, que `LoadFromConfigDir` appelle désormais),
+  `DepsCapture.Portee` posée par `AvecCapture` via `AvecPorteeDuRadar` (gardée : c'est le moyen
+  d'application). Variante absente → NULL : vérifié (`TestProjeterPlacementDesVies_EcritUneLigneParVie`,
+  seconde passe). Journal V2b.
+- [x] V2b.2 **Rattrapage convergent** : un match au pont non publiable écrit quand même ses lignes
   (V1 amendée) — chaque instant de la vie compte en `unplaced` (les positions ne s'attribuent à
   personne : le joueur n'est pas situé), `measured_ms = 0`, médiane NULL, frags rattachés comme
   ailleurs ; le compteur `killsource_placement_pont_non_publiable` reste. `matchsAJour` converge
   alors sans règle de plus. Test de la règle (rouge sous mutation) et test de convergence de
   `matchsAJour` sur ce cas.
-- [ ] V2b.3 Gate du lot V2 rejoué en entier (commandes du journal V2), dont le témoin V2.7 : les
+  → règle dans `replay.PlacementDesVies` (`sansPont` : tout instant « non situé », porteurs non
+  lus par le collecteur) ; tests pur, collecteur sur base, convergence de `matchsAJour`. **Réserve
+  (§7)** : les 3 matchs de la copie cités par le journal V2 ne sont PAS ce cas et restent candidats
+  (cause antérieure au lot V2, journal V2b).
+- [x] V2b.3 Gate du lot V2 rejoué en entier (commandes du journal V2), dont le témoin V2.7 : les
   lignes du 22/09 portent désormais `radar_m` (18 m en Arène).
+  → vert (sorties au journal V2b) ; témoin : 18 m sur `8e376cb1` et `ab526724`, `beyond_ms` non
+  NULL, part hors radar 6,46 % et 10,75 %.
 - Gate : celui de V2.
+
+#### Journal V2b (exécuteur, 2026-09-29)
+
+**Fichiers.** Neufs : `games/mappings/portee_du_radar.go` (+ `_test.go`),
+`archlint/no_local_radar_range_lookup_test.go`, `sync/killcollector/capture_portee_test.go`.
+Modifiés : `games/mappings/registry.go` (`RegulationPath`, `LoadRegulationForTitle` ; le registre
+lit son `regulation.toml` par `RegulationPath`, comportement identique),
+`service/tactical_service_isolement.go` (`rayonsParMatch`), `service/teammates/teammates_squad_isolement.go`
+(`rayonParMatchDuScope`), `sync/killcollector/capture.go` (`DepsCapture.Portee`, `porteeDuTitre`,
+`AvecCapture`), `collector.go` et `placement_des_vies.go` du collecteur (commentaires, porteurs non
+lus sur pont refusé, compteur du pont déplacé à la publication, champ `pont_non_publiable` du
+journal), `film/replay/placement_des_vies.go` (+ `_test.go`), tests du collecteur (unitaire,
+intégration, témoin), `cmd/levelup/cmd_backfill_killsource_selection.go` (godoc de `matchsAJour`)
+et son test d'intégration.
+
+**V2b.1 — comment la portée atteint les trois lieux de naissance.** `CaptureDepuisCatalogue`
+(appelée par l'étape post-sync `postsync.go:173`, `backfill-killsource` et `--online` via
+`cmd_backfill_killsource_positions.go:55`) charge `regulation.toml` par
+`mappings.LoadRegulationForTitle` — la fonction que le registre des mappings de `server_apiv1`
+emploie (`LoadFromConfigDir` → `loadRegulationIfExists(RegulationPath(…))`), sans charger les
+autres manifestes — et pose `DepsCapture.Portee` (fermeture sur `RadarRangeMap()` résolue par
+`mappings.PorteeDuRadar`). `AvecCapture` l'applique par `AvecPorteeDuRadar` ; les trois sites
+appliquent la capture (garde-rail `no_collecteur_sans_capture_test.go`), aucun code de plus.
+Fichier illisible ou absent : `Warn` et aucune portée (lignes NULL, compteur « sans portée »).
+Aucune comparaison de slug. Le témoin n'injecte plus la portée : elle vient de la capture, et
+`v2CritereDeLaPortee` la confronte à une lecture indépendante (`LoadRegulationFromFile` + helper).
+
+**V2b.2 — la règle.** `PlacementDesVies` ne refuse plus : sans pont publiable, `mesureDesVies`
+porte `sansPont` et `classer` rend « non situé » AVANT toute autre cause (le portage et la vitalité
+s'attribuent par le même pont) ; mêmes grille fermée, portée recopiée (hors radar 0), frags par
+`rattacherLesFrags`, `PontNonPubliable` au bilan. Le collecteur ne lit plus les porteurs sur un
+pont refusé (`portagesDuMatch`), écrit, et compte `killsource_placement_pont_non_publiable` à la
+publication. Le persister accepte ces lignes sans changement (cumul non situé = grille de la vie).
+
+**Réserve sur la population réelle (vérifiée sur la copie).** Les 3 matchs du journal V2
+(`03af54c3`, `50247b26`, `13b00e35`, BTB:Slayer) ne sont PAS des ponts non publiables à vies
+écrites : leurs vies datent d'une passe du 2026-09-12 à `isolement-2026-09-10-pont-a-l-instant`,
+et la passe actuelle n'établit aucun pont (`13b00e35` rejoué : « positions — passe ignorée : pont
+slot->xuid vide », aucune vie écrite, donc aucun placement). La clause d'isolement de `matchsAJour`
+(sans le placement) les re-sélectionnait DÉJÀ avant V2 (requête rejouée sur la copie : aucun des
+trois à jour). La règle V2b.2 couvre le cas `PontEtabli` mais `IndexDisagreements > 0` (vies
+écrites, contexte des morts refusé) ; sur la copie, 0 match à vies de la révision courante n'est
+sans contexte de mort. §7.
+
+**Mutations** (script de copie dans le scratchpad, test ciblé, restauration vérifiée par `cmp`) :
+
+| # | Test | Mutation | Rouge |
+|---|---|---|---|
+| R1 | `TestPorteeDuRadar` | clé non nettoyée | `"  Slayer:Arena\t"` : (0, false) |
+| R2 | `TestPorteeDuRadar` | portée ≤ 0 acceptée | `Casse` (0, true), `Negative` (−3, true) |
+| R3 | `TestAvecCapture_PoseLaPorteeDuRadar` | `AvecCapture` sans `AvecPorteeDuRadar` | portée nil |
+| R3b | `TestEmpriseV2Temoin` (`8e376cb1`) | même mutation | « ligne 0 : portée attendue 18 m, radar nil » |
+| R4 | `TestCaptureDepuisCatalogue_PorteeDuDepot` | la capture ne pose pas `Portee` | « capture sans portée » |
+| R5 | `TestPorteeDuTitre_BestEffort` | dégradation retirée | une portée sur fichier absent |
+| R6 | `TestLoadRegulationForTitle_LeChargeurDuRegistre` | chemin sans `mappings/` | (nil, nil) |
+| R7 | `TestNoLocalRadarRangeLookup` | copie réintroduite dans `rayonsParMatch` | 1 violation |
+| R8 | `TestNoLocalRadarRangeLookup_ReconnaitLesCopies` | empreinte 2 retirée | copie du témoin non reconnue |
+| N1 | `TestPlacementDesVies_PontNonPubliable`, `…_PontNonPubliable_EcritLesVies` (base), `TestMatchsAJour_PontNonPubliable_Converge` | règle V1 d'origine (aucune ligne) | 0 vie sur 3 / 0 ligne / 0 vie |
+| N2 | `TestPlacementDesVies_PontNonPubliable` | garde `sansPont` retirée de `classer` | 10 100 ms « équipe à terre » |
+| N3 | `…_PontNonPubliable_EcritSansLireLesPorteurs` | porteurs lus sur pont refusé | bilan : drapeau gardé, statborg, équipes, monde lus |
+| N4 | `…_PontNonPubliable_EcritLesVies` | compteur du pont retiré | 0 au lieu de 1 |
+| N5 | `TestPlacementDesVies_PontNonPubliable` | refus non dit au bilan | `PontNonPubliable` faux |
+| N6 | `TestMatchsAJour_PontNonPubliable_Converge` | `matchsAJour` exige `measured_ms > 0` | reste candidat |
+| N7 | `…_PontNonPubliable_EcritSansLireLesPorteurs` | refus d'écrire rétabli au collecteur | 0 échec d'écriture (non tentée) |
+
+Premier essai de N3 NON rouge : avec un film nil les lectures ne paniquent pas (elles rendent
+vide) ; le test pince désormais le bilan de `portagesDuMatch` (vierge sur pont refusé).
+
+**Gate** (depuis `apps/go-api`, `CGO_ENABLED=1`, `GOCACHE` du worktree, une commande `go` à la
+fois) :
+- `go test` en trois lots : `./internal/sync/... ./internal/games/... ./internal/replaybuild/...
+  ./internal/archlint/...` : tout ok sauf `sync/skill` `TestLUSRV2Shadow_RafalesBornees_300Candidats`
+  (2,01 à 2,06 s pour 2 s, §7 V1) — rejoué seul : ok ; reste d'`internal` : 102 ok, aucun FAIL ;
+  hors `internal` : 38 ok, aucun FAIL.
+- `go test -tags=integration -p 1` : `./internal/sync/killcollector/... ./internal/persist/...
+  ./internal/migration/... ./internal/games/halo_infinite/migrations/... ./internal/api/wire/...
+  ./cmd/levelup/...` : 5 ok, `killcollector` `TestRosterDesFilms_AnnuaireContreJointure` facteur
+  9,97 pour 10 (§7 V2) — paquet rejoué seul : ok ; les 9 autres paquets de `./internal/sync/...` :
+  ok ; `./internal/sync/` : ok (275,8 s) ; `./internal/service/...` : 5 ok,
+  `service` `TestCareerLive_NilAPIResponse_NotCached` échoue une fois (délai de 2 s, §7) — vert
+  seul puis deux fois sur le paquet entier.
+- Témoin : `EMPRISE_V2_FILMS=8e376cb1…,ab526724…` (commande du journal V2) : PASS 74,9 s ;
+  `8e376cb1` Team Slayer:Arena 102/102, 18 m, hors radar 193 700 / 2 997 200 ms (6,46 %) ;
+  `ab526724` CTF:Arena 150/150, 18 m, hors radar 346 600 / 3 224 300 ms (10,75 %), 31 portages ;
+  lignes égales au calcul pur champ à champ.
+- `make go-api-lint` : 0 issues. `go test ./internal/archlint/...` : ok. `gofmt -l internal cmd` :
+  vide. Sous `--build-tags=integration` (hors cible) sur les paquets touchés : seul le signalement
+  `goimports` antérieur de `postsync_backlog_integration_test.go` (§7 V2).
 
 ### V3 — Lecture et contrat (Go) · moyen
 
@@ -851,6 +958,7 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
   faux) : aucune ligne, refus au bilan. Règle NON écrite en V3, ajoutée par cohérence avec
   `ContextesDesMorts` (mêmes positions attribuées par les mêmes vies). Conséquence : sur un tel film,
   `match_lives` aura des lignes et `match_life_placement` aucune. À confirmer par le superviseur.
+  → Amendée le 2026-09-29 (V2b.2) : une ligne par vie, entière « non située ».
 - (V1) Garde du drapeau au sync : la cuisson pose l'entrée du drapeau sur TOUT film et laisse les
   trois signaux du film trancher ; le sync ne paie les lectures du drapeau que si la variante est de
   la famille CTF (`GardesDesPorteurs.Drapeau`), puis les mêmes signaux tranchent. Un film que ses
@@ -872,14 +980,17 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
 - (V2, 2026-09-29) **V2.5 inapplicable telle qu'écrite** : `api/wire` ne construit ni le collecteur
   ni le moteur de sync (détail et deux voies au journal V2). Tant que V2.5 n'est pas tranchée,
   toute ligne de `match_life_placement` s'écrit `radar_m` / `beyond_ms` NULL.
+  → Réglé par V2b.1 (portée par la capture).
 - (V2) La résolution « variante nettoyée → portée > 0 » vit en DEUX copies
   (`service/tactical_service*.go` `rayonsParMatch`, `service/teammates/teammates_squad_isolement.go`
   `rayonParMatchDuScope`, qui le dit dans son godoc) ; le câblage V2.5 en ferait une troisième. Le
   témoin V2.7 en porte une copie de test (`v2Portee`).
+  → Réglé par V2b.1 (`mappings.PorteeDuRadar` + garde-rail, la copie de test comprise).
 - (V2) Rattrapage : un match dont le pont slot->xuid n'est pas publiable a des vies et aucun
   placement (même refus que le contexte des morts), donc `matchsAJour` le garde candidat à chaque
   passe manuelle. Mesuré sur la copie du 2026-09-28 : 3 matchs sur 1 519 à vies n'ont aucun
   contexte de mort (le signe de ce refus). Le backlog automatique n'est pas touché.
+  → Règle réglée par V2b.2 ; MAIS le signe était faux pour ces 3 matchs (entrée V2b ci-dessous).
 - (V2) La feuille du match (triplet frags / morts / assistances) n'a changé AUCUN portage sur les
   films témoins `ab526724` (CTF) et `b4f9064c` (Oddball) : le pont par manche s'en passe sur eux.
   Seul le test de couture `TestEntreeDesPorteurs_PorteCeQueLaPasseALu` en garde la transmission.
@@ -896,3 +1007,18 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
   `sync/killcollector/postsync_backlog_integration_test.go` (bloc d'import intact ; le lot n'a
   ajouté qu'un test en fin de fichier), `goconst` `name_fr` dans
   `migration/steps_metadata_purge_weapon_families_labels.go`.
+- (V2b, 2026-09-29) **Les 3 matchs « à vies sans contexte de mort » de la copie ne convergent
+  toujours pas, et ce n'est pas le pont non publiable.** `03af54c3`, `50247b26`, `13b00e35`
+  (BTB:Slayer) : vies d'une passe du 2026-09-12 à `isolement-2026-09-10-pont-a-l-instant`
+  (révision périmée), positions d'une passe ancienne ; la passe ACTUELLE n'établit aucun pont
+  (`13b00e35` rejoué par `CollectMatch` : « positions — passe ignorée : pont slot->xuid vide
+  (vies=0 nommees=0 lectures_index=0) »), donc n'écrit ni positions, ni vies, ni placement. La
+  clause d'isolement de `matchsAJour` (positions présentes, vies à une révision périmée, équipes
+  en base) les re-sélectionnait DÉJÀ avant V2 : non-convergence antérieure au lot, que V2b.2 ne
+  touche pas. 8 matchs de la copie ont encore des vies à cette révision périmée. Non traité.
+- (V2b) `service` `TestCareerLive_NilAPIResponse_NotCached` (attente de 2 s) a échoué une fois sous
+  `-tags=integration -p 1` ; vert seul, puis deux fois sur le paquet entier. Test chronométré
+  sensible à la charge, hors du lot.
+- (V2b) Le chemin de `regulation.toml` s'écrit à la main en plusieurs endroits antérieurs au lot
+  (`sync/replayartifacts/flaggrabsnet.go:73`, `padtiers.go:268` via `TitleMappingsDir`, le témoin
+  V2.7) ; le lot ajoute `mappings.RegulationPath` (celui du registre) sans migrer ces sites.

@@ -20,6 +20,7 @@ package killcollector
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -118,6 +119,45 @@ func TestProjeterPlacementDesVies_EcritUneLigneParVie(t *testing.T) {
 	}
 }
 
+// TestProjeterPlacementDesVies_PontNonPubliable_EcritLesVies — lot V2b.2 (decision V1 amendee le
+// 2026-09-29) : un pont slot->xuid non publiable ECRIT une ligne par vie, entiere « non situee »
+// (la grille fermee de la vie), rien de mesure, la portee recopiee, le frag rattache — la ligne
+// que le persister accepte et que `matchsAJour` reconnait (convergence du rattrapage).
+func TestProjeterPlacementDesVies_PontNonPubliable_EcritLesVies(t *testing.T) {
+	db := baseBacklog(t)
+	c := (&KillSourceCollector{acquireShared: writerSur(db)}).AvecPorteeDuRadar(
+		func(string) (float64, bool) { return 18, true })
+	pos := positionsDUneVie()
+	mat := materiauDIsolement{registre: registreDeTest(pos, 1), positions: pos}
+	if mat.registre.PontPubliable() {
+		t.Fatal("fixture : le pont devait etre refuse")
+	}
+	vie := mat.registre.ViesNommees()[0]
+	ids := MatchIdentities{Equipes: map[string]int{"111": 0, "222": 1}, Variante: "CTF:Arena"}
+	journal := persist.KillSourceBatch{Publishable: true, Deaths: []persist.KillEventInsert{
+		{TimeMS: int(vie.DebutMS) + 100, FeedKillerXUID: "111", VictimXUID: "222"},
+	}}
+	avant := observability.LoadCounter(metricPlacementPontRefuse)
+
+	c.projeterPlacementDesVies(context.Background(), "m1", mat, ids, journal)
+	lignes := lirePlacement(t, db, "m1")
+	if len(lignes) != 1 {
+		t.Fatalf("%d lignes, attendu 1 (une par vie nommee, pont refuse compris)", len(lignes))
+	}
+	l := lignes[0]
+	grille := ((vie.FinMS-vie.DebutMS)/100 + 1) * 100
+	if l.rev != PlacementRev || l.mesure != 0 || l.nonSitue != grille || l.porteur != 0 ||
+		l.aTerre != 0 || l.coequipier != 0 || l.mediane != nil || l.frags != 1 {
+		t.Fatalf("ligne = %+v : attendu %d ms non situees, rien de mesure, 1 frag", l, grille)
+	}
+	if l.radar == nil || *l.radar != 18 || l.horsRadar == nil || *l.horsRadar != 0 {
+		t.Fatalf("ligne = %+v : attendu portee 18 et 0 ms hors radar", l)
+	}
+	if got := observability.LoadCounter(metricPlacementPontRefuse) - avant; got != 1 {
+		t.Fatalf("%s a bouge de %d, attendu 1", metricPlacementPontRefuse, got)
+	}
+}
+
 // ── V2.7 : le temoin sur de vrais films ────────────────────────────────────────────────────
 
 // v2Env : les donnees du temoin, ou un saut.
@@ -166,8 +206,9 @@ func v2CopieMigree(t *testing.T, source string) *sql.DB {
 	return db
 }
 
-// v2Portee : la table de portee du radar du titre, lue dans regulation.toml par le chargeur des
-// mappings — la MEME source que la lecture (`RadarRangeMap`), nettoyage de cle compris.
+// v2Portee : la portee du radar du titre, lue INDEPENDAMMENT de la capture (le fichier relu par
+// `LoadRegulationFromFile`), resolue par le helper unique `mappings.PorteeDuRadar` — la MEME
+// resolution que la lecture et l'ecriture (lot V2b).
 func v2Portee(t *testing.T, repoRoot string) PorteeDuRadar {
 	t.Helper()
 	dir := title.NewPathResolver(repoRoot).TitleMappingsDir(title.DefaultSlug)
@@ -176,10 +217,7 @@ func v2Portee(t *testing.T, repoRoot string) PorteeDuRadar {
 		t.Fatalf("regulation.toml : %v", err)
 	}
 	table := reg.RadarRangeMap()
-	return func(v string) (float64, bool) {
-		m, ok := table[strings.TrimSpace(v)]
-		return float64(m), ok && m > 0
-	}
+	return func(v string) (float64, bool) { return mappings.PorteeDuRadar(table, v) }
 }
 
 func TestEmpriseV2Temoin(t *testing.T) {
@@ -190,7 +228,9 @@ func TestEmpriseV2Temoin(t *testing.T) {
 	}
 	db := v2CopieMigree(t, base)
 	portee := v2Portee(t, repoRoot)
-	col := v0Collecteur(t, v0Env{cac: cache}, db, db).AvecPorteeDuRadar(portee)
+	// LA PORTEE N'EST PAS INJECTEE PAR LE TEST (lot V2b) : elle vient de la capture, comme en
+	// production. `v2CritereDeLaPortee` la confronte a la lecture independante du test.
+	col := v0Collecteur(t, v0Env{cac: cache}, db, db)
 	ctx := context.Background()
 	for _, id := range films {
 		outcome, _, err := col.CollectMatch(ctx, id)
@@ -199,6 +239,7 @@ func TestEmpriseV2Temoin(t *testing.T) {
 		}
 		ecrites := lirePlacement(t, db, id)
 		v2CritereDesVies(t, db, id, ecrites)
+		v2CritereDeLaPortee(t, db, id, ecrites, portee)
 		pures := v2CalculPur(t, ctx, col, db, id, repoRoot, portee)
 		v2Comparer(t, id, ecrites, pures)
 	}
@@ -227,6 +268,47 @@ func v2CritereDesVies(t *testing.T, db *sql.DB, id string, ecrites []lignePlacem
 	}
 	t.Logf("%s  %d vies ecrites = %d vies en base ; %d non mesurees ; mesure %d ms, porteur %d ms ; "+
 		"portee %v", id[:8], len(ecrites), vies, nonMesurees, mesure, porteur, ecrites[0].radar != nil)
+}
+
+// v2CritereDeLaPortee (lot V2b.3) : chaque ligne porte la portee de la variante du match, telle
+// que la lecture independante du test la resout, et un temps hors radar des qu'elle est connue.
+// Journalise la part hors radar du match (ms hors radar / ms mesurees).
+func v2CritereDeLaPortee(t *testing.T, db *sql.DB, id string, ecrites []lignePlacement, portee PorteeDuRadar) {
+	t.Helper()
+	var variante string
+	if err := db.QueryRow(`SELECT coalesce(game_variant_name, '') FROM match_registry WHERE match_id = ?`,
+		id).Scan(&variante); err != nil {
+		t.Fatalf("%s : variante : %v", id, err)
+	}
+	attendu, connue := portee(variante)
+	var hors, mesure int64
+	for i, l := range ecrites {
+		if !connue {
+			if l.radar != nil || l.horsRadar != nil {
+				t.Fatalf("%s ligne %d : variante %q sans portee, ligne %+v", id, i, variante, l)
+			}
+			continue
+		}
+		if l.radar == nil || *l.radar != attendu || l.horsRadar == nil {
+			t.Fatalf("%s ligne %d : variante %q, portee attendue %v m, ligne radar %s / hors radar %s",
+				id, i, variante, attendu, v2Clair(l.radar), v2Clair(l.horsRadar))
+		}
+		hors, mesure = hors+*l.horsRadar, mesure+l.mesure
+	}
+	part := 0.0
+	if mesure > 0 {
+		part = 100 * float64(hors) / float64(mesure)
+	}
+	t.Logf("%s  variante %q : portee %v m (connue %v) ; hors radar %d ms sur %d ms mesurees (%.2f %%)",
+		id[:8], variante, attendu, connue, hors, mesure, part)
+}
+
+// v2Clair rend la valeur pointee, ou « nil ».
+func v2Clair[T any](p *T) string {
+	if p == nil {
+		return "nil"
+	}
+	return fmt.Sprint(*p)
 }
 
 // v2CalculPur : le calcul de V1.3 (`replay.PlacementDesVies`) sur la passe rejouee, nourri par des
