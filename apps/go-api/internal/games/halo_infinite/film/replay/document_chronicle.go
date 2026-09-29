@@ -2735,11 +2735,9 @@ package replay
 //	                verdict `redecoder` (ses faits persistes portent l ancienne revision
 //	                d objectifs, et un rapport de replis sans les noms neufs).
 
-// v76 (2026-09-27, jalon J10 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, lot J10.7 ; constats GB-3,
-// RA2-5, RB2-6, RB2-7, GA1-4, GA1-5 et faiblesse 9 de l audit du 2026-09-24) : DETERMINISME ET
-// CORRECTIFS RESIDUELS. La FORME du document ne change pas (aucun champ) ; son CONTENU peut changer,
-// et un artefact 75 doit se lire « a redecoder ». Ecrite sur J10 comme v75, renumerotee v76 a la
-// fusion : J8, fusionne avant dans la branche de suite d audit, avait pris le 75 ; elle le suit.
+// v76 (2026-09-27, jalon J10 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, lot J10.7 ; constats GB-3, RA2-5, RB2-6, RB2-7, GA1-4, GA1-5 et faiblesse 9 de
+// l audit du 2026-09-24) : DETERMINISME ET CORRECTIFS RESIDUELS. La FORME du document ne change pas (aucun champ) ; son CONTENU peut changer, et un artefact 75 doit se
+// lire « a redecoder ». Ecrite sur J10 comme v75, renumerotee v76 a la fusion : J8, fusionne avant dans la branche de suite d audit, avait pris le 75 ; elle le suit.
 //
 //	ordre des      les tris qui decident d une sortie sont TOTAUX (DT-9, lot J10.1) : `roster` (deux
 //	tranches       bots d un meme index par nom, RA2-5), `equipmentChanges` (GB-3 : la liste n est
@@ -2758,9 +2756,11 @@ package replay
 //
 //	CE QUI MONTE    `SchemaVersion` 75 -> 76 ; `grammar.Rev` `grammar-2026-09-27.2` ->
 //	AVEC ELLE       `grammar-2026-09-27.3`. `killsource.Rev` (`killsource-2026-09-27`) et
-//	                `objectives.Rev` (`objectives-2026-09-27`, montee par v75) gardent leur valeur :
-//	                series jamais publiees, goldens regeneres a revision constante (leurs tris
-//	                changent aussi). `killcollector.IsolationDecoderRev` n est pas touchee par ce lot.
+//	                `objectives.Rev` (`objectives-2026-09-27`, montee par v75) gardent leur valeur : series jamais publiees, goldens regeneres a
+//	                revision constante (leurs tris changent aussi). `killcollector.IsolationDecoderRev` n est pas touchee par ce lot.
 //
-//	LE PARC         un artefact 75 porte `grammar-2026-09-27.2` sur ses calques de grammaire :
-//	                verdict `redecoder`.
+//	LE PARC         un artefact 75 porte `grammar-2026-09-27.2` sur ses calques de grammaire : verdict `redecoder`.
+//
+//	A SCHEMA        lot R2 (2026-09-28, constats C2, C3, C6 du G-corpus J11.1 ; v76 jamais publiee), films a slot bipede reboucle seuls : `tracks`/`bounds` perdent les positions
+//	CONSTANT (R2)   d en-tetes de generation >= 2 anterieurs a la creation de leur corps (filtre date) ; `coverage.bridge.slotCollisions` ne compte plus les SIEGES RECYCLES
+//	                (verdict nominal ; `XUIDAt` y repond par corps) ; `coverage.seats` : un vote de place que l unite du tir contredit ne compte plus.

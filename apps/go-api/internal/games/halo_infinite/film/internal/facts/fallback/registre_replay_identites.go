@@ -7,9 +7,10 @@ package fallback
 
 var registreReplayIdentites = []Repli{
 	{
-		Nom:       "repli_identite_premier_occupant_du_siege",
-		Fait:      "quel joueur occupait un slot a un instant donne, pour un lecteur qui demande un xuid",
-		Mecanisme: "aucune vie nommee ne couvre l'instant : le PREMIER occupant nomme du siege est servi (sauf slot ambigu, ou le registre se tait)",
+		Nom:  "repli_identite_premier_occupant_du_siege",
+		Fait: "quel joueur occupait un slot a un instant donne, pour un lecteur qui demande un xuid",
+		Mecanisme: "aucune vie nommee ne couvre l'instant : le PREMIER occupant nomme du siege est servi (sauf slot ambigu, ou le registre se tait ; " +
+			"sur un siege recycle, lot R2, le joueur des vies nommees du CORPS qui tient le slot a l'instant)",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
@@ -17,7 +18,7 @@ var registreReplayIdentites = []Repli{
 			// L'ANCRE EST LA GARDE, PAS LA LECTURE : citer le champ que ce site lit ferait
 			// rougir `archlint/no_identity_bridge_outside_registry_test.go`, qui interdit ce
 			// nom hors du registre d'identite — commentaires exclus, chaines comprises.
-			Ancre: "if r.SlotAmbiguous[slot] {",
+			Ancre: "if r.pontAplatiMuet(slot) {",
 		}, {
 			Fichier: pkgReplay + "identity_registry.go",
 			Ancre:   "r.fb.Declenche(fallback.NomIdentitePremierOccupantDuSiege)",

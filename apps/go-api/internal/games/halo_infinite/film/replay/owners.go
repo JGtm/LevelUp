@@ -98,6 +98,8 @@ type OwnerReport struct {
 	DeathOffsetRunnerUp int
 	// SlotCollisions compte les slots dont les vies nommées désignent des joueurs différents.
 	// Mesuré à 0 sur 000d5950 ; un film non nul invaliderait la table slot -> joueur.
+	// Depuis le lot R2 : dans un MEME corps (ou un corps non etabli) — `len(SlotAmbiguous)` ; les
+	// sieges recycles (`SlotRecycle`) n y entrent pas.
 	SlotCollisions int
 	// Closures porte ce que les FERMETURES ont ajouté et refusé (cf. closures.go). Elles ne
 	// sont pas des lectures : ce sont des déductions par élimination, et elles se comptent donc
@@ -110,7 +112,12 @@ type OwnerReport struct {
 	// hérite d'un nom arbitraire. Le marqueur existe pour qu'il puisse s'abstenir — `xuidAt` le
 	// fait déjà, et `SlotCollisions` en est le simple cardinal.
 	SlotAmbiguous map[uint32]bool
-	// lives : les vies découpées et nommées, telles que le nommage les a laissées. Interne au
+	// SlotRecycle : les slots dont deux CORPS etablis distincts (records de creation) portent des
+	// joueurs differents — un siege recycle, pas une collision (lot R2, 2026-09-28, constat C3).
+	// La donnee par vie y est juste ; seul le pont aplati s'y tait, et `xuidNumAt` y repond par
+	// corps. Disjoint de `SlotAmbiguous`, et non compte par `SlotCollisions`.
+	SlotRecycle map[uint32]bool
+	// lives :les vies découpées et nommées, telles que le nommage les a laissées. Interne au
 	// paquet : c'est la source du nommage PAR VIE des tracks (nameTracksByLives, lot identité
 	// des vies 2026-09-02) — un slot recyclé y porte une identité PAR OCCUPANT, là où SlotXUID
 	// n'en retient qu'une par slot (première nommée, collisions comptées).

@@ -83,7 +83,7 @@ func buildOwnersFromTracks(tracks map[uint32]slotTrack,
 	}
 	rep.IndexReadings = idx.Readings
 	rep.IndexDisagreements = idx.Disagreements
-	owners, byXUID, ambigus := ownersFromLives(lives, idx.ByXUID)
+	owners, byXUID, ambigus, recycles := ownersFromLives(lives, idx.ByXUID, corpsParSlot(in.BipedCreations))
 	// LE PONT SLOT -> INDEX DES CREATIONS COMPLETE CELUI DES VIES, et il le fait pour les corps
 	// que les vies nommees ne peuvent PAS porter : un bot n'a pas de xuid, donc `ownersFromLives`
 	// ignore son slot. Le record de creation, lui, porte l'index quel qu'il soit.
@@ -94,6 +94,7 @@ func buildOwnersFromTracks(tracks map[uint32]slotTrack,
 	}
 	rep.SlotAmbiguous = ambigus
 	rep.SlotCollisions = len(ambigus)
+	rep.SlotRecycle = recycles
 	rep.FromDeaths = len(owners)
 	// LES FERMETURES VIENNENT APRES LA LECTURE, JAMAIS A SA PLACE (cf. closures.go). Elles ne
 	// touchent que les vies que le fil des morts n'a pas nommees, et elles s'abstiennent des que
@@ -204,11 +205,20 @@ func (r OwnerReport) xuidNumAt(slot uint32, tUS uint64) (uint64, bool) {
 	// PREMIER occupant nommé, par ordre des vies : le servir à un instant que sa vie ne couvre
 	// pas reviendrait à publier un nom arbitraire, et c'est exactement ce que cette méthode
 	// existe pour éviter. Sans vie couvrante ET sur un slot à plusieurs occupants, on se tait.
-	if r.SlotAmbiguous[slot] {
+	// LE SIEGE RECYCLE (lot R2) : deux corps distincts, deux joueurs. Le pont aplati n en garde qu un ;
+	// le registre repond PAR CORPS ([IdentityRegistry.xuidDuCorpsA]).
+	if r.pontAplatiMuet(slot) {
 		return 0, false
 	}
 	x := r.SlotXUID[slot]
 	return x, x != 0
+}
+
+// pontAplatiMuet dit que le pont aplati (un joueur par slot) ne vaut pas pour ce slot : deux joueurs
+// y sont nommes, dans un meme corps (collision, `SlotAmbiguous`) ou dans deux corps successifs
+// (siege recycle, `SlotRecycle`, lot R2).
+func (r OwnerReport) pontAplatiMuet(slot uint32) bool {
+	return r.SlotAmbiguous[slot] || r.SlotRecycle[slot]
 }
 
 // NamingBridge rend le pont slot -> joueur DÉBARRASSÉ DES SLOTS AMBIGUS — celui que doit
@@ -227,16 +237,20 @@ func (r OwnerReport) xuidNumAt(slot uint32, tUS uint64) (uint64, bool) {
 // ambigus À LA SOURCE : le lecteur ne peut plus oublier la garde, puisqu'il n'a plus de quoi
 // l'enfreindre.
 //
+// DEPUIS LE LOT R2 (2026-09-28), il retire aussi les SIÈGES RECYCLÉS (`SlotRecycle`) : le pont y
+// garderait le premier occupant pour tous les corps du siège. Une piste sans nom sur un tel slot
+// reste sans nom, et son résidu se compte (`coverage.bridge.unnamedLives`).
+//
 // `SlotXUID` RESTE INCHANGÉ pour ses autres consommateurs (ramassages, marques de portage, frags
 // sous équipement actif) : leur exemption est explicite au cadrage de l'audit, et la modifier
 // sortirait du périmètre de cette revue.
 func (r OwnerReport) NamingBridge() map[uint32]uint64 {
-	if len(r.SlotAmbiguous) == 0 {
+	if len(r.SlotAmbiguous)+len(r.SlotRecycle) == 0 {
 		return r.SlotXUID
 	}
 	out := make(map[uint32]uint64, len(r.SlotXUID))
 	for s, x := range r.SlotXUID {
-		if !r.SlotAmbiguous[s] {
+		if !r.pontAplatiMuet(s) {
 			out[s] = x
 		}
 	}

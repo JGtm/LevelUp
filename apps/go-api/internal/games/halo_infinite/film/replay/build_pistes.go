@@ -124,11 +124,14 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 		a.opt.Fallbacks.DeclencheN(fallback.NomIndexDeTireurHorsPlace, a.indexTireur.total)
 	}
 	var tirsDesPlaces []FireEventRef
+	var tireurs []string
 	if a.indexTireur.estLaPlace() {
 		tirsDesPlaces = fireRefs(a.fire)
+		// LA VIE QUI TIRE, LUE PAR L UNITE DU TIR (lot R2, constat C6) : elle refuse les votes qu elle contredit.
+		tireurs = tireursDesTirs(a.fire, a.doc.Tracks, a.horloge())
 	}
 	a.siegeCov = poserLesSieges(a.doc.Roster, occ, entreesDesPlaces{
-		table: a.opt.FilmTable, fire: tirsDesPlaces, horloge: a.horloge()})
+		table: a.opt.FilmTable, fire: tirsDesPlaces, tireurs: tireurs, horloge: a.horloge()})
 	a.siegeCov.BotsSuccesseurs = botsSuccesseurs
 	a.siegeCov.TirsIndexNonPlace = !a.indexTireur.estLaPlace()
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.

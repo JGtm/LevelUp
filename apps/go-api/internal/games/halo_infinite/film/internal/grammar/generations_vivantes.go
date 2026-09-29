@@ -35,12 +35,37 @@ package grammar
 // D-4). Un ensemble nil ou vide — le coeur pur [ScanBipedRecords] quand l appelant ne fournit rien,
 // le detecteur de decoupage — met TOUS les slots dans ce repli : c est bit a bit l ancien filtre.
 //
+// # UNE GENERATION VIVANTE N EST PAS VIVANTE A TOUT INSTANT (lot R2, 2026-09-28, constat C2 du
+// G-corpus J11.1)
+//
+// Le masque ci-dessus est ATEMPOREL : il dit qu un corps (slot, generation) a existe, pas QUAND. Or
+// le moteur cree l entite (record NEW) PUIS replique ses positions (lot E2 : 10 a 30 ms apres) ; un
+// record delta dont le handle designe un corps AVANT le record de creation de ce corps n est donc la
+// replication d aucun corps — a cet instant le slot porte le corps precedent. Mesure sur les quatre
+// films a slot reboucle (instrument `r2_positions_aberrantes_research_test.go`) : 32, 30, 20 et 102
+// en-tetes ancres de generation >= 2 AVANT la creation de leur corps, dont 14, 6, 5 et 28 publies en
+// positions de production — TOUS aberrants (z de -937 a -946 m sur Fortitude, borne de carte
+// (-981,5 ; -688,76 ; -108,12) sur `a349fea8` slot 532, premier point de la piste slot 516 de
+// `084a804d` 3,3 s avant sa creation). C est la cause des bornes de scene faussees et des sauts
+// impossibles publies depuis le lot J5.2.
+//
+// D ou la garde DATEE : un record lu A UN INSTANT ([GenerationsVivantes.A]) est refuse quand son
+// corps a un record de creation lu POSTERIEUR a cet instant et que le slot porte alors un AUTRE
+// corps (ou aucun). EXCEPTION, et c est la frontiere avec `replay` : le PREMIER corps d un slot, de
+// generation 1, reste regi par la regle R-B1 de `replay/positions_porte.go` (positions anterieures
+// ecartees ET comptees dans `coverage.tracks.avantCreation`) — cette garde ne rejoue pas la regle
+// que le rejeu applique et compte deja, elle la porte la ou le rejeu ne la voit pas (la position
+// publiee n a pas de generation). Un corps connu par les seules images-cles (aucune creation lue)
+// n a pas de date : il n est pas garde. Un balayage non date (instruments, coeur pur) garde le
+// filtre atemporel.
+//
 // # LES OBJETS DU MONDE : TOUTES LES GENERATIONS, EXPLICITEMENT
 //
 // Un vehicule ou un objet du monde emploie les quatre valeurs du tag. [ToutesLesGenerations] le dit
 // en toutes lettres a l appelant (`replay/build_vehicles.go`) ; il n y a plus de booleen a desarmer.
 
 import (
+	"cmp"
 	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -50,6 +75,11 @@ import (
 // accepte sur un slot dont aucune generation n est connue — le filtre d avant le lot J5.2.
 const generationDuRepli = 1
 
+// generationDuPremierCorps : la generation du record de creation du PREMIER corps d un slot, celle
+// dont la regle R-B1 du rejeu garde les positions anterieures a la creation (meme constante mesuree
+// que `replay.premiereGenerationDuCorps`, lot E2).
+const generationDuPremierCorps = 1
+
 // GenerationsVivantes dit, slot par slot, quelles generations du handle designent un corps.
 // Le zero n est pas utilisable : passer par [NouvellesGenerationsVivantes] ou
 // [ToutesLesGenerations] ; nil est accepte partout et vaut « aucune generation connue ».
@@ -58,6 +88,19 @@ type GenerationsVivantes struct {
 	toutes bool
 	// masques : indexe par le slot ; le bit g vaut 1 quand la generation g est vivante.
 	masques []uint8
+	// creations : indexe par le slot, les records de creation lus, tries par instant puis
+	// generation — les dates des corps successifs du siege (lot R2). Vide : aucune garde datee.
+	creations [][]creationDatee
+	// instant / date : l instant du paquet porteur, pose par [GenerationsVivantes.A]. Sans date,
+	// le filtre est atemporel.
+	instant uint64
+	date    bool
+}
+
+// creationDatee : l instant d un record de creation de bipede et la generation du corps qu il ouvre.
+type creationDatee struct {
+	tUS uint64
+	gen uint32
 }
 
 // ToutesLesGenerations rend le filtre LEVE : un record est lu quelle que soit sa generation. C est
@@ -84,16 +127,74 @@ func (g *GenerationsVivantes) masque(slot uint32) uint8 {
 	return g.masques[slot]
 }
 
+// avecCreations pose les dates des corps (records de creation lus) : la garde datee de
+// [GenerationsVivantes.A]. Rend le recepteur.
+func (g *GenerationsVivantes) avecCreations(cre []BipedCreation) *GenerationsVivantes {
+	if g == nil || g.toutes || len(cre) == 0 {
+		return g
+	}
+	g.creations = make([][]creationDatee, len(g.masques))
+	for _, c := range cre {
+		if c.Slot < uint32(len(g.creations)) {
+			g.creations[c.Slot] = append(g.creations[c.Slot], creationDatee{tUS: c.TimestampUS, gen: c.Generation})
+		}
+	}
+	for _, l := range g.creations {
+		slices.SortFunc(l, func(a, b creationDatee) int {
+			return cmp.Or(cmp.Compare(a.tUS, b.tUS), cmp.Compare(a.gen, b.gen))
+		})
+	}
+	return g
+}
+
+// A rend le filtre DATE a l instant `tUS` (horloge des paquets) : celui d un record lu dans un
+// paquet de cet instant. Sans creation connue (ou filtre leve, ou nil), le recepteur lui-meme.
+func (g *GenerationsVivantes) A(tUS uint64) *GenerationsVivantes {
+	if g == nil || g.toutes || len(g.creations) == 0 {
+		return g
+	}
+	v := *g
+	v.instant, v.date = tUS, true
+	return &v
+}
+
 // Accepte dit si un record de ce handle se lit. Slot sans generation connue : le repli
-// `repli_generation_vivante_inconnue_tag1` (generation 1 seulement).
+// `repli_generation_vivante_inconnue_tag1` (generation 1 seulement). Filtre date : un corps n est
+// pas lu avant son record de creation (cf. l en-tete, lot R2).
 func (g *GenerationsVivantes) Accepte(h types.LifeKey) bool {
 	if g != nil && g.toutes {
 		return true
 	}
 	if m := g.masque(h.Slot); m != 0 {
-		return m&(1<<h.Gen) != 0
+		return m&(1<<h.Gen) != 0 && !g.avantSaCreation(h)
 	}
 	return h.Gen == generationDuRepli
+}
+
+// avantSaCreation dit que le corps `h` n est pas encore cree a l instant du filtre : le slot porte
+// alors un autre corps (ou aucun), et un record de creation de `h` est lu PLUS TARD. Le premier
+// corps d un slot, de generation 1, en est exempte : la regle R-B1 du rejeu le regit (cf. l en-tete).
+func (g *GenerationsVivantes) avantSaCreation(h types.LifeKey) bool {
+	if !g.date || h.Slot >= uint32(len(g.creations)) {
+		return false
+	}
+	cs := g.creations[h.Slot]
+	tenant := -1
+	for i := range cs {
+		if cs[i].tUS > g.instant {
+			break
+		}
+		tenant = i
+	}
+	if tenant >= 0 && cs[tenant].gen == h.Gen {
+		return false
+	}
+	for i := tenant + 1; i < len(cs); i++ {
+		if cs[i].gen == h.Gen {
+			return i > 0 || h.Gen != generationDuPremierCorps
+		}
+	}
+	return false
 }
 
 // Connue dit si au moins une generation du slot est connue (ou si le filtre est leve).
@@ -148,7 +249,13 @@ func (c *FilmContext) GenerationsVivantes() *GenerationsVivantes {
 		return NouvellesGenerationsVivantes(nil)
 	}
 	if c.vies.vivantes == nil {
-		c.vies.vivantes = NouvellesGenerationsVivantes(viesConnuesDuFilm(c))
+		// LES DATES DES CORPS : celles des records de creation (lot R2). Une creation illisible ne
+		// date rien, et le filtre reste atemporel.
+		cre, _, err := c.CreationsDeBipede()
+		if err != nil {
+			cre = nil
+		}
+		c.vies.vivantes = NouvellesGenerationsVivantes(viesConnuesDuFilm(c)).avecCreations(cre)
 	}
 	return c.vies.vivantes
 }

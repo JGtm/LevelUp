@@ -113,7 +113,7 @@ func ctfReadingOnlyOwners(tracks map[uint32]slotTrack, deaths []types.Death,
 	lives := buildLifeSpans(tracks)
 	off, _, _ := bestDeathOffset(lives, deaths)
 	nameLivesByDeaths(lives, deaths, off)
-	owners, _, _ := ownersFromLives(lives, idx.ByXUID)
+	owners, _, _, _ := ownersFromLives(lives, idx.ByXUID, nil)
 	return owners, lives, off
 }
 

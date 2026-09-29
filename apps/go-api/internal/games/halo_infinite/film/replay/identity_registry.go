@@ -239,8 +239,24 @@ func (r IdentityRegistry) IndexParSlot() map[uint32]int { return r.own.Owner }
 // tout lecteur qui s'en sert pour NOMMER une piste (cf. `OwnerReport.NamingBridge`).
 func (r IdentityRegistry) PontEpure() map[uint32]uint64 { return r.own.NamingBridge() }
 
-// SlotsAmbigus rend les slots dont les vies nommees designent des joueurs DIFFERENTS.
-func (r IdentityRegistry) SlotsAmbigus() map[uint32]bool { return r.own.SlotAmbiguous }
+// SlotsAmbigus rend les slots dont les vies nommees designent des joueurs DIFFERENTS, la ou le pont
+// aplati se tait : dans un meme corps (collision, comptee par le verdict) OU dans deux corps
+// successifs d un siege recycle (lot R2, non compte). Ses lecteurs n ont pas l instant d une vie
+// (equipe d une piste par slot, pistes de porteur de drapeau, occupants hors corps connus) : ils
+// s abstiennent, et chacun compte son abstention.
+func (r IdentityRegistry) SlotsAmbigus() map[uint32]bool {
+	if len(r.own.SlotRecycle) == 0 {
+		return r.own.SlotAmbiguous
+	}
+	out := make(map[uint32]bool, len(r.own.SlotAmbiguous)+len(r.own.SlotRecycle))
+	for s := range r.own.SlotAmbiguous {
+		out[s] = true
+	}
+	for s := range r.own.SlotRecycle {
+		out[s] = true
+	}
+	return out
+}
 
 // PontDeSlot rend le xuid que le pont aplati donne a ce slot — VIDE si le slot est AMBIGU.
 //
@@ -248,7 +264,7 @@ func (r IdentityRegistry) SlotsAmbigus() map[uint32]bool { return r.own.SlotAmbi
 // publierait un nom arbitraire sur une vie que la lecture n'a pas nommee. C'est la meme
 // abstention que [IdentityRegistry.XUIDAt], et pour la meme raison.
 func (r IdentityRegistry) PontDeSlot(slot uint32) string {
-	if r.own.SlotAmbiguous[slot] {
+	if r.own.pontAplatiMuet(slot) {
 		return ""
 	}
 	if x, ok := r.own.SlotXUID[slot]; ok && x != 0 {
@@ -293,6 +309,12 @@ func (r IdentityRegistry) XUIDNumAt(slot uint32, tUS uint64) uint64 {
 // lui qui nomme (lot J8.7) : une demande qu aucune vie couvrante ne tranche.
 func (r IdentityRegistry) xuidNumAt(slot uint32, tUS uint64) uint64 {
 	x, parLePremierOccupant := r.own.xuidNumAt(slot, tUS)
+	if x == 0 && r.own.SlotRecycle[slot] && !r.own.SlotAmbiguous[slot] {
+		// SIEGE RECYCLE (lot R2) : le corps qui tient le slot a l instant, par ses vies nommees. C est
+		// la meme demande qu aucune vie couvrante ne tranche, bornee au corps : le meme repli, compte.
+		x = r.xuidDuCorpsA(slot, int64(tUS)) //nolint:gosec // horloge du film, bien sous 2^63
+		parLePremierOccupant = x != 0
+	}
 	if parLePremierOccupant {
 		r.fb.Declenche(fallback.NomIdentitePremierOccupantDuSiege)
 	}

@@ -113,7 +113,13 @@ type corpsDuSlot struct {
 // corpsA rend le corps qui tient `slot` a `tUS`. Un slot sans record de creation, ou un instant
 // anterieur au premier record d'un slot aux lectures divergentes, n'a aucun corps etabli.
 func (r IdentityRegistry) corpsA(slot uint32, tUS int64) corpsDuSlot {
-	c, ok := r.corps[slot]
+	return corpsDuSlotA(r.corps, slot, tUS)
+}
+
+// corpsDuSlotA est [IdentityRegistry.corpsA] sur la table des corps seule : la construction du pont
+// ([ownersFromLives]) la pose avant que le registre n'existe.
+func corpsDuSlotA(corps map[uint32]corpsLu, slot uint32, tUS int64) corpsDuSlot {
+	c, ok := corps[slot]
 	if !ok {
 		return corpsDuSlot{cle: types.LifeKey{Slot: slot}}
 	}
@@ -122,6 +128,55 @@ func (r IdentityRegistry) corpsA(slot uint32, tUS int64) corpsDuSlot {
 		return corpsDuSlot{cle: types.LifeKey{Slot: slot}}
 	}
 	return corpsDuSlot{cle: types.LifeKey{Slot: slot, Gen: d.gen}, etabli: true}
+}
+
+// # UN SIEGE RECYCLE N EST PAS UN SIEGE QUI CHANGE DE PORTEUR (lot R2, 2026-09-28, constat C3)
+//
+// Deux vies d'un meme slot nommees pour deux joueurs differents sont une COLLISION — le pont ne sait
+// pas qui occupe le corps, et le verdict du pont refuse de publier — SEULEMENT si elles peuvent etre
+// le meme corps : meme cle (slot, generation) a leur debut, ou l'une des deux sans corps etabli
+// (rien ne prouve alors qu'elles sont distinctes). Deux vies de corps ETABLIS et distincts sont deux
+// occupants SUCCESSIFS du siege : la donnee par vie est juste, et seul le pont APLATI (un joueur par
+// slot) ne peut pas la dire — il se tait sur ce slot, et ses lecteurs lisent par corps
+// ([IdentityRegistry.XUIDNumAt]) ou s'abstiennent en le comptant. Mesure avant le lot : 66 slots en
+// « collision » sur `4f77afc1`, 114 sur `084a804d`, tous des sieges recycles depuis que les corps de
+// generation >= 2 ont des positions (J5.2 GB-1).
+
+// classerLeSlot rend, pour les vies NOMMEES d'un meme slot (indices dans `lives`), s'il y a une
+// COLLISION (deux joueurs dans un corps indiscernable) et, sinon, si le siege est RECYCLE (deux
+// joueurs dans deux corps etablis distincts).
+func classerLeSlot(lives []lifeSpan, vies []int, corps map[uint32]corpsLu) (collision, recycle bool) {
+	for a := 0; a < len(vies); a++ {
+		la := lives[vies[a]]
+		for b := a + 1; b < len(vies); b++ {
+			lb := lives[vies[b]]
+			if la.xuid == lb.xuid {
+				continue
+			}
+			ca, cb := corpsDuSlotA(corps, la.slot, la.from), corpsDuSlotA(corps, lb.slot, lb.from)
+			if !ca.etabli || !cb.etabli || ca == cb {
+				return true, false
+			}
+			recycle = true
+		}
+	}
+	return false, recycle
+}
+
+// xuidDuCorpsA rend le joueur du corps qui tient `slot` a `tUS`, par les vies NOMMEES de ce corps :
+// la lecture PAR CORPS d'un siege recycle. Zero quand aucun corps n'est etabli a l'instant, ou que
+// le corps n'a aucune vie nommee.
+func (r IdentityRegistry) xuidDuCorpsA(slot uint32, tUS int64) uint64 {
+	corps := r.corpsA(slot, tUS)
+	if !corps.etabli {
+		return 0
+	}
+	for _, l := range r.Vies() {
+		if l.slot == slot && l.xuid != 0 && r.corpsA(slot, l.from) == corps {
+			return l.xuid
+		}
+	}
+	return 0
 }
 
 // memeCorps garde, parmi les vies nommees d'un slot, celles du corps qui tient ce slot a `tUS`.

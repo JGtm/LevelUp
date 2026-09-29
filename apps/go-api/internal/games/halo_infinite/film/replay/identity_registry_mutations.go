@@ -34,7 +34,9 @@ package replay
 // slot que le pont attribue deja a QUELQU'UN D'AUTRE, ecraser publierait un nom arbitraire sur
 // les lecteurs du pont aplati : on marque le slot AMBIGU, ce qui fait taire `XUIDAt`,
 // `PontDeSlot` et `PontEpure` — exactement ce que `ownersFromLives` fait des collisions de
-// lecture. La VIE, elle, garde son identite : elle est bornee dans le temps, elle ne ment pas.
+// lecture. Depuis le lot R2, la vie deduite d un AUTRE corps etabli fait du slot un SIEGE
+// RECYCLE ([IdentityRegistry.reclasserLeSlot]) : le pont aplati se tait de meme, sans collision.
+// La VIE, elle, garde son identite : elle est bornee dans le temps, elle ne ment pas.
 func (r *IdentityRegistry) poserIdentiteDeVie(i int, xuid uint64, pi int, piConnu bool,
 	nomPar string) bool {
 	if xuid == 0 || i < 0 || i >= len(r.own.lives) || r.own.lives[i].xuid != 0 {
@@ -52,11 +54,7 @@ func (r *IdentityRegistry) poserIdentiteDeVie(i int, xuid uint64, pi int, piConn
 	r.own.lives[i].nomPar = nomPar
 	r.deducedLives[i] = true
 	if deja, connu := r.own.SlotXUID[slot]; connu && deja != xuid {
-		if r.own.SlotAmbiguous == nil {
-			r.own.SlotAmbiguous = map[uint32]bool{}
-		}
-		r.own.SlotAmbiguous[slot] = true
-		r.own.SlotCollisions = len(r.own.SlotAmbiguous)
+		r.reclasserLeSlot(slot)
 		return true
 	}
 	if r.own.SlotXUID != nil {
@@ -110,4 +108,35 @@ func (r *IdentityRegistry) poserIdentiteDeduite(slot uint32, xuid uint64, pi int
 		}
 	}
 	return n
+}
+
+// reclasserLeSlot refait le classement d un slot dont une vie vient de recevoir un joueur que le
+// pont aplati n y portait pas : COLLISION si deux joueurs se trouvent dans un corps indiscernable,
+// SIEGE RECYCLE si leurs corps etablis sont distincts (lot R2, [classerLeSlot]). Les deux ensembles
+// restent disjoints ; `SlotCollisions` en suit le premier.
+func (r *IdentityRegistry) reclasserLeSlot(slot uint32) {
+	var vies []int
+	for i := range r.own.lives {
+		if r.own.lives[i].slot == slot && r.own.lives[i].xuid != 0 {
+			vies = append(vies, i)
+		}
+	}
+	collision, recycle := classerLeSlot(r.own.lives, vies, r.corps)
+	switch {
+	case collision || !recycle:
+		// SANS DEUX CORPS DISTINCTS PROUVES, la regle d avant : le joueur que le pont aplati porte
+		// (`SlotXUID`) differe de celui qui vient d etre pose, et rien ne dit qu ils n occupent pas
+		// le meme corps.
+		if r.own.SlotAmbiguous == nil {
+			r.own.SlotAmbiguous = map[uint32]bool{}
+		}
+		r.own.SlotAmbiguous[slot] = true
+		delete(r.own.SlotRecycle, slot)
+	case recycle:
+		if r.own.SlotRecycle == nil {
+			r.own.SlotRecycle = map[uint32]bool{}
+		}
+		r.own.SlotRecycle[slot] = true
+	}
+	r.own.SlotCollisions = len(r.own.SlotAmbiguous)
 }

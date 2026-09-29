@@ -211,7 +211,7 @@ func objBuildBridge(dir string) (objBridge, error) {
 	lives := buildLifeSpans(indexBySlot(pos))
 	off, matched, _ := bestDeathOffset(lives, deaths)
 	named := nameLivesByDeaths(lives, deaths, off)
-	_, byXUID, collisions := ownersFromLives(lives, table.ByXUID)
+	_, byXUID, collisions, _ := ownersFromLives(lives, table.ByXUID, nil)
 	return objBridge{
 		SlotXUID: byXUID, OffsetMS: off, Deaths: deaths, LivesTotal: len(lives),
 		DeathsNamed: named, OffsetMatches: matched, Collisions: len(collisions),

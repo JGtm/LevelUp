@@ -250,6 +250,12 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // CE QUE LE BUMP DECLENCHE : comme aux lots precedents, `matchsAJour` rend eligible au redecodage
 // tout match qui a des positions ; il ne declenche rien par lui-meme — seule la commande
 // `levelup backfill-killsource` re-decode.
+//
+// A REVISION CONSTANTE, LOT R2 (2026-09-28, serie non publiee ; constats C2 et C3 du G-corpus J11.1) :
+// le filtre de generation vivante est DATE (un en-tete de corps anterieur a la creation de ce corps
+// n est plus lu : 14, 6, 5 et 28 positions aberrantes en moins sur les quatre films a slot reboucle)
+// et le pont juge les collisions PAR CORPS (un siege recycle n est plus « ambigu » : `XUIDAt` y
+// repond par corps). Memes films concernes, meme declenchement ; la valeur ne bouge pas.
 const IsolationDecoderRev = "isolement-2026-09-27-generations-vivantes"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
