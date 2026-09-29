@@ -864,7 +864,10 @@ fois) :
   `match_death_context` intouchés (lus par l'onglet Tactique et la vue match).
 - [ ] V3.5 Contrat régénéré (`openapi.yaml`, `generated.ts`), instantané de surface et ratchet de
   contrat à jour.
-- Gate : gate commun + `go test -tags=integration -p 1 ./internal/service/teammates/... ./internal/platform/duckdb/...`.
+- [ ] V3.6 (déplacé de V4.4 par le superviseur le 2026-09-29 : retirer `nuage_isolement` du contrat
+  casse le typage de son seul lecteur, la suppression web part donc avec) — item V4.4 exécuté ici,
+  à la lettre.
+- Gate : gate commun (web compris, et `lefthook run pre-push`) + `go test -tags=integration -p 1 ./internal/service/teammates/... ./internal/platform/duckdb/...`.
 
 ### V4 — Cartes (web) · moyen
 
@@ -876,7 +879,7 @@ fois) :
   monté dans `SquadEmprisePage.tsx` (V8), `empriseSections` / `empriseHasContent` étendus.
 - [ ] V4.3 Textes FR / EN dans un fichier neuf `emprise/placementStrings.ts`
   (`Record<Locale, …>`) : `empriseStrings.ts` est à 490 lignes, seuil 500.
-- [ ] V4.4 Suppression web du nuage de Synergies : `SquadIsolementNuageCard.tsx`,
+- [~] V4.4 (fait en V3.6) Suppression web du nuage de Synergies : `SquadIsolementNuageCard.tsx`,
   `squadIsolementNuageOption.ts`, `squadIsolementStrings.ts`, clés `squad.isolement.*` du manifeste
   `squad.toml`, leurs tests, montage `SquadSynergiesPage.tsx:167-176` ; commentaire de section de
   Synergies mis à jour (rangée 1 = « Appui »).
