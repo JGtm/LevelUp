@@ -78,7 +78,7 @@ const skullTickGapMS = 3000
 // — un film dont tous les trains tiennent en un seul tic, ou un axe sans echelle.
 func skullTickWidthFrames(recs []types.StatRecord, ctx matchClock, cons *objectives.ReplisALaConsultation) int {
 	var ecarts []int
-	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullTicksComponent, false, cons) {
+	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullTicksComponent(), false, cons) {
 		for _, pts := range byRound {
 			inst := skullTickInstants(pts)
 			for i := 1; i < len(inst); i++ {
@@ -239,7 +239,7 @@ func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence carrierPres
 // execution.
 func skullCarryIntervals(recs []types.StatRecord, identity objectives.RoundIdentity,
 	cons *objectives.ReplisALaConsultation) []skullRawCarry {
-	bySlot := objectives.SeriesByRound(recs, objectives.SkullTicksComponent, false, cons)
+	bySlot := objectives.SeriesByRound(recs, objectives.SkullTicksComponent(), false, cons)
 	var out []skullRawCarry
 	for slot, byRound := range bySlot {
 		for round, pts := range byRound {
@@ -281,7 +281,7 @@ func skullTickInstants(pts []types.ScorePoint) []int {
 // denominateur de couverture, independant des trains de tics.
 func skullGrabCount(recs []types.StatRecord, cons *objectives.ReplisALaConsultation) int {
 	total := 0
-	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullGrabsComponent, false, cons) {
+	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullGrabsComponent(), false, cons) {
 		for _, pts := range byRound {
 			if n := len(pts); n > 0 {
 				total += int(pts[n-1].Value)

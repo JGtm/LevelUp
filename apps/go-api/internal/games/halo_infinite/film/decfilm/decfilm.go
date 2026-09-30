@@ -131,9 +131,6 @@ func VerifierRegistre() []string                    { return fallback.VerifierRe
 type BipedCreation = grammar.BipedCreation
 type BipedPosition = grammar.BipedPosition
 
-// PRIVE(hitPosSample) : BuildBipedTracks
-var BuildBipedTracks = grammar.BuildBipedTracks
-
 func CountFilmChunks(dir string) int { return grammar.CountFilmChunks(dir) }
 
 const CoverageWarnRatio = grammar.CoverageWarnRatio
@@ -472,7 +469,8 @@ func TimestampEstimator(data []byte, startMS, durationMS int) func(int) float64 
 }
 
 // ---- weaponv3 ----
-var KnownWeaponHigh32 = weaponv3.KnownWeaponHigh32
+// KnownWeaponHigh32 rend une COPIE de la table high-32 -> nom canonique (J12.4).
+func KnownWeaponHigh32() map[uint32]string { return weaponv3.KnownWeaponHigh32Copie() }
 
 const PIBits = weaponv3.PIBits
 

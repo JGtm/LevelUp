@@ -200,11 +200,11 @@ func etapesDuBalayage(t *testing.T) (steps []string, scans int) {
 
 func TestObserveEtapesBuildFromFilm(t *testing.T) {
 	steps, scans := etapesDuBalayage(t)
-	if !slices.Equal(steps, BuildFromFilmSteps) {
-		t.Fatalf("les etapes observees par l'etage de balayage ne sont pas BuildFromFilmSteps\n  source  : %v\n  liste   : %v", steps, BuildFromFilmSteps)
+	if !slices.Equal(steps, BuildFromFilmSteps()) {
+		t.Fatalf("les etapes observees par l'etage de balayage ne sont pas BuildFromFilmSteps()\n  source  : %v\n  liste   : %v", steps, BuildFromFilmSteps())
 	}
 	horsStats := 0
-	for _, s := range BuildFromFilmSteps {
+	for _, s := range BuildFromFilmSteps() {
 		if !strings.HasSuffix(s, ".stats") {
 			horsStats++
 		}
@@ -235,8 +235,8 @@ func TestBuildFromFilmNeBalaiePlusLuiMeme(t *testing.T) {
 func TestObserveNilNeCouteRien(t *testing.T) {
 	var o Options
 	o.observe("positions", nil)
-	if slices.Contains(BuildFromFilmSteps, "") {
-		t.Fatal("BuildFromFilmSteps porte un nom vide")
+	if slices.Contains(BuildFromFilmSteps(), "") {
+		t.Fatal("BuildFromFilmSteps() porte un nom vide")
 	}
 }
 

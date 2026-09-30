@@ -553,19 +553,6 @@ func (b *Builder) observe(step string, v any) {
 	}
 }
 
-// BuildBytesStepsBefore et BuildBytesStepsAfter sont les etapes que BuildBytes rend a
-// l'observateur AVANT et APRES le decodage des positions (`replay.BuildFromFilmSteps`), dans
-// l'ordre. Exportees pour le harnais d'equivalence, gardees par observe_test.go.
-var (
-	BuildBytesStepsBefore = []string{
-		"score", "objectives", "vip", "skull", "bomb", "flag", "zones", "zoneRoles",
-		"killsource", "spawnPoints", "spawnPointsState", "neutralDeaths", "killRefs",
-	}
-	// `EtapeRejeuDepuisLesFaits` PRECEDE `artifact` : le harnais doit savoir QUELLE BRANCHE a
-	// servi avant de comparer les octets qu elle a produits (lot 4.1.2).
-	BuildBytesStepsAfter = []string{EtapeRejeuDepuisLesFaits, "artifact"}
-)
-
 // trierSuccessions range les relais de bots dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9) :
 // instant de bascule, index de film, nom. Deux bots rejoignant a la MEME milliseconde restaient ex
 // aequo ; le nom est unique parmi les bots du roster du film.

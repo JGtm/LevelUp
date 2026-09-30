@@ -43,11 +43,11 @@ import (
 // ══════════════════════════════════════════════════════════════════════════════
 
 var (
-	// FormulaAPattern est le marker Section 1 : [20 00 02].
-	FormulaAPattern = []byte{0x20, 0x00, 0x02}
+	// formulaAPattern est le marker Section 1 : [20 00 02].
+	formulaAPattern = []byte{0x20, 0x00, 0x02}
 
-	// FrameMarker est le marker de position de frame : [A0 7B 42].
-	FrameMarker = []byte{0xA0, 0x7B, 0x42}
+	// frameMarker est le marker de position de frame : [A0 7B 42].
+	frameMarker = []byte{0xA0, 0x7B, 0x42}
 )
 
 const (
@@ -124,11 +124,11 @@ type FireEvent struct {
 //  Frame positions & timestamp estimation
 // ══════════════════════════════════════════════════════════════════════════════
 
-// FindFramePositions retourne toutes les positions du FrameMarker.
+// FindFramePositions retourne toutes les positions du frameMarker.
 func FindFramePositions(data []byte) []int {
 	var positions []int
 	for pos := 0; ; {
-		idx := bytes.Index(data[pos:], FrameMarker)
+		idx := bytes.Index(data[pos:], frameMarker)
 		if idx < 0 {
 			break
 		}
@@ -173,7 +173,7 @@ func ScanFormulaA(data []byte) []FormulaAResult {
 	var results []FormulaAResult
 	pos := 0
 	for {
-		idx := bytes.Index(data[pos:], FormulaAPattern)
+		idx := bytes.Index(data[pos:], formulaAPattern)
 		if idx < 0 || pos+idx+4 > len(data) {
 			break
 		}

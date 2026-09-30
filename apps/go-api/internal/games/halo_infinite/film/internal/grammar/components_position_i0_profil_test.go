@@ -165,7 +165,7 @@ func TestProfilDeQuantificationChangeLaValeurRendue(t *testing.T) {
 	}
 
 	faussee := profil
-	faussee.Range = profile.QuantRangeWorld100
+	faussee.Range = profile.QuantRangeWorld100()
 	if avant, apres := lire(profil, absolu), lire(faussee, absolu); avant == apres {
 		t.Errorf("la range faussee dans le profil rend la MEME coordonnee absolue %v — le "+
 			"deserialiseur ne lit donc pas la range au profil", avant)

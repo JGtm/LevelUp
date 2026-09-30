@@ -152,9 +152,9 @@ func segmentsParManche(recs []types.StatRecord, cons *ReplisALaConsultation) map
 			}
 		}
 	}
-	poser(KillsComponent, func(s *segmentKDA, v int) { s.kills = v })
-	poser(DeathsComponent, func(s *segmentKDA, v int) { s.deaths = v })
-	poser(AssistsComponent, func(s *segmentKDA, v int) { s.assists = v })
+	poser(KillsComponent(), func(s *segmentKDA, v int) { s.kills = v })
+	poser(DeathsComponent(), func(s *segmentKDA, v int) { s.deaths = v })
+	poser(AssistsComponent(), func(s *segmentKDA, v int) { s.assists = v })
 	return out
 }
 

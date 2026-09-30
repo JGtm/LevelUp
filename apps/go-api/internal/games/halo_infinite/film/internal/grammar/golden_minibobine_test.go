@@ -309,7 +309,7 @@ func famillesDeltaBipede(t *testing.T, r *recueil, fc *FilmContext) {
 
 // famillesObjetsDuMonde : les entites du monde (positions, projectiles, creations, zones).
 func famillesObjetsDuMonde(r *recueil, fc *FilmContext, film *source.Film) {
-	wr := profile.QuantRangeCEBiped // bornes MESUREES du film 000d5950 (cf. quantize.go) — zero fixture
+	wr := profile.QuantRangeCEBiped() // bornes MESUREES du film 000d5950 (cf. quantize.go) — zero fixture
 
 	opt := DefaultScanFilmOptions()
 	opt.WorldRange = &wr

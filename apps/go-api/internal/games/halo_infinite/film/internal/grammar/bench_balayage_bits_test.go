@@ -77,7 +77,7 @@ func BenchmarkBalayageBitABit(b *testing.B) {
 	if len(known) == 0 {
 		b.Fatal("catalogue de familles vide : les balayages d image-cle ne mesureraient rien")
 	}
-	wr := profile.QuantRangeCEBiped // bornes MESUREES du film 000d5950, comme le golden des familles
+	wr := profile.QuantRangeCEBiped() // bornes MESUREES du film 000d5950, comme le golden des familles
 	opt := DefaultScanFilmOptions()
 	opt.WorldRange = &wr
 	for b.Loop() {
