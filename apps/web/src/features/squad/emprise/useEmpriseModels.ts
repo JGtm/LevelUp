@@ -36,6 +36,7 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
   const production = useMemo(() => (block ? buildProductionRows(block) : []), [block])
   const yieldRows = useMemo(() => (block ? buildYieldRows(block) : []), [block])
   const habit = useMemo(() => (block ? buildHabitView(block) : ({ kind: 'none' } as const)), [block])
+  const placement = block?.placement ?? null
 
   const identities = useMemo<PickupIdentity[]>(() => {
     const emblems = new Map(medalDigest.map((e) => [e.player.toLowerCase(), e.emblem_url]))
@@ -53,5 +54,5 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
     [block],
   )
 
-  return { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, identities, playerName }
+  return { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, placement, identities, playerName }
 }

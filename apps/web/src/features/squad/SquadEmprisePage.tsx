@@ -12,7 +12,10 @@
  *   3. « Carte par carte » : « Contrôle des ressources, match par match », pleine largeur ;
  *   4. « Prendre, et s'en servir » : « Frags obtenus avec les ressources » | « Rendement face à
  *      l'adversaire », côte à côte, même hauteur (la survivante prend la rangée) ;
- *   5. « Par rapport à d'habitude » : « Contrôle des ressources, soirée après soirée », dans la
+ *   5. « Groupés ou isolés » : « Placement et rendement de chaque vie » (nuage, pleine largeur)
+ *      puis « Part des vies par placement » (barres), sous le nuage (lot V4 du plan
+ *      PLAN_EMPRISE_VIES_2026-09-28) ; absent sans vie mesurée (Halo 5, portée du radar inconnue) ;
+ *   6. « Par rapport à d'habitude » : « Contrôle des ressources, soirée après soirée », dans la
  *      colonne de gauche comme dans la maquette (la carte d'isolement de droite est hors
  *      périmètre : rien n'est rendu à sa place).
  *
@@ -39,6 +42,10 @@ import { EMPRISE_TEXT, type EmpriseText } from './emprise/empriseStrings'
 import { HabitCard } from './emprise/HabitCard'
 import type { HabitView } from './emprise/habit.logic'
 import { PickupSheetsCard } from './emprise/PickupSheetsCard'
+import type { PlacementBlock } from './emprise/placementCharts'
+import { PLACEMENT_TEXT } from './emprise/placementStrings'
+import { PlacementQuartsCard } from './emprise/PlacementQuartsCard'
+import { PlacementVieCard } from './emprise/PlacementVieCard'
 import { ProductionCard } from './emprise/ProductionCard'
 import type { ProductionRow, YieldRow } from './emprise/production.logic'
 import { ResourceControlCard } from './emprise/ResourceControlCard'
@@ -64,7 +71,7 @@ export function SquadEmprisePage() {
     et.sheets.rest,
     locale,
   )
-  const { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, identities, playerName } = models
+  const { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, placement, identities, playerName } = models
   const show = empriseSections(models)
 
   if (confirmedGamertags.length === 0 || selectedRows.length === 0) {
@@ -118,7 +125,7 @@ export function SquadEmprisePage() {
           />
         </section>
       )}
-      <UsageSections show={show} production={production} yieldRows={yieldRows} habit={habit} locale={locale} et={et} />
+      <UsageSections show={show} production={production} yieldRows={yieldRows} habit={habit} placement={placement} locale={locale} et={et} />
     </div>
   )
 }
@@ -134,12 +141,13 @@ function EmptyCard({ title, description }: { title: string; description: string 
   )
 }
 
-/** Blocs 4 et 5 : « Prendre, et s'en servir » puis « Par rapport à d'habitude ». */
+/** Blocs 4 à 6 : « Prendre, et s'en servir », « Groupés ou isolés », puis « Par rapport à d'habitude ». */
 function UsageSections({
   show,
   production,
   yieldRows,
   habit,
+  placement,
   locale,
   et,
 }: {
@@ -147,9 +155,11 @@ function UsageSections({
   production: ProductionRow[]
   yieldRows: YieldRow[]
   habit: HabitView
+  placement: PlacementBlock | null
   locale: Locale
   et: EmpriseText
 }) {
+  const pt = PLACEMENT_TEXT[locale]
   return (
     <>
       {show.prendre && (
@@ -159,6 +169,15 @@ function UsageSections({
           <div className="grid gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
             {production.length > 0 && <ProductionCard rows={production} t={et} />}
             {yieldRows.length > 0 && <YieldCard rows={yieldRows} t={et} />}
+          </div>
+        </section>
+      )}
+      {show.placement && placement && (
+        <section className="space-y-2" data-testid="emprise-section-placement">
+          <SectionTitle>{pt.section}</SectionTitle>
+          <div className="space-y-4">
+            <PlacementVieCard placement={placement} locale={locale} t={pt} />
+            <PlacementQuartsCard placement={placement} locale={locale} t={pt} />
           </div>
         </section>
       )}

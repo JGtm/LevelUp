@@ -1039,21 +1039,95 @@ devenu inutilisé) : réécrits en mutations qui compilent.
 
 ### V4 — Cartes (web) · moyen
 
-- [ ] V4.1 `features/squad/emprise/placementCharts.ts` : deux constructeurs d'option (§2.1, §2.2),
+- [x] V4.1 `features/squad/emprise/placementCharts.ts` : deux constructeurs d'option (§2.1, §2.2),
   en portant les motifs de `squadIsolementNuageOption.ts` (repère du radar, gros point) avant sa
   suppression ; tests des options (bornes, repères, tailles, couleurs par jeton, seuil de 8 %,
   décalage déterministe, plafonds à 2 et à 5).
-- [ ] V4.2 Cartes `PlacementVieCard.tsx` et `PlacementQuartsCard.tsx`, bloc « Groupés ou isolés »
+  → `placementCharts.ts` (`buildPlacementLifeOption`, `buildPlacementQuartsOption`,
+  `resolvePlacementColors`) + `placementCharts.test.ts` (34 tests) ; journal V4 ci-dessous.
+- [x] V4.2 Cartes `PlacementVieCard.tsx` et `PlacementQuartsCard.tsx`, bloc « Groupés ou isolés »
   monté dans `SquadEmprisePage.tsx` (V8), `empriseSections` / `empriseHasContent` étendus.
-- [ ] V4.3 Textes FR / EN dans un fichier neuf `emprise/placementStrings.ts`
+  → bloc monté dans `UsageSections` entre « Prendre, et s'en servir » et « Par rapport à
+  d'habitude » ; `placementHasLives` (`empriseContent.ts`) : au moins un joueur à une vie mesurée.
+- [x] V4.3 Textes FR / EN dans un fichier neuf `emprise/placementStrings.ts`
   (`Record<Locale, …>`) : `empriseStrings.ts` est à 490 lignes, seuil 500.
+  → `placementStrings.ts` (+ `placementStrings.test.ts` : trois phrases au plus par aide, FR et
+  EN) ; `empriseStrings.ts` non touché.
 - [~] V4.4 (fait en V3.6) Suppression web du nuage de Synergies : `SquadIsolementNuageCard.tsx`,
   `squadIsolementNuageOption.ts`, `squadIsolementStrings.ts`, clés `squad.isolement.*` du manifeste
   `squad.toml`, leurs tests, montage `SquadSynergiesPage.tsx:167-176` ; commentaire de section de
   Synergies mis à jour (rangée 1 = « Appui »).
-- [ ] V4.5 Tests de page : bloc présent sur la soirée témoin (fixture), absent sans le bloc, onglet
+- [x] V4.5 Tests de page : bloc présent sur la soirée témoin (fixture), absent sans le bloc, onglet
   toujours masqué sans aucun contenu.
+  → `SquadEmprisePage.test.tsx`, describe « Groupés ou isolés » (5 tests) ; fixture
+  `placement.fixtures.ts` (3 joueurs, quatre quarts, une vie au-delà des plafonds).
 - Gate : gate commun web + `lefthook run pre-push`.
+  → vert, sorties au journal V4.
+
+#### Journal V4 (exécuteur, 2026-09-30)
+
+**Fichiers.** Neufs dans `apps/web/src/features/squad/emprise/` : `placementCharts.ts` (+ `.test.ts`),
+`placementStrings.ts` (+ `.test.ts`), `PlacementVieCard.tsx`, `PlacementQuartsCard.tsx`,
+`placement.fixtures.ts`. Modifiés : `SquadEmprisePage.tsx` (bloc dans `UsageSections`, en-tête de
+page) et son test, `emprise/empriseContent.ts` (`placementHasLives`, `empriseSections` et
+`empriseHasContent` étendus), `emprise/useEmpriseModels.ts` (rend `placement`), `lib/api/types.ts`
+(quatre alias `SquadEmprisePlacement*` du contrat). Le fichier de test de la page est à 500 lignes
+(seuil) : les gabarits de bloc de la suite y sont repris d'un helper (`sansMesure`).
+
+**Décisions du lot (à relire).**
+- **Repère du radar : jeton `extreme`.** La spécification dit « couleur d'accent » ; l'accent de la
+  maquette est un violet (`--accent`), et l'app n'a pas de jeton `accent` de graphe (`--accent`
+  du thème est un gris de survol). `extreme` (fuchsia) est la teinte violette du thème ; `warning`
+  (ambre) est celle du joueur 2 et du trait à 50 % des autres cartes, `info` (bleu) celle du joueur 1.
+  Un seul point de changement : `resolvePlacementColors`.
+- **Encre sombre des valeurs des segments : `--warning-foreground`** (sombre dans les deux thèmes,
+  lue au rendu ; repli sur la couleur du texte hors navigateur). Aucun jeton « encre » n'existe.
+- **« N vies » des infobulles et taille du gros point = `lives_measured`** (les vies dans les
+  médianes et dans les parts) ; « N vies mesurées sur M » de l'aide de carte = `coverage`.
+- **Seuils de tracé lus au bloc** : repère du radar à `isolated_from_ratio`, frontière à
+  `productive_from_kills − 0,5`, quatre quarts aux mêmes coins ; les bornes d'axe (0-2, −0,5 à 5,5)
+  et les plafonds (2, 5) sont ceux de la spécification, en constantes nommées.
+- **Valeurs des segments** : la donnée empilée est la part exacte (×100), la valeur écrite est
+  arrondie et masquée sous 8 % après arrondi (comme la maquette). Les noms des joueurs sont
+  laissés à `containLabel` (`getGridBase`) plutôt qu'à une marge gauche fixe de 80 px.
+- **Hachage du décalage** : FNV-1a puis brassage final (`fmix32`) ; FNV-1a seul dispersait mal des
+  débuts de vie consécutifs (34 valeurs distinctes sur 50 vues rouge du test de dispersion).
+- **Bloc absent** si aucun joueur n'a de vie mesurée (Halo 5, portée du radar inconnue) : même
+  prédicat pour la page et pour la barre d'onglets.
+
+**Mutations** (script de copie dans le scratchpad, test ciblé, restauration par copie vérifiée par
+`cmp` à chaque fois ; TOUS les tests neufs vus rouges) :
+
+| # | Test | Mutation | Rouge |
+|---|---|---|---|
+| M1 | axes | `X_MAX` 2 → 3 | bornes et plafond |
+| M2 | plafonds | `KILLS_CAP` 5 → 6 | vie à 7 frags |
+| M3 / M4 | tailles | diviseur 9 → 10 ; plafond du gros point 200 → 100 | rouge |
+| M5 / M5b / M5c | décalage | décalage nul ; `Math.random` ; clé sans `start_ms` | dispersion, hasard, clé |
+| M6 / M7 | repères | radar en constante 1 ; frontière sans −0,5 | seuils du bloc |
+| M8 / M8b / M14 | quarts | 2e quart teinté ; opacité 30 % ; zone teintée sur le radar | rouge |
+| M9 / M10 | légende | légende en haut ; gros point sous un autre nom de série | rouge |
+| M11 | seuil de 8 % | 8 → 5 | rouge |
+| M12 / M12b / M18 | jetons | perf-tier-3 ; perf-tier-2 pour le 1er ; repère en `warning` | rouge (le test applique la palette : sans elle `resolveToken` rend `''` partout, M18 restait vert au premier essai) |
+| M13 | ordre | premier joueur en bas | rouge |
+| M15 / M15b / M23 | barres | non empilées ; épaisseur 20 ; séparateur retiré | rouge |
+| M16 | infobulle | gamertag non échappé | rouge |
+| M17 | axe X | libellés sans deux décimales | rouge |
+| M19 / M20 / M21 | plafonds | gros point sans plafond (2e essai : le premier restait vert, la fixture n'avait pas de médiane au-delà) ; frags sans plafond ; radar plafonné dans l'infobulle | rouge |
+| M22 / M30 | couleurs | joueur au repli du thème ; principal = 2e joueur | rouge |
+| M24 / M25 / M26 / M29 | styles | liseré du semis ; cerclage 2 → 1 ; encre = texte ; variable d'encre claire | rouge |
+| M27 / M28 | infobulle | part lue dans le mauvais quart ; durée m:ss fausse | rouge |
+| P1 / P2 / P3 / P5 | page | prédicat toujours faux ; ignore les vies ; section sans prédicat ; `empriseHasContent` sans placement | rouge |
+| P4 / P4c / P6 / P7 / P8 | page | bloc après habitude ; bloc avant prendre ; cartes côte à côte ; quarts au-dessus ; intertitre non traduit | rouge (P4b, mutation mal écrite, ne déplaçait rien : réécrite en P4c) |
+| S1 / S2 / S3 / S4 | textes | 4e phrase ; matchs sans portée oubliés ; seuil de frags oublié (2e essai : la valeur 2 apparaissait aussi dans « 1,25 ») ; titre de quart en minuscules | rouge |
+
+**Gate** (depuis `apps/web` puis la racine du worktree) : `npx tsc -b --force` : 0 erreur ;
+`npx vitest run --pool=forks` : 827 fichiers ok / 5 sautés, 8 798 tests ok / 23 sautés (316 s),
+aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants) ;
+`knip-ratchet` 0/0/0 ; `lint-cross-feature-imports` 7 ≤ plafond 7 ; `lint-no-hardcoded-colors`
+0 violation ; `lefthook run pre-push` : 9 étapes vertes.
+
+**Non fait.** Aucun rendu réel (ni serveur ni navigateur, brief) : le gate visuel est celui de V5.5.
 
 ### V5 — Clôture (superviseur) · moyen
 

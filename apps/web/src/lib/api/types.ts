@@ -2361,6 +2361,11 @@ export type SquadEmpriseObjectShare = components['schemas']['SquadEmpriseObjectS
 export type SquadEmpriseCount = components['schemas']['SquadEmpriseCount']
 export type SquadEmpriseHabit = components['schemas']['SquadEmpriseHabit']
 export type SquadEmpriseEvening = components['schemas']['SquadEmpriseEvening']
+// Placement des vies (plan PLAN_EMPRISE_VIES_2026-09-28, lot V3) : bloc `squad_emprise.placement`.
+export type SquadEmprisePlacement = components['schemas']['SquadEmprisePlacement']
+export type SquadEmprisePlacementPlayer = components['schemas']['SquadEmprisePlacementPlayer']
+export type SquadEmprisePlacementLife = components['schemas']['SquadEmprisePlacementLife']
+export type SquadEmprisePlacementQuadrant = components['schemas']['SquadEmprisePlacementQuadrant']['quadrant']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 

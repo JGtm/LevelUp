@@ -10,7 +10,7 @@
  * seule — la grille match par match exige au moins une ligne lue au film (la seule ligne des
  * frags ne fait pas une grille). Aucun branchement sur le titre : tout se lit dans le bloc.
  */
-import type { SquadEmpriseBlock } from '@/lib/api/types'
+import type { SquadEmpriseBlock, SquadEmprisePlacement } from '@/lib/api/types'
 
 import { buildControlRows, buildMatchGrid, buildPickupSheets, type MatchGrid, type PickupSheets } from './emprise.logic'
 import { buildHabitView, type HabitView } from './habit.logic'
@@ -31,7 +31,13 @@ export interface EmpriseSections {
   roles: boolean
   carte: boolean
   prendre: boolean
+  placement: boolean
   habitude: boolean
+}
+
+/** Le bloc « Groupés ou isolés » a-t-il au moins une vie mesurée à tracer ? (Sans portée de radar ou sans film : absent.) */
+export function placementHasLives(placement: SquadEmprisePlacement | null | undefined): boolean {
+  return placement != null && (placement.players ?? []).some((p) => p.lives_measured > 0)
 }
 
 /** Les blocs à rendre, depuis les modèles des cartes. */
@@ -42,12 +48,14 @@ export function empriseSections(m: {
   production: ProductionRow[]
   yieldRows: YieldRow[]
   habit: HabitView
+  placement: SquadEmprisePlacement | null | undefined
 }): EmpriseSections {
   return {
     bilan: m.controlRows.length > 0,
     roles: sheetsHaveLines(m.sheets),
     carte: gridHasFilmRows(m.grid),
     prendre: m.production.length > 0 || m.yieldRows.length > 0,
+    placement: placementHasLives(m.placement),
     habitude: m.habit.kind !== 'none',
   }
 }
@@ -62,6 +70,7 @@ export function empriseHasContent(block: SquadEmpriseBlock | null | undefined): 
     production: buildProductionRows(block),
     yieldRows: buildYieldRows(block),
     habit: buildHabitView(block),
+    placement: block.placement,
   })
   return Object.values(s).some(Boolean)
 }
