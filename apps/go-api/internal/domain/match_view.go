@@ -506,7 +506,7 @@ type MatchCombatTab struct {
 	// du VIEWER (is_me) pour ce match. Classes gun = bulk weapon kills du viewer
 	// (registre) ; melee/grenade/spartan + total = compteurs natifs de sa ligne
 	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null). Cf.
-	// .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
+	// .ai/archive/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
 	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
 
 	// KillDistanceByWeapon : POC (LOT G.3, 2026-08-30, plan retours-utilisateur

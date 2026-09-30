@@ -138,7 +138,7 @@ type chunksHighlightDuCache struct {
 //
 // LE REGISTRE EST LU EN PLUS, et c est le SEUL chunk supplementaire charge : il pese ~2 Mio
 // contre les dizaines de Mio du film entier, et sans lui le decoupage du gamertag se devine
-// (cf. .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Registre absent : la version reste
+// (cf. .ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Registre absent : la version reste
 // inconnue, `ops` le consigne et le decoupage historique s applique.
 func (c chunksHighlightDuCache) ChunkHighlight(_ context.Context, matchID string) (ops.FilmHighlight, bool, error) {
 	manifest, err := c.cache.LoadManifest(matchID)

@@ -1,7 +1,7 @@
 package killsource
 
 // paquet_identite.go — L IDENTITE DE PAQUET DECIDE L APPARIEMENT, LA FENETRE DE 2,5 s DEVIENT UN
-// REPLI (lot 1.9.7 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, D13 et D14).
+// REPLI (lot 1.9.7 du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, D13 et D14).
 //
 // # CE QUE LE FILM ECRIT, ET QUI N ETAIT PAS LU
 //

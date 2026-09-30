@@ -35,7 +35,7 @@ package grammar
 //	  V2_FILMS="0d76e8f1:behemoth,fccc61cd:launch site" \
 //	  V2_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  V2_PADS=<repo>/data/titles/halo_infinite/reference/map_weapon_pads.json \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestV2SpawnsCooldowns$' -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestV2SpawnsCooldowns$' -v -timeout 180m
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"

@@ -17,7 +17,7 @@ package skillchain
 // le LUSR et en famille slayer pour la performance).
 //
 // LACUNES D-I CORRIGÉES le 2026-08-27 (lot 1bis du plan
-// .ai/PLAN_PERF_NOTE_OBJECTIFS.md, décision utilisateur) — 26 matchs du corpus des
+// .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md, décision utilisateur) — 26 matchs du corpus des
 // 4 joueurs suivis tombaient en famille slayer alors qu'ils sont des matchs
 // d'objectif :
 //   - 5 sous-modes ajoutés à la liste : `vip`, `neutral bomb`, `one bomb`,

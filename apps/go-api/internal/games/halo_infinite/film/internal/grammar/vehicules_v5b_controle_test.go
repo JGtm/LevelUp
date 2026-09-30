@@ -20,7 +20,7 @@ package grammar
 // d'insertion `p`. Si `p` tombe sur une frontière, le bloc EST un composant (ou son extension).
 //
 //	CGO_ENABLED=0 V5_ROOT=<cache> V5_FILMS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run 'TestV5BMouvement|TestV5BAncrage' -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run 'TestV5BMouvement|TestV5BAncrage' -v -timeout 180m
 
 import (
 	"fmt"

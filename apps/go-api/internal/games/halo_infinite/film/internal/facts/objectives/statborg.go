@@ -31,7 +31,7 @@ import (
 //	puis, par index : [5 bits MANCHE][5 bits MANCHE][valeur A][valeur B][2 drapeaux][conditionnelles]
 //
 // Chaque constante a ete lue sur 1 078 en-tetes et 2 708 lectures de composant issus d'une
-// capture Cheat Engine, pas supposee (.ai/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md §15) :
+// capture Cheat Engine, pas supposee (.ai/V7.5/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md §15) :
 //   - le bit qui precede l'identifiant vaut 1 dans 1 077/1 078 (c'est le code de record DELTA) ;
 //   - les slots valent 6 et 8 (equipes) et 10..24 pairs (les 8 joueurs), soit
 //     2 x (identifiant runtime - 0x40000000) ;

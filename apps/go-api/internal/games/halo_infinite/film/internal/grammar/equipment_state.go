@@ -291,12 +291,12 @@ type equipmentWalk struct {
 	want [EquipmentFieldCount]int
 }
 
-// scanPayload balaye UN payload delta et rend les records de ti=37 dont la marche a abouti.
 // contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
 func (w equipmentWalk) contexte() ContexteDeLecture {
 	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
 }
 
+// scanPayload balaye UN payload delta et rend les records de ti=37 dont la marche a abouti.
 func (w equipmentWalk) scanPayload(
 	pay []byte, band map[uint32]bool, st *EquipmentStateStats,
 	cur *EquipmentStateSample, pk FilmPacket, chunk int,

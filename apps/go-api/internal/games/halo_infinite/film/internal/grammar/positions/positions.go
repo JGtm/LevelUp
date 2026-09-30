@@ -1,5 +1,5 @@
 // Package positions décode les positions joueurs KEYFRAME des films Halo
-// Infinite (§N de .ai/RESEARCH_THEATER_RE.md). Pur, sans accès DB.
+// Infinite (§N de .ai/archive/V7/RESEARCH_THEATER_RE.md). Pur, sans accès DB.
 //
 // Modèle de décodage (prouvé sur 000d5950, cf. cmd/tmp_posdecode) :
 //   - Les positions full-state vivent dans le payload TYPE_2 de chaque chunk.

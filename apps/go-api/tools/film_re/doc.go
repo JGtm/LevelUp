@@ -4,7 +4,7 @@
 //
 // CE QUE C'EST : le releve, sous forme de donnee typee, des ecrivains de composants ECS
 // trouves dans `HaloInfinite.exe` par Ghidra en lecture seule pendant la preparation du lot 3.6
-// du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`. Les notes qui l'expliquent vivent dans
+// du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`. Les notes qui l'expliquent vivent dans
 // `.ai/V7.5/film_re/NOTE_3_6_*.md` ; ce paquet en est la forme MACHINE, pour que le lot 3.6
 // n'ait pas a recopier cinquante-sept adresses a la main dans `ecs_table.tsv`.
 //

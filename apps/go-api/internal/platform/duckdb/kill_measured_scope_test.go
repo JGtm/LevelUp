@@ -2,7 +2,7 @@
 
 // Package duckdb — kill_measured_scope_test.go : LA SOUS-REQUÊTE `fragSolo` EST BORNÉE.
 //
-// Résidu 4.0a du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md. La garde d'unicité du frag se juge
+// Résidu 4.0a du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md. La garde d'unicité du frag se juge
 // sur un GROUPE, donc dans une branche de jointure — et tant que cette branche ne portait pas
 // son propre scope, DuckDB ne pouvait POUSSER aucun filtre jusqu'au balayage de
 // `match_kill_events` : la vue entière était lue à chaque lecture de Synthèse (mesuré ×15,6,

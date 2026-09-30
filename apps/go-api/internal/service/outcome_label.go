@@ -81,7 +81,7 @@ func outcomeTextByKey(outcomes *mappings.OutcomeMappingSet, locale, key string) 
 // outcomeKeyFromHaloCode traduit un code Halo BRUT (domain.Outcome*) en clé canonique MT-06,
 // pour les DTO dont le service n'a PAS (encore) d'adapter sémantique câblé (CareerService,
 // ExplorerService — dette multi-titre existante, hors périmètre de ce lot : cf.
-// .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §9). Halo uniquement : un futur titre aux codes
+// .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §9). Halo uniquement : un futur titre aux codes
 // différents devra câbler son adapter sémantique avant d'appeler ces DTO.
 func outcomeKeyFromHaloCode(code int) string {
 	switch code {

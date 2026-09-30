@@ -39,7 +39,7 @@ func postTimeseriesPage(t *testing.T, page domain.TimeseriesPageResponse) *httpt
 }
 
 // TestTimeseriesHandler_WeaponRangeInResponse — la section « Portée par arme » traverse le
-// handler et se sérialise telle quelle (lot 4 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md).
+// handler et se sérialise telle quelle (lot 4 du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md).
 //
 // CE QUE CE TEST VÉRIFIE ET QU'AUCUN TEST DE SERVICE NE PEUT VOIR : la forme JSON servie au
 // front. Un côté d'arme est un POINTEUR — nil doit disparaître de la charge utile (« aucune

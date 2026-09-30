@@ -20,7 +20,7 @@ package grammar
 // après le trou.
 //
 //	CGO_ENABLED=0 V5_ROOT=<cache> V5_FILMS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV5Appariement -v -timeout 120m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV5Appariement -v -timeout 120m
 
 import (
 	"fmt"

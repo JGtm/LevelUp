@@ -13,7 +13,7 @@
 // passage (steps qui délèguent à ApplyLabels / ApplyRegistry).
 //
 // Registre d'armes canonique = passage PRINCIPAL de la résolution d'arme (cf.
-// .ai/PLAN_WEAPON_TAXONOMY.md). 3 tables référentielles dans metadata.duckdb :
+// .ai/archive/V7/PLAN_WEAPON_TAXONOMY.md). 3 tables référentielles dans metadata.duckdb :
 //   - weapons          : 1 ligne par arme par titre (class/role/family/faction/damage_type + extra JSON).
 //   - weapon_ids       : N ids par arme (filmshell/stock_id/module…) → un id résout vers UN weapon_key.
 //   - weapon_families  : whitelist référentielle des clés de famille cross-titre (plus

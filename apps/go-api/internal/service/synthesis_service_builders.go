@@ -237,7 +237,7 @@ func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWea
 // topWeaponKillRows rend les N lignes d'arme les plus meurtrières, filtrées et triées.
 //
 // # LA DÉFINITION CANONIQUE DU « TOP ARMES » DU DÉPÔT (D11 du plan
-// # .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md)
+// # .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md)
 //
 // Elle vivait INLINE dans `buildTopWeaponKills`, et `buildWeaponAccuracy` en porte déjà une
 // variante sur sa propre métrique : le profil d'armes du Face-à-face en aurait été la

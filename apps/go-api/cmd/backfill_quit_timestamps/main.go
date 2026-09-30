@@ -5,7 +5,7 @@
 //
 // Modèle identique à cmd/backfill_participation_info, mais cible les 2
 // timestamps absolus ajoutés en 2026-05-27 pour ordonner précisément les
-// quitters (cf. .ai/LUSR_V2_HANDOFF.md "Priority quitter").
+// quitters (cf. .ai/archive/V7/LUSR v2/LUSR_V2_HANDOFF.md "Priority quitter").
 //
 // Stratégie :
 //  1. Applique la migration ADD COLUMN IF NOT EXISTS (idempotent).

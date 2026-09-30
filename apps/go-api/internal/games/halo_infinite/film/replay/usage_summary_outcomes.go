@@ -38,7 +38,7 @@ package replay
 // Le clamp à zéro absorbe deux écarts mesurés et attendus : les 2,45 % de fenêtres
 // que la mesure E0.4 ne referme pas, et le fait qu'une POSE EST UNE CHARGE, PAS UN
 // OBJET (un capteur pris une fois et lancé quatre fois donne 4 poses pour 1 objet —
-// piège d'unité n°1 de `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`).
+// piège d'unité n°1 de `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`).
 //
 // # LA JOINTURE RANG -> FAMILLE SE FAIT SUR LA FAMILLE PUBLIÉE (schéma 51, lot 4.3)
 //

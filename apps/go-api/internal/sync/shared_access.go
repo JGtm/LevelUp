@@ -1,7 +1,7 @@
 package sync
 
 // shared_access.go — accès à la DB partagée pour le pipeline post-sync, en
-// « bursts » paresseux (étape 1 contention, cf. .ai/PLAN_POSTSYNC_BURST_LEASE.md).
+// « bursts » paresseux (étape 1 contention, cf. .ai/archive/V7/PLAN_POSTSYNC_BURST_LEASE.md).
 //
 // PROBLÈME MESURÉ (étape 0) : le post-sync tenait le writer RW pendant TOUT le
 // pipeline (~13s/joueur, 99% du cycle), alors que seules 4 étapes écrivent

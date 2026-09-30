@@ -9,7 +9,7 @@ package grammar
 // vitesse (P1.4) vivent dans transloc_exemption_film_test.go.
 //
 //	CGO_ENABLED=0 P1_FILM=<depot>/data/cache/film_chunks/1b2d9e08 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestP1Recuperation' -v -timeout 30m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestP1Recuperation' -v -timeout 30m
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"

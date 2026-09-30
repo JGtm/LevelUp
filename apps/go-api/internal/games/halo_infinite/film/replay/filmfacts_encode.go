@@ -20,9 +20,6 @@ const (
 	gpHasShield byte = 1 << 3
 )
 
-// EncodeFilmFacts serialise les faits d un film. Le format est decrit en tete de filmfacts.go ;
-// la SUITE DES SECTIONS est celle que `DecodeFilmFacts` relit, dans le meme ordre, et toute
-// insertion au milieu monte `filmFactsMagic` DANS LE MEME COMMIT.
 // EncodeFilmFactsAvecErreur est [EncodeFilmFacts] qui REND SON ECHEC.
 //
 // Le codec est sans erreur sur tout ce qu il ecrit a la main ; une seule charge peut echouer (les
@@ -34,6 +31,9 @@ func EncodeFilmFactsAvecErreur(g *FilmFacts) ([]byte, error) {
 	return w.b, w.echec
 }
 
+// EncodeFilmFacts serialise les faits d un film. Le format est decrit en tete de filmfacts.go ;
+// la SUITE DES SECTIONS est celle que `DecodeFilmFacts` relit, dans le meme ordre, et toute
+// insertion au milieu monte `filmFactsMagic` DANS LE MEME COMMIT.
 func EncodeFilmFacts(g *FilmFacts) []byte {
 	return encodeurDeFaits(g).b
 }

@@ -34,7 +34,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 TI11_FILM=<repo>/data/cache/film_chunks/64e8adfa \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TI11Mur -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TI11Mur -v
 
 import (
 	"sort"

@@ -1,5 +1,5 @@
 // Package fallback porte LE REGISTRE DES REPLIS du décodeur de film (D14 du plan
-// `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034).
+// `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034).
 //
 // # CE QUE CE PAQUET EXISTE POUR EMPÊCHER
 //
@@ -56,12 +56,11 @@
 // différence, et les CONVERSIONS (la lecture qui remplace l'heuristique) sont les lots 1.9.1
 // à 1.9.14.
 //
-// # OÙ IL VIVRA
+// # OÙ IL VIT
 //
-// Sous `replay/` tant que la couche `facts` n'existe pas (plan, item 1.9.0). Au pas 5 de M2
-// (lot 2.5), quand les cinq couches `source` -> `profile` -> `grammar` -> `facts` -> `replay`
-// sont séparées, ce paquet devient `film/facts/fallback` : il est déjà une FEUILLE (aucun
-// import du dépôt), donc le déplacement est pur.
+// Dans la couche `facts` (`film/internal/facts/fallback`), feuille sans import du dépôt. Chaque
+// entrée est comptée : `TestChaqueRepliEstCompte` (ce paquet) refuse une entrée sans compteur
+// branché, hors la catégorie explicite [Repli.HorsProduction].
 package fallback
 
 import (

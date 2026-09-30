@@ -21,7 +21,7 @@
 //
 // Limite : ne détecte pas les ATTACH via abstractions (interfaces, méthodes
 // nommées différemment, sql.Tx obtenu via shared_social puis tx.Exec). Pour
-// ces cas, recourir à l'audit manuel (cf. .ai/audit_shared_social_writes_2026-05-27.md).
+// ces cas, recourir à l'audit manuel (cf. .ai/archive/V7/audit_shared_social_writes_2026-05-27.md).
 
 package duckdb
 

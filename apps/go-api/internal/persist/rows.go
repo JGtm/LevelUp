@@ -176,7 +176,7 @@ type KillPositionInsert struct {
 
 // KillOpeningInsert — row pour shared.kill_openings : les positions monde des deux
 // joueurs UN TEMPS-POUR-TUER AVANT le coup fatal (proxy d'entame, D5 du plan
-// .ai/PLAN_DUELS_PORTEE_2026-09-06.md, validé le 2026-09-06 à 1,24 m d'écart médian).
+// .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, validé le 2026-09-06 à 1,24 m d'écart médian).
 //
 // MÊME FORME QUE KillPositionInsert, ET POURTANT UN TYPE DISTINCT : les deux rows
 // ne visent pas la même table et ne portent PAS la même mesure. Un type partagé

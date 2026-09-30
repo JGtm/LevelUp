@@ -295,6 +295,12 @@ var references = []reference{
 	{"fccc61cd", 95, 3, 2, 0, 1, 98, "Launch Site"},
 }
 
+type anchor2 struct {
+	at       string
+	tag      uint32
+	diverges bool
+}
+
 // anchors : LES ANCRES DE VERITE TERRAIN, confirmees en mode Theater. C est la ressource la plus
 // rare du chantier : 30 confrontations, zero etiquette publiee fausse. Elles vivaient dans un
 // journal ; si une bascule change un seul tag, cela doit se voir ICI et tout de suite.
@@ -302,12 +308,6 @@ var references = []reference{
 // PIEGE, ET IL A MORDU : deux morts peuvent tomber dans la MEME seconde. On verifie donc qu AU
 // MOINS UNE ligne de la seconde porte le tag attendu, jamais qu une map indexee par "MM:SS" le
 // porte.
-type anchor2 struct {
-	at       string
-	tag      uint32
-	diverges bool
-}
-
 var anchors = map[string][]anchor2{
 	"000d5950": {
 		{"00:35", 0xeea85c26, false}, {"00:44", 0x130c4b61, false},

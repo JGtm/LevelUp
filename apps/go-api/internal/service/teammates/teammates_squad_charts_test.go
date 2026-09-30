@@ -617,7 +617,7 @@ func TestImpactScoreWeights_Coverage(t *testing.T) {
 			t.Errorf("badge %q manque dans impactScoreWeights", badge)
 		}
 	}
-	// Sanity : les weights matchent la spec (cf. .ai/charts_specs/teammates/07).
+	// Sanity : les weights matchent la spec (cf. .ai/charts_specs/teammates/07_impact_taquinerie.yaml).
 	expected := map[string]float64{
 		"clutch_finisher":   2.0,
 		"first_blood":       2.0,

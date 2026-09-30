@@ -2,7 +2,7 @@ package migration
 
 // steps_metadata_purge_weapon_families_labels.go — purge des colonnes inertes
 // weapon_families.name_en / weapon_families.name_fr (plan libellés en dur, lot M5 L4,
-// .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §4 L4).
+// .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §4 L4).
 //
 // Contexte : `weapon_families` (games/weapons/registry.go, ApplyRegistry) porte un
 // libellé EN/FR par famille d'arme (« battle_rifle » -> "Battle Rifle"/"Fusil de

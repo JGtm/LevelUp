@@ -22,7 +22,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I28_FILM=<repo>/data/cache/film_chunks/084a804d \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI28CamoActiveState$' -timeout 30m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI28CamoActiveState$' -timeout 30m -v
 
 import (
 	"fmt"

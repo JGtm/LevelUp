@@ -216,17 +216,17 @@ func (w bipedCreationWalk) scanPayload(pay []byte, pk FilmPacket, chunk int) []B
 	return out
 }
 
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (w bipedCreationWalk) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
+}
+
 // readCreation rejoue les TROIS premières feuilles de `consumeBipedDefaultState` à l'intérieur
 // d'une ancre, et applique le gate de signature.
 //
 // CHAQUE REFUS EST COMPTÉ À PART, et les catégories ne sont pas décoratives : `ShapeBad` est le
 // rejet ordinaire d'un ancrage bit à bit, `SignatureMismatch` est le seul qui dise quelque chose
 // du FILM, et `GateClosed` est un fait mesuré à zéro dont la remontée serait une découverte.
-// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
-func (w bipedCreationWalk) contexte() ContexteDeLecture {
-	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
-}
-
 func (w bipedCreationWalk) readCreation(pay []byte, p, total int) (BipedCreation, bool) {
 	var cre BipedCreation
 	st := w.st

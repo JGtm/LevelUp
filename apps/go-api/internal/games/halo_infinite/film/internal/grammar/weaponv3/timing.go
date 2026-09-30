@@ -1,7 +1,7 @@
 package weaponv3
 
 // timing.go — estimateur de timestamp µs-précis depuis l'en-tête de paquet
-// 16 octets (réf .ai/RESEARCH_THEATER_RE.md §L, port de cmd/tmp_p2valid).
+// 16 octets (réf .ai/archive/V7/RESEARCH_THEATER_RE.md §L, port de cmd/tmp_p2valid).
 //
 // Le chunk film est une suite de paquets : [Type u16 LE @0][b2][b3]
 // [Size u32 LE @4][µs u64 LE @8], suivis d'un payload de `Size` octets à @16.

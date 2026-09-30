@@ -7,7 +7,7 @@
 // À lire avant tout nouveau décodage.
 //
 // GRAMMAIRE DU RECORD BIPED (validée au quantum exact, 99,99 %, contre une table de
-// vérité live ; cf. .ai/thought_log_replay.md) :
+// vérité live ; cf. .ai/V7.5/replay2d/thought_log_replay.md) :
 //
 //	[1 préfixe=1][idLow = slot][2 tag][1 gate=0][3 maskCount]
 //	[6 bits x maskCount indices de composants, croissants, le premier = 0]

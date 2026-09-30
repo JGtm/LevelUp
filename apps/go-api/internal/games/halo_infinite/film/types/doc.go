@@ -13,9 +13,9 @@
 //
 // # C EST UNE FEUILLE, ET C EST LA PROPRIETE QUI COMPTE
 //
-// AUCUN import du depot, jamais — meme doctrine que `games/canonical`, `domain/replaydoc` et
-// `film/source`. Garde-rail : `archlint/film_types_leaf_test.go`. C est cette propriete qui
-// autorise `film/source`, elle-meme feuille pour cause de cycle (`filmsource_leaf_test.go`), a
+// AUCUN import du depot, jamais — meme doctrine que `games/canonical` et `domain/replaydoc`.
+// Garde-rail : `archlint/film_types_leaf_test.go`. C est cette propriete qui autorise
+// `film/internal/source`, feuille pour cause de cycle (`filmsource_leaf_test.go`), a
 // l importer : une feuille importee par une feuille ne ferme aucun cycle.
 //
 // # CE QUI Y ENTRE, ET CE QUI N Y ENTRE PAS

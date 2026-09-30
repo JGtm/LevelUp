@@ -28,7 +28,7 @@ package grammar
 //
 //	go test ./internal/games/halo_infinite/film/internal/grammar/ -run KeyframeClosureRatchet -update-keyframe-closure
 //
-// LE CHEMIN A ETE CORRIGE LE 2026-09-17 (lot 3.6.a) : il nommait encore `film/filmdec/`, le
+// LE CHEMIN A ETE CORRIGE LE 2026-09-17 (lot 3.6.a) : il nommait encore l ancien paquet `filmdec`, le
 // paquet d avant la descente du lot 2.5.e. Le golden, lui, portait le bon chemin — il avait ete
 // corrige A LA MAIN, ce que l en-tete de cette fonction interdit, et la premiere regeneration
 // venue le remettait a l ancien. Le meme geste a RENDU AU GENERATEUR le bloc d historique du lot

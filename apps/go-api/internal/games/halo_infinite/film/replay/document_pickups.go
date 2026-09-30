@@ -151,6 +151,22 @@ type Pickup struct {
 	Origin string `json:"origin,omitempty"`
 }
 
+// pickupInputs groupe ce qui NOMME et QUALIFIE un ramassage, autour de la liste brute.
+//
+// LE GROUPEMENT N'EST PAS COSMETIQUE : `buildPickups` etait montee a SIX parametres, au-dessus
+// du plafond du depot, et son commentaire affirmait le contraire. Ce qui repond a « qui, quoi,
+// d'ou » tient dans une structure ; la liste et l'horloge restent des arguments parce qu'elles
+// sont l'ENTREE et le REFERENTIEL, pas des dependances.
+type pickupInputs struct {
+	// occupant rend le joueur qui tient le siège A L'INSTANT du ramassage (microsecondes,
+	// horloge du film) — le registre à l'instant, jamais le pont aplati (lot 6.1, 2026-09-10).
+	// Nil = aucun nommage, ce qui est la dégradation propre quand le pont n'existe pas.
+	occupant   func(slot uint32, tUS uint64) uint64
+	st         types.BipedPickupStats
+	weaponKeys map[uint32]string
+	judge      *pickupOriginJudge
+}
+
 // buildPickups projette les ramassages lus dans le film sur l'axe de frames du document et
 // pose l'identité du ramasseur.
 //
@@ -169,22 +185,6 @@ type Pickup struct {
 // (Vérifié sur pièces le 2026-09-01 : les 21 entrées de `[[equipment_objects]]` s'écrivent
 // `"0x"` + minuscules, et `tagGlobalID32` les parse en `uint32` au chargement du manifeste.
 // La casse du fichier n'atteint jamais cette jointure.)
-// pickupInputs groupe ce qui NOMME et QUALIFIE un ramassage, autour de la liste brute.
-//
-// LE GROUPEMENT N'EST PAS COSMETIQUE : `buildPickups` etait montee a SIX parametres, au-dessus
-// du plafond du depot, et son commentaire affirmait le contraire. Ce qui repond a « qui, quoi,
-// d'ou » tient dans une structure ; la liste et l'horloge restent des arguments parce qu'elles
-// sont l'ENTREE et le REFERENTIEL, pas des dependances.
-type pickupInputs struct {
-	// occupant rend le joueur qui tient le siège A L'INSTANT du ramassage (microsecondes,
-	// horloge du film) — le registre à l'instant, jamais le pont aplati (lot 6.1, 2026-09-10).
-	// Nil = aucun nommage, ce qui est la dégradation propre quand le pont n'existe pas.
-	occupant   func(slot uint32, tUS uint64) uint64
-	st         types.BipedPickupStats
-	weaponKeys map[uint32]string
-	judge      *pickupOriginJudge
-}
-
 func buildPickups(
 	pickups []types.BipedPickup, clk replayClock, in pickupInputs,
 ) ([]Pickup, PickupCoverage) {

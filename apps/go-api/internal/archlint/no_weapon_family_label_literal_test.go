@@ -1,7 +1,7 @@
 // Package archlint — garde-fous d'architecture vérifiés en test (ratchet).
 //
 // no_weapon_family_label_literal_test.go : garde-rail complémentaire (lot M5 L4,
-// 2026-09-08, .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §2.C/§4), frère de
+// 2026-09-08, .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §2.C/§4), frère de
 // TestNoNewModePlaylistLabelLiteral (no_bare_resolve_mode_ui_test.go, lot L3).
 //
 // `games/weapons/registry.go` portait `weaponFamilyRow struct{ key, en, fr string }` —

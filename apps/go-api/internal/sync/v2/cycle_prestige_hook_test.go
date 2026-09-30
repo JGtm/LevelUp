@@ -7,7 +7,7 @@
 //
 // Contexte : avant le fix, prestige.RunPostSyncHook ne tournait sur AUCUN chemin
 // (le hook engine n'est pas atteint en V2 — RunPostSyncForV2 court-circuite
-// engine.run()). Cf. .ai/AUDIT_VERIF_FINALE_2026-07-06.md VF-1.
+// engine.run()). Cf. .ai/archive/V7/AUDIT_VERIF_FINALE_2026-07-06.md VF-1.
 package v2
 
 import (

@@ -26,7 +26,7 @@ package grammar
 // Windows (32 767 caracteres) — la forme en liste ne peut PAS porter le corpus entier.
 //
 //	CGO_ENABLED=0 CHUNK00_CORPUS="C:/.../data/cache/film_chunks" \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TableJoueursCorpus -v -timeout 60m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TableJoueursCorpus -v -timeout 60m
 
 import (
 	"errors"

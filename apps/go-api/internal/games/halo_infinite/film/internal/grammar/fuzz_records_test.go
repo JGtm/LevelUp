@@ -20,11 +20,11 @@ package grammar
 //
 // CAMPAGNE (a la main, jamais en CI) :
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run FuzzFilmRecordReaders -fuzz FuzzFilmRecordReaders -fuzztime 60s
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run FuzzFilmRecordReaders -fuzz FuzzFilmRecordReaders -fuzztime 60s
 //
 // REGENERATION DES GRAINES :
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run FuzzSeedsRegenerate -update
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run FuzzSeedsRegenerate -update
 
 import (
 	"flag"
@@ -41,7 +41,7 @@ import (
 //
 // IL A PILOTE DEUX SORTIES, ET C'ETAIT UN DEFAUT (correction C5 de la revue E-R1, 2026-09-06).
 // Sous le nom `updateGoldens`, ce drapeau ouvrait AUSSI la reecriture du golden des familles
-// (`golden_minibobine_test.go`) : `go test ./internal/games/halo_infinite/film/filmdec/ -update` SANS `-run`
+// (`golden_minibobine_test.go`) : `go test ./internal/games/halo_infinite/film/internal/grammar/ -update` SANS `-run`
 // reecrivait le golden avec ce que le decodeur rendait a cet instant, et le paquet repondait
 // `ok`. Mesure : avec `br.Skip(2)` -> `br.Skip(3)` dans `readZoomRef`, la commande rendait
 // `ok` et le golden partait avec la valeur derivee. Une porte de regeneration doit nommer CE

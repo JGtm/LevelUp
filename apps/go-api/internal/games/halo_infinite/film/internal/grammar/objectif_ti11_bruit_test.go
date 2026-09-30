@@ -125,7 +125,7 @@ package grammar
 // decodage a la fois sur la machine (verrou INTER-PROCESSUS `filmproc.AcquireSolo`). Aucun chemin de production n'est modifie.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Bruit -v -timeout 60m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Bruit -v -timeout 60m
 
 import (
 	"os"

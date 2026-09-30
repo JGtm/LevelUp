@@ -125,7 +125,7 @@ type BridgeHealth struct {
 	// `TacticalContribution`, questions `morts`/`kills`/`gagne`/`isole`) en frame EXACTE du
 	// rejeu, plutôt que l'approximation que `?frame=` servait jusqu'ici pour ces quatre
 	// questions sur six (décalage mesuré de 3,6 à 50,8 s selon le match — cf.
-	// `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`).
+	// `.ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`).
 	//
 	// POINTEUR, PAS int64 : MÊME PIÈGE omitempty que `ReplayDocument.OriginMs`/`T0FilmMs`
 	// (document.go). ZÉRO N'EST PAS UNE VALEUR PAR DÉFAUT ACCEPTABLE — un film dont le calage

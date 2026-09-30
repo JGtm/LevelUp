@@ -22,8 +22,9 @@ package replaybuild
 //
 // # CE QUE LA BRANCHE « RELIRE » NE CHANGE PAS
 //
-//	LE VERROU SOLO       `filmproc.AcquireSolo` est pris par les SIX points d entree, jamais par
-//	                     ce paquet. Un rejeu depuis les faits ne decompresse aucun chunk et ne le
+//	LE VERROU SOLO       `filmproc.AcquireSolo` est pris par les points d entree (`cmd/*`,
+//	                     `internal/replaychild`), jamais par ce paquet. Un rejeu
+//	                     depuis les faits ne decompresse aucun chunk et ne le
 //	                     merite pas, mais le sortir du verrou deplacerait une garantie MEMOIRE
 //	                     dans une boucle — la porte par laquelle quatre sinistres RAM sont
 //	                     passes. RIEN NE CHANGE ICI (note de preparation de M4, §2.5).

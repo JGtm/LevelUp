@@ -95,9 +95,11 @@ type calibration struct {
 	// compte par decodage, lot J8.7).
 	PoigneeDecidee bool
 	// CarteLue : les largeurs viennent-elles de l entree de catalogue de la CARTE du match ?
-	// FAUX = repli `repli_carte_absente_largeurs_par_defaut` — l invariant conserve, c est-a-dire
-	// les largeurs d UNE carte (`cliffhanger`) appliquees a celle-ci. Jamais un zero muet : le
-	// rendu lisible le dit, et `Decode` l avertit par film.
+	// FAUX n arrive qu en RECHERCHE : en production [Decode] refuse un film sans carte avant la
+	// calibration ([ErrCarteAbsente], lot J7 ; le repli qui decodait aux largeurs d une autre
+	// carte est retire depuis le 2026-09-27). En recherche, FAUX = les largeurs d UNE carte
+	// (`cliffhanger`) appliquees a celle-ci ; le rendu lisible le dit et
+	// [decodeCtx.avertirReplisDeCalibration] l avertit par film.
 	CarteLue bool
 	// ControleDeCorruptionLu : le film a-t-il DECLARE son controle de corruption par composant
 	// (le bit de `chunk_00 + 0x0CB45C`, lot 5.18.2) ? FAUX = le film ne porte pas de section

@@ -47,7 +47,7 @@ type Projectile struct {
 // plutôt X et le bit plus bas (étendue / 2^7 majoritaire).
 //
 // LA CAUSE EST EN AMONT, dans la déquantification (`grammar`), et elle N'EST PAS corrigée ici :
-// elle est caractérisée (`.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`). Ce qui est corrigé
+// elle est caractérisée (`.ai/V7.5/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`). Ce qui est corrigé
 // ici est la PUBLICATION d'une position fausse, qui faisait tracer au client une droite en
 // travers de toute la carte, à 300 m/s et plus.
 //

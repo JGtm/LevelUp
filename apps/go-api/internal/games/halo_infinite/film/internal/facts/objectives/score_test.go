@@ -10,7 +10,7 @@ import (
 //
 // Ils encodent la verite terrain etablie le 2026-08-01 par confrontation avec une capture
 // Cheat Engine et avec un releve terrain ecrit a l'oeil AVANT tout decodage
-// (.ai/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md §15).
+// (.ai/V7.5/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md §15).
 
 // finalScores rend le dernier score connu de chaque slot d'equipe.
 func finalScores(pts []types.ScorePoint) map[int]int64 {

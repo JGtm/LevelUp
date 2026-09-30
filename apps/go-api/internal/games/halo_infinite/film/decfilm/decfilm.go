@@ -26,7 +26,9 @@
 // pesait 78 symboles, il en pese 46 — la porte aux octets et la couche `profile` ont absorbe le
 // reste). LE CHIFFRE EST LE POINT : une facade de 163 symboles n est PAS une frontiere, c est un
 // ALIAS. V15 (7) l assume pour ce lot — il faut que le compilateur puisse prouver le lieu AVANT
-// qu on discute de la surface — et renvoie la REDUCTION a M4, sur la mesure consignee.
+// qu on discute de la surface — et renvoyait la REDUCTION a M4. La reduction n a PAS ete retenue
+// (decision V25 du 2026-09-18) : la surface est tenue par un ratchet date,
+// `archlint/film_facade_surface_test.go`, qui porte le compte courant.
 //
 // # LES TROIS FORMES DE RE-EXPORT, ET LEURS RAISONS
 //
@@ -53,8 +55,9 @@
 // lit aucun octet et ne publie rien.
 //
 // `film/replay` N EST PAS ICI, et c est une decision ecrite : c est la couche de PUBLICATION,
-// 239 de ses symboles sont cites hors du decodeur (`sync/replayartifacts`, `sync/killcollector`,
-// `service/*`, `api/*`, `replaybuild`, `ops`), et le document de rejeu EST le contrat public.
+// ses symboles sont cites hors du decodeur (`sync/replayartifacts`, `sync/killcollector`,
+// `service/*`, `api/*`, `replaybuild`, `ops` ; compte courant tenu par
+// `archlint/film_facade_surface_test.go`), et le document de rejeu EST le contrat public.
 // Elle reste EXPORTEE. `film/types`, `film/revision`, `film/filmcache` et les trois catalogues
 // de libelles (`damagetag`, `killicon`, `medalname`) restent exportes pour la meme raison de
 // nature : ils declarent des formes ou nomment des choses, ils ne decodent pas.

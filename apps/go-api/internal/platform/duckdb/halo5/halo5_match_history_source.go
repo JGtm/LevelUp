@@ -5,7 +5,7 @@
 // C'est le pendant h5 du MatchHistoryRepo d'Infinite, mais ciblé canonical.MatchSummary
 // (la voie LoadMatchSummaries de l'adapter) plutôt que domain.MatchHistoryRawRow.
 // AUCUN fetch live : la donnée (match_registry + match_participants) est déjà écrite
-// par le livesync h5. Cf. AXE A de .ai/PLAN_H5_PROD_GATE.md.
+// par le livesync h5. Cf. AXE A de .ai/archive/V7/PLAN_H5_PROD_GATE.md.
 //
 // Identité joueur : Halo 5 résout le gamertag en xuid Xbox réel au sync, mais
 // l'adapter h5 reçoit le GAMERTAG comme clé (cf. internal/games/halo_5/adapter_data.go).

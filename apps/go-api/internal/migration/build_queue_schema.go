@@ -1,5 +1,5 @@
 // Package migration — build_queue_schema.go : schéma de la FILE DURABLE de
-// construction (piste F §2 du plan .ai/PLAN_MASTER_FILM_KILLFEED_REJEU.md).
+// construction (piste F §2 du plan .ai/V7.5/PLAN_MASTER_FILM_KILLFEED_REJEU.md).
 //
 // POURQUOI CETTE TABLE EXISTE. Le JobStore (internal/platform/jobs, jobs.json)
 // n'a aucune sémantique de file : pas de prise (claim), pas de priorité, pas de

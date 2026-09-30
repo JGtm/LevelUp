@@ -17,7 +17,7 @@ package grammar
 // TÉMOIN PAR DÉCALAGE : le même appariement, épisodes décalés de 37 s.
 //
 //	CGO_ENABLED=0 V5_ROOT=<cache> V5_FILMS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV5Paire -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV5Paire -v -timeout 180m
 
 import (
 	"sort"

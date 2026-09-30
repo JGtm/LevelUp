@@ -1,6 +1,6 @@
 //go:build integration
 
-// performance_cleanup_integration_test.go — lot 2 de .ai/PLAN_PERF_NOTE_OBJECTIFS.md
+// performance_cleanup_integration_test.go — lot 2 de .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md
 // (B2.2 tests du batch auto-nettoyant, B2.3 garde-rail pérenne « aucune note sur
 // un match non terminé »).
 //
@@ -287,7 +287,7 @@ func TestBatchPerformance_CleansEverythingWhenUniverseEmpty(t *testing.T) {
 // ── B2.3 — garde-rail pérenne ───────────────────────────────────────────────
 
 // TestBatchPerformance_NoStoredScoreSurvivesOnUnfinishedMatch est le garde-rail
-// permanent du lot 2 (B2.3 de .ai/PLAN_PERF_NOTE_OBJECTIFS.md) : après un run de
+// permanent du lot 2 (B2.3 de .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md) : après un run de
 // batch, AUCUNE ligne de player_match_enrichment_latest ne porte de
 // performance_score si la participation du joueur est un non-terminé (outcome=4).
 //

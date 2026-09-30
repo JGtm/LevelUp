@@ -307,19 +307,18 @@ func parseRegistry(data []byte) *Registry {
 //
 // LA BOUCLE DE BLOCS NE DOIT PARCOURIR QUE DES BLOCS ENTIERS, et c'est une CONDITION DE SURETE,
 // pas une commodite : `registryBlockTail` compare la suite nommee a la fin du bloc, donc sur un
-// bloc incomplet il recevrait `from > to` et `zeroTail` PANIQUERAIT (`data[from:to]`). Les TROIS
+// bloc incomplet il recevrait `from > to` et `zeroTail` PANIQUERAIT (`data[from:to]`). Les
 // appelants de production n'ont aucun `recover`, donc un `chunk_00` tronque ferait tomber le
-// processus — releve du 2026-09-14, `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ |
+// processus — releve du 2026-09-30, `grep -rn "ParseRegistryChunk(" --include=*.go internal/ cmd/ |
 // grep -v _test.go` :
 //
-//	internal/games/halo_infinite/film/filmdec/film_context.go:254
-//	internal/games/halo_infinite/film/internal/facts/killsource/world.go:58   (via killsource/decode.go:123,
-//	                                                            paquet importe par killcollector
-//	                                                            et par replaybuild)
-//	internal/sync/killcollector/hits.go:113
+//	internal/games/halo_infinite/film/internal/grammar/film_context.go   (le contexte du film)
+//	internal/games/halo_infinite/film/internal/facts/killsource/world.go (paquet importe par
+//	                                                                      killcollector et replaybuild)
+//	internal/games/halo_infinite/film/decfilm/decfilm.go                 (facade, re-export)
 //
-// (`film/research/cmd_rdata_weapon_scan` l'appelle aussi trois fois : outil de recherche, hors
-// production.) Reproductions et non-regression : registry_tronque_test.go.
+// (`film/research/` l'appelle aussi : outils de recherche, hors production.) Reproductions et
+// non-regression : registry_tronque_test.go.
 //
 // Un tampon plus court que l'en-tete est entierement de la queue : il ne porte meme pas le
 // debut du tableau d'entrees.

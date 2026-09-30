@@ -274,7 +274,7 @@ const (
 	// not_exposed — autre format de film, aucun décodeur, donc aucun artefact possible.
 	//
 	// ⚠ ELLE GOUVERNE LA PRODUCTION, ET L'AFFICHAGE SUIT (décision utilisateur du
-	// 2026-09-05, registre `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` D1/D2/D3) : sans la
+	// 2026-09-05, registre `.ai/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` D1/D2/D3) : sans la
 	// clé, l'étape post-sync `sync/replayartifacts` ne met RIEN en file et ne cuit RIEN, et
 	// les deux loaders du film de la Match View (`/objective-events`, `/positions`) ne sont
 	// pas câblés — les routes rendent alors un 503 `capability_not_supported` au lieu d'un

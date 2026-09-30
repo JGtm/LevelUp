@@ -13,7 +13,7 @@ import (
 // NE COUVRE PAS les capabilities DATA-LEVEL (games.CapabilityKey, clés pointées
 // "match.objective.stats", déclarées en capabilities.toml) : deux systèmes distincts
 // qui partagent des noms de constantes (games.CapWeaponAccuracy vs CapWeaponAccuracy) —
-// cf. .ai/DIAG_WAYPOINT_COLUMN_INFINITE.md §4.4.
+// cf. .ai/archive/V7.2.1/DIAG_WAYPOINT_COLUMN_INFINITE.md §4.4.
 //
 // Topologie RÉELLE des listes maintenues à la main (mesurée le 2026-07-26) :
 //

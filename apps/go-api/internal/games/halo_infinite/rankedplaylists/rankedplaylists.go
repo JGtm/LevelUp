@@ -20,7 +20,7 @@
 // internal/games/mappings, un loader de config pur (zéro dépendance vers sync/
 // migrations en retour, vérifié) qui porte les libellés EN/FR embarqués
 // (cf. ranked_playlists_labels.toml, lot libellés L3 2026-09-07 : les noms
-// étaient auparavant des littéraux Go, cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md).
+// étaient auparavant des littéraux Go, cf. .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md).
 package rankedplaylists
 
 import (

@@ -146,7 +146,7 @@ const (
 	// `film.replay_artifact` (games/adapter.go) qui gouverne, elle, la PRODUCTION de
 	// l'artefact — même partage des rôles que `match.objective.stats` (données) et
 	// `objective_stats` (UI). Décision utilisateur du 2026-09-05, registre
-	// `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` (D1, L2, L5).
+	// `.ai/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` (D1, L2, L5).
 	CapReplay Capability = "replay"
 	// CapWeaponRange — le titre expose la PORTÉE ET LE DÉNIVELÉ MESURÉS des engagements,
 	// par arme et des deux côtés (« où je frague », « où je meurs »). Absente ⇒ le front

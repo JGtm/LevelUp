@@ -19,7 +19,7 @@ package grammar
 //	    analyse, six archetypes. La CI n'a pas de film ; le cache local du depot en a 1 380.
 //
 //	CGO_ENABLED=0 FILM_CONTEXT_FILM=<depot>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run FilmContext -count=1 -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run FilmContext -count=1 -v
 
 import (
 	"errors"
