@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // origin_research_test.go — INSTRUMENT DE MESURE : L'ORIGINE DE L'ARTEFACT (lot 7.2).

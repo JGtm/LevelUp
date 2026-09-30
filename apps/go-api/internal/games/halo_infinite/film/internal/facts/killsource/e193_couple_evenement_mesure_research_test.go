@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // e193_couple_evenement_mesure_research_test.go — LOT 1.9.3, LA MESURE AVANT DE CODER.

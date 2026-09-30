@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_i22_signal_research_test.go — LE SIGNAL DE COMMANDE DE L'EQUIPEMENT et LE RECENSEMENT DU

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_uses_join_test.go — LA JOINTURE du lot D phase 0 : rattacher les lectures de

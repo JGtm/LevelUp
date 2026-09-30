@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // bit_projectile_research_test.go — INSTRUMENT BB.1 : du point publié aberrant jusqu'aux BITS.

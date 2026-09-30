@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r11_grappin_research_test.go — LE SECOND TEMOIN POSITIF, PRE-INSCRIT : LE GRAPPIN.

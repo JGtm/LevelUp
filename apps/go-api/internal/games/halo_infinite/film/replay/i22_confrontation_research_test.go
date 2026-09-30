@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // i22_confrontation_research_test.go — SONDE JETABLE (etude de faisabilite du 2026-08-24).

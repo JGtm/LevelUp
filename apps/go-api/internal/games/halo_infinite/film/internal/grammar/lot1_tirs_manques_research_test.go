@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_tirs_manques_research_test.go — LOT 1 : LES TIRS MANQUES (demande utilisateur). Un tir

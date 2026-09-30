@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_charges_research_test.go — PISTE B du lot R8 : le canal des COMPOSANTS de l'entite

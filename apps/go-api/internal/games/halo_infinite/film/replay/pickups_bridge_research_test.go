@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // pickups_bridge_research_test.go — LE GATE DE PUBLICATION DU CANAL NATIF : la traversée

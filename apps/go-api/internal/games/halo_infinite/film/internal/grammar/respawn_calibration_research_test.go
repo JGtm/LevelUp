@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // respawn_calibration_research_test.go — CALIBRER L'UNITÉ DU COMPTE À REBOURS (ti=5 i1).

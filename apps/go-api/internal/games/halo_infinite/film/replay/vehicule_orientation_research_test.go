@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // vehicule_orientation_research_test.go — LOT 5.2b.2 : `i2` EST-IL L AVANT DU CHASSIS ?

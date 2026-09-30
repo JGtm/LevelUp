@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r2_positions_aberrantes_research_test.go — INSTRUMENT du lot R2 (plan de suite de l audit du

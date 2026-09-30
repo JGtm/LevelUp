@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // assaut_pied_ancre_test.go — LE PIED DE FILM EN ASSAUT : le negatif tenait-il a L'ANCRE ?

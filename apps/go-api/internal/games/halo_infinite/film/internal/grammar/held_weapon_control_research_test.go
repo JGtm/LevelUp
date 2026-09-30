@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // held_weapon_control_research_test.go — LE CONTROLE DE COMPLETUDE, et la classification.

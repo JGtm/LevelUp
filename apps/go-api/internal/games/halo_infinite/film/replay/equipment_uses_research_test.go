@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_uses_research_test.go — DATER L'USAGE D'UN EQUIPEMENT PAR SES CHARGES (lot D,

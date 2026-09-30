@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // geo_explosifs_helpers_test.go — collecteurs, types et geometrie de l'instrument

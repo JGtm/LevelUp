@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // roster_remplacements_research_test.go — L INSTRUMENT DU LOT 5.2b.1 : QUI LE ROSTER DU

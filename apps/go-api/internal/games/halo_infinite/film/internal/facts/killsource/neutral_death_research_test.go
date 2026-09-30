@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // neutral_death_research_test.go — INSTRUMENT DE MESURE (lot 7.1 du rejeu 2D, 2026-08-14).

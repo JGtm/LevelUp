@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_composant_score_test.go — LOT F : LA TRANSPOSITION EN COLONNES ET LE SCORE.

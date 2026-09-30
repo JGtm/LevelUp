@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // origine_typage_mesure_research_test.go — TYPER LES POINTS PAR LA MESURE, la chaine de tags

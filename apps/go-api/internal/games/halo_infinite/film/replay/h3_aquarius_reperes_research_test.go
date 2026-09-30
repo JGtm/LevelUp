@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // h3_aquarius_reperes_research_test.go — LOT H.3 : POURQUOI `0797ce72` ET `c88ec007` NE SE

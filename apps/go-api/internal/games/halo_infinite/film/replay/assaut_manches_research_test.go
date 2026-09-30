@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // assaut_manches_research_test.go — INSTRUMENT DE RECHERCHE : de quoi est faite une MANCHE

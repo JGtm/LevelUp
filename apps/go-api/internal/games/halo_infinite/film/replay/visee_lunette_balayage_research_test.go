@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_lunette_balayage_research_test.go — LE BALAYAGE : QUEL COMPOSANT DU BIPEDE, S'IL EN EST

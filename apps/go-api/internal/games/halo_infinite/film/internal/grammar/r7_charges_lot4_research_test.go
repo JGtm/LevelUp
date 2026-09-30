@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_charges_lot4_research_test.go — suite : les types courants « petits » (armes, dialogues,

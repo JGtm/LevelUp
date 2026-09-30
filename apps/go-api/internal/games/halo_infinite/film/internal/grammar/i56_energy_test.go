@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i56_energy_test.go — INSTRUMENT DE MESURE de l'ÉTAPE 3 (actualisée) du plan

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipements_events_research_test.go — lot R5 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03 :

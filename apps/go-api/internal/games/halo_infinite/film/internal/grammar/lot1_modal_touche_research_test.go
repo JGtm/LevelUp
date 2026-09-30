@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_modal_touche_research_test.go — LOT 1 : « MODAL = RATÉ ? ». Le record

@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // i0_poignee_score_research_test.go — LE BALAYAGE DU MOT DE POIGNEE EST-IL SCORE DANS LE MONDE

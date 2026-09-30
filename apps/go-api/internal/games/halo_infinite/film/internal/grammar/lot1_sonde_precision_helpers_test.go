@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_sonde_precision_helpers_test.go — decodeurs et utilitaires de la sonde precision/distance

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_research_test.go — INSTRUMENT DE MESURE des ARMES AU SOL (Phase 2.1 du plan

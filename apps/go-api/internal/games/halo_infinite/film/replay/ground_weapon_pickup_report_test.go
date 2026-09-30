@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_pickup_report_test.go — LES QUATRE PUBLICATIONS de la phase 2, separees de la

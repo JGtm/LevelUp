@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // inventory_delta_corpus_test.go — LA CONFRONTATION DES DEUX CANAUX D'INVENTAIRE, sur corpus.

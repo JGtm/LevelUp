@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_visee_compare_research_test.go — LOT 1 : CONFRONTER ma visee modele-M au decodeur de

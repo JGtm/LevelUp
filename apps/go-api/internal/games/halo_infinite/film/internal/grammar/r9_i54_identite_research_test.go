@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_i54_identite_research_test.go — i54 REJUGE PAR L'IDENTITE

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_changes_film_research_test.go — le calque des ramassages et des consommations

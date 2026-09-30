@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i59_rank_cross_test.go — INSTRUMENT DE MESURE de l'item 0.7 du plan

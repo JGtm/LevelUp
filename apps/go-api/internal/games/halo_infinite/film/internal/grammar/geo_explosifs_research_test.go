@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // geo_explosifs_research_test.go — ATTRIBUER une TOUCHE EXPLOSIVE non fatale a son TIREUR par

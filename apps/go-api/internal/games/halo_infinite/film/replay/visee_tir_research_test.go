@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_tir_research_test.go — LE TIR FATAL PORTE-T-IL L'ETAT DE LUNETTE ?

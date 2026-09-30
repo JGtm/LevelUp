@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // grenade_ecart_research_test.go — BANC DE MESURE : un lancer de grenade est-il posé sur SON

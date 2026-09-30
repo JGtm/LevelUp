@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // deto_attribution_helpers_test.go — collecteurs, scan projectile BORNE et geometrie de

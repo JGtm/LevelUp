@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // d6_manches_research_test.go — INSTRUMENT D6 : D OU VIENNENT LES MANCHES D UN FILM, SLOT PAR SLOT ?

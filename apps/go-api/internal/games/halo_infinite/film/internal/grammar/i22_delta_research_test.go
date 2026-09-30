@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i22_delta_research_test.go — SONDE JETABLE (etude de faisabilite du 2026-08-24).

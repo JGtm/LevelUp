@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // imagecle_oracle_n2_research_test.go — PHASE 5a, OBJECTIF 3 : `n2` COMME ORACLE DE LARGEUR D'ETAT PAR DEFAUT.

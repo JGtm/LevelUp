@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_degats_type1_research_test.go — LOT 1 : damage_section_response (TYPE 1, octet 0xC0,

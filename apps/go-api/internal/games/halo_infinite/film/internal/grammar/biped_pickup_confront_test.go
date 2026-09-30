@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // biped_pickup_confront_test.go — ETAPE 4 DU CHANTIER RAMASSAGE : ce que l'evenement natif

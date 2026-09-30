@@ -1,3 +1,5 @@
+//go:build research
+
 package mapvar
 
 // socles_root6_test.go — LE CHAMP RACINE 6, JAMAIS DECODE.

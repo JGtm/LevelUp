@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_signature114_research_test.go — LOT A2/A3 : ATTRIBUTION DES PAQUETS 114 A UN JOUEUR PAR

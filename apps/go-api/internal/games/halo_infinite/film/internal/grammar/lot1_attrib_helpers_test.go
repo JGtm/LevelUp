@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_attrib_helpers_test.go — ADAPTATEURS de recherche autour du numerateur productionise

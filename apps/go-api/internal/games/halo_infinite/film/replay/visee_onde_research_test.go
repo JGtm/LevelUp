@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_onde_research_test.go — LOT C : LA CORRELATION D'ONDE CARREE (moteur de mesure).

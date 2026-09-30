@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // assaut_a10_jauge_test.go — LA JAUGE, UNE FOIS `ti=11` DECODE.

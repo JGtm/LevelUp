@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_zoom_gate_test.go — LA PORTE DU CHANTIER VISEE : les evenements `unit_zoom` du film

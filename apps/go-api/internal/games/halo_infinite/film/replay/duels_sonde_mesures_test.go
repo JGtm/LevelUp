@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // duels_sonde_mesures_test.go — les mesures M1 a M4 de la sonde duels (scinde de

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // playergameevent_0xe9_research_test.go — LOT 1 : decodage de PlayerGameEventSmall (0xE9,

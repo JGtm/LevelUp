@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r11_entite_research_test.go — L'OBJET EN MAIN, ET SES CHARGES.

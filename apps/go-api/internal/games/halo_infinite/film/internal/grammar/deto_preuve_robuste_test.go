@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // deto_preuve_robuste_test.go — LA PREUVE : l'attribution DETONATION->tireur des touches

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // chunk00_section3_research_test.go — LOT D2 : CE QU'EST LA TROISIEME SECTION DE chunk_00.

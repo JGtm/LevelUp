@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_corpus_test.go — RECENSEMENT DE CORPUS : sur quels films `ti=42` est-il

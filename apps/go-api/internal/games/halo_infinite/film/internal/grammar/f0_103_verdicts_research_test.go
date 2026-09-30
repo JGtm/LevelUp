@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // f0_103_verdicts_research_test.go — LOT F.0, QUESTIONS 1 a 3 : les references du type 103

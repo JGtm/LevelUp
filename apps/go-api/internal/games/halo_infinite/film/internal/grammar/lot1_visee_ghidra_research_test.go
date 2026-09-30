@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_visee_ghidra_research_test.go — LOT 1 : RECALER LA VISEE SUR LA GRAMMAIRE GHIDRA.

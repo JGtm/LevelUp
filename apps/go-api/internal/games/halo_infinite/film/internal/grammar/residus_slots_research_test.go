@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // residus_slots_research_test.go — PHASE 5b, RESIDU 2 DE LA TABLE DES SLOTS.

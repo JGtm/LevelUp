@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // powerup_socle_temoin_test.go — LE CONTROLE de la remontee de la phase 1.

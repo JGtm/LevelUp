@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r11_journal_research_test.go — LE JOURNAL D'UNE VIE, AVEC UNE ANCRE, ET SA COLLECTE.

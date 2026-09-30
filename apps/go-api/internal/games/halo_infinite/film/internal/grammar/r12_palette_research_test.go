@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_palette_research_test.go — LA PALETTE DE CAPACITES, SANS ARTEFACT DE REJEU.

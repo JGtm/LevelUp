@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // explo_touches_research_test.go — LOT 1 : les TOUCHES EXPLOSIVES (roquette, empaleur, ravageur,

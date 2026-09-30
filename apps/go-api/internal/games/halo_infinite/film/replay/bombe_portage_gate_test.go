@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // bombe_portage_gate_test.go — LE GATE DU PORTAGE DE LA BOMBE (schéma 30) : la chaîne de

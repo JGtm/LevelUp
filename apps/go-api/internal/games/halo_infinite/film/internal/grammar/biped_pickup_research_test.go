@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // biped_pickup_research_test.go — CHANTIER RAMASSAGE : decoder l'evenement natif

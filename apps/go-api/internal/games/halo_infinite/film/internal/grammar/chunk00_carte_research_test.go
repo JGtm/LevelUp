@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // chunk00_carte_research_test.go — LOT D2 : LA CARTE EXHAUSTIVE DE chunk_00.
@@ -33,8 +35,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // chunk00Films rend les repertoires de film de la garde d'environnement.
@@ -51,16 +51,6 @@ func chunk00Films(t *testing.T, envName string) []string {
 		}
 	}
 	return out
-}
-
-// readChunk00 lit et decompresse chunk_00.bin d'un repertoire de film.
-func readChunk00(t *testing.T, dir string) (raw, data []byte) {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join(dir, "chunk_00.bin"))
-	if err != nil {
-		t.Fatalf("lecture chunk_00 de %s : %v", dir, err)
-	}
-	return b, source.Inflate(b)
 }
 
 // slotSpan decrit la zone REELLEMENT lue par parseRegistry dans une entree nommee. `off` est

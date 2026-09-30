@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // imagecle_fermeture_research_test.go — PHASE 5a, OBJECTIFS 1 ET 2 : CE QUE LA BONNE FORME

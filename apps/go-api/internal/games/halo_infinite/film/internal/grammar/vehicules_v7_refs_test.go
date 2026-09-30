@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_refs_test.go — INSTRUMENT (lot V7) : QUEL TYPE D'EVENEMENT DE TETE DATE LA

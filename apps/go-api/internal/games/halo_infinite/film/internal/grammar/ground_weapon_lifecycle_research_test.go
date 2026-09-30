@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // ground_weapon_lifecycle_research_test.go — LA TROISIEME PIECE : l'arme AU SOL.

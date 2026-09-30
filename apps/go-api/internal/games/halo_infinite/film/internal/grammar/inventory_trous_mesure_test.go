@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // inventory_trous_mesure_test.go — MESURER LES TROUS DE LA FICHE D'INVENTAIRE (aucune

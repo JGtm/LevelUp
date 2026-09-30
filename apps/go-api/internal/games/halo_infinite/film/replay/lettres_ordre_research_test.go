@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // lettres_ordre_research_test.go — INSTRUMENT DE MESURE du lot « lettres A/B/C des bases »

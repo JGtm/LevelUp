@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // e191_origine_rapport_research_test.go — LOT 1.9.1 : LES TABLEAUX DE LA MESURE.

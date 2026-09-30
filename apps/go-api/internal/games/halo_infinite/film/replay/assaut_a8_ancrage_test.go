@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // assaut_a8_ancrage_test.go — POURQUOI `ti=13` NE SE LIT PAS EN ASSAUT. Le diagnostic, avant

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // weapon_burst_research_test.go — L'INVENTAIRE FERME DES ARMES AUTOMATIQUES, MESURE AVANT

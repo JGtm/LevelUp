@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // biped_pickup_ref0_couverture_test.go — LOT 2, SUITE. La base 512 est etablie sur les

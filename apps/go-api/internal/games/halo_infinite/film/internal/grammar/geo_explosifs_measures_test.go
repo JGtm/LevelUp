@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // geo_explosifs_measures_test.go — mesures M2/M3/M4 et appariement fatal de l'instrument

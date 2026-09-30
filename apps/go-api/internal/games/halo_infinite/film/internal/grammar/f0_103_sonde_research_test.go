@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // f0_103_sonde_research_test.go — LOT F.0 : LA SONDE, c est-a-dire les valeurs BRUTES.

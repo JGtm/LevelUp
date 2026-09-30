@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_lunette_balayage_verdict_test.go — LA MOITIE « RESTITUTION » du balayage. L'instrument,

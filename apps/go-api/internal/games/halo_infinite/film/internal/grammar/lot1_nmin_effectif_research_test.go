@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_nmin_effectif_research_test.go — MESURE de l'effectif par cle (joueur, arme), pour

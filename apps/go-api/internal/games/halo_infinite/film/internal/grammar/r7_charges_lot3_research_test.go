@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_charges_lot3_research_test.go — suite : la famille PROJECTILES / DEGATS (types 5, 6, 7,

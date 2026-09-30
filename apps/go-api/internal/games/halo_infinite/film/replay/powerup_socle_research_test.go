@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // powerup_socle_research_test.go — LE POWER-UP DE SOCLE AU CENTRE DE CATALYST.

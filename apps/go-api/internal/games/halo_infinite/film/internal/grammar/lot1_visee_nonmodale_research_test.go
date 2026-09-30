@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_visee_nonmodale_research_test.go — LOT 1 : LA VISEE DES TIRS NON-MODAUX (ceux qui

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_evenements_research_test.go — LOT 1 : LE MODELE « LISTE D'EVENEMENTS PUIS TRAME »,

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_grammaire_research_test.go — lot R7 du PLAN_PERCER_TRAME_FILM : la TABLE DE GRAMMAIRE

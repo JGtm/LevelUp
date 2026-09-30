@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // f0_103_corpus_research_test.go — LOT F.0 : LE RECENSEMENT DU PARC D ARTEFACTS.

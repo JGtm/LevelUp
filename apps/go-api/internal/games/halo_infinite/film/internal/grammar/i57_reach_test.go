@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i57_reach_test.go — INSTRUMENT DE MESURE de l'ÉTAPE 3 du plan

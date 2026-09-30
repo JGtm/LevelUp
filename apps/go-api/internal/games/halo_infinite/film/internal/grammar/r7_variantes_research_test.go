@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_variantes_research_test.go — lot R7 : CALIBRATION SUR PIECES DES VARIANTES DE BUILD.

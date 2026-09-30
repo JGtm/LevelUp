@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_projectiles_research_test.go — LOT 1 : les EVENEMENTS PROJECTILE du film, voie de

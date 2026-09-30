@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // residus_vacants_research_test.go — PHASE 5b, RESIDU 1 : LES DEUX ECARTS ABERRANTS DE LA TABLE

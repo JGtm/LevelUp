@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_attrib_arme_tir_research_test.go — ATTRIBUTION PAR LE TIR de la PRECISION et de la

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_cadence_detente_research_test.go — DETENTE vs BALLE : le film emet-il un

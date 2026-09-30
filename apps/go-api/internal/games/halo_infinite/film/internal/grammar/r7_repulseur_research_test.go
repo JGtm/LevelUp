@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_repulseur_research_test.go — lot R7 : LE REPULSEUR CONFRONTE A LA TRAJECTOIRE.

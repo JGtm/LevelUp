@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_letal_test.go — INSTRUMENT (lot V7) : Y A-T-IL UN DRAPEAU DE LETALITE dans la

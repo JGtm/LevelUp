@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_sonde_precision_research_test.go — SONDE DE FIABILITE pour une future feature

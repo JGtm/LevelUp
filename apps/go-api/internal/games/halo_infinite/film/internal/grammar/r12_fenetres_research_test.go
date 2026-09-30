@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_fenetres_research_test.go — LA QUESTION POSEE DANS L'AUTRE SENS.

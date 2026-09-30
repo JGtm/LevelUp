@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_slot_builds_research_test.go — LE PROFIL PAR BUILD DE LA TABLE DES SLOTS.

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_projectiles_helpers_test.go — decodeurs et collecteurs de l'instrument

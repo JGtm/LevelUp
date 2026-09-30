@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // origine_elargi_research_test.go — LE TEST QUI TRANCHE : le seau ABSTENTION s'effondre-t-il

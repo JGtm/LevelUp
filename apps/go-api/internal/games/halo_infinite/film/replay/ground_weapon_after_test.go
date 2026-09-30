@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_after_test.go — L'APRÈS de la réfutation des positions d'armes au sol, et

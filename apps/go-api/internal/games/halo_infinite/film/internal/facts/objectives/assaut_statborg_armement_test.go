@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // assaut_statborg_armement_test.go — LE STATBORG CONTRE L'INSTANT D'ARMEMENT, avec plancher.

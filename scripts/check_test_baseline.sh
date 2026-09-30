@@ -101,6 +101,14 @@
 # aveugle) et un échec de compilation n'émet pas d'event fail test-level
 # (contrôle 2 aveugle). Le seul signal restant est l'event fail PACKAGE-level.
 #
+# RETRAIT DU 2026-09-30 (jalon J12.7 du PLAN_SUITE_AUDIT_DECODEUR_FILM, DU-5 a) : 159 tests
+# retirés (12 de `film/internal/facts/objectives`, 5 de `film/internal/grammar`, 134 de
+# `film/replay`, 8 de `film/replay/mapvar`). Leurs fichiers (`*_research_test.go` et les
+# compagnons qui ne compilent qu'avec eux) sont passés sous `//go:build research` : ils ne
+# tournent plus dans le build par défaut, donc plus dans le run CI. 159 lignes JSONL, 159 paires
+# (Package, Test), vérifié par différence avant/après — compte PARTIEL d'absences volontaires,
+# remède prescrit ici même. La CI les COMPILE toujours (`go vet -tags=research ./...`).
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

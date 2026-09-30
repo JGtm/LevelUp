@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // f0_103_artefact_research_test.go — LOT F.0 : L ARTEFACT COMME VERITE D ORIGINE, et la

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_recensement_research_test.go — lot R7 : le RECENSEMENT des types en TETE de liste, sur

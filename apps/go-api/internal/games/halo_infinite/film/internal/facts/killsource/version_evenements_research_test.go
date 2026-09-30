@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // version_evenements_research_test.go — INSTRUMENT H.2 : LE CALQUE « EVENEMENTS DU PIED DE FILM »

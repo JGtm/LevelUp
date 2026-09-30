@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_vitalite_source_research_test.go — LOT 1 : QUE VAUT LA VITALITÉ DU FILM (i4 santé,

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_pickup_research_test.go — LE RAMASSAGE d'une arme au sol : disparition BORNEE

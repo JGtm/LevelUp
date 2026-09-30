@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_ecrivain_research_test.go — LA CARTE DE chunk_00 RELUE CHEZ L'ECRIVAIN.

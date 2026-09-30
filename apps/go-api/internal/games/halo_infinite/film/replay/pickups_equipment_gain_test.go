@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // pickups_equipment_gain_test.go — FAUT-IL PUBLIER LES RAMASSAGES NON-ARME ?

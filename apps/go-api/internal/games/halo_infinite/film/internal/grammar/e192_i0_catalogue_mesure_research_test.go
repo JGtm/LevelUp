@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // e192_i0_catalogue_mesure_research_test.go — LOT 1.9.2, LA MESURE AVANT DE CODER.

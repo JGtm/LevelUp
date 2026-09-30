@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_masque_research_test.go — LE RECENSEMENT DU MASQUE BIPEDE PAR RANG PORTE

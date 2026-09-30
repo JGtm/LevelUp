@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_chronologie_research_test.go — LA CHRONOLOGIE DE ZOOM RELEVEE A LA MAIN, CONFRONTEE A

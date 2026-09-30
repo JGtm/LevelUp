@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i59_tag1_confirm_test.go — INSTRUMENT DE MESURE de la PHASE 0-BIS du plan

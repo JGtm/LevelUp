@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_link_research_test.go — INSTRUMENT DE MESURE (pas de production). Trois questions

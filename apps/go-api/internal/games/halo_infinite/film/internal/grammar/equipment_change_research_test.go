@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipment_change_research_test.go — INSTRUMENT DE MESURE (pas de production).

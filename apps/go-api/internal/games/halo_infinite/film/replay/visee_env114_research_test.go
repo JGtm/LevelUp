@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_env114_research_test.go — LOT A1 : LES FRONTIERES DE CHAMPS DE L'ENVELOPPE DU TYPE 114,

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_monde_chrono_research_test.go — LOT 1 : la resolution ref -> slot -> bipede de

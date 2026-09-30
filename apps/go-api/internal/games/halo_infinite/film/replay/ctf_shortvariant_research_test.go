@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ctf_shortvariant_research_test.go — INSTRUMENT DE RECHERCHE #5 (v7.5, colonne ①).

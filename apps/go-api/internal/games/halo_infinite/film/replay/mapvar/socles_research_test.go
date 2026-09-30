@@ -1,3 +1,5 @@
+//go:build research
+
 package mapvar
 
 // socles_research_test.go — INSTRUMENT DE MESURE : les socles d'armes sont-ils dans le

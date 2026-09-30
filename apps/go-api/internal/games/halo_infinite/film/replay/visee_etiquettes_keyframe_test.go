@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_etiquettes_keyframe_test.go — LOT G3 : LA CORRELATION SUR LES IMAGES-CLES.

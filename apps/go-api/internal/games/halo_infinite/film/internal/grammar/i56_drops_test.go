@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i56_drops_test.go — INSTRUMENT DE MESURE : UNE CHUTE D'ÉNERGIE DE CAPACITÉ EST-ELLE UN

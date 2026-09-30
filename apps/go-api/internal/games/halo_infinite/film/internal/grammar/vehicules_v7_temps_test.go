@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_temps_test.go — INSTRUMENT (lot V7) : LA COINCIDENCE TEMPORELLE entre un type

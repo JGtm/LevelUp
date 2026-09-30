@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_familles_trame_research_test.go — LOT 1 DU PLAN « PERCER LA TRAME » (2026-08-30) :

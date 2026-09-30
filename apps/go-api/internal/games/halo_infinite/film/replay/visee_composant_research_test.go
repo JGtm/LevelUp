@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_composant_research_test.go — LOT F : LE DERNIER CANAL, A OFFSET VARIABLE (moteur).

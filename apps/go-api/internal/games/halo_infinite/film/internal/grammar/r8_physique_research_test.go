@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_physique_research_test.go — MESURE 3 du lot R8 : L'ORACLE PHYSIQUE.

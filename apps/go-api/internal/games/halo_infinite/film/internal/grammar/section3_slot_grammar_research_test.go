@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_slot_grammar_research_test.go — LA GRAMMAIRE COMPLETE D'UN ENREGISTREMENT DE SLOT.

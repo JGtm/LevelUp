@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_canal_zoom_research_test.go — LE CANAL DU ZOOM DANS LES PAQUETS DELTA. Les deux

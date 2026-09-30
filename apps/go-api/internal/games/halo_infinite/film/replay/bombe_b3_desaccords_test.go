@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // bombe_b3_desaccords_test.go — LES QUATRE DÉSACCORDS DE V1, DÉPARTAGÉS PAR LA POSITION.

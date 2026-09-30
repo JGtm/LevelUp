@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // inventory_position_i22_test.go — MESURER LA POSITION DU MOTIF i22 (grenades) RELATIVEMENT A

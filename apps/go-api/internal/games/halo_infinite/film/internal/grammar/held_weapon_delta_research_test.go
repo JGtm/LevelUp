@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // held_weapon_delta_research_test.go — INSTRUMENT DE MESURE (pas de production).

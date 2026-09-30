@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_roster_research_test.go — LA TABLE DES SLOTS DU MATCH, DANS chunk_00.

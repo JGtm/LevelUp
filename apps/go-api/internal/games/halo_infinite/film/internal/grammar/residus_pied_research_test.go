@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // residus_pied_research_test.go — PHASE 5b, RESIDU 6 : CE QUE VAUT L'OCTET 55 DU PIED.

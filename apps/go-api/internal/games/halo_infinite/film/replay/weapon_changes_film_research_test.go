@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // weapon_changes_film_research_test.go — le calque des prises et des lachers, VU DE BOUT EN

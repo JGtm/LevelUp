@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // profil_roster_research_test.go — PHASE 4, QUESTION 3 : POURQUOI LE LECTEUR DE LA TABLE DES

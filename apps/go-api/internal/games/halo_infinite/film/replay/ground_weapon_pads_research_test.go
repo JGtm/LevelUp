@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_pads_research_test.go — SOCLES par RECURRENCE SPATIALE, et CYCLE de

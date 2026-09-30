@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_i54_research_test.go — PISTE B, canal 2 : le composant i54

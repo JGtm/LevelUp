@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipment_palette_section3_research_test.go — LOT 5, ADDENDUM B : LA PALETTE rang -> objet

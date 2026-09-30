@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // playergameevent_0xe9_helpers_test.go — decodeur et collecteurs de l'instrument

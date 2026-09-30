@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_pads_aggregate_test.go — LE CRITERE DE CATALOGUE (item 1.4 du plan) : un socle

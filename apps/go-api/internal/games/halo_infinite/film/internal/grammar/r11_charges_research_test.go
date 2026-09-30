@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r11_charges_research_test.go — LES CHARGES CONSOMMEES, PAR EQUIPEMENT NOMME.

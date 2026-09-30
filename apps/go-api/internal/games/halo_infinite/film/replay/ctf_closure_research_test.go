@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ctf_closure_research_test.go — INSTRUMENT DE RECHERCHE #3 (v7.5 voie B).

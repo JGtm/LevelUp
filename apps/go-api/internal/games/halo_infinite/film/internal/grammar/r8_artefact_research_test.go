@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_artefact_research_test.go — SOCLE COMMUN des instruments du lot R8 (usage du

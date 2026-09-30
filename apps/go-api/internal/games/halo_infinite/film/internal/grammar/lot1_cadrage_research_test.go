@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_cadrage_research_test.go — LOT 1 DU PLAN « PERCER LA TRAME » : LES INSTRUMENTS DE

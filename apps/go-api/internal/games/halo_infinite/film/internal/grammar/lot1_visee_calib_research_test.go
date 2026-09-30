@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_visee_calib_research_test.go — LOT 1 : CALIBRER (et donc PROUVER ou REFUTER) la visee du

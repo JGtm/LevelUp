@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // inventory_trous_rapport_test.go — L'AGREGATION ET LA MISE EN FORME de la mesure des trous

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // profil_fermeture_research_test.go — PHASE 4, QUESTION 1 : LA FERMETURE DE 186.
