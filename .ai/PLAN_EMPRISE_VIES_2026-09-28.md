@@ -1131,7 +1131,7 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
 
 ### V5 — Clôture (superviseur) · moyen
 
-- [ ] V5.1 Revue adversariale du diff cumulé (skill `adversarial-review` : lot sync / persistance),
+- [x] V5.1 Revue adversariale du diff cumulé (skill `adversarial-review` : lot sync / persistance),
   correctifs par lot rouvert, un test de non-régression rouge sous mutation par correction.
   Ronde 1 (2026-09-30, trois relecteurs Sonnet aveugles, contrat de 6 lignes ; diff
   `549d7f7f0..1781ae3c3`) : écritures et sync (L1, L2) — 12 conditions tiennent, 1 constat ;
@@ -1158,6 +1158,10 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
     Fait 2026-09-30 : `porteurs_au_sync_test.go` (`TestPortagesDuDocument_BombeEtCouronne`) ; 3 mutations rouges (boucle bombe, boucle couronne VIP, tri).
   - R5 (P3, jeté) seuil de 8 % appliqué à la part arrondie : c'est exactement la maquette validée
     (`p.value >= 8` sur la valeur arrondie).
+  Ronde 2 (2026-09-30, relecteur Sonnet frais, diff des seules corrections `875992902..cc4f3f483`) :
+  **aucun défaut recevable** ; 6 conditions tiennent (types et fuseau de `written_at`, vues
+  `_latest` à passe unique, match sans vies ou sans placement, ordre vies puis placement, test R2
+  rouge sous mutation, non-régressions et formateur de l'axe verts). P0 + P1 : 4 → 0. Revue close.
 - [ ] V5.2 Rattrapage local (serveur arrêté, binaire du worktree, `LEVELUP_REPO_ROOT` = dossier
   principal) : `levelup backfill-killsource --films-only --dry-run` d'abord, la liste doit contenir
   les 12 matchs filmés du 22/09 ; puis la passe réelle, bornée par `--limit` si la liste dépasse la
