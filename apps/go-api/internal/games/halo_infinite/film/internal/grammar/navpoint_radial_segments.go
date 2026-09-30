@@ -39,7 +39,6 @@ package grammar
 import (
 	"cmp"
 	"slices"
-	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -85,11 +84,10 @@ func NavpointSegments(reads []types.NavpointRadialRead) []NavpointSegment {
 		trierSerieNavpoint(s)
 		out = append(out, navpointSegmentsOfSeries(slot, s)...)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].EndMS != out[j].EndMS {
-			return out[i].EndMS < out[j].EndMS
-		}
-		return out[i].Slot < out[j].Slot
+	// Tri total (J12.1, DT-9) : (EndMS, Slot) unique — un trou > NavpointRiseMaxGapMS separe deux
+	// segments d un slot, dont les fins sont donc strictement croissantes.
+	slices.SortFunc(out, func(a, b NavpointSegment) int {
+		return cmp.Or(cmp.Compare(a.EndMS, b.EndMS), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out
 }

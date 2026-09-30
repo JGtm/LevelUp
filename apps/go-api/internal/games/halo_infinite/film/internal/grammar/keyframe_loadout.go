@@ -1,7 +1,8 @@
 package grammar
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -189,7 +190,8 @@ func familiesByRecordRecs(pay []byte, marches []KeyframeRec, known map[uint32]bo
 	}
 	// L'index de recherche binaire ci-dessous exige des débuts de record CROISSANTS. Le
 	// walker les émet déjà dans cet ordre ; on le garantit ici plutôt que de le supposer.
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
+	// Tri total (J12.1, DT-9) : Bit unique, la marche avance strictement (ancre suivante >= Bit+64).
+	slices.SortFunc(recs, func(a, b KeyframeRec) int { return cmp.Compare(a.Bit, b.Bit) })
 	starts := make([]int, len(recs))
 	for i, r := range recs {
 		starts[i] = r.Bit

@@ -50,7 +50,7 @@ package grammar
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -270,7 +270,7 @@ func confirmPlacements(
 	for _, p := range best {
 		out = append(out, p)
 	}
-	sort.Slice(out, func(i, j int) bool { return lessPlacement(out[i], out[j]) })
+	slices.SortFunc(out, comparateurDeLess(lessPlacement))
 	st.Placements = len(out)
 	return out
 }

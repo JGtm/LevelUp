@@ -30,7 +30,8 @@ package grammar
 // ne touche ni matchBipedHeader ni ascendingFromZero, et ne lit que des fenêtres bornées.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -117,21 +118,14 @@ func buildEquipRecoveryWindows(
 			})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].tsMin != out[j].tsMin {
-			return out[i].tsMin < out[j].tsMin
-		}
-		return cmpVie(out[i], out[j])
+	// Tri total (J12.1, DT-9) : debut, puis la vie (slot, generation) ; deux fenetres d une meme
+	// vie au meme debut gardent leur rang d entree, qui est l ordre du film de la chaine — c est
+	// la cle unique (la map ne fait qu ordonner des vies distinctes, que la cle separe). L ordre
+	// compte : un candidat va a la PREMIERE fenetre active de sa vie.
+	slices.SortStableFunc(out, func(a, b equipRecoveryWindow) int {
+		return cmp.Or(cmp.Compare(a.tsMin, b.tsMin), cmp.Compare(a.slot, b.slot), cmp.Compare(a.gen, b.gen))
 	})
 	return out
-}
-
-// cmpVie departage deux fenetres de meme debut par leur vie : slot, puis generation du handle.
-func cmpVie(a, b equipRecoveryWindow) bool {
-	if a.slot != b.slot {
-		return a.slot < b.slot
-	}
-	return a.gen < b.gen
 }
 
 // scanEquipmentRecovery re-balaye les fenêtres et rend, pour chacune, les émissions
@@ -392,11 +386,11 @@ func acceptEquipRecovery(w *equipRecoveryWindow) []equipRecovered {
 	if len(kept) == 0 {
 		return nil
 	}
-	sort.Slice(kept, func(i, j int) bool {
-		if kept[i].TimestampUS != kept[j].TimestampUS {
-			return kept[i].TimestampUS < kept[j].TimestampUS
-		}
-		return kept[i].off < kept[j].off
+	// Tri total (J12.1, DT-9) : instant, offset de bit, puis le paquet (chunk, rang) — un
+	// candidat par position de bit d un paquet, donc la cle est unique.
+	slices.SortFunc(kept, func(a, b equipRecovered) int {
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.off, b.off),
+			cmp.Compare(a.Chunk, b.Chunk), cmp.Compare(a.PacketIndex, b.PacketIndex))
 	})
 	holes, prev := 0, w.fromC
 	for i, c := range kept {

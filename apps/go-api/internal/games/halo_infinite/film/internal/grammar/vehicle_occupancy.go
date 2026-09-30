@@ -43,7 +43,8 @@ package grammar
 // entière : l'appelant qui la reprendra relèvera ses emprises et les passera ici.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -117,11 +118,8 @@ func VehicleKeyframeStates(spans []KeyframeRecordSpan) []VehicleKeyframeState {
 		}
 		out = append(out, st)
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].TimestampUS != out[j].TimestampUS {
-			return out[i].TimestampUS < out[j].TimestampUS
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b VehicleKeyframeState) int {
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out
 }

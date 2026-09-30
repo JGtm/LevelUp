@@ -33,7 +33,6 @@ import (
 	"bytes"
 	"cmp"
 	"slices"
-	"sort"
 
 	"levelup/go-api/internal/games/weapons/filmshell"
 )
@@ -256,8 +255,9 @@ func ScanFormulaANS(data []byte) []FormulaAResult {
 			pos = absP + 1
 		}
 	}
-	// Trier par position
-	sort.Slice(results, func(i, j int) bool { return results[i].Offset < results[j].Offset })
+	// Trier par position. Tri total (J12.1, DT-9) : Offset unique — deux motifs de 8 octets
+	// distincts (cles de WeaponBytesMap) ne coincident pas a la meme position.
+	slices.SortFunc(results, func(a, b FormulaAResult) int { return cmp.Compare(a.Offset, b.Offset) })
 	return results
 }
 

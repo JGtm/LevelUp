@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -118,7 +119,7 @@ func lifeEndRawSamples(
 	}
 	for k := range out {
 		pts := out[k]
-		sort.Slice(pts, func(i, j int) bool { return lessSample(pts[i], pts[j]) })
+		slices.SortFunc(pts, compareSample) // le tri de production (J12.1)
 		out[k] = pts
 	}
 	return out

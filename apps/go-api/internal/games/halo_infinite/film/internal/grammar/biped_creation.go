@@ -59,10 +59,11 @@ package grammar
 // HORS LIGNE (parcours de tous les paquets delta du film) — jamais depuis un chemin de requête.
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"sort"
+	"slices"
 )
 
 // BipedRepresentationName est le mot de 32 bits « player-representation-name » (FUN_14080dec4)
@@ -282,11 +283,8 @@ func motAlternatifModal(m map[uint32]int) (uint32, int) {
 	for w := range m {
 		mots = append(mots, w)
 	}
-	sort.Slice(mots, func(i, j int) bool {
-		if m[mots[i]] != m[mots[j]] {
-			return m[mots[i]] > m[mots[j]]
-		}
-		return mots[i] < mots[j]
+	slices.SortFunc(mots, func(a, b uint32) int { // mots : cles d une map, uniques
+		return cmp.Or(cmp.Compare(m[b], m[a]), cmp.Compare(a, b))
 	})
 	return mots[0], m[mots[0]]
 }

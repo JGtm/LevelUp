@@ -156,14 +156,9 @@ func PairWeaponHits(shots []WeaponShot, damages []WeaponDamage, window uint64, d
 	for _, k := range order {
 		out = append(out, *acc[k])
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].ShotsPaired != out[j].ShotsPaired {
-			return out[i].ShotsPaired > out[j].ShotsPaired
-		}
-		if out[i].FilmIndex != out[j].FilmIndex {
-			return out[i].FilmIndex < out[j].FilmIndex
-		}
-		return out[i].WeaponID < out[j].WeaponID
+	slices.SortFunc(out, func(a, b WeaponHitStats) int { // (FilmIndex, WeaponID) : cle de `acc`, unique
+		return cmp.Or(cmp.Compare(b.ShotsPaired, a.ShotsPaired), cmp.Compare(a.FilmIndex, b.FilmIndex),
+			cmp.Compare(a.WeaponID, b.WeaponID))
 	})
 	return out
 }

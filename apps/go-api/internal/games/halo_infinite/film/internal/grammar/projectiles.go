@@ -2,7 +2,7 @@ package grammar
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -194,7 +194,10 @@ func ScanWorldObjectsForBand(
 		// Tri TOTAL des échantillons d'une vie : l'instant seul laisse des ex æquo (plusieurs
 		// records du même projectile dans un même paquet), et un départage arbitraire ferait
 		// dépendre le premier point — donc la naissance — de l'ordre d'arrivée.
-		sort.Slice(pts, func(i, j int) bool { return lessSample(pts[i], pts[j]) })
+		// Tri total (J12.1, DT-9) : compareSample — instant, position, PUIS repos et chunk ; deux
+		// échantillons qu il ne sépare pas sont identiques. L ordre des ex æquo de position compte :
+		// splitLives coupe sur un record `at rest`.
+		slices.SortFunc(pts, compareSample)
 		for _, seg := range splitLives(pts) {
 			out = append(out, types.ProjectileTrack{Slot: k.slot, Gen: k.gen, Pts: seg})
 		}
@@ -205,22 +208,8 @@ func ScanWorldObjectsForBand(
 	// `birthNear` prend celle d'un INDICE donné — l'ordre choisissait donc la position publiée
 	// pour un lancer de grenade. Le couple (slot, gen) est unique par construction (c'est la clé
 	// de `lives`), l'instant de naissance sépare les segments d'une même clé : l'ordre est total.
-	sort.Slice(out, func(i, j int) bool { return lessTrack(out[i], out[j]) })
+	slices.SortFunc(out, comparateurDeLess(lessTrack))
 	return out, nil
-}
-
-// lessSample : ordre total sur les échantillons d'une vie (instant, puis position).
-func lessSample(a, b types.ProjectileSample) bool {
-	if a.TimestampUS != b.TimestampUS {
-		return a.TimestampUS < b.TimestampUS
-	}
-	if a.X != b.X {
-		return a.X < b.X
-	}
-	if a.Y != b.Y {
-		return a.Y < b.Y
-	}
-	return a.Z < b.Z
 }
 
 // lessTrack : ordre total sur les vies (naissance, slot, génération, PUIS la piste elle-même).
@@ -289,6 +278,22 @@ func signe(inferieur bool) int {
 		return -1
 	}
 	return 1
+}
+
+// comparateurDeLess rend le comparateur a trois voies d une relation « strictement avant » :
+// meme ordre, forme de `slices.SortFunc` (lot J12.1). Il sert les relations deja TOTALES du
+// paquet (lessTrack, lessPlacement, lessNavpointRise), que les tests interrogent sous cette forme.
+func comparateurDeLess[T any](less func(a, b T) bool) func(a, b T) int {
+	return func(a, b T) int {
+		switch {
+		case less(a, b):
+			return -1
+		case less(b, a):
+			return 1
+		default:
+			return 0
+		}
+	}
 }
 
 // projectileGapUS est le trou temporel au-delà duquel deux échantillons d'un même couple
