@@ -12,8 +12,8 @@
 > Contrat d'exécution : skill `plan-execution`. Statuts `[x]` / `[~]` réf / `[!]` justifié ; aucune
 > case vide à la clôture d'un lot.
 >
-> Statut : **PROPOSÉ le 2026-09-28, en attente du go utilisateur.** Il passe APRÈS le plan
-> `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` et ne démarre qu'aux conditions d'entrée du §1.
+> Statut : **GO utilisateur le 2026-09-30** (« attaque le plan des véhicules »). Exécution en cours
+> sur `wt/emprise` (base `feat/v75`), conditions d'entrée amendées au §1.
 
 ## 0. Hors périmètre
 
@@ -24,9 +24,14 @@
 
 ## 1. Conditions d'entrée (vérifiées par le superviseur avant L7.0 ; une seule manquante = pas de départ)
 
-- **E1** `feat/suite-audit-decodeur` est fusionnée dans `feat/v75`. Elle modifie
-  `film/replay/vehicle_rides*.go`, `build_vehicles.go`, `grammar/vehicle_occupancy*.go` et porte le
-  schéma d'artefact 76 : dériver depuis un calque en mouvement ferait deux fois le travail.
+- **E1 (amendée le 2026-09-30 par le superviseur)** : `feat/suite-audit-decodeur` n'est PAS attendue.
+  Elle est en plein travail dans une autre session (six sous-branches actives le 2026-09-30) et la
+  fusionner de ce côté lui imposerait un rattrapage en cours de lots. À la place, une règle de
+  frontière : L7 NE MODIFIE AUCUN des fichiers qu'elle réécrit (`film/replay/vehicle_rides*.go`,
+  `build_vehicles.go`, `grammar/vehicle_occupancy*.go`, `film/replay/document_vehicles.go`) ; il LIT le
+  calque véhicules du document de rejeu (`vehicles[].rides[]`, `family`, `part`, `carrier`) et accepte
+  tout schéma ≥ 67 (71 sur `feat/v75`, 76 sur l'audit). Quand l'audit fusionnera, la dérivation se
+  rejoue par sa commande de rattrapage ; aucun conflit de fichier attendu.
 - **E2** Soirées témoins (relevé du superviseur du 2026-09-28 sur une copie de la base locale,
   frags dont la source est de classe véhicule, JGtm avec Madina97294 ou Chocoboflor dans le même
   camp) :
@@ -39,8 +44,9 @@
   composition a 59 matchs à frags de véhicule en local (Snowbound, Behemoth, High Ground, Isolation
   en Quick Play surtout). L'utilisateur ne joue pas en général de modes à véhicules en escouade,
   mais d'autres utilisateurs de l'application le peuvent (2026-09-28) : la ressource est gardée.
-- **E3** Les huit matchs témoins recuits au schéma courant (occupation lue : schéma ≥ 67), un film
-  à la fois, serveur arrêté.
+- **E3 (amendée)** : les mesures de L7.0 construisent le document des huit témoins EN MÉMOIRE (comme
+  le lot V0 du plan des vies) ; la recuisson réelle des huit artefacts (serveur arrêté, un film à la
+  fois) n'est faite qu'à la clôture L7.5, pour la vérification sur données réelles.
 
 ## 2. Décisions tranchées
 
@@ -91,7 +97,7 @@ même protocole que le plan des vies (§5).
 
 ### L7.0 — Témoin et mesures (superviseur puis exécuteur) · rapide
 
-- [ ] L7.0.1 E1 et E3 vérifiées (E2 relevée le 2026-09-28) ; recuisson des huit matchs témoins.
+- [ ] L7.0.1 Documents des huit témoins construits en mémoire (E3 amendée) ; frontière E1 tenue.
 - [ ] L7.0.2 Sur les matchs du témoin : prises (D2), temps à bord (D4), part `proximity`, frags de
   classe véhicule par camp (D5). **Seuils écrits avant la mesure : ≥ 90 % des frags de classe
   véhicule d'un joueur de l'escouade tombent pendant un de ses épisodes publiés ; part `proximity`
