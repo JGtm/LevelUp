@@ -11,6 +11,7 @@ package replay
 // ChunksApresTrouAbandonnes n arrive pas au compteur »).
 
 import (
+	"context"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -184,7 +185,7 @@ func TestLesReplisHorsBalayageNeSeComptentQuUneFoisDepuisLesFaits(t *testing.T) 
 	optDirect.MapQuant, optDirect.FilmIdentity, optDirect.ReplisHorsBalayage = &entry, id, horsBalayage
 	optDirect.Fallbacks = fallback.NouveauCompteur()
 	optDirect.Fallbacks.Cumuler(repliDuBalayage)
-	direct := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, optDirect)
+	direct := BuildFromPositions(context.Background(), goldenFilm, "halo_infinite", g.Positions, g.Fire, optDirect)
 
 	blob, err := EncodeFilmFactsFile(&FilmFactsFile{
 		Coverage: *couvertureDuDecodeur(id), Facts: *g, Identity: identiteDeFaits(id),
@@ -197,7 +198,7 @@ func TestLesReplisHorsBalayageNeSeComptentQuUneFoisDepuisLesFaits(t *testing.T) 
 	if err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
-	rejoue := BuildFromFacts(goldenFilm, "halo_infinite", f, Options{MapQuant: &entry, ReplisHorsBalayage: horsBalayage})
+	rejoue := BuildFromFacts(context.Background(), goldenFilm, "halo_infinite", f, Options{MapQuant: &entry, ReplisHorsBalayage: horsBalayage})
 
 	attendu := map[string]int{
 		string(fallback.NomPlafondGrenadeParDefaut): 2, string(fallback.NomChunkDuPiedParArgmax): 1,

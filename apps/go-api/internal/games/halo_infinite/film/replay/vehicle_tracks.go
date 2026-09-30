@@ -23,6 +23,7 @@ package replay
 
 import (
 	"cmp"
+	"context"
 	"slices"
 	"sort"
 
@@ -99,7 +100,7 @@ type vehicleLife struct {
 }
 
 // buildVehicleTracks assemble les vies publiables, leur couverture et le bilan de rattachement.
-func buildVehicleTracks(
+func buildVehicleTracks(ctx context.Context,
 	scan VehicleScan, bipeds []grammar.BipedPosition, reg IdentityRegistry, clock replayClock,
 ) ([]VehicleTrack, VehicleCoverage, vehicleRideStats) {
 	// `AimReads` compte ce que le FILM a rendu, pas ce que les episodes en retiennent : c est lui
@@ -114,7 +115,7 @@ func buildVehicleTracks(
 	if scan.Scanned && scan.DeathStats.CadreParDefaut {
 		clock.fb.Declenche(fallback.NomCadreDeMarcheParDefautConserve)
 	}
-	lives, deathTally := vehicleLives(scan.Keyframes, scan.Deaths)
+	lives, deathTally := vehicleLives(ctx, scan.Keyframes, scan.Deaths)
 	cov.Lives = len(lives)
 	cov.DeathsRead, cov.DeathsMatched = deathTally.read, deathTally.matched
 	cov.DeathsUnmatched, cov.DeathsTailDesync = deathTally.unmatched, deathTally.tailDesync
@@ -160,7 +161,7 @@ func buildVehicleTracks(
 // le nuage de positions serait attribue deux fois — puis pose sur chacune la MORT QUE LE FILM
 // ECRIT (cf. vehicle_end.go). L ordre est celui de D14 (b) : les fenetres d abord, la lecture
 // ensuite, parce que c est la fenetre qui departage deux vies de meme `(slot, gen)`.
-func vehicleLives(
+func vehicleLives(ctx context.Context,
 	kf grammar.WorldObjectKeyframes, deaths []types.ObjectDeath,
 ) ([]vehicleLife, vehicleDeathTally) {
 	out := make([]vehicleLife, 0, len(kf.SeenUS))
@@ -177,7 +178,7 @@ func vehicleLives(
 		return cmp.Or(cmp.Compare(a.key.Slot, b.key.Slot), cmp.Compare(a.firstUS, b.firstUS), cmp.Compare(a.key.Gen, b.key.Gen))
 	})
 	assignVehicleWindows(out)
-	return out, assignVehicleDeaths(out, deaths)
+	return out, assignVehicleDeaths(ctx, out, deaths)
 }
 
 // assignVehicleWindows pose `loUS` / `hiUS` sur des vies DEJA triees par (slot, premier

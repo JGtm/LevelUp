@@ -221,7 +221,7 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 		return OutcomeNoFilm, 0, fmt.Errorf("roster %s: %w", matchID, err)
 	}
 
-	batch := BuildKillSourceBatch(matchID, res, ids)
+	batch := BuildKillSourceBatch(ctx, matchID, res, ids)
 	fusionnees, err := c.write(ctx, batch)
 	if err != nil {
 		observability.AddInt(metricWriteError, 1)

@@ -74,7 +74,7 @@ type bilanDeuxPasses struct {
 
 // parentDeuxPasses joue les deux passes de chaque film et compare. Code non nul des qu un
 // artefact diverge, qu un enfant echoue ou que le harnais n a pas pu poser la question.
-func parentDeuxPasses(o options) int {
+func parentDeuxPasses(ctx context.Context, o options) int {
 	films, err := listeDesFilms(o)
 	if err != nil {
 		fmt.Println("corpus illisible :", err)
@@ -97,7 +97,7 @@ func parentDeuxPasses(o options) int {
 		len(films), etapeArtefact)
 	var b bilanDeuxPasses
 	for _, film := range films {
-		jouerLesDeuxPasses(o, runner, tmp, film, &b)
+		jouerLesDeuxPasses(ctx, o, runner, tmp, film, &b)
 	}
 	fmt.Printf("\nBILAN S8 : %d artefact(s) IDENTIQUE(s) a l octet, %d ARTEFACT DIVERGENT, dont "+
 		"%d portant des ecart(s) d etape a classer, %d ecarte(s), %d echec(s), %d illisible(s) "+
@@ -110,7 +110,7 @@ func parentDeuxPasses(o options) int {
 }
 
 // jouerLesDeuxPasses lance les deux enfants d un film et compare leurs digests.
-func jouerLesDeuxPasses(o options, runner *filmproc.Runner, tmp, film string,
+func jouerLesDeuxPasses(ctx context.Context, o options, runner *filmproc.Runner, tmp, film string,
 	b *bilanDeuxPasses,
 ) {
 	fmt.Printf("===== %s =====\n", film)
@@ -118,7 +118,7 @@ func jouerLesDeuxPasses(o options, runner *filmproc.Runner, tmp, film string,
 	var durees [2]time.Duration
 	for i, nom := range []string{passeFilm, passeFaits} {
 		sortie := filepath.Join(tmp, film+"."+nom+".tsv")
-		res := runner.Run(context.Background(), argsEnfantPasse(o, film, nom, sortie))
+		res := runner.Run(ctx, argsEnfantPasse(o, film, nom, sortie))
 		durees[i] = res.Dur
 		fmt.Printf("  passe %-5s %-12s %9s  pic %5.2f Gio\n",
 			nom, res.Issue, res.Dur.Round(time.Millisecond), gio(res.Peak))

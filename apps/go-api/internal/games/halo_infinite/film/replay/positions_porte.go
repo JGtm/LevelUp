@@ -50,6 +50,7 @@ package replay
 // par document.
 
 import (
+	"context"
 	"log/slog"
 	"sort"
 
@@ -203,7 +204,7 @@ func axesDesPositions(pos []grammar.BipedPosition) (xs, ys, zs []float32) {
 }
 
 // poserSur publie ce que la porte a ecarte dans la couverture des traces, et le journalise.
-func (c couverturePorte) poserSur(tc *TrackCoverage, matchID string) {
+func (c couverturePorte) poserSur(ctx context.Context, tc *TrackCoverage, matchID string) {
 	tc.AvantCreation, tc.ViesAvantPremiereCreation, tc.HorsEmprise =
 		c.AvantCreation, c.ViesAvantPremiereCreation, c.HorsEmprise
 	tc.SlotsArmes, tc.SlotsDesarmes = c.SlotsArmes, c.SlotsDesarmes
@@ -211,7 +212,7 @@ func (c couverturePorte) poserSur(tc *TrackCoverage, matchID string) {
 		return
 	}
 	// JOURNALISE, JAMAIS AVALE (regle n° 3 du depot) : ces positions ne sont pas publiees.
-	slog.Info("rejeu : porte des positions de bipede",
+	slog.InfoContext(ctx, "rejeu : porte des positions de bipede",
 		"match_id", matchID, "avantCreation", c.AvantCreation,
 		"viesAvantPremiereCreation", c.ViesAvantPremiereCreation, "horsEmprise", c.HorsEmprise,
 		"slotsArmes", c.SlotsArmes, "slotsDesarmes", c.SlotsDesarmes)

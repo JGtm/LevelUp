@@ -1,6 +1,7 @@
 package replaybuild
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,9 +30,9 @@ func TestWithGeometryDir_RepertoireSansPropImposeZeroProp(t *testing.T) {
 	b := &Builder{repoRoot: repoRoot, titleSlug: slug, geometries: map[string][]replay.MapObject{
 		"ridgeline": {{}}, // ce que la resolution par carte rendrait si l'imposition s'annulait
 	}}
-	b.WithGeometryDir(t.TempDir()) // impose : aucun map_objects.csv dedans
+	b.WithGeometryDir(context.Background(), t.TempDir()) // impose : aucun map_objects.csv dedans
 
-	if got := b.geometryFor("ridgeline"); got == nil || len(got) != 0 {
+	if got := b.geometryFor(context.Background(), "ridgeline"); got == nil || len(got) != 0 {
 		t.Fatalf("un repertoire impose sans prop doit imposer zero prop, obtenu %v", got)
 	}
 }

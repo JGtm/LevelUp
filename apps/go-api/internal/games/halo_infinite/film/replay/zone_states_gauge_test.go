@@ -9,6 +9,7 @@ package replay
 // Les fabriques partagees vivent dans `zone_states_test.go`.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -176,7 +177,7 @@ func TestZoneGaugeTStrictementCroissant(t *testing.T) {
 // en compte les points.
 func TestZoneStatesPublieLaJaugeEnDirect(t *testing.T) {
 	in, c := bastionCase()
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if len(states) != 2 {
 		t.Fatalf("%d zone(s) publiee(s), attendu 2", len(states))
 	}
@@ -237,7 +238,7 @@ func TestZoneStatesCollineNePublieAucuneJauge(t *testing.T) {
 	for f := 396; f <= 400; f++ {
 		pts = append(pts, pointAt(f, -19.5, 0, 0)) // zone 0 pendant la seconde
 	}
-	states, cov := buildZoneStates(in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
+	states, cov := buildZoneStates(context.Background(), in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
 	if len(states) != 2 || cov.Method != ZoneMethodPositions {
 		t.Fatalf("%d zone(s), methode %q — attendu 2 et %q", len(states), cov.Method, ZoneMethodPositions)
 	}

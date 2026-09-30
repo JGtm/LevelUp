@@ -9,6 +9,7 @@ package replay
 // `zone_states_test.go` ; seules celles propres a ce volet sont posees ici.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -18,7 +19,7 @@ import (
 // l'intervalle court jusqu'a la bascule suivante — le dernier jusqu'a la fin de l'axe.
 func TestZoneStatesIntervallesSuiventLesBascules(t *testing.T) {
 	in, c := bastionCase()
-	states, _ := buildZoneStates(in, c)
+	states, _ := buildZoneStates(context.Background(), in, c)
 	spans := states[0].Spans
 	if len(spans) != 3 {
 		t.Fatalf("%d intervalle(s) sur la zone 0, attendu 3 : %+v", len(spans), spans)
@@ -53,7 +54,7 @@ func TestZoneStatesIntervallesSuiventLesBascules(t *testing.T) {
 // seule emission aberrante sous zero (cf. gaugeProgressOf).
 func TestZoneStatesProgressionEstLeSommetDeLaJauge(t *testing.T) {
 	in, c := bastionCase()
-	states, _ := buildZoneStates(in, c)
+	states, _ := buildZoneStates(context.Background(), in, c)
 	spans := states[0].Spans
 	// L'intervalle qui contient la rampe LA PLUS HAUTE du slot (0,95) publie ce sommet, sur
 	// l'echelle du jeu.
@@ -77,7 +78,7 @@ func TestZoneStatesProgressionEstLeSommetDeLaJauge(t *testing.T) {
 // confrontee a l'equipe du capteur, et les deux comptes sont publies.
 func TestZoneStatesControleDuProprietaire(t *testing.T) {
 	in, c := bastionCase()
-	_, cov := buildZoneStates(in, c)
+	_, cov := buildZoneStates(context.Background(), in, c)
 	if cov.OwnerChecked != 4 || cov.OwnerAgreed != 4 {
 		t.Errorf("controle du proprietaire %d/%d, attendu 4/4", cov.OwnerAgreed, cov.OwnerChecked)
 	}
@@ -94,7 +95,7 @@ func TestZoneStatesCanalConfirmeUneSeuleFoisNEstPasElu(t *testing.T) {
 	// La reprise de la zone 1 disparait : il ne reste qu'UNE capture concordante sur son canal.
 	in.Reads = zoneReadsWithout(in.Reads, 21, 401)
 	c.actions = c.actions[:3]
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if len(states) != 1 || states[0].ZoneRef != 0 {
 		t.Fatalf("%d zone(s) publiee(s) : %+v — seule la zone 0 a deux concordances", len(states), states)
 	}
@@ -118,7 +119,7 @@ func TestZoneStatesUnCanalNEstProprietaireQueDUneZone(t *testing.T) {
 		zoneReadAt(11, 201, grammar.ManagedPropertyTagU32, 1),
 		zoneReadAt(11, 401, grammar.ManagedPropertyTagU32, 0),
 	)
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if len(states) != 1 {
 		t.Fatalf("%d zone(s) publiee(s), attendu 1 : un canal ne tient qu'une zone — %+v",
 			len(states), states)
@@ -161,7 +162,7 @@ func zoneReadsWithoutSlot(reads []grammar.ManagedPropertyRead,
 func TestZoneStatesSlotNonApparieNEstPasPublie(t *testing.T) {
 	in, c := bastionCase()
 	in.Reads = append(in.Reads, zoneRampAt(30, 450, 700)...) // rampe loin de toute capture
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if len(states) != 2 {
 		t.Errorf("%d zone(s) publiee(s), attendu 2 — le slot orphelin ne doit rien publier",
 			len(states))
@@ -176,7 +177,7 @@ func TestZoneStatesSlotNonApparieNEstPasPublie(t *testing.T) {
 func TestZoneStatesValeurInconnueNOuvreAucunIntervalle(t *testing.T) {
 	in, c := bastionCase()
 	in.Reads = append(in.Reads, zoneReadAt(11, 400, grammar.ManagedPropertyTagU32, 7))
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov.UnknownOwner != 1 {
 		t.Fatalf("valeurs inconnues %d, attendu 1", cov.UnknownOwner)
 	}
@@ -192,7 +193,7 @@ func TestZoneStatesValeurInconnueNOuvreAucunIntervalle(t *testing.T) {
 func TestZoneStatesSansRosterAccepteLesDeuxCampsMesures(t *testing.T) {
 	in, c := bastionCase()
 	in.TeamByXUID = nil
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if len(states) == 0 {
 		t.Fatalf("aucun etat publie sans roster : les camps 0 et 1 restent lisibles")
 	}

@@ -33,6 +33,7 @@ package replay
 // que le canal possède, et il vient d'un relevé, pas d'un modèle.
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
@@ -370,8 +371,8 @@ func (idx *abilityRankIndex) rankInLife(slot uint32, at uint64) (int, bool) {
 // logAbilityImpulseCoverage sort la couverture du calque. Un journal qui ne dirait que les
 // publiées laisserait croire que le canal n'a rien refusé — or il refuse deux choses de
 // natures différentes, et c'est justement ce qu'il faut pouvoir lire.
-func logAbilityImpulseCoverage(cov AbilityImpulseCoverage) {
-	slog.Info("rejeu : impulsions de capacite",
+func logAbilityImpulseCoverage(ctx context.Context, cov AbilityImpulseCoverage) {
+	slog.InfoContext(ctx, "rejeu : impulsions de capacite",
 		"lectures", cov.Reads, "episodes", cov.Episodes, "publiees", cov.Published,
 		"sansIdentite", cov.NoIdentity, "familleNonMesuree", cov.OtherFamily,
 		"attributionIndisponible", cov.NoResolver,

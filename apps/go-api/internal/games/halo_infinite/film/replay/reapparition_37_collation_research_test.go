@@ -41,6 +41,7 @@ package replay
 // resout pas un nom de carte, et surtout il n ouvre AUCUNE base. Un film a la fois.
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
@@ -110,7 +111,7 @@ func reap37UnFilmCollation(t *testing.T, cat *profile.MapQuantCatalog, racine, c
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", court, err)
 	}
-	doc, err := BuildFromFilm("lot-3.7-collation", "halo_infinite", film, Options{MapQuant: &entry})
+	doc, err := BuildFromFilm(context.Background(), "lot-3.7-collation", "halo_infinite", film, Options{MapQuant: &entry})
 	if err != nil {
 		t.Fatalf("cuisson de %s : %v", court, err)
 	}

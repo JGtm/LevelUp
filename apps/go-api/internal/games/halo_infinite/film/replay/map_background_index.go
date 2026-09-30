@@ -38,6 +38,7 @@ package replay
 // répertoire `map_backgrounds/`. Rien n'ouvre le jeu, rien ne va sur le réseau, aucune base.
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -186,17 +187,17 @@ func (i *MapBackgroundIndex) Cles() int {
 //
 // Un sidecar illisible ou hors schéma est SIGNALÉ et sauté — jamais avalé, et jamais fatal : un
 // fond abîmé ne doit pas priver de fond toutes les autres cartes.
-func BuildMapBackgroundIndex(dir string) (*MapBackgroundIndex, error) {
+func BuildMapBackgroundIndex(ctx context.Context, dir string) (*MapBackgroundIndex, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("répertoire de fonds illisible (%s) : %w", dir, err)
 	}
-	return indexDepuisEntrees(dir, entries), nil
+	return indexDepuisEntrees(ctx, dir, entries), nil
 }
 
 // indexDepuisEntrees construit l'index à partir d'un listing déjà obtenu (le cache le réutilise
 // pour ne pas lister deux fois).
-func indexDepuisEntrees(dir string, entries []os.DirEntry) *MapBackgroundIndex {
+func indexDepuisEntrees(ctx context.Context, dir string, entries []os.DirEntry) *MapBackgroundIndex {
 	// porteurs : identité -> clés qui la revendiquent. On collecte TOUT avant de trancher —
 	// décider au fil de l'eau ferait dépendre le résultat de l'ordre de lecture.
 	porteurs := map[string]map[string]bool{}
@@ -209,7 +210,7 @@ func indexDepuisEntrees(dir string, entries []os.DirEntry) *MapBackgroundIndex {
 		chemin := filepath.Join(dir, e.Name())
 		bg, errLect := LoadMapBackground(chemin)
 		if errLect != nil {
-			slog.Warn("index des fonds : sidecar illisible — carte non indexée",
+			slog.WarnContext(ctx, "index des fonds : sidecar illisible — carte non indexée",
 				"err", errLect, "path", chemin)
 			continue
 		}
@@ -222,12 +223,12 @@ func indexDepuisEntrees(dir string, entries []os.DirEntry) *MapBackgroundIndex {
 			ajouteIdentite(porteurs, nom, cle)
 		}
 	}
-	return trancheAmbiguites(porteurs, cles)
+	return trancheAmbiguites(ctx, porteurs, cles)
 }
 
 // trancheAmbiguites transforme les revendications en index : une identité revendiquée par une
 // seule clé devient résolvable, les autres sont écartées et publiées.
-func trancheAmbiguites(porteurs map[string]map[string]bool, cles int) *MapBackgroundIndex {
+func trancheAmbiguites(ctx context.Context, porteurs map[string]map[string]bool, cles int) *MapBackgroundIndex {
 	idx := &MapBackgroundIndex{
 		parIdentite: make(map[string]string, len(porteurs)),
 		ambigues:    map[string][]string{},
@@ -244,7 +245,7 @@ func trancheAmbiguites(porteurs map[string]map[string]bool, cles int) *MapBackgr
 		}
 		sort.Strings(liste)
 		idx.ambigues[identite] = liste
-		slog.Warn("index des fonds : identité de carte ambiguë — aucun fond servi sous ce nom",
+		slog.WarnContext(ctx, "index des fonds : identité de carte ambiguë — aucun fond servi sous ce nom",
 			"identite", identite, "cles", strings.Join(liste, ", "))
 	}
 	return idx
@@ -304,7 +305,7 @@ var signatureIndatable atomic.Uint64
 
 // MapBackgroundIndexFor rend l'index d'un répertoire de fonds, en réutilisant la construction
 // précédente tant que le répertoire n'a pas bougé.
-func MapBackgroundIndexFor(dir string) (*MapBackgroundIndex, error) {
+func MapBackgroundIndexFor(ctx context.Context, dir string) (*MapBackgroundIndex, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("répertoire de fonds illisible (%s) : %w", dir, err)
@@ -316,7 +317,7 @@ func MapBackgroundIndexFor(dir string) (*MapBackgroundIndex, error) {
 	if cached, ok := indexFondsCache[dir]; ok && cached.signature == signature {
 		return cached.index, nil
 	}
-	idx := indexDepuisEntrees(dir, entries)
+	idx := indexDepuisEntrees(ctx, dir, entries)
 	indexFondsCache[dir] = indexFondsEntree{signature: signature, index: idx}
 	return idx, nil
 }

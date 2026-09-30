@@ -6,7 +6,10 @@ package replay
 // Options.NeutralDeaths et le commentaire qui dit pourquoi). Il ne fait qu'appliquer au calque
 // la règle commune à tous les autres — on ne publie que ce qui rencontrera une trajectoire.
 
-import "log/slog"
+import (
+	"context"
+	"log/slog"
+)
 
 // keepNeutralDeathsOfPublishedTracks écarte les morts dont le joueur n'a AUCUNE trajectoire
 // publiée.
@@ -24,7 +27,7 @@ import "log/slog"
 // jour et même helper que les actions d'objectif (`xuidOfPublishedTrack`). Ce site-ci et
 // `objectives.go` étaient les deux SEULS des treize filtres « piste publiée » du paquet à
 // cadencer sur un nom lu ; les onze autres cadencent sur le SLOT via `keepOfPublishedTracks`.
-func keepNeutralDeathsOfPublishedTracks(deaths []NeutralDeath, tracks []Track,
+func keepNeutralDeathsOfPublishedTracks(ctx context.Context, deaths []NeutralDeath, tracks []Track,
 	slotXUID map[uint32]uint64) []NeutralDeath {
 	if len(deaths) == 0 {
 		return nil
@@ -38,7 +41,7 @@ func keepNeutralDeathsOfPublishedTracks(deaths []NeutralDeath, tracks []Track,
 		out = append(out, d)
 	}
 	if dropped := len(deaths) - len(out); dropped > 0 {
-		slog.Info("rejeu 2D : morts sans revendication écartées (joueur sans trajectoire publiée, "+
+		slog.InfoContext(ctx, "rejeu 2D : morts sans revendication écartées (joueur sans trajectoire publiée, "+
 			"ou type non établi)", "ecartees", dropped, "publiees", len(out))
 	}
 	if len(out) == 0 {

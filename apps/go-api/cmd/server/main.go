@@ -123,7 +123,7 @@ func main() {
 	// ouvrirait un second écrivain sur les mêmes bases, ce que le modèle mono-processus
 	// interdit (ADR 0013/0016). Même patron que le health-check ci-dessous.
 	if replaychild.IsChild(os.Args) {
-		os.Exit(replaychild.RunChild(os.Args))
+		os.Exit(replaychild.RunChild(context.Background(), os.Args))
 	}
 
 	// --- 0. Health-check mode (Docker HEALTHCHECK) ---

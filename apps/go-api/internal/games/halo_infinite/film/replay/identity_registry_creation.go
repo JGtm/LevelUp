@@ -57,6 +57,7 @@ package replay
 
 import (
 	"cmp"
+	"context"
 	"log/slog"
 	"slices"
 	"sort"
@@ -423,23 +424,23 @@ func indexDesBotsDeclares(bots []BotIdentity) map[int]bool {
 // tombe sous zero ou sous le vrai residu, et l'alarme se tait ou se sous-evalue — exactement le
 // defaut consigne. `causes.IndexOutOfTable`, LUI, exclut deja tout bot NOMME (bid pose) : une
 // vie qui en sort n'est plus `non_resolu`, donc plus dans ce compte. Rien a soustraire.
-func (r creationReport) alarmerSurLesRefus(matchID string, causes canonical.UnresolvedCauses) {
-	slog.Info("rejeu : lien direct corps -> joueur",
+func (r creationReport) alarmerSurLesRefus(ctx context.Context, matchID string, causes canonical.UnresolvedCauses) {
+	slog.InfoContext(ctx, "rejeu : lien direct corps -> joueur",
 		"match_id", matchID, "records", r.Records, "corps", r.Slots,
 		"direct", r.Direct, "propage", r.Propagated, "indexBot", r.IndexBot,
 		"parEntite", r.ParEntite, "slotsRecycles", r.Recycled)
 	if causes.IndexOutOfTable > 0 {
-		slog.Warn("rejeu : index de participant LU mais absent de la table publiee — vies NON "+
+		slog.WarnContext(ctx, "rejeu : index de participant LU mais absent de la table publiee — vies NON "+
 			"rattachees (verdict I0 : participant que PlayerIndexTable ne nomme pas)",
 			"match_id", matchID, "vies", causes.IndexOutOfTable)
 	}
 	if causes.DivergentReadings > 0 {
-		slog.Warn("rejeu : vie anterieure au premier record de son slot RECYCLE — aucun corps "+
+		slog.WarnContext(ctx, "rejeu : vie anterieure au premier record de son slot RECYCLE — aucun corps "+
 			"etabli a cet instant, le partage se tait",
 			"match_id", matchID, "vies", causes.DivergentReadings, "slotsRecycles", r.Recycled)
 	}
 	if r.Slots > 0 && causes.NoCreationRecord > 0 {
-		slog.Warn("rejeu : vies de bipede sans record de creation sur un film qui en porte — "+
+		slog.WarnContext(ctx, "rejeu : vies de bipede sans record de creation sur un film qui en porte — "+
 			"classe attendue VIDE (lot E2 : bijection slots<->records mesuree sur 5 films)",
 			"match_id", matchID, "vies", causes.NoCreationRecord, "corps", r.Slots)
 	}

@@ -48,6 +48,7 @@ package replay
 //	  go test ./internal/games/halo_infinite/film/replay -run TestBancEcartLancerLanceur -v -timeout 1800s
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -163,7 +164,7 @@ func grenEcartCas2(doc ReplayDocument, l *grenEcartLectures) []grenEcartCas {
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TimestampUS < sorted[j].TimestampUS })
 	origin := sorted[0].TimestampUS
 	step := uint64(doc.FrameIntervalMS) * 1000
-	reg := BuildIdentityRegistry(IdentityInput{
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{
 		Positions: sorted, BipedCreations: l.creations,
 		Deaths: l.deaths, PlayerIndices: l.indices, Fire: fireRefs(l.fire),
 		Clock:   IdentityClock{OriginUS: origin, StepUS: step, FrameCount: doc.FrameCount},

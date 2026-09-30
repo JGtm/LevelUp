@@ -16,6 +16,7 @@ package replay
 //	           frame certaine (`to < from`), affiche jusqu'a l'image-cle suivante.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -54,7 +55,7 @@ func TestPartiAvantLOrigineNeTientAucunePlace(t *testing.T) {
 	tracks := []Track{vieDe("190", 125, 999)}
 	in := entreesDesOccupants{scan: scan, bots: bots, horloge: horlogeDOrigine()}
 	occ := lierLesOccupants(roster, tracks, in)
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 4),
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 4),
 		horloge: horlogeDOrigine()})
 
 	if len(roster[3].Presence) != 0 {

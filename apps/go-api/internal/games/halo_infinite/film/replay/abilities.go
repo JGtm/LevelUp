@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"sort"
@@ -200,8 +201,8 @@ func buildAbilityCoverage(raw, clean, published []AbilityRead, noise int) Abilit
 
 // logAbilityCoverage journalise la couverture du calque — un rejet compté mais jamais
 // journalisé serait à moitié muet.
-func logAbilityCoverage(cov AbilityCoverage) {
-	slog.Info("rejeu : identite de capacite portee",
+func logAbilityCoverage(ctx context.Context, cov AbilityCoverage) {
+	slog.InfoContext(ctx, "rejeu : identite de capacite portee",
 		"lectures", cov.Reads, "bruitDeBalayage", cov.ScanNoise,
 		"sansTrajectoirePubliee", cov.Unpublished, "publiees", cov.Published)
 }

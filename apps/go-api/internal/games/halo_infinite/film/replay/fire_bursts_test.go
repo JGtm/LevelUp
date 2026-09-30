@@ -4,6 +4,7 @@ package replay
 // `fire_bursts.go`). Les chiffres de terrain vivent dans les instruments du lot M4b.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -30,7 +31,7 @@ func fbDoc() *ReplayDocument {
 }
 
 func fbPublier(doc *ReplayDocument, rs ...types.ContinuousFireBurst) ([]FireBurst, *ContinuousFireCoverage) {
-	return buildFireBursts(doc, rs, types.ContinuousFireStats{Scanned: true}, occupantsPlats(map[uint32]int{10: 3, 11: 4}),
+	return buildFireBursts(context.Background(), doc, rs, types.ContinuousFireStats{Scanned: true}, occupantsPlats(map[uint32]int{10: 3, 11: 4}),
 		vsClock())
 }
 
@@ -151,7 +152,7 @@ func TestCoupsALaCadenceEtALaMontee(t *testing.T) {
 
 // TestSansMarcheDesTramesAucuneCouverture — un artefact reconstruit sans la marche n affirme rien.
 func TestSansMarcheDesTramesAucuneCouverture(t *testing.T) {
-	out, cov := buildFireBursts(fbDoc(), nil, types.ContinuousFireStats{}, occupantsPlats(nil), vsClock())
+	out, cov := buildFireBursts(context.Background(), fbDoc(), nil, types.ContinuousFireStats{}, occupantsPlats(nil), vsClock())
 	if out != nil || cov != nil {
 		t.Errorf("rafales %v couverture %v : attendu nil, nil", out, cov)
 	}

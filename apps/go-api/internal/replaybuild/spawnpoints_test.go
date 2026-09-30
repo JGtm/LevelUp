@@ -7,6 +7,7 @@ package replaybuild
 // lisaient « carte connue, aucun point » au lieu de « points non etablis ».
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -67,7 +68,7 @@ func TestSpawnPointsRendLesTroisEtats(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.mapID+"->"+c.attendu, func(t *testing.T) {
-			pts, etat := b.spawnPoints("match", c.mapID, nil)
+			pts, etat := b.spawnPoints(context.Background(), "match", c.mapID, nil)
 			if etat != c.attendu {
 				t.Errorf("etat = %q, attendu %q", etat, c.attendu)
 			}
@@ -90,13 +91,13 @@ func TestSpawnPointsReplieSurLeNomPublic(t *testing.T) {
 		},
 	}
 	b := &Builder{repoRoot: spEcrireCatalogue(t, cat), titleSlug: "halo_infinite"}
-	got, etat := b.spawnPoints("match", "", []string{"Catalyst"})
+	got, etat := b.spawnPoints(context.Background(), "match", "", []string{"Catalyst"})
 	if etat != "established" || len(got) != 1 {
 		t.Fatalf("repli par nom public : etat %q, %d point(s) — attendu established et 1",
 			etat, len(got))
 	}
 	// Un nom qui ne correspond a rien reste une carte ABSENTE.
-	if _, etat := b.spawnPoints("match", "", []string{"Carte Inexistante"}); etat != "map_absent" {
+	if _, etat := b.spawnPoints(context.Background(), "match", "", []string{"Carte Inexistante"}); etat != "map_absent" {
 		t.Errorf("nom inconnu : etat %q, attendu map_absent", etat)
 	}
 }

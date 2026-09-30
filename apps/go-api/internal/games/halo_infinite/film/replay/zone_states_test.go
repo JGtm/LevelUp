@@ -13,6 +13,7 @@ package replay
 // `zone_states_hill.go`.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -96,7 +97,7 @@ func intPtr(v int) *int { return &v }
 // rattachent a un slot de jauge sort avec ses intervalles de propriete.
 func TestZoneStatesPublieUnEtatParZoneAppariee(t *testing.T) {
 	in, c := bastionCase()
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if len(states) != 2 {
 		t.Fatalf("%d zone(s) publiee(s), attendu 2 : %+v", len(states), states)
 	}
@@ -145,7 +146,7 @@ func TestZoneStatesProgressionSurLEchelleDuJeu(t *testing.T) {
 func TestZoneStatesSansCatalogueNePublieRien(t *testing.T) {
 	in, c := bastionCase()
 	in.Zones = nil
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if states != nil {
 		t.Errorf("%d etat(s) publie(s) sans catalogue de zones", len(states))
 	}
@@ -159,7 +160,7 @@ func TestZoneStatesSansCatalogueNePublieRien(t *testing.T) {
 func TestZoneStatesNonBalayeNePublieAucuneCouverture(t *testing.T) {
 	in, c := bastionCase()
 	in.Scanned = false
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if states != nil || cov != nil {
 		t.Errorf("balayage absent : attendu (nil, nil), obtenu (%d etats, %+v)", len(states), cov)
 	}
@@ -201,7 +202,7 @@ func TestZoneStatesTientLeVolumeDUnVraiFilm(t *testing.T) {
 	}
 	c := zoneCtx{origin: 0, step: 100_000, frames: frames, intervalMS: 100,
 		tracks: []Track{track("2533", pts...)}, actions: actions, matchID: "volume"}
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov == nil {
 		t.Fatalf("aucune couverture rendue sur le cas de volume")
 	}
@@ -228,7 +229,7 @@ func TestZonesCouverturePublieLaCauseDesCapturesPerdues(t *testing.T) {
 	// Une sixieme capture dont le capteur n'a AUCUNE piste : cause `NoPosition`, une ignorance.
 	c.actions = append(c.actions, action("9999", 260))
 
-	_, cov := buildZoneStates(in, c)
+	_, cov := buildZoneStates(context.Background(), in, c)
 	if cov == nil {
 		t.Fatal("couverture nulle")
 	}
@@ -263,7 +264,7 @@ func TestZonesAttribueLesCapturesDesViesNonNommees(t *testing.T) {
 	}
 	c.slotXUID = map[uint32]uint64{536: 2533, 537: 2535}
 
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov.Attributed != 4 {
 		t.Fatalf("attribuees = %d, attendu 4 (couverture %+v)", cov.Attributed, cov)
 	}

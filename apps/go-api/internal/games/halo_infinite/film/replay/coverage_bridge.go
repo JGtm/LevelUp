@@ -9,6 +9,7 @@ package replay
 // modifiée, seul l'emplacement change.
 
 import (
+	"context"
 	"errors"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -288,12 +289,12 @@ func verdictOfBridge(b BridgeHealth) string {
 // l'origine du document dont il est le témoin (`resolveOriginMs`). Mesuré x8,9 et x10,5 sur
 // les deux témoins du parc : ce seuil n'est pas atteint aujourd'hui, et c'est bien pourquoi
 // l'atteindre doit se voir.
-func (b BridgeHealth) warnIfCalageEtroit() {
+func (b BridgeHealth) warnIfCalageEtroit(ctx context.Context) {
 	if b.DeathOffsetMatched == 0 ||
 		b.DeathOffsetMatched >= deathOffsetMargeMin*b.DeathOffsetRunnerUp {
 		return
 	}
-	slog.Warn("rejeu : calage du fil des morts trop peu distinct du bruit — nommage et origine suspects",
+	slog.WarnContext(ctx, "rejeu : calage du fil des morts trop peu distinct du bruit — nommage et origine suspects",
 		"apparies", b.DeathOffsetMatched, "second_candidat", b.DeathOffsetRunnerUp,
 		"marge_minimale", deathOffsetMargeMin, "vies", b.LivesTotal, "slots", b.Slots)
 }

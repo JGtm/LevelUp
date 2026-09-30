@@ -35,7 +35,7 @@ type ReplayBuildEnqueuer func(ctx context.Context, titleSlug, matchID string) (d
 // ReplayPlacementReader rend la décision courante « où se construit un rejeu »
 // (replaybuild.DecidePlacement appliqué au réglage vivant). Le handler ne la
 // calcule pas : le point de décision est unique, il le CONSULTE.
-type ReplayPlacementReader func() replaybuild.Placement
+type ReplayPlacementReader func(ctx context.Context) replaybuild.Placement
 
 // AdminReplayBuildActionHandler porte les actions replay-build/{run,enqueue}.
 type AdminReplayBuildActionHandler struct {
@@ -77,11 +77,11 @@ func (h *AdminReplayBuildActionHandler) WithPlacement(p ReplayPlacementReader) *
 // même trahirait le réglage ; une action qui ne ferait rien en répondant 202
 // laisserait croire à un travail lancé. D'où un refus nommé, avec le chemin à
 // prendre à la place.
-func (h *AdminReplayBuildActionHandler) refusedByPlacement() error {
+func (h *AdminReplayBuildActionHandler) refusedByPlacement(ctx context.Context) error {
 	if h.placement == nil {
 		return nil
 	}
-	switch h.placement() {
+	switch h.placement(ctx) {
 	case replaybuild.PlacementLocal:
 		return nil
 	case replaybuild.PlacementWorker:
@@ -174,7 +174,7 @@ func (h *AdminReplayBuildActionHandler) handleRun(ctx context.Context, in *repla
 	if err := json.Unmarshal(in.RawBody, &req); err != nil || req.MatchID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
 	}
-	if err := h.refusedByPlacement(); err != nil {
+	if err := h.refusedByPlacement(ctx); err != nil {
 		slog.WarnContext(ctx, "admin_actions: construction locale refusée par le réglage",
 			"match_id", req.MatchID, "err", err)
 		return nil, err

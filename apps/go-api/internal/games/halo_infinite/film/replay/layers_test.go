@@ -21,6 +21,7 @@ package replay
 // sur du vide. Le compte de champs a un plancher, et il echoue bruyamment.
 
 import (
+	"context"
 	"reflect"
 	"regexp"
 	"sort"
@@ -307,7 +308,7 @@ func champEstVide(v reflect.Value) bool {
 // CE QU IL NE PROUVE PAS, et c est ecrit : la reciproque. Un calque VIDE n est pas un calque non
 // produit — c est precisement pourquoi `layers` existe.
 func TestCalquesGardesFermeesLaissentLeCalqueVide(t *testing.T) {
-	doc := BuildFromPositions("m", "halo_infinite", positionsPourVersion(), nil,
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourVersion(), nil,
 		Options{FrameIntervalMS: 100})
 	if len(doc.Tracks) == 0 {
 		t.Fatal("temoin anti-muet : la cuisson n a publie aucune piste, le document est vide et " +
@@ -331,7 +332,7 @@ func TestCalquesGardesFermeesLaissentLeCalqueVide(t *testing.T) {
 // ne doit alors declarer que les quatre calques de publication, et surtout pas les trente-et-un
 // calques non gardes : ce serait le mensonge exact que `layers` existe pour empecher.
 func TestCalquesProduitsSurUnDocumentSansPisteNeDeclarentQueLaPublication(t *testing.T) {
-	doc := BuildFromPositions("m", "halo_infinite", nil, nil, Options{FrameIntervalMS: 100})
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", nil, nil, Options{FrameIntervalMS: 100})
 	if doc.FrameCount != 0 {
 		t.Fatalf("temoin : un document sans position doit garder FrameCount a zero, vu %d", doc.FrameCount)
 	}
@@ -359,7 +360,7 @@ func TestCalquesProduitsSurUnDocumentSansPisteNeDeclarentQueLaPublication(t *tes
 // TestLayersEstPoseParLaCuisson : la table ATTEINT le document. Sans ce test, `layers` pourrait
 // rester nil en production sans qu aucune fermeture ne le dise.
 func TestLayersEstPoseParLaCuisson(t *testing.T) {
-	doc := BuildFromPositions("m", "halo_infinite", positionsPourVersion(), nil,
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourVersion(), nil,
 		Options{FrameIntervalMS: 100})
 	if len(doc.Layers) == 0 {
 		t.Fatal("`layers` absent d une cuisson reelle : la passe `poserLesCalquesProduits` ne " +

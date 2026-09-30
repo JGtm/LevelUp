@@ -12,7 +12,10 @@ package replay
 // pas soit LISIBLE dans la fixture (0,25 m ecrit vaut 0,25 m parcouru — les valeurs choisies
 // sont exactes en float32, sans quoi « juste sous le seuil » ne voudrait rien dire).
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 const t0tInterval = 100
 
@@ -38,7 +41,7 @@ func TestDetectT0FilmRafaleNominale(t *testing.T) {
 		t0tCourse("B", 200),
 		t0tCourse("C", 203),
 	}
-	t0, cov := DetectT0Film(tracks, t0tInterval, 9000, "test-rafale")
+	t0, cov := DetectT0Film(context.Background(), tracks, t0tInterval, 9000, "test-rafale")
 	if t0 == nil {
 		t.Fatalf("coup d'envoi refuse alors que trois joueurs partent ensemble : %+v", cov)
 	}
@@ -68,7 +71,7 @@ func TestDetectT0FilmRefuseRafaleUnique(t *testing.T) {
 		t0tCourse("A", 200),
 		t0tCourse("B", 500),
 	}
-	t0, cov := DetectT0Film(tracks, t0tInterval, 9000, "test-solo")
+	t0, cov := DetectT0Film(context.Background(), tracks, t0tInterval, 9000, "test-solo")
 	if t0 != nil {
 		t.Fatalf("coup d'envoi date (%d ms) alors qu'un seul joueur part : %+v", *t0, cov)
 	}
@@ -87,7 +90,7 @@ func TestDetectT0FilmRefuseAfkComplet(t *testing.T) {
 		{XUID: "A", Points: []T0FilmPoint{{T: 0, X: 1}}},
 		{XUID: "B", Points: []T0FilmPoint{{T: 0, X: 2}}},
 	}
-	t0, cov := DetectT0Film(tracks, t0tInterval, 9000, "test-afk")
+	t0, cov := DetectT0Film(context.Background(), tracks, t0tInterval, 9000, "test-afk")
 	if t0 != nil {
 		t.Fatalf("coup d'envoi date (%d ms) sur un film ou personne ne bouge", *t0)
 	}
@@ -107,7 +110,7 @@ func TestDetectT0FilmTeleportationNEstPasUnMouvement(t *testing.T) {
 		{XUID: "A", Points: []T0FilmPoint{{T: 10, X: 0}, {T: 11, X: 40}, {T: 12, X: 40.25}}},
 		{XUID: "B", Points: []T0FilmPoint{{T: 10, X: 0}, {T: 11, X: 40}, {T: 12, X: 40.25}}},
 	}
-	t0, cov := DetectT0Film(tracks, t0tInterval, 9000, "test-teleport")
+	t0, cov := DetectT0Film(context.Background(), tracks, t0tInterval, 9000, "test-teleport")
 	if t0 != nil {
 		t.Fatalf("coup d'envoi date (%d ms) sur une simple teleportation : %+v", *t0, cov)
 	}
@@ -132,7 +135,7 @@ func TestDetectT0FilmTrouDeReplicationPuisLocomotion(t *testing.T) {
 			{T: 223, X: 1.15},
 		}}
 	}
-	t0, cov := DetectT0Film([]T0FilmTrack{saut("A"), saut("B")}, t0tInterval, 9000, "test-trou")
+	t0, cov := DetectT0Film(context.Background(), []T0FilmTrack{saut("A"), saut("B")}, t0tInterval, 9000, "test-trou")
 	if t0 == nil {
 		t.Fatalf("coup d'envoi refuse alors que deux joueurs courent apres le trou : %+v", cov)
 	}
@@ -148,7 +151,7 @@ func TestDetectT0FilmRefusePlusDeDeuxMinutes(t *testing.T) {
 	// Rien avant la 130e seconde : ce n'est plus un coup d'envoi, c'est du jeu deja en cours
 	// (film qui demarre tard, ou positions manquantes).
 	tracks := []T0FilmTrack{t0tCourse("A", 1300), t0tCourse("B", 1300)}
-	t0, cov := DetectT0Film(tracks, t0tInterval, 9000, "test-tard")
+	t0, cov := DetectT0Film(context.Background(), tracks, t0tInterval, 9000, "test-tard")
 	if t0 != nil {
 		t.Fatalf("coup d'envoi date (%d ms) a plus de deux minutes de la frame 0", *t0)
 	}
@@ -169,7 +172,7 @@ func TestDetectT0FilmPisteAUnPointNEstPasExploitable(t *testing.T) {
 		t0tCourse("A", 40),
 		t0tCourse("B", 40),
 	}
-	t0, cov := DetectT0Film(tracks, t0tInterval, 0, "test-un-point")
+	t0, cov := DetectT0Film(context.Background(), tracks, t0tInterval, 0, "test-un-point")
 	if t0 == nil {
 		t.Fatalf("coup d'envoi refuse : %+v", cov)
 	}
@@ -190,7 +193,7 @@ func TestDetectT0FilmCumulJusteSousLeSeuil(t *testing.T) {
 		t0tLigne("A", 30, 0, 0.25, 0.5),
 		t0tLigne("B", 30, 0, 0.25, 0.5),
 	}
-	t0, cov := DetectT0Film(tracks, t0tInterval, 9000, "test-seuil-sous")
+	t0, cov := DetectT0Film(context.Background(), tracks, t0tInterval, 9000, "test-seuil-sous")
 	if t0 != nil {
 		t.Fatalf("coup d'envoi date (%d ms) pour un cumul de 0,50 m — le seuil doit etre "+
 			"strict", *t0)
@@ -206,7 +209,7 @@ func TestDetectT0FilmCumulJusteAuDessusDuSeuil(t *testing.T) {
 		t0tLigne("A", 30, 0, 0.25, 0.5, 0.5625),
 		t0tLigne("B", 30, 0, 0.25, 0.5, 0.5625),
 	}
-	t0, cov := DetectT0Film(tracks, t0tInterval, 9000, "test-seuil-sur")
+	t0, cov := DetectT0Film(context.Background(), tracks, t0tInterval, 9000, "test-seuil-sur")
 	if t0 == nil {
 		t.Fatalf("coup d'envoi refuse pour un cumul de 0,5625 m : %+v", cov)
 	}
@@ -226,7 +229,7 @@ func TestDetectT0FilmFenetreGlissanteOublieLesPasAnciens(t *testing.T) {
 		}
 		return T0FilmTrack{XUID: xuid, Points: pts}
 	}
-	t0, cov := DetectT0Film([]T0FilmTrack{derive("A"), derive("B")}, t0tInterval, 9000, "test-derive")
+	t0, cov := DetectT0Film(context.Background(), []T0FilmTrack{derive("A"), derive("B")}, t0tInterval, 9000, "test-derive")
 	if t0 != nil {
 		t.Fatalf("coup d'envoi date (%d ms) sur une derive lente : %+v", *t0, cov)
 	}
@@ -239,7 +242,7 @@ func TestDetectT0FilmRefuseSansIntervalleDeFrame(t *testing.T) {
 	// Sans echelle de temps, ni la fenetre ni la marge n'ont de sens : le detecteur s'abstient
 	// au lieu de diviser par zero.
 	tracks := []T0FilmTrack{t0tCourse("A", 10), t0tCourse("B", 10)}
-	t0, cov := DetectT0Film(tracks, 0, 9000, "test-sans-intervalle")
+	t0, cov := DetectT0Film(context.Background(), tracks, 0, 9000, "test-sans-intervalle")
 	if t0 != nil {
 		t.Fatalf("coup d'envoi date (%d ms) sans intervalle de frame", *t0)
 	}

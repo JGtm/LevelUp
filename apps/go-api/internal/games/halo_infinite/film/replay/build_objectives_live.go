@@ -39,6 +39,7 @@ package replay
 // LIGNE : champ a zero, ce paquet resout comme avant.
 
 import (
+	"context"
 	"log/slog"
 	"strconv"
 
@@ -120,14 +121,14 @@ type FlagInput struct {
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
 // HORS LIGNE — appelee par BuildFromFilm.
-func decodeFilmCarrierMarks(fc *grammar.FilmContext, matchID string, in FlagInput,
+func decodeFilmCarrierMarks(ctx context.Context, fc *grammar.FilmContext, matchID string, in FlagInput,
 	cons *objectives.ReplisALaConsultation) grammar.CarrierMarkScan {
 	if !drapeauBalayable(in, cons) {
 		return grammar.CarrierMarkScan{}
 	}
 	marks, err := grammar.ScanCarrierMarks(fc)
 	if err != nil {
-		slog.Warn("drapeau : marqueur de portage illisible — calque publie sans son controle",
+		slog.WarnContext(ctx, "drapeau : marqueur de portage illisible — calque publie sans son controle",
 			"err", err, "match_id", matchID)
 		return grammar.CarrierMarkScan{}
 	}
@@ -146,7 +147,7 @@ func flagFilmSignalsOf(in FlagInput, cons *objectives.ReplisALaConsultation) obj
 // + DeathOffsetMS) : les evenements nommes sont dates sur l'horloge du MATCH, les images-cles et
 // les positions sur celle du FILM. Sans ce calage, le controle du marqueur comparerait deux
 // horloges differentes et ne confirmerait rien.
-func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
+func attachFlagCarries(ctx context.Context, doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
 	equipes teamPublication) {
 	in := opt.Flag
 	signals := flagFilmSignalsOf(in, opt.consultations())
@@ -175,8 +176,8 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	// moitie, et elle vaut par elle-meme : sur les neuf dixiemes des matchs — tout ce qui n'est
 	// pas du CTF — ce pont ne sert a RIEN, puisque le calque ne publie rien. On ne le paye plus.
 	if !in.Scanned || !signals.IsFlagFilm() {
-		vide, cov := buildFlagCarries(scan, flagCarryCtx{fb: clock.fb})
-		attachFlagLayer(doc, vide, cov)
+		vide, cov := buildFlagCarries(scan, flagCarryCtx{fb: clock.fb, journal: ctx})
+		attachFlagLayer(ctx, doc, vide, cov)
 		return
 	}
 	scan.Identity = flagIdentityOf(in, opt)
@@ -191,7 +192,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 			deathOffsetMS: reg.DeathOffsetMS()},
 		tracks: doc.Tracks, deaths: opt.Deaths,
 		slotXUID: reg.PontEpure(), slotAmbiguous: reg.SlotsAmbigus(),
-		fb: clock.fb,
+		fb: clock.fb, journal: ctx,
 	})
 	if cov != nil {
 		cov.ObjectLives = len(scan.Free)
@@ -202,7 +203,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	// (cf. flag_return_gauge.go).
 	attachFlagReturnGauges(carries, in, matchClock{origin: clock.origin, step: clock.step,
 		frames: clock.frames, deathOffsetMS: reg.DeathOffsetMS()}, cov)
-	attachFlagLayer(doc, carries, cov)
+	attachFlagLayer(ctx, doc, carries, cov)
 	attachFlagReturnZone(doc, opt.Labels.FlagReturnZone, carries)
 }
 
@@ -244,12 +245,12 @@ func attachFlagReturnZone(doc *ReplayDocument, z FlagReturnZone, carries []FlagC
 // attachFlagLayer pose le calque et sa couverture sur le document, et journalise. Un seul endroit
 // le fait : les deux sorties d'`attachFlagCarries` (film d'un autre mode, film de CTF) doivent
 // publier la MEME chose — un calque vide et une couverture qui dit POURQUOI.
-func attachFlagLayer(doc *ReplayDocument, carries []FlagCarry, cov *FlagCarriesCoverage) {
+func attachFlagLayer(ctx context.Context, doc *ReplayDocument, carries []FlagCarry, cov *FlagCarriesCoverage) {
 	doc.FlagCarries = carries
 	if doc.Coverage != nil {
 		doc.Coverage.FlagCarries = cov
 	}
-	logFlagCarriesCoverage(cov)
+	logFlagCarriesCoverage(ctx, cov)
 }
 
 // deathInstantsOf traduit le fil des morts du rejeu dans la forme qu'attend le pont d'identite.
@@ -271,11 +272,11 @@ func deathInstantsOf(deaths []types.Death) []types.DeathInstant {
 // la question qu'il faut pouvoir poser a un artefact du parc pour savoir si une completion
 // d'identite le repare. Les slots sont ceux du STATBORG (10..24 pairs pour les joueurs), pas ceux
 // des bipedes.
-func logFlagOpeningsWithoutBridge(slots []int, openings int) {
+func logFlagOpeningsWithoutBridge(ctx context.Context, slots []int, openings int) {
 	if len(slots) == 0 {
 		return
 	}
-	slog.Info("rejeu : prises de drapeau sans pont d'identite",
+	slog.InfoContext(ctx, "rejeu : prises de drapeau sans pont d'identite",
 		"slots", slots, "sansPont", len(slots), "prises", openings)
 }
 
@@ -284,21 +285,21 @@ func logFlagOpeningsWithoutBridge(slots []int, openings int) {
 // DEUX PHRASES, PARCE QUE DEUX SITUATIONS APPELLENT DEUX REPONSES : une prise sans pont ou sans
 // piste est un trou de rattachement, un depassement de simultaneite ENTRE PORTAGES FERMES est
 // une contradiction entre faits dates. Le second est le seul qui accuse la regle elle-meme.
-func logFlagCarriesCoverage(cov *FlagCarriesCoverage) {
+func logFlagCarriesCoverage(ctx context.Context, cov *FlagCarriesCoverage) {
 	if cov == nil {
 		return
 	}
 	if !cov.FlagFilm {
-		slog.Debug("rejeu : film non reconnu CTF — aucun drapeau publie",
+		slog.DebugContext(ctx, "rejeu : film non reconnu CTF — aucun drapeau publie",
 			"bursts", cov.Bursts, "captures", cov.Captures, "vols", cov.Steals)
 		return
 	}
 	if cov.ClosedOverlaps > 0 {
-		slog.Warn("rejeu : plus de deux drapeaux portes a la fois ENTRE PORTAGES FERMES — "+
+		slog.WarnContext(ctx, "rejeu : plus de deux drapeaux portes a la fois ENTRE PORTAGES FERMES — "+
 			"la lecture se contredit", "depassements", cov.ClosedOverlaps,
 			"depassementsTous", cov.Overlaps, "portages", cov.Carries)
 	}
-	slog.Info("rejeu : vie des drapeaux",
+	slog.InfoContext(ctx, "rejeu : vie des drapeaux",
 		"prises", cov.Openings, "portages", cov.Carries, "fermes", cov.Closed,
 		"ouverts", cov.Open, "viesLibres", cov.ObjectLives,
 		"fermesParLObjet", cov.ClosedByObject, "lachersRepositionnes", cov.DropsRepositioned,
@@ -314,11 +315,11 @@ func logFlagCarriesCoverage(cov *FlagCarriesCoverage) {
 	// pas (canal non lu, lu sans slot de jauge, slots sans correlation, correlation sans emission
 	// sur l intervalle). `apparies` a zero avec des `slots` non nuls est le cas qu il faut VOIR
 	// arriver : le canal parle, et aucune de ses series ne suit les lachers publies.
-	slog.Info("rejeu : jauge de retour du drapeau",
+	slog.InfoContext(ctx, "rejeu : jauge de retour du drapeau",
 		"balaye", cov.GaugeScanned, "slots", cov.GaugeSlots, "lectures", cov.GaugeReads,
 		"apparies", cov.GaugePaired, "lachersAvecJauge", cov.GaugeSpans, "points", cov.GaugePoints)
 	if cov.GaugeScanned && cov.GaugeSlots > 0 && cov.GaugePaired == 0 {
-		slog.Warn("rejeu : jauge de retour LUE mais AUCUNE ne correle a un drapeau — "+
+		slog.WarnContext(ctx, "rejeu : jauge de retour LUE mais AUCUNE ne correle a un drapeau — "+
 			"les lachers publies et les series du film ne se recouvrent pas",
 			"slots", cov.GaugeSlots, "lectures", cov.GaugeReads, "portages", cov.Carries)
 	}

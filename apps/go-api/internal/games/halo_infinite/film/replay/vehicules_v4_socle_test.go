@@ -16,6 +16,7 @@ package replay
 //	  go test ./internal/games/halo_infinite/film/replay/ -run TestV4 -v -timeout 120m
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -136,7 +137,7 @@ func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 	ctx.fire = fire
 	ctx.own = v4Pont(t, ctx.dir, bip, fire)
 	ctx.clock = v4Horloge(bip)
-	ctx.lives, _ = vehicleLives(ctx.scan.Keyframes, ctx.scan.Deaths)
+	ctx.lives, _ = vehicleLives(context.Background(), ctx.scan.Keyframes, ctx.scan.Deaths)
 	ctx.vehBySlot = vehiclePositionsBySlot(ctx.scan.Positions)
 	ctx.spawns = vehicleSpawnsByLife(ctx.scan.Creations, ctx.lives)
 	ctx.lifeBySlot = map[uint32][]vehicleLife{}

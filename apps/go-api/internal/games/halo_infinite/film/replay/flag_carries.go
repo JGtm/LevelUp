@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"sort"
 	"strconv"
 
@@ -180,6 +181,9 @@ type flagCarryCtx struct {
 	slotAmbiguous map[uint32]bool
 	// fb compte les REPLIS de cette cuisson (D14). Nil ne compte rien.
 	fb *fallback.Compteur
+	// journal est le contexte de l APPELANT de la cuisson (lot J12.3), que portent les journaux du
+	// calque. Nil dans les tests qui n en journalisent rien.
+	journal context.Context
 }
 
 // flagOpening est une prise, avant tout bornage.
@@ -263,7 +267,7 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 		}
 		named = append(named, o)
 	}
-	logFlagOpeningsWithoutBridge(sansPont, len(openings))
+	logFlagOpeningsWithoutBridge(ctx.journal, sansPont, len(openings))
 	raws := boundFlagCarries(named, scan, ctx)
 	// LES QUATRE CHAINES DE FERMETURE S'APPLIQUENT EN SUITE, ET LA PLUS PRECOCE GAGNE — chacune
 	// EFFACANT l'etat de fin de celle qu'elle remplace (cf. [flagCloseAt], flag_carries_close.go).
@@ -384,7 +388,7 @@ func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCa
 	// parce que le slot est partage (cf. flag_carrier_tracks.go, garde du constat C1).
 	idx, ambigus := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous, ctx.fb)
 	cov.AmbiguousSlot = len(ambigus)
-	logFlagAmbiguousSlots(ambigus)
+	logFlagAmbiguousSlots(ctx.journal, ambigus)
 	out := raws[:0:0]
 	for _, r := range raws {
 		f0 := ctx.frameOfMatchMS(r.t0)

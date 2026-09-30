@@ -59,6 +59,7 @@ package replay
 // fait qu'il en manque une.
 
 import (
+	"context"
 	"log/slog"
 	"strconv"
 
@@ -216,9 +217,9 @@ func trackSpanUS(t Track, origin, step uint64) (int64, int64) {
 // est un DÉFAUT, pas une donnée. Le message porte de quoi ouvrir l'enquête (le match, le nombre,
 // puis le slot et les bornes de la première) sans noyer le journal — un film à fort défaut de
 // nommage en produirait des dizaines.
-func logUnnamedLives(matchID string, tracks []Track, rep unnamedLivesReport) {
+func logUnnamedLives(ctx context.Context, matchID string, tracks []Track, rep unnamedLivesReport) {
 	if rep.total() > 0 {
-		slog.Info("rejeu : nommage final des vies restantes",
+		slog.InfoContext(ctx, "rejeu : nommage final des vies restantes",
 			"match_id", matchID, "traitees", rep.total(), "parViePrecedente", rep.byPrevious,
 			"parVieSuivante", rep.byNext, "parPont", rep.byBridge, "residu", rep.remaining,
 			"frontieresIndecidables", rep.contested)
@@ -233,7 +234,7 @@ func logUnnamedLives(matchID string, tracks []Track, rep unnamedLivesReport) {
 			break
 		}
 	}
-	slog.Error("rejeu : des vies PUBLIEES restent sans identite — defaut de nommage du pont",
+	slog.ErrorContext(ctx, "rejeu : des vies PUBLIEES restent sans identite — defaut de nommage du pont",
 		"match_id", matchID, "vies", rep.remaining, "premierSlot", slot,
 		"premiereFrameDebut", from, "premiereFrameFin", to)
 }

@@ -40,6 +40,7 @@ package replay
 // `champsNonTransportes`.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -84,8 +85,8 @@ func decodeFilmInputsForEntry(film, dir string, entry profile.MapQuantEntry) (*F
 	// ce que la production fait.
 	opt := Options{MapQuant: &entry, RosterXUIDs: roster}
 	fc := grammar.NewFilmContextForMap(charge, opt.MapQuant, decoupageForce(opt))
-	installWorldObjectPrecision(fc, film, opt.Fallbacks)
-	scan, err := scanFilmInputs(film, charge, fc, opt)
+	installWorldObjectPrecision(context.Background(), fc, film, opt.Fallbacks)
+	scan, err := scanFilmInputs(context.Background(), film, charge, fc, opt)
 	if err != nil {
 		return nil, err
 	}

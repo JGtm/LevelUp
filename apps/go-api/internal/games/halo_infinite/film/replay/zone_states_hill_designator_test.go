@@ -10,6 +10,7 @@ package replay
 // 296 -> 599) et non celles du designateur (50 -> 199, 200 -> 399, 400 -> 599) — le test echoue.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -57,7 +58,7 @@ func hillDesignatorCase(chained bool) (ZoneInput, zoneCtx) {
 // designateur, la colline vide est publiee, la methode le dit.
 func TestZoneStatesCollineDesignateurFermeLesPeriodesALaBascule(t *testing.T) {
 	in, c := hillDesignatorCase(true)
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov.Method != ZoneMethodDesignator {
 		t.Fatalf("methode %q, attendu %q", cov.Method, ZoneMethodDesignator)
 	}
@@ -124,7 +125,7 @@ func fusionneSpansContigus(spans []ZoneSpan) [][2]int {
 // main (bornes des rampes, methode « positions »).
 func TestZoneStatesCollineDesignateurNonChaineRetombeSurLesRampes(t *testing.T) {
 	in, c := hillDesignatorCase(false)
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov.Method != ZoneMethodPositions {
 		t.Fatalf("methode %q, attendu %q (repli)", cov.Method, ZoneMethodPositions)
 	}
@@ -156,7 +157,7 @@ func TestZoneStatesCollineDesignateurExigeUnProprietaireVoisin(t *testing.T) {
 	for f := 96; f <= 100; f++ {
 		pts = append(pts, pointAt(f, 20.5, 0, 0))
 	}
-	_, cov := buildZoneStates(in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
+	_, cov := buildZoneStates(context.Background(), in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
 	if cov.Method != ZoneMethodPositions {
 		t.Fatalf("methode %q, attendu %q : le trio n'est pas un designateur", cov.Method,
 			ZoneMethodPositions)

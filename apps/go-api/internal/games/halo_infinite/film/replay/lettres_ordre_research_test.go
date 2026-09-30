@@ -69,6 +69,7 @@ package replay
 //	go test -count=1 -run TestLettresOrdreStabilite -v ./internal/games/halo_infinite/film/replay/
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -260,7 +261,7 @@ func lettresDoc(t *testing.T, dir string, film lettresFilm,
 		}
 	}
 	opt := lettresOptions(t, dir, film)
-	doc := BuildFromPositions(film.short, title.DefaultSlug, pos, nil, opt)
+	doc := BuildFromPositions(context.Background(), film.short, title.DefaultSlug, pos, nil, opt)
 	return doc, origin
 }
 

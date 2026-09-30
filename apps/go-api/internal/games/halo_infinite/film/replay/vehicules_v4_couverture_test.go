@@ -27,6 +27,7 @@ package replay
 // de vehicules sur la carte.
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -212,7 +213,7 @@ func v4Confirme(g vehicleGap, boards, exits []types.VehicleEvent) bool {
 // que l ecart mesure ci-dessus se lise a cote du chiffre publie.
 func v4MesureProduction(t *testing.T, ctx v4Ctx) {
 	t.Helper()
-	tracks, cov, _ := buildVehicleTracks(ctx.scan, ctx.bip, ctx.own, ctx.clock)
+	tracks, cov, _ := buildVehicleTracks(context.Background(), ctx.scan, ctx.bip, ctx.own, ctx.clock)
 	t.Logf("V4-COUV %s PRODUCTION — vies=%d publiees=%d episodes=%d nommes=%d avecSiege=%d"+
 		" ambigus=%d (evenement=%d mixte=%d trou=%d)",
 		ctx.film.ID, cov.Lives, len(tracks), cov.Rides, cov.RidesNamed, cov.RidesWithSeat,

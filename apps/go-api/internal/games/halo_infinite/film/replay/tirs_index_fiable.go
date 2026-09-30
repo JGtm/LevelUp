@@ -21,6 +21,7 @@ package replay
 // PUR : aucune I/O.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -65,11 +66,11 @@ func (m accordIndexUnite) estLaPlace() bool {
 }
 
 // journaliser dit la mesure quand elle ecarte l index.
-func (m accordIndexUnite) journaliser(matchID string) {
+func (m accordIndexUnite) journaliser(ctx context.Context, matchID string) {
 	if m.estLaPlace() {
 		return
 	}
-	slog.Warn("rejeu : l index de tireur n est pas la place sur ce film — seule la reference 0 pose les tirs",
+	slog.WarnContext(ctx, "rejeu : l index de tireur n est pas la place sur ce film — seule la reference 0 pose les tirs",
 		"match_id", matchID, "accord", m.accord, "tirs", m.total, "seuil", seuilAccordIndexUnite)
 }
 

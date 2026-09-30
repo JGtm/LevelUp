@@ -54,6 +54,7 @@ package replay
 // les items 2.1 a 2.4 — un seul film par processus.
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -228,7 +229,7 @@ func gwPickupOwners(t *testing.T, dir string, f *gwPickupFilm) map[uint32]uint64
 		t.Logf("2.5 PONT — events de tir illisibles (%v) : fermeture A privee de sa source", err)
 		fire = nil
 	}
-	own := BuildIdentityRegistry(IdentityInput{Positions: f.positions, Deaths: deaths,
+	own := BuildIdentityRegistry(context.Background(), IdentityInput{Positions: f.positions, Deaths: deaths,
 		PlayerIndices: table, Fire: fireRefs(fire)})
 	t.Logf("2.5 PONT (constructeur) — morts %d · slots ponts %d · vies nommees %d/%d ·"+
 		" par lecture %d · fermetures tir %d / reapparition %d (contestees %d, refusees %d) ·"+

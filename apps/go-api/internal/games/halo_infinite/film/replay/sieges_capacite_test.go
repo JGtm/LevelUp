@@ -16,6 +16,7 @@ package replay
 //	                 nombre d'entites que le film montre ensemble dans l'equipe, et pas au-dela.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -32,7 +33,7 @@ func TestPlaceOuverteQuandLaTableEstIncomplete(t *testing.T) {
 	}
 	occ := occupantsFabriques([]int{0, 0, 1, 1, 0}, iv(0, 99), iv(0, 99), iv(0, 99), iv(30, 99), iv(40, 99))
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2),
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2),
 		horloge: horlogeDeSieges(fb)})
 
 	if roster[3].Seat != 9 || roster[3].SeatSource != SeatSourceOuverte {
@@ -57,7 +58,7 @@ func TestPlaceOuverteNeReprendPasUnNumeroDePlace(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(1, "200"), entree(9, "900"), entree(9, "910")}
 	occ := occupantsFabriques([]int{0, 1, 0, 1}, iv(0, 99), iv(0, 99), iv(10, 99), iv(20, 99))
 	occ.simultanees = map[int]int{0: 2, 1: 2}
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1),
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1),
 		horloge: horlogeDeSieges(nil)})
 
 	if roster[2].Seat != 9 || roster[3].Seat != premierePlaceHorsIndex {
@@ -80,7 +81,7 @@ func TestCapaciteDeLaPlusGrandeEquipeDeLaTable(t *testing.T) {
 	}
 	occ := occupantsFabriques([]int{0, 0, 0, 0, 1, 1, 1, 1}, iv(0, 99), iv(0, 99), iv(0, 99),
 		iv(0, 99), iv(0, 99), iv(0, 99), iv(20, 99), iv(30, 99))
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 3, 4, 5),
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 3, 4, 5),
 		horloge: horlogeDeSieges(nil)})
 
 	if roster[6].SeatSource != SeatSourceOuverte || roster[7].SeatSource != SeatSourceOuverte {
@@ -99,7 +100,7 @@ func TestCapaciteLueDansLesEntites(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(1, "200"), entree(9, "900"), entree(10, "910")}
 	occ := occupantsFabriques([]int{0, 1, 0, 1}, iv(0, 99), iv(0, 99), iv(20, 99), iv(30, 99))
 	occ.simultanees = map[int]int{0: 2, 1: 1}
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1),
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1),
 		horloge: horlogeDeSieges(nil)})
 
 	if roster[2].SeatSource != SeatSourceOuverte {

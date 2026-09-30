@@ -9,6 +9,7 @@ package main
 // tombe dans EXACTEMENT une categorie, c'est ce qui rend le total verifiable ».
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,7 +37,7 @@ func TestScannerArtefacts_IgnoreLesMarquesDeDerivation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	verdicts, err := scannerArtefacts(dir)
+	verdicts, err := scannerArtefacts(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("scannerArtefacts: %v", err)
 	}

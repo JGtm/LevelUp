@@ -11,7 +11,10 @@ package replay
 // persiste comme un zero MESURE. Ou pire, comme ici, un armement tombait par hasard dans la
 // fenetre d un autre lacher.
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 // bombClockDoc monte un document arme : un armement date a 17 000 ms sur l horloge du FILM, et
 // une periode de portage de « 7 » fermee PAR LACHER a 12 000 ms sur celle du MATCH. Avec une
@@ -35,7 +38,7 @@ func bombClockDoc(originUS uint64) (ReplayDocument, Options, IdentityRegistry, H
 // MUTATION : retirer la garde `ClockRead` de `bombArmsByXUID` rougit ce test.
 func TestBombArmsAbsentSansHorlogeDuFilm(t *testing.T) {
 	doc, opt, own, carry := bombClockDoc(0)
-	attachBombStats(&doc, opt, own, carry)
+	attachBombStats(context.Background(), &doc, opt, own, carry)
 	if doc.BombStats == nil {
 		t.Fatal("aucune statistique posee sur le document")
 	}
@@ -55,7 +58,7 @@ func TestBombArmsAbsentSansHorlogeDuFilm(t *testing.T) {
 func TestBombArmsZeroMesureSansArmement(t *testing.T) {
 	doc, opt, own, carry := bombClockDoc(0)
 	doc.BombArmings = nil
-	attachBombStats(&doc, opt, own, carry)
+	attachBombStats(context.Background(), &doc, opt, own, carry)
 	if doc.BombStats == nil {
 		t.Fatal("aucune statistique posee sur le document")
 	}
@@ -69,7 +72,7 @@ func TestBombArmsZeroMesureSansArmement(t *testing.T) {
 // par son lacher, et `bomb_arms` est mesure.
 func TestBombArmsMesureAvecHorlogeDuFilm(t *testing.T) {
 	doc, opt, own, carry := bombClockDoc(1_000_000)
-	attachBombStats(&doc, opt, own, carry)
+	attachBombStats(context.Background(), &doc, opt, own, carry)
 	if doc.BombStats == nil {
 		t.Fatal("aucune statistique posee sur le document")
 	}

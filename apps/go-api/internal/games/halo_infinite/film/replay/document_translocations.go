@@ -27,6 +27,7 @@ package replay
 // celles qui l'ont. Jamais une position devinée (règle filmdec/map_bounds.go).
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 )
@@ -122,8 +123,8 @@ func coordPtr(v float32) *float32 {
 
 // logTranslocationCoverage sort la couverture du calque — un journal qui ne dirait que les
 // publiées laisserait croire qu'elles sont toutes là, et qu'elles portent toutes leur saut.
-func logTranslocationCoverage(cov TranslocationCoverage) {
-	slog.Info("rejeu : teleportations du translocateur",
+func logTranslocationCoverage(ctx context.Context, cov TranslocationCoverage) {
+	slog.InfoContext(ctx, "rejeu : teleportations du translocateur",
 		"evenements", cov.Events, "publiees", cov.Published, "positionnees", cov.Positioned,
 		"sansPosition", cov.Published-cov.Positioned,
 		"avantOrigine", cov.BeforeOrigin, "sansPiste", cov.Unpublished)

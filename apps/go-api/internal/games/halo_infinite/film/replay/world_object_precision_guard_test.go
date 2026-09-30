@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"os"
 	"regexp"
 	"strings"
@@ -45,7 +46,7 @@ func TestInstallWorldObjectPrecision(t *testing.T) {
 		t.Fatal("le cas de test doit différer de l'invariant du profil, sinon il ne mesure rien")
 	}
 	fc := grammar.NewFilmContextForMap(nil, &entry, nil)
-	installWorldObjectPrecision(fc, "testdata", fallback.NouveauCompteur())
+	installWorldObjectPrecision(context.Background(), fc, "testdata", fallback.NouveauCompteur())
 	if got := fc.LargeursObjetDuMonde().AxisW; got != entry.AxisWidths {
 		t.Fatalf("largeurs NON POSÉES sur le contexte : %v, attendu %v (celles de la carte du match)",
 			got, entry.AxisWidths)
@@ -64,7 +65,7 @@ func TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths(t *testing.T) {
 
 	sansLargeurs := profile.MapQuantEntry{Module: "sans_largeurs"}
 	fc := grammar.NewFilmContextForMap(nil, &sansLargeurs, nil)
-	installWorldObjectPrecision(fc, "testdata", fallback.NouveauCompteur())
+	installWorldObjectPrecision(context.Background(), fc, "testdata", fallback.NouveauCompteur())
 	if got := fc.LargeursObjetDuMonde(); got != prev {
 		t.Fatalf("largeurs à zéro posées (%v) : le décodeur lirait des champs de 0 bit", got.AxisW)
 	}
@@ -78,7 +79,7 @@ func TestBuildFromFilmRefusesWithoutMapQuant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("mini-bobine illisible : %v", err)
 	}
-	if _, err := BuildFromFilm("minifilm", "halo_infinite", film, Options{}); err == nil {
+	if _, err := BuildFromFilm(context.Background(), "minifilm", "halo_infinite", film, Options{}); err == nil {
 		t.Fatal("BuildFromFilm a produit un document sans entrée de catalogue : les positions " +
 			"ne seraient que des quanta déquantifiés au hasard")
 	}
@@ -120,7 +121,7 @@ func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 	// largeurs viennent de la CARTE DU MATCH et pas de l'invariant du profil —, seulement de
 	// chemin : l'installateur recoit desormais le CONTEXTE, sur lequel il pose.
 	pose := regexp.MustCompile(`
-\s*poserProfilPuisCarte\(fc, `)
+\s*poserProfilPuisCarte\(ctx, fc, `)
 	if !pose.MatchString(body) {
 		t.Fatal("BuildFromFilmAvecFaits n'appelle plus poserProfilPuisCarte(fc, …) : les largeurs d'axe " +
 			"ne sont plus posées sur le contexte du film, et les objets du monde de TOUTES les " +
@@ -136,7 +137,7 @@ func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
 			"garde plus rien")
 	}
 	if !regexp.MustCompile(`
-\s*installWorldObjectPrecision\(fc, `).MatchString(corpsPose) {
+\s*installWorldObjectPrecision\(ctx, fc, `).MatchString(corpsPose) {
 		t.Fatal("poserProfilPuisCarte ne pose plus les largeurs d'axe sur le contexte du film " +
 			"(mêmes conséquences mesurées que ci-dessus)")
 	}
@@ -227,7 +228,7 @@ func TestProfilEgaleGlobalesWorldObject(t *testing.T) {
 	for _, e := range cartes {
 		entry := e
 		fc := grammar.NewFilmContextForMap(nil, &entry, nil)
-		installWorldObjectPrecision(fc, "testdata", fallback.NouveauCompteur())
+		installWorldObjectPrecision(context.Background(), fc, "testdata", fallback.NouveauCompteur())
 		attendu, got := fc.Profile().Map().Layout(), fc.LargeursObjetDuMonde()
 		if got.AxisW != attendu.AxisW || got.Region != attendu.Region {
 			t.Errorf("%s : le profil du film dit {axes %v région %d}, le profil de balayage du "+

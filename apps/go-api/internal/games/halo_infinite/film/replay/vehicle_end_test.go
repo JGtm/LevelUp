@@ -8,6 +8,7 @@ package replay
 // test qui resterait vert sous cette mutation ne prouverait rien de la lecture.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -42,7 +43,7 @@ func TestAssignVehicleDeathsAttribueParLaFenetre(t *testing.T) {
 		{TimestampUS: 150_000_000, Slot: 777, Gen: 1, TailDesync: true},
 		{TimestampUS: 33_000_000, Slot: 999, Gen: 0},
 	}
-	tally := assignVehicleDeaths(lives, deaths)
+	tally := assignVehicleDeaths(context.Background(), lives, deaths)
 	if lives[0].deathUS != 55_000_000 {
 		t.Errorf("premiere vie : deathUS=%d, attendu 55000000 (la mort la plus precoce de la"+
 			" fenetre)", lives[0].deathUS)
@@ -59,7 +60,7 @@ func TestAssignVehicleDeathsAttribueParLaFenetre(t *testing.T) {
 // TestAssignVehicleDeathsSansVie : une mort que personne ne reprend est COMPTEE, jamais jetee —
 // c est le signal qu une vie manque au recensement.
 func TestAssignVehicleDeathsSansVie(t *testing.T) {
-	tally := assignVehicleDeaths(nil, []types.ObjectDeath{{TimestampUS: 1, Slot: 5}})
+	tally := assignVehicleDeaths(context.Background(), nil, []types.ObjectDeath{{TimestampUS: 1, Slot: 5}})
 	if tally.read != 1 || tally.unmatched != 1 || tally.matched != 0 {
 		t.Errorf("bilan = %+v, attendu read=1 unmatched=1 matched=0", tally)
 	}
@@ -182,7 +183,7 @@ func TestVehicleLivesPoseLaMortEcrite(t *testing.T) {
 		},
 	}
 	deaths := []types.ObjectDeath{{TimestampUS: 45_000_000, Slot: 777, Gen: 1}}
-	lives, tally := vehicleLives(kf, deaths)
+	lives, tally := vehicleLives(context.Background(), kf, deaths)
 	if tally.matched != 1 {
 		t.Fatalf("bilan = %+v : la lecture n est pas cablee dans `vehicleLives`", tally)
 	}
@@ -217,7 +218,7 @@ func TestFinDeVieIgnorerLeDeadStateRendUneFinFausse(t *testing.T) {
 	deaths := []types.ObjectDeath{{TimestampUS: mortUS, Slot: 777, Gen: 1}}
 
 	lu := []vehicleLife{vie}
-	assignVehicleDeaths(lu, deaths)
+	assignVehicleDeaths(context.Background(), lu, deaths)
 	cause, tEnd := vehicleEndOf(lu[0], clock)
 	if cause != VehicleEndDestroyed || tEnd == nil || *tEnd != 2821 {
 		t.Fatalf("lecture : cause=%q tEnd=%v, attendu %q / 2821", cause, tEnd, VehicleEndDestroyed)
@@ -225,7 +226,7 @@ func TestFinDeVieIgnorerLeDeadStateRendUneFinFausse(t *testing.T) {
 
 	// MUTATION : le dead-state ecrit est ignore (aucune mort attribuee).
 	mute := []vehicleLife{vie}
-	assignVehicleDeaths(mute, nil)
+	assignVehicleDeaths(context.Background(), mute, nil)
 	causeMutee, tEndMute := vehicleEndOf(mute[0], clock)
 	if causeMutee == VehicleEndDestroyed || tEndMute != nil {
 		t.Fatalf("MUTATION SANS EFFET : la fin reste %q / %v alors que le dead-state est ignore"+

@@ -80,9 +80,9 @@ const originControlMinMatches = 5
 // filmClockUS celui du premier paquet du film. Le temoin (deathOffsetMS, matched) vient de
 // `bestDeathOffset` : `horlogeFilm = horlogeFil + deathOffsetMS`, d'ou une seconde
 // expression de la meme origine, `firstPosUS/1000 − deathOffsetMS`.
-func resolveOriginMs(firstPosUS, filmClockUS uint64, deathOffsetMS int64, matched int) *int64 {
+func resolveOriginMs(ctx context.Context, firstPosUS, filmClockUS uint64, deathOffsetMS int64, matched int) *int64 {
 	if filmClockUS == 0 || firstPosUS < filmClockUS {
-		slog.Warn("rejeu : origine d'horloge non etablie — le client retombera sur l'appariement",
+		slog.WarnContext(ctx, "rejeu : origine d'horloge non etablie — le client retombera sur l'appariement",
 			"premierPaquetPositionUS", firstPosUS, "premierPaquetFilmUS", filmClockUS)
 		return nil
 	}
@@ -90,7 +90,7 @@ func resolveOriginMs(firstPosUS, filmClockUS uint64, deathOffsetMS int64, matche
 	if matched >= originControlMinMatches {
 		control := int64(firstPosUS)/1000 - deathOffsetMS
 		if ecart := control - read; ecart > originControlToleranceMS || ecart < -originControlToleranceMS {
-			slog.Warn("rejeu : origine LUE contredite par le fil des morts — aucune origine publiee",
+			slog.WarnContext(ctx, "rejeu : origine LUE contredite par le fil des morts — aucune origine publiee",
 				"origineLueMs", read, "origineTemoinMs", control, "ecartMs", ecart, "mortsAppariees", matched)
 			return nil
 		}
@@ -109,11 +109,9 @@ func resolveOriginMs(firstPosUS, filmClockUS uint64, deathOffsetMS int64, matche
 //
 // L'artefact le DIT desormais, et pas seulement le journal : `coverage.originResolved` vaut
 // faux, et le rendu masque ces calques plutot que de les poser au mauvais instant.
-func originMSOf(origin *int64, matchID string) int {
+func originMSOf(ctx context.Context, origin *int64, matchID string) int {
 	if origin == nil {
-		// Contexte vide, et c'est exact : cet assembleur est HORS LIGNE, il n'y a aucun
-		// contexte de requete a propager ici.
-		slog.WarnContext(context.Background(),
+		slog.WarnContext(ctx,
 			"rejeu : aucune origine etablie — calques dates sur l'horloge du film NON recales",
 			"match_id", matchID)
 		return 0

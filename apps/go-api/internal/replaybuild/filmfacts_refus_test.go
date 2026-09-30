@@ -46,7 +46,7 @@ func TestCuisson_AucunFaitEcritQuandLArtefactEstRefuse(t *testing.T) {
 	}
 
 	riche := artefactAuSchema(replay.SchemaVersion, match, true)
-	if _, err := StoreArtifact(b.repoRoot, b.titleSlug, match, riche); err != nil {
+	if _, err := StoreArtifact(context.Background(), b.repoRoot, b.titleSlug, match, riche); err != nil {
 		t.Fatalf("depot de l artefact riche : %v", err)
 	}
 	b.rangerLesFaits(ctx, match, pauvre, faitsMinimaux())

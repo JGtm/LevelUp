@@ -27,6 +27,7 @@ package replay
 // PUR : aucune I/O.
 
 import (
+	"context"
 	"log/slog"
 	"math"
 	"sort"
@@ -48,7 +49,7 @@ type fireBurstBoard struct {
 }
 
 // buildFireBursts publie les rafales et rend leur couverture. Nil sans aucune lecture.
-func buildFireBursts(doc *ReplayDocument, in []types.ContinuousFireBurst, st types.ContinuousFireStats,
+func buildFireBursts(ctx context.Context, doc *ReplayDocument, in []types.ContinuousFireBurst, st types.ContinuousFireStats,
 	occ occupantsDesSlots, clock replayClock) ([]FireBurst, *ContinuousFireCoverage) {
 	if !st.Scanned {
 		return nil, nil
@@ -75,7 +76,7 @@ func buildFireBursts(doc *ReplayDocument, in []types.ContinuousFireBurst, st typ
 		return out[i].Slot < out[j].Slot
 	})
 	if !cov.balanced() {
-		slog.Error("rejeu : couverture du tir continu desequilibree", "lues", cov.BurstsRead,
+		slog.ErrorContext(ctx, "rejeu : couverture du tir continu desequilibree", "lues", cov.BurstsRead,
 			"publiees", cov.Published)
 	}
 	return out, cov
@@ -398,11 +399,11 @@ func coverageFromStats(st types.ContinuousFireStats) *ContinuousFireCoverage {
 }
 
 // logFireBursts journalise la publication avec ses denominateurs.
-func logFireBursts(cov *ContinuousFireCoverage) {
+func logFireBursts(ctx context.Context, cov *ContinuousFireCoverage) {
 	if cov == nil {
 		return
 	}
-	slog.Info("rejeu : tir continu", "paquets", cov.Packets, "vueCFermee", cov.Closed,
+	slog.InfoContext(ctx, "rejeu : tir continu", "paquets", cov.Packets, "vueCFermee", cov.Closed,
 		"trous", cov.Holes, "lues", cov.BurstsRead, "publiees", cov.Published, "vehicule", cov.OnVehicle,
 		"aPied", cov.OnFoot, "autreBit", cov.OtherInput, "sansJoueur", cov.NoPlayer,
 		"ambigues", cov.Ambiguous, "montureSansArme", cov.VehicleNoWeapon, "sansPiste", cov.NoTrack,

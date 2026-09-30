@@ -71,7 +71,7 @@ func SetArtifactStoredSink(fn func(ArtifactStored)) {
 // FAILSAFE STRICT : un puits qui panique ne doit JAMAIS faire échouer une écriture
 // d'artefact — le rejeu est le produit, la notification n'en est que l'annonce. La panique
 // est récupérée et JOURNALISÉE (jamais avalée), l'écriture reste réussie.
-func publishArtifactStored(ev ArtifactStored) {
+func publishArtifactStored(ctx context.Context, ev ArtifactStored) {
 	storedSinkMu.RLock()
 	fn := storedSink
 	storedSinkMu.RUnlock()
@@ -80,7 +80,7 @@ func publishArtifactStored(ev ArtifactStored) {
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			slog.ErrorContext(context.Background(),
+			slog.ErrorContext(ctx,
 				"replaybuild: puits d'artefact en panique — écriture conservée, notification perdue",
 				"match_id", ev.MatchID, "title", ev.TitleSlug, "recover", fmt.Sprintf("%v", r))
 		}

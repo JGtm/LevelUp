@@ -28,6 +28,7 @@ package replay
 // sans etape observee fait echouer ce test — c'est le but.
 
 import (
+	"context"
 	"log/slog"
 	"slices"
 	"strings"
@@ -92,9 +93,9 @@ type stepClock struct{ last time.Time }
 // la seconde sortie du balayage precedent, emise dans la foulee. Les chronometrer mesurerait
 // zero, et surtout avancer l'horloge sur elles volerait au balayage SUIVANT le temps ecoule
 // entre les deux appels.
-func (o Options) observe(step string, v any) {
+func (o Options) observe(ctx context.Context, step string, v any) {
 	if o.clock != nil && !strings.HasSuffix(step, ".stats") {
-		slog.Debug("replay: balayage", "step", step, "duration", time.Since(o.clock.last))
+		slog.DebugContext(ctx, "replay: balayage", "step", step, "duration", time.Since(o.clock.last))
 		o.clock.last = time.Now()
 	}
 	if o.Observe != nil {

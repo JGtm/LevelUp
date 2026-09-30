@@ -31,6 +31,7 @@
 package replaybuild
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,7 +61,7 @@ type StoredArtifact struct {
 //
 // Tout refus rend une erreur qui enveloppe domain.ErrBuildArtifactInvalid et
 // n'écrit RIEN.
-func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArtifact, error) {
+func StoreArtifact(ctx context.Context, repoRoot, titleSlug, matchID string, blob []byte) (StoredArtifact, error) {
 	if err := validateArtifact(titleSlug, matchID, blob); err != nil {
 		return StoredArtifact{}, err
 	}
@@ -69,7 +70,7 @@ func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArti
 	// partage avec les trois autres écrivains (cf. writeArtifactBytes). L'accusé décrit ce
 	// que le disque porte APRÈS l'appel — donc l'artefact conservé quand l'écriture est
 	// refusée, et le nouveau sinon.
-	surDisque, err := writeArtifactBytes(outPath, titleSlug, matchID, blob)
+	surDisque, err := writeArtifactBytes(ctx, outPath, titleSlug, matchID, blob)
 	if err != nil {
 		return StoredArtifact{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
@@ -204,11 +205,11 @@ func validateArtifact(titleSlug, matchID string, blob []byte) error {
 //
 // titleSlug et matchID sont ceux de l'APPELANT (identité du job / du registre), pas ceux du
 // document : cf. ArtifactStored.
-func writeArtifactBytes(outPath, titleSlug, matchID string, blob []byte) (Digest, error) {
+func writeArtifactBytes(ctx context.Context, outPath, titleSlug, matchID string, blob []byte) (Digest, error) {
 	if enPlace, oui := wouldDowngrade(outPath, blob); oui {
 		// Jamais muet : un artefact non écrit doit s'expliquer, sinon l'admin verra une
 		// construction « réussie » sans comprendre pourquoi le fichier n'a pas changé.
-		slog.Warn("replaybuild: écriture d'artefact REFUSÉE — elle rétrograderait celui en place "+
+		slog.WarnContext(ctx, "replaybuild: écriture d'artefact REFUSÉE — elle rétrograderait celui en place "+
 			"(compteurs de joueur présents sur disque, absents dans le candidat, même schéma)",
 			"match_id", enPlace.MatchID, "path", outPath, "joueurs_en_place", enPlace.Players,
 			"schema", enPlace.SchemaVersion, "octets_refuses", len(blob))
@@ -222,7 +223,7 @@ func writeArtifactBytes(outPath, titleSlug, matchID string, blob []byte) (Digest
 		return Digest{}, err
 	}
 	ecrit, _ := digestFromBytes(blob)
-	publishArtifactStored(ArtifactStored{
+	publishArtifactStored(ctx, ArtifactStored{
 		TitleSlug: titleSlug, MatchID: matchID, Path: outPath,
 		Bytes: ecrit.Bytes, Tracks: ecrit.Tracks, SchemaVersion: ecrit.SchemaVersion,
 	})

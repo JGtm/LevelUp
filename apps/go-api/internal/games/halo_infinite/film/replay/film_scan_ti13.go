@@ -24,10 +24,10 @@ func (s *filmScan) balayerProprietesTi13() {
 	zones := zonesBalayables(s.opt.Zone)
 	jauge := drapeauBalayable(s.opt.Flag, s.opt.consultations())
 	partage := ti13Partage{fc: s.fc, matchID: s.matchID}
-	s.in.ZoneReads = decodeFilmZoneReads(&partage, zones)
+	s.in.ZoneReads = decodeFilmZoneReads(s.ctx, &partage, zones)
 	s.in.ZoneScanned = zones
-	s.opt.observe("zoneReads", s.in.ZoneReads)
-	s.in.FlagGauge = decodeFilmFlagReturnGauge(&partage, jauge)
+	s.opt.observe(s.ctx, "zoneReads", s.in.ZoneReads)
+	s.in.FlagGauge = decodeFilmFlagReturnGauge(s.ctx, &partage, jauge)
 	s.in.FlagGaugeScanned = jauge
-	s.opt.observe("flagGauge", s.in.FlagGauge)
+	s.opt.observe(s.ctx, "flagGauge", s.in.FlagGauge)
 }

@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
@@ -67,7 +68,7 @@ func TestTableauNommeLeCorpsDunBotQueLaTableIgnore(t *testing.T) {
 	in := entreeHorsTable()
 	in.Bots = []BotIdentity{{FilmIndex: 8, Name: "343 Donos [bot]", BotID: 3}}
 	in.Participants = []Participant{{ID: "111"}, {ID: "222"}, {ID: "bid(3.0)"}}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	var vues int
 	for _, l := range reg.Vies() {
 		if l.slot != 200 {
@@ -108,7 +109,7 @@ func TestTableauNommeLeCorpsDunBotQueLaTableIgnore(t *testing.T) {
 func TestTableauSeTaitSansLigneDeTableau(t *testing.T) {
 	in := entreeHorsTable()
 	in.Bots = []BotIdentity{{FilmIndex: 8, Name: "343 Donos [bot]", BotID: 3}}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	if reg.ViesNommeesParLeTableau() != 0 {
 		t.Fatalf("vies nommees sans tableau = %d, attendu 0 — un lien que l'API ne donne pas "+
 			"ne se devine pas", reg.ViesNommeesParLeTableau())
@@ -126,7 +127,7 @@ func TestTableauSeTaitSansLigneDeTableau(t *testing.T) {
 func TestTableauDepartageUnIndexPartageParUnBotEtUnArrivant(t *testing.T) {
 	in := filmSiegePartage()
 	in.Participants = []Participant{{ID: "111"}, {ID: "bid(7.0)"}, tableauDe("222", 10_000)}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	var avant, apres int
 	for _, l := range reg.Vies() {
 		if l.slot != 300 {
@@ -165,7 +166,7 @@ func TestTableauSeTaitSurUneVieQuiEnjambeLArrivee(t *testing.T) {
 	in := filmSiegePartage()
 	// Arrivee A 21 s : la seconde vie du slot 300 court de 20 s a 24 s, elle l'enjambe.
 	in.Participants = []Participant{{ID: "111"}, {ID: "bid(7.0)"}, tableauDe("222", 21_000)}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	for _, l := range reg.Vies() {
 		if l.slot != 300 || l.from < 10_000_000 {
 			continue
@@ -190,7 +191,7 @@ func TestUneDeductionNEcrasePasLeBotDuTableau(t *testing.T) {
 	in := filmSiegePartage()
 	in.Participants = []Participant{{ID: "111"}, {ID: "bid(7.0)"}, tableauDe("222", 21_000)}
 	in.RosterXUIDs = []uint64{111, 222}
-	for _, l := range BuildIdentityRegistry(in).Vies() {
+	for _, l := range BuildIdentityRegistry(context.Background(), in).Vies() {
 		if l.slot != 300 || l.from >= 10_000_000 {
 			continue
 		}
@@ -206,7 +207,7 @@ func TestUneDeductionNEcrasePasLeBotDuTableau(t *testing.T) {
 func TestCouvertureBipedeVentileEncoreChaqueNonResoluAvecTableau(t *testing.T) {
 	in := filmSiegePartage()
 	in.Participants = []Participant{{ID: "111"}, {ID: "bid(7.0)"}, tableauDe("222", 21_000)}
-	c := BuildIdentityRegistry(in).Section.Coverage.BipedSlot
+	c := BuildIdentityRegistry(context.Background(), in).Section.Coverage.BipedSlot
 	if c.UnresolvedByCause.Total() != c.Unresolved {
 		t.Fatalf("causes = %d, non_resolu = %d (%+v)", c.UnresolvedByCause.Total(), c.Unresolved, c)
 	}
@@ -218,7 +219,7 @@ func TestSectionPublieLeBidEtSaProvenance(t *testing.T) {
 	in := entreeHorsTable()
 	in.Bots = []BotIdentity{{FilmIndex: 8, Name: "343 Donos [bot]", BotID: 3}}
 	in.Participants = []Participant{{ID: "bid(3.0)"}}
-	sec := BuildIdentityRegistry(in).Section
+	sec := BuildIdentityRegistry(context.Background(), in).Section
 	var vu bool
 	for _, b := range sec.BipedSlots {
 		if b.Slot != 200 {

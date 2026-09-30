@@ -97,7 +97,7 @@ func lotProjetable(ctx context.Context, lus []artefactLu) []artefactLu {
 func referencesDuTitre(ctx context.Context, d Deps, titre string, n int) (
 	*ReferenceEmplacements, *mappings.RegulationSet, bool,
 ) {
-	ref, err := ChargerReferenceEmplacements(d.RepoRoot, d.TitleSlug)
+	ref, err := ChargerReferenceEmplacements(ctx, d.RepoRoot, d.TitleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: niveaux d'armes — reference des emplacements illisible, "+
 			"cette famille s'abstient (les autres gardent leur marque)",

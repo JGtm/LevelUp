@@ -22,20 +22,21 @@ package replay
 // HORS LIGNE — appelé par l'assemblage, comme les autres calques.
 
 import (
+	"context"
 	"log/slog"
 	"sort"
 )
 
 // attachObjectiveObjects pose les vies LIBRES des objets d'objectif publiables sur le document,
 // avec leur couverture et leur journal.
-func attachObjectiveObjects(doc *ReplayDocument, opt Options, clock replayClock) {
+func attachObjectiveObjects(ctx context.Context, doc *ReplayDocument, opt Options, clock replayClock) {
 	lives, cov := buildObjectiveObjects(
 		opt.Pads.Weapons, opt.Labels.ObjectiveObjects, opt.Labels.ObjectiveFamilies, clock)
 	doc.ObjectiveObjects = lives
 	if doc.Coverage != nil {
 		doc.Coverage.ObjectiveObjects = cov
 	}
-	logObjectiveObjectsCoverage(cov)
+	logObjectiveObjectsCoverage(ctx, cov)
 }
 
 // familleCrane — l'identifiant de famille du crane, tel que le MANIFESTE le publie. Constante
@@ -173,11 +174,11 @@ func objectiveObjectLifeOf(l flagFreeLife, family string, label Label,
 
 // logObjectiveObjectsCoverage journalise ce que le calque a publié et ce qu'il a écarté. Un
 // calque vide doit DIRE lequel de ses silences il sert.
-func logObjectiveObjectsCoverage(cov *ObjectiveObjectsCoverage) {
+func logObjectiveObjectsCoverage(ctx context.Context, cov *ObjectiveObjectsCoverage) {
 	if cov == nil {
 		return
 	}
-	slog.Info("rejeu : objets d objectif libres",
+	slog.InfoContext(ctx, "rejeu : objets d objectif libres",
 		"balaye", cov.Scanned, "declares", cov.Declared, "vies", cov.Lives,
 		"points", cov.Points, "immobiles", cov.Motionless, "horsAxe", cov.OutOfAxis)
 }

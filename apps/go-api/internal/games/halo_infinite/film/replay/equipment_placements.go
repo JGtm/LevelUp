@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -262,7 +263,7 @@ const equipmentFamilyOther = "other"
 // relit ensuite dans l'artefact (`coverage.placements.calibrated`).
 //
 // HORS LIGNE — appelée par BuildFromFilm.
-func decodeFilmPlacements(
+func decodeFilmPlacements(ctx context.Context,
 	fc *grammar.FilmContext, matchID string, worldRange *profile.Vec3Range,
 ) ([]types.EquipmentPlacement, grammar.EquipmentPlacementStats) {
 	pl, st, err := grammar.ScanEquipmentPlacements(fc, worldRange)
@@ -273,16 +274,16 @@ func decodeFilmPlacements(
 	}
 	switch {
 	case err != nil:
-		slog.Warn("poses d'equipement illisibles — rejeu sans equipement pose",
+		slog.WarnContext(ctx, "poses d'equipement illisibles — rejeu sans equipement pose",
 			"err", err, "match_id", matchID)
 		return nil, st
 	case !st.Calibration.Widths.Valid():
-		slog.Warn("poses d'equipement : le decoupage du bloc de replication n'a pas ete tranche"+
+		slog.WarnContext(ctx, "poses d'equipement : le decoupage du bloc de replication n'a pas ete tranche"+
 			" sur ce film — AUCUNE pose publiee plutot que du bruit",
 			"match_id", matchID, "ancres", st.Calibration.Anchors,
 			"vies", st.Calibration.Lives, "chunksLus", st.Calibration.Chunks)
 	default:
-		slog.Info("poses d'equipement : records de creation ti=37",
+		slog.InfoContext(ctx, "poses d'equipement : records de creation ti=37",
 			"decoupage", st.Calibration.Widths.String(), "accords", st.Calibration.Agree,
 			"ancres", st.Anchors, "acceptes", st.Accepted,
 			"confirmes", st.Confirmed, "poses", st.Placements)
@@ -300,16 +301,16 @@ func decodeFilmPlacements(
 // publie TOUS DEUX (`coverage.placements.spawnLists` et `.spawnEvents`).
 //
 // HORS LIGNE — appelee par le balayage, sous le meme verrou que le reste de la cuisson.
-func decodeFilmSpawnEvents(
+func decodeFilmSpawnEvents(ctx context.Context,
 	fc *grammar.FilmContext, matchID string,
 ) ([]types.EquipmentSpawnEvent, types.EquipmentSpawnStats) {
 	ev, st, err := grammar.ScanEquipmentSpawnEvents(fc)
 	if err != nil {
-		slog.Warn("evenements de piece engendree illisibles — l'origine des poses retombe sur ses replis",
+		slog.WarnContext(ctx, "evenements de piece engendree illisibles — l'origine des poses retombe sur ses replis",
 			"err", err, "match_id", matchID)
 		return nil, st
 	}
-	slog.Info("poses d'equipement : evenements 103 (piece engendree)",
+	slog.InfoContext(ctx, "poses d'equipement : evenements 103 (piece engendree)",
 		"match_id", matchID, "chunks", st.Chunks, "paquetsDelta", st.Packets,
 		"listesNonVides", st.Lists, "evenements", st.Events,
 		"refSource", st.WithSource, "refEngendree", st.WithSpawned, "ref2", st.Ref2)
@@ -318,11 +319,11 @@ func decodeFilmSpawnEvents(
 
 // logPlacementCoverage publie au journal ce que le calque a rendu — les mêmes dénominateurs
 // que l'artefact, pour qu'un build se juge sans ouvrir le JSON.
-func logPlacementCoverage(c *EquipmentPlacementCoverage) {
+func logPlacementCoverage(ctx context.Context, c *EquipmentPlacementCoverage) {
 	if c == nil {
 		return
 	}
-	slog.Info("rejeu : poses d'equipement",
+	slog.InfoContext(ctx, "rejeu : poses d'equipement",
 		"balaye", c.Scanned, "calibre", c.Calibrated, "decoupage", c.Widths, "poses", c.Placements,
 		"nommees", c.Named, "autres", c.Other,
 		"avecPoseur", c.WithOwner, "avecCap", c.WithHeading,

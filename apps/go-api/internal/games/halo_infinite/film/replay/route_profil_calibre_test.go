@@ -28,6 +28,7 @@ package replay
 // appelle, et lit le contexte apres. Les deux mutations ci-dessus le font rougir.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -62,7 +63,7 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 	calibre.Mouvement.WorldObject.AxisW = [3]uint{7, 7, 7}
 
 	fc := grammar.NewFilmContextForMap(film, &entry, nil)
-	poserProfilPuisCarte(fc, "route-du-profil", Options{ProfilDeBalayage: &calibre})
+	poserProfilPuisCarte(context.Background(), fc, "route-du-profil", Options{ProfilDeBalayage: &calibre})
 
 	got := fc.ProfilDeBalayage()
 
@@ -103,7 +104,7 @@ func TestRouteDuProfilCalibreJusquAuContexte(t *testing.T) {
 	// (3) SANS PROFIL DANS LES OPTIONS, le contexte garde le sien et la carte s'installe quand
 	// meme : un appelant qui n'a pas decode le kill-feed n'est pas puni.
 	fc2 := grammar.NewFilmContextForMap(film, &entry, nil)
-	poserProfilPuisCarte(fc2, "route-sans-profil", Options{})
+	poserProfilPuisCarte(context.Background(), fc2, "route-sans-profil", Options{})
 	wo2 := fc2.LargeursObjetDuMonde()
 	if wo2.AxisW != attendu.AxisW || wo2.Region != attendu.Region {
 		t.Errorf("sans profil dans les options : largeurs = axes %v / region %d, attendu axes %v "+

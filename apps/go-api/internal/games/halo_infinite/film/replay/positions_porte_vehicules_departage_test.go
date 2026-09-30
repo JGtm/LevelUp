@@ -10,6 +10,7 @@ package replay
 // (`coverage.vehicles.silencesNonTranches`).
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -26,7 +27,7 @@ func departageVie(t *testing.T, nee bool, pos []grammar.BipedPosition) (VehicleT
 	if nee {
 		scan.Creations = []types.EquipmentCreation{vehCreation(key, 1_500_000, 5, 5, vehChassisKnown)}
 	}
-	got, cov, _ := buildVehicleTracks(scan, nil, IdentityRegistry{}, vehClock())
+	got, cov, _ := buildVehicleTracks(context.Background(), scan, nil, IdentityRegistry{}, vehClock())
 	if len(got) != 1 {
 		t.Fatalf("vies publiees = %d, attendu 1", len(got))
 	}
@@ -141,7 +142,7 @@ func TestNaissancePosterieureALaFinDeLaVieIgnoree(t *testing.T) {
 		Creations: []types.EquipmentCreation{vehCreation(key, 60_000_000, 40, 40, vehChassisKnown)},
 		Positions: []grammar.BipedPosition{vehPos(770, 3_000_000, 5, 5), vehPos(770, 3_100_000, 5, 5)},
 	}
-	got, _, _ := buildVehicleTracks(scan, nil, IdentityRegistry{}, vehClock())
+	got, _, _ := buildVehicleTracks(context.Background(), scan, nil, IdentityRegistry{}, vehClock())
 	if len(got) != 1 {
 		t.Fatalf("vies publiees = %d, attendu 1", len(got))
 	}

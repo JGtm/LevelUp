@@ -10,6 +10,7 @@ package replay
 // les memes que l'instrument des armes — les deux calques se mesurent sur le meme assemblage.
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -38,7 +39,7 @@ func TestEquipmentChangesSurFilmReel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chunks du film illisibles : %v", err)
 	}
-	doc, err := BuildFromFilm("mesure-equipement", "halo_infinite", film, Options{MapQuant: &entry})
+	doc, err := BuildFromFilm(context.Background(), "mesure-equipement", "halo_infinite", film, Options{MapQuant: &entry})
 	if err != nil {
 		t.Fatalf("assemblage : %v", err)
 	}

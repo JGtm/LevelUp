@@ -9,6 +9,7 @@ package replaybuild
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"testing"
@@ -23,7 +24,7 @@ func TestObjectiveRoles_TableAbsenteEstJournaliseeEnDebug(t *testing.T) {
 	t.Cleanup(func() { slog.SetDefault(ancien) })
 
 	b := &Builder{repoRoot: t.TempDir(), titleSlug: title.DefaultSlug}
-	if set := b.objectiveRoles(); set != nil {
+	if set := b.objectiveRoles(context.Background()); set != nil {
 		t.Fatalf("table absente : %+v, attendu nil", set)
 	}
 	var niveaux []string

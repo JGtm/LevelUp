@@ -125,8 +125,8 @@ type CitationWeaponSource struct {
 //
 // Elle est resolue par le pont `killcollector`, qui porte deja l'import title-specific et
 // la garde de capability — le paquet `sync` racine n'a donc rien a savoir du titre.
-func (e *SyncEngine) citationWeaponSourceDuMoteur() []CitationWeaponSource {
-	c := killcollector.ClassifierPourTitre(e.repoRoot, e.titleSlug)
+func (e *SyncEngine) citationWeaponSourceDuMoteur(ctx context.Context) []CitationWeaponSource {
+	c := killcollector.ClassifierPourTitre(ctx, e.repoRoot, e.titleSlug)
 	if c == nil {
 		return nil
 	}

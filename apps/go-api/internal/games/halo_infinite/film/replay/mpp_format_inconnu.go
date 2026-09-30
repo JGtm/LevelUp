@@ -24,14 +24,11 @@ package replay
 // L AVERTISSEMENT, lui, est emis UNE SEULE FOIS PAR FILM, depuis `BuildFromFilm` — trois lignes
 // identiques par cuisson noieraient le signal qu elles portent.
 //
-// # POURQUOI `slog.Warn` ET NON `slog.WarnContext`
+// # LE CONTEXTE DE L APPELANT
 //
-// Il n y a AUCUN `context.Context` sur ce chemin : ni `BuildFromFilm(matchID, titleSlug, film,
-// opt)`, ni son appelant `replaybuild.BuildBytes(matchID, mapNames, filmDir, facts)`, ni
-// `Options` n en portent un. Les quarante et quelques appels `slog` du paquet sont tous des
-// `slog.Warn` / `slog.Info` pour cette raison. Passer `context.Background()` n ajouterait aucune
-// cle et romprait l uniformite du paquet ; plomber un ctx sur trois couches pour cette seule
-// ligne depasse le perimetre du lot. Consigne au §4 du PLAN_DECODEUR_FILM.
+// La ligne porte le `ctx` de l appelant de la cuisson depuis le lot J12.3 (2026-09-30) :
+// `replaybuild.BuildBytes(ctx, ...)` le passe a `BuildFromFilm(ctx, ...)`, qui le passe ici. Le
+// ratchet `archlint/film_slog_contexte_test.go` interdit le retour d un `slog` sans contexte.
 //
 // # LE COMPTAGE DU REGISTRE RESTE DIFFERE, ET CE N EST PAS LE MEME OBJET
 //
@@ -41,6 +38,7 @@ package replay
 // format » — il ne l attend pas.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -75,7 +73,7 @@ func formatSansProfil(film *source.Film) (int, bool) {
 
 // avertirFormatSansProfil emet L UNIQUE avertissement par film. Appele par [BuildFromFilm],
 // avant tout balayage, pour que la ligne precede les consequences qu elle explique.
-func avertirFormatSansProfil(film *source.Film, matchID string) {
+func avertirFormatSansProfil(ctx context.Context, film *source.Film, matchID string) {
 	format, sansProfil := formatSansProfil(film)
 	if !sansProfil {
 		return
@@ -86,7 +84,7 @@ func avertirFormatSansProfil(film *source.Film, matchID string) {
 			build = id.Build
 		}
 	}
-	slog.Warn("version de format de chunk_00 INCONNUE de la table de profil — largeurs du bloc "+
+	slog.WarnContext(ctx, "version de format de chunk_00 INCONNUE de la table de profil — largeurs du bloc "+
 		"de replication CALIBREES sur le film (repli repli_largeurs_mpp_calibrees_sur_le_film) ; "+
 		"un patch du jeu a pu changer le format",
 		"match_id", matchID, "format", format, "build", build)

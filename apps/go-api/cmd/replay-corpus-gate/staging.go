@@ -57,7 +57,7 @@ func avertirSiCatalogueModifie(ctx context.Context, sourceRoot, titleSlug string
 	relRef, err := filepath.Rel(sourceRoot,
 		filepath.Join(title.NewPathResolver(sourceRoot).TitleDataDir(titleSlug), "reference"))
 	if err != nil {
-		slog.Warn("replay-corpus-gate: verification des modifications locales des catalogues (chemin)",
+		slog.WarnContext(ctx, "replay-corpus-gate: verification des modifications locales des catalogues (chemin)",
 			"err", err)
 		return
 	}
@@ -66,12 +66,12 @@ func avertirSiCatalogueModifie(ctx context.Context, sourceRoot, titleSlug string
 	cmd.Dir = sourceRoot
 	out, err := cmd.Output()
 	if err != nil {
-		slog.Warn("replay-corpus-gate: verification des modifications locales des catalogues",
+		slog.WarnContext(ctx, "replay-corpus-gate: verification des modifications locales des catalogues",
 			"err", err)
 		return
 	}
 	if modifs := strings.TrimSpace(string(out)); modifs != "" {
-		slog.Warn("replay-corpus-gate: catalogues de reference du HEAD modifies localement "+
+		slog.WarnContext(ctx, "replay-corpus-gate: catalogues de reference du HEAD modifies localement "+
 			"(non commis) — la cuisson HEAD les inclut ; un ecart contre la base peut donc ne "+
 			"PAS venir uniquement du diff de revision",
 			"titre", titleSlug, "modifications", modifs)

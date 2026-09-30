@@ -20,6 +20,7 @@ package replay
 // `zone_states_test.go`.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -48,7 +49,7 @@ func lettresPubliees(states []ZoneState) map[int]string {
 // slots et l'ordre des zones coincident ici, et c'est le cas le plus simple.
 func TestZoneLettresCasNominal(t *testing.T) {
 	in, c := bastionCase()
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	got := lettresPubliees(states)
 	if got[0] != "A" || got[1] != "B" {
 		t.Errorf("lettres %v, attendu zone 0 = A (slot 10) et zone 1 = B (slot 20)", got)
@@ -66,7 +67,7 @@ func TestZoneLettresCasNominal(t *testing.T) {
 // rangerait par `zoneRef` rendrait A et B dans l'autre sens et ferait echouer ce cas.
 func TestZoneLettresSuiventLeSlotPasLeZoneRef(t *testing.T) {
 	in, c := bastionCaseSlotsEchanges()
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	got := lettresPubliees(states)
 	if got[1] != "A" || got[0] != "B" {
 		t.Errorf("lettres %v, attendu zone 1 = A (slot 10) et zone 0 = B (slot 20) —"+
@@ -125,7 +126,7 @@ func TestZoneLettresBijectionExigee(t *testing.T) {
 		track("2533", pointAt(100, -19.5, 0, 0)),
 		track("2535", pointAt(300, -19.5, 0, 0)),
 	}
-	states, cov := buildZoneStates(in, zoneTestCtx(actions, tracks))
+	states, cov := buildZoneStates(context.Background(), in, zoneTestCtx(actions, tracks))
 	if len(states) != 1 {
 		t.Fatalf("%d zone(s) publiee(s), attendu 1 (seule la zone 0 est appariee) : %+v",
 			len(states), states)
@@ -153,7 +154,7 @@ func TestZoneLettresJamaisSurUneColline(t *testing.T) {
 	for f := 396; f <= 400; f++ {
 		pts = append(pts, pointAt(f, -19.5, 0, 0))
 	}
-	states, cov := buildZoneStates(in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
+	states, cov := buildZoneStates(context.Background(), in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
 	if len(states) == 0 {
 		t.Fatalf("aucune periode de colline publiee : le cas ne juge rien")
 	}

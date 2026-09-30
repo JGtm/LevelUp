@@ -148,7 +148,7 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
-	pass, mat, err := buildPositionRows(film, res, entry, ids, kills, matchID)
+	pass, mat, err := buildPositionRows(ctx, film, res, entry, ids, kills, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "killsource: positions — passe ignoree", "match_id", matchID, "err", err)
 		return
@@ -261,11 +261,11 @@ func optionsDeBalayageDesPositions(
 // ELLE NE COMPOSE RIEN ELLE-MEME : ce qui suit les lectures — les deux jeux de lignes — vit dans
 // `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06, constat
 // B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
-func buildPositionRows(
+func buildPositionRows(ctx context.Context,
 	film *decfilm.Film, res *decfilm.Result, entry decfilm.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
-	lectures, originUS, err := lireLePontDuCollecteur(film, entry, ids, matchID)
+	lectures, originUS, err := lireLePontDuCollecteur(ctx, film, entry, ids, matchID)
 	if err != nil {
 		return passePositions{}, materiauDIsolement{}, err
 	}
@@ -285,7 +285,7 @@ func buildPositionRows(
 	// siege d index partage bot/humain attribue les vies du bot a l humain (cf. l en-tete de
 	// `games/halo_infinite/replayidentity/bot_identities.go`).
 	bots := replayidentity.BotIdentities(res)
-	reg := replay.BuildIdentityRegistry(entreeDuRegistre(lectures, ids, bots, matchID))
+	reg := replay.BuildIdentityRegistry(ctx, entreeDuRegistre(lectures, ids, bots, matchID))
 	if !reg.PontEtabli() {
 		observability.AddInt(metricPositionsNoBridge, 1)
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf(
@@ -304,7 +304,7 @@ func buildPositionRows(
 // du collecteur : le roster de la feuille pour la table d index, et la fatalite des erreurs dans
 // l ordre d avant le lot J4.3 (positions, horloge — comptee —, fil des morts, index). Les
 // creations de bipede restent NON fatales : le registre degrade sur le pont par morts et le dit.
-func lireLePontDuCollecteur(
+func lireLePontDuCollecteur(ctx context.Context,
 	film *decfilm.Film, entry decfilm.MapQuantEntry, ids MatchIdentities, matchID string,
 ) (lecturesDuFilm, uint64, error) {
 	fc := decfilm.NewFilmContextForMap(film, &entry, nil)
@@ -331,13 +331,13 @@ func lireLePontDuCollecteur(
 	// par morts alors que la cuisson, elle, lit le film. Absence NON fatale.
 	creations, cStats := pont.Creations, pont.StatsCreations
 	if pont.ErrCreations != nil {
-		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
+		slog.WarnContext(ctx, "killsource: creations de bipede illisibles — degradation sur le pont par morts",
 			"err", pont.ErrCreations, "match_id", matchID)
 		ids.replis.Declenche(decfilm.NomIdentitePontParMorts) // repli compte depuis le lot J8.7
 		creations = nil
 	}
 	if cStats.Anchors > 0 && cStats.Accepted == 0 {
-		slog.Warn("killsource: aucune signature de creation reconnue sur des ancres presentes",
+		slog.WarnContext(ctx, "killsource: aucune signature de creation reconnue sur des ancres presentes",
 			"match_id", matchID, "ancres", cStats.Anchors, "motAlternatifModal", cStats.OtherWord)
 	}
 	return lecturesDuFilm{

@@ -15,6 +15,7 @@ package replay
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -301,7 +302,7 @@ func buildRoster(idx types.PlayerIndexTable, names map[uint64]string, bots []Bot
 // 2026-09-27), pas celui du slot : sur un slot recyclé, le pont par slot garde le PREMIER
 // occupant, et le bot d'un corps suivant restait anonyme — puis le nommage final lui donnait
 // l'identité du corps précédent (cf. identity_registry_corps.go).
-func nameBotTracks(tracks []Track, occ occupantsDesSlots, bots []BotIdentity, origin, step uint64) {
+func nameBotTracks(ctx context.Context, tracks []Track, occ occupantsDesSlots, bots []BotIdentity, origin, step uint64) {
 	if occ.vide() || len(bots) == 0 {
 		return
 	}
@@ -309,7 +310,7 @@ func nameBotTracks(tracks []Track, occ occupantsDesSlots, bots []BotIdentity, or
 	if partages > 0 {
 		// PAS UNE ERREUR : un siège partagé est un fait du film (des remplaçants SUCCESSIFS),
 		// et c'est le RELAIS qui sait les départager par l'instant de bascule.
-		slog.Info("rejeu : sièges de bot partagés par plusieurs noms — nommage laissé au relais",
+		slog.InfoContext(ctx, "rejeu : sièges de bot partagés par plusieurs noms — nommage laissé au relais",
 			"sieges", partages)
 	}
 	for i := range tracks {

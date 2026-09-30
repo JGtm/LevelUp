@@ -15,6 +15,7 @@ package replay
 // proprietaire.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -66,7 +67,7 @@ func TestCollineProprietaireSubdiviseLaPeriode(t *testing.T) {
 		zoneReadAt(41, 60, grammar.ManagedPropertyTagU32, 0),
 		zoneReadAt(41, 300, grammar.ManagedPropertyTagU32, 1),
 	})
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov.Method != ZoneMethodDesignator {
 		t.Fatalf("methode %q, attendu %q", cov.Method, ZoneMethodDesignator)
 	}
@@ -106,7 +107,7 @@ func TestCollineProprietaireNeutreEstUneMesure(t *testing.T) {
 		zoneReadAt(41, 60, grammar.ManagedPropertyTagU32, zoneNeutralOwner),
 		zoneReadAt(41, 250, grammar.ManagedPropertyTagU32, 1),
 	})
-	states, _ := buildZoneStates(in, c)
+	states, _ := buildZoneStates(context.Background(), in, c)
 	got := spansTries(states)
 	if len(got) == 0 {
 		t.Fatal("aucun intervalle publie")
@@ -141,7 +142,7 @@ func TestCollineProprietaireUnSeulCampEmis(t *testing.T) {
 		zoneReadAt(41, 300, grammar.ManagedPropertyTagU32, 1),
 		zoneReadAt(41, 500, grammar.ManagedPropertyTagU32, 1),
 	})
-	states, _ := buildZoneStates(in, c)
+	states, _ := buildZoneStates(context.Background(), in, c)
 	got := spansTries(states)
 	if len(got) == 0 {
 		t.Fatal("aucun intervalle publie")
@@ -184,7 +185,7 @@ func TestCollineProprietaireValeurInconnueNOuvreRien(t *testing.T) {
 		zoneReadAt(41, 60, grammar.ManagedPropertyTagU32, 7),
 		zoneReadAt(41, 300, grammar.ManagedPropertyTagU32, 0),
 	})
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov.UnknownOwner != 1 {
 		t.Errorf("UnknownOwner = %d, attendu 1 — une valeur hors referentiel doit se compter",
 			cov.UnknownOwner)

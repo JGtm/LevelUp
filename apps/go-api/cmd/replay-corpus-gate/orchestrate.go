@@ -42,14 +42,14 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 	base := ligneRapport{Temoin: t}
 
 	if err := stageFilm(tc.ParcRoot, tc.WorkRoot, t.ID); err != nil {
-		slog.Warn("replay-corpus-gate: temoin absent du parc local — ignore, pas un echec",
+		slog.WarnContext(ctx, "replay-corpus-gate: temoin absent du parc local — ignore, pas un echec",
 			"temoin", t.ID, "famille", t.Famille, "err", err)
 		base.Absent, base.AbsentCause = true, err.Error()
 		return base
 	}
 	if tc.Reference == referenceBase {
 		if err := stageFilm(tc.ParcRoot, tc.WorkRootBase, t.ID); err != nil {
-			slog.Warn("replay-corpus-gate: temoin absent du parc local (racine base) — ignore",
+			slog.WarnContext(ctx, "replay-corpus-gate: temoin absent du parc local (racine base) — ignore",
 				"temoin", t.ID, "famille", t.Famille, "err", err)
 			base.Absent, base.AbsentCause = true, err.Error()
 			return base
@@ -62,7 +62,7 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 	// ERREUR — distinction verifiee AVANT ReadFactsFile pour ne pas confondre les deux cas.
 	factsPath := filepath.Join(tc.FactsDir, t.ID+".facts.json")
 	if _, err := os.Stat(factsPath); err != nil {
-		slog.Warn("replay-corpus-gate: faits du match introuvables (absent du registre de la base "+
+		slog.WarnContext(ctx, "replay-corpus-gate: faits du match introuvables (absent du registre de la base "+
 			"partagee, ou export non demande) — temoin ignore, pas un echec des autres",
 			"temoin", t.ID, "famille", t.Famille, "err", err)
 		base.Absent, base.AbsentCause = true, fmt.Sprintf("faits non exportes : %v", err)
@@ -87,7 +87,7 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 	refPath, err := tc.resoudreReference(ctx, facts)
 	if err != nil {
 		if errors.Is(err, errAbsentDuParc) {
-			slog.Warn("replay-corpus-gate: aucun artefact de reference — temoin ignore",
+			slog.WarnContext(ctx, "replay-corpus-gate: aucun artefact de reference — temoin ignore",
 				"temoin", t.ID, "err", err)
 			base.Absent, base.AbsentCause = true, err.Error()
 			return base

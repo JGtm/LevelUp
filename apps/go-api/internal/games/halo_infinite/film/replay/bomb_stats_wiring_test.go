@@ -48,6 +48,7 @@ package replay
 // règle des DEUX canaux, celle qu'un `if in.ArmingsRead` seul casserait en silence.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -233,7 +234,7 @@ func TestBombStatsCablageAbsentNestPasZero(t *testing.T) {
 
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			doc := BuildFromPositions("m", "halo_infinite", bwPositions(), nil, bwOptions(c))
+			doc := BuildFromPositions(context.Background(), "m", "halo_infinite", bwPositions(), nil, bwOptions(c))
 			bwVerifieCouverture(t, doc, c)
 			st := bwStats(t, doc)
 			bwVerifieColonnes(t, st, c)
@@ -356,7 +357,7 @@ func TestBombStatsCablageRecalageHorloge(t *testing.T) {
 	opt := bwOptions(bwCas{etat: bwAnneauPublie, pont: true})
 	opt.Bomb.Reads = bwAnneauArme(7_000)
 
-	doc := BuildFromPositions("m", "halo_infinite", bwPositions(), nil, opt)
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", bwPositions(), nil, opt)
 	st := bwStats(t, doc)
 	assertBombInt(t, st, bwXUIDDec, func(p BombPlayerStats) *int { return p.Arms }, 1, "arms")
 	cov := st.Coverage

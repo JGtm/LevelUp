@@ -26,6 +26,7 @@ package replay
 // tir long (sonde P4) : leur place passe par le chainage.
 
 import (
+	"context"
 	"log/slog"
 	"sort"
 
@@ -39,7 +40,7 @@ const placesLisiblesParLesTirs = 1 << 5
 
 // lireLesPlacesDansLesTirs : la LECTURE `tirs` (cf. l'en-tete). Rend les places lues, les arrivants
 // contestes, et si la lecture s'est abstenue faute d'un index de tireur assez large.
-func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(fire []FireEventRef, tireurs []string) (lues, contestes int, tronque bool) {
+func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(ctx context.Context, fire []FireEventRef, tireurs []string) (lues, contestes int, tronque bool) {
 	if pp.indexDeTireurTronque() {
 		return 0, 0, true
 	}
@@ -84,7 +85,7 @@ func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(fire []FireEventRef, tireurs [
 		lues++
 	}
 	if contredits > 0 {
-		slog.Info("rejeu : tirs de place dont la vie qui tire n est pas l arrivant deduit — sans vote",
+		slog.InfoContext(ctx, "rejeu : tirs de place dont la vie qui tire n est pas l arrivant deduit — sans vote",
 			"tirs", contredits)
 	}
 	return lues, contestes, false

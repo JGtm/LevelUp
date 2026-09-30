@@ -85,7 +85,7 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	}
 	defer lock.Release()
 
-	builder, err := replaybuild.NewBuilder(cfg.RepoRoot, o.titleSlug)
+	builder, err := replaybuild.NewBuilder(ctx, cfg.RepoRoot, o.titleSlug)
 	if err != nil {
 		slog.ErrorContext(ctx, "backfill-replay (enfant): builder indisponible",
 			"err", err, "match_id", o.one, "title", o.titleSlug)
@@ -104,7 +104,7 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 		mapNames = mapNamesForOne(ctx, pr, o.titleSlug, o.one)
 	}
 
-	out, berr := builder.BuildMatch(o.one, mapNames, filmDir, faits)
+	out, berr := builder.BuildMatch(ctx, o.one, mapNames, filmDir, faits)
 	switch {
 	case berr == nil:
 		fmt.Printf("  %s : %d tracks, %d octets (%s)\n", o.one, out.Tracks, out.Bytes, out.Module)

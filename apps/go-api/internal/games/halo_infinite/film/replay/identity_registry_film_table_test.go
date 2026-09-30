@@ -13,6 +13,7 @@ package replay
 //	T-REFUS     une table refusee laisse la lecture des chunks seule, et le refus est publie.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
@@ -184,7 +185,7 @@ func TestRosterPrendLesSiegesEtLesNomsDuFilm(t *testing.T) {
 	)
 	in := entreeIdentite(film, map[uint64]int{quiMeurt: 0, quiRejoint: 5})
 	in.Deaths = []types.Death{{XUID: quiMeurt, Gamertag: "Alpha", TimeMS: 1000}}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 
 	roster := buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, in.Deaths), nil, teamPublication{})
 	parXUID := map[string]RosterEntry{}

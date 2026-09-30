@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"log/slog"
 	"sort"
 
@@ -296,7 +297,7 @@ func skullGrabCount(recs []types.StatRecord, cons *objectives.ReplisALaConsultat
 // LE PONT D'IDENTITE (slot statborg -> xuid) SE FAIT ICI, comme pour la couronne et le drapeau,
 // par les seuls INSTANTS DE MORT et PAR MANCHE — aucune base. `reg.DeathOffsetMS()` cale l'horloge
 // des enregistrements (meme horloge que le fil des morts) sur l'axe des frames.
-func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
+func attachSkullCarries(ctx context.Context, doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
 	deduced map[int]bool) {
 	in := opt.Skull
 	if !in.Scanned {
@@ -319,7 +320,7 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, 
 	if doc.Coverage != nil {
 		doc.Coverage.SkullCarries = cov
 	}
-	logSkullCarriesCoverage(cov)
+	logSkullCarriesCoverage(ctx, cov)
 }
 
 // skullIdentityOf rend le pont d'identite du calque : celui de l'appelant s'il en a fourni un,
@@ -343,11 +344,11 @@ func skullIdentityOf(in SkullInput, opt Options) objectives.RoundIdentity {
 }
 
 // logSkullCarriesCoverage journalise ce que le calque publie — et ce qu'il ecarte.
-func logSkullCarriesCoverage(cov *SkullCarriesCoverage) {
+func logSkullCarriesCoverage(ctx context.Context, cov *SkullCarriesCoverage) {
 	if cov == nil {
 		return
 	}
-	slog.Info("rejeu : portage du crane d'Oddball",
+	slog.InfoContext(ctx, "rejeu : portage du crane d'Oddball",
 		"prises", cov.Grabs, "trains", cov.Trains, "portages", cov.Carries,
 		"fermes", cov.Closed, "ouverts", cov.Open,
 		"sansPont", cov.NoBridge, "horsFenetre", cov.OutOfWindow,

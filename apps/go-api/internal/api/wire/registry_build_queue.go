@@ -109,7 +109,7 @@ func (r *ServiceRegistry) EnqueueReplayBuild(ctx context.Context, titleSlug, mat
 // UN SEUL POINT DE DÉCISION, TROIS APPELANTS : le fil de l'eau post-sync
 // (replayartifacts.Hook.Placement), l'action admin (ce runner), et — délibérément
 // PAS — le CLI de backfill, outil d'opérateur qui garde son chemin direct.
-func (r *ServiceRegistry) ReplayPlacement() replaybuild.Placement {
+func (r *ServiceRegistry) ReplayPlacement(ctx context.Context) replaybuild.Placement {
 	setting := ""
 	if r.settingsStore != nil {
 		if s, _ := r.settingsStore.Load(); s != nil {
@@ -120,7 +120,7 @@ func (r *ServiceRegistry) ReplayPlacement() replaybuild.Placement {
 		Production:       r.cfg.IsProduction(),
 		WorkerConfigured: strings.TrimSpace(r.cfg.BuildWorkerToken) != "",
 	})
-	replaybuild.LogPlacement("admin", p, err)
+	replaybuild.LogPlacement(ctx, "admin", p, err)
 	return p
 }
 
@@ -221,7 +221,7 @@ func (r *ServiceRegistry) StoreBuildArtifact(ctx context.Context, jobID, workerI
 	if slug == "" {
 		slug = titlePkg.DefaultSlug
 	}
-	stored, err := replaybuild.StoreArtifact(r.cfg.RepoRoot, slug, job.MatchID, blob)
+	stored, err := replaybuild.StoreArtifact(ctx, r.cfg.RepoRoot, slug, job.MatchID, blob)
 	if err != nil {
 		if errors.Is(err, domain.ErrBuildArtifactInvalid) {
 			observability.IncCounter("build_queue_artifacts_rejected_invalid_total")

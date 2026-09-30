@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"log/slog"
 	"sort"
 
@@ -182,7 +183,7 @@ func countActionsWithoutTrack(actions []ObjectiveAction, tracks []Track,
 // ligne (cf. Options.Objectives) — aucune base, et JUSTE en multi-manche (le slot d'entite est
 // reattribue d'une manche a l'autre). L'horloge, elle, demande une soustraction — celle de
 // l'origine (cf. buildObjectiveActions et build_score.go).
-func attachObjectiveActions(doc *ReplayDocument, opt Options, reg IdentityRegistry,
+func attachObjectiveActions(ctx context.Context, doc *ReplayDocument, opt Options, reg IdentityRegistry,
 	c scoreClock) LayerCoverage {
 	actions, cov := buildObjectiveActions(opt.Objectives, opt.ObjectivesUnnamed,
 		opt.ObjectivesRefused, c)
@@ -190,9 +191,9 @@ func attachObjectiveActions(doc *ReplayDocument, opt Options, reg IdentityRegist
 	if n := countActionsWithoutTrack(actions, doc.Tracks, reg.PontEpure()); n > 0 {
 		// PUBLIEES QUAND MEME, ET SIGNALEES : le defaut est dans le calque des POSITIONS, pas
 		// dans l'action. Le taire ferait disparaitre une lecture vraie sans laisser de trace.
-		slog.Warn("rejeu : actions d'objectif dont l'auteur n'a aucune trajectoire publiee",
+		slog.WarnContext(ctx, "rejeu : actions d'objectif dont l'auteur n'a aucune trajectoire publiee",
 			"match_id", doc.MatchID, "actions", n, "publiees", len(actions))
 	}
-	cov.warnIfLossy("objectifs")
+	cov.warnIfLossy(ctx, "objectifs")
 	return cov
 }

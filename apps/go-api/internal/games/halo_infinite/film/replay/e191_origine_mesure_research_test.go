@@ -46,6 +46,7 @@ package replay
 //	CGO_ENABLED=1 LEVELUP_REPO_ROOT=<parc> go run ./cmd/levelup replay-facts-export //	  --out internal/games/halo_infinite/film/replay/testdata/equivalence 0797ce72 4f77afc1
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -290,7 +291,7 @@ func e191ViesDuRegistre(g *FilmFacts, sorted []grammar.BipedPosition) []lifeSpan
 	opt := g.options()
 	origin := sorted[0].TimestampUS
 	step := uint64(opt.frameIntervalMS()) * 1000
-	reg := BuildIdentityRegistry(IdentityInput{
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{
 		Positions: sorted, BipedCreations: g.BipedCreations,
 		Deaths: g.Deaths, PlayerIndices: g.PlayerIndices, FilmTable: g.FilmTable,
 		Bots: opt.Bots, Fire: fireRefs(g.Fire), RosterXUIDs: opt.RosterXUIDs,

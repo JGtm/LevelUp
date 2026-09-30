@@ -29,6 +29,7 @@ package replay
 // Ici ne sortent que les objets qui ont BOUGÉ : une arme lâchée tombe, une arme de socle non.
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -371,8 +372,8 @@ func gwItemTakeInWindow(b gwPickupBounds, apparUS, tUS uint64) bool {
 }
 
 // logGroundWeaponItems journalise le calque avec ses dénominateurs.
-func logGroundWeaponItems(cov GroundWeaponItemsCoverage) {
-	slog.Info("rejeu : armes au sol individuelles",
+func logGroundWeaponItems(ctx context.Context, cov GroundWeaponItemsCoverage) {
+	slog.InfoContext(ctx, "rejeu : armes au sol individuelles",
 		"objets", cov.Objects, "publiees", cov.Published, "auRepos", cov.AtRest,
 		"lacheurNomme", cov.DropperNamed, "prisesRecues", cov.TakesTotal,
 		"ramasseurNomme", cov.PickupLinked,

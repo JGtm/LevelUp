@@ -9,6 +9,7 @@ package replay
 // GARDE : PICKUP_FILM (repertoire du film) et PICKUP_MAP (nom de carte du catalogue de bornes).
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,7 +37,7 @@ func TestWeaponChangesSurFilmReel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chunks du film illisibles : %v", err)
 	}
-	doc, err := BuildFromFilm("mesure-ramassage", "halo_infinite", film, Options{MapQuant: &entry})
+	doc, err := BuildFromFilm(context.Background(), "mesure-ramassage", "halo_infinite", film, Options{MapQuant: &entry})
 	if err != nil {
 		t.Fatalf("assemblage : %v", err)
 	}
@@ -88,7 +89,7 @@ func TestGroundWeaponsSurFilmReel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chunks du film illisibles : %v", err)
 	}
-	doc, err := BuildFromFilm("mesure-armes-au-sol", "halo_infinite", film, Options{MapQuant: &entry})
+	doc, err := BuildFromFilm(context.Background(), "mesure-armes-au-sol", "halo_infinite", film, Options{MapQuant: &entry})
 	if err != nil {
 		t.Fatalf("assemblage : %v", err)
 	}

@@ -50,7 +50,7 @@ func resolveBaseRevision(ctx context.Context, explicit, sourceRoot string) (stri
 	}
 	origin, err := gitRevParse(ctx, sourceRoot, "origin/feat/v75")
 	if err != nil {
-		slog.Warn("replay-corpus-gate: origin/feat/v75 introuvable — repli sur HEAD^", "err", err)
+		slog.WarnContext(ctx, "replay-corpus-gate: origin/feat/v75 introuvable — repli sur HEAD^", "err", err)
 		return "HEAD^", nil
 	}
 	if head != origin {
@@ -77,8 +77,9 @@ type worktreeBase struct {
 
 // creerWorktreeBase cree le worktree detache et rend sa fonction de nettoyage — a `defer` par
 // l'appelant, MEME EN ECHEC (le worktree, une fois cree, doit toujours etre retire). `ctx` ne
-// couvre QUE la CREATION : le nettoyage retourne utilise DELIBEREMENT context.Background(),
-// jamais `ctx` — une interruption (Ctrl-C, CORPUS-R1 C1/C2) annule `ctx` precisement pour
+// couvre QUE la CREATION : le nettoyage retourne utilise DELIBEREMENT
+// `context.WithoutCancel(ctx)` (lot J12.3 : les valeurs du contexte, pas son annulation), jamais
+// `ctx` lui-meme — une interruption (Ctrl-C, CORPUS-R1 C1/C2) annule `ctx` precisement pour
 // declencher CE nettoyage ; l'annuler aussi couperait la suppression qu'on vient de demander.
 func creerWorktreeBase(ctx context.Context, sourceRoot, workDir, revision string) (worktreeBase, func(), error) {
 	chemin := filepath.Join(workDir, "base-worktree")
@@ -93,18 +94,18 @@ func creerWorktreeBase(ctx context.Context, sourceRoot, workDir, revision string
 	wt := worktreeBase{Chemin: chemin, GoAPIDir: filepath.Join(chemin, "apps", "go-api")}
 	cleanup := func() {
 		if trouve, err := contientUneJonction(chemin); err != nil {
-			slog.Warn("replay-corpus-gate: balayage de jonctions avant suppression du worktree base",
+			slog.WarnContext(ctx, "replay-corpus-gate: balayage de jonctions avant suppression du worktree base",
 				"chemin", chemin, "err", err)
 		} else if trouve {
-			slog.Error("replay-corpus-gate: worktree base NON SUPPRIME — une jonction y a ete "+
+			slog.ErrorContext(ctx, "replay-corpus-gate: worktree base NON SUPPRIME — une jonction y a ete "+
 				"detectee (git worktree remove la suivrait et supprimerait l'autre cote) ; "+
 				"nettoyage manuel requis", "chemin", chemin)
 			return
 		}
-		rmCmd := exec.CommandContext(context.Background(), "git", "worktree", "remove", "--force", chemin)
+		rmCmd := exec.CommandContext(context.WithoutCancel(ctx), "git", "worktree", "remove", "--force", chemin)
 		rmCmd.Dir = sourceRoot
 		if out, err := rmCmd.CombinedOutput(); err != nil {
-			slog.Warn("replay-corpus-gate: suppression du worktree base", "chemin", chemin,
+			slog.WarnContext(ctx, "replay-corpus-gate: suppression du worktree base", "chemin", chemin,
 				"err", err, "sortie", string(out))
 		}
 	}

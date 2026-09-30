@@ -54,7 +54,10 @@ package replay
 // fil des morts était illisible. Le champ sort alors à `nil` chez TOUS les joueurs — « on n'a pas
 // regardé », jamais un zéro qui se lirait comme une mesure.
 
-import "log/slog"
+import (
+	"context"
+	"log/slog"
+)
 
 // attachBombStats calcule les cinq statistiques d'Assaut et les faits datés, et les pose sur le
 // document.
@@ -62,7 +65,7 @@ import "log/slog"
 // GARDE DE MODE : `opt.Bomb.CarryScanned`, posée par l'appelant (`replaybuild.isBombVariant`)
 // sur TOUTE la famille bomb, One Bomb comprise. Hors de la famille : ni calque, ni couverture —
 // la même règle que les autres calques d'objectif.
-func attachBombStats(doc *ReplayDocument, opt Options, reg IdentityRegistry, carry HeldObjectCarry) {
+func attachBombStats(ctx context.Context, doc *ReplayDocument, opt Options, reg IdentityRegistry, carry HeldObjectCarry) {
 	if !opt.Bomb.CarryScanned {
 		return
 	}
@@ -95,7 +98,7 @@ func attachBombStats(doc *ReplayDocument, opt Options, reg IdentityRegistry, car
 	})
 	doc.BombStats = &stats
 	doc.BombEvents = events
-	logBombStats(doc.MatchID, stats.Coverage, opt.MatchKills.Dropped)
+	logBombStats(ctx, doc.MatchID, stats.Coverage, opt.MatchKills.Dropped)
 }
 
 // bombArmingsRead dit si le calque des armements a été LU ET PUBLIÉ — balayage armé ET
@@ -118,8 +121,8 @@ func bombArmingsRead(doc *ReplayDocument) bool {
 // + `generated.ts`) — un compteur de diagnostic ne justifie pas d'élargir un contrat d'API. Il
 // est journalisé ici, au même endroit et au même instant que le dénominateur `kills` qu'il
 // complète, donc jamais tu.
-func logBombStats(matchID string, c BombStatsCoverage, killsEcartes int) {
-	slog.Info("rejeu : statistiques d'objectif de l'Assaut",
+func logBombStats(ctx context.Context, matchID string, c BombStatsCoverage, killsEcartes int) {
+	slog.InfoContext(ctx, "rejeu : statistiques d'objectif de l'Assaut",
 		"match_id", matchID, "joueurs", c.Players, "explosions", c.Detonations,
 		"armements", c.Armings, "attribues", c.ArmingsAttributed,
 		"parLacher", c.ArmingsByDrop, "parRepli", c.ArmingsByActiveCarry,

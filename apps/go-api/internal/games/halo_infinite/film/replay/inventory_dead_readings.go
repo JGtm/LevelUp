@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"sort"
@@ -95,7 +96,7 @@ func invSinceLastDeathMS(sorted []int64, tMS int64) (int64, bool) {
 // requalifiée n'est PAS une anomalie — c'est un trou du décodeur que le fil des morts n'explique
 // pas —, mais son volume doit se lire, sinon une régression du pont slot->joueur passerait pour
 // une amélioration du décodage.
-func logInventoryEmptyCoverage(inv []Inventory, marked int) {
+func logInventoryEmptyCoverage(ctx context.Context, inv []Inventory, marked int) {
 	empty := 0
 	for _, i := range inv {
 		if i.Empty != "" {
@@ -105,7 +106,7 @@ func logInventoryEmptyCoverage(inv []Inventory, marked int) {
 	if empty == 0 {
 		return
 	}
-	slog.Info("rejeu : lectures d'inventaire vides",
+	slog.InfoContext(ctx, "rejeu : lectures d'inventaire vides",
 		"lectures", len(inv), "vides", empty,
 		"morts", marked, "inexpliquees", empty-marked)
 }

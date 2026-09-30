@@ -31,18 +31,18 @@ func (s *filmScan) balayerEtatsDeMouvement() {
 	m, err := grammar.ScanMarcheDesTrames(s.fc)
 	st, tc := m.MovementStateStats, m.ContinuousFireStats
 	if err != nil {
-		slog.Warn("etats de mouvement et tir continu illisibles — rejeu sans intervalles d etat ni rafales",
+		slog.WarnContext(s.ctx, "etats de mouvement et tir continu illisibles — rejeu sans intervalles d etat ni rafales",
 			"err", err, "match_id", s.matchID)
 		m, st, tc = grammar.MarcheDesTrames{}, types.MovementStateStats{}, types.ContinuousFireStats{}
 	} else {
-		slog.Info("etats de mouvement lus",
+		slog.InfoContext(s.ctx, "etats de mouvement lus",
 			"records", st.Records, "desyncs", st.Desyncs, "lectures", st.Read,
 			"paquets", st.Packets, "paquetsEvenements", st.EventPackets,
 			"paquetsEvenementsLocalises", st.EventPacketsLocated,
 			"paquetsEvenementsNonLocalises", st.EventPacketsUnlocated,
 			"slotNonLie", st.SlotUnbound, "doublons", st.Duplicates, "liaisonsOubliees", st.LiaisonsOubliees, "neufsContreUnVivant", st.NeufsContreUnVivant,
 			"largeursCarte", st.MapWidths, "absent", st.Absent)
-		slog.Info("tir continu lu (vue de controle)",
+		slog.InfoContext(s.ctx, "tir continu lu (vue de controle)",
 			"paquets", tc.Packets, "vueCFermee", tc.Closed, "trous", tc.Holes, "suitesDeTrous", tc.HoleRuns,
 			"rafales", tc.Bursts, "rafalesTouchees", tc.BurstsWithHole, "tirTenuTuMs", tc.HeldHoleMS,
 			"match_id", s.matchID)
@@ -51,8 +51,8 @@ func (s *filmScan) balayerEtatsDeMouvement() {
 	s.opt.Fallbacks.DeclencheN(fallback.NomLiaisonParAnticipation, m.LiaisonsParRepliDAnticipation)
 	s.in.MovementStates, s.in.MovementStateStats = m.MovementStates, st
 	s.in.ContinuousFire, s.in.ContinuousFireStats = m.ContinuousFire, tc
-	s.opt.observe("movementStates", s.in.MovementStates)
-	s.opt.observe("movementStates.stats", st)
-	s.opt.observe("continuousFire", s.in.ContinuousFire)
-	s.opt.observe("continuousFire.stats", tc)
+	s.opt.observe(s.ctx, "movementStates", s.in.MovementStates)
+	s.opt.observe(s.ctx, "movementStates.stats", st)
+	s.opt.observe(s.ctx, "continuousFire", s.in.ContinuousFire)
+	s.opt.observe(s.ctx, "continuousFire.stats", tc)
 }

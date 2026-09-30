@@ -62,6 +62,7 @@ package replay
 // une tuile par place, son occupant a l'instant lu, sinon vide — vit cote web (`seatLogic.ts`).
 
 import (
+	"context"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -212,7 +213,7 @@ type entreesDesPlaces struct {
 
 // poserLesSieges ECRIT la place, la provenance et la presence de chaque entree du roster, EN
 // PLACE, et rend sa couverture. PURE au sens du decodage : ni octet de film, ni base.
-func poserLesSieges(roster []RosterEntry, occ occupants, in entreesDesPlaces) SeatCoverage {
+func poserLesSieges(ctx context.Context, roster []RosterEntry, occ occupants, in entreesDesPlaces) SeatCoverage {
 	cov := SeatCoverage{Entrees: len(roster), Presences: PresencesDesVies,
 		EntitesNonLiees: occ.entitesNonLiees, EntitesContestees: occ.entitesContestees,
 		TrousDEntite: occ.trous, ImagesClesDouteuses: occ.imagesDouteuses,
@@ -233,7 +234,7 @@ func poserLesSieges(roster []RosterEntry, occ occupants, in entreesDesPlaces) Se
 		pp.poserLesOrigines()
 		pp.ouvrirAuCoupDEnvoi()
 		pp.estimerLaCapacite()
-		cov.PlacesTirs, cov.TirsContestes, cov.TirsIndexTronque = pp.lireLesPlacesDansLesTirs(in.fire, in.tireurs)
+		cov.PlacesTirs, cov.TirsContestes, cov.TirsIndexTronque = pp.lireLesPlacesDansLesTirs(ctx, in.fire, in.tireurs)
 		cov.Apparies, cov.PlacesOuvertes, cov.SansPlace = pp.chainerLesArrivants()
 		in.horloge.fb.DeclencheN(fallback.NomPlaceDuRemplacantParChainageDEquipe, cov.Apparies)
 		in.horloge.fb.DeclencheN(fallback.NomPlaceOuverteSousLaCapaciteEstimee, cov.PlacesOuvertes)

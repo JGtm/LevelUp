@@ -25,6 +25,7 @@ package replay
 //	  go test ./internal/games/halo_infinite/film/replay/ -run TestV8 -v -timeout 120m
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -385,8 +386,8 @@ func v8Artefact(t *testing.T, ctx v4Ctx, tot *v8Bilan) {
 	t.Helper()
 	avant := ctx.scan
 	avant.Events = v8SansReference(ctx.scan.Events)
-	_, ca, _ := buildVehicleTracks(avant, ctx.bip, ctx.own, ctx.clock)
-	_, cb, st := buildVehicleTracks(ctx.scan, ctx.bip, ctx.own, ctx.clock)
+	_, ca, _ := buildVehicleTracks(context.Background(), avant, ctx.bip, ctx.own, ctx.clock)
+	_, cb, st := buildVehicleTracks(context.Background(), ctx.scan, ctx.bip, ctx.own, ctx.clock)
 	t.Logf("  ARTEFACT avant/apres : vies publiees %d -> %d · episodes %d -> %d · nommes %d -> %d"+
 		" · sieges %d -> %d · AMBIGUS (episodes qui se chevauchent) %d -> %d",
 		ca.Published, cb.Published, ca.Rides, cb.Rides, ca.RidesNamed, cb.RidesNamed,

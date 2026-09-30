@@ -13,6 +13,7 @@ package replaybuild
 // vit sur [Digest.HasPlayerCounters], qui est le predicat qu'elle decrivait.
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 
@@ -163,12 +164,12 @@ func digestFromBytes(raw []byte) (Digest, bool) {
 // La taille rendue est celle de ce qui est FINALEMENT sur le disque, pas celle du document
 // qu'on voulait écrire : quand le garde anti-régression conserve l'artefact en place, annoncer
 // la taille du candidat ferait croire à une écriture qui n'a pas eu lieu.
-func writeArtifact(outPath, titleSlug, matchID string, doc replay.ReplayDocument) (int, error) {
+func writeArtifact(ctx context.Context, outPath, titleSlug, matchID string, doc replay.ReplayDocument) (int, error) {
 	blob, err := json.Marshal(doc)
 	if err != nil {
 		return 0, err
 	}
-	surDisque, err := writeArtifactBytes(outPath, titleSlug, matchID, blob)
+	surDisque, err := writeArtifactBytes(ctx, outPath, titleSlug, matchID, blob)
 	if err != nil {
 		return 0, err
 	}

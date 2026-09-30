@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"log/slog"
 	"sort"
 
@@ -160,7 +161,7 @@ type GrenadeReadCoverage struct {
 // aucune couverture n'est publiée. Un {0,0} affirmerait « lecture faite, rien trouvé » là où
 // l'ABSENCE dit « ce film ne transmet pas de grenades » — deux choses différentes, et le
 // diagnostic repose sur cette distinction.
-func attachGrenadeReadCoverage(doc *ReplayDocument, built []GrenadeRead, ammoRefused bool) {
+func attachGrenadeReadCoverage(ctx context.Context, doc *ReplayDocument, built []GrenadeRead, ammoRefused bool) {
 	if doc.Coverage == nil || len(built) == 0 {
 		return
 	}
@@ -176,7 +177,7 @@ func attachGrenadeReadCoverage(doc *ReplayDocument, built []GrenadeRead, ammoRef
 		}
 	}
 	doc.Coverage.GrenadeReads = cov
-	slog.Info("rejeu : couverture des grenades portees",
+	slog.InfoContext(ctx, "rejeu : couverture des grenades portees",
 		"imagesCles", cov.FromKeyframe, "delta", cov.FromDelta,
 		"ecarteesSansPiste", cov.Unpublished, "canalMunitionsRefuse", cov.AmmoRefused)
 }

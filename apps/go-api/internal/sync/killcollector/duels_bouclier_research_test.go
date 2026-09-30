@@ -366,7 +366,7 @@ func duelsBPontIdentite(
 	if err != nil {
 		t.Fatalf("index de joueur : %v", err)
 	}
-	owners := replay.BuildIdentityRegistry(replay.IdentityInput{
+	owners := replay.BuildIdentityRegistry(context.Background(), replay.IdentityInput{
 		Positions: positions, Deaths: deaths, PlayerIndices: idx, RosterXUIDs: roster,
 	})
 	// LE PONT EPURE, PAS L'APLATI (lot 6.1) : la sonde s'en sert pour ses propres denominateurs

@@ -17,6 +17,7 @@ package main
 // `--allow-missing` reste inchange : il eteint la verification de couverture, pas le verdict.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -57,7 +58,7 @@ func TestPerteSortEnUnMemeAvecUnTemoinAbsent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "gate.json")
 	lignes := []ligneRapport{ligneAbsente("aaaaaaaa"), lignePerdante("bbbbbbbb")}
 
-	code, err := finaliser(lignes, "base(abc1234)", optionsGate(path))
+	code, err := finaliser(context.Background(), lignes, "base(abc1234)", optionsGate(path))
 	if code != codePerte {
 		t.Fatalf("code de sortie = %d, %d (codePerte) attendu : un temoin ABSENT ne doit pas "+
 			"masquer la perte mesuree sur les temoins PRESENTS", code, codePerte)
@@ -87,7 +88,7 @@ func TestCouvertureIncompleteSortEnQuatreQuandLesPresentsSontAZero(t *testing.T)
 	path := filepath.Join(t.TempDir(), "gate.json")
 	lignes := []ligneRapport{ligneAbsente("aaaaaaaa"), ligneAZero("bbbbbbbb")}
 
-	code, err := finaliser(lignes, "base(abc1234)", optionsGate(path))
+	code, err := finaliser(context.Background(), lignes, "base(abc1234)", optionsGate(path))
 	if code != codeCouvertureIncomplete {
 		t.Fatalf("code de sortie = %d, %d (codeCouvertureIncomplete) attendu : les temoins "+
 			"presents sont a zero, il ne reste que la couverture a dire", code,
@@ -118,7 +119,7 @@ func TestAllowMissingResteInchange(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "gate.json")
 			o := optionsGate(path)
 			o.AllowMissing = true
-			code, err := finaliser(c.lignes, "base(abc1234)", o)
+			code, err := finaliser(context.Background(), c.lignes, "base(abc1234)", o)
 			if code != c.attendu {
 				t.Errorf("code = %d, %d attendu avec --allow-missing", code, c.attendu)
 			}

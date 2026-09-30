@@ -13,6 +13,7 @@ package replay
 
 import (
 	"bytes"
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"strings"
@@ -70,7 +71,7 @@ func TestLAlarmeDeMargeEtroiteSeDeclencheEtSeTait(t *testing.T) {
 
 	// Marge ÉTROITE : le calage retenu ne fait pas deux fois mieux que son suivant.
 	BridgeHealth{DeathOffsetMatched: 9, DeathOffsetRunnerUp: 8, LivesTotal: 87, Slots: 84}.
-		warnIfCalageEtroit()
+		warnIfCalageEtroit(context.Background())
 	if !strings.Contains(buf.String(), motif) {
 		t.Fatalf("marge 9:8 — aucune alarme, le seuil de %d n'est pas gardé. Journal : %q",
 			deathOffsetMargeMin, buf.String())
@@ -81,7 +82,7 @@ func TestLAlarmeDeMargeEtroiteSeDeclencheEtSeTait(t *testing.T) {
 	for _, cas := range []struct{ matched, runnerUp int }{{71, 10}, {143, 18}, {40, 15}} {
 		buf.Reset()
 		BridgeHealth{DeathOffsetMatched: cas.matched, DeathOffsetRunnerUp: cas.runnerUp}.
-			warnIfCalageEtroit()
+			warnIfCalageEtroit(context.Background())
 		if strings.Contains(buf.String(), motif) {
 			t.Fatalf("marge %d:%d — alarme sur un calage pourtant franc : %q",
 				cas.matched, cas.runnerUp, buf.String())
@@ -90,7 +91,7 @@ func TestLAlarmeDeMargeEtroiteSeDeclencheEtSeTait(t *testing.T) {
 
 	// Pont non construit : aucun calage, donc aucune alarme à donner.
 	buf.Reset()
-	BridgeHealth{}.warnIfCalageEtroit()
+	BridgeHealth{}.warnIfCalageEtroit(context.Background())
 	if strings.Contains(buf.String(), motif) {
 		t.Fatalf("alarme sur un pont vide : %q", buf.String())
 	}
@@ -101,7 +102,7 @@ func TestLAlarmeDeMargeEtroiteSeDeclencheEtSeTait(t *testing.T) {
 		Owner: map[uint32]int{1: 0}, SlotXUID: map[uint32]uint64{1: 11},
 		DeathOffsetMatches: 9, DeathOffsetRunnerUp: 8, DeathsNamed: 9, LivesTotal: 87,
 	})
-	buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, own, true, nil)
+	buildCoverage(context.Background(), LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, own, true, nil)
 	if !strings.Contains(buf.String(), motif) {
 		t.Fatalf("buildCoverage n'appelle plus la garde de marge : %q", buf.String())
 	}
@@ -250,7 +251,7 @@ func TestUnAmasPlusGrosQueLeVraiCalageNEmportePasLeBudget(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	defer slog.SetDefault(prev)
 
-	BridgeHealth{DeathOffsetMatched: n, DeathOffsetRunnerUp: second}.warnIfCalageEtroit()
+	BridgeHealth{DeathOffsetMatched: n, DeathOffsetRunnerUp: second}.warnIfCalageEtroit(context.Background())
 
 	if strings.Contains(buf.String(), "calage du fil des morts trop peu distinct") {
 		t.Fatalf("marge %d:%d — alarme sur un calage désormais franc : %q", n, second, buf.String())

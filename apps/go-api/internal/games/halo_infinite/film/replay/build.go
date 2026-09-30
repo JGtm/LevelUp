@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -36,9 +37,9 @@ const coordScale = 100
 //	                                  ensuite (projectiles, equipes, sieges) ;
 //	les tirs embarques APRES les vehicules, la palette AVANT les impulsions, les replis EN
 //	DERNIER (`clore`).
-func BuildFromPositions(matchID, titleSlug string, pos []grammar.BipedPosition,
+func BuildFromPositions(ctx context.Context, matchID, titleSlug string, pos []grammar.BipedPosition,
 	fire []grammar.FireEvent, opt Options) ReplayDocument {
-	a := &assemblage{matchID: matchID, opt: opt, pos: pos, fire: fire}
+	a := &assemblage{ctx: ctx, matchID: matchID, opt: opt, pos: pos, fire: fire}
 	if !a.ouvrir(titleSlug) {
 		a.poserLesCalquesProduits()
 		return a.doc
@@ -78,6 +79,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []grammar.BipedPosition,
 type assemblage struct {
 	// Les entrées de l'appelant, jamais modifiées après `ouvrir` (sauf `opt.Fallbacks`, que
 	// `ouvrir` garantit non nil — cf. Options.Fallbacks, D14).
+	// ctx est le contexte de L APPELANT (lot J12.3) : les journaux des passes le portent.
+	ctx     context.Context
 	matchID string
 	opt     Options
 	pos     []grammar.BipedPosition

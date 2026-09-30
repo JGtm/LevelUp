@@ -248,7 +248,7 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 		return "", fmt.Errorf("écriture du cache film : %w", err)
 	}
 
-	builder, err := replaybuild.NewBuilder(w.repoRoot, p.TitleSlug)
+	builder, err := replaybuild.NewBuilder(ctx, w.repoRoot, p.TitleSlug)
 	if err != nil {
 		return "", fmt.Errorf("catalogue de titre indisponible : %w", err)
 	}
@@ -307,7 +307,7 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	// ici n'a l'usage — l'artefact qui fait foi est celui que le SERVEUR range
 	// (`replaybuild.StoreArtifact`), avec son garde anti-régression et sa notification. Un
 	// ouvrier distant écrivait en prime dans une arborescence de dépôt qu'il n'a pas.
-	built, err := builder.BuildBytes(p.MatchID, p.MapNames, filmcache.ChunkDir(w.workDir, p.ShortID), facts)
+	built, err := builder.BuildBytes(ctx, p.MatchID, p.MapNames, filmcache.ChunkDir(w.workDir, p.ShortID), facts)
 	lock.Release()
 	if err != nil {
 		return "", err

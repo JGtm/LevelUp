@@ -8,7 +8,7 @@ package replay
 // refuse), et le corpus reel n'est pas en CI. Le garde porte donc sur la SOURCE, comme les
 // ratchets d'archlint : il lit `scanFilmInputs` et les phases qu'elle appelle, et exige que
 //
-//  1. les litteraux `observe("...")`, dans l'ordre du source, soient EXACTEMENT
+//  1. les litteraux `observe(ctx, "...")`, dans l'ordre du source, soient EXACTEMENT
 //     BuildFromFilmSteps ;
 //  2. chaque appel de balayage (`Scan*`, `decodeFilm*`) ait son etape : autant d'appels de
 //     balayage que d'etapes hors `.stats`. Un balayage ajoute sans `observe` casse ce compte.
@@ -30,6 +30,7 @@ package replay
 // balayages eux-memes (`Scan*`, `decodeFilm*`), qui sont les feuilles : ce sont eux qu'on compte.
 
 import (
+	"context"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -155,8 +156,8 @@ func (m *marcheurDEtapes) descendre(body *ast.BlockStmt) {
 			return true
 		}
 		switch {
-		case nom == "observe" && len(call.Args) == 2:
-			if lit, ok := call.Args[0].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+		case nom == "observe" && len(call.Args) == 3:
+			if lit, ok := call.Args[1].(*ast.BasicLit); ok && lit.Kind == token.STRING {
 				s, _ := strconv.Unquote(lit.Value)
 				m.steps = append(m.steps, s)
 			}
@@ -234,7 +235,7 @@ func TestBuildFromFilmNeBalaiePlusLuiMeme(t *testing.T) {
 // TestObserveNilNeCouteRien : sans observateur, observe est un no-op — ni panique, ni appel.
 func TestObserveNilNeCouteRien(t *testing.T) {
 	var o Options
-	o.observe("positions", nil)
+	o.observe(context.Background(), "positions", nil)
 	if slices.Contains(BuildFromFilmSteps(), "") {
 		t.Fatal("BuildFromFilmSteps() porte un nom vide")
 	}
@@ -270,7 +271,7 @@ func declarationsDeSource(t *testing.T, src string) map[string]*ast.FuncDecl {
 func TestMarcheurDescendDansChaqueAppel(t *testing.T) {
 	const src = `package p
 func racine() { phase(); phase() }
-func phase() { opt.observe("a", nil); ScanTruc() }
+func phase() { opt.observe(ctx, "a", nil); ScanTruc() }
 `
 	m := marcher(declarationsDeSource(t, src), "racine")
 	if m.cycle != "" {
@@ -289,7 +290,7 @@ func phase() { opt.observe("a", nil); ScanTruc() }
 func TestMarcheurRefuseUnCycle(t *testing.T) {
 	const src = `package p
 func racine() { a() }
-func a() { opt.observe("x", nil); b() }
+func a() { opt.observe(ctx, "x", nil); b() }
 func b() { a() }
 `
 	m := marcher(declarationsDeSource(t, src), "racine")

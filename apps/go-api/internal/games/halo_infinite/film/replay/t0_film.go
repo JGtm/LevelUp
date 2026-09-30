@@ -289,35 +289,35 @@ func t0FilmBurst(deps []t0FilmDeparture, frameIntervalMS int, windowMS int64) in
 //
 // PUR au sens du calcul — la seule sortie hors valeur de retour est le journal du refus, qui
 // suit la regle du depot : jamais de degradation silencieuse.
-func DetectT0Film(tracks []T0FilmTrack, frameIntervalMS int, originMs int64,
+func DetectT0Film(ctx context.Context, tracks []T0FilmTrack, frameIntervalMS int, originMs int64,
 	matchID string) (*int64, *T0FilmCoverage) {
 	cov := &T0FilmCoverage{}
 	if frameIntervalMS <= 0 {
-		return t0FilmRefuse(cov, t0FilmReasonNoFrameStep, matchID)
+		return t0FilmRefuse(ctx, cov, t0FilmReasonNoFrameStep, matchID)
 	}
 	deps, usable := t0FilmDepartures(tracks, frameIntervalMS)
 	cov.Tracks, cov.Moving = usable, len(deps)
 	if len(deps) == 0 {
-		return t0FilmRefuse(cov, t0FilmReasonNoMovement, matchID)
+		return t0FilmRefuse(ctx, cov, t0FilmReasonNoMovement, matchID)
 	}
 	cov.MarginMs = int64(deps[0].frame) * int64(frameIntervalMS)
 	cov.Burst = t0FilmBurst(deps, frameIntervalMS, t0FilmBurstMS)
 	if cov.Burst < t0FilmMinBurst {
-		return t0FilmRefuse(cov, t0FilmReasonSmallBurst, matchID)
+		return t0FilmRefuse(ctx, cov, t0FilmReasonSmallBurst, matchID)
 	}
 	if cov.MarginMs > t0FilmMaxDelayMS {
-		return t0FilmRefuse(cov, t0FilmReasonTooLate, matchID)
+		return t0FilmRefuse(ctx, cov, t0FilmReasonTooLate, matchID)
 	}
 	cov.Detected = true
 	t0 := originMs + cov.MarginMs
 	return &t0, cov
 }
 
-// t0FilmRefuse journalise le refus et rend l'absence de valeur. Le contexte est vide, et c'est
-// exact : cet assembleur est HORS LIGNE, il n'y a aucun contexte de requete a propager.
-func t0FilmRefuse(cov *T0FilmCoverage, reason, matchID string) (*int64, *T0FilmCoverage) {
+// t0FilmRefuse journalise le refus et rend l'absence de valeur. Le journal porte le `ctx` de
+// l appelant de la cuisson (lot J12.3).
+func t0FilmRefuse(ctx context.Context, cov *T0FilmCoverage, reason, matchID string) (*int64, *T0FilmCoverage) {
 	cov.Detected, cov.Reason = false, reason
-	slog.WarnContext(context.Background(),
+	slog.WarnContext(ctx,
 		"rejeu : coup d'envoi NON date par le film — le T0 de l'API reste la source",
 		"match_id", matchID, "raison", reason, "pistes", cov.Tracks, "pistesEnMouvement",
 		cov.Moving, "rafale", cov.Burst, "margeMs", cov.MarginMs)

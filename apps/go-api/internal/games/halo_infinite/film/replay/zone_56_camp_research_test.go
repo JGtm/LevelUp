@@ -48,6 +48,7 @@ package replay
 // UN SEUL FILM PAR INVOCATION, aucune base DuckDB, aucun artefact ecrit.
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -131,7 +132,7 @@ func zone56Contexte(t *testing.T, dir, carte string) *grammar.FilmContext {
 	if carte == "" {
 		t.Log("SANS CARTE : largeurs d axe auto-detectees — licite pour ti=13 (aucune position)")
 		fc := grammar.NewFilmContext(film)
-		poserProfilPuisCarte(fc, "lot-5.6-sans-carte", Options{})
+		poserProfilPuisCarte(context.Background(), fc, "lot-5.6-sans-carte", Options{})
 		return fc
 	}
 	root, err := testutil.RepoRoot()
@@ -148,7 +149,7 @@ func zone56Contexte(t *testing.T, dir, carte string) *grammar.FilmContext {
 		t.Fatalf("carte %q hors catalogue : %v", carte, err)
 	}
 	fc := grammar.NewFilmContextForMap(film, &entry, nil)
-	poserProfilPuisCarte(fc, "lot-5.6", Options{})
+	poserProfilPuisCarte(context.Background(), fc, "lot-5.6", Options{})
 	return fc
 }
 

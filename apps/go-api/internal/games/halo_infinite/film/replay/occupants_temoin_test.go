@@ -20,6 +20,7 @@ package replay
 // equipes —, les trois bots perdent leur equipe, aucun ne trouve de place).
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -165,7 +166,7 @@ func TestTemoinB1ad85ebPlacesEtPresences(t *testing.T) {
 	occ := lierLesOccupants(roster, tracks, occIn)
 	var pub teamPublication
 	pub.poserEquipesParEntree(roster, occ)
-	cov := poserLesSieges(roster, occ, placeIn)
+	cov := poserLesSieges(context.Background(), roster, occ, placeIn)
 
 	eagle := []string{"343 Hundy [bot]", "Hanover Cat", "343 PardonMy [bot]", "Claudors"}
 	if got := occupantsDeLaPlace(roster, 5); !egaux(got, eagle) {

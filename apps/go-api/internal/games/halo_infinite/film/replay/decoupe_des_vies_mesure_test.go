@@ -33,6 +33,7 @@ package replay
 // coupure qui change de classe doit se voir.
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -90,7 +91,7 @@ func TestCoupuresDeVieOntLeurCause(t *testing.T) {
 		opt := g.options()
 		opt.Labels = goldenCatalog(t)
 		opt.MapQuant = &entry
-		doc := BuildFromPositions(b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
+		doc := BuildFromPositions(context.Background(), b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
 		reg, _ := registreDuDocument(g, opt, doc)
 		got := classerLesCoupures(reg, opt)
 		for i := range total {

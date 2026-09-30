@@ -39,6 +39,7 @@ package replay
 //	critere mesurable : `bridgeNamedLives == 0` sur toute cuisson de film du parc.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -70,7 +71,7 @@ func marquerCauseDeMort(lives []lifeSpan, pairs []deathPair) {
 
 // verifierParLesMorts confronte la victime de chaque mort appariee au joueur que la LECTURE
 // DIRECTE a pose sur la meme vie. Elle ne modifie AUCUNE vie.
-func verifierParLesMorts(lives []lifeSpan, deaths []types.Death, pairs []deathPair,
+func verifierParLesMorts(ctx context.Context, lives []lifeSpan, deaths []types.Death, pairs []deathPair,
 	matchID string) bridgeVerification {
 	v := bridgeVerification{Matched: len(pairs)}
 	for _, p := range pairs {
@@ -83,7 +84,7 @@ func verifierParLesMorts(lives []lifeSpan, deaths []types.Death, pairs []deathPa
 			continue
 		}
 		v.Discordant++
-		slog.Warn("rejeu : le pont par morts CONTREDIT le lien direct — le film fait foi",
+		slog.WarnContext(ctx, "rejeu : le pont par morts CONTREDIT le lien direct — le film fait foi",
 			"match_id", matchID, "slot", l.slot, "de", l.from, "a", l.to,
 			"xuidDirect", l.xuid, "xuidDuPont", deaths[p.di].XUID, "voie", l.nomPar)
 	}

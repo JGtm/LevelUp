@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -25,7 +26,7 @@ func TestPlaceDesTirs_LaVieQuiTireRefuseLeVoteQuElleContredit(t *testing.T) {
 		{FilmIndex: 6, TimestampUS: 5_000_000}, // tire par 310
 	}
 	tireurs := []string{"320", "320", "310"}
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 5, 6), fire: tirs,
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 5, 6), fire: tirs,
 		tireurs: tireurs, horloge: horlogeDeSieges(nil)})
 
 	if roster[3].Seat != 6 || roster[3].SeatSource != SeatSourceTirs {
@@ -38,7 +39,7 @@ func TestPlaceDesTirs_LaVieQuiTireRefuseLeVoteQuElleContredit(t *testing.T) {
 	// Sans la lecture de l'unite, la deduction d'avant reste (et conteste).
 	roster2 := []RosterEntry{entree(0, "100"), {FilmIndex: 5, XUID: "500"}, {FilmIndex: 6, XUID: "600"},
 		entree(10, "310"), entree(11, "320")}
-	cov2 := poserLesSieges(roster2, occ, entreesDesPlaces{table: tableDeDebut(0, 5, 6), fire: tirs,
+	cov2 := poserLesSieges(context.Background(), roster2, occ, entreesDesPlaces{table: tableDeDebut(0, 5, 6), fire: tirs,
 		horloge: horlogeDeSieges(nil)})
 	if cov2.TirsContestes != 1 {
 		t.Errorf("sans unite lue : %d contestation(s), attendu 1 (la deduction seule)", cov2.TirsContestes)

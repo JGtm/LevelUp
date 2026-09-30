@@ -31,6 +31,7 @@ package replay
 // épisodes publiés et les trajectoires sur lesquelles poser les tirs.
 
 import (
+	"context"
 	"log/slog"
 	"sort"
 )
@@ -59,7 +60,7 @@ type vehicleShotRide struct {
 
 // attachVehicleShots publie, dans `doc.Shots`, les tirs des joueurs embarqués et met la
 // couverture à jour. Rien à faire sans épisode ni orphelin — le document sort inchangé.
-func attachVehicleShots(
+func attachVehicleShots(ctx context.Context,
 	doc *ReplayDocument, orphans []orphanShot, reg IdentityRegistry, clock replayClock,
 ) {
 	cov := doc.Coverage
@@ -108,7 +109,7 @@ func attachVehicleShots(
 	sort.SliceStable(doc.Shots, func(i, j int) bool { return doc.Shots[i].T < doc.Shots[j].T })
 	cov.Verdict["shots"] = verdictOf(cov.Shots)
 	nameVariantsByWeapon(doc.Vehicles, added, cov.Vehicles)
-	logVehicleShots(doc.Coverage.Vehicles, len(added))
+	logVehicleShots(ctx, doc.Coverage.Vehicles, len(added))
 }
 
 // Verdicts d'un orphelin passé devant la porte du véhicule.
@@ -394,11 +395,11 @@ func vehicleShotTally(cov *VehicleCoverage, v vehicleShotVerdict) {
 }
 
 // logVehicleShots journalise la seconde porte avec ses dénominateurs.
-func logVehicleShots(cov *VehicleCoverage, published int) {
+func logVehicleShots(ctx context.Context, cov *VehicleCoverage, published int) {
 	if cov == nil {
 		return
 	}
-	slog.Info("rejeu : tirs en vehicule",
+	slog.InfoContext(ctx, "rejeu : tirs en vehicule",
 		"publies", published, "poses", cov.Shots, "ambigus", cov.ShotsAmbiguous,
 		"sansPosition", cov.ShotsUnplaced, "orphelinsHorsEpisode", cov.ShotsNoRide)
 }

@@ -40,6 +40,7 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautArmementGate -v -timeout 60m
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -191,7 +192,7 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)
 	}
-	reads := decodeFilmBombReads(grammar.NewFilmContext(film), id, BombInput{Scanned: true, ChunkStartMS: clock})
+	reads := decodeFilmBombReads(context.Background(), grammar.NewFilmContext(film), id, BombInput{Scanned: true, ChunkStartMS: clock})
 	agDiagnostiquerSegments(t, id, reads, a5ExplosionTimes(id))
 	// Grille synthétique : originMS=0, pas 100 ms, axe assez long pour tout le film — le gate
 	// juge les délais en ms, la conversion en frames est couverte par les tests unitaires.

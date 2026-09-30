@@ -33,6 +33,7 @@ package replay
 // film, donc elles ne sont pas dans les faits. C est la frontiere ecrite en tete d `options.go`.
 
 import (
+	"context"
 	"crypto/sha256"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -48,7 +49,7 @@ import (
 //
 // HORS LIGNE comme son jumeau — ne jamais appeler depuis un chemin de requete ; l API sert
 // l artefact pre-construit.
-func BuildFromFacts(matchID, titleSlug string, f *FilmFactsFile, opt Options) ReplayDocument {
+func BuildFromFacts(ctx context.Context, matchID, titleSlug string, f *FilmFactsFile, opt Options) ReplayDocument {
 	if opt.Fallbacks == nil {
 		opt.Fallbacks = fallback.NouveauCompteur()
 	}
@@ -62,7 +63,7 @@ func BuildFromFacts(matchID, titleSlug string, f *FilmFactsFile, opt Options) Re
 	// prennent la valeur qu un balayage sous SES gardes leur aurait donnee.
 	in.restreindreAuxGardes(GardesDe(opt))
 	in.applyTo(&opt)
-	return BuildFromPositions(matchID, titleSlug, in.Positions, in.Fire, opt)
+	return BuildFromPositions(ctx, matchID, titleSlug, in.Positions, in.Fire, opt)
 }
 
 // faitsDuBalayage capture les faits d un film JUSTE APRES son balayage — appelee par

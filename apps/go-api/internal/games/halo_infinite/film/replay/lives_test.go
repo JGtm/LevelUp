@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -243,7 +244,7 @@ func TestNameBotTracksNamesBridgedSlotsOnly(t *testing.T) {
 		{Slot: 602, XUID: "2533274800000001"}, // humain nommé : intouchable
 	}
 	owner := map[uint32]int{600: 8, 602: 8}
-	nameBotTracks(tracks, occupantsPlats(owner), []BotIdentity{{FilmIndex: 8, Name: "343 Aloysius [bot]"}}, 0, 100_000)
+	nameBotTracks(context.Background(), tracks, occupantsPlats(owner), []BotIdentity{{FilmIndex: 8, Name: "343 Aloysius [bot]"}}, 0, 100_000)
 	if tracks[0].Bot != "343 Aloysius [bot]" {
 		t.Errorf("la vie pontée vers l'index du bot doit porter son nom, obtenu %q", tracks[0].Bot)
 	}
@@ -286,7 +287,7 @@ func TestDeuxBotsSurUnMemeSiegeNeSecrasentPas(t *testing.T) {
 	// Bout en bout : la piste du siège ambigu reste LIBRE (ni xuid, ni bot), celle du siège
 	// mono-bot est nommée.
 	tracks := []Track{{Slot: 100}, {Slot: 200}}
-	nameBotTracks(tracks, occupantsPlats(map[uint32]int{100: 8, 200: 9}), bots, 0, 100_000)
+	nameBotTracks(context.Background(), tracks, occupantsPlats(map[uint32]int{100: 8, 200: 9}), bots, 0, 100_000)
 	if tracks[0].Bot != "" {
 		t.Errorf("piste du siege partage : %q, attendu libre pour le relais", tracks[0].Bot)
 	}

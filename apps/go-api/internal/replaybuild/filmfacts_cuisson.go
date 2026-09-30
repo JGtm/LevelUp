@@ -111,17 +111,17 @@ func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID, filmDir strin
 	// UNE SEULE LECTURE DU FIL DES MORTS pour les deux consommateurs de cet etage
 	// (`identifiedEvents` et `killRefs`, qui ouvraient chacun le chunk highlight).
 	deaths := lireMorts(film)
-	logPhase("film", matchID, tFilm)
+	logPhase(ctx, "film", matchID, tFilm)
 	tStats := time.Now()
 	statborg := statborgDuFilm(ctx, matchID, film)
-	logPhase("stats", matchID, tStats)
+	logPhase(ctx, "stats", matchID, tStats)
 	// UN SEUL décodage killsource par match : neutralDeaths ET killRefs (cf. kills.go) en
 	// dérivent tous les deux, pour ne payer qu'UNE fois le verrou filmdec partagé avec la
 	// cuisson du rejeu — au lieu de deux, comme avant la jointure des frags sous effet actif
 	// (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
 	tKS := time.Now()
-	kills := b.decodeKillSource(matchID, entry, film)
-	logPhase("killsource", matchID, tKS)
+	kills := b.decodeKillSource(ctx, matchID, entry, film)
+	logPhase(ctx, "killsource", matchID, tKS)
 	return entreesDeCuisson{film: film, statborg: statborg, deaths: deaths, kills: kills}, nil
 }
 
@@ -187,7 +187,7 @@ func (b *Builder) documentDeLaCuisson(ctx context.Context, matchID, filmDir stri
 		}
 		err := src.entete.Utilisable(entry, replay.GardesDe(opts))
 		if err == nil {
-			return documentCuit{doc: replay.BuildFromFacts(matchID, b.titleSlug, src.faits, opts),
+			return documentCuit{doc: replay.BuildFromFacts(ctx, matchID, b.titleSlug, src.faits, opts),
 				depuisLesFaits: true}, nil
 		}
 		slog.InfoContext(ctx, "cuisson: faits de film cuits sous d autres gardes — redecodage",
@@ -197,8 +197,8 @@ func (b *Builder) documentDeLaCuisson(ctx context.Context, matchID, filmDir stri
 		}
 	}
 	tDecode := time.Now()
-	doc, aPersister, err := replay.BuildFromFilmAvecFaits(matchID, b.titleSlug, src.film, opts)
-	logPhase("decodage", matchID, tDecode)
+	doc, aPersister, err := replay.BuildFromFilmAvecFaits(ctx, matchID, b.titleSlug, src.film, opts)
+	logPhase(ctx, "decodage", matchID, tDecode)
 	if err != nil {
 		return documentCuit{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
 	}
@@ -386,7 +386,7 @@ func horlogeDesChunks(film *decfilm.Film) map[int]int {
 // COMMUNE VEUT DIRE QU IL N Y A QU UNE SORTIE : un second `json.Marshal` sur la branche « relire »
 // aurait pu diverger sur un reglage d encodage, et l equivalence a l octet du test S8 n aurait
 // plus rien prouve.
-func (b *Builder) serialiserDocument(matchID string, entry decfilm.MapQuantEntry,
+func (b *Builder) serialiserDocument(ctx context.Context, matchID string, entry decfilm.MapQuantEntry,
 	doc replay.ReplayDocument, depuisLesFaits bool, debutTotal time.Time,
 ) (Built, error) {
 	if len(doc.Tracks) == 0 {
@@ -394,13 +394,13 @@ func (b *Builder) serialiserDocument(matchID string, entry decfilm.MapQuantEntry
 	}
 	tMarshal := time.Now()
 	blob, err := json.Marshal(doc)
-	logPhase("marshal", matchID, tMarshal)
+	logPhase(ctx, "marshal", matchID, tMarshal)
 	if err != nil {
 		return Built{}, fmt.Errorf("sérialisation artefact %s: %w", matchID, err)
 	}
 	b.observe(EtapeRejeuDepuisLesFaits, depuisLesFaits)
 	b.observe("artifact", blob)
-	slog.Info("cuisson: octets construits", "match_id", matchID, "depuis_les_faits", depuisLesFaits,
+	slog.InfoContext(ctx, "cuisson: octets construits", "match_id", matchID, "depuis_les_faits", depuisLesFaits,
 		"duration", time.Since(debutTotal), "tracks", len(doc.Tracks), "bytes", len(blob))
 	return Built{Blob: blob, Module: entry.Module, Tracks: len(doc.Tracks)}, nil
 }

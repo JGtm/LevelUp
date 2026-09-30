@@ -21,6 +21,7 @@ package replay
 // 319 vues. Aucun autre calque du rejeu ne sait dire cela de lui-même.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -185,8 +186,8 @@ func birthOfLives(positions []grammar.BipedPosition) func(uint32) (uint64, bool)
 
 // logEquipmentChangeCoverage sort la couverture du calque, TÉMOIN DE COMPLÉTUDE COMPRIS : un
 // journal qui ne dirait que les publiés laisserait croire qu'ils sont tous là.
-func logEquipmentChangeCoverage(cov EquipmentChangeCoverage) {
-	slog.Info("rejeu : ramassages et consommations d equipement",
+func logEquipmentChangeCoverage(ctx context.Context, cov EquipmentChangeCoverage) {
+	slog.InfoContext(ctx, "rejeu : ramassages et consommations d equipement",
 		"decodes", cov.Decoded, "publies", cov.Published,
 		"ramassages", cov.Taken, "consommations", cov.Spent,
 		"reapparitions", cov.Spawned, "avantOrigine", cov.BeforeOrigin,
