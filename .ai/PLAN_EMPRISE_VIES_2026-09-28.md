@@ -1133,6 +1133,27 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
 
 - [ ] V5.1 Revue adversariale du diff cumulé (skill `adversarial-review` : lot sync / persistance),
   correctifs par lot rouvert, un test de non-régression rouge sous mutation par correction.
+  Ronde 1 (2026-09-30, trois relecteurs Sonnet aveugles, contrat de 6 lignes ; diff
+  `549d7f7f0..1781ae3c3`) : écritures et sync (L1, L2) — 12 conditions tiennent, 1 constat ;
+  calcul et tests (L4, L6) — 14 conditions tiennent, aucun défaut de calcul, 3 trous de test ;
+  web (L5, L3, §2) — 30 conditions tiennent, 2 constats. Triage du superviseur :
+  - [ ] R1 (P1) `placementCharts.ts:342-345` : l'axe des frags montre le libellé « 5.5 » (ECharts
+    ajoute une graduation aux bornes de l'étendue ; le formateur ne masque que les négatifs) —
+    le §2.1 veut des graduations entières de pas 1. Correction : n'écrire que les entiers ≥ 0.
+  - [ ] R2 (P1, requalifié : invariant V12 de ce lot) `cmd_backfill_killsource_selection.go`
+    `matchsAJour` : vies réécrites (révision d'isolement montée) puis écriture du placement en
+    échec → l'ancienne passe de placement, déjà à `PlacementRev`, fait croire le match à jour, et
+    l'Emprise lit un placement calculé sur d'anciennes vies. Correction : un match n'est à jour que
+    si sa passe de placement à `PlacementRev` est écrite APRÈS (ou avec) sa passe de vies courante.
+  - [ ] R3 (P1, requalifié : V1.2 promettait un test par règle) tests manquants de
+    `placement_des_vies.go` : frag à l'instant exact du début de la vie suivante (borne
+    `[début, début suivant)`) ; paires de causes simultanées porteur/non situé, équipe à
+    terre/non situé, non situé/coéquipier non situé ; branches de `fragRecevable` tueur inconnu,
+    camp inconnu, tueur sans vie. Chaque test rouge sous la mutation nommée par le relecteur.
+  - [ ] R4 (P1, même motif) tests manquants de `porteurs_au_sync.go` `portagesDuDocument` : bombe,
+    couronne VIP, tri par début.
+  - R5 (P3, jeté) seuil de 8 % appliqué à la part arrondie : c'est exactement la maquette validée
+    (`p.value >= 8` sur la valeur arrondie).
 - [ ] V5.2 Rattrapage local (serveur arrêté, binaire du worktree, `LEVELUP_REPO_ROOT` = dossier
   principal) : `levelup backfill-killsource --films-only --dry-run` d'abord, la liste doit contenir
   les 12 matchs filmés du 22/09 ; puis la passe réelle, bornée par `--limit` si la liste dépasse la
