@@ -260,6 +260,10 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
     même PR. **ADRs et runbooks = EN-only** (pas de traduction à créer ni maintenir).
 16. **Git** : jamais `git stash` (commit WIP à la place) ; demander avant tout commit ;
     jamais travailler sur `main` ; ne pas changer de branche si un travail est en cours.
+17. **Commentaires** : le code porte le contrat (ce que fait la déclaration, ses invariants,
+    pourquoi) ; l'histoire (mesures datées, lots, comptes du jour) va dans l'ADR, la chronique
+    ou le journal. S'applique au code neuf et à toute affirmation fausse rencontrée, pas de
+    réécriture de masse. Détail : skill `arch-rules`.
 
 ## Diagnostic de revue de code — anti-patterns interdits
 
