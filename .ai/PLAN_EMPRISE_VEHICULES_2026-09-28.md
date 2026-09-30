@@ -332,6 +332,26 @@ Journal : [2026-10-01] L7.4 joué en avant-plan ; L7.5 (clôture, superviseur) r
 
 - [ ] L7.5.1 Revue adversariale, rattrapage local, vérification sur le témoin, fusion, CI verte,
   gate visuel utilisateur après fusion ; prod par l'utilisateur.
+  Ronde 1 (2026-10-01, deux relecteurs Sonnet aveugles) : écriture (L1, L2) — 14 conditions
+  tiennent, 3 constats ; lecture et web (L4, L6, L5) — 14 conditions tiennent, aucun défaut de
+  calcul, 4 constats. Triage du superviseur :
+  - [ ] RV1 (P1) `cmd_backfill_vehicle_takes.go:205-207` : le dry-run colle deux raisons
+    (`schema_before_67takes_not_measured`) — séparer.
+  - [ ] RV2 (P1) `cmd/levelup/main.go:232-237` : l'aide de `backfill-vehicle-takes` hérite des trois
+    lignes orphelines de `backfill-flag-grabs-net` — les rendre à leur commande.
+  - [ ] RV3 (P1, règle 6) `cmd_backfill_vehicle_takes.go:223-237` : 5e copie de la lecture d'un
+    document de rejeu dans `cmd/levelup` (déjà dans `bomb_stats`, `flag_grabs_net`, `pad_tiers`,
+    `usage_summary`) alors que `replayartifacts.lireDocumentRange` existe — exporter le helper,
+    migrer les cinq copies sans changer leur comportement, garde-rail grep auto-testé.
+  - [ ] RV4 (P1, test manquant) `analysis/squademprise/vehicles.go:258` : `PairedShare` à zéro
+    frag doit rester absent (sinon NaN et page qui ne se sérialise plus) — test.
+  - [ ] RV5 (P1, test manquant) `teammates_service_emprise_vehicles.go:47` : les identifiants des
+    soirées de l'habitude doivent entrer dans la lecture — test.
+  - [ ] RV6 (P1, test manquant) `YieldCard.tsx:121` : pas de note « robots » à zéro passage — test.
+  - RV7 (P2, consigné) `teammates_service_emprise.go:71` / `build.go:88` : si la lecture du résumé
+    d'usage échoue alors que celle des véhicules réussit, les coéquipiers passent dans « reste du
+    camp » et l'habitude des véhicules disparaît. Cas de panne seulement (les deux dérivent du
+    même artefact) ; à traiter avec la lecture de l'onglet, hors de ce lot.
 
 ## 5. Découvertes (à consigner ici, pas à traiter)
 
