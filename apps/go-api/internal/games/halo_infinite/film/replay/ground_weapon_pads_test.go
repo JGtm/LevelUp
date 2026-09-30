@@ -29,8 +29,9 @@ func gwTestClock() replayClock {
 // pour que le test ne depende pas de l'ordre d'iteration d'une map.
 func gwTestFamily(t *testing.T, rank int) uint32 {
 	t.Helper()
-	fams := make([]uint32, 0, len(weaponv3.KnownWeaponHigh32))
-	for f := range weaponv3.KnownWeaponHigh32 {
+	connues := weaponv3.KnownWeaponHigh32Copie()
+	fams := make([]uint32, 0, len(connues))
+	for f := range connues {
 		fams = append(fams, f)
 	}
 	sort.Slice(fams, func(i, j int) bool { return fams[i] < fams[j] })

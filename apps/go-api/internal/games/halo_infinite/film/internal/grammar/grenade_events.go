@@ -111,12 +111,18 @@ const (
 // appariés aux décréments unitaires du compteur porté, et la table `grenade_types` lue
 // dans le binaire du jeu). C'est lui qui relie un lancer au compteur d'inventaire du
 // même type — le réordonner désaccorderait les deux calques.
-var GrenadeTypeIDsByRank = [...]uint32{
+var grenadeTypeIDsByRank = [GrenadeRankCount]uint32{
 	GrenadeFragmentation,
 	GrenadePlasma,
 	GrenadeDynamo,
 	GrenadeSpike,
 }
+
+// GrenadeRankCount est le nombre de rangs de grenade connus (la longueur de [GrenadeTypeIDsByRank]).
+const GrenadeRankCount = 4
+
+// GrenadeTypeIDsByRank rend la table (un tableau : l appelant en tient une COPIE, J12.4).
+func GrenadeTypeIDsByRank() [GrenadeRankCount]uint32 { return grenadeTypeIDsByRank }
 
 // GrenadeRankOf rend le rang d'un tag de grenade, et s'il est connu. Un tag inconnu n'a
 // PAS de rang 0 par défaut : le second retour existe pour que l'appelant ne confonde
@@ -129,7 +135,7 @@ var GrenadeTypeIDsByRank = [...]uint32{
 // construction et ce compteur vaudrait zéro sur tout film. Le créer serait un compteur mort
 // (règle 7 du dépôt) ; la garantie est ici, en clair.
 func GrenadeRankOf(typeID uint32) (int, bool) {
-	for rank, id := range GrenadeTypeIDsByRank {
+	for rank, id := range grenadeTypeIDsByRank {
 		if id == typeID {
 			return rank, true
 		}

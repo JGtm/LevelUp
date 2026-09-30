@@ -66,13 +66,10 @@ type StatComponent struct {
 	Unitary bool
 }
 
-// Les emplacements que le rejeu publie.
-var (
-	// ModeScoreComponent : le score de MODE (comp 0, valeur A) — celui que l'ECRAN affiche,
-	// et qui n'est pas toujours celui de l'API (phase 0-ter du lot A : Strongholds compte des
-	// ticks, KOTH des secondes de colline).
-	ModeScoreComponent = StatComponent{Comp: modeScoreComp, Strict: true}
-)
+// ModeScoreComponent : le score de MODE (comp 0, valeur A) — celui que l'ECRAN affiche,
+// et qui n'est pas toujours celui de l'API (phase 0-ter du lot A : Strongholds compte des
+// ticks, KOTH des secondes de colline).
+func ModeScoreComponent() StatComponent { return StatComponent{Comp: modeScoreComp, Strict: true} }
 
 // PersonalScoreComponent : le score PERSONNEL (comp 1, valeur B).
 func PersonalScoreComponent() StatComponent {

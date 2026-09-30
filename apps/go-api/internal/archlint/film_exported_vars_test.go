@@ -15,21 +15,18 @@ package archlint
 //
 // EXCLUES DE LA MESURE, par nature et non par allowlist : les erreurs sentinelles (`ErrXxx` =
 // `errors.New(...)` / `fmt.Errorf(...)`, ou renvoi `pkg.ErrXxx` de la facade : Go n a pas de `const` d erreur, et le test
-// `errors.Is` est l usage prevu) et les instruments de recherche (`film/research/`), migres au
-// jalon J12.7 avec leur tag de build.
+// `errors.Is` est l usage prevu).
 //
 // # PERIMETRE
 //
 // `internal/games/halo_infinite/film/` (hors `research/`), `internal/replaybuild/`,
 // `internal/sync/killcollector/`, `cmd/replay-*`. Fichiers non-test seulement.
 //
-// # L ALLOWLIST ET SA DATE
+// # ALLOWLIST
 //
-// QUATRE entrees, posees le 2026-09-30 (J12.4) : chacune est lue par du CODE d un fichier
-// `*_research_test.go` ou de `film/research/`, que le jalon J12.4 n a pas le droit de toucher
-// (ils changent de tag au J12.7). Le critere de retrait est mesurable : des que ces lecteurs
-// sont migres, l entree devient un accesseur, et ce test REFUSE une entree qui ne correspond plus
-// a une variable (l allowlist ne peut que DECROITRE).
+// AUCUNE. Les quatre entrees posees le 2026-09-30 (J12.4) sont retirees le meme jour : leurs
+// lecteurs `research` sont migres (accesseurs `ModeScoreComponent()`, `KnownWeaponHigh32Lookup` /
+// `KnownWeaponHigh32Copie`, `GrenadeTypeIDsByRank()` + `GrenadeRankCount`, `WeaponHitDistanceEdges()`).
 //
 // # LA MUTATION QUI DOIT ROUGIR
 //
@@ -46,14 +43,6 @@ import (
 	"strings"
 	"testing"
 )
-
-// varsExporteesEnAttenteJ127 : « dossier.Nom », avec le lecteur qui les retient.
-var varsExporteesEnAttenteJ127 = map[string]string{
-	"internal/games/halo_infinite/film/internal/facts/objectives.ModeScoreComponent": "e1911_manches_mesure_research_test.go",
-	"internal/games/halo_infinite/film/internal/grammar/weaponv3.KnownWeaponHigh32":  "held_weapon_control_research_test.go",
-	"internal/games/halo_infinite/film/internal/grammar.GrenadeTypeIDsByRank":        "grenade_production_research_test.go, film/research/grenadeids",
-	"internal/games/halo_infinite/film/internal/grammar.WeaponHitDistanceEdges":      "lot1_sonde_precision_research_test.go",
-}
 
 func TestAucuneVarExporteeModifiableDansLeDecodeur(t *testing.T) {
 	racine := apiRootDepuisIci(t)
@@ -120,14 +109,7 @@ func TestAucuneVarExporteeModifiableDansLeDecodeur(t *testing.T) {
 	}
 	var fautes []string
 	for cle := range trouvees {
-		if _, permis := varsExporteesEnAttenteJ127[cle]; !permis {
-			fautes = append(fautes, cle)
-		}
-	}
-	for cle := range varsExporteesEnAttenteJ127 {
-		if !trouvees[cle] {
-			fautes = append(fautes, cle+" : entree d allowlist PERIMEE (la variable n existe plus) — la retirer")
-		}
+		fautes = append(fautes, cle)
 	}
 	if len(fautes) > 0 {
 		sort.Strings(fautes)

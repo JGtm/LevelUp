@@ -48,7 +48,7 @@ const sondeMapEnv = "LOT1_SONDE_MAP"
 
 // sondeDistEdges : bornes (metres) des buckets de distance attaquant<->victime. PRODUCTIONISE :
 // alias des bornes de weapon_hits.go — une seule source pour l'instrument et la table.
-var sondeDistEdges = WeaponHitDistanceEdges
+var sondeDistEdges = WeaponHitDistanceEdges()
 
 // sondeDmgEvt : un evenement damage_aftermath horodate, refs d'en-tete non resolues, source.
 // magClear/magRaw sont additifs (peuples par sondeScanDamage, lus par l'instrument

@@ -157,7 +157,7 @@ func TestGrenadeWhitelistIsWhatMakesTheMarkerSelective(t *testing.T) {
 		t.Errorf("%d lancer(s) sur un marqueur suivi d un identifiant HORS liste blanche : la "+
 			"selectivite ne vient plus de la liste, et le decodeur rendrait du bruit", len(got))
 	}
-	for want, id := range GrenadeTypeIDsByRank {
+	for want, id := range GrenadeTypeIDsByRank() {
 		got := scanGrenadesDeReference(buildGrenadeRecord(0, id, 1))
 		if len(got) != 1 {
 			t.Errorf("identifiant %08x (rang %d) : %d lancer(s) reconnu(s)", id, want, len(got))

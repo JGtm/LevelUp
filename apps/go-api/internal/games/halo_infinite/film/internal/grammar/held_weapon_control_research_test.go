@@ -29,7 +29,7 @@ func hwName(v uint32) string {
 	if v == noVariant {
 		return "(vide)"
 	}
-	if n, ok := weaponv3.KnownWeaponHigh32[v]; ok {
+	if n, ok := weaponv3.KnownWeaponHigh32Lookup(v); ok {
 		return n
 	}
 	return fmt.Sprintf("0x%08x", v)

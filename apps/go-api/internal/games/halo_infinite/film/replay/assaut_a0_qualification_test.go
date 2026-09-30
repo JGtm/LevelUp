@@ -147,7 +147,7 @@ func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 	}
 
 	// Increments du score de mode, PAR MANCHE (la forme que l'ecran affiche) puis en cumule.
-	parManche := objectives.SeriesByRound(recs, objectives.ModeScoreComponent, true, nil)
+	parManche := objectives.SeriesByRound(recs, objectives.ModeScoreComponent(), true, nil)
 	slots := make([]int, 0, len(parManche))
 	for s := range parManche {
 		slots = append(slots, s)
@@ -160,7 +160,7 @@ func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 			}
 		}
 	}
-	total := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true, nil)
+	total := objectives.SeriesTotal(recs, objectives.ModeScoreComponent(), true, nil)
 	for _, s := range slots {
 		pts := total[s]
 		if len(pts) == 0 {

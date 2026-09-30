@@ -49,7 +49,7 @@ func TestGrenadesDeProduction(t *testing.T) {
 			t.Errorf("%s : %v", id, err)
 			continue
 		}
-		var parRang [len(GrenadeTypeIDsByRank)]int
+		var parRang [GrenadeRankCount]int
 		indexMax, sansRang := -1, 0
 		for _, g := range throws {
 			rang, connu := g.Rank()

@@ -30,20 +30,23 @@ const WeaponHitPairWindowUS uint64 = 1_000_000
 // WeaponHitDistanceEdges : bornes (metres) des tranches de distance tireur<->victime. Identiques
 // aux bornes de l'instrument d'attribution et a celles documentees par la table
 // match_weapon_hit_distance (migration Lot 1).
-var WeaponHitDistanceEdges = []float64{2, 5, 10, 15, 25, 40}
+var weaponHitDistanceEdges = []float64{2, 5, 10, 15, 25, 40}
+
+// WeaponHitDistanceEdges rend une COPIE des bornes (J12.4) : aucun importeur ne tient la table modifiable.
+func WeaponHitDistanceEdges() []float64 { return slices.Clone(weaponHitDistanceEdges) }
 
 // WeaponHitBucket rend l'index de tranche d'une distance (0..len(edges)).
 func WeaponHitBucket(d float64) int {
-	for i, e := range WeaponHitDistanceEdges {
+	for i, e := range weaponHitDistanceEdges {
 		if d < e {
 			return i
 		}
 	}
-	return len(WeaponHitDistanceEdges)
+	return len(weaponHitDistanceEdges)
 }
 
 // WeaponHitBucketCount est le nombre de tranches de l'histogramme (edges + 1).
-func WeaponHitBucketCount() int { return len(WeaponHitDistanceEdges) + 1 }
+func WeaponHitBucketCount() int { return len(weaponHitDistanceEdges) + 1 }
 
 // WeaponShot est un tir action_weapon_fire (0xD2 type 36) LONG horodate.
 type WeaponShot struct {

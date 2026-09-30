@@ -64,8 +64,9 @@ func bpkOpen(t *testing.T) (bpkFilm, bool) {
 
 // hwCatalogue rend le predicat d'appartenance au catalogue de production.
 func hwCatalogue() map[uint32]bool {
-	m := make(map[uint32]bool, len(weaponv3.KnownWeaponHigh32))
-	for f := range weaponv3.KnownWeaponHigh32 {
+	connues := weaponv3.KnownWeaponHigh32Copie()
+	m := make(map[uint32]bool, len(connues))
+	for f := range connues {
 		m[f] = true
 	}
 	return m

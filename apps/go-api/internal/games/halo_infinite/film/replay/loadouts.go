@@ -44,8 +44,9 @@ import (
 // production dérivée de l'enum d'armes (weaponv3, elle-même dérivée de filmshell.WeaponIDToName).
 // C'est la SEULE source de vérité sur ce qu'est une arme ici — pas de liste parallèle.
 func loadoutFamilies() map[uint32]bool {
-	m := make(map[uint32]bool, len(weaponv3.KnownWeaponHigh32))
-	for f := range weaponv3.KnownWeaponHigh32 {
+	connues := weaponv3.KnownWeaponHigh32Copie()
+	m := make(map[uint32]bool, len(connues))
+	for f := range connues {
 		m[f] = true
 	}
 	return m

@@ -109,7 +109,7 @@ func ctIncrements(t *testing.T, e ctEntree) []ctIncrement {
 	t.Helper()
 	src := p2aBobine(t, e.dir)
 	recs := objectives.StatRecords(src)
-	series := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true, nil)
+	series := objectives.SeriesTotal(recs, objectives.ModeScoreComponent(), true, nil)
 	var out []ctIncrement
 	for slot, pts := range series {
 		if !objectives.IsTeamSlot(slot) {
