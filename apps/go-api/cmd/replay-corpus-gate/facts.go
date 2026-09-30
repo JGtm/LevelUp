@@ -172,10 +172,13 @@ func exportFactsAvec(exporter exporterUnFait, ids []string) {
 	}
 }
 
-// exportUnFait invoque `levelup replay-facts-export` pour UN SEUL id.
+// exportUnFait invoque `levelup replay-facts-export --oracle` pour UN SEUL id : les faits (entree
+// de cuisson) ET l'oracle officiel du banc de verite (`<short8>.oracle.json`, jamais une entree de
+// cuisson), en UNE ouverture de la base en lecture (`OpenReadForQuery` cote export). Les faits
+// s'ecrivent d'abord : un oracle refuse (vide) laisse le temoin comparable, sans score O-S3.
 func exportUnFait(ctx context.Context, p exportParams, id string) error {
 	cmd := exec.CommandContext(ctx, "go", "run", "./cmd/levelup", "replay-facts-export", //nolint:gosec // id du manifeste + chemins internes
-		"--out", p.FactsDir, "--title", p.TitleSlug, id)
+		"--out", p.FactsDir, "--title", p.TitleSlug, "--oracle", id)
 	cmd.Dir = p.GoAPIDir
 	cmd.Env = append(os.Environ(),
 		"LEVELUP_REPO_ROOT="+p.ParcRoot,

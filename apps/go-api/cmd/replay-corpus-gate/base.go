@@ -192,6 +192,8 @@ func preparerReferenceBase(ctx context.Context, p basePrepParams, tc *temoinCont
 	}
 
 	tc.WorkRootBase, tc.BinBase = workRootBase, binBase
+	tc.RegistreBase = registreDeLaBase(ctx, wtBase.GoAPIDir, filepath.Join(p.WorkRoot, "gocache-base"),
+		filepath.Join(p.WorkRoot, "bin", "replay-verite-base"+exeSuffix()))
 	tc.BaseSHA = baseSHA
 	tc.BaseGoVersion = goVersionDe(ctx, wtBase.GoAPIDir)
 	tc.CacheBase = baseCache{Racine: filepath.Join(title.NewPathResolver(tc.ParcRoot).CacheRootDir(), dossierCacheBase)}

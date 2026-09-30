@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/replayverite"
 )
 
 // errAbsentDuParc marque un temoin dont l'artefact de reference (mode parc) n'existe pas au
@@ -38,6 +39,10 @@ type temoinContexte struct {
 	BaseSHA, BaseGoVersion string
 	CacheBase              baseCache
 	SansCacheBase          bool
+	// RegistreBase : le registre des replis de la BASE, produit par l'outil du banc compile a la
+	// base (verite_registre.go) ; nil = inconnu (mode parc, ou base sans l'outil) — tout repli
+	// nouveau est alors un FAUX.
+	RegistreBase replayverite.RegistreReplis
 }
 
 // traiterTemoin cuit et compare UN temoin ; ne rend JAMAIS d'erreur — un temoin absent ou en
@@ -107,6 +112,16 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 	rap, err := compareTemoin(refPath, cuissonHead.ArtifactPath)
 	if err != nil {
 		base.Erreur = fmt.Errorf("comparaison : %w", err)
+		return base
+	}
+	// LE BANC AVANT LE BILAN : les filets de `remplirBilan` dependent des mesures que le banc a
+	// reellement notees (verite.go).
+	base.Verite, err = juger(jugement{
+		Reference: refPath, HEAD: cuissonHead.ArtifactPath, Faits: facts.MatchFacts,
+		Oracle: lireOracleDuTemoin(ctx, tc.FactsDir, t.ID), RegistreAvant: tc.RegistreBase,
+	})
+	if err != nil {
+		base.Erreur = err
 		return base
 	}
 	base.remplirBilan(rap)

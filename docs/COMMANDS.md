@@ -967,7 +967,19 @@ up, or a NEW fallback fires (unless the before-registry says its counter was not
 `MANQUE` when an oracle false negative goes up or an internal proof degrades; `ok` otherwise. Only
 the delta decides: absolute values are printed for information. Units matched ON the oracle itself
 (`triplet_feuille` statborg slots, teams resolved by `teamIdentity` `a`/`a0`) are excluded, never
-counted as true positives. Integration into `replay-corpus-gate` comes next.
+counted as true positives. `-oracle <short8>.oracle.json` adds O-S3 (personal score).
+
+**Inside `replay-corpus-gate` (2026-09-30), the bench IS the verdict.** Every compared witness is
+judged by the bench (reference and HEAD, same facts, same oracle — the gate now exports
+`<short8>.oracle.json` next to the facts with `replay-facts-export --oracle`). The witness status is
+`FAUX` / `MANQUE` (bench), then `PERTE` for two safety nets only: a `replaydiff` loss in a block no
+bench measure covers, or a top-level layer that vanishes. Every other `replaydiff` difference
+(covered losses, changes, gains) stays in the report for information; `CHANGEMENT` is no longer a
+status. The text report prints a `BANC DE VERITE` section per witness BEFORE the `replaydiff`
+details; the JSON carries a `verite` object per witness. Rule R-1 needs the base's fallback
+registry: the gate builds `cmd/replay-verite` in the base worktree and runs `-registre` (once per
+run, not cached: it depends only on the base SHA). A base older than the bench has no such tool —
+the registry is then unknown and every new fallback is `FAUX`, as the report says.
 
 ### Frontend (`apps/web`)
 

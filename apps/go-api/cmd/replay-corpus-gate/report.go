@@ -16,27 +16,29 @@ package main
 // le risque que ce gate existe pour eliminer (CLAUDE.md, anti-pattern « rapporter, pas
 // masquer »).
 //
-// # LA REGLE DE PRIORITE DES STATUTS (2026-09-17, lot 2.8.1)
+// # LA REGLE DE PRIORITE DES STATUTS (2026-09-30 : le banc de verite rend le verdict, D-5)
 //
 // Un temoin porte UN SEUL statut, et il se choisit dans CET ORDRE — le premier qui s'applique
 // gagne, les suivants ne sont meme pas consultes :
 //
 //	1. ABSENT      le temoin n'a pas ete compare du tout (film, faits ou artefact manquants).
-//	   ERREUR      la cuisson ou la comparaison a echoue. ABSENT et ERREUR s'excluent par
+//	   ERREUR      la cuisson, la comparaison ou le banc a echoue. ABSENT et ERREUR s'excluent par
 //	               construction (orchestrate.go les pose dans des branches disjointes) ; ils
 //	               partagent ce rang parce qu'ils disent la meme chose : PAS DE MESURE.
-//	2. PERTE       au moins une mesure a baisse ou disparu. PRIME SUR `CHANGEMENT` : un temoin
-//	               qui porte les deux est un temoin en perte, et c'est la perte qu'on instruit.
-//	3. CHANGEMENT  aucune perte, mais au moins une valeur publiee a BOUGE (reattribution, voie
-//	               de nommage qui cede a une autre — `replaydiff/polarite.go`). Statut DISTINCT
-//	               de la perte depuis le 2026-09-17 : jusque-la un changement sortait `PERTE`,
-//	               ce qui envoyait chercher une regression la ou une valeur avait seulement
-//	               change de main. Il reste BLOQUANT (`estBloquant`) : un changement se
-//	               justifie (divergence prouvee) ou il se corrige, jamais il ne se tait.
-//	4. ok          ni perte ni changement. Des GAINS peuvent s'y trouver : un gain n'est jamais
-//	               un echec.
+//	2. FAUX        le banc de verite (verite.go) voit un faux positif d'oracle, une classe de
+//	               violation ou un repli nouveau en hausse. PRIME SUR TOUT le reste : rien de
+//	               faux n'est publie.
+//	3. MANQUE      le banc voit un faux negatif d'oracle en hausse, ou une preuve interne qui se
+//	               degrade.
+//	4. PERTE       un FILET : une perte `replaydiff` qu'aucune mesure du banc ne couvre, ou un
+//	               calque qui disparait (verite.go, `filetsDe`).
+//	5. ok          rien de cela.
 //
-// Les gains n'entrent nulle part dans ce choix — ils se lisent dans leur colonne.
+// LES AUTRES DIFFERENCES `replaydiff` — pertes couvertes par le banc, CHANGEMENTS, gains — NE
+// DECIDENT PLUS RIEN depuis le 2026-09-30 : elles restent comptees au tableau et nommees dans les
+// sections de detail, a titre d'information. Jusque-la chaque perte et chaque changement
+// bloquaient, et chaque passage se soldait par des heures d'attribution a la main d'ecarts dont
+// aucun ne disait si la donnee etait plus JUSTE (conception du banc, §0).
 
 import (
 	"fmt"
@@ -45,6 +47,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/replaydiff"
+	"levelup/go-api/internal/replayverite"
 )
 
 // Les codes de sortie du gate, NOMMES — le seul canal qu'une CI, un agregateur ou un pilote
@@ -55,8 +58,8 @@ import (
 const (
 	// codeOK : tout le manifeste a ete compare, aucun temoin bloquant.
 	codeOK = 0
-	// codePerte : au moins un temoin compare porte une PERTE ou un CHANGEMENT bloquant
-	// (`estBloquant`) — le verdict que ce gate existe pour rendre.
+	// codePerte : au moins un temoin compare est BLOQUANT (`estBloquant`) : FAUX ou MANQUE au banc
+	// de verite, ou PERTE d'un filet — le verdict que ce gate existe pour rendre.
 	codePerte = 1
 	// codeUsage : le gate n'a pas pu DEMARRER (drapeau invalide, manifeste illisible, racine
 	// introuvable, capability absente, worktree de base impossible). Aucun temoin n'a ete
@@ -79,11 +82,12 @@ const (
 // nommes ici parce que le tableau, le JSON et les tests les partagent : trois litteraux
 // separes divergeraient au premier renommage.
 const (
-	statutOK         = "ok"
-	statutChangement = "CHANGEMENT"
-	statutPerte      = "PERTE"
-	statutAbsent     = "ABSENT"
-	statutErreur     = "ERREUR"
+	statutOK     = "ok"
+	statutFaux   = "FAUX"
+	statutManque = "MANQUE"
+	statutPerte  = "PERTE"
+	statutAbsent = "ABSENT"
+	statutErreur = "ERREUR"
 )
 
 // ligneRapport est le resultat d'UN temoin, pret a s'imprimer. `SchemaReference` porte le
@@ -124,6 +128,12 @@ type ligneRapport struct {
 	// pilote devait relancer `replay-diff` a la main sur les artefacts conserves pour savoir
 	// LESQUELS — ce qui est arrive a la cloture M1 (plan §5, les 7 changements nommes).
 	ChangementsDetail []replaydiff.Difference
+	// Verite : le verdict du banc de verite sur ce temoin (verite.go) ; nil = le banc n'a pas
+	// juge (temoin absent ou en erreur).
+	Verite *replayverite.Comparaison
+	// Filets : les pertes `replaydiff` qui restent BLOQUANTES — hors de tout bloc couvert par une
+	// mesure du banc, ou calque disparu (verite.go, `filetsDe`).
+	Filets []replaydiff.Difference
 }
 
 // origineBase dit d'ou vient l'artefact de la base, pour la colonne « base » du tableau :
@@ -136,16 +146,12 @@ func (l ligneRapport) origineBase() string {
 	return "cuite"
 }
 
-// aUnePerte dit si CE temoin porte au moins une mesure qui a baisse ou disparu.
-func (l ligneRapport) aUnePerte() bool { return l.Pertes > 0 }
-
-// aUnChangement dit si CE temoin porte au moins une valeur publiee qui a BOUGE sans etre ni un
-// gain ni une perte.
-func (l ligneRapport) aUnChangement() bool { return l.Changements > 0 }
-
-// estBloquant dit si CE temoin doit faire echouer le gate : une perte OU un changement. Les
-// deux bloquent, et ils ne se confondent pas pour autant — cf. la regle de priorite en tete.
-func (l ligneRapport) estBloquant() bool { return l.aUnePerte() || l.aUnChangement() }
+// estBloquant dit si CE temoin doit faire echouer le gate : FAUX, MANQUE ou PERTE d'un filet —
+// cf. la regle de priorite en tete. Un temoin absent ou en erreur n'est pas « bloquant » ici :
+// `codeSortie` et `verifierCouverture` en rendent leurs propres codes.
+func (l ligneRapport) estBloquant() bool {
+	return !l.Absent && l.Erreur == nil && l.statutVerite() != ""
+}
 
 // statut rend le statut du temoin selon la regle de priorite de l'en-tete de ce fichier.
 func (l ligneRapport) statut() string {
@@ -154,10 +160,9 @@ func (l ligneRapport) statut() string {
 		return statutAbsent
 	case l.Erreur != nil:
 		return statutErreur
-	case l.aUnePerte():
-		return statutPerte
-	case l.aUnChangement():
-		return statutChangement
+	}
+	if s := l.statutVerite(); s != "" {
+		return s
 	}
 	return statutOK
 }
@@ -174,6 +179,10 @@ func (l ligneRapport) statut() string {
 // (`verdict_metriques.go`). Les comptes se recalculent donc DEPUIS LES ECARTS, qui sont la meme
 // population que les bilans (`replaydiff.Rapport.ajouter` alimente les deux d'un seul geste) :
 // aucune mesure n'est perdue, seule la CLASSIFICATION change.
+//
+// LES FILETS SE POSENT ICI (2026-09-30), et c'est pourquoi `l.Verite` doit etre pose AVANT : un
+// bloc n'est couvert que par une mesure que le banc a reellement notee sur CE temoin. Sans banc
+// (`Verite` nil), aucun bloc n'est couvert et toute perte reste bloquante.
 func (l *ligneRapport) remplirBilan(rap replaydiff.Rapport) {
 	l.SchemaReference, l.SchemaHEAD = rap.SchemaAncien, rap.SchemaNouveau
 	l.Gains, l.Pertes, l.Changements = 0, 0, 0
@@ -196,6 +205,7 @@ func (l *ligneRapport) remplirBilan(rap replaydiff.Rapport) {
 			l.Gains++
 		}
 	}
+	l.Filets = filetsDe(l.PertesDetail, l.Verite)
 }
 
 // imprimerTableau ecrit le recapitulatif — un temoin par ligne, dans l'ordre du manifeste.
@@ -273,8 +283,8 @@ func vide(s string) string {
 
 // codeSortie rend `codeErreurCuisson` si un temoin CUIT porte une erreur de cuisson ou de
 // comparaison (TOUJOURS bloquant, quel que soit le mode : le gate n'a alors pas pu faire son
-// travail), `codePerte` si `pertesBloquent` est vrai et qu'un temoin est bloquant (perte OU
-// changement), `codeOK` sinon. `pertesBloquent` vaut `reference == "base"` (toujours) ou
+// travail), `codePerte` si `pertesBloquent` est vrai et qu'un temoin est bloquant (FAUX, MANQUE
+// ou filet PERTE), `codeOK` sinon. `pertesBloquent` vaut `reference == "base"` (toujours) ou
 // `--strict` (mode parc) — cf. l'en-tete du fichier.
 //
 // L'ERREUR DE CUISSON PRIME SUR LA PERTE : elle se rencontre en premier dans la boucle et rend

@@ -31,6 +31,11 @@ package main
 //	    le pilote, toujours bloquant.
 //	(c) LE RESTE    inchange. Une perte reelle et un changement hors telemetrie bloquent.
 //
+// DEPUIS LE 2026-09-30, CETTE CLASSIFICATION N EST PLUS LE VERDICT : c est le banc de verite
+// (verite.go). Elle continue de dire, au rapport, ce qui est perte, changement ou telemetrie, et
+// elle nourrit les FILETS : seule une PERTE hors des blocs couverts par le banc bloque encore. Un
+// CHANGEMENT ne bloque plus (cf. report.go, regle de priorite).
+//
 // # CE QUE CE FICHIER N EST PAS
 //
 // Il ne touche PAS `replaydiff` : la MESURE et la polarite restent ou elles sont, c est le

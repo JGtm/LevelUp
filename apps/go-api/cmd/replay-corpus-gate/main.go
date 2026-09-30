@@ -25,6 +25,15 @@
 //
 // Dans les deux modes, aucun schema n'est bumpe — le gate COMPARE.
 //
+// # LE VERDICT EST CELUI DU BANC DE VERITE (2026-09-30, decision D-5)
+//
+// Chaque temoin compare est juge par `internal/replayverite` : les deux artefacts contre les
+// oracles (faits du match, oracle officiel `<short8>.oracle.json` exporte a cote des faits) et par
+// des comptes de violations. Son verdict (FAUX / MANQUE / ok) est celui du temoin ; les differences
+// `replaydiff` restent au rapport a titre d'information, sauf deux filets (verite.go). Le registre
+// des replis de la base, que la regle R-1 du banc exige, est produit par l'outil du banc compile a
+// la base (verite_registre.go).
+//
 // # CE QU'IL EXIGE
 //
 // Le PARC LOCAL de developpement (chunks de film ; + artefacts deja cuits en mode parc) ET
@@ -62,8 +71,8 @@
 // Ils se lisent sans parser le tableau, et chacun dit UNE chose :
 //
 //	0  codeOK                   tout le manifeste a ete compare, aucun temoin bloquant.
-//	1  codePerte                au moins un temoin compare porte une PERTE ou un CHANGEMENT
-//	                            bloquant. LE verdict de ce gate.
+//	1  codePerte                au moins un temoin compare est BLOQUANT : FAUX ou MANQUE au banc
+//	                            de verite, ou PERTE d'un filet (verite.go). LE verdict de ce gate.
 //	2  codeUsage                le gate n'a pas DEMARRE : drapeau invalide, manifeste illisible,
 //	                            racine introuvable, capability absente, worktree de base
 //	                            impossible. Rien n'a ete mesure du diff sous revue.
@@ -158,6 +167,9 @@ type executerOptions struct {
 	MemGiB int
 	// SansCacheBase : --sans-cache-base, force la recuisson de la base (basecache.go).
 	SansCacheBase bool
+	// registreAvantConnu : le registre des replis de la base a ete lu (verite_registre.go) — pose
+	// par executer, jamais par la ligne de commande ; il ne sert qu'a le dire au rapport.
+	registreAvantConnu bool
 }
 
 // environnementGate regroupe la resolution des racines et du manifeste — un struct plutot
@@ -224,6 +236,7 @@ func executer(ctx context.Context, o executerOptions) (int, error) {
 	}
 
 	lignes := cuireEtComparerTousLesTemoins(ctx, env.Manifest, tc)
+	o.registreAvantConnu = tc.RegistreBase != nil
 	return finaliser(lignes, refLabel, o)
 }
 
@@ -334,6 +347,7 @@ func cuireEtComparerTousLesTemoins(ctx context.Context, manifest Manifest, tc te
 // zero ».
 func finaliser(lignes []ligneRapport, refLabel string, o executerOptions) (int, error) {
 	imprimerTableau(os.Stdout, lignes, refLabel)
+	imprimerVerite(os.Stdout, lignes, o.registreAvantConnu)
 	imprimerDetailPertes(os.Stdout, lignes)
 	imprimerDetailChangements(os.Stdout, lignes)
 	imprimerTelemetrie(os.Stdout, lignes)
@@ -403,6 +417,7 @@ type ligneJSON struct {
 	Pertes            int          `json:"pertes"`
 	Changements       int          `json:"changements"`
 	DureeMS           int64        `json:"dureeMs"`
+	Verite            *veriteJSON  `json:"verite,omitempty"`
 	PertesDetail      []detailJSON `json:"pertesDetail,omitempty"`
 	ChangementsDetail []detailJSON `json:"changementsDetail,omitempty"`
 }
@@ -420,6 +435,7 @@ func ligneVersJSON(l ligneRapport) ligneJSON {
 	if l.Erreur != nil {
 		lj.Erreur = l.Erreur.Error()
 	}
+	lj.Verite = veriteVersJSON(l)
 	lj.PertesDetail = detailsVersJSON(l.PertesDetail)
 	lj.ChangementsDetail = detailsVersJSON(l.ChangementsDetail)
 	return lj

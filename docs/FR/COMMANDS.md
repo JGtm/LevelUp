@@ -1006,8 +1006,21 @@ monte, ou qu'un repli NOUVEAU se déclenche (sauf si le registre d'avant dit son
 branché) ; `MANQUE` quand un faux négatif d'oracle monte ou qu'une preuve interne se dégrade ;
 `ok` sinon. Seul le delta décide : les valeurs absolues s'affichent à titre d'information. Les
 unités appariées SUR l'oracle lui-même (slots statborg `triplet_feuille`, camps rattachés par
-`teamIdentity` `a`/`a0`) sont exclues, jamais comptées en vrais positifs. L'intégration à
-`replay-corpus-gate` suit.
+`teamIdentity` `a`/`a0`) sont exclues, jamais comptées en vrais positifs. `-oracle
+<short8>.oracle.json` ajoute O-S3 (score personnel).
+
+**Dans `replay-corpus-gate` (2026-09-30), le verdict EST celui du banc.** Chaque témoin comparé est
+jugé par le banc (référence et HEAD, mêmes faits, même oracle — le gate exporte désormais
+`<short8>.oracle.json` à côté des faits par `replay-facts-export --oracle`). Le statut du témoin est
+`FAUX` / `MANQUE` (banc), puis `PERTE` pour deux filets seulement : une perte `replaydiff` dans un
+bloc qu'aucune mesure du banc ne couvre, ou un calque de premier niveau qui disparaît. Toutes les
+autres différences `replaydiff` (pertes couvertes, changements, gains) restent au rapport à titre
+d'information ; `CHANGEMENT` n'est plus un statut. Le rapport texte imprime une section
+`BANC DE VERITE` par témoin AVANT le détail `replaydiff` ; le JSON porte un objet `verite` par
+témoin. La règle R-1 exige le registre des replis de la base : le gate compile `cmd/replay-verite`
+dans le worktree de base et lance `-registre` (une fois par passage, sans cache : il ne dépend que
+du SHA de la base). Une base antérieure au banc n'a pas cet outil : le registre est alors inconnu et
+tout repli nouveau est `FAUX`, ce que le rapport dit.
 
 ### Frontend (`apps/web`)
 
