@@ -265,6 +265,30 @@ jobs:
           # Prestige (smoke tests + route registration).
           PRESTIGE_ENABLED: "true"
 
+  # J12.6 (2026-09-30) : D-5 (deux films decodes en parallele ne partagent aucun etat) est prouve
+  # SOUS `-race`. `-race` est incompatible avec DuckDB (cf. job coverage) : ce job cible donc le
+  # seul paquet grammar, mini-bobines du depot, aucune base. CGO obligatoire pour `-race`.
+  film-race:
+    name: Film race (grammar, -race cible)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: go test -race (deux films en parallele)
+        run: go test -race -count=1 -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/internal/grammar/
+        env:
+          CGO_ENABLED: "1"
+
   go-lint:
     name: Go Lint (golangci-lint)
     runs-on: ubuntu-latest
