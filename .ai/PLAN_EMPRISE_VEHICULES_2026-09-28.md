@@ -97,11 +97,72 @@ même protocole que le plan des vies (§5).
 
 ### L7.0 — Témoin et mesures (superviseur puis exécuteur) · rapide
 
-- [ ] L7.0.1 Documents des huit témoins construits en mémoire (E3 amendée) ; frontière E1 tenue.
-- [ ] L7.0.2 Sur les matchs du témoin : prises (D2), temps à bord (D4), part `proximity`, frags de
+- [x] L7.0.1 Documents des huit témoins construits en mémoire (E3 amendée) ; frontière E1 tenue.
+  Les huit documents sortent au schéma 71 (code actuel) ; aucun fichier de la frontière E1 touché
+  (`git status` : deux tests de recherche neufs, rien d'autre).
+- [x] L7.0.2 Sur les matchs du témoin : prises (D2), temps à bord (D4), part `proximity`, frags de
   classe véhicule par camp (D5). **Seuils écrits avant la mesure : ≥ 90 % des frags de classe
   véhicule d'un joueur de l'escouade tombent pendant un de ses épisodes publiés ; part `proximity`
-  ≤ 50 % des épisodes.** Manqué : STOP, rapport à l'utilisateur.
+  ≤ 50 % des épisodes.** Manqué : STOP, rapport à l'utilisateur. **Verdict : les deux seuils sont
+  tenus à la lettre** (45,2 % ; 11/11), avec les réserves nommées ci-dessous.
+
+**Instruments** (tests de recherche, sautés sans données, rien écrit dans `data/`) :
+`platform/duckdb/emprise_vehicules_l70_frags_research_test.go` (`TestEmpriseL70Frags` : frags D5
+par la requête, le classificateur `halo_infinite.NewKillSourceRegistry` et le résolveur de classe
+`resolveWeaponKeyDimensions` du lecteur de la « Répartition des frags », sur copies de `shared` et
+`metadata`) puis `replaybuild/emprise_vehicules_l70_research_test.go` (`TestEmpriseL70` : document
+en mémoire par `v0Document`, horloge du lot V0.1 — film µs = origine + f × pas, match ms = film ms
+− `coverage.bridge.deathOffsetMs`). Prises D2 : par vie (pièce montée repliée sur son porteur),
+épisodes triés par `t0` puis siège (conducteur d'abord), une prise à chaque changement de camp ;
+camp de l'occupant par `roster[].team` du film (0 discordance avec `match_participants.team_id`
+sur les huit matchs).
+
+**Prises (D2) et temps à bord (D4), par match** (camp 0 / camp 1 ; temps en s) :
+
+| Match | Vies (sans épisode) | Épisodes (dont `proximity`) | Prises 0 / 1 | Temps à bord 0 / 1 |
+|---|---|---|---|---|
+| fccc61cd Launch Site | 15 (12) | 3 (3 = 100 %) | 2 / 1 | 15 / 21 |
+| 879a4dba Fortitude | 44 (20) | 46 (14 = 30,4 %) | 16 / 12 | 523 / 258 |
+| 5676a9ba Insolence | 60 (33) | 63 (41 = 65,1 %) | 16 / 18 | 543 / 944 |
+| 4f77afc1 Flood Gulch | 146 (87) | 111 (44 = 39,6 %) | 32 / 29 | 1262 / 1343 |
+| f2966f08 Behemoth | 12 (8) | 8 (3 = 37,5 %) | 4 / 2 | 148 / 45 |
+| 7b0d89c4 Behemoth | 10 (6) | 5 (3 = 60,0 %) | 3 / 1 | 289 / 38 |
+| 4ecdf3e7 High Ground | 9 (7) | 2 (1 = 50,0 %) | 0 / 2 | 0 / 14 |
+| bfecd02b Snowbound | 11 (9) | 3 (0 = 0 %) | 1 / 1 | 158 / 119 |
+| **Total** | 307 (182) | **241 (109 = 45,2 %)** | 74 / 66 | 2938 / 2782 |
+
+Familles des prises (total des huit, 140) : warthog 42, mongoose 25, ghost 19, wraith 18, falcon 17,
+banshee 9, chopper 4, famille inconnue 4 (879a4dba 2, 4f77afc1 2), shade 2. 3 épisodes sans
+xuid (4f77afc1), 0 sans camp, 2 pièces montées orphelines (porteur absent du document).
+
+**Frags de classe véhicule ou tourelle (D5), par camp du tueur** : 24/07 = 101 (fccc61cd 2, 879a4dba
+13, 5676a9ba 35, 4f77afc1 51 dont 3 tourelle) ; 01/09 = 30 (f2966f08 4, 7b0d89c4 14, 4ecdf3e7 1,
+bfecd02b 11). Par match (camp 0 / 1) : 2/0, 2/11, 15/20, 26/25, 4/0, 12/2, 1/0, 5/6.
+
+**Seuil frags (escouade, tueur = JGtm, Madina97294 ou Chocoboflor)** : 11 frags, 11 pendant un de
+leurs épisodes publiés, dès la lecture stricte (bornes incluses ; ±500 ms et ±1 s donnent le même
+compte) — JGtm 1 (5676a9ba), 5 (4f77afc1), 5 (bfecd02b) ; Madina97294 et Chocoboflor 0.
+
+**Réserves, à lire avant L7.1** :
+
+1. **L'échantillon du seuil est petit : 11 frags**, tous de JGtm ; les 120 autres
+   frags d engin des huit matchs sont ceux du reste du lobby.
+2. **Tout le lobby, la couverture des épisodes tombe à 62 % (81/131)** : 879a4dba 9/13, 5676a9ba
+   27/35, 4f77afc1 20/51 (39 %), f2966f08 1/4, 7b0d89c4 13/14, fccc61cd 0/2, 4ecdf3e7 0/1,
+   bfecd02b 11/11. Cause connue : la primitive n'attribue qu'une part des vies de véhicule (limite
+   publiée au calque). Conséquence pour D4 : un « rendement par minute à bord » par CAMP a un
+   dénominateur (le temps à bord) plus bas que la réalité ; celui d'un joueur de l'escouade, qui
+   tient ses frags dans ses épisodes, n'a pas ce biais. À statuer pour le bloc (L7.3), pas ici.
+3. **`proximity` : 45,2 % des épisodes au total, mais 65,1 % à Insolence, 60 % à un Behemoth, 100 %
+   à Launch Site.** En temps à bord, `proximity` pèse 3023 s sur 5720 s (52,8 %), au-dessus de 50 %.
+   Le seuil du plan porte sur le COMPTE d'épisodes ; il est tenu sur l'ensemble des huit.
+4. **Écart avec le relevé du 2026-09-28** : D5 ne compte que les sources à clé de registre (classe
+   `vehicle` ou `turret` dans `metadata.weapons`) ; 30 frags de plus du 24/07 (13 à 879a4dba, 17 à
+   4f77afc1) ont une source de classe « VEHICULE » SANS clé de registre (les écrasements, exclus
+   par D5 comme dans la Répartition des frags) — 101 + 30 = 131, le chiffre du relevé.
+
+Journal : [2026-09-30] L7.0 joué en avant-plan (une passe de 1188 s sur les huit films, pic mémoire
+sous le plafond de 8 Gio) ; seuils tenus ; L7.1 autorisé.
 
 ### L7.1 — Projection pure (Go) · moyen
 
