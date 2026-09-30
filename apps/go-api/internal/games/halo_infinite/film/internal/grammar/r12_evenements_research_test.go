@@ -31,7 +31,7 @@ package grammar
 // `CGO_ENABLED=0`. USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 R12_FILMS=<repo>/data/cache/film_chunks R12_IDS=215e7022 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR12(Cadrage|Evenements)$' -count=1 -timeout 60m -v
 
 import (

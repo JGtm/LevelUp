@@ -20,7 +20,7 @@ package grammar
 // test se saute — les films ne sont pas versionnes.
 //
 //	CGO_ENABLED=0 HW_FILM=<depot>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run HeldWeapon -v -timeout 30m
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run HeldWeapon -v -timeout 30m
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"

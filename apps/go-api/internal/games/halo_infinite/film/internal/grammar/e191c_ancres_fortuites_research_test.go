@@ -35,7 +35,7 @@ package grammar
 //
 // LECTURE SEULE, sans garde d environnement (bobines versionnees).
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191cAncresFortuites$' -v -count=1
+//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191cAncresFortuites$' -v -count=1
 
 import (
 	"path/filepath"

@@ -21,7 +21,7 @@ package grammar
 //
 //	CGO_ENABLED=0 I48M_PARC='<depot>/data/cache/film_chunks/01e1f945,<...>/0a44c6cc' \
 //	  I48M_MAXJUMPS=12 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI48ManquesParc$' -v -timeout 60m
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI48ManquesParc$' -v -timeout 60m
 
 import (
 	"math"

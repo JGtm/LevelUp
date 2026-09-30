@@ -19,7 +19,7 @@ package grammar
 // LECTURE SEULE, `chunk_00` uniquement (aucun film entier n est lu).
 //
 //	CGO_ENABLED=0 CHUNK00_CORPUS="C:/.../data/cache/film_chunks" \
-//	  go test -tags research ./internal/games/halo_infinite/film/filmdec/ \
+//	  go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run TestMPPResolutionCorpus -v -timeout 30m
 
 import (

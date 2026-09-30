@@ -22,7 +22,7 @@ package grammar
 // USAGE (garde par environnement, saute sans elle) :
 //
 //	CHUNK00_FILMS='C:/.../film_chunks/a521164d;C:/.../film_chunks/60ae07c4' \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run KeyframeClosureInventaire -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run KeyframeClosureInventaire -v
 
 import (
 	"fmt"

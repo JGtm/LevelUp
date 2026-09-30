@@ -30,7 +30,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I54_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI54MobilityActionUsage$' -timeout 10m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI54MobilityActionUsage$' -timeout 10m -v
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"

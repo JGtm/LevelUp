@@ -36,7 +36,7 @@ package grammar
 //	  EQUIP_EVENTS_ROOT=<repo>/data/cache/film_chunks \
 //	  EQUIP_EVENTS_ARTS=<repo>/data/cache/replays/halo_infinite \
 //	  EQUIP_EVENTS_IDS=000d5950,06dfe6d9,084a804d,4f77afc1,8a485699,1b2d9e08,a0c36016 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestEquipementsEvenements$' -timeout 30m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestEquipementsEvenements$' -timeout 30m -v
 
 import (
 	"encoding/json"

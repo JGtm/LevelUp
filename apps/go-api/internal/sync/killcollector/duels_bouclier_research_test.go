@@ -16,7 +16,7 @@ package killcollector
 // coups, et c'est un duel. Le bouclier est replique DANS LE RECORD DE POSITION a chaque fois
 // qu'il change (`BipedPosition.ShieldAt`) — deux a dix fois plus dense que le flux de degats.
 //
-// CE QUE CETTE SONDE MESURE (items 1.3 a 1.7 de `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`) :
+// CE QUE CETTE SONDE MESURE (items 1.3 a 1.7 de `.ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md`) :
 //
 //	A  pont du tueur — part des kills du feed dont le TUEUR est localise a T par le pont de
 //	   PRODUCTION (`ResolveSlotXUID` + `BuildKillPositions`). Sans lui, rien d'autre n'a de sens.

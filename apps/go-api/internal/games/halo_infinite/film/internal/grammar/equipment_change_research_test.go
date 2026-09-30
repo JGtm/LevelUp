@@ -26,7 +26,7 @@ package grammar
 // GARDE : HW_FILM, meme convention que les autres instruments de ce lot.
 //
 //	CGO_ENABLED=0 HW_FILM=<depot>/data/cache/film_chunks/64e8adfa \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run types.EquipmentChange -v -timeout 30m
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run types.EquipmentChange -v -timeout 30m
 
 import (
 	"fmt"

@@ -28,7 +28,7 @@ package grammar
 //	  R6_ROOT=... R6_CAT=... (memes valeurs que TestR6Layout117) \
 //	  R6_MAPS="1b2d9e08=944396dd-5661-4a16-b1d8-a6053f762c55,a0c36016=forest" \
 //	  R6_IDS=000d5950,06dfe6d9,084a804d,4f77afc1,8a485699,bf2a9f05,d1dfbc02,1b2d9e08,a0c36016 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR6SondageListe$' -timeout 20m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR6SondageListe$' -timeout 20m -v
 
 import (
 	"fmt"

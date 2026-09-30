@@ -33,7 +33,7 @@ package grammar
 //	  R9_MANIFESTS=<repo>/data/cache/film_manifests \
 //	  R9_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
 //	  R8_BOUNDS=<wt>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R9_IDS=8a485699 go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  R9_IDS=8a485699 go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR9(Horloge|CreneauxPropulseur)$' -count=1 -timeout 60m -v
 
 import (

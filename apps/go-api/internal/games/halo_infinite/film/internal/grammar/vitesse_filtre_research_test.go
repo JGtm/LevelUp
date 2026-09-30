@@ -4,7 +4,7 @@ package grammar
 
 // vitesse_filtre_research_test.go — R3 : que coûte le filtre MaxSpeedMPS=100 de la
 // production sur les téléportations du translocateur, et que vaudrait son remplacement ?
-// Plan : .ai/PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03.md, lot R3.
+// Plan : .ai/V7.5/PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03.md, lot R3.
 //
 // CE QUE LA PRODUCTION FAIT (offline_biped.go / offline_filters.go, lu sur pièces) :
 // DropTeleports rejette toute position dont la vitesse depuis la DERNIÈRE POSITION ACCEPTÉE

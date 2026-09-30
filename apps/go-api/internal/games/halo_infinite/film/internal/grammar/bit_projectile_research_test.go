@@ -27,7 +27,7 @@ package grammar
 //	CGO_ENABLED=0 \
 //	BITPROJ_PARC=<racine portant data/> \
 //	BITPROJ_FILMS='0797ce72=Live Fire,21ece4d8=Live Fire' \
-//	  go test ./internal/games/halo_infinite/film/filmdec -run TestBancBitProjectile -v -timeout 1800s
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar -run TestBancBitProjectile -v -timeout 1800s
 //
 // Réglages : BITPROJ_DETAIL (nombre de pas détaillés par film, défaut 20).
 

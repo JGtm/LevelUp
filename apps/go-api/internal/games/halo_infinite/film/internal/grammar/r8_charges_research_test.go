@@ -27,7 +27,7 @@ package grammar
 //
 //	CGO_ENABLED=0 R8_FILMS=<repo>/data/cache/film_chunks \
 //	  R8_ARTIFACTS=<repo>/data/cache/replays/halo_infinite R8_IDS=00ba2e1c \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR8ChargesIdentite$' -timeout 60m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR8ChargesIdentite$' -timeout 60m -v
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"

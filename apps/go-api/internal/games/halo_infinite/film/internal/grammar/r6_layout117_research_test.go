@@ -39,7 +39,7 @@ package grammar
 //	  R6_ARTS=<repo>/data/cache/replays/halo_infinite \
 //	  R6_CAT=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  R6_IDS=1b2d9e08,a0c36016,4577fcc4,f2966f08,faff9935 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR6Layout117$' -timeout 20m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR6Layout117$' -timeout 20m -v
 
 import (
 	"encoding/json"

@@ -34,7 +34,7 @@ package grammar
 //
 //	CGO_ENABLED=0 R8_FILMS=<repo>/data/cache/film_chunks \
 //	  R8_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R8_IDS=06dfe6d9 go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  R8_IDS=06dfe6d9 go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR9Masque$' -count=1 -timeout 120m -v
 
 import (

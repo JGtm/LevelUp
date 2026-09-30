@@ -24,7 +24,7 @@ package grammar
 // LECTURE SEULE, skip par defaut, CGO_ENABLED=0.
 //
 //	CGO_ENABLED=0 R7_ROOT=... R7_ARTS=... R7_CAT=... R7_MAPS=... R7_IDS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR7Oracle117$' -count=1 -timeout 30m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR7Oracle117$' -count=1 -timeout 30m -v
 
 import (
 	"math"

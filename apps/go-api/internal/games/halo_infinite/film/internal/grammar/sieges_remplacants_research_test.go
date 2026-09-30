@@ -33,7 +33,7 @@ package grammar
 //
 // INSTRUMENT LOURD (rebalaye les bobines) : `//go:build research`, joue a la demande —
 //
-//	go test -tags research ./internal/games/halo_infinite/film/filmdec/ \
+//	go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run TestSiegesDesRemplacants -v
 
 import (

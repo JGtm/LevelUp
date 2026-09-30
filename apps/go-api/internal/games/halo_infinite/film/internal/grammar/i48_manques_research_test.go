@@ -34,7 +34,7 @@ package grammar
 //
 //	CGO_ENABLED=0 I48M_FILM=<depot>/data/cache/film_chunks/1b2d9e08 \
 //	  I48M_SLOT=535 I48M_US_MIN=146862000 I48M_US_MAX=194162000 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI48ManquesFenetre$' -v -timeout 30m
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI48ManquesFenetre$' -v -timeout 30m
 
 import (
 	"fmt"

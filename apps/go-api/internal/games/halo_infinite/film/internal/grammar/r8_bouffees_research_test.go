@@ -38,7 +38,7 @@ package grammar
 //
 //	CGO_ENABLED=0 R8_FILMS=<repo>/data/cache/film_chunks \
 //	  R8_BOUNDS=<worktree>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R8_IDS=00ba2e1c go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR8Bouffees$' \
+//	  R8_IDS=00ba2e1c go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR8Bouffees$' \
 //	  -timeout 120m -v
 
 import (

@@ -22,7 +22,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	GAME_FILM=C:/.../data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestRespawnTimerCalibration$' -timeout 30m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestRespawnTimerCalibration$' -timeout 30m -v
 
 import (
 	"fmt"

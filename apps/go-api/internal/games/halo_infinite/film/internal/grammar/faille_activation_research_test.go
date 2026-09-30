@@ -30,7 +30,7 @@ package grammar
 //	CGO_ENABLED=0 FAILLE_FILM=<repo>/data/cache/film_chunks/1b2d9e08 \
 //	  FAILLE_BOUNDS=-11.45,104.54,73.91,19.72,153.51,82.53 \
 //	  FAILLE_ANCRES="A1:535:17.34,135.50:146862000-185262000:185262000;A2:560:18.34,120.19:328162000-351062000:351062000" \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestFailleActivationEntites$' -timeout 30m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestFailleActivationEntites$' -timeout 30m -v
 //
 // Format d'une ancre : label:slotBipede:x,y:t0us-t1us:tSautUS — t0/t1 = fenêtre de pose
 // (frames prise -> saut converties en US par (originMs + t*frameIntervalMs)*1000).

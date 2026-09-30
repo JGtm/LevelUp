@@ -18,7 +18,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 R8_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR8' -count=1 -timeout 30m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR8' -count=1 -timeout 30m -v
 
 import (
 	"encoding/json"

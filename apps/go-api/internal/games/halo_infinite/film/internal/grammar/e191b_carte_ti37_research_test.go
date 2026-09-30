@@ -42,7 +42,7 @@ package grammar
 // LECTURE SEULE, sans garde d environnement : les 7 bobines par build sont VERSIONNEES
 // (`../replay/testdata/minifilm_*`), comme pour le ratchet 0.A.3.
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191bCarteTI37$' -v -count=1
+//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191bCarteTI37$' -v -count=1
 
 import (
 	"fmt"
