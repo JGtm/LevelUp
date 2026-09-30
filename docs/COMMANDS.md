@@ -226,6 +226,17 @@ go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] 
 go run ./cmd/levelup backfill-pad-tiers --dry-run
 go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--title S]
 
+# 4 ter. Emprise VEHICLES resource (takes, time aboard, frags matched to the killer's ride
+#    episodes) -> match_vehicle_takes (append-only). Same motif as (4): it reads the
+#    artifacts AS THEY ARE, no decoding, NO RE-COOK; the only database read is the match's
+#    frags in match_kill_events_latest. An artifact older than schema 67 (no occupation read)
+#    is written as "not measured", never as zero: this is the state of the whole corpus until
+#    it is re-baked. RESUME KEYS ON PRESENCE, so AFTER A RE-BAKE (or once death events have
+#    landed) --force IS REQUIRED: the row in the database would keep saying "not measured".
+#    SERVER STOPPED, including for --dry-run (it plays the migrations).
+go run ./cmd/levelup backfill-vehicle-takes --dry-run
+go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID] [--limit N] [--title S]
+
 # 5. Tactical occupation rasters -> sidecar JSON files under
 #    data/cache/replays/{slug}/rasters/. NO database is opened, not even read-only: the
 #    sidecar is per-match and anonymous, so nothing has to be asked of DuckDB.

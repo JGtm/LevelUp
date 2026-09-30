@@ -125,6 +125,8 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	// tenu jusqu'a la fin de la passe, et une lecture ouverte pendant qu'il l'est attendrait en
 	// B-swap un retour en lecture seule qu'il empeche. Seuls les niveaux d'armes lisent la base.
 	niveaux := preparerNiveauxDArmes(ctx, d, b, lus)
+	// LA RESSOURCE VEHICULES lit aussi la base (frags de mort) : meme regle, meme place.
+	vehicules := preparerPrisesDeVehicules(ctx, d, b, lus)
 	// UN SEUL SEGMENT D'ECRITURE POUR LES QUATRE FAMILLES (constat C7 de la revue A-R1) : la
 	// source d'acquisition est memoisee ici, et relachee ici. Le nil reste nil — un chemin sans
 	// writer cable doit continuer de degrader famille par famille, avec ses journaux.
@@ -150,6 +152,8 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	// l artefact deja range, qui rend lisible aux pages d agregat ce que la vue match resout
 	// deja a la requete (cf. padtiers.go). Projetes plus haut, ecrits ici.
 	ecrireNiveauxDArmes(ctx, d, b, niveaux)
+	// LES VEHICULES DE L EMPRISE juste apres : meme forme, meme segment d ecriture, une passe par match.
+	ecrirePrisesDeVehicules(ctx, d, b, vehicules)
 	// LES RASTERS TACTIQUES, QUATRIEME PROJECTION — memes artefacts lus, meme place (apres
 	// toute cuisson). La seule qui n'ecrit AUCUNE base : son resultat est un fichier pose a
 	// cote de son artefact (cf. raster.go), donc hors du segment d'ecriture shared partage

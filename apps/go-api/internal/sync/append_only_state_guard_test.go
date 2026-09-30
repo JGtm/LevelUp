@@ -181,6 +181,13 @@ var appendOnlyStateTables = []string{
 	// / ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT.
 	// Recette ADR 0026 étape 5.
 	"match_pad_pickups_by_tier",
+	// match_vehicle_takes (ressource vehicules de l Emprise, 2026-09-30) : creee directement
+	// append-only (id PK seq + decode_pass + written_at + vue match_vehicle_takes_latest, derniere
+	// PASSE ENTIERE par match). Une passe porte toujours une ligne `match` de couverture : la vue
+	// ne peut donc jamais servir les prises d une passe precedente pour un match re-projete sans
+	// prise. Ecriture = INSERT pur (persist/vehicle_takes_persister.go, un seul statement) ; aucun
+	// DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE tolere. Lecture via _latest UNIQUEMENT.
+	"match_vehicle_takes",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors

@@ -72,6 +72,29 @@ sans portée de radar connue), `carrier_ms`, `team_down_ms`, `unplaced_ms`,
 **Lecture : vue `match_life_placement_latest` UNIQUEMENT** (dernière passe ENTIÈRE par match,
 `decode_pass`). Plan : `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`.
 
+### match_vehicle_takes — ressource véhicules de l'Emprise (append-only, 2026-09-30)
+Écrite par la dérivation post-rangement `sync/replayartifacts/vehicletakes.go` (famille de
+`Deriver`, gate `film.vehicle_usage`) et par `levelup backfill-vehicle-takes`, depuis le calque
+véhicules de l'artefact (`vehicles[].rides[]`, schéma >= 67, projection pure
+`replay.ProjectVehicleTakes`). Persister `persist/vehicle_takes_persister.go` (INSERT-only, une
+transaction par passe). Plan : `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`.
+Deux natures de ligne (`row_kind`) dans UNE passe (`decode_pass`) :
+- `take` : une ligne par `(camp, xuid, family)` — `takes` (D2), `aboard_ms` (D4), `episodes`, dont
+  `proximity_episodes`, `frags` = frags de classe engin (véhicule/tourelle) tombés PENDANT un
+  épisode de ce joueur sur cette famille (D9, numérateur du rendement). `family` = clé de châssis
+  ou `unknown`.
+- `match` : UNE ligne par passe (`camp` -1, `xuid` et `family` vides), écrite MÊME sans prise : elle
+  fait retenir la passe entière par la vue et sépare « zéro mesuré » de « non mesuré ».
+Colonnes de COUVERTURE, recopiées sur chaque ligne de la passe : `measured` / `unmeasured_reason` /
+`doc_schema` (D8 : artefact sans occupation lue, raisons `schema_before_67`,
+`vehicles_not_scanned`, `frame_interval_missing`), `episodes_read` / `episodes_unnamed` (D10 :
+épisodes sans xuid) / `episodes_no_camp`, `frags_read` / `frags_reason` (`no_kill_source`,
+`no_classifier`, `origin_missing`, `takes_not_measured`), `frags_total` / `frags_unmatched` (D9).
+Les frags viennent de `match_kill_events_latest` (source mesurée, tueur du kill-feed), classés par
+`KillSourceClassifier` + `weapons.ClassesByKey` + `domain.IsEngineFragClass` (une seule définition),
+joints aux épisodes par `frameOfFilmMS`/`frameInWindow` (les mêmes que les épisodes d'équipement).
+**Lecture : vue `match_vehicle_takes_latest` UNIQUEMENT** (dernière passe ENTIÈRE par match).
+
 ## metadata.duckdb
 
 | Table | Clé | Description |

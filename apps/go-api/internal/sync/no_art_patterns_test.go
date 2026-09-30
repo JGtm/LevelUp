@@ -160,6 +160,13 @@ var tablesProtegees = []string{
 	// nouvelle ; la vue match_pad_pickups_by_tier_latest ne rend que la dernière PASSE
 	// ENTIÈRE par match.
 	"match_pad_pickups_by_tier",
+	// match_vehicle_takes (ressource vehicules de l Emprise, 2026-09-30) : table append-only
+	// NET-NEUVE (prises, temps a bord et frags apparies par camp/joueur/famille, plus une ligne
+	// `match` de couverture, lus de l artefact range). Son persister
+	// (internal/persist/vehicle_takes_persister.go) n emet que des INSERT dans une transaction
+	// unique — aucune entree d allowlist a prevoir. Remplacer une passe = en ecrire une nouvelle ;
+	// la vue match_vehicle_takes_latest ne rend que la derniere PASSE ENTIERE par match.
+	"match_vehicle_takes",
 	// kill_positions / match_weapon_hit_distance (G4 du registre v2, enrôlement 2026-09-05) :
 	// les deux dernières tables du film restées HORS des deux listes anti-ART alors qu'elles
 	// sont append-only avec vue _latest depuis leur migration. Vérifié sur pièces avant

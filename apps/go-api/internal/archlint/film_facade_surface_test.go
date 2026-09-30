@@ -272,7 +272,15 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           une methode : aucun identifiant compte en plus).
 //	                                           RE-MESURE A L ENTREE du lot : 291 sur `e893ed8dd`
 //	                                           (`comm` des deux inventaires : 3 ajouts, 1 retrait).
-const plafondSurfaceReplay = 293 // 2026-09-29 — emprise-vies V2 sur e893ed8dd : 291 + 3 - 1 (cf. l historique ci-dessus)
+//	298  emprise-vehicules L7.2 (2026-09-30)    +5, la ressource vehicules ecrite au fil de l eau
+//	                                           (`sync/replayartifacts/vehicletakes.go`) : `ProjectVehicleTakes`,
+//	                                           `PairVehicleFrags`, `VehicleFragRef`,
+//	                                           `VehicleFragsCoverage`, `VehicleFragsNoSource`. Les
+//	                                           tests citent les raisons et la provenance `film` en
+//	                                           LITTERAUX (oracles independants), donc ne comptent pas.
+//	                                           RE-MESURE A L ENTREE du lot : 293 sur `707d4e983`
+//	                                           (`comm` des deux inventaires : 5 ajouts, 0 retrait).
+const plafondSurfaceReplay = 298 // 2026-09-30 — emprise-vehicules L7.2 sur 707d4e983 : 293 + 5 (cf. l historique ci-dessus)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

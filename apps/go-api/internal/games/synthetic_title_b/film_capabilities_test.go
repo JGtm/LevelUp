@@ -30,7 +30,7 @@ import (
 // filmAttendu — le contenu EXACT attendu des huit lignes `film.*` du TOML de la fixture.
 //
 // C'est une liste ECRITE A LA MAIN, et c'est voulu : la deriver du fichier reviendrait a
-// comparer le fichier a lui-meme. Un cas `supported` et sept `not_exposed` — si un jour la
+// comparer le fichier a lui-meme. un cas `supported` et huit `not_exposed` — si un jour la
 // fixture doit changer, ce tableau change dans le meme commit, ce qui rend la decision
 // visible en revue.
 var filmAttendu = map[games.CapabilityKey]games.CapabilityStatus{
@@ -39,6 +39,7 @@ var filmAttendu = map[games.CapabilityKey]games.CapabilityStatus{
 	games.CapFilmBombStats:      games.CapNotExposed,
 	games.CapFilmFlagGrabsNet:   games.CapNotExposed,
 	games.CapFilmWeaponTiers:    games.CapNotExposed,
+	games.CapFilmVehicleUsage:   games.CapNotExposed,
 	games.CapFilmKillSource:     games.CapNotExposed,
 	games.CapFilmWeaponShots:    games.CapNotExposed,
 	games.CapFilmKillPositions:  games.CapNotExposed,

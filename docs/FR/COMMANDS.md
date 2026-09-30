@@ -234,6 +234,18 @@ go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] 
 go run ./cmd/levelup backfill-pad-tiers --dry-run
 go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--title S]
 
+# 4 ter. Ressource VEHICULES de l Emprise (prises, temps a bord, frags apparies aux
+#    episodes du tueur) -> match_vehicle_takes (append-only). Meme motif que (4) : elle LIT
+#    les artefacts TELS QU ILS SONT, sans decodage, SANS RECUISSON ; la seule lecture en
+#    base est celle des frags du match dans match_kill_events_latest. Un artefact anterieur
+#    au schema 67 (aucune occupation lue) s ecrit « non mesure », jamais zero : c est l etat
+#    de tout le parc tant qu il n est pas recuit. LA REPRISE SE CLE SUR LA PRESENCE, donc
+#    APRES UNE RECUISSON (ou l arrivee des evenements de mort) --force EST OBLIGATOIRE : la
+#    ligne en base continuerait de dire « non mesure ». SERVEUR ARRETE, y compris pour
+#    --dry-run (elle joue les migrations).
+go run ./cmd/levelup backfill-vehicle-takes --dry-run
+go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID] [--limit N] [--title S]
+
 # 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.

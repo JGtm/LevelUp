@@ -216,14 +216,82 @@ archlint, gofmt).
 
 ### L7.2 — Écriture (Go, persistance — lot sensible) · lourd
 
-- [ ] L7.2.1 Tables append-only `match_vehicle_takes` (+ vue `_latest`), persister INSERT-only,
+- [x] L7.2.1 Table append-only `match_vehicle_takes` (+ vue `_latest`), persister INSERT-only,
   inscriptions aux garde-rails (`no_art_patterns_test.go`, `append_only_state_guard_test.go`,
-  `compaction_registry.go` + e2e), ordre des migrations.
-- [ ] L7.2.2 Famille dans `Deriver` (une lecture de l'artefact, même marque par match), capability
-  fine `film.vehicle_usage` dans `capabilities.toml` de Halo Infinite.
-- [ ] L7.2.3 Commande `levelup backfill-vehicle-takes` (modèle `backfill-pad-tiers` : reprenable,
-  `--dry-run`, `--match`, serveur arrêté).
-- [ ] L7.2.4 Tests d'intégration (`-tags=integration -p 1`).
+  regexp de `no_raw_rating_reads_test.go`, `compaction_registry.go` + e2e), ordre des migrations.
+- [x] L7.2.2 Famille dans `Deriver` (une lecture de l'artefact, même marque par match), capability
+  fine `film.vehicle_usage` dans `capabilities.toml` de Halo Infinite (et `not_exposed` dans la
+  fixture du titre synthétique).
+- [x] L7.2.3 Commande `levelup backfill-vehicle-takes` (modèle `backfill-pad-tiers` : reprenable,
+  `--dry-run`, `--match`, serveur arrêté), documentée dans `docs/COMMANDS.md` et `docs/FR/COMMANDS.md`.
+- [x] L7.2.4 Tests d'intégration (`-tags=integration -p 1`) : écriture, vue, famille dans `Deriver`,
+  capability absente, D8, D9, D10, reprise de la commande.
+- [x] D9 Appariement des frags de classe engin aux épisodes (lecture en base avant l'écriture,
+  jonction d'horloge de `equipment_episode_kills.go` extraite en helper partagé, non recopiée).
+
+**Schéma** (`match_vehicle_takes`, migration `shared_create_vehicle_takes`, une PK séquence, UN index
+`match_id`) : `id`, `match_id`, `decode_pass`, `written_at`, `row_kind` (`take` | `match`), `camp`,
+`xuid`, `family`, `takes`, `aboard_ms`, `episodes`, `proximity_episodes`, `frags`, puis les colonnes
+de COUVERTURE recopiées sur chaque ligne de la passe : `measured`, `unmeasured_reason`, `doc_schema`
+(D8), `episodes_read`, `episodes_unnamed` (D10), `episodes_no_camp`, `frags_read`, `frags_reason`,
+`frags_total`, `frags_unmatched` (D9). Vue `match_vehicle_takes_latest` = dernière passe ENTIÈRE par
+match. Justification : (1) UNE table plutôt que deux — la passe s'écrit en une transaction et la vue
+retient une passe entière ; avec une table « prises » et une table « couverture », un match re-projeté
+SANS prise servirait les prises de la passe précédente (arbitrage par clé, piège ADR 0026). (2) La
+ligne `match` (camp -1, xuid et famille vides) existe TOUJOURS : elle porte « zéro mesuré » contre
+« non mesuré » (D8) et fait retenir la passe. (3) Couverture recopiée sur chaque ligne, comme
+`pads_confirmed` : une ligne se lit seule. (4) `episodes_unnamed` et non `…_no_xuid` : le semeur de
+l'e2e de compaction sème tout nom en `xuid` comme une chaîne (colonne entière refusée).
+
+**Fichiers** : `film/replay/vehicle_takes.go` (+ `Rides`, `Frags`), `vehicle_takes_frags.go` (+ test),
+`equipment_episode_kills.go` (helpers `frameOfFilmMS` / `frameInWindow`, partagés) ;
+`domain/frag_distribution.go` (`IsEngineFragClass`, une seule définition, reprise par
+`service/fragdist`) ; `persist/vehicle_takes_persister.go` (+ tests), `batch.go`, `builder.go`,
+`combined_persister.go` ; `migration/steps_shared_vehicle_takes.go`, `order.go`,
+`compaction_registry.go` ; `games/adapter.go`, `capabilities.go`, `halo_infinite/adapter_data.go`,
+`config/titles/{halo_infinite,synthetic_title_b}/mappings/capabilities.toml` ;
+`sync/replayartifacts/vehicletakes.go` (+ tests), `derivations.go`, `journal.go` (compteurs ADR 0009) ;
+`cmd/levelup/cmd_backfill_vehicle_takes.go` (+ test), `main.go` ; docs `COMMANDS.md` EN et FR ;
+skill `db-schema` ; ratchet `archlint/film_facade_surface_test.go` 293 -> 298.
+
+**Câblage** : `Deriver` lit les artefacts une fois, PRÉPARE la famille (porte `film.vehicle_usage`,
+projection pure, lecture des frags par le segment de lecture `WithRead` — avant tout segment
+d'écriture), puis l'écrit dans le segment unique après les niveaux d'armes. Frags : source mesurée de
+`match_kill_events_latest` -> `KillSourceClassifier` -> `weapons.ClassesByKey` -> `IsEngineFragClass`
+(même définition que la Répartition des frags), joints aux épisodes par l'horloge des épisodes
+d'équipement (`frame = (time_ms - originMs) / pas`, bornes incluses). Lecture de base en échec = match
+mesuré ni écrit ni marqué ; aucun événement de mort à source mesurée = prises écrites, frags « non lus »
+(`no_kill_source`), jamais zéro. `DerivationsRev` NON montée, comme `padtiers` / `flaggrabsnet`
+(ajoutées après `derivations-2026-09-06` sans la monter) : la monter rejouerait toutes les dérivations
+(dont les positions) du parc pour une famille neuve ; le parc passe par `backfill-vehicle-takes`, qui ne
+redécode rien. Capacité `film.vehicle_usage` déclarée pour Halo Infinite seulement ; aucun `slug ==`.
+
+**Horloge vérifiée sur données réelles** (sonde jetable, supprimée) : sur 25 artefacts locaux à
+équipement, `time_ms` de `match_kill_events_latest` joint par `originMs` retrouve 228 des 229 frags
+comptés `K` par la cuisson (le manquant est un schéma 29) : la jonction est la bonne.
+
+**Mutations** (copie, mutation, rouge constaté, restauration par copie, `cmp` identique) — appariement :
+MP1 bornes exclusives, MP2 tueur ignoré, MP3 frag posé sur la mauvaise famille, MP4 dernier épisode au
+lieu du premier, MP5 origine ignorée, MP6 lecture des événements ignorée ; persistance : MV1 doublon non
+refusé, MV2 somme des frags non contrôlée, MV3 passe non mesurée avec lignes, MV4 sans ligne `match`, MV5
+vue en ordre croissant, MV6 registre de compaction sur une mauvaise colonne ; famille : MD1 porte toujours
+fermée, MD2 toujours ouverte, MD3 échec de lecture non inscrit au bilan, MD4 sans filtre de classe, MD5 D8
+non honoré, MD6 `Deriver` sans écriture, MD7 D10 non compté, MD8 tueur bot compté, MD9 « sans événement »
+lu comme zéro ; commande : MC1 reprise ignorée, MC2 `--force` ignoré, MC3 `--dry-run` écrit ; capability :
+MK1 clé absente du TOML, MK2 fixture synthétique ouverte. Quatre mutants ont d'abord survécu ou rougi
+pour la mauvaise raison et ont été refaits : MP3 et MP4 (tests renforcés : frag dans la seconde famille
+triée, deux épisodes qui se chevauchent), MC2 (le test passait la clé de reprise vide : il passe
+maintenant la clé fournie ET `--force`), et MD1/MD2/MD4 (import inutilisé : refaits compilables).
+
+**Gate** (rejouée après la dernière modification) : `go test` par lots (games, migration, persist,
+domain, service, analysis, replaybuild ; sync, platform, cmd ; le reste) vert — deux flakes de charge hors
+périmètre rejoués seuls et verts (`sync/skill` rafales 2 s, `mapcatalog` overlay concurrent) ;
+`go test -tags=integration -p 1` : `sync/replayartifacts`, `persist`, `migration`,
+`games/halo_infinite/migrations`, `cmd/levelup` verts, et `sync` (découpé par initiale A-B, C, D-F, G-M, N-R, S,
+T-Z : le paquet dépasse 600 s d'un bloc) vert ; `make go-api-lint` 0 (un gocyclo 20 sur la
+validation a été scindé) ; `go test ./internal/archlint/...` vert ; `gofmt -l internal cmd` vide.
+
+Journal : [2026-09-30] L7.2 joué en avant-plan ; schéma, famille, commande et tests livrés ; L7.3 autorisé.
 
 ### L7.3 — Bloc Emprise (Go) · moyen
 
@@ -260,3 +328,17 @@ archlint, gofmt).
 - (L7.1) `film_facade_surface_test.go` : la première version du test de recherche L7.0 citait en
   commentaire `replay.VehicleRideSrcProximity` et a fait monter le plafond de 293 à 294 ; le nom a
   été retiré (constante recopiée en littéral, comme `v0SrcLue`).
+- (L7.2) La classe d'une source de dégât (`KillSourceClassifier`) n'est armée que par la capability
+  `film.kill_source` (`killcollector.ClassifierPourTitre`) : un titre qui déclarerait `film.vehicle_usage`
+  sans elle écrirait des prises et des frags « non lus » (`no_classifier`). Halo Infinite déclare les deux.
+- (L7.2) Une passe écrite avant l'arrivée des événements de mort (ou avant la recuisson d'un artefact de
+  schéma < 67) garde « frags non lus » / « non mesuré » : la reprise de `backfill-vehicle-takes` se clé
+  sur la PRÉSENCE en base, donc il faut `--force` après une recuisson (documenté aux deux COMMANDS).
+  Le post-sync lit les frags après l'étape kill source (1.57 avant 1.58) et le dépôt d'ouvrier plus tard :
+  le cas normal est « frags lus ».
+- (L7.2) Le calque de décor (`VehicleScenery`) n'est jamais dans l'artefact (cf. L7.0) : la dérivation ne
+  peut pas l'honorer, le décor sans occupant ne porte de toute façon aucune prise.
+- (L7.2) Les tests `internal/sync/skill` (rafales bornées à 2 s) et `internal/mapcatalog` (overlay
+  concurrent) rougissent parfois sous la charge d'un `go test ./...` complet et passent seuls. Non traité.
+- (L7.2) L'e2e de compaction sème toute colonne dont le nom finit par `xuid` comme une chaîne : un
+  compteur entier ne doit pas porter ce suffixe (piège, contourné par `episodes_unnamed`).

@@ -94,6 +94,9 @@ type VehicleUsageRow struct {
 	// Episodes et ProximityEpisodes : les episodes comptes dans cette ligne, dont ceux de repli.
 	Episodes          int `json:"episodes"`
 	ProximityEpisodes int `json:"proximityEpisodes"`
+	// Frags : frags de classe engin de cet occupant tombes PENDANT un de ses episodes de cette famille
+	// (D9, `PairVehicleFrags`). Zero tant que l appariement n a pas ete joue.
+	Frags int `json:"frags"`
 }
 
 // VehicleTakesCoverage dit ce que le calcul a lu, rattache et ecarte. Ce sont les compteurs qui
@@ -127,8 +130,11 @@ type VehicleTakesReport struct {
 	// Reason nomme pourquoi `Measured` est faux ; vide sinon.
 	Reason string `json:"reason,omitempty"`
 	// Rows : triees par (camp, xuid, famille).
-	Rows     []VehicleUsageRow    `json:"rows,omitempty"`
-	Coverage VehicleTakesCoverage `json:"coverage"`
+	Rows []VehicleUsageRow `json:"rows,omitempty"`
+	// Rides : les episodes COMPTES (ceux qui ont un camp et un xuid), dans l ordre de montee de
+	// chaque vie. C est la matiere de l appariement des frags (`PairVehicleFrags`).
+	Rides    []VehicleAccountedRide `json:"rides,omitempty"`
+	Coverage VehicleTakesCoverage   `json:"coverage"`
 }
 
 // vehicleLifeKey est la cle d une vie de vehicule.
@@ -149,14 +155,15 @@ func ProjectVehicleTakes(doc *ReplayDocument) VehicleTakesReport {
 	rep := VehicleTakesReport{Measured: true}
 	rides := vehicleRidesByLife(doc, &rep.Coverage)
 	camps := vehicleCampsByXUID(doc)
-	acc := map[vehicleUsageKey]*VehicleUsageRow{}
+	acc := newVehicleAccum()
 	step := int64(doc.FrameIntervalMS)
 	for _, key := range sortedLifeKeys(rides) {
 		if vehicleAccountLife(rides[key], camps, step, acc, &rep.Coverage) {
 			rep.Coverage.LivesWithRides++
 		}
 	}
-	rep.Rows = vehicleUsageRows(acc)
+	rep.Rows = vehicleUsageRows(acc.rows)
+	rep.Rides = acc.rides
 	return rep
 }
 
@@ -283,7 +290,7 @@ type vehicleUsageKey struct {
 // vehicleAccountLife compte une vie : le temps de tous ses episodes, les prises dans l ordre de
 // montee. Rend vrai quand au moins un episode a ete compte.
 func vehicleAccountLife(rides []vehicleLifeRide, camps map[string]int, stepMS int64,
-	acc map[vehicleUsageKey]*VehicleUsageRow, cov *VehicleTakesCoverage) bool {
+	acc *vehicleAccum, cov *VehicleTakesCoverage) bool {
 	sort.SliceStable(rides, func(i, j int) bool {
 		a, b := rides[i].ride, rides[j].ride
 		if a.T0 != b.T0 {
@@ -307,7 +314,9 @@ func vehicleAccountLife(rides []vehicleLifeRide, camps map[string]int, stepMS in
 		if !ok {
 			continue
 		}
-		row := vehicleUsageRowOf(acc, vehicleUsageKey{camp, r.XUID, e.family})
+		row := vehicleUsageRowOf(acc.rows, vehicleUsageKey{camp, r.XUID, e.family})
+		acc.rides = append(acc.rides, VehicleAccountedRide{
+			Camp: camp, XUID: r.XUID, Family: e.family, T0: r.T0, T1: r.T1, Proximity: prox})
 		row.AboardMS += duration
 		row.Episodes++
 		if prox {
@@ -377,4 +386,25 @@ func sortedLifeKeys(m map[vehicleLifeKey][]vehicleLifeRide) []vehicleLifeKey {
 		return keys[i].gen < keys[j].gen
 	})
 	return keys
+}
+
+// VehicleAccountedRide : un episode COMPTE dans une ligne de sortie, avec son intervalle en
+// frames du document (bornes incluses). `Family` est celle de la vie porteuse (une piece montee a
+// celle de son porteur).
+type VehicleAccountedRide struct {
+	Camp      int
+	XUID      string
+	Family    string
+	T0, T1    int
+	Proximity bool
+}
+
+// vehicleAccum : ce que le calcul cumule — les lignes, et les episodes qui les ont nourries.
+type vehicleAccum struct {
+	rows  map[vehicleUsageKey]*VehicleUsageRow
+	rides []VehicleAccountedRide
+}
+
+func newVehicleAccum() *vehicleAccum {
+	return &vehicleAccum{rows: map[vehicleUsageKey]*VehicleUsageRow{}}
 }

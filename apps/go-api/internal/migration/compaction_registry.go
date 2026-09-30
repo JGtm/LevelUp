@@ -96,6 +96,9 @@ var tablesCompactables = []compactable{
 	passeDeLaVueParente("match_usage_players", "match_usage_films_latest", "summary_pass"),
 	dernierePasse("match_pad_pickups_by_tier", "decode_pass"),
 	dernierePasse("match_flag_grabs_net", "decode_pass"),
+	// match_vehicle_takes (plan Emprise vehicules L7.2, 2026-09-30) : ses passes superseedees n ont
+	// aucun lecteur — la lecture de l onglet Emprise passe par la vue `_latest` seule.
+	dernierePasse("match_vehicle_takes", "decode_pass"),
 	derniereLigneParCle("match_bomb_stats", "match_id, xuid"),
 }
 
