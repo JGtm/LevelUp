@@ -358,6 +358,11 @@ Journal : [2026-10-01] L7.4 joué en avant-plan ; L7.5 (clôture, superviseur) r
     d'usage échoue alors que celle des véhicules réussit, les coéquipiers passent dans « reste du
     camp » et l'habitude des véhicules disparaît. Cas de panne seulement (les deux dérivent du
     même artefact) ; à traiter avec la lecture de l'onglet, hors de ce lot.
+  Ronde 2 (2026-10-01, relecteur Sonnet frais, diff `687c65edf..e02a1ba74`) : 9 conditions
+  tiennent (erreurs et détection d'absence du helper identiques, garde-rail sans faux positif,
+  tests RV1 à RV6 rouges sans leur correction) ; un seul constat P2, corrigé par le superviseur :
+  le commentaire de `LireArtefactRange` citait un garde-rail inexistant (le vrai :
+  `internal/archlint/no_artefact_reread_in_cmd_test.go`). Revue close (P0 + P1 : 6 → 0).
 
 ## 5. Découvertes (à consigner ici, pas à traiter)
 
