@@ -19,7 +19,7 @@ package grammar
 //     taille fixe, les longueurs d'UN véhicule se rangent en base + 89 k.
 //
 //	CGO_ENABLED=0 V5_ROOT=<cache> V5_FILMS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run 'TestV5BBloc|TestV5BLongueurs' -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run 'TestV5BBloc|TestV5BLongueurs' -v -timeout 180m
 
 import (
 	"fmt"

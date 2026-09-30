@@ -20,7 +20,7 @@ package grammar
 // LECTURE SEULE, garde par LIVEFIRE_IDX_FILM, saute partout ailleurs (CI comprise).
 //
 //	CGO_ENABLED=0 LIVEFIRE_IDX_FILM=<repo>/data/cache/film_chunks/60ae07c4 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestLiveFireRegionIndex$' -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestLiveFireRegionIndex$' -v
 
 import (
 	"os"

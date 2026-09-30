@@ -54,7 +54,7 @@ package grammar
 //
 // REGIME : garde ASSAUT_CACHE. Aucune base, aucun reseau, sentinelle memoire armee, un seul
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run NavpointTi12Meche -v -timeout 60m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run NavpointTi12Meche -v -timeout 60m
 
 import (
 	"fmt"

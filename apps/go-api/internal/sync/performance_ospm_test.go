@@ -1,4 +1,4 @@
-// performance_ospm_test.go — lot 3 de .ai/PLAN_PERF_NOTE_OBJECTIFS.md (B3.4 b/c).
+// performance_ospm_test.go — lot 3 de .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md (B3.4 b/c).
 //
 // Couvre la métrique `objective_participation` (ospm) : calcul par minute, règle de
 // PRÉSENCE (couverture personal_score_awards, D-J), redistribution du poids quand la

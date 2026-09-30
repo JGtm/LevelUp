@@ -48,7 +48,7 @@ import (
 // shared servi read-only pendant >24h). Avec 48h, une telle panne marquait
 // définitivement absents des films encore disponibles → perte permanente du
 // match dans le retry set. 30 jours couvre toute panne réaliste tout en finissant
-// par sortir les vrais films expirés. Cf. .ai/HANDOFF_sync_combat_completion.md.
+// par sortir les vrais films expirés. Cf. .ai/archive/V7/HANDOFF_sync_combat_completion.md.
 const defaultFilmRetryWindow = 30 * 24 * time.Hour
 
 // filmRetryWindow retourne la fenêtre effective. Override via
@@ -111,7 +111,7 @@ const freshFilmWaitWindow = 10 * time.Minute
 // Défaut : 30s × 3 (re-essais à +30s/+60s/+90s après le 1er fetch raté). Le
 // watcher détecte un match en ~10s mais le film Halo se publie en ~1 min : 30s
 // est une VALEUR DE DÉPART pour laisser le film arriver, à affiner en prod selon
-// le taux de complétude au 1er passage. Cf. .ai/HANDOFF_ENRICHMENT_CONVERGENCE.md.
+// le taux de complétude au 1er passage. Cf. .ai/archive/V7/HANDOFF_ENRICHMENT_CONVERGENCE.md.
 var freshFilmRetryDelays = func() []time.Duration {
 	v := os.Getenv("LEVELUP_FRESH_FILM_RETRY")
 	if v == "0" {
@@ -235,7 +235,7 @@ func flushHighlightEvents(
 		// ou âge inconnu) → MarkEventsLoaded (sort du retry set) ; récent → on
 		// laisse events_loaded=FALSE pour réessayer (le film n'est peut-être pas
 		// encore propagé — éviter la perte définitive d'un film simplement
-		// retardé, cf. .ai/HANDOFF_sync_combat_completion.md).
+		// retardé, cf. .ai/archive/V7/HANDOFF_sync_combat_completion.md).
 		definitive := isNoFilmDefinitive(ctx, sharedDB, c.matchID)
 		slog.DebugContext(ctx, "processHighlightEvents: film absent ou chunk vide",
 			"match_id", c.matchID, "found", c.filmFound, "data_len", c.dataLen,

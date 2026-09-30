@@ -3,7 +3,7 @@
 // réutilisable SANS duplication par toutes les couches qui en ont besoin —
 // Synthesis / Match view / Timeseries / Sessions (package service) ET la page
 // Escouade (package service/teammates, qui ne peut pas importer son parent
-// service). Cf. .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md §2 + §6 (D-P6-1).
+// service). Cf. .ai/archive/V7/PLAN_FRAG_DISTRIBUTION_V2.md §2 + §6 (D-P6-1).
 //
 // Le builder reste PUR (aucune IO, aucun log — le câblage service loggue les
 // compteurs via logFragDistribution). Les types (FragDistribution/FragClassEntry/

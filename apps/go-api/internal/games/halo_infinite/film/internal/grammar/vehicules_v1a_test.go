@@ -26,7 +26,7 @@ package grammar
 //
 //	CGO_ENABLED=0 V1A_FILM_ROOT=<depot>/data/cache \
 //	  V1A_FILMS="0d76e8f1:Behemoth SF,fccc61cd:Launch Site SF" \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV1aQualification -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV1aQualification -v -timeout 180m
 
 import (
 	"encoding/binary"

@@ -1,5 +1,5 @@
 // Package duckdb — compare_repo_weapons.go : LE SCOPE DU PROFIL D'ARMES DU FACE-À-FACE
-// (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2, amendé au lot 3-bis).
+// (plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2, amendé au lot 3-bis).
 //
 // Fichier séparé de compare_repo.go, qui porte déjà les six lectures de la page : la frontière
 // suit la donnée (le scope d'armes d'un joueur) et garde les deux fichiers loin du plafond de

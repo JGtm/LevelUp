@@ -1,5 +1,5 @@
 // Package duckdb — weapon_range_repo.go : implémentation DuckDB de
-// port.WeaponRangeRepository (plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md, lot 3).
+// port.WeaponRangeRepository (plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, lot 3).
 //
 // # DEUX CÔTÉS, UNE SEULE JOINTURE — ET UNE SEULE LECTURE
 //

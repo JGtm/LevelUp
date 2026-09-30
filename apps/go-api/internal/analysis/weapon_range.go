@@ -104,7 +104,7 @@ type WeaponRange struct {
 	P10, Median, P90 float64
 	// Min, Max sont les distances EXTRÊMES observées, en mètres.
 	//
-	// ELLES NE SE TRACENT JAMAIS (D5 du plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+	// ELLES NE SE TRACENT JAMAIS (D5 du plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
 	// Tout le fichier explique pourquoi le bâton va de p10 à p90 : sur des centaines de
 	// frags, le minimum et le maximum décrivent deux accidents — un tir de mêlée et un tir
 	// chanceux à travers la carte. Les publier n'annule pas ce constat, il le complète :
@@ -253,7 +253,7 @@ func weaponRangeOf(g weaponSideKey, grp []MeasuredKill) WeaponRange {
 // # POURQUOI CETTE FONCTION EXISTE, ET POURQUOI ELLE EST PURE
 //
 // `WeaponRangeAggregate` groupe par (clé, côté) — quelle que soit la clé. Publier la portée
-// par RÔLE plutôt que par arme (D1 du plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) ne
+// par RÔLE plutôt que par arme (D1 du plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) ne
 // demande donc aucune seconde agrégation : il suffit de changer la clé AVANT d'agréger. Faire
 // l'inverse — fusionner des lignes déjà agrégées — mélangerait des percentiles, ce qui n'a
 // aucun sens : la médiane d'un ensemble ne se déduit pas des médianes de ses parties.

@@ -23,8 +23,8 @@ package archlint
 //
 // « Laisser les deux facades telles quelles, avec un ratchet. » La reduction de la facade (166) et
 // de la surface compagnon (257) est NON RETENUE — ce n est plus un report, c est une decision, et
-// elle est consignee au §1.4 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md` ainsi qu a l ADR 0034
-// (section « State reached at M4 », D-1). CONSEQUENCE POUR CE FICHIER : il n est plus la mesure
+// elle est consignee au §1.4 du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` ainsi qu a l ADR 0034
+// (annexe `docs/adr/0034-annex-history.md`, section « State reached at M4 », D-1). CONSEQUENCE POUR CE FICHIER : il n est plus la mesure
 // d entree d un lot a venir, il est LA SEULE CHOSE qui tient la ligne — d ou la phrase
 // [exigenceDeJustificationDatee] dans ses trois messages d erreur.
 //
@@ -157,7 +157,8 @@ const plafondSurfaceFacade = 187 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
 // 1,5 fois la facade : c est la mesure qui dit ou est le vrai poids de la frontiere (note de
-// preparation de M4, §1.3 point 4). L ADR 0034 `:335` en annoncait 239 a la cloture de M2.
+// preparation de M4, §1.3 point 4). L ADR 0034 en annoncait 239 a la cloture de M2 (section M2,
+// aujourd hui dans `docs/adr/0034-annex-history.md`).
 //
 // HISTORIQUE DES MONTEES, une ligne par commit qui la fait bouger — c est ce qui rend le ratchet
 // lisible plutot qu une valeur qui change sans raison ecrite :

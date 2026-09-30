@@ -33,7 +33,7 @@ package grammar
 //
 //	CGO_ENABLED=0 TRANSLOC_FILM=<repo>/data/cache/film_chunks/06dfe6d9 \
 //	  TRANSLOC_BOUNDS=-50.16,-51.7,163.84,50.52,51.67,186.82 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestTranslocateur$' -timeout 90m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestTranslocateur$' -timeout 90m -v
 
 import (
 	"fmt"

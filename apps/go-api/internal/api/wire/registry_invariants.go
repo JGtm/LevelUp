@@ -30,7 +30,7 @@ var invariantsLog = slog.With("module", "invariants")
 
 // RunDataInvariants exécute tous les invariants déclarés : les globaux une
 // fois, puis les invariants par joueur pour chaque joueur suivi du titre.
-// Phase 4 du plan .ai/PLAN_SYNC_INVARIANTS_GATE.md.
+// Phase 4 du plan .ai/archive/V7/PLAN_SYNC_INVARIANTS_GATE.md.
 func (r *ServiceRegistry) RunDataInvariants(ctx context.Context, titleSlug string) (domain.AdminInvariantsResponse, error) {
 	resp := domain.AdminInvariantsResponse{
 		TitleSlug:        titleSlug,

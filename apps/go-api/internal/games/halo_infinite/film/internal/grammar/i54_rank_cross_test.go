@@ -24,7 +24,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I54X_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI54CrossI48Rank$' -timeout 30m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI54CrossI48Rank$' -timeout 30m -v
 
 import (
 	"fmt"

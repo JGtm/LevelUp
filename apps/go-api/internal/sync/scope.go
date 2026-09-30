@@ -92,7 +92,7 @@ type SyncScope struct {
 	ForcePlayableDuration bool
 
 	// ── EngagementScore — Phase 3 du plan engagement ───────────────────
-	// Calcule le score d'engagement (cf .ai/REFLEXION_ENGAGEMENT_SCORE_*)
+	// Calcule le score d'engagement (cf .ai/archive/V7/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md)
 	// pour chaque match du joueur. Necessite que les highlight_events soient
 	// deja charges (Events=true ou backfill_completed bit MBitEvents).
 	EngagementScores      bool

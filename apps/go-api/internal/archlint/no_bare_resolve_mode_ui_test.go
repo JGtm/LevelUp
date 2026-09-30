@@ -83,7 +83,7 @@ func TestNoNewBareResolveModeUI(t *testing.T) {
 
 // ---------------------------------------------------------------------------
 // TestNoNewModePlaylistLabelLiteral — garde-rail complémentaire (lot M5 L3,
-// 2026-09-08, .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §2.B/§4).
+// 2026-09-08, .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §2.B/§4).
 //
 // rankedplaylists.go portait NameEN/NameFR comme des CHAMPS de struct littéral
 // assignés en dur (`NameEN: "Ranked Arena", NameFR: "Arène classée"`) — exactement
@@ -105,7 +105,7 @@ var modePlaylistLabelFieldAllowlist = map[string]bool{
 	// Tier CSR (Bronze..Onyx), PAS un mode/playlist — famille distincte, déjà
 	// identifiée en double/triple ailleurs (compare_service.go::csrRankLabel,
 	// home_canonical_skill.go::csrTierENtoFR, sync/csr_writes.go::tierENtoFR ;
-	// cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §11, découverte M5 L5). Pas
+	// cf. .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §11, découverte M5 L5). Pas
 	// touché par ce ratchet (portée L3 = modes/playlists), ni par ce lot.
 	"analysis/skill_v2/tier.go": true,
 }

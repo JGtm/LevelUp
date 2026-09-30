@@ -31,7 +31,7 @@ package grammar
 //
 //	CGO_ENABLED=0 V10_FILM_ROOT=<repo>/data/cache V10_FILMS="0d76e8f1:behemoth" \
 //	  V10_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestV10MasqueDeadState$' -v -timeout 90m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestV10MasqueDeadState$' -v -timeout 90m
 
 import (
 	"fmt"

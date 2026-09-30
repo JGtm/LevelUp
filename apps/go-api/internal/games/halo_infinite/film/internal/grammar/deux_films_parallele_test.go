@@ -26,7 +26,7 @@ package grammar
 // Ce paquet ne tire PAS DuckDB : `go test -race` y tourne sans `-gcflags=all=-d=checkptr=0`.
 // La commande du gate :
 //
-//	go test -race -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/filmdec/
+//	go test -race -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/internal/grammar/
 
 import (
 	"fmt"

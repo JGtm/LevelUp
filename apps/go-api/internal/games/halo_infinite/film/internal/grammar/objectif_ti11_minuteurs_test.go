@@ -81,7 +81,7 @@ package grammar
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee, UN SEUL
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Minuteurs -v -timeout 90m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Minuteurs -v -timeout 90m
 
 import (
 	"fmt"

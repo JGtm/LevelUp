@@ -36,7 +36,7 @@ package grammar
 // traitee AVANT de publier un fait tire d un de ces composants.
 //
 //	CHUNK00_FILMS='C:/.../film_chunks/a521164d;C:/.../film_chunks/fb1a1a72' \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191bMasqueTI37$' -v -count=1
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191bMasqueTI37$' -v -count=1
 
 import (
 	"path/filepath"

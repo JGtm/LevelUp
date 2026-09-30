@@ -26,7 +26,7 @@ package grammar
 //
 //	CGO_ENABLED=0 TI42_CAPTURE=<repo>/.ai/V7.5/dumps/kf_capture_sample.txt \
 //	  TI42_BUFFER=<repo>/.ai/V7.5/dumps/kf_slot0_live.bin \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TI42WidthOracle -timeout 10m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TI42WidthOracle -timeout 10m -v
 
 import (
 	"os"

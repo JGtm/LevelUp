@@ -11,7 +11,7 @@
 // `shared.`). En mode legacy / CLI backfill (SharedReader == LegacySharedReader),
 // ce handle est RW : WriteMatch peut donc écrire dessus. Le backfill v3 tourne
 // HORS chemin live (MaxOpenConns(1), sérialisé) — pas de pression concurrente ART
-// (cf. .ai/PLAN_WEAPON_ATTRIBUTION_V3.md §10).
+// (cf. plan PLAN_WEAPON_ATTRIBUTION_V3 §10, retiré du dépôt le 2026-07-13 par ca6b1864a).
 //
 // Écriture par match : DELETE FROM les deux tables WHERE match_id = ?, puis INSERT
 // de tous les events, dans une seule transaction (idempotent + atomique) — même

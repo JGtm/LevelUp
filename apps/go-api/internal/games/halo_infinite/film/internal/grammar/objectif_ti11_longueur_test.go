@@ -63,7 +63,7 @@ package grammar
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Longueur -v -timeout 40m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Longueur -v -timeout 40m
 
 import (
 	"fmt"
@@ -275,7 +275,7 @@ func ti11Verdict(t *testing.T, m map[int]int) {
 // L'ecart est donc rendu DEUX FOIS : sa distribution brute, et sa moyenne ventilee par nombre de
 // composants presents. C'est la seconde qui separe les trois lectures.
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Residu -v -timeout 40m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Residu -v -timeout 40m
 func TestObjectifTi11Residu(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {

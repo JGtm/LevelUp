@@ -6,7 +6,7 @@ package grammar
 // CE QU'IL MESURE, et pourquoi il existe. Le corpus documentaire du depot se CONTREDIT sur
 // l'endroit ou la traversee de ti=11 s'arrete : PLAN_RETOURS_PLANCHE §R4 et
 // SUIVI_REPLAY_2D.md:320 disent `interaction-filter` en i4 ; components_batch3.go:12 et
-// .ai/PLAN_OBJECTIFS_TEMPS_REEL.md:25 disent i0 (« Le SUIVI accusait i4 [...] C'est faux »).
+// .ai/V7.5/PLAN_OBJECTIFS_TEMPS_REEL.md:25 disent i0 (« Le SUIVI accusait i4 [...] C'est faux »).
 // Un lot qui part sur la mauvaise version perd son temps sur le mauvais composant. Cet
 // instrument remplace les deux affirmations par une MESURE datee, sur pieces.
 //
@@ -27,7 +27,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 TI11_FILM=<repo>/data/cache/film_chunks/64e8adfa \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TI11 -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TI11 -v
 
 import (
 	"fmt"

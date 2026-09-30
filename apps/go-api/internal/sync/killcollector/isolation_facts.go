@@ -45,7 +45,7 @@ const (
 	metricIsolationWriteFail         = "killsource_isolement_erreurs_ecriture"
 	// metricIsolationPontNonPublicable : le pont slot->xuid est refuse (`IndexDisagreements >
 	// 0`, cf. replay.PontPubliable) — cause DISTINCTE de « sans lieu » (Q8,
-	// .ai/DECOUVERTES_TACTIQUE_2026-09-07.md) : sans ce compteur dedie, un pont non publiable
+	// .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md) : sans ce compteur dedie, un pont non publiable
 	// faisait tomber TOUTES les morts du match dans killsource_isolement_morts_sans_lieu, qui
 	// ne dit normalement qu'« une victime precise n'a pas de position au film ».
 	metricIsolationPontNonPublicable = "killsource_isolement_pont_non_publiable"
@@ -283,11 +283,6 @@ func toLifeRows(vies []replay.VieNommee) []persist.LifeInsert {
 	return out
 }
 
-// toDeathContextRows calcule le contexte de chaque mort du JOURNAL et le traduit en lignes.
-//
-// LE JOURNAL EST LA SOURCE DES MORTS, pas le film. C'est la meme liste que celle qui part dans
-// `match_kill_events`, donc les deux tables se joignent sur (match_id, victim_xuid, time_ms)
-// sans rapprocher deux horloges.
 // ecartsDeProjection : pourquoi une mort du journal n'a pas produit de contexte.
 type ecartsDeProjection struct {
 	victimeNonResolue int // bot, ou nom que le roster ne resout pas
@@ -296,6 +291,11 @@ type ecartsDeProjection struct {
 	pontNonPublicable int // le pont slot->xuid est refuse (IndexDisagreements > 0)
 }
 
+// toDeathContextRows calcule le contexte de chaque mort du JOURNAL et le traduit en lignes.
+//
+// LE JOURNAL EST LA SOURCE DES MORTS, pas le film. C'est la meme liste que celle qui part dans
+// `match_kill_events`, donc les deux tables se joignent sur (match_id, victim_xuid, time_ms)
+// sans rapprocher deux horloges.
 func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	deaths []persist.KillEventInsert,
 ) ([]persist.DeathContextInsert, ecartsDeProjection) {

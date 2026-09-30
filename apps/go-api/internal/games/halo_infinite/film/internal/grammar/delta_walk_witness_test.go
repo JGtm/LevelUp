@@ -30,7 +30,7 @@ package grammar
 // USAGE (depuis apps/go-api, un film a la fois, en avant-plan) :
 //
 //	CGO_ENABLED=0 DELTA_WITNESS_FILM=C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestDeltaWalkWitness -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestDeltaWalkWitness -v
 
 import (
 	"fmt"

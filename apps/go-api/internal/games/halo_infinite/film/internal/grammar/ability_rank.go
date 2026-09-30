@@ -226,6 +226,11 @@ func maskHas(idx []int, target int) bool {
 	return false
 }
 
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (g grammaireRecord) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: g.prof, Obs: g.obs}
+}
+
 // grammaireRecord porte ce qu une marche de record bipede doit connaitre DU FILM : le
 // decoupage d i0, l archetype lu dans son registre, et le PROFIL DE BALAYAGE pose sur chaque
 // lecteur qu elle construit (lot 2.3 — c est par lui que les largeurs de la carte, le
@@ -234,11 +239,6 @@ func maskHas(idx []int, target int) bool {
 // LES TROIS VOYAGENT ENSEMBLE parce qu ils viennent du MEME contexte de film : les separer
 // laisserait un appelant en passer deux sur trois, et une marche au profil par defaut lit des
 // largeurs qui ne sont pas celles de ce film — sans rien dire.
-// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
-func (g grammaireRecord) contexte() ContexteDeLecture {
-	return ContexteDeLecture{Profil: g.prof, Obs: g.obs}
-}
-
 type grammaireRecord struct {
 	lay  profile.I0Layout
 	arch Archetype

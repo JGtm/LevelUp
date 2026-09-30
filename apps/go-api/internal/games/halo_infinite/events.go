@@ -6,7 +6,7 @@ package halo_infinite
 // Contrairement à Halo 5 (timeline native servie par l'API, cf. halo_5/events.go),
 // Infinite ne dispose PAS d'une timeline d'events propre côté API : on la
 // reconstitue depuis `shared.highlight_events` (parser film → kill/death/medal/mode)
-// au référentiel T0. C'est la Phase 2 du plan `.ai/PLAN_CANONICAL_MATCH_EVENTS.md`.
+// au référentiel T0. C'est la Phase 2 du plan `.ai/archive/V7/PLAN_CANONICAL_MATCH_EVENTS.md`.
 //
 // Dégradations assumées (vs Halo 5 natif), reportées via infiniteEventLimitations
 // et les capabilities match.killfeed.per_kill (degraded) / match.events.spatial

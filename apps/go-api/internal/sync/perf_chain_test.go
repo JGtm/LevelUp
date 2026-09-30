@@ -35,7 +35,7 @@ func TestGetPerformanceChain(t *testing.T) {
 		{name: "ranked + firefight sur sous-mode objectif → ranked_objectif", pairName: "Ranked:CTF on Recharge", isRanked: true, isFirefight: true, want: PerfChainRankedObjectif},
 		{name: "famille lue dans le sous-mode, pas dans le préfixe", pairName: "BTB:CTF on Highpower", isRanked: true, want: PerfChainRankedObjectif},
 
-		// LACUNE D-I CORRIGÉE (lot 1bis du plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md,
+		// LACUNE D-I CORRIGÉE (lot 1bis du plan .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md,
 		// 2026-08-27) : « ctf 3 captures » est entré dans la liste partagée, et la
 		// règle du préfixe rattrape les pair_name inversés. Le recompute LUSR des
 		// chaînes déjà persistées est traité au lot 4.

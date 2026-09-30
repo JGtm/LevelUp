@@ -275,7 +275,7 @@ func v1aConfronteCaps(pos []grammar.BipedPosition) (caps, depl, vel v1aEcarts, v
 	return caps, depl, vel, vit
 }
 
-// v1aMesureCap porte les trois caps d'une paire d'echantillons et la vitesse i1 du premier.
+// v1aMesureCapPaire porte les trois caps d'une paire d'echantillons et la vitesse i1 du premier.
 type v1aMesureCapPaire struct {
 	Cap, Deplacement, Velocite, VitesseMPS float64
 }

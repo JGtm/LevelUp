@@ -23,7 +23,7 @@ package grammar
 // LECTURE SEULE : aucun fichier ecrit, aucune base ouverte.
 //
 //	CGO_ENABLED=0 V11_ROOT=<cache> V11_FILMS=0d76e8f1,fccc61cd \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV11 -v -timeout 120m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV11 -v -timeout 120m
 
 import (
 	"fmt"

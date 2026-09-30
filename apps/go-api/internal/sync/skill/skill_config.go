@@ -134,7 +134,7 @@ var RelativeWeights = map[string]float64{
 // objectiveChainWeights — profil de poids des chaînes de FAMILLE OBJECTIF
 // (LUSRChainArenaObjectif, PerfChainRankedObjectif).
 //
-// FIGÉ au gate 0 du 2026-08-27 (décision D-J de .ai/PLAN_PERF_NOTE_OBJECTIFS.md,
+// FIGÉ au gate 0 du 2026-08-27 (décision D-J de .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md,
 // argumentaire chiffré dans RAPPORT_SIM_PERF_NOTE_2026-08.md) : la participation à
 // l'objectif entre à 0.12, financée par les quatre métriques de combat pur
 // (kpm 0.14→0.10, kda 0.11→0.09, accuracy 0.04→0.03, pspm 0.10→0.08). TOUTES les
@@ -201,7 +201,7 @@ const (
 // supplémentaires garantissent qu'aucun match n'est orphelin de score.
 //
 // Le classé est scindé PAR FAMILLE depuis le 2026-08-27 (plan
-// .ai/PLAN_PERF_NOTE_OBJECTIFS.md, décision D-A) : comparer un match d'objectif à
+// .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md, décision D-A) : comparer un match d'objectif à
 // un historique majoritairement slayer décalait sa note (corpus : pspm médian 206
 // en objectif contre 161 en slayer sur le classé). Une note reste « relative aux
 // 50 derniers matchs de la MÊME chaîne » — la scission rend cette population

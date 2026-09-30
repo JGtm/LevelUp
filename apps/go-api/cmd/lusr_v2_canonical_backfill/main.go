@@ -21,7 +21,7 @@
 // Reset PAR JOUEUR (DELETE WHERE xuid=?) + persist OWNER-ONLY : chaque joueur
 // reprocesse tous ses matchs et écrit ses lignes SANS écraser l'état v2 des
 // autres → couverture complète pour TOUS (corrige le couplage cross-joueur du
-// backfill séquentiel, cf. .ai/thought_log 2026-06-07).
+// backfill séquentiel, cf. .ai/archive/thought_log_2026-Q2.md, 2026-06-07).
 package main
 
 import (

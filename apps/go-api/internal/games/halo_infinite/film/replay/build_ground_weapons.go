@@ -122,9 +122,6 @@ func decodeFilmPadScan(
 	return WorldObjectScan{Scanned: true, Creations: cre, Stats: st, Keyframes: kf, Tracks: tracks}
 }
 
-// gwInstallMPPWidths installe les largeurs du bloc MPP MESURÉES sur ce film SUR LE CONTEXTE, et
-// rend leur restauration. Largeurs non renseignées (calibration refusée) : rien n'est installé —
-// l'invariant du profil vaut mieux qu'un découpage nul, qui ne lirait aucune identité du tout.
 // gwWidthsForFilm rend les largeurs MPP a INSTALLER pour ce film : celles que porte sa VERSION
 // DE FORMAT quand la grammaire les a relues chez l ecrivain (format 27), sinon les largeurs
 // CALIBREES sur le film.
@@ -168,6 +165,9 @@ func gwWidthsForFilm(fc *grammar.FilmContext, calibrees profile.MPPWidths) profi
 	return calibrees
 }
 
+// gwInstallMPPWidths installe les largeurs du bloc MPP MESURÉES sur ce film SUR LE CONTEXTE, et
+// rend leur restauration. Largeurs non renseignées (calibration refusée) : rien n'est installé —
+// l'invariant du profil vaut mieux qu'un découpage nul, qui ne lirait aucune identité du tout.
 func gwInstallMPPWidths(fc *grammar.FilmContext, w profile.MPPWidths) func() {
 	if !w.Valid() {
 		// Ni relue ni calibree : le balayage se fait aux largeurs de l INVARIANT (9/5), repli

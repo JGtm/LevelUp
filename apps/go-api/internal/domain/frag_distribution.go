@@ -1,7 +1,7 @@
 // Package domain — frag_distribution.go : DTO canonique « Répartition des frags »
 // v2 (sunburst hiérarchique classe→rôle). Type title-agnostic partagé par toutes
 // les surfaces (Synthesis, Match view, Timeseries, Sessions ; l'Escouade n'utilise
-// que le niveau classe). Cf. .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md §2.
+// que le niveau classe). Cf. .ai/archive/V7/PLAN_FRAG_DISTRIBUTION_V2.md §2.
 //
 // Provenance des données (point anti-double-source) :
 //   - Classes melee/grenade/spartan_ability + total : stats canoniques API

@@ -31,7 +31,7 @@ en Go ou TypeScript. **SQLite interdit** : DuckDB uniquement.
 - `.ai/project_map.md` — cartographie (vérifier la date : doctrine RE-VÉRIFIER, les
   documents `.ai/` rotent plus vite qu'ils ne sont maintenus)
 - **Équipement (usages, poses, lâchers, ramassages, charges)** :
-  `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` — À LIRE AVANT toute affirmation sur le
+  `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` — À LIRE AVANT toute affirmation sur le
   sujet, y compris en conversation. Les faits sont éparpillés sur quatre documents et
   répondre de mémoire y produit des contradictions (constaté le 2026-09-09).
 - Recherche / rétro-ingénierie (film Theater, arme par kill, rejeu 2D, cartes) :
@@ -260,6 +260,10 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
     même PR. **ADRs et runbooks = EN-only** (pas de traduction à créer ni maintenir).
 16. **Git** : jamais `git stash` (commit WIP à la place) ; demander avant tout commit ;
     jamais travailler sur `main` ; ne pas changer de branche si un travail est en cours.
+17. **Commentaires** : le code porte le contrat (ce que fait la déclaration, ses invariants,
+    pourquoi) ; l'histoire (mesures datées, lots, comptes du jour) va dans l'ADR, la chronique
+    ou le journal. S'applique au code neuf et à toute affirmation fausse rencontrée, pas de
+    réécriture de masse. Détail : skill `arch-rules`.
 
 ## Diagnostic de revue de code — anti-patterns interdits
 
@@ -325,30 +329,16 @@ git commit -m "refactor(phase2): ..."
   (appartenance d'un match à la session d'une composition indépendante de la présence à la
   fin — quitter un match n'est pas quitter la session ; `composition_sessions[].match_count`
   seule source d'un compte de session, `/filters/resolve` en repli de chargement seulement ;
-  2 ratchets) · `0034` **décodeur de film** (profil par build immuable, cinq couches
-  `source`→`profile`→`grammar`→`facts`→`replay`, porte unique aux octets, clé inconnue =
-  erreur typée + film mis de côté + compteur (actif depuis le lot 3.1.1, 2026-09-17 :
-  `sync/killcollector` et `replaybuild` écartent le film, jamais un décodage au profil d'un
-  voisin), faits / publication séparés, équipe = le film seul ; **amendé à
-  la clôture M2, 2026-09-17** : les quatre couches internes sous `film/internal/` fermées
-  par le COMPILATEUR, façade `film/decfilm` (**166** symboles, un alias ; réduction NON
-  RETENUE — décision V25 du 2026-09-18, un ratchet de surface daté à la place :
-  `archlint/film_facade_surface_test.go`, 166 et **257** identifiants `replay.X` hors de
-  `film/`), `film/replay` exportée comme couche de publication, une
-  révision PAR COUCHE + le bloc `coverage.decoder` ; **puis à la clôture M3,
-  2026-09-17** : le profil est DÉPENSÉ (33 lignes — la loi des largeurs d'axe relue chez
-  l'écrivain, 79/79 cartes, et l'amorce de grenade par clef écrite) et un balayage ne décide
-  plus ce qu'il ne discrimine pas (mot de poignée, `param_4` : oracle qui n'écrit rien, sinon
-  repli nommé) ; **puis à la clôture M4 — et du chantier —, 2026-09-18** : les faits d'un
-  film sont PERSISTÉS (`data/cache/film_facts/{slug}/<short8>.filmfacts.bin`, cinq sections,
-  en-tête de 110 o portant les quatre révisions) et la publication REJOUE depuis eux quand ils
-  sont frais, décode sinon (S8 : document depuis les faits ≡ document depuis le film à
-  l'octet sur 10 films, 95× à 442× plus rapide) ; `SchemaVersion` **62** porte `layers`
-  (une révision par calque : la présence d'un calque se lit dans sa révision) et
-  `coverage.deathsPaths` ; « à recuire » est un verdict à trois sorties (`a-jour` /
-  `republier` / `redecoder`) ; AUCUNE révision de décodage montée, donc aucun backlog
-  killsource ouvert ; lot 4.3 (un seul type publié) reporté après le chantier (V16) ;
-  partiels et corrections nommés dans l'ADR) ·
+  2 ratchets) · `0034` **décodeur de film** (profil immuable par build ; cinq couches
+  `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `film/internal/`,
+  fermées par le compilateur ; hors de `film/`, on passe par la façade `film/decfilm`, dont la
+  surface est tenue par `archlint/film_facade_surface_test.go` (187 symboles et 277
+  identifiants `replay.X` hors de `film/` au 2026-09-30 ; réduction non retenue, V25) ;
+  porte unique aux octets ; build inconnu = erreur typée + film mis de côté + compteur ; une
+  révision par couche, empreinte insensible aux commentaires ; faits PERSISTÉS, la
+  publication rejoue depuis eux quand ils sont frais ; équipe = le film seul ; replis
+  nommés, comptés, retirés (D-10) ; état courant court dans l'ADR, historique M2-M4 dans
+  `docs/adr/0034-annex-history.md`) ·
   `0035` **annuaire des joueurs** (xuid = clé d'identité unique ; port `PlayerDirectory` ;
   aucun sync ni suivi sans profil suivi ; `Onboard` seul chemin de création ; verrou décidé
   en un point, défauts sûrs en mode appliqué ; purge sans toucher la base partagée).

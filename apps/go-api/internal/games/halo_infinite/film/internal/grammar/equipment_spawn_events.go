@@ -6,7 +6,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 // liste de type 103 `EquipmentSpawnedObject`, et la vie d'objet que sa deuxième référence
 // DÉSIGNE.
 //
-// # CE QUE CE LECTEUR REMPLACE (D13 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`)
+// # CE QUE CE LECTEUR REMPLACE (D13 du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`)
 //
 // L'origine d'une pose d'équipement se décidait par une FENÊTRE TEMPORELLE de 200 ms entre la
 // création de l'objet et la fin de la vie de son poseur (aujourd'hui le seul REPLI de

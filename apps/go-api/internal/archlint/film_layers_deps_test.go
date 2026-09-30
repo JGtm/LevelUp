@@ -70,7 +70,7 @@ package archlint
 //
 // # LES 12 ARETES DE LA NOTE DE PREPARATION, ET CE QU IL EN RESTE
 //
-// `.ai/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §2.2 listait 12 aretes a casser ; ce ratchet en a
+// `.ai/V7.5/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §2.2 listait 12 aretes a casser ; ce ratchet en a
 // porte 8, en a ajoute 2 que la note n avait pas comptees (elle regardait le SENS, ce ratchet
 // regarde aussi le LIEU), et en a laisse 4 a D9. TOUTES SONT TOMBEES, chacune dans le commit du
 // deplacement qui la resolvait — les trois dernieres au lot 2.5.e-a, avec la descente de

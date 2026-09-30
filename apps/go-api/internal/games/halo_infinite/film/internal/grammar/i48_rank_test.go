@@ -37,7 +37,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I48_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI48PaletteRank$' -timeout 20m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI48PaletteRank$' -timeout 20m -v
 
 import (
 	"fmt"

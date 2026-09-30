@@ -21,7 +21,7 @@ package grammar
 // LECTURE SEULE : aucun fichier ecrit, aucune base ouverte. A supprimer a la cloture du lot V0.
 //
 //	CGO_ENABLED=0 V0_CHUNK_DIRS=<cache>/film_chunks/8a049c50 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV0Composants -v -timeout 60m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV0Composants -v -timeout 60m
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"

@@ -15,7 +15,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 INV_DELTA_FILMS=<repo>/data/cache/film_chunks INV_DELTA_MAX=15 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestInventoryDeltaCorpus$' -timeout 120m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestInventoryDeltaCorpus$' -timeout 120m -v
 
 import (
 	"fmt"

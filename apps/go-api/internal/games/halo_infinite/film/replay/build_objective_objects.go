@@ -38,6 +38,11 @@ func attachObjectiveObjects(doc *ReplayDocument, opt Options, clock replayClock)
 	logObjectiveObjectsCoverage(cov)
 }
 
+// familleCrane — l'identifiant de famille du crane, tel que le MANIFESTE le publie. Constante
+// parce qu'il est repris par la table ci-dessous et par tous les cas de test du paquet : un
+// litteral disperse est le premier a diverger le jour ou le manifeste renommerait la famille.
+const familleCrane = "ball"
+
 // objectiveObjectPublished — les familles dont les vies libres sont PUBLIÉES.
 //
 // LA LISTE EST PLUS COURTE QUE CELLE DES OBJETS RECONNUS, ET C'EST UNE MESURE, PAS UN REPORT.
@@ -50,11 +55,6 @@ func attachObjectiveObjects(doc *ReplayDocument, opt Options, clock replayClock)
 //
 // LE JOUR OÙ CE NÉGATIF SERA LEVÉ, une ligne suffira ici et AUCUNE CLÉ DU DOCUMENT NE BOUGERA :
 // c'est pourquoi la forme publiée porte `family` plutôt que de s'appeler « crâne ».
-// familleCrane — l'identifiant de famille du crane, tel que le MANIFESTE le publie. Constante
-// parce qu'il est repris par la table ci-dessous et par tous les cas de test du paquet : un
-// litteral disperse est le premier a diverger le jour ou le manifeste renommerait la famille.
-const familleCrane = "ball"
-
 var objectiveObjectPublished = map[string]bool{familleCrane: true}
 
 // buildObjectiveObjects assemble les vies libres publiables. PUR : aucune lecture de film, aucune

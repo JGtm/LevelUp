@@ -75,7 +75,7 @@ package migration
 //     joueur) : MA40 0.971 · Mk51 Sidekick 1.004 · BR75 1.007 · Bandit Evo 1.007. CE QUI SURVIT
 //     A DEUX LOTS INDEPENDANTS : le MA40 a un deficit, plus grand que celui du BR75. CE QUI EST
 //     CONTESTE : le deficit du Sidekick — a ne publier ni comme present ni comme absent.
-//     Cf. `.ai/GUIDE_WEAPON_SHOTS.md` §3, RE_LOG 7ter.80 (3)(6) et 7ter.81 (9).
+//     Cf. `.ai/V7.5/GUIDE_WEAPON_SHOTS.md` §3, RE_LOG 7ter.80 (3)(6) et 7ter.81 (9).
 //
 // ─── APPEND-ONLY, MEME UNITE DE GENERATION QUE `match_kill_events` ────────────────────────
 //

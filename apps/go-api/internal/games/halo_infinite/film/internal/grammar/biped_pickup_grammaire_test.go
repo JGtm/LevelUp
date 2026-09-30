@@ -336,22 +336,6 @@ func TestBipedPickupEchecs(t *testing.T) {
 		bpkVerdict(bpkPct(echecsSansCadrage, echecs) >= 80))
 }
 
-// TestBipedPickupLargeurRef0 — LA LARGEUR DU DOMAINE 2 EST UNE VALEUR DE RUNTIME, PAS UNE
-// CONSTANTE DU FORMAT. Le lecteur de reference de l'exe (FUN_1406d3140) lit sa largeur dans
-// la table DAT_1451f98d0/d4 indexee par le domaine, peuplee au chargement de carte :
-//
-//	si le bit de configuration du paquet vaut 1 : base = DAT_1451f98d0[dom*2] et
-//	   largeur = FUN_1406d310c(DAT_1451f98d4[dom*2]) ; sinon largeur globale de repli.
-//	seul le domaine 1 porte une sonde R(1) qui bascule sur un second couple (0x1451f98f0/f4).
-//	Puis, TOUJOURS, R(2) de generation. La reference vaut (gen<<30) | (base + index).
-//
-// C'est la MEME table que celle qui donne FrameConfig.IDLowBits — et sur ce film IDLowBits
-// se calibre a 9, pas a la valeur par defaut 13. Il faut donc calibrer la largeur du
-// domaine 2 sur le film au lieu de la supposer.
-//
-// SEUIL ECRIT AVANT LA MESURE : la largeur retenue est celle qui maximise le taux de trames
-// exactes ; elle n'est acceptee que si ce taux atteint au moins 80 % du PLAFOND mesure sur
-// unit_zoom (grammaire prouvee) et si les largeurs voisines restent sous 20 %.
 // bpkEssaieLargeur decode UN evenement type 9 en supposant la largeur w pour l'index de
 // ref0, puis soumet le cadrage obtenu a l'oracle. Alimente les compteurs du balayage.
 func bpkEssaieLargeur(f bpkFilm, snap WorldSnapshot, pay []byte, w int, cfg FrameConfig,
@@ -383,6 +367,22 @@ func bpkEssaieLargeur(f bpkFilm, snap WorldSnapshot, pay []byte, w int, cfg Fram
 	}
 }
 
+// TestBipedPickupLargeurRef0 — LA LARGEUR DU DOMAINE 2 EST UNE VALEUR DE RUNTIME, PAS UNE
+// CONSTANTE DU FORMAT. Le lecteur de reference de l'exe (FUN_1406d3140) lit sa largeur dans
+// la table DAT_1451f98d0/d4 indexee par le domaine, peuplee au chargement de carte :
+//
+//	si le bit de configuration du paquet vaut 1 : base = DAT_1451f98d0[dom*2] et
+//	   largeur = FUN_1406d310c(DAT_1451f98d4[dom*2]) ; sinon largeur globale de repli.
+//	seul le domaine 1 porte une sonde R(1) qui bascule sur un second couple (0x1451f98f0/f4).
+//	Puis, TOUJOURS, R(2) de generation. La reference vaut (gen<<30) | (base + index).
+//
+// C'est la MEME table que celle qui donne FrameConfig.IDLowBits — et sur ce film IDLowBits
+// se calibre a 9, pas a la valeur par defaut 13. Il faut donc calibrer la largeur du
+// domaine 2 sur le film au lieu de la supposer.
+//
+// SEUIL ECRIT AVANT LA MESURE : la largeur retenue est celle qui maximise le taux de trames
+// exactes ; elle n'est acceptee que si ce taux atteint au moins 80 % du PLAFOND mesure sur
+// unit_zoom (grammaire prouvee) et si les largeurs voisines restent sous 20 %.
 func TestBipedPickupLargeurRef0(t *testing.T) {
 	f, ok := bpkOpen(t)
 	if !ok {

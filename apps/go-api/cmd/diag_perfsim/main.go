@@ -1,5 +1,5 @@
 // cmd/diag_perfsim — simulation OFFLINE et LECTURE SEULE de la note de
-// performance (lot 0 du plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md).
+// performance (lot 0 du plan .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md).
 //
 // Rejoue batchComputePerformanceScores (internal/sync/performance.go) sur les
 // données réelles des joueurs suivis, sous deux régimes :

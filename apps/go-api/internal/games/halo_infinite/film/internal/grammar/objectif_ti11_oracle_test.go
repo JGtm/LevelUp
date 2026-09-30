@@ -42,7 +42,7 @@ import (
 // le coupable, au lieu de laisser un taux global qu'on ne sait pas ou attribuer.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Oracle -v -timeout 40m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Oracle -v -timeout 40m
 func TestObjectifTi11Oracle(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
@@ -162,7 +162,7 @@ func reg0(cache string) (Archetype, bool) {
 // COMPOSANTS — ceux-la, precisement, que la configuration actuelle rate a 100 %.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Calibration -v -timeout 40m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Calibration -v -timeout 40m
 func TestObjectifTi11Calibration(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {

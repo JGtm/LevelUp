@@ -252,7 +252,7 @@ func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
 	// catalogue est tranchee dans le constructeur, et les balayages la lisent ici.
 	s.scan.Layout = s.fc.ImposedLayout()
 	// L'HORLOGE DES BALAYAGES PART ICI, et pas a l'entree de la fonction : ce qui precede est
-	// l'attente du verrou process et la lecture du catalogue, qui ne sont le temps d'aucun
+	// la construction du contexte et la lecture du catalogue, qui ne sont le temps d'aucun
 	// balayage. A partir d'ici, chaque `opt.observe` ferme le balayage qu'il annonce
 	// (cf. observe.go).
 	s.opt.clock = &stepClock{last: time.Now()}

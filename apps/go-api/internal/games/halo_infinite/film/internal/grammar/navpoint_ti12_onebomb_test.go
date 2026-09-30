@@ -33,7 +33,7 @@ package grammar
 // REGIME : garde ASSAUT_CACHE. Aucune base, aucun reseau, sentinelle memoire armee, un seul
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run NavpointTi12OneBombInspection -v -timeout 30m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run NavpointTi12OneBombInspection -v -timeout 30m
 
 import (
 	"fmt"

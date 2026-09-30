@@ -9,13 +9,12 @@
 //
 // # POURQUOI UN PAQUET FEUILLE, ET POURQUOI PAS `grammar`
 //
-// Ce paquet n'importe RIEN du depot (stdlib seule) — un garde-rail le verifie
-// (`internal/archlint/filmsource_leaf_test.go`). Ce n'est pas une coquetterie d'architecture,
-// c'est la seule position possible : `filmcache` importe `objectives` (`filmcache.go`), et
-// cinq tests INTERNES de `grammar` importent `objectives` ou `filmcache`
-// (`sonde_registre_verdicts_test.go`, `navpoint_ti12_radial_test.go`,
-// `objectif_ti11_minuteurs_test.go`, `ti47_annonces_test.go`, `zone_census_report_test.go`).
-// Loger la source du film dans `grammar` ferait donc importer `grammar` par `objectives`, ou
+// Ce paquet n'importe du depot que `film/types`, elle-meme une feuille a zero import — deux
+// garde-rails le verifient (`internal/archlint/filmsource_leaf_test.go`,
+// `internal/archlint/film_types_leaf_test.go`). Ce n'est pas une coquetterie d'architecture :
+// au moment de sa creation (2026-09-02), `filmcache` importait `objectives` et cinq tests
+// INTERNES de `grammar` importaient `objectives` ou `filmcache` ; loger la source du film dans
+// `grammar` faisait donc importer `grammar` par `objectives`, ou
 // `filmcache` par `grammar` : un cycle, en production ou en test. Une feuille n'en cree aucun.
 //
 // # LA GRAMMAIRE (D3 REVISEE DU 2026-09-02) — ET LA MESURE QUI L'A ECRITE
@@ -67,8 +66,8 @@
 // source.go).
 //
 // Ce paquet ne connait pas la semantique des chunks au-dela de ce numero : le role de chacun se
-// lit dans le manifeste ([types.ChunkMeta], fourni par l'appelant), et l'interpretation viendra avec
-// `FilmContext` (lot 2 du plan).
+// lit dans le manifeste ([types.ChunkMeta], fourni par l'appelant) ; l'interpretation vit dans
+// `grammar.FilmContext`.
 //
 // # POLITIQUE MEMOIRE
 //

@@ -2,7 +2,7 @@
 
 // cmd/repair_msr_index — diagnostic et réparation des index ART de
 // `match_skill_rank` sur les DB joueur (item C.8 du plan
-// .ai/PLAN_FINITIONS_2026-09-13.md, P0 du 2026-09-13).
+// .ai/V7.5/PLAN_FINITIONS_2026-09-13.md, P0 du 2026-09-13).
 //
 // **Pourquoi** : mesuré sur pièces le 2026-09-13, serveur arrêté, sur la player DB
 // de JGtm — `COUNT(*) FILTER (WHERE playlist_group='h5_arena')` (scan complet) rend

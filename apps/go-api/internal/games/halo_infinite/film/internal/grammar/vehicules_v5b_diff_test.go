@@ -21,7 +21,7 @@ package grammar
 // témoin, une chute d'accord ne dit pas si elle vient du bloc ou de la dérive.
 //
 //	CGO_ENABLED=0 V5_ROOT=<cache> V5_FILMS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV5BDiff -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV5BDiff -v -timeout 180m
 
 import (
 	"fmt"

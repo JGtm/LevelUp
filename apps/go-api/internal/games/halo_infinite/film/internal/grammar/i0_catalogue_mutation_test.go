@@ -37,7 +37,7 @@ package grammar
 // ne teste qu'un bit contre zéro et accepte AUSSI des enregistrements d'une AUTRE région, dont
 // les quanta sont exprimés dans une autre AABB.
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run I0Catalogue -v -count=1
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run I0Catalogue -v -count=1
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"

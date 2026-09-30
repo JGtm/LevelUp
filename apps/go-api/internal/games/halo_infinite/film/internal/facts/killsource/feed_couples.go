@@ -3,7 +3,7 @@ package killsource
 import "levelup/go-api/internal/games/halo_infinite/film/types"
 
 // feed_couples.go — LE COUPLE (TUEUR, VICTIME) EST LU AU KILL-EVENT 85, PLUS RECOLLE SUR LE
-// VOISIN (lot 1.9.3 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, D13).
+// VOISIN (lot 1.9.3 du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, D13).
 //
 // # CE QUE LE FILM ECRIT, ET QUI N ETAIT PAS LU
 //

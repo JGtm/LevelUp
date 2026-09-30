@@ -23,7 +23,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 KF_GRAM_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestKFGram' -timeout 30m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestKFGram' -timeout 30m -v
 
 import (
 	"fmt"

@@ -1,6 +1,6 @@
 // Package service — session_page_usage.go : le bloc « usages d'équipement,
 // socles et objectifs » de la page détail de session (chantier session-usage S2,
-// .ai/HANDOFF_SESSION_USAGE_BDD_2026-09-04.md §5/S2).
+// .ai/V7.5/HANDOFF_SESSION_USAGE_BDD_2026-09-04.md §5/S2).
 //
 // PATRON D'ATTACHEMENT (miroir IntensityRows/FirstBlood) : repo optionnel injecté
 // à la DI, attaché à la réponse existante de POST .../pages/sessions/detail —
