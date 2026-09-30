@@ -60562,8 +60562,8 @@
 {"Time":"2026-09-05T23:46:44.6043321+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestStoreArtifact_RefuseLaRegression","Elapsed":0.01}
 {"Time":"2026-09-05T23:46:44.6170427+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestStoreArtifact_EnrichissementAccepte","Elapsed":0.01}
 {"Time":"2026-09-05T23:46:44.6242822+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestStoreArtifact_PremierDepotToujoursAccepte","Elapsed":0.01}
-{"Time":"2026-09-05T23:46:44.6242822+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestIsBombVariant","Elapsed":0}
-{"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestAucuneGardeParNomDeVariante","Elapsed":0}
+{"Time":"2026-09-05T23:46:44.6242822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGardesDeLaVariante_Bombe","Elapsed":0}
+{"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAucuneGardeParNomDeVariante","Elapsed":0}
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"skip","Package":"levelup/go-api/internal/replaybuild","Test":"TestPhase0Bis_BalayageLargeDesTagsAmbigus","Elapsed":0}
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestBorneHauteWilson","Elapsed":0}
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"skip","Package":"levelup/go-api/internal/replaybuild","Test":"TestPhase0_PoidsDesTagsAmbigusDeGrenade","Elapsed":0}

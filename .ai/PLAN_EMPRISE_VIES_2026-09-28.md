@@ -1209,6 +1209,18 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
 - Ordre des items suivants (superviseur, 2026-09-30) : V5.7 (notes de version) passe AVANT la
   fusion V5.4, pour que la fusion porte ses notes ; aucun autre changement d'ordre.
 - [ ] V5.4 Fusion `wt/emprise` → `feat/v75` (sur accord), CI verte au niveau job.
+  2026-09-30 (superviseur) : avant fusion, `go vet ./...` et la suite d'intégration complète
+  `-tags=integration -p 1` rejouée en trois morceaux sur `c20d3a1b6` (191 paquets `ok`, 0 échec).
+  Fusion en avance rapide, poussée (`549d7f7f0..c20d3a1b6`, pre-push vert). CI du push (run
+  36742090869) : tous les jobs Go verts sauf « Go Coverage + Baseline », rouge sur la baseline de
+  présence — `go test` y sort 0, mais deux tests de la baseline sont absents :
+  `replaybuild::TestIsBombVariant` et `replaybuild::TestAucuneGardeParNomDeVariante`, DÉPLACÉS par
+  le lot V1 vers `film/replay` (`TestGardesDeLaVariante_Bombe`, `TestAucuneGardeParNomDeVariante`)
+  sans mise à jour de la baseline (le pre-push ne joue pas ce contrôle). Remède prescrit par
+  `scripts/check_test_baseline.sh` : les deux entrées repointées, rien d'autre ne bouge (diff = 2
+  lignes), contrôle rejoué sur le JSONL de la CI : vert. Job web annulé à sa limite de 20 min
+  pendant `playwright install --with-deps` (miroir apt Ubuntu à quelques dizaines de Ko/s ;
+  typage, lint, build et 8 798 tests vitest verts dans ce même job) : infrastructure, relancé.
 - [ ] V5.5 Gate visuel par l'utilisateur APRÈS la fusion (onglet Emprise, soirée du 22/09 ; rangée
   « Appui » seule sur Synergies) ; il nomme les témoins.
 - [!] V5.6 Rattrapage prod : fait par l'utilisateur après le déploiement de la v7.5. Coût à lui
