@@ -139,8 +139,17 @@ go run ./cmd/levelup backfill-killsource --workers 1    # la boucle en série d'
 go run ./cmd/levelup backfill-killsource --limit 20     # les 20 films les moins chers
 go run ./cmd/levelup backfill-killsource --credit-only  # la passe SQL → SQL seule
 go run ./cmd/levelup backfill-killsource --force        # redécode même ce qui est à jour
+go run ./cmd/levelup backfill-killsource --match 1c4c63c2,ee90570b --dry-run   # seulement ces matchs (préfixes de 8+ caractères, univoques)
 go run ./cmd/levelup backfill-killsource --status       # DANS UN AUTRE TERMINAL : où elle en est
 ```
+
+**`--match ID[,ID...]` — borne la passe hors ligne à des matchs nommés.** Identifiants séparés
+par des virgules ; un préfixe court (8 caractères ou plus) est accepté s'il désigne UN seul match
+du registre, et refusé avec une erreur claire s'il est ambigu (les candidats sont listés) ou
+inconnu. La règle de fraîcheur ne change pas : un match nommé déjà à jour est sauté sauf
+`--force` ; `--limit` s'applique après le filtre ; `--dry-run` liste chaque film retenu. Refusée
+avec `--online` (cette passe choisit ses films dans l'historique du joueur, pas dans le registre)
+et avec `--credit-only` (la passe SQL → SQL ne lit pas cette sélection).
 
 **`--workers` (défaut 3) — N films décodés en parallèle, UN SEUL qui touche la base.** La
 décomposition du coût (lot 5.24.1) mesure **93 à 99 % du temps d'un film en CPU hors base** :

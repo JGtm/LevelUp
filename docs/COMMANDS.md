@@ -133,8 +133,17 @@ go run ./cmd/levelup backfill-killsource --workers 1    # the serial loop from b
 go run ./cmd/levelup backfill-killsource --limit 20     # the 20 cheapest films
 go run ./cmd/levelup backfill-killsource --credit-only  # the SQL → SQL pass alone
 go run ./cmd/levelup backfill-killsource --force        # re-decode even what is already fresh
+go run ./cmd/levelup backfill-killsource --match 1c4c63c2,ee90570b --dry-run   # only these matches (8+ char prefixes, unambiguous)
 go run ./cmd/levelup backfill-killsource --status       # IN ANOTHER TERMINAL: where it stands
 ```
+
+**`--match ID[,ID...]` — bound the offline pass to named matches.** Comma-separated match ids;
+a short prefix (8 characters or more) is accepted when it designates ONE match of the registry,
+and refused with a clear error when it is ambiguous (the candidates are listed) or unknown. The
+freshness rule is unchanged: a named match that is already fresh is skipped unless `--force`;
+`--limit` applies after the filter; `--dry-run` lists every retained film. Refused with
+`--online` (that pass picks its films from the player's history, not from the registry) and with
+`--credit-only` (the SQL → SQL pass does not read this selection).
 
 **`--workers` (default 3) — N films decoded in parallel, only ONE touching the database.** The
 cost breakdown (lot 5.24.1) measures **93 to 99 % of a film's time as CPU outside the

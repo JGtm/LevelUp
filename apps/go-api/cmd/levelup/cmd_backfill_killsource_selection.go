@@ -38,7 +38,7 @@ type bilanDeSelection struct {
 func filmsACollecter(
 	ctx context.Context, db *sql.DB, cacheRoot string, o killsourceOptions,
 ) ([]filmCandidat, bilanDeSelection, error) {
-	registre, err := matchsDuRegistre(ctx, db, 0)
+	registre, err := registreDeLaPasse(ctx, db, o) // tout le registre, ou les matchs de --match
 	if err != nil {
 		return nil, bilanDeSelection{}, err
 	}
@@ -205,8 +205,9 @@ func compterChunks(cacheRoot, matchID string) (int, bool) {
 	return len(m.Chunks), true
 }
 
-// afficherPlan : le plan de passe, avec sa queue de films chers en evidence.
-func afficherPlan(candidats []filmCandidat) {
+// afficherPlan : le plan de passe, avec sa queue de films chers en evidence. `tout` liste chaque
+// film (sinon le milieu d une longue liste est elide).
+func afficherPlan(candidats []filmCandidat, tout bool) {
 	total := 0
 	gros := 0
 	for _, c := range candidats {
@@ -218,10 +219,10 @@ func afficherPlan(candidats []filmCandidat) {
 	fmt.Printf("  chunks a decoder : %d au total, %d film(s) au-dela de 50 chunks (passes en dernier)\n",
 		total, gros)
 	for i, c := range candidats {
-		if i >= 5 && i < len(candidats)-3 {
+		if !tout && i >= 5 && i < len(candidats)-3 {
 			continue
 		}
-		if i == 5 {
+		if !tout && i == 5 {
 			fmt.Println("  ...")
 		}
 		fmt.Printf("  %-40s %3d chunks\n", c.matchID, c.chunks)

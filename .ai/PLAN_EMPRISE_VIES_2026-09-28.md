@@ -1165,11 +1165,20 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
   Amendé par le superviseur le 2026-09-30 : `--limit` prend les films les MOINS CHERS d'abord, pas
   ceux d'une soirée, et la passe entière du parc local (~1 300 films, ~1 min par film et par
   ouvrier) tiendrait le serveur arrêté des heures. Sous-item :
-  - [ ] V5.2a Option `--match` de `backfill-killsource` (liste d'identifiants séparés par des
+  - [x] V5.2a Option `--match` de `backfill-killsource` (liste d'identifiants séparés par des
     virgules, préfixes courts de 8 caractères acceptés s'ils sont univoques) : restreint la
     sélection hors ligne à ces matchs, `matchsAJour` toujours appliqué sauf `--force`, refusée
     avec `--online` ; tests (filtre, préfixe ambigu refusé, combinaison avec `--force` et
     `--dry-run`) ; documentée dans `docs/COMMANDS.md` et `docs/FR/COMMANDS.md`.
+    Fait 2026-09-30 : `cmd_backfill_killsource_match.go` (nouveau : `validerMatch`, `resoudreMatchs`,
+    `registreDeLaPasse`), branchements dans `cmd_backfill_killsource{,_selection}.go` ;
+    `afficherPlan(candidats, tout)` liste tout sous `--match` ; refusée aussi avec `--credit-only`
+    (elle serait ignorée). Tests `cmd_backfill_killsource_match_test.go` et
+    `..._match_integration_test.go` ; 11 mutations rouges (filtre ignoré, ambigu accepté, inconnu
+    ignoré, `--online` accepté, préfixe court accepté, `--credit-only` accepté, trim retiré,
+    `--force` ignoré, `matchsAJour` ignoré, plan non complet, liste vide acceptée). Docs EN et FR.
+    Découverte (non traitée) : `afficherPlan` n'affiche jamais son « ... » sur une longue liste
+    (le `continue` de `i == 5` le précède).
   - [ ] V5.2b Passe réelle bornée aux 12 matchs filmés du 22/09 par `--match`.
 - [ ] V5.3 Vérification sur données réelles, soirée du 22/09 : ~146 vies pour JGtm, 80 pour
   Madina97294, 73 pour Chocoboflor (relevé du 2026-09-28 sur `match_lives_latest`) ; part des vies
@@ -1313,3 +1322,8 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
 - (V3) Un premier passage de mutations (Q7, Q9, S7) a produit des mutations qui ne compilaient pas :
   un « rouge » d'échec de compilation ne prouve rien ; le script `mut.sh` ne le distingue pas d'un
   échec de test (relu à la main).
+- (V5.2a) `afficherPlan` (`cmd_backfill_killsource_selection.go`) n'affiche jamais son « ... » sur une
+  longue liste : le `continue` de la ligne `i >= 5 && i < len-3` précède le `if i == 5`. Sous `--match`
+  la liste est complète, donc sans effet ; défaut cosmétique préexistant, non traité.
+- (V5.2a) Un `sed` de mutation `if false {` sur `dejaFaits[id]` ne compile pas (paquet de test en
+  échec de build) : remplacé par `&& len(id) < 0`, rouge par échec de test et non de compilation.
