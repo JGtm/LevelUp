@@ -59,11 +59,6 @@ const (
 	chronoGTVictime = "Madina97294"
 )
 
-// chronoEpisodes : les periodes zoomees de Nilton410, en SECONDES d'horloge du feed.
-var chronoEpisodes = [][2]float64{
-	{41, 46.3}, {49, 52}, {61, 61.8}, {68, 68.8}, {71, 73}, {85, 86},
-}
-
 // chronoEpisodeMadina : la periode unique de la victime.
 var chronoEpisodeMadina = [2]float64{45, 46.3}
 

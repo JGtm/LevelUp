@@ -1,5 +1,3 @@
-//go:build research
-
 package grammar
 
 // weapon_index_groundtruth_test.go — VERITE TERRAIN du correctif d'indice de tireur (Lot 3),

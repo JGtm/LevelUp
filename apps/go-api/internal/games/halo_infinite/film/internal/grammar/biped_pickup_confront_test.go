@@ -29,24 +29,6 @@ const bpkTolUS = 500_000
 // PIRE (le plus favorable au hasard) pour ne pas se flatter.
 var bpkDecalages = []int64{37_000_000, -53_000_000, 91_000_000}
 
-// bpkCollecte rend tous les biped_pickup du film, decodes et tries par horodatage.
-func bpkCollecte(t *testing.T, f bpkFilm) []bpkEvent {
-	t.Helper()
-	var evs []bpkEvent
-	bpkEachEvent(t, f, func(typ int, pay []byte, _ WorldSnapshot, tsUS uint64) {
-		if typ != bpkTypePickup {
-			return
-		}
-		br := LecteurSur(pay)
-		br.Skip(bpkHeaderBits)
-		e := bpkDecode(br)
-		e.TimestampUS = tsUS
-		evs = append(evs, e)
-	})
-	sort.Slice(evs, func(i, j int) bool { return evs[i].TimestampUS < evs[j].TimestampUS })
-	return evs
-}
-
 // bpkAccordArme dit s'il existe un biped_pickup a moins de bpkTolUS de ts portant l'arme fam.
 // decalUS decale artificiellement les ramassages : c'est le temoin de hasard.
 func bpkAccordArme(evs []bpkEvent, ts uint64, fam uint32, decalUS int64) bool {

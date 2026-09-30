@@ -1,5 +1,3 @@
-//go:build research
-
 package replay
 
 // bombe_b1_identite_test.go — L'IDENTITÉ DE LA BOMBE D'ASSAUT DANS LE CANAL DES ARMES TENUES.

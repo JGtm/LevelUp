@@ -1,5 +1,3 @@
-//go:build research
-
 package grammar
 
 import (

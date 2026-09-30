@@ -212,52 +212,6 @@ func geoCalibrateSpeed(t *testing.T, touch []geoTouch, heavy []geoShot, tracks m
 	return med, geoMedian(all)
 }
 
-// geoBuildIdentity apprend la table roster(EnumA/B) -> FilmIndex : chaque mort lie la victime
-// (slot -> FilmIndex via ses tirs) a son roster EnumA. Rend (table, cardinalite, injective?).
-func geoBuildIdentity(shots []geoShot, kills []geoKill) (map[int32]int, int, bool) {
-	slotFilm := map[uint32]map[int]int{}
-	for _, s := range shots {
-		slot := uint32(geoActiveBase + int(s.att))
-		if slotFilm[slot] == nil {
-			slotFilm[slot] = map[int]int{}
-		}
-		slotFilm[slot][s.film]++
-	}
-	argmax := func(m map[int]int) (int, bool) {
-		best, bn, ok := 0, -1, false
-		for f, n := range m {
-			if n > bn {
-				best, bn, ok = f, n, true
-			}
-		}
-		return best, ok
-	}
-	rosterVotes := map[int32]map[int]int{}
-	for _, k := range kills {
-		if fm, ok := slotFilm[k.victSlot]; ok {
-			if f, ok2 := argmax(fm); ok2 {
-				if rosterVotes[k.victRost] == nil {
-					rosterVotes[k.victRost] = map[int]int{}
-				}
-				rosterVotes[k.victRost][f]++
-			}
-		}
-	}
-	table := map[int32]int{}
-	filmUsed := map[int]int32{}
-	injective := true
-	for r, m := range rosterVotes {
-		if f, ok := argmax(m); ok {
-			table[r] = f
-			if prev, seen := filmUsed[f]; seen && prev != r {
-				injective = false
-			}
-			filmUsed[f] = r
-		}
-	}
-	return table, len(table), injective
-}
-
 // TestGeoExplosifs produit les 4 mesures de la jointure geometrique sur LOT1_TRAME_FILM.
 func TestGeoExplosifs(t *testing.T) {
 	dir := os.Getenv(lot1TrameFilmEnv)

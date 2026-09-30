@@ -1,5 +1,3 @@
-//go:build research
-
 package replay
 
 // assaut_a5_explosions_test.go — LA CONFRONTATION DE PUBLICATION : les explosions que le rejeu

@@ -37,22 +37,6 @@ import (
 	"testing"
 )
 
-// chunk00Films rend les repertoires de film de la garde d'environnement.
-func chunk00Films(t *testing.T, envName string) []string {
-	t.Helper()
-	v := os.Getenv(envName)
-	if v == "" {
-		t.Skipf("%s absent : instrument saute", envName)
-	}
-	var out []string
-	for _, p := range strings.Split(v, ";") {
-		if p = strings.TrimSpace(p); p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
 // slotSpan decrit la zone REELLEMENT lue par parseRegistry dans une entree nommee. `off` est
 // l'octet de l'ENTREE (cadrage du jeu, lot 1.2) : [off, off+len(nom)) = le nom, puis son NUL
 // terminateur, et [off+registryEntryLevelOffset, +4) = le u32 de niveau.

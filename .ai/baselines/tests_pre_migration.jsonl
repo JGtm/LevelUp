@@ -59695,6 +59695,10 @@
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAssautA1Identite","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAssautA3Ti13","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAssautA4Confront","Elapsed":0}
+{"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAssautA5Explosions","Elapsed":0}
+{"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAssautA5PontIdentite","Elapsed":0}
+{"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAssautArmementGate","Elapsed":0}
+{"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAssautBombArmsGate","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAttachementPhase0Vehicules","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAttachementPhase0Parents","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.8349633+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestAttachementPhase0CTF","Elapsed":0}
@@ -59770,6 +59774,11 @@
 {"Time":"2026-09-05T23:46:24.9108358+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBombStatsCablageAbsentNestPasZero/SANS_pont_·_anneau_balaye_et_PUBLIE","Elapsed":0.01}
 {"Time":"2026-09-05T23:46:24.9108358+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBombStatsCablageAbsentNestPasZero","Elapsed":0.02}
 {"Time":"2026-09-05T23:46:24.9108358+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBombStatsCablageRecalageHorloge","Elapsed":0}
+{"Time":"2026-09-05T23:46:24.9108358+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBombeB1Temoin","Elapsed":0}
+{"Time":"2026-09-05T23:46:24.9113569+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBombeB1Assaut","Elapsed":0}
+{"Time":"2026-09-05T23:46:24.9197945+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBombeB2Assaut","Elapsed":0}
+{"Time":"2026-09-05T23:46:24.9197945+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBombeB2TemoinOddball","Elapsed":0}
+{"Time":"2026-09-05T23:46:24.9197945+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBombePortageGate","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.9197945+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPitchForJSONArrondiAuDixieme","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.9197945+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPitchForJSONOmetLaViseeAPlat","Elapsed":0}
 {"Time":"2026-09-05T23:46:24.9498139+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPointOmetPQuandLaViseeEstAPlat","Elapsed":0.03}
@@ -59989,6 +59998,10 @@
 {"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGwPickupLessRespecteLApparition","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGwPickupLessNeSeparePasDeuxObjetsIdentiques","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGwPadsLessSepareClasseEtVieDelta","Elapsed":0}
+{"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGwPadsClusterSepareDeuxSoclesVoisins","Elapsed":0}
+{"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGwPadsClusterNeMelangePasLesFamilles","Elapsed":0}
+{"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGwPadsClusterAssignRendLaGrappeDeChaqueEntree","Elapsed":0}
+{"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestGwPadsCycleRefuseDeConclureSurUnCycleInstable","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildWeaponPadsPublieUnSocleEtSesOccupations","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildWeaponPadsPublieLeCycleQuandIlEstEtabli","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.2548822+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildWeaponPadsPublieLesEcartsQuIlNAPasPuPrendre","Elapsed":0}
@@ -60034,8 +60047,12 @@
 {"Time":"2026-09-05T23:46:36.2590727+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/internal/grammar","Test":"TestScanFilmKeyframeInventoryRefuseUnChunkIllisible","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.2601209+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/internal/grammar","Test":"TestScanFilmKeyframeInventoryAllChunksUnreadable","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.2627136+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/internal/grammar","Test":"TestScanKeyframeInventoryCompteLesChunks","Elapsed":0}
+{"Time":"2026-09-05T23:46:36.2627136+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestInventoryDeltaConfrontationCorpus","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.6689651+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestInventaireRecordVideRecouvrementMorts","Elapsed":0.41}
 {"Time":"2026-09-05T23:46:36.6689651+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestInventaireRecordVideCorpus","Elapsed":0}
+{"Time":"2026-09-05T23:46:36.6689651+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/internal/grammar","Test":"TestPositionI22","Elapsed":0}
+{"Time":"2026-09-05T23:46:36.6689651+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/internal/grammar","Test":"TestInventaireApresR2b","Elapsed":0}
+{"Time":"2026-09-05T23:46:36.6689651+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/internal/grammar","Test":"TestOracleTypesPortesEtLances","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.6689651+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/internal/grammar","Test":"TestR1AbilityAnchorThenPattern","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.6699997+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/internal/grammar","Test":"TestR1PatternMustFollowWithinSixtyBits","Elapsed":0}
 {"Time":"2026-09-05T23:46:36.6705169+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/internal/grammar","Test":"TestR1DoubleAnchorIsNotDisambiguated","Elapsed":0}
@@ -60200,6 +60217,9 @@
 {"Time":"2026-09-05T23:46:38.7267923+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPowerupPadsIndexDOccupationEstGlobal","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.7267923+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPowerupPadsVoieNonLueNeDitPasZero","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.7272996+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPowerupPadRuleSuitLeManifesteDuTitre","Elapsed":0}
+{"Time":"2026-09-05T23:46:38.7278079+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPowerupSocleOracle","Elapsed":0}
+{"Time":"2026-09-05T23:46:38.7278079+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPowerupSocleRemontee","Elapsed":0}
+{"Time":"2026-09-05T23:46:38.7278079+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestPowerupSocleTemoinRemontee","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.7561727+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestUnSeulConstructeurDEnsembleDeSlotsPublies","Elapsed":0.03}
 {"Time":"2026-09-05T23:46:38.7561727+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestKeepOfPublishedTracks_ContratPreserve","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.7561727+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestScoreTimelineReassignedSlotAttributesToRoundOwner","Elapsed":0}
@@ -60339,6 +60359,10 @@
 {"Time":"2026-09-05T23:46:39.2563717+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestVIPPeriodes","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.2563717+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestVIPV0Qualification","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.2563717+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestViseeElevation","Elapsed":0}
+{"Time":"2026-09-05T23:46:39.2568876+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestViseeZoomBoutEnBout","Elapsed":0}
+{"Time":"2026-09-05T23:46:39.2568876+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestViseeZoomDureesObservees","Elapsed":0}
+{"Time":"2026-09-05T23:46:39.2568876+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestViseeZoomEntreesOrphelines","Elapsed":0}
+{"Time":"2026-09-05T23:46:39.2568876+02:00","Action":"skip","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestViseeZoomGate","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.2568876+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestInstallWorldObjectPrecision","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.2568876+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.2636561+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestBuildFromFilmRefusesWithoutMapQuant","Elapsed":0.01}

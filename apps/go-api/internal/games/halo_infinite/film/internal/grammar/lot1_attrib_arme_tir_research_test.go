@@ -27,13 +27,10 @@ package grammar
 // deltaWitnessChunks. Lancer une fois par film (000d5950, 01e1f945, 00502e52).
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
-
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 const (
@@ -41,14 +38,6 @@ const (
 	attribOFF   = uint64(3_000_000) // 3 s : temoin decale
 	attribWideW = uint64(2_000_000) // 2 s : fenetre elargie (projectiles lents)
 )
-
-// attribWeaponName nomme une arme par son WeaponID (metadata weapon_labels) ; a defaut, l'hexa.
-func attribWeaponName(wid uint64) string {
-	if n, ok := filmshell.WeaponIDToName[wid]; ok {
-		return n
-	}
-	return fmt.Sprintf("wid#%016x", wid)
-}
 
 // attribDamagesToSonde reduit des WeaponDamage aux champs qu'utilise sondeBaseSweep (ts + refs).
 func attribDamagesToSonde(ds []WeaponDamage) []sondeDmgEvt {

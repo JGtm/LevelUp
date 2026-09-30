@@ -1,5 +1,3 @@
-//go:build research
-
 package replay
 
 // ground_weapon_pads_cluster_test.go — LES TESTS DE LA REGLE DE GRAPPE ET DE LA REGLE DE CYCLE,

@@ -19,8 +19,17 @@ package archlint
 //     fichier sous un dossier d instruments (`film/research/`, `tools/film_re/`). Sans ce sens,
 //     du code de production pourrait se cacher derrière le tag et sortir du build par défaut.
 //
+// TROISIÈME CONTRÔLE (J12.7 bis, 2026-09-30) : le tag cache les INSTRUMENTS, jamais une garde.
+// Le J12.7 avait tagué « par fermeture » des gardes (`bombe_portage_gate_test.go`,
+// `visee_zoom_gate_test.go`...) : elles ne tournaient plus ni en CI ni dans les gates locaux.
+// Un fichier dont le NOM se déclare garde (`_gate_test.go`, `_gates_test.go`, `_garde_test.go`,
+// `_ratchet_test.go`, `_oracle_test.go`, `_temoin_test.go`, `_temoins_test.go` — suffixes
+// exacts : un `*_gate_research_test.go` reste un instrument) ne porte jamais le tag ; les
+// symboles de recherche qu'il utilise se DÉPLACENT dans un helper non tagué.
+//
 // Mutation qui doit le faire rougir : retirer la première ligne d'un `*_research_test.go`
-// (sens 1), ou poser `//go:build research` sur un fichier de production (sens 2).
+// (sens 1), poser `//go:build research` sur un fichier de production (sens 2), ou sur un
+// `*_gate_test.go` (troisième contrôle).
 
 import (
 	"io/fs"
@@ -135,4 +144,39 @@ func TestFichierTagueResearchEstUnInstrument(t *testing.T) {
 			") — du code de production sortirait du build par défaut",
 			rel, tagResearch, dossiersInstruments)
 	})
+}
+
+// suffixesGarde : les fins de nom par lesquelles un fichier de test se DÉCLARE garde. Suffixes
+// exacts, pour ne pas prendre `ground_weapon_pads_aggregate_test.go` (« aggre-GATE ») ni un
+// instrument `*_gate_research_test.go` pour une garde.
+var suffixesGarde = []string{
+	"_gate_test.go", "_gates_test.go", "_garde_test.go", "_ratchet_test.go",
+	"_oracle_test.go", "_temoin_test.go", "_temoins_test.go",
+}
+
+// gardesPlancher : 47 fichiers de garde mesurés le 2026-09-30 (18 gate, 14 ratchet, 10 oracle,
+// 5 temoin/temoins). Un balayage qui en rend nettement moins ne garde plus rien.
+const gardesPlancher = 40
+
+// TestGardeNeCachePasDerriereResearch — une garde ne sort jamais du build par défaut.
+func TestGardeNeCachePasDerriereResearch(t *testing.T) {
+	vus := 0
+	balayerGo(t, func(rel, texte string) {
+		for _, suffixe := range suffixesGarde {
+			if !strings.HasSuffix(rel, suffixe) {
+				continue
+			}
+			vus++
+			if contrainteResearch(texte) {
+				t.Errorf("%s porte %q : c'est une GARDE (suffixe %s), elle doit tourner dans le "+
+					"build par défaut — déplacer les symboles de recherche qu'elle utilise dans un "+
+					"helper non tagué du paquet, pas taguer la garde", rel, tagResearch, suffixe)
+			}
+			return
+		}
+	})
+	if vus < gardesPlancher {
+		t.Errorf("%d fichier(s) de garde balayé(s), plancher %d (mesure du 2026-09-30) — le "+
+			"garde-rail ne voit plus les gardes", vus, gardesPlancher)
+	}
 }

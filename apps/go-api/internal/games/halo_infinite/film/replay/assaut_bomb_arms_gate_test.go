@@ -1,5 +1,3 @@
-//go:build research
-
 package replay
 
 // assaut_bomb_arms_gate_test.go — LE GATE DE LA JOINTURE D'ARMEMENT sur films réels : la

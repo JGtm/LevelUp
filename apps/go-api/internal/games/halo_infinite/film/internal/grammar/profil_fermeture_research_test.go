@@ -57,8 +57,6 @@ package grammar
 
 import (
 	"fmt"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -66,35 +64,6 @@ import (
 
 // profilFermetureAttendue est la position de i0 que la derivation doit rendre pour ti=9.
 const profilFermetureAttendue = equipeDecalageMesure
-
-// profilEtatComplet est la decomposition d'un record par le lecteur d'ETAT COMPLET.
-type profilEtatComplet struct {
-	TI           int
-	N1, N2       uint64
-	DSBits       int
-	CorpsRelatif int // position du premier composant, relative a l'ancre
-}
-
-// profilLireEtatComplet decompose un record a l'ancre `anchor` selon FUN_142e2bfd0.
-// `ds` est joue par le deserialiseur d'etat par defaut PORTE du depot (default_state_arch.go),
-// donc aucune largeur n'est inventee ici.
-func profilLireEtatComplet(pay []byte, anchor, ti int) profilEtatComplet {
-	e := profilEtatComplet{TI: ti}
-	p := anchor + profile.KeyframeEnTeteBits
-	e.N1 = source.BitsBourres(pay, p, profile.KeyframeMotDeTailleBits)
-	p += profile.KeyframeMotDeTailleBits
-	if e.N1 > 0 { // FUN_142e2bfd0 : `if (0 < (int)uVar7)` — sans taille, pas d'etat par defaut
-		br := LecteurSur(pay)
-		br.SetBitPos(p)
-		consumeKeyframeDefaultState(br, uint32(ti))
-		e.DSBits = br.BitPos() - p
-		p = br.BitPos()
-	}
-	e.N2 = source.BitsBourres(pay, p, profile.KeyframeMotDeTailleBits)
-	p += profile.KeyframeMotDeTailleBits
-	e.CorpsRelatif = p - anchor
-	return e
-}
 
 // TestProfilFermeture186 est le controle F1 : la somme des largeurs lues dans l'executable
 // vaut EXACTEMENT 186 sur chaque record ti=9, sans ajustement.

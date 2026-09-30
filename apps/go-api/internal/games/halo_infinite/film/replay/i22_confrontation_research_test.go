@@ -139,26 +139,3 @@ func TestI22Confrontation(t *testing.T) {
 	t.Logf("age median de la derniere lecture : images-cles seules = %.2f s | fusionne = %.2f s",
 		medianOf(ageKF), medianOf(ageMerged))
 }
-
-func lastAgeS(ts []uint64, at uint64) float64 {
-	var last uint64
-	var got bool
-	for _, t := range ts {
-		if t <= at {
-			last, got = t, true
-		}
-	}
-	if !got {
-		return 0
-	}
-	return float64(at-last) / 1e6
-}
-
-func medianOf(v []float64) float64 {
-	if len(v) == 0 {
-		return 0
-	}
-	c := append([]float64(nil), v...)
-	sort.Float64s(c)
-	return c[len(c)/2]
-}

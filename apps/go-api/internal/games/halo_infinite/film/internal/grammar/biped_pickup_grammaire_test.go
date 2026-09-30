@@ -39,42 +39,6 @@ import "testing"
 // bit de fin de liste 1  =  **50**. C'est EXACTEMENT le pic du scan empirique (etape 2),
 // obtenu sans aucun ajustement : deux chaines independantes se ferment.
 
-// bpkEvent est un evenement biped_pickup decode.
-type bpkEvent struct {
-	TimestampUS  uint64
-	Ref0         uint64 // domaine 2, R(8) — le ramasseur presume
-	Ref0Present  bool
-	Ref1Present  bool
-	Ref2Present  bool
-	Kind         uint64 // R(3) de tete de charge
-	Objet        uint32 // R(32) : le handle de l'objet ramasse (0xFFFFFFFF = absent)
-	ObjetPresent bool
-	// FinBit : position du bit qui suit le bit de fin de liste, donc le debut de la trame
-	// quand l'evenement est seul dans sa liste.
-	FinBit int
-	// Suite : un autre evenement suit dans la meme liste.
-	Suite bool
-}
-
-// bpkDecode consomme UN evenement type 9 a partir d'un lecteur place juste apres le champ de
-// type, puis le bit de fin de liste. La grammaire est celle lue dans l'exe (ci-dessus).
-func bpkDecode(br *Lecteur) bpkEvent {
-	var e bpkEvent
-	e.Ref0, e.Ref0Present = bpkRef(br, 2)
-	_, e.Ref1Present = bpkRef(br, 8)
-	_, e.Ref2Present = bpkRef(br, 7)
-	e.Kind = br.ReadBits(3)
-	if br.ReadBit() {
-		e.Objet = uint32(br.ReadBits(32))
-		e.ObjetPresent = true
-	} else {
-		e.Objet = 0xFFFFFFFF
-	}
-	e.Suite = br.ReadBit()
-	e.FinBit = br.BitPos()
-	return e
-}
-
 // bpkGramStats accumule ce que le decodage rend, et le publie.
 type bpkGramStats struct {
 	n, seuls, exact                       int

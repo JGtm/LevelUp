@@ -1,5 +1,3 @@
-//go:build research
-
 package grammar
 
 // player_table_corpus_test.go — LE LECTEUR DE PRODUCTION REPRODUIT L'ORACLE DES INSTRUMENTS SUR

@@ -1,5 +1,3 @@
-//go:build research
-
 package replay
 
 // powerup_socle_oracle_test.go — PHASE 1 : la position du socle, MESUREE par les ramassages.

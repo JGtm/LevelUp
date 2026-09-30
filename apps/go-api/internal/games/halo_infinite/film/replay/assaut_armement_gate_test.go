@@ -1,5 +1,3 @@
-//go:build research
-
 package replay
 
 // assaut_armement_gate_test.go — LE GATE DU PORTAGE DE L'ARMEMENT : la chaîne de PRODUCTION

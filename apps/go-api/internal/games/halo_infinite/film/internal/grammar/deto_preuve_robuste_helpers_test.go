@@ -1,5 +1,3 @@
-//go:build research
-
 package grammar
 
 // deto_preuve_robuste_helpers_test.go — LE SCAN DE KILLS ROBUSTE, porte dans grammar.

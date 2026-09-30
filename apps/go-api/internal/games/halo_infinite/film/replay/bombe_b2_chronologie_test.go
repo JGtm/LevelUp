@@ -1,5 +1,3 @@
-//go:build research
-
 package replay
 
 // bombe_b2_chronologie_test.go — LA CHRONOLOGIE DE LA BOMBE, CONFRONTÉE AUX ORACLES.

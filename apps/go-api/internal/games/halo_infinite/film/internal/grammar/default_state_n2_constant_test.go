@@ -1,5 +1,3 @@
-//go:build research
-
 package grammar
 
 // default_state_n2_constant_test.go — `n2` EST CONSTANT QUAND L'ETAT PAR DEFAUT FAIT LA BONNE

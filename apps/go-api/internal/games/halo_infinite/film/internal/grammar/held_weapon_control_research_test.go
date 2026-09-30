@@ -24,15 +24,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// hwCatalogue rend le predicat d'appartenance au catalogue de production.
-func hwCatalogue() map[uint32]bool {
-	m := make(map[uint32]bool, len(weaponv3.KnownWeaponHigh32))
-	for f := range weaponv3.KnownWeaponHigh32 {
-		m[f] = true
-	}
-	return m
-}
-
 // hwName nomme une famille, ou la rend en hexa si elle est hors catalogue.
 func hwName(v uint32) string {
 	if v == noVariant {

@@ -43,11 +43,6 @@ import (
 	"testing"
 )
 
-// sondePosTolUS : tolerance temporelle evenement<->position. MEME valeur que
-// replay/shots.go shotPosToleranceUS (120 ms) ; recopiee ici pour rester DANS filmdec
-// (pas d'import de internal/games/halo_infinite/film/replay depuis un instrument de filmdec).
-const sondePosTolUS = uint64(120_000)
-
 // sondeMapEnv force la carte quand la signature de largeurs est ambigue.
 const sondeMapEnv = "LOT1_SONDE_MAP"
 

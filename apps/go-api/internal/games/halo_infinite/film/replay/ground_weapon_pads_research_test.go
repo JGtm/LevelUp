@@ -331,13 +331,6 @@ func gwPadsFamilyLine(m map[string]int) string {
 	return "(" + strings.Join(parts, " ") + ")"
 }
 
-func gwPadsPart(k, n int) string {
-	if n == 0 {
-		return "-"
-	}
-	return fmt.Sprintf("%d/%d=%.1f%%", k, n, 100*float64(k)/float64(n))
-}
-
 // mapQuantEntryFromEnv charge l'entree de catalogue de bornes de la carte nommee par `mapEnv`.
 // Sans elle, pas de METRES — et tous les seuils de ce chantier sont en metres : on echoue
 // plutot que de mesurer dans une unite muette.

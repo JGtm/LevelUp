@@ -44,7 +44,6 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -634,25 +633,4 @@ func TestAssautPontIdentite(t *testing.T) {
 	}
 	t.Logf("BILAN PONT : %d explosion(s) nommee(s) -> %d identifiee(s) (%.1f %%)",
 		nommes, identifies, 100*float64(identifies)/float64(nommes))
-}
-
-// amArmeSentinelle arme le plafond memoire de MESURE pour un balayage de corpus, et rend la
-// fonction de desarmement (a differer par l'appelant).
-//
-// POURQUOI CHAQUE INSTRUMENT DE CE FICHIER L'APPELLE (leçon du 2026-08-31). Ces balayages
-// enchainent jusqu'a 65 films DANS UN SEUL PROCESSUS. Le decodage du statborg est borne par
-// `statMaxRecordsPerFilm` et les pics mesures restent sous le dixieme de gibioctet — mais c'est
-// une PROPRIETE OBSERVEE, pas une garantie, et la doctrine du depot ne fait pas d'exception :
-// tout processus qui enchaine des films arme sa sentinelle (cf. `internal/filmproc`).
-func amArmeSentinelle(t *testing.T, nom string) func() {
-	t.Helper()
-	g := filmproc.Arm(nom, filmproc.MeasureLimitGiB, func(peak uint64) {
-		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — balayage interrompu pour proteger la machine",
-			float64(peak)/(1<<30))
-	})
-	return func() {
-		g.Disarm()
-		t.Logf("pic memoire observe : %.2f Gio (plafond souple %d Gio)",
-			float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
-	}
 }

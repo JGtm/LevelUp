@@ -1,5 +1,3 @@
-//go:build research
-
 package grammar
 
 // biped_pickups_test.go — LE GARDE-FOU DU PORTAGE. `ScanFilmBipedPickups` (production) et

@@ -51,12 +51,6 @@ import (
 	"testing"
 )
 
-// s3bEnteteFin : borne haute de la recherche de la chaine de build. Elle s'arrete AVANT le
-// corps (`0x0CE68C`) : le corps est bit-packe et une occurrence de `HI_` y serait fortuite.
-// La borne basse est l'octet 0x20, comme chez `lireEntete` — un `HI_` plus tot ne peut pas
-// avoir de champ version devant lui.
-const s3bEnteteFin = 0x0CE68C
-
 // s3bProfil : ce qu'on mesure pour un build.
 type s3bProfil struct {
 	films          int
@@ -64,20 +58,6 @@ type s3bProfil struct {
 	ecarts         map[int]int // (mesure - predit) -> nombre d'enregistrements
 	filmsUnEcart   int         // films ou UN SEUL ecart couvre tous les enregistrements
 	enrs, nomsBons int
-}
-
-// s3bBuild cherche le prefixe `HI_` dans la zone d'en-tete et rend (chaine, offset). Rend
-// ("", -1) si le film ne porte pas de section d'identification.
-func s3bBuild(d []byte) (string, int) {
-	if len(d) < s3bEnteteFin {
-		return "", -1
-	}
-	for off := 0x20; off < s3bEnteteFin; off++ {
-		if d[off] == 'H' && d[off+1] == 'I' && d[off+2] == '_' {
-			return s3wChaine(d, off, 32), off
-		}
-	}
-	return "", -1
 }
 
 // TestSection3SlotProfilBuilds execute B-ENT, B-ENR et B-NOM sur tout le cache.

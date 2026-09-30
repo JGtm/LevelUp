@@ -58,43 +58,6 @@ import (
 	"testing"
 )
 
-const (
-	// s3rXuidLo / s3rXuidHi : la plage des XUID Xbox Live. Bornes ecrites avant la mesure ;
-	// elles servent AUSSI a fabriquer les leurres du controle R-NEG, pour que ceux-ci aient
-	// exactement la meme forme que les vraies valeurs cherchees.
-	s3rXuidLo = uint64(0x0009000000000000)
-	s3rXuidHi = uint64(0x000A000000000000)
-	// s3rEnteteBits : les 85 bits d'en-tete qui precedent l'entier de 64 bits (1+1+1+32+2+48).
-	s3rEnteteBits = 85
-	// s3rCorpsBit : borne basse du balayage, le debut du corps dans le flux.
-	s3rCorpsBit = s3wCorpsOff * 8
-	// s3rEcartMax : au-dela de cet ecart en bits, deux touches n'appartiennent pas a la meme
-	// grappe d'enregistrements. Les longueurs mesurees vont de 16 611 a 28 145 bits ; le seuil
-	// est pose a 40 000, soit 1,4 fois la plus longue.
-	s3rEcartMax = 40000
-	s3rLeurres  = 40
-)
-
-// s3rTouche : une occurrence d'entier de 64 bits precedee d'un en-tete conforme.
-type s3rTouche struct {
-	bit   int
-	xuid  uint64
-	token uint64 // le champ de 48 bits a slot+0x09
-}
-
-// s3rBit lit n bits MSB-first.
-func s3rBit(d []byte, bit, n int) uint64 {
-	var acc uint64
-	for k := 0; k < n; k++ {
-		b := bit + k
-		if b>>3 >= len(d) {
-			return 0
-		}
-		acc = acc<<1 | uint64((d[b>>3]>>(7-uint(b&7)))&1)
-	}
-	return acc
-}
-
 // s3rCherche rend toutes les positions de bit ou la valeur 64 bits `v` apparait MSB-first.
 func s3rCherche(d []byte, v uint64, from, to int) []int {
 	var out []int

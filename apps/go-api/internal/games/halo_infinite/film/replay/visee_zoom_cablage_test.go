@@ -1,5 +1,3 @@
-//go:build research
-
 package replay
 
 // visee_zoom_cablage_test.go — LES GATES DE CABLAGE ET LES MESURES DE STRUCTURE de la lunette.

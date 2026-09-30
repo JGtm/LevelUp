@@ -7,9 +7,6 @@ package grammar
 
 import "testing"
 
-// geoMaxChunks borne le balayage (RAM : un film BTB est gros). 16 = compromis arene/BTB.
-const geoMaxChunks = 16
-
 // geoConfMargin / geoConfAngle : un choix geometrique est CONFIANT si sa marge de cout sur le
 // second candidat depasse geoConfMargin ET si le gagnant vise la victime a moins de geoConfAngle.
 const (
