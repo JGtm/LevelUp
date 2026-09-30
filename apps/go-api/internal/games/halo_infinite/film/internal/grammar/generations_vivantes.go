@@ -59,6 +59,19 @@ package grammar
 // n a pas de date : il n est pas garde. Un balayage non date (instruments, coeur pur) garde le
 // filtre atemporel.
 //
+// # TOUS LES LECTEURS DE RECORDS DELTA BIPEDES, PAS LES SEULES POSITIONS (lot R2-bis, 2026-09-29)
+//
+// Le lot R2 n avait date que le balayage des positions. Le MEME marcheur servait les huit canaux delta
+// (`walkDeltaBipedRecords` : rang et charges de capacite, impulsions, camouflage, grappin, arme tenue,
+// inventaire, equipement de l unite) avec le masque atemporel, et deux lecteurs voisins aussi (la
+// recuperation d equipement, `equipment_recovery.go`, et la visee seule, `offline_aim_only.go`) :
+// 32, 30, 20 et 102 en-tetes anterieurs a la creation de leur corps y etaient encore acceptes sur
+// `084a804d`, `a349fea8`, `4f77afc1`, `1c4c63c2` (decouverte 2 du lot R2). Ils prennent desormais leur
+// filtre par [FilmContext.GenerationsVivantesA], a l instant du paquet porteur — la MEME garde, par la
+// MEME fonction [GenerationsVivantes.A]. Garde-rail : `generations_vivantes_datees_ratchet_test.go`
+// (l acces atemporel [FilmContext.GenerationsVivantes] n a plus que deux appelants de production
+// nommes, qui le datent ou ne jugent aucun record).
+//
 // # LES OBJETS DU MONDE : TOUTES LES GENERATIONS, EXPLICITEMENT
 //
 // Un vehicule ou un objet du monde emploie les quatre valeurs du tag. [ToutesLesGenerations] le dit
@@ -258,6 +271,14 @@ func (c *FilmContext) GenerationsVivantes() *GenerationsVivantes {
 		c.vies.vivantes = NouvellesGenerationsVivantes(viesConnuesDuFilm(c)).avecCreations(cre)
 	}
 	return c.vies.vivantes
+}
+
+// GenerationsVivantesA rend le filtre de generation de ce film DATE a l instant `tUS` d un paquet :
+// [FilmContext.GenerationsVivantes] passe par [GenerationsVivantes.A]. C est l acces des lecteurs de
+// records delta bipedes (lot R2-bis) : un record lu dans un paquet n est la replication d un corps
+// qu apres le record de creation de ce corps. Jamais nil.
+func (c *FilmContext) GenerationsVivantesA(tUS uint64) *GenerationsVivantes {
+	return c.GenerationsVivantes().A(tUS)
 }
 
 // viesConnuesDuFilm rend les vies (slot, generation) que les deux lectures de production designent.

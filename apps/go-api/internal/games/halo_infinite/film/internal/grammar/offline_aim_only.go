@@ -92,7 +92,8 @@ func ScanBipedAimOnly(fc *FilmContext) ([]BipedAim, error) {
 	if band.Count() == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	gens := fc.GenerationsVivantes() // lot J5.2 : les generations vivantes du film, pas la seule 1
+	// Lot J5.2 : les generations vivantes du film, pas la seule 1 ; DATEES a l instant du paquet
+	// (lot R2-bis) : la visee d un corps n est pas lue avant son record de creation.
 	var out []BipedAim
 	read := 0
 	for _, c := range nums {
@@ -105,6 +106,7 @@ func ScanBipedAimOnly(fc *FilmContext) ([]BipedAim, error) {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
+			gens := fc.GenerationsVivantesA(pk.TimestampUS)
 			for _, a := range ScanBipedAimRecords(pk.Payload(data), band, gens, fc.ContexteDeLecture()) {
 				a.Chunk, a.PacketIndex, a.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, a)

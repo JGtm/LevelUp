@@ -29,10 +29,12 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/persist"
 
 	"levelup/go-api/internal/sync/haloclient"
 )
@@ -257,15 +259,28 @@ func verifierFaitsDIsolement(t *testing.T, db *sql.DB, col *KillSourceCollector,
 			"autorise une distance", orphelines)
 	}
 
-	// LES DEUX COLONNES DE `match_lives` NE PRENNENT QUE LEURS VALEURS D'ENUM.
+	// LES DEUX COLONNES DE `match_lives` NE PRENNENT QUE LEURS VALEURS D'ENUM — celles que le
+	// persister valide (`persist.CauseFin*`, `persist.NommePar*`), lues ICI par leurs constantes.
+	// Le litteral `named_by IN ('death','closure')` de ce test datait du lot 7C (2026-09-07) : il
+	// ignorait les voies du registre d'identite du lot E2 (`biped_creation`,
+	// `biped_creation_propagee`, `elimination`, `exclusion_temporelle`, 2026-09-08, acceptees par le
+	// persister au correctif `2fc9f2aa8` du 2026-09-09) et `tableau_api` (lot 4.3, 2026-09-10) : il
+	// comptait « hors enum » des vies que le schema accepte (lot R2-bis, 2026-09-29).
+	causes := []string{persist.CauseFinMort, persist.CauseFinFilm, persist.CauseFinCoupure}
+	nommages := []string{persist.NommeParMort, persist.NommeParFermeture, persist.NommeParCreation,
+		persist.NommeParCreationPropagee, persist.NommeParElimination,
+		persist.NommeParExclusionTemporelle, persist.NommeParTableauAPI}
+	enSQL := func(vals []string) string { return "'" + strings.Join(vals, "','") + "'" }
 	var horsEnum int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM match_lives_latest WHERE match_id = ?
-		AND (end_cause NOT IN ('death','film_end','cut') OR named_by NOT IN ('death','closure'))`,
-		film).Scan(&horsEnum); err != nil {
+	var valeurs sql.NullString
+	if err := db.QueryRow(`SELECT COUNT(*), string_agg(DISTINCT end_cause || '/' || named_by, ', ')
+		FROM match_lives_latest WHERE match_id = ?
+		AND (end_cause NOT IN (`+enSQL(causes)+`) OR named_by NOT IN (`+enSQL(nommages)+`))`, //nolint:gosec // constantes du paquet persist
+		film).Scan(&horsEnum, &valeurs); err != nil {
 		t.Fatalf("select enum: %v", err)
 	}
 	if horsEnum != 0 {
-		t.Errorf("%d vie(s) portant une valeur hors enum", horsEnum)
+		t.Errorf("%d vie(s) portant une valeur hors enum (end_cause/named_by : %s)", horsEnum, valeurs.String)
 	}
 
 	// IDEMPOTENCE DE LA PASSE (ADR 0026) : la vue sert la DERNIERE passe, la table garde tout.
