@@ -131,7 +131,7 @@ func translocBounds() (profile.Vec3Range, error) {
 		}
 		v[i] = float32(f)
 	}
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		wr[a].Min, wr[a].Max = v[a], v[a+3]
 		if wr[a].Max <= wr[a].Min {
 			return wr, fmt.Errorf("axe %d : borne haute (%g) sous la borne basse (%g)", a, wr[a].Max, wr[a].Min)
@@ -232,7 +232,7 @@ func translocChunks(t *testing.T) []int {
 		return nil
 	}
 	var out []int
-	for _, p := range strings.Split(raw, ",") {
+	for p := range strings.SplitSeq(raw, ",") {
 		n, err := strconv.Atoi(strings.TrimSpace(p))
 		if err != nil {
 			t.Fatalf("%s=%q : %q n'est pas un numero de chunk", translocChunksEnv, raw, p)
@@ -244,7 +244,7 @@ func translocChunks(t *testing.T) []int {
 
 func translocDist(a, b [3]float32) float64 {
 	var s float64
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		d := float64(a[i]) - float64(b[i])
 		s += d * d
 	}

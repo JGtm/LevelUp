@@ -434,7 +434,7 @@ func matchWorldObjectRecord(pay []byte, p int, band map[uint32]bool) (WorldObjec
 func ascendingComponents(pay []byte, at, mc int) ([]int, bool) {
 	idx := make([]int, mc)
 	prev := -1
-	for k := 0; k < mc; k++ {
+	for k := range mc {
 		v := int(source.BitsTolerants(pay, at+6*k, 6))
 		if v <= prev {
 			return nil, false
@@ -465,7 +465,7 @@ func decodeWorldObjectPos(pay []byte, at int, wr *profile.Vec3Range, lg profile.
 		return v, false
 	}
 	off := at + 2 + idxW
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		w := lg.AxisW[a]
 		q := source.BitsTolerants(pay, off, int(w))
 		if q == 0 || q == (uint64(1)<<w)-1 {

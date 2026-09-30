@@ -44,7 +44,7 @@ func encodeEnteteDuFichier(f *FilmFactsFile) *gwriter {
 	entete := &gwriter{}
 	encodeCouvertureDuDecodeur(entete, f.Coverage)
 	entete.str(f.Facts.MapModule)
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		entete.u(uint64(f.Facts.AxisW[a]))
 	}
 	entete.bool8(f.Facts.LayoutDetected)
@@ -79,7 +79,7 @@ func DecodeFilmFactsEntete(blob []byte) (FilmFactsEntete, error) {
 	e.corps = r.off + longueur
 	e.Coverage = decodeCouvertureDuDecodeur(r)
 	e.MapModule = r.str()
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		e.AxisW[a] = uint(r.u())
 	}
 	e.LayoutDetected = r.bool8()
@@ -206,7 +206,7 @@ func listeDesRevisions(c DecoderCoverage) string {
 func EmpreinteDeCle(entry profile.MapQuantEntry) [sha256.Size]byte {
 	h := sha256.New()
 	_, _ = fmt.Fprintf(h, "module:%d:%s\n", len(entry.Module), entry.Module)
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		_, _ = fmt.Fprintf(h, "axe:%d:%08x:%08x:%d\n", a, math.Float32bits(entry.Min[a]),
 			math.Float32bits(entry.Max[a]), entry.AxisWidths[a])
 	}

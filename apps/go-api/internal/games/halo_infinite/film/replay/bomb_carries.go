@@ -87,10 +87,7 @@ func buildBombCarries(carry HeldObjectCarry, ctx matchClock,
 			cov.OutOfWindow++
 			continue
 		}
-		f1 := clampFrame(ctx.frameOfMatchMS(int64(p.FinMS)), ctx.frames)
-		if f1 < f0 {
-			f1 = f0
-		}
+		f1 := max(clampFrame(ctx.frameOfMatchMS(int64(p.FinMS)), ctx.frames), f0)
 		xuid := strconv.FormatUint(p.XUID, 10)
 		// Gate de PRÉSENCE : le porteur doit être sur la carte pendant le portage (même
 		// règle et MÊME code que le crâne — une seule copie, cf. carrierPresence.gate).

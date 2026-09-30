@@ -119,10 +119,7 @@ func TestLot1TirsEtCibles(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	var (
 		paquets, mauvaisType, court, blocSup, ecartes int
 		refAbs, viseeOK, viseeKO                      int

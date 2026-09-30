@@ -30,7 +30,7 @@ func invTrousCorpus(t *testing.T) []string {
 	t.Helper()
 	if raw := strings.TrimSpace(os.Getenv(invTrousFilmsEnv)); raw != "" {
 		var out []string
-		for _, p := range strings.Split(raw, ",") {
+		for p := range strings.SplitSeq(raw, ",") {
 			if p = strings.TrimSpace(p); p != "" {
 				out = append(out, p)
 			}

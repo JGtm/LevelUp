@@ -36,7 +36,7 @@ func writeBipedHeaderEtMasque(w *bitWriter, slot uint32, tag, maskCount uint64) 
 	w.bits(tag, 2)                      // tag
 	w.bits(0, 2)                        // gate + maskSel
 	w.bits(maskCount, 3)                // maskCount
-	for k := uint64(0); k < maskCount; k++ {
+	for k := range maskCount {
 		w.bits(k, bipedIndexBits) // indices croissants depuis 0
 	}
 }
@@ -127,7 +127,7 @@ func TestWalkPackets(t *testing.T) {
 		h := make([]byte, packetHeaderSize)
 		h[0], h[1] = byte(typ), byte(typ>>8)
 		h[4], h[5], h[6], h[7] = byte(size), byte(size>>8), byte(size>>16), byte(size>>24)
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			h[8+i] = byte(ts >> (8 * uint(i)))
 		}
 		chunk = append(chunk, h...)

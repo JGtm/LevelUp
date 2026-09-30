@@ -124,7 +124,7 @@ func r8LoadCorpus(t *testing.T) []*r8Artifact {
 		t.Skipf("%s absent : instrument de mesure saute", r8ArtifactsEnv)
 	}
 	only := map[string]bool{}
-	for _, s := range strings.Split(os.Getenv(r8IDsEnv), ",") {
+	for s := range strings.SplitSeq(os.Getenv(r8IDsEnv), ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			only[s] = true
 		}
@@ -207,10 +207,7 @@ func r8Quantile(v []float64, q float64) float64 {
 	}
 	s := append([]float64(nil), v...)
 	sort.Float64s(s)
-	i := int(q * float64(len(s)-1))
-	if i < 0 {
-		i = 0
-	}
+	i := max(int(q*float64(len(s)-1)), 0)
 	if i >= len(s) {
 		i = len(s) - 1
 	}

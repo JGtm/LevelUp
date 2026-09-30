@@ -57,10 +57,7 @@ func TestProjectileOwner(t *testing.T) {
 		t.Fatalf("registre illisible : %v", err)
 	}
 
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks · ti projectile=%d · base bipede reference %d ==",
 		filepath.Base(dir), n, ProjectileTypeIndex, lot1chReferenceBase)
 
@@ -190,10 +187,7 @@ func projOwnerFinalWorld(t *testing.T) *World {
 	if err != nil {
 		return nil
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	w := NewWorld(reg)
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)

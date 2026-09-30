@@ -57,7 +57,7 @@ func r7DecodeKnock(pay []byte, bitType int) (r7Knock, bool) {
 	br.Skip(bitType + 7)
 	var k r7Knock
 	// refs : domaines {0, 0, 7} — 13 bits chacune.
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if !br.ReadBit() {
 			continue
 		}

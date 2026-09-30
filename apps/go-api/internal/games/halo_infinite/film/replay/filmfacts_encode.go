@@ -69,7 +69,7 @@ func encodeEntete(w *gwriter, g *FilmFacts) {
 	// la MAUVAISE, elles se dequantifient en coordonnees FAUSSES, pas approximatives
 	// (cf. DequantBipedAxis). Le module est donc ecrit ici et VERIFIE a la relecture.
 	w.str(g.MapModule)
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		w.u(uint64(g.AxisW[a]))
 	}
 	w.bool8(g.LayoutDetected)
@@ -103,7 +103,7 @@ func encodeEvenements(w *gwriter, g *FilmFacts) {
 		}
 		w.bool8(e.HasAim)
 		if e.HasAim {
-			for a := 0; a < 3; a++ {
+			for a := range 3 {
 				w.f32(e.Aim[a])
 			}
 		}
@@ -195,7 +195,7 @@ func encodeCanauxDelta(w *gwriter, g *FilmFacts) {
 		lastTS = gr.TimestampUS
 		w.u(uint64(gr.Slot))
 		w.bool8(gr.Heavy)
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			w.u(uint64(gr.PosQ[a]))
 		}
 	}
@@ -209,10 +209,10 @@ func encodeCanauxDelta(w *gwriter, g *FilmFacts) {
 		// LE VA-ET-VIENT VOYAGE AVEC SON TEMOIN (v12) : sans lui, un saut sans position
 		// serait indistinguable d un saut vers l origine du monde.
 		w.bool8(tr.HasPositions)
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			w.f32(tr.From[a])
 		}
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			w.f32(tr.To[a])
 		}
 	}

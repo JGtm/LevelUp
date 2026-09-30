@@ -43,6 +43,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -229,16 +230,16 @@ func v2boTIHist(m map[uint32]int) string {
 		tis = append(tis, ti)
 	}
 	sort.Slice(tis, func(i, j int) bool { return m[tis[i]] > m[tis[j]] })
-	out := ""
+	var out strings.Builder
 	for k, ti := range tis {
 		if k >= 6 {
-			out += " ..."
+			out.WriteString(" ...")
 			break
 		}
-		out += " ti" + strconv.Itoa(int(ti)) + ":" + strconv.Itoa(m[ti])
+		out.WriteString(" ti" + strconv.Itoa(int(ti)) + ":" + strconv.Itoa(m[ti]))
 	}
-	if out == "" {
+	if out.String() == "" {
 		return "(aucun parent vivant)"
 	}
-	return out
+	return out.String()
 }

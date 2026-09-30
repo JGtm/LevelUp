@@ -46,7 +46,7 @@ func v0Dirs(t *testing.T) []string {
 		t.Skipf("mesure non demandee : %s vide", v0ChunkDirsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(v, ",") {
+	for s := range strings.SplitSeq(v, ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, s)
 		}

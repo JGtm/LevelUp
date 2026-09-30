@@ -150,7 +150,7 @@ func TestInventoryDeltaCorpus(t *testing.T) {
 		invDeltaPct(tot.MagOutOfEnvelope-tot.MagOutOfEnvelopeCorroborated, tot.MagRead-tot.MagCorroborated))
 	t.Logf("chargeur R(8)  : %s", invDeltaQuantiles(mags))
 	t.Logf("reserve  R(11) : %s", invDeltaQuantiles(reserves))
-	for k := 0; k < invDeltaWeaponSlots; k++ {
+	for k := range invDeltaWeaponSlots {
 		t.Logf("  emplacement %d  chargeur %s", k, invDeltaQuantiles(magBySlot[k]))
 		t.Logf("  emplacement %d  reserve  %s", k, invDeltaQuantiles(resBySlot[k]))
 	}

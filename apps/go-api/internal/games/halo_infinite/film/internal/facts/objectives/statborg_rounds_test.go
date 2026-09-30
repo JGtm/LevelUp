@@ -184,7 +184,7 @@ const (
 // de repeatPackets paquets FRAME portant tous le meme enregistrement.
 func chunkRepete(data []byte) []byte {
 	out := make([]byte, 0, repeatPackets*(repeatHdrSize+len(data)))
-	for i := 0; i < repeatPackets; i++ {
+	for i := range repeatPackets {
 		hdr := make([]byte, repeatHdrSize)
 		binary.LittleEndian.PutUint16(hdr[0:], packetFrame)
 		binary.LittleEndian.PutUint32(hdr[4:], uint32(len(data)))

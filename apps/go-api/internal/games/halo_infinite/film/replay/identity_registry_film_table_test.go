@@ -271,7 +271,7 @@ func TestCompositionRetireUnIndexQueDeuxXUIDSeDisputent(t *testing.T) {
 	// LE DETERMINISME EST LA PROPRIETE MENACEE, et c'est l'ordre d'iteration d'une map qui la
 	// menacait : on recompose, et l'identite publiee ne doit jamais bouger.
 	t.Run("determinisme", func(t *testing.T) {
-		for i := 0; i < 50; i++ {
+		for i := range 50 {
 			c := composerTableDIndex(in)
 			if len(c.table.ByXUID) != 1 || c.table.ByXUID[indifferent] != 2 {
 				t.Fatalf("passe %d : table = %v, attendue {temoin: 2} a chaque composition",

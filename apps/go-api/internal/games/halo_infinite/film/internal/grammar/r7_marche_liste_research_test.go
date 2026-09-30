@@ -305,7 +305,7 @@ func r7Cartes(t *testing.T) map[string]r7Ctx {
 		return out
 	}
 	cat := r6LireCatalogue(t, catPath)
-	for _, kv := range strings.Split(maps, ",") {
+	for kv := range strings.SplitSeq(maps, ",") {
 		i := strings.IndexByte(kv, '=')
 		if i <= 0 {
 			continue

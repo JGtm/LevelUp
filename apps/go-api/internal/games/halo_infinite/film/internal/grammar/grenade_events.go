@@ -4,6 +4,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"slices"
 )
 
 // grenade_events.go — LANCERS DE GRENADE, lus par balayage d'un motif d'amorce dans les paquets
@@ -288,11 +289,8 @@ func tiProjectileParNom(reg *Registry) (int, int) {
 	for _, a := range reg.Archetypes {
 		n := 0
 		for _, nom := range composantsProjectile {
-			for _, c := range a.Components {
-				if c == nom {
-					n++
-					break
-				}
+			if slices.Contains(a.Components, nom) {
+				n++
 			}
 		}
 		if n > vus {

@@ -98,7 +98,7 @@ func r7SkipChargeLot5(br *Lecteur, typ int, ctx r7Ctx) bool {
 	case 119:
 		r7Direction19(br)
 		n := int(br.ReadBits(4)) + 1 // FUN_142ed0abc : R(4) puis valeur+1
-		for i := 0; i < n; i++ {
+		for range n {
 			r7RefCharge(br, 0) // domaine 0, SANS bit de porte
 			r7Direction19(br)
 		}
@@ -139,7 +139,7 @@ func r7SkipChargeLot5(br *Lecteur, typ int, ctx r7Ctx) bool {
 		br.Skip(1)
 		if br.ReadBit() { // la porte du R(32) commande aussi les deux vecteurs
 			br.Skip(32)
-			for i := 0; i < 2; i++ {
+			for range 2 {
 				if !r7VecteurQuantifie(br, ctx, 16) {
 					return false
 				}

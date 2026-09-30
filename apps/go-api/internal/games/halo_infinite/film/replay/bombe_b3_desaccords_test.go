@@ -39,6 +39,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -170,10 +171,7 @@ func TestBombeB3Desaccords(t *testing.T) {
 				continue // désaccord : traité en P2
 			}
 			ampl := b3Amplitude(bp.b3Fenetre(p.Slot, originUS, tPose-b3FenAvantMS, tPose+b3FenApresMS))
-			fin := p.FinMS
-			if fin > tE {
-				fin = tE
-			}
+			fin := min(p.FinMS, tE)
 			if q, ok := bp.b3DernierAvant(p.Slot, originUS, fin); ok {
 				sites = append(sites, b3Site{q: q, tE: tE, slot: p.Slot})
 				t.Logf("%s ACCORD %d : slot %d, amplitude d'armement %.0f quanta — SITE pris au lâcher %d",
@@ -242,11 +240,11 @@ func b3VersSites(bp b3Pos, sites []b3Site, slot uint32, originUS uint64, t int) 
 	if !ok || len(sites) == 0 {
 		return ""
 	}
-	out := ""
+	var out strings.Builder
 	for _, s := range sites {
-		out += fmt.Sprintf(", site %d : %.0f quanta", s.tE, b3Dist(q, s.q))
+		out.WriteString(fmt.Sprintf(", site %d : %.0f quanta", s.tE, b3Dist(q, s.q)))
 	}
-	return out
+	return out.String()
 }
 
 // xuidStr écrit un xuid en décimal, comme le pont statborg.

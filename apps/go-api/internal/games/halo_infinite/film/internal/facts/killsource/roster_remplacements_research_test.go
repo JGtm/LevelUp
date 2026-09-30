@@ -33,6 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -212,14 +213,14 @@ func indicesLisibles(par map[int]int) string {
 		idx = append(idx, i)
 	}
 	sort.Ints(idx)
-	s := ""
+	var s strings.Builder
 	for _, i := range idx {
-		s += fmt.Sprintf("%d (x%d) ", i, par[i])
+		s.WriteString(fmt.Sprintf("%d (x%d) ", i, par[i]))
 	}
 	if len(idx) > 1 {
-		s += "DESACCORD"
+		s.WriteString("DESACCORD")
 	}
-	return s
+	return s.String()
 }
 
 // journaliserRoster : ce que le decodeur RETIENT aujourd hui.

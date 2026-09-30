@@ -40,7 +40,7 @@ func TestGroundWeaponCorpusCensus(t *testing.T) {
 		t.Skipf("%s absent : recensement de corpus sauté", gwCorpusEnv)
 	}
 
-	for _, dir := range strings.Split(raw, ",") {
+	for dir := range strings.SplitSeq(raw, ",") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue

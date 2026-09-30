@@ -30,6 +30,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -93,13 +94,14 @@ func (c *v4Classe) ajoute(d float64, age uint64, ok bool) {
 
 func (c v4Classe) ligne(nom string) string {
 	p := v4Percentiles(c.distances, 0.25, 0.5, 0.75, 0.9)
-	s := fmt.Sprintf("%-22s n=%-5d sansVeh=%-4d frais<1s=%-4d parNaissance=%-4d "+
+	var s strings.Builder
+	s.WriteString(fmt.Sprintf("%-22s n=%-5d sansVeh=%-4d frais<1s=%-4d parNaissance=%-4d "+
 		"d25=%.1f d50=%.1f d75=%.1f d90=%.1f |", nom, c.n, c.sansVeh, c.ageFrais, c.ageSpawn,
-		p[0], p[1], p[2], p[3])
+		p[0], p[1], p[2], p[3]))
 	for _, r := range v4RayonsM {
-		s += fmt.Sprintf(" R%.1f=%d", r, c.parRayon[r])
+		s.WriteString(fmt.Sprintf(" R%.1f=%d", r, c.parRayon[r]))
 	}
-	return s
+	return s.String()
 }
 
 // TestV4CouvertureEpisodes — ETAGE 1 : quelle porte ferme, et de combien.

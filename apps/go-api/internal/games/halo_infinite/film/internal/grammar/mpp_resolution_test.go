@@ -113,7 +113,7 @@ func TestMPPWidthsForFilmNeConsultePasLeBuild(t *testing.T) {
 // UN FILM SANS VERSION LISIBLE N EST PAS UN FILM AU FORMAT 0 : il est `FormatInconnu`, donc
 // compte sous `filmdec_unknown_format_0`, et sa largeur n est PAS posee.
 func TestMPPWidthsForFilmSurEntreeTronquee(t *testing.T) {
-	for n := 0; n < 8; n++ {
+	for n := range 8 {
 		f, err := source.Load(source.MemoryChunks{make([]byte, n)}, nil)
 		if err != nil {
 			t.Fatalf("chunk de %d octets : chargement %v", n, err)

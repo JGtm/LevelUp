@@ -71,7 +71,7 @@ func encodePositionSection(w *gwriter, pos []grammar.BipedPosition) {
 			// la ou les bits d un float32 n en tenaient aucun.
 			cur := [3]int64{int64(p.Q[0]), int64(p.Q[1]), int64(p.Q[2])}
 			prev := lastXYZ[p.Slot]
-			for a := 0; a < 3; a++ {
+			for a := range 3 {
 				w.i(cur[a] - prev[a])
 			}
 			lastXYZ[p.Slot] = cur
@@ -119,7 +119,7 @@ func decodePositionSection(r *greader, lay profile.I0Layout, world profile.Vec3R
 			p.HasWorld = true
 			prev := lastXYZ[p.Slot]
 			var cur [3]int64
-			for a := 0; a < 3; a++ {
+			for a := range 3 {
 				cur[a] = prev[a] + r.i()
 			}
 			lastXYZ[p.Slot] = cur
@@ -266,7 +266,7 @@ func encodeCreations(w *gwriter, creations []types.EquipmentCreation) {
 		w.u(uint64(c.Ref))
 		w.bool8(c.HasID)
 		w.u(uint64(c.AbilityID))
-		for i := 0; i < types.MPPFieldCount; i++ {
+		for i := range types.MPPFieldCount {
 			w.bool8(c.MPPPresent[i])
 			w.u(c.MPPVal[i])
 		}
@@ -298,7 +298,7 @@ func decodeCreations(r *greader) []types.EquipmentCreation {
 		c.Chunk, c.PacketIndex, c.BitPos = int(r.i()), int(r.i()), int(r.i())
 		c.HasRef, c.Ref = r.bool8(), uint32(r.u())
 		c.HasID, c.AbilityID = r.bool8(), uint32(r.u())
-		for i := 0; i < types.MPPFieldCount; i++ {
+		for i := range types.MPPFieldCount {
 			c.MPPPresent[i] = r.bool8()
 			c.MPPVal[i] = r.u()
 		}

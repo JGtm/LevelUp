@@ -119,7 +119,7 @@ func TestR6Layout117(t *testing.T) {
 	}
 	cat := r6LireCatalogue(t, catPath)
 	totalOK, totalEv := 0, 0
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		id = strings.TrimSpace(id)
 		t.Logf("")
 		t.Logf("############ FILM %s ############", id)
@@ -300,7 +300,7 @@ func r6Decode(pay []byte, e r6CatEntry, wr uint) r6Decoded {
 			bits = [3]uint{22, 22, 22}
 		}
 		var out [3]float64
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			q := br.ReadBits(bits[i])
 			out[i] = min[i] + (float64(q)+0.5)*(max[i]-min[i])/float64(uint64(1)<<bits[i])
 		}

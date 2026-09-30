@@ -206,30 +206,33 @@ func bwOptions(c bwCas) Options {
 	return opt
 }
 
-func bwInt(v int) *int         { return &v }
-func bwSec(v float64) *float64 { return &v }
+//go:fix inline
+func bwInt(v int) *int { return new(v) }
+
+//go:fix inline
+func bwSec(v float64) *float64 { return new(v) }
 
 // TestBombStatsCablageAbsentNestPasZero — les colonnes non lues sortent ABSENTES du chemin de
 // production, jamais à zéro, dans les cinq combinaisons que le câblage peut produire.
 func TestBombStatsCablageAbsentNestPasZero(t *testing.T) {
 	cas := []bwCas{{
 		nom: "portage lu · anneau NON balaye", etat: bwAnneauNonBalaye, pont: true,
-		veutGrabs: bwInt(1), veutSecondes: bwSec(1),
+		veutGrabs: new(1), veutSecondes: new(float64(1)),
 	}, {
 		nom: "portage lu · anneau balaye et PUBLIE", etat: bwAnneauPublie, pont: true,
 		// arms = 0 MESURE : les deux canaux sont lus, aucun armement n'est attribuable.
-		veutArms: bwInt(0), veutGrabs: bwInt(1), veutSecondes: bwSec(1),
+		veutArms: new(0), veutGrabs: new(1), veutSecondes: new(float64(1)),
 	}, {
 		nom: "portage lu · anneau balaye mais RETENU a la source", etat: bwAnneauRetenu, pont: true,
-		veutGrabs: bwInt(1), veutSecondes: bwSec(1),
+		veutGrabs: new(1), veutSecondes: new(float64(1)),
 	}, {
 		nom: "SANS pont · anneau NON balaye", etat: bwAnneauNonBalaye, score: true,
-		veutDetonations: bwInt(1),
+		veutDetonations: new(1),
 	}, {
 		// LE CAS QUI PORTE LA REGLE DES DEUX CANAUX : l'anneau est LU et publié, le portage ne
 		// l'est pas, et `arms` reste ABSENT — un `if in.ArmingsRead` seul publierait 0 ici.
 		nom: "SANS pont · anneau balaye et PUBLIE", etat: bwAnneauPublie, score: true,
-		veutDetonations: bwInt(1),
+		veutDetonations: new(1),
 	}}
 
 	for _, c := range cas {

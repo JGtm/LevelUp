@@ -398,15 +398,9 @@ func vehicleBounds(
 	if spawn.TimestampUS > 0 && spawn.TimestampUS < bornUS {
 		bornUS = spawn.TimestampUS
 	}
-	lastProofUS := l.lastUS
-	if lastSeenUS > lastProofUS {
-		lastProofUS = lastSeenUS
-	}
+	lastProofUS := max(lastSeenUS, l.lastUS)
 	t0 = clock.frame(bornUS)
-	t1 = clock.frame(lastProofUS)
-	if t1 < t0 {
-		t1 = t0
-	}
+	t1 = max(clock.frame(lastProofUS), t0)
 	t1max = clock.frames - 1
 	if l.goneByUS > 0 {
 		t1max = clock.frame(l.goneByUS)

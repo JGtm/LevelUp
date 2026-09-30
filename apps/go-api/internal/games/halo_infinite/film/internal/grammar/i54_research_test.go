@@ -36,6 +36,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -211,12 +212,7 @@ func TestI54MobilityActionUsage(t *testing.T) {
 
 // i54InMask dit si la liste d'index du masque contient i54.
 func i54InMask(idx []int) bool {
-	for _, id := range idx {
-		if id == i54Index {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(idx, i54Index)
 }
 
 // i54Flag1 lit flag1 (le gate du corps d'i54, premier bit du composant — cf.

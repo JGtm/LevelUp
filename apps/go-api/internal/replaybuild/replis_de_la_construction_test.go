@@ -62,7 +62,7 @@ func TestLaFeuilleDeMatchCompteSesRetraits(t *testing.T) {
 // sans etat de zone, et le repli se compte a chaque cuisson (la table memorisee ne l efface pas).
 func TestUnTitreSansTableDObjectifsCompteSonRepliAChaqueCuisson(t *testing.T) {
 	b := &Builder{repoRoot: t.TempDir(), titleSlug: title.DefaultSlug}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		fb := decfilm.NouveauCompteur()
 		if zones, _ := b.matchZones(context.Background(), "m", "carte", "Arena:Strongholds", fb); zones != nil {
 			t.Fatalf("titre sans table : zones %v", zones)

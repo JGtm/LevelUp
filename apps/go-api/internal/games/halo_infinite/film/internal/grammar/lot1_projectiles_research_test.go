@@ -65,10 +65,7 @@ func TestLot1Projectiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks (evenements projectile) ==", filepath.Base(dir), n)
 
 	width := projCalibrateWidth(t, dir, n)

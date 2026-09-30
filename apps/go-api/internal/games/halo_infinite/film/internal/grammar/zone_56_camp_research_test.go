@@ -64,6 +64,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -278,16 +279,13 @@ func zone56RapportNoms(t *testing.T, a *zone56Acc) {
 			vals = append(vals, v)
 		}
 		sort.Slice(vals, func(x, y int) bool { return a.noms[i][vals[x]] > a.noms[i][vals[y]] })
-		n := len(vals)
-		if n > 5 {
-			n = 5
-		}
-		var s string
+		n := min(len(vals), 5)
+		var s strings.Builder
 		for _, v := range vals[:n] {
-			s += fmt.Sprintf(" 0x%08x(%d)", v, a.noms[i][v])
+			s.WriteString(fmt.Sprintf(" 0x%08x(%d)", v, a.noms[i][v]))
 		}
 		t.Logf("  i%d : %d valeurs distinctes sur %d records —%s",
-			i, len(vals), a.singleton[i], s)
+			i, len(vals), a.singleton[i], s.String())
 	}
 }
 
@@ -432,9 +430,9 @@ func zone56TagsVus(m map[int]int) string {
 		ks = append(ks, k)
 	}
 	sort.Slice(ks, func(i, j int) bool { return m[ks[i]] > m[ks[j]] })
-	var s string
+	var s strings.Builder
 	for _, k := range ks {
-		s += fmt.Sprintf(" %d(x%d)", k, m[k])
+		s.WriteString(fmt.Sprintf(" %d(x%d)", k, m[k]))
 	}
-	return s
+	return s.String()
 }

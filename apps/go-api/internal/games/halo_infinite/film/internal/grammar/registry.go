@@ -272,10 +272,10 @@ func parseRegistry(data []byte) *Registry {
 	// du registre. C'est CELA une troncature ; sur un chunk_00 complet la boucle sort par `break`
 	// et la queue qui reste est la section suivante, pas un tampon coupe.
 	epuise := true
-	for b := 0; b < nBlocks; b++ {
+	for b := range nBlocks {
 		base := registryEntryBase + b*archetypeBlockSize
 		arch := Archetype{Index: b}
-		for s := 0; s < archetypeBlockSlots; s++ {
+		for s := range archetypeBlockSlots {
 			off := base + s*registrySlotSize
 			name := entryName(data, off)
 			if name == "" {
@@ -365,10 +365,7 @@ func entryName(data []byte, off int) string {
 	if off < 0 || off >= len(data) {
 		return ""
 	}
-	end := off + registryEntryNameBytes
-	if end > len(data) {
-		end = len(data)
-	}
+	end := min(off+registryEntryNameBytes, len(data))
 	raw := data[off:end]
 	if z := bytes.IndexByte(raw, 0); z >= 0 {
 		raw = raw[:z]

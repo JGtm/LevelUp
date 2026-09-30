@@ -41,6 +41,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -199,14 +200,14 @@ func histogrammeDesSieges(h map[int]int) string {
 		cles = append(cles, k)
 	}
 	sort.Ints(cles)
-	out := ""
+	var out strings.Builder
 	for i, k := range cles {
 		if i > 0 {
-			out += ","
+			out.WriteString(",")
 		}
-		out += fmt.Sprintf("%d x%d", k, h[k])
+		out.WriteString(fmt.Sprintf("%d x%d", k, h[k]))
 	}
-	return out
+	return out.String()
 }
 
 // verdictDesSieges nomme les arrivees, les departs, et les index REUTILISES.
@@ -258,8 +259,8 @@ func verdictDesSieges(t *testing.T, court string, tri []*siegeEntite, paquets in
 func occupationParPaquet(t *testing.T, court string, tri []*siegeEntite, paquets int) {
 	t.Helper()
 	maxi, mini := 0, 1<<30
-	ligne := ""
-	for pk := 0; pk < paquets; pk++ {
+	var ligne strings.Builder
+	for pk := range paquets {
 		n := 0
 		for _, e := range tri {
 			if e.PremierPk <= pk && pk <= e.DernierPk {
@@ -272,9 +273,9 @@ func occupationParPaquet(t *testing.T, court string, tri []*siegeEntite, paquets
 		if n < mini {
 			mini = n
 		}
-		ligne += fmt.Sprintf(" %d", n)
+		ligne.WriteString(fmt.Sprintf(" %d", n))
 	}
-	t.Logf("  %s | OCCUPANTS par paquet :%s", court, ligne)
+	t.Logf("  %s | OCCUPANTS par paquet :%s", court, ligne.String())
 	t.Logf("  %s | index ECRITS sur tout le film = %d | occupants SIMULTANES min=%d max=%d | "+
 		"fiches en trop si on affiche tout le roster = %d",
 		court, len(tri), mini, maxi, len(tri)-maxi)

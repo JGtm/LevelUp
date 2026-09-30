@@ -39,10 +39,7 @@ func TestLot1Degats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	var (
 		paquets, type0                       int
 		trameOK, trameKO, deltasLies, masqOK int

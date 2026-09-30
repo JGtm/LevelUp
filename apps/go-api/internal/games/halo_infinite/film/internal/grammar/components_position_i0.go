@@ -166,7 +166,7 @@ func consumePredictedDelta(br *Lecteur, pd profile.PrecisionDescriptor) {
 		// 3 signed 8-bit deltas = un NOMBRE DE CRANS signé par axe. Le pas physique est
 		// DeltaQuantum (propre au delta, PAS la range absolue/2^axisW qui donnait ~18 u = faux).
 		var d [3]float32
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			n := signed8(br.ReadBits(8))
 			d[i] = float32(n) * br.deltaQuantum()
 		}
@@ -178,7 +178,7 @@ func consumePredictedDelta(br *Lecteur, pd profile.PrecisionDescriptor) {
 	// sur [-2^(AxisW-1), 2^(AxisW-1)) et mis à l'échelle DeltaQuantum (range delta propre =
 	// DeltaQuantum*2^AxisW). AxisW = pd.AxisW[i] (6 par défaut ; ambiguïté 6 vs 14 sweepable).
 	var d [3]float32
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		w := deltaAxisW(br, pd, i)
 		q := br.ReadBits(w)
 		half := float32(uint64(1) << (w - 1))

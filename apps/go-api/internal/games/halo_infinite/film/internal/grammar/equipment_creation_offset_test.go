@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -108,23 +109,23 @@ func equipLogBitProfile(t *testing.T, pr equipOffsetProbe) {
 		return
 	}
 	n := top[0].count
-	line := ""
-	for i := 0; i < equipProfileBits; i++ {
+	var line strings.Builder
+	for i := range equipProfileBits {
 		switch {
 		case prof[i] == 0:
-			line += "0"
+			line.WriteString("0")
 		case prof[i] == n:
-			line += "1"
+			line.WriteString("1")
 		default:
-			line += "."
+			line.WriteString(".")
 		}
 		if i%8 == 7 {
-			line += " "
+			line.WriteString(" ")
 		}
 	}
 	t.Logf("   PROFIL DE BITS à la distance %d (%d records) — 0/1 = bit constant, . = variable :",
 		g, n)
-	t.Logf("     %s", line)
+	t.Logf("     %s", line.String())
 }
 
 // equipOffsetProbe localise les corps de record par la position, puis cherche l'en-tête.
@@ -285,7 +286,7 @@ func (pr *equipOffsetProbe) profile(pay []byte, p int, d uint32) {
 		prof = &[equipProfileBits]int{}
 		pr.bits[d] = prof
 	}
-	for i := 0; i < equipProfileBits; i++ {
+	for i := range equipProfileBits {
 		if source.BitsTolerants(pay, p+i, 1) == 1 {
 			prof[i]++
 		}

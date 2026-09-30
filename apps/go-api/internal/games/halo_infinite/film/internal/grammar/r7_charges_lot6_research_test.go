@@ -111,7 +111,7 @@ func r7Charge36(br *Lecteur, ctx r7Ctx) bool {
 	}
 	nComp, nCib := r7Comptes(br)
 	kindUn := map[int]bool{}
-	for i := 0; i < nCib; i++ {
+	for i := range nCib {
 		kindUn[i] = br.ReadBits(2) == 1
 		br.Skip(1)
 		r7RefCharge(br, 1)
@@ -121,7 +121,7 @@ func r7Charge36(br *Lecteur, ctx r7Ctx) bool {
 		base = 12
 	}
 	dernierQ, vuQ := uint64(1), false
-	for i := 0; i < nComp; i++ {
+	for range nComp {
 		br.Skip(4)
 		if !br.ReadBit() { // p
 			continue
@@ -175,7 +175,7 @@ func r7Queue36(br *Lecteur, ctx r7Ctx, estBloc, blocHoro bool) bool {
 			br.Skip(4)
 		}
 		if a2 {
-			for i := 0; i < 2; i++ { // FUN_14320c36c puis FUN_142a40f18
+			for range 2 { // FUN_14320c36c puis FUN_142a40f18
 				if br.ReadBit() {
 					br.Skip(12)
 				}
@@ -201,7 +201,7 @@ func r7Charge35(br *Lecteur, ctx r7Ctx) bool {
 	br.Skip(32)
 	br.Skip(2) // deux R(1)
 	nCib := int(br.ReadBits(4))
-	for i := 0; i < nCib; i++ {
+	for range nCib {
 		br.Skip(2 + 1)
 		r7RefCharge(br, 1)
 	}
@@ -213,7 +213,7 @@ func r7Charge35(br *Lecteur, ctx r7Ctx) bool {
 			w = v
 		}
 	}
-	for i := 0; i < nComp; i++ {
+	for range nComp {
 		br.Skip(4)
 		if !br.ReadBit() {
 			continue
@@ -234,7 +234,7 @@ func r7Charge35(br *Lecteur, ctx r7Ctx) bool {
 		br.Skip(4)
 	}
 	if a2 {
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			if br.ReadBit() {
 				br.Skip(12)
 			}

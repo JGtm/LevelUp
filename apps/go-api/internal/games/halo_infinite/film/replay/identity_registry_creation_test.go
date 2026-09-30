@@ -365,7 +365,7 @@ func TestAlarmerSurLesRefusNeSoustraitPasDeuxPopulationsNonComparables(t *testin
 // sortie DU TOUT — c'est exactement le silence que l'ancien calcul produisait.
 func viesAlarmeesIndexHorsTable(t *testing.T, journal []byte) int {
 	t.Helper()
-	for _, ligne := range bytes.Split(journal, []byte("\n")) {
+	for ligne := range bytes.SplitSeq(journal, []byte("\n")) {
 		if len(ligne) == 0 {
 			continue
 		}

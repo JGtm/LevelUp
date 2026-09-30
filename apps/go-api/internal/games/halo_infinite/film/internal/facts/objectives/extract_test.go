@@ -104,7 +104,6 @@ func TestExtractCTFCaptureCount(t *testing.T) {
 		{"53ce4390", "CTF:Arena", 3, 1, 2},
 	}
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.id, func(t *testing.T) {
 			bobine, ok := newDiskFilm(t, tc.id)
 			if !ok {

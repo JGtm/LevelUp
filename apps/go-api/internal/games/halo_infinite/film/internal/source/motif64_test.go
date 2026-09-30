@@ -16,7 +16,7 @@ import (
 // refFenetre lit les 64 bits a la position p, un bit a la fois.
 func refFenetre(d []byte, p int) uint64 {
 	var w uint64
-	for k := 0; k < 64; k++ {
+	for k := range 64 {
 		q := p + k
 		w = w<<1 | uint64(d[q>>3]>>(7-uint(q&7)))&1
 	}
@@ -54,7 +54,7 @@ func motifTampons() [][]byte {
 	rng := rand.New(rand.NewSource(0x6D6F_7469))
 	var out [][]byte
 	for _, n := range []int{0, 1, 7, 8, 9, 15, 16, 17, 23, 24, 31, 40, 64, 97} {
-		for v := 0; v < 4; v++ {
+		for v := range 4 {
 			d := make([]byte, n)
 			for i := range d {
 				switch v {
@@ -94,7 +94,7 @@ func motifsDeTest() []Motif64 {
 		{Nuls: ^uint64(0)},
 		{},
 	}
-	for i := 0; i < 12; i++ {
+	for i := range 12 {
 		out = append(out, Motif64{
 			Nuls:      rng.Uint64() & rng.Uint64() & rng.Uint64(),
 			AuMoinsUn: [2]uint64{rng.Uint64() * uint64(i%3), rng.Uint64() >> uint(rng.Intn(64))},
@@ -134,7 +134,7 @@ func TestHuitEgaleHuitRetenues(t *testing.T) {
 	rng := rand.New(rand.NewSource(0x0808))
 	for _, m := range motifsDeTest() {
 		for _, a := range []uint64{0, 1} {
-			for i := 0; i < 20_000; i++ {
+			for i := range 20_000 {
 				w0, nb := rng.Uint64(), uint64(rng.Intn(256))
 				switch i % 4 {
 				case 1:
@@ -143,7 +143,7 @@ func TestHuitEgaleHuitRetenues(t *testing.T) {
 					w0 |= rng.Uint64() | rng.Uint64()
 				}
 				var want uint64
-				for k := uint(0); k < 8; k++ {
+				for k := range uint(8) {
 					w := w0 << k
 					if k > 0 {
 						w |= nb >> (8 - k)

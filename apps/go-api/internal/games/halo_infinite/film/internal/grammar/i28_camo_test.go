@@ -115,7 +115,7 @@ func TestI28CamoActiveState(t *testing.T) {
 	}
 	i28LogShape(t, samples)
 	perSlot := i28BySlot(samples)
-	for ch := 0; ch < i28ChannelCount; ch++ {
+	for ch := range i28ChannelCount {
 		i28LogConcentration(t, ch, perSlot, slotRanks)
 	}
 	i28LogMinority(t, samples, slotRanks)
@@ -164,7 +164,7 @@ func i28LogShape(t *testing.T, samples []i28Sample) {
 			hasFrac++
 			fracHist[int(sm.st.FracQ)]++
 		}
-		for i := 0; i < 6; i++ {
+		for i := range 6 {
 			if sm.st.SubPresent[i] {
 				subPresent[i]++
 				subVals[i][int(sm.st.SubQ[i])]++
@@ -178,7 +178,7 @@ func i28LogShape(t *testing.T, samples []i28Sample) {
 	t.Logf("  R(3) de tête : %s", i48RenderInt(c3))
 	t.Logf("  quantum R(12) principal (%d valeurs distinctes) : %s",
 		len(fracHist), i28RenderCapped(fracHist, 48))
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		t.Logf("  queue[%d] : présent %d · %s", i, subPresent[i], i28RenderCapped(subVals[i], 12))
 	}
 }
@@ -287,7 +287,7 @@ func i28LogConcentration(t *testing.T, ch int, perSlot map[uint32][]i28Sample, s
 // minorité ≤ 40 lectures), les lectures MINORITAIRES avec slot, rang i48 et instant : si la
 // minorité tombe toute sur des vies rang 8, la voie est l'interrupteur du camouflage.
 func i28LogMinority(t *testing.T, samples []i28Sample, slotRanks map[uint32][]int) {
-	for ch := 0; ch < i28ChannelCount; ch++ {
+	for ch := range i28ChannelCount {
 		hist := map[int]int{}
 		for _, sm := range samples {
 			if v, p := i28ChannelVal(sm.st, ch); p {
@@ -330,7 +330,7 @@ func i28LogCurve(t *testing.T, perSlot map[uint32][]i28Sample, slotRanks map[uin
 	// vies rang 8 et AUCUNE ailleurs. À défaut (aucune voie exclusive), la voie la plus
 	// transitionnelle d'une vie rang 8, puis de n'importe quelle vie — étiquetée comme telle.
 	exclusive := -1
-	for ch := 0; ch < i28ChannelCount; ch++ {
+	for ch := range i28ChannelCount {
 		on8, off8 := 0, 0
 		for sl, list := range perSlot {
 			trans, _ := i28ChanTransitions(list, ch)
@@ -351,7 +351,7 @@ func i28LogCurve(t *testing.T, perSlot map[uint32][]i28Sample, slotRanks map[uin
 			if needRank8 && !eaHasRank(slotRanks[sl], 8) {
 				continue
 			}
-			for ch := 0; ch < i28ChannelCount; ch++ {
+			for ch := range i28ChannelCount {
 				if exclusive >= 0 && ch != exclusive {
 					continue
 				}

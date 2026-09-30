@@ -124,7 +124,7 @@ func f0Films(t *testing.T) (string, []string) {
 		t.Skipf("instrument F.0 : definir %s et %s", f0RootEnv, f0IDsEnv)
 	}
 	var out []string
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		if id = strings.TrimSpace(id); id != "" {
 			out = append(out, id)
 		}
@@ -154,7 +154,7 @@ func f0Cartes(t *testing.T, cat *profile.MapQuantCatalog) map[string]profile.Map
 		t.Skipf("instrument F.0 : definir %s — le lancer d abord par TestF0CalibreCarte", f0MapsEnv)
 	}
 	out := map[string]profile.MapQuantEntry{}
-	for _, kv := range strings.Split(spec, ",") {
+	for kv := range strings.SplitSeq(spec, ",") {
 		i := strings.IndexByte(kv, '=')
 		if i <= 0 {
 			continue

@@ -226,10 +226,7 @@ func TestGeoExplosifs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > geoMaxChunks {
-		n = geoMaxChunks
-	}
+	n := min(CountFilmChunks(dir), geoMaxChunks)
 	wr := sondeWorldRange(t, dir)
 	if wr == nil {
 		t.Skipf("bornes monde absentes : la geometrie exige des positions (renseigner %s)", sondeMapEnv)

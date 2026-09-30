@@ -29,7 +29,7 @@ func TestComposantsVueBM4bLargeurs(t *testing.T) {
 		{"ti=5 i24 trois elements vides", "player-desired-frame-configuration-component",
 			func(w *bitw) {
 				w.put(0, 1) // FUN_14080d69c : pas de poignee
-				for i := 0; i < 3; i++ {
+				for range 3 {
 					w.put(1, 1) // FUN_1406d1024 : porte inversee, pas de R(6)
 					w.put(0, 1) // g1
 					w.put(0, 1) // g2

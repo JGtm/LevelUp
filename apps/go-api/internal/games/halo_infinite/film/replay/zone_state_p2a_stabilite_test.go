@@ -59,7 +59,7 @@ func p2aLitTable(t *testing.T, dir, short string) (map[uint32]p2aLigneTable, boo
 		return nil, false
 	}
 	out := map[uint32]p2aLigneTable{}
-	for _, line := range strings.Split(string(blob), "\n") {
+	for line := range strings.SplitSeq(string(blob), "\n") {
 		f := strings.Split(strings.TrimRight(line, "\r"), "\t")
 		if len(f) < 8 || f[0] != "a1_table" {
 			continue

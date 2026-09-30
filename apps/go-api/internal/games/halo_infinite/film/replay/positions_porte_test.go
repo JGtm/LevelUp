@@ -19,7 +19,7 @@ import (
 // (`boundsMinSamples`), et une emprise connue d avance.
 func porteFoule(n, debutMS int) []grammar.BipedPosition {
 	out := make([]grammar.BipedPosition, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out = append(out, pos(900, debutMS+100*i, float32(i%100), float32((i*7)%100), float32(i%10)))
 	}
 	return out

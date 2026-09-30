@@ -75,7 +75,7 @@ func (l I0Layout) TotalBits() int {
 // AxisOffset est l'offset bit de l'axe ax depuis le début d'i0.
 func (l I0Layout) AxisOffset(ax int) int {
 	off := l.GateBits
-	for i := 0; i < ax; i++ {
+	for i := range ax {
 		off += int(l.AxisW[i])
 	}
 	return off

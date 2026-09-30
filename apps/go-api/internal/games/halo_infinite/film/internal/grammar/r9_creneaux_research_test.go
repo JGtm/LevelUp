@@ -296,7 +296,7 @@ func r9FilmDirs(t *testing.T) []string {
 		t.Skipf("%s absent : instrument saute", r9FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(os.Getenv(r9IDsEnv), ",") {
+	for s := range strings.SplitSeq(os.Getenv(r9IDsEnv), ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, filepath.Join(root, s))
 		}

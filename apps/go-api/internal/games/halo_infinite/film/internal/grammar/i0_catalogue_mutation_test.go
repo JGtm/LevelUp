@@ -68,7 +68,7 @@ func (r recordBipedSynthetique) ecrire(w *bitWriter) {
 	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 	w.bits(0, preGate) // i0 absolu : spine + useDefault nuls
 	w.bits(r.Region, r.Lay.GateBits-preGate)
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		w.bits(r.Q[ax], int(r.Lay.AxisW[ax]))
 	}
 }

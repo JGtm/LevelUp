@@ -112,7 +112,7 @@ func gwPadsCompareMaps(
 				" applique pas", set, m, len(fs))
 			continue
 		}
-		for i := 0; i < len(fs); i++ {
+		for i := range fs {
 			for j := i + 1; j < len(fs); j++ {
 				a, b := fs[i], fs[j]
 				ab, an := gwPadsOverlap(socles[a], socles[b], true)
@@ -210,12 +210,12 @@ func gwPadsReadLogs(t *testing.T, paths []string) (map[string][]gwPadApparition,
 		if err != nil {
 			t.Fatalf("sortie illisible (%s) : %v", p, err)
 		}
-		for _, line := range strings.Split(string(blob), "\n") {
-			i := strings.Index(line, "APPAR\t")
-			if i < 0 {
+		for line := range strings.SplitSeq(string(blob), "\n") {
+			_, after, ok := strings.Cut(line, "APPAR\t")
+			if !ok {
 				continue
 			}
-			film, mapName, a, ok := gwPadsParseAppar(line[i+len("APPAR\t"):])
+			film, mapName, a, ok := gwPadsParseAppar(after)
 			if !ok {
 				bad++
 				continue

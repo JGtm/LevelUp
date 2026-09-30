@@ -258,7 +258,7 @@ func gwBoxDiagonal(pts []grammar.WorldObjectSample) float32 {
 		}
 	}
 	var sum float64
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		d := float64(mx[a] - mn[a])
 		sum += d * d
 	}

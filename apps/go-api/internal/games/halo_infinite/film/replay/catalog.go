@@ -14,6 +14,8 @@ package replay
 // règle du chantier — mieux vaut un identifiant qu'un mot faux, parce qu'un mot faux se
 // lit comme une certitude.
 
+import "maps"
+
 // WeaponIconRef pointe l'icône EXTRAITE DU JEU d'une famille d'arme, telle que le titre
 // la sert. Tinted dit si le visuel est un masque à teindre (cf. WeaponImageIsTinted).
 type WeaponIconRef struct {
@@ -214,18 +216,14 @@ func NewLabelCatalog(
 	var eff map[string]string
 	if len(effects) > 0 {
 		eff = make(map[string]string, len(effects))
-		for k, v := range effects {
-			eff[k] = v
-		}
+		maps.Copy(eff, effects)
 	}
 	// La table des CLÉS est copiée pour la même raison que celle des effets : le
 	// catalogue survit à son appelant et ne doit pas partager une map mutable.
 	var keys map[uint32]string
 	if len(familyToKey) > 0 {
 		keys = make(map[uint32]string, len(familyToKey))
-		for f, k := range familyToKey {
-			keys[f] = k
-		}
+		maps.Copy(keys, familyToKey)
 	}
 	return LabelCatalog{
 		Weapons:   weapons,

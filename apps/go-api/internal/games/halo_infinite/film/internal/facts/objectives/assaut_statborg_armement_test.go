@@ -211,7 +211,7 @@ func TestAssautStatborgArmementFenetre(t *testing.T) {
 
 		// PLANCHER — sur TOUS les films : c'est une propriete de densite du flux.
 		if tmax > tmin {
-			for i := 0; i < asTirages; i++ {
+			for range asTirages {
 				instant := tmin + rng.Intn(tmax-tmin)
 				tirages++
 				for k, xs := range instants {

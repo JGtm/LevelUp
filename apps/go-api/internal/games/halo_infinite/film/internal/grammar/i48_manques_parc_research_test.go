@@ -117,7 +117,7 @@ func TestI48ManquesParc(t *testing.T) {
 	}
 
 	examined, scanner, film, missTotal, hitTotal := 0, 0, 0, 0, 0
-	for _, dir := range strings.Split(parc, ",") {
+	for dir := range strings.SplitSeq(parc, ",") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" || examined >= maxJumps {
 			continue
@@ -235,7 +235,7 @@ func TestI48ManquesAvantApres(t *testing.T) {
 	}
 	var tb, ta i48mChain
 	var totalAdd int
-	for _, dir := range strings.Split(parc, ",") {
+	for dir := range strings.SplitSeq(parc, ",") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue

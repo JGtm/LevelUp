@@ -159,10 +159,7 @@ func vgUneColonne(id int, cs []vfComp, temps []int64, slots []uint32, echMin int
 			vc.largMax = c.larg
 		}
 	}
-	vc.offsets = vc.largMin
-	if vc.offsets > vfOffsetMax {
-		vc.offsets = vfOffsetMax
-	}
+	vc.offsets = min(vc.largMin, vfOffsetMax)
 	if vc.offsets <= 0 {
 		return vgColonne{}, false
 	}

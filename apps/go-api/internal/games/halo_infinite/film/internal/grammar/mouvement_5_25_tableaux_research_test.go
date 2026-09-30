@@ -428,7 +428,7 @@ func t525ClasserRejets(t *testing.T, p *t525Passe, parID map[uint32]*t525Rejet) 
 		}
 		jamais[tete] += r.n
 	}
-	for tete := uint32(0); tete < 4; tete++ {
+	for tete := range uint32(4) {
 		if parTete[tete] == 0 {
 			continue
 		}

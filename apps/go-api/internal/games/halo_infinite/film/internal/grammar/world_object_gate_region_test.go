@@ -33,7 +33,7 @@ func wogRecord(region uint32, indexW int, axisW [3]uint, q [3]uint64) []byte {
 	w := &bitw{}
 	w.put(0, 2) // precHigh, index-sel
 	w.put(uint64(region), indexW)
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		w.put(q[a], int(axisW[a]))
 	}
 	w.pad(24)

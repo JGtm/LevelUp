@@ -94,7 +94,7 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 	}
 	t.Logf("B1 — ramasseurs NOMMES : %d / %d (%.1f %%)", named, len(pickups),
 		100*float64(named)/float64(len(pickups)))
-	for c := uint8(0); c < 8; c++ {
+	for c := range uint8(8) {
 		if byClass[c] == 0 {
 			continue
 		}

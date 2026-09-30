@@ -19,6 +19,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -66,18 +67,18 @@ func TestF0Sonde103(t *testing.T) {
 
 // f0RefsTexte formate les trois references.
 func f0RefsTexte(refs [3]r7RefVal) string {
-	out := ""
+	var out strings.Builder
 	for i, r := range refs {
 		if i > 0 {
-			out += " | "
+			out.WriteString(" | ")
 		}
 		if !r.Present {
-			out += fmt.Sprintf("ref%d=absente(dom %d)", i, r.Dom)
+			out.WriteString(fmt.Sprintf("ref%d=absente(dom %d)", i, r.Dom))
 			continue
 		}
-		out += fmt.Sprintf("ref%d=idx %d gen %d (dom %d, w %d)", i, r.Index, r.Gen, r.Dom, r.Width)
+		out.WriteString(fmt.Sprintf("ref%d=idx %d gen %d (dom %d, w %d)", i, r.Index, r.Gen, r.Dom, r.Width))
 	}
-	return out
+	return out.String()
 }
 
 // f0CreationsAutour rend les creations `ti=37` a moins de `rayon` µs de l instant donne.

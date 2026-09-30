@@ -386,7 +386,7 @@ func ctHasardN(incs []ctIncrement, n int, t0, t1 int64, horsTerminal bool) float
 	}
 	rng := rand.New(rand.NewSource(20260819)) //nolint:gosec // temoin de mesure, pas de securite
 	sum := 0.0
-	for k := 0; k < ctTirages; k++ {
+	for range ctTirages {
 		b := make([]int64, n)
 		for i := range b {
 			b[i] = t0 + rng.Int63n(t1-t0)

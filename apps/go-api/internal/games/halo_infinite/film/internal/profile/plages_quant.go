@@ -66,7 +66,7 @@ func QuantRangeCEBiped() Vec3Range {
 func QuantRangeParDefautDuBuild() Vec3Range {
 	b := BornesParDefautDuBuild()
 	var r Vec3Range
-	for axe := 0; axe < 3; axe++ {
+	for axe := range 3 {
 		r[axe] = AxisRange{Min: b[axe][0], Max: b[axe][1]}
 	}
 	return r

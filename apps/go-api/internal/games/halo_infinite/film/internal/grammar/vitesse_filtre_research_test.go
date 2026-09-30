@@ -452,7 +452,7 @@ func vitfChunks(t *testing.T) []int {
 		return nil
 	}
 	var out []int
-	for _, p := range strings.Split(raw, ",") {
+	for p := range strings.SplitSeq(raw, ",") {
 		n, err := strconv.Atoi(strings.TrimSpace(p))
 		if err != nil {
 			t.Fatalf("%s=%q : %q n'est pas un numéro de chunk", vitfChunksEnv, raw, p)

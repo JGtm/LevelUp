@@ -116,7 +116,7 @@ func TestNavpointTi12Plancher(t *testing.T) {
 	rng := rand.New(rand.NewSource(tpGraine))
 	aussiBien, pleins := 0, 0
 	cvs := make([]float64, 0, tpTirages)
-	for i := 0; i < tpTirages; i++ {
+	for range tpTirages {
 		c, v, _ := tpStatNulle(films, rng)
 		if c == 13 {
 			pleins++
@@ -334,7 +334,7 @@ func TestNavpointTi12PlancherVariantes(t *testing.T) {
 			grp.nom, total, couv, total, med/1000, cv)
 		rng := rand.New(rand.NewSource(tpGraine))
 		aussiBien, pleins := 0, 0
-		for i := 0; i < tpTirages; i++ {
+		for range tpTirages {
 			c, v, _ := tpStatNulle(films, rng)
 			if c == total {
 				pleins++

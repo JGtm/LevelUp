@@ -188,7 +188,7 @@ func i59t1Transitions(reads []i59t1Read) map[uint32]map[uint32]int {
 		series[r.slot] = append(series[r.slot], r)
 	}
 	out := map[uint32]map[uint32]int{}
-	for tag := uint32(0); tag < 4; tag++ {
+	for tag := range uint32(4) {
 		out[tag] = map[uint32]int{}
 	}
 	for slot, ss := range series {
@@ -228,7 +228,7 @@ func i59t1Datation(t *testing.T, reads []i59t1Read, slotFirst map[uint32]uint64,
 			}
 		}
 	}
-	for tag := uint32(0); tag < 4; tag++ {
+	for tag := range uint32(4) {
 		i59t1OffsetLine(t, fmt.Sprintf("transitions -> tag %d", tag), offs[tag])
 	}
 	i59t1OffsetLine(t, "transitions -> tag 1 SUR VIES DE PROPULSEUR (la population jugée)", propOffs)
@@ -277,7 +277,7 @@ func i59t1Payload(t *testing.T, reads []i59t1Read) {
 			byTag[r.tag].aligned++
 		}
 	}
-	for tag := uint32(0); tag < 4; tag++ {
+	for tag := range uint32(4) {
 		a := byTag[tag]
 		if a == nil || a.withAfter == 0 {
 			t.Logf("  tag %d : aucun record avec un composant APRÈS i59 — non testable ici", tag)

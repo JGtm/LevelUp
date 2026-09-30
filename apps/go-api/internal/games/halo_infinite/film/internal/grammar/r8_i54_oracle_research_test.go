@@ -284,7 +284,7 @@ func r8RandomFilmWitness(speeds r8SpeedIndex, b *r8Bucket) {
 		if len(list) < 20 {
 			continue
 		}
-		for n := 0; n < 40; n++ {
+		for range 40 {
 			at := list[rng.Intn(len(list))].t0
 			if p, k := speeds.peak(s, at, r8PeakWindowUS); k > 0 {
 				b.add(p, -1)

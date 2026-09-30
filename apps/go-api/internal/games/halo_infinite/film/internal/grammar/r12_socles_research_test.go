@@ -28,6 +28,7 @@ package grammar
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -85,14 +86,14 @@ func r12SoclesOneFilm(t *testing.T, dir string) {
 		if id == r12EqipRepulseur {
 			mark = "   <<<< REPULSEUR (eqip)"
 		}
-		var txt string
+		var txt strings.Builder
 		for i, ms := range v {
 			if i >= 30 {
 				break
 			}
-			txt += r12MMSS(ms) + " "
+			txt.WriteString(r12MMSS(ms) + " ")
 		}
-		t.Logf("    id=%08x  n=%-4d %s%s", id, len(v), txt, mark)
+		t.Logf("    id=%08x  n=%-4d %s%s", id, len(v), txt.String(), mark)
 	}
 
 	rep := parID[r12EqipRepulseur]

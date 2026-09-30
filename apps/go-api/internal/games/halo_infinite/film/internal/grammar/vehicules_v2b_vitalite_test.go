@@ -429,10 +429,7 @@ func v2bQuantile(sorted []float64, q float64) float64 {
 	if len(sorted) == 0 {
 		return 0
 	}
-	i := int(q * float64(len(sorted)-1))
-	if i < 0 {
-		i = 0
-	}
+	i := max(int(q*float64(len(sorted)-1)), 0)
 	if i >= len(sorted) {
 		i = len(sorted) - 1
 	}
@@ -445,7 +442,7 @@ func v2bParseFilms(t *testing.T) []v2bFilmSpec {
 		t.Skipf("V2B_FILMS absent : instrument vitalite saute")
 	}
 	var out []v2bFilmSpec
-	for _, tok := range strings.Split(raw, ",") {
+	for tok := range strings.SplitSeq(raw, ",") {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {
 			continue

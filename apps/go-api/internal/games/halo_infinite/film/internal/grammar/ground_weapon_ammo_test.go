@@ -42,7 +42,7 @@ func munI0(w *bitWriter) {
 	w.bit(0)                                                                  // i0 precHigh = 0
 	w.bit(0)                                                                  // i0 index-sel = 0 -> lit l'index de region
 	w.bits(0, int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().IndexW)) // index de region
-	for a := 0; a < 3; a++ {                                                  // les trois axes
+	for a := range 3 {                                                        // les trois axes
 		w.bits(0, int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]))
 	}
 	w.bits(0, 2) // i0 queue R(2)

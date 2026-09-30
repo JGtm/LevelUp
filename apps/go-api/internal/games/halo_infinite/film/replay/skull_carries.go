@@ -204,10 +204,7 @@ func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence carrierPres
 			cov.OutOfWindow++
 			continue
 		}
-		f1 := clampFrame(ctx.frameOfMatchMS(int64(r.t1MS)), ctx.frames)
-		if f1 < f0 {
-			f1 = f0
-		}
+		f1 := max(clampFrame(ctx.frameOfMatchMS(int64(r.t1MS)), ctx.frames), f0)
 		// LA DEMI-FENETRE DE TIC, AUX DEUX BORNES — posee APRES le rejet hors fenetre (un
 		// train qui commence avant l'axe reste hors fenetre : ce n'est pas la demi-fenetre qui
 		// doit l'y ramener) et AVANT le gate de presence (une seconde d'amorce hors de toute

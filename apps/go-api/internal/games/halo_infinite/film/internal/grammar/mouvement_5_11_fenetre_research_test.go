@@ -152,10 +152,7 @@ func m511Bits(pay []byte, at, n int) string {
 	br.Skip(at)
 	var sb strings.Builder
 	for reste := n; reste > 0; {
-		w := reste
-		if w > 32 {
-			w = 32
-		}
+		w := min(reste, 32)
 		fmt.Fprintf(&sb, "%0*b ", w, br.ReadBits(uint(w))) //nolint:gosec // largeur bornee a 32
 		reste -= w
 	}

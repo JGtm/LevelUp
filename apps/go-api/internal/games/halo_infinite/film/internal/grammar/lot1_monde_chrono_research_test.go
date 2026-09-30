@@ -75,10 +75,7 @@ func TestLot1MondeChrono(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	cfg := DefaultFrameConfig()
 	acc0, acc1 := newLot1chAccum(), newLot1chAccum()
 

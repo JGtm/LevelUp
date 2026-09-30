@@ -237,7 +237,7 @@ func ti47Candidates(t *testing.T) []int {
 		return nil
 	}
 	var out []int
-	for _, part := range strings.Split(v, ",") {
+	for part := range strings.SplitSeq(v, ",") {
 		w, err := strconv.Atoi(strings.TrimSpace(part))
 		if err != nil || w <= 0 || w > ti47MaxDecalage {
 			t.Fatalf("%s = %q : largeur candidate invalide", ti47RunEnv, part)

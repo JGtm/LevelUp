@@ -243,7 +243,7 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 		// — et un index fige a 1 bit. Au niveau 30 le pas de la loi passe sous 1e-4 : les DEUX
 		// tables donnent 26/26/26, quelles que soient les bornes, et l index est lu sur
 		// `DAT_144632be0` bits. Le portage unique ([lireE494]) le lit.
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			lireE494(br, niveauTransformDActif)
 		}
 		return variant, nil, true

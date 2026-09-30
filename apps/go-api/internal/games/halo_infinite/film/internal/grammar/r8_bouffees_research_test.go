@@ -209,7 +209,7 @@ func r8Measure(recs []r8Rec, anchors []r8Anchor) r8Lift {
 		if near {
 			lf.winRecs++
 		}
-		for c := 0; c < r8MaxComponent; c++ {
+		for c := range r8MaxComponent {
 			if r.mask&(1<<uint(c)) == 0 {
 				continue
 			}
@@ -269,7 +269,7 @@ func r8LogLift(t *testing.T, s r8MobSetup, titre string, lf r8Lift) {
 		nWin, nAll     int
 	}
 	var rows []row
-	for c := 0; c < r8MaxComponent; c++ {
+	for c := range r8MaxComponent {
 		if lf.inWin[c] < 10 || lf.inAll[c] == 0 {
 			continue
 		}

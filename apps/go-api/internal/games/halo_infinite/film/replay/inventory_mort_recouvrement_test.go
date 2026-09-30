@@ -156,7 +156,7 @@ func TestInventaireRecordVideCorpus(t *testing.T) {
 		t.Skip("corpus : INV_MORT_FILMS non defini")
 	}
 	totalVide, totalPlein := newInvMortStat(), newInvMortStat()
-	for _, dir := range strings.Split(raw, ",") {
+	for dir := range strings.SplitSeq(raw, ",") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue

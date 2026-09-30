@@ -336,7 +336,7 @@ func mpVerdict(t *testing.T, titre string, films []*mpFilm, garde func(string, i
 	}
 	rng := rand.New(rand.NewSource(tpGraine))
 	pleins, aussiBien := 0, 0
-	for i := 0; i < tpTirages; i++ {
+	for range tpTirages {
 		c, v := mpStatNulle(films, garde, rng)
 		if c == total {
 			pleins++

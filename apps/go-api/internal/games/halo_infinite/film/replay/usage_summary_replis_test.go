@@ -131,7 +131,7 @@ func docGardeNegative(episodes int) *ReplayDocument {
 			{Slot: 1, T: 10, Kind: EquipmentTaken, R: 8, From: NoAbilityRank},
 		},
 	}
-	for i := 0; i < episodes; i++ {
+	for i := range episodes {
 		t0 := 100 + i*100
 		doc.EquipmentEpisodes = append(doc.EquipmentEpisodes,
 			EquipmentEpisode{Slot: 1, Fam: EquipFamilyCamo, T0: t0, T1: t0 + 10})
@@ -167,7 +167,7 @@ func TestReplisDuResumeDUsageSurLesHuitBuilds(t *testing.T) {
 	totaux := map[fallback.Nom]int{}
 	for _, b := range goldenBuilds() {
 		g, entry := chargerGoldenBuild(t, b)
-		s := BuildUsageSummary(ptrDocument(assemblerGoldenBuild(t, b, g, entry)))
+		s := BuildUsageSummary(new(assemblerGoldenBuild(t, b, g, entry)))
 		ligne := make([]string, 0, 3)
 		for _, d := range s.Match.Fallbacks {
 			totaux[d.Nom] += d.Declenchements
@@ -189,4 +189,6 @@ func TestReplisDuResumeDUsageSurLesHuitBuilds(t *testing.T) {
 }
 
 // ptrDocument rend l'adresse d'un document assemble — `BuildUsageSummary` prend un pointeur.
-func ptrDocument(d ReplayDocument) *ReplayDocument { return &d }
+//
+//go:fix inline
+func ptrDocument(d ReplayDocument) *ReplayDocument { return new(d) }

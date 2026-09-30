@@ -55,7 +55,7 @@ func TestNeutralDeathNatureCoverage(t *testing.T) {
 	if spec == "" {
 		t.Skipf("mesure non demandee : %s vide", neutralDeathFilmsEnv)
 	}
-	for _, item := range strings.Split(spec, ",") {
+	for item := range strings.SplitSeq(spec, ",") {
 		dir := strings.TrimSpace(item)
 		if dir == "" {
 			continue

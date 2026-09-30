@@ -298,7 +298,7 @@ func TestKFGramOffset(t *testing.T) {
 		}
 		t.Logf("  meilleur decalage de corps : %d bits -> %d marches exactes sur %d",
 			best, bestN, bounded)
-		for off := 0; off < kfGramOffsetMax; off++ {
+		for off := range kfGramOffsetMax {
 			if exact[off] > 0 || tiOK[off] > bounded/2 {
 				t.Logf("    decalage %3d : ti relu correct %4d · marches exactes %4d",
 					off, tiOK[off], exact[off])
@@ -324,7 +324,7 @@ func kfGramSweep(reg *Registry, pays [][]byte, ti int) (
 			want := recs[i+1].Bit
 			bounded++
 			lens[want-r.Bit]++
-			for off := 0; off < kfGramOffsetMax; off++ {
+			for off := range kfGramOffsetMax {
 				if int(source.BitsBourres(pay, r.Bit+off, 6)) == ti {
 					tiOK[off]++
 				}

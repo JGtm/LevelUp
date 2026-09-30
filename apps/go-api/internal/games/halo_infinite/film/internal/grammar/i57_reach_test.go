@@ -35,6 +35,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -162,7 +163,7 @@ func i57MatchDense(
 		return 0, 0, nil, false
 	}
 	var idx []int
-	for b := 0; b < i57DenseMaskBits; b++ {
+	for b := range i57DenseMaskBits {
 		if uint32(source.BitsStricts(pay, maskAt+b, 1)) == 1 {
 			idx = append(idx, b)
 		}
@@ -365,12 +366,7 @@ func i57Hit(eps []i56Episode, samples []i57Sample, val uint32, shift int64) int 
 
 // i57InMask dit si le masque du record annonce le composant i57.
 func i57InMask(idx []int) bool {
-	for _, id := range idx {
-		if id == i57Index {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(idx, i57Index)
 }
 
 // i57Report publie les trois causes séparément. Un taux sans son dénominateur ne se juge pas.

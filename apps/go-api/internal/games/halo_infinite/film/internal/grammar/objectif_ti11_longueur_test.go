@@ -349,7 +349,7 @@ func ti11ResiduPayload(pay []byte, reg *Registry, ecarts map[int]int, parNb map[
 			continue
 		}
 		nb := 0
-		for i := 0; i < ti11Composants; i++ {
+		for i := range ti11Composants {
 			if tr.Mask>>uint(i)&1 == 1 {
 				nb++
 			}

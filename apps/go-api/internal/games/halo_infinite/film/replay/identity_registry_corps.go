@@ -146,7 +146,7 @@ func corpsDuSlotA(corps map[uint32]corpsLu, slot uint32, tUS int64) corpsDuSlot 
 // COLLISION (deux joueurs dans un corps indiscernable) et, sinon, si le siege est RECYCLE (deux
 // joueurs dans deux corps etablis distincts).
 func classerLeSlot(lives []lifeSpan, vies []int, corps map[uint32]corpsLu) (collision, recycle bool) {
-	for a := 0; a < len(vies); a++ {
+	for a := range vies {
 		la := lives[vies[a]]
 		for b := a + 1; b < len(vies); b++ {
 			lb := lives[vies[b]]

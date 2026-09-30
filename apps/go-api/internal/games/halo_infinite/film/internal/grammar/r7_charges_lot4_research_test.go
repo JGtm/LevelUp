@@ -188,7 +188,7 @@ func r7SkipChargeLot4(br *Lecteur, typ int, ctx r7Ctx) bool {
 
 	// --- 32 unit_teleported : deux vecteurs quantifies classe 0x10 ---
 	case 32:
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			if !r7VecteurQuantifie(br, ctx, 16) {
 				return false
 			}

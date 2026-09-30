@@ -25,6 +25,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -85,7 +86,7 @@ func r8MobResolve(t *testing.T, dir string) r8MobSetup {
 		t.Fatalf("archetype biped illisible : %v", err)
 	}
 	idx := -1
-	for id := 0; id < 64; id++ {
+	for id := range 64 {
 		if arch.component(id) == r8CompMobilityAction {
 			idx = id
 			break
@@ -160,7 +161,7 @@ func r8MirrorBody(br *Lecteur, ev *r8MobEvent) {
 	br.ReadBits(64)
 	br.ReadBits(32)
 	lireE494(br, niveauPosition)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		consume140c1e9d4(br, 12)
 	}
 	br.ReadBits(24)
@@ -216,10 +217,5 @@ func r8ScanMobility(t *testing.T, s r8MobSetup) ([]r8MobEvent, int, int) {
 }
 
 func r8HasIndex(idx []int, want int) bool {
-	for _, id := range idx {
-		if id == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(idx, want)
 }

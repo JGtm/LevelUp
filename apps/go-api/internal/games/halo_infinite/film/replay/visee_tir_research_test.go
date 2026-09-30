@@ -114,7 +114,7 @@ type tirClasse struct {
 
 func (c *tirClasse) ajoute(r tirRecord) {
 	c.apparies++
-	for b := 0; b < tirHeadBits; b++ {
+	for b := range tirHeadBits {
 		if r.head[b/64]>>(63-b%64)&1 == 1 {
 			c.bits[b]++
 		}
@@ -183,10 +183,7 @@ func TestViseeTirFatal(t *testing.T) {
 // tirTraiteCorpus repartit les films sur un pool de workers ; aucun etat global de decodage
 // n'est touche (voir l'en-tete), donc aucun verrou de process n'est pris.
 func tirTraiteCorpus(dirs []string, root string) []tirBilanFilm {
-	workers := runtime.NumCPU()
-	if workers > 8 {
-		workers = 8
-	}
+	workers := min(runtime.NumCPU(), 8)
 	in := make(chan string, len(dirs))
 	for _, d := range dirs {
 		in <- d
@@ -196,16 +193,14 @@ func tirTraiteCorpus(dirs []string, root string) []tirBilanFilm {
 	var out []tirBilanFilm
 	var wg sync.WaitGroup
 	for w := 0; w < workers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for d := range in {
 				b := tirTraiteFilm(filepath.Join(root, d), d)
 				mu.Lock()
 				out = append(out, b)
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	sort.Slice(out, func(i, j int) bool { return out[i].film < out[j].film })
@@ -479,7 +474,7 @@ func tirEcrisTSV(t *testing.T, zoome, nonZoome, fond tirClasse) {
 	}
 	var sb strings.Builder
 	sb.WriteString("bit\tzoome_n\tzoome_taux\tnonzoome_n\tnonzoome_taux\tfond_taux\n")
-	for b := 0; b < tirHeadBits; b++ {
+	for b := range tirHeadBits {
 		rz := tirTauxDe(zoome.bits[b], zoome.apparies)
 		rn := tirTauxDe(nonZoome.bits[b], nonZoome.apparies)
 		rf := tirTauxDe(fond.bits[b], fond.apparies)

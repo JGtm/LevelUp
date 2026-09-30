@@ -23,7 +23,7 @@ func LabelHash(name string) int32 {
 	key := []byte(name)
 	var h uint32
 	nblocks := len(key) / 4
-	for i := 0; i < nblocks; i++ {
+	for i := range nblocks {
 		k := binary.LittleEndian.Uint32(key[i*4:])
 		k *= murmurC1
 		k = k<<15 | k>>17

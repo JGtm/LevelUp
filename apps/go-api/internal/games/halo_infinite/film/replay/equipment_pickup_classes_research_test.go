@@ -65,10 +65,7 @@ func eqcGrenadeRise(deltas []types.InventoryDelta, slot uint32, at uint64, decal
 	if avant == nil || apres == nil {
 		return false
 	}
-	n := len(avant)
-	if len(apres) < n {
-		n = len(apres)
-	}
+	n := min(len(apres), len(avant))
 	for i := 0; i < n; i++ {
 		if apres[i] > avant[i] {
 			return true
@@ -142,7 +139,7 @@ func TestEquipmentPickupClassSemantics(t *testing.T) {
 			}
 		}
 	}
-	for c := uint8(0); c < 8; c++ {
+	for c := range uint8(8) {
 		e := par[c]
 		if e == nil {
 			continue

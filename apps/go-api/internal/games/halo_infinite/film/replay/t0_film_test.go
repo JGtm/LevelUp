@@ -224,7 +224,7 @@ func TestDetectT0FilmFenetreGlissanteOublieLesPasAnciens(t *testing.T) {
 	// plafonne a 0,25 m. C'est ce qui distingue une derive lente d'un depart.
 	derive := func(xuid string) T0FilmTrack {
 		pts := make([]T0FilmPoint, 0, 8)
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			pts = append(pts, T0FilmPoint{T: 10 + i*6, X: float32(i) * 0.25})
 		}
 		return T0FilmTrack{XUID: xuid, Points: pts}

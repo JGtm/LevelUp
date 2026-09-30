@@ -202,7 +202,7 @@ func TestCleDeCuisson_ChaqueChampDeLEntreeGouverne(t *testing.T) {
 		"Region":          func(m *profile.MapQuantEntry) { m.Region++ },
 		"RegionIndexBits": func(m *profile.MapQuantEntry) { m.RegionIndexBits = m.EffectiveRegionIndexBits() + 1 },
 	}
-	for _, champ := range reflect.VisibleFields(reflect.TypeOf(profile.MapQuantEntry{})) {
+	for _, champ := range reflect.VisibleFields(reflect.TypeFor[profile.MapQuantEntry]()) {
 		if _, ok := mutations[champ.Name]; !ok {
 			t.Errorf("le champ %s de MapQuantEntry n a pas de mutation dans ce test : un champ neuf "+
 				"de l entree gouverne-t-il le decodage ? l ajouter ici ET a `empreinteDeCle`", champ.Name)

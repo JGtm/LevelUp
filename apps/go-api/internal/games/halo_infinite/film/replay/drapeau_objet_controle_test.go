@@ -327,7 +327,7 @@ func objDrapeauSocles(t *testing.T, id string) []PointObjective {
 // fenetre que le reste du controle — aucun seuil neuf.
 func objDrapeauResidu(vies []flagFreeLife, i int) bool {
 	x, y := vies[i].First()
-	for j := 0; j < i; j++ {
+	for j := range i {
 		if vies[i].T0US < vies[j].T1US ||
 			vies[i].T0US-vies[j].T1US > objDrapeauLacherFenetreUS {
 			continue

@@ -53,6 +53,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
@@ -346,10 +347,7 @@ func zone56LogJauge(t *testing.T, canaux map[zone56Canal][]zoneSample, camps []z
 	})
 	t.Log("| candidat (pendant la rampe) | reference (apres le sommet) | abouties | accord | desaccord | avortees vues | constant | valeurs |")
 	t.Log("|---|---|---:|---:|---:|---:|---:|---|")
-	n := len(lignes)
-	if n > 6 {
-		n = 6
-	}
+	n := min(len(lignes), 6)
 	for _, l := range lignes[:n] {
 		t.Logf("| %s | %s | %d | %d | %d | %d | %d | %s |",
 			l.cand, l.ref, l.b.abouties, l.b.accord, l.b.desaccord, l.b.avortees,
@@ -449,16 +447,13 @@ func zone56Valeurs(m map[uint64]int) string {
 		vals = append(vals, v)
 	}
 	sort.Slice(vals, func(i, j int) bool { return m[vals[i]] > m[vals[j]] })
-	n := len(vals)
-	if n > 6 {
-		n = 6
-	}
-	var s string
+	n := min(len(vals), 6)
+	var s strings.Builder
 	for _, v := range vals[:n] {
-		s += fmt.Sprintf(" %d(x%d)", v, m[v])
+		s.WriteString(fmt.Sprintf(" %d(x%d)", v, m[v]))
 	}
 	if len(vals) > n {
-		s += fmt.Sprintf(" +%d", len(vals)-n)
+		s.WriteString(fmt.Sprintf(" +%d", len(vals)-n))
 	}
-	return s
+	return s.String()
 }

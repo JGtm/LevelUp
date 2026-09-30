@@ -91,7 +91,7 @@ func hwResolve(t *testing.T, dir string) hwSetup {
 		t.Fatalf("archetype biped illisible : %v", err)
 	}
 	widx, sel := map[int]bool{}, -1
-	for id := 0; id < 64; id++ {
+	for id := range 64 {
 		switch arch.component(id) {
 		case compWeaponStateTypeInfo:
 			widx[id] = true

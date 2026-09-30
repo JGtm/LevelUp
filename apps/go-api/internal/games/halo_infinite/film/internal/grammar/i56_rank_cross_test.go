@@ -153,7 +153,7 @@ func i56xDropsBySlot(energy []i56xSample) map[uint32]int {
 	}
 	series := map[key][]i56xSample{}
 	for _, e := range energy {
-		for c := 0; c < AbilityEnergyCharges; c++ {
+		for c := range AbilityEnergyCharges {
 			if e.ch[c] != AbilityEnergyUnarmed {
 				series[key{e.slot, c}] = append(series[key{e.slot, c}], e)
 			}

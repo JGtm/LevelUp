@@ -330,7 +330,7 @@ func mntSecond(r ObjectiveRead) int {
 // ajouter range UNE lecture dans une voie.
 func (v *mntVoieBilan) ajouter(slot uint32, e mntEch) {
 	v.lectures++
-	for k := 0; k < 2; k++ {
+	for k := range 2 {
 		v.histo[k][e.v[k]]++
 		if mntLegal(e.v[k]) {
 			v.legaux[k]++
@@ -360,7 +360,7 @@ func (v *mntVoieBilan) finaliser() {
 		for _, e := range s {
 			vus[e.tMS] = true
 		}
-		for k := 0; k < 2; k++ {
+		for k := range 2 {
 			if mntVarie(s, k) {
 				v.slotsVariables[k]++
 			}

@@ -10,6 +10,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -17,17 +18,18 @@ import (
 // invente sa propre forme ne dirait rien du fichier réel.
 func sidecarFond(t *testing.T, dir, cle string, noms ...string) {
 	t.Helper()
-	blob := `{"schemaVersion":1,"module":"` + cle + `","mapNames":[`
+	var blob strings.Builder
+	blob.WriteString(`{"schemaVersion":1,"module":"` + cle + `","mapNames":[`)
 	for i, n := range noms {
 		if i > 0 {
-			blob += ","
+			blob.WriteString(",")
 		}
-		blob += `"` + n + `"`
+		blob.WriteString(`"` + n + `"`)
 	}
-	blob += `],"image":"` + cle + `.png","source":"test","generatedAt":"2026-08-27T10:00:00Z",` +
+	blob.WriteString(`],"image":"` + cle + `.png","source":"test","generatedAt":"2026-08-27T10:00:00Z",` +
 		`"style":"encre","calibration":{"metersPerPixel":0.05,"originX":-1,"originY":1,` +
-		`"widthPx":10,"heightPx":10,"convention":"test"},"stats":{"anchors":1}}`
-	if err := os.WriteFile(filepath.Join(dir, cle+".json"), []byte(blob), 0o644); err != nil {
+		`"widthPx":10,"heightPx":10,"convention":"test"},"stats":{"anchors":1}}`)
+	if err := os.WriteFile(filepath.Join(dir, cle+".json"), []byte(blob.String()), 0o644); err != nil {
 		t.Fatalf("écriture sidecar %s : %v", cle, err)
 	}
 }

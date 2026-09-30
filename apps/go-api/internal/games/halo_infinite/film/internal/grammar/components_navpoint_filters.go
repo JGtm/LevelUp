@@ -106,7 +106,7 @@ func navpointFilterOrderBits(v bool) uint {
 // boucles d'ordre de `i2` et `i3`/`i4`.
 func navpointFilterCount(mask uint64) int {
 	n := 0
-	for i := 0; i < navpointFilterSlots; i++ {
+	for i := range navpointFilterSlots {
 		if mask>>uint(i)&1 != 0 {
 			n++
 		}
@@ -120,7 +120,7 @@ func navpointFilterCount(mask uint64) int {
 func consumeFilterSet(br *Lecteur, v bool) (mask uint64, ok bool) {
 	mask = br.ReadBits(navpointFilterMaskBits)
 	br.ReadBits(navpointFilterFlagBits(v))
-	for i := 0; i < navpointFilterSlots; i++ {
+	for i := range navpointFilterSlots {
 		if mask>>uint(i)&1 == 0 {
 			continue
 		}

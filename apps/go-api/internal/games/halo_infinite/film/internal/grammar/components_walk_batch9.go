@@ -26,7 +26,7 @@ package grammar
 // lisibles, sans les interpreter.
 func consumeManagedObjectBoundaryVisibility(br *Lecteur) {
 	var flags uint64
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		if br.ReadBit() {
 			flags |= 1 << uint(i)
 		}

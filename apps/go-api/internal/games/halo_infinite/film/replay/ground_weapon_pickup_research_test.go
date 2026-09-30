@@ -43,6 +43,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 
@@ -174,12 +175,7 @@ func gwPickupLoadouts(t *testing.T, dir string) map[uint64]map[uint32][]string {
 }
 
 func gwPickupHasFamily(in []string, want string) bool {
-	for _, f := range in {
-		if f == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(in, want)
 }
 
 // gwPickupObjects rend les apparitions retenues, bornees et datees — PAR LA CHAINE DE

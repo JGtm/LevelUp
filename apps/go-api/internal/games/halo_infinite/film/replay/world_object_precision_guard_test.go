@@ -173,8 +173,8 @@ func funcBody(src, head string) (string, bool) {
 		return "", false
 	}
 	rest := src[i:]
-	if end := strings.Index(rest, "\n}\n"); end >= 0 {
-		return rest[:end], true
+	if before, _, ok := strings.Cut(rest, "\n}\n"); ok {
+		return before, true
 	}
 	return rest, true
 }

@@ -149,10 +149,7 @@ func TestLot1DegatsType1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks (damage_section_response, type 1) ==", filepath.Base(dir), n)
 
 	var (
@@ -322,10 +319,7 @@ func TestLot1DegatsType1ArmesLourdes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks (armes lourdes via type 1) ==", filepath.Base(dir), n)
 
 	shots := attribCollectShots(t, dir, n)

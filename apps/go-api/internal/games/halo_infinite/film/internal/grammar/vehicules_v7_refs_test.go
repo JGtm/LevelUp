@@ -247,7 +247,7 @@ func (sc *v7Scan) sample(ty int, pay []byte, at uint64, veh, gnd v7Bande) {
 	t.n++
 	bits := len(pay) * 8
 	for iw, w := range v7Widths {
-		for variant := 0; variant < 2; variant++ {
+		for variant := range 2 {
 			vBase, gBase := uint32(0), uint32(0)
 			if variant == 1 {
 				vBase, gBase = veh.min, gnd.min

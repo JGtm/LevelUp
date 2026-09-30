@@ -34,6 +34,7 @@ package grammar
 
 import (
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 
@@ -108,12 +109,7 @@ func e191cUnFilmListe(t *testing.T, court string, blanchis map[string]int, suspe
 
 // e191cDansB dit si l archetype appartient a la population (B).
 func e191cDansB(ti int) bool {
-	for _, v := range e191cSansDesync {
-		if v == ti {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(e191cSansDesync, ti)
 }
 
 // e191cUnique rend la liste triee sans doublon.

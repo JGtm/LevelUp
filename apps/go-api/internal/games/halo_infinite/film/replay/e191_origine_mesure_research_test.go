@@ -165,7 +165,7 @@ func e191FilmsDemandes() []e191Film {
 		return e191Films()
 	}
 	garde := map[string]bool{}
-	for _, id := range strings.Split(spec, ",") {
+	for id := range strings.SplitSeq(spec, ",") {
 		if id = strings.TrimSpace(id); id != "" {
 			garde[id] = true
 		}

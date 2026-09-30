@@ -189,7 +189,7 @@ func probeRecenseKF(dir string, n int) probeCensus {
 func probeResoutArchetypes(t *testing.T, reg *Registry, c probeCensus) [probeRoleCount]*probeArch {
 	t.Helper()
 	var out [probeRoleCount]*probeArch
-	for r := 0; r < probeRoleCount; r++ {
+	for r := range probeRoleCount {
 		var vus []int
 		for _, a := range reg.Archetypes {
 			if len(a.indicesOf(probeRoleNoms[r].comp)) > 0 {

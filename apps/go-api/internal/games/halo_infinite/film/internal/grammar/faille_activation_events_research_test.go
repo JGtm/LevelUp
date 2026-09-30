@@ -37,6 +37,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"math"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -149,10 +150,7 @@ func failleRapport117(t *testing.T, t117 []failleEvOcc, origine uint64) {
 
 // failleTete copie les premiers octets du payload (bornés) pour le rapport et les sondes.
 func failleTete(pay []byte) []byte {
-	n := 24
-	if len(pay) < n {
-		n = len(pay)
-	}
+	n := min(len(pay), 24)
 	out := make([]byte, n)
 	copy(out, pay[:n])
 	return out
@@ -229,14 +227,14 @@ func lenOccs(occs []failleEvOcc, ancre int) int {
 }
 
 func joinParts(parts []string) string {
-	out := ""
+	var out strings.Builder
 	for i, p := range parts {
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += p
+		out.WriteString(p)
 	}
-	return out
+	return out.String()
 }
 
 // failleRefsHypotheses tente le décodage des trois références gardées d'un événement 102/103

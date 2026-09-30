@@ -86,7 +86,7 @@ func TestBancBitProjectile(t *testing.T) {
 
 func bitProjFilmsDeEnv(s string) []bitProjFilm {
 	var out []bitProjFilm
-	for _, part := range strings.Split(s, ",") {
+	for part := range strings.SplitSeq(s, ",") {
 		id, carte, ok := strings.Cut(strings.TrimSpace(part), "=")
 		if !ok || id == "" || carte == "" {
 			continue
@@ -196,7 +196,7 @@ func bitProjLis(
 		return e, false
 	}
 	off := rec.After + porte
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		q := source.BitsTolerants(pay, off, int(w[a]))
 		if q == 0 || q == (uint64(1)<<w[a])-1 {
 			return e, false
@@ -285,7 +285,7 @@ func bitProjDetaille(t *testing.T, e profile.MapQuantEntry, prod []bpEchantillon
 		}
 		n++
 		var xor [3]uint64
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			xor[a] = p.a.q[a] ^ p.b.q[a]
 		}
 		t.Logf("%-6d %-5d %-10d | %-22s | %-22s | %s  pas %.2f m (dx %.2f dy %.2f)",

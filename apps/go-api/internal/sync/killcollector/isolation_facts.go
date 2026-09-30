@@ -312,10 +312,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	// toute facon (meme garde), mais melanger cette cause dans `sansLieu` ferait croire a un
 	// probleme localise a chaque victime plutot qu'a un pont casse pour le match entier.
 	if !mat.registre.PontPubliable() {
-		ecarts.pontNonPublicable = len(journal) - ecarts.sansEquipe
-		if ecarts.pontNonPublicable < 0 {
-			ecarts.pontNonPublicable = 0
-		}
+		ecarts.pontNonPublicable = max(len(journal)-ecarts.sansEquipe, 0)
 		return nil, ecarts
 	}
 	ctxs := replay.ContextesDesMorts(replay.EntreeContexteMorts{
@@ -328,10 +325,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	})
 	// LE RESTE EST « SANS LIEU » : la mort est resolue, sa victime a une equipe, et pourtant
 	// aucun contexte n'est sorti — c'est que le film ne la montrait pas a cet instant.
-	ecarts.sansLieu = len(journal) - ecarts.sansEquipe - len(ctxs)
-	if ecarts.sansLieu < 0 {
-		ecarts.sansLieu = 0
-	}
+	ecarts.sansLieu = max(len(journal)-ecarts.sansEquipe-len(ctxs), 0)
 	out := make([]persist.DeathContextInsert, 0, len(ctxs))
 	for _, c := range ctxs {
 		out = append(out, persist.DeathContextInsert{

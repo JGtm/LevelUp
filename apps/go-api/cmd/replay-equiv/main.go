@@ -195,7 +195,7 @@ func dossierEquivalence(repoRoot string) string {
 // filmsDemandes rend la liste short8 de `-films`, vide si le drapeau ne l'est pas.
 func filmsDemandes(liste string) []string {
 	var out []string
-	for _, part := range strings.Split(liste, ",") {
+	for part := range strings.SplitSeq(liste, ",") {
 		if s := strings.TrimSpace(part); s != "" {
 			out = append(out, s)
 		}

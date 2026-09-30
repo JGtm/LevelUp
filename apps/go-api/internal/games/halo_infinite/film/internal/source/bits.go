@@ -115,7 +115,7 @@ func (b *Bits) ReadBits(n uint) uint64 {
 // chemin par mot ne couvre pas.
 func (b *Bits) readBitsLoop(n uint) uint64 {
 	var r uint64
-	for i := uint(0); i < n; i++ {
+	for range n {
 		var bit uint64
 		if idx := b.pos >> 3; idx < len(b.buf) {
 			bit = uint64(b.buf[idx]>>(7-(uint(b.pos)&7))) & 1
@@ -201,7 +201,7 @@ func BitsTolerants(d []byte, pos, n int) uint64 {
 		return BitsAt(d, pos, uint(n))
 	}
 	var v uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v = v<<1 | uint64(BitAt(d, pos+i))
 	}
 	return v
@@ -231,7 +231,7 @@ func BitsBourres(d []byte, pos, n int) uint64 {
 // panique ; largeur > 64 : seuls les 64 derniers bits lus sont rendus).
 func bitsBourresBoucle(d []byte, pos, n int) uint64 {
 	var r uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p := pos + i
 		var bit uint64
 		if idx := p >> 3; idx < len(d) {
@@ -264,7 +264,7 @@ func BitsStricts(d []byte, pos, n int) uint64 {
 // premier bit hors du tampon.
 func bitsStrictsBoucle(d []byte, pos, n int) uint64 {
 	var v uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p := pos + i
 		v = v<<1 | uint64(d[p>>3]>>(7-uint(p&7))&1)
 	}
@@ -293,7 +293,7 @@ func BitsTronques(d []byte, pos, n int) uint64 {
 // conventions de bord que le chemin par mot ne couvre pas (position negative, largeur > 64).
 func bitsTronquesBoucle(d []byte, pos, n int) uint64 {
 	var r uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		bi := (pos + i) / 8
 		if bi >= len(d) {
 			return r

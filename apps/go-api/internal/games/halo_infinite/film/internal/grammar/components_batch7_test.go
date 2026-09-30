@@ -199,7 +199,7 @@ func i9Cases() []i9Case {
 				w.put(0x02, 8) // type de cle, octet NON masque
 				w.put(0x07, 8) // type de valeur
 				w.put(0x02, 8) // compte LEB128 = 2
-				for i := 0; i < 2; i++ {
+				for range 2 {
 					w.put(0xa5, 8)
 					w.put(0xdeadbeef, 32)
 				}

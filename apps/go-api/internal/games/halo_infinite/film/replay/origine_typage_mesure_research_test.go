@@ -159,14 +159,14 @@ func TestOrigineTypageParLaMesure(t *testing.T) {
 			noms = append(noms, f)
 		}
 		sort.Strings(noms)
-		ligne := ""
+		var ligne strings.Builder
 		for i, n := range noms {
 			if i > 0 {
-				ligne += " "
+				ligne.WriteString(" ")
 			}
-			ligne += n + ":" + itoa(fams[n])
+			ligne.WriteString(n + ":" + itoa(fams[n]))
 		}
-		t.Logf("0x%08X  %s", uint32(k), ligne)
+		t.Logf("0x%08X  %s", uint32(k), ligne.String())
 	}
 	t.Log("LECTURE : une famille `grenade_*` type le point en GRENADE, toute autre famille du " +
 		"manifeste le type en EQUIPEMENT. Un point qui ne recoit que des familles d'armes " +
@@ -272,18 +272,18 @@ func TestOrigineTypageParLesRamassages(t *testing.T) {
 			noms = append(noms, f)
 		}
 		sort.Strings(noms)
-		ligne := ""
+		var ligne strings.Builder
 		for i, n := range noms {
 			if i > 0 {
-				ligne += " "
+				ligne.WriteString(" ")
 			}
-			ligne += n + ":" + itoa(fams[n])
+			ligne.WriteString(n + ":" + itoa(fams[n]))
 		}
 		marque := ""
 		if _, ok := mapvarPadFamilyName(k); ok {
 			marque = "   <<< SOCLE D'ARME PROUVE — un ramassage non-arme ici est un signal"
 		}
-		t.Logf("0x%08X  %s%s", uint32(k), ligne, marque)
+		t.Logf("0x%08X  %s%s", uint32(k), ligne.String(), marque)
 	}
 }
 

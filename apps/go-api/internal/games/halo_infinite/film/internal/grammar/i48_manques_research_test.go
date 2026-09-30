@@ -196,7 +196,7 @@ func i48mStrict(s i48mSetup, usMin, usMax uint64) (ems, unread []i48mCand) {
 // (bit k = composant k) ou inverse (bit k = composant 63-k), et rend les index leves.
 func i48mDenseIdx(pay []byte, at int, msb bool) []int {
 	var idx []int
-	for k := 0; k < 64; k++ {
+	for k := range 64 {
 		if uint32(source.BitsStricts(pay, at+k, 1)) == 1 {
 			comp := k
 			if msb {
@@ -294,7 +294,7 @@ func i48mMatchAt(s i48mSetup, pay []byte, p, total int) (i48mCand, int, bool) {
 func i48mAscending(pay []byte, at, count int) ([]int, bool) {
 	out := make([]int, 0, count)
 	prev := -1
-	for k := 0; k < count; k++ {
+	for k := range count {
 		idx := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if idx <= prev {
 			return nil, false

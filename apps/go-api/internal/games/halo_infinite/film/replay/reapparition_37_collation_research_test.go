@@ -73,7 +73,7 @@ func TestReapparition37Collation(t *testing.T) {
 		t.Skip("REAP_FILM_ROOT et REAP_COLLATION requis — aucun film ouvert sans eux")
 	}
 	cat := reap37Catalogue(t)
-	for _, spec := range strings.Split(liste, ",") {
+	for spec := range strings.SplitSeq(liste, ",") {
 		spec = strings.TrimSpace(spec)
 		if spec == "" {
 			continue

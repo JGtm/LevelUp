@@ -29,6 +29,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -228,9 +229,9 @@ func v4ArmesLigne(m map[string]int) string {
 		}
 		return keys[i] < keys[j]
 	})
-	s := ""
+	var s strings.Builder
 	for _, k := range keys {
-		s += fmt.Sprintf("%s=%d ", k, m[k])
+		s.WriteString(fmt.Sprintf("%s=%d ", k, m[k]))
 	}
-	return s
+	return s.String()
 }

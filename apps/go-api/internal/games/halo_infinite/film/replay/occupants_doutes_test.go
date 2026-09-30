@@ -152,7 +152,7 @@ func posesSousDoute(t *testing.T, sansBrewDog bool) ([]RosterEntry, SeatCoverage
 // par equipe (le temoin est un 4 contre 4).
 func verifierLaCapacite(t *testing.T, roster []RosterEntry) {
 	t.Helper()
-	for f := 0; f < temoinFrames; f++ {
+	for f := range temoinFrames {
 		for eq, noms := range affichesA(roster, f) {
 			if len(noms) > 4 {
 				t.Fatalf("frame %d : l'equipe %d affiche %d fiches %v — jamais plus que ses 4 places",

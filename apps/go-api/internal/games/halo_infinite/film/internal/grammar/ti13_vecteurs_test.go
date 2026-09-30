@@ -364,7 +364,7 @@ func TestTi13HookConsommeLesMemesBitsSansHook(t *testing.T) {
 	}
 	// Un octet de tete par tag possible : la garde doit tenir sur les seize branches, pas
 	// seulement sur celle qui domine le corpus.
-	for tag := 0; tag < 16; tag++ {
+	for tag := range 16 {
 		octets := []byte{byte(tag << 4), 0xA5, 0x3C, 0xF0, 0x0F, 0x5A}
 		for _, c := range cas {
 			SetManagedPropertyHook(nil)

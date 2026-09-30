@@ -108,10 +108,7 @@ func TestDetoPreuveFindRockets(t *testing.T) {
 	}
 	sort.Slice(stats, func(i, j int) bool { return stats[i].rockets > stats[j].rockets })
 	t.Logf("== %d films scannes · %d avec au moins un tir de lanceur explosif ==", scanned, len(stats))
-	top := rockFinderTop
-	if len(stats) < top {
-		top = len(stats)
-	}
+	top := min(len(stats), rockFinderTop)
 	for i := 0; i < top; i++ {
 		s := stats[i]
 		t.Logf("%2d. %s · %d tirs explosifs (%d premiers chunks) · %d FilmIndex · axe %v · %d chunks",

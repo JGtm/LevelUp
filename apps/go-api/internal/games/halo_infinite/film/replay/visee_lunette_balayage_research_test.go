@@ -124,7 +124,7 @@ type adsTally struct {
 
 func (a *adsTally) ajoute(c adsClasse, masque uint64) {
 	a.instants[c]++
-	for id := 0; id < adsSweepMaxIndex; id++ {
+	for id := range adsSweepMaxIndex {
 		if masque&(1<<uint(id)) != 0 {
 			a.vus[c][id]++
 		}

@@ -6,6 +6,8 @@ package grammar
 // lot1_projectiles_research_test.go (scinde pour le seuil de 500 lignes). Voir l'en-tete de ce
 // fichier-la pour la grammaire lue dans l'exe, les seuils et les mesures.
 
+import "strings"
+
 import "testing"
 
 // La reference d'en-tete unique (slot 0) est du DOMAINE 5 (commutateur 0x1408096ec :
@@ -102,17 +104,18 @@ func projCalibrateWidth(t *testing.T, dir string, n int) uint {
 		}
 	}
 	best, bestRate := widths[0], -1.0
-	line := "   balayage largeur dom5 (slots 1+2 absents) :"
+	var line strings.Builder
+	line.WriteString("   balayage largeur dom5 (slots 1+2 absents) :")
 	for _, w := range widths {
 		a := by[w]
 		r := lot1Pct(a.bothAbsent, a.tot)
-		line += " w" + itoa(int(w)) + "=" + itoa(int(r)) + "%"
+		line.WriteString(" w" + itoa(int(w)) + "=" + itoa(int(r)) + "%")
 		if r > bestRate {
 			best, bestRate = w, r
 		}
 	}
 	t.Logf("M0 CALIBRAGE largeur ref0 (domaine 5) :")
-	t.Logf("%s", line)
+	t.Logf("%s", line.String())
 	t.Logf("   largeur retenue = %d (%.1f %% de slots 1+2 absents)", best, bestRate)
 	return best
 }

@@ -175,7 +175,7 @@ func r11LogWanted(t *testing.T, s r11Setup, samples []EquipmentStateSample, want
 			continue
 		}
 		var parts []string
-		for f := 0; f < EquipmentFieldCount; f++ {
+		for f := range EquipmentFieldCount {
 			if sm.Present[f] {
 				parts = append(parts, fmt.Sprintf("%s=%d", EquipmentField(f), sm.Val[f]))
 			}

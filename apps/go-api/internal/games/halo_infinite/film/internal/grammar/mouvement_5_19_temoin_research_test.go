@@ -28,6 +28,7 @@ package grammar
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"sort"
 	"strconv"
@@ -263,9 +264,7 @@ func TestRejets519(t *testing.T) {
 				balaye[uint32(r.Slot)] = uint32(r.TI) //nolint:gosec // bornes par le walker
 			}
 			table, _ := TableDeDatums(pay)
-			for s, ti := range table {
-				datum[s] = ti
-			}
+			maps.Copy(datum, table)
 			recs, _ := WalkKeyframeRecords(pay, tc.reg, tc.fc.ContexteDeLecture())
 			for _, r := range recs {
 				marche[uint32(r.Slot)] = uint32(r.TI) //nolint:gosec // bornes par le walker

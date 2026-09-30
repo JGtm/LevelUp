@@ -233,7 +233,7 @@ func TestOriginLevitationCalibratedOnKnownWeaponPads(t *testing.T) {
 	tout := append(append([]float64(nil), surSocle...), lachees...)
 	rng := rand.New(rand.NewSource(20260901))
 	var pireTemoin float64
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		rng.Shuffle(len(tout), func(a, b int) { tout[a], tout[b] = tout[b], tout[a] })
 		d := math.Abs(levMedian(tout[:len(surSocle)]) - levMedian(tout[len(surSocle):]))
 		if d > pireTemoin {

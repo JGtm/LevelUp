@@ -57,6 +57,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"unicode"
 )
@@ -127,7 +128,7 @@ func TestPaletteEquipementDansSection3(t *testing.T) {
 	rng := rand.New(rand.NewSource(20260901))
 	planchers := 0
 	const nTemoin = 2000
-	for i := 0; i < nTemoin; i++ {
+	for range nTemoin {
 		planchers += len(eps3Occurrences(sec, rng.Uint32()))
 	}
 	t.Logf("B-NEG · plancher du hasard : %d occurrence(s) pour %d valeurs tirées au sort (%.5f par valeur)",
@@ -216,18 +217,19 @@ func eps3Occurrences(sec []byte, v uint32) []int {
 
 // eps3Offsets rend au plus cinq décalages, en absolu dans le fichier inflaté.
 func eps3Offsets(occ []int) string {
-	out := "["
+	var out strings.Builder
+	out.WriteString("[")
 	for i, o := range occ {
 		if i >= 5 {
-			out += " …"
+			out.WriteString(" …")
 			break
 		}
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += eps3Hex(eps3Debut + o)
+		out.WriteString(eps3Hex(eps3Debut + o))
 	}
-	return out + "]"
+	return out.String() + "]"
 }
 
 // eps3Hex formate un décalage en hexadécimal sur six chiffres.

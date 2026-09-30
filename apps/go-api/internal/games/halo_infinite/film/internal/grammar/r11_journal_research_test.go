@@ -107,7 +107,7 @@ func r11FilmDirs(t *testing.T) []string {
 		t.Skipf("%s absent : instrument saute", r9FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(os.Getenv(r11IDsEnv), ",") {
+	for s := range strings.SplitSeq(os.Getenv(r11IDsEnv), ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, filepath.Join(root, s))
 		}
@@ -140,7 +140,7 @@ func r11Nib(v int) string {
 func r11EnergyTxt(mask uint32, ch [AbilityEnergyCharges]int) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "masque=%d%d%d", (mask>>2)&1, (mask>>1)&1, mask&1)
-	for i := 0; i < AbilityEnergyCharges; i++ {
+	for i := range AbilityEnergyCharges {
 		fmt.Fprintf(&b, " e%d[%s]", i, r11Nib(ch[i]))
 	}
 	return b.String()

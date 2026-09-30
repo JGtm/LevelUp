@@ -177,7 +177,7 @@ func TestFaitsDuBalayageLaisseExactementDeuxSectionsALAssemblage(t *testing.T) {
 		t.Fatal("faitsDuBalayage rend nil sur un decoupage LU du catalogue : elle ne devrait " +
 			"rendre nil que sur un decoupage illisible")
 	}
-	champs := reflect.VisibleFields(reflect.TypeOf(FilmFactsFile{}))
+	champs := reflect.VisibleFields(reflect.TypeFor[FilmFactsFile]())
 	if len(champs) < 6 {
 		t.Fatalf("%d champ(s) lus sur FilmFactsFile : la reflexion ne mesure plus rien", len(champs))
 	}
@@ -309,8 +309,8 @@ func TestLObservateurNEstPasUnFaitPersiste(t *testing.T) {
 // fait rougir, et le message dit ou l ajouter.
 func TestStatsDeMortDObjetSontToutesPortees(t *testing.T) {
 	const cadre = 1 // `Config`, qui voyage a part sous `Cadre`
-	origine := reflect.TypeOf(grammar.ObjectDeathStats{}).NumField()
-	projection := reflect.TypeOf(statsSansCadre{}).NumField()
+	origine := reflect.TypeFor[grammar.ObjectDeathStats]().NumField()
+	projection := reflect.TypeFor[statsSansCadre]().NumField()
 	if origine-cadre != projection {
 		t.Errorf("grammar.ObjectDeathStats porte %d champ(s), la projection %d (+%d pour le "+
 			"cadre) : un champ n est pas porte.\nL ajouter a `statsSansCadre` ET aux DEUX sens "+

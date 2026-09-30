@@ -84,7 +84,7 @@ func TestDocumentPublishesCoverage(t *testing.T) {
 	// La couverture doit atteindre le DOCUMENT, pas seulement les journaux : c'est la
 	// différence entre un décodeur qui sait ce qu'il perd et un écran qui le montre.
 	var pos []grammar.BipedPosition
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		ts := 1_000_000 + uint64(i)*50_000
 		pos = append(pos, posAt(10, ts, 1, 1, 90))
 		pos = append(pos, posAt(11, ts, 5, 5, 270))
@@ -128,7 +128,7 @@ func TestBridgeHealthJSONKeysAreDistinct(t *testing.T) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
-	if got, want := len(m), reflect.TypeOf(BridgeHealth{}).NumField(); got != want {
+	if got, want := len(m), reflect.TypeFor[BridgeHealth]().NumField(); got != want {
 		t.Errorf("%d cles JSON pour %d champs — des tags se recouvrent : %s", got, want, raw)
 	}
 	// Les valeurs doivent aussi survivre au tour complet : une cle ecrasee garderait la

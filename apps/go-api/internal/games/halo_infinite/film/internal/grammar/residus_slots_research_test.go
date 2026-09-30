@@ -85,10 +85,7 @@ func rsNomLE(d []byte, e *s3sEnr, from, to int) (pos, touches int) {
 // rsFinGamertag rend la position de bit qui suit le champ de gamertag (`sub+0xc14`) d'un
 // enregistrement deja decode. Calculee, pas cherchee : tous les termes sont lus dans le flux.
 func rsFinGamertag(e *s3sEnr) int {
-	unites := len(utf16.Encode([]rune(e.gamertag))) + 1
-	if unites > s3sGtMax {
-		unites = s3sGtMax
-	}
+	unites := min(len(utf16.Encode([]rune(e.gamertag)))+1, s3sGtMax)
 	return e.debut + s3rEnteteBits + 64 + s3sPrefixeMasque + e.compteMasque +
 		s3sLargeurN + e.n*8 + s3sLargeurM + e.m*32 + s3sBloc104 + unites*16
 }

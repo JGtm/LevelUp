@@ -49,14 +49,13 @@ var baliseDatee = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} — .{20,}$`)
 // l empreinte de forme cuite emploie deja : deux listes des memes calques divergeraient.
 func balisesRacineCuites(t *testing.T) map[string]bool {
 	t.Helper()
-	root := reflect.TypeOf(ReplayDocument{})
+	root := reflect.TypeFor[ReplayDocument]()
 	if root.NumField() < plancherChampsRacine {
 		t.Fatalf("balayage muet : %d champs a la racine du document, plancher %d — "+
 			"le type n a pas ete trouve, ou il a fondu", root.NumField(), plancherChampsRacine)
 	}
 	out := make(map[string]bool, root.NumField())
-	for i := 0; i < root.NumField(); i++ {
-		f := root.Field(i)
+	for f := range root.Fields() {
 		if f.PkgPath != "" {
 			continue
 		}

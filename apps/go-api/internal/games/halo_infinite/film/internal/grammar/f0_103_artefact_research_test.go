@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 
@@ -140,10 +141,7 @@ func f0Joint(f f0Film, a f0Art) ([]f0Pose, int, int) {
 	}
 	seaux := map[cle][]types.EquipmentPlacement{}
 	for _, p := range f.Places {
-		t0 := f0Frame(p.T0US, origin, step)
-		if t0 < 0 {
-			t0 = 0
-		}
+		t0 := max(f0Frame(p.T0US, origin, step), 0)
 		if t0 >= a.FrameCount && a.FrameCount > 0 {
 			t0 = a.FrameCount - 1
 		}
@@ -262,10 +260,5 @@ func f0FinDeVie(a f0Art) map[uint32][]int {
 
 // f0EstFinDeVie dit si la frame `t0` est exactement la derniere frame d une vie du slot.
 func f0EstFinDeVie(fins map[uint32][]int, slot uint32, t0 int) bool {
-	for _, f := range fins[slot] {
-		if f == t0 {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(fins[slot], t0)
 }

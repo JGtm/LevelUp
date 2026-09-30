@@ -96,7 +96,7 @@ var (
 func readsOf(hist map[int]int) []AbilityRead {
 	var out []AbilityRead
 	for rank, n := range hist {
-		for i := 0; i < n; i++ {
+		for range n {
 			out = append(out, AbilityRead{R: rank, Src: AbilitySrcI48})
 		}
 	}

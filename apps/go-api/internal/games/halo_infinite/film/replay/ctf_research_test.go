@@ -94,7 +94,7 @@ func TestCTFLostShotsResearch(t *testing.T) {
 		t.Fatalf("%s est requis (répertoire des rapports — jamais data/)", ctfOutEnv)
 	}
 	cat := loadCTFQuantCatalog(t)
-	for _, item := range strings.Split(spec, ",") {
+	for item := range strings.SplitSeq(spec, ",") {
 		short, mapName, ok := strings.Cut(strings.TrimSpace(item), ":")
 		if !ok {
 			t.Fatalf("entrée mal formée %q (attendu short:Carte)", item)
@@ -369,7 +369,7 @@ func writeCTFTemporal(b *strings.Builder, r filmReport) {
 		}
 	}
 	fmt.Fprintf(b, "\n# repartition temporelle (deciles du film)\n")
-	for i := 0; i < buckets; i++ {
+	for i := range buckets {
 		fmt.Fprintf(b, "decile\t%d\tdisponibles\t%d\tsans_slot\t%d\ttaux\t%.4f\n",
 			i+1, avail[i], lost[i], ratio(lost[i], avail[i]))
 	}

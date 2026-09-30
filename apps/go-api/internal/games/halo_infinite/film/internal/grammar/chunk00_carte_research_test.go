@@ -49,7 +49,7 @@ func parsedSpans(data []byte) []slotSpan {
 	var out []slotSpan
 	for b := 0; b < len(data)/archetypeBlockSize; b++ {
 		base := registryEntryBase + b*archetypeBlockSize
-		for s := 0; s < archetypeBlockSlots; s++ {
+		for s := range archetypeBlockSlots {
 			off := base + s*registrySlotSize
 			name := entryName(data, off)
 			if name == "" {
@@ -173,9 +173,9 @@ func occupationBlocs(t *testing.T, data []byte, nBlocks int) {
 	t.Helper()
 	var porteurs []string
 	total := 0
-	for b := 0; b < nBlocks; b++ {
+	for b := range nBlocks {
 		n := 0
-		for s := 0; s < archetypeBlockSlots; s++ {
+		for s := range archetypeBlockSlots {
 			if entryName(data, registryEntryBase+b*archetypeBlockSize+s*registrySlotSize) == "" {
 				break
 			}
@@ -302,7 +302,7 @@ func TestChunk00Sections(t *testing.T) {
 		t.Logf("  dernier octet non nul @0x%06x ; %d octets nuls en queue",
 			dernierNonNul, len(data)-1-dernierNonNul)
 		zonesNulles(t, data, 256)
-		for _, spec := range strings.Split(os.Getenv("CHUNK00_HEX"), ",") {
+		for spec := range strings.SplitSeq(os.Getenv("CHUNK00_HEX"), ",") {
 			off, n, ok := parseFenetre(spec)
 			if !ok {
 				continue
@@ -399,7 +399,7 @@ func comparerFilms(t *testing.T, dirs []string, buffers map[string][]byte) {
 		n := min(len(refData), len(other))
 		diffs, premier := 0, -1
 		zones := map[int]int{}
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if refData[i] != other[i] {
 				diffs++
 				if premier < 0 {

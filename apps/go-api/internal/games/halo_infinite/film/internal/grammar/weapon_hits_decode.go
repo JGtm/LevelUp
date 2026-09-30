@@ -92,7 +92,7 @@ func lot1DecodeDamageAftermath(br *Lecteur) lot1DmgResult {
 	}
 	// (7) 15 drapeaux R(1) ; le 15e (bit 28) garde un R(32)
 	var last bool
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		last = br.ReadBit()
 	}
 	if last { // (8) si bit 28 : R(32)

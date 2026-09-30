@@ -84,10 +84,7 @@ func TestLot1SondePrecisionDistance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks balayes ==", filepath.Base(dir), n)
 
 	// M1 — TIRS PAR ARME.
@@ -179,10 +176,7 @@ func sonde3Join(t *testing.T, srcCount, armes map[uint64]int, fires []FireEvent)
 		ns, interVariant, lot1Pct(interVariant, ns))
 	t.Logf("   intersection avec WeaponID moitie basse : %d (%.1f %%) · moitie haute : %d (%.1f %%)",
 		interLo, lot1Pct(interLo, ns), interHi, lot1Pct(interHi, ns))
-	best := interVariant
-	if interLo > best {
-		best = interLo
-	}
+	best := max(interLo, interVariant)
 	if interHi > best {
 		best = interHi
 	}

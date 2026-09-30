@@ -221,7 +221,7 @@ func v10ParseFilms(t *testing.T) []v10FilmSpec {
 		t.Skipf("V10_FILMS absent : instrument dead-state saute")
 	}
 	var out []v10FilmSpec
-	for _, tok := range strings.Split(raw, ",") {
+	for tok := range strings.SplitSeq(raw, ",") {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {
 			continue

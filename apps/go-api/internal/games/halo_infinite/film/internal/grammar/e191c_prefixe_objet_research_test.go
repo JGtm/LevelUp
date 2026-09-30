@@ -36,6 +36,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -217,14 +218,14 @@ func e191cLogCinq(t *testing.T, mesures []e191cMesure) {
 
 // joinCols colle des colonnes deja formatees, separees de deux espaces.
 func joinCols(cols []string) string {
-	out := ""
+	var out strings.Builder
 	for i, c := range cols {
 		if i > 0 {
-			out += "  "
+			out.WriteString("  ")
 		}
-		out += c
+		out.WriteString(c)
 	}
-	return out
+	return out.String()
 }
 
 // e191cLogConfondant publie le tableau [B] : la MEME population classee par nombre de
@@ -397,14 +398,15 @@ func e191cTopResidus(m map[int]int) string {
 		}
 		return l[i].r < l[j].r
 	})
-	out := fmt.Sprintf("%d valeurs distinctes ;", len(l))
+	var out strings.Builder
+	out.WriteString(fmt.Sprintf("%d valeurs distinctes ;", len(l)))
 	for i, e := range l {
 		if i >= 5 {
 			break
 		}
-		out += fmt.Sprintf(" %+d x%d", e.r, e.n)
+		out.WriteString(fmt.Sprintf(" %+d x%d", e.r, e.n))
 	}
-	return out
+	return out.String()
 }
 
 // e191cPaires sont les COUPLES D ARCHETYPES DE MEME TAILLE dont l un ferme et l autre pas.

@@ -46,6 +46,7 @@ package replay
 import (
 	"context"
 	"log/slog"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
@@ -227,12 +228,7 @@ func bidsParIndex(bots []BotIdentity) map[int]string {
 }
 
 func contientBid(l []string, bid string) bool {
-	for _, v := range l {
-		if v == bid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(l, bid)
 }
 
 // alarmer journalise ce que le tableau a pose et ce qu'il n'a pas su poser. Un refus sans cause

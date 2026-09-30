@@ -32,6 +32,7 @@ package grammar
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -61,14 +62,14 @@ func bpkTop(m map[uint64]int, k int) string {
 	if len(s) > k {
 		s = s[:k]
 	}
-	out := ""
+	var out strings.Builder
 	for i, e := range s {
 		if i > 0 {
-			out += " · "
+			out.WriteString(" · ")
 		}
-		out += fmt.Sprintf("%d x%d", e.k, e.v)
+		out.WriteString(fmt.Sprintf("%d x%d", e.k, e.v))
 	}
-	return out
+	return out.String()
 }
 
 // TestBipedPickupCalibration — CALIBRAGE OBLIGATOIRE AVANT TOUT VERDICT DE CADRAGE.
@@ -170,18 +171,18 @@ func TestBipedPickupRecensement(t *testing.T) {
 		if len(echantillon) < 12 {
 			br3 := LecteurSur(pay)
 			br3.Skip(bpkHeaderBits)
-			bits := ""
+			var bits strings.Builder
 			for i := 0; i < 64 && bpkHeaderBits+i < len(pay)*8; i++ {
 				if br3.ReadBit() {
-					bits += "1"
+					bits.WriteString("1")
 				} else {
-					bits += "0"
+					bits.WriteString("0")
 				}
 				if i%8 == 7 {
-					bits += " "
+					bits.WriteString(" ")
 				}
 			}
-			echantillon = append(echantillon, fmt.Sprintf("ts=%d len=%d %s", tsUS, len(pay), bits))
+			echantillon = append(echantillon, fmt.Sprintf("ts=%d len=%d %s", tsUS, len(pay), bits.String()))
 		}
 	})
 	t.Logf("== film %s · %d chunk(s) · IDLowBits calibre = %d ==", f.dir, f.chunks, f.idLow)

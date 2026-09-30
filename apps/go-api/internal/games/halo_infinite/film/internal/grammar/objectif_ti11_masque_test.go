@@ -207,7 +207,7 @@ func ti11ReleverRecord(b *ti11Bilan, pay []byte, reg *Registry, bit int) {
 		b.horsDomaine++
 		return
 	}
-	for i := 0; i < ti11Composants; i++ {
+	for i := range ti11Composants {
 		if tr.Mask>>uint(i)&1 == 1 {
 			b.presence[i]++
 		}
@@ -215,7 +215,7 @@ func ti11ReleverRecord(b *ti11Bilan, pay []byte, reg *Registry, bit int) {
 	b.desync[tr.DesyncAt]++
 	if tr.Mask>>12&1 == 1 {
 		b.avecJauge++
-		for i := 0; i < ti11Composants; i++ {
+		for i := range ti11Composants {
 			if tr.Mask>>uint(i)&1 == 1 {
 				b.compagnons[i]++
 			}

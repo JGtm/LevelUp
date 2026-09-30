@@ -213,7 +213,7 @@ func bpkComposition(t *testing.T, evs []bpkEvent, objets map[uint32]int,
 			armeParKind[e.Kind]++
 		}
 	}
-	for k := uint64(0); k < 8; k++ {
+	for k := range uint64(8) {
 		if totalParKind[k] == 0 {
 			continue
 		}

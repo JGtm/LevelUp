@@ -180,7 +180,7 @@ const worldObjectMaxComponent = 1 << worldObjectIndexBits
 // Un composant absent du registre rend -1, et le balayage le déclare non mesurable.
 func equipmentFieldIndices(arch Archetype) [EquipmentFieldCount]int {
 	var out [EquipmentFieldCount]int
-	for f := 0; f < EquipmentFieldCount; f++ {
+	for f := range EquipmentFieldCount {
 		out[f] = -1
 		if ids := arch.indicesOf(EquipmentField(f).String()); len(ids) > 0 {
 			out[f] = ids[0]
@@ -344,7 +344,7 @@ func (w equipmentWalk) scanPayload(
 func (w equipmentWalk) lastWanted(idx []int) int {
 	last := -1
 	for _, id := range idx {
-		for f := 0; f < EquipmentFieldCount; f++ {
+		for f := range EquipmentFieldCount {
 			if w.want[f] >= 0 && id == w.want[f] && id > last {
 				last = id
 			}
@@ -355,7 +355,7 @@ func (w equipmentWalk) lastWanted(idx []int) int {
 
 func (w equipmentWalk) countMask(idx []int, st *EquipmentStateStats) {
 	for _, id := range idx {
-		for f := 0; f < EquipmentFieldCount; f++ {
+		for f := range EquipmentFieldCount {
 			if w.want[f] >= 0 && id == w.want[f] {
 				st.WithField[f]++
 			}
@@ -364,7 +364,7 @@ func (w equipmentWalk) countMask(idx []int, st *EquipmentStateStats) {
 }
 
 func (w equipmentWalk) countRead(cur *EquipmentStateSample, st *EquipmentStateStats) {
-	for f := 0; f < EquipmentFieldCount; f++ {
+	for f := range EquipmentFieldCount {
 		if !cur.Seen[f] {
 			continue
 		}

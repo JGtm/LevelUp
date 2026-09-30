@@ -142,7 +142,7 @@ func collectI0Samples(pay []byte, slots SlotBand, chunk, pkt int, out []i0Sample
 		var s i0Sample
 		s.slot, s.chunk, s.pkt = slot, chunk, pkt
 		s.indexBit = uint8(uint32(source.BitsStricts(pay, i0+preGate, 1)))
-		for k := 0; k < detectWindow; k++ {
+		for k := range detectWindow {
 			if uint32(source.BitsStricts(pay, i0+k, 1)) == 1 {
 				s.bits[k>>6] |= 1 << (63 - uint(k&63))
 			}
@@ -174,7 +174,7 @@ func profileI0(samples []i0Sample) I0LayoutReport {
 				continue
 			}
 			rep.Pairs++
-			for k := 0; k < detectWindow; k++ {
+			for k := range detectWindow {
 				if a.bit(k) != b.bit(k) {
 					flips[k]++
 				}

@@ -220,10 +220,7 @@ func TestLot1DegatsBlesse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	chunks := make([]int, 0, n)
 	for c := 1; c <= n; c++ {
 		chunks = append(chunks, c)

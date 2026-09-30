@@ -299,7 +299,7 @@ func matchRecordHeader(pay []byte, b int) (slot int, idx []int, compAt int, ok b
 	// l'essentiel de la contrainte dure.
 	idx = make([]int, n)
 	prev := -1
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx[i] = int(source.BitsTronques(pay, m+4+statCompIndexBits*i, statCompIndexBits))
 		if idx[i] >= statMaxComp || idx[i] <= prev {
 			return 0, nil, 0, false
@@ -321,7 +321,7 @@ func denseComponentList(pay []byte, p int) ([]int, bool) {
 		return nil, false
 	}
 	idx := make([]int, 0, statMaxComp)
-	for i := 0; i < statMaxComp; i++ {
+	for i := range statMaxComp {
 		if mask>>uint(i)&1 == 1 {
 			idx = append(idx, i)
 		}

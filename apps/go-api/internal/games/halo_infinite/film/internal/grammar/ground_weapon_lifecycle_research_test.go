@@ -552,11 +552,11 @@ func TestGroundWeaponAmmo(t *testing.T) {
 		if len(l) > 6 {
 			l = l[:6]
 		}
-		s := ""
+		var s strings.Builder
 		for _, e := range l {
-			s += fmt.Sprintf("%d(x%d) ", e.v, e.n)
+			s.WriteString(fmt.Sprintf("%d(x%d) ", e.v, e.n))
 		}
-		t.Logf("  %s : valeurs les plus frequentes -> %s", name, s)
+		t.Logf("  %s : valeurs les plus frequentes -> %s", name, s.String())
 	}
 	show("champ A R(8)", histA)
 	show("champ B R(11)", histB)

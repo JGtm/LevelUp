@@ -35,6 +35,7 @@ package grammar
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -129,10 +130,7 @@ func h526LireBloc(c int, pk FilmPacket, pay []byte, ic int) h526Bloc {
 	if pk.Type != h526TypeJete && len(pay)*8 >= h526Mot {
 		b.mot = int64(uint32(source.BitsStricts(pay, 0, h526Mot)))
 	}
-	n := len(pay)
-	if n > 16 {
-		n = 16
-	}
+	n := min(len(pay), 16)
 	b.hex = fmt.Sprintf("% x", pay[:n])
 	return b
 }
@@ -278,11 +276,11 @@ func h526Hist(m map[int]int) string {
 		cles = append(cles, k)
 	}
 	sort.Ints(cles)
-	s := ""
+	var s strings.Builder
 	for _, k := range cles {
-		s += fmt.Sprintf(" %d:%d", k, m[k])
+		s.WriteString(fmt.Sprintf(" %d:%d", k, m[k]))
 	}
-	return "{" + s + " }"
+	return "{" + s.String() + " }"
 }
 
 // h526Hist64 : idem pour des cles 64 bits.
@@ -292,9 +290,9 @@ func h526Hist64(m map[int64]int) string {
 		cles = append(cles, k)
 	}
 	sort.Slice(cles, func(a, b int) bool { return cles[a] < cles[b] })
-	s := ""
+	var s strings.Builder
 	for _, k := range cles {
-		s += fmt.Sprintf(" %d:%d", k, m[k])
+		s.WriteString(fmt.Sprintf(" %d:%d", k, m[k]))
 	}
-	return "{" + s + " }"
+	return "{" + s.String() + " }"
 }

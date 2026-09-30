@@ -54,7 +54,7 @@ func temoinPartiel(t *testing.T) []filmcache.WriteChunk {
 	out := make([]filmcache.WriteChunk, 0, len(mf.Chunks))
 	for _, c := range mf.Chunks {
 		out = append(out, filmcache.WriteChunk{Index: c.Index, ChunkType: c.ChunkType,
-			StartMS: c.StartMS, DurationMS: c.DurationMS, Data: []byte(fmt.Sprintf("c%d", c.Index))})
+			StartMS: c.StartMS, DurationMS: c.DurationMS, Data: fmt.Appendf(nil, "c%d", c.Index)})
 	}
 	return out
 }

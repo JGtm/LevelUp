@@ -205,12 +205,12 @@ func consumeSimulationState(br *Lecteur) {
 	}
 	consumeGate0R(br, 5) // FUN_1407f2058 #1
 	consumeGate0R(br, 5) // FUN_1407f2058 #2
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		br.ReadBits(16) // FUN_142ee2194 = R(16)
 	}
 	br.ReadBits(2) // inline R(2) #1
 	br.ReadBits(2) // inline R(2) #2
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		br.ReadBits(16) // FUN_142ee2194 = R(16)
 	}
 	consume140c1e79c(br)         // FUN_140c1e79c = R(1)[R19]+R8
@@ -296,7 +296,7 @@ func consumeMask(br *Lecteur) uint64 {
 	if !br.ReadBit() {
 		count := uint32(br.ReadBits(3))
 		var mask uint64
-		for i := uint32(0); i < count; i++ {
+		for range count {
 			idx := uint(br.ReadBits(6))
 			mask |= uint64(1) << (idx & 63)
 		}

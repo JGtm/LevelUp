@@ -90,7 +90,7 @@ func TestPointOmetPQuandLaViseeEstAPlat(t *testing.T) {
 func TestPitchPublieEstToujoursHorsDeLaBandeDOmission(t *testing.T) {
 	var omis int
 	minAbs := float32(math.MaxFloat32)
-	for raw := uint32(0); raw < 2048; raw++ {
+	for raw := range uint32(2048) {
 		var p grammar.BipedPosition
 		p.HasYaw = true
 		p.PitchRaw = raw

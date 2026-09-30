@@ -111,7 +111,7 @@ func FiltrerTemoins(m Manifest, noms []string) (Manifest, error) {
 // toleres, entrees vides ignorees.
 func NomsDemandes(liste string) []string {
 	var out []string
-	for _, part := range strings.Split(liste, ",") {
+	for part := range strings.SplitSeq(liste, ",") {
 		if s := strings.TrimSpace(part); s != "" {
 			out = append(out, s)
 		}

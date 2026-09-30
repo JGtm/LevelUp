@@ -11,6 +11,7 @@ package objectives
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -220,12 +221,7 @@ func e1911ImprimeVerdict(t *testing.T, bilans []e1911Bilan) {
 
 // e1911EstJete dit si ce designateur est jete par la garde sur ce film.
 func e1911EstJete(b e1911Bilan, valeur int) bool {
-	for _, v := range b.Jetees {
-		if v == valeur {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(b.Jetees, valeur)
 }
 
 // e1911SecondeManche dit si le film ECRIT une seconde manche MATERIELLE, que la garde la

@@ -145,7 +145,7 @@ func failleBounds() (profile.Vec3Range, error) {
 		}
 		v[i] = float32(f)
 	}
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		wr[a].Min, wr[a].Max = v[a], v[a+3]
 		if wr[a].Max <= wr[a].Min {
 			return wr, fmt.Errorf("axe %d : borne haute (%g) sous la basse (%g)", a, wr[a].Max, wr[a].Min)
@@ -161,7 +161,7 @@ func failleParseAncres(raw string) ([]failleAncre, error) {
 		return nil, fmt.Errorf("aucune ancre (format label:slot:x,y:t0us-t1us:tSautUS;...)")
 	}
 	var out []failleAncre
-	for _, ent := range strings.Split(raw, ";") {
+	for ent := range strings.SplitSeq(raw, ";") {
 		f := strings.Split(strings.TrimSpace(ent), ":")
 		if len(f) != 5 {
 			return nil, fmt.Errorf("ancre %q : 5 champs attendus, %d reçus", ent, len(f))

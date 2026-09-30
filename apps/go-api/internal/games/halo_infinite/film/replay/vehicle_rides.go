@@ -221,10 +221,7 @@ func vehicleRideOf(
 		endUS = ev.TimestampUS
 	}
 	r.T0 = in.clock.frame(startUS)
-	r.T1 = in.clock.frame(endUS)
-	if r.T1 < r.T0 {
-		r.T1 = r.T0
-	}
+	r.T1 = max(in.clock.frame(endUS), r.T0)
 	// LA VISEE SE LIT SUR LES BORNES AFFINEES, pas sur celles du trou : quand un evenement a
 	// resserre une borne, la serie doit suivre le meme intervalle que `T0`/`T1`.
 	r.Aim = vehicleRideAimOf(in.aimBySlot[g.slot], startUS, endUS, in.clock)

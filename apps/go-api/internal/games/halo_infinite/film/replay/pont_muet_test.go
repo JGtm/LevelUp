@@ -35,7 +35,7 @@ func pontFixture(originMS, premiereMortMS int64, n int) ([]lifeSpan, []types.Dea
 	var lives []lifeSpan
 	var deaths []types.Death
 	tMatch := premiereMortMS
-	for i := 0; i < n; i++ {
+	for i := range n {
 		residu := int64(i%3) * 12 // 0, 12, 24 ms : sous la fenêtre de 150
 		lives = append(lives, pontVie(uint32(500+i), originMS+tMatch+residu))
 		deaths = append(deaths, types.Death{XUID: uint64(1000 + i), TimeMS: tMatch})
@@ -146,7 +146,7 @@ func TestLeVoteDesigneLePicEtPasLeBruit(t *testing.T) {
 	const origine, premiereMort = 3_000_000, 80_000
 	lives, deaths := pontFixture(origine, premiereMort, 15)
 	// Douze vies parasites groupées ailleurs : elles votent toutes pour le même écart faux.
-	for i := 0; i < 12; i++ {
+	for i := range 12 {
 		lives = append(lives, pontVie(uint32(900+i), origine+premiereMort-400_000+int64(i)))
 	}
 
@@ -214,11 +214,11 @@ func TestLeRosterNAdmetNiZeroNiDoublon(t *testing.T) {
 func pontFixtureAmas(originMS, premiereMortMS int64, n, kFins, mMorts int, decalage int64) ([]lifeSpan, []types.Death) {
 	lives, deaths := pontFixture(originMS, premiereMortMS, n)
 	const finDeMancheMS = 300_000
-	for i := 0; i < kFins; i++ {
+	for i := range kFins {
 		// Toutes dans le même cycle de réplication (~16 ms), très en deçà d'un panier.
 		lives = append(lives, pontVie(uint32(900+i), originMS+finDeMancheMS+int64(i%2)*16))
 	}
-	for j := 0; j < mMorts; j++ {
+	for j := range mMorts {
 		deaths = append(deaths, types.Death{
 			XUID:   uint64(9000 + j),
 			TimeMS: finDeMancheMS - decalage + int64(j%2)*8,
@@ -280,7 +280,7 @@ func TestSansFeuilleLeRosterEstCeluiDeLAncienCorps(t *testing.T) {
 		graine ^= graine << 17
 		return graine
 	}
-	for tirage := 0; tirage < 300; tirage++ {
+	for tirage := range 300 {
 		deaths := make([]types.Death, 0, 24)
 		for i := 0; i < 1+int(suivant()%24); i++ {
 			// Des xuids du domaine réel (]2e15, 3e15[), certains répétés.

@@ -158,8 +158,9 @@ func TestM3NaissanceGrammaire(t *testing.T) {
 		hdr := c.BitPos
 		g, fams := m3OracleArmes(pay, hdr, tc.cfg, cat)
 		corps := hdr + 3 + tc.cfg.IDLowBits + 2
-		ligne := fmt.Sprintf("slot %d g%d t=%d oracle %+d %08X", c.Slot, c.Generation, c.TimestampUS/100000,
-			g-hdr, fams)
+		var ligne strings.Builder
+		ligne.WriteString(fmt.Sprintf("slot %d g%d t=%d oracle %+d %08X", c.Slot, c.Generation, c.TimestampUS/100000,
+			g-hdr, fams))
 		for _, v := range vars {
 			br := LecteurSur(pay)
 			br.poserCadre(tc.cfg)
@@ -181,7 +182,7 @@ func TestM3NaissanceGrammaire(t *testing.T) {
 					justes[v.nom]++
 				}
 			}
-			ligne += fmt.Sprintf(" | %s i43 %+d desync %d fin %+d", v.nom, i43-hdr, tr.DesyncAt, tr.EndBit-hdr)
+			ligne.WriteString(fmt.Sprintf(" | %s i43 %+d desync %d fin %+d", v.nom, i43-hdr, tr.DesyncAt, tr.EndBit-hdr))
 			if dumps < 6 && v.nom == "I0" {
 				t.Logf("   DUMP %s slot %d : etat par defaut fin %+d masque %v", v.nom, c.Slot,
 					tr.DefaultBits-hdr, m3Indices(tr.Mask))
@@ -189,7 +190,7 @@ func TestM3NaissanceGrammaire(t *testing.T) {
 			}
 		}
 		dumps++
-		t.Logf("   %s", ligne)
+		t.Logf("   %s", ligne.String())
 	}
 	for _, v := range vars {
 		t.Logf("== variante %-5s : i43 sur l oracle %d / %d ; ecarts %v", v.nom, justes[v.nom], len(cres),
@@ -200,7 +201,7 @@ func TestM3NaissanceGrammaire(t *testing.T) {
 // m3Indices rend les index poses d un masque.
 func m3Indices(m uint64) []int {
 	var out []int
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if m&(uint64(1)<<uint(i)) != 0 {
 			out = append(out, i)
 		}
@@ -260,7 +261,7 @@ func TestM3NaissanceBits(t *testing.T) {
 			c.TimestampUS/100000, c.BitPos, c.PacketIndex, c.Chunk, len(pay)*8)
 		for o := 0; o < 1800; o += 64 {
 			var sb strings.Builder
-			for k := 0; k < 64; k++ {
+			for k := range 64 {
 				p := c.BitPos + o + k
 				if p >= len(pay)*8 {
 					break
@@ -406,7 +407,7 @@ func m3LireExport(t *testing.T, chemin string) []m3Ligne {
 		t.Fatalf("export : %v", err)
 	}
 	var out []m3Ligne
-	for _, l := range strings.Split(strings.TrimSpace(string(blob)), "\n") {
+	for l := range strings.SplitSeq(strings.TrimSpace(string(blob)), "\n") {
 		c := strings.Split(l, "\t")
 		if len(c) < 9 {
 			continue

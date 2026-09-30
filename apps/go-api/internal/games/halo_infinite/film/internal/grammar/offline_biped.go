@@ -240,7 +240,7 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay profile.I0Layout, opt 
 	// sont les siens ; ne reste ici que la LECTURE du record.
 	walkDeltaBipedPayload(payload, slots, lay, opt.Generations, func(r deltaBipedRecord) {
 		var q [3]uint32
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			q[ax] = uint32(source.BitsStricts(payload, r.I0+lay.AxisOffset(ax), int(lay.AxisW[ax])))
 		}
 		if opt.DropSaturated && saturatedQuantum(q, lay) {
@@ -333,7 +333,7 @@ func ascendingFromZero(pay []byte, at, count int) ([]int, bool) {
 		return nil, false
 	}
 	prev := -1
-	for k := 0; k < count; k++ {
+	for k := range count {
 		idx := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if (k == 0 && idx != 0) || idx <= prev {
 			return nil, false

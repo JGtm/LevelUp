@@ -16,6 +16,7 @@ package grammar
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -114,10 +115,8 @@ func xrTable(t *testing.T, spec xrSpec, slotRanks map[uint32][]int, reads, event
 // xrTag marque les rangs cibles dans le tableau.
 func xrTag(spec xrSpec, r int) string {
 	for _, g := range spec.groups {
-		for _, x := range g.ranks {
-			if x == r {
-				return "  <- " + g.name
-			}
+		if slices.Contains(g.ranks, r) {
+			return "  <- " + g.name
 		}
 	}
 	return ""

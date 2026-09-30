@@ -146,7 +146,7 @@ func env114Tailles(t *testing.T, nom string, pk []env114Paquet) {
 // env114Entropies rend, par position de bit, la fraction de paquets a 1 (borne = bits communs).
 func env114Entropies(pk []env114Paquet, nb int) []float64 {
 	frac := make([]float64, nb)
-	for b := 0; b < nb; b++ {
+	for b := range nb {
 		var uns int
 		for _, p := range pk {
 			uns += int(grammar.ReadBitsAtForDiag(p.pay, b, 1))
@@ -178,10 +178,7 @@ func env114Cardinalites(pk []env114Paquet, nb, w int) []int {
 
 // env114Classe rend le verdict d'une position, aux seuils declares en tete de fichier.
 func env114Classe(card, n int) string {
-	seuilHaut := env114SeuilHaut
-	if n/2 < seuilHaut {
-		seuilHaut = n / 2
-	}
+	seuilHaut := min(n/2, env114SeuilHaut)
 	switch {
 	case card == 1:
 		return "CONSTANTE"
@@ -201,7 +198,7 @@ func env114TableBits(t *testing.T, nom string, pk []env114Paquet, nb int) []int 
 	card := env114Cardinalites(pk, nb, env114Fenetre)
 	t.Logf("B+C. PROFIL [%s] — %d paquets, %d bits communs ; par position : p(1), entropie,"+
 		" cardinalite de [b ; b+%d) et verdict", nom, len(pk), nb, env114Fenetre)
-	for b := 0; b < nb; b++ {
+	for b := range nb {
 		verdict, c := "-", -1
 		if b < len(card) {
 			c = card[b]
@@ -223,7 +220,7 @@ func env114TableBits(t *testing.T, nom string, pk []env114Paquet, nb int) []int 
 func env114Ossature(pk []env114Paquet, nb int) map[int]int {
 	out := map[int]int{}
 	frac := env114Entropies(pk, nb)
-	for b := 0; b < nb; b++ {
+	for b := range nb {
 		if frac[b] == 0 {
 			out[b] = 0
 		} else if frac[b] == 1 {
@@ -259,7 +256,7 @@ func env114Cumul(t *testing.T, nom string, pk []env114Paquet, depuis, nb int) {
 // (chaine et non entier : la tranche depasse 32 bits des qu'on cumule).
 func env114Cle(p env114Paquet, depuis, long int) string {
 	var sb strings.Builder
-	for i := 0; i < long; i++ {
+	for i := range long {
 		b := depuis + i
 		if b >= p.nBits {
 			sb.WriteByte('_')
@@ -283,10 +280,7 @@ func TestViseeEnv114Frontieres(t *testing.T) {
 	}
 	nom := env114Nom(dir)
 	env114Tailles(t, nom, pk)
-	nb := env114BitsCommuns(pk)
-	if nb > env114MaxBits {
-		nb = env114MaxBits
-	}
+	nb := min(env114BitsCommuns(pk), env114MaxBits)
 	env114TableBits(t, nom, pk, nb)
 	env114Cumul(t, nom, pk, 24, nb)
 	env114Cumul(t, nom, pk, 8, nb)
@@ -295,7 +289,7 @@ func TestViseeEnv114Frontieres(t *testing.T) {
 	t.Logf("E. OSSATURE [%s] — %d positions constantes sur %d : %s", nom, len(ossature), nb,
 		env114Motif(ossature, nb))
 
-	for _, autre := range strings.Split(os.Getenv(env114AutresEnv), ",") {
+	for autre := range strings.SplitSeq(os.Getenv(env114AutresEnv), ",") {
 		autre = strings.TrimSpace(autre)
 		if autre == "" {
 			continue
@@ -313,10 +307,7 @@ func env114Confronte(t *testing.T, dir string, ossature map[int]int, nbRef int) 
 		t.Logf("F. [%s] — aucun paquet 114 (film sans zoom ou chunks absents)", nom)
 		return
 	}
-	nb := env114BitsCommuns(pk)
-	if nb > nbRef {
-		nb = nbRef
-	}
+	nb := min(env114BitsCommuns(pk), nbRef)
 	env114Tailles(t, nom, pk)
 	frac := env114Entropies(pk, nb)
 	var tenus, casses, hors []string
@@ -344,7 +335,7 @@ func env114Confronte(t *testing.T, dir string, ossature map[int]int, nbRef int) 
 	}
 	card := env114Cardinalites(pk, nb, env114Fenetre)
 	var zones []string
-	for b := 0; b < len(card); b++ {
+	for b := range card {
 		zones = append(zones, fmt.Sprintf("%d:%s", b, env114ZoneCourte(env114Classe(card[b], len(pk)))))
 	}
 	t.Logf("    profil de zones : %s", strings.Join(zones, " "))
@@ -366,7 +357,7 @@ func env114ZoneCourte(v string) string {
 // env114Motif rend l'ossature sous forme lisible : 0/1 aux positions constantes, « . » ailleurs.
 func env114Motif(ossature map[int]int, nb int) string {
 	var sb strings.Builder
-	for b := 0; b < nb; b++ {
+	for b := range nb {
 		if b%8 == 0 && b > 0 {
 			sb.WriteByte(' ')
 		}

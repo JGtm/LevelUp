@@ -72,6 +72,7 @@ package replay
 // côté « utilisé » des deux bonus (leur compte d'épisodes).
 
 import (
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/domain/equipmentusage"
@@ -90,12 +91,7 @@ var equipmentOutcomeFamilies = equipmentusage.EquipmentOutcomeFamilies()
 
 // estFamilleDuBilan dit si cette famille porte une ligne d'issue.
 func estFamilleDuBilan(family string) bool {
-	for _, f := range equipmentOutcomeFamilies {
-		if f == family {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(equipmentOutcomeFamilies, family)
 }
 
 // equipmentOutcomeFamilyOf rend la famille du bilan que nomme ce rang de palette,

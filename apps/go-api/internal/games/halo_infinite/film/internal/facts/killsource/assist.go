@@ -191,7 +191,7 @@ func pickGate15(f *film) bool {
 		if !hasEvents(p) || len(p.payload) < 64 {
 			continue
 		}
-		for g := 0; g < 2; g++ {
+		for g := range 2 {
 			score[g] += len(killEventsIn(p.payload, g == 1))
 		}
 	}

@@ -9,6 +9,7 @@ package grammar
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -201,17 +202,17 @@ func projOwnerTopVals(ids []uint64, k int) string {
 		rows = append(rows, kv{v, n})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].n > rows[j].n })
-	out := ""
+	var out strings.Builder
 	for i, r := range rows {
 		if i >= k {
 			break
 		}
-		out += " " + utoa(r.v) + ":" + itoa(r.n)
+		out.WriteString(" " + utoa(r.v) + ":" + itoa(r.n))
 	}
-	if out == "" {
+	if out.String() == "" {
 		return " (aucune)"
 	}
-	return out
+	return out.String()
 }
 
 // projOwnerPerLifeStable mesure la stabilite de freeID par vie de projectile (slot) : une vraie
@@ -304,11 +305,11 @@ func projOwnerMaskLine(hist map[int]int, total int) string {
 		idxs = append(idxs, i)
 	}
 	sort.Ints(idxs)
-	out := ""
+	var out strings.Builder
 	for _, i := range idxs {
-		out += " i" + itoa(i) + "=" + itoa(hist[i])
+		out.WriteString(" i" + itoa(i) + "=" + itoa(hist[i]))
 	}
-	return out
+	return out.String()
 }
 
 // utoa : uint64 -> decimal (evite fmt pour rester homogene avec itoa du paquet de tests).

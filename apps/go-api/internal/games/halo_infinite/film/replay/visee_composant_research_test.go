@@ -197,16 +197,10 @@ func vfNewStat() vfStat {
 
 // vfLitBits lit le prefixe d'un composant, cadre a gauche sur 64 bits.
 func vfLitBits(pay []byte, at, larg int) uint64 {
-	n := larg
-	if n > vfOffsetMax {
-		n = vfOffsetMax
-	}
+	n := min(larg, vfOffsetMax)
 	var v uint64
 	for o := 0; o < n; o += 32 {
-		w := 32
-		if n-o < w {
-			w = n - o
-		}
+		w := min(n-o, 32)
 		v |= uint64(grammar.ReadBitsAtForDiag(pay, at+o, w)) << (64 - o - w)
 	}
 	return v

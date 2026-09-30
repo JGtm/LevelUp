@@ -309,7 +309,7 @@ const ruleColumns = 5
 
 // headerInts lit `date=` et `regles=` d une ligne de commentaire d en-tete.
 func headerInts(line string) (date string, count int) {
-	for _, f := range strings.Fields(line) {
+	for f := range strings.FieldsSeq(line) {
 		if v, ok := strings.CutPrefix(f, "date="); ok {
 			date = v
 		}

@@ -152,7 +152,7 @@ func actorStateWidth(p uint32) uint {
 // 1422cde0e : `FUN_14076e494(param_2, ..., 0x10, 0, param_3, 0)`). Ce port lisait R(16) plat ;
 // le jeu lit la garde, la porte, l index et trois axes a la ligne 0x10 — le portage unique.
 func consume14058c058(br *Lecteur) {
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		if !br.ReadBit() { // present
 			continue
 		}

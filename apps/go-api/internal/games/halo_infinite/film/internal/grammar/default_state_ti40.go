@@ -61,7 +61,7 @@ func consumeDefaultStateTI40(br *Lecteur) {
 		consumeOpt32(br) // 7a. cVar3==0 : FUN_14080d69c = R(1) ; si 1 -> R(32)
 	} else {
 		n := br.ReadBits(2) // 7b. cVar3!=0 : R(2) count
-		for i := uint64(0); i < n; i++ {
+		for range n {
 			consumeOpt32(br) // count x [R(1) ; si 1 -> R(32) FUN_14080d6f0 sur flux film]
 		}
 	}

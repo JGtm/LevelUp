@@ -46,6 +46,7 @@ package grammar
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -128,7 +129,7 @@ func nmLoopBits(pay []byte, postCounts, nComp, nTargets int) int {
 	br := LecteurSur(pay)
 	br.Skip(postCounts)
 	var comp [16]uint64 // R(2) memorise par composante (idx 0..15 : R(4) max)
-	for i := 0; i < nComp; i++ {
+	for i := range nComp {
 		r2 := br.ReadBits(2)
 		if i < len(comp) {
 			comp[i] = r2
@@ -140,7 +141,7 @@ func nmLoopBits(pay []byte, postCounts, nComp, nTargets int) int {
 	if nTargets == 1 {
 		mode = 12
 	}
-	for i := 0; i < nTargets; i++ {
+	for range nTargets {
 		br.Skip(4)        // R(4)
 		if br.ReadBit() { // R(1) hit
 			br.Skip(3) // R(3) (FUN_1406d310c(6)=3)
@@ -201,10 +202,7 @@ func TestLot1ViseeNonModale(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	modal := &nmClasse{nom: "modal (0,0)"}
 	compS := &nmClasse{nom: "composante-seule"}
 	cibleS := &nmClasse{nom: "cible-seule"}
@@ -312,10 +310,7 @@ func TestLot1ViseeNonModaleScan(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	const oMax = 220
 	var scan [oMax + 1]lot1AimConc
 	var ctrl lot1AimConc
@@ -361,14 +356,14 @@ func TestLot1ViseeNonModaleScan(t *testing.T) {
 
 // nmDProfil rend la ligne "d:concentration" du decalage nmDLo..nmDHi.
 func nmDProfil(cl *nmClasse) string {
-	out := ""
+	var out strings.Builder
 	for d := nmDLo; d <= nmDHi; d++ {
 		if d > nmDLo {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += itoa(d) + ":" + nmPct(cl.at(d).maxSousSeuil())
+		out.WriteString(itoa(d) + ":" + nmPct(cl.at(d).maxSousSeuil()))
 	}
-	return out
+	return out.String()
 }
 
 // nmTopHist rend les k paires (N,P) les plus frequentes.
@@ -382,14 +377,14 @@ func nmTopHist(m map[[2]int]int, k int) string {
 		s = append(s, e{np, c})
 	}
 	nmSortDesc(len(s), func(i, j int) bool { return s[j].n > s[i].n }, func(i, j int) { s[i], s[j] = s[j], s[i] })
-	out := ""
+	var out strings.Builder
 	for i := 0; i < k && i < len(s); i++ {
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += "(" + itoa(s[i].np[0]) + "," + itoa(s[i].np[1]) + "):" + itoa(s[i].n)
+		out.WriteString("(" + itoa(s[i].np[0]) + "," + itoa(s[i].np[1]) + "):" + itoa(s[i].n))
 	}
-	return out
+	return out.String()
 }
 
 // nmTopOff rend les k offsets les plus frequents d'un histogramme offset->compte.
@@ -400,19 +395,19 @@ func nmTopOff(m map[int]int, k int) string {
 		s = append(s, e{o, c})
 	}
 	nmSortDesc(len(s), func(i, j int) bool { return s[j].n > s[i].n }, func(i, j int) { s[i], s[j] = s[j], s[i] })
-	out := ""
+	var out strings.Builder
 	for i := 0; i < k && i < len(s); i++ {
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += itoa(s[i].o) + ":" + itoa(s[i].n)
+		out.WriteString(itoa(s[i].o) + ":" + itoa(s[i].n))
 	}
-	return out
+	return out.String()
 }
 
 // nmSortDesc : tri par insertion generique (petit N ; evite d'importer sort pour deux usages).
 func nmSortDesc(n int, less func(i, j int) bool, swap func(i, j int)) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for j := i + 1; j < n; j++ {
 			if less(i, j) {
 				swap(i, j)

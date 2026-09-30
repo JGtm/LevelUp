@@ -54,7 +54,7 @@ func consumeObjectMultiplayerProperties(br *Lecteur) {
 
 // tacmap-backmenu-openoverride (FUN_142ed3d64): 32 × ( R(1)[si0:R(5)] handle + R(1) + R(1) ).
 func consumeTacmapBackmenuOpenoverride(br *Lecteur) {
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		if !br.ReadBit() {
 			br.ReadBits(5)
 		}
@@ -65,7 +65,7 @@ func consumeTacmapBackmenuOpenoverride(br *Lecteur) {
 
 // tacmap-queuedreplaymission (FUN_1407f24f8): 32 × ( R(1)[si0:R(5)] handle + R(32) id + R(1) ).
 func consumeTacmapQueuedReplayMission(br *Lecteur) {
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		if !br.ReadBit() {
 			br.ReadBits(5)
 		}
@@ -132,14 +132,14 @@ func consumeManagedSplashMessage(br *Lecteur) (r24 uint64) {
 	if br.ReadBit() { // managed-object reference set
 		br.ReadBits(32)
 		n := br.ReadBits(3)
-		for i := uint64(0); i < n; i++ {
+		for range n {
 			refElem()
 		}
 	}
 	r24 = br.ReadBits(24)
 	if br.ReadBit() { // full body
 		c1 := br.ReadBits(3)
-		for i := uint64(0); i < c1; i++ {
+		for range c1 {
 			br.ReadBits(16)
 			br.ReadBits(8)
 			br.ReadBits(8)
@@ -147,7 +147,7 @@ func consumeManagedSplashMessage(br *Lecteur) (r24 uint64) {
 			br.ReadBits(32)
 		}
 		c2 := br.ReadBits(2)
-		for i := uint64(0); i < c2; i++ {
+		for range c2 {
 			br.ReadBits(32)
 			br.ReadBits(16)
 			if br.ReadBit() {

@@ -97,7 +97,7 @@ func tcgLireVueC(pay []byte, finB, tr int, ts uint64, fermee bool) []tcgCtl {
 	br := LecteurSur(pay)
 	br.Skip(finB)
 	var out []tcgCtl
-	for tour := 0; tour < plafondToursVueC; tour++ {
+	for range plafondToursVueC {
 		if !placeDisponible(br, frameLen, 1+LargeurKindVueC) || !br.ReadBit() {
 			return out
 		}

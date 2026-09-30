@@ -140,7 +140,7 @@ func TestViseeOctet0Corpus(t *testing.T) {
 	}
 	t.Logf("CORPUS — %d films lus", nFilms)
 	sousSeuil := 0
-	for b := 0; b < 0x80; b++ {
+	for b := range 0x80 {
 		sousSeuil += compte[b]
 	}
 	t.Logf("CONTROLE DE GRAMMAIRE — paquets dont le premier octet est < 0x80 : %d"+

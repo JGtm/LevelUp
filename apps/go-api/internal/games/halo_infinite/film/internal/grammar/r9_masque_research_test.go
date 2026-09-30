@@ -42,6 +42,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -132,22 +133,22 @@ func r9LogMasque(
 	sort.Ints(rks)
 	t.Logf("%s : recensement du masque BIPEDE par rang porte (rangs a >= %d records)",
 		film, r9MasqueMin)
-	var head string
+	var head strings.Builder
 	for _, k := range rks {
-		head += padRank(k, recs[k])
+		head.WriteString(padRank(k, recs[k]))
 	}
-	t.Logf("  %-52s %s", "composant", head)
+	t.Logf("  %-52s %s", "composant", head.String())
 	ids := make([]int, 0, len(ann))
 	for id := range ann {
 		ids = append(ids, id)
 	}
 	sort.Ints(ids)
 	for _, id := range ids {
-		var line string
+		var line strings.Builder
 		for _, k := range rks {
-			line += padRate(float64(ann[id][k]) / float64(recs[k]))
+			line.WriteString(padRate(float64(ann[id][k]) / float64(recs[k])))
 		}
-		t.Logf("  i%-2d %-48s %s", id, arch.component(id), line)
+		t.Logf("  i%-2d %-48s %s", id, arch.component(id), line.String())
 	}
 }
 

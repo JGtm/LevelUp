@@ -49,7 +49,9 @@ package replay
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 	"sort"
 	"testing"
 
@@ -201,12 +203,7 @@ func ctfzEpisodesDuFilm(t *testing.T, root, id string, src *objDiskFilm, cat Lab
 
 // ctfzEstNeutre dit si un film est declare « drapeau neutre » par la BASE.
 func ctfzEstNeutre(id string) bool {
-	for _, n := range ctfzFilmsNeutres {
-		if n == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ctfzFilmsNeutres, id)
 }
 
 // ctfzRapportVariante CONFRONTE le discriminant de variante a son oracle.
@@ -310,9 +307,7 @@ func ctfzPistesEnnemies(pistes map[int]map[string][]Point, team int) map[string]
 		if tm == team {
 			continue
 		}
-		for x, pts := range par {
-			out[x] = pts
-		}
+		maps.Copy(out, par)
 	}
 	return out
 }
@@ -406,7 +401,7 @@ func ctfzOccupation(e ctfzEpisode, pistes map[string][]Point) [][]int {
 		occ[r] = make([]int, n)
 	}
 	for _, pts := range pistes {
-		for i := 0; i < n; i++ {
+		for i := range n {
 			x, y, ok := ctfzPosA(pts, e.t0+i)
 			if !ok {
 				continue
@@ -626,10 +621,7 @@ func ctfzRapportRayon(t *testing.T, eps []ctfzEpisode) {
 // multiplie par le pas de temps. C'est ce que le modele du jeu appelle la contribution des
 // joueurs a la jauge.
 func ctfzIntegraleHarmonique(e ctfzEpisode, r, ret int) float64 {
-	fin := ret - 1
-	if fin > e.t1 {
-		fin = e.t1
-	}
+	fin := min(ret-1, e.t1)
 	var s float64
 	for i := 0; i <= fin-e.t0 && i < len(e.occ[r]); i++ {
 		s += ctfzHarmonique(e.occ[r][i]) / 10

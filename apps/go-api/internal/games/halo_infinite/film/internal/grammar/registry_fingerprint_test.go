@@ -169,7 +169,7 @@ func TestRegistryFingerprintOnFilm(t *testing.T) {
 	// Le cout des N re-parses : mesure sur 4 passes, le compte des chemins de production.
 	deb = time.Now()
 	const reparses = 4
-	for i := 0; i < reparses; i++ {
+	for i := range reparses {
 		if _, err := ParseRegistryChunk(raw); err != nil {
 			t.Fatalf("re-parse %d : %v", i, err)
 		}

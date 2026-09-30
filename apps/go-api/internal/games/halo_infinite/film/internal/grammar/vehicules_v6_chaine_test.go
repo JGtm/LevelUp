@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -174,11 +175,11 @@ func v6TopHist(h map[int]int, n int) string {
 		}
 		return all[i].k < all[j].k
 	})
-	s := ""
+	var s strings.Builder
 	for i := 0; i < len(all) && i < n; i++ {
-		s += fmt.Sprintf(" %d×%d", all[i].k, all[i].v)
+		s.WriteString(fmt.Sprintf(" %d×%d", all[i].k, all[i].v))
 	}
-	return s
+	return s.String()
 }
 
 // v6Concentration rend la part des 8 types les plus frequents (mesure de non-uniformite).

@@ -67,10 +67,7 @@ func TestLot1NminEffectifParArme(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks balayes (effectif Nmin par cle joueur/arme) ==", filepath.Base(dir), n)
 
 	shots := attribCollectShots(t, dir, n)

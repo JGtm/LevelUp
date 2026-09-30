@@ -167,7 +167,7 @@ func FindKeyframeBlockInsertion(long, short KeyframeRecordBits) KeyframeBlockIns
 	}
 	// head[i] : accords des i premiers bits, alignés sur le DÉBUT des deux records.
 	head := make([]int, lf+1)
-	for i := 0; i < lf; i++ {
+	for i := range lf {
 		head[i+1] = head[i]
 		if keyframeBitAt(long.Pay, long.BitStart+i) == keyframeBitAt(short.Pay, short.BitStart+i) {
 			head[i+1]++
@@ -175,7 +175,7 @@ func FindKeyframeBlockInsertion(long, short KeyframeRecordBits) KeyframeBlockIns
 	}
 	// tail[i] : accords des i derniers bits, alignés sur la FIN des deux records.
 	tail := make([]int, lf+1)
-	for i := 0; i < lf; i++ {
+	for i := range lf {
 		tail[i+1] = tail[i]
 		if keyframeBitAt(long.Pay, long.BitEnd-1-i) == keyframeBitAt(short.Pay, short.BitEnd-1-i) {
 			tail[i+1]++

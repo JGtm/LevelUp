@@ -25,7 +25,7 @@ func chunk00Films(t *testing.T, envName string) []string {
 		t.Skipf("%s absent : instrument saute", envName)
 	}
 	var out []string
-	for _, p := range strings.Split(v, ";") {
+	for p := range strings.SplitSeq(v, ";") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}

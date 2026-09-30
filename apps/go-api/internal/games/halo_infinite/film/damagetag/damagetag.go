@@ -189,7 +189,7 @@ func Source() Provenance { return provided }
 
 // headerDate : la valeur `date=` d une ligne de commentaire d en-tete, ou "".
 func headerDate(line string) string {
-	for _, f := range strings.Fields(line) {
+	for f := range strings.FieldsSeq(line) {
 		if v, ok := strings.CutPrefix(f, "date="); ok {
 			return v
 		}

@@ -77,13 +77,13 @@ func TestR6SondageListe(t *testing.T) {
 	}
 	cat := r6LireCatalogue(t, catPath)
 	cartes := map[string]string{}
-	for _, kv := range strings.Split(maps, ",") {
+	for kv := range strings.SplitSeq(maps, ",") {
 		if i := strings.IndexByte(kv, '='); i > 0 {
 			cartes[strings.TrimSpace(kv[:i])] = strings.TrimSpace(kv[i+1:])
 		}
 	}
 	agg := r6Stats{opaques: map[int]int{}, parPosition: map[int]map[int]int{}}
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		id = strings.TrimSpace(id)
 		t.Logf("")
 		t.Logf("############ FILM %s ############", id)
@@ -222,7 +222,7 @@ func r6SauteEvenement(br *Lecteur, typ int, entry *r6CatEntry) bool {
 	saute13 := func() { br.Skip(13 + 2) } // index 13 bits + generation 2 bits
 	switch {
 	case typ == 103: // refs {7,0,7} — 13 bits chacune, pas de sonde
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			if br.ReadBit() {
 				saute13()
 			}
@@ -236,7 +236,7 @@ func r6SauteEvenement(br *Lecteur, typ int, entry *r6CatEntry) bool {
 				br.Skip(13 + 2)
 			}
 		}
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			if br.ReadBit() {
 				saute13()
 			}
@@ -259,10 +259,10 @@ func r6SauteEvenement(br *Lecteur, typ int, entry *r6CatEntry) bool {
 		if br.ReadBit() { // [R(1) ; si 1 : R(32)] — mot d'effet
 			br.Skip(32)
 		}
-		for p := 0; p < 2; p++ { // deux positions, porte INVERSEE (cf. TestR6Layout117)
+		for range 2 { // deux positions, porte INVERSEE (cf. TestR6Layout117)
 			if !br.ReadBit() {
 				br.Skip(1) // index de region (1 bit mesure : une seule region)
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					br.Skip(int(entry.AxisWidths[i]))
 				}
 			} else {
@@ -271,7 +271,7 @@ func r6SauteEvenement(br *Lecteur, typ int, entry *r6CatEntry) bool {
 		}
 		return true
 	default: // types 0 bit, domaines non sources : portes 000 exigees
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			if br.ReadBit() {
 				return false
 			}

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -222,7 +223,7 @@ func sondeMedian(xs []float64) float64 {
 // sondeBaseSweep compte, par base candidate, les degats a deux refs dont les deux positions
 // sont trouvees, et rend le pic (base la plus resolvante). Calibration du decalage de bande.
 func sondeBaseSweep(dmg []sondeDmgEvt, tr map[uint32][]sondeSample) (string, int, int) {
-	out := ""
+	var out strings.Builder
 	peakBase, peakRes := lot1chBases[0], -1
 	for _, b := range lot1chBases {
 		if b < 400 {
@@ -239,12 +240,12 @@ func sondeBaseSweep(dmg []sondeDmgEvt, tr map[uint32][]sondeSample) (string, int
 				res++
 			}
 		}
-		out += " " + itoa(b) + "=" + itoa(res)
+		out.WriteString(" " + itoa(b) + "=" + itoa(res))
 		if res > peakRes {
 			peakBase, peakRes = b, res
 		}
 	}
-	return out, peakBase, peakRes
+	return out.String(), peakBase, peakRes
 }
 
 // sonde5Hist rend l'histogramme des buckets de distance en une ligne.
@@ -256,11 +257,12 @@ func sonde5Hist(bc []int) string {
 		prev = e
 	}
 	labels[len(sondeDistEdges)] = formatBucket(prev, math.Inf(1))
-	out := "buckets"
+	var out strings.Builder
+	out.WriteString("buckets")
 	for i, c := range bc {
-		out += " " + labels[i] + "=" + itoa(c)
+		out.WriteString(" " + labels[i] + "=" + itoa(c))
 	}
-	return out
+	return out.String()
 }
 
 // formatBucket rend l'etiquette d'un bucket de distance (itoa vit dans lot1_visee_calib).

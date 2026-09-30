@@ -69,7 +69,7 @@ func TestHooksConsumeSameBitsWithoutHook(t *testing.T) {
 	rng := rand.New(rand.NewSource(20260817))
 	buf := make([]byte, 128)
 	for _, name := range hookedNames {
-		for iter := 0; iter < 500; iter++ {
+		for iter := range 500 {
 			for i := range buf {
 				buf[i] = byte(rng.Intn(256))
 			}
@@ -353,7 +353,7 @@ func TestPlayerMalleablePropertiesHook(t *testing.T) {
 	w.put(1, 1)
 	w.put(0, 1)
 	w.put(1, 1) // les trois drapeaux de tete
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		if i == 2 {
 			w.put(1, 1)
 			w.put(0xabc, 12)
@@ -361,7 +361,7 @@ func TestPlayerMalleablePropertiesHook(t *testing.T) {
 		}
 		w.put(0, 1)
 	}
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		w.put(uint64(i%2), 1)
 	}
 	br := lecteurDInstrument(append(w.buf, make([]byte, 8)...))
@@ -569,17 +569,17 @@ func TestProbeSplashStaticPublishesUnconditionalField(t *testing.T) {
 // chaque enumeration : c'est ce qui relie une valeur publiee au nom que le film lui donne. Une
 // valeur oubliee dans un `switch` rendrait « champ inconnu » et le test l'attrape.
 func TestHookFieldStringsAreRegistryLabels(t *testing.T) {
-	for f := GameEngineField(0); f < GameEngineFieldCount; f++ {
+	for f := range GameEngineField(GameEngineFieldCount) {
 		if s := f.String(); s == "" || s[0] != 'g' {
 			t.Errorf("GameEngineField(%d).String() = %q — attendu une etiquette `game-engine-...`", f, s)
 		}
 	}
-	for f := PlayerStateField(0); f < PlayerStateFieldCount; f++ {
+	for f := range PlayerStateField(PlayerStateFieldCount) {
 		if s := f.String(); s == "" || s[0] != 'p' {
 			t.Errorf("PlayerStateField(%d).String() = %q — attendu une etiquette `player-...`", f, s)
 		}
 	}
-	for p := ProbeComponent(0); p < ProbeComponentCount; p++ {
+	for p := range ProbeComponent(ProbeComponentCount) {
 		if s := p.String(); s == "" || s[0] < 'a' || s[0] > 'z' {
 			t.Errorf("ProbeComponent(%d).String() = %q", p, s)
 		}

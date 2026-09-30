@@ -31,7 +31,8 @@ func TestFlagStates_SentinellesObjectiveEvents(t *testing.T) {
 	}
 }
 
-func xuidPtr(s string) *string { return &s }
+//go:fix inline
+func xuidPtr(s string) *string { return new(s) }
 
 // docDrapeau construit un document minimal porteur d'un calque de drapeau.
 func docDrapeau(flagFilm bool, intervalMS int, spans []FlagSpan) *ReplayDocument {
@@ -47,7 +48,7 @@ func docDrapeau(flagFilm bool, intervalMS int, spans []FlagSpan) *ReplayDocument
 func TestFlagTracksOf_ConvertitLesFramesEnMillisecondes(t *testing.T) {
 	t.Parallel()
 	doc := docDrapeau(true, 100, []FlagSpan{
-		{State: FlagStateCarried, T0: 50, T1: 100, XUID: xuidPtr("A")},
+		{State: FlagStateCarried, T0: 50, T1: 100, XUID: new("A")},
 		{State: FlagStateDropped, T0: 100, T1: 112},
 	})
 	tracks, openings, ok := FlagTracksOf(doc)

@@ -27,7 +27,7 @@ func TestZoneStatesIntervallesSuiventLesBascules(t *testing.T) {
 	want := []struct {
 		t0, t1 int
 		owner  *int
-	}{{0, 100, nil}, {101, 300, intPtr(0)}, {301, 599, intPtr(1)}}
+	}{{0, 100, nil}, {101, 300, new(0)}, {301, 599, new(1)}}
 	for i, w := range want {
 		got := spans[i]
 		if got.T0 != w.t0 || got.T1 != w.t1 {

@@ -313,7 +313,7 @@ func TestV8RefVehicule(t *testing.T) {
 		}
 		tot.slotsBande += s.slotsBande
 		tot.slotsPlusieursVies += s.slotsPlusieursVies
-		for g := 0; g < 4; g++ {
+		for g := range 4 {
 			tot.genVies[g] += s.genVies[g]
 			tot.genRefs[g] += s.genRefs[g]
 		}
@@ -321,7 +321,7 @@ func TestV8RefVehicule(t *testing.T) {
 		totB.d1Presente += b.d1Presente
 		totB.d1Veh += b.d1Veh
 		totB.d1Bip += b.d1Bip
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			totB.presente[i] += b.presente[i]
 			totB.brutVeh[i] += b.brutVeh[i]
 			totB.baseVeh[i] += b.baseVeh[i]
@@ -349,7 +349,7 @@ func TestV8RefVehicule(t *testing.T) {
 		"dont %d portent PLUS D UNE vie", tot.genVies, tot.genRefs, tot.slotsBande,
 		tot.slotsPlusieursVies)
 	t.Logf("== V8 — L EMBARQUEMENT PORTE-T-IL SON VEHICULE ? (n = %d) ==", totB.n)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		t.Logf("  ref %d (domaine %s) : presente %s · valeur BRUTE en bande VEH %s · "+
 			"base+valeur en bande VEH %s · base+valeur en bande BIPEDE %s",
 			i, [3]string{"2", "3", "7"}[i], pc(totB.presente[i], totB.n),

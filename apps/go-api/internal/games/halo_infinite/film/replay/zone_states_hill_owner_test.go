@@ -76,10 +76,10 @@ func TestCollineProprietaireSubdiviseLaPeriode(t *testing.T) {
 		t0, t1 int
 		owner  *int
 	}{
-		{60, 199, ptr(0)}, // premier contact du canal a 60, jusqu'a la bascule du designateur
-		{200, 299, ptr(0)},
-		{300, 399, ptr(1)},
-		{400, 599, ptr(1)},
+		{60, 199, new(0)}, // premier contact du canal a 60, jusqu'a la bascule du designateur
+		{200, 299, new(0)},
+		{300, 399, new(1)},
+		{400, 599, new(1)},
 	}
 	got := spansTries(states)
 	if len(got) != len(veut) {
@@ -199,4 +199,6 @@ func TestCollineProprietaireValeurInconnueNOuvreRien(t *testing.T) {
 
 // ptr rend un pointeur sur un entier — les camps du DTO sont des pointeurs, parce que le camp 0
 // existe et doit se distinguer de « aucun camp ».
-func ptr(v int) *int { return &v }
+//
+//go:fix inline
+func ptr(v int) *int { return new(v) }

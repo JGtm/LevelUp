@@ -53,7 +53,7 @@ func v11Films(t *testing.T) []string {
 		t.Skipf("mesure non demandee : %s ou %s vide", v11RootEnv, v11FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(films, ",") {
+	for s := range strings.SplitSeq(films, ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, root+"/film_chunks/"+s)
 		}
@@ -79,7 +79,7 @@ func newV11SlotStat() *v11SlotStat {
 // v11MasqueIdx rend les index de composants d'un masque 64 bits, en ordre croissant.
 func v11MasqueIdx(m uint64) []int {
 	var out []int
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if m&(uint64(1)<<uint(i)) != 0 {
 			out = append(out, i)
 		}

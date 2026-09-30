@@ -173,10 +173,7 @@ func buildVipCrown(scan VipCrownScan, ctx matchClock) ([]VipPeriod, *VipCrownCov
 			cov.OutOfWindow++
 			continue
 		}
-		f1 := clampFrame(ctx.frameOfMatchMS(r.t1MS), ctx.frames)
-		if f1 < f0 {
-			f1 = f0
-		}
+		f1 := max(clampFrame(ctx.frameOfMatchMS(r.t1MS), ctx.frames), f0)
 		out = append(out, VipPeriod{XUID: r.xuid, T0: f0, T1: f1, Closed: r.closed})
 		cov.tally(r)
 	}

@@ -8,6 +8,7 @@ package grammar
 
 import (
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/weapons/filmshell"
@@ -207,15 +208,15 @@ func exploTopTI(m map[int]int, k int) string {
 		rows = append(rows, kv{ti, n})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].n > rows[j].n })
-	out := ""
+	var out strings.Builder
 	for i, r := range rows {
 		if i >= k {
 			break
 		}
-		out += " ti=" + itoa(r.ti) + ":" + itoa(r.n)
+		out.WriteString(" ti=" + itoa(r.ti) + ":" + itoa(r.n))
 	}
-	if out == "" {
+	if out.String() == "" {
 		return "(aucun)"
 	}
-	return out
+	return out.String()
 }

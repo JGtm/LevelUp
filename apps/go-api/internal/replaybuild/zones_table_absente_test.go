@@ -28,7 +28,7 @@ func TestObjectiveRoles_TableAbsenteEstJournaliseeEnDebug(t *testing.T) {
 		t.Fatalf("table absente : %+v, attendu nil", set)
 	}
 	var niveaux []string
-	for _, ligne := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
+	for ligne := range bytes.SplitSeq(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
 		var rec struct {
 			Level string `json:"level"`
 			Msg   string `json:"msg"`

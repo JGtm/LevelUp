@@ -329,7 +329,7 @@ func r12MasqueAncre(t *testing.T, s r12Setup, tl r12RankTimeline, fs []r12Fen,
 		facteurPort, facteurQui float64
 	}
 	var rows []row
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if tout.annonces[i] == 0 {
 			continue
 		}

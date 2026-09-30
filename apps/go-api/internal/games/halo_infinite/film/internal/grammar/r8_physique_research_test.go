@@ -235,7 +235,7 @@ func r8RandomWitness(
 		if len(pts) < 8 {
 			continue
 		}
-		for n := 0; n < r8RandomPerTrack; n++ {
+		for range r8RandomPerTrack {
 			pt := pts[rng.Intn(len(pts))]
 			if s, ok := r8SelfSample(fs, ti, pt.T); ok {
 				pop.addSelf(s)

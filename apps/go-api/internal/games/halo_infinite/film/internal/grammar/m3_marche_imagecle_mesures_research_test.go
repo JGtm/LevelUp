@@ -32,10 +32,7 @@ func m3ScanRG(buf []byte, from, prevSlot, total, maxWin int, appris m3N1) (at in
 	at = -1
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	signe := -1
-	end := from + maxWin
-	if end > total {
-		end = total
-	}
+	end := min(from+maxWin, total)
 	sentStreak := 0
 	for q := from; q < end && q+64 <= total; q++ {
 		id := source.BitsBourres(buf, q, 32)
@@ -382,7 +379,7 @@ func TestM3PreuveRougeAvant(t *testing.T) {
 	kfEcrireRecord(w, 1, 10, 5, 300)
 	w.bits(0, kfScanFenetreBits+5000)
 	kfEcrireRecord(w, 1, 11, 5, 300)
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		w.bits(kfSent, 32)
 	}
 	recs = m3Walk(w.buf, kfScanFenetreBits, m3ScanProdAncien)

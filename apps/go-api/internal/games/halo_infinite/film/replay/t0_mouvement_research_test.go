@@ -421,10 +421,7 @@ func t0mQuantile(tri []float64, q float64) float64 {
 	if len(tri) == 0 {
 		return 0
 	}
-	idx := int(math.Round(q * float64(len(tri)-1)))
-	if idx < 0 {
-		idx = 0
-	}
+	idx := max(int(math.Round(q*float64(len(tri)-1))), 0)
 	if idx >= len(tri) {
 		idx = len(tri) - 1
 	}
@@ -556,10 +553,7 @@ func TestT0MouvementContreEtalonAPI(t *testing.T) {
 		frameCoupe := -1
 		if sain {
 			// La coupe du plancher de bruit : la frame du film qui precede le T0-API.
-			frameCoupe = int((ref.t0APIms - *doc.OriginMs) / int64(doc.FrameIntervalMS))
-			if frameCoupe < 0 {
-				frameCoupe = 0
-			}
+			frameCoupe = max(int((ref.t0APIms-*doc.OriginMs)/int64(doc.FrameIntervalMS)), 0)
 		}
 		m := t0mAnalyseDoc(&doc, frameCoupe)
 		doc.Tracks = nil

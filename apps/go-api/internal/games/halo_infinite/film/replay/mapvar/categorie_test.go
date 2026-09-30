@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -66,14 +67,14 @@ func tri(m map[int]int) string {
 		l = append(l, kv{k, v})
 	}
 	sort.Slice(l, func(i, j int) bool { return l[i].v > l[j].v })
-	s := ""
+	var s strings.Builder
 	for i, x := range l {
 		if i >= 8 {
 			break
 		}
-		s += formate(x.k, x.v)
+		s.WriteString(formate(x.k, x.v))
 	}
-	return s
+	return s.String()
 }
 
 func triU8(m map[uint8]int) string {

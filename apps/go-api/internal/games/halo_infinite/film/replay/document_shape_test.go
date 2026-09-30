@@ -36,6 +36,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -79,8 +80,8 @@ func TestDocumentShapeMatchesGolden(t *testing.T) {
 // noms de types, memes tags JSON, memes `omitempty` (cf. son `doc.go`). Une divergence signifie
 // qu'un calque cuit n'atteint plus le client, ou qu'un champ servi n'a plus de source.
 func TestDocumentShapeTwinsAgree(t *testing.T) {
-	stockee := documentShapeRender(reflect.TypeOf(ReplayDocument{}))
-	servie := documentShapeRender(reflect.TypeOf(replaydoc.ReplayDocument{}))
+	stockee := documentShapeRender(reflect.TypeFor[ReplayDocument]())
+	servie := documentShapeRender(reflect.TypeFor[replaydoc.ReplayDocument]())
 	if stockee == servie {
 		return
 	}
@@ -106,10 +107,8 @@ func TestDocumentShapeSchemaHasChronicleEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chronique illisible : %v", err)
 	}
-	for _, v := range versions {
-		if v == SchemaVersion {
-			return
-		}
+	if slices.Contains(versions, SchemaVersion) {
+		return
 	}
 	t.Errorf("SchemaVersion = %d n'a AUCUNE entree dans document_chronicle.go (versions "+
 		"declarees : %v) — une montee sans chronique ne dit pas ce qu'elle change", SchemaVersion, versions)
@@ -168,14 +167,14 @@ func TestDocumentShapeRegenerate(t *testing.T) {
 // LA FORME EN CLAIR EST DANS LE GOLDEN, et pas seulement son hachage : une empreinte qui bouge
 // ne dit pas CE QUI a bouge, et la premiere question d'une revue est toujours celle-la.
 func documentShapeGolden() string {
-	render := documentShapeRender(reflect.TypeOf(ReplayDocument{}))
+	render := documentShapeRender(reflect.TypeFor[ReplayDocument]())
 	var b strings.Builder
 	b.WriteString("# EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.\n")
 	b.WriteString("# Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.\n")
 	fmt.Fprintf(&b, "%s%d\n", shapeEnteteSchema, SchemaVersion)
 	fmt.Fprintf(&b, "%s%s\n", shapeEnteteEmpreinte, empreinteDe(render))
 	fmt.Fprintf(&b, "%s%s\n", shapeEnteteServie,
-		empreinteDe(documentShapeRender(reflect.TypeOf(replaydoc.ReplayDocument{}))))
+		empreinteDe(documentShapeRender(reflect.TypeFor[replaydoc.ReplayDocument]())))
 	fmt.Fprintf(&b, "%s%s\n", shapeEnteteCuite, empreinteDe(documentShapeRenderCuite()))
 	fmt.Fprintf(&b, "%s%d\n\n", shapeEnteteCuiteRegle, cuiteRegleCourante)
 	b.WriteString(render)
@@ -189,7 +188,7 @@ func shapeGoldenTete() (schema int, empreinte string) {
 	if err != nil {
 		return 0, ""
 	}
-	for _, ligne := range strings.Split(string(raw), "\n") {
+	for ligne := range strings.SplitSeq(string(raw), "\n") {
 		switch {
 		case strings.HasPrefix(ligne, shapeEnteteSchema):
 			_, _ = fmt.Sscanf(strings.TrimPrefix(ligne, shapeEnteteSchema), "%d", &schema)
@@ -248,8 +247,7 @@ func documentShapeRender(root reflect.Type) string {
 // champsDe : les champs exportes d'un type, rendus et tries par nom.
 func champsDe(t reflect.Type) []string {
 	out := make([]string, 0, t.NumField())
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
+	for f := range t.Fields() {
 		if f.PkgPath != "" {
 			continue // champ non exporte : jamais serialise
 		}
@@ -276,8 +274,8 @@ func collecterTypes(t reflect.Type, out map[string]reflect.Type, vus map[reflect
 		if nom := t.Name(); nom != "" {
 			out[nom] = t
 		}
-		for i := 0; i < t.NumField(); i++ {
-			collecterTypes(t.Field(i).Type, out, vus)
+		for field := range t.Fields() {
+			collecterTypes(field.Type, out, vus)
 		}
 	default:
 	}
@@ -378,11 +376,10 @@ var calquesALaRequete = map[string]bool{
 // documentShapeRenderCuite rend la forme du document PRIVÉE des types que seuls les calques
 // résolus à la requête atteignent. Un type partagé avec un calque cuit y reste.
 func documentShapeRenderCuite() string {
-	root := reflect.TypeOf(ReplayDocument{})
+	root := reflect.TypeFor[ReplayDocument]()
 	types := map[string]reflect.Type{root.Name(): root}
 	vus := map[reflect.Type]bool{root: true}
-	for i := 0; i < root.NumField(); i++ {
-		f := root.Field(i)
+	for f := range root.Fields() {
 		if f.PkgPath != "" || calquesALaRequete[baliseJSON(f)] {
 			continue
 		}
@@ -416,8 +413,7 @@ func documentShapeRenderCuite() string {
 // champsCuitsDe : les champs exportés d'un type, PRIVÉS des calques résolus à la requête.
 func champsCuitsDe(t reflect.Type) []string {
 	out := make([]string, 0, t.NumField())
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
+	for f := range t.Fields() {
 		if f.PkgPath != "" || calquesALaRequete[baliseJSON(f)] {
 			continue
 		}
@@ -430,8 +426,8 @@ func champsCuitsDe(t reflect.Type) []string {
 // baliseJSON rend le nom de clé JSON d'un champ (avant la virgule des options).
 func baliseJSON(f reflect.StructField) string {
 	tag := f.Tag.Get("json")
-	if i := strings.IndexByte(tag, ','); i >= 0 {
-		return tag[:i]
+	if before, _, ok := strings.Cut(tag, ","); ok {
+		return before
 	}
 	return tag
 }
@@ -442,12 +438,12 @@ func shapeGoldenEmpreinteCuite() string {
 	if err != nil {
 		return ""
 	}
-	for _, ligne := range strings.Split(string(raw), "\n") {
+	for ligne := range strings.SplitSeq(string(raw), "\n") {
 		if strings.HasPrefix(ligne, shapeEnteteCuiteRegle) {
 			continue // la ligne de RÈGLE commence par le même préfixe : ne pas la confondre
 		}
-		if strings.HasPrefix(ligne, shapeEnteteCuite) {
-			return strings.TrimSpace(strings.TrimPrefix(ligne, shapeEnteteCuite))
+		if after, ok := strings.CutPrefix(ligne, shapeEnteteCuite); ok {
+			return strings.TrimSpace(after)
 		}
 	}
 	return ""
@@ -460,7 +456,7 @@ func shapeGoldenCuiteRegle() int {
 	if err != nil {
 		return 0
 	}
-	for _, ligne := range strings.Split(string(raw), "\n") {
+	for ligne := range strings.SplitSeq(string(raw), "\n") {
 		if strings.HasPrefix(ligne, shapeEnteteCuiteRegle) {
 			var v int
 			_, _ = fmt.Sscanf(strings.TrimPrefix(ligne, shapeEnteteCuiteRegle), "%d", &v)
@@ -476,11 +472,11 @@ func shapeGoldenCuiteRegle() int {
 // cuisson. Le jour où un chemin de `build*.go` en poserait un, l'artefact porterait un contenu
 // dont la forme ne serait plus ratchetée — et ce test rougit AVANT.
 func TestDocumentShapeCalquesALaRequeteRestentHorsCuisson(t *testing.T) {
-	root := reflect.TypeOf(ReplayDocument{})
+	root := reflect.TypeFor[ReplayDocument]()
 	for balise := range calquesALaRequete {
 		trouve := false
-		for i := 0; i < root.NumField(); i++ {
-			if baliseJSON(root.Field(i)) == balise {
+		for field := range root.Fields() {
+			if baliseJSON(field) == balise {
 				trouve = true
 			}
 		}

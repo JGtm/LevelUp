@@ -294,7 +294,7 @@ func TestAssautManchesControleHorsEchantillon(t *testing.T) {
 	defer amArmeSentinelle(t, "TestAssautManchesControleHorsEchantillon")()
 	var bande []string
 	films, manches := 0, 0
-	for _, id := range strings.Split(libres, ",") {
+	for id := range strings.SplitSeq(libres, ",") {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			continue
@@ -528,7 +528,7 @@ func TestAssautDomaineComp0(t *testing.T) {
 	for _, f := range amCorpus {
 		ids = append(ids, f.id)
 	}
-	for _, id := range strings.Split(os.Getenv("ASSAUT_FILMS_LIBRES"), ",") {
+	for id := range strings.SplitSeq(os.Getenv("ASSAUT_FILMS_LIBRES"), ",") {
 		if id = strings.TrimSpace(id); id != "" {
 			ids = append(ids, id)
 		}
@@ -614,10 +614,10 @@ func TestAssautPontIdentite(t *testing.T) {
 		}
 		nommes += len(named)
 		identifies += nomme
-		manques := ""
+		var manques strings.Builder
 		for _, e := range named {
 			if identity.At(e.Slot, e.TimeMS) == "" {
-				manques += fmt.Sprintf(" [slot %d a %d ms SANS identite]", e.Slot, e.TimeMS)
+				manques.WriteString(fmt.Sprintf(" [slot %d a %d ms SANS identite]", e.Slot, e.TimeMS))
 			}
 		}
 		plat := objectives.SlotIdentityByDeaths(recs, di)
@@ -628,7 +628,7 @@ func TestAssautPontIdentite(t *testing.T) {
 			}
 		}
 		t.Logf("%s : %d nomme(s) -> %d identifie(s) par manche, %d par le pont PLAT (%d slots), %d mort(s)%s",
-			f.id, len(named), nomme, platOK, len(plat), len(deaths), manques)
+			f.id, len(named), nomme, platOK, len(plat), len(deaths), manques.String())
 	}
 	t.Logf("BILAN PONT : %d explosion(s) nommee(s) -> %d identifiee(s) (%.1f %%)",
 		nommes, identifies, 100*float64(identifies)/float64(nommes))

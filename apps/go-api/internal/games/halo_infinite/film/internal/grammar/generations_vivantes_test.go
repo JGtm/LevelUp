@@ -114,7 +114,7 @@ func comptesDesHuitCanaux(t *testing.T, fc *FilmContext) map[string]int {
 
 // poserDeuxBits ecrit la valeur `v` (2 bits, MSB d abord) a la position `pos` du tampon.
 func poserDeuxBits(buf []byte, pos int, v uint8) {
-	for k := 0; k < 2; k++ {
+	for k := range 2 {
 		bit := (v >> (1 - k)) & 1
 		octet, masque := (pos+k)>>3, byte(0x80)>>uint((pos+k)&7)
 		if bit == 1 {

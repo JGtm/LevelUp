@@ -37,6 +37,8 @@ package killicon
 // kill en face ET dont le dead-state designe la victime elle-meme. Appliquer cette table a une
 // mort ordinaire rendrait << suicide >> sur un kill parfaitement attribue.
 
+import "maps"
+
 import "levelup/go-api/internal/games/halo_infinite/film/damagetag"
 
 // Les TYPES de mort publies. Identifiants stables, jamais des libelles : la traduction FR/EN
@@ -77,8 +79,6 @@ func NeutralDeath(tag uint32) (kind string, icon Icon, ok bool) {
 // NeutralSprites : la table type -> vignette, copiee. Sert aux garde-rails d assets.
 func NeutralSprites() map[string]string {
 	out := make(map[string]string, len(neutralSprites))
-	for k, v := range neutralSprites {
-		out[k] = v
-	}
+	maps.Copy(out, neutralSprites)
 	return out
 }

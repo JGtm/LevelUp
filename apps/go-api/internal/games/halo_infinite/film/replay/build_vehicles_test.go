@@ -79,7 +79,7 @@ const (
 // seconde ecriture de la formule, et elle divergerait.
 func vehVelScale(mps float64) uint32 {
 	n := uint32(1) << vehTestScaleBits
-	for s := uint32(0); s < n; s++ {
+	for s := range n {
 		if float64(grammar.DecodeVelocityMagnitude(uint64(s), vehTestScaleBits)) >= mps {
 			return s
 		}

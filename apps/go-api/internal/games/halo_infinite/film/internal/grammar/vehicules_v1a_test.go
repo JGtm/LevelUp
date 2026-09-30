@@ -64,7 +64,7 @@ func v1aCorpus(t *testing.T) (string, []v1aFilm) {
 		t.Skipf("mesure non demandee : %s ou %s vide", v1aRootEnv, v1aFilmsEnv)
 	}
 	var out []v1aFilm
-	for _, s := range strings.Split(liste, ",") {
+	for s := range strings.SplitSeq(liste, ",") {
 		if s = strings.TrimSpace(s); s == "" {
 			continue
 		}
@@ -271,7 +271,7 @@ func v1aCondense(pos []BipedPosition) v1aEmpreinte {
 		ecris(uint64(p.Chunk))
 		ecris(uint64(p.PacketIndex))
 		ecris(p.TimestampUS)
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			ecris(uint64(p.Q[ax]))
 			e.SommeQ[ax] += uint64(p.Q[ax])
 		}

@@ -85,7 +85,7 @@ func TestI22Confrontation(t *testing.T) {
 		withPrior++
 		same := len(prior.Values) == 4
 		if same {
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				if uint32(prior.Values[i]) != k.Grenades[i] {
 					same = false
 				}

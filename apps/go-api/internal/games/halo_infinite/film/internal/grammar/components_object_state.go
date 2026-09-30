@@ -20,11 +20,11 @@ package grammar
 func consumeObjectRegionState(br *Lecteur) {
 	present := br.ReadBit()
 	count := br.ReadBits(6)
-	for i := uint64(0); i < count; i++ {
+	for range count {
 		br.ReadBits(3)
 	}
 	if present {
-		for i := uint64(0); i < count; i++ {
+		for range count {
 			br.ReadBits(10)
 		}
 	}
@@ -39,7 +39,7 @@ func consumeObjectRegionState(br *Lecteur) {
 // AUCUNE LARGEUR N A CHANGE ; largeurs figees par TestConsumeObjectDamageSectionsLargeurs.
 func consumeObjectDamageSections(br *Lecteur) {
 	count := br.ReadBits(6)
-	for i := uint64(0); i < count; i++ {
+	for range count {
 		if br.ReadBit() {
 			br.ReadBits(7)
 			br.ReadBits(16)
@@ -365,7 +365,7 @@ func consumeObjectLowFrequency(br *Lecteur) {
 	br.ReadBits(4)      // FUN_142af2a50 = R(4)
 	br.ReadBits(6)      // FUN_1407eddb4 = R(6)
 	n := br.ReadBits(6) // R(6) keyframe count (0..63)
-	for i := uint64(0); i < n; i++ {
+	for range n {
 		if br.ReadBit() { // FUN_1406d49c4 per-keyframe flag
 			br.ReadBit() // flag set -> 1 bit
 		} else {
@@ -374,7 +374,7 @@ func consumeObjectLowFrequency(br *Lecteur) {
 		}
 	}
 	// trailer: 7 raw present flags
-	for i := 0; i < 7; i++ {
+	for range 7 {
 		br.ReadBit()
 	}
 	if !br.ReadBit() { // FUN_142d55f00 : present quand bit==0 -> R(4)

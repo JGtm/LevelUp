@@ -207,13 +207,7 @@ func v10Desc(v []float64) string {
 func v10Hist(v []float64) [10]int {
 	var h [10]int
 	for _, x := range v {
-		i := int(x * 10)
-		if i > 9 {
-			i = 9
-		}
-		if i < 0 {
-			i = 0
-		}
+		i := max(min(int(x*10), 9), 0)
 		h[i]++
 	}
 	return h

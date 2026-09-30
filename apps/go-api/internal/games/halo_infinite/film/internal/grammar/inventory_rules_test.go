@@ -50,14 +50,14 @@ const (
 // regle trouve, c est ce qu on y a mis.
 func buildAbilityRecord(gap int, index uint32, anchors int) []byte {
 	w := &bitWriter{}
-	for a := 0; a < anchors; a++ {
+	for range anchors {
 		w.put(invAbilityAnchor, abilityAnchorBits)
-		for i := 0; i < gap; i++ {
+		for range gap {
 			w.put(1, 1)
 		}
 		w.put(invAbilityPattern, abilityPatternBits)
 		w.put(index, abilityIndexBits)
-		for i := 0; i < 32; i++ { // separation entre deux ancres
+		for range 32 { // separation entre deux ancres
 			w.put(1, 1)
 		}
 	}
@@ -119,14 +119,14 @@ func TestR1DoubleAnchorIsNotDisambiguated(t *testing.T) {
 // ne peut pas produire le prefixe 100.
 func buildGrenadeBlock(lead int, counts [4]uint32, tail int) []byte {
 	w := &bitWriter{}
-	for i := 0; i < lead; i++ {
+	for range lead {
 		w.put(1, 1)
 	}
 	w.put(4, 3)
 	for _, c := range counts {
 		w.put(c, 8)
 	}
-	for i := 0; i < tail; i++ {
+	for range tail {
 		w.put(1, 1)
 	}
 	return w.buf
@@ -177,7 +177,7 @@ func TestR2StopsAtTheFirstMatch(t *testing.T) {
 	for _, c := range []uint32{1, 0, 0, 0} {
 		w.put(c, 8)
 	}
-	for i := 0; i < 64; i++ {
+	for range 64 {
 		w.put(1, 1)
 	}
 	w.put(4, 3)
@@ -204,11 +204,11 @@ const (
 func TestR3FirstKnownFamilyInBitOrder(t *testing.T) {
 	w := &bitWriter{}
 	const lead = 40
-	for i := 0; i < lead; i++ {
+	for range lead {
 		w.put(1, 1)
 	}
 	w.put(famMA40, 32)
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		w.put(1, 1)
 	}
 	w.put(famSidekick, 32)
@@ -284,7 +284,7 @@ func TestR4WithoutAFamilyNothingIsRead(t *testing.T) {
 func buildRecordWithAmmoThenFamily(mag, res uint32, sel int) ([]byte, int, uint32, uint32) {
 	w := &bitWriter{}
 	const lead = 20
-	for i := 0; i < lead; i++ {
+	for range lead {
 		w.put(1, 1)
 	}
 	m := mag
@@ -299,7 +299,7 @@ func buildRecordWithAmmoThenFamily(mag, res uint32, sel int) ([]byte, int, uint3
 	w.put(0, 1) // LA PORTE d i43 : c est sur ce bit que le bloc doit atterrir
 	familyBit := w.n
 	w.put(famMA40, 32)
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		w.put(1, 1)
 	}
 	return w.buf, familyBit, mag, res
@@ -311,12 +311,12 @@ func buildRecordWithAmmoThenFamily(mag, res uint32, sel int) ([]byte, int, uint3
 // regle trouve, c est ce qu on y a mis.
 func buildGrenadeSelTail(off int, mask, sel uint32, tail int) []byte {
 	w := &bitWriter{}
-	for i := 0; i < off; i++ {
+	for range off {
 		w.put(1, 1)
 	}
 	w.put(mask, 6)
 	w.put(sel, 3)
-	for i := 0; i < tail; i++ {
+	for range tail {
 		w.put(1, 1)
 	}
 	return w.buf
@@ -354,14 +354,14 @@ func TestR5MaskMustMatchCounters(t *testing.T) {
 func TestR5ContradictoryReadsRefuse(t *testing.T) {
 	gren := [invGrenadeSlots]uint32{0, 2, 1, 0}
 	w := &bitWriter{}
-	for i := 0; i < invGrenadeSelLo; i++ {
+	for range invGrenadeSelLo {
 		w.put(1, 1)
 	}
 	w.put(0b110, 6)
 	w.put(2, 3) // rang 1
 	w.put(0b110, 6)
 	w.put(3, 3) // rang 2, a +209 : encore dans la fenetre
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		w.put(1, 1)
 	}
 	if got := invGrenadeSelection(w.buf, 0, len(w.buf)*8, gren); got != -1 {

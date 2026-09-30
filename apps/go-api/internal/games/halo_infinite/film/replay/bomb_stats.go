@@ -357,21 +357,21 @@ func bombPlayerRows(in BombStatsInput, t bombTallies) []BombPlayerStats {
 	for x := range xuids {
 		row := BombPlayerStats{XUID: x}
 		if in.DetonationsRead {
-			row.Detonations = measuredInt(t.detonations[x])
+			row.Detonations = new(t.detonations[x])
 		}
 		// `bomb_arms` demande les DEUX canaux : l'anneau date l'armement, le portage le
 		// nomme — et l'horloge du film qui les recale (cf. [bombArmsMeasured]). Sans l'un des
 		// trois, le champ reste absent — jamais un zéro qui laisserait croire que le joueur
 		// n'a rien armé.
 		if bombArmsMeasured(in) {
-			row.Arms = measuredInt(t.arms[x])
+			row.Arms = new(t.arms[x])
 		}
 		if in.CarryRead {
-			row.Grabs = measuredInt(t.grabs[x])
-			row.TimeAsCarrierSeconds = measuredSeconds(t.seconds[x])
+			row.Grabs = new(t.grabs[x])
+			row.TimeAsCarrierSeconds = new(t.seconds[x])
 		}
 		if in.CarryRead && in.KillsRead {
-			row.CarriersKilled = measuredInt(t.killed[x])
+			row.CarriersKilled = new(t.killed[x])
 		}
 		rows = append(rows, row)
 	}
@@ -482,6 +482,9 @@ func bombCarriedAt(periods []HeldObjectPeriod, t int64) bool {
 
 // measuredInt / measuredSeconds rendent un pointeur sur une valeur MESURÉE — le zéro qu'ils portent est
 // un zéro mesuré, à ne pas confondre avec le `nil` d'une source non lue.
-func measuredInt(v int) *int { return &v }
+//
+//go:fix inline
+func measuredInt(v int) *int { return new(v) }
 
-func measuredSeconds(v float64) *float64 { return &v }
+//go:fix inline
+func measuredSeconds(v float64) *float64 { return new(v) }

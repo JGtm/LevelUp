@@ -18,6 +18,8 @@ package grammar
 // le propulseur vaut 5 en famille A et 21 en famille B, un litteral en dur rendrait un
 // instrument muet sur l'autre famille (le piege qui avait rendu le translocateur invisible).
 
+import "slices"
+
 import "fmt"
 
 type r12Palette struct {
@@ -82,12 +84,7 @@ func r12ClassifyPalette(ranks []r12RankRead) *r12Palette {
 }
 
 func r12Contains(xs []int, v int) bool {
-	for _, x := range xs {
-		if x == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(xs, v)
 }
 
 // r12RankOf rend le rang qui porte l'equipement nomme (nom EN de la palette), ou -1.

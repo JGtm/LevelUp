@@ -47,6 +47,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -199,13 +200,13 @@ func e191MasqueContient(masque []int, i int) bool {
 
 // e191Signature rend la signature COURTE des composants regardes : `i10+ i18- i20+ ...`.
 func e191Signature(masque []int) string {
-	out := ""
+	var out strings.Builder
 	for _, c := range e191Composants {
 		marque := "-"
 		if e191MasqueContient(masque, c.i) {
 			marque = "+"
 		}
-		out += fmt.Sprintf("i%d%s ", c.i, marque)
+		out.WriteString(fmt.Sprintf("i%d%s ", c.i, marque))
 	}
-	return out
+	return out.String()
 }

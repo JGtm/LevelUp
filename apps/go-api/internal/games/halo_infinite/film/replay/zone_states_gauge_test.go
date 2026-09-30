@@ -18,7 +18,7 @@ import (
 // gaugeSamples fabrique `n` emissions aux frames t0 + i*pas, de valeur brute v0 + i*dv.
 func gaugeSamples(n, t0, pas int, v0, dv uint64) []zoneSample {
 	out := make([]zoneSample, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out = append(out, zoneSample{t: t0 + i*pas, v: v0 + uint64(i)*dv})
 	}
 	return out
@@ -305,7 +305,7 @@ func TestZoneGaugeRetourAZeroFermeLaRampe(t *testing.T) {
 // que le film ecrit (cf. appendGaugeReset).
 func rampeDeJauge(n, t0 int, top float64) []zoneSample {
 	out := make([]zoneSample, 0, n+1)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f := top * float64(i+1) / float64(n)
 		out = append(out, zoneSample{t: t0 + i, v: zoneGaugeQuantZero + uint64(f*zoneGaugeQuantUnit)})
 	}

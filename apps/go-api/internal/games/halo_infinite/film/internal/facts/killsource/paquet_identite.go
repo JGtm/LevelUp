@@ -70,12 +70,12 @@ func (p paquetID) memeQue(chunk, pidx int) bool {
 // fonction ne connait que l ORDRE, et c est precisement ce qu il ne faut pas recopier a cinq
 // endroits.
 func choisirParIdentitePuisFenetre(n int, identite, fenetre, couple func(int) bool) (int, bool) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if identite(i) && couple(i) {
 			return i, false
 		}
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if fenetre(i) && couple(i) {
 			return i, true
 		}

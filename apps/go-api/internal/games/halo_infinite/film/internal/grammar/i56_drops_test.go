@@ -256,7 +256,7 @@ func i56dDeltas(t *testing.T, energy []i56dSample) []i56Drop {
 	}
 	series := map[key][]i56dSample{}
 	for _, e := range energy {
-		for c := 0; c < AbilityEnergyCharges; c++ {
+		for c := range AbilityEnergyCharges {
 			if e.ch[c] != AbilityEnergyUnarmed {
 				series[key{e.slot, c}] = append(series[key{e.slot, c}], e)
 			}

@@ -90,7 +90,7 @@ func TestR2PositionsAberrantes(t *testing.T) {
 					return
 				}
 				var q [3]uint32
-				for ax := 0; ax < 3; ax++ {
+				for ax := range 3 {
 					q[ax] = uint32(source.BitsStricts(pay, r.I0+lay.AxisOffset(ax), int(lay.AxisW[ax])))
 				}
 				t.Logf("RECORD t=%d chunk=%d pk=%d gen=%d vivante=%v masque=%v q=%v sat=%v xyz=(%.2f %.2f %.2f)",
@@ -221,7 +221,7 @@ func TestR2BilanDesCorps(t *testing.T) {
 			pay := pk.Payload(data)
 			walkDeltaBipedPayload(pay, fc.BipedSlots(), lay, gens.A(pk.TimestampUS), func(r deltaBipedRecord) {
 				var q [3]uint64
-				for ax := 0; ax < 3; ax++ {
+				for ax := range 3 {
 					q[ax] = source.BitsStricts(pay, r.I0+lay.AxisOffset(ax), int(lay.AxisW[ax]))
 				}
 				genDe[[5]uint64{uint64(r.Slot), pk.TimestampUS, q[0], q[1], q[2]}] = r.Gen

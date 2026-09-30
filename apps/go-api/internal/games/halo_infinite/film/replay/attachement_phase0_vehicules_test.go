@@ -44,7 +44,7 @@ const attFilmsVehiculesEnv = "ATT_FILMS_VEHICULES"
 func attFilmsVehicules() []string {
 	if v := os.Getenv(attFilmsVehiculesEnv); v != "" {
 		var out []string
-		for _, s := range strings.Split(v, ",") {
+		for s := range strings.SplitSeq(v, ",") {
 			if s = strings.TrimSpace(s); s != "" {
 				out = append(out, s)
 			}
@@ -110,7 +110,7 @@ func TestAttachementPhase0CensusVehicules(t *testing.T) {
 		images                int
 	}
 	var out []ligne
-	for _, id := range strings.Split(liste, ",") {
+	for id := range strings.SplitSeq(liste, ",") {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			continue

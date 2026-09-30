@@ -8,7 +8,9 @@ package grammar
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -177,12 +179,7 @@ func p3Egal(a, b []uint32) bool {
 }
 
 func p3Contient(a []uint32, x uint32) bool {
-	for _, v := range a {
-		if v == x {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(a, x)
 }
 
 // p3Accords publie les accords avec O1 et O2, le temoin (vie suivante) et le hasard (toutes paires).
@@ -252,11 +249,11 @@ func p3Accords(t *testing.T, nom string, vies []*p3Vie, sel func(*p3Vie) *p3Nais
 func p3Detail(t *testing.T, vies []*p3Vie) {
 	t.Helper()
 	fam := func(v []uint32) string {
-		s := ""
+		var s strings.Builder
 		for _, x := range v {
-			s += fmt.Sprintf(" %08X", x)
+			s.WriteString(fmt.Sprintf(" %08X", x))
 		}
-		return "[" + s + " ]"
+		return "[" + s.String() + " ]"
 	}
 	t.Logf("== P3.4 DETAIL PAR VIE (slot debut..fin | marche | record trouve : trame chunk bit gen desync " +
 		"annonces/lus emplacements | O1 | O2)")
@@ -267,13 +264,13 @@ func p3Detail(t *testing.T, vies []*p3Vie) {
 			s += " | MARCHE oui"
 		}
 		if n := v.trouvee; n != nil {
-			var idx string
+			var idx strings.Builder
 			for _, a := range n.armes {
-				idx += fmt.Sprintf(" i%d:%v:%08X/%08X", a.idx, a.present, a.hi, a.lo)
+				idx.WriteString(fmt.Sprintf(" i%d:%v:%08X/%08X", a.idx, a.present, a.hi, a.lo))
 			}
 			s += fmt.Sprintf(" | TROUVE t=%d c%d bit %d (fin vue B %d, close %v) g%d desync=%d %d/%d%s",
 				n.trame, n.chunk, n.bit, n.finMarche, n.hitEndB, n.gen, n.desync, n.annoncees,
-				len(n.armes), idx)
+				len(n.armes), idx.String())
 		} else {
 			s += " | RIEN TROUVE"
 		}

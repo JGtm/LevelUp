@@ -381,7 +381,7 @@ func consumeWeaponMagazineList(br *Lecteur) {
 		return
 	}
 	n := uint32(br.ReadBits(4)) // FUN_1424e1d48 count
-	for i := uint32(0); i < n; i++ {
+	for range n {
 		if br.ReadBit() {
 			br.ReadBits(32)
 		}

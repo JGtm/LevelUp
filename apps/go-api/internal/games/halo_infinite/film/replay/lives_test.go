@@ -40,7 +40,7 @@ func TestBuildLifeSpansKeepsContinuousTrackWhole(t *testing.T) {
 	// Des échantillons rapprochés ne doivent JAMAIS être coupés : un découpage trop
 	// agressif fabriquerait des vies sans mort, donc des vies jamais nommées.
 	var pts []grammar.BipedPosition
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		pts = append(pts, posAt(512, uint64(i)*16_000, 0, 0, 0))
 	}
 	if lives := buildLifeSpans(tracksOf(pts...)); len(lives) != 1 {
@@ -92,7 +92,7 @@ func TestNameLivesByDeathsIsDeterministic(t *testing.T) {
 		return m[512], m[513]
 	}
 	a1, b1 := build()
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		if a2, b2 := build(); a2 != a1 || b2 != b1 {
 			t.Fatalf("appariement non deterministe : (%d,%d) puis (%d,%d)", a1, b1, a2, b2)
 		}
@@ -173,7 +173,7 @@ func TestBuildRosterIsSortedAndStable(t *testing.T) {
 	if first[0].XUID != "2533274800000001" {
 		t.Errorf("xuid attendu en decimal, obtenu %q", first[0].XUID)
 	}
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		if got := buildRoster(idx, nil, nil, teamPublication{}); got[0].XUID != first[0].XUID || got[2].XUID != first[2].XUID {
 			t.Fatalf("roster non reproductible entre deux appels : %+v puis %+v", first, got)
 		}

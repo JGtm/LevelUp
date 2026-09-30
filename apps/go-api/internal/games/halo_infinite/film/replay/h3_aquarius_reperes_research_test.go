@@ -246,7 +246,7 @@ func h3RetrouveBornes(t *testing.T, dir, id string, refEntry profile.MapQuantEnt
 		if !vu || len(v[0]) < f1ReperePointsMin {
 			continue
 		}
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			dec[ax] = append(dec[ax], f1Mediane(v[ax]))
 			pub[ax] = append(pub[ax], att[ax])
 		}

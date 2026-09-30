@@ -60,7 +60,7 @@ func TestOriginMeasure(t *testing.T) {
 	if cache == "" {
 		t.Fatalf("%s est requis", originCacheEnv)
 	}
-	for _, short := range strings.Split(spec, ",") {
+	for short := range strings.SplitSeq(spec, ",") {
 		short = strings.TrimSpace(short)
 		if short == "" {
 			continue

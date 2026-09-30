@@ -149,7 +149,7 @@ type compteFermeture struct {
 // les lignes vides sont ignorees.
 func lignesFermeture(s string) map[string]compteFermeture {
 	out := map[string]compteFermeture{}
-	for _, l := range strings.Split(s, "\n") {
+	for l := range strings.SplitSeq(s, "\n") {
 		l = strings.TrimSpace(l)
 		if l == "" || strings.HasPrefix(l, "#") {
 			continue

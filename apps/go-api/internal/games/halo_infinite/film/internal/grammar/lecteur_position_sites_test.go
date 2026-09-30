@@ -45,7 +45,7 @@ var (
 // lue d une porte sautee.
 func motif(n uint) uint64 {
 	var v uint64
-	for i := uint(0); i < n; i++ {
+	for i := range n {
 		if i%2 == 0 {
 			v |= 1 << i
 		}
@@ -159,7 +159,7 @@ func casDesSitesDePosition() []casDeSite {
 	// CALL 142ed9556 ; niveau 30 : 26 bits par axe dans les DEUX tables.
 	for _, idx := range []int{-1, 0} {
 		var f []champDeFlux
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			f = append(f, e524(idx, 1, axesNiveau30)...)
 		}
 		cas = append(cas, casDeSite{nom: fmt.Sprintf("asset-transform idx=%d", idx), indexW: 1,

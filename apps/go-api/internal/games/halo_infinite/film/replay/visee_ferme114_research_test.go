@@ -330,7 +330,7 @@ func TestViseeFermeture114(t *testing.T) {
 	}
 	lots := map[string][]env114Paquet{}
 	var noms []string
-	for _, dir := range strings.Split(liste, ",") {
+	for dir := range strings.SplitSeq(liste, ",") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue
@@ -346,7 +346,7 @@ func TestViseeFermeture114(t *testing.T) {
 	t.Logf("FERMETURE — %d films ; cardinal du domaine 2 lu dans le binaire : 0x%x (base 0x%x)",
 		len(noms), ferme114CardDom2, ferme114BaseDom2)
 	lots105 := map[string][]env114Paquet{}
-	for _, dir := range strings.Split(liste, ",") {
+	for dir := range strings.SplitSeq(liste, ",") {
 		if dir = strings.TrimSpace(dir); dir != "" {
 			lots105[env114Nom(dir)] = env114CollecteType(dir, 105)
 		}

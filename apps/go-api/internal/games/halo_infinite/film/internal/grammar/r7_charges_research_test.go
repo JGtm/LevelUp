@@ -80,10 +80,7 @@ func r7BitsAxe(etendue float64, k int) uint {
 	if lim := math.Pow(2, 22); n > lim {
 		n = lim
 	}
-	b := int(math.Ceil(math.Log2(n)))
-	if b > 26 {
-		b = 26
-	}
+	b := min(int(math.Ceil(math.Log2(n))), 26)
 	if b < 0 {
 		b = 0
 	}
@@ -104,7 +101,7 @@ func r7VecteurQuantifie(br *Lecteur, ctx r7Ctx, k int) bool {
 			return false // sans la carte du film, la largeur est inconnue : on ne devine pas
 		}
 		br.Skip(int(ctx.regionBits))
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			br.Skip(int(r7BitsAxe(ctx.etendues[i], k)))
 		}
 		return true
@@ -159,7 +156,7 @@ func r7SkipCharge(br *Lecteur, typ int, ctx r7Ctx) bool {
 		if br.ReadBit() {
 			br.Skip(32)
 		}
-		for p := 0; p < 2; p++ {
+		for range 2 {
 			if !r7VecteurQuantifie(br, ctx, 16) {
 				return false
 			}

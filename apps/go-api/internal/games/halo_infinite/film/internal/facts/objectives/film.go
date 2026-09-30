@@ -275,10 +275,7 @@ func scanTh10Events(data []byte) []FooterEvent {
 // d'event puis décode le bloc de 60 octets le précédant. Renvoie ok=false si le
 // bloc n'est pas un th=10. (Le xuid est rempli par l'appelant.)
 func decodeTh10Block(data []byte, xstart, total int) (FooterEvent, bool) {
-	win := xstart + 20000
-	if win > total {
-		win = total
-	}
+	win := min(xstart+20000, total)
 	for b := xstart; b <= win-32; b++ {
 		if source.OctetAuBit(data, b) == 0 && source.OctetAuBit(data, b+8) == 0 &&
 			source.OctetAuBit(data, b+16) == 0x2e && source.OctetAuBit(data, b+24) == 0xe0 {

@@ -25,6 +25,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -138,12 +139,12 @@ func equipWidthScores(byWidths map[profile.MPPWidths]int) string {
 		}
 	}
 	sort.Slice(ws, func(i, j int) bool { return byWidths[ws[i]] > byWidths[ws[j]] })
-	out := ""
+	var out strings.Builder
 	for _, w := range ws {
-		out += fmt.Sprintf(" %s:%d", w, byWidths[w])
+		out.WriteString(fmt.Sprintf(" %s:%d", w, byWidths[w]))
 	}
-	if out == "" {
+	if out.String() == "" {
 		return " (aucun accord)"
 	}
-	return out
+	return out.String()
 }

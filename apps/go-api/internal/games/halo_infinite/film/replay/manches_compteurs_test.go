@@ -88,7 +88,7 @@ func manchesBloc(round, debut, n int, slots []int) []types.StatRecord {
 	var recs []types.StatRecord
 	for j, slot := range slots {
 		recs = append(recs, coreLine(slot, round, debut, 0, 0, 0, 0)...)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			k := int64(i + 1)
 			t := debut + 500 + j*manchesDecalageSlot + i*manchesPasProgression
 			recs = append(recs, coreLine(slot, round, t, k, k, k, k*10)...)
@@ -100,7 +100,7 @@ func manchesBloc(round, debut, n int, slots []int) []types.StatRecord {
 // manchesInstants rend les trois instants de progression du slot d'index j dans une manche.
 func manchesInstants(j, debut int) []int {
 	out := make([]int, 0, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		out = append(out, debut+500+j*manchesDecalageSlot+i*manchesPasProgression)
 	}
 	return out

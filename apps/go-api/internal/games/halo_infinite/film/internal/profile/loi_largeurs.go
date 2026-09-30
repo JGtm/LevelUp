@@ -122,7 +122,7 @@ func LargeursAxeDuNiveau(bornes [3][2]float32, niveau int) [3]uint {
 	deuxPas := pas + pas
 	limite := deuxPas * plafondDeComptage
 	var out [3]uint
-	for axe := 0; axe < 3; axe++ {
+	for axe := range 3 {
 		etendue := bornes[axe][1] - bornes[axe][0]
 		casiers := uint32(plafondDeComptage)
 		if etendue < limite {

@@ -127,7 +127,7 @@ func gameSummary(t *testing.T, short string, st GameChainStats, recs []GameEntit
 					active++
 				}
 			}
-			for f := 0; f < PlayerStateFieldCount; f++ {
+			for f := range PlayerStateFieldCount {
 				if r.PlayerSeen[PlayerStateField(f)] {
 					fields[f]++
 				}
@@ -151,7 +151,7 @@ func gameSummary(t *testing.T, short string, st GameChainStats, recs []GameEntit
 		fmt.Sprint(st.RecordsClean), fmt.Sprint(engine), fmt.Sprint(player),
 		fmt.Sprint(len(perSlot)), fmt.Sprint(top8), fmt.Sprint(respawn), fmt.Sprint(active),
 	}
-	for f := 0; f < PlayerStateFieldCount; f++ {
+	for f := range PlayerStateFieldCount {
 		cells = append(cells, fmt.Sprint(fields[f]))
 	}
 	gameAppendLine(t, filepath.Join(out, "synthese_films.tsv"),
@@ -242,7 +242,7 @@ func gameChainSlots(t *testing.T, recs []GameEntityRecord) {
 func gameChainFields(t *testing.T, recs []GameEntityRecord) {
 	t.Helper()
 	t.Logf("CHAINE · ti=0 CHAMPS")
-	for f := 0; f < GameEngineFieldCount; f++ {
+	for f := range GameEngineFieldCount {
 		fl := GameEngineField(f)
 		hist, n, gated := map[string]int{}, 0, 0
 		for _, r := range recs {
@@ -267,7 +267,7 @@ func gameChainFields(t *testing.T, recs []GameEntityRecord) {
 	}
 	t.Logf("    %-48s CAPTURE : %d lectures certaines", compGameEngineRoundTimer, nrt)
 	t.Logf("CHAINE · ti=5 CHAMPS")
-	for f := 0; f < PlayerStateFieldCount; f++ {
+	for f := range PlayerStateFieldCount {
 		fl := PlayerStateField(f)
 		hist, n, gated := map[string]int{}, 0, 0
 		for _, r := range recs {
@@ -356,7 +356,7 @@ func gameLogEngineFields(t *testing.T, sc GameEntityScan) {
 		return
 	}
 	t.Logf("ti=0 CHAMPS (records dont la marche a abouti : %d)", st.Walked)
-	for f := 0; f < GameEngineFieldCount; f++ {
+	for f := range GameEngineFieldCount {
 		t.Logf("    %-48s masque %6d · LU %6d · porte fermee %6d",
 			GameEngineField(f), st.WithField[f], st.Read[f], st.Gated[f])
 	}
@@ -377,7 +377,7 @@ func gameLogPlayerFields(t *testing.T, sc GameEntityScan) {
 		return
 	}
 	t.Logf("ti=5 CHAMPS (records dont la marche a abouti : %d)", st.Walked)
-	for f := 0; f < PlayerStateFieldCount; f++ {
+	for f := range PlayerStateFieldCount {
 		t.Logf("    %-48s masque %6d · LU %6d · porte fermee %6d",
 			PlayerStateField(f), st.WithField[f], st.Read[f], st.Gated[f])
 	}

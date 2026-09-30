@@ -1,5 +1,7 @@
 package grammar
 
+import "maps"
+
 import "levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 
 // World tracks entity-id -> archetype (and the last resolved position) ACROSS FRAME records.
@@ -367,9 +369,7 @@ func (w *World) Bound() int { return len(w.slots) }
 // cloneSlots returns a shallow copy of the slot table (for per-frame rollback).
 func (w *World) cloneSlots() map[uint32]slotState {
 	m := make(map[uint32]slotState, len(w.slots))
-	for k, v := range w.slots {
-		m[k] = v
-	}
+	maps.Copy(m, w.slots)
 	return m
 }
 

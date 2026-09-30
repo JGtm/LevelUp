@@ -159,7 +159,7 @@ func r11LogArmed(t *testing.T, s r11Setup, rd r11Reads) {
 			continue
 		}
 		armed++
-		for k := 0; k < AbilityEnergyCharges; k++ {
+		for k := range AbilityEnergyCharges {
 			if e.Ch[k] != AbilityEnergyUnarmed {
 				kHist[k]++
 			}
@@ -274,7 +274,7 @@ func r11Uses(s r11Setup, rd r11Reads, segs []r11Seg) []r11Use {
 		sort.Slice(es, func(a, b int) bool { return es[a].TSUS < es[b].TSUS })
 		cur := [AbilityEnergyCharges]int{r11FullNibble, r11FullNibble, r11FullNibble}
 		for _, e := range es {
-			for k := 0; k < AbilityEnergyCharges; k++ {
+			for k := range AbilityEnergyCharges {
 				if e.Ch[k] == AbilityEnergyUnarmed {
 					cur[k] = r11FullNibble
 					continue
@@ -381,7 +381,7 @@ func r11CountEnergy(r *r11Row, g r11Seg, energy []r11EnergyRead) {
 			continue
 		}
 		r.Reads++
-		for k := 0; k < AbilityEnergyCharges; k++ {
+		for k := range AbilityEnergyCharges {
 			if e.Ch[k] != AbilityEnergyUnarmed {
 				r.KHist[k]++
 			}

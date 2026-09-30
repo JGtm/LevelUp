@@ -35,6 +35,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -117,7 +118,7 @@ func equipOwnerBipeds(t *testing.T, dir string, lay profile.I0Layout, wr profile
 	out := make([]equipOwnerSample, 0, len(raw))
 	for _, p := range raw {
 		var v [3]float32
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			f := (float32(p.Q[a]) + 0.5) / float32(uint64(1)<<lay.AxisW[a])
 			v[a] = wr[a].Min + f*(wr[a].Max-wr[a].Min)
 		}
@@ -292,9 +293,9 @@ func equipOwnerRanksLine(m map[int]int) string {
 		rs = append(rs, r)
 	}
 	sort.Ints(rs)
-	out := ""
+	var out strings.Builder
 	for _, r := range rs {
-		out += fmt.Sprintf(" %d:%d", r, m[r])
+		out.WriteString(fmt.Sprintf(" %d:%d", r, m[r]))
 	}
-	return out
+	return out.String()
 }

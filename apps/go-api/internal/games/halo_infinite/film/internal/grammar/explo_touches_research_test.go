@@ -375,10 +375,7 @@ func TestExploTouches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks · base bipede %d ==", filepath.Base(dir), n, exploBase)
 
 	shots := exploCollectShots(t, dir, n)

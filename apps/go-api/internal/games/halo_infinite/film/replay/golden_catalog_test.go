@@ -106,7 +106,7 @@ func repoRootForTest(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("répertoire courant : %v", err)
 	}
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		if _, err := os.Stat(filepath.Join(dir, "config", "titles")); err == nil {
 			return dir
 		}

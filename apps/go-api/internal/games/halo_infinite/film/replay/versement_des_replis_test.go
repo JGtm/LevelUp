@@ -29,8 +29,7 @@ import (
 // par la table, sous UN nom, et ce nom est une entree du registre. Que l entree soit BRANCHEE est
 // tenu ailleurs (`fallback.TestChaqueRepliEstCompte`, direction (E) d `archlint`).
 func TestChaqueChampDuRapportDeGrammaireEstVerse(t *testing.T) {
-	var zero grammar.ComptesDesReplis
-	typ := reflect.TypeOf(zero)
+	typ := reflect.TypeFor[grammar.ComptesDesReplis]()
 	nomsVus := map[fallback.Nom]string{}
 	for i := 0; i < typ.NumField(); i++ {
 		var r grammar.ComptesDesReplis
@@ -116,7 +115,7 @@ func appelsDansLOrdre(t *testing.T, fichier, fonction string) []string {
 // TestChaqueCompteDuKillFeedEstVerse : chaque champ de [killsource.ReplisDuDecodage], et chacun des
 // comptes que le decodeur tenait deja, arrive au compteur sous UN nom, a l assemblage.
 func TestChaqueCompteDuKillFeedEstVerse(t *testing.T) {
-	typ := reflect.TypeOf(killsource.ReplisDuDecodage{})
+	typ := reflect.TypeFor[killsource.ReplisDuDecodage]()
 	poseurs := map[string]func(*killsource.Result){}
 	for i := 0; i < typ.NumField(); i++ {
 		i := i
@@ -149,7 +148,7 @@ func TestChaqueCompteDuKillFeedEstVerse(t *testing.T) {
 // TestChaqueCompteDesObjectifsEstVerse : chaque champ de [objectives.ComptesDesReplis] arrive au
 // compteur sous UN nom, a l assemblage.
 func TestChaqueCompteDesObjectifsEstVerse(t *testing.T) {
-	typ := reflect.TypeOf(objectives.ComptesDesReplis{})
+	typ := reflect.TypeFor[objectives.ComptesDesReplis]()
 	for i := 0; i < typ.NumField(); i++ {
 		var c objectives.ComptesDesReplis
 		reflect.ValueOf(&c).Elem().Field(i).SetInt(7)

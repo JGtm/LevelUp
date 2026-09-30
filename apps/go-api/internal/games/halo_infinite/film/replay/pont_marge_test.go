@@ -121,7 +121,7 @@ func pontFixturePlateauADeuxPaniers() ([]lifeSpan, []types.Death) {
 	var deaths []types.Death
 	const origine, residuTardif = 2_000_000, 220
 	tMatch := int64(40_000)
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		var residu int64
 		if i >= 25 {
 			residu = residuTardif
@@ -172,15 +172,15 @@ func pontFixtureAmasPlusGrosQueLeVrai() ([]lifeSpan, []types.Death) {
 	var deaths []types.Death
 	const origine, amas, decalageAmas = 200_000, 400_000, 50_000
 	tMatch := int64(10_000)
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		lives = append(lives, pontVie(uint32(500+i), origine+tMatch))
 		deaths = append(deaths, types.Death{XUID: uint64(1000 + i), TimeMS: tMatch})
 		tMatch += 11_000 + int64(i*i*7_919)%37_000
 	}
-	for j := 0; j < 20; j++ {
+	for j := range 20 {
 		deaths = append(deaths, types.Death{XUID: uint64(9000 + j), TimeMS: amas + int64(j)*3})
 	}
-	for j := 0; j < 5; j++ {
+	for j := range 5 {
 		lives = append(lives, pontVie(uint32(800+j), origine+decalageAmas+amas+int64(j)*3))
 	}
 	return lives, deaths

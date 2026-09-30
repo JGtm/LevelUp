@@ -95,7 +95,7 @@ func TestCalculer_DirectiveGoCompte(t *testing.T) {
 // du meme fichier, pour prouver que la directive, elle, compte.
 func retirerDirectives(texte string) string {
 	var garde []string
-	for _, ligne := range strings.Split(texte, "\n") {
+	for ligne := range strings.SplitSeq(texte, "\n") {
 		if !strings.HasPrefix(ligne, "//go:") {
 			garde = append(garde, ligne)
 		}

@@ -52,7 +52,7 @@ func v5Films(t *testing.T) []string {
 		t.Skipf("mesure non demandée : %s ou %s vide", v5RootEnv, v5FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(films, ",") {
+	for s := range strings.SplitSeq(films, ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, root+"/film_chunks/"+s)
 		}

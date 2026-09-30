@@ -119,7 +119,7 @@ func (ctl controleEcarts) retenuEntre(a, b int) bool {
 
 // tousVacants verifie `n` enregistrements vacants consecutifs a partir de `a`.
 func (ctl controleEcarts) tousVacants(a, n int) bool {
-	for k := 0; k < n; k++ {
+	for k := range n {
 		if !slotVacant(ctl.d, a+k*ctl.vide, ctl.finBit) {
 			return false
 		}

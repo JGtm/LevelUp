@@ -108,7 +108,7 @@ func TestInventaireChassisDesArtefacts(t *testing.T) {
 func inventaireFichiers(t *testing.T, dir string) (fichiers []string, manquants []string) {
 	t.Helper()
 	if ids := strings.TrimSpace(os.Getenv(parcIDsEnv)); ids != "" {
-		for _, raw := range strings.Split(ids, ",") {
+		for raw := range strings.SplitSeq(ids, ",") {
 			id := strings.TrimSpace(raw)
 			if id == "" {
 				continue

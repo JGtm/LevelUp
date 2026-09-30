@@ -88,7 +88,7 @@ func ti42ReadCapture(path string) ([]ti42CaptureRecord, error) {
 		return nil, err
 	}
 	var out []ti42CaptureRecord
-	for _, line := range strings.Split(string(blob), "\n") {
+	for line := range strings.SplitSeq(string(blob), "\n") {
 		f := strings.Fields(line)
 		if len(f) < 3 {
 			continue

@@ -547,7 +547,7 @@ func v13ParseFilms(t *testing.T) []string {
 		t.Skipf("V13_FILMS absent : mesure V13 sautee")
 	}
 	var out []string
-	for _, tok := range strings.Split(raw, ",") {
+	for tok := range strings.SplitSeq(raw, ",") {
 		if tok = strings.TrimSpace(tok); tok != "" {
 			out = append(out, tok)
 		}

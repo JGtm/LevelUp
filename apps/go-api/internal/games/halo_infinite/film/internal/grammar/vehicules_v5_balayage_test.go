@@ -151,10 +151,7 @@ func v5BalayerRecord(
 		return
 	}
 	for ei, ex := range v5Extracteurs {
-		maxDec := long - ex.Largeur
-		if maxDec > v5MaxDecalage {
-			maxDec = v5MaxDecalage
-		}
+		maxDec := min(long-ex.Largeur, v5MaxDecalage)
 		for d := 0; d <= maxDec; d++ {
 			vDebut := ex.Slot(source.BitsBourres(r.Payload, r.BitStart+d, ex.Largeur))
 			v5Marquer(local, global, v5Cible{v5AncreDebut, ei, d}, cibles[vDebut], positif)

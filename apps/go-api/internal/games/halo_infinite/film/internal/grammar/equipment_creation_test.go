@@ -47,6 +47,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -198,7 +199,7 @@ func equipCreationLogFields(t *testing.T, label string, cre []types.EquipmentCre
 // quelque part dans son record de naissance, c'est le premier endroit où la chercher.
 func equipCreationLogMPP(t *testing.T, cre []types.EquipmentCreation) {
 	t.Helper()
-	for f := 0; f < MPPFieldCount; f++ {
+	for f := range MPPFieldCount {
 		h := map[uint32]int{}
 		lives := map[uint32]map[equipCreationLifeKey]bool{}
 		for _, c := range cre {
@@ -230,11 +231,11 @@ func equipCreationSum(h map[uint32]int) int {
 }
 
 func equipCreationLine(h map[uint32]int, limit int) string {
-	out := ""
+	var out strings.Builder
 	for _, e := range equipCreationTop(h, limit) {
-		out += fmt.Sprintf(" %d:%d", e.key, e.count)
+		out.WriteString(fmt.Sprintf(" %d:%d", e.key, e.count))
 	}
-	return out
+	return out.String()
 }
 
 // equipCreationLogLives compte les VIES d'objet (slot, génération) et dit combien portent un

@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -155,12 +156,7 @@ func TestDeuxPassesEtUpdateSontExclusifs(t *testing.T) {
 }
 
 func contient(liste []string, v string) bool {
-	for _, s := range liste {
-		if s == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(liste, v)
 }
 
 // TestModeS8NePeutPasEcrireUneReference : LE MODE S8 NE TOUCHE JAMAIS LES 20 TSV DE REFERENCE.

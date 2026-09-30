@@ -349,7 +349,7 @@ func lifeEndTailProbe(
 	// TÉMOIN : mêmes fenêtres, sur des clés que le film ne porte pas.
 	ctrl, ctrlHits := 0, 0
 	for slot := range band {
-		for gen := uint32(0); gen < 4; gen++ {
+		for gen := range uint32(4) {
 			k := types.LifeKey{Slot: slot, Gen: gen}
 			if len(raw[k]) > 0 {
 				continue
@@ -418,10 +418,9 @@ func lifeEndDelSelectivity(t *testing.T, dir string, n int, band map[uint32]bool
 	lg profile.PrecisionDescriptor) {
 	t.Helper()
 	cands, payloads := 0, 0
-	limit := n
-	if limit > 4 {
-		limit = 4 // quatre chunks suffisent à établir un ordre de grandeur
-	}
+	limit := min(n,
+		// quatre chunks suffisent à établir un ordre de grandeur
+		4)
 	for c := 1; c <= limit; c++ {
 		chunk, err := ReadFilmChunk(dir, c)
 		if err != nil {

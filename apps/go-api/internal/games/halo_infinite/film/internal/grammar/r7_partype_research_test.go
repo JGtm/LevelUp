@@ -36,7 +36,7 @@ func r7TypesDemandes() map[int]bool {
 		return nil
 	}
 	out := map[int]bool{}
-	for _, s := range strings.Split(v, ",") {
+	for s := range strings.SplitSeq(v, ",") {
 		if n, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
 			out[n] = true
 		}

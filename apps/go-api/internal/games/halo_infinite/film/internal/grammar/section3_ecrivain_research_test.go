@@ -126,7 +126,7 @@ func s3wFermeture(t *testing.T) {
 // l'horodatage du match par le balayage de decalage (controle W-NEG).
 func s3wChampsNom(t *testing.T, d []byte) {
 	t.Helper()
-	for k := 0; k < 2; k++ {
+	for k := range 2 {
 		deb := s3wBoolOff + k*s3wNomBits/8
 		nz := 0
 		for i := deb; i < deb+s3wNomBits/8 && i < len(d); i++ {
@@ -166,7 +166,7 @@ func s3wChampsNom(t *testing.T, d []byte) {
 func s3wBlocs(t *testing.T, d []byte) {
 	t.Helper()
 	deb := s3wBoolOff + 2*s3wNomBits/8 + 16 // apres les deux noms et les quatre u32
-	for k := 0; k < 3; k++ {
+	for k := range 3 {
 		o := deb + k*0x1000
 		nz := 0
 		for i := o; i < o+0x1000 && i < len(d); i++ {
@@ -214,7 +214,7 @@ func TestSection3HorodatageContreRegistre(t *testing.T) {
 // s3wRefs decoupe `film=epoch;film=epoch`.
 func s3wRefs(v string) map[string]int64 {
 	out := map[string]int64{}
-	for _, p := range strings.Split(v, ";") {
+	for p := range strings.SplitSeq(v, ";") {
 		kv := strings.SplitN(strings.TrimSpace(p), "=", 2)
 		if len(kv) != 2 {
 			continue
@@ -231,7 +231,7 @@ func s3wRefs(v string) map[string]int64 {
 // sortis du flux sont ceux de la memoire et se relisent en LE.
 func s3wU32Flux(d []byte, bit int) uint32 {
 	var acc uint32
-	for k := 0; k < 32; k++ {
+	for k := range 32 {
 		b := bit + k
 		if b>>3 >= len(d) {
 			return 0

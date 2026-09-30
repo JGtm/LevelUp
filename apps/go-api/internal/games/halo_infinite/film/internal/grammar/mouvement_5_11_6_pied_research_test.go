@@ -165,10 +165,7 @@ func m5116RendrePied(t *testing.T, pieds []m5116Pied) {
 // m5116Diff nomme les rangs de bits ou deux mots different.
 func m5116Diff(a, b string) string {
 	ab, bb := strings.ReplaceAll(a, " ", ""), strings.ReplaceAll(b, " ", "")
-	n := len(ab)
-	if len(bb) < n {
-		n = len(bb)
-	}
+	n := min(len(bb), len(ab))
 	var rangs []string
 	for i := 0; i < n; i++ {
 		if ab[i] != bb[i] {

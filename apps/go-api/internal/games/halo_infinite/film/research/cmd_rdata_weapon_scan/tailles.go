@@ -152,12 +152,12 @@ func litCtx(reg *grammar.Registry, chunkIdx, pktIdx int) {
 func freshWorld(reg *grammar.Registry, path string) *grammar.World {
 	raw, _ := os.ReadFile(path)
 	w := grammar.NewWorld(reg)
-	for _, line := range strings.Split(string(raw), "\n") {
+	for line := range strings.SplitSeq(string(raw), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		for _, tok := range strings.Fields(line) {
+		for tok := range strings.FieldsSeq(line) {
 			parts := strings.SplitN(tok, ":", 2)
 			if len(parts) != 2 {
 				continue

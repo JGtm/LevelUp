@@ -29,6 +29,7 @@ package grammar
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -148,7 +149,7 @@ func TestBipedPickupRef0Base(t *testing.T) {
 		mode, modeN, len(paires), bpkPct(modeN, len(paires)))
 	t.Logf("TEMOIN (appariement permute d'un cran) : %d valeurs distinctes — mode %d sur %d (%.1f %%)",
 		len(temoin), tMode, tModeN, bpkPct(tModeN, len(paires)))
-	for k := uint64(0); k < 8; k++ {
+	for k := range uint64(8) {
 		if m := ecartsParClasse[k]; len(m) > 0 {
 			t.Logf("  classe R(3)=%d : %s", k, bpkTopI64(m, 6))
 		}
@@ -186,14 +187,14 @@ func bpkTopI64(m map[int64]int, k int) string {
 	if len(s) > k {
 		s = s[:k]
 	}
-	out := ""
+	var out strings.Builder
 	for i, e := range s {
 		if i > 0 {
-			out += " · "
+			out.WriteString(" · ")
 		}
-		out += fmtI64(e.k, e.v)
+		out.WriteString(fmtI64(e.k, e.v))
 	}
-	return out
+	return out.String()
 }
 
 func fmtI64(k int64, v int) string {

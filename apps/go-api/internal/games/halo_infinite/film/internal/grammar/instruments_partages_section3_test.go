@@ -55,7 +55,7 @@ type s3rTouche struct {
 // s3rBit lit n bits MSB-first.
 func s3rBit(d []byte, bit, n int) uint64 {
 	var acc uint64
-	for k := 0; k < n; k++ {
+	for k := range n {
 		b := bit + k
 		if b>>3 >= len(d) {
 			return 0
@@ -134,10 +134,11 @@ func s3sDecode(d []byte, debut, fin int) *s3sEnr {
 // s3sPredite rend la longueur que la grammaire PREDIT pour un enregistrement, a partir des
 // quatre nombres lus dans le flux. C'est le coeur du controle G-CLO.
 func s3sPredite(e *s3sEnr) int {
-	unites := len(utf16.Encode([]rune(e.gamertag))) + 1 // le NUL terminateur est ecrit
-	if unites > s3sGtMax {
-		unites = s3sGtMax // chaine pleine : FUN_1407ece18 s'arrete sur la borne, sans NUL
-	}
+	unites := min(
+		// le NUL terminateur est ecrit
+		len(utf16.Encode([]rune(e.gamertag)))+1,
+		// chaine pleine : FUN_1407ece18 s'arrete sur la borne, sans NUL
+		s3sGtMax)
 	return s3sFixeSlot + s3sFixeSub + e.compteMasque + e.n*8 + e.m*32 + unites*16
 }
 
@@ -153,10 +154,7 @@ func s3wChaine(d []byte, off, max int) string {
 	if off < 0 || off >= len(d) {
 		return ""
 	}
-	end := off + max
-	if end > len(d) {
-		end = len(d)
-	}
+	end := min(off+max, len(d))
 	s := string(d[off:end])
 	if i := strings.IndexByte(s, 0); i >= 0 {
 		s = s[:i]
@@ -228,7 +226,7 @@ func s3sDecodeListes(d []byte, e *s3sEnr, p, fin int) int {
 	e.bloc104 = s3sOctets(d, p, s3sBloc104/8)
 	p += s3sBloc104
 	var unites []uint16
-	for k := 0; k < s3sGtMax; k++ {
+	for range s3sGtMax {
 		u := uint16(s3rBit(d, p, 16))
 		p += 16
 		if u == 0 {
@@ -276,7 +274,7 @@ func s3sDecodeQueue(d []byte, e *s3sEnr, p, fin int) int {
 // DES ADRESSES, MSB d'abord, donc n octets relus MSB-first rendent l'image memoire verbatim.
 func s3sOctets(d []byte, bit, n int) []byte {
 	out := make([]byte, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out[i] = byte(s3rBit(d, bit+i*8, 8))
 	}
 	return out

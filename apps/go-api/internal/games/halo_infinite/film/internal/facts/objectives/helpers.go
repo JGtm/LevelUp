@@ -5,7 +5,9 @@ package objectives
 import "strconv"
 
 // intPtr renvoie un *int pointant sur v (pour les colonnes NULL-able du domaine).
-func intPtr(v int) *int { return &v }
+//
+//go:fix inline
+func intPtr(v int) *int { return new(v) }
 
 // abs renvoie la valeur absolue d'un int.
 func abs(v int) int {

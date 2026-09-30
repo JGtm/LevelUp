@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -413,11 +414,11 @@ func ti11SortedKeys(m map[int]int) []int {
 }
 
 func ti11Histogram(m map[int]int) string {
-	s := ""
+	var s strings.Builder
 	for _, k := range ti11SortedKeys(m) {
-		s += fmt.Sprintf("%d:%d ", k, m[k])
+		s.WriteString(fmt.Sprintf("%d:%d ", k, m[k]))
 	}
-	return s
+	return s.String()
 }
 
 func ti11Ratio(a, b int) string {

@@ -54,6 +54,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -122,7 +123,7 @@ func reap37Corpus(t *testing.T) (string, []string) {
 		t.Skip("REAP_FILM_ROOT et REAP_FILMS requis — aucun film ouvert sans eux")
 	}
 	var out []string
-	for _, s := range strings.Split(liste, ",") {
+	for s := range strings.SplitSeq(liste, ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, s)
 		}
@@ -322,7 +323,7 @@ func reap37LireIndexTi11(fc *FilmContext) map[reap37Paire]int {
 
 // reap37ArchetypeObjectif trouve `ti=11` par le NOM de son composant i0, jamais par un index.
 func reap37ArchetypeObjectif(reg *Registry) (uint32, bool) {
-	for ti := 0; ti < objectArchetypeCount; ti++ {
+	for ti := range objectArchetypeCount {
 		a, ok := reg.Archetype(ti)
 		if !ok || len(a.Components) == 0 {
 			continue
@@ -355,7 +356,7 @@ func reap37Popcount(v uint64) int {
 // laquelle des deux entites le jeu emploie.
 func reap37ArchetypesMoteur(reg *Registry) []uint32 {
 	var out []uint32
-	for ti := 0; ti < objectArchetypeCount; ti++ {
+	for ti := range objectArchetypeCount {
 		a, ok := reg.Archetype(ti)
 		if !ok || len(a.Components) <= 15 {
 			continue
@@ -368,12 +369,7 @@ func reap37ArchetypesMoteur(reg *Registry) []uint32 {
 }
 
 func reap37Contient(l []uint32, v uint32) bool {
-	for _, x := range l {
-		if x == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(l, v)
 }
 
 // reap37LireMoteur marche UN record d image-cle du moteur de jeu : les composants portes par le

@@ -66,7 +66,7 @@ func (r *IdentityRegistry) resolveByTemporalExclusion(ctx context.Context, in Id
 	if !ok {
 		return
 	}
-	for tour := 0; tour < toursExclusionMax; tour++ {
+	for range toursExclusionMax {
 		if pose := r.poserExclusions(viesForcees(r.Vies(), roster), in); pose == 0 {
 			break
 		}

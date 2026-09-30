@@ -276,7 +276,7 @@ func obVueOrphelines(t *testing.T, series map[uint32][]ti12Ech, exps []int32) {
 	}
 	t.Logf("--- MONTEES CONTIGUES VALIDES : %d suivie(s) d'une explosion sous %d s, "+
 		"%d orpheline(s)", suivies, tpSensMaxMS/1000, orphelines)
-	for _, l := range strings.Split(sb.String(), "] ") {
+	for l := range strings.SplitSeq(sb.String(), "] ") {
 		if l == "" {
 			continue
 		}

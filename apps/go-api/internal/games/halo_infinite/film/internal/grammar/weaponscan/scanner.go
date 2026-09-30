@@ -181,10 +181,7 @@ func ScanFormulaA(data []byte) []FormulaAResult {
 		pb := data[absPos+3]
 		pi := int(pb >> 5)
 
-		end := absPos + 68
-		if end > len(data) {
-			end = len(data)
-		}
+		end := min(absPos+68, len(data))
 
 		bestSX := -1
 		for suffix := range filmshell.AllFormulaASuffixes {
@@ -377,7 +374,7 @@ func decodeFireEventAt(data []byte, bitPos, totalBits int) (FireEvent, bool) {
 
 // matchMarkerAt vérifie si le marker universel 11 bits est à bitPos.
 func matchMarkerAt(data []byte, bitPos int) bool {
-	for i := 0; i < universalMarkerLen; i++ {
+	for i := range universalMarkerLen {
 		byteIdx := (bitPos + i) / 8
 		bitIdx := 7 - ((bitPos + i) % 8)
 		bit := (data[byteIdx] >> uint(bitIdx)) & 1
@@ -392,7 +389,7 @@ func matchMarkerAt(data []byte, bitPos int) bool {
 // readBitsUint64 lit n bits depuis bitPos en big-endian.
 func readBitsUint64(data []byte, bitPos, n int) uint64 {
 	var result uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		byteIdx := (bitPos + i) / 8
 		bitIdx := 7 - ((bitPos + i) % 8)
 		bit := uint64((data[byteIdx] >> uint(bitIdx)) & 1)
@@ -404,7 +401,7 @@ func readBitsUint64(data []byte, bitPos, n int) uint64 {
 // readBitsUint8 lit n bits (≤8) depuis bitPos en big-endian.
 func readBitsUint8(data []byte, bitPos, n int) uint8 {
 	var result uint8
-	for i := 0; i < n; i++ {
+	for i := range n {
 		byteIdx := (bitPos + i) / 8
 		bitIdx := 7 - ((bitPos + i) % 8)
 		bit := (data[byteIdx] >> uint(bitIdx)) & 1

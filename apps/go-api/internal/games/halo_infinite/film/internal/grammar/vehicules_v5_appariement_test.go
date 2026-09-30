@@ -235,10 +235,7 @@ func v5Presence(t *testing.T, dir string, app []v5EpisodeApparie) {
 // v5Contient dit si la valeur `cible` apparaît, sous l'un des extracteurs, à un décalage
 // quelconque de la fenêtre du record.
 func v5Contient(r v5KfRec, cible uint32) bool {
-	long := r.Fin - r.BitStart
-	if long > v5PresenceFenetre {
-		long = v5PresenceFenetre
-	}
+	long := min(r.Fin-r.BitStart, v5PresenceFenetre)
 	for _, ex := range v5Extracteurs {
 		for d := 0; d+ex.Largeur <= long; d++ {
 			if ex.Slot(source.BitsBourres(r.Payload, r.BitStart+d, ex.Largeur)) == cible {

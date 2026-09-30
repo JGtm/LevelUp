@@ -214,7 +214,7 @@ func s3sPlancherNom(d []byte, e *s3sEnr) (touches, essais int) {
 		essais++
 		var u []uint16
 		p := base + dec
-		for k := 0; k < s3sGtMax; k++ {
+		for range s3sGtMax {
 			v := uint16(s3rBit(d, p, 16))
 			p += 16
 			if v == 0 {

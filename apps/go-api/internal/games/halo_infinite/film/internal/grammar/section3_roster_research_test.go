@@ -161,7 +161,7 @@ func s3rImprime(t *testing.T, d []byte, hits []s3rTouche) {
 func s3rPlancher(d []byte, fin int) int {
 	rng := rand.New(rand.NewSource(7))
 	n := 0
-	for i := 0; i < s3rLeurres; i++ {
+	for range s3rLeurres {
 		v := s3rXuidLo | (rng.Uint64() & 0x0000ffffffffffff)
 		n += len(s3rCherche(d, v, s3rCorpsBit, fin))
 	}
@@ -330,13 +330,13 @@ func TestSection3RosterCorpus(t *testing.T) {
 // s3rRosters decoupe `film=xuid,xuid;film=xuid`.
 func s3rRosters(v string) map[string][]uint64 {
 	out := map[string][]uint64{}
-	for _, p := range strings.Split(v, ";") {
+	for p := range strings.SplitSeq(v, ";") {
 		kv := strings.SplitN(strings.TrimSpace(p), "=", 2)
 		if len(kv) != 2 {
 			continue
 		}
 		var xs []uint64
-		for _, s := range strings.Split(kv[1], ",") {
+		for s := range strings.SplitSeq(kv[1], ",") {
 			if n, err := strconv.ParseUint(strings.TrimSpace(s), 10, 64); err == nil {
 				xs = append(xs, n)
 			}

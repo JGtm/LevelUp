@@ -174,13 +174,13 @@ func (c *collecteurTirContinu) entree(e EntreeDeControle) {
 	if e.Index < 0 || e.Index >= joueursDeControle {
 		return
 	}
-	for main := 0; main < 2; main++ {
+	for main := range 2 {
 		arme := e.Action.Arme[main]
-		for rang := 0; rang < entreesDeGachetteParMain; rang++ {
+		for rang := range entreesDeGachetteParMain {
 			k := cleBitDeTir{joueur: e.Index, main: main, rang: rang}
 			c.bit(k, e.Action.Gachettes[main]&(1<<rang) != 0, arme)
 		}
-		for rang := 0; rang < barilletsParMain; rang++ {
+		for rang := range barilletsParMain {
 			k := cleBitDeTir{joueur: e.Index, main: main, barillet: true, rang: rang}
 			c.bit(k, e.Action.Barillets[main]&(1<<rang) != 0, arme)
 		}

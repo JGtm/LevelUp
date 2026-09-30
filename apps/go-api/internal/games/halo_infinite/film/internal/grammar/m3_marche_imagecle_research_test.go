@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -35,10 +36,7 @@ func m3ScanRegle(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	at = -1
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	proche := -1
-	end := from + maxWin
-	if end > total {
-		end = total
-	}
+	end := min(from+maxWin, total)
 	sentStreak := 0
 	for q := from; q+64 <= end; q++ {
 		id := source.BitsBourres(buf, q, 32)
@@ -82,10 +80,7 @@ func m3ScanRecal(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	at = -1
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	exact := -1
-	end := from + maxWin
-	if end > total {
-		end = total
-	}
+	end := min(from+maxWin, total)
 	sentStreak := 0
 	for q := from; q+64 <= end; q++ {
 		id := source.BitsBourres(buf, q, 32)
@@ -136,10 +131,7 @@ func m3ScanRecalExt(buf []byte, from, prevSlot, total, maxWin int) int {
 
 // m3SentinelleAvant dit si la fenetre [f, f+maxWin) contient la fin de table (2048 sentinelles).
 func m3SentinelleAvant(buf []byte, f, total, maxWin int) bool {
-	end := f + maxWin
-	if end > total {
-		end = total
-	}
+	end := min(f+maxWin, total)
 	streak := 0
 	for q := f; q+32 <= end; q++ {
 		if source.BitsBourres(buf, q, 32) == kfSent {
@@ -158,10 +150,7 @@ func m3SentinelleAvant(buf []byte, f, total, maxWin int) bool {
 func m3ScanProdAncien(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	at = -1
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
-	end := from + maxWin
-	if end > total {
-		end = total
-	}
+	end := min(from+maxWin, total)
 	sentStreak := 0
 	for q := from; q+64 <= end; q++ {
 		id := source.BitsBourres(buf, q, 32)
@@ -312,7 +301,8 @@ func TestM3MarcheV2(t *testing.T) {
 		sommes[v.nom] = &tot{}
 	}
 	for _, k := range kfs {
-		ligne := fmt.Sprintf("ch%-3d %7d bits :", k.ch, k.pay)
+		var ligne strings.Builder
+		ligne.WriteString(fmt.Sprintf("ch%-3d %7d bits :", k.ch, k.pay))
 		for _, v := range vars {
 			l := k.par[v.nom]
 			s := sommes[v.nom]
@@ -338,10 +328,10 @@ func TestM3MarcheV2(t *testing.T) {
 			s.incoherents += inco
 			s.inconnus += inc
 			s.fin += fin
-			ligne += fmt.Sprintf(" | %s %d rec %d bip %d inco %d inc %.0f%%", v.nom, len(l.recs), bip, inco,
-				inc, 100*float64(fin)/float64(k.pay))
+			ligne.WriteString(fmt.Sprintf(" | %s %d rec %d bip %d inco %d inc %.0f%%", v.nom, len(l.recs), bip, inco,
+				inc, 100*float64(fin)/float64(k.pay)))
 		}
-		t.Logf("   %s", ligne)
+		t.Logf("   %s", ligne.String())
 	}
 	noms := make([]string, 0, len(vars))
 	for _, v := range vars {

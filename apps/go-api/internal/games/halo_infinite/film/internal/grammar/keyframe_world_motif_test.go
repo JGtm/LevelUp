@@ -99,7 +99,7 @@ func comparerSuivante(t *testing.T, nom string, r *kfRecherche, from, prevSlot i
 func TestMotifDAncreCouvreLesGardesDeLAncre(t *testing.T) {
 	rng := rand.New(rand.NewSource(0x4B46))
 	retenues := 0
-	for i := 0; i < 200_000; i++ {
+	for i := range 200_000 {
 		gen, slot := uint64(rng.Intn(4)), uint64(rng.Intn(kfTableCap+64))
 		id := gen<<30 | slot
 		if i%7 == 0 {
@@ -143,7 +143,7 @@ func payloadSynthetiqueDAncres(rng *rand.Rand) []byte {
 	w := &bitWriter{}
 	w.bit(0)
 	slot := uint64(rng.Intn(40))
-	for k := 0; k < 12; k++ {
+	for range 12 {
 		switch rng.Intn(6) {
 		case 0, 1:
 			slot += uint64(1 + rng.Intn(3))
@@ -173,7 +173,7 @@ func payloadSynthetiqueDAncres(rng *rand.Rand) []byte {
 func TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques(t *testing.T) {
 	rng := rand.New(rand.NewSource(0x5C1E))
 	cas := 0
-	for n := 0; n < 12; n++ {
+	for range 12 {
 		buf := payloadSynthetiqueDAncres(rng)
 		total := len(buf) * 8
 		for _, fen := range []int{64, 500, 3000, total} {

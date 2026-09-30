@@ -38,7 +38,7 @@ func departageVie(t *testing.T, nee bool, pos []grammar.BipedPosition) (VehicleT
 // d apparition), un toutes les 100 ms a partir de `deUS`.
 func aberrantEn(deUS uint64, n int) []grammar.BipedPosition {
 	out := make([]grammar.BipedPosition, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out = append(out, vehPos(770, deUS+uint64(i)*100_000, -201.16, 88.24))
 	}
 	return out

@@ -136,7 +136,7 @@ func psLoadDoc(t *testing.T, dir, id string) (ReplayDocument, bool) {
 func psCentreDesSocles(pads []psPoint) psCentre {
 	var ct psCentre
 	var somme float64
-	for i := 0; i < len(pads); i++ {
+	for i := range pads {
 		for j := i + 1; j < len(pads); j++ {
 			a, b := pads[i], pads[j]
 			if math.Abs(float64(a.X-b.X)) > 0.5 || math.Abs(float64(a.Y+b.Y)) > 0.5 {

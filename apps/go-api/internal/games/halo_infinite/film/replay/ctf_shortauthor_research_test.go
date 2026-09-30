@@ -203,7 +203,7 @@ func ctfSplitFireRecords(t *testing.T, dir string) (longs, shorts [][]byte) {
 // balayage de recherche exposerait plus que nécessaire. Elle est bornée, contrairement à lui.
 func readBitsAtLocal(pay []byte, at, n int) uint32 {
 	var v uint32
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx := (at + i) >> 3
 		if idx >= len(pay) {
 			return v << uint(n-i)

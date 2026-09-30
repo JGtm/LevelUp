@@ -211,10 +211,10 @@ func extractCTF(matchID string, film *source.Film, roster Roster,
 	for _, b := range bursts {
 		ev := objectiveevent.Event{
 			MatchID:       matchID,
-			TimeMS:        intPtr(b.matchMS),
+			TimeMS:        new(b.matchMS),
 			ObjectiveType: ObjectiveTypeFlag,
 			EventType:     EventTypeCapture,
-			Value:         intPtr(1), // +1 capture
+			Value:         new(1), // +1 capture
 			Source:        SourceBurst,
 			Confidence:    ConfidenceExact,
 			Details:       "{}",
@@ -222,7 +222,7 @@ func extractCTF(matchID string, film *source.Film, roster Roster,
 		if scorer, ok := captureScorer(th10, b.matchMS); ok {
 			xuid := formatXUID(scorer.XUID)
 			ev.Players = []objectiveevent.Player{{XUID: xuid, Role: RoleScorer}}
-			ev.TeamID = intPtr(scorer.Team)
+			ev.TeamID = new(scorer.Team)
 			ctl.note(roster, xuid, scorer.Team)
 		}
 		out = append(out, ev)
@@ -276,14 +276,14 @@ func extractFromTh10(
 		xuid := formatXUID(e.XUID)
 		ev := objectiveevent.Event{
 			MatchID:       matchID,
-			TimeMS:        intPtr(e.TimeMS),
+			TimeMS:        new(e.TimeMS),
 			ObjectiveType: objType,
 			EventType:     evType,
 			Source:        SourceTh10,
 			Confidence:    ConfidenceApprox,
 			Details:       "{}",
 			Players:       []objectiveevent.Player{{XUID: xuid, Role: RoleScorer}},
-			TeamID:        intPtr(e.Team),
+			TeamID:        new(e.Team),
 		}
 		ctl.note(roster, xuid, e.Team)
 		out = append(out, ev)

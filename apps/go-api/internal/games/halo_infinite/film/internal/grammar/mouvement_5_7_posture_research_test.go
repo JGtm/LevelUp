@@ -300,7 +300,7 @@ func m57Distribution(t *testing.T, rec *m57Rec) {
 		slots[p.slot] = true
 	}
 	var parts []string
-	for tag := uint64(0); tag < 4; tag++ {
+	for tag := range uint64(4) {
 		parts = append(parts, fmt.Sprintf("tag %d : %d (%.1f %%)",
 			tag, parTag[tag], m533bPart(parTag[tag], len(rec.post))))
 	}
@@ -328,7 +328,7 @@ func m57TestMontee(t *testing.T, rec *m57Rec) {
 	parSlot := m57ParSlot(rec.vit)
 	type bilan struct{ total, apparie, positif, franc int }
 	b := map[uint64]*bilan{}
-	for tag := uint64(0); tag < 4; tag++ {
+	for tag := range uint64(4) {
 		b[tag] = &bilan{}
 	}
 	for _, p := range rec.post {
@@ -351,7 +351,7 @@ func m57TestMontee(t *testing.T, rec *m57Rec) {
 	}
 	t.Logf("TEST DE LA MONTEE (fenetre %d us, meme vie) — un tag d etat AERIEN doit precede une "+
 		"montee de vz sur plus de 90 %% de ses occurrences appariees :", m57FenetreUS)
-	for tag := uint64(0); tag < 4; tag++ {
+	for tag := range uint64(4) {
 		st := b[tag]
 		t.Logf("  tag %d : %d lectures · %d appariees (%.1f %%) · vz > 0 sur %d (%.1f %% des "+
 			"appariees) · vz >= %.1f m/s sur %d (%.1f %%)",

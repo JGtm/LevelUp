@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -204,10 +205,5 @@ func onlyPlayerIndex(m map[int]int) int {
 }
 
 func containsXUID(xs []uint64, x uint64) bool {
-	for _, v := range xs {
-		if v == x {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(xs, x)
 }

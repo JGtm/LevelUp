@@ -33,7 +33,7 @@ func horlogeDOrigine() replayClock {
 // scanDOrigine : cinq images-cles porteuses, toutes les 20 s depuis l'instant 0 du film.
 func scanDOrigine(ents ...grammar.PlayerEntity) grammar.PlayerEntityScan {
 	s := grammar.PlayerEntityScan{Scanned: true, Entities: ents}
-	for k := uint64(0); k < 5; k++ {
+	for k := range uint64(5) {
 		s.KeyframesUS = append(s.KeyframesUS, k*20_000_000)
 	}
 	return s

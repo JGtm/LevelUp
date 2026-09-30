@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -84,14 +85,14 @@ func e191cJoin(l []string) string {
 	if len(l) == 0 {
 		return "(aucun)"
 	}
-	out := ""
+	var out strings.Builder
 	for i, s := range l {
 		if i > 0 {
-			out += " | "
+			out.WriteString(" | ")
 		}
-		out += s
+		out.WriteString(s)
 	}
-	return out
+	return out.String()
 }
 
 // e191cBasculesBobine rend, pour une bobine, les records perdus et gagnes de ti=37 et ti=38.

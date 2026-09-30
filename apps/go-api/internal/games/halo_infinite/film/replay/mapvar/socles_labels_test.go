@@ -50,7 +50,7 @@ func TestSoclesResoudreLabels(t *testing.T) {
 		t.Skipf("%s absent — resolution de labels ignoree", soclesLabelsEnv)
 	}
 	cibles := map[int32]bool{}
-	for _, s := range strings.Split(brut, ",") {
+	for s := range strings.SplitSeq(brut, ",") {
 		v, err := strconv.ParseInt(strings.TrimSpace(s), 10, 32)
 		if err != nil {
 			t.Fatalf("%s: %q illisible: %v", soclesLabelsEnv, s, err)

@@ -97,7 +97,7 @@ func consumeItemAndTacmapComponent(br *Lecteur, name string, typeIndex uint32, l
 		br.ReadBits(32)
 		return variant, nil, true
 	case "tacmap-lockedlights": // ti=34 i5 (FUN_142ed4f84) — 4×(R(32)+R(96))
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			br.ReadBits(32)
 			br.ReadBits(96)
 		}

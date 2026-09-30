@@ -192,10 +192,7 @@ func d3iBornesSerie(parSlot map[uint32][]d3iPoint) (int64, int64) {
 func d3iMesureCardinal(t *testing.T, short string, ser d3iSerie) {
 	t.Helper()
 	changes := d3iPointsDeChangement(ser)
-	finMS := ser.matchMS
-	if ser.dernierMS > finMS {
-		finMS = ser.dernierMS
-	}
+	finMS := max(ser.dernierMS, ser.matchMS)
 	segments := d3iSegments(changes, ser.premierMS, finMS)
 	var exploitable, aTrois int64
 	histo := map[int]int64{}

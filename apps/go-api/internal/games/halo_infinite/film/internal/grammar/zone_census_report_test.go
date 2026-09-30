@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -308,7 +309,7 @@ func zcReportDelta(t *testing.T, res zcScanResult, b zcBands, gram map[int]zcArc
 func zcWriteTIRows(sb *strings.Builder, t *testing.T, ti int, s *zcDeltaStats, res zcScanResult, g zcArchInfo) {
 	t.Helper()
 	floor := zcNoiseFloor(s)
-	for i := 0; i < worldObjectMaxComponent; i++ {
+	for i := range worldObjectMaxComponent {
 		if s.byIndex[i] == 0 {
 			continue
 		}
@@ -368,7 +369,7 @@ func zcReportDensity(t *testing.T, res zcScanResult, gram map[int]zcArchInfo, o 
 			continue
 		}
 		floor := zcNoiseFloor(s)
-		for i := 0; i < worldObjectMaxComponent; i++ {
+		for i := range worldObjectMaxComponent {
 			if s.inWin[i]+s.outWin[i] == 0 {
 				continue
 			}
@@ -398,12 +399,7 @@ const zcGateMinAnnonces = 100
 // --- petites fonctions de mise en forme -------------------------------------------------
 
 func zcIsTarget(ti int) bool {
-	for _, v := range zcTargetTIs {
-		if v == ti {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(zcTargetTIs, ti)
 }
 
 func zcName(g zcArchInfo, i int) string {

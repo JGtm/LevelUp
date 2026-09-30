@@ -55,7 +55,7 @@ func TestManchesBornesReleve(t *testing.T) {
 		t.Skip("mesure non demandee : MANCHES_CACHE et MANCHES_FILMS requis")
 	}
 	defer amArmeSentinelle(t, "TestManchesBornesReleve")()
-	for _, film := range strings.Split(films, ",") {
+	for film := range strings.SplitSeq(films, ",") {
 		if film = strings.TrimSpace(film); film == "" {
 			continue
 		}

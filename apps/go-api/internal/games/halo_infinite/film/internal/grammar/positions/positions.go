@@ -158,9 +158,9 @@ func combAt(p []byte, bp int) bool {
 	if bp < 0 || (bp+96)>>3 >= len(p) {
 		return false
 	}
-	for rep := 0; rep < 4; rep++ {
+	for rep := range 4 {
 		base := bp + rep*24
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			if source.BitAt(p, base+i) != 1 {
 				return false
 			}
@@ -178,7 +178,7 @@ func combAt(p []byte, bp int) bool {
 // interprète en float32 (little-endian).
 func readFloat32LE(p []byte, o int) float32 {
 	var v uint32
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		v = (v << 1) | uint32(source.BitAt(p, o+i))
 	}
 	sw := (v&0xff)<<24 | (v&0xff00)<<8 | (v&0xff0000)>>8 | (v&0xff000000)>>24

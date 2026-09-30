@@ -118,9 +118,9 @@ func wbrDecodeWave(raw []byte) (wbrWave, error) {
 func wbrMixMono(data []byte, channels int) []float64 {
 	n := len(data) / (2 * channels)
 	out := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		somme := 0.0
-		for c := 0; c < channels; c++ {
+		for c := range channels {
 			v := int16(binary.LittleEndian.Uint16(data[2*(i*channels+c):])) //nolint:gosec // PCM 16 bits signe
 			somme += float64(v) / 32768
 		}
@@ -131,10 +131,7 @@ func wbrMixMono(data []byte, channels int) []float64 {
 
 // wbrEnvelope redresse puis lisse : moyenne glissante de la valeur absolue sur wbrSmoothMS.
 func wbrEnvelope(w wbrWave) []float64 {
-	win := int(wbrSmoothMS * float64(w.rate) / 1000)
-	if win < 1 {
-		win = 1
-	}
+	win := max(int(wbrSmoothMS*float64(w.rate)/1000), 1)
 	out := make([]float64, len(w.samples))
 	somme := 0.0
 	for i, v := range w.samples {
@@ -142,10 +139,7 @@ func wbrEnvelope(w wbrWave) []float64 {
 		if i >= win {
 			somme -= math.Abs(w.samples[i-win])
 		}
-		large := win
-		if i+1 < win {
-			large = i + 1
-		}
+		large := min(i+1, win)
 		out[i] = somme / float64(large)
 	}
 	return out
@@ -177,10 +171,7 @@ func wbrOnsets(env []float64, rate int, ratio float64) int {
 		return 0
 	}
 	haut := ratio * maxi
-	sep := int(wbrOnsetGapMS * float64(rate) / 1000)
-	if sep < 1 {
-		sep = 1
-	}
+	sep := max(int(wbrOnsetGapMS*float64(rate)/1000), 1)
 	n, dernier := 0, -1
 	for i, v := range env {
 		if v < haut || !wbrIsLocalMax(env, i, sep) {

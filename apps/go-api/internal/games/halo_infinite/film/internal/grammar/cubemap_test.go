@@ -104,7 +104,7 @@ func TestDecodeAimVectorRoundTrip(t *testing.T) {
 		errRad := math.Max(2.2*math.Atan(2.0/float64(n-1)), 0.1*math.Pi/180)
 		tol := math.Cos(errRad)
 		worst := 1.0
-		for i := 0; i < 3000; i++ {
+		for range 3000 {
 			v := randomUnit(rnd)
 			enc, ok := EncodeAimVector(v, w)
 			if !ok {
@@ -133,7 +133,7 @@ func TestDecodeAimVectorFlatIsWorse(t *testing.T) {
 	rnd := rand.New(rand.NewSource(7))
 	var sumFull, sumFlat float64
 	const n = 5000
-	for i := 0; i < n; i++ {
+	for range n {
 		v := randomUnit(rnd)
 		enc, _ := EncodeAimVector(v, 19)
 		full, _ := DecodeAimVectorChecked(enc, 19)

@@ -47,6 +47,7 @@ package grammar
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -172,12 +173,7 @@ func e191bPorteLePrefixe(reg *Registry, ti int) bool {
 	if !ok {
 		return false
 	}
-	for _, n := range arch.Components {
-		if n == e191bPrefixeObjet {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(arch.Components, e191bPrefixeObjet)
 }
 
 // e191bLogRegistre imprime la liste ordonnee des composants de ti=37 pour une bobine.

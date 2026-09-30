@@ -183,7 +183,7 @@ func skipTLVMap(br *Lecteur, depth int) {
 // champs jusqu'au type de fil 0 ou 1 — `FUN_140c7fedc` et son fragment hors ligne 142295806.
 func consumeTLVMessage(br *Lecteur) {
 	readTLVVarint(br) // FUN_1408ccb7c -> FUN_140b4bcb4 : en-tete, valeur jetee par le moteur
-	for i := 0; i < tlvMaxFields; i++ {
+	for range tlvMaxFields {
 		wire := readTLVTag(br)
 		if wire == tlvWireEnd || wire == tlvWireBoundary {
 			return

@@ -80,7 +80,7 @@ func TestObjectifTi11Oracle(t *testing.T) {
 	t.Logf("########## ORACLE — %d record(s) marches, %d chaines (%.1f %%)",
 		total, chaines, ti11Part(chaines, total))
 	arch, _ := reg0(cache)
-	for i := 0; i < ti11Composants; i++ {
+	for i := range ti11Composants {
 		if avec[i] == 0 {
 			continue
 		}
@@ -110,7 +110,7 @@ func ti11OracleTable(pay []byte, reg *Registry,
 		if ok {
 			*chaines++
 		}
-		for i := 0; i < ti11Composants; i++ {
+		for i := range ti11Composants {
 			present := tr.Mask>>uint(i)&1 == 1
 			switch {
 			case present && ok:
@@ -237,7 +237,7 @@ func ti11CalibPayload(pay []byte, reg *Registry, un, unC, plus, plusC *int) {
 			continue
 		}
 		n := 0
-		for i := 0; i < ti11Composants; i++ {
+		for i := range ti11Composants {
 			if tr.Mask>>uint(i)&1 == 1 {
 				n++
 			}

@@ -15,6 +15,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -82,12 +83,7 @@ func eaWalkThrough(pay []byte, i0, total int, idx []int, s eaFilmSetup, target i
 
 // eaMaskHas dit si la liste d'index du masque contient l'index visé.
 func eaMaskHas(idx []int, target int) bool {
-	for _, id := range idx {
-		if id == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(idx, target)
 }
 
 // eaSlotRanks lit les identités i48 du film par le BALAYAGE DE PRODUCTION
@@ -126,12 +122,7 @@ func eaRankSet(ranks []int) []int {
 
 // eaHasRank dit si la vie a transmis au moins une fois ce rang.
 func eaHasRank(ranks []int, want int) bool {
-	for _, r := range ranks {
-		if r == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ranks, want)
 }
 
 // eaEpisode est un groupe de lectures consécutives d'un même slot à moins de gapUS d'écart :

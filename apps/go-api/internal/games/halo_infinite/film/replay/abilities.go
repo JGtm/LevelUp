@@ -4,6 +4,7 @@ import (
 	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
+	"slices"
 	"sort"
 	"strconv"
 )
@@ -343,12 +344,7 @@ func paletteIDOrNone(p *AbilityPalette) string {
 }
 
 func containsRank(marks []int, r int) bool {
-	for _, m := range marks {
-		if m == r {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(marks, r)
 }
 
 // abilityLabelsUsed nomme les rangs de capacité que le document emploie RÉELLEMENT.

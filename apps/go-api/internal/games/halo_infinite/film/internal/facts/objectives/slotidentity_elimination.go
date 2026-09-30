@@ -1,5 +1,7 @@
 package objectives
 
+import "maps"
+
 import "levelup/go-api/internal/games/halo_infinite/film/types"
 
 // slotidentity_elimination.go — L'IDENTITE D'UN SLOT D'ENTITE PAR ELIMINATION, MANCHE PAR MANCHE.
@@ -201,14 +203,10 @@ func (ri RoundIdentity) copieProfonde() RoundIdentity {
 	}
 	for round, m := range ri.byRound {
 		copie := make(map[int]string, len(m))
-		for slot, xuid := range m {
-			copie[slot] = xuid
-		}
+		maps.Copy(copie, m)
 		out.byRound[round] = copie
 		orig := make(map[int]string, len(m))
-		for slot, o := range ri.origins[round] {
-			orig[slot] = o
-		}
+		maps.Copy(orig, ri.origins[round])
 		out.origins[round] = orig
 	}
 	return out

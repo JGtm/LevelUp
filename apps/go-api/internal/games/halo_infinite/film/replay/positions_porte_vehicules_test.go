@@ -210,7 +210,7 @@ func TestPorteVehiculeContinuiteHorsEmprise(t *testing.T) {
 		p.Z = 5 - 2.4*float32(i)
 		positions = append(positions, p)
 	}
-	for i := 0; i < 3; i++ { // faux en-tete repete, isole
+	for i := range 3 { // faux en-tete repete, isole
 		p := vehPos(770, 12_000_000+uint64(i)*100_000, -19.41, -346.69)
 		p.Z = 323.74
 		positions = append(positions, p)

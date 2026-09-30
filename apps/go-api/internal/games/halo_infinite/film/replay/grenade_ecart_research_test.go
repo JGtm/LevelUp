@@ -92,7 +92,7 @@ func TestBancEcartLancerLanceur(t *testing.T) {
 // donc le séparateur de champ est la virgule et celui de paire le signe égal.
 func grenEcartFilmsDeEnv(s string) []grenEcartFilm {
 	var out []grenEcartFilm
-	for _, part := range strings.Split(s, ",") {
+	for part := range strings.SplitSeq(s, ",") {
 		id, carte, ok := strings.Cut(strings.TrimSpace(part), "=")
 		if !ok || id == "" || carte == "" {
 			continue

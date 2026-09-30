@@ -184,13 +184,6 @@ func clampSeed(b []byte) []byte {
 	return append([]byte(nil), b...)
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // estUnTir dit si le payload porte un record de tir (type 36) EN TETE, par la grammaire.
 func estUnTir(pay []byte) bool {
 	typ, present := PacketHeadEventType(pay)

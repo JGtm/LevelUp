@@ -41,10 +41,10 @@ func TestChaqueChampDeFilmStatsEstCableDansOptions(t *testing.T) {
 	}
 	litteral := optionsLitteral(t, string(src))
 
-	typ := reflect.TypeOf(filmStats{})
+	typ := reflect.TypeFor[filmStats]()
 	var orphelins []string
-	for i := 0; i < typ.NumField(); i++ {
-		nom := typ.Field(i).Name
+	for field := range typ.Fields() {
+		nom := field.Name
 		if raison, exempte := champsNonCables[nom]; exempte {
 			t.Logf("champ %s non cable, raison : %s", nom, raison)
 			continue

@@ -274,7 +274,7 @@ func v11BalayePayload(pay []byte, classe map[uint32]string, res map[string]*v11C
 func v11MasqueCroissant(pay []byte, at, count int) ([]int, bool) {
 	out := make([]int, 0, count)
 	prev := -1
-	for k := 0; k < count; k++ {
+	for k := range count {
 		v := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if v <= prev || v >= v11MaxComposants {
 			return nil, false

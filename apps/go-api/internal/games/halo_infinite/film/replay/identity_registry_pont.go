@@ -1,5 +1,7 @@
 package replay
 
+import "maps"
+
 import "context"
 
 // identity_registry_pont.go — LA CONSTRUCTION DU PONT BRUT, ET SES DEUX ACCESSEURS GARDES.
@@ -148,9 +150,7 @@ func extendSlotXUID(byXUID map[uint32]uint64, owner map[uint32]int,
 	xuidToIndex map[uint64]int) map[uint32]uint64 {
 	indexToXUID := indexToXUIDOf(xuidToIndex)
 	out := make(map[uint32]uint64, len(owner))
-	for s, x := range byXUID {
-		out[s] = x
-	}
+	maps.Copy(out, byXUID)
 	for s, pi := range owner {
 		if _, ok := out[s]; ok {
 			continue

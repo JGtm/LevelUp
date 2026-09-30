@@ -39,7 +39,7 @@ func TestGrenadesDeProduction(t *testing.T) {
 	if racine == "" || ids == "" {
 		t.Skipf("instrument de mesure : definir %s et %s", grenProdRootEnv, grenProdIDsEnv)
 	}
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			continue

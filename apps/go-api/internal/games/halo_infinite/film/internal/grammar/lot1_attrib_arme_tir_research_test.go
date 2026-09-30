@@ -335,10 +335,7 @@ func attribM5(t *testing.T, shots []WeaponShot, dmg []WeaponDamage) {
 		}
 	}
 	ns := len(src)
-	best := interLo
-	if interHi > best {
-		best = interHi
-	}
+	best := max(interHi, interLo)
 	t.Logf("M5 (secondaire) tag source -> arme : %d tags source · intersection WeaponID bas %d (%.1f %%) · haut %d (%.1f %%)",
 		ns, interLo, lot1Pct(interLo, ns), interHi, lot1Pct(interHi, ns))
 	t.Logf("   joignable directement (> 50 %% des tags) : %s — sinon table requise ; NON BLOQUANT",
@@ -360,10 +357,7 @@ func TestLot1AttribArmeTir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks balayes (attribution PAR LE TIR, code productionise) ==", filepath.Base(dir), n)
 
 	shots, err := ScanFilmWeaponShots(dir, n)

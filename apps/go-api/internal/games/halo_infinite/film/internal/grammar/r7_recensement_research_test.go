@@ -37,7 +37,7 @@ func r7Films(t *testing.T) (string, []string) {
 		t.Skipf("instrument R7 : definir %s et %s", r7RootEnv, r7IDsEnv)
 	}
 	var out []string
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		if id = strings.TrimSpace(id); id != "" {
 			out = append(out, id)
 		}
@@ -109,7 +109,7 @@ func TestR7Recensement(t *testing.T) {
 			100*float64(e.n)/float64(max(1, totalDelta)))
 	}
 	var absents []string
-	for typ := 0; typ < 123; typ++ {
+	for typ := range 123 {
 		if parc[typ] == 0 {
 			absents = append(absents, fmt.Sprintf("%d", typ))
 		}

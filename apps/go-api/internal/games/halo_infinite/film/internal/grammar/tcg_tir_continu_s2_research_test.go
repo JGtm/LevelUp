@@ -27,7 +27,7 @@ func tcgNomComposant(reg *Registry, ti uint32, i int) string {
 // tcgIndices rend les indices poses dans un masque.
 func tcgIndices(m uint64) []int {
 	var out []int
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if m&(1<<uint(i)) != 0 {
 			out = append(out, i)
 		}

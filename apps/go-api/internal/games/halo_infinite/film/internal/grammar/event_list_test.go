@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -275,11 +276,11 @@ func logSeat(t *testing.T, name string, h map[uint32]int) {
 		tot += c
 	}
 	sort.Slice(arr, func(i, j int) bool { return arr[i].c > arr[j].c })
-	line := ""
+	var line strings.Builder
 	for i := 0; i < len(arr) && i < 6; i++ {
-		line += " seat=" + itoa(arr[i].s) + "×" + itoa(arr[i].c)
+		line.WriteString(" seat=" + itoa(arr[i].s) + "×" + itoa(arr[i].c))
 	}
-	t.Logf("siège %s n=%d top:%s", name, tot, line)
+	t.Logf("siège %s n=%d top:%s", name, tot, line.String())
 }
 
 func maxi(a, b int) int {

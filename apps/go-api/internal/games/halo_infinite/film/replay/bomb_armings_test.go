@@ -20,7 +20,7 @@ func baMontee(slot uint32, startMS int32, n int) []types.NavpointRadialRead {
 // baMonteeVers fabrique un segment montant finissant au quantum qEnd (pas de 16 quanta).
 func baMonteeVers(slot uint32, startMS int32, n int, qEnd uint8) []types.NavpointRadialRead {
 	out := make([]types.NavpointRadialRead, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out = append(out, types.NavpointRadialRead{
 			Slot: slot, TMS: startMS + int32(i)*100, Q: qEnd - uint8(16*(n-1-i)),
 		})
@@ -34,7 +34,7 @@ func baMonteeVers(slot uint32, startMS int32, n int, qEnd uint8) []types.Navpoin
 func baTenue(slot uint32, startMS int32, durMS int32, q0 uint8) []types.NavpointRadialRead {
 	n := int(durMS/100) + 1
 	out := make([]types.NavpointRadialRead, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out = append(out, types.NavpointRadialRead{
 			Slot: slot, TMS: startMS + int32(i)*100, Q: q0 - uint8(2*i),
 		})

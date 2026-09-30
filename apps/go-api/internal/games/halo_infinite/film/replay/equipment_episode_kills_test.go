@@ -149,7 +149,7 @@ func TestAttachAllEquipmentKills_LectureNonTentee(t *testing.T) {
 	eps := []EquipmentEpisode{ekEp(10, 20)}
 	slotXUID := map[uint32]uint64{512: 111}
 	kills := KillsInput{Read: false, Kills: []EquipmentKillRef{{XUID: 111, TimeMS: 1500}}}
-	read := attachAllEquipmentKills(eps, kills, occupantFige(slotXUID), int64Ptr(0), 100)
+	read := attachAllEquipmentKills(eps, kills, occupantFige(slotXUID), new(int64(0)), 100)
 	if read {
 		t.Fatalf("Read=false doit rendre killsRead=false, quels que soient les EquipmentKillRef fournis")
 	}
@@ -175,7 +175,7 @@ func TestAttachAllEquipmentKills_LectureReussie(t *testing.T) {
 	eps := []EquipmentEpisode{ekEp(10, 20)}
 	slotXUID := map[uint32]uint64{512: 111}
 	kills := KillsInput{Read: true, Kills: []EquipmentKillRef{{XUID: 111, TimeMS: 1500}}}
-	read := attachAllEquipmentKills(eps, kills, occupantFige(slotXUID), int64Ptr(0), 100)
+	read := attachAllEquipmentKills(eps, kills, occupantFige(slotXUID), new(int64(0)), 100)
 	if !read {
 		t.Fatalf("killsRead doit être vrai quand Read=true et l'origine est établie")
 	}
@@ -184,4 +184,5 @@ func TestAttachAllEquipmentKills_LectureReussie(t *testing.T) {
 	}
 }
 
-func int64Ptr(v int64) *int64 { return &v }
+//go:fix inline
+func int64Ptr(v int64) *int64 { return new(v) }

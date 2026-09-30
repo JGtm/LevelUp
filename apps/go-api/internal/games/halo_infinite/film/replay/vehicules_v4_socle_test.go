@@ -66,7 +66,7 @@ func v4Corpus(t *testing.T) []v0Film {
 		t.Skipf("mesure non demandee : %s vide (« short8:Carte, ... »)", v4FilmsEnv)
 	}
 	var out []v0Film
-	for _, s := range strings.Split(v, ",") {
+	for s := range strings.SplitSeq(v, ",") {
 		id, carte, ok := strings.Cut(strings.TrimSpace(s), ":")
 		if !ok {
 			t.Fatalf("entree de corpus invalide %q : forme attendue « short8:Carte »", s)

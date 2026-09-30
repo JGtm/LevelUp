@@ -25,6 +25,7 @@ package grammar
 //	  ./internal/games/halo_infinite/film/internal/grammar/
 
 import (
+	"maps"
 	"sort"
 	"testing"
 )
@@ -74,9 +75,7 @@ func TestNaissance520(t *testing.T) {
 				continue
 			}
 			pay := pk.Payload(data)
-			for s, ti := range n520SlotsDuPayload(pay) {
-				ch.Candidat[s] = ti
-			}
+			maps.Copy(ch.Candidat, n520SlotsDuPayload(pay))
 			for _, r := range WalkKeyframeWorld(pay) {
 				ch.Ancres[uint32(r.Slot)] = r.TI //nolint:gosec // borne par le walker
 				//nolint:gosec // slot, TI et Gen viennent du walker, bornes par construction

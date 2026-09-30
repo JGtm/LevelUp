@@ -255,7 +255,7 @@ func TestViseeSousEntete(t *testing.T) {
 	}
 	lots := map[string][]env114Paquet{}
 	var noms []string
-	for _, dir := range strings.Split(liste, ",") {
+	for dir := range strings.SplitSeq(liste, ",") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue

@@ -124,10 +124,7 @@ func afScanTousLesIndices(data []byte) []afBloc {
 
 // afDecodeBloc : `decodeTh10Block` sans son filtre sur l'indice de type.
 func afDecodeBloc(data []byte, xstart, total int) (afBloc, bool) {
-	win := xstart + 20000
-	if win > total {
-		win = total
-	}
+	win := min(xstart+20000, total)
 	for b := xstart; b <= win-32; b++ {
 		if source.OctetAuBit(data, b) == 0 && source.OctetAuBit(data, b+8) == 0 &&
 			source.OctetAuBit(data, b+16) == 0x2e && source.OctetAuBit(data, b+24) == 0xe0 {

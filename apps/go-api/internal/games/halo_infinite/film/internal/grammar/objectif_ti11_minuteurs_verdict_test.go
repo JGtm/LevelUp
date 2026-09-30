@@ -135,14 +135,14 @@ func mntAgreger(bs []*mntBilan, voie int, garde func(*mntBilan) bool) mntAgr {
 		a.slots += v.slots
 		a.descentes += len(v.descentes)
 		a.legalPaire += v.legalPaire
-		for k := 0; k < 2; k++ {
+		for k := range 2 {
 			a.legaux[k] += v.legaux[k]
 			a.slotsVariables[k] += v.slotsVariables[k]
 			for val, n := range v.histo[k] {
 				a.histo[k][val] += n
 			}
 		}
-		for k := 0; k < 3; k++ {
+		for k := range 3 {
 			a.ordre[k] += v.ordre[k]
 		}
 	}
@@ -161,7 +161,7 @@ func mntJournalFilm(t *testing.T, b *mntBilan) {
 	t.Logf("           HORLOGE : ecart moteur -> manifeste %s · %d horodatage(s) ambigu(s) · "+
 		"%d lecture(s) sans horloge · %d lecture(s) sans seconde valeur",
 		mntEcart(b.ecarts), b.ambigus, b.sansHorloge, b.sansSecond)
-	for i := 0; i < mntVoies; i++ {
+	for i := range mntVoies {
 		mntLigneVoie(t, b.voies[i], mntNomVoie[i])
 	}
 }
@@ -258,7 +258,7 @@ func mntGate0(t *testing.T, bs []*mntBilan) {
 	t.Logf("########## GATE 0 LEGALITE — domaine {-1} U [0,%d] U {%d,%d,%d} = %d valeurs sur %d ; "+
 		"un tirage UNIFORME donnerait %.1f %%", mntBassinMax, mntManche, mntMortSubite, mntGrace,
 		mntLegales, mntValeursSept, attendu)
-	for i := 0; i < mntVoies; i++ {
+	for i := range mntVoies {
 		mntLigneLegalite(t, mntCampAssaut, mntAgreger(bs, i, func(b *mntBilan) bool {
 			return !mntEstTemoin(b)
 		}), mntNomVoie[i])
@@ -315,7 +315,7 @@ func mntGate1(t *testing.T, bs []*mntBilan) {
 func mntGate2(t *testing.T, bs []*mntBilan) {
 	t.Helper()
 	t.Logf("########## GATE 2 SEMANTIQUE — distribution des deux valeurs, par voie")
-	for i := 0; i < mntVoies; i++ {
+	for i := range mntVoies {
 		mntGate2Voie(t, mntCampAssaut, mntAgreger(bs, i, func(b *mntBilan) bool {
 			return !mntEstTemoin(b)
 		}), mntNomVoie[i])
@@ -367,7 +367,7 @@ func mntGate3(t *testing.T, bs []*mntBilan) {
 	t.Logf("########## GATE 3 CRITERE — 28 explosions, delai = explosion moins DEPART de descente "+
 		"(descente : >= %d ech., amplitude >= %d quanta, l'absence coupe la suite)",
 		mntDescenteMinEch, mntDescenteMinAmpl)
-	for i := 0; i < mntVoies; i++ {
+	for i := range mntVoies {
 		mntPasse(t, mntNomVoie[i], par, i)
 	}
 	mntDetail(t, par)
