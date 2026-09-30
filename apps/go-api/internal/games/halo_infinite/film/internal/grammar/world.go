@@ -1,8 +1,10 @@
 package grammar
 
-import "maps"
+import (
+	"maps"
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/constat"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
+)
 
 // World tracks entity-id -> archetype (and the last resolved position) ACROSS FRAME records.
 // A FRAME delta (type-3) carries NO typeIndex: it must resolve its archetype from the

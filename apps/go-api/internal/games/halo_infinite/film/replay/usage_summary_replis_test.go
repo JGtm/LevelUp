@@ -187,8 +187,3 @@ func TestReplisDuResumeDUsageSurLesHuitBuilds(t *testing.T) {
 		t.Logf("TOTAL 8 builds  %-45s %d", nom, totaux[nom])
 	}
 }
-
-// ptrDocument rend l'adresse d'un document assemble — `BuildUsageSummary` prend un pointeur.
-//
-//go:fix inline
-func ptrDocument(d ReplayDocument) *ReplayDocument { return new(d) }

@@ -196,9 +196,3 @@ func TestCollineProprietaireValeurInconnueNOuvreRien(t *testing.T) {
 		}
 	}
 }
-
-// ptr rend un pointeur sur un entier — les camps du DTO sont des pointeurs, parce que le camp 0
-// existe et doit se distinguer de « aucun camp ».
-//
-//go:fix inline
-func ptr(v int) *int { return new(v) }

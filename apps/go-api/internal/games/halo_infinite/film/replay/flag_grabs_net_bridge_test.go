@@ -31,9 +31,6 @@ func TestFlagStates_SentinellesObjectiveEvents(t *testing.T) {
 	}
 }
 
-//go:fix inline
-func xuidPtr(s string) *string { return new(s) }
-
 // docDrapeau construit un document minimal porteur d'un calque de drapeau.
 func docDrapeau(flagFilm bool, intervalMS int, spans []FlagSpan) *ReplayDocument {
 	return &ReplayDocument{

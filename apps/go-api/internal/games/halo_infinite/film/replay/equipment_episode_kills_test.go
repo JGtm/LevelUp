@@ -183,6 +183,3 @@ func TestAttachAllEquipmentKills_LectureReussie(t *testing.T) {
 		t.Fatalf("K = %d, attendu 1", eps[0].K)
 	}
 }
-
-//go:fix inline
-func int64Ptr(v int64) *int64 { return new(v) }

@@ -1,8 +1,9 @@
 package replay
 
-import "maps"
-
-import "context"
+import (
+	"context"
+	"maps"
+)
 
 // identity_registry_pont.go — LA CONSTRUCTION DU PONT BRUT, ET SES DEUX ACCESSEURS GARDES.
 //

@@ -206,12 +206,6 @@ func bwOptions(c bwCas) Options {
 	return opt
 }
 
-//go:fix inline
-func bwInt(v int) *int { return new(v) }
-
-//go:fix inline
-func bwSec(v float64) *float64 { return new(v) }
-
 // TestBombStatsCablageAbsentNestPasZero — les colonnes non lues sortent ABSENTES du chemin de
 // production, jamais à zéro, dans les cinq combinaisons que le câblage peut produire.
 func TestBombStatsCablageAbsentNestPasZero(t *testing.T) {

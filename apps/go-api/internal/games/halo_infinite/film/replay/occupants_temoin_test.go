@@ -229,9 +229,6 @@ func verifierLesPresencesDuTemoin(t *testing.T, roster []RosterEntry) {
 	}
 }
 
-//go:fix inline
-func entierDe(v int) *int { return new(v) }
-
 func memeBorne(a, b *int) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil

@@ -8,9 +8,6 @@ package replay
 
 import "testing"
 
-//go:fix inline
-func strPtr(s string) *string { return new(s) }
-
 // docSocleTest — un document minimal : deux joueurs, un socle d'ARME et un socle
 // de BONUS, des occupations nommées et anonymes des deux côtés.
 func docSocleTest() *ReplayDocument {

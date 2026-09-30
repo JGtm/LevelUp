@@ -91,9 +91,6 @@ func bastionCase() (ZoneInput, zoneCtx) {
 	return zoneTestInput(reads), zoneTestCtx(actions, tracks)
 }
 
-//go:fix inline
-func intPtr(v int) *int { return new(v) }
-
 // TestZoneStatesPublieUnEtatParZoneAppariee est le cas nominal : chaque zone que les captures
 // rattachent a un slot de jauge sort avec ses intervalles de propriete.
 func TestZoneStatesPublieUnEtatParZoneAppariee(t *testing.T) {

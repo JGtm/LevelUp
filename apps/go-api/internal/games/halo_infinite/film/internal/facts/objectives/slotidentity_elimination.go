@@ -1,8 +1,10 @@
 package objectives
 
-import "maps"
+import (
+	"maps"
 
-import "levelup/go-api/internal/games/halo_infinite/film/types"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // slotidentity_elimination.go — L'IDENTITE D'UN SLOT D'ENTITE PAR ELIMINATION, MANCHE PAR MANCHE.
 //

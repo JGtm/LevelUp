@@ -474,12 +474,3 @@ func bombCarriedAt(periods []HeldObjectPeriod, t int64) bool {
 	}
 	return false
 }
-
-// measuredInt / measuredSeconds rendent un pointeur sur une valeur MESURÉE — le zéro qu'ils portent est
-// un zéro mesuré, à ne pas confondre avec le `nil` d'une source non lue.
-//
-//go:fix inline
-func measuredInt(v int) *int { return new(v) }
-
-//go:fix inline
-func measuredSeconds(v float64) *float64 { return new(v) }

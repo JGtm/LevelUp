@@ -37,9 +37,11 @@ package killicon
 // kill en face ET dont le dead-state designe la victime elle-meme. Appliquer cette table a une
 // mort ordinaire rendrait << suicide >> sur un kill parfaitement attribue.
 
-import "maps"
+import (
+	"maps"
 
-import "levelup/go-api/internal/games/halo_infinite/film/damagetag"
+	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+)
 
 // Les TYPES de mort publies. Identifiants stables, jamais des libelles : la traduction FR/EN
 // appartient a la couche d affichage (regle i18n du depot).
