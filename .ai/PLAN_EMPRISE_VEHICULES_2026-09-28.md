@@ -84,6 +84,17 @@
 - **D7 — Couleur** : jeton `resource-vehicle` (déjà dans les quatre palettes depuis L0).
 - **D8 — Un artefact sans occupation lue** (schéma < 67) : le match est « véhicules non mesurés »
   (même traitement que « sans film » pour cette ligne seulement), jamais zéro.
+- **D9 — Rendement sans biais (superviseur, 2026-09-30, sur les réserves de L7.0)** : sur tout le
+  lobby, seuls 62 % des frags de classe véhicule tombent dans un épisode publié (81 / 131 ; la part
+  `proximity` pèse 52,8 % du temps à bord). Diviser TOUS les frags de classe véhicule par le seul
+  temps à bord publié gonflerait le rendement. Donc : la barre « part des frags » garde D5 (tous les
+  frags de classe véhicule, comme la Répartition des frags) ; le RENDEMENT (frags par minute à bord)
+  ne compte au numérateur que les frags de classe véhicule tombés PENDANT un épisode publié de leur
+  tueur, calculés à la dérivation par la même jonction d'horloge que les épisodes d'équipement
+  (`replaybuild/equipment_episode_kills.go`, réutilisée, pas recopiée) ; la part appariée est
+  publiée en couverture. Même principe que la correction R1 de l'onglet (numérateur et dénominateur
+  sur la même population).
+- **D10 — Épisodes sans xuid (bots)** : ni prise ni temps ; comptés en couverture.
 
 ## 3. Organisation
 
