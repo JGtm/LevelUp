@@ -41,10 +41,9 @@ package objectives
 import (
 	"bytes"
 	"cmp"
-	"context"
-	"log/slog"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -101,16 +100,18 @@ func manifestChunks(film *source.Film) []manifestChunk {
 	return out
 }
 
-// chunksDatables rend les chunks du manifeste et JOURNALISE le cas où il n'y en a aucun.
+// chunksDatables rend les chunks du manifeste et SIGNALE dans `diag` le cas où il n'y en a aucun
+// (diagnostic depuis le lot J12.3, ADR 0034 D-4 : l orchestrateur le journalise).
 //
 // Un film chargé SANS manifeste porte des paquets mais aucun `start_ms` : rien n'y est datable.
 // Se taire ferait lire « ce film ne porte rien » là où il faut lire « on ne sait pas dater ce
 // film » — deux faits différents, et le second est réparable (le manifeste, lui, se retélécharge).
-func chunksDatables(ctx context.Context, film *source.Film, matchID string) []manifestChunk {
+func chunksDatables(film *source.Film, matchID string, diag *constat.Diagnostics) []manifestChunk {
 	chunks := manifestChunks(film)
 	if len(chunks) == 0 {
-		slog.InfoContext(ctx, "objectives: film sans chunk décrit par le manifeste — rien à dater",
-			"match_id", matchID, "chunks_du_film", filmChunkCount(film))
+		diag.Signaler(constat.Diagnostic{Code: DiagFilmSansManifeste, Niveau: constat.NiveauInfo,
+			Message: "objectives: film sans chunk decrit par le manifeste — rien a dater",
+			Attrs:   []any{"match_id", matchID, "chunks_du_film", filmChunkCount(film)}})
 	}
 	return chunks
 }

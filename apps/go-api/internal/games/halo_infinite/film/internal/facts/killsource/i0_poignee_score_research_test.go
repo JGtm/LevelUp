@@ -58,7 +58,7 @@ func TestScoreDuMotDePoignee(t *testing.T) {
 		t.Fatalf("film : %v", err)
 	}
 	c.film = f
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("timeline : %v", err)
 	}

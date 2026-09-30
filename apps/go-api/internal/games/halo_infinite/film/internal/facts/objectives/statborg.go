@@ -1,10 +1,9 @@
 package objectives
 
 import (
-	"context"
-	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -159,35 +158,38 @@ func IsTeamSlot(slot int) bool { return slot <= statTeamSlotMax }
 // par slot. L'ancrage est DIRECT : les contraintes de l'en-tete suffisent a localiser un
 // enregistrement, aucune traversee de la chaine n'est necessaire.
 //
-// Variante sans contexte, conservee pour les appelants existants : elle delegue a
-// [StatRecordsCtx] et JETTE le drapeau de troncature. Tout appelant qui publie ce qu'il lit
-// doit utiliser [StatRecordsCtx] et propager `truncated` — publier un score tronque sans le
-// dire serait un mensonge silencieux.
+// Variante des outils, conservee pour les appelants existants : elle delegue a
+// [StatRecordsBornes] SANS recueillir de diagnostics et JETTE le drapeau de troncature. Tout
+// appelant qui publie ce qu'il lit doit utiliser [StatRecordsBornes] et propager `truncated` —
+// publier un score tronque sans le dire serait un mensonge silencieux.
 func StatRecords(film *source.Film) []types.StatRecord {
-	recs, _ := StatRecordsCtx(context.Background(), film, "")
+	recs, _, _ := StatRecordsBornes(film, "")
 	return recs
 }
 
-// StatRecordsCtx decode les enregistrements d'entite sous PLAFOND (cf. statMaxRecordsPerFilm).
-// Il rend les enregistrements lus et `truncated` = true si le plafond a ete atteint : dans ce
-// cas la lecture s'arrete la, elle est journalisee, et l'appelant doit le publier.
-//
-// matchID n'est utilise que pour le journal ; il peut etre vide.
+// StatRecordsBornes decode les enregistrements d'entite sous PLAFOND (cf. statMaxRecordsPerFilm).
+// Il rend les enregistrements lus et `truncated` = true si le plafond a ete atteint : la lecture
+// s'arrete la, le dit dans `diags`, et l'appelant doit le publier. `StatRecordsCtx` jusqu au lot
+// J12.3 : ce paquet ne journalise plus (ADR 0034 D-4), l orchestrateur journalise `diags` avec
+// SON contexte. matchID n'est utilise que pour les diagnostics ; il peut etre vide.
 //
 // LE FILM ARRIVE DEJA CHARGE, et seuls les chunks du MANIFESTE sont balayes (cf. [manifestChunks]).
-func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) (recs []types.StatRecord, truncated bool) {
-	recs, truncated, _ = StatRecordsAvecReplis(ctx, film, matchID)
-	return recs, truncated
+func StatRecordsBornes(film *source.Film, matchID string) (
+	recs []types.StatRecord, truncated bool, diags []constat.Diagnostic,
+) {
+	recs, truncated, _, diags = StatRecordsAvecReplis(film, matchID)
+	return recs, truncated, diags
 }
 
-// StatRecordsAvecReplis est [StatRecordsCtx], plus les comptes des deux replis du balayage —
+// StatRecordsAvecReplis est [StatRecordsBornes], plus les comptes des deux replis du balayage —
 // enregistrements abandonnes et composants arretes (lot J8.7). La cuisson les porte avec la section
 // statborg des faits persistes, et les verse au compteur a l assemblage.
-func StatRecordsAvecReplis(ctx context.Context, film *source.Film, matchID string) (
-	recs []types.StatRecord, truncated bool, replis ComptesDesReplis,
+func StatRecordsAvecReplis(film *source.Film, matchID string) (
+	recs []types.StatRecord, truncated bool, replis ComptesDesReplis, diags []constat.Diagnostic,
 ) {
 	var out []types.StatRecord
-	for _, c := range chunksDatables(ctx, film, matchID) {
+	var diag constat.Diagnostics
+	for _, c := range chunksDatables(film, matchID, &diag) {
 		frames := framesOf(film, c.pos)
 		if len(frames) == 0 {
 			continue
@@ -197,15 +199,15 @@ func StatRecordsAvecReplis(ctx context.Context, film *source.Film, matchID strin
 			tMS := c.meta.StartMS + int((f.TS-base)/1000)
 			out = append(out, scanFrameAvecReplis(f.Payload, tMS, &replis)...)
 			if len(out) >= statMaxRecordsPerFilm {
-				slog.WarnContext(ctx,
-					"statborg: plafond d'enregistrements atteint, lecture tronquee",
-					"match_id", matchID, "records", len(out),
-					"limite", statMaxRecordsPerFilm, "chunk", c.meta.Index)
-				return sortRecords(out), true, replis
+				diag.Signaler(constat.Diagnostic{Code: DiagStatborgTronque, Niveau: constat.NiveauWarn,
+					Message: "statborg: plafond d'enregistrements atteint, lecture tronquee",
+					Attrs: []any{"match_id", matchID, "records", len(out),
+						"limite", statMaxRecordsPerFilm, "chunk", c.meta.Index}})
+				return sortRecords(out), true, replis, diag.Relever()
 			}
 		}
 	}
-	return sortRecords(out), false, replis
+	return sortRecords(out), false, replis, diag.Relever()
 }
 
 // sortRecords ordonne les enregistrements par temps puis par slot.

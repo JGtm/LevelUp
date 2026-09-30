@@ -78,7 +78,7 @@ func TestSeriePublieeEtCleAppariementSAccordent(t *testing.T) {
 	recs := derivRecs(aberrant)
 
 	// LA CLE : ce que le pont d'identite compte comme increments.
-	b := newEventBudget("test")
+	b := newEventBudget("test", nil)
 	cle := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b, nil)
 	if cle[12] != 0 {
 		t.Fatalf("la cle compte %d assistance(s) pour le slot 12, attendu 0 — la borne par pas "+
@@ -122,7 +122,7 @@ func TestSerieSaineTraverseLaDerivationIntacte(t *testing.T) {
 	const sain = 3 // pire pas sain mesure sur le parc (lot 6.7-B1, item 6)
 	recs := derivRecs(sain)
 
-	b := newEventBudget("test")
+	b := newEventBudget("test", nil)
 	cle := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b, nil)
 	if b.rejetes != 0 {
 		t.Fatalf("%d rejet(s) sur un vecteur SAIN", b.rejetes)
@@ -179,7 +179,7 @@ func TestBoundedSeriesEtIncrementTimesNeDiventJamaisDeuxChoses(t *testing.T) {
 	}
 	for nom, pts := range cas {
 		serie := boundedSeries(pts)
-		evts := incrementTimes(pts, statSlotKey{coreAssistsComp, sideA}, newEventBudget("test"))
+		evts := incrementTimes(pts, statSlotKey{coreAssistsComp, sideA}, newEventBudget("test", nil))
 		var total int64
 		if len(serie) > 0 {
 			total = serie[len(serie)-1].Value

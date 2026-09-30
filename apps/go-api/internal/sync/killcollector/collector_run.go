@@ -185,6 +185,10 @@ func (c *KillSourceCollector) decoderSousLaCarte(ctx context.Context, matchID st
 	opts := decfilm.DefaultOptions()
 	opts.Carte = carte
 	res, err := decfilm.Decode(ctx, matchID, film, &opts)
+	// CE QUE LE DECODAGE A CONSTATE (lot J12.3, ADR 0034 D-4) se journalise ici, sous le ctx du match.
+	if res != nil {
+		replay.JournaliserDiagnostics(ctx, res.Diagnostics)
+	}
 	switch {
 	case err == nil:
 		return res, OutcomeWritten, nil

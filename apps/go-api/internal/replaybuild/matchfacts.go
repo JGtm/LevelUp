@@ -103,7 +103,8 @@ func statborgDuFilm(ctx context.Context, matchID string, film *decfilm.Film) rep
 	if film == nil || len(chunksDuManifeste(film)) == 0 {
 		return replay.FilmStatborg{} // illisible ou sans manifeste — deja journalise par filmload.go
 	}
-	recs, truncated, replis := decfilm.StatRecordsAvecReplis(ctx, film, matchID)
+	recs, truncated, replis, diags := decfilm.StatRecordsAvecReplis(film, matchID)
+	replay.JournaliserDiagnostics(ctx, diags)
 	return replay.FilmStatborg{
 		Records: recs, BurstMS: decfilm.CaptureBurstTimes(film), Truncated: truncated,
 		ChunkStartMS: horlogeDesChunks(film), Replis: replis,

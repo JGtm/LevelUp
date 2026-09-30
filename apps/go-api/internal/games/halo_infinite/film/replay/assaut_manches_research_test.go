@@ -36,7 +36,6 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautManchesRecherche -v -timeout 30m
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -103,7 +102,7 @@ func TestAssautManchesRecherche(t *testing.T) {
 			t.Logf("FILM %s ABSENT (%v) — saute", f.id, err)
 			continue
 		}
-		recs, tronque := objectives.StatRecordsCtx(context.Background(), src, f.id)
+		recs, tronque, _ := objectives.StatRecordsBornes(src, f.id)
 		retenues := objectives.RealRounds(recs)
 		t.Logf("FILM %s — %s : %d enregistrements, tronque=%v, manches retenues actuellement=%v",
 			f.id, f.libelle, len(recs), tronque, amTriRetenues(retenues))
@@ -305,7 +304,7 @@ func TestAssautManchesControleHorsEchantillon(t *testing.T) {
 			t.Logf("film %s absent — saute", id)
 			continue
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+		recs, _, _ := objectives.StatRecordsBornes(src, id)
 		if len(recs) == 0 {
 			t.Logf("film %s : 0 enregistrement — saute", id)
 			continue
@@ -377,7 +376,7 @@ func TestAssautPointsDeModeParJoueur(t *testing.T) {
 			t.Logf("film %s absent — saute", f.id)
 			continue
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, f.id)
+		recs, _, _ := objectives.StatRecordsBornes(src, f.id)
 		t.Logf("=== %s (%s) — manches retenues %v", f.id, f.libelle,
 			amTriRetenues(objectives.RealRounds(recs)))
 		byRound := objectives.SeriesByRound(recs,
@@ -445,7 +444,7 @@ func TestAssautMancheSansPorteur(t *testing.T) {
 		if err != nil || !ok {
 			continue
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, c.id)
+		recs, _, _ := objectives.StatRecordsBornes(src, c.id)
 		t.Logf("=== %s manche %d (explosion attendue a %d ms)", c.id, c.round, c.msEsp)
 		parSlot := map[int][]string{}
 		for _, r := range recs {
@@ -491,7 +490,7 @@ func TestAssautParasiteCe083875(t *testing.T) {
 	if err != nil || !ok {
 		t.Skip("film absent")
 	}
-	recs, _ := objectives.StatRecordsCtx(context.Background(), src, "ce083875")
+	recs, _, _ := objectives.StatRecordsBornes(src, "ce083875")
 	t.Logf("manches retenues : %v", amTriRetenues(objectives.RealRounds(recs)))
 	for _, r := range recs {
 		if r.TimeMS < 218_000 || r.TimeMS > 221_000 {
@@ -539,7 +538,7 @@ func TestAssautDomaineComp0(t *testing.T) {
 		if err != nil || !ok {
 			continue
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, f)
+		recs, _, _ := objectives.StatRecordsBornes(src, f)
 		for _, r := range recs {
 			v, ok := r.Comps[0]
 			if !ok || objectives.IsTeamSlot(r.Slot) {
@@ -593,7 +592,7 @@ func TestAssautPontIdentite(t *testing.T) {
 		if err != nil || !ok {
 			continue
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, f.id)
+		recs, _, _ := objectives.StatRecordsBornes(src, f.id)
 		deaths, err := grammar.ScanFilmDeaths(filepath.Join(cache, "film_chunks", f.id))
 		if err != nil {
 			t.Logf("%s : fil des morts illisible (%v)", f.id, err)

@@ -38,7 +38,6 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run ManchesBornes -v -timeout 60m
 
 import (
-	"context"
 	"os"
 	"sort"
 	"strings"
@@ -65,7 +64,7 @@ func TestManchesBornesReleve(t *testing.T) {
 			t.Logf("FILM %s ABSENT (%v) — saute", film, err)
 			continue
 		}
-		recs, tronque := objectives.StatRecordsCtx(context.Background(), src, film)
+		recs, tronque, _ := objectives.StatRecordsBornes(src, film)
 		mbReleveFilm(t, film, recs, tronque)
 	}
 }

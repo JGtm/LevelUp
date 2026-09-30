@@ -201,7 +201,7 @@ func TestTotalNonChronologiqueEstRefuse(t *testing.T) {
 		{TimeMS: 3_057, Slot: 12, Value: 61},
 		{TimeMS: 4_225, Slot: 12, Value: 62},
 	}
-	got := objectives.ChronologicalTotal(pts)
+	got := objectives.ChronologicalTotal(pts, nil)
 	if len(got) != 3 {
 		t.Fatalf("%d points retenus, attendu 3 (le point qui recule doit etre ecarte) : %+v", len(got), got)
 	}

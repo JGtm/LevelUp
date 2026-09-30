@@ -177,7 +177,7 @@ func SeriesByRound(recs []types.StatRecord, c StatComponent, teams bool,
 // `cons` : l enregistreur des replis a la consultation du document ([ReplisALaConsultation], lot
 // J8.7-bis) ; nil hors production.
 func SeriesTotal(recs []types.StatRecord, c StatComponent, teams bool, cons *ReplisALaConsultation) map[int][]types.ScorePoint {
-	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams, cons), RealRounds(recs))
+	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams, cons), RealRounds(recs), cons.Diagnostics())
 	for slot, pts := range out {
 		if c.Unitary {
 			pts = boundedSeries(pts)

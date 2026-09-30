@@ -31,6 +31,7 @@ package killsource
 import (
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -51,8 +52,9 @@ type timeline struct {
 	initSnap grammar.WorldSnapshot
 }
 
-// newTimeline : registre depuis le chunk 0 + keyframes tries par horodatage.
-func newTimeline(f *film) (*timeline, error) {
+// newTimeline : registre depuis le chunk 0 + keyframes tries par horodatage. Ce que la lecture du
+// registre et la marche d image-cle constatent tombe dans `diag` (lot J12.3).
+func newTimeline(f *film, diag *constat.Diagnostics) (*timeline, error) {
 	if f.src.NumChunks() == 0 {
 		return nil, ErrNoChunk
 	}
@@ -60,10 +62,15 @@ func newTimeline(f *film) (*timeline, error) {
 	if err != nil {
 		return nil, errRegistry(err)
 	}
+	if d, ok := grammar.DiagnosticRegistreInconnu(reg); ok {
+		diag.Signaler(d)
+	}
 	tl := &timeline{}
 	// LA MARCHE D IMAGE-CLE DU FILM (lot D-fix, 2026-09-24) : celle des balayages de la cuisson,
 	// qui refuse l elu qu un record prouve par la grammaire du film contredit.
-	marche := grammar.NewFilmContext(f.src).MarcheDImageCle()
+	fc := grammar.NewFilmContext(f.src)
+	marche := fc.MarcheDImageCle()
+	fc.Diagnostics().Verser(diag)
 	for i := range f.packets {
 		if f.packets[i].typ == packetTypeKeyframe {
 			tl.events = append(tl.events, keyframeEvent{f.packets[i].ts, keyframeRecs(f.packets[i].payload, marche)})

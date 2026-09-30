@@ -46,6 +46,9 @@ func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry de
 	// source fiable. Pas de repli. »
 	opts.Carte = &entry
 	res, err := decfilm.Decode(ctx, matchID, film, &opts)
+	if res != nil {
+		replay.JournaliserDiagnostics(ctx, res.Diagnostics) // lot J12.3, ADR 0034 D-4
+	}
 	if err != nil {
 		slog.InfoContext(ctx, "replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
 			"err", err, "match_id", matchID)

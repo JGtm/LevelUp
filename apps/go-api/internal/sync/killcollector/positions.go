@@ -312,6 +312,8 @@ func lireLePontDuCollecteur(ctx context.Context,
 		Balayage: optionsDeBalayageDesPositions(fc, entry), Carte: &entry,
 		RosterDesMorts: func([]types.Death) []uint64 { return rosterUint64(ids.XUIDs) },
 	})
+	// CE QUE LA LECTURE DU PONT A CONSTATE (grammar, lot J12.3 — ADR 0034 D-4).
+	replay.JournaliserDiagnostics(ctx, fc.Diagnostics().Relever())
 	switch {
 	case pont.ErrPositions != nil:
 		return lecturesDuFilm{}, 0, fmt.Errorf("positions bipeds: %w", pont.ErrPositions)

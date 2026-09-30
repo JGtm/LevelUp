@@ -30,6 +30,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 )
 
@@ -55,6 +56,9 @@ func replisDeLaPasse(ctx context.Context) *decfilm.Compteur {
 // publierReplisDeLaPasse publie les replis d UNE passe de film : un compteur expvar par nom, et la
 // ligne de journal du film.
 func publierReplisDeLaPasse(ctx context.Context, matchID string, fb *decfilm.Compteur) {
+	// UN NOM HORS REGISTRE EST UN DIAGNOSTIC DU COMPTEUR (lot J12.3, ADR 0034 D-4) : il se journalise
+	// ici, avec la passe.
+	replay.JournaliserDiagnostics(ctx, fb.Diagnostics().Relever())
 	rap := fb.Rapport()
 	for _, r := range rap {
 		observability.AddInt(prefixeReplisDeLaPasse+string(r.Nom), int64(r.Declenchements))

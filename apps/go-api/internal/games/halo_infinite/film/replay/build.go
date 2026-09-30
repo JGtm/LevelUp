@@ -40,6 +40,8 @@ const coordScale = 100
 func BuildFromPositions(ctx context.Context, matchID, titleSlug string, pos []grammar.BipedPosition,
 	fire []grammar.FireEvent, opt Options) ReplayDocument {
 	a := &assemblage{ctx: ctx, matchID: matchID, opt: opt, pos: pos, fire: fire}
+	// LES DIAGNOSTICS DE L ASSEMBLAGE SE JOURNALISENT EN SORTIE, sur les deux retours (lot J12.3).
+	defer a.journaliserLesDiagnostics()
 	if !a.ouvrir(titleSlug) {
 		a.poserLesCalquesProduits()
 		return a.doc

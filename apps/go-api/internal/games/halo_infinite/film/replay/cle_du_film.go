@@ -75,7 +75,7 @@ func (c CleFilm) Refusee() bool { return c.Err != nil }
 // CleDuFilm rend la cle d un film DEJA CHARGE et le verdict de la table de profil.
 //
 // UN FILM SANS `chunk_00` N EST JAMAIS REFUSE, et c est la meme regle que
-// `grammar.journaliserProfilIncomplet` : une bobine partielle ou une fixture sans registre n a
+// `grammar.FilmContext.signalerProfilIncomplet` : une bobine partielle ou une fixture sans registre n a
 // pas de cle a chercher, et la refuser transformerait un diagnostic de lecture deja nomme
 // ([grammar.ErrNoFilmChunk], « decoupage i0 illisible », ...) en « cle inconnue », qui serait
 // faux.

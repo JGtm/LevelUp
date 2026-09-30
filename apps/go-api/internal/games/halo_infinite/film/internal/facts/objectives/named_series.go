@@ -11,8 +11,8 @@ package objectives
 // 2026-09-11 — le seuil de 500 lignes etait de nouveau atteint).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"log/slog"
 	"sort"
 )
 
@@ -84,7 +84,7 @@ func rawSeriesByKey(recs []types.StatRecord, table map[statSlotKey]statSlot,
 // manches precedentes : la suite rendue est croissante sur tout le match et son dernier point
 // est le total du match. Mesure : les frags d'un Oddball passent de 48 a 87 sur 88 attendus.
 func seriesBySlot(recs []types.StatRecord, key statSlotKey, cons *ReplisALaConsultation) map[int][]types.ScorePoint {
-	return cumulateRounds(rawSeriesByRound(recs, key, false, cons), RealRounds(recs))
+	return cumulateRounds(rawSeriesByRound(recs, key, false, cons), RealRounds(recs), cons.Diagnostics())
 }
 
 // rawSeriesByRound groupe les emissions par slot puis par manche, en jetant les ancrages
@@ -152,7 +152,8 @@ func emissionHorsDomaine(key statSlotKey, v types.StatValue, val int64) bool {
 //
 // La suite assemblee passe par [ChronologicalTotal] : le cumul suppose que l'ordre des MANCHES
 // est l'ordre du TEMPS, et cette supposition doit etre verifiee, pas presumee.
-func cumulateRounds(raw map[int]map[int][]types.ScorePoint, real map[int]bool) map[int][]types.ScorePoint {
+func cumulateRounds(raw map[int]map[int][]types.ScorePoint, real map[int]bool,
+	diag *constat.Diagnostics) map[int][]types.ScorePoint {
 	out := make(map[int][]types.ScorePoint, len(raw))
 	for slot, byRound := range raw {
 		var offset int64
@@ -173,7 +174,7 @@ func cumulateRounds(raw map[int]map[int][]types.ScorePoint, real map[int]bool) m
 			}
 			offset += kept[len(kept)-1].Value
 		}
-		if serie = ChronologicalTotal(serie); len(serie) > 0 {
+		if serie = ChronologicalTotal(serie, diag); len(serie) > 0 {
 			out[slot] = serie
 		}
 	}
@@ -197,11 +198,12 @@ func cumulateRounds(raw map[int]map[int][]types.ScorePoint, real map[int]bool) m
 // forcement d'une manche rangee apres celle dont il porte l'instant, donc c'est lui qui est mal
 // range, pas ceux qui le precedent.
 //
-// L'ECART EST JOURNALISE ICI, une fois, avec le slot et le premier recul : c'est un defaut, pas
-// un cas nominal, et il ne doit jamais etre avale. Le journal vit dans la fonction plutot que
+// L'ECART EST SIGNALE ICI, une fois, avec le slot et le premier recul : c'est un defaut, pas
+// un cas nominal, et il ne doit jamais etre avale. Le diagnostic nait dans la fonction plutot que
 // chez ses appelants pour que les DEUX cumuls (par slot ici, par joueur dans `games/halo_infinite/film/replay`)
-// le rendent de la meme facon, sans dupliquer ni le message ni la decision.
-func ChronologicalTotal(pts []types.ScorePoint) []types.ScorePoint {
+// le rendent de la meme facon, sans dupliquer ni le message ni la decision ; il tombe dans `diag`
+// (lot J12.3, ADR 0034 D-4) et l orchestrateur le journalise.
+func ChronologicalTotal(pts []types.ScorePoint, diag *constat.Diagnostics) []types.ScorePoint {
 	out := make([]types.ScorePoint, 0, len(pts))
 	last, dropped, recul := 0, 0, 0
 	for i, p := range pts {
@@ -216,8 +218,9 @@ func ChronologicalTotal(pts []types.ScorePoint) []types.ScorePoint {
 		last = p.TimeMS
 	}
 	if dropped > 0 {
-		slog.Warn("objectives: serie cumulee NON CHRONOLOGIQUE — points ecartes",
-			"slot", pts[0].Slot, "ecartes", dropped, "retenus", len(out), "premierRecul", recul)
+		diag.Signaler(constat.Diagnostic{Code: DiagSerieNonChronologique, Niveau: constat.NiveauWarn,
+			Message: "objectives: serie cumulee NON CHRONOLOGIQUE — points ecartes",
+			Attrs:   []any{"slot", pts[0].Slot, "ecartes", dropped, "retenus", len(out), "premierRecul", recul}})
 	}
 	if len(out) == 0 {
 		return nil

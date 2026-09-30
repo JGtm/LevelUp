@@ -100,6 +100,9 @@ func BuildFromFilmAvecFaits(ctx context.Context, matchID, titleSlug string, film
 	// profil (`build`) et l empreinte du registre ECS, que `coverage.decoder` publie.
 	opt.FilmIdentity = identiteDuFilm(fc)
 	s, err := scanFilmInputs(ctx, matchID, film, fc, opt)
+	// CE QUE LE BALAYAGE A CONSTATE (grammar, lot J12.3 — ADR 0034 D-4) se journalise ICI, erreur
+	// ou non, sous le contexte de l appelant.
+	JournaliserDiagnostics(ctx, fc.Diagnostics().Relever())
 	if err != nil {
 		return ReplayDocument{}, nil, err
 	}

@@ -290,10 +290,10 @@ var registreFilmdec = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "registry_fingerprint.go",
-			Ancre:   "func warnUnknownRegistry(fp uint64, blocks, slots int) {",
+			Ancre:   "func DiagnosticRegistreInconnu(reg *Registry) (constat.Diagnostic, bool) {",
 		}, {
 			// COMPTE = UN film dont l empreinte n est pas celle de reference, au registre memorise du
-			// contexte (lot J8.7) — la ou `warnUnknownRegistry` ne signale qu UNE fois par processus.
+			// contexte (lot J8.7) — la ou `DiagnosticRegistreInconnu` ne signale qu UNE fois par processus.
 			Fichier: pkgFilmdec + "replis_du_film.go",
 			Ancre:   "c.NoterReplis(ComptesDesReplis{RegistreInconnu: 1})",
 		}, {

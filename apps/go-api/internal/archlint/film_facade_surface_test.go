@@ -310,7 +310,14 @@ const plafondSurfaceFacade = 186 // 2026-09-30 — J12.4 sur 8cd560673 : 187 - 1
 //	                                           que l assemblage verse au compteur
 //	                                           (`replay.ReplisHorsBalayage`). UN symbole neuf,
 //	                                           re-mesure sur la base `5fad0cc93` : 276.
-const plafondSurfaceReplay = 277 // 2026-09-27 — audit(J8.7) sur 5fad0cc93 : 276 + 1 (replay.ReplisHorsBalayage)
+//	278  J12.3   (2026-09-30)                  les diagnostics des couches (ADR 0034 D-4) : les
+//	                                           orchestrateurs hors de `film/` (`replaybuild`,
+//	                                           `sync/killcollector`, `cmd/killsource`,
+//	                                           `cmd/oddball-terrain`, `cmd/statnames-sweep`)
+//	                                           journalisent par `replay.JournaliserDiagnostics`.
+//	                                           UN symbole neuf, re-mesure sur la base `e3e322b74` :
+//	                                           277.
+const plafondSurfaceReplay = 278 // 2026-09-30 — J12.3 sur e3e322b74 : 277 + 1 (replay.JournaliserDiagnostics)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

@@ -298,7 +298,6 @@ func parseRegistry(data []byte) *Registry {
 		reg.TruncatedBytes = 0 // la queue est la section suivante du chunk, pas une coupure
 	}
 	reg.fingerprint, reg.namedSlots = fp.sum(), fp.slots
-	warnUnknownRegistry(reg.fingerprint, len(reg.Archetypes), reg.namedSlots)
 	return reg
 }
 

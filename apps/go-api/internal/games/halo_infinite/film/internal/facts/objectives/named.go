@@ -248,14 +248,14 @@ func NamedEventsFrom(recs []types.StatRecord, objectiveType string, cons *Replis
 	// observable : deux parcours de map donneraient deux sorties differentes sur un film
 	// tronque. D'ou [sortedSlotKeys] et [sortedIntKeys] — sans effet sur un film sain, ou tout
 	// est emis puis retrie par [sortNamedEvents].
-	b := newEventBudget("named_events:" + objectiveType)
+	b := newEventBudget("named_events:"+objectiveType, cons.Diagnostics())
 	var out []NamedEvent
 	for _, key := range sortedSlotKeys(table) {
 		slot := table[key]
 		if slot.Redundant {
 			continue
 		}
-		series := cumulateRounds(byKey[key], real)
+		series := cumulateRounds(byKey[key], real, cons.Diagnostics())
 		for _, entity := range sortedIntKeys(series) {
 			for _, t := range incrementTimes(series[entity], key, b) {
 				out = append(out, NamedEvent{
@@ -348,7 +348,7 @@ func crossCheckFrom(recs []types.StatRecord, objectiveType string) map[int]map[s
 	}
 	// Un budget pour la passe entiere, et un parcours trie pour qu'il se consomme toujours
 	// dans le meme ordre (meme raison qu'a [NamedEventsFrom]).
-	b := newEventBudget("cross_check:" + objectiveType)
+	b := newEventBudget("cross_check:"+objectiveType, nil) // outil hors production : aucun document
 	defer b.resume()
 	out := map[int]map[string][2]int{}
 	for _, key := range sortedSlotKeys(table) {

@@ -178,7 +178,7 @@ func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 	if err != nil || !ok {
 		t.Fatalf("%s : film absent du cache : %v", id, err)
 	}
-	recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+	recs, _, _ := objectives.StatRecordsBornes(src, id)
 	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb, nil)
 	dir := filepath.Join(cache, "film_chunks", id)
 	deaths, err := grammar.ScanFilmDeaths(dir)

@@ -71,6 +71,7 @@ import (
 	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -397,11 +398,14 @@ const StatPlayerSlots = objectives.StatPlayerSlots
 type StatRecord = types.StatRecord
 
 func StatRecords(film *source.Film) []types.StatRecord { return objectives.StatRecords(film) }
-func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) ([]types.StatRecord, bool) {
-	return objectives.StatRecordsCtx(ctx, film, matchID)
+
+// StatRecordsBornes et StatRecordsAvecReplis rendent en plus les DIAGNOSTICS de la lecture (lot
+// J12.3, ADR 0034 D-4) : l appelant les journalise avec son contexte (`replay.JournaliserDiagnostics`).
+func StatRecordsBornes(film *source.Film, matchID string) ([]types.StatRecord, bool, []constat.Diagnostic) {
+	return objectives.StatRecordsBornes(film, matchID)
 }
-func StatRecordsAvecReplis(ctx context.Context, film *source.Film, matchID string) ([]types.StatRecord, bool, objectives.ComptesDesReplis) {
-	return objectives.StatRecordsAvecReplis(ctx, film, matchID)
+func StatRecordsAvecReplis(film *source.Film, matchID string) ([]types.StatRecord, bool, objectives.ComptesDesReplis, []constat.Diagnostic) {
+	return objectives.StatRecordsAvecReplis(film, matchID)
 }
 
 type ComptesDesReplisObjectifs = objectives.ComptesDesReplis

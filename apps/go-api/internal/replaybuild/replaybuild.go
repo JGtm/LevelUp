@@ -265,6 +265,7 @@ func (b *Builder) BuildBytes(ctx context.Context, matchID string, mapNames []str
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
 	cat := b.collecterEntreesCatalogue(ctx, matchID, mapNames, facts, &stats, src)
+	replay.JournaliserDiagnostics(ctx, cat.replis.Diagnostics().Relever()) // replis hors registre (J12.3)
 	opts := b.buildReplayOptions(ctx, entry, facts, cat, &stats)
 	cuit, err := b.documentDeLaCuisson(ctx, matchID, filmDir, opts, src)
 	if err != nil {

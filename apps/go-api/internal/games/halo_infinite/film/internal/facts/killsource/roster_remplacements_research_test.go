@@ -254,7 +254,7 @@ func journaliserHorsRoster(t *testing.T, f *film) {
 	}
 	tbl := readFilmTable(f)
 	r := buildRoster(kf, loadBotMeta(f), opts.Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("timeline : %v", err)
 	}

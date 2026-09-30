@@ -63,7 +63,6 @@ package objectives
 //	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautStatborgArmement -v -timeout 60m
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -191,7 +190,7 @@ func TestAssautStatborgArmementFenetre(t *testing.T) {
 			t.Errorf("%s : film absent du cache (%s)", id, cache)
 			continue
 		}
-		recs, tronque := StatRecordsCtx(context.Background(), src, id)
+		recs, tronque, _ := StatRecordsBornes(src, id)
 		instants := asInstants(recs)
 		tmin, tmax := 0, 0
 		for _, r := range recs {

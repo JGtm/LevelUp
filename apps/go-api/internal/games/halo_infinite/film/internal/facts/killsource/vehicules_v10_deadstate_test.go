@@ -89,7 +89,7 @@ func v10RunFilm(t *testing.T, dir, short8 string) {
 	if err != nil {
 		t.Fatalf("%s : film illisible : %v", short8, err)
 	}
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("%s : timeline : %v", short8, err)
 	}

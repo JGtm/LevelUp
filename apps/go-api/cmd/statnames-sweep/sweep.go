@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -98,7 +99,8 @@ func sweepFilm(cache, id string) error {
 	if !ok {
 		return fmt.Errorf("film absent du cache (%s)", cache)
 	}
-	recs, truncated := decfilm.StatRecordsCtx(context.Background(), film, id)
+	recs, truncated, diags := decfilm.StatRecordsBornes(film, id)
+	replay.JournaliserDiagnostics(context.Background(), diags)
 	deaths, err := decfilm.ScanDeaths(film)
 	if err != nil {
 		return fmt.Errorf("fil des morts : %w", err)

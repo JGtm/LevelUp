@@ -40,7 +40,7 @@ func pt(ms int, v int64) types.ScorePoint { return types.ScorePoint{TimeMS: ms, 
 func TestIncrementTimesSerieSaineIntacte(t *testing.T) {
 	const pireSaut = 3 // parc de 68 artefacts, 2026-09-11 : le plus gros pas confirme par l'oracle
 	pts := []types.ScorePoint{pt(100, 1), pt(200, 2), pt(345931, 2+pireSaut)}
-	b := newEventBudget("test")
+	b := newEventBudget("test", nil)
 	out := incrementTimes(pts, statSlotKey{20, sideB}, b)
 
 	if len(out) != 2+pireSaut {
@@ -65,7 +65,7 @@ func TestIncrementTimesSerieSaineIntacte(t *testing.T) {
 func TestIncrementTimesPasAberrantDeSoixanteQuatreRejete(t *testing.T) {
 	const aberrant = 64 // parc de 68 artefacts : le PLUS PETIT pas que l'oracle refute
 	pts := []types.ScorePoint{pt(100, 1), pt(200, 1+aberrant)}
-	b := newEventBudget("test")
+	b := newEventBudget("test", nil)
 	out := incrementTimes(pts, statSlotKey{24, sideA}, b)
 
 	if len(out) != 1 || out[0] != 100 {
@@ -82,7 +82,7 @@ func TestIncrementTimesPasAberrantDeSoixanteQuatreRejete(t *testing.T) {
 func TestIncrementTimesAssistsExplosivesRamenentLaFeuilleDeMatch(t *testing.T) {
 	pts := []types.ScorePoint{pt(100, 1), pt(200, 2), pt(300, 3), pt(400, 4), pt(500, 5), pt(600, 6),
 		pt(700, 9488)}
-	b := newEventBudget("test")
+	b := newEventBudget("test", nil)
 	out := incrementTimes(pts, statSlotKey{3, sideA}, b)
 
 	if len(out) != 6 {
@@ -98,7 +98,7 @@ func TestIncrementTimesAssistsExplosivesRamenentLaFeuilleDeMatch(t *testing.T) {
 func TestIncrementTimesPremierTermeEnormeRejete(t *testing.T) {
 	const bombe = 2163333610 // mesure 4b.1 : `51101d1d`, comp 20 B, slot 24, t = 136 636 ms
 	pts := []types.ScorePoint{pt(136636, bombe), pt(200000, bombe+3)}
-	b := newEventBudget("test")
+	b := newEventBudget("test", nil)
 	out := incrementTimes(pts, statSlotKey{20, sideB}, b)
 
 	// Le point geant n'emet rien ; `prev` a saute a sa valeur, donc le point suivant ne
@@ -121,7 +121,7 @@ func TestIncrementTimesPremierTermeEnormeRejete(t *testing.T) {
 func TestIncrementTimesSautIntermediaireRejete(t *testing.T) {
 	const bombe = 537698416 // mesure 4b.1 : la PLUS PETITE bombe (`1c4c63c2`, comp 22 A)
 	pts := []types.ScorePoint{pt(100, 1), pt(200, 2), pt(300, 2+bombe), pt(400, 2+bombe+2)}
-	b := newEventBudget("test")
+	b := newEventBudget("test", nil)
 	out := incrementTimes(pts, statSlotKey{22, sideA}, b)
 
 	want := []int{100, 200, 400, 400}
@@ -141,7 +141,7 @@ func TestIncrementTimesSautIntermediaireRejete(t *testing.T) {
 // TestIncrementTimesBudgetEpuiseEnCoursDeRoute — le plafond TOTAL, atteint au milieu d'une
 // serie dont chaque pas tient pourtant sous la borne par pas.
 func TestIncrementTimesBudgetEpuiseEnCoursDeRoute(t *testing.T) {
-	b := newEventBudget("test")
+	b := newEventBudget("test", nil)
 	b.reste = 5 // solde reduit : le plafond reel demanderait un million d'evenements pour rien
 	pts := []types.ScorePoint{pt(100, 3), pt(200, 6), pt(300, 20)}
 	out := incrementTimes(pts, statSlotKey{21, sideA}, b)
@@ -166,7 +166,7 @@ func TestIncrementTimesBudgetEpuiseEnCoursDeRoute(t *testing.T) {
 // TestBudgetTraverseLesAppels — note N-AV : le solde doit descendre DANS l'appel, sinon un
 // appel isole peut allouer des gigaoctets avant que qui que ce soit ait la main.
 func TestBudgetTraverseLesAppels(t *testing.T) {
-	b := newEventBudget("test")
+	b := newEventBudget("test", nil)
 	b.reste = 10
 
 	if n := len(incrementTimes([]types.ScorePoint{pt(100, 8)}, statSlotKey{2, sideA}, b)); n != 8 {

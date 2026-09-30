@@ -22,7 +22,6 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautA1Identite -v
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"os"
@@ -126,7 +125,7 @@ func TestAssautA1Identite(t *testing.T) {
 // slot d'equipe (une montee = une explosion — releve A0.3, corrobore par le score API 9/9).
 func a1ClassesTemporelles(t *testing.T, id string, src *objDiskFilm) (debuts, explosions []int64) {
 	t.Helper()
-	recs, truncated := objectives.StatRecordsCtx(context.Background(), src, id)
+	recs, truncated, _ := objectives.StatRecordsBornes(src, id)
 	if truncated {
 		t.Logf("%s : enregistrements TRONQUES — classes temporelles partielles, et cela se dit", id)
 	}

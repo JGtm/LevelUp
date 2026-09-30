@@ -43,7 +43,6 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautA6Armement -v -timeout 40m
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"os"
@@ -113,7 +112,7 @@ func TestAssautA6Armement(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+		recs, _, _ := objectives.StatRecordsBornes(src, id)
 		exps := a5Explosions[id]
 		totalExplosions += len(exps)
 
@@ -292,7 +291,7 @@ func TestAssautA6Minuterie(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+		recs, _, _ := objectives.StatRecordsBornes(src, id)
 		for _, T := range a5Explosions[id] {
 			for comp := 0; comp <= 27; comp++ {
 				for _, canal := range []string{"A", "B", "C", "D"} {
@@ -429,7 +428,7 @@ func TestAssautA6TemoinMinuterie(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+		recs, _, _ := objectives.StatRecordsBornes(src, id)
 		for _, T := range a5Explosions[id] {
 			faux := T - a6DecalageTemoinMS
 			for comp := 0; comp <= 27; comp++ {

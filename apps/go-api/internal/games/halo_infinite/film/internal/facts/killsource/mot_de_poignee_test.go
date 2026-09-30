@@ -178,7 +178,7 @@ func calibrerUnFilm(t *testing.T, dir string, o Options) calibration {
 	if err != nil {
 		t.Fatalf("film %s : %v", dir, err)
 	}
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("timeline %s : %v", dir, err)
 	}

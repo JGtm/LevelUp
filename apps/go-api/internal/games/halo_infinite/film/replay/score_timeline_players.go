@@ -150,11 +150,12 @@ func playerRoundsByXUID(recs []types.StatRecord, comp objectives.StatComponent,
 //
 // LE CUMUL PASSE PAR [objectives.ChronologicalTotal] : concatener les manches dans l'ordre
 // des MANCHES ne donne une courbe chronologique que si la decoupe par manche est juste. Le
-// controle refuse de publier une courbe qui recule dans le temps, et le dit au journal.
+// controle refuse de publier une courbe qui recule dans le temps, et le dit (diagnostic de
+// l enregistreur des consultations, journalise en fin d assemblage — lot J12.3).
 func seriesOfRounds(byRound map[int][]types.ScorePoint, c scoreClock) ScoreSeries {
 	return ScoreSeries{
 		Rounds: scoreRoundsOf(byRound, c),
-		Total:  scoreTicksOf(objectives.ChronologicalTotal(cumulateXUIDRounds(byRound)), c),
+		Total:  scoreTicksOf(objectives.ChronologicalTotal(cumulateXUIDRounds(byRound), c.cons.Diagnostics()), c),
 	}
 }
 
