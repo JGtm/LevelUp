@@ -166,9 +166,42 @@ sous le plafond de 8 Gio) ; seuils tenus ; L7.1 autorisé.
 
 ### L7.1 — Projection pure (Go) · moyen
 
-- [ ] L7.1.1 Fonction pure depuis `ReplayDocument` (vies de véhicule, `rides`, famille, décor) :
+- [x] L7.1.1 Fonction pure depuis `ReplayDocument` (vies de véhicule, `rides`, famille, décor) :
   prises par camp et par joueur, temps à bord, par famille ; tests synthétiques (changement de camp,
   sièges simultanés, décor, pièce montée, famille inconnue, artefact sans occupation).
+
+**Livré (2026-09-30)** : `film/replay/vehicle_takes.go` (hors fichiers de la frontière E1) et
+`vehicle_takes_test.go` (17 tests). Lieu : `film/replay`, couche de publication du document, comme
+les autres projections pures d'un `ReplayDocument` (`FlagTracksOf`, `PlacementDesVies`) ; pas
+`analysis/` (il faudrait y importer le type du document ou en dupliquer la forme). Le coût est
+connu : l'appelant du lot L7.2 cite de nouveaux identifiants `replay.X` hors de `film/`, donc le
+plafond de `film_facade_surface_test.go` monte, avec sa justification datée, dans le commit L7.2.
+
+API : `ProjectVehicleTakes(doc *ReplayDocument) VehicleTakesReport` ; `VehicleTakesReport{Measured,
+Reason, Rows []VehicleUsageRow, Coverage VehicleTakesCoverage}` ; ligne = `(Camp, XUID, Family)` →
+`Takes`, `AboardMS`, `Episodes`, `ProximityEpisodes` ; `VehicleFamilyUnknown = "unknown"` ;
+raisons `VehicleTakesUnmeasured{Schema,NotScanned,NoInterval}` (D8 : schéma < 67, calque non
+balayé ou pas d'image absent → `Measured = false`, aucune ligne ; un film balayé sans véhicule est
+un zéro MESURÉ). Le camp est celui du film (`roster[].team`).
+
+Mutations (copie, mutation, rouge constaté, restauration par copie, `cmp` identique) : M1 une seule
+prise par vie (`camp != current` → `current == -1`) rouge sur 5 tests ; M2 prise à chaque épisode
+(`|| true`) rouge sur 3 ; M3 ordre des sièges inversé ; M4 décor ignoré ; M5 pièce non rattachée ;
+M6 doublon de pièce non écarté ; M7 famille vide gardée ; M8 épisodes `proximity` écartés ; M9
+plancher de schéma abaissé ; M10 durée sans intervalle d'image ; M11 camp `-1` accepté ; M12 xuid
+vide non compté ; M13 balayage ignoré ; M14 tri des lignes inversé ; M15 pièce orpheline gardée
+pièce ; M16 constante de provenance dérivée ; M17 ordre du document au lieu de l'ordre de montée.
+Dix-sept mutants tués. Deux tests renforcés en cours de route, parce qu'un mutant survivait ou que
+l'ordre n'était pas épinglé : l'orphelin vérifie `PartRides == 0`, et un test liste les épisodes à
+l'envers.
+
+Non fait ici, et pourquoi : la projection n'est pas jouée sur les huit documents réels — le
+rattrapage réel est prescrit au lot L7.5 (E3 amendée) et le test d'intégration de L7.2 lira des
+artefacts ; l'instrument de recherche de L7.0 est hors d'`film/` et citerait de nouveaux
+identifiants `replay.X` (plafond d'archlint) sans bénéfice avant L7.2.
+
+Journal : [2026-09-30] L7.1 joué après les seuils de L7.0 ; gate verte (film/replay, vet, lint 0,
+archlint, gofmt).
 
 ### L7.2 — Écriture (Go, persistance — lot sensible) · lourd
 
@@ -202,3 +235,17 @@ sous le plafond de 8 Gio) ; seuils tenus ; L7.1 autorisé.
 - Les compteurs de l'API `VehicleDestroys`, `DriverAssists`, `Hijacks` sont déclarés
   (`openspartan/halo_api_payload.go:134-136`) mais jamais persistés.
 - `VehicleTransferDamage` (2 256 frags en local) : sens non établi.
+- (L7.0, 2026-09-30) Le verdict de décor (`doc.VehicleScenery`) n'existe PAS dans l'artefact : il
+  est posé à la requête par `service.decideVehicleScenery` (zone jouable de la carte), sur des
+  vies qui n'ont aucun occupant par construction (`vehicleIsPosedOnly` : `len(Rides) == 0`). La
+  dérivation de L7.2 lit l'artefact, donc sans verdict : le décor n'y porte jamais d'épisode, donc
+  jamais de prise. La projection honore le verdict quand il est là (test) ; elle ne peut ni
+  appeler ni recopier la règle, qui vit dans `service`.
+- (L7.0) Les épisodes sans xuid (un bot, ou un slot que le pont n'a pas nommé : 3 à `4f77afc1`) ne
+  font ni prise ni temps dans la projection : un bot à bord prend pourtant bien le véhicule à son
+  camp. Non traité ; le camp d'un bot se lirait par le slot de sa piste (`Track.Team`), à statuer.
+- (L7.0) La couverture des épisodes est de 62 % sur les frags d'engin de tout le lobby (11/11 pour
+  l'escouade) : un rendement par minute à bord calculé par camp serait biaisé vers le haut.
+- (L7.1) `film_facade_surface_test.go` : la première version du test de recherche L7.0 citait en
+  commentaire `replay.VehicleRideSrcProximity` et a fait monter le plafond de 293 à 294 ; le nom a
+  été retiré (constante recopiée en littéral, comme `v0SrcLue`).
