@@ -846,28 +846,196 @@ fois) :
 
 ### V3 — Lecture et contrat (Go) · moyen
 
-- [ ] V3.1 Dépôt `platform/duckdb/squad_life_placement_repo.go` : un chargement borné (V11) ; test
+- [x] V3.1 Dépôt `platform/duckdb/squad_life_placement_repo.go` : un chargement borné (V11) ; test
   DuckDB `:memory:` (lecture `_latest` seulement, bornes respectées, ligne à portée périmée écartée).
   Le service le consomme par une interface déclarée comme celle du dépôt de l'Emprise (même paquet,
   même motif d'injection `With…`), testée avec un dépôt simulé.
-- [ ] V3.2 Calcul pur `analysis/squademprise/placement.go` (+ tests) : par joueur de la composition,
+  → `LoadLifePlacement(ctx, matchIDs, xuids)` : une requête sur `match_life_placement_latest`
+  (ADR 0026), `match_id` en constante `VARCHAR[]` sous la fenêtre (`clauseListeMatchs`), xuids en
+  semi-jointure (`clauseListeParJointure`), `match_registry` pour la variante, aucune lecture de
+  `v_gamertag_lookup`, `ORDER BY` total ; table absente → `games.ErrCapabilityNotSupported`. Port
+  `port.SquadLifePlacementRepository`, injection `WithLifePlacement`. Tests : 4 sur `:memory:`
+  migrée (dernière passe seule, fenêtre bornée par `exigerFenetresBornees`, NULL relus nil, listes
+  vides sans requête, table absente, ligne périmée écartée) ; 6 du service sur dépôt simulé.
+- [x] V3.2 Calcul pur `analysis/squademprise/placement.go` (+ tests) : par joueur de la composition,
   les vies mesurées (X = `median_m / radar_m`, part hors radar = `beyond_ms / measured_ms`, frags,
   durée, identifiants), médianes, comptes des quatre quarts ; couverture (matchs mesurés, matchs
   sans portée, lignes à portée périmée, vies non mesurées, ms par cause d'exclusion).
-- [ ] V3.3 Bloc `placement` dans `squad_emprise` (domaine, service `teammates_service_emprise.go`,
+  → `Placement(PlacementInput) (*domain.SquadEmprisePlacement, PlacementBilan)` ; 11 tests
+  (dont `TestPlacement_ContratJSON`, ajouté par ce lot). Univers : matchs à portée courante connue
+  (sinon `matches_without_range`), lignes à portée écrite ≠ courante (ou NULL) écartées et comptées
+  (`stale_lives`, matchs nommés au bilan).
+- [x] V3.3 Bloc `placement` dans `squad_emprise` (domaine, service `teammates_service_emprise.go`,
   câblage sous `CapFilmKillPositions`) ; `ErrCapabilityNotSupported` → bloc absent, testé.
-- [ ] V3.4 Suppression Go du nuage de Synergies (V7) : champ `SquadEchange.nuage_isolement`,
+  → `domain.SquadEmpriseBlock.Placement` (`omitempty`), `TeammatesService.attacherPlacement`
+  (`teammates_service_emprise_placement.go`, section de durée `emprise_placement`, appelé par
+  `loadUsageBlocks` sur le MÊME `scope` que l'Emprise), câblage `wire/registry_pages_home.go` sous
+  `games.CapFilmKillPositions` ; capability absente ou table absente : Debug + bloc absent ; lecture
+  en échec : Error + bloc absent ; portée périmée : Warn ; test de câblage par AST
+  `TestTeammatesCtx_CableLePlacementDesVies`.
+- [x] V3.4 Suppression Go du nuage de Synergies (V7) : champ `SquadEchange.nuage_isolement`,
   `domain/squad_isolement.go`, producteur `service/teammates/teammates_squad_isolement.go` (la
   résolution de portée `rayonParMatchDuScope` et le câblage radar de `TeammatesService` sont
   GARDÉS et déplacés vers leur nouveau lecteur), appel `teammates_squad_echange.go:155`, garde-rail
   `TestSquadNuageIsolement_Contrat` et tests dédiés. `analysis/coordination/` et
   `match_death_context` intouchés (lus par l'onglet Tactique et la vue match).
-- [ ] V3.5 Contrat régénéré (`openapi.yaml`, `generated.ts`), instantané de surface et ratchet de
+  → supprimés : le champ, `squad_isolement.go`, `teammates_squad_isolement.go` (+ test), l'appel,
+  `TestSquadNuageIsolement_Contrat` ; `rayonParMatchDuScope` et `WithRadarRange` déplacés dans
+  `teammates_service_emprise_placement.go` (test `TestRayonParMatchDuScope`) ; `analysis/coordination/`
+  et `match_death_context` non touchés ; `TestBuildSquadEchange_JournalRestreintALaComposition`
+  exige désormais AUCUNE lecture du contexte des morts. Aucun résidu (grep du gate, §journal V3).
+- [x] V3.5 Contrat régénéré (`openapi.yaml`, `generated.ts`), instantané de surface et ratchet de
   contrat à jour.
-- [ ] V3.6 (déplacé de V4.4 par le superviseur le 2026-09-29 : retirer `nuage_isolement` du contrat
+  → `openapi-gen -check` à jour, `check-generated-types-fresh` OK, `contract-surface.snapshot.json`
+  régénéré (schémas `SquadEmprisePlacement*`, deux enums de quart ; retrait de
+  `SquadNuageIsolement`, `SquadIsolementMort`, `SquadIsolementRepere` ; les schémas `SquadEmprise*` et
+  `SquadObjective*` des lots précédents y manquaient aussi), `lint-contract-ratchet` vert au
+  `lefthook run pre-push`.
+- [x] V3.6 (déplacé de V4.4 par le superviseur le 2026-09-29 : retirer `nuage_isolement` du contrat
   casse le typage de son seul lecteur, la suppression web part donc avec) — item V4.4 exécuté ici,
   à la lettre.
+  → supprimés : `SquadIsolementNuageCard.tsx` (+ test), `squadIsolementNuageOption.ts`,
+  `squadIsolement.logic.ts` (+ test), `squadIsolementStrings.ts`, 26 clés `squad.isolement.*` du
+  manifeste (`generated/squad.ts` régénéré), types `SquadNuageIsolement` / `SquadIsolementMort` /
+  `SquadIsolementRepere` de `types.ts`, montage retiré de `SquadSynergiesPage.tsx` (rangée 1 =
+  « Appui » seul, commentaire de section mis à jour) ; test `SquadSynergiesPage` « rangée Appui ».
+  Quatre commentaires qui nommaient l'ancienne carte reformulés.
 - Gate : gate commun (web compris, et `lefthook run pre-push`) + `go test -tags=integration -p 1 ./internal/service/teammates/... ./internal/platform/duckdb/...`.
+  → vert, sorties au journal V3.
+
+#### Journal V3 (exécuteur, 2026-09-30)
+
+**Reprise.** Un premier exécutant a été coupé (quota) avant de statuer le lot : son travail
+(non commité, ni plan ni journal) a été AUDITÉ item par item sur pièces, complété et rejoué en
+entier. Compilation constatée : `go build ./...`, `go vet`, `tsc -b --force` verts d'emblée.
+
+**Audit (fait par le premier exécutant / complété ici).**
+
+| Exigence | État |
+|---|---|
+| V3.1 lecture par `match_life_placement_latest` seule ; bornée par matchs (constante `VARCHAR[]`) ET xuids (semi-jointure) ; pas de `v_gamertag_lookup` ; interface + `With…` + dépôt simulé | fait (premier exécutant) |
+| V3.2 X = `median_m / radar_m`, quarts (isolé X ≥ 1,0, rentable frags ≥ 1), médianes par joueur, couverture (matchs, sans portée, périmées, non mesurées, ms par cause) | fait (premier exécutant) ; test de contrat JSON ajouté ici |
+| Portée périmée écartée ET journalisée en `Warn` ; résolution par `mappings.PorteeDuRadar` seul (garde-rail `no_local_radar_range_lookup_test.go`, commentaire mis à jour) | fait (premier exécutant) |
+| V3.3 bloc sous `CapFilmKillPositions`, `ErrCapabilityNotSupported` en Debug, test de câblage AST | fait (premier exécutant) ; test « sans bloc Emprise » ajouté ici |
+| V3.4 / V3.6 suppressions Go et web | faites (premier exécutant) ; TROIS commentaires résiduels (`lowSampleNote.ts`, son garde-rail, `portee_du_radar.go`) reformulés ici : le grep de résidu est à 0 |
+| V3.5 contrat, instantané, ratchet | fait (premier exécutant), revérifié ici (`-check`, fraîcheur, ratchet) |
+| Plan, journal, mutations, gate, ADR 0036 (garde-rail de lecture ajouté à I2) | manquaient : faits ici |
+
+**Fichiers.** Neufs : `analysis/squademprise/placement.go` (+ test), `domain/squad_emprise_placement.go`,
+`platform/duckdb/squad_life_placement_repo.go` (+ test), `service/teammates/teammates_service_emprise_placement.go`
+(+ test). Modifiés : `analysis/squademprise/input.go` (`PlacementRow`, `PlacementRead`),
+`domain/squad_emprise.go` (champ `Placement`), `domain/squad_echange.go` (champ retiré), `port/squad_emprise.go`,
+`service/teammates/{teammates_service.go,teammates_service_usage.go,teammates_squad_echange.go}` + tests,
+`api/wire/registry_pages_home.go` (+ test), `archlint/no_local_radar_range_lookup_test.go` (commentaire),
+`games/mappings/portee_du_radar.go` (commentaire), contrat (`openapi.yaml`, `generated.ts`,
+`contract-surface.snapshot.json`, `types.ts`), web (suppressions V3.6, `SquadSynergiesPage.tsx` et son
+test, i18n `squad.toml` / `generated/squad.ts`), `docs/adr/0036-page-reads-are-scoped.md`. Supprimés : voir V3.4 et V3.6.
+
+**Forme JSON du bloc** (`squad_emprise.placement`, absent quand la capability manque, que la lecture
+échoue ou qu'aucune vie n'est écrite pour la composition sur le périmètre ; parts en unité 0..1,
+X en portées de radar) :
+
+```json
+"placement": {
+  "isolated_from_ratio": 1,
+  "productive_from_kills": 1,
+  "players": [
+    {
+      "xuid": "2535...", "gamertag": "JGtm",
+      "lives_total": 146, "lives_measured": 141,
+      "median_radar_ratio": 0.62, "median_kills": 1,
+      "quadrants": [
+        {"quadrant": "in_range_productive",  "lives": 70, "share": 0.4965},
+        {"quadrant": "isolated_productive",  "lives": 9,  "share": 0.0638},
+        {"quadrant": "in_range_costly",      "lives": 52, "share": 0.3688},
+        {"quadrant": "isolated_costly",      "lives": 10, "share": 0.0709}
+      ],
+      "lives": [
+        {"match_id": "8e376cb1-...", "start_ms": 1000, "duration_ms": 41200, "radar_ratio": 0.75,
+         "out_of_radar_share": 0.0, "kills": 2, "quadrant": "in_range_productive"}
+      ]
+    }
+  ],
+  "coverage": {
+    "matches_total": 12, "matches_with_placement": 12, "matches_without_range": 0, "stale_lives": 0,
+    "lives_total": 299, "lives_measured": 290, "lives_unmeasured": 9,
+    "measured_ms": 8900000, "carrier_ms": 124100, "team_down_ms": 96000,
+    "unplaced_ms": 310000, "teammate_unplaced_ms": 140000
+  }
+}
+```
+
+(Valeurs d'illustration ; la forme est celle des types `domain.SquadEmprisePlacement*`.) Sans vie
+mesurée, un joueur garde ses quatre quarts (`lives` = 0, sans `share`), `lives: []`, et ni
+`median_radar_ratio` ni `median_kills`. `radar_ratio` est la VRAIE valeur (le client pose à 2 pour
+tracer, l'infobulle garde la vraie) ; `lives` dans l'ordre chronologique du périmètre.
+
+**Décisions prises dans le cadre du lot (à relire).**
+- `lives_total` et les cumuls en ms ne comptent que les vies RETENUES (match à portée courante connue,
+  ligne à portée non périmée) ; les vies d'un match sans portée ne sont comptées nulle part (le match
+  l'est : `matches_without_range`), celles à portée périmée le sont dans `stale_lives`.
+- `matches_with_placement` inclut les matchs sans portée et ceux à vies périmées (« matchs qui ont une
+  ligne écrite pour la composition »).
+- Le bloc est publié dès qu'une ligne d'un match du périmètre existe, même si toutes sont écartées
+  (couverture non vide, joueurs à zéro vie) : l'infobulle dit alors pourquoi.
+
+**Mutations** (script de copie dans le scratchpad, test ciblé, restauration par copie vérifiée par
+`cmp` à chaque fois ; TOUS les tests NEUFS du lot vus rouges) :
+
+| # | Test | Mutation | Rouge |
+|---|---|---|---|
+| Q1 | `Placement_XEtPartHorsRadar` | X = médiane sans division par la portée | X = 27 |
+| Q2 | idem | part hors radar rapportée à la durée, non au mesuré | 0,125 au lieu de 0,25 |
+| Q3 / Q3b | `Placement_QuartsEtBornes` | isolé `>` au lieu de `≥` / rentable `>` au lieu de `≥` | quart de la borne faux |
+| Q4 | `Placement_VieNonMesuree` | vie non mesurée non comptée | rouge |
+| Q5 | `Placement_MatchSansPortee` | match sans portée non compté | 0 au lieu de 1 |
+| Q6 | `Placement_PorteePerimee` | comparaison portée écrite / courante retirée | 1 périmée au lieu de 2 |
+| Q7 | `Placement_HorsCompositionEtHorsPerimetre` | filtre du périmètre retiré | 1 ignorée au lieu de 2 |
+| Q8 | `Placement_OrdreDesFichesEtChronologie` | tri chronologique retiré | rouge |
+| Q9 | `Placement_Medianes` | médiane = première valeur | 0,5 / 0 |
+| Q10 | `Placement_VieNonMesuree` | part rapportée aux vies retenues, non aux mesurées | rouge |
+| Q11 | `Placement_CouvertureDesCauses` | cumul « porteur » lit la cause « non situé » | cumuls faux |
+| Q12 | `Placement_AucuneVie` | bloc publié sans vie | rouge |
+| Q13 | `…OrdreDesFiches…`, `…ContratJSON` | `lives` nil au lieu de `[]` | les deux rouges |
+| Q14 / Q15 | `Placement_ContratJSON` | `omitempty` retiré de la médiane / de la part | rouge |
+| D1 | `SquadLifePlacementRepo_BorneEtDernierePasse` | lecture de la table brute | passes anciennes relues |
+| D2 | idem | matchs liés en semi-jointure (fenêtre non bornée) | `exigerFenetresBornees` rouge |
+| D3 | idem | joueurs non bornés à la composition | vies de C relues |
+| D4 | idem | NULL de la médiane relu comme valeur | rouge |
+| D5 | `SquadLifePlacementRepo_ListesVides` | requête émise sur une seule liste vide | requête envoyée |
+| D6 | `SquadLifePlacementRepo_TableAbsente` | erreur de table absente non reconnue | « Catalog Error » remontée |
+| D7 | `…BorneEtDernierePasse` | variantes non rendues | `map[]` |
+| S1 / S1b | `GetPage_Placement_UneLectureBornee…` | xuids tronqués / matchs vides | bornes fausses |
+| S2 | `GetPage_Placement_DepotNonSupporte` | `ErrCapabilityNotSupported` non reconnue | bloc publié / journal absent |
+| S3 | `GetPage_Placement_LectureEnEchec` | Error rétrogradé en Warn | niveau faux |
+| S4 | `GetPage_Placement_UneLectureBornee…` | bloc non attaché | placement nil |
+| S5 | `GetPage_Placement_PorteePerimeeJournalisee` | Warn rétrogradé en Info | niveau faux |
+| S6 | `GetPage_Placement_CapabilityAbsente` | Debug rétrogradé en Info | niveau faux |
+| S7 | idem + `RayonParMatchDuScope` | résolution avec une table vide | rouge (panique d'index) |
+| S8 | `GetPage_Placement_LectureEnEchec` | bloc vide publié sur échec | rouge |
+| S9 | `AttacherPlacement_SansBlocEmprise_NeLitRien` | garde `bloc == nil` retirée | panique (nil) |
+| W1 | `TeammatesCtx_CableLePlacementDesVies` | porte de capability retirée | rouge |
+| W2 | idem | autre dépôt câblé | rouge |
+| W3 | idem | portée du radar non câblée | rouge |
+| L1 | `BuildSquadEchange_JournalRestreint…` | la page relit le contexte des morts | contexte 1, attendu 0 |
+| Y1 | `SquadSynergiesPage` « rangée Appui » | seconde cellule dans la grille | 2 cartes au lieu de 1 |
+
+Premiers essais Q7, Q9 et S7 NON rouges (erreur de compilation de la mutation : variable ou import
+devenu inutilisé) : réécrits en mutations qui compilent.
+
+**Gate** (depuis `apps/go-api`, `CGO_ENABLED=1`, `GOCACHE` du worktree, une commande à la fois) :
+- `go build ./...`, `go vet ./internal/... ./cmd/...` : sans sortie. `go test` en trois lots :
+  `sync games replaybuild archlint` tout ok (sync 115 s, grammar 72 s, archlint 61 s) ; reste d'`internal` :
+  102 ok, aucun FAIL ; hors `internal` : 38 ok, aucun FAIL.
+- `go test -tags=integration -p 1 ./internal/service/teammates/... ./internal/platform/duckdb/... ./internal/api/wire/...` :
+  ok (duckdb 260 s, wire 61 s, prestige 35 s, teammates 1 s, sharedprovider 9 s, halo5 0,3 s).
+- `make go-api-lint` : 0 issues. `go test ./internal/archlint/...` : ok. `gofmt -l internal cmd` : vide.
+- `openapi-gen -check` : à jour ; `tools/check-generated-types-fresh.mjs` : OK.
+- Web : `npx tsc -b --force` : 0 erreur ; `npx vitest run --pool=forks` : 825 fichiers ok / 5 sautés,
+  8 753 tests ok / 23 sautés (333 s), aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements
+  existants) ; `knip-ratchet` 0/0/0 ; `lint-cross-feature-imports` 7 ≤ plafond 7 ; `lint-no-hardcoded-colors`
+  0 violation ; `lefthook run pre-push` : 9 étapes vertes (go-vet-cgo, govulncheck, knip, contrat, imports,
+  couleurs, champs, shared-social, rappel).
 
 ### V4 — Cartes (web) · moyen
 
@@ -1025,3 +1193,15 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
 - (V2b) Le chemin de `regulation.toml` s'écrit à la main en plusieurs endroits antérieurs au lot
   (`sync/replayartifacts/flaggrabsnet.go:73`, `padtiers.go:268` via `TitleMappingsDir`, le témoin
   V2.7) ; le lot ajoute `mappings.RegulationPath` (celui du registre) sans migrer ces sites.
+- (V3, 2026-09-30) L'instantané de surface du contrat (`contract-surface.snapshot.json`) ne portait
+  ni les schémas `SquadEmprise*` ni `SquadObjective*` des lots antérieurs : sa régénération de V3 les
+  a ajoutés en même temps que `SquadEmprisePlacement*`. Aucun garde-rail ne le signalait.
+- (V3) L'ordre chronologique de `lives` est celui du périmètre passé au calcul (`perimetreEscouade`,
+  « dans l'ordre de filteredMatches ») ; le calcul trie par rang de match dans ce périmètre, il ne
+  relit aucun horodatage. Non revérifié que `filteredMatches` est chronologique ; le rendu V4 ne s'en
+  sert que pour l'ordre des points (le décalage vertical dérive de la clé de la vie).
+- (V3) Rien ne garde l'OBLIGATION de déclarer une section de durée (ADR 0036 I6, « not yet guarded »),
+  y compris la section `emprise_placement` du bloc.
+- (V3) Un premier passage de mutations (Q7, Q9, S7) a produit des mutations qui ne compilaient pas :
+  un « rouge » d'échec de compilation ne prouve rien ; le script `mut.sh` ne le distingue pas d'un
+  échec de test (relu à la main).

@@ -12056,7 +12056,6 @@ export interface components {
             matchs_mesures: number;
             /** Format: int64 */
             matchs_total: number;
-            nuage_isolement?: components["schemas"]["SquadNuageIsolement"];
             taux_par_session: components["schemas"]["SquadEchangeSessionPoint"][] | null;
         };
         SquadEchangeBucket: {
@@ -12099,6 +12098,7 @@ export interface components {
             /** Format: int64 */
             matches_total: number;
             objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            placement?: components["schemas"]["SquadEmprisePlacement"];
             players: components["schemas"]["SessionUsageSquadPlayer"][] | null;
             production: components["schemas"]["SquadEmpriseProduction"][] | null;
             resources: components["schemas"]["SquadEmpriseResource"][] | null;
@@ -12174,6 +12174,77 @@ export interface components {
             taken: number;
             /** Format: int64 */
             used: number;
+        };
+        SquadEmprisePlacement: {
+            coverage: components["schemas"]["SquadEmprisePlacementCoverage"];
+            /** Format: double */
+            isolated_from_ratio: number;
+            players: components["schemas"]["SquadEmprisePlacementPlayer"][] | null;
+            /** Format: int64 */
+            productive_from_kills: number;
+        };
+        SquadEmprisePlacementCoverage: {
+            /** Format: int64 */
+            carrier_ms: number;
+            /** Format: int64 */
+            lives_measured: number;
+            /** Format: int64 */
+            lives_total: number;
+            /** Format: int64 */
+            lives_unmeasured: number;
+            /** Format: int64 */
+            matches_total: number;
+            /** Format: int64 */
+            matches_with_placement: number;
+            /** Format: int64 */
+            matches_without_range: number;
+            /** Format: int64 */
+            measured_ms: number;
+            /** Format: int64 */
+            stale_lives: number;
+            /** Format: int64 */
+            team_down_ms: number;
+            /** Format: int64 */
+            teammate_unplaced_ms: number;
+            /** Format: int64 */
+            unplaced_ms: number;
+        };
+        SquadEmprisePlacementLife: {
+            /** Format: int64 */
+            duration_ms: number;
+            /** Format: int64 */
+            kills: number;
+            match_id: string;
+            /** Format: double */
+            out_of_radar_share: number;
+            /** @enum {string} */
+            quadrant: "in_range_productive" | "isolated_productive" | "in_range_costly" | "isolated_costly";
+            /** Format: double */
+            radar_ratio: number;
+            /** Format: int64 */
+            start_ms: number;
+        };
+        SquadEmprisePlacementPlayer: {
+            gamertag: string;
+            lives: components["schemas"]["SquadEmprisePlacementLife"][] | null;
+            /** Format: int64 */
+            lives_measured: number;
+            /** Format: int64 */
+            lives_total: number;
+            /** Format: double */
+            median_kills?: number;
+            /** Format: double */
+            median_radar_ratio?: number;
+            quadrants: components["schemas"]["SquadEmprisePlacementQuadrant"][] | null;
+            xuid: string;
+        };
+        SquadEmprisePlacementQuadrant: {
+            /** Format: int64 */
+            lives: number;
+            /** @enum {string} */
+            quadrant: "in_range_productive" | "isolated_productive" | "in_range_costly" | "isolated_costly";
+            /** Format: double */
+            share?: number;
         };
         SquadEmpriseProduction: {
             exposure?: components["schemas"]["SquadEmpriseExposure"];
@@ -12360,32 +12431,6 @@ export interface components {
                 [key: string]: components["schemas"]["SquadIntensityMatchRow"][] | null;
             };
         };
-        SquadIsolementMort: {
-            /** Format: int64 */
-            delai_ms?: number;
-            /** Format: double */
-            distance_ratio?: number;
-            gamertag: string;
-            hors_de_vue: boolean;
-            hors_fenetre: boolean;
-            match_id: string;
-            /** Format: int64 */
-            time_ms: number;
-            vengee: boolean;
-            xuid: string;
-        };
-        SquadIsolementRepere: {
-            couverture: components["schemas"]["Couverture"];
-            gamertag: string;
-            /** Format: int64 */
-            mediane_delai_ms?: number;
-            /** Format: double */
-            mediane_distance_ratio?: number;
-            /** Format: int64 */
-            nb_morts: number;
-            part_isolee: components["schemas"]["Couverture"];
-            xuid: string;
-        };
         SquadKillMechanicBar: {
             kills_by_player: {
                 [key: string]: number;
@@ -12463,16 +12508,6 @@ export interface components {
             start_time: string;
             /** Format: double */
             team_mmr_avg: number;
-        };
-        SquadNuageIsolement: {
-            /** Format: int64 */
-            fenetre_ms: number;
-            morts: components["schemas"]["SquadIsolementMort"][] | null;
-            /** Format: int64 */
-            plafond_ms: number;
-            /** Format: int64 */
-            plancher_echantillon_faible: number;
-            reperes: components["schemas"]["SquadIsolementRepere"][] | null;
         };
         SquadObjectiveEvening: {
             /** Format: double */

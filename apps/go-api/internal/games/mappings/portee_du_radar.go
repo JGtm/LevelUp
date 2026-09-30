@@ -5,7 +5,7 @@ package mappings
 // # POURQUOI UN HELPER (CLAUDE.md regle 6, plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2b)
 //
 // La table `[radar_range_m]` de regulation.toml se lisait par variante en DEUX copies (l'onglet
-// Tactique, `TacticalService.rayonsParMatch` ; le nuage d'isolement de l'escouade,
+// Tactique, `TacticalService.rayonsParMatch` ; le placement des vies de l'Emprise (ex-nuage d'isolement),
 // `rayonParMatchDuScope`), et l'ecriture du placement des vies au sync en demandait une
 // troisieme. Les trois lecteurs doivent rendre la MEME portee pour la MEME variante : une ligne
 // ecrite au sync avec une portee que la lecture ne reconnaitrait pas serait ecartee comme

@@ -61,6 +61,34 @@ type PowerKillRow struct {
 	Kills   *int
 }
 
+// PlacementRow — une vie de `match_life_placement_latest` (plan Emprise vies, lot V3), telle que
+// le sync l'a écrite. MedianM nil = vie non mesurée ; RadarM et BeyondMS nil ENSEMBLE = variante
+// sans portée connue à l'écriture.
+type PlacementRow struct {
+	MatchID            string
+	XUID               string
+	StartMS            int64
+	EndMS              int64
+	DurationMS         int64
+	MeasuredMS         int64
+	MedianM            *float64
+	BeyondMS           *int64
+	RadarM             *float64
+	CarrierMS          int64
+	TeamDownMS         int64
+	UnplacedMS         int64
+	TeammateUnplacedMS int64
+	Kills              int
+}
+
+// PlacementRead — la lecture bornée du placement : les vies des joueurs demandés sur les matchs
+// demandés, et la variante de chaque match qui en porte (`match_registry.game_variant_name`, la
+// clé de la portée courante du radar).
+type PlacementRead struct {
+	Rows     []PlacementRow
+	Variants map[string]string
+}
+
 // Input — tout ce que le calcul demande.
 type Input struct {
 	PlayerXUID string

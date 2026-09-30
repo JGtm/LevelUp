@@ -87,12 +87,11 @@ type TeammatesService struct {
 	// lister les matchs ayant un artefact (colonne « Rejeu » du tableau historique de
 	// l'escouade). Nil → aucune ligne ne porte de rejeu (dégradation gracieuse).
 	replaySvc port.ReplayService
-	// radarRange (optionnel) : game_variant_name -> portee du radar en metres
-	// (`regulation.toml [radar_range_m]`), MEME table que l'onglet Tactique
-	// (ServiceRegistry.radarRangeFor). Nil ou variante absente -> le nuage
-	// « isolement x couverture » (section Echange) omet les sessions concernees plutot
-	// que d'inventer un rayon.
-	radarRange map[string]int
+	// radarRange / placementRepo (optionnels) : la table des portées de radar du titre et le
+	// lecteur du placement des vies, les deux entrées du bloc « Groupés ou isolés » de
+	// l'Emprise, cf. teammates_service_emprise_placement.go.
+	radarRange    map[string]int
+	placementRepo port.SquadLifePlacementRepository
 	// sessionUsageRepo (optionnel) : le résumé d'usage (vues _latest) du bloc
 	// « servi ou gâché » de l'équipement (étape E6.1bis). Câblé gated par
 	// film.usage_summary ; nil → bloc servi avec Available=false et raison
@@ -188,15 +187,6 @@ func (s *TeammatesService) WithReplay(svc port.ReplayService) *TeammatesService 
 func (s *TeammatesService) WithEchange(repo port.TacticalRepository, caps games.CapabilityMap) *TeammatesService {
 	s.tacticalRepo = repo
 	s.caps = caps
-	return s
-}
-
-// WithRadarRange injecte la table des portees de radar du titre — MEME source que
-// `ServiceRegistry.radarRangeFor` pour l'onglet Tactique. Sans injection (nil ou vide), le
-// nuage « isolement x couverture » de la section Echange est absent du contrat : un match
-// dont on ne connait pas le rayon n'a pas d'isolement mesurable, jamais un rayon de repli.
-func (s *TeammatesService) WithRadarRange(parVariante map[string]int) *TeammatesService {
-	s.radarRange = parVariante
 	return s
 }
 

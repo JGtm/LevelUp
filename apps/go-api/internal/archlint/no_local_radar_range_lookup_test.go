@@ -4,7 +4,8 @@
 //
 // La table `[radar_range_m]` de regulation.toml se lisait par variante en deux copies
 // (`service/tactical_service_isolement.go` `rayonsParMatch`,
-// `service/teammates/teammates_squad_isolement.go` `rayonParMatchDuScope`) plus une copie de
+// `service/teammates/teammates_squad_isolement.go` `rayonParMatchDuScope`, deplacee au lot V3
+// dans `teammates_service_emprise_placement.go` avec le retrait du nuage) plus une copie de
 // test (le temoin V2.7 du placement des vies, `v2Portee`) ; l'ecriture au sync en demandait une
 // troisieme. La SOURCE UNIQUE est `mappings.PorteeDuRadar`
 // (`internal/games/mappings/portee_du_radar.go`) : la lecture et l'ecriture doivent rendre la

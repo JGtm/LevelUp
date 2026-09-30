@@ -89,6 +89,10 @@ type SquadEmpriseBlock struct {
 	// Habit : les soirées précédentes comparables (D5). Nil sans coéquipier sélectionné ou
 	// sans film.
 	Habit *SquadEmpriseHabit `json:"habit,omitempty"`
+	// Placement : « Groupés ou isolés », le placement et le rendement de chaque vie de la
+	// composition (squad_emprise_placement.go). Nil sans `film.kill_positions`, lecture en échec
+	// ou aucune vie écrite pour la composition sur le périmètre.
+	Placement *SquadEmprisePlacement `json:"placement,omitempty"`
 }
 
 // SquadEmpriseCount — un compte camp contre camp.

@@ -157,7 +157,8 @@ whole table while every returned number stays the same, so no value test can see
 `platform/duckdb/weapon_range_repo_fenetres_test.go` — `TestWeaponRange_Perimetre_FenetresBornees`;
 `platform/duckdb/career_repo_fenetres_test.go` — `TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur`,
 `TestLecturesHistorique_CampagneHorsDeLaListe` (lot B, 2026-09-27);
-`platform/duckdb/annuaire_fenetres_test.go` — `TestAnnuaire_ListesLieesEnUnParametre` (item B.7).
+`platform/duckdb/annuaire_fenetres_test.go` — `TestAnnuaire_ListesLieesEnUnParametre` (item B.7);
+`platform/duckdb/squad_life_placement_repo_test.go` — `TestSquadLifePlacementRepo_BorneEtDernierePasse` (Emprise life placement, `match_life_placement_latest`, 2026-09-30).
 
 ### I3 — Data re-read from one request to the next goes through a cache invalidated at sync, never filled by a degraded load
 

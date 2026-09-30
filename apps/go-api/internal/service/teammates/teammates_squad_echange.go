@@ -25,8 +25,7 @@
 // C'est la mecanique de baseline du briefing de l'Explorateur (buildBriefingBaseline :
 // le scope compare a l'historique complet, dont il est un sous-ensemble). La lire en deux
 // requetes filtrees differemment aurait donne deux univers a reconcilier ; l'habituel, qui
-// contient le perimetre filtre, est donc la liste blanche de l'UNIQUE lecture. Le nuage
-// d'isolement lit le meme perimetre (teammates_squad_isolement.go).
+// contient le perimetre filtre, est donc la liste blanche de l'UNIQUE lecture.
 package teammates
 
 import (
@@ -150,10 +149,6 @@ func (s *TeammatesService) buildSquadEchange(
 	// composition (sa liste blanche, D2.4).
 	out.TauxParSession = tauxParSession(habituel, habituelRows, campHabituel, scopeIDs)
 
-	// Nuage « isolement x couverture » (item 7.7) : MEME perimetre filtre (`scope`,
-	// `scopeIDs`) et MEME roster que le reste de la section — decoupes par session.
-	out.NuageIsolement = s.buildSquadIsolementNuage(ctx, scope, perimetre, xuidsOrdered, gtByXUID, mainXUID)
-
 	slog.InfoContext(ctx, "teammates_echange",
 		"player", mainGamertag, "matchs", out.MatchsTotal, "matchs_mesures", out.MatchsMesures,
 		"morts_vengeables", out.Couverture.N, "morts_vengees", out.Couverture.Brut,
@@ -162,11 +157,10 @@ func (s *TeammatesService) buildSquadEchange(
 	return out
 }
 
-// lireJournalDesMorts lit UNE fois le journal des morts de la composition — la lecture que
-// l'echange et le nuage d'isolement se partagent (D2.4) — sous la section de duree
-// `kill_events_shared`, distincte de celle du calcul (`echange`) : les sections restent des
-// feuilles. La liste blanche est l'historique de la composition (l'habituel), jamais tout
-// l'historique du joueur.
+// lireJournalDesMorts lit UNE fois le journal des morts de la composition (D2.4) — sous la
+// section de duree `kill_events_shared`, distincte de celle du calcul (`echange`) : les
+// sections restent des feuilles. La liste blanche est l'historique de la composition
+// (l'habituel), jamais tout l'historique du joueur.
 func (s *TeammatesService) lireJournalDesMorts(
 	ctx context.Context, mainXUID string, perimetre domain.ListeBlancheMatchs,
 ) (domain.TacticalKillEvents, error) {

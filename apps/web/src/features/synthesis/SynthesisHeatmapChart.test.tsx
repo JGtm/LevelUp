@@ -23,7 +23,7 @@ import type { HeatmapCell } from '@/lib/api/types'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
 
 // jsdom n'a pas de canvas : on mocke echarts-for-react (comme
-// SquadIsolementNuageCard.test.tsx) pour capturer l'option ECharts construite.
+// components/charts/ChartCard.test.tsx) pour capturer l'option ECharts construite.
 const captured: Array<Record<string, unknown>> = []
 vi.mock('echarts-for-react', () => ({
   default: (props: Record<string, unknown>) => {
