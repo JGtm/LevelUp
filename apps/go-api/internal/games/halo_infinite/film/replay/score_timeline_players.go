@@ -10,6 +10,8 @@ package replay
 // ordre, memes commentaires de mesure.
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -85,7 +87,7 @@ func buildPlayerScoresFlat(recs []types.StatRecord, identity map[int]string, c s
 		}
 		out = append(out, p)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].XUID < out[j].XUID })
+	slices.SortStableFunc(out, func(a, b PlayerScore) int { return cmp.Compare(a.XUID, b.XUID) })
 	if len(out) == 0 {
 		return nil
 	}

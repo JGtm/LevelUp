@@ -33,7 +33,8 @@ package replay
 // Explication structurelle cohérente mais invérifiable : comptés comme désaccords.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -89,11 +90,8 @@ func buildLoadouts(raw []types.KeyframeLoadout, origin, step uint64) []Loadout {
 	if len(out) == 0 {
 		return nil
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T != out[j].T {
-			return out[i].T < out[j].T
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b Loadout) int {
+		return cmp.Or(cmp.Compare(a.T, b.T), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out
 }

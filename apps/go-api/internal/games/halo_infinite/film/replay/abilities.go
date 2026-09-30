@@ -1,11 +1,11 @@
 package replay
 
 import (
+	"cmp"
 	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"slices"
-	"sort"
 	"strconv"
 )
 
@@ -100,14 +100,8 @@ func buildAbilityReads(
 	if len(out) == 0 {
 		return nil
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T != out[j].T {
-			return out[i].T < out[j].T
-		}
-		if out[i].Slot != out[j].Slot {
-			return out[i].Slot < out[j].Slot
-		}
-		return out[i].Src < out[j].Src
+	slices.SortStableFunc(out, func(a, b AbilityRead) int {
+		return cmp.Or(cmp.Compare(a.T, b.T), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Src, b.Src))
 	})
 	return out
 }

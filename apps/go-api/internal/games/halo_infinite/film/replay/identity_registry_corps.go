@@ -22,7 +22,7 @@ package replay
 //	memeCorps / pontDuCorps        le nommage final par occupation borne au corps (unnamed_lives.go)
 
 import (
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -98,7 +98,7 @@ func (o occupantsDesSlots) slotsDe(pi int, tUS int64) []uint32 {
 	for s := range o.corps {
 		essayer(s)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 

@@ -2,7 +2,7 @@ package replay
 
 import (
 	"maps"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -390,6 +390,6 @@ func sortedClaimSlots(m map[uint32]map[int]int) []uint32 {
 	for s := range m {
 		out = append(out, s)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }

@@ -1,7 +1,8 @@
 package replay
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -108,11 +109,8 @@ func vipSelectionOpenings(events []objectives.NamedEvent, identity objectives.Ro
 		}
 		out = append(out, vipRawPeriod{slot: e.Slot, xuid: identity.At(e.Slot, e.TimeMS), t0MS: int64(e.TimeMS)})
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].t0MS != out[j].t0MS {
-			return out[i].t0MS < out[j].t0MS
-		}
-		return out[i].slot < out[j].slot
+	slices.SortStableFunc(out, func(a, b vipRawPeriod) int {
+		return cmp.Or(cmp.Compare(a.t0MS, b.t0MS), cmp.Compare(a.slot, b.slot))
 	})
 	return out
 }

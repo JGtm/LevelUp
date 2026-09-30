@@ -62,8 +62,9 @@ package replay
 // une tuile par place, son occupant a l'instant lu, sinon vide — vit cote web (`seatLogic.ts`).
 
 import (
+	"cmp"
 	"context"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -343,14 +344,11 @@ func botIdentityKey(nom string) string { return "bot:" + nom }
 // d'iteration d'une map Go est aleatoire, et un artefact qui change d'octets sans changer de
 // contenu est indiffable.
 func ordreDesArrivants(roster []RosterEntry, occ *occupants, ids []int) {
-	sort.SliceStable(ids, func(a, b int) bool {
-		da, db := occ.parEntree[ids[a]].presence[0].de, occ.parEntree[ids[b]].presence[0].de
-		if da != db {
-			return da < db
-		}
-		if roster[ids[a]].FilmIndex != roster[ids[b]].FilmIndex {
-			return roster[ids[a]].FilmIndex < roster[ids[b]].FilmIndex
-		}
-		return cleDeRoster(roster[ids[a]]) < cleDeRoster(roster[ids[b]])
+	slices.SortStableFunc(ids, func(a, b int) int {
+		return cmp.Or(
+			cmp.Compare(occ.parEntree[a].presence[0].de, occ.parEntree[b].presence[0].de),
+			cmp.Compare(roster[a].FilmIndex, roster[b].FilmIndex),
+			cmp.Compare(cleDeRoster(roster[a]), cleDeRoster(roster[b])),
+		)
 	})
 }

@@ -40,6 +40,8 @@ package replay
 // PUR : aucune I/O. Les lectures entrent deja decodees (cf. `build_vehicles.go`).
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -58,7 +60,7 @@ func vehicleAimBySlot(aims []grammar.BipedAim) map[uint32][]grammar.BipedAim {
 	}
 	for s := range out {
 		v := out[s]
-		sort.SliceStable(v, func(i, j int) bool { return v[i].TimestampUS < v[j].TimestampUS })
+		slices.SortStableFunc(v, func(a, b grammar.BipedAim) int { return cmp.Compare(a.TimestampUS, b.TimestampUS) })
 	}
 	return out
 }

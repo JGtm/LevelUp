@@ -13,7 +13,10 @@ package replay
 // qu une. Il ne lit rien du film — il ne travaille que sur des `VehicleTrack` deja construites.
 // Le point d appel unique est `buildVehicleTracks`, juste apres `sortVehicleTracks`.
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 // mergeVehicleRelays fond les vies EN RELAIS : deux vies consecutives du MEME chassis, au MEME
 // point, dont la seconde commence dans l intervalle non observe de la premiere. Rend la tranche
@@ -100,11 +103,8 @@ func mergeVehicleRelay(a, b VehicleTrack) VehicleTrack {
 		out.T1Max = out.T1
 	}
 	rides := append(append([]VehicleRide(nil), a.Rides...), b.Rides...)
-	sort.SliceStable(rides, func(i, j int) bool {
-		if rides[i].T0 != rides[j].T0 {
-			return rides[i].T0 < rides[j].T0
-		}
-		return rides[i].Slot < rides[j].Slot
+	slices.SortStableFunc(rides, func(x, y VehicleRide) int {
+		return cmp.Or(cmp.Compare(x.T0, y.T0), cmp.Compare(x.Slot, y.Slot))
 	})
 	out.Rides = clampVehicleRides(rides, out.T0, out.T1Max)
 	if out.Spawn == nil {

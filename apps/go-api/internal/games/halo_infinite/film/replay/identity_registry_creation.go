@@ -60,7 +60,6 @@ import (
 	"context"
 	"log/slog"
 	"slices"
-	"sort"
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -373,7 +372,7 @@ func corpsParSlot(creations []grammar.BipedCreation) map[uint32]corpsLu {
 		slices.SortFunc(e.dates, func(a, b dateDeCreation) int {
 			return cmp.Or(cmp.Compare(a.tUS, b.tUS), cmp.Compare(a.gen, b.gen), cmp.Compare(a.index, b.index))
 		})
-		sort.Slice(e.index, func(i, j int) bool { return e.index[i] < e.index[j] })
+		slices.Sort(e.index)
 		out[s] = e
 	}
 	return out

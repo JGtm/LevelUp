@@ -26,8 +26,10 @@ package replay
 // tir long (sonde P4) : leur place passe par le chainage.
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -220,11 +222,9 @@ const sansPlafond = 1 << 30
 // `plafond`. LES FERMETURES AVANT LES OUVERTURES a egalite de frame : deux presences qui se
 // touchent sans se recouvrir ne comptent pas pour deux — c'est exactement un relais.
 func balayerLesBornes(bornes []borneDAffichage, plafond int) (maxi, au int) {
-	sort.Slice(bornes, func(a, b int) bool {
-		if bornes[a].f != bornes[b].f {
-			return bornes[a].f < bornes[b].f
-		}
-		return bornes[a].d < bornes[b].d
+	// Tri total (J12.1, DT-9) : (f, d) ; deux bornes egales sur les deux champs sont indiscernables.
+	slices.SortFunc(bornes, func(a, b borneDAffichage) int {
+		return cmp.Or(cmp.Compare(a.f, b.f), cmp.Compare(a.d, b.d))
 	})
 	n := 0
 	for k, b := range bornes {

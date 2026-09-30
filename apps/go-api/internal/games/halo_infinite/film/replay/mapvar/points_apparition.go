@@ -37,7 +37,10 @@ package mapvar
 // juge dans les seules non-armes (15 sur 16 grenades pour l'un, 11 sur 11 equipements pour
 // l'autre) et repose sur UNE carte et UN film : c'est une hypothese etayee, pas un fait.
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 // SpawnKind est la nature d'un point d'apparition, telle que la mesure la donne.
 type SpawnKind string
@@ -103,7 +106,7 @@ func SpawnPointTypeIDs() []int32 {
 	for id := range spawnPointTypes {
 		out = append(out, int32(id))
 	}
-	sort.Slice(out, func(i, j int) bool { return uint32(out[i]) < uint32(out[j]) })
+	slices.SortFunc(out, func(a, b int32) int { return cmp.Compare(uint32(a), uint32(b)) })
 	return out
 }
 
@@ -145,9 +148,7 @@ func SpawnPoints(v *Variant) []SpawnPoint {
 			objs = append(objs, o)
 		}
 	}
-	sort.SliceStable(objs, func(i, j int) bool {
-		return lessPadSpot(objs[i], objs[j])
-	})
+	slices.SortStableFunc(objs, cmpPadSpot)
 	out := make([]SpawnPoint, 0, len(objs))
 	for _, o := range objs {
 		kind, _ := SpawnKindOf(o.TypeID)

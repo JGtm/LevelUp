@@ -11,9 +11,10 @@ package replay
 // DEPLACEMENT PUR pour `decimateTracks` : aucune ligne de logique ne change.
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -194,7 +195,7 @@ func bornesDesVies(sorted []grammar.BipedPosition, in decoupeDesTraces) map[uint
 		out[l.slot] = append(out[l.slot], l)
 	}
 	for s := range out {
-		sort.SliceStable(out[s], func(i, j int) bool { return out[s][i].from < out[s][j].from })
+		slices.SortStableFunc(out[s], func(a, b lifeSpan) int { return cmp.Compare(a.from, b.from) })
 	}
 	return out
 }

@@ -24,7 +24,7 @@ package replay
 import (
 	"context"
 	"log/slog"
-	"sort"
+	"slices"
 )
 
 // attachObjectiveObjects pose les vies LIBRES des objets d'objectif publiables sur le document,
@@ -98,7 +98,15 @@ func buildObjectiveObjects(scan WorldObjectScan, labels map[uint32]Label,
 	// frame — et `sort.SliceStable` reconduisant l'ordre d'entrée pour les ex æquo, ce tri
 	// s'adossait en réalité à `flagFreeLives`, exactement le couplage que le commentaire d'avant
 	// prétendait avoir coupé. Le départage par le contenu de la vie le coupe pour de bon.
-	sort.SliceStable(out, func(i, j int) bool { return objectiveObjectLess(out[i], out[j]) })
+	slices.SortStableFunc(out, func(a, b ObjectiveObjectLife) int {
+		switch {
+		case objectiveObjectLess(a, b):
+			return -1
+		case objectiveObjectLess(b, a):
+			return 1
+		}
+		return 0
+	})
 	return out, cov
 }
 

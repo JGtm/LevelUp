@@ -3,7 +3,7 @@ package replay
 import (
 	"context"
 	"log/slog"
-	"sort"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -88,7 +88,7 @@ func tracksByXUID(tracks []Track, slotXUID map[uint32]uint64,
 		}
 		out[xuid] = append(out[xuid], t)
 	}
-	sort.Slice(ambigus, func(i, j int) bool { return ambigus[i] < ambigus[j] })
+	slices.Sort(ambigus)
 	return out, ambigus
 }
 

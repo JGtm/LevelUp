@@ -248,7 +248,7 @@ func vehiclePositionsBySlot(pos []grammar.BipedPosition) map[uint32][]grammar.Bi
 	}
 	for s := range out {
 		v := out[s]
-		sort.SliceStable(v, func(i, j int) bool { return v[i].TimestampUS < v[j].TimestampUS })
+		slices.SortStableFunc(v, func(a, b grammar.BipedPosition) int { return cmp.Compare(a.TimestampUS, b.TimestampUS) })
 	}
 	return out
 }
@@ -464,15 +464,9 @@ func vehicleSamplesOf(
 // sortVehicleTracks fige l ordre publie : par instant d apparition, puis par vie. Un ordre stable
 // est ce qui rend l artefact comparable d une cuisson a l autre (les vies sortent d une map).
 func sortVehicleTracks(tracks []VehicleTrack) {
-	sort.Slice(tracks, func(i, j int) bool {
-		switch {
-		case tracks[i].T0 != tracks[j].T0:
-			return tracks[i].T0 < tracks[j].T0
-		case tracks[i].Slot != tracks[j].Slot:
-			return tracks[i].Slot < tracks[j].Slot
-		default:
-			return tracks[i].Gen < tracks[j].Gen
-		}
+	// Tri total (J12.1, DT-9) : (Slot, Gen) est unique, les vies sont les cles de `kf.SeenUS`.
+	slices.SortFunc(tracks, func(a, b VehicleTrack) int {
+		return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Gen, b.Gen))
 	})
 }
 

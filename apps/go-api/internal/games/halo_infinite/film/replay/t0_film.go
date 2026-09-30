@@ -1,9 +1,10 @@
 package replay
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
-	"sort"
+	"slices"
 )
 
 // t0_film.go — LE COUP D'ENVOI, DATE PAR LE PREMIER MOUVEMENT DU FILM.
@@ -152,7 +153,8 @@ func t0FilmSteps(pts []T0FilmPoint, frameIntervalMS int) []t0FilmStep {
 		return nil
 	}
 	tri := append([]T0FilmPoint(nil), pts...)
-	sort.Slice(tri, func(i, j int) bool { return tri[i].T < tri[j].T })
+	// Tri total (J12.1, DT-9) : T est unique dans une piste publiee (un point par frame, decimateTracks).
+	slices.SortFunc(tri, func(a, b T0FilmPoint) int { return cmp.Compare(a.T, b.T) })
 	out := make([]t0FilmStep, 0, len(tri)-1)
 	for i := 1; i < len(tri); i++ {
 		a, b := tri[i-1], tri[i]
@@ -234,7 +236,11 @@ func t0FilmDepartures(tracks []T0FilmTrack, frameIntervalMS int) (deps []t0FilmD
 			deps = append(deps, t0FilmDeparture{frame: f, xuid: tracks[i].XUID})
 		}
 	}
-	sort.Slice(deps, func(a, b int) bool { return deps[a].frame < deps[b].frame })
+	// Tri total (J12.1, DT-9) : (frame, xuid), les ex aequo restants sont egaux. Le xuid ne change pas
+	// le verdict : t0FilmBurst ne lit que la premiere frame et l'ensemble des partants de la fenetre.
+	slices.SortFunc(deps, func(a, b t0FilmDeparture) int {
+		return cmp.Or(cmp.Compare(a.frame, b.frame), cmp.Compare(a.xuid, b.xuid))
+	})
 	return deps, usable
 }
 

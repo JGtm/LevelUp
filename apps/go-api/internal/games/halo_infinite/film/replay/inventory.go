@@ -1,10 +1,11 @@
 package replay
 
 import (
+	"cmp"
 	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
-	"sort"
+	"slices"
 )
 
 // inventory.go — L'INVENTAIRE porté à la grille du rejeu.
@@ -191,11 +192,8 @@ func buildInventory(raw []types.KeyframeInventory, origin, step uint64) ([]Inven
 	if len(out) == 0 {
 		return nil, droppedBeforeOrigin
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T != out[j].T {
-			return out[i].T < out[j].T
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b Inventory) int {
+		return cmp.Or(cmp.Compare(a.T, b.T), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out, droppedBeforeOrigin
 }

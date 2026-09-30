@@ -52,7 +52,7 @@ package replay
 import (
 	"context"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -197,9 +197,9 @@ func axesDesPositions(pos []grammar.BipedPosition) (xs, ys, zs []float32) {
 		}
 		xs, ys, zs = append(xs, p.X), append(ys, p.Y), append(zs, p.Z)
 	}
-	sort.Slice(xs, func(i, j int) bool { return xs[i] < xs[j] })
-	sort.Slice(ys, func(i, j int) bool { return ys[i] < ys[j] })
-	sort.Slice(zs, func(i, j int) bool { return zs[i] < zs[j] })
+	slices.Sort(xs)
+	slices.Sort(ys)
+	slices.Sort(zs)
 	return xs, ys, zs
 }
 

@@ -1,8 +1,9 @@
 package replay
 
 import (
+	"cmp"
 	"context"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
@@ -157,7 +158,7 @@ func (a *assemblage) ouvrir(titleSlug string) bool {
 		return false
 	}
 	a.sorted = append([]grammar.BipedPosition(nil), a.pos...)
-	sort.SliceStable(a.sorted, func(i, j int) bool { return a.sorted[i].TimestampUS < a.sorted[j].TimestampUS })
+	slices.SortStableFunc(a.sorted, func(p, q grammar.BipedPosition) int { return cmp.Compare(p.TimestampUS, q.TimestampUS) })
 
 	a.origin = a.sorted[0].TimestampUS
 	a.step = uint64(a.interval) * 1000

@@ -19,9 +19,10 @@ package replay
 //	                   (contrairement aux calques dates depuis le premier paquet du film).
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -225,7 +226,7 @@ func zoneSeriesOf(reads []grammar.ManagedPropertyRead, c zoneCtx) zoneSeries {
 	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner, out.desig, out.ownerChained} {
 		for s := range m {
 			ss := m[s]
-			sort.SliceStable(ss, func(i, j int) bool { return ss[i].t < ss[j].t })
+			slices.SortStableFunc(ss, func(a, b zoneSample) int { return cmp.Compare(a.t, b.t) })
 			m[s] = ss
 		}
 	}
@@ -343,7 +344,7 @@ func zoneRampsOf(ser zoneSeries) []zoneRamp {
 	for _, s := range sortedZoneSlots(ser.gauge) {
 		out = append(out, findZoneRamps(s, ser.gauge[s])...)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].tPeak < out[j].tPeak })
+	slices.SortStableFunc(out, func(a, b zoneRamp) int { return cmp.Compare(a.tPeak, b.tPeak) })
 	return out
 }
 
@@ -353,7 +354,7 @@ func sortedZoneSlots[T any](m map[uint32]T) []uint32 {
 	for s := range m {
 		out = append(out, s)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 

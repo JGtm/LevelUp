@@ -5,7 +5,9 @@ package replay
 // est ecrite en tete de sieges.go.
 
 import (
+	"cmp"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 )
@@ -289,8 +291,8 @@ func (pp *poseDesPlaces) placesDeLEquipe(t int) int {
 func (pp *poseDesPlaces) bornerAuSuccesseur() (bornes, chevauchements int) {
 	for _, idx := range pp.ordre {
 		occ := pp.places[idx].occupations
-		sort.SliceStable(occ, func(a, b int) bool {
-			return pp.intervalle(occ[a]).de < pp.intervalle(occ[b]).de
+		slices.SortStableFunc(occ, func(a, b occupation) int {
+			return cmp.Compare(pp.intervalle(a).de, pp.intervalle(b).de)
 		})
 		for k := 0; k+1 < len(occ); k++ {
 			cur, suiv := pp.intervalle(occ[k]), pp.intervalle(occ[k+1])

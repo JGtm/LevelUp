@@ -1,8 +1,9 @@
 package replay
 
 import (
+	"cmp"
 	"context"
-	"sort"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -311,7 +312,7 @@ func flagOpenings(evs []objectives.NamedEvent, identity objectives.RoundIdentity
 	}
 	var out []flagOpening
 	for _, ops := range bySlot {
-		sort.SliceStable(ops, func(i, j int) bool { return ops[i].t0 < ops[j].t0 })
+		slices.SortStableFunc(ops, func(a, b flagOpening) int { return cmp.Compare(a.t0, b.t0) })
 		for _, o := range ops {
 			if n := len(out); n > 0 && out[n-1].slot == o.slot && out[n-1].round == o.round &&
 				o.t0-out[n-1].t0 <= flagGrabMergeMS {
@@ -330,11 +331,8 @@ func flagOpenings(evs []objectives.NamedEvent, identity objectives.RoundIdentity
 // sortFlagOpenings pose un ordre TOTAL (instant, puis slot) : sans lui, le parcours de map
 // rendrait une sortie differente a chaque execution.
 func sortFlagOpenings(ops []flagOpening) {
-	sort.SliceStable(ops, func(i, j int) bool {
-		if ops[i].t0 != ops[j].t0 {
-			return ops[i].t0 < ops[j].t0
-		}
-		return ops[i].slot < ops[j].slot
+	slices.SortStableFunc(ops, func(a, b flagOpening) int {
+		return cmp.Or(cmp.Compare(a.t0, b.t0), cmp.Compare(a.slot, b.slot))
 	})
 }
 
@@ -433,7 +431,7 @@ func timesByRoundSlot(evs []objectives.NamedEvent, stat string,
 		}
 	}
 	for s := range out {
-		sort.Slice(out[s], func(i, j int) bool { return out[s][i] < out[s][j] })
+		slices.Sort(out[s])
 	}
 	return out
 }
@@ -446,7 +444,7 @@ func deathTimesByXUID(deaths []types.Death) map[string][]int64 {
 		out[x] = append(out[x], d.TimeMS)
 	}
 	for x := range out {
-		sort.Slice(out[x], func(i, j int) bool { return out[x][i] < out[x][j] })
+		slices.Sort(out[x])
 	}
 	return out
 }

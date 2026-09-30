@@ -41,7 +41,7 @@ package replay
 import (
 	"context"
 	"log/slog"
-	"sort"
+	"slices"
 )
 
 // NomParExclusionTemporelle : la vie a ete nommee par EXCLUSION TEMPORELLE sur le roster.
@@ -209,8 +209,8 @@ func occupationMaximale(lives []lifeSpan) int {
 		debuts = append(debuts, l.from)
 		fins = append(fins, l.to+1)
 	}
-	sort.Slice(debuts, func(i, j int) bool { return debuts[i] < debuts[j] })
-	sort.Slice(fins, func(i, j int) bool { return fins[i] < fins[j] })
+	slices.Sort(debuts)
+	slices.Sort(fins)
 	var cour, plafond int64
 	j := 0
 	for _, d := range debuts {

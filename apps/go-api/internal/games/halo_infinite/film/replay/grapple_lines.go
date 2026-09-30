@@ -1,7 +1,8 @@
 package replay
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -111,7 +112,7 @@ func buildGrappleLines(reads []types.GrappleRead, entry profile.MapQuantEntry,
 	for s := range bySlot {
 		slots = append(slots, s)
 	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	slices.Sort(slots)
 	var out []GrappleLine
 	// LES VIES SE COMPTENT PAR VIE, PAS PAR SLOT (même correctif, 2026-09-06) : la clé était le
 	// slot, ce qui confondait deux occupations successives d'un même siège de réplication en une
@@ -119,7 +120,7 @@ func buildGrappleLines(reads []types.GrappleRead, entry profile.MapQuantEntry,
 	lives := map[[2]int]struct{}{}
 	for _, s := range slots {
 		list := bySlot[s]
-		sort.SliceStable(list, func(i, j int) bool { return list[i].TimestampUS < list[j].TimestampUS })
+		slices.SortStableFunc(list, func(a, b types.GrappleRead) int { return cmp.Compare(a.TimestampUS, b.TimestampUS) })
 		for _, l := range grappleLinesOfLife(list, entry, origin, step, byTrack[s], cov) {
 			out = append(out, l)
 			if tr := lifeCovering(byTrack[s], l.T0); tr != nil {
@@ -131,11 +132,8 @@ func buildGrappleLines(reads []types.GrappleRead, entry profile.MapQuantEntry,
 	if len(out) == 0 {
 		return nil, cov
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T0 != out[j].T0 {
-			return out[i].T0 < out[j].T0
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b GrappleLine) int {
+		return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out, cov
 }

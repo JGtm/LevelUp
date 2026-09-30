@@ -54,7 +54,8 @@ package replay
 // totaux de match, eux, restent complets : pad_occupancies compte tout).
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
@@ -389,6 +390,6 @@ func (u *usageTallies) rows() []UsagePlayerSummary {
 	for _, t := range u.byXUID {
 		out = append(out, *t)
 	}
-	sort.Slice(out, func(a, b int) bool { return out[a].XUID < out[b].XUID })
+	slices.SortFunc(out, func(a, b UsagePlayerSummary) int { return cmp.Compare(a.XUID, b.XUID) })
 	return out
 }

@@ -27,10 +27,11 @@ package replay
 // PUR : aucune I/O.
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"math"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -69,11 +70,8 @@ func buildFireBursts(ctx context.Context, doc *ReplayDocument, in []types.Contin
 			out = append(out, f)
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T0 != out[j].T0 {
-			return out[i].T0 < out[j].T0
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b FireBurst) int {
+		return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.Slot, b.Slot))
 	})
 	if !cov.balanced() {
 		slog.ErrorContext(ctx, "rejeu : couverture du tir continu desequilibree", "lues", cov.BurstsRead,
@@ -353,7 +351,7 @@ func dotationsParSlot(ls []Loadout) map[uint32][]Loadout {
 		out[l.Slot] = append(out[l.Slot], l)
 	}
 	for s := range out {
-		sort.SliceStable(out[s], func(i, j int) bool { return out[s][i].T < out[s][j].T })
+		slices.SortStableFunc(out[s], func(a, b Loadout) int { return cmp.Compare(a.T, b.T) })
 	}
 	return out
 }
@@ -365,7 +363,7 @@ func prisesParSlot(ws []WeaponChange) map[uint32][]WeaponChange {
 		out[w.Slot] = append(out[w.Slot], w)
 	}
 	for s := range out {
-		sort.SliceStable(out[s], func(i, j int) bool { return out[s][i].T < out[s][j].T })
+		slices.SortStableFunc(out[s], func(a, b WeaponChange) int { return cmp.Compare(a.T, b.T) })
 	}
 	return out
 }

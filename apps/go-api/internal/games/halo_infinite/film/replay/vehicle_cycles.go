@@ -48,7 +48,8 @@ package replay
 // Ces occasions se COMPTENT (`Missing`), elles ne se devinent pas.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 )
 
 // vehicleCycleClusterM est le rayon d agglomeration des naissances en UN emplacement, en metres.
@@ -141,11 +142,8 @@ func buildVehicleCycles(tracks []VehicleTrack, stepUS uint64, cov *VehicleCovera
 			P90S: round2(float32(c.P90S)), Gaps: c.Gaps, Missing: manques,
 		})
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].X != out[j].X {
-			return out[i].X < out[j].X
-		}
-		return out[i].Y < out[j].Y
+	slices.SortStableFunc(out, func(a, b VehicleCycle) int {
+		return cmp.Or(cmp.Compare(a.X, b.X), cmp.Compare(a.Y, b.Y))
 	})
 	if cov != nil {
 		cov.Cycles = len(out)
@@ -172,7 +170,7 @@ func clusterVehicleSpawns(tracks []VehicleTrack) []*vehicleCycleCluster {
 			ordre = append(ordre, i)
 		}
 	}
-	sort.SliceStable(ordre, func(i, j int) bool { return tracks[ordre[i]].T0 < tracks[ordre[j]].T0 })
+	slices.SortStableFunc(ordre, func(a, b int) int { return cmp.Compare(tracks[a].T0, tracks[b].T0) })
 	var out []*vehicleCycleCluster
 	for _, i := range ordre {
 		tr := tracks[i]
@@ -229,7 +227,7 @@ func vehicleCycleGaps(lives []vehicleCycleLife, secPerFrame float64) ([]float64,
 	if len(lives) < 2 {
 		return nil, 0
 	}
-	sort.SliceStable(lives, func(i, j int) bool { return lives[i].t0 < lives[j].t0 })
+	slices.SortStableFunc(lives, func(a, b vehicleCycleLife) int { return cmp.Compare(a.t0, b.t0) })
 	gaps := make([]float64, 0, len(lives)-1)
 	var manques int
 	for i := 1; i < len(lives); i++ {

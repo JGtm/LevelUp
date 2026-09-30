@@ -8,6 +8,7 @@ package replay
 // et chaque section a sa fonction.
 
 import (
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -387,7 +388,7 @@ func encodeQueue(w *gwriter, g *FilmFacts) {
 	for x := range g.PlayerIndices.ByXUID {
 		xuids = append(xuids, x)
 	}
-	sort.Slice(xuids, func(i, j int) bool { return xuids[i] < xuids[j] })
+	slices.Sort(xuids)
 	w.u(uint64(len(xuids)))
 	for _, x := range xuids {
 		w.u(x)

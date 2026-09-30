@@ -1,9 +1,10 @@
 package replay
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
@@ -130,14 +131,8 @@ func buildObjectiveActions(evs []objectives.IdentifiedEvent, unnamed, refused in
 			cov.Attached++
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].TimeMS != out[j].TimeMS {
-			return out[i].TimeMS < out[j].TimeMS
-		}
-		if out[i].XUID != out[j].XUID {
-			return out[i].XUID < out[j].XUID
-		}
-		return out[i].Stat < out[j].Stat
+	slices.SortStableFunc(out, func(a, b ObjectiveAction) int {
+		return cmp.Or(cmp.Compare(a.TimeMS, b.TimeMS), cmp.Compare(a.XUID, b.XUID), cmp.Compare(a.Stat, b.Stat))
 	})
 	return out, cov
 }

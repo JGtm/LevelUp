@@ -8,9 +8,10 @@ package replay
 // `greader`, varints, flottants, centimetre entier) vit dans `filmfacts_flux.go`.
 
 import (
+	"cmp"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -357,11 +358,8 @@ func encodeKeyframes(w *gwriter, kf grammar.WorldObjectKeyframes) {
 	for k := range kf.SeenUS {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].Slot != keys[j].Slot {
-			return keys[i].Slot < keys[j].Slot
-		}
-		return keys[i].Gen < keys[j].Gen
+	slices.SortFunc(keys, func(a, b types.LifeKey) int {
+		return cmp.Or(cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Gen, b.Gen))
 	})
 	w.u(uint64(len(keys)))
 	for _, k := range keys {

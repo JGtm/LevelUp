@@ -80,7 +80,8 @@ package replay
 // `EquipmentCoverage.KillsRead`, appliquée par champ.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -313,14 +314,8 @@ func BuildBombStats(in BombStatsInput) (BombMatchStats, []BombEvent) {
 // type et par acteur — un ordre TOTAL, donc une sortie reproductible quel que soit l'ordre
 // d'assemblage des sources.
 func sortedBombEvents(events []BombEvent) []BombEvent {
-	sort.SliceStable(events, func(i, j int) bool {
-		if events[i].TimeMS != events[j].TimeMS {
-			return events[i].TimeMS < events[j].TimeMS
-		}
-		if events[i].Type != events[j].Type {
-			return events[i].Type < events[j].Type
-		}
-		return events[i].XUID < events[j].XUID
+	slices.SortStableFunc(events, func(a, b BombEvent) int {
+		return cmp.Or(cmp.Compare(a.TimeMS, b.TimeMS), cmp.Compare(a.Type, b.Type), cmp.Compare(a.XUID, b.XUID))
 	})
 	return events
 }
@@ -375,7 +370,7 @@ func bombPlayerRows(in BombStatsInput, t bombTallies) []BombPlayerStats {
 		}
 		rows = append(rows, row)
 	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].XUID < rows[j].XUID })
+	slices.SortFunc(rows, func(a, b BombPlayerStats) int { return cmp.Compare(a.XUID, b.XUID) })
 	return rows
 }
 

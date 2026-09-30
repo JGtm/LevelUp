@@ -1,10 +1,11 @@
 package replay
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -417,11 +418,8 @@ func buildEquipmentPlacements(
 		out, causes = append(out, pl), append(causes, cause)
 	}
 	tallyEquipmentPlacements(out, causes, cov)
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T0 != out[j].T0 {
-			return out[i].T0 < out[j].T0
-		}
-		return out[i].ID < out[j].ID
+	slices.SortStableFunc(out, func(a, b EquipmentPlacement) int {
+		return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.ID, b.ID))
 	})
 	return out, cov
 }

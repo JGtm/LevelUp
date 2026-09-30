@@ -58,9 +58,11 @@ package replay
 // désamorcée pendant la mèche, et ce silence-là est le comportement du jeu, pas un défaut.
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -449,7 +451,7 @@ func bombReadsBySlot(reads []types.NavpointRadialRead) map[uint32][]types.Navpoi
 	}
 	for slot := range out {
 		s := out[slot]
-		sort.SliceStable(s, func(i, j int) bool { return s[i].TMS < s[j].TMS })
+		slices.SortStableFunc(s, func(a, b types.NavpointRadialRead) int { return cmp.Compare(a.TMS, b.TMS) })
 	}
 	return out
 }

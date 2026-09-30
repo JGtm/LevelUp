@@ -33,8 +33,9 @@ package replay
 // match, cohérent avec un temps de recharge.
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -227,14 +228,14 @@ func spawnSetFrom(
 	}
 	for slot := range bySlot {
 		l := bySlot[slot]
-		sort.SliceStable(l, func(i, j int) bool { return l[i].ts < l[j].ts })
+		slices.SortStableFunc(l, func(a, b releve) int { return cmp.Compare(a.ts, b.ts) })
 	}
 	nes := map[uint32][]uint64{}
 	for _, c := range creations {
 		nes[c.Slot] = append(nes[c.Slot], c.TimestampUS)
 	}
 	for slot := range nes {
-		sort.Slice(nes[slot], func(i, j int) bool { return nes[slot][i] < nes[slot][j] })
+		slices.Sort(nes[slot])
 	}
 	return func(slot uint32, at uint64) (grammar.SpawnState, bool) {
 		var debut uint64

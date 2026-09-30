@@ -4,6 +4,7 @@ import (
 	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
+	"slices"
 	"sort"
 )
 
@@ -73,7 +74,7 @@ func deathTimesByVictimMS(deaths []types.Death, offsetMS int64) map[uint64][]int
 		out[d.XUID] = append(out[d.XUID], d.TimeMS+offsetMS)
 	}
 	for x := range out {
-		sort.Slice(out[x], func(i, j int) bool { return out[x][i] < out[x][j] })
+		slices.Sort(out[x])
 	}
 	return out
 }

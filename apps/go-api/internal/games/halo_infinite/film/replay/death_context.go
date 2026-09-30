@@ -38,6 +38,7 @@ package replay
 
 import (
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -248,7 +249,7 @@ func mortsParVictime(journal []MortDuJournal) map[uint64][]int64 {
 		out[m.VictimeXUID] = append(out[m.VictimeXUID], m.TempsMS)
 	}
 	for _, v := range out {
-		sort.Slice(v, func(i, j int) bool { return v[i] < v[j] })
+		slices.Sort(v)
 	}
 	return out
 }
