@@ -150,8 +150,9 @@ func TestVehicules_FragsEtRendementSurLesFragsApparies(t *testing.T) {
 	e := p.Exposure
 	if e == nil || e.Kind != domain.EmpriseExposureAboardMS ||
 		e.Value != (domain.SquadEmpriseCount{Us: 210_000, Them: 100_000}) ||
-		e.Kills != (domain.SquadEmpriseCount{Us: 4, Them: 0}) {
-		t.Fatalf("exposition = %+v, attendu temps à bord 210 s / 100 s et 4 / 0 frags appariés", e)
+		e.Kills != (domain.SquadEmpriseCount{Us: 6, Them: 4}) || e.PairedKills == nil ||
+		*e.PairedKills != (domain.SquadEmpriseCount{Us: 4, Them: 0}) {
+		t.Fatalf("exposition = %+v, attendu temps à bord 210 s / 100 s, 6 / 4 frags de la population et 4 / 0 appariés", e)
 	}
 	if p.YieldUs == nil || math.Abs(*p.YieldUs-4/3.5) > 1e-9 {
 		t.Errorf("rendement chez nous = %v, attendu 4 frags appariés / 3,5 min", p.YieldUs)
@@ -195,7 +196,7 @@ func TestVehicules_PerimetreCommunDuRendement(t *testing.T) {
 	p := productionDe(b, domain.EmpriseResourceVehicle)
 	if p == nil || p.Kills != (domain.SquadEmpriseCount{Us: 2, Them: 1}) ||
 		p.Exposure.Value != (domain.SquadEmpriseCount{Us: 180_000}) ||
-		p.Exposure.Kills != (domain.SquadEmpriseCount{Us: 2}) {
+		p.Exposure.Kills != (domain.SquadEmpriseCount{Us: 2, Them: 1}) || *p.Exposure.PairedKills != (domain.SquadEmpriseCount{Us: 2}) {
 		t.Fatalf("production = %+v / %+v, attendu les seuls matchs c et d : 180 s à bord, 2 frags appariés, 2 / 1 frags", p, p.Exposure)
 	}
 	if p.YieldUs == nil || math.Abs(*p.YieldUs-2/3.0) > 1e-9 {

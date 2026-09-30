@@ -204,7 +204,7 @@ type SquadEmpriseProduction struct {
 	// Exposure : ce qui a permis ces frags. Nil sans mesure du film.
 	Exposure *SquadEmpriseExposure `json:"exposure,omitempty"`
 	// YieldUs / YieldThem : frags par minute d'effet (bonus), frags par prise (armes spéciales),
-	// calculés sur Exposure.Kills. Nil quand l'exposition du camp est nulle.
+	// calculés sur Exposure.Kills (véhicules : Exposure.PairedKills). Nil quand l'exposition du camp est nulle.
 	YieldUs   *float64 `json:"yield_us,omitempty"`
 	YieldThem *float64 `json:"yield_them,omitempty"`
 	// RelativeGap : notre rendement / le sien − 1 (0 = autant que l'adversaire).
@@ -217,9 +217,12 @@ type SquadEmpriseExposure struct {
 	Value SquadEmpriseCount `json:"value"`
 	// Kills : les frags des matchs où l'exposition est mesurée. Pour les armes spéciales, c'est
 	// Production.Kills privé des matchs sans niveaux de socle : un rendement se lit sur un seul
-	// périmètre. Pour les véhicules, ce sont les frags APPARIÉS aux épisodes de leur tueur (D9) ;
-	// Value est lu sur les mêmes matchs.
+	// périmètre. Pour les véhicules, ce sont tous les frags de classe véhicule des matchs du
+	// rendement (D5) ; Value est lu sur les mêmes matchs.
 	Kills SquadEmpriseCount `json:"kills"`
+	// PairedKills : les frags APPARIÉS aux épisodes de leur tueur, le numérateur du rendement quand
+	// il diffère de Kills (véhicules, D9). Nil ailleurs : le rendement lit alors Kills.
+	PairedKills *SquadEmpriseCount `json:"paired_kills,omitempty"`
 }
 
 // SquadEmpriseHabit — « par rapport à d'habitude » (D5).

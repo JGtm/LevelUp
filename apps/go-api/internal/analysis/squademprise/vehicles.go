@@ -220,13 +220,16 @@ func productionVehicules(s *soiree) (domain.SquadEmpriseProduction, bool) {
 	if v.yield == 0 || (v.aboard[0]+v.aboard[1] == 0 && v.kills[0]+v.kills[1] == 0) {
 		return domain.SquadEmpriseProduction{}, false
 	}
+	kills := domain.SquadEmpriseCount{Us: v.kills[0], Them: v.kills[1]}
+	paired := domain.SquadEmpriseCount{Us: v.paired[0], Them: v.paired[1]}
 	p := domain.SquadEmpriseProduction{
 		Resource: domain.EmpriseResourceVehicle,
-		Kills:    domain.SquadEmpriseCount{Us: v.kills[0], Them: v.kills[1]},
+		Kills:    kills,
 		Exposure: &domain.SquadEmpriseExposure{
-			Kind:  domain.EmpriseExposureAboardMS,
-			Value: domain.SquadEmpriseCount{Us: int(v.aboard[0]), Them: int(v.aboard[1])},
-			Kills: domain.SquadEmpriseCount{Us: v.paired[0], Them: v.paired[1]},
+			Kind:        domain.EmpriseExposureAboardMS,
+			Value:       domain.SquadEmpriseCount{Us: int(v.aboard[0]), Them: int(v.aboard[1])},
+			Kills:       kills,
+			PairedKills: &paired,
 		},
 		YieldUs:   parMinute(v.paired[0], v.aboard[0]),
 		YieldThem: parMinute(v.paired[1], v.aboard[1]),

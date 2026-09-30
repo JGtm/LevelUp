@@ -12127,6 +12127,7 @@ export interface components {
         SquadEmpriseExposure: {
             kills: components["schemas"]["SquadEmpriseCount"];
             kind: string;
+            paired_kills?: components["schemas"]["SquadEmpriseCount"];
             value: components["schemas"]["SquadEmpriseCount"];
         };
         SquadEmpriseHabit: {

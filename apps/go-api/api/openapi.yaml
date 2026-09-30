@@ -26719,6 +26719,8 @@ components:
           $ref: '#/components/schemas/SquadEmpriseCount'
         kind:
           type: string
+        paired_kills:
+          $ref: '#/components/schemas/SquadEmpriseCount'
         value:
           $ref: '#/components/schemas/SquadEmpriseCount'
       required:
