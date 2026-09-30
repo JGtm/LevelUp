@@ -494,3 +494,37 @@ Verdicts du banc sur la chaîne réelle (outil livré, artefacts `j11`, sans reg
 - **J6-bis** : `MANQUE` (P-1) sur 6 témoins, et un repli nouveau (`repli_emission_hors_domaine_jetee`)
   sur 9.
 - **J6-ter** : `ok` partout.
+
+## 12. Intégration au gate de corpus (2026-09-30, après fusion du cache de la base `3f644931a`)
+
+- **Verdict.** `cmd/replay-corpus-gate/verite.go` note chaque témoin comparé : la référence et le
+  HEAD, avec les mêmes faits et le même oracle. Le statut suit cette priorité : `ABSENT`/`ERREUR`,
+  puis `FAUX`, `MANQUE`, `PERTE` (filets), `ok`. `CHANGEMENT` n'est plus un statut. Si le banc ne
+  peut pas lire un artefact, le témoin est en `ERREUR` (code 3).
+- **Filets.** Deux cas bloquent encore :
+  - une perte `replaydiff` hors des blocs couverts. La table `blocsCouverts` rattache chaque bloc à
+    la mesure qui le couvre, et un bloc n'est couvert que si cette mesure est NOTÉE des deux côtés.
+    Un O-S1 circulaire ne couvre rien ; sans oracle, O-S3 ne couvre pas le score personnel ;
+  - un calque de premier niveau qui passe à zéro ou disparaît, même dans un bloc couvert.
+
+  Sans banc, aucun bloc n'est couvert.
+- **Registre R-1** : produit par `cmd/replay-verite -registre`, compilé dans le worktree de base
+  avec le GOCACHE de la base. Il est lu **une fois par passage et n'entre pas dans le cache**, parce
+  qu'il ne dépend que du SHA de base, que la clé du cache porte déjà. Une base sans l'outil donne un
+  registre inconnu, et le rapport le dit.
+- **Oracle** : l'export des faits passe `--oracle`, et `<short8>.oracle.json` est lu à côté des
+  faits. S'il est absent ou vide, O-S3 manque des deux côtés et le verdict n'est pas touché ;
+  l'absence est journalisée. **O-S3 (score personnel) est branché**, contre `personal_score`, ou
+  `score` s'il manque : la synchro remplit les deux colonnes depuis `CoreStats.PersonalScore`. Sa
+  ligne de base connue : les décréments ne sont pas publiés, donc un joueur qui s'est suicidé ou a
+  trahi porte un FP stable. **O-S4, O-S5 et O-X1 restent pour la 2b** : il faut une table stat
+  publiée → colonne d'oracle, et mesurer ce que l'API compte en tirs.
+- **Rapport** : une section `BANC DE VERITE` par témoin, placée avant le détail `replaydiff` ; un
+  objet `verite` dans le JSON (statut, constats, filets). Les compteurs gains / pertes / changements
+  restent au tableau, pour information.
+- **Tests** : verdict du gate contre verdict du banc, filets, O-S1 circulaire, artefact réel
+  (`bcb6d393` abîmé donne `FAUX`, section avant le détail, JSON), registre sans outil, rendu du
+  registre inconnu. Les tests existants ont été mis à jour (changements informatifs, fixture de
+  paire réelle : sans banc, les 13 pertes sont 13 filets). 15 mutations par copie sur le gate et
+  O-S3, toutes rouges.
+- **Non fait** : aucun essai réel (aucun décodage, aucune exécution du gate, sur consigne).
