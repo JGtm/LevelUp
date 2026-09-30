@@ -231,7 +231,9 @@ func scanEquipRecoveryPacket(
 		return
 	}
 	total := len(pay) * 8
-	gens := s.fc.GenerationsVivantes() // lot J5.2 : generations vivantes du film, memorisees par le contexte
+	// Lot J5.2 : generations vivantes du film, memorisees par le contexte ; DATEES a l instant du
+	// paquet (lot R2-bis) : un corps n est pas lu avant son record de creation.
+	gens := s.fc.GenerationsVivantesA(pk.TimestampUS)
 	for p := 0; p+bipedHeaderBits+bipedIndexBits <= total; p++ {
 		if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 			continue
@@ -247,8 +249,8 @@ func scanEquipRecoveryPacket(
 		if w == nil {
 			continue
 		}
-		// EN-TÊTE DE PRODUCTION INTACT (R2 §4) : génération vivante (lot J5.2 ; la seule 1
-		// avant) et bit 16 nul. Seule la PORTE du masque (bit 17) distingue les deux formes récupérables.
+		// EN-TÊTE DE PRODUCTION INTACT (R2 §4) : génération vivante à l'instant du paquet (lot
+		// J5.2, datée au lot R2-bis ; la seule 1 avant) et bit 16 nul. Seule la PORTE du masque (bit 17) distingue les deux formes récupérables.
 		if !gens.Accepte(h) || uint32(source.BitsStricts(pay, p+16, 1)) != 0 {
 			continue
 		}

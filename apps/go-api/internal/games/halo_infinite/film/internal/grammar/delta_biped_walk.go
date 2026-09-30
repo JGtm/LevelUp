@@ -74,8 +74,10 @@ func deltaBipedMinRecord(i0Bits int) int {
 // `visit` pour chacun, dans l'ordre du flux.
 //
 // `gens` est le FILTRE DE GENERATION (lot J5.2, DT-8), passe tel quel a `matchBipedHeader` : les
-// huit balayages de canal recoivent les generations VIVANTES du film ([FilmContext.GenerationsVivantes]),
-// `ScanBipedRecords` celles de ses options. nil : tous les slots dans le repli nomme (generation 1).
+// huit balayages de canal recoivent les generations VIVANTES du film datees a l instant du paquet
+// ([FilmContext.GenerationsVivantesA], lot R2-bis), `ScanBipedRecords` celles de ses options
+// (datees par paquet dans `scanBipedChunks`, lot R2). nil : tous les slots dans le repli nomme
+// (generation 1).
 func walkDeltaBipedPayload(
 	pay []byte, slots SlotBand, lay profile.I0Layout, gens *GenerationsVivantes, visit func(deltaBipedRecord),
 ) {
@@ -105,8 +107,9 @@ func walkDeltaBipedRecords(
 	fc *FilmContext, chunks []int, slots SlotBand, lay profile.I0Layout, visit func(deltaBipedRecord),
 ) {
 	// LES GENERATIONS VIVANTES DU FILM, et non plus `true` en dur (constat GB-1) : un corps de generation
-	// >= 2 est lu par les huit canaux comme par les positions.
-	gens := fc.GenerationsVivantes()
+	// >= 2 est lu par les huit canaux comme par les positions. DATEES A L INSTANT DU PAQUET (lot
+	// R2-bis) : un en-tete dont le corps n est pas encore cree n est la replication d aucun corps
+	// (generations_vivantes.go).
 	for _, c := range chunks {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -116,6 +119,7 @@ func walkDeltaBipedRecords(
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
+			gens := fc.GenerationsVivantesA(pk.TimestampUS)
 			walkDeltaBipedPayload(pk.Payload(data), slots, lay, gens, func(r deltaBipedRecord) {
 				r.Chunk, r.Packet = c, pk
 				visit(r)

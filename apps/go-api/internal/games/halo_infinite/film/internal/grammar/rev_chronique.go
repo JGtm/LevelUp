@@ -380,3 +380,15 @@ package grammar
 // faux ancrages masquaient reviennent (+15 sur `a349fea8`). Films sans slot reboucle : aucun record
 // concerne. Les huit canaux delta, l arme tenue et la recuperation d equipement gardent le filtre
 // atemporel (hors du lot : decouverte au rapport R2).
+//
+// A REVISION CONSTANTE, LOT R2-bis (2026-09-29, serie jamais publiee ; decouverte 2 du lot R2) : la
+// MEME garde datee ([GenerationsVivantes.A], par [FilmContext.GenerationsVivantesA]) s applique aux
+// autres lecteurs de records delta bipedes — le marcheur des huit canaux (`walkDeltaBipedRecords` :
+// rang et charges de capacite, impulsions, camouflage, grappin, arme tenue, inventaire, equipement de
+// l unite), la recuperation d equipement et la visee seule. En-tetes anterieurs a la creation de
+// leur corps refuses par le marcheur : 32, 33, 20 et 102 sur `084a804d`, `a349fea8`, `4f77afc1`,
+// `1c4c63c2` (records rendus 27, 29, 18 et 91 de moins : le curseur libere retrouve des records
+// reels) ; emissions retirees, entre autres : arme tenue 1/0/2/1, rang de capacite 1/0/0/5, visee
+// seule 92/122/335/406. Positions inchangees ; films sans slot recycle (`bcb6d393`, `51ebbc0f`,
+// `d9781168`, `e5adf7b2`) : toutes les sorties identiques a l octet. Garde-rail :
+// `generations_vivantes_datees_ratchet_test.go`.
