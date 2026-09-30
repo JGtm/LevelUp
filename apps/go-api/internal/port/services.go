@@ -281,6 +281,15 @@ type ReplayFactsRepo interface {
 	FactsForMatch(ctx context.Context, matchID string) (MatchFacts, error)
 }
 
+// ReplayOracleRepo lit les VERITES OFFICIELLES d'un match que la cuisson du rejeu ne lit pas
+// (`domain.MatchOracle`) : l'oracle du banc de verite (`internal/replayverite`). Port SEPARE de
+// ReplayFactsRepo parce que ce qui passe par l'un est une entree de cuisson, et ce qui passe par
+// l'autre ne doit jamais en devenir une.
+type ReplayOracleRepo interface {
+	// OracleForMatch rend l'oracle du match ; un match sans ligne rend un oracle VIDE sans erreur.
+	OracleForMatch(ctx context.Context, matchID string) (domain.MatchOracle, error)
+}
+
 // ReplayLinkTarget est la cible de lien d'un match. Défini et documenté dans
 // `internal/domain/replay_link.go`.
 type ReplayLinkTarget = domain.ReplayLinkTarget

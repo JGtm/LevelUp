@@ -237,7 +237,7 @@ Commandes:
                   AUCUN decodage de film, AUCUNE base ouverte — une lecture d'artefacts suivie de petits JSON ranges sous
                   data/cache/replays/{slug}/rasters/. Idempotent (un sidecar n'est refait que s'il manque ou si son artefact a
                   change de schema) (--backfill obligatoire, --dry-run, --title, --limit)
-  replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence des rejeux (--out, --title)
+  replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence (--out, --title, --oracle : + <short8>.oracle.json)
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
