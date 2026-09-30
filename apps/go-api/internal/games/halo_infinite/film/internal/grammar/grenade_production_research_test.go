@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // grenade_production_research_test.go — CE QUE LE CHEMIN DE PRODUCTION LIT, FILM PAR FILM.

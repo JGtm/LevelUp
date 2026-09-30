@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // victime_degat_recu_research_test.go — LOT 1 : le bipède (ti=35) réplique-t-il, CÔTÉ VICTIME,

@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // btb2025_abstention_research_test.go — BANC DE DIAGNOSTIC, garde par variable d environnement.

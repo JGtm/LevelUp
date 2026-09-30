@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_oracle117_research_test.go — lot R7 : L'ORACLE 117, temoin de NON-REGRESSION permanent.

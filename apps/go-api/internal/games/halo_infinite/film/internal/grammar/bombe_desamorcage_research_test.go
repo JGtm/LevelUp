@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // bombe_desamorcage_research_test.go — LES POSES SANS EXPLOSION : le desamorcage, s'il existe

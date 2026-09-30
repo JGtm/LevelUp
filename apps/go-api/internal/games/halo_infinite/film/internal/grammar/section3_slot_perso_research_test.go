@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_slot_perso_research_test.go — L'HYPOTHESE DE LA PERSONNALISATION, MISE A L'EPREUVE.

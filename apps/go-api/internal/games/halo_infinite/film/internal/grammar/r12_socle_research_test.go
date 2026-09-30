@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_socle_research_test.go — LE SOCLE DU LOT R12 : un film SANS ARTEFACT ET SANS BORNES.

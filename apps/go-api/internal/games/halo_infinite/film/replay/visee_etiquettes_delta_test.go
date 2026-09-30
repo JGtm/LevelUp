@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_etiquettes_delta_test.go — LOT G : LA CORRELATION SUR LES RECORDS DELTA.

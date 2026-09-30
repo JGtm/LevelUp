@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_i57_tag3_research_test.go — PORTE (a) du lot R9 : la branche `tag == 3` d'i57.

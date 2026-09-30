@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // lettres_stabilite_test.go — LA CLAUSE DE STABILITE du lot « lettres A/B/C des bases » :

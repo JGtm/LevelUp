@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // origine_coil_research_test.go — L'HYPOTHÈSE UTILISATEUR SUR `00007ca9` : UNE BOBINE ?

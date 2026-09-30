@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // assaut_a6_armement_test.go — LA CHASSE A L'ARMEMENT DE LA BOMBE, dans les canaux jamais lus.

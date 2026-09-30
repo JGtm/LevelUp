@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vitesse_filtre_outils_research_test.go — outillage de TestVitesseFiltre (lot R3, plan

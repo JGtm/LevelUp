@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // projectile_owner_helpers_test.go — collecteurs et types de l'instrument

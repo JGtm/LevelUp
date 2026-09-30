@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_socles_research_test.go — LE SOCLE : ses REAPPARITIONS, datees par les creations ti=37.

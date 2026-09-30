@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ctf_research_test.go — INSTRUMENT DE RECHERCHE (v7.5 voie B, décision #2 du master plan).

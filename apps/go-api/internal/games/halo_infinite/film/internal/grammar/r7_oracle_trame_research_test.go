@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_oracle_trame_research_test.go — lot R7, TEMOIN 3 : L'ORACLE DE TRAME, le seul juge

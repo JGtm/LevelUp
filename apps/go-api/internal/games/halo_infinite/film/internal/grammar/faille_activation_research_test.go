@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // faille_activation_research_test.go — R1 : quand un joueur ACTIVE le translocateur (pose la

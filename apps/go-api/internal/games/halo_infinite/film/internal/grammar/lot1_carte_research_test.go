@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_carte_research_test.go — LOT 1 : LA CARTE DES COMPOSANTS DES TRAMES CADREES.

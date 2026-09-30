@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_etiquettes_research_test.go — LOT G : LES ETIQUETTES VIENNENT DESORMAIS DU FILM.

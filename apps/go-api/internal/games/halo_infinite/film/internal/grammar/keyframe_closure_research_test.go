@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // keyframe_closure_research_test.go — L INVENTAIRE DE LA FERMETURE D IMAGE-CLE, PAR ARCHETYPE.

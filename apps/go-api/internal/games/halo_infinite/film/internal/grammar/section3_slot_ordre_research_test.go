@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_slot_ordre_research_test.go — L'ORDRE DES SLOTS, L'EQUIPE, ET LE TEXTE DU 30/08.

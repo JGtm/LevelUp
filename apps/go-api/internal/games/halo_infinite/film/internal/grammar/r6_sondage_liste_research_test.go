@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r6_sondage_liste_research_test.go — lot R6, question B (volet film) : les types

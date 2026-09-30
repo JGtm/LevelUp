@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_tirs_research_test.go — LOT 1 : LES INSTRUMENTS DE RECENSEMENT CORPUS ET DE

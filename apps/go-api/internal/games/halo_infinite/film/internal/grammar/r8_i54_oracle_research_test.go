@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_i54_oracle_research_test.go — LE JUGE de la piste B, canal i54, EN TEMPS FILM.

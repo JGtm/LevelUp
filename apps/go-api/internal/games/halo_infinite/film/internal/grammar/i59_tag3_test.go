@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i59_tag3_test.go — INSTRUMENT DE MESURE de la PHASE E du plan

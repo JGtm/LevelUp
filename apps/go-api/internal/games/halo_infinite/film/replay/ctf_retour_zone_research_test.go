@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ctf_retour_zone_research_test.go — INSTRUMENT DE RECHERCHE : LA ZONE DE RETOUR DU DRAPEAU.

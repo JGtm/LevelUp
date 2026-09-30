@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipe_film_oracle_research_test.go — PHASE 3, LA CONFRONTATION A L'ORACLE EXTERNE.

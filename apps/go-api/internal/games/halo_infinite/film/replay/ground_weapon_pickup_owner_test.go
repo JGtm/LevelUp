@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_pickup_owner_test.go — ITEM 2.5 : L'ORACLE DU RAMASSAGE SUIT LE JOUEUR, PAS LE

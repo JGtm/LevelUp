@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // pickup_report_research_test.go — LA LISTE, ET RIEN D'AUTRE.

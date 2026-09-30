@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // origine_poses_research_test.go — L'ORIGINE D'UNE POSE : DOTATION AU SPAWN ou OBJET DEPLOYE ?

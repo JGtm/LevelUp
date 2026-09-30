@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_ecrivain_research_test.go — LA CARTE DE chunk_00 RELUE CHEZ L'ECRIVAIN.
@@ -63,22 +65,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-)
-
-// Offsets de la tete, lus dans FUN_14299b198. Ils sont en OCTETS du tampon inflate.
-const (
-	s3wRegistreDebut = 0x000008 // le registre commence ici, pas a 0
-	s3wRegistreBits  = 0x659000 // 6 656 000 bits = 832 000 octets = 50 blocs de 0x4100
-	s3wTableDebut    = 0x0CB208 // la table par type
-	s3wTableBits     = 0xF60    // 3 936 bits = 492 octets = 123 u32
-	s3wVersionOff    = 0x0CB3F4 // trois champs de 32 octets
-	s3wBuildOff      = 0x0CB414
-	s3wSaveurOff     = 0x0CB434
-	s3wU32aOff       = 0x0CB454
-	s3wU32bOff       = 0x0CB458
-	s3wBoolOff       = 0x0CB45C // UN bit : tout ce qui suit est decale
-	s3wNomBits       = 0x800    // 256 octets par champ de nom, deux champs
-	s3wCorpsOff      = 0x0CE68C // debut du corps dans le FLUX (FUN_1407ec560) : struct 0x0CE690 - 4
 )
 
 // s3wBitApresBool rend la position en BITS du premier champ qui suit le booleen d'un bit.
@@ -263,20 +249,4 @@ func s3wPlausible(v uint32) bool { return v > 1600000000 && v < 1900000000 }
 // s3wUTC formate un temps Unix.
 func s3wUTC(v uint32) string {
 	return time.Unix(int64(v), 0).UTC().Format("2006-01-02 15:04:05Z")
-}
-
-// s3wChaine lit une chaine ASCII terminee par NUL dans un champ de largeur fixe.
-func s3wChaine(d []byte, off, max int) string {
-	if off < 0 || off >= len(d) {
-		return ""
-	}
-	end := off + max
-	if end > len(d) {
-		end = len(d)
-	}
-	s := string(d[off:end])
-	if i := strings.IndexByte(s, 0); i >= 0 {
-		s = s[:i]
-	}
-	return s
 }

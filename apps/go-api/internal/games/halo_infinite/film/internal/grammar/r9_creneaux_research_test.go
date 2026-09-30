@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_creneaux_research_test.go — DES CRENEAUX A REGARDER DANS LE THEATER, PAS UNE STATISTIQUE.

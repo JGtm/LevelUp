@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_degats_blesse_research_test.go — LOT 1 : DEPARTAGER, dans damage_aftermath (0xC0

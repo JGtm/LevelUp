@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r6_layout117_research_test.go — lot R6 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03,

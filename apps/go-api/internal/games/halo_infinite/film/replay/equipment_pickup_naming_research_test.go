@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_pickup_naming_research_test.go — LOT 4, ÉTAPES 1 ET 2 : NOMMER l'objet des

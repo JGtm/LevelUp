@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_evenements_research_test.go — LA LISTE COMPLETE D'EVENEMENTS SUR UN FILM HORS CATALOGUE.

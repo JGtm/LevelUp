@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_charges_lot6_research_test.go — LE TYPE 36 `action_weapon_fire` (29 038 tetes sur

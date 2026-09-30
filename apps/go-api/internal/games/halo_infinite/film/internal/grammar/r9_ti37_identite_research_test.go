@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_ti37_identite_research_test.go — PORTE (b) du lot R9 : l'entite ti=37 PORTEE, dont

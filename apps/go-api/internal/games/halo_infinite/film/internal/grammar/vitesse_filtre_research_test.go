@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vitesse_filtre_research_test.go — R3 : que coûte le filtre MaxSpeedMPS=100 de la

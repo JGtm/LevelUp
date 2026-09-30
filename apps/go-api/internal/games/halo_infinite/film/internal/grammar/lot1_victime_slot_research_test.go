@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_victime_slot_research_test.go — LOT 1 : RESOUDRE la reference domaine-1 de

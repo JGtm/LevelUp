@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i47_research_test.go — INSTRUMENT DE MESURE de la GRENADE SÉLECTIONNÉE (i47) dans les

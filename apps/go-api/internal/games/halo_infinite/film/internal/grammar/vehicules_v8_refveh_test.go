@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v8_refveh_test.go — INSTRUMENT (lot V8) : LA REFERENCE VEHICULE DES EVENEMENTS

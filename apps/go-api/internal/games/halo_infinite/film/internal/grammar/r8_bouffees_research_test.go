@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_bouffees_research_test.go — LE BALAYAGE SYSTEMATIQUE : quel composant du BIPEDE est

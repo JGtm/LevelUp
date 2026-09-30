@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_ferme114_research_test.go — LOT A4 (cloture) : LA FERMETURE ENTRE LES FRONTIERES

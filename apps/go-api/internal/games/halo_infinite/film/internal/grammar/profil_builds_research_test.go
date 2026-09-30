@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // profil_builds_research_test.go — PHASE 4, QUESTION 2 : LES BUILDS ANCIENS.

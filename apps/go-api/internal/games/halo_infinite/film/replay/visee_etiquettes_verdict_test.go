@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_etiquettes_verdict_test.go — LOT G : LA MESURE, LE CONTROLE, LE VERDICT.

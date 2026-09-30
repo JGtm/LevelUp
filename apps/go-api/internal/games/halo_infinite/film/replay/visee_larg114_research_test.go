@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_larg114_research_test.go — LOT A4 : LES LARGEURS DU VAR-INT DE REFERENCE, PAR FERMETURE

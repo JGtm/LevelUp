@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // manches_bornes_research_test.go — INSTRUMENT DE MESURE des bornes de manche : ce qui separe,

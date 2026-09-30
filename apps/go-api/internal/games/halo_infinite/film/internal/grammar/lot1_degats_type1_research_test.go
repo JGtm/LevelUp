@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_degats_type1_research_test.go — LOT 1 : damage_section_response (TYPE 1, octet 0xC0,
@@ -30,7 +32,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
 )
 
@@ -444,15 +445,4 @@ func TestLot1DegatsType1ArmesLourdes(t *testing.T) {
 	heavyUp := hN >= 20 && lot1Pct(hAny, hN) >= 30
 	t.Logf("VERDICT ARMES LOURDES (lien reel ET lourdes >= 30 %% de coincidence) : %s",
 		lot1Verdict(linkReal && heavyUp))
-}
-
-// lot1IsHeavy : l'arme est-elle une arme lourde/explosif/faisceau (0 % en type 0) ?
-func lot1IsHeavy(name string) bool {
-	for _, k := range []string{"SPNKr", "Hydra", "Skewer", "Ravager", "Shock", "Mangler",
-		"Stalker", "Bulldog", "Fuel Rod", "Rod"} {
-		if strings.Contains(name, k) {
-			return true
-		}
-	}
-	return false
 }

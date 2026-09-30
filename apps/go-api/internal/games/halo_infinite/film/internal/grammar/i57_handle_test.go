@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i57_handle_test.go — INSTRUMENT DE MESURE de la PHASE C du plan

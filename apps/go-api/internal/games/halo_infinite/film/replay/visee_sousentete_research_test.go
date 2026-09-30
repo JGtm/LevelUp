@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_sousentete_research_test.go — LOT A4 (suite) : L'HYPOTHESE DU SOUS-EN-TETE, TESTEE SUR

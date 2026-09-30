@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_chaine_test.go — INSTRUMENT (lot V7) : LES TROIS REFERENCES D'UN EVENEMENT, LUES

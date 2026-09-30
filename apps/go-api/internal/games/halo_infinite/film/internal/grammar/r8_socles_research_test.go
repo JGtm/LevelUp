@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_socles_research_test.go — MESURE 1 du lot R8 : les poses `deployed` de familles

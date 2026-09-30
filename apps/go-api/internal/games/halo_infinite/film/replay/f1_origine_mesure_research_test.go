@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // f1_origine_mesure_research_test.go — LOT F.1 : LA MESURE AVANT / APRES du retrait de la

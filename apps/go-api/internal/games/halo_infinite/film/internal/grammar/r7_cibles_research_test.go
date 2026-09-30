@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_cibles_research_test.go — lot R7 : LA QUESTION DE FOND. Le RÉPULSEUR (type 104

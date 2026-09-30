@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_octet0_research_test.go — LE BIT DE POIDS FAIBLE DU PREMIER OCTET : « variante courte »

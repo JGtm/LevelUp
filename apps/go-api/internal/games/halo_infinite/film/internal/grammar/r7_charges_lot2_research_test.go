@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_charges_lot2_research_test.go — suite de `r7_charges_research_test.go` : la famille des

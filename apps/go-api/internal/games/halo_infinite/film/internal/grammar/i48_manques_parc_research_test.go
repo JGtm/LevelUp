@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i48_manques_parc_research_test.go — INSTRUMENT DE MESURE (pas de production). Lot R2.2

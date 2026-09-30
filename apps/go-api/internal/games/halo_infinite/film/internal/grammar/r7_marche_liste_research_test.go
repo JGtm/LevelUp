@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_marche_liste_research_test.go — lot R7 : LE MARCHEUR DE LISTE et ses temoins.

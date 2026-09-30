@@ -1,3 +1,5 @@
+//go:build research
+
 package mapvar
 
 // socles_candidats_test.go — TOUS LES SOCLES DE LA CARTE, Y COMPRIS CEUX QUE LE FILM NE

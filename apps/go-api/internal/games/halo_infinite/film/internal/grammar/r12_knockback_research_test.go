@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_knockback_research_test.go — LES DEUX TYPES DE POUSSEE, MIS A L'EPREUVE.

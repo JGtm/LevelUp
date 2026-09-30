@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_pickup_manifest_research_test.go — LOT 5, ÉTAPE 1 : NOMMER les ramassages

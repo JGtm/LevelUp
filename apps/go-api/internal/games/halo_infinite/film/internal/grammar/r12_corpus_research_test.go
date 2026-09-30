@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_corpus_research_test.go — LES TETES SEULES, SUR UN CORPUS : le cadrage CERTAIN.

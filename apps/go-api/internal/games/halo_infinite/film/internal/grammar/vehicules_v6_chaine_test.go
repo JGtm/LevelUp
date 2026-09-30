@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v6_chaine_test.go — INSTRUMENT (lot V6) : la GRAMMAIRE D'ENCHAINEMENT de la liste

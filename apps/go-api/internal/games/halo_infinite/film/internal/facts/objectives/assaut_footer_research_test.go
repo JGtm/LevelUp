@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // assaut_footer_research_test.go — L'ARMEMENT DE LA BOMBE DANS LE PIED DE FILM.

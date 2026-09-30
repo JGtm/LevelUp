@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_origin_levitation_research_test.go — LOT 6, RECHERCHE PURE : L'ORIGINE D'UNE PRISE,

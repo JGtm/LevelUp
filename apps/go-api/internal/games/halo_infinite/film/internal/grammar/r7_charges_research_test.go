@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_charges_research_test.go — lot R7 : les LARGEURS DE CHARGE par type, sourcees de

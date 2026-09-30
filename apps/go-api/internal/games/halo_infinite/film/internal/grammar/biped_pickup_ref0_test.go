@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // biped_pickup_ref0_test.go — LOT 2 DU CHANTIER RAMASSAGE : QUI ramasse ? La reference ref0

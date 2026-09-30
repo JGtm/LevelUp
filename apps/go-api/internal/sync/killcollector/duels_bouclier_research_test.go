@@ -1,3 +1,5 @@
+//go:build research
+
 package killcollector
 
 // duels_bouclier_research_test.go — SONDE N°2 : LA MESURE QUI DECIDE DU LOT 7 (duels).

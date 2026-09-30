@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_poussee_research_test.go — LA FACE VICTIME (par. 6 du RAPPORT_R9_REPULSEUR_2026-09-03) :

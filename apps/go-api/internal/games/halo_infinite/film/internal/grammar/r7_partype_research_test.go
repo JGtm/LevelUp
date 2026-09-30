@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_partype_research_test.go — lot R7 : L'ORACLE DE TRAME APPLIQUE TYPE PAR TYPE.

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i54_research_test.go — INSTRUMENT DE MESURE de l'item 1.4 du plan

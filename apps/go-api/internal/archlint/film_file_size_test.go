@@ -435,6 +435,9 @@ func balayerTaillesFilm(t *testing.T) map[string]int {
 			if err != nil {
 				return err
 			}
+			// J12.7 (2026-09-30) : l'en-tete `//go:build research` + ligne vide (2 lignes) n'est
+			// pas du contenu : le tag ne doit pas faire monter un plafond fige. Il est retire du compte.
+			blob = bytes.TrimPrefix(blob, []byte("//go:build research\n\n"))
 			out[filepath.ToSlash(rel)] = bytes.Count(blob, []byte("\n"))
 			return nil
 		})

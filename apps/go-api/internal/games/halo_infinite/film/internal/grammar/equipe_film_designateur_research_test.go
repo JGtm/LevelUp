@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipe_film_designateur_research_test.go — PHASE 3, LA MESURE ET SES CONTROLES.

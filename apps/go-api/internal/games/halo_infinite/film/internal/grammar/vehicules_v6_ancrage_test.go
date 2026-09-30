@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v6_ancrage_test.go — INSTRUMENT (lot V6) : L'ANCRAGE AVAL.

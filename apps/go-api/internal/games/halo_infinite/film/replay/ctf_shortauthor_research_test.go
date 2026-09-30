@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ctf_shortauthor_research_test.go — INSTRUMENT DE RECHERCHE #6 (v7.5, colonne ①).

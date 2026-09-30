@@ -1,3 +1,5 @@
+//go:build research
+
 package killcollector
 
 // duels_bouclier_mesures_test.go — les mesures A, O, B, temoin et discrimination de la sonde

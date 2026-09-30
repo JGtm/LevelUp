@@ -1,3 +1,5 @@
+//go:build research
+
 // LE BALAYAGE DE `param_4` A DISPARU AVEC LA GRANDEUR (lot 5.1.7, 2026-09-18) : `param_4` est
 // le niveau que le registre du film porte par composant (`Archetype.Level`), il se LIT et ne
 // se force plus. Il n y a plus d axe a balayer ici.

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // ti40_morts_alignement_research_test.go — QUELLE VALEUR DU PROFIL DEPLACE LES MORTS DE VEHICULE.

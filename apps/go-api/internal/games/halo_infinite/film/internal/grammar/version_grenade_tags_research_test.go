@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // version_grenade_tags_research_test.go — INSTRUMENT H.2 : LE CALQUE « LANCERS DE GRENADE »,

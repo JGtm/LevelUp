@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_pickup_link_research_test.go — LOT 4, ÉTAPE 3 : LE LIEN OBJET-AU-SOL ↔ RAMASSAGE

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_i59_tags_research_test.go — LA PIECE QUI MANQUAIT : les TAGS d'i59 et d'i57.

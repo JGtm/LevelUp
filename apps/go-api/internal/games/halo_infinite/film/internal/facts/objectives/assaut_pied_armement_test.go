@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // assaut_pied_armement_test.go — LE PIED DE FILM D'ASSAUT : RECENSEMENT DES INDICES, puis la

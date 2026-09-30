@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_charges_lot5_research_test.go — LES TYPES CIBLES : equipement, repulseur, propulseur.

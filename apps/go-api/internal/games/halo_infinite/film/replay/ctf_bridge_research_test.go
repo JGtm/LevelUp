@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ctf_bridge_research_test.go — INSTRUMENT DE RECHERCHE #2 (v7.5 voie B).

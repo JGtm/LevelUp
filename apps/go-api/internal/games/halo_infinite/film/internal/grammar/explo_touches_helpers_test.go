@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // explo_touches_helpers_test.go — collecteurs, types et petits utilitaires de l'instrument

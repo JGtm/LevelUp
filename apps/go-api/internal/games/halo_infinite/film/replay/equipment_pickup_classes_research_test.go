@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_pickup_classes_research_test.go — LOT 4, ÉTAPE 2 : QU'EST-CE QUI SÉPARE LA

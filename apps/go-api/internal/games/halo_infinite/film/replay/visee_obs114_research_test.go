@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_obs114_research_test.go — LOT A2 (suite) : INSTRUMENT D'OBSERVATION DU TYPE 114, OUVERT

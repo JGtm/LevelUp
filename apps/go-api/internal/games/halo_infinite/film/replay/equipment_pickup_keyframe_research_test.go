@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_pickup_keyframe_research_test.go — VOLET B : nommer les non-armes par l'ETAT

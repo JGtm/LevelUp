@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // t0_mouvement_research_test.go — LE COUP D'ENVOI SE LIT-IL DANS LE PREMIER MOUVEMENT ?

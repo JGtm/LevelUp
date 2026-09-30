@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_monde_chrono_research_test.go — LOT 1 : la resolution ref -> slot -> bipede de
@@ -24,11 +26,6 @@ import (
 )
 
 // lot1chBases est PRODUCTIONISE (resolution slot base-512) : weapon_hits_decode.go.
-
-// lot1chReferenceBase : base de la bande bipede etablie par l'instrument A (calibration par
-// la vitalite, base a couverture max = 512 sur les trois films temoins). Sert de reference
-// commune pour le AVANT/APRES quand l'argmax "monde" tombe sur une base voisine (bande contigue).
-const lot1chReferenceBase = 512
 
 // lot1DamageRefs rend les index bruts des deux references domaine-1 d'un payload 0xC0, et
 // ok=false si le paquet n'est pas un damage_aftermath (type 0).

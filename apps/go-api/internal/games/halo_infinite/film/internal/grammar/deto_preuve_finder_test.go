@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // deto_preuve_finder_test.go — CHERCHE dans le corpus les films les plus riches en tirs de

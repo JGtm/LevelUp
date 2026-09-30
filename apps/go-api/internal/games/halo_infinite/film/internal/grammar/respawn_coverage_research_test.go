@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // respawn_coverage_research_test.go — LA COUVERTURE DU COMPTEUR DE RESPAWN, voie bande

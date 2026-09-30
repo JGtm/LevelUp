@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v6_marche_test.go — INSTRUMENT (lot V6) : LA MARCHE DE LA LISTE, PAR LA SIGNATURE.

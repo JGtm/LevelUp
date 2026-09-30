@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // assaut_pied_classement_test.go — NOMMER LES RECOMPENSES D'ASSAUT : detonation d'abord, pose ensuite.

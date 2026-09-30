@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_typage_trame_research_test.go — LOTS D3 et D4 : CE QUE LE PREMIER OCTET D'UNE TRAME EST

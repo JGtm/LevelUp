@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // bombe_b3_desaccords_test.go — LES QUATRE DÉSACCORDS DE V1, DÉPARTAGÉS PAR LA POSITION.
@@ -44,14 +46,6 @@ import (
 
 // b3Films : les trois films porteurs des quatre désaccords de B2-V1.
 var b3Films = []string{"1c01e34f", "3d58eb37", "69b16f5d"}
-
-// b3MecheMS rend la mèche mesurée du film (Husky Raid a la sienne).
-func b3MecheMS(id string) int {
-	if id == "1c01e34f" {
-		return 5100
-	}
-	return b2MecheMS
-}
 
 const (
 	b3FenAvantMS = 2500 // fenêtre d'immobilité avant la pose

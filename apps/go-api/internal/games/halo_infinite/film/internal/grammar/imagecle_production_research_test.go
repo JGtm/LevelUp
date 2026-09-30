@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // imagecle_production_research_test.go — PHASE 5a, OBJECTIF 4 : CE QUE LA PRODUCTION DERAILLE

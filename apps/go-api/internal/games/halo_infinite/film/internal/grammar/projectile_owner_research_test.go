@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // projectile_owner_research_test.go — LOT 1 : RELIER UN PROJECTILE A SON TIREUR PAR UN CHAMP

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // e191_origine_mesure_research_test.go — LOT 1.9.1 : LA MESURE AVANT DE CODER (le contexte).

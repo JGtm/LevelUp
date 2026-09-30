@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // loadout_prediction_research_test.go — LA MESURE QUI COMPTE : sait-on, a tout instant, ce
