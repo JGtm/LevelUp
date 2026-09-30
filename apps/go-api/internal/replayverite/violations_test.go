@@ -7,11 +7,11 @@ import "testing"
 func TestSaut_AuDelaDuPlafondSaufTranslocationEtPorte(t *testing.T) {
 	d := documentJuste()
 	d.Tracks[0].Points = []Point{{T: 10, X: 0, Y: 0}, {T: 11, X: 20, Y: 0}, {T: 12, X: 20.5, Y: 0}}
-	b := Noter(d, faitsJustes())
+	b := Noter(d, faitsJustes(), nil)
 	exigerViolations(t, b, ViolSaut, 1)
 
 	d.Translocations = []Translocation{{T: 12}}
-	b = Noter(d, faitsJustes())
+	b = Noter(d, faitsJustes(), nil)
 	exigerViolations(t, b, ViolSaut, 0)
 	if b.Violations[ViolSaut].Exemptees != 1 {
 		t.Errorf("exemptees = %d, veut 1", b.Violations[ViolSaut].Exemptees)
@@ -21,10 +21,10 @@ func TestSaut_AuDelaDuPlafondSaufTranslocationEtPorte(t *testing.T) {
 	porte := portesDeCarteMesurees[len(portesDeCarteMesurees)-1]
 	d.Tracks[0].Points[1] = Point{T: 11, X: porte.centre[0] + 1, Y: porte.centre[1], Z: ptr(porte.centre[2])}
 	d.Tracks[0].Points[2] = Point{T: 12, X: porte.centre[0] + 1.5, Y: porte.centre[1], Z: ptr(porte.centre[2])}
-	exigerViolations(t, Noter(d, faitsJustes()), ViolSaut, 1) // carte inconnue : pas d'exemption
+	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolSaut, 1) // carte inconnue : pas d'exemption
 	faits := faitsJustes()
 	faits.MapID = porte.mapID
-	exigerViolations(t, Noter(d, faits), ViolSaut, 0)
+	exigerViolations(t, Noter(d, faits, nil), ViolSaut, 0)
 }
 
 // TestHorsEmprise_ObjetsEtVehiculesAuDelaDeLaMarge : un objet pose a plus de la marge de
@@ -36,7 +36,7 @@ func TestHorsEmprise_ObjetsEtVehiculesAuDelaDeLaMarge(t *testing.T) {
 	d.WeaponPads = []Objet{{X: 50, Y: 50}}
 	d.Vehicles = []Vehicule{{Slot: 700, Samples: []Echantillon{{T: 5, X: -500, Y: 0}, {T: 6, X: 5, Y: 5}}}}
 	d.Shots = append(d.Shots, Action{T: 60, Slot: ptr(512)})
-	exigerViolations(t, Noter(d, faitsJustes()), ViolHorsEmprise, 3)
+	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolHorsEmprise, 3)
 }
 
 // TestHorsVie_ActionSurUnSlotSansVie : une action hors de toute vie de son slot, au-dela de la
@@ -48,15 +48,15 @@ func TestHorsVie_ActionSurUnSlotSansVie(t *testing.T) {
 	d.Pickups = []Action{{T: 120, Slot: ptr(513)}}
 	d.WeaponChanges = []Action{{T: 301 + toleranceVieImages, Slot: ptr(514)}}
 	d.Abilities = []Action{{T: 225, Slot: ptr(513)}}
-	d.EquipmentChanges = []Action{{T: 10}}                       // sans slot : non jugeable, ignore
-	exigerViolations(t, Noter(d, faitsJustes()), ViolHorsVie, 4) // tir @130, grenade slot 999, changement @306, capacite @225
+	d.EquipmentChanges = []Action{{T: 10}}                            // sans slot : non jugeable, ignore
+	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolHorsVie, 4) // tir @130, grenade slot 999, changement @306, capacite @225
 }
 
 // TestDeuxCorps_VieQuiRecouvreUneAutre : deux vies d'un meme xuid qui se recouvrent.
 func TestDeuxCorps_VieQuiRecouvreUneAutre(t *testing.T) {
 	d := documentJuste()
 	d.Tracks = append(d.Tracks, piste(520, "111", 90, 120))
-	b := Noter(d, faitsJustes())
+	b := Noter(d, faitsJustes(), nil)
 	exigerViolations(t, b, ViolDeuxCorps, 1) // [90,120] recouvre [0,100], pas [150,300]
 }
 
@@ -70,7 +70,7 @@ func TestAbsent_PresenceEtVieDuPorteur(t *testing.T) {
 	d.Objectives = []ActionObjectif{{T: 125, XUID: "111", Stat: "kills"}, {T: 280, XUID: "222", Stat: "kills"}}
 	d.SkullCarries = []Portage{{XUID: "111", T0: 110, T1: 160}}
 	d.FlagCarries = []Drapeau{{Spans: []EtatDrapeau{{State: etatDrapeauPorte, T0: 20, T1: 90, XUID: ptr("111")}, {State: "dropped", T0: 91, T1: 95}}}}
-	exigerViolations(t, Noter(d, faitsJustes()), ViolAbsent, 3)
+	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolAbsent, 3)
 }
 
 // TestTrajet_PassagerLoinDuVehicule : un passager a plus de rayonTrajetM de son vehicule a la meme
@@ -81,7 +81,7 @@ func TestTrajet_PassagerLoinDuVehicule(t *testing.T) {
 	d.Vehicles = []Vehicule{{Slot: 700,
 		Samples: []Echantillon{{T: 10, X: 1, Y: 0}, {T: 20, X: rayonTrajetM + 1, Y: 0}, {T: 25, X: 50, Y: 0}, {T: 40, X: 50, Y: 0}},
 		Rides:   []Trajet{{T0: 5, T1: 35, Slot: 512}}}}
-	exigerViolations(t, Noter(d, faitsJustes()), ViolTrajetLoin, 1)
+	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolTrajetLoin, 1)
 }
 
 // TestIdentite_CompteursPublies : V-7 somme les desaccords publies.
@@ -89,7 +89,7 @@ func TestIdentite_CompteursPublies(t *testing.T) {
 	d := documentJuste()
 	d.Coverage.Bridge = &CouvPont{Discordant: 2, SlotCollisions: 1}
 	d.Coverage.Seats = &CouvSieges{Chevauchements: 1}
-	exigerViolations(t, Noter(d, faitsJustes()), ViolIdentite, 4)
+	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolIdentite, 4)
 }
 
 // TestMortSansVie_IncrementLoinDeToutesLesFinsDeVie : une mort du statborg loin de toute fin de vie
@@ -98,7 +98,7 @@ func TestMortSansVie_IncrementLoinDeToutesLesFinsDeVie(t *testing.T) {
 	d := documentJuste()
 	d.ScoreTimeline.Players[0].Deaths = serie(Pas{0, 0}, Pas{100 + toleranceMortImages, 1}, Pas{220, 2})
 	d.ScoreTimeline.Players = append(d.ScoreTimeline.Players, ScoreJoueur{XUID: "333", Deaths: serie(Pas{50, 1})})
-	exigerViolations(t, Noter(d, faitsJustes()), ViolMortSansVie, 1)
+	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolMortSansVie, 1)
 }
 
 // TestPreuves_FermetureContradictionsVerdicts : P-1, P-2 et le rang des verdicts P-4.
@@ -106,7 +106,7 @@ func TestPreuves_FermetureContradictionsVerdicts(t *testing.T) {
 	d := documentJuste()
 	d.Coverage.Keyframes = &CouvImagesCles{Refutations: 2, ContradictoryProofs: 1}
 	d.Coverage.Verdict = map[string]string{"a": "nominal", "b": "partiel : moins des deux tiers", "c": "non publiable : x"}
-	p := Noter(d, faitsJustes()).Preuves
+	p := Noter(d, faitsJustes(), nil).Preuves
 	if p[PreuveFermeture].Valeur != 80 || !p[PreuveFermeture].PlusEstMieux {
 		t.Errorf("P-1 = %+v", p[PreuveFermeture])
 	}

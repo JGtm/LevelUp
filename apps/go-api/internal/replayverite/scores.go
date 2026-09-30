@@ -182,3 +182,40 @@ func ajouterAuCamp(parCamp *[2]int, camp map[string]int, xuid string, n int) {
 	}
 	parCamp[c] += n
 }
+
+// scorePersonnel : O-S3, le score personnel final du statborg (`scoreTimeline.players[].score`)
+// contre `personal_score` de la ligne de match (`score` quand il manque : la synchro remplit les
+// deux colonnes depuis le meme `CoreStats.PersonalScore`, internal/sync/transforms.go). NON
+// circulaire, y compris pour un slot nomme par le triplet : le triplet apparie frags, morts et
+// assistances, jamais le score.
+//
+// Ligne de base connue : le score publie ne redescend jamais (les decrements de -100 sont ecartes,
+// `film/replay/document_score.go`) ; un joueur qui s'est suicide ou a trahi porte donc un FP
+// stable. Seul le delta decide.
+func scorePersonnel(d *Document, oracle domain.MatchOracle) Score {
+	pub := map[string]int{}
+	if d.ScoreTimeline != nil {
+		for _, p := range d.ScoreTimeline.Players {
+			pub[p.XUID] = p.Score.Finale()
+		}
+	}
+	var s Score
+	off := map[string]bool{}
+	for _, o := range oracle.Players {
+		v := o.PersonalScore
+		if v == nil {
+			v = o.Score
+		}
+		if v == nil {
+			continue // colonne NULL : pas d'oracle pour ce joueur, ni vrai ni faux
+		}
+		off[o.XUID] = true
+		s.noter(o.XUID, pub[o.XUID], *v)
+	}
+	for x, v := range pub {
+		if !off[x] {
+			s.noter(x, v, 0)
+		}
+	}
+	return s
+}

@@ -39,6 +39,8 @@ func TestLancer_CodesDeSortie(t *testing.T) {
 	avant := ecrire(t, dir, "a.json", artefactMinimal(false))
 	apres := ecrire(t, dir, "b.json", artefactMinimal(true))
 	faits := ecrire(t, dir, "f.facts.json", faitsMinimaux)
+	oracle := ecrire(t, dir, "o.oracle.json", `{"matchId":"m-1","players":[{"xuid":"111","personalScore":0}]}`)
+	vide := ecrire(t, dir, "v.oracle.json", `{"matchId":"m-1"}`)
 	cas := []struct {
 		nom  string
 		args []string
@@ -48,6 +50,8 @@ func TestLancer_CodesDeSortie(t *testing.T) {
 		{"identique", []string{"-avant", avant, "-apres", avant, "-faits", faits, "-temoin", "t1"}, codeOK, "BANC DE VERITE — t1 : ok"},
 		{"vie en trop", []string{"-avant", avant, "-apres", apres, "-faits", faits}, codeVerdict, "[FAUX] V-4 deux corps"},
 		{"sans faits", []string{"-avant", avant, "-apres", apres}, codeUsage, ""},
+		{"avec oracle", []string{"-avant", avant, "-apres", avant, "-faits", faits, "-oracle", oracle}, codeOK, "O-S3 score personnel"},
+		{"oracle vide", []string{"-avant", avant, "-apres", avant, "-faits", faits, "-oracle", vide}, codeUsage, ""},
 	}
 	for _, k := range cas {
 		var out, errw bytes.Buffer

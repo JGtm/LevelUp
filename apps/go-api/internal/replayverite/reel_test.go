@@ -102,7 +102,7 @@ func lireFaitsReels(t *testing.T) replaybuild.FactsFile {
 func TestReel_BulletinFige(t *testing.T) {
 	d := lireArtefactReel(t)
 	faits := lireFaitsReels(t)
-	got := decrireBulletin(Noter(d, faits.MatchFacts))
+	got := decrireBulletin(Noter(d, faits.MatchFacts, nil))
 	if os.Getenv("LEVELUP_UPDATE_REPLAYVERITE_GOLDEN") == "1" {
 		if err := os.WriteFile(bulletinReel, []byte(got), 0o600); err != nil {
 			t.Fatal(err)
@@ -120,7 +120,7 @@ func TestReel_BulletinFige(t *testing.T) {
 // TestReel_ComparaisonAvecSoiEstOk, puis chaque abimage d'un artefact reel rend le verdict attendu.
 func TestReel_AbimagesDUnArtefactReel(t *testing.T) {
 	faits := lireFaitsReels(t).MatchFacts
-	ref := Noter(lireArtefactReel(t), faits)
+	ref := Noter(lireArtefactReel(t), faits, nil)
 	if c := Comparer(ref, ref, nil); c.Statut != StatutOK {
 		t.Fatalf("un artefact contre lui-meme : %s %+v", c.Statut, c.Bloquants())
 	}
@@ -139,7 +139,7 @@ func TestReel_AbimagesDUnArtefactReel(t *testing.T) {
 	for _, k := range cas {
 		d := lireArtefactReel(t)
 		k.abimer(d)
-		c := Comparer(ref, Noter(d, faits), nil)
+		c := Comparer(ref, Noter(d, faits, nil), nil)
 		if c.Statut != k.veut {
 			t.Errorf("%s : statut %s, veut %s", k.nom, c.Statut, k.veut)
 			continue

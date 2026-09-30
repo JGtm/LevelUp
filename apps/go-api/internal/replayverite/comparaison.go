@@ -10,6 +10,8 @@ package replayverite
 //	ok      rien de cela. Les gains s'affichent, ils ne decident rien.
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 )
@@ -270,4 +272,18 @@ func union[V any](a, b map[string]V) map[string]bool {
 		out[k] = true
 	}
 	return out
+}
+
+// LireRegistre desserialise le registre des replis ecrit par `replay-verite -registre`
+// (nom -> compteur branche). Un registre vide est refuse : il ferait passer tout repli nouveau pour
+// « absent du registre d'avant » sans le dire.
+func LireRegistre(blob []byte) (RegistreReplis, error) {
+	var reg RegistreReplis
+	if err := json.Unmarshal(blob, &reg); err != nil {
+		return nil, fmt.Errorf("replayverite : registre des replis illisible : %w", err)
+	}
+	if len(reg) == 0 {
+		return nil, errors.New("replayverite : registre des replis vide")
+	}
+	return reg, nil
 }

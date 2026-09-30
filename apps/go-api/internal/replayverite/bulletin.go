@@ -19,6 +19,7 @@ const (
 	ScoreCamps      = "O-S1 score par camp"
 	ScoreMarque     = "O-S2 actions de marque par camp"
 	ScoreEquipes    = "O-T1 equipes du roster"
+	ScorePersonnel  = "O-S3 score personnel"
 	PreuveFermeture = "P-1 paquets fermes au bit pres"
 	PreuveContradic = "P-2 preuves contradictoires (image-cle)"
 	PreuveVerdicts  = "P-4 verdicts de couverture"
@@ -90,11 +91,13 @@ type Bulletin struct {
 	Replis map[string]int
 }
 
-// Noter juge un artefact contre les faits du match qui l'ont cuit.
+// Noter juge un artefact contre les faits du match qui l'ont cuit, et contre l'oracle officiel
+// quand il est fourni (nil = les scores qui l'attendent sont absents du bulletin).
 //
 // Pur : aucune E/S. Les faits sont ceux de la cuisson (`domain.MatchFacts`) ; ils servent d'oracle
-// SAUF la ou la methode publiee dit qu'ils ont servi d'appariement (cf. doc.go).
-func Noter(d *Document, faits domain.MatchFacts) Bulletin {
+// SAUF la ou la methode publiee dit qu'ils ont servi d'appariement (cf. doc.go). L'oracle
+// (`domain.MatchOracle`) n'est jamais une entree de la cuisson : il n'est circulaire nulle part.
+func Noter(d *Document, faits domain.MatchFacts, oracle *domain.MatchOracle) Bulletin {
 	b := Bulletin{
 		MatchID:    d.MatchID,
 		Scores:     map[string]Score{},
@@ -105,6 +108,9 @@ func Noter(d *Document, faits domain.MatchFacts) Bulletin {
 	noterKDA(d, faits, b.Scores)
 	noterVies(d, faits, b.Scores)
 	noterCamps(d, faits, b.Scores)
+	if oracle != nil {
+		b.Scores[ScorePersonnel] = scorePersonnel(d, *oracle)
+	}
 	noterPreuves(d, b.Preuves)
 	b.Violations[ViolSaut] = violationsSauts(d, faits.MapID)
 	b.Violations[ViolHorsEmprise] = violationsHorsEmprise(d)

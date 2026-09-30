@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replayverite"
@@ -39,8 +40,8 @@ func main() {
 
 // options regroupe les drapeaux de l'outil.
 type options struct {
-	avant, apres, faits, temoin, registreAvant string
-	registre                                   bool
+	avant, apres, faits, oracle, temoin, registreAvant string
+	registre                                           bool
 }
 
 func lancer(args []string, out, errw io.Writer) int {
@@ -50,6 +51,7 @@ func lancer(args []string, out, errw io.Writer) int {
 	fs.StringVar(&o.avant, "avant", "", "artefact de reference (revision d'avant)")
 	fs.StringVar(&o.apres, "apres", "", "artefact juge (revision d'apres)")
 	fs.StringVar(&o.faits, "faits", "", "faits du match (<short8>.facts.json, ceux de la cuisson)")
+	fs.StringVar(&o.oracle, "oracle", "", "oracle officiel (<short8>.oracle.json, replay-facts-export --oracle) ; vide = scores O-S3 absents")
 	fs.StringVar(&o.temoin, "temoin", "", "nom du temoin dans le rapport (defaut : matchId)")
 	fs.StringVar(&o.registreAvant, "registre-avant", "", "registre des replis de la revision d'avant (-registre)")
 	fs.BoolVar(&o.registre, "registre", false, "ecrire le registre des replis de CETTE revision (JSON) et sortir")
@@ -83,17 +85,23 @@ func juger(o options) (replayverite.Comparaison, string, error) {
 	if err != nil {
 		return replayverite.Comparaison{}, "", err
 	}
-	avant, err := lireDocument(o.avant)
+	avant, err := lireAvec(o.avant, replayverite.LireDocument)
 	if err != nil {
 		return replayverite.Comparaison{}, "", err
 	}
-	apres, err := lireDocument(o.apres)
+	apres, err := lireAvec(o.apres, replayverite.LireDocument)
 	if err != nil {
 		return replayverite.Comparaison{}, "", err
 	}
 	var reg replayverite.RegistreReplis
 	if o.registreAvant != "" {
-		if reg, err = lireRegistre(o.registreAvant); err != nil {
+		if reg, err = lireAvec(o.registreAvant, replayverite.LireRegistre); err != nil {
+			return replayverite.Comparaison{}, "", err
+		}
+	}
+	var oracle *domain.MatchOracle
+	if o.oracle != "" {
+		if oracle, err = lireAvec(o.oracle, replayverite.LireOracle); err != nil {
 			return replayverite.Comparaison{}, "", err
 		}
 	}
@@ -101,32 +109,23 @@ func juger(o options) (replayverite.Comparaison, string, error) {
 	if temoin == "" {
 		temoin = apres.MatchID
 	}
-	c := replayverite.Comparer(replayverite.Noter(avant, faits.MatchFacts), replayverite.Noter(apres, faits.MatchFacts), reg)
+	c := replayverite.Comparer(replayverite.Noter(avant, faits.MatchFacts, oracle),
+		replayverite.Noter(apres, faits.MatchFacts, oracle), reg)
 	return c, temoin, nil
 }
 
-func lireDocument(path string) (*replayverite.Document, error) {
+// lireAvec lit un fichier et le decode par le lecteur du banc.
+func lireAvec[T any](path string, lire func([]byte) (T, error)) (T, error) {
+	var zero T
 	blob, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l'operateur
 	if err != nil {
-		return nil, fmt.Errorf("artefact %s : %w", path, err)
+		return zero, fmt.Errorf("%s : %w", path, err)
 	}
-	d, err := replayverite.LireDocument(blob)
+	v, err := lire(blob)
 	if err != nil {
-		return nil, fmt.Errorf("artefact %s : %w", path, err)
+		return zero, fmt.Errorf("%s : %w", path, err)
 	}
-	return d, nil
-}
-
-func lireRegistre(path string) (replayverite.RegistreReplis, error) {
-	blob, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l'operateur
-	if err != nil {
-		return nil, fmt.Errorf("registre %s : %w", path, err)
-	}
-	var reg replayverite.RegistreReplis
-	if err := json.Unmarshal(blob, &reg); err != nil {
-		return nil, fmt.Errorf("registre %s : %w", path, err)
-	}
-	return reg, nil
+	return v, nil
 }
 
 // ecrireRegistre ecrit, pour CETTE revision, si le compteur de chaque repli est branche : l'entree

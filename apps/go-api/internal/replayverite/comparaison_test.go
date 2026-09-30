@@ -6,7 +6,7 @@ import (
 )
 
 func comparerDocs(avant, apres *Document, reg RegistreReplis) Comparaison {
-	return Comparer(Noter(avant, faitsJustes()), Noter(apres, faitsJustes()), reg)
+	return Comparer(Noter(avant, faitsJustes(), nil), Noter(apres, faitsJustes(), nil), reg)
 }
 
 func exigerConstat(t *testing.T, c Comparaison, prefixe string, sens Statut) Constat {
