@@ -29,8 +29,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -142,7 +144,7 @@ func copierArbre(src, dst string) error {
 func copierArbreCompte(src, dst string) (int, error) {
 	info, err := os.Stat(src)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return 0, nil
 		}
 		return 0, err

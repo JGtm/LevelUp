@@ -29,7 +29,9 @@ package grammar
 //	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestGameEntitiesPhase0$' -timeout 30m -v
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -163,7 +165,7 @@ func gameSummary(t *testing.T, short string, st GameChainStats, recs []GameEntit
 func gameAppendLine(t *testing.T, path, header, line string) {
 	t.Helper()
 	_, err := os.Stat(path)
-	fresh := os.IsNotExist(err)
+	fresh := errors.Is(err, fs.ErrNotExist)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		t.Fatalf("synthese %s : %v", path, err)

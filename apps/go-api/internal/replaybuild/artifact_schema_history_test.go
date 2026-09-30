@@ -35,6 +35,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -140,7 +141,7 @@ func TestLeDepotRefuseChaqueSchemaAnterieur(t *testing.T) {
 			if !errors.Is(err, domain.ErrBuildArtifactInvalid) {
 				t.Fatalf("un depot au schema %d rend %v, attendu ErrBuildArtifactInvalid", v, err)
 			}
-			if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
+			if _, statErr := os.Stat(path); !errors.Is(statErr, fs.ErrNotExist) {
 				t.Errorf("un depot refuse au schema %d a tout de meme ecrit %s", v, path)
 			}
 		})
