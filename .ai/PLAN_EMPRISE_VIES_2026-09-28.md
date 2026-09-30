@@ -15,7 +15,9 @@
 > périmètre, découvertes consignées au §7). Statuts : `[x]` fait, `[~]` couvert ailleurs (réf),
 > `[!]` non fait (justification écrite). Aucune case vide à la clôture d'un lot.
 >
-> Statut : **GO utilisateur le 2026-09-28** (« oui go »). Exécution en cours.
+> Statut : **GO utilisateur le 2026-09-28** (« oui go »). **Code livré le 2026-09-30** dans
+> `feat/v75` (`511396d60`, CI verte au niveau job). Restent : V5.5 gate visuel par l'utilisateur,
+> V5.6 rattrapage prod par l'utilisateur après le déploiement de la v7.5.
 
 ## 0. Hors périmètre
 
@@ -1208,7 +1210,10 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
   gauche du trait du radar, ce que le gate visuel dira.
 - Ordre des items suivants (superviseur, 2026-09-30) : V5.7 (notes de version) passe AVANT la
   fusion V5.4, pour que la fusion porte ses notes ; aucun autre changement d'ordre.
-- [ ] V5.4 Fusion `wt/emprise` → `feat/v75` (sur accord), CI verte au niveau job.
+- [x] V5.4 Fusion `wt/emprise` → `feat/v75` (sur accord), CI verte au niveau job.
+  → CI verte au niveau job sur `511396d60` : CI push 36747409603 et pull_request 36747424695
+  (tous les jobs `success`, E2E ignoré comme d'habitude), Secrets, ADR 0021 Gate et Deploy
+  Pre-Check verts.
   2026-09-30 (superviseur) : avant fusion, `go vet ./...` et la suite d'intégration complète
   `-tags=integration -p 1` rejouée en trois morceaux sur `c20d3a1b6` (191 paquets `ok`, 0 échec).
   Fusion en avance rapide, poussée (`549d7f7f0..c20d3a1b6`, pre-push vert). CI du push (run
