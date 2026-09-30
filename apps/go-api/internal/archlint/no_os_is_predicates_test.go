@@ -20,9 +20,9 @@ package archlint
 // # PERIMETRE
 //
 // `internal/games/halo_infinite/film/`, `internal/replaybuild/`, `internal/sync/killcollector/`,
-// `cmd/replay-*`. Sont EXCLUS, par perimetre et non par allowlist, les instruments de recherche
-// (`*_research_test.go` et `film/research/`) : ils changent de tag de build au jalon J12.7 et
-// seront migres avec lui ; le jour ou ce tag est pose, retirer cette exclusion.
+// `cmd/replay-*`, instruments de recherche compris (`film/research/` et `*_research_test.go`, compiles
+// sous `-tags=research`) : le balayage lit l AST sans compiler, le tag de build est sans effet. Aucune
+// exclusion.
 //
 // # LA MUTATION QUI DOIT ROUGIR
 //
@@ -71,12 +71,9 @@ func TestAucunPredicatOSIsDansLePerimetreDuFilm(t *testing.T) {
 			rel, _ := filepath.Rel(racine, p)
 			rel = filepath.ToSlash(rel)
 			if d.IsDir() {
-				if rel == "internal/games/halo_infinite/film/research" {
-					return filepath.SkipDir
-				}
 				return nil
 			}
-			if !strings.HasSuffix(d.Name(), ".go") || strings.HasSuffix(d.Name(), "_research_test.go") {
+			if !strings.HasSuffix(d.Name(), ".go") {
 				return nil
 			}
 			fichiers++

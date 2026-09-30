@@ -32,10 +32,7 @@ package archlint
 // `*_gate_test.go` (troisième contrôle).
 
 import (
-	"io/fs"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -73,47 +70,24 @@ func contrainteResearch(texte string) bool {
 	return false
 }
 
-// balayerGo appelle `visiter` pour CHAQUE `.go` du module (mêmes filtres de dossiers que
-// `balayerTests`).
-func balayerGo(t *testing.T, visiter func(rel, texte string)) {
+// balayerGoTexte appelle `visiter` pour CHAQUE `.go` du module, avec son contenu. S appuie sur
+// `balayerGo` (doc_chemins_ai_test.go) : un seul parcours.
+func balayerGoTexte(t *testing.T, visiter func(rel, texte string)) {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici)))
-	err := filepath.WalkDir(goAPIRoot, func(chemin string, d fs.DirEntry, err error) error {
+	goAPI, _ := racinesDuModule(t)
+	balayerGo(t, goAPI, func(rel, chemin string) {
+		buf, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
 		if err != nil {
-			return err
+			t.Fatalf("lecture de %s : %v", rel, err)
 		}
-		if d.IsDir() {
-			nom := d.Name()
-			if chemin != goAPIRoot && (dossiersInvisiblesAuGo[nom] ||
-				strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(chemin, ".go") {
-			return nil
-		}
-		buf, rerr := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
-		if rerr != nil {
-			return rerr
-		}
-		rel, _ := filepath.Rel(goAPIRoot, chemin)
-		visiter(filepath.ToSlash(rel), string(buf))
-		return nil
+		visiter(rel, string(buf))
 	})
-	if err != nil {
-		t.Fatalf("parcours du module (%s) : %v", goAPIRoot, err)
-	}
 }
 
 // TestInstrumentsResearchSontTagues — chaque `*_research_test.go` du MODULE porte le tag.
 func TestInstrumentsResearchSontTagues(t *testing.T) {
 	vus := 0
-	balayerGo(t, func(rel, texte string) {
+	balayerGoTexte(t, func(rel, texte string) {
 		if !strings.HasSuffix(rel, "_research_test.go") {
 			return
 		}
@@ -131,7 +105,7 @@ func TestInstrumentsResearchSontTagues(t *testing.T) {
 
 // TestFichierTagueResearchEstUnInstrument — l'autre sens : le tag ne cache pas de production.
 func TestFichierTagueResearchEstUnInstrument(t *testing.T) {
-	balayerGo(t, func(rel, texte string) {
+	balayerGoTexte(t, func(rel, texte string) {
 		if !contrainteResearch(texte) || strings.HasSuffix(rel, "_test.go") {
 			return
 		}
@@ -161,7 +135,7 @@ const gardesPlancher = 40
 // TestGardeNeCachePasDerriereResearch — une garde ne sort jamais du build par défaut.
 func TestGardeNeCachePasDerriereResearch(t *testing.T) {
 	vus := 0
-	balayerGo(t, func(rel, texte string) {
+	balayerGoTexte(t, func(rel, texte string) {
 		for _, suffixe := range suffixesGarde {
 			if !strings.HasSuffix(rel, suffixe) {
 				continue
