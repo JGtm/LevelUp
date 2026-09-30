@@ -37,6 +37,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"levelup/go-api/internal/domain/title"
 )
 
 // resolveBaseRevision rend la revision de base a cuire, cf. l'en-tete du fichier.
@@ -153,4 +155,63 @@ func compilerReplayBuild(ctx context.Context, goAPIDir, gocache, sortie string) 
 		return fmt.Errorf("compilation de cmd/replay-build (%s) : %w\n%s", goAPIDir, err, stderr.String())
 	}
 	return nil
+}
+
+// basePrepParams regroupe les chemins fixes de la preparation de la reference base — un struct
+// plutot qu'une signature a plus de 5 parametres une fois `ctx` ajoute (CLAUDE.md n°5).
+type basePrepParams struct {
+	SourceRoot, WorkRoot, BaseFlag string
+}
+
+// preparerReferenceBase resout la revision de base EN SHA COMPLET, cree son worktree detache
+// DEPUIS CE SHA (nettoye via nettoyeur, compose sans jamais reassigner une closure sous un
+// defer deja arme — CORPUS-R1 C1), y compile replay-build, et peuple les champs base de tc
+// (dont ceux du cache, basecache.go). Rend le libelle de colonne a afficher.
+func preparerReferenceBase(ctx context.Context, p basePrepParams, tc *temoinContexte, nettoyeur *nettoyeurCompose) (string, error) {
+	baseRev, err := resolveBaseRevision(ctx, p.BaseFlag, p.SourceRoot)
+	if err != nil {
+		return "", fmt.Errorf("resolution de la base : %w", err)
+	}
+	baseSHA, err := gitRevParse(ctx, p.SourceRoot, baseRev+"^{commit}")
+	if err != nil {
+		return "", fmt.Errorf("resolution de la base en SHA complet (%s) : %w", baseRev, err)
+	}
+	wtBase, cleanupWt, err := creerWorktreeBase(ctx, p.SourceRoot, p.WorkRoot, baseSHA)
+	if err != nil {
+		return "", fmt.Errorf("worktree de base (%s = %s) : %w", baseRev, baseSHA, err)
+	}
+	nettoyeur.Ajouter(cleanupWt)
+
+	workRootBase := filepath.Join(p.WorkRoot, "cuisson-base")
+	if err := stageReferenceOnce(wtBase.Chemin, workRootBase, tc.TitleSlug); err != nil {
+		return "", fmt.Errorf("catalogues de reference (base) : %w", err)
+	}
+	binBase := filepath.Join(p.WorkRoot, "bin", "replay-build-base"+exeSuffix())
+	if err := compilerReplayBuild(ctx, wtBase.GoAPIDir, filepath.Join(p.WorkRoot, "gocache-base"), binBase); err != nil {
+		return "", fmt.Errorf("compilation replay-build (base %s) : %w", baseRev, err)
+	}
+
+	tc.WorkRootBase, tc.BinBase = workRootBase, binBase
+	tc.BaseSHA = baseSHA
+	tc.BaseGoVersion = goVersionDe(ctx, wtBase.GoAPIDir)
+	tc.CacheBase = baseCache{Racine: filepath.Join(title.NewPathResolver(tc.ParcRoot).CacheRootDir(), dossierCacheBase)}
+	slog.Info("replay-corpus-gate: base resolue", "revision", baseRev, "sha", baseSHA,
+		"worktree", wtBase.Chemin, "go", tc.BaseGoVersion, "cache", tc.CacheBase.Racine,
+		"sansCache", tc.SansCacheBase)
+	return "base(" + baseRev + ")", nil
+}
+
+// goVersionDe rend `go env GOVERSION` tel que vu depuis `goAPIDir` (la chaine d'outils qui
+// compile replay-build). Un echec rend "" — la cle de cache sera alors incomplete et le cache
+// sera refuse, avec l'erreur journalisee ici.
+func goVersionDe(ctx context.Context, goAPIDir string) string {
+	cmd := exec.CommandContext(ctx, "go", "env", "GOVERSION")
+	cmd.Dir = goAPIDir
+	out, err := cmd.Output()
+	if err != nil {
+		slog.Warn("replay-corpus-gate: go env GOVERSION impossible — cache de la base refuse",
+			"dir", goAPIDir, "err", err)
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

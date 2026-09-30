@@ -106,6 +106,11 @@ type ligneRapport struct {
 	// interdit.
 	Changements int
 	Duree       time.Duration
+	// BaseDuCache : l'artefact de la base vient du cache (basecache.go), pas d'une cuisson de ce passage.
+	BaseDuCache bool
+	// BaseArtefactEnCache / BaseFaitsEnCache : l'artefact et les faits du film de la base sont dans
+	// l'entree de cache a l'issue du traitement (une entree complete a les deux).
+	BaseArtefactEnCache, BaseFaitsEnCache bool
 	// PertesDetail : les differences de sens PERTE ou DISPARU seulement — c'est LE FAIT a
 	// rapporter, jamais a resumer en un seul compte.
 	PertesDetail []replaydiff.Difference
@@ -119,6 +124,16 @@ type ligneRapport struct {
 	// pilote devait relancer `replay-diff` a la main sur les artefacts conserves pour savoir
 	// LESQUELS — ce qui est arrive a la cloture M1 (plan §5, les 7 changements nommes).
 	ChangementsDetail []replaydiff.Difference
+}
+
+// origineBase dit d'ou vient l'artefact de la base, pour la colonne « base » du tableau :
+// "cache" (relu, basecache.go) ou "cuite" (cuite ce passage) ; "-" hors mode base est
+// indiscernable de « cuite » ici, la colonne ne s'interprete qu'avec --reference=base.
+func (l ligneRapport) origineBase() string {
+	if l.BaseDuCache {
+		return "cache"
+	}
+	return "cuite"
 }
 
 // aUnePerte dit si CE temoin porte au moins une mesure qui a baisse ou disparu.
@@ -187,22 +202,23 @@ func (l *ligneRapport) remplirBilan(rap replaydiff.Rapport) {
 // `refLabel` nomme la colonne de reference ("base" ou "parc") — c'est la SEULE chose qui
 // distingue l'affichage des deux modes, la structure de ligneRapport est commune aux deux.
 func imprimerTableau(w io.Writer, lignes []ligneRapport, refLabel string) {
-	_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  %s\n",
-		"temoin", "famille", refLabel, "HEAD", "gains", "pertes", "chang.", "duree", "statut")
+	_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s %-6s %-5s  %s\n",
+		"temoin", "famille", refLabel, "HEAD", "gains", "pertes", "chang.", "duree", "base", "cache", "statut")
 	for _, l := range lignes {
 		switch {
 		case l.Absent:
-			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  %s (%s)\n",
-				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-",
+			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s %-6s %-5s  %s (%s)\n",
+				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-", "-", "-",
 				statutAbsent, l.AbsentCause)
 		case l.Erreur != nil:
-			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s  %s : %v\n",
-				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-",
+			_, _ = fmt.Fprintf(w, "%-12s %-16s %6s %6s %8s %8s %8s %10s %-6s %-5s  %s : %v\n",
+				l.Temoin.ID, l.Temoin.Famille, "-", "-", "-", "-", "-", "-", l.origineBase(), l.presenceCache(),
 				statutErreur, l.Erreur)
 		default:
-			_, _ = fmt.Fprintf(w, "%-12s %-16s %6d %6d %8d %8d %8d %10s  %s\n",
+			_, _ = fmt.Fprintf(w, "%-12s %-16s %6d %6d %8d %8d %8d %10s %-6s %-5s  %s\n",
 				l.Temoin.ID, l.Temoin.Famille, l.SchemaReference, l.SchemaHEAD,
-				l.Gains, l.Pertes, l.Changements, l.Duree.Round(10*time.Millisecond), l.statut())
+				l.Gains, l.Pertes, l.Changements, l.Duree.Round(10*time.Millisecond), l.origineBase(),
+				l.presenceCache(), l.statut())
 		}
 	}
 }
@@ -308,4 +324,18 @@ func verifierCouverture(lignes []ligneRapport, allowMissing bool) error {
 		"un gate qui ne compare pas un temoin ne le garde pas (passer --allow-missing pour "+
 		"tolerer deliberement) :\n  %s",
 		len(absents), len(lignes), strings.Join(absents, "\n  "))
+}
+
+// presenceCache rend la presence dans le cache de la base, pour la colonne « cache » : "A+F"
+// (artefact et faits du film), "A", "F" ou "-".
+func (l ligneRapport) presenceCache() string {
+	switch {
+	case l.BaseArtefactEnCache && l.BaseFaitsEnCache:
+		return "A+F"
+	case l.BaseArtefactEnCache:
+		return "A"
+	case l.BaseFaitsEnCache:
+		return "F"
+	}
+	return "-"
 }
