@@ -138,6 +138,13 @@ describe('Véhicules — frags et rendement (D5, D9)', () => {
     expect(note).toContain('2 passages sans joueur nommé (robots) ne comptent pas')
   })
 
+  it('zéro passage sans joueur nommé : la note de couverture ne parle pas de robots', () => {
+    mount({ ...VEHICLES_2209, vehicles: { ...VEHICLES_2209.vehicles!, episodes_unnamed: 0 } })
+    const note = text('emprise-yield-vehicle-note')
+    expect(note).toContain('11 frags sur 23 (47,8 %)')
+    expect(note).not.toContain('robots')
+  })
+
   it('sans véhicules, pas de note', () => {
     mount(EMPRISE_2209)
     expect(screen.queryByTestId('emprise-yield-vehicle-note')).toBeNull()

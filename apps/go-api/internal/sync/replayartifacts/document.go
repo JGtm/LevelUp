@@ -66,3 +66,17 @@ func lireDocumentRange(path string) (*replay.ReplayDocument, int, error) {
 	}
 	return &doc, len(raw), nil
 }
+
+// LireArtefactRange est la PORTE EXPORTEE de [lireDocumentRange] pour les commandes hors ligne
+// (`cmd/levelup`, revue L7.5 RV3, 2026-10-01) : cinq commandes de rattrapage copiaient
+// `os.ReadFile` + `json.Unmarshal` vers un `replay.ReplayDocument`. Mettre le helper ICI, a cote
+// de son proprietaire, garde UNE seule deserialisation d'artefact dans le depot ; le garde-rail
+// `cmd/levelup/backfill_artefact_lecture_unique_test.go` interdit la sixieme copie.
+//
+// Un fichier absent se RECONNAIT par `errors.Is(err, os.ErrNotExist)` (l'erreur est enveloppee :
+// `os.IsNotExist` ne la voit plus). Les textes d'erreur (`lecture artefact: ...`,
+// `parse artefact: ...`) sont ceux que les cinq commandes journalisaient deja.
+func LireArtefactRange(path string) (*replay.ReplayDocument, error) {
+	doc, _, err := lireDocumentRange(path)
+	return doc, err
+}

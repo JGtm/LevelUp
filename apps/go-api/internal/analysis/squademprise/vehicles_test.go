@@ -7,6 +7,7 @@ package squademprise
 // épisodes sans xuid en couverture (D10), nom des familles qualifiées, habitude.
 
 import (
+	"encoding/json"
 	"math"
 	"testing"
 	"time"
@@ -380,5 +381,25 @@ func TestVehicules_TempsABordSansPrise(t *testing.T) {
 	if mongoose == nil || mongoose.Taken != (domain.SquadEmpriseCount{}) || mongoose.Aboard == nil ||
 		mongoose.Aboard.Us != 20_000 || mongoose.Squad[1].XUID != "A" || *mongoose.Squad[1].AboardMS != 20_000 {
 		t.Errorf("Mongoose = %+v, attendu publié sans prise avec 20 s à bord d'Alpha", mongoose)
+	}
+}
+
+// TestVehicules_ZeroFragSansPartApparie — revue L7.5, RV4 : sur un périmètre mesuré où AUCUN frag
+// d'engin n'est compté, la part appariée reste ABSENTE (0 / 0 n'est pas un nombre) ; sinon elle
+// vaudrait NaN et la page ne se sérialiserait plus.
+func TestVehicules_ZeroFragSansPartApparie(t *testing.T) {
+	read := vehiculesUnMatch()
+	read.Passes = []VehiclePass{passeMesuree("m1", 0, 0)}
+	read.Frags = nil
+	b := Build(avecVehicules(read))
+	cov := b.Vehicles
+	if cov == nil || cov.MatchesMeasured != 1 || cov.FragsTotal != 0 {
+		t.Fatalf("couverture = %+v, attendu un match mesuré sans frag d'engin", cov)
+	}
+	if cov.PairedShare != nil {
+		t.Errorf("part appariée = %v à zéro frag, attendu absente", *cov.PairedShare)
+	}
+	if _, err := json.Marshal(b); err != nil {
+		t.Errorf("le bloc ne se sérialise plus : %v", err)
 	}
 }

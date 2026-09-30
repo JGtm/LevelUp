@@ -335,19 +335,25 @@ Journal : [2026-10-01] L7.4 joué en avant-plan ; L7.5 (clôture, superviseur) r
   Ronde 1 (2026-10-01, deux relecteurs Sonnet aveugles) : écriture (L1, L2) — 14 conditions
   tiennent, 3 constats ; lecture et web (L4, L6, L5) — 14 conditions tiennent, aucun défaut de
   calcul, 4 constats. Triage du superviseur :
-  - [ ] RV1 (P1) `cmd_backfill_vehicle_takes.go:205-207` : le dry-run colle deux raisons
+  - [x] RV1 (P1) `cmd_backfill_vehicle_takes.go:205-207` : le dry-run colle deux raisons
     (`schema_before_67takes_not_measured`) — séparer.
-  - [ ] RV2 (P1) `cmd/levelup/main.go:232-237` : l'aide de `backfill-vehicle-takes` hérite des trois
+    Fait (2026-10-01) : `cmd_backfill_vehicle_takes.go` (`ligneDryRunVehicules`, raisons etiquetees `raison=` / `frags_raison=`, vide = `-`) ; test `cmd/levelup/backfill_aide_test.go` `TestLigneDryRunVehiculesSepareLesRaisons` ; mutation forme collee `%s%s` : rouge.
+  - [x] RV2 (P1) `cmd/levelup/main.go:232-237` : l'aide de `backfill-vehicle-takes` hérite des trois
     lignes orphelines de `backfill-flag-grabs-net` — les rendre à leur commande.
-  - [ ] RV3 (P1, règle 6) `cmd_backfill_vehicle_takes.go:223-237` : 5e copie de la lecture d'un
+    Fait (2026-10-01) : `cmd/levelup/main.go` (les trois lignes rendues a `backfill-flag-grabs-net`, aide de `backfill-vehicle-takes` deja complete) ; test `backfill_aide_test.go` `TestAideBackfillChaqueEntreePorteSonTexte` (chaque entree cite sa table, aucune celle d'une autre) ; mutation main.go de HEAD : rouge.
+  - [x] RV3 (P1, règle 6) `cmd_backfill_vehicle_takes.go:223-237` : 5e copie de la lecture d'un
     document de rejeu dans `cmd/levelup` (déjà dans `bomb_stats`, `flag_grabs_net`, `pad_tiers`,
     `usage_summary`) alors que `replayartifacts.lireDocumentRange` existe — exporter le helper,
     migrer les cinq copies sans changer leur comportement, garde-rail grep auto-testé.
-  - [ ] RV4 (P1, test manquant) `analysis/squademprise/vehicles.go:258` : `PairedShare` à zéro
+    Fait (2026-10-01) : helper `replayartifacts.LireArtefactRange` (`sync/replayartifacts/document.go`), cinq copies migrees (`errors.Is(err, os.ErrNotExist)` a la place de `os.IsNotExist`, memes textes d'erreur) ; garde-rail `archlint/no_artefact_reread_in_cmd_test.go` (auto-teste) ; mutation copie dans `cmd_backfill_pad_tiers.go` : rouge.
+  - [x] RV4 (P1, test manquant) `analysis/squademprise/vehicles.go:258` : `PairedShare` à zéro
     frag doit rester absent (sinon NaN et page qui ne se sérialise plus) — test.
-  - [ ] RV5 (P1, test manquant) `teammates_service_emprise_vehicles.go:47` : les identifiants des
+    Fait (2026-10-01) : test `squademprise/vehicles_test.go` `TestVehicules_ZeroFragSansPartApparie` ; mutation `if true` dans `couvertureVehicules` : rouge.
+  - [x] RV5 (P1, test manquant) `teammates_service_emprise_vehicles.go:47` : les identifiants des
     soirées de l'habitude doivent entrer dans la lecture — test.
-  - [ ] RV6 (P1, test manquant) `YieldCard.tsx:121` : pas de note « robots » à zéro passage — test.
+    Fait (2026-10-01) : test `teammates_service_emprise_vehicles_test.go` `TestGetPage_Vehicules_LaLectureInclutLesSoireesDeLHabitude` (lecture `[m1 h1]`) ; mutation `ids := matchIDsOf(current)` : rouge.
+  - [x] RV6 (P1, test manquant) `YieldCard.tsx:121` : pas de note « robots » à zéro passage — test.
+    Fait (2026-10-01) : test `SquadEmpriseVehicles.test.tsx` « zéro passage sans joueur nommé » ; mutation `> 0` en `>= 0` : rouge.
   - RV7 (P2, consigné) `teammates_service_emprise.go:71` / `build.go:88` : si la lecture du résumé
     d'usage échoue alors que celle des véhicules réussit, les coéquipiers passent dans « reste du
     camp » et l'habitude des véhicules disparaît. Cas de panne seulement (les deux dérivent du

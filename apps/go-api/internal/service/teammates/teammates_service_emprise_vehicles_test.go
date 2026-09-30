@@ -157,3 +157,32 @@ func TestGetPage_Vehicules_LectureEnEchec(t *testing.T) {
 		t.Errorf("le reste de l'Emprise doit rester servi : %+v", b)
 	}
 }
+
+// TestGetPage_Vehicules_LaLectureInclutLesSoireesDeLHabitude — revue L7.5, RV5 : les matchs des
+// soirées précédentes comparables (`squademprise.HabitCandidates`) entrent dans la lecture, EN PLUS
+// du périmètre, sans quoi l'habitude des véhicules se calcule sur rien. Le match `h1` d'une soirée
+// antérieure, de la même famille de mode que `m1`, doit donc figurer dans l'appel du dépôt.
+func TestGetPage_Vehicules_LaLectureInclutLesSoireesDeLHabitude(t *testing.T) {
+	t0 := time.Now().UTC().Add(-time.Hour)
+	squad, usage := usageFixture(t0)
+	cur, prev := "soiree-courante", "soiree-precedente"
+	squad.squadRows = []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0, Outcome: domain.OutcomeWin, PairName: "Slayer", SessionLabel: &cur},
+		{MatchID: "h1", StartTime: t0.Add(-48 * time.Hour), Outcome: domain.OutcomeWin, PairName: "Slayer", SessionLabel: &prev},
+	}
+	repo := &fakeVehicules{read: vehiculesM1()}
+	svc := NewTeammatesService(squad, nil).
+		WithPlayerMatchesRepo(newSynthMockFromRows(squad.synthRows, squad.synthErr), "halo_infinite", "Main").
+		WithEmprise(feuilleM1()).WithUsageSummary(usage).WithVehicleUsage(repo)
+	if _, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{
+		SelectedGamertags: []string{"Ally1"},
+	}); err != nil {
+		t.Fatalf("GetPage : %v", err)
+	}
+	if len(repo.appels) != 1 {
+		t.Fatalf("%d lecture(s) des véhicules, attendu une", len(repo.appels))
+	}
+	if got := fmt.Sprint(repo.appels[0]); got != "[m1 h1]" {
+		t.Errorf("lecture bornée par %s, attendu le périmètre puis la soirée de l'habitude [m1 h1]", got)
+	}
+}

@@ -113852,3 +113852,13 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Résultats observés** : 13 mutants web nommés tous rouges ; tsc, vitest complet, lint, knip, imports croisés et couleurs verts. Garde-rail neuf : toute ressource de l ordre a textes FR / EN, couleur et expositions.
 
 **Conclusion / prochaine étape** : L7.3 et L7.4 cochés ; L7.5 (revue adversariale, rattrapage réel des huit témoins, gate visuel utilisateur après fusion) revient au superviseur.
+
+## [2026-10-01] Emprise véhicules, lot L7.5 : corrections RV1 à RV6 de la revue adversariale, ronde 1
+
+**Statut** : Complété (commit `fix(emprise-vehicules/L7.5)` sur `wt/emprise` ; L7.5.1 reste ouvert : rattrapage local, témoin, fusion, CI, gate visuel).
+
+**Décision technique principale** : la lecture d un artefact de rejeu par les commandes hors ligne passe par UN helper exporté, `replayartifacts.LireArtefactRange` (`document.go`, à côté de `lireDocumentRange`). Les cinq copies de `cmd/levelup` (bomb_stats, flag_grabs_net, pad_tiers, usage_summary, vehicle_takes) sont migrées ; l erreur étant enveloppée, l absence de fichier se reconnaît par `errors.Is(err, os.ErrNotExist)` (les textes `lecture artefact:` / `parse artefact:` sont inchangés). Garde-rail `archlint/no_artefact_reread_in_cmd_test.go` (auto-testé) : plus de `json.Unmarshal` + `replay.ReplayDocument` dans un fichier de `cmd/`. RV1 : ligne `--dry-run` de vehicle-takes en `raison=` / `frags_raison=`. RV2 : les trois lignes de flag-grabs-net rendues à leur commande (elles avaient été séparées de leur tête par l insertion de pad-tiers puis de vehicle-takes). RV4 à RV6 : trois tests.
+
+**Résultats observés** : six mutations (forme collée, aide de HEAD, copie de la lecture, `if true`, `ids := matchIDsOf(current)`, `>= 0`) toutes rouges, restaurées à l identique (`cmp`). Gate Go et web verts.
+
+**Conclusion / prochaine étape** : RV1 à RV6 cochés ; RV7 consigné, non traité ; le reste de L7.5.1 revient au superviseur.

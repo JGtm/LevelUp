@@ -43,7 +43,7 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -177,8 +177,8 @@ func projeterCorpusVehicules(
 			b.dejaEnBase++
 			continue
 		}
-		doc, err := lireArtefactVehicules(pr.ReplayArtifactPath(o.titleSlug, id))
-		if os.IsNotExist(err) {
+		doc, err := replayartifacts.LireArtefactRange(pr.ReplayArtifactPath(o.titleSlug, id))
+		if errors.Is(err, os.ErrNotExist) {
 			b.sansArtefact++
 			continue
 		}
@@ -202,9 +202,7 @@ func projeterCorpusVehicules(
 		comptabiliserPasseVehicules(&b, batch)
 		if o.dryRun {
 			// UNE LIGNE PAR MATCH : l operateur doit pouvoir CONTROLER ce qui sera ecrit.
-			fmt.Printf("  %-40s mesure=%-5v schema=%3d lignes=%3d frags=%d/%d (%s%s)\n", id, batch.Measured,
-				batch.DocSchema, len(batch.Rows), batch.FragsTotal-batch.FragsUnmatched, batch.FragsTotal,
-				batch.Reason, batch.FragsReason)
+			fmt.Println(ligneDryRunVehicules(id, batch))
 			continue
 		}
 		if err := p.PersistPass(ctx, batch); err != nil {
@@ -216,23 +214,6 @@ func projeterCorpusVehicules(
 		b.ecrits++
 	}
 	return b
-}
-
-// lireArtefactVehicules lit et deserialise UN artefact. L erreur de fichier absent est rendue
-// telle quelle (`os.IsNotExist`).
-func lireArtefactVehicules(path string) (*replay.ReplayDocument, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, err
-		}
-		return nil, fmt.Errorf("lecture artefact: %w", err)
-	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		return nil, fmt.Errorf("parse artefact: %w", err)
-	}
-	return &doc, nil
 }
 
 // comptabiliserPasseVehicules additionne les totaux du bilan.
@@ -250,4 +231,21 @@ func comptabiliserPasseVehicules(b *bilanVehicleTakesBackfill, batch persist.Veh
 	}
 	b.fragsTotal += batch.FragsTotal
 	b.fragsNonApp += batch.FragsUnmatched
+}
+
+// ligneDryRunVehicules rend la ligne `--dry-run` d UN match. Les DEUX raisons (celle de la
+// passe, celle des frags) portent chacune son etiquette et sont separees : collees, elles se
+// lisaient `schema_before_67takes_not_measured` (revue L7.5, RV1, 2026-10-01). Une raison
+// vide est rendue `-`, pour que la colonne reste lisible.
+func ligneDryRunVehicules(id string, batch persist.VehicleTakesBatch) string {
+	return fmt.Sprintf("  %-40s mesure=%-5v schema=%3d lignes=%3d frags=%d/%d raison=%s frags_raison=%s",
+		id, batch.Measured, batch.DocSchema, len(batch.Rows), batch.FragsTotal-batch.FragsUnmatched,
+		batch.FragsTotal, raisonOuTiret(batch.Reason), raisonOuTiret(batch.FragsReason))
+}
+
+func raisonOuTiret(r string) string {
+	if r == "" {
+		return "-"
+	}
+	return r
 }
