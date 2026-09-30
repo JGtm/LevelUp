@@ -312,9 +312,21 @@ Journal : [2026-10-01] L7.3 joué en avant-plan ; L7.4 autorisé.
 
 ### L7.4 — Cartes (web) · moyen
 
-- [ ] L7.4.1 `RESOURCE_ORDER`, `resourceColors.ts`, textes FR / EN dans un fichier de textes neuf
+- [x] L7.4.1 `RESOURCE_ORDER`, `resourceColors.ts`, textes FR / EN dans un fichier de textes neuf
   (`empriseStrings.ts` à 490 lignes), lignes des sept cartes (maquette l. 621, 688, 933-934, 946,
   997, 1269-1270), pastilles pleines (D3).
+
+**Livré (2026-10-01)** : `emprise.logic.ts` (`RESOURCE_VEHICLE`, ordre bonus / armes spéciales / véhicules / râteliers, `readable` : les véhicules se lisent de l état du match et non du film, case `unmeasured`), `resourceColors.ts` (jeton `resource-vehicle`), `vehicleStrings.ts` (textes FR / EN neufs, fabrique appelée par `empriseStrings.ts` qui reste à 500 lignes), `vehicles.logic.ts` (nom des familles : libellé du titre, sinon nom propre tiré de la clé, sinon « Véhicule inconnu » ; couverture du rendement), `useEmpriseModels.ts`, `YieldCard.tsx` (note de couverture D9 / D10), `ResourceMatchGridCard.tsx` (case hachurée « non mesuré »), `SquadEmprisePage.tsx`.
+
+**Cartes touchées** (une ligne « Véhicules » dans chacune, masquée quand le bloc ne publie pas la ressource) : Contrôle des ressources ; Contrôle des ressources au fil de la session (légende et courbe) ; Répartition des prises dans l escouade (section, pied « 3 véhicules », « Ressource dominante », pastilles TOUTES pleines, D3) ; Contrôle des ressources, match par match (synthèse + une ligne par famille, qui chez nous, « non mesuré » hachuré ≠ « — » zéro mesuré) ; Frags obtenus avec les ressources (barre épaisse = tous les frags de classe véhicule, barre fine = temps à bord) ; Rendement face à l adversaire (frags appariés par minute à bord, sous une note « N frags sur M appariés » et les passages de robots ignorés) ; Contrôle des ressources, soirée après soirée (courbe et médiane). Infobulles des fiches, de la production et du rendement complétées (une proposition de plus, pas de pavé).
+
+**Contrat Go ajusté au passage** : `exposure.paired_kills` (commit `02528988`) — `exposure.kills` garde tous les frags de la population du rendement, de sorte que la règle web « la barre épaisse lit exposure.kills » reste inchangée et juste pour les véhicules ; le rendement vient du Go.
+
+**Tests** : `emprise/vehicles.logic.test.ts` (22 cas de modèles), `SquadEmpriseVehicles.test.tsx` (page, FR / EN, masquage), `emprise/emprise.resources.test.ts` (garde-rail : toute ressource de `RESOURCE_ORDER` a ses textes dans les deux langues, sa couleur, les expositions du Go), fixture `vehicles.fixtures.ts`. **Mutations** (copie, mutation, rouge, restauration, identité) : MW1 ordre sans véhicules, MW2 jeton perdu, MW3 véhicules lus du film, MW4 « non mesuré » tu, MW5 famille sans nom, MW6 inconnu non nommé, MW7 couverture en échec, MW8 note absente, MW9 exposition à bord perdue, MW10 case « non mesuré » muette, MW12 robots tus, MW13 textes de ressource perdus, MW14 note sans rendement — treize mutants, tous rouges.
+
+**Gate** : `npx tsc -b --force` vert ; `npx vitest run --pool=forks` complet (830 fichiers, 8 826 tests verts, 23 sautés hérités) ; `npm run lint` 0 erreur (26 avertissements hérités) ; `knip-ratchet` 0 / 0 / 0 ; imports croisés 7 <= 7 ; couleurs 0 violation ; `lefthook run pre-push` : voir le journal.
+
+Journal : [2026-10-01] L7.4 joué en avant-plan ; L7.5 (clôture, superviseur) reste.
 
 ### L7.5 — Clôture (superviseur)
 

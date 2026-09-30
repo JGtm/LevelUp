@@ -23,6 +23,7 @@ import { pisteColumns } from './pisteLayout'
 import { yieldGeometry, type YieldRow } from './production.logic'
 import { resourceInk } from './resourceColors'
 import { TipText } from './TipText'
+import type { VehicleCoverage } from './vehicles.logic'
 
 const MORE_INK = `color-mix(in oklab, ${PLUS_INK} 80%, var(--muted))`
 const LESS_INK = `color-mix(in oklab, ${MINUS_INK} 80%, var(--muted))`
@@ -33,7 +34,7 @@ const TICK_AT = [0, 25, 50, 75, 100] as const
 /** Au-delà de ±40 % d'écart, la valeur s'écrit dans le bout de la barre. */
 const INSIDE_FROM_PCT = 40
 
-export function YieldCard({ rows, t }: { rows: YieldRow[]; t: EmpriseText }) {
+export function YieldCard({ rows, coverage, t }: { rows: YieldRow[]; coverage?: VehicleCoverage | null; t: EmpriseText }) {
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -53,6 +54,7 @@ export function YieldCard({ rows, t }: { rows: YieldRow[]; t: EmpriseText }) {
           <YieldLine key={r.resource} row={r} t={t} />
         ))}
         <TrackAxis columns={COLUMNS} ticks={TICK_AT.map((at, i) => ({ at, label: t.yield.axis[i] }))} />
+        {coverage && <VehicleNote coverage={coverage} t={t} />}
       </div>
     </ObjectifFrame>
   )
@@ -106,5 +108,17 @@ function YieldLine({ row, t }: { row: YieldRow; t: EmpriseText }) {
         </span>
       </div>
     </div>
+  )
+}
+
+/** D9 : la part des frags de véhicule appariés à un passage daté de leur tueur, et les passages de robots ignorés (D10). */
+function VehicleNote({ coverage, t }: { coverage: VehicleCoverage; t: EmpriseText }) {
+  const v = t.vehicles
+  const note = v.pairedNote(coverage.fragsPaired, coverage.fragsTotal, t.pctFmt(coverage.pairedShare * 100))
+  return (
+    <p className="text-[11px] leading-snug text-muted-foreground" data-testid="emprise-yield-vehicle-note">
+      {note}
+      {coverage.episodesUnnamed > 0 ? ` ${v.unnamedNote(coverage.episodesUnnamed)}` : ''}
+    </p>
   )
 }

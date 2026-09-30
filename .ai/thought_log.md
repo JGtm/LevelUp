@@ -113842,3 +113842,13 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Résultats observés** : 36 mutants nommés tous rouges (dont 6 refaits compilables), restaurations par copie identiques ; gates Go verts (intégration découpée par initiale), lint 0, archlint vert (garde Campagne : exclusion posée sur la lecture du camp), contrat régénéré et vérifié.
 
 **Conclusion / prochaine étape** : L7.3 coché ; L7.4 (cartes web) suit.
+
+## [2026-10-01] Emprise véhicules, lot L7.4 : les cartes de l onglet portent la ressource véhicules (web)
+
+**Statut** : Complété (commit `feat(emprise-vehicules/L7.4)` sur `wt/emprise`).
+
+**Décision technique principale** : la ressource entre par `RESOURCE_ORDER` (une entrée de liste de plus, textes dans `vehicleStrings.ts` pour ne pas dépasser 500 lignes), sans règle métier côté web : le Go publie tout, le web trace et formate. Les véhicules se lisent de l état du match (`measured` / `not_measured`), jamais du film ; « non mesuré » est une case hachurée distincte du zéro mesuré. Pour que la règle « la barre épaisse lit exposure.kills » reste vraie, le Go publie `exposure.paired_kills` (le numérateur du rendement) et laisse `exposure.kills` = tous les frags de la population (D5 / D9). Pastilles des fiches toutes pleines (D3), note de couverture sous le rendement (frags appariés, passages de robots ignorés).
+
+**Résultats observés** : 13 mutants web nommés tous rouges ; tsc, vitest complet, lint, knip, imports croisés et couleurs verts. Garde-rail neuf : toute ressource de l ordre a textes FR / EN, couleur et expositions.
+
+**Conclusion / prochaine étape** : L7.3 et L7.4 cochés ; L7.5 (revue adversariale, rattrapage réel des huit témoins, gate visuel utilisateur après fusion) revient au superviseur.

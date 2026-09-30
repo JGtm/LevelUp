@@ -335,7 +335,7 @@ describe('Prendre, et s’en servir', () => {
     // Une barre fine sous chaque barre épaisse (rôle img, nom = la ligne d'exposition).
     expect(within(bonus).getByRole('img', { name: /temps d’effet : 2 min 39/ })).toBeInTheDocument()
     const legend = within(card).getByTestId('objectif-legend')
-    for (const label of ['Notre camp', 'Adversaire', '50 % : autant que l’adversaire', 'Barre fine : temps d’effet ou prises']) {
+    for (const label of ['Notre camp', 'Adversaire', '50 % : autant que l’adversaire', 'Barre fine : temps d’effet, prises ou temps à bord']) {
       expect(legend.textContent).toContain(label)
     }
   })

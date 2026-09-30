@@ -53,6 +53,7 @@ import { ResourceFilCard } from './emprise/ResourceFilCard'
 import { ResourceMatchGridCard } from './emprise/ResourceMatchGridCard'
 import { useEmpriseModels } from './emprise/useEmpriseModels'
 import { useOutcomeLabels } from './emprise/useOutcomeLabels'
+import type { VehicleCoverage } from './emprise/vehicles.logic'
 import { YieldCard } from './emprise/YieldCard'
 import { TEAM_REST_INK } from './formes/colors'
 import { getSquadText } from './i18n'
@@ -71,7 +72,7 @@ export function SquadEmprisePage() {
     et.sheets.rest,
     locale,
   )
-  const { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, placement, identities, playerName } = models
+  const { objectName, controlRows, fil, sheets, grid, production, yieldRows, vehicleCoverage, habit, placement, identities, playerName } = models
   const show = empriseSections(models)
 
   if (confirmedGamertags.length === 0 || selectedRows.length === 0) {
@@ -125,7 +126,16 @@ export function SquadEmprisePage() {
           />
         </section>
       )}
-      <UsageSections show={show} production={production} yieldRows={yieldRows} habit={habit} placement={placement} locale={locale} et={et} />
+      <UsageSections
+        show={show}
+        production={production}
+        yieldRows={yieldRows}
+        vehicleCoverage={vehicleCoverage}
+        habit={habit}
+        placement={placement}
+        locale={locale}
+        et={et}
+      />
     </div>
   )
 }
@@ -146,6 +156,7 @@ function UsageSections({
   show,
   production,
   yieldRows,
+  vehicleCoverage,
   habit,
   placement,
   locale,
@@ -154,6 +165,7 @@ function UsageSections({
   show: EmpriseSections
   production: ProductionRow[]
   yieldRows: YieldRow[]
+  vehicleCoverage: VehicleCoverage | null
   habit: HabitView
   placement: PlacementBlock | null
   locale: Locale
@@ -168,7 +180,7 @@ function UsageSections({
           {/* Une carte seule (sans rendement : Halo 5, D10) prend la rangée (précédent : Dynamique, L1). */}
           <div className="grid gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
             {production.length > 0 && <ProductionCard rows={production} t={et} />}
-            {yieldRows.length > 0 && <YieldCard rows={yieldRows} t={et} />}
+            {yieldRows.length > 0 && <YieldCard rows={yieldRows} coverage={vehicleCoverage} t={et} />}
           </div>
         </section>
       )}
