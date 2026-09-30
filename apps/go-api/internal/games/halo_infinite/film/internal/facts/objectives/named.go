@@ -1,7 +1,8 @@
 package objectives
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -281,20 +282,9 @@ func NamedEventsFrom(recs []types.StatRecord, objectiveType string, cons *Replis
 // aujourd'hui : sur les tables actuelles, deux evenements egaux sur les trois premieres cles
 // viennent forcement du meme emplacement.
 func sortNamedEvents(evs []NamedEvent) {
-	sort.SliceStable(evs, func(i, j int) bool {
-		if evs[i].TimeMS != evs[j].TimeMS {
-			return evs[i].TimeMS < evs[j].TimeMS
-		}
-		if evs[i].Slot != evs[j].Slot {
-			return evs[i].Slot < evs[j].Slot
-		}
-		if evs[i].Stat != evs[j].Stat {
-			return evs[i].Stat < evs[j].Stat
-		}
-		if evs[i].Comp != evs[j].Comp {
-			return evs[i].Comp < evs[j].Comp
-		}
-		return evs[i].Side < evs[j].Side
+	slices.SortStableFunc(evs, func(a, b NamedEvent) int {
+		return cmp.Or(cmp.Compare(a.TimeMS, b.TimeMS), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Stat, b.Stat),
+			cmp.Compare(a.Comp, b.Comp), cmp.Compare(a.Side, b.Side))
 	})
 }
 

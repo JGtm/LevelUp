@@ -10,7 +10,8 @@
 package objectives
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 
 	"levelup/go-api/internal/domain/objectiveevent"
@@ -240,7 +241,7 @@ func collectCaptureBursts(film *source.Film) []captureBurst {
 		}
 		out = append(out, scanCaptureBursts(framesOf(film, c.pos), c.meta.StartMS)...)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].matchMS < out[j].matchMS })
+	slices.SortFunc(out, func(a, b captureBurst) int { return cmp.Compare(a.matchMS, b.matchMS) }) // seul champ : ex aequo indiscernables
 	return out
 }
 
@@ -297,8 +298,8 @@ func finalize(matchID string, events []objectiveevent.Event) []objectiveevent.Ev
 	if len(events) == 0 {
 		return nil
 	}
-	sort.SliceStable(events, func(i, j int) bool {
-		return timeOrNeg(events[i].TimeMS) < timeOrNeg(events[j].TimeMS)
+	slices.SortStableFunc(events, func(a, b objectiveevent.Event) int {
+		return cmp.Compare(timeOrNeg(a.TimeMS), timeOrNeg(b.TimeMS))
 	})
 	for i := range events {
 		events[i].Seq = i

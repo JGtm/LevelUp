@@ -29,7 +29,8 @@ package killsource
 //     dechets, 79 -> 78 morts.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -245,7 +246,9 @@ func keyframeRecs(pl []byte, marche grammar.MarcheDImageCle) []grammar.KeyframeR
 		have[a.slot] = true
 		recs = append(recs, grammar.KeyframeRec{Slot: a.slot, TI: a.ti, Gen: a.gen, Bit: a.bit})
 	}
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
+	// Bit unique : deux enregistrements ne commencent pas au meme bit, et une ancre du balayage qui
+	// tomberait sur un enregistrement du walker en porterait le slot, deja vu.
+	slices.SortFunc(recs, func(a, b grammar.KeyframeRec) int { return cmp.Compare(a.Bit, b.Bit) })
 	return recs
 }
 

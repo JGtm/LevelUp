@@ -39,8 +39,9 @@ package killsource
 // different au meme instant, la marche gagnerait et l ecart serait COMPTE, jamais lisse.
 
 import (
+	"cmp"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"sort"
+	"slices"
 )
 
 // sourcedCandidate : un candidat, avec la voie qui l a produit.
@@ -379,7 +380,8 @@ func (p *pass) runUnclaimed() {
 				Multiplicity: multOf(p.ctx.mult, best.candidate)},
 		})
 	}
-	sort.Slice(p.unclaimed, func(i, j int) bool { return p.unclaimed[i].TimeMS < p.unclaimed[j].TimeMS })
+	// TimeMS unique : un evenement du kill-feed par instant (`byTime` de buildFeed).
+	slices.SortFunc(p.unclaimed, func(a, b UnclaimedDeath) int { return cmp.Compare(a.TimeMS, b.TimeMS) })
 }
 
 // choisirNonRevendiquee : LA LECTURE D ABORD (D14 b) — le candidat auto-inflige du PAQUET que le
@@ -464,7 +466,7 @@ func (p *pass) kills() []Kill {
 	for _, k := range p.byTime {
 		out = append(out, k)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].TimeMS < out[j].TimeMS })
+	slices.SortFunc(out, func(a, b Kill) int { return cmp.Compare(a.TimeMS, b.TimeMS) }) // TimeMS : cle de `byTime`, unique
 	return out
 }
 

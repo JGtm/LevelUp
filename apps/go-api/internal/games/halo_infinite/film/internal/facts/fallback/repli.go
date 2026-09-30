@@ -64,8 +64,9 @@
 package fallback
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -276,7 +277,7 @@ func (r Repli) Paquet() string {
 // porte ne le sont pas et ne se modifient pas.
 func Table() []Repli {
 	out := append([]Repli(nil), registre...)
-	sort.Slice(out, func(i, j int) bool { return out[i].Nom < out[j].Nom })
+	slices.SortFunc(out, func(a, b Repli) int { return cmp.Compare(a.Nom, b.Nom) }) // Nom unique : VerifierRegistre refuse un doublon
 	return out
 }
 

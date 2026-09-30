@@ -11,8 +11,10 @@ package objectives
 // 2026-09-11 — le seuil de 500 lignes etait de nouveau atteint).
 
 import (
+	"cmp"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"slices"
 	"sort"
 )
 
@@ -163,7 +165,7 @@ func cumulateRounds(raw map[int]map[int][]types.ScorePoint, real map[int]bool,
 				continue
 			}
 			pts := byRound[round]
-			sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
+			slices.SortStableFunc(pts, func(a, b types.ScorePoint) int { return cmp.Compare(a.TimeMS, b.TimeMS) })
 			kept := longestRun(pts, false)
 			// `kept` N EST JAMAIS VIDE : `pts` porte au moins l emission qui a cree sa manche, et
 			// [longestRun] rend au moins un point d une suite non vide. La branche « manche sautee »
@@ -253,11 +255,8 @@ func sortedSlotKeys(table map[statSlotKey]statSlot) []statSlotKey {
 	for k := range table {
 		out = append(out, k)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Comp != out[j].Comp {
-			return out[i].Comp < out[j].Comp
-		}
-		return out[i].Side < out[j].Side
+	slices.SortFunc(out, func(a, b statSlotKey) int { // cles d une map : uniques
+		return cmp.Or(cmp.Compare(a.Comp, b.Comp), cmp.Compare(a.Side, b.Side))
 	})
 	return out
 }

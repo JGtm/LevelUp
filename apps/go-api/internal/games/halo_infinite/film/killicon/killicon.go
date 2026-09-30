@@ -29,7 +29,7 @@ import (
 	_ "embed"
 	"fmt"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -222,7 +222,7 @@ func ResolvedTags() []uint32 {
 	for t := range byTag {
 		out = append(out, t)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 

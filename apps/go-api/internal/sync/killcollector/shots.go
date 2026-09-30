@@ -31,7 +31,7 @@ import (
 	"context"
 	"log/slog"
 	"math/bits"
-	"sort"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
@@ -287,7 +287,7 @@ func sortedWeaponIDs(byWeapon map[uint64]int) []uint64 {
 	for id := range byWeapon {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 	return ids
 }
 

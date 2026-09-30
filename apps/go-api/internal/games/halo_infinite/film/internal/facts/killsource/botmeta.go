@@ -39,7 +39,8 @@ package killsource
 // n est pas un bot parti), et il se compte ([botMeta.Incomplets]).
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"unicode/utf16"
 )
 
@@ -219,11 +220,8 @@ func clesTriees(m map[[2]int]uint64) [][2]int {
 	for k := range m {
 		out = append(out, k)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i][0] != out[j][0] {
-			return out[i][0] < out[j][0]
-		}
-		return out[i][1] < out[j][1]
+	slices.SortFunc(out, func(a, b [2]int) int { // cles d une map : uniques
+		return cmp.Or(cmp.Compare(a[0], b[0]), cmp.Compare(a[1], b[1]))
 	})
 	return out
 }
@@ -291,7 +289,9 @@ func firstCopyOnly(in []bot) []bot {
 	for _, b := range first {
 		out = append(out, b)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].bitPos < out[j].bitPos })
+	// Tri total (J12.1, DT-9) : position de bit, puis nom (cle de la map `first`, unique) ; l entree
+	// vient d une map, ses ex aequo n avaient aucun ordre a preserver.
+	slices.SortFunc(out, func(a, b bot) int { return cmp.Or(cmp.Compare(a.bitPos, b.bitPos), cmp.Compare(a.Name, b.Name)) })
 	return out
 }
 

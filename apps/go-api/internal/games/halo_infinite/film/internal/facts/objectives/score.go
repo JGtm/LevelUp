@@ -1,8 +1,9 @@
 package objectives
 
 import (
+	"cmp"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"sort"
+	"slices"
 )
 
 // score.go — les COURBES tirees des enregistrements d'entite : score de mode et score
@@ -147,7 +148,7 @@ func SeriesByRound(recs []types.StatRecord, c StatComponent, teams bool,
 			if !real[round] {
 				continue
 			}
-			sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
+			slices.SortStableFunc(pts, func(a, b types.ScorePoint) int { return cmp.Compare(a.TimeMS, b.TimeMS) })
 			kept := longestRun(pts, c.Strict)
 			if c.Unitary {
 				kept = boundedSeries(kept)

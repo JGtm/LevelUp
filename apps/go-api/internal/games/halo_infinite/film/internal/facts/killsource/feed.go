@@ -23,7 +23,9 @@ package killsource
 // Theater).
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/domain/highlightevent"
@@ -171,7 +173,7 @@ func buildFeed(evs []highlightevent.HighlightEvent) *killFeed {
 	for _, v := range byTime {
 		kf.events = append(kf.events, *v)
 	}
-	sort.Slice(kf.events, func(i, j int) bool { return kf.events[i].timeMS < kf.events[j].timeMS })
+	slices.SortFunc(kf.events, func(a, b feedEvent) int { return cmp.Compare(a.timeMS, b.timeMS) }) // timeMS : cle de `byTime`, unique
 	return kf
 }
 

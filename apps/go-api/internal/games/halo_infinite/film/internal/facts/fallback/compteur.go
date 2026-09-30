@@ -28,8 +28,9 @@ package fallback
 // face à un décodage qui pèse des dizaines de secondes.
 
 import (
+	"cmp"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -125,7 +126,7 @@ func (c *Compteur) Rapport() []Declenchement {
 			out = append(out, Declenchement{Nom: nom, Declenchements: n})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Nom < out[j].Nom })
+	slices.SortFunc(out, func(a, b Declenchement) int { return cmp.Compare(a.Nom, b.Nom) }) // Nom : cle de la map `c.n`, unique
 	return out
 }
 

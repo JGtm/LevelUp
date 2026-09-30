@@ -1,7 +1,8 @@
 package objectives
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -177,13 +178,7 @@ func IdentifyNamedEventsByRound(evs []NamedEvent, identity RoundIdentity) ([]Ide
 // sortIdentifiedEvents ordonne par instant, puis xuid, puis nom : un ordre total, donc une
 // sortie reproductible malgre le parcours de map amont. Partage par les deux ponts d'identite.
 func sortIdentifiedEvents(evs []IdentifiedEvent) {
-	sort.SliceStable(evs, func(i, j int) bool {
-		if evs[i].TimeMS != evs[j].TimeMS {
-			return evs[i].TimeMS < evs[j].TimeMS
-		}
-		if evs[i].XUID != evs[j].XUID {
-			return evs[i].XUID < evs[j].XUID
-		}
-		return evs[i].Stat < evs[j].Stat
+	slices.SortStableFunc(evs, func(a, b IdentifiedEvent) int {
+		return cmp.Or(cmp.Compare(a.TimeMS, b.TimeMS), cmp.Compare(a.XUID, b.XUID), cmp.Compare(a.Stat, b.Stat))
 	})
 }

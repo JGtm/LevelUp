@@ -1,7 +1,8 @@
 package objectives
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -212,14 +213,8 @@ func StatRecordsAvecReplis(film *source.Film, matchID string) (
 
 // sortRecords ordonne les enregistrements par temps puis par slot.
 func sortRecords(out []types.StatRecord) []types.StatRecord {
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].TimeMS != out[j].TimeMS {
-			return out[i].TimeMS < out[j].TimeMS
-		}
-		if out[i].Slot != out[j].Slot {
-			return out[i].Slot < out[j].Slot
-		}
-		return out[i].Round < out[j].Round
+	slices.SortStableFunc(out, func(a, b types.StatRecord) int {
+		return cmp.Or(cmp.Compare(a.TimeMS, b.TimeMS), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Round, b.Round))
 	})
 	return out
 }
@@ -482,7 +477,7 @@ func modeScoreRunsByRound(recs []types.StatRecord) map[int]int {
 	}
 	runs := map[int]int{}
 	for k, pts := range series {
-		sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
+		slices.SortStableFunc(pts, func(a, b types.ScorePoint) int { return cmp.Compare(a.TimeMS, b.TimeMS) })
 		if n := len(longestRun(pts, true)); n > runs[k.round] {
 			runs[k.round] = n
 		}

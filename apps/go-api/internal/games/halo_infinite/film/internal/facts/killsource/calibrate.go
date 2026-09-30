@@ -41,8 +41,9 @@ package killsource
 // desynchronisation — la CROISSANCE DES SLOTS. Ce choix pese ~8 morts.
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -249,11 +250,8 @@ func oracleLargeurAxe(sample []*packet, tl *timeline, cfg grammar.FrameConfig, v
 	// TRI DETERMINISTE : score decroissant, PUIS largeur croissante. `sort.Slice` n est pas
 	// stable, et sur des ex aequo son `out[0]` est arbitraire — c est exactement le defaut que
 	// ce commit retire ; il ne sera pas laisse ici.
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].score != out[j].score {
-			return out[i].score > out[j].score
-		}
-		return out[i].aw < out[j].aw
+	slices.SortFunc(out, func(a, b cand) int { // largeur : unique par candidat
+		return cmp.Or(cmp.Compare(b.score, a.score), cmp.Compare(a.aw, b.aw))
 	})
 	med := out[len(out)/2].score
 	res.AxisW, res.Score, res.Median = out[0].aw, out[0].score, med
@@ -318,11 +316,8 @@ func motDePoigneeRetenu(scores []int, invariant uint) (retenu uint, score, media
 	for k, s := range scores {
 		out = append(out, cand{indexWMin + uint(k), s})
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].score != out[j].score {
-			return out[i].score > out[j].score
-		}
-		return out[i].iw < out[j].iw
+	slices.SortFunc(out, func(a, b cand) int { // largeur : unique par candidat
+		return cmp.Or(cmp.Compare(b.score, a.score), cmp.Compare(a.iw, b.iw))
 	})
 	med := out[len(out)/2].score
 	if float64(out[0].score) < flatRatio*float64(max1(med)) {
