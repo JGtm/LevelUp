@@ -324,7 +324,7 @@ the difference is written here; the history of how each decision was reached is 
 - **D-1, five layers.** `film/internal/{source,profile,grammar,facts}` and `film/replay`; the
   `internal/` directory makes the compiler refuse any import from outside `film/`. Outside `film/`
   the decoder is reached through the facade `film/decfilm`, whose surface is frozen by
-  `archlint/film_facade_surface_test.go` (187 symbols; 277 `replay.X` identifiers cited outside
+  `archlint/film_facade_surface_test.go` (186 symbols; 277 `replay.X` identifiers cited outside
   `film/`); reducing it was not retained (decision V25, 2026-09-18). **"`replay` decodes nothing"
   holds**: no production file of `film/replay` creates a bit reader or reads a bit; its film reads
   go through scan stages of `grammar`.
@@ -342,9 +342,9 @@ the difference is written here; the history of how each decision was reached is 
   (`archlint/decode_lock_interdit_test.go`). The only remaining "one decode at a time" bound is the
   inter-process, memory-driven `filmproc.AcquireSolo`, taken by the entry points (`cmd/*`,
   `replaychild`) and never by `replaybuild` or by the HTTP layer (`archlint/no_decode_in_api_test.go`).
-  **Not yet true: "proven under `go test -race`".** `TestDeuxFilmsEnParallele`
-  (`film/internal/grammar/deux_films_parallele_test.go`) exists, but on 2026-09-30 no CI job runs
-  the film packages under `-race` (only `shared-social-gate.yml` uses it).
+  **"Proven under `go test -race`" is held by the CI job `film-race`** (J12.6, 2026-09-30), which runs
+  `TestDeuxFilmsEnParallele` (`film/internal/grammar/deux_films_parallele_test.go`) under `-race` on
+  the `grammar` package alone (`-race` is incompatible with DuckDB, hence the narrow target).
 - **D-6, revisions.** One revision per layer and per facts consumer: `source-2026-09-16.2`,
   `profile-2026-09-17.3`, `grammar-2026-09-27.3`, `killsource-2026-09-27`,
   `objectives-2026-09-27`; fingerprints ignore ordinary comments and layout (lot J3.1). The replay

@@ -332,7 +332,7 @@ git commit -m "refactor(phase2): ..."
   2 ratchets) · `0034` **décodeur de film** (profil immuable par build ; cinq couches
   `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `film/internal/`,
   fermées par le compilateur ; hors de `film/`, on passe par la façade `film/decfilm`, dont la
-  surface est tenue par `archlint/film_facade_surface_test.go` (187 symboles et 277
+  surface est tenue par `archlint/film_facade_surface_test.go` (186 symboles et 277
   identifiants `replay.X` hors de `film/` au 2026-09-30 ; réduction non retenue, V25) ;
   porte unique aux octets ; build inconnu = erreur typée + film mis de côté + compteur ; une
   révision par couche, empreinte insensible aux commentaires ; faits PERSISTÉS, la
