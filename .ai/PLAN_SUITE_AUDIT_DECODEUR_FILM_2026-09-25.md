@@ -1643,3 +1643,24 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   même filtre daté pour les huit canaux delta, l'arme tenue et la récupération d'équipement
   (lectures antérieures au corps encore acceptées), et `TestKillSourceFaitsDIsolementFilmReel`
   rouge depuis avant `6676dcabd` ; gates complets de l'arbre fusionné.
+- 2026-09-30 : **R2-bis** fusionné (`8cd560673`, travail d'un agent coupé par la limite de quota,
+  relu et fini par un agent Sonnet) : filtre de génération daté pour les huit canaux delta, la
+  récupération d'équipement et la visée seule ; test d'isolement lisant son enum dans `persist`.
+  CI de `aa379da7f` VERTE. **Méthode de J11 changée à la demande de l'utilisateur** (« on ne peut
+  pas recommencer à chaque fois des analyses qui durent des heures ») : (1) comparaison au dernier
+  état ACCEPTÉ, par paliers, au lieu de `feat/v75` ; (2) critères décisifs = lecture (fermeture) et
+  données publiées, les compteurs de couverture en information ; (3) artefacts de base en cache
+  (`cmd/replay-corpus-gate/basecache*.go`) ; (4) **banc de vérité** (`internal/replayverite`,
+  conception `.ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md`) : scores contre des
+  oracles (K/D/A et score personnel officiels, hors cas circulaires ; fermeture ; huit classes de
+  vraisemblance), verdict FAUX / MANQUE / ok avant/après, qui devient le verdict du gate (D-5,
+  sans drapeau). Le serveur dev peut être arrêté et relancé à volonté (utilisateur, 2026-09-30).
+  **Amendement d'ordre** (utilisateur, 2026-09-30) : J12 démarre en parallèle de J11 sur des
+  branches à part (J12.2, J12.4, J12.5, J12.6, J12.7 + J12.7 bis — 18 gardes remises hors du tag
+  `research` —, J12.8, résidus, puis J12.3) ; la fusion de J12 reste après celle de J11. GO de
+  l'utilisateur pour la vague J11.4 ; J11.5 (vérification visuelle) APRÈS la fusion. Passage
+  réduit `6676dcabd` → `8cd560673` : 4 témoins identiques, pertes des 15 autres rapprochées des
+  rapports R1, R2, R2-bis, R3 ; restent à attribuer une baisse de lecture sur `4f77afc1`
+  (tir continu : 69 paquets fermés et 1 312 entrées en moins, 199 records d'états de mouvement),
+  `60ae07c4` (2 paquets fermés) et `d9781168` (14 entrées) — essai du banc sur ces trois témoins
+  contre `e87a275de` (avant R2-bis).
