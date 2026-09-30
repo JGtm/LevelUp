@@ -400,3 +400,97 @@ faux de ce corpus.
    traiter `z` comme optionnel.
 5. Les courbes statborg ne couvrent que 8 joueurs en BTB (tous les BTB du corpus). C'est le premier
    gisement de FN sur O-K1..3.
+
+### 10.1 Faux et manques du corpus actuel, mesurés par le banc livré (phase 2a)
+
+Mesure du 2026-09-30 : `cmd/replay-verite` sur les 19 artefacts `b452391f7` (J6-ter, schéma 76), chacun
+contre lui-même, valeurs absolues. Consignés sur instruction du superviseur, **aucun n'est corrigé**. Le
+verdict du banc ne les juge pas : il ne juge que leur évolution.
+
+6. **O-V1, vies en trop (28 FP)** : `c75f33b8` 9, `d9781168` 8, `51ebbc0f` 6, `084a804d` 3, `4f77afc1` 1,
+   `60ae07c4` 1. Le détail par joueur (publié / officiel) est dans le rapport de l'outil. Le chiffre
+   d'essai de la phase 1 (27) venait du script jetable ; celui-ci fait foi.
+7. **O-V2, fins de vie au-delà des morts officielles** (FP sans identité) : 18 sur `084a804d`, 27 sur
+   `4f77afc1`, 89 sur `50247b26`, 114 sur `a349fea8`, 17 sur `a521164d`, 14 sur `c75f33b8` et
+   `d9781168`, de 1 à 11 ailleurs. Ce sont des vies coupées sans mort, ou des départs et fins de manche :
+   la cause n'est pas instruite.
+8. **V-4, deux corps** : `084a804d`, 3 recouvrements (xuid `2533274851740446` 1 image, `2535442829120831`
+   9 images, `2535464635796745` 208 images), apparus à la fusion J5+J6+J9.
+9. **V-3, actions hors vie** : 255 sur 19 témoins, dont 114 sur `4f77afc1` et 93 sur `084a804d`.
+   **CORRECTION de la phase 1** : les « grenades hors vie des vieux builds » (285) étaient presque toutes
+   au slot 0, qui veut dire « pont muet », le lanceur est inconnu (`film/replay/grenades.go`). Ce ne sont
+   pas des faux et le banc livré ne les juge pas. Restent 17 actions sur `a349fea8` et 4 sur `50247b26`.
+10. **V-6, passagers à plus de 3 m du véhicule** : 10 (`084a804d` 6, `4f77afc1` 3, `a349fea8` 1). Le
+    chiffre de phase 1 (6) appariait à l'image exacte ; le banc apparie à ±1 image.
+11. **V-8, morts du statborg sans fin de vie à ±2 images** : 62, dont 20 sur `4f77afc1` et 13 sur
+    `084a804d`.
+12. **V-2, objets hors emprise à plus de 10 m** : 899 sur `50247b26`, 430 sur `a521164d`, 535 sur
+    `e5adf7b2` (surtout des échantillons de véhicule sur BTB et les builds anciens), 10 sur `084a804d` et
+    `4f77afc1`. Sur les cartes Arena, ce sont des armes `spawned` jamais ramassées, à plus de 100 m.
+    Est-ce un rangement hors carte réel ou un faux ? Non instruit.
+13. **V-5** : 1 action d'objectif `kills` hors présence (`bcb6d393`, xuid `2535468064146356`, image 578).
+14. **O-S2** : sur `084a804d` (BTB CTF), aucune capture publiée contre un score de 3 à 2 (FN 5) : le
+    calque `objectives` n'est pas publié sur ce témoin. Sur `c75f33b8`, 0 détonation contre 3 (FN 3,
+    découverte 1).
+15. **V-7** : `084a804d` passe de 22 à 146 désaccords d'identité publiés à la fusion J5+J6+J9.
+16. **J5 sur `4f77afc1`** : O-T1 (contradiction d'équipe) monte, et le verdict `bridge` de P-4 se dégrade.
+
+## 11. Phase 2a — livré, et écarts à la conception
+
+Livré sur `feat/suite-audit-decodeur-verite` :
+- `internal/replayverite` : scores O-K1..3, O-V1, O-V2, O-S1, O-S2, O-T1 ; preuves P-1, P-2, P-4 ;
+  violations V-1 à V-8 ; R-1 ; verdict `FAUX` / `MANQUE` / `ok` ; rendu avant/après ;
+- l'outil `cmd/replay-verite`, qui prend deux artefacts, des faits et en option le registre des replis
+  d'avant, et sait écrire ce registre ;
+- l'oracle officiel : `domain.MatchOracle`, `port.ReplayOracleRepo`, `duckdb.ReplayOracleRepo`, et
+  `levelup replay-facts-export --oracle` qui écrit `<short8>.oracle.json` en lecture seule
+  (`OpenReadForQuery`).
+
+Décisions superviseur appliquées : D-1 à D-8 ; les absolus sont informatifs ; chaque seuil est une
+constante nommée avec sa mesure (`seuils.go`) ; les faux du corpus sont consignés (§10.1).
+
+Écarts, chacun motivé :
+- **P-3 n'est pas livré.** Il exige les kills individuels (section 5 des faits du film), qui relèvent de la
+  phase 2b (D-3).
+- **V-8 n'attend pas la 2b.** Au lieu des morts de killsource, il lit les morts du statborg (paliers de la
+  courbe `deaths`). Mesure de la tolérance : sur 1 344 morts statborg, 982 tombent à l'image même de la
+  fin de vie, 304 à +1 et 2 à +2, d'où ±2 images.
+- **Exemption de V-1.** Aucune donnée de carte ne positionne ascenseurs, canons ou largages :
+  `map_objectives.json` n'a que des noms de script sans coordonnées, `map_callouts.json` des zones
+  d'appel, `map_positions_jouees.json` une seule carte. L'exemption est donc une **liste nommée et
+  datée** (`portes_de_carte.go`) : 5 portes mesurées sur Thunderhead et Dredge, rayon 3 m au départ ou à
+  l'arrivée du saut, avec un critère de retrait. Sa mesure : `11de8353` 47 sauts, tous exemptés ;
+  `d9781168` 38 sauts, tous exemptés.
+- **V-2 restreint.** Seuls les objets posés et les échantillons de véhicule sont jugés, avec une marge de
+  10 m et non 5. Les tirs, grenades et projectiles volent au-delà de l'enveloppe des joueurs : des
+  centaines par témoin BTB, même à 20 m.
+- **V-3 ne juge pas le slot 0** (pont muet, voir §10.1 n° 9).
+- **O-V1 sans tolérance de ±1** pour les arrivées et départs : seul le delta décide, et une tolérance
+  aurait masqué une vie coupée.
+- **Extracteur de fin de match.** `replaydiff` n'a pas été exporté, contrairement à D-1 : il travaille sur
+  un `map[string]any`, le banc sur des types. `Serie.Finale` en est la **deuxième** copie (plafond de la
+  règle n° 6), aucune troisième n'est admise.
+- **Oracle exporté sans consommateur dans le banc.** Les scores qui le lisent (O-S3, O-S4, O-S5, O-X1)
+  n'étaient pas dans la liste de la phase 2a : l'export existe, son lecteur reste à décider.
+
+Preuves :
+- tests purs sur artefacts synthétiques, et un artefact réel élagué (`bcb6d393`, 169 Ko compressés),
+  bulletin figé ;
+- **30 mutations par copie, toutes rouges**, au moins une par score, par preuve, par classe, par
+  exemption et par règle de verdict ;
+- gates : `go build ./...`, `go vet ./...`, tests du paquet et de l'outil, test d'intégration du dépôt
+  d'oracle (`-tags=integration`), `internal/archlint`, golangci-lint des paquets touchés (0 constat
+  nouveau).
+
+Verdicts du banc sur la chaîne réelle (outil livré, artefacts `j11`, sans registre d'avant) :
+- **J4 → J5 (`8f89aeedc` → `d6701c058`)** : `FAUX` sur `084a804d` (O-V1, O-V2, V-4, V-6, V-7), sur
+  `4f77afc1` (O-T1, O-V1, O-V2, P-4 `bridge`, V-7) et sur `a349fea8` (O-V2) ; `MANQUE` (P-1) sur
+  `0797ce72`, `51ebbc0f` et `c75f33b8`.
+- **J8** : `FAUX` partout, de 16 à 26 replis « nouveaux » par témoin. C'est le cas du compteur
+  nouvellement branché, que seul le registre d'avant excuse. Aucune révision de J8 ne porte l'outil qui
+  l'écrit : ce cas n'est prouvé que par le test synthétique.
+- **J10** : `ok` partout.
+- **J7** : `FAUX` sur 4 témoins, un ou deux replis nouveaux (à attribuer : branchés ou nouveaux ?).
+- **J6-bis** : `MANQUE` (P-1) sur 6 témoins, et un repli nouveau (`repli_emission_hors_domaine_jetee`)
+  sur 9.
+- **J6-ter** : `ok` partout.
