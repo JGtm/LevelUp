@@ -1183,10 +1183,31 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
     `--force` ignoré, `matchsAJour` ignoré, plan non complet, liste vide acceptée). Docs EN et FR.
     Découverte (non traitée) : `afficherPlan` n'affiche jamais son « ... » sur une longue liste
     (le `continue` de `i == 5` le précède).
-  - [ ] V5.2b Passe réelle bornée aux 12 matchs filmés du 22/09 par `--match`.
-- [ ] V5.3 Vérification sur données réelles, soirée du 22/09 : ~146 vies pour JGtm, 80 pour
+  - [x] V5.2b Passe réelle bornée aux 12 matchs filmés du 22/09 par `--match`.
+    Fait 2026-09-30 (superviseur ; serveur local déjà arrêté — aucun `air`/`server.exe`, port 8000
+    libre —, binaire du worktree `2822130f0`, `LEVELUP_REPO_ROOT` = dossier principal) : la
+    migration `shared_match_life_placement_v1` s'applique à l'ouverture (schéma 220) ; dry-run sur
+    les 13 préfixes de la soirée : 13 au registre, 1 déjà à jour (`f3061ab7`, Detachment : aucune
+    position), 12 films ; passe réelle `--films-only --match …` : 12 films écrits, 1 144 morts,
+    0 erreur, 0 absent, 1 min 14 s (3 ouvriers) ; `placement des vies ecrit` sur les 12 matchs,
+    portée connue partout, aucun pont non publiable, 0 frag hors vie. Serveur laissé arrêté (il
+    l'était avant la passe).
+- [x] V5.3 Vérification sur données réelles, soirée du 22/09 : ~146 vies pour JGtm, 80 pour
   Madina97294, 73 pour Chocoboflor (relevé du 2026-09-28 sur `match_lives_latest`) ; part des vies
   mesurées et répartition des causes d'exclusion relevées et collées ici.
+  Fait 2026-09-30 (`match_life_placement_latest`, lecture seule, radar 18 m partout) :
+
+  | Joueur | Matchs | Vies | Mesurées | Médiane X | Médiane frags | À portée rentable | À portée coûteux | Isolé rentable | Isolé coûteux | Hors radar | Mesuré | Porteur | Équipe à terre | Non situé | Coéquipier non situé |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | JGtm | 12 | 146 | 145 | 0,44 | 0 | 67 | 71 | 4 | 3 | 9,1 % | 93,3 % | 1,4 % | 1,1 % | 2,3 % | 2,0 % |
+  | Madina97294 | 6 | 80 | 79 | 0,43 | 1 | 50 | 26 | 1 | 2 | 9,8 % | 92,2 % | 1,8 % | 1,0 % | 3,9 % | 1,4 % |
+  | Chocoboflor | 6 | 73 | 72 | 0,42 | 1 | 36 | 32 | 1 | 3 | 7,5 % | 93,4 % | 0,8 % | 0,9 % | 4,0 % | 1,0 % |
+
+  Nombres de vies identiques au relevé du 2026-09-28. Lecture : en Arène, l'escouade reste groupée
+  (médiane à 0,43 portée, 4 à 7 vies isolées par joueur sur la soirée) ; le nuage se tassera à
+  gauche du trait du radar, ce que le gate visuel dira.
+- Ordre des items suivants (superviseur, 2026-09-30) : V5.7 (notes de version) passe AVANT la
+  fusion V5.4, pour que la fusion porte ses notes ; aucun autre changement d'ordre.
 - [ ] V5.4 Fusion `wt/emprise` → `feat/v75` (sur accord), CI verte au niveau job.
 - [ ] V5.5 Gate visuel par l'utilisateur APRÈS la fusion (onglet Emprise, soirée du 22/09 ; rangée
   « Appui » seule sur Synergies) ; il nomme les témoins.
