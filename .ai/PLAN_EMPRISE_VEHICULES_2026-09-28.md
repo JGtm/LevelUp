@@ -366,3 +366,13 @@ Journal : [2026-10-01] L7.4 joué en avant-plan ; L7.5 (clôture, superviseur) r
   concurrent) rougissent parfois sous la charge d'un `go test ./...` complet et passent seuls. Non traité.
 - (L7.2) L'e2e de compaction sème toute colonne dont le nom finit par `xuid` comme une chaîne : un
   compteur entier ne doit pas porter ce suffixe (piège, contourné par `episodes_unnamed`).
+- (L7.3/L7.4, superviseur, 2026-10-01 — relevé du rapport de l'exécutant, non consigné par lui)
+  décisions ACCEPTÉES : périmètre commun du rendement (frags, temps à bord et rendement sur les
+  mêmes matchs : passe mesurée, frags appariés, événements de mort lus) ; frags par camp lus à la
+  requête depuis `match_kill_events_latest` (tueur sans camp = adversaire, registre sans classe =
+  « non lus ») ; `exposure.paired_kills` numérateur du rendement, `exposure.kills` = tous les
+  frags ; ligne `vehicle` de la grille portée par l'état du match (`measured`), pas par
+  `has_film && team_known`. Découvertes : la grille écrit « non mesuré » sur la synthèse ET sur
+  chaque famille d'un match non mesuré (bavard) ; la légende hachurée dit encore « Sans film »
+  alors que la hachure sert aussi à « non mesuré » ; le garde « exclusion de la Campagne » refuse
+  toute constante SQL qui filtre `xuid = ?` sur `match_participants` sans l'exclusion.
