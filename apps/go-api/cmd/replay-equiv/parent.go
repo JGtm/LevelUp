@@ -171,9 +171,9 @@ func argsEnfant(o options, film, sortie string) []string {
 // ajoute la-bas devient une etape attendue ici, sans que personne ait a y penser.
 func etapesAttendues() []string {
 	return slices.Concat(
-		replaybuild.BuildBytesStepsBefore,
-		replay.BuildFromFilmSteps,
-		replaybuild.BuildBytesStepsAfter,
+		replaybuild.BuildBytesStepsBefore(),
+		replay.BuildFromFilmSteps(),
+		replaybuild.BuildBytesStepsAfter(),
 	)
 }
 

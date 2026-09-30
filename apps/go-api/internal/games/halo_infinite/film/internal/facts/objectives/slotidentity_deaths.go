@@ -187,7 +187,7 @@ func deathThreadByXUIDCompte(deaths []types.DeathInstant, c *ComptesDesReplis) m
 // centaines de millions) ne deroule rien. Le plafond propre au pont (`maxDeathsPerSlot`, 1 000) a
 // disparu avec ses gardes : il bornait une valeur que la serie publiee ne laisse plus passer.
 func deathProgressions(recs []types.StatRecord, cons *ReplisALaConsultation) map[int][]int {
-	return instantsDesMorts(SeriesTotal(recs, DeathsComponent, false, cons))
+	return instantsDesMorts(SeriesTotal(recs, DeathsComponent(), false, cons))
 }
 
 // deathProgressionsByRound est [deathProgressions] MANCHE PAR MANCHE : `manche -> slot ->
@@ -195,7 +195,7 @@ func deathProgressions(recs []types.StatRecord, cons *ReplisALaConsultation) map
 // repartent de zero a chaque manche comme le compteur du jeu.
 func deathProgressionsByRound(recs []types.StatRecord, cons *ReplisALaConsultation) map[int]map[int][]int {
 	parManche := map[int]map[int][]types.ScorePoint{}
-	for slot, byRound := range SeriesByRound(recs, DeathsComponent, false, cons) {
+	for slot, byRound := range SeriesByRound(recs, DeathsComponent(), false, cons) {
 		for round, pts := range byRound {
 			if parManche[round] == nil {
 				parManche[round] = map[int][]types.ScorePoint{}

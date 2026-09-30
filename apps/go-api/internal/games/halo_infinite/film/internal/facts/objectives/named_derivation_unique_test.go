@@ -89,7 +89,7 @@ func TestSeriePublieeEtCleAppariementSAccordent(t *testing.T) {
 	}
 
 	// LA SERIE : ce que le document publie.
-	serie := SeriesTotal(recs, AssistsComponent, false, nil)
+	serie := SeriesTotal(recs, AssistsComponent(), false, nil)
 	if got := finalDe(serie[12]); got != int64(cle[12]) {
 		t.Errorf("SERIE PUBLIEE ≠ CLE D'APPARIEMENT pour le slot 12 : la serie finit a %d "+
 			"assistances, la cle en compte %d — la borne par pas ne descend pas dans la serie",
@@ -102,7 +102,7 @@ func TestSeriePublieeEtCleAppariementSAccordent(t *testing.T) {
 
 	// La forme par MANCHE doit dire la meme chose que le total : c'est elle que le chemin
 	// multi-manche (`replay.buildPlayerScoresByRound`) recompose.
-	parManche := SeriesByRound(recs, AssistsComponent, false, nil)
+	parManche := SeriesByRound(recs, AssistsComponent(), false, nil)
 	if got := finalDe(parManche[12][0]); got != 0 {
 		t.Errorf("serie PAR MANCHE du slot 12 : finit a %d, attendu 0", got)
 	}
@@ -130,7 +130,7 @@ func TestSerieSaineTraverseLaDerivationIntacte(t *testing.T) {
 	if cle[12] != sain {
 		t.Fatalf("la cle compte %d, attendu %d", cle[12], sain)
 	}
-	if got := finalDe(SeriesTotal(recs, AssistsComponent, false, nil)[12]); got != sain {
+	if got := finalDe(SeriesTotal(recs, AssistsComponent(), false, nil)[12]); got != sain {
 		t.Errorf("la serie finit a %d, attendu %d — la borne a coupe un compteur sain", got, sain)
 	}
 }

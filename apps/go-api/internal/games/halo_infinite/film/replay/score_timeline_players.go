@@ -60,10 +60,10 @@ func buildPlayerScoresFlat(recs []types.StatRecord, identity map[int]string, c s
 	if len(identity) == 0 {
 		return nil
 	}
-	personal := loadScoreSeries(recs, objectives.PersonalScoreComponent, false, c.cons)
-	kills := loadScoreSeries(recs, objectives.KillsComponent, false, c.cons)
-	deaths := loadScoreSeries(recs, objectives.DeathsComponent, false, c.cons)
-	assists := loadScoreSeries(recs, objectives.AssistsComponent, false, c.cons)
+	personal := loadScoreSeries(recs, objectives.PersonalScoreComponent(), false, c.cons)
+	kills := loadScoreSeries(recs, objectives.KillsComponent(), false, c.cons)
+	deaths := loadScoreSeries(recs, objectives.DeathsComponent(), false, c.cons)
+	assists := loadScoreSeries(recs, objectives.AssistsComponent(), false, c.cons)
 
 	slots := make([]int, 0, len(identity))
 	for slot := range identity {
@@ -97,10 +97,10 @@ func buildPlayerScoresFlat(recs []types.StatRecord, identity map[int]string, c s
 // fusionnes en une entree — courbe recomposee dans l'ordre du temps.
 func buildPlayerScoresByRound(recs []types.StatRecord,
 	round objectives.RoundIdentity, c scoreClock) []PlayerScore {
-	personal := playerRoundsByXUID(recs, objectives.PersonalScoreComponent, round, c.cons)
-	kills := playerRoundsByXUID(recs, objectives.KillsComponent, round, c.cons)
-	deaths := playerRoundsByXUID(recs, objectives.DeathsComponent, round, c.cons)
-	assists := playerRoundsByXUID(recs, objectives.AssistsComponent, round, c.cons)
+	personal := playerRoundsByXUID(recs, objectives.PersonalScoreComponent(), round, c.cons)
+	kills := playerRoundsByXUID(recs, objectives.KillsComponent(), round, c.cons)
+	deaths := playerRoundsByXUID(recs, objectives.DeathsComponent(), round, c.cons)
+	assists := playerRoundsByXUID(recs, objectives.AssistsComponent(), round, c.cons)
 
 	out := make([]PlayerScore, 0)
 	for _, xuid := range sortedXUIDs(personal, kills, deaths, assists) {

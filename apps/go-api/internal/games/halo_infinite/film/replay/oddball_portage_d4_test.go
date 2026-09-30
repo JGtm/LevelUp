@@ -107,7 +107,7 @@ func TestEtatVivantOddballPortage(t *testing.T) {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
 	identity := objectives.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
-	perso := objectives.SeriesTotal(recs, objectives.PersonalScoreComponent, false, nil)
+	perso := objectives.SeriesTotal(recs, objectives.PersonalScoreComponent(), false, nil)
 	t.Logf("%s : pont %d slot(s) nomme(s) ; score personnel sur %d slot(s)",
 		id, len(identity), len(perso))
 	if len(perso) < 2 {

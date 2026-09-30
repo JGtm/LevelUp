@@ -33,7 +33,9 @@ package filmcache
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -83,7 +85,7 @@ type manifestJSON struct {
 func Open(root, shortID string) (*Source, bool, error) {
 	path := ManifestPath(root, shortID)
 	raw, err := os.ReadFile(path)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil, false, nil
 	}
 	if err != nil {
@@ -191,7 +193,7 @@ func ManifestPath(root, shortID string) string {
 // Un cache absent rend une liste vide, pas une erreur : le cache est local et partiel.
 func ListShortIDs(root string) ([]string, error) {
 	entries, err := os.ReadDir(filepath.Join(root, manifestsDir))
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
 	if err != nil {

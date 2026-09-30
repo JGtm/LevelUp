@@ -20,10 +20,18 @@ package weaponv3
 // liste maitre `games/weapons/filmshell`), PAS d'une hand-list qui dérive. Toute arme ajoutée à
 // l'enum v2 (sandbox/Fiesta/grenades) est ainsi automatiquement connue du canon.
 
-import "levelup/go-api/internal/games/weapons/filmshell"
+import (
+	"maps"
+
+	"levelup/go-api/internal/games/weapons/filmshell"
+)
 
 // KnownWeaponHigh32 — map high-32 → nom canonique, dérivée de l'enum v2.
 var KnownWeaponHigh32 = buildKnownWeaponHigh32()
+
+// KnownWeaponHigh32Copie rend une COPIE de [KnownWeaponHigh32] : l accesseur que la facade expose
+// (J12.4), pour qu aucun importeur ne tienne la table modifiable elle-meme.
+func KnownWeaponHigh32Copie() map[uint32]string { return maps.Clone(KnownWeaponHigh32) }
 
 // buildKnownWeaponHigh32 dérive le set high-32 → nom depuis filmshell.WeaponIDToName.
 // Le fold par high-32 est DÉTERMINISTE (indépendant de l'ordre d'itération de la map) :

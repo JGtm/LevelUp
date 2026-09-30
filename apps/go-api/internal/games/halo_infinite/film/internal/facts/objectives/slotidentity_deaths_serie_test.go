@@ -40,7 +40,7 @@ func TestLePontPlatParMortsLitLaSeriePubliee(t *testing.T) {
 		recKDA(1000, 10, 0, 1, 1, 0), recKDA(2000, 10, 0, 1, 2, 0), recKDA(3000, 10, 0, 1, 3, 0),
 		recKDA(1200, 12, 0, 1, 1, 0),
 	}, 0, 1500)
-	serie := SeriesTotal(recs, DeathsComponent, false, nil)
+	serie := SeriesTotal(recs, DeathsComponent(), false, nil)
 	got := deathProgressions(recs, nil)
 	for slot, pts := range serie {
 		if want := int(pts[len(pts)-1].Value); len(got[slot]) != want {
@@ -60,7 +60,7 @@ func TestLePontParMancheLitLaSeriePubliee(t *testing.T) {
 	if len(realRoundsSorted(recs)) != 2 {
 		t.Fatalf("le scenario doit porter deux manches reelles, %v", realRoundsSorted(recs))
 	}
-	parManche := SeriesByRound(recs, DeathsComponent, false, nil)
+	parManche := SeriesByRound(recs, DeathsComponent(), false, nil)
 	deroule := deathProgressionsByRound(recs, nil)
 	for _, round := range realRoundsSorted(recs) {
 		got := deroule[round]

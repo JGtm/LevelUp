@@ -217,7 +217,7 @@ func classerLesEcarts(film, faits map[string]string) (absencesDeBalayage int, ec
 		switch {
 		case !oka && !okb:
 			continue
-		case oka && !okb && slices.Contains(replay.BuildFromFilmSteps, etape):
+		case oka && !okb && slices.Contains(replay.BuildFromFilmSteps(), etape):
 			absencesDeBalayage++
 		case oka != okb:
 			ecarts = append(ecarts, etape+"(absente d une passe)")
