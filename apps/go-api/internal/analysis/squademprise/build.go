@@ -22,6 +22,8 @@ type soiree struct {
 	// dont les niveaux de socle sont mesurés (le périmètre de l'exposition).
 	pwk, pwkOnTiers domain.SquadEmpriseCount
 	pwkMatches      int
+	// veh : les véhicules, indépendants du film (vehicles.go).
+	veh vehicleSum
 }
 
 func newSoiree() *soiree { return &soiree{obj: newObjets()} }
@@ -29,6 +31,8 @@ func newSoiree() *soiree { return &soiree{obj: newObjets()} }
 // add verse un match dans la soirée. Les objets d'un match ne sont versés que là où ils se
 // lisent : tallyMatch n'en compte pas ailleurs.
 func (s *soiree) add(t matchTally) {
+	s.veh.add(t.veh)
+	s.obj.merge(t.obj, estVehicule)
 	if t.pwk != nil {
 		s.pwkMatches++
 		s.pwk.Us += t.pwk.Us
@@ -45,7 +49,7 @@ func (s *soiree) add(t matchTally) {
 	if t.tiersMeasured() {
 		s.tiersMatches++
 	}
-	s.obj.merge(t.obj)
+	s.obj.merge(t.obj, func(res string) bool { return !estVehicule(res) })
 	for i := 0; i < 2; i++ {
 		s.outcomes[i].Add(t.outcomes[i])
 		s.effectMS[i] += t.effectMS[i]
@@ -80,6 +84,7 @@ func Build(in Input) domain.SquadEmpriseBlock {
 	block.Resources = bilan(s)
 	block.Objects = s.obj.publier("", players, &in)
 	block.Production = production(s)
+	block.Vehicles = couvertureVehicules(s, in.Vehicles != nil, in.VehiclesUnavailable)
 	if in.Film != nil && len(in.Timeline) > 0 {
 		block.Habit = buildHabit(&in, ix, current)
 	}
@@ -102,8 +107,15 @@ func bilan(s *soiree) []domain.SquadEmpriseResource {
 			Resource: domain.EmpriseResourcePowerWeapon, Taken: taken, MatchesMeasured: s.tiersMatches,
 		})
 	}
+	if taken := s.obj.total(domain.EmpriseResourceVehicle); s.veh.measured > 0 && taken.Us+taken.Them > 0 {
+		out = append(out, domain.SquadEmpriseResource{
+			Resource: domain.EmpriseResourceVehicle, Taken: taken, MatchesMeasured: s.veh.measured,
+		})
+	}
 	return out
 }
+
+func estVehicule(resource string) bool { return resource == domain.EmpriseResourceVehicle }
 
 func outcomeCounts(o sessionusage.OutcomeCounts) domain.SquadEmpriseOutcomeCounts {
 	return domain.SquadEmpriseOutcomeCounts{Taken: o.Taken, Used: o.Used, Kept: o.Kept, Dropped: o.Dropped}

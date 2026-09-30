@@ -149,3 +149,24 @@ func TestTeammatesCtx_CableLePlacementDesVies(t *testing.T) {
 		t.Errorf("WithRadarRange = %+v : attendu un appel inconditionnel WithRadarRange(r.radarRangeFor(pdb))", radar)
 	}
 }
+
+// TestTeammatesCtx_CableLesVehiculesDeLEmprise — plan Emprise véhicules, lot L7.3 : le lecteur de la
+// ressource véhicules est câblé sur le PlayerDB du joueur avec le classificateur de source de dégât
+// du titre, SOUS la seule porte `film.vehicle_usage` (celle de sa dérivation au sync). Un autre
+// argument (sans classificateur, plus de frags par camp), une porte retirée, élargie ou déplacée
+// rougissent : sans eux, la ressource disparaît du bloc — ou sort pour un titre sans film — en
+// silence.
+func TestTeammatesCtx_CableLesVehiculesDeLEmprise(t *testing.T) {
+	appels := appelsDansTeammatesCtx(t, "WithVehicleUsage")
+	if len(appels) != 1 {
+		t.Fatalf("%d appel(s) à WithVehicleUsage dans TeammatesCtx, attendu 1", len(appels))
+	}
+	a := appels[0]
+	const attendu = "duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb))"
+	if len(a.args) != 1 || a.args[0] != attendu {
+		t.Errorf("WithVehicleUsage(%s) : attendu WithVehicleUsage(%s)", strings.Join(a.args, ", "), attendu)
+	}
+	if len(a.portes) != 1 || !strings.Contains(a.portes[0], "games.CapFilmVehicleUsage") {
+		t.Errorf("WithVehicleUsage hors de la seule porte games.CapFilmVehicleUsage (portes : %v)", a.portes)
+	}
+}

@@ -65,6 +65,9 @@ func (s *TeammatesService) loadEmprise(
 	}
 	in.PowerKills, in.SheetUnavailable = s.lireFeuilleEmprise(ctx, teammatesMatchIDs(scope))
 	in.Film, in.FilmUnavailable = s.lireFilmEmprise(ctx, current, timeline, lu.lectures)
+	// La ressource véhicules vient de l'artefact, pas du résumé d'usage : sa propre lecture et sa propre
+	// section (teammates_service_emprise_vehicles.go).
+	in.Vehicles, in.VehiclesUnavailable, in.VehicleLabels = s.lireVehiculesEmprise(ctx, playerXUID, current, timeline, req.Locale)
 	if in.Film != nil {
 		in.Players = squadagg.SquadPlayers(playerXUID, s.gamertag, in.Film.Participants, req.SelectedGamertags)
 	} else {

@@ -272,6 +272,13 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmKillPositions) {
 		svc = svc.WithLifePlacement(duckdb.NewSquadLifePlacementRepo(pdb))
 	}
+	// Ressource véhicules de l'Emprise (plan Emprise véhicules, lot L7.3) : la capability fine
+	// film.vehicle_usage, celle de sa dérivation au sync (Infinite ; absente pour Halo 5 → ressource
+	// absente, journalisé en Debug par le service). Le classificateur de source de dégât est celui de
+	// la Répartition des frags. Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmVehicleUsage) {
+		svc = svc.WithVehicleUsage(duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb)))
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 

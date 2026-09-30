@@ -113832,3 +113832,13 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Résultats observés** : horloge vérifiée sur 25 artefacts réels (228 des 229 frags `K` de la cuisson retrouvés depuis la base par `originMs`). 26 mutants nommés, tous rouges après renforcement de deux tests et refonte de trois mutants non compilables ; restaurations par copie, `cmp` identique. Gate : `go test` par lots vert (deux flakes de charge hors périmètre, verts seuls), intégration `-p 1` verte sur les cinq paquets touchés et sur `sync` (découpé par initiale), lint 0, archlint vert (plafond `replay` 293 -> 298, justifié), gofmt vide. Piège noté : l'e2e de compaction sème toute colonne finissant par `xuid` comme une chaîne.
 
 **Conclusion / prochaine étape** : L7.2 coché au plan ; suivant L7.3 (bloc Emprise, lecture bornée de `match_vehicle_takes_latest`, ADR 0036). Rattrapage réel des huit témoins prescrit à L7.5 (`--force` après recuisson).
+
+## [2026-10-01] Emprise véhicules, lot L7.3 : la ressource `vehicle` dans le bloc Emprise (Go)
+
+**Statut** : Complété (commit `feat(emprise-vehicules/L7.3)` sur `wt/emprise`).
+
+**Décision technique principale** : la ressource entre dans les listes existantes du bloc (ressources, objets par famille, grille par match, production, habitude) plus un bloc de couverture `vehicles` et un état `matches[].vehicles` qui sépare « non mesuré » (D8) du zéro mesuré. Lecture unique et bornée (ADR 0036 I2) par `SquadVehicleRepo` : prises et couverture depuis `match_vehicle_takes_latest`, frags de classe véhicule par camp depuis `match_kill_events_latest` pour les seuls matchs dont la passe en compte (classificateur et résolveur de classe de la Répartition des frags). Périmètre commun frags / temps à bord / rendement (D9) : matchs aux frags appariés et événements lus. Indépendante du film ; capability `film.vehicle_usage` absente : ressource absente (Debug), lecture en échec : dite (`load_failed`).
+
+**Résultats observés** : 36 mutants nommés tous rouges (dont 6 refaits compilables), restaurations par copie identiques ; gates Go verts (intégration découpée par initiale), lint 0, archlint vert (garde Campagne : exclusion posée sur la lecture du camp), contrat régénéré et vérifié.
+
+**Conclusion / prochaine étape** : L7.3 coché ; L7.4 (cartes web) suit.

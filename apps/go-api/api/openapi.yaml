@@ -26651,6 +26651,8 @@ components:
             - "null"
         sheet_unavailable:
           type: string
+        vehicles:
+          $ref: '#/components/schemas/SquadEmpriseVehicles'
       required:
         - matches_total
         - matches_measured
@@ -26765,6 +26767,10 @@ components:
           type: boolean
         tiers:
           type: string
+        vehicles:
+          type: string
+        vehicles_reason:
+          type: string
       required:
         - match_id
         - has_film
@@ -26792,6 +26798,8 @@ components:
     SquadEmpriseObject:
       additionalProperties: false
       properties:
+        aboard_ms:
+          $ref: '#/components/schemas/SquadEmpriseCount'
         key:
           type: string
         label:
@@ -26820,6 +26828,9 @@ components:
     SquadEmpriseObjectShare:
       additionalProperties: false
       properties:
+        aboard_ms:
+          format: int64
+          type: integer
         dropped:
           format: int64
           type: integer
@@ -27079,6 +27090,52 @@ components:
         - resource
         - taken
         - share
+      type: object
+    SquadEmpriseVehicles:
+      additionalProperties: false
+      properties:
+        episodes_no_camp:
+          format: int64
+          type: integer
+        episodes_read:
+          format: int64
+          type: integer
+        episodes_unnamed:
+          format: int64
+          type: integer
+        frags_matches:
+          format: int64
+          type: integer
+        frags_paired:
+          format: int64
+          type: integer
+        frags_total:
+          format: int64
+          type: integer
+        matches_measured:
+          format: int64
+          type: integer
+        matches_not_measured:
+          format: int64
+          type: integer
+        paired_share:
+          format: double
+          type: number
+        proximity_episodes:
+          format: int64
+          type: integer
+        unavailable:
+          type: string
+      required:
+        - matches_measured
+        - matches_not_measured
+        - episodes_read
+        - episodes_unnamed
+        - episodes_no_camp
+        - proximity_episodes
+        - frags_matches
+        - frags_total
+        - frags_paired
       type: object
     SquadEngagementSession:
       additionalProperties: false

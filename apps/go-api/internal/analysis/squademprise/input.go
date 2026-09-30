@@ -109,11 +109,21 @@ type Input struct {
 	Weapons map[string]squadformes.WeaponInfo
 	// SessionMatchCounts : libellé de session -> matchs de la composition (ADR 0033).
 	SessionMatchCounts map[string]int
+	// Vehicles : la ressource véhicules (lecture de `match_vehicle_takes_latest`, périmètre ET
+	// matchs de l'habitude). Nil = non lue ; VehiclesUnavailable dit alors l'échec (vide quand le
+	// titre ne mesure simplement pas la ressource). Indépendante du film.
+	Vehicles            *VehicleRead
+	VehiclesUnavailable string
+	// VehicleLabels : famille de véhicule -> nom du titre dans la langue de la requête, pour les
+	// seules familles que le manifeste du titre qualifie (une tourelle fixe). Les autres sont des
+	// noms propres du jeu, que le client affiche depuis leur clé.
+	VehicleLabels map[string]string
 }
 
 // resourceOrder — l'ordre de publication des ressources.
 var resourceOrder = []string{
-	domain.EmpriseResourcePowerup, domain.EmpriseResourcePowerWeapon, domain.EmpriseResourceRack,
+	domain.EmpriseResourcePowerup, domain.EmpriseResourcePowerWeapon,
+	domain.EmpriseResourceVehicle, domain.EmpriseResourceRack,
 }
 
 // resourceRank — le rang d'une ressource dans resourceOrder.

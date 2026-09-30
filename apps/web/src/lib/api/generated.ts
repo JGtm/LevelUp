@@ -12103,6 +12103,7 @@ export interface components {
             production: components["schemas"]["SquadEmpriseProduction"][] | null;
             resources: components["schemas"]["SquadEmpriseResource"][] | null;
             sheet_unavailable?: string;
+            vehicles?: components["schemas"]["SquadEmpriseVehicles"];
         };
         SquadEmpriseCampOutcomes: {
             them: components["schemas"]["SquadEmpriseOutcomeCounts"];
@@ -12140,6 +12141,8 @@ export interface components {
             resources: components["schemas"]["SquadEmpriseMatchResource"][] | null;
             team_known: boolean;
             tiers?: string;
+            vehicles?: string;
+            vehicles_reason?: string;
         };
         SquadEmpriseMatchResource: {
             objects: components["schemas"]["SquadEmpriseObject"][] | null;
@@ -12147,6 +12150,7 @@ export interface components {
             taken: components["schemas"]["SquadEmpriseCount"];
         };
         SquadEmpriseObject: {
+            aboard_ms?: components["schemas"]["SquadEmpriseCount"];
             key: string;
             label?: string;
             /** Format: int64 */
@@ -12157,6 +12161,8 @@ export interface components {
             weapon_key?: string;
         };
         SquadEmpriseObjectShare: {
+            /** Format: int64 */
+            aboard_ms?: number;
             /** Format: int64 */
             dropped?: number;
             /** Format: int64 */
@@ -12269,6 +12275,29 @@ export interface components {
             /** Format: double */
             share: number;
             taken: components["schemas"]["SquadEmpriseCount"];
+        };
+        SquadEmpriseVehicles: {
+            /** Format: int64 */
+            episodes_no_camp: number;
+            /** Format: int64 */
+            episodes_read: number;
+            /** Format: int64 */
+            episodes_unnamed: number;
+            /** Format: int64 */
+            frags_matches: number;
+            /** Format: int64 */
+            frags_paired: number;
+            /** Format: int64 */
+            frags_total: number;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_not_measured: number;
+            /** Format: double */
+            paired_share?: number;
+            /** Format: int64 */
+            proximity_episodes: number;
+            unavailable?: string;
         };
         SquadEngagementSession: {
             durations_seconds: number[] | null;
