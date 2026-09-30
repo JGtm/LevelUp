@@ -1162,6 +1162,15 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
   principal) : `levelup backfill-killsource --films-only --dry-run` d'abord, la liste doit contenir
   les 12 matchs filmés du 22/09 ; puis la passe réelle, bornée par `--limit` si la liste dépasse la
   soirée témoin et le mois qui la précède.
+  Amendé par le superviseur le 2026-09-30 : `--limit` prend les films les MOINS CHERS d'abord, pas
+  ceux d'une soirée, et la passe entière du parc local (~1 300 films, ~1 min par film et par
+  ouvrier) tiendrait le serveur arrêté des heures. Sous-item :
+  - [ ] V5.2a Option `--match` de `backfill-killsource` (liste d'identifiants séparés par des
+    virgules, préfixes courts de 8 caractères acceptés s'ils sont univoques) : restreint la
+    sélection hors ligne à ces matchs, `matchsAJour` toujours appliqué sauf `--force`, refusée
+    avec `--online` ; tests (filtre, préfixe ambigu refusé, combinaison avec `--force` et
+    `--dry-run`) ; documentée dans `docs/COMMANDS.md` et `docs/FR/COMMANDS.md`.
+  - [ ] V5.2b Passe réelle bornée aux 12 matchs filmés du 22/09 par `--match`.
 - [ ] V5.3 Vérification sur données réelles, soirée du 22/09 : ~146 vies pour JGtm, 80 pour
   Madina97294, 73 pour Chocoboflor (relevé du 2026-09-28 sur `match_lives_latest`) ; part des vies
   mesurées et répartition des causes d'exclusion relevées et collées ici.
