@@ -630,14 +630,18 @@ the local film cache; the two offline ones need no DB and decode one film per bo
 ```bash
 cd apps/go-api
 go run ./cmd/levelup replay-facts-export --out internal/games/halo_infinite/film/replay/testdata/equivalence \
-  [--title slug] <short8|match_id>...
+  [--title slug] [--oracle] <short8|match_id>...
 ```
 
 Writes one `<short8>.facts.json` per match — match rows, both team scores, variant, candidate map
 names — in the shape `replay-build --facts` already reads. Without those facts, zones, objective
 actions, VIP/skull/bomb, pads and spawn points are short-circuited and an equivalence run would be
 vacuous. Read-only (`OpenReadForQuery`); it fails outright rather than writing empty facts, so stop
-a server that holds the shared DB in write.
+a server that holds the shared DB in write. `--oracle` also writes `<short8>.oracle.json`: the
+official truths the build never reads (personal score, shots, kills by category, boolean presence,
+objective stats from `match_objective_stats_latest`), the oracle of the truth bench
+(`cmd/replay-verite`). It is a SEPARATE file on purpose: build inputs stay byte-identical. An empty
+oracle is refused like empty facts.
 
 ```bash
 go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt), compare only
@@ -942,6 +946,28 @@ If the local parc is older than HEAD, `--reference=parc` diffs are expected to s
 layers, documented fixes); any LOSS is a fact to report, never to hide by narrowing the
 manifest or filtering the report.
 
+
+#### Truth bench (`cmd/replay-verite`, 2026-09-30)
+
+Judges a replay artifact AFTER against an artifact BEFORE of the same witness, against ORACLES
+(official match truths) and VIOLATION COUNTS (what no real match can contain), instead of
+attributing hundreds of coverage metrics by hand. Design:
+`.ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md`; library: `internal/replayverite`. It
+bakes nothing, decodes no film and opens no DB.
+
+```bash
+cd apps/go-api
+go run ./cmd/replay-verite -avant <before.json> -apres <after.json> -faits <short8>.facts.json \
+  [-temoin id] [-registre-avant registre.json]
+go run ./cmd/replay-verite -registre > registre.json   # fallback registry of THIS revision
+```
+
+Verdict (exit 1 when not `ok`): `FAUX` when an oracle false positive or a violation class goes
+up, or a NEW fallback fires (unless the before-registry says its counter was not wired yet);
+`MANQUE` when an oracle false negative goes up or an internal proof degrades; `ok` otherwise. Only
+the delta decides: absolute values are printed for information. Units matched ON the oracle itself
+(`triplet_feuille` statborg slots, teams resolved by `teamIdentity` `a`/`a0`) are excluded, never
+counted as true positives. Integration into `replay-corpus-gate` comes next.
 
 ### Frontend (`apps/web`)
 
