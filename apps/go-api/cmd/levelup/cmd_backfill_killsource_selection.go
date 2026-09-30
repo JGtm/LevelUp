@@ -116,6 +116,18 @@ func filmsACollecter(
 // comme les autres, sans regle de plus (3 matchs sur 1 519 a vies sur la copie du 2026-09-28
 // etaient re-selectionnes a chaque passe avant ce lot). Le backlog AUTOMATIQUE du post-sync ne
 // lit pas cette condition (`conditionBacklog`, inchange) : aucun redecodage ne part de lui-meme.
+//
+// LE PLACEMENT DOIT ETRE POSTERIEUR AUX VIES COURANTES (revue adversariale V5.1, R2, 2026-09-30) :
+// un placement a `PlacementRev` calcule sur d anciennes vies ne rend pas le match a jour. Cas
+// reel : le collecteur reecrit les vies (revision d isolement montee), puis l ecriture du
+// placement echoue (compteur `killsource_placement_erreurs_ecriture`) — l ancienne passe de placement, deja a
+// `PlacementRev`, ferait croire le match a jour et l Emprise lirait un placement d anciennes
+// vies. LE CRITERE EST `written_at` : `decode_pass` est un tirage aleatoire (aucun ordre), alors
+// que les deux persisters posent `time.Now().UTC()` UNE fois par passe (toutes les lignes d une
+// passe le partagent) et que le collecteur ecrit le placement APRES les vies : sur un chemin
+// sain, `placement.written_at >= vies.written_at`. `>=` (et non `>`) : deux horloges egales sont
+// le meme instant, pas une preuve de peremption. Les vues `_latest` portent chacune la passe
+// courante ; `MAX` n en est que l unique valeur de la passe.
 func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT DISTINCT e.match_id FROM match_kill_events_latest e
@@ -130,7 +142,9 @@ func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM match_lives_latest l WHERE l.match_id = e.match_id)
 		    OR EXISTS (SELECT 1 FROM match_life_placement_latest pl
-		               WHERE pl.match_id = e.match_id AND pl.decoder_rev = ?)
+		               WHERE pl.match_id = e.match_id AND pl.decoder_rev = ?
+		                 AND pl.written_at >= (SELECT MAX(l.written_at) FROM match_lives_latest l
+		                                       WHERE l.match_id = e.match_id))
 		  )`,
 		decfilm.Rev, killscope.ReadPathCreditBackfill,
 		killcollector.IsolationDecoderRev, killcollector.PlacementRev)

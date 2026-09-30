@@ -325,3 +325,115 @@ func enClair[T any](p *T) string {
 	}
 	return fmt.Sprint(*p)
 }
+
+// ─── COMPLÉMENTS DE LA REVUE ADVERSARIALE V5.1, R3 (2026-09-30) ──────────────────────────────
+//
+// Trois trous relevés par le relecteur, chacun fermé par un test rouge sous la mutation nommée.
+
+// TestPlacementDesVies_FragALInstantDuDebutDeLaVieSuivante — la borne est `[début, début
+// suivant)` : le frag posé EXACTEMENT au début de ma seconde vie est celui de la seconde, pas de
+// la première. Mutation vue rouge : `>` en `>=` dans le `sort.Search` du rattachement.
+func TestPlacementDesVies_FragALInstantDuDebutDeLaVieSuivante(t *testing.T) {
+	for _, cas := range []struct {
+		nom               string
+		tempsMS           int64
+		premiere, seconde int
+	}{
+		{"une milliseconde avant le debut", 15_999, 1, 0},
+		{"exactement au debut", 16_000, 0, 1},
+	} {
+		t.Run(cas.nom, func(t *testing.T) {
+			e := decorDeuxVies()
+			e.Journal = []FragDuJournal{{TueurXUID: 111, VictimeXUID: 999, TempsMS: cas.tempsMS, Publiable: true}}
+			vies, bilan := PlacementDesVies(e)
+			p, s := placementDe(t, vies, 111, 0), placementDe(t, vies, 111, 16_000)
+			if p.Frags != cas.premiere || s.Frags != cas.seconde || bilan.FragsRattaches != 1 {
+				t.Fatalf("frags premiere %d / seconde %d / rattaches %d, attendu %d / %d / 1",
+					p.Frags, s.Frags, bilan.FragsRattaches, cas.premiere, cas.seconde)
+			}
+		})
+	}
+}
+
+// TestPlacementDesVies_CausesSimultanees — trois PAIRES de causes vraies au même instant : c'est
+// la plus prioritaire qui prend l'instant, l'autre n'est pas comptée. Mutation vue rouge : le
+// bloc de la cause seconde placé avant celui de la première dans `classer`.
+func TestPlacementDesVies_CausesSimultanees(t *testing.T) {
+	adv, mAdv := adversaireLointain()
+	// Mes positions s'interrompent de 4 à 6 s : non situé de 5,1 à 5,9 s (cf. JoueurNonSitue).
+	mesTrous := append(pisteMonde(1, 0, 4_000, 0, 0), pisteMonde(1, 6_000, 10_000, 0, 0)...)
+
+	t.Run("porteur et non situe : porteur", func(t *testing.T) {
+		pos := append(append([]grammar.BipedPosition{}, mesTrous...), pisteMonde(2, 0, 12_000, 3, 0)...)
+		e := decorPlacement(append(pos, adv...), []Death{mortFilm(111, 10_000), mortFilm(222, 12_000), mAdv})
+		e.Portages = map[uint64][]IntervalleDePort{111: {{DebutMS: 5_000, FinMS: 5_900}}}
+		v := placementDe(t, mustVies(PlacementDesVies(e)), 111, 0)
+		if v.PorteurMS != 1_000 || v.NonSitueMS != 0 || v.MesureMS != 9_100 {
+			t.Fatalf("porteur %d / non situe %d / mesure %d ms, attendu 1 000 / 0 / 9 100 (%+v)",
+				v.PorteurMS, v.NonSitueMS, v.MesureMS, v)
+		}
+	})
+
+	t.Run("equipe a terre et non situe : equipe a terre", func(t *testing.T) {
+		// Le coéquipier meurt à 4 s et ne revient qu'à 12 s (cf. decorEquipeATerre).
+		pos := append(append([]grammar.BipedPosition{}, mesTrous...), pisteMonde(2, 0, 4_000, 3, 0)...)
+		pos = append(pos, pisteMonde(2, 12_000, 16_000, 3, 0)...)
+		e := decorPlacement(append(pos, adv...), []Death{
+			mortFilm(222, 4_000), mortFilm(111, 10_000), mortFilm(222, 16_000), mAdv,
+		})
+		v := placementDe(t, mustVies(PlacementDesVies(e)), 111, 0)
+		if v.EquipeATerreMS != 6_000 || v.NonSitueMS != 0 {
+			t.Fatalf("equipe a terre %d / non situe %d ms, attendu 6 000 / 0 (%+v)",
+				v.EquipeATerreMS, v.NonSitueMS, v)
+		}
+	})
+
+	t.Run("non situe et coequipier non situe : non situe", func(t *testing.T) {
+		pos := append(append([]grammar.BipedPosition{}, mesTrous...), pisteMonde(2, 0, 4_000, 3, 0)...)
+		pos = append(pos, pisteMonde(2, 6_000, 12_000, 3, 0)...)
+		e := decorPlacement(append(pos, adv...), []Death{mortFilm(111, 10_000), mortFilm(222, 12_000), mAdv})
+		v := placementDe(t, mustVies(PlacementDesVies(e)), 111, 0)
+		if v.NonSitueMS != 900 || v.CoequipierNonSitueMS != 0 || v.MesureMS != 9_200 {
+			t.Fatalf("non situe %d / coequipier non situe %d / mesure %d ms, attendu 900 / 0 / 9 200 (%+v)",
+				v.NonSitueMS, v.CoequipierNonSitueMS, v.MesureMS, v)
+		}
+	})
+}
+
+// mustVies écarte le bilan d'un appel à PlacementDesVies.
+func mustVies(v []PlacementVie, _ BilanPlacement) []PlacementVie { return v }
+
+// TestPlacementDesVies_FragsEcartesParLeurRefus — les branches de `fragRecevable` et le refus du
+// tueur sans vie : chacune est comptée dans SON compteur du bilan, aucune n'est rattachée.
+// Mutations vues rouges : retirer chaque refus ; `||` en `&&` sur les deux camps.
+func TestPlacementDesVies_FragsEcartesParLeurRefus(t *testing.T) {
+	for _, cas := range []struct {
+		nom     string
+		frag    FragDuJournal
+		attendu BilanPlacement
+	}{
+		{"tueur inconnu (xuid nul)", FragDuJournal{VictimeXUID: 999, TempsMS: 5_000, Publiable: true},
+			BilanPlacement{FragsTueurInconnu: 1}},
+		{"camp du tueur inconnu", FragDuJournal{TueurXUID: 777, VictimeXUID: 999, TempsMS: 5_000, Publiable: true},
+			BilanPlacement{FragsCampInconnu: 1}},
+		{"camp de la victime inconnu", FragDuJournal{TueurXUID: 111, VictimeXUID: 777, TempsMS: 5_000, Publiable: true},
+			BilanPlacement{FragsCampInconnu: 1}},
+		{"tueur sans aucune vie", FragDuJournal{TueurXUID: 333, VictimeXUID: 999, TempsMS: 5_000, Publiable: true},
+			BilanPlacement{FragsSansVie: 1}},
+	} {
+		t.Run(cas.nom, func(t *testing.T) {
+			e := decorNominal()
+			e.Equipes[333] = 0 // un camp, mais aucune vie nommée au registre
+			e.Journal = []FragDuJournal{cas.frag}
+			vies, bilan := PlacementDesVies(e)
+			if bilan != cas.attendu {
+				t.Fatalf("bilan %+v, attendu %+v", bilan, cas.attendu)
+			}
+			for _, v := range vies {
+				if v.Frags != 0 {
+					t.Fatalf("la vie de %d porte %d frag(s) : un frag ecarte ne se rattache pas", v.XUID, v.Frags)
+				}
+			}
+		})
+	}
+}

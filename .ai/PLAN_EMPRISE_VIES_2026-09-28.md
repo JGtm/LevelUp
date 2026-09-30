@@ -1137,21 +1137,25 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
   `549d7f7f0..1781ae3c3`) : écritures et sync (L1, L2) — 12 conditions tiennent, 1 constat ;
   calcul et tests (L4, L6) — 14 conditions tiennent, aucun défaut de calcul, 3 trous de test ;
   web (L5, L3, §2) — 30 conditions tiennent, 2 constats. Triage du superviseur :
-  - [ ] R1 (P1) `placementCharts.ts:342-345` : l'axe des frags montre le libellé « 5.5 » (ECharts
+  - [x] R1 (P1) `placementCharts.ts:342-345` : l'axe des frags montre le libellé « 5.5 » (ECharts
     ajoute une graduation aux bornes de l'étendue ; le formateur ne masque que les négatifs) —
     le §2.1 veut des graduations entières de pas 1. Correction : n'écrire que les entiers ≥ 0.
-  - [ ] R2 (P1, requalifié : invariant V12 de ce lot) `cmd_backfill_killsource_selection.go`
+    Fait 2026-09-30 : `placementCharts.ts` (formateur : `v >= 0 && Number.isInteger(v)`), test `placementCharts.test.ts` (« Y : … les seuls entiers ≥ 0 », `formatter(5.5)` = vide) ; rouge vu sur le code d'avant.
+  - [x] R2 (P1, requalifié : invariant V12 de ce lot) `cmd_backfill_killsource_selection.go`
     `matchsAJour` : vies réécrites (révision d'isolement montée) puis écriture du placement en
     échec → l'ancienne passe de placement, déjà à `PlacementRev`, fait croire le match à jour, et
     l'Emprise lit un placement calculé sur d'anciennes vies. Correction : un match n'est à jour que
     si sa passe de placement à `PlacementRev` est écrite APRÈS (ou avec) sa passe de vies courante.
-  - [ ] R3 (P1, requalifié : V1.2 promettait un test par règle) tests manquants de
+    Fait 2026-09-30 : `cmd_backfill_killsource_selection.go` (`pl.written_at >= MAX(l.written_at)` des vues `_latest` ; critère `written_at`, `decode_pass` étant aléatoire), test d'intégration `TestMatchsAJour_PlacementPosterieurAuxVies` ; rouge vu sous l'ancienne requête.
+  - [x] R3 (P1, requalifié : V1.2 promettait un test par règle) tests manquants de
     `placement_des_vies.go` : frag à l'instant exact du début de la vie suivante (borne
     `[début, début suivant)`) ; paires de causes simultanées porteur/non situé, équipe à
     terre/non situé, non situé/coéquipier non situé ; branches de `fragRecevable` tueur inconnu,
     camp inconnu, tueur sans vie. Chaque test rouge sous la mutation nommée par le relecteur.
-  - [ ] R4 (P1, même motif) tests manquants de `porteurs_au_sync.go` `portagesDuDocument` : bombe,
+    Fait 2026-09-30 : `placement_des_vies_test.go` (`FragALInstantDuDebutDeLaVieSuivante`, `CausesSimultanees`, `FragsEcartesParLeurRefus`) ; 7 mutations rouges (`>` en `>=` ; 3 inversions de blocs de `classer` ; refus tueur inconnu ; `||` en `&&` ; refus tueur sans vie).
+  - [x] R4 (P1, même motif) tests manquants de `porteurs_au_sync.go` `portagesDuDocument` : bombe,
     couronne VIP, tri par début.
+    Fait 2026-09-30 : `porteurs_au_sync_test.go` (`TestPortagesDuDocument_BombeEtCouronne`) ; 3 mutations rouges (boucle bombe, boucle couronne VIP, tri).
   - R5 (P3, jeté) seuil de 8 % appliqué à la part arrondie : c'est exactement la maquette validée
     (`p.value >= 8` sur la valeur arrondie).
 - [ ] V5.2 Rattrapage local (serveur arrêté, binaire du worktree, `LEVELUP_REPO_ROOT` = dossier

@@ -115,3 +115,45 @@ func TestPortagesAuSync_ChaqueFamilleNePaieQueSesLectures(t *testing.T) {
 		})
 	}
 }
+
+// TestPortagesDuDocument_BombeEtCouronne — revue adversariale V5.1, R4 (2026-09-30) : les
+// intervalles de la BOMBE et de la couronne VIP sont lus (deux boucles que rien ne pinçait), et
+// les intervalles d'un même joueur sortent TRIES PAR DÉBUT, toutes familles confondues.
+//
+// Même horloge que `HorlogeDuMatch` (origine 10 000 000 µs, calage 4 000 ms) : la frame t vaut
+// 6 000 + 100 t ms de match. Le joueur 555 porte la bombe aux frames 70-75 PUIS 20-25 (donnés
+// dans le désordre) et la couronne aux frames 50-55 : la seule liste triée est [20, 50, 70].
+// Mutations vues rouges : retirer la boucle de la bombe, celle de la couronne, ou le tri.
+func TestPortagesDuDocument_BombeEtCouronne(t *testing.T) {
+	doc := docDePorteurs()
+	doc.FlagCarries, doc.SkullCarries = nil, nil
+	doc.BombCarries = []BombCarry{
+		{XUID: "333", T0: 5, T1: 8},
+		{XUID: "555", T0: 70, T1: 75},
+		{XUID: "555", T0: 20, T1: 25},
+	}
+	doc.VipCrown = []VipPeriod{{XUID: "444", T0: 40, T1: 45}, {XUID: "555", T0: 50, T1: 55}}
+
+	var b BilanPortages
+	got := portagesDuDocument(doc, 10_000_000, &b)
+
+	if l := got[333]; len(l) != 1 || l[0] != (IntervalleDePort{DebutMS: 6_500, FinMS: 6_800}) {
+		t.Fatalf("bombe de 333 = %+v, attendu [6 500, 6 800] ms du match", l)
+	}
+	if l := got[444]; len(l) != 1 || l[0] != (IntervalleDePort{DebutMS: 10_000, FinMS: 10_500}) {
+		t.Fatalf("couronne de 444 = %+v, attendu [10 000, 10 500] ms du match", l)
+	}
+	attendu := []IntervalleDePort{{DebutMS: 8_000, FinMS: 8_500}, {DebutMS: 11_000, FinMS: 11_500}, {DebutMS: 13_000, FinMS: 13_500}}
+	l := got[555]
+	if len(l) != len(attendu) {
+		t.Fatalf("portages de 555 = %+v, attendu %+v", l, attendu)
+	}
+	for i := range attendu {
+		if l[i] != attendu[i] {
+			t.Fatalf("portages de 555 = %+v, attendu %+v (tries par debut)", l, attendu)
+		}
+	}
+	if b.Intervalles != 5 {
+		t.Fatalf("bilan %+v, attendu 5 intervalles", b)
+	}
+}

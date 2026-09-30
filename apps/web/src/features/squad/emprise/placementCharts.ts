@@ -363,7 +363,7 @@ export function buildPlacementLifeOption(block: PlacementBlock, c: PlacementColo
       min: Y_MIN,
       max: Y_MAX,
       interval: 1,
-      axisLabel: { ...axis.axisLabel, formatter: (v: number) => (v < 0 ? '' : String(v)) },
+      axisLabel: { ...axis.axisLabel, formatter: (v: number) => (v >= 0 && Number.isInteger(v) ? String(v) : '') },
     },
     tooltip: { ...getTooltipBase(tc), trigger: 'item', formatter: tipOf },
     series: [

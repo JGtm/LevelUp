@@ -161,3 +161,45 @@ func TestMatchsAJour_PontNonPubliable_Converge(t *testing.T) {
 		t.Fatalf("%s reste candidat apres son placement : le rattrapage ne converge pas", id)
 	}
 }
+
+// TestMatchsAJour_PlacementPosterieurAuxVies — revue adversariale V5.1, R2 (2026-09-30). Un
+// placement a `PlacementRev` calcule sur d'anciennes vies ne rend pas le match a jour : les vies
+// reecrites PLUS TARD (revision d'isolement montee, puis ecriture du placement en echec) le
+// remettent candidat, et il ne redevient a jour que quand le placement est reecrit apres elles.
+// Les horodatages sont poses explicitement : le critere est `written_at`, pas l'ordre des ordres.
+func TestMatchsAJour_PlacementPosterieurAuxVies(t *testing.T) {
+	db := baseDeSelection(t)
+	ctx := context.Background()
+	const id = "vies-reecrites"
+	matchAJourDeSesVies(t, db, id)
+	executer(t, db, `UPDATE match_lives SET written_at = TIMESTAMP '2026-09-20 10:00:00' WHERE match_id = ?`, id)
+	executer(t, db, `INSERT INTO match_life_placement (match_id, decode_pass, decoder_rev, written_at,
+		xuid, start_ms, end_ms, duration_ms, measured_ms, carrier_ms, team_down_ms, unplaced_ms,
+		teammate_unplaced_ms, kills) VALUES (?, 'pl1', ?, TIMESTAMP '2026-09-20 10:00:00', '111', 0,
+		10000, 10000, 10100, 0, 0, 0, 0, 0)`, id, killcollector.PlacementRev)
+	verifier := func(etape string, attendu bool) {
+		t.Helper()
+		aJour, err := matchsAJour(ctx, db)
+		if err != nil {
+			t.Fatalf("%s : matchsAJour: %v", etape, err)
+		}
+		if aJour[id] != attendu {
+			t.Fatalf("%s : a jour = %v, attendu %v", etape, aJour[id], attendu)
+		}
+	}
+	verifier("placement ecrit avec les vies (meme instant)", true)
+
+	// Les vies sont reecrites plus tard (nouvelle passe) ; le placement, lui, n'a pas suivi.
+	executer(t, db, `INSERT INTO match_lives (match_id, decode_pass, decoder_rev, written_at, xuid,
+		start_ms, end_ms, end_cause, named_by)
+		VALUES (?, 'v2', ?, TIMESTAMP '2026-09-25 10:00:00', '111', 0, 10000, 'death', 'death')`,
+		id, killcollector.IsolationDecoderRev)
+	verifier("vies reecrites, placement d'avant", false)
+
+	// Le placement est reecrit apres les vies : le match converge.
+	executer(t, db, `INSERT INTO match_life_placement (match_id, decode_pass, decoder_rev, written_at,
+		xuid, start_ms, end_ms, duration_ms, measured_ms, carrier_ms, team_down_ms, unplaced_ms,
+		teammate_unplaced_ms, kills) VALUES (?, 'pl2', ?, TIMESTAMP '2026-09-25 10:00:01', '111', 0,
+		10000, 10000, 10100, 0, 0, 0, 0, 0)`, id, killcollector.PlacementRev)
+	verifier("placement reecrit apres les vies", true)
+}
