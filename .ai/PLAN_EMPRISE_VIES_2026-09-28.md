@@ -1214,7 +1214,8 @@ aucun rejeu nécessaire ; `npm run lint` : 0 erreur (26 avertissements existants
 - [!] V5.6 Rattrapage prod : fait par l'utilisateur après le déploiement de la v7.5. Coût à lui
   annoncer : `backfill-killsource` redécode chaque film éligible (mesure consignée : 2 films en
   2 min 13 s, serveur arrêté).
-- [ ] V5.7 `CHANGELOG` et `RELEASE_NOTES` (EN et FR) de la 7.5 ; journal ; mémoire.
+- [x] V5.7 `CHANGELOG` et `RELEASE_NOTES` (EN et FR) de la 7.5 ; journal ; mémoire.
+  Fait 2026-09-30 : `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md` (`[7.5.0]` : Ajouté x3 — onglet Emprise, bloc « Groupés ou isolés », option `--match` ; Ops (4b) placement des vies et phrase Emprise ajoutée à (3) ; deux phrases corrigées), `docs/RELEASE_NOTES.md` et `docs/FR/RELEASE_NOTES.md` (deux entrées, une phrase corrigée) ; entrée `.ai/thought_log.md`. La mémoire (index `MEMORY.md`) est hors du worktree : au superviseur.
 
 ## 5. Reprise de session
 
@@ -1352,3 +1353,8 @@ plus récente du journal. Reprendre au premier item non statué du premier lot n
   la liste est complète, donc sans effet ; défaut cosmétique préexistant, non traité.
 - (V5.2a) Un `sed` de mutation `if false {` sur `dejaFaits[id]` ne compile pas (paquet de test en
   échec de build) : remplacé par `&& len(id) < 0`, rouge par échec de test et non de compilation.
+- (V5.7) `CHANGELOG` et `RELEASE_NOTES` (EN et FR) décrivent encore l'Escouade pour « Les formes retenues »
+  (`features/squad/formes`, 19 cartes) et « Équipement utilisé, gardé, gaspillé » (« Synthèse, Escouade,
+  Sessions ») ; les cartes squad de `formes/` ont été supprimées (D12) et `formes_retenues` n'est monté que
+  par Contributions et les Séries temporelles. Phrases non réécrites (hors des contradictions frontales), à
+  reprendre par le superviseur si l'on veut être exact.

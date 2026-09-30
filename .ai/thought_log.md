@@ -113793,3 +113793,11 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Résultats observés** : tests unitaires (`..._match_test.go` : résolution, refus, validation des options, refus par `runBackfillKillSource`, plan complet) et d'intégration sur shared migré (`..._match_integration_test.go` : filtre, préfixe univoque, ambigu/inconnu refusés, `--force` contre `matchsAJour`). 11 mutations rouges nommées (filtre ignoré, ambigu accepté, inconnu ignoré, `--online` accepté, préfixe court accepté, `--credit-only` accepté, trim retiré, `--force` ignoré, `matchsAJour` ignoré, plan non complet, liste vide acceptée), fichiers restaurés par copie et `cmp`. Docs `docs/COMMANDS.md` et `docs/FR/COMMANDS.md`. Découverte non traitée : le « ... » de `afficherPlan` n'apparaît jamais (plan §7).
 
 **Conclusion / prochaine étape** : V5.2a cochée ; V5.2b (passe réelle sur les 12 matchs du 22/09 par `--match`) reste à jouer, hors de ce lot.
+
+## [2026-09-30] Emprise vies, V5.7 : notes de version de la 7.5 (CHANGELOG et RELEASE_NOTES, EN et FR) — Complété (`wt/emprise`)
+
+**Décision technique principale** : décrire les deux chantiers de l'onglet Escouade « Emprise » (onglet, puis bloc « Groupés ou isolés ») dans `[7.5.0]`, et corriger les seules phrases que la branche contredit (l'Escouade n'a plus d'onglet « Usages » ; le nuage « Frags non ripostés » a quitté Synergies). Rien d'autre n'est réécrit.
+
+**Résultats observés** : `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md` : trois entrées Ajouté (onglet, bloc, option `--match`), une entrée Ops (4b) placement des vies (même commande que (4), un film décodé par match éligible), une phrase ajoutée à l'Ops (3) `backfill-pad-tiers` (il alimente l'Emprise ; il figurait déjà, sans ce lien), deux phrases corrigées. `docs/RELEASE_NOTES.md` et `docs/FR/RELEASE_NOTES.md` : deux entrées grand public, une phrase corrigée. La porte `film.usage_summary` de l'Emprise a été vérifié sur pièces (`teammates_service_emprise.go`).
+
+**Conclusion / prochaine étape** : V5.7 cochée ; V5.4 (fusion dans `feat/v75`, sur accord) suit. Non traité (plan §7) : les entrées « Les formes retenues » et « équipement utilisé, gardé, gaspillé » décrivent encore l'Escouade, alors que les cartes squad de `formes/` ont été supprimées (D12) et que `formes_retenues` n'est plus monté que par Contributions et les Séries temporelles.
