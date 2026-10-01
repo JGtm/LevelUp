@@ -244,7 +244,10 @@ go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--ti
 #    ligne en base continuerait de dire « non mesure ». SERVEUR ARRETE, y compris pour
 #    --dry-run (elle joue les migrations).
 go run ./cmd/levelup backfill-vehicle-takes --dry-run
-go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID] [--limit N] [--title S]
+go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--limit N] [--title S]
+#    --match : identifiants de match séparés par des virgules, ou préfixes univoques de 8+
+#    caractères, résolus contre le registre comme backfill-killsource ; inconnu / ambigu /
+#    trop court = refusé, rien d écrit.
 
 # 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :

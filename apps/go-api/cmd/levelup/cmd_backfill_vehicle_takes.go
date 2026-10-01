@@ -36,7 +36,7 @@ package main
 // backfill-pad-tiers, y compris pour --dry-run qui joue les migrations) :
 //
 //	levelup backfill-vehicle-takes --dry-run        # une ligne par match, aucune ecriture
-//	levelup backfill-vehicle-takes --match <uuid>   # un seul match
+//	levelup backfill-vehicle-takes --match a1b2c3d4,<uuid>   # ces matchs (liste, prefixes 8+ univoques)
 //	levelup backfill-vehicle-takes                  # tout le corpus, reprenable
 //	levelup backfill-vehicle-takes --force          # re-ecrit meme ce qui est deja en base
 
@@ -84,7 +84,8 @@ func runBackfillVehicleTakes(cfg *config.AppConfig, args []string) error {
 	fs.BoolVar(&o.force, "force", false,
 		"re-ecrire meme les matchs deja presents en base (OBLIGATOIRE apres une recuisson ou l arrivee des frags)")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "projeter et imprimer une ligne par match sans rien ecrire")
-	fs.StringVar(&o.match, "match", "", "ne traiter que ce match (identifiant complet du registre)")
+	fs.StringVar(&o.match, "match", "", "ne traiter que ces matchs : liste separee par des virgules, identifiants complets ou prefixes "+
+		"univoques d au moins 8 caracteres, resolus contre le registre (refus sinon, rien d ecrit)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -116,11 +117,11 @@ func runBackfillVehicleTakes(cfg *config.AppConfig, args []string) error {
 	if err := migrerSchemaPartage(db, o.titleSlug); err != nil {
 		return err
 	}
-	candidats := []string{o.match}
-	if o.match == "" {
-		if candidats, err = matchsDuRegistre(ctx, db, 0); err != nil {
-			return err
-		}
+	// `--match` se RESOUT contre le registre (liste, prefixes de 8+ caracteres univoques) : un refus
+	// part ICI, avant toute ecriture. Jamais l identifiant pris tel quel (RV8).
+	candidats, err := registreBorne(ctx, db, o.match)
+	if err != nil {
+		return err
 	}
 	dejaEcrits := map[string]bool{}
 	if !o.force {

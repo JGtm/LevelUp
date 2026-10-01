@@ -113862,3 +113862,13 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Résultats observés** : six mutations (forme collée, aide de HEAD, copie de la lecture, `if true`, `ids := matchIDsOf(current)`, `>= 0`) toutes rouges, restaurées à l identique (`cmp`). Gate Go et web verts.
 
 **Conclusion / prochaine étape** : RV1 à RV6 cochés ; RV7 consigné, non traité ; le reste de L7.5.1 revient au superviseur.
+
+## [2026-10-01] Emprise véhicules, lot L7.5 : RV8, `--match` de `backfill-vehicle-takes` résolu contre le registre
+
+**Statut** : Complété (commit `fix(emprise-vehicules/L7.5)` sur `wt/emprise`).
+
+**Décision technique principale** : `--match` de `backfill-vehicle-takes` prenait la valeur telle quelle pour un identifiant de match. Le 2026-10-01 une liste (`--match fccc61cd,879a4dba,...`) a écrit dans `match_vehicle_takes` une passe dont le `match_id` est la chaîne entière. Il passe désormais par `registreBorne` (`cmd_backfill_killsource_match.go`), extraite de `registreDeLaPasse` et PARTAGÉE avec `backfill-killsource` (qui l appelle) : liste séparée par des virgules, préfixes de 8+ caractères univoques résolus contre `match_registry`, inconnu / ambigu / trop court / liste vide refusés avant toute écriture. Aucune copie des fonctions de résolution. Le garde « liste sans identifiant » est passé dans `registreBorne` (il n était que dans `validerMatch`, propre à killsource).
+
+**Résultats observés** : test d intégration `TestBackfillVehicleTakes_Match` (7 cas, la commande entière sur une racine temporaire : liste de deux, préfixe univoque, identifiant complet, inconnu / ambigu / trop court / virgules seules refusés et table brute vide). Trois mutations rouges, restaurées par copie (`cmp`) : valeur brute reprise (6 cas rouges), garde liste vide retiré, ambiguïté résolue au premier candidat. Les lignes au `match_id` composite écrites le 2026-10-01 dans la base locale sont inertes (les lectures sont bornées aux identifiants du périmètre) et restent en place (table append-only).
+
+**Conclusion / prochaine étape** : RV8 coché sous L7.5.1 ; docs `COMMANDS.md` EN et FR mises à jour ; le reste de L7.5.1 revient au superviseur.

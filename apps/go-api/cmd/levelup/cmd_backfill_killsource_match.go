@@ -115,11 +115,23 @@ func citerCandidats(candidats []string) string {
 // registreDeLaPasse : les matchs du registre que la passe hors ligne considere — tous, ou ceux
 // que `--match` nomme (dans l ordre stable du registre).
 func registreDeLaPasse(ctx context.Context, db *sql.DB, o killsourceOptions) ([]string, error) {
+	return registreBorne(ctx, db, o.match)
+}
+
+// registreBorne : la resolution de `--match` contre le registre, PARTAGEE par toutes les
+// sous-commandes qui l offrent (backfill-killsource, backfill-vehicle-takes). Vide = tout le
+// registre ; sinon chaque fragment designe UN match du registre ou la fonction refuse AVANT que
+// l appelant ecrive quoi que ce soit (RV8 : une valeur prise telle quelle ecrivait en table
+// append-only un identifiant qui n existe pas).
+func registreBorne(ctx context.Context, db *sql.DB, match string) ([]string, error) {
 	registre, err := matchsDuRegistre(ctx, db, 0)
-	if err != nil || o.match == "" {
+	if err != nil || match == "" {
 		return registre, err
 	}
-	voulus, err := resoudreMatchs(registre, o.match)
+	if len(decouperMatchs(match)) == 0 {
+		return nil, fmt.Errorf("--match %q : aucun identifiant (liste separee par des virgules)", match)
+	}
+	voulus, err := resoudreMatchs(registre, match)
 	if err != nil {
 		return nil, err
 	}

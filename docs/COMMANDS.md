@@ -235,7 +235,10 @@ go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--ti
 #    landed) --force IS REQUIRED: the row in the database would keep saying "not measured".
 #    SERVER STOPPED, including for --dry-run (it plays the migrations).
 go run ./cmd/levelup backfill-vehicle-takes --dry-run
-go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID] [--limit N] [--title S]
+go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--limit N] [--title S]
+#    --match: comma-separated match ids or unambiguous prefixes of 8+ characters, resolved
+#    against the registry like backfill-killsource; unknown / ambiguous / too short = refused,
+#    nothing written.
 
 # 5. Tactical occupation rasters -> sidecar JSON files under
 #    data/cache/replays/{slug}/rasters/. NO database is opened, not even read-only: the

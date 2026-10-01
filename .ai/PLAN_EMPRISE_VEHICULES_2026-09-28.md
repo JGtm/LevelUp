@@ -358,6 +358,16 @@ Journal : [2026-10-01] L7.4 joué en avant-plan ; L7.5 (clôture, superviseur) r
     d'usage échoue alors que celle des véhicules réussit, les coéquipiers passent dans « reste du
     camp » et l'habitude des véhicules disparaît. Cas de panne seulement (les deux dérivent du
     même artefact) ; à traiter avec la lecture de l'onglet, hors de ce lot.
+  - [x] RV8 (P1, trouvé à la vérification sur données réelles) `cmd_backfill_vehicle_takes.go` :
+    `--match` prenait la valeur telle quelle (une liste a écrit une passe au `match_id` composite).
+    Fait (2026-10-01) : `--match` résolu par `registreBorne` (`cmd_backfill_killsource_match.go`,
+    extraite de `registreDeLaPasse` et partagée avec `backfill-killsource` : liste, préfixes 8+
+    univoques, refus clair avant toute écriture) ; test d intégration
+    `cmd/levelup/cmd_backfill_vehicle_takes_match_integration_test.go` `TestBackfillVehicleTakes_Match`
+    (7 cas) ; mutations : valeur brute reprise, garde liste vide retiré, ambiguïté résolue au premier
+    candidat : rouges ; docs `COMMANDS.md` EN et FR. Les lignes au `match_id` composite écrites le
+    2026-10-01 dans la base locale sont inertes (aucune lecture ne les atteint : les lectures sont
+    bornées aux identifiants du périmètre) et restent en place (table append-only, aucune suppression).
   Ronde 2 (2026-10-01, relecteur Sonnet frais, diff `687c65edf..e02a1ba74`) : 9 conditions
   tiennent (erreurs et détection d'absence du helper identiques, garde-rail sans faux positif,
   tests RV1 à RV6 rouges sans leur correction) ; un seul constat P2, corrigé par le superviseur :
