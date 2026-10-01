@@ -1,0 +1,43 @@
+chassis	module	mainstruct	comptes_physique	type	nom_type	porte_818
+002ba902	common-rtx-new.module	4400	[0 0 0 0 0 0 0 1 0 0 0 0]	7	chopper	false
+f4c45d71	common-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+7617ff6e	common-rtx-new.module	4400	[0 1 0 0 0 0 0 0 0 0 0 0]	1	human_jeep	false
+0001530a	common-rtx-new.module	4400	[0 0 0 0 1 0 0 0 0 0 0 0]	4	alien_fighter	false
+86799cb6	common-rtx-new.module	4400	[0 0 0 1 0 0 0 0 0 0 0 0]	3	alien_scout	false
+ae845375	common-rtx-new.module	4400	[0 0 0 1 0 0 0 0 0 0 0 0]	3	alien_scout	false
+1a043c29	common-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+000df0c4	common-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+5b80c406	common-rtx-new.module	4400	[0 0 0 1 0 0 0 0 0 0 0 0]	3	alien_scout	false
+000026f2	common-rtx-new.module	4400	[0 0 1 0 0 0 0 0 0 0 0 0]	2	human_plane	false
+233c877d	common-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+5159c8ef	common-rtx-new.module	4400	[0 1 0 0 0 0 0 0 0 0 0 0]	1	human_jeep	false
+9af9e693	common-rtx-new.module	4400	[0 0 0 1 0 0 0 0 0 0 0 0]	3	alien_scout	false
+000026f0	common-rtx-new.module	4400	[0 0 1 0 0 0 0 0 0 0 0 0]	2	human_plane	false
+0000d3dc	common-rtx-new.module	4400	[0 0 0 1 0 0 0 0 0 0 0 0]	3	alien_scout	false
+001b33fc	common-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+038df01a	common-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+3a8060e2	common-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+3d4a8a5a	common-rtx-new.module	4400	[0 0 0 0 0 0 0 1 0 0 0 0]	7	chopper	false
+c6e79dcc	common-rtx-new.module	4400	[0 0 0 0 1 0 0 0 0 0 0 0]	4	alien_fighter	false
+0000254b	common-rtx-new.module	4400	[0 0 0 0 0 0 1 0 0 0 0 0]	6	vtol	true
+00002706	common-rtx-new.module	4400	[0 0 0 1 0 0 0 0 0 0 0 0]	3	alien_scout	false
+75312e51	common-rtx-new.module	4400	[0 1 0 0 0 0 0 0 0 0 0 0]	1	human_jeep	false
+000026ed	common-rtx-new.module	4400	[0 0 0 0 1 0 0 0 0 0 0 0]	4	alien_fighter	false
+0000d3db	common-rtx-new.module	4400	[1 0 0 0 0 0 0 0 0 0 0 0]	0	human_tank	false
+dd7f9102	globals-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+0000d4ff	globals-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+0000d500	globals-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+00002705	globals-rtx-new.module	4400	[0 1 0 0 0 0 0 0 0 0 0 0]	1	human_jeep	false
+af31ab1a	globals-rtx-new.module	4400	[0 1 0 0 0 0 0 0 0 0 0 0]	1	human_jeep	false
+fe32c0f4	globals-rtx-new.module	4400	[0 1 0 0 0 0 0 0 0 0 0 0]	1	human_jeep	false
+64b925eb	globals-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+b65b3b4a	globals-rtx-new.module	4400	[0 0 0 0 0 0 1 0 0 0 0 0]	6	vtol	true
+cb96ca07	globals-rtx-new.module	4400	[0 1 0 0 0 0 0 0 0 0 0 0]	1	human_jeep	false
+de26e3d7	globals-rtx-new.module	4400	[0 1 0 0 0 0 0 0 0 0 0 0]	1	human_jeep	false
+f6f54e56	globals-rtx-new.module	4400	[1 0 0 0 0 0 0 0 0 0 0 0]	0	human_tank	false
+bcfb852f	globals-rtx-new.module	4400	[0 0 0 0 0 1 0 0 0 0 0 0]	5	turret	false
+000025aa	globals-rtx-new.module	4400	[0 1 0 0 0 0 0 0 0 0 0 0]	1	human_jeep	false
+4118381d	absent des modules installes (any|pc|ds globals, any|ds levels/multi)					
+10754375	absent des modules installes (any|pc|ds globals, any|ds levels/multi)					
+77ef810a	absent des modules installes (any|pc|ds globals, any|ds levels/multi)					
+d0b40d0a	absent des modules installes (any|pc|ds globals, any|ds levels/multi)					

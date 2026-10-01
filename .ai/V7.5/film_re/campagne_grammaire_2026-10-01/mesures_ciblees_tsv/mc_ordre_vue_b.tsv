@@ -1,0 +1,647 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	autre non ferme · ouverte · DELTA apres DEL · avant le dernier record	3	3	0	0	19
+0797ce72	HI_1_13_0	autre non ferme · ouverte · DELTA apres DEL · sur le dernier record	24	24	0	0	128
+0797ce72	HI_1_13_0	autre non ferme · ouverte · NEW apres DEL · avant le dernier record	10	10	0	0	68
+0797ce72	HI_1_13_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	41	41	0	0	277
+0797ce72	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	40	40	0	0	280
+0797ce72	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	253	253	0	0	1565
+0797ce72	HI_1_13_0	autre non ferme · ouverte · ordre respecte	121	121	0	0	461
+0797ce72	HI_1_13_0	autre non ferme · ouverte · slot non croissant (DEL) · avant le dernier record	3	3	0	0	24
+0797ce72	HI_1_13_0	autre non ferme · ouverte · slot non croissant (DELTA) · avant le dernier record	14	14	0	0	104
+0797ce72	HI_1_13_0	autre non ferme · ouverte · slot non croissant (DELTA) · sur le dernier record	76	76	0	0	519
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · DELTA apres DEL · avant le dernier record	2	2	0	0	7
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · DELTA apres DEL · sur le dernier record	4	4	0	0	11
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DEL · avant le dernier record	1	1	0	0	9
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DEL · sur le dernier record	6	6	0	0	33
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	17	17	0	0	107
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	48	48	0	0	322
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	740	740	0	0	4587
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · slot non croissant (DEL) · avant le dernier record	4	4	0	0	23
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · slot non croissant (DEL) · sur le dernier record	2	2	0	0	15
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	16	16	0	0	32
+0797ce72	HI_1_13_0	autre non ferme · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	10	10	0	0	65
+0797ce72	HI_1_13_0	autre non ferme · terminateur · DELTA apres DEL · sur le dernier record	2	2	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · terminateur · NEW apres DEL · avant le dernier record	2	2	0	0	15
+0797ce72	HI_1_13_0	autre non ferme · terminateur · NEW apres DEL · sur le dernier record	3	3	0	0	20
+0797ce72	HI_1_13_0	autre non ferme · terminateur · NEW apres DELTA · avant le dernier record	2	2	0	0	14
+0797ce72	HI_1_13_0	autre non ferme · terminateur · NEW apres DELTA · sur le dernier record	12	12	0	0	92
+0797ce72	HI_1_13_0	autre non ferme · terminateur · ordre respecte	248	248	0	0	1481
+0797ce72	HI_1_13_0	autre non ferme · terminateur · slot non croissant (DEL) · avant le dernier record	1	1	0	0	8
+0797ce72	HI_1_13_0	autre non ferme · terminateur · slot non croissant (DEL) · sur le dernier record	4	4	0	0	25
+0797ce72	HI_1_13_0	autre non ferme · terminateur · slot non croissant (DELTA) · avant le dernier record	3	3	0	0	26
+0797ce72	HI_1_13_0	autre non ferme · terminateur · slot non croissant (DELTA) · sur le dernier record	4	4	0	0	10
+0797ce72	HI_1_13_0	ferme · rejet hors datum · NEW apres DEL	1	1	0	1	0
+0797ce72	HI_1_13_0	ferme · rejet hors datum · NEW apres DELTA	4	4	0	4	0
+0797ce72	HI_1_13_0	ferme · rejet hors datum · ordre respecte	20	20	0	20	0
+0797ce72	HI_1_13_0	ferme · terminateur · DELTA apres DEL	2	2	0	2	0
+0797ce72	HI_1_13_0	ferme · terminateur · NEW apres DEL	5	5	0	5	0
+0797ce72	HI_1_13_0	ferme · terminateur · NEW apres DELTA	7	7	0	7	0
+0797ce72	HI_1_13_0	ferme · terminateur · ordre respecte	19163	19163	0	19163	0
+0797ce72	HI_1_13_0	ferme · terminateur · slot non croissant (DEL)	2	2	0	2	0
+0797ce72	HI_1_13_0	ferme · terminateur · slot non croissant (DELTA)	1	1	0	1	0
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	5	5	5	0	31
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · DELTA apres DEL · sur le dernier record	7	7	7	0	38
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DEL · avant le dernier record	4	4	4	0	20
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DEL · sur le dernier record	15	15	15	0	83
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	97	97	97	0	418
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	80	80	80	0	486
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	4302	4302	4302	0	27888
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · slot non croissant (DEL) · avant le dernier record	4	4	4	0	28
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · slot non croissant (DEL) · sur le dernier record	11	11	11	0	71
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	5	5	5	0	37
+0797ce72	HI_1_13_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	14	14	14	0	100
+0797ce72	HI_1_13_0	hors cadre · terminateur · DELTA apres DEL · sur le dernier record	6	6	6	0	39
+0797ce72	HI_1_13_0	hors cadre · terminateur · NEW apres DEL · avant le dernier record	3	3	3	0	16
+0797ce72	HI_1_13_0	hors cadre · terminateur · NEW apres DEL · sur le dernier record	2	2	2	0	14
+0797ce72	HI_1_13_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	14	14	14	0	99
+0797ce72	HI_1_13_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	40	40	40	0	282
+0797ce72	HI_1_13_0	hors cadre · terminateur · ordre respecte	842	842	842	0	5049
+0797ce72	HI_1_13_0	hors cadre · terminateur · slot non croissant (DEL) · avant le dernier record	5	5	5	0	35
+0797ce72	HI_1_13_0	hors cadre · terminateur · slot non croissant (DEL) · sur le dernier record	44	44	44	0	303
+0797ce72	HI_1_13_0	hors cadre · terminateur · slot non croissant (DELTA) · avant le dernier record	3	3	3	0	21
+0797ce72	HI_1_13_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	7	7	7	0	50
+084a804d	HI_1_10_0	autre non ferme · ouverte · NEW apres DEL · avant le dernier record	1	1	0	0	0
+084a804d	HI_1_10_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	7	7	0	0	73
+084a804d	HI_1_10_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	10	10	0	0	60
+084a804d	HI_1_10_0	autre non ferme · ouverte · ordre respecte	615	615	0	0	6471
+084a804d	HI_1_10_0	autre non ferme · ouverte · slot non croissant (DEL) · avant le dernier record	2	2	0	0	18
+084a804d	HI_1_10_0	autre non ferme · ouverte · slot non croissant (DELTA) · sur le dernier record	1	1	0	0	14
+084a804d	HI_1_10_0	autre non ferme · ouverte · slot non croissant (NEW) · avant le dernier record	1	1	0	0	1
+084a804d	HI_1_10_0	autre non ferme · ouverte · slot non croissant (NEW) · sur le dernier record	6	6	0	0	2
+084a804d	HI_1_10_0	autre non ferme · rejet hors datum · NEW apres DEL · avant le dernier record	1	1	0	0	0
+084a804d	HI_1_10_0	autre non ferme · rejet hors datum · ordre respecte	44	44	0	0	168
+084a804d	HI_1_10_0	autre non ferme · rejet hors datum · slot non croissant (DEL) · sur le dernier record	1	1	0	0	0
+084a804d	HI_1_10_0	autre non ferme · rejet hors datum · slot non croissant (NEW) · avant le dernier record	4	4	0	0	0
+084a804d	HI_1_10_0	autre non ferme · terminateur · ordre respecte	32	32	0	0	101
+084a804d	HI_1_10_0	autre non ferme · terminateur · slot non croissant (DEL) · sur le dernier record	1	1	0	0	0
+084a804d	HI_1_10_0	ferme · rejet hors datum · DELTA apres DEL	1	1	0	1	0
+084a804d	HI_1_10_0	ferme · rejet hors datum · NEW apres DEL	2	2	0	2	0
+084a804d	HI_1_10_0	ferme · rejet hors datum · ordre respecte	167	167	0	167	0
+084a804d	HI_1_10_0	ferme · rejet hors datum · slot non croissant (DEL)	2	2	0	2	0
+084a804d	HI_1_10_0	ferme · rejet hors datum · slot non croissant (NEW)	5	5	0	5	0
+084a804d	HI_1_10_0	ferme · terminateur · DELTA apres DEL	9	9	0	9	0
+084a804d	HI_1_10_0	ferme · terminateur · NEW apres DEL	7	7	0	7	0
+084a804d	HI_1_10_0	ferme · terminateur · NEW apres DELTA	4	4	0	4	0
+084a804d	HI_1_10_0	ferme · terminateur · ordre respecte	5001	5001	0	5001	0
+084a804d	HI_1_10_0	ferme · terminateur · slot non croissant (DEL)	1	1	0	1	0
+084a804d	HI_1_10_0	ferme · terminateur · slot non croissant (DELTA)	4	4	0	4	0
+084a804d	HI_1_10_0	ferme · terminateur · slot non croissant (NEW)	32	32	0	32	0
+084a804d	HI_1_10_0	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	5	5	5	0	91
+084a804d	HI_1_10_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	2	2	2	0	13
+084a804d	HI_1_10_0	hors cadre · rejet hors datum · ordre respecte	22926	22926	22926	0	439479
+084a804d	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (DEL) · avant le dernier record	1	1	1	0	20
+084a804d	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (DEL) · sur le dernier record	1	1	1	0	0
+084a804d	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	2	2	2	0	9
+084a804d	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	1	1	1	0	11
+084a804d	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (NEW) · avant le dernier record	1	1	1	0	28
+084a804d	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (NEW) · sur le dernier record	2	2	2	0	1
+084a804d	HI_1_10_0	hors cadre · terminateur · DELTA apres DEL · sur le dernier record	2	2	2	0	0
+084a804d	HI_1_10_0	hors cadre · terminateur · NEW apres DEL · avant le dernier record	1	1	1	0	4
+084a804d	HI_1_10_0	hors cadre · terminateur · NEW apres DEL · sur le dernier record	1	1	1	0	0
+084a804d	HI_1_10_0	hors cadre · terminateur · ordre respecte	127	127	127	0	130
+084a804d	HI_1_10_0	hors cadre · terminateur · slot non croissant (DEL) · sur le dernier record	4	4	4	0	2
+084a804d	HI_1_10_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	2	2	2	0	40
+084a804d	HI_1_10_0	hors cadre · terminateur · slot non croissant (NEW) · sur le dernier record	4	4	4	0	0
+111fa685	HI_1_10_0	autre non ferme · ouverte · DELTA apres DEL · avant le dernier record	2	2	0	0	16
+111fa685	HI_1_10_0	autre non ferme · ouverte · NEW apres DEL · avant le dernier record	1	1	0	0	1
+111fa685	HI_1_10_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	16	16	0	0	104
+111fa685	HI_1_10_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	18	18	0	0	342
+111fa685	HI_1_10_0	autre non ferme · ouverte · ordre respecte	106	106	0	0	1115
+111fa685	HI_1_10_0	autre non ferme · ouverte · slot non croissant (DEL) · avant le dernier record	3	3	0	0	10
+111fa685	HI_1_10_0	autre non ferme · ouverte · slot non croissant (DELTA) · sur le dernier record	2	2	0	0	33
+111fa685	HI_1_10_0	autre non ferme · ouverte · slot non croissant (NEW) · avant le dernier record	1	1	0	0	0
+111fa685	HI_1_10_0	autre non ferme · ouverte · slot non croissant (NEW) · sur le dernier record	10	10	0	0	2
+111fa685	HI_1_10_0	autre non ferme · rejet hors datum · DELTA apres DEL · avant le dernier record	2	2	0	0	34
+111fa685	HI_1_10_0	autre non ferme · rejet hors datum · DELTA apres DEL · sur le dernier record	2	2	0	0	17
+111fa685	HI_1_10_0	autre non ferme · rejet hors datum · NEW apres DEL · sur le dernier record	1	1	0	0	7
+111fa685	HI_1_10_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	2	2	0	0	31
+111fa685	HI_1_10_0	autre non ferme · rejet hors datum · ordre respecte	92	92	0	0	661
+111fa685	HI_1_10_0	autre non ferme · rejet hors datum · slot non croissant (DEL) · avant le dernier record	1	1	0	0	17
+111fa685	HI_1_10_0	autre non ferme · rejet hors datum · slot non croissant (NEW) · avant le dernier record	1	1	0	0	0
+111fa685	HI_1_10_0	autre non ferme · rejet hors datum · slot non croissant (NEW) · sur le dernier record	2	2	0	0	1
+111fa685	HI_1_10_0	autre non ferme · terminateur · DELTA apres DEL · avant le dernier record	2	2	0	0	9
+111fa685	HI_1_10_0	autre non ferme · terminateur · DELTA apres DEL · sur le dernier record	2	2	0	0	25
+111fa685	HI_1_10_0	autre non ferme · terminateur · NEW apres DEL · sur le dernier record	1	1	0	0	8
+111fa685	HI_1_10_0	autre non ferme · terminateur · ordre respecte	102	102	0	0	1169
+111fa685	HI_1_10_0	autre non ferme · terminateur · slot non croissant (DEL) · avant le dernier record	1	1	0	0	7
+111fa685	HI_1_10_0	autre non ferme · terminateur · slot non croissant (DEL) · sur le dernier record	4	4	0	0	38
+111fa685	HI_1_10_0	ferme · rejet hors datum · NEW apres DELTA	1	1	0	1	0
+111fa685	HI_1_10_0	ferme · rejet hors datum · ordre respecte	57	57	0	57	0
+111fa685	HI_1_10_0	ferme · rejet hors datum · slot non croissant (DEL)	1	1	0	1	0
+111fa685	HI_1_10_0	ferme · rejet hors datum · slot non croissant (NEW)	1	1	0	1	0
+111fa685	HI_1_10_0	ferme · terminateur · DELTA apres DEL	2	2	0	2	0
+111fa685	HI_1_10_0	ferme · terminateur · NEW apres DEL	3	3	0	3	0
+111fa685	HI_1_10_0	ferme · terminateur · ordre respecte	4083	4083	0	4083	0
+111fa685	HI_1_10_0	ferme · terminateur · slot non croissant (NEW)	4	4	0	4	0
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	6	6	6	0	94
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · DELTA apres DEL · sur le dernier record	6	6	6	0	75
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · NEW apres DEL · avant le dernier record	7	7	7	0	83
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · NEW apres DEL · sur le dernier record	4	4	4	0	35
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	1	1	1	0	15
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	3	3	3	0	50
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · ordre respecte	10508	10508	10508	0	195244
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	1	1	1	0	19
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	2	2	2	0	29
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (NEW) · avant le dernier record	4	4	4	0	3
+111fa685	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (NEW) · sur le dernier record	1	1	1	0	1
+111fa685	HI_1_10_0	hors cadre · terminateur · DELTA apres DEL · sur le dernier record	6	6	6	0	26
+111fa685	HI_1_10_0	hors cadre · terminateur · NEW apres DEL · sur le dernier record	2	2	2	0	33
+111fa685	HI_1_10_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	3	3	3	0	36
+111fa685	HI_1_10_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	1	1	1	0	7
+111fa685	HI_1_10_0	hors cadre · terminateur · ordre respecte	360	360	360	0	2971
+111fa685	HI_1_10_0	hors cadre · terminateur · slot non croissant (DEL) · avant le dernier record	4	4	4	0	59
+111fa685	HI_1_10_0	hors cadre · terminateur · slot non croissant (DEL) · sur le dernier record	20	20	20	0	248
+111fa685	HI_1_10_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	2	2	2	0	47
+111fa685	HI_1_10_0	hors cadre · terminateur · slot non croissant (NEW) · avant le dernier record	1	1	1	0	0
+111fa685	HI_1_10_0	hors cadre · terminateur · slot non croissant (NEW) · sur le dernier record	2	2	2	0	0
+11de8353	HI_1_9_0	autre non ferme · ouverte · NEW apres DEL · avant le dernier record	1	1	0	0	1
+11de8353	HI_1_9_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	3	3	0	0	0
+11de8353	HI_1_9_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	2	2	0	0	34
+11de8353	HI_1_9_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	108	108	0	0	1756
+11de8353	HI_1_9_0	autre non ferme · ouverte · ordre respecte	123	123	0	0	1143
+11de8353	HI_1_9_0	autre non ferme · ouverte · slot non croissant (NEW) · sur le dernier record	12	12	0	0	3
+11de8353	HI_1_9_0	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	3	3	0	0	48
+11de8353	HI_1_9_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	11	11	0	0	167
+11de8353	HI_1_9_0	autre non ferme · rejet hors datum · ordre respecte	149	149	0	0	1973
+11de8353	HI_1_9_0	autre non ferme · rejet hors datum · slot non croissant (DEL) · sur le dernier record	1	1	0	0	1
+11de8353	HI_1_9_0	autre non ferme · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	1	1	0	0	15
+11de8353	HI_1_9_0	autre non ferme · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	1	1	0	0	17
+11de8353	HI_1_9_0	autre non ferme · rejet hors datum · slot non croissant (NEW) · avant le dernier record	1	1	0	0	0
+11de8353	HI_1_9_0	autre non ferme · rejet hors datum · slot non croissant (NEW) · sur le dernier record	1	1	0	0	1
+11de8353	HI_1_9_0	autre non ferme · terminateur · NEW apres DEL · avant le dernier record	1	1	0	0	0
+11de8353	HI_1_9_0	autre non ferme · terminateur · NEW apres DELTA · avant le dernier record	2	2	0	0	25
+11de8353	HI_1_9_0	autre non ferme · terminateur · NEW apres DELTA · sur le dernier record	4	4	0	0	65
+11de8353	HI_1_9_0	autre non ferme · terminateur · ordre respecte	32	32	0	0	129
+11de8353	HI_1_9_0	autre non ferme · terminateur · slot non croissant (NEW) · avant le dernier record	1	1	0	0	0
+11de8353	HI_1_9_0	ferme · rejet hors datum · ordre respecte	52	52	0	52	0
+11de8353	HI_1_9_0	ferme · rejet hors datum · slot non croissant (NEW)	1	1	0	1	0
+11de8353	HI_1_9_0	ferme · terminateur · DELTA apres DEL	1	1	0	1	0
+11de8353	HI_1_9_0	ferme · terminateur · NEW apres DELTA	1	1	0	1	0
+11de8353	HI_1_9_0	ferme · terminateur · ordre respecte	5680	5680	0	5680	0
+11de8353	HI_1_9_0	ferme · terminateur · slot non croissant (NEW)	4	4	0	4	0
+11de8353	HI_1_9_0	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	3	3	3	0	39
+11de8353	HI_1_9_0	hors cadre · rejet hors datum · NEW apres DEL · avant le dernier record	1	1	1	0	1
+11de8353	HI_1_9_0	hors cadre · rejet hors datum · NEW apres DEL · sur le dernier record	4	4	4	0	1
+11de8353	HI_1_9_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	2	2	2	0	42
+11de8353	HI_1_9_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	15	15	15	0	234
+11de8353	HI_1_9_0	hors cadre · rejet hors datum · ordre respecte	9530	9530	9530	0	175152
+11de8353	HI_1_9_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	3	3	3	0	51
+11de8353	HI_1_9_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	6	6	6	0	98
+11de8353	HI_1_9_0	hors cadre · rejet hors datum · slot non croissant (NEW) · sur le dernier record	3	3	3	0	2
+11de8353	HI_1_9_0	hors cadre · terminateur · NEW apres DEL · avant le dernier record	1	1	1	0	0
+11de8353	HI_1_9_0	hors cadre · terminateur · NEW apres DEL · sur le dernier record	1	1	1	0	0
+11de8353	HI_1_9_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	1	1	1	0	15
+11de8353	HI_1_9_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	37	37	37	0	568
+11de8353	HI_1_9_0	hors cadre · terminateur · ordre respecte	179	179	179	0	1178
+11de8353	HI_1_9_0	hors cadre · terminateur · slot non croissant (DEL) · avant le dernier record	1	1	1	0	1
+11de8353	HI_1_9_0	hors cadre · terminateur · slot non croissant (DELTA) · avant le dernier record	1	1	1	0	15
+11de8353	HI_1_9_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	3	3	3	0	57
+11de8353	HI_1_9_0	hors cadre · terminateur · slot non croissant (NEW) · sur le dernier record	1	1	1	0	1
+1c4c63c2	HI_1_10_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	3	3	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	5	5	0	0	34
+1c4c63c2	HI_1_10_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	33	33	0	0	172
+1c4c63c2	HI_1_10_0	autre non ferme · ouverte · ordre respecte	1243	1243	0	0	9694
+1c4c63c2	HI_1_10_0	autre non ferme · ouverte · slot non croissant (DELTA) · avant le dernier record	1	1	0	0	14
+1c4c63c2	HI_1_10_0	autre non ferme · ouverte · slot non croissant (NEW) · sur le dernier record	7	7	0	0	2
+1c4c63c2	HI_1_10_0	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	1	1	0	0	22
+1c4c63c2	HI_1_10_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	6	6	0	0	24
+1c4c63c2	HI_1_10_0	autre non ferme · rejet hors datum · ordre respecte	86	86	0	0	313
+1c4c63c2	HI_1_10_0	autre non ferme · rejet hors datum · slot non croissant (NEW) · avant le dernier record	2	2	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · terminateur · NEW apres DELTA · avant le dernier record	1	1	0	0	4
+1c4c63c2	HI_1_10_0	autre non ferme · terminateur · NEW apres DELTA · sur le dernier record	3	3	0	0	13
+1c4c63c2	HI_1_10_0	autre non ferme · terminateur · ordre respecte	35	35	0	0	75
+1c4c63c2	HI_1_10_0	autre non ferme · terminateur · slot non croissant (DEL) · sur le dernier record	2	2	0	0	2
+1c4c63c2	HI_1_10_0	autre non ferme · terminateur · slot non croissant (NEW) · avant le dernier record	4	4	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · terminateur · slot non croissant (NEW) · sur le dernier record	1	1	0	0	1
+1c4c63c2	HI_1_10_0	ferme · rejet hors datum · DELTA apres DEL	22	22	0	22	0
+1c4c63c2	HI_1_10_0	ferme · rejet hors datum · NEW apres DEL	21	21	0	21	0
+1c4c63c2	HI_1_10_0	ferme · rejet hors datum · NEW apres DELTA	12	12	0	12	0
+1c4c63c2	HI_1_10_0	ferme · rejet hors datum · ordre respecte	3348	3348	0	3348	0
+1c4c63c2	HI_1_10_0	ferme · rejet hors datum · slot non croissant (DEL)	7	7	0	7	0
+1c4c63c2	HI_1_10_0	ferme · rejet hors datum · slot non croissant (DELTA)	7	7	0	7	0
+1c4c63c2	HI_1_10_0	ferme · rejet hors datum · slot non croissant (NEW)	102	102	0	102	0
+1c4c63c2	HI_1_10_0	ferme · terminateur · DELTA apres DEL	151	151	0	151	0
+1c4c63c2	HI_1_10_0	ferme · terminateur · NEW apres DEL	34	34	0	34	0
+1c4c63c2	HI_1_10_0	ferme · terminateur · NEW apres DELTA	38	38	0	38	0
+1c4c63c2	HI_1_10_0	ferme · terminateur · ordre respecte	15351	15351	0	15351	0
+1c4c63c2	HI_1_10_0	ferme · terminateur · slot non croissant (DEL)	18	18	0	18	0
+1c4c63c2	HI_1_10_0	ferme · terminateur · slot non croissant (DELTA)	34	34	0	34	0
+1c4c63c2	HI_1_10_0	ferme · terminateur · slot non croissant (NEW)	209	209	0	209	0
+1c4c63c2	HI_1_10_0	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	2	2	2	0	31
+1c4c63c2	HI_1_10_0	hors cadre · rejet hors datum · DELTA apres DEL · sur le dernier record	3	3	3	0	0
+1c4c63c2	HI_1_10_0	hors cadre · rejet hors datum · NEW apres DEL · sur le dernier record	1	1	1	0	0
+1c4c63c2	HI_1_10_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	7	7	7	0	75
+1c4c63c2	HI_1_10_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	11	11	11	0	46
+1c4c63c2	HI_1_10_0	hors cadre · rejet hors datum · ordre respecte	45663	45663	45663	0	595577
+1c4c63c2	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	2	2	2	0	7
+1c4c63c2	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (NEW) · avant le dernier record	6	6	6	0	21
+1c4c63c2	HI_1_10_0	hors cadre · rejet hors datum · slot non croissant (NEW) · sur le dernier record	1	1	1	0	0
+1c4c63c2	HI_1_10_0	hors cadre · terminateur · DELTA apres DEL · sur le dernier record	1	1	1	0	0
+1c4c63c2	HI_1_10_0	hors cadre · terminateur · NEW apres DEL · sur le dernier record	2	2	2	0	13
+1c4c63c2	HI_1_10_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	5	5	5	0	17
+1c4c63c2	HI_1_10_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	10	10	10	0	53
+1c4c63c2	HI_1_10_0	hors cadre · terminateur · ordre respecte	214	214	214	0	638
+1c4c63c2	HI_1_10_0	hors cadre · terminateur · slot non croissant (DEL) · sur le dernier record	1	1	1	0	0
+1c4c63c2	HI_1_10_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	3	3	3	0	79
+1c4c63c2	HI_1_10_0	hors cadre · terminateur · slot non croissant (NEW) · avant le dernier record	3	3	3	0	1
+1c4c63c2	HI_1_10_0	hors cadre · terminateur · slot non croissant (NEW) · sur le dernier record	3	3	3	0	3
+396cfc92	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	10	10	0	0	81
+396cfc92	HI_1_13_0	autre non ferme · ouverte · ordre respecte	370	370	0	0	1529
+396cfc92	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	1	1	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · terminateur · ordre respecte	1	1	0	0	0
+396cfc92	HI_1_13_0	ferme · rejet hors datum · ordre respecte	4	4	0	4	0
+396cfc92	HI_1_13_0	ferme · terminateur · DELTA apres DEL	1	1	0	1	0
+396cfc92	HI_1_13_0	ferme · terminateur · NEW apres DELTA	1	1	0	1	0
+396cfc92	HI_1_13_0	ferme · terminateur · ordre respecte	22822	22822	0	22822	0
+396cfc92	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	1	1	1	0	8
+396cfc92	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	1	1	1	0	5
+396cfc92	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	8348	8348	8348	0	56778
+396cfc92	HI_1_13_0	hors cadre · terminateur · ordre respecte	12	12	12	0	95
+4f77afc1	HI_1_13_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	3	3	0	0	7
+4f77afc1	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	2	2	0	0	29
+4f77afc1	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	6	6	0	0	140
+4f77afc1	HI_1_13_0	autre non ferme · ouverte · ordre respecte	746	746	0	0	11887
+4f77afc1	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	1	1	0	0	25
+4f77afc1	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	3	3	0	0	91
+4f77afc1	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	7	7	0	0	28
+4f77afc1	HI_1_13_0	autre non ferme · terminateur · DELTA apres DEL · sur le dernier record	1	1	0	0	1
+4f77afc1	HI_1_13_0	autre non ferme · terminateur · ordre respecte	7	7	0	0	135
+4f77afc1	HI_1_13_0	autre non ferme · terminateur · slot non croissant (DEL) · sur le dernier record	1	1	0	0	3
+4f77afc1	HI_1_13_0	ferme · rejet hors datum · DELTA apres DEL	3	3	0	3	0
+4f77afc1	HI_1_13_0	ferme · rejet hors datum · NEW apres DEL	1	1	0	1	0
+4f77afc1	HI_1_13_0	ferme · rejet hors datum · NEW apres DELTA	1	1	0	1	0
+4f77afc1	HI_1_13_0	ferme · rejet hors datum · ordre respecte	380	380	0	380	0
+4f77afc1	HI_1_13_0	ferme · rejet hors datum · slot non croissant (DEL)	1	1	0	1	0
+4f77afc1	HI_1_13_0	ferme · rejet hors datum · slot non croissant (NEW)	10	10	0	10	0
+4f77afc1	HI_1_13_0	ferme · terminateur · DELTA apres DEL	72	72	0	72	0
+4f77afc1	HI_1_13_0	ferme · terminateur · NEW apres DEL	8	8	0	8	0
+4f77afc1	HI_1_13_0	ferme · terminateur · NEW apres DELTA	8	8	0	8	0
+4f77afc1	HI_1_13_0	ferme · terminateur · ordre respecte	22356	22356	0	22356	0
+4f77afc1	HI_1_13_0	ferme · terminateur · slot non croissant (DEL)	11	11	0	11	0
+4f77afc1	HI_1_13_0	ferme · terminateur · slot non croissant (DELTA)	13	13	0	13	0
+4f77afc1	HI_1_13_0	ferme · terminateur · slot non croissant (NEW)	46	46	0	46	0
+4f77afc1	HI_1_13_0	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	3	3	3	0	80
+4f77afc1	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	4	4	4	0	48
+4f77afc1	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	7	7	7	0	148
+4f77afc1	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	9468	9468	9468	0	177994
+4f77afc1	HI_1_13_0	hors cadre · rejet hors datum · slot non croissant (NEW) · avant le dernier record	1	1	1	0	24
+4f77afc1	HI_1_13_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	1	1	1	0	8
+4f77afc1	HI_1_13_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	3	3	3	0	33
+4f77afc1	HI_1_13_0	hors cadre · terminateur · ordre respecte	40	40	40	0	1022
+4f77afc1	HI_1_13_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	8	8	8	0	231
+50247b26	version-31	autre non ferme · ouverte · DELTA apres DEL · avant le dernier record	1	1	0	0	29
+50247b26	version-31	autre non ferme · ouverte · DELTA apres DEL · sur le dernier record	1	1	0	0	0
+50247b26	version-31	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	1	1	0	0	17
+50247b26	version-31	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	8	8	0	0	113
+50247b26	version-31	autre non ferme · ouverte · ordre respecte	269	269	0	0	4792
+50247b26	version-31	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	1	1	0	0	24
+50247b26	version-31	autre non ferme · rejet hors datum · ordre respecte	14	14	0	0	138
+50247b26	version-31	autre non ferme · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	1	1	0	0	17
+50247b26	version-31	autre non ferme · terminateur · ordre respecte	1433	1433	0	0	36709
+50247b26	version-31	ferme · rejet hors datum · ordre respecte	8	8	0	8	0
+50247b26	version-31	ferme · terminateur · ordre respecte	145	145	0	145	0
+50247b26	version-31	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	1	1	1	0	23
+50247b26	version-31	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	1	1	1	0	25
+50247b26	version-31	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	1	1	1	0	3
+50247b26	version-31	hors cadre · rejet hors datum · ordre respecte	10677	10677	10677	0	236041
+50247b26	version-31	hors cadre · rejet hors datum · slot non croissant (DEL) · sur le dernier record	1	1	1	0	1
+50247b26	version-31	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	1	1	1	0	21
+50247b26	version-31	hors cadre · rejet hors datum · slot non croissant (NEW) · avant le dernier record	2	2	2	0	38
+50247b26	version-31	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	1	1	1	0	7
+50247b26	version-31	hors cadre · terminateur · ordre respecte	3090	3090	3090	0	40726
+50247b26	version-31	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	2	2	2	0	51
+50247b26	version-31	hors cadre · terminateur · slot non croissant (NEW) · avant le dernier record	3	3	3	0	1
+51ebbc0f	HI_1_13_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	1	1	0	0	7
+51ebbc0f	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	38	38	0	0	2
+51ebbc0f	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	10	10	0	0	16
+51ebbc0f	HI_1_13_0	autre non ferme · ouverte · ordre respecte	810	810	0	0	276
+51ebbc0f	HI_1_13_0	autre non ferme · ouverte · slot non croissant (DELTA) · avant le dernier record	1	1	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · ouverte · slot non croissant (DELTA) · sur le dernier record	1	1	0	0	6
+51ebbc0f	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	5	5	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	44	44	0	0	3
+51ebbc0f	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	4	4	0	0	24
+51ebbc0f	HI_1_13_0	autre non ferme · terminateur · NEW apres DELTA · avant le dernier record	3	3	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · terminateur · NEW apres DELTA · sur le dernier record	13	13	0	0	1
+51ebbc0f	HI_1_13_0	autre non ferme · terminateur · ordre respecte	67	67	0	0	9
+51ebbc0f	HI_1_13_0	ferme · rejet hors datum · ordre respecte	21	21	0	21	0
+51ebbc0f	HI_1_13_0	ferme · terminateur · DELTA apres DEL	4	4	0	4	0
+51ebbc0f	HI_1_13_0	ferme · terminateur · NEW apres DEL	1	1	0	1	0
+51ebbc0f	HI_1_13_0	ferme · terminateur · NEW apres DELTA	11	11	0	11	0
+51ebbc0f	HI_1_13_0	ferme · terminateur · ordre respecte	9807	9807	0	9807	0
+51ebbc0f	HI_1_13_0	ferme · terminateur · slot non croissant (NEW)	3	3	0	3	0
+51ebbc0f	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DEL · avant le dernier record	1	1	1	0	0
+51ebbc0f	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DEL · sur le dernier record	2	2	2	0	0
+51ebbc0f	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	16	16	16	0	3
+51ebbc0f	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	61	61	61	0	1
+51ebbc0f	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	16511	16511	16511	0	29354
+51ebbc0f	HI_1_13_0	hors cadre · rejet hors datum · slot non croissant (DEL) · avant le dernier record	1	1	1	0	9
+51ebbc0f	HI_1_13_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	6	6	6	0	0
+51ebbc0f	HI_1_13_0	hors cadre · terminateur · NEW apres DEL · avant le dernier record	1	1	1	0	0
+51ebbc0f	HI_1_13_0	hors cadre · terminateur · NEW apres DEL · sur le dernier record	2	2	2	0	0
+51ebbc0f	HI_1_13_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	34	34	34	0	1
+51ebbc0f	HI_1_13_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	119	119	119	0	6
+51ebbc0f	HI_1_13_0	hors cadre · terminateur · ordre respecte	175	175	175	0	25
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · DELTA apres DEL · avant le dernier record	2	2	0	0	12
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · DELTA apres DEL · sur le dernier record	6	6	0	0	37
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · NEW apres DEL · avant le dernier record	5	5	0	0	31
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	29	29	0	0	136
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	50	50	0	0	363
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	287	287	0	0	1572
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · ordre respecte	810	810	0	0	1051
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · slot non croissant (DEL) · avant le dernier record	1	1	0	0	8
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · slot non croissant (DELTA) · avant le dernier record	17	17	0	0	115
+60ae07c4	HI_1_8_0	autre non ferme · ouverte · slot non croissant (DELTA) · sur le dernier record	77	77	0	0	426
+60ae07c4	HI_1_8_0	autre non ferme · rejet hors datum · NEW apres DEL · sur le dernier record	1	1	0	0	8
+60ae07c4	HI_1_8_0	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	3	3	0	0	19
+60ae07c4	HI_1_8_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	20	20	0	0	143
+60ae07c4	HI_1_8_0	autre non ferme · rejet hors datum · ordre respecte	570	570	0	0	3318
+60ae07c4	HI_1_8_0	autre non ferme · rejet hors datum · slot non croissant (DEL) · avant le dernier record	1	1	0	0	8
+60ae07c4	HI_1_8_0	autre non ferme · rejet hors datum · slot non croissant (DEL) · sur le dernier record	2	2	0	0	16
+60ae07c4	HI_1_8_0	autre non ferme · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	2	2	0	0	7
+60ae07c4	HI_1_8_0	autre non ferme · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	3	3	0	0	17
+60ae07c4	HI_1_8_0	autre non ferme · rejet hors datum · slot non croissant (NEW) · avant le dernier record	8	8	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · terminateur · DELTA apres DEL · sur le dernier record	1	1	0	0	5
+60ae07c4	HI_1_8_0	autre non ferme · terminateur · NEW apres DEL · sur le dernier record	2	2	0	0	9
+60ae07c4	HI_1_8_0	autre non ferme · terminateur · NEW apres DELTA · avant le dernier record	5	5	0	0	39
+60ae07c4	HI_1_8_0	autre non ferme · terminateur · NEW apres DELTA · sur le dernier record	7	7	0	0	50
+60ae07c4	HI_1_8_0	autre non ferme · terminateur · ordre respecte	274	274	0	0	1490
+60ae07c4	HI_1_8_0	autre non ferme · terminateur · slot non croissant (DELTA) · sur le dernier record	1	1	0	0	6
+60ae07c4	HI_1_8_0	ferme · rejet hors datum · DELTA apres DEL	1	1	0	1	0
+60ae07c4	HI_1_8_0	ferme · rejet hors datum · NEW apres DEL	2	2	0	2	0
+60ae07c4	HI_1_8_0	ferme · rejet hors datum · NEW apres DELTA	17	17	0	17	0
+60ae07c4	HI_1_8_0	ferme · rejet hors datum · ordre respecte	74	74	0	74	0
+60ae07c4	HI_1_8_0	ferme · rejet hors datum · slot non croissant (DEL)	2	2	0	2	0
+60ae07c4	HI_1_8_0	ferme · rejet hors datum · slot non croissant (DELTA)	1	1	0	1	0
+60ae07c4	HI_1_8_0	ferme · rejet hors datum · slot non croissant (NEW)	1	1	0	1	0
+60ae07c4	HI_1_8_0	ferme · terminateur · DELTA apres DEL	3	3	0	3	0
+60ae07c4	HI_1_8_0	ferme · terminateur · NEW apres DEL	1	1	0	1	0
+60ae07c4	HI_1_8_0	ferme · terminateur · NEW apres DELTA	10	10	0	10	0
+60ae07c4	HI_1_8_0	ferme · terminateur · ordre respecte	13849	13849	0	13849	0
+60ae07c4	HI_1_8_0	ferme · terminateur · slot non croissant (DEL)	2	2	0	2	0
+60ae07c4	HI_1_8_0	ferme · terminateur · slot non croissant (DELTA)	3	3	0	3	0
+60ae07c4	HI_1_8_0	ferme · terminateur · slot non croissant (NEW)	3	3	0	3	0
+60ae07c4	HI_1_8_0	hors cadre · rejet hors datum · DELTA apres DEL · sur le dernier record	4	4	4	0	30
+60ae07c4	HI_1_8_0	hors cadre · rejet hors datum · NEW apres DEL · avant le dernier record	7	7	7	0	39
+60ae07c4	HI_1_8_0	hors cadre · rejet hors datum · NEW apres DEL · sur le dernier record	4	4	4	0	23
+60ae07c4	HI_1_8_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	76	76	76	0	244
+60ae07c4	HI_1_8_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	42	42	42	0	314
+60ae07c4	HI_1_8_0	hors cadre · rejet hors datum · ordre respecte	29131	29131	29131	0	170114
+60ae07c4	HI_1_8_0	hors cadre · rejet hors datum · slot non croissant (DEL) · avant le dernier record	7	7	7	0	52
+60ae07c4	HI_1_8_0	hors cadre · rejet hors datum · slot non croissant (DEL) · sur le dernier record	13	13	13	0	93
+60ae07c4	HI_1_8_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	5	5	5	0	31
+60ae07c4	HI_1_8_0	hors cadre · terminateur · DELTA apres DEL · sur le dernier record	2	2	2	0	8
+60ae07c4	HI_1_8_0	hors cadre · terminateur · NEW apres DEL · sur le dernier record	2	2	2	0	15
+60ae07c4	HI_1_8_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	8	8	8	0	66
+60ae07c4	HI_1_8_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	35	35	35	0	245
+60ae07c4	HI_1_8_0	hors cadre · terminateur · ordre respecte	927	927	927	0	4841
+60ae07c4	HI_1_8_0	hors cadre · terminateur · slot non croissant (DEL) · avant le dernier record	3	3	3	0	19
+60ae07c4	HI_1_8_0	hors cadre · terminateur · slot non croissant (DEL) · sur le dernier record	7	7	7	0	40
+60ae07c4	HI_1_8_0	hors cadre · terminateur · slot non croissant (DELTA) · avant le dernier record	1	1	1	0	6
+60ae07c4	HI_1_8_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	9	9	9	0	61
+a349fea8	version-33	autre non ferme · ouverte · DELTA apres DEL · avant le dernier record	3	3	0	0	30
+a349fea8	version-33	autre non ferme · ouverte · NEW apres DEL · avant le dernier record	1	1	0	0	0
+a349fea8	version-33	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	3	3	0	0	10
+a349fea8	version-33	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	3	3	0	0	1
+a349fea8	version-33	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	21	21	0	0	16
+a349fea8	version-33	autre non ferme · ouverte · ordre respecte	920	920	0	0	8822
+a349fea8	version-33	autre non ferme · ouverte · slot non croissant (DELTA) · sur le dernier record	2	2	0	0	1
+a349fea8	version-33	autre non ferme · ouverte · slot non croissant (NEW) · sur le dernier record	1	1	0	0	2
+a349fea8	version-33	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	5	5	0	0	28
+a349fea8	version-33	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	7	7	0	0	2
+a349fea8	version-33	autre non ferme · rejet hors datum · ordre respecte	143	143	0	0	190
+a349fea8	version-33	autre non ferme · rejet hors datum · slot non croissant (NEW) · avant le dernier record	5	5	0	0	0
+a349fea8	version-33	autre non ferme · terminateur · DELTA apres DEL · sur le dernier record	3	3	0	0	0
+a349fea8	version-33	autre non ferme · terminateur · NEW apres DEL · avant le dernier record	1	1	0	0	0
+a349fea8	version-33	autre non ferme · terminateur · NEW apres DELTA · avant le dernier record	1	1	0	0	10
+a349fea8	version-33	autre non ferme · terminateur · NEW apres DELTA · sur le dernier record	5	5	0	0	15
+a349fea8	version-33	autre non ferme · terminateur · ordre respecte	914	914	0	0	23246
+a349fea8	version-33	autre non ferme · terminateur · slot non croissant (DELTA) · avant le dernier record	2	2	0	0	0
+a349fea8	version-33	autre non ferme · terminateur · slot non croissant (DELTA) · sur le dernier record	1	1	0	0	0
+a349fea8	version-33	ferme · rejet hors datum · ordre respecte	21	21	0	21	0
+a349fea8	version-33	ferme · rejet hors datum · slot non croissant (NEW)	2	2	0	2	0
+a349fea8	version-33	ferme · terminateur · ordre respecte	440	440	0	440	0
+a349fea8	version-33	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	4	4	4	0	90
+a349fea8	version-33	hors cadre · rejet hors datum · DELTA apres DEL · sur le dernier record	4	4	4	0	0
+a349fea8	version-33	hors cadre · rejet hors datum · NEW apres DEL · avant le dernier record	4	4	4	0	29
+a349fea8	version-33	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	5	5	5	0	30
+a349fea8	version-33	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	19	19	19	0	36
+a349fea8	version-33	hors cadre · rejet hors datum · ordre respecte	19207	19207	19207	0	380157
+a349fea8	version-33	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	2	2	2	0	0
+a349fea8	version-33	hors cadre · terminateur · DELTA apres DEL · avant le dernier record	4	4	4	0	28
+a349fea8	version-33	hors cadre · terminateur · DELTA apres DEL · sur le dernier record	4	4	4	0	0
+a349fea8	version-33	hors cadre · terminateur · NEW apres DEL · sur le dernier record	1	1	1	0	0
+a349fea8	version-33	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	11	11	11	0	0
+a349fea8	version-33	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	10	10	10	0	3
+a349fea8	version-33	hors cadre · terminateur · ordre respecte	2927	2927	2927	0	53078
+a349fea8	version-33	hors cadre · terminateur · slot non croissant (DEL) · sur le dernier record	1	1	1	0	24
+a349fea8	version-33	hors cadre · terminateur · slot non croissant (DELTA) · avant le dernier record	1	1	1	0	1
+a349fea8	version-33	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	1	1	1	0	0
+a349fea8	version-33	hors cadre · terminateur · slot non croissant (NEW) · avant le dernier record	1	1	1	0	0
+a521164d	HI_1_4_1	autre non ferme · ouverte · DELTA apres DEL · avant le dernier record	1	1	0	0	0
+a521164d	HI_1_4_1	autre non ferme · ouverte · NEW apres DEL · avant le dernier record	1	1	0	0	0
+a521164d	HI_1_4_1	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	4	4	0	0	12
+a521164d	HI_1_4_1	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	17	17	0	0	1
+a521164d	HI_1_4_1	autre non ferme · ouverte · ordre respecte	315	315	0	0	3443
+a521164d	HI_1_4_1	autre non ferme · ouverte · slot non croissant (DEL) · avant le dernier record	1	1	0	0	0
+a521164d	HI_1_4_1	autre non ferme · ouverte · slot non croissant (DELTA) · sur le dernier record	2	2	0	0	8
+a521164d	HI_1_4_1	autre non ferme · ouverte · slot non croissant (NEW) · sur le dernier record	1	1	0	0	0
+a521164d	HI_1_4_1	autre non ferme · rejet hors datum · DELTA apres DEL · sur le dernier record	2	2	0	0	0
+a521164d	HI_1_4_1	autre non ferme · rejet hors datum · NEW apres DEL · avant le dernier record	3	3	0	0	0
+a521164d	HI_1_4_1	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	3	3	0	0	6
+a521164d	HI_1_4_1	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	4	4	0	0	1
+a521164d	HI_1_4_1	autre non ferme · rejet hors datum · ordre respecte	139	139	0	0	119
+a521164d	HI_1_4_1	autre non ferme · rejet hors datum · slot non croissant (DEL) · sur le dernier record	2	2	0	0	0
+a521164d	HI_1_4_1	autre non ferme · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	1	1	0	0	13
+a521164d	HI_1_4_1	autre non ferme · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	1	1	0	0	0
+a521164d	HI_1_4_1	autre non ferme · rejet hors datum · slot non croissant (NEW) · sur le dernier record	2	2	0	0	1
+a521164d	HI_1_4_1	autre non ferme · terminateur · DELTA apres DEL · avant le dernier record	1	1	0	0	42
+a521164d	HI_1_4_1	autre non ferme · terminateur · NEW apres DEL · avant le dernier record	2	2	0	0	0
+a521164d	HI_1_4_1	autre non ferme · terminateur · NEW apres DELTA · avant le dernier record	4	4	0	0	23
+a521164d	HI_1_4_1	autre non ferme · terminateur · ordre respecte	267	267	0	0	6830
+a521164d	HI_1_4_1	autre non ferme · terminateur · slot non croissant (DEL) · avant le dernier record	1	1	0	0	1
+a521164d	HI_1_4_1	ferme · rejet hors datum · ordre respecte	7	7	0	7	0
+a521164d	HI_1_4_1	ferme · terminateur · ordre respecte	694	694	0	694	0
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	1	1	1	0	20
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · DELTA apres DEL · sur le dernier record	2	2	2	0	0
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · NEW apres DEL · avant le dernier record	3	3	3	0	23
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	17	17	17	0	28
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	16	16	16	0	43
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · ordre respecte	6315	6315	6315	0	132377
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · slot non croissant (DEL) · avant le dernier record	1	1	1	0	0
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · slot non croissant (DEL) · sur le dernier record	4	4	4	0	83
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	2	2	2	0	0
+a521164d	HI_1_4_1	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	1	1	1	0	8
+a521164d	HI_1_4_1	hors cadre · terminateur · DELTA apres DEL · avant le dernier record	2	2	2	0	1
+a521164d	HI_1_4_1	hors cadre · terminateur · NEW apres DEL · avant le dernier record	1	1	1	0	0
+a521164d	HI_1_4_1	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	5	5	5	0	1
+a521164d	HI_1_4_1	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	15	15	15	0	18
+a521164d	HI_1_4_1	hors cadre · terminateur · ordre respecte	1969	1969	1969	0	38272
+a521164d	HI_1_4_1	hors cadre · terminateur · slot non croissant (DEL) · avant le dernier record	2	2	2	0	21
+a521164d	HI_1_4_1	hors cadre · terminateur · slot non croissant (DEL) · sur le dernier record	6	6	6	0	116
+a521164d	HI_1_4_1	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	1	1	1	0	16
+a521164d	HI_1_4_1	hors cadre · terminateur · slot non croissant (NEW) · avant le dernier record	1	1	1	0	0
+bcb6d393	HI_1_12_0	autre non ferme · ouverte · DELTA apres DEL · avant le dernier record	1	1	0	0	5
+bcb6d393	HI_1_12_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	2	2	0	0	1
+bcb6d393	HI_1_12_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	5	5	0	0	3
+bcb6d393	HI_1_12_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	65	65	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · ouverte · ordre respecte	12352	12352	0	0	67923
+bcb6d393	HI_1_12_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	6	6	0	0	3
+bcb6d393	HI_1_12_0	autre non ferme · rejet hors datum · ordre respecte	62	62	0	0	6
+bcb6d393	HI_1_12_0	autre non ferme · terminateur · NEW apres DELTA · sur le dernier record	1	1	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · terminateur · ordre respecte	3	3	0	0	0
+bcb6d393	HI_1_12_0	ferme · rejet hors datum · ordre respecte	2	2	0	2	0
+bcb6d393	HI_1_12_0	ferme · terminateur · ordre respecte	5832	5832	0	5832	0
+bcb6d393	HI_1_12_0	ferme · terminateur · slot non croissant (NEW)	1	1	0	1	0
+bcb6d393	HI_1_12_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	4	4	4	0	10
+bcb6d393	HI_1_12_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	5	5	5	0	1
+bcb6d393	HI_1_12_0	hors cadre · rejet hors datum · ordre respecte	3190	3190	3190	0	18517
+bcb6d393	HI_1_12_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	1	1	1	0	0
+bcb6d393	HI_1_12_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	3	3	3	0	0
+bcb6d393	HI_1_12_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	13	13	13	0	1
+bcb6d393	HI_1_12_0	hors cadre · terminateur · ordre respecte	33	33	33	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	2	2	0	0	16
+bf15f7ab	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	1	1	0	0	7
+bf15f7ab	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	111	111	0	0	768
+bf15f7ab	HI_1_13_0	autre non ferme · ouverte · ordre respecte	175	175	0	0	166
+bf15f7ab	HI_1_13_0	autre non ferme · ouverte · slot non croissant (DELTA) · sur le dernier record	16	16	0	0	113
+bf15f7ab	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	136	136	0	0	937
+bf15f7ab	HI_1_13_0	autre non ferme · terminateur · ordre respecte	116	116	0	0	801
+bf15f7ab	HI_1_13_0	ferme · rejet hors datum · ordre respecte	3	3	0	3	0
+bf15f7ab	HI_1_13_0	ferme · terminateur · NEW apres DEL	1	1	0	1	0
+bf15f7ab	HI_1_13_0	ferme · terminateur · ordre respecte	28471	28471	0	28471	0
+bf15f7ab	HI_1_13_0	ferme · terminateur · slot non croissant (DELTA)	1	1	0	1	0
+bf15f7ab	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	1614	1614	1614	0	9532
+bf15f7ab	HI_1_13_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	7	7	7	0	49
+bf15f7ab	HI_1_13_0	hors cadre · terminateur · ordre respecte	34	34	34	0	228
+bf15f7ab	HI_1_13_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	3	3	3	0	22
+bfecd02b	HI_1_13_0	autre non ferme · ouverte · ordre respecte	1146	1146	0	0	5063
+bfecd02b	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	2	2	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · terminateur · ordre respecte	1	1	0	0	0
+bfecd02b	HI_1_13_0	ferme · rejet hors datum · ordre respecte	5	5	0	5	0
+bfecd02b	HI_1_13_0	ferme · rejet hors datum · slot non croissant (DEL)	1	1	0	1	0
+bfecd02b	HI_1_13_0	ferme · rejet hors datum · slot non croissant (NEW)	1	1	0	1	0
+bfecd02b	HI_1_13_0	ferme · terminateur · DELTA apres DEL	2	2	0	2	0
+bfecd02b	HI_1_13_0	ferme · terminateur · ordre respecte	26394	26394	0	26394	0
+bfecd02b	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	3145	3145	3145	0	23239
+bfecd02b	HI_1_13_0	hors cadre · terminateur · ordre respecte	7	7	7	0	64
+bfecd02b	HI_1_13_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	2	2	2	0	17
+c75f33b8	HI_1_13_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	1	1	0	0	10
+c75f33b8	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	2	2	0	0	8
+c75f33b8	HI_1_13_0	autre non ferme · ouverte · ordre respecte	209	209	0	0	296
+c75f33b8	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	10	10	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	1	1	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · terminateur · ordre respecte	5	5	0	0	0
+c75f33b8	HI_1_13_0	ferme · rejet hors datum · NEW apres DEL	1	1	0	1	0
+c75f33b8	HI_1_13_0	ferme · rejet hors datum · ordre respecte	22	22	0	22	0
+c75f33b8	HI_1_13_0	ferme · terminateur · DELTA apres DEL	5	5	0	5	0
+c75f33b8	HI_1_13_0	ferme · terminateur · NEW apres DELTA	1	1	0	1	0
+c75f33b8	HI_1_13_0	ferme · terminateur · ordre respecte	22912	22912	0	22912	0
+c75f33b8	HI_1_13_0	ferme · terminateur · slot non croissant (NEW)	3	3	0	3	0
+c75f33b8	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	1	1	1	0	9
+c75f33b8	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	2282	2282	2282	0	10220
+c75f33b8	HI_1_13_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	1	1	1	0	0
+c75f33b8	HI_1_13_0	hors cadre · terminateur · ordre respecte	10	10	10	0	0
+c75f33b8	HI_1_13_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	2	2	2	0	16
+d9781168	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	1	1	0	0	6
+d9781168	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	2	2	0	0	14
+d9781168	HI_1_13_0	autre non ferme · ouverte · ordre respecte	186	186	0	0	181
+d9781168	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	1	1	0	0	0
+d9781168	HI_1_13_0	autre non ferme · terminateur · ordre respecte	1	1	0	0	0
+d9781168	HI_1_13_0	ferme · rejet hors datum · NEW apres DEL	1	1	0	1	0
+d9781168	HI_1_13_0	ferme · rejet hors datum · ordre respecte	92	92	0	92	0
+d9781168	HI_1_13_0	ferme · rejet hors datum · slot non croissant (NEW)	2	2	0	2	0
+d9781168	HI_1_13_0	ferme · terminateur · DELTA apres DEL	6	6	0	6	0
+d9781168	HI_1_13_0	ferme · terminateur · NEW apres DEL	9	9	0	9	0
+d9781168	HI_1_13_0	ferme · terminateur · ordre respecte	26346	26346	0	26346	0
+d9781168	HI_1_13_0	ferme · terminateur · slot non croissant (DEL)	1	1	0	1	0
+d9781168	HI_1_13_0	ferme · terminateur · slot non croissant (DELTA)	1	1	0	1	0
+d9781168	HI_1_13_0	ferme · terminateur · slot non croissant (NEW)	6	6	0	6	0
+d9781168	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	11060	11060	11060	0	64284
+d9781168	HI_1_13_0	hors cadre · terminateur · ordre respecte	188	188	188	0	13
+d9781168	HI_1_13_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	1	1	1	0	8
+e5adf7b2	HI_1_11_0	autre non ferme · ouverte · DELTA apres DEL · sur le dernier record	2	2	0	0	22
+e5adf7b2	HI_1_11_0	autre non ferme · ouverte · NEW apres DEL · avant le dernier record	1	1	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · ouverte · NEW apres DEL · sur le dernier record	6	6	0	0	103
+e5adf7b2	HI_1_11_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	6	6	0	0	15
+e5adf7b2	HI_1_11_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	39	39	0	0	448
+e5adf7b2	HI_1_11_0	autre non ferme · ouverte · ordre respecte	205	205	0	0	3475
+e5adf7b2	HI_1_11_0	autre non ferme · ouverte · slot non croissant (NEW) · sur le dernier record	7	7	0	0	2
+e5adf7b2	HI_1_11_0	autre non ferme · rejet hors datum · DELTA apres DEL · sur le dernier record	1	1	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · rejet hors datum · NEW apres DEL · avant le dernier record	2	2	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	4	4	0	0	14
+e5adf7b2	HI_1_11_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	3	3	0	0	52
+e5adf7b2	HI_1_11_0	autre non ferme · rejet hors datum · ordre respecte	239	239	0	0	1370
+e5adf7b2	HI_1_11_0	autre non ferme · rejet hors datum · slot non croissant (DEL) · avant le dernier record	1	1	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · rejet hors datum · slot non croissant (DEL) · sur le dernier record	1	1	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	5	5	0	0	83
+e5adf7b2	HI_1_11_0	autre non ferme · rejet hors datum · slot non croissant (NEW) · sur le dernier record	2	2	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · terminateur · NEW apres DELTA · avant le dernier record	3	3	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · terminateur · NEW apres DELTA · sur le dernier record	3	3	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · terminateur · ordre respecte	82	82	0	0	864
+e5adf7b2	HI_1_11_0	autre non ferme · terminateur · slot non croissant (NEW) · sur le dernier record	2	2	0	0	0
+e5adf7b2	HI_1_11_0	ferme · rejet hors datum · ordre respecte	58	58	0	58	0
+e5adf7b2	HI_1_11_0	ferme · rejet hors datum · slot non croissant (NEW)	3	3	0	3	0
+e5adf7b2	HI_1_11_0	ferme · terminateur · DELTA apres DEL	4	4	0	4	0
+e5adf7b2	HI_1_11_0	ferme · terminateur · NEW apres DEL	1	1	0	1	0
+e5adf7b2	HI_1_11_0	ferme · terminateur · NEW apres DELTA	1	1	0	1	0
+e5adf7b2	HI_1_11_0	ferme · terminateur · ordre respecte	4211	4211	0	4211	0
+e5adf7b2	HI_1_11_0	ferme · terminateur · slot non croissant (DELTA)	1	1	0	1	0
+e5adf7b2	HI_1_11_0	ferme · terminateur · slot non croissant (NEW)	6	6	0	6	0
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	2	2	2	0	39
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · DELTA apres DEL · sur le dernier record	2	2	2	0	43
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · NEW apres DEL · avant le dernier record	3	3	3	0	0
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · NEW apres DEL · sur le dernier record	4	4	4	0	24
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	18	18	18	0	51
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	22	22	22	0	196
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · ordre respecte	9846	9846	9846	0	201404
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · slot non croissant (DEL) · avant le dernier record	1	1	1	0	0
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · slot non croissant (DEL) · sur le dernier record	4	4	4	0	0
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · avant le dernier record	2	2	2	0	39
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	4	4	4	0	60
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · slot non croissant (NEW) · avant le dernier record	1	1	1	0	0
+e5adf7b2	HI_1_11_0	hors cadre · rejet hors datum · slot non croissant (NEW) · sur le dernier record	1	1	1	0	0
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · DELTA apres DEL · avant le dernier record	1	1	1	0	19
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · DELTA apres DEL · sur le dernier record	5	5	5	0	62
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · NEW apres DEL · avant le dernier record	1	1	1	0	0
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · NEW apres DEL · sur le dernier record	1	1	1	0	1
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	9	9	9	0	17
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	15	15	15	0	114
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · ordre respecte	248	248	248	0	716
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · slot non croissant (DEL) · avant le dernier record	1	1	1	0	15
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · slot non croissant (DEL) · sur le dernier record	2	2	2	0	23
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · slot non croissant (DELTA) · avant le dernier record	1	1	1	0	17
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	3	3	3	0	58
+e5adf7b2	HI_1_11_0	hors cadre · terminateur · slot non croissant (NEW) · sur le dernier record	1	1	1	0	0
+f75e7053	HI_1_13_0	autre non ferme · ouverte · ordre respecte	313	313	0	0	814
+f75e7053	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	1	1	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · terminateur · ordre respecte	1	1	0	0	0
+f75e7053	HI_1_13_0	ferme · rejet hors datum · ordre respecte	2	2	0	2	0
+f75e7053	HI_1_13_0	ferme · terminateur · NEW apres DEL	1	1	0	1	0
+f75e7053	HI_1_13_0	ferme · terminateur · ordre respecte	23420	23420	0	23420	0
+f75e7053	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	4287	4287	4287	0	26439
+fb1a1a72	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · avant le dernier record	22	22	0	0	7
+fb1a1a72	HI_1_13_0	autre non ferme · ouverte · NEW apres DELTA · sur le dernier record	5	5	0	0	8
+fb1a1a72	HI_1_13_0	autre non ferme · ouverte · ordre respecte	1604	1604	0	0	1843
+fb1a1a72	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DELTA · avant le dernier record	9	9	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · rejet hors datum · NEW apres DELTA · sur le dernier record	60	60	0	0	1
+fb1a1a72	HI_1_13_0	autre non ferme · rejet hors datum · ordre respecte	12	12	0	0	30
+fb1a1a72	HI_1_13_0	autre non ferme · terminateur · NEW apres DELTA · avant le dernier record	2	2	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · terminateur · NEW apres DELTA · sur le dernier record	14	14	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · terminateur · ordre respecte	92	92	0	0	5
+fb1a1a72	HI_1_13_0	ferme · rejet hors datum · NEW apres DEL	1	1	0	1	0
+fb1a1a72	HI_1_13_0	ferme · rejet hors datum · ordre respecte	13	13	0	13	0
+fb1a1a72	HI_1_13_0	ferme · terminateur · DELTA apres DEL	3	3	0	3	0
+fb1a1a72	HI_1_13_0	ferme · terminateur · ordre respecte	22299	22299	0	22299	0
+fb1a1a72	HI_1_13_0	ferme · terminateur · slot non croissant (NEW)	2	2	0	2	0
+fb1a1a72	HI_1_13_0	hors cadre · rejet hors datum · DELTA apres DEL · avant le dernier record	1	1	1	0	4
+fb1a1a72	HI_1_13_0	hors cadre · rejet hors datum · DELTA apres DEL · sur le dernier record	2	2	2	0	0
+fb1a1a72	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · avant le dernier record	35	35	35	0	2
+fb1a1a72	HI_1_13_0	hors cadre · rejet hors datum · NEW apres DELTA · sur le dernier record	107	107	107	0	7
+fb1a1a72	HI_1_13_0	hors cadre · rejet hors datum · ordre respecte	23306	23306	23306	0	15580
+fb1a1a72	HI_1_13_0	hors cadre · rejet hors datum · slot non croissant (DELTA) · sur le dernier record	3	3	3	0	0
+fb1a1a72	HI_1_13_0	hors cadre · terminateur · NEW apres DEL · avant le dernier record	2	2	2	0	0
+fb1a1a72	HI_1_13_0	hors cadre · terminateur · NEW apres DELTA · avant le dernier record	96	96	96	0	2
+fb1a1a72	HI_1_13_0	hors cadre · terminateur · NEW apres DELTA · sur le dernier record	85	85	85	0	7
+fb1a1a72	HI_1_13_0	hors cadre · terminateur · ordre respecte	300	300	300	0	58
+fb1a1a72	HI_1_13_0	hors cadre · terminateur · slot non croissant (DELTA) · avant le dernier record	1	1	1	0	4
+fb1a1a72	HI_1_13_0	hors cadre · terminateur · slot non croissant (DELTA) · sur le dernier record	3	3	3	0	18

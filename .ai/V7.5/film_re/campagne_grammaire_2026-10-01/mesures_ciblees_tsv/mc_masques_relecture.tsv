@@ -1,0 +1,38 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	NEW ti >= 50 : arret	146	0	0	0	0
+0797ce72	HI_1_13_0	relu	252863	0	0	0	0
+084a804d	HI_1_10_0	NEW ti >= 50 : arret	20	0	0	0	0
+084a804d	HI_1_10_0	relu	606428	0	0	0	0
+111fa685	HI_1_10_0	NEW ti >= 50 : arret	22	0	0	0	0
+111fa685	HI_1_10_0	relu	270549	0	0	0	0
+11de8353	HI_1_9_0	NEW ti >= 50 : arret	21	0	0	0	0
+11de8353	HI_1_9_0	relu	275072	0	0	0	0
+1c4c63c2	HI_1_10_0	NEW ti >= 50 : arret	11	0	0	0	0
+1c4c63c2	HI_1_10_0	relu	919040	0	0	0	0
+396cfc92	HI_1_13_0	NEW ti >= 50 : arret	8	0	0	0	0
+396cfc92	HI_1_13_0	relu	421925	0	0	0	0
+4f77afc1	HI_1_13_0	NEW ti >= 50 : arret	7	0	0	0	0
+4f77afc1	HI_1_13_0	relu	840023	0	0	0	0
+50247b26	version-31	NEW ti >= 50 : arret	2	0	0	0	0
+50247b26	version-31	relu	542437	0	0	0	0
+51ebbc0f	HI_1_13_0	NEW ti >= 50 : arret	6	0	0	0	0
+51ebbc0f	HI_1_13_0	relu	150053	0	0	0	0
+60ae07c4	HI_1_8_0	NEW ti >= 50 : arret	179	0	0	0	0
+60ae07c4	HI_1_8_0	relu	337014	0	0	0	0
+a349fea8	version-33	NEW ti >= 50 : arret	9	0	0	0	0
+a349fea8	version-33	relu	552621	0	0	0	0
+a521164d	HI_1_4_1	NEW ti >= 50 : arret	12	0	0	0	0
+a521164d	HI_1_4_1	relu	226020	0	0	0	0
+bcb6d393	HI_1_12_0	NEW ti >= 50 : arret	22	0	0	0	0
+bcb6d393	HI_1_12_0	relu	167939	0	0	0	0
+bf15f7ab	HI_1_13_0	NEW ti >= 50 : arret	112	0	0	0	0
+bf15f7ab	HI_1_13_0	relu	283689	0	0	0	0
+bfecd02b	HI_1_13_0	relu	309186	0	0	0	0
+c75f33b8	HI_1_13_0	relu	220277	0	0	0	0
+d9781168	HI_1_13_0	NEW ti >= 50 : arret	2	0	0	0	0
+d9781168	HI_1_13_0	relu	332913	0	0	0	0
+e5adf7b2	HI_1_11_0	NEW ti >= 50 : arret	27	0	0	0	0
+e5adf7b2	HI_1_11_0	relu	322998	0	0	0	0
+f75e7053	HI_1_13_0	relu	237132	0	0	0	0
+fb1a1a72	HI_1_13_0	NEW ti >= 50 : arret	10	0	0	0	0
+fb1a1a72	HI_1_13_0	relu	293033	0	0	0	0

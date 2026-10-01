@@ -231,4 +231,12 @@ const enteteCarteDeFermeture = "" +
 	"#     tacmap-cooptetherarea, crew-order, precHigh = 1 de l i0 absolu du bipede). AUCUN compte\n" +
 	"#     `fermes` ne bouge. ks_000d5950 vue=C : 3 388 -> 3 387 terminees, son compte d avant J6.3\n" +
 	"#     (un paquet non ferme s arrete sur le bloc 0xbc et non sur le terminateur). 0 ligne `fermes`\n" +
-	"#     ne descend.\n"
+	"#     ne descend.\n" +
+	"#   2026-10-01 campagne de grammaire phase 1, item 1.4 : colonne product_use de ecs_table.tsv\n" +
+	"#     CORRIGEE SUR PIECES (36 -> 73 lignes utiles, chacune cite son canal de production). ENTRENT :\n" +
+	"#     ti=35 i1/i29/i54/i57/i62 (etats de mouvement), i10 (occupation), ti=9 i0 (equipe),\n" +
+	"#     ti=40 i0/i1/i2/i11 (vehicules), ti=13 i1..i33 (zones), ti=12 i14 (armement),\n" +
+	"#     ti=42 i0/i20 (socles). SORTENT, faute d appelant de production : ti=11 i0/i3/i5/i12/i13/i14\n" +
+	"#     (ScanObjectives) et ti=37 i20/i21/i23/i24 (ScanEquipmentState). AUCUN compte de paquet ni de\n" +
+	"#     record ne bouge ; seuls les UTILES : ks_000d5950 5 889/30 428 -> 6 608/31 200,\n" +
+	"#     ks_e5adf7b2 0/1 -> 0/23. 0 ligne `fermes` ne descend.\n"

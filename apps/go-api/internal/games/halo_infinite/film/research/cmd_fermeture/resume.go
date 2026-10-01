@@ -50,6 +50,9 @@ func (r *rapport) ecrireResume(w io.Writer, top int) {
 	if r.modes.fermeture {
 		r.ecrireFermeture(w, top)
 	}
+	if r.v2 != nil {
+		r.v2.ecrireSection(w, top)
+	}
 	if r.gb1 != nil {
 		r.gb1.ecrireSection(w)
 	}

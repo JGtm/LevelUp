@@ -154,6 +154,8 @@ func TestLireModes(t *testing.T) {
 		"fermeture":      {fermeture: true},
 		"gb1":            {gb1: true},
 		"fermeture, gb1": {fermeture: true, gb1: true},
+		"v2":             {fermeture: true, v2: true},
+		"v2,gb1":         {fermeture: true, gb1: true, v2: true},
 	}
 	for v, attendu := range cas {
 		md, err := lireModes(v)

@@ -41,6 +41,14 @@
 #     `fermes` ne bouge. ks_000d5950 vue=C : 3 388 -> 3 387 terminees, son compte d avant J6.3
 #     (un paquet non ferme s arrete sur le bloc 0xbc et non sur le terminateur). 0 ligne `fermes`
 #     ne descend.
+#   2026-10-01 campagne de grammaire phase 1, item 1.4 : colonne product_use de ecs_table.tsv
+#     CORRIGEE SUR PIECES (36 -> 73 lignes utiles, chacune cite son canal de production). ENTRENT :
+#     ti=35 i1/i29/i54/i57/i62 (etats de mouvement), i10 (occupation), ti=9 i0 (equipe),
+#     ti=40 i0/i1/i2/i11 (vehicules), ti=13 i1..i33 (zones), ti=12 i14 (armement),
+#     ti=42 i0/i20 (socles). SORTENT, faute d appelant de production : ti=11 i0/i3/i5/i12/i13/i14
+#     (ScanObjectives) et ti=37 i20/i21/i23/i24 (ScanEquipmentState). AUCUN compte de paquet ni de
+#     record ne bouge ; seuls les UTILES : ks_000d5950 5 889/30 428 -> 6 608/31 200,
+#     ks_e5adf7b2 0/1 -> 0/23. 0 ligne `fermes` ne descend.
 a521164d	paquets	0	0		listes_non_localisees=0
 a521164d	vue=A	0	0		terminees=0 arrets=
 a521164d	vue=B	0	0		terminees=0 arrets=
@@ -81,7 +89,7 @@ ks_000d5950	paquets	1823	5957	ti=43 i35 device-animation-layer-state-component	l
 ks_000d5950	vue=A	1700	5484		terminees=5484 arrets=
 ks_000d5950	vue=B	1823	5930	ti=43 i35 device-animation-layer-state-component	terminees=3485 arrets=ti=0 i13 game-engine-disabled-kill-volume-flags-component:1;ti=10 i2 managed-object-navpoint-component:2;ti=10 i3 managed-object-navpoint-component:1;ti=10 i6 managed-object-navpoint-component:1;ti=11 i4 managed-objective-interaction-filter-component:1;ti=18 i1 effect-state-data-component:4;ti=18 i2 effect-state-data-component:2;ti=19 i1 sound-placement-state-data-component:1;ti=19 i4 sound-placement-state-data-component:1;ti=2 i11 game-engine-soft-ceilings-component:6;ti=2 i13 game-engine-disabled-kill-volume-flags-component:1;ti=2 i14 GameEngineComposerLetterboxComponent:1;ti=2 i17 matchflow-isplaying-flags-component:3;ti=26 i0 supply-lines-blocked-status-component:2;ti=34 i10 tacmap-mapdismissallock:3;ti=34 i12 tacmap-backmenulocked-state:6;ti=35 i59 biped-spartan-ability-non-predicted-state:4;ti=43 i34 device-animation-layer-settings-component:2;ti=43 i35 device-animation-layer-state-component:2365;ti=43 i39 device-machine-flags-component:1;ti=45 i0 matchflow-sequence-data-component:1;ti=45 i1 matchflow-focus-data-component:1;ti=5 i10 player-primary-respawn-object-component:1;ti=50 archetype hors registre:5;ti=51 archetype hors registre:1;ti=52 archetype hors registre:1;ti=58 archetype hors registre:9;ti=59 archetype hors registre:4;ti=60 archetype hors registre:7;ti=61 archetype hors registre:1;vue B : fin de payload:6
 ks_000d5950	vue=C	1823	3485	vue C : terminateur hors cadre	terminees=3387 arrets=vue C : bloc 0xbc non porte:26;vue C : debordement:1;vue C : kind non porte:71;vue C : terminateur hors cadre:1564
-ks_000d5950	utiles	5889	30428		entrees_controle_fermees=11735
+ks_000d5950	utiles	6608	31200		entrees_controle_fermees=11735
 ks_000d5950	ti=0	0	2	ti=0 i13 game-engine-disabled-kill-volume-flags-component	neufs=0/2 deltas=0/0 utiles=0/0
 ks_000d5950	ti=1	0	1	vue C : terminateur hors cadre	neufs=0/1 deltas=0/0 utiles=0/0
 ks_000d5950	ti=2	20	163	ti=43 i35 device-animation-layer-state-component	neufs=0/14 deltas=20/149 utiles=0/0
@@ -89,10 +97,10 @@ ks_000d5950	ti=4	1775	5871	ti=43 i35 device-animation-layer-state-component	neuf
 ks_000d5950	ti=5	45	183	ti=43 i35 device-animation-layer-state-component	neufs=0/1 deltas=45/182 utiles=0/0
 ks_000d5950	ti=6	16	60	ti=43 i35 device-animation-layer-state-component	neufs=0/1 deltas=16/59 utiles=0/0
 ks_000d5950	ti=8	0	1	vue C : terminateur hors cadre	neufs=0/1 deltas=0/0 utiles=0/0
-ks_000d5950	ti=9	0	8	ti=43 i39 device-machine-flags-component	neufs=0/8 deltas=0/0 utiles=0/0
+ks_000d5950	ti=9	0	8	ti=43 i39 device-machine-flags-component	neufs=0/8 deltas=0/0 utiles=0/8
 ks_000d5950	ti=10	0	7	vue C : terminateur hors cadre	neufs=0/7 deltas=0/0 utiles=0/0
-ks_000d5950	ti=11	0	1	ti=11 i4 managed-objective-interaction-filter-component	neufs=0/1 deltas=0/0 utiles=0/1
-ks_000d5950	ti=13	8	8		neufs=0/0 deltas=8/8 utiles=0/0
+ks_000d5950	ti=11	0	1	ti=11 i4 managed-objective-interaction-filter-component	neufs=0/1 deltas=0/0 utiles=0/0
+ks_000d5950	ti=13	8	8		neufs=0/0 deltas=8/8 utiles=8/8
 ks_000d5950	ti=14	0	2	vue C : bloc 0xbc non porte	neufs=0/0 deltas=0/2 utiles=0/0
 ks_000d5950	ti=16	0	2	vue B : fin de payload	neufs=0/2 deltas=0/0 utiles=0/0
 ks_000d5950	ti=17	0	1	ti=5 i10 player-primary-respawn-object-component	neufs=0/0 deltas=0/1 utiles=0/0
@@ -103,11 +111,11 @@ ks_000d5950	ti=22	0	2	vue C : kind non porte	neufs=0/2 deltas=0/0 utiles=0/0
 ks_000d5950	ti=25	0	1	vue C : terminateur hors cadre	neufs=0/1 deltas=0/0 utiles=0/0
 ks_000d5950	ti=26	0	2	ti=26 i0 supply-lines-blocked-status-component	neufs=0/2 deltas=0/0 utiles=0/0
 ks_000d5950	ti=34	0	9	ti=34 i12 tacmap-backmenulocked-state	neufs=0/9 deltas=0/0 utiles=0/0
-ks_000d5950	ti=35	3549	27008	ti=43 i35 device-animation-layer-state-component	neufs=7/21 deltas=3542/26987 utiles=3529/26952
-ks_000d5950	ti=37	1928	1974	ti=43 i35 device-animation-layer-state-component	neufs=21/59 deltas=1907/1915 utiles=1375/1406
+ks_000d5950	ti=35	3549	27008	ti=43 i35 device-animation-layer-state-component	neufs=7/21 deltas=3542/26987 utiles=3542/26987
+ks_000d5950	ti=37	1928	1974	ti=43 i35 device-animation-layer-state-component	neufs=21/59 deltas=1907/1915 utiles=1374/1403
 ks_000d5950	ti=38	4	22	ti=43 i39 device-machine-flags-component	neufs=4/19 deltas=0/3 utiles=0/0
 ks_000d5950	ti=41	988	2139	ti=43 i35 device-animation-layer-state-component	neufs=21/166 deltas=967/1973 utiles=985/2069
-ks_000d5950	ti=42	803	830	ti=43 i35 device-animation-layer-state-component	neufs=6/30 deltas=797/800 utiles=0/0
+ks_000d5950	ti=42	803	830	ti=43 i35 device-animation-layer-state-component	neufs=6/30 deltas=797/800 utiles=699/725
 ks_000d5950	ti=43	35	2404	ti=43 i35 device-animation-layer-state-component	neufs=0/1 deltas=35/2403 utiles=0/0
 ks_000d5950	ti=45	0	2	ti=45 i0 matchflow-sequence-data-component	neufs=0/2 deltas=0/0 utiles=0/0
 ks_000d5950	ti=47	48	49	vue B : fin de payload	neufs=0/1 deltas=48/48 utiles=0/0
@@ -122,7 +130,7 @@ ks_e5adf7b2	paquets	371	584	vue C : terminateur hors cadre	listes_non_localisees
 ks_e5adf7b2	vue=A	359	530		terminees=530 arrets=
 ks_e5adf7b2	vue=B	371	582	ti=10 i2 managed-object-navpoint-component	terminees=579 arrets=ti=10 i2 managed-object-navpoint-component:1;ti=35 i60 simulation-state-component:1;ti=43 i22 device-power-component:1
 ks_e5adf7b2	vue=C	371	579	vue C : terminateur hors cadre	terminees=531 arrets=vue C : bloc 0xbc non porte:18;vue C : debordement:24;vue C : kind non porte:6;vue C : terminateur hors cadre:160
-ks_e5adf7b2	utiles	0	1		entrees_controle_fermees=1
+ks_e5adf7b2	utiles	0	23		entrees_controle_fermees=1
 ks_e5adf7b2	ti=4	240	441	vue C : terminateur hors cadre	neufs=0/1 deltas=240/440 utiles=0/0
 ks_e5adf7b2	ti=10	0	1	ti=10 i2 managed-object-navpoint-component	neufs=0/1 deltas=0/0 utiles=0/0
 ks_e5adf7b2	ti=21	1	60	vue C : debordement	neufs=0/4 deltas=1/56 utiles=0/0
@@ -131,6 +139,6 @@ ks_e5adf7b2	ti=35	0	2	ti=35 i60 simulation-state-component	neufs=0/2 deltas=0/0 
 ks_e5adf7b2	ti=37	0	1	vue C : terminateur hors cadre	neufs=0/1 deltas=0/0 utiles=0/0
 ks_e5adf7b2	ti=38	0	15	vue C : kind non porte	neufs=0/1 deltas=0/14 utiles=0/0
 ks_e5adf7b2	ti=40	0	2	vue C : terminateur hors cadre	neufs=0/0 deltas=0/2 utiles=0/0
-ks_e5adf7b2	ti=42	18	42	vue C : terminateur hors cadre	neufs=0/0 deltas=18/42 utiles=0/0
+ks_e5adf7b2	ti=42	18	42	vue C : terminateur hors cadre	neufs=0/0 deltas=18/42 utiles=0/22
 ks_e5adf7b2	ti=43	0	1	ti=43 i22 device-power-component	neufs=0/0 deltas=0/1 utiles=0/0
 ks_e5adf7b2	ti=47	0	161	vue C : bloc 0xbc non porte	neufs=0/0 deltas=0/161 utiles=0/0

@@ -9,11 +9,11 @@ package main
 //	fermeture_archetypes.tsv  une ligne par (film, archetype)
 //	fermeture_bloquants.tsv   une ligne par (film, cause d arret)
 //	fermeture_resume.md       par build : paquets fermes par vue, records utiles fermes ; puis le
-//	                          classement des bloquants du corpus ; puis, en mode `gb1`, la
-//	                          section GB-1
+//	                          classement des bloquants du corpus ; puis, en mode `v2`, les
+//	                          sections de la carte v2 ; puis, en mode `gb1`, la section GB-1
 //
-// Les trois TSV de fermeture ne sont crees qu en mode `fermeture` ; ceux du mode `gb1`
-// (`gb1_*.tsv`) sont decrits dans gb1_rapport.go.
+// Les trois TSV de fermeture ne sont crees qu en mode `fermeture` (ou `v2`) ; ceux du mode `gb1`
+// (`gb1_*.tsv`) sont decrits dans gb1_rapport.go, ceux qu AJOUTE le mode `v2` dans v2_rapport.go.
 //
 // Les chiffres sont colles, sans interpretation : les verdicts appartiennent a la note de
 // mesure (J4.0.5), pas a l instrument.
@@ -66,7 +66,9 @@ type rapport struct {
 	parBuild                     map[string]*cumulBuild
 	parBloquant                  map[string]*cumulBloquant
 	// gb1 porte les sorties du mode `gb1` ; nil hors de ce mode.
-	gb1             *rapportGB1
+	gb1 *rapportGB1
+	// v2 porte les sorties AJOUTEES par le mode `v2` (v2_rapport.go) ; nil hors de ce mode.
+	v2              *rapportV2
 	mesures, echecs int
 }
 
@@ -82,6 +84,12 @@ func ouvrirRapport(dir string, tab tableECS, md modes) (*rapport, error) {
 	if md.gb1 {
 		var err error
 		if r.gb1, err = ouvrirRapportGB1(dir); err != nil {
+			return nil, errors.Join(err, r.fermer())
+		}
+	}
+	if md.v2 {
+		var err error
+		if r.v2, err = ouvrirRapportV2(dir); err != nil {
 			return nil, errors.Join(err, r.fermer())
 		}
 	}
@@ -219,6 +227,9 @@ func (r *rapport) fermer() error {
 	errs := []error{fermerTSV(r.films, r.archetypes, r.bloquants)}
 	if r.gb1 != nil {
 		errs = append(errs, r.gb1.fermer())
+	}
+	if r.v2 != nil {
+		errs = append(errs, r.v2.fermer())
 	}
 	return errors.Join(errs...)
 }
