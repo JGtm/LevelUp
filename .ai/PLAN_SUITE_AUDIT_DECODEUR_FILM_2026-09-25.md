@@ -1114,7 +1114,7 @@ G-web, G-CI. **Taille** : M.
 - [x] J11.1 G-corpus complet (`--reference=base`, base = tête de `feat/v75`) : zéro perte non
       expliquée ; changements = union des déclarations J3-J10 (table au §9) ; rapport JSON archivé.
 - [x] J11.2 `replay-equiv` : références re-figées à la tête (`-update`), digests commités.
-- [ ] J11.3 Mesures de clôture : GB-1 (vies sans positions par film, avant/après), compte par repli
+- [x] J11.3 Mesures de clôture : GB-1 (vies sans positions par film, avant/après), compte par repli
       sur le corpus (→ liste de retrait soumise à DU-7), assistants `?N` = 0, bots épinglés ;
       carte de fermeture rejouée contre la référence de J4.0.5 (→ état du déclencheur de la
       représentation intermédiaire, rapporté à l'utilisateur).
@@ -1685,3 +1685,14 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   preuve G-equiv avant/après J12 sur 20 films : document publié IDENTIQUE à l'octet ; quatre
   digests d'étape changent sans effet publié (champ de diagnostics : killsource, drapeau, crâne ;
   départage `compareSample` des échantillons au repos : socles, 2 points sur 86 818).
+- 2026-10-01 : **J11.2** (`4c3fd0dbb`) : références d'équivalence re-figées à la tête, 20/20
+  identiques au contrôle. **J11.3** (`e297192b5`, `.ai/V7.5/film_re/MESURES_CLOTURE_J11_2026-10-01.md`) :
+  GB-1 tenu (vies sans position 123/330/77/74 → 0/0/0/8 ; durées 972 → 1 056 s, 826 → 1 289 s,
+  933 → 948 s) ; carte de fermeture ≥ référence sur les 18 films ; **déclencheur de la
+  représentation intermédiaire NON atteint** (meilleur build HI_1_13_0 : 80,2 % des records utiles
+  fermés, contre 95 % requis ; builds anciens 0 à 30 %) ; 119 replis au registre, 53 actifs sur le
+  corpus, 66 à compte nul → liste de retrait publiée pour DU-7 (hors plan, décision au jalon
+  suivant) ; assistants `?N` = 0 ; 2 bots non épinglés signalés. **Ordre de fin de J11 modifié**
+  (superviseur, à confirmer par l'utilisateur) : fusion J11.6 dans `feat/v75` AVANT la vague J11.4,
+  parce que le serveur dev du checkout principal tourne le code de `feat/v75` et redécoderait à
+  l'ancienne ce que la vague aura recuit.
