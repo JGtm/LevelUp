@@ -392,3 +392,15 @@ package grammar
 // seule 92/122/335/406. Positions inchangees ; films sans slot recycle (`bcb6d393`, `51ebbc0f`,
 // `d9781168`, `e5adf7b2`) : toutes les sorties identiques a l octet. Garde-rail :
 // `generations_vivantes_datees_ratchet_test.go`.
+//
+// A REVISION CONSTANTE, LOT R3-bis (2026-09-30, serie jamais publiee) : la baisse de lecture de
+// `4f77afc1` sous la reference J4.0.5, remontee au paquet (carte de fermeture paquet par paquet de
+// vingt films, la reference contre la tete du plan). Neuf paquets fermes a la reference et perdus a
+// la tete, tous introduits par J6 et non par R3 (les cinq exceptions de R3 n y retirent que des
+// fermetures gagnees par J6). Deux sites de plus gardent leur lecture d AVANT J6, en EXCEPTIONS
+// DATEES au meme format : les deux vecteurs de unit-actor-state (`FUN_14058c058`, seize bits plats ;
+// `4f77afc1` 38:410, 54:316, 54:1140 et la chaine 12:1118..12:1128, 133 entrees de controle) et
+// tacmap-waypointstate (`ti=34 i7`, position aux largeurs de la traversee, sans le R(1) de
+// `param_4 > 1` ; `d9781168` 34:336, 4 entrees). Prix : onze paquets que J6 avait gagnes, jamais
+// fermes a la reference (`084a804d` six, `e5adf7b2` deux, `111fa685`, `4f77afc1`, `d9781168` un
+// chacun). Plus aucun paquet ferme a la reference ne se perd sur les vingt films.
