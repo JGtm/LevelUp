@@ -1391,23 +1391,6 @@ export type SquadEchangeJoueur = components['schemas']['SquadEchangeJoueur']
 export type SquadEchangeSessionPoint = components['schemas']['SquadEchangeSessionPoint']
 
 /**
- * Le nuage « Pourquoi la vengeance ne vient pas » (`SquadEchange.nuage_isolement`) : UN
- * POINT PAR MORT (`morts`, distance au coéquipier visible rapportée à la portée du radar ×
- * délai avant que le tueur tombe) et un repère médian par joueur (`reperes`). `part_isolee`
- * et `couverture` du repère sont des `Couverture` (taux + brut + par match + N +
- * échantillon faible), jamais un float nu.
- *
- * TROIS ÉTATS EXCLUSIFS PAR MORT, tranchés par le SERVEUR (décision du 2026-09-22 — la
- * règle des 5 s vaut partout) : `vengee` (le tueur est tombé DANS `fenetre_ms`, la seule
- * vraie riposte), `hors_fenetre` (il est tombé après : `delai_ms` est publié pour que le
- * point reste visible, mais ce n'est pas une riposte), ou ni l'un ni l'autre (aucune
- * riposte connue, pas de délai). `fenetre_ms` porte la fenêtre : ne jamais coder 5 000 ici.
- */
-export type SquadNuageIsolement = components['schemas']['SquadNuageIsolement']
-export type SquadIsolementMort = components['schemas']['SquadIsolementMort']
-export type SquadIsolementRepere = components['schemas']['SquadIsolementRepere']
-
-/**
  * La PORTÉE DES ENGAGEMENTS de tous les joueurs d'un match (lot N2, 2026-09-21) : une
  * médiane de distance de frag par (match, joueur), et la médiane du LOBBY du match — qui se
  * calcule sur les frags, jamais comme la moyenne des médianes par joueur. `lobby_delta_m`
@@ -2378,6 +2361,11 @@ export type SquadEmpriseObjectShare = components['schemas']['SquadEmpriseObjectS
 export type SquadEmpriseCount = components['schemas']['SquadEmpriseCount']
 export type SquadEmpriseHabit = components['schemas']['SquadEmpriseHabit']
 export type SquadEmpriseEvening = components['schemas']['SquadEmpriseEvening']
+// Placement des vies (plan PLAN_EMPRISE_VIES_2026-09-28, lot V3) : bloc `squad_emprise.placement`.
+export type SquadEmprisePlacement = components['schemas']['SquadEmprisePlacement']
+export type SquadEmprisePlacementPlayer = components['schemas']['SquadEmprisePlacementPlayer']
+export type SquadEmprisePlacementLife = components['schemas']['SquadEmprisePlacementLife']
+export type SquadEmprisePlacementQuadrant = components['schemas']['SquadEmprisePlacementQuadrant']['quadrant']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 

@@ -89,6 +89,7 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     seek: vi.fn(),
     setTransportPlaying: vi.fn(),
     endMatch: vi.fn(),
+    intro: vi.fn(),
     recordingTrack: () => null,
   exportTrack: () => ({ timeline: [], endMatchStems: [], variationPercent: 0, distancePercent: 0, families: { voice: [], music: [] }, engines: [] }),
     ...over,

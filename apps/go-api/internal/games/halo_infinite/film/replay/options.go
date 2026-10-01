@@ -304,11 +304,11 @@ type Options struct {
 	// ce compte est son dénominateur — il devient `coverage.objectives.refusedByRoster`.
 	ObjectivesRefused int
 	// StatborgIdentity est le pont slot d'entité statborg -> xuid PAR MANCHE, résolu par
-	// l'appelant (`replaybuild.pontParManche`) et déjà partagé par les calques d'objectif.
+	// l'appelant ([PontParManche]) et déjà partagé par les calques d'objectif.
 	//
 	// POURQUOI ELLE ENTRE ICI. Le registre d'identité PUBLIE ce lien avec sa provenance
 	// (`identity.statborgSlots`) ; il ne le recalcule pas — un second déroulage complet du
-	// compteur de morts par cuisson est précisément ce que la mémorisation de `pontParManche`
+	// compteur de morts par cuisson est précisément ce que la mémorisation de [PontParManche]
 	// existe pour éviter. Résolveur vide = aucun lien de statborg publié.
 	StatborgIdentity objectives.RoundIdentity
 	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
@@ -332,7 +332,7 @@ type Options struct {
 	Skull SkullInput
 	// Bomb : de quoi construire L'ARMEMENT DE LA BOMBE d'Assaut (entrée de DONNÉES comme Skull ;
 	// cf. bomb_armings.go). `Scanned` faux = ni balayage ni calque ni couverture. La GARDE DE
-	// MODE est chez l'appelant (`replaybuild.isBombVariant`), et elle couvre TOUTE LA FAMILLE
+	// MODE est posée par l'appelant ([GardesDeLaVariante]), et elle couvre TOUTE LA FAMILLE
 	// BOMB, ONE BOMB COMPRISE : la garde par NOM qui écartait cette variante
 	// (`isArmableBombVariant`) N'EXISTE PLUS depuis le 2026-09-04. La lecture « mèche pausable »
 	// est en production et explique One Bomb sans rien casser ailleurs (9/9 explosions portées,

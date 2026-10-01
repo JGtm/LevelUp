@@ -110,6 +110,17 @@ const (
 	// ne porte aucun ramasseur nomme, et c est dit en DEBUG.
 	CompteurNiveauxArmesEcrits = "postsync_replay_pad_tiers_ecrites_total"
 	CompteurNiveauxArmesEchecs = "postsync_replay_pad_tiers_echecs_total"
+	// Ressource VEHICULES de l Emprise projetee des artefacts ranges, ecrite dans
+	// `match_vehicle_takes` (cf. vehicletakes.go, plan vehicules L7.2).
+	// CompteurPrisesVehiculesEcrites : passes persistees (y compris « non mesure » — D8 — et
+	// « zero mesure ») ; CompteurPrisesVehiculesEchecs : writer indisponible, capabilities ou
+	// frags de mort illisibles, ou INSERT refuse — un defaut, jamais un etat normal ;
+	// CompteurPrisesVehiculesNonMesurees : passes ecrites « non mesure » (artefact sans occupation
+	// lue) — un etat normal tant que le parc n est pas recuit, compte pour que « non mesure » ne
+	// se confonde pas avec « zero ».
+	CompteurPrisesVehiculesEcrites     = "postsync_replay_vehicle_takes_ecrites_total"
+	CompteurPrisesVehiculesEchecs      = "postsync_replay_vehicle_takes_echecs_total"
+	CompteurPrisesVehiculesNonMesurees = "postsync_replay_vehicle_takes_non_mesurees_total"
 	// Positions joueurs projetees des artefacts ranges, ecrites dans `match_player_positions`
 	// (cf. positions.go, decision utilisateur 1). CompteurPositionsEcrites : passes persistees ;
 	// CompteurPositionsEchecs : writer indisponible, absent du cablage, ou INSERT refuse — un

@@ -1,6 +1,9 @@
 package analysis
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TestAnnuaireGamertags_Resolve rejoue la cascade de v_gamertag_lookup niveau par niveau.
 // Chaque cas ne laisse ouvert que le niveau qu'il vérifie : si l'ordre des niveaux se
@@ -66,5 +69,50 @@ func TestMaskedXuidLabel_CompteEnCaracteres(t *testing.T) {
 	}
 	if got := MaskedXuidLabel(""); got != "Joueur " {
 		t.Errorf("MaskedXuidLabel(\"\") = %q, attendu \"Joueur \"", got)
+	}
+}
+
+// TestAnnuaireGamertags_Nomme : la frontière du port GamertagResolver — nommé par un niveau de la
+// cascade (bot, alias, participant, kill-feed), ou laissé au libellé masqué.
+func TestAnnuaireGamertags_Nomme(t *testing.T) {
+	a := AnnuaireGamertags{
+		Alias:        map[string]string{"x_alias": "NomAlias", "x_vide": ""},
+		Participants: map[string]string{"x_part": "NomPart"},
+		KillFeed:     map[string]string{"x_kf": "NomKF"},
+	}
+	for xuid, attendu := range map[string]bool{
+		"x_alias": true, "x_part": true, "x_kf": true, "bid(1.0)": true, "bid(99.0)": true,
+		"x_vide": false, "x_inconnu": false,
+	} {
+		if got := a.Nomme(xuid); got != attendu {
+			t.Errorf("Nomme(%q) = %v, attendu %v (Resolve : %q)", xuid, got, attendu, a.Resolve(xuid))
+		}
+		if !attendu && a.Resolve(xuid) != MaskedXuidLabel(xuid) {
+			t.Errorf("%q non nommé mais Resolve rend %q", xuid, a.Resolve(xuid))
+		}
+	}
+}
+
+// TestAnnuaireSQL_PorteeBase : la portée base lit les participants sur TOUTE la base — aucun
+// `match_id` —, la portée de la lecture les borne à ses matchs (un seul gabarit par niveau) ; la
+// localisation du repli (DA.10) ne projette que des match_id.
+func TestAnnuaireSQL_PorteeBase(t *testing.T) {
+	base := AnnuaireNomsBaseSQL()
+	if strings.Contains(base, "match_id") {
+		t.Errorf("AnnuaireNomsBaseSQL borne par match :\n%s", base)
+	}
+	if lecture := AnnuaireNomsSQL(); strings.Replace(lecture, " AND "+SQLDansListeParJointure("match_id"), "", 1) != base {
+		t.Errorf("les deux portées divergent hors de la borne de match :\n%s\n---\n%s", lecture, base)
+	}
+	// DA.10 : la localisation ne rend QUE des match_id (lecture brute admise pour localiser,
+	// jamais pour lire une valeur) — aucune colonne de nom dans ce qu'elle projette.
+	loc := AnnuaireKillFeedLocaliserSQL()
+	if n := strings.Count(loc, "SELECT match_id FROM"); n != 4 {
+		t.Errorf("AnnuaireKillFeedLocaliserSQL : %d projections « SELECT match_id », attendu 4 :\n%s", n, loc)
+	}
+	for _, interdit := range []string{"SELECT xuid, gamertag", "MAX(", "_gamertag AS", "SELECT *"} {
+		if strings.Contains(loc, interdit) {
+			t.Errorf("AnnuaireKillFeedLocaliserSQL lit une valeur (%q) :\n%s", interdit, loc)
+		}
 	}
 }

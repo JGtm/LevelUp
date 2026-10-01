@@ -3,6 +3,7 @@
 package migration
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"testing"
@@ -36,6 +37,25 @@ func TestAddColumnIfMissing_AlreadyExists(t *testing.T) {
 
 	if err := addColumnIfMissing(db, "t2", "existing_col", "VARCHAR"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestExecScriptContext_HonoursContext : l'exécuteur canonique porte le contexte de
+// l'appelant (backlog B2) : un contexte déjà annulé n'exécute rien et remonte l'annulation.
+func TestExecScriptContext_HonoursContext(t *testing.T) {
+	db := openMemDB(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := ExecScriptContext(ctx, db, "CREATE TABLE t_ctx (id INTEGER);")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("ExecScriptContext sous contexte annulé : err = %v, attendu context.Canceled", err)
+	}
+	exists, err := tableExists(db, "t_ctx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exists {
+		t.Fatal("t_ctx créée malgré un contexte annulé")
 	}
 }
 

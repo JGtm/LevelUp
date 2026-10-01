@@ -222,12 +222,12 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	}
 
 	batch := BuildKillSourceBatch(matchID, res, ids)
-	fusionnees, err := c.write(ctx, batch)
+	fusionne, err := c.write(ctx, batch)
 	if err != nil {
 		observability.AddInt(metricWriteError, 1)
 		return OutcomeWritten, 0, err
 	}
-	publiees := len(fusionnees)
+	publiees := len(fusionne.Deaths)
 	publishKillSourceMetrics(res, batch)
 
 	// LA VENTILATION DES TIRS, SUR LES MEMES CHUNKS. Son echec ne remet PAS en cause les morts :
@@ -243,12 +243,12 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	//	batch.Deaths   la liste PRE-FUSION. Seule population qui peut structurellement avoir
 	//	               une POSITION — un kill recupere par le producteur credit-seul n a aucune
 	//	               position a offrir (cf. l en-tete de positions.go).
-	//	fusionnees     ce que le JOURNAL a reellement ecrit (MergeCreditAndFilm : credit + film,
+	//	fusionne       ce que le JOURNAL a reellement ecrit (MergeCreditAndFilm : credit + film,
 	//	               orphelins compris). C est la liste que les FAITS D ISOLEMENT doivent
 	//	               suivre : une mort credit-seule absente du fil n aurait sinon aucun
 	//	               contexte, ET sa victime ne serait jamais « en attente » aux morts
 	//	               suivantes — elle passerait pour vivante et hors de vue.
-	c.collectPositions(ctx, matchID, film, res, ids, batch.Deaths, fusionnees)
+	c.collectPositions(ctx, matchID, film, res, ids, batch.Deaths, fusionne)
 
 	// LE NUMERATEUR DE PRECISION PAR ARME (weapon_accuracy + distance), Infinite depuis le film.
 	// Best-effort au meme titre que les tirs : son echec ou son absence (film non sur disque,
@@ -307,31 +307,33 @@ func (c *KillSourceCollector) collectShots(
 // match DEJA insere, donc sans `Shared.Match`, et `SharedPersister` y serait un no-op. Le chemin
 // builder existe (`SetKillSource`) et reste le bon quand un film serait pret des le sync
 // primaire — ce qui n arrive pas aujourd hui.
-// ELLE REND LA LISTE FUSIONNEE, pas seulement son compte : c est celle que le journal porte, et
-// les faits d isolement doivent la suivre (cf. l appel a collectPositions).
-func (c *KillSourceCollector) write(ctx context.Context, film persist.KillSourceBatch) ([]persist.KillEventInsert, error) {
+// ELLE REND LA PASSE FUSIONNEE, pas seulement son compte : c est celle que le journal porte, et
+// les faits d isolement doivent la suivre (cf. l appel a collectPositions). Sa PUBLIABILITE
+// voyage avec elle depuis le lot V2 du plan Emprise vies : le placement des vies ne rattache a
+// une vie que les frags d une passe publiable.
+func (c *KillSourceCollector) write(ctx context.Context, film persist.KillSourceBatch) (persist.KillSourceBatch, error) {
 	db, release, err := c.acquireShared(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("lease shared %s: %w", film.MatchID, err)
+		return persist.KillSourceBatch{}, fmt.Errorf("lease shared %s: %w", film.MatchID, err)
 	}
 	defer release()
 
 	base, err := persist.CreditBaseForMatch(ctx, db, film.MatchID)
 	if err != nil {
-		return nil, err
+		return persist.KillSourceBatch{}, err
 	}
 	batch, st, err := persist.MergeCreditAndFilm(base, film)
 	if err != nil {
-		return nil, err
+		return persist.KillSourceBatch{}, err
 	}
 	persist.PublishMergeStats(ctx, film.MatchID, st)
 	slog.InfoContext(ctx, "killsource: passe fusionnee sur la base credit",
 		"match_id", film.MatchID, "base_credit", len(base.Deaths), "lignes_film", len(film.Deaths),
 		"publiees", len(batch.Deaths), "enrichies", st.Enriched, "orphelins", st.Orphans)
 	if err := persist.NewKillSourcePersister(db).PersistPass(ctx, batch); err != nil {
-		return nil, err
+		return persist.KillSourceBatch{}, err
 	}
-	return batch.Deaths, nil
+	return batch, nil
 }
 
 // writeShots : l ecriture des tirs, sous son PROPRE lease.

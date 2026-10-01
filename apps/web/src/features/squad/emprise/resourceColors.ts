@@ -1,16 +1,17 @@
 /**
  * resourceColors.ts — le code couleur des RESSOURCES de l'onglet Emprise (D9 du plan
- * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : bonus sarcelle, armes spéciales violet, armes
- * de râtelier bleu (les véhicules, lot L7, prendront `resource-vehicle`). Une pastille de cette
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : bonus sarcelle, armes spéciales violet, véhicules
+ * orange, armes de râtelier bleu. Une pastille de cette
  * couleur précède chaque nom de ressource (spec S8). Jetons seulement : aucune valeur en dur.
  */
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
-import { RESOURCE_POWERUP, RESOURCE_POWER_WEAPON, RESOURCE_RACK } from './emprise.logic'
+import { RESOURCE_POWERUP, RESOURCE_POWER_WEAPON, RESOURCE_RACK, RESOURCE_VEHICLE } from './emprise.logic'
 
 const RESOURCE_TOKENS: Record<string, SemanticToken> = {
   [RESOURCE_POWERUP]: 'resource-powerup',
   [RESOURCE_POWER_WEAPON]: 'resource-power-weapon',
+  [RESOURCE_VEHICLE]: 'resource-vehicle',
   [RESOURCE_RACK]: 'resource-rack',
 }
 

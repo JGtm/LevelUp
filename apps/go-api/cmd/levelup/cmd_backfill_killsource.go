@@ -115,6 +115,7 @@ package main
 //	levelup backfill-killsource --workers 1            # la boucle en serie d avant le lot 5.24
 //	levelup backfill-killsource --credit-only          # la passe SQL -> SQL seule (secondes)
 //	levelup backfill-killsource --force                # redecode meme ce qui est a jour
+//	levelup backfill-killsource --match 1c4c63c2,ee90570b   # borne aux matchs nommes (prefixes 8+)
 //
 // Le cache de films se resout par `--cache`, sinon `LEVELUP_LEGACY_FILM_CACHE_DIR`, sinon
 // `<repo>/data/cache`.
@@ -168,6 +169,9 @@ type killsourceOptions struct {
 	// workersExplicite : `--workers` a ete ecrit sur la ligne de commande (par opposition au
 	// defaut). Sert UNIQUEMENT a refuser `--online --workers N` sans refuser `--online`.
 	workersExplicite bool
+	// match : la liste (separee par des virgules) des matchs auxquels la passe HORS LIGNE se
+	// borne — cf. cmd_backfill_killsource_match.go. Vide = tout le registre.
+	match string
 }
 
 func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
@@ -177,6 +181,8 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	fs.StringVar(&o.cacheDir, "cache", "", "racine du cache de films (defaut : LEVELUP_LEGACY_FILM_CACHE_DIR puis <repo>/data/cache)")
 	fs.IntVar(&o.limit, "limit", 0, "borne le nombre de films decodes (0 = tous) — les moins chers d abord")
 	fs.BoolVar(&o.force, "force", false, "redecoder meme les matchs deja a jour pour la revision de decodeur courante")
+	fs.StringVar(&o.match, "match", "", "borne la passe HORS LIGNE a ces matchs : identifiants separes par des virgules, "+
+		"prefixe court (8 caracteres et plus) accepte s il est univoque ; refuse avec --online")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "afficher le plan de passe sans rien ecrire")
 	fs.BoolVar(&o.filmsOnly, "films-only", false, "ne jouer que la passe de decodage des films")
 	fs.BoolVar(&o.creditOnly, "credit-only", false, "ne jouer que la passe credit-seul (SQL -> SQL)")
@@ -340,7 +346,8 @@ func passeDesFilms(
 		fmt.Printf("films a decoder : %d (cache %s)\n", len(candidats), cacheRoot)
 		fmt.Println(bilanInitial(candidats, bilan.TotalRegistre, bilan.DejaAJour, o.workers))
 		if len(candidats) > 0 {
-			afficherPlan(candidats)
+			// Sous `--match` la liste est COURTE et c est elle qu on veut relire en entier.
+			afficherPlan(candidats, o.match != "")
 		}
 		return nil, nil
 	}
@@ -415,6 +422,9 @@ func validerLesOptions(o killsourceOptions) error {
 			"est le RESEAU (plafonne par --rps), pas le decodage, et paralleliser ne ferait "+
 			"qu attendre plus vite en depassant le debit qu on s est donne. Relancer sans "+
 			"--workers, ou avec --workers 1", o.workers)
+	}
+	if err := validerMatch(o); err != nil {
+		return err
 	}
 	return verifierLesOuvriers(o.workers)
 }

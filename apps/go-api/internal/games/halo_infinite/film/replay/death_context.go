@@ -161,7 +161,7 @@ func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
 	if !e.Registre.PontPubliable() {
 		return nil
 	}
-	pos := indexerParXUID(e)
+	pos := indexerParXUID(e.Positions, e.Registre)
 	vies := viesParXUID(e.Registre)
 	mortsPar := mortsParVictime(e.Journal)
 
@@ -196,7 +196,7 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint
 		case EtatVisible:
 			c.Visibles++
 			if p, ok := pos.visibleA(autre, m.TempsMS); ok {
-				if d := math.Hypot(p.x-lieu.x, p.y-lieu.y); d < plusProche {
+				if d := distanceHorizontale(p, lieu); d < plusProche {
 					plusProche = d
 				}
 			}
@@ -259,6 +259,16 @@ type point struct {
 	x, y float64
 }
 
+// distanceHorizontale est LA distance entre deux joueurs : 2D HORIZONTALE, en mètres monde.
+//
+// UNE SEULE ÉCRITURE POUR SES DEUX LECTEURS : le contexte d'une mort (le coéquipier visible le
+// plus proche) et le placement d'une vie (`placement_des_vies.go`, même question posée à chaque
+// instant de la vie). Deux formules auraient pu diverger — une hauteur ajoutée d'un côté, par
+// exemple — et les deux tables du même film ne diraient plus la même distance au même instant.
+func distanceHorizontale(a, b point) float64 {
+	return math.Hypot(a.x-b.x, a.y-b.y)
+}
+
 // positionsParXUID répond à « où était ce joueur, et l'a-t-on vu récemment ».
 type positionsParXUID map[uint64][]point
 
@@ -277,11 +287,14 @@ type positionsParXUID map[uint64][]point
 // UNE POSITION QUE NULLE VIE NOMMÉE NE COUVRE N'EST ATTRIBUÉE À PERSONNE. Elle est écartée,
 // jamais rattachée au voisin le plus proche : mieux vaut un coéquipier « hors de vue » qu'un
 // coéquipier placé au mauvais endroit.
-func indexerParXUID(e EntreeContexteMorts) positionsParXUID {
-	vies := viesParSlot(e.Registre)
+//
+// DEUX LECTEURS : le contexte des morts et le placement des vies (`placement_des_vies.go`). Elle
+// prend les deux seules choses dont elle a besoin, et non l'entrée de l'un d'eux.
+func indexerParXUID(positions []grammar.BipedPosition, r IdentityRegistry) positionsParXUID {
+	vies := viesParSlot(r)
 	out := positionsParXUID{}
-	for i := range e.Positions {
-		p := &e.Positions[i]
+	for i := range positions {
+		p := &positions[i]
 		if !p.HasWorld {
 			continue
 		}
@@ -290,7 +303,7 @@ func indexerParXUID(e EntreeContexteMorts) positionsParXUID {
 			continue
 		}
 		out[xuid] = append(out[xuid], point{
-			tMS: int64(p.TimestampUS)/1000 - e.Registre.DeathOffsetMS(),
+			tMS: int64(p.TimestampUS)/1000 - r.DeathOffsetMS(),
 			x:   float64(p.X), y: float64(p.Y),
 		})
 	}

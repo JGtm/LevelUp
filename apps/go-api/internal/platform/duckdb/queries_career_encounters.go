@@ -3,6 +3,9 @@ package duckdb
 // Q26CareerTopEncountersTpl : Carrière — les 10 joueurs les plus croisés, hors amis (dernier %s).
 // AUCUN GAMERTAG EN SQL (lot perf L7, 2026-09-23) : plus de `LEFT JOIN v_gamertag_lookup` (vue
 // matérialisée entière à chaque page) ; l'annuaire de la lecture nomme les lignes (squad_repo_annuaire.go).
+// La fenêtre `_latest` du kill-feed (kv_stats) est bornée aux matchs du joueur (lot B du plan perf,
+// 2026-09-27, ADR 0036 I2) : le %s qui suit ses deux prédicats reçoit " AND <clauseListeMatchs>",
+// la liste QMatchsDuJoueurTpl en UNE constante. Ordre des %s : win, loss, win, loss, liste, amis.
 var Q26CareerTopEncountersTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
@@ -50,7 +53,7 @@ kv_stats AS (
             CASE WHEN kv.feed_killer_xuid = ? THEN 1 ELSE 0 END AS kills_by_me,
             CASE WHEN kv.victim_xuid     = ? THEN 1 ELSE 0 END AS kills_by_them
         FROM ` + KillEventsCanonicalTable + ` kv
-        WHERE kv.feed_killer_xuid = ? OR kv.victim_xuid = ?
+        WHERE (kv.feed_killer_xuid = ? OR kv.victim_xuid = ?)%s
     ) t
     GROUP BY opp_xuid
 )
@@ -73,9 +76,13 @@ WHERE 1=1 %s
 ORDER BY es.count_together DESC, es.xuid ASC
 LIMIT 10`
 
-// Q27CareerRivalsTpl : Career — top frags (souffre-douleur) ou top morts (némésis).
+// Q27CareerRivalsTpl : Career — l'agrégat des duels du joueur, UNE ligne par adversaire (frags,
+// morts, matchs partagés). Les deux classements (némésis par morts subies, souffre-douleur par
+// frags infligés) se trient EN GO sur cette unique lecture (classerRivaux) : jusqu'au lot B du
+// plan perf (2026-09-27) la page lisait deux fois la même fenêtre, une par classement.
 //
-// Format string : %s à remplacer par "frags" ou "deaths" pour ORDER BY.
+// Format string : %s = le prédicat de clauseListeMatchs sur kv.match_id : la liste des matchs du
+// joueur (QMatchsDuJoueurTpl) en UNE constante sous la fenêtre `_latest` du kill-feed (ADR 0036 I2).
 //
 // Paramètres :
 //
@@ -84,7 +91,8 @@ LIMIT 10`
 //	?3 = xuid joueur (SUM deaths : kills par lui)
 //	?4 = xuid joueur (filtre WHERE killer_xuid)
 //	?5 = xuid joueur (filtre WHERE victim_xuid)
-//	?6 = xuid joueur (exclusion self dans final WHERE)
+//	?6 = les matchs du joueur (un paramètre VARCHAR[])
+//	?7 = xuid joueur (exclusion self dans final WHERE)
 //
 // Source : COUNT(*) sur shared.match_kill_events_latest — 1 ligne = 1 mort
 // (cf. KillEventsCanonicalTable pour la traduction et les deux pièges).
@@ -106,7 +114,8 @@ WITH pairs AS (
         COUNT(DISTINCT kv.match_id) AS match_count,
         MIN(kv.match_id) AS match_rencontre
     FROM ` + KillEventsCanonicalTable + ` kv
-    WHERE kv.feed_killer_xuid = ? OR kv.victim_xuid = ?
+    WHERE (kv.feed_killer_xuid = ? OR kv.victim_xuid = ?)
+      AND %s
     GROUP BY opp_xuid
 )
 SELECT
@@ -117,133 +126,42 @@ SELECT
     p.match_rencontre
 FROM pairs p
 WHERE p.opp_xuid <> ?
-  AND p.opp_xuid NOT LIKE 'bid(%%'
-ORDER BY %s DESC, p.match_count DESC, p.opp_xuid ASC
-LIMIT 10`
+  AND p.opp_xuid NOT LIKE 'bid(%%'`
 
-// Q28RelationsTpl : hub Communauté > Relations. Généralisation de Q26 — TOUS
-// les joueurs récurrents (HAVING count_together >= 2), sans LIMIT, avec en plus
-// MIN(start_time) AS first_seen et les KDA moyens en allié / en ennemi.
+// Q28RelationsScopedTpl : hub Communauté > Relations. Généralisation de Q26 — TOUS les joueurs
+// récurrents (HAVING count_together >= 2), sans LIMIT ni exclusion d'amis, avec en plus
+// MIN(start_time) AS first_seen et les KDA moyens en allié / en ennemi. AUCUN GAMERTAG (lot A,
+// 2026-09-26, ADR 0036 I1) : GetRelations nomme les lignes par l'annuaire en portée base.
 //
-// Format string : 4 %s = winExpr, lossExpr, winExpr, lossExpr (title-aware,
-// fallback "e.my_outcome = 2/3" byte-identique Halo). PAS de clause d'exclusion
-// friends ni de LIMIT (le hub Relations affiche tout le monde).
-//
-// Placeholders ? (ordre) — tous = xuid du joueur courant :
-//
-//	?1 my_history.WHERE xuid = ?
-//	?2 encounters JOIN p.xuid <> ?
-//	?3 kv_stats CASE killer_xuid = ? → victim
-//	?4 kv_stats CASE killer_xuid = ? → kills_by_me
-//	?5 kv_stats CASE victim_xuid = ? → kills_by_them
-//	?6 kv_stats WHERE killer_xuid = ?
-//	?7 kv_stats WHERE OR victim_xuid = ?
-//
-// Colonnes SELECT (15, scannées dans cet ordre) : xuid, gamertag,
-// count_together, ally_count, enemy_count, wins_as_ally, losses_as_ally,
-// wins_vs_enemy, losses_vs_enemy, kills_dealt, deaths_suffered, avg_kda_with,
-// avg_kda_against, first_seen_at, last_seen_at.
-var Q28RelationsTpl = `
-WITH my_history AS (
-    SELECT match_id, team_id, outcome
-    FROM match_participants
-    WHERE xuid = ?` + campaignExclusionToken + `
-),
-encounters AS (
-    SELECT
-        p.xuid,
-        p.match_id,
-        p.team_id  AS opp_team_id,
-        h.team_id  AS my_team_id,
-        h.outcome  AS my_outcome,
-        p.kda      AS opp_kda,
-        ` + StartTimeCanonicalSQL("r") + ` AS start_time
-    FROM my_history h
-    JOIN match_participants p
-        ON p.match_id = h.match_id
-       AND p.xuid <> ?
-       AND p.xuid NOT LIKE 'bid(%%'
-    LEFT JOIN match_registry r ON r.match_id = p.match_id
-),
-encounter_stats AS (
-    SELECT
-        e.xuid,
-        COUNT(DISTINCT e.match_id) AS count_together,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id THEN e.match_id END) AS ally_count,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id THEN e.match_id END) AS enemy_count,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND %s THEN e.match_id END) AS wins_as_ally,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND %s THEN e.match_id END) AS losses_as_ally,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND %s THEN e.match_id END) AS wins_vs_enemy,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND %s THEN e.match_id END) AS losses_vs_enemy,
-        AVG(CASE WHEN e.opp_team_id  = e.my_team_id THEN e.opp_kda END) AS avg_kda_with,
-        AVG(CASE WHEN e.opp_team_id <> e.my_team_id THEN e.opp_kda END) AS avg_kda_against,
-        MIN(e.start_time) AS first_seen_at,
-        MAX(e.start_time) AS last_seen_at
-    FROM encounters e
-    GROUP BY e.xuid
-    HAVING COUNT(DISTINCT e.match_id) >= 2
-),
-kv_stats AS (
-    SELECT
-        opp_xuid AS xuid,
-        SUM(kills_by_me)   AS kills_dealt,
-        SUM(kills_by_them) AS deaths_suffered
-    FROM (
-        SELECT
-            CASE WHEN kv.feed_killer_xuid = ? THEN kv.victim_xuid ELSE kv.feed_killer_xuid END AS opp_xuid,
-            CASE WHEN kv.feed_killer_xuid = ? THEN 1 ELSE 0 END AS kills_by_me,
-            CASE WHEN kv.victim_xuid     = ? THEN 1 ELSE 0 END AS kills_by_them
-        FROM ` + KillEventsCanonicalTable + ` kv
-        WHERE kv.feed_killer_xuid = ? OR kv.victim_xuid = ?
-    ) t
-    GROUP BY opp_xuid
-)
-SELECT
-    es.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(es.xuid, 4))) AS gamertag,
-    es.count_together,
-    es.ally_count,
-    es.enemy_count,
-    es.wins_as_ally,
-    es.losses_as_ally,
-    es.wins_vs_enemy,
-    es.losses_vs_enemy,
-    COALESCE(kv.kills_dealt, 0)    AS kills_dealt,
-    COALESCE(kv.deaths_suffered,0) AS deaths_suffered,
-    es.avg_kda_with,
-    es.avg_kda_against,
-    es.first_seen_at,
-    es.last_seen_at
-FROM encounter_stats es
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
-LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
-ORDER BY es.count_together DESC, es.xuid ASC`
-
-// Q28RelationsScopedTpl : variante de Q28RelationsTpl restreinte à un
-// sous-ensemble de match_id (segmentation serveur Phase 2). Le périmètre
-// (expérience/classé, saison/période, playlist/mode, vue solo/escouade) est
-// calculé EN AMONT par FiltersService.ResolveMatchIDs (cross-DB : player DB
-// pour is_with_friends + shared pour le reste) ; SQL ne fait que restreindre
-// par match_id. Deux points de restriction symétriques :
+// TOUJOURS RESTREINTE À UNE LISTE DE match_id : le périmètre de filtres de la page
+// (FiltersService.ResolveMatchIDs, segmentation serveur Phase 2), sinon les matchs de
+// l'historique du joueur (QMatchsDuJoueurTpl, lot B du plan perf, 2026-09-27 : la variante sans
+// liste, retirée, laissait la fenêtre `_latest` du kill-feed sur toute la table, ADR 0036 I2).
+// Deux points de restriction symétriques :
 //   - my_history : limite l'historique du joueur au scope (alimente encounters)
-//   - kv_stats   : limite les frags/morts échangés au scope (sinon les duels
-//     d'autres périmètres pollueraient kills_dealt/deaths_suffered)
+//   - kv_stats   : limite les frags/morts échangés au scope, en UNE constante sous la fenêtre
+//     (sinon les duels d'autres périmètres pollueraient kills_dealt/deaths_suffered)
 //
-// Format string : 6 %s — winExpr, lossExpr, winExpr, lossExpr (cf. Q28RelationsTpl),
-// puis 2 clauses IN injectées : ?h (my_history) et ?k (kv_stats). Chaque clause a
-// la forme " AND match_id IN (?,?,…)".
+// Format string : 6 %s, dans l'ordre du texte — la clause de my_history (" AND " +
+// clauseListeMatchs("match_id", …)), winExpr, lossExpr, winExpr, lossExpr (title-aware, fallback
+// "e.my_outcome = 2/3" byte-identique Halo), puis la clause de kv_stats (" AND " +
+// clauseListeMatchs("kv.match_id", …)).
+//
+// Colonnes SELECT (14, scannées dans cet ordre) : xuid, count_together, ally_count,
+// enemy_count, wins_as_ally, losses_as_ally, wins_vs_enemy, losses_vs_enemy, kills_dealt,
+// deaths_suffered, avg_kda_with, avg_kda_against, first_seen_at, last_seen_at.
 //
 // Placeholders ? (ordre) :
 //
 //	?1 my_history.WHERE xuid = ?
-//	?…  scope IN (my_history)  — N placeholders du set
+//	?2 la liste (my_history, un paramètre VARCHAR[])
 //	?  encounters JOIN p.xuid <> ?
 //	?  kv_stats CASE killer_xuid = ? → victim
 //	?  kv_stats CASE killer_xuid = ? → kills_by_me
 //	?  kv_stats CASE victim_xuid = ? → kills_by_them
 //	?  kv_stats WHERE killer_xuid = ?
 //	?  kv_stats WHERE OR victim_xuid = ?
-//	?…  scope IN (kv_stats)     — N placeholders du set
+//	?  la liste (kv_stats, un paramètre VARCHAR[])
 //
 // Le binding exact est construit par buildRelationsQuery.
 var Q28RelationsScopedTpl = `
@@ -303,7 +221,6 @@ kv_stats AS (
 )
 SELECT
     es.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(es.xuid, 4))) AS gamertag,
     es.count_together,
     es.ally_count,
     es.enemy_count,
@@ -318,7 +235,6 @@ SELECT
     es.first_seen_at,
     es.last_seen_at
 FROM encounter_stats es
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
 ORDER BY es.count_together DESC, es.xuid ASC`
 

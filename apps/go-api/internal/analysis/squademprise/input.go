@@ -61,6 +61,34 @@ type PowerKillRow struct {
 	Kills   *int
 }
 
+// PlacementRow — une vie de `match_life_placement_latest` (plan Emprise vies, lot V3), telle que
+// le sync l'a écrite. MedianM nil = vie non mesurée ; RadarM et BeyondMS nil ENSEMBLE = variante
+// sans portée connue à l'écriture.
+type PlacementRow struct {
+	MatchID            string
+	XUID               string
+	StartMS            int64
+	EndMS              int64
+	DurationMS         int64
+	MeasuredMS         int64
+	MedianM            *float64
+	BeyondMS           *int64
+	RadarM             *float64
+	CarrierMS          int64
+	TeamDownMS         int64
+	UnplacedMS         int64
+	TeammateUnplacedMS int64
+	Kills              int
+}
+
+// PlacementRead — la lecture bornée du placement : les vies des joueurs demandés sur les matchs
+// demandés, et la variante de chaque match qui en porte (`match_registry.game_variant_name`, la
+// clé de la portée courante du radar).
+type PlacementRead struct {
+	Rows     []PlacementRow
+	Variants map[string]string
+}
+
 // Input — tout ce que le calcul demande.
 type Input struct {
 	PlayerXUID string
@@ -81,11 +109,21 @@ type Input struct {
 	Weapons map[string]squadformes.WeaponInfo
 	// SessionMatchCounts : libellé de session -> matchs de la composition (ADR 0033).
 	SessionMatchCounts map[string]int
+	// Vehicles : la ressource véhicules (lecture de `match_vehicle_takes_latest`, périmètre ET
+	// matchs de l'habitude). Nil = non lue ; VehiclesUnavailable dit alors l'échec (vide quand le
+	// titre ne mesure simplement pas la ressource). Indépendante du film.
+	Vehicles            *VehicleRead
+	VehiclesUnavailable string
+	// VehicleLabels : famille de véhicule -> nom du titre dans la langue de la requête, pour les
+	// seules familles que le manifeste du titre qualifie (une tourelle fixe). Les autres sont des
+	// noms propres du jeu, que le client affiche depuis leur clé.
+	VehicleLabels map[string]string
 }
 
 // resourceOrder — l'ordre de publication des ressources.
 var resourceOrder = []string{
-	domain.EmpriseResourcePowerup, domain.EmpriseResourcePowerWeapon, domain.EmpriseResourceRack,
+	domain.EmpriseResourcePowerup, domain.EmpriseResourcePowerWeapon,
+	domain.EmpriseResourceVehicle, domain.EmpriseResourceRack,
 }
 
 // resourceRank — le rang d'une ressource dans resourceOrder.

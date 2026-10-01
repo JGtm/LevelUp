@@ -116,6 +116,8 @@ func main() {
 		exitErr = runEngagementCoefs(cfg, args)
 	case "rebuild-pme-art":
 		exitErr = runRebuildPME(cfg, args)
+	case "compact-passes":
+		exitErr = runCompactPasses(cfg, args)
 	case "consolidate-aliases":
 		exitErr = runConsolidateAliases(cfg, args)
 	case "recompute-friends":
@@ -140,6 +142,8 @@ func main() {
 		exitErr = runBackfillFlagGrabsNet(cfg, args)
 	case "backfill-pad-tiers":
 		exitErr = runBackfillPadTiers(cfg, args)
+	case "backfill-vehicle-takes":
+		exitErr = runBackfillVehicleTakes(cfg, args)
 	case "tactical-rasters":
 		exitErr = runTacticalRasters(cfg, args)
 	case "replay-facts-export":
@@ -199,6 +203,9 @@ Commandes:
   reset-bitmasks  Reset rétroactif skill/participants/PVE bits (Phase 4 PLAN_BITMASKS_AUDIT_FIX)
   engagement-coefs Recompute des coefficients d'engagement (--with-scores pour rejouer aussi les scores) — bypasse les migrations
   rebuild-pme-art  Reconstruit l'index ART de player_match_enrichment (--all|--gamertag) — anti-corruption DuckDB 1.5.x, serveur arrêté
+  compact-passes  Retire les passes de décodage supersédées des tables du film (base partagée, par titre) : reconstruction sans
+                  DELETE, vues _latest identiques, sauvegarde préalable obligatoire ; à jouer après une campagne de redécodage
+                  (--dry-run, --title, --rewrite-file, --backup-dir, serveur arrêté)
   consolidate-aliases  Merge la DB globale xbox_aliases dans shared.xuid_aliases (dédup par xuid) — serveur arrêté
   recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
   backfill-squad-creators Réinscrit le créateur manquant dans les escouades legacy (append-only, idempotent, --dry-run dispo, serveur arrêté)
@@ -221,10 +228,13 @@ Commandes:
                   append-only + faits datés dans match_objective_events) : AUCUN décodage de film. À lancer APRÈS backfill-replay,
                   qui est la passe qui les fait naître dans les artefacts (--dry-run, --force, --match, --limit, serveur arrêté)
   backfill-flag-grabs-net  Projette en base les prises de drapeau BRUTES et NETTES lues du calque de drapeau des artefacts de rejeu
-  backfill-pad-tiers       Projette en base les prises de socle VENTILEES PAR NIVEAU d arme (base / terrain / puissance) lues des artefacts de rejeu
                   déjà rangés (match_flag_grabs_net append-only) : AUCUN décodage, AUCUNE recuisson — tout artefact de schéma >= 14
                   est lisible tel quel. La fenêtre de jonglage vient de regulation.toml ; un changement de fenêtre EXIGE --force
                   (--dry-run, --force, --match, --limit, serveur arrêté)
+  backfill-pad-tiers       Projette en base les prises de socle VENTILEES PAR NIVEAU d arme (base / terrain / puissance) lues des artefacts de rejeu
+  backfill-vehicle-takes  Projette en base la ressource VEHICULES de l Emprise (prises, temps a bord, frags apparies par camp/joueur/famille) lue du calque
+                  vehicules des artefacts de rejeu deja ranges (match_vehicle_takes append-only) : AUCUN decodage, AUCUNE recuisson. Un artefact
+                  de schema < 67 est ecrit « non mesure ». Apres une recuisson, --force (--dry-run, --force, --match, --limit, serveur arrete)
   backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild,
                   UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par
                   SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force,

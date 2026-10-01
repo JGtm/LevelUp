@@ -38,6 +38,22 @@ func TestEnsurePlayerSchema_Idempotent(t *testing.T) {
 	}
 }
 
+// TestEnsurePlayerSchema_TrailingCommentOnly : un commentaire APRÈS le dernier « ; » du DDL
+// de soin ne fait pas échouer EnsurePlayerSchema. Avant le découpeur unique (B2, 2026-09-26),
+// sync avait sa propre copie qui passait ce fragment à DuckDB (« empty query », constaté en
+// CI le 2026-09-20). Surcharge d'une variable du paquet : pas de t.Parallel.
+func TestEnsurePlayerSchema_TrailingCommentOnly(t *testing.T) {
+	orig := playerSchemaSQL
+	t.Cleanup(func() { playerSchemaSQL = orig })
+	playerSchemaSQL = orig + "\n-- note finale\n"
+
+	db := openTestDB(t)
+	if err := EnsurePlayerSchema(t.Context(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema avec un commentaire après le dernier « ; » : %v", err)
+	}
+	assertTableExists(t, db, "personal_score_awards")
+}
+
 // ── EnsureSharedSchema ───────────────────────────────────────────────────────
 
 func TestEnsureSharedSchema_InMemory(t *testing.T) {
@@ -90,6 +106,17 @@ func TestExecScript_InvalidSQL(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid SQL")
 	}
+}
+
+// TestExecScript_TrailingCommentOnly : un fragment fait uniquement de commentaires `--`
+// (la note qui suit le dernier « ; ») n'est pas une instruction ; il est ignoré au lieu
+// d'être envoyé à DuckDB (« empty query »).
+func TestExecScript_TrailingCommentOnly(t *testing.T) {
+	db := openTestDB(t)
+	if err := execScript(t.Context(), db, "CREATE TABLE t_fin (id INT);\n-- note finale\n"); err != nil {
+		t.Fatalf("execScript avec un commentaire final : %v", err)
+	}
+	assertTableExists(t, db, "t_fin")
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────

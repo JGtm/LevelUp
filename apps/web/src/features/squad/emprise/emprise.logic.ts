@@ -10,8 +10,8 @@
  *
  * LES RESSOURCES SONT UNE LISTE : chaque carte parcourt les ressources que le bloc publie, dans
  * l'ordre de `RESOURCE_ORDER` ; une ressource absente n'a ni ligne, ni courbe, ni section. Une
- * ressource que le web ne sait pas encore nommer (les véhicules, lot L7) n'est pas rendue tant
- * qu'elle n'a pas son entrée ici et dans les textes : l'ajouter ne demande aucune refonte.
+ * ressource que le web ne sait pas nommer n'est pas rendue tant qu'elle n'a pas son entrée ici et
+ * dans les textes (les véhicules, lot L7.4, y sont entrés sans refonte : une entrée de plus).
  *
  * Pur : aucun React, aucune couleur, aucune chaîne de langue.
  */
@@ -28,13 +28,17 @@ import { outcomeCodeToValue } from '@/lib/outcome'
 /** Clés des ressources (contrat Go `domain.EmpriseResource*`). */
 export const RESOURCE_POWERUP = 'powerup'
 export const RESOURCE_POWER_WEAPON = 'power_weapon'
+export const RESOURCE_VEHICLE = 'vehicle'
 export const RESOURCE_RACK = 'rack'
 
 /** L'ordre d'affichage des ressources que l'onglet sait rendre. */
-export const RESOURCE_ORDER: readonly string[] = [RESOURCE_POWERUP, RESOURCE_POWER_WEAPON, RESOURCE_RACK]
+export const RESOURCE_ORDER: readonly string[] = [RESOURCE_POWERUP, RESOURCE_POWER_WEAPON, RESOURCE_VEHICLE, RESOURCE_RACK]
 
 /** État des niveaux de socle d'un match mesuré (contrat Go `domain.EmpriseTiersMeasured`). */
 const TIERS_MEASURED = 'measured'
+
+/** État des véhicules d'un match mesuré (contrat Go `domain.EmpriseVehiclesMeasured`). */
+const VEHICLES_MEASURED = 'measured'
 
 /** Les ressources connues d'une liste, sans doublon, dans l'ordre d'affichage. */
 function orderedResources(list: Iterable<string>): string[] {
@@ -99,6 +103,14 @@ function historyIndex(history: SquadMatchHistoryRow[]): Map<string, SquadMatchHi
   return new Map(history.map((h) => [h.match_id, h]))
 }
 
+/**
+ * Les prises d'une ressource se lisent-elles sur ce match ? Bonus, armes et râteliers viennent du
+ * film (filmé ET camp connu) ; les véhicules, de l'artefact : leur état est celui du match (D8).
+ */
+function readable(m: SquadEmpriseMatch, resource: string): boolean {
+  return resource === RESOURCE_VEHICLE ? m.vehicles === VEHICLES_MEASURED : m.has_film && m.team_known
+}
+
 function matchResource(m: SquadEmpriseMatch, resource: string) {
   return (m.resources ?? []).find((r) => r.resource === resource)
 }
@@ -141,7 +153,7 @@ export function buildResourceFil(block: SquadEmpriseBlock, history: SquadMatchHi
   const matches = (block.matches ?? []).map((m) => {
     const points: Record<string, FilPoint | null> = {}
     for (const resource of resources) {
-      const taken = m.has_film && m.team_known ? matchResource(m, resource)?.taken : undefined
+      const taken = readable(m, resource) ? matchResource(m, resource)?.taken : undefined
       const n = total(taken)
       if (!taken || n <= 0) {
         points[resource] = null
@@ -290,6 +302,8 @@ export type GridCell =
   | { kind: 'noteam' }
   /** Film décodé, mais niveaux de socle non établis : armes spéciales et râteliers ne se séparent pas. */
   | { kind: 'untiered'; tiers: string }
+  /** Véhicules non mesurés sur ce match (D8) : l'occupation n'a pas été lue ; `reason` = la raison machine du Go. */
+  | { kind: 'unmeasured'; reason: string }
 
 export interface GridRow {
   /** Objet de la soirée (lignes d'objet) ; absent pour les lignes de synthèse et de frags. */
@@ -327,6 +341,10 @@ function valueCell(taken: SquadEmpriseCount | undefined, who: GridWho[], padsEmp
  * inconnu », jamais « rien à prendre ».
  */
 function filmGate(m: SquadEmpriseMatch, resource: string): GridCell | null {
+  // Les véhicules viennent de l'artefact, pas du résumé d'usage : leur état est celui du match (D8).
+  if (resource === RESOURCE_VEHICLE) {
+    return readable(m, resource) ? null : { kind: 'unmeasured', reason: m.vehicles_reason ?? '' }
+  }
   if (!m.has_film) return { kind: 'nofilm' }
   if (!m.team_known) return { kind: 'noteam' }
   if (resource !== RESOURCE_POWERUP && m.tiers !== TIERS_MEASURED) return { kind: 'untiered', tiers: m.tiers ?? '' }

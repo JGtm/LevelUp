@@ -243,6 +243,10 @@ func fallbackCapabilities() games.CapabilityMap {
 		// fenetre de jonglage dans regulation.toml (cf. capabilities.toml).
 		games.CapFilmFlagGrabsNet: games.CapSupported,
 		games.CapFilmWeaponTiers:  games.CapSupported,
+		// La RESSOURCE VEHICULES de l Emprise (prises, temps a bord, frags apparies) lue du calque
+		// vehicules de l artefact -> shared.match_vehicle_takes. Gouverne la production post-sync
+		// (replayartifacts), le backfill CLI et l exposition (cf. capabilities.toml).
+		games.CapFilmVehicleUsage: games.CapSupported,
 		// L ARTEFACT DE REJEU 2D lui-meme (data/cache/replays/{slug}/{match}.json) : la
 		// SOURCE dont les quatre cles film.* ci-dessus sont des projections. Gouverne la
 		// PRODUCTION (etape post-sync replayartifacts : sans la cle, rien n est mis en

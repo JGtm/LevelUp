@@ -63,7 +63,7 @@ type PrestigeBundle struct {
 // Raison des chemins explicites (2026-07-26) : le layout disque de la DÉMO n'est
 // pas celui de la production. Les fixtures démo vivent sous
 // LEVELUP_DEMO_FIXTURES_DIR en layout PLAT (`<dir>/warehouse/*.duckdb`, cf.
-// ops.demoTitleSubdir), là où le PathResolver résout
+// title.DemoLayout), là où le PathResolver résout
 // `data/titles/{slug}/warehouse/*.duckdb`. Dérivé du seul repoRoot, le bundle démo
 // pointait un chemin inexistant : l'initialisation échouait, le bundle restait nil,
 // et TOUTE lecture Prestige adossée à une base (arcs, objectifs, total de points,

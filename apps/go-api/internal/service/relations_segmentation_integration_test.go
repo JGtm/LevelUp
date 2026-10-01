@@ -23,7 +23,8 @@ import (
 
 // seedRelationsSegmentation peuple un :memory: avec le schéma minimal commun au
 // FiltersRepo (v_match_full + player_match_enrichment_latest) et au CareerRepo
-// (match_participants + match_registry + killer_victim_pairs + v_gamertag_lookup).
+// (match_participants avec gamertag + match_registry + kill-feed canonique + xuid_aliases : les noms
+// viennent de l'annuaire en portée base du lot A, plus de v_gamertag_lookup).
 //
 // Dataset (joueur = xuidMe) :
 //   - m1, m2 : ESCOUADE (is_with_friends=TRUE), me + Buddy alliés (WIN)
@@ -42,13 +43,12 @@ func seedRelationsSegmentation(t *testing.T, db *duckdb.DB) {
 			map_id VARCHAR, playlist_id VARCHAR,
 			game_variant_id VARCHAR, game_variant_name VARCHAR)`,
 		`CREATE TABLE match_participants (
-			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE)`,
+			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE, gamertag VARCHAR)`,
 		// BASCULE DU 2026-08-03 : Q28 (scopée ou non) lit la canonique — un JOURNAL,
 		// 1 ligne = 1 mort, sans `kill_count`.
 		`CREATE TABLE match_kill_events_latest (
 			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
-		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM xuid_aliases`,
 		// v_match_full : la query FiltersRepo lit r.* depuis cette vue.
 		`CREATE VIEW v_match_full AS SELECT * FROM match_registry`,
 		// player_match_enrichment_latest : is_with_friends + colonnes lues par
@@ -73,7 +73,7 @@ func seedRelationsSegmentation(t *testing.T, db *duckdb.DB) {
 			('m2', TIMESTAMPTZ '2026-02-10 14:00:00+00', 'Quick Play', 'Slayer', FALSE, FALSE),
 			('m3', TIMESTAMPTZ '2026-03-10 14:00:00+00', 'Quick Play', 'Slayer', FALSE, FALSE),
 			('m4', TIMESTAMPTZ '2026-04-10 14:00:00+00', 'Quick Play', 'Slayer', FALSE, FALSE)`,
-		`INSERT INTO match_participants VALUES
+		`INSERT INTO match_participants (match_id, xuid, team_id, outcome, kda) VALUES
 			('m1','xuidMe',0,2,1.5), ('m1','xuidBuddy',0,2,2.0),
 			('m2','xuidMe',0,2,1.5), ('m2','xuidBuddy',0,2,3.0),
 			('m3','xuidMe',0,3,0.8), ('m3','xuidRival',1,2,2.5),

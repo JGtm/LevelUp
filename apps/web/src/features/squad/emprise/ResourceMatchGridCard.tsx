@@ -314,6 +314,8 @@ function cellTip(
       return `${head}\n${t.grid.noFilmTip}`
     case 'noteam':
       return `${head}\n${t.grid.noTeamTip}`
+    case 'unmeasured':
+      return `${head}\n${t.vehicles.unmeasuredTip}`
     case 'untiered':
       return `${head}\n${cell.tiers === 'unestablished' ? t.grid.unestablishedTip : t.grid.untieredTip}`
     case 'none':
@@ -345,6 +347,13 @@ function Cell({ cell, role, tip, t }: { cell: GridCell; role: RowRole; tip: stri
       body = (
         <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} style={UNMEASURED_HATCH} data-cell="nofilm">
           {t.grid.noFilmCell}
+        </div>
+      )
+      break
+    case 'unmeasured':
+      body = (
+        <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} style={UNMEASURED_HATCH} data-cell="unmeasured">
+          {t.vehicles.unmeasuredCell}
         </div>
       )
       break

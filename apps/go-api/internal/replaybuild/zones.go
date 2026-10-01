@@ -132,57 +132,6 @@ func isHillVariant(variant string) bool {
 	return decfilm.ObjectiveTypeOf(variant) == decfilm.ObjectiveTypeHill
 }
 
-// isVipVariant dit si la variante du match est un mode VIP — la GARDE DE MODE de la couronne
-// (`replay.VipInput.Scanned`). Elle est ICI, chez l'appelant, parce que `comp 22 A` vaut
-// `flag_grabs` en CTF : lu sur un film CTF, il rendrait de fausses couronnes ; le paquet `replay`
-// ne devine aucun mode.
-//
-// CRITERE : le jeton `vip` dans le nom de variante, MEME approche par mot-clef que les autres
-// modes (`ctf`, `koth`, `oddball`...). Le marqueur canonique du mode est `GameVariantCategory=23`
-// (verifie sur les payloads bruts, `VIP_COURONNE_PROTOCOLE.md`), mais la categorie n'est pas
-// portee par `MatchFacts` — le nom l'est. LA GARDE ECHOUE FERMEE : un film VIP dont le nom ne
-// porterait pas `vip` ne montre simplement pas de couronne (degradation gracieuse) ; la seule
-// erreur dangereuse — une couronne sur un film non-VIP — exigerait un nom non-VIP contenant
-// `vip`, ce qu'aucune variante Halo ne fait.
-func isVipVariant(variant string) bool {
-	return strings.Contains(strings.ToLower(variant), "vip")
-}
-
-// isSkullVariant dit si la variante du match est un mode ODDBALL — la GARDE DE MODE du porteur du
-// crane (`replay.SkullInput.Scanned`). Elle est ICI, chez l'appelant, parce que `comp 0 A` est le
-// score de mode de tout mode : lu sur un film d'un autre mode, il rendrait de faux porteurs ; le
-// paquet `replay` ne devine aucun mode. MEME predicat canonique que la colline
-// (`ObjectiveTypeOf`), pour qu'il ne diverge pas du reste de la reconnaissance de mode.
-func isSkullVariant(variant string) bool {
-	return decfilm.ObjectiveTypeOf(variant) == decfilm.ObjectiveTypeSkull
-}
-
-// isBombVariant dit si la variante est de la FAMILLE BOMB, TOUTES variantes — la GARDE DE
-// MODE de l'ARMEMENT (`replay.BombInput.Scanned`) ET du PORTAGE (`CarryScanned`). Elle est
-// ICI, chez l'appelant, comme les autres : le paquet `replay` ne devine aucun mode.
-//
-// LA FAMILLE vient du predicat canonique (`ObjectiveTypeOf` == bomb : « Assault:One Bomb »,
-// « Assault:Neutral Bomb », « Assault:Neutral Bomb Squad », « Husky Raid:Assault » — les 4
-// formes du registre, releve du 2026-08-31). One Bomb Y EST INCLUSE.
-//
-// IL Y AVAIT ICI UNE SECONDE GARDE, `isArmableBombVariant`, QUI EXCLUAIT ONE BOMB PAR SON
-// NOM : sous la lecture SIMPLE (montee contigue, meche fixe de 4,93 s) le protocole du
-// 2026-09-01 y avait REFUTE le signal (CV 0,725, 87/1000 tirages nuls aussi bien). Elle est
-// LEVEE le 2026-09-04 : la lecture « meche pausable » du meme jour explique One Bomb (9/9
-// explosions portees, mediane 16,18 s, CV 0,017, 0/1000) sans toucher aux temoins (Neutral
-// Bomb 13/13, Husky Raid 4/4), et elle est desormais en production
-// (`filmdec/navpoint_radial_segments.go`, `replay/bomb_armings.go`). Ce qui protege le calque
-// n'est plus un NOM mais la CONFRONTATION LOCALE aux explosions du meme film (garde 2,
-// tout-ou-rien) : elle retient le calque entier si une explosion n'a pas son armement dans la
-// fenetre de sens, ou si les meches du film se contredisent.
-//
-// Le negatif de l'armement n'a jamais vise le canal des armes tenues, present dans les 9 films
-// d'Assaut de B1 (One Bomb comprise) : les deux gardes portent maintenant le meme predicat,
-// et restent DEUX champs parce qu'elles arment deux balayages distincts.
-func isBombVariant(variant string) bool {
-	return decfilm.ObjectiveTypeOf(variant) == decfilm.ObjectiveTypeBomb
-}
-
 // tableRoles projette la table du titre sur la variante du match : les memes entrees, le meme
 // matcher et le meme ordre que le service.
 //

@@ -17,6 +17,8 @@ type index struct {
 	powerKills map[string][]PowerKillRow
 	squad      map[string]bool
 	playerXUID string
+	// veh : la ressource véhicules, nil quand elle n'est pas lue (vehicles.go).
+	veh *vehicleIndex
 }
 
 func newIndex(in *Input) *index {
@@ -30,6 +32,7 @@ func newIndex(in *Input) *index {
 	for _, r := range in.PowerKills {
 		ix.powerKills[r.MatchID] = append(ix.powerKills[r.MatchID], r)
 	}
+	ix.veh = newVehicleIndex(in.Vehicles)
 	if in.Film == nil {
 		return ix
 	}
@@ -82,6 +85,8 @@ type matchTally struct {
 	effectMS    [2]int64
 	effectKills [2]int
 	pwk         *domain.SquadEmpriseCount
+	// veh : les véhicules du match (vehicles.go), indépendants du film.
+	veh vehicleTally
 }
 
 // bonusMeasured : les prises et issues des bonus se lisent sur ce match.
@@ -95,6 +100,7 @@ func (t matchTally) tiersMeasured() bool {
 // tallyMatch compte un match.
 func tallyMatch(id string, ix *index) matchTally {
 	t := matchTally{obj: newObjets(), pwk: powerKillsOf(ix.powerKills[id], ix.playerXUID)}
+	tallyVehicles(&t, id, ix)
 	ours, known := ix.tc.PlayerTeam[id]
 	t.filmTeam, t.teamKnown = known, known || t.pwk != nil
 	film, ok := ix.films[id]
@@ -226,6 +232,7 @@ func publierMatch(m Match, t matchTally, in *Input) domain.SquadEmpriseMatch {
 	pm := domain.SquadEmpriseMatch{
 		MatchID: m.MatchID, HasFilm: t.hasFilm, TeamKnown: t.teamKnown,
 		PowerWeaponKills: t.pwk, Resources: []domain.SquadEmpriseMatchResource{},
+		Vehicles: t.veh.state, VehiclesReason: t.veh.reason,
 	}
 	if t.hasFilm {
 		pm.Tiers = t.tiers

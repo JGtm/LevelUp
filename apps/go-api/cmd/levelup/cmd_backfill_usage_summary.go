@@ -43,7 +43,7 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -59,6 +59,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // usageSummaryOptions : les reglages de la passe.
@@ -317,17 +318,12 @@ func projeterUnArtefact(
 	ctx context.Context, path, matchID string, o usageSummaryOptions,
 	dejaResumes map[string]passeCouranteUsage,
 ) (*replay.UsageSummary, etatUsageMatch) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, usageSansArtefact
-		}
-		fmt.Printf("  ECHEC %s : lecture artefact: %v\n", matchID, err)
-		return nil, usageEchec
+	doc, err := replayartifacts.LireArtefactRange(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, usageSansArtefact
 	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		fmt.Printf("  ECHEC %s : parse artefact: %v\n", matchID, err)
+	if err != nil {
+		fmt.Printf("  ECHEC %s : %v\n", matchID, err)
 		return nil, usageEchec
 	}
 	// UN ARTEFACT ENCORE A UN SCHEMA ANTERIEUR AU COURANT NE PEUT PAS ETRE RESUME : ses champs
@@ -354,7 +350,7 @@ func projeterUnArtefact(
 			return nil, usageDejaAJour
 		}
 	}
-	s := replay.BuildUsageSummary(&doc)
+	s := replay.BuildUsageSummary(doc)
 	return &s, usageAProjeter
 }
 

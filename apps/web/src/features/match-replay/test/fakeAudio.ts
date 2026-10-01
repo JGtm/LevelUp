@@ -59,7 +59,9 @@ export class FakeSource {
   playbackRate = new FakeParam()
   connect() {}
   disconnect() {}
-  start(t: number) { this.started = t }
+  /** Le DÉCALAGE dans le tampon au départ (`start(t, offset)`), 0 quand il est omis. */
+  offset = 0
+  start(t: number, offset = 0) { this.started = t; this.offset = offset }
   stop(t: number) { this.stopped = t }
   /** Fin naturelle de la source : c'est le navigateur qui l'appelle, ici le test. */
   end() { this.onended?.() }

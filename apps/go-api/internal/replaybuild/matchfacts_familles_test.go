@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // recordsCTFAvecFragsDeTest — la meme fixture que [recordsCTFDeTest], plus le compteur de FRAGS
@@ -49,7 +50,7 @@ func TestComptesDeCouvertureNeGardentQueLesObjectifs(t *testing.T) {
 		t.Fatalf("fixture non discriminante : %d objectif(s) sur %d nommee(s)",
 			objectifs, len(nommees))
 	}
-	pont := func() *pontParManche { return &pontParManche{recs: recs} }
+	pont := func() *replay.PontParManche { return replay.NouveauPontParManche(recs, nil, nil, nil) }
 	ctx := context.Background()
 
 	// PONT INCOMPLET — sans identite, tout le calque part en `noSlot` ; seuls les objectifs

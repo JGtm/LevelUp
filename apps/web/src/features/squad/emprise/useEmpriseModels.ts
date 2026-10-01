@@ -11,10 +11,12 @@ import type { SquadEmpriseObject, TeammatesPageResponse } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { TEAM_REST_INK, squadPlayerInk } from '../formes/colors'
-import { RESOURCE_POWERUP, buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil } from './emprise.logic'
+import { RESOURCE_POWERUP, RESOURCE_VEHICLE, buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil } from './emprise.logic'
 import { buildHabitView } from './habit.logic'
 import type { PickupIdentity } from './PickupSheetsCard'
 import { buildProductionRows, buildYieldRows } from './production.logic'
+import { EMPRISE_TEXT } from './empriseStrings'
+import { buildVehicleCoverage, vehicleFamilyName } from './vehicles.logic'
 
 export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPlayerLabel: string, restLabel: string, locale: Locale) {
   const block = pageData?.squad_emprise
@@ -22,11 +24,16 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
   const medalDigest = useMemo(() => pageData?.medal_digest ?? [], [pageData?.medal_digest])
   const usageText = USAGE_TEXT[locale]
 
-  // Un bonus est nommé par le web (famille du résumé d'usage), une arme par le titre.
+  // Un bonus est nommé par le web (famille du résumé d'usage), une arme par le titre, un véhicule
+  // par son libellé de titre (famille qualifiée) ou le nom propre tiré de sa clé.
+  const unknownVehicle = EMPRISE_TEXT[locale].vehicles.unknown
   const objectName = useCallback(
-    (o: SquadEmpriseObject) =>
-      o.resource === RESOURCE_POWERUP ? equipmentFamilyLabel(o.key, usageText) : o.label || o.key,
-    [usageText],
+    (o: SquadEmpriseObject) => {
+      if (o.resource === RESOURCE_POWERUP) return equipmentFamilyLabel(o.key, usageText)
+      if (o.resource === RESOURCE_VEHICLE) return vehicleFamilyName(o.key, o.label, unknownVehicle)
+      return o.label || o.key
+    },
+    [usageText, unknownVehicle],
   )
 
   const controlRows = useMemo(() => (block ? buildControlRows(block) : []), [block])
@@ -35,7 +42,9 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
   const grid = useMemo(() => (block ? buildMatchGrid(block, history) : null), [block, history])
   const production = useMemo(() => (block ? buildProductionRows(block) : []), [block])
   const yieldRows = useMemo(() => (block ? buildYieldRows(block) : []), [block])
+  const vehicleCoverage = useMemo(() => (block ? buildVehicleCoverage(block) : null), [block])
   const habit = useMemo(() => (block ? buildHabitView(block) : ({ kind: 'none' } as const)), [block])
+  const placement = block?.placement ?? null
 
   const identities = useMemo<PickupIdentity[]>(() => {
     const emblems = new Map(medalDigest.map((e) => [e.player.toLowerCase(), e.emblem_url]))
@@ -53,5 +62,5 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
     [block],
   )
 
-  return { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, identities, playerName }
+  return { objectName, controlRows, fil, sheets, grid, production, yieldRows, vehicleCoverage, habit, placement, identities, playerName }
 }

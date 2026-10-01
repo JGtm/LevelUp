@@ -38,7 +38,7 @@ type bilanDeSelection struct {
 func filmsACollecter(
 	ctx context.Context, db *sql.DB, cacheRoot string, o killsourceOptions,
 ) ([]filmCandidat, bilanDeSelection, error) {
-	registre, err := matchsDuRegistre(ctx, db, 0)
+	registre, err := registreDeLaPasse(ctx, db, o) // tout le registre, ou les matchs de --match
 	if err != nil {
 		return nil, bilanDeSelection{}, err
 	}
@@ -78,7 +78,7 @@ func filmsACollecter(
 }
 
 // matchsAJour : les matchs dont TOUTES les passes courantes portent leur revision de decodeur
-// courante — le journal des morts ET les faits d isolement.
+// courante — le journal des morts, les faits d isolement ET le placement des vies.
 //
 // La lecture passe par les VUES `_latest` (ADR 0026) : une passe ancienne, deja supplantee, ne
 // doit pas faire sauter un match. `read_path` distingue les deux producteurs — un match couvert
@@ -102,6 +102,32 @@ func filmsACollecter(
 //
 // SANS LA SECONDE, LA PASSE NE CONVERGE PAS : un match a positions mais sans equipe serait
 // redecode a CHAQUE passe, indefiniment, pour reproduire le meme refus (constat de revue).
+//
+// ─── LE PLACEMENT DES VIES A LA SIENNE (plan Emprise vies, decision V12, 2026-09-29) ─────
+//
+// Tout match qui A DES VIES doit porter une passe de `match_life_placement_latest` a
+// [killcollector.PlacementRev] : c est la seule population ou le placement peut naitre (il ne
+// s ecrit qu apres des vies ecrites). Sans cette condition, le corpus deja collecte resterait
+// sans placement, son journal et ses vies portant deja leurs revisions courantes.
+//
+// LA PASSE CONVERGE AUSSI SUR UN PONT NON PUBLIABLE (lot V2b, 2026-09-29) : un tel match a des
+// vies, et le collecteur lui ecrit desormais une ligne de placement par vie (chaque vie entiere
+// « non situee », rien de mesure) au lieu d'aucune — il sort donc de la liste des candidats
+// comme les autres, sans regle de plus (3 matchs sur 1 519 a vies sur la copie du 2026-09-28
+// etaient re-selectionnes a chaque passe avant ce lot). Le backlog AUTOMATIQUE du post-sync ne
+// lit pas cette condition (`conditionBacklog`, inchange) : aucun redecodage ne part de lui-meme.
+//
+// LE PLACEMENT DOIT ETRE POSTERIEUR AUX VIES COURANTES (revue adversariale V5.1, R2, 2026-09-30) :
+// un placement a `PlacementRev` calcule sur d anciennes vies ne rend pas le match a jour. Cas
+// reel : le collecteur reecrit les vies (revision d isolement montee), puis l ecriture du
+// placement echoue (compteur `killsource_placement_erreurs_ecriture`) — l ancienne passe de placement, deja a
+// `PlacementRev`, ferait croire le match a jour et l Emprise lirait un placement d anciennes
+// vies. LE CRITERE EST `written_at` : `decode_pass` est un tirage aleatoire (aucun ordre), alors
+// que les deux persisters posent `time.Now().UTC()` UNE fois par passe (toutes les lignes d une
+// passe le partagent) et que le collecteur ecrit le placement APRES les vies : sur un chemin
+// sain, `placement.written_at >= vies.written_at`. `>=` (et non `>`) : deux horloges egales sont
+// le meme instant, pas une preuve de peremption. Les vues `_latest` portent chacune la passe
+// courante ; `MAX` n en est que l unique valeur de la passe.
 func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT DISTINCT e.match_id FROM match_kill_events_latest e
@@ -112,9 +138,16 @@ func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 		               WHERE l.match_id = e.match_id AND l.decoder_rev = ?)
 		    OR NOT EXISTS (SELECT 1 FROM match_participants mp
 		                   WHERE mp.match_id = e.match_id AND mp.team_id IS NOT NULL)
+		  )
+		  AND (
+		    NOT EXISTS (SELECT 1 FROM match_lives_latest l WHERE l.match_id = e.match_id)
+		    OR EXISTS (SELECT 1 FROM match_life_placement_latest pl
+		               WHERE pl.match_id = e.match_id AND pl.decoder_rev = ?
+		                 AND pl.written_at >= (SELECT MAX(l.written_at) FROM match_lives_latest l
+		                                       WHERE l.match_id = e.match_id))
 		  )`,
 		decfilm.Rev, killscope.ReadPathCreditBackfill,
-		killcollector.IsolationDecoderRev)
+		killcollector.IsolationDecoderRev, killcollector.PlacementRev)
 	if err != nil {
 		return nil, fmt.Errorf("matchs deja a jour: %w", err)
 	}
@@ -172,8 +205,9 @@ func compterChunks(cacheRoot, matchID string) (int, bool) {
 	return len(m.Chunks), true
 }
 
-// afficherPlan : le plan de passe, avec sa queue de films chers en evidence.
-func afficherPlan(candidats []filmCandidat) {
+// afficherPlan : le plan de passe, avec sa queue de films chers en evidence. `tout` liste chaque
+// film (sinon le milieu d une longue liste est elide).
+func afficherPlan(candidats []filmCandidat, tout bool) {
 	total := 0
 	gros := 0
 	for _, c := range candidats {
@@ -185,10 +219,10 @@ func afficherPlan(candidats []filmCandidat) {
 	fmt.Printf("  chunks a decoder : %d au total, %d film(s) au-dela de 50 chunks (passes en dernier)\n",
 		total, gros)
 	for i, c := range candidats {
-		if i >= 5 && i < len(candidats)-3 {
+		if !tout && i >= 5 && i < len(candidats)-3 {
 			continue
 		}
-		if i == 5 {
+		if !tout && i == 5 {
 			fmt.Println("  ...")
 		}
 		fmt.Printf("  %-40s %3d chunks\n", c.matchID, c.chunks)

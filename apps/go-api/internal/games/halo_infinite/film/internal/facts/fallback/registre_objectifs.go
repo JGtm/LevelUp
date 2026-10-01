@@ -27,7 +27,7 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "en-tete non reconnu, aucun composant decode, ou compteur hors domaine : l'enregistrement est abandonne par un `continue` muet",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "c.EnregistrementsAbandonnes += abandonnes"}, {Fichier: pkgReplaybuild + "matchfacts.go", Ancre: "sb.Replis.Plus(pont.identite().ComptesDesReplis())"}, siteDeVersement("NomEnregistrementStatborgAbandonne"), {
+		Sites: []Site{{Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "c.EnregistrementsAbandonnes += abandonnes"}, {Fichier: pkgReplaybuild + "matchfacts.go", Ancre: "sb.Replis.Plus(pont.Identite().ComptesDesReplis())"}, siteDeVersement("NomEnregistrementStatborgAbandonne"), {
 			Fichier: pkgObjectiveEvents + "statborg.go",
 			Ancre:   "if len(comps) == 0 || !statCountersInDomain(comps) {",
 		}},

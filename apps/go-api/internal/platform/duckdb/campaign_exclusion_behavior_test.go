@@ -5,11 +5,14 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
+	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/campaign"
 )
 
 // TestCampaignExclusion_FiltersCampaignMatch — preuve COMPORTEMENTALE (item H1) :
@@ -131,4 +134,115 @@ func equalStrings(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// ─── Lecteurs corrigés au lot B4 (backlog 2026-09-26, D-5) ───────────────────
+//
+// Chaque cas sème, pour le même joueur, un match d'arène et un match de Campagne
+// (game_variant_id de la source unique), puis lit par le VRAI lecteur. Halo 5 :
+// la Campagne disparaît. Halo Infinite (aucune variante masquée) : le résolveur
+// est neutre, les deux matchs restent.
+
+const (
+	b4XUIDA = "2533274800000001"
+	b4XUIDB = "2533274800000002"
+)
+
+// b4Titres : titre → la Campagne est-elle masquée ?
+var b4Titres = []struct {
+	slug    string
+	masquee bool
+}{{"halo_5", true}, {"halo_infinite", false}}
+
+// newB4PlayerDB : shared minimal (colonnes lues par les lecteurs du lot) avec un
+// match d'arène (arena1, 01/09) et un match de Campagne PLUS RÉCENT (camp1, 02/09),
+// joués par A et B dans la même équipe. A : 5 frags en arène, 50 en Campagne.
+func newB4PlayerDB(t *testing.T, titleSlug string) *PlayerDB {
+	t.Helper()
+	shared := openMemDB(t)
+	ctx := context.Background()
+	camp := analysis.CampaignExcludedVariantIDs("halo_5")[0]
+	stmts := []string{
+		`CREATE TABLE match_registry (match_id VARCHAR, start_time TIMESTAMP,
+			start_time_utc TIMESTAMPTZ, game_variant_id VARCHAR, is_firefight BOOLEAN,
+			playlist_id VARCHAR)`,
+		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, team_id INTEGER,
+			outcome INTEGER, kills INTEGER, deaths INTEGER)`,
+		`INSERT INTO match_registry VALUES
+			('arena1', '2026-09-01 10:00:00', '2026-09-01 10:00:00+00', 'aaaaaaaa-0000-0000-0000-000000000001', FALSE, 'pl'),
+			('camp1',  '2026-09-02 10:00:00', '2026-09-02 10:00:00+00', '` + camp + `', FALSE, 'pl')`,
+		`INSERT INTO match_participants VALUES
+			('arena1', '` + b4XUIDA + `', 0, 2, 5, 1), ('arena1', '` + b4XUIDB + `', 0, 2, 3, 2),
+			('camp1',  '` + b4XUIDA + `', 0, 2, 50, 0), ('camp1',  '` + b4XUIDB + `', 0, 2, 40, 0)`,
+	}
+	for _, s := range stmts {
+		if _, err := shared.Exec(ctx, s); err != nil {
+			t.Fatalf("fixture B4 : %v\n%s", err, s)
+		}
+	}
+	return &PlayerDB{Player: openMemDB(t), Shared: shared, SharedReader: LegacySharedReader(shared),
+		XUID: b4XUIDA, Gamertag: "B4", TitleSlug: titleSlug}
+}
+
+// b4Attendu rend la valeur attendue selon que la Campagne est masquée.
+func b4Attendu[T any](masquee bool, sans, avec T) T {
+	if masquee {
+		return sans
+	}
+	return avec
+}
+
+// B4.2.1 — CompareRepo.GetEncounterStats : matchs communs A/B.
+func TestCampaignExclusion_GetEncounterStats(t *testing.T) {
+	for _, tc := range b4Titres {
+		enc, err := NewCompareRepo(newB4PlayerDB(t, tc.slug)).GetEncounterStats(context.Background(), b4XUIDA, b4XUIDB)
+		if err != nil || enc == nil {
+			t.Fatalf("%s : GetEncounterStats = %v, %v", tc.slug, enc, err)
+		}
+		if want := b4Attendu(tc.masquee, 1, 2); enc.TotalEncounters != want {
+			t.Errorf("%s : %d rencontres, attendu %d (Campagne masquée : %v)", tc.slug, enc.TotalEncounters, want, tc.masquee)
+		}
+	}
+}
+
+// B4.2.2 — CampaignSampleProvider.LoadAxisSamples (axe radar « combat » = frags).
+func TestCampaignExclusion_LoadAxisSamples(t *testing.T) {
+	since := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	until := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	for _, tc := range b4Titres {
+		got, err := NewCampaignSampleProvider(newB4PlayerDB(t, tc.slug)).LoadAxisSamples(context.Background(),
+			b4XUIDA, tc.slug, "combat", campaign.AxisKindRadar, "all", since, until)
+		if err != nil {
+			t.Fatalf("%s : LoadAxisSamples : %v", tc.slug, err)
+		}
+		if want := b4Attendu(tc.masquee, []float64{5}, []float64{5, 50}); fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Errorf("%s : échantillons %v, attendu %v", tc.slug, got, want)
+		}
+	}
+}
+
+// B4.2.3 — EngagementScoreRepo.ListRecentPvPMatchIDs.
+func TestCampaignExclusion_ListRecentPvPMatchIDs(t *testing.T) {
+	for _, tc := range b4Titres {
+		got, err := NewEngagementScoreRepo(newB4PlayerDB(t, tc.slug)).ListRecentPvPMatchIDs(context.Background(), b4XUIDA, 10)
+		if err != nil {
+			t.Fatalf("%s : ListRecentPvPMatchIDs : %v", tc.slug, err)
+		}
+		if want := b4Attendu(tc.masquee, []string{"arena1"}, []string{"arena1", "camp1"}); !equalStrings(got, want) {
+			t.Errorf("%s : %v, attendu %v", tc.slug, got, want)
+		}
+	}
+}
+
+// B4.2.4 — CountCrossTitleCooccurrences (q31) : lecture du shared d'un AUTRE titre,
+// sans slug : exclusion title-agnostic (excludeAllCampaignByMatchID).
+func TestCampaignExclusion_CountCrossTitleCooccurrences(t *testing.T) {
+	pdb := newB4PlayerDB(t, "halo_5")
+	got, err := CountCrossTitleCooccurrences(context.Background(), pdb.Shared.SQLDb(), b4XUIDA, []string{b4XUIDB}, 1)
+	if err != nil {
+		t.Fatalf("CountCrossTitleCooccurrences : %v", err)
+	}
+	if got[b4XUIDB] != 1 {
+		t.Errorf("matchs communs avec B = %d, attendu 1 (Campagne masquée) — %v", got[b4XUIDB], got)
+	}
 }

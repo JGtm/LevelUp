@@ -5,7 +5,7 @@
  * DE COMPARER la valeur, il ne la cache pas. La réserve s'affiche donc AVEC la valeur,
  * jamais à sa place. Source unique de cette forme depuis la revue de la vague 1
  * (2026-09-07, constat P1 : trois copies du motif dans `SquadEchangeKpi`,
- * `TacticalAnalysisView` et `SquadIsolementNuageCard`, avec deux séparateurs différents).
+ * `TacticalAnalysisView` et le nuage d'isolement de Synergies (retiré le 2026-09-29), avec deux séparateurs différents).
  * Garde-rail : `lowSampleNote.guard.test.ts`.
  *
  * @param base       le texte déjà formaté (sous-titre de tuile, ligne de tooltip…)

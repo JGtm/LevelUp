@@ -4,6 +4,7 @@ package service
 // L9-go, 2026-09-23, revue adversariale D, P1) : le registre des profils suivis d'abord (xuid
 // connu, aucune lecture), puis UNE lecture pour les autres — jamais une lecture par ami (avant :
 // ExplorerRepo.ResolveXUIDByGamertag, 1,8 à 2,8 s chacun).
+// Invariant I4 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 
 import (
 	"context"

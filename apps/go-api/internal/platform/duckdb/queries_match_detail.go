@@ -33,13 +33,15 @@ LIMIT 1`
 //	?4 = myXUID (my_team), ?5 = myXUID (me.xuid=?).
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
+//
+// AUCUN GAMERTAG EN SQL (lot A du plan perf « lectures par périmètre », 2026-09-26, ADR 0036
+// I1) : la jointure sur la vue canonique des noms coûtait 2,2 s par ouverture. GetMatchEncounters
+// nomme les lignes par l'annuaire du match en portée base (squad_repo_annuaire.go).
 var Q23MatchEncounters = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
-           COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
            FALSE AS is_bot
     FROM match_participants p
-    LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : leur xuid 'bid(N.0)' est unique par match → aucun
@@ -53,7 +55,6 @@ my_team AS (
 )
 SELECT
     tm.xuid,
-    tm.gamertag,
     tm.is_bot,
     COUNT(DISTINCT hist.match_id) AS count_together,
     (tm.team_id = (SELECT team_id FROM my_team)) AS is_ally
@@ -61,7 +62,7 @@ FROM this_match tm
 LEFT JOIN match_participants me ON me.xuid = ?` + campaignExclusionToken + `
 LEFT JOIN match_participants hist
     ON hist.match_id = me.match_id AND hist.xuid = tm.xuid
-GROUP BY tm.xuid, tm.gamertag, tm.is_bot, tm.team_id
+GROUP BY tm.xuid, tm.is_bot, tm.team_id
 ORDER BY count_together DESC`
 
 // Q23bMatchEncounterStats : stats riches par encounter (chunk MV4.C').
@@ -80,12 +81,16 @@ ORDER BY count_together DESC`
 //	?8 = myXUID  (kv join condition)
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
+//
+// AUCUN NOM (lot A, 2026-09-26, ADR 0036 I1) : this_match joignait la vue canonique des noms pour
+// une colonne gamertag que le SELECT final ne rendait pas — une évaluation entière de la vue pour
+// rien. La colonne et la jointure sont parties ; les lignes rendues sont inchangées (le nom d'une
+// rencontre vient de Q23, nommée par l'annuaire du match). Ce qui reste du coût de Q23b est la
+// fenêtre `_latest` du kill-feed (kv_stats, hors lot A).
 var Q23bMatchEncounterStats = `
 WITH this_match AS (
-    SELECT p.xuid, p.team_id,
-           COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag
+    SELECT p.xuid, p.team_id
     FROM match_participants p
-    LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : pas d'historique cross-match pertinent (cf. Q23).

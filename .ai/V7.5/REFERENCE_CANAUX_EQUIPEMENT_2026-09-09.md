@@ -255,33 +255,95 @@ matchs à re-résumer.
 
 ## 4. Qui lit quoi aujourd'hui
 
-- **Vue match, « Usages d'équipement »** (`features/match-replay/model/equipmentUsageLogic.ts`) —
-  lit `grappleLines`, `equipmentEpisodes`, `equipmentPlacements` (deployed ET dropped),
-  `grenades`, et **`equipmentChanges` depuis l'étape E2 du 2026-09-09** (la phrase précédente
-  de ce paragraphe disait « ne lit PAS » : c'était vrai jusqu'à ce jour-là). Il y sert au seul
-  calcul du GARDÉ, par famille.
-- **`equipmentChanges` est bien vivant ailleurs** : `abilityChargeLogic.ts`,
-  `placementTeleport.ts`, `riftStations.ts`, `equipmentChangeSound.ts`. Le brancher sur la
-  fiche d'usage n'est donc pas un défrichage.
-- **ÉCART GO / WEB — REFERMÉ LE 2026-09-10.** Il a existé une demi-journée : le résumé de
-  session (Go, `us6`) lisait le « utilisé » d'un déployable sans pièce engendrée sur ses
-  CONSOMMATIONS pendant que son miroir de la vue match (`equipmentKeptLogic.ts`) restait sur
-  les POSES. Le lot 5.7 a aligné le web (`usageUsedOf`), et la **correction C1 de la revue de
-  la vague 5** a aligné le dernier lecteur resté en arrière : l'AGRÉGAT DE SESSION
-  (`internal/analysis/sessionusage/usage_outcomes.go`, `equipmentUsedOf`), qui lisait encore
-  `DeployedByFamily` pour toutes les familles — un capteur `taken=3, spent=2, dropped=1,
-  deployed=0` s'y affichait « utilisé 0 · gardé 0 · lâché 1 » quand la vue match affichait
-  « utilisé 2 ». La liste des familles à pièce engendrée n'est plus recopiée : elle passe par
-  `replay.UsageFamilySpawnsPiece` (garde-rail `sessionusage/usage_outcomes_guard_test.go`).
-- **La liste des colonnes de la vue match a suivi le 2026-09-10** (correction C2) : elle
-  rejouait sa propre définition d'« utilisé » et une famille seulement CONSOMMÉE n'ouvrait
-  aucune colonne — donc plus aucun affichage, `equipmentUsageColumns.ts` retirant le groupe
-  entier sur une liste vide. Elle passe désormais par `familyHasAnyTrace`, qui dérive de
-  `usageUsedOf`.
-- **Page Sessions** (`features/session-detail/`) — lit le bloc `usage` de la réponse, donc
-  uniquement le tableau du §3 — qui porte les trois issues depuis l'étape E3 (grandeurs
-  `equipment_<famille>` et leur champ `outcomes`), sous réserve de la recuisson.
-- **Solo / Synthèse et Escouade** — **aucun bloc d'usage**, ni front ni contrat.
+> **Mis à jour le 2026-09-28 (chantier Emprise, lot L6.6 de
+> `.ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md`).** La version précédente finissait sur
+> « Solo / Synthèse et Escouade : aucun bloc d'usage » : c'était périmé. Chemins Go relatifs à
+> `apps/go-api/internal/`, chemins web à `apps/web/src/`.
+
+Deux sortes de lecteurs. Ceux du DOCUMENT DE REJEU (vue match, rejeu 2D) lisent le film et
+voient tout, sans recuisson. Ceux de la BASE (Sessions, Séries temporelles, Escouade) lisent
+le résumé persisté (§3) et les niveaux de socle (§7) : jamais mieux que la dernière passe.
+
+### Lecteurs du document (grain match)
+
+- **Vue match, onglet Arsenal** : `features/match-view/MatchViewTabArsenal.tsx:181` monte
+  `MatchEquipmentUsageSection` (`features/match-replay/`), qui lit le document par
+  `useMatchReplay`. Le calcul vit dans `features/match-replay/model/equipmentUsageLogic.ts` :
+  `grappleLines` (l. 335), `equipmentEpisodes` (l. 337), `equipmentPlacements` deployed ET
+  dropped (l. 343), `grenades` (l. 352), et `equipmentChanges` `taken` (l. 355), qui sert au
+  seul calcul du GARDÉ (`deriveKeptFromTaken`, `equipmentKeptLogic.ts:208`).
+- **Le « utilisé » de la vue match** passe par `usageUsedOf` (`equipmentKeptLogic.ts:115`),
+  qui nourrit aussi les colonnes (`equipmentUsageColumns.ts:176`). La liste des familles
+  affichées passe par `familyHasAnyTrace` (`equipmentKeptLogic.ts:142`, appelée
+  `equipmentUsageLogic.ts:434`) : une famille seulement CONSOMMÉE ouvre sa colonne
+  (correction C2 du 2026-09-10).
+- **Socles de la vue match** : `MatchPadControlSection` (`MatchViewTabArsenal.tsx:188`) lit
+  `padPickups` (`model/padControlLogic.ts:184`).
+- **Rejeu 2D** : `equipmentChanges` y est lu par `model/abilityChargeLogic.ts:137`,
+  `model/placementTeleport.ts:210`, `model/riftStations.ts:118` et
+  `sound/equipmentChangeSound.ts:39` (tous sous `features/match-replay/`).
+
+### Lecteurs de la base (grain session et périmètre)
+
+Tous passent par `platform/duckdb/session_usage_repo.go`, sur les vues `_latest` :
+`match_usage_films_latest` (l. 59 : `duration_ms`, `pad_unnamed`, `powerup_pickups_json`),
+`match_usage_players_latest` (l. 103 : épisodes, poses, les quatre ventilations d'issue),
+`match_participants` (l. 179, camps) et `match_pad_pickups_by_tier_latest` (l. 243).
+
+- **Page Sessions** : bloc `usage` de `POST …/pages/sessions/detail`
+  (`domain/session_page.go:148`), produit par `service/session_page_usage.go` (films, joueurs,
+  participants l. 111-113, niveaux de socle l. 306 ; calcul `sessionusage.ComputeUsage`).
+  Web : `features/session-detail/SessionColumnBody.tsx:151` monte `SessionUsageSection`
+  (cartes d'équipement l. 97, cartes de socles l. 50). Les trois issues y sont publiées sur
+  les grandeurs `equipment_<famille>` depuis l'étape E3, sous réserve de la recuisson.
+- **Séries temporelles, onglet Progression** : bloc `equipment_usage`
+  (`domain/timeseries.go:370`), produit par `squadagg.BuildEquipmentUsageBlock`
+  (`service/squadagg/equipment_usage.go:99` ; lectures l. 77-85, niveaux de socle l. 152),
+  appelé par `service/timeseries_service_sections.go:104`. Même page, bloc
+  `formes_retenues` en contexte SOLO (`domain/timeseries.go:377`,
+  `timeseries_service_sections.go:115-119`). Web : `features/timeseries/TimeseriesPage.usages.tsx`
+  monte `EquipmentUsageSection` (l. 95) et `FormesRetenuesSection` (l. 106).
+- **Synthèse** : **aucun bloc d'équipement**. Le bloc « servi ou gâché » l'a quittée le
+  2026-09-13 pour les Séries temporelles (`service/synthesis_service_usage.go:6-8`) ; rien
+  sous `features/synthesis/` ne lit l'équipement.
+- **Escouade, onglet Emprise** (lots L4-L5, remplace l'ancien onglet Usages) : bloc
+  `squad_emprise` de `/pages/teammates` (`domain/teammates.go:608`). Service
+  `service/teammates/teammates_service_emprise.go` : résumé d'usage par `squadagg.LireUsage`
+  (lecture partagée avec `formes_retenues`, `teammates_service_usage.go:77`), niveaux de socle
+  (l. 144), et frags aux armes spéciales de la FEUILLE DE MATCH, hors film
+  (`match_participants.power_weapon_kills`, `platform/duckdb/squad_emprise_repo.go:45-47`).
+  Calcul pur `analysis/squademprise/` : les BONUS (camouflage, surbouclier :
+  `sessionusage.PowerupFamilies`) y lisent prises, gardés et lâchés
+  (`sessionusage.PlayerOutcomeCounts`), temps d'effet et frags pendant l'effet
+  (`sessionusage.PowerupEffect` : `camo_ms` / `overshield_ms`) et socles vidés
+  (`powerup_pickups_json`) — `squademprise/match.go:141` ; les ARMES SPÉCIALES et les
+  RÂTELIERS y sont les niveaux `puissance` et `terrain` des socles (`match.go:170`,
+  `input.go:103`). Aucun déployable, ni grappin, ni propulseur. Web :
+  `features/squad/emprise/useEmpriseModels.ts:20`, sept cartes montées par
+  `features/squad/SquadEmprisePage.tsx` (l. 90-170) ; l'onglet se retire quand le bloc n'a
+  rien à montrer (`SquadLayout.tsx:243`).
+- **Escouade, onglet Contributions** : **aucun canal d'équipement**. Il lit `formes_retenues`
+  (`domain/teammates.go:597` ; `SquadContributionsPage.tsx:131-134`) pour la seule partie
+  objectif de ses matchs (`features/squad/objectif/objectif.logic.ts:114`, `:123`), et ses
+  cartes de frags lisent `frag_classes` (l. 61).
+- **Escouade, onglet Dynamique** : **aucun canal d'équipement** (`SquadDynamiquePage.tsx`).
+- **Escouade, bloc `equipment_usage`** : **retiré de `/pages/teammates` au lot L5.4**
+  (`domain/teammates.go:594-596`, `service/teammates/teammates_service_usage.go:5-9`) ; son
+  seul lecteur était l'ancien onglet Usages.
+
+### Une seule définition du « utilisé » côté Go
+
+- **ÉCART GO / WEB — REFERMÉ LE 2026-09-10.** Le lot 5.7 a aligné le web (`usageUsedOf`) sur
+  le résumé `us6`, et la **correction C1 de la revue de la vague 5** a aligné l'AGRÉGAT DE
+  SESSION : `equipmentUsedOf` (`analysis/sessionusage/usage_outcomes.go:98`) lit les
+  consommations d'un déployable sans pièce engendrée. Avant, un capteur `taken=3, spent=2,
+  dropped=1, deployed=0` s'y affichait « utilisé 0 · gardé 0 · lâché 1 » quand la vue match
+  affichait « utilisé 2 ». La liste des familles à pièce engendrée n'est pas recopiée :
+  `equipmentusage.UsageFamilySpawnsPiece` (`domain/equipmentusage/families.go:139`),
+  garde-rail `analysis/sessionusage/usage_outcomes_guard_test.go`.
+- **L'Emprise lit la même définition** : `sessionusage.PlayerOutcomeCounts`
+  (`usage_outcomes_counts.go:34`) passe par `equipmentOutcomeOf` puis `equipmentUsedOf`
+  (`usage_outcomes.go:72-74`).
 
 ## 5. Décisions en vigueur, et l'amendement en attente
 
@@ -307,8 +369,12 @@ Trois affirmations fausses à ne pas répéter :
 - ~~« On ne mesure aucun ramassage d'équipement. »~~ → `equipmentChanges.taken`.
 - ~~« On ne sait pas si un camouflage a été utilisé. »~~ → `equipmentEpisodes`, et l'objet
   non activé tombe au sol à la mort.
-- ~~« Chaque page mérite une forme différente. »~~ → même bloc partout ; seules changent la
-  fenêtre observée, la présence de coéquipiers nommés, et ce que la base a déjà cuit (§3).
+- ~~« Chaque page mérite une forme différente. »~~ → même bloc sur les pages qui affichent le
+  « servi ou gâché » (Sessions, Séries temporelles) ; seules changent la fenêtre observée, la
+  présence de coéquipiers nommés, et ce que la base a déjà cuit (§3). **Corrigé le 2026-09-28
+  (chantier Emprise)** : cette ligne disait « même bloc partout ». L'Escouade n'a plus ce bloc
+  depuis le lot L5.4 (`equipment_usage` retiré de `/pages/teammates`) ; son onglet Emprise
+  pose une autre question, camp contre camp, sur le bloc `squad_emprise` (§4).
 - ~~« Les bonus doivent sortir de la barre. »~~ → non : ils ont juste une autre définition
   de « utilisé » (§1 bis). Le seul équipement qui doive rester hors barre est le
   **répulseur**, et pour une raison opposée : son usage n'est mesuré nulle part.

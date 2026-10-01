@@ -17,11 +17,11 @@
  * `FENETRE_ROLE` matchs) dit le rôle ; un point atypique se voit sans faire basculer
  * l'étiquette.
  *
- * ELLE SE PLACE DANS LA SECTION COORDINATION, APRÈS LE NUAGE D'ISOLEMENT : les trois cartes
- * de la section répondent à la même question — comment l'escouade s'occupe de l'espace
- * entre ses joueurs. La riposte dit qui vient, l'isolement dit pourquoi personne ne vient,
- * la portée dit à quelle distance chacun se tient. Elle vient en dernier parce qu'elle est
- * la seule à ne pas parler de morts.
+ * ELLE SE PLACE DANS LA SECTION COORDINATION, EN DERNIER : les cartes de la section
+ * répondent à la même question — comment l'escouade s'occupe de l'espace entre ses
+ * joueurs. L'appui dit ce qu'elle se donne, la riposte dit qui vient, la portée dit à quelle
+ * distance chacun se tient. Elle vient en dernier parce qu'elle est la seule à ne pas parler
+ * de morts.
  *
  * D22-VERBOSITÉ (LOI) : graphe et légendes seulement. La lecture tient dans l'infobulle du
  * titre, en trois phrases ; sous le graphe, rien d'autre que la légende et la couverture.

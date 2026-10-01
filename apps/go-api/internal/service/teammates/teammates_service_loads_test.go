@@ -3,6 +3,7 @@ package teammates
 // teammates_service_loads_test.go — lot perf L2 : les lectures partagées d'une requête
 // (teammates_service_loads.go). Chaque test fait tourner GetPage sur une page COMPLÈTE (les
 // blocs consommateurs rendent tous une section) et compte les lectures faites.
+// Invariant I4 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 
 import (
 	"context"
@@ -194,7 +195,8 @@ func TestBuildSquadIntensityProfile_XUIDsDeLaPage(t *testing.T) {
 	}
 }
 
-// tacticalRepoEspion capture aussi les requêtes du contexte des morts (nuage d'isolement).
+// tacticalRepoEspion compte aussi les requêtes du contexte des morts : depuis le retrait du nuage
+// « Frags non ripostés » (plan Emprise vies, décision V7), la page n'en fait AUCUNE.
 type tacticalRepoEspion struct {
 	*mockTacticalRepo
 	vuesMorts []domain.TacticalQuery
@@ -205,39 +207,46 @@ func (e *tacticalRepoEspion) MortsAvecContexte(ctx context.Context, q domain.Tac
 	return e.mockTacticalRepo.MortsAvecContexte(ctx, q)
 }
 
-// TestBuildSquadEchange_JournalRestreintALaComposition (L2.4 / D2.4) : le journal des morts et
-// le contexte des morts sont lus UNE fois chacun, avec pour liste blanche l'historique de la
-// COMPOSITION (l'habituel), jamais tout l'historique du joueur.
+// lignesEscouade : une ligne escouade par match, une minute d'écart.
+func lignesEscouade(ids ...string) []domain.SquadMatchRow {
+	start := time.Date(2026, 9, 1, 20, 0, 0, 0, time.UTC)
+	out := make([]domain.SquadMatchRow, 0, len(ids))
+	for i, id := range ids {
+		out = append(out, domain.SquadMatchRow{MatchID: id, StartTime: start.Add(time.Duration(i) * time.Minute)})
+	}
+	return out
+}
+
+// TestBuildSquadEchange_JournalRestreintALaComposition (L2.4 / D2.4) : le journal des morts est
+// lu UNE fois, avec pour liste blanche l'historique de la COMPOSITION (l'habituel), jamais tout
+// l'historique du joueur ; le contexte des morts n'est plus lu du tout (nuage retiré, V7).
 func TestBuildSquadEchange_JournalRestreintALaComposition(t *testing.T) {
 	ids := []string{"m1", "m2"}
 	espion := &tacticalRepoEspion{mockTacticalRepo: &mockTacticalRepo{
 		lecture: domain.TacticalKillEvents{
-			Univers: domain.TacticalUnivers{Matchs: isolementMatches("Arena", ids...), Equipes: equipesDeuxContreDeux(ids...)},
+			Univers: universDe(ids...),
 			Events: []domain.KillEvent{
 				{MatchID: "m2", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 10_000},
 				{MatchID: "m2", KillerXUID: "x_Ami", VictimXUID: "x_adv1", TimeMs: 12_000},
 			},
 		},
-		morts: domain.TacticalMortsContexte{Morts: []domain.MortContexte{
-			mortContexte("m2", "x_main", 10_000, metres(9), 1, 0),
-		}},
 	}}
 	svc := &TeammatesService{
 		titleSlug: "halo_infinite", gamertag: "main",
-		tacticalRepo: espion, caps: capsFiables(), radarRange: isolementRadar(),
+		tacticalRepo: espion, caps: capsFiables(),
 	}
 	// Le filtre de la page retient m2 ; l'historique de la composition compte m1 et m2.
 	got := svc.buildSquadEchange(context.Background(),
-		isolementRows("m2"), isolementRows("m1", "m2"), "main", "x_main", echangeMates("Ami"))
-	if got == nil || got.NuageIsolement == nil {
-		t.Fatalf("section echange et nuage attendus, obtenu %+v", got)
+		lignesEscouade("m2"), lignesEscouade("m1", "m2"), "main", "x_main", echangeMates("Ami"))
+	if got == nil {
+		t.Fatal("section echange attendue")
 	}
-	if len(espion.vues) != 1 || len(espion.vuesMorts) != 1 {
-		t.Fatalf("lectures : journal %d, contexte %d — attendu une de chaque", len(espion.vues), len(espion.vuesMorts))
+	if len(espion.vues) != 1 || len(espion.vuesMorts) != 0 {
+		t.Fatalf("lectures : journal %d, contexte %d — attendu une du journal, aucune du contexte",
+			len(espion.vues), len(espion.vuesMorts))
 	}
-	for _, q := range []domain.TacticalQuery{espion.vues[0], espion.vuesMorts[0]} {
-		if !q.Matchs.Restreint() || strings.Join(q.Matchs.IDs(), ",") != "m1,m2" {
-			t.Errorf("liste blanche = %v (restreinte %v), attendu l'habituel [m1 m2]", q.Matchs.IDs(), q.Matchs.Restreint())
-		}
+	q := espion.vues[0]
+	if !q.Matchs.Restreint() || strings.Join(q.Matchs.IDs(), ",") != "m1,m2" {
+		t.Errorf("liste blanche = %v (restreinte %v), attendu l'habituel [m1 m2]", q.Matchs.IDs(), q.Matchs.Restreint())
 	}
 }

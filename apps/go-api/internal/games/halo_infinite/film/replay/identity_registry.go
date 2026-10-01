@@ -113,7 +113,7 @@ type IdentityInput struct {
 // en sont le DENOMINATEUR.
 //
 // POURQUOI ELLE ARRIVE RESOLUE. La resolution vit dans `objectives`, feuille du decodage,
-// et deux calques la partagent deja, memorisee (cf. `replaybuild.pontParManche`). La recalculer
+// et deux calques la partagent deja, memorisee (cf. [PontParManche]). La recalculer
 // ici serait un second deroulage complet du compteur de morts par cuisson — le cout que la
 // memorisation existe pour eviter.
 type StatborgIdentityInput struct {

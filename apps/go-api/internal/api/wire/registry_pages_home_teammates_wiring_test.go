@@ -118,3 +118,55 @@ func TestTeammatesCtx_CableLePredicatDuDrapeauNeutre(t *testing.T) {
 		t.Errorf("WithObjectiveHistory hors de la porte games.CapMatchObjectiveStats (portes : %v)", a.portes)
 	}
 }
+
+// TestTeammatesCtx_CableLePlacementDesVies — plan Emprise vies, lot V3.3 : le lecteur du placement
+// des vies est câblé sur le PlayerDB du joueur SOUS la porte `film.kill_positions` (celle des vies
+// au sync, décision V10), et la portée courante du radar l'accompagne SANS condition (table de
+// l'onglet Tactique). Un autre argument, une porte retirée ou déplacée, ou la portée perdue
+// rougissent : sans eux, le bloc « Groupés ou isolés » disparaît en silence.
+func TestTeammatesCtx_CableLePlacementDesVies(t *testing.T) {
+	appels := appelsDansTeammatesCtx(t, "WithLifePlacement")
+	if len(appels) != 1 {
+		t.Fatalf("%d appel(s) à WithLifePlacement dans TeammatesCtx, attendu 1", len(appels))
+	}
+	a := appels[0]
+	if len(a.args) != 1 || a.args[0] != "duckdb.NewSquadLifePlacementRepo(pdb)" {
+		t.Errorf("WithLifePlacement(%s) : attendu WithLifePlacement(duckdb.NewSquadLifePlacementRepo(pdb))",
+			strings.Join(a.args, ", "))
+	}
+	gate := false
+	for _, p := range a.portes {
+		if strings.Contains(p, "games.CapFilmKillPositions") {
+			gate = true
+		}
+	}
+	if !gate || len(a.portes) != 1 {
+		t.Errorf("WithLifePlacement hors de la seule porte games.CapFilmKillPositions (portes : %v)", a.portes)
+	}
+
+	radar := appelsDansTeammatesCtx(t, "WithRadarRange")
+	if len(radar) != 1 || len(radar[0].args) != 1 || radar[0].args[0] != "r.radarRangeFor(pdb)" || len(radar[0].portes) != 0 {
+		t.Errorf("WithRadarRange = %+v : attendu un appel inconditionnel WithRadarRange(r.radarRangeFor(pdb))", radar)
+	}
+}
+
+// TestTeammatesCtx_CableLesVehiculesDeLEmprise — plan Emprise véhicules, lot L7.3 : le lecteur de la
+// ressource véhicules est câblé sur le PlayerDB du joueur avec le classificateur de source de dégât
+// du titre, SOUS la seule porte `film.vehicle_usage` (celle de sa dérivation au sync). Un autre
+// argument (sans classificateur, plus de frags par camp), une porte retirée, élargie ou déplacée
+// rougissent : sans eux, la ressource disparaît du bloc — ou sort pour un titre sans film — en
+// silence.
+func TestTeammatesCtx_CableLesVehiculesDeLEmprise(t *testing.T) {
+	appels := appelsDansTeammatesCtx(t, "WithVehicleUsage")
+	if len(appels) != 1 {
+		t.Fatalf("%d appel(s) à WithVehicleUsage dans TeammatesCtx, attendu 1", len(appels))
+	}
+	a := appels[0]
+	const attendu = "duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb))"
+	if len(a.args) != 1 || a.args[0] != attendu {
+		t.Errorf("WithVehicleUsage(%s) : attendu WithVehicleUsage(%s)", strings.Join(a.args, ", "), attendu)
+	}
+	if len(a.portes) != 1 || !strings.Contains(a.portes[0], "games.CapFilmVehicleUsage") {
+		t.Errorf("WithVehicleUsage hors de la seule porte games.CapFilmVehicleUsage (portes : %v)", a.portes)
+	}
+}

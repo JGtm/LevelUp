@@ -43,7 +43,7 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -52,7 +52,6 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/replayartifacts"
@@ -272,20 +271,15 @@ func comptabiliserPasse(b *bilanFlagGrabsNetBackfill, batch persist.FlagGrabsNet
 // est exportee exactement pour ca. Deux projections de la meme regle divergeraient au premier
 // changement — c est la dette que la regle du depot (« <= 2 copies d un meme motif ») interdit.
 func lireUnArtefactPrisesNettes(path, matchID string, window time.Duration) (persist.FlagGrabsNetBatch, etatFlagGrabsNetMatch) {
-	raw, err := os.ReadFile(path)
+	doc, err := replayartifacts.LireArtefactRange(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return persist.FlagGrabsNetBatch{}, prisesSansArtefact
+	}
 	if err != nil {
-		if os.IsNotExist(err) {
-			return persist.FlagGrabsNetBatch{}, prisesSansArtefact
-		}
-		fmt.Printf("  ECHEC %s : lecture artefact: %v\n", matchID, err)
+		fmt.Printf("  ECHEC %s : %v\n", matchID, err)
 		return persist.FlagGrabsNetBatch{}, prisesEchec
 	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		fmt.Printf("  ECHEC %s : parse artefact: %v\n", matchID, err)
-		return persist.FlagGrabsNetBatch{}, prisesEchec
-	}
-	batch := replayartifacts.ProjeterPrisesNettes(matchID, &doc, window)
+	batch := replayartifacts.ProjeterPrisesNettes(matchID, doc, window)
 	if batch.MatchID == "" {
 		return persist.FlagGrabsNetBatch{}, prisesSansCalque
 	}

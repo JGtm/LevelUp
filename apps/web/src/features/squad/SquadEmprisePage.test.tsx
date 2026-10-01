@@ -16,6 +16,7 @@ import { renderWithProviders } from '@/test/render-utils'
 
 import { empriseHasContent } from './emprise/empriseContent'
 import { EMPRISE_2209, HISTORY_2209, XUID } from './emprise/emprise.fixtures'
+import { PLACEMENT_2209 } from './emprise/placement.fixtures'
 import { formatMatchTime } from './formes/format'
 import * as squadContextModule from './SquadContext'
 import { SquadEmprisePage } from './SquadEmprisePage'
@@ -334,7 +335,7 @@ describe('Prendre, et s’en servir', () => {
     // Une barre fine sous chaque barre épaisse (rôle img, nom = la ligne d'exposition).
     expect(within(bonus).getByRole('img', { name: /temps d’effet : 2 min 39/ })).toBeInTheDocument()
     const legend = within(card).getByTestId('objectif-legend')
-    for (const label of ['Notre camp', 'Adversaire', '50 % : autant que l’adversaire', 'Barre fine : temps d’effet ou prises']) {
+    for (const label of ['Notre camp', 'Adversaire', '50 % : autant que l’adversaire', 'Barre fine : temps d’effet, prises ou temps à bord']) {
       expect(legend.textContent).toContain(label)
     }
   })
@@ -443,5 +444,57 @@ describe('Prendre et habitude — anglais (S12)', () => {
     expect(text('emprise-yield-raw-powerup')).toBe('3.0 vs 2.7')
     expect(text('emprise-yield-gap-powerup')).toBe('+14%')
     expect(text('emprise-production-exposure-powerup')).toBe('effect time: 2 min 39 · 58.5%1 min 53')
+  })
+})
+
+describe('Groupés ou isolés (lot V4 du plan Emprise vies)', () => {
+  const withPlacement = (placement = PLACEMENT_2209) => page({ ...EMPRISE_2209, placement })
+  const sansMesure = () => ({ ...PLACEMENT_2209, players: (PLACEMENT_2209.players ?? []).map((p) => ({ ...p, lives_measured: 0, lives: [] })) })
+
+  it('le bloc se montre entre « Prendre, et s’en servir » et « Par rapport à d’habitude », le nuage au-dessus de la barre des quarts', () => {
+    mount({ pageData: withPlacement() })
+    const prendre = screen.getByTestId('emprise-section-prendre')
+    const section = screen.getByTestId('emprise-section-placement')
+    const habitude = screen.getByTestId('emprise-section-habitude')
+    expect(prendre.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(section.compareDocumentPosition(habitude) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(section).getByText('Groupés ou isolés')).toBeInTheDocument()
+    const vie = within(section).getByTestId('emprise-placement-vie')
+    const quarts = within(section).getByTestId('emprise-placement-quarts')
+    expect(vie.compareDocumentPosition(quarts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Pleine largeur : les deux cartes s'empilent, aucune grille à deux colonnes.
+    expect(vie.parentElement).toBe(quarts.parentElement)
+    expect(vie.parentElement?.className).not.toContain('grid-cols-2')
+    expect(within(vie).getByText('Placement et rendement de chaque vie')).toBeInTheDocument()
+    expect(within(quarts).getByText('Part des vies par placement')).toBeInTheDocument()
+    for (const card of [vie, quarts]) expect(within(card).getByTestId('echarts-mock')).toBeInTheDocument()
+  })
+
+  it('titres en anglais', () => {
+    useAppShellStore.setState({ locale: 'en' })
+    mount({ pageData: withPlacement() })
+    const section = screen.getByTestId('emprise-section-placement')
+    expect(within(section).getByText('Grouped or isolated')).toBeInTheDocument()
+    expect(within(section).getByText('Placement and yield of each life')).toBeInTheDocument()
+    expect(within(section).getByText('Share of lives by placement')).toBeInTheDocument()
+  })
+
+  it('sans le bloc placement : le bloc est absent, le reste de l’onglet est là', () => {
+    mount()
+    expect(screen.queryByTestId('emprise-section-placement')).toBeNull()
+    expect(screen.getByTestId('emprise-section-prendre')).toBeInTheDocument()
+  })
+
+  it('placement sans aucune vie mesurée : le bloc est absent', () => {
+    mount({ pageData: withPlacement(sansMesure()) })
+    expect(screen.queryByTestId('emprise-section-placement')).toBeNull()
+  })
+
+  it('l’onglet reste masqué sans aucun contenu, y compris avec un placement sans vie mesurée ; une vie mesurée suffit à le montrer', () => {
+    const rien: SquadEmpriseBlock = { matches_total: 7, matches_measured: 0, players: EMPRISE_2209.players, resources: [], objects: [], matches: [], production: [] }
+    const sansVie = sansMesure()
+    expect(empriseHasContent(rien)).toBe(false)
+    expect(empriseHasContent({ ...rien, placement: sansVie })).toBe(false)
+    expect(empriseHasContent({ ...rien, placement: PLACEMENT_2209 })).toBe(true)
   })
 })

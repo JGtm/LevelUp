@@ -139,7 +139,7 @@ describe('SquadSynergiesPage — ce qui a déménagé (lot 3)', () => {
 })
 
 // Les deux titres de section de l'onglet (lot 3, fusionné avec la section « Coordination »
-// de la vague 3) : « Coordination » coiffe la riposte, l'appui, l'isolement et la portée ;
+// de la vague 3) : « Coordination » coiffe la riposte, l'appui et la portée ;
 // « Historique » la bande de résultats ET le tableau des matchs. Un titre coiffe au moins
 // deux blocs, jamais un bloc seul : sans aucun de ces blocs, pas de titre.
 describe('SquadSynergiesPage — titres de section', () => {
@@ -196,5 +196,22 @@ describe('SquadSynergiesPage — section Assistances', () => {
     })
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.queryByText("Assistances dans l'escouade")).toBeNull()
+  })
+})
+
+// RANGÉE 1 = « Appui » SEUL (plan Emprise vies, décision V7, 2026-09-29) : le nuage « Frags non
+// ripostés » a quitté Synergies ; la grille garde sa règle, la carte présente prend sa colonne.
+describe('SquadSynergiesPage — rangée « Appui »', () => {
+  it("l'appui est seul dans sa grille, et le nuage n'est plus monté", () => {
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+      pageData: { ...pageWithAssistPairs(), echange: echangeDe() } as TeammatesPageResponse,
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    const grille = screen.getAllByText('Appui')[0].closest('.grid')
+    expect(grille, 'grille de la rangée 1').not.toBeNull()
+    expect(grille?.children.length, 'cartes de la rangée 1').toBe(1)
+    expect(screen.queryByText('Frags non ripostés')).toBeNull()
   })
 })

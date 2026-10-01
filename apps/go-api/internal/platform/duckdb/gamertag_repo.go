@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // GamertagRepo implemente port.GamertagRepository.
@@ -64,15 +65,18 @@ func (r *GamertagRepo) Search(ctx context.Context, query string) ([]domain.Gamer
 	return results, rows.Err()
 }
 
-// ResolveGamertags résout un set BORNÉ de xuid → gamertag via le chokepoint
-// canonique v_gamertag_lookup (mêmes garanties que Q12 scoreboard : bots résolus
-// en nom officiel, cascade xuid_aliases/match_participants/killer_victim_pairs,
-// jamais de xuid brut). Implémente port.GamertagResolver.
+// ResolveGamertags résout les xuids d'un MATCH → gamertag par l'annuaire du match en portée base
+// (lot A du plan perf « lectures par périmètre », 2026-09-26, ADR 0036 I1) : la cascade de la vue
+// canonique des noms (bot, alias, participants et kill-feed de toute la base), sans l'évaluer —
+// elle coûtait 2,1 s par appel. Implémente port.GamertagResolver.
 //
-// Sémantique : un xuid SANS gamertag résolu (orphelin hors sources) est ABSENT de
-// la map retournée — le caller laisse l'identité sans gamertag et le rendu applique
-// le masquage (front displayPlayerName). xuids vide/dédupliqué-vide → map vide.
-func (r *GamertagRepo) ResolveGamertags(ctx context.Context, xuids []string) (map[string]string, error) {
+// Sémantique : seuls les xuids que la cascade NOMME sont dans la map ; un xuid qu'elle laisse au
+// libellé masqué en est ABSENT — le caller laisse l'identité sans gamertag et le rendu applique
+// le masquage (front displayPlayerName, même libellé « Joueur #### » qu'analysis.MaskedXuidLabel).
+// Écart nommé (DA.5) : la vue rendait ce libellé côté serveur pour un xuid connu d'une source
+// mais sans nom ; il est désormais posé par le front, identique. xuids vide/dédupliqué-vide →
+// map vide.
+func (r *GamertagRepo) ResolveGamertags(ctx context.Context, matchID string, xuids []string) (map[string]string, error) {
 	uniq := dedupNonEmpty(xuids)
 	out := make(map[string]string, len(uniq))
 	if len(uniq) == 0 {
@@ -88,25 +92,25 @@ func (r *GamertagRepo) ResolveGamertags(ctx context.Context, xuids []string) (ma
 	}
 	defer release()
 
-	q := fmt.Sprintf(
-		"SELECT xuid, gamertag FROM v_gamertag_lookup WHERE gamertag IS NOT NULL AND xuid IN (%s)",
-		Placeholders(len(uniq)))
-	rows, err := db.QueryContext(ctx, q, ToAnySlice(uniq)...)
+	defer timing.FromContext(ctx).Section("resolve_gamertags_annuaire")()
+	lecture := lectureANommer{xuids: uniq, porteeBase: true}
+	if matchID != "" {
+		lecture.matchIDs = []string{matchID}
+		lecture.matchs = make([]string, len(uniq))
+		for i := range lecture.matchs {
+			lecture.matchs[i] = matchID
+		}
+	}
+	noms, err := annuaireDeLecture(ctx, db, lecture)
 	if err != nil {
 		return nil, fmt.Errorf("GamertagRepo.ResolveGamertags: %w", err)
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var xuid, gamertag string
-		if err := rows.Scan(&xuid, &gamertag); err != nil {
-			return nil, fmt.Errorf("GamertagRepo.ResolveGamertags scan: %w", err)
-		}
-		if gamertag != "" {
-			out[xuid] = gamertag
+	for _, x := range uniq {
+		if noms.Nomme(x) {
+			out[x] = noms.Resolve(x)
 		}
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // dedupNonEmpty retourne les valeurs uniques non-vides en préservant l'ordre.

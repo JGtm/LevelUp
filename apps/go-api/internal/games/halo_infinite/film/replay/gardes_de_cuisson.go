@@ -94,12 +94,20 @@ func empreinteDuRoster(xuids []uint64) [sha256.Size]byte {
 	return out
 }
 
+// Noms des gardes de famille dans le message de refus de [GardesDeCuisson.couvre] (constantes depuis la
+// fusion J11.6 du 2026-10-01 : les temoins de recherche du paquet repetent ces mots, goconst).
+const (
+	nomGardeDrapeau = "drapeau"
+	nomGardeZones   = "zones"
+	nomGardeBombe   = "bombe"
+)
+
 // couvre rend nil si des faits cuits sous `g` servent une cuisson qui demande `d`.
 func (g GardesDeCuisson) couvre(d GardesDeCuisson) error {
 	for _, c := range []struct {
 		nom           string
 		demande, cuit bool
-	}{{"drapeau", d.Drapeau, g.Drapeau}, {"zones", d.Zones, g.Zones}, {"bombe", d.Bombe, g.Bombe}} {
+	}{{nomGardeDrapeau, d.Drapeau, g.Drapeau}, {nomGardeZones, d.Zones, g.Zones}, {nomGardeBombe, d.Bombe, g.Bombe}} {
 		if c.demande && !c.cuit {
 			return fmt.Errorf("%w : %s demande, les faits ne l ont pas balaye", ErrFilmFactsGardes, c.nom)
 		}

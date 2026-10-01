@@ -50,7 +50,6 @@ const FEATURE_IMPORT_RE = /@\/features\/([a-z0-9-]+)((?:\/[A-Za-z0-9._-]+)*)/g
 //   qui prévisualise les charts de chaque feature
 const ALLOWED_CROSS_IMPORTS = new Set([
   // Auth est cross-cutting (login/register/admin partagent les queries)
-  'auth=>auth',
   'admin=>auth',
   'admin=>setup',
   // Le dashboard monitoring (WatcherSection) réutilise le hook useWatcherStatus
@@ -60,20 +59,8 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // via useSettings — même source que la section d'admin qui les édite, zéro
   // duplication de query. Dépendance durable (2026-08-16, chantier sons-rejeu).
   'match-replay=>settings',
-  // L'onglet Admin « Lab » (AdminLabPage + WaypointExplorerPanel) et la section
-  // Diagnostics de « Qualité données » réutilisent les panneaux / queries / i18n
-  // de la feature lab (ResourcesPanel, DiagnosticsPanel, useLab*) — réutilisation
-  // voulue (zéro réécriture), dépendance durable.
-  'admin=>lab',
-  // Compare consommé par carrière + explorer + palmarès (tiroir latéral)
-  'career=>compare',
-  'explorer=>compare',
-  'palmares=>compare',
-  // Leaderboard consommé par carrière + palmarès
-  'career=>leaderboard',
+  // Leaderboard consommé par palmarès
   'palmares=>leaderboard',
-  // Citations consommé par carrière (onglet)
-  'career=>citations',
   // Achievements consommé par carrière (section progression)
   'career=>achievements',
   // Career réutilise ExplorerMatchesTable pour les "Matchs marquants"
@@ -147,11 +134,8 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'home=>palmares',
   'home=>media',
   'home=>match-history',
-  // Settings consommé par friends + profil
-  'friends=>settings',
   // ChartsShowcasePage du Lab agrège tous les wrappers
   'lab=>timeseries',
-  'lab=>squad',
   // Match-view embarque engagement + match-history (favoris, navigation)
   'match-view=>engagement',
   'match-view=>match-history',
@@ -162,14 +146,8 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // Squad embarque engagement (SquadEngagementSection)
   'squad=>engagement',
   // SquadLayout orchestre la barre filtres unifiée Squad (cf. commit 26111a3a)
-  'squad=>settings',
   'squad=>filters',
   'squad=>friends',
-  'squad=>compare',
-  // PersonalStatsLayout réutilise les primitives filters/synthesis/squad (cf. SquadLayout pattern)
-  'personal-stats=>filters',
-  'personal-stats=>synthesis',
-  'personal-stats=>squad',
   // Synthesis embarque squad sub-views
   'synthesis=>squad',
   // TimeseriesPage embarque la section engagement, réutilise les wrappers
@@ -184,10 +162,9 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // Home embarque le SyncIndicator + auto-sync triggers de settings.
   'home=>settings',
   // Match-view réutilise des wrappers Squad (colors hash joueur, impact badges)
-  // ainsi que la galerie Media. Settings : réglages accessibility/preferences.
+  // ainsi que la galerie Media.
   'match-view=>squad',
   'match-view=>media',
-  'match-view=>settings',
   // Flow onboarding : auth (XboxLoginPage) + onboarding (OpenSpartanImportCard)
   // partagent les primitives setup (déclaration joueur, jobs de sync initial).
   'auth=>setup',
@@ -197,9 +174,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // Explorer réutilise la bannière d'identité joueur de Home
   // (ExplorerTargetIdentityBanner).
   'explorer=>home',
-  // SquadContributionsPage réutilise un chart Timeseries (réciproque durable
-  // de timeseries=>squad déjà déclaré).
-  'squad=>timeseries',
   // Synthesis agrège filters + explorer (vue consolidée transverse).
   'synthesis=>filters',
   'synthesis=>explorer',
@@ -282,6 +256,11 @@ function getFeatureNameFromPath(relPath) {
 
 const crossViolations = []
 const reverseViolations = []
+// A3.1 (2026-09-27) : entrées d'ALLOWED_CROSS_IMPORTS réellement servies pendant le
+// balayage — même logique de saut que la ligne du marqueur `cross-feature-allow`
+// ci-dessus (un fichier marqué n'alimente ni les violations ni les usages). Sert à
+// détecter les dérogations mortes (déclarées mais jamais appariées à un import réel).
+const usedAllowEntries = new Set()
 
 const featuresDir = join(WEB_SRC, 'features')
 const componentsDir = join(WEB_SRC, 'components')
@@ -308,7 +287,14 @@ try {
       // sa feature ; ajouter un import ailleurs dans la même voisine fait rougir le lint.
       const paire = `${consumerFeature}=>${importedFeature}`
       const module = `${consumerFeature}=>${importedModule}`
-      if (ALLOWED_CROSS_IMPORTS.has(paire) || ALLOWED_CROSS_IMPORTS.has(module)) continue
+      if (ALLOWED_CROSS_IMPORTS.has(paire)) {
+        usedAllowEntries.add(paire)
+        continue
+      }
+      if (ALLOWED_CROSS_IMPORTS.has(module)) {
+        usedAllowEntries.add(module)
+        continue
+      }
       crossViolations.push({ file: relPath, key: module, importedFeature: importedModule })
     }
   }
@@ -335,6 +321,22 @@ try {
   }
 } catch (err) {
   console.error('reverse boundary scan error:', err.message)
+}
+
+// A3.1 (2026-09-27) : dérogations mortes — déclarées dans ALLOWED_CROSS_IMPORTS mais
+// jamais appariées à un import réel pendant le balayage ci-dessus. Une entrée morte
+// documente une dépendance qui n'existe plus : elle ment sur l'architecture réelle et
+// personne ne l'a retirée (D-6, item 5 du backlog 2026-09-26).
+const deadAllowEntries = [...ALLOWED_CROSS_IMPORTS].filter((entry) => !usedAllowEntries.has(entry))
+
+if (deadAllowEntries.length > 0) {
+  console.log(`\n# Dérogations mortes dans ALLOWED_CROSS_IMPORTS (${deadAllowEntries.length}) :`)
+  for (const entry of deadAllowEntries) console.log(`  ${entry}`)
+  console.log(
+    '\nERREUR : ces entrées ne correspondent plus à aucun import réel. Les retirer ' +
+      '(avec leur commentaire devenu orphelin) avant de relancer ce script.',
+  )
+  process.exit(1)
 }
 
 // Report

@@ -5,8 +5,8 @@ package duckdb
 //
 // Ce que ces tests verrouillent, et pourquoi chacun peut echouer :
 //
-//  1. aucune fenetre `_latest` ne voit plus que les lignes du perimetre, pour les quatre
-//     lectures (univers, journal des morts, positions, morts en contexte). Le defaut que
+//  1. aucune fenetre `_latest` ne voit plus que les lignes du perimetre, pour les cinq
+//     lectures (univers, journal des morts, positions, morts en contexte, morts par carte). Le defaut que
 //     le lot corrige ne changeait AUCUN chiffre : l'univers re-selectionne en sous-requete
 //     et le EXISTS sans liste laissaient la fenetre du journal se calculer sur toute la
 //     table. Seul le nombre de lignes vues par la fenetre le montre (cf.
@@ -14,6 +14,7 @@ package duckdb
 //  2. la liste recopiee dans le EXISTS de l'univers ne change pas le drapeau `mesure` ;
 //  3. la lecture d'isolement, qui porte desormais la liste sur ses TROIS vues, garde ses
 //     gardes (contexte exige, double kill au meme instant ecarte, voisinage NULL servi nil).
+// Invariant I2 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 
 import (
 	"context"
@@ -65,7 +66,8 @@ func seedFenetresTactiques(t *testing.T, pdb *PlayerDB, n int) []string {
 }
 
 // TestTacticalRepo_PerimetreRestreint_FenetresBornees : DEUX matchs demandes sur DIX ; chaque
-// fenetre de chaque requete des quatre lectures ne doit voir que les lignes de ces deux-la.
+// fenetre de chaque requete des cinq lectures (morts par carte comprise, lot B) ne doit voir que
+// les lignes de ces deux-la.
 func TestTacticalRepo_PerimetreRestreint_FenetresBornees(t *testing.T) {
 	b := newBaseNotee(t)
 	ids := seedFenetresTactiques(t, b.pdb, 10)
@@ -114,6 +116,16 @@ func TestTacticalRepo_PerimetreRestreint_FenetresBornees(t *testing.T) {
 		t.Fatalf("Univers = %d matchs, want 2", len(univ.Matchs))
 	}
 	exigerFenetresBornees(t, b, "Univers", borne, 1)
+
+	// Morts par carte (lot B, 2026-09-27) : la liste posee sous les DEUX fenetres (positions, journal).
+	parCarte, err := repo.MortsParCarte(ctx, q)
+	if err != nil {
+		t.Fatalf("MortsParCarte: %v", err)
+	}
+	if len(parCarte[tacCarteA]) != 2 {
+		t.Fatalf("MortsParCarte = %+v, want une mort a moi dans chacun des deux matchs", parCarte)
+	}
+	exigerFenetresBornees(t, b, "MortsParCarte", borne, 1)
 }
 
 // TestTacticalRepo_ListeBlanche_MesureInchangee : la liste recopiee dans le EXISTS ne peut

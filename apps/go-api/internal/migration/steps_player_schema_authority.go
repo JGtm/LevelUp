@@ -68,11 +68,12 @@ import "database/sql"
 // personal_score_awards_latest (DENSE_RANK, génération MAX, tombstones exclus) — créée
 // par applyAppendOnlyPersonalScoreAwards (steps_player_append_only_personal_score_awards.go).
 //
-// AUCUN COMMENTAIRE EN FIN DE SCRIPT. Ce DDL est découpé sur « ; » par deux splitters
-// naïfs (migration.execScript et sync.splitSQL) : un commentaire APRÈS le dernier « ; »
-// devient une instruction vide et fait échouer sync.EnsurePlayerSchema (« empty query »,
-// constaté en CI le 2026-09-20). Le commentaire ci-dessous est donc en TÊTE, attaché au
-// premier statement ; le reste de la justification vit dans ce commentaire Go.
+// DÉCOUPAGE. Ce DDL est exécuté par le découpeur UNIQUE du module (migration.SplitSQL,
+// via ExecScriptContext ; sync.execScript lui délègue depuis le lot B2 du 2026-09-26). Il
+// ignore un fragment fait seulement de commentaires `--` et un `;` dans un `--`. Jusqu'à ce
+// lot, sync avait sa propre copie, qui passait un commentaire placé APRÈS le dernier « ; » à
+// DuckDB (« empty query », constaté en CI le 2026-09-20). Limites restantes (godoc de
+// SplitSQL) : ni `;` dans une chaîne `'…'` ni commentaire `/* */` dans ce DDL.
 const PlayerPersonalScoreAwardsDDL = `
 -- AUCUN INDEX SECONDAIRE sur cette table (décisions 2026-08-05 puis 2026-09-20, cf.
 -- l'en-tête du fichier). Les lecteurs passent tous par personal_score_awards_latest,
@@ -130,6 +131,34 @@ CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
     QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1;
 `
 
+// PlayerRetiredPSAIndexesDropSQL / PlayerRetiredMSRIndexesDropSQL — SOURCE UNIQUE des
+// noms des index secondaires RETIRÉS des player DB (surface ART #23645) : consommée par
+// les steps de retrait (drop_psa_secondary_art_indexes_v1 ici, 2026-09-20 ;
+// drop_msr_secondary_art_indexes_v1 dans la chaîne match_skill_rank du titre, 2026-09-27)
+// ET par le soin rejoué à chaque ouverture (sync.playerSchemaSQL, via
+// PlayerRetiredARTIndexesDropSQL).
+//
+// Pourquoi le soin aussi (plan backlog 2026-09-26, décision D-4) : un binaire plus ancien
+// (autre worktree, retour arrière) RECRÉE ces index par son propre CREATE INDEX IF NOT
+// EXISTS, et un step de migration one-shot ne rejoue jamais. Les index recréés
+// reviendraient en silence, désynchronisables et empruntés par des lecteurs bruts.
+const PlayerRetiredPSAIndexesDropSQL = `
+DROP INDEX IF EXISTS idx_psa_match;
+DROP INDEX IF EXISTS idx_psa_category;
+DROP INDEX IF EXISTS idx_psa_gen;
+`
+
+// PlayerRetiredMSRIndexesDropSQL — cf. PlayerRetiredPSAIndexesDropSQL. Retrait MESURÉ
+// (critère D-4 amendé : psa_index_repro_msr_planprobe_test.go, tag psarepro).
+const PlayerRetiredMSRIndexesDropSQL = `
+DROP INDEX IF EXISTS idx_msr_match_lookup;
+DROP INDEX IF EXISTS idx_msr_rating_type;
+DROP INDEX IF EXISTS idx_msr_playlist;
+`
+
+// PlayerRetiredARTIndexesDropSQL — les deux listes, pour le soin d'EnsurePlayerSchema.
+const PlayerRetiredARTIndexesDropSQL = PlayerRetiredPSAIndexesDropSQL + PlayerRetiredMSRIndexesDropSQL
+
 // L'ordre de Register() dans cet init() est CONTRAINT : il doit reproduire l'ordre de ces
 // 6 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
 // Ils y occupent les positions qui suivent immédiatement repair_match_citations_primary_key
@@ -184,10 +213,7 @@ func init() {
 			"(tout passe par la vue _latest, plan Sequential Scan) et ils se désynchronisent " +
 			"sur les insertions courantes (#23645, récidive constatée le 2026-09-20)",
 		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-DROP INDEX IF EXISTS idx_psa_match;
-DROP INDEX IF EXISTS idx_psa_category;
-DROP INDEX IF EXISTS idx_psa_gen;`)
+			return execScript(db, PlayerRetiredPSAIndexesDropSQL)
 		},
 	})
 }

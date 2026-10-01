@@ -6,6 +6,7 @@ package skill
 // régime stationnaire, le shadow LUSR v2 lit le filigrane (et l'éligibilité de ce
 // qui le dépasse) sur le LECTEUR et ne prend AUCUN écrivain ; une ligne INFO par
 // joueur et par cycle le dit, avec candidates et new.
+// Invariant I5 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 
 import (
 	"context"

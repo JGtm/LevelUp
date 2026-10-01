@@ -52,11 +52,14 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **First kill / first death, ranges and usages** on the Timeseries page, objectives trimmed down to what the mode actually offered
 - **New badges** — "Thief" (the most kills stolen from a friend) in the Squad impact matrix, "Scuttled" and "Selfless" on objective modes when the score and the kills tell opposite stories, and "Lackey / Boss" roles on the assist charts
 - **Assists exchanged with each relation** — a column in Relations, a "Duo partner" card and an "Inner circle" card
-- **A "Usage" tab on the Timeseries and the Squad** — range, equipment and "the shapes you keep" in one place, and the cumulative damage balance on the Timeseries Summary
+- **A "Usage" tab on the Timeseries** — range, equipment and "the shapes you keep" in one place, and the cumulative damage balance on the Timeseries Summary
+- **A "Map control" tab on the Squad** — who took what on the map, camp against camp: the camouflage and overshield bonuses, the special weapons of the power pads and the rack weapons. You see the balance of the evening and how it moved over the session, who in the squad took what, match by match, what your kills owe to those resources, how well you fare against the opponent with them, and how tonight compares with your usual evenings. It replaces the old Squad "Usage" tab (old links land on it), and the cards it used to hold moved to Contributions and Dynamics.
+- **"Grouped or isolated"** — in the Map control tab, one dot per life: how far you were from the nearest living teammate (in radar ranges) and how many kills that life brought, split into four quarters so that the isolated lives that cost you are easy to spot, plus the share of your lives by placement. Measured for each match as it is synced. The "Unanswered kills" cloud leaves the Synergies tab; the Payback card stays.
 - **Sessions in four sections**, and a side-by-side comparison in shared rows that stays readable when the drawer opens
 - **Squad intensity against your real team and the lobby**, and a filter bar that no longer replays every chart's animation on each click
 - **Explorer and Head-to-head** — the briefing shows the favourite weapon of the selection and the kill range of the player you scout; the Head-to-head gets a weapon profile: kill share by weapon class, range by role, top 3 weapons
 - **The home match tile** shows how many of your kills a teammate assisted
+- **Much shorter loading times** — the first opening of the Squad page drops from 194 seconds to 2.6; the Synthesis, Sessions, Timeseries, Career and Home pages load faster too, and a long request is no longer cut off and replayed
 
 **Match view**
 - **One card template for the whole page** — the three tables that were hard to compare became charts

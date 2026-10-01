@@ -45,6 +45,7 @@ type AppConfig struct {
 	SessionDir      string
 	DemoMode        bool
 	DemoFixturesDir string
+	stateFromRepo   bool // Load : chemins d'état du dépôt même en démo (B-C10) ; LoadServer : faux
 	// DemoLocale : locale UI forcée en mode démo (vitrine publique). Défaut "en"
 	// (audience internationale). Surchargeable via LEVELUP_DEMO_LOCALE — les tests
 	// E2E la pinnent à "fr" pour exercer l'UI française (specs FR). Le visiteur peut
@@ -212,24 +213,24 @@ func BootstrapEnvLocal() {
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
 }
 
-// Load charge la configuration depuis les variables d'environnement.
-// Les valeurs par défaut correspondent au développement local.
-func Load() (*AppConfig, error) {
+// load charge la configuration de l'environnement (défauts = dév local) ; fromRepo : cf. Load/LoadServer.
+func load(fromRepo bool) (*AppConfig, error) {
 	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
 	// Charger .env.local avant toute lecture de variable d'environnement,
 	// pour que les variables locales (SPNKR_AZURE_*, LEVELUP_*) soient disponibles.
 	// (No-op si main() a déjà appelé BootstrapEnvLocal — loadEnvLocal n'écrase
 	// jamais une var déjà définie.)
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
-	demoMode := strings.ToLower(getEnvOrDefault("LEVELUP_DEMO_MODE", "false")) == "true"
+	st := loadStatePaths(repoRoot, fromRepo) // mode démo + chemins d'état et d'exécution, cf. config_demo.go
+	appSettingsPath := st.path("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"), titlePkg.DemoLayout.AppSettingsPath)
 
 	cfg := &AppConfig{
 		RepoRoot:          repoRoot,
-		DBProfilesPath:    getEnvOrDefault("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json")),
-		AppSettingsPath:   getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json")),
-		SessionDir:        getEnvOrDefault("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions")),
-		DemoMode:          demoMode,
-		DemoFixturesDir:   getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "data", "demo")),
+		DBProfilesPath:    st.path("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json"), titlePkg.DemoLayout.DBProfilesPath),
+		AppSettingsPath:   appSettingsPath,
+		SessionDir:        st.path("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions"), titlePkg.DemoLayout.SessionDir),
+		DemoMode:          st.demoMode,
+		DemoFixturesDir:   st.fixturesDir,
 		DemoLocale:        getEnvOrDefault("LEVELUP_DEMO_LOCALE", "en"),
 		APIHost:           getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),
 		APIPort:           getEnvInt("LEVELUP_API_PORT", 8000),
@@ -237,8 +238,8 @@ func Load() (*AppConfig, error) {
 		CORSOrigins:       parseCORSOrigins(getEnvOrDefault("LEVELUP_CORS_ORIGINS", "")),
 		Lang:              getEnvOrDefault("LEVELUP_LANG", "fr"),
 		AppVersion:        getEnvOrDefault("LEVELUP_APP_VERSION", "dev"),
-		DiscordWebhookURL: loadDiscordWebhookURL(getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))),
-		AuthDir:           getEnvOrDefault("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth")),
+		DiscordWebhookURL: loadDiscordWebhookURL(appSettingsPath),
+		AuthDir:           st.path("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth"), titlePkg.DemoLayout.AuthDir),
 		AuthMode:          getEnvOrDefault("LEVELUP_AUTH_MODE", "none"),
 		OAuthRedirectURI:  getEnvOrDefault("LEVELUP_OAUTH_REDIRECT_URI", ""),
 		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
@@ -249,13 +250,12 @@ func Load() (*AppConfig, error) {
 		WebDistDir:        getEnvOrDefault("LEVELUP_WEB_DIST", ""),
 		RateLimitRPM:      getEnvInt("LEVELUP_RATE_LIMIT_RPM", DefaultRateLimitRPM),
 	}
-	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
-	cfg.Backup = loadBackupConfig(repoRoot, appSettingsPath)
+	cfg.Backup = st.backupConfig(repoRoot, appSettingsPath)
 	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
-	cfg.PersistBatchAsync = getEnvOrDefault("LEVELUP_PERSIST_BATCH_ASYNC", "") != "0"
+	cfg.PersistBatchAsync = st.persistBatchAsync()
 	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"
 	cfg.EventsConvergenceMax = getEnvInt("LEVELUP_EVENTS_CONVERGENCE_MAX", DefaultEventsConvergenceMax)
 	if cfg.EventsConvergenceMax <= 0 {
@@ -350,7 +350,7 @@ func (c *AppConfig) corsAllLocalhost() bool {
 // et hors DemoMode, refuse de démarrer si la configuration est non sûre. Hors
 // production, ne renvoie jamais d'erreur — les avertissements restent consultables
 // via SecurityWarnings() pour un log au boot. À appeler explicitement depuis
-// cmd/server ; Load() ne valide pas (les CLI et tests réutilisent Load avec des
+// cmd/server ; LoadServer et Load ne valident pas (Load sert les CLI et les tests, avec des
 // défauts de dev).
 func (c *AppConfig) Validate() error {
 	if c.DemoMode || !c.IsProduction() {

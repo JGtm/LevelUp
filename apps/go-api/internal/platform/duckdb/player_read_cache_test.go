@@ -2,6 +2,7 @@
 // 2026-09-23, lot L5b, D5b.3) : coalescence, copie à la lecture, TTL, invalidation
 // par (xuid, titre) et course invalidation / chargement. Aucune base : chargeurs
 // factices.
+// Invariant I3 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 package duckdb
 
 import (

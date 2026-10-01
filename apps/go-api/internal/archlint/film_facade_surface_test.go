@@ -309,7 +309,56 @@ const plafondSurfaceFacade = 187 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 
 //	                                           que l assemblage verse au compteur
 //	                                           (`replay.ReplisHorsBalayage`). UN symbole neuf,
 //	                                           re-mesure sur la base `5fad0cc93` : 276.
-const plafondSurfaceReplay = 277 // 2026-09-27 — audit(J8.7) sur 5fad0cc93 : 276 + 1 (replay.ReplisHorsBalayage)
+//	291  emprise-vies V1 (2026-09-28)           +13, le placement des vies et les porteurs lus au
+//	                                           sync (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`).
+//	                                           HUIT par `replaybuild`, qui appelle desormais le pont
+//	                                           par manche, les gardes de mode et les entrees des
+//	                                           calques de porteur DEPLACES dans `replay` pour que
+//	                                           le sync les partage sans copie : `PontParManche`,
+//	                                           `NouveauPontParManche`, `GardesDeLaVariante`,
+//	                                           `EntreeDuDrapeau`, `EntreeDuCrane`,
+//	                                           `EntreeDeLaCouronne`, `EntreeDeLaBombe`, et
+//	                                           `PortagesAuSync` (nomme dans le commentaire de
+//	                                           `matchfacts.go`). CINQ par le temoin du collecteur
+//	                                           (`sync/killcollector/emprise_v1_temoin_research_test.go`) :
+//	                                           `PlacementDesVies`, `EntreePlacement`,
+//	                                           `FragDuJournal`, `PlacementVie`, `BilanPlacement`.
+//	                                           RE-MESURE A L ENTREE du lot : 278 sur `6466b11ef`
+//	                                           (`comm` des deux inventaires : 13 ajouts, 0 retrait).
+//	293  emprise-vies V2 (2026-09-29)           +3 -1, le placement des vies ecrit par le collecteur
+//	                                           (`sync/killcollector/placement_des_vies.go`), qui
+//	                                           lit les porteurs au sync : `EntreePorteursAuSync`,
+//	                                           `BilanPortages`, `IntervalleDePort`. UN RETRAIT :
+//	                                           `PointObjective`, que `replaybuild/flagspawns.go` et
+//	                                           son test ne citent plus — la projection des socles
+//	                                           vit dans `replay` (`MapObjectivesEntry.SoclesDeDrapeau`,
+//	                                           une methode : aucun identifiant compte en plus).
+//	                                           RE-MESURE A L ENTREE du lot : 291 sur `e893ed8dd`
+//	                                           (`comm` des deux inventaires : 3 ajouts, 1 retrait).
+//	298  emprise-vehicules L7.2 (2026-09-30)    +5, la ressource vehicules ecrite au fil de l eau
+//	                                           (`sync/replayartifacts/vehicletakes.go`) : `ProjectVehicleTakes`,
+//	                                           `PairVehicleFrags`, `VehicleFragRef`,
+//	                                           `VehicleFragsCoverage`, `VehicleFragsNoSource`. Les
+//	                                           tests citent les raisons et la provenance `film` en
+//	                                           LITTERAUX (oracles independants), donc ne comptent pas.
+//	                                           RE-MESURE A L ENTREE du lot : 293 sur `707d4e983`
+//	                                           (`comm` des deux inventaires : 5 ajouts, 0 retrait).
+//	297  fusion J11.6 (2026-10-01)              `origin/feat/v75` (emprise-vies, emprise-vehicules)
+//	                                           fusionnee dans `feat/suite-audit-decodeur` : les deux
+//	                                           histoires ci-dessus partent de 278 (rr(m4b)) et sont
+//	                                           INDEPENDANTES. Branche de l audit : -1 net (+4
+//	                                           `FilmFactsEntete`, `GardesDe`, `EmpreinteDeCle`,
+//	                                           `ReplisHorsBalayage` ; -5 `Death`, `PlayerIndexTable`,
+//	                                           `ScanClockOrigin`, `ScanFilmDeaths`,
+//	                                           `ScanPlayerIndices`, descendus dans `types` et
+//	                                           `grammar` par J4.2). Emprise : +20 net (291, 293, 298
+//	                                           ci-dessus). Le test d integration du rattrapage
+//	                                           convergent (`cmd/levelup/..._placement_integration_test.go`)
+//	                                           citait `Death` et `PlayerIndexTable` sous `replay` :
+//	                                           reecrits `types.X` a la fusion, ils ne comptent pas.
+//	                                           RE-MESURE A LA FUSION : 278 - 1 + 20 = 297 (`comm`
+//	                                           des inventaires des deux tetes et de l arbre fusionne).
+const plafondSurfaceReplay = 297 // 2026-10-01 — fusion J11.6 (feat/v75 -> feat/suite-audit-decodeur) : 278 - 1 (audit) + 20 (emprise) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

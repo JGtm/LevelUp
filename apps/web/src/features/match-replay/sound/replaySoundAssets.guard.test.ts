@@ -37,6 +37,7 @@ import {
   END_VOICE_STEMS,
 } from './endMatchSound'
 import { EXPLOSION_SOUND_STEMS, THROW_SOUND_STEMS } from './grenadeSound'
+import { INTRO_MUSIC_STEM } from './introSound'
 import { SOUND_CUT_MAX_S } from './replayAudio'
 import {
   EQUIPMENT_PLACEMENT_SOUND_STEMS,
@@ -66,6 +67,7 @@ import { allEngineStems, VEHICLE_ENGINE_STEMS } from './vehicleEngineSound'
 import { VEHICLE_SHOT_LOOPS, VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
 
 import { racineDuDepot } from '../test/featureFiles'
+import { wavFormat } from '../test/wavFile'
 
 /**
  * Les stems de TIR DE VÉHICULE (lot du 2026-09-04) : des ARMES au sens de la règle de durée
@@ -162,6 +164,9 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // Le son « MANCHE TERMINÉE » (2026-08-28) : voix d'annonceur FR et EN, sur la piste (daté à
     // la bascule de manche), les deux langues livrées et vérifiées ensemble.
     ...Object.values(ROUND_OVER_SOUND_STEMS),
+    // La MUSIQUE D'INTRO (item 7, 2026-09-27) : jouée au départ depuis le préambule, sans
+    // instant sur la piste — même dossier d'assets, même garde-rail.
+    INTRO_MUSIC_STEM,
     // LE CRANE d'Oddball (lot du 2026-08-29) : prise et chute. Source doc.skullCarries, pas
     // doc.objectives — le nommage statborg ne couvre pas Oddball. Leurs variantes entrent par
     // SOUND_VARIANTS ci-dessus, comme celles du grappin.
@@ -207,6 +212,15 @@ function wavDurationS(file: string): number {
   }
   expect(byteRate, `${file} : en-tete fmt illisible`).toBeGreaterThan(0)
   return dataSize / byteRate
+}
+
+/**
+ * Le chunk fmt complet d'un WAV : cadence, canaux, profondeur. Né dans le garde-rail des
+ * moteurs ; remonté au niveau du module le 2026-09-27 (item 7) pour servir aussi la musique
+ * d'intro, plutôt que d'en écrire une troisième lecture du chunk `fmt `.
+ */
+function fmtDe(stem: string): { canaux: number; cadence: number; bits: number } {
+  return wavFormat(resolve(SOUNDS_DIR, `${stem}.wav`))
 }
 
 describe('garde-rail : durée livrée par catégorie', () => {
@@ -609,24 +623,6 @@ describe('garde-rail : tout WAV livre est decodable par un navigateur', () => {
  * livre sans etre cable serait un asset mort — ce test l'interdit explicitement.
  */
 describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-09-04)', () => {
-  /** Le chunk fmt complet d'un WAV : cadence, canaux, profondeur. */
-  function fmtDe(stem: string): { canaux: number; cadence: number; bits: number } {
-    const buf = readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`))
-    for (let at = 12; at + 8 <= buf.length; ) {
-      const id = buf.toString('latin1', at, at + 4)
-      const size = buf.readUInt32LE(at + 4)
-      if (id === 'fmt ') {
-        return {
-          canaux: buf.readUInt16LE(at + 10),
-          cadence: buf.readUInt32LE(at + 12),
-          bits: buf.readUInt16LE(at + 22),
-        }
-      }
-      at += 8 + size + (size % 2)
-    }
-    throw new Error(`${stem} : chunk fmt introuvable`)
-  }
-
   it('chaque famille de la table a ses clips, et chaque clip son fichier', () => {
     for (const [famille, stems] of Object.entries(VEHICLE_ENGINE_STEMS)) {
       const clips = stems.idle
@@ -865,3 +861,24 @@ describe('garde-rail : destructions de vehicule (lot du 2026-09-05)', () => {
     }
   })
 })
+
+/**
+ * LA MUSIQUE D'INTRO (item 7 du backlog, décision D-8 du 2026-09-26). Un EXTRAIT de la montée du
+ * thème multijoueur : [R − 1 s ; R + 2 s], borné à la fin de la piste source — trois secondes au
+ * plus, et au moins la seconde qui précède la résolution (sans elle, rien ne tomberait sur le coup
+ * d'envoi). La source est en QUATRE canaux : le format canonique se vérifie ici en plus du
+ * garde-rail « décodable » ci-dessus, qui ne regarde que le format et le nombre de canaux.
+ */
+describe('garde-rail : la musique d intro (item 7, décision D-8)', () => {
+  it('format canonique : 48 kHz, 16 bits, stéréo', () => {
+    expect(fmtDe(INTRO_MUSIC_STEM)).toEqual({ canaux: 2, cadence: 48_000, bits: 16 })
+  })
+
+  it('un extrait de trois secondes au plus, qui porte la seconde d avant la résolution', () => {
+    const s = wavDurationS(resolve(SOUNDS_DIR, `${INTRO_MUSIC_STEM}.wav`))
+    expect(s).toBeGreaterThan(1)
+    expect(s).toBeLessThanOrEqual(3 + 0.001)
+    expect(s).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
+  })
+})
+

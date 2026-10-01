@@ -27,7 +27,7 @@ package replay
 //
 // # LA GARDE DE MODE : famille bomb, TOUTES variantes
 //
-// `opt.Bomb.CarryScanned` est posée par l'appelant (`replaybuild.isBombVariant`) sur toute
+// `opt.Bomb.CarryScanned` est posée par l'appelant (`GardesDeLaVariante`) sur toute
 // variante de la famille bomb, One Bomb COMPRISE. Le négatif One Bomb de v33 visait l'anneau
 // d'armement, jamais le composant d arme tenue du bipède ; il est LEVÉ depuis le 2026-09-04
 // (lecture « mèche pausable », schéma 39) et les deux gardes portent maintenant le même

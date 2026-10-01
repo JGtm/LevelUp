@@ -38,8 +38,9 @@ import (
 // LA CARTE EST OPTIONNELLE, ET C'EST UN PARAMETRE, PAS UNE CONCATENATION (ajout
 // 2026-09-06, phase 3) : `? = ” OR mr.map_id = ?` neutralise le predicat quand
 // l'appelant ne vise aucune carte (page Escouade). Assembler la clause en Go
-// aurait fait DEUX chaines SQL pour un seul univers — et le garde-rail structurel
-// campaign_exclusion_guard_test ne balaye qu'une constante, pas un assemblage.
+// aurait fait DEUX chaines SQL pour un seul univers — et le garde-rail structurel de
+// l'epoque ne balayait qu'une constante, pas un assemblage (remplace le 2026-09-27,
+// backlog B4, par internal/archlint/campaign_exclusion_guard_test.go).
 //
 // LE PERIMETRE (liste blanche de match_id, composition) est ajoute par
 // `clausePerimetre` : sa longueur depend de l'appel, donc il ne peut pas vivre dans
@@ -72,8 +73,9 @@ import (
 // page Escouade, qui lit le meme journal filtre pareil.
 //
 // PREFIXE `Q` ET TOKEN CAMPAGNE (correction R2, revue du 2026-09-06) : le
-// garde-rail structurel campaign_exclusion_guard_test ne balaye QUE les constantes
-// nommees `Q<...>`. Sans le prefixe, un lecteur per-player passait sous son radar ;
+// garde-rail structurel de l'epoque ne balayait QUE les constantes nommees `Q<...>`
+// (remplace le 2026-09-27, backlog B4, par internal/archlint/campaign_exclusion_guard_test.go,
+// qui balaie toutes les declarations). Sans le prefixe, un lecteur per-player passait sous son radar ;
 // sans le token, les ~287 matchs Campagne d'un joueur Halo 5 entraient dans
 // l'univers des rasters alors que l'Explorateur les masque. Le token est resolu au
 // call site par resolveCampaignExclusion, qui connait le titre du joueur (no-op
@@ -105,9 +107,9 @@ const journalPerimetre = "%PERIMETRE_JOURNAL%"
 // colonneEligible : le jeton que `universSQL` remplace par le predicat d'eligibilite a la
 // cuisson (`analysis.SQLEligibleALaCuisson`).
 //
-// UN JETON PLUTOT QU'UN ASSEMBLAGE EN GO : le garde-rail structurel
-// campaign_exclusion_guard_test ne balaye QUE des constantes `Q<...>`, et QTacticalUnivers
-// doit rester une constante entiere pour rester sous son radar (meme raison que le token
+// UN JETON PLUTOT QU'UN ASSEMBLAGE EN GO : le garde-rail structurel de l'epoque ne
+// balayait QUE des constantes `Q<...>`, et QTacticalUnivers devait rester une constante
+// entiere pour rester sous son radar (meme raison que le token
 // campagne juste au-dessus).
 const colonneEligible = "%ELIGIBLE_CUISSON%"
 
@@ -123,7 +125,7 @@ const colonneEligible = "%ELIGIBLE_CUISSON%"
 // d'un autre titre.
 //
 // Se place AVANT campaignExclusionToken : le token doit rester le DERNIER fragment du WHERE
-// (garde-rail structurel campaign_exclusion_guard_test.go).
+// (garde-rail internal/archlint/campaign_exclusion_guard_test.go).
 const clausePvEExclu = `
   AND COALESCE(mr.is_firefight, FALSE) = FALSE`
 

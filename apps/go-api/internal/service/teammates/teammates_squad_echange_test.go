@@ -14,21 +14,12 @@ import (
 
 // ─── DECOR ─────────────────────────────────────────────────────────────────────────────
 
-// mockTacticalRepo sert un journal des morts pose a la main. KillEvents et
-// MortsAvecContexte sont exerces ici (echange + nuage isolement de la page
-// Escouade) ; MapsPlayed, KillPositions et Univers restent refuses.
+// mockTacticalRepo sert un journal des morts pose a la main. Seul KillEvents est exerce ici
+// (echange de la page Escouade) ; les autres lectures sont refusees.
 type mockTacticalRepo struct {
 	lecture domain.TacticalKillEvents
 	err     error
 	vues    []domain.TacticalQuery
-
-	// morts/mortsErr : reponse posee a la main pour MortsAvecContexte (nuage
-	// isolement). Zero-value = aucune mort, aucune erreur — harmless par defaut,
-	// et de toute facon jamais appele par les tests d'echange (buildSquadEchange
-	// n'invoque le nuage isolement que si `radarRange` est cable, cf.
-	// buildSquadIsolementNuage).
-	morts    domain.TacticalMortsContexte
-	mortsErr error
 }
 
 func (m *mockTacticalRepo) MapsPlayed(context.Context, domain.TacticalQuery) ([]domain.TacticalMapRow, error) {
@@ -54,10 +45,11 @@ func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery)
 	return m.lecture, m.err
 }
 
-// MortsAvecContexte sert le nuage « isolement x couverture » (item 7.7). Reponse posee a la
-// main via `morts`/`mortsErr` — zero-value harmless, cf. le commentaire du champ.
+// MortsAvecContexte : jamais appelee par la page Escouade depuis le retrait du nuage « Frags non
+// ripostes » (plan Emprise vies, decision V7) ; l'espion de teammates_service_loads_test.go le
+// verifie.
 func (m *mockTacticalRepo) MortsAvecContexte(context.Context, domain.TacticalQuery) (domain.TacticalMortsContexte, error) {
-	return m.morts, m.mortsErr
+	return domain.TacticalMortsContexte{}, errors.New("non appele")
 }
 
 // MatchsOuvrables (ADR 0029, lot M1) : jamais appelee par les tests d'echange de ce

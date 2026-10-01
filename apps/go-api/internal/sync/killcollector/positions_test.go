@@ -326,7 +326,7 @@ func TestCollectPositions_CapabiliteAbsenteNeTenteAucuneEcriture(t *testing.T) {
 		mapBounds:     testMapQuantCatalog(),
 		acquireShared: panicWriter,
 	}
-	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), persist.KillSourceBatch{Deaths: killRefValide()})
 }
 
 // TestCollectPositions_NonCableNeTenteAucuneEcriture — Q8 (2026-09-07) : ce cas est une
@@ -340,7 +340,7 @@ func TestCollectPositions_NonCableNeTenteAucuneEcriture(t *testing.T) {
 		acquireShared: panicWriter,
 		// mapNames / mapBounds volontairement nil : WithPositionCapture jamais appele.
 	}
-	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), persist.KillSourceBatch{Deaths: killRefValide()})
 	if got := observability.LoadCounter(metricPositionsNotWired) - avant; got != 1 {
 		t.Errorf("%s a bougé de %d, attendu 1 : un cablage manquant doit se compter",
 			metricPositionsNotWired, got)
@@ -355,7 +355,7 @@ func TestCollectPositions_AucuneIdentiteResolueNeTenteAucuneEcriture(t *testing.
 		acquireShared: panicWriter,
 	}
 	deaths := []persist.KillEventInsert{{TimeMS: 1000, FeedKillerXUID: "", VictimXUID: ""}}
-	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, deaths, deaths)
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, deaths, persist.KillSourceBatch{Deaths: deaths})
 }
 
 func TestCollectPositions_CarteHorsCatalogueNeTenteAucuneEcriture(t *testing.T) {
@@ -365,7 +365,7 @@ func TestCollectPositions_CarteHorsCatalogueNeTenteAucuneEcriture(t *testing.T) 
 		mapBounds:     testMapQuantCatalog(),
 		acquireShared: panicWriter,
 	}
-	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), persist.KillSourceBatch{Deaths: killRefValide()})
 }
 
 // TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture — bornes resolues, morts resolues,
@@ -379,7 +379,7 @@ func TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture(t *testing.T) {
 		acquireShared: panicWriter,
 	}
 	ids := MatchIdentities{XUIDs: []string{"111", "222"}}
-	c.collectPositions(context.Background(), "m1", nil, nil, ids, killRefValide(), killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, nil, ids, killRefValide(), persist.KillSourceBatch{Deaths: killRefValide()})
 }
 
 // TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique : LE point critique de la passe

@@ -17,8 +17,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReplayKill } from '../model/killFeedLogic'
 
 import type { EndMatchSoundSpec } from './endMatchSound'
+import { SOUND_MAX_VOICES } from './replayAudio'
 import { SOUND_MAX_SPEED } from './replaySoundCursor'
-import { type FakeContext, flushAudio, installFakeAudio } from '../test/fakeAudio'
+import { type FakeContext, flushAudio, installFakeAudio, okAudioResponse } from '../test/fakeAudio'
 import { testReplayDoc } from '../test/testDoc'
 import { SOUND_VOLUME_DEFAULT, useReplaySound, type ReplaySoundContext } from './useReplaySound'
 
@@ -118,8 +119,11 @@ describe('useReplaySound — activation', () => {
     await act(async () => { await flushAudio() })
     expect(result.current.on).toBe(true)
     expect(ctx.resumed).toBe(1)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(String(fetchMock.mock.calls[0][0])).toBe('/static/sounds/halo_infinite/hinf_br75.wav')
+    // Le kill du match, et l'extrait d'intro que tout match peut jouer au départ (item 7).
+    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual([
+      '/static/sounds/halo_infinite/hinf_br75.wav',
+      '/static/sounds/halo_infinite/intro_music_01.wav',
+    ])
   })
 
   it('activer en plein match ne déverse pas ce qui précède : le premier battement recale', async () => {
@@ -412,6 +416,22 @@ describe('useReplaySound — la fin de partie', () => {
     expect(ctx.sources).toHaveLength(2)
   })
 
+  // ITEM 11 (2026-09-26) : sur une fin dense, les tirs tenaient le plafond et la fanfare, jouée
+  // après la voix, était refusée en silence. La fanfare seule dure 9,9 s ici : c'est elle qu'on lit.
+  it('huit sons en cours à l’arrivée : la voix ET la fanfare partent quand même', async () => {
+    fetchMock.mockImplementation((url: string) => Promise.resolve(okAudioResponse(url.includes('_music_') ? 9.9 : 1.2)))
+    const huit = Array.from({ length: SOUND_MAX_VOICES }, () => kill())
+    const { result } = renderHook(() => useReplaySound(docWithCouple(), huit, 1, { ...NO_CONTEXT, endMatch: VICTOIRE_FR }))
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050)) // les huit kills partent ensemble : plafond plein
+    expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES)
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
+    expect(ctx.sources.slice(SOUND_MAX_VOICES).map((s) => s.buffer?.duration)).toContain(9.9)
+  })
+
   it('avance rapide : la conclusion se tait aussi, comme l’annonce le panneau', async () => {
     const doc = docWithCouple()
     const { result } = renderHook(() =>
@@ -428,7 +448,7 @@ describe('useReplaySound — la fin de partie', () => {
     const { result } = mountWithEnd(null)
     act(() => result.current.toggle())
     await act(async () => { await flushAudio() })
-    expect(fetchMock).toHaveBeenCalledTimes(1) // le seul son du match : le kill au BR
+    expect(fetchMock).toHaveBeenCalledTimes(2) // le seul son du match (le kill au BR) + l'intro
     act(() => result.current.endMatch())
     expect(ctx.sources).toHaveLength(0)
   })

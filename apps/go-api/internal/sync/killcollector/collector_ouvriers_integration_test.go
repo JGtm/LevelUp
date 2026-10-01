@@ -50,6 +50,9 @@ var vuesComparees = []string{
 	"match_lives_latest",
 	"match_death_context_latest",
 	"kill_positions_latest",
+	// Le placement des vies (plan Emprise vies, lot V2, 2026-09-29) : troisieme projection de la
+	// passe de positions, ecrite par les memes ouvriers.
+	"match_life_placement_latest",
 }
 
 // filmsDuTestDEgalite : des films du bas du cout QUI ECRIVENT (cf. D1 (5.24) : les moins chers
