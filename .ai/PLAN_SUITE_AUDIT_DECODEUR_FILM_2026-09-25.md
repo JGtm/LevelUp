@@ -1109,9 +1109,9 @@ G-web, G-CI. **Taille** : M.
 
 ### J11 — Vague unique : gates de corpus, re-décodage, backfills, fusion (GO opérationnel)
 
-- [ ] J11.0 J3 à J10 clos (J6 statué) ; `git merge feat/v75` dans la branche ; G-film, G-arch,
+- [x] J11.0 J3 à J10 clos (J6 statué) ; `git merge feat/v75` dans la branche ; G-film, G-arch,
       G-integ complets verts ; G-CI.
-- [ ] J11.1 G-corpus complet (`--reference=base`, base = tête de `feat/v75`) : zéro perte non
+- [x] J11.1 G-corpus complet (`--reference=base`, base = tête de `feat/v75`) : zéro perte non
       expliquée ; changements = union des déclarations J3-J10 (table au §9) ; rapport JSON archivé.
 - [ ] J11.2 `replay-equiv` : références re-figées à la tête (`-update`), digests commités.
 - [ ] J11.3 Mesures de clôture : GB-1 (vies sans positions par film, avant/après), compte par repli
@@ -1664,3 +1664,24 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   (tir continu : 69 paquets fermés et 1 312 entrées en moins, 199 records d'états de mouvement),
   `60ae07c4` (2 paquets fermés) et `d9781168` (14 entrées) — essai du banc sur ces trois témoins
   contre `e87a275de` (avant R2-bis).
+- 2026-10-01 : **R3-bis** fusionné (`380a9ed88`) : la baisse de `4f77afc1` sous la référence venait
+  de J6 (deux sites restés au portage : unit-actor-state `FUN_14058c058`, tacmap-waypointstate
+  ti=34 i7), masquée par des gains de J6 que R3 a rendus ; deux exceptions datées de plus
+  (quatorze au total) ; carte de fermeture finale ≥ référence J4.0.5 sur les 20 films
+  (`4f77afc1` 22 910 / 408 162 contre 22 909 / 408 151). Décision superviseur : l'exception
+  displayasset est GARDÉE (la lecture du jeu ferait +66 paquets sur `4f77afc1` mais −10 de la
+  référence sur `51ebbc0f`). **Banc de vérité** fusionné (`9c1288448`) : il rend le verdict du
+  gate. **Gate d'acceptation J11.1** (base `6676dcabd`, banc, 19 témoins, serveur arrêté) :
+  8 ok ; « MANQUE » P-1 sur 9 témoins = gains de J6 rendus par les exceptions, TOUS au niveau
+  ou au-dessus de la référence d'avant le plan (accepté) ; « FAUX » `a349fea8` V-2 5 → 1 076 =
+  artefact de l'emprise (calculée sur les pistes publiées, débarrassées par R2 du point aberrant à
+  −981 m) : aucun objet publié ne change (découverte : le banc doit lire l'emprise de la carte) ;
+  « FAUX » `e5adf7b2` `repli_deadstate_categorie_hors_enum` 0 → 1 = glissement de classement de
+  deux enregistrements de bruit (slots hors joueurs, aucun kill associé ; total des refus
+  inchangé à 26, sortie killsource identique à l'octet), né de `562e060ba` (R3) : accepté.
+  **J11.1 TENU.** Gains mesurés par le banc : identités discordantes 146 → 31 (`084a804d`),
+  98 → 32 (`4f77afc1`), deux corps 3 → 1. **J12** sur sa branche : J12.1 (188 tris convertis,
+  `go fix`), J12.3 (contexte, diagnostics typés), J12.2/4/5/6/7/7 bis/8 et résidus faits ;
+  preuve G-equiv avant/après J12 sur 20 films : document publié IDENTIQUE à l'octet ; quatre
+  digests d'étape changent sans effet publié (champ de diagnostics : killsource, drapeau, crâne ;
+  départage `compareSample` des échantillons au repos : socles, 2 points sur 86 818).
