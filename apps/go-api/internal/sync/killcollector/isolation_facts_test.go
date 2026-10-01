@@ -154,7 +154,7 @@ func TestPostSyncDeps_SansResolveurDeCarte_LaCaptureEstDesarmee(t *testing.T) {
 // à l'appelant de décider s'il dégrade. Une fonction qui rendrait des deps vides en silence
 // fabriquerait le silence que ce lot corrige.
 func TestCaptureDepuisCatalogue_RefuseUnResolveurNil(t *testing.T) {
-	if _, err := CaptureDepuisCatalogue(t.TempDir(), "halo_infinite", nil); err == nil {
+	if _, err := CaptureDepuisCatalogue(context.Background(), t.TempDir(), "halo_infinite", nil); err == nil {
 		t.Fatal("aucune erreur pour un resolveur nil")
 	}
 }
@@ -163,7 +163,7 @@ func TestCaptureDepuisCatalogue_RefuseUnResolveurNil(t *testing.T) {
 // illisible : l'appelant journalise et dégrade, la fonction ne ment pas.
 func TestCaptureDepuisCatalogue_CatalogueAbsent_RendUneErreur(t *testing.T) {
 	repo := fakeMapNames{keys: port.MatchMapKeys{Names: []string{"Catalyst"}}}
-	if _, err := CaptureDepuisCatalogue(t.TempDir(), "halo_infinite", repo); err == nil {
+	if _, err := CaptureDepuisCatalogue(context.Background(), t.TempDir(), "halo_infinite", repo); err == nil {
 		t.Fatal("aucune erreur alors que le catalogue de bornes n'existe pas dans ce TempDir")
 	}
 }

@@ -198,7 +198,7 @@ func preparerReferenceBase(ctx context.Context, p basePrepParams, tc *temoinCont
 	tc.BaseSHA = baseSHA
 	tc.BaseGoVersion = goVersionDe(ctx, wtBase.GoAPIDir)
 	tc.CacheBase = baseCache{Racine: filepath.Join(title.NewPathResolver(tc.ParcRoot).CacheRootDir(), dossierCacheBase)}
-	slog.Info("replay-corpus-gate: base resolue", "revision", baseRev, "sha", baseSHA,
+	slog.InfoContext(ctx, "replay-corpus-gate: base resolue", "revision", baseRev, "sha", baseSHA,
 		"worktree", wtBase.Chemin, "go", tc.BaseGoVersion, "cache", tc.CacheBase.Racine,
 		"sansCache", tc.SansCacheBase)
 	return "base(" + baseRev + ")", nil
@@ -212,7 +212,7 @@ func goVersionDe(ctx context.Context, goAPIDir string) string {
 	cmd.Dir = goAPIDir
 	out, err := cmd.Output()
 	if err != nil {
-		slog.Warn("replay-corpus-gate: go env GOVERSION impossible — cache de la base refuse",
+		slog.WarnContext(ctx, "replay-corpus-gate: go env GOVERSION impossible — cache de la base refuse",
 			"dir", goAPIDir, "err", err)
 		return ""
 	}

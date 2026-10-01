@@ -21,6 +21,7 @@ package killcollector
 // reponse n'est pas la meme selon qu'un serveur tourne ou non (modele mono-process, ADR 0013).
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -66,7 +67,7 @@ func (d DepsCapture) Cablee() bool { return d.MapNames != nil && d.Bounds != nil
 // L'ERREUR EST RENDUE, PAS AVALEE : c'est a l'appelant de decider s'il degrade en « positions
 // desactivees » (le cas de tous les appelants d'aujourd'hui) ou s'il refuse. Une fonction qui
 // rend silencieusement des deps vides fabriquerait exactement le silence que ce lot corrige.
-func CaptureDepuisCatalogue(repoRoot, titleSlug string, mapNames port.ReplayMapNameRepo) (DepsCapture, error) {
+func CaptureDepuisCatalogue(ctx context.Context, repoRoot, titleSlug string, mapNames port.ReplayMapNameRepo) (DepsCapture, error) {
 	if mapNames == nil {
 		return DepsCapture{}, fmt.Errorf("capture positions %s: aucun resolveur de carte", titleSlug)
 	}
@@ -77,8 +78,8 @@ func CaptureDepuisCatalogue(repoRoot, titleSlug string, mapNames port.ReplayMapN
 			titleSlug, chemin, err)
 	}
 	deps := DepsCapture{MapNames: mapNames, Bounds: catalogue}
-	deps.Libelles, deps.Objectifs = cataloguesDuPlacement(repoRoot, titleSlug)
-	deps.Portee = porteeDuTitre(repoRoot, titleSlug)
+	deps.Libelles, deps.Objectifs = cataloguesDuPlacement(ctx, repoRoot, titleSlug)
+	deps.Portee = porteeDuTitre(ctx, repoRoot, titleSlug)
 	return deps, nil
 }
 
@@ -89,10 +90,10 @@ func CaptureDepuisCatalogue(repoRoot, titleSlug string, mapNames port.ReplayMapN
 // BEST-EFFORT, comme les deux catalogues des porteurs : un fichier illisible ou absent se
 // JOURNALISE puis degrade en « aucune portee » — les vies s'ecrivent quand meme, sans part hors
 // radar, et chaque match se compte `killsource_placement_matchs_sans_portee`.
-func porteeDuTitre(repoRoot, titleSlug string) PorteeDuRadar {
+func porteeDuTitre(ctx context.Context, repoRoot, titleSlug string) PorteeDuRadar {
 	reglement, err := mappings.LoadRegulationForTitle(repoRoot, titleSlug)
 	if err != nil || reglement == nil {
-		slog.Warn("killsource: placement — regulation.toml illisible ou absent, vies sans portee "+
+		slog.WarnContext(ctx, "killsource: placement — regulation.toml illisible ou absent, vies sans portee "+
 			"du radar", "titleSlug", titleSlug, "path", mappings.RegulationPath(repoRoot, titleSlug),
 			"err", err)
 		return nil
@@ -104,16 +105,16 @@ func porteeDuTitre(repoRoot, titleSlug string) PorteeDuRadar {
 // cataloguesDuPlacement charge les deux catalogues des porteurs, BEST-EFFORT : un fichier
 // illisible se JOURNALISE (installation incomplete — ils sont versionnes) puis degrade, comme a la
 // cuisson (`replaybuild.objectivesCatalog`). Les positions et les vies n'en dependent pas.
-func cataloguesDuPlacement(repoRoot, titleSlug string) (replay.LabelCatalog, *replay.MapObjectivesCatalog) {
+func cataloguesDuPlacement(ctx context.Context, repoRoot, titleSlug string) (replay.LabelCatalog, *replay.MapObjectivesCatalog) {
 	libelles, err := replaylabels.Load(repoRoot, titleSlug)
 	if err != nil {
-		slog.Warn("killsource: placement — catalogue de libelles illisible, porteurs du drapeau "+
+		slog.WarnContext(ctx, "killsource: placement — catalogue de libelles illisible, porteurs du drapeau "+
 			"sans objets d'objectif nommes", "titleSlug", titleSlug, "err", err)
 	}
 	chemin := titlePkg.NewPathResolver(repoRoot).MapObjectivesPath(titleSlug)
 	objectifs, err := replay.LoadMapObjectives(chemin)
 	if err != nil {
-		slog.Warn("killsource: placement — catalogue d'objectifs illisible, drapeaux sans equipe "+
+		slog.WarnContext(ctx, "killsource: placement — catalogue d'objectifs illisible, drapeaux sans equipe "+
 			"proprietaire", "titleSlug", titleSlug, "path", chemin, "err", err)
 		objectifs = nil
 	}

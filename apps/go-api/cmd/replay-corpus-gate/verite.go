@@ -208,7 +208,7 @@ func (l ligneRapport) statutVerite() string {
 }
 
 // imprimerVerite ecrit la section du banc, temoin par temoin, AVANT le detail `replaydiff`.
-func imprimerVerite(w io.Writer, lignes []ligneRapport, registreAvantConnu bool) {
+func imprimerVerite(ctx context.Context, w io.Writer, lignes []ligneRapport, registreAvantConnu bool) {
 	var concernes []ligneRapport
 	for _, l := range lignes {
 		if l.Verite != nil || len(l.Filets) > 0 {
@@ -227,7 +227,7 @@ func imprimerVerite(w io.Writer, lignes []ligneRapport, registreAvantConnu bool)
 		_, _ = fmt.Fprintln(w)
 		if l.Verite != nil {
 			if err := replayverite.Rendre(w, l.Temoin.ID, *l.Verite); err != nil {
-				slog.Warn("replay-corpus-gate: rendu du banc de verite", "temoin", l.Temoin.ID, "err", err)
+				slog.WarnContext(ctx, "replay-corpus-gate: rendu du banc de verite", "temoin", l.Temoin.ID, "err", err)
 			}
 		}
 		for _, d := range l.Filets {

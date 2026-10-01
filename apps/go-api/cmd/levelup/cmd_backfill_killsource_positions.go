@@ -30,7 +30,7 @@ import (
 // handle metadata ouvert ici ; elle est TOUJOURS non-nil (no-op si rien n a ete ouvert), donc
 // l appelant peut la `defer` inconditionnellement.
 func positionCaptureDeps(
-	cfg *config.AppConfig, titleSlug string, sharedDB *sql.DB, porte *killcollector.PorteDeLaBase,
+	ctx context.Context, cfg *config.AppConfig, titleSlug string, sharedDB *sql.DB, porte *killcollector.PorteDeLaBase,
 ) (killcollector.DepsCapture, func()) {
 	noop := func() {}
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
@@ -52,7 +52,7 @@ func positionCaptureDeps(
 	// LA RESOLUTION DE CARTE PASSE PAR LA PORTE (lot 5.24.2) : elle lit `match_registry` sur le
 	// handle partage, donc elle est l un des trois chemins par lesquels cette passe parle a la
 	// base — et il n y a aucune raison d en laisser un dehors.
-	capture, err := killcollector.CaptureDepuisCatalogue(cfg.RepoRoot, titleSlug,
+	capture, err := killcollector.CaptureDepuisCatalogue(ctx, cfg.RepoRoot, titleSlug,
 		porte.GarderLesCartes(duckdb.NewReplayMapRepo(staticSharedReader{db: sharedDB}, metaDB)))
 	if err != nil {
 		fmt.Printf("%v — positions desactivees pour cette passe\n", err)

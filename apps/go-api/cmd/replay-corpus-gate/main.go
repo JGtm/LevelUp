@@ -347,7 +347,7 @@ func cuireEtComparerTousLesTemoins(ctx context.Context, manifest Manifest, tc te
 // zero ».
 func finaliser(ctx context.Context, lignes []ligneRapport, refLabel string, o executerOptions) (int, error) {
 	imprimerTableau(os.Stdout, lignes, refLabel)
-	imprimerVerite(os.Stdout, lignes, o.registreAvantConnu)
+	imprimerVerite(ctx, os.Stdout, lignes, o.registreAvantConnu)
 	imprimerDetailPertes(os.Stdout, lignes)
 	imprimerDetailChangements(os.Stdout, lignes)
 	imprimerTelemetrie(os.Stdout, lignes)

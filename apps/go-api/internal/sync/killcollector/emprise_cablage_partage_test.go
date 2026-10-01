@@ -46,7 +46,7 @@ func v0Collecteur(t *testing.T, e v0Env, lecture, ecriture *sql.DB) *KillSourceC
 	if err != nil {
 		t.Fatalf("racine du depot : %v", err)
 	}
-	deps, err := CaptureDepuisCatalogue(repoRoot, title.DefaultSlug,
+	deps, err := CaptureDepuisCatalogue(context.Background(), repoRoot, title.DefaultSlug,
 		duckdb.NewReplayMapRepo(v0Lecteur{lecture}, nil))
 	if err != nil {
 		t.Fatalf("capture : %v", err)
