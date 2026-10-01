@@ -6,6 +6,12 @@
 > intermédiaire ». Le chantier démarrera sur décision, quand son déclencheur (§9) sera mesuré par
 > la carte de fermeture (lot J4.0 du plan).
 >
+> **Mise à jour 2026-10-01** : analyse de mise en œuvre sur pièces et comparaison avec le port Rust
+> dans `.ai/ANALYSE_MISE_EN_OEUVRE_REPRESENTATION_INTERMEDIAIRE_2026-10-01.md`. Elle corrige cette
+> spec sur huit points (§2 de l'analyse : une seule table d'entités, deux phases, fermeture refusée
+> distincte de la queue opaque, récupération présente dans la marche, ordre de migration, lieu des
+> types, origine du « 7,9 Go », étape 1 consommée) : l'ADR part de l'analyse, pas de ce texte seul.
+>
 > **Pour qui** : l'utilisateur, et les agents qui écriront l'ADR puis le plan d'exécution de ce
 > chantier. Les chiffres cités sont mesurés sur la tête de la campagne des retours rejeu
 > (`feat/rr-m4b`, `f2b52546b`) sauf mention contraire ; ils se re-mesurent à l'ouverture.
