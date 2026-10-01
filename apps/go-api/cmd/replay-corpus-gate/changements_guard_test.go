@@ -1,40 +1,36 @@
 package main
 
 // changements_guard_test.go — LES `Changements` NE DOIVENT PLUS RETOMBER A ZERO (2026-09-16),
-// ET ILS PORTENT DESORMAIS LEUR PROPRE STATUT (2026-09-17, lot 2.8.1).
+// ET DEPUIS LE BANC DE VERITE (2026-09-30) ILS INFORMENT SANS BLOQUER.
 //
 // # CE QUE CE FICHIER GARDE, ET POURQUOI IL EXISTE
 //
 // `replaydiff.BilanAxe` compte TROIS categories : les gains, les pertes, et les CHANGEMENTS —
 // une valeur publiee qui BOUGE sans etre ni l'un ni l'autre. Jusqu'au 2026-09-16,
 // `bilanDepuisRapport` sommait `b.Gains` et `b.Pertes` et s'arretait la : la troisieme categorie
-// n'etait pas seulement absente de l'affichage, elle etait JETEE. Un temoin dont une valeur
-// publiee bougeait sortait `ok`, au tableau comme au JSON, et le lot suivant heritait d'un
-// changement que personne n'avait classe.
+// etait JETEE, du tableau comme du JSON.
 //
-// Ce test tient les quatre maillons de la chaine d'un seul coup, sur le cas minimal qui compte :
-// ZERO gain, ZERO perte, UN changement.
+// Du 2026-09-17 au 2026-09-30 un changement portait son propre statut, `CHANGEMENT`, BLOQUANT.
+// Depuis le banc de verite (verite.go, decision D-5), c'est le banc qui rend le verdict : un
+// changement ne dit pas si la donnee est plus JUSTE, il ne bloque donc plus — mais il doit rester
+// COMPTE et NOMME, pour qu'un operateur le voie. Ce test tient les maillons qui restent :
 //
-//	LE STATUT    le temoin doit sortir `CHANGEMENT` — depuis le 2026-09-17 un statut A LUI,
-//	             plus `PERTE` : un changement se JUSTIFIE (reattribution documentee, voie de
-//	             nommage qui cede) ou il se corrige, et le confondre avec une perte envoie
-//	             chercher une regression la ou une valeur a seulement change de main.
 //	LE DETAIL    il doit etre NOMME, pas seulement compte (D5 (1.9.9)).
 //	LE TABLEAU   la colonne `chang.` doit porter le compte.
-//	LE CODE      `codeSortie` doit refuser le run : distinct de la perte ne veut pas dire tolere.
+//	LE VERDICT   un changement SEUL rend `ok` et le code 0 : le banc decide.
 //
 // LES MUTATIONS QUI LE FONT ROUGIR, NOMMEES :
-//   - retirer `l.Changements += b.Changements` de `remplirBilan` (report.go) : le compte
-//     retombe a zero, le statut repasse a `ok`, le code a `codeOK` — trois assertions tombent ;
+//   - retirer `l.Changements++` de `remplirBilan` (report.go) : le compte retombe a zero ;
 //   - retirer la branche `SensChangement` de `remplirBilan` : `ChangementsDetail` reste vide et
 //     la section « DETAIL DES CHANGEMENTS » disparait ;
-//   - retirer `case l.aUnChangement()` de `statut()` : le statut repasse a `ok`.
+//   - rendre un changement bloquant dans `statutVerite` : le statut sort autre chose que `ok`.
 
 import (
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/replaydiff"
+	"levelup/go-api/internal/replayverite"
 )
 
 // rapportUnSeulChangement fabrique le cas minimal : un axe, aucun gain, aucune perte, un
@@ -75,38 +71,39 @@ func TestBilanPorteLesChangements(t *testing.T) {
 	}
 }
 
-// TestUnChangementSeulVautChangement — LE MAILLON 2 : le statut PROPRE et le code de sortie.
-func TestUnChangementSeulVautChangement(t *testing.T) {
-	l := ligneRapport{Temoin: Temoin{ID: "x", Famille: "f"}, Gains: 0, Pertes: 0, Changements: 1}
-	if l.aUnePerte() {
-		t.Errorf("un temoin a 0 perte ne doit PAS compter comme une perte — `PERTE` et " +
-			"`CHANGEMENT` sont deux verdicts distincts depuis le 2026-09-17")
+// TestUnChangementSeulInformeSansBloquer — LE MAILLON 2 : un changement seul, avec un banc `ok`,
+// rend `ok` et le code 0 ; il reste compte (maillons 1 et 3).
+func TestUnChangementSeulInformeSansBloquer(t *testing.T) {
+	var l ligneRapport
+	l.Temoin = Temoin{ID: "x", Famille: "f"}
+	l.Verite = comparaisonDe(replayverite.StatutOK)
+	l.remplirBilan(rapportUnSeulChangement())
+	if l.Changements != 1 {
+		t.Fatalf("changements = %d, 1 attendu", l.Changements)
 	}
-	if got := l.statut(); got != statutChangement {
-		t.Errorf("statut = %q, %q attendu — un changement sans perte a son propre verdict",
-			got, statutChangement)
+	if got := l.statut(); got != statutOK {
+		t.Errorf("statut = %q, %q attendu — un changement seul informe, le banc decide", got, statutOK)
 	}
-	if !l.estBloquant() {
-		t.Errorf("un temoin a 1 changement doit rester BLOQUANT : distinct de la perte ne veut " +
-			"pas dire tolere en silence")
+	if l.estBloquant() {
+		t.Errorf("un changement seul ne doit plus bloquer (banc de verite, D-5)")
 	}
-	if got := codeSortie([]ligneRapport{l}, true); got != codePerte {
-		t.Errorf("code de sortie = %d, %d attendu : le gate accepte un mouvement de valeur "+
-			"publiee en silence", got, codePerte)
+	if got := codeSortie([]ligneRapport{l}, true); got != codeOK {
+		t.Errorf("code de sortie = %d, %d attendu", got, codeOK)
 	}
 }
 
-// TestUnePerteEtUnChangementSortentPERTE — LA REGLE DE PRIORITE : `PERTE` prime. Un temoin qui
-// porte les deux est un temoin en perte, et c'est la perte qu'on instruit.
-func TestUnePerteEtUnChangementSortentPERTE(t *testing.T) {
-	l := ligneRapport{Temoin: Temoin{ID: "x"}, Pertes: 1, Changements: 4}
+// TestUnFiletEtUnChangementSortentPERTE — un filet (perte non couverte par le banc) bloque, quels
+// que soient les changements qui l'accompagnent.
+func TestUnFiletEtUnChangementSortentPERTE(t *testing.T) {
+	l := ligneRapport{Temoin: Temoin{ID: "x"}, Pertes: 1, Changements: 4,
+		Filets: []replaydiff.Difference{perte("armes", "shots/n", "2", "1")}}
 	if got := l.statut(); got != statutPerte {
-		t.Errorf("statut = %q, %q attendu : une perte prime toujours sur un changement", got, statutPerte)
+		t.Errorf("statut = %q, %q attendu : un filet bloque", got, statutPerte)
 	}
 }
 
 // TestTableauAfficheLesChangements — LE MAILLON 3 : la colonne existe, porte le compte, et le
-// statut imprime est `CHANGEMENT`.
+// statut imprime est `ok` (un changement informe, le banc de verite decide).
 func TestTableauAfficheLesChangements(t *testing.T) {
 	var b strings.Builder
 	imprimerTableau(&b, []ligneRapport{
@@ -119,9 +116,9 @@ func TestTableauAfficheLesChangements(t *testing.T) {
 	if !strings.Contains(sortie, "7") {
 		t.Errorf("le compte de changements (7) n'apparait pas dans la ligne :\n%s", sortie)
 	}
-	if !strings.Contains(sortie, statutChangement) {
-		t.Errorf("le statut n'est pas `%s` alors que le temoin porte 7 changements et 0 perte :\n%s",
-			statutChangement, sortie)
+	if !strings.HasSuffix(strings.TrimSpace(sortie), statutOK) {
+		t.Errorf("le statut n'est pas `%s` alors que le temoin ne porte que 7 changements :\n%s",
+			statutOK, sortie)
 	}
 }
 

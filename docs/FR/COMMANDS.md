@@ -655,7 +655,7 @@ priorité CPU basse, verrou solo).
 ```bash
 cd apps/go-api
 go run ./cmd/levelup replay-facts-export --out internal/games/halo_infinite/film/replay/testdata/equivalence \
-  [--title slug] <short8|match_id>...
+  [--title slug] [--oracle] <short8|match_id>...
 ```
 
 Écrit un `<short8>.facts.json` par match — lignes de match, scores des deux camps, variante,
@@ -663,7 +663,11 @@ identités de carte candidates — dans la forme que `replay-build --facts` lit 
 zones, actions d'objectif, VIP/crâne/bombe, socles et points d'apparition sont court-circuités et
 une passe d'équivalence serait vacuante. Lecture seule (`OpenReadForQuery`) ; la commande échoue
 franchement au lieu d'écrire des faits vides — arrêter un serveur qui tient la base partagée en
-écriture.
+écriture. `--oracle` écrit aussi `<short8>.oracle.json` : les vérités officielles que la cuisson ne
+lit jamais (score personnel, tirs, kills par catégorie, présence booléenne, stats d'objectif de
+`match_objective_stats_latest`), l'oracle du banc de vérité (`cmd/replay-verite`). C'est un fichier
+SÉPARÉ, exprès : les entrées de la cuisson restent identiques à l'octet. Un oracle vide est refusé
+comme des faits vides.
 
 ```bash
 go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt), comparaison seule
@@ -981,6 +985,42 @@ Si le parc local est plus ancien que le HEAD, les écarts attendus en `--referen
 GAINS (calques neufs, correctifs documentés) ; toute PERTE est un fait à rapporter, jamais à
 masquer en resserrant le manifeste ou en filtrant le rapport.
 
+
+#### Banc de vérité (`cmd/replay-verite`, 2026-09-30)
+
+Juge un artefact de rejeu APRÈS contre un artefact AVANT du même témoin, contre des ORACLES (les
+vérités officielles du match) et par des COMPTES DE VIOLATIONS (ce qu'aucun match réel ne peut
+contenir), au lieu d'attribuer à la main des centaines de métriques de couverture. Conception :
+`.ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md` ; bibliothèque : `internal/replayverite`.
+Il ne cuit rien, ne décode aucun film et n'ouvre aucune base.
+
+```bash
+cd apps/go-api
+go run ./cmd/replay-verite -avant <avant.json> -apres <apres.json> -faits <short8>.facts.json \
+  [-temoin id] [-registre-avant registre.json]
+go run ./cmd/replay-verite -registre > registre.json   # registre des replis de CETTE révision
+```
+
+Verdict (sortie 1 hors `ok`) : `FAUX` quand un faux positif d'oracle ou une classe de violation
+monte, ou qu'un repli NOUVEAU se déclenche (sauf si le registre d'avant dit son compteur non encore
+branché) ; `MANQUE` quand un faux négatif d'oracle monte ou qu'une preuve interne se dégrade ;
+`ok` sinon. Seul le delta décide : les valeurs absolues s'affichent à titre d'information. Les
+unités appariées SUR l'oracle lui-même (slots statborg `triplet_feuille`, camps rattachés par
+`teamIdentity` `a`/`a0`) sont exclues, jamais comptées en vrais positifs. `-oracle
+<short8>.oracle.json` ajoute O-S3 (score personnel).
+
+**Dans `replay-corpus-gate` (2026-09-30), le verdict EST celui du banc.** Chaque témoin comparé est
+jugé par le banc (référence et HEAD, mêmes faits, même oracle — le gate exporte désormais
+`<short8>.oracle.json` à côté des faits par `replay-facts-export --oracle`). Le statut du témoin est
+`FAUX` / `MANQUE` (banc), puis `PERTE` pour deux filets seulement : une perte `replaydiff` dans un
+bloc qu'aucune mesure du banc ne couvre, ou un calque de premier niveau qui disparaît. Toutes les
+autres différences `replaydiff` (pertes couvertes, changements, gains) restent au rapport à titre
+d'information ; `CHANGEMENT` n'est plus un statut. Le rapport texte imprime une section
+`BANC DE VERITE` par témoin AVANT le détail `replaydiff` ; le JSON porte un objet `verite` par
+témoin. La règle R-1 exige le registre des replis de la base : le gate compile `cmd/replay-verite`
+dans le worktree de base et lance `-registre` (une fois par passage, sans cache : il ne dépend que
+du SHA de la base). Une base antérieure au banc n'a pas cet outil : le registre est alors inconnu et
+tout repli nouveau est `FAUX`, ce que le rapport dit.
 
 ### Frontend (`apps/web`)
 

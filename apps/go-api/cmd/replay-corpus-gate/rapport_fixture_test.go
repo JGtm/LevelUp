@@ -58,8 +58,15 @@ func TestRapportDuGateSurUnePaireReelle(t *testing.T) {
 			"(les colonnes du corpus gate pour ce temoin, moins le seuil `tracks.minPoints`)",
 			l.Gains, l.Pertes, l.Changements, len(l.TelemetrieDetail))
 	}
+	// La fixture n'a que le rapport `replaydiff`, pas les artefacts : aucun banc de verite ne la
+	// juge. Sans banc, aucun bloc n'est couvert (verite.go) : les 13 pertes sont 13 FILETS, et le
+	// temoin sort PERTE. Le verdict du banc sur un artefact reel est tenu par
+	// `TestRapportDuGate_BancAvantLeDetailSurUnArtefactReel` (verite_test.go).
+	if len(l.Filets) != 13 {
+		t.Errorf("%d filet(s), 13 attendus : sans banc, toute perte reste bloquante", len(l.Filets))
+	}
 	if got := l.statut(); got != statutPerte {
-		t.Errorf("statut = %q, %q attendu : 13 pertes priment sur 2 changements", got, statutPerte)
+		t.Errorf("statut = %q, %q attendu : sans banc, les 13 pertes sont des filets", got, statutPerte)
 	}
 
 	var b strings.Builder

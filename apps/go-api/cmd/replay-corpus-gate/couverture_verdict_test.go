@@ -22,6 +22,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/replayverite"
 )
 
 // ligneAbsente : un temoin que le gate n'a pas pu comparer (l'alea).
@@ -33,11 +35,14 @@ func ligneAbsente(id string) ligneRapport {
 	}
 }
 
-// lignePerdante : un temoin compare qui a PERDU — le fait a rapporter.
+// lignePerdante : un temoin compare que le banc de verite juge FAUX — le fait a rapporter
+// (depuis le 2026-09-30, c'est le banc qui rend le verdict, verite.go). Ses trois pertes
+// `replaydiff` restent comptees, a titre d'information.
 func lignePerdante(id string) ligneRapport {
 	return ligneRapport{
 		Temoin: Temoin{ID: id, Famille: "slayer"},
 		Pertes: 3,
+		Verite: comparaisonDe(replayverite.StatutFaux),
 	}
 }
 

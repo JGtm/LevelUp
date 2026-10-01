@@ -74,7 +74,10 @@ const plafondMemoireGate = 4
 // resultatCuisson porte l'artefact produit et le temps qu'il a coute.
 type resultatCuisson struct {
 	ArtifactPath string
-	Duree        time.Duration
+	// FaitsPath : le fichier de faits du film (`<short8>.filmfacts.bin`) que la cuisson depose
+	// sous WorkRoot ; il peut etre ABSENT (puits d'artefact qui refuse, cf. replaybuild).
+	FaitsPath string
+	Duree     time.Duration
 }
 
 // cuissonParams regroupe les chemins d'UNE cuisson — un struct plutot qu'une signature a plus
@@ -128,6 +131,7 @@ func bakeTemoin(ctx context.Context, p cuissonParams, facts replaybuild.FactsFil
 
 	return resultatCuisson{
 		ArtifactPath: title.NewPathResolver(p.WorkRoot).ReplayArtifactPath(p.TitleSlug, facts.MatchID),
+		FaitsPath:    title.NewPathResolver(p.WorkRoot).FilmFactsPath(p.TitleSlug, facts.MatchID),
 		Duree:        time.Since(debut),
 	}, nil
 }

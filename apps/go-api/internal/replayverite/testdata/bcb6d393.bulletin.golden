@@ -1,0 +1,68 @@
+match bcb6d393-8f5e-40e3-806b-e3cb35bfc9b0
+O-K1 kills (statborg) : VP 37 / FP 0 / FN 10 (1 exclus)
+  2533274823110022 : publie 0 / officiel 4
+  2533274876732804 : publie 0 / officiel 4
+  2535460750735339 : publie 0 / officiel 2
+O-K2 morts (statborg) : VP 34 / FP 0 / FN 13 (1 exclus)
+  2533274823110022 : publie 0 / officiel 3
+  2533274876732804 : publie 0 / officiel 3
+  2535418713587213 : publie 0 / officiel 1
+  2535460750735339 : publie 0 / officiel 5
+  bid(59.0) : publie 0 / officiel 1
+O-K3 assistances (statborg) : VP 9 / FP 0 / FN 2 (1 exclus)
+  2533274823110022 : publie 0 / officiel 1
+  2533274876732804 : publie 0 / officiel 1
+O-S1 score par camp : non note (circulaire, 2 exclus)
+O-S2 actions de marque par camp : VP 3 / FP 0 / FN 0
+O-T1 equipes du roster : VP 11 / FP 0 / FN 0
+O-V1 morts par les vies : VP 44 / FP 0 / FN 6
+  2533274811363842 : publie 2 / officiel 3
+  2533274858283686 : publie 5 / officiel 6
+  2535418713587213 : publie 0 / officiel 1
+  2535468064146356 : publie 4 / officiel 5
+  2791963697577117 : publie 4 / officiel 5
+  bid(59.0) : publie 0 / officiel 1
+O-V2 fins de vie (sans identite) : VP 50 / FP 3 / FN 0
+  match : publie 53 / officiel 50
+P-1 paquets fermes au bit pres : 5835
+P-2 preuves contradictoires (image-cle) : 2
+P-4 verdicts de couverture bridge : 2
+P-4 verdicts de couverture grenades : 2
+P-4 verdicts de couverture objectives : 2
+P-4 verdicts de couverture shots : 2
+V-1 saut : 0
+V-2 objet hors emprise : 0
+V-3 action hors vie : 0
+V-4 deux corps : 0
+V-5 acteur absent ou mort : 1
+  objectif kills 2535468064146356 @578 : hors presence
+V-6 trajet loin du vehicule : 0
+V-7 identite discordante : 2
+V-8 mort sans fin de vie : 3
+  2533274811363842 mort @356
+  2533274811363842 mort @692
+  2535469190789936 mort @649
+R-1 repli_ancre_d_image_cle_par_election : 737
+R-1 repli_ancre_sans_vie_delta_ecartee : 313
+R-1 repli_bande_bipede_comblee : 4
+R-1 repli_chaine_evenement_code_non_modelise : 1252
+R-1 repli_chunk_du_pied_par_argmax : 1
+R-1 repli_composants_statborg_arretes : 4
+R-1 repli_deadstate_hors_bande_bipede : 2
+R-1 repli_deadstate_indice_hors_roster : 1
+R-1 repli_enregistrement_statborg_abandonne : 954
+R-1 repli_identite_premier_occupant_du_siege : 29
+R-1 repli_impulsion_fusionnee_dans_le_geste : 4
+R-1 repli_largeur_mot_de_poignee_inferee : 1
+R-1 repli_liaison_par_anticipation : 10
+R-1 repli_libelle_de_source_autres : 11
+R-1 repli_localisation_largeur_libre : 189
+R-1 repli_mort_de_bot_premier_candidat : 1
+R-1 repli_mort_non_revendiquee_la_plus_proche : 1
+R-1 repli_origine_au_sol_lachee_par_fenetre : 99
+R-1 repli_piste_drapeau_sans_pont_ecartee : 4
+R-1 repli_place_du_remplacant_par_chainage_d_equipe : 4
+R-1 repli_plafond_grenade_par_defaut : 1
+R-1 repli_relais_de_bot_abandonne : 3
+R-1 repli_sonde_non_lancee_porte_relachee : 1
+R-1 repli_type_de_chunk_perdu_du_manifeste : 1
