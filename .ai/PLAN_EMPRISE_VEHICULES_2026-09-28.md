@@ -368,6 +368,15 @@ Journal : [2026-10-01] L7.4 joué en avant-plan ; L7.5 (clôture, superviseur) r
     candidat : rouges ; docs `COMMANDS.md` EN et FR. Les lignes au `match_id` composite écrites le
     2026-10-01 dans la base locale sont inertes (aucune lecture ne les atteint : les lectures sont
     bornées aux identifiants du périmètre) et restent en place (table append-only, aucune suppression).
+  Vérification sur données réelles (superviseur, 2026-10-01 ; serveur local arrêté puis relancé,
+  port 8000 vérifié) : recuisson des huit témoins au schéma 71 (`backfill-replay --one <id> --force`,
+  binaire du worktree ; deux films journalisent des vies publiées sans identité, 3 et 8, défaut de
+  nommage du pont connu, hors de ce lot), puis `backfill-vehicle-takes --force --match <id>` par
+  match. Le binaire lit la configuration du dossier principal, qui n'a pas encore
+  `film.vehicle_usage` : `capabilities.toml` du worktree copié le temps de la passe, original remis
+  et vérifié par `cmp`. Résultat : 8 matchs écrits, 0 non mesuré, 0 échec ; 138 prises (24/07 : 3,
+  28, 34, 59 ; 01/09 : 6, 2, 2, 4), 131 frags de classe engin dont 81 appariés (62 %, égal à la
+  mesure de L7.0).
   Ronde 2 (2026-10-01, relecteur Sonnet frais, diff `687c65edf..e02a1ba74`) : 9 conditions
   tiennent (erreurs et détection d'absence du helper identiques, garde-rail sans faux positif,
   tests RV1 à RV6 rouges sans leur correction) ; un seul constat P2, corrigé par le superviseur :
