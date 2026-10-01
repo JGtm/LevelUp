@@ -1113,7 +1113,7 @@ G-web, G-CI. **Taille** : M.
       G-integ complets verts ; G-CI.
 - [x] J11.1 G-corpus complet (`--reference=base`, base = tête de `feat/v75`) : zéro perte non
       expliquée ; changements = union des déclarations J3-J10 (table au §9) ; rapport JSON archivé.
-- [ ] J11.2 `replay-equiv` : références re-figées à la tête (`-update`), digests commités.
+- [x] J11.2 `replay-equiv` : références re-figées à la tête (`-update`), digests commités.
 - [ ] J11.3 Mesures de clôture : GB-1 (vies sans positions par film, avant/après), compte par repli
       sur le corpus (→ liste de retrait soumise à DU-7), assistants `?N` = 0, bots épinglés ;
       carte de fermeture rejouée contre la référence de J4.0.5 (→ état du déclencheur de la
