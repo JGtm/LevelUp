@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // weapon_burst_wave_test.go — LA PRIMITIVE DE SIGNAL de l'instrument de rafale : lire un `.wav`,

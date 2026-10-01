@@ -42,10 +42,6 @@ import (
 // que tout joueur vivant ait un echantillon, assez etroit pour qu'il soit encore la ou il etait.
 const gwPickupWitnessTolUS = 100_000
 
-// gwPickupWitnessSeed fige le tirage des temoins. Un temoin qui change d'une execution a
-// l'autre n'est pas un temoin : c'est un bruit qu'on relance jusqu'a ce qu'il arrange.
-const gwPickupWitnessSeed = 20260817
-
 // gwPickupNearestAt rend la distance du joueur le PLUS PROCHE de `pos` a l'instant `atUS` —
 // le TEMOIN de l'item 2.1. Chaque slot est represente par son echantillon le plus proche dans
 // le temps, a `gwPickupWitnessTolUS` pres ; un slot sans echantillon dans cette fenetre est un

@@ -58,18 +58,6 @@ func decodeFilmPlacementsDir(
 	return decodeFilmPlacements(context.Background(), grammar.NewFilmContext(filmDeDir(dir)), dir, wr)
 }
 
-// decodeFilmPadScansDir : [decodeFilmPadScans] depuis un repertoire.
-func decodeFilmPadScansDir(dir string, wr *profile.Vec3Range, mpp profile.MPPWidths) PadScans {
-	return decodeFilmPadScans(context.Background(), grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
-}
-
-// decodeFilmPadScanDir : [decodeFilmPadScan] depuis un repertoire.
-func decodeFilmPadScanDir(
-	dir string, wr *profile.Vec3Range, mpp profile.MPPWidths, arch padArchetype,
-) WorldObjectScan {
-	return decodeFilmPadScan(context.Background(), grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp, arch)
-}
-
 // decodeFilmVehicleScanDir : [decodeFilmVehicleScan] depuis un repertoire.
 func decodeFilmVehicleScanDir(dir string, wr *profile.Vec3Range, mpp profile.MPPWidths) VehicleScan {
 	return decodeFilmVehicleScan(context.Background(), grammar.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)

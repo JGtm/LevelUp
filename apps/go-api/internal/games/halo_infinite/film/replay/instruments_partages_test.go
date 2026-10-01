@@ -9,7 +9,6 @@ package replay
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -46,13 +45,6 @@ func b3MecheMS(id string) int {
 		return 5100
 	}
 	return b2MecheMS
-}
-
-func gwPadsPart(k, n int) string {
-	if n == 0 {
-		return "-"
-	}
-	return fmt.Sprintf("%d/%d=%.1f%%", k, n, 100*float64(k)/float64(n))
 }
 
 func lastAgeS(ts []uint64, at uint64) float64 {
