@@ -42,7 +42,7 @@ import (
 // [objectives.RoundIdentity.CompletedByElimination] la ferme dans le cas d'unicite, controle
 // par le residu de la feuille, et
 // [objectives.RoundIdentity.CompletedByRoundResidue] des que la manche laisse PLUSIEURS
-// slots muets (lot 6.7-B1). LA MEME CHAINE QUE LE PONT DE LA CUISSON (`replaybuild`, pontParManche) :
+// slots muets (lot 6.7-B1). LA MEME CHAINE QUE LE PONT DE LA CUISSON ([PontParManche]) :
 // deux lecteurs du meme pont doivent dire la meme chose du meme match. `lines` vide rend
 // l'identite inchangee.
 func buildPlayerScores(recs []types.StatRecord, flat map[int]string,

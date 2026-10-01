@@ -18,13 +18,13 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // rasterIsole sert « ou je meurs isole ».
@@ -154,7 +154,8 @@ func matchsAyantUnRayon(rayons map[string]float64) []string {
 // `match_registry.game_variant_name`, donc de ce que l'API a envoye, et des variantes y arrivent
 // avec un blanc de tete ou de queue. Une cle non nettoyee manque la table, et le match sort
 // SILENCIEUSEMENT de la lecture — un defaut de donnee deguise en trou de referentiel, qui envoie
-// chercher la panne au mauvais endroit.
+// chercher la panne au mauvais endroit. La resolution (nettoyage compris) est celle de
+// `mappings.PorteeDuRadar`, la seule du depot (plan Emprise vies, lot V2b).
 func (s *TacticalService) rayonsParMatch(matchs []domain.TacticalMatch) (map[string]float64, int) {
 	out := make(map[string]float64, len(matchs))
 	sans := 0
@@ -162,12 +163,12 @@ func (s *TacticalService) rayonsParMatch(matchs []domain.TacticalMatch) (map[str
 		if !m.Mesure {
 			continue
 		}
-		metres, ok := s.radar[strings.TrimSpace(m.GameVariantName)]
-		if !ok || metres <= 0 {
+		metres, ok := mappings.PorteeDuRadar(s.radar, m.GameVariantName)
+		if !ok {
 			sans++
 			continue
 		}
-		out[m.MatchID] = float64(metres)
+		out[m.MatchID] = metres
 	}
 	return out, sans
 }

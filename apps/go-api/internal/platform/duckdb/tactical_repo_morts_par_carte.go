@@ -19,6 +19,15 @@ package duckdb
 //	une seule colonne   la position de la victime, pas les quatre coordonnees ;
 //	le perimetre        la liste blanche de match_id de la barre L2, comme partout ailleurs.
 //
+// # LA LISTE EST POSEE SOUS LES DEUX FENETRES (lot B du plan perf, 2026-09-27, ADR 0036 I2)
+//
+// Jusque-la, la liste blanche ne se posait que sur `match_registry` : les fenetres `_latest`
+// des positions et du journal se calculaient sur la table ENTIERE (0,23 a 0,39 s sur la copie
+// compactee, quel que soit le perimetre, 30 matchs compris). La liste est desormais liee en UNE
+// constante sur `kp.match_id` ET sur `e.match_id` (clauseListeMatchs) — un filtre ne traverse pas
+// la jointure. Sans liste blanche (aucun appelant de production), la liste liee est celle des
+// matchs du joueur (QMatchsDuJoueurTpl) : la jointure du participant la retenait deja.
+//
 // # MEMES GARDES D'ATTRIBUTION QUE `KillPositions`
 //
 // `e.publishable` (une passe non publiable est juste en agregat et fausse ligne a ligne) et
@@ -32,6 +41,7 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 
@@ -39,8 +49,8 @@ import (
 )
 
 // QTacticalMortsParCarte : %s = la table des positions au coup fatal
-// (`positionsAtKill`, source unique du nom). Le token Campagne TERMINE le WHERE de la
-// sous-requete, comme partout cote lecture.
+// (`positionsAtKill`, source unique du nom), puis le predicat de liste de chacune des deux vues
+// (positions, journal ; clauseListeMatchs). Le token Campagne TERMINE le WHERE de la sous-requete, comme partout cote lecture.
 const QTacticalMortsParCarte = `
 SELECT map_id, match_id, victim_x, victim_y FROM (
   SELECT mr.map_id                     AS map_id,
@@ -56,6 +66,7 @@ SELECT map_id, match_id, victim_x, victim_y FROM (
   JOIN match_registry mr ON mr.match_id = kp.match_id
   JOIN match_participants mp ON mp.match_id = mr.match_id AND mp.xuid = ?
   WHERE e.publishable
+    AND %s AND %s
     AND kp.victim_x IS NOT NULL AND kp.victim_y IS NOT NULL
     AND mr.map_id IS NOT NULL AND mr.map_id <> ''` + clausePvEExclu + campaignExclusionToken
 
@@ -77,21 +88,20 @@ func (r *TacticalRepo) MortsParCarte(ctx context.Context, q domain.TacticalQuery
 	}
 	defer release()
 
-	perim, perimArgs := clausePerimetre(q)
-	// L'ORDRE DES ARGUMENTS SUIT L'ORDRE TEXTUEL DES `?` : le joueur (jointure du
-	// participant), le perimetre, puis LA VICTIME — filtree APRES le regroupement.
-	args := append([]any{q.PlayerXUID}, perimArgs...)
-	args = append(args, q.PlayerXUID)
-	query := resolveCampaignExclusion(
-		fmt.Sprintf(QTacticalMortsParCarte, positionsAtKill), r.pdb.TitleSlug, "mr") + perim +
-		"\n  GROUP BY mr.map_id, kp.match_id, kp.killer_xuid, kp.time_ms\n" +
-		"  HAVING count(*) = 1\n) WHERE victim_xuid = ?"
-
+	out := make(map[string][]domain.PositionSample)
+	matchs, err := r.matchsDesFenetres(ctx, db, q)
+	if err != nil {
+		return nil, r.degrader(ctx, "MortsParCarte", err)
+	}
+	if len(matchs) == 0 {
+		// Liste blanche vide (aucun match, jamais tous) ou joueur sans match : rien a lire.
+		return out, nil
+	}
+	query, args := r.mortsParCarteSQL(q, matchs)
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, r.degrader(ctx, "MortsParCarte", err)
 	}
-	out := make(map[string][]domain.PositionSample)
 	err = scanRows(ctx, rows, "TacticalRepo.MortsParCarte", func(sc rowScanner) error {
 		var mapID string
 		var p domain.PositionSample
@@ -102,4 +112,40 @@ func (r *TacticalRepo) MortsParCarte(ctx context.Context, q domain.TacticalQuery
 		return nil
 	})
 	return out, err
+}
+
+// matchsDesFenetres : la liste liee sous les deux fenetres — la liste blanche de la page quand
+// elle est posee, sinon les matchs du joueur (QMatchsDuJoueurTpl, exclusion Campagne comprise).
+func (r *TacticalRepo) matchsDesFenetres(ctx context.Context, db *sql.DB, q domain.TacticalQuery) ([]string, error) {
+	if q.Matchs.Restreint() {
+		return q.Matchs.IDs(), nil
+	}
+	return matchsDeLHistorique(ctx, db, historique{xuid: q.PlayerXUID, titre: r.pdb.TitleSlug})
+}
+
+// mortsParCarteSQL assemble la requete et ses arguments, sur une liste `matchs` NON VIDE.
+//
+// LA LISTE EST POSEE SUR LES DEUX VUES (clauseListeMatchs, un parametre chacune) ET NULLE PART
+// AILLEURS : le registre est joint sur `kp.match_id`, qu'elle borne deja ; la reposer sur
+// `mr.match_id` (clausePerimetre) lierait des milliers de parametres de plus pour rien. Du
+// perimetre, seule la composition (coequipiers) s'ajoute donc ici.
+//
+// L'ORDRE DES ARGUMENTS SUIT L'ORDRE TEXTUEL DES `?` : le joueur (jointure du participant), la
+// liste deux fois (positions, journal), la composition, puis LA VICTIME — filtree APRES le
+// regroupement.
+func (r *TacticalRepo) mortsParCarteSQL(q domain.TacticalQuery, matchs []string) (string, []any) {
+	sansListe := q
+	sansListe.Matchs = domain.ListeBlancheMatchs{}
+	perim, perimArgs := clausePerimetre(sansListe)
+	listePos, argPos := clauseListeMatchs("kp.match_id", matchs)
+	listeJournal, argJournal := clauseListeMatchs("e.match_id", matchs)
+	args := make([]any, 0, 4+len(perimArgs))
+	args = append(args, q.PlayerXUID, argPos, argJournal)
+	args = append(args, perimArgs...)
+	args = append(args, q.PlayerXUID)
+	query := resolveCampaignExclusion(
+		fmt.Sprintf(QTacticalMortsParCarte, positionsAtKill, listePos, listeJournal), r.pdb.TitleSlug, "mr") + perim +
+		"\n  GROUP BY mr.map_id, kp.match_id, kp.killer_xuid, kp.time_ms\n" +
+		"  HAVING count(*) = 1\n) WHERE victim_xuid = ?"
+	return query, args
 }

@@ -31,7 +31,7 @@ package main
 //
 // Usage :
 //
-//	levelup replay-facts-export --out <dossier> [--title halo_infinite] <short8|match_id>...
+//	levelup replay-facts-export --out <dossier> [--title halo_infinite] [--oracle] <short8|match_id>...
 
 import (
 	"context"
@@ -54,17 +54,21 @@ import (
 // ignore : l'identite complete du match et ses cartes candidates. Elle vit dans `replaybuild`
 // parce que c'est LUI qui la relit (harnais d'equivalence) : une copie ici derivait en silence.
 
-// runReplayFactsExport ecrit un <short8>.facts.json par match demande.
+// runReplayFactsExport ecrit un <short8>.facts.json par match demande — et, avec `--oracle`, un
+// <short8>.oracle.json a cote (banc de verite, decision D-2 : les verites officielles que la
+// cuisson ne lit pas, dans un fichier SEPARE pour que les entrees de cuisson restent identiques a
+// l octet).
 func runReplayFactsExport(cfg *config.AppConfig, args []string) error {
 	fs := flag.NewFlagSet("replay-facts-export", flag.ContinueOnError)
 	out := fs.String("out", "", "dossier de sortie des <short8>.facts.json (obligatoire)")
 	titleSlug := fs.String("title", titlePkg.DefaultSlug, "slug du titre")
+	oracle := fs.Bool("oracle", false, "ecrire aussi <short8>.oracle.json (banc de verite)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	ids := fs.Args()
 	if *out == "" || len(ids) == 0 {
-		return errors.New("usage : levelup replay-facts-export --out <dossier> [--title slug] <short8|match_id> [autres ids]")
+		return errors.New("usage : levelup replay-facts-export --out <dossier> [--title slug] [--oracle] <short8|match_id> [autres ids]")
 	}
 	ctx := context.Background()
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
@@ -74,17 +78,20 @@ func runReplayFactsExport(cfg *config.AppConfig, args []string) error {
 	}
 	db, release, err := duckdb.OpenReadForQuery(pr.SharedDBPath(*titleSlug))
 	if err != nil {
-		// L'INSTRUCTION PROPRE A L'EXPORT, et elle seule : la sentinelle dit déjà « base tenue,
-		// reessayer » ; ici on peut faire mieux que réessayer, on peut arrêter le serveur.
+		// L INSTRUCTION PROPRE A L EXPORT, et elle seule : la sentinelle dit deja « base tenue,
+		// reessayer » ; ici on peut faire mieux que reessayer, on peut arreter le serveur.
 		if errors.Is(err, duckdb.ErrBaseTenueEnEcriture) {
-			return fmt.Errorf("open shared RO : %w (l'arreter le temps de l'export)", err)
+			return fmt.Errorf("open shared RO : %w (l arreter le temps de l export)", err)
 		}
 		return fmt.Errorf("open shared RO : %w", err)
 	}
 	defer release()
-	var repo port.ReplayFactsRepo = duckdb.NewReplayFactsRepo(db)
 	if err := os.MkdirAll(*out, 0o750); err != nil {
 		return fmt.Errorf("dossier de sortie : %w", err)
+	}
+	exp := exportFaits{out: *out, faits: duckdb.NewReplayFactsRepo(db)}
+	if *oracle {
+		exp.oracle = duckdb.NewReplayOracleRepo(db)
 	}
 	for _, id := range ids {
 		short := titlePkg.FilmShortMatchID(id)
@@ -92,24 +99,63 @@ func runReplayFactsExport(cfg *config.AppConfig, args []string) error {
 		if !ok {
 			return fmt.Errorf("%s : match absent du registre", id)
 		}
-		facts, err := repo.FactsForMatch(ctx, entry.matchID)
-		if err != nil {
-			return fmt.Errorf("%s : faits illisibles : %w", short, err)
+		if err := exp.exporter(ctx, short, entry); err != nil {
+			return err
 		}
-		if facts.Empty() {
-			return fmt.Errorf("%s : faits VIDES pour un match present au registre — export refuse", short)
-		}
-		blob, err := json.MarshalIndent(
-			replaybuild.FactsFile{MatchFacts: facts, MatchID: entry.matchID, MapNames: entry.mapNames}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("%s : serialisation : %w", short, err)
-		}
-		path := filepath.Join(*out, short+".facts.json")
-		if err := os.WriteFile(path, append(blob, '\n'), 0o600); err != nil {
-			return fmt.Errorf("%s : ecriture : %w", short, err)
-		}
-		fmt.Printf("  %s : %d joueur(s), variante %q, cartes %v -> %s\n",
-			short, len(facts.Players), facts.GameVariantName, entry.mapNames, path)
+	}
+	return nil
+}
+
+// exportFaits porte les deux lecteurs d un export et son dossier ; `oracle` nil = pas d oracle.
+type exportFaits struct {
+	out    string
+	faits  port.ReplayFactsRepo
+	oracle port.ReplayOracleRepo
+}
+
+// exporter ecrit les faits d UN match, puis son oracle si demande.
+func (e exportFaits) exporter(ctx context.Context, short string, entry registreEntry) error {
+	facts, err := e.faits.FactsForMatch(ctx, entry.matchID)
+	if err != nil {
+		return fmt.Errorf("%s : faits illisibles : %w", short, err)
+	}
+	if facts.Empty() {
+		return fmt.Errorf("%s : faits VIDES pour un match present au registre — export refuse", short)
+	}
+	path := filepath.Join(e.out, short+".facts.json")
+	if err := ecrireJSON(path, replaybuild.FactsFile{MatchFacts: facts, MatchID: entry.matchID, MapNames: entry.mapNames}); err != nil {
+		return fmt.Errorf("%s : %w", short, err)
+	}
+	fmt.Printf("  %s : %d joueur(s), variante %q, cartes %v -> %s\n",
+		short, len(facts.Players), facts.GameVariantName, entry.mapNames, path)
+	if e.oracle == nil {
+		return nil
+	}
+	orc, err := e.oracle.OracleForMatch(ctx, entry.matchID)
+	if err != nil {
+		return fmt.Errorf("%s : oracle illisible : %w", short, err)
+	}
+	// UN ORACLE VIDE EST REFUSE, pour la meme raison que des faits vides : un banc qui jugerait
+	// contre un oracle vide ne verrait aucun faux, et le dirait « ok ».
+	if orc.Empty() {
+		return fmt.Errorf("%s : oracle VIDE pour un match present au registre — export refuse", short)
+	}
+	opath := filepath.Join(e.out, short+".oracle.json")
+	if err := ecrireJSON(opath, orc); err != nil {
+		return fmt.Errorf("%s : %w", short, err)
+	}
+	fmt.Printf("  %s : oracle de %d joueur(s) -> %s\n", short, len(orc.Players), opath)
+	return nil
+}
+
+// ecrireJSON serialise `v` indente, suivi d un saut de ligne.
+func ecrireJSON(path string, v any) error {
+	blob, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Errorf("serialisation : %w", err)
+	}
+	if err := os.WriteFile(path, append(blob, 0x0a), 0o600); err != nil {
+		return fmt.Errorf("ecriture : %w", err)
 	}
 	return nil
 }

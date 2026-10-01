@@ -7,7 +7,8 @@
 // à chaque boot), fatal sur toute DB FRAÎCHE ou reconstruite.
 //
 // CE QUE FAIT CE PACKAGE. Il photographie le schéma AVANT et APRÈS le soin et journalise
-// en WARN (`schema_drift_healed`) chaque objet RÉELLEMENT créé — jamais les no-ops. Une
+// en WARN (`schema_drift_healed`) chaque objet RÉELLEMENT créé, et chaque index RÉELLEMENT
+// retiré (lot B-C5, 2026-09-27) — jamais les no-ops. Une
 // player DB à jour n'émet donc RIEN ; une DB en retard sur la chaîne de migrations se
 // signale bruyamment à chaque ouverture, avec l'objet exact qui manquait.
 //
@@ -80,7 +81,8 @@ func collect(ctx context.Context, db *sql.DB, query string, out map[Object]struc
 }
 
 // Report compare l'état APRÈS le soin à l'état `before` et journalise en WARN
-// `schema_drift_healed` chaque objet réellement créé. No-op si `before` est nil
+// `schema_drift_healed` chaque objet réellement créé (action=created) et chaque index
+// réellement retiré (action=dropped). No-op si `before` est nil
 // (introspection indisponible, déjà journalisée) ou si rien n'a changé — cas NOMINAL
 // d'une DB à jour. `healedBy` nomme le soin responsable (ex. "sync.EnsurePlayerSchema").
 //
@@ -103,14 +105,40 @@ func Report(ctx context.Context, db *sql.DB, before map[Object]struct{}, healedB
 		if obj.Kind == "column" && !tableExistedBefore(before, obj.Table) {
 			continue // table entièrement créée : déjà signalée comme telle
 		}
-		slog.WarnContext(ctx, "schema_drift_healed",
-			"object_kind", obj.Kind,
-			"table", obj.Table,
-			"object", obj.Name,
-			"db", dbPath,
-			"authority", "migrations",
-			"healed_by", healedBy)
+		warnHealed(ctx, obj, "created", dbPath, healedBy)
 	}
+	reportRetiredIndexes(ctx, before, after, dbPath, healedBy)
+}
+
+// reportRetiredIndexes journalise chaque index présent AVANT le soin et absent APRÈS : le
+// soin retire les index ART retirés (MSR, PSA — convergence D-4 du plan backlog 2026-09-26)
+// qu'un binaire plus ancien aurait recréés. Ce retrait est une action réelle : il se
+// journalise comme une création (lot B-C5), jamais sur une base à jour. Seuls les INDEX
+// sont comparés dans ce sens : c'est la suppression que porte le DDL de soin (DROP INDEX IF
+// EXISTS). Une conversion append-only d'une table legacy, qui la reconstruit, y apparaît
+// aussi, à raison : c'est une action réelle.
+func reportRetiredIndexes(ctx context.Context, before, after map[Object]struct{}, dbPath, healedBy string) {
+	for obj := range before {
+		if obj.Kind != "index" {
+			continue
+		}
+		if _, stillThere := after[obj]; stillThere {
+			continue
+		}
+		warnHealed(ctx, obj, "dropped", dbPath, healedBy)
+	}
+}
+
+// warnHealed émet le WARN schema_drift_healed d'un objet créé ou retiré par le soin.
+func warnHealed(ctx context.Context, obj Object, action, dbPath, healedBy string) {
+	slog.WarnContext(ctx, "schema_drift_healed",
+		"action", action,
+		"object_kind", obj.Kind,
+		"table", obj.Table,
+		"object", obj.Name,
+		"db", dbPath,
+		"authority", "migrations",
+		"healed_by", healedBy)
 }
 
 // tableExistedBefore indique si la table portait déjà des objets avant le soin.

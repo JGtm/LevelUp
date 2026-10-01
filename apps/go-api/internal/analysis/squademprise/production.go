@@ -24,6 +24,9 @@ func production(s *soiree) []domain.SquadEmpriseProduction {
 	if p, ok := productionArmes(s); ok {
 		out = append(out, p)
 	}
+	if p, ok := productionVehicules(s); ok {
+		out = append(out, p)
+	}
 	return out
 }
 

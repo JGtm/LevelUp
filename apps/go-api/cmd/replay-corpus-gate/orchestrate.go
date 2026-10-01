@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/replayverite"
 )
 
 // errAbsentDuParc marque un temoin dont l'artefact de reference (mode parc) n'existe pas au
@@ -32,6 +33,16 @@ type temoinContexte struct {
 	// MemGiB : le plafond souple transmis a `replay-build`, LE MEME des deux cotes (D6).
 	MemGiB    int
 	Reference string // "base" (defaut) ou "parc"
+	// Cache de la base (basecache.go) : BaseSHA et BaseGoVersion sont resolus par
+	// preparerReferenceBase ; CacheBase.Racine vide = cache desactive ; SansCacheBase force la
+	// recuisson (et rafraichit l'entree).
+	BaseSHA, BaseGoVersion string
+	CacheBase              baseCache
+	SansCacheBase          bool
+	// RegistreBase : le registre des replis de la BASE, produit par l'outil du banc compile a la
+	// base (verite_registre.go) ; nil = inconnu (mode parc, ou base sans l'outil) — tout repli
+	// nouveau est alors un FAUX.
+	RegistreBase replayverite.RegistreReplis
 }
 
 // traiterTemoin cuit et compare UN temoin ; ne rend JAMAIS d'erreur — un temoin absent ou en
@@ -84,7 +95,9 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 	}
 	base.Duree = cuissonHead.Duree
 
-	refPath, err := tc.resoudreReference(ctx, facts)
+	ref, err := tc.resoudreReference(ctx, t, facts)
+	base.BaseDuCache, base.BaseArtefactEnCache, base.BaseFaitsEnCache = ref.DuCache, ref.ArtefactEnCache, ref.FaitsEnCache
+	refPath := ref.Artefact
 	if err != nil {
 		if errors.Is(err, errAbsentDuParc) {
 			slog.WarnContext(ctx, "replay-corpus-gate: aucun artefact de reference — temoin ignore",
@@ -101,26 +114,56 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 		base.Erreur = fmt.Errorf("comparaison : %w", err)
 		return base
 	}
+	// LE BANC AVANT LE BILAN : les filets de `remplirBilan` dependent des mesures que le banc a
+	// reellement notees (verite.go).
+	base.Verite, err = juger(jugement{
+		Reference: refPath, HEAD: cuissonHead.ArtifactPath, Faits: facts.MatchFacts,
+		Oracle: lireOracleDuTemoin(ctx, tc.FactsDir, t.ID), RegistreAvant: tc.RegistreBase,
+	})
+	if err != nil {
+		base.Erreur = err
+		return base
+	}
 	base.remplirBilan(rap)
 	return base
 }
 
 // resoudreReference rend le chemin de l'artefact de REFERENCE — celui deja cuit dans le parc
-// (mode parc, lecture seule) ou une cuisson fraiche a la base (mode base).
-func (tc temoinContexte) resoudreReference(ctx context.Context, facts replaybuild.FactsFile) (string, error) {
+// (mode parc, lecture seule) ou la base (mode base : relue du cache si sa cle est capturable et
+// valide, sinon cuite fraiche puis rangee, cf. basecache.go). Le booleen dit si la base vient du
+// cache.
+func (tc temoinContexte) resoudreReference(ctx context.Context, t Temoin, facts replaybuild.FactsFile) (baseResolue, error) {
 	if tc.Reference == referenceParc {
 		refPath := referenceArtifactPath(tc.ParcRoot, tc.TitleSlug, facts.MatchID)
 		if _, err := os.Stat(refPath); err != nil {
-			return "", fmt.Errorf("%w : %s (%v)", errAbsentDuParc, refPath, err)
+			return baseResolue{}, fmt.Errorf("%w : %s (%v)", errAbsentDuParc, refPath, err)
 		}
-		return refPath, nil
+		return baseResolue{Artefact: refPath}, nil
 	}
-	cuissonBase, err := bakeTemoin(ctx, cuissonParams{
-		BinPath: tc.BinBase, WorkRoot: tc.WorkRootBase, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
-		MemGiB: tc.MemGiB,
-	}, facts)
+	cuire := func() (string, string, error) {
+		cuissonBase, err := bakeTemoin(ctx, cuissonParams{
+			BinPath: tc.BinBase, WorkRoot: tc.WorkRootBase, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
+			MemGiB: tc.MemGiB,
+		}, facts)
+		if err != nil {
+			return "", "", err
+		}
+		return cuissonBase.ArtifactPath, cuissonBase.FaitsPath, nil
+	}
+	if !tc.CacheBase.actif() {
+		return cuireSansCache(cuire)
+	}
+	cle, err := tc.cleCacheBase(t, facts)
 	if err != nil {
-		return "", err
+		slog.WarnContext(ctx, "replay-corpus-gate: cle de cache de la base non capturable — "+
+			"cuisson sans cache", "temoin", t.ID, "err", err)
+		return cuireSansCache(cuire)
 	}
-	return cuissonBase.ArtifactPath, nil
+	return resoudreAvecCache(ctx, tc.CacheBase, cle, tc.SansCacheBase, cuire)
+}
+
+// cuireSansCache cuit la base sans passer par le cache (cache desactive ou cle non capturable).
+func cuireSansCache(cuire cuissonBaseFn) (baseResolue, error) {
+	artefact, _, err := cuire()
+	return baseResolue{Artefact: artefact}, err
 }

@@ -5,9 +5,12 @@ package killcollector
 // Extrait de positions.go (lot 5.1, revue de vague 4, constat P2) : le fichier frolait le
 // plafond de 500 lignes du depot au moment d'ajouter `Bots`/`Participants` a cette fonction.
 // Meme fichier LOGIQUE (la couture reste appelee par `buildPositionRows`), autre fichier
-// PHYSIQUE — aucun changement de comportement.
+// PHYSIQUE — aucun changement de comportement. `rosterUint64` et `parseXUID` l y ont rejointe a la
+// fusion J11.6 (2026-10-01, meme raison : positions.go passait les 500 lignes).
 
 import (
+	"strconv"
+
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -60,4 +63,34 @@ type lecturesDuFilm struct {
 	creations []decfilm.BipedCreation
 	deaths    []types.Death
 	idx       types.PlayerIndexTable
+	// contexte : le contexte de film que l etage du pont a ouvert sous la carte du match. La lecture
+	// des porteurs au sync (plan Emprise vies, lot V2) y pose le profil calibre puis les largeurs,
+	// sans rouvrir le film.
+	contexte *decfilm.FilmContext
+}
+
+// rosterUint64 traduit les xuids texte de MatchIdentities pour ScanFilmPlayerIndices, qui lit un
+// roster numerique (le film ne porte que des motifs de bits, jamais une chaine).
+func rosterUint64(xuids []string) []uint64 {
+	out := make([]uint64, 0, len(xuids))
+	for _, s := range xuids {
+		if v, ok := parseXUID(s); ok {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// parseXUID : un xuid est une suite de chiffres decimale, et rien d autre — meme regle que
+// identities.go (estDecimal), reappliquee ici parce que cette lecture est numerique alors que
+// MatchIdentities.Resoudre rend des chaines.
+func parseXUID(s string) (uint64, bool) {
+	if s == "" {
+		return 0, false
+	}
+	v, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
 }

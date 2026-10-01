@@ -1109,12 +1109,12 @@ G-web, G-CI. **Taille** : M.
 
 ### J11 — Vague unique : gates de corpus, re-décodage, backfills, fusion (GO opérationnel)
 
-- [ ] J11.0 J3 à J10 clos (J6 statué) ; `git merge feat/v75` dans la branche ; G-film, G-arch,
+- [x] J11.0 J3 à J10 clos (J6 statué) ; `git merge feat/v75` dans la branche ; G-film, G-arch,
       G-integ complets verts ; G-CI.
-- [ ] J11.1 G-corpus complet (`--reference=base`, base = tête de `feat/v75`) : zéro perte non
+- [x] J11.1 G-corpus complet (`--reference=base`, base = tête de `feat/v75`) : zéro perte non
       expliquée ; changements = union des déclarations J3-J10 (table au §9) ; rapport JSON archivé.
-- [ ] J11.2 `replay-equiv` : références re-figées à la tête (`-update`), digests commités.
-- [ ] J11.3 Mesures de clôture : GB-1 (vies sans positions par film, avant/après), compte par repli
+- [x] J11.2 `replay-equiv` : références re-figées à la tête (`-update`), digests commités.
+- [x] J11.3 Mesures de clôture : GB-1 (vies sans positions par film, avant/après), compte par repli
       sur le corpus (→ liste de retrait soumise à DU-7), assistants `?N` = 0, bots épinglés ;
       carte de fermeture rejouée contre la référence de J4.0.5 (→ état du déclencheur de la
       représentation intermédiaire, rapporté à l'utilisateur).
@@ -1643,3 +1643,56 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   même filtre daté pour les huit canaux delta, l'arme tenue et la récupération d'équipement
   (lectures antérieures au corps encore acceptées), et `TestKillSourceFaitsDIsolementFilmReel`
   rouge depuis avant `6676dcabd` ; gates complets de l'arbre fusionné.
+- 2026-09-30 : **R2-bis** fusionné (`8cd560673`, travail d'un agent coupé par la limite de quota,
+  relu et fini par un agent Sonnet) : filtre de génération daté pour les huit canaux delta, la
+  récupération d'équipement et la visée seule ; test d'isolement lisant son enum dans `persist`.
+  CI de `aa379da7f` VERTE. **Méthode de J11 changée à la demande de l'utilisateur** (« on ne peut
+  pas recommencer à chaque fois des analyses qui durent des heures ») : (1) comparaison au dernier
+  état ACCEPTÉ, par paliers, au lieu de `feat/v75` ; (2) critères décisifs = lecture (fermeture) et
+  données publiées, les compteurs de couverture en information ; (3) artefacts de base en cache
+  (`cmd/replay-corpus-gate/basecache*.go`) ; (4) **banc de vérité** (`internal/replayverite`,
+  conception `.ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md`) : scores contre des
+  oracles (K/D/A et score personnel officiels, hors cas circulaires ; fermeture ; huit classes de
+  vraisemblance), verdict FAUX / MANQUE / ok avant/après, qui devient le verdict du gate (D-5,
+  sans drapeau). Le serveur dev peut être arrêté et relancé à volonté (utilisateur, 2026-09-30).
+  **Amendement d'ordre** (utilisateur, 2026-09-30) : J12 démarre en parallèle de J11 sur des
+  branches à part (J12.2, J12.4, J12.5, J12.6, J12.7 + J12.7 bis — 18 gardes remises hors du tag
+  `research` —, J12.8, résidus, puis J12.3) ; la fusion de J12 reste après celle de J11. GO de
+  l'utilisateur pour la vague J11.4 ; J11.5 (vérification visuelle) APRÈS la fusion. Passage
+  réduit `6676dcabd` → `8cd560673` : 4 témoins identiques, pertes des 15 autres rapprochées des
+  rapports R1, R2, R2-bis, R3 ; restent à attribuer une baisse de lecture sur `4f77afc1`
+  (tir continu : 69 paquets fermés et 1 312 entrées en moins, 199 records d'états de mouvement),
+  `60ae07c4` (2 paquets fermés) et `d9781168` (14 entrées) — essai du banc sur ces trois témoins
+  contre `e87a275de` (avant R2-bis).
+- 2026-10-01 : **R3-bis** fusionné (`380a9ed88`) : la baisse de `4f77afc1` sous la référence venait
+  de J6 (deux sites restés au portage : unit-actor-state `FUN_14058c058`, tacmap-waypointstate
+  ti=34 i7), masquée par des gains de J6 que R3 a rendus ; deux exceptions datées de plus
+  (quatorze au total) ; carte de fermeture finale ≥ référence J4.0.5 sur les 20 films
+  (`4f77afc1` 22 910 / 408 162 contre 22 909 / 408 151). Décision superviseur : l'exception
+  displayasset est GARDÉE (la lecture du jeu ferait +66 paquets sur `4f77afc1` mais −10 de la
+  référence sur `51ebbc0f`). **Banc de vérité** fusionné (`9c1288448`) : il rend le verdict du
+  gate. **Gate d'acceptation J11.1** (base `6676dcabd`, banc, 19 témoins, serveur arrêté) :
+  8 ok ; « MANQUE » P-1 sur 9 témoins = gains de J6 rendus par les exceptions, TOUS au niveau
+  ou au-dessus de la référence d'avant le plan (accepté) ; « FAUX » `a349fea8` V-2 5 → 1 076 =
+  artefact de l'emprise (calculée sur les pistes publiées, débarrassées par R2 du point aberrant à
+  −981 m) : aucun objet publié ne change (découverte : le banc doit lire l'emprise de la carte) ;
+  « FAUX » `e5adf7b2` `repli_deadstate_categorie_hors_enum` 0 → 1 = glissement de classement de
+  deux enregistrements de bruit (slots hors joueurs, aucun kill associé ; total des refus
+  inchangé à 26, sortie killsource identique à l'octet), né de `562e060ba` (R3) : accepté.
+  **J11.1 TENU.** Gains mesurés par le banc : identités discordantes 146 → 31 (`084a804d`),
+  98 → 32 (`4f77afc1`), deux corps 3 → 1. **J12** sur sa branche : J12.1 (188 tris convertis,
+  `go fix`), J12.3 (contexte, diagnostics typés), J12.2/4/5/6/7/7 bis/8 et résidus faits ;
+  preuve G-equiv avant/après J12 sur 20 films : document publié IDENTIQUE à l'octet ; quatre
+  digests d'étape changent sans effet publié (champ de diagnostics : killsource, drapeau, crâne ;
+  départage `compareSample` des échantillons au repos : socles, 2 points sur 86 818).
+- 2026-10-01 : **J11.2** (`4c3fd0dbb`) : références d'équivalence re-figées à la tête, 20/20
+  identiques au contrôle. **J11.3** (`e297192b5`, `.ai/V7.5/film_re/MESURES_CLOTURE_J11_2026-10-01.md`) :
+  GB-1 tenu (vies sans position 123/330/77/74 → 0/0/0/8 ; durées 972 → 1 056 s, 826 → 1 289 s,
+  933 → 948 s) ; carte de fermeture ≥ référence sur les 18 films ; **déclencheur de la
+  représentation intermédiaire NON atteint** (meilleur build HI_1_13_0 : 80,2 % des records utiles
+  fermés, contre 95 % requis ; builds anciens 0 à 30 %) ; 119 replis au registre, 53 actifs sur le
+  corpus, 66 à compte nul → liste de retrait publiée pour DU-7 (hors plan, décision au jalon
+  suivant) ; assistants `?N` = 0 ; 2 bots non épinglés signalés. **Ordre de fin de J11 modifié**
+  (superviseur, à confirmer par l'utilisateur) : fusion J11.6 dans `feat/v75` AVANT la vague J11.4,
+  parce que le serveur dev du checkout principal tourne le code de `feat/v75` et redécoderait à
+  l'ancienne ce que la vague aura recuit.

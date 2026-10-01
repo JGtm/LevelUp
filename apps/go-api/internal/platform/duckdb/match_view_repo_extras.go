@@ -1,13 +1,13 @@
 // Package duckdb — match_view_repo_extras.go : sections secondaires de la
-// vue Match (events highlight, KV pairs, encounters, encounter stats, media,
+// vue Match (kill sources, kill assists, KV pairs, encounter stats, media,
 // expected stats, history for avg, player assists model). Découpé de
-// match_view_repo.go (god-file split, refactor 2026-05-27).
+// match_view_repo.go (god-file split, refactor 2026-05-27) ; events highlight et rencontres
+// (lectures nommées) dans match_view_repo_noms.go depuis le lot A (2026-09-26).
 package duckdb
 
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
@@ -17,61 +17,8 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 )
-
-// medalNameFromRawJSON extrait le nom anglais de la médaille du raw_json d'un
-// event `medal` de highlight_events ({"medal_name": "Odin's Raven", ...}).
-// Nil si le JSON est vide, illisible ou sans champ medal_name non vide — l'event
-// reste servi, simplement anonyme (le service ne résout alors rien).
-func medalNameFromRawJSON(raw string) *string {
-	if strings.TrimSpace(raw) == "" {
-		return nil
-	}
-	var payload struct {
-		MedalName string `json:"medal_name"`
-	}
-	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-		return nil
-	}
-	name := strings.TrimSpace(payload.MedalName)
-	if name == "" {
-		return nil
-	}
-	return &name
-}
-
-// GetMatchEvents retourne les events highlight du match (Q21).
-// Exécutée sur SharedReader (ADR 0016, shared-only).
-func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]domain.EventRaw, error) {
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	sharedDB, release, err := r.sharedRead().Get(ctx)
-	if err != nil {
-		return nil, nil
-	}
-	defer release()
-	rows, err := sharedDB.QueryContext(ctx, Q21MatchEventsWithXUID, matchID)
-	if err != nil {
-		// La table peut être absente sur certains matchs → retourner vide
-		return nil, nil
-	}
-	defer rows.Close()
-
-	var results []domain.EventRaw
-	for rows.Next() {
-		var e domain.EventRaw
-		var medalRaw sql.NullString
-		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID, &e.Gamertag, &medalRaw); err != nil {
-			return nil, fmt.Errorf("MatchViewRepo.GetMatchEvents scan: %w", err)
-		}
-		if medalRaw.Valid {
-			e.MedalName = medalNameFromRawJSON(medalRaw.String)
-		}
-		results = append(results, e)
-	}
-	return results, rows.Err()
-}
 
 // GetMatchKillSources retourne la source de dégât de chaque mort du match (Q21b).
 // Exécutée sur SharedReader (ADR 0016, shared-only).
@@ -237,43 +184,6 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 	return results, rows.Err()
 }
 
-// GetMatchEncounters retourne l'historique de rencontres avec les participants (Q23).
-// Exécutée sur SharedReader (ADR 0016) — Q23 lit match_participants +
-// v_gamertag_lookup (shared-only).
-func (r *MatchViewRepo) GetMatchEncounters(ctx context.Context, matchID, myXUID string) ([]domain.EncounterRaw, error) {
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-
-	sharedDB, release, err := r.sharedRead().Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounters: shared reader: %w", err)
-	}
-	defer release()
-
-	// Masquage Campagne (Halo 5) : count_together agrège l'historique du joueur
-	// (me.xuid) → forme by-match-id sur me.match_id. No-op Infinite. Item backlog H1.
-	q := resolveCampaignExclusionByMatchID(Q23MatchEncounters, r.pdb.TitleSlug, "me.match_id")
-	rows, err := sharedDB.QueryContext(ctx, q,
-		matchID, myXUID, // this_match WHERE
-		matchID, myXUID, // my_team WHERE
-		myXUID, // me.xuid = ?
-	)
-	if err != nil {
-		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounters: %w", err)
-	}
-	defer rows.Close()
-
-	var results []domain.EncounterRaw
-	for rows.Next() {
-		var enc domain.EncounterRaw
-		if err := rows.Scan(&enc.XUID, &enc.Gamertag, &enc.IsBot, &enc.CountTogether, &enc.IsAlly); err != nil {
-			return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounters scan: %w", err)
-		}
-		results = append(results, enc)
-	}
-	return results, rows.Err()
-}
-
 // GetMatchEncounterStats retourne les stats riches par encounter (Q23b,
 // chunk MV4.C'). Permet d'attribuer les badges narratifs ally_plus et
 // tough_enemy.
@@ -285,13 +195,14 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	// Q23b lit match_participants + match_registry + killer_victim_pairs +
-	// v_gamertag_lookup (shared-only) — via SharedReader (ADR 0016).
+	// Q23b lit match_participants + match_registry + le kill-feed canonique (shared-only) — via
+	// SharedReader (ADR 0016). Aucun nom : lot A, 2026-09-26.
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounterStats: shared reader: %w", err)
 	}
 	defer release()
+	defer timing.FromContext(ctx).Section("match_encounter_stats")()
 
 	// PMT-5 : exprs win/loss title-aware (fallback "eh.me_outcome = 2/3" byte-identique
 	// Halo). Ordre des %s du template : win, loss, win, loss.

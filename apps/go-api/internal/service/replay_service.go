@@ -20,9 +20,15 @@ import (
 )
 
 // replayService lit l'artefact de rejeu d'un titre donné via le PathResolver.
+//
+// DEUX RACINES (lot B-C7 du backlog 2026-09-26). repoRoot porte les DONNÉES VERSIONNÉES :
+// fonds de carte, catalogues de référence, mappings, libellés, zones, règles de tiers.
+// runtimeRoot porte les ARTEFACTS D'EXÉCUTION : les rejeux construits. Hors démo, les deux
+// sont la racine du dépôt ; en démo, runtimeRoot est `<démo>/runtime/`.
 type replayService struct {
-	titleSlug string
-	repoRoot  string
+	titleSlug   string
+	repoRoot    string
+	runtimeRoot string
 	// maps nomme la carte d'un match (fond de carte). Nil = pas de fond servi, jamais
 	// d'erreur : le rejeu reste lisible sur son sol structurel.
 	maps port.ReplayMapNameRepo
@@ -34,8 +40,17 @@ type replayService struct {
 // l'artefact ne sait pas faire. Nil est un cas servi : pas de fond de carte, le rejeu garde
 // son sol structurel. Un paramètre plutôt qu'un `With*` : un service à deux formes de
 // construction finit toujours par n'en avoir qu'une de testée.
+//
+// Données versionnées ET artefacts sous la même racine (cas hors démo, CLI, tests) : c'est
+// NewReplayServiceRoots avec deux racines égales, jamais une autre construction.
 func NewReplayService(titleSlug, repoRoot string, maps port.ReplayMapNameRepo) port.ReplayService {
-	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot, maps: maps}
+	return NewReplayServiceRoots(titleSlug, repoRoot, repoRoot, maps)
+}
+
+// NewReplayServiceRoots construit le service avec la racine des données versionnées
+// (repoRoot) et celle des artefacts d'exécution (runtimeRoot), distinctes en démo.
+func NewReplayServiceRoots(titleSlug, repoRoot, runtimeRoot string, maps port.ReplayMapNameRepo) port.ReplayService {
+	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot, runtimeRoot: runtimeRoot, maps: maps}
 }
 
 // IsAvailable dit si l'artefact existe, par un os.Stat — JAMAIS par une lecture : la
@@ -45,7 +60,7 @@ func NewReplayService(titleSlug, repoRoot string, maps port.ReplayMapNameRepo) p
 // Tout échec vaut « pas de rejeu » (répertoire absent, droits, chemin non résolu) :
 // l'absence de lien est la dégradation sûre, une erreur 500 sur la page match ne l'est pas.
 func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
-	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
+	path := title.NewPathResolver(s.runtimeRoot).ReplayArtifactPath(s.titleSlug, matchID)
 	info, err := os.Stat(path)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -68,7 +83,7 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 // d'erreur. Une lecture qui échoue pour une autre raison est journalisée ET remontée —
 // l'appelant dégrade sur l'ensemble vide (aucune icône), jamais sur un 500.
 func (s *replayService) AvailableSet(ctx context.Context) (port.ReplayAvailability, error) {
-	dir := title.NewPathResolver(s.repoRoot).ReplayArtifactsDir(s.titleSlug)
+	dir := title.NewPathResolver(s.runtimeRoot).ReplayArtifactsDir(s.titleSlug)
 	entries, err := os.ReadDir(dir)
 	if errors.Is(err, os.ErrNotExist) {
 		return port.ReplayAvailability{}, nil
@@ -119,7 +134,7 @@ const replayArtifactExt = ".json"
 // sur la forme de FIL (`domain/replaydoc`) — c'est la seule frontière où les deux se croisent
 // (cf. internal/service/replayview).
 func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydoc.ReplayDocument, error) {
-	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
+	path := title.NewPathResolver(s.runtimeRoot).ReplayArtifactPath(s.titleSlug, matchID)
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable

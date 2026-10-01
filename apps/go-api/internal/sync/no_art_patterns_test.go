@@ -160,6 +160,13 @@ var tablesProtegees = []string{
 	// nouvelle ; la vue match_pad_pickups_by_tier_latest ne rend que la dernière PASSE
 	// ENTIÈRE par match.
 	"match_pad_pickups_by_tier",
+	// match_vehicle_takes (ressource vehicules de l Emprise, 2026-09-30) : table append-only
+	// NET-NEUVE (prises, temps a bord et frags apparies par camp/joueur/famille, plus une ligne
+	// `match` de couverture, lus de l artefact range). Son persister
+	// (internal/persist/vehicle_takes_persister.go) n emet que des INSERT dans une transaction
+	// unique — aucune entree d allowlist a prevoir. Remplacer une passe = en ecrire une nouvelle ;
+	// la vue match_vehicle_takes_latest ne rend que la derniere PASSE ENTIERE par match.
+	"match_vehicle_takes",
 	// kill_positions / match_weapon_hit_distance (G4 du registre v2, enrôlement 2026-09-05) :
 	// les deux dernières tables du film restées HORS des deux listes anti-ART alors qu'elles
 	// sont append-only avec vue _latest depuis leur migration. Vérifié sur pièces avant
@@ -199,6 +206,12 @@ var tablesProtegees = []string{
 	// une passe plus courte laisserait survivre les lignes de la précédente.
 	"match_lives",
 	"match_death_context",
+	// match_life_placement (plan Emprise vies, lot V2, 2026-09-29) : table append-only
+	// NET-NEUVE, troisième projection de la passe de positions (placement et rendement de chaque
+	// vie). Writer unique : internal/persist/life_placement_persister.go, INSERT purs dans une
+	// transaction unique — aucune entrée d'allowlist, ni ici ni dans allowlistRawDelete. Vue
+	// _latest par DERNIÈRE PASSE ENTIÈRE par match, comme match_lives.
+	"match_life_placement",
 	// NB (2026-08-03) : `media_likes_history` et `media_match_associations_history` sont
 	// append-only elles aussi mais N'ONT PAS leur place ICI — même raison que
 	// `player_records_history` ci-dessus : elles co-résident dans

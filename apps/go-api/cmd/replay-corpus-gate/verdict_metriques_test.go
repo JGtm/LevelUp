@@ -64,7 +64,8 @@ func TestRevisionSeuleNeBloquePas(t *testing.T) {
 // TestRejetQuiMonteDUnDenominateurNulEstUnChangement — CAS 2 : le cas du lot 3.3.2.
 //
 // `noSlot` 0 -> 54 avec `available` 0 -> 289 : le compteur de rejet ne monte que parce qu'il y a
-// desormais de la matiere a rejeter. C'est un CHANGEMENT — affiche, instruit, TOUJOURS bloquant.
+// desormais de la matiere a rejeter. C'est un CHANGEMENT — affiche et nomme ; depuis le banc de
+// verite (2026-09-30), un changement n'est plus bloquant : il informe, le banc decide.
 func TestRejetQuiMonteDUnDenominateurNulEstUnChangement(t *testing.T) {
 	l := ligneDe(
 		ecartDe("coverage.grenades.available", "0", "289", replaydiff.SensGain),
@@ -81,11 +82,11 @@ func TestRejetQuiMonteDUnDenominateurNulEstUnChangement(t *testing.T) {
 	if l.Gains != 1 {
 		t.Fatalf("gains=%d, attendu 1 (available 0 -> 289)", l.Gains)
 	}
-	if l.statut() != statutChangement {
-		t.Fatalf("statut %q, attendu %q", l.statut(), statutChangement)
+	if l.statut() != statutOK {
+		t.Fatalf("statut %q, attendu %q — un changement informe, il ne bloque plus", l.statut(), statutOK)
 	}
-	if got := codeSortie([]ligneRapport{l}, true); got != codePerte {
-		t.Fatalf("code = %d, attendu %d — un changement reste bloquant, le pilote l'instruit", got, codePerte)
+	if got := codeSortie([]ligneRapport{l}, true); got != codeOK {
+		t.Fatalf("code = %d, attendu %d — un changement seul ne bloque plus (banc de verite)", got, codeOK)
 	}
 }
 
@@ -218,9 +219,9 @@ func TestVerdictDuLot332RejoueSurSaFixture(t *testing.T) {
 	if totalChangements != 15 {
 		t.Errorf("%d changement(s), attendu 15 : 8 verdicts de grenades + 7 noSlot", totalChangements)
 	}
-	if got := codeSortie(lignes, true); got != codePerte {
-		t.Errorf("code = %d, attendu %d — les changements restent bloquants, le pilote les instruit",
-			got, codePerte)
+	if got := codeSortie(lignes, true); got != codeOK {
+		t.Errorf("code = %d, attendu %d — depuis le banc de verite (2026-09-30) les changements "+
+			"informent sans bloquer, et le lot 3.3.2 n'avait aucune perte", got, codeOK)
 	}
 	for _, l := range lignes {
 		if l.statut() == statutPerte {

@@ -1,6 +1,7 @@
 // cmd/diag_exec — exécuteur SQL RW one-shot pour merges/maintenance locale.
 // Usage: go run ./cmd/diag_exec <db_path> "<sql>"
-// Ouvre la DB en READ_WRITE et exécute le SQL (plusieurs statements séparés par ;).
+// Ouvre la DB en READ_WRITE et exécute le SQL (plusieurs statements séparés par ;,
+// découpés par migration.SplitSQL : le découpeur unique du module, backlog B2).
 // Outil throwaway (non embarqué dans l'image).
 package main
 
@@ -12,6 +13,8 @@ import (
 	"strings"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 func main() {
@@ -31,11 +34,7 @@ func main() {
 	db.SetMaxOpenConns(1)
 
 	ctx := context.Background()
-	for _, stmt := range strings.Split(sqlText, ";") {
-		s := strings.TrimSpace(stmt)
-		if s == "" {
-			continue
-		}
+	for _, s := range migration.SplitSQL(sqlText) {
 		// SELECT/WITH/PRAGMA → afficher les lignes ; sinon Exec.
 		up := strings.ToUpper(s)
 		if strings.HasPrefix(up, "SELECT") || strings.HasPrefix(up, "WITH") || strings.HasPrefix(up, "PRAGMA") {

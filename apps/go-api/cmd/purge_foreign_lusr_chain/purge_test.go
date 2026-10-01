@@ -125,18 +125,14 @@ func TestPurgeForeignLUSRChain_CommitRebuildsWithoutForeignRows(t *testing.T) {
 		t.Errorf("ligne à playlist_group NULL = %d, want 1 (IS DISTINCT FROM, pas `<>`)", n)
 	}
 
-	// La vue et les index sont reposés : sans eux, les lecteurs applicatifs
-	// (match_skill_rank_latest) casseraient et les scans repartiraient en full table.
+	// La vue est reposée : sans elle, les lecteurs applicatifs (match_skill_rank_latest)
+	// casseraient. (Les index secondaires n'existent plus depuis le 2026-09-27.)
 	if n := countRows(t, db,
 		`SELECT COUNT(*) FROM duckdb_views() WHERE view_name = 'match_skill_rank_latest'`); n != 1 {
 		t.Errorf("vue match_skill_rank_latest = %d, want 1", n)
 	}
 	if n := countRows(t, db, `SELECT COUNT(*) FROM match_skill_rank_latest`); n != 3 {
 		t.Errorf("lignes servies par la vue = %d, want 3", n)
-	}
-	if n := countRows(t, db,
-		`SELECT COUNT(*) FROM duckdb_indexes() WHERE table_name = 'match_skill_rank'`); n < 3 {
-		t.Errorf("index sur match_skill_rank = %d, want ≥ 3 (idx_msr_match_lookup, _rating_type, _playlist)", n)
 	}
 
 	// La PK technique et son DEFAULT : un INSERT sans id doit continuer de marcher.
@@ -160,11 +156,9 @@ func TestPurgeForeignLUSRChain_RefusesEmptyArguments(t *testing.T) {
 	}
 }
 
-// TestCensus_ForcesScanAndMatchesLookupOnHealthyDB — sur une base saine, le compte
-// par scan forcé et le compte par lookup indexé coïncident, et le pré-vol passe.
-// C'est la non-régression du durcissement C.8 : le recensement lit désormais par
-// scan (`playlist_group || ”`), il doit continuer de rendre le compte exact.
-func TestCensus_ForcesScanAndMatchesLookupOnHealthyDB(t *testing.T) {
+// TestCensus_ForcesScanOnHealthyDB — non-régression du durcissement C.8 : le recensement
+// lit par scan (`playlist_group || ”`), il doit rendre le compte exact.
+func TestCensus_ForcesScanOnHealthyDB(t *testing.T) {
 	path := newFixturePlayerDB(t)
 	db := reopen(t, path)
 	ctx := context.Background()
@@ -176,40 +170,8 @@ func TestCensus_ForcesScanAndMatchesLookupOnHealthyDB(t *testing.T) {
 	if c.ForeignRaw != 2 {
 		t.Errorf("lignes étrangères par scan = %d, want 2", c.ForeignRaw)
 	}
-	if c.ForeignIndexed != c.ForeignRaw {
-		t.Errorf("lookup=%d scan=%d : les deux comptages doivent coïncider sur une base saine",
-			c.ForeignIndexed, c.ForeignRaw)
-	}
-	if c.indexMismatch() {
-		t.Error("indexMismatch() vrai sur une base saine (faux positif)")
-	}
-	if err := checkIndexCoherence(ctx, path, "h5_arena", c, true); err != nil {
-		t.Errorf("le pré-vol doit passer sur une base saine ; err = %v", err)
-	}
-}
-
-// TestCheckIndexCoherence_BlocksCommitOnDesync — la règle de refus, isolée des
-// données (la désynchronisation ART n'est pas reproductible sur commande) : en
-// dry-run l'écart est signalé sans bloquer, en -commit il interdit toute écriture
-// et nomme l'outil de réparation.
-func TestCheckIndexCoherence_BlocksCommitOnDesync(t *testing.T) {
-	// Les comptes réels mesurés sur la base de JGtm le 2026-09-13.
-	desync := chainCensus{TotalRows: 12000, ForeignRaw: 1826, ForeignIndexed: 22}
-	ctx := context.Background()
-	const dbPath = "data/titles/halo_infinite/players/JGtm/stats.duckdb"
-
-	if err := checkIndexCoherence(ctx, dbPath, "h5_arena", desync, false); err != nil {
-		t.Errorf("en dry-run l'écart se SIGNALE sans bloquer ; err = %v", err)
-	}
-
-	err := checkIndexCoherence(ctx, dbPath, "h5_arena", desync, true)
-	if err == nil {
-		t.Fatal("en -commit, un index désynchronisé doit INTERDIRE l'écriture")
-	}
-	for _, want := range []string{"repair_msr_index", "1826", "22", "h5_arena"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("le refus doit mentionner %q pour être actionnable ; err = %v", want, err)
-		}
+	if got := c.ForeignByRatingType; got["LUSR"] != 1 || got["LUSR_V2"] != 1 {
+		t.Errorf("ventilation par rating_type = %v, want LUSR:1 LUSR_V2:1", got)
 	}
 }
 

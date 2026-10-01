@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/replaydiff"
+	"levelup/go-api/internal/replayverite"
 )
 
 // TestCodeSortieZeroSansPerte — aucun temoin en perte ni en erreur : code 0.
@@ -18,12 +19,13 @@ func TestCodeSortieZeroSansPerte(t *testing.T) {
 	}
 }
 
-// TestCodeSortieUnDesQuUnAxePerteSuffit — LE COMPORTEMENT DEMANDE : un seul temoin en perte
-// suffit a faire echouer tout le gate, meme si d'autres temoins sont propres.
+// TestCodeSortieUnDesQuUnAxePerteSuffit — LE COMPORTEMENT DEMANDE : un seul temoin bloquant (ici
+// un filet : une perte qu'aucune mesure du banc ne couvre) suffit a faire echouer tout le gate,
+// meme si d'autres temoins sont propres.
 func TestCodeSortieUnDesQuUnAxePerteSuffit(t *testing.T) {
 	lignes := []ligneRapport{
 		{Temoin: Temoin{ID: "a"}, Pertes: 0},
-		{Temoin: Temoin{ID: "b"}, Pertes: 1},
+		{Temoin: Temoin{ID: "b"}, Pertes: 1, Filets: []replaydiff.Difference{perte("armes", "shots/n", "2", "1")}},
 		{Temoin: Temoin{ID: "c"}, Pertes: 0},
 	}
 	if got := codeSortie(lignes, true); got != codePerte {
@@ -92,10 +94,13 @@ func TestImprimerTableauNommeLeStatut(t *testing.T) {
 	var b strings.Builder
 	imprimerTableau(&b, []ligneRapport{
 		{Temoin: Temoin{ID: "aaaa1111", Famille: "ctf"}, Gains: 2, Pertes: 0},
-		{Temoin: Temoin{ID: "bbbb2222", Famille: "oddball"}, Pertes: 1},
+		{Temoin: Temoin{ID: "bbbb2222", Famille: "oddball"}, Pertes: 1,
+			Filets: []replaydiff.Difference{perte("armes", "shots/n", "2", "1")}},
 		{Temoin: Temoin{ID: "cccc3333", Famille: "slayer"}, Absent: true, AbsentCause: "aucun chunk"},
 		{Temoin: Temoin{ID: "dddd4444", Famille: "assaut"}, Erreur: errTest("carte hors catalogue")},
 		{Temoin: Temoin{ID: "eeee5555", Famille: "vehicules"}, Gains: 4, Changements: 2},
+		{Temoin: Temoin{ID: "ffff6666", Famille: "bombe"}, Verite: comparaisonDe(replayverite.StatutFaux)},
+		{Temoin: Temoin{ID: "abab7777", Famille: "koth"}, Verite: comparaisonDe(replayverite.StatutManque)},
 	}, "base(origin/feat/v75)")
 	out := b.String()
 	for _, attendu := range []string{
@@ -103,7 +108,9 @@ func TestImprimerTableauNommeLeStatut(t *testing.T) {
 		"bbbb2222", statutPerte,
 		"cccc3333", statutAbsent, "aucun chunk",
 		"dddd4444", statutErreur, "carte hors catalogue",
-		"eeee5555", statutChangement,
+		"eeee5555", // des changements seuls : ok depuis le 2026-09-30 (information)
+		"ffff6666", statutFaux,
+		"abab7777", statutManque,
 	} {
 		if !strings.Contains(out, attendu) {
 			t.Errorf("le tableau doit contenir %q :\n%s", attendu, out)
@@ -122,8 +129,9 @@ func TestLigneVersJSONPorteStatutEtCause(t *testing.T) {
 		statut string
 	}{
 		{"propre", ligneRapport{Temoin: Temoin{ID: "a"}, Gains: 3}, statutOK},
-		{"perte", ligneRapport{Temoin: Temoin{ID: "b"}, Pertes: 2}, statutPerte},
-		{"changement", ligneRapport{Temoin: Temoin{ID: "c"}, Changements: 2}, statutChangement},
+		{"filet", ligneRapport{Temoin: Temoin{ID: "b"}, Pertes: 2,
+			Filets: []replaydiff.Difference{perte("armes", "shots/n", "2", "1")}}, statutPerte},
+		{"changement seul", ligneRapport{Temoin: Temoin{ID: "c"}, Changements: 2}, statutOK},
 		{"erreur", ligneRapport{Temoin: Temoin{ID: "d"}, Erreur: errTest("plafond memoire")}, statutErreur},
 		{"absent", ligneRapport{Temoin: Temoin{ID: "e"}, Absent: true, AbsentCause: "faits non exportes"}, statutAbsent},
 	}

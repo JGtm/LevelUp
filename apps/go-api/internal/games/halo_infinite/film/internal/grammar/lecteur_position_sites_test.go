@@ -202,7 +202,8 @@ func casDesObjetsDuMonde() []casDeSite {
 			flux: concat(seul(bit(true)), axesSeuls(axesPrecHautNiveau16), seul(fixe(17))), lire: wo},
 		// unit-actor-state : 64 + R(8) (param 1) + R(4), puis 5 emplacements ; le premier present,
 		// a = 0 et b = 0 : R(32), e494, R(8) de queue, FUN_14080d69c ferme.
-		{nom: "unit-actor-state emplacement a=0 b=0", indexW: 1,
+		// EXCEPTION DATEE (lot R3-bis, 2026-09-30) : le site garde son ancien lecteur.
+		{nom: "unit-actor-state emplacement a=0 b=0", indexW: 1, exception: "unit-actor-state",
 			flux: concat(seul(fixe(32), fixe(32), fixe(8), fixe(4)),
 				seul(bit(true), bit(false), bit(false), fixe(32)), e524(0, 1, axesCarteNiveau16),
 				seul(fixe(8), bit(false)),
@@ -233,7 +234,8 @@ func casDesTacmaps() []casDeSite {
 			lire: parNom("tacmap-poiiconoffset", 30, 0)},
 		// ti=34 i7 tacmap-waypointstate : FUN_140f04d88, CALL 140f04de0 ; R(1), R(32), garde f91c +
 		// e524, puis R(1) quand le niveau du registre depasse 1.
-		{nom: "tacmap-waypointstate niveau registre 2", indexW: 1,
+		// EXCEPTION DATEE (lot R3-bis, 2026-09-30) : le site garde son ancien lecteur.
+		{nom: "tacmap-waypointstate niveau registre 2", indexW: 1, exception: "waypointstate",
 			flux: concat(seul(bit(true), fixe(32)), e524(0, 1, axesCarteNiveau16), seul(bit(true))),
 			lire: parNom("tacmap-waypointstate", 34, 2)},
 		// ti=32 i0 tacmap-areaofinterest : FUN_142ed7764, CALL 142ed7853 (thunk).

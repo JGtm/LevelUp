@@ -22,9 +22,13 @@ package killcollector
 
 import (
 	"fmt"
+	"log/slog"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -34,6 +38,18 @@ import (
 type DepsCapture struct {
 	MapNames port.ReplayMapNameRepo
 	Bounds   *decfilm.MapQuantCatalog
+	// Libelles et Objectifs : ce que la lecture des PORTEURS du placement des vies demande (plan
+	// Emprise vies, lot V2) — le catalogue de libelles du titre (objets d'objectif du drapeau) et
+	// le catalogue d'objectifs de carte (socles de drapeau), les MEMES fichiers que la cuisson.
+	// OPTIONNELS, a la difference des deux premiers : leur absence degrade le calque du drapeau
+	// comme a la cuisson, jamais les positions.
+	Libelles  replay.LabelCatalog
+	Objectifs *replay.MapObjectivesCatalog
+	// Portee : la portee du radar par variante (`regulation.toml [radar_range_m]`), resolue par
+	// `mappings.PorteeDuRadar` sur la MEME table que la lecture (plan Emprise vies, lot V2b).
+	// OPTIONNELLE comme les deux precedentes : nil = aucune table lisible, les lignes du
+	// placement s'ecrivent sans portee (`radar_m` et `beyond_ms` NULL) et se comptent.
+	Portee PorteeDuRadar
 }
 
 // Cablee dit si les deux dependances sont la.
@@ -60,16 +76,63 @@ func CaptureDepuisCatalogue(repoRoot, titleSlug string, mapNames port.ReplayMapN
 		return DepsCapture{}, fmt.Errorf("capture positions %s: catalogue de bornes (%s): %w",
 			titleSlug, chemin, err)
 	}
-	return DepsCapture{MapNames: mapNames, Bounds: catalogue}, nil
+	deps := DepsCapture{MapNames: mapNames, Bounds: catalogue}
+	deps.Libelles, deps.Objectifs = cataloguesDuPlacement(repoRoot, titleSlug)
+	deps.Portee = porteeDuTitre(repoRoot, titleSlug)
+	return deps, nil
+}
+
+// porteeDuTitre charge la table des portees du radar du titre par LE chargeur du registre des
+// mappings (`mappings.LoadRegulationForTitle` : meme chemin, meme validation que
+// `server_apiv1` -> `LoadFromConfigDir` -> `GetRegulation`), et la resout par le helper unique.
+//
+// BEST-EFFORT, comme les deux catalogues des porteurs : un fichier illisible ou absent se
+// JOURNALISE puis degrade en « aucune portee » — les vies s'ecrivent quand meme, sans part hors
+// radar, et chaque match se compte `killsource_placement_matchs_sans_portee`.
+func porteeDuTitre(repoRoot, titleSlug string) PorteeDuRadar {
+	reglement, err := mappings.LoadRegulationForTitle(repoRoot, titleSlug)
+	if err != nil || reglement == nil {
+		slog.Warn("killsource: placement — regulation.toml illisible ou absent, vies sans portee "+
+			"du radar", "titleSlug", titleSlug, "path", mappings.RegulationPath(repoRoot, titleSlug),
+			"err", err)
+		return nil
+	}
+	table := reglement.RadarRangeMap()
+	return func(variante string) (float64, bool) { return mappings.PorteeDuRadar(table, variante) }
+}
+
+// cataloguesDuPlacement charge les deux catalogues des porteurs, BEST-EFFORT : un fichier
+// illisible se JOURNALISE (installation incomplete — ils sont versionnes) puis degrade, comme a la
+// cuisson (`replaybuild.objectivesCatalog`). Les positions et les vies n'en dependent pas.
+func cataloguesDuPlacement(repoRoot, titleSlug string) (replay.LabelCatalog, *replay.MapObjectivesCatalog) {
+	libelles, err := replaylabels.Load(repoRoot, titleSlug)
+	if err != nil {
+		slog.Warn("killsource: placement — catalogue de libelles illisible, porteurs du drapeau "+
+			"sans objets d'objectif nommes", "titleSlug", titleSlug, "err", err)
+	}
+	chemin := titlePkg.NewPathResolver(repoRoot).MapObjectivesPath(titleSlug)
+	objectifs, err := replay.LoadMapObjectives(chemin)
+	if err != nil {
+		slog.Warn("killsource: placement — catalogue d'objectifs illisible, drapeaux sans equipe "+
+			"proprietaire", "titleSlug", titleSlug, "path", chemin, "err", err)
+		objectifs = nil
+	}
+	return libelles, objectifs
 }
 
 // AvecCapture applique les deps au collecteur si elles sont completes. Chainable, no-op sinon —
 // l'appelant a deja journalise la degradation.
+//
+// LA PORTEE DU RADAR VOYAGE ICI (plan Emprise vies, lot V2b) : les trois lieux de naissance du
+// collecteur (etape post-sync, `backfill-killsource`, `--online`) appliquent tous la capture
+// (garde-rail `archlint/no_collecteur_sans_capture_test.go`), ils ont donc la portee sans code
+// de plus. `TestAvecCapture_PoseLaPorteeDuRadar` echoue si cette ligne disparait.
 func (c *KillSourceCollector) AvecCapture(d DepsCapture) *KillSourceCollector {
 	if !d.Cablee() {
 		return c
 	}
-	return c.WithPositionCapture(d.MapNames, d.Bounds)
+	c.placement.libelles, c.placement.objectifs = d.Libelles, d.Objectifs
+	return c.AvecPorteeDuRadar(d.Portee).WithPositionCapture(d.MapNames, d.Bounds)
 }
 
 // CaptureCablee dit si CE collecteur produira des positions (et donc des faits d'isolement).

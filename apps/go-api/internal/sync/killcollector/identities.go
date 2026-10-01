@@ -54,6 +54,14 @@ type MatchIdentities struct {
 	// du contexte par `IdentitiesForMatch` pour les fonctions pures qui recoivent ces identites. nil :
 	// rien n est compte (identites construites a la main, tests).
 	replis *decfilm.Compteur
+	// Variante et CarteID : `match_registry.game_variant_name` et `map_id`. Feuille : la ligne
+	// de match de chaque participant (frags, morts, assistances). Ce sont les trois faits de
+	// base que la lecture des PORTEURS au sync demande (plan Emprise vies, lot V2) : la garde de
+	// mode (variante), les socles de drapeau (carte, meme cle que la cuisson) et le pont par
+	// manche (le triplet de la feuille). Memes colonnes que `ReplayFactsRepo`, cote cuisson.
+	Variante string
+	CarteID  string
+	Feuille  []decfilm.PlayerLine
 }
 
 // Resoudre : LE nom que le film donne devient un xuid et un gamertag. UNE SEULE COPIE DE CETTE

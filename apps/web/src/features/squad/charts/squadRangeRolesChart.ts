@@ -5,7 +5,7 @@
  * n'expose qu'un `symbolSize` UNIFORME par série (ici la taille dit les frags mesurés, et
  * un point sous le plancher se dessine CREUX) et il ne porte ni `markArea` ni `markLine`
  * (les trois bandes de rôle et la ligne du lobby). Même pattern que
- * `SquadIsolementNuageCard` : composer `<ChartCard>` avec un `buildOption` custom.
+ * `SquadRiposteSessionsChart` : composer `<ChartCard>` avec un `buildOption` custom.
  *
  * L'axe X est CATÉGORIEL — un match par position, du plus ancien au plus récent — et ses
  * étiquettes « #N · carte » ont le gabarit des autres graphes par match de la page

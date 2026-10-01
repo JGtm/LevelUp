@@ -143,6 +143,13 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 		// cable quand meme pour qu un SetPadTiers() ne puisse pas etre silencieusement jete.
 		// Transaction distincte, meme fenetre de lease.
 		sharedErr = NewPadTiersPersister(sharedDB).Persist(ctx, batch)
+		if sharedErr != nil {
+			return
+		}
+		// Ressource vehicules (match_vehicle_takes append-only) : NO-OP tant que
+		// batch.Shared.VehicleTakes est nil, cable quand meme pour qu un SetVehicleTakes() ne
+		// puisse pas etre silencieusement jete. Transaction distincte, meme fenetre de lease.
+		sharedErr = NewVehicleTakesPersister(sharedDB).Persist(ctx, batch)
 	}()
 	observePersistPhase("shared_write", writeStart, sharedErr == nil)
 

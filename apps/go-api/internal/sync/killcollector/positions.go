@@ -110,10 +110,10 @@ const (
 // approximation, c'est la population exacte qui peut avoir une position.
 func (c *KillSourceCollector) collectPositions(
 	ctx context.Context, matchID string, film *decfilm.Film, res *decfilm.Result,
-	ids MatchIdentities, deaths, fusionnees []persist.KillEventInsert,
+	ids MatchIdentities, deaths []persist.KillEventInsert, fusionne persist.KillSourceBatch,
 ) {
 	if !c.caps.Has(games.CapFilmKillPositions) {
-		slog.DebugContext(ctx, "killsource: positions — capability absente, passe ignoree",
+		slog.DebugContext(ctx, "killsource: positions, vies et placement des vies — capability absente, passe ignoree",
 			"match_id", matchID, "capability", string(games.CapFilmKillPositions),
 			"err", games.ErrCapabilityNotSupported)
 		return
@@ -154,7 +154,7 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
-	c.ecrireLesDeuxPasses(ctx, matchID, pass, mat, ids, fusionnees)
+	c.ecrireLesDeuxPasses(ctx, matchID, pass, mat, ids, fusionne)
 }
 
 // ecrireLesDeuxPasses ecrit les positions PUIS les entames, SOUS DEUX LEASES SEPARES ET SANS
@@ -171,7 +171,7 @@ func (c *KillSourceCollector) collectPositions(
 // premier. Ce n est pas une dependance, c est une priorite.
 func (c *KillSourceCollector) ecrireLesDeuxPasses(
 	ctx context.Context, matchID string, pass passePositions, mat materiauDIsolement,
-	ids MatchIdentities, fusionnees []persist.KillEventInsert,
+	ids MatchIdentities, fusionne persist.KillSourceBatch,
 ) {
 	if err := c.writePositions(ctx, matchID, pass.rows); err != nil {
 		observability.AddInt(metricPositionsWriteFail, 1)
@@ -187,7 +187,12 @@ func (c *KillSourceCollector) ecrireLesDeuxPasses(
 		// MEME PORTE QUE LES POSITIONS (`CapFilmKillPositions`) : les deux tables reposent sur les
 		// memes positions bipeds. Une capability neuve n aurait rien gate de plus et aurait ajoute
 		// une cle a tenir a jour dans chaque `capabilities.toml`.
-		c.projeterFaitsDIsolement(ctx, matchID, mat, ids, fusionnees)
+		//
+		// LE PLACEMENT DES VIES EST LA TROISIEME (plan Emprise vies, lot V2) : apres les vies, sous
+		// son propre lease, et seulement pour des vies ecrites (cf. placement_des_vies.go).
+		if c.projeterFaitsDIsolement(ctx, matchID, mat, ids, fusionne.Deaths) {
+			c.projeterPlacementDesVies(ctx, matchID, mat, ids, fusionne)
+		}
 	}
 	c.persistOpenings(ctx, matchID, pass)
 }
@@ -285,7 +290,8 @@ func buildPositionRows(ctx context.Context,
 	// siege d index partage bot/humain attribue les vies du bot a l humain (cf. l en-tete de
 	// `games/halo_infinite/replayidentity/bot_identities.go`).
 	bots := replayidentity.BotIdentities(res)
-	reg := replay.BuildIdentityRegistry(ctx, entreeDuRegistre(lectures, ids, bots, matchID))
+	entree := entreeDuRegistre(lectures, ids, bots, matchID)
+	reg := replay.BuildIdentityRegistry(ctx, entree)
 	if !reg.PontEtabli() {
 		observability.AddInt(metricPositionsNoBridge, 1)
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf(
@@ -296,7 +302,8 @@ func buildPositionRows(ctx context.Context,
 	// LE MATERIAU REMONTE TEL QUEL : le registre porte les vies nommees et le calage d horloge,
 	// les positions portent le monde. La projection des faits d isolement s en sert sans
 	// rescanner le film (cf. isolation_facts.go).
-	mat := materiauDIsolement{registre: reg, positions: lectures.positions}
+	mat := materiauDIsolement{registre: reg, positions: lectures.positions, film: film,
+		contexte: lectures.contexte, carte: entry, profil: profilCalibre(res), identite: entree}
 	return composerPassePositions(lectures.positions, reg, kills, int64(originUS), matchID), mat, nil
 }
 
@@ -344,6 +351,7 @@ func lireLePontDuCollecteur(ctx context.Context,
 	}
 	return lecturesDuFilm{
 		positions: pont.Positions, creations: creations, deaths: pont.Morts, idx: pont.Index,
+		contexte: fc,
 	}, pont.OrigineUS, nil
 }
 
@@ -403,32 +411,6 @@ func killRefsFromDeaths(deaths []persist.KillEventInsert) []replay.KillRef {
 		out = append(out, replay.KillRef{KillerXUID: killerXUID, VictimXUID: victimXUID, TimeMS: int64(d.TimeMS)})
 	}
 	return out
-}
-
-// rosterUint64 traduit les xuids texte de MatchIdentities pour ScanFilmPlayerIndices, qui lit un
-// roster numerique (le film ne porte que des motifs de bits, jamais une chaine).
-func rosterUint64(xuids []string) []uint64 {
-	out := make([]uint64, 0, len(xuids))
-	for _, s := range xuids {
-		if v, ok := parseXUID(s); ok {
-			out = append(out, v)
-		}
-	}
-	return out
-}
-
-// parseXUID : un xuid est une suite de chiffres decimale, et rien d autre — meme regle que
-// identities.go (estDecimal), reappliquee ici parce que cette lecture est numerique alors que
-// MatchIdentities.Resoudre rend des chaines.
-func parseXUID(s string) (uint64, bool) {
-	if s == "" {
-		return 0, false
-	}
-	v, err := strconv.ParseUint(s, 10, 64)
-	if err != nil {
-		return 0, false
-	}
-	return v, true
 }
 
 // toKillPositionRows traduit le resultat pur en lignes ecrivables. AUCUNE ligne pour une mort

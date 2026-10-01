@@ -182,6 +182,14 @@ export interface ReplayPlaybackOptions {
    */
   onPlayingChange?: (playing: boolean) => void
   /**
+   * LA LECTURE PART DU PRÉAMBULE (item 7, décision D-8, 2026-09-27) : « Lecture » ou
+   * « Recommencer » avec le curseur au préambule ou en deçà, APRÈS l'éventuel rembobinage d'un
+   * rejeu terminé, et après `onTransportGesture` (le lecteur audio doit exister). Jamais sur une
+   * reprise, un glissé, un saut, un lien tactique ni une lecture automatique — aucun de ces
+   * chemins ne passe par ici. La musique d'intro s'y branche (`useReplaySound.intro`).
+   */
+  onStarted?: () => void
+  /**
    * OUVRIR À UNE FRAME PRÉCISE (lot M1b, 2026-09-08) : posé une seule fois par la route depuis
    * un lien tactique déjà converti (cf. `ReplayCanvasProps.openAtFrame`). Gagne sur le cadrage
    * au coup d'envoi (`leadInFrame`) même si celui-ci arrive APRÈS (la fenêtre de gameplay vient
@@ -234,7 +242,7 @@ export interface ReplayPlayback {
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, openAtFrame } = o
-  const { soundTick, soundSeek, onEnded, onTransportGesture, onPlayingChange } = o
+  const { soundTick, soundSeek, onEnded, onTransportGesture, onPlayingChange, onStarted } = o
   // POSÉ VRAI DÈS QUE `openAtFrame` A ÉTÉ APPLIQUÉ (voir l'effet plus bas) : empêche le
   // cadrage au coup d'envoi (juste en dessous) d'écraser un lien tactique déjà positionné si
   // la fenêtre de gameplay arrive PLUS TARD (Match View asynchrone) sur un instant antérieur
@@ -436,6 +444,7 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const restart = () => {
     onTransportGesture()
     rewind()
+    onStarted?.() // toujours au préambule après le rembobinage
     setPlaying(true)
   }
 
@@ -445,6 +454,8 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     // relancée à `endFrame` conclurait « fin » à son premier pas et se rendormirait — le bouton
     // « Lecture » n'aurait aucun effet visible.
     if (!playing && frameRef.current >= endFrame) rewind()
+    // UN DÉPART, PAS UNE PAUSE, ET DEPUIS LE PRÉAMBULE (cf. `onStarted`).
+    if (!playing && frameRef.current <= leadInFrame) onStarted?.()
     setPlaying((p) => !p)
   }
 

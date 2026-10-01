@@ -216,7 +216,8 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `LEVELUP_INSTANCE_LOCKED` | Verrouille l'instance aux utilisateurs existants. | `false` |
 | `LEVELUP_RATE_LIMIT_RPM` | Rate limit HTTP (requêtes/minute). | défaut interne |
 | `LEVELUP_WEB_DIST` | Chemin du frontend buildé (`apps/web/dist`), posé par l'image Docker. | (aucun) |
-| `LEVELUP_DEMO_MODE` | `true` active le mode démo. | `false` |
+| `LEVELUP_DEMO_MODE` | `true` active le mode démo. En démo, le serveur API (et lui seul) place les défauts d'état et d'exécution ci-dessus (`db_profiles.json`, `app_settings.json`, auth, sessions, logs, sauvegardes) sous la racine démo : voir [Chemins du mode démo](#chemins-du-mode-démo). | `false` |
+| `LEVELUP_DEMO_FIXTURES_DIR` | Racine démo (fixture générée par `levelup seed-demo`). | `<root>/data/demo` |
 | `LEVELUP_LANG` | Langue UI/CLI par défaut. | `fr` |
 | `LEVELUP_APP_VERSION` | Version applicative reportée. | `dev` |
 | `LEVELUP_USE_SHARED_PROVIDER` | Active le swap RO↔RW du SharedDBProvider (ADR 0016). | (off) |
@@ -231,6 +232,32 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `LEVELUP_LOGS_ENABLED` | Mettre `false` pour désactiver les logs fichiers. | activé |
 | `LEVELUP_LOGS_MAX_SIZE_MB` | Taille max de chaque `{catégorie}.log` avant rotation. `0` désactive la rotation (croissance illimitée). | `100` |
 | `LEVELUP_LOGS_MAX_BACKUPS` | Archives conservées par catégorie (`{catégorie}.log.1..N`). `0` = aucune. | `3` |
+
+### Chemins du mode démo
+
+Avec `LEVELUP_DEMO_MODE=true`, `LEVELUP_REPO_ROOT` fournit toujours la configuration versionnée
+(`config/titles/**`, `data/titles/*/reference/**`, `static/`, `.env.local`), mais rien de ce que
+le serveur lit comme état ou écrit en tournant n'y vit (décision D-7, lot B5 du backlog). Les
+défauts dérivent alors de la racine démo `<démo>` = `LEVELUP_DEMO_FIXTURES_DIR` ; une variable
+posée explicitement garde la main. Cela ne vaut que pour le processus serveur API
+(`config.LoadServer`) : tout autre binaire (`levelup seed-demo` et les autres outils opérateurs, les
+tests) garde les défauts du dépôt quelle que soit `LEVELUP_DEMO_MODE`, puisqu'il travaille sur les
+vraies données (lot B-C10 du backlog) :
+
+| Élément | Défaut en démo |
+|---------|----------------|
+| `db_profiles.json`, `app_settings.json` | `<démo>/db_profiles.json`, `<démo>/app_settings.json` (écrits par `seed-demo`) |
+| Auth (`users.json`, `groups.json`, magasin de tokens) | `<démo>/auth/` (vide : la démo ne se connecte à rien) |
+| Sessions, logs, sauvegardes | `<démo>/runtime/sessions`, `<démo>/runtime/logs`, `<démo>/runtime/backups` |
+| Caches et état d'administration (`jobs.json`, cache de l'aide, amis, `admin_state/`, artefacts de rejeu) | `<démo>/runtime/data/…` |
+| Magasin de monitoring | en mémoire (aucun `monitoring.duckdb`) |
+
+Les tâches de fond qui écriraient ou supprimeraient hors de la racine démo (janitor, file
+persist asynchrone et reprise du WAL, santé données, purge des rejeux, surveillance disque,
+crons catalogue, noms d'assets, Spartan et classement mondial, watcher, pool de tokens,
+migrations des amis et du groupe au boot) ne sont pas lancées ; une ligne de log
+`demo_mode: tâches de fond coupées` les liste au boot. `POST /settings/backup/run` répond 403 en
+démo. `<démo>/runtime/` est ignoré par git sous `data/demo/` et `tests/fixtures/demo-root/`.
 
 ### Sync / feature flags
 

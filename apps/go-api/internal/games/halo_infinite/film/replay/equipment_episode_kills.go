@@ -111,7 +111,7 @@ func attachEpisodeKills(
 		// toujours >= 0 (fenêtre clampée au début de la vie publiée), donc un frag dont le
 		// temps recalé est négatif ne matchera jamais aucun épisode, quel que soit
 		// l'arrondi exact retenu pour la partie négative.
-		frame := (k.TimeMS - int(originMs)) / frameIntervalMS
+		frame := frameOfFilmMS(k.TimeMS, originMs, frameIntervalMS)
 		if k.XUID != 0 {
 			creditFrame(episodes, occupant, k.XUID, frame, false)
 		}
@@ -130,7 +130,7 @@ func attachEpisodeKills(
 func creditFrame(episodes []EquipmentEpisode, occupant func(uint32, int) uint64,
 	xuid uint64, frame int, assist bool) {
 	for i := range episodes {
-		if frame < episodes[i].T0 || frame > episodes[i].T1 {
+		if !frameInWindow(frame, episodes[i].T0, episodes[i].T1) {
 			continue
 		}
 		if occupant(episodes[i].Slot, frame) != xuid {
@@ -142,4 +142,23 @@ func creditFrame(episodes []EquipmentEpisode, occupant func(uint32, int) uint64,
 			episodes[i].K++
 		}
 	}
+}
+
+// frameOfFilmMS pose un instant de l'horloge « début du film » sur l'axe de frames du rejeu : la
+// SOUSTRACTION SIMPLE de l'origine du document puis la division entière par le pas (cf. l'en-tête).
+// Troncature simple, pas de division plancher signée : un instant antérieur à la frame 0 rend une
+// frame négative ou nulle, que `frameInWindow` refuse ou accepte selon T0 (toute fenêtre commence
+// à T0 >= 0).
+//
+// C'EST LA JONCTION D'HORLOGE UNIQUE des jointures frags <-> épisodes : les épisodes d'équipement
+// (ci-dessus) et les épisodes de véhicule (`vehicle_takes_frags.go`, plan Emprise véhicules D9)
+// l'appellent toutes deux. Une seconde formule ferait deux horloges.
+func frameOfFilmMS(timeMS int, originMs int64, frameIntervalMS int) int {
+	return (timeMS - int(originMs)) / frameIntervalMS
+}
+
+// frameInWindow dit si `frame` tombe dans la fenêtre [t0, t1], BORNES INCLUSES : un frag exactement
+// à T0 ou à T1 compte. Partagé par les deux jointures, pour la même raison que `frameOfFilmMS`.
+func frameInWindow(frame, t0, t1 int) bool {
+	return frame >= t0 && frame <= t1
 }

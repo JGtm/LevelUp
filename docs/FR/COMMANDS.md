@@ -139,8 +139,17 @@ go run ./cmd/levelup backfill-killsource --workers 1    # la boucle en série d'
 go run ./cmd/levelup backfill-killsource --limit 20     # les 20 films les moins chers
 go run ./cmd/levelup backfill-killsource --credit-only  # la passe SQL → SQL seule
 go run ./cmd/levelup backfill-killsource --force        # redécode même ce qui est à jour
+go run ./cmd/levelup backfill-killsource --match 1c4c63c2,ee90570b --dry-run   # seulement ces matchs (préfixes de 8+ caractères, univoques)
 go run ./cmd/levelup backfill-killsource --status       # DANS UN AUTRE TERMINAL : où elle en est
 ```
+
+**`--match ID[,ID...]` — borne la passe hors ligne à des matchs nommés.** Identifiants séparés
+par des virgules ; un préfixe court (8 caractères ou plus) est accepté s'il désigne UN seul match
+du registre, et refusé avec une erreur claire s'il est ambigu (les candidats sont listés) ou
+inconnu. La règle de fraîcheur ne change pas : un match nommé déjà à jour est sauté sauf
+`--force` ; `--limit` s'applique après le filtre ; `--dry-run` liste chaque film retenu. Refusée
+avec `--online` (cette passe choisit ses films dans l'historique du joueur, pas dans le registre)
+et avec `--credit-only` (la passe SQL → SQL ne lit pas cette sélection).
 
 **`--workers` (défaut 3) — N films décodés en parallèle, UN SEUL qui touche la base.** La
 décomposition du coût (lot 5.24.1) mesure **93 à 99 % du temps d'un film en CPU hors base** :
@@ -224,6 +233,21 @@ go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] 
 #    `terrain` ou `puissance`), et la reprise ne les reverrait jamais.
 go run ./cmd/levelup backfill-pad-tiers --dry-run
 go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--title S]
+
+# 4 ter. Ressource VEHICULES de l Emprise (prises, temps a bord, frags apparies aux
+#    episodes du tueur) -> match_vehicle_takes (append-only). Meme motif que (4) : elle LIT
+#    les artefacts TELS QU ILS SONT, sans decodage, SANS RECUISSON ; la seule lecture en
+#    base est celle des frags du match dans match_kill_events_latest. Un artefact anterieur
+#    au schema 67 (aucune occupation lue) s ecrit « non mesure », jamais zero : c est l etat
+#    de tout le parc tant qu il n est pas recuit. LA REPRISE SE CLE SUR LA PRESENCE, donc
+#    APRES UNE RECUISSON (ou l arrivee des evenements de mort) --force EST OBLIGATOIRE : la
+#    ligne en base continuerait de dire « non mesure ». SERVEUR ARRETE, y compris pour
+#    --dry-run (elle joue les migrations).
+go run ./cmd/levelup backfill-vehicle-takes --dry-run
+go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--limit N] [--title S]
+#    --match : identifiants de match séparés par des virgules, ou préfixes univoques de 8+
+#    caractères, résolus contre le registre comme backfill-killsource ; inconnu / ambigu /
+#    trop court = refusé, rien d écrit.
 
 # 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
@@ -598,6 +622,60 @@ go run ./cmd/levelup reset-bitmasks                         # reset des bits de 
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute des coefficients d'engagement
 ```
 
+#### Compaction des passes de décodage supersédées (`compact-passes`)
+
+Chaque redécodage d'un film AJOUTE une passe entière aux tables du film de la base partagée des
+matchs (`match_kill_events`, `match_lives`, `match_death_context`, `kill_openings`,
+`kill_positions`, `match_weapon_shots`, `match_player_positions`, le résumé d'usage, les niveaux
+de socle, les prises de drapeau, les statistiques d'Assaut — INSERT-only, ADR 0019 / 0026). Les
+vues `_latest` ne servent que la dernière passe, mais toute lecture qui les évalue parcourt
+toutes les passes : sur la base locale du 2026-09-26, 90 % de ces lignes étaient des passes
+mortes. `compact-passes` reconstruit chaque table avec les seules lignes que sa vue retient —
+jamais de `DELETE` (bug DuckDB ART #23645) : un échange transactionnel qui vérifie, avant le
+COMMIT, le nombre de lignes, le DDL et les index de la table, et que la vue rend exactement le
+même résultat. Les séquences ne sont pas touchées (aucun `id` n'est réutilisé). Idempotente : une
+seconde passe rend `deja-compacte`.
+
+Quand : après une campagne de redécodage (recuisson, `backfill-killsource`), jamais au boot ni
+après un sync. **Serveur arrêté** : la commande refuse une base qu'un autre processus tient.
+
+```bash
+go run ./cmd/levelup compact-passes --dry-run                # lecture seule : brutes / _latest / gain par table
+go run ./cmd/levelup compact-passes                          # sauvegarde, puis compaction, tous les titres
+go run ./cmd/levelup compact-passes --title halo_5           # un seul titre
+go run ./cmd/levelup compact-passes --rewrite-file           # + réécriture du fichier pour rendre la place au disque
+go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des sauvegardes (défaut : celui de la base)
+```
+
+- **Sauvegarde (obligatoire)** : copie octet pour octet du fichier de la base, prise après un
+  `CHECKPOINT`, fichier fermé, affichée `sauvegarde : <chemin>`
+  (`<nom>.<slug>.avant-compaction-<UTC>.duckdb`). Restaurer = remettre ce fichier en place, serveur
+  arrêté. L'outillage de sauvegarde Parquet (`backup`) n'est pas utilisé : il perd séquences,
+  vues et index.
+- **`--rewrite-file`** : DuckDB réutilise les blocs libérés mais ne rétrécit jamais un fichier.
+  L'option recopie la base dans un fichier neuf (`COPY FROM DATABASE`), relit les DEUX fichiers
+  seuls et ne les échange que si le catalogue (tables, vues, index, séquences avec leur prochaine
+  valeur, macros, types), le compte de chaque table et l'empreinte de chaque vue compactée sont
+  identiques. La commande TIENT le verrou DuckDB de la base du début à la fin (aucun autre
+  processus ne peut l'ouvrir entre-temps) : une seule connexion fait le `CHECKPOINT`, la copie vers
+  le fichier neuf et la sauvegarde de l'ancien (`<nom>.<slug>.avant-reecriture-<UTC>.duckdb`, écrite par
+  `COPY FROM DATABASE` dans `--backup-dir`, n'importe quel volume — sous Windows, les octets d'un
+  fichier tenu par DuckDB ne se lisent pas), et les deux copies sont vérifiées sous ce verrou.
+  Puis UN rename met le fichier neuf en place — le chemin de la base porte toujours une base
+  complète, quel que soit l'instant où la commande s'arrête. Sous Linux, le rename a lieu pendant
+  que la connexion est encore ouverte ; sous Windows, qui refuse de remplacer un fichier tenu, la
+  connexion est fermée et le rename suit aussitôt : un processus qui a ouvert la base entre les
+  deux la tient encore, le rename échoue et la commande refuse, base intacte. Seule perte
+  théorique : un processus qui ouvrirait, écrirait, ferait son checkpoint et fermerait ENTIÈREMENT
+  en ces quelques microsecondes. Un `.wal` laissé au lancement par un processus
+  tué avant son checkpoint est rejoué par la première ouverture de la commande (récupération
+  normale de DuckDB, sans perte) et se retrouve dans la sauvegarde et la compaction ; l'étape de
+  réécriture refuse, elle, un `.wal` non vide qui apparaîtrait entre la compaction et la
+  réécriture. Les sauvegardes portent le slug du titre (`<nom>.<slug>.avant-…`) et un fichier
+  existant n'est jamais écrasé ni retiré. Sur toute erreur, le
+  fichier temporaire et la sauvegarde sont retirés. Mesuré sur une copie : 1 264 Mio -> 351 Mio.
+- Supprimer les sauvegardes à la main une fois l'application vérifiée.
+
 ### Migration des chemins média (one-shot, binaire autonome)
 
 Convertit les chemins média **absolus** (legacy) en chemins relatifs portables
@@ -655,7 +733,7 @@ priorité CPU basse, verrou solo).
 ```bash
 cd apps/go-api
 go run ./cmd/levelup replay-facts-export --out internal/games/halo_infinite/film/replay/testdata/equivalence \
-  [--title slug] <short8|match_id>...
+  [--title slug] [--oracle] <short8|match_id>...
 ```
 
 Écrit un `<short8>.facts.json` par match — lignes de match, scores des deux camps, variante,
@@ -663,7 +741,11 @@ identités de carte candidates — dans la forme que `replay-build --facts` lit 
 zones, actions d'objectif, VIP/crâne/bombe, socles et points d'apparition sont court-circuités et
 une passe d'équivalence serait vacuante. Lecture seule (`OpenReadForQuery`) ; la commande échoue
 franchement au lieu d'écrire des faits vides — arrêter un serveur qui tient la base partagée en
-écriture.
+écriture. `--oracle` écrit aussi `<short8>.oracle.json` : les vérités officielles que la cuisson ne
+lit jamais (score personnel, tirs, kills par catégorie, présence booléenne, stats d'objectif de
+`match_objective_stats_latest`), l'oracle du banc de vérité (`cmd/replay-verite`). C'est un fichier
+SÉPARÉ, exprès : les entrées de la cuisson restent identiques à l'octet. Un oracle vide est refusé
+comme des faits vides.
 
 ```bash
 go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt), comparaison seule
@@ -981,6 +1063,42 @@ Si le parc local est plus ancien que le HEAD, les écarts attendus en `--referen
 GAINS (calques neufs, correctifs documentés) ; toute PERTE est un fait à rapporter, jamais à
 masquer en resserrant le manifeste ou en filtrant le rapport.
 
+
+#### Banc de vérité (`cmd/replay-verite`, 2026-09-30)
+
+Juge un artefact de rejeu APRÈS contre un artefact AVANT du même témoin, contre des ORACLES (les
+vérités officielles du match) et par des COMPTES DE VIOLATIONS (ce qu'aucun match réel ne peut
+contenir), au lieu d'attribuer à la main des centaines de métriques de couverture. Conception :
+`.ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md` ; bibliothèque : `internal/replayverite`.
+Il ne cuit rien, ne décode aucun film et n'ouvre aucune base.
+
+```bash
+cd apps/go-api
+go run ./cmd/replay-verite -avant <avant.json> -apres <apres.json> -faits <short8>.facts.json \
+  [-temoin id] [-registre-avant registre.json]
+go run ./cmd/replay-verite -registre > registre.json   # registre des replis de CETTE révision
+```
+
+Verdict (sortie 1 hors `ok`) : `FAUX` quand un faux positif d'oracle ou une classe de violation
+monte, ou qu'un repli NOUVEAU se déclenche (sauf si le registre d'avant dit son compteur non encore
+branché) ; `MANQUE` quand un faux négatif d'oracle monte ou qu'une preuve interne se dégrade ;
+`ok` sinon. Seul le delta décide : les valeurs absolues s'affichent à titre d'information. Les
+unités appariées SUR l'oracle lui-même (slots statborg `triplet_feuille`, camps rattachés par
+`teamIdentity` `a`/`a0`) sont exclues, jamais comptées en vrais positifs. `-oracle
+<short8>.oracle.json` ajoute O-S3 (score personnel).
+
+**Dans `replay-corpus-gate` (2026-09-30), le verdict EST celui du banc.** Chaque témoin comparé est
+jugé par le banc (référence et HEAD, mêmes faits, même oracle — le gate exporte désormais
+`<short8>.oracle.json` à côté des faits par `replay-facts-export --oracle`). Le statut du témoin est
+`FAUX` / `MANQUE` (banc), puis `PERTE` pour deux filets seulement : une perte `replaydiff` dans un
+bloc qu'aucune mesure du banc ne couvre, ou un calque de premier niveau qui disparaît. Toutes les
+autres différences `replaydiff` (pertes couvertes, changements, gains) restent au rapport à titre
+d'information ; `CHANGEMENT` n'est plus un statut. Le rapport texte imprime une section
+`BANC DE VERITE` par témoin AVANT le détail `replaydiff` ; le JSON porte un objet `verite` par
+témoin. La règle R-1 exige le registre des replis de la base : le gate compile `cmd/replay-verite`
+dans le worktree de base et lance `-registre` (une fois par passage, sans cache : il ne dépend que
+du SHA de la base). Une base antérieure au banc n'a pas cet outil : le registre est alors inconnu et
+tout repli nouveau est `FAUX`, ce que le rapport dit.
 
 ### Frontend (`apps/web`)
 

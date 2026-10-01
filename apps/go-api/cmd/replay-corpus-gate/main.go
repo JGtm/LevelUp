@@ -25,6 +25,15 @@
 //
 // Dans les deux modes, aucun schema n'est bumpe — le gate COMPARE.
 //
+// # LE VERDICT EST CELUI DU BANC DE VERITE (2026-09-30, decision D-5)
+//
+// Chaque temoin compare est juge par `internal/replayverite` : les deux artefacts contre les
+// oracles (faits du match, oracle officiel `<short8>.oracle.json` exporte a cote des faits) et par
+// des comptes de violations. Son verdict (FAUX / MANQUE / ok) est celui du temoin ; les differences
+// `replaydiff` restent au rapport a titre d'information, sauf deux filets (verite.go). Le registre
+// des replis de la base, que la regle R-1 du banc exige, est produit par l'outil du banc compile a
+// la base (verite_registre.go).
+//
 // # CE QU'IL EXIGE
 //
 // Le PARC LOCAL de developpement (chunks de film ; + artefacts deja cuits en mode parc) ET
@@ -42,7 +51,9 @@
 //	  [--reference=base|parc] [--base REV] [--strict] [--allow-missing] \
 //	  [--manifest config/replay_corpus.toml] [--temoins a,b] [--parc-root DIR] \
 //	  [--lock-root DIR] [--source-root DIR] [--work-root DIR] [--keep-work] \
-//	  [--json rapport.json]
+//	  [--json rapport.json] [--sans-cache-base]
+//
+// --sans-cache-base force la recuisson de la base (cache des artefacts de la base : basecache.go).
 //
 // --temoins rejoue les SEULS temoins nommes, sans fabriquer de manifeste reduit (D2 (cloture
 // M1)) : le corpus versionne reste le seul corpus. Un id inconnu est une erreur (codeUsage),
@@ -60,8 +71,8 @@
 // Ils se lisent sans parser le tableau, et chacun dit UNE chose :
 //
 //	0  codeOK                   tout le manifeste a ete compare, aucun temoin bloquant.
-//	1  codePerte                au moins un temoin compare porte une PERTE ou un CHANGEMENT
-//	                            bloquant. LE verdict de ce gate.
+//	1  codePerte                au moins un temoin compare est BLOQUANT : FAUX ou MANQUE au banc
+//	                            de verite, ou PERTE d'un filet (verite.go). LE verdict de ce gate.
 //	2  codeUsage                le gate n'a pas DEMARRE : drapeau invalide, manifeste illisible,
 //	                            racine introuvable, capability absente, worktree de base
 //	                            impossible. Rien n'a ete mesure du diff sous revue.
@@ -117,6 +128,7 @@ func main() {
 	memGiB := flag.Int("mem-gib", plafondMemoireGate,
 		"plafond memoire souple (Gio) arme sur CHAQUE cuisson enfant, HEAD et base (0 = desarme) ; le "+
 			"defaut du gate depasse celui de production, deux temoins BTB etant mesures a 3,8 Gio (D6)")
+	sansCacheBase := flag.Bool("sans-cache-base", false, "forcer la recuisson de la base (mode base) au lieu de relire le cache des artefacts de la base ; l'entree de cache est rafraichie")
 	temoinsFlag := flag.String("temoins", "", "rejouer les SEULS temoins nommes (ids separes par des virgules) — le manifeste versionne reste le corpus, aucun manifeste reduit a ecrire ; un id inconnu est une erreur")
 	flag.Parse()
 
@@ -124,7 +136,7 @@ func main() {
 		Reference: *reference, Base: *baseFlag, Strict: *strict, AllowMissing: *allowMissing,
 		ManifestPath: *manifestPath, ParcRootFlag: *parcRootFlag, LockRootFlag: *lockRootFlag,
 		SourceRootFlag: *sourceRootFlag, WorkRootFlag: *workRootFlag, KeepWork: *keepWork,
-		SortieJSON: *sortieJSON, Temoins: *temoinsFlag, MemGiB: *memGiB,
+		SortieJSON: *sortieJSON, Temoins: *temoinsFlag, MemGiB: *memGiB, SansCacheBase: *sansCacheBase,
 	}
 
 	// signal.NotifyContext, PAS un handler qui appellerait os.Exit lui-meme : ce gate dure 13 a
@@ -153,6 +165,11 @@ type executerOptions struct {
 	Temoins string
 	// MemGiB : le plafond souple arme sur chaque cuisson enfant (--mem-gib).
 	MemGiB int
+	// SansCacheBase : --sans-cache-base, force la recuisson de la base (basecache.go).
+	SansCacheBase bool
+	// registreAvantConnu : le registre des replis de la base a ete lu (verite_registre.go) — pose
+	// par executer, jamais par la ligne de commande ; il ne sert qu'a le dire au rapport.
+	registreAvantConnu bool
 }
 
 // environnementGate regroupe la resolution des racines et du manifeste — un struct plutot
@@ -198,7 +215,7 @@ func executer(ctx context.Context, o executerOptions) (int, error) {
 	tc := temoinContexte{
 		ParcRoot: env.ParcRoot, WorkRoot: workRoot, BinHead: binHead,
 		LockRoot: env.LockRoot, TitleSlug: env.TitleSlug, Reference: o.Reference,
-		MemGiB: o.MemGiB,
+		MemGiB: o.MemGiB, SansCacheBase: o.SansCacheBase,
 	}
 	refLabel := referenceParc
 	if o.Reference == referenceBase {
@@ -219,6 +236,7 @@ func executer(ctx context.Context, o executerOptions) (int, error) {
 	}
 
 	lignes := cuireEtComparerTousLesTemoins(ctx, env.Manifest, tc)
+	o.registreAvantConnu = tc.RegistreBase != nil
 	return finaliser(ctx, lignes, refLabel, o)
 }
 
@@ -283,41 +301,6 @@ func preparerCuissonHead(ctx context.Context, sourceRoot, workRoot, titleSlug st
 	return binHead, nil
 }
 
-// basePrepParams regroupe les chemins fixes de la preparation de la reference base — un struct
-// plutot qu'une signature a plus de 5 parametres une fois `ctx` ajoute (CLAUDE.md n°5).
-type basePrepParams struct {
-	SourceRoot, WorkRoot, BaseFlag string
-}
-
-// preparerReferenceBase resout la revision de base, cree son worktree detache (nettoye via
-// nettoyeur, compose sans jamais reassigner une closure sous un defer deja arme —
-// CORPUS-R1 C1), y compile replay-build, et peuple les champs base de tc. Rend le libelle de
-// colonne a afficher.
-func preparerReferenceBase(ctx context.Context, p basePrepParams, tc *temoinContexte, nettoyeur *nettoyeurCompose) (string, error) {
-	baseRev, err := resolveBaseRevision(ctx, p.BaseFlag, p.SourceRoot)
-	if err != nil {
-		return "", fmt.Errorf("resolution de la base : %w", err)
-	}
-	wtBase, cleanupWt, err := creerWorktreeBase(ctx, p.SourceRoot, p.WorkRoot, baseRev)
-	if err != nil {
-		return "", fmt.Errorf("worktree de base (%s) : %w", baseRev, err)
-	}
-	nettoyeur.Ajouter(cleanupWt)
-
-	workRootBase := filepath.Join(p.WorkRoot, "cuisson-base")
-	if err := stageReferenceOnce(wtBase.Chemin, workRootBase, tc.TitleSlug); err != nil {
-		return "", fmt.Errorf("catalogues de reference (base) : %w", err)
-	}
-	binBase := filepath.Join(p.WorkRoot, "bin", "replay-build-base"+exeSuffix())
-	if err := compilerReplayBuild(ctx, wtBase.GoAPIDir, filepath.Join(p.WorkRoot, "gocache-base"), binBase); err != nil {
-		return "", fmt.Errorf("compilation replay-build (base %s) : %w", baseRev, err)
-	}
-
-	tc.WorkRootBase, tc.BinBase = workRootBase, binBase
-	slog.InfoContext(ctx, "replay-corpus-gate: base resolue", "revision", baseRev, "worktree", wtBase.Chemin)
-	return "base(" + baseRev + ")", nil
-}
-
 // idsDuManifeste extrait les ids, dans l'ordre du manifeste — l'entree de exportFacts.
 func idsDuManifeste(m Manifest) []string {
 	ids := make([]string, len(m.Temoins))
@@ -364,6 +347,7 @@ func cuireEtComparerTousLesTemoins(ctx context.Context, manifest Manifest, tc te
 // zero ».
 func finaliser(ctx context.Context, lignes []ligneRapport, refLabel string, o executerOptions) (int, error) {
 	imprimerTableau(os.Stdout, lignes, refLabel)
+	imprimerVerite(os.Stdout, lignes, o.registreAvantConnu)
 	imprimerDetailPertes(os.Stdout, lignes)
 	imprimerDetailChangements(os.Stdout, lignes)
 	imprimerTelemetrie(os.Stdout, lignes)
@@ -421,6 +405,9 @@ type ligneJSON struct {
 	ID                string       `json:"id"`
 	Famille           string       `json:"famille"`
 	Statut            string       `json:"statut"`
+	BaseDuCache       bool         `json:"baseDuCache"`
+	BaseArtefactCache bool         `json:"baseArtefactEnCache"`
+	BaseFaitsCache    bool         `json:"baseFaitsEnCache"`
 	Absent            bool         `json:"absent,omitempty"`
 	AbsentCause       string       `json:"absentCause,omitempty"`
 	Erreur            string       `json:"erreur,omitempty"`
@@ -430,6 +417,7 @@ type ligneJSON struct {
 	Pertes            int          `json:"pertes"`
 	Changements       int          `json:"changements"`
 	DureeMS           int64        `json:"dureeMs"`
+	Verite            *veriteJSON  `json:"verite,omitempty"`
 	PertesDetail      []detailJSON `json:"pertesDetail,omitempty"`
 	ChangementsDetail []detailJSON `json:"changementsDetail,omitempty"`
 }
@@ -438,7 +426,8 @@ type ligneJSON struct {
 func ligneVersJSON(l ligneRapport) ligneJSON {
 	lj := ligneJSON{
 		ID: l.Temoin.ID, Famille: l.Temoin.Famille, Statut: l.statut(),
-		Absent: l.Absent, AbsentCause: l.AbsentCause,
+		BaseDuCache: l.BaseDuCache, BaseArtefactCache: l.BaseArtefactEnCache,
+		BaseFaitsCache: l.BaseFaitsEnCache, Absent: l.Absent, AbsentCause: l.AbsentCause,
 		SchemaReference: l.SchemaReference, SchemaHEAD: l.SchemaHEAD,
 		Gains: l.Gains, Pertes: l.Pertes, Changements: l.Changements,
 		DureeMS: l.Duree.Milliseconds(),
@@ -446,6 +435,7 @@ func ligneVersJSON(l ligneRapport) ligneJSON {
 	if l.Erreur != nil {
 		lj.Erreur = l.Erreur.Error()
 	}
+	lj.Verite = veriteVersJSON(l)
 	lj.PertesDetail = detailsVersJSON(l.PertesDetail)
 	lj.ChangementsDetail = detailsVersJSON(l.ChangementsDetail)
 	return lj

@@ -102,6 +102,8 @@ type Provider interface {
 	// readers en vol, puis bascule le handle global en mode RW.
 	//
 	// Le WriterHandle retourné DOIT être Released (typiquement via defer).
+	// Une vidange expirée sur la borne du provider rend ErrDrainTimeout
+	// (transitoire, retentable) ; un ctx appelant fini rend ctx.Err().
 	AcquireWriter(ctx context.Context) (*WriterHandle, error)
 
 	// State retourne l'état courant. Lecture atomique, sans verrou.

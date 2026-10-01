@@ -1,4 +1,5 @@
 // Package middleware_test — slog_logger_test.go : tests du middleware SlogLogger.
+// Invariant I6 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 package middleware_test
 
 import (

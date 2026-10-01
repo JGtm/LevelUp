@@ -44,7 +44,7 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -53,7 +53,6 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
@@ -304,20 +303,15 @@ func lireUnArtefactPadTiers(
 	path, matchID string, ref *replayartifacts.ReferenceEmplacements,
 	ident replayartifacts.IdentiteMatchNiveaux, randomStarts bool,
 ) (persist.PadTiersBatch, etatPadTiersMatch) {
-	raw, err := os.ReadFile(path)
+	doc, err := replayartifacts.LireArtefactRange(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return persist.PadTiersBatch{}, niveauxSansArtefact
+	}
 	if err != nil {
-		if os.IsNotExist(err) {
-			return persist.PadTiersBatch{}, niveauxSansArtefact
-		}
-		fmt.Printf("  ECHEC %s : lecture artefact: %v\n", matchID, err)
+		fmt.Printf("  ECHEC %s : %v\n", matchID, err)
 		return persist.PadTiersBatch{}, niveauxEchec
 	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		fmt.Printf("  ECHEC %s : parse artefact: %v\n", matchID, err)
-		return persist.PadTiersBatch{}, niveauxEchec
-	}
-	batch := replayartifacts.ProjeterNiveauxDArmes(matchID, &doc, ref, ident, randomStarts)
+	batch := replayartifacts.ProjeterNiveauxDArmes(matchID, doc, ref, ident, randomStarts)
 	if batch.MatchID == "" {
 		return persist.PadTiersBatch{}, niveauxSansPrise
 	}

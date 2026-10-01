@@ -178,6 +178,19 @@ schema_version = 1
 # regulation.toml ([weapon_tiers] random_start_mode_tokens). Leur absence n'eteint rien —
 # elle fait seulement qu'aucun mode n'est tenu pour aleatoire.
 "film.weapon_tiers"      = "supported"
+
+# film.vehicle_usage — LA RESSOURCE VEHICULES de l'Emprise : prises, temps a bord et frags de
+# classe engin apparies aux episodes, par match, camp, joueur et famille de vehicule
+# -> shared.match_vehicle_takes (append-only + vue _latest).
+#
+# La mesure vient du calque vehicules de l'artefact (`vehicles[].rides[]`, schema >= 67) ; un
+# artefact plus ancien est « vehicules non mesures », jamais zero. Les frags viennent de
+# match_kill_events_latest, classes par le registre d'armes (vehicle / turret).
+#
+# ⚠ Clé FINE, même doctrine que les sept film.* ci-dessus : elle gouverne la PRODUCTION et
+# l'EXPOSITION de cette ressource, rien d'autre des vehicules.
+# ABSENTE pour Halo 5 : pas de décodeur de film, donc aucun calque vehicules.
+"film.vehicle_usage"     = "supported"
 # L'ARTEFACT DE REJEU 2D lui-même (data/cache/replays/halo_infinite/{match}.json) : trame de
 # positions, kill-feed recalé, score, roster, calques d'objectif. C'est la SOURCE dont les
 # quatre dérivés du film sont les projections (film.usage_summary, film.bomb_stats, la

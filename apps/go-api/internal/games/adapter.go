@@ -264,6 +264,23 @@ const (
 	// et l'EXPOSITION de cette ventilation, rien d'autre des socles. Ne pas l'élargir.
 	CapFilmWeaponTiers CapabilityKey = "film.weapon_tiers"
 
+	// CapFilmVehicleUsage — le titre produit, PAR MATCH, par camp, par joueur et par famille de
+	// vehicule, LA RESSOURCE VEHICULES DE L'EMPRISE (prises, temps a bord, frags de classe engin
+	// apparies aux episodes), lue du calque vehicules de l'artefact range et persistee dans
+	// `shared.match_vehicle_takes` (append-only + vue `_latest`).
+	//
+	// POURQUOI UNE CLE NEUVE. `film.replay_artifact` gouverne l'artefact lui-meme, pas ce que
+	// chaque derive en tire ; `film.usage_summary` compte les prises PAR ARME et n'a ni occupation
+	// ni episodes. Les prises de vehicule viennent de `vehicles[].rides[]`, une lecture distincte
+	// du meme artefact, et elle s'arme donc separement.
+	//
+	// Halo Infinite : supported. Halo 5 : ABSENTE — pas de decodeur de film, donc aucun artefact,
+	// donc aucun calque vehicules : la ressource n'existe pas (D10 de l'onglet).
+	//
+	// ⚠ Clé FINE, même doctrine que les sept `film.*` ci-dessus : elle gouverne la PRODUCTION et
+	// l'EXPOSITION de cette ressource, rien d'autre des vehicules. Ne pas l'élargir.
+	CapFilmVehicleUsage CapabilityKey = "film.vehicle_usage"
+
 	// CapFilmReplayArtifact — le titre produit L'ARTEFACT DE REJEU 2D lui-même
 	// (`data/cache/replays/{slug}/{match}.json`) : trame de positions, kill-feed recalé,
 	// score, roster, calques d'objectif. C'est la SOURCE dont les quatre dérivés du film

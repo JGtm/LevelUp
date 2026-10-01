@@ -13,8 +13,8 @@ package domain
 // `powerup` (bonus : camouflage + surbouclier, prises ATTRIBUÉES à un joueur, décision D4),
 // `power_weapon` (armes spéciales : prises sur les socles de niveau `puissance`, D3), `rack`
 // (armes de râtelier : socles de niveau `terrain`, grille match par match seulement). Une
-// ressource sans donnée est ABSENTE, jamais à zéro ; « véhicules » (lot L7) s'y ajoutera comme
-// une entrée de plus.
+// ressource sans donnée est ABSENTE, jamais à zéro ; `vehicle` (lot L7.3, squad_emprise_vehicles.go)
+// est entrée dans ces listes comme une entrée de plus.
 //
 // # RÉSULTAT, SCORE ET DOMINANCE NE SONT PAS ICI
 //
@@ -89,6 +89,13 @@ type SquadEmpriseBlock struct {
 	// Habit : les soirées précédentes comparables (D5). Nil sans coéquipier sélectionné ou
 	// sans film.
 	Habit *SquadEmpriseHabit `json:"habit,omitempty"`
+	// Placement : « Groupés ou isolés », le placement et le rendement de chaque vie de la
+	// composition (squad_emprise_placement.go). Nil sans `film.kill_positions`, lecture en échec
+	// ou aucune vie écrite pour la composition sur le périmètre.
+	Placement *SquadEmprisePlacement `json:"placement,omitempty"`
+	// Vehicles : la couverture de la ressource véhicules (squad_emprise_vehicles.go). Nil quand
+	// le titre ne la mesure pas (capability `film.vehicle_usage`), jamais un zéro.
+	Vehicles *SquadEmpriseVehicles `json:"vehicles,omitempty"`
 }
 
 // SquadEmpriseCount — un compte camp contre camp.
@@ -137,6 +144,8 @@ type SquadEmpriseObject struct {
 	// PadsEmptied : socles de ce bonus vidés, avec ou sans ramasseur nommé (les prises non
 	// attribuées ne comptent dans aucun camp, D4). Bonus seulement.
 	PadsEmptied *int `json:"pads_emptied,omitempty"`
+	// Aboard : temps à bord de chaque camp sur cette famille, en ms (véhicules seulement, D4).
+	Aboard *SquadEmpriseCount `json:"aboard_ms,omitempty"`
 	// Squad : les prises de notre camp, une entrée par joueur de Players dans l'ordre, puis le
 	// reste du camp (XUID vide).
 	Squad []SquadEmpriseObjectShare `json:"squad"`
@@ -151,6 +160,8 @@ type SquadEmpriseObjectShare struct {
 	// Kept / Dropped : bonus gardés sans être activés / lâchés en mourant. Bonus seulement.
 	Kept    *int `json:"kept,omitempty"`
 	Dropped *int `json:"dropped,omitempty"`
+	// AboardMS : son temps à bord, en ms (véhicules seulement, D4).
+	AboardMS *int64 `json:"aboard_ms,omitempty"`
 }
 
 // SquadEmpriseMatch — un match du périmètre.
@@ -170,6 +181,11 @@ type SquadEmpriseMatch struct {
 	// PowerWeaponKills : frags aux armes spéciales de chaque camp (feuille de match). Nil quand
 	// la feuille ne le dit pas ou que le camp est inconnu.
 	PowerWeaponKills *SquadEmpriseCount `json:"power_weapon_kills,omitempty"`
+	// Vehicles : l'état des véhicules du match (EmpriseVehicles*), qui sépare « non mesuré » (D8)
+	// d'un zéro mesuré ; vide quand le titre ne mesure pas la ressource. VehiclesReason : la raison
+	// machine d'un match non mesuré.
+	Vehicles       string `json:"vehicles,omitempty"`
+	VehiclesReason string `json:"vehicles_reason,omitempty"`
 }
 
 // SquadEmpriseMatchResource — une ressource d'un match et ses objets.
@@ -188,7 +204,7 @@ type SquadEmpriseProduction struct {
 	// Exposure : ce qui a permis ces frags. Nil sans mesure du film.
 	Exposure *SquadEmpriseExposure `json:"exposure,omitempty"`
 	// YieldUs / YieldThem : frags par minute d'effet (bonus), frags par prise (armes spéciales),
-	// calculés sur Exposure.Kills. Nil quand l'exposition du camp est nulle.
+	// calculés sur Exposure.Kills (véhicules : Exposure.PairedKills). Nil quand l'exposition du camp est nulle.
 	YieldUs   *float64 `json:"yield_us,omitempty"`
 	YieldThem *float64 `json:"yield_them,omitempty"`
 	// RelativeGap : notre rendement / le sien − 1 (0 = autant que l'adversaire).
@@ -201,8 +217,12 @@ type SquadEmpriseExposure struct {
 	Value SquadEmpriseCount `json:"value"`
 	// Kills : les frags des matchs où l'exposition est mesurée. Pour les armes spéciales, c'est
 	// Production.Kills privé des matchs sans niveaux de socle : un rendement se lit sur un seul
-	// périmètre.
+	// périmètre. Pour les véhicules, ce sont tous les frags de classe véhicule des matchs du
+	// rendement (D5) ; Value est lu sur les mêmes matchs.
 	Kills SquadEmpriseCount `json:"kills"`
+	// PairedKills : les frags APPARIÉS aux épisodes de leur tueur, le numérateur du rendement quand
+	// il diffère de Kills (véhicules, D9). Nil ailleurs : le rendement lit alors Kills.
+	PairedKills *SquadEmpriseCount `json:"paired_kills,omitempty"`
 }
 
 // SquadEmpriseHabit — « par rapport à d'habitude » (D5).

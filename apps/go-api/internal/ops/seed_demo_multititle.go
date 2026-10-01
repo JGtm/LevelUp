@@ -4,7 +4,7 @@
 // le MÊME arbre data/demo, puis on écrit UNE fois db_profiles.json v3 (une entrée
 // par couple titre × gamertag démo) + app_settings.json.
 //
-// Layout de sortie (cf. demoTitleSubdir) :
+// Layout de sortie (cf. title.DemoLayout, source unique) :
 //   - titre par défaut (halo_infinite) → PLAT, byte-identique à la démo mono-titre :
 //     data/demo/warehouse/*.duckdb, data/demo/players/DEMO/stats.duckdb
 //   - titre additionnel (halo_5)       → title-scopé (miroir du PathResolver prod) :
@@ -26,18 +26,9 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 )
 
-// demoTitleSubdir retourne le sous-répertoire de sortie d'un titre dans l'arbre démo.
-// Titre par défaut (ou slug vide) → outDir tel quel (layout PLAT legacy, byte-identique
-// mono-titre). Titre additionnel → outDir/titles/{slug}/ (miroir PathResolver prod).
-func demoTitleSubdir(outDir, slug string) string {
-	if slug == "" || slug == titlePkg.DefaultSlug {
-		return outDir
-	}
-	return filepath.Join(outDir, "titles", slug)
-}
-
-// demoPlayerDBRelPath retourne le chemin relatif (à la racine démo) de la player DB
-// démo d'un titre — cohérent avec demoTitleSubdir, pour db_profiles.json.
+// demoPlayerDBRelPath retourne le chemin RELATIF (à la racine démo) de la player DB démo
+// d'un titre, inscrit dans db_profiles.json (champ db_path, que le résolveur démo ignore) —
+// cohérent avec title.DemoLayout.
 func demoPlayerDBRelPath(slug, demoDir string) string {
 	if slug == "" || slug == titlePkg.DefaultSlug {
 		return filepath.ToSlash(filepath.Join("data", "players", demoDir, "stats.duckdb"))

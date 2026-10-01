@@ -125,6 +125,14 @@ func IsPerWeaponFragClass(class string) bool {
 	return perWeaponFragClasses[class]
 }
 
+// IsEngineFragClass indique si une classe est celle d un ENGIN : vehicule ou tourelle. C est LA
+// definition de « frag de classe vehicule » de l application (2026-09-30, plan Emprise vehicules,
+// D5) : la Repartition des frags (service/fragdist) et la ressource vehicules de l Emprise la lisent
+// toutes deux ici, jamais chacune dans son coin.
+func IsEngineFragClass(class string) bool {
+	return class == FragClassVehicle || class == FragClassTurret
+}
+
 // WeaponClassHasAccuracy indique si une classe d'arme a une précision PERTINENTE dans un
 // graphe « Précision par arme ». Faux pour les classes SANS « tir au but » — projectiles
 // (grenade), mêlée, capacités spartanes, résidu non attribué — les armes montées d'engin

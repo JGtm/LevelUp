@@ -2,8 +2,8 @@
 // (kill-feed / timeline, chargée on-demand).
 //
 // Orchestration (arch-rules) : combine l'adapter de titre (LoadMatchEvents →
-// canonical.MatchEventTimeline) et un GamertagResolver (chokepoint canonique
-// v_gamertag_lookup). Aucun SQL inline, aucune logique de titre par slug : la
+// canonical.MatchEventTimeline) et un GamertagResolver (la cascade canonique des noms, lue
+// sur le match de la timeline). Aucun SQL inline, aucune logique de titre par slug : la
 // capability est portée par l'adapter (ErrCapabilityNotSupported propagée).
 package service
 
@@ -60,7 +60,8 @@ func (s *MatchEventsService) GetMatchEvents(ctx context.Context, matchID string,
 }
 
 // enrichGamertags peuple PlayerIdentity.Gamertag (vide) des events via le
-// chokepoint canonique. No-op si resolver nil, ou si aucune identité xuid-seule
+// chokepoint canonique, pour le match de la timeline (tl.MatchID : le résolveur lit l'annuaire
+// de CE match, lot A). No-op si resolver nil, ou si aucune identité xuid-seule
 // (ex. Halo 5 = déjà gamertag-keyé, XUID vide). Échec resolver = dégradation
 // gracieuse (identité laissée sans gamertag, masquée au rendu front).
 func (s *MatchEventsService) enrichGamertags(ctx context.Context, tl *canonical.MatchEventTimeline) {
@@ -80,7 +81,7 @@ func (s *MatchEventsService) enrichGamertags(ctx context.Context, tl *canonical.
 	for x := range need {
 		xuids = append(xuids, x)
 	}
-	gamertags, err := s.resolver.ResolveGamertags(ctx, xuids)
+	gamertags, err := s.resolver.ResolveGamertags(ctx, tl.MatchID, xuids)
 	if err != nil {
 		s.logger.WarnContext(ctx, "match_events_gamertag_resolve_failed",
 			"match_id", tl.MatchID, "xuids", len(xuids), "err", err)

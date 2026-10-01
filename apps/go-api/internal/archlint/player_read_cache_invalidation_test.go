@@ -12,6 +12,7 @@
 //   - duckdb.MatchExclusionRepo.SetExclusion : exclusion d'un match.
 //
 // Un point retiré à dessein se retire d'ici dans le même commit, avec sa raison.
+// Invariant I3 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 package archlint
 
 import (

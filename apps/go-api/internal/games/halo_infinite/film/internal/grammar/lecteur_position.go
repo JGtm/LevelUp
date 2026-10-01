@@ -49,11 +49,12 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 // `dispatch_object.go`) : largeur 6 + niveau du registre, largeurs du descripteur de traversee,
 // index fige a 1, largeurs de la carte sous la porte posee, 16 bits plats — chacun faux ailleurs.
 //
-// ONZE SITES RESTENT HORS DU PORTAGE, en EXCEPTIONS DATEES (decision du superviseur du
-// 2026-09-27 ; lot J6-bis du 2026-09-28 ; lot R3 du 2026-09-29) : flock-position, world-object
-// i0, `ti=38 i18`, flock-destination, tacmap-poiicon, player-desired-respawn-location,
-// tacmap-displayasset, tacmap-areaofinterest, tacmap-cooptetherarea, crew-order et la branche
-// precHigh = 1 de l i0 absolu du bipede gardent leur ancien lecteur dans
+// TREIZE SITES RESTENT HORS DU PORTAGE, en EXCEPTIONS DATEES (decision du superviseur du
+// 2026-09-27 ; lot J6-bis du 2026-09-28 ; lot R3 du 2026-09-29 ; lot R3-bis du 2026-09-30) :
+// flock-position, world-object i0, `ti=38 i18`, flock-destination, tacmap-poiicon,
+// player-desired-respawn-location, tacmap-displayasset, tacmap-areaofinterest,
+// tacmap-cooptetherarea, crew-order, la branche precHigh = 1 de l i0 absolu du bipede, les deux
+// vecteurs de unit-actor-state et tacmap-waypointstate gardent leur ancien lecteur dans
 // `lecteur_position_exceptions.go`, parce que la lecture du jeu y fait baisser la fermeture des
 // bobines. Les chiffres et le critere de retrait sont dans ce fichier et dans la table des sites.
 

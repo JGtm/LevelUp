@@ -62,7 +62,14 @@ func buildPlayerDirectory(d playerDirectoryDeps) port.PlayerDirectory {
 	}
 	if d.cfg != nil {
 		deps.Profiles = d.cfg
-		deps.FS = playerdirectory.NewPathFS(d.cfg.RepoRoot)
+		// PAS de témoin disque en démo (lot B-C2 du backlog 2026-09-26) : il balaierait les
+		// dossiers de joueurs du DÉPÔT, que la démo publique listait alors comme orphelins
+		// sur un poste de dev. Pas de repli sur la racine démo non plus : la fixture nomme
+		// ses dossiers autrement que ses clés de profil (DemoPlayer -> DEMO), un balayage y
+		// inventerait des orphelins. Sans FS, l'annuaire tolère l'absence (cf. Deps).
+		if !d.cfg.DemoMode {
+			deps.FS = playerdirectory.NewPathFS(d.cfg.RepoRoot)
+		}
 	}
 	if d.users != nil {
 		deps.Accounts = d.users

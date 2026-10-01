@@ -317,7 +317,64 @@ const plafondSurfaceFacade = 186 // 2026-09-30 — J12.4 sur 8cd560673 : 187 - 1
 //	                                           journalisent par `replay.JournaliserDiagnostics`.
 //	                                           UN symbole neuf, re-mesure sur la base `e3e322b74` :
 //	                                           277.
-const plafondSurfaceReplay = 278 // 2026-09-30 — J12.3 sur e3e322b74 : 277 + 1 (replay.JournaliserDiagnostics)
+//	291  emprise-vies V1 (2026-09-28)           +13, le placement des vies et les porteurs lus au
+//	                                           sync (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`).
+//	                                           HUIT par `replaybuild`, qui appelle desormais le pont
+//	                                           par manche, les gardes de mode et les entrees des
+//	                                           calques de porteur DEPLACES dans `replay` pour que
+//	                                           le sync les partage sans copie : `PontParManche`,
+//	                                           `NouveauPontParManche`, `GardesDeLaVariante`,
+//	                                           `EntreeDuDrapeau`, `EntreeDuCrane`,
+//	                                           `EntreeDeLaCouronne`, `EntreeDeLaBombe`, et
+//	                                           `PortagesAuSync` (nomme dans le commentaire de
+//	                                           `matchfacts.go`). CINQ par le temoin du collecteur
+//	                                           (`sync/killcollector/emprise_v1_temoin_research_test.go`) :
+//	                                           `PlacementDesVies`, `EntreePlacement`,
+//	                                           `FragDuJournal`, `PlacementVie`, `BilanPlacement`.
+//	                                           RE-MESURE A L ENTREE du lot : 278 sur `6466b11ef`
+//	                                           (`comm` des deux inventaires : 13 ajouts, 0 retrait).
+//	293  emprise-vies V2 (2026-09-29)           +3 -1, le placement des vies ecrit par le collecteur
+//	                                           (`sync/killcollector/placement_des_vies.go`), qui
+//	                                           lit les porteurs au sync : `EntreePorteursAuSync`,
+//	                                           `BilanPortages`, `IntervalleDePort`. UN RETRAIT :
+//	                                           `PointObjective`, que `replaybuild/flagspawns.go` et
+//	                                           son test ne citent plus — la projection des socles
+//	                                           vit dans `replay` (`MapObjectivesEntry.SoclesDeDrapeau`,
+//	                                           une methode : aucun identifiant compte en plus).
+//	                                           RE-MESURE A L ENTREE du lot : 291 sur `e893ed8dd`
+//	                                           (`comm` des deux inventaires : 3 ajouts, 1 retrait).
+//	298  emprise-vehicules L7.2 (2026-09-30)    +5, la ressource vehicules ecrite au fil de l eau
+//	                                           (`sync/replayartifacts/vehicletakes.go`) : `ProjectVehicleTakes`,
+//	                                           `PairVehicleFrags`, `VehicleFragRef`,
+//	                                           `VehicleFragsCoverage`, `VehicleFragsNoSource`. Les
+//	                                           tests citent les raisons et la provenance `film` en
+//	                                           LITTERAUX (oracles independants), donc ne comptent pas.
+//	                                           RE-MESURE A L ENTREE du lot : 293 sur `707d4e983`
+//	                                           (`comm` des deux inventaires : 5 ajouts, 0 retrait).
+//	297  fusion J11.6 (2026-10-01)              `origin/feat/v75` (emprise-vies, emprise-vehicules)
+//	                                           fusionnee dans `feat/suite-audit-decodeur` : les deux
+//	                                           histoires ci-dessus partent de 278 (rr(m4b)) et sont
+//	                                           INDEPENDANTES. Branche de l audit : -1 net (+4
+//	                                           `FilmFactsEntete`, `GardesDe`, `EmpreinteDeCle`,
+//	                                           `ReplisHorsBalayage` ; -5 `Death`, `PlayerIndexTable`,
+//	                                           `ScanClockOrigin`, `ScanFilmDeaths`,
+//	                                           `ScanPlayerIndices`, descendus dans `types` et
+//	                                           `grammar` par J4.2). Emprise : +20 net (291, 293, 298
+//	                                           ci-dessus). Le test d integration du rattrapage
+//	                                           convergent (`cmd/levelup/..._placement_integration_test.go`)
+//	                                           citait `Death` et `PlayerIndexTable` sous `replay` :
+//	                                           reecrits `types.X` a la fusion, ils ne comptent pas.
+//	                                           RE-MESURE A LA FUSION : 278 - 1 + 20 = 297 (`comm`
+//	                                           des inventaires des deux tetes et de l arbre fusionne).
+//	298  fusion J12 (2026-10-01)                `feat/suite-audit-decodeur` (`8b894a677`, 297)
+//	                                           fusionnee dans `feat/suite-audit-decodeur-j12`
+//	                                           (`78d8d5482`, 278) : les deux histoires ci-dessus
+//	                                           (J12.3 a 278, J11.6 a 297) sont INDEPENDANTES. +1 sur
+//	                                           la branche du plan : `replay.JournaliserDiagnostics`
+//	                                           (J12.3), qu emprise ne citait pas. Aucun retrait.
+//	                                           RE-MESURE A LA FUSION : 297 + 1 = 298 (`comm` des
+//	                                           inventaires des deux tetes et de l arbre fusionne).
+const plafondSurfaceReplay = 298 // 2026-10-01 — fusion J12 (8b894a677 -> 78d8d5482) : 297 (plan) + 1 (replay.JournaliserDiagnostics, J12.3) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // GetMatchScoreboard retourne les stats de tous les joueurs (Q12).
 // Exécutée sur SharedReader (ADR 0016) — Q12 lit medals_earned + weapon_kills
-// + match_participants + v_gamertag_lookup (shared-only).
+// + match_participants (shared-only) ; les noms viennent de l'annuaire du match en portée base
+// (lot A du plan perf « lectures par périmètre », plus de jointure sur la vue des noms).
 //
 // Les stats d'objectifs sont chargées SÉPARÉMENT (Q12bObjectiveStats) et
 // best-effort : leur absence (vue match_objective_stats_latest non migrée) ne
@@ -30,25 +32,21 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	}
 	defer release()
 
-	// Q12 utilise 2 fois match_id : CTE des medailles, puis WHERE. Set perfect-kill
-	// resolu pour le titre du joueur (HINF byte-identique).
-	q := resolvePerfectKillClause(Q12MatchScoreboard, "medal_name_id", pdbTitleSlug(r.pdb))
-	rows, err := sharedDB.QueryContext(ctx, q, matchID, matchID)
+	stop := timing.FromContext(ctx).Section("match_scoreboard")
+	results, err := r.lireTableauDeScore(ctx, sharedDB, matchID)
+	stop()
+	if err != nil {
+		return nil, err
+	}
+	stop = timing.FromContext(ctx).Section("match_scoreboard_annuaire")
+	err = nommerLignesPorteeBase(ctx, sharedDB, []string{matchID}, results, accesLigne[domain.ScoreboardRaw]{
+		xuid:   func(s domain.ScoreboardRaw) string { return s.XUID },
+		match:  func(domain.ScoreboardRaw) string { return matchID },
+		nommer: func(s *domain.ScoreboardRaw, gt string) { s.Gamertag = gt },
+	})
+	stop()
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
-	}
-	defer rows.Close()
-
-	var results []domain.ScoreboardRaw
-	for rows.Next() {
-		s, scanErr := scanScoreboardRow(rows)
-		if scanErr != nil {
-			return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard scan: %w", scanErr)
-		}
-		results = append(results, s)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
 	// Objectifs : section DÉGRADABLE indépendamment (map vide si la vue manque).
@@ -77,6 +75,28 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	return results, nil
 }
 
+// lireTableauDeScore lit Q12 (lignes sans nom).
+func (r *MatchViewRepo) lireTableauDeScore(ctx context.Context, db *sql.DB, matchID string) ([]domain.ScoreboardRaw, error) {
+	// Q12 utilise 2 fois match_id : CTE des medailles, puis WHERE. Set perfect-kill
+	// resolu pour le titre du joueur (HINF byte-identique).
+	q := resolvePerfectKillClause(Q12MatchScoreboard, "medal_name_id", pdbTitleSlug(r.pdb))
+	rows, err := db.QueryContext(ctx, q, matchID, matchID)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
+	}
+	defer rows.Close()
+
+	var results []domain.ScoreboardRaw
+	for rows.Next() {
+		s, scanErr := scanScoreboardRow(rows)
+		if scanErr != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard scan: %w", scanErr)
+		}
+		results = append(results, s)
+	}
+	return results, rows.Err()
+}
+
 // scanScoreboardRow scanne une ligne de Q12 et sanitize les flottants.
 // Extrait de GetMatchScoreboard (seuil 80 lignes/fonction).
 func scanScoreboardRow(rows *sql.Rows) (domain.ScoreboardRaw, error) {
@@ -90,7 +110,6 @@ func scanScoreboardRow(rows *sql.Rows) (domain.ScoreboardRaw, error) {
 	var firstJoined, lastLeave sql.NullTime
 	if err := rows.Scan(
 		&s.XUID,
-		&s.Gamertag,
 		&s.IsBot,
 		&s.TeamID,
 		&s.RankInTeam,

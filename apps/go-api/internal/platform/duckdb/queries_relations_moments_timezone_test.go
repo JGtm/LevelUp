@@ -57,11 +57,10 @@ func openHeatmapTZDB(t *testing.T, timezone string) *DB {
 func seedHeatmapTZ(t *testing.T, db *sql.DB) {
 	t.Helper()
 	stmts := []string{
-		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, team_id INTEGER)`,
+		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, team_id INTEGER, gamertag VARCHAR)`,
 		`CREATE TABLE match_registry (match_id VARCHAR, start_time_utc TIMESTAMPTZ, start_time TIMESTAMP)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
-		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM xuid_aliases`,
-		`INSERT INTO match_participants VALUES
+		`INSERT INTO match_participants (match_id, xuid, team_id) VALUES
 			('m1','xuidMe',0), ('m1','xuidAlly',0),
 			('m2','xuidMe',0), ('m2','xuidAlly',0),
 			('m3','xuidMe',0), ('m3','xuidAlly',0)`,
