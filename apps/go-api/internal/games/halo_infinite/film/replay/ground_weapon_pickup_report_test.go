@@ -426,3 +426,16 @@ func gwPickupMax(v []float64) float64 {
 	}
 	return m
 }
+
+// gwPickupDateUS rend l'instant retenu de la disparition : celui du passage quand il existe, la
+// borne haute sinon (règle du plan : « aucun : `unknown`, date = borne haute »).
+//
+// IL NE SE PUBLIE PAS À L'ARTEFACT — l'artefact publie l'INTERVALLE [borne basse, borne haute],
+// que le recensement mesure. Cette date sert au CYCLE (item 2.4 : l'horloge d'un socle repart au
+// ramassage, 24 socles établis sur 57 contre 4 pour l'horloge d'apparition).
+func (o gwPickupObject) gwPickupDateUS() uint64 {
+	if o.Picker.Found {
+		return o.Picker.TUS
+	}
+	return o.Bounds.HighUS
+}
