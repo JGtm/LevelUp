@@ -298,6 +298,10 @@ git commit -m "refactor(phase2): ..."
 5. Pas de nom fourni → en proposer un avant de créer
 6. Entre sessions : `git log --oneline -10` pour reprendre au bon endroit
 7. Plusieurs branches uniquement pour des tâches réellement indépendantes/parallèles
+8. **Merge vers `main` = squash merge uniquement** (imposé par GitHub : seul « Squash and
+   merge » est activé). Une branche = un commit sur `main` ; le titre du squash suit
+   Conventional Commits et résume la tâche. Branche supprimée après merge. Ne jamais
+   faire de `git merge` local vers `main`.
 
 ## Décisions architecturales (ADRs) — `docs/adr/`
 
