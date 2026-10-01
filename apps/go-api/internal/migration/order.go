@@ -213,6 +213,7 @@ var canonicalOrder = []string{
 	// steps_shared_match_lives.go : init() suit le nom de fichier, donc APRES les trois
 	// steps_shared_kill_events*.go — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_match_lives_v1",             // shared (vies nommées du film + contexte de voisinage d une mort, append-only + vues _latest par passe)
+	"shared_match_life_placement_v1",    // shared (placement de chaque vie, append-only + vue _latest par passe ; steps_shared_match_lives_placement.go trie juste apres steps_shared_match_lives.go)
 	"shared_objective_events_v1",        // shared
 	"shared_objective_score_v1_drop",    // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
 	"shared_create_pad_pickups_by_tier", // shared
@@ -302,6 +303,10 @@ var canonicalOrder = []string{
 	// Doit SUIVRE le créateur des tables : il en altère une et recrée sa vue (étape E3
 	// du plan équipement, 2026-09-09). Enregistrée juste après lui, dans le même fichier.
 	"shared_match_usage_players_outcomes_v1", // shared (les trois issues d'un objet pris, par famille)
+	// Ressource vehicules de l Emprise (plan vehicules L7.2, 2026-09-30) : position dictee par l ordre
+	// d init (steps_shared_vehicle_takes.go trie apres steps_shared_usage_summary.go et avant
+	// steps_shared_weapon_*.go) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_create_vehicle_takes", // shared (match_vehicle_takes, append-only + vue _latest par passe)
 	// Table SOEUR de match_weapon_shots (distances tireur<->victime des touches, acquis du
 	// chantier precision remis le 2026-09-01). Position dictee par l'ordre d'init
 	// (alphabetique par nom de fichier) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.

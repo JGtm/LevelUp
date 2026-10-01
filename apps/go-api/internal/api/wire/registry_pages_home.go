@@ -225,8 +225,8 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// seule porte data-level. Titre qui ne nomme pas le tueur de chaque mort →
 		// section absente du contrat (jamais des zéros). Jamais une comparaison de slug.
 		WithEchange(duckdb.NewTacticalRepo(pdb), r.capabilitiesForPDB(pdb)).
-		// Nuage « isolement x couverture » de la section Echange (item 7.7) : MÊME
-		// table de portée de radar que l'onglet Tactique (radarRangeFor).
+		// « Groupés ou isolés » de l'Emprise (plan Emprise vies, lot V3) : la portée COURANTE du
+		// radar de chaque match, MÊME table que l'onglet Tactique (radarRangeFor).
 		WithRadarRange(r.radarRangeFor(pdb)).
 		// « Rôles de portée » (D22-5) : MÊME repo et MÊME classificateur que la Synthèse
 		// et la page Sessions. Câblage INCONDITIONNEL — le repo rend
@@ -265,6 +265,19 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	// qu'il lit ; jamais une comparaison de slug. Sans lui, l'historique n'écarte aucun mode.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveHistory(skillchain.IsNeutralFlagSubMode)
+	}
+	// Placement des vies (« Groupés ou isolés », plan Emprise vies, lot V3) : MÊME porte que les
+	// vies au sync, film.kill_positions (Infinite ; absente pour Halo 5 → bloc absent, journalisé
+	// en Debug par le service). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmKillPositions) {
+		svc = svc.WithLifePlacement(duckdb.NewSquadLifePlacementRepo(pdb))
+	}
+	// Ressource véhicules de l'Emprise (plan Emprise véhicules, lot L7.3) : la capability fine
+	// film.vehicle_usage, celle de sa dérivation au sync (Infinite ; absente pour Halo 5 → ressource
+	// absente, journalisé en Debug par le service). Le classificateur de source de dégât est celui de
+	// la Répartition des frags. Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmVehicleUsage) {
+		svc = svc.WithVehicleUsage(duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb)))
 	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

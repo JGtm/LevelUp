@@ -9,6 +9,19 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// tracee : l'objet a une trace — une prise, du temps à bord ou un socle vidé.
+func (o *objectAcc) tracee() bool {
+	return o.us+o.them > 0 || o.padsEmptied > 0 || o.aboardTotal() > 0
+}
+
+func (o *objectAcc) aboardTotal() int64 {
+	n := o.aboardThem
+	for _, v := range o.aboard {
+		n += v
+	}
+	return n
+}
+
 // objectAcc — un objet en cours de comptage.
 type objectAcc struct {
 	resource, key string
@@ -17,12 +30,17 @@ type objectAcc struct {
 	taken, kept, dropped map[string]int
 	padsEmptied          int
 	hasPads              bool
+	// aboard : temps à bord en ms (véhicules, D4) — camp adverse, puis chez nous par xuid (clé "" =
+	// reste du camp).
+	aboardThem int64
+	aboard     map[string]int64
 }
 
 func newObjectAcc(resource, key string) *objectAcc {
 	return &objectAcc{
 		resource: resource, key: key,
 		taken: map[string]int{}, kept: map[string]int{}, dropped: map[string]int{},
+		aboard: map[string]int64{},
 	}
 }
 
@@ -39,6 +57,15 @@ func (o *objectAcc) add(us bool, who string, n, kept, dropped int) {
 	o.dropped[who] += dropped
 }
 
+// addAboard ajoute du temps à bord (véhicules) ; who comme pour add.
+func (o *objectAcc) addAboard(us bool, who string, ms int64) {
+	if !us {
+		o.aboardThem += ms
+		return
+	}
+	o.aboard[who] += ms
+}
+
 func (o *objectAcc) merge(other *objectAcc) {
 	o.us += other.us
 	o.them += other.them
@@ -50,6 +77,10 @@ func (o *objectAcc) merge(other *objectAcc) {
 	}
 	for k, v := range other.dropped {
 		o.dropped[k] += v
+	}
+	o.aboardThem += other.aboardThem
+	for k, v := range other.aboard {
+		o.aboard[k] += v
 	}
 	o.padsEmptied += other.padsEmptied
 	o.hasPads = o.hasPads || other.hasPads
@@ -72,9 +103,13 @@ func (s *objets) get(resource, key string) *objectAcc {
 	return o
 }
 
-func (s *objets) merge(other *objets) {
+// merge verse les objets de other ; `garde` (nil = tous) dit quelles ressources passent : les
+// véhicules se versent toujours, les autres quand le film du match se lit (soiree.add).
+func (s *objets) merge(other *objets, garde func(resource string) bool) {
 	for _, o := range other.byKey {
-		s.get(o.resource, o.key).merge(o)
+		if garde == nil || garde(o.resource) {
+			s.get(o.resource, o.key).merge(o)
+		}
 	}
 }
 
@@ -90,10 +125,10 @@ func (s *objets) total(resource string) domain.SquadEmpriseCount {
 	return c
 }
 
-// has dit si la ressource a une trace : une prise, ou un socle de bonus vidé.
+// has dit si la ressource a une trace : une prise, du temps à bord, ou un socle de bonus vidé.
 func (s *objets) has(resource string) bool {
 	for _, o := range s.byKey {
-		if o.resource == resource && (o.us+o.them > 0 || o.padsEmptied > 0) {
+		if o.resource == resource && o.tracee() {
 			return true
 		}
 	}
@@ -105,7 +140,7 @@ func (s *objets) has(resource string) bool {
 func (s *objets) publier(resource string, players []domain.SessionUsageSquadPlayer, in *Input) []domain.SquadEmpriseObject {
 	list := make([]*objectAcc, 0, len(s.byKey))
 	for _, o := range s.byKey {
-		if (resource == "" || o.resource == resource) && (o.us+o.them > 0 || o.padsEmptied > 0) {
+		if (resource == "" || o.resource == resource) && o.tracee() {
 			list = append(list, o)
 		}
 	}
@@ -140,21 +175,29 @@ func publierObjet(o *objectAcc, players []domain.SessionUsageSquadPlayer, in *In
 	if info, ok := in.Weapons[o.key]; ok && !bonus {
 		obj.WeaponKey, obj.Label = info.WeaponKey, info.Label
 	}
+	if o.resource == domain.EmpriseResourceVehicle {
+		obj.Label = in.VehicleLabels[o.key]
+		obj.Aboard = &domain.SquadEmpriseCount{Us: int(o.aboardTotal() - o.aboardThem), Them: int(o.aboardThem)}
+	}
 	if bonus && o.hasPads {
 		n := o.padsEmptied
 		obj.PadsEmptied = &n
 	}
 	for _, p := range players {
-		obj.Squad = append(obj.Squad, partDe(o, p.XUID, bonus))
+		obj.Squad = append(obj.Squad, partDe(o, p.XUID))
 	}
-	obj.Squad = append(obj.Squad, partDe(o, "", bonus))
+	obj.Squad = append(obj.Squad, partDe(o, ""))
 	return obj
 }
 
 // partDe — la part d'un joueur des fiches (ou du reste du camp, who = "").
-func partDe(o *objectAcc, who string, bonus bool) domain.SquadEmpriseObjectShare {
+func partDe(o *objectAcc, who string) domain.SquadEmpriseObjectShare {
 	part := domain.SquadEmpriseObjectShare{XUID: who, Taken: o.taken[who]}
-	if bonus {
+	if o.resource == domain.EmpriseResourceVehicle {
+		ms := o.aboard[who]
+		part.AboardMS = &ms
+	}
+	if o.resource == domain.EmpriseResourcePowerup {
 		kept, dropped := o.kept[who], o.dropped[who]
 		part.Kept, part.Dropped = &kept, &dropped
 	}

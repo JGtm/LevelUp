@@ -6,6 +6,7 @@
  * déjà le seuil de taille. Parité FR / EN garantie par le typage `Record<Locale, …>`.
  */
 import type { Locale } from '@/lib/i18n/locale'
+import { buildVehicleText, type VehicleText } from './vehicleStrings'
 
 /**
  * Les noms d'une ressource, selon l'endroit où elle s'écrit : `label` (« Bonus »), sous-libellé
@@ -28,7 +29,10 @@ export interface ResourceText {
 /** Une exposition (barre fine) : son nom (« temps d’effet ») et le format de sa valeur (« 2 min 39 »). */
 export interface ExposureText { name: string; fmt: (v: number) => string }
 
+type BaseEmpriseText = Omit<EmpriseText, 'vehicles'> // avant l'ajout des véhicules (vehicleStrings.ts)
+
 export interface EmpriseText {
+  vehicles: VehicleText // les mots propres aux véhicules ; leur entrée de ressource est posée par withVehicles
   sections: { bilan: string; roles: string; carte: string; prendre: string; habitude: string }
   resources: Record<string, ResourceText>
   ourSide: string
@@ -148,7 +152,7 @@ function signedPct(gap: number, sep: string): string {
   return `${gap > 0 ? '+' : '−'}${n}${sep}%`
 }
 
-const FR: EmpriseText = {
+const FR: BaseEmpriseText = {
   sections: {
     bilan: 'Bilan de la soirée',
     roles: 'Rôles dans l’escouade',
@@ -219,10 +223,10 @@ const FR: EmpriseText = {
   sheets: {
     title: 'Répartition des prises dans l’escouade',
     info:
-      'Qui, dans notre camp, a pris chaque bonus et chaque arme spéciale de la soirée, une ' +
+      'Qui, dans notre camp, a pris chaque bonus, arme spéciale et véhicule de la soirée, une ' +
       'pastille par prise. Pour un bonus, une pastille vide est une prise perdue : gardée sans ' +
-      'être activée, ou lâchée en mourant. L’usage d’une arme spéciale n’est pas mesuré par ' +
-      'prise : ses pastilles sont toutes pleines.',
+      'être activée, ou lâchée en mourant. L’usage d’une arme spéciale ou d’un véhicule n’est pas ' +
+      'mesuré par prise : leurs pastilles sont toutes pleines.',
     dominant: 'Ressource dominante',
     rest: 'Reste du camp',
     legendTaken: 'Prise',
@@ -245,11 +249,11 @@ const FR: EmpriseText = {
     title: 'Frags obtenus avec les ressources',
     info:
       'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine ce qui les a ' +
-      'permis (temps d’effet d’un bonus, prises d’une arme spéciale), toutes deux sur les matchs où ' +
+      'permis (temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un véhicule), toutes deux sur les matchs où ' +
       'ce qui les a permis est mesuré. Si la coupure de la barre épaisse est à gauche de celle de la ' +
       'fine, on a moins produit qu’on n’a eu. Les frags de toute la soirée se lisent match par match.',
     ariaLabel: 'Notre part des frags obtenus avec chaque ressource, et de ce qui les a permis',
-    thinLegend: 'Barre fine : temps d’effet ou prises',
+    thinLegend: 'Barre fine : temps d’effet, prises ou temps à bord',
     exposure: {
       effect_ms: { name: 'temps d’effet', fmt: duration },
       pickups: { name: 'prises sur les socles', fmt: (v) => `${v} prise${v > 1 ? 's' : ''}` },
@@ -262,7 +266,7 @@ const FR: EmpriseText = {
     title: 'Rendement face à l’adversaire',
     info:
       'Combien notre camp produit de plus ou de moins que l’adversaire pour la même exposition : ' +
-      'par minute d’effet d’un bonus, par prise d’arme spéciale. Zéro veut dire autant que lui. ' +
+      'par minute d’effet d’un bonus, par prise d’arme spéciale, par minute à bord d’un véhicule. Zéro veut dire autant que lui. ' +
       'Les deux rendements bruts sont écrits sous la valeur.',
     ariaLabel: 'Notre rendement face à celui de l’adversaire, par ressource',
     more: 'Plus productifs que l’adversaire',
@@ -318,7 +322,7 @@ const FR: EmpriseText = {
   },
 }
 
-const EN: EmpriseText = {
+const EN: BaseEmpriseText = {
   sections: {
     bilan: 'Session summary',
     roles: 'Roles within the squad',
@@ -389,9 +393,9 @@ const EN: EmpriseText = {
   sheets: {
     title: 'Pickups within the squad',
     info:
-      'Who on our side picked up each power-up and each power weapon of the session, one dot ' +
+      'Who on our side picked up each power-up, power weapon and vehicle of the session, one dot ' +
       'per pickup. For a power-up, a hollow dot is a lost pickup: held without being ' +
-      'activated, or dropped on death. Power weapon use isn’t measured per pickup: its dots are ' +
+      'activated, or dropped on death. Power weapon and vehicle use isn’t measured per pickup: their dots are ' +
       'all filled.',
     dominant: 'Main resource',
     rest: 'Rest of the side',
@@ -414,11 +418,11 @@ const EN: EmpriseText = {
     title: 'Kills with resources',
     info:
       'The thick bar splits the kills the resource brought, the thin bar what made them possible ' +
-      '(effect time for a power-up, pickups for a power weapon), both over the matches where the ' +
+      '(effect time for a power-up, pickups for a power weapon, time aboard a vehicle), both over the matches where the ' +
       'latter is measured. If the thick bar’s split sits left of the thin one’s, we produced less ' +
       'than we had. Kills over the whole session read match by match.',
     ariaLabel: 'Our share of the kills made with each resource, and of what made them possible',
-    thinLegend: 'Thin bar: effect time or pickups',
+    thinLegend: 'Thin bar: effect time, pickups or time aboard',
     exposure: {
       effect_ms: { name: 'effect time', fmt: duration },
       pickups: { name: 'pickups from the pads', fmt: (v) => `${v} pickup${v > 1 ? 's' : ''}` },
@@ -431,7 +435,7 @@ const EN: EmpriseText = {
     title: 'Efficiency against the opponent',
     info:
       'How much more or less our side produces than the opponent for the same exposure: per ' +
-      'minute of power-up effect, per power weapon pickup. Zero means as much as them. Both raw ' +
+      'minute of power-up effect, per power weapon pickup, per minute aboard a vehicle. Zero means as much as them. Both raw ' +
       'rates are written next to the value.',
     ariaLabel: 'Our efficiency against the opponent’s, per resource',
     more: 'More productive than the opponent',
@@ -487,4 +491,10 @@ const EN: EmpriseText = {
   },
 }
 
-export const EMPRISE_TEXT: Record<Locale, EmpriseText> = { fr: FR, en: EN }
+const VT = buildVehicleText(duration)
+const withVehicles = (b: BaseEmpriseText, v: VehicleText): EmpriseText => ({
+  ...b, vehicles: v,
+  resources: { ...b.resources, vehicle: v.resource },
+  production: { ...b.production, exposure: { ...b.production.exposure, aboard_ms: v.aboard } },
+})
+export const EMPRISE_TEXT: Record<Locale, EmpriseText> = { fr: withVehicles(FR, VT.fr), en: withVehicles(EN, VT.en) }

@@ -42,13 +42,10 @@ var gunFragClasses = map[string]bool{
 	domain.FragClassHeavy:    true,
 }
 
-// engineFragClasses = classes d'ENGIN, servies par le registre quelle que soit la
-// provenance de la ligne : véhicule et tourelle existent dans `weapon_kills` (Halo 5) ET
-// dans la source de dégât (Halo Infinite).
-var engineFragClasses = map[string]bool{
-	domain.FragClassVehicle: true,
-	domain.FragClassTurret:  true,
-}
+// Les classes d'ENGIN (`domain.IsEngineFragClass`) sont servies par le registre quelle que soit
+// la provenance de la ligne : véhicule et tourelle existent dans `weapon_kills` (Halo 5) ET
+// dans la source de dégât (Halo Infinite). Leur définition est partagée avec la ressource
+// véhicules de l'Emprise (2026-09-30) : une seule, dans `domain`.
 
 // offArsenalFragClasses = classes d'OBJET hors arsenal (équipement, environnement). Elles
 // ne sont servies que si la ligne a été MESURÉE dans la source de dégât du film.
@@ -68,7 +65,7 @@ var offArsenalFragClasses = map[string]bool{
 // (gun), par engin (véhicule/tourelle), et par objet hors arsenal quand la source de
 // dégât l'a mesurée.
 func isRegistryFragClass(r port.WeaponKillRow) bool {
-	if gunFragClasses[r.Class] || engineFragClasses[r.Class] {
+	if gunFragClasses[r.Class] || domain.IsEngineFragClass(r.Class) {
 		return true
 	}
 	return r.FromDamageSource && offArsenalFragClasses[r.Class]

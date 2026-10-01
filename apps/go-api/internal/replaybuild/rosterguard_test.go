@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
 
@@ -34,7 +35,7 @@ func rosterDe(n int) port.MatchFacts {
 // rougit ce test — les actions ressortent alors publiees, exactement comme avant ce lot.
 func TestGardeDEffectifRefuseUnFilmAuDelaDeHuitJoueurs(t *testing.T) {
 	recs := recordsCTFDeTest()
-	pont := func() *pontParManche { return &pontParManche{recs: recs} }
+	pont := func() *replay.PontParManche { return replay.NouveauPontParManche(recs, nil, nil) }
 
 	nommees := len(decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeFlag))
 	if nommees == 0 {
@@ -72,7 +73,7 @@ func TestGardeDEffectifRefuseUnFilmAuDelaDeHuitJoueurs(t *testing.T) {
 func TestGardeDEffectifNeRefuseRienSansFaitsDeMatch(t *testing.T) {
 	recs := recordsCTFDeTest()
 	got, _, refuses := identifiedEvents(context.Background(), "m", filmDeaths{}, recs,
-		port.MatchFacts{GameVariantName: "CTF:Arena"}, &pontParManche{recs: recs})
+		port.MatchFacts{GameVariantName: "CTF:Arena"}, replay.NouveauPontParManche(recs, nil, nil))
 	if refuses != 0 {
 		t.Errorf("refuses = %d, attendu 0 : sans ligne de match, l'effectif est INCONNU", refuses)
 	}
@@ -101,7 +102,7 @@ func TestSiegesAuCoupDEnvoiNeCompteNiBotNiRemplacant(t *testing.T) {
 	}
 	// Et le calque n'est donc PAS refuse.
 	_, _, refuses := identifiedEvents(context.Background(), "m", filmDeaths{}, recordsCTFDeTest(),
-		f, &pontParManche{recs: recordsCTFDeTest()})
+		f, replay.NouveauPontParManche(recordsCTFDeTest(), nil, nil))
 	if refuses != 0 {
 		t.Errorf("%d action(s) refusee(s) : un 4v4 a remplacants tient dans le format", refuses)
 	}

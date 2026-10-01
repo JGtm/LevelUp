@@ -169,12 +169,4 @@ type SquadEchange struct {
 	// Une session dont le journal des morts n'est lisible sur AUCUN match n'a pas de
 	// point : elle n'a pas un taux nul, elle n'a pas de taux.
 	TauxParSession []SquadEchangeSessionPoint `json:"taux_par_session"`
-
-	// NuageIsolement alimente le nuage « Pourquoi la vengeance ne vient pas » de l'onglet
-	// Synergies : UN POINT PAR MORT (distance au coequipier visible rapportee a la portee
-	// du radar x delai avant riposte, cf. squad_isolement.go) et un repere par joueur.
-	// Nil quand le titre n'a pas de table de portee de radar cablee, ou qu'aucune mort du
-	// roster n'est localisee sur un match a rayon connu — une OMISSION, jamais un nuage
-	// vide.
-	NuageIsolement *SquadNuageIsolement `json:"nuage_isolement,omitempty"`
 }

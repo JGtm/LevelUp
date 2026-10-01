@@ -50,6 +50,14 @@ type MatchIdentities struct {
 	// departager un siege d index PARTAGE entre un bot et un humain arrive en cours (lot 5.1,
 	// revue de vague 4, constat P2 — cf. identity_registry_scoreboard.go pour la regle).
 	Participants []replay.Participant
+	// Variante et CarteID : `match_registry.game_variant_name` et `map_id`. Feuille : la ligne
+	// de match de chaque participant (frags, morts, assistances). Ce sont les trois faits de
+	// base que la lecture des PORTEURS au sync demande (plan Emprise vies, lot V2) : la garde de
+	// mode (variante), les socles de drapeau (carte, meme cle que la cuisson) et le pont par
+	// manche (le triplet de la feuille). Memes colonnes que `ReplayFactsRepo`, cote cuisson.
+	Variante string
+	CarteID  string
+	Feuille  []decfilm.PlayerLine
 }
 
 // Resoudre : LE nom que le film donne devient un xuid et un gamertag. UNE SEULE COPIE DE CETTE

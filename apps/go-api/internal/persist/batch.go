@@ -170,6 +170,15 @@ type SharedBatch struct {
 	// Table cible `match_pad_pickups_by_tier` : append-only, lecture par la vue
 	// `match_pad_pickups_by_tier_latest` UNIQUEMENT (ADR 0026).
 	PadTiers *PadTiersBatch `json:"pad_tiers,omitempty"`
+
+	// VehicleTakes : LA RESSOURCE VEHICULES de l'Emprise (prises, temps a bord, frags apparies
+	// par camp, joueur et famille de vehicule), lue de l'artefact range. Meme regime que
+	// PadTiers : produite par l'etape post-sync (`sync/replayartifacts/vehicletakes.go`), jamais
+	// au sync primaire.
+	//
+	// Table cible `match_vehicle_takes` : append-only, lecture par la vue
+	// `match_vehicle_takes_latest` UNIQUEMENT (ADR 0026).
+	VehicleTakes *VehicleTakesBatch `json:"vehicle_takes,omitempty"`
 }
 
 // PlayerBatch contient les écritures pour stats.duckdb (du joueur Player).

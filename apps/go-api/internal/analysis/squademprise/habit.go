@@ -158,7 +158,7 @@ func eveningOf(label string, matches []Match, ix *index, counts map[string]int) 
 	if !first.IsZero() {
 		ev.StartTime = first.UTC().Format(time.RFC3339)
 	}
-	for _, res := range []string{domain.EmpriseResourcePowerup, domain.EmpriseResourcePowerWeapon} {
+	for _, res := range []string{domain.EmpriseResourcePowerup, domain.EmpriseResourcePowerWeapon, domain.EmpriseResourceVehicle} {
 		c := s.obj.total(res)
 		if c.Us+c.Them > 0 {
 			ev.Shares = append(ev.Shares, domain.SquadEmpriseShare{

@@ -83,6 +83,9 @@ func (s *TeammatesService) loadUsageBlocks(
 	}
 	// L'Emprise (lot L4) : ses propres lectures, le même périmètre (teammates_service_emprise.go).
 	siVivante(ctx, func() { out.emprise = s.loadEmprise(ctx, playerXUID, p, req, perimetreLu{scope, lectures}) })
+	// « Groupés ou isolés » (plan Emprise vies, lot V3) : le même périmètre, la composition des
+	// fiches de l'Emprise ; sa propre lecture et sa propre section (teammates_service_emprise_placement.go).
+	siVivante(ctx, func() { s.attacherPlacement(ctx, out.emprise, scope) })
 	return out
 }
 

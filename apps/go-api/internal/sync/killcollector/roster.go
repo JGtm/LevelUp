@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	"fmt"
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"log/slog"
@@ -157,10 +158,15 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 		return fmt.Errorf("SharedRoster: db nil")
 	}
 	start := analysis.SQLStartTimeCanonical("mr")
+	// LA FEUILLE ET LA VARIANTE VIENNENT DANS LA MEME LECTURE (plan Emprise vies, lot V2) : les
+	// porteurs d'objectif lus au sync en ont besoin, et une seconde requete par match aurait ete
+	// un second passage derriere la porte de la base pour les memes deux tables.
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT p.xuid, p.shots_fired, p.team_id,
 		       COALESCE(p.joined_in_progress, FALSE),
-		       CAST(epoch_ms(p.first_joined_time) - epoch_ms(`+start+`) AS BIGINT)
+		       CAST(epoch_ms(p.first_joined_time) - epoch_ms(`+start+`) AS BIGINT),
+		       COALESCE(p.kills, 0), COALESCE(p.deaths, 0), COALESCE(p.assists, 0),
+		       COALESCE(mr.game_variant_name, ''), trim(COALESCE(mr.map_id, ''))
 		FROM match_participants p
 		JOIN match_registry mr ON mr.match_id = p.match_id
 		WHERE p.match_id = ? AND p.xuid IS NOT NULL AND p.xuid <> ''
@@ -175,9 +181,13 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 		var xuid string
 		var shots, team, joinMS sql.NullInt64
 		var joined bool
-		if err := rows.Scan(&xuid, &shots, &team, &joined, &joinMS); err != nil {
+		ligne := decfilm.PlayerLine{}
+		if err := rows.Scan(&xuid, &shots, &team, &joined, &joinMS,
+			&ligne.Kills, &ligne.Deaths, &ligne.Assists, &out.Variante, &out.CarteID); err != nil {
 			return fmt.Errorf("SharedRoster participants(%s) scan: %w", matchID, err)
 		}
+		ligne.XUID = xuid
+		out.Feuille = append(out.Feuille, ligne)
 		out.XUIDs = append(out.XUIDs, xuid)
 		if shots.Valid {
 			out.ShotsFired[xuid] = int(shots.Int64)

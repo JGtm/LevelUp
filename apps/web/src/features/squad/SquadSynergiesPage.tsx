@@ -33,7 +33,6 @@ import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadAppuiCard } from './SquadAppuiCard'
 import { SquadRiposteCard } from './SquadRiposteCard'
 import { getSquadRiposteText } from './squadRiposteStrings'
-import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
 import { SquadRangeRolesCard } from './SquadRangeRolesCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 
@@ -129,14 +128,15 @@ export function SquadSynergiesPage() {
   return (
     <div className="space-y-4">
       {/* SECTION « COORDINATION » (D19, 2026-09-21 ; TROIS RANGÉES, 2026-09-22) — DEUX
-          NOTIONS, CINQ CARTES. Elle en montait HUIT empilées, dont sept portaient la même
+          NOTIONS, QUATRE CARTES. Elle en montait HUIT empilées, dont sept portaient la même
           notion sous quatre noms différents (échange, vengeance, assistance croisée,
           riposte). La riposte vit désormais dans une seule carte-récit, l'appui dans la
-          sienne.
+          sienne. Le nuage « Frags non ripostés » l'a quittée le 2026-09-29 (plan Emprise
+          vies, décision V7) : le placement de chaque vie se lit dans l'onglet Emprise.
 
           L'ORDRE EST CELUI DES RANGÉES, pas celui d'une pile :
-            1. « Appui » et « Frags non ripostés » côte à côte — les deux faces de ce que
-               l'escouade se doit l'une à l'autre : ce qu'elle donne, ce qu'elle ne rend pas ;
+            1. « Appui » seul, dans la colonne de gauche de sa grille — ce que l'escouade
+               se donne ;
             2. la RIPOSTE, en TROIS BLOCS montés par `SquadRiposteCard` (un fragment, pas
                une carte) : « Morts ripostées » et « Temps de riposte » côte à côte sur une
                rangée, puis « Riposte » — frise et repli — pleine largeur sous elles ;
@@ -163,16 +163,11 @@ export function SquadSynergiesPage() {
               }
             />
           </SectionTitle>
-          {/* RANGÉE 1 — « Appui » à gauche, « Frags non ripostés » à droite. */}
-          {(assistPairs || echange?.nuage_isolement) && (
+          {/* RANGÉE 1 — « Appui » seul, la grille garde sa règle : la carte présente prend
+              sa colonne. */}
+          {assistPairs && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {assistPairs && <SquadAppuiCard block={assistPairs} roster={roster} />}
-              {echange?.nuage_isolement && (
-                <SquadIsolementNuageCard
-                  nuage={echange.nuage_isolement}
-                  joueurs={echange.joueurs ?? []}
-                />
-              )}
+              <SquadAppuiCard block={assistPairs} roster={roster} />
             </div>
           )}
           {/* RANGÉE 2 — la riposte : une rangée de deux blocs, puis la frise pleine largeur. */}

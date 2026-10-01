@@ -239,7 +239,7 @@ export const TAILLE_POINT_MAX = 18
 
 /**
  * taillePoint projette les frags mesurés d'un point sur la plage RÉELLE de la période
- * (`min`..`max`), comme le gros point du nuage d'isolement : une échelle absolue perdrait
+ * (`min`..`max`) : une échelle absolue perdrait
  * tout écart dès que la sélection est petite. `min === max` → le milieu de la plage.
  */
 export function taillePoint(mesures: number, min: number, max: number): number {

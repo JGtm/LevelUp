@@ -441,7 +441,8 @@ Journal L6.1, ronde 1 (2026-09-27, exécuteur Opus, `wt/emprise`) — chaque con
 - [ ] L6.4 Gate visuel par l'utilisateur, soirée du 22/09, maquettes à côté ; il nomme les témoins.
 - [!] L6.5 Prod (sur accord, prévenir avant) : mêmes rattrapages après déploiement.
   2026-09-27 : décision utilisateur, il fait le rattrapage prod lui-même (copie de fichiers). Procédure, garde-fous (base locale arrêtée au 22/09, une copie écraserait les matchs plus récents de la prod) et voie recommandée : `.ai/HANDOFF_EMPRISE_CLOTURE_2026-09-27.md` §3.
-- [ ] L6.6 Mettre à jour `REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 (périmé), ce plan, le journal.
+- [x] L6.6 Mettre à jour `REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 (périmé), ce plan, le journal.
+  Journal L6.6 (2026-09-28, exécuteur Opus, `wt/emprise`, non commité) : §4 réécrit sur le code du worktree (lecteurs du document : vue match `equipmentUsageLogic.ts`, socles `padControlLogic.ts`, rejeu 2D ; lecteurs de la base : Sessions `session_page_usage.go`, Séries temporelles `timeseries_service_sections.go:104` / `equipment_usage`, Synthèse sans équipement `synthesis_service_usage.go:6-8`, Emprise `teammates_service_emprise.go` sur `match_usage_*_latest`, `match_pad_pickups_by_tier_latest` et `match_participants.power_weapon_kills`, Contributions et Dynamique sans canal d'équipement, `equipment_usage` retiré de `/pages/teammates` `domain/teammates.go:594-596`), chaque ligne avec fichier:ligne. §6 : « même bloc partout » corrigé (l'Escouade n'a plus ce bloc depuis L5.4). §3 et §5 : aucune phrase contredite par le chantier ; inexactitudes antérieures versées aux Découvertes du rapport.
 
 ### L7 — Véhicules (données du film + lignes des cartes) · lourd, après L6
 
@@ -452,6 +453,10 @@ le lot le plus risqué, qui ne doit pas retarder l'onglet. Plan détaillé à é
 L6 (périmètre, décisions, gates), soumis à l'utilisateur avant exécution.
 
 - [ ] L7.0 Plan détaillé écrit et validé par l'utilisateur.
+  2026-09-28 : écrit, `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md` ; validation en attente. Il passe
+  après `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` (les deux graphes des vies) et ne démarre qu'à ses
+  conditions d'entrée (audit du décodeur fusionné, recuisson des soirées témoins du 24/07 et du
+  01/09, qui ont des véhicules).
 
 ## 6. Reprise de session
 

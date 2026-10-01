@@ -47,7 +47,7 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -59,6 +59,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // bombStatsOptions : les reglages de la passe.
@@ -242,17 +243,12 @@ func projeterCorpusBombe(
 // meme validation (`persist.validateBombStatsBatch`) et par le meme vocabulaire
 // (`replay.BombEventProvenance`), qui vit en UN seul endroit.
 func lireUnArtefactBombe(path, matchID string) (persist.BombStatsBatch, etatBombeMatch) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return persist.BombStatsBatch{}, bombeSansArtefact
-		}
-		fmt.Printf("  ECHEC %s : lecture artefact: %v\n", matchID, err)
-		return persist.BombStatsBatch{}, bombeEchec
+	doc, err := replayartifacts.LireArtefactRange(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return persist.BombStatsBatch{}, bombeSansArtefact
 	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		fmt.Printf("  ECHEC %s : parse artefact: %v\n", matchID, err)
+	if err != nil {
+		fmt.Printf("  ECHEC %s : %v\n", matchID, err)
 		return persist.BombStatsBatch{}, bombeEchec
 	}
 	if doc.BombStats == nil {

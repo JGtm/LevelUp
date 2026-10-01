@@ -26508,8 +26508,6 @@ components:
         matchs_total:
           format: int64
           type: integer
-        nuage_isolement:
-          $ref: '#/components/schemas/SquadNuageIsolement'
         taux_par_session:
           items:
             $ref: '#/components/schemas/SquadEchangeSessionPoint'
@@ -26631,6 +26629,8 @@ components:
           type:
             - array
             - "null"
+        placement:
+          $ref: '#/components/schemas/SquadEmprisePlacement'
         players:
           items:
             $ref: '#/components/schemas/SessionUsageSquadPlayer'
@@ -26651,6 +26651,8 @@ components:
             - "null"
         sheet_unavailable:
           type: string
+        vehicles:
+          $ref: '#/components/schemas/SquadEmpriseVehicles'
       required:
         - matches_total
         - matches_measured
@@ -26717,6 +26719,8 @@ components:
           $ref: '#/components/schemas/SquadEmpriseCount'
         kind:
           type: string
+        paired_kills:
+          $ref: '#/components/schemas/SquadEmpriseCount'
         value:
           $ref: '#/components/schemas/SquadEmpriseCount'
       required:
@@ -26765,6 +26769,10 @@ components:
           type: boolean
         tiers:
           type: string
+        vehicles:
+          type: string
+        vehicles_reason:
+          type: string
       required:
         - match_id
         - has_film
@@ -26792,6 +26800,8 @@ components:
     SquadEmpriseObject:
       additionalProperties: false
       properties:
+        aboard_ms:
+          $ref: '#/components/schemas/SquadEmpriseCount'
         key:
           type: string
         label:
@@ -26820,6 +26830,9 @@ components:
     SquadEmpriseObjectShare:
       additionalProperties: false
       properties:
+        aboard_ms:
+          format: int64
+          type: integer
         dropped:
           format: int64
           type: integer
@@ -26854,6 +26867,177 @@ components:
         - used
         - kept
         - dropped
+      type: object
+    SquadEmprisePlacement:
+      additionalProperties: false
+      properties:
+        coverage:
+          $ref: '#/components/schemas/SquadEmprisePlacementCoverage'
+        isolated_from_ratio:
+          format: double
+          type: number
+        players:
+          items:
+            $ref: '#/components/schemas/SquadEmprisePlacementPlayer'
+          type:
+            - array
+            - "null"
+        productive_from_kills:
+          format: int64
+          type: integer
+      required:
+        - isolated_from_ratio
+        - productive_from_kills
+        - players
+        - coverage
+      type: object
+    SquadEmprisePlacementCoverage:
+      additionalProperties: false
+      properties:
+        carrier_ms:
+          format: int64
+          type: integer
+        lives_measured:
+          format: int64
+          type: integer
+        lives_total:
+          format: int64
+          type: integer
+        lives_unmeasured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        matches_with_placement:
+          format: int64
+          type: integer
+        matches_without_range:
+          format: int64
+          type: integer
+        measured_ms:
+          format: int64
+          type: integer
+        stale_lives:
+          format: int64
+          type: integer
+        team_down_ms:
+          format: int64
+          type: integer
+        teammate_unplaced_ms:
+          format: int64
+          type: integer
+        unplaced_ms:
+          format: int64
+          type: integer
+      required:
+        - matches_total
+        - matches_with_placement
+        - matches_without_range
+        - stale_lives
+        - lives_total
+        - lives_measured
+        - lives_unmeasured
+        - measured_ms
+        - carrier_ms
+        - team_down_ms
+        - unplaced_ms
+        - teammate_unplaced_ms
+      type: object
+    SquadEmprisePlacementLife:
+      additionalProperties: false
+      properties:
+        duration_ms:
+          format: int64
+          type: integer
+        kills:
+          format: int64
+          type: integer
+        match_id:
+          type: string
+        out_of_radar_share:
+          format: double
+          type: number
+        quadrant:
+          enum:
+            - in_range_productive
+            - isolated_productive
+            - in_range_costly
+            - isolated_costly
+          type: string
+        radar_ratio:
+          format: double
+          type: number
+        start_ms:
+          format: int64
+          type: integer
+      required:
+        - match_id
+        - start_ms
+        - duration_ms
+        - radar_ratio
+        - out_of_radar_share
+        - kills
+        - quadrant
+      type: object
+    SquadEmprisePlacementPlayer:
+      additionalProperties: false
+      properties:
+        gamertag:
+          type: string
+        lives:
+          items:
+            $ref: '#/components/schemas/SquadEmprisePlacementLife'
+          type:
+            - array
+            - "null"
+        lives_measured:
+          format: int64
+          type: integer
+        lives_total:
+          format: int64
+          type: integer
+        median_kills:
+          format: double
+          type: number
+        median_radar_ratio:
+          format: double
+          type: number
+        quadrants:
+          items:
+            $ref: '#/components/schemas/SquadEmprisePlacementQuadrant'
+          type:
+            - array
+            - "null"
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertag
+        - lives_total
+        - lives_measured
+        - quadrants
+        - lives
+      type: object
+    SquadEmprisePlacementQuadrant:
+      additionalProperties: false
+      properties:
+        lives:
+          format: int64
+          type: integer
+        quadrant:
+          enum:
+            - in_range_productive
+            - isolated_productive
+            - in_range_costly
+            - isolated_costly
+          type: string
+        share:
+          format: double
+          type: number
+      required:
+        - quadrant
+        - lives
       type: object
     SquadEmpriseProduction:
       additionalProperties: false
@@ -26908,6 +27092,52 @@ components:
         - resource
         - taken
         - share
+      type: object
+    SquadEmpriseVehicles:
+      additionalProperties: false
+      properties:
+        episodes_no_camp:
+          format: int64
+          type: integer
+        episodes_read:
+          format: int64
+          type: integer
+        episodes_unnamed:
+          format: int64
+          type: integer
+        frags_matches:
+          format: int64
+          type: integer
+        frags_paired:
+          format: int64
+          type: integer
+        frags_total:
+          format: int64
+          type: integer
+        matches_measured:
+          format: int64
+          type: integer
+        matches_not_measured:
+          format: int64
+          type: integer
+        paired_share:
+          format: double
+          type: number
+        proximity_episodes:
+          format: int64
+          type: integer
+        unavailable:
+          type: string
+      required:
+        - matches_measured
+        - matches_not_measured
+        - episodes_read
+        - episodes_unnamed
+        - episodes_no_camp
+        - proximity_episodes
+        - frags_matches
+        - frags_total
+        - frags_paired
       type: object
     SquadEngagementSession:
       additionalProperties: false
@@ -27377,66 +27607,6 @@ components:
         - options
         - rows
       type: object
-    SquadIsolementMort:
-      additionalProperties: false
-      properties:
-        delai_ms:
-          format: int64
-          type: integer
-        distance_ratio:
-          format: double
-          type: number
-        gamertag:
-          type: string
-        hors_de_vue:
-          type: boolean
-        hors_fenetre:
-          type: boolean
-        match_id:
-          type: string
-        time_ms:
-          format: int64
-          type: integer
-        vengee:
-          type: boolean
-        xuid:
-          type: string
-      required:
-        - xuid
-        - gamertag
-        - match_id
-        - time_ms
-        - hors_de_vue
-        - vengee
-        - hors_fenetre
-      type: object
-    SquadIsolementRepere:
-      additionalProperties: false
-      properties:
-        couverture:
-          $ref: '#/components/schemas/Couverture'
-        gamertag:
-          type: string
-        mediane_delai_ms:
-          format: int64
-          type: integer
-        mediane_distance_ratio:
-          format: double
-          type: number
-        nb_morts:
-          format: int64
-          type: integer
-        part_isolee:
-          $ref: '#/components/schemas/Couverture'
-        xuid:
-          type: string
-      required:
-        - xuid
-        - gamertag
-        - nb_morts
-        - part_isolee
-        - couverture
-      type: object
     SquadKillMechanicBar:
       additionalProperties: false
       properties:
@@ -27618,37 +27788,6 @@ components:
         - start_time
         - outcome
         - team_mmr_avg
-      type: object
-    SquadNuageIsolement:
-      additionalProperties: false
-      properties:
-        fenetre_ms:
-          format: int64
-          type: integer
-        morts:
-          items:
-            $ref: '#/components/schemas/SquadIsolementMort'
-          type:
-            - array
-            - "null"
-        plafond_ms:
-          format: int64
-          type: integer
-        plancher_echantillon_faible:
-          format: int64
-          type: integer
-        reperes:
-          items:
-            $ref: '#/components/schemas/SquadIsolementRepere'
-          type:
-            - array
-            - "null"
-      required:
-        - morts
-        - reperes
-        - fenetre_ms
-        - plafond_ms
-        - plancher_echantillon_faible
       type: object
     SquadObjectiveEvening:
       additionalProperties: false

@@ -5,7 +5,7 @@ package migration
 // compaction_test.go — la MÉCANIQUE de la compaction (compaction.go) et du cœur commun
 // (table_swap.go), sur la table réelle `match_bomb_stats` (DDL et vue de sa migration) : garde de
 // cardinalité, vérification avant COMMIT, orphelin, refus d'une vue dont la règle a changé,
-// dry-run, table absente. Le bout-à-bout sur le schéma partagé COMPLET (les 13 tables, les
+// dry-run, table absente. Le bout-à-bout sur le schéma partagé COMPLET (les 15 tables, les
 // séquences, les index) vit dans internal/games/halo_infinite/migrations/compaction_e2e_test.go.
 
 import (

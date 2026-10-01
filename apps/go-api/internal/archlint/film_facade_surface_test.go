@@ -246,7 +246,41 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `UnitOtherIndex`, `ShotsByUnit`, `TirsParPlace` n en
 //	                                           ajoutent aucun. RE-MESURE A L ENTREE du lot : 275 sur
 //	                                           `c9ef97ec6` (feat/rr-vague-d).
-const plafondSurfaceReplay = 278 // 2026-09-24 — rr(m4b) sur c9ef97ec6 : 275 + 3 (FireBurst, FireBurstHole, ContinuousFireCoverage)
+//	291  emprise-vies V1 (2026-09-28)           +13, le placement des vies et les porteurs lus au
+//	                                           sync (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`).
+//	                                           HUIT par `replaybuild`, qui appelle desormais le pont
+//	                                           par manche, les gardes de mode et les entrees des
+//	                                           calques de porteur DEPLACES dans `replay` pour que
+//	                                           le sync les partage sans copie : `PontParManche`,
+//	                                           `NouveauPontParManche`, `GardesDeLaVariante`,
+//	                                           `EntreeDuDrapeau`, `EntreeDuCrane`,
+//	                                           `EntreeDeLaCouronne`, `EntreeDeLaBombe`, et
+//	                                           `PortagesAuSync` (nomme dans le commentaire de
+//	                                           `matchfacts.go`). CINQ par le temoin du collecteur
+//	                                           (`sync/killcollector/emprise_v1_temoin_research_test.go`) :
+//	                                           `PlacementDesVies`, `EntreePlacement`,
+//	                                           `FragDuJournal`, `PlacementVie`, `BilanPlacement`.
+//	                                           RE-MESURE A L ENTREE du lot : 278 sur `6466b11ef`
+//	                                           (`comm` des deux inventaires : 13 ajouts, 0 retrait).
+//	293  emprise-vies V2 (2026-09-29)           +3 -1, le placement des vies ecrit par le collecteur
+//	                                           (`sync/killcollector/placement_des_vies.go`), qui
+//	                                           lit les porteurs au sync : `EntreePorteursAuSync`,
+//	                                           `BilanPortages`, `IntervalleDePort`. UN RETRAIT :
+//	                                           `PointObjective`, que `replaybuild/flagspawns.go` et
+//	                                           son test ne citent plus — la projection des socles
+//	                                           vit dans `replay` (`MapObjectivesEntry.SoclesDeDrapeau`,
+//	                                           une methode : aucun identifiant compte en plus).
+//	                                           RE-MESURE A L ENTREE du lot : 291 sur `e893ed8dd`
+//	                                           (`comm` des deux inventaires : 3 ajouts, 1 retrait).
+//	298  emprise-vehicules L7.2 (2026-09-30)    +5, la ressource vehicules ecrite au fil de l eau
+//	                                           (`sync/replayartifacts/vehicletakes.go`) : `ProjectVehicleTakes`,
+//	                                           `PairVehicleFrags`, `VehicleFragRef`,
+//	                                           `VehicleFragsCoverage`, `VehicleFragsNoSource`. Les
+//	                                           tests citent les raisons et la provenance `film` en
+//	                                           LITTERAUX (oracles independants), donc ne comptent pas.
+//	                                           RE-MESURE A L ENTREE du lot : 293 sur `707d4e983`
+//	                                           (`comm` des deux inventaires : 5 ajouts, 0 retrait).
+const plafondSurfaceReplay = 298 // 2026-09-30 — emprise-vehicules L7.2 sur 707d4e983 : 293 + 5 (cf. l historique ci-dessus)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

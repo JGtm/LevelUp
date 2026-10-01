@@ -7,7 +7,7 @@
  * directe de la chaîne localisée de réserve) réapparaît ailleurs — anti-divergence après
  * la centralisation de la revue de la vague 1 (2026-09-07 : trois copies, deux
  * séparateurs différents, dans SquadEchangeKpi, TacticalAnalysisView et
- * SquadIsolementNuageCard).
+ * le nuage d'isolement de Synergies, retiré le 2026-09-29).
  *
  * Contexte : le drapeau `echantillon_faible` interdit de comparer une valeur, il ne la
  * cache pas ; la réserve s'accole donc au texte, et cette forme a une seule source.

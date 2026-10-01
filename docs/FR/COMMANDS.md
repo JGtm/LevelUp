@@ -139,8 +139,17 @@ go run ./cmd/levelup backfill-killsource --workers 1    # la boucle en série d'
 go run ./cmd/levelup backfill-killsource --limit 20     # les 20 films les moins chers
 go run ./cmd/levelup backfill-killsource --credit-only  # la passe SQL → SQL seule
 go run ./cmd/levelup backfill-killsource --force        # redécode même ce qui est à jour
+go run ./cmd/levelup backfill-killsource --match 1c4c63c2,ee90570b --dry-run   # seulement ces matchs (préfixes de 8+ caractères, univoques)
 go run ./cmd/levelup backfill-killsource --status       # DANS UN AUTRE TERMINAL : où elle en est
 ```
+
+**`--match ID[,ID...]` — borne la passe hors ligne à des matchs nommés.** Identifiants séparés
+par des virgules ; un préfixe court (8 caractères ou plus) est accepté s'il désigne UN seul match
+du registre, et refusé avec une erreur claire s'il est ambigu (les candidats sont listés) ou
+inconnu. La règle de fraîcheur ne change pas : un match nommé déjà à jour est sauté sauf
+`--force` ; `--limit` s'applique après le filtre ; `--dry-run` liste chaque film retenu. Refusée
+avec `--online` (cette passe choisit ses films dans l'historique du joueur, pas dans le registre)
+et avec `--credit-only` (la passe SQL → SQL ne lit pas cette sélection).
 
 **`--workers` (défaut 3) — N films décodés en parallèle, UN SEUL qui touche la base.** La
 décomposition du coût (lot 5.24.1) mesure **93 à 99 % du temps d'un film en CPU hors base** :
@@ -224,6 +233,21 @@ go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] 
 #    `terrain` ou `puissance`), et la reprise ne les reverrait jamais.
 go run ./cmd/levelup backfill-pad-tiers --dry-run
 go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--title S]
+
+# 4 ter. Ressource VEHICULES de l Emprise (prises, temps a bord, frags apparies aux
+#    episodes du tueur) -> match_vehicle_takes (append-only). Meme motif que (4) : elle LIT
+#    les artefacts TELS QU ILS SONT, sans decodage, SANS RECUISSON ; la seule lecture en
+#    base est celle des frags du match dans match_kill_events_latest. Un artefact anterieur
+#    au schema 67 (aucune occupation lue) s ecrit « non mesure », jamais zero : c est l etat
+#    de tout le parc tant qu il n est pas recuit. LA REPRISE SE CLE SUR LA PRESENCE, donc
+#    APRES UNE RECUISSON (ou l arrivee des evenements de mort) --force EST OBLIGATOIRE : la
+#    ligne en base continuerait de dire « non mesure ». SERVEUR ARRETE, y compris pour
+#    --dry-run (elle joue les migrations).
+go run ./cmd/levelup backfill-vehicle-takes --dry-run
+go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--limit N] [--title S]
+#    --match : identifiants de match séparés par des virgules, ou préfixes univoques de 8+
+#    caractères, résolus contre le registre comme backfill-killsource ; inconnu / ambigu /
+#    trop court = refusé, rien d écrit.
 
 # 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
