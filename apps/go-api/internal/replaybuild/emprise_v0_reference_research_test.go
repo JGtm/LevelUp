@@ -1,3 +1,5 @@
+//go:build research
+
 package replaybuild
 
 // emprise_v0_reference_research_test.go — LOT V0 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`,

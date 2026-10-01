@@ -1,3 +1,5 @@
+//go:build research
+
 package killcollector
 
 // emprise_v1_temoin_research_test.go — LOT V1.3 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :
@@ -44,9 +46,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/persist"
 )
 
 // Les seuils du plan (V1.3), et la fenêtre de jointure des contextes de mort.
@@ -59,13 +59,6 @@ const (
 	v1RequeteContextesMorts = `SELECT victim_xuid, time_ms, nearest_teammate_m
 		FROM match_death_context_latest WHERE match_id = ? AND nearest_teammate_m IS NOT NULL`
 )
-
-// v1Passe : ce que la passe du collecteur a en main quand le placement se calcule.
-type v1Passe struct {
-	mat      materiauDIsolement
-	ids      MatchIdentities
-	fusionne persist.KillSourceBatch
-}
 
 func TestEmpriseV1Temoin(t *testing.T) {
 	var films []string
@@ -95,53 +88,6 @@ func TestEmpriseV1Temoin(t *testing.T) {
 		v1CritereDesFrags(t, id, bilan)
 		v1CritereDesFins(t, ctx, lecture, id, p.mat.registre.ViesNommees(), vies)
 	}
-}
-
-// v1RejouerLaPasse rejoue `collect` jusqu'aux faits d'isolement, par les fonctions de production,
-// sans rien écrire.
-func v1RejouerLaPasse(t *testing.T, ctx context.Context, col *KillSourceCollector, lecture *sql.DB,
-	id string) v1Passe {
-	t.Helper()
-	chunks, _, err := FilmChunksForMatch(ctx, col.client, id)
-	if err != nil {
-		t.Fatalf("%s : chunks : %v", id, err)
-	}
-	film, err := FilmOf(chunks)
-	if err != nil {
-		t.Fatalf("%s : film : %v", id, err)
-	}
-	opts := decfilm.DefaultOptions()
-	carte, err := col.carteDuMatch(ctx, id)
-	if err != nil {
-		t.Fatalf("%s : carte : %v", id, err)
-	}
-	opts.Carte = carte
-	res, err := decfilm.Decode(ctx, id, film, &opts)
-	if err != nil {
-		t.Fatalf("%s : decodage : %v", id, err)
-	}
-	ids, err := col.roster.IdentitiesForMatch(ctx, id)
-	if err != nil {
-		t.Fatalf("%s : roster : %v", id, err)
-	}
-	passeFilm := BuildKillSourceBatch(ctx, id, res, ids)
-	base, err := persist.CreditBaseForMatch(ctx, lecture, id)
-	if err != nil {
-		t.Fatalf("%s : base credit : %v", id, err)
-	}
-	fusionne, _, err := persist.MergeCreditAndFilm(base, passeFilm)
-	if err != nil {
-		t.Fatalf("%s : fusion : %v", id, err)
-	}
-	entry, err := col.resolveMapBounds(ctx, id)
-	if err != nil {
-		t.Fatalf("%s : carte : %v", id, err)
-	}
-	_, mat, err := buildPositionRows(ctx, film, res, entry, ids, killRefsFromDeaths(passeFilm.Deaths), id)
-	if err != nil {
-		t.Fatalf("%s : positions : %v", id, err)
-	}
-	return v1Passe{mat: mat, ids: ids, fusionne: fusionne}
 }
 
 // v1CritereDesVies : critère 1.

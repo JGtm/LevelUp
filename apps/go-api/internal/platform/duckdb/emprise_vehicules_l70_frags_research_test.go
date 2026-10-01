@@ -1,3 +1,5 @@
+//go:build research
+
 package duckdb
 
 // emprise_vehicules_l70_frags_research_test.go — LOT L7.0 DU PLAN

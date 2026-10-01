@@ -1,3 +1,5 @@
+//go:build research
+
 package replaybuild
 
 // emprise_vehicules_l70_research_test.go — LOT L7.0 DU PLAN

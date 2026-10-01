@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // emprise_v0_porteurs_research_test.go — LOT V0.2 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :
