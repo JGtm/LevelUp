@@ -1,13 +1,14 @@
 package grammar
 
-// lecteur_position_exceptions.go — LES ONZE SITES DE `FUN_14076e524` QUI GARDENT LEUR ANCIEN
+// lecteur_position_exceptions.go — LES TREIZE SITES DE `FUN_14076e524` QUI GARDENT LEUR ANCIEN
 // LECTEUR (lot J6.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision du superviseur du
 // 2026-09-27 pour les trois premiers ; lot J6-bis du 2026-09-28 pour flock-destination,
 // tacmap-poiicon et player-desired-respawn-location ; lot R3 du 2026-09-29 pour
 // tacmap-displayasset, tacmap-areaofinterest, tacmap-cooptetherarea, crew-order et le precHigh de
-// la branche absolue d i0 du bipede — meme situation, meme format).
+// la branche absolue d i0 du bipede ; lot R3-bis du 2026-09-30 pour unit-actor-state et
+// tacmap-waypointstate — meme situation, meme format).
 //
-// Le portage unique (`lecteur_position.go`) lit ces onze sites comme le jeu les ecrit — releve
+// Le portage unique (`lecteur_position.go`) lit ces treize sites comme le jeu les ecrit — releve
 // Ghidra du 2026-09-27 — et la FERMETURE DES BOBINES baisse sur chacun : la lecture du jeu y est
 // donc contredite par une mesure que ce lot ne sait pas expliquer. Chaque site garde ici son
 // lecteur d AVANT le lot, et figure comme EXCEPTION DATEE dans la table des sites
@@ -273,6 +274,46 @@ func consumeCrewOrder(br *Lecteur, level uint32) {
 // entrees ; NEW ti=35 slot 527) ; aucune fermeture ne monte sur les douze films. Les deux autres
 // sites a precHigh (grammaire d ecrivain d i0, delta predit a cVar1 = 1) gardent la lecture du jeu.
 func consumePrecHautDuBipede(_ *Lecteur) {}
+
+// LOT R3-BIS (2026-09-30) — DEUX SITES DE PLUS, LOCALISES AU PAQUET.
+//
+// Methode : carte de fermeture paquet par paquet de vingt films (les dix-huit de la reference
+// J4.0.5, `f75e7053` et `000d5950`), la reference (`56299bdc3~1`) contre la tete du plan ; chaque
+// paquet de la reference perdu remonte au premier composant dont la longueur change ; puis chaque
+// site rendu SEUL a son lecteur d avant sur la tete, sur les vingt films.
+
+// lireViseeDActeurAncienne lit le vecteur d un emplacement de visee de unit-actor-state
+// (`FUN_14058c058`, branches a = 0) comme avant le lot J6.3 : seize bits plats.
+//
+// EXCEPTION (lot R3-bis, 2026-09-30) : chez le jeu, `FUN_14076e494(..., 0x10, 0, param_3, 0)` (CALLs
+// 1422cddc1 et 1422cde0e, une par branche a = 0) — garde, porte, index, trois axes a la ligne
+// 0x10, 49 a 67 bits. Portee ainsi, des paquets de `4f77afc1` (HI_1_13_0) que l ancien lecteur
+// fermait au bit pres ne ferment plus : les listes 38:410 (17 entrees de controle), 54:316 (5) et
+// 54:1140 (11), et 12:1118, ou le slot 570 se lie alors a ti=4 au lieu de ti=35, d ou les paquets
+// 12:1120 a 12:1128 (100 entrees). Il faut les deux branches : rendue seule, la branche b = 0 laisse
+// 54:316 et la chaine de 12:1118 perdues. Elle en ferme onze autres, jamais fermes a la reference :
+// `084a804d` 8:276, 10:384, 10:844, 20:722, 26:656, 33:634 (68 entrees), `e5adf7b2` 6:838 et 7:440
+// (14), `111fa685` 10:906, `4f77afc1` 48:776 (6), `d9781168` 33:1176 (3). La porte et l index que
+// lit la lecture du jeu ne departagent pas les deux familles (porte a 0, index 0 et 1 de part et
+// d autre ; la porte posee n apparait que chez les secondes).
+func lireViseeDActeurAncienne(br *Lecteur) {
+	br.ReadBits(16)
+}
+
+// consumeTacmapWaypointState lit ti=34 i7 tacmap-waypointstate (`FUN_140f04d74` -> `FUN_140f04d88`)
+// comme avant le lot J6.3 : R(1), `FUN_14080dec4` "waypoint-lockedto" = R(32), puis la position au
+// lecteur d AVANT ([lireCorpsDeTraverseeAncien]) — et pas le R(1) de `param_4 > 1`.
+//
+// EXCEPTION (lot R3-bis, 2026-09-30) : chez le jeu, la garde, `FUN_14076e524(0x10)` (CALL 140f04de0,
+// 140f04dd5) et un R(1) quand le niveau du registre depasse 1 (`if (1 < param_4)`). Portee ainsi, la
+// liste d evenements du chunk 34 paquet 336 de `d9781168` (HI_1_13_0, 4 entrees), que l ancien
+// lecteur fermait au bit pres, ne se localise plus (+30 bits) ; il faut les deux ecarts (position et
+// R(1)) pour la rendre. Aucune fermeture ne monte sur les vingt films.
+func consumeTacmapWaypointState(br *Lecteur) {
+	br.ReadBit()
+	br.ReadBits(32) // FUN_14080dec4 "waypoint-lockedto"
+	lireCorpsDeTraverseeAncien(br)
+}
 
 // lireCorpsDeTraverseeAncien est la position que les sites tacmap lisaient avant le lot J6.3
 // (`consumeE524PositionBody`) : la porte, l index sur la largeur du descripteur de TRAVERSEE, puis

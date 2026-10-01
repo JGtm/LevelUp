@@ -59,10 +59,8 @@ func tableDesSitesDePosition() []siteDePosition {
 		{"consumeObjectPositionDynamicPrecisionD", "", "lireE420", n10, 1, "grammaire d ecrivain d i0 : FUN_14076e29c -> FUN_14076e420, CALL 14076e2c0"},
 		{"consumeMobilityActionBody", "", "lireE494", n10, 2, "i54 : FUN_1408f02c8, CALLs 1408f03c7 et 1408f0758 (EBP = 0x10)"},
 		{"consumeManagedAndObjectiveComponent", "asset-transform-component", "lireE494", n1e, 1, "ti=44 i0 : FUN_142ed9530, CALL 142ed9556 (x5 par FUN_142ed3c64)"},
-		{"consume14058c058", "", "lireE494", n10, 2, "unit-actor-state : FUN_14058c058, CALLs 1422cddc1 et 1422cde0e"},
 		{"consumeBipedDefaultStateMediaFrame", "", "lireE494", n10, 1, "trame media : FUN_140f44c38, CALL 142451b5d"},
 		{"consumeCrewFlockAndMusicComponent", "tacmap-poiiconoffset", "lireE494", n10, 1, "ti=30 i1 : FUN_142ed485c -> FUN_1424e0e38(0x10) (descripteur 143d06b00)"},
-		{"consumeTacmapWaypointState", "", "lireE494", n10, 1, "ti=34 i7 : FUN_140f04d88, CALL 140f04de0 (140f04dd5)"},
 		{"consumeSpawnFilterType", "", "lireE494", n10, 1, "ti=20 i0 etiquette 3 : FUN_142b6eeec, CALL 142b6ef31"},
 		{"consumeSelectableZoneData", "", "lireE494", n10, 1, "selectable-zone-data : FUN_141454340, CALL 14145437e"},
 		{"readTranslocVec", "", "lireE494Sur", n10, 1, "EquipmentTranslocatorTeleportEffects : FUN_140f04fb8, CALLs 140f04ff0 et 140f05023"},
@@ -96,8 +94,8 @@ var lecteursLocauxInterdits = []*regexp.Regexp{
 // fichierDesExceptions porte les sites qui gardent leur ancien lecteur ([exceptionsDuPortage]).
 const fichierDesExceptions = "lecteur_position_exceptions.go"
 
-// critereDeRetraitDesExceptions : le meme pour les onze (decision du superviseur, 2026-09-27 ; lot
-// J6-bis, 2026-09-28 ; lot R3, 2026-09-29).
+// critereDeRetraitDesExceptions : le meme pour les treize (decision du superviseur, 2026-09-27 ; lot
+// J6-bis, 2026-09-28 ; lot R3, 2026-09-29 ; lot R3-bis, 2026-09-30).
 const critereDeRetraitDesExceptions = "la lecture du jeu fait monter la fermeture sans aucune baisse " +
 	"sur les bobines, ou la grammaire dependante du build est etablie"
 
@@ -150,6 +148,15 @@ func exceptionsDuPortage() map[string]exceptionDuPortage {
 			"1406d0093 -> 1422f4cb7, FUN_141f85880(&DAT_143b8c6d0, 0x10)",
 			"marche des trames : listes 0797ce72 9:138 (6 entrees), 084a804d 25:356 (21) et 37:22 (10) " +
 				"fermees -> non localisees, sans aucune hausse sur les douze films"},
+		// Lot R3-bis (2026-09-30), meme situation, meme format ; carte de fermeture paquet par paquet
+		// de vingt films, la reference J4.0.5 contre la tete du plan.
+		"unit-actor-state": {"lireViseeDActeurAncienne", 0x10, "unit-actor-state : FUN_14058c058, CALLs 1422cddc1 et 1422cde0e",
+			"marche des trames de 4f77afc1 : listes 38:410 (17 entrees), 54:316 (5), 54:1140 (11) et la chaine " +
+				"12:1118..12:1128 (slot 570 lie a ti=4) fermees -> non fermees ; hausses sur 084a804d (6 paquets), " +
+				"e5adf7b2 (2), 111fa685, 4f77afc1 48:776 et d9781168 33:1176, jamais fermes a la reference"},
+		"waypointstate": {"consumeTacmapWaypointState", 0x10, "ti=34 i7 : FUN_140f04d88, CALL 140f04de0 (140f04dd5)",
+			"marche des trames de d9781168 : liste chunk 34 paquet 336 (4 entrees) fermee -> non localisee, " +
+				"sans aucune hausse sur les vingt films"},
 	}
 }
 
@@ -162,7 +169,7 @@ var exemptionsDeLecteurLocal = map[string]string{
 		"l appel a `FUN_14076e494(0x10)` (CALL 142f2605d) est dans les etiquettes 4 et 5, pas dans la " +
 		"3 que ce port lit — ce n est donc pas un site du lecteur. Decouverte consignee au rapport J6.3.",
 	fichierDesExceptions: "2026-09-27 (lot J6.3, decision du superviseur), 2026-09-28 (lot J6-bis) et " +
-		"2026-09-29 (lot R3) : les onze exceptions datees du portage unique (`exceptionsDuPortage`), critere de retrait : " + critereDeRetraitDesExceptions,
+		"2026-09-29 (lot R3), 2026-09-30 (lot R3-bis) : les treize exceptions datees du portage unique (`exceptionsDuPortage`), critere de retrait : " + critereDeRetraitDesExceptions,
 }
 
 // TestLesExceptionsDuPortageSontEnPlace : chaque exception vit dans son fichier, n appelle PAS le
