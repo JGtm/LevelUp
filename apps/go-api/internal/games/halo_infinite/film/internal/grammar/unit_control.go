@@ -150,7 +150,9 @@ func actorStateWidth(p uint32) uint {
 //
 // LE 0x10 EST UN NIVEAU, PAS UNE LARGEUR (lot J6.3, releve du 2026-09-27, CALLs 1422cddc1 et
 // 1422cde0e : `FUN_14076e494(param_2, ..., 0x10, 0, param_3, 0)`). Ce port lisait R(16) plat ;
-// le jeu lit la garde, la porte, l index et trois axes a la ligne 0x10 — le portage unique.
+// le jeu lit la garde, la porte, l index et trois axes a la ligne 0x10. LES DEUX VECTEURS SONT UNE
+// EXCEPTION DATEE du portage unique (lot R3-bis, 2026-09-30) : ils gardent leurs seize bits plats
+// (`lireViseeDActeurAncienne`, `lecteur_position_exceptions.go`).
 func consume14058c058(br *Lecteur) {
 	for i := 0; i < 5; i++ {
 		if !br.ReadBit() { // present
@@ -165,12 +167,12 @@ func consume14058c058(br *Lecteur) {
 			br.ReadBits(2)               // R(2) ushort
 			br.ReadBits(10)              // FUN_1406d84b4 dequant (width 0xa)
 			br.ReadBits(10)              // FUN_1406d84b4 dequant (width 0xa)
-			lireE494(br, niveauPosition) // FUN_14076e494(..., 0x10, 0, param_3, 0)
+			lireViseeDActeurAncienne(br) // exception datee R3-bis ; jeu : FUN_14076e494(..., 0x10, 0, param_3, 0)
 			consumeOpt32(br)             // FUN_14080d69c
 			consume141d0f344(br)         // FUN_141d0f344 = R(32)
 			consume1408f0ac4(br, 0)      // FUN_1408f0ac4(...,0)
 		case !a:
-			lireE494(br, niveauPosition) // FUN_14076e494(..., 0x10, 0, param_3, 0)
+			lireViseeDActeurAncienne(br) // exception datee R3-bis ; jeu : FUN_14076e494(..., 0x10, 0, param_3, 0)
 		default:
 			consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		}

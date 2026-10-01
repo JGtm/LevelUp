@@ -135,16 +135,5 @@ func consumeCompressedDir140c1e79c(br *Lecteur) {
 // dispatch de traverse.go les porte (le vecteur par le portage unique depuis le lot J6.3) et la désynchronisation
 // propre sur la branche de largeur runtime.
 
-// consumeTacmapWaypointState porte ti=34 i7 (`FUN_140f04d74` -> `FUN_140f04d88`) : R(1),
-// `FUN_14080dec4` "waypoint-lockedto" = R(32), la garde de pleine precision puis
-// `FUN_14076e524(0x10)` (CALL 140f04de0) — le portage unique —, et un R(1) de plus quand son
-// `param_4` (le niveau du registre) depasse 1 (`if (1 < param_4)`). LOT J6.3 (2026-09-27) : le
-// port lisait la position aux largeurs du descripteur de TRAVERSEE et omettait ce R(1).
-func consumeTacmapWaypointState(br *Lecteur, level uint32) {
-	br.ReadBit()
-	br.ReadBits(32) // FUN_14080dec4 "waypoint-lockedto"
-	lireE494(br, niveauPosition)
-	if level > 1 {
-		br.ReadBit()
-	}
-}
+// tacmap-waypointstate (ti=34 i7) est une EXCEPTION DATEE du portage unique (lot R3-bis,
+// 2026-09-30) : son lecteur vit dans `lecteur_position_exceptions.go`.
