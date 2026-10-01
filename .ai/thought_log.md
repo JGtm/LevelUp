@@ -113872,3 +113872,11 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Résultats observés** : test d intégration `TestBackfillVehicleTakes_Match` (7 cas, la commande entière sur une racine temporaire : liste de deux, préfixe univoque, identifiant complet, inconnu / ambigu / trop court / virgules seules refusés et table brute vide). Trois mutations rouges, restaurées par copie (`cmp`) : valeur brute reprise (6 cas rouges), garde liste vide retiré, ambiguïté résolue au premier candidat. Les lignes au `match_id` composite écrites le 2026-10-01 dans la base locale sont inertes (les lectures sont bornées aux identifiants du périmètre) et restent en place (table append-only).
 
 **Conclusion / prochaine étape** : RV8 coché sous L7.5.1 ; docs `COMMANDS.md` EN et FR mises à jour ; le reste de L7.5.1 revient au superviseur.
+
+## [2026-10-01] Emprise véhicules (lot L7) : fusionné dans `feat/v75` (`9ee561819`, CI verte) — Complété (gate visuel et prod à l'utilisateur)
+
+**Décision technique principale** : la ressource « Véhicules » de l'Emprise est dérivée du calque véhicules de l'artefact de rejeu (famille du `Deriver`, table append-only `match_vehicle_takes`, capability `film.vehicle_usage`, commande `backfill-vehicle-takes`), SANS toucher au décodeur : frontière de fichiers avec `feat/suite-audit-decodeur` (en cours dans une autre session) au lieu d'attendre sa fusion. Rendement sans biais : seuls les frags tombés pendant une montée publiée comptent (62 % des frags de classe engin sur les témoins).
+
+**Résultats observés** : revue en deux rondes (6 constats corrigés, 1 consigné ; ronde 2 : un commentaire). Vérification sur les huit témoins recuits : 138 prises, 131 frags dont 81 appariés. Défaut trouvé à la vérification et corrigé : `--match` de la commande prenait la valeur brute (une passe au `match_id` composite reste, inerte, dans la base locale). CI verte au premier essai.
+
+**Conclusion / prochaine étape** : gate visuel (soirée du 24/07) ; prod : recuisson puis `backfill-vehicle-takes --force`. Après la fusion de l'audit du décodeur : relancer le rattrapage des véhicules.

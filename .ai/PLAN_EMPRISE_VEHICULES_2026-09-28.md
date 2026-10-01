@@ -12,8 +12,8 @@
 > Contrat d'exécution : skill `plan-execution`. Statuts `[x]` / `[~]` réf / `[!]` justifié ; aucune
 > case vide à la clôture d'un lot.
 >
-> Statut : **GO utilisateur le 2026-09-30** (« attaque le plan des véhicules »). Exécution en cours
-> sur `wt/emprise` (base `feat/v75`), conditions d'entrée amendées au §1.
+> Statut : **GO utilisateur le 2026-09-30**. **Code livré le 2026-10-01** dans `feat/v75`
+> (`9ee561819`, CI verte). Restent : gate visuel et rattrapage prod, par l'utilisateur.
 
 ## 0. Hors périmètre
 
@@ -330,8 +330,11 @@ Journal : [2026-10-01] L7.4 joué en avant-plan ; L7.5 (clôture, superviseur) r
 
 ### L7.5 — Clôture (superviseur)
 
-- [ ] L7.5.1 Revue adversariale, rattrapage local, vérification sur le témoin, fusion, CI verte,
+- [x] L7.5.1 Revue adversariale, rattrapage local, vérification sur le témoin, fusion, CI verte,
   gate visuel utilisateur après fusion ; prod par l'utilisateur.
+  → Fusionné dans `feat/v75` (`9ee561819`), CI du push verte au niveau job (run 36807524643 ;
+  Secrets, ADR 0021 Gate, Deploy Pre-Check verts). Restent à l'utilisateur : gate visuel (Escouade,
+  onglet Emprise, soirée du 24/07, lignes « Véhicules ») et rattrapage prod (4c des notes de version).
   Ronde 1 (2026-10-01, deux relecteurs Sonnet aveugles) : écriture (L1, L2) — 14 conditions
   tiennent, 3 constats ; lecture et web (L4, L6, L5) — 14 conditions tiennent, aucun défaut de
   calcul, 4 constats. Triage du superviseur :
