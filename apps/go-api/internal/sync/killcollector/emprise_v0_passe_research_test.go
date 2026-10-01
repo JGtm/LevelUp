@@ -71,7 +71,7 @@ func v0Garde(t *testing.T) v0Env {
 		dir: os.Getenv("EMPRISE_V0_DIR"), db: os.Getenv("EMPRISE_V0_DB"),
 		cac: os.Getenv("EMPRISE_V0_CACHE"), tours: 3,
 	}
-	for _, f := range strings.Split(os.Getenv("EMPRISE_V0_FILMS"), ",") {
+	for f := range strings.SplitSeq(os.Getenv("EMPRISE_V0_FILMS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			e.films = append(e.films, f)
 		}

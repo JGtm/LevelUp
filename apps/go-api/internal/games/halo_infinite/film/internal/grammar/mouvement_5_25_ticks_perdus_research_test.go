@@ -332,10 +332,7 @@ func t525Deciles(t *testing.T, titre string, trs []t525Trame, classe uint8) {
 		if tr.classe != classe || tr.bits == 0 {
 			continue
 		}
-		k := max(tr.curseur*10/tr.bits, 0)
-		if k > 10 {
-			k = 10
-		}
+		k := min(max(tr.curseur*10/tr.bits, 0), 10)
 		d[k]++
 		n++
 	}
@@ -394,10 +391,7 @@ func t525TableauB(t *testing.T, p *t525Passe) {
 		n++
 		sommeLus += tr.records
 		sommeAttendu += att
-		k := max(int(float64(tr.records)/att*10), 0)
-		if k > 10 {
-			k = 10
-		}
+		k := min(max(int(float64(tr.records)/att*10), 0), 10)
 		d[k]++
 	}
 	t.Logf("(b) TRAMES ABANDONNEES SUR UN REJET : %d avec voisine fermee · %d sans",

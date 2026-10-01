@@ -66,7 +66,7 @@ func eqcGrenadeRise(deltas []types.InventoryDelta, slot uint32, at uint64, decal
 		return false
 	}
 	n := min(len(apres), len(avant))
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if apres[i] > avant[i] {
 			return true
 		}

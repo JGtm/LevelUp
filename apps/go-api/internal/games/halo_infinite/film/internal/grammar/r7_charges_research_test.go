@@ -80,10 +80,7 @@ func r7BitsAxe(etendue float64, k int) uint {
 	if lim := math.Pow(2, 22); n > lim {
 		n = lim
 	}
-	b := min(int(math.Ceil(math.Log2(n))), 26)
-	if b < 0 {
-		b = 0
-	}
+	b := max(min(int(math.Ceil(math.Log2(n))), 26), 0)
 	return uint(b)
 }
 

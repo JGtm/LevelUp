@@ -62,7 +62,7 @@ const (
 
 func TestEmpriseV1Temoin(t *testing.T) {
 	var films []string
-	for _, f := range strings.Split(os.Getenv("EMPRISE_V1_FILMS"), ",") {
+	for f := range strings.SplitSeq(os.Getenv("EMPRISE_V1_FILMS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			films = append(films, f)
 		}

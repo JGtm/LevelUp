@@ -79,7 +79,7 @@ const (
 func v0Films(t *testing.T) (films []string, dir, cache string, tours int) {
 	t.Helper()
 	dir, cache, tours = os.Getenv("EMPRISE_V0_DIR"), os.Getenv("EMPRISE_V0_CACHE"), 3
-	for _, f := range strings.Split(os.Getenv("EMPRISE_V0_FILMS"), ",") {
+	for f := range strings.SplitSeq(os.Getenv("EMPRISE_V0_FILMS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			films = append(films, f)
 		}
@@ -270,7 +270,7 @@ func v0RegistreConforme(b v0Base) string {
 	a, c := append([][3]int64(nil), vies...), append([][3]int64(nil), b.col.Vies...)
 	less := func(s [][3]int64) func(i, j int) bool {
 		return func(i, j int) bool {
-			for k := 0; k < 3; k++ {
+			for k := range 3 {
 				if s[i][k] != s[j][k] {
 					return s[i][k] < s[j][k]
 				}
@@ -295,7 +295,7 @@ func v0RegistreConforme(b v0Base) string {
 func v0Chrono(n int, f func()) (float64, uint64) {
 	var durees []float64
 	var pic uint64
-	for i := 0; i < n; i++ {
+	for range n {
 		ech := v0Echantillonner()
 		debut := time.Now()
 		f()

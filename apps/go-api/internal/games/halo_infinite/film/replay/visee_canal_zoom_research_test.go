@@ -108,7 +108,7 @@ func TestViseeCensusTypesCorpus(t *testing.T) {
 	var wg sync.WaitGroup
 	workers := min(runtime.NumCPU(), 8)
 	debut := time.Now()
-	for w := 0; w < workers; w++ {
+	for range workers {
 		wg.Go(func() {
 			for d := range in {
 				dir := filepath.Join(root, d)
@@ -204,7 +204,7 @@ func TestViseeCanalFenetres(t *testing.T) {
 	var wg sync.WaitGroup
 	workers := min(runtime.NumCPU(), 8)
 	debut := time.Now()
-	for w := 0; w < workers; w++ {
+	for range workers {
 		wg.Go(func() {
 			for d := range in {
 				dir := filepath.Join(root, d)

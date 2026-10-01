@@ -176,10 +176,7 @@ func sonde3Join(t *testing.T, srcCount, armes map[uint64]int, fires []FireEvent)
 		ns, interVariant, lot1Pct(interVariant, ns))
 	t.Logf("   intersection avec WeaponID moitie basse : %d (%.1f %%) · moitie haute : %d (%.1f %%)",
 		interLo, lot1Pct(interLo, ns), interHi, lot1Pct(interHi, ns))
-	best := max(interLo, interVariant)
-	if interHi > best {
-		best = interHi
-	}
+	best := max(interHi, max(interLo, interVariant))
 	t.Logf("   VERDICT joignable directement (intersection > 50 %% des tags source) : %s — sinon une TABLE (tag de degat -> arme) est requise",
 		lot1Verdict(ns > 0 && best*2 > ns))
 }

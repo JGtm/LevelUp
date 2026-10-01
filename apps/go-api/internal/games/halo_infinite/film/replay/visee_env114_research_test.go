@@ -311,7 +311,7 @@ func env114Confronte(t *testing.T, dir string, ossature map[int]int, nbRef int) 
 	env114Tailles(t, nom, pk)
 	frac := env114Entropies(pk, nb)
 	var tenus, casses, hors []string
-	for b := 0; b < nb; b++ {
+	for b := range nb {
 		v, ok := ossature[b]
 		if !ok {
 			continue

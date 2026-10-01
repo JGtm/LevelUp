@@ -57,7 +57,7 @@ func (p *v5bProfil) ajoute(i int, ok bool) {
 // v5bDiffAvant remplit le profil aligné sur le DÉBUT des deux records.
 func v5bDiffAvant(p *v5bProfil, a, b v5KfRec) {
 	n := min(b.LongueurEnBits, a.LongueurEnBits)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p.ajoute(i, keyframeBitAt(a.Payload, a.BitStart+i) == keyframeBitAt(b.Payload, b.BitStart+i))
 	}
 }
@@ -65,7 +65,7 @@ func v5bDiffAvant(p *v5bProfil, a, b v5KfRec) {
 // v5bDiffArriere remplit le profil aligné sur la FIN des deux records.
 func v5bDiffArriere(p *v5bProfil, a, b v5KfRec) {
 	n := min(b.LongueurEnBits, a.LongueurEnBits)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p.ajoute(i, keyframeBitAt(a.Payload, a.Fin-1-i) == keyframeBitAt(b.Payload, b.Fin-1-i))
 	}
 }
@@ -73,7 +73,7 @@ func v5bDiffArriere(p *v5bProfil, a, b v5KfRec) {
 // v5bLCP rend la longueur du plus long préfixe commun en bits.
 func v5bLCP(a, b v5KfRec) int {
 	n := min(b.LongueurEnBits, a.LongueurEnBits)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if keyframeBitAt(a.Payload, a.BitStart+i) != keyframeBitAt(b.Payload, b.BitStart+i) {
 			return i
 		}
@@ -84,7 +84,7 @@ func v5bLCP(a, b v5KfRec) int {
 // v5bLCS rend la longueur du plus long suffixe commun en bits.
 func v5bLCS(a, b v5KfRec) int {
 	n := min(b.LongueurEnBits, a.LongueurEnBits)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if keyframeBitAt(a.Payload, a.Fin-1-i) != keyframeBitAt(b.Payload, b.Fin-1-i) {
 			return i
 		}

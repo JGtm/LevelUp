@@ -91,7 +91,7 @@ type l70Prise struct {
 func TestEmpriseL70(t *testing.T) {
 	dir, cache := os.Getenv("EMPRISE_L70_DIR"), os.Getenv("EMPRISE_L70_CACHE")
 	var films []string
-	for _, f := range strings.Split(os.Getenv("EMPRISE_L70_FILMS"), ",") {
+	for f := range strings.SplitSeq(os.Getenv("EMPRISE_L70_FILMS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			films = append(films, f)
 		}

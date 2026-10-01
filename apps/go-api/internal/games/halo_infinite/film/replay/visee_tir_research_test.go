@@ -192,7 +192,7 @@ func tirTraiteCorpus(dirs []string, root string) []tirBilanFilm {
 	var mu sync.Mutex
 	var out []tirBilanFilm
 	var wg sync.WaitGroup
-	for w := 0; w < workers; w++ {
+	for range workers {
 		wg.Go(func() {
 			for d := range in {
 				b := tirTraiteFilm(filepath.Join(root, d), d)

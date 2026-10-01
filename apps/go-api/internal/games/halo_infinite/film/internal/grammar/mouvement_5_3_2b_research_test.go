@@ -187,7 +187,7 @@ func m532bOracle(t *testing.T, recs []m532bRec, kf map[uint32][]m532bKF) {
 				par[sp.nom] = c
 			}
 			n := min(sp.largeur, m532bBitsMax)
-			for b := 0; b < n; b++ {
+			for b := range n {
 				v, okb := m532Lit(r.pay, sp.startBit+b, 1)
 				if !okb {
 					continue

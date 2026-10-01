@@ -167,7 +167,7 @@ func m5116Diff(a, b string) string {
 	ab, bb := strings.ReplaceAll(a, " ", ""), strings.ReplaceAll(b, " ", "")
 	n := min(len(bb), len(ab))
 	var rangs []string
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if ab[i] != bb[i] {
 			rangs = append(rangs, fmt.Sprintf("bit %d : %c -> %c", i, ab[i], bb[i]))
 		}

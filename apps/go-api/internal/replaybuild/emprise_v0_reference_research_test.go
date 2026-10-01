@@ -93,7 +93,7 @@ type v0Reference struct {
 func TestEmpriseV0Reference(t *testing.T) {
 	dir, cache := os.Getenv("EMPRISE_V0_DIR"), os.Getenv("EMPRISE_V0_CACHE")
 	var films []string
-	for _, f := range strings.Split(os.Getenv("EMPRISE_V0_FILMS"), ",") {
+	for f := range strings.SplitSeq(os.Getenv("EMPRISE_V0_FILMS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			films = append(films, f)
 		}
