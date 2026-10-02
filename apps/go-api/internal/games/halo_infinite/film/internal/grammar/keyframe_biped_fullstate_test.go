@@ -29,7 +29,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 KF35_ROOT=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestKF35' -timeout 30m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestKF35' -timeout 30m -v
 
 import (
 	"fmt"
@@ -255,7 +255,7 @@ func kf35Walk(f kf35Film, pay []byte, b kf35Bound, v kf35Variant, tal *kf35Tally
 func kf35Chain(f kf35Film, pay []byte, from int, b kf35Bound, v kf35Variant) bool {
 	total := len(pay) * 8
 	pos, prev := from, b.Rec.Slot
-	for n := 0; n < kf35ChainMax; n++ {
+	for range kf35ChainMax {
 		if pos == b.Want {
 			return true
 		}
@@ -295,7 +295,7 @@ func kf35Pass(f kf35Film, v kf35Variant) kf35Tally {
 func kf35ApplyStubs(f kf35Film, v kf35Variant) (stubbed []string, restore func()) {
 	arch, _ := f.Reg.Archetype(bipedDefaultStateTypeIndex)
 	seen := map[string]bool{}
-	for round := 0; round < kf35StubRounds; round++ {
+	for range kf35StubRounds {
 		added := false
 		for _, pay := range f.Pays {
 			for _, b := range kf35BoundedRecs(pay) {

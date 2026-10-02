@@ -265,10 +265,7 @@ func TestType817Dump(t *testing.T) {
 			pay := pk.Payload(data)
 			t817Motifs(t, pay)
 			for off := 0; off < len(pay) && off < 256; off += 32 {
-				fin := off + 32
-				if fin > len(pay) {
-					fin = len(pay)
-				}
+				fin := min(off+32, len(pay))
 				t.Logf("  %04x  %x", off, pay[off:fin])
 			}
 			t.Logf("  ... queue :")
@@ -286,7 +283,7 @@ func t817Motifs(t *testing.T, pay []byte) {
 	t.Helper()
 	for i := 0; i+8 <= len(pay); i++ {
 		ok := true
-		for k := 0; k < 4; k++ {
+		for k := range 4 {
 			c := pay[i+2*k]
 			if pay[i+2*k+1] != 0 || c < 0x20 || c > 0x7e {
 				ok = false

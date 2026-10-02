@@ -1,4 +1,4 @@
-// perf_weights_test.go — lot 3 de .ai/PLAN_PERF_NOTE_OBJECTIFS.md (B3.4a).
+// perf_weights_test.go — lot 3 de .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md (B3.4a).
 //
 // Verrouille les profils de poids par chaîne : le profil objectif est FIGÉ au gate 0
 // du 2026-08-27 (D-J) et ne doit pas dériver silencieusement ; les chaînes

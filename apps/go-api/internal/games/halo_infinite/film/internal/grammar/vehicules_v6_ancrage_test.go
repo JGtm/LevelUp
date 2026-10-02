@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v6_ancrage_test.go — INSTRUMENT (lot V6) : L'ANCRAGE AVAL.
@@ -19,6 +21,7 @@ package grammar
 import (
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -235,15 +238,15 @@ func v6TopIntHist(h map[int]int, n int) string {
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)
-	s := ""
+	var s strings.Builder
 	for i, k := range keys {
 		if i >= n {
-			s += " …"
+			s.WriteString(" …")
 			break
 		}
-		s += " " + itoa(k) + "×" + itoa(h[k])
+		s.WriteString(" " + itoa(k) + "×" + itoa(h[k]))
 	}
-	return s
+	return s.String()
 }
 
 // TestV6Ancrage : le score de trame designe-t-il le VRAI debut de trame ?

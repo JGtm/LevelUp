@@ -20,6 +20,7 @@ package replay
 // equipes —, les trois bots perdent leur equipe, aucun ne trouve de place).
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -107,7 +108,7 @@ func temoinB1ad85eb() ([]RosterEntry, []Track, entreesDesOccupants, entreesDesPl
 	}
 	tirs = append(tirs, FireEventRef{FilmIndex: 0, TimestampUS: 50_000_000}) // MONEY, sa place
 	table := grammar.FilmPlayerTable{}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		table.Seats = append(table.Seats, grammar.FilmPlayerSeat{FilmIndex: i, XUID: uint64(100 + i)})
 	}
 	horloge := replayClock{origin: 0, step: 100_000, frames: temoinFrames}
@@ -165,7 +166,7 @@ func TestTemoinB1ad85ebPlacesEtPresences(t *testing.T) {
 	occ := lierLesOccupants(roster, tracks, occIn)
 	var pub teamPublication
 	pub.poserEquipesParEntree(roster, occ)
-	cov := poserLesSieges(roster, occ, placeIn)
+	cov := poserLesSieges(context.Background(), roster, occ, placeIn)
 
 	eagle := []string{"343 Hundy [bot]", "Hanover Cat", "343 PardonMy [bot]", "Claudors"}
 	if got := occupantsDeLaPlace(roster, 5); !egaux(got, eagle) {
@@ -175,7 +176,7 @@ func TestTemoinB1ad85ebPlacesEtPresences(t *testing.T) {
 	if got := occupantsDeLaPlace(roster, 1); !egaux(got, cobra) {
 		t.Errorf("place 1 : %v, attendu %v", got, cobra)
 	}
-	for f := 0; f < temoinFrames; f++ {
+	for f := range temoinFrames {
 		for eq, noms := range affichesA(roster, f) {
 			if len(noms) > 4 {
 				t.Fatalf("frame %d : l'equipe %d affiche %d occupants %v — jamais plus que ses 4 places",
@@ -211,9 +212,9 @@ func TestTemoinB1ad85ebPlacesEtPresences(t *testing.T) {
 func verifierLesPresencesDuTemoin(t *testing.T, roster []RosterEntry) {
 	t.Helper()
 	attendu := map[string]PresenceInterval{
-		"FairyNectar5788": {From: 0, To: 3117, ToMax: entierDe(3154)},
+		"FairyNectar5788": {From: 0, To: 3117, ToMax: new(3154)},
 		"343 Hundy [bot]": {From: 0, To: 272},
-		"Hanover Cat":     {From: 412, To: 662, ToMax: entierDe(773)},
+		"Hanover Cat":     {From: 412, To: 662, ToMax: new(773)},
 		"Claudors":        {From: 1013, To: temoinFrames - 1},
 	}
 	for _, e := range roster {
@@ -227,8 +228,6 @@ func verifierLesPresencesDuTemoin(t *testing.T, roster []RosterEntry) {
 		}
 	}
 }
-
-func entierDe(v int) *int { return &v }
 
 func memeBorne(a, b *int) bool {
 	if a == nil || b == nil {

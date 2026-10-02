@@ -90,7 +90,7 @@ func TestExitEventVehicleRef(t *testing.T) {
 
 // evbForceType réécrit EN PLACE le champ R(7) de type de tête d'un payload déjà sérialisé.
 func evbForceType(pay []byte, typ int) {
-	for i := 0; i < eventTypeBits; i++ {
+	for i := range eventTypeBits {
 		bit := 2 + i
 		masque := byte(1) << uint(7-bit%8)
 		pay[bit/8] &^= masque

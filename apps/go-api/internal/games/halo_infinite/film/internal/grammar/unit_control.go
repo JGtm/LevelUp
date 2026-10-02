@@ -154,7 +154,7 @@ func actorStateWidth(p uint32) uint {
 // EXCEPTION DATEE du portage unique (lot R3-bis, 2026-09-30) : ils gardent leurs seize bits plats
 // (`lireViseeDActeurAncienne`, `lecteur_position_exceptions.go`).
 func consume14058c058(br *Lecteur) {
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		if !br.ReadBit() { // present
 			continue
 		}

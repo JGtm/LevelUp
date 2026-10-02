@@ -18,7 +18,7 @@ package grammar
 // LECTURE SEULE, hors ligne, sous garde d'environnement. Aucun fichier écrit, aucune base.
 //
 //	CGO_ENABLED=0 V5_ROOT=<cache> V5_FILMS=0d76e8f1,fccc61cd \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV5 -v -timeout 60m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV5 -v -timeout 60m
 
 import (
 	"fmt"
@@ -52,7 +52,7 @@ func v5Films(t *testing.T) []string {
 		t.Skipf("mesure non demandée : %s ou %s vide", v5RootEnv, v5FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(films, ",") {
+	for s := range strings.SplitSeq(films, ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, root+"/film_chunks/"+s)
 		}

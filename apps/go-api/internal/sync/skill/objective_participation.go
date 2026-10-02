@@ -11,7 +11,7 @@
 // feuille des helpers de scoring ; il porte déjà isSchemaMissingErr, que ce loader
 // réutilise au lieu d'en poser une 3e copie.
 //
-// Décision D-C/D-J du plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md (2026-08-27).
+// Décision D-C/D-J du plan .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md (2026-08-27).
 package skill
 
 import (

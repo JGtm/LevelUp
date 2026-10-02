@@ -52,13 +52,13 @@ func i59LoiEtiquette(brut uint64) uint64 { return brut + 1 }
 // TestI59LoiDeLEtiquetteEstBrutPlusUn epingle la loi elle-meme : elle est le seul fait de ce
 // fichier dont depend la lecture des six autres branches.
 func TestI59LoiDeLEtiquetteEstBrutPlusUn(t *testing.T) {
-	for brut := uint64(0); brut < 8; brut++ {
+	for brut := range uint64(8) {
 		if got, veut := i59LoiEtiquette(brut), brut+1; got != veut {
 			t.Fatalf("brut %d : etiquette %d, attendu %d", brut, got, veut)
 		}
 	}
 	// L ETIQUETTE 0 EST INATTEIGNABLE, et c est le point (2) de l en-tete.
-	for brut := uint64(0); brut < 8; brut++ {
+	for brut := range uint64(8) {
 		if i59LoiEtiquette(brut) == 0 {
 			t.Fatalf("brut %d rend l etiquette 0 : la branche morte de l ecrivain serait "+
 				"atteignable, et la lecture de FUN_142f21c0c serait fausse", brut)
@@ -136,7 +136,7 @@ func i59LoiCorps(brut uint64, sommeAxes int) []byte {
 	w.bits(0, sommeAxes)
 	w.bits(0, anchorMidBits)
 	w.bit(0) // porte FUN_1407f08bc fermee
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		w.bit(1) // vecteur constant : aucune charge
 	}
 	w.bits(0, anchorPackedBits)

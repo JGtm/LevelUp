@@ -38,7 +38,9 @@ package replay
 // pas la progression de garde : `buildHillStates` ne pose aucune serie, et le dit.
 
 import (
+	"cmp"
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -81,7 +83,7 @@ func zoneGaugeSeriesOf(ss []zoneSample, wins []zoneGaugeWindow, gap int) []Gauge
 	if len(wins) == 0 || len(ss) == 0 {
 		return nil
 	}
-	sort.SliceStable(wins, func(i, j int) bool { return wins[i].t0 < wins[j].t0 })
+	slices.SortStableFunc(wins, func(a, b zoneGaugeWindow) int { return cmp.Compare(a.t0, b.t0) })
 	var out []GaugePoint
 	for _, w := range wins {
 		out = appendGaugeWindow(out, ss, w, gap)
@@ -206,7 +208,7 @@ func zoneGaugeRampsOf(ramps []zoneRamp, owner, capt []zoneSample, c zoneRampsCtx
 			CapturingTeam: rampCapturingTeam(r, owner, capt, c),
 		})
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].T0 < out[j].T0 })
+	slices.SortStableFunc(out, func(a, b ZoneGaugeRamp) int { return cmp.Compare(a.T0, b.T0) })
 	return out
 }
 

@@ -39,6 +39,8 @@ package grammar
 // (lecture fausse confirmee), celui du NEW (creation perdue), ou aucun des deux (indecis). Chaque
 // refus recoit son verdict a la PREMIERE image-cle du chunk suivant, avant l oubli et les liaisons.
 
+import "maps"
+
 // neufRefuse : un NEW refuse, en attente du verdict de l image-cle suivante.
 type neufRefuse struct {
 	slot, neuf, vivant uint32
@@ -124,9 +126,7 @@ func lierLeChunkAuMonde(w *World, marche MarcheDImageCle, data []byte, pks []Fil
 // d abord, la table de datums pour les slots que la chaine n a pas atteints.
 func archetypesDeclares(recs []KeyframeRec, table map[uint32]uint32) map[uint32]uint32 {
 	out := make(map[uint32]uint32, len(recs)+len(table))
-	for s, ti := range table {
-		out[s] = ti
-	}
+	maps.Copy(out, table)
 	for _, r := range recs {
 		out[uint32(r.Slot)] = uint32(r.TI) //nolint:gosec // slot et TI bornes par le walker
 	}

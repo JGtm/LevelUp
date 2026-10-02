@@ -13,6 +13,7 @@ package replay
 // map_backgrounds/), donc ce test tourne partout où le dépôt est là — y compris en CI.
 
 import (
+	"context"
 	"os"
 	"sort"
 	"strings"
@@ -35,7 +36,7 @@ func indexDuCatalogueLivre(t *testing.T) *MapBackgroundIndex {
 		t.Fatalf("racine du depot introuvable — le garde-rail se skipperait en silence en CI : %v", err)
 	}
 	dir := title.NewPathResolver(root).MapBackgroundDir(titreDuCatalogueDeFonds)
-	idx, err := BuildMapBackgroundIndex(dir)
+	idx, err := BuildMapBackgroundIndex(context.Background(), dir)
 	if err != nil {
 		t.Skipf("catalogue de fonds absent (%s) : %v", dir, err)
 	}

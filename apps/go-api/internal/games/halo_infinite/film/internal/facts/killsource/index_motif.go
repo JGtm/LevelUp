@@ -43,7 +43,7 @@ package killsource
 // aucun effet sur les lignes publiees.
 
 import (
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
@@ -179,6 +179,6 @@ func xuidsNommesParLeFilm(slots []types.PlayerSlot, kf *killFeed) (map[uint64]st
 	for x := range nom {
 		xuids = append(xuids, x)
 	}
-	sort.Slice(xuids, func(i, j int) bool { return xuids[i] < xuids[j] })
+	slices.Sort(xuids)
 	return nom, xuids
 }

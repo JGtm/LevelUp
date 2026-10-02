@@ -13,6 +13,7 @@ package replay
 //	T-REFUS     une table refusee laisse la lecture des chunks seule, et le refus est publie.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
@@ -184,7 +185,7 @@ func TestRosterPrendLesSiegesEtLesNomsDuFilm(t *testing.T) {
 	)
 	in := entreeIdentite(film, map[uint64]int{quiMeurt: 0, quiRejoint: 5})
 	in.Deaths = []types.Death{{XUID: quiMeurt, Gamertag: "Alpha", TimeMS: 1000}}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 
 	roster := buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, in.Deaths), nil, teamPublication{})
 	parXUID := map[string]RosterEntry{}
@@ -270,7 +271,7 @@ func TestCompositionRetireUnIndexQueDeuxXUIDSeDisputent(t *testing.T) {
 	// LE DETERMINISME EST LA PROPRIETE MENACEE, et c'est l'ordre d'iteration d'une map qui la
 	// menacait : on recompose, et l'identite publiee ne doit jamais bouger.
 	t.Run("determinisme", func(t *testing.T) {
-		for i := 0; i < 50; i++ {
+		for i := range 50 {
 			c := composerTableDIndex(in)
 			if len(c.table.ByXUID) != 1 || c.table.ByXUID[indifferent] != 2 {
 				t.Fatalf("passe %d : table = %v, attendue {temoin: 2} a chaque composition",

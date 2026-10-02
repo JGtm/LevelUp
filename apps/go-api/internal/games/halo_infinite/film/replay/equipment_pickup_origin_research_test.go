@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_pickup_origin_research_test.go — LOT 5, ÉTAPE 3 : L'ORIGINE d'un ramassage

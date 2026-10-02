@@ -45,6 +45,7 @@ import (
 	"slices"
 	"strconv"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -106,11 +107,14 @@ func PortagesAuSync(ctx context.Context, e EntreePorteursAuSync) (map[uint64][]I
 		return nil, b
 	}
 	fb := fallback.NouveauCompteur()
-	poserProfilPuisCarte(e.Contexte, e.MatchID, Options{ProfilDeBalayage: e.ProfilDeBalayage, Fallbacks: fb})
+	poserProfilPuisCarte(ctx, e.Contexte, e.MatchID, Options{ProfilDeBalayage: e.ProfilDeBalayage, Fallbacks: fb})
 	opt := e.optionsDuRegistre(fb)
 	b.Lectures = e.lireLesPorteurs(ctx, b.Gardes, &opt)
 	// Le document n'est pas publié : le titre n'y sert à rien, il reste vide.
-	doc := BuildFromPositions(e.MatchID, "", e.Identite.Positions, nil, opt)
+	doc := BuildFromPositions(ctx, e.MatchID, "", e.Identite.Positions, nil, opt)
+	// CE QUE LES LECTURES DU CONTEXTE ONT CONSTATE (grammar, lot J12.3 — ADR 0034 D-4) se journalise
+	// ICI, sous le contexte de l appelant : le collecteur a deja releve celles du pont.
+	JournaliserDiagnostics(ctx, e.Contexte.Diagnostics().Relever())
 	portages := portagesDuDocument(doc, premierPaquetUS(e.Identite.Positions), &b)
 	return portages, b
 }
@@ -132,7 +136,9 @@ func (e EntreePorteursAuSync) lireLesPorteurs(ctx context.Context, g GardesDesPo
 	var recs []types.StatRecord
 	var bursts []int
 	if g.Drapeau || g.Crane || g.VIP {
-		recs, _ = objectives.StatRecordsCtx(ctx, e.Film, e.MatchID)
+		var diags []constat.Diagnostic
+		recs, _, diags = objectives.StatRecordsBornes(e.Film, e.MatchID)
+		JournaliserDiagnostics(ctx, diags)
 		lu.Statborg = true
 		bursts = objectives.CaptureBurstTimes(e.Film)
 	}
@@ -146,8 +152,8 @@ func (e EntreePorteursAuSync) lireLesPorteurs(ctx context.Context, g GardesDesPo
 		opt.Flag.Spawns = e.Socles
 		opt.PlayerTeams, opt.TeamScan, opt.PlayerEntities = grammar.ScanPlayerTeams(e.Contexte)
 		monde := e.Carte.Range()
-		_, poses := decodeFilmPlacements(e.Contexte, e.MatchID, &monde)
-		opt.Pads = decodeFilmPadScans(e.Contexte, e.MatchID, &monde, poses.Calibration.Widths)
+		_, poses := decodeFilmPlacements(ctx, e.Contexte, e.MatchID, &monde)
+		opt.Pads = decodeFilmPadScans(ctx, e.Contexte, e.MatchID, &monde, poses.Calibration.Widths)
 		lu.Equipes, lu.ObjetsDuMonde = true, true
 	}
 	opt.Skull = EntreeDuCrane(recs, g.Crane, pont)

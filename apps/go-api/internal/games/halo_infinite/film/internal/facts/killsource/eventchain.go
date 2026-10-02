@@ -184,7 +184,7 @@ func estAncreDeKillEvent(pl []byte, x int) bool {
 // arrete la chaine.
 func evPresence(r *curseurEv, code int) bool {
 	cfg := evCfgIdx[code]
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if r.g1() == 0 {
 			continue
 		}

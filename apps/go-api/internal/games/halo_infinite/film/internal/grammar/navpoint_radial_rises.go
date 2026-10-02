@@ -28,7 +28,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"sort"
+	"slices"
 )
 
 // Les seuils de la definition d'une MONTEE CONTIGUE — protocole du 2026-09-01, 0/1000.
@@ -68,7 +68,7 @@ func NavpointContiguousRises(reads []types.NavpointRadialRead) []NavpointRise {
 		trierSerieNavpoint(s)
 		out = append(out, navpointRisesOfSeries(slot, s)...)
 	}
-	sort.Slice(out, func(i, j int) bool { return lessNavpointRise(out[i], out[j]) })
+	slices.SortFunc(out, comparateurDeLess(lessNavpointRise))
 	return out
 }
 

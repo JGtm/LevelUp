@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_coincidence_research_test.go — MESURE 2 du lot R8 : que fait le canal i48 (rang de

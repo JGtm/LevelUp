@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_correl_test.go — INSTRUMENT (lot V7) : LE TEMOIN NATUREL DU CORPUS. Un type

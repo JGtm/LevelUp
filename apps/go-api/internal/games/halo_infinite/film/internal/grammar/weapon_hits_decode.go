@@ -19,6 +19,10 @@ package grammar
 // item E.3 : `refDomWidth` d'event_list.go est la seule table du paquet.)
 
 // lot1RefDom consomme une reference gardee du domaine dom (sans sonde). Rend (index, presente).
+// La production ne lit que la consommation des bits ; les valeurs rendues servent aux
+// instruments du tag research (lot1_degats_type1_research_test.go).
+//
+//nolint:unparam // valeurs lues par les seuls instruments research : la production saute la reference
 func lot1RefDom(br *Lecteur, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
@@ -92,7 +96,7 @@ func lot1DecodeDamageAftermath(br *Lecteur) lot1DmgResult {
 	}
 	// (7) 15 drapeaux R(1) ; le 15e (bit 28) garde un R(32)
 	var last bool
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		last = br.ReadBit()
 	}
 	if last { // (8) si bit 28 : R(32)

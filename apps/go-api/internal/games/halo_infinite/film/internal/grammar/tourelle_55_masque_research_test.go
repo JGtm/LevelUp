@@ -121,7 +121,7 @@ func tourelle55Ventiler(pos []BipedPosition) (map[int]int, int, map[int]map[uint
 		if p.MaskOver {
 			over++
 		}
-		for i := 0; i < 64; i++ {
+		for i := range 64 {
 			if p.MaskBits&(1<<uint(i)) == 0 {
 				continue
 			}

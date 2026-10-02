@@ -104,7 +104,7 @@ func TestFilmFactsFichierEstUnPointFixe(t *testing.T) {
 	// L ordre d ecriture des maps doit tenir SUR PLUSIEURS ENCODAGES DU MEME OBJET, et pas
 	// seulement sur l aller-retour : c est la mesure du determinisme, la precedente celle de la
 	// fidelite.
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		encore, err := EncodeFilmFactsFile(f)
 		if err != nil {
 			t.Fatalf("encodage %d : %v", i, err)
@@ -131,7 +131,7 @@ func TestFilmFactsFichierPorteLesCinqSections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
-	champs := reflect.VisibleFields(reflect.TypeOf(FilmFactsFile{}))
+	champs := reflect.VisibleFields(reflect.TypeFor[FilmFactsFile]())
 	if len(champs) < 6 {
 		t.Fatalf("%d champ(s) lus sur FilmFactsFile : la reflexion ne mesure plus rien", len(champs))
 	}
@@ -187,8 +187,7 @@ func TestFilmFactsFichierNePerdQueLePaquetDeKillsource(t *testing.T) {
 			return
 		}
 		vus[rt] = true
-		for i := 0; i < rt.NumField(); i++ {
-			f := rt.Field(i)
+		for f := range rt.Fields() {
 			if !f.IsExported() {
 				cle := rt.PkgPath()
 				cle = cle[strings.LastIndex(cle, "/")+1:] + "." + rt.Name() + "." + f.Name
@@ -203,10 +202,10 @@ func TestFilmFactsFichierNePerdQueLePaquetDeKillsource(t *testing.T) {
 	// La section 1 passe par le codec MAISON (elle ne perd rien par ce mecanisme) : les sections
 	// mesurees ici sont les quatre qui passent par JSON.
 	for _, rt := range []reflect.Type{
-		reflect.TypeOf(&profile.FilmIdentity{}),
-		reflect.TypeOf([]fallback.Declenchement{}),
-		reflect.TypeOf(FilmStatborg{}),
-		reflect.TypeOf(killsource.Result{}),
+		reflect.TypeFor[*profile.FilmIdentity](),
+		reflect.TypeFor[[]fallback.Declenchement](),
+		reflect.TypeFor[FilmStatborg](),
+		reflect.TypeFor[killsource.Result](),
 	} {
 		marcher(rt)
 	}

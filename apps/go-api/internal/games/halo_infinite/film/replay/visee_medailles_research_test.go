@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_medailles_research_test.go — RECENSEMENT DE L'ORACLE DES MEDAILLES.

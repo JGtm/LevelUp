@@ -38,6 +38,7 @@ package replay
 
 import (
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -70,7 +71,7 @@ const FenetreVisibiliteMs = 1000
 //
 // Un quatrième état (« parti », déduit d'un calage horloge API/film sur `ArriveeMS`/
 // `DepartMS`) a existé puis a été retiré par 7C.9 (2026-09-07) : le calage produisait un
-// FAIT FAUX POSSIBLE (cf. .ai/DECOUVERTES_TACTIQUE_2026-09-07.md, section 7C) — un
+// FAIT FAUX POSSIBLE (cf. .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md, section 7C) — un
 // coéquipier présent en début de partie pouvait sortir « parti » avant même d'être
 // entré, gonflant le compte de morts isolées. `EtatParti` n'était plus jamais produit
 // depuis ce retrait ; supprimé en clôture (Q8) avec son `case` et le champ `Partis`.
@@ -215,7 +216,7 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint
 }
 
 // etatDUnCoequipier applique les trois règles actives : visible, en attente, hors de vue.
-// V1 : les départs ne sont plus appliqués (horloge API vs film) — cf. .ai/DECOUVERTES_TACTIQUE_2026-09-07.md
+// V1 : les départs ne sont plus appliqués (horloge API vs film) — cf. .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md
 func etatDUnCoequipier(pos positionsParXUID, vies map[uint64][]vieMatch,
 	mortsPar map[uint64][]int64, xuid uint64, tMS int64,
 ) string {
@@ -248,7 +249,7 @@ func mortsParVictime(journal []MortDuJournal) map[uint64][]int64 {
 		out[m.VictimeXUID] = append(out[m.VictimeXUID], m.TempsMS)
 	}
 	for _, v := range out {
-		sort.Slice(v, func(i, j int) bool { return v[i] < v[j] })
+		slices.Sort(v)
 	}
 	return out
 }

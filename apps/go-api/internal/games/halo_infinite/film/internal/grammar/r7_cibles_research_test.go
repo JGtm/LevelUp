@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_cibles_research_test.go — lot R7 : LA QUESTION DE FOND. Le RÉPULSEUR (type 104
@@ -18,10 +20,11 @@ package grammar
 // LECTURE SEULE, skip par defaut, CGO_ENABLED=0, balayage borne (R7_CHUNKS).
 //
 //	CGO_ENABLED=0 R7_ROOT=... R7_IDS=... R7_CAT=... R7_MAPS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR7Cibles$' -count=1 -timeout 60m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR7Cibles$' -count=1 -timeout 60m -v
 
 import (
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -54,7 +57,7 @@ var r7TypesJustes = map[int]bool{
 // r7ChainePropre dit si tous les evenements STRICTEMENT AVANT l'indice i ont une largeur de
 // charge validee. C'est la condition pour que le cadrage de l'evenement i soit lui-meme sur.
 func r7ChainePropre(evs []r7Ev, i int) bool {
-	for k := 0; k < i; k++ {
+	for k := range i {
 		if !r7TypesJustes[evs[k].Typ] {
 			return false
 		}
@@ -65,10 +68,8 @@ func r7ChainePropre(evs []r7Ev, i int) bool {
 // r7EstCible dit si le type appartient a une famille cible.
 func r7EstCible(typ int) bool {
 	for _, l := range r7CiblesFamille {
-		for _, c := range l {
-			if c == typ {
-				return true
-			}
+		if slices.Contains(l, typ) {
+			return true
 		}
 	}
 	return false
@@ -231,10 +232,7 @@ func TestR7Cibles(t *testing.T) {
 			t.Logf("  ... (+%d autres)", len(trouvees)-200)
 			break
 		}
-		fin := o.BitDebut/8 + 12
-		if fin > len(o.Pay) {
-			fin = len(o.Pay)
-		}
+		fin := min(o.BitDebut/8+12, len(o.Pay))
 		t.Logf("  film %s chunk %d ts=%d : type %d %s en position %d · ref0=%d (presente=%v) · bit %d · octets % X",
 			o.Film, o.Chunk, o.TsUS, o.Typ, r7Noms[o.Typ], o.Pos, o.Ref0, o.HasRef0, o.BitDebut,
 			o.Pay[o.BitDebut/8:fin])

@@ -268,13 +268,13 @@ func (w *gameEntityWalk) fieldOf(class, id int) int {
 	name := w.arch[class].component(id)
 	switch class {
 	case GameEngineTypeIndex:
-		for f := 0; f < GameEngineFieldCount; f++ {
+		for f := range GameEngineFieldCount {
 			if GameEngineField(f).String() == name {
 				return f
 			}
 		}
 	case PlayerEngineTypeIndex:
-		for f := 0; f < PlayerStateFieldCount; f++ {
+		for f := range PlayerStateFieldCount {
 			if PlayerStateField(f).String() == name {
 				return f
 			}

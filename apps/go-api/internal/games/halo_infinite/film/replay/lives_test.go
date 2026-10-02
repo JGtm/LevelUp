@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -39,7 +40,7 @@ func TestBuildLifeSpansKeepsContinuousTrackWhole(t *testing.T) {
 	// Des échantillons rapprochés ne doivent JAMAIS être coupés : un découpage trop
 	// agressif fabriquerait des vies sans mort, donc des vies jamais nommées.
 	var pts []grammar.BipedPosition
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		pts = append(pts, posAt(512, uint64(i)*16_000, 0, 0, 0))
 	}
 	if lives := buildLifeSpans(tracksOf(pts...)); len(lives) != 1 {
@@ -91,7 +92,7 @@ func TestNameLivesByDeathsIsDeterministic(t *testing.T) {
 		return m[512], m[513]
 	}
 	a1, b1 := build()
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		if a2, b2 := build(); a2 != a1 || b2 != b1 {
 			t.Fatalf("appariement non deterministe : (%d,%d) puis (%d,%d)", a1, b1, a2, b2)
 		}
@@ -172,7 +173,7 @@ func TestBuildRosterIsSortedAndStable(t *testing.T) {
 	if first[0].XUID != "2533274800000001" {
 		t.Errorf("xuid attendu en decimal, obtenu %q", first[0].XUID)
 	}
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		if got := buildRoster(idx, nil, nil, teamPublication{}); got[0].XUID != first[0].XUID || got[2].XUID != first[2].XUID {
 			t.Fatalf("roster non reproductible entre deux appels : %+v puis %+v", first, got)
 		}
@@ -243,7 +244,7 @@ func TestNameBotTracksNamesBridgedSlotsOnly(t *testing.T) {
 		{Slot: 602, XUID: "2533274800000001"}, // humain nommé : intouchable
 	}
 	owner := map[uint32]int{600: 8, 602: 8}
-	nameBotTracks(tracks, occupantsPlats(owner), []BotIdentity{{FilmIndex: 8, Name: "343 Aloysius [bot]"}}, 0, 100_000)
+	nameBotTracks(context.Background(), tracks, occupantsPlats(owner), []BotIdentity{{FilmIndex: 8, Name: "343 Aloysius [bot]"}}, 0, 100_000)
 	if tracks[0].Bot != "343 Aloysius [bot]" {
 		t.Errorf("la vie pontée vers l'index du bot doit porter son nom, obtenu %q", tracks[0].Bot)
 	}
@@ -286,7 +287,7 @@ func TestDeuxBotsSurUnMemeSiegeNeSecrasentPas(t *testing.T) {
 	// Bout en bout : la piste du siège ambigu reste LIBRE (ni xuid, ni bot), celle du siège
 	// mono-bot est nommée.
 	tracks := []Track{{Slot: 100}, {Slot: 200}}
-	nameBotTracks(tracks, occupantsPlats(map[uint32]int{100: 8, 200: 9}), bots, 0, 100_000)
+	nameBotTracks(context.Background(), tracks, occupantsPlats(map[uint32]int{100: 8, 200: 9}), bots, 0, 100_000)
 	if tracks[0].Bot != "" {
 		t.Errorf("piste du siege partage : %q, attendu libre pour le relais", tracks[0].Bot)
 	}

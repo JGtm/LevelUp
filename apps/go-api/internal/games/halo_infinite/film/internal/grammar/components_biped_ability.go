@@ -183,10 +183,10 @@ func consumeBipedLowFrequencyData(br *Lecteur) {
 // ushort low-12; the 7 then +1/+1 single-bit flags are FUN_1406cf008).
 func consumeBipedMalleablePropertyBlock(br *Lecteur, recordStateParam uint32) {
 	consumeGateR(br, 8) // FUN_1407f08bc = R(1)+optR(8)
-	for i := 0; i < 11; i++ {
+	for range 11 {
 		consume1411b1ac0(br) // FUN_140e82b84 = R(1)+optR(12)
 	}
-	for i := 0; i < 7; i++ {
+	for range 7 {
 		br.ReadBit() // FUN_1406cf008 flag
 	}
 	if recordStateParam > 1 {
@@ -300,7 +300,7 @@ func consumeMobilityActionBody(br *Lecteur) {
 	br.ReadBits(64) // FUN_1406d676c(..., 0x60) = R(96), en deux lectures (ReadBits <= 64)
 	br.ReadBits(32)
 	lireE494(br, niveauPosition) // FUN_14076f91c puis FUN_14076e524 niveau 0x10 (@1408f03c7, R9D = EBP)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		consume140c1e9d4(br, 12) // 3 x FUN_140c1e9d4(w=0xc)
 	}
 	br.ReadBits(24)          // FUN_14076dc04(..., 0x18)

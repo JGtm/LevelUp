@@ -8,6 +8,7 @@ package replay
 // d un match sans mort. `coverage.bridge.deathsFeed` porte le VERDICT de la lecture.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -104,7 +105,7 @@ func TestDocumentPublieLeVerdictDuFilDesMorts(t *testing.T) {
 		{"sans balayage, fil vide", Options{}, ""},
 	} {
 		cas.opt.FilmClockOriginUS = 1_000_000
-		doc := BuildFromPositions("m", "halo_infinite", pos, nil, cas.opt)
+		doc := BuildFromPositions(context.Background(), "m", "halo_infinite", pos, nil, cas.opt)
 		if doc.Coverage == nil {
 			t.Fatalf("%s : document sans couverture", cas.nom)
 		}

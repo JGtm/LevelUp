@@ -123,7 +123,7 @@ func exporterAvecReessai(ctx context.Context, tenter func() error, dormir dormeu
 		if essai == reessaisExport {
 			break
 		}
-		slog.Warn("replay-corpus-gate: base partagee tenue en ecriture — nouvel essai de l'export",
+		slog.WarnContext(ctx, "replay-corpus-gate: base partagee tenue en ecriture — nouvel essai de l'export",
 			"essai", essai, "essais", reessaisExport, "attente", delaiEntreReessais, "err", dernier)
 		if err := dormir(ctx, delaiEntreReessais); err != nil {
 			return errors.Join(dernier, err)
@@ -154,7 +154,7 @@ func exportFacts(ctx context.Context, p exportParams, ids []string) error {
 	if err := os.MkdirAll(p.FactsDir, 0o750); err != nil {
 		return fmt.Errorf("dossier des faits : %w", err)
 	}
-	exportFactsAvec(func(id string) error {
+	exportFactsAvec(ctx, func(id string) error {
 		return exporterAvecReessai(ctx, func() error { return exportUnFait(ctx, p, id) }, dormirContexte)
 	}, ids)
 	return nil
@@ -162,10 +162,10 @@ func exportFacts(ctx context.Context, p exportParams, ids []string) error {
 
 // exportFactsAvec applique `exporter` a chaque id, EN CONTINUANT apres un echec — le coeur du
 // correctif C4, teste independamment du sous-processus reel (facts_test.go).
-func exportFactsAvec(exporter exporterUnFait, ids []string) {
+func exportFactsAvec(ctx context.Context, exporter exporterUnFait, ids []string) {
 	for _, id := range ids {
 		if err := exporter(id); err != nil {
-			slog.Warn("replay-corpus-gate: export des faits impossible pour ce temoin — ignore, "+
+			slog.WarnContext(ctx, "replay-corpus-gate: export des faits impossible pour ce temoin — ignore, "+
 				"les autres temoins du manifeste continuent",
 				"temoin", id, "err", err)
 		}

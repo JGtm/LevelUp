@@ -40,7 +40,7 @@ func framePacket(us uint64, size int) []byte {
 	p[5] = byte(size >> 8)
 	p[6] = byte(size >> 16)
 	p[7] = byte(size >> 24)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		p[8+i] = byte(us >> (8 * i))
 	}
 	return p
@@ -62,10 +62,7 @@ func TestUSEstimator_CacheMonotone(t *testing.T) {
 		t.Fatalf("ms initiale %v < startMS %d", prev, startMS)
 	}
 	// Parcours par pas réguliers : les ms doivent rester >= startMS et croître.
-	step := len(chunk) / 50
-	if step < 1 {
-		step = 1
-	}
+	step := max(len(chunk)/50, 1)
 	for pos := 0; pos < len(chunk); pos += step {
 		ms := est(pos)
 		if ms < float64(startMS) {

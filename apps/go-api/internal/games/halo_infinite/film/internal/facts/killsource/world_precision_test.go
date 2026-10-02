@@ -156,7 +156,7 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("film %s : %v", dir, err)
 	}
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("timeline de %s : %v", dir, err)
 	}

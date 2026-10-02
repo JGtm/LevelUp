@@ -21,12 +21,13 @@ package grammar
 //
 // LECTURE SEULE, sans garde d environnement (bobines versionnees).
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191cPrefixeV$' -v -count=1
+//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191cPrefixeV$' -v -count=1
 
 import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -110,18 +111,18 @@ func e191cHisto(m map[string]int) string {
 		}
 		return l[i].k < l[j].k
 	})
-	out := ""
+	var out strings.Builder
 	for i, e := range l {
 		if i >= 4 {
-			out += " ..."
+			out.WriteString(" ...")
 			break
 		}
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += fmt.Sprintf("%s×%d", e.k, e.n)
+		out.WriteString(fmt.Sprintf("%s×%d", e.k, e.n))
 	}
-	return out
+	return out.String()
 }
 
 // LE RESULTAT DU PAS 3 TER : LE PREFIXE `V` N EST PAS LA CLE (2026-09-16).

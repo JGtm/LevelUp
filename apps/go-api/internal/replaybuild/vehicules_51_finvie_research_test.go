@@ -39,6 +39,7 @@ package replaybuild
 // exactement comme le corpus gate le fait — sa carte est Flood Gulch (`config/replay_corpus.toml`).
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -60,13 +61,13 @@ func TestVehicules51FinDeVie(t *testing.T) {
 		t.Fatalf("racine repo : %v", err)
 	}
 	matchID, cartes, faits := veh51Entrees(t, repoRoot, court, carte, sansFaits)
-	b, err := NewBuilder(repoRoot, title.DefaultSlug)
+	b, err := NewBuilder(context.Background(), repoRoot, title.DefaultSlug)
 	if err != nil {
 		t.Fatalf("preparation du builder : %v", err)
 	}
 	b.SansFaitsPersistes()
 	cacheRoot := title.NewPathResolver(repoRoot).CacheRootDir()
-	built, err := b.BuildBytes(matchID, cartes, filmcache.ChunkDir(cacheRoot, court), faits)
+	built, err := b.BuildBytes(context.Background(), matchID, cartes, filmcache.ChunkDir(cacheRoot, court), faits)
 	if err != nil {
 		t.Fatalf("cuisson de %s : %v", court, err)
 	}

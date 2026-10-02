@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // faille_activation_events_research_test.go — R1.2 : quand un joueur ACTIVE le translocateur,
@@ -28,13 +30,14 @@ package grammar
 //	CGO_ENABLED=0 FAILLE_FILM=<repo>/data/cache/film_chunks/1b2d9e08 \
 //	  FAILLE_BOUNDS=-11.45,104.54,73.91,19.72,153.51,82.53 \
 //	  FAILLE_ANCRES="A1:535:17.34,135.50:146862000-185262000:185262000;A2:560:18.34,120.19:328162000-351062000:351062000" \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestFailleActivationEvenements$' -timeout 20m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestFailleActivationEvenements$' -timeout 20m -v
 
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"math"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -147,10 +150,7 @@ func failleRapport117(t *testing.T, t117 []failleEvOcc, origine uint64) {
 
 // failleTete copie les premiers octets du payload (bornés) pour le rapport et les sondes.
 func failleTete(pay []byte) []byte {
-	n := 24
-	if len(pay) < n {
-		n = len(pay)
-	}
+	n := min(len(pay), 24)
 	out := make([]byte, n)
 	copy(out, pay[:n])
 	return out
@@ -227,14 +227,14 @@ func lenOccs(occs []failleEvOcc, ancre int) int {
 }
 
 func joinParts(parts []string) string {
-	out := ""
+	var out strings.Builder
 	for i, p := range parts {
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += p
+		out.WriteString(p)
 	}
-	return out
+	return out.String()
 }
 
 // failleRefsHypotheses tente le décodage des trois références gardées d'un événement 102/103

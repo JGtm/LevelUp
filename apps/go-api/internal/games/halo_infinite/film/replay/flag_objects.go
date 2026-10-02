@@ -61,7 +61,7 @@ package replay
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
-	"sort"
+	"slices"
 )
 
 // flagFreeLife est UNE vie libre : la creation, puis la piste repliquee jusqu'a sa fin.
@@ -138,7 +138,15 @@ func flagFreeLives(scan WorldObjectScan, flags map[uint32]Label) []flagFreeLife 
 			out = append(out, flagFreeLifeOf(ids[k], k, c, tracks[k], lifeEnd))
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return flagFreeLess(out[i], out[j]) })
+	slices.SortFunc(out, func(a, b flagFreeLife) int {
+		switch {
+		case flagFreeLess(a, b):
+			return -1
+		case flagFreeLess(b, a):
+			return 1
+		}
+		return 0
+	})
 	return out
 }
 

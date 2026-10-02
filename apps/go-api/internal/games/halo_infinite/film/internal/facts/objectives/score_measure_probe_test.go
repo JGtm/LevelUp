@@ -40,7 +40,7 @@ func writeProbe(m *measureRows, recs []types.StatRecord, or oracleMatch) {
 		"assists": sortedInt64(fieldOf(or.Lines, "a")),
 	}
 	hits := 0
-	for comp := 0; comp < statMaxComp; comp++ {
+	for comp := range statMaxComp {
 		for _, side := range []string{sideA, sideB} {
 			got := lastBySlot(recs, statSlotKey{comp, side})
 			if len(got) != statPlayerSlots {

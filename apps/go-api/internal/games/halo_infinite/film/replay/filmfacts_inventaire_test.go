@@ -9,6 +9,7 @@ package replay
 // l inventaire illisible rejoue depuis ses faits se disait « lu, et rien ».
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -53,8 +54,8 @@ func TestFaits_InventaireIllisiblePublieLeMemeDocumentQueLeFilm(t *testing.T) {
 	g.Inventory = nil
 	opt := g.options()
 	opt.MapQuant, opt.Fallbacks = &entry, fallback.NouveauCompteur()
-	direct := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, opt)
-	rejoue := BuildFromFacts(goldenFilm, "halo_infinite", relireLesFaits(t, g), Options{MapQuant: &entry})
+	direct := BuildFromPositions(context.Background(), goldenFilm, "halo_infinite", g.Positions, g.Fire, opt)
+	rejoue := BuildFromFacts(context.Background(), goldenFilm, "halo_infinite", relireLesFaits(t, g), Options{MapQuant: &entry})
 
 	_, calqueDirect := direct.Layers["inventory"]
 	_, calqueRejoue := rejoue.Layers["inventory"]

@@ -34,7 +34,8 @@ package replay
 // `NoPosition` qui existait deja (cf. vehicle_tracks.go).
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -57,7 +58,9 @@ func ecarterVehiculesHorsEmprise(scan VehicleScan, e empriseJouee, fb *fallback.
 		return out, 0, 0
 	}
 	triees := append([]grammar.BipedPosition(nil), scan.Positions...)
-	sort.SliceStable(triees, func(i, j int) bool { return triees[i].TimestampUS < triees[j].TimestampUS })
+	slices.SortStableFunc(triees, func(a, b grammar.BipedPosition) int {
+		return cmp.Compare(a.TimestampUS, b.TimestampUS)
+	})
 	rejets := rejetsParSlot(triees, e)
 	out.Positions = make([]grammar.BipedPosition, 0, len(triees))
 	gardees := map[uint32][]grammar.BipedPosition{}

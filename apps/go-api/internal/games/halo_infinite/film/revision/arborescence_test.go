@@ -21,7 +21,7 @@ func racineAPI(t *testing.T) string {
 	}
 	// .../internal/games/halo_infinite/film/revision -> .../apps/go-api
 	dir := filepath.Dir(ici)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		dir = filepath.Dir(dir)
 	}
 	return dir

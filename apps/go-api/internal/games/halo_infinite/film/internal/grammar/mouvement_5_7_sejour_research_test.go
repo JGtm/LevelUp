@@ -103,7 +103,7 @@ func m57RendreSejour(t *testing.T, sej []m57Sejour) {
 	t.Helper()
 	t.Logf("SEJOUR PAR TAG (temps jusqu a la lecture d `i55` suivante de la MEME vie) — un etat " +
 		"AERIEN doit etre court (quelques dixiemes de seconde), un etat AU SOL long :")
-	for tag := uint64(0); tag < 4; tag++ {
+	for tag := range uint64(4) {
 		var d []float64
 		for _, s := range sej {
 			if s.tag == tag && s.aSuivant {
@@ -135,9 +135,9 @@ func m57RendreTransitions(t *testing.T, sej []m57Sejour) {
 	}
 	t.Logf("MATRICE DES TRANSITIONS (de -> vers, par vie) — un etat AERIEN s inscrit ENTRE deux " +
 		"etats au sol, donc sa ligne et sa colonne sont dominees par le meme tag :")
-	for de := uint64(0); de < 4; de++ {
+	for de := range uint64(4) {
 		var parts []string
-		for vers := uint64(0); vers < 4; vers++ {
+		for vers := range uint64(4) {
 			n := m[[2]uint64{de, vers}]
 			parts = append(parts, fmt.Sprintf("-> %d : %d (%.1f %%)",
 				vers, n, m533bPart(n, depart[de])))
@@ -152,7 +152,7 @@ func m57RendreVitesseTenue(t *testing.T, sej []m57Sejour) {
 	t.Helper()
 	t.Logf("VITESSE TENUE A L INSTANT DE LA LECTURE (derniere lecture d `i1` de la meme vie a ou " +
 		"avant) :")
-	for tag := uint64(0); tag < 4; tag++ {
+	for tag := range uint64(4) {
 		var vz, sol []float64
 		var monte int
 		for _, s := range sej {
@@ -184,10 +184,7 @@ func m57Quantile(xs []float64, q float64) float64 {
 	if len(xs) == 0 {
 		return 0
 	}
-	i := int(q * float64(len(xs)-1))
-	if i < 0 {
-		i = 0
-	}
+	i := max(int(q*float64(len(xs)-1)), 0)
 	if i >= len(xs) {
 		i = len(xs) - 1
 	}

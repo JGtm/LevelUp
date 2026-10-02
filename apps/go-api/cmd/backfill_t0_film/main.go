@@ -71,7 +71,7 @@ func run(ctx context.Context, slug string, commit bool) error {
 	}
 	paths := title.NewPathResolver(repoRoot)
 	dir := paths.ReplayArtifactsDir(slug)
-	verdicts, err := scannerArtefacts(dir)
+	verdicts, err := scannerArtefacts(ctx, dir)
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,8 @@ package replaybuild
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"strings"
 	"testing"
@@ -44,11 +46,11 @@ func TestCuisson_AucunFaitEcritQuandLArtefactEstRefuse(t *testing.T) {
 	}
 
 	riche := artefactAuSchema(replay.SchemaVersion, match, true)
-	if _, err := StoreArtifact(b.repoRoot, b.titleSlug, match, riche); err != nil {
+	if _, err := StoreArtifact(context.Background(), b.repoRoot, b.titleSlug, match, riche); err != nil {
 		t.Fatalf("depot de l artefact riche : %v", err)
 	}
 	b.rangerLesFaits(ctx, match, pauvre, faitsMinimaux())
-	if _, err := os.Stat(res.FilmFactsPath(b.titleSlug, match)); !os.IsNotExist(err) {
+	if _, err := os.Stat(res.FilmFactsPath(b.titleSlug, match)); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("l artefact APPAUVRI est refuse par le puits, et ses faits sont ecrits quand "+
 			"meme (err = %v) : la reparation suivante rejouerait des faits cuits sous des gardes "+
 			"pauvres (RA1-1)", err)

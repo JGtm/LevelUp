@@ -27,9 +27,11 @@ package replay
 // PUR : aucune I/O.
 
 import (
+	"cmp"
+	"context"
 	"log/slog"
 	"math"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -48,7 +50,7 @@ type fireBurstBoard struct {
 }
 
 // buildFireBursts publie les rafales et rend leur couverture. Nil sans aucune lecture.
-func buildFireBursts(doc *ReplayDocument, in []types.ContinuousFireBurst, st types.ContinuousFireStats,
+func buildFireBursts(ctx context.Context, doc *ReplayDocument, in []types.ContinuousFireBurst, st types.ContinuousFireStats,
 	occ occupantsDesSlots, clock replayClock) ([]FireBurst, *ContinuousFireCoverage) {
 	if !st.Scanned {
 		return nil, nil
@@ -68,14 +70,11 @@ func buildFireBursts(doc *ReplayDocument, in []types.ContinuousFireBurst, st typ
 			out = append(out, f)
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T0 != out[j].T0 {
-			return out[i].T0 < out[j].T0
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b FireBurst) int {
+		return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.Slot, b.Slot))
 	})
 	if !cov.balanced() {
-		slog.Error("rejeu : couverture du tir continu desequilibree", "lues", cov.BurstsRead,
+		slog.ErrorContext(ctx, "rejeu : couverture du tir continu desequilibree", "lues", cov.BurstsRead,
 			"publiees", cov.Published)
 	}
 	return out, cov
@@ -352,7 +351,7 @@ func dotationsParSlot(ls []Loadout) map[uint32][]Loadout {
 		out[l.Slot] = append(out[l.Slot], l)
 	}
 	for s := range out {
-		sort.SliceStable(out[s], func(i, j int) bool { return out[s][i].T < out[s][j].T })
+		slices.SortStableFunc(out[s], func(a, b Loadout) int { return cmp.Compare(a.T, b.T) })
 	}
 	return out
 }
@@ -364,7 +363,7 @@ func prisesParSlot(ws []WeaponChange) map[uint32][]WeaponChange {
 		out[w.Slot] = append(out[w.Slot], w)
 	}
 	for s := range out {
-		sort.SliceStable(out[s], func(i, j int) bool { return out[s][i].T < out[s][j].T })
+		slices.SortStableFunc(out[s], func(a, b WeaponChange) int { return cmp.Compare(a.T, b.T) })
 	}
 	return out
 }
@@ -398,11 +397,11 @@ func coverageFromStats(st types.ContinuousFireStats) *ContinuousFireCoverage {
 }
 
 // logFireBursts journalise la publication avec ses denominateurs.
-func logFireBursts(cov *ContinuousFireCoverage) {
+func logFireBursts(ctx context.Context, cov *ContinuousFireCoverage) {
 	if cov == nil {
 		return
 	}
-	slog.Info("rejeu : tir continu", "paquets", cov.Packets, "vueCFermee", cov.Closed,
+	slog.InfoContext(ctx, "rejeu : tir continu", "paquets", cov.Packets, "vueCFermee", cov.Closed,
 		"trous", cov.Holes, "lues", cov.BurstsRead, "publiees", cov.Published, "vehicule", cov.OnVehicle,
 		"aPied", cov.OnFoot, "autreBit", cov.OtherInput, "sansJoueur", cov.NoPlayer,
 		"ambigues", cov.Ambiguous, "montureSansArme", cov.VehicleNoWeapon, "sansPiste", cov.NoTrack,

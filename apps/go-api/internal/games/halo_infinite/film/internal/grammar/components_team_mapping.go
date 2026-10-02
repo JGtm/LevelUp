@@ -37,7 +37,7 @@ func consumeGameEngineTeamMapping(br *Lecteur) {
 	mask := br.ReadBits(8) // FUN_140f582d0 = R(8) MASK M (state+6)
 	br.ReadBits(8)         // FUN_140f582d0 = R(8) field D (state+8)
 	br.ReadBits(8)         // FUN_140f582d0 = R(8) field E (state+a)
-	for i := uint(0); i < 8; i++ {
+	for i := range uint(8) {
 		if (mask>>i)&1 != 0 {
 			br.ReadBits(4) // FUN_1407ef804 = R(4) per-present-team value
 		}

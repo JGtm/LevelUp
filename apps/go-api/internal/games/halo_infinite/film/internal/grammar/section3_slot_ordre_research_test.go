@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_slot_ordre_research_test.go — L'ORDRE DES SLOTS, L'EQUIPE, ET LE TEXTE DU 30/08.
@@ -98,7 +100,7 @@ func s3sOracle(dir string) map[uint64]s3sRef {
 // s3oRoster lit le `roster` du document de rejeu du film, dans le premier repertoire de
 // `CHUNK00_REPLAYS` qui le porte.
 func s3oRoster(dir string) []s3sJoueur {
-	for _, root := range strings.Split(os.Getenv("CHUNK00_REPLAYS"), ";") {
+	for root := range strings.SplitSeq(os.Getenv("CHUNK00_REPLAYS"), ";") {
 		if root = strings.TrimSpace(root); root == "" {
 			continue
 		}
@@ -120,13 +122,13 @@ func s3oRoster(dir string) []s3sJoueur {
 // l'ordre des slots.
 func s3oEquipes(v string) map[string][]int {
 	out := map[string][]int{}
-	for _, p := range strings.Split(v, ";") {
+	for p := range strings.SplitSeq(v, ";") {
 		kv := strings.SplitN(strings.TrimSpace(p), "=", 2)
 		if len(kv) != 2 {
 			continue
 		}
 		var es []int
-		for _, s := range strings.Split(kv[1], ",") {
+		for s := range strings.SplitSeq(kv[1], ",") {
 			n, err := strconv.Atoi(strings.TrimSpace(s))
 			if err != nil {
 				n = -1

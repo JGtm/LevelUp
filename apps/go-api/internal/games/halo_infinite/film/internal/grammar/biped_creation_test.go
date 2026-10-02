@@ -120,7 +120,7 @@ func TestCreationBipedeLitLIndexALaPositionExacte(t *testing.T) {
 // rendre les 32 valeurs telles quelles. Un masque trop court se verrait ici, et nulle part
 // ailleurs — sur un film réel l'index ne dépasse jamais le roster.
 func TestCreationBipedeLesTrenteDeuxIndexSeLisent(t *testing.T) {
-	for idx := uint32(0); idx < 32; idx++ {
+	for idx := range uint32(32) {
 		w := &bitWriter{}
 		ecrireBipedCreation(w, bipedCreationRecord{
 			slot: 600, gen: 3, version: bipedCreationVersion,
@@ -333,7 +333,7 @@ func TestCreationBipedeTemoinFantome(t *testing.T) {
 		x ^= x << 5
 		return uint64(x) & ((1 << uint(n)) - 1)
 	}
-	for i := 0; i < ancres; i++ {
+	for i := range ancres {
 		w.bit(0)                    // R(1) = 0
 		w.bits(1, 2)                // R(2) = 1 : recNew
 		w.bits(uint64(512+i%8), 13) // slot DANS la bande

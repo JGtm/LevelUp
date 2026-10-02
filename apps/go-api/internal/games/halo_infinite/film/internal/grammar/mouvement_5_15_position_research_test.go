@@ -121,7 +121,7 @@ func t515LireBits(pay []byte, at, n int) int {
 		return -1
 	}
 	v := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v <<= 1
 		if pay[(at+i)/8]&(1<<uint(7-(at+i)%8)) != 0 {
 			v |= 1

@@ -1,6 +1,8 @@
+//go:build research
+
 package grammar
 
-// f0_103_contexte_research_test.go — LOT F.0 (plan .ai/PLAN_FINITIONS_2026-09-13.md) :
+// f0_103_contexte_research_test.go — LOT F.0 (plan .ai/V7.5/PLAN_FINITIONS_2026-09-13.md) :
 // LE CONTEXTE DE MESURE du type 103 `EquipmentSpawnedObject`.
 //
 // # LA QUESTION DU LOT
@@ -45,7 +47,7 @@ package grammar
 //	  F0_ARTS=<depot>/data/cache/replays/halo_infinite \
 //	  F0_CAT=<depot>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  F0_IDS=000d5950,1cd3848a,215e7022 F0_MAPS=000d5950=Cliffhanger,... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestF0' -count=1 -timeout 90m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestF0' -count=1 -timeout 90m -v
 
 import (
 	"fmt"
@@ -122,7 +124,7 @@ func f0Films(t *testing.T) (string, []string) {
 		t.Skipf("instrument F.0 : definir %s et %s", f0RootEnv, f0IDsEnv)
 	}
 	var out []string
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		if id = strings.TrimSpace(id); id != "" {
 			out = append(out, id)
 		}
@@ -152,7 +154,7 @@ func f0Cartes(t *testing.T, cat *profile.MapQuantCatalog) map[string]profile.Map
 		t.Skipf("instrument F.0 : definir %s — le lancer d abord par TestF0CalibreCarte", f0MapsEnv)
 	}
 	out := map[string]profile.MapQuantEntry{}
-	for _, kv := range strings.Split(spec, ",") {
+	for kv := range strings.SplitSeq(spec, ",") {
 		i := strings.IndexByte(kv, '=')
 		if i <= 0 {
 			continue

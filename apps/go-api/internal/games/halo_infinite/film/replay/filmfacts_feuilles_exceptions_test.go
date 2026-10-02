@@ -151,8 +151,8 @@ func TestFeuillesNonTransporteesHorsDuDocument(t *testing.T) {
 		}
 		switch ty.Kind() {
 		case reflect.Struct:
-			for i := 0; i < ty.NumField(); i++ {
-				visiter(ty.Field(i).Type, chemin+"."+ty.Field(i).Name)
+			for field := range ty.Fields() {
+				visiter(field.Type, chemin+"."+field.Name)
 			}
 		case reflect.Pointer, reflect.Slice, reflect.Array:
 			visiter(ty.Elem(), chemin)
@@ -161,7 +161,7 @@ func TestFeuillesNonTransporteesHorsDuDocument(t *testing.T) {
 			visiter(ty.Elem(), chemin)
 		}
 	}
-	visiter(reflect.TypeOf(ReplayDocument{}), "ReplayDocument")
+	visiter(reflect.TypeFor[ReplayDocument](), "ReplayDocument")
 	if len(vus) < 50 {
 		t.Fatalf("%d type(s) visites depuis ReplayDocument : la mesure ne mesure plus rien", len(vus))
 	}

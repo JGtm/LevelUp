@@ -80,7 +80,7 @@ func skillTierLabel(en string) string {
 //
 // Label sert la CLÉ CANONIQUE (win|loss|tie|dnf), pas un texte — le web libelle (D5,
 // 2026-09-07). candidates est une liste fixe de codes Halo (dette multi-titre existante de
-// ce fichier, hors périmètre : cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §9).
+// ce fichier, hors périmètre : cf. .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §9).
 func computeAvailableOutcomes(
 	base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest, replays port.ReplayAvailability,
 ) []domain.LabelValue {

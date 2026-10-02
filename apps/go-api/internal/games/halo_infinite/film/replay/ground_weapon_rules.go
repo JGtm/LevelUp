@@ -22,8 +22,10 @@ package replay
 // `ground_weapon_pads.go`.
 
 import (
+	"cmp"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -142,7 +144,11 @@ func gwPadsClusterAssign(app []gwPadApparition) ([]gwPadCluster, []int) {
 	for i := range ord {
 		ord[i] = i
 	}
-	sort.Slice(ord, func(i, j int) bool { return gwPadsLess(app[ord[i]], app[ord[j]]) })
+	// Tri total (J12.1, DT-9) : `gwPadsLess`, puis l'indice d'entrée — deux apparitions qu'il ne
+	// sépare pas sont identiques champ pour champ, et leur rang ne change pas les grappes.
+	slices.SortFunc(ord, func(i, j int) int {
+		return cmp.Or(gwCmpDeLess(gwPadsLess, app[i], app[j]), cmp.Compare(i, j))
+	})
 	assign := make([]int, len(app))
 	var out []gwPadCluster
 	for _, src := range ord {
@@ -172,7 +178,7 @@ func gwPadsClusterAssign(app []gwPadApparition) ([]gwPadCluster, []int) {
 		assign[src] = best
 	}
 	for i := range out {
-		sort.Slice(out[i].TS, func(a, b int) bool { return out[i].TS[a] < out[i].TS[b] })
+		slices.Sort(out[i].TS)
 	}
 	// Les grappes sont rendues dans un ordre TOTAL (et non celui de leur découverte) : les
 	// index d'assignation déjà distribués doivent suivre la permutation, sans quoi ils
@@ -186,7 +192,11 @@ func gwPadsSortClusters(out []gwPadCluster, assign []int) ([]gwPadCluster, []int
 	for i := range perm {
 		perm[i] = i
 	}
-	sort.Slice(perm, func(i, j int) bool { return gwPadsClusterLess(out[perm[i]], out[perm[j]]) })
+	// Tri total (J12.1, DT-9) : `gwPadsClusterLess`, puis le rang de DÉCOUVERTE de la grappe —
+	// unique, et lui-même tiré de l'ordre total des apparitions.
+	slices.SortFunc(perm, func(i, j int) int {
+		return cmp.Or(gwCmpDeLess(gwPadsClusterLess, out[i], out[j]), cmp.Compare(i, j))
+	})
 	inv := make([]int, len(out))
 	sorted := make([]gwPadCluster, len(out))
 	for newIdx, oldIdx := range perm {
@@ -228,6 +238,19 @@ func gwPadsLess(a, b gwPadApparition) bool {
 		return a.Class < b.Class
 	}
 	return !a.HasDelta && b.HasDelta
+}
+
+// gwCmpDeLess rend en forme `cmp` (négatif, zéro, positif) l'ordre strict `less` : la forme
+// qu'attendent les tris `slices.*`, sans réécrire — donc sans risquer de faire diverger — les
+// comparateurs de la chaîne, que les tests d'ordre appellent aussi.
+func gwCmpDeLess[T any](less func(a, b T) bool, a, b T) int {
+	switch {
+	case less(a, b):
+		return -1
+	case less(b, a):
+		return 1
+	}
+	return 0
 }
 
 // gwPadsClusterLess est l'ordre TOTAL des grappes rendues.

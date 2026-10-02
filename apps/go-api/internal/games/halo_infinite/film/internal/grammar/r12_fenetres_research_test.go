@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_fenetres_research_test.go — LA QUESTION POSEE DANS L'AUTRE SENS.
@@ -36,7 +38,7 @@ package grammar
 // DuckDB, `CGO_ENABLED=0`. USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 R12_FILMS=<repo>/data/cache/film_chunks R12_IDS=215e7022 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR12Fenetres$' -count=1 -timeout 60m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR12Fenetres$' -count=1 -timeout 60m -v
 
 import (
 	"fmt"
@@ -327,7 +329,7 @@ func r12MasqueAncre(t *testing.T, s r12Setup, tl r12RankTimeline, fs []r12Fen,
 		facteurPort, facteurQui float64
 	}
 	var rows []row
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if tout.annonces[i] == 0 {
 			continue
 		}

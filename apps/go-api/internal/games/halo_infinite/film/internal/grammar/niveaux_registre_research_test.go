@@ -66,7 +66,7 @@ func TestNiveauxDuRegistre(t *testing.T) {
 	if films == "" {
 		t.Skip("instrument de mesure : NIV_FILMS requis (chemins separes par ;)")
 	}
-	for _, dir := range strings.Split(films, ";") {
+	for dir := range strings.SplitSeq(films, ";") {
 		if dir = strings.TrimSpace(dir); dir == "" {
 			continue
 		}

@@ -28,7 +28,7 @@ func consumeObjectiveFormattedText(br *Lecteur) {
 	}
 	br.ReadBits(32)
 	count := br.ReadBits(3)
-	for i := uint64(0); i < count; i++ {
+	for range count {
 		tag := br.ReadBits(3)
 		switch tag {
 		case 0:
@@ -70,7 +70,7 @@ func consumeEquipmentCommandTick(br *Lecteur) {
 // statborg-finalized-rounds-values-stat-component: R(32) mask + per set bit 2x{R(1)[if0:varwidth]}.
 func consumeStatborgFinalized(br *Lecteur) {
 	mask := uint32(br.ReadBits(32))
-	for i := uint(0); i < 32; i++ {
+	for i := range uint(32) {
 		if (mask>>i)&1 != 0 {
 			if !br.ReadBit() {
 				br.ReadSignedVarWidth()

@@ -1,7 +1,7 @@
 package service
 
 // compare_weapons_guard_test.go — LE TRI « FRAGS DÉCROISSANTS, DÉPARTAGE SUR LE LIBELLÉ »
-// NE S'ÉCRIT QU'UNE FOIS (D11 du plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+// NE S'ÉCRIT QU'UNE FOIS (D11 du plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
 //
 // # POURQUOI CE GARDE-RAIL
 //

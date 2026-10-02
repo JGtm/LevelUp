@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // i0_poignee_score_research_test.go — LE BALAYAGE DU MOT DE POIGNEE EST-IL SCORE DANS LE MONDE
@@ -56,7 +58,7 @@ func TestScoreDuMotDePoignee(t *testing.T) {
 		t.Fatalf("film : %v", err)
 	}
 	c.film = f
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("timeline : %v", err)
 	}

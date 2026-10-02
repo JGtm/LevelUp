@@ -28,10 +28,10 @@ func flagNeutralScan(auNeutre, auxEquipes int) FlagCarryScan {
 	// LES NAISSANCES DE REFERENCE TOMBENT TOT (pas de 0,1 s), avant tout portage : elles servent a
 	// COMPTER, pas a declencher une rentree. Une naissance posee sur l'instant d'un lacher en
 	// declencherait une, et le test mesurerait alors autre chose que ce qu'il annonce.
-	for i := 0; i < auNeutre; i++ {
+	for i := range auNeutre {
 		scan.Free = append(scan.Free, flagFreeLifeAt(uint64(i+1)*100_000, 50, 50))
 	}
-	for i := 0; i < auxEquipes; i++ {
+	for i := range auxEquipes {
 		scan.Free = append(scan.Free, flagFreeLifeAt(uint64(i+50)*1_000_000, 0, 0))
 	}
 	return scan
@@ -141,7 +141,7 @@ func TestFlagNaissancesLaDISTANCEDecideDuDenominateur(t *testing.T) {
 		{"a 0,50 m du socle : un lacher a portee du support", 0.50, false},
 	} {
 		scan := flagNeutralScan(0, 0)
-		for i := 0; i < 6; i++ {
+		for i := range 6 {
 			scan.Free = append(scan.Free,
 				flagFreeLifeAt(uint64(i+1)*100_000, 50+c.ecart, 50))
 		}
@@ -177,7 +177,7 @@ func TestFlagSoclesSansEquipeNeTombentPasDansLePanierNeutre(t *testing.T) {
 	}
 	// Six naissances au socle sans equipe : largement au-dessus de flagNeutralMinBirths, et
 	// strictement majoritaires. Triees sur l'equipe, elles basculaient le film.
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		scan.Free = append(scan.Free, flagFreeLifeAt(uint64(i+1)*100_000, 100, 100))
 	}
 	choix := flagChooseSpawns(scan)

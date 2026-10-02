@@ -8,6 +8,7 @@ package killcollector
 // fichier d'origine — ici on ne decide rien, on ne parle ni au reseau ni a la base : on traduit.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
@@ -34,7 +35,7 @@ import (
 // AUCUN PLAFOND A 100 sur les parts : 1,7 % des kill-events vont jusqu a 228, ce sont des
 // donnees. Le seul plafond applique est celui du TYPE (uint8, 255) — et si une valeur le
 // depassait, c est le type qu il faudrait elargir, pas la valeur qu il faudrait ecreter.
-func BuildKillSourceBatch(matchID string, res *decfilm.Result, ids MatchIdentities) persist.KillSourceBatch {
+func BuildKillSourceBatch(ctx context.Context, matchID string, res *decfilm.Result, ids MatchIdentities) persist.KillSourceBatch {
 	batch := persist.KillSourceBatch{
 		MatchID:     matchID,
 		DecoderRev:  decfilm.Rev,
@@ -42,7 +43,7 @@ func BuildKillSourceBatch(matchID string, res *decfilm.Result, ids MatchIdentiti
 		Deaths:      make([]persist.KillEventInsert, 0, len(res.Kills)),
 	}
 	for i := range res.Kills {
-		batch.Deaths = append(batch.Deaths, killToInsert(&res.Kills[i], ids))
+		batch.Deaths = append(batch.Deaths, killToInsert(ctx, &res.Kills[i], ids))
 	}
 	return batch
 }
@@ -53,7 +54,7 @@ func BuildKillSourceBatch(matchID string, res *decfilm.Result, ids MatchIdentiti
 // LES TROIS NOMS PASSENT PAR [MatchIdentities.Resoudre] — victime, tueur, assistant. Aucun ne se
 // resout « a la main » : le film peut donner un gamertag OU un xuid, et la regle qui les
 // distingue n existe qu a un seul endroit.
-func killToInsert(k *decfilm.Kill, ids MatchIdentities) persist.KillEventInsert {
+func killToInsert(ctx context.Context, k *decfilm.Kill, ids MatchIdentities) persist.KillEventInsert {
 	victimeXUID, victimeNom := ids.Resoudre(k.Victim)
 	tueurXUID, tueurNom := ids.Resoudre(k.Feed.Killer)
 	d := persist.KillEventInsert{
@@ -89,10 +90,10 @@ func killToInsert(k *decfilm.Kill, ids MatchIdentities) persist.KillEventInsert 
 		d.AssistIndex = &idx
 	}
 	if k.KillerDamage.Known {
-		d.KillerDamagePct = pctToU8(k.KillerDamage.Pct)
+		d.KillerDamagePct = pctToU8(ctx, k.KillerDamage.Pct)
 	}
 	if k.AssistDamage.Known && k.Assist.Name != "" {
-		d.AssistDamagePct = pctToU8(k.AssistDamage.Pct)
+		d.AssistDamagePct = pctToU8(ctx, k.AssistDamage.Pct)
 	}
 	return d
 }
@@ -102,12 +103,12 @@ func killToInsert(k *decfilm.Kill, ids MatchIdentities) persist.KillEventInsert 
 // ⚠ `uint8` plafonne a 255 pour un maximum MESURE a 228 : la marge existe mais elle est mince.
 // Si une valeur superieure apparaissait, c est le TYPE qu il faudrait elargir — pas la valeur
 // qu il faudrait plafonner. Le log est la pour qu on l apprenne au lieu de le subir.
-func pctToU8(pct int) *uint8 {
+func pctToU8(ctx context.Context, pct int) *uint8 {
 	if pct < 0 {
 		pct = 0
 	}
 	if pct > 255 {
-		slog.Warn("killsource: part de degats au-dela de la capacite du type UTINYINT — "+
+		slog.WarnContext(ctx, "killsource: part de degats au-dela de la capacite du type UTINYINT — "+
 			"ELARGIR LE TYPE, ne pas plafonner la valeur", "pct", pct)
 		pct = 255
 	}

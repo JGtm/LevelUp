@@ -254,10 +254,7 @@ func invPosObserve(pay []byte, sp invRecordSpan, known map[uint32]bool) (invPosO
 		return invPosObs{}, invPosHorsSujet
 	}
 	end := first - 1
-	lo := end - invAmmoSearchSpan
-	if lo < sp.from {
-		lo = sp.from
-	}
+	lo := max(end-invAmmoSearchSpan, sp.from)
 	sols := invSolveAmmoBlock(pay, end, lo)
 	if len(sols) == 0 {
 		return invPosObs{}, invPosHorsSujet
@@ -308,10 +305,7 @@ func invPosObserve(pay []byte, sp invRecordSpan, known map[uint32]bool) (invPosO
 		},
 		nbCands: len(invPosCands(pay, sp.from, sp.to, DefaultGrenadeMax)),
 	}
-	amtLo := sols[0] - invPosWinLarge
-	if amtLo < sp.from {
-		amtLo = sp.from
-	}
+	amtLo := max(sols[0]-invPosWinLarge, sp.from)
 	win := invPosCands(pay, amtLo, sols[0], DefaultGrenadeMax)
 	o.nbCandsAmt = len(win)
 	o.i22Rel = i22 - sols[0]
@@ -766,7 +760,7 @@ func TestOracleTypesPortesEtLances(t *testing.T) {
 			t.Logf("%s : lancers illisibles (%v) — film ecarte de l'oracle", invPosBase(dir), err)
 			continue
 		}
-		for r := 0; r < invGrenadeSlots; r++ {
+		for r := range invGrenadeSlots {
 			switch {
 			case lance[r] && porte[r]:
 				lanceEtPorte++

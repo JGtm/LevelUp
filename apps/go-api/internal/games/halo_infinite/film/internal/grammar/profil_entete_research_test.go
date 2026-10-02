@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // profil_entete_research_test.go — PHASE 4, QUESTION 1 : EXPLIQUER 186, PAS LE MESURER.

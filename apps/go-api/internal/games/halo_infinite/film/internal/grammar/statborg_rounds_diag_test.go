@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -183,11 +184,11 @@ func (d *roundsDiag) report(short string, ti int) []string {
 
 // sortedCounts rend les couples cle=n tries, pour une sortie stable.
 func sortedCounts(m map[string]int) string {
-	s := ""
+	var s strings.Builder
 	for _, k := range sortedKeys(m) {
-		s += fmt.Sprintf("%s=%d ", k, m[k])
+		s.WriteString(fmt.Sprintf("%s=%d ", k, m[k]))
 	}
-	return s
+	return s.String()
 }
 
 func sortedKeys(m map[string]int) []string {
@@ -200,11 +201,11 @@ func sortedKeys(m map[string]int) []string {
 }
 
 func joinLines(lines []string) string {
-	s := ""
+	var s strings.Builder
 	for _, ln := range lines {
-		s += ln + "\n"
+		s.WriteString(ln + "\n")
 	}
-	return s
+	return s.String()
 }
 
 // manifestStarts rend le start_ms de chaque chunk, lu dans le manifeste du cache film. Le

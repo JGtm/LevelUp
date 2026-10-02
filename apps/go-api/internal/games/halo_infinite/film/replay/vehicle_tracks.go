@@ -23,6 +23,7 @@ package replay
 
 import (
 	"cmp"
+	"context"
 	"slices"
 	"sort"
 
@@ -99,7 +100,7 @@ type vehicleLife struct {
 }
 
 // buildVehicleTracks assemble les vies publiables, leur couverture et le bilan de rattachement.
-func buildVehicleTracks(
+func buildVehicleTracks(ctx context.Context,
 	scan VehicleScan, bipeds []grammar.BipedPosition, reg IdentityRegistry, clock replayClock,
 ) ([]VehicleTrack, VehicleCoverage, vehicleRideStats) {
 	// `AimReads` compte ce que le FILM a rendu, pas ce que les episodes en retiennent : c est lui
@@ -114,7 +115,7 @@ func buildVehicleTracks(
 	if scan.Scanned && scan.DeathStats.CadreParDefaut {
 		clock.fb.Declenche(fallback.NomCadreDeMarcheParDefautConserve)
 	}
-	lives, deathTally := vehicleLives(scan.Keyframes, scan.Deaths)
+	lives, deathTally := vehicleLives(ctx, scan.Keyframes, scan.Deaths)
 	cov.Lives = len(lives)
 	cov.DeathsRead, cov.DeathsMatched = deathTally.read, deathTally.matched
 	cov.DeathsUnmatched, cov.DeathsTailDesync = deathTally.unmatched, deathTally.tailDesync
@@ -160,7 +161,7 @@ func buildVehicleTracks(
 // le nuage de positions serait attribue deux fois — puis pose sur chacune la MORT QUE LE FILM
 // ECRIT (cf. vehicle_end.go). L ordre est celui de D14 (b) : les fenetres d abord, la lecture
 // ensuite, parce que c est la fenetre qui departage deux vies de meme `(slot, gen)`.
-func vehicleLives(
+func vehicleLives(ctx context.Context,
 	kf grammar.WorldObjectKeyframes, deaths []types.ObjectDeath,
 ) ([]vehicleLife, vehicleDeathTally) {
 	out := make([]vehicleLife, 0, len(kf.SeenUS))
@@ -177,7 +178,7 @@ func vehicleLives(
 		return cmp.Or(cmp.Compare(a.key.Slot, b.key.Slot), cmp.Compare(a.firstUS, b.firstUS), cmp.Compare(a.key.Gen, b.key.Gen))
 	})
 	assignVehicleWindows(out)
-	return out, assignVehicleDeaths(out, deaths)
+	return out, assignVehicleDeaths(ctx, out, deaths)
 }
 
 // assignVehicleWindows pose `loUS` / `hiUS` sur des vies DEJA triees par (slot, premier
@@ -247,7 +248,7 @@ func vehiclePositionsBySlot(pos []grammar.BipedPosition) map[uint32][]grammar.Bi
 	}
 	for s := range out {
 		v := out[s]
-		sort.SliceStable(v, func(i, j int) bool { return v[i].TimestampUS < v[j].TimestampUS })
+		slices.SortStableFunc(v, func(a, b grammar.BipedPosition) int { return cmp.Compare(a.TimestampUS, b.TimestampUS) })
 	}
 	return out
 }
@@ -397,15 +398,9 @@ func vehicleBounds(
 	if spawn.TimestampUS > 0 && spawn.TimestampUS < bornUS {
 		bornUS = spawn.TimestampUS
 	}
-	lastProofUS := l.lastUS
-	if lastSeenUS > lastProofUS {
-		lastProofUS = lastSeenUS
-	}
+	lastProofUS := max(lastSeenUS, l.lastUS)
 	t0 = clock.frame(bornUS)
-	t1 = clock.frame(lastProofUS)
-	if t1 < t0 {
-		t1 = t0
-	}
+	t1 = max(clock.frame(lastProofUS), t0)
 	t1max = clock.frames - 1
 	if l.goneByUS > 0 {
 		t1max = clock.frame(l.goneByUS)
@@ -469,15 +464,9 @@ func vehicleSamplesOf(
 // sortVehicleTracks fige l ordre publie : par instant d apparition, puis par vie. Un ordre stable
 // est ce qui rend l artefact comparable d une cuisson a l autre (les vies sortent d une map).
 func sortVehicleTracks(tracks []VehicleTrack) {
-	sort.Slice(tracks, func(i, j int) bool {
-		switch {
-		case tracks[i].T0 != tracks[j].T0:
-			return tracks[i].T0 < tracks[j].T0
-		case tracks[i].Slot != tracks[j].Slot:
-			return tracks[i].Slot < tracks[j].Slot
-		default:
-			return tracks[i].Gen < tracks[j].Gen
-		}
+	// Tri total (J12.1, DT-9) : (Slot, Gen) est unique, les vies sont les cles de `kf.SeenUS`.
+	slices.SortFunc(tracks, func(a, b VehicleTrack) int {
+		return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Gen, b.Gen))
 	})
 }
 

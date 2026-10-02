@@ -51,6 +51,7 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautBombArmsGate -v -timeout 60m
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"os"
 	"path/filepath"
@@ -158,7 +159,7 @@ func baMesurer(t *testing.T, cache, id string) baFilm {
 		id, offset, int64(filmClockUS)/1000, own.DeathOffsetMS())
 	doc := ReplayDocument{MatchID: id, BombArmings: armings,
 		Coverage: &Coverage{BombArmings: armCov}}
-	attachBombStats(&doc, Options{FilmClockOriginUS: filmClockUS,
+	attachBombStats(context.Background(), &doc, Options{FilmClockOriginUS: filmClockUS,
 		Bomb: BombInput{CarryScanned: true}}, own,
 		HeldObjectCarry{Periods: periodes})
 	if doc.BombStats == nil {

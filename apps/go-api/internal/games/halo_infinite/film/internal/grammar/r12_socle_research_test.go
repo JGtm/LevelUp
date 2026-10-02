@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_socle_research_test.go — LE SOCLE DU LOT R12 : un film SANS ARTEFACT ET SANS BORNES.
@@ -132,7 +134,7 @@ func r12FilmDirs(t *testing.T) []string {
 		t.Skipf("%s absent : instrument saute", r12FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(os.Getenv(r12IDsEnv), ",") {
+	for s := range strings.SplitSeq(os.Getenv(r12IDsEnv), ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, filepath.Join(root, s))
 		}

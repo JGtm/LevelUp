@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // deto_attribution_groundtruth_test.go — VERIFICATION ADVERSE de l'attribution

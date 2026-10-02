@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -59,7 +60,7 @@ const singleActivationFloor = 10
 // et publie la distribution des durees de ses episodes de camouflage actif.
 func TestCamoEpisodeDurationDistributionDuGolden(t *testing.T) {
 	g := loadGoldenInputs(t)
-	doc := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, g.options())
+	doc := BuildFromPositions(context.Background(), goldenFilm, "halo_infinite", g.Positions, g.Fire, g.options())
 	if doc.FrameIntervalMS <= 0 {
 		t.Fatalf("intervalle de frame nul ou negatif : %d", doc.FrameIntervalMS)
 	}

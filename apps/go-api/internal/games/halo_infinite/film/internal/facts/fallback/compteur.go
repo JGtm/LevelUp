@@ -28,8 +28,9 @@ package fallback
 // face à un décodage qui pèse des dizaines de secondes.
 
 import (
-	"log/slog"
-	"sort"
+	"cmp"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,6 +41,9 @@ import (
 type Compteur struct {
 	mu sync.Mutex
 	n  map[Nom]int
+	// diag : les diagnostics de cette cuisson — un nom hors registre y est signale (lot J12.3,
+	// ADR 0034 D-4) ; l orchestrateur les releve par [Compteur.Diagnostics] et les journalise.
+	diag constat.Diagnostics
 }
 
 // NouveauCompteur rend un compteur vide, prêt à recevoir des déclenchements.
@@ -47,7 +51,8 @@ func NouveauCompteur() *Compteur { return &Compteur{n: map[Nom]int{}} }
 
 // Declenche note UN déclenchement du repli `nom`. Sûr sur un récepteur nil.
 //
-// UN NOM HORS REGISTRE EST UNE ERREUR JOURNALISÉE, PAS UNE PANIQUE ET PAS UN SILENCE. Le
+// UN NOM HORS REGISTRE EST UNE ERREUR SIGNALÉE, PAS UNE PANIQUE ET PAS UN SILENCE : un
+// diagnostic de niveau erreur ([DiagRepliHorsRegistre]) que l orchestrateur journalise. Le
 // décodage d'un film ne s'interrompt pas pour un compteur ; mais taire l'écart laisserait un
 // repli se compter sous un nom que personne ne pourrait relier à une entrée — exactement le
 // repli anonyme que ce paquet existe pour interdire. Le garde-rail `archlint` attrape le cas
@@ -61,8 +66,9 @@ func (c *Compteur) DeclencheN(nom Nom, k int) {
 		return
 	}
 	if _, ok := Lire(nom); !ok {
-		slog.Error("repli hors registre declenche — le compte ne se rattache a aucune entree",
-			"repli", string(nom), "declenchements", k)
+		c.diag.Signaler(constat.Diagnostic{Code: DiagRepliHorsRegistre, Niveau: constat.NiveauError,
+			Message: "repli hors registre declenche — le compte ne se rattache a aucune entree",
+			Attrs:   []any{"repli", string(nom), "declenchements", k}})
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -70,6 +76,17 @@ func (c *Compteur) DeclencheN(nom Nom, k int) {
 		c.n = map[Nom]int{}
 	}
 	c.n[nom] += k
+}
+
+// DiagRepliHorsRegistre : un repli declenche sous un nom absent du registre (lot J12.3).
+const DiagRepliHorsRegistre constat.Code = "fallback.repli_hors_registre"
+
+// Diagnostics rend les diagnostics de cette cuisson (ADR 0034 D-4) ; nil sur un compteur nil.
+func (c *Compteur) Diagnostics() *constat.Diagnostics {
+	if c == nil {
+		return nil
+	}
+	return &c.diag
 }
 
 // Compte rend le nombre de déclenchements d'un repli sur cette cuisson. Zéro sur un récepteur
@@ -109,7 +126,7 @@ func (c *Compteur) Rapport() []Declenchement {
 			out = append(out, Declenchement{Nom: nom, Declenchements: n})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Nom < out[j].Nom })
+	slices.SortFunc(out, func(a, b Declenchement) int { return cmp.Compare(a.Nom, b.Nom) }) // Nom : cle de la map `c.n`, unique
 	return out
 }
 

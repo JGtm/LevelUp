@@ -1,7 +1,8 @@
 package grammar
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -225,9 +226,13 @@ func WorldObjectPositionsForBand(dir string, wr *profile.Vec3Range, band map[uin
 			}
 		}
 	}
+	// Tri total (J12.1, DT-9) : instant, puis generation et position — deux echantillons qu il ne
+	// separe pas sont identiques ; NearestWorldObjectSample garde le premier a egalite d ecart.
 	for slot := range out {
-		pts := out[slot]
-		sort.Slice(pts, func(i, j int) bool { return pts[i].TimestampUS < pts[j].TimestampUS })
+		slices.SortFunc(out[slot], func(a, b WorldObjectSample) int {
+			return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Gen, b.Gen),
+				cmp.Compare(a.X, b.X), cmp.Compare(a.Y, b.Y), cmp.Compare(a.Z, b.Z))
+		})
 	}
 	return out
 }

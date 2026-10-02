@@ -88,7 +88,7 @@ type TacticalContribution struct {
 	// main (cuisson asynchrone, artefact absent ou trop vieux) — c'est le WEB qui convertit,
 	// au moment d'ouvrir le rejeu, quand le document (et donc l'offset) est charge
 	// (`lib/replay/replayLogic.resolveTacticalReplayInstant`). Decouverte du lot M1
-	// (`.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`) : TRAITEE le 2026-09-08 par ce champ.
+	// (`.ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`) : TRAITEE le 2026-09-08 par ce champ.
 	Clock string `json:"clock"`
 
 	// XUID est le joueur dont l'evenement a produit cette contribution (victime, tueur, ou

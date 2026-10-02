@@ -154,7 +154,7 @@ func filmCacheRoot(t *testing.T) string {
 
 func findModuleRoot(wd string) string {
 	dir := wd
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir
 		}
@@ -170,11 +170,11 @@ func findModuleRoot(wd string) string {
 func mainTreeRootFromWorktree(wd string) string {
 	norm := filepath.ToSlash(wd)
 	const marker = "/.claude/worktrees/"
-	idx := strings.Index(norm, marker)
-	if idx < 0 {
+	before, _, ok := strings.Cut(norm, marker)
+	if !ok {
 		return ""
 	}
-	return filepath.FromSlash(norm[:idx])
+	return filepath.FromSlash(before)
 }
 
 // loadCachedChunk lit un chunk et le décompresse (zlib, magic 0x78). Renvoie nil

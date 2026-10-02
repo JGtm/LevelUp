@@ -149,7 +149,7 @@ func main() {
 
 	code, err := executer(ctx, opts)
 	if err != nil {
-		slog.Error("replay-corpus-gate", "err", err)
+		slog.ErrorContext(ctx, "replay-corpus-gate", "err", err)
 	}
 	os.Exit(code)
 }
@@ -196,13 +196,13 @@ func executer(ctx context.Context, o executerOptions) (int, error) {
 	nettoyeur := &nettoyeurCompose{}
 	defer func() { nettoyeur.Executer() }()
 
-	workRoot, cleanupWorkRoot, err := prepareWorkRoot(o.WorkRootFlag, o.KeepWork)
+	workRoot, cleanupWorkRoot, err := prepareWorkRoot(ctx, o.WorkRootFlag, o.KeepWork)
 	if err != nil {
 		return codeUsage, fmt.Errorf("racine de travail : %w", err)
 	}
 	nettoyeur.Ajouter(cleanupWorkRoot)
 
-	slog.Info("replay-corpus-gate: racines resolues",
+	slog.InfoContext(ctx, "replay-corpus-gate: racines resolues",
 		"reference", o.Reference, "source", env.SourceRoot, "parc", env.ParcRoot,
 		"verrou", env.LockRoot, "travail", workRoot, "manifeste", env.ManifestPath,
 		"temoins", len(env.Manifest.Temoins))
@@ -237,7 +237,7 @@ func executer(ctx context.Context, o executerOptions) (int, error) {
 
 	lignes := cuireEtComparerTousLesTemoins(ctx, env.Manifest, tc)
 	o.registreAvantConnu = tc.RegistreBase != nil
-	return finaliser(lignes, refLabel, o)
+	return finaliser(ctx, lignes, refLabel, o)
 }
 
 // chargerEnvironnement resout les trois racines, charge le manifeste et verifie la capability
@@ -318,7 +318,7 @@ func cuireEtComparerTousLesTemoins(ctx context.Context, manifest Manifest, tc te
 	lignes := make([]ligneRapport, 0, len(manifest.Temoins))
 	for _, t := range manifest.Temoins {
 		if err := ctx.Err(); err != nil {
-			slog.Warn("replay-corpus-gate: interruption — temoins restants non tentes",
+			slog.WarnContext(ctx, "replay-corpus-gate: interruption — temoins restants non tentes",
 				"temoin", t.ID, "err", err)
 			break
 		}
@@ -345,9 +345,9 @@ func cuireEtComparerTousLesTemoins(ctx context.Context, manifest Manifest, tc te
 // informations, `couverture_incomplete` a la racine et les compteurs par temoin, pour qu'un
 // lecteur automatique ne confonde jamais « tout est a zero » avec « ce qui a ete compare est a
 // zero ».
-func finaliser(lignes []ligneRapport, refLabel string, o executerOptions) (int, error) {
+func finaliser(ctx context.Context, lignes []ligneRapport, refLabel string, o executerOptions) (int, error) {
 	imprimerTableau(os.Stdout, lignes, refLabel)
-	imprimerVerite(os.Stdout, lignes, o.registreAvantConnu)
+	imprimerVerite(ctx, os.Stdout, lignes, o.registreAvantConnu)
 	imprimerDetailPertes(os.Stdout, lignes)
 	imprimerDetailChangements(os.Stdout, lignes)
 	imprimerTelemetrie(os.Stdout, lignes)
@@ -365,7 +365,7 @@ func finaliser(lignes []ligneRapport, refLabel string, o executerOptions) (int, 
 	if code == codeOK {
 		return codeCouvertureIncomplete, errCouverture
 	}
-	slog.Warn("replay-corpus-gate: couverture incomplete EN PLUS du verdict des temoins "+
+	slog.WarnContext(ctx, "replay-corpus-gate: couverture incomplete EN PLUS du verdict des temoins "+
 		"presents — le code de sortie est celui du verdict, pas celui de la couverture",
 		"code", code, "err", errCouverture)
 	return code, nil

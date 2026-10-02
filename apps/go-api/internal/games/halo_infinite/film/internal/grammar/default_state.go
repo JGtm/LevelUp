@@ -266,7 +266,7 @@ func consumePresenceMask(br *Lecteur) int {
 		br.ReadBits(64)
 	} else { // gate==0 : sparse
 		count := br.ReadBits(3)
-		for i := uint64(0); i < count; i++ {
+		for range count {
 			br.ReadBits(6)
 		}
 	}
@@ -351,7 +351,7 @@ func consumeMultiplayerPropertiesBlock(br *Lecteur) {
 	br.ReadBits(uint(br.mppWidths().Index)) // inline R(5) -> DST+0x1a
 	count := uint32(br.ReadBits(3))
 	if count <= 4 {
-		for i := uint32(0); i < count; i++ {
+		for range count {
 			br.ReadBits(5)   // inline R(5)
 			consumeOpt32(br) // FUN_14080d69c
 		}

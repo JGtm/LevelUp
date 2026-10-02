@@ -1,8 +1,9 @@
 package replay
 
 import (
+	"context"
 	"log/slog"
-	"sort"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -87,7 +88,7 @@ func tracksByXUID(tracks []Track, slotXUID map[uint32]uint64,
 		}
 		out[xuid] = append(out[xuid], t)
 	}
-	sort.Slice(ambigus, func(i, j int) bool { return ambigus[i] < ambigus[j] })
+	slices.Sort(ambigus)
 	return out, ambigus
 }
 
@@ -141,11 +142,11 @@ func slotAmbigu(noms map[string]struct{}, pont uint64) bool {
 // logFlagAmbiguousSlots journalise les slots dont les vies sans nom ont ete refusees au repli.
 // Un AVERTISSEMENT, pas une information : c'est de la matiere que le calque renonce a exploiter,
 // et le seul endroit ou la limite ci-dessus se voit en production.
-func logFlagAmbiguousSlots(slots []uint32) {
+func logFlagAmbiguousSlots(ctx context.Context, slots []uint32) {
 	if len(slots) == 0 {
 		return
 	}
-	slog.Warn("rejeu : vies sans nom refusees au calque drapeau — slot partage par plusieurs joueurs",
+	slog.WarnContext(ctx, "rejeu : vies sans nom refusees au calque drapeau — slot partage par plusieurs joueurs",
 		"slots", slots, "nombre", len(slots))
 }
 

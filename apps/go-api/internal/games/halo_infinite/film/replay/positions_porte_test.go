@@ -7,6 +7,7 @@ package replay
 // de match n est dans le code de production, seulement leur FORME.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -18,7 +19,7 @@ import (
 // (`boundsMinSamples`), et une emprise connue d avance.
 func porteFoule(n, debutMS int) []grammar.BipedPosition {
 	out := make([]grammar.BipedPosition, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out = append(out, pos(900, debutMS+100*i, float32(i%100), float32((i*7)%100), float32(i%10)))
 	}
 	return out
@@ -69,7 +70,7 @@ func TestPorteVieOuverteParSaCreationCommenceAuRecord(t *testing.T) {
 		pos(523, 4_860, 12, 10, 1),
 	)
 	opt := Options{FrameIntervalMS: 100, BipedCreations: []grammar.BipedCreation{porteCreation(523, 4_650, 1)}}
-	doc := BuildFromPositions("m", "halo_infinite", in, nil, opt)
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, opt)
 	trs := porteTraces(doc, 523)
 	if len(trs) != 1 {
 		t.Fatalf("vies du slot 523 = %d, attendu 1", len(trs))
@@ -99,7 +100,7 @@ func TestPorteAucuneVieAvantLaPremiereCreation(t *testing.T) {
 		pos(600, 30_120, 21, 20, 1),
 	)
 	opt := Options{FrameIntervalMS: 100, BipedCreations: []grammar.BipedCreation{porteCreation(600, 30_000, 1)}}
-	doc := BuildFromPositions("m", "halo_infinite", in, nil, opt)
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, opt)
 	trs := porteTraces(doc, 600)
 	if len(trs) != 1 || trs[0].StartFrame != 300 {
 		t.Fatalf("vies du slot 600 = %+v, attendu une seule vie, ouverte a la frame 300", trs)
@@ -119,7 +120,7 @@ func TestPorteDesarmeeQuandLePremierRecordNEstPasLePremierCorps(t *testing.T) {
 	in = append(in, pos(601, 1_000, 50, 50, 1), pos(601, 1_100, 51, 50, 1),
 		pos(601, 30_020, 20, 20, 1))
 	opt := Options{FrameIntervalMS: 100, BipedCreations: []grammar.BipedCreation{porteCreation(601, 30_000, 2)}}
-	doc := BuildFromPositions("m", "halo_infinite", in, nil, opt)
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, opt)
 	n := 0
 	for _, tr := range porteTraces(doc, 601) {
 		n += len(tr.Points)
@@ -147,7 +148,7 @@ func TestPortePremierRecordDUnSlotRecycle(t *testing.T) {
 	opt := Options{FrameIntervalMS: 100, BipedCreations: []grammar.BipedCreation{
 		porteCreation(602, 60_000, 2), porteCreation(602, 30_000, 1),
 	}}
-	doc := BuildFromPositions("m", "halo_infinite", in, nil, opt)
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, opt)
 	c := doc.Coverage.Tracks
 	if c.AvantCreation != 1 || c.SlotsArmes != 1 || c.SlotsDesarmes != 0 {
 		t.Errorf("avantCreation = %d, slotsArmes = %d, slotsDesarmes = %d ; attendu 1, 1, 0 : le point "+
@@ -161,7 +162,7 @@ func TestPortePointHorsEmpriseEcarte(t *testing.T) {
 	in := porteFoule(300, 0)
 	in = append(in, pos(610, 5_000, 30, 30, 1), pos(610, 5_100, 31, 30, 1),
 		pos(611, 7_000, -78.6, 46.38, -325.4)) // vie d un point, 330 m sous une carte de 10 m de haut
-	doc := BuildFromPositions("m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
 	if trs := porteTraces(doc, 611); len(trs) != 0 {
 		t.Errorf("vie hors emprise publiee : %+v", trs)
 	}
@@ -180,7 +181,7 @@ func TestPortePointHorsEmpriseEcarte(t *testing.T) {
 // et rien n est ecarte.
 func TestPorteEmpriseDesarmeeSurUnePoignee(t *testing.T) {
 	in := []grammar.BipedPosition{pos(620, 0, 1, 1, 1), pos(620, 100, 2, 1, 1), pos(621, 200, -900, 900, 1)}
-	doc := BuildFromPositions("m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
 	if len(porteTraces(doc, 621)) != 1 || doc.Coverage.Tracks.HorsEmprise != 0 {
 		t.Errorf("sous %d positions, l emprise ne doit rien ecarter (horsEmprise %d)",
 			boundsMinSamples, doc.Coverage.Tracks.HorsEmprise)
@@ -200,7 +201,7 @@ func TestPorteChuteContinueHorsEmpriseConservee(t *testing.T) {
 		in = append(in, pos(630, 5_000+100*i, 50, 50, 5-2.4*float32(i)))
 	}
 	in = append(in, pos(631, 9_000, 50, 50, -325.4)) // isole, plus profond encore
-	doc := BuildFromPositions("m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
 	n := 0
 	for _, tr := range porteTraces(doc, 630) {
 		n += len(tr.Points)

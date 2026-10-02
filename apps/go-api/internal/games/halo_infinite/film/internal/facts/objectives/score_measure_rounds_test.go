@@ -127,7 +127,7 @@ func statRecordsExt(film *source.Film) []statRecordExt {
 func scanFrameExt(pay []byte, tMS int) []statRecordExt {
 	var out []statRecordExt
 	lim := len(pay)*8 - statTailBits
-	for b := 0; b < lim; b++ {
+	for b := range lim {
 		slot, idx, at, form, ok := matchHeaderExt(pay, b)
 		if !ok {
 			continue
@@ -226,7 +226,7 @@ func sparseList(pay []byte, p int) ([]int, int, bool) {
 	}
 	idx := make([]int, n)
 	prev := -1
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx[i] = int(source.BitsTronques(pay, p+3+statCompIndexBits*i, statCompIndexBits))
 		if idx[i] >= statMaxComp || idx[i] <= prev {
 			return nil, 0, false
@@ -247,7 +247,7 @@ func denseList(pay []byte, p int) ([]int, int, bool) {
 		return nil, 0, false
 	}
 	var idx []int
-	for i := 0; i < statMaxComp; i++ {
+	for i := range statMaxComp {
 		if mask>>uint(i)&1 == 1 {
 			idx = append(idx, i)
 		}
@@ -316,11 +316,11 @@ func decodeFinalizedComponent(pay []byte, p int) (map[int]int64, int, bool) {
 	mask := source.BitsTronques(pay, p, statRoundMaskBits)
 	q := p + statRoundMaskBits
 	out := map[int]int64{}
-	for i := 0; i < statRoundMaskBits; i++ {
+	for i := range statRoundMaskBits {
 		if mask>>uint(i)&1 == 0 {
 			continue
 		}
-		for side := 0; side < 2; side++ {
+		for side := range 2 {
 			if q+1 > len(pay)*8 {
 				return nil, 0, false
 			}

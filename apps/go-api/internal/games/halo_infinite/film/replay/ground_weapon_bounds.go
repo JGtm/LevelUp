@@ -116,10 +116,7 @@ func gwPickupNextAfter(sorted []uint64, at uint64) (uint64, bool) {
 // gwPickupSeenWithin restreint le recensement d'une clé à la vie [t0, lifeEnd).
 func gwPickupSeenWithin(seen []uint64, t0, lifeEnd uint64) []uint64 {
 	lo := sort.Search(len(seen), func(i int) bool { return seen[i] >= t0 })
-	hi := sort.Search(len(seen), func(i int) bool { return seen[i] >= lifeEnd })
-	if hi < lo {
-		hi = lo
-	}
+	hi := max(sort.Search(len(seen), func(i int) bool { return seen[i] >= lifeEnd }), lo)
 	return seen[lo:hi]
 }
 

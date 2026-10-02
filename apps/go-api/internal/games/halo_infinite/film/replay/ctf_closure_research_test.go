@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ctf_closure_research_test.go — INSTRUMENT DE RECHERCHE #3 (v7.5 voie B).
@@ -44,7 +46,7 @@ func TestCTFExclusionClosure(t *testing.T) {
 		t.Fatalf("%s et %s sont requis", ctfCacheEnv, ctfOutEnv)
 	}
 	cat := loadCTFQuantCatalog(t)
-	for _, item := range strings.Split(spec, ",") {
+	for item := range strings.SplitSeq(spec, ",") {
 		short, mapName, ok := strings.Cut(strings.TrimSpace(item), ":")
 		if !ok {
 			t.Fatalf("entrée mal formée %q", item)

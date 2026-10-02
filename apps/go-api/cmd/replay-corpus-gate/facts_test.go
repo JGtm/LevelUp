@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -19,7 +20,7 @@ func TestExportFactsAvecContinueApresUnEchec(t *testing.T) {
 		return nil
 	}
 
-	exportFactsAvec(exporter, []string{"bon1a2b3c", "deadbeef", "bon4d5e6f"})
+	exportFactsAvec(context.Background(), exporter, []string{"bon1a2b3c", "deadbeef", "bon4d5e6f"})
 
 	if len(appeles) != 3 {
 		t.Fatalf("attendu 3 tentatives (un echec ne doit pas interrompre les suivantes), obtenu %d : %v",
@@ -34,7 +35,7 @@ func TestExportFactsAvecContinueApresUnEchec(t *testing.T) {
 // (utilise par les tests du manifeste reduit) : aucune tentative, aucune panique.
 func TestExportFactsAvecVideNeFaitRienEtNePanicPas(t *testing.T) {
 	appele := false
-	exportFactsAvec(func(string) error { appele = true; return nil }, nil)
+	exportFactsAvec(context.Background(), func(string) error { appele = true; return nil }, nil)
 	if appele {
 		t.Fatal("un lot vide n'a rien a exporter")
 	}

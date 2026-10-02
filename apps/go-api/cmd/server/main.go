@@ -123,7 +123,7 @@ func main() {
 	// ouvrirait un second écrivain sur les mêmes bases, ce que le modèle mono-processus
 	// interdit (ADR 0013/0016). Même patron que le health-check ci-dessous.
 	if replaychild.IsChild(os.Args) {
-		os.Exit(replaychild.RunChild(os.Args))
+		os.Exit(replaychild.RunChild(context.Background(), os.Args))
 	}
 
 	// --- 0. Health-check mode (Docker HEALTHCHECK) ---
@@ -478,7 +478,7 @@ func main() {
 	// `RunForDB(TargetPlayer)` n'était jusqu'ici câblé qu'en CLI ; on le câble
 	// au boot par profil. Idempotent (migrations tracées dans schema_migrations).
 	// Non-fatal : une player DB verrouillée/absente ne doit pas bloquer le boot.
-	// Cf. repair_*_primary_key + .ai/thought_log 2026-06-04.
+	// Cf. repair_*_primary_key + .ai/archive/thought_log_2026-Q2.md (2026-06-04).
 	if !cfg.DemoMode {
 		if players, perr := cfg.LoadPlayers(); perr != nil {
 			slog.Warn("migrations player: chargement profils échoué (non-fatal)", "err", perr)
@@ -1292,7 +1292,7 @@ func main() {
 				// LOGUE AVANT DE DÉGRADER (règle n°3) : sans cette ligne, un
 				// app_settings.json illisible faisait passer la fenêtre à 0 EN SILENCE —
 				// c'est-à-dire rétention illimitée, donc purge désactivée sans un mot (Q8,
-				// .ai/DECOUVERTES_TACTIQUE_2026-09-07.md).
+				// .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md).
 				slog.WarnContext(ctx, "replay_purge_cron: settings illisibles, "+
 					"rétention illimitée (purge désactivée)", "err", err)
 				return 0

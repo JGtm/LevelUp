@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -33,7 +34,7 @@ func nameLivesByDeaths(lives []lifeSpan, deaths []types.Death, off int64) int {
 // declaree, cf. identity_registry_bridge.go).
 func buildOwnersDeTest(tracks map[uint32]slotTrack, deaths []types.Death, idx types.PlayerIndexTable,
 	fire []FireEventRef) OwnerReport {
-	rep, _, _ := buildOwnersFromTracks(tracks,
+	rep, _, _ := buildOwnersFromTracks(context.Background(), tracks,
 		IdentityInput{Deaths: deaths, PlayerIndices: idx, Fire: fire})
 	return rep
 }

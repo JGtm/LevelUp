@@ -268,7 +268,7 @@ func (d *decoder) readList(typ byte) (Value, error) {
 		return Value{}, err
 	}
 	out := Value{Type: typ, Items: make([]Value, 0, count)}
-	for i := 0; i < count; i++ {
+	for i := range count {
 		item, err := d.readValue(elemType)
 		if err != nil {
 			return Value{}, fmt.Errorf("cb2: item %d/%d: %w", i, count, err)
@@ -296,7 +296,7 @@ func (d *decoder) readMap() (Value, error) {
 		return Value{}, err
 	}
 	out := Value{Type: btMap, Pairs: make([]KeyValue, 0, count)}
-	for i := 0; i < count; i++ {
+	for range count {
 		k, err := d.readValue(keyType & 0x1F)
 		if err != nil {
 			return Value{}, err

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_composant_pont_test.go — LOT F : LE PONT SLOT -> JOUEUR, ET LA CALIBRATION DE LA MARCHE.

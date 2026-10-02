@@ -33,7 +33,6 @@ import (
 	"bytes"
 	"cmp"
 	"slices"
-	"sort"
 
 	"levelup/go-api/internal/games/weapons/filmshell"
 )
@@ -43,11 +42,11 @@ import (
 // ══════════════════════════════════════════════════════════════════════════════
 
 var (
-	// FormulaAPattern est le marker Section 1 : [20 00 02].
-	FormulaAPattern = []byte{0x20, 0x00, 0x02}
+	// formulaAPattern est le marker Section 1 : [20 00 02].
+	formulaAPattern = []byte{0x20, 0x00, 0x02}
 
-	// FrameMarker est le marker de position de frame : [A0 7B 42].
-	FrameMarker = []byte{0xA0, 0x7B, 0x42}
+	// frameMarker est le marker de position de frame : [A0 7B 42].
+	frameMarker = []byte{0xA0, 0x7B, 0x42}
 )
 
 const (
@@ -124,11 +123,11 @@ type FireEvent struct {
 //  Frame positions & timestamp estimation
 // ══════════════════════════════════════════════════════════════════════════════
 
-// FindFramePositions retourne toutes les positions du FrameMarker.
+// FindFramePositions retourne toutes les positions du frameMarker.
 func FindFramePositions(data []byte) []int {
 	var positions []int
 	for pos := 0; ; {
-		idx := bytes.Index(data[pos:], FrameMarker)
+		idx := bytes.Index(data[pos:], frameMarker)
 		if idx < 0 {
 			break
 		}
@@ -173,7 +172,7 @@ func ScanFormulaA(data []byte) []FormulaAResult {
 	var results []FormulaAResult
 	pos := 0
 	for {
-		idx := bytes.Index(data[pos:], FormulaAPattern)
+		idx := bytes.Index(data[pos:], formulaAPattern)
 		if idx < 0 || pos+idx+4 > len(data) {
 			break
 		}
@@ -181,10 +180,7 @@ func ScanFormulaA(data []byte) []FormulaAResult {
 		pb := data[absPos+3]
 		pi := int(pb >> 5)
 
-		end := absPos + 68
-		if end > len(data) {
-			end = len(data)
-		}
+		end := min(absPos+68, len(data))
 
 		bestSX := -1
 		for suffix := range filmshell.AllFormulaASuffixes {
@@ -259,8 +255,9 @@ func ScanFormulaANS(data []byte) []FormulaAResult {
 			pos = absP + 1
 		}
 	}
-	// Trier par position
-	sort.Slice(results, func(i, j int) bool { return results[i].Offset < results[j].Offset })
+	// Trier par position. Tri total (J12.1, DT-9) : Offset unique — deux motifs de 8 octets
+	// distincts (cles de WeaponBytesMap) ne coincident pas a la meme position.
+	slices.SortFunc(results, func(a, b FormulaAResult) int { return cmp.Compare(a.Offset, b.Offset) })
 	return results
 }
 
@@ -377,7 +374,7 @@ func decodeFireEventAt(data []byte, bitPos, totalBits int) (FireEvent, bool) {
 
 // matchMarkerAt vérifie si le marker universel 11 bits est à bitPos.
 func matchMarkerAt(data []byte, bitPos int) bool {
-	for i := 0; i < universalMarkerLen; i++ {
+	for i := range universalMarkerLen {
 		byteIdx := (bitPos + i) / 8
 		bitIdx := 7 - ((bitPos + i) % 8)
 		bit := (data[byteIdx] >> uint(bitIdx)) & 1
@@ -392,7 +389,7 @@ func matchMarkerAt(data []byte, bitPos int) bool {
 // readBitsUint64 lit n bits depuis bitPos en big-endian.
 func readBitsUint64(data []byte, bitPos, n int) uint64 {
 	var result uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		byteIdx := (bitPos + i) / 8
 		bitIdx := 7 - ((bitPos + i) % 8)
 		bit := uint64((data[byteIdx] >> uint(bitIdx)) & 1)
@@ -404,7 +401,7 @@ func readBitsUint64(data []byte, bitPos, n int) uint64 {
 // readBitsUint8 lit n bits (≤8) depuis bitPos en big-endian.
 func readBitsUint8(data []byte, bitPos, n int) uint8 {
 	var result uint8
-	for i := 0; i < n; i++ {
+	for i := range n {
 		byteIdx := (bitPos + i) / 8
 		bitIdx := 7 - ((bitPos + i) % 8)
 		bit := (data[byteIdx] >> uint(bitIdx)) & 1

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_charges_lot2_research_test.go — suite de `r7_charges_research_test.go` : la famille des
@@ -70,7 +72,7 @@ func r7ValeurTagA(br *Lecteur, tag uint64, ctx r7Ctx) bool {
 		br.Skip(1)
 		return true
 	case 5: // chaine C auto-delimitee : R(8) jusqu'au premier octet nul, plafond 16 octets
-		for i := 0; i < 16; i++ {
+		for range 16 {
 			if br.ReadBits(8) == 0 {
 				return true
 			}
@@ -107,7 +109,7 @@ func r7SkipChargeLot2(br *Lecteur, typ int, ctx r7Ctx) bool {
 	case 82:
 		br.Skip(32 + 8) // event-id + R(8)  (FUN_14080ae70)
 		n := br.ReadBits(3)
-		for i := uint64(0); i < n; i++ {
+		for range n {
 			br.Skip(32) // nom de propriete
 			if !r7ValeurTagA(br, br.ReadBits(3), ctx) {
 				return false

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v6_ref2_test.go — INSTRUMENT (lot V6) : LA REFERENCE 2 DE L'EMBARQUEMENT EST-ELLE

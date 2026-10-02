@@ -288,10 +288,7 @@ func objLancerQuantile(sorted []float64, q float64) float64 {
 	if len(sorted) == 0 {
 		return math.NaN()
 	}
-	i := int(math.Ceil(q*float64(len(sorted)))) - 1
-	if i < 0 {
-		i = 0
-	}
+	i := max(int(math.Ceil(q*float64(len(sorted))))-1, 0)
 	if i >= len(sorted) {
 		i = len(sorted) - 1
 	}

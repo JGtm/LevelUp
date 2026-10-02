@@ -6,7 +6,10 @@ package replay
 // (garde-rail `archlint`, une seule entree d'allowlist). C'est ce qui permet de le lire sans
 // avoir a verifier qu'il ne contourne pas une garde — il n'en a pas les moyens.
 
-import "log/slog"
+import (
+	"context"
+	"log/slog"
+)
 
 // SanteDuPont rend la sante du pont slot -> joueur : sur quoi il repose, et ce qu'il refuse.
 func (r IdentityRegistry) SanteDuPont() BridgeHealth {
@@ -38,10 +41,10 @@ func (r IdentityRegistry) SanteDuPont() BridgeHealth {
 // buildCoverage assemble la couverture publiee et ses verdicts. `originResolved` dit si l'origine
 // de la frame 0 a ete etablie — elle conditionne la justesse de l'axe de temps de TOUS les
 // calques dates depuis l'horloge du film (cf. Coverage.OriginResolved).
-func buildCoverage(shots, grenades, objectives LayerCoverage, reg IdentityRegistry,
+func buildCoverage(ctx context.Context, shots, grenades, objectives LayerCoverage, reg IdentityRegistry,
 	originResolved bool, score *ScoreCoverage) *Coverage {
 	b := reg.SanteDuPont()
-	b.warnIfCalageEtroit()
+	b.warnIfCalageEtroit(ctx)
 	return &Coverage{
 		Shots: shots, Grenades: grenades, Objectives: objectives, Bridge: b,
 		OriginResolved: originResolved, Score: score,
@@ -56,9 +59,9 @@ func buildCoverage(shots, grenades, objectives LayerCoverage, reg IdentityRegist
 
 // logRegistry ALARME sur ce que le registre n'a PAS su nommer. Un lien non resolu se publie et se
 // compte (doctrine §0.2 du plan v2) ; il ne se tait jamais.
-func (r IdentityRegistry) logRegistry(matchID string) {
+func (r IdentityRegistry) logRegistry(ctx context.Context, matchID string) {
 	total := r.Section.Coverage.Total()
-	slog.Info("rejeu : registre d'identite",
+	slog.InfoContext(ctx, "rejeu : registre d'identite",
 		"match_id", matchID,
 		"slots", len(r.IndexParSlot()), "viesNommees", r.ViesNommeesParLaLecture(),
 		"viesTotal", r.ViesTotal(), "lecturesIndex", r.LecturesIndex(),
@@ -75,24 +78,24 @@ func (r IdentityRegistry) logRegistry(matchID string) {
 		"sansCandidatAuTableau", r.ViesSansCandidatAuTableau(),
 		"liensDirects", total.Direct, "liensDeduits", total.Inferred,
 		"liensNonResolus", total.Unresolved)
-	r.creation.alarmerSurLesRefus(matchID, r.Section.Coverage.BipedSlot.UnresolvedByCause)
+	r.creation.alarmerSurLesRefus(ctx, matchID, r.Section.Coverage.BipedSlot.UnresolvedByCause)
 	if r.PontDiscordant() > 0 {
-		slog.Warn("rejeu : le pont par morts contredit le lien direct sur des vies — le film "+
+		slog.WarnContext(ctx, "rejeu : le pont par morts contredit le lien direct sur des vies — le film "+
 			"fait foi, les noms du pont sont ecartes",
 			"match_id", matchID, "discordances", r.PontDiscordant(),
 			"concordances", r.PontConcordant())
 	}
 	if r.ViesNommeesParLePont() > 0 {
-		slog.Warn("rejeu : AUCUNE lecture directe corps -> joueur — le pont par morts a nomme en "+
+		slog.WarnContext(ctx, "rejeu : AUCUNE lecture directe corps -> joueur — le pont par morts a nomme en "+
 			"degradation complete (cf. identity_registry_bridge.go)",
 			"match_id", matchID, "vies", r.ViesNommeesParLePont())
 	}
 	if r.DesaccordsIndex() > 0 {
-		slog.Warn("rejeu : desaccord de lecture de l'index de joueur — liens directs NON publies",
+		slog.WarnContext(ctx, "rejeu : desaccord de lecture de l'index de joueur — liens directs NON publies",
 			"match_id", matchID, "desaccords", r.DesaccordsIndex())
 	}
 	if total.Unresolved > 0 {
-		slog.Warn("rejeu : liens d'identite NON RESOLUS — publies et comptes, jamais inventes",
+		slog.WarnContext(ctx, "rejeu : liens d'identite NON RESOLUS — publies et comptes, jamais inventes",
 			"match_id", matchID, "liens", total.Unresolved)
 	}
 }

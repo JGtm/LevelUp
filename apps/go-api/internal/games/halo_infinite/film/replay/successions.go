@@ -34,6 +34,7 @@ package replay
 // n'a pas su nommer.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -78,7 +79,7 @@ type calageDesRelais struct {
 // candidates naissent dans la même fenêtre (deux remplaçants simultanés), celle qui CONTIENT un
 // tir de l'indice du remplaçant est la sienne — un tir est une lecture, pas une devinette. Deux
 // candidates tirées, ou aucune : la chaîne s'arrête.
-func attributeSuccessions(tracks []Track, successions []Succession, c calageDesRelais, fire []FireEventRef) {
+func attributeSuccessions(ctx context.Context, tracks []Track, successions []Succession, c calageDesRelais, fire []FireEventRef) {
 	if len(successions) == 0 || c.offsetMatches == 0 {
 		return
 	}
@@ -102,7 +103,7 @@ func attributeSuccessions(tracks []Track, successions []Succession, c calageDesR
 		}
 	}
 	c.fb.DeclencheN(fallback.NomVieDeBotParRelaisDeLaBase, claimed)
-	slog.Info("rejeu : fermetures par relais", "successions", len(successions),
+	slog.InfoContext(ctx, "rejeu : fermetures par relais", "successions", len(successions),
 		"viesAttribuees", claimed, "chainesArretees", halted, "contestationsLeveesParTir", liftedByFire)
 }
 

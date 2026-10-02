@@ -137,7 +137,7 @@ func buildGolden(t *testing.T) ReplayDocument {
 		t.Fatalf("entree de catalogue de Cliffhanger illisible : %v", err)
 	}
 	opt.MapQuant = &entry
-	return BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, opt)
+	return BuildFromPositions(t.Context(), goldenFilm, "halo_infinite", g.Positions, g.Fire, opt)
 }
 
 // TestGoldenAssembly : l assemblage rejoue rend-il toujours la meme chose ?

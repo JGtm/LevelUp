@@ -26,10 +26,10 @@ func jgtmQuota1bc77d2e() []Award {
 func TestLabelPersonalScoreReconciliesJGtm(t *testing.T) {
 	// Suite d'increments observee sur le film, rejouee comme une courbe cumulee.
 	deltas := []int64{}
-	for i := 0; i < 22; i++ {
+	for range 22 {
 		deltas = append(deltas, 100)
 	}
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		deltas = append(deltas, 25)
 	}
 	deltas = append(deltas, 50, 50, 125, 125, 300, 10)

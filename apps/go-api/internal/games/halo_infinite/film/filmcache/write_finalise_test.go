@@ -55,7 +55,7 @@ func completerLeTemoin(entrees []writeManifestChunk) []WriteChunk {
 	out := make([]WriteChunk, 0, len(entrees)+3)
 	for _, e := range entrees {
 		out = append(out, WriteChunk{Index: e.Index, ChunkType: e.ChunkType, StartMS: e.StartMS,
-			DurationMS: e.DurationMS, Data: []byte(fmt.Sprintf("c%d", e.Index))})
+			DurationMS: e.DurationMS, Data: fmt.Appendf(nil, "c%d", e.Index)})
 	}
 	return append(out,
 		WriteChunk{Index: 34, ChunkType: 2, StartMS: 660116, DurationMS: 20000, Data: []byte("c34")},

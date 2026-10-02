@@ -186,11 +186,8 @@ func m532bOracle(t *testing.T, recs []m532bRec, kf map[uint32][]m532bKF) {
 				c = &compteur{}
 				par[sp.nom] = c
 			}
-			n := sp.largeur
-			if n > m532bBitsMax {
-				n = m532bBitsMax
-			}
-			for b := 0; b < n; b++ {
+			n := min(sp.largeur, m532bBitsMax)
+			for b := range n {
 				v, okb := m532Lit(r.pay, sp.startBit+b, 1)
 				if !okb {
 					continue
@@ -217,7 +214,7 @@ func m532bOracle(t *testing.T, recs []m532bRec, kf map[uint32][]m532bKF) {
 	for _, nom := range noms {
 		c := par[nom]
 		meilleur, meilleurB, meilleurN := 0.0, -1, 0
-		for b := 0; b < m532bBitsMax; b++ {
+		for b := range m532bBitsMax {
 			if c.total[b] < 30 {
 				continue
 			}

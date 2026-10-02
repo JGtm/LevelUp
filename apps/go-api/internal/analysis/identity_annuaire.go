@@ -7,7 +7,7 @@
 // vue agrège `match_participants` GROUP BY, deux passes de `match_kill_events_latest` et deux
 // de `killer_victim_pairs` en FULL OUTER JOIN : aucun filtre n'y est poussé, elle est
 // matérialisée EN ENTIER à chaque jointure — 3 s par évaluation sur la base de production,
-// six évaluations par page (mesure du 2026-09-23, .ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS).
+// six évaluations par page (mesure du 2026-09-23, .ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md).
 //
 // Le lecteur charge désormais, pour les seuls xuids qu'il a rencontrés et sur les seuls matchs
 // qu'il lit, les noms que chaque niveau de la vue leur donnerait (AnnuaireGamertags), puis

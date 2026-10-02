@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r11_journal_research_test.go — LE JOURNAL D'UNE VIE, AVEC UNE ANCRE, ET SA COLLECTE.
@@ -36,7 +38,7 @@ package grammar
 //	CGO_ENABLED=0 R9_FILMS=<repo>/data/cache/film_chunks \
 //	  R9_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
 //	  R8_BOUNDS=<wt>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R11_IDS=72b0a25e go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  R11_IDS=72b0a25e go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR11Journal$' -count=1 -timeout 60m -v
 
 import (
@@ -105,7 +107,7 @@ func r11FilmDirs(t *testing.T) []string {
 		t.Skipf("%s absent : instrument saute", r9FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(os.Getenv(r11IDsEnv), ",") {
+	for s := range strings.SplitSeq(os.Getenv(r11IDsEnv), ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, filepath.Join(root, s))
 		}
@@ -138,7 +140,7 @@ func r11Nib(v int) string {
 func r11EnergyTxt(mask uint32, ch [AbilityEnergyCharges]int) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "masque=%d%d%d", (mask>>2)&1, (mask>>1)&1, mask&1)
-	for i := 0; i < AbilityEnergyCharges; i++ {
+	for i := range AbilityEnergyCharges {
 		fmt.Fprintf(&b, " e%d[%s]", i, r11Nib(ch[i]))
 	}
 	return b.String()

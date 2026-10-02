@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_pickup_keyframe_research_test.go — VOLET B : nommer les non-armes par l'ETAT
@@ -53,6 +55,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -181,7 +184,7 @@ func TestEquipmentPickupKeyframeNaming(t *testing.T) {
 		nonArmes, etiquetes, pct100(etiquetes, nonArmes), ambigus, sansChangement, sansPaire)
 	t.Logf("TEMOIN decale (pire des 3) : %d (%.1f %%) — c est LE risque de cette voie : la fenetre fait ~20 s",
 		pire, pct100(pire, nonArmes))
-	for c := uint8(0); c < 8; c++ {
+	for c := range uint8(8) {
 		if v := parClasse[c]; v[1] > 0 {
 			t.Logf("  classe %d : %d / %d etiquetes (%.1f %%)", c, v[0], v[1], pct100(v[0], v[1]))
 		}
@@ -204,18 +207,18 @@ func TestEquipmentPickupKeyframeNaming(t *testing.T) {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
-		s := ""
+		var s strings.Builder
 		for i, k := range keys {
 			if i > 0 {
-				s += " · "
+				s.WriteString(" · ")
 			}
-			s += fmt.Sprintf("%s x%d", k, m[k])
+			s.WriteString(fmt.Sprintf("%s x%d", k, m[k]))
 		}
 		mark := ""
 		if len(m) > 1 {
 			mark = "  <-- COLLISION"
 		}
-		t.Logf("  %08x : %s%s", id, s, mark)
+		t.Logf("  %08x : %s%s", id, s.String(), mark)
 	}
 	t.Logf("identifiants etiquetes : %d · dont en COLLISION : %d (%.1f %%)",
 		len(table), collisions, pct100(collisions, len(table)))

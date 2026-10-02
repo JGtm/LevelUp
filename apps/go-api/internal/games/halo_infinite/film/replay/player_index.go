@@ -1,7 +1,7 @@
 package replay
 
 import (
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -46,7 +46,7 @@ func rosterOf(deaths []types.Death, extra []uint64) []uint64 {
 	for _, x := range extra {
 		ajouter(x)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 

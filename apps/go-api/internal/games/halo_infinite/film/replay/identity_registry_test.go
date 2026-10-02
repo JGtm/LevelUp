@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
@@ -51,7 +52,7 @@ func entreeDeuxJoueurs(roster []uint64) IdentityInput {
 //
 // MUTATION : retirer `resolveByRosterElimination` -> les vies du slot 200 restent anonymes, rouge.
 func TestRegistreNommeLeSlotMuetParElimination(t *testing.T) {
-	reg := BuildIdentityRegistry(entreeDeuxJoueurs([]uint64{111, 222}))
+	reg := BuildIdentityRegistry(context.Background(), entreeDeuxJoueurs([]uint64{111, 222}))
 	var nommees, deduites int
 	for i, l := range reg.Vies() {
 		if l.slot != 200 {
@@ -83,7 +84,7 @@ func TestRegistreNommeLeSlotMuetParElimination(t *testing.T) {
 //
 // MUTATION : prendre « le premier » candidat -> une identite inventee, rouge.
 func TestRegistreSeTaitADeuxCandidats(t *testing.T) {
-	reg := BuildIdentityRegistry(entreeDeuxJoueurs([]uint64{111, 222, 333}))
+	reg := BuildIdentityRegistry(context.Background(), entreeDeuxJoueurs([]uint64{111, 222, 333}))
 	for _, l := range reg.Vies() {
 		if l.slot == 200 && l.xuid != 0 {
 			t.Fatalf("un candidat a ete choisi malgre l'ambiguite : xuid %d", l.xuid)
@@ -98,7 +99,7 @@ func TestRegistreSeTaitADeuxCandidats(t *testing.T) {
 // TestRegistreSansRosterNeDeduitRien : sans roster de la base, l'elimination n'a pas de candidat
 // — l'artefact reste publiable hors ligne, exactement comme avant le lot.
 func TestRegistreSansRosterNeDeduitRien(t *testing.T) {
-	reg := BuildIdentityRegistry(entreeDeuxJoueurs(nil))
+	reg := BuildIdentityRegistry(context.Background(), entreeDeuxJoueurs(nil))
 	for _, l := range reg.Vies() {
 		if l.slot == 200 && l.xuid != 0 {
 			t.Fatalf("une identite est apparue sans roster : xuid %d", l.xuid)
@@ -122,7 +123,7 @@ func TestRegistreFilmEntierementNommeInchange(t *testing.T) {
 		RosterXUIDs:   []uint64{111},
 		Clock:         IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 231},
 	}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	for i, l := range reg.Vies() {
 		if l.xuid != 111 {
 			t.Fatalf("vie %d non nommee par la lecture : %+v", i, l)
@@ -143,7 +144,7 @@ func TestRegistreFilmEntierementNommeInchange(t *testing.T) {
 // TestRegistrePublieLeLienDirectDeLIndexDeJoueur : l'index de joueur lu dans le film est publie
 // `direct`, avec son nombre de lectures concordantes — jamais `deduit`.
 func TestRegistrePublieLeLienDirectDeLIndexDeJoueur(t *testing.T) {
-	reg := BuildIdentityRegistry(entreeDeuxJoueurs([]uint64{111, 222}))
+	reg := BuildIdentityRegistry(context.Background(), entreeDeuxJoueurs([]uint64{111, 222}))
 	var direct, externe int
 	for _, p := range reg.Section.Players {
 		switch p.Link.Source {
@@ -167,7 +168,7 @@ func TestRegistrePublieLeLienDirectDeLIndexDeJoueur(t *testing.T) {
 // TestRegistreBorneChaqueLienDeSlot : un slot RECYCLE porte plusieurs liens bornes, jamais un
 // lien aplati. C'est ce qui interdit de rejouer le defaut P0-2.
 func TestRegistreBorneChaqueLienDeSlot(t *testing.T) {
-	reg := BuildIdentityRegistry(entreeDeuxJoueurs([]uint64{111, 222}))
+	reg := BuildIdentityRegistry(context.Background(), entreeDeuxJoueurs([]uint64{111, 222}))
 	n := 0
 	for _, b := range reg.Section.BipedSlots {
 		if b.Slot != 100 {

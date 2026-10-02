@@ -34,7 +34,7 @@ package grammar
 //	  MAPQUANT_CTRL_ROOT=<repo>/data/cache/film_chunks \
 //	  MAPQUANT_CTRL_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  MAPQUANT_CTRL_PAIRES=<csv film,carte> \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestControleBornesFilms$' -timeout 60m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestControleBornesFilms$' -timeout 60m -v
 
 import (
 	"encoding/csv"

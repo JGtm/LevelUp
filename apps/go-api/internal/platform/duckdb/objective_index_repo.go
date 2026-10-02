@@ -1,6 +1,6 @@
 // Package duckdb — objective_index_repo.go : agrégats par (xuid × famille de mode)
 // sur match_objective_stats_latest pour l'index de participation aux objectifs
-// (narrative.ComputeObjectiveIndex — plan .ai/PLAN_AXE_OBJECTIFS_INDEX.md, étape 4).
+// (narrative.ComputeObjectiveIndex — plan .ai/V7.5/PLAN_AXE_OBJECTIFS_INDEX.md, étape 4).
 //
 // Les listes de colonnes NE SONT PAS dupliquées ici : le SELECT est généré depuis
 // les tables exportées narrative.ObjectiveFamilyActionWeights /

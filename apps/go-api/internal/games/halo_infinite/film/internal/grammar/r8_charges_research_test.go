@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_charges_research_test.go — PISTE B du lot R8 : le canal des COMPOSANTS de l'entite
@@ -25,7 +27,7 @@ package grammar
 //
 //	CGO_ENABLED=0 R8_FILMS=<repo>/data/cache/film_chunks \
 //	  R8_ARTIFACTS=<repo>/data/cache/replays/halo_infinite R8_IDS=00ba2e1c \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR8ChargesIdentite$' -timeout 60m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR8ChargesIdentite$' -timeout 60m -v
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -168,7 +170,7 @@ func r8ScanFilm(t *testing.T, dir string) map[types.LifeKey]*r8LifeStat {
 		filepath.Base(dir), len(pl), pst.Calibration.Widths.String(), pst.Anchors,
 		pst.Confirmed, pst.Lives, len(ident),
 		sst.Records, sst.Walked, sst.Broken, sst.Slots)
-	for f := 0; f < EquipmentFieldCount; f++ {
+	for f := range EquipmentFieldCount {
 		t.Logf("  champ %-12s masque=%6d lu=%6d porteFermee=%6d",
 			r8FieldNames[f], sst.WithField[f], sst.Read[f], sst.Gated[f])
 	}
@@ -193,7 +195,7 @@ func r8Aggregate(
 			out[k] = st
 		}
 		st.samples++
-		for f := 0; f < EquipmentFieldCount; f++ {
+		for f := range EquipmentFieldCount {
 			if s.Seen[f] {
 				st.seen[f]++
 			}
@@ -306,7 +308,7 @@ func r8FilmDirs(t *testing.T) []string {
 		t.Skipf("%s absent : instrument de mesure saute", r8FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(os.Getenv(r8IDsEnv), ",") {
+	for s := range strings.SplitSeq(os.Getenv(r8IDsEnv), ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, filepath.Join(root, s))
 		}

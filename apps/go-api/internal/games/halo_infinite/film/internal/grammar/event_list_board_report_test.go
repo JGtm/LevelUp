@@ -22,7 +22,7 @@ func evbRapport(t *testing.T, tot *evbTotaux) {
 		widths = append(widths, w)
 	}
 	sort.Slice(widths, func(i, j int) bool {
-		for k := 0; k < 3; k++ {
+		for k := range 3 {
 			if widths[i][k] != widths[j][k] {
 				return widths[i][k] < widths[j][k]
 			}

@@ -1,5 +1,5 @@
 // Package archlint — no_french_label_literal_test.go : LE GARDE-RAIL FINAL du plan
-// « libellés en dur » (.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md, §4 « Garde-rail FINAL »).
+// « libellés en dur » (.ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md, §4 « Garde-rail FINAL »).
 //
 // # CE QUI EST COMPTÉ
 //
@@ -45,7 +45,7 @@
 // fichiers (538 littéraux), très au-delà des ~15 fichiers cités dans l'inventaire §2 —
 // l'essentiel étant des messages d'erreur `api/handlers/*` (famille F) non encore
 // individuellement cités. Conforme à la doctrine RE-VÉRIFIER du plan : la carte du 07/09
-// datait déjà. Reprise consignée : .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §9.
+// datait déjà. Reprise consignée : .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §9.
 //
 // Modèle : les autres `no_*_test.go` du dossier (ratchet nommé/daté) et `no_mojibake_test.go`
 // (marche à suivre, allowlist vide visée).
@@ -109,7 +109,7 @@ var frenchLabelAllowlist = map[string]int{
 	// features/_shared/experienceCascade.ts, commentaire « NE PAS traduire ces
 	// chaînes ici ») — le LABEL, lui, est déjà localisé FR/EN (expTypeLabelEN).
 	// Migrer la VALUE vers une clé neutre exige un lot dédié coordonné back+front
-	// (cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §11, découverte M5 L3).
+	// (cf. .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §11, découverte M5 L3).
 	"analysis/playlist_label.go":       2,
 	"service/match_history_service.go": 2,
 
@@ -129,7 +129,7 @@ var frenchLabelAllowlist = map[string]int{
 	// lu par platform/duckdb/weapon_resolver.go comme repli de nom pour les sentinelles
 	// (grenade/mêlée/véhicule) et les ids sans weapon_key — migrer ce repli vers un TOML
 	// dupliquerait weapon_names.toml (déjà la SOURCE UNIQUE depuis V72-06) sans rien
-	// résoudre. Cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §13 (découverte M5 L4).
+	// résoudre. Cf. .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §13 (découverte M5 L4).
 	"games/weapons/labels.go": 12,
 
 	// L5 — rangs / CSR. mappings/ranks.go (RankCatalog) est le rang de CARRIÈRE,

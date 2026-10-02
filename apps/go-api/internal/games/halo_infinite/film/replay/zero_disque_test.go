@@ -43,6 +43,7 @@ package replay
 // qui decode entierement depuis un repertoire vide n'a touche aucun fichier relatif.
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -125,7 +126,7 @@ func TestZeroDisqueBuildFromFilm(t *testing.T) {
 
 	entrerDansUnRepertoireVide(t)
 
-	_, err = BuildFromFilm("minifilm", "halo_infinite", film, Options{MapQuant: &entry})
+	_, err = BuildFromFilm(context.Background(), "minifilm", "halo_infinite", film, Options{MapQuant: &entry})
 	attendu := fmt.Sprintf("aucun slot biped (ti=%d) dans les keyframes du film", grammar.BipedTypeIndex)
 	switch {
 	case err == nil:

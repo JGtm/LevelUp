@@ -39,6 +39,7 @@ package replay
 
 import (
 	"cmp"
+	"context"
 	"log/slog"
 	"slices"
 
@@ -381,11 +382,11 @@ func gwFrameOf(atUS uint64, clock replayClock) int {
 
 // logGroundWeaponCoverage publie au journal ce que le calque a rendu — les mêmes dénominateurs
 // que l'artefact, pour qu'un build se juge sans ouvrir le JSON.
-func logGroundWeaponCoverage(c *GroundWeaponCoverage) {
+func logGroundWeaponCoverage(ctx context.Context, c *GroundWeaponCoverage) {
 	if c == nil {
 		return
 	}
-	slog.Info("rejeu : socles d'arme au sol",
+	slog.InfoContext(ctx, "rejeu : socles d'arme au sol",
 		"balaye", c.Scanned, "ancres", c.Anchors, "acceptees", c.Accepted,
 		"retenues", c.Kept, "ecartees", c.Rejected, "objetsDObjectif", c.Objectives,
 		"lachees", c.Dropped, "apparues", c.Spawned, "auRepos", c.AtRest,
@@ -395,7 +396,7 @@ func logGroundWeaponCoverage(c *GroundWeaponCoverage) {
 	// LA VOIE `ti=37` A SA PROPRE LIGNE, et il le faut : ses dénominateurs sont ceux d'un AUTRE
 	// balayage. Les fondre dans la ligne ci-dessus aurait rendu illisible le seul rapport qui
 	// dit si la lecture a réussi — acceptées contre retenues par l'identité.
-	slog.Info("rejeu : socles de power-up",
+	slog.InfoContext(ctx, "rejeu : socles de power-up",
 		"balaye", c.PowerupScanned, "acceptees", c.PowerupAccepted,
 		"retenues", c.PowerupKept, "socles", c.PowerupPads)
 	// LE SILENCE QU'IL FAUT ROMPRE : des créations acceptées dont AUCUNE ne résout d'arme n'est
@@ -403,7 +404,7 @@ func logGroundWeaponCoverage(c *GroundWeaponCoverage) {
 	// non réinstallées, ou grammaire de l'état par défaut qui a bougé. Sans ce warn, un film BTB
 	// entier sortait avec zéro socle sans que rien ne le signale.
 	if c.Kept == 0 && c.Accepted > 0 {
-		slog.Warn("rejeu : identite ti=42 non resolue sur AUCUNE creation — largeurs MPP ?",
+		slog.WarnContext(ctx, "rejeu : identite ti=42 non resolue sur AUCUNE creation — largeurs MPP ?",
 			"acceptees", c.Accepted, "retenues", c.Kept, "ancres", c.Anchors)
 	}
 }

@@ -253,7 +253,7 @@ func derniereLigneDeDonnees(t *testing.T, chemin string) (rev, empreinte string)
 		t.Fatalf("golden %s illisible : %v — il est VERSIONNE, son absence est une erreur",
 			chemin, err)
 	}
-	for _, ligne := range strings.Split(strings.ReplaceAll(string(blob), "\r\n", "\n"), "\n") {
+	for ligne := range strings.SplitSeq(strings.ReplaceAll(string(blob), "\r\n", "\n"), "\n") {
 		if ligne == "" || strings.HasPrefix(ligne, "#") {
 			continue
 		}

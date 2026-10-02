@@ -1,5 +1,5 @@
 // Package service — synthesis_weapon_range_test.go : la section « Portée par arme » vue du
-// service (lot 4 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md).
+// service (lot 4 du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md).
 //
 // PÉRIMÈTRE : `loadWeaponRange` et son entourage — le port mocké, les dégradations, le régime
 // de journalisation. Les tests des DEUX FONCTIONS PURES qu'il appelle (`mergeWeaponSides` et
@@ -49,7 +49,7 @@ type mockWeaponRangeRepo struct {
 	labels    map[string]port.WeaponLabel
 	labelsErr error
 	// dims / dimsErr : la résolution clé d'arme -> class/role/family (lot 2 du plan
-	// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). Nil = registre muet, ce qui est un
+	// .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). Nil = registre muet, ce qui est un
 	// état réel (metadata non migrée) et non une panne.
 	dims    map[string]port.WeaponDimensions
 	dimsErr error

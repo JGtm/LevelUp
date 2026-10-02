@@ -103,7 +103,7 @@ func ModuleDe(dossier string) (Module, error) {
 
 // cheminDuModule lit la directive `module` d un `go.mod`.
 func cheminDuModule(gomod string) string {
-	for _, ligne := range strings.Split(strings.ReplaceAll(gomod, "\r\n", "\n"), "\n") {
+	for ligne := range strings.SplitSeq(strings.ReplaceAll(gomod, "\r\n", "\n"), "\n") {
 		if reste, ok := strings.CutPrefix(strings.TrimSpace(ligne), "module "); ok {
 			return strings.Trim(strings.TrimSpace(reste), `"`)
 		}

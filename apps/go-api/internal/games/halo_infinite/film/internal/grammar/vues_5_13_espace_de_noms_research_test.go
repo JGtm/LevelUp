@@ -131,7 +131,7 @@ func TestVues513EspaceDeNoms(t *testing.T) {
 		}
 	}
 	t.Logf("%d paquets delta marches", paquets)
-	for v := 0; v < 3; v++ {
+	for v := range 3 {
 		t.Logf("  vue de rang %d : %d marches, %d sans record, tags %s",
 			v, marchees[v], vides[v], v513Tags(tags[v]))
 	}

@@ -5,8 +5,9 @@ package replay
 // applique, et porte les fenetres d'entite que la liaison et le nommage des corps partagent.
 
 import (
+	"cmp"
 	"math"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
@@ -283,7 +284,11 @@ func fusionnerLesPresences(ivs []intervalleDePresence) []intervalleDePresence {
 	if len(ivs) < 2 {
 		return ivs
 	}
-	sort.Slice(ivs, func(i, j int) bool { return ivs[i].de < ivs[j].de })
+	// Tri total (J12.1, DT-9) : debut, puis fins — deux intervalles restes egaux sont identiques.
+	// La fusion y est insensible : des ex aequo de debut fondent toujours ensemble.
+	slices.SortFunc(ivs, func(x, y intervalleDePresence) int {
+		return cmp.Or(cmp.Compare(x.de, y.de), cmp.Compare(x.a, y.a), cmp.Compare(x.aMax, y.aMax))
+	})
 	out := []intervalleDePresence{ivs[0]}
 	for _, iv := range ivs[1:] {
 		dernier := &out[len(out)-1]

@@ -22,6 +22,7 @@ package replay
 //	go test -count=1 -run TestZoneEtatPhase2bTemoin -v -timeout 30m ./internal/games/halo_infinite/film/replay/
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -116,7 +117,7 @@ func p2bBuild(t *testing.T, dir, short string, quant *profile.MapQuantEntry, zon
 			origin = p.TimestampUS
 		}
 	}
-	return BuildFromPositions(short, title.DefaultSlug, pos, nil, opt), origin
+	return BuildFromPositions(context.Background(), short, title.DefaultSlug, pos, nil, opt), origin
 }
 
 // p2bLogCouverture publie `coverage.zones` tel que l'artefact le porte.

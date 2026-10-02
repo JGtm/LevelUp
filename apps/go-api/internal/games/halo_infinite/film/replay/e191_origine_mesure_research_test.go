@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // e191_origine_mesure_research_test.go — LOT 1.9.1 : LA MESURE AVANT DE CODER (le contexte).
@@ -44,6 +46,7 @@ package replay
 //	CGO_ENABLED=1 LEVELUP_REPO_ROOT=<parc> go run ./cmd/levelup replay-facts-export //	  --out internal/games/halo_infinite/film/replay/testdata/equivalence 0797ce72 4f77afc1
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -162,7 +165,7 @@ func e191FilmsDemandes() []e191Film {
 		return e191Films()
 	}
 	garde := map[string]bool{}
-	for _, id := range strings.Split(spec, ",") {
+	for id := range strings.SplitSeq(spec, ",") {
 		if id = strings.TrimSpace(id); id != "" {
 			garde[id] = true
 		}
@@ -288,7 +291,7 @@ func e191ViesDuRegistre(g *FilmFacts, sorted []grammar.BipedPosition) []lifeSpan
 	opt := g.options()
 	origin := sorted[0].TimestampUS
 	step := uint64(opt.frameIntervalMS()) * 1000
-	reg := BuildIdentityRegistry(IdentityInput{
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{
 		Positions: sorted, BipedCreations: g.BipedCreations,
 		Deaths: g.Deaths, PlayerIndices: g.PlayerIndices, FilmTable: g.FilmTable,
 		Bots: opt.Bots, Fire: fireRefs(g.Fire), RosterXUIDs: opt.RosterXUIDs,

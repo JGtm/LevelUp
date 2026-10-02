@@ -1,7 +1,9 @@
+//go:build research
+
 package replay
 
 // duels_ouverture_research_test.go — LA VALIDATION DU PROXY D'ENTAME (D5, item 2.5 du plan
-// `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`).
+// `.ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md`).
 //
 // # CE QUE CET INSTRUMENT TRANCHE
 //

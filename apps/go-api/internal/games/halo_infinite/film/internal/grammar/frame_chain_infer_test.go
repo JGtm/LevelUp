@@ -111,7 +111,7 @@ func TestChainNoFalseBindWhenUnconfirmed(t *testing.T) {
 	bw.deltaEmpty(101)
 	bw.deltaEmpty(102)
 	// Pad with 1-bits so the tail never reads as a flush (zero) end-of-frame.
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		bw.bit(1)
 	}
 

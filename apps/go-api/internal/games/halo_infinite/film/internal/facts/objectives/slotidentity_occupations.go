@@ -243,7 +243,7 @@ func seatOccupations(recs []types.StatRecord, thread map[string][]int,
 				continue
 			}
 			if deaths == nil {
-				deaths = rawSeriesByRound(recs, DeathsComponent.key(), false, nil)
+				deaths = rawSeriesByRound(recs, DeathsComponent().key(), false, nil)
 			}
 			occ := occupationsBetween(changes)
 			for i := range occ {
@@ -277,7 +277,7 @@ func occupationDeaths(raw []types.ScorePoint, o Occupation) []int {
 		return nil
 	}
 	parInstant(pts)
-	kept := boundedSeries(longestRun(pts, DeathsComponent.Strict))
+	kept := boundedSeries(longestRun(pts, DeathsComponent().Strict))
 	return instantsDesMorts(map[int][]types.ScorePoint{0: kept})[0]
 }
 

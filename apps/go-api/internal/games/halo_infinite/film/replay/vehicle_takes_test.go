@@ -15,8 +15,6 @@ const (
 	tkNC = "300"
 )
 
-func tkInt(v int) *int { return &v }
-
 // tkDoc : un document au schema courant, calque balaye, pas d image de 100 ms.
 func tkDoc(vehicles ...VehicleTrack) *ReplayDocument {
 	return &ReplayDocument{
@@ -24,9 +22,9 @@ func tkDoc(vehicles ...VehicleTrack) *ReplayDocument {
 		FrameIntervalMS: 100,
 		Coverage:        &Coverage{Vehicles: &VehicleCoverage{Scanned: true}},
 		Roster: []RosterEntry{
-			{XUID: tkA1, Team: tkInt(0)}, {XUID: tkA2, Team: tkInt(0)},
-			{XUID: tkB1, Team: tkInt(1)}, {XUID: tkB2, Team: tkInt(1)},
-			{XUID: tkNC, Team: tkInt(-1)}, {XUID: "", Team: tkInt(1)}, // un bot : pas de xuid
+			{XUID: tkA1, Team: new(0)}, {XUID: tkA2, Team: new(0)},
+			{XUID: tkB1, Team: new(1)}, {XUID: tkB2, Team: new(1)},
+			{XUID: tkNC, Team: new(-1)}, {XUID: "", Team: new(1)}, // un bot : pas de xuid
 		},
 		Vehicles: vehicles,
 	}
@@ -95,8 +93,8 @@ func TestVehicleTakes_MemeCampSuccessifNeFaitQuUnePrise(t *testing.T) {
 }
 
 func TestVehicleTakes_SiegesSimultanesLeConducteurEstCredite(t *testing.T) {
-	passager := VehicleRide{XUID: tkA2, T0: 10, T1: 20, Src: VehicleRideSrcFilm, Seat: tkInt(1)}
-	conducteur := VehicleRide{XUID: tkA1, T0: 10, T1: 20, Src: VehicleRideSrcFilm, Seat: tkInt(0)}
+	passager := VehicleRide{XUID: tkA2, T0: 10, T1: 20, Src: VehicleRideSrcFilm, Seat: new(1)}
+	conducteur := VehicleRide{XUID: tkA1, T0: 10, T1: 20, Src: VehicleRideSrcFilm, Seat: new(0)}
 	inconnu := VehicleRide{XUID: tkB2, T0: 10, T1: 20, Src: VehicleRideSrcFilm} // sans siege : apres
 	// Le passager puis le siege inconnu sont LISTES AVANT le conducteur : l ordre du document ne decide pas.
 	rep := ProjectVehicleTakes(tkDoc(tkLife(1, "warthog", passager, inconnu, conducteur)))

@@ -17,6 +17,7 @@ package replay
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -109,7 +110,8 @@ func v6EtatsEpisodes(
 func v6EtatsDistances(
 	eps []vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition, in vehicleRideInputs,
 ) string {
-	s := "distances (m) au vehicule le plus proche — debut / fin / temoin+60s :"
+	var s strings.Builder
+	s.WriteString("distances (m) au vehicule le plus proche — debut / fin / temoin+60s :")
 	for _, ep := range eps {
 		pts := bySlot[ep.slot]
 		a0, h0 := vehicleAnchorAt(pts, ep.startUS, false)
@@ -120,12 +122,12 @@ func v6EtatsDistances(
 		}
 		b := a0
 		b.TimestampUS += v4TemoinUS
-		s += "\n     slot " + itoa32(ep.slot) + " " + kind +
+		s.WriteString("\n     slot " + itoa32(ep.slot) + " " + kind +
 			" · debut " + v6Dist(a0, h0, in) +
 			" · fin " + v6Dist(a1, h1 && !ep.openEnd, in) +
-			" · temoin " + v6Dist(b, h0, in)
+			" · temoin " + v6Dist(b, h0, in))
 	}
-	return s
+	return s.String()
 }
 
 // v6RayonsM : les rayons compares pour l ANCRE D EVENEMENT. 1,5 m est la production du trou.
@@ -137,7 +139,8 @@ var v6RayonsM = []float64{1.5, 2, 3, 5, 8, 12}
 func v6EtatsRayons(
 	eps []vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition, in vehicleRideInputs,
 ) string {
-	s := "rattachement par rayon (ancre d evenement) :"
+	var s strings.Builder
+	s.WriteString("rattachement par rayon (ancre d evenement) :")
 	for _, r := range v6RayonsM {
 		ok, amb, temoin := 0, 0, 0
 		for _, ep := range eps {
@@ -160,10 +163,10 @@ func v6EtatsRayons(
 				temoin++
 			}
 		}
-		s += fmt.Sprintf("\n     R=%.1f m : rattaches %d/%d · ambigus %d · TEMOIN+60s %d",
-			r, ok, len(eps), amb, temoin)
+		s.WriteString(fmt.Sprintf("\n     R=%.1f m : rattaches %d/%d · ambigus %d · TEMOIN+60s %d",
+			r, ok, len(eps), amb, temoin))
 	}
-	return s
+	return s.String()
 }
 
 // v6CountWithin compte les vehicules FRAIS sous le rayon a l instant de l echantillon.

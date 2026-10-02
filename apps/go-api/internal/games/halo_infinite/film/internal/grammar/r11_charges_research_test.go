@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r11_charges_research_test.go — LES CHARGES CONSOMMEES, PAR EQUIPEMENT NOMME.
@@ -34,7 +36,7 @@ package grammar
 //	CGO_ENABLED=0 R9_FILMS=<repo>/data/cache/film_chunks \
 //	  R9_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
 //	  R8_BOUNDS=<wt>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R11_IDS=1cd3848a,72b0a25e go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  R11_IDS=1cd3848a,72b0a25e go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR11Charges$' -count=1 -timeout 120m -v
 
 import (
@@ -157,7 +159,7 @@ func r11LogArmed(t *testing.T, s r11Setup, rd r11Reads) {
 			continue
 		}
 		armed++
-		for k := 0; k < AbilityEnergyCharges; k++ {
+		for k := range AbilityEnergyCharges {
 			if e.Ch[k] != AbilityEnergyUnarmed {
 				kHist[k]++
 			}
@@ -272,7 +274,7 @@ func r11Uses(s r11Setup, rd r11Reads, segs []r11Seg) []r11Use {
 		sort.Slice(es, func(a, b int) bool { return es[a].TSUS < es[b].TSUS })
 		cur := [AbilityEnergyCharges]int{r11FullNibble, r11FullNibble, r11FullNibble}
 		for _, e := range es {
-			for k := 0; k < AbilityEnergyCharges; k++ {
+			for k := range AbilityEnergyCharges {
 				if e.Ch[k] == AbilityEnergyUnarmed {
 					cur[k] = r11FullNibble
 					continue
@@ -379,7 +381,7 @@ func r11CountEnergy(r *r11Row, g r11Seg, energy []r11EnergyRead) {
 			continue
 		}
 		r.Reads++
-		for k := 0; k < AbilityEnergyCharges; k++ {
+		for k := range AbilityEnergyCharges {
 			if e.Ch[k] != AbilityEnergyUnarmed {
 				r.KHist[k]++
 			}

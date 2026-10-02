@@ -154,6 +154,6 @@ type PostSyncResult struct {
 	// Propagée vers SyncResult.Errors par l'appelant (engine.go) pour que
 	// Status() renvoie "partial_success" au lieu de mentir avec "success"
 	// alors qu'une étape critique a invalidé une DB.
-	// Cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md Phase 5 "Status sync honnête".
+	// Cf. .ai/archive/V7/PLAN_LUSR_ART_HOME_CRASH.md Phase 5 "Status sync honnête".
 	FatalErrors []string `json:"fatal_errors,omitempty"`
 }

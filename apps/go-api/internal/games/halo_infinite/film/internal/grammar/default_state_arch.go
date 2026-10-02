@@ -192,7 +192,7 @@ func consumeDefaultStateTI13(br *Lecteur) {
 		lireVariantDePropriete(br, true) // mode A, index -1
 		return
 	}
-	for i := 0; i < managedPropertyPlayerCount; i++ {
+	for range managedPropertyPlayerCount {
 		lireVariantDePropriete(br, false) // mode B, index i
 	}
 }

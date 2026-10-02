@@ -54,7 +54,7 @@ package grammar
 //
 // REGIME : garde ASSAUT_CACHE. Aucune base, aucun reseau, sentinelle memoire armee, un seul
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run NavpointTi12Meche -v -timeout 60m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run NavpointTi12Meche -v -timeout 60m
 
 import (
 	"fmt"
@@ -336,7 +336,7 @@ func mpVerdict(t *testing.T, titre string, films []*mpFilm, garde func(string, i
 	}
 	rng := rand.New(rand.NewSource(tpGraine))
 	pleins, aussiBien := 0, 0
-	for i := 0; i < tpTirages; i++ {
+	for range tpTirages {
 		c, v := mpStatNulle(films, garde, rng)
 		if c == total {
 			pleins++

@@ -133,7 +133,7 @@ type ExplorerPlayerQueryResponse struct {
 }
 
 // ExplorerLiveSectionStatus code l'état d'une section live de l'encart "Profil
-// joueur cible" (Lot A3, .ai/V7.1/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md) —
+// joueur cible" (Lot A3, .ai/archive/V7.1/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md) —
 // pourquoi une section est vide ou partielle, jamais silencieuse :
 //
 //   - "ok"            : donnée servie normalement (fetch live réussi, ou calcul

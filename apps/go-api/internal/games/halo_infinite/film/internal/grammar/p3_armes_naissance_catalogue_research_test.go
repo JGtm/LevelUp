@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -91,13 +92,13 @@ func p3LireParCatalogue(t *testing.T, tc t516Temoin, vies []*p3Vie, origine int6
 		cles = append(cles, c)
 	}
 	sort.Ints(cles)
-	var s string
+	var s strings.Builder
 	for _, c := range cles {
-		s += fmt.Sprintf(" +%d:%d", c, rel[c])
+		s.WriteString(fmt.Sprintf(" +%d:%d", c, rel[c]))
 	}
 	t.Logf("== P3.8 LECTURE PAR CATALOGUE (%d familles au catalogue) : %d/%d records lus ; position de la "+
 		"porte du 1er emplacement / en-tete :%s ; valeurs presentes HORS catalogue (exclues) %v", len(cat), lus,
-		records, s, p3Hexes(horsCat))
+		records, s.String(), p3Hexes(horsCat))
 }
 
 // p3ScanDebut / p3ScanFin bornent la lecture par catalogue, relativement a l en-tete du record NEW.
@@ -140,7 +141,7 @@ func p3Enchainer(b []byte, o, k int, cfg FrameConfig, cat map[uint32]bool) ([]p3
 	br.SetBitPos(o)
 	var out []p3Arme
 	dedans := 0
-	for i := 0; i < k; i++ {
+	for i := range k {
 		debut := br.BitPos()
 		if debut+1 > len(b)*8 {
 			return nil, 0
@@ -175,9 +176,9 @@ func p3Enchainer(b []byte, o, k int, cfg FrameConfig, cat map[uint32]bool) ([]p3
 
 // p3Hexes formate un compte de valeurs.
 func p3Hexes(m map[uint32]int) string {
-	s := ""
+	var s strings.Builder
 	for k, v := range m {
-		s += fmt.Sprintf(" %08X:%d", k, v)
+		s.WriteString(fmt.Sprintf(" %08X:%d", k, v))
 	}
-	return "[" + s + " ]"
+	return "[" + s.String() + " ]"
 }

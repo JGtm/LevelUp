@@ -95,7 +95,7 @@ func (r *runner) measure(ctx context.Context, m eligible) result {
 	identified := identifyZoneActions(lines, film)
 	res.identified = len(identified)
 
-	doc, err := replay.BuildFromFilm(m.short, r.slug, film,
+	doc, err := replay.BuildFromFilm(ctx, m.short, r.slug, film,
 		replay.Options{MapQuant: m.quant, Objectives: identified})
 	if err != nil {
 		res.err = err

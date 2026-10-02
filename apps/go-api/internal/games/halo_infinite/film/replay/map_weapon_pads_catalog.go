@@ -24,6 +24,7 @@ package replay
 // résultat VERSIONNÉ, clé = map_id, jointure par map_id SEUL, rejeu 100 % hors ligne.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -164,7 +165,7 @@ func LoadMapWeaponPads(path string) (*MapWeaponPadsCatalog, error) {
 // Le catalogue VERSIONNÉ, lui, reste obligatoire : son absence est une installation incomplète,
 // et l'erreur remonte à l'appelant comme avant (les deux appelants la dégradent, chacun avec sa
 // trace).
-func LoadMapWeaponPadsMerged(versionne, overlay string) (*MapWeaponPadsCatalog, error) {
+func LoadMapWeaponPadsMerged(ctx context.Context, versionne, overlay string) (*MapWeaponPadsCatalog, error) {
 	cat, err := LoadMapWeaponPads(versionne)
 	if err != nil {
 		return nil, err
@@ -174,7 +175,7 @@ func LoadMapWeaponPadsMerged(versionne, overlay string) (*MapWeaponPadsCatalog, 
 	case errors.Is(err, fs.ErrNotExist):
 		return cat, nil
 	case err != nil:
-		slog.Warn("catalogue des socles : overlay illisible — seules les cartes versionnees "+
+		slog.WarnContext(ctx, "catalogue des socles : overlay illisible — seules les cartes versionnees "+
 			"sont servies ; le rattrapage au fetch de film les rajoutera",
 			"err", err, "overlay", overlay)
 		return cat, nil
@@ -193,7 +194,7 @@ func LoadMapWeaponPadsMerged(versionne, overlay string) (*MapWeaponPadsCatalog, 
 		ajoutees++
 	}
 	if ajoutees > 0 {
-		slog.Debug("catalogue des socles : cartes rattrapees superposees au catalogue versionne",
+		slog.DebugContext(ctx, "catalogue des socles : cartes rattrapees superposees au catalogue versionne",
 			"ajoutees", ajoutees, "versionnees", len(cat.Maps)-ajoutees, "overlay", overlay)
 	}
 	return cat, nil

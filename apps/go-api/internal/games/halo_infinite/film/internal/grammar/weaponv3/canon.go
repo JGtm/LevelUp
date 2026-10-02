@@ -20,10 +20,25 @@ package weaponv3
 // liste maitre `games/weapons/filmshell`), PAS d'une hand-list qui dérive. Toute arme ajoutée à
 // l'enum v2 (sandbox/Fiesta/grenades) est ainsi automatiquement connue du canon.
 
-import "levelup/go-api/internal/games/weapons/filmshell"
+import (
+	"maps"
 
-// KnownWeaponHigh32 — map high-32 → nom canonique, dérivée de l'enum v2.
-var KnownWeaponHigh32 = buildKnownWeaponHigh32()
+	"levelup/go-api/internal/games/weapons/filmshell"
+)
+
+// knownWeaponHigh32 — map high-32 → nom canonique, dérivée de l enum v2. NON exportée (J12.4 résidu) :
+// l extérieur la lit par [KnownWeaponHigh32Lookup] (une entrée) ou [KnownWeaponHigh32Copie].
+var knownWeaponHigh32 = buildKnownWeaponHigh32()
+
+// KnownWeaponHigh32Copie rend une COPIE de la table : qu aucun importeur ne tienne la table
+// modifiable elle-meme.
+func KnownWeaponHigh32Copie() map[uint32]string { return maps.Clone(knownWeaponHigh32) }
+
+// KnownWeaponHigh32Lookup rend le nom canonique d un high-32 et s il est connu.
+func KnownWeaponHigh32Lookup(high uint32) (string, bool) {
+	nom, ok := knownWeaponHigh32[high]
+	return nom, ok
+}
 
 // buildKnownWeaponHigh32 dérive le set high-32 → nom depuis filmshell.WeaponIDToName.
 // Le fold par high-32 est DÉTERMINISTE (indépendant de l'ordre d'itération de la map) :
@@ -60,7 +75,7 @@ const commonWeaponSuffix uint32 = 0x42c9679f
 //     FormulaA (object-ids §C) n'a PAS ce suffixe → toujours rejeté.
 func CanonWeaponID(id uint64) (high uint32, known bool) {
 	high = uint32(id >> 32)
-	if _, ok := KnownWeaponHigh32[high]; ok {
+	if _, ok := knownWeaponHigh32[high]; ok {
 		return high, true
 	}
 	if uint32(id&0xffffffff) == commonWeaponSuffix {
@@ -71,5 +86,5 @@ func CanonWeaponID(id uint64) (high uint32, known bool) {
 
 // WeaponName retourne le nom canonique d'un high-32, ou "" si inconnu.
 func WeaponName(high uint32) string {
-	return KnownWeaponHigh32[high]
+	return knownWeaponHigh32[high]
 }

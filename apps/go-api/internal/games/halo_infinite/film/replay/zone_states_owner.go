@@ -19,6 +19,8 @@ package replay
 //	                  la VALEUR contre l'equipe du capteur, que le vote n'a pas servi a choisir.
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -248,15 +250,8 @@ func zoneOwnerCandidates(ser zoneSeries, pairs []zonePair, teams map[string]int,
 // LES EGALITES SE TRANCHENT PAR L'ORDRE (zone croissante, puis slot croissant), jamais au
 // hasard : deux cuissons du meme film doivent rendre le meme artefact.
 func electZoneOwners(cands []zoneOwnerCandidate) map[int]uint32 {
-	sort.SliceStable(cands, func(i, j int) bool {
-		switch {
-		case cands[i].score != cands[j].score:
-			return cands[i].score > cands[j].score
-		case cands[i].ref != cands[j].ref:
-			return cands[i].ref < cands[j].ref
-		default:
-			return cands[i].slot < cands[j].slot
-		}
+	slices.SortStableFunc(cands, func(a, b zoneOwnerCandidate) int {
+		return cmp.Or(cmp.Compare(b.score, a.score), cmp.Compare(a.ref, b.ref), cmp.Compare(a.slot, b.slot))
 	})
 	out := map[int]uint32{}
 	held := map[uint32]bool{}

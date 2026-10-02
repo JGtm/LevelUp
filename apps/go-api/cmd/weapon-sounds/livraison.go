@@ -5,7 +5,7 @@ package main
 //
 // PORTAGE FIDELE de `_outils/livraison.py` (archive Desktop du chantier sons-armes, HORS
 // DEPOT, lecture seule), au meme titre que pck_dump.go a ferme le maillon `akpk_unpack.py`
-// (constat H2 du registre `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`). MEME ALGORITHME,
+// (constat H2 du registre `.ai/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`). MEME ALGORITHME,
 // MEMES STRUCTURES DE DONNEES (lot1.json, lot2.json, manifeste.json, coups.json,
 // votes-final.json, produits par les etapes 2/3/5/6 de la recette — hors depot, non portes
 // par ce lot), MEME GENERATEUR PSEUDO-ALEATOIRE (livraison_mt19937.go, verifie bit a bit

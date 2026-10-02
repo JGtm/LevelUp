@@ -45,7 +45,8 @@ package grammar
 // `types/grammar_mouvement.go` porte les chiffres.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -382,15 +383,9 @@ func (sc *movementStateScanner) publier() {
 // partiel laisserait l ordre des lectures d un meme paquet dependre du parcours, donc le
 // document dependre d un detail de balayage.
 func sortMovementStates(out []types.MovementStateRead) {
-	sort.SliceStable(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		if a.TimestampUS != b.TimestampUS {
-			return a.TimestampUS < b.TimestampUS
-		}
-		if a.Slot != b.Slot {
-			return a.Slot < b.Slot
-		}
-		return a.Kind < b.Kind
+	slices.SortStableFunc(out, func(a, b types.MovementStateRead) int {
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Slot, b.Slot),
+			cmp.Compare(a.Kind, b.Kind))
 	})
 }
 

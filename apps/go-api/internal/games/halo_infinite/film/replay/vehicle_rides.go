@@ -39,6 +39,8 @@ package replay
 // PUR : aucune I/O, aucune lecture de film. Les entrees sont deja decodees.
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -221,10 +223,7 @@ func vehicleRideOf(
 		endUS = ev.TimestampUS
 	}
 	r.T0 = in.clock.frame(startUS)
-	r.T1 = in.clock.frame(endUS)
-	if r.T1 < r.T0 {
-		r.T1 = r.T0
-	}
+	r.T1 = max(in.clock.frame(endUS), r.T0)
 	// LA VISEE SE LIT SUR LES BORNES AFFINEES, pas sur celles du trou : quand un evenement a
 	// resserre une borne, la serie doit suivre le meme intervalle que `T0`/`T1`.
 	r.Aim = vehicleRideAimOf(in.aimBySlot[g.slot], startUS, endUS, in.clock)
@@ -280,11 +279,11 @@ func vehicleGaps(bipeds []grammar.BipedPosition) []vehicleGap {
 	for s := range bySlot {
 		slots = append(slots, s)
 	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	slices.Sort(slots)
 	var out []vehicleGap
 	for _, s := range slots {
 		ech := bySlot[s]
-		sort.SliceStable(ech, func(i, j int) bool { return ech[i].TimestampUS < ech[j].TimestampUS })
+		slices.SortStableFunc(ech, func(a, b grammar.BipedPosition) int { return cmp.Compare(a.TimestampUS, b.TimestampUS) })
 		for i := 1; i < len(ech); i++ {
 			if (ech[i].TimestampUS-ech[i-1].TimestampUS)/1000 < vehicleGapMinMS {
 				continue
@@ -317,7 +316,7 @@ func vehicleNearestWithin(
 	for s := range vehBySlot {
 		slots = append(slots, s)
 	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	slices.Sort(slots)
 	best, found, bestD := uint32(0), false, 0.0
 	for _, s := range slots {
 		p, gap, ok := vehicleSampleNear(vehBySlot[s], e.TimestampUS)
@@ -389,7 +388,7 @@ func vehicleEventsByOccupant(
 	for _, m := range []map[uint32][]types.VehicleEvent{boards, exits} {
 		for s := range m {
 			v := m[s]
-			sort.SliceStable(v, func(i, j int) bool { return v[i].TimestampUS < v[j].TimestampUS })
+			slices.SortStableFunc(v, func(a, b types.VehicleEvent) int { return cmp.Compare(a.TimestampUS, b.TimestampUS) })
 		}
 	}
 	return boards, exits

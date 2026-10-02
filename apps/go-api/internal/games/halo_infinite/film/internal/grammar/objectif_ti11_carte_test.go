@@ -33,7 +33,7 @@ package grammar
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Carte -v -timeout 40m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Carte -v -timeout 40m
 
 import (
 	"fmt"
@@ -112,7 +112,7 @@ func TestObjectifTi11Carte(t *testing.T) {
 	suivies, obs := 0, 0
 	for _, v := range vies {
 		obs += v.n
-		for b := 0; b < ti11CorpsBits; b++ {
+		for b := range ti11CorpsBits {
 			if v.corps.bit(b) == 1 {
 				unSur[b]++
 			}
@@ -121,7 +121,7 @@ func TestObjectifTi11Carte(t *testing.T) {
 			continue
 		}
 		suivies++
-		for b := 0; b < ti11CorpsBits; b++ {
+		for b := range ti11CorpsBits {
 			if v.ou.bit(b) != v.et.bit(b) {
 				varie[b]++
 			}
@@ -174,7 +174,7 @@ func ti11CartePayload(pay []byte, film string, vies map[string]*ti11Vie) int {
 // ti11CarteLigne rend une ligne de 104 pourcentages, groupes par octet pour rester lisible.
 func ti11CarteLigne(v []int, total int) string {
 	var sb strings.Builder
-	for b := 0; b < len(v); b++ {
+	for b := range v {
 		if b > 0 && b%8 == 0 {
 			sb.WriteString(" | ")
 		}

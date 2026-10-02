@@ -200,7 +200,7 @@ func dropTeleportsReference(pos []BipedPosition, maxSpeed float64) []BipedPositi
 // sur film témoin (TestP1InvarianceSansTete117, 188 979 échantillons réels).
 func TestDropTeleportsInvarianceSansEvenement(t *testing.T) {
 	var in []BipedPosition
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		in = append(in, bp(513, i*16, float32(i)*0.1, 0))
 		if i%17 == 0 {
 			in = append(in, bp(513, i*16+8, float32(100+i), 0)) // aberrations à écarter

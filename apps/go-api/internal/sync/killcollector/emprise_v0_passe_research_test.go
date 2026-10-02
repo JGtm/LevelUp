@@ -1,3 +1,5 @@
+//go:build research
+
 package killcollector
 
 // emprise_v0_passe_research_test.go — LOT V0 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`,
@@ -54,23 +56,13 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/sync/haloclient"
-	"levelup/go-api/internal/testutil"
 )
-
-// v0Env porte les entrees du protocole, lues dans l'environnement.
-type v0Env struct {
-	films        []string
-	dir, db, cac string
-	tours        int
-}
 
 // v0Garde lit l'environnement et SAUTE proprement quand une entree manque.
 func v0Garde(t *testing.T) v0Env {
@@ -79,7 +71,7 @@ func v0Garde(t *testing.T) v0Env {
 		dir: os.Getenv("EMPRISE_V0_DIR"), db: os.Getenv("EMPRISE_V0_DB"),
 		cac: os.Getenv("EMPRISE_V0_CACHE"), tours: 3,
 	}
-	for _, f := range strings.Split(os.Getenv("EMPRISE_V0_FILMS"), ",") {
+	for f := range strings.SplitSeq(os.Getenv("EMPRISE_V0_FILMS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			e.films = append(e.films, f)
 		}
@@ -103,11 +95,6 @@ func v0OuvrirCopie(t *testing.T, chemin string) *sql.DB {
 	t.Cleanup(func() { _ = db.Close() })
 	return db
 }
-
-// v0Lecteur adapte un handle au port de lecture partagee du resolveur de carte.
-type v0Lecteur struct{ db *sql.DB }
-
-func (l v0Lecteur) Get(context.Context) (*sql.DB, func(), error) { return l.db, func() {}, nil }
 
 // v0Identite : ce que la base dit d'un match, pose pour l'instrument de cuisson.
 type v0Identite struct {
@@ -234,33 +221,6 @@ func v0BaseTemporaire(t *testing.T) *sql.DB {
 	return db
 }
 
-// v0Collecteur cable le collecteur comme la production : les trois capabilities du titre
-// (`capabilities.toml` : film.kill_source, film.weapon_shots, film.kill_positions), le cache
-// disque comme source de films, le roster par defaut (jointure par match) sur la copie, la
-// capture de positions par `CaptureDepuisCatalogue` et le resolveur de carte de production.
-// `ConfigureFilmAccuracy` n'est PAS appele : aucun appelant de production ne l'appelle.
-func v0Collecteur(t *testing.T, e v0Env, lecture, ecriture *sql.DB) *KillSourceCollector {
-	t.Helper()
-	repoRoot, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
-	deps, err := CaptureDepuisCatalogue(repoRoot, title.DefaultSlug,
-		duckdb.NewReplayMapRepo(v0Lecteur{lecture}, nil))
-	if err != nil {
-		t.Fatalf("capture : %v", err)
-	}
-	caps := games.CapabilityMap{
-		games.CapFilmKillSource:    games.CapSupported,
-		games.CapFilmWeaponShots:   games.CapSupported,
-		games.CapFilmKillPositions: games.CapSupported,
-	}
-	return NewKillSourceCollector(NewLocalCacheFilms(haloclient.NewLocalFilmCache(e.cac)),
-		NewSharedRoster(lecture), func(context.Context) (*sql.DB, func(), error) {
-			return ecriture, func() {}, nil
-		}, caps, 0).AvecCapture(deps)
-}
-
 // v0Mediane rend la mediane d'une serie (copie triee).
 func v0Mediane(v []float64) float64 {
 	if len(v) == 0 {
@@ -366,12 +326,12 @@ func v0Instrumenter(t *testing.T, ctx context.Context, col *KillSourceCollector,
 	if err != nil {
 		t.Fatalf("%s : roster : %v", p.MatchID, err)
 	}
-	batch := BuildKillSourceBatch(p.MatchID, res, ids)
+	batch := BuildKillSourceBatch(ctx, p.MatchID, res, ids)
 	entry, err := col.resolveMapBounds(ctx, p.MatchID)
 	if err != nil {
 		t.Fatalf("%s : carte : %v", p.MatchID, err)
 	}
-	_, mat, err := buildPositionRows(film, res, entry, ids, killRefsFromDeaths(batch.Deaths), p.MatchID)
+	_, mat, err := buildPositionRows(ctx, film, res, entry, ids, killRefsFromDeaths(batch.Deaths), p.MatchID)
 	if err != nil {
 		t.Fatalf("%s : positions : %v", p.MatchID, err)
 	}

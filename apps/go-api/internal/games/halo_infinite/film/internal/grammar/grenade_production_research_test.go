@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // grenade_production_research_test.go — CE QUE LE CHEMIN DE PRODUCTION LIT, FILM PAR FILM.
@@ -37,7 +39,7 @@ func TestGrenadesDeProduction(t *testing.T) {
 	if racine == "" || ids == "" {
 		t.Skipf("instrument de mesure : definir %s et %s", grenProdRootEnv, grenProdIDsEnv)
 	}
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			continue
@@ -47,7 +49,7 @@ func TestGrenadesDeProduction(t *testing.T) {
 			t.Errorf("%s : %v", id, err)
 			continue
 		}
-		var parRang [len(GrenadeTypeIDsByRank)]int
+		var parRang [GrenadeRankCount]int
 		indexMax, sansRang := -1, 0
 		for _, g := range throws {
 			rang, connu := g.Rank()

@@ -30,12 +30,13 @@ package grammar
 //
 // LECTURE SEULE, sans garde d environnement (bobines versionnees).
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191cEtatParDefaut$' -v -count=1
+//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191cEtatParDefaut$' -v -count=1
 
 import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -146,20 +147,20 @@ func e191cTopLargeurs(m map[int]int) string {
 		}
 		return l[i].w < l[j].w
 	})
-	out := ""
+	var out strings.Builder
 	for i, e := range l {
 		if i >= 5 {
 			break
 		}
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += e191cPaire(e.w, e.n)
+		out.WriteString(e191cPaire(e.w, e.n))
 	}
-	if out == "" {
+	if out.String() == "" {
 		return "(aucune)"
 	}
-	return out
+	return out.String()
 }
 
 // e191cPaire formate une paire largeur/compte.

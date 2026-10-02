@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_dom1_test.go — INSTRUMENT (lot V7) : LA REFERENCE 0, LUE COMME UNE UNITE.

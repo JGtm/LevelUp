@@ -1,3 +1,5 @@
+//go:build research
+
 package mapvar
 
 // socles_candidats_test.go — TOUS LES SOCLES DE LA CARTE, Y COMPRIS CEUX QUE LE FILM NE
@@ -174,7 +176,7 @@ func TestSoclesObjetBrut(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s : root[3] absent", nom)
 	}
-	for _, brut := range strings.Split(idx, ",") {
+	for brut := range strings.SplitSeq(idx, ",") {
 		i, err := strconv.Atoi(strings.TrimSpace(brut))
 		if err != nil {
 			t.Fatalf("%s: %q illisible: %v", soclesIdxEnv, brut, err)

@@ -30,6 +30,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"log/slog"
@@ -51,6 +52,8 @@ import (
 const outilNom = "replay-build"
 
 func main() {
+	// LE CONTEXTE DE L OUTIL NAIT ICI, ET NULLE PART AILLEURS (lot J12.3).
+	ctx := context.Background()
 	titleFlag := flag.String("title", title.DefaultSlug, "slug du titre")
 	interval := flag.Int("interval", 0, "pas de temps du rejeu, en ms (0 = défaut)")
 	geomDir := flag.String("geometry", "",
@@ -70,14 +73,15 @@ func main() {
 	debut := time.Now()
 	args := flag.Args()
 	if len(args) < 1 || *mapName == "" {
-		slog.Error("usage: replay-build --map <carte> [--title slug] [--interval MS] [--geometry DIR] [--facts FICHIER.json] [--cpuprofile F] [--memprofile F] <matchId> [filmDir] (les options précèdent le matchId)")
+		slog.ErrorContext(ctx, "usage: replay-build --map <carte> [--title slug] [--interval MS] [--geometry DIR] "+
+			"[--facts FICHIER.json] [--cpuprofile F] [--memprofile F] <matchId> [filmDir] (les options précèdent le matchId)")
 		os.Exit(2)
 	}
 	matchID := args[0]
 
 	repoRoot, err := title.FindRepoRoot()
 	if err != nil {
-		slog.Error("racine repo", "err", err)
+		slog.ErrorContext(ctx, "racine repo", "err", err)
 		os.Exit(1)
 	}
 	// LE JOURNAL EST INSTALLÉ ICI, ET IL NE L'ÉTAIT PAS DU TOUT : sans handler, ce binaire
@@ -85,14 +89,14 @@ func main() {
 	// cf. games/halo_infinite/film/replay/observe.go) étaient donc PERDUES, et rien n'atterrissait dans logs/.
 	defer logging.InstallCLILevel(repoRoot, logging.ConsoleLevelFromEnv())()
 
-	builder, err := replaybuild.NewBuilder(repoRoot, *titleFlag)
+	builder, err := replaybuild.NewBuilder(ctx, repoRoot, *titleFlag)
 	if err != nil {
-		slog.Error("préparation du builder", "err", err, "title", *titleFlag)
+		slog.ErrorContext(ctx, "préparation du builder", "err", err, "title", *titleFlag)
 		os.Exit(1)
 	}
 	builder.WithFrameInterval(*interval)
 	if *geomDir != "" {
-		builder.WithGeometryDir(*geomDir)
+		builder.WithGeometryDir(ctx, *geomDir)
 	}
 
 	// La disposition du cache film n'est déclarée que dans filmcache (garde-rail).
@@ -107,22 +111,22 @@ func main() {
 	// profil n'a pas demarre : l'ordre d'armement (verrou, priorite, sentinelle) reste intact,
 	// et le profil demarre APRES, comme avant.
 	arreterProfilCPU := func() {}
-	defer armerProtections(cacheRoot, matchID, *memGiB, func() { arreterProfilCPU() })()
+	defer armerProtections(ctx, cacheRoot, matchID, *memGiB, func() { arreterProfilCPU() })()
 
-	arreterProfilCPU = demarrerProfilCPU(*cpuProfile)
-	out, err := builder.BuildMatch(matchID, []string{*mapName}, filmDir, loadFacts(*factsPath, matchID))
+	arreterProfilCPU = demarrerProfilCPU(ctx, *cpuProfile)
+	out, err := builder.BuildMatch(ctx, matchID, []string{*mapName}, filmDir, loadFacts(ctx, *factsPath, matchID))
 	// LE PROFIL SE FERME AVANT TOUT `os.Exit` : un fichier de profil non fermé est illisible, et
 	// `os.Exit` ne joue aucun `defer`.
 	arreterProfilCPU()
 	if err != nil {
-		slog.Error("construction de l'artefact", "err", err, "filmDir", filmDir, "match", matchID)
+		slog.ErrorContext(ctx, "construction de l'artefact", "err", err, "filmDir", filmDir, "match", matchID)
 		os.Exit(1)
 	}
-	ecrireProfilTas(*memProfile)
-	slog.Info("artefact rejeu écrit",
+	ecrireProfilTas(ctx, *memProfile)
+	slog.InfoContext(ctx, "artefact rejeu écrit",
 		"path", out.ArtifactPath, "tracks", out.Tracks, "module", out.Module,
 		"bytes", out.Bytes, "match", matchID, "title", *titleFlag)
-	slog.Info("cuisson terminee", "match", matchID, "duration", time.Since(debut))
+	slog.InfoContext(ctx, "cuisson terminee", "match", matchID, "duration", time.Since(debut))
 }
 
 // armerProtections arme LES TROIS PROTECTIONS et rend leur relâche, à `defer` chez l'appelant.
@@ -147,15 +151,15 @@ func main() {
 // `arreterProfil` est la fermeture du profil CPU, jouée AVANT `os.Exit` quand la sentinelle
 // tranche : `os.Exit` ne joue aucun `defer`, et un fichier de profil non fermé est illisible —
 // c'est précisément sur un film qui explose qu'on veut pouvoir le lire.
-func armerProtections(cacheRoot, matchID string, memGiB int, arreterProfil func()) func() {
+func armerProtections(ctx context.Context, cacheRoot, matchID string, memGiB int, arreterProfil func()) func() {
 	lock, err := filmproc.AcquireSolo(cacheRoot, outilNom, matchID)
 	if err != nil {
-		slog.Error("décodage refusé", "err", err)
+		slog.ErrorContext(ctx, "décodage refusé", "err", err)
 		os.Exit(filmproc.CodePreparation)
 	}
 	filmproc.LowerOwnPriority(outilNom)
 	g := filmproc.Arm(outilNom, memGiB, func(peak uint64) {
-		slog.Error("plafond memoire depasse — cuisson abandonnee",
+		slog.ErrorContext(ctx, "plafond memoire depasse — cuisson abandonnee",
 			"pic_octets", peak, "pic_gio", float64(peak)/(1<<30), "match", matchID)
 		arreterProfil()
 		lock.Release()
@@ -168,7 +172,7 @@ func armerProtections(cacheRoot, matchID string, memGiB int, arreterProfil func(
 		// instruction rendent deux mesures differentes et `gio` cesse d'etre la conversion
 		// d'`octets` (defaut N2 de la revue R2).
 		pic := g.Peak()
-		slog.Info("pic memoire de la cuisson", "octets", pic, "gio", float64(pic)/(1<<30))
+		slog.InfoContext(ctx, "pic memoire de la cuisson", "octets", pic, "gio", float64(pic)/(1<<30))
 		lock.Release()
 	}
 }
@@ -178,27 +182,27 @@ func armerProtections(cacheRoot, matchID string, memGiB int, arreterProfil func(
 //
 // UN ÉCHEC N'ARRÊTE PAS LA CUISSON, mais il n'est jamais avalé : l'opérateur qui a demandé un
 // profil doit savoir qu'il n'en aura pas, sans perdre pour autant le décodage qu'il a lancé.
-func demarrerProfilCPU(path string) func() {
+func demarrerProfilCPU(ctx context.Context, path string) func() {
 	if path == "" {
 		return func() {}
 	}
 	f, err := os.Create(path) //nolint:gosec // chemin fourni par l'operateur du CLI
 	if err != nil {
-		slog.Warn("profil CPU impossible — cuisson sans profil", "err", err, "path", path)
+		slog.WarnContext(ctx, "profil CPU impossible — cuisson sans profil", "err", err, "path", path)
 		return func() {}
 	}
 	if err := pprof.StartCPUProfile(f); err != nil {
-		slog.Warn("profil CPU impossible — cuisson sans profil", "err", err, "path", path)
+		slog.WarnContext(ctx, "profil CPU impossible — cuisson sans profil", "err", err, "path", path)
 		_ = f.Close()
 		return func() {}
 	}
 	return func() {
 		pprof.StopCPUProfile()
 		if err := f.Close(); err != nil {
-			slog.Warn("fermeture du profil CPU", "err", err, "path", path)
+			slog.WarnContext(ctx, "fermeture du profil CPU", "err", err, "path", path)
 			return
 		}
-		slog.Info("profil CPU écrit", "path", path)
+		slog.InfoContext(ctx, "profil CPU écrit", "path", path)
 	}
 }
 
@@ -206,22 +210,22 @@ func demarrerProfilCPU(path string) func() {
 //
 // LE `runtime.GC()` EST OBLIGATOIRE et il n'est pas cosmétique : sans lui, le profil compte des
 // objets déjà inatteignables et fait passer pour vivant ce que le décodeur vient de lâcher.
-func ecrireProfilTas(path string) {
+func ecrireProfilTas(ctx context.Context, path string) {
 	if path == "" {
 		return
 	}
 	f, err := os.Create(path) //nolint:gosec // chemin fourni par l'operateur du CLI
 	if err != nil {
-		slog.Warn("profil de tas impossible", "err", err, "path", path)
+		slog.WarnContext(ctx, "profil de tas impossible", "err", err, "path", path)
 		return
 	}
 	defer func() { _ = f.Close() }()
 	runtime.GC()
 	if err := pprof.WriteHeapProfile(f); err != nil {
-		slog.Warn("profil de tas non écrit", "err", err, "path", path)
+		slog.WarnContext(ctx, "profil de tas non écrit", "err", err, "path", path)
 		return
 	}
-	slog.Info("profil de tas écrit", "path", path)
+	slog.InfoContext(ctx, "profil de tas écrit", "path", path)
 }
 
 // loadFacts lit les faits du match dans un fichier JSON.
@@ -245,23 +249,23 @@ func ecrireProfilTas(path string) {
 // Un chemin vide rend des faits vides, sans bruit : c'est le mode nominal du binaire. Un fichier
 // ILLISIBLE, lui, est journalisé — demander des faits et n'en avoir aucun n'est pas la même chose
 // que ne pas en demander.
-func loadFacts(path, matchID string) port.MatchFacts {
+func loadFacts(ctx context.Context, path, matchID string) port.MatchFacts {
 	if path == "" {
 		return port.MatchFacts{}
 	}
 	raw, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l'operateur du CLI
 	if err != nil {
-		slog.Warn("faits du match illisibles — artefact sans compteurs de joueur ni actions d'objectif",
+		slog.WarnContext(ctx, "faits du match illisibles — artefact sans compteurs de joueur ni actions d'objectif",
 			"err", err, "path", path, "match", matchID)
 		return port.MatchFacts{}
 	}
 	var facts port.MatchFacts
 	if err := json.Unmarshal(raw, &facts); err != nil {
-		slog.Warn("faits du match invalides — artefact sans compteurs de joueur ni actions d'objectif",
+		slog.WarnContext(ctx, "faits du match invalides — artefact sans compteurs de joueur ni actions d'objectif",
 			"err", err, "path", path, "match", matchID)
 		return port.MatchFacts{}
 	}
-	slog.Info("faits du match charges", "path", path, "match", matchID,
+	slog.InfoContext(ctx, "faits du match charges", "path", path, "match", matchID,
 		"joueurs", len(facts.Players), "variante", facts.GameVariantName)
 	return facts
 }

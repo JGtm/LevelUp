@@ -1,7 +1,7 @@
 package replay
 
 import (
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
@@ -220,7 +220,7 @@ func siegesTries(tracks map[uint32]slotTrack) []uint32 {
 	for s := range tracks {
 		out = append(out, s)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 

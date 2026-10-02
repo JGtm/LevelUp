@@ -58,7 +58,7 @@ package grammar
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11 -v -timeout 40m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11 -v -timeout 40m
 
 import (
 	"fmt"
@@ -207,7 +207,7 @@ func ti11ReleverRecord(b *ti11Bilan, pay []byte, reg *Registry, bit int) {
 		b.horsDomaine++
 		return
 	}
-	for i := 0; i < ti11Composants; i++ {
+	for i := range ti11Composants {
 		if tr.Mask>>uint(i)&1 == 1 {
 			b.presence[i]++
 		}
@@ -215,7 +215,7 @@ func ti11ReleverRecord(b *ti11Bilan, pay []byte, reg *Registry, bit int) {
 	b.desync[tr.DesyncAt]++
 	if tr.Mask>>12&1 == 1 {
 		b.avecJauge++
-		for i := 0; i < ti11Composants; i++ {
+		for i := range ti11Composants {
 			if tr.Mask>>uint(i)&1 == 1 {
 				b.compagnons[i]++
 			}

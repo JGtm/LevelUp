@@ -18,7 +18,8 @@ package replay
 // CONTREDIT aucune lecture de la meme vie (cf. `vehicleFilmRides.contredit`).
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -140,11 +141,8 @@ func (b *vehicleRideBuild) tallyResolution(par vehicleResolvedBy) {
 func (b *vehicleRideBuild) trier() {
 	for k := range b.out {
 		v := b.out[k]
-		sort.SliceStable(v, func(i, j int) bool {
-			if v[i].T0 != v[j].T0 {
-				return v[i].T0 < v[j].T0
-			}
-			return v[i].Slot < v[j].Slot
+		slices.SortStableFunc(v, func(a, b VehicleRide) int {
+			return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.Slot, b.Slot))
 		})
 	}
 }

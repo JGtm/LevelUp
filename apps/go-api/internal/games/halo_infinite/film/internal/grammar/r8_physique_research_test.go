@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_physique_research_test.go — MESURE 3 du lot R8 : L'ORACLE PHYSIQUE.
@@ -233,7 +235,7 @@ func r8RandomWitness(
 		if len(pts) < 8 {
 			continue
 		}
-		for n := 0; n < r8RandomPerTrack; n++ {
+		for range r8RandomPerTrack {
 			pt := pts[rng.Intn(len(pts))]
 			if s, ok := r8SelfSample(fs, ti, pt.T); ok {
 				pop.addSelf(s)

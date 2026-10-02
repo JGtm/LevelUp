@@ -229,7 +229,7 @@ func signed8(b uint64) int32 {
 // rendre un [3]float32 invitait à lire ces bits comme une coordonnée — ce que le NB
 // ci-dessus interdit. Aucun appelant ne l'a jamais fait.
 func readRawVec3(br *Lecteur) {
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		br.ReadBits(32)
 	}
 }

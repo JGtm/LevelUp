@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // pads_proximity_research_test.go — LE RAFFINEMENT DE L'ETAT INCERTAIN D'UN SOCLE, MESURE AVANT

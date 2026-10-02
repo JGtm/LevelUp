@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_composant_score_test.go — LOT F : LA TRANSPOSITION EN COLONNES ET LE SCORE.
@@ -65,10 +67,7 @@ func vfBatColonnes(recs []vfRecord, echMin int) []vfColonne {
 				vc.largMax = c.larg
 			}
 		}
-		vc.offsets = vc.largMin
-		if vc.offsets > vfOffsetMax {
-			vc.offsets = vfOffsetMax
-		}
+		vc.offsets = min(vc.largMin, vfOffsetMax)
 		if vc.offsets <= 0 {
 			continue
 		}
@@ -87,7 +86,7 @@ func vfTranspose(temps []int64, cs []vfComp, offsets int) *ondeCol {
 	}
 	for i, comp := range cs {
 		mot, bit := i/64, uint(i%64)
-		for o := 0; o < offsets; o++ {
+		for o := range offsets {
 			if comp.bits>>(63-uint(o))&1 == 1 {
 				c.col[o][mot] |= 1 << bit
 			}

@@ -44,7 +44,7 @@ func unitFromHeading(deg float64) [3]float32 {
 // (lives_test.go, à partir du fil des morts) ; ici on teste ce que buildShots en fait.
 func TestBuildShots_PlacesShotOnItsOwnerSlot(t *testing.T) {
 	var pos []grammar.BipedPosition
-	for i := uint64(0); i < 20; i++ {
+	for i := range uint64(20) {
 		ts := 1_000_000 + i*50_000
 		pos = append(pos, posAt(10, ts, 1, 1, 90))  // slot 10 regarde vers +Y
 		pos = append(pos, posAt(11, ts, 5, 5, 270)) // slot 11 regarde vers -Y
@@ -83,7 +83,7 @@ func TestBuildShots_PlacesShotOnItsOwnerSlot(t *testing.T) {
 // aucun tir publié. Un tir placé au mauvais endroit serait pire que pas de tir.
 func TestBuildShots_RejectsAmbiguous(t *testing.T) {
 	var pos []grammar.BipedPosition
-	for i := uint64(0); i < 20; i++ {
+	for i := range uint64(20) {
 		ts := 1_000_000 + i*50_000
 		pos = append(pos, posAt(10, ts, 1, 1, 90))
 		pos = append(pos, posAt(11, ts, 5, 5, 90)) // même cap : ambigu

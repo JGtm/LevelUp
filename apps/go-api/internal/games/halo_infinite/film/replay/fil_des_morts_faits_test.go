@@ -19,6 +19,7 @@ package replay
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -114,7 +115,7 @@ func documentsDuFilmEtDesFaits(t *testing.T, cas casDuFilDesMorts) (ReplayDocume
 	if err != nil {
 		t.Fatalf("%s : relecture des faits : %v", cas.nom, err)
 	}
-	return depuisLeFilm, BuildFromFacts(goldenFilm, "halo_infinite", f, Options{MapQuant: &entry})
+	return depuisLeFilm, BuildFromFacts(context.Background(), goldenFilm, "halo_infinite", f, Options{MapQuant: &entry})
 }
 
 // TestLeRejeuDepuisLesFaitsRendLeVerdictDuFilDesMorts : film a fil LU, VIDE et ILLISIBLE — le

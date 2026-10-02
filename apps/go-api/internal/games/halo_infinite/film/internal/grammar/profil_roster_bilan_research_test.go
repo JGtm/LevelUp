@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // profil_roster_bilan_research_test.go — PHASE 4, QUESTION 3 : LA COMPTABILITE ET LA SONDE.

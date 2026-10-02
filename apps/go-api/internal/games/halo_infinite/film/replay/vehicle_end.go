@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -70,7 +71,7 @@ type vehicleDeathTally struct {
 //
 // UNE MORT QUE PERSONNE NE REPREND EST COMPTEE, JAMAIS JETEE : c est le signal qu une vie
 // manque au recensement, et le compte le dit (`VehicleCoverage.DeathsUnmatched`).
-func assignVehicleDeaths(lives []vehicleLife, deaths []types.ObjectDeath) vehicleDeathTally {
+func assignVehicleDeaths(ctx context.Context, lives []vehicleLife, deaths []types.ObjectDeath) vehicleDeathTally {
 	t := vehicleDeathTally{read: len(deaths)}
 	if len(lives) == 0 || len(deaths) == 0 {
 		t.unmatched = len(deaths)
@@ -94,7 +95,7 @@ func assignVehicleDeaths(lives []vehicleLife, deaths []types.ObjectDeath) vehicl
 			lives[i].deathUS, lives[i].deathTailDesync = d.TimestampUS, d.TailDesync
 		}
 	}
-	logVehicleDeathTally(t)
+	logVehicleDeathTally(ctx, t)
 	return t
 }
 
@@ -163,15 +164,15 @@ func (t *vehicleDeathTally) mesurerLEcart(lives []vehicleLife, d types.ObjectDea
 // lue que personne ne reprenait disparaissait dans un entier, et le lot 3.7 a du la
 // re-instruire film par film pour decouvrir qu elle valait 17 sur 20. Le niveau est `Warn` des
 // qu une mort se perd : c est une donnee du film que le document ne portera pas.
-func logVehicleDeathTally(t vehicleDeathTally) {
+func logVehicleDeathTally(ctx context.Context, t vehicleDeathTally) {
 	if t.read == 0 {
 		return
 	}
-	niveau := slog.Info
+	niveau := slog.LevelInfo
 	if t.unmatched > 0 {
-		niveau = slog.Warn
+		niveau = slog.LevelWarn
 	}
-	niveau("rejeu : attribution des morts de vehicule",
+	slog.Log(ctx, niveau, "rejeu : attribution des morts de vehicule",
 		"lues", t.read, "appariees", t.matched, "viesFermees", t.closed,
 		"nonAppariees", t.unmatched, "queueRompue", t.tailDesync,
 		"perdues_slotAbsent", t.noSlot, "perdues_generationAbsente", t.noGen,

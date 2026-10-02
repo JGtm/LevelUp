@@ -129,7 +129,7 @@ func TestScoreTimelineTeamIdentityOneSidedBeforeFrags(t *testing.T) {
 	in.TeamScores = &scores
 	// Controle : sans registre de score, (b) SEULE tranche, et dans le meme sens.
 	if m := identityByFrags(in.TeamByXUID, []int{6, 8},
-		loadScoreSeries(recs, objectives.KillsComponent, true, nil), loadScoreSeries(recs, objectives.KillsComponent, false, nil),
+		loadScoreSeries(recs, objectives.KillsComponent(), true, nil), loadScoreSeries(recs, objectives.KillsComponent(), false, nil),
 		objectives.SlotIdentityFrom(recs, in.Lines, nil)); m[8] != 1 || m[6] != 0 {
 		t.Fatalf("CONTROLE FAUX : la somme des frags ne tranche pas ce gabarit (%v) — le test ne "+
 			"prouverait pas l ordre des preuves", m)

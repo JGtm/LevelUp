@@ -97,7 +97,7 @@ func TestMapQuantCatalogShipped(t *testing.T) {
 		t.Fatal("catalogue vide")
 	}
 	for name, e := range cat.Maps {
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			extent := float64(e.Max[ax]) - float64(e.Min[ax])
 			if extent <= 0 {
 				t.Errorf("%s axe %d : étendue non positive (%g)", name, ax, extent)

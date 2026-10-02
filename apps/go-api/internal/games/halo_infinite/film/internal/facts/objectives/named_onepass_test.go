@@ -23,7 +23,7 @@ func refNamedEventsFrom(recs []types.StatRecord, objectiveType string) []NamedEv
 	if !ok {
 		return nil
 	}
-	b := newEventBudget("reference")
+	b := newEventBudget("reference", nil)
 	var out []NamedEvent
 	for key, slot := range table {
 		if slot.Redundant {

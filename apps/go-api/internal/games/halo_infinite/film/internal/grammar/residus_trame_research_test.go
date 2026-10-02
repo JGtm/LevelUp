@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // residus_trame_research_test.go — PHASE 5b, RESIDUS 3 et 4 DE LA TRAME D'ETAT.

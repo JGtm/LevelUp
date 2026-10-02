@@ -109,7 +109,7 @@ func b1ScanFilm(t *testing.T, cache, id string) (map[uint32]*b1FamStat, grammar.
 
 // b1Ligne formate une famille pour le journal de mesure.
 func b1Ligne(f uint32, s *b1FamStat) string {
-	nom, connu := weaponv3.KnownWeaponHigh32[f]
+	nom, connu := weaponv3.KnownWeaponHigh32Lookup(f)
 	if !connu {
 		nom = "HORS CATALOGUE"
 	}
@@ -122,7 +122,7 @@ func b1Ligne(f uint32, s *b1FamStat) string {
 func b1HorsCatalogue(fams map[uint32]*b1FamStat) []uint32 {
 	var out []uint32
 	for f := range fams {
-		if _, connu := weaponv3.KnownWeaponHigh32[f]; !connu {
+		if _, connu := weaponv3.KnownWeaponHigh32Lookup(f); !connu {
 			out = append(out, f)
 		}
 	}
@@ -170,7 +170,7 @@ func TestBombeB1Temoin(t *testing.T) {
 	if len(crane.slots) < 2 {
 		t.Errorf("T2 ÉCHOUE : crâne tenu par %d slot(s) (>=2 exigés)", len(crane.slots))
 	}
-	if _, connu := weaponv3.KnownWeaponHigh32[b1Crane]; connu {
+	if _, connu := weaponv3.KnownWeaponHigh32Lookup(b1Crane); connu {
 		t.Errorf("T3 ÉCHOUE : le crâne est au catalogue d'armes — le filtre C1 serait faux")
 	}
 }
@@ -202,7 +202,7 @@ func TestBombeB1Assaut(t *testing.T) {
 	complets := map[uint32]int{} // films où C4 tient (>=1 vers ET >=1 depuis)
 	for _, fams := range parFilm {
 		for f, s := range fams {
-			if _, connu := weaponv3.KnownWeaponHigh32[f]; connu {
+			if _, connu := weaponv3.KnownWeaponHigh32Lookup(f); connu {
 				continue // C1
 			}
 			presence[f]++

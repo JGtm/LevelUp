@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_socles_research_test.go — LE SOCLE : ses REAPPARITIONS, datees par les creations ti=37.
@@ -21,11 +23,12 @@ package grammar
 // GARDES : `R12_FILMS`, `R12_IDS`. Aucune ecriture, aucune DuckDB, `CGO_ENABLED=0`. USAGE :
 //
 //	CGO_ENABLED=0 R12_FILMS=<repo>/data/cache/film_chunks R12_IDS=215e7022 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR12Socles$' -count=1 -timeout 60m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR12Socles$' -count=1 -timeout 60m -v
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -83,14 +86,14 @@ func r12SoclesOneFilm(t *testing.T, dir string) {
 		if id == r12EqipRepulseur {
 			mark = "   <<<< REPULSEUR (eqip)"
 		}
-		var txt string
+		var txt strings.Builder
 		for i, ms := range v {
 			if i >= 30 {
 				break
 			}
-			txt += r12MMSS(ms) + " "
+			txt.WriteString(r12MMSS(ms) + " ")
 		}
-		t.Logf("    id=%08x  n=%-4d %s%s", id, len(v), txt, mark)
+		t.Logf("    id=%08x  n=%-4d %s%s", id, len(v), txt.String(), mark)
 	}
 
 	rep := parID[r12EqipRepulseur]

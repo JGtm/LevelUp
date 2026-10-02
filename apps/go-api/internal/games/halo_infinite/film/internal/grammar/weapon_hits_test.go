@@ -148,7 +148,7 @@ func TestWeaponHitBucket(t *testing.T) {
 			t.Errorf("WeaponHitBucket(%.1f)=%d, veut %d", c.d, got, c.want)
 		}
 	}
-	if WeaponHitBucketCount() != len(WeaponHitDistanceEdges)+1 {
-		t.Fatalf("WeaponHitBucketCount=%d incoherent avec %d bornes", WeaponHitBucketCount(), len(WeaponHitDistanceEdges))
+	if WeaponHitBucketCount() != len(weaponHitDistanceEdges)+1 {
+		t.Fatalf("WeaponHitBucketCount=%d incoherent avec %d bornes", WeaponHitBucketCount(), len(weaponHitDistanceEdges))
 	}
 }

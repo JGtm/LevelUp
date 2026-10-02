@@ -154,10 +154,7 @@ func m5116RendreReste(t *testing.T, a, b float64, dedans, hors []m5116Reste) {
 			r.finLue, r.nBits, r.valeur)
 	}
 	t.Logf("TEMOIN, 12 paquets hors fenetre :")
-	pas := len(hors) / 12
-	if pas < 1 {
-		pas = 1
-	}
+	pas := max(len(hors)/12, 1)
 	var n int
 	for i := 0; i < len(hors) && n < 12; i += pas {
 		n++

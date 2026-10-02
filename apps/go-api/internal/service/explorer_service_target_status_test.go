@@ -1,7 +1,7 @@
 package service
 
 // explorer_service_target_status_test.go — Lot A3 (fin de la dégradation muette,
-// .ai/V7.1/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md) : couvre le statut
+// .ai/archive/V7.1/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md) : couvre le statut
 // (domain.ExplorerLiveSectionStatus) renvoyé par les 4 fetchs live de l'encart
 // "Profil joueur cible" — identity, career (service record), season_csrs,
 // combat_live. Chaque fonction est testée directement (sans passer par

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_attrib_arme_tir_research_test.go — ATTRIBUTION PAR LE TIR de la PRECISION et de la
@@ -25,13 +27,10 @@ package grammar
 // deltaWitnessChunks. Lancer une fois par film (000d5950, 01e1f945, 00502e52).
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
-
-	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 const (
@@ -39,14 +38,6 @@ const (
 	attribOFF   = uint64(3_000_000) // 3 s : temoin decale
 	attribWideW = uint64(2_000_000) // 2 s : fenetre elargie (projectiles lents)
 )
-
-// attribWeaponName nomme une arme par son WeaponID (metadata weapon_labels) ; a defaut, l'hexa.
-func attribWeaponName(wid uint64) string {
-	if n, ok := filmshell.WeaponIDToName[wid]; ok {
-		return n
-	}
-	return fmt.Sprintf("wid#%016x", wid)
-}
 
 // attribDamagesToSonde reduit des WeaponDamage aux champs qu'utilise sondeBaseSweep (ts + refs).
 func attribDamagesToSonde(ds []WeaponDamage) []sondeDmgEvt {
@@ -344,10 +335,7 @@ func attribM5(t *testing.T, shots []WeaponShot, dmg []WeaponDamage) {
 		}
 	}
 	ns := len(src)
-	best := interLo
-	if interHi > best {
-		best = interHi
-	}
+	best := max(interHi, interLo)
 	t.Logf("M5 (secondaire) tag source -> arme : %d tags source · intersection WeaponID bas %d (%.1f %%) · haut %d (%.1f %%)",
 		ns, interLo, lot1Pct(interLo, ns), interHi, lot1Pct(interHi, ns))
 	t.Logf("   joignable directement (> 50 %% des tags) : %s — sinon table requise ; NON BLOQUANT",
@@ -369,10 +357,7 @@ func TestLot1AttribArmeTir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks balayes (attribution PAR LE TIR, code productionise) ==", filepath.Base(dir), n)
 
 	shots, err := ScanFilmWeaponShots(dir, n)

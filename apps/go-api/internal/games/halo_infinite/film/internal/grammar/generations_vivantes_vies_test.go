@@ -128,7 +128,7 @@ func enFormeDense(r deltaBipedRecord, tag uint32) []byte {
 	for _, comp := range r.Mask {
 		ecrisBits(pay, 18+63-comp, 1, 1)
 	}
-	for k := 0; k < reste; k++ {
+	for k := range reste {
 		ecrisBits(pay, 18+64+k, 1, uint32(r.Payload[(r.I0+k)/8]>>(7-uint((r.I0+k)%8))&1))
 	}
 	return pay

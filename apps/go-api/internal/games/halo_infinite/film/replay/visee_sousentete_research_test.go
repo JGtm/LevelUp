@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_sousentete_research_test.go — LOT A4 (suite) : L'HYPOTHESE DU SOUS-EN-TETE, TESTEE SUR
@@ -253,7 +255,7 @@ func TestViseeSousEntete(t *testing.T) {
 	}
 	lots := map[string][]env114Paquet{}
 	var noms []string
-	for _, dir := range strings.Split(liste, ",") {
+	for dir := range strings.SplitSeq(liste, ",") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue

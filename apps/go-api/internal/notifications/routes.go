@@ -8,7 +8,7 @@ package notifications
 // CLAUDE.md n°6 : un littéral de route recopié re-diverge en N copies).
 
 // PlayerTargetRoute construit la route title-scopée d'une notification joueur au
-// format canonique post-D7 (« titre dans l'URL », .ai/PLAN_TITLE_SLUG_URL_2026-07.md) :
+// format canonique post-D7 (« titre dans l'URL », .ai/archive/V7.1/PLAN_TITLE_SLUG_URL_2026-07.md) :
 //
 //	/t/{titleSlug}/players/{playerSlug}/{suffix}
 //

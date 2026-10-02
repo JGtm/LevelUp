@@ -11,6 +11,7 @@ package replay
 //	R-PISTES     une piste anonyme prend le NOM du bot dont une vie du meme slot porte le `bid`.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -83,7 +84,7 @@ func bidsParSlot(reg IdentityRegistry) map[uint32]string {
 }
 
 func TestCorpsDIndexPartageNommeParLEntiteASaCreation(t *testing.T) {
-	reg := BuildIdentityRegistry(entreeTroisBots(true))
+	reg := BuildIdentityRegistry(context.Background(), entreeTroisBots(true))
 	want := map[uint32]string{512: "bid(16.0)", 526: "bid(7.0)", 564: "bid(19.0)"}
 	got := bidsParSlot(reg)
 	for slot, bid := range want {
@@ -102,7 +103,7 @@ func TestCorpsDIndexPartageNommeParLEntiteASaCreation(t *testing.T) {
 }
 
 func TestCorpsDIndexPartageSansEntiteRestentRefuses(t *testing.T) {
-	reg := BuildIdentityRegistry(entreeTroisBots(false))
+	reg := BuildIdentityRegistry(context.Background(), entreeTroisBots(false))
 	for slot, bid := range bidsParSlot(reg) {
 		if slot != 100 && bid != "" {
 			t.Errorf("corps %d : bid %q sans entite lue — la lecture devait se taire", slot, bid)

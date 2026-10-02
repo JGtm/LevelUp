@@ -119,7 +119,7 @@ func consumePlayerDesiredRespawnPlayer(br *Lecteur) {
 // n'a pas a y repondre.
 func consumePlayerEngineLoadout(br *Lecteur) {
 	v := make([]uint64, 0, 8)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		v = append(v, br.ReadBits(8))
 	}
 	if br.obs != nil && br.obs.PlayerStateHook != nil {
@@ -166,17 +166,17 @@ func consumePlayerPendingJoinInProgress(br *Lecteur) {
 // quand la porte est a 0), puis [g0 .. g8].
 func consumePlayerMalleableProperties(br *Lecteur) {
 	v := make([]uint64, 0, 24)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		v = append(v, bit2u(br.ReadBit()))
 	}
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		if br.ReadBit() {
 			v = append(v, 1, br.ReadBits(12))
 			continue
 		}
 		v = append(v, 0, 0)
 	}
-	for i := 0; i < 9; i++ {
+	for range 9 {
 		v = append(v, bit2u(br.ReadBit()))
 	}
 	if br.obs != nil && br.obs.PlayerStateHook != nil {

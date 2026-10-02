@@ -38,7 +38,8 @@ package grammar
 // vient de traverser — même passe, aucun décodage supplémentaire.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -85,15 +86,9 @@ func dedupOccupancy(in []types.VehicleOccupancy) []types.VehicleOccupancy {
 	if len(in) == 0 {
 		return nil
 	}
-	sort.SliceStable(in, func(i, j int) bool {
-		switch {
-		case in[i].TimestampUS != in[j].TimestampUS:
-			return in[i].TimestampUS < in[j].TimestampUS
-		case in[i].Slot != in[j].Slot:
-			return in[i].Slot < in[j].Slot
-		default:
-			return in[i].ParentSlot < in[j].ParentSlot
-		}
+	slices.SortStableFunc(in, func(a, b types.VehicleOccupancy) int {
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Slot, b.Slot),
+			cmp.Compare(a.ParentSlot, b.ParentSlot))
 	})
 	type key struct {
 		at                   uint64

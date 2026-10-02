@@ -4,7 +4,7 @@
 //
 // Un engagement a deux distances : celle du coup fatal, et celle d'un temps-pour-tuer plus
 // tôt (proxy d'entame validé le 2026-09-06, écart médian 1,24 m — D5 du plan
-// .ai/PLAN_DUELS_PORTEE_2026-09-06.md). L'écart entre les deux dit si le joueur FERME la
+// .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md). L'écart entre les deux dit si le joueur FERME la
 // distance pendant l'échange ou s'il la garde.
 //
 // # POURQUOI PAR FRAG APPARIÉ, ET JAMAIS ENTRE DEUX MÉDIANES

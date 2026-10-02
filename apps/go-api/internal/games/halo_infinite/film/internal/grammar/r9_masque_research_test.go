@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_masque_research_test.go — LE RECENSEMENT DU MASQUE BIPEDE PAR RANG PORTE
@@ -32,7 +34,7 @@ package grammar
 //
 //	CGO_ENABLED=0 R8_FILMS=<repo>/data/cache/film_chunks \
 //	  R8_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R8_IDS=06dfe6d9 go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  R8_IDS=06dfe6d9 go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR9Masque$' -count=1 -timeout 120m -v
 
 import (
@@ -40,6 +42,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -130,22 +133,22 @@ func r9LogMasque(
 	sort.Ints(rks)
 	t.Logf("%s : recensement du masque BIPEDE par rang porte (rangs a >= %d records)",
 		film, r9MasqueMin)
-	var head string
+	var head strings.Builder
 	for _, k := range rks {
-		head += padRank(k, recs[k])
+		head.WriteString(padRank(k, recs[k]))
 	}
-	t.Logf("  %-52s %s", "composant", head)
+	t.Logf("  %-52s %s", "composant", head.String())
 	ids := make([]int, 0, len(ann))
 	for id := range ann {
 		ids = append(ids, id)
 	}
 	sort.Ints(ids)
 	for _, id := range ids {
-		var line string
+		var line strings.Builder
 		for _, k := range rks {
-			line += padRate(float64(ann[id][k]) / float64(recs[k]))
+			line.WriteString(padRate(float64(ann[id][k]) / float64(recs[k])))
 		}
-		t.Logf("  i%-2d %-48s %s", id, arch.component(id), line)
+		t.Logf("  i%-2d %-48s %s", id, arch.component(id), line.String())
 	}
 }
 

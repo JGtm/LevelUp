@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_link_research_test.go — INSTRUMENT DE MESURE (pas de production). Trois questions
@@ -33,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -526,11 +529,11 @@ func TestLienPriseEquipementPose(t *testing.T) {
 	}
 	sort.Strings(ids)
 	for _, id := range ids {
-		line := ""
+		var line strings.Builder
 		for r, n := range matrix[id] {
-			line += fmt.Sprintf("rang%d=%d  ", r, n)
+			line.WriteString(fmt.Sprintf("rang%d=%d  ", r, n))
 		}
-		t.Logf("   eqip %s : %s", id, line)
+		t.Logf("   eqip %s : %s", id, line.String())
 	}
 }
 
@@ -663,11 +666,11 @@ func TestI26ResolutionDesHandles(t *testing.T) {
 	}
 	sort.Strings(ids)
 	for _, id := range ids {
-		line := ""
+		var line strings.Builder
 		for r, n := range matrix[id] {
-			line += fmt.Sprintf("rang%d=%d  ", r, n)
+			line.WriteString(fmt.Sprintf("rang%d=%d  ", r, n))
 		}
-		t.Logf("   eqip %s : %s", id, line)
+		t.Logf("   eqip %s : %s", id, line.String())
 	}
 }
 
@@ -803,10 +806,10 @@ func TestI26HandleVersCreation(t *testing.T) {
 	}
 	sort.Strings(ids)
 	for _, id := range ids {
-		line := ""
+		var line strings.Builder
 		for r, n := range matrix[id] {
-			line += fmt.Sprintf("rang%d=%d  ", r, n)
+			line.WriteString(fmt.Sprintf("rang%d=%d  ", r, n))
 		}
-		t.Logf("   eqip %s : %s", id, line)
+		t.Logf("   eqip %s : %s", id, line.String())
 	}
 }

@@ -7,7 +7,7 @@ package killcollector
 //
 // DEPUIS LE 2026-09-06, IL EN PRODUIT DEUX : la même lecture du film rend AUSSI
 // `shared.kill_openings` — les positions un temps-pour-tuer AVANT le coup fatal (proxy
-// d'entame, D5 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md). Pas un second décodeur : la
+// d'entame, D5 du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md). Pas un second décodeur : la
 // fonction pure `replay.BuildKillOpenings`, qui décale par `replay.ShiftKillRefs`, place par LA
 // fonction de placement du paquet et n'accepte un côté que si l'instant décalé tombe dans la
 // MÊME VIE que le coup fatal. Voir composerPassePositions.
@@ -55,7 +55,7 @@ package killcollector
 // fréquent et non pathologique — pas la donnée que le titre offre). Un titre qui l'a mais dont
 // le collecteur n'a pas reçu WithPositionCapture (CLI qui ne l'appelle pas, mauvaise DI en prod)
 // est, LUI, une régression de câblage : la table `kill_positions` resterait vide en silence,
-// invisible sans relire le code (constat Q8, .ai/DECOUVERTES_TACTIQUE_2026-09-07.md) — journalisé
+// invisible sans relire le code (constat Q8, .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md) — journalisé
 // en WARN et compté (`metricPositionsNotWired`) depuis la clôture Q8, pas Debug.
 //
 // # BEST-EFFORT ASSUMÉ, MÊME DOCTRINE QUE shots.go
@@ -97,7 +97,7 @@ const (
 	metricPositionsKillsDropped = "killsource_positions_morts_sans_position"
 	// metricPositionsNotWired : la capability est là, mais WithPositionCapture n'a pas été
 	// fourni au collecteur — régression de câblage, la table reste vide en silence si ce
-	// compteur n'est pas observé (Q8, .ai/DECOUVERTES_TACTIQUE_2026-09-07.md).
+	// compteur n'est pas observé (Q8, .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md).
 	metricPositionsNotWired = "killsource_positions_non_cablees"
 )
 
@@ -148,7 +148,7 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
-	pass, mat, err := buildPositionRows(film, res, entry, ids, kills, matchID)
+	pass, mat, err := buildPositionRows(ctx, film, res, entry, ids, kills, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "killsource: positions — passe ignoree", "match_id", matchID, "err", err)
 		return
@@ -266,11 +266,11 @@ func optionsDeBalayageDesPositions(
 // ELLE NE COMPOSE RIEN ELLE-MEME : ce qui suit les lectures — les deux jeux de lignes — vit dans
 // `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06, constat
 // B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
-func buildPositionRows(
+func buildPositionRows(ctx context.Context,
 	film *decfilm.Film, res *decfilm.Result, entry decfilm.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
-	lectures, originUS, err := lireLePontDuCollecteur(film, entry, ids, matchID)
+	lectures, originUS, err := lireLePontDuCollecteur(ctx, film, entry, ids, matchID)
 	if err != nil {
 		return passePositions{}, materiauDIsolement{}, err
 	}
@@ -291,7 +291,7 @@ func buildPositionRows(
 	// `games/halo_infinite/replayidentity/bot_identities.go`).
 	bots := replayidentity.BotIdentities(res)
 	entree := entreeDuRegistre(lectures, ids, bots, matchID)
-	reg := replay.BuildIdentityRegistry(entree)
+	reg := replay.BuildIdentityRegistry(ctx, entree)
 	if !reg.PontEtabli() {
 		observability.AddInt(metricPositionsNoBridge, 1)
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf(
@@ -311,7 +311,7 @@ func buildPositionRows(
 // du collecteur : le roster de la feuille pour la table d index, et la fatalite des erreurs dans
 // l ordre d avant le lot J4.3 (positions, horloge — comptee —, fil des morts, index). Les
 // creations de bipede restent NON fatales : le registre degrade sur le pont par morts et le dit.
-func lireLePontDuCollecteur(
+func lireLePontDuCollecteur(ctx context.Context,
 	film *decfilm.Film, entry decfilm.MapQuantEntry, ids MatchIdentities, matchID string,
 ) (lecturesDuFilm, uint64, error) {
 	fc := decfilm.NewFilmContextForMap(film, &entry, nil)
@@ -319,6 +319,8 @@ func lireLePontDuCollecteur(
 		Balayage: optionsDeBalayageDesPositions(fc, entry), Carte: &entry,
 		RosterDesMorts: func([]types.Death) []uint64 { return rosterUint64(ids.XUIDs) },
 	})
+	// CE QUE LA LECTURE DU PONT A CONSTATE (grammar, lot J12.3 — ADR 0034 D-4).
+	replay.JournaliserDiagnostics(ctx, fc.Diagnostics().Relever())
 	switch {
 	case pont.ErrPositions != nil:
 		return lecturesDuFilm{}, 0, fmt.Errorf("positions bipeds: %w", pont.ErrPositions)
@@ -338,13 +340,13 @@ func lireLePontDuCollecteur(
 	// par morts alors que la cuisson, elle, lit le film. Absence NON fatale.
 	creations, cStats := pont.Creations, pont.StatsCreations
 	if pont.ErrCreations != nil {
-		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
+		slog.WarnContext(ctx, "killsource: creations de bipede illisibles — degradation sur le pont par morts",
 			"err", pont.ErrCreations, "match_id", matchID)
 		ids.replis.Declenche(decfilm.NomIdentitePontParMorts) // repli compte depuis le lot J8.7
 		creations = nil
 	}
 	if cStats.Anchors > 0 && cStats.Accepted == 0 {
-		slog.Warn("killsource: aucune signature de creation reconnue sur des ancres presentes",
+		slog.WarnContext(ctx, "killsource: aucune signature de creation reconnue sur des ancres presentes",
 			"match_id", matchID, "ancres", cStats.Anchors, "motAlternatifModal", cStats.OtherWord)
 	}
 	return lecturesDuFilm{

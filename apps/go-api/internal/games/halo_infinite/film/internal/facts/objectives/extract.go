@@ -10,7 +10,8 @@
 package objectives
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 
 	"levelup/go-api/internal/domain/objectiveevent"
@@ -211,10 +212,10 @@ func extractCTF(matchID string, film *source.Film, roster Roster,
 	for _, b := range bursts {
 		ev := objectiveevent.Event{
 			MatchID:       matchID,
-			TimeMS:        intPtr(b.matchMS),
+			TimeMS:        new(b.matchMS),
 			ObjectiveType: ObjectiveTypeFlag,
 			EventType:     EventTypeCapture,
-			Value:         intPtr(1), // +1 capture
+			Value:         new(1), // +1 capture
 			Source:        SourceBurst,
 			Confidence:    ConfidenceExact,
 			Details:       "{}",
@@ -222,7 +223,7 @@ func extractCTF(matchID string, film *source.Film, roster Roster,
 		if scorer, ok := captureScorer(th10, b.matchMS); ok {
 			xuid := formatXUID(scorer.XUID)
 			ev.Players = []objectiveevent.Player{{XUID: xuid, Role: RoleScorer}}
-			ev.TeamID = intPtr(scorer.Team)
+			ev.TeamID = new(scorer.Team)
 			ctl.note(roster, xuid, scorer.Team)
 		}
 		out = append(out, ev)
@@ -240,7 +241,7 @@ func collectCaptureBursts(film *source.Film) []captureBurst {
 		}
 		out = append(out, scanCaptureBursts(framesOf(film, c.pos), c.meta.StartMS)...)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].matchMS < out[j].matchMS })
+	slices.SortFunc(out, func(a, b captureBurst) int { return cmp.Compare(a.matchMS, b.matchMS) }) // seul champ : ex aequo indiscernables
 	return out
 }
 
@@ -276,14 +277,14 @@ func extractFromTh10(
 		xuid := formatXUID(e.XUID)
 		ev := objectiveevent.Event{
 			MatchID:       matchID,
-			TimeMS:        intPtr(e.TimeMS),
+			TimeMS:        new(e.TimeMS),
 			ObjectiveType: objType,
 			EventType:     evType,
 			Source:        SourceTh10,
 			Confidence:    ConfidenceApprox,
 			Details:       "{}",
 			Players:       []objectiveevent.Player{{XUID: xuid, Role: RoleScorer}},
-			TeamID:        intPtr(e.Team),
+			TeamID:        new(e.Team),
 		}
 		ctl.note(roster, xuid, e.Team)
 		out = append(out, ev)
@@ -297,8 +298,8 @@ func finalize(matchID string, events []objectiveevent.Event) []objectiveevent.Ev
 	if len(events) == 0 {
 		return nil
 	}
-	sort.SliceStable(events, func(i, j int) bool {
-		return timeOrNeg(events[i].TimeMS) < timeOrNeg(events[j].TimeMS)
+	slices.SortStableFunc(events, func(a, b objectiveevent.Event) int {
+		return cmp.Compare(timeOrNeg(a.TimeMS), timeOrNeg(b.TimeMS))
 	})
 	for i := range events {
 		events[i].Seq = i

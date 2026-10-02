@@ -31,7 +31,9 @@ package replay
 // exactement au total.
 
 import (
+	"cmp"
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
@@ -228,7 +230,7 @@ func samplesByXUID(tracks []Track, slotXUID map[uint32]uint64) map[string][]Poin
 	}
 	for x := range out {
 		pts := out[x]
-		sort.SliceStable(pts, func(i, j int) bool { return pts[i].T < pts[j].T })
+		slices.SortStableFunc(pts, func(a, b Point) int { return cmp.Compare(a.T, b.T) })
 		out[x] = pts
 	}
 	return out

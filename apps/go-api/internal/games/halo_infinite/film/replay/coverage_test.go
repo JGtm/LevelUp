@@ -2,6 +2,7 @@ package replay
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"reflect"
@@ -83,13 +84,13 @@ func TestDocumentPublishesCoverage(t *testing.T) {
 	// La couverture doit atteindre le DOCUMENT, pas seulement les journaux : c'est la
 	// différence entre un décodeur qui sait ce qu'il perd et un écran qui le montre.
 	var pos []grammar.BipedPosition
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		ts := 1_000_000 + uint64(i)*50_000
 		pos = append(pos, posAt(10, ts, 1, 1, 90))
 		pos = append(pos, posAt(11, ts, 5, 5, 270))
 	}
 	events := []grammar.FireEvent{fireAt(1_200_000, 3, 90), fireAt(1_300_000, 3, 90)}
-	doc := BuildFromPositions("m", "halo_infinite", pos, events, Options{})
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", pos, events, Options{})
 	if doc.Coverage == nil {
 		t.Fatal("le document doit porter sa couverture")
 	}
@@ -127,7 +128,7 @@ func TestBridgeHealthJSONKeysAreDistinct(t *testing.T) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
-	if got, want := len(m), reflect.TypeOf(BridgeHealth{}).NumField(); got != want {
+	if got, want := len(m), reflect.TypeFor[BridgeHealth]().NumField(); got != want {
 		t.Errorf("%d cles JSON pour %d champs — des tags se recouvrent : %s", got, want, raw)
 	}
 	// Les valeurs doivent aussi survivre au tour complet : une cle ecrasee garderait la
@@ -144,7 +145,7 @@ func TestBridgeHealthJSONKeysAreDistinct(t *testing.T) {
 // calage MESURÉ serait un mensonge que rien, côté client, ne pourrait détecter. La garde,
 // donc, n'est PAS `DeathOffsetMS != 0` mais `DeathOffsetMatches > 0`, testée aux deux bornes.
 func TestDeathOffsetMsAbsentWhenBridgeUnmatched(t *testing.T) {
-	empty := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, IdentityRegistry{}, false, nil)
+	empty := buildCoverage(context.Background(), LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, IdentityRegistry{}, false, nil)
 	if got := empty.Bridge.DeathOffsetMs; got != nil {
 		t.Fatalf("pont non construit (0 mort appariee) : deathOffsetMs = %d, attendu nil", *got)
 	}
@@ -154,13 +155,13 @@ func TestDeathOffsetMsAbsentWhenBridgeUnmatched(t *testing.T) {
 	// isole delibérément `buildCoverage` de `buildOwners` pour prouver que c'est bien le
 	// COMPTE, et non la valeur, qui commande la publication.
 	zeroMatchesButOffsetSet := regDe(OwnerReport{DeathOffsetMS: 12_345, DeathOffsetMatches: 0})
-	refused := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, zeroMatchesButOffsetSet, false, nil)
+	refused := buildCoverage(context.Background(), LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, zeroMatchesButOffsetSet, false, nil)
 	if got := refused.Bridge.DeathOffsetMs; got != nil {
 		t.Fatalf("0 mort appariee malgre un DeathOffsetMS non nul : deathOffsetMs = %d, attendu nil (le compte commande, pas la valeur)", *got)
 	}
 
 	known := regDe(OwnerReport{DeathOffsetMS: 12_345, DeathOffsetMatches: 71})
-	present := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, known, false, nil)
+	present := buildCoverage(context.Background(), LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, known, false, nil)
 	if got := present.Bridge.DeathOffsetMs; got == nil || *got != 12_345 {
 		t.Fatalf("calage connu (71 appariements) : deathOffsetMs = %v, attendu *12345", got)
 	}
@@ -168,7 +169,7 @@ func TestDeathOffsetMsAbsentWhenBridgeUnmatched(t *testing.T) {
 	// Calage mesure EXACTEMENT a zero (horloges deja alignees) : une mesure valide, distincte
 	// de l'absence — c'est exactement le piege que le pointeur (plutot qu'un int nu) evite.
 	knownZero := regDe(OwnerReport{DeathOffsetMS: 0, DeathOffsetMatches: 15})
-	presentZero := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, knownZero, false, nil)
+	presentZero := buildCoverage(context.Background(), LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, knownZero, false, nil)
 	if got := presentZero.Bridge.DeathOffsetMs; got == nil || *got != 0 {
 		t.Fatalf("calage connu et mesure a zero : deathOffsetMs = %v, attendu *0 (pas absent)", got)
 	}
@@ -292,7 +293,7 @@ func TestWarnIfLossyAlerteAussiSurLesNonPubliees(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	defer slog.SetDefault(prev)
 
-	LayerCoverage{Available: 76, Attached: 41, Unpublished: 35}.warnIfLossy("objectifs")
+	LayerCoverage{Available: 76, Attached: 41, Unpublished: 35}.warnIfLossy(context.Background(), "objectifs")
 
 	out := buf.String()
 	if !strings.Contains(out, "sansTrajectoirePubliee") {
@@ -300,7 +301,7 @@ func TestWarnIfLossyAlerteAussiSurLesNonPubliees(t *testing.T) {
 	}
 	// Le seuil reste un SEUIL : sous 10 %, pas de bruit.
 	buf.Reset()
-	LayerCoverage{Available: 100, Attached: 95, Unpublished: 5}.warnIfLossy("objectifs")
+	LayerCoverage{Available: 100, Attached: 95, Unpublished: 5}.warnIfLossy(context.Background(), "objectifs")
 	if strings.Contains(buf.String(), "sansTrajectoirePubliee") {
 		t.Errorf("avertissement sous le seuil : %q", buf.String())
 	}

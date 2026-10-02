@@ -352,7 +352,7 @@ func MouvementParDefaut() MovementProfile {
 		WorldObject:             PrecisionDescriptor{IndexW: 1, AxisW: [3]uint{13, 13, 14}},
 		DeltaQuantum:            0.01383,
 		DeltaAxisWidth:          14,
-		Range:                   QuantRangeCEBiped,
+		Range:                   QuantRangeCEBiped(),
 		FullPrecision:           false,
 		DeltaHasHandleTail:      false,
 		CalibratedSkip:          false,

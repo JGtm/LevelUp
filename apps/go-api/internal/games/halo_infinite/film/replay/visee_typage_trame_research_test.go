@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_typage_trame_research_test.go — LOTS D3 et D4 : CE QUE LE PREMIER OCTET D'UNE TRAME EST
@@ -85,7 +87,7 @@ func typageDirs(t *testing.T) []string {
 	t.Helper()
 	if v := os.Getenv("TYPAGE_FILMS"); v != "" {
 		var out []string
-		for _, p := range strings.Split(v, ";") {
+		for p := range strings.SplitSeq(v, ";") {
 			if p = strings.TrimSpace(p); p != "" {
 				out = append(out, p)
 			}

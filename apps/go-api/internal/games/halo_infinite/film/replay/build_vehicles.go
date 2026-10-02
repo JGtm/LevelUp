@@ -39,6 +39,7 @@ package replay
 // par `BuildFromFilm`. `attachVehicles` est PUR.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -101,34 +102,34 @@ type VehicleScan struct {
 // le film est deja charge et le contexte deja ouvert (lots 1 et 2 de PLAN_CUISSON_PERF), et
 // c'est lui qui porte la bande bipede, le decoupage d'i0 et le registre que les cinq lectures
 // ci-dessous partagent.
-func decodeFilmVehicleScan(
+func decodeFilmVehicleScan(ctx context.Context,
 	fc *grammar.FilmContext, matchID string, wr *profile.Vec3Range, mpp profile.MPPWidths,
 ) VehicleScan {
 	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
 	kf := grammar.ScanWorldObjectKeyframes(fc, grammar.VehicleTypeIndex)
 	if len(kf.Band) == 0 {
-		slog.Info("vehicules : aucun slot ti=40 aux images-cles — rejeu sans ce calque",
+		slog.InfoContext(ctx, "vehicules : aucun slot ti=40 aux images-cles — rejeu sans ce calque",
 			"match_id", matchID, "imagesCles", len(kf.TimesUS))
 		return VehicleScan{}
 	}
 	cre, st, err := grammar.ScanVehicleCreationsForBand(fc, wr, kf.Band)
 	if err != nil {
-		slog.Warn("vehicules : records de creation illisibles — rejeu sans ce calque",
+		slog.WarnContext(ctx, "vehicules : records de creation illisibles — rejeu sans ce calque",
 			"err", err, "match_id", matchID)
 		return VehicleScan{}
 	}
 	pos, err := grammar.ScanBipedPositionsForBand(
 		fc, grammar.NewSlotBand(kf.Band), vehicleScanOptions(fc, wr))
 	if err != nil {
-		slog.Warn("vehicules : nuage de positions illisible — AUCUN vehicule publie (sans lui, une"+
+		slog.WarnContext(ctx, "vehicules : nuage de positions illisible — AUCUN vehicule publie (sans lui, une"+
 			" vie recensee n aurait ni trajectoire ni cap)", "err", err, "match_id", matchID)
 		return VehicleScan{}
 	}
 	out := VehicleScan{Scanned: true, Keyframes: kf, Creations: cre, Stats: st, Positions: pos}
-	out.Events = decodeFilmVehicleEvents(fc, matchID)
-	out.Aims = decodeFilmOccupantAims(fc, matchID)
-	out.Deaths, out.Occupancy, out.DeathStats = decodeFilmVehicleDeaths(fc, matchID)
-	slog.Info("vehicules : balayage ti=40",
+	out.Events = decodeFilmVehicleEvents(ctx, fc, matchID)
+	out.Aims = decodeFilmOccupantAims(ctx, fc, matchID)
+	out.Deaths, out.Occupancy, out.DeathStats = decodeFilmVehicleDeaths(ctx, fc, matchID)
+	slog.InfoContext(ctx, "vehicules : balayage ti=40",
 		"slots", st.Slots, "ancres", st.Anchors, "creationsAcceptees", st.Accepted,
 		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS),
 		"echantillons", len(pos), "evenements", len(out.Events), "viseesSansPosition", len(out.Aims),
@@ -149,12 +150,12 @@ func decodeFilmVehicleScan(
 // ELLE FILTRE SUR L ARCHETYPE, PAS SUR LA BANDE. La marche range par `TypeIndex` ; un slot lie a
 // `ti=40` par un record NEW en cours de flux est donc garde, alors que la bande des images-cles
 // l aurait perdu (2 a 5 morts par film chez le bipede, mesure V13 gate G1a).
-func decodeFilmVehicleDeaths(
+func decodeFilmVehicleDeaths(ctx context.Context,
 	fc *grammar.FilmContext, matchID string,
 ) ([]types.ObjectDeath, []types.VehicleOccupancy, grammar.ObjectDeathStats) {
 	facts, err := grammar.ScanMarchFacts(fc)
 	if err != nil {
-		slog.Warn("vehicules : morts ecrites illisibles — fins de vie bornees par le seul"+
+		slog.WarnContext(ctx, "vehicules : morts ecrites illisibles — fins de vie bornees par le seul"+
 			" recensement", "err", err, "match_id", matchID)
 		return nil, nil, facts.Stats
 	}
@@ -164,7 +165,7 @@ func decodeFilmVehicleDeaths(
 			out = append(out, d)
 		}
 	}
-	logVehicleDeathReads(matchID, len(facts.Deaths), len(out), facts.Stats)
+	logVehicleDeathReads(ctx, matchID, len(facts.Deaths), len(out), facts.Stats)
 	if len(out) == 0 {
 		return nil, facts.Occupancy, facts.Stats
 	}
@@ -179,14 +180,14 @@ func decodeFilmVehicleDeaths(
 // consommation de corps : `MaskDeclared` compte les records dont le masque ANNONCE le dead-state,
 // `MaskDeclaredDesync` ceux d entre eux que la marche a perdus. Un ecart entre les deux est une
 // PERTE DE LECTURE ; leur egalite dit que le film n en ecrit pas plus.
-func logVehicleDeathReads(matchID string, tous, vehicules int, st grammar.ObjectDeathStats) {
+func logVehicleDeathReads(ctx context.Context, matchID string, tous, vehicules int, st grammar.ObjectDeathStats) {
 	ti := uint32(grammar.VehicleTypeIndex)
 	declares, perdus := st.MaskDeclared[ti], st.MaskDeclaredDesync[ti]
-	niveau := slog.Info
+	niveau := slog.LevelInfo
 	if perdus > 0 {
-		niveau = slog.Warn
+		niveau = slog.LevelWarn
 	}
-	niveau("vehicules : lecture des morts ecrites",
+	slog.Log(ctx, niveau, "vehicules : lecture des morts ecrites",
 		"match_id", matchID, "mortsToutesEntites", tous, "mortsVehicules", vehicules,
 		"masqueDeclareLeDeadState", declares, "dontDesynchronises", perdus,
 		"recordsAtteints", st.Records[ti], "recordsEntierementPortes", st.CleanRecords[ti],
@@ -206,10 +207,10 @@ func logVehicleDeathReads(matchID string, tous, vehicules int, st grammar.Object
 // 22 963 lectures sur `0d76e8f1`, invisibles au premier). Les fusionner reviendrait a relacher la
 // porte du nuage de positions, qui est celle sous laquelle TOUT le calque a ete mesure. La BANDE,
 // elle, est partagee : c'est celle du contexte, relevee une seule fois.
-func decodeFilmOccupantAims(fc *grammar.FilmContext, matchID string) []grammar.BipedAim {
+func decodeFilmOccupantAims(ctx context.Context, fc *grammar.FilmContext, matchID string) []grammar.BipedAim {
 	aims, err := grammar.ScanBipedAimOnly(fc)
 	if err != nil {
-		slog.Warn("vehicules : visees sans position illisibles — episodes d occupation sans serie"+
+		slog.WarnContext(ctx, "vehicules : visees sans position illisibles — episodes d occupation sans serie"+
 			" de visee, le cone retombe sur le cap du chassis", "err", err, "match_id", matchID)
 		return nil
 	}
@@ -220,10 +221,10 @@ func decodeFilmOccupantAims(fc *grammar.FilmContext, matchID string) []grammar.B
 // absence rend les episodes d occupation au seul trou de position, qui est la primitive de repli
 // MESUREE (86,3 % des trous portent leur sortie, et 100 % de ces sorties ferment le trou a
 // +/-2 s — rapport V3_DESTRUCTION_DATEE_2026-09-02, gate 6).
-func decodeFilmVehicleEvents(fc *grammar.FilmContext, matchID string) []types.VehicleEvent {
+func decodeFilmVehicleEvents(ctx context.Context, fc *grammar.FilmContext, matchID string) []types.VehicleEvent {
 	ev, err := grammar.ScanVehicleEvents(fc)
 	if err != nil {
-		slog.Warn("vehicules : liste d evenements illisible — episodes d occupation bornes par le"+
+		slog.WarnContext(ctx, "vehicules : liste d evenements illisible — episodes d occupation bornes par le"+
 			" seul trou de position", "err", err, "match_id", matchID)
 		return nil
 	}
@@ -269,11 +270,11 @@ func vehicleScanOptions(fc *grammar.FilmContext, wr *profile.Vec3Range) grammar.
 // qui porte les TROUS de position d ou sortent les episodes d occupation. `reg` donne le pont
 // slot -> xuid, sans lequel un episode reste anonyme (il est publie quand meme : le vehicule est
 // occupe, seul son occupant est inconnu).
-func attachVehicles(
+func attachVehicles(ctx context.Context,
 	doc *ReplayDocument, scan VehicleScan, bipeds []grammar.BipedPosition,
 	reg IdentityRegistry, clock replayClock,
 ) {
-	tracks, cov, st := buildVehicleTracks(scan, bipeds, reg, clock)
+	tracks, cov, st := buildVehicleTracks(ctx, scan, bipeds, reg, clock)
 	// UN JOUEUR N EST JAMAIS A DEUX ENDROITS : un episode s arrete a la naissance de la vie
 	// suivante du meme joueur, lue sur les pistes PUBLIEES (cf. vehicle_rides_next_life.go, repli
 	// nomme compte au registre). Les compteurs d episodes se recomptent sur ce qui est publie.
@@ -285,12 +286,12 @@ func attachVehicles(
 	// document qui fait foi, pas le balayage (cf. vehicle_cycles.go).
 	doc.VehicleCycles = buildVehicleCycles(tracks, clock.step, &cov)
 	doc.Coverage.Vehicles = &cov
-	logVehicleCoverage(&cov)
+	logVehicleCoverage(ctx, &cov)
 	// DEUX REPLIS COMPTES ICI (lot J8.7) : le cap deduit de la velocite, et l episode d occupation
 	// reconstruit du trou de position.
-	clock.fb.DeclencheN(fallback.NomCapVehiculeVitesseInsuffisante, logVehicleHeadingSource(scan.Positions))
+	clock.fb.DeclencheN(fallback.NomCapVehiculeVitesseInsuffisante, logVehicleHeadingSource(ctx, scan.Positions))
 	clock.fb.DeclencheN(fallback.NomEpisodeOccupationParTrouDePosition, st.repli)
-	logVehicleRideResolution(st)
+	logVehicleRideResolution(ctx, st)
 }
 
 // logVehicleRideResolution journalise PAR QUELLE VOIE les episodes d occupation ont trouve leur
@@ -302,17 +303,17 @@ func attachVehicles(
 // largeur de champ qui bouge, un domaine mal attribue), le calque continuerait de publier des
 // episodes — rattaches par la geometrie, en silence, avec l ambiguite d avant. `nommes` a zero
 // alors que des episodes existent est exactement ce signal.
-func logVehicleRideResolution(st vehicleRideStats) {
+func logVehicleRideResolution(ctx context.Context, st vehicleRideStats) {
 	if st.episodes == 0 && st.repli == 0 {
 		return
 	}
-	slog.Info("rejeu : rattachement des episodes d occupation",
+	slog.InfoContext(ctx, "rejeu : rattachement des episodes d occupation",
 		"episodesEvenement", st.episodes, "nommesParLEvenement", st.nommes,
 		"resolusParEvenement", st.parEvenement, "resolusParVieLaPlusProche", st.parEvenementProche,
 		"resolusParGeometrie", st.parGeometrie, "nonRattaches", st.perdus,
 		"episodesDeRepli", st.repli, "siegesLusDansLeFilm", st.sieges)
 	if st.episodes > 0 && st.nommes == 0 {
-		slog.Warn("rejeu : AUCUN episode d occupation nomme par son evenement de sortie — la"+
+		slog.WarnContext(ctx, "rejeu : AUCUN episode d occupation nomme par son evenement de sortie — la"+
 			" reference de vehicule (domaine 1, ref 1) n est plus lue, le calque retombe sur la"+
 			" seule geometrie", "episodes", st.episodes)
 	}

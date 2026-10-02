@@ -93,8 +93,7 @@ package grammar
 // atomique : il appartient au balayage qui l a ouvert, et a lui seul.
 
 import (
-	"log/slog"
-
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -153,6 +152,9 @@ type FilmContext struct {
 	replis replisDuContexte
 	// marches : la marche d ancres de chaque payload d image-cle, faite une fois ([memoireDesMarches]).
 	marches *memoireDesMarches
+	// diag : les DIAGNOSTICS de ce film (diagnostic.go, lot J12.3) — ce que la couche journalisait,
+	// rendu a l orchestrateur qui l a ouvert ([FilmContext.Diagnostics]).
+	diag constat.Diagnostics
 }
 
 // Observation rend l observateur de ce contexte. Jamais nil.
@@ -268,34 +270,43 @@ func NewFilmContextForMap(film *source.Film, entry *profile.MapQuantEntry, force
 	// l appelant ni le catalogue n en fournit — `resolveI0Layout`).
 	c.bal.Grammaire = grammaireSousCarte(c.bal.Grammaire, c.impose != nil)
 	c.prof, c.profLu = ResolveProfile(film, entry), true
-	journaliserProfilIncomplet(film, c.prof)
+	c.signalerProfilIncomplet()
 	return c
 }
 
-// journaliserProfilIncomplet emet L UNIQUE ligne du constructeur quand une cle du film manque a
-// la table de profil (principe 12 : jamais de degradation silencieuse).
+// signalerProfilIncomplet note L UNIQUE diagnostic du constructeur quand une cle du film manque a
+// la table de profil (principe 12 : jamais de degradation silencieuse). L orchestrateur le
+// journalise ([FilmContext.Diagnostics], ADR 0034 D-4).
 //
 // ELLE NE SE DECLENCHE QUE SI LE FILM PORTE SON REGISTRE. Une bobine partielle ou une fixture
 // sans `chunk_00` n a pas de cle a chercher : la journaliser serait du bruit a chaque instrument,
 // et l absence de chunk est deja dite par [ErrNoFilmChunk] la ou elle compte.
 //
-// `slog.Warn` et non `WarnContext` : ce constructeur ne prend pas de `ctx`, comme
-// l installateur des largeurs d axe de la carte (`replay/world_object_precision.go`) et
-// `replay.avertirFormatSansProfil`, qui journalisent de la meme facon sur le meme chemin.
-//
 // RECOUVREMENT ASSUME avec `avertirFormatSansProfil` sur le seul cas « format inconnu » : cette
 // ligne-ci nomme le PROFIL et ses deux cles, et elle couvre aussi le chemin `killcollector`, ou
 // aucun autre avertissement n existe.
-func journaliserProfilIncomplet(film *source.Film, p profile.Profile) {
+func (c *FilmContext) signalerProfilIncomplet() {
+	p := c.prof
 	if p.Err() == nil {
 		return
 	}
-	if _, ok := FilmRegistryChunk(film); !ok {
+	if _, ok := FilmRegistryChunk(c.film); !ok {
 		return
 	}
-	slog.Warn("profil du film INCOMPLET — une cle ecrite dans le film est absente de la table "+
-		"de profil ; le film reste decode, les replis existants decident et se comptent",
-		"err", p.Err(), "format", p.FormatVersion(), "build", p.Build())
+	c.diag.Signaler(constat.Diagnostic{Code: DiagProfilIncomplet, Niveau: constat.NiveauWarn,
+		Message: "profil du film INCOMPLET — une cle ecrite dans le film est absente de la table " +
+			"de profil ; le film reste decode, les replis existants decident et se comptent",
+		Attrs: []any{"err", p.Err(), "format", p.FormatVersion(), "build", p.Build()}})
+}
+
+// Diagnostics rend l accumulateur des diagnostics de ce film (ADR 0034 D-4, lot J12.3). Le
+// contexte le remplit ; l orchestrateur qui l a ouvert le releve et le journalise avec SON
+// `ctx`. nil sur un contexte nil.
+func (c *FilmContext) Diagnostics() *constat.Diagnostics {
+	if c == nil {
+		return nil
+	}
+	return &c.diag
 }
 
 // resolveI0Layout EST LA REGLE, ecrite une fois : le decoupage FORCE s'il y en a un, sinon celui
@@ -424,6 +435,9 @@ func (c *FilmContext) Registry() (*Registry, error) {
 			c.reg, c.regErr = ParseRegistryChunk(raw)
 		}
 		c.noterRegistre(c.reg)
+		if d, ok := DiagnosticRegistreInconnu(c.reg); ok {
+			c.diag.Signaler(d)
+		}
 	}
 	return c.reg, c.regErr
 }

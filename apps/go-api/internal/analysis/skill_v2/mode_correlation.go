@@ -16,7 +16,7 @@ package skill_v2
 //
 // **Cap requis par décision produit** : w_d ≤ 0.4 strict. La motivation est
 // d'éviter qu'un joueur "chaos" (modes high-deaths fun-mode) voie son skill
-// slayer / objectif inflated par ses kills chaos. Cf. .ai/LUSR_V2_HANDOFF.md.
+// slayer / objectif inflated par ses kills chaos. Cf. .ai/archive/V7/LUSR v2/LUSR_V2_HANDOFF.md.
 
 // Phase4ModeCouplingMaxWeight est la borne supérieure absolue du w_d. Le code
 // CLAMP toute valeur au-dessus à 0.4 pour respecter la contrainte produit.

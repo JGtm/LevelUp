@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // assaut_pied_ancre_test.go — LE PIED DE FILM EN ASSAUT : le negatif tenait-il a L'ANCRE ?
@@ -47,6 +49,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
@@ -145,10 +148,7 @@ func paReleve(data []byte) paBilan {
 // paBlocTh rejoue la geometrie de production d'un bloc (end-marker en avant, 60 octets en
 // arriere, th a l'octet 47) SANS aucune contrainte de prefixe.
 func paBlocTh(data []byte, xstart, total int) (int, bool) {
-	win := xstart + 20000
-	if win > total {
-		win = total
-	}
+	win := min(xstart+20000, total)
 	for p := xstart; p <= win-32; p++ {
 		if source.OctetAuBit(data, p) == 0 && source.OctetAuBit(data, p+8) == 0 &&
 			source.OctetAuBit(data, p+16) == 0x2e && source.OctetAuBit(data, p+24) == 0xe0 {
@@ -452,7 +452,7 @@ func paBlocsOctets(data []byte) []paBlocOctets {
 		}
 		var b paBlocOctets
 		b.t = t
-		for i := 0; i < 60; i++ {
+		for i := range 60 {
 			b.oct[i] = source.OctetAuBit(data, ebs+i*8)
 		}
 		out = append(out, b)
@@ -463,14 +463,14 @@ func paBlocsOctets(data []byte) []paBlocOctets {
 
 // paHex rend 60 octets en hexadecimal groupe par 4, pour la lecture a l'oeil.
 func paHex(b []byte) string {
-	out := ""
+	var out strings.Builder
 	for i, x := range b {
 		if i > 0 && i%4 == 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += fmt.Sprintf("%02x", x)
+		out.WriteString(fmt.Sprintf("%02x", x))
 	}
-	return out
+	return out.String()
 }
 
 // TestAssautPiedPose — LA POSE, cherchee comme recompense a delai constant avant l'explosion.
@@ -539,16 +539,16 @@ func paValeur(oct []byte) int {
 func paTag(oct []byte) string {
 	best := ""
 	for i := 0; i+6 <= len(oct); i += 2 {
-		s := ""
+		var s strings.Builder
 		for j := i; j+1 < len(oct); j += 2 {
 			c := oct[j]
 			if oct[j+1] != 0 || c < 0x20 || c > 0x7e {
 				break
 			}
-			s += string(rune(c))
+			s.WriteString(string(rune(c)))
 		}
-		if len(s) > len(best) {
-			best = s
+		if len(s.String()) > len(best) {
+			best = s.String()
 		}
 	}
 	if best == "" {

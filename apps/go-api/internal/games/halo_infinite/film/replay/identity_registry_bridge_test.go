@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
@@ -64,7 +65,7 @@ func filmPaireEchangee() IdentityInput {
 // avant `nommerViesParCreations`) -> le slot 100 porte 222 et le slot 200 porte 111, ROUGE. C'est
 // la paire echangee, et c'est ce que la production servait jusqu'a ce lot.
 func TestPontParMortsNEcrasePasLeLienDirect(t *testing.T) {
-	reg := BuildIdentityRegistry(filmPaireEchangee())
+	reg := BuildIdentityRegistry(context.Background(), filmPaireEchangee())
 	attendu := map[uint32]uint64{100: 111, 200: 222}
 	for _, l := range reg.Vies() {
 		if want, ok := attendu[l.slot]; ok && l.xuid != want {
@@ -80,7 +81,7 @@ func TestPontParMortsNEcrasePasLeLienDirect(t *testing.T) {
 // TestPontParMortsCompteSesDiscordances : le desaccord n'ecrase pas, il s'inscrit. Sans ces deux
 // compteurs, la correction du lot serait muette — et personne ne saurait que le pont se trompait.
 func TestPontParMortsCompteSesDiscordances(t *testing.T) {
-	reg := BuildIdentityRegistry(filmPaireEchangee())
+	reg := BuildIdentityRegistry(context.Background(), filmPaireEchangee())
 	if reg.PontDiscordant() != 2 {
 		t.Fatalf("discordances = %d, attendu 2 (la paire echangee compte pour ses deux vies) ; "+
 			"concordances = %d", reg.PontDiscordant(), reg.PontConcordant())
@@ -98,7 +99,7 @@ func TestPontParMortsCompteSesDiscordances(t *testing.T) {
 // TestPontParMortsNeNommeAucuneVieQuandLeFilmNomme — L'OBJECTIF CHIFFRE DU LOT : zero vie nommee
 // par le pont des lors que le film porte ses records de creation.
 func TestPontParMortsNeNommeAucuneVieQuandLeFilmNomme(t *testing.T) {
-	reg := BuildIdentityRegistry(filmPaireEchangee())
+	reg := BuildIdentityRegistry(context.Background(), filmPaireEchangee())
 	if reg.ViesNommeesParLePont() != 0 {
 		t.Fatalf("vies nommees par le pont = %d, attendu 0 : le film les nomme toutes",
 			reg.ViesNommeesParLePont())
@@ -126,7 +127,7 @@ func TestPontParMortsNeNommeAucuneVieQuandLeFilmNomme(t *testing.T) {
 // TestSectionPublieLaVoieDeCreationEtSaProvenance : la section porte `direct` + la voie exacte,
 // et non un `deduit` qui ferait passer une lecture pour une supposition.
 func TestSectionPublieLaVoieDeCreationEtSaProvenance(t *testing.T) {
-	reg := BuildIdentityRegistry(filmPaireEchangee())
+	reg := BuildIdentityRegistry(context.Background(), filmPaireEchangee())
 	for _, b := range reg.Section.BipedSlots {
 		if b.Link.Source != canonical.LinkDirect {
 			t.Fatalf("slot %d : source = %q, attendu %q",

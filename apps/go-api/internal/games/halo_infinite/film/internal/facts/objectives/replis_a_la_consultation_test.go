@@ -33,17 +33,17 @@ func avecEmissionsNegatives(instants ...int) []types.StatRecord {
 func TestUneEmissionJeteeSeCompteUneFoisQuelQueSoitLeNombreDeLectures(t *testing.T) {
 	cons := &ReplisALaConsultation{}
 	recs := avecEmissionsNegatives(1500)
-	SeriesByRound(recs, ModeScoreComponent, false, cons)
-	SeriesTotal(recs, ModeScoreComponent, false, cons)
-	rawSeriesByKey(recs, map[statSlotKey]statSlot{ModeScoreComponent.key(): {Stat: "sonde"}}, cons)
+	SeriesByRound(recs, ModeScoreComponent(), false, cons)
+	SeriesTotal(recs, ModeScoreComponent(), false, cons)
+	rawSeriesByKey(recs, map[statSlotKey]statSlot{ModeScoreComponent().key(): {Stat: "sonde"}}, cons)
 	if got := cons.ComptesDesReplis().EmissionsHorsDomaineJetees; got != 1 {
 		t.Fatalf("une emission jetee lue trois fois : %d, attendu 1", got)
 	}
 
 	deux := &ReplisALaConsultation{}
 	recs = avecEmissionsNegatives(1500, 2500)
-	SeriesTotal(recs, ModeScoreComponent, false, deux)
-	SeriesByRound(recs, ModeScoreComponent, false, deux)
+	SeriesTotal(recs, ModeScoreComponent(), false, deux)
+	SeriesByRound(recs, ModeScoreComponent(), false, deux)
 	if got := deux.ComptesDesReplis().EmissionsHorsDomaineJetees; got != 2 {
 		t.Fatalf("deux emissions jetees distinctes : %d, attendu 2", got)
 	}
@@ -53,7 +53,7 @@ func TestUneEmissionJeteeSeCompteUneFoisQuelQueSoitLeNombreDeLectures(t *testing
 // qu il jette, sans aucune autre lecture.
 func TestLaMarcheParTableEstUnSiteDuRepli(t *testing.T) {
 	cons := &ReplisALaConsultation{}
-	rawSeriesByKey(avecEmissionsNegatives(1500), map[statSlotKey]statSlot{ModeScoreComponent.key(): {Stat: "sonde"}}, cons)
+	rawSeriesByKey(avecEmissionsNegatives(1500), map[statSlotKey]statSlot{ModeScoreComponent().key(): {Stat: "sonde"}}, cons)
 	if got := cons.ComptesDesReplis().EmissionsHorsDomaineJetees; got != 1 {
 		t.Fatalf("emission jetee par la marche par table : %d, attendu 1", got)
 	}
@@ -87,7 +87,7 @@ func TestUnInstantAvantLesManchesSeCompteUneFoisDepuisDeuxCopies(t *testing.T) {
 // TestSansEnregistreurRienNEstNote : nil (outils hors production) consulte sans compter ni paniquer.
 func TestSansEnregistreurRienNEstNote(t *testing.T) {
 	var cons *ReplisALaConsultation
-	SeriesTotal(avecEmissionsNegatives(1500), ModeScoreComponent, false, cons)
+	SeriesTotal(avecEmissionsNegatives(1500), ModeScoreComponent(), false, cons)
 	recs, deaths := twoRoundReassignedFixture()
 	ResolveRoundIdentity(recs, deaths, nil).At(22, 100)
 	if got := cons.ComptesDesReplis(); got != (ComptesDesReplis{}) {

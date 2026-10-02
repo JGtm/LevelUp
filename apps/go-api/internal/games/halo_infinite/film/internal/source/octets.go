@@ -69,7 +69,7 @@ func OctetAuBit(d []byte, pos int) byte {
 // consecutifs, du moins significatif au plus significatif.
 func U64LEAuBit(d []byte, pos int) uint64 {
 	var x uint64
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		x |= uint64(OctetAuBit(d, pos+i*8)) << (uint(i) * 8)
 	}
 	return x

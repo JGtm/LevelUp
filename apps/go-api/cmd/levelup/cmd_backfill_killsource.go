@@ -366,7 +366,7 @@ func passeDesFilms(
 	// passe des morts/tirs n en depend pas). ACTIVEE PAR DEFAUT ici, PAS derriere un flag CLI —
 	// c est la seule commande de backfill de ce producteur, et une feature OFF « pour plus tard »
 	// est l anti-pattern que CLAUDE.md interdit (regle 11) : la capture est prete, elle capture.
-	capture, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db, porte)
+	capture, cleanupPositions := positionCaptureDeps(ctxTravail, cfg, o.titleSlug, db, porte)
 	defer cleanupPositions()
 
 	collecteur := collecteurHorsLigne(cache, db, porte, caps, capture).AvecArretDoux(ctx)

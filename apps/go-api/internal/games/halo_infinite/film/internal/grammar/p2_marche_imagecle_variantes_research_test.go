@@ -34,10 +34,7 @@ type p2Election func(c []p2CandN) int
 // p2Candidats rend le voisin immediat eventuel (retour anticipe comme en production) et sinon
 // tous les candidats valides de la fenetre.
 func p2Candidats(pay []byte, from, prev, total, maxWin int) (voisin int, c []p2CandN) {
-	end := from + maxWin
-	if end > total {
-		end = total
-	}
+	end := min(from+maxWin, total)
 	sent := 0
 	for q := from; q+64 <= end; q++ {
 		id := source.BitsBourres(pay, q, 32)

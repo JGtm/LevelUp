@@ -103,9 +103,9 @@ type ReferenceEmplacements = replay.MapWeaponPadsCatalog
 //
 // EXPORTEE parce que le backfill (`cmd/levelup`) en a besoin AUSSI, et qu'une seconde lecture
 // du meme fichier ailleurs ferait deux verites de la meme reference.
-func ChargerReferenceEmplacements(repoRoot, titleSlug string) (*ReferenceEmplacements, error) {
+func ChargerReferenceEmplacements(ctx context.Context, repoRoot, titleSlug string) (*ReferenceEmplacements, error) {
 	res := titlePkg.NewPathResolver(repoRoot)
-	return replay.LoadMapWeaponPadsMerged(
+	return replay.LoadMapWeaponPadsMerged(ctx,
 		res.MapWeaponPadsPath(titleSlug), res.MapWeaponPadsOverlayPath(titleSlug))
 }
 

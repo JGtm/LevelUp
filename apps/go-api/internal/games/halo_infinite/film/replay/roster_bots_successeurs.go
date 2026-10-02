@@ -41,7 +41,8 @@ package replay
 // nommee se COMPTE (`coverage.seats.identitesHorsRoster`).
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -82,14 +83,8 @@ func admettreLesBotsSuccesseurs(roster []RosterEntry, bots []BotIdentity, scan g
 		admis++
 	}
 	if admis > 0 {
-		sort.SliceStable(roster, func(i, j int) bool {
-			if roster[i].FilmIndex != roster[j].FilmIndex {
-				return roster[i].FilmIndex < roster[j].FilmIndex
-			}
-			if roster[i].XUID != roster[j].XUID {
-				return roster[i].XUID < roster[j].XUID
-			}
-			return roster[i].Name < roster[j].Name
+		slices.SortStableFunc(roster, func(a, b RosterEntry) int {
+			return cmp.Or(cmp.Compare(a.FilmIndex, b.FilmIndex), cmp.Compare(a.XUID, b.XUID), cmp.Compare(a.Name, b.Name))
 		})
 	}
 	return roster, admis

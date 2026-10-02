@@ -24,10 +24,7 @@ const invAmmoSearchSpan = 300
 // début du bloc est établi par un critère de largeur, sans aucune information de grenade.
 func readAmmo(pay []byte, inv *types.KeyframeInventory, from, firstFamilyBit int) (start int, ok bool) {
 	end := firstFamilyBit - 1
-	lo := end - invAmmoSearchSpan
-	if lo < from {
-		lo = from
-	}
+	lo := max(end-invAmmoSearchSpan, from)
 	sols := invSolveAmmoBlock(pay, end, lo)
 	inv.AmmoCandidates = len(sols)
 	if len(sols) == 0 {
@@ -58,7 +55,7 @@ func invParseAmmoBlock(
 	}
 	fits := func(n int) bool { return p+n <= limit }
 
-	for k := 0; k < invGrenadeSlots; k++ {
+	for k := range invGrenadeSlots {
 		if !fits(1) {
 			return st, sel, p, false
 		}
@@ -92,7 +89,7 @@ func invParseAmmoBlock(
 		return st, sel, p, false
 	}
 	rd(3)
-	for g := 0; g < 2; g++ {
+	for range 2 {
 		if !fits(1) {
 			return st, sel, p, false
 		}

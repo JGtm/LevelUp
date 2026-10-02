@@ -1,7 +1,8 @@
 package positions
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/domain/playerposition"
 )
@@ -28,7 +29,9 @@ func assignTeamsBestEffort(ps []playerposition.PlayerPosition) {
 	for i := range idx {
 		idx[i] = i
 	}
-	sort.Slice(idx, func(a, b int) bool { return ps[idx[a]].X < ps[idx[b]].X })
+	// Tri total (J12.1, DT-9) : X, puis l'indice de la position (unique). Des X égaux ne sont
+	// jamais séparés par la coupe (vide nul), donc l'équipe ne dépend pas de leur rang.
+	slices.SortFunc(idx, func(a, b int) int { return cmp.Or(cmp.Compare(ps[a].X, ps[b].X), cmp.Compare(a, b)) })
 
 	xmin, xmax := ps[idx[0]].X, ps[idx[len(idx)-1]].X
 	span := float64(xmax - xmin)

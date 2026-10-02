@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // powerup_socle_keyframes_test.go — PHASE 3 : ce que les IMAGES-CLES recensent, et que les

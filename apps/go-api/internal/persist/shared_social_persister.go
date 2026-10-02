@@ -45,7 +45,7 @@
 //
 //  Planifié (scheduler/scan) : idem event-driven, async goroutine.
 //
-// Cf. .ai/AUDIT_SHARED_SOCIAL_WRITERS.md pour l'inventaire exhaustif des
+// Cf. .ai/archive/V7/AUDIT_SHARED_SOCIAL_WRITERS.md pour l'inventaire exhaustif des
 // sites migrés.
 
 package persist

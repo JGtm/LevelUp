@@ -48,7 +48,7 @@ func refKfReadBits(buf []byte, pos, n int) uint64 {
 // l oracle SEMANTIQUE de `kfReadBits` (le differentiel du lot 4 opposait les deux).
 func refKfReadBitsLoop(buf []byte, pos, n int) uint64 {
 	var r uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p := pos + i
 		var bit uint64
 		if idx := p >> 3; idx < len(buf) {
@@ -71,7 +71,7 @@ func refKfBitAt(buf []byte, p int) uint64 {
 // par mot n en etait qu une optimisation, prouvee equivalente au lot 4 (`PLAN_CUISSON_PERF` D6).
 func refReadBitsAt(b []byte, pos, n int) uint32 {
 	var v uint32
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p := pos + i
 		v = v<<1 | uint32(b[p>>3]>>(7-uint(p&7))&1)
 	}
@@ -81,7 +81,7 @@ func refReadBitsAt(b []byte, pos, n int) uint32 {
 // refPeekBits est la BOUCLE D ORIGINE de `grammar.PeekBits` : zero des DEUX cotes du tampon.
 func refPeekBits(d []byte, bp, n int) uint64 {
 	var v uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p := bp + i
 		if p < 0 || p>>3 >= len(d) {
 			v <<= 1
@@ -103,7 +103,7 @@ func refInvBitAt(buf []byte, p int) uint32 {
 // refInvBits est `grammar.invBits` d avant : n bits par la boucle de `invBitAt`.
 func refInvBits(pay []byte, p, n int) uint32 {
 	var v uint32
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v = v<<1 | refInvBitAt(pay, p+i)
 	}
 	return v

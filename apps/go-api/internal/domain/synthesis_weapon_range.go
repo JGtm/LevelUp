@@ -1,5 +1,5 @@
 // Package domain — synthesis_weapon_range.go : LA PORTÉE ET LE DÉNIVELÉ DES ENGAGEMENTS,
-// contrat de la section Synthèse (plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md, lot 4).
+// contrat de la section Synthèse (plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, lot 4).
 //
 // # CE QUE LA SECTION RÉPOND
 //
@@ -102,7 +102,7 @@ type WeaponRangeSide struct {
 	P90    float64 `json:"p90"`
 
 	// MinM / MaxM : les distances EXTRÊMES observées, en mètres — POUR L'INFOBULLE SEULE
-	// (D5 du plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). Elles répondent à « jusqu'où
+	// (D5 du plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). Elles répondent à « jusqu'où
 	// est-il allé », que p10 -> p90 ne dit pas. Elles NE SE TRACENT JAMAIS : les porter dans
 	// la géométrie du bâton ferait exactement ce que D6 refuse — décrire deux accidents.
 	// Sur une ligne d'une seule mesure, min == max == médiane, et c'est exact.

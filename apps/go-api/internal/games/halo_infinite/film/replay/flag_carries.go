@@ -1,7 +1,9 @@
 package replay
 
 import (
-	"sort"
+	"cmp"
+	"context"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -180,6 +182,9 @@ type flagCarryCtx struct {
 	slotAmbiguous map[uint32]bool
 	// fb compte les REPLIS de cette cuisson (D14). Nil ne compte rien.
 	fb *fallback.Compteur
+	// journal est le contexte de l APPELANT de la cuisson (lot J12.3), que portent les journaux du
+	// calque. Nil dans les tests qui n en journalisent rien.
+	journal context.Context
 }
 
 // flagOpening est une prise, avant tout bornage.
@@ -263,7 +268,7 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 		}
 		named = append(named, o)
 	}
-	logFlagOpeningsWithoutBridge(sansPont, len(openings))
+	logFlagOpeningsWithoutBridge(ctx.journal, sansPont, len(openings))
 	raws := boundFlagCarries(named, scan, ctx)
 	// LES QUATRE CHAINES DE FERMETURE S'APPLIQUENT EN SUITE, ET LA PLUS PRECOCE GAGNE — chacune
 	// EFFACANT l'etat de fin de celle qu'elle remplace (cf. [flagCloseAt], flag_carries_close.go).
@@ -307,7 +312,7 @@ func flagOpenings(evs []objectives.NamedEvent, identity objectives.RoundIdentity
 	}
 	var out []flagOpening
 	for _, ops := range bySlot {
-		sort.SliceStable(ops, func(i, j int) bool { return ops[i].t0 < ops[j].t0 })
+		slices.SortStableFunc(ops, func(a, b flagOpening) int { return cmp.Compare(a.t0, b.t0) })
 		for _, o := range ops {
 			if n := len(out); n > 0 && out[n-1].slot == o.slot && out[n-1].round == o.round &&
 				o.t0-out[n-1].t0 <= flagGrabMergeMS {
@@ -326,11 +331,8 @@ func flagOpenings(evs []objectives.NamedEvent, identity objectives.RoundIdentity
 // sortFlagOpenings pose un ordre TOTAL (instant, puis slot) : sans lui, le parcours de map
 // rendrait une sortie differente a chaque execution.
 func sortFlagOpenings(ops []flagOpening) {
-	sort.SliceStable(ops, func(i, j int) bool {
-		if ops[i].t0 != ops[j].t0 {
-			return ops[i].t0 < ops[j].t0
-		}
-		return ops[i].slot < ops[j].slot
+	slices.SortStableFunc(ops, func(a, b flagOpening) int {
+		return cmp.Or(cmp.Compare(a.t0, b.t0), cmp.Compare(a.slot, b.slot))
 	})
 }
 
@@ -384,7 +386,7 @@ func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCa
 	// parce que le slot est partage (cf. flag_carrier_tracks.go, garde du constat C1).
 	idx, ambigus := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous, ctx.fb)
 	cov.AmbiguousSlot = len(ambigus)
-	logFlagAmbiguousSlots(ambigus)
+	logFlagAmbiguousSlots(ctx.journal, ambigus)
 	out := raws[:0:0]
 	for _, r := range raws {
 		f0 := ctx.frameOfMatchMS(r.t0)
@@ -429,7 +431,7 @@ func timesByRoundSlot(evs []objectives.NamedEvent, stat string,
 		}
 	}
 	for s := range out {
-		sort.Slice(out[s], func(i, j int) bool { return out[s][i] < out[s][j] })
+		slices.Sort(out[s])
 	}
 	return out
 }
@@ -442,7 +444,7 @@ func deathTimesByXUID(deaths []types.Death) map[string][]int64 {
 		out[x] = append(out[x], d.TimeMS)
 	}
 	for x := range out {
-		sort.Slice(out[x], func(i, j int) bool { return out[x][i] < out[x][j] })
+		slices.Sort(out[x])
 	}
 	return out
 }

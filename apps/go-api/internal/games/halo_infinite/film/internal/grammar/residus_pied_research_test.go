@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // residus_pied_research_test.go — PHASE 5b, RESIDU 6 : CE QUE VAUT L'OCTET 55 DU PIED.
@@ -45,6 +47,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -74,7 +77,7 @@ func rpOctetA(d []byte, bit int) byte {
 // rpU64LE lit un uint64 petit-boutiste a un offset bit arbitraire.
 func rpU64LE(d []byte, bit int) uint64 {
 	var x uint64
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		x |= uint64(rpOctetA(d, bit+i*8)) << (uint(i) * 8)
 	}
 	return x
@@ -124,10 +127,7 @@ func rpScan(d []byte) []rpBloc {
 // rpDecode cherche le marqueur de fin du bloc et rend ses 60 octets (transcription de
 // `decodeTh10Block`).
 func rpDecode(d []byte, xs, total int) (rpBloc, bool) {
-	win := xs + 20000
-	if win > total {
-		win = total
-	}
+	win := min(xs+20000, total)
 	for b := xs; b <= win-32; b++ {
 		if rpOctetA(d, b) != 0 || rpOctetA(d, b+8) != 0 ||
 			rpOctetA(d, b+16) != 0x2e || rpOctetA(d, b+24) != 0xe0 {
@@ -138,7 +138,7 @@ func rpDecode(d []byte, xs, total int) (rpBloc, bool) {
 			return rpBloc{}, false
 		}
 		var bl rpBloc
-		for k := 0; k < rpBlocOctets; k++ {
+		for k := range rpBlocOctets {
 			bl.octets[k] = rpOctetA(d, ebs+k*8)
 		}
 		bl.t = int(bl.octets[48])<<24 | int(bl.octets[49])<<16 |
@@ -182,7 +182,7 @@ type rpAccords struct {
 // rpAjoute confronte un bloc a l'equipe prouvee de son acteur.
 func (a *rpAccords) rpAjoute(b rpBloc, eq int) {
 	a.compares++
-	for k := 0; k < rpBlocOctets; k++ {
+	for k := range rpBlocOctets {
 		v := int(b.octets[k])
 		if a.valeurs[k] == nil {
 			a.valeurs[k] = map[int]int{}
@@ -258,7 +258,7 @@ func rpRapport(t *testing.T, a *rpAccords) {
 		quoi string
 	}
 	var ls []ligne
-	for k := 0; k < rpBlocOctets; k++ {
+	for k := range rpBlocOctets {
 		ls = append(ls, ligne{k, a.brut[k], "brut"}, ligne{k, a.moinsUn[k], "valeur-1"},
 			ligne{k, a.bitBas[k], "bit bas"})
 	}
@@ -291,15 +291,15 @@ func rpHisto(m map[int]int) string {
 		xs = append(xs, kv{k, n})
 	}
 	sort.Slice(xs, func(i, j int) bool { return xs[i].n > xs[j].n })
-	s := ""
+	var s strings.Builder
 	for i, x := range xs {
 		if i == 6 {
-			s += fmt.Sprintf("... (%d valeurs)", len(xs))
+			s.WriteString(fmt.Sprintf("... (%d valeurs)", len(xs)))
 			break
 		}
-		s += fmt.Sprintf("%d:x%d ", x.k, x.n)
+		s.WriteString(fmt.Sprintf("%d:x%d ", x.k, x.n))
 	}
-	return s
+	return s.String()
 }
 
 // TestResidusPiedDrapeaux publie le contenu brut des octets 37 a 43 et de l'octet 55, evenement

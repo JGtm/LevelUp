@@ -41,7 +41,7 @@ package grammar
 // 0 en dur faute de manifeste : sur les films 39-40 — 211 des 1 351 du cache, mars a novembre
 // 2025 — ils lisaient du rembourrage, le roster humain s'effondrait a 2 noms distincts pour 24 a
 // 27 joueurs et les portes « indice < nPlay » du decodeur de source de degat rejetaient les trois
-// quarts des morts (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Ils lisent desormais la
+// quarts des morts (.ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Ils lisent desormais la
 // version ICI plutot que de la deviner.
 //
 // # NOTE D'HISTOIRE

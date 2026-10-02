@@ -1,8 +1,9 @@
 package objectives
 
 import (
+	"cmp"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -115,14 +116,11 @@ func LabelPersonalScore(points []types.ScorePoint, quotas map[int][]Award) []Lab
 	}
 	out := make([]LabelledEvent, 0, retenus)
 	for slot, ps := range bySlot {
-		sort.SliceStable(ps, func(i, j int) bool { return ps[i].TimeMS < ps[j].TimeMS })
+		slices.SortStableFunc(ps, func(a, b types.ScorePoint) int { return cmp.Compare(a.TimeMS, b.TimeMS) })
 		out = append(out, labelSlot(slot, ps, quotas[slot])...)
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].TimeMS != out[j].TimeMS {
-			return out[i].TimeMS < out[j].TimeMS
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b LabelledEvent) int {
+		return cmp.Or(cmp.Compare(a.TimeMS, b.TimeMS), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out
 }
@@ -168,7 +166,11 @@ func unitIndex(awards []Award) map[int64][]Award {
 		out[a.Unit] = append(out[a.Unit], a)
 	}
 	for u := range out {
-		sort.Slice(out[u], func(i, j int) bool { return out[u][i].Name < out[u][j].Name })
+		// Tri total (J12.1, DT-9) : nom, puis famille et nombre. Deux recompenses de meme nom ne
+		// different que par des champs que [buildEvent] ne publie pas dans l ordre (nom, famille).
+		slices.SortFunc(out[u], func(a, b Award) int {
+			return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.Category, b.Category), cmp.Compare(a.Count, b.Count))
+		})
 	}
 	return out
 }
@@ -205,7 +207,7 @@ func decompose(d int64, units map[int64][]Award) ([]int64, bool) {
 	for u := range units {
 		us = append(us, u)
 	}
-	sort.Slice(us, func(i, j int) bool { return us[i] > us[j] })
+	slices.SortFunc(us, func(a, b int64) int { return cmp.Compare(b, a) })
 	for n := 2; n <= maxCompoundParts; n++ {
 		sols := combinations(d, us, n)
 		if len(sols) == 1 {

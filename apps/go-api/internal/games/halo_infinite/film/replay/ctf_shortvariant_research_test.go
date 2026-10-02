@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ctf_shortvariant_research_test.go — INSTRUMENT DE RECHERCHE #5 (v7.5, colonne ①).
@@ -68,7 +70,7 @@ func TestCTFShortVariant(t *testing.T) {
 	if cache == "" || outDir == "" {
 		t.Fatalf("%s et %s sont requis", ctfCacheEnv, ctfOutEnv)
 	}
-	for _, short := range strings.Split(spec, ",") {
+	for short := range strings.SplitSeq(spec, ",") {
 		short = strings.TrimSpace(short)
 		t.Run(short, func(t *testing.T) {
 			b := ctfShortReport(t, filepath.Join(cache, "film_chunks", short), short)

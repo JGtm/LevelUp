@@ -285,7 +285,7 @@ type v2Clu struct {
 // le centre courant est a moins de thresh, sinon il ouvre un amas. DETERMINISTE (points tries).
 func v2Cluster(pts [][3]float64, thresh float64) []v2Clu {
 	sort.Slice(pts, func(i, j int) bool {
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			if pts[i][ax] != pts[j][ax] {
 				return pts[i][ax] < pts[j][ax]
 			}
@@ -308,7 +308,7 @@ func v2Cluster(pts [][3]float64, thresh float64) []v2Clu {
 			members = append(members, []int{pi})
 			continue
 		}
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			sums[best][ax] += p[ax]
 		}
 		counts[best]++
@@ -418,7 +418,7 @@ func v2ParseFilms(t *testing.T) []v2FilmSpec {
 		t.Skipf("V2_FILMS absent : instrument V2 saute")
 	}
 	var out []v2FilmSpec
-	for _, tok := range strings.Split(raw, ",") {
+	for tok := range strings.SplitSeq(raw, ",") {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {
 			continue
@@ -489,7 +489,7 @@ func v2LogBBox(t *testing.T, label string, pts [][3]float64) {
 	}
 	lo, hi := pts[0], pts[0]
 	for _, p := range pts {
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			if p[ax] < lo[ax] {
 				lo[ax] = p[ax]
 			}

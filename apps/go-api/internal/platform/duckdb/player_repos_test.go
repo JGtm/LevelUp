@@ -558,7 +558,7 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 // Le test sentinel TestOpenPlayerDB_NoSharedSchemaOnPoolConns
 // (pool_shared_reader_integration_test.go) prouve l'invariant prod.
 // À retirer progressivement à mesure que les Q37/queries cross-DB sont
-// migrées via SharedReader (cf. .ai/V7/AUDIT_SHARED_READER_LEAKS.md).
+// migrées via SharedReader (cf. .ai/archive/V7/AUDIT_SHARED_READER_LEAKS.md).
 func seedSharedDBSchema(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()

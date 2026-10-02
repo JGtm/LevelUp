@@ -31,6 +31,7 @@ package replaybuild
 //	  go test -tags=research ./internal/replaybuild/ -run '^TestVentilationDesVies$' -v -timeout 60m
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -82,7 +83,7 @@ func ventCuire(t *testing.T, court, carte string) (replay.VehicleScan, replay.Re
 		t.Fatalf("racine repo : %v", err)
 	}
 	matchID, cartes, faits := veh51Entrees(t, repoRoot, court, carte, os.Getenv("VENT_NOFACTS") != "")
-	b, err := NewBuilder(repoRoot, title.DefaultSlug)
+	b, err := NewBuilder(context.Background(), repoRoot, title.DefaultSlug)
 	if err != nil {
 		t.Fatalf("preparation du builder : %v", err)
 	}
@@ -98,7 +99,7 @@ func ventCuire(t *testing.T, court, carte string) (replay.VehicleScan, replay.Re
 		}
 	})
 	cacheRoot := title.NewPathResolver(repoRoot).CacheRootDir()
-	built, err := b.BuildBytes(matchID, cartes, filmcache.ChunkDir(cacheRoot, court), faits)
+	built, err := b.BuildBytes(context.Background(), matchID, cartes, filmcache.ChunkDir(cacheRoot, court), faits)
 	if err != nil {
 		t.Fatalf("cuisson de %s : %v", court, err)
 	}

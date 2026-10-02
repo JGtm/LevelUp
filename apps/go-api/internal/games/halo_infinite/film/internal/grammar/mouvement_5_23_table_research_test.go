@@ -127,7 +127,7 @@ func a523Compter(tab *TableAnticipee, id uint32, chunk int, b *a523Bilan) {
 	// La cle SANS tete : ce que la table resoudrait si les deux bits de tete etaient ignores.
 	// L ecart entre les deux chiffres est le PRIX de la cle du jeu — s il est nul, les deux
 	// cles coincident sur ce film.
-	for tete := uint8(0); tete < 4; tete++ {
+	for tete := range uint8(4) {
 		if tete == uint8(id>>30) {
 			continue
 		}
@@ -233,7 +233,7 @@ func a523TIDemandes() map[uint32]bool {
 		return nil
 	}
 	out := map[uint32]bool{}
-	for _, s := range strings.Split(v, ",") {
+	for s := range strings.SplitSeq(v, ",") {
 		n, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil || n < 0 {
 			continue

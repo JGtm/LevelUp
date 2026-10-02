@@ -6,7 +6,7 @@ package migration
 // **Pourquoi** : PK(match_id) + 3 index ART (idx_pme_session, idx_pme_engagement_history,
 // idx_pme_engagement_paces) sur des colonnes MUTÉES par des UPDATE/ON CONFLICT
 // incrémentaux (perf/engagement/session/friends/bot/exclusion/psa) = vecteur DuckDB
-// #23645 (crash prod sur `engagement-coefs --with-scores`). Cf. .ai/PLAN_PME_ART_HARDENING.md.
+// #23645 (crash prod sur `engagement-coefs --with-scores`). Cf. .ai/archive/V7/PLAN_PME_ART_HARDENING.md.
 //
 // **Stratégie append-only + MERGE-ON-READ PAR GROUPE** : PK technique id BIGINT
 // (séquence pme_seq) + written_at + colonne `stage` discriminant l'étape d'écriture.

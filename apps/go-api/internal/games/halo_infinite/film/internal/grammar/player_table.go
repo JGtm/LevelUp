@@ -338,7 +338,7 @@ func marcherTable(d []byte, depart, finBit, persoBits int) (slots []types.Player
 	ferme bool) {
 	vide := slotVacantBits(persoBits)
 	p := depart
-	for rang := 0; rang < playerTableSlots; rang++ {
+	for rang := range playerTableSlots {
 		if slotVacant(d, p, finBit) {
 			vacants++
 			p += vide

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ctf_bridge_research_test.go — INSTRUMENT DE RECHERCHE #2 (v7.5 voie B).
@@ -47,7 +49,7 @@ func TestCTFBridgeAnatomy(t *testing.T) {
 		t.Fatalf("%s et %s sont requis", ctfCacheEnv, ctfOutEnv)
 	}
 	cat := loadCTFQuantCatalog(t)
-	for _, item := range strings.Split(spec, ",") {
+	for item := range strings.SplitSeq(spec, ",") {
 		short, mapName, ok := strings.Cut(strings.TrimSpace(item), ":")
 		if !ok {
 			t.Fatalf("entrée mal formée %q", item)
@@ -209,15 +211,12 @@ func ctfWriteDriftProbe(b *strings.Builder, lives []lifeSpan, deaths []types.Dea
 				best = r
 			}
 		}
-		i := int((l.to - int64(origin)) * 10 / span)
-		if i > 9 {
-			i = 9
-		}
+		i := min(int((l.to-int64(origin))*10/span), 9)
 		sums[i] += best
 		counts[i]++
 	}
 	fmt.Fprintf(b, "\n# residu median d'appariement par decile (ms)\n")
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if counts[i] == 0 {
 			continue
 		}

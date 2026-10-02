@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_slot_perso_research_test.go — L'HYPOTHESE DE LA PERSONNALISATION, MISE A L'EPREUVE.
@@ -246,7 +248,7 @@ func TestSection3SlotPersoChamps(t *testing.T) {
 func s3pArmure(t *testing.T, b []byte) {
 	t.Helper()
 	pleines := 0
-	for k := 0; k < s3pArmuresNb; k++ {
+	for k := range s3pArmuresNb {
 		o := s3pArmures + k*s3pArmurePas
 		v, s := s3pU32(b, o+4), s3pU32(b, o+8)
 		th, co, ma := s3pU32(b, o+0xc), s3pU32(b, o+0x10), s3pU32(b, o+0x14)
@@ -264,12 +266,12 @@ func s3pArmure(t *testing.T, b []byte) {
 // s3pObjet imprime les 7 objets et leurs 8 couples region/permutation.
 func s3pObjet(t *testing.T, b []byte) {
 	t.Helper()
-	for k := 0; k < s3pObjetsNb; k++ {
+	for k := range s3pObjetsNb {
 		o := s3pObjets + k*s3pObjetPas
 		v, s := s3pU32(b, o+4), s3pU32(b, o+8)
 		th, co, ma := s3pU32(b, o+0xc), s3pU32(b, o+0x10), s3pU32(b, o+0x14)
 		var paires []string
-		for j := 0; j < 8; j++ {
+		for j := range 8 {
 			r, p := s3pU32(b, o+0x18+j*8), s3pU32(b, o+0x1c+j*8)
 			if r == 0 && p == 0 {
 				continue

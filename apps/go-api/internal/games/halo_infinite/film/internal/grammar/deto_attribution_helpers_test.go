@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // deto_attribution_helpers_test.go — collecteurs, scan projectile BORNE et geometrie de
@@ -7,6 +9,7 @@ package grammar
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -117,7 +120,7 @@ func detoScanProjectiles(t *testing.T, dir string, wr *profile.Vec3Range, n int)
 	}
 	var out []detoDeton
 	for _, pts := range lives {
-		sort.Slice(pts, func(i, j int) bool { return lessSample(pts[i], pts[j]) })
+		slices.SortFunc(pts, compareSample) // le tri de production (J12.1)
 		for _, seg := range splitLives(pts) {
 			out = append(out, detoFromLife(seg))
 		}

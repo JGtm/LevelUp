@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"log/slog"
 	"sort"
 
@@ -78,7 +79,7 @@ const skullTickGapMS = 3000
 // — un film dont tous les trains tiennent en un seul tic, ou un axe sans echelle.
 func skullTickWidthFrames(recs []types.StatRecord, ctx matchClock, cons *objectives.ReplisALaConsultation) int {
 	var ecarts []int
-	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullTicksComponent, false, cons) {
+	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullTicksComponent(), false, cons) {
 		for _, pts := range byRound {
 			inst := skullTickInstants(pts)
 			for i := 1; i < len(inst); i++ {
@@ -203,10 +204,7 @@ func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence carrierPres
 			cov.OutOfWindow++
 			continue
 		}
-		f1 := clampFrame(ctx.frameOfMatchMS(int64(r.t1MS)), ctx.frames)
-		if f1 < f0 {
-			f1 = f0
-		}
+		f1 := max(clampFrame(ctx.frameOfMatchMS(int64(r.t1MS)), ctx.frames), f0)
 		// LA DEMI-FENETRE DE TIC, AUX DEUX BORNES — posee APRES le rejet hors fenetre (un
 		// train qui commence avant l'axe reste hors fenetre : ce n'est pas la demi-fenetre qui
 		// doit l'y ramener) et AVANT le gate de presence (une seconde d'amorce hors de toute
@@ -239,7 +237,7 @@ func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence carrierPres
 // execution.
 func skullCarryIntervals(recs []types.StatRecord, identity objectives.RoundIdentity,
 	cons *objectives.ReplisALaConsultation) []skullRawCarry {
-	bySlot := objectives.SeriesByRound(recs, objectives.SkullTicksComponent, false, cons)
+	bySlot := objectives.SeriesByRound(recs, objectives.SkullTicksComponent(), false, cons)
 	var out []skullRawCarry
 	for slot, byRound := range bySlot {
 		for round, pts := range byRound {
@@ -281,7 +279,7 @@ func skullTickInstants(pts []types.ScorePoint) []int {
 // denominateur de couverture, independant des trains de tics.
 func skullGrabCount(recs []types.StatRecord, cons *objectives.ReplisALaConsultation) int {
 	total := 0
-	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullGrabsComponent, false, cons) {
+	for _, byRound := range objectives.SeriesByRound(recs, objectives.SkullGrabsComponent(), false, cons) {
 		for _, pts := range byRound {
 			if n := len(pts); n > 0 {
 				total += int(pts[n-1].Value)
@@ -296,7 +294,7 @@ func skullGrabCount(recs []types.StatRecord, cons *objectives.ReplisALaConsultat
 // LE PONT D'IDENTITE (slot statborg -> xuid) SE FAIT ICI, comme pour la couronne et le drapeau,
 // par les seuls INSTANTS DE MORT et PAR MANCHE — aucune base. `reg.DeathOffsetMS()` cale l'horloge
 // des enregistrements (meme horloge que le fil des morts) sur l'axe des frames.
-func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
+func attachSkullCarries(ctx context.Context, doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
 	deduced map[int]bool) {
 	in := opt.Skull
 	if !in.Scanned {
@@ -319,7 +317,7 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, 
 	if doc.Coverage != nil {
 		doc.Coverage.SkullCarries = cov
 	}
-	logSkullCarriesCoverage(cov)
+	logSkullCarriesCoverage(ctx, cov)
 }
 
 // skullIdentityOf rend le pont d'identite du calque : celui de l'appelant s'il en a fourni un,
@@ -343,11 +341,11 @@ func skullIdentityOf(in SkullInput, opt Options) objectives.RoundIdentity {
 }
 
 // logSkullCarriesCoverage journalise ce que le calque publie — et ce qu'il ecarte.
-func logSkullCarriesCoverage(cov *SkullCarriesCoverage) {
+func logSkullCarriesCoverage(ctx context.Context, cov *SkullCarriesCoverage) {
 	if cov == nil {
 		return
 	}
-	slog.Info("rejeu : portage du crane d'Oddball",
+	slog.InfoContext(ctx, "rejeu : portage du crane d'Oddball",
 		"prises", cov.Grabs, "trains", cov.Trains, "portages", cov.Carries,
 		"fermes", cov.Closed, "ouverts", cov.Open,
 		"sansPont", cov.NoBridge, "horsFenetre", cov.OutOfWindow,

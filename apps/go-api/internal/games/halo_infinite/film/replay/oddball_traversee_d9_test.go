@@ -153,10 +153,7 @@ func d9Reconstruit(e d8Etat, deaths []types.Death, opt d9Options) (map[string]fl
 // pendant plusieurs images consecutives. La fenetre borne la recherche — au-dela, non attribue.
 func d9PremierTraversant(e d8Etat, debutUS, finUS uint64, x, y float32, fenetreMS int,
 ) (uint64, uint64, bool) {
-	limite := debutUS + uint64(fenetreMS)*1000
-	if finUS < limite {
-		limite = finUS
-	}
+	limite := min(finUS, debutUS+uint64(fenetreMS)*1000)
 	for at := debutUS; at <= limite; at += d7ImageUS {
 		xuid, d, second := d6PlusProche(e.tracks, e.pont, at, x, y)
 		if xuid == 0 || d > d6RayonRamassageM {

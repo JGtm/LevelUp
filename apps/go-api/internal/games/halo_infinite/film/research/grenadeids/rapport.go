@@ -151,7 +151,7 @@ func EcrireAppariement(w io.Writer, st StatsI22, app []Appariement, top int) {
 // hasardAttendu rend le nombre d occurrences que les quatre identifiants produiraient par pur
 // hasard sur un flux de `octets` octets balaye bit a bit.
 func hasardAttendu(octets int) float64 {
-	return float64(octets) * 8 * float64(len(grammar.GrenadeTypeIDsByRank)) / 4294967296.0
+	return float64(octets) * 8 * float64(grammar.GrenadeRankCount) / 4294967296.0
 }
 
 // ouiNon rend un booleen en clair.

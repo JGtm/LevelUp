@@ -36,8 +36,9 @@ package grammar
 // premiere occurrence vue ferait dependre la reponse de l'ordre de parcours.
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 )
 
 // KeyframeClosureStat est la fermeture d'UN archetype sur un film.
@@ -88,7 +89,8 @@ func keyframeBornesToutes(pay []byte) []keyframeBorne {
 
 // keyframeBornesDe rend les bornes de records DEJA marches (cf. [keyframeBornesToutes]).
 func keyframeBornesDe(recs []KeyframeRec) []keyframeBorne {
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
+	// Tri total (J12.1, DT-9) : Bit unique, la marche avance strictement (ancre suivante >= Bit+64).
+	slices.SortFunc(recs, func(a, b KeyframeRec) int { return cmp.Compare(a.Bit, b.Bit) })
 	out := make([]keyframeBorne, 0, len(recs))
 	for i := range recs {
 		b := keyframeBorne{Bit: recs[i].Bit, Want: -1, Slot: recs[i].Slot, TI: recs[i].TI}

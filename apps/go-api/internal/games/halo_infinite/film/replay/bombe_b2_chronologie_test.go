@@ -141,7 +141,7 @@ func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, 
 	if err != nil {
 		t.Logf("%s : index de joueur illisible (%v) — pont par le seul fil des morts", id, err)
 	}
-	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
 	slotXUID, rep := reg.PontEpure(), reg
 	t.Logf("%s : %d transitions bombe/crane, pont slot->xuid : %d slots nommés (vies=%d)",
 		id, len(evs), len(slotXUID), rep.ViesTotal())
@@ -178,7 +178,7 @@ func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 	if err != nil || !ok {
 		t.Fatalf("%s : film absent du cache : %v", id, err)
 	}
-	recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+	recs, _, _ := objectives.StatRecordsBornes(src, id)
 	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb, nil)
 	dir := filepath.Join(cache, "film_chunks", id)
 	deaths, err := grammar.ScanFilmDeaths(dir)

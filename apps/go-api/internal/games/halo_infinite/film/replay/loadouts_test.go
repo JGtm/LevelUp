@@ -20,9 +20,10 @@ const (
 
 func TestLoadoutFamilies_DeriveDuCatalogueDeProduction(t *testing.T) {
 	fams := loadoutFamilies()
-	if len(fams) != len(weaponv3.KnownWeaponHigh32) {
+	attendues := len(weaponv3.KnownWeaponHigh32Copie())
+	if len(fams) != attendues {
 		t.Fatalf("le set interrogé doit être exactement le catalogue : %d vs %d",
-			len(fams), len(weaponv3.KnownWeaponHigh32))
+			len(fams), attendues)
 	}
 	if !fams[famSkewer] {
 		t.Fatalf("famille %08X (Skewer) absente du set interrogé", famSkewer)

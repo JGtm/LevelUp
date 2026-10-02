@@ -29,8 +29,10 @@ package killsource
 //     dechets, 79 -> 78 morts.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -51,8 +53,9 @@ type timeline struct {
 	initSnap grammar.WorldSnapshot
 }
 
-// newTimeline : registre depuis le chunk 0 + keyframes tries par horodatage.
-func newTimeline(f *film) (*timeline, error) {
+// newTimeline : registre depuis le chunk 0 + keyframes tries par horodatage. Ce que la lecture du
+// registre et la marche d image-cle constatent tombe dans `diag` (lot J12.3).
+func newTimeline(f *film, diag *constat.Diagnostics) (*timeline, error) {
 	if f.src.NumChunks() == 0 {
 		return nil, ErrNoChunk
 	}
@@ -60,10 +63,15 @@ func newTimeline(f *film) (*timeline, error) {
 	if err != nil {
 		return nil, errRegistry(err)
 	}
+	if d, ok := grammar.DiagnosticRegistreInconnu(reg); ok {
+		diag.Signaler(d)
+	}
 	tl := &timeline{}
 	// LA MARCHE D IMAGE-CLE DU FILM (lot D-fix, 2026-09-24) : celle des balayages de la cuisson,
 	// qui refuse l elu qu un record prouve par la grammaire du film contredit.
-	marche := grammar.NewFilmContext(f.src).MarcheDImageCle()
+	fc := grammar.NewFilmContext(f.src)
+	marche := fc.MarcheDImageCle()
+	fc.Diagnostics().Verser(diag)
 	for i := range f.packets {
 		if f.packets[i].typ == packetTypeKeyframe {
 			tl.events = append(tl.events, keyframeEvent{f.packets[i].ts, keyframeRecs(f.packets[i].payload, marche)})
@@ -238,7 +246,9 @@ func keyframeRecs(pl []byte, marche grammar.MarcheDImageCle) []grammar.KeyframeR
 		have[a.slot] = true
 		recs = append(recs, grammar.KeyframeRec{Slot: a.slot, TI: a.ti, Gen: a.gen, Bit: a.bit})
 	}
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
+	// Bit unique : deux enregistrements ne commencent pas au meme bit, et une ancre du balayage qui
+	// tomberait sur un enregistrement du walker en porterait le slot, deja vu.
+	slices.SortFunc(recs, func(a, b grammar.KeyframeRec) int { return cmp.Compare(a.Bit, b.Bit) })
 	return recs
 }
 

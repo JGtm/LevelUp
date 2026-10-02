@@ -156,14 +156,14 @@ package grammar
 //
 // # REGENERATION — UNE PORTE QUI NE SERT QU'A CE GOLDEN
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run GoldenMiniBobineFamilles -update-golden-familles
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run GoldenMiniBobineFamilles -update-golden-familles
 //
 // Un golden ne s'edite JAMAIS a la main. Il ne se regenere qu'apres un changement de decodage
 // DECLARE, et le diff des comptes se relit dans le journal du lot.
 //
 // LE DRAPEAU EST DEDIE, ET IL L'EST DEPUIS LE 2026-09-06 (correction C5 de la revue E-R1). Ce
 // golden partageait le `-update` du corpus de graines du fuzz (`fuzz_records_test.go`) : la
-// commande `go test ./internal/games/halo_infinite/film/filmdec/ -update` SANS `-run`, qui est celle qu'on tape
+// commande `go test ./internal/games/halo_infinite/film/internal/grammar/ -update` SANS `-run`, qui est celle qu'on tape
 // pour regenerer les graines, le reecrivait au passage avec ce que le decodeur rendait a cet
 // instant — et le paquet repondait `ok`. Mesure a l'appui : `br.Skip(2)` -> `br.Skip(3)` dans
 // `readZoomRef` (une largeur de generation qu'aucun autre test n'epingle) suffisait a le faire
@@ -309,7 +309,7 @@ func famillesDeltaBipede(t *testing.T, r *recueil, fc *FilmContext) {
 
 // famillesObjetsDuMonde : les entites du monde (positions, projectiles, creations, zones).
 func famillesObjetsDuMonde(r *recueil, fc *FilmContext, film *source.Film) {
-	wr := profile.QuantRangeCEBiped // bornes MESUREES du film 000d5950 (cf. quantize.go) — zero fixture
+	wr := profile.QuantRangeCEBiped() // bornes MESUREES du film 000d5950 (cf. quantize.go) — zero fixture
 
 	opt := DefaultScanFilmOptions()
 	opt.WorldRange = &wr

@@ -17,7 +17,7 @@ const (
 
 // kfSentinelles ferme la table.
 func kfSentinelles(w *bitWriter) {
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		w.bits(kfSent, 32)
 	}
 }

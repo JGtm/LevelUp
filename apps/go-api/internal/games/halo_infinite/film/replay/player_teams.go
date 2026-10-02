@@ -43,6 +43,7 @@ package replay
 // Les vies suivent l'entree qui les porte (xuid, ou nom de bot), avant le pont par index.
 
 import (
+	"context"
 	"log/slog"
 	"strconv"
 
@@ -315,25 +316,25 @@ func (p teamPublication) tableDesEquipesPourLesDrapeaux() map[string]int {
 
 // logTeamCoverage journalise ce que la lecture a couvert et ce que le controle en dit. Une
 // contradiction et un refus se DISENT, avant toute degradation (regle n° 3 du depot).
-func logTeamCoverage(matchID string, cov TeamCoverage) {
-	slog.Info("rejeu : equipes lues dans le film", "match_id", matchID, "lue", cov.Read,
+func logTeamCoverage(ctx context.Context, matchID string, cov TeamCoverage) {
+	slog.InfoContext(ctx, "rejeu : equipes lues dans le film", "match_id", matchID, "lue", cov.Read,
 		"refus", cov.Refusal, "records", cov.Records, "rejetes", cov.Rejected,
 		"divergences", cov.Divergences, "film", cov.Film, "sansEquipe", cov.NoTeam,
 		"nonLus", cov.Unread, "accord", cov.Accord, "contradiction", cov.Contradiction,
 		"silence", cov.Silence, "vies", cov.Tracks, "viesAvecEquipe", cov.TracksNamed,
 		"viesSlotAmbigu", cov.TracksSlotAmbiguous)
 	if cov.TracksSlotAmbiguous > 0 {
-		slog.Warn("rejeu : le pont slot -> index s'ABSTIENT sur des vies dont le slot a porte "+
+		slog.WarnContext(ctx, "rejeu : le pont slot -> index s'ABSTIENT sur des vies dont le slot a porte "+
 			"deux joueurs nommes — leur equipe reste inconnue plutot qu'empruntee au premier "+
 			"occupant", "match_id", matchID, "vies", cov.TracksSlotAmbiguous)
 	}
 	if cov.Contradiction > 0 {
-		slog.Warn("rejeu : la base CONTREDIT le film sur l'equipe de joueurs — le film fait foi, "+
+		slog.WarnContext(ctx, "rejeu : la base CONTREDIT le film sur l'equipe de joueurs — le film fait foi, "+
 			"l'ecart est compte", "match_id", matchID, "contradictions", cov.Contradiction,
 			"accords", cov.Accord)
 	}
 	if !cov.Read {
-		slog.Warn("rejeu : equipes NON LUES dans le film — aucune vie ne portera d'equipe",
+		slog.WarnContext(ctx, "rejeu : equipes NON LUES dans le film — aucune vie ne portera d'equipe",
 			"match_id", matchID, "refus", cov.Refusal)
 	}
 }

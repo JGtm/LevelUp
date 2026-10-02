@@ -40,7 +40,7 @@ func reassignFixture() ([]types.StatRecord, []types.Death) {
 	// Les valeurs sont PROPRES A LA MANCHE (non cumulees) ; les morts (comp2 B) 1/2/3 datent les
 	// instants d'identite.
 	add := func(slot, round, t0 int, personal [3]int64) {
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			k := int64(i + 1)
 			recs = append(recs, coreLine(slot, round, t0+i*1_000, k, k, k, personal[i])...)
 		}

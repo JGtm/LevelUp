@@ -41,7 +41,7 @@ type m4bFin struct {
 func TestM4bRejetsDeVueB(t *testing.T) {
 	cad := s3LireCadre(t)
 	var fenetres [][2]int
-	for _, s := range strings.Split(os.Getenv("M4B_FENETRES"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_FENETRES"), ",") {
 		var a, b int
 		if _, err := fmt.Sscanf(s, "%d-%d", &a, &b); err == nil {
 			fenetres = append(fenetres, [2]int{a, b})
@@ -182,7 +182,7 @@ func m4bRelireFin(pay []byte, recs []FrameRecord, debut int, cfg FrameConfig, f 
 func TestM4bSlotsRejetes(t *testing.T) {
 	cad := s3LireCadre(t)
 	suivis := map[uint32]bool{}
-	for _, s := range strings.Split(os.Getenv("M4B_SLOTS"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_SLOTS"), ",") {
 		var v uint32
 		if _, err := fmt.Sscanf(s, "%d", &v); err == nil {
 			suivis[v] = true
@@ -233,7 +233,7 @@ func TestM4bSlotsRejetes(t *testing.T) {
 func TestM4bRecordsDesSlots(t *testing.T) {
 	cad := s3LireCadre(t)
 	suivis := map[uint32]bool{}
-	for _, s := range strings.Split(os.Getenv("M4B_SLOTS"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_SLOTS"), ",") {
 		var v uint32
 		if _, err := fmt.Sscanf(s, "%d", &v); err == nil {
 			suivis[v] = true
@@ -289,7 +289,7 @@ func TestM4bRecordsDesSlots(t *testing.T) {
 func TestM4bJournalDesPaquets(t *testing.T) {
 	cad := s3LireCadre(t)
 	var fenetres [][2]int
-	for _, s := range strings.Split(os.Getenv("M4B_FENETRES"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_FENETRES"), ",") {
 		var a, b int
 		if _, err := fmt.Sscanf(s, "%d-%d", &a, &b); err == nil {
 			fenetres = append(fenetres, [2]int{a, b})

@@ -141,7 +141,7 @@ func lignesDeBobine(t *testing.T, dir string) []string {
 func chaineDepuis(pl []byte, depart int, g15 bool) string {
 	r := nouveauCurseurEv(pl, depart)
 	var b strings.Builder
-	for n := 0; n < 4096; n++ {
+	for range 4096 {
 		debut := r.pos()
 		code := int(source.BitsAt(pl, debut+1, 7))
 		fin, ok := evStep(r, g15)

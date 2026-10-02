@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i59_rank_cross_test.go — INSTRUMENT DE MESURE de l'item 0.7 du plan
@@ -49,7 +51,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I59X_FILM=<repo>/data/cache/film_chunks/00ba2e1c \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI59TagsCrossI48Rank$' -timeout 60m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI59TagsCrossI48Rank$' -timeout 60m -v
 
 import (
 	"fmt"

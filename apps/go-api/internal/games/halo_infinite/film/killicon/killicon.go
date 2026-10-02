@@ -29,7 +29,7 @@ import (
 	_ "embed"
 	"fmt"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -222,7 +222,7 @@ func ResolvedTags() []uint32 {
 	for t := range byTag {
 		out = append(out, t)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 
@@ -309,7 +309,7 @@ const ruleColumns = 5
 
 // headerInts lit `date=` et `regles=` d une ligne de commentaire d en-tete.
 func headerInts(line string) (date string, count int) {
-	for _, f := range strings.Fields(line) {
+	for f := range strings.FieldsSeq(line) {
 		if v, ok := strings.CutPrefix(f, "date="); ok {
 			date = v
 		}

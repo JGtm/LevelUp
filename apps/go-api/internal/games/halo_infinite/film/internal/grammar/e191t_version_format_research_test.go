@@ -37,11 +37,12 @@ package grammar
 //
 // LECTURE SEULE, sans garde d environnement (les sept bobines sont versionnees).
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191tVersionDeFormat' -v -count=1
+//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191tVersionDeFormat' -v -count=1
 
 import (
 	"encoding/binary"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -199,16 +200,16 @@ func TestE191tIndexQuiVarient(t *testing.T) {
 	t.Logf("")
 	t.Logf("######## LES NEUF INDEX QUE L ECRIVAIN INTERROGE, BOBINE PAR BOBINE ########")
 	for _, i := range e191tIndexPortes {
-		ligne := ""
+		var ligne strings.Builder
 		for _, court := range ordre {
 			v, ok := vers[court]
 			if !ok || i >= len(v) {
-				ligne += "  --"
+				ligne.WriteString("  --")
 				continue
 			}
-			ligne += " " + e191tPad(int(v[i]))
+			ligne.WriteString(" " + e191tPad(int(v[i])))
 		}
-		t.Logf("  type[0x%02x] %s", i, ligne)
+		t.Logf("  type[0x%02x] %s", i, ligne.String())
 	}
 	t.Logf("  (ordre : a521164d 60ae07c4 11de8353 111fa685 e5adf7b2 bcb6d393 fb1a1a72)")
 }
@@ -229,11 +230,11 @@ func e191tTrierU32(m map[uint32]bool) []uint32 {
 
 // e191tPad cadre un entier sur trois colonnes.
 func e191tPad(v int) string {
-	s := ""
+	var s strings.Builder
 	for _, c := range []byte{byte('0' + (v/100)%10), byte('0' + (v/10)%10), byte('0' + v%10)} {
-		s += string(c)
+		s.WriteString(string(c))
 	}
-	return s
+	return s.String()
 }
 
 // e191tContradictions : les DEUX lignes des tables de l ECRIVAIN que la mesure contredit.

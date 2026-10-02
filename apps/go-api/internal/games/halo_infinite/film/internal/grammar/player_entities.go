@@ -49,7 +49,11 @@ package grammar
 //
 // HORS LIGNE, comme player_teams.go : aucune ecriture, aucun schema.
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+	"sort"
+)
 
 // PlayerEntity est UNE entite `ti=9` : un occupant du match, lu dans la trame d'etat.
 type PlayerEntity struct {
@@ -252,11 +256,8 @@ func (a *accumulateurDEntites) doutesPublies() []DouteDAbsence {
 			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Rang != out[j].Rang {
-			return out[i].Rang < out[j].Rang
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortFunc(out, func(a, b DouteDAbsence) int { // (Rang, Slot) : cles de deux maps imbriquees, uniques
+		return cmp.Or(cmp.Compare(a.Rang, b.Rang), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out
 }
@@ -314,11 +315,8 @@ func (a *accumulateurDEntites) publier() PlayerEntityScan {
 	}
 	// L'ORDRE EST IMPOSE : l'ordre d'iteration d'une map Go est aleatoire, et des faits qui
 	// changent d'octets sans changer de contenu ne se comparent plus.
-	sort.Slice(out.Entities, func(i, j int) bool {
-		if out.Entities[i].FirstKF != out.Entities[j].FirstKF {
-			return out.Entities[i].FirstKF < out.Entities[j].FirstKF
-		}
-		return out.Entities[i].Slot < out.Entities[j].Slot
+	slices.SortFunc(out.Entities, func(a, b PlayerEntity) int { // Slot : cle de la map `entites`, unique
+		return cmp.Or(cmp.Compare(a.FirstKF, b.FirstKF), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out
 }

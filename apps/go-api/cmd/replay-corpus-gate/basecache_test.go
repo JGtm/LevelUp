@@ -65,7 +65,7 @@ func TestCleBaseStable(t *testing.T) {
 // l'empreinte ET rendre l'ancienne entree introuvable. Retirer le SHA de la cle le fait tomber.
 func TestCleBaseInvalideQuandUnParametreChange(t *testing.T) {
 	ref := cleDeTest()
-	v := reflect.TypeOf(ref)
+	v := reflect.TypeFor[cleBase]()
 	for i := 0; i < v.NumField(); i++ {
 		modif := ref
 		f := reflect.ValueOf(&modif).Elem().Field(i)

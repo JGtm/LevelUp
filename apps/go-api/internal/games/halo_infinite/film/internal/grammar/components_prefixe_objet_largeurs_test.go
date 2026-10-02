@@ -190,7 +190,7 @@ func TestConsumeObjectFrameConfigurationLargeurs(t *testing.T) {
 	// avec le premier bit de chaque triplet a 1 (FUN_1406d1024 est a porte INVERSEE).
 	w := &bitw{}
 	w.put(0, 1) // FUN_14080d69c : porte fermee
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		w.put(1, 1) // FUN_1406d1024 : bit a 1 -> pas de R(6)
 		w.put(0, 1) // pas de R(12)
 		w.put(0, 1) // pas de R(12)
@@ -207,7 +207,7 @@ func TestConsumeObjectFrameConfigurationLargeurs(t *testing.T) {
 	w2.put(0, 32)
 	w2.put(0, 6) // compte lu = 0 -> 1 drapeau
 	w2.put(0, 1)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		w2.put(1, 1)
 		w2.put(0, 1)
 		w2.put(0, 1)

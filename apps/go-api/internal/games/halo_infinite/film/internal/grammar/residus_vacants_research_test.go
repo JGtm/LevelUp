@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // residus_vacants_research_test.go — PHASE 5b, RESIDU 1 : LES DEUX ECARTS ABERRANTS DE LA TABLE
@@ -25,69 +27,6 @@ import (
 	"path/filepath"
 	"testing"
 )
-
-// rsVide rend la longueur, en bits, d'un enregistrement de slot ENTIEREMENT A ZERO sur un build
-// dont la transposition vaut `delta`. Elle est CALCULEE terme a terme depuis la grammaire, pas
-// ajustee sur une mesure :
-//
-//	  85  en-tete du slot (1+1+1+32+2+48)        FUN_1407ecb08
-//	+ 64  le XUID, nul                           FUN_1406d6498
-//	+ 11  prefixe du masque (rang du bit haut)    FUN_1424ccf94
-//	+  1  le masque reduit a un bit               masque vide -> rang 0 -> 1 bit ecrit
-//	+ 12  N, nul                                  FUN_1411b1a24
-//	+  8  M, nul                                  FUN_1411b198c
-//	+ 832 le bloc de 104 octets                   sub+0xc48
-//	+ 16  la chaine reduite a son NUL             FUN_1407ece18 s'arrete APRES l'unite nulle
-//	+ 128 le bloc de 16 octets                    sub+0xc38
-//	+ 32  `desired-representation`                sub+0xcb0
-//	+ 64  le champ de 64 bits                     sub+0xcb8
-//	+ 46  les six champs courts (10+14+6+8+7+1)
-//	= 1 299 bits, puis le bloc de personnalisation, le bloc de queue et le u32 final.
-const rsVideHorsBlocs = 1299
-
-func rsVide(delta int) int { return rsVideHorsBlocs + s3sPersoBits + delta + s3sBloc44 + 32 }
-
-// rsVacant dit si un enregistrement de slot VACANT commence au bit `p`. Le predicat est
-// GRAMMATICAL et sans seuil : chaque champ est lu a sa place et doit valoir zero. Un tel
-// enregistrement est doublement INVISIBLE au balayage — son booleen de tete vaut 0 (le balayage
-// exige `1/0/0`) et son XUID tombe hors de la plage Xbox — et c'est la raison mecanique pour
-// laquelle il DOUBLE l'ecart entre ses deux voisins.
-//
-// Les champs laisses libres sont ceux dont la mesure montre qu'ils ne sont PAS nuls dans un
-// enregistrement vacant : `sub+0xcb8` (64 bits) et le champ de 6 bits `sub+0xc35`.
-func rsVacant(d []byte, p int) bool {
-	if s3rBit(d, p, 3) != 0 || s3rBit(d, p+3, 32) != 0 || s3rBit(d, p+35, 2) != 0 {
-		return false
-	}
-	if s3rBit(d, p+37, 48) != 0 || s3rBit(d, p+s3rEnteteBits, 64) != 0 {
-		return false
-	}
-	q := p + s3rEnteteBits + 64
-	if s3rBit(d, q, s3sPrefixeMasque+1) != 0 { // prefixe nul, donc un seul bit de masque, nul
-		return false
-	}
-	q += s3sPrefixeMasque + 1
-	if s3rBit(d, q, s3sLargeurN) != 0 || s3rBit(d, q+s3sLargeurN, s3sLargeurM) != 0 {
-		return false
-	}
-	q += s3sLargeurN + s3sLargeurM
-	for k := 0; k < s3sBloc104; k += 64 { // les 104 octets de sub+0xc48
-		if s3rBit(d, q+k, 64) != 0 {
-			return false
-		}
-	}
-	q += s3sBloc104
-	if s3rBit(d, q, 16) != 0 { // la chaine reduite a son terminateur
-		return false
-	}
-	q += 16
-	for k := 0; k < s3sBloc16+32; k += 32 { // sub+0xc38 puis `desired-representation`
-		if s3rBit(d, q+k, 32) != 0 {
-			return false
-		}
-	}
-	return true
-}
 
 // rsEcarts rend les enregistrements a nom imprimable du balayage CORRIGE de la phase 4 (critere
 // `slot+0x08` leve, filtre de parasite par le champ de nom) et l'ecart au suivant. Partir du

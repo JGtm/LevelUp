@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // neutral_death_research_test.go — INSTRUMENT DE MESURE (lot 7.1 du rejeu 2D, 2026-08-14).
@@ -53,7 +55,7 @@ func TestNeutralDeathNatureCoverage(t *testing.T) {
 	if spec == "" {
 		t.Skipf("mesure non demandee : %s vide", neutralDeathFilmsEnv)
 	}
-	for _, item := range strings.Split(spec, ",") {
+	for item := range strings.SplitSeq(spec, ",") {
 		dir := strings.TrimSpace(item)
 		if dir == "" {
 			continue

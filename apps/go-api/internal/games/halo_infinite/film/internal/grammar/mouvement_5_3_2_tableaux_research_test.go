@@ -103,7 +103,7 @@ func m532Masques(t *testing.T, ech []m532Ech) {
 	maxIdx := map[int]int{}
 	for _, e := range ech {
 		n, hi := 0, -1
-		for i := 0; i < 64; i++ {
+		for i := range 64 {
 			if e.masque&(uint64(1)<<uint(i)) != 0 {
 				parIndex[i]++
 				n++
@@ -152,7 +152,7 @@ func m532Etats(t *testing.T, ech []m532Ech) {
 	}
 	t.Logf("ETATS : accroupi %d records · glissade %d records", accroupi, glisse)
 	var parts []string
-	for b := 0; b < 8; b++ {
+	for b := range 8 {
 		if histoCrouch[b] > 0 {
 			parts = append(parts, fmt.Sprintf("[%.2f-%.2f[:%d", float64(b)/8, float64(b+1)/8, histoCrouch[b]))
 		}
@@ -277,7 +277,7 @@ func m532BitsDeControle(t *testing.T, ech []m532Ech) {
 			}
 			avecSuite++
 			monte := suite.dirZ > 0.30
-			for b := 0; b < 32; b++ {
+			for b := range 32 {
 				if e.mot32&(1<<uint(b)) == 0 {
 					continue
 				}
@@ -306,7 +306,7 @@ func m532BitsDeControle(t *testing.T, ech []m532Ech) {
 	plancher := m532Pct(montees, len(ech))
 	t.Logf("MOT DE 32 BITS d `i18 +0x544` : %d records le portent, %d ont une suite lisible. "+
 		"PLANCHER de montee (dirZ > 0,30) sur tout le film : %.1f %%", total, avecSuite, plancher)
-	for b := 0; b < 32; b++ {
+	for b := range 32 {
 		if allume[b] == 0 {
 			continue
 		}

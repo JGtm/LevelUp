@@ -62,7 +62,7 @@ func TestAmorceGrenadeLesDeuxLargeursSeLisent(t *testing.T) {
 					"que la mesure du lot 3.3.1 suive", a.Bits, a.IndexAuteurBit, c.bits, c.index)
 			}
 			g := grammaireSous(a)
-			for rang, id := range GrenadeTypeIDsByRank {
+			for rang, id := range GrenadeTypeIDsByRank() {
 				var cov grenadeCouverture
 				got := scanGrenadeThrows(buildGrenadeRecordSous(a, 7, id, 19), g, &cov)
 				if len(got) != 1 {
@@ -108,7 +108,7 @@ func TestAmorceGrenadeUneLargeurNeLitPasLAutre(t *testing.T) {
 	for _, c := range croix {
 		t.Run(c.nom, func(t *testing.T) {
 			g := grammaireSous(c.lue)
-			for _, id := range GrenadeTypeIDsByRank {
+			for _, id := range GrenadeTypeIDsByRank() {
 				var cov grenadeCouverture
 				got := scanGrenadeThrows(buildGrenadeRecordSous(c.ecrite, 7, id, 3), g, &cov)
 				if len(got) != 0 {

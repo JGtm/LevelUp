@@ -152,7 +152,7 @@ func occupationDesSieges(doc ReplayDocument, parCle map[string][]Track) string {
 		return "(pas de frames)"
 	}
 	mini, maxi := 1<<30, 0
-	for pas := 0; pas < 20; pas++ {
+	for pas := range 20 {
 		f := doc.FrameCount * pas / 20
 		n := 0
 		for _, e := range doc.Roster {

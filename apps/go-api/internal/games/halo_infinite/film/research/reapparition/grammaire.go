@@ -65,7 +65,7 @@ func (e *Executable) Relever(f FuncRange) Releve {
 	vues := map[uint32]bool{}
 	ciblesVues := map[uint64]bool{}
 
-	for i := 0; i < len(code); i++ {
+	for i := range code {
 		if bits, ok := lireAvanceCompteur(code, i); ok {
 			va := f.Debut + uint64(i)
 			r.Largeurs = append(r.Largeurs, Largeur{VA: va, Bits: bits})

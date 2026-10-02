@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_cible_test.go — INSTRUMENT (lot V7) : LE DEPOUILLEMENT INSTANCE PAR INSTANCE des

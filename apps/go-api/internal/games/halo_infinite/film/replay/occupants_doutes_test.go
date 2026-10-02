@@ -18,6 +18,7 @@ package replay
 //	D-COMPTE   les deux compteurs de `coverage.seats` : images douteuses et bornes differees.
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -88,7 +89,7 @@ func TestLesDoutesSeComptentDansLaCouvertureDesPlaces(t *testing.T) {
 	douteux.Doutes = []grammar.DouteDAbsence{{Rang: 0, Slot: 7}}
 	roster := []RosterEntry{entree(4, "100")}
 	occ := lierLesOccupants(roster, nil, entreesDeTest(douteux))
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{horloge: replayClock{step: 100_000, frames: siegeFrames}})
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{horloge: replayClock{step: 100_000, frames: siegeFrames}})
 	if cov.ImagesClesDouteuses != 1 || cov.BornesDifferees != 1 {
 		t.Fatalf("coverage.seats : images douteuses %d, bornes differees %d — attendu 1 et 1",
 			cov.ImagesClesDouteuses, cov.BornesDifferees)
@@ -143,7 +144,7 @@ func posesSousDoute(t *testing.T, sansBrewDog bool) ([]RosterEntry, SeatCoverage
 	occ := lierLesOccupants(roster, tracks, occIn)
 	var pub teamPublication
 	pub.poserEquipesParEntree(roster, occ)
-	cov := poserLesSieges(roster, occ, placeIn)
+	cov := poserLesSieges(context.Background(), roster, occ, placeIn)
 	return roster, cov, fb
 }
 
@@ -151,7 +152,7 @@ func posesSousDoute(t *testing.T, sansBrewDog bool) ([]RosterEntry, SeatCoverage
 // par equipe (le temoin est un 4 contre 4).
 func verifierLaCapacite(t *testing.T, roster []RosterEntry) {
 	t.Helper()
-	for f := 0; f < temoinFrames; f++ {
+	for f := range temoinFrames {
 		for eq, noms := range affichesA(roster, f) {
 			if len(noms) > 4 {
 				t.Fatalf("frame %d : l'equipe %d affiche %d fiches %v — jamais plus que ses 4 places",

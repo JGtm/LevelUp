@@ -1,7 +1,8 @@
 package replay
 
 import (
-	"sort"
+	"maps"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -378,9 +379,7 @@ func livesCoveringAt(lives []lifeSpan, free []int, tUS uint64) []int {
 
 func copyOwners(in map[uint32]int) map[uint32]int {
 	out := make(map[uint32]int, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 
@@ -391,6 +390,6 @@ func sortedClaimSlots(m map[uint32]map[int]int) []uint32 {
 	for s := range m {
 		out = append(out, s)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }

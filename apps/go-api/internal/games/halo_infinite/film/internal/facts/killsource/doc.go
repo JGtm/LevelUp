@@ -32,7 +32,9 @@
 //
 // # CE QUE LE BRANCHEUR A A ECRIRE
 //
-// Une seule fonction publique, [Decode]. Le cablage complet tient en quelques lignes :
+// Le point d entree est [Decode] (les autres exportes — [DefaultOptions], [ProfilDeDepart],
+// [ProfilDeDepartPourCarte], [CatalogueProvenance], [CatalogueSize] — le configurent ou le
+// decrivent). Le cablage complet tient en quelques lignes :
 //
 //	film, err := source.Load(source.MemoryChunks(chunks), meta) // les chunks telecharges
 //	opts := killsource.DefaultOptions()                       // la config GELEE
@@ -102,15 +104,14 @@
 // nommees depassent 100, jusqu a 228. Une valeur > 100 est une DONNEE REELLE, pas une lecture
 // ratee — son interpretation (degat excedentaire) n est PAS etablie.
 //
-// CE PAQUET EST IMPORTE PAR L APPLICATION : `internal/replaybuild/replaybuild.go`
-// (`neutralDeaths`, via le film que `BuildBytes` a deja charge + `killsource.Decode`) l utilise pour typer
-// les lignes de mort neutres de l artefact de rejeu 2D — brique partagee par
-// `cmd/replay-build`, `levelup backfill-replay`, l action admin replay-build et l etape
-// post-sync locale (cf. l en-tete de `replaybuild`). Le reste (`cmd/killsource`) est un
-// outil. Il ne touche ni la base, ni le reseau, ni les fichiers du jeu : il decode des
-// chunks deja mis en cache sur disque par un producteur anterieur. Une ecriture per-match
-// issue de ce decodage devra passer par `internal/persist/BatchBuilder` (regle anti-ART,
-// ADR 0019/0030).
+// CE PAQUET EST IMPORTE PAR L APPLICATION, par la facade `film/decfilm` (`decfilm.Decode`) :
+// `internal/replaybuild/kills.go` (`decodeKillSource`, sur le film que la cuisson a deja charge)
+// type les lignes de mort neutres et les references de kill de l artefact de rejeu 2D, et
+// `internal/sync/killcollector` (`collector_run.go`) en tire les lignes de kill du sync. Le
+// reste (`cmd/killsource`) est un outil. Il ne touche ni la base, ni le reseau, ni les fichiers
+// du jeu : il decode des chunks deja mis en cache sur disque par un producteur anterieur. Une
+// ecriture per-match issue de ce decodage passe par `internal/persist/BatchBuilder` (regle
+// anti-ART, ADR 0019/0030).
 //
 // # OFFLINE PUR — ET C EST PROUVE, PAS AFFIRME
 //
@@ -196,13 +197,15 @@
 //   - LA PEREMPTION DU CATALOGUE. Risque MINEUR (les ajouts d armes sont rares). La DETECTION
 //     reste posee et testee ([Health]), elle n est pas un entretien regulier.
 //
-// # CONTRAINTE D EXECUTION — UN SEUL DECODAGE A LA FOIS DANS UN PROCESS
+// # PLUSIEURS DECODAGES A LA FOIS DANS UN PROCESS : PERMIS
 //
-// Les parametres de replication de `grammar` sont des GLOBAUX DE PAQUET. Enchainer deux films
-// dans le meme process contamine la calibration du second (mesure : le score de fccc61cd passe
-// de 1111 a 1214 selon l ordre d appel, RE_LOG 7ter.52). [Decode] serialise donc les passes par
-// un verrou de paquet et remet les globaux a leur valeur d origine a chaque entree. Le cout est
-// de **8 a 30 secondes par film** (mesure : 8.2 / 11.2 / 28.6 / 11.1 s sur les quatre films de
-// reference). Le << ~22 ms >> qui figurait ici venait d un autre chantier et portait sur une passe
-// bien plus courte : il justifiait a tort de negliger la serialisation des decodages.
+// Les parametres de replication de `grammar` etaient des GLOBAUX DE PAQUET, et un verrou de
+// paquet serialisait les decodages (enchainer deux films contaminait la calibration du second :
+// score de fccc61cd 1111 ou 1214 selon l ordre d appel, RE_LOG 7ter.52). Ces globaux n existent
+// plus : le profil de balayage voyage avec le lecteur de bits ([grammar.ProfilDeBalayage]), et le
+// verrou a ete retire au lot 2.3 du PLAN_DECODEUR_FILM (`archlint/decode_lock_interdit_test.go`
+// interdit son retour, `archlint/filmdec_package_vars_test.go` mesure zero variable de paquet
+// ecrite). Deux [Decode] concurrents sont independants ; la borne d un decodage a la fois par
+// poste est MEMOIRE, pas correction, et elle vit hors d ici (`filmproc.AcquireSolo`). Cout mesure
+// d un decodage : 8 a 30 secondes par film sur les quatre films de reference.
 package killsource

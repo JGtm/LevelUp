@@ -1,7 +1,7 @@
 //go:build integration
 
 // Package duckdb — weapon_range_repo_test.go : tests WeaponRangeRepo (lot 3 du plan
-// .ai/PLAN_DUELS_PORTEE_2026-09-06.md).
+// .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md).
 //
 // Round-trip sur DB `:memory:` montée par les VRAIES migrations shared (fixture partagée
 // `newKillSourceTestPlayerDB` — jamais une DDL recopiée : une DDL de test qui diverge de la

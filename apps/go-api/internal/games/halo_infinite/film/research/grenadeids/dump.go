@@ -59,10 +59,7 @@ func EcrireTranches(w io.Writer, r *Releve) {
 		fmt.Fprintf(w, "     ti=%d idx=%d ts=%d chunk=%d paquet=%d bit=%d\n",
 			t.TypeIndex, t.Index, t.TimestampUS, t.Chunk, t.Paquet, t.BitPos)
 		for i := 0; i < len(t.Bits); i += 64 {
-			fin := i + 64
-			if fin > len(t.Bits) {
-				fin = len(t.Bits)
-			}
+			fin := min(i+64, len(t.Bits))
 			fmt.Fprintf(w, "       %+5d  %s\n", i-dumpAvant, espacerParOctet(t.Bits[i:fin]))
 		}
 	}
@@ -75,10 +72,7 @@ func espacerParOctet(s string) string {
 		if i > 0 {
 			b.WriteByte(' ')
 		}
-		fin := i + 8
-		if fin > len(s) {
-			fin = len(s)
-		}
+		fin := min(i+8, len(s))
 		b.WriteString(s[i:fin])
 	}
 	return b.String()

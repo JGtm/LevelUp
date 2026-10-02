@@ -9,6 +9,7 @@ package killcollector
 // `AvecCapture` la pose sur le collecteur.
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +26,7 @@ func TestCaptureDepuisCatalogue_PorteeDuDepot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("racine du depot : %v", err)
 	}
-	deps, err := CaptureDepuisCatalogue(racine, "halo_infinite",
+	deps, err := CaptureDepuisCatalogue(context.Background(), racine, "halo_infinite",
 		fakeMapNames{keys: port.MatchMapKeys{Names: []string{"Catalyst"}}})
 	if err != nil {
 		t.Fatalf("capture du depot : %v", err)
@@ -72,7 +73,7 @@ func TestAvecCapture_PoseLaPorteeDuRadar(t *testing.T) {
 // TestPorteeDuTitre_BestEffort — fichier absent ou illisible : aucune portee (journalise), jamais
 // une erreur qui couperait les positions.
 func TestPorteeDuTitre_BestEffort(t *testing.T) {
-	if p := porteeDuTitre(t.TempDir(), "halo_infinite"); p != nil {
+	if p := porteeDuTitre(context.Background(), t.TempDir(), "halo_infinite"); p != nil {
 		t.Fatal("regulation.toml absent : attendu aucune portee")
 	}
 	racine := t.TempDir()
@@ -83,7 +84,7 @@ func TestPorteeDuTitre_BestEffort(t *testing.T) {
 	if err := os.WriteFile(chemin, []byte("[meta]\ntitle_slug = \"halo_infinite\"\n"), 0o600); err != nil {
 		t.Fatalf("ecriture : %v", err)
 	}
-	if p := porteeDuTitre(racine, "halo_infinite"); p != nil {
+	if p := porteeDuTitre(context.Background(), racine, "halo_infinite"); p != nil {
 		t.Fatal("regulation.toml invalide (schema_version absent) : attendu aucune portee")
 	}
 }

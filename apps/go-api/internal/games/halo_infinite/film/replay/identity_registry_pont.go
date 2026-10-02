@@ -1,5 +1,10 @@
 package replay
 
+import (
+	"context"
+	"maps"
+)
+
 // identity_registry_pont.go — LA CONSTRUCTION DU PONT BRUT, ET SES DEUX ACCESSEURS GARDES.
 //
 // TROISIEME MOITIE DU MEME PRODUCTEUR (lot E2, 2026-09-08). `identity_registry.go` porte les
@@ -21,8 +26,8 @@ package replay
 // tirs sur le mauvais joueur ne se voit pas, et c'est bien pire.
 //
 // APPELANT UNIQUE : [BuildIdentityRegistry]. Le garde-rail `archlint` l'exige.
-func buildOwners(in IdentityInput) (OwnerReport, creationReport, bridgeVerification) {
-	return buildOwnersFromTracks(indexBySlot(in.Positions), in)
+func buildOwners(ctx context.Context, in IdentityInput) (OwnerReport, creationReport, bridgeVerification) {
+	return buildOwnersFromTracks(ctx, indexBySlot(in.Positions), in)
 }
 
 // buildOwnersFromTracks est [buildOwners] sur des trajectoires DEJA indexees par slot.
@@ -31,7 +36,7 @@ func buildOwners(in IdentityInput) (OwnerReport, creationReport, bridgeVerificat
 // construisent leurs trajectoires a la main plutot que de fabriquer des positions. Leur faire
 // passer par `indexBySlot` demanderait de reconstituer des `BipedPosition` a partir de vies —
 // c'est-a-dire d'inventer la donnee que l'instrument mesure.
-func buildOwnersFromTracks(tracks map[uint32]slotTrack,
+func buildOwnersFromTracks(ctx context.Context, tracks map[uint32]slotTrack,
 	in IdentityInput) (OwnerReport, creationReport, bridgeVerification) {
 	rep := OwnerReport{Owner: map[uint32]int{}, SlotXUID: map[uint32]uint64{}}
 	deaths, idx := in.Deaths, in.PlayerIndices
@@ -70,7 +75,7 @@ func buildOwnersFromTracks(tracks map[uint32]slotTrack,
 	crea := nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots, in.Entities)
 	paires := apparierMortsEtVies(lives, deaths, off)
 	marquerCauseDeMort(lives, paires)
-	verif := verifierParLesMorts(lives, deaths, paires, in.MatchID)
+	verif := verifierParLesMorts(ctx, lives, deaths, paires, in.MatchID)
 	if crea.Slots == 0 {
 		// AUCUNE LECTURE DIRECTE RECUE : degradation complete et declaree (cf.
 		// identity_registry_bridge.go). Sur un film dont les creations sont lues, cette
@@ -146,9 +151,7 @@ func extendSlotXUID(byXUID map[uint32]uint64, owner map[uint32]int,
 	xuidToIndex map[uint64]int) map[uint32]uint64 {
 	indexToXUID := indexToXUIDOf(xuidToIndex)
 	out := make(map[uint32]uint64, len(owner))
-	for s, x := range byXUID {
-		out[s] = x
-	}
+	maps.Copy(out, byXUID)
 	for s, pi := range owner {
 		if _, ok := out[s]; ok {
 			continue

@@ -80,7 +80,8 @@ package replay
 // `EquipmentCoverage.KillsRead`, appliquée par champ.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -313,14 +314,8 @@ func BuildBombStats(in BombStatsInput) (BombMatchStats, []BombEvent) {
 // type et par acteur — un ordre TOTAL, donc une sortie reproductible quel que soit l'ordre
 // d'assemblage des sources.
 func sortedBombEvents(events []BombEvent) []BombEvent {
-	sort.SliceStable(events, func(i, j int) bool {
-		if events[i].TimeMS != events[j].TimeMS {
-			return events[i].TimeMS < events[j].TimeMS
-		}
-		if events[i].Type != events[j].Type {
-			return events[i].Type < events[j].Type
-		}
-		return events[i].XUID < events[j].XUID
+	slices.SortStableFunc(events, func(a, b BombEvent) int {
+		return cmp.Or(cmp.Compare(a.TimeMS, b.TimeMS), cmp.Compare(a.Type, b.Type), cmp.Compare(a.XUID, b.XUID))
 	})
 	return events
 }
@@ -357,25 +352,25 @@ func bombPlayerRows(in BombStatsInput, t bombTallies) []BombPlayerStats {
 	for x := range xuids {
 		row := BombPlayerStats{XUID: x}
 		if in.DetonationsRead {
-			row.Detonations = measuredInt(t.detonations[x])
+			row.Detonations = new(t.detonations[x])
 		}
 		// `bomb_arms` demande les DEUX canaux : l'anneau date l'armement, le portage le
 		// nomme — et l'horloge du film qui les recale (cf. [bombArmsMeasured]). Sans l'un des
 		// trois, le champ reste absent — jamais un zéro qui laisserait croire que le joueur
 		// n'a rien armé.
 		if bombArmsMeasured(in) {
-			row.Arms = measuredInt(t.arms[x])
+			row.Arms = new(t.arms[x])
 		}
 		if in.CarryRead {
-			row.Grabs = measuredInt(t.grabs[x])
-			row.TimeAsCarrierSeconds = measuredSeconds(t.seconds[x])
+			row.Grabs = new(t.grabs[x])
+			row.TimeAsCarrierSeconds = new(t.seconds[x])
 		}
 		if in.CarryRead && in.KillsRead {
-			row.CarriersKilled = measuredInt(t.killed[x])
+			row.CarriersKilled = new(t.killed[x])
 		}
 		rows = append(rows, row)
 	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].XUID < rows[j].XUID })
+	slices.SortFunc(rows, func(a, b BombPlayerStats) int { return cmp.Compare(a.XUID, b.XUID) })
 	return rows
 }
 
@@ -479,9 +474,3 @@ func bombCarriedAt(periods []HeldObjectPeriod, t int64) bool {
 	}
 	return false
 }
-
-// measuredInt / measuredSeconds rendent un pointeur sur une valeur MESURÉE — le zéro qu'ils portent est
-// un zéro mesuré, à ne pas confondre avec le `nil` d'une source non lue.
-func measuredInt(v int) *int { return &v }
-
-func measuredSeconds(v float64) *float64 { return &v }

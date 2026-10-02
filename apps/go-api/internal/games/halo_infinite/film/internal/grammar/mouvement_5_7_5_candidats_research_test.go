@@ -33,6 +33,7 @@ package grammar
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -166,12 +167,7 @@ func m575RelireCandidats(pay []byte, r FrameRecord, cfg FrameConfig, ts uint64,
 
 // m575EstCandidat dit si le composant fait partie des candidats relus.
 func m575EstCandidat(nom string) bool {
-	for _, n := range m575CandidatsComposants {
-		if n == nom {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(m575CandidatsComposants, nom)
 }
 
 // m575LireUnCandidat relit UN composant a `depart` et rend les NOMS DE CANDIDAT vrais a cet
@@ -184,7 +180,7 @@ func m575LireUnCandidat(pay []byte, depart int, nom string, cfg FrameConfig) []s
 			return
 		}
 		out = append(out, "i18.mot32.porte")
-		for b := 0; b < 32; b++ {
+		for b := range 32 {
 			if u.Val&(1<<uint(b)) != 0 {
 				out = append(out, fmt.Sprintf("i18.mot32.bit%02d", b))
 			}

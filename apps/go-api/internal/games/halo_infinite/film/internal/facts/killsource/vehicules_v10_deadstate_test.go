@@ -89,7 +89,7 @@ func v10RunFilm(t *testing.T, dir, short8 string) {
 	if err != nil {
 		t.Fatalf("%s : film illisible : %v", short8, err)
 	}
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("%s : timeline : %v", short8, err)
 	}
@@ -221,7 +221,7 @@ func v10Films(t *testing.T) []string {
 		t.Skipf("V10_FILMS absent : instrument dead-state vehicule saute")
 	}
 	var out []string
-	for _, tok := range strings.Split(raw, ",") {
+	for tok := range strings.SplitSeq(raw, ",") {
 		tok = strings.TrimSpace(tok)
 		if i := strings.Index(tok, ":"); i >= 0 {
 			tok = strings.TrimSpace(tok[:i]) // tolere la forme "short8:carte" des autres instruments

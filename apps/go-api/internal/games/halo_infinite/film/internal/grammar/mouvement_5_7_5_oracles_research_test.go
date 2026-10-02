@@ -128,7 +128,7 @@ func m575Episodes(rec *m57Rec) []m575Episode {
 	var out []m575Episode
 	for slot, vs := range m57ParSlot(rec.vit) {
 		var cur *m575Episode
-		for i := 0; i < len(vs); i++ {
+		for i := range vs {
 			dt := m575DureeTenue(vs, i)
 			switch {
 			case vs[i].vz >= m575SeuilAirMS && cur == nil:

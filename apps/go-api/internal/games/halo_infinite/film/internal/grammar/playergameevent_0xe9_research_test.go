@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // playergameevent_0xe9_research_test.go — LOT 1 : decodage de PlayerGameEventSmall (0xE9,
@@ -49,6 +51,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -165,10 +168,7 @@ func TestPlayerGameEventSmall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks · base bipede %d ==", filepath.Base(dir), n, pgesRefBase)
 
 	cen := newPgesCensus()
@@ -316,15 +316,15 @@ func pgesTopInt(m map[int]int, k int) string {
 	if len(s) > k {
 		s = s[:k]
 	}
-	out := ""
+	var out strings.Builder
 	for i, e := range s {
 		if i > 0 {
-			out += " · "
+			out.WriteString(" · ")
 		}
-		out += itoa(e.key) + ":" + itoa(e.v)
+		out.WriteString(itoa(e.key) + ":" + itoa(e.v))
 	}
-	if out == "" {
+	if out.String() == "" {
 		return "(aucun)"
 	}
-	return out
+	return out.String()
 }

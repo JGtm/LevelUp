@@ -36,7 +36,7 @@ import (
 // `binary.LittleEndian.AppendUint32/64` et `Uint32/64`, d ou les huit fixtures inchangees
 // (`git diff --stat -- testdata/` vide au commit de promotion).
 func ajouterPoidsFaibleDAbord(b []byte, v uint64, n int) []byte {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b = append(b, byte(v>>(8*uint(i))))
 	}
 	return b
@@ -46,7 +46,7 @@ func ajouterPoidsFaibleDAbord(b []byte, v uint64, n int) []byte {
 // sites verifient `r.off+n <= len(r.b)` et posent `r.err` sinon — la garde est la, pas ici.
 func lirePoidsFaibleDAbord(b []byte, n int) uint64 {
 	var v uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v |= uint64(b[i]) << (8 * uint(i))
 	}
 	return v

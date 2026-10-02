@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -119,7 +120,7 @@ func TestInventoryCoverageAbsentWhenNothingToRead(t *testing.T) {
 	// Deux points sur un slot : le minimum pour que le document soit assemble jusqu'au bout
 	// (sans position, BuildFromPositions rend un document nu, sans aucune couverture).
 	in := []grammar.BipedPosition{pos(512, 0, 10, 20, 1), pos(512, 100, 11, 21, 1)}
-	sans := BuildFromPositions("m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
+	sans := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
 	if sans.Coverage == nil {
 		t.Fatal("document sans couverture : rien a juger")
 	}
@@ -127,7 +128,7 @@ func TestInventoryCoverageAbsentWhenNothingToRead(t *testing.T) {
 		t.Errorf("aucun inventaire fourni : la couverture doit rester ABSENTE, obtenu %+v",
 			*sans.Coverage.Inventory)
 	}
-	vide := BuildFromPositions("m", "halo_infinite", in, nil,
+	vide := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil,
 		Options{FrameIntervalMS: 100, Inventory: []types.KeyframeInventory{}})
 	if vide.Coverage == nil || vide.Coverage.Inventory == nil {
 		t.Fatal("lecture faite mais vide : la couverture doit etre PRESENTE, a zero")

@@ -109,7 +109,7 @@ func Load(src Source, meta []types.ChunkMeta) (*Film, error) {
 		return nil, errNoChunk
 	}
 	f := &Film{chunks: make([][]byte, n), bounds: make([][2]int, n)}
-	for ch := 0; ch < n; ch++ {
+	for ch := range n {
 		raw, err := src.Chunk(ch)
 		if err != nil {
 			return nil, fmt.Errorf("source: chunk %d: %w", ch, err)

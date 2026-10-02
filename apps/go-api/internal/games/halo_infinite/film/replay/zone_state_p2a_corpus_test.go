@@ -25,6 +25,7 @@ package replay
 // avait deja diagnostique.
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -297,7 +298,7 @@ func p2aDoc(t *testing.T, dir, short string, quant *profile.MapQuantEntry) Repla
 		clockUS = 0
 	}
 	opt.FilmClockOriginUS = clockUS
-	return BuildFromPositions(short, title.DefaultSlug, pos, nil, opt)
+	return BuildFromPositions(context.Background(), short, title.DefaultSlug, pos, nil, opt)
 }
 
 // p2aFrameOf convertit un instant de l'horloge du MANIFESTE en index de frame du rejeu, en

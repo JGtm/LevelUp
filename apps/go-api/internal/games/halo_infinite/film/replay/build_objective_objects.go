@@ -22,21 +22,27 @@ package replay
 // HORS LIGNE — appelé par l'assemblage, comme les autres calques.
 
 import (
+	"context"
 	"log/slog"
-	"sort"
+	"slices"
 )
 
 // attachObjectiveObjects pose les vies LIBRES des objets d'objectif publiables sur le document,
 // avec leur couverture et leur journal.
-func attachObjectiveObjects(doc *ReplayDocument, opt Options, clock replayClock) {
+func attachObjectiveObjects(ctx context.Context, doc *ReplayDocument, opt Options, clock replayClock) {
 	lives, cov := buildObjectiveObjects(
 		opt.Pads.Weapons, opt.Labels.ObjectiveObjects, opt.Labels.ObjectiveFamilies, clock)
 	doc.ObjectiveObjects = lives
 	if doc.Coverage != nil {
 		doc.Coverage.ObjectiveObjects = cov
 	}
-	logObjectiveObjectsCoverage(cov)
+	logObjectiveObjectsCoverage(ctx, cov)
 }
+
+// familleCrane — l'identifiant de famille du crane, tel que le MANIFESTE le publie. Constante
+// parce qu'il est repris par la table ci-dessous et par tous les cas de test du paquet : un
+// litteral disperse est le premier a diverger le jour ou le manifeste renommerait la famille.
+const familleCrane = "ball"
 
 // objectiveObjectPublished — les familles dont les vies libres sont PUBLIÉES.
 //
@@ -50,11 +56,6 @@ func attachObjectiveObjects(doc *ReplayDocument, opt Options, clock replayClock)
 //
 // LE JOUR OÙ CE NÉGATIF SERA LEVÉ, une ligne suffira ici et AUCUNE CLÉ DU DOCUMENT NE BOUGERA :
 // c'est pourquoi la forme publiée porte `family` plutôt que de s'appeler « crâne ».
-// familleCrane — l'identifiant de famille du crane, tel que le MANIFESTE le publie. Constante
-// parce qu'il est repris par la table ci-dessous et par tous les cas de test du paquet : un
-// litteral disperse est le premier a diverger le jour ou le manifeste renommerait la famille.
-const familleCrane = "ball"
-
 var objectiveObjectPublished = map[string]bool{familleCrane: true}
 
 // buildObjectiveObjects assemble les vies libres publiables. PUR : aucune lecture de film, aucune
@@ -97,7 +98,15 @@ func buildObjectiveObjects(scan WorldObjectScan, labels map[uint32]Label,
 	// frame — et `sort.SliceStable` reconduisant l'ordre d'entrée pour les ex æquo, ce tri
 	// s'adossait en réalité à `flagFreeLives`, exactement le couplage que le commentaire d'avant
 	// prétendait avoir coupé. Le départage par le contenu de la vie le coupe pour de bon.
-	sort.SliceStable(out, func(i, j int) bool { return objectiveObjectLess(out[i], out[j]) })
+	slices.SortStableFunc(out, func(a, b ObjectiveObjectLife) int {
+		switch {
+		case objectiveObjectLess(a, b):
+			return -1
+		case objectiveObjectLess(b, a):
+			return 1
+		}
+		return 0
+	})
 	return out, cov
 }
 
@@ -173,11 +182,11 @@ func objectiveObjectLifeOf(l flagFreeLife, family string, label Label,
 
 // logObjectiveObjectsCoverage journalise ce que le calque a publié et ce qu'il a écarté. Un
 // calque vide doit DIRE lequel de ses silences il sert.
-func logObjectiveObjectsCoverage(cov *ObjectiveObjectsCoverage) {
+func logObjectiveObjectsCoverage(ctx context.Context, cov *ObjectiveObjectsCoverage) {
 	if cov == nil {
 		return
 	}
-	slog.Info("rejeu : objets d objectif libres",
+	slog.InfoContext(ctx, "rejeu : objets d objectif libres",
 		"balaye", cov.Scanned, "declares", cov.Declared, "vies", cov.Lives,
 		"points", cov.Points, "immobiles", cov.Motionless, "horsAxe", cov.OutOfAxis)
 }

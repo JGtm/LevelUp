@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_variantes_research_test.go — lot R7 : CALIBRATION SUR PIECES DES VARIANTES DE BUILD.
@@ -209,7 +211,7 @@ func TestR7Tag7(t *testing.T) {
 
 func r7CompteTag(m map[uint64]int) string {
 	out := ""
-	for tag := uint64(0); tag < 8; tag++ {
+	for tag := range uint64(8) {
 		if out != "" {
 			out += " · "
 		}

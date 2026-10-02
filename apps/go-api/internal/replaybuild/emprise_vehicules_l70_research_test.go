@@ -1,3 +1,5 @@
+//go:build research
+
 package replaybuild
 
 // emprise_vehicules_l70_research_test.go — LOT L7.0 DU PLAN
@@ -32,6 +34,7 @@ package replaybuild
 //	  go test ./internal/replaybuild/ -run '^TestEmpriseL70$' -v -count=1 -timeout 60m
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -88,7 +91,7 @@ type l70Prise struct {
 func TestEmpriseL70(t *testing.T) {
 	dir, cache := os.Getenv("EMPRISE_L70_DIR"), os.Getenv("EMPRISE_L70_CACHE")
 	var films []string
-	for _, f := range strings.Split(os.Getenv("EMPRISE_L70_FILMS"), ",") {
+	for f := range strings.SplitSeq(os.Getenv("EMPRISE_L70_FILMS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			films = append(films, f)
 		}
@@ -108,7 +111,7 @@ func TestEmpriseL70(t *testing.T) {
 	defer garde.Disarm()
 	var agg l70Agregat
 	for _, id := range films {
-		b, err := NewBuilder(repoRoot, title.DefaultSlug)
+		b, err := NewBuilder(context.Background(), repoRoot, title.DefaultSlug)
 		if err != nil {
 			t.Fatalf("builder : %v", err)
 		}

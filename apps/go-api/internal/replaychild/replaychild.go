@@ -83,7 +83,7 @@ func IsChild(args []string) bool {
 // LA SENTINELLE EST ARMEE ICI. Elle mene a un arret du processus, ce qui n'est licite que parce
 // que cet enfant NE TIENT AUCUN HANDLE D'ECRITURE : il ne connait pas la base, et l'artefact
 // final est ecrit par le parent.
-func RunChild(args []string) int {
+func RunChild(ctx context.Context, args []string) int {
 	reqPath := valueOf(args, Flag)
 	if reqPath == "" {
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : %s attend un chemin de requete\n", Flag)
@@ -111,12 +111,12 @@ func RunChild(args []string) int {
 		filmproc.EmitPeak(g.Peak())
 	}()
 
-	builder, err := replaybuild.NewBuilder(req.RepoRoot, req.TitleSlug)
+	builder, err := replaybuild.NewBuilder(ctx, req.RepoRoot, req.TitleSlug)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : builder indisponible : %v\n", err)
 		return filmproc.CodePreparation
 	}
-	built, err := builder.BuildBytes(req.MatchID, req.MapNames, req.FilmDir, req.Facts)
+	built, err := builder.BuildBytes(ctx, req.MatchID, req.MapNames, req.FilmDir, req.Facts)
 	if err != nil {
 		// UN REFUS VOULU (carte hors catalogue, cle de film inconnue, film non finalise) sort en
 		// `CodeSkipped` AVEC SA RAISON, classee par `errors.Is` (cf. raison.go) : `CodeFailed`

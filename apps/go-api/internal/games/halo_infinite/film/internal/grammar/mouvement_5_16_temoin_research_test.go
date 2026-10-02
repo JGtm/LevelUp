@@ -49,6 +49,7 @@ package grammar
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -349,7 +350,7 @@ func t516Relancer(pay []byte, w *World, reg *Registry, cfg FrameConfig, debut in
 			w.Unbind(s)
 		}
 	}()
-	for tours := 0; tours < t516RelanceMax; tours++ {
+	for tours := range t516RelanceMax {
 		m := t515Marcher(pay, w, cfg, debut)
 		if r := len(pay)*8 - m.FinVueC; r >= 0 && r <= m5116GateOctet &&
 			c514ResteNul(pay, m.FinVueC) {
@@ -425,14 +426,14 @@ func t516HistTI(m map[int]int) string {
 
 // joinVirgule joint des morceaux par « · ».
 func joinVirgule(p []string) string {
-	out := ""
+	var out strings.Builder
 	for i, s := range p {
 		if i > 0 {
-			out += " · "
+			out.WriteString(" · ")
 		}
-		out += s
+		out.WriteString(s)
 	}
-	return out
+	return out.String()
 }
 
 // TestTemoin516Population recense CE QUE LE FILM DECLARE : les types de paquet presents, les

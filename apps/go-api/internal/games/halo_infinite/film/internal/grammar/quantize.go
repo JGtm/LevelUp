@@ -16,7 +16,7 @@ const quantCenter = 0.5
 func (b *Lecteur) ReadQuantizedVec3(bits uint, rng profile.Vec3Range) [3]float32 {
 	var out [3]float32
 	scale := float32(uint64(1) << bits)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		q := float32(b.ReadBits(bits))
 		step := (rng[i].Max - rng[i].Min) / scale
 		out[i] = q*step + rng[i].Min + step*quantCenter

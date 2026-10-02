@@ -17,16 +17,16 @@ func TestFindKeyframeBlockInsertion(t *testing.T) {
 	// périodique court rendrait la position d'insertion ambiguë et le test ne prouverait rien.
 	court := make([]byte, (lf+7)/8+4)
 	x := uint32(0xACE1)
-	for i := 0; i < lf; i++ {
+	for i := range lf {
 		x = x*1103515245 + 12345
 		kfSpanEcrire(court, i, 1, uint64((x>>16)&1))
 	}
 	// Le record LONG : court[0:p] + BLOC(d) + court[p:], le bloc étant une constante reconnaissable.
 	long := make([]byte, (lf+d+7)/8+4)
-	for i := 0; i < p; i++ {
+	for i := range p {
 		kfSpanEcrire(long, i, 1, source.BitsBourres(court, i, 1))
 	}
-	for i := 0; i < d; i++ {
+	for i := range d {
 		kfSpanEcrire(long, p+i, 1, uint64((i/7)&1))
 	}
 	for i := p; i < lf; i++ {

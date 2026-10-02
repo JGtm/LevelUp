@@ -21,12 +21,11 @@ package main
 //   - « conflit DuckDB mono-process » : les enfants sont STRICTEMENT SEQUENTIELS et chacun
 //     RELACHE son handle de lecture AVANT de decoder. Il n'existe jamais deux lecteurs, et
 //     jamais un lecteur pendant un decodage.
-//   - « un exec perdrait le verrou process filmdec » : ce verrou
-//     (`filmproc.AcquireSolo`, INTER-PROCESSUS) borne la machine a un decodage
-//     simultanes DANS UN MEME PROCESSUS. Deux processus ne partagent pas ces globaux : un
-//     film par processus est une isolation STRICTEMENT PLUS FORTE que le verrou, pas sa
-//     perte. Elle remet meme a zero, a chaque film, la table d'observation compWidthObs que
-//     le paquet n'efface jamais.
+//   - « un exec perdrait le verrou process filmdec » : ce verrou de paquet n'existe plus
+//     (retire au lot 2.3 du PLAN_DECODEUR_FILM, avec les globaux de decodage qu'il protegeait).
+//     Le verrou qui reste (`filmproc.AcquireSolo`) est INTER-PROCESSUS : il borne la machine a
+//     un decodage a la fois, et l'enfant le prend lui-meme. Un film par processus reste une
+//     isolation memoire stricte.
 //
 // Le decodage passe donc toujours par la librairie, jamais par un autre binaire : le seul
 // processus lance est CELUI-CI, sur un seul film.

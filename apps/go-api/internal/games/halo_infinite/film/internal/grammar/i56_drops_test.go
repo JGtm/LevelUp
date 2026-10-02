@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i56_drops_test.go — INSTRUMENT DE MESURE : UNE CHUTE D'ÉNERGIE DE CAPACITÉ EST-ELLE UN
@@ -34,7 +36,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I56_DROPS_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI56DropsAreEvents$' -timeout 30m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI56DropsAreEvents$' -timeout 30m -v
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -254,7 +256,7 @@ func i56dDeltas(t *testing.T, energy []i56dSample) []i56Drop {
 	}
 	series := map[key][]i56dSample{}
 	for _, e := range energy {
-		for c := 0; c < AbilityEnergyCharges; c++ {
+		for c := range AbilityEnergyCharges {
 			if e.ch[c] != AbilityEnergyUnarmed {
 				series[key{e.slot, c}] = append(series[key{e.slot, c}], e)
 			}

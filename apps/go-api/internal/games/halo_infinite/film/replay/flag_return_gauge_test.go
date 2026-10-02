@@ -66,7 +66,7 @@ func TestAttachFlagReturnGaugesApparieLaJaugeEtPublieUnEscalier(t *testing.T) {
 	carries := []FlagCarry{frgCarry(0, 20, 40)}
 	// Dix lectures, TOUTES dans le lacher : la jauge de ce drapeau.
 	var reads []grammarManagedRead
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		reads = append(reads, frgLecture(1490, 20+2*i, float64(i)/10))
 	}
 	var cov FlagCarriesCoverage
@@ -101,7 +101,7 @@ func TestAttachFlagReturnGaugesApparieLaJaugeEtPublieUnEscalier(t *testing.T) {
 func TestAttachFlagReturnGaugesRefuseLeSlotVoisin(t *testing.T) {
 	carries := []FlagCarry{frgCarry(0, 20, 40)}
 	var reads []grammarManagedRead
-	for i := 0; i < 19; i++ { // 3 dedans sur 19 = 15,8 %
+	for i := range 19 { // 3 dedans sur 19 = 15,8 %
 		f := 60 + i
 		if i < 3 {
 			f = 22 + i
@@ -136,7 +136,7 @@ func TestAttachFlagReturnGaugesRefuseUnePoigneeDEchantillons(t *testing.T) {
 func TestAttachFlagReturnGaugesUnSlotParDrapeau(t *testing.T) {
 	carries := []FlagCarry{frgCarry(0, 20, 40), frgCarry(1, 60, 80)}
 	var reads []grammarManagedRead
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		reads = append(reads, frgLecture(1614, 20+2*i, float64(i)/10))
 		reads = append(reads, frgLecture(1619, 60+2*i, float64(i)/10))
 	}

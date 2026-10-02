@@ -38,6 +38,7 @@ package replaybuild
 // d'equipe -1 et sans etat `home`. `coverage.flagCarries.spawns` publie le compte, donc le fait.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/domain/title"
@@ -47,19 +48,19 @@ import (
 // flagSpawns rend TOUS les socles de drapeau de la carte du match, en coordonnees monde — les
 // deux socles d'equipe ET le socle neutre du centre. Le calque retient ceux qui correspondent a
 // la variante qu'il reconnait.
-func (b *Builder) flagSpawns(matchID, mapID string) []replay.FlagSpawn {
+func (b *Builder) flagSpawns(ctx context.Context, matchID, mapID string) []replay.FlagSpawn {
 	if mapID == "" {
-		slog.Debug("replaybuild: match sans map_id — drapeaux sans equipe proprietaire",
+		slog.DebugContext(ctx, "replaybuild: match sans map_id — drapeaux sans equipe proprietaire",
 			"match_id", matchID, "titleSlug", b.titleSlug)
 		return nil
 	}
-	cat := b.objectivesCatalog()
+	cat := b.objectivesCatalog(ctx)
 	if cat == nil {
 		return nil
 	}
 	entry, err := cat.Lookup(mapID)
 	if err != nil {
-		slog.Debug("replaybuild: carte hors catalogue d'objectifs — drapeaux sans equipe proprietaire",
+		slog.DebugContext(ctx, "replaybuild: carte hors catalogue d'objectifs — drapeaux sans equipe proprietaire",
 			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
 		return nil
 	}
@@ -74,7 +75,7 @@ func (b *Builder) flagSpawns(matchID, mapID string) []replay.FlagSpawn {
 // LE CHARGEMENT NE SE RETENTE PAS : une passe de masse construit des centaines d'artefacts, et
 // un catalogue absent le resterait a chaque appel — autant d'ouvertures de fichier et de lignes
 // de journal pour la meme absence. `objectivesTried` fige la tentative.
-func (b *Builder) objectivesCatalog() *replay.MapObjectivesCatalog {
+func (b *Builder) objectivesCatalog(ctx context.Context) *replay.MapObjectivesCatalog {
 	if b.objectivesTried {
 		return b.objectives
 	}
@@ -84,7 +85,7 @@ func (b *Builder) objectivesCatalog() *replay.MapObjectivesCatalog {
 	if err != nil {
 		// Le catalogue est VERSIONNE : son absence n'est pas le cas nominal d'une carte sans
 		// objectifs, c'est une installation incomplete. On le dit, puis on degrade.
-		slog.Warn("replaybuild: catalogue d'objectifs illisible — drapeaux sans equipe proprietaire",
+		slog.WarnContext(ctx, "replaybuild: catalogue d'objectifs illisible — drapeaux sans equipe proprietaire",
 			"err", err, "path", path, "titleSlug", b.titleSlug)
 		return nil
 	}

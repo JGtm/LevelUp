@@ -28,7 +28,7 @@ func TestUnRamassageNatifNeDateQuUneOccupation(t *testing.T) {
 	}
 	st := datePadPickups(pads, picks, pickups)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if picks[i].T != nil || picks[i].XUID != nil {
 			t.Errorf("occupation %d : t = %v, xuid = %v, attendu nil/nil — un ramassage dispute "+
 				"entre deux socles ne date aucun des deux", i, picks[i].T, picks[i].XUID)

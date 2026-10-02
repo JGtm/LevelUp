@@ -91,12 +91,12 @@ func runBackfillPadTiers(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 
-	ref, reg, err := portePadTiers(cfg, o.titleSlug)
+	ctx := context.Background()
+	ref, reg, err := portePadTiers(ctx, cfg, o.titleSlug)
 	if err != nil || ref == nil {
 		return err
 	}
 
-	ctx := context.Background()
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 	sharedPath := pr.SharedDBPath(o.titleSlug)
 	if _, err := os.Stat(sharedPath); err != nil {
@@ -144,7 +144,7 @@ func runBackfillPadTiers(cfg *config.AppConfig, args []string) error {
 
 // portePadTiers franchit les DEUX portes du titre. Rend (nil, nil, nil) quand le titre ne
 // declare pas la grandeur : ce n est pas une erreur, c est une passe vide qui le dit a l ecran.
-func portePadTiers(cfg *config.AppConfig, titleSlug string) (
+func portePadTiers(ctx context.Context, cfg *config.AppConfig, titleSlug string) (
 	*replayartifacts.ReferenceEmplacements, *mappings.RegulationSet, error,
 ) {
 	// LE GATE EST UNE CAPABILITY, JAMAIS UN SLUG (ratchet no_slug_comparison_test.go).
@@ -157,7 +157,7 @@ func portePadTiers(cfg *config.AppConfig, titleSlug string) (
 			titleSlug, string(games.CapFilmWeaponTiers))
 		return nil, nil, nil
 	}
-	ref, err := replayartifacts.ChargerReferenceEmplacements(cfg.RepoRoot, titleSlug)
+	ref, err := replayartifacts.ChargerReferenceEmplacements(ctx, cfg.RepoRoot, titleSlug)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reference des emplacements du titre %s: %w", titleSlug, err)
 	}

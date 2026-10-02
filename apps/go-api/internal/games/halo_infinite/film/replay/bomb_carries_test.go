@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -115,14 +116,14 @@ func TestBombCarriesGuards(t *testing.T) {
 		bombChange(1_000_000, 3, bombHeldFamily, grammar.NoWeaponVariant),
 	}}
 	// Garde fermee : rien, pas meme une couverture.
-	attachBombCarries(&doc, opt, IdentityRegistry{}, replayClock{origin: 0, step: 1000, frames: 100}, nil)
+	attachBombCarries(context.Background(), &doc, opt, IdentityRegistry{}, replayClock{origin: 0, step: 1000, frames: 100}, nil)
 	if doc.BombCarries != nil || doc.Coverage.BombCarries != nil {
 		t.Fatalf("garde fermee : calque %v, couverture %v — attendu rien",
 			doc.BombCarries, doc.Coverage.BombCarries)
 	}
 	// Garde ouverte, pont vide : couverture avec les transitions vues, aucun portage.
 	opt.Bomb.CarryScanned = true
-	attachBombCarries(&doc, opt, IdentityRegistry{}, replayClock{origin: 0, step: 1000, frames: 100}, nil)
+	attachBombCarries(context.Background(), &doc, opt, IdentityRegistry{}, replayClock{origin: 0, step: 1000, frames: 100}, nil)
 	cov := doc.Coverage.BombCarries
 	if cov == nil || !cov.BombFilm || cov.Events != 1 || cov.Carries != 0 {
 		t.Fatalf("pont vide : couverture %+v, attendu {BombFilm, Events 1, Carries 0}", cov)

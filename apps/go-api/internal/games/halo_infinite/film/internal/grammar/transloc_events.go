@@ -233,7 +233,7 @@ func readTranslocVec(br *Lecteur, entry *profile.MapQuantEntry) ([3]float32, boo
 		rng = entry.Range()
 	}
 	lay := profile.I0Layout{AxisW: pos.w}
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		out[ax] = DequantBipedAxis(uint32(pos.q[ax]), ax, lay, rng)
 	}
 	return out, br.Remaining() >= 0
@@ -258,7 +258,7 @@ func translocEntryUsable(e *profile.MapQuantEntry) bool {
 	if e == nil || e.EffectiveRegionIndexBits() > translocMaxRegionBits {
 		return false
 	}
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		if e.AxisWidths[ax] == 0 || e.AxisWidths[ax] > translocMaxAxisBits {
 			return false
 		}

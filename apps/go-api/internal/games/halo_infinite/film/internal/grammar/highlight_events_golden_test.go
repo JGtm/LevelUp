@@ -51,7 +51,7 @@ func goldenHighlightEventContent(t *testing.T) string {
 
 	var b strings.Builder
 	b.WriteString("# forme du type (ordre, nom, type, tag)\n")
-	rt := reflect.TypeOf(highlightevent.HighlightEvent{})
+	rt := reflect.TypeFor[highlightevent.HighlightEvent]()
 	fmt.Fprintf(&b, "champs=%d\n", rt.NumField())
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)

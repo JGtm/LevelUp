@@ -76,7 +76,7 @@ func TestObserveEtapesBuildBytes(t *testing.T) {
 		t.Fatal("BuildBytes introuvable")
 	}
 	got := etapesObservees(t, fn.Body, parNom, 0)
-	want := slices.Concat(BuildBytesStepsBefore, []string{"<BuildFromFilm>"}, BuildBytesStepsAfter)
+	want := slices.Concat(BuildBytesStepsBefore(), []string{"<BuildFromFilm>"}, BuildBytesStepsAfter())
 	if !slices.Equal(got, want) {
 		t.Fatalf("etapes de BuildBytes dans le source\n  source : %v\n  attendu : %v", got, want)
 	}

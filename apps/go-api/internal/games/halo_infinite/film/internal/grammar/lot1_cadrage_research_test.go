@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_cadrage_research_test.go — LOT 1 DU PLAN « PERCER LA TRAME » : LES INSTRUMENTS DE
@@ -52,10 +54,7 @@ func TestLot1EnteteParPaquet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	type famAgg struct {
 		ks    map[int]int    // k gagnant -> paquets
 		bitsK map[string]int // "k=N tete=bbbbbbbb bbbbbbbb" -> paquets
@@ -172,10 +171,7 @@ func TestLot1PremierRecordSousK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	familleK := map[byte]int{0xA0: 2, 0xC2: 6, 0xD2: 8, 0xD3: 6, 0xC0: 5}
 	type agg struct {
 		packets int
@@ -287,10 +283,7 @@ func TestLot1InferenceParFamille(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 
 	amorces := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12}
 	cibles := map[byte]bool{0xA0: true, 0xC0: true, 0xC2: true, 0xC3: true, 0xC7: true,

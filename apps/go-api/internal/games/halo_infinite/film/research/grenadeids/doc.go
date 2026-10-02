@@ -3,7 +3,7 @@
 // Package grenadeids est un INSTRUMENT DE RECHERCHE du lot 3.3 (volet recherche), hors
 // production.
 //
-// LA QUESTION, ET L ORDRE DE PREUVE IMPOSE PAR V17 (plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`
+// LA QUESTION, ET L ORDRE DE PREUVE IMPOSE PAR V17 (plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`
 // §1.4). L utilisateur a pose le 2026-09-18 une hypothese a tester AVANT toute liste blanche
 // « ancienne » : le nombre et l ordre des types de grenade n ont pas change depuis la sortie du
 // jeu, et des identifiants qui changeraient entre builds sont improbables ; ce qui a
@@ -32,7 +32,7 @@
 //
 // LE MARQUEUR N EST PAS UNE CONSTANTE DE FORMAT, et l instrument en tient compte. C est le
 // milieu d un record de CREATION d entite : `[5 bits bas de typeIndex][19 bits d amorce de l
-// etat par defaut]` (`.ai/ADDENDUM_ETAT_DE_L_ART_2026-07-26.md` §3, repris par
+// etat par defaut]` (`.ai/V7.5/ADDENDUM_ETAT_DE_L_ART_2026-07-26.md` §3, repris par
 // `grammar/projectiles.go`). Le `0x4C0C00` de production encode donc `ti=41`, l archetype
 // projectile DE CE BUILD. L instrument resout l archetype projectile du film PAR LE NOM de ses
 // composants (`projectile-at-rest-state`, `projectile-tether-state`, ...) — jamais par rang,

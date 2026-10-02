@@ -1,7 +1,7 @@
 // Package sync — golden_test.go : test E2E "golden fixture" pour la chaîne
 // sync highlight events.
 //
-// Phase 4 du plan .ai/PLAN_HIGHLIGHT_EVENTS_BACKFILL.md (mai 2026).
+// Phase 4 du plan .ai/archive/V7/PLAN_HIGHLIGHT_EVENTS_BACKFILL.md (mai 2026).
 //
 // CE TEST AURAIT CAPTURÉ LES BUGS RÉCENTS :
 //   - Parser bit-aligné cassé : highlight_events resterait à 0 alors qu'on

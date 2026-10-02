@@ -32,7 +32,7 @@ func TestEquipmentOwnerDepartageDeuxBipedesEquidistants(t *testing.T) {
 	// les separe pas, et c'est le cas qui tirait au sort.
 	slots := []uint32{9, 4, 17}
 	xy := map[uint32][2]float32{9: {1, 0}, 4: {-1, 0}, 17: {0, 1}}
-	for tour := 0; tour < 50; tour++ {
+	for tour := range 50 {
 		var positions []grammar.BipedPosition
 		// L'ordre d'ENTREE change de tour en tour ; l'ordre d'iteration de la map interne
 		// change de lui-meme.

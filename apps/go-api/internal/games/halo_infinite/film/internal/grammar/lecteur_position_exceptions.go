@@ -40,7 +40,7 @@ func consumeObjectPositionMonde(br *Lecteur) {
 	if !br.ReadBit() { // FUN_14076e524 index-sel ; si 0 -> lit l'index de région
 		br.ReadBits(br.worldObjectPrecision().IndexW)
 	}
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		br.ReadBits(br.worldObjectPrecision().AxisW[a]) // FUN_140cc5128 axe a
 	}
 	br.ReadBits(2) // FUN_14076e304 R(2) finite (handle-tail = 0 bit quand precHigh=0)
@@ -88,13 +88,13 @@ func largeurAncienneDuFlock(level uint) uint {
 // 11de8353 99 -> 19) ; lue R(96) brut, elle baisse aussi (281, 30, 19).
 func consumeGenericRigidBodyTransforms(br *Lecteur) {
 	mask := br.ReadBits(8)
-	for i := uint(0); i < 8; i++ {
+	for i := range uint(8) {
 		if mask&(1<<i) != 0 {
 			consumeCompressedDir140c1e79c(br)
 			if !br.ReadBit() { // FUN_14076e524 index-present select
 				br.ReadBits(br.traversal().IndexW)
 			}
-			for a := 0; a < 3; a++ {
+			for a := range 3 {
 				br.ReadBits(br.traversal().AxisW[a]) // FUN_140cc5128 axis a
 			}
 		}
@@ -323,7 +323,7 @@ func lireCorpsDeTraverseeAncien(br *Lecteur) {
 	if !br.ReadBit() { // porte ; 0 -> l index est present
 		br.ReadBits(br.traversal().IndexW)
 	}
-	for axe := 0; axe < 3; axe++ {
+	for axe := range 3 {
 		br.ReadBits(br.traversal().AxisW[axe])
 	}
 }

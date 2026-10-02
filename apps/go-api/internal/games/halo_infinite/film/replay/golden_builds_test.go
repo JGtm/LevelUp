@@ -60,6 +60,7 @@ package replay
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"flag"
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -234,7 +235,7 @@ func assemblerGoldenBuild(t *testing.T, b goldenBuild, g *FilmFacts,
 	opt := g.options()
 	opt.Labels = goldenCatalog(t)
 	opt.MapQuant = &entry
-	return BuildFromPositions(b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
+	return BuildFromPositions(context.Background(), b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
 }
 
 // TestGoldenBuildsAssembly : l assemblage rejoue rend-il toujours la meme chose, build par build ?

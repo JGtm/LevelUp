@@ -39,6 +39,6 @@ func (s *filmScan) lirePontDIdentite() {
 	})
 	s.in.Translocations = s.pont.Translocations
 	if len(s.in.Translocations) > 0 {
-		slog.Info("translocateur : teleportations lues", "evenements", len(s.in.Translocations))
+		slog.InfoContext(s.ctx, "translocateur : teleportations lues", "evenements", len(s.in.Translocations))
 	}
 }

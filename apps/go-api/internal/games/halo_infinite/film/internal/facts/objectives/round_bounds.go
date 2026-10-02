@@ -1,7 +1,9 @@
 package objectives
 
 import (
+	"cmp"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"slices"
 	"sort"
 )
 
@@ -242,11 +244,8 @@ func (w RoundBounds) KeptSegments() []KeptSegment {
 	for _, s := range w.kept {
 		out = append(out, s)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Slot != out[j].Slot {
-			return out[i].Slot < out[j].Slot
-		}
-		return out[i].Round < out[j].Round
+	slices.SortFunc(out, func(a, b KeptSegment) int { // (Slot, Round) : cle de la map `kept`, unique
+		return cmp.Or(cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Round, b.Round))
 	})
 	return out
 }
@@ -298,7 +297,7 @@ func chainedRounds(recs []types.StatRecord) []roundMark {
 			middleMS: medianOfSlice(instants[round]),
 		})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].round < out[j].round })
+	slices.SortFunc(out, func(a, b roundMark) int { return cmp.Compare(a.round, b.round) }) // cle de la map `parSlot`, unique
 	return out
 }
 

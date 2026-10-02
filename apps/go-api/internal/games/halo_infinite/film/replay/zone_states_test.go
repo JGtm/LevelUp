@@ -13,6 +13,7 @@ package replay
 // `zone_states_hill.go`.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -90,13 +91,11 @@ func bastionCase() (ZoneInput, zoneCtx) {
 	return zoneTestInput(reads), zoneTestCtx(actions, tracks)
 }
 
-func intPtr(v int) *int { return &v }
-
 // TestZoneStatesPublieUnEtatParZoneAppariee est le cas nominal : chaque zone que les captures
 // rattachent a un slot de jauge sort avec ses intervalles de propriete.
 func TestZoneStatesPublieUnEtatParZoneAppariee(t *testing.T) {
 	in, c := bastionCase()
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if len(states) != 2 {
 		t.Fatalf("%d zone(s) publiee(s), attendu 2 : %+v", len(states), states)
 	}
@@ -145,7 +144,7 @@ func TestZoneStatesProgressionSurLEchelleDuJeu(t *testing.T) {
 func TestZoneStatesSansCatalogueNePublieRien(t *testing.T) {
 	in, c := bastionCase()
 	in.Zones = nil
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if states != nil {
 		t.Errorf("%d etat(s) publie(s) sans catalogue de zones", len(states))
 	}
@@ -159,7 +158,7 @@ func TestZoneStatesSansCatalogueNePublieRien(t *testing.T) {
 func TestZoneStatesNonBalayeNePublieAucuneCouverture(t *testing.T) {
 	in, c := bastionCase()
 	in.Scanned = false
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if states != nil || cov != nil {
 		t.Errorf("balayage absent : attendu (nil, nil), obtenu (%d etats, %+v)", len(states), cov)
 	}
@@ -177,12 +176,12 @@ func TestZoneStatesTientLeVolumeDUnVraiFilm(t *testing.T) {
 	const frames, captures = 5000, 246
 	var reads []grammar.ManagedPropertyRead
 	for slot := uint32(10); slot < 15; slot++ { // 5 slots de jauge, ~1 000 emissions chacun
-		for i := 0; i < 330; i++ {
+		for i := range 330 {
 			reads = append(reads, zoneRampAt(slot, 8+i*15, uint64(500+i))...)
 		}
 	}
 	for slot := uint32(30); slot < 40; slot++ { // 10 slots de propriete
-		for i := 0; i < 40; i++ {
+		for i := range 40 {
 			v := uint64(i % 2)
 			if i%7 == 0 {
 				v = zoneNeutralOwner
@@ -193,15 +192,15 @@ func TestZoneStatesTientLeVolumeDUnVraiFilm(t *testing.T) {
 	in := zoneTestInput(reads)
 	actions := make([]ObjectiveAction, 0, captures)
 	pts := make([]Point, 0, frames)
-	for f := 0; f < frames; f++ {
+	for f := range frames {
 		pts = append(pts, pointAt(f, -19.5, 0, 0))
 	}
-	for i := 0; i < captures; i++ {
+	for i := range captures {
 		actions = append(actions, action("2533", 8+i*20))
 	}
 	c := zoneCtx{origin: 0, step: 100_000, frames: frames, intervalMS: 100,
 		tracks: []Track{track("2533", pts...)}, actions: actions, matchID: "volume"}
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov == nil {
 		t.Fatalf("aucune couverture rendue sur le cas de volume")
 	}
@@ -228,7 +227,7 @@ func TestZonesCouverturePublieLaCauseDesCapturesPerdues(t *testing.T) {
 	// Une sixieme capture dont le capteur n'a AUCUNE piste : cause `NoPosition`, une ignorance.
 	c.actions = append(c.actions, action("9999", 260))
 
-	_, cov := buildZoneStates(in, c)
+	_, cov := buildZoneStates(context.Background(), in, c)
 	if cov == nil {
 		t.Fatal("couverture nulle")
 	}
@@ -263,7 +262,7 @@ func TestZonesAttribueLesCapturesDesViesNonNommees(t *testing.T) {
 	}
 	c.slotXUID = map[uint32]uint64{536: 2533, 537: 2535}
 
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov.Attributed != 4 {
 		t.Fatalf("attribuees = %d, attendu 4 (couverture %+v)", cov.Attributed, cov)
 	}

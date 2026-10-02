@@ -26,7 +26,9 @@
 // pesait 78 symboles, il en pese 46 — la porte aux octets et la couche `profile` ont absorbe le
 // reste). LE CHIFFRE EST LE POINT : une facade de 163 symboles n est PAS une frontiere, c est un
 // ALIAS. V15 (7) l assume pour ce lot — il faut que le compilateur puisse prouver le lieu AVANT
-// qu on discute de la surface — et renvoie la REDUCTION a M4, sur la mesure consignee.
+// qu on discute de la surface — et renvoyait la REDUCTION a M4. La reduction n a PAS ete retenue
+// (decision V25 du 2026-09-18) : la surface est tenue par un ratchet date,
+// `archlint/film_facade_surface_test.go`, qui porte le compte courant.
 //
 // # LES TROIS FORMES DE RE-EXPORT, ET LEURS RAISONS
 //
@@ -53,8 +55,9 @@
 // lit aucun octet et ne publie rien.
 //
 // `film/replay` N EST PAS ICI, et c est une decision ecrite : c est la couche de PUBLICATION,
-// 239 de ses symboles sont cites hors du decodeur (`sync/replayartifacts`, `sync/killcollector`,
-// `service/*`, `api/*`, `replaybuild`, `ops`), et le document de rejeu EST le contrat public.
+// ses symboles sont cites hors du decodeur (`sync/replayartifacts`, `sync/killcollector`,
+// `service/*`, `api/*`, `replaybuild`, `ops` ; compte courant tenu par
+// `archlint/film_facade_surface_test.go`), et le document de rejeu EST le contrat public.
 // Elle reste EXPORTEE. `film/types`, `film/revision`, `film/filmcache` et les trois catalogues
 // de libelles (`damagetag`, `killicon`, `medalname`) restent exportes pour la meme raison de
 // nature : ils declarent des formes ou nomment des choses, ils ne decodent pas.
@@ -68,6 +71,7 @@ import (
 	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -130,9 +134,6 @@ func VerifierRegistre() []string                    { return fallback.VerifierRe
 // ---- grammar ----
 type BipedCreation = grammar.BipedCreation
 type BipedPosition = grammar.BipedPosition
-
-// PRIVE(hitPosSample) : BuildBipedTracks
-var BuildBipedTracks = grammar.BuildBipedTracks
 
 func CountFilmChunks(dir string) int { return grammar.CountFilmChunks(dir) }
 
@@ -397,11 +398,14 @@ const StatPlayerSlots = objectives.StatPlayerSlots
 type StatRecord = types.StatRecord
 
 func StatRecords(film *source.Film) []types.StatRecord { return objectives.StatRecords(film) }
-func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) ([]types.StatRecord, bool) {
-	return objectives.StatRecordsCtx(ctx, film, matchID)
+
+// StatRecordsBornes et StatRecordsAvecReplis rendent en plus les DIAGNOSTICS de la lecture (lot
+// J12.3, ADR 0034 D-4) : l appelant les journalise avec son contexte (`replay.JournaliserDiagnostics`).
+func StatRecordsBornes(film *source.Film, matchID string) ([]types.StatRecord, bool, []constat.Diagnostic) {
+	return objectives.StatRecordsBornes(film, matchID)
 }
-func StatRecordsAvecReplis(ctx context.Context, film *source.Film, matchID string) ([]types.StatRecord, bool, objectives.ComptesDesReplis) {
-	return objectives.StatRecordsAvecReplis(ctx, film, matchID)
+func StatRecordsAvecReplis(film *source.Film, matchID string) ([]types.StatRecord, bool, objectives.ComptesDesReplis, []constat.Diagnostic) {
+	return objectives.StatRecordsAvecReplis(film, matchID)
 }
 
 type ComptesDesReplisObjectifs = objectives.ComptesDesReplis
@@ -472,7 +476,8 @@ func TimestampEstimator(data []byte, startMS, durationMS int) func(int) float64 
 }
 
 // ---- weaponv3 ----
-var KnownWeaponHigh32 = weaponv3.KnownWeaponHigh32
+// KnownWeaponHigh32 rend une COPIE de la table high-32 -> nom canonique (J12.4).
+func KnownWeaponHigh32() map[uint32]string { return weaponv3.KnownWeaponHigh32Copie() }
 
 const PIBits = weaponv3.PIBits
 

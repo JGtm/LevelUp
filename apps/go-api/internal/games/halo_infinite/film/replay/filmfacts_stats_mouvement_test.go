@@ -66,8 +66,8 @@ func remplirFeuillesDistinctes(t *testing.T, v reflect.Value, n *uint64) {
 	t.Helper()
 	switch v.Kind() {
 	case reflect.Struct:
-		for i := 0; i < v.NumField(); i++ {
-			remplirFeuillesDistinctes(t, v.Field(i), n)
+		for _, field := range v.Fields() {
+			remplirFeuillesDistinctes(t, field, n)
 		}
 	case reflect.Array:
 		for i := 0; i < v.Len(); i++ {

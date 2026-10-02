@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipements_events_sondes_research_test.go — second volet de l instrument R5 (en-tete et

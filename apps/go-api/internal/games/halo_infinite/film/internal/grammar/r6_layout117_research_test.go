@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r6_layout117_research_test.go — lot R6 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03,
@@ -37,7 +39,7 @@ package grammar
 //	  R6_ARTS=<repo>/data/cache/replays/halo_infinite \
 //	  R6_CAT=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  R6_IDS=1b2d9e08,a0c36016,4577fcc4,f2966f08,faff9935 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR6Layout117$' -timeout 20m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR6Layout117$' -timeout 20m -v
 
 import (
 	"encoding/json"
@@ -117,7 +119,7 @@ func TestR6Layout117(t *testing.T) {
 	}
 	cat := r6LireCatalogue(t, catPath)
 	totalOK, totalEv := 0, 0
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		id = strings.TrimSpace(id)
 		t.Logf("")
 		t.Logf("############ FILM %s ############", id)
@@ -298,7 +300,7 @@ func r6Decode(pay []byte, e r6CatEntry, wr uint) r6Decoded {
 			bits = [3]uint{22, 22, 22}
 		}
 		var out [3]float64
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			q := br.ReadBits(bits[i])
 			out[i] = min[i] + (float64(q)+0.5)*(max[i]-min[i])/float64(uint64(1)<<bits[i])
 		}

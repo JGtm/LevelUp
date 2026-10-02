@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_i22_signal_research_test.go — LE SIGNAL DE COMMANDE DE L'EQUIPEMENT et LE RECENSEMENT DU
@@ -38,7 +40,7 @@ package grammar
 //
 //	CGO_ENABLED=0 R8_FILMS=<repo>/data/cache/film_chunks \
 //	  R8_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R8_IDS=00ba2e1c go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  R8_IDS=00ba2e1c go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR9I22Signal$' -count=1 -timeout 180m -v
 
 import (

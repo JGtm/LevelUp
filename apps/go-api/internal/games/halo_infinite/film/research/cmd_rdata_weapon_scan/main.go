@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -71,7 +72,7 @@ func loadWorld() (map[int]int, map[int][]int) {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		for _, tok := range strings.Fields(line) {
+		for tok := range strings.FieldsSeq(line) {
 			parts := strings.SplitN(tok, ":", 2)
 			if len(parts) != 2 {
 				continue
@@ -102,7 +103,7 @@ func weaponish(name string) bool {
 
 func bitsAt(d []byte, bp, n int) uint64 {
 	var v uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p := bp + i
 		if p>>3 >= len(d) {
 			v <<= 1
@@ -284,11 +285,8 @@ func main() {
 		if !ok {
 			continue
 		}
-		for _, c := range arch.Components {
-			if weaponish(c) {
-				candidates[ti] = true
-				break
-			}
+		if slices.ContainsFunc(arch.Components, weaponish) {
+			candidates[ti] = true
 		}
 	}
 	// args = typeIndex supplémentaires à dumper
