@@ -65,6 +65,10 @@ func positionCaptureDeps(
 	capture, err := killcollector.CaptureDepuisCatalogue(ctx, cfg.RepoRoot, titleSlug,
 		porte.GarderLesCartes(duckdb.NewReplayMapRepo(staticSharedReader{db: sharedDB}, metaDB)))
 	if err != nil {
+		// JOURNAL STRUCTURE ET CONSOLE (revue finale, 2026-10-02) : la commande imprime ses bilans en
+		// console ; l echec y reste lisible, et se journalise avec son contexte (CLAUDE.md regle 3).
+		slog.WarnContext(ctx, "backfill-killsource: catalogue de bornes illisible — aucune carte ne se "+
+			"resout, films mis de cote pour cette passe", "titleSlug", titleSlug, "err", err)
 		fmt.Printf("%v — aucune carte ne se resout : films mis de cote pour cette passe\n", err)
 		return killcollector.DepsCapture{}, fermer
 	}
