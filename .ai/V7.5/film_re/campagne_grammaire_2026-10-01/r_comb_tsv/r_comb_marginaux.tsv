@@ -1,0 +1,111 @@
+groupe	combinaison	levier	seul_sains	seul_utiles_sains	seul_fermes_brut	marginal_sains	marginal_utiles_sains	marginal_fermes_brut	interaction_sains	interaction_utiles_sains	marginal_pts_fixe_sains
+HI_1_10_0	full	L1	+2338	+62456	+2389	+2209	+59807	+2220	-129	-2649	3.60
+HI_1_10_0	full	L2	-29	-107	+389	-36	-134	+352	-7	-27	-0.01
+HI_1_10_0	full	L6a	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_10_0	full	L6b	-1	+0	+1	-3	-71	+5	-2	-71	-0.00
+HI_1_10_0	full	L8	-1	+0	+3	-74	-2594	-63	-73	-2594	-0.16
+HI_1_10_0	full	L9	+557	+13073	+564	+437	+10522	+428	-120	-2551	0.63
+HI_1_10_0	full	combinaison complete (full - reference)	+2735	+72773	+3180				-129	-2649	
+HI_1_10_0	full	somme des seuls	+2864	+75422	+3346						
+HI_1_10_0	full (L1 derive sans L9)	L1	+2338	+62456	+2389	+1946	+53439	+1969	-392	-9017	3.22
+HI_1_10_0	full (L1 derive sans L9)	L9	+557	+13073	+564	+174	+4154	+177	-383	-8919	0.25
+HI_1_11_0	full	L1	+957	+24127	+960	+997	+25222	+1000	+40	+1095	8.25
+HI_1_11_0	full	L2	+0	+0	+11	+0	+0	+11	+0	+0	0.00
+HI_1_11_0	full	L6a	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_11_0	full	L6b	+293	+3073	+293	+322	+3806	+322	+29	+733	1.24
+HI_1_11_0	full	L8	+0	+0	+0	+1	+22	+1	+1	+22	0.01
+HI_1_11_0	full	L9	+21	+579	+21	+31	+919	+31	+10	+340	0.30
+HI_1_11_0	full	combinaison complete (full - reference)	+1311	+28874	+1325				+40	+1095	
+HI_1_11_0	full	somme des seuls	+1271	+27779	+1285						
+HI_1_11_0	full (L1 derive sans L9)	L1	+957	+24127	+960	+987	+24882	+990	+30	+755	8.14
+HI_1_11_0	full (L1 derive sans L9)	L9	+21	+579	+21	+21	+579	+21	+0	+0	0.19
+HI_1_12_0	full	L1	+401	+3215	+401	+1589	+13608	+1589	+1188	+10393	9.31
+HI_1_12_0	full	L2	+11293	+80047	+11297	+12569	+91135	+12573	+1276	+11088	62.38
+HI_1_12_0	full	L6a	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_12_0	full	L6b	+24	+223	+24	+114	+936	+114	+90	+713	0.64
+HI_1_12_0	full	L8	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_12_0	full	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_12_0	full	combinaison complete (full - reference)	+12994	+94573	+12998				+1276	+11088	
+HI_1_12_0	full	somme des seuls	+11718	+83485	+11722						
+HI_1_12_0	full (L1 derive sans L9)	L1	+401	+3215	+401	+1589	+13608	+1589	+1188	+10393	9.31
+HI_1_12_0	full (L1 derive sans L9)	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_13_0	full	L1	+16980	+192158	+17032	+11915	+107616	+11937	-5065	-84542	3.74
+HI_1_13_0	full	L2	+6332	+62435	+6364	+2341	+28177	+2371	-3991	-34258	0.98
+HI_1_13_0	full	L6a	+3280	+26763	+3266	+3545	+27649	+3531	+265	+886	0.96
+HI_1_13_0	full	L6b	+65	+1851	+64	+241	+1892	+245	+176	+41	0.07
+HI_1_13_0	full	L8	+30597	+234374	+30605	+32108	+246704	+32107	+1511	+12330	8.56
+HI_1_13_0	full	L9	+1048	+30028	+1050	-1112	-29360	-1114	-2160	-59388	-1.02
+HI_1_13_0	full	combinaison complete (full - reference)	+53644	+465529	+53699				-4658	-82080	
+HI_1_13_0	full	somme des seuls	+58302	+547609	+58381						
+HI_1_13_0	full (L1 derive sans L9)	L1	+16980	+192158	+17032	+14105	+167858	+14131	-2875	-24300	5.83
+HI_1_13_0	full (L1 derive sans L9)	L9	+1048	+30028	+1050	+1078	+30882	+1080	+30	+854	1.07
+HI_1_4_1	full	L1	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_4_1	full	L2	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_4_1	full	L6a	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_4_1	full	L6b	+69	+0	+64	+69	+0	+64	+0	+0	0.00
+HI_1_4_1	full	L8	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_4_1	full	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_4_1	full	combinaison complete (full - reference)	+69	+0	+64				+0	+0	
+HI_1_4_1	full	somme des seuls	+69	+0	+64						
+HI_1_4_1	full (L1 derive sans L9)	L1	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_4_1	full (L1 derive sans L9)	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_8_0	full	L1	+6077	+46617	+6102	+6843	+53540	+6869	+766	+6923	18.44
+HI_1_8_0	full	L2	+0	+0	+1	+0	+0	+1	+0	+0	0.00
+HI_1_8_0	full	L6a	+1790	+11300	+1757	+2568	+16475	+2524	+778	+5175	5.67
+HI_1_8_0	full	L6b	+0	-7	+11	+218	+43	+218	+218	+50	0.01
+HI_1_8_0	full	L8	+0	+0	+0	+0	+0	-1	+0	+0	0.00
+HI_1_8_0	full	L9	+133	+1174	+133	+339	+2972	+339	+206	+1798	1.02
+HI_1_8_0	full	combinaison complete (full - reference)	+8984	+66057	+8977				+984	+6973	
+HI_1_8_0	full	somme des seuls	+8000	+59084	+8004						
+HI_1_8_0	full (L1 derive sans L9)	L1	+6077	+46617	+6102	+6637	+51742	+6663	+560	+5125	17.82
+HI_1_8_0	full (L1 derive sans L9)	L9	+133	+1174	+133	+133	+1174	+133	+0	+0	0.40
+HI_1_9_0	full	L1	+1268	+28293	+1279	+1287	+28790	+1298	+19	+497	11.27
+HI_1_9_0	full	L2	+1	+0	+30	+1	+18	+30	+0	+18	0.01
+HI_1_9_0	full	L6a	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_9_0	full	L6b	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_9_0	full	L8	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+HI_1_9_0	full	L9	+15	+372	+15	+34	+851	+34	+19	+479	0.33
+HI_1_9_0	full	combinaison complete (full - reference)	+1303	+29162	+1343				+19	+497	
+HI_1_9_0	full	somme des seuls	+1284	+28665	+1324						
+HI_1_9_0	full (L1 derive sans L9)	L1	+1268	+28293	+1279	+1264	+28221	+1275	-4	-72	11.05
+HI_1_9_0	full (L1 derive sans L9)	L9	+15	+372	+15	+11	+282	+11	-4	-90	0.11
+corpus (20 films)	full	L1	+28025	+357010	+28166	+24844	+288727	+24916	-3181	-68283	4.38
+corpus (20 films)	full	L2	+17598	+142399	+18093	+14876	+119220	+15339	-2722	-23179	1.81
+corpus (20 films)	full	L6a	+5070	+38063	+5023	+6113	+44124	+6055	+1043	+6061	0.67
+corpus (20 films)	full	L6b	+460	+5144	+467	+971	+6610	+978	+511	+1466	0.10
+corpus (20 films)	full	L8	+30596	+234374	+30608	+32035	+244132	+32044	+1439	+9758	3.71
+corpus (20 films)	full	L9	+1774	+45226	+1783	-271	-14096	-282	-2045	-59322	-0.21
+corpus (20 films)	full	combinaison complete (full - reference)	+81055	+757140	+81600				-2468	-65076	
+corpus (20 films)	full	somme des seuls	+83523	+822216	+84140						
+corpus (20 films)	full (L1 derive sans L9)	L1	+28025	+357010	+28166	+26532	+339894	+26620	-1493	-17116	5.16
+corpus (20 films)	full (L1 derive sans L9)	L9	+1774	+45226	+1783	+1417	+37071	+1422	-357	-8155	0.56
+hors corpus : 81c02726 (HI_1_13_0)	full	L1	+2884	+27355	+2885	+0	+0	+0	-2884	-27355	0.00
+hors corpus : 81c02726 (HI_1_13_0)	full	L2	+3579	+33838	+3580	+695	+6483	+695	-2884	-27355	4.04
+hors corpus : 81c02726 (HI_1_13_0)	full	L6a	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+hors corpus : 81c02726 (HI_1_13_0)	full	L6b	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+hors corpus : 81c02726 (HI_1_13_0)	full	L8	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+hors corpus : 81c02726 (HI_1_13_0)	full	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+hors corpus : 81c02726 (HI_1_13_0)	full	combinaison complete (full - reference)	+3579	+33838	+3580				-2884	-27355	
+hors corpus : 81c02726 (HI_1_13_0)	full	somme des seuls	+6463	+61193	+6465						
+hors corpus : 81c02726 (HI_1_13_0)	full (L1 derive sans L9)	L1	+2884	+27355	+2885	+0	+0	+0	-2884	-27355	0.00
+hors corpus : 81c02726 (HI_1_13_0)	full (L1 derive sans L9)	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-31	full	L1	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-31	full	L2	+1	+24	+1	+1	+24	+1	+0	+0	0.01
+version-31	full	L6a	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-31	full	L6b	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-31	full	L8	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-31	full	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-31	full	combinaison complete (full - reference)	+1	+24	+1				+0	+0	
+version-31	full	somme des seuls	+1	+24	+1						
+version-31	full (L1 derive sans L9)	L1	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-31	full (L1 derive sans L9)	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-33	full	L1	+4	+144	+3	+4	+144	+3	+0	+0	0.03
+version-33	full	L2	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-33	full	L6a	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-33	full	L6b	+10	+4	+10	+10	+4	+10	+0	+0	0.00
+version-33	full	L8	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-33	full	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00
+version-33	full	combinaison complete (full - reference)	+14	+148	+13				+0	+0	
+version-33	full	somme des seuls	+14	+148	+13						
+version-33	full (L1 derive sans L9)	L1	+4	+144	+3	+4	+144	+3	+0	+0	0.03
+version-33	full (L1 derive sans L9)	L9	+0	+0	+0	+0	+0	+0	+0	+0	0.00

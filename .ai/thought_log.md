@@ -114101,6 +114101,112 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Conclusion / prochaine étape** : ordre recommandé = J12 fusionné → vague J11.4 → replis nuls (comptes du parc) + instrument de fermeture v2 + ADR → RI 1.x → RI 2.1-2.6 et campagne de grammaire (si rouverte) → RI 2.7 (comportement, killsource en dernier). Décisions de l'utilisateur le 2026-10-01 (questionnaire) : résidu de film dense ROUVERT dans une campagne de grammaire bornée qui commence par l'instrument de fermeture v2 ; étape 1 et lots sans différence de la RI après la fusion de J12 ; documents commités sans push. Aucun GO de lancement : chaque bloc attend un GO daté. Restent ouvertes : replis nuls, report des corrections dans l'ADR, coopération Rust, blocs véhicules.
 
+## [2026-10-01] Campagne de grammaire, phase 1, étape 1 : instrument de fermeture v2 et carte v2 sur 20 films — Complété (non commité, en attente du superviseur)
+
+**Décision technique** : `grammar.FrameClosureDetaillee` (instrument neuf, `frame_closure_detail*.go`) rend la carte de `FrameClosure` (identité champ à champ testée) plus le détail de chaque paquet (sortie de vue B lue aux compteurs `RejetsHorsDatum` / `RejetsDeVue`, eid rejeté, flux de la vue C, reste, dernier composant, lectures au-delà du payload) ; `cmd_fermeture -mode v2` ventile, confronte les rejets au bloc de type 1 du chunk et du suivant, estime le dénominateur des entrées utiles, lit le compte déclaré du chunk 3. `product_use` corrigé sur pièces (36 -> 73 lignes ; ti=11 et ti=37 i20-i24 SORTENT, sans appelant de production). `grammar.Rev` inchangé, empreinte régénérée à révision constante ; golden de fermeture régénéré (seuls les utiles bougent).
+
+**Résultats** : colonnes anciennes identiques à J11 §2 (20/20). Hors cadre 264 757 paquets : 95,3 % sortent de la vue B par rejet hors datum (0 rejet de vue), vue C vide 96,1 %, reste >= 64 bits 99,8 % ; 84,4 % de ces rejets visent un eid alloué pendant le chunk selon le bloc de type 1 suivant, sans NEW lu (91,7 % des utiles en jeu). HI_1_13_0 : 80,6 % d'utiles fermés (table corrigée). Chunk 3 : déclaré = trouvé sur 20/20. Mode borné : 658 records sur 7,6 M. Rapport : `.ai/V7.5/film_re/CARTE_FERMETURE_V2_2026-10-01.md`.
+
+**Prochaine étape** : confronter ces mesures aux constats Ghidra de l'étape 2 (T1, T3, T8) — étape 4 du plan.
+
+## [2026-10-01] Campagne de grammaire, phase 1, étape 4 : mesures ciblées des 42 constats sur 20 films — Complété (non commité, en attente du superviseur)
+
+**Décision technique** : une sonde `research` (six fichiers `campagne_*_research_test.go` sous `film/internal/grammar/`, aucun fichier de production touché, `grammar.Rev` inchangé) rejoue la marche de la carte v2 en gardant les records de la vue B, et joue cinq marches par film : référence, oracle-NEW (la naissance retrouvée par la sonde M1 à ≤ 3 paquets dans une région non lue est liée après son paquet), oracle-bloc (pont masque -> archétype du bloc suivant), tête-bloc (A/B du filtre de candidats de T1-3), et la combinaison. M1 est contrôlée par un eid témoin par rejet (slot jamais alloué) : le discriminant est la distance au premier rejet (≤ 3 paquets : 30,2 % des rejetés contre 1,4 % des témoins).
+
+**Résultats** : référence identique à la carte v2. Oracle-NEW (5 170 liaisons, ≈ 4,7 % fausses estimées) : corpus 284 704 -> 312 315 paquets fermés (+29 769 / −2 158), utiles fermés +344 129 ; HI_1_13_0 66,9 -> 71,8 % des paquets, 80,6 -> 86,2 % des utiles, hors cadre 86 921 -> 58 517. Tête-bloc : gain net sur HI_1_13_0 (+12 193) et HI_1_12_0, perte nette sur HI_1_8_0 à HI_1_11_0. Oracle-bloc : 266 liaisons seulement, 5 714 des 6 033 « naissances non lues » ont un masque vide au bloc suivant (entités nées et mortes dans le chunk). Régions des NEW non lus : (i) tête de paquet à événements et (ii) paquet non localisé dominent, (iii') « après un rejet antérieur » est une troisième région réelle non prévue (contre l'ordre de l'écrivain, non tranché). 8 388 paquets fermés (2,9 %, 22 % des fermés de HI_1_10_0) contredisent un invariant de l'écrivain (NEW à masque impossible) : fermetures factices. T1-4/C5, T1-6, T7-5, T8-C4 : effets mesurés négligeables. Rapport : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_CIBLEES.md`, TSV dans `mesures_ciblees_tsv/`.
+
+**Prochaine étape** : étape 5 (synthèse et plan de la phase 2, classés par gain mesuré) ; à statuer avant tout correctif : les 4 598 paquets fermés après un rejet, la région (iii'), les fermetures factices de HI_1_10_0.
+
+## [2026-10-01] Campagne de grammaire, étape 5 : synthèse de la phase 1 et plan de la phase 2
+
+**Statut** : Complété (rien de commité ; aucune sortie de production touchée ; aucune commande go lancée par cette étape).
+
+**Décision technique principale** : la cause n°1 (« vue C : terminateur hors cadre », 264 757 paquets) est attribuée, sur pièces Ghidra et mesures, aux naissances d'entités non lues (entités nées et mortes dans le chunk, NEW dans la tête des paquets à événements ou dans des paquets à événements non localisés). T2 (décalage de masque), T8 (bourrage), kinds 1/2, garde par eid et NEW refusés sont écartés comme leviers.
+
+**Résultats observés** : oracle des naissances = borne +27 611 paquets nets, +344 129 utiles ; HI_1_13_0 80,6 -> 86,2 % ; déclencheur 95 % non atteint sur aucun build. Fermetures factices : 8 388 paquets (HI_1_10_0 22 % de ses fermés).
+
+**Conclusion / prochaine étape** : rapport `.ai/V7.5/film_re/RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md` ; plan de la phase 2 au §6 du plan de campagne (lots R-L1, L1 à L7, L0 ; décisions D1 à D9) ; découvertes au §5. Attendre le GO de l'utilisateur par lot ; développement possible avant J12, preuve et fusion post-J12.
+
+## [2026-10-01] Campagne de grammaire — mesures bis 1 (critique de complétude, points 10-13, 21-23, 29)
+
+**Statut** : Complété (mesures ; aucune décision de lot prise ici).
+
+**Décision technique principale** : nouvelle sonde `campagne_bis1_research_test.go` (tag research, aucun fichier de production, `grammar.Rev` inchangé) : dénominateur des entrées par la règle T5 (une entrée au plus par joueur) et les joueurs du film ; juge des invariants de l'écrivain sur chaque paquet fermé de 14 marches ; oracle restreint par région M1 ; localisateur L1a « bande OU bloc » filtré par les invariants.
+
+**Résultats observés** : item 1.3 — estimateur CARTE §5 tautologique (= part des paquets fermés) ; dénominateur indépendant = borne basse seulement (HI_1_13_0 >= 45,0 %, corpus >= 24,2 %). L1a filtré : +16 407 / −8 925 dont 7 004 factices retirées, mais pertes saines sur HI_1_8_0 à HI_1_11_0 (le filtre ne les annule pas). Borne de L1 portée par (i) +16 383 et (ii) +11 540 ; (iii') rejet −522 et (iii) −65 nuisibles ; (i)+(ii) +28 168 > oracle complet +27 611. Gains factices : oracle 1,5 %, tete-bloc 17,4 %. Liaisons 5 081 + 89 = 5 170, témoins 239 ; (iii) liée = 511 eid tous `ti=3 i0`, tous HI_1_13_0.
+
+**Conclusion / prochaine étape** : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_1.md` + `mesures_bis_tsv/`. À reporter dans le PLAN §6.1 et le RAPPORT §1/§3 (non fait ici) ; dénominateur exact des entrées = lecture Ghidra de l'appelant de `FUN_14076b0e8`.
+
+## [2026-10-01] Campagne de grammaire — mesures bis 2 (critique de complétude, points 24, 25, 26 et T6-C2)
+
+**Statut** : Complété (mesures ; aucune décision de lot prise ici ; rien de commité).
+
+**Décision technique principale** : les A/B que la phase 1 disait « non mesurables sans toucher la production » passent par une SURCOUCHE de recherche (`go test -overlay`) : copies de `capture.go`, `lecteur_position.go`, `lecteur_position_exceptions.go` sous `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/mesures_bis2_overlay/`, substituées à la seule compilation des tests `research,campagne_overlay` ; aucun fichier de production modifié sur disque, `grammar.Rev` inchangé. Sondes : `campagne_bis2_*_research_test.go` (grammar), `himodule/campagne_bis2_vehi_research_test.go`, `cmd_fermeture/bis2_regions_research_test.go`.
+
+**Résultats observés** : (24) fourche `+0x74` du bloc 0xbc non tranchable : sur 1 570 paquets arrêtés par le bloc, R(96) ferme 6, e420 9, témoins à un bit 11 et 10 — le bloc n'est jamais lu au bon bit, borne T5-3 réfutée. (25) A/B par site : `flock-position` +416/−10, `tacmap-displayasset` +77/−16, `world-object-i0` +12 338 records d'image-clé pour +31 paquets net, `ti38-i18` et `unit-actor-state` en perte ; T4-C3 établi sur Live Fire en contexte de production avec les bornes des 4 plages lues dans les modules : +3 269 paquets (`0797ce72`), +1 806 (`60ae07c4`). (T6-C2) type de physique lu dans les tags `vehi` : Falcon et Wasp = vtol, toutes familles cohérentes ; images-clés `ti=40` : porte levée 136 fermés, posée 26, par châssis 137 sur 7 059 — 98 % restent non fermés pour une autre cause ; `77ef810a`/`4118381d`/`d0b40d0a` absents des modules installés, non identifiés. (26) `81c02726` : les 71 NEW `ti=43` désynchronisent sur `i19` (pas i20/i21/i22), leurs DELTA sont rejetés hors datum ; la grammaire T7 ferme +3 580 paquets (fenêtre de la 3e montée 181 → 218/222) ; sur le corpus +18 105/−12 paquets, HI_1_13_0 « hors cadre » 86 921 → 81 049 : T7-5/T7-6 réfutés.
+
+**Conclusion / prochaine étape** : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_2.md` + `mesures_bis2_tsv/`. À reporter dans le PLAN §6 et le RAPPORT (non fait ici) : reclasser L2 (`ti=43`) comme levier de la cause n°1 sur HI_1_13_0, L5 (bloc 0xbc) sans gain, ajouter la lecture par index de plage (catalogue des plages) ; la carte v2 range les NEW lus-désynchronisés en « naissance non lue » (à corriger avant de s'appuyer sur la région (iii)).
+
+## [2026-10-02] Campagne de grammaire — mesures bis 3 : populations sans lot (critique points 27, 28, D-24)
+
+**Statut** : Complété (mesures ; aucun code de production, rien de commité).
+**Décision technique** : sondes `campagne_bis3_*_research_test.go` (tag research ; `ti=3`, sites, Live Fire et filtre sous la surcouche bis 2) ; Ghidra lecture seule.
+**Résultats observés** : P1 (87 eid) = marche d'image-clé qui rejette la génération 0 et limite voisin/recalage à la génération 1 (en-tête exact présent 87/87 ; oracle +1 784/−1) ; P2 = naissances de génération 0 mal classées (couvert par L1) ; P3/P4 = décalages de curseur (Live Fire par index −81 %/−91 %, `flock-position` −77 %) ; P5 = P1 + P3 ; P6 = recherche (filtres non discriminants sauf pont, 72 eid) ; région (iii) = `ti=3 i0` non porté (`FUN_142ed4aec`) + `ti=3 i1` homonyme 26 bits (`FUN_142ed4880`) : +30 618/−10 paquets, +234 454 utiles, témoin `ti=4` −256 370 ; D-24 : cardinal 8 191 partout, calibrage 13 sur 20/20, autres largeurs ≤ 30 040 fermés.
+**Conclusion / suite** : deux lots proposés (`ti=3`, marche d'image-clé toutes générations), une recherche (coupables résiduels de P3), P6 en recherche préalable. Rapport : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_3_POPULATIONS.md`.
+
+## [2026-10-02] Campagne de grammaire — correction des documents de la phase 1 d'après la critique de complétude
+
+**Statut** : Complété (documents seulement ; aucun code, aucune commande go, rien de commité).
+**Décision technique** :
+- `RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md` est réécrit, avec la table des corrections
+  (§7, par point de la critique).
+- `MESURES_CIBLEES.md` reçoit une section « Corrections du 2026-10-01 » en tête ; l'historique n'est
+  pas réécrit.
+- Dans le PLAN, seuls les §5 et §6 sont modifiés :
+  - §5 : D-5, D-6, D-10, D-11, D-19 et D-24 annotés ; nouvelles découvertes D-42 à D-61 ;
+  - §6 : réécrit, avec les gates par film, killsource, performance et garde-fou de la recopie,
+    l'inventaire J12, les lots L8, L9, L10 et L6a/b, le retrait de L5, les recherches R-*, et les
+    décisions D-RI, D-VEH et D10, D1 étant reformulée.
+**Résultats observés** :
+- La branche J12 est visible localement : `origin/feat/suite-audit-decodeur-j12` = `bc0e2511a`,
+  29 commits au-dessus de `8b894a677`.
+- `git diff` montre des recoupements mécaniques (J12.1 tris et `go fix`, J12.5 documentation) sur
+  `object_deaths_march.go`, `movement_states.go`, `frame_infer.go`, `type1_datums.go`, les
+  `dispatch_*.go`, les lecteurs de position, `source/bits.go`, `cmd_fermeture` et
+  `grammar_rev.golden`.
+- J12 ne touche ni `facts/killsource/walk.go`, ni `frame_closure.golden`, ni `ecs_table.tsv`.
+- Sous la grammaire `ti=3`, le dénominateur fixe de HI_1_13_0 monte (2 759 700 records utiles lus,
+  contre 2 504 223) : le déclencheur s'éloigne.
+**Conclusion / suite** :
+- Décisions de l'utilisateur au PLAN §6.3 (D1 reformulée, D-RI, D-VEH, D2 à D10).
+- Statuts proposés pour le §2 en §6.4, à reporter par le superviseur.
+
+## [2026-10-02] Campagne de grammaire — mesures bis 4 : item 1.3 (dénominateur des entrées de contrôle) et reste du point 25 (juge sur les A/B de position)
+
+**Statut** : Complété (recherche ; deux sondes `*_research_test.go` neuves, aucun fichier de production, `grammar.Rev` = `grammar-2026-09-27.3`, rien de commité).
+**Décision technique** :
+- 1.3 : lecture Ghidra (lecture seule) de la chaîne qui écrit une entrée de la vue C : `FUN_14076b0e8` n'a que des références de DONNÉES (slot `+0x18` de la vtable `0x1436a8770`) ; son appelant est l'ordonnanceur des vues `FUN_14076aca4` (slot `+0x28` du canal `0x1436a86b8`, appelé en `140516b81` par `FUN_1405167fc`), lui-même déclenché par la décision d'envoi par pair `FUN_1405185b0` (horloge murale, cadence, débit). Bit en attente posé par le relais serveur `FUN_141f85a84` → `FUN_14076ac14` à chaque tick pour un joueur qui a une unité.
+- Point 25 : juge des invariants joué sur les 16 variantes (17 marches par film) de BIS_2 §3, contexte des instruments, surcouche.
+**Résultats observés** :
+- 1.3 `[!]` prouvé : la présence d'une entrée dépend d'états d'exécution du réseau absents du film. Corroboration mesurée sur 20 films : 1 124 cas (joueur × triplet sain) où la vue C du paquet du milieu est entièrement vide entre deux présences ; 1 462 absences isolées dans une vue C non vide ; à écart d'horodatage égal (12-20 ms), 15 628 vues vides contre 216 573 non vides. Contrôles : 284 704 fermés, 8 388 contredits, 2 301 082 entrées utiles.
+- Point 25 (net sain, corpus) : `flock-position` +391, `tacmap-displayasset` +64 (aucune perte saine), `world-object-i0` +123, neuf sites neutres (0/0 sain), `ti38-i18` −7, `unit-actor-state` −17, `i0-bipede-prechigh` −1 ; les treize ensemble +614. Fermés, gagnés, perdus identiques à `mb2_positions.tsv` sur 340 lignes.
+**Conclusion / suite** : statuts et tables à reporter par le superviseur. Rapport : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_4.md` (TSV `mesures_bis4_tsv/`, extraits Ghidra `ghidra_13/`). Découvertes D-B4-1 à D-B4-5 consignées (dont : le relais serveur ne pose jamais le bloc `0xbc`).
+
+## [2026-10-02] Campagne de grammaire du jeu, phase 1 — recherche Ghidra, vérification adverse et clôture (superviseur) — Complété
+
+**Décision technique principale** : phase 1 menée sur `feat/campagne-grammaire` (worktree `LevelUp-wt-campagne-grammaire`, base `69564ef7d` = `8b894a677` + l'analyse de la représentation intermédiaire), en trois workflows et un agent (106 agents Opus au total) : instrument de fermeture v2 ; huit pistes Ghidra en lecture seule (T1 naissances non lues, T2 décalage de masque, T3 fin de vue B, T4 positions, T5 vue C, T6 véhicules `ti=40`, T7 dispositifs `ti=43` et moteur, T8 bourrage) ; deux vérificateurs adverses par constat (lentilles jeu et code), verdicts conservés dans `campagne_grammaire_2026-10-01/VERIFICATIONS_ADVERSES.md` (43 constats : 41 retenus, 1 contesté, 1 réfuté) ; mesures ciblées puis bis 1 à 4 ; deux critiques de complétude traitées (39 + 21 points). Aucune sortie de production modifiée ; `grammar.Rev` = `grammar-2026-09-27.3`.
+
+**Résultats observés** : la cause n° 1 « terminateur hors cadre » est un rejet hors datum dans 95,3 % des paquets, et l'écrivain du jeu n'émet jamais de DELTA sans NEW antérieur : ce sont des naissances non lues (têtes de paquets à événements, paquets à événements non localisés). Leviers mesurés sur 20 films : naissances (i)+(ii) borne +28 168 paquets ; composant `ti=3` (low-frequency non porté + homonyme `high-frequency`) +30 618 ; dispositifs `ti=43` +18 105 (répare le témoin `81c02726`) ; image-clé générations 0/2 +1 784 ; Live Fire par index de plage +3 269 sur `0797ce72`. Réfutés ou nuls : décalage de masque, bourrage (le jeu rend aussi des zéros, mais déclare le paquet en échec s'il a trop lu), kinds 1/2 de la vue C (jamais écrits dans un film), bloc `0xbc` (jamais au bon bit), dépendance au build des exceptions de position, `IDLowBits` (= 13 = ceil(log2(8 191 entrées du bloc de type 1)) partout). 8 388 fermetures « factices » contredisent un invariant de l'écrivain. Kill-feed complet : compte déclaré = trouvé sur 20/20 films. Déclencheur de la spec hors de portée même sous l'oracle (HI_1_13_0 ≈ 85-88 % selon le dénominateur) ; moitié « entrées » non mesurable exactement (dépend d'états réseau absents du film). Branche J12 récupérée et confrontée par diff : trois fichiers en commun, conflits mécaniques plus deux contraintes de structure (J12.3, J12.4). Incident : trois décompilations écrites par un agent à la racine du checkout principal, déplacées dans les notes.
+
+**Conclusion / prochaine étape** : phase 2 planifiée au §6 du plan (vague 1 composants, références re-figées, vague 2 unification des localisateurs puis naissances, ensuite seulement l'étape 1 de la représentation intermédiaire — changement d'ordre par rapport à l'analyse, soumis à l'utilisateur). Décisions D1 à D11, D-RI, D-VEH à prendre ; rien ne se fusionne avant J12.
+
+## [2026-10-02] Campagne de grammaire : décisions utilisateur sur la phase 2 et signal du localisateur — Complété (décisions consignées)
+
+**Décision technique principale** : décisions de l'utilisateur (questionnaire, recommandations retenues) consignées au §3 du plan : ordre « composants, naissances, représentation intermédiaire » (vague 1 composants, vague 2 LU puis naissances, ensuite seulement l'étape 1 de la RI) ; blocs véhicules et dispositifs dans la campagne (`ti=43`, `ti=40`, octet `+0x818`) ; fermetures factices exclues de la mesure ; seuil de 95 % ramené au rang d'indicateur.
+
+**Résultats observés** : la session du chantier de suite d'audit signale (enquête `ENQUETE_SCAN_SEPTEMBRE_2026-10-02.md`, `origin/feat/suite-audit-decodeur` @ `90014fe79`) que la signature du localisateur des paquets à événements est figée sur le slot 123 ; dans les modes à objectif porté le delta « high-frequency » passe par les slots 124 et 126-129, d'où 19,1 % de kills `scan` en septembre. Consigné en D-67 : c'est vraisemblablement une part de la région (ii) de la campagne (L1b), à poser une fois dans le localisateur unifié (LU).
+
+**Conclusion / prochaine étape** : décision utilisateur attendue sur la prise en charge de D-67 par la campagne ; à la fusion de J12, fusionner `feat/v75` dans la branche puis ouvrir la vague 1 sur GO daté.
 ## [2026-10-02] Échéance Notion « ≥ 01/10 retrait de la migration boot legacy ADR 0023 » : déjà soldée le 13/09, docs restées en retard alignées — Complété
 
 **Décision technique principale** : la tâche (supprimer `MigrateLegacyTokensAtBoot` + helpers DuckDB privés + `EnvRefreshTokenForGamertag` + allowlists sentinel) a été exécutée en avance le 2026-09-13 (`7fd6d0fcb`, lot B.2 de `PLAN_FINITIONS_2026-09-13`, sur `feat/v75`, pas encore dans `main`). Rien à refaire dans le code. Contre-vérification du critère à l'échéance, en lecture seule sur la prod (`auth.log*`, le binaire de `main` porte encore la migration), puis alignement des documents que le lot B.2 avait manqués (règle « doc inversée »).
@@ -114139,6 +114245,13 @@ efficaces sur les tâches cadrées, à éviter quand un obstacle impose un arbit
 Reports : `.ai/REGISTRE_REPORTS.md`, section « Reports du plan de suite d'audit du
 décodeur ».
 
+## [2026-10-02] Campagne de grammaire : J12 fusionné dans la campagne — Complété
+
+**Décision technique principale** : dès le signal de la session de suite d'audit (J12 dans `feat/v75`, `95b19e635`), fusion de `origin/feat/v75` dans `feat/campagne-grammaire` (`f28a4a816`) après un essai `git merge-tree` (un seul conflit annoncé, confirmé) et un essai complet dans un worktree jetable (chantier « fusion » des recherches préalables). Conflit `grammar_rev.golden` résolu en reprenant la version de `feat/v75` puis en régénérant l'empreinte à révision constante (`grammar-2026-09-27.3`, `14b3a79d…`, valeur prédite par l'essai) ; quatre sondes passées à l'accesseur `profile.QuantRangeCEBiped()` de J12.4 ; règle 17 de CLAUDE.md appliquée aux commentaires du code neuf (`32ba9078d`).
+
+**Résultats observés** : gates verts sur l'arbre fusionné (`gofmt`, `go vet` film, `go vet -tags=research ./...` du module, `go vet` avec surcouche, `go test ./internal/archlint/` complet — `TestNoExpiredTODO` vert grâce au TODO re-daté par `feat/v75` —, `go test` des 17 paquets du film, `cmd_fermeture` research, tests de révision). Carte de fermeture v2 rejouée sur les 20 films avec l'outil de l'arbre fusionné : TSV identiques à la phase 1 hors pic mémoire et durée. Chemins `.ai` cités par le code de la campagne vérifiés à la casse exacte. Le checkout principal porte du travail non commité d'une autre session (registre, thought_log, docs ADR 0023) et n'a pas été touché.
+
+**Conclusion / prochaine étape** : la campagne est à jour de `feat/v75` ; intégrer les recherches préalables à la fin du workflow en cours, puis vague 1 sur GO daté de l'utilisateur. Push de la branche (première CI Linux) à proposer à l'utilisateur.
 ## [2026-10-02] Registre des reports — déplacé à la racine de `.ai/` et nettoyé — Complété
 
 **Décision technique principale** : le registre passe de `.ai/V7.5/REGISTRE_REPORTS.md` à
@@ -114157,6 +114270,183 @@ ratchets `archlint` des chemins cités verts.
 d'anciens documents sont désormais approximatifs (laissés tels quels, les sections et libellés
 restent cherchables).
 
+## [2026-10-02] Campagne de grammaire : recherches préalables de la phase 2 intégrées aux documents — Complété (documents) ; décisions D12 à D17 en attente
+
+**Statut** : Complété pour les documents ; rien n'est commité ; aucun lot lancé.
+
+**Décision technique principale** : les six chantiers de recherche (`wf_9088d8bd-e43` : fusion,
+R-COMB, R-LS + R-L1 (c), R-L1 (a)(b)(d) + R-P6, R-L3 + R-HOM + R-P3, R-L4 + R-L6) et leurs
+vérificateurs adverses sont reportés dans le plan (§5 : annotations de D-2, D-3, D-8, D-42, D-46,
+D-49, D-52, D-54, D-56, D-67 et découvertes neuves D-68 à D-103 ; §6.0 : résultat de l'essai de
+fusion de J12, surcouches, R-COMB coché, R-COMB-2 proposée ; §6.1 : tables mises à jour ; §6.2 :
+mises à jour par lot ; §6.3 : décisions D12 à D17 proposées ; §6.5 neuf : statut par recherche,
+effet sur les lots, dénominateur consolidé, ordre proposé, intégration) et dans le rapport (§8).
+Tout item non confirmé par un vérificateur est marqué « NON CONFIRMÉ » avec sa raison.
+
+**Résultats observés** :
+- R-COMB : sous six leviers, HI_1_13_0 86,0 à 88,0 % (fixe de R-COMB) ; aucun build à 95 % ; la
+  partie estimée de la phrase des 95 % n'est pas une borne.
+- R-LS : ordre par site ; cuisson +18 119 / −2 paquets, 0 film en baisse ; killsource 1 080 morts
+  rendues à la marche, voie publiée (backfill dû).
+- R-L1 : (iii') sans records, 4 598 fermetures factices, vue A = 41 genres de messages à porter,
+  condition par film de L1a (+15 070 sains, seuil choisi sur le corpus).
+- R-L3 : portage +3 575 sains, 0 film en baisse ; position du bit des vieux builds non discriminée.
+- R-HOM : un seul homonyme ; R-P3 : désaveu hors bloc +694 sains, 0 perdu.
+- R-L4 : 3 058 / 3 058 records `ti=40` d'image-clé sous trois lectures communes ; delta +1 436 / −0 ;
+  MPP 8/3 +80 979 paquets sur 6 films (pertes non jugées). R-L6 : L6a hors Live Fire réfuté.
+- Dénominateur fixe consolidé (awk sur les TSV des chantiers) : HI_1_13_0 2 959 104, corpus
+  7 176 150 ; sous les six leviers de R-COMB, HI_1_13_0 83,7 à 85,7 %.
+- Surcouches : quatre sur cinq d'avant J12, incompatibles sous le tag commun (vet rouge avec
+  quatre).
+
+**Conclusion / prochaine étape** : décisions de l'utilisateur sur D12 à D17 (dénominateur
+consolidé, ordres de LS, lots neufs LM / LK / LP, scissions L3 et L4 et sortie de L1b, seuil de
+L1a, surcouche unique) ; puis surcouche unique post-J12 et R-COMB-2 avant le GO daté de la vague 1.
+
+## [2026-10-02] Campagne de grammaire : surcouche de mesure unique post-J12 (D17, D-100, critique D16) — Complété
+
+**Décision technique** : une seule surcouche, `campagne_grammaire_2026-10-01/surcouche_unique_postj12/`
+(7 fichiers + `overlay.json` + `delta/`), fusion à trois voies (base `fe18bf67c`, ours = tête
+post-J12, theirs = copie de chaque famille), crochets inertes par défaut ; le localisateur R-LS,
+jusqu'ici substitué sans condition par `r_loc_overlay/`, passe derrière `CAMPAGNE_RLOC_LS=1`.
+
+**Résultats observés** (mesuré, note `SURCOUCHE_UNIQUE.md`) :
+- `go vet -tags=research,campagne_overlay -overlay=<unique>` vert sur grammar, killsource,
+  cmd/killsource, cmd_fermeture ; avant, rouge avec 5 surcouches sur 6. Aucun tag propre requis.
+- Inertie : carte v2 (`cmd_fermeture -mode v2`, 20 films) identique en production et sous la
+  surcouche, et identique à la phase 1 (10 TSV) ; killsource identique à l'octet (3 films).
+- Rejouées à l'identique de leurs notes : R-COMB (`r_comb_configs.tsv`, 506 lignes), R-COMP
+  (4 TSV L3), R-VEH (`r_veh_delta.tsv`, `r_veh_ti40_variantes.tsv`), R-LS (carte `ls` 20/20,
+  voies killsource sur 3 films), BIS_2 (`mb2_ti43`, une colonne texte à ex aequo).
+- D-102 : l'édition `python3` de `r_veh_ti40_research_test.go` est juste (vet, gofmt, mesure à
+  l'octet) ; diff de l'édition impossible (aucune version antérieure conservée).
+- Gate : gofmt vide ; `go vet -tags=research ./...` rc=0 ; archlint ok.
+
+**Conclusion / prochaine étape** : toute mesure en surcouche part désormais de
+`surcouche_unique_postj12/overlay.json` ; anciennes surcouches et en-têtes de sondes à retirer ou
+mettre à jour (superviseur) ; R-COMB-2 peut être lancée sur cette surcouche.
+
+## [2026-10-02] Campagne de grammaire : R-COMB-2, tous les leviers ensemble sur la surcouche unique (critique R : A4, B5-B9, C10, C11, E21, E22) — Complété
+
+**Décision technique** : douze leviers mesurés ensemble (L8, L2, LM, L3a, L6a, L6b, L4a, LS ordre `ls2`, L1a
+causale en ligne, LP, L7 exact, L9 oracle dérivé), puis la combinaison privée d'un levier à la fois ;
+surcouche unique étendue de deux fichiers (`frame_infer.go` : bascule L7 ; `rcomb2_leviers.go` : leviers de
+composant pour `cmd/killsource`), inertie remesurée (carte v2 10 TSV, killsource 19/19 à l'octet).
+
+**Résultats observés** (mesuré, `R_COMB_2.md`, `r_comb2_tsv/`) :
+- L7 rejeté : −2 688 sains seul (9 films en baisse), −58 719 dans la combinaison ; combinaison retenue C11
+  (sans L7).
+- Indicateur (utiles sains / fixe consolidé recalculé, HI_1_13_0 3 073 267, corpus 7 758 290) sous C11 :
+  HI_1_13_0 65,4 → 93,8 % (92,3 % sans l'oracle L9) ; HI_1_8_0 95,2 % ; HI_1_11_0 90,6 ; HI_1_12_0 89,7 ;
+  HI_1_9_0 89,4 ; HI_1_10_0 81,5 ; corpus 33,2 → 77,0 %. Gate 2 de C11 tenu sur 21/21 films. Réserves : L9
+  oracle, L1a choisit par le juge, juge à trois invariants.
+- Marginales saines (corpus) : LM +109 844, L8 +37 199, LS +34 222, L1a +29 594, L2 +19 657, L3a +12 000,
+  L6a +8 261, L9 +6 429, L4a +4 440, L6b +1 751, LP +1 281. Gate 2 en défaut : L2 (`1c4c63c2` −916 sains en
+  marginal), L6b (3 films seul), L8 (1 requalifié), L4a (−11 utiles) ; `world-object-i0` infirmé.
+- Gate 3 killsource (19 témoins ; `1c4c63c2`, `81c02726` sans carte) : aucune valeur de mort changée par aucun
+  levier ; voies : LS 229, L6b 8 morts du scan à la marche ; LM, L1a, LP nuls par construction, L9 à mesurer
+  sur le lot.
+- B7 : sous L8, toutes les signatures (123 et high-frequency) tombent sur `ti=4` ; règle proposée : prédicat
+  par table de composant, pas par nom.
+- Écart : une commande `python3 --version` lancée par erreur (aucun script, aucun fichier).
+
+**Conclusion / prochaine étape** : ordre de vague proposé par contribution saine (R_COMB_2 §10) ; décisions
+utilisateur : D6 (LM), réparation de L2 sur HI_1_10_0 et de L6b avant leurs lots, sortie de L7, L0 avant L1a.
+
+## [2026-10-02] Campagne de grammaire : critique R (25 points) traitée dans les documents, avec la surcouche unique et R-COMB-2 — Complété (documents) ; décisions D18 à D22 en attente
+
+**Statut** : Complété pour les documents ; rien n'est commité ; aucune commande `go`, aucun fichier de
+production ni sonde modifiés ; `grammar.Rev` reste `grammar-2026-09-27.3`.
+
+**Décision technique principale** : les 25 points de `CRITIQUE_COMPLETUDE_R.md` sont traités dans le
+PLAN (§5 : D-66, D-67, D-71, D-79, D-93, D-94, D-100, D-102, D-103 annotés, découvertes neuves D-104 à
+D-114 ; §6.0 : règle « Gain » (bornes), dénominateur recalculé, gate 2 (juge de L0, requalifications),
+gate 3 mesuré par levier, gate 5 (`r_nais_marche`), items `[x]` / `[~]` / `[!]`, rejoué / supposé après
+J12, montée de `grammar.Rev` par L0 ; §6.1 réécrit en sains par contribution marginale ; §6.2 par lot ;
+§6.3 : D1, D2, D-RI, D-VEH marquées TRANCHÉES, D18 à D22 neuves, liste courte ; §6.4 périmé ; §6.5.1 à
+§6.5.5 corrigés, §6.5.6 neuf = table de traitement), dans le RAPPORT (§8 annoté, §9 neuf) et dans les
+six notes `R_*.md` (section « Corrections du 2026-10-02 » en tête, alignée sur
+`VERIFICATIONS_ADVERSES_R.md`).
+
+**Résultats observés** :
+- L0 : la définition de la fermeture (`LectureVueC.Fermee`) est lue par la cuisson
+  (`debut_de_liste.go:157`, `tir_continu.go:115`, établi par lecture) : L0 change une sortie, monte
+  `grammar.Rev`, passe en tête de la vague 1 (amendement D18).
+- Ordre en sains marginaux (R-COMB-2, C11) : LM +109 844, L8 +37 199, LS +34 222, L1a +29 594, L2
+  +19 657, L3a +12 000, L6a +8 261, L9 +6 429, L4a +4 440, L6b +1 751, LP +1 281 ; L7 rejeté.
+- Pas prêts au gate par film : L2, L6b ; à instruire : L8, L4a ; extension `world-object-i0` retirée.
+- Formats 24-25 sous LM seul, en sains (awk sur `r_comb2_configs.tsv`) : 49,6 à 79,9 % par film (le
+  « 72 à 84 % » était brut).
+- Écart : un fichier temporaire écrit une fois dans `/tmp` (réécriture d'une table du plan), effacé
+  aussitôt ; à éviter (scratchpad seulement).
+
+**Conclusion / prochaine étape** : décisions utilisateur D18 (amendement de D-RI), D14, D6, D19, D22
+(puis D12, D13, D15, D16, D20, D21, D10 / D17) ; au superviseur : retrait des six anciennes surcouches
+et des en-têtes de sondes (item `[!]` du §6.0), entrée du journal §4 du plan pour l'intégration des
+R-*, la surcouche unique et R-COMB-2 ; mesures préalables proposées au §6.0 (sous-groupes de L0.6, L2
+sur HI_1_10_0, L6b, R-COMB-2 sous le juge de L0).
+
+## [2026-10-02] Campagne de grammaire : lot L0, la fermeture d'un paquet suit les règles de l'écrivain (D2) — Complété (non commité)
+
+**Statut** : Complété, rien de commité (`feat/campagne-grammaire`, tête `ff42fcf40`). Détail :
+`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md` ; statuts au §6.2 L0 du plan.
+
+**Décision technique principale** : `LectureVueC` porte `FermeeAuBit`, la première règle de
+l'écrivain contredite (`Invariant`) et `Fermee = FermeeAuBit && aucune règle` (`ecrivain_invariants.go`) :
+sortie de vue B par rejet (`FUN_142f2e174`, `FUN_142f2cee0`, `FUN_142f2cc78`), ordre NEW*/DELTA*/DEL* à
+slots croissants (`FUN_14076b9c8`), masque écrivable (`FUN_142e2da44`, bit au-delà de l'archétype jugé à
+la traversée), vue C de l'enregistreur (`FUN_142f2c3b0`, `FUN_14076b0e8`, `FUN_1406d5bf4`). Mot du DEL
+(L0.8) non retenu : il se juge contre l'archétype du datum, que le paquet ne porte pas.
+`debutParFermeture` prend le premier candidat qui ferme, à défaut le premier qui ferme au bit près
+(décision du lot : la forme pure perd 29 paquets sains en cascade, `e5adf7b2`). `grammar.Rev` ->
+`grammar-2026-10-02` ; `source.Rev`, `killsource.Rev`, `SchemaVersion` inchangés (goldens à révision
+constante, fixtures de contrat identiques hors chaîne de révision).
+
+**Résultats observés** :
+- Mesures préalables : 4 598 fermés après rejet tous factices (976 + 3 426 par le début antérieur,
+  648 / 648 par la place minimale d'un DELTA, les 32 sains un par un) ; juge relu et règles de
+  production d'accord sur les 284 704 fermés au bit ; D-44 = 23 338 / 213 040 paquets.
+- Carte v2 (20 films) : 284 704 fermés au bit -> 276 327 fermés ; sains 275 308 -> 276 327, utiles
+  sains 2 572 823 -> 2 585 919 ; 0 sain perdu, aucun film en baisse ; corpus 43,4 % (variable), 33,3 %
+  (fixe consolidé).
+- killsource 19 / 19 identiques à l'octet ; `replay-equiv` : 5 étapes sur 61 divergent (tir continu,
+  états de mouvement de quelques têtes de liste, artefact), 56 identiques ; rafales du tir continu en
+  baisse sur 9 films (`1c4c63c2` 399 -> 196) ; pic de `1c4c63c2` +18 %.
+- Banc de vérité (`e5adf7b2`, `1c4c63c2`) : MANQUE sur P-1 seul, qui est la requalification D2
+  (D-L0-4) ; aucun oracle ni violation ne bouge.
+- Gates verts : `gofmt`, `go vet` film et `-tags=research ./...`, `archlint`, 17 paquets film,
+  `cmd_fermeture` research ; mutations 12 / 12 rouges.
+
+**Conclusion / prochaine étape** : à confirmer par l'utilisateur : `debutParFermeture` à deux rangs,
+L0.8 non retenu, baisse des rafales du tir continu au rejeu ; commit du lot sur sa décision ; puis le
+lot suivant de la vague 1 jugé sous ce juge. Découvertes D-L0-1 à D-L0-4 consignées au §5 du plan.
+
+## [2026-10-02] Lot L0 — corrections du contrôle — Complété (non commité)
+
+**Statut** : Complété, rien de commité (`feat/campagne-grammaire`, tête `ff42fcf40`). Contrôleur :
+« non conforme en l'état, corrigeable » ; corrections D-A à D-E du pilote. Détail :
+`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md` §3, §5, §7.1, §9.
+
+**Décision technique principale** : le second rang de `debutParFermeture` est gardé comme repli nommé
+et compté (ADR 0034 D-10) : `repli_debut_de_liste_ferme_au_bit` (`registre_filmdec_marche.go`, lecture
+non portée, après lecture), compté par l'observation de la marche
+(`Observation.DebutsDeListeParRepliFermeAuBit` -> `MarcheDesTrames` -> `replay/film_scan_mouvement.go`,
+`coverage.fallbacks`), sans champ persisté neuf. Commentaire ramené au contrat, en-tête corrigé (le
+second rang n'est pas une preuve). Empreinte `grammar_rev` régénérée à révision constante
+`grammar-2026-10-02`.
+
+**Résultats observés** : mutations 16 / 16 rouges (M15 rougit par
+`TestTemoinDecaleJugeParLesReglesDeLaVueC`, M16 par `TestLeRepliDuDebutFermeAuBitEstCompte`) ; gofmt,
+vet, archlint, G-film verts ; `replay-equiv` : mêmes étapes que le lot, l'artefact ne gagne que
+l'entrée du repli (7 620 listes sur 20 films, dont 6 039 sur `1c4c63c2`) ; killsource identique à
+l'octet sur `e5adf7b2` et `084a804d` ; `replay-corpus-gate` (base `ff42fcf40`, parc copié au
+scratchpad) FAUX sur 19 / 19 par P-1 (MANQUE, D-L0-4) et le repli neuf (FAUX, D-L0-5) seulement.
+LOT_L0.md et le plan corrigés (gates non tous verts, compteur d'anticipation, « 0 sain perdu » sous le
+juge de L0, asymétrie L0.7 / L0.8 et réserve des builds sans exécutable marquées estimées) ; décisions
+du 2026-10-02 au §3 du plan.
+
+**Conclusion / prochaine étape** : commit par le pilote ; fusion de L0 seul dans `feat/v75` une fois
+vérifié (CI verte), selon la décision de l'utilisateur ; D-L0-5 et D-L0-6 consignées au §5.
 ## [2026-10-02] Représentation intermédiaire du film — plan d'exécution de l'étape 1, confié à une autre conversation
 
 **Statut** : Complété (plan écrit ; exécution confiée à une autre conversation).
@@ -114223,3 +114513,41 @@ ratchet de mojibake ne voit pas (relecture Latin-1).
 **Conclusion / prochaine étape** : le lot 1.2 (phase des trames sur la marche de production)
 attend la fusion du lot « définition de la fermeture » de la campagne dans `feat/v75` (consigne de
 l'utilisateur et prérequis du plan) ; la campagne préviendra. Rien n'est poussé.
+## [2026-10-02] Passe killsource : un film lu sans kill reste au backlog et occupe tout le cycle — Complété (branche `fix/killsource-sans-killfeed-a-jour`)
+
+**Constat** (`logs/general.log` du checkout principal, 05:18 → 15:45) : 448 décodages, dont 440
+« film sans kill-feed, rien a publier » sur 8 match_id seulement (48 à 56 fois chacun). Ce sont
+des matchs de ~55 s dont le film est complet (en-tête, 3-4 réplications, temps forts présents
+sur disque) et ne porte aucun kill. Coût CPU faible (66 à 100 ms par film, 33,4 s au total,
+~0,6 s par cycle), mais dégât réel : `perCycle = 8` et le backlog trié du plus récent au plus
+vieux. De 05:34 à 07:19, 7 places sur 8 prises (1 film utile par cycle) ; depuis 07:34 (arrivée du
+8e, `279ac3dd`), 48 cycles à 8/8, 0 film écrit, `backlog_restant` figé à 7 351.
+
+**Cause** : `conditionBacklog` (et `matchsAJour` du backfill) ne tient un match pour à jour que
+s'il a une ligne `match_kill_events_latest` à `decfilm.Rev` hors voie crédit, ou le bit terminal
+`MBitFilmAbsent`. Un film sans kill n'écrit aucune ligne et ne reçoit délibérément aucun bit (une
+révision future pourrait le lire) : rien ne le sortait du backlog.
+
+**Décision technique principale** : nouvelle colonne `match_registry.killsource_sans_killfeed_rev`
+(migration `shared_registry_killsource_sans_killfeed_rev_v1`, ALTER additive), écrite par
+`persist.KillSourceSansKillFeedPersister` (UPDATE par match sous le writer, forme autorisée
+anti-ART ; `match_registry` n'est pas append-only) avec `decfilm.Rev`. Une révision et non un
+bit : à la révision suivante le match redevient candidat. Lue par `conditionBacklog` (liste et
+jauge) et `matchsAJour` (backfill hors ligne et `--online`). Posée UNIQUEMENT pour un film
+complet décodé sans kill : nouvelle issue `OutcomeSansKillFeedARelire` pour le film non finalisé
+(qui sortait jusqu'ici en `OutcomeNoKillFeed`) et pour le morceau des temps forts déclaré mais non
+servi — comptée avec « sans kill-feed » dans les synthèses, ne pose rien. Couture de test
+`decoderLeFilm` (aucune mini-bobine du dépôt n'atteint `ErrNoKillFeed` : pas de paquet type 0).
+Aucun changement pour les films qui ont un kill-feed. SYNC_GUIDE EN + FR complétés.
+
+**Résultats observés** : test d'intégration rouge sur le code d'avant (backlog `[ancien courant]`
+au lieu de `[ancien]`), vert après ; trois mutations (révision non posée, condition retirée du
+backlog, garde des temps forts retirée) refont rougir le test attendu. Suites vertes :
+killcollector (unitaire + integration), migration, persist, sync, archlint (dont le ratchet du
+prédicat unique des temps forts, qui a imposé `finalise.EstTempsForts`), cmd/levelup integration ;
+golangci-lint 0 nouvelle issue (avec et sans tag integration).
+
+**Conclusion / prochaine étape** : commit sur la branche puis fusion dans feat/v75 sur accord
+utilisateur. Au premier cycle après redémarrage, les 8 films sont décodés une dernière fois, la
+colonne est posée, et le backlog doit recommencer à baisser (`killsource_postsync_backlog_restant`
+sous 7 351, `sans_killfeed` à 0 aux cycles suivants).

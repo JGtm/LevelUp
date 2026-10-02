@@ -38,6 +38,9 @@ type EntityTrace struct {
 	Dead        *types.DeadState // captured object-dead-state heavy form (nil if no dead-state component present)
 	DesyncAt    int              // iterator index of the first un-ported present component (-1 if all consumed)
 	EndBit      int
+	// MasqueNonEcrit : la regle de `FUN_142e2da44` que le masque lu contredit ([lireMasque],
+	// [traverseComponentLoopFrom]) ; [InvariantAucun] pour un masque que l ecrivain peut ecrire.
+	MasqueNonEcrit InvariantEcrivain
 }
 
 // bipedDefaultStateTypeIndex is the keyframe typeIndex of the biped archetype
@@ -126,7 +129,7 @@ func TraverseEntity(br *Lecteur, reg *Registry, defaultStateBits int) EntityTrac
 	// N'existe PAS dans le path DELTA (decodeDelta appelle consumeMask seul). Le retirer casse
 	// le décodage (désync) — c'est un vrai bit, pas un double-gate.
 	t.Gate = br.ReadBit()
-	t.Mask = consumeMask(br)
+	t.Mask, t.MasqueNonEcrit = lireMasque(br)
 
 	arch, ok := reg.Archetype(int(t.TypeIndex))
 	if !ok {
@@ -243,6 +246,9 @@ func traverseComponentLoop(br *Lecteur, arch Archetype, t *EntityTrace) {
 // Porter `i - decales` ici appliquerait deux fois la meme conversion. Ratchet :
 // `masque_cadre_registre_test.go`.
 func traverseComponentLoopFrom(br *Lecteur, arch Archetype, t *EntityTrace, from int) {
+	if masqueHorsArchetype(t.Mask, len(arch.Components)) {
+		t.MasqueNonEcrit = InvariantMasqueHorsArchetype // `FUN_142e2da44` : aucun bit au-dela de n
+	}
 	for i := from; i < len(arch.Components); i++ {
 		if t.Mask&(uint64(1)<<(uint(i)&63)) == 0 {
 			continue // component absent from the mask: NO bits consumed.
@@ -291,16 +297,8 @@ func traverseComponentLoopFrom(br *Lecteur, arch Archetype, t *EntityTrace, from
 }
 
 // consumeMask mirrors FUN_1406d7610: R(1) gate ; if 0 -> R(3) count + count×R(6)
-// index (sparse set) ; if 1 -> R(64) dense mask.
+// index (sparse set) ; if 1 -> R(64) dense mask. [lireMasque] juge en plus le masque.
 func consumeMask(br *Lecteur) uint64 {
-	if !br.ReadBit() {
-		count := uint32(br.ReadBits(3))
-		var mask uint64
-		for range count {
-			idx := uint(br.ReadBits(6))
-			mask |= uint64(1) << (idx & 63)
-		}
-		return mask
-	}
-	return br.ReadBits(64)
+	m, _ := lireMasque(br)
+	return m
 }

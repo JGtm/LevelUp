@@ -19,9 +19,10 @@ package grammar
 // desormais lue EN ENTIER : les trois branches que ce port refusait (le troisieme champ du couple
 // analogique, le champ +0x10 et les drapeaux +0x14) sont resolues au site d appel, et le bloc
 // d action est celui de `bloc_action.go`, dont deux sous-lecteurs ont ete corriges. Ce que la vue
-// rend ne vaut que si le paquet se FERME ([vueCFermee]) : c est l oracle de cadrage de la sonde,
-// et un paquet dont la vue C n est pas atteinte ou ne se ferme pas est un TROU, nomme et compte
-// par l appelant ([LectureVueC]).
+// rend ne vaut que si le paquet se FERME : au bit pres ([vueCFermee], l oracle de cadrage de la
+// sonde) et sans regle de l ecrivain contredite (`ecrivain_invariants.go`). Un paquet dont la vue C
+// n est pas atteinte ou ne se ferme pas est un TROU, nomme et compte par l appelant
+// ([LectureVueC]).
 
 // LargeurKindVueC est la largeur du selecteur de handler de la vue C
 // (`FUN_1406cf548` : `kind = R(2)`).
@@ -307,9 +308,16 @@ func vueCFermee(pay []byte, curseur int) bool {
 // LectureVueC est le VERDICT d un paquet sur sa vue C, tel que la marche du frame-processeur le
 // publie ([Observation.VueControleHook]) : UN par paquet delta marche.
 type LectureVueC struct {
-	// Atteinte : la vue B a clos sa liste, la vue C a donc ete lue.
+	// Atteinte : la vue B a clos sa liste (terminateur ou en-tete rejete), la vue C a donc ete lue.
 	Atteinte bool
-	// Fermee : la vue C s est lue jusqu a son terminateur ET le paquet se ferme ([vueCFermee]).
+	// FermeeAuBit : la vue C s est lue jusqu a son terminateur ET le paquet se ferme au bit pres
+	// ([vueCFermee]). Necessaire, pas suffisant.
+	FermeeAuBit bool
+	// Invariant : la premiere regle de l ecrivain que la lecture contredit
+	// (`ecrivain_invariants.go`) ; la sortie par rejet toujours, les autres sur un paquet
+	// [LectureVueC.FermeeAuBit] seulement.
+	Invariant InvariantEcrivain
+	// Fermee : le paquet est ferme au bit pres ET aucune regle de l ecrivain n est contredite.
 	// Seule une vue fermee rend des entrees.
 	Fermee bool
 	// Arret : la cause, quand la vue C atteinte ne s est pas lue jusqu a son terminateur.

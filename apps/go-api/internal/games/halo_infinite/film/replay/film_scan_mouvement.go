@@ -49,6 +49,7 @@ func (s *filmScan) balayerEtatsDeMouvement() {
 	}
 	s.opt.Fallbacks.DeclencheN(fallback.NomPhysiqueDeTypeDeVehiculeSupposee, st.VehicleTypePhysicsAssumed)
 	s.opt.Fallbacks.DeclencheN(fallback.NomLiaisonParAnticipation, m.LiaisonsParRepliDAnticipation)
+	s.opt.Fallbacks.DeclencheN(fallback.NomDebutDeListeFermeAuBit, m.DebutsDeListeParRepliFermeAuBit)
 	s.in.MovementStates, s.in.MovementStateStats = m.MovementStates, st
 	s.in.ContinuousFire, s.in.ContinuousFireStats = m.ContinuousFire, tc
 	s.opt.observe(s.ctx, "movementStates", s.in.MovementStates)

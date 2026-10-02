@@ -1,0 +1,500 @@
+film	build	ti	variante	issue	classe_bassin	records
+0797ce72	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		23
+0797ce72	HI_1_13_0	2	moteur	ferme	prefixe contigu	22
+0797ce72	HI_1_13_0	2	moteur	ferme	vide	1
+0797ce72	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	autre	1
+0797ce72	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	21
+0797ce72	HI_1_13_0	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+0797ce72	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	autre	1
+0797ce72	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	21
+0797ce72	HI_1_13_0	2	moteur + i2 R(2)	sous la frontiere	autre	1
+0797ce72	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	autre	1
+0797ce72	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	21
+0797ce72	HI_1_13_0	2	moteur + i3 absent	sous la frontiere	autre	1
+0797ce72	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	21
+0797ce72	HI_1_13_0	2	moteur + i4 -1 bit	sous la frontiere	autre	2
+0797ce72	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	21
+0797ce72	HI_1_13_0	2	moteur + i4 R(5) sans porte	sous la frontiere	autre	2
+0797ce72	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	21
+0797ce72	HI_1_13_0	2	moteur + i4 porte + R(4)	sous la frontiere	autre	2
+0797ce72	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	22
+0797ce72	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+0797ce72	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	22
+0797ce72	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+0797ce72	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		23
+084a804d	HI_1_10_0	2	i15	arret i11 game-engine-soft-ceilings-component		55
+084a804d	HI_1_10_0	2	moteur	ferme	prefixe contigu	54
+084a804d	HI_1_10_0	2	moteur	ferme	vide	1
+084a804d	HI_1_10_0	2	moteur + i0 -1 bit	au-dela de la frontiere	autre	21
+084a804d	HI_1_10_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	34
+084a804d	HI_1_10_0	2	moteur + i2 R(2)	au-dela de la frontiere	autre	21
+084a804d	HI_1_10_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	34
+084a804d	HI_1_10_0	2	moteur + i3 absent	au-dela de la frontiere	autre	21
+084a804d	HI_1_10_0	2	moteur + i3 absent	au-dela de la frontiere	vide	34
+084a804d	HI_1_10_0	2	moteur + i4 -1 bit	au-dela de la frontiere	autre	20
+084a804d	HI_1_10_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	35
+084a804d	HI_1_10_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	autre	20
+084a804d	HI_1_10_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	35
+084a804d	HI_1_10_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	autre	20
+084a804d	HI_1_10_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	35
+084a804d	HI_1_10_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	54
+084a804d	HI_1_10_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+084a804d	HI_1_10_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	54
+084a804d	HI_1_10_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+084a804d	HI_1_10_0	2	reference	arret i11 game-engine-soft-ceilings-component		55
+111fa685	HI_1_10_0	2	i15	arret i11 game-engine-soft-ceilings-component		29
+111fa685	HI_1_10_0	2	moteur	ferme	prefixe contigu	28
+111fa685	HI_1_10_0	2	moteur	ferme	vide	1
+111fa685	HI_1_10_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	29
+111fa685	HI_1_10_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	29
+111fa685	HI_1_10_0	2	moteur + i3 absent	au-dela de la frontiere	vide	29
+111fa685	HI_1_10_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	29
+111fa685	HI_1_10_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	29
+111fa685	HI_1_10_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	29
+111fa685	HI_1_10_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	28
+111fa685	HI_1_10_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+111fa685	HI_1_10_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	28
+111fa685	HI_1_10_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+111fa685	HI_1_10_0	2	reference	arret i11 game-engine-soft-ceilings-component		29
+11de8353	HI_1_9_0	2	i15	arret i11 game-engine-soft-ceilings-component		31
+11de8353	HI_1_9_0	2	moteur	ferme	prefixe contigu	29
+11de8353	HI_1_9_0	2	moteur	ferme	vide	2
+11de8353	HI_1_9_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	30
+11de8353	HI_1_9_0	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+11de8353	HI_1_9_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	30
+11de8353	HI_1_9_0	2	moteur + i2 R(2)	sous la frontiere	autre	1
+11de8353	HI_1_9_0	2	moteur + i3 absent	au-dela de la frontiere	vide	30
+11de8353	HI_1_9_0	2	moteur + i3 absent	sous la frontiere	autre	1
+11de8353	HI_1_9_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	31
+11de8353	HI_1_9_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	31
+11de8353	HI_1_9_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	31
+11de8353	HI_1_9_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	29
+11de8353	HI_1_9_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	2
+11de8353	HI_1_9_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	29
+11de8353	HI_1_9_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	2
+11de8353	HI_1_9_0	2	reference	arret i11 game-engine-soft-ceilings-component		31
+1c4c63c2	HI_1_10_0	0	i15	arret i11 game-engine-soft-ceilings-component		2
+1c4c63c2	HI_1_10_0	0	i15	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	moteur	arret i18 forge-engine-player-roles-component	autre	2
+1c4c63c2	HI_1_10_0	0	moteur	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	moteur + i0 -1 bit	arret i18 forge-engine-player-roles-component	autre	2
+1c4c63c2	HI_1_10_0	0	moteur + i0 -1 bit	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	moteur + i2 R(2)	arret i18 forge-engine-player-roles-component	autre	2
+1c4c63c2	HI_1_10_0	0	moteur + i2 R(2)	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	moteur + i3 absent	arret i18 forge-engine-player-roles-component	autre	2
+1c4c63c2	HI_1_10_0	0	moteur + i3 absent	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	moteur + i4 -1 bit	arret i18 forge-engine-player-roles-component	autre	1
+1c4c63c2	HI_1_10_0	0	moteur + i4 -1 bit	arret i18 forge-engine-player-roles-component	vide	1
+1c4c63c2	HI_1_10_0	0	moteur + i4 -1 bit	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	moteur + i4 R(5) sans porte	arret i18 forge-engine-player-roles-component	autre	2
+1c4c63c2	HI_1_10_0	0	moteur + i4 R(5) sans porte	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	moteur + i4 porte + R(4)	arret i18 forge-engine-player-roles-component	autre	2
+1c4c63c2	HI_1_10_0	0	moteur + i4 porte + R(4)	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	moteur, i15 +1 (temoin)	arret i18 forge-engine-player-roles-component	autre	2
+1c4c63c2	HI_1_10_0	0	moteur, i15 +1 (temoin)	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	moteur, i15 -1 (temoin)	arret i18 forge-engine-player-roles-component	autre	2
+1c4c63c2	HI_1_10_0	0	moteur, i15 -1 (temoin)	sous la frontiere		8
+1c4c63c2	HI_1_10_0	0	reference	arret i11 game-engine-soft-ceilings-component		2
+1c4c63c2	HI_1_10_0	0	reference	sous la frontiere		8
+1c4c63c2	HI_1_10_0	2	i15	arret i11 game-engine-soft-ceilings-component		68
+1c4c63c2	HI_1_10_0	2	moteur	ferme	prefixe contigu	66
+1c4c63c2	HI_1_10_0	2	moteur	ferme	vide	1
+1c4c63c2	HI_1_10_0	2	moteur	sous la frontiere	vide	1
+1c4c63c2	HI_1_10_0	2	moteur + i0 -1 bit	au-dela de la frontiere	autre	26
+1c4c63c2	HI_1_10_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	40
+1c4c63c2	HI_1_10_0	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+1c4c63c2	HI_1_10_0	2	moteur + i0 -1 bit	sous la frontiere	vide	1
+1c4c63c2	HI_1_10_0	2	moteur + i2 R(2)	au-dela de la frontiere	autre	26
+1c4c63c2	HI_1_10_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	40
+1c4c63c2	HI_1_10_0	2	moteur + i2 R(2)	sous la frontiere	autre	1
+1c4c63c2	HI_1_10_0	2	moteur + i2 R(2)	sous la frontiere	vide	1
+1c4c63c2	HI_1_10_0	2	moteur + i3 absent	au-dela de la frontiere	autre	26
+1c4c63c2	HI_1_10_0	2	moteur + i3 absent	au-dela de la frontiere	vide	40
+1c4c63c2	HI_1_10_0	2	moteur + i3 absent	sous la frontiere	autre	1
+1c4c63c2	HI_1_10_0	2	moteur + i3 absent	sous la frontiere	vide	1
+1c4c63c2	HI_1_10_0	2	moteur + i4 -1 bit	au-dela de la frontiere	autre	27
+1c4c63c2	HI_1_10_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	40
+1c4c63c2	HI_1_10_0	2	moteur + i4 -1 bit	sous la frontiere	vide	1
+1c4c63c2	HI_1_10_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	autre	27
+1c4c63c2	HI_1_10_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	40
+1c4c63c2	HI_1_10_0	2	moteur + i4 R(5) sans porte	sous la frontiere	vide	1
+1c4c63c2	HI_1_10_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	autre	27
+1c4c63c2	HI_1_10_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	40
+1c4c63c2	HI_1_10_0	2	moteur + i4 porte + R(4)	sous la frontiere	vide	1
+1c4c63c2	HI_1_10_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	66
+1c4c63c2	HI_1_10_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+1c4c63c2	HI_1_10_0	2	moteur, i15 +1 (temoin)	sous la frontiere	vide	1
+1c4c63c2	HI_1_10_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	66
+1c4c63c2	HI_1_10_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	2
+1c4c63c2	HI_1_10_0	2	reference	arret i11 game-engine-soft-ceilings-component		68
+396cfc92	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		27
+396cfc92	HI_1_13_0	2	moteur	ferme	prefixe contigu	26
+396cfc92	HI_1_13_0	2	moteur	ferme	vide	1
+396cfc92	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	26
+396cfc92	HI_1_13_0	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+396cfc92	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	26
+396cfc92	HI_1_13_0	2	moteur + i2 R(2)	sous la frontiere	autre	1
+396cfc92	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	26
+396cfc92	HI_1_13_0	2	moteur + i3 absent	sous la frontiere	autre	1
+396cfc92	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	26
+396cfc92	HI_1_13_0	2	moteur + i4 -1 bit	sous la frontiere	autre	1
+396cfc92	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	26
+396cfc92	HI_1_13_0	2	moteur + i4 R(5) sans porte	sous la frontiere	autre	1
+396cfc92	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	26
+396cfc92	HI_1_13_0	2	moteur + i4 porte + R(4)	sous la frontiere	autre	1
+396cfc92	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	26
+396cfc92	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+396cfc92	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	26
+396cfc92	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+396cfc92	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		27
+4f77afc1	HI_1_13_0	0	i15	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	moteur	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	moteur + i0 -1 bit	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	moteur + i2 R(2)	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	moteur + i3 absent	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	moteur + i4 -1 bit	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	moteur + i4 R(5) sans porte	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	moteur + i4 porte + R(4)	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	moteur, i15 +1 (temoin)	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	moteur, i15 -1 (temoin)	sous la frontiere		2
+4f77afc1	HI_1_13_0	0	reference	sous la frontiere		2
+4f77afc1	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		61
+4f77afc1	HI_1_13_0	2	moteur	ferme	prefixe contigu	59
+4f77afc1	HI_1_13_0	2	moteur	ferme	vide	2
+4f77afc1	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	autre	14
+4f77afc1	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	47
+4f77afc1	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	autre	14
+4f77afc1	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	47
+4f77afc1	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	autre	14
+4f77afc1	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	47
+4f77afc1	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	autre	13
+4f77afc1	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	48
+4f77afc1	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	autre	13
+4f77afc1	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	48
+4f77afc1	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	autre	13
+4f77afc1	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	48
+4f77afc1	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	59
+4f77afc1	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	2
+4f77afc1	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	59
+4f77afc1	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	2
+4f77afc1	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		61
+50247b26	version-31	2	i15	arret i11 game-engine-soft-ceilings-component		30
+50247b26	version-31	2	moteur	sous la frontiere	autre	30
+50247b26	version-31	2	moteur + i0 -1 bit	ferme	prefixe contigu	29
+50247b26	version-31	2	moteur + i0 -1 bit	ferme	vide	1
+50247b26	version-31	2	moteur + i2 R(2)	ferme	prefixe contigu	29
+50247b26	version-31	2	moteur + i2 R(2)	ferme	vide	1
+50247b26	version-31	2	moteur + i3 absent	ferme	prefixe contigu	29
+50247b26	version-31	2	moteur + i3 absent	ferme	vide	1
+50247b26	version-31	2	moteur + i4 -1 bit	ferme	prefixe contigu	29
+50247b26	version-31	2	moteur + i4 -1 bit	ferme	vide	1
+50247b26	version-31	2	moteur + i4 R(5) sans porte	ferme	prefixe contigu	29
+50247b26	version-31	2	moteur + i4 R(5) sans porte	ferme	vide	1
+50247b26	version-31	2	moteur + i4 porte + R(4)	ferme	prefixe contigu	29
+50247b26	version-31	2	moteur + i4 porte + R(4)	ferme	vide	1
+50247b26	version-31	2	moteur, i15 +1 (temoin)	sous la frontiere	autre	30
+50247b26	version-31	2	moteur, i15 -1 (temoin)	sous la frontiere	autre	30
+50247b26	version-31	2	reference	arret i11 game-engine-soft-ceilings-component		30
+51ebbc0f	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		41
+51ebbc0f	HI_1_13_0	2	moteur	au-dela de la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur	au-dela de la frontiere	prefixe contigu	1
+51ebbc0f	HI_1_13_0	2	moteur	au-dela de la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur	ferme	prefixe contigu	25
+51ebbc0f	HI_1_13_0	2	moteur	ferme	vide	1
+51ebbc0f	HI_1_13_0	2	moteur	sous la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur	sous la frontiere	prefixe contigu	8
+51ebbc0f	HI_1_13_0	2	moteur	sous la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur	sous la frontiere	vide	2
+51ebbc0f	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	prefixe contigu	1
+51ebbc0f	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	25
+51ebbc0f	HI_1_13_0	2	moteur + i0 -1 bit	sous la frontiere	autre	2
+51ebbc0f	HI_1_13_0	2	moteur + i0 -1 bit	sous la frontiere	prefixe contigu	9
+51ebbc0f	HI_1_13_0	2	moteur + i0 -1 bit	sous la frontiere	vide	2
+51ebbc0f	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	prefixe contigu	1
+51ebbc0f	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	25
+51ebbc0f	HI_1_13_0	2	moteur + i2 R(2)	sous la frontiere	autre	2
+51ebbc0f	HI_1_13_0	2	moteur + i2 R(2)	sous la frontiere	prefixe contigu	9
+51ebbc0f	HI_1_13_0	2	moteur + i2 R(2)	sous la frontiere	vide	2
+51ebbc0f	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	prefixe contigu	1
+51ebbc0f	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	25
+51ebbc0f	HI_1_13_0	2	moteur + i3 absent	sous la frontiere	autre	2
+51ebbc0f	HI_1_13_0	2	moteur + i3 absent	sous la frontiere	prefixe contigu	9
+51ebbc0f	HI_1_13_0	2	moteur + i3 absent	sous la frontiere	vide	2
+51ebbc0f	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	autre	2
+51ebbc0f	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	prefixe contigu	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	25
+51ebbc0f	HI_1_13_0	2	moteur + i4 -1 bit	sous la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 -1 bit	sous la frontiere	prefixe contigu	9
+51ebbc0f	HI_1_13_0	2	moteur + i4 -1 bit	sous la frontiere	vide	2
+51ebbc0f	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	autre	2
+51ebbc0f	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	prefixe contigu	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	25
+51ebbc0f	HI_1_13_0	2	moteur + i4 R(5) sans porte	sous la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 R(5) sans porte	sous la frontiere	prefixe contigu	9
+51ebbc0f	HI_1_13_0	2	moteur + i4 R(5) sans porte	sous la frontiere	vide	2
+51ebbc0f	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	autre	2
+51ebbc0f	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	prefixe contigu	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	25
+51ebbc0f	HI_1_13_0	2	moteur + i4 porte + R(4)	sous la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 porte + R(4)	sous la frontiere	prefixe contigu	8
+51ebbc0f	HI_1_13_0	2	moteur + i4 porte + R(4)	sous la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur + i4 porte + R(4)	sous la frontiere	vide	2
+51ebbc0f	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	26
+51ebbc0f	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 +1 (temoin)	sous la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 +1 (temoin)	sous la frontiere	prefixe contigu	8
+51ebbc0f	HI_1_13_0	2	moteur, i15 +1 (temoin)	sous la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 +1 (temoin)	sous la frontiere	vide	2
+51ebbc0f	HI_1_13_0	2	moteur, i15 -1 (temoin)	au-dela de la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 -1 (temoin)	au-dela de la frontiere	prefixe contigu	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 -1 (temoin)	au-dela de la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	autre	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	33
+51ebbc0f	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	tout a un (>= 48 fentes)	1
+51ebbc0f	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	3
+51ebbc0f	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		41
+60ae07c4	HI_1_8_0	2	i15	arret i11 game-engine-soft-ceilings-component		42
+60ae07c4	HI_1_8_0	2	moteur	ferme	autre	1
+60ae07c4	HI_1_8_0	2	moteur	ferme	prefixe contigu	40
+60ae07c4	HI_1_8_0	2	moteur	ferme	vide	1
+60ae07c4	HI_1_8_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	39
+60ae07c4	HI_1_8_0	2	moteur + i0 -1 bit	sous la frontiere	autre	3
+60ae07c4	HI_1_8_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	39
+60ae07c4	HI_1_8_0	2	moteur + i2 R(2)	sous la frontiere	autre	3
+60ae07c4	HI_1_8_0	2	moteur + i3 absent	au-dela de la frontiere	vide	39
+60ae07c4	HI_1_8_0	2	moteur + i3 absent	sous la frontiere	autre	3
+60ae07c4	HI_1_8_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	39
+60ae07c4	HI_1_8_0	2	moteur + i4 -1 bit	sous la frontiere	autre	3
+60ae07c4	HI_1_8_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	39
+60ae07c4	HI_1_8_0	2	moteur + i4 R(5) sans porte	sous la frontiere	autre	3
+60ae07c4	HI_1_8_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	39
+60ae07c4	HI_1_8_0	2	moteur + i4 porte + R(4)	sous la frontiere	autre	3
+60ae07c4	HI_1_8_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	autre	1
+60ae07c4	HI_1_8_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	40
+60ae07c4	HI_1_8_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+60ae07c4	HI_1_8_0	2	moteur, i15 -1 (temoin)	sous la frontiere	autre	1
+60ae07c4	HI_1_8_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	40
+60ae07c4	HI_1_8_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+60ae07c4	HI_1_8_0	2	reference	arret i11 game-engine-soft-ceilings-component		42
+a349fea8	version-33	2	i15	arret i11 game-engine-soft-ceilings-component		49
+a349fea8	version-33	2	moteur	au-dela de la frontiere	autre	1
+a349fea8	version-33	2	moteur	sous la frontiere	autre	48
+a349fea8	version-33	2	moteur + i0 -1 bit	ferme	prefixe contigu	47
+a349fea8	version-33	2	moteur + i0 -1 bit	ferme	vide	1
+a349fea8	version-33	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+a349fea8	version-33	2	moteur + i2 R(2)	ferme	prefixe contigu	47
+a349fea8	version-33	2	moteur + i2 R(2)	ferme	vide	1
+a349fea8	version-33	2	moteur + i2 R(2)	sous la frontiere	autre	1
+a349fea8	version-33	2	moteur + i3 absent	ferme	prefixe contigu	47
+a349fea8	version-33	2	moteur + i3 absent	ferme	vide	1
+a349fea8	version-33	2	moteur + i3 absent	sous la frontiere	autre	1
+a349fea8	version-33	2	moteur + i4 -1 bit	ferme	autre	1
+a349fea8	version-33	2	moteur + i4 -1 bit	ferme	prefixe contigu	47
+a349fea8	version-33	2	moteur + i4 -1 bit	ferme	vide	1
+a349fea8	version-33	2	moteur + i4 R(5) sans porte	ferme	autre	1
+a349fea8	version-33	2	moteur + i4 R(5) sans porte	ferme	prefixe contigu	47
+a349fea8	version-33	2	moteur + i4 R(5) sans porte	ferme	vide	1
+a349fea8	version-33	2	moteur + i4 porte + R(4)	ferme	autre	1
+a349fea8	version-33	2	moteur + i4 porte + R(4)	ferme	prefixe contigu	47
+a349fea8	version-33	2	moteur + i4 porte + R(4)	ferme	vide	1
+a349fea8	version-33	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	autre	1
+a349fea8	version-33	2	moteur, i15 +1 (temoin)	sous la frontiere	autre	48
+a349fea8	version-33	2	moteur, i15 -1 (temoin)	au-dela de la frontiere	autre	1
+a349fea8	version-33	2	moteur, i15 -1 (temoin)	sous la frontiere	autre	48
+a349fea8	version-33	2	reference	arret i11 game-engine-soft-ceilings-component		49
+a521164d	HI_1_4_1	2	i15	arret i11 game-engine-soft-ceilings-component		19
+a521164d	HI_1_4_1	2	moteur	au-dela de la frontiere	autre	1
+a521164d	HI_1_4_1	2	moteur	sous la frontiere	autre	18
+a521164d	HI_1_4_1	2	moteur + i0 -1 bit	ferme	prefixe contigu	17
+a521164d	HI_1_4_1	2	moteur + i0 -1 bit	ferme	vide	1
+a521164d	HI_1_4_1	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+a521164d	HI_1_4_1	2	moteur + i2 R(2)	ferme	prefixe contigu	17
+a521164d	HI_1_4_1	2	moteur + i2 R(2)	ferme	vide	1
+a521164d	HI_1_4_1	2	moteur + i2 R(2)	sous la frontiere	autre	1
+a521164d	HI_1_4_1	2	moteur + i3 absent	ferme	prefixe contigu	17
+a521164d	HI_1_4_1	2	moteur + i3 absent	ferme	vide	1
+a521164d	HI_1_4_1	2	moteur + i3 absent	sous la frontiere	autre	1
+a521164d	HI_1_4_1	2	moteur + i4 -1 bit	ferme	prefixe contigu	18
+a521164d	HI_1_4_1	2	moteur + i4 -1 bit	ferme	vide	1
+a521164d	HI_1_4_1	2	moteur + i4 R(5) sans porte	ferme	prefixe contigu	18
+a521164d	HI_1_4_1	2	moteur + i4 R(5) sans porte	ferme	vide	1
+a521164d	HI_1_4_1	2	moteur + i4 porte + R(4)	ferme	prefixe contigu	18
+a521164d	HI_1_4_1	2	moteur + i4 porte + R(4)	ferme	vide	1
+a521164d	HI_1_4_1	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	autre	1
+a521164d	HI_1_4_1	2	moteur, i15 +1 (temoin)	sous la frontiere	autre	18
+a521164d	HI_1_4_1	2	moteur, i15 -1 (temoin)	au-dela de la frontiere	autre	1
+a521164d	HI_1_4_1	2	moteur, i15 -1 (temoin)	sous la frontiere	autre	18
+a521164d	HI_1_4_1	2	reference	arret i11 game-engine-soft-ceilings-component		19
+bcb6d393	HI_1_12_0	2	i15	arret i11 game-engine-soft-ceilings-component		19
+bcb6d393	HI_1_12_0	2	moteur	ferme	prefixe contigu	18
+bcb6d393	HI_1_12_0	2	moteur	ferme	vide	1
+bcb6d393	HI_1_12_0	2	moteur + i0 -1 bit	au-dela de la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	17
+bcb6d393	HI_1_12_0	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i2 R(2)	au-dela de la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	17
+bcb6d393	HI_1_12_0	2	moteur + i2 R(2)	sous la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i3 absent	au-dela de la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i3 absent	au-dela de la frontiere	vide	17
+bcb6d393	HI_1_12_0	2	moteur + i3 absent	sous la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i4 -1 bit	au-dela de la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	17
+bcb6d393	HI_1_12_0	2	moteur + i4 -1 bit	sous la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	17
+bcb6d393	HI_1_12_0	2	moteur + i4 R(5) sans porte	sous la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	17
+bcb6d393	HI_1_12_0	2	moteur + i4 porte + R(4)	sous la frontiere	autre	1
+bcb6d393	HI_1_12_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	18
+bcb6d393	HI_1_12_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+bcb6d393	HI_1_12_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	18
+bcb6d393	HI_1_12_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+bcb6d393	HI_1_12_0	2	reference	arret i11 game-engine-soft-ceilings-component		19
+bf15f7ab	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		26
+bf15f7ab	HI_1_13_0	2	moteur	ferme	prefixe contigu	25
+bf15f7ab	HI_1_13_0	2	moteur	ferme	vide	1
+bf15f7ab	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	26
+bf15f7ab	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	26
+bf15f7ab	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	26
+bf15f7ab	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	26
+bf15f7ab	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	26
+bf15f7ab	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	26
+bf15f7ab	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	25
+bf15f7ab	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+bf15f7ab	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	25
+bf15f7ab	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+bf15f7ab	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		26
+bfecd02b	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		27
+bfecd02b	HI_1_13_0	2	moteur	ferme	prefixe contigu	26
+bfecd02b	HI_1_13_0	2	moteur	ferme	vide	1
+bfecd02b	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	autre	1
+bfecd02b	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	26
+bfecd02b	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	autre	1
+bfecd02b	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	26
+bfecd02b	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	autre	1
+bfecd02b	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	26
+bfecd02b	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	27
+bfecd02b	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	27
+bfecd02b	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	27
+bfecd02b	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	26
+bfecd02b	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+bfecd02b	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	26
+bfecd02b	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+bfecd02b	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		27
+c75f33b8	HI_1_13_0	0	i15	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	moteur	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	moteur + i0 -1 bit	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	moteur + i2 R(2)	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	moteur + i3 absent	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	moteur + i4 -1 bit	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	moteur + i4 R(5) sans porte	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	moteur + i4 porte + R(4)	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	moteur, i15 +1 (temoin)	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	moteur, i15 -1 (temoin)	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	0	reference	au-dela de la frontiere		1
+c75f33b8	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		24
+c75f33b8	HI_1_13_0	2	moteur	ferme	prefixe contigu	22
+c75f33b8	HI_1_13_0	2	moteur	ferme	vide	2
+c75f33b8	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	23
+c75f33b8	HI_1_13_0	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+c75f33b8	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	23
+c75f33b8	HI_1_13_0	2	moteur + i2 R(2)	sous la frontiere	autre	1
+c75f33b8	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	23
+c75f33b8	HI_1_13_0	2	moteur + i3 absent	sous la frontiere	autre	1
+c75f33b8	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	autre	1
+c75f33b8	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	23
+c75f33b8	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	autre	1
+c75f33b8	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	23
+c75f33b8	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	autre	1
+c75f33b8	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	23
+c75f33b8	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	22
+c75f33b8	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	2
+c75f33b8	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	22
+c75f33b8	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	2
+c75f33b8	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		24
+d9781168	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		37
+d9781168	HI_1_13_0	2	moteur	ferme	prefixe contigu	36
+d9781168	HI_1_13_0	2	moteur	ferme	vide	1
+d9781168	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	autre	10
+d9781168	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	26
+d9781168	HI_1_13_0	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+d9781168	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	autre	10
+d9781168	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	26
+d9781168	HI_1_13_0	2	moteur + i2 R(2)	sous la frontiere	autre	1
+d9781168	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	autre	10
+d9781168	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	26
+d9781168	HI_1_13_0	2	moteur + i3 absent	sous la frontiere	autre	1
+d9781168	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	autre	11
+d9781168	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	26
+d9781168	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	autre	11
+d9781168	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	26
+d9781168	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	autre	11
+d9781168	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	26
+d9781168	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	36
+d9781168	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+d9781168	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	36
+d9781168	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+d9781168	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		37
+e5adf7b2	HI_1_11_0	2	i15	arret i11 game-engine-soft-ceilings-component		29
+e5adf7b2	HI_1_11_0	2	moteur	ferme	prefixe contigu	28
+e5adf7b2	HI_1_11_0	2	moteur	ferme	vide	1
+e5adf7b2	HI_1_11_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	27
+e5adf7b2	HI_1_11_0	2	moteur + i0 -1 bit	ferme	prefixe contigu	1
+e5adf7b2	HI_1_11_0	2	moteur + i0 -1 bit	sous la frontiere	autre	1
+e5adf7b2	HI_1_11_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	27
+e5adf7b2	HI_1_11_0	2	moteur + i2 R(2)	ferme	prefixe contigu	1
+e5adf7b2	HI_1_11_0	2	moteur + i2 R(2)	sous la frontiere	autre	1
+e5adf7b2	HI_1_11_0	2	moteur + i3 absent	au-dela de la frontiere	vide	27
+e5adf7b2	HI_1_11_0	2	moteur + i3 absent	ferme	prefixe contigu	1
+e5adf7b2	HI_1_11_0	2	moteur + i3 absent	sous la frontiere	autre	1
+e5adf7b2	HI_1_11_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	27
+e5adf7b2	HI_1_11_0	2	moteur + i4 -1 bit	ferme	prefixe contigu	2
+e5adf7b2	HI_1_11_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	27
+e5adf7b2	HI_1_11_0	2	moteur + i4 R(5) sans porte	ferme	prefixe contigu	2
+e5adf7b2	HI_1_11_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	27
+e5adf7b2	HI_1_11_0	2	moteur + i4 porte + R(4)	ferme	prefixe contigu	2
+e5adf7b2	HI_1_11_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	28
+e5adf7b2	HI_1_11_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+e5adf7b2	HI_1_11_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	28
+e5adf7b2	HI_1_11_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+e5adf7b2	HI_1_11_0	2	reference	arret i11 game-engine-soft-ceilings-component		29
+f75e7053	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		24
+f75e7053	HI_1_13_0	2	moteur	ferme	prefixe contigu	23
+f75e7053	HI_1_13_0	2	moteur	ferme	vide	1
+f75e7053	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	24
+f75e7053	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	24
+f75e7053	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	24
+f75e7053	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	24
+f75e7053	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	24
+f75e7053	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	24
+f75e7053	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	23
+f75e7053	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+f75e7053	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	23
+f75e7053	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+f75e7053	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		24
+fb1a1a72	HI_1_13_0	2	i15	arret i11 game-engine-soft-ceilings-component		41
+fb1a1a72	HI_1_13_0	2	moteur	ferme	prefixe contigu	40
+fb1a1a72	HI_1_13_0	2	moteur	ferme	vide	1
+fb1a1a72	HI_1_13_0	2	moteur + i0 -1 bit	au-dela de la frontiere	vide	41
+fb1a1a72	HI_1_13_0	2	moteur + i2 R(2)	au-dela de la frontiere	vide	41
+fb1a1a72	HI_1_13_0	2	moteur + i3 absent	au-dela de la frontiere	vide	41
+fb1a1a72	HI_1_13_0	2	moteur + i4 -1 bit	au-dela de la frontiere	vide	41
+fb1a1a72	HI_1_13_0	2	moteur + i4 R(5) sans porte	au-dela de la frontiere	vide	41
+fb1a1a72	HI_1_13_0	2	moteur + i4 porte + R(4)	au-dela de la frontiere	vide	41
+fb1a1a72	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	prefixe contigu	40
+fb1a1a72	HI_1_13_0	2	moteur, i15 +1 (temoin)	au-dela de la frontiere	vide	1
+fb1a1a72	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	prefixe contigu	40
+fb1a1a72	HI_1_13_0	2	moteur, i15 -1 (temoin)	sous la frontiere	vide	1
+fb1a1a72	HI_1_13_0	2	reference	arret i11 game-engine-soft-ceilings-component		41

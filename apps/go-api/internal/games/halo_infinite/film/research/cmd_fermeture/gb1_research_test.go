@@ -28,7 +28,7 @@ var bobinesGB1 = []string{"minibobine_000d5950", "minibobine_e5adf7b2"}
 // trois TSV et la section du resume portent leurs lignes, et les invariants de la mesure tiennent.
 func TestModeGB1EcritSesSortiesEtSesInvariants(t *testing.T) {
 	dir := t.TempDir()
-	rap, err := ouvrirRapport(dir, tableECS{}, modes{gb1: true})
+	rap, err := ouvrirRapport(dir, tableECS{}, modes{gb1: true}, optionsV2{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestDeuxModesSurUnFilm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rap, err := ouvrirRapport(dir, tab, modes{fermeture: true, gb1: true})
+	rap, err := ouvrirRapport(dir, tab, modes{fermeture: true, gb1: true}, optionsV2{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,6 +156,8 @@ func TestLireModes(t *testing.T) {
 		"fermeture":      {fermeture: true},
 		"gb1":            {gb1: true},
 		"fermeture, gb1": {fermeture: true, gb1: true},
+		"v2":             {fermeture: true, v2: true},
+		"v2,gb1":         {fermeture: true, gb1: true, v2: true},
 	}
 	for v, attendu := range cas {
 		md, err := lireModes(v)

@@ -128,6 +128,12 @@ func filmsACollecter(
 // sain, `placement.written_at >= vies.written_at`. `>=` (et non `>`) : deux horloges egales sont
 // le meme instant, pas une preuve de peremption. Les vues `_latest` portent chacune la passe
 // courante ; `MAX` n en est que l unique valeur de la passe.
+//
+// ─── LE FILM LU SANS KILL EST A JOUR POUR SA REVISION (2026-10-02) ───────────────────────
+//
+// Un film complet decode sans aucun kill n ecrit aucune ligne de journal : sans le second membre
+// de l UNION, il serait redecode a chaque passe. `match_registry.killsource_sans_killfeed_rev`
+// porte la revision sous laquelle il a ete lu ; une autre revision le rend candidat.
 func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT DISTINCT e.match_id FROM match_kill_events_latest e
@@ -145,9 +151,11 @@ func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 		               WHERE pl.match_id = e.match_id AND pl.decoder_rev = ?
 		                 AND pl.written_at >= (SELECT MAX(l.written_at) FROM match_lives_latest l
 		                                       WHERE l.match_id = e.match_id))
-		  )`,
+		  )
+		UNION
+		SELECT r.match_id FROM match_registry r WHERE r.killsource_sans_killfeed_rev = ?`,
 		decfilm.Rev, killscope.ReadPathCreditBackfill,
-		killcollector.IsolationDecoderRev, killcollector.PlacementRev)
+		killcollector.IsolationDecoderRev, killcollector.PlacementRev, decfilm.Rev)
 	if err != nil {
 		return nil, fmt.Errorf("matchs deja a jour: %w", err)
 	}

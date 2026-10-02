@@ -30,6 +30,8 @@ func TestMarquerFilmParOutcome(t *testing.T) {
 			"garde bit-honnete : pas de ligne, pas de bit (sinon bit menteur)"},
 		{"film muet", OutcomeNoKillFeed, 0, 0, false,
 			"le film EXISTE : le marquer absent le retirerait a tort des rattrapages"},
+		{"kill-feed a relire", OutcomeSansKillFeedARelire, 0, 0, false,
+			"film non finalise ou temps forts non servis : il doit etre relu"},
 		{"abandon delai", OutcomeTimeout, 0, 0, false,
 			"etat transitoire : le match doit rester candidat"},
 		{"capability absente", OutcomeNotSupported, 0, 0, false,
@@ -47,5 +49,22 @@ func TestMarquerFilmParOutcome(t *testing.T) {
 				t.Errorf("bit = %d, attendu %d — %s", bit, c.bit, c.pourquoi)
 			}
 		})
+	}
+}
+
+// TestLuSansKill : seul le film COMPLET decode sans kill pose la revision « lu sans kill ». Un
+// film non finalise ou sans temps forts servis reste candidat ; les autres issues n affirment rien
+// sur le kill-feed.
+func TestLuSansKill(t *testing.T) {
+	for _, o := range []KillSourceOutcome{
+		OutcomeWritten, OutcomeNoFilm, OutcomeSansKillFeedARelire, OutcomeTimeout,
+		OutcomeNotSupported, OutcomeUnknownKey, OutcomeCarteNonResolue,
+	} {
+		if luSansKill(o) {
+			t.Errorf("luSansKill(%q) = true — le match sortirait du backlog sans avoir ete lu sans kill", o)
+		}
+	}
+	if !luSansKill(OutcomeNoKillFeed) {
+		t.Errorf("luSansKill(%q) = false — le film lu sans kill reviendrait a chaque cycle", OutcomeNoKillFeed)
 	}
 }

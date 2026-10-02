@@ -2,7 +2,7 @@ package fallback
 
 // registre_filmdec_marche.go — les replis de la MARCHE des images-cles et des trames de `grammar`
 // (election d ancre, physique de vehicule supposee, generation vivante inconnue, liaison par
-// anticipation).
+// anticipation, debut de liste ferme au bit).
 //
 // SCINDE DE `registre_filmdec.go` AU LOT J8.7 (2026-09-27) PAR DEPLACEMENT PUR : le fichier passait
 // 500 lignes (seuil du depot) avec les sites de compte du sous-lot `grammar`. La coupe suit la
@@ -142,6 +142,39 @@ var registreFilmdecMarche = []Repli{
 		DatePose:        date0927,
 		CibleRetrait:    "la lecture du record de naissance d une entite nee en milieu de chunk ; a defaut, retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)",
 		CritereRetrait:  "record de naissance lu ET 0 liaison par anticipation comptee sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_debut_de_liste_ferme_au_bit",
+		Fait: "le debut de la liste d evenements d un paquet delta que le localisateur strict ne localise pas, quand aucun candidat NEW de tete ne FERME le paquet",
+		Mecanisme: "le premier candidat d ou la marche complete ferme le paquet AU BIT PRES seulement (reste nul, une regle de l ecrivain contredite) est pris comme debut : " +
+			"les records sont lus et les NEW lies, le paquet reste non ferme (trou du tir continu) ; compte = listes dont le debut est pris a ce rang",
+		// LECTURE NON PORTEE : le film ecrit la liste depuis un record NEW dont l en-tete est lu
+		// juste et le corps mal lu (masque au-dela de l archetype) ; la lecture de ce corps ferait
+		// fermer le paquet au premier rang.
+		Condition: CondLectureNonPortee,
+		// APRES LECTURE : le premier rang (un candidat d ou le paquet ferme, regles de l ecrivain
+		// tenues) est essaye sur tous les candidats avant que ce rang entre.
+		Ordre: OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "debut_de_liste.go",
+			Ancre:   "cfg.Obs.compterDebutDeListeParRepliFermeAuBit()",
+		}, {
+			Fichier: pkgFilmdec + "observateur.go",
+			Ancre:   "DebutsDeListeParRepliFermeAuBit int",
+		}, {
+			Fichier: pkgFilmdec + "observateur.go",
+			Ancre:   "func (o *Observation) compterDebutDeListeParRepliFermeAuBit() {",
+		}, {
+			Fichier: pkgFilmdec + "movement_states.go",
+			Ancre:   "m.DebutsDeListeParRepliFermeAuBit = sc.obs.DebutsDeListeParRepliFermeAuBit",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/film_scan_mouvement.go",
+			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomDebutDeListeFermeAuBit, m.DebutsDeListeParRepliFermeAuBit)",
+		}},
+		DatePose:        "2026-10-02",
+		CibleRetrait:    "la lecture du corps des records NEW de tete que ce rang garde (decouverte D-L0-2 de la campagne de grammaire), qui fait fermer ces paquets au premier rang",
+		CritereRetrait:  "0 liste prise a ce rang comptee sur le corpus du gate de rejeu ET aucun paquet sain perdu a la carte de fermeture sans ce rang",
 		CompteurBranche: true,
 	},
 }
