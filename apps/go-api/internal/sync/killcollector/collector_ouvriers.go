@@ -214,7 +214,7 @@ func comptabiliserFilm(sum *KillSourceSummary, ev EvenementDeFilm) {
 		sum.Deaths += ev.Morts
 	case OutcomeNoFilm:
 		sum.NoFilm++
-	case OutcomeNoKillFeed:
+	case OutcomeNoKillFeed, OutcomeSansKillFeedARelire:
 		sum.NoKillFeed++
 	case OutcomeTimeout:
 		sum.Timeouts++

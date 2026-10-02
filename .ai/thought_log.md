@@ -114157,6 +114157,63 @@ ratchets `archlint` des chemins cités verts.
 d'anciens documents sont désormais approximatifs (laissés tels quels, les sections et libellés
 restent cherchables).
 
+## [2026-10-02] Représentation intermédiaire du film — plan d'exécution de l'étape 1, confié à une autre conversation
+
+**Statut** : Complété (plan écrit ; exécution confiée à une autre conversation).
+
+**Décision technique principale** : l'utilisateur confie la représentation intermédiaire à une
+autre conversation, en parallèle de la campagne de grammaire. Plan exécutable
+`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md` : ADR 0037, paquet de types
+`grammar/lecture`, marche de production devenue `FilmContext.Trames` puis `ImagesCles`, tests
+T1/T3/T5/T6, zéro différence de sortie. Propriété des fichiers partagée avec la campagne (§1.3) :
+la phase delta attend la fusion du lot « définition de la fermeture », la phase images-clés celle
+de la marche d'image-clé.
+
+**Résultats observés** : symboles et fichiers cités vérifiés dans le code de `feat/v75`
+(430cdd7b4) ; ADR suivant libre = 0037.
+
+**Conclusion / prochaine étape** : l'autre conversation démarre par l'ADR et le paquet de types,
+qui ne dépendent de rien ; la campagne de grammaire continue dans son worktree.
+
+## [2026-10-02] Passe killsource : un film lu sans kill reste au backlog et occupe tout le cycle — Complété (branche `fix/killsource-sans-killfeed-a-jour`)
+
+**Constat** (`logs/general.log` du checkout principal, 05:18 → 15:45) : 448 décodages, dont 440
+« film sans kill-feed, rien a publier » sur 8 match_id seulement (48 à 56 fois chacun). Ce sont
+des matchs de ~55 s dont le film est complet (en-tête, 3-4 réplications, temps forts présents
+sur disque) et ne porte aucun kill. Coût CPU faible (66 à 100 ms par film, 33,4 s au total,
+~0,6 s par cycle), mais dégât réel : `perCycle = 8` et le backlog trié du plus récent au plus
+vieux. De 05:34 à 07:19, 7 places sur 8 prises (1 film utile par cycle) ; depuis 07:34 (arrivée du
+8e, `279ac3dd`), 48 cycles à 8/8, 0 film écrit, `backlog_restant` figé à 7 351.
+
+**Cause** : `conditionBacklog` (et `matchsAJour` du backfill) ne tient un match pour à jour que
+s'il a une ligne `match_kill_events_latest` à `decfilm.Rev` hors voie crédit, ou le bit terminal
+`MBitFilmAbsent`. Un film sans kill n'écrit aucune ligne et ne reçoit délibérément aucun bit (une
+révision future pourrait le lire) : rien ne le sortait du backlog.
+
+**Décision technique principale** : nouvelle colonne `match_registry.killsource_sans_killfeed_rev`
+(migration `shared_registry_killsource_sans_killfeed_rev_v1`, ALTER additive), écrite par
+`persist.KillSourceSansKillFeedPersister` (UPDATE par match sous le writer, forme autorisée
+anti-ART ; `match_registry` n'est pas append-only) avec `decfilm.Rev`. Une révision et non un
+bit : à la révision suivante le match redevient candidat. Lue par `conditionBacklog` (liste et
+jauge) et `matchsAJour` (backfill hors ligne et `--online`). Posée UNIQUEMENT pour un film
+complet décodé sans kill : nouvelle issue `OutcomeSansKillFeedARelire` pour le film non finalisé
+(qui sortait jusqu'ici en `OutcomeNoKillFeed`) et pour le morceau des temps forts déclaré mais non
+servi — comptée avec « sans kill-feed » dans les synthèses, ne pose rien. Couture de test
+`decoderLeFilm` (aucune mini-bobine du dépôt n'atteint `ErrNoKillFeed` : pas de paquet type 0).
+Aucun changement pour les films qui ont un kill-feed. SYNC_GUIDE EN + FR complétés.
+
+**Résultats observés** : test d'intégration rouge sur le code d'avant (backlog `[ancien courant]`
+au lieu de `[ancien]`), vert après ; trois mutations (révision non posée, condition retirée du
+backlog, garde des temps forts retirée) refont rougir le test attendu. Suites vertes :
+killcollector (unitaire + integration), migration, persist, sync, archlint (dont le ratchet du
+prédicat unique des temps forts, qui a imposé `finalise.EstTempsForts`), cmd/levelup integration ;
+golangci-lint 0 nouvelle issue (avec et sans tag integration).
+
+**Conclusion / prochaine étape** : commit sur la branche puis fusion dans feat/v75 sur accord
+utilisateur. Au premier cycle après redémarrage, les 8 films sont décodés une dernière fois, la
+colonne est posée, et le backlog doit recommencer à baisser (`killsource_postsync_backlog_restant`
+sous 7 351, `sans_killfeed` à 0 aux cycles suivants).
+
 ## [2026-10-02] Falcon de Behemoth : règle générale « tenu en l'air à vide » + retrait de `turretRidesNotRideable` (schéma 77)
 
 **Statut** : Complété côté code (branche `feat/falcon-behemoth`, depuis `origin/feat/v75` `430cdd7b4`) ; commit, push et fusion dans `feat/v75` sur accord de l'utilisateur, AVANT la recuisson de la vague 1 de la campagne de grammaire.
