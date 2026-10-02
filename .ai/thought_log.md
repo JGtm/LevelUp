@@ -114174,3 +114174,26 @@ de la marche d'image-clé.
 
 **Conclusion / prochaine étape** : l'autre conversation démarre par l'ADR et le paquet de types,
 qui ne dépendent de rien ; la campagne de grammaire continue dans son worktree.
+
+## [2026-10-02] Représentation intermédiaire du film, étape 1 — lot 0 : ADR 0037 — Complété (`feat/representation-intermediaire`)
+
+**Statut** : Complété (lot 0 du plan `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`).
+
+**Décision technique principale** : `docs/adr/0037-film-intermediate-representation.md` écrit à
+partir du projet d'ADR de la spec (§12) corrigé par C1 à C8 et DT-1 à DT-8 : la marche de
+production devient la lecture unique de la grammaire (pas de second marcheur), deux phases
+images-clés puis trames avec préliminaires bornés, une seule table d'entités exposée en lecture
+seule, trois états de fermeture d'un paquet (fermé / fermeture refusée / queue opaque à cause
+typée), récupération en couche séparée et récupération déjà présente dans la marche MARQUÉE sans
+changement de comportement, types dans `grammar/lecture` (feuille, révision de la grammaire seule,
+interdite à `replay` et `decfilm`), ordre de migration à différence nulle, comportement en dernier ;
+seuil de 95 % = indicateur (décision D1 de l'utilisateur, 2026-10-02). Amende ADR 0034 D-1, D-2,
+D-6, D-7, D-10 ; renvoi posé dans l'ADR 0034 et entrée ajoutée à la liste de `CLAUDE.md`.
+
+**Résultats observés** : chiffres et chemins de l'ADR vérifiés sur pièces (analyse, rapports,
+registre des replis, CI `film-race`) ; `go test ./internal/archlint/ -count=1` ok. Worktree dédié
+`LevelUp-wt-ri`, cache de compilation Go séparé (la campagne compile en parallèle sur la machine).
+
+**Conclusion / prochaine étape** : lot 1.1 (paquet de types `grammar/lecture`, ratchet de couche,
+tests de taille). La phase des trames attend la fusion du lot « définition de la fermeture » de la
+campagne dans `feat/v75`.

@@ -348,7 +348,11 @@ git commit -m "refactor(phase2): ..."
   en un point, défauts sûrs en mode appliqué ; purge sans toucher la base partagée) ·
   `0036` **lectures par périmètre** (ni `v_gamertag_lookup` ni fenêtre `_latest` non bornée dans
   une lecture de page ; un chargement par requête ; cache invalidé au sync ; sync stationnaire sans
-  écrivain ; sections de durée ; bornes DuckDB lues à l'ouverture — 7 invariants à garde-rail nommé).
+  écrivain ; sections de durée ; bornes DuckDB lues à l'ouverture — 7 invariants à garde-rail nommé) ·
+  `0037` **représentation intermédiaire du film** (la marche de production devient la lecture unique de
+  la grammaire : structure typée à étendues en bits, deux phases images-clés puis trames, une seule table
+  d'entités, fermeture refusée distincte de la queue opaque, récupération marquée ; types dans
+  `grammar/lecture`, que ni `replay` ni `decfilm` n'importent ; amende 0034 D-1, D-2, D-6, D-7, D-10).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

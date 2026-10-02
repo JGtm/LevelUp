@@ -2,7 +2,9 @@
 
 **Status**: Accepted (2026-09-13). Amended on **2026-09-26** by the audit follow-up (revision model
 and facts freshness: D-3 rule 2, D-6, D-7; one scan stage for the identity bridge and the facade
-over the bytes: D-1, D-2). The state reached at the M2, M3 and M4 closures of
+over the bytes: D-1, D-2). Amended on **2026-10-02** by
+[ADR 0037](0037-film-intermediate-representation.md): the grammar's reading becomes a typed
+intermediate representation (D-1, D-2, D-6, D-7, D-10). The state reached at the M2, M3 and M4 closures of
 `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` (2026-09-17 and 2026-09-18), and the corrections found
 on the tree during that effort, moved on 2026-09-30 to
 [the history annex](0034-annex-history.md). This file keeps the decisions, their amendments and a

@@ -119,13 +119,21 @@ la commande du dépôt (`LEVELUP_UPDATE_GRAMMAR_REV=1 go test ./internal/games/h
 après la preuve de différence nulle ; `grammar.Rev` ne monte pas.
 
 ### Lot 0 — ADR (taille S, aucun prérequis)
-- [ ] 0.1 Écrire `docs/adr/0037-film-intermediate-representation.md` (EN, ADR = anglais seulement,
+- [x] 0.1 Écrire `docs/adr/0037-film-intermediate-representation.md` (EN, ADR = anglais seulement,
       règle 15) à partir du projet d'ADR de la spec §12, CORRIGÉ par C1 à C8 et par DT-1 à DT-8 ;
       il amende ADR 0034 D-1, D-2, D-6, D-7, D-10 ; il cite les mesures d'appui (analyse §1) et le
       port Rust comme confirmation indépendante de la direction (5,5 % contre 66,9 % de trames
       fermées : la récupération séparée est nécessaire).
-- [ ] 0.2 Ajouter l'ADR à la liste des ADRs de `CLAUDE.md` (une ligne) et au renvoi de l'ADR 0034.
+      *Fait* : douze décisions IR-1 à IR-12 (C1 à C8 et DT-1 à DT-8 répartis, plus IR-12 : le seuil
+      de 95 % est un indicateur, décision D1 de l'utilisateur du 2026-10-02 consignée au plan de la
+      campagne) et une section « Amendments to ADR 0034 » (D-1, D-2, D-6, D-7, D-10).
+- [x] 0.2 Ajouter l'ADR à la liste des ADRs de `CLAUDE.md` (une ligne) et au renvoi de l'ADR 0034.
+      *Fait* : entrée `0037` en fin de liste de `CLAUDE.md` ; ligne « Amended on 2026-10-02 by
+      ADR 0037 » dans le statut de l'ADR 0034.
 - Gate : relecture ; `go test ./internal/archlint/` (ratchet des chemins `.ai` cités).
+  *Tenu le 2026-10-02* : relecture faite (chemins et chiffres vérifiés sur pièces) ;
+  `go test ./internal/archlint/ -count=1` ok (64,8 s). Aucun test Go ne lit `docs/adr/` ni
+  `CLAUDE.md` (grep).
 
 ### Lot 1.1 — Paquet de types `grammar/lecture` (taille S, aucun prérequis)
 - [ ] 1.1.1 Paquet feuille `apps/go-api/internal/games/halo_infinite/film/internal/grammar/lecture`,
@@ -221,3 +229,12 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
 - 2026-10-02 : plan écrit par la session de la campagne de grammaire, à la demande de l'utilisateur,
   à partir de l'analyse du 2026-10-01 et des huit corrections de la spec ; confié à une autre
   conversation.
+- 2026-10-02 : exécution confiée par l'utilisateur à la session `levelup-57` (« commence par l'ADR et
+  le paquet de types ; ne commence pas la phase des trames tant que L0 n'est pas fusionné ; tu peux
+  committer, demande avant de pousser ou de fusionner »). Worktree `LevelUp-wt-ri`, branche
+  `feat/representation-intermediaire` créée depuis `origin/feat/v75` = `93cea7cdc` (amont désactivé
+  pour qu'aucun push n'aille sur `feat/v75`), jonction `apps/web/node_modules` posée. Cache de
+  compilation Go DÉDIÉ (`GOCACHE=%LOCALAPPDATA%\go-build-ri`) : la campagne compile en parallèle sur
+  la même machine, et deux commandes `go` sur un même cache le corrompent. Campagne prévenue
+  (session `levelup-83`) : accusé de réception, L0 ni commité ni fusionné à cette heure.
+- 2026-10-02 : lot 0 clos (ADR 0037, gate tenu).
