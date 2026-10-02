@@ -146,6 +146,24 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
 - 2026-10-02, soir (utilisateur) : **GO DE LA VAGUE 1** (« tu as mon feu vert »), donné en réponse à
   la demande de GO de la vague 1 après R-COMB-2. Les décisions de composition de la vague (D18, D14,
   D6, D19 et les ratifications techniques) restent à confirmer au questionnaire avant le premier lot.
+- **2026-10-02, tard le soir (utilisateur, question posée en langage clair) : « CORRECTIONS
+  D'ABORD »** — on garde l'ordre corrections puis architecture, MAIS uniquement les corrections
+  GÉNÉRALES lues dans le jeu : aucun réglage par film, par carte, ni par version du jeu non vérifiable
+  dans le jeu. Application de ce critère par le superviseur (liste à confirmer ou corriger par
+  l'utilisateur, aucune autre décision ajoutée) :
+  - **retenues, vague 1** : la définition de la fermeture par les règles de l'écrivain (L0) en tête ;
+    les lecteurs de composants portés depuis l'exécutable du jeu : `ti=3` (L8), dispositifs `ti=43`
+    (L2, après réparation de sa perte), moteur sur le build lu dans le jeu (L3a), véhicules `ti=40` en
+    delta (L4a, perte instruite) ; la marche d'image-clé de toutes les générations (L9) ;
+  - **retenues, vague 2** : l'unification des deux localisateurs (LU, sans changement de sortie), la
+    signature du localisateur sur tous les emplacements de l'archétype lu au registre (LS), le
+    désaveu des déclarations que la table de datums du jeu dit mortes (LP) ; les naissances
+    uniquement par la grammaire (lecture des messages de la vue A), sans condition par film ;
+  - **mises de côté** (non conformes au critère) : la condition choisie film par film pour les
+    naissances (L1a), le découpage MPP mesuré des anciennes versions sans exécutable (LM) et le bit de
+    trop des anciennes versions (L3b), les largeurs par plage tant qu'elles ne tiennent que sur une
+    carte (L6a), les sites de position qui perdent sur des films (L6b, jusqu'à explication par le
+    jeu), la lecture d'image-clé non confirmée (LK, L4b) ; L7 reste rejeté.
 - **2026-10-02, plus tard le soir (utilisateur) : les réponses au questionnaire ci-dessous sont
   SUSPENDUES** — « je n'ai pas bien compris les questions donc mes réponses ne sont pas forcément
   éclairées ; j'avais la légère impression qu'on divergeait un peu trop et que c'était vraiment du
