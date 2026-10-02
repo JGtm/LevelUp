@@ -7,10 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replayverite"
 )
@@ -140,16 +142,7 @@ func (tc temoinContexte) resoudreReference(ctx context.Context, t Temoin, facts 
 		}
 		return baseResolue{Artefact: refPath}, nil
 	}
-	cuire := func() (string, string, error) {
-		cuissonBase, err := bakeTemoin(ctx, cuissonParams{
-			BinPath: tc.BinBase, WorkRoot: tc.WorkRootBase, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
-			MemGiB: tc.MemGiB,
-		}, facts)
-		if err != nil {
-			return "", "", err
-		}
-		return cuissonBase.ArtifactPath, cuissonBase.FaitsPath, nil
-	}
+	cuire := tc.cuissonDeLaBase(ctx, facts, bakeTemoin)
 	if !tc.CacheBase.actif() {
 		return cuireSansCache(cuire)
 	}
@@ -166,4 +159,33 @@ func (tc temoinContexte) resoudreReference(ctx context.Context, t Temoin, facts 
 func cuireSansCache(cuire cuissonBaseFn) (baseResolue, error) {
 	artefact, _, err := cuire()
 	return baseResolue{Artefact: artefact}, err
+}
+
+// bakeFn : la signature de [bakeTemoin], injectable pour que le test de [cuissonDeLaBase] observe
+// la racine de travail au moment de la cuisson sans binaire.
+type bakeFn func(context.Context, cuissonParams, replaybuild.FactsFile) (resultatCuisson, error)
+
+// cuissonDeLaBase rend la cuisson de la base du temoin, par `bake` (bakeTemoin en production).
+//
+// ELLE PART SANS FAITS PERSISTES POUR CE FILM (revue finale P1-c, 2026-10-02). Avec `--work-root`
+// explicite reutilise entre deux `--base`, la racine de travail de la base garde les faits ecrits par
+// le binaire d une AUTRE base ; a revisions constantes, `replay-build` les jugerait frais et
+// republierait depuis eux au lieu de decoder avec le code de CETTE base. Les retirer force le
+// decodage : les faits que la cuisson laisse sont alors les siens (et [resoudreAvecCache] ne range
+// que des faits ecrits apres son debut).
+func (tc temoinContexte) cuissonDeLaBase(ctx context.Context, facts replaybuild.FactsFile, bake bakeFn) cuissonBaseFn {
+	return func() (string, string, error) {
+		perimes := title.NewPathResolver(tc.WorkRootBase).FilmFactsPath(tc.TitleSlug, facts.MatchID)
+		if err := os.Remove(perimes); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return "", "", fmt.Errorf("faits du film d une cuisson precedente de la base (%s) : %w", perimes, err)
+		}
+		cuissonBase, err := bake(ctx, cuissonParams{
+			BinPath: tc.BinBase, WorkRoot: tc.WorkRootBase, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
+			MemGiB: tc.MemGiB,
+		}, facts)
+		if err != nil {
+			return "", "", err
+		}
+		return cuissonBase.ArtifactPath, cuissonBase.FaitsPath, nil
+	}
 }

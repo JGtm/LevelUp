@@ -52,6 +52,9 @@ package main
 // cuisson de la base depose sous sa racine de travail : le banc de verite les relit pour les kills
 // individuels. Une entree est COMPLETE avec artefact ET faits, sinon elle est recuite ; une
 // cuisson qui ne laisse pas de faits (puits d'artefact qui refuse) ne range rien, journalise.
+// La cuisson de la base part SANS faits pour ce film (`cuissonDeLaBase`) et seuls des faits ecrits
+// depuis son debut se rangent (`ecritsDepuis`) : une racine de travail reutilisee entre deux bases
+// ne prete jamais a l une les faits de l autre (revue finale P1-c).
 //
 // # LA LECTURE
 //
@@ -412,15 +415,16 @@ func resoudreAvecCache(ctx context.Context, bc baseCache, c cleBase, forcer bool
 			return baseResolue{Artefact: e.Artefact, DuCache: true, ArtefactEnCache: a, FaitsEnCache: f}, nil
 		}
 	}
+	debut := time.Now()
 	artefact, faits, err := cuire()
 	if err != nil {
 		return baseResolue{}, err
 	}
 	res := baseResolue{Artefact: artefact}
-	if !fichierExiste(faits) {
-		slog.WarnContext(ctx, "replay-corpus-gate: la cuisson de la base n'a pas laisse de faits du "+
-			"film — rien n'est range au cache (une entree sans faits serait incomplete)",
-			"temoin", c.Temoin, "base", c.BaseSHA, "faits", faits)
+	if !ecritsDepuis(faits, debut) {
+		slog.WarnContext(ctx, "replay-corpus-gate: la cuisson de la base n'a pas ecrit de faits du "+
+			"film — rien n'est range au cache (une entree sans faits, ou avec ceux d'une autre "+
+			"cuisson, serait fausse)", "temoin", c.Temoin, "base", c.BaseSHA, "faits", faits)
 		return res, nil
 	}
 	if err := bc.ranger(c, artefact, faits); err != nil {
@@ -430,4 +434,19 @@ func resoudreAvecCache(ctx context.Context, bc baseCache, c cleBase, forcer bool
 	}
 	res.ArtefactEnCache, res.FaitsEnCache = bc.chemins(c).presence()
 	return res, nil
+}
+
+// toleranceHorodatage : la marge accordee a la granularite de l'horodatage du systeme de fichiers
+// (2 s sur FAT) quand on compare la date d'ecriture des faits au debut de la cuisson.
+const toleranceHorodatage = 2 * time.Second
+
+// ecritsDepuis dit si le fichier de faits `chemin` existe ET a ete ecrit depuis `debut` (revue
+// finale P1-c) : un fichier de faits plus ancien que la cuisson n'est pas le sien — il vient d'une
+// cuisson precedente de la meme racine de travail, peut-etre d'une autre base — et ne se range pas.
+func ecritsDepuis(chemin string, debut time.Time) bool {
+	info, err := os.Stat(chemin)
+	if err != nil || info.IsDir() {
+		return false
+	}
+	return !info.ModTime().Before(debut.Add(-toleranceHorodatage))
 }
