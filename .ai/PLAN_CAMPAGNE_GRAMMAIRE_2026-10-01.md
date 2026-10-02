@@ -450,8 +450,8 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
   `ti=3` de cette campagne (lot L8). Annexe : morts de bot toujours étiquetées `scan`.
   **Lien avec la campagne** : c'est très probablement une part de la région (ii) « paquets à
   événements non localisés » (lot L1b, R-L1). Le correctif se poserait UNE fois dans le localisateur
-  unifié par LU (vague 2), ou juste après LU. **Décision utilisateur attendue** : que cette campagne
-  le prenne (la session de suite d'audit le propose et le soumet à l'utilisateur).
+  unifié par LU (vague 2), ou juste après LU. **Statut (2026-10-02)** : CONFIÉ À LA CAMPAGNE, lot
+  LS (§6.1 et §6.2), par accord entre les deux sessions, l'utilisateur leur ayant laissé la décision.
 
 ## 6. Phase 2 — lots correctifs (écrits à l'étape 5, révisés le 2026-10-02)
 
@@ -710,6 +710,7 @@ chaîne ci-dessus suit les faits transmis ; sur ce point, le schéma de l'ANALYS
 | L4 | composant | Véhicules `ti=40` : porte lue + composants | image-clé **mesuré** : 14 → 137 records fermés sur 7 059 (98 % restent bloqués, R-L4) ; delta **estimé** ≤ 1 666 paquets (causes nommées) | oui | M-L |
 | L7 | marche | NEW sur slot occupé | ≤ 137 paquets (mesuré) | oui | S |
 | LU | marche (structure) | Unifier les localisateurs jumeaux (`marchLocateStrict` et sa copie `facts/killsource/walk.go`), zéro différence, premier lot de la vague 2 | 0 (sortie identique exigée) | non | S-M |
+| LS | marche | Signature du localisateur : tout slot lié à l archétype « high-frequency » (123 strict, puis autre slot high-frequency, puis repli largeur libre), posée UNE fois dans le localisateur unifié par LU (D-67, confié à la campagne le 2026-10-02) | mesuré par l enquête de suite d audit : 362 / 403 kills `scan` rendus à la marche sur trois films ; effet sur la fermeture à mesurer (part de la région (ii)) | oui | S |
 | L0 | instrument | Invariants de l'écrivain, sortie de vue B, classements corrigés | 0 fermeture ; requalifie 8 388 fermés, 2 832 causes, 12 854 « réalloués », 3 560 « naissances non lues » sur `81c02726`, 1 570 arrêts « bloc 0xbc » | carte seulement | M |
 | L10 | garde-fou | Cardinal du bloc de type 1 ≠ 8 191 : refusé ou daté, largeur lue sur le cardinal | 0 sur le corpus (mesuré : 8 191 partout) | non sur le corpus | S |
 | ~~L5~~ | — | Bloc `0xbc` de la vue C | **SORTI** : mesuré 6 et 9 paquets sous les deux formes, contre 11 et 10 pour les témoins décalés (BIS_2 §2) ; borne ≤ 953 réfutée | — | — |
@@ -841,6 +842,22 @@ se réduisent alors au localisateur unifié.
   `frame_closure.golden` identique, `grammar.Rev` et `killsource.Rev` inchangés (révision constante),
   plus un garde-rail (test grep) qui interdit une seconde copie (règle 6).
 - Taille S-M. Sortie : non.
+
+**LS — Signature du localisateur figée sur le slot 123 (marche, vague 2, juste après LU)** (confié à
+la campagne le 2026-10-02 par accord avec la session du chantier de suite d audit, l utilisateur
+ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comme pour tout lot)
+- Source : D-67 et l enquête `.ai/V7.5/film_re/ENQUETE_SCAN_SEPTEMBRE_2026-10-02.md`
+  (`origin/feat/suite-audit-decodeur` @ `90014fe79`), à relire sur pièces à l entrée du lot.
+- Objet : le localisateur unifié (LU) accepte, pour la signature du delta « high-frequency » de 35
+  bits, tout slot lié à cet archétype dans le registre et les images-clés du film (124, 126 à 129 dans
+  les modes à objectif porté), dans l ordre « slot 123 strict -> autre slot high-frequency -> repli
+  largeur libre » ; une seule implémentation pour la marche des morts d objet et killsource.
+- Gain attendu : moins de kills servis par le `scan` (19,1 % en septembre, 85,3 % d entre eux dans
+  19 matchs à objectif porté) ; part de la région (ii) « paquets à événements non localisés » à
+  mesurer par la carte v2 avant et après.
+- Gate : §6.0 complet, dont le gate killsource (delta déclaré, montée de `killsource.Rev`, backfill
+  killsource déclaré) et le gate par film ; test d après les films de l enquête (trois films cités).
+- Taille S. Sortie : oui.
 
 **L8 — `ti=3` low-frequency et routage des homonymes (composant)**
 - Gain mesuré (BIS_3 §6, surcouche) : +30 618 / −10 paquets, +234 454 utiles, hors cadre de 264 757 à
