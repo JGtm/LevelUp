@@ -442,3 +442,24 @@ package killsource
 // le compte `repli_carte_absente_largeurs_par_defaut` disparait avec le repli, et celui de
 // `repli_roster_indice_hors_bijection` juge le nom publie par le predicat unique
 // `estNomDeRemplissage`.
+
+// ENTREE `killsource-2026-10-02` (2026-10-02, lot L3a de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.0 points 1 et 3) : LA REVISION MONTE DERRIERE LA
+// GRAMMAIRE, PARCE QUE LA SORTIE CHANGE.
+//
+// AUCUNE SOURCE DE LA COUCHE N EST TOUCHEE. Ce qui monte est la VALEUR de `grammar.Rev`
+// (`grammar-2026-10-02.2` : la fin du moteur de partie `ti=0/1/2 i11..i17` portee, lecteur de
+// minuteur unique), que la fermeture des imports de cette couche hache. La regle du plan est
+// ecrite : un lot qui change une sortie monte `grammar.Rev` et `facts.Rev` (cette constante) suit ;
+// `killsource.Rev` monte si la sortie change.
+//
+// CE QUI CHANGE DANS LA SORTIE `cmd/killsource json` (19 temoins de `config/replay_corpus.toml`,
+// binaire de la base contre binaire du lot) : AUCUNE mort, aucune valeur, aucune voie. Changent le
+// diagnostic d ORACLE de `calibration` (scores du profil plat et de `indexW_poignee`, 11 films) et,
+// sur `111fa685`, deux compteurs de sante (`killsource_candidates_total` 226 -> 227,
+// `killsource_unexplained_pair` 24 -> 25, d ou la population de la voie sequentielle 205 -> 206).
+// Mesures : `campagne_grammaire_2026-10-01/LOT_L3a.md` §5.3.
+//
+// LE BACKLOG QU ELLE OUVRE EST UN BACKLOG DE DATATION : les lignes de `match_kill_events` deja en
+// base deviennent candidates au redecodage (`conditionBacklog`, `sync/killcollector/postsync.go`),
+// geste de PRODUCTION pris sur signal utilisateur (D6, D7 du plan), jamais automatique.

@@ -19,8 +19,10 @@ package grammar
 // reste a l appelant (`DequantEndpoint`), ces lecteurs rendent les quanta bruts.
 //
 // GARDE-RAIL (regle des deux copies) : `lecteur_minuteur_guard_test.go` interdit, hors de ce
-// fichier, la sequence de lectures de FUN_140d580d0 ecrite en ligne, et exige que tout fichier qui
-// cite FUN_140d580d0 ou FUN_142ba78dc appelle l un de ces deux lecteurs.
+// fichier et dans la production du paquet, la sequence de lectures de FUN_140d580d0 ecrite en
+// ligne, les sauts litteraux `Skip(37)` / `Skip(53)` et tout `Skip` qui nomme une largeur de
+// minuteur (`largeurQueueMinuteur`, `roundTimerBits`, `largeurMinuteurSoftKill`). Il ne verifie
+// pas qui cite FUN_140d580d0 dans un commentaire.
 
 // largeurQueueMinuteur : la queue de FUN_1407f0354 (`+0x2c += 5`).
 const largeurQueueMinuteur uint = 5

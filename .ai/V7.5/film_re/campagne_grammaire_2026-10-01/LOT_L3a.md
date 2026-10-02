@@ -15,8 +15,9 @@
 
 ## 0. Statut
 
-**[x] retenu** — sous réserve de la décision de l'intégrateur sur les quatre requalifications
-(§4.1), sur `killsource.Rev` (§5.3) et sur le filet du gate de corpus (§6.3 : rc 1, aucun oracle
+**[x] retenu** — après les quatre corrections du contrôle indépendant (§9), sous réserve de la
+décision de l'intégrateur sur les quatre requalifications (§4.1) et sur le filet du gate de corpus
+(§6.3 : rc 1, aucun oracle
 touché, familles expliquées). Formule du gate 2 : **0 film en baisse nette ; 4 sains
 requalifiés contredits, aucun perdu non fermé ; chacun des 4 est contredit par une règle de
 l'écrivain (`FUN_142e2da44`, masque au-delà de l'archétype) sur un en-tête de tête que la marche
@@ -29,6 +30,8 @@ requalification nette-positive par film).
 | Lecteur unique de `FUN_140d580d0` / `FUN_142ba78dc`, 5 copies migrées, garde-rail | fait (§2.2) |
 | Vecteurs d'après l'écrivain | fait (§3) |
 | `grammar.Rev`, chronique, empreinte | fait (`grammar-2026-10-02.2`, §5) |
+| `killsource.Rev`, chronique, empreinte | fait (`killsource-2026-10-02`, §5.2, correction 3 du contrôle) |
+| Corrections du contrôle indépendant (4) | fait (§9) |
 | Gate 1 (gofmt, vet, vet research, archlint, G-film) | vert (§6) |
 | Gate 2 (carte v2, 20 films, avant / après, juge sur gains et pertes) | tenu en net (§4) |
 | Gate 3 (killsource, 19 témoins) | aucune mort changée ; diagnostics seuls (§5.3) |
@@ -91,7 +94,10 @@ mêmes grammaires ; elles sont re-décompilées ici (`scratchpad/L3a/ghidra/`, `
 
 `lecteur_minuteur_guard_test.go` : hors de `lecteur_minuteur.go`, aucun fichier de production du
 paquet ne peut porter deux `ReadBits` du même argument suivis d'un `ReadBits(5)`, ni un `Skip(37)` /
-`Skip(53)` ; le fichier hôte doit porter la séquence exactement une fois (garde contre un fantôme).
+`Skip(53)`, ni (depuis la correction 2 du contrôle, §9) un `Skip` dont la ligne nomme une largeur de
+minuteur (`largeurQueueMinuteur`, `roundTimerBits`, `largeurMinuteurSoftKill`) ; un saut calculé à
+partir de littéraux seuls (`Skip(2*16 + 5)`) lui échappe, et il ne vérifie pas qui cite
+`FUN_140d580d0` en commentaire ; le fichier hôte doit porter la séquence exactement une fois (garde contre un fantôme).
 `Skip(15)` n'est pas interdit (`consumeDevicePosition` = `R(14) + R(1)`, autre forme). Le lot L2
 (`ti=43 i37`, `FUN_142ba78dc`) devra appeler le lecteur unique : le garde-rail le lui impose.
 
@@ -102,10 +108,13 @@ paquet ne peut porter deux `ReadBits` du même argument suivis d'un `ReadBits(5)
   `i11` × 3, `i16` × 2, `i17` × 2), gardées inchangées (66).
 - `frame_closure.golden` et `keyframe_closure.golden` re-figés (aucune ligne ne descend), historique
   écrit dans les deux en-têtes (tests ratchets).
-- `grammar_rev.golden`, `killsource_rev.golden` (révision constante, historique écrit),
+- `grammar_rev.golden`, `killsource_rev.golden` (révision montée à `killsource-2026-10-02` par la
+  correction 3, §5.2 ; la ligne `killsource-2026-09-27` garde son empreinte de la base),
   `types/testdata/shapes.golden`, 8 fixtures de contrat `replay_schema_76_*.json.gz` + `manifest.json`
   (identiques hors `grammarRev`, vérifié par décompression et substitution : 31 ou 32 occurrences
-  par fixture, aucun autre octet).
+  par fixture, aucun autre octet ; puis, après la correction 3, identiques à la version du commit
+  `115db0e71` hors `killsource-2026-09-27` → `killsource-2026-10-02`, 4 occurrences par fixture,
+  vérifié de même sur les 8).
 
 ## 3. Vecteurs (d'après l'écrivain) et mutations
 
@@ -150,6 +159,7 @@ Base verte ; **14 / 14 ROUGES** :
 | M12 `Skip(37)` revenu (`i12`) | garde-rail |
 | M13 maillon non chaîné | vecteurs, compte, G4, ratchets |
 | M14 lecteur hôte sans la séquence | garde-rail (fantôme) |
+| X16b (contrôle) saut calculé `br.Skip(int(2*roundTimerBits + largeurQueueMinuteur))` (`i12`) | garde-rail, après son élargissement (§9, correction 2) ; VERTE avant |
 
 **Écart** : M1 à M10 et M13 par `-overlay` (copie mutée, le worktree n'est pas touché). M11, M12,
 M14 visent le garde-rail, qui lit les SOURCES sur disque (`os.ReadFile`), ce que `-overlay` ne
@@ -260,8 +270,15 @@ partent de la même base et prendront vraisemblablement le même : l'intégrateu
 ### 5.2 Autres révisions
 
 - `source.Rev`, `profile.Rev`, `objectives.Rev` : inchangées (aucune source touchée ; tests verts).
-- `killsource.Rev` : **inchangée**, golden régénéré à révision constante (`a0a59c83…`), historique
-  écrit dans `killsource_rev.golden` — l'empreinte bouge par la VALEUR de `grammar.Rev`.
+- `killsource.Rev` : **`killsource-2026-09-27` → `killsource-2026-10-02`** (correction 3 du
+  contrôle, §9), par la règle écrite du plan : §6.0 point 1 (N6, « `facts.Rev` suit » ;
+  `decfilm.Rev = killsource.Rev`, `decfilm.go:89-91`) et point 3 (« `killsource.Rev` est monté si la
+  sortie change »), la sortie JSON changeant sur 12 témoins (§5.3). Entrée neuve dans
+  `facts/killsource/rev_chronique.go` ; golden régénéré par la commande du dépôt (empreinte
+  `a0a59c83…`, celle de la première version du lot, car aucune source de la couche ne change : seule
+  la VALEUR de `grammar.Rev` bouge) ; la ligne `killsource-2026-09-27` reprend l'empreinte de la base
+  (`3d8c497b…`), que la première version du lot avait recopiée. Suivent `types/testdata/shapes.golden`
+  et les 8 fixtures de contrat (§2.3).
 - `replay.SchemaVersion` : inchangée (76) ; le document ne change que par la chaîne de révision des
   calques sur les fixtures (§2.3) — à confirmer par `replay-equiv` (§6.2).
 
@@ -279,11 +296,12 @@ témoins (`l3a_tsv/ks_diff.tsv`), binaire de la base contre binaire du lot :
 - **aucune mort, aucune valeur, aucune voie ne change** (aucun chemin `morts.*` dans les écarts, 191
   morts sur `111fa685` avant et après). Conforme à R-COMB-2 §6 pour L3a.
 
-Décision du lot : `killsource.Rev` ne monte pas — ces deux sorties ne sont ni persistées dans
-`match_kill_events` ni lues par `decoder_rev` (les compteurs de santé sont des métriques expvar,
-`health.go`). La règle « `killsource.Rev` n'a pas à monter pour un diagnostic » reste **supposée**
-(plan §6.0 point 3) : à trancher par l'intégrateur. `1c4c63c2` n'a pas de carte lisible et n'est pas
-joué (comme L0 et R-COMB-2).
+Première version du lot (commit `115db0e71`) : `killsource.Rev` ne montait pas, au motif que ces
+deux sorties ne sont ni persistées dans `match_kill_events` ni lues par `decoder_rev`. Le contrôle
+indépendant l'a relevé contraire à la règle écrite (§6.0 points 1 et 3), et aucune décision datée de
+l'intégrateur n'y déroge : **`killsource.Rev` monte à `killsource-2026-10-02`** (§5.2, §9). Le
+backlog qu'elle ouvre est de datation (aucune mort ne change), sur signal utilisateur (D6, D7).
+`1c4c63c2` n'a pas de carte lisible et n'est pas joué (comme L0 et R-COMB-2).
 
 ## 6. Gates (sorties exactes)
 
@@ -387,7 +405,6 @@ vague, plan §6.0 point 6).
 - Révision `.2` au lieu d'un suffixe propre au lot (§5.1).
 - Quatre sains requalifiés contredits (§4.1) : contredits par une règle de l'écrivain, nets positifs
   par film ; non « factices retirées » au sens strict de D2.
-- `killsource.Rev` gardée malgré un JSON qui change en diagnostic seul (§5.3), règle supposée.
 - Mutations du garde-rail jouées en place (avec restauration vérifiée) et non par `-overlay` (§3.2).
 - La forme courte de `i14` est portée d'après le LECTEUR du jeu, sans écrivain dans l'exécutable ni
   film qui la déclare : seul un vecteur la tient (M4). Elle n'introduit aucune branche de version :
@@ -427,7 +444,49 @@ vague, plan §6.0 point 6).
   dans le jeu.
 - **D-L3a-7** Les garde-rails qui lisent les sources (`os.ReadFile`) échappent à `-overlay` : une
   mutation qui les vise doit être jouée en place. Non traité.
-- **D-L3a-8** L'en-tête de `dispatch_object.go` parle encore de « SEPT maillons » ; la chaîne en
-  compte onze avec ce lot (dix avant). Non traité (seule la liste des maillons a reçu la ligne du lot).
+- **D-L3a-8** L'en-tête de `dispatch_object.go` parlait encore de « SEPT maillons ». La CHAÎNE
+  (chaque `default` qui rend le maillon suivant) compte **onze** maillons avec ce lot (dix avant) ;
+  la LISTE de l'en-tête n'en nommait que dix (neuf avant) : elle omettait
+  `consumeManagedPlayerComponent` (`dispatch_player.go:311`, maillon du lot 3.6.a entre
+  `consumePlayerTailAndGameEngineComponent` et `consumeCaptureAndBipedComponent`). **Traité par la
+  correction 4 du contrôle (§9)** : la liste reçoit ce maillon (onze lignes `consume*`, égal au compte
+  de la chaîne) et la phrase « Cette exemption vaut pour les SEPT maillons » est réécrite (l'exemption
+  vaut pour les sept maillons qui portent `//nolint:gocyclo,funlen // dette gelee` ; les quatre autres
+  restent sous le seuil). Reste NON traité, même en-tête : « LES SEPT `//nolint` … » est historique
+  (lot 2.6.2) et reste vrai.
 - **D-L3a-9** `111fa685` : un candidat killsource de plus et un couple inexpliqué de plus ; cause non
   instruite (la marche lit plus de records). Sans effet sur les morts.
+
+## 9. Corrections du contrôle indépendant (2026-10-02)
+
+Contrôle sur `115db0e71` (verdict : retenable après quatre corrections mineures, aucune ne change un
+bit lu). Corrections appliquées dans le worktree du lot, même branche, commit « campagne(grammaire)
+L3a: corrections du contrôle ».
+
+| # | Correction | Statut | Vérification (mesurée) |
+|---|---|---|---|
+| 1 | `lecteur_minuteur.go`, en-tête GARDE-RAIL : retirer « exige que tout fichier qui cite `FUN_140d580d0` ou `FUN_142ba78dc` appelle l'un de ces deux lecteurs » (faux : aucune vérification de citation ; `quantize_endpoint.go:54`, `dispatch_player.go:22`, `rev_chronique.go:450` citent sans appeler) | [x] | `grep -n 'exige que tout fichier' lecteur_minuteur.go` : vide. L'en-tête décrit désormais ce que le test vérifie et dit qu'il ne vérifie pas les citations. |
+| 2 | `lecteur_minuteur_guard_test.go` : l'en-tête promettait l'interdiction d'un « saut de 2n + 5 bits » ; X16b (`br.Skip(int(2*roundTimerBits + largeurQueueMinuteur))`) restait verte | [x] (garde-rail ÉLARGI, en-tête ramené à ce qu'il vérifie) | Nouvelle expression `sautMinuteurCalcule` : un `Skip` dont la ligne nomme `largeurQueueMinuteur`, `roundTimerBits` ou `largeurMinuteurSoftKill`. Base : `TestLecteurDeMinuteurUnique` vert. X16b jouée en place puis restaurée par `git checkout` (statut vide après) : **ROUGE** (`components_walk_batch9.go : 0 lecture(s) en ligne et 1 saut(s)`). Variante sur `ti=5 i2` (`br.Skip(int(3 * largeurMinuteurSoftKill))`) : **ROUGE**. Reste hors garde-rail, écrit dans l'en-tête : un saut calculé de littéraux seuls (`Skip(2*16 + 5)`). |
+| 3 | `killsource.Rev` : appliquer la règle écrite (§6.0 points 1 et 3) ou citer une décision datée de l'intégrateur | [x] (règle appliquée ; aucune décision datée n'existe) | `killsource-2026-09-27` → `killsource-2026-10-02` (`rev.go`), entrée de chronique (`rev_chronique.go`, 465 lignes), golden régénéré par la commande du dépôt puis vérifié sans drapeau (`ok`), ligne `09-27` rendue à l'empreinte de la base ; `shapes.golden` et 8 fixtures de contrat régénérés (identiques hors la chaîne, 4 occurrences par fixture). §5.2, §5.3. |
+| 4 | D-L3a-8 : « onze (dix avant) » contre une liste de dix (neuf avant) ; phrase « SEPT maillons » de `dispatch_object.go:43` | [x], avec un écart sur pièces | **Le compte de la correction est faux sur pièces** : la chaîne réelle (`default` → maillon suivant) a onze maillons avec le lot, dix avant — la liste en omettait un, `consumeManagedPlayerComponent` (`dispatch_player.go:311`, lot 3.6.a). Ramener LOT_L3a.md à « dix » aurait écrit une affirmation fausse : non appliqué tel quel. Appliqué à la place (règle 17, même bloc d'en-tête) : la liste reçoit ce maillon (`grep -c '^//	consume' dispatch_object.go` = **11**, égal au compte cité), la ligne de `consumePlayerTailAndGameEngineComponent` perd « joueur géré (ti=9) », la phrase de l'exemption nomme les sept maillons `funlen` et les quatre autres (32, 40, 21 et 22 lignes, mesurées accolade à accolade), et « Chaque maillon dépasse 80 lignes » (faux pour ces quatre) devient « Les maillons exemptés sont longs ». |
+
+Aucun code de lecture ne change : hors commentaires et tests, le seul octet de production modifié est
+la constante `killsource.Rev` (`git diff -- '*.go' ':!*_test.go'`, lignes non commentaires).
+`grammar.Rev` reste `grammar-2026-10-02.2` et `TestGrammarRevSuitLaGrammaire` reste vert : la
+grammaire est identique au jeton près. La carte v2, la sortie `cmd/killsource json` (qui ne publie pas
+la révision), `replay-equiv` et `replay-corpus-gate` ne sont donc PAS rejoués : aucun film concerné
+(établi par le diff, non par une mesure sur film).
+
+Gates rejoués (depuis `apps/go-api`, `GOCACHE=…/go-build-cg-l3a`, une commande `go` à la fois,
+sorties sous `scratchpad/L3a/corr_ctl/`) :
+
+| Gate | Sortie |
+|---|---|
+| `gofmt -l ./internal/games/halo_infinite/film/ ./cmd/` | vide |
+| `go vet ./internal/games/halo_infinite/film/...` | rc 0 |
+| `go vet -tags=research ./internal/games/halo_infinite/film/...` | rc 0 |
+| G-film (`film/...`, `replaybuild/...`, `sync/killcollector/...`, `-count=1 -timeout 30m`) | rc 0, 19 paquets `ok`, 0 FAIL (`grammar` 39,5 s, `replay` 33,0 s, `facts/killsource` 5,1 s) |
+| `go test ./internal/archlint/ -count=1` | `ok … 41.030s` |
+| `golangci-lint run --new-from-rev=af6e93e23` sur `grammar/` et `facts/killsource/` (cache isolé) | `0 issues.` |
+| Mutation X16b et variante `ti=5 i2` (garde-rail seul) | ROUGES |
+| vitest `goFixtures.contract.test.ts` | non rejoué : le worktree n'a pas de `node_modules` (les fixtures ne changent que par une chaîne de révision) |

@@ -3,8 +3,11 @@ package grammar
 // lecteur_minuteur_guard_test.go — LE GARDE-RAIL DU LECTEUR DE MINUTEUR (regle des deux copies,
 // CLAUDE.md n. 6). La sequence de FUN_140d580d0 — deux lectures de n bits puis la queue R(5) — a
 // vecu en ligne dans cinq composants ; elle n existe plus qu une fois, dans
-// `lecteur_minuteur.go`. Ce test interdit qu elle revienne ailleurs dans la production du paquet,
-// ecrite en ligne ou sous la forme d un saut de 2n + 5 bits.
+// `lecteur_minuteur.go`. Ce test interdit qu elle revienne ailleurs dans la production du paquet
+// sous trois formes : ecrite en ligne (deux `ReadBits` du meme argument puis un `ReadBits(5)`), en
+// saut litteral `Skip(37)` ou `Skip(53)` (n = 16), ou en saut calcule qui nomme une largeur de
+// minuteur sur la ligne du `Skip`. Un saut calcule a partir de litteraux seuls (`Skip(2*16 + 5)`)
+// lui echappe.
 
 import (
 	"os"
@@ -24,6 +27,12 @@ var lectureMinuteurLitteral = regexp.MustCompile(
 // 3n + 5 a n = 16 (53 bits). Le saut de 15 bits n est pas interdit : `consumeDevicePosition` le
 // fait pour R(14) + R(1), une autre forme.
 var sautMinuteurLitteral = regexp.MustCompile(`Skip\((37|53)\)`)
+
+// sautMinuteurCalcule : un `Skip` dont la ligne nomme une largeur de minuteur — la queue de
+// FUN_1407f0354 ou un n que les appelants passent a FUN_140d580d0. Aucun saut de production ne
+// les nomme : ces largeurs ne servent qu au lecteur unique et a ses appelants.
+var sautMinuteurCalcule = regexp.MustCompile(
+	`Skip\([^\n]*\b(largeurQueueMinuteur|roundTimerBits|largeurMinuteurSoftKill)\b`)
 
 // TestLecteurDeMinuteurUnique interdit les copies hors du fichier hote.
 //
@@ -52,7 +61,7 @@ func TestLecteurDeMinuteurUnique(t *testing.T) {
 				copies++
 			}
 		}
-		sauts := len(sautMinuteurLitteral.FindAll(data, -1))
+		sauts := len(sautMinuteurLitteral.FindAll(data, -1)) + len(sautMinuteurCalcule.FindAll(data, -1))
 		if f == "lecteur_minuteur.go" {
 			hote = copies
 			continue

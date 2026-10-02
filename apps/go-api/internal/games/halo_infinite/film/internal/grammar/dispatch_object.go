@@ -24,7 +24,8 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 //	consumeItemAndTacmapComponent            equipement, objet pose, projectile, tacmap
 //	consumePlayerAndSceneComponent           joueur (ti=5), scene, statborg, physique
 //	consumeCrewFlockAndMusicComponent        equipage, nuee, musique, effets, moteur de partie
-//	consumePlayerTailAndGameEngineComponent  queue joueur, joueur gere (ti=9), moteur de partie
+//	consumePlayerTailAndGameEngineComponent  queue joueur, moteur de partie
+//	consumeManagedPlayerComponent            joueur gere (ti=9), i0 a i9
 //	consumeCaptureAndBipedComponent          composants CAPTES (obje, arme tenue, vitalites,
 //	                                         etat de mort), arme, bipede, etat de simulation
 //	consumeManagedAndObjectiveComponent      objet gere (ti=10/13), objectif (ti=11), unite
@@ -35,13 +36,16 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 //
 // # EXEMPTION DE LONGUEUR (seuil de 80 lignes, CLAUDE.md regle 5)
 //
-// Chaque maillon depasse 80 lignes et le restera : un maillon est une TABLE, pas un
+// Les maillons exemptes sont longs et le resteront : un maillon est une TABLE, pas un
 // algorithme — un arm par composant ECS du jeu, deux a quatre lignes chacun, sans branche
 // partagee a factoriser. Sa longueur est le NOMBRE DE COMPOSANTS PORTES. La seule
 // « extraction » possible serait de couper la table plus fin, ce qui multiplierait les bornes
 // arbitraires sans rendre un maillon plus lisible ni plus sur. Le decoupage retenu suit donc
 // les familles dominantes et les frontieres de lots de portage, pas un quota de lignes.
-// Cette exemption vaut pour les SEPT maillons de la chaine (fichiers `dispatch_*.go`).
+// Cette exemption vaut pour les sept maillons qui portent `//nolint:gocyclo,funlen // dette gelee`
+// (fichiers `dispatch_*.go`). Les quatre autres maillons de la chaine (onze en tout) restent sous
+// le seuil : `consumeNavpointComponent` et `consumeManagedPlayerComponent` n exemptent que
+// `gocyclo`, `consumeMoteurDePartie` et `consumeComposantsVueBM4b` n exemptent rien.
 //
 // # LES SEPT `//nolint:gocyclo,funlen // dette gelee`, ET POURQUOI ILS APPARAISSENT AU LOT 2.6.2
 //
