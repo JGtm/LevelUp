@@ -7,8 +7,6 @@ package killcollector
 // qui se trompe en silence doit vivre a UN seul endroit, sous son propre en-tete.
 
 import (
-	"strings"
-
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
@@ -20,8 +18,6 @@ import (
 // lui, EXISTE. Deriver la liste des xuids des cles de la reference perdrait silencieusement ces
 // joueurs-la — leurs tirs seraient decodes et jamais attribues.
 type MatchIdentities struct {
-	// ParXUID : `xuid -> gamertag`, par la vue canonique `v_gamertag_lookup`.
-	ParXUID map[string]string
 	// ParNom : `gamertag -> xuid`. Les noms AMBIGUS (deux participants homonymes) en sont
 	// ABSENTS : ecrire les morts d un joueur sous le xuid d un autre serait pire que rien.
 	ParNom map[string]string
@@ -67,19 +63,9 @@ type MatchIdentities struct {
 // Resoudre : LE nom que le film donne devient un xuid et un gamertag. UNE SEULE COPIE DE CETTE
 // REGLE EXISTE, et c est deliberé — elle a deja coute une passe entiere de backfill.
 //
-// LE FILM DONNE DEUX FORMES DE NOM, et les confondre est silencieux :
-//
-//	"Chocoboflor"           un GAMERTAG, tel que le kill-feed du film le porte. Il se resout
-//	                        contre le roster du match, et un nom inconnu reste sans xuid.
-//	"xuid:2535469190789936" LE XUID LUI-MEME, ecrit par le decodeur quand le film ne porte
-//	                        aucun gamertag pour ce joueur (cf. decfilm.XUIDNamePrefix).
-//	                        C est l identite la PLUS FORTE, et la chercher dans une table de
-//	                        gamertags ne rend evidemment rien.
-//
-// Mesure du defaut, le 2026-08-01 : traiter la seconde forme comme un gamertag a produit
-// 16 908 morts dont **10** portaient un xuid de victime. Le nom d affichage, lui, repasse par la
-// vue canonique — sinon la table stockerait `xuid:2535...` comme pseudo, exactement l « xuid brut
-// a l affichage » que `v_gamertag_lookup` existe pour empecher.
+// LE FILM DONNE UN GAMERTAG, tel que le kill-feed le porte (un event sans gamertag n entre pas dans
+// le fil, cf. `killsource.buildFeed`). Il se resout contre le roster du match, et un nom inconnu
+// reste sans xuid.
 func (m MatchIdentities) Resoudre(nom string) (xuid, gamertag string) {
 	xuid, gamertag = m.resoudre(nom)
 	if xuid == "" {
@@ -91,27 +77,5 @@ func (m MatchIdentities) Resoudre(nom string) (xuid, gamertag string) {
 
 // resoudre est la regle de [MatchIdentities.Resoudre], sans le compte.
 func (m MatchIdentities) resoudre(nom string) (xuid, gamertag string) {
-	if reste, ok := strings.CutPrefix(nom, decfilm.XUIDNamePrefix); ok {
-		if estDecimal(reste) {
-			if gt := m.ParXUID[reste]; gt != "" {
-				return reste, gt
-			}
-			return reste, nom // xuid connu, nom inconnu : on garde la forme brute, honnete
-		}
-		return "", nom
-	}
 	return m.ParNom[nom], nom
-}
-
-// estDecimal : un xuid est une suite de chiffres, et rien d autre.
-func estDecimal(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-	return true
 }

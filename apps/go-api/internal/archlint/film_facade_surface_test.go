@@ -152,7 +152,7 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // (`replaybuild`) le cree — ses propres lectures (actions nommees, signaux du drapeau, pont par manche) y
 // notent deja — et le passe aux options du rejeu : elle doit NOMMER le type. Aucune constante `Nom*` n entre
 // dans la facade (les trois noms neufs sont verses par `replay`).
-const plafondSurfaceFacade = 186 // 2026-09-30 — J12.4 sur 8cd560673 : 187 - 1 (BuildBipedTracks, renvoi sans aucun lecteur hors de grammar, supprime ; KnownWeaponHigh32 passe de var a func, meme compte)
+const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7) sur 430cdd7b4 : 186 - 7 (NomGamertagPremierXuidGagne, NomMortNeutreSansXuidAbandonnee, NomParticipantSansXuidRetire, NomCampInconnuRetireDeLaTable, NomHomonymesSansXuid, NomIdentitePontParMorts, XUIDNamePrefix)
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -394,8 +394,8 @@ const plafondSurfaceReplay = 299 // 2026-10-02 — revue finale D2 sur 06afd4566
 var plafondsParFamilleFacade = map[string]int{
 	"grammar":    45, // 2026-09-30 — J12.4 : -1 (BuildBipedTracks) ; 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
 	"objectives": 40, // 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs) ; 2026-09-28 — J8.7-bis : +1 (ReplisALaConsultation)
-	"killsource": 37, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire (J7) : +1 (`ErrCarteAbsente`)
-	"fallback":   29, // 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector)
+	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire (J7) : +1 (`ErrCarteAbsente`) ; 2026-10-02 — retrait des replis nuls (DU-7) : -1 (`XUIDNamePrefix`)
+	"fallback":   23, // 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector) ; 2026-10-02 — retrait des replis nuls (DU-7) : -6 (noms des replis retires)
 	"types":      10,
 	"profile":    8,
 	"source":     6, // 2026-09-26 — J4.5 : -1 (Paquets)

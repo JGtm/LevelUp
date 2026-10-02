@@ -1,6 +1,6 @@
 package fallback
 
-// registre_replay_objectifs.go — les replis des calques DRAPEAU, ZONE (et colline), CRÂNE et
+// registre_replay_objectifs.go — les replis des calques DRAPEAU, ZONE (et colline) et
 // BOMBE (`internal/games/halo_infinite/film/replay/`).
 //
 // UN FICHIER NEUF, ET C'EST LA LIMITE DE 500 LIGNES : `registre_replay_identites.go` l'avait
@@ -128,42 +128,6 @@ var registreReplayObjectifs = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_zone_camp_sans_roster",
-		Fait:      "a quel camp crediter une capture de zone",
-		Mecanisme: "roster vide : TOUTE valeur non neutre du canal compte comme une capture du camp",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "zone_states_owner.go",
-			Ancre:   "case len(teams) == 0 && v != zoneNeutralOwner:",
-		}, {
-			Fichier: pkgReplay + "zone_states_owner.go",
-			Ancre:   "fb.DeclencheN(fallback.NomZoneCampSansRoster, captures)",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "l equipe lue dans le film portee au calque des zones (la table de la base n est plus qu un controle) ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "le roster des zones vient du film ; 0 film a roster vide sur les 8 builds",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_zone_proprietaire_sans_roster",
-		Fait:      "quel camp possede une zone a un instant",
-		Mecanisme: "roster vide : toute valeur <= 1 est tenue pour un camp",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "zone_states_owner.go",
-			Ancre:   "case len(teams) == 0 && v <= 1:",
-		}, {
-			Fichier: pkgReplay + "zone_states_owner.go",
-			Ancre:   "fb.DeclencheN(fallback.NomZoneProprietaireSansRoster, n)",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "meme cible que repli_zone_camp_sans_roster",
-		CritereRetrait:  "0 film a roster vide sur les 8 builds",
-		CompteurBranche: true,
-	},
-	{
 		Nom:       "repli_zone_camp_de_capture_deduit_de_l_issue",
 		Fait:      "quel CAMP pousse la jauge d'une zone, rampe par rampe",
 		Mecanisme: "aucun canal POUSSEUR n'a ete elu pour cette zone : le camp est DEDUIT de l'issue — le proprietaire juste apres le sommet d'une rampe ABOUTIE. Une rampe avortee reste alors sans camp",
@@ -216,38 +180,6 @@ var registreReplayObjectifs = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_crane_porteur_sans_vie_nommee",
-		Fait:      "un portage de crane est-il refuse faute de porteur present",
-		Mecanisme: "le joueur n'a AUCUNE vie nommee : la porte laisse passer sans rien verifier",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		// LA PORTE EST PARTAGEE AVEC LA BOMBE (`carrier_presence.go`, lot J8.7-bis) : elle compte, le calque
-		// du crane nomme et verse ; la bombe a son entree, `repli_bombe_porteur_sans_vie_nommee`.
-		Sites: sitesDeLaPorteDePresence("skull_carries.go",
-			"clock.fb.DeclencheN(fallback.NomCranePorteurSansVieNommee, presence.porteursSansVieNommee())"),
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "le porteur du crane lu au canal des armes tenues ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 porteur sans vie nommee sur les films Oddball du corpus",
-		CompteurBranche: true,
-	},
-	{
-		// POSE AU LOT J8.7-bis (2026-09-28) : la bombe traverse la MEME porte de presence que le crane
-		// (`buildBombCarries` -> `carrierPresence.gate`), mais son calque lui passait un compteur nil —
-		// un portage de bombe sans vie nommee passait la porte SANS ETRE COMPTE, ni sous son nom ni sous
-		// celui du crane (preuve : `bomb_carries_presence_repli_test.go`).
-		Nom:       "repli_bombe_porteur_sans_vie_nommee",
-		Fait:      "un portage de bombe est-il refuse faute de porteur present",
-		Mecanisme: "le joueur n'a AUCUNE vie nommee : la porte laisse passer sans rien verifier (premiere abstention de la porte partagee avec le crane)",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: sitesDeLaPorteDePresence("bomb_carries.go",
-			"clock.fb.DeclencheN(fallback.NomBombePorteurSansVieNommee, presence.porteursSansVieNommee())"),
-		DatePose:        "2026-09-28",
-		CibleRetrait:    retraitRegle4 + " ; sinon le porteur de la bombe nomme par une vie publiee (pont bipede -> joueur complet sur les films Assaut)",
-		CritereRetrait:  "0 portage de bombe sans vie nommee du porteur sur les films Assaut du corpus gate de J11",
-		CompteurBranche: true,
-	},
-	{
 		Nom:       "repli_armement_bombe_debut_a_zero",
 		Fait:      "l'instant de debut d'un armement de bombe commence avant la frame 0",
 		Mecanisme: "la conversion en frame echoue : le debut est pose a 0",
@@ -262,20 +194,4 @@ var registreReplayObjectifs = []Repli{
 		CritereRetrait:  "0 armement anterieur a la frame 0 sur les films d'Assaut du corpus",
 		CompteurBranche: true,
 	},
-}
-
-// sitesDeLaPorteDePresence : les sites d un repli de la PORTE DE PRESENCE partagee (crane, bombe) —
-// la decision et le compte dans `carrier_presence.go`, une seule copie, puis le versement sous le
-// nom du repli par le calque `fichier` (lot J8.7-bis, 2026-09-28).
-func sitesDeLaPorteDePresence(fichier, versement string) []Site {
-	return []Site{{
-		Fichier: pkgReplay + "carrier_presence.go",
-		Ancre:   "func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {",
-	}, {
-		Fichier: pkgReplay + "carrier_presence.go",
-		Ancre:   "*p.sansVieNommee++",
-	}, {
-		Fichier: pkgReplay + fichier,
-		Ancre:   versement,
-	}}
 }

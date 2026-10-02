@@ -171,6 +171,25 @@ DU-7 (retenu : hors plan) : J11 publie la liste, le retrait suit la regle 4 de D
 compte est a zero sur le corpus a la cloture d'un jalon est supprime au jalon suivant, avec ses tests »)
 sur decision. Les 66 replis nuls se repartissent selon leur `CibleRetrait` du registre.
 
+> **Suite du 2026-10-02 (DU-7 tranchee).** Le zero des 19 temoins a ete remplace par le compte du parc :
+> `.ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md` (1 227 artefacts au schema 76, passes killsource et
+> usage-summary de la vague J11.4, journal du serveur). **28 des 66 se declenchent sur le parc** et
+> sortent de la liste de retrait ; les 10 replis des couches grammaire et profil relevent de la
+> campagne de grammaire. Sur decision de l utilisateur, 20 replis ont ete soumis au retrait le
+> 2026-10-02 ; **19 sont retires** (code, constante, entree du registre, ligne de versement, tests) :
+> `repli_bombe_porteur_sans_vie_nommee`, `repli_camp_inconnu_retire_de_la_table`,
+> `repli_crane_porteur_sans_vie_nommee`, `repli_gamertag_par_xuid_brut`,
+> `repli_gamertag_premier_xuid_gagne`, `repli_homonymes_sans_xuid`,
+> `repli_identite_piste_meilleur_recouvrement`, `repli_identite_pont_par_morts`,
+> `repli_instant_sur_la_premiere_manche`, `repli_mort_ecartee_hors_equipe_de_base`,
+> `repli_mort_neutre_sans_xuid_abandonnee`, `repli_mort_sans_xuid_ignoree`,
+> `repli_participant_sans_xuid_retire`, `repli_roster_indice_hors_bijection`,
+> `repli_traction_vie_du_tir`, `repli_traction_vie_la_plus_proche`, `repli_zone_camp_sans_roster`
+> (classe A) ; `repli_famille_arme_identifiant_brut`, `repli_zone_proprietaire_sans_roster` (classe C).
+> `repli_porteur_anonyme_sans_fin_par_mort` (classe A) reste en place : la seule voie honnete est une
+> fin de portage « inconnue » que l election du poseur de bombe (`bomb_arms.go`) devrait traiter, une
+> conversion non triviale renvoyee a l utilisateur.
+
 **A. Cible = la regle 4 de D-10 (compte nul au gate de J11) : 45 replis, candidats directs.**
 
 | Repli | Condition | Compteur branche | Cible de retrait (abregee) |

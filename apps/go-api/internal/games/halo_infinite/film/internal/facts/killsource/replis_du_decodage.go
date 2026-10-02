@@ -40,12 +40,6 @@ type ReplisDuDecodage struct {
 	// NomsInventes : `repli_roster_nom_invente` — noms `?N` fabriques pour rendre l affectation
 	// carree (`roster.go`).
 	NomsInventes int
-	// NomsHorsBijection : `repli_roster_indice_hors_bijection` — noms « ? » PUBLIES en victime ou en
-	// tueur d une mort, faute de bijection pour l indice (`roster.go`, `hybrid.go`).
-	NomsHorsBijection int
-	// NomsParXUIDBrut : `repli_gamertag_par_xuid_brut` — evenements de kill ou de mort du feed
-	// nommes `xuid:<N>` faute de gamertag (`feed.go`).
-	NomsParXUIDBrut int
 	// PiedParArgmax : `repli_chunk_du_pied_par_argmax` — le chunk du pied designe par le plus grand
 	// nombre de kills, UNE fois par decodage (`feed.go`).
 	PiedParArgmax int
@@ -80,7 +74,7 @@ func unSi(decide bool) int {
 }
 
 // replisDuResultat compose les comptes que la passe a accumules dans ses etages et ceux qui se
-// lisent sur ce qu elle publie (noms « ? », libelles « Autres »). Appelee UNE fois, par [decodeCtx.finish].
+// lisent sur ce qu elle publie (libelles « Autres »). Appelee UNE fois, par [decodeCtx.finish].
 func (c *decodeCtx) replisDuResultat(kills []Kill, unclaimed []UnclaimedDeath, sondeLancee bool) ReplisDuDecodage {
 	r := ReplisDuDecodage{
 		RecordsDesynchronises:          c.walkRes.desync,
@@ -89,7 +83,6 @@ func (c *decodeCtx) replisDuResultat(kills []Kill, unclaimed []UnclaimedDeath, s
 		CategoriesHorsEnum:             c.walkRes.horsEnum,
 		LocalisationsALargeurLibre:     c.walkRes.largeurLibre,
 		NomsInventes:                   c.roster.nomsInventes,
-		NomsParXUIDBrut:                c.feed.nomsParXUID,
 		PiedParArgmax:                  1, // `loadKillFeed` designe le pied par argmax a chaque decodage
 		ChainesArretees:                c.killEvents.chainesArretees,
 		TypeDeChunkPerdu:               1, // `loadFilm` jette le type du manifeste a chaque decodage
@@ -98,11 +91,6 @@ func (c *decodeCtx) replisDuResultat(kills []Kill, unclaimed []UnclaimedDeath, s
 		MotDePoigneeInfere:             unSi(c.calib.PoigneeDecidee),
 	}
 	for i := range kills {
-		// Le nom se juge par LE predicat unique du remplissage (lot J7.1, FK-2, DT-6 ; ratchet
-		// `archlint/killsource_nom_de_remplissage_test.go`), pas par une comparaison a « ? » : depuis
-		// J7 les temps 4 et 5 refusent un tel nom ([pass.nomPubliable]), et ce compte tient le
-		// critere de retrait du repli (« 0 ligne de mort ecrite avec un nom « ? » »).
-		r.NomsHorsBijection += unSi(estNomDeRemplissage(kills[i].Victim)) + unSi(estNomDeRemplissage(kills[i].Feed.Killer))
 		r.LibellesAutres += unSi(!kills[i].Source.Named)
 	}
 	for i := range unclaimed {

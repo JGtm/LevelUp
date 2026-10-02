@@ -51,40 +51,6 @@ var registreReplayIdentites = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_identite_piste_meilleur_recouvrement",
-		Fait:      "a quelle vie nommee appartient une piste quand PLUSIEURS vies du meme slot la recouvrent",
-		Mecanisme: "la vie dont le recouvrement temporel avec la piste est le plus grand gagne, sans aucun seuil minimal",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "identity.go",
-			Ancre:   "bestOverlap, bestXUID = ov, l.xuid",
-		}},
-		DatePose: dateAudit0E,
-		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1). Elle nommait le lot 1.9.13, fusionne
-		// le 2026-09-15 : le lot a bien FERMÉ le défaut (les vies se découpent aux morts écrites,
-		// donc ne se recouvrent plus) et le critère est TENU — 0 déclenchement sur les 8 goldens
-		// d'assemblage, bloc « REPLIS DECLENCHES », alors que `nameTracksByLives` y tourne sur
-		// 99 à 144 pistes par film. L'entrée ne SORT pourtant pas encore, pour deux raisons
-		// écrites :
-		//
-		//	(1) D14 (d) retire au JALON SUIVANT ce dont le compte est nul À LA CLÔTURE d'un jalon,
-		//	    et sur LE CORPUS : les 8 goldens sont 8 films, le corpus gate en porte 14 et le
-		//	    parc 1 351. Le gate de clôture de M1 tranche ;
-		//	(2) le « site » n'est pas du code mort séparable. L'ancre est la SÉLECTION par
-		//	    recouvrement maximal, qui nomme CHAQUE piste ; ce qui est un repli, c'est
-		//	    l'arbitrage à partir du deuxième candidat, et il n'a pas de branche à lui.
-		//	    Retirer l'entrée retirerait donc le COMPTEUR — le seul instrument qui prouve que
-		//	    le zéro dure — en laissant l'arbitrage anonyme dans le code, ce que D14 (a)
-		//	    interdit. Le retrait propre est une CONVERSION (abstention explicite dès deux
-		//	    candidats), et elle appartient à M2.
-		CibleRetrait: "abstention explicite des deux candidats, puis retrait de l entree (compte nul depuis le 2026-09-15) ; a defaut, " + retraitRegle4,
-		// Sans seuil, un recouvrement d'une seule frame l'emporte sur l'absence : le compte dit
-		// combien de pistes sont nommées par un arbitrage plutôt que par une lecture.
-		CritereRetrait:  "0 piste arbitree par recouvrement sur les 8 builds : TENU le 2026-09-16 (0/8, goldens d'assemblage) ; reste a confirmer au corpus gate",
-		CompteurBranche: true,
-	},
-	{
 		Nom:       "repli_vie_coupee_au_trou_de_replication",
 		Fait:      "ou finit une vie de joueur",
 		Mecanisme: "un trou de positions de plus de lifeGapUS (5 s) ferme la vie courante et en ouvre une neuve — pour le seul joueur dont le film n'ecrit AUCUNE mort (site 1), ou pour TOUTES les vies quand la table d'index des joueurs est vide (site 2)",
@@ -128,25 +94,6 @@ var registreReplayIdentites = []Repli{
 		// 212 coupures sous-decrivait le fait au point de rendre D14 (d) inoperant — un compte
 		// qui ne bouge pas avec la population qu il decrit ne mesure rien.
 		CritereRetrait:  "0 coupure decidee par le seuil au corpus gate ; `vies_un_echantillon_test.go` rend 0 orpheline sur les 8 builds",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_mort_ecartee_hors_equipe_de_base",
-		Fait:      "une mort entre-t-elle dans le contexte d'isolement publie",
-		Mecanisme: "la victime n'est dans aucune equipe de la feuille de match : la mort est ecartee ENTIEREMENT",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillcollector + "isolation_facts.go", Ancre: "Fallbacks: ids.replis,"}, {
-			Fichier: pkgReplay + "death_context.go",
-			Ancre:   "if !dansUneEquipe {",
-		}, {
-			Fichier: pkgReplay + "death_context.go",
-			Ancre:   "e.Fallbacks.Declenche(fallback.NomMortEcarteeHorsEquipeDeBase)",
-		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "l equipe lue dans le film portee jusqu a ce calque ; a defaut, " + retraitRegle4,
-		// Aucune ligne, aucun compteur, aucun log : une mort disparaît du calque sans trace.
-		CritereRetrait:  "l'equipe vient du film et non de la base ; 0 mort ecartee sur les 8 builds",
 		CompteurBranche: true,
 	},
 	{

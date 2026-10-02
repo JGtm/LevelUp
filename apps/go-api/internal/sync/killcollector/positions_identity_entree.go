@@ -81,9 +81,7 @@ func rosterUint64(xuids []string) []uint64 {
 	return out
 }
 
-// parseXUID : un xuid est une suite de chiffres decimale, et rien d autre — meme regle que
-// identities.go (estDecimal), reappliquee ici parce que cette lecture est numerique alors que
-// MatchIdentities.Resoudre rend des chaines.
+// parseXUID : un xuid est une suite de chiffres decimale, et rien d autre.
 func parseXUID(s string) (uint64, bool) {
 	if s == "" {
 		return 0, false

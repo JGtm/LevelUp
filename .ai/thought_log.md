@@ -114156,3 +114156,35 @@ ratchets `archlint` des chemins cités verts.
 **Conclusion / prochaine étape** : aucune. Les numéros de ligne cités vers le registre dans
 d'anciens documents sont désormais approximatifs (laissés tels quels, les sections et libellés
 restent cherchables).
+
+## [2026-10-02] Retrait des replis nuls (DU-7) — mesure du parc, 19 replis retirés — Complété (reste push + CI)
+
+**Décision technique principale** : compter le parc sans cuisson à partir de quatre sources
+lues seulement — `coverage.fallbacks` des 1 227 artefacts recuits par la vague J11.4 (schéma 76),
+journaux `backfill-killsource` (1 222 films) et `backfill-usage-summary` (1 227 matchs) de la
+vague, journal du serveur depuis son redémarrage. Les 10 replis grammaire/profil sont exclus
+(campagne de grammaire).
+
+**Résultats observés** : 28 des 66 « nuls » se déclenchent sur le parc, dont 7 de classe A
+comptés hors cuisson (killsource, usage-summary, cycle serveur) que la mesure de J11 ne pouvait
+pas voir — `repli_garde_equipement_negatif_a_zero` 2 984, `repli_fraicheur_des_derivations_par_taille`
+compte le chemin normal du jugement « à jour ». Restent nuls : 18 de classe A, 10 de classe C.
+Rapport : `.ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md`. Constat hors périmètre : 8 films sans
+kill-feed redécodés à chaque cycle serveur (tâche séparée).
+
+**Conclusion / prochaine étape** : proposition = 18 A + 2 C (famille d'arme brute, propriétaire
+de zone sans roster), retenue par l'utilisateur (questionnaire) avec correction des documents.
+
+**Exécution (branche `feat/retrait-replis-nuls`, worktree `LevelUp-wt-retrait-replis-nuls`)** :
+19 retirés, 1 maintenu `[!]` : `repli_porteur_anonyme_sans_fin_par_mort`, car sa seule voie
+honnête (fin de portage inconnue) change l'élection de l'armement de bombe (`bomb_arms.go` lit
+`!FinParMort`), une conversion et pas un retrait. Registre 119 → 100 entrées ; façade `decfilm`
+186 → 179 symboles ; killsource et objectives : goldens d'empreinte régénérés à révision
+constante (sortie inchangée), aucune recuisson. Gates verts : build, vet, tests ciblés,
+`go test ./...` (193 paquets), intégration, baseline (`--from-jsonl`), golangci 0 issue.
+`replay-equiv` : `artifact` identique à l'octet sur les 20 films, 58 étapes sur 61 identiques ;
+`flag`, `killsource` et `skull` diffèrent sur les 20 par la FORME des objets observés (champs
+de compte retirés), même motif que les lots 1.9.3 et 1.9.10 du CORPUS.txt. Re-fige `-update`
+sur accord de l'utilisateur : 20 identiques ensuite ; git = 20 fichiers, 60 lignes, toutes
+`flag`/`killsource`/`skull`, aucun `.facts.json` ; consigné dans CORPUS.txt. Commité, non poussé :
+reste le push (sur accord) et la CI au niveau job. Statut : Complété localement.

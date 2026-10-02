@@ -24,11 +24,11 @@ func TestReplisDuResultatPorteChaqueCompte(t *testing.T) {
 	c := &decodeCtx{
 		walkRes:    &walkResult{desync: 1, horsBande: 2, horsRoster: 3, horsEnum: 4, largeurLibre: 5},
 		roster:     &roster{nomsInventes: 6},
-		feed:       &killFeed{nomsParXUID: 7},
+		feed:       &killFeed{},
 		killEvents: &assistScan{chainesArretees: 8},
 		calib:      calibration{CarteLue: false, ControleDeCorruptionLu: false, PoigneeDecidee: true},
 	}
-	kills := []Kill{{Victim: "?", Feed: FeedTruth{Killer: "?"}}} // le nom que [roster.nameOf] rend hors bijection
+	kills := []Kill{{Victim: "A", Feed: FeedTruth{Killer: "B"}}}
 	unclaimed := []UnclaimedDeath{{}}
 	r := c.replisDuResultat(kills, unclaimed, false)
 	v := reflect.ValueOf(r)
@@ -37,9 +37,8 @@ func TestReplisDuResultatPorteChaqueCompte(t *testing.T) {
 			t.Errorf("le champ %s reste a zero : son etage ne le verse pas au resultat", v.Type().Field(i).Name)
 		}
 	}
-	if r.NomsHorsBijection != 2 || r.LibellesAutres != 2 {
-		t.Errorf("noms « ? » %d (attendu 2 : victime et tueur), libelles « Autres » %d (attendu 2 : une mort revendiquee, une orpheline)",
-			r.NomsHorsBijection, r.LibellesAutres)
+	if r.LibellesAutres != 2 {
+		t.Errorf("libelles « Autres » %d (attendu 2 : une mort revendiquee, une orpheline)", r.LibellesAutres)
 	}
 	if got := c.replisDuResultat(nil, nil, true); got.SondeNonLancee != 0 {
 		t.Errorf("sonde lancee comptee comme repli : %d", got.SondeNonLancee)

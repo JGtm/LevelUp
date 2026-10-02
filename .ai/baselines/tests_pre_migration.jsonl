@@ -60375,7 +60375,6 @@
 {"Time":"2026-09-05T23:46:40.6628202+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestZoneStatesUnCanalNEstProprietaireQueDUneZone","Elapsed":0}
 {"Time":"2026-09-05T23:46:40.6628202+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestZoneStatesSlotNonApparieNEstPasPublie","Elapsed":0}
 {"Time":"2026-09-05T23:46:40.6628202+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestZoneStatesValeurInconnueNOuvreAucunIntervalle","Elapsed":0}
-{"Time":"2026-09-05T23:46:40.6628202+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestZoneStatesSansRosterAccepteLesDeuxCampsMesures","Elapsed":0}
 {"Time":"2026-09-05T23:46:40.6628202+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestZoneStatesPublieUnEtatParZoneAppariee","Elapsed":0}
 {"Time":"2026-09-05T23:46:40.6628202+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestZoneStatesProgressionSurLEchelleDuJeu","Elapsed":0}
 {"Time":"2026-09-05T23:46:40.6628202+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestZoneStatesSansCatalogueNePublieRien","Elapsed":0}
@@ -60446,10 +60445,7 @@
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"skip","Package":"levelup/go-api/internal/replaybuild","Test":"TestPhase0_PoidsDesTagsAmbigusDeGrenade","Elapsed":0}
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"skip","Package":"levelup/go-api/internal/replaybuild","Test":"TestPhase1_JointureDuLancerSurLOracle","Elapsed":0}
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestResolveKillIdentity_Gamertag","Elapsed":0}
-{"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestResolveKillIdentity_ReplixuidPrefixe","Elapsed":0}
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestResolveKillIdentity_GamertagInconnu","Elapsed":0}
-{"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestResolveKillIdentity_ReplixuidNonDecimalRefuse","Elapsed":0}
-{"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestGamertagXUIDIndex_PremierGagneEnCasDeDoublon","Elapsed":0}
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestGamertagXUIDIndex_ListeVide","Elapsed":0}
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestResolveKills_TueurEtVictimeResolus","Elapsed":0}
 {"Time":"2026-09-05T23:46:44.6253336+02:00","Action":"pass","Package":"levelup/go-api/internal/replaybuild","Test":"TestResolveKills_VictimeInconnueEcarteeEtComptee","Elapsed":0}
@@ -60555,7 +60551,6 @@
 {"Time":"2026-09-05T23:47:46.4899685+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestKillSourceLimiteDeTempsParDefaut","Elapsed":0}
 {"Time":"2026-09-05T23:47:46.4899685+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestPontAssembleLaSequenceCompleteAvecTrous","Elapsed":0}
 {"Time":"2026-09-05T23:47:46.4899685+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestPontCompteLesTypes","Elapsed":0}
-{"Time":"2026-09-05T23:47:47.5143147+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestRosterResoutLesDeuxFormesDeNom","Elapsed":1.02}
 {"Time":"2026-09-05T23:47:48.5658904+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestCreditRecomposeAvecLEnrichissementDuFilm","Elapsed":1.05}
 {"Time":"2026-09-05T23:47:52.9898055+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestCreditEcritLesTroisEtatsSansMentir","Elapsed":4.42}
 {"Time":"2026-09-05T23:47:53.9767923+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestCreditCouvreUnMatchSansFilm","Elapsed":0.99}

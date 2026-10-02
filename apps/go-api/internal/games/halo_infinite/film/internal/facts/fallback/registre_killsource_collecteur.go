@@ -24,26 +24,11 @@ var registreKillsourceCollecteur = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{Fichier: pkgKillcollector + "identities.go", Ancre: "m.replis.Declenche(decfilm.NomXuidVidePourNomInconnu)"}, {
 			Fichier: pkgKillcollector + "identities.go",
-			Ancre:   "return \"\", nom",
+			Ancre:   "return m.ParNom[nom], nom",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "la table du film nomme les joueurs a zero mort, jusqu a l ecriture ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 ligne de `match_deaths` sans xuid de victime sur le parc",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_homonymes_sans_xuid",
-		Fait:      "le xuid des participants qui portent le MEME gamertag dans un match",
-		Mecanisme: "aucun des deux n'est retenu — ecrire les morts de l'un sous le xuid de l'autre serait pire",
-		Condition: CondContradiction,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillcollector + "roster.go", Ancre: "out.replis.DeclencheN(decfilm.NomHomonymesSansXuid, len(ambigus))"}, {
-			Fichier: pkgKillcollector + "roster.go",
-			Ancre:   "ambigus := map[string]bool{}",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "la table du film donne l index, pas le nom : l homonymie cesse d etre un obstacle ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 match a homonymes non resolus sur le parc ; le repli est SAIN, c'est son silence qui ne l'est pas",
 		CompteurBranche: true,
 	},
 	{
@@ -91,23 +76,6 @@ var registreKillsourceCollecteur = []Repli{
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "aucune (configuration d'exploitation) ; le COMPTE est ce qui manque",
 		CritereRetrait:  "un compteur expvar dit combien de matchs passent sans numerateur film ; retrait sans objet",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_identite_pont_par_morts",
-		Fait:      "le nom d'un corps de bipede, quand le lien direct n'a pas pu etre lu",
-		Mecanisme: "les creations de bipede sont illisibles (TOUTE erreur, y compris transitoire) : le registre retombe sur le pont par le fil des morts",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillcollector + "positions.go", Ancre: "ids.replis.Declenche(decfilm.NomIdentitePontParMorts)"}, {
-			Fichier: pkgKillcollector + "positions.go",
-			Ancre:   "creations de bipede illisibles",
-		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "le registre d identite prend la table du film comme lien direct ; a defaut, " + retraitRegle4,
-		// DÉFAUT DÉJÀ MESURÉ (audit 0.E) : deux `slog.Warn`, aucun expvar. Une erreur
-		// transitoire dégrade silencieusement l'identité de TOUT un match.
-		CritereRetrait:  "0 degradation sur le pont par morts dans les journaux du parc ; le lien direct couvre 100 % des corps",
 		CompteurBranche: true,
 	},
 	{

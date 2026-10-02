@@ -182,7 +182,7 @@ func (c *clientDeBobine) GetFilmChunks(_ context.Context, _ string) ([]haloclien
 type rosterVide struct{}
 
 func (rosterVide) IdentitiesForMatch(_ context.Context, _ string) (MatchIdentities, error) {
-	return MatchIdentities{ParNom: map[string]string{}, ParXUID: map[string]string{},
+	return MatchIdentities{ParNom: map[string]string{},
 		ShotsFired: map[string]int{}}, nil
 }
 

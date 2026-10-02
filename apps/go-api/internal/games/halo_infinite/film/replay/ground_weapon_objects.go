@@ -75,7 +75,9 @@ type padRule struct {
 }
 
 // weaponPadRule est la règle des ARMES AU SOL : identité résolue dans le catalogue d'armes du
-// titre, nom canonique (alias repliés), objets d'objectif écartés d'abord.
+// titre, nom canonique (alias repliés), objets d'objectif écartés d'abord. Une identité que le
+// catalogue connaît sans la nommer est écartée comme une identité inconnue : elle n'a pas de
+// famille, et sa valeur brute n'en tient pas lieu.
 func weaponPadRule(flags map[uint32]Label) padRule {
 	known := loadoutFamilies()
 	return padRule{
@@ -85,7 +87,8 @@ func weaponPadRule(flags map[uint32]Label) padRule {
 			if !known[id] {
 				return "", false
 			}
-			return gwPadsWeaponFamily(id), true
+			nom := gwPadsWeaponFamily(id)
+			return nom, nom != ""
 		},
 	}
 }

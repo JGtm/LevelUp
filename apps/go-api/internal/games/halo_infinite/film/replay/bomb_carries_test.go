@@ -56,7 +56,7 @@ func TestBombCarriesDeathClosesWithoutEmission(t *testing.T) {
 	deaths := []types.Death{{XUID: 111, TimeMS: 4_000}}
 	// step = 1000 µs/frame => 1 frame par ms.
 	carries, cov := buildBombCarries(bombTestCarry(evs, slotXUID, deaths),
-		matchClock{origin: 0, step: 1000, frames: 20_000}, carrierPresence{})
+		matchClock{origin: 0, step: 1000, frames: 20_000}, presenceInconnue())
 	if cov == nil || !cov.BombFilm {
 		t.Fatalf("couverture absente ou BombFilm faux : %+v", cov)
 	}

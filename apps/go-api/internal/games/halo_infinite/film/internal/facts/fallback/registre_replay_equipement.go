@@ -45,7 +45,9 @@ var registreReplayEquipement = []Repli{
 		// cuisson, dans `BuildUsageSummary` ; son compte n'entre donc jamais dans
 		// `coverage.fallbacks[]`. Les deux instruments qui le mesurent VRAIMENT sont nommes
 		// ci-dessous.
-		CibleRetrait: "le compte est deja nul sur les 8 builds, et le journal des passes le confirme ou l infirme sur le parc ; a defaut, " + retraitRegle4,
+		CibleRetrait: "la lecture qui borne chaque geste a une vie publiee du slot : le compte est NON NUL sur le parc " +
+			"(0 sur les 8 builds, mais 163 declenchements sur 104 des 1 227 matchs de usage-summary, vague J11.4, " +
+			"2026-10-02), pas de retrait sec ; a defaut, " + retraitRegle4,
 		// DÉFAUT MESURÉ PUIS REFERMÉ. Audit 0.E, constat N-3 de REG-R2 : 32 à 95 % des poses d'un
 		// film tombaient hors de toute fenêtre publiée (153/351, 443/466, 34/105 sur trois films).
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
@@ -60,7 +62,7 @@ var registreReplayEquipement = []Repli{
 		// absence de trace. Le `replay-corpus-gate` n'en est PAS un : il lit les artefacts.
 		CritereRetrait: "poses hors fenetre publiee a 0 : sur les 8 builds " +
 			"(`replay/usage_summary_replis_test.go`) TENU le 2026-09-16 (0/8) ; sur le parc, " +
-			"ligne `replis de la passe` des deux producteurs a `aucun`",
+			"ligne `replis de la passe` des deux producteurs a `aucun` — NON TENU le 2026-10-02 (104 matchs, 163 declenchements)",
 		CompteurBranche: true,
 	},
 	{
@@ -76,7 +78,8 @@ var registreReplayEquipement = []Repli{
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le seul lot 1.9.13,
 		// fusionne le 2026-09-15.
-		CibleRetrait: "meme canal et meme mesure que repli_geste_dernier_occupant_du_match ; a defaut, " + retraitRegle4,
+		CibleRetrait: "meme canal et meme mesure que repli_geste_dernier_occupant_du_match : NON NUL sur le parc " +
+			"(5 declenchements sur 3 des 1 227 matchs de usage-summary, vague J11.4, 2026-10-02) ; a defaut, " + retraitRegle4,
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
 		// (`replay/usage_summary_replis_test.go`) : **0 déclenchement sur 8/8**.
 		// MEMES DEUX INSTRUMENTS que `repli_geste_dernier_occupant_du_match` (ronde 2, F2) :
@@ -84,7 +87,7 @@ var registreReplayEquipement = []Repli{
 		// passe` que les deux producteurs ecrivent sur le parc, « aucun » compris.
 		CritereRetrait: "0 geste anterieur a la premiere vie du slot une fois les vies bornees " +
 			"aux apparitions ecrites : sur les 8 builds TENU le 2026-09-16 (0/8) ; sur le parc, " +
-			"ligne `replis de la passe` a `aucun`",
+			"ligne `replis de la passe` a `aucun` — NON TENU le 2026-10-02 (3 matchs, 5 declenchements)",
 		CompteurBranche: true,
 	},
 	{
@@ -113,68 +116,7 @@ var registreReplayEquipement = []Repli{
 		// qui dira si la reconciliation de M3 l'a referme.
 		CritereRetrait: "0 ecrasement : la somme des trois canaux est alors coherente et la garde " +
 			"peut tomber — NON TENU le 2026-09-16 (30 sur les 8 builds de " +
-			"`replay/usage_summary_replis_test.go`) ; sur le parc, ligne `replis de la passe`",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_traction_vie_du_tir",
-		Fait:      "a quelle vie rattacher une traction de grappin",
-		Mecanisme: "aucune vie ne couvre l'ACCROCHE : la vie qui couvre le TIR decide",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "grapple_lines.go",
-			Ancre:   "track = lifeCovering(vies, t0)",
-		}, {
-			Fichier: pkgReplay + "build_calques.go",
-			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieDuTir, grapCov.viesParLeTir)",
-		}},
-		DatePose: dateAudit0E,
-		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
-		// le 2026-09-15 sans avoir cable ce compteur — sa frequence reste donc INCONNUE, et un
-		// zero n'y serait pas lisible (cf. [Repli.CompteurBranche]).
-		CibleRetrait:    "mesurer le compte desormais cable ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 traction dont l'accroche tombe hors de toute vie sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_traction_vie_la_plus_proche",
-		Fait:      "a quelle vie rattacher une traction dont ni l'accroche ni le tir ne sont couverts",
-		Mecanisme: "la vie la plus proche en temps est retenue, la fenetre est ensuite bornee par la vie",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "grapple_lines.go",
-			Ancre:   "track = lifeNearest(vies, tAttach)",
-		}, {
-			Fichier: pkgReplay + "build_calques.go",
-			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieLaPlusProche, grapCov.viesLesPlusProches)",
-		}},
-		DatePose: dateAudit0E,
-		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : meme raison que
-		// repli_traction_vie_du_tir, meme geste de cablage.
-		CibleRetrait:    "mesurer le compte desormais cable ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 traction sans vie couvrante sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_famille_arme_identifiant_brut",
-		Fait:      "le nom de la famille d'arme d'un socle",
-		Mecanisme: "le catalogue ne nomme pas l'identifiant : la valeur brute 0x%08x sert de nom",
-		Condition: CondFilmMuet,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "ground_weapon_rules.go",
-			Ancre:   "return fmt.Sprintf(\"0x%08x\", w)",
-		}, {
-			Fichier: pkgReplay + "ground_weapon_pads.go",
-			Ancre:   "clock.fb.DeclencheN(fallback.NomFamilleArmeIdentifiantBrut, gwFamillesBrutes(wObjs))",
-		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "aucune tant que le catalogue d'armes est incomplet ; retrait sec des que le compte est nul sur le parc",
-		// Ce repli-ci est HONNÊTE (il ne fabrique aucun nom) ; ce qui manque est son COMPTE :
-		// un artefact ne dit pas combien de ses familles sont des identifiants bruts.
-		CritereRetrait:  "0 famille rendue sous forme 0x%08x sur le parc",
+			"`replay/usage_summary_replis_test.go`) ; sur le parc, ligne `replis de la passe` — NON TENU le 2026-10-02 (2 984 ecrasements sur 847 des 1 227 matchs)",
 		CompteurBranche: true,
 	},
 	{
@@ -233,7 +175,7 @@ var registreReplayEquipement = []Repli{
 		// 20 -> 13 et 8 -> 1. Le compteur n'a pas ete cable au passage, donc le RESIDU n'a pas
 		// de chiffre a lui.
 		CibleRetrait:    "mesurer le residu du compteur desormais cable ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 elargissement necessaire sur les 8 builds — RESIDU NON MESURE (compteur non cable au 2026-09-16 ; le 1.9.13 a fait tomber les grandeurs voisines sans les annuler)",
+		CritereRetrait:  "0 elargissement necessaire sur le parc — residu MESURE NON NUL le 2026-10-02 : 2 matchs / 4 elargissements sur 1 227 artefacts (.ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md)",
 		CompteurBranche: true,
 	},
 	{

@@ -205,9 +205,9 @@ func TestCompteurBrancheEstDeclareSansAmbiguite(t *testing.T) {
 // les déclenchements s'additionnent, le rapport est trié et sans zéro.
 func TestCompteurEstSurEtNilSafe(t *testing.T) {
 	var absent *Compteur
-	absent.Declenche("repli_identite_piste_meilleur_recouvrement")
-	absent.DeclencheN("repli_identite_piste_meilleur_recouvrement", 5)
-	if got := absent.Compte("repli_identite_piste_meilleur_recouvrement"); got != 0 {
+	absent.Declenche("repli_drapeau_seul_en_jeu")
+	absent.DeclencheN("repli_drapeau_seul_en_jeu", 5)
+	if got := absent.Compte("repli_drapeau_seul_en_jeu"); got != 0 {
 		t.Errorf("compteur nil : compte = %d, attendu 0", got)
 	}
 	if r := absent.Rapport(); r != nil {
@@ -217,13 +217,13 @@ func TestCompteurEstSurEtNilSafe(t *testing.T) {
 	c := NouveauCompteur()
 	c.Declenche("repli_plafond_grenade_par_defaut")
 	c.DeclencheN("repli_plafond_grenade_par_defaut", 2)
-	c.Declenche("repli_identite_piste_meilleur_recouvrement")
+	c.Declenche("repli_drapeau_seul_en_jeu")
 	c.DeclencheN("repli_position_lacher_prend_la_prise", 0) // ignoré : k <= 0
 	rap := c.Rapport()
 	if len(rap) != 2 {
 		t.Fatalf("rapport = %v, attendu 2 lignes (le k=0 ne doit pas en creer une)", rap)
 	}
-	if rap[0].Nom != "repli_identite_piste_meilleur_recouvrement" || rap[1].Declenchements != 3 {
+	if rap[0].Nom != "repli_drapeau_seul_en_jeu" || rap[1].Declenchements != 3 {
 		t.Errorf("rapport mal trie ou mal cumule : %v", rap)
 	}
 }

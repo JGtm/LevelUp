@@ -22,6 +22,19 @@
 #
 #
 #
+# REFERENCES RE-FIGEES AU RETRAIT DES REPLIS NULS (DU-7), SCHEMA 76, LE 2026-10-02 (branche
+# feat/retrait-replis-nuls ; mesure du parc : .ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md).
+# CLASSIFICATION AVANT `-update`, sortie complete : 20 films, 20 ecarts, et sur les VINGT les trois
+# memes etapes des 61 — `flag`, `killsource`, `skull`. `artifact` (le document cuit) et les 57
+# autres etapes sont IDENTIQUES A L OCTET. Les trois objets observes perdent des champs de COMPTE de
+# replis retires, tous nuls sur le parc (1 227 artefacts, 1 222 films killsource) : `killsource`
+# (`Stats.Replis.NomsHorsBijection`, `NomsParXUIDBrut`), `flag` et `skull` (les comptes des
+# objectifs `MortsSansXUID`, `InstantsSurLaPremiereManche`, et la table des instants de
+# `ReplisALaConsultation`). Motif identique aux lots 1.9.3 et 1.9.10 : la FORME de l objet observe
+# change, ses projections ne bougent pas. GIT apres `-update` : 20 fichiers, 60 insertions, 60
+# suppressions, TOUTES sur les lignes `flag`, `killsource` et `skull`. Aucun `.facts.json` touche.
+# `SchemaVersion` reste 76.
+#
 # REFERENCES RE-FIGEES AU LOT 1.9.10, SCHEMA 59, LE 2026-09-16 (la fin de vie d un vehicule lue
 # au dead-state ecrit). DEUX ETAPES bougent sur les 10 films du regime court, `vehicles` et
 # `artifact` ; les 51 autres sont IDENTIQUES A L OCTET sur les dix — aucun balayage d image-cle,

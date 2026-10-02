@@ -69,11 +69,9 @@ type fakeRoster map[string]string
 func (r fakeRoster) IdentitiesForMatch(_ context.Context, _ string) (MatchIdentities, error) {
 	out := MatchIdentities{
 		ParNom:     map[string]string(r),
-		ParXUID:    make(map[string]string, len(r)),
 		ShotsFired: map[string]int{},
 	}
-	for nom, xuid := range r {
-		out.ParXUID[xuid] = nom
+	for _, xuid := range r {
 		out.XUIDs = append(out.XUIDs, xuid)
 	}
 	sort.Strings(out.XUIDs)

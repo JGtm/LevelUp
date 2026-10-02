@@ -24,7 +24,6 @@ package killsource
 
 import (
 	"cmp"
-	"fmt"
 	"slices"
 	"sort"
 
@@ -58,10 +57,8 @@ type feedEvent struct {
 // chargement (cf. `feed_couples.go` et [decodeCtx.prepare]).
 type killFeed struct {
 	events []feedEvent // instants, tries
-	// nomsParXUID : evenements de kill ou de mort nommes `xuid:<N>` (`repli_gamertag_par_xuid_brut`, lot J8.7).
-	nomsParXUID int
-	pairs       []feedEvent // couples publies (meme instant + lus au kill-event + recolles)
-	names       []string    // roster HUMAIN, trie
+	pairs  []feedEvent // couples publies (meme instant + lus au kill-event + recolles)
+	names  []string    // roster HUMAIN, trie
 	// xuidDe : le xuid que le kill-feed porte pour chaque gamertag, qu il TUE ou qu il MEURE. Il
 	// sert quand un couple LU au kill-event nomme une victime dont aucun instant voisin ne porte la
 	// mort, et il donne au lien par motif (`index_motif.go`) les xuids a chercher — tueurs compris
@@ -121,17 +118,10 @@ func loadKillFeed(f *film) (*killFeed, error) {
 	return kf, nil
 }
 
-// XUIDNamePrefix : le prefixe du nom de REPLI, quand le kill-feed d un film ne porte pas de
-// gamertag pour un joueur (il porte alors son XUID, et lui seul).
-//
-// EXPORTE PARCE QUE L APPELANT DOIT SAVOIR LE LIRE. Un nom `xuid:2533...` n est pas un pseudo :
-// c est l identite la plus forte qui soit, et un collecteur qui le traiterait comme un gamertag
-// chercherait dans son roster une cle qui n y sera jamais — il ecrirait alors des lignes SANS
-// xuid, qu aucun agregat carriere ne peut joindre. C est exactement le defaut mesure le
-// 2026-08-01 : 16 908 morts ecrites, 10 avec un xuid de victime.
-const XUIDNamePrefix = "xuid:"
-
 // buildFeed : regroupe les events par instant et resout les XUID en gamertags.
+//
+// UN EVENT DONT LE XUID N A AUCUN GAMERTAG DANS LE BLOC N ENTRE PAS DANS LE FIL : le kill-feed
+// s apparie par NOM, et aucun nom ne se fabrique a partir du xuid.
 func buildFeed(evs []highlightevent.HighlightEvent) *killFeed {
 	gt := map[uint64]string{}
 	for _, e := range evs {
@@ -149,21 +139,18 @@ func buildFeed(evs []highlightevent.HighlightEvent) *killFeed {
 	}
 	for _, e := range evs {
 		name := gt[e.XUID]
-		parXUID := name == ""
-		if parXUID {
-			name = fmt.Sprintf("%s%d", XUIDNamePrefix, e.XUID)
+		if name == "" {
+			continue
 		}
 		switch e.EventType {
 		case highlightevent.EventTypeKill:
 			kf.nKills++
-			kf.nomsParXUID += unSi(parXUID)
 			at(e.TimeMS).killer = name
 			// Le xuid d un TUEUR se retient aussi (lot J7.3, FK-3) : un joueur qui tue sans mourir
 			// — un remplacant, absent de la table ecrite a l ouverture — doit etre cherche au motif.
 			kf.xuidDe[name] = e.XUID
 		case highlightevent.EventTypeDeath:
 			kf.nDeaths++
-			kf.nomsParXUID += unSi(parXUID)
 			ev := at(e.TimeMS)
 			ev.victim = name
 			ev.victimXUID = e.XUID

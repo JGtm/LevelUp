@@ -103,22 +103,16 @@ const NomGestePremiereVieDuSlot = fallback.NomGestePremiereVieDuSlot
 
 // Les replis que `replaybuild` et `sync/replayartifacts` declenchent eux-memes (lot J8.7).
 const NomAssistantNonResoluAbandonne = fallback.NomAssistantNonResoluAbandonne
-const NomGamertagPremierXuidGagne = fallback.NomGamertagPremierXuidGagne
-const NomMortNeutreSansXuidAbandonnee = fallback.NomMortNeutreSansXuidAbandonnee
 const NomRepereNeutreGeneriqueConserve = fallback.NomRepereNeutreGeneriqueConserve
 const NomRelaisDeBotAbandonne = fallback.NomRelaisDeBotAbandonne
-const NomParticipantSansXuidRetire = fallback.NomParticipantSansXuidRetire
-const NomCampInconnuRetireDeLaTable = fallback.NomCampInconnuRetireDeLaTable
 const NomCatalogueDeZonesAbsent = fallback.NomCatalogueDeZonesAbsent
 const NomFraicheurDesDerivationsParTaille = fallback.NomFraicheurDesDerivationsParTaille
 
 // Les replis que `sync/killcollector` declenche lui-meme, sur le compteur de sa passe (lot J8.7).
 const NomXuidVidePourNomInconnu = fallback.NomXuidVidePourNomInconnu
-const NomHomonymesSansXuid = fallback.NomHomonymesSansXuid
 const NomIndiceEnCollisionJete = fallback.NomIndiceEnCollisionJete
 const NomPremiereOccurrenceSansConcordance = fallback.NomPremiereOccurrenceSansConcordance
 const NomPrecisionParArmePasseSautee = fallback.NomPrecisionParArmePasseSautee
-const NomIdentitePontParMorts = fallback.NomIdentitePontParMorts
 const NomCoequipiersPartisConstanteNulle = fallback.NomCoequipiersPartisConstanteNulle
 const NomDistancesDeToucheDesactivees = fallback.NomDistancesDeToucheDesactivees
 const NomCartePremierNomResolu = fallback.NomCartePremierNomResolu
@@ -306,8 +300,6 @@ func ProfilDeDepart() grammar.ProfilDeBalayage { return killsource.ProfilDeDepar
 
 type Result = killsource.Result
 type Stats = killsource.Stats
-
-const XUIDNamePrefix = killsource.XUIDNamePrefix
 
 // ---- objectives ----
 func CaptureBurstTimes(film *source.Film) []int { return objectives.CaptureBurstTimes(film) }

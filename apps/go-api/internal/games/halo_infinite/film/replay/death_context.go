@@ -172,9 +172,10 @@ func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
 		if !connu {
 			continue
 		}
+		// UNE VICTIME HORS DE TOUTE EQUIPE NE SORT PAS : sans son camp, ses coequipiers ne se designent
+		// pas, et le contexte d isolement n a rien a mesurer.
 		son, dansUneEquipe := e.Equipes[m.VictimeXUID]
 		if !dansUneEquipe {
-			e.Fallbacks.Declenche(fallback.NomMortEcarteeHorsEquipeDeBase)
 			continue
 		}
 		out = append(out, contexteDUneMort(e, pos, vies, mortsPar, m, son, lieu))

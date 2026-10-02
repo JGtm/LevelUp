@@ -13,6 +13,13 @@ import (
 // coupe un portage, et le porteur d'un train est nomme par l'identite de SA manche — donc le
 // calque gere PLUSIEURS MANCHES sans melanger les porteurs.
 
+// presenceInconnue : un index de presence dont une vie ANONYME couvre tout l axe — la presence de
+// chaque porteur y est INCONNUE, donc la porte laisse passer chaque portage sans le rogner. C est
+// l index des tests qui ne regardent pas la porte de presence.
+func presenceInconnue() carrierPresence {
+	return carrierPresence{unnamed: []presenceSpan{{0, int(^uint(0) >> 1)}}}
+}
+
 // skullFixture fabrique un film Oddball a DEUX manches :
 //   - manche 0 : slot 22 = "A" (deux portages, coupes par un trou), slot 20 = "C" ;
 //   - manche 1 : slot 22 REATTRIBUE a "B".
@@ -69,7 +76,7 @@ func TestSkullCarriesTwoRounds(t *testing.T) {
 	recs, deaths := skullFixture()
 	// step = 1000 us/frame => 1 frame par ms (frame = instant en ms). frames grand : tout ferme.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		matchClock{origin: 0, step: 1000, frames: 100000}, carrierPresence{})
+		matchClock{origin: 0, step: 1000, frames: 100000}, presenceInconnue())
 
 	if cov == nil || !cov.SkullFilm {
 		t.Fatalf("couverture absente ou SkullFilm faux : %+v", cov)
@@ -117,7 +124,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 	recs, deaths := skullFixture()
 	// frames = 23000 : le dernier portage (fin 22000) tombe dans le mou de fin (3 s) -> ouvert.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		matchClock{origin: 0, step: 1000, frames: 23000}, carrierPresence{})
+		matchClock{origin: 0, step: 1000, frames: 23000}, presenceInconnue())
 	if len(carries) != 4 {
 		t.Fatalf("portages = %d, attendu 4", len(carries))
 	}
@@ -139,7 +146,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 
 // TestSkullCarriesUnscanned — hors Oddball (Scanned faux), ni calque ni couverture.
 func TestSkullCarriesUnscanned(t *testing.T) {
-	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, matchClock{step: 1000, frames: 100}, carrierPresence{})
+	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, matchClock{step: 1000, frames: 100}, presenceInconnue())
 	if carries != nil || cov != nil {
 		t.Errorf("film non-Oddball : attendu (nil, nil), obtenu (%v, %v)", carries, cov)
 	}

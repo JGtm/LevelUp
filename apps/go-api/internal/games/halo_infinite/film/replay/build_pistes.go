@@ -64,7 +64,7 @@ func (a *assemblage) poserLesPistes() {
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
 	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
-	nameTracksByLives(a.doc.Tracks, a.reg.Vies(), a.origin, a.step, a.opt.Fallbacks)
+	nameTracksByLives(a.doc.Tracks, a.reg.Vies(), a.origin, a.step)
 	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée.
 	// D'abord les vies que le registre a nommées par le `bid` de leur bot — le corps d'un index
 	// partagé, lu par l'entité qui vit à sa création (lot M2.3) —, puis les slots que le pont

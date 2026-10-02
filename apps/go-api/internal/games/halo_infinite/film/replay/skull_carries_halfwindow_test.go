@@ -39,7 +39,7 @@ func TestSkullTickWidthMesureeSurLeFilm(t *testing.T) {
 func TestSkullCarriesDemiFenetreAuxDeuxBornes(t *testing.T) {
 	recs, deaths := skullFixture()
 	carries, _ := buildSkullCarries(skullTestScan(recs, deaths),
-		matchClock{origin: 0, step: 1000, frames: 100000}, carrierPresence{})
+		matchClock{origin: 0, step: 1000, frames: 100000}, presenceInconnue())
 	if len(carries) != 4 {
 		t.Fatalf("portages = %d, attendu 4", len(carries))
 	}
@@ -70,7 +70,7 @@ func TestSkullCarriesDemiFenetreBorneeParLAxe(t *testing.T) {
 	recs, deaths := skullFixture()
 	// frames = 22200 : le dernier train (22000 + 499) deborderait de l'axe.
 	carries, _ := buildSkullCarries(skullTestScan(recs, deaths),
-		matchClock{origin: 0, step: 1000, frames: 22200}, carrierPresence{})
+		matchClock{origin: 0, step: 1000, frames: 22200}, presenceInconnue())
 	if len(carries) != 4 {
 		t.Fatalf("portages = %d, attendu 4", len(carries))
 	}
@@ -107,7 +107,7 @@ func TestSkullCarriesSansCadenceMesurableNeDeplaceRien(t *testing.T) {
 	if got := skullHalfTickFrames(recs, ctx, nil); got != 0 {
 		t.Fatalf("demi-fenetre = %d, attendu 0 (aucune cadence mesurable)", got)
 	}
-	carries, _ := buildSkullCarries(skullTestScan(recs, deaths), ctx, carrierPresence{})
+	carries, _ := buildSkullCarries(skullTestScan(recs, deaths), ctx, presenceInconnue())
 	if len(carries) != 3 {
 		t.Fatalf("portages = %d, attendu 3", len(carries))
 	}

@@ -75,10 +75,6 @@ type GrappleCoverage struct {
 	// BrokenBodies : corps tag==3 non décodables (grammaire non établie, cf.
 	// components_biped_anchor.go) — comptés, jamais devinés.
 	BrokenBodies int `json:"brokenBodies"`
-	// viesParLeTir / viesLesPlusProches : les tractions posees sur une vie qui ne couvre PAS l accroche
-	// — la vie du tir, ou la plus proche en temps. NON PUBLIES (champs non exportes) : ce sont les
-	// comptes des deux replis inscrits, verses au compteur de la cuisson (lot J8.7).
-	viesParLeTir, viesLesPlusProches int
 }
 
 // buildGrappleLines assemble les tractions : appariement tir->accroche par vie, ancre
@@ -162,14 +158,8 @@ func grappleLinesOfLife(list []types.GrappleRead, entry profile.MapQuantEntry,
 			}
 			pendingFire = -1
 		}
-		if l, voie, ok := grappleLine(r, startUS, entry, origin, step, vies); ok {
+		if l, ok := grappleLine(r, startUS, entry, origin, step, vies); ok {
 			out = append(out, l)
-			switch voie {
-			case tractionParLeTir:
-				cov.viesParLeTir++
-			case tractionLaPlusProche:
-				cov.viesLesPlusProches++
-			}
 		}
 	}
 	if pendingFire >= 0 {
@@ -186,8 +176,11 @@ func grappleLinesOfLife(list []types.GrappleRead, entry profile.MapQuantEntry,
 // plusieurs depuis le schéma 36, et prendre la dernière jetait toutes les tractions des
 // précédentes (cf. buildGrappleLines). L'accroche fait foi plutôt que le tir : c'est elle
 // qui atteste la traction, et c'est sur elle que le calque est daté.
+//
+// UNE ACCROCHE QU'AUCUNE VIE PUBLIÉE NE COUVRE N'EST PAS TRACÉE : ni la vie du tir ni la vie la plus
+// proche ne prouvent que ce porteur tenait le grappin à cet instant.
 func grappleLine(r types.GrappleRead, startUS uint64, entry profile.MapQuantEntry,
-	origin, step uint64, vies []*Track) (GrappleLine, voieDeTraction, bool) {
+	origin, step uint64, vies []*Track) (GrappleLine, bool) {
 	lay := profile.I0Layout{AxisW: entry.AxisWidths}
 	wr := entry.Range()
 	ax := grammar.DequantBipedAxis(r.PosQ[0], 0, lay, wr)
@@ -195,33 +188,9 @@ func grappleLine(r types.GrappleRead, startUS uint64, entry profile.MapQuantEntr
 	az := grammar.DequantBipedAxis(r.PosQ[2], 2, lay, wr)
 	t0 := frameOf(startUS, origin, step)
 	tAttach := frameOf(r.TimestampUS, origin, step)
-	voie := tractionSurSaVie
 	track := lifeCovering(vies, tAttach)
 	if track == nil {
-		track = lifeCovering(vies, t0) // l'accroche tombe dans un trou : le tir décide
-		voie = tractionParLeTir
-	}
-	if track == nil {
-		// AUCUNE FENÊTRE NE COUVRE NI L'ACCROCHE NI LE TIR : la traction se rattache à la vie
-		// la PLUS PROCHE, ce que faisait l'état d'avant le découpage (il prenait la piste du
-		// slot sans se demander si elle couvrait quoi que ce soit). Deux configurations
-		// l'atteignent avec UNE SEULE vie — la vie comprise entre le tir et l'accroche, et un
-		// couple tir/accroche antérieur à la vie de moins de `grapplePullCapUS` —, donc sans
-		// aucun rapport avec le découpage (constat C1 de la revue REG-R1, 2026-09-06). Le clamp
-		// ci-dessous borne exactement comme avant et refuse toujours une fenêtre vide.
-		//
-		// CE QUI EST GARANTI, ET RIEN DE PLUS : quand aucune vie ne couvre l'accroche, la
-		// traction est publiée comme avant. Ce n'est PAS « ce calque ne publie jamais moins
-		// qu'avant » — une accroche tombant sur la DERNIÈRE image d'une vie a bien une vie
-		// couvrante, dont la fenêtre est alors vide (`t1 <= t0`), et la traction est refusée
-		// là où l'ancien code la posait sur la vie SUIVANTE. Ce refus-là est le bon : dater
-		// sur sa vie suivante la traction d'un joueur qui vient de mourir serait faux
-		// (constat N-1 de la seconde ronde REG-R2).
-		track = lifeNearest(vies, tAttach)
-		voie = tractionLaPlusProche
-	}
-	if track == nil {
-		return GrappleLine{}, voie, false // aucune vie publiée : aucune fiche où poser la traction
+		return GrappleLine{}, false // aucune vie publiée ne couvre l'accroche : aucune fiche où la poser
 	}
 	t1 := grappleArrival(track, tAttach, int(grapplePullCapUS/step), ax, ay, az)
 	if t0 < track.StartFrame {
@@ -231,9 +200,9 @@ func grappleLine(r types.GrappleRead, startUS uint64, entry profile.MapQuantEntr
 		t1 = track.EndFrame
 	}
 	if t1 <= t0 {
-		return GrappleLine{}, voie, false // mort à l'accroche ou fenêtre hors de la vie publiée
+		return GrappleLine{}, false // mort à l'accroche ou fenêtre hors de la vie publiée
 	}
-	return GrappleLine{Slot: r.Slot, T0: t0, T1: t1, AX: round2(ax), AY: round2(ay), AZ: round2(az)}, voie, true
+	return GrappleLine{Slot: r.Slot, T0: t0, T1: t1, AX: round2(ax), AY: round2(ay), AZ: round2(az)}, true
 }
 
 // lifeCovering rend la vie du slot dont la fenêtre publiée contient cette frame, nil si aucune.
@@ -248,39 +217,6 @@ func lifeCovering(vies []*Track, frame int) *Track {
 		}
 	}
 	return nil
-}
-
-// lifeNearest rend la vie du slot dont la fenêtre est la plus proche de cette frame — distance
-// nulle si elle la contient, sinon l'écart au bord le plus proche. nil quand le slot n'a aucune
-// vie publiée : il n'y a alors rien à quoi rattacher.
-//
-// À ÉGALITÉ, LA PREMIÈRE DE LA LISTE GAGNE (comparaison stricte `d < bestD`), et c'est LA VIE
-// PRÉCÉDENTE parce que l'ordre de production est chronologique : `decimateTracks` émet les vies
-// closes puis la courante, et rien ne retrie `doc.Tracks` avant l'assemblage de ce calque. Le
-// cas d'égalité est réel — une accroche au milieu du trou entre deux vies est à la même distance
-// des deux —, et le choix est alors celui de la vie qui vient de s'achever, celle qui portait le
-// geste. Ce n'est donc PAS une indépendance à l'ordre : c'est une dépendance à un ordre GARANTI
-// par la production, et un futur tri de `doc.Tracks` inverserait ce cas (constat N-2 de la
-// seconde ronde REG-R2).
-func lifeNearest(vies []*Track, frame int) *Track {
-	var best *Track
-	bestD := 0
-	for _, t := range vies {
-		if t == nil {
-			continue
-		}
-		d := 0
-		switch {
-		case frame < t.StartFrame:
-			d = t.StartFrame - frame
-		case frame > t.EndFrame:
-			d = frame - t.EndFrame
-		}
-		if best == nil || d < bestD {
-			best, bestD = t, d
-		}
-	}
-	return best
 }
 
 // grappleArrival rend la frame d'ARRIVÉE : celle, entre l'accroche et la borne de
@@ -300,13 +236,3 @@ func grappleArrival(track *Track, tAttach, capFrames int, ax, ay, az float32) in
 	}
 	return best
 }
-
-// voieDeTraction dit PAR QUELLE VIE une traction a ete posee : celle qui couvre l accroche (la
-// lecture), ou l un des deux replis inscrits — la vie du tir, la vie la plus proche (lot J8.7).
-type voieDeTraction int
-
-const (
-	tractionSurSaVie voieDeTraction = iota
-	tractionParLeTir
-	tractionLaPlusProche
-)

@@ -22,8 +22,6 @@ import (
 	"cmp"
 	"slices"
 	"sort"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // zoneOwnerMinAgreements est le nombre MINIMAL de captures concordantes qu'un canal doit porter
@@ -84,7 +82,6 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 			zoneRampsCtx{teams: teams, win: win, fb: c.fb})
 		out = append(out, st)
 	}
-	compterLesReplisSansRoster(c.fb, len(in.TeamByXUID) == 0, len(teams) == 0, len(pairs), out)
 	checkOwnerAgreement(ser, ownerSlot, pairs, in.TeamByXUID, win, cov)
 	return out
 }
@@ -280,8 +277,8 @@ func electZoneOwners(cands []zoneOwnerCandidate) map[int]uint32 {
 // `coverage.zones.ownerAgreed` se lit comme la qualite du MEILLEUR candidat, pas comme une preuve
 // independante (celle-la est ecrite au journal du lot, inventaire des canaux a l'appui).
 //
-// SANS ROSTER (CLI hors ligne), l'accord n'est pas calculable : le score retombe alors sur les
-// changements qui SUIVENT une capture, et la degradation se lit dans `ownerChecked` a zero.
+// SANS ROSTER, l'accord n'est pas calculable : aucun canal n'est note, aucun n'est elu, et la zone
+// n'est pas publiee (elle se lit dans `ownerUnpaired`). Le camp d'une capture n'est jamais devine.
 func ownerScores(ss []zoneSample, pairs []zonePair, teams map[string]int, win int) map[int]int {
 	out := map[int]int{}
 	for _, p := range pairs {
@@ -289,11 +286,7 @@ func ownerScores(ss []zoneSample, pairs []zonePair, teams map[string]int, win in
 		if !ok {
 			continue
 		}
-		team, known := teams[p.xuid]
-		switch {
-		case known && v == uint64(team):
-			out[p.ref]++
-		case len(teams) == 0 && v != zoneNeutralOwner:
+		if team, known := teams[p.xuid]; known && v == uint64(team) {
 			out[p.ref]++
 		}
 	}
@@ -353,15 +346,13 @@ func mergeZoneRuns(ss []zoneSample) []zoneSample {
 }
 
 // zoneOwnerTeam traduit une valeur de canal en camp. Rend (nil, true) pour la valeur neutre, et
-// (nil, false) pour une valeur qui n'est pas un camp connu — celle-la n'ouvre aucun intervalle.
+// (nil, false) pour une valeur qui n'est pas un camp du roster — celle-la n'ouvre aucun intervalle.
+// Sans roster, aucune valeur n'est un camp : le camp n'est jamais devine de la valeur seule.
 func zoneOwnerTeam(v uint64, teams map[uint64]bool) (*int, bool) {
 	if v == zoneNeutralOwner {
 		return nil, true
 	}
-	switch {
-	case len(teams) > 0 && teams[v]:
-	case len(teams) == 0 && v <= 1:
-	default:
+	if !teams[v] {
 		return nil, false
 	}
 	t := int(v)
@@ -423,27 +414,4 @@ func zoneValueAfter(ss []zoneSample, t, win int) (uint64, bool) {
 		return 0, false
 	}
 	return ss[i].v, true
-}
-
-// compterLesReplisSansRoster verse au compteur de la cuisson les deux replis d un roster VIDE
-// (lot J8.7) : chaque capture jugee par la regle « toute valeur non neutre est un camp »
-// ([ownerScores]), et chaque intervalle publie avec un camp que seule la regle « toute valeur
-// <= 1 est un camp » a pose ([zoneOwnerTeam]).
-func compterLesReplisSansRoster(fb *fallback.Compteur, sansRoster, sansCamps bool, captures int,
-	etats []ZoneState) {
-	if sansRoster {
-		fb.DeclencheN(fallback.NomZoneCampSansRoster, captures)
-	}
-	if !sansCamps {
-		return
-	}
-	n := 0
-	for _, st := range etats {
-		for _, sp := range st.Spans {
-			if sp.Owner != nil {
-				n++
-			}
-		}
-	}
-	fb.DeclencheN(fallback.NomZoneProprietaireSansRoster, n)
 }

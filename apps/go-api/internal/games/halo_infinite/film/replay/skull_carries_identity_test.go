@@ -113,7 +113,7 @@ func TestSkullCarriesPontFourniPublieLePortage(t *testing.T) {
 	// Avant le lot : le pont par morts se tait sur le slot 12, le train est perdu.
 	carries, cov := buildSkullCarries(
 		scanDe(skullIdentityOf(SkullInput{Records: recs}, Options{Deaths: deaths})),
-		clock, carrierPresence{})
+		clock, presenceInconnue())
 	if len(carries) != 0 || cov.NoBridge != 1 || !cov.Balanced() {
 		t.Fatalf("pont par morts seul : %d portage(s), couverture %+v, attendu 0 portage et "+
 			"1 sans pont", len(carries), *cov)
@@ -121,7 +121,7 @@ func TestSkullCarriesPontFourniPublieLePortage(t *testing.T) {
 
 	// Apres le lot : le pont complete de l'appelant nomme le slot, et le portage est publie.
 	complet := objectives.FlatRoundIdentity(map[int]string{10: "111", 12: "222"})
-	carries, cov = buildSkullCarries(scanDe(complet), clock, carrierPresence{})
+	carries, cov = buildSkullCarries(scanDe(complet), clock, presenceInconnue())
 	if len(carries) != 1 || cov.NoBridge != 0 || !cov.Balanced() {
 		t.Fatalf("pont complete : %d portage(s), couverture %+v, attendu 1 portage et "+
 			"0 sans pont", len(carries), *cov)

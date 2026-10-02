@@ -11,8 +11,6 @@ package replaybuild
 import (
 	"context"
 	"log/slog"
-	"strconv"
-	"strings"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
@@ -99,8 +97,7 @@ func profilDeBalayageDeLaCuisson(res *decfilm.Result) *decfilm.ProfilDeBalayage 
 //
 // LA RÉSOLUTION EST HORS LIGNE, ENTIÈREMENT FILM-NATIVE : ce paquet n'ouvre AUCUNE base (même
 // contrat que neutralDeaths et que le reste de replaybuild). `decfilm.Kill.Feed.Killer` et
-// `decfilm.Kill.Victim` portent un GAMERTAG (ou `xuid:<N>` en repli, cf.
-// decfilm.XUIDNamePrefix) ; le pont gamertag -> xuid vient du fil des morts DU FILM : chaque
+// `decfilm.Kill.Victim` portent un GAMERTAG ; le pont gamertag -> xuid vient du fil des morts DU FILM : chaque
 // mort y porte le xuid ET le gamertag de sa victime dans le MÊME enregistrement — aucune table
 // externe à charger.
 //
@@ -114,8 +111,9 @@ func profilDeBalayageDeLaCuisson(res *decfilm.Result) *decfilm.ProfilDeBalayage 
 // désormais le MÊME résultat, lu une fois par `BuildBytes` — mêmes valeurs, mêmes refus
 // journalisés, une décompression et un parse de moins par cuisson.
 //
-// `fb` recoit les deux replis de la resolution (assistant non resolu, gamertag a deux xuids) — le
-// compteur de la CONSTRUCTION (lot J8.7), que l assemblage verse ; nil ne compte rien.
+// `fb` recoit le repli de la resolution (assistant non resolu) — le compteur de la CONSTRUCTION
+// (lot J8.7), que l assemblage verse ; nil ne compte rien. Un gamertag que le fil porte sous deux
+// xuids ne resout rien, et le journal le dit.
 func (b *Builder) killRefs(ctx context.Context, matchID string, deaths filmDeaths, res *decfilm.Result, fb *decfilm.Compteur) (replay.KillsInput, replay.MatchKillsInput) {
 	if res == nil {
 		return replay.KillsInput{}, replay.MatchKillsInput{}
@@ -130,8 +128,11 @@ func (b *Builder) killRefs(ctx context.Context, matchID string, deaths filmDeath
 			"err", deaths.err, "match_id", matchID)
 		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
-	parGamertag, divergences := gamertagXUIDIndex(deaths.list)
-	fb.DeclencheN(decfilm.NomGamertagPremierXuidGagne, divergences)
+	parGamertag, ambigus := gamertagXUIDIndex(deaths.list)
+	if ambigus > 0 {
+		slog.WarnContext(ctx, "replaybuild: gamertag porte par deux xuids dans le fil des morts — ses frags ne se resolvent pas",
+			"match_id", matchID, "gamertags_ambigus", ambigus)
+	}
 	r := resolveKills(res.Kills, parGamertag)
 	fb.DeclencheN(decfilm.NomAssistantNonResoluAbandonne, r.assistantsNonResolus)
 	r.log(ctx, matchID, len(res.Kills))
@@ -209,47 +210,30 @@ func (r killResolution) log(ctx context.Context, matchID string, total int) {
 }
 
 // gamertagXUIDIndex construit gamertag -> xuid depuis le fil des morts du film — le MÊME
-// enregistrement porte les deux pour la victime (cf. types.Death). EN CAS DE DIVERGENCE, LE
-// PREMIER GAGNE — même règle que replay.gamertagsOf (identity.go), pour la même raison : les
-// 32 octets d'un même xuid ne varient pas d'un enregistrement à l'autre à l'intérieur d'un
-// film, donc rien à arbitrer.
+// enregistrement porte les deux pour la victime (cf. types.Death).
 //
-// LE SECOND RENDU COMPTE LES DIVERGENCES que la regle tranche en silence — un gamertag vu avec un
-// AUTRE xuid que le premier (`repli_gamertag_premier_xuid_gagne`, lot J8.7).
+// UN GAMERTAG VU SOUS DEUX XUIDS N'ENTRE PAS DANS LA TABLE : aucun des deux n'est plus sûr que
+// l'autre, et ses frags restent non résolus. Le second rendu compte ces gamertags ambigus.
 func gamertagXUIDIndex(deaths []types.Death) (map[string]uint64, int) {
 	out := make(map[string]uint64, len(deaths))
-	divergences := 0
+	ambigus := map[string]bool{}
 	for _, d := range deaths {
-		if d.Gamertag == "" {
+		if d.Gamertag == "" || ambigus[d.Gamertag] {
 			continue
 		}
-		if premier, seen := out[d.Gamertag]; !seen {
-			out[d.Gamertag] = d.XUID
-		} else if premier != d.XUID {
-			divergences++
+		if premier, seen := out[d.Gamertag]; seen && premier != d.XUID {
+			ambigus[d.Gamertag] = true
+			delete(out, d.Gamertag)
+			continue
 		}
+		out[d.Gamertag] = d.XUID
 	}
-	return out, divergences
+	return out, len(ambigus)
 }
 
-// resolveKillIdentity résout un nom killsource (gamertag, ou repli `xuid:<N>`) en xuid.
-//
-// MÊME RÈGLE À DEUX CAS QUE `killcollector.MatchIdentities.Resoudre`
-// (internal/sync/killcollector/identities.go) — une copie DÉLIBÉRÉE, pas une divergence : ce
-// paquet n'ouvre aucune base (contrat de replaybuild) et ne peut donc pas construire le
-// `MatchIdentities` porté par `v_gamertag_lookup` que le collecteur EN LIGNE utilise ;
-// celui-ci résout contre le fil des morts DU FILM, la seule source disponible hors ligne. Les
-// deux s'accordent sur LA RÈGLE (repli `xuid:` d'abord, gamertag ensuite), jamais sur LA
-// SOURCE — si un troisième lecteur de cette règle apparaît, centraliser (règle du dépôt sur
-// les copies, CLAUDE.md n° 6).
+// resolveKillIdentity résout un gamertag killsource en xuid, contre le fil des morts DU FILM — la
+// seule source disponible hors ligne : ce paquet n'ouvre aucune base (contrat de replaybuild).
 func resolveKillIdentity(name string, byGamertag map[string]uint64) (uint64, bool) {
-	if reste, ok := strings.CutPrefix(name, decfilm.XUIDNamePrefix); ok {
-		xuid, err := strconv.ParseUint(reste, 10, 64)
-		if err != nil {
-			return 0, false
-		}
-		return xuid, true
-	}
 	xuid, ok := byGamertag[name]
 	return xuid, ok
 }

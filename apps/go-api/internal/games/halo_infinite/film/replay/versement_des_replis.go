@@ -35,7 +35,7 @@ package replay
 //	                        a CHAQUE cuisson, et ils ne sont jamais dans le rapport persiste du
 //	                        balayage : versees ici, ils comptent une fois sur les deux chemins.
 //
-//	LES REPLIS A LA CONSULTATION ([ReplisHorsBalayage.Consultations], lot J8.7-bis) suivent le
+//	LE REPLI A LA CONSULTATION ([ReplisHorsBalayage.Consultations], lot J8.7-bis) suit le
 //	second chemin : l enregistreur du document se remplit PENDANT l assemblage (et la construction
 //	de la cuisson), et il est lu ICI, une fois, a la cloture.
 //
@@ -59,11 +59,11 @@ type ReplisHorsBalayage struct {
 	// la section statborg des faits) et la construction du pont d identite par manche.
 	Objectifs objectives.ComptesDesReplis
 	// Construction : le RAPPORT des replis que la construction de la cuisson (`replaybuild`) a comptes
-	// elle-meme, sous leurs noms de registre (morts neutres, relais de bot, feuille de match, zones,
+	// elle-meme, sous leurs noms de registre (morts neutres, relais de bot, zones,
 	// resolution des frags). Recalcule a chaque cuisson, sur les deux chemins.
 	Construction []fallback.Declenchement
-	// Consultations : l enregistreur des replis qui se declenchent a la LECTURE des series nommees et
-	// du resolveur d identite par manche (lot J8.7-bis, 2026-09-28), partage par tout le document —
+	// Consultations : l enregistreur du repli qui se declenche a la LECTURE des series nommees (lot
+	// J8.7-bis, 2026-09-28), partage par tout le document —
 	// la construction de la cuisson et chaque calque y notent les evenements DISTINCTS qu ils
 	// consultent. Nil : l assemblage en ouvre un ([assemblage.ouvrir]).
 	Consultations *objectives.ReplisALaConsultation
@@ -114,10 +114,8 @@ var versementsDesReplis = []ligneDeVersement{
 	{fallback.NomDeadstateCategorieHorsEnum, func(s sourcesDeReplis) int { return s.killsource.Replis.CategoriesHorsEnum }},
 	{fallback.NomLocalisationLargeurLibre, func(s sourcesDeReplis) int { return s.killsource.Replis.LocalisationsALargeurLibre }},
 	{fallback.NomRosterNomInvente, func(s sourcesDeReplis) int { return s.killsource.Replis.NomsInventes }},
-	{fallback.NomRosterIndiceHorsBijection, func(s sourcesDeReplis) int { return s.killsource.Replis.NomsHorsBijection }},
 	{fallback.NomBijectionHongroiseDuFeed, func(s sourcesDeReplis) int { return s.bijectionInferee }},
 	{fallback.NomCoupleRecolleSurLeVoisin, func(s sourcesDeReplis) int { return s.killsource.Couples.Recolles }},
-	{fallback.NomGamertagParXuidBrut, func(s sourcesDeReplis) int { return s.killsource.Replis.NomsParXUIDBrut }},
 	{fallback.NomChunkDuPiedParArgmax, func(s sourcesDeReplis) int { return s.killsource.Replis.PiedParArgmax }},
 	{fallback.NomChaineEvenementCodeNonModelise, func(s sourcesDeReplis) int { return s.killsource.Replis.ChainesArretees }},
 	{fallback.NomTypeDeChunkPerduDuManifeste, func(s sourcesDeReplis) int { return s.killsource.Replis.TypeDeChunkPerdu }},
@@ -136,11 +134,9 @@ var versementsDesReplis = []ligneDeVersement{
 	{fallback.NomEnregistrementStatborgAbandonne, func(s sourcesDeReplis) int { return s.objectifs.EnregistrementsAbandonnes }},
 	{fallback.NomComposantsStatborgArretes, func(s sourcesDeReplis) int { return s.objectifs.ComposantsArretes }},
 	{fallback.NomTableIdentiteVide, func(s sourcesDeReplis) int { return s.objectifs.TablesIdentiteVides }},
-	{fallback.NomMortSansXuidIgnoree, func(s sourcesDeReplis) int { return s.objectifs.MortsSansXUID }},
 	{fallback.NomDebutDeMancheAuMinimum, func(s sourcesDeReplis) int { return s.objectifs.DebutsDeMancheAuMinimum }},
 	{fallback.NomSlotAbandonneAuPremierArrive, func(s sourcesDeReplis) int { return s.objectifs.SlotsAbandonnes }},
 	{fallback.NomEmissionHorsDomaineJetee, func(s sourcesDeReplis) int { return s.objectifs.EmissionsHorsDomaineJetees }},
-	{fallback.NomInstantSurLaPremiereManche, func(s sourcesDeReplis) int { return s.objectifs.InstantsSurLaPremiereManche }},
 }
 
 // verserLesReplis joue la table sur `s` : chaque ligne verse son champ au compteur sous son nom.

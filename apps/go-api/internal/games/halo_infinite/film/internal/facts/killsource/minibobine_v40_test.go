@@ -16,7 +16,7 @@ package killsource
 // Un film de version 40, versionne, ou les deux decoupages DIVERGENT franchement :
 //
 //	version lue (40)  roster de 26 noms, 26 gamertags distincts
-//	version 0         roster de 11 entrees, 2 gamertags distincts (le reste retombe sur `xuid:`)
+//	version 0         roster de 2 gamertags distincts (les events sans gamertag lisible n entrent pas)
 //
 // Il n y a pas de zone grise : le plancher de ce test est a 20, et la mutation rend 11.
 //
@@ -107,28 +107,22 @@ func TestMiniBobineV40RosterSuitLaVersionLue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadKillFeed sur la bobine v40 : %v", err)
 	}
-	gamertags := 0
-	for _, n := range kf.names {
-		if !strings.HasPrefix(n, XUIDNamePrefix) {
-			gamertags++
-		}
-	}
-	if len(kf.names) < miniBobineV40Plancher || gamertags < miniBobineV40Plancher {
+	if len(kf.names) < miniBobineV40Plancher {
 		t.Fatalf(`LE DECOUPAGE DU GAMERTAG NE SUIT PLUS LA VERSION DU FILM.
 
   bobine    : %s (film %s, version %d)
-  roster    : %d entree(s), dont %d gamertag(s) — plancher %d
-  attendu   : 26 et 26 (mesure du 2026-09-12)
+  roster    : %d gamertag(s) — plancher %d
+  attendu   : 26 (mesure du 2026-09-12)
 
 Sur un film de version 39-40 le gamertag vit a l OCTET 12 du bloc d event, pas a l octet 0.
-Passer 0 au lieu de la version lue rend ici 11 entrees et 2 gamertags : le roster humain
+Passer 0 au lieu de la version lue rend ici 2 gamertags : le roster humain
 s effondre, et les portes « indice < nPlay » du decodeur de source de degat rejettent les trois
 quarts des morts (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
 
 Verifier que loadFilm pose majorVersion/versionLue et que loadKillFeed passe f.majorVersion
 a grammar.ParseHighlightEvents.`,
 			miniBobineV40Dir, miniBobineV40Film, f.majorVersion,
-			len(kf.names), gamertags, miniBobineV40Plancher)
+			len(kf.names), miniBobineV40Plancher)
 	}
 }
 

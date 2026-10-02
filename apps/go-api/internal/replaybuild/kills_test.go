@@ -10,7 +10,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// kills_test.go — la résolution d'identité hors ligne (gamertag/xuid: -> xuid), sur données
+// kills_test.go — la résolution d'identité hors ligne (gamertag -> xuid), sur données
 // 100 % synthétiques (aucun film) : PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1.
 
 func TestResolveKillIdentity_Gamertag(t *testing.T) {
@@ -21,16 +21,6 @@ func TestResolveKillIdentity_Gamertag(t *testing.T) {
 	}
 }
 
-func TestResolveKillIdentity_ReplixuidPrefixe(t *testing.T) {
-	// "xuid:<N>" est la forme de repli du décodeur (decfilm.XUIDNamePrefix) quand le
-	// film ne porte aucun gamertag pour ce joueur : le nombre EST déjà le xuid, aucune
-	// table à consulter.
-	xuid, ok := resolveKillIdentity("xuid:2535469190789936", nil)
-	if !ok || xuid != 2535469190789936 {
-		t.Fatalf("xuid=%d ok=%v, attendu 2535469190789936/true", xuid, ok)
-	}
-}
-
 func TestResolveKillIdentity_GamertagInconnu(t *testing.T) {
 	xuid, ok := resolveKillIdentity("Inconnu", map[string]uint64{"Autre": 1})
 	if ok || xuid != 0 {
@@ -38,26 +28,16 @@ func TestResolveKillIdentity_GamertagInconnu(t *testing.T) {
 	}
 }
 
-func TestResolveKillIdentity_ReplixuidNonDecimalRefuse(t *testing.T) {
-	// Un repli mal formé ne doit jamais paniquer ni renvoyer une fausse identité.
-	xuid, ok := resolveKillIdentity("xuid:pas-un-nombre", nil)
-	if ok || xuid != 0 {
-		t.Fatalf("xuid=%d ok=%v, attendu 0/false (repli non décimal)", xuid, ok)
-	}
-}
-
-func TestGamertagXUIDIndex_PremierGagneEnCasDeDoublon(t *testing.T) {
+func TestGamertagXUIDIndex_DoublonNeResoutRien(t *testing.T) {
 	deaths := []types.Death{
 		{XUID: 111, Gamertag: "Joueur"},
-		{XUID: 222, Gamertag: "Joueur"}, // même nom, second xuid : ne doit rien écraser
+		{XUID: 222, Gamertag: "Joueur"}, // même nom, second xuid : le nom ne désigne plus personne
 		{XUID: 333, Gamertag: ""},       // sans gamertag : absent de l'index
+		{XUID: 444, Gamertag: "Seul"},
 	}
-	idx, _ := gamertagXUIDIndex(deaths)
-	if len(idx) != 1 {
-		t.Fatalf("index = %d entrées, attendu 1", len(idx))
-	}
-	if idx["Joueur"] != 111 {
-		t.Errorf("xuid de \"Joueur\" = %d, attendu 111 (le premier)", idx["Joueur"])
+	idx, ambigus := gamertagXUIDIndex(deaths)
+	if len(idx) != 1 || idx["Seul"] != 444 || ambigus != 1 {
+		t.Fatalf("index = %v, ambigus = %d — attendu {Seul: 444} et 1 ambigu", idx, ambigus)
 	}
 }
 
@@ -132,22 +112,20 @@ func TestResolveKills_TueurInconnuPerdLesDeuxSorties(t *testing.T) {
 func TestResolveKills_ComptesConserves(t *testing.T) {
 	idx := map[string]uint64{"A": 1, "B": 2}
 	kills := []decfilm.Kill{
-		killDe("A", "B", 100),         // couple complet
-		killDe("B", "Bot 001", 200),   // victime bot
-		killDe("Inconnu", "A", 300),   // tueur hors roster
-		killDe("xuid:4242", "B", 400), // repli xuid: côté tueur
-		killDe("A", "xuid:4242", 500), // repli xuid: côté victime
+		killDe("A", "B", 100),       // couple complet
+		killDe("B", "Bot 001", 200), // victime bot
+		killDe("Inconnu", "A", 300), // tueur hors roster
 	}
 	r := resolveKills(kills, idx)
 	if len(r.pairs)+r.killerUnresolved+r.victimUnresolved != len(kills) {
 		t.Fatalf("%d couples + %d tueurs perdus + %d victimes perdues != %d kills fournis",
 			len(r.pairs), r.killerUnresolved, r.victimUnresolved, len(kills))
 	}
-	if len(r.pairs) != 3 {
-		t.Fatalf("pairs = %+v, attendu 3 (les deux replis `xuid:` en font partie)", r.pairs)
+	if len(r.pairs) != 1 {
+		t.Fatalf("pairs = %+v, attendu 1", r.pairs)
 	}
-	if len(r.refs) != 4 {
-		t.Fatalf("refs = %d, attendu 4 (seul le tueur hors roster manque)", len(r.refs))
+	if len(r.refs) != 2 {
+		t.Fatalf("refs = %d, attendu 2 (seul le tueur hors roster manque)", len(r.refs))
 	}
 }
 

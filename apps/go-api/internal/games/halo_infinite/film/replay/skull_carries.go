@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -180,9 +179,9 @@ type skullRawCarry struct {
 // `presence` est l'index des vies bipedes publiees (cf. [carrierPresence]) et decide, par
 // [carrierPresence.gate], de ce qui sort : un portage dont les pistes publiees prouvent que le
 // porteur etait AILLEURS est un FANTOME et part en `CarrierAbsent` ; un portage qui deborde d'une
-// vie NOMMEE du porteur est ROGNE a elle. Partout ailleurs — porteur jamais nomme, ou vie ANONYME
-// couvrant l'intervalle — le gate S'ABSTIENT : on ne rejette pas l'inconnu. `presence` zero
-// (tests) laisse donc passer tous les trains.
+// vie NOMMEE du porteur est ROGNE a elle. Une vie ANONYME couvrant l'intervalle fait S'ABSTENIR
+// le gate : on ne rejette pas l'inconnu. Un porteur qu'aucune vie publiee ne nomme ni ne laisse
+// ouvert est absent : son portage part en `CarrierAbsent`.
 func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence carrierPresence) ([]SkullCarry, *SkullCarriesCoverage) {
 	if !scan.Scanned {
 		return nil, nil
@@ -306,13 +305,10 @@ func attachSkullCarries(ctx context.Context, doc *ReplayDocument, opt Options, r
 		Identity:      skullIdentityOf(in, opt),
 		Consultations: opt.consultations(),
 	}
-	presence := carrierPresenceOf(doc.Tracks, deduced)
 	carries, cov := buildSkullCarries(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		deathOffsetMS: reg.DeathOffsetMS(),
-	}, presence)
-	// LA PORTE DE PRESENCE EST PARTAGEE AVEC LA BOMBE : c est ICI qu elle prend le nom du crane.
-	clock.fb.DeclencheN(fallback.NomCranePorteurSansVieNommee, presence.porteursSansVieNommee())
+	}, carrierPresenceOf(doc.Tracks, deduced))
 	doc.SkullCarries = carries
 	if doc.Coverage != nil {
 		doc.Coverage.SkullCarries = cov

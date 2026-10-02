@@ -188,14 +188,14 @@ func TestZoneStatesValeurInconnueNOuvreAucunIntervalle(t *testing.T) {
 	}
 }
 
-// TestZoneStatesSansRosterAccepteLesDeuxCampsMesures : hors ligne (aucun fait de match), seules
-// les deux valeurs mesurees du canal sont acceptees comme camps.
-func TestZoneStatesSansRosterAccepteLesDeuxCampsMesures(t *testing.T) {
+// TestZoneStatesSansRosterNeDevineAucunCamp : sans roster, le camp d'une capture n'est pas
+// calculable ; aucun canal n'est elu, aucune zone n'est publiee, rien n'est devine de la valeur.
+func TestZoneStatesSansRosterNeDevineAucunCamp(t *testing.T) {
 	in, c := bastionCase()
 	in.TeamByXUID = nil
 	states, cov := buildZoneStates(context.Background(), in, c)
-	if len(states) == 0 {
-		t.Fatalf("aucun etat publie sans roster : les camps 0 et 1 restent lisibles")
+	if len(states) != 0 {
+		t.Fatalf("%d etat(s) publie(s) sans roster : un camp a ete devine de la valeur du canal", len(states))
 	}
 	if cov.OwnerChecked != 0 {
 		t.Errorf("controle du proprietaire %d, attendu 0 sans roster", cov.OwnerChecked)
