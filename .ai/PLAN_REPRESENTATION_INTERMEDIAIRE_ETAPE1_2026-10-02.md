@@ -278,3 +278,20 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
   fusion de L0 dans `feat/v75` : `git merge origin/feat/v75`, régénération de l'empreinte à la
   révision de `feat/v75`, références d'équivalence re-figées, mesure « avant » (critère 4) sur
   cette base.
+- 2026-10-02 (soir) : branche poussée sur accord de l'utilisateur (`c0f29f382`, pre-push vert).
+  CI VERTE au niveau job (run `37039754462`, 38 min 42 : build et tests Linux et Windows,
+  couverture et baseline, golangci-lint, `film-race`, frontend, OpenAPI ; E2E sauté comme prévu
+  hors PR vers `main`), Deploy Pre-Check et gitleaks verts. L'utilisateur autorise la communication directe avec les autres sessions et le mode
+  multi-agents si nécessaire (coût annoncé avant). Campagne (`levelup-83`) : L0 est en cours
+  d'écriture depuis 18 h 20 (quelques heures jusqu'à sa vérification) ; décision de l'utilisateur
+  (~19 h 20) : L0 sera fusionné SEUL dans `feat/v75` dès qu'il sera vérifié, sans recuisson à ce
+  moment. Attention pour la reprise : L0 touche aussi `frame_infer.go`, `lecteur.go`,
+  `traverse.go`, `frame_records.go` et `rev.go` (exception « sauf L0 » du §1.3), et fait MONTER
+  `grammar.Rev` — conflit attendu sur `grammar_rev.golden` et `grammar_perimetre.golden` : prendre
+  la version de `feat/v75`, régénérer l'empreinte à SA révision.
+- Rappels d'exploitation pour les gates avec décodage du lot 1.2 (mémoire du dépôt) :
+  `replay-equiv` se lance avec `-repo-root <worktree>` et des jonctions
+  `data/cache/film_chunks` et `data/cache/film_manifests` vers le checkout principal (jamais
+  `LEVELUP_REPO_ROOT`, qui ferait écrire les références du principal) ; une passe de plus de
+  10 minutes se lance par `Monitor`, pas en arrière-plan Bash (enfants orphelins) ; prévenir la
+  campagne avant une passe de décodage (une à la fois sur la machine).
