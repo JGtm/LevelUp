@@ -87,10 +87,7 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 		return base
 	}
 
-	cuissonHead, err := bakeTemoin(ctx, cuissonParams{
-		BinPath: tc.BinHead, WorkRoot: tc.WorkRoot, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
-		MemGiB: tc.MemGiB,
-	}, facts)
+	cuissonHead, err := tc.cuissonDuHead(ctx, facts, bakeTemoin)
 	if err != nil {
 		base.Erreur = fmt.Errorf("cuisson HEAD : %w", err)
 		return base
@@ -175,9 +172,8 @@ type bakeFn func(context.Context, cuissonParams, replaybuild.FactsFile) (resulta
 // que des faits ecrits apres son debut).
 func (tc temoinContexte) cuissonDeLaBase(ctx context.Context, facts replaybuild.FactsFile, bake bakeFn) cuissonBaseFn {
 	return func() (string, string, error) {
-		perimes := title.NewPathResolver(tc.WorkRootBase).FilmFactsPath(tc.TitleSlug, facts.MatchID)
-		if err := os.Remove(perimes); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return "", "", fmt.Errorf("faits du film d une cuisson precedente de la base (%s) : %w", perimes, err)
+		if err := retirerLesFaitsPerimes(tc.WorkRootBase, tc.TitleSlug, facts.MatchID); err != nil {
+			return "", "", err
 		}
 		cuissonBase, err := bake(ctx, cuissonParams{
 			BinPath: tc.BinBase, WorkRoot: tc.WorkRootBase, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
@@ -188,4 +184,29 @@ func (tc temoinContexte) cuissonDeLaBase(ctx context.Context, facts replaybuild.
 		}
 		return cuissonBase.ArtifactPath, cuissonBase.FaitsPath, nil
 	}
+}
+
+// cuissonDuHead cuit le temoin au HEAD, par `bake` (bakeTemoin en production). ELLE PART SANS FAITS
+// PERSISTES POUR CE FILM, comme celle de la base (revue finale, 2026-10-02) : avec `--work-root`
+// reutilise, ceux d un HEAD precedent seraient juges frais a revisions constantes et republies au lieu
+// d un decodage par le code de CE HEAD.
+func (tc temoinContexte) cuissonDuHead(ctx context.Context, facts replaybuild.FactsFile, bake bakeFn) (resultatCuisson, error) {
+	if err := retirerLesFaitsPerimes(tc.WorkRoot, tc.TitleSlug, facts.MatchID); err != nil {
+		return resultatCuisson{}, err
+	}
+	return bake(ctx, cuissonParams{
+		BinPath: tc.BinHead, WorkRoot: tc.WorkRoot, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
+		MemGiB: tc.MemGiB,
+	}, facts)
+}
+
+// retirerLesFaitsPerimes supprime, sous la racine de travail `workRoot`, les faits persistes du film
+// `matchID` qu une cuisson precedente y a laisses (revue finale P1-c et D3) : la cuisson qui suit
+// decode, au lieu de republier depuis des faits ecrits par un autre binaire. Absents : rien a faire.
+func retirerLesFaitsPerimes(workRoot, titleSlug, matchID string) error {
+	perimes := title.NewPathResolver(workRoot).FilmFactsPath(titleSlug, matchID)
+	if err := os.Remove(perimes); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("faits du film d une cuisson precedente (%s) : %w", perimes, err)
+	}
+	return nil
 }

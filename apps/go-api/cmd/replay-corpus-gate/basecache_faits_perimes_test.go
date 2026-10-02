@@ -66,3 +66,32 @@ func TestResoudreAvecCache_FaitsAnterieursALaCuissonNonRanges(t *testing.T) {
 		t.Fatal("une entree portant des faits que cette cuisson n a pas ecrits a ete rangee")
 	}
 }
+
+// TestCuissonDuHead_PartSansLesFaitsDUnPrecedent — revue finale, decouverte 3 (2026-10-02) : le meme
+// defaut cote HEAD. Avec `--work-root` reutilise, la racine de travail du HEAD garde les faits ecrits
+// par le binaire d un HEAD PRECEDENT ; a revisions constantes, `replay-build` les republierait au
+// lieu de decoder avec le code de CE HEAD.
+// Mutation vue rouge : ne plus retirer les faits du temoin avant la cuisson du HEAD.
+func TestCuissonDuHead_PartSansLesFaitsDUnPrecedent(t *testing.T) {
+	tc := temoinContexte{WorkRoot: t.TempDir(), TitleSlug: title.DefaultSlug}
+	facts := replaybuild.FactsFile{}
+	facts.MatchID = "abcd1234-0000-0000-0000-000000000000"
+	perimes := title.NewPathResolver(tc.WorkRoot).FilmFactsPath(tc.TitleSlug, facts.MatchID)
+	if err := os.MkdirAll(filepath.Dir(perimes), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(perimes, []byte("faits d un HEAD precedent"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	vus := false
+	bake := func(_ context.Context, p cuissonParams, f replaybuild.FactsFile) (resultatCuisson, error) {
+		vus = fichierExiste(title.NewPathResolver(p.WorkRoot).FilmFactsPath(p.TitleSlug, f.MatchID))
+		return resultatCuisson{ArtifactPath: "a"}, nil
+	}
+	if _, err := tc.cuissonDuHead(context.Background(), facts, bake); err != nil {
+		t.Fatal(err)
+	}
+	if vus {
+		t.Fatalf("la cuisson du HEAD a demarre avec les faits d une cuisson precedente (%s)", perimes)
+	}
+}
