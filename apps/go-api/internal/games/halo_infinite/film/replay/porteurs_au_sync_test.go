@@ -8,7 +8,12 @@ import (
 	"context"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // TestPortagesAuSync_HorsModeAPorteurNeLitRien — LA GARDE REND AVANT LE PREMIER OCTET.
@@ -173,5 +178,34 @@ func TestPortagesAuSync_LesReplisSontRendus(t *testing.T) {
 	if n := b.Replis.Compte(fallback.NomLargeursAxeParDefautConservees); n != 1 {
 		t.Fatalf("%s = %d au bilan, attendu 1 (rapport : %v)", fallback.NomLargeursAxeParDefautConservees,
 			n, fallback.Texte(b.Replis.Rapport()))
+	}
+}
+
+// TestPortagesAuSync_ReplisDuStatborgEtDuPontVerses — revue finale, decouverte 1 (2026-10-02) : les
+// replis du balayage du statborg (`StatRecordsAvecReplis`) et de la construction du pont par manche
+// rejoignent le compteur rendu au bilan, comme a la cuisson (`replaybuild`, `replisObjectifs` :
+// statborg plus pont), et une seule fois. Ils etaient jetes (`StatRecordsBornes`).
+// Mutations vues rouges : relire par `StatRecordsBornes` (comptes jetes) ; ne plus poser
+// `ReplisHorsBalayage.Objectifs` ; les verser deux fois.
+func TestPortagesAuSync_ReplisDuStatborgEtDuPontVerses(t *testing.T) {
+	e := EntreePorteursAuSync{MatchID: "m", Variante: "Arena:VIP"}
+	// Des positions : sans elles l assemblage rend avant sa cloture, ou les replis se versent.
+	for ts := uint64(0); ts <= 10_000; ts += 100 {
+		e.Identite.Positions = append(e.Identite.Positions, grammar.BipedPosition{Slot: 1, TimestampUS: ts * 1000, HasWorld: true})
+	}
+	e.lireStatborg = func(*source.Film, string) ([]types.StatRecord, bool, objectives.ComptesDesReplis, []constat.Diagnostic) {
+		recs := []types.StatRecord{{TimeMS: 1000, Slot: 10, Comps: map[int]types.StatValue{}}}
+		return recs, false, objectives.ComptesDesReplis{EnregistrementsAbandonnes: 2, ComposantsArretes: 1}, nil
+	}
+	_, b := PortagesAuSync(context.Background(), e)
+	for nom, veut := range map[fallback.Nom]int{
+		fallback.NomEnregistrementStatborgAbandonne: 2,
+		fallback.NomComposantsStatborgArretes:       1,
+		// Un enregistrement et aucune mort : le pont par instants de mort sort vide (construction).
+		fallback.NomTableIdentiteVide: 1,
+	} {
+		if got := b.Replis.Compte(nom); got != veut {
+			t.Errorf("%s = %d au bilan, veut %d (rapport : %s)", nom, got, veut, fallback.Texte(b.Replis.Rapport()))
+		}
 	}
 }
