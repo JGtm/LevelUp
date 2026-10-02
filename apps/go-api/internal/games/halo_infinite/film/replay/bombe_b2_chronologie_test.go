@@ -38,7 +38,27 @@ package replay
 //	     4 804 ms : le lâcher du canal EST le geste de pose, à ~130 ms de la mèche. Suivant
 //	     le patron du dépôt (TestAssautA5PontIdentite), les chiffres MESURÉS ET EXPLIQUÉS
 //	     sont FIGÉS comme référence : toute amélioration comme toute dégradation rougit.
-//	V3 — LE TÉMOIN ODDBALL. Chaque événement skull_carry du pied (xuid, t) doit tomber
+//
+//	     RE-FIGÉ LE 2026-10-02 : V1 = 16/20 (80,0 %), V2 = 27/28 inchangé. La référence
+//	     13/17 décrivait un pont FAUX sur `ce083875`, réparé par le lot du pont muet
+//	     (`feat/v2-pont-muet`, fusion `ee4084c14` du 2026-09-07, entré dans feat/v75 par
+//	     `6d67ef596` : le calage du fil des morts n'est plus cherché sous `min(fins de
+//	     vie) − 60 s`). Bissection par commit, sonde « ce083875 explosion 512505 pontée » :
+//	     `eb7a3dfbd` non ponté, `ee4084c14` ponté. Sur ce film le pont passe de 19/190 à
+//	     168/190 slots nommés, et les TROIS slots que l'ancien pont nommait (532, 566,
+//	     603) changent tous de xuid — l'ancien appariement était un pic de bruit. Effet
+//	     sur la garde, explosion par explosion : 512505, 686401 et 947537, hors
+//	     dénominateur jusque-là (« porteur NON ponté », slots 599, 629, 682), deviennent
+//	     résolues et les TROIS s'accordent avec le détonateur du statborg, oracle qui ne
+//	     doit rien au pont des bipèdes ; leurs délais lâcher -> explosion (4 686, 4 604,
+//	     4 673 ms) sont ceux de la pose. Les 25 autres explosions rendent le MÊME verdict
+//	     qu'au 2026-09-01 (diff ligne à ligne contre `b526dc362`, la garde à sa naissance) ;
+//	     les quatre désaccords sont les mêmes ; la distribution des délais est identique
+//	     (n=23, médiane 4 804 ms). Quinze portages de `ce083875` changent de fin : quatorze
+//	     se ferment désormais PAR MORT, plus tôt — ils couvraient un porteur mort jusqu'à
+//	     la prise suivante, l'ancien comportement faux — et le quinzième (slot 532) se
+//	     fermait sur la mort du xuid mal ponté ; aucun n'est le porteur d'une pose.
+//	V3 —LE TÉMOIN ODDBALL. Chaque événement skull_carry du pied (xuid, t) doit tomber
 //	     pendant une période de portage du crâne attribuée au MÊME xuid (tolérance ±1000 ms
 //	     aux bords). Cible écrite : accord >= 90 % des événements dont l'instant est couvert
 //	     par une période pontée ; le taux brut (couverts ou non) se publie à côté.
@@ -238,10 +258,11 @@ func TestBombeB2Assaut(t *testing.T) {
 		v1Accords, v1Resolues, 100*float64(v1Accords)/float64(max(v1Resolues, 1)))
 	t.Logf("V2 : %d/%d intervalles [pose, explosion] sans prise (%.1f %%)",
 		v2Vides, v2Total, 100*float64(v2Vides)/float64(max(v2Total, 1)))
-	// Chiffres FIGÉS (cf. en-tête, « MESURÉ ») : un écart dans un sens comme dans l'autre
-	// est une régression à instruire — patron TestAssautA5PontIdentite.
-	if v1Accords != 13 || v1Resolues != 17 {
-		t.Errorf("V1 : %d/%d, référence figée 13/17 — la chronologie ou un pont a bougé", v1Accords, v1Resolues)
+	// Chiffres FIGÉS (cf. en-tête, « MESURÉ » puis « RE-FIGÉ LE 2026-10-02 ») : un écart
+	// dans un sens comme dans l'autre est une régression à instruire — patron
+	// TestAssautA5PontIdentite.
+	if v1Accords != 16 || v1Resolues != 20 {
+		t.Errorf("V1 : %d/%d, référence figée 16/20 — la chronologie ou un pont a bougé", v1Accords, v1Resolues)
 	}
 	if v2Vides != 27 || v2Total != 28 {
 		t.Errorf("V2 : %d/%d, référence figée 27/28", v2Vides, v2Total)
