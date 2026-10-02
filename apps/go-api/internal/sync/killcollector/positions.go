@@ -315,6 +315,8 @@ func lireLePontDuCollecteur(ctx context.Context,
 	film *decfilm.Film, entry decfilm.MapQuantEntry, ids MatchIdentities, matchID string,
 ) (lecturesDuFilm, uint64, error) {
 	fc := decfilm.NewFilmContextForMap(film, &entry, nil)
+	// SON RAPPORT DE REPLIS SE VERSE A LA SORTIE DE LA PASSE, sur tous les chemins (revue finale).
+	noterLeContexteDeLaPasse(ctx, fc)
 	pont := decfilm.ScanPontDIdentite(fc, decfilm.OptionsDuPont{
 		Balayage: optionsDeBalayageDesPositions(fc, entry), Carte: &entry,
 		RosterDesMorts: func([]types.Death) []uint64 { return rosterUint64(ids.XUIDs) },

@@ -11,6 +11,7 @@ package killcollector
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
@@ -68,5 +69,33 @@ func TestLaPassePublieUnCompteurParNom(t *testing.T) {
 	publierReplisDeLaPasse(context.Background(), "m", fb)
 	if got := observability.LoadCounter(nom) - avant; got != 2 {
 		t.Errorf("%s : +%d, attendu +2", nom, got)
+	}
+}
+
+// TestLeRapportDuContexteDuPontEstVerseALaPasse — revue finale, decouverte 2 (2026-10-02) : le
+// rapport du contexte de film que la passe ouvre (`lireLePontDuCollecteur`) — ici le fil des morts lu
+// au dernier numero, faute de manifeste — n etait verse nulle part au collecteur. Il l est a la
+// sortie de la passe, UNE fois, meme quand la lecture du pont echoue (mini-bobine sans manifeste ni carte).
+// Mutations vues rouges : ne plus inscrire le contexte ; ne plus le verser ; le verser deux fois.
+func TestLeRapportDuContexteDuPontEstVerseALaPasse(t *testing.T) {
+	passe := decfilm.NouveauCompteur()
+	ctx := avecReplisDeLaPasse(context.Background(), passe)
+	// La mini-bobine versionnee du rejeu : trois chunks, SANS manifeste — le fil des morts se lit au
+	// dernier numero.
+	film, err := decfilm.LoadDir(filepath.Join("..", "..", "games", "halo_infinite", "film", "replay",
+		"testdata", "minifilm_000d5950"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _ = lireLePontDuCollecteur(ctx, film, decfilm.MapQuantEntry{}, MatchIdentities{}, "m")
+	const publie = prefixeReplisDeLaPasse + "repli_temps_forts_dernier_numero"
+	avant := observability.LoadCounter(publie)
+	cloreLaPasse(context.Background(), ctx, "m")
+	verserLesContextesDeLaPasse(ctx) // la sortie ne verse qu une fois, meme rejouee
+	if got := decfilm.Texte(passe.Rapport()); got != "repli_temps_forts_dernier_numero=1" {
+		t.Fatalf("compteur de la passe = %q, attendu le seul repli du fil des morts, une fois", got)
+	}
+	if got := observability.LoadCounter(publie) - avant; got != 1 {
+		t.Fatalf("%s a bouge de %d, attendu 1 : le rapport du contexte n est pas publie", publie, got)
 	}
 }

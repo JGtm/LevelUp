@@ -58,7 +58,9 @@ func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) 
 	// la sortie quelle qu elle soit — un abandon rend compte de ce qui s est deja declenche.
 	replis := decfilm.NouveauCompteur()
 	matchCtx = avecReplisDeLaPasse(matchCtx, replis)
-	defer publierReplisDeLaPasse(ctx, matchID, replis)
+	// LES CONTEXTES DE FILM DE LA PASSE VERSENT LEUR RAPPORT AVANT LA PUBLICATION (revue finale,
+	// 2026-10-02, cf. replis_de_la_passe.go).
+	defer cloreLaPasse(ctx, matchCtx, matchID)
 
 	outcome, deaths, err := c.collect(matchCtx, matchID)
 	dur := time.Since(start)

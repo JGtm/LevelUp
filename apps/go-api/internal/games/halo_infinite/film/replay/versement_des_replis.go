@@ -186,3 +186,15 @@ func (o Options) enregistreurDesConsultations() *objectives.ReplisALaConsultatio
 	}
 	return &objectives.ReplisALaConsultation{}
 }
+
+// VerserLesReplisDuContexte verse au compteur `fb` le rapport des replis de `grammar` et `profile`
+// accumule par le contexte de film `fc` — la meme table que [versementDuBalayage], pour un appelant
+// HORS de la cuisson : le collecteur de sync, qui ouvre son propre contexte (pont d identite, pose des
+// largeurs, lectures des porteurs) et le verse UNE fois, a la sortie de sa passe (revue finale,
+// 2026-10-02). Un contexte nil ne verse rien.
+func VerserLesReplisDuContexte(fb *fallback.Compteur, fc *grammar.FilmContext) {
+	if fc == nil {
+		return
+	}
+	versementDuBalayage(fb, fc)
+}
