@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -49,10 +50,20 @@ type Lecteur struct {
 	// qui n observe rien. Il ne change AUCUNE consommation de bits : c est la propriete
 	// qui le distingue du profil (cf. l en-tete de `observateur.go`).
 	obs *Observation
-	// rejetVueB : la derniere boucle de records de la vue B ([decodeInferLoop]) s est arretee sur un
-	// en-tete REJETE et non sur son terminateur ; le curseur est a la fin de cet en-tete.
-	rejetVueB bool
+	// sortieVueB : comment la derniere boucle de records de la vue B ([decodeInferLoop]) s est
+	// arretee. Sur un en-tete REJETE ([estUnRejet]), le curseur est a la fin de cet en-tete et
+	// eidRejete porte son eid complet.
+	sortieVueB lecture.SortieVueB
+	eidRejete  uint32
+	// exceptionDatee : le composant en cours de traversee a ete lu par un site en exception datee
+	// (`lecteur_position_exceptions.go`) ; la boucle de composants le remet a faux avant chaque
+	// composant ([traverseComponentLoopFrom]).
+	exceptionDatee bool
 }
+
+// noterExceptionDatee marque le composant en cours : sa largeur vient d un lecteur en exception
+// datee, pas du portage de l ecrivain.
+func (b *Lecteur) noterExceptionDatee() { b.exceptionDatee = true }
 
 // LecteurSur rend un lecteur de grammaire positionne sur le premier bit de `buf`. C est la
 // SEULE porte de construction du paquet, et elle passe par la couche source

@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/types"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // Keyframe/delta entity traversal: drives the mask-gated component loop
 // (FUN_14076cb60) over an archetype's ordered component list (from the registry),
@@ -22,6 +25,9 @@ type CompResult struct {
 	Variant  uint32 // variant-name for obje/weapon components (else noVariant)
 	Ported   bool   // false => no bit-exact deser; traversal must stop here
 	StartBit int
+	// Prov dit d ou vient la largeur avec laquelle le composant a ete traverse (ADR 0037 IR-4) ;
+	// [lecture.LargeurNonRenseignee] pour un composant non porte.
+	Prov lecture.ProvenanceLargeur
 	// Payload porte la VALEUR décodée du composant, pour les seuls composants de
 	// captureNames (cf. capture.go) : BodyVitality, ShieldVitality, RespawnTimer,
 	// RoundTimer. nil partout ailleurs — le décodeur reste un sauteur de bits par défaut.
@@ -266,9 +272,11 @@ func traverseComponentLoopFrom(br *Lecteur, arch Archetype, t *EntityTrace, from
 		if w, ok := br.p.Grammaire.largeurCalibree(arch.Components[i]); ok {
 			br.Skip(w)
 			consumeCorruptionCheck(br)
-			t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Ported: true, StartBit: start})
+			t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Ported: true, StartBit: start,
+				Prov: lecture.LargeurCalibree})
 			continue
 		}
+		br.exceptionDatee = false
 		variant, dead, payload, ported := consumeByNameCapturing(br, arch.Components[i], t.TypeIndex, arch.Level(i))
 		if dead != nil {
 			t.Dead = dead
@@ -283,7 +291,8 @@ func traverseComponentLoopFrom(br *Lecteur, arch Archetype, t *EntityTrace, from
 			if w, ok := br.p.Grammaire.largeurBouchon(arch.Components[i]); ok {
 				br.Skip(w)
 				consumeCorruptionCheck(br)
-				t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant, Ported: true, StartBit: start})
+				t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant, Ported: true,
+					StartBit: start, Prov: lecture.LargeurBouchon})
 				continue
 			}
 			t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant, Ported: false, StartBit: start})
@@ -292,8 +301,17 @@ func traverseComponentLoopFrom(br *Lecteur, arch Archetype, t *EntityTrace, from
 		}
 		consumeCorruptionCheck(br)
 		t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant,
-			Ported: ported, StartBit: start, Payload: payload})
+			Ported: ported, StartBit: start, Payload: payload, Prov: provenanceDeLaLargeur(br)})
 	}
+}
+
+// provenanceDeLaLargeur rend la provenance de la largeur d un composant que son deserialiseur
+// vient de traverser : le portage de l ecrivain, ou un site en exception datee.
+func provenanceDeLaLargeur(br *Lecteur) lecture.ProvenanceLargeur {
+	if br.exceptionDatee {
+		return lecture.LargeurExceptionDatee
+	}
+	return lecture.LargeurEcrivain
 }
 
 // consumeMask mirrors FUN_1406d7610: R(1) gate ; if 0 -> R(3) count + count×R(6)

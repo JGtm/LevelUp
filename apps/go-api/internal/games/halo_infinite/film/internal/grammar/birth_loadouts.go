@@ -18,7 +18,7 @@ package grammar
 // le PREMIER de la trame (la liste finit sur son en-tête dans 40/41, 91/99 et 123/125 cas), et le
 // localisateur de production (`marchLocate`, signature du slot 123) démarre plus loin et le
 // saute. Démarrer la marche à la fin de la liste demanderait la grammaire de charge de CHAQUE
-// type d'événement (cf. `movementStateScanner.paquet`) : ce lecteur prend donc le record comme
+// type d'événement (cf. `movementStateScanner.trame`) : ce lecteur prend donc le record comme
 // ANCRE, par la signature que [ScanBipedCreations] reconnaît déjà en production (43 bits
 // déterminés) — l'alternative que la sonde P3 nomme.
 //
@@ -150,7 +150,7 @@ func newBirthScan(fc *FilmContext, reg *Registry, emp map[int]int, st *types.Bir
 }
 
 // lierLeChunk pose sur le monde ce que les images-clés du chunk déclarent, puis la table de
-// datums — la liaison de la marche de production (`movementStateScanner.lierLeMonde`), SANS son
+// datums — la liaison de la marche de production ([lierLeChunkAuMonde]), SANS son
 // oubli des slots que l image-clé ne porte plus (lot D-fix, `keyframe_liaison.go`) : ce balayage
 // ne décode aucun delta sous l archétype du monde (le record NEW porte le sien), il n y lit que la
 // CONFIRMATION d une fermeture, et l oubli y retirait une fermeture sur 104 (`b1f01a33`) sans

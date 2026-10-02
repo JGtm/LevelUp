@@ -32,10 +32,12 @@ type Etat uint8
 const (
 	// EtatNonRenseigne : sentinelle, jamais posée par la marche.
 	EtatNonRenseigne Etat = iota
-	// EtatInterprete : la marche a publié une valeur typée de l'occurrence pendant sa lecture.
+	// EtatInterprete : la marche a capturé une valeur typée de l'occurrence pendant sa lecture (la
+	// trace la porte). Une valeur publiée à un crochet de l'observation reste hors de la structure
+	// (ADR 0037 IR-8) : son occurrence est délimitée.
 	EtatInterprete
-	// EtatDelimite : l'étendue est connue — le composant a été traversé — et aucune valeur n'en a
-	// été publiée.
+	// EtatDelimite : l'étendue est connue — le composant a été traversé — et la structure ne porte
+	// pas sa valeur.
 	EtatDelimite
 	// EtatInfranchissable : la largeur est inconnue (lecteur non porté) ; la traversée s'arrête au
 	// début de l'occurrence, et le reste de la vue est une queue opaque ([QueueOpaque]).

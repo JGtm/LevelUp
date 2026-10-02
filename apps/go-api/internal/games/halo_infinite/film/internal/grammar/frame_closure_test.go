@@ -58,6 +58,16 @@ func (w *bitWriter) vueCUneEntree() {
 	w.bit(0)
 }
 
+// marcherPaquet marche UN payload delta depuis `debut` par la marche par rangs de la marche des
+// trames ([lireTrameParRangs]) et le classe, comme [mesureDesTrames.classerLaTrame].
+func (m *mesureDesTrames) marcherPaquet(pay []byte, w *World, debut int) {
+	br := LecteurSur(pay)
+	br.poserCadre(m.cfg)
+	var l lectureDeTrame
+	lireTrameParRangs(br, pay, w, m.cfg, debut, &l)
+	m.classer(paquetMarche{enTete: partDeLaTete(debut, m.cfg), recs: l.recs, rangs: l.rangs, vueC: l.verdict})
+}
+
 // marcherUn marche un payload depuis la tete du paquet sous une mesure neuve et rend sa carte.
 func marcherUn(t *testing.T, w *World, utiles UsagesProduit, pays ...[]byte) FrameClosureReport {
 	t.Helper()

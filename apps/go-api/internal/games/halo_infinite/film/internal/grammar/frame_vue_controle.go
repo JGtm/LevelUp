@@ -95,8 +95,11 @@ func champsAbsents() ChampsDeControle {
 type FluxVueC struct {
 	// Vide : la vue n a ecrit que son terminateur (UN bit).
 	Vide bool
-	// Kinds : les selecteurs `R(2)` rencontres, dans l ordre.
+	// Kinds : les selecteurs `R(2)` rencontres, dans l ordre ; Tours : la position du bit de
+	// continuation qui ouvre chacun d eux (meme rang que Kinds), l etendue de chaque tour dans la
+	// structure de lecture (ADR 0037 IR-1).
 	Kinds []int
+	Tours []int
 	// Porte : la vue a lu jusqu a son terminateur.
 	Porte bool
 	// Arret : la cause, quand la vue ne s est pas lue jusqu a son terminateur.
@@ -127,6 +130,7 @@ func consumeVueC(br *Lecteur, frameLen int) FluxVueC {
 			out.Arret = ArretVueCDebordement
 			return out
 		}
+		debutDuTour := br.BitPos()
 		if !br.ReadBit() {
 			out.Vide = tour == 0
 			out.Porte, out.Arret = true, ArretVueCAucun
@@ -137,7 +141,7 @@ func consumeVueC(br *Lecteur, frameLen int) FluxVueC {
 			return out
 		}
 		k := int(br.ReadBits(LargeurKindVueC))
-		out.Kinds = append(out.Kinds, k)
+		out.Kinds, out.Tours = append(out.Kinds, k), append(out.Tours, debutDuTour)
 		switch k {
 		case kindVueCNeant:
 			continue // zero bit : l ecrivain reboucle

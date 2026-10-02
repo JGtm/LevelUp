@@ -27,11 +27,15 @@ const (
 	// 123 (`marchLocateStrict`).
 	DebutParSignature
 	// DebutParChaine : paquet à liste d'événements, liste ouverte par ses records NEW de tête, dont
-	// la chaîne finit au bit près sur le début que la signature a localisé (`debutDeLaListe`).
+	// la chaîne finit au bit près sur le début que la signature a localisé (`localiserLaListe`).
 	DebutParChaine
 	// DebutParFermeture : paquet à liste d'événements que la signature ne localise pas, liste
-	// ouverte par un record NEW de tête depuis lequel la marche ferme le paquet (`debutDeLaListe`).
+	// ouverte par un record NEW de tête depuis lequel la marche ferme le paquet (`localiserLaListe`).
 	DebutParFermeture
+	// DebutParFermetureAuBit : comme [DebutParFermeture], mais la marche depuis ce record ne ferme
+	// le paquet qu'au bit près, une règle de l'écrivain contredite : le repli nommé
+	// `repli_debut_de_liste_ferme_au_bit`.
+	DebutParFermetureAuBit
 	// DebutNonLocalise : paquet à liste d'événements dont le début n'a pas été trouvé ; aucune vue
 	// n'est lue.
 	DebutNonLocalise
@@ -79,14 +83,15 @@ type Verdict uint8
 
 // Les verdicts de fermeture.
 const (
-	// VerdictNonRendu : sans objet — un paquet d'image-clé, dont chaque record porte sa preuve.
+	// VerdictNonRendu : aucun verdict — un paquet d'image-clé, dont chaque record porte sa preuve,
+	// ou une trame marchée sans les classes de vue (la vue C n'y est pas lue).
 	VerdictNonRendu Verdict = iota
 	// VerdictFerme : le prédicat de fermeture de la grammaire tient ; chaque record du paquet est
 	// prouvé avec lui.
 	VerdictFerme
-	// VerdictRefuse : les vues ont été lues jusqu'à leurs terminateurs mais le paquet ne se ferme
-	// pas — une largeur est fausse quelque part devant, à une position INCONNUE. Les records ne
-	// sont pas prouvés.
+	// VerdictRefuse : la vue C a été lue jusqu'à son terminateur mais le paquet ne se ferme pas :
+	// une largeur est fausse quelque part devant, à une position INCONNUE, ou la lecture contredit
+	// une règle de l'écrivain ([Fermeture.Regle]). Les records ne sont pas prouvés.
 	VerdictRefuse
 	// VerdictQueueOpaque : la marche s'est arrêtée à une position CONNUE, pour une cause typée
 	// ([Fermeture.Queue]).
@@ -105,6 +110,8 @@ const (
 	CauseListeNonLocalisee
 	// CauseMessageVueANonPorte : un corps de message de la vue A dont la grammaire n'est pas portée.
 	CauseMessageVueANonPorte
+	// CauseFinDePayloadVueA : la vue A a atteint la fin du payload avant son terminateur.
+	CauseFinDePayloadVueA
 	// CauseComposantNonPorte : un composant sans lecteur ([Record.Desync] désigne son index).
 	CauseComposantNonPorte
 	// CauseArchetypeHorsRegistre : un record dont l'archétype est hors du registre du film.
@@ -146,10 +153,22 @@ type QueueOpaque struct {
 	Composant int16
 }
 
-// Fermeture est le verdict de fermeture d'une trame delta et ce qu'elle a consommé.
+// AucuneRegle est la [Fermeture.Regle] d'une lecture qui ne contredit aucune règle de l'écrivain.
+const AucuneRegle uint8 = 0
+
+// Fermeture est le verdict de fermeture d'une trame delta et ce qu'elle a consommé. Le prédicat
+// appartient à la grammaire (`ecrivain_invariants.go`) ; la structure porte son verdict, jamais
+// une seconde définition (ADR 0037 IR-4).
 type Fermeture struct {
 	// Verdict est le verdict ; [VerdictNonRendu] pour un paquet d'image-clé.
 	Verdict Verdict
+	// AuBit dit que la vue C s'est lue jusqu'à son terminateur et que le reste du payload fait de 0
+	// à 7 bits nuls : la moitié « au bit près » du prédicat.
+	AuBit bool
+	// Regle est la première règle de l'écrivain que la lecture contredit, codée comme
+	// l'`InvariantEcrivain` de la grammaire ; [AucuneRegle] sinon. Le paquet n'est fermé que si
+	// [Fermeture.AuBit] tient ET qu'aucune règle n'est contredite.
+	Regle uint8
 	// Consommes est la position du curseur de la marche à son arrêt, en bits depuis le début du
 	// payload.
 	Consommes uint32
@@ -174,10 +193,13 @@ type VueA struct {
 // VueB est la vue des entités (rang 1) d'une trame delta : son étendue et sa sortie. Ses records
 // sont [Paquet.Records].
 type VueB struct {
-	// Debut et Bits sont son étendue ; zéro bit pour une vue non atteinte.
+	// Debut et Bits sont son étendue ; zéro bit pour une vue non atteinte. Un en-tête rejeté est
+	// compris dans l'étendue : l'écrivain l'a écrit, et la vue s'arrête après lui.
 	Debut, Bits uint32
 	// Sortie dit comment sa boucle de records s'est terminée.
 	Sortie SortieVueB
+	// EIDRejete est l'eid complet de l'en-tête rejeté, quand la sortie est un rejet ; zéro sinon.
+	EIDRejete uint32
 }
 
 // IndexDeControleAbsent est l'[EntreeVueC.Index] d'une entrée qui ne porte pas d'index de
@@ -190,8 +212,8 @@ const IndexDeControleAbsent int8 = -1
 type EntreeVueC struct {
 	// Debut est le premier bit du tour : le bit de continuation qui l'annonce.
 	Debut uint32
-	// Bits est sa longueur, sélecteur et charge compris ; la charge d'un tour qui arrête la marche
-	// n'y est pas comptée.
+	// Bits est sa longueur, sélecteur et charge compris ; pour un tour qui arrête la marche,
+	// jusqu'à la position d'arrêt.
 	Bits uint32
 	// Kind est le sélecteur `R(2)` : 0 l'entrée de contrôle d'un participant, 1 et 2 des charges
 	// non portées, 3 aucune charge.
@@ -241,4 +263,7 @@ type Paquet struct {
 	Records []Record
 	// Comps est l'arène des composants de tous les records du paquet ([Record.Comps]).
 	Comps []Composant
+	// Entites est la table d'entités de la marche, telle que la lecture de ce paquet l'a laissée
+	// (ADR 0037 IR-5) : en lecture seule, valide le temps du tour.
+	Entites Entites
 }

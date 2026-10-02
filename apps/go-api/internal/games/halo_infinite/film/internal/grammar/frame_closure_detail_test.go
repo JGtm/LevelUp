@@ -97,6 +97,19 @@ func recouperLeDetail(t *testing.T, nom string, r FrameClosureReport, details []
 	}
 }
 
+// marcherPaquetDetaille marche UN payload depuis `debut` par la marche par rangs
+// ([lireTrameParRangs]), le classe et en remplit le detail, comme
+// [marcheDetaillee.detaillerLaTrame].
+func (md *marcheDetaillee) marcherPaquetDetaille(pay []byte, w *World, debut int, d *PaquetDeCarte) {
+	avant := compteDesAnticipations(md.cfg.Obs)
+	br := LecteurSur(pay)
+	br.poserCadre(md.cfg)
+	var l lectureDeTrame
+	lireTrameParRangs(br, pay, w, md.cfg, debut, &l)
+	md.detaillerLaMarche(&l, debut, pay, d)
+	d.Anticipations = compteDesAnticipations(md.cfg.Obs) - avant
+}
+
 // marcherUnDetaille marche un payload depuis la tete du paquet et rend son detail.
 func marcherUnDetaille(t *testing.T, w *World, pay []byte) PaquetDeCarte {
 	t.Helper()

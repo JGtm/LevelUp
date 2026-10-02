@@ -178,18 +178,76 @@ après la preuve de différence nulle ; `grammar.Rev` ne monte pas.
 ### Lot 1.2 — Phase delta : la marche de production devient `FilmContext.Trames` (taille M)
 **Prérequis** : lot L0 de la campagne (définition de la fermeture) fusionné dans `feat/v75`, puis
 `git merge origin/feat/v75` dans la branche et références d'équivalence re-figées.
-- [ ] 1.2.1 Le pilotage de `movementStateScanner.marcher` (`movement_states.go`) devient
+- [x] 1.2.1 Le pilotage de `movementStateScanner.marcher` (`movement_states.go`) devient
       `FilmContext.Trames(interets) iter.Seq2[*lecture.Paquet, error]` dans des fichiers neufs
       `grammar/marche_trames*.go`.
-- [ ] 1.2.2 `ScanMarcheDesTrames` (états de mouvement, tir continu) et `FrameClosure` en deviennent
+      *Fait* : `marche_trames.go` (le marcheur : table anticipée posée une fois, puis chunk par
+      chunk la liaison des images-clés au monde, puis paquet par paquet la localisation des listes
+      et la marche par rangs ; `FilmContext.Trames(obs)` en est l'itérateur), `marche_trames_rangs.go`
+      (la marche d'UNE trame par rangs, `lireTrameParRangs`, seule implantation — `decodeFrameParRangs`
+      n'en est plus qu'une porte), `marche_trames_ranger.go` (ce que la marche range dans la
+      structure, sans relire un bit), `marche_trames_entites.go` (la table d'entités). Écart au
+      libellé : les « intérêts » sont l'`Observation` existante, dont les crochets interprètent
+      pendant la marche (DT-7). Le paquet rendu est l'arène de la marche, valide pendant le tour
+      qui le rend ; son en-tête est posé AVANT la marche du paquet, parce que les crochets qui
+      publient pendant la marche le lisent.
+- [x] 1.2.2 `ScanMarcheDesTrames` (états de mouvement, tir continu) et `FrameClosure` en deviennent
       les consommateurs ; la recopie du pilotage dans `frame_closure.go` disparaît.
-- [ ] 1.2.3 `HeaderBit` posé dans `decodeInferLoop` (étendue de chaque record) ; étendues des vues ;
+      *Fait* : les états de mouvement (`movementStateScanner.trame`), le tir continu (le verdict de
+      la vue C lu dans la trame rendue), `FrameClosure` et `FrameClosureDetaillee` consomment
+      `marcheurDesTrames.parcourir` ; les deux recopies du pilotage (`frame_closure.go`,
+      `frame_closure_detail.go`) ont disparu. Garde-rail `marche_trames_unique_test.go` : dans le
+      code de production du paquet, `lierLeChunkAuMonde` et `localiserLaListe` ne sont appelés que
+      depuis `marche_trames.go` (mutation : un appel ailleurs, rouge). Les formes booléennes
+      `debutDeLaListe` / `debutParFermeture`, sans appelant de production, vivent dans le fichier de
+      test étiqueté `marche_trames_sondes_research_test.go` pour les sondes de la campagne (avec
+      `marcherParRangs` et `largeurTagDeGeneration`) ; `debut_par_fermeture_test.go` teste le rang
+      rendu par `debutParFermetureRangee`.
+- [x] 1.2.3 `HeaderBit` posé dans `decodeInferLoop` (étendue de chaque record) ; étendues des vues ;
       sortie de vue B typée (terminateur / rejet hors datum / rejet de vue, compteurs de
       `observateur.go`) ; état de fermeture du paquet selon DT-4.
-- [ ] 1.2.4 Table d'entités exposée en lecture seule (DT-2) ; liaisons marquées par provenance ;
+      *Fait* : `HeaderBit` et `FinBit` de chaque record (`finirLeRecord`) ; étendues des vues A, B,
+      C et de chaque tour de vue C (`FluxVueC.Tours`) ; chaque sortie de `decodeInferLoop` est
+      typée (terminateur, rejet hors datum, rejet de vue — avec l'eid rejeté —, record
+      infranchissable, fin de payload, plafond), les compteurs de `observateur.go` inchangés ;
+      verdict fermé / refusé / queue opaque à cause typée et position connue (record et composant
+      désignés pour un composant non porté), jamais confondus ; preuve de chaque record. Tests :
+      `marche_trames_test.go` (paquets synthetiques dont chaque bit est connu ; mutation « fin d'un
+      record prise à la fin de son en-tête », rouge) et `marche_trames_bobines_test.go` (sur les
+      bobines du dépôt : records et composants contigus et emboîtés, tours de vue C contigus,
+      verdict accordé à la vue C et aux preuves ; la marche rend les comptes de la carte de
+      fermeture et des états de mouvement).
+- [x] 1.2.4 Table d'entités exposée en lecture seule (DT-2) ; liaisons marquées par provenance ;
       récupération marquée (DT-5).
+      *Fait* : `lecture.Entites` sur le monde (`entitesDuMonde` : eid, archétype, rang de vue du
+      film, provenance, génération connue) ; le commentaire de `world.go` qui parlait de trois
+      tables corrigé (une table, la vue en attribut) ; chaque porte de liaison du monde pose sa
+      provenance (NEW lu, image-clé, datum, anticipation, inférence, joker) et chaque record dit la
+      liaison sous laquelle il a été lu ; récupération marquée dans la marche : le début d'une
+      liste d'événements (signature, chaîne, fermeture au premier rang, repli du second rang
+      `DebutParFermetureAuBit`), les liaisons de datum / d'anticipation / d'inférence, et la
+      provenance des largeurs (écrivain, exception datée, calibrée, bouchon). Restent hors de ce
+      lot, par le plan : l'élection d'ancre d'image-clé (`LiaisonImageCleElue`, phase images-clés,
+      lot 1.3). Aucun lecteur de production ne porte de largeur présumée (`LargeurPresumee`
+      n'a pas de source ; confirmé par la campagne le 2026-10-02 : aucun lot de sa vague 1 n'en
+      pose).
 - Gate : G-unit, G-arch, G-vet, G-film ; G-equiv : zéro divergence ; `frame_closure.golden`
   identique ; killsource identique à l'octet sur les témoins ; durée et pic mémoire mesurés (critère 4).
+  *Tenu le 2026-10-02 (nuit)* : G-unit (`grammar/...`) vert ; G-arch vert ; G-vet sortie 0 avec et
+  sans `research` ; G-film vert (23 paquets) après régénération de l'empreinte à révision CONSTANTE
+  (`grammar-2026-10-02`, `a38f9ba8…` -> `7f46317a…`, périmètre inchangé) ; `golangci-lint` (ratchet
+  du dépôt) 0 problème sur les paquets touchés. G-equiv : `replay-equiv` 20/20 identiques aux
+  références re-figées sur la base du lot (`c787c307f`), chaque film DÉCODÉ — les faits de la passe
+  de référence mis de côté avant la passe, parce que leur fraîcheur ne regarde que les révisions
+  déclarées et qu'une passe à révision constante les aurait relus ; les 20 fichiers de faits
+  identiques à l'octet à ceux de la référence ; `frame_closure.golden` inchangé ; killsource
+  `json` 19/19 témoins identiques à l'octet, journaux identiques hors horodatage. Critère 4 mesuré
+  (binaires alternés film par film, ordre inversé au second tour, quatre films dont le BTB
+  `084a804d`) : durée moyenne par film de −7,9 % à +4,7 % (écarts par paire de −16,5 % à
+  +10,3 %), pic mémoire moyen par film de −6,7 % à +3,3 % ; mais un même binaire varie jusqu'à 15 %
+  d'un tour à l'autre (durée et pic) sous la charge de la campagne (trois agents qui décodent) :
+  aucune régression visible, NON CONCLUSIF SOUS CHARGE en deçà de 10 % ; mesure à rejouer machine
+  calme (item de clôture de l'étape), quand la campagne aura assemblé sa vague 1 (elle préviendra).
 
 ### Lot 1.3 — Phase images-clés : `FilmContext.ImagesCles` (taille M)
 **Prérequis** : lot 1.2 clos ; lot de la campagne sur la marche d'image-clé (L9) fusionné ou
@@ -256,6 +314,25 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
    second caractère couvre la relecture CP1252 (`€`, `”`…), pas les contrôles C1 `U+0080`-`U+009F`
    d'une relecture Latin-1. Hors périmètre (ni fichier du plan, ni sortie) : à confier à un lot de
    nettoyage, avec l'élargissement du ratchet.
+2. (2026-10-02, lot 1.2) `DecodeFrameViews` (`grammar/frame_harvest.go`) n'a plus d'appelant de
+   production : la production marche par `FilmContext.Trames`. Elle reste la porte de décodage de
+   quatre fichiers de test non étiquetés (`grammar/vehicules_v11_tourelle_test.go`,
+   `grammar/vehicules_v5_occupation_test.go`, `replay/attachement_phase0_socle_test.go`,
+   `replay/visee_composant_pont_test.go`) et d'une trentaine de sondes de recherche ; son corps est
+   la même marche par rangs que la production. À retirer quand ces lecteurs passeront sur la
+   structure (étape 2).
+3. (2026-10-02, lot 1.2) Les sondes de recherche de la campagne (`campagne_marche_research_test.go`,
+   `m4b_*_research_test.go`, `mouvement_*_research_test.go`) recopient encore le pilotage
+   (`lierLeChunkAuMonde` puis `DecodeFrameViews`) ; le garde-rail du pilotage unique ne regarde que
+   la production. Fichiers de la campagne : signalé, non traité.
+4. (2026-10-02, lot 1.2) `SortieVueBAutre` (carte de fermeture détaillée) est inatteignable par
+   construction depuis que la boucle de records type sa sortie ; la valeur reste tant que la
+   colonne de l'outil de la campagne (`research/cmd_fermeture/`) la porte.
+5. (2026-10-02, lot 1.2) `decodeInferLoop` garde deux branches inatteignables en production : la
+   réparation de chaîne (`const inferRepair = false`) et la resynchronisation validée
+   (`inferResyncTargets` toujours nil depuis le retrait de son réglage, 2026-09-05). Code mort
+   antérieur à ce plan ; hors périmètre (aucune sortie ne change à le retirer, mais
+   `decodeInferLoop` est sous plafond de longueur et la campagne y travaille).
 
 ## 7. Journal
 
@@ -295,3 +372,22 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
   `LEVELUP_REPO_ROOT`, qui ferait écrire les références du principal) ; une passe de plus de
   10 minutes se lance par `Monitor`, pas en arrière-plan Bash (enfants orphelins) ; prévenir la
   campagne avant une passe de décodage (une à la fois sur la machine).
+- 2026-10-02 (nuit) : lot 1.2 clos. Prérequis tenu : L0 fusionné dans `feat/v75` (`af6e93e23`),
+  refusion dans la branche (`ff86624ba`), références d'équivalence re-figées sur cette base
+  (`c787c307f`) et passe de référence (durées, pics, sorties killsource) prise sur la même base.
+  La marche des trames est écrite une fois et consommée ; différence nulle prouvée (cf. gate du
+  lot). Coordination : la campagne confirme que sa vague 1 ne touche ni `localiserLaListe` ni
+  `debutParFermetureRangee` et ne pose aucune largeur présumée ; elle a donné la voie libre pour
+  les passes de décodage sans pouvoir réserver de fenêtre (trois agents en parallèle). Pendant le
+  lot, `feat/v75` a reçu la fusion falcon-behemoth (schéma 77 ; rejeu, service et web, aucun
+  fichier de grammaire) : la preuve est faite sur la base du lot, la refusion et le re-figeage des
+  références ouvrent le lot 1.3. Précision d'IR-4 (ADR 0037) et des types de `lecture` : une
+  occurrence n'est « interprétée » que si la trace capture sa valeur ; une valeur publiée à un
+  crochet de l'observation laisse l'occurrence délimitée jusqu'à ce que son canal lise la structure
+  (étape 2) — le lien publication -> étendue des états de mouvement et du tir continu est l'objet
+  de T3 (1.4.2).
+- Rappel d'exploitation (lot 1.2) : avant toute passe de preuve à révision constante, renommer
+  `data/cache/film_facts` du worktree (dossier réel, jamais une jonction) — `replay-equiv` relit
+  les faits frais, et leur fraîcheur ne regarde que les révisions déclarées ; vérifier
+  `depuis_les_faits=false` dans le journal et comparer les faits neufs à l'octet. Même précaution
+  avant chaque cuisson mesurée (critère 4).

@@ -21,14 +21,14 @@ func TestLeRepliDAnticipationEstCompteParLaMarche(t *testing.T) {
 	cfg := FrameConfig{IDLowBits: 13, Profil: ProfilDeBalayageParDefaut(), Obs: NouvelleObservation()}
 
 	for _, id := range []uint32{1<<30 | 77, 1<<30 | 78} {
-		if rejetDeVue(recDelta, id, w, cfg) {
+		if _, rejete := rejetDeVue(recDelta, id, w, cfg); rejete {
 			t.Fatalf("eid %#x rejete : la table anticipee le declare, le repli doit le lier", id)
 		}
 	}
-	if !rejetDeVue(recDelta, 1<<30|79, w, cfg) {
+	if _, rejete := rejetDeVue(recDelta, 1<<30|79, w, cfg); !rejete {
 		t.Fatal("eid du slot 79 accepte : aucune image-cle ne le declare, il doit etre rejete hors datum")
 	}
-	sc := &movementStateScanner{monde: w, obs: cfg.Obs}
+	sc := &movementStateScanner{obs: cfg.Obs}
 	if got := sc.liaisonsDuRepliDAnticipation(); got != 2 {
 		t.Fatalf("la marche rend %d liaison(s) par anticipation, attendu 2 : le compte du repli "+
 			"n arrive pas a la cuisson", got)

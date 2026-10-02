@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -31,22 +32,28 @@ import (
 // le monde connait — finit EXACTEMENT sur le debut que le localisateur a trouve : deux lectures
 // independantes, l en-tete en tete et la signature du slot 123 en queue, qui s accordent au bit
 // pres. Quand le localisateur ne trouve rien, la preuve est la FERMETURE du paquet par la marche
-// complete qui part du candidat ([debutParFermeture]) ; a defaut, le candidat d ou le paquet ferme
-// au bit pres seulement est garde, et ce second rang N EST PAS une preuve : c est le repli nomme
-// `repli_debut_de_liste_ferme_au_bit`, compte a part. Sinon le debut du localisateur est garde, et
-// rien ne change d un bit. Par la chaine et au premier rang, aucun bit n est devine, les records
-// sont LUS ; les listes ainsi etendues sont comptees
+// complete qui part du candidat ([debutParFermetureRangee]) ; a defaut, le candidat d ou le paquet
+// ferme au bit pres seulement est garde, et ce second rang N EST PAS une preuve : c est le repli
+// nomme `repli_debut_de_liste_ferme_au_bit`, compte a part. Sinon le debut du localisateur est
+// garde, et rien ne change d un bit. Par la chaine et au premier rang, aucun bit n est devine, les
+// records sont LUS ; les listes ainsi etendues sont comptees
 // ([types.MovementStateStats.EventPacketsNewRecordStart]).
 
-// debutDeLaListe rend le debut de la marche d un paquet a evenements : le premier record NEW de
-// tete prouve ([debutParChaine], [debutParFermeture]), sinon le localisateur strict. `-1` : liste
-// non localisee. Le booleen dit que la liste commence a un record NEW que le localisateur sautait.
-func debutDeLaListe(pay []byte, w *World, cfg FrameConfig) (int, bool) {
+// localiserLaListe rend le debut de la marche d un paquet a evenements et COMMENT il a ete trouve :
+// le premier record NEW de tete prouve par la chaine ([debutParChaine]) ou par la fermeture
+// ([debutParFermetureRangee], aux deux rangs), sinon le debut du localisateur strict
+// ([lecture.DebutParSignature]) ; -1 et [lecture.DebutNonLocalise] pour une liste non localisee.
+// Tout debut autre que celui du localisateur est un record NEW que le localisateur sautait. Chaque
+// comment est une recuperation que la structure de lecture marque (ADR 0037 IR-6).
+func localiserLaListe(pay []byte, w *World, cfg FrameConfig) (int, lecture.DebutDeVueB) {
 	debut := marchLocateStrict(pay, w, cfg)
 	if debut < 0 {
-		return debutParFermeture(pay, candidatsDeTete(pay, len(pay)*8, w), w, cfg)
+		return debutParFermetureRangee(pay, candidatsDeTete(pay, len(pay)*8, w), w, cfg)
 	}
-	return debutParChaine(pay, debut, candidatsDeTete(pay, debut, w), w, cfg)
+	if d, parNeuf := debutParChaine(pay, debut, candidatsDeTete(pay, debut, w), w, cfg); parNeuf {
+		return d, lecture.DebutParChaine
+	}
+	return debut, lecture.DebutParSignature
 }
 
 // candidatsDeTete rend, tries, les positions `p` (en-tete complet avant `fin`) qui portent un
@@ -145,10 +152,12 @@ func pasDEssai(pay []byte, pos, extra int, w *World, essai FrameConfig) (int, bo
 	return pos, false // terminateur : la liste finirait avant le debut localise
 }
 
-// debutParFermeture rend, pour un paquet dont le localisateur ne trouve pas la liste, le PREMIER
-// candidat d ou la marche complete (monde restaure apres chaque essai) FERME le paquet
+// debutParFermetureRangee rend, pour un paquet dont le localisateur ne trouve pas la liste, le
+// PREMIER candidat d ou la marche complete (monde restaure apres chaque essai) FERME le paquet
 // ([LectureVueC.Fermee] : au bit pres, sans regle de l ecrivain contredite) ; s il n y en a aucun,
-// le premier d ou elle le ferme au bit pres ([LectureVueC.FermeeAuBit]) ; -1 sinon.
+// le premier d ou elle le ferme au bit pres ([LectureVueC.FermeeAuBit]) ; -1 sinon. Il rend aussi
+// le RANG retenu : [lecture.DebutParFermeture], [lecture.DebutParFermetureAuBit], ou
+// [lecture.DebutNonLocalise] avec -1.
 //
 // LE PREMIER RANG EST UNE PREUVE : le paquet ferme, aucune regle de l ecrivain contredite.
 //
@@ -158,7 +167,7 @@ func pasDEssai(pay []byte, pos, extra int, w *World, essai FrameConfig) (int, bo
 // tir continu y voit un trou), mais ses records sont lus et ses NEW lies, comme ceux de tout paquet
 // lu et non ferme. Chaque liste prise a ce rang est comptee
 // ([Observation.DebutsDeListeParRepliFermeAuBit]).
-func debutParFermeture(pay []byte, candidats []int, w *World, cfg FrameConfig) (int, bool) {
+func debutParFermetureRangee(pay []byte, candidats []int, w *World, cfg FrameConfig) (int, lecture.DebutDeVueB) {
 	extra := motFacultatifDEnTete(cfg)
 	auBit := -1
 	for _, p := range candidats {
@@ -167,16 +176,17 @@ func debutParFermeture(pay []byte, candidats []int, w *World, cfg FrameConfig) (
 		}
 		l := lectureDEssai(pay, w, cfg, p-extra)
 		if l.Fermee {
-			return p - extra, true
+			return p - extra, lecture.DebutParFermeture
 		}
 		if l.FermeeAuBit && auBit < 0 {
 			auBit = p - extra
 		}
 	}
-	if auBit >= 0 {
-		cfg.Obs.compterDebutDeListeParRepliFermeAuBit()
+	if auBit < 0 {
+		return -1, lecture.DebutNonLocalise
 	}
-	return auBit, auBit >= 0
+	cfg.Obs.compterDebutDeListeParRepliFermeAuBit()
+	return auBit, lecture.DebutParFermetureAuBit
 }
 
 // lectureDEssai marche le paquet depuis `debut` sur le monde, puis le restaure, et rend le verdict

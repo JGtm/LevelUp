@@ -114551,3 +114551,40 @@ golangci-lint 0 nouvelle issue (avec et sans tag integration).
 utilisateur. Au premier cycle après redémarrage, les 8 films sont décodés une dernière fois, la
 colonne est posée, et le backlog doit recommencer à baisser (`killsource_postsync_backlog_restant`
 sous 7 351, `sans_killfeed` à 0 aux cycles suivants).
+
+## [2026-10-02] Représentation intermédiaire du film, étape 1 — lot 1.2 : la marche de production devient `FilmContext.Trames` — Complété (`feat/representation-intermediaire`)
+
+**Statut** : Complété (lot 1.2 du plan `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`).
+
+**Décision technique principale** : la marche des trames delta est écrite UNE fois
+(`grammar/marche_trames*.go`) et consommée par ses lecteurs : états de mouvement et tir continu
+(`movementStateScanner.trame`), carte de fermeture et carte détaillée. Elle range chaque trame dans
+la structure `grammar/lecture` sans relire un bit : étendues des vues, des records (`HeaderBit` /
+`FinBit`), des composants et des tours de vue C ; sortie de vue B typée sur chaque retour de
+`decodeInferLoop` ; verdict fermé / refusé / queue opaque (cause typée, record et composant
+désignés) ; provenance des liaisons (chaque porte de liaison du monde pose la sienne) et des
+largeurs ; table d'entités en lecture seule ; récupération marquée (début de liste par signature,
+chaîne, fermeture, repli du second rang). L'interprétation reste aux crochets de l'observation
+(ADR 0037 IR-8) : l'en-tête du paquet est posé avant sa marche, et le tir continu reçoit le verdict
+de la vue C lu dans la trame. Garde-rail du pilotage unique (`marche_trames_unique_test.go`). Les
+formes booléennes du début de liste, sans appelant de production, passent dans un fichier de test
+étiqueté `research` pour les sondes de la campagne. Précision d'IR-4 (ADR 0037) et des types : une
+occurrence n'est « interprétée » que si la trace capture sa valeur ; une valeur publiée à un
+crochet laisse l'occurrence délimitée jusqu'à ce que son canal lise la structure (étape 2).
+
+**Résultats observés** : différence nulle prouvée sur la base du lot (`feat/v75` post-L0) —
+`replay-equiv` 20/20 identiques, chaque film DÉCODÉ (faits de la passe de référence mis de côté :
+la fraîcheur des faits ne regarde que les révisions déclarées, une passe à révision constante les
+relirait) ; les 20 fichiers de faits identiques à l'octet ; `killsource json` 19/19 témoins
+identiques à l'octet, journaux identiques hors horodatage ; `frame_closure.golden` inchangé.
+Critère 4 mesuré (binaires alternés, deux tours, quatre films dont le BTB `084a804d`) : durée
+moyenne par film de −7,9 % à +4,7 %, pic de −6,7 % à +3,3 %, mais un même binaire varie de 15 %
+d'un tour à l'autre sous la charge de la campagne — aucune régression visible, non conclusif sous
+charge en deçà de 10 %, à rejouer machine calme à la clôture de l'étape. Gates : G-unit, G-arch,
+G-vet (avec et sans `research`), G-film (23 paquets) verts, `golangci-lint` 0 problème ; empreinte
+régénérée à révision constante (`grammar-2026-10-02`). Découvertes consignées au plan (§6, 2 à 5).
+
+**Conclusion / prochaine étape** : lot 1.3 (phase images-clés) — au début du lot, refusion de
+`feat/v75` (falcon-behemoth, schéma 77, entré pendant le lot 1.2) et références re-figées ; il
+attend aussi le lot de la campagne sur la marche d'image-clé (L9) ou une coordination. Rien n'est
+poussé.

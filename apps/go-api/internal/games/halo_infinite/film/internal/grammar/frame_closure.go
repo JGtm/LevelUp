@@ -157,49 +157,50 @@ type FrameClosureReport struct {
 const ArchetypeNonResolu = -1
 
 // FrameClosure mesure la carte de fermeture des trames delta d un film, sous la marche de
-// production ([ScanMarcheDesTrames]) et le profil que porte `fc`.
+// production et le profil que porte `fc`.
 //
-// LA MARCHE EST CELLE DE PRODUCTION, PAS UNE COPIE DE SES LECTURES : meme monde (liaisons des
-// images-cles chunk par chunk, table anticipee), meme localisation des listes d evenements
-// ([debutDeLaListe]), meme marcheur ([DecodeFrameViewsCurseur], trois vues). Seul le PILOTAGE —
-// la boucle chunk -> paquet — est recopie de `movementStateScanner.marcher`, parce que celui-ci
-// publie des etats de mouvement et non ce que la carte classe ; le brancher ici aurait touche
-// une marche de production pour un instrument.
+// LA MARCHE EST CELLE DE PRODUCTION, ET LA CARTE LA CONSOMME : la marche des trames
+// ([FilmContext.Trames], `marche_trames.go`) — meme monde, meme localisation des listes
+// d evenements, meme marche par rangs que les etats de mouvement et le tir continu. La carte ne
+// fait que CLASSER ce que la marche rend, trame par trame.
 func FrameClosure(fc *FilmContext, utiles UsagesProduit) (FrameClosureReport, error) {
-	if fc == nil {
-		return FrameClosureReport{}, fmt.Errorf("filmdec: contexte de film nil — aucune fermeture a mesurer")
+	m, mt, err := mesureSurLaMarche(fc, utiles)
+	if err != nil {
+		return FrameClosureReport{}, err
 	}
-	chunks := fc.ChunkNumbers()
-	if len(chunks) == 0 {
-		return FrameClosureReport{}, ErrNoFilmChunk
+	mt.parcourir(func(t *trameLue) bool {
+		m.classerLaTrame(t)
+		return true
+	})
+	return m.rapport(), nil
+}
+
+// mesureSurLaMarche ouvre une mesure de la carte et la marche des trames qu elle classe, sous le
+// cadre de balayage du contexte et l observateur de la mesure.
+func mesureSurLaMarche(fc *FilmContext, utiles UsagesProduit) (*mesureDesTrames, *marcheurDesTrames, error) {
+	if fc == nil {
+		return nil, nil, fmt.Errorf("filmdec: contexte de film nil — aucune fermeture a mesurer")
+	}
+	if len(fc.ChunkNumbers()) == 0 {
+		return nil, nil, ErrNoFilmChunk
 	}
 	reg, err := fc.Registry()
 	if err != nil {
-		return FrameClosureReport{}, fmt.Errorf("filmdec: registre illisible, les trames n ont pas de grammaire: %w", err)
+		return nil, nil, fmt.Errorf("filmdec: registre illisible, les trames n ont pas de grammaire: %w", err)
 	}
 	cfg := fc.CadreDeBalayage()
 	if !cfg.Profil.Grammaire.ClassesDeVue {
 		// La carte mesure la marche PAR CLASSES DE VUE, celle de production : un cadre qui ne la
 		// porte pas ne publie pas le verdict de la vue C, et la mesure n aurait pas d oracle.
-		return FrameClosureReport{}, errors.New("filmdec: la carte de fermeture exige la marche " +
+		return nil, nil, errors.New("filmdec: la carte de fermeture exige la marche " +
 			"par classes de vue (GrammaireBalayage.ClassesDeVue)")
 	}
 	m := nouvelleMesureDesTrames(reg, utiles, cfg)
-	monde := NewWorld(reg)
-	monde.PoserTableAnticipee(ConstruireTableAnticipee(fc))
-	marche := fc.MarcheDImageCle()
-	for _, c := range chunks {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		monde.PoserChunkCourant(c)
-		lierLeChunkAuMonde(monde, marche, data, pks, m.cfg.Obs)
-		for _, pk := range pks {
-			m.paquet(pk, data, monde)
-		}
+	mt, err := fc.nouveauMarcheurDesTrames(m.cfg.Obs)
+	if err != nil {
+		return nil, nil, err
 	}
-	return m.rapport(), nil
+	return m, mt, nil
 }
 
 // mesureDesTrames porte ce que la carte accumule d un paquet a l autre, pour UN film.
@@ -228,31 +229,23 @@ func nouvelleMesureDesTrames(reg *Registry, utiles UsagesProduit, cfg FrameConfi
 	return m
 }
 
-// paquet marche UN paquet du film, comme `movementStateScanner.paquet` : les paquets delta
-// seulement, et ceux a liste d evenements depuis le debut que [debutDeLaListe] leur trouve.
-func (m *mesureDesTrames) paquet(pk FilmPacket, data []byte, w *World) {
-	if pk.Type != PacketTypeDelta || pk.Size < 1 {
+// classerLaTrame range UNE trame de la marche dans la carte : une liste d evenements non
+// localisee, ou ce que la marche par rangs a lu, sous le verdict que la vue C a publie au crochet
+// de la mesure. La vue A n a ete lue que si la marche est partie de la TETE du paquet.
+func (m *mesureDesTrames) classerLaTrame(t *trameLue) {
+	if t.debut < 0 {
+		m.listeNonLocalisee()
 		return
 	}
-	pay := pk.Payload(data)
-	debut := movementStateSkipLeadBits
-	if _, present := PacketHeadEventType(pay); present {
-		debut, _ = debutDeLaListe(pay, w, m.cfg)
-		if debut < 0 {
-			m.listeNonLocalisee()
-			return
-		}
-	}
-	m.marcherPaquet(pay, w, debut)
+	m.classer(paquetMarche{enTete: partDeLaTete(t.debut, m.cfg), recs: t.lecture.recs,
+		rangs: t.lecture.rangs, vueC: m.vueC})
+	m.vueC = LectureVueC{}
 }
 
-// marcherPaquet marche UN payload delta depuis `debut` et le classe. La vue A n est lue que si la
-// marche part de la TETE du paquet — la condition meme de `decodeFrameParRangs`.
-func (m *mesureDesTrames) marcherPaquet(pay []byte, w *World, debut int) {
-	m.vueC = LectureVueC{}
-	recs, rangs, _ := DecodeFrameViewsCurseur(pay, w, m.cfg, MovementStateViews, debut)
-	enTete := debut == m.cfg.PacketPreambleBits && m.cfg.PacketPreambleBits >= 1
-	m.classer(paquetMarche{enTete: enTete, recs: recs, rangs: rangs, vueC: m.vueC})
+// partDeLaTete dit si une marche partie de `debut` lit la vue A — la condition meme de
+// [lireTrameParRangs].
+func partDeLaTete(debut int, cfg FrameConfig) bool {
+	return debut == cfg.PacketPreambleBits && cfg.PacketPreambleBits >= 1
 }
 
 // rapport rend la carte accumulee, bloquant de chaque archetype compris.

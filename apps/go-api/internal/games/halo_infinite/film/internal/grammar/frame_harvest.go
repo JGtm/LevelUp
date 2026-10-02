@@ -312,40 +312,12 @@ func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
 // la vue A — une vue A non vide est alors DETECTEE au lieu d etre prise pour un bit d amorce.
 // Quand l appelant part d un debut LOCALISE (paquet a liste d evenements, `marchLocateStrict`),
 // la vue A est derriere le point de depart et la marche commence au rang 1.
+//
+// La marche elle-meme est [lireTrameParRangs] (`marche_trames_rangs.go`), que la marche des
+// trames partage : cette porte n en rend que les records, les rangs lus et le curseur.
 func decodeFrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 	skipLeadBits int) ([]FrameRecord, int, int) {
-	frameLen := len(buf) * 8
-	rangs := 0
-	if skipLeadBits == cfg.PacketPreambleBits && cfg.PacketPreambleBits >= 1 {
-		br.Skip(cfg.PacketPreambleBits - 1) // le bit de configuration du frame-processeur
-		if a := consumeVueA(br, frameLen); !a.Porte {
-			br.publierVueC(LectureVueC{}) // vue C non atteinte : un TROU, que l appelant compte
-			return nil, rangs, br.BitPos()
-		}
-		rangs++
-	} else {
-		br.Skip(skipLeadBits)
-	}
-	// RANG 1 — le gestionnaire d entites. L index de vue du MONDE HORS LIGNE pour cette classe
-	// est `vueDeLImageCle` : le film la nomme rang 1, le monde la range en 0 (cf.
-	// [World.vueDeLEspaceDeNoms]).
-	w.PoserVueCourante(int(vueDeLImageCle))
-	recs, _, hitEnd := decodeInferLoop(br, buf, w, cfg)
-	if !hitEnd {
-		br.publierVueC(LectureVueC{})
-		return recs, rangs, br.BitPos()
-	}
-	rangs++
-	// RANG 2 — la vue de controle. Elle ne rend AUCUN record d entite : ses records vont dans
-	// le tableau que `FUN_142987460` applique par `vtable[0x48]`, et ce ne sont pas des deltas
-	// d entite. La marche hors ligne n en publie donc aucun — c est ce qui supprime les records
-	// DEL fantomes du pied de trame. Ses ENTREES DE CONTROLE (le tir continu, lot M4b) sont
-	// publiees au hook, avec le verdict de fermeture ([verdictDeVueC]) : une vue qui ne ferme pas
-	// le paquet ne rend rien.
-	c := consumeVueC(br, frameLen)
-	if c.Porte {
-		rangs++
-	}
-	br.publierVueC(verdictDeVueC(buf, br.BitPos(), c, recs, br.rejetVueB))
-	return recs, rangs, br.BitPos()
+	var l lectureDeTrame
+	lireTrameParRangs(br, buf, w, cfg, skipLeadBits, &l)
+	return l.recs, l.rangs, l.curseur
 }

@@ -1,6 +1,10 @@
 package grammar
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+)
 
 // FRAME-delta decoder (L3) — port of the type-0 packet record loop FUN_1406cd128 +
 // dispatch FUN_1406cbaa0 + delta FUN_141f86b58. Grammar extracted via Ghidra
@@ -158,6 +162,13 @@ type FrameRecord struct {
 	// recordHeaderBit donne la position VRAIE de chaque record capture : sans elle on ne peut
 	// pas localiser le point de rupture de la marche.
 	HeaderBit int
+	// FinBit : la position qui suit le dernier bit lu du record — le debut du record suivant
+	// quand la traversee va au bout, la position d arret sinon. Avec HeaderBit, l etendue du
+	// record dans la structure de lecture (ADR 0037 IR-1).
+	FinBit int
+	// Liaison : la provenance de la liaison sous laquelle un DELTA a ete lu, ou que pose un NEW ;
+	// [lecture.LiaisonAucune] pour un DEL et pour un NEW qui n a rien lie (ADR 0037 IR-5).
+	Liaison lecture.Liaison
 }
 
 // readRecordType ports the record-type PREFIX CODE: R(1); set -> DELTA; else R(2).
@@ -286,6 +297,7 @@ func DecodeFrameRecords(br *Lecteur, w *World, cfg FrameConfig) ([]FrameRecord, 
 			// until the default-state deser is bit-exact (handoff L3 "T3" wall).
 			if rec.DesyncAt == -1 {
 				w.BindFull(id, rec.TypeIndex)
+				rec.Liaison = lecture.LiaisonLueNeuf
 			}
 		case recDel:
 			if cfg.HasExtraFields && br.ReadBit() {
@@ -303,6 +315,7 @@ func DecodeFrameRecords(br *Lecteur, w *World, cfg FrameConfig) ([]FrameRecord, 
 				rec.DesyncAt = 0
 				break
 			}
+			rec.Liaison = w.liaisonDu(slot)
 			rec.Trace = decodeDelta(br, w, slot)
 			rec.TypeIndex = rec.Trace.TypeIndex
 			rec.DesyncAt = rec.Trace.DesyncAt
@@ -310,6 +323,7 @@ func DecodeFrameRecords(br *Lecteur, w *World, cfg FrameConfig) ([]FrameRecord, 
 			return out, fmt.Errorf("invalid record type %d at bit %d", typ, br.BitPos())
 		}
 
+		rec.FinBit = br.BitPos()
 		out = append(out, rec)
 		if rec.DesyncAt != -1 {
 			return out, fmt.Errorf("desync record slot=%d typeIdx=%d at component i%d (bit %d)",

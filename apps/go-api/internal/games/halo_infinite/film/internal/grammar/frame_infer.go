@@ -8,6 +8,8 @@ package grammar
 // « decoder correctement » (deduire l archetype d un transitoire absent du liage) face au
 // decodage nominal, qui n en a pas besoin.
 
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+
 // DecodeFrameInfer decodes a FRAME like DecodeFrameRecords but, on a delta for an
 // UNBOUND slot (a transient entity absent from the binding dump), it INFERS the slot's
 // archetype (inferUnboundArchetype) and skips its body accordingly — decoding the frame
@@ -149,24 +151,44 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 // `id` est l eid COMPLET et non le slot : la cle que `FUN_1406caad8` compare porte les deux bits
 // de tete, et 638 des 23 325 en-tetes rejetes de `bfecd02b` presentent une tete qu AUCUNE
 // image-cle du film n emploie — ceux-la ne doivent pas etre lies.
-func rejetDeVue(typ int, id uint32, w *World, cfg FrameConfig) bool {
+//
+// Le booleen dit que le DELTA est rejete ; la sortie dit par quelle garde (ADR 0037 IR-4).
+func rejetDeVue(typ int, id uint32, w *World, cfg FrameConfig) (lecture.SortieVueB, bool) {
 	if typ != recDelta || !cfg.Profil.Grammaire.TablesParVue {
-		return false
+		return lecture.SortieNonAtteinte, false
 	}
 	slot := id & 0x3fffffff
 	if _, lie := w.ArchetypeForSlot(slot); !lie {
 		ti, anticipe := w.LierParRepliDAnticipation(id)
 		if !anticipe {
 			cfg.Obs.compterRejetHorsDatum()
-			return true
+			return lecture.SortieRejetHorsDatum, true
 		}
 		cfg.Obs.compterLiaisonParRepliDAnticipation(ti)
 	}
 	if !w.VuePossede(slot) {
 		cfg.Obs.compterRejetDeVue()
-		return true
+		return lecture.SortieRejetDeVue, true
 	}
-	return false
+	return lecture.SortieNonAtteinte, false
+}
+
+// estUnRejet dit si la vue B s est arretee sur un en-tete DELTA rejete.
+func estUnRejet(s lecture.SortieVueB) bool {
+	return s == lecture.SortieRejetHorsDatum || s == lecture.SortieRejetDeVue
+}
+
+// sortirDeLaVueB note sur le lecteur comment la boucle de records de la vue B s arrete, et rend
+// `hitEnd` : vrai quand la vue a clos sa liste — sur son terminateur ou sur un en-tete rejete.
+func (b *Lecteur) sortirDeLaVueB(s lecture.SortieVueB) bool {
+	b.sortieVueB = s
+	return s == lecture.SortieTerminateur || estUnRejet(s)
+}
+
+// finirLeRecord pose la fin d un record lu : la position du curseur quand la boucle le range.
+func finirLeRecord(rec FrameRecord, br *Lecteur) FrameRecord {
+	rec.FinBit = br.BitPos()
+	return rec
 }
 
 // corpsDeRecordNeuf traverse le corps d un record NEW, tente la reparation de chaine, et LIE
@@ -199,8 +221,10 @@ func corpsDeRecordNeuf(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 		cfg.Obs.refuserUnNeuf(w, rec)
 	case repaired:
 		w.BindSoft(rec.ID, rec.TypeIndex)
+		rec.Liaison = lecture.LiaisonInference
 	default:
 		w.BindFull(rec.ID, rec.TypeIndex)
+		rec.Liaison = lecture.LiaisonLueNeuf
 	}
 	return false
 }
@@ -241,7 +265,7 @@ func (o *Observation) refuserUnNeuf(w *World, rec *FrameRecord) {
 // leading config bit then 3 view record-loops) can be decoded in sequence sharing one
 // reader. Returns the records, the number of inferred transients, and hitEnd = whether
 // it stopped on a clean end-of-records marker or on a REJECTED delta header (true ;
-// `br.rejetVueB` tells which) vs a desync/EOF (false).
+// `br.sortieVueB` tells which) vs a desync/EOF (false).
 //
 // EXEMPTION DE LONGUEUR (109 lignes, seuil 80 — CLAUDE.md regle 5, examinee au lot 2.7 le
 // 2026-09-16). Raison STRUCTURELLE : c est une boucle de decodage a sortie multiple. Chaque
@@ -253,7 +277,7 @@ func (o *Observation) refuserUnNeuf(w *World, rec *FrameRecord) {
 // il ne touche pas a cette boucle. Reexamen au lot 3.6 (ports de composants), qui la rouvre.
 func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int, bool) {
 	var out []FrameRecord
-	br.rejetVueB = false
+	br.sortieVueB, br.eidRejete = lecture.SortieNonAtteinte, 0
 	inferred := 0
 	frameLen := len(buf) * 8
 	guard := 0
@@ -261,7 +285,7 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 	// (inferResyncTargets set). Returns true = stop (unrecoverable desync), false =
 	// recovered (br repositioned, keep looping).
 	stall := func(startPos int, rec FrameRecord) bool {
-		out = append(out, rec)
+		out = append(out, finirLeRecord(rec, br))
 		if inferResyncTargets != nil {
 			if next, ok := validatedResync(buf, startPos+1, w, cfg); ok {
 				br.SetBitPos(next)
@@ -273,7 +297,7 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 	for br.BitPos() < frameLen {
 		guard++
 		if guard > 8192 {
-			return out, inferred, false
+			return out, inferred, br.sortirDeLaVueB(lecture.SortiePlafond)
 		}
 		startPos := br.BitPos()
 		if cfg.HasExtraFields {
@@ -281,7 +305,7 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 		}
 		typ := readRecordType(br)
 		if typ == recEnd {
-			return out, inferred, true
+			return out, inferred, br.sortirDeLaVueB(lecture.SortieTerminateur)
 		}
 		id := readRecordID(br, cfg.IDLowBits, cfg.IDBase)
 		slot := id & 0x3fffffff
@@ -289,17 +313,17 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 		// sans lui, un NEW publiait ses etats sous le slot du record precedent.
 		br.poserSlotDeCapture(slot)
 		finEntete := br.BitPos()
-		rec := FrameRecord{Type: typ, ID: id, Slot: slot, DesyncAt: -1}
-		if rejetDeVue(typ, id, w, cfg) {
+		rec := FrameRecord{Type: typ, ID: id, Slot: slot, DesyncAt: -1, HeaderBit: startPos}
+		if sortie, rejete := rejetDeVue(typ, id, w, cfg); rejete {
 			br.SetBitPos(finEntete)
-			br.rejetVueB = true
-			return out, inferred, true
+			br.eidRejete = id
+			return out, inferred, br.sortirDeLaVueB(sortie)
 		}
 		switch typ {
 		case recNew:
 			if corpsDeRecordNeuf(br, buf, w, cfg, &rec) {
 				if stall(startPos, rec) {
-					return out, inferred, false
+					return out, inferred, br.sortirDeLaVueB(lecture.SortieRecordInfranchissable)
 				}
 				continue
 			}
@@ -309,7 +333,7 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 		case recDelta:
 			if _, bound := w.ArchetypeForSlot(slot); bound {
 				bodyStart := br.BitPos()
-				rec.Trace = decodeDelta(br, w, slot)
+				rec.Liaison, rec.Trace = w.liaisonDu(slot), decodeDelta(br, w, slot)
 				rec.TypeIndex, rec.DesyncAt = rec.Trace.TypeIndex, rec.Trace.DesyncAt
 				if rec.DesyncAt != -1 && cfg.Profil.Grammaire.InferenceChaine && inferRepair {
 					if t, end, ok := repairUnportedComponent(buf, bodyStart, recDelta, slot, rec.Trace, w, cfg); ok {
@@ -319,7 +343,7 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 				}
 				if rec.DesyncAt != -1 {
 					if stall(startPos, rec) {
-						return out, inferred, false
+						return out, inferred, br.sortirDeLaVueB(lecture.SortieRecordInfranchissable)
 					}
 					continue
 				}
@@ -338,27 +362,27 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 				if !ok {
 					rec.DesyncAt = 0
 					if stall(startPos, rec) {
-						return out, inferred, false
+						return out, inferred, br.sortirDeLaVueB(lecture.SortieRecordInfranchissable)
 					}
 					continue
 				}
 				if cfg.Profil.Grammaire.InferenceChaine && uniq {
 					w.BindSoft(id, ti)
 				}
-				rec.TypeIndex = ti
+				rec.TypeIndex, rec.Liaison = ti, lecture.LiaisonInference
 				inferred++
 				br.SetBitPos(end)
 			}
 		default:
 			rec.DesyncAt = 0
 			if stall(startPos, rec) {
-				return out, inferred, false
+				return out, inferred, br.sortirDeLaVueB(lecture.SortieRecordInfranchissable)
 			}
 			continue
 		}
-		out = append(out, rec)
+		out = append(out, finirLeRecord(rec, br))
 	}
-	return out, inferred, false
+	return out, inferred, br.sortirDeLaVueB(lecture.SortieFinDePayload)
 }
 
 // inferResyncTargets, when non-nil, enables validated-resync recovery in

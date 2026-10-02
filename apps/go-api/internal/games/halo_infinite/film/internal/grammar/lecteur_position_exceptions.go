@@ -33,6 +33,7 @@ package grammar
 // et BAISSE sur les anciens (ti=38 : 11de8353 99 -> 83, a521164d 122 -> 119 ; ti=42 : 60ae07c4
 // 5 -> 4, 11de8353 3 -> 2, 111fa685 2 -> 1). La garde de pleine precision n est pas lue non plus.
 func consumeObjectPositionMonde(br *Lecteur) {
+	br.noterExceptionDatee()
 	if br.ReadBit() { // precHigh (FUN_14076e420 R(1))
 		br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)
 		return
@@ -55,6 +56,7 @@ func consumeObjectPositionMonde(br *Lecteur) {
 // monte sur ks_000d5950 (paquets 1823 -> 1847, ti=21 44/490 -> 84/536, ti=35 3549 -> 3638) et
 // BAISSE sur ks_e5adf7b2 (paquets 371 -> 370, ti=21 1/60 -> 0/60, ti=4 240 -> 239).
 func consumeFlockPosition(br *Lecteur, level uint) {
+	br.noterExceptionDatee()
 	if fullPrecisionGate(br) {
 		br.ReadBits(rawVec3Bits) // FUN_1411b259c -> FUN_1406d676c(..., 0x60)
 		return
@@ -87,6 +89,7 @@ func largeurAncienneDuFlock(level uint) uint {
 // fermeture d image-cle ti=38 BAISSE sans aucune hausse (fb1a1a72 317 -> 245, 111fa685 72 -> 30,
 // 11de8353 99 -> 19) ; lue R(96) brut, elle baisse aussi (281, 30, 19).
 func consumeGenericRigidBodyTransforms(br *Lecteur) {
+	br.noterExceptionDatee()
 	mask := br.ReadBits(8)
 	for i := range uint(8) {
 		if mask&(1<<i) != 0 {
@@ -112,6 +115,7 @@ func consumeGenericRigidBodyTransforms(br *Lecteur) {
 // 29 et 4 bits, la lecture du jeu sur 52 et 70. Elle en ferme une autre, `000d5950` (HI_1_13_0) chunk 20
 // paquet 1322 (8 entrees) : le format depend du build ou du contenu, ce que ce lot n etablit pas.
 func consumeFlockDestination(br *Lecteur, level uint32) {
+	br.noterExceptionDatee()
 	br.ReadBit()
 	lireVecteurAncienAuNiveauDuRegistre(br, level)
 	if level > 1 {
@@ -128,6 +132,7 @@ func consumeFlockDestination(br *Lecteur, level uint32) {
 // lecteur fermait au bit pres (0 entree de controle), ne se localise plus : le composant passe de
 // 239 a 264 bits ; aucune fermeture ne monte sur les huit builds.
 func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
+	br.noterExceptionDatee()
 	br.ReadBits(32) // icon-id
 	br.ReadBits(32) // icon-missionid
 	br.ReadBit()
@@ -157,6 +162,7 @@ func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
 // pres, ne se localise plus (le composant passe de 44 a 71 bits) ; elle en ferme deux autres
 // (`e5adf7b2` chunk 6 paquet 50, 4 entrees ; `111fa685` chunk 14 paquet 552, 2 entrees).
 func consumePlayerDesiredRespawnLocation(br *Lecteur, level uint32) {
+	br.noterExceptionDatee()
 	if !br.ReadBit() {
 		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
 		return
@@ -207,6 +213,7 @@ func lireVecteurAncienAuNiveauDuRegistre(br *Lecteur, level uint32) (q [3]uint64
 // aucune forme ne ferme les deux familles : l ancien lecteur sur la seule porte posee ferme les dix
 // et perd 14:42, 7:2380 et 32:2062 ; sur la seule porte a 0, il perd 46:10 et 29:208 sans rien fermer.
 func consumeTacmapDisplayAsset(br *Lecteur) {
+	br.noterExceptionDatee()
 	br.ReadBits(32)
 	br.ReadBits(32)
 	br.ReadBits(2)
@@ -227,6 +234,7 @@ func consumeTacmapDisplayAsset(br *Lecteur) {
 // `11de8353` 19:394 (liste, 13 entrees), `fb1a1a72` 38:8 (6), `60ae07c4` 3:1790 (0) ; scindee par la
 // porte, aucune forme ne ferme les deux familles.
 func consumeTacmapAreaOfInterest(br *Lecteur) {
+	br.noterExceptionDatee()
 	br.ReadBits(32)
 	br.ReadBits(3)
 	lireCorpsDeTraverseeAncien(br)
@@ -241,6 +249,7 @@ func consumeTacmapAreaOfInterest(br *Lecteur) {
 // fermait au bit pres, ne se localise plus (+48 bits, porte posee) ; aucune fermeture ne monte sur
 // les douze films.
 func consumeTacmapCoopTetherArea(br *Lecteur) {
+	br.noterExceptionDatee()
 	lireCorpsDeTraverseeAncien(br)
 	br.ReadBits(12)
 	br.ReadBits(12)
@@ -256,6 +265,7 @@ func consumeTacmapCoopTetherArea(br *Lecteur) {
 // `084a804d` (HI_1_10_0, 14 entrees), que l ancien lecteur fermait au bit pres, ne se localise plus
 // (+26 bits) ; elle en ferme une autre, `e5adf7b2` chunk 4 paquet 900 (liste, 12 entrees).
 func consumeCrewOrder(br *Lecteur, level uint32) {
+	br.noterExceptionDatee()
 	br.ReadBits(3)    // FUN_142b1cf3c
 	if br.ReadBit() { // presence du vecteur
 		lireVecteurAncienAuNiveauDuRegistre(br, level)
@@ -273,7 +283,9 @@ func consumeCrewOrder(br *Lecteur, level uint32) {
 // paquet 356 (21 entrees ; delta du slot 685, dont la lecture d accroupi) et chunk 37 paquet 22 (10
 // entrees ; NEW ti=35 slot 527) ; aucune fermeture ne monte sur les douze films. Les deux autres
 // sites a precHigh (grammaire d ecrivain d i0, delta predit a cVar1 = 1) gardent la lecture du jeu.
-func consumePrecHautDuBipede(_ *Lecteur) {}
+func consumePrecHautDuBipede(br *Lecteur) {
+	br.noterExceptionDatee()
+}
 
 // LOT R3-BIS (2026-09-30) — DEUX SITES DE PLUS, LOCALISES AU PAQUET.
 //
@@ -297,6 +309,7 @@ func consumePrecHautDuBipede(_ *Lecteur) {}
 // lit la lecture du jeu ne departagent pas les deux familles (porte a 0, index 0 et 1 de part et
 // d autre ; la porte posee n apparait que chez les secondes).
 func lireViseeDActeurAncienne(br *Lecteur) {
+	br.noterExceptionDatee()
 	br.ReadBits(16)
 }
 
@@ -310,6 +323,7 @@ func lireViseeDActeurAncienne(br *Lecteur) {
 // lecteur fermait au bit pres, ne se localise plus (+30 bits) ; il faut les deux ecarts (position et
 // R(1)) pour la rendre. Aucune fermeture ne monte sur les vingt films.
 func consumeTacmapWaypointState(br *Lecteur) {
+	br.noterExceptionDatee()
 	br.ReadBit()
 	br.ReadBits(32) // FUN_14080dec4 "waypoint-lockedto"
 	lireCorpsDeTraverseeAncien(br)

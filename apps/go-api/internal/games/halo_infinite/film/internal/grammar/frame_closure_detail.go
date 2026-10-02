@@ -16,18 +16,21 @@ package grammar
 // les regles de l ecrivain que la lecture contredit (`ecrivain_invariants.go`) et les departs de
 // vue C decales d ou elle referme le paquet (`frame_closure_temoins.go`).
 //
-// # LA MARCHE EST CELLE DE PRODUCTION, PILOTEE A LA MAIN
+// # LA MARCHE EST CELLE DE PRODUCTION, ET LA CARTE DETAILLEE LA CONSOMME
 //
-// [decodeFrameParRangs] ne rend ni la fin de la vue B ni le flux de la vue C : la marche de ce
-// fichier ([marcheDetaillee.marcherParRangs]) en recopie le PILOTAGE — dix lignes : bit de
-// configuration, [consumeVueA], [decodeInferLoop], [consumeVueC], [verdictDeVueC] — et appelle les
-// MEMES lecteurs, sans lire un bit a cote. Le classement est celui de [FrameClosure] (meme
-// `mesureDesTrames`). Le garde-fou de la recopie est un test : sur les bobines du depot, la carte
-// rendue par [FrameClosureDetaillee] est IDENTIQUE, champ a champ, a celle de [FrameClosure]
-// (`frame_closure_detail_test.go`). La sortie de vue B se lit aux compteurs que l observateur
-// tient ([Observation.RejetsHorsDatum], [Observation.RejetsDeVue]), avant et apres la boucle.
+// La marche des trames ([FilmContext.Trames], `marche_trames.go`) rend, pour chaque trame, ce que
+// la marche par rangs a lu ([lectureDeTrame]) : les bornes et la sortie typee de la vue B, l eid
+// rejete, le flux de la vue C, le curseur et le debordement. Le detail en est une fonction, sans
+// relire un bit (sauf les temoins decales, qui rejouent la vue C a d autres departs). Le
+// classement est celui de [FrameClosure] (meme `mesureDesTrames`) : sur les bobines du depot, la
+// carte rendue par [FrameClosureDetaillee] est IDENTIQUE, champ a champ, a celle de
+// [FrameClosure] (`frame_closure_detail_test.go`).
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+)
 
 // CauseHorsCadre est le nom de la cause « vue C : terminateur hors cadre » : la vue C a lu son
 // terminateur, et le paquet ne se ferme pas.
@@ -56,8 +59,9 @@ const (
 	// SortieVueBRejetDeVue : un DELTA dont le slot est connu mais possede par une autre vue (le
 	// repli de `FUN_1406cd128`, cf. [Observation.RejetsDeVue]).
 	SortieVueBRejetDeVue
-	// SortieVueBAutre : une combinaison des compteurs qu aucune branche de la boucle ne produit.
-	// Son compte doit valoir zero ; il existe pour que ce zero soit VU.
+	// SortieVueBAutre : une sortie qu aucune branche de la boucle ne produit — la sortie est typee
+	// par la boucle elle-meme ([Lecteur.sortirDeLaVueB]). Son compte vaut zero par construction ;
+	// la valeur reste tant que la colonne de l instrument la porte.
 	SortieVueBAutre
 	// NombreDeSortiesDeVueB est le nombre de sorties.
 	NombreDeSortiesDeVueB = 6
@@ -94,7 +98,7 @@ type PaquetDeCarte struct {
 	TimestampUS  uint64
 	Bits         int
 	// ListeNonLocalisee : aucune vue n a ete lue (cf. [CauseListeNonLocalisee]). ListeLocalisee :
-	// le paquet porte une liste d evenements dont le debut a ete trouve ([debutDeLaListe]).
+	// le paquet porte une liste d evenements dont le debut a ete trouve ([localiserLaListe]).
 	ListeNonLocalisee, ListeLocalisee bool
 	// Fermee : le paquet se ferme ([LectureVueC.Fermee]). Cause : la premiere cause d arret, vide
 	// s il ferme.
@@ -152,6 +156,9 @@ type PaquetDeCarte struct {
 type marcheDetaillee struct {
 	*mesureDesTrames
 	voir func(PaquetDeCarte)
+	// anticipations : les liaisons par anticipation comptees jusqu ici par l observateur de la
+	// mesure — le compte d un paquet est l ecart d une trame a la suivante.
+	anticipations int
 }
 
 // FrameClosureDetaillee est [FrameClosure] qui rend en plus, a `voir` (qui peut etre nil), le
@@ -159,60 +166,36 @@ type marcheDetaillee struct {
 // [FrameClosure].
 func FrameClosureDetaillee(fc *FilmContext, utiles UsagesProduit,
 	voir func(PaquetDeCarte)) (FrameClosureReport, error) {
-	if fc == nil {
-		return FrameClosureReport{}, fmt.Errorf("filmdec: contexte de film nil — aucune fermeture a mesurer")
-	}
-	chunks := fc.ChunkNumbers()
-	if len(chunks) == 0 {
-		return FrameClosureReport{}, ErrNoFilmChunk
-	}
-	reg, err := fc.Registry()
+	m, mt, err := mesureSurLaMarche(fc, utiles)
 	if err != nil {
-		return FrameClosureReport{}, fmt.Errorf("filmdec: registre illisible, les trames n ont pas de grammaire: %w", err)
+		return FrameClosureReport{}, err
 	}
-	cfg := fc.CadreDeBalayage()
-	if !cfg.Profil.Grammaire.ClassesDeVue {
-		return FrameClosureReport{}, fmt.Errorf("filmdec: la carte de fermeture exige la marche " +
-			"par classes de vue (GrammaireBalayage.ClassesDeVue)")
-	}
-	md := marcheDetaillee{mesureDesTrames: nouvelleMesureDesTrames(reg, utiles, cfg), voir: voir}
-	monde := NewWorld(reg)
-	monde.PoserTableAnticipee(ConstruireTableAnticipee(fc))
-	marche := fc.MarcheDImageCle()
-	for _, c := range chunks {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		monde.PoserChunkCourant(c)
-		lierLeChunkAuMonde(monde, marche, data, pks, md.cfg.Obs)
-		for _, pk := range pks {
-			md.paquet(c, pk, data, monde)
-		}
-	}
+	md := marcheDetaillee{mesureDesTrames: m, voir: voir}
+	mt.parcourir(func(t *trameLue) bool {
+		md.detaillerLaTrame(t)
+		return true
+	})
 	return md.rapport(), nil
 }
 
-// paquet marche UN paquet comme [mesureDesTrames.paquet], et en publie le detail.
-func (md *marcheDetaillee) paquet(c int, pk FilmPacket, data []byte, w *World) {
-	if pk.Type != PacketTypeDelta || pk.Size < 1 {
+// detaillerLaTrame classe UNE trame de la marche, comme [mesureDesTrames.classerLaTrame], et en
+// publie le detail.
+func (md *marcheDetaillee) detaillerLaTrame(t *trameLue) {
+	p := t.paquet
+	d := PaquetDeCarte{Chunk: p.Chunk, Index: p.Index, TimestampUS: p.TS, Bits: len(p.Payload) * 8,
+		DebutVueB: -1, FinVueB: -1}
+	// Les liaisons par anticipation ne se posent que dans la boucle de records de la vue B :
+	// l ecart du compteur d une trame a la suivante est celui de la marche de ce paquet.
+	n := compteDesAnticipations(md.cfg.Obs)
+	d.Anticipations, md.anticipations = n-md.anticipations, n
+	if t.debut < 0 {
+		md.listeNonLocalisee()
+		d.ListeNonLocalisee, d.Cause = true, causeListeNonLocalisee
+		md.publier(d)
 		return
 	}
-	pay := pk.Payload(data)
-	d := PaquetDeCarte{Chunk: c, Index: pk.Index, TimestampUS: pk.TimestampUS, Bits: len(pay) * 8,
-		DebutVueB: -1, FinVueB: -1}
-	debut := movementStateSkipLeadBits
-	if _, present := PacketHeadEventType(pay); present {
-		debut, _ = debutDeLaListe(pay, w, md.cfg)
-		if debut < 0 {
-			md.listeNonLocalisee()
-			d.ListeNonLocalisee, d.Cause = true, causeListeNonLocalisee
-			md.publier(d)
-			return
-		}
-		d.ListeLocalisee = true
-	}
-	md.marcherPaquetDetaille(pay, w, debut, &d)
+	d.ListeLocalisee = p.Debut != lecture.DebutEnTete
+	md.detaillerLaMarche(&t.lecture, t.debut, p.Payload, &d)
 	md.publier(d)
 }
 
@@ -223,121 +206,72 @@ func (md *marcheDetaillee) publier(d PaquetDeCarte) {
 	}
 }
 
-// marcherPaquetDetaille est [mesureDesTrames.marcherPaquet] sous la marche detaillee.
-func (md *marcheDetaillee) marcherPaquetDetaille(pay []byte, w *World, debut int, d *PaquetDeCarte) {
-	md.vueC = LectureVueC{}
-	recs, rangs, l := md.marcherParRangs(pay, w, debut, d)
-	enTete := debut == md.cfg.PacketPreambleBits && md.cfg.PacketPreambleBits >= 1
-	p := paquetMarche{enTete: enTete, recs: recs, rangs: rangs, vueC: l}
+// detaillerLaMarche classe UNE trame lue depuis `debut` et en remplit le detail.
+func (md *marcheDetaillee) detaillerLaMarche(l *lectureDeTrame, debut int, pay []byte, d *PaquetDeCarte) {
+	detaillerLaLecture(l, pay, md.cfg, d)
+	p := paquetMarche{enTete: partDeLaTete(debut, md.cfg), recs: l.recs, rangs: l.rangs, vueC: l.verdict}
 	avantLus, avantFermes := md.rep.Utiles.Records, md.rep.Utiles.RecordsFermes
 	md.classer(p)
 	d.UtilesLus = md.rep.Utiles.Records - avantLus
 	d.UtilesEnJeu = d.UtilesLus - (md.rep.Utiles.RecordsFermes - avantFermes)
-	d.Fermee = l.Fermee
-	if !l.Fermee {
+	d.Fermee = l.verdict.Fermee
+	if !l.verdict.Fermee {
 		d.Cause = md.bloquantDuPaquet(p).nom
 	}
-	decrireLesRecords(md.reg, recs, len(pay)*8, d)
+	decrireLesRecords(md.reg, l.recs, len(pay)*8, d)
 }
 
-// marcherParRangs est [decodeFrameParRangs] — meme pilotage, memes lecteurs — qui note en plus la
-// fin de la vue B, sa sortie, l eid rejete et le flux de la vue C. Elle rend le verdict de la vue
-// C que [decodeFrameParRangs] publierait au crochet.
-func (md *marcheDetaillee) marcherParRangs(pay []byte, w *World, debut int,
-	d *PaquetDeCarte) ([]FrameRecord, int, LectureVueC) {
-	cfg := md.cfg
-	br := LecteurSur(pay)
-	br.poserCadre(cfg)
-	frameLen := len(pay) * 8
-	rangs := 0
-	if debut == cfg.PacketPreambleBits && cfg.PacketPreambleBits >= 1 {
-		br.Skip(cfg.PacketPreambleBits - 1)
-		if a := consumeVueA(br, frameLen); !a.Porte {
-			d.Curseur, d.Deborde = br.BitPos(), br.Deborde()
-			return nil, rangs, LectureVueC{}
-		}
-		rangs++
-	} else {
-		br.Skip(debut)
+// detaillerLaLecture remplit ce que la marche par rangs dit d une trame : le curseur, le
+// debordement, les bornes et la sortie de la vue B, l eid rejete, le flux de la vue C, le verdict,
+// TOUTES les regles de l ecrivain que la lecture contredit, et les temoins decales d un paquet
+// ferme au bit pres.
+func detaillerLaLecture(l *lectureDeTrame, pay []byte, cfg FrameConfig, d *PaquetDeCarte) {
+	d.Curseur, d.Deborde = l.curseur, l.deborde
+	if l.debutVueB < 0 {
+		return // la vue A n est pas portee : la vue B n est pas atteinte
 	}
-	w.PoserVueCourante(int(vueDeLImageCle))
-	d.DebutVueB = br.BitPos()
-	avant := lireCompteursDeSortie(cfg.Obs)
-	recs, _, hitEnd := decodeInferLoop(br, pay, w, cfg)
-	apres := lireCompteursDeSortie(cfg.Obs)
-	d.Sortie, d.Anticipations = sortieDeVueB(avant, apres, hitEnd), apres.anticipations-avant.anticipations
-	d.FinVueB, d.Curseur = br.BitPos(), br.BitPos()
-	if d.Sortie.EstUnRejet() {
-		d.EIDRejete = eidDeLEnTeteRejete(pay, cfg, d.FinVueB)
+	rejet := estUnRejet(l.sortieVueB)
+	d.DebutVueB, d.FinVueB, d.Sortie = l.debutVueB, l.finVueB, sortieDeLaCarte(l.sortieVueB)
+	if rejet {
+		d.EIDRejete = l.eidRejete
 	}
-	if !hitEnd {
-		d.Deborde = br.Deborde()
-		d.Invariants = jugerLePaquet(recs, false, FluxVueC{}, true).ensemble
-		return recs, rangs, LectureVueC{}
+	if !l.vueCAtteinte {
+		d.Invariants = jugerLePaquet(l.recs, false, FluxVueC{}, true).ensemble
+		return
 	}
-	rangs++
-	c := consumeVueC(br, frameLen)
-	if c.Porte {
-		rangs++
-	}
-	l := verdictDeVueC(pay, br.BitPos(), c, recs, br.rejetVueB)
-	d.VueCAtteinte, d.VueC, d.Curseur, d.Deborde = true, c, br.BitPos(), br.Deborde()
-	d.FermeeAuBit, d.Invariant = l.FermeeAuBit, l.Invariant
-	d.Invariants = jugerLePaquet(recs, br.rejetVueB, c, true).ensemble
-	if l.FermeeAuBit {
+	d.VueCAtteinte, d.VueC = true, l.fluxC
+	d.FermeeAuBit, d.Invariant = l.verdict.FermeeAuBit, l.verdict.Invariant
+	d.Invariants = jugerLePaquet(l.recs, rejet, l.fluxC, true).ensemble
+	if l.verdict.FermeeAuBit {
 		d.TemoinsDecales = temoinsDecales(pay, cfg, d.FinVueB)
 	}
-	return recs, rangs, l
 }
 
-// compteursDeSortie : les compteurs de l observateur qui disent comment la vue B s arrete.
-type compteursDeSortie struct {
-	horsDatum, deVue, anticipations int
+// sortieDeLaCarte rend la sortie de vue B de la carte : les trois sorties qui closent la liste
+// sont les siennes, les trois qui la laissent ouverte se confondent en [SortieVueBOuverte].
+func sortieDeLaCarte(s lecture.SortieVueB) SortieDeVueB {
+	switch s {
+	case lecture.SortieNonAtteinte:
+		return SortieVueBNonAtteinte
+	case lecture.SortieTerminateur:
+		return SortieVueBTerminateur
+	case lecture.SortieRejetHorsDatum:
+		return SortieVueBRejetHorsDatum
+	case lecture.SortieRejetDeVue:
+		return SortieVueBRejetDeVue
+	}
+	return SortieVueBOuverte
 }
 
-// lireCompteursDeSortie releve les compteurs de sortie de l observateur.
-func lireCompteursDeSortie(o *Observation) compteursDeSortie {
+// compteDesAnticipations rend le nombre de liaisons par anticipation que l observateur a
+// comptees, tous archetypes confondus.
+func compteDesAnticipations(o *Observation) int {
 	if o == nil {
-		return compteursDeSortie{}
+		return 0
 	}
 	n := 0
 	for _, k := range o.LiaisonsParRepliDAnticipation {
 		n += k
 	}
-	return compteursDeSortie{horsDatum: o.RejetsHorsDatum, deVue: o.RejetsDeVue, anticipations: n}
-}
-
-// sortieDeVueB lit la sortie de la boucle de records : un rejet incremente UN des deux compteurs
-// et rend `hitEnd` vrai ([decodeInferLoop]) ; un terminateur rend `hitEnd` vrai sans compteur.
-func sortieDeVueB(avant, apres compteursDeSortie, hitEnd bool) SortieDeVueB {
-	horsDatum, deVue := apres.horsDatum-avant.horsDatum, apres.deVue-avant.deVue
-	switch {
-	case !hitEnd && horsDatum == 0 && deVue == 0:
-		return SortieVueBOuverte
-	case !hitEnd:
-		return SortieVueBAutre
-	case horsDatum == 0 && deVue == 0:
-		return SortieVueBTerminateur
-	case horsDatum == 1 && deVue == 0:
-		return SortieVueBRejetHorsDatum
-	case horsDatum == 0 && deVue == 1:
-		return SortieVueBRejetDeVue
-	}
-	return SortieVueBAutre
-}
-
-// largeurTagDeGeneration est la largeur du tag de generation de l en-tete d un record
-// ([readRecordID] : `R(2)` en bits 30-31).
-const largeurTagDeGeneration = 2
-
-// eidDeLEnTeteRejete relit l identifiant de l en-tete rejete : [decodeInferLoop] remet le curseur
-// a la FIN de cet en-tete, dont les `IDLowBits + 2` derniers bits sont l identifiant.
-func eidDeLEnTeteRejete(pay []byte, cfg FrameConfig, finEntete int) uint32 {
-	debut := finEntete - cfg.IDLowBits - largeurTagDeGeneration
-	if debut < 0 {
-		return 0
-	}
-	br := LecteurSur(pay)
-	br.SetBitPos(debut)
-	return readRecordID(br, cfg.IDLowBits, cfg.IDBase)
+	return n
 }

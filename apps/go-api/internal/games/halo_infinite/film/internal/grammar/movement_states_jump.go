@@ -93,15 +93,15 @@ func (sc *movementStateScanner) vitesse(slot uint32, v []uint64) {
 		// mode pleine precision (R(96), non dequantifie ici) ou vitesse ABSENTE de cet instant.
 		return
 	}
-	if ti, ok := sc.monde.ArchetypeForSlot(slot); !ok || ti != BipedTypeIndex {
+	if ti, ok := sc.archetypeDuSlot(slot); !ok || ti != BipedTypeIndex {
 		return
 	}
 	vec := DecodeVelocity(v[2], v[3])
 	if sc.vit == nil {
 		sc.vit = map[uint32][]jumpVelSample{}
 	}
-	sc.vit[slot] = append(sc.vit[slot], jumpVelSample{ts: sc.ts, vz: float64(vec[2]),
-		chunk: sc.chunk, paquet: sc.paquetIndex})
+	sc.vit[slot] = append(sc.vit[slot], jumpVelSample{ts: sc.paquet.TS, vz: float64(vec[2]),
+		chunk: sc.paquet.Chunk, paquet: sc.paquet.Index})
 	sc.st.VelocityReads++
 }
 
@@ -159,7 +159,7 @@ func episodesDeMontee(slot uint32, vs []jumpVelSample) []jumpEpisode {
 
 // vitessesOrdonnees trie les lectures d une vie par instant et ECARTE les doublons d instant.
 //
-// Le chemin d inference de [DecodeFrameViews] re-parcourt un record quand une chaine de
+// Le chemin d inference de la marche ([decodeInferLoop]) re-parcourt un record quand une chaine de
 // transitoires le demande : la meme vitesse est alors publiee deux fois au meme instant. La
 // compter deux fois ne changerait pas la hauteur (la duree tenue d un doublon est nulle) mais
 // rendrait les bornes d episode dependantes de l ordre de parcours.

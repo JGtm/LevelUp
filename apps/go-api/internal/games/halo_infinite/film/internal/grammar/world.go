@@ -4,6 +4,7 @@ import (
 	"maps"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
 // World tracks entity-id -> archetype (and the last resolved position) ACROSS FRAME records.
@@ -28,13 +29,14 @@ import (
 type World struct {
 	Reg   *Registry
 	slots map[uint32]slotState
-	// vueCourante : l index de la VUE de replication en cours de marche (0, 1 ou 2).
+	// vueCourante : l index de la VUE de replication en cours de marche (0, 1 ou 2), dans la
+	// numerotation de la marche hors ligne, ou la vue des entites — le rang 1 du film — vaut 0.
 	//
-	// LE JEU A TROIS TABLES D ENTITES, UNE PAR VUE, ET UNE ENTITE N APPARTIENT QU A UNE
-	// (`FUN_142987460` : `param_1 + 0x228` donne trois objets de vue, et `FUN_1406cd128` teste
-	// `vue[0x38][slot].eid == eid` avant de lire un corps de delta). Le monde hors ligne n a
-	// qu une table ; cette variable, plus [slotState.Vue], en tiennent lieu — chaque liaison
-	// retient DANS QUELLE VUE elle a ete posee, et [World.VuePossede] rend la garde.
+	// LA TABLE D ENTITES EST UNE SEULE TABLE, indexee par le slot de l eid : la table de datums du
+	// decodeur partage, que la garde vive de `FUN_1406cbaa0` interroge sur l eid entier et dont
+	// l image-cle est le vidage (`frame_infer.go`, `keyframe_datums.go`). La vue n est qu un
+	// ATTRIBUT de chaque liaison ([slotState.Vue]) : [World.VuePossede] la consulte pour le repli
+	// de garde de vue de `FUN_1406cd128` (ADR 0037 IR-5).
 	vueCourante int8
 	// nsImageCle : le RANG DE VUE que les images-cles de ce film declarent, ou
 	// `nsImageCleInconnu` avant la premiere liaison d image-cle. Voir
@@ -74,6 +76,9 @@ type slotState struct {
 	// INCONNU (liaison posee par une image-cle : le keyframe ne dit pas la vue). Une vue
 	// inconnue ne rejette rien, exactement comme [slotState.GenAny] pour la generation.
 	Vue int8
+	// Liaison : d ou vient la liaison — chaque porte de liaison pose la sienne (ADR 0037 IR-5,
+	// IR-6 : celles de la recuperation sont nommees).
+	Liaison lecture.Liaison
 }
 
 // vueInconnue : la valeur de [slotState.Vue] quand aucune vue n a pu etre attribuee.
@@ -123,7 +128,7 @@ func (w *World) LierParRepliDAnticipation(id uint32) (uint32, bool) {
 	if !ok {
 		return 0, false
 	}
-	w.BindDatum(slot, ti)
+	w.lierCommeDatum(slot, ti, lecture.LiaisonAnticipation)
 	if !w.anticipationDite {
 		w.anticipationDite = true
 		// UN DIAGNOSTIC, PAS UNE LIGNE DE JOURNAL (lot J12.3, ADR 0034 D-4) : il tombe dans les
@@ -174,7 +179,8 @@ func (w *World) VuePossede(slot uint32) bool {
 // l'eid entier avant de lire le corps d'un delta (FUN_1406caad8 -> `return 3`), donc la generation
 // est une contrainte de validite gratuite. Elle n'est appliquee que si SetStrictGeneration(true).
 func (w *World) BindFull(id, typeIndex uint32) {
-	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id, Vue: w.vueCourante}
+	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id, Vue: w.vueCourante,
+		Liaison: lecture.LiaisonLueNeuf}
 }
 
 // strictGeneration exige que l'eid COMPLET d'un delta (tag de generation inclus) corresponde a
@@ -206,6 +212,7 @@ func (w *World) GenerationMatches(id uint32, strict bool) bool {
 func (w *World) BindWildcard(slot, typeIndex uint32) {
 	w.slots[slot&0x3fffffff] = slotState{
 		TypeIndex: typeIndex, FullID: slot & 0x3fffffff, GenAny: true, Vue: 0,
+		Liaison: lecture.LiaisonJoker,
 	}
 }
 
@@ -263,7 +270,7 @@ const vueDeLImageCle int8 = 0
 func (w *World) BindImageCle(ns, slot, typeIndex uint32) {
 	w.slots[slot&0x3fffffff] = slotState{
 		TypeIndex: typeIndex, FullID: slot & 0x3fffffff, GenAny: true,
-		Vue: w.vueDeLEspaceDeNoms(ns),
+		Vue: w.vueDeLEspaceDeNoms(ns), Liaison: lecture.LiaisonImageCle,
 	}
 }
 
@@ -304,10 +311,21 @@ func (w *World) vueDeLEspaceDeNoms(ns uint32) int8 {
 // Elle ne pose AUCUNE position : `PosValid` reste faux, et le premier chemin absolu du slot
 // l amorcera comme pour toute autre liaison.
 func (w *World) BindDatum(slot, typeIndex uint32) {
+	w.lierCommeDatum(slot, typeIndex, lecture.LiaisonDatum)
+}
+
+// lierCommeDatum pose une liaison de la forme de [World.BindDatum], avec sa provenance : la table
+// de datums lue a position libre, ou l anticipation ([World.LierParRepliDAnticipation]).
+func (w *World) lierCommeDatum(slot, typeIndex uint32, l lecture.Liaison) {
 	s := slot & 0x3fffffff
 	w.slots[s] = slotState{
-		TypeIndex: typeIndex, FullID: s, Soft: true, GenAny: true, Vue: vueInconnue,
+		TypeIndex: typeIndex, FullID: s, Soft: true, GenAny: true, Vue: vueInconnue, Liaison: l,
 	}
+}
+
+// liaisonDu rend la provenance de la liaison d un slot ; [lecture.LiaisonAucune] s il n est pas lie.
+func (w *World) liaisonDu(slot uint32) lecture.Liaison {
+	return w.slots[slot&0x3fffffff].Liaison
 }
 
 // BindSoft registers an INFERRED slot -> archetype binding (chain inference). Soft
@@ -316,6 +334,7 @@ func (w *World) BindDatum(slot, typeIndex uint32) {
 func (w *World) BindSoft(id, typeIndex uint32) {
 	w.slots[id&0x3fffffff] = slotState{
 		TypeIndex: typeIndex, FullID: id, Soft: true, Vue: w.vueCourante,
+		Liaison: lecture.LiaisonInference,
 	}
 }
 
