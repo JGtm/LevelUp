@@ -334,6 +334,6 @@ justification ecrite). **Aucune case vide a la cloture d'une phase.**
 
 1. Lire ce fichier de haut en bas : les cases cochees disent ou en est le chantier.
 2. Lire l'entree la plus recente de `.ai/thought_log.md` portant « equipement ».
-3. Lire `.ai/V7.5/REGISTRE_REPORTS.md` pour les reports en cours.
+3. Lire `.ai/REGISTRE_REPORTS.md` pour les reports en cours.
 4. **Verifier sur pieces** avant de coder : rouvrir le fichier et la ligne cible, le code a
    pu bouger.

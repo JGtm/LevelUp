@@ -185,7 +185,7 @@ bornes de gameplay), gate visuel utilisateur en fin de chantier.
       chiffres de tests, deviations assumees) ; statuts du present plan tous poses.
       Ecrite AU FIL DE L'EAU (une section par lot, dans le commit du lot) plutot qu'en une fois
       a la cloture : le contrat `plan-execution` demande une entree a CHAQUE cloture d'etape.
-- [x] 4-2 Report REGISTRE : `.ai/V7.5/REGISTRE_REPORTS.md` — « Medias du rejeu phase 2 »
+- [x] 4-2 Report REGISTRE : `.ai/REGISTRE_REPORTS.md` — « Medias du rejeu phase 2 »
       REDUIT PAR L'AMENDEMENT a la seule DONNEE : endpoint { id, kind, replayMs, durationMs,
       thumbUrl, url, label } par match/joueur (recalage t0/displayClockMs comme le fil) et
       passage de la prop `media` au canvas. Le rendu — piste, placement, lightbox, cles — est

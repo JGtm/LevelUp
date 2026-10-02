@@ -572,7 +572,7 @@ two types) → 165 (J4.5, eight symbols without consumers removed). The companio
   colour, no chart changes, and the BTB compact density stays `mode_category === 'BTB'`.
 - **Not a research dump.** Open reverse-engineering questions (the semantics of the per-type table
   values, the unidentified footer bytes, the 48-bit token, the displayed label of a team
-  designator) stay out, each with its resume condition in `.ai/V7.5/REGISTRE_REPORTS.md`.
+  designator) stay out, each with its resume condition in `.ai/REGISTRE_REPORTS.md`.
 - **Not a port of the neighbouring efforts** (vehicles, assault, duels): they have their own plans.
 - **No layer and no ratchet without a consumer** at the step that introduces it.
 

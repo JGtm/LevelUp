@@ -284,7 +284,7 @@ changent. Statuer AVANT d ecrire.
 - [x] 6.1 Tous les items des etapes 0 a 5 portent un statut : `[x]`, `[~]` (avec la reference) ou
       `[!]` (avec sa justification ecrite). Aucune case vide.
 - [x] 6.2 Cinq entrees `.ai/thought_log.md` (cadrage+etape 0, puis une par etape).
-- [x] 6.3 QUATRE lignes au registre `.ai/V7.5/REGISTRE_REPORTS.md` : le lot et ses deux
+- [x] 6.3 QUATRE lignes au registre `.ai/REGISTRE_REPORTS.md` : le lot et ses deux
       reserves ouvertes (gate bloque, lot scinde), la reserve `SOUS_RESERVE` du repulseur avec
       son unique match datable, la vignette impossible pour la chute, et les vehicules/tourelles
       laisses hors perimetre alors que le pont existe desormais.

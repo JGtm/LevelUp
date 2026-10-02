@@ -22,7 +22,7 @@ branche `feat/v75`, HEAD code `736ccf3c3`. Biais assumé du mandat : en cas de d
     sur EUX SEULS. Ce dernier ecart est la CORRECTION DECLAREE du lot V9** … le kill-feed des
     matchs a vehicules change dans le sens de la correction. »
 - **Ce que j'ai cherché pour réfuter, et qui n'existe pas** :
-  - Aucune entrée dans `.ai/V7.5/REGISTRE_REPORTS.md` (grep `KillSourceDecoderRev|decoder_rev|
+  - Aucune entrée dans `.ai/REGISTRE_REPORTS.md` (grep `KillSourceDecoderRev|decoder_rev|
     revision du decodeur` → 0 ligne) ; aucune décision datée dans `.ai/thought_log.md` (les
     5 occurrences de `decoder_rev` concernent `whd-v1`, un rejeu à venir, une autre table).
   - Aucun échappatoire côté CLI : `cmd_backfill_killsource.go:139-150` n'expose que
@@ -58,7 +58,7 @@ branche `feat/v75`, HEAD code `736ccf3c3`. Biais assumé du mandat : en cas de d
     des octets, il n'écrit dans aucune base.
 - **Ce que l'auditeur n'a pas vu (et qui abaisse la gravité, sans réfuter)** :
   1. **Le tiers T0-film est DÉJÀ AU REGISTRE**, daté et avec sa condition de reprise :
-     `.ai/V7.5/REGISTRE_REPORTS.md` ligne 18 — « **Report T0-film au fil de l'eau limite au
+     `.ai/REGISTRE_REPORTS.md` ligne 18 — « **Report T0-film au fil de l'eau limite au
      placement `local`** — le chemin `worker` (defaut PROD) ne cuit rien en process, donc ne
      reporte rien au registre | lot C T0-film, **2026-09-02** | … | Lot dedie : accrocher le
      report a `replaybuild.SetArtifactStoredSink` ». C'est mot pour mot le constat, déjà
@@ -130,7 +130,7 @@ branche `feat/v75`, HEAD code `736ccf3c3`. Biais assumé du mandat : en cas de d
     (`games/halo_infinite/adapter_data.go:218`, `capabilities.toml:108`).
 - **Ce que l'auditeur n'a pas vu** :
   1. **C'est un report AU REGISTRE, daté, avec une décision utilisateur ferme et une condition de
-     reprise nominative.** `.ai/V7.5/REGISTRE_REPORTS.md` ligne 24 : « **Precision PAR ARME (film)
+     reprise nominative.** `.ai/REGISTRE_REPORTS.md` ligne 24 : « **Precision PAR ARME (film)
      REMISEE — capability d'exposition RETIREE (decision FERME user)** | Remise precision-arme,
      **2026-09-01** | … On REMISE : **les acquis BACKEND sont conserves** (fix d'index
      `ShooterIndex5`/filmdec, decodeur `weapon_hits*`, resolveur distance, table/migration

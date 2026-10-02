@@ -20,8 +20,8 @@
    de sous-agent (sauf la revue adversariale quand le lot la prescrit).
 4. **Découvertes** : consignées, jamais traitées dans le lot — SAUF P0 (donnée fausse servie,
    corruption, sécurité), traité immédiatement avec entrée au registre. Registres :
-   Tactique → `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md` ; rejeu/v2 → `.ai/V7.5/REGISTRE_REPORTS.md` ;
-   libellés → §3 du plan libellés ; tout le reste → `.ai/V7.5/REGISTRE_REPORTS.md`.
+   Tactique → `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md` ; rejeu/v2 → `.ai/REGISTRE_REPORTS.md` ;
+   libellés → §3 du plan libellés ; tout le reste → `.ai/REGISTRE_REPORTS.md`.
 5. **Modèle et effort** par lot (colonne « Exécutant ») : Sonnet pour le mécanique, le web
    d'interface et les tests ; Opus pour les diagnostics, les contrats et le paradigme.
    **Revue adversariale : UNE SEULE PAR VAGUE** (décision utilisateur 2026-09-07 : pas de
@@ -47,7 +47,7 @@
 |---|---|---|
 | `feat/outcome-cle-canonique` | 1 commit d'avance (`56e5d5ba0`), 213 de retard. Son unique changement (quatre littéraux du repli FR en constantes `goconst`) est DÉJÀ sur `feat/v75` par `b11bc6872`, mêmes valeurs, noms de constantes différents (`outcomeLabelTie` vs `outcomeFallbackTie`). Fusion = conflit sur `outcome_label.go` pour rien. | **SUPPRIMER** (locale + `origin`), retirer le worktree `LevelUp-wt-outcome-cle`. Rien à récupérer. Le lot L1 se poursuit sur une branche neuve (§2, Q4). |
 | `feat/v2-audit-vies` | 1 commit (`370955a35`) : brouillon de `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`. `feat/v75` porte la version STATUÉE (41 lignes de plus, fusion `eb7a3dfbd` de `feat/v2-vies-anonymes`). Fusion = conflit add/add. | **SUPPRIMER** (locale + `origin`). Rien à récupérer. |
-| `wt/blob-304-retry` | 6 commits, 406 de retard. Code : `sync/haloclient` (retry d'un blob CDN, 304 d'edge non traité en échec, corps coupé retenté, garde-rail `no_text_predicate_test`), 2 rondes de revue adversariale P0+P1 = 0, un seul item ouvert = observation J+7 après déploiement (report valide). **Aucun conflit de code** : `haloclient/` et `pooled_client_test.go` n'ont pas bougé sur `feat/v75` depuis la base `081871f09`. Conflits uniquement sur `.ai/thought_log.md` et `.ai/V7.5/REGISTRE_REPORTS.md` (garder les deux côtés). Branche `wt/` = jamais passée en CI. | **FUSIONNER dans `feat/v75`** (Q2). Puis supprimer la branche et les deux worktrees `LevelUp-wt-blob-304` / `LevelUp-wt-film-blobs`. |
+| `wt/blob-304-retry` | 6 commits, 406 de retard. Code : `sync/haloclient` (retry d'un blob CDN, 304 d'edge non traité en échec, corps coupé retenté, garde-rail `no_text_predicate_test`), 2 rondes de revue adversariale P0+P1 = 0, un seul item ouvert = observation J+7 après déploiement (report valide). **Aucun conflit de code** : `haloclient/` et `pooled_client_test.go` n'ont pas bougé sur `feat/v75` depuis la base `081871f09`. Conflits uniquement sur `.ai/thought_log.md` et `.ai/REGISTRE_REPORTS.md` (garder les deux côtés). Branche `wt/` = jamais passée en CI. | **FUSIONNER dans `feat/v75`** (Q2). Puis supprimer la branche et les deux worktrees `LevelUp-wt-blob-304` / `LevelUp-wt-film-blobs`. |
 
 Quick win annexe (Q1) : `git branch --merged feat/v75` liste ~95 branches locales déjà
 fusionnées (`feat/duels`, `feat/v2-*`, `wt/*`…) et une soixantaine de worktrees
@@ -325,7 +325,7 @@ suivies et n'est jamais touché ; suppression locale seulement, `origin` gardé 
   diff intégral) jamais faite bien que le commit dise « clôture ». Reprise : Q8.
 - 2026-09-07 ; `DECOUVERTES_TACTIQUE`, entrée « `LEFT JOIN match_registry` sans test » ; caduque
   depuis 7C.9 (le JOIN a disparu avec la lecture des instants). Reprise : Q8 (fermer).
-- 2026-09-07 ; `.ai/V7.5/REGISTRE_REPORTS.md:578` ; le commit `6c960861c` (phase 5 sur
+- 2026-09-07 ; `.ai/REGISTRE_REPORTS.md:578` ; le commit `6c960861c` (phase 5 sur
   `feat/v75`, ESLint rouge) est réputé corrigé par `bf5d465bd` : seule la CI de `f2c8ddce1`
   le prouvera. Reprise : Q8 (d).
 - 2026-09-07 ; `killcollector/positions.go:258-266` ; lecteur du pont par morts hors rejeu, à

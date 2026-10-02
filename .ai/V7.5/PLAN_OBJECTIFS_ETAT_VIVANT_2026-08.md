@@ -247,7 +247,7 @@ c'est l'ordre ecrit par R4, et il n'a pas bouge.
 > decouvertes vont au §7, elles ne se traitent pas.
 >
 > Commits : prefixe `obj-etat(D<n>):`, sur `wt/obj-etat` uniquement, jamais `git add -A`, jamais de
-> push. `.ai/thought_log.md` et `.ai/V7.5/REGISTRE_REPORTS.md` ne sont PAS touches par cette
+> push. `.ai/thought_log.md` et `.ai/REGISTRE_REPORTS.md` ne sont PAS touches par cette
 > branche : leurs TEXTES sont fournis au CR de lot, le superviseur les consigne a la fusion.
 
 ### D1 — RECENSEMENT DU CORPUS, et verdict de faisabilite par mode (STOP au verdict)
@@ -935,7 +935,7 @@ par le lot.
 
 - [x] D8.1 Tous les items du plan statues, aucune case vide.
 - [x] D8.2 CR de lot : mesures, seuils tenus ou non, chiffres, et les TEXTES prets a coller pour
-      `.ai/thought_log.md` et `.ai/V7.5/REGISTRE_REPORTS.md` (le superviseur les consigne).
+      `.ai/thought_log.md` et `.ai/REGISTRE_REPORTS.md` (le superviseur les consigne).
 - [!] D8.3 Les lignes de registre a AMENDER sont nommees : crane d'Oddball, `ti=11` objectifs
       vivants, VIP, et toute condition de reprise creee par une phase `[!]`.
 

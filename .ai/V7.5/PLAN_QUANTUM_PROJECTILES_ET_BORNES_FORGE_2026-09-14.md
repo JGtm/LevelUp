@@ -254,7 +254,7 @@ de merge vers `main` depuis ce plan (push main = deploiement prod).
 
 - (vide)
 
-## Reports (a verser au `.ai/V7.5/REGISTRE_REPORTS.md` a la cloture)
+## Reports (a verser au `.ai/REGISTRE_REPORTS.md` a la cloture)
 
 - Re-cuisson du parc pour que les 338 trajectoires coupees soient reparees dans les artefacts
   deja publies (decision utilisateur, D3).

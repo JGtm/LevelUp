@@ -90,7 +90,7 @@ function cheminAffiche(f: string): string {
  *    PRODUITS PAR GO par cette même frontière — c'est tout son objet, et le faire via la
  *    fixture minimale reviendrait à ne plus tester le document réel.
  *
- * RETIRÉ le 2026-09-10 (lot hygiène 5.3, `.ai/V7.5/REGISTRE_REPORTS.md`, L577) :
+ * RETIRÉ le 2026-09-10 (lot hygiène 5.3, `.ai/REGISTRE_REPORTS.md`, L577) :
  * `replayModel.bench.test.ts` (mesure E2.3 du plan « frise, point de vue », 2026-09-06,
  * chantier clos) lisait un artefact HORS DÉPÔT et se sautait donc toujours en CI — la mesure
  * qu'il produisait est déjà écrite en dur au-dessus de la mémo qu'elle a justifiée

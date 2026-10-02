@@ -688,7 +688,7 @@ golden d'empreinte.
 | Référence avant refacto (2026-09-02) | 2 min 24 à 2 min 49 par film ; `playerIndices` 35-40 s ; socles 12,7-15,2 s ; poses 11,8-14 s ; chaque scanner Δ 6,6-7,9 s ; killsource 7,9-9,4 s ; pics 0,18-0,20 Gio ; BTB `1c4c63c2` tué à 4,09 Gio | `.ai/V7.5/MESURES_CUISSON_PERF.md:15-31` |
 | Après contexte partagé et boucles chaudes (2026-09-03) | 15,7 / 18,6 / 18,2 s (−89 %) ; BTB `084a804d` 19 min 54 → 1 min 40 ; pics 0,17-0,43 Gio | `:170-191` |
 | Bombes bornées (lot 4b) | `51101d1d` 4,9 s / 0,08 Gio ; `a349fea8` 1 min 48 / 0,48 Gio ; `1c4c63c2` 1 min 54 / 0,68 Gio ; `60ae07c4` 25 s / 0,34 Gio | `:193-215` |
-| « 7,9 Go » | `51101d1d` le 2026-08-24 : 7,9 Go en 2,6 s, dû à `NamedEventsFrom`/`incrementTimes` (2 163 333 677 événements, ~26 Gio sans garde), corrigé le 2026-09-03 | `.ai/V7.5/REGISTRE_REPORTS.md:492`, `filmproc/doc.go:9`, `replay/testdata/equivalence/BOMBES.txt:16` |
+| « 7,9 Go » | `51101d1d` le 2026-08-24 : 7,9 Go en 2,6 s, dû à `NamedEventsFrom`/`incrementTimes` (2 163 333 677 événements, ~26 Gio sans garde), corrigé le 2026-09-03 | `.ai/REGISTRE_REPORTS.md` (lignes « Film-bombe `51101d1d` » et « BOMBE RAM `NamedEventsFrom` » ; la ligne citée à l époque, soldée, est sortie du registre le 2026-10-02), `filmproc/doc.go:9`, `replay/testdata/equivalence/BOMBES.txt:16` |
 | Décodage contre rejeu depuis les faits (S8, 2026-09-18) | 12,7 s à 2 min 37 contre 122 à 355 ms : **95× à 442×** ; faits de 2,7 à 11,9 Mo | `docs/adr/0034-film-decoder-profile-and-layers.md:806-815` |
 | G-equiv J2 (2026-09-26) | pics 0,11 à 1,19 Gio, BTB compris | plan, journal `:1430-1434` |
 | Carte de fermeture seule (J4.0.5) | 15 à 43 s par film, pics 55 à 215 Mio | `CARTE_FERMETURE_2026-09-26.md:17` |

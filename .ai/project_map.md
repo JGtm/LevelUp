@@ -398,7 +398,7 @@ data/
 
 | Sous-dossier de `.ai/` | Contenu |
 |---|---|
-| `V7.5/` | Archives de chantier v7.5 (`film_re/`, `killweapon/`, `replay2d/`, `chantiers/`, `cartes/`, `icones/`, `dumps/`, `v2/`, `outillage/`, …) — index `V7.5/README.md` ; registre des reports `V7.5/REGISTRE_REPORTS.md` |
+| `V7.5/` | Archives de chantier v7.5 (`film_re/`, `killweapon/`, `replay2d/`, `chantiers/`, `cartes/`, `icones/`, `dumps/`, `v2/`, `outillage/`, …) — index `V7.5/README.md` ; registre des reports `REGISTRE_REPORTS.md` (racine de `.ai/`) |
 | `archive/` | Tout ce qui précède v7.5 (V6, V7, V7.1, journaux trimestriels) |
 | `V7.2/`, `V7.2.1/`, `V7.3/` | Plans des versions 7.2 à 7.3 |
 | `H5_EXPLORATION/` | Exploration Halo 5 (registre des reports H5) |

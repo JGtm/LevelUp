@@ -76,7 +76,7 @@ Lecture seule. Toutes les lignes citées ont été rouvertes et recomptées.
     **3.5 « Poser la capability »**, coché `[ ]` (non fait) : « Déclarer `film.replay2d` et y
     brancher la route et le lien. Aujourd'hui la seule porte est un 404 sur un fichier absent :
     un titre qui ne sait pas produire de rejeu n'a aucun moyen de le dire. » Le dépôt dit donc
-    lui-même que le constat est vrai et non traité. `.ai/V7.5/REGISTRE_REPORTS.md:493` ne
+    lui-même que le constat est vrai et non traité. `.ai/REGISTRE_REPORTS.md:493` ne
     l'énonce qu'en incise, à l'intérieur d'une entrée **SOLDÉE** sur les médias : ce n'est pas
     un report avec condition de reprise.
   - **Ce que l'auditeur n'a pas vu, et qui abaisse la gravité : aucun chemin produit ne mène à

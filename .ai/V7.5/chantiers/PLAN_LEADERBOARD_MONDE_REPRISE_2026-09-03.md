@@ -171,7 +171,7 @@ visuelle = MAIN AU USER (`http://localhost:5173/t/halo_infinite/players/JGtm/com
       le VPS (prévenir, fenêtre d'écriture courte), puis vérifier le cycle cron prod du
       lendemain 04:00 (log « cycle terminé » saison 13-3).
 
-## Reports (registre `.ai/V7.5/REGISTRE_REPORTS.md` à mettre à jour à la clôture)
+## Reports (registre `.ai/REGISTRE_REPORTS.md` à mettre à jour à la clôture)
 
 - **xuid de bout en bout** (colonne xuid sur `world_player_season_stats` via recette
   ADR 0026 — step au nom neuf + vue —, writers, jointure par xuid d'abord). Condition de

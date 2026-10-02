@@ -50,7 +50,7 @@ n'est pas « le seul film que la CI décode » (`TestGoldenMiniBobine` et `TestE
 décodent des films réels versionnés, sans condition).
 
 Les découvertes du §8 sont désormais portées au registre du chantier
-(`.ai/V7.5/REGISTRE_REPORTS.md`), ce qui n'avait pas été fait.
+(`.ai/REGISTRE_REPORTS.md`), ce qui n'avait pas été fait.
 
 ---
 

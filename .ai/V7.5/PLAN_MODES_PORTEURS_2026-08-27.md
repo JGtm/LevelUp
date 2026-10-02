@@ -67,7 +67,7 @@
 > Donnees et config lues dans le DEPOT PRINCIPAL via `LEVELUP_REPO_ROOT`
 > (`c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration`) — aucune ecriture de base,
 > lectures DuckDB par `OpenReadForQuery` uniquement. Commits prefixe `oddball-d10(...)`,
-> jamais `git add -A`, jamais de push. `.ai/thought_log.md` et `.ai/V7.5/REGISTRE_REPORTS.md`
+> jamais `git add -A`, jamais de push. `.ai/thought_log.md` et `.ai/REGISTRE_REPORTS.md`
 > ne sont PAS touches par cette branche (textes fournis au CR, le superviseur les consigne).
 > Ce lot couvre les phases **O0 a O4 (diagnostic)**. O2 (gate) et O5 (publication) sont un
 > second lot, ouvert par arbitrage superviseur sur les chiffres de O1/O3/O4.

@@ -290,7 +290,7 @@ mur dans le cadre/format, un succes rend l'objectif (type/progression/etat/porte
 NO-GO : reprise lecteur ti=35 (0,51 %, derive dans les feuilles), these lecteur>ecrivain.
 ```
 
-## 7. Ligne pour `.ai/V7.5/REGISTRE_REPORTS.md` (NON ecrite par cette passe)
+## 7. Ligne pour `.ai/REGISTRE_REPORTS.md` (NON ecrite par cette passe)
 
 ```
 | 2026-08-27 | RE lecteur image-cle (scouting borne, jamais attaque avant) | GO ETROIT

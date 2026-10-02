@@ -1039,7 +1039,7 @@ Reprise à l'identique de la discipline déjà appliquée par `registre_film/LOT
 1. Lire ce fichier de haut en bas à partir de la section « ACTUALISATION DU 2026-08-24 » ;
    les cases cochées disent où en est le chantier (Phase 0 → 1 → 2, ordre strict).
 2. `.ai/thought_log.md`, entrée la plus récente portant « équipement » ou « capacité ».
-3. `.ai/V7.5/REGISTRE_REPORTS.md` pour les reports en cours liés à `i54`/`i56`/`i48`/
+3. `.ai/REGISTRE_REPORTS.md` pour les reports en cours liés à `i54`/`i56`/`i48`/
    « équipement actif ».
 4. **Vérifier sur pièces avant de coder** : rouvrir le fichier et la ligne cible, le code a
    pu bouger — en particulier `SchemaVersion` (Décision D6) et l'état d'`i56` dans

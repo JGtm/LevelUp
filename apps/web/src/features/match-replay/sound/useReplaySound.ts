@@ -305,7 +305,7 @@ function useInstanceSoundTuning(playerRef: { current: ReplayAudioPlayer | null }
  * (scoreboard, fin de partie, langue, point de vue), plutôt que de la piste elle-même
  * (`doc`/`kills`/`speed`, restés positionnels).
  *
- * Regroupées en objet le 2026-09-10 (lot hygiène 5.3, `.ai/V7.5/REGISTRE_REPORTS.md`, L575) :
+ * Regroupées en objet le 2026-09-10 (lot hygiène 5.3, `.ai/REGISTRE_REPORTS.md`, L575) :
  * le hook avait 7 paramètres positionnels (seuil du dépôt CLAUDE.md n°5 : 5), une exemption
  * commentée en attendant ce lot, qui touche les 8 appels du hook — dont 7 tests.
  *

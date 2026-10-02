@@ -6,7 +6,7 @@ schéma 43) puis au HEAD corrigé (schéma 45). Grille de rejeu : 100 ms par fra
 films — une frame = 0,1 s partout ci-dessous.
 
 Source : `.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md` §3.3 (« faits nouveaux ») et les deux entrées
-correspondantes de `.ai/V7.5/REGISTRE_REPORTS.md`. Les deux faits ont été détectés PAR L'AXE DES
+correspondantes de `.ai/REGISTRE_REPORTS.md`. Les deux faits ont été détectés PAR L'AXE DES
 DURÉES et par lui seul : aucun comptage d'éléments ne pouvait les voir.
 
 ---

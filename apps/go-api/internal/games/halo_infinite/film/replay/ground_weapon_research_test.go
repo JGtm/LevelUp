@@ -37,7 +37,7 @@ package replay
 //
 // Conséquence : le calque cartographique « armes au sol » est HORS DE PORTÉE offline-pur. Phase 2
 // spatiale abandonnée pour v7.5, reportée avec sa condition de reprise (default-state ti=42 résolu,
-// OU événements de cycle de vie décodés) — .ai/V7.5/REGISTRE_REPORTS.md. Ce verdict CONFIRME celui
+// OU événements de cycle de vie décodés) — .ai/REGISTRE_REPORTS.md. Ce verdict CONFIRME celui
 // du 2026-07-28 (.ai/V7.5/replay2d/SUIVI_REPLAY_2D.md) que le plan de Phase 2 avait contredit.
 //
 // USAGE (depuis apps/go-api) :

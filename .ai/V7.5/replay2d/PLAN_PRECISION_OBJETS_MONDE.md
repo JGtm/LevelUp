@@ -198,7 +198,7 @@ retour au vert) :
 
 `[x]` fait · `[~]` couvert ailleurs (reference) · `[!]` non traite (justification ecrite).
 Aucune case vide a la cloture. Entree datee au `.ai/thought_log.md`. Toute piste non traitee
-au `.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de reprise.
+au `.ai/REGISTRE_REPORTS.md` avec sa condition de reprise.
 
 ## Journal de la phase 1 (2026-08-15) — le tableau, avec ses denominateurs
 

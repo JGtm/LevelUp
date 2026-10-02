@@ -202,7 +202,7 @@ pret sur `000d5950`). Couverture mesuree sur l'artefact (voir journal ci-dessous
 > l'IDENTITE des armes au sol est decodee (196 lectures / 22 armes sur `000d5950`). La POSITION est
 > REFUTEE sur pieces — le calque cartographique n'a donc pas d'entree, et **2.2 / 2.3 sont
 > ANNULEES** (pas « en attente »). Report inscrit au registre
-> `.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de reprise. Une version NON SPATIALE (liste
+> `.ai/REGISTRE_REPORTS.md` avec sa condition de reprise. Une version NON SPATIALE (liste
 > « quelles armes gisent au sol », sans position) reste une option produit si reprise.
 >
 > Effort constate : la mesure a coute l'essentiel du lot ; le cablage suppose n'a jamais eu lieu
@@ -254,7 +254,7 @@ pret sur `000d5950`). Couverture mesuree sur l'artefact (voir journal ci-dessous
   champ `GroundWeapons` dans `ReplayDocument` n'a pas de contenu publiable : sans position, un
   calque de document ne porterait rien que le client puisse poser. Ni `document.go`, ni
   `build.go`, ni le contrat OpenAPI, ni `generate-types` ne sont touches par ce lot.
-  Justification : POSITION refutee en 2.1. Report : registre `.ai/V7.5/REGISTRE_REPORTS.md`.
+  Justification : POSITION refutee en 2.1. Report : registre `.ai/REGISTRE_REPORTS.md`.
 - [!] **2.3 Rendu web — ANNULEE** (meme decision, meme cause). Zero ligne web dans ce lot.
   Une version NON SPATIALE (liste des armes au sol a l'instant lu, sans position) reste une option
   produit a la reprise — elle exigerait 2.2 sous une autre forme, donc un nouveau lot.
@@ -275,7 +275,7 @@ selectionnee i47/i48, pickup/swap par frame) exige de rendre le walk delta bit-e
 OFFLINE : resoudre les largeurs de precision `i0/i21` (aujourd'hui issues d'une capture Cheat
 Engine, `traverse.go:1199-1209` « NOT a general decode path. Empty by default ») ET corriger la
 faute de corps `i22` (92,46 % de comptes impossibles, `frame_records.go:81`). C'est un chantier de
-RETRO-INGENIERIE, pas un cablage. -> Registre `.ai/V7.5/REGISTRE_REPORTS.md`, condition de reprise :
+RETRO-INGENIERIE, pas un cablage. -> Registre `.ai/REGISTRE_REPORTS.md`, condition de reprise :
 « walk delta offline bit-exact jusqu'a i43 ».
 
 **Non decodable (a ne pas chercher)** : evenement typé pickup/drop (le film n'en porte aucun) ;

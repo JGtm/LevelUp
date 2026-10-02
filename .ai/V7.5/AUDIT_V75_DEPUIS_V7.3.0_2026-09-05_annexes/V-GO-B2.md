@@ -53,7 +53,7 @@ Chaque verdict est adossé à un fichier:ligne rouvert, pas au texte de l'audit.
    « `[ ]` Déclarer `film.replay2d` et y brancher la route et le lien. Aujourd'hui la seule
    porte est un 404 sur un fichier absent : un titre qui ne sait pas produire de rejeu n'a
    aucun moyen de le dire. » — case **NON cochée**, plan du 2026-07-31, contrat
-   `plan-execution` affiché en tête. `grep -i replay2d .ai/V7.5/REGISTRE_REPORTS.md` ne rend
+   `plan-execution` affiché en tête. `grep -i replay2d .ai/REGISTRE_REPORTS.md` ne rend
    que deux lignes sans rapport (bases du worktree ; calque des armes au sol) : **aucune
    entrée du registre ne porte ce report, donc aucune condition de reprise**. Au regard des
    règles 2 et 3 du skill `plan-execution` (« ne jamais différer une étape exécutable
@@ -248,7 +248,7 @@ est plus bas que le mien, sans doute par exclusion des `testdata` ; sans inciden
   couvre que `analysis/filmsource`, et `filmdec_package_vars_test.go` est un ratchet de
   variables, pas de frontière.
 - **Aucune entrée du registre.** `grep -i 'adr 0012|placement.*filmdec|déplacement de
-  paquets'` sur `.ai/V7.5/REGISTRE_REPORTS.md` et `.ai/thought_log.md` → rien. L'escalade du
+  paquets'` sur `.ai/REGISTRE_REPORTS.md` et `.ai/thought_log.md` → rien. L'escalade du
   2026-08-06 n'a donc pas été convertie en report daté avec condition de reprise : elle est
   restée sans suite pendant que le périmètre passait à 248 fichiers.
 - Élément de coût que l'auditeur n'a pas cité, et qui joue plutôt en faveur du constat qu'il

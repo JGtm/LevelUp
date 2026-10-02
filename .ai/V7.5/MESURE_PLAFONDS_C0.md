@@ -338,7 +338,7 @@ document decrivent la cuisson d'AUJOURD'HUI ; les PNG publies datent du 2026-08-
 **R7 — Le grief d'origine sur les cartes NATIVES a peut-etre deja ete solde.** Les trois cartes
 « on ne voit que les toits » du gate du 2026-08-10 (Illusion, Prism, Aquarius) ont ete re-cuites
 par la voie de reference et le gate du lot toits a ete **VALIDE par l'utilisateur le
-2026-08-13** (« excellent travail », `.ai/V7.5/REGISTRE_REPORTS.md` ligne 112). Leurs sidecars
+2026-08-13** (« excellent travail », `.ai/REGISTRE_REPORTS.md` ligne 112). Leurs sidecars
 publies portent la substitution (`cellsSubstituted` 116 018 / 152 000 / 310 884). Avant tout
 C1, confirmer avec l'utilisateur quelles cartes il juge encore mauvaises AUJOURD'HUI.
 

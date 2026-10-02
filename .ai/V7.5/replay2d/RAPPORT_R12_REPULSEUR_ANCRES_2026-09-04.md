@@ -73,7 +73,7 @@ soit en temps de MATCH (horloge film = instant + 10,4 s), soit deja en temps de 
 Cette question se tranche AVANT toute mesure neuve, et elle se tranche sur une piece deja
 ecrite au depot, anterieure au releve et independante de lui.
 
-`.ai/V7.5/REGISTRE_REPORTS.md` (ligne « Repulseur : le tag `07104b31` reste SOUS_RESERVE »,
+`.ai/REGISTRE_REPORTS.md` (ligne « Repulseur : le tag `07104b31` reste SOUS_RESERVE »,
 lot kills-hors-arme du 2026-08-29) consigne l'UNIQUE kill au repulseur de toute la base :
 
 > match `215e7022-9959-4a1e-85aa-861161b588f4`, 2026-02-03 16:13 UTC, Argyle,
@@ -833,6 +833,6 @@ fenetres, defaut 1500), `R12_CORPUS=1` (resume par film).
 | 5 | **Exploiter le canal des creations ti=37 par GlobalID pour le calque des SOCLES d'equipement** : il date les reapparitions a la seconde (3/3), il n'a besoin ni d'artefact ni de bornes metriques pour les INSTANTS | acquis livrable en l'etat, hors question du repulseur | 1/2 lot |
 | 6 | **Porter la reconstruction du contexte de carte depuis le layout** (par. 4.1) partout ou un instrument R7 exige `map_quant_bounds.json` | elle debloque le canal des evenements sur toutes les cartes hors catalogue, Argyle et les variantes Forge comprises | 1/2 lot |
 | 7 | **Amender le rapport R7** : son par. 4.3 conclut « 0 tete sur 108 occurrences, p ~ 1e-23 » pour le type 104 ; ce lot en mesure 2 sur 42 autres films. La conclusion « ce type est trop rare pour que sa part en tete se mesure » remplace « ce type n'existe pas » | un rapport qui garde un argument trop fort se relit mal | 15 min |
-| 8 | **Mettre a jour le registre des reports** (`.ai/V7.5/REGISTRE_REPORTS.md`, ligne « Repulseur : le tag `07104b31` reste SOUS_RESERVE ») : la verite terrain Theater qui lui manquait existe (par. 2.1) | la ligne dit « PAS de verite-terrain Theater » et c'est desormais faux | 15 min |
+| 8 | **Mettre a jour le registre des reports** (`.ai/REGISTRE_REPORTS.md`, ligne « Repulseur : le tag `07104b31` reste SOUS_RESERVE ») : la verite terrain Theater qui lui manquait existe (par. 2.1) | la ligne dit « PAS de verite-terrain Theater » et c'est desormais faux | 15 min |
 
 ---

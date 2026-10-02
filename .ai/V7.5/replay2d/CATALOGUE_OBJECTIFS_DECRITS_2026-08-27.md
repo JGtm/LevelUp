@@ -388,7 +388,7 @@ dépendance de cadre ; PTC ti=23 gardé par la validation de largeur de position
 
 ---
 
-## 7. Lignes pour `.ai/V7.5/REGISTRE_REPORTS.md`
+## 7. Lignes pour `.ai/REGISTRE_REPORTS.md`
 
 ```
 [2026-08-27] ti=11 managed-objective (5 feuilles triviales : i3 object-reference +0x40, i14

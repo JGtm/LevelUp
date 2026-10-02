@@ -280,7 +280,7 @@ worktree dédié du plan. Coût estimé : 10 à 12 lancements d'agents, l'un apr
 - **Exécutant** (un par lot, seul agent actif, dans le worktree du plan) :
   - code, tests, commits locaux ;
   - section de son lot + journal et découvertes de sa famille de lots (A ou B) dans ce fichier.
-  - Ne touche jamais `.ai/thought_log.md`, `.ai/BACKLOG.md` ni `.ai/V7.5/REGISTRE_REPORTS.md`.
+  - Ne touche jamais `.ai/thought_log.md`, `.ai/BACKLOG.md` ni `.ai/REGISTRE_REPORTS.md`.
 - **Superviseur** :
   - vérifie le rapport sur pièces, rejoue les gates, pousse la branche, lit la CI au niveau job
     (`gh run view <id> --json status,conclusion,jobs`) ;
@@ -1491,7 +1491,7 @@ est supprimé.
 - DB-3 (enquête) : l'entrée backlog de l'item 1 est inexacte sur trois points : tir immédiat,
   pas de délai de 30 s ; `ErrDrainTimeout` n'existe pas ; les logs du 20/09 ne sont plus
   disponibles. L'entrée sera réécrite à la clôture.
-- DB-4 (enquête) : `.ai/V7.5/REGISTRE_REPORTS.md:543-544` cite `repair_psa_index` et
+- DB-4 (enquête) : `.ai/REGISTRE_REPORTS.md:543-544` cite `repair_psa_index` et
   `repair_msr_index` comme détecteurs périodiques. Ligne à réécrire par le superviseur à la
   clôture de B3.
 - DB-5 (B1, 2026-09-26) : le compteur `swapFailuresTotal[drain_timeout]` et le WARN « drain

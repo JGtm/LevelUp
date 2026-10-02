@@ -280,11 +280,11 @@ démo. `<démo>/runtime/` est ignoré par git sous `data/demo/` et `tests/fixtur
 | `RESTIC_REPOSITORY` / `RESTIC_PASSWORD` / `RESTIC_PASSWORD_FILE` | Cible/credentials des backups Restic. |
 | `LEVELUP_BACKUP_DIR` | Répertoire de backup local. |
 
-> Les variables legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` ne sont PLUS lues à
-> l'exécution (ADR 0023 Phase 5, 2026-08-25). Seule la migration one-shot du boot
-> les consulte encore, pour recopier une valeur résiduelle dans le store de
-> tokens — retrait prévu le 2026-10-01. Pour semer un refresh token : SSO Xbox
-> web, `token-capture` ou `token-import`.
+> Les variables legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` ne sont PLUS lues
+> (ADR 0023 Phase 5, 2026-08-25). Leur dernier lecteur, la migration one-shot du
+> boot qui recopiait une valeur résiduelle dans le store de tokens, a été retiré
+> le 2026-09-13. Pour semer un refresh token : SSO Xbox web, `token-capture` ou
+> `token-import`.
 
 ---
 

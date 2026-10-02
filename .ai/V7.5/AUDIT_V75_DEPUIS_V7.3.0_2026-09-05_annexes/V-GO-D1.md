@@ -56,7 +56,7 @@
     .github packaging apps/go-api/internal apps/web/src` = **0** exact.
   - Dernier commit `cmd/vs-measure/` : 2026-09-02 (`97d8ec488`) ; HEAD 2026-09-05.
 - Ce que l'auditeur n'a pas vu : **l'item est un report assume, entre le jour meme de HEAD.**
-  - `.ai/V7.5/REGISTRE_REPORTS.md:12`, date **2026-09-05**, avec condition de reprise ecrite :
+  - `.ai/REGISTRE_REPORTS.md:12`, date **2026-09-05**, avec condition de reprise ecrite :
     « decision de l'auteur : garder avec un en-tete "outil de recherche, hors production" ou
     supprimer (regle 7) », et proprietaire nomme (« l'auteur du chantier »).
   - `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md:478` — item **N-5** du plan d'integration.
@@ -69,7 +69,7 @@
     l'ensemble du depot, et les seules references qui existent sont precisement le report date
     et sa condition de reprise.
   - **Incoherence interne de G9** : dans sa propre table « Constats ecartes », l'auditeur ecarte
-    `cmd/replay-equiv` au motif « Dette assumee, `.ai/V7.5/REGISTRE_REPORTS.md:13`, avec
+    `cmd/replay-equiv` au motif « Dette assumee, `.ai/REGISTRE_REPORTS.md:13`, avec
     condition de reprise ». `vs-measure` est a la **ligne 12 du meme registre**, avec une
     condition de reprise. Deux lignes adjacentes, deux standards opposes.
 - Consequence reelle reformulee : le constat re-signale, en P1, un report deja inscrit la veille
@@ -138,7 +138,7 @@
   - `git ls-files "*static/vehicles-assets*" | wc -l` = **20** exact ; consommateurs reels
     confirmes (`useReplayVehicles.ts`, `assets/static/layout.go`,
     `analysis/replay/vehicle_families.go`, + 6 autres).
-  - `.ai/V7.5/REGISTRE_REPORTS.md:12` **en entier** (l'auditeur n'en cite qu'un fragment) :
+  - `.ai/REGISTRE_REPORTS.md:12` **en entier** (l'auditeur n'en cite qu'un fragment) :
     « outillage de recherche (sons, mesures, sprites) sans consommateur de production ; leur
     statut (**outil maintenu** / a supprimer **apres extraction des assets**) appartient a
     l'auteur du chantier | **decision de l'auteur : garder** avec un en-tete "outil de recherche,

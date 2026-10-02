@@ -482,7 +482,7 @@ CGO_ENABLED=1 go run ./cmd/mapstruct-build [--levels DIR] [--maps "Cliffhanger,S
   `map_quant_bounds.json` (module ↔ display-name link).
 - Replay when: another map's mesh-instance decoding reaches full coverage. **Caveat**: the
   artifact's `structure` field is under a deferred-removal decision
-  (`.ai/V7.5/REGISTRE_REPORTS.md`) — still read by two web files — check that entry before
+  (`.ai/REGISTRE_REPORTS.md`) — still read by two web files — check that entry before
   assuming this tool is safe to drop.
 
 #### mappos-build
@@ -864,7 +864,7 @@ default build.
 reference). It is *pre-existing*, not a regression — verified 2026-09-05 by replaying it on
 the previous commit, which yields bit-identical numbers. Nobody could see it before: the
 corpus never ran to completion, and CI does not execute it. Tracked in
-`.ai/V7.5/REGISTRE_REPORTS.md`.
+`.ai/REGISTRE_REPORTS.md`.
 
 #### Replay non-regression gate on a witness corpus (`cmd/replay-corpus-gate`)
 

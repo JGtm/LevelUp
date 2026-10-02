@@ -22,7 +22,7 @@ aucun des fichiers cités n'a bougé depuis). Lecture seule, aucun `go test` / `
   - `grep -n fullState entity.go` → **2 lignes seulement** : `:65` (commentaire) et `:66`
     (signature). Le paramètre n'est jamais lu. `wc -l` = 338 + 248 = **586 L**.
   - Allowlists et décisions : `internal/archlint/` (35 fichiers) ne mentionne `entity` que pour
-    `keyframe_entity_queue.go` ; `.ai/V7.5/REGISTRE_REPORTS.md` ne porte **aucune** ligne
+    `keyframe_entity_queue.go` ; `.ai/REGISTRE_REPORTS.md` ne porte **aucune** ligne
     entity.go/`DecodeEntityRecord` ; aucun `TODO(expiry:)` (`archlint/todo_expiry_test.go`).
 - **Ce qui confirme, au-delà du rapport**
   - Le dépôt documente lui-même la **supersession** : `components_batch7.go:6-8` — « the REAL
@@ -243,7 +243,7 @@ aucun des fichiers cités n'a bougé depuis). Lecture seule, aucun `go test` / `
   - **Contradiction interne à l'audit** : ce fichier est, par construction, l'un des « 85 fichiers
     de test sans aucune assertion » que le même rapport classe en P2 n°1 (« ils ne peuvent pas
     échouer »). Il est ici promu en P1 comme l'unique filet de largeur.
-  - **L'oracle a été consommé, et le dépôt le dit** : `.ai/V7.5/REGISTRE_REPORTS.md` l.227 —
+  - **L'oracle a été consommé, et le dépôt le dit** : `.ai/REGISTRE_REPORTS.md` l.227 —
     « L'oracle de LARGEUR live (`kf_capture_sample.txt`) est **ÉPUISÉ** et le négatif est publié :
     un seul record NEW `ti=42`, porte ouverte. » Pour cet archétype, les « 400 frontières » ne se
     traduisent pas en 400 largeurs testables : la population utile est d'**un** record. (Une
