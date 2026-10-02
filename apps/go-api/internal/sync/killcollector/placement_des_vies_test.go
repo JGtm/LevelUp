@@ -198,3 +198,27 @@ func TestEntreeDesPorteurs_PorteCeQueLaPasseALu(t *testing.T) {
 		t.Fatalf("libelles non transmis : %+v", e.Libelles)
 	}
 }
+
+// TestPortagesDuMatch_VerseLesReplisAuCompteurDeLaPasse — revue finale P1-b (2026-10-02) : les
+// replis de la lecture des porteurs (`replay.PortagesAuSync`) rejoignent le compteur de la passe du
+// film, celui que `publierReplisDeLaPasse` publie (expvar `killsource_*` et journal), et UNE fois.
+// Film et contexte nuls sur une variante VIP : la pose des largeurs d'axe se replie (entree sans
+// largeurs) — un repli au moins, sans fixture de film.
+// Mutations vues rouges : ne plus verser `lus.Replis` ; le verser deux fois.
+func TestPortagesDuMatch_VerseLesReplisAuCompteurDeLaPasse(t *testing.T) {
+	c := &KillSourceCollector{}
+	mat := materiauAvecUneVie()
+	if !mat.registre.PontPubliable() {
+		t.Fatal("fixture : le pont devait etre publiable (sinon aucune lecture n'est payee)")
+	}
+	passe := decfilm.NouveauCompteur()
+	ctx := avecReplisDeLaPasse(context.Background(), passe)
+	_, lus := c.portagesDuMatch(ctx, "m1", mat, MatchIdentities{Variante: "Arena:VIP"})
+	rendus := lus.Replis.Rapport()
+	if len(rendus) == 0 {
+		t.Fatal("fixture : la lecture des porteurs devait declencher au moins un repli")
+	}
+	if got, want := decfilm.Texte(passe.Rapport()), decfilm.Texte(rendus); got != want {
+		t.Fatalf("compteur de la passe = %q, attendu les replis des porteurs %q, une fois", got, want)
+	}
+}

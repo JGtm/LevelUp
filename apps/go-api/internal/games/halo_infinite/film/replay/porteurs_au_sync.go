@@ -93,6 +93,13 @@ type BilanPortages struct {
 	XUIDIllisibles int
 	// DrapeauOuverts : portages `carried_open` (borne haute) écartés.
 	DrapeauOuverts int
+	// Replis : le compteur des replis que la lecture et l'assemblage ont déclenchés (pose des
+	// largeurs, calques, consultations des séries nommées et du pont par manche), ou nil quand
+	// rien n'a été lu. Ce chemin n'écrit aucun document : sans ce champ, ces comptes mouraient ici
+	// (revue finale P1-b). L'appelant les VERSE une fois à son propre compteur de passe — le
+	// collecteur, `portagesDuMatch` — qui les publie avec les autres replis du film. Pointeur, et
+	// pas rapport, pour que le bilan reste comparable.
+	Replis *fallback.Compteur
 }
 
 // LecturesDesPorteurs dit quelles lectures du film ont été faites en plus de la passe de positions.
@@ -107,6 +114,7 @@ func PortagesAuSync(ctx context.Context, e EntreePorteursAuSync) (map[uint64][]I
 		return nil, b
 	}
 	fb := fallback.NouveauCompteur()
+	b.Replis = fb
 	poserProfilPuisCarte(ctx, e.Contexte, e.MatchID, Options{ProfilDeBalayage: e.ProfilDeBalayage, Fallbacks: fb})
 	opt := e.optionsDuRegistre(fb)
 	b.Lectures = e.lireLesPorteurs(ctx, b.Gardes, &opt)

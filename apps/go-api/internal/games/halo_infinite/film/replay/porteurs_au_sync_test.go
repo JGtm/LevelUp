@@ -7,6 +7,8 @@ package replay
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // TestPortagesAuSync_HorsModeAPorteurNeLitRien — LA GARDE REND AVANT LE PREMIER OCTET.
@@ -155,5 +157,21 @@ func TestPortagesDuDocument_BombeEtCouronne(t *testing.T) {
 	}
 	if b.Intervalles != 5 {
 		t.Fatalf("bilan %+v, attendu 5 intervalles", b)
+	}
+}
+
+// TestPortagesAuSync_LesReplisSontRendus — revue finale P1-b (2026-10-02) : les replis que la
+// lecture et l'assemblage declenchent sur ce chemin (ici la pose des largeurs d'axe, contexte nul
+// donc entree de carte sans largeurs) sont RENDUS au bilan, pour que l'appelant les verse a son
+// compteur de passe. Ils mouraient dans un compteur local.
+// Mutation vue rouge : ne plus poser `b.Replis` (le compteur local reste local).
+func TestPortagesAuSync_LesReplisSontRendus(t *testing.T) {
+	_, b := PortagesAuSync(context.Background(), EntreePorteursAuSync{MatchID: "m", Variante: "Arena:VIP"})
+	if b.Replis == nil {
+		t.Fatal("bilan sans compteur de replis : les replis du chemin du sync ne sortent pas")
+	}
+	if n := b.Replis.Compte(fallback.NomLargeursAxeParDefautConservees); n != 1 {
+		t.Fatalf("%s = %d au bilan, attendu 1 (rapport : %v)", fallback.NomLargeursAxeParDefautConservees,
+			n, fallback.Texte(b.Replis.Rapport()))
 	}
 }
