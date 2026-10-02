@@ -27,6 +27,7 @@ package replay
 // `BuildFromFilm`). Les deux le parsent PAR SON NOM — s'il demenage, ils le suivent.
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -46,8 +47,8 @@ import (
 //
 // HORS LIGNE par construction — ne jamais appeler depuis un chemin de requête ; l'API sert
 // l'artefact pré-construit.
-func BuildFromFilm(matchID, titleSlug string, film *source.Film, opt Options) (ReplayDocument, error) {
-	doc, _, err := BuildFromFilmAvecFaits(matchID, titleSlug, film, opt)
+func BuildFromFilm(ctx context.Context, matchID, titleSlug string, film *source.Film, opt Options) (ReplayDocument, error) {
+	doc, _, err := BuildFromFilmAvecFaits(ctx, matchID, titleSlug, film, opt)
 	return doc, err
 }
 
@@ -58,7 +59,7 @@ func BuildFromFilm(matchID, titleSlug string, film *source.Film, opt Options) (R
 // UN SEUL CHEMIN DE BALAYAGE, ET C EST LE POINT : [BuildFromFilm] n est plus qu un appel a
 // celle-ci qui jette les faits. Deux sequences de balayages ont deja diverge une fois dans ce
 // depot (decouverte D7, cinq canaux absents du fixture) — il n y en a qu une.
-func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Options) (
+func BuildFromFilmAvecFaits(ctx context.Context, matchID, titleSlug string, film *source.Film, opt Options) (
 	ReplayDocument, *FilmFactsFile, error,
 ) {
 	if opt.MapQuant == nil {
@@ -84,7 +85,7 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 	// L AVERTISSEMENT UNIQUE PAR FILM quand la version de format de `chunk_00` est inconnue de
 	// la table de profil (lot 1.9.1 ter) : ici, avant tout balayage, pour que la ligne PRECEDE
 	// les consequences qu elle explique. Les COMPTEURS, eux, tombent aux deux sites du repli.
-	avertirFormatSansProfil(film, matchID)
+	avertirFormatSansProfil(ctx, film, matchID)
 	// LE CONTEXTE DU FILM EST OUVERT ICI DEPUIS LE LOT 2.1, ET PAS DANS `scanFilmInputs` : c est
 	// lui qui porte le PROFIL, resolu a la construction (D1), et c est le profil que
 	// `installWorldObjectPrecision` lit juste apres. L ouvrir plus bas obligerait a resoudre le
@@ -93,12 +94,15 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 	// d i0, registre) restent PARESSEUSES, donc calculees au premier balayage qui les demande,
 	// donc apres l installation ci-dessous et apres le demarrage de l horloge des etapes.
 	fc := grammar.NewFilmContextForMap(film, opt.MapQuant, decoupageForce(opt))
-	poserProfilPuisCarte(fc, matchID, opt)
+	poserProfilPuisCarte(ctx, fc, matchID, opt)
 	// LA SECTION 2 DE `chunk_00`, POUR L ARTEFACT (schema 61, lot 2.6.3). Le profil du contexte
 	// l a DEJA lue a sa resolution : la reprendre ici ne relit pas un octet. Elle porte la cle du
 	// profil (`build`) et l empreinte du registre ECS, que `coverage.decoder` publie.
 	opt.FilmIdentity = identiteDuFilm(fc)
-	s, err := scanFilmInputs(matchID, film, fc, opt)
+	s, err := scanFilmInputs(ctx, matchID, film, fc, opt)
+	// CE QUE LE BALAYAGE A CONSTATE (grammar, lot J12.3 — ADR 0034 D-4) se journalise ICI, erreur
+	// ou non, sous le contexte de l appelant.
+	JournaliserDiagnostics(ctx, fc.Diagnostics().Relever())
 	if err != nil {
 		return ReplayDocument{}, nil, err
 	}
@@ -128,7 +132,7 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 // balayage y a pose son horloge d etapes, qui ne concerne pas l assemblage.
 func (s *filmScan) assembler(titleSlug string, opt Options) ReplayDocument {
 	s.in.applyTo(&opt)
-	return BuildFromPositions(s.matchID, titleSlug, s.in.Positions, s.in.Fire, opt)
+	return BuildFromPositions(s.ctx, s.matchID, titleSlug, s.in.Positions, s.in.Fire, opt)
 }
 
 // poserProfilPuisCarte installe sur le contexte, DANS CET ORDRE, le profil de balayage calibre
@@ -152,11 +156,11 @@ func (s *filmScan) assembler(titleSlug string, opt Options) ReplayDocument {
 //
 // Garde-rail : `TestRouteDuProfilCalibreJusquAuContexte` epingle les deux — le profil calibre
 // ARRIVE, et les largeurs de carte SURVIVENT. Intervertir les deux appels le fait rougir.
-func poserProfilPuisCarte(fc *grammar.FilmContext, matchID string, opt Options) {
+func poserProfilPuisCarte(ctx context.Context, fc *grammar.FilmContext, matchID string, opt Options) {
 	if opt.ProfilDeBalayage != nil {
 		fc.PoserProfilDeBalayage(*opt.ProfilDeBalayage)
 	}
-	installWorldObjectPrecision(fc, matchID, opt.Fallbacks)
+	installWorldObjectPrecision(ctx, fc, matchID, opt.Fallbacks)
 }
 
 // filmScan porte ce que les cinq phases de balayage se partagent : le film et son contexte, les
@@ -167,6 +171,9 @@ func poserProfilPuisCarte(fc *grammar.FilmContext, matchID string, opt Options) 
 // chacune, au-dela de la limite du depot (5 parametres), et une phase qui en oublierait une
 // lirait un zero sans que rien ne le dise.
 type filmScan struct {
+	// ctx est le contexte de L APPELANT de la cuisson (lot J12.3) : les journaux des balayages le
+	// portent. Il vit le temps d UN appel, comme le reste de cette structure.
+	ctx     context.Context
 	matchID string
 	film    *source.Film
 	fc      *grammar.FilmContext
@@ -210,9 +217,9 @@ func decoupageForce(opt Options) *profile.I0Layout {
 // filtre de vitesse aux teleportations, les changements d'arme se qualifient sur les loadouts
 // deja lus, les changements d'equipement sur les naissances lues dans les positions, et les
 // socles comme les vehicules heritent des largeurs MPP calibrees par les poses.
-func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
+func scanFilmInputs(ctx context.Context, matchID string, film *source.Film, fc *grammar.FilmContext,
 	opt Options) (*filmScan, error) {
-	s := &filmScan{matchID: matchID, film: film, fc: fc, opt: opt, world: opt.MapQuant.Range()}
+	s := &filmScan{ctx: ctx, matchID: matchID, film: film, fc: fc, opt: opt, world: opt.MapQuant.Range()}
 	s.scan = grammar.DefaultScanFilmOptions()
 	if opt.Scan != nil {
 		s.scan = *opt.Scan
@@ -252,7 +259,7 @@ func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
 	// catalogue est tranchee dans le constructeur, et les balayages la lisent ici.
 	s.scan.Layout = s.fc.ImposedLayout()
 	// L'HORLOGE DES BALAYAGES PART ICI, et pas a l'entree de la fonction : ce qui precede est
-	// l'attente du verrou process et la lecture du catalogue, qui ne sont le temps d'aucun
+	// la construction du contexte et la lecture du catalogue, qui ne sont le temps d'aucun
 	// balayage. A partir d'ici, chaque `opt.observe` ferme le balayage qu'il annonce
 	// (cf. observe.go).
 	s.opt.clock = &stepClock{last: time.Now()}

@@ -135,7 +135,7 @@ func e1911ChampEntree(t *testing.T) (films []string, desig []int) {
 // e1911Decoupe rend les parties non vides d'une liste separee par des virgules.
 func e1911Decoupe(v string) []string {
 	var out []string
-	for _, p := range strings.Split(v, ",") {
+	for p := range strings.SplitSeq(v, ",") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}
@@ -236,7 +236,7 @@ func e1911Bits(pay []byte, p, n int) string {
 		return strings.Repeat(".", n)
 	}
 	var b strings.Builder
-	for i := 0; i < n; i++ {
+	for i := range n {
 		fmt.Fprintf(&b, "%d", source.BitsTronques(pay, p+i, 1))
 	}
 	return b.String()

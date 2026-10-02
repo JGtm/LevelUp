@@ -70,7 +70,7 @@ package archlint
 //
 // # LES 12 ARETES DE LA NOTE DE PREPARATION, ET CE QU IL EN RESTE
 //
-// `.ai/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §2.2 listait 12 aretes a casser ; ce ratchet en a
+// `.ai/V7.5/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §2.2 listait 12 aretes a casser ; ce ratchet en a
 // porte 8, en a ajoute 2 que la note n avait pas comptees (elle regardait le SENS, ce ratchet
 // regarde aussi le LIEU), et en a laisse 4 a D9. TOUTES SONT TOMBEES, chacune dans le commit du
 // deplacement qui la resolvait — les trois dernieres au lot 2.5.e-a, avec la descente de
@@ -297,6 +297,10 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// contrat). C est exactement le rangement de `revision` ci-dessus, pour la meme raison : il
 	// ne lit aucun octet de film et ne publie rien, il DECLARE des formes.
 	"internal/games/halo_infinite/film/types": horsCoucheFilm,
+	// `constat` : LES DIAGNOSTICS des couches (lot J12.3, ADR 0034 D-4). Feuille sans import du
+	// depot, que `grammar` et `facts` nomment pour RENDRE ce qu ils constataient au lieu de le
+	// journaliser — donc sans rang, meme rangement que `types` : il ne lit ni ne publie rien.
+	"internal/games/halo_infinite/film/internal/constat": horsCoucheFilm,
 }
 
 // LA TOLERANCE D ARETE A ETE SUPPRIMEE LE 2026-09-17 (lot 2.5.e-d), AVEC SA DERNIERE ENTREE.

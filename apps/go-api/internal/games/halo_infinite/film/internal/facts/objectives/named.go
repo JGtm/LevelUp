@@ -1,7 +1,8 @@
 package objectives
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -41,7 +42,7 @@ import (
 // impair (aucun film partage) et ne garde que les cles sur lesquelles les deux moities sont
 // d'accord — le controle a rejete 8 des 19 cles CTF que le balayage donnait pour resolues.
 // Table figee : `.ai/refs/TABLE_STATS_STATBORG.tsv` ; detail :
-// `.ai/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` §17.
+// `.ai/V7.5/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` §17.
 //
 // ATTENTION a ce que cette table figee EST, et a ce qu'elle n'est pas (arbitrage du
 // 2026-08-05) : elle recense TOUS les emplacements decodes du statborg, tous consommateurs
@@ -248,14 +249,14 @@ func NamedEventsFrom(recs []types.StatRecord, objectiveType string, cons *Replis
 	// observable : deux parcours de map donneraient deux sorties differentes sur un film
 	// tronque. D'ou [sortedSlotKeys] et [sortedIntKeys] — sans effet sur un film sain, ou tout
 	// est emis puis retrie par [sortNamedEvents].
-	b := newEventBudget("named_events:" + objectiveType)
+	b := newEventBudget("named_events:"+objectiveType, cons.Diagnostics())
 	var out []NamedEvent
 	for _, key := range sortedSlotKeys(table) {
 		slot := table[key]
 		if slot.Redundant {
 			continue
 		}
-		series := cumulateRounds(byKey[key], real)
+		series := cumulateRounds(byKey[key], real, cons.Diagnostics())
 		for _, entity := range sortedIntKeys(series) {
 			for _, t := range incrementTimes(series[entity], key, b) {
 				out = append(out, NamedEvent{
@@ -281,20 +282,9 @@ func NamedEventsFrom(recs []types.StatRecord, objectiveType string, cons *Replis
 // aujourd'hui : sur les tables actuelles, deux evenements egaux sur les trois premieres cles
 // viennent forcement du meme emplacement.
 func sortNamedEvents(evs []NamedEvent) {
-	sort.SliceStable(evs, func(i, j int) bool {
-		if evs[i].TimeMS != evs[j].TimeMS {
-			return evs[i].TimeMS < evs[j].TimeMS
-		}
-		if evs[i].Slot != evs[j].Slot {
-			return evs[i].Slot < evs[j].Slot
-		}
-		if evs[i].Stat != evs[j].Stat {
-			return evs[i].Stat < evs[j].Stat
-		}
-		if evs[i].Comp != evs[j].Comp {
-			return evs[i].Comp < evs[j].Comp
-		}
-		return evs[i].Side < evs[j].Side
+	slices.SortStableFunc(evs, func(a, b NamedEvent) int {
+		return cmp.Or(cmp.Compare(a.TimeMS, b.TimeMS), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Stat, b.Stat),
+			cmp.Compare(a.Comp, b.Comp), cmp.Compare(a.Side, b.Side))
 	})
 }
 
@@ -348,7 +338,7 @@ func crossCheckFrom(recs []types.StatRecord, objectiveType string) map[int]map[s
 	}
 	// Un budget pour la passe entiere, et un parcours trie pour qu'il se consomme toujours
 	// dans le meme ordre (meme raison qu'a [NamedEventsFrom]).
-	b := newEventBudget("cross_check:" + objectiveType)
+	b := newEventBudget("cross_check:"+objectiveType, nil) // outil hors production : aucun document
 	defer b.resume()
 	out := map[int]map[string][2]int{}
 	for _, key := range sortedSlotKeys(table) {

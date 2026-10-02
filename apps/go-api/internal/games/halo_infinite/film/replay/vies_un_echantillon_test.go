@@ -30,6 +30,7 @@ package replay
 // doit pas bouger en silence.
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -101,7 +102,7 @@ func TestViesDUnEchantillonOntLeurOracle(t *testing.T) {
 		opt := g.options()
 		opt.Labels = goldenCatalog(t)
 		opt.MapQuant = &entry
-		doc := BuildFromPositions(b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
+		doc := BuildFromPositions(context.Background(), b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
 		if doc.Coverage != nil && doc.Coverage.Tracks != nil &&
 			doc.Coverage.Tracks.RefusedMinPoints != 0 {
 			t.Errorf("%s : %d vie(s) encore REFUSEE(S) au seuil par defaut — il vaut 1",
@@ -188,7 +189,7 @@ func registreDuDocument(g *FilmFacts, opt Options,
 	}
 	clk := IdentityClock{OriginUS: origin, StepUS: uint64(opt.frameIntervalMS()) * 1000,
 		FrameCount: doc.FrameCount}
-	return BuildIdentityRegistry(IdentityInput{
+	return BuildIdentityRegistry(context.Background(), IdentityInput{
 		Positions: sorted, BipedCreations: opt.BipedCreations, Deaths: opt.Deaths,
 		PlayerIndices: opt.PlayerIndices, FilmTable: opt.FilmTable, Bots: opt.Bots,
 		Fire: fireRefs(g.Fire), RosterXUIDs: opt.RosterXUIDs, Participants: opt.Participants,

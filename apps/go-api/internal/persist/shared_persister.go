@@ -4,8 +4,8 @@
 // Architecture (refactor 2026-05-23) :
 //
 //   - INSERT-only : aucun UPDATE, aucun DELETE — évite le bug ART DuckDB
-//     observé en prod (cf. .ai/INCIDENT_ART_CORRUPTION_DUCKDB.md +
-//     .ai/REFACTOR_COLLECT_PERSIST.md).
+//     observé en prod (cf. .ai/archive/V7/INCIDENT_ART_CORRUPTION_DUCKDB.md +
+//     .ai/archive/V7/REFACTOR_COLLECT_PERSIST.md).
 //   - Atomique : 1 transaction par batch. BEGIN → INSERT × N → COMMIT ou
 //     ROLLBACK sur erreur. Aucun état partiel possible.
 //   - Idempotent : si match_id existe déjà dans match_registry, return nil

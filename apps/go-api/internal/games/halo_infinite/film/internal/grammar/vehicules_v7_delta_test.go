@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_delta_test.go — INSTRUMENT (lot V7) : L'ECART ENTRE UN EVENEMENT QUI VISE UN

@@ -1,9 +1,11 @@
 package replay
 
 import (
+	"cmp"
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
-	"sort"
+	"slices"
 	"strconv"
 )
 
@@ -98,14 +100,8 @@ func buildAbilityReads(
 	if len(out) == 0 {
 		return nil
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T != out[j].T {
-			return out[i].T < out[j].T
-		}
-		if out[i].Slot != out[j].Slot {
-			return out[i].Slot < out[j].Slot
-		}
-		return out[i].Src < out[j].Src
+	slices.SortStableFunc(out, func(a, b AbilityRead) int {
+		return cmp.Or(cmp.Compare(a.T, b.T), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Src, b.Src))
 	})
 	return out
 }
@@ -200,8 +196,8 @@ func buildAbilityCoverage(raw, clean, published []AbilityRead, noise int) Abilit
 
 // logAbilityCoverage journalise la couverture du calque — un rejet compté mais jamais
 // journalisé serait à moitié muet.
-func logAbilityCoverage(cov AbilityCoverage) {
-	slog.Info("rejeu : identite de capacite portee",
+func logAbilityCoverage(ctx context.Context, cov AbilityCoverage) {
+	slog.InfoContext(ctx, "rejeu : identite de capacite portee",
 		"lectures", cov.Reads, "bruitDeBalayage", cov.ScanNoise,
 		"sansTrajectoirePubliee", cov.Unpublished, "publiees", cov.Published)
 }
@@ -342,12 +338,7 @@ func paletteIDOrNone(p *AbilityPalette) string {
 }
 
 func containsRank(marks []int, r int) bool {
-	for _, m := range marks {
-		if m == r {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(marks, r)
 }
 
 // abilityLabelsUsed nomme les rangs de capacité que le document emploie RÉELLEMENT.

@@ -24,7 +24,7 @@ package grammar
 // USAGE (depuis apps/go-api, cache Go isole, UN FILM PAR PROCESS de preference) :
 //
 //	CGO_ENABLED=0 V13_FILM_ROOT=<repo>/data/cache V13_FILMS=0d76e8f1 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestV13DeadStateMarche$' -v -timeout 120m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestV13DeadStateMarche$' -v -timeout 120m
 
 import (
 	"fmt"
@@ -328,8 +328,6 @@ func v13GateG2(t *testing.T, declared, found int) {
 	t.Logf("  [G2 OK] film sans vehicule : 0 dead-state en archetype 40")
 }
 
-// v13ReportVehicles detaille les dead-states vehicule et chiffre la resolution du champ tueur,
-// COMPAREE au meme taux chez le bipede — c'est le critere de decision du gate.
 // v13ReportPower est LE garde-fou de lecture du lot : il chiffre COMBIEN de dead-states vehicule
 // la mesure pourrait voir SI un vehicule en gravait au meme taux qu'un bipede. Sans ce chiffre,
 // « 0 trouve » se lit a tort comme « ca n'existe pas », alors que la marche ne rend que ~1 000
@@ -352,6 +350,8 @@ func v13ReportPower(t *testing.T, st *v13Stats, bipDead, vehDead int) {
 	}
 }
 
+// v13ReportVehicles detaille les dead-states vehicule et chiffre la resolution du champ tueur,
+// COMPAREE au meme taux chez le bipede — c'est le critere de decision du gate.
 func v13ReportVehicles(t *testing.T, veh, biped []v13Dead, vehLo, vehHi int) {
 	t.Helper()
 	if len(veh) == 0 {
@@ -547,7 +547,7 @@ func v13ParseFilms(t *testing.T) []string {
 		t.Skipf("V13_FILMS absent : mesure V13 sautee")
 	}
 	var out []string
-	for _, tok := range strings.Split(raw, ",") {
+	for tok := range strings.SplitSeq(raw, ",") {
 		if tok = strings.TrimSpace(tok); tok != "" {
 			out = append(out, tok)
 		}

@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // assaut_pied_classement_test.go — NOMMER LES RECOMPENSES D'ASSAUT : detonation d'abord, pose ensuite.
@@ -47,6 +49,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
@@ -302,7 +305,7 @@ func pcMarqueurs(data []byte) []pcMarqueur {
 		m.valeur = int(source.OctetAuBit(data, ebs+44*8))<<24 | int(source.OctetAuBit(data, ebs+45*8))<<16 |
 			int(source.OctetAuBit(data, ebs+46*8))<<8 | th
 		debut := p - 120*8
-		for i := 0; i < 120; i++ {
+		for i := range 120 {
 			m.avant[i] = source.OctetAuBit(data, debut+i*8)
 		}
 		out = append(out, m)
@@ -412,7 +415,7 @@ func TestAssautPiedTemoinsTags(t *testing.T) {
 		}
 		recs := pcRecompenses(footer)
 		n, avecTag := 0, 0
-		exemples := ""
+		var exemples strings.Builder
 		for _, r := range recs {
 			if r.valeur != 10 {
 				continue
@@ -421,11 +424,11 @@ func TestAssautPiedTemoinsTags(t *testing.T) {
 			if r.tag != "(sans tag)" {
 				avecTag++
 				if avecTag <= 4 {
-					exemples += fmt.Sprintf(" [t=%d %s]", r.t, r.tag)
+					exemples.WriteString(fmt.Sprintf(" [t=%d %s]", r.t, r.tag))
 				}
 			}
 		}
 		t.Logf("%-9s %-12s : %d evenement(s) +10, %d avec gamertag en clair —%s",
-			w.id, w.mode, n, avecTag, exemples)
+			w.id, w.mode, n, avecTag, exemples.String())
 	}
 }

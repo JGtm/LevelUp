@@ -1010,7 +1010,7 @@ package replay
 // zéro qui se lirait comme un calage exact (cf. BridgeHealth.DeathOffsetMs, coverage_bridge.go).
 //
 //	pourquoi     le lien « voir dans le rejeu » posé depuis une cellule Tactique (lot M1,
-//	             `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`) portait un instant EXACT pour
+//	             `.ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`) portait un instant EXACT pour
 //	             deux questions sur six (`temps`/`routes`, déjà sur l'horloge du film) et une
 //	             APPROXIMATION pour les quatre autres (`morts`/`kills`/`gagne`/`isole`, sur
 //	             l'horloge du MATCH) — le décalage par match n'était publié nulle part. Le
@@ -1180,7 +1180,7 @@ package replay
 //	                (médiane 31,89 m pour 63,775 m) avec |Δx| médian 0,20 m : le bit de poids
 //	                fort de Y bascule, 3 907 pas sur 4 901. Sur les cartes Forge l'axe touché est
 //	                plutôt X et le bit plus bas (étendue / 2^7 majoritaire). Le chantier appartient
-//	                à `grammar` : `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+//	                à `grammar` : `.ai/V7.5/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
 //
 //	le contrat      `coverage.projectiles` est ADDITIF et optionnel. `grenades[].slot` et
 //	                `projectiles[].p` existaient déjà : ce sont leurs VALEURS qui changent, et
@@ -1260,7 +1260,7 @@ package replay
 //	                position de bit — Y figé au quantum près (479, 735) pendant que X saute d'une
 //	                puissance de deux exacte, sur plusieurs slots et générations à la fois. Le
 //	                garde-fou de v52 la couvre et devient rare : c'est son rôle.
-//	                Détail : `.ai/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`.
+//	                Détail : `.ai/V7.5/RAPPORT_LOT_BBIS_BIT_PROJECTILE_2026-09-12.md`.
 //
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // v54 (2026-09-12, lot G.2bis) — LA VERSION DU FILM EST LUE, PLUS DEVINEE
@@ -1300,7 +1300,7 @@ package replay
 //
 //	ce que le lot   le REDECODAGE lui-meme (`backfill-replay --only-existing` et le backlog
 //	n'a pas fait    killsource par `KillSourceDecoderRev`) : consigne du lot, il reste a lancer.
-//	                Detail : `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+//	                Detail : `.ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
 
 // v55 (2026-09-14, lot 1.0.4 du PLAN_DECODEUR_FILM) : LE REFUS DE PUBLICATION D'UNE VIE CESSE
 // D'ETRE MUET.

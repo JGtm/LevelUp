@@ -32,7 +32,7 @@ package grammar
 // Le controle est un test PERMANENT (sans garde d environnement) : bobines et catalogue sont
 // versionnes. Il restaure le descripteur global apres chaque bobine.
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191bFermetureAvecCarte$' -v -count=1
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191bFermetureAvecCarte$' -v -count=1
 
 import (
 	"path/filepath"

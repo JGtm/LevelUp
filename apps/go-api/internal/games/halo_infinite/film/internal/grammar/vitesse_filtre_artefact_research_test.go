@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vitesse_filtre_artefact_research_test.go — lecture de l'ARTEFACT PUBLIÉ pour

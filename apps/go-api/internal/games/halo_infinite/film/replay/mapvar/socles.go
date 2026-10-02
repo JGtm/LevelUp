@@ -25,8 +25,9 @@ package mapvar
 // où elle est infirmée, on recalcule sans ré-extraire un seul fichier.
 
 import (
+	"cmp"
 	"math"
-	"sort"
+	"slices"
 )
 
 // PadFamily est la famille d'un socle, DÉRIVÉE du type_id — jamais lue dans le fichier.
@@ -114,9 +115,7 @@ func PadSpots(v *Variant) []PadSpot {
 			objs = append(objs, o)
 		}
 	}
-	sort.SliceStable(objs, func(i, j int) bool {
-		return lessPadSpot(objs[i], objs[j])
-	})
+	slices.SortStableFunc(objs, cmpPadSpot)
 	out := make([]PadSpot, 0, len(objs))
 	for _, o := range objs {
 		fam, _ := PadFamilyOf(o.TypeID)
@@ -142,18 +141,10 @@ func nearestPadSpot(spots []PadSpot, p Vec3) int {
 	return -1
 }
 
-// lessPadSpot est l'ordre spatial des objets de socle (x, y, z, puis instance_id).
-func lessPadSpot(a, b Object) bool {
-	if a.Pos.X != b.Pos.X {
-		return a.Pos.X < b.Pos.X
-	}
-	if a.Pos.Y != b.Pos.Y {
-		return a.Pos.Y < b.Pos.Y
-	}
-	if a.Pos.Z != b.Pos.Z {
-		return a.Pos.Z < b.Pos.Z
-	}
-	return a.InstanceID < b.InstanceID
+// cmpPadSpot est l'ordre spatial des objets de socle (x, y, z, puis instance_id).
+func cmpPadSpot(a, b Object) int {
+	return cmp.Or(cmp.Compare(a.Pos.X, b.Pos.X), cmp.Compare(a.Pos.Y, b.Pos.Y),
+		cmp.Compare(a.Pos.Z, b.Pos.Z), cmp.Compare(a.InstanceID, b.InstanceID))
 }
 
 // Dist3 est la distance euclidienne 3D entre deux points du repère monde, en mètres.

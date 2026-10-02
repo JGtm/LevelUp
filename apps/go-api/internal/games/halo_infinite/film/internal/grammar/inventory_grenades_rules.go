@@ -79,7 +79,7 @@ func invGrenadeCountsAt(
 	if uint32(source.BitsTolerants(pay, b, 3)) != invGrenadeSlots {
 		return c, 0, false
 	}
-	for i := 0; i < invGrenadeSlots; i++ {
+	for i := range invGrenadeSlots {
 		v := uint32(source.BitsTolerants(pay, b+3+8*i, 8))
 		if v > maxVal {
 			return c, 0, false

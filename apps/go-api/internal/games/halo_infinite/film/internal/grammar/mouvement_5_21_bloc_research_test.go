@@ -25,6 +25,7 @@ package grammar
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -123,7 +124,7 @@ func b521BornesDuMasque(b BlocDeDatums, kf map[uint32]uint32, reg *Registry) (da
 		if !ok {
 			continue
 		}
-		for k := 0; k < datumBitmapBits; k++ {
+		for k := range datumBitmapBits {
 			if !e.Composant(k) {
 				continue
 			}
@@ -144,15 +145,15 @@ func b521Classes(h map[string]int) string {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool { return h[keys[i]] > h[keys[j]] })
-	s := ""
+	var s strings.Builder
 	for i, k := range keys {
 		if i == 12 {
-			s += fmt.Sprintf(" (+%d classes)", len(keys)-12)
+			s.WriteString(fmt.Sprintf(" (+%d classes)", len(keys)-12))
 			break
 		}
-		s += fmt.Sprintf(" [%s] x%d", k, h[k])
+		s.WriteString(fmt.Sprintf(" [%s] x%d", k, h[k]))
 	}
-	return s
+	return s.String()
 }
 
 // TestBloc521Masques mesure si le masque de 256 bits DETERMINE l archetype.

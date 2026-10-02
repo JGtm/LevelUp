@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // origine_positions_research_test.go — L'ORIGINE D'UN OBJET AU SOL : SOCLE OU SOL ?

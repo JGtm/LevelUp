@@ -34,6 +34,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
@@ -114,11 +115,11 @@ func a3Inventaire(t *testing.T, id string, sc *p2aScan) map[uint32][]zoneSample 
 			tags = append(tags, tag)
 		}
 		sort.Ints(tags)
-		ligne := ""
+		var ligne strings.Builder
 		for _, tag := range tags {
-			ligne += fmtTag(tag, parSlot[s][tag])
+			ligne.WriteString(fmtTag(tag, parSlot[s][tag]))
 		}
-		t.Logf("%s : slot %d — %d emission(s) i1 :%s", id, s, total, ligne)
+		t.Logf("%s : slot %d — %d emission(s) i1 :%s", id, s, total, ligne.String())
 	}
 	t.Logf("%s : inventaire i1 — %d slot(s) au-dessus de %d emissions (sur %d emetteurs), "+
 		"%d slot(s) a jauge (tag %d)", id, publies, p2aMinParSlot, len(parSlot), len(gauge),

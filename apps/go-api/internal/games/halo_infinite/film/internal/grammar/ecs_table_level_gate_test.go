@@ -25,7 +25,7 @@ import (
 // `ok`, sans quoi elle se confond avec un run vert.
 //
 //	ECS_TABLE_FILM=../facts/killsource/testdata/minibobine_000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run G2 -update-ecs-table-level
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run G2 -update-ecs-table-level
 var updateNiveauxECS = flag.Bool("update-ecs-table-level", false,
 	"reecrire la colonne `level` de testdata/ecs_table.tsv depuis le registre du PREMIER film "+
 		"de ECS_TABLE_FILM — CETTE colonne seulement")

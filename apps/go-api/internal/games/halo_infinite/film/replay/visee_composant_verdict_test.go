@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_composant_verdict_test.go — LOT F : LA MESURE, LE CONTROLE, LE VERDICT.

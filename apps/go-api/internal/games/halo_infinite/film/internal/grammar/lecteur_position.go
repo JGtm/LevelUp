@@ -112,7 +112,7 @@ func (b *Lecteur) tablesDuProfil() tablesDePosition {
 // bornesDeLaPlage convertit une plage en bornes {min, max} par axe.
 func bornesDeLaPlage(r profile.Vec3Range) [3][2]float32 {
 	var out [3][2]float32
-	for axe := 0; axe < 3; axe++ {
+	for axe := range 3 {
 		out[axe] = [2]float32{r[axe].Min, r[axe].Max}
 	}
 	return out

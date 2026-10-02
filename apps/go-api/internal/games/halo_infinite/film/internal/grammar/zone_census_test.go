@@ -90,7 +90,7 @@ func zcModuleRoot(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("getwd : %v", err)
 	}
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir
 		}

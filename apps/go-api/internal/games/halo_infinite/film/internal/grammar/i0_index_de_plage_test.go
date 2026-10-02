@@ -22,6 +22,7 @@ package grammar
 // decodage, ces temoins non.
 
 import (
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -41,16 +42,17 @@ func carteALaPlageUn() profile.MapQuantEntry {
 // bits, puis trois axes a zero. En-tete : bUsePred=0, bDelta=0, precHigh=0, puis le SELECTEUR
 // d index — a 0 l index suit, a 1 il n y en a pas et le lecteur prend la table DEFAUT.
 func fluxAbsoluAvecIndex(idx int, idxW uint) []byte {
-	bits := "000" // bUsePred, bDelta, precHigh
+	var bits strings.Builder
+	bits.WriteString("000") // bUsePred, bDelta, precHigh
 	if idx < 0 {
-		bits += "1" // selecteur pose : aucun index ne suit
+		bits.WriteString("1") // selecteur pose : aucun index ne suit
 	} else {
-		bits += "0"
+		bits.WriteString("0")
 		for b := int(idxW) - 1; b >= 0; b-- {
-			bits += string(rune('0' + byte((idx>>uint(b))&1)))
+			bits.WriteString(string(rune('0' + byte((idx>>uint(b))&1))))
 		}
 	}
-	return bitsDe(bits, 32)
+	return bitsDe(bits.String(), 32)
 }
 
 // positionEmise rejoue le deserialiseur d i0 sur `buf` sous le profil de `e` et dit si une

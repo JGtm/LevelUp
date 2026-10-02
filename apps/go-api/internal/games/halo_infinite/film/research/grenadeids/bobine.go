@@ -10,6 +10,7 @@ package grenadeids
 
 import (
 	"fmt"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -150,10 +151,5 @@ func tiProjectileParNom(reg *grammar.Registry) (int, int) {
 
 // contientComposant dit si l archetype porte ce nom de composant.
 func contientComposant(a grammar.Archetype, nom string) bool {
-	for _, c := range a.Components {
-		if c == nom {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(a.Components, nom)
 }

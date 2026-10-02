@@ -39,7 +39,7 @@ package killsource
 // alerte sur une mort QUI N EXISTE PAS. Le fantome est compte comme couvert.
 
 import (
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
@@ -81,7 +81,7 @@ func (c *decodeCtx) walkOutOfCatalogue() (int, []uint32) {
 			tags = append(tags, cd.tag)
 		}
 	}
-	sort.Slice(tags, func(i, j int) bool { return tags[i] < tags[j] })
+	slices.Sort(tags)
 	return n, tags
 }
 
@@ -163,6 +163,6 @@ func (c *decodeCtx) relaxedProbe(covered map[int]bool) RelaxedProbe {
 			}
 		}
 	}
-	sort.Slice(st.Tags, func(i, j int) bool { return st.Tags[i] < st.Tags[j] })
+	slices.Sort(st.Tags)
 	return st
 }

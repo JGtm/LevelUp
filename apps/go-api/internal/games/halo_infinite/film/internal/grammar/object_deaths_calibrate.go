@@ -37,7 +37,10 @@ package grammar
 // (2026-09-16) : sur `minibobine_e5adf7b2` les DIX-HUIT cadres localisent 0 paquet sur 54, et le
 // code retenait pourtant un cadre, en silence, au departage par records propres.
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 // calibPacketBudget / calibEventBudget bornent l echantillon de calibrage. Le budget est exprime
 // EN PAQUETS A EVENEMENTS parce que le critere est leur taux de localisation ; la borne en
@@ -88,15 +91,10 @@ func calibrateFrameConfig(
 	// localisation, c est le cadre PAR DEFAUT qui passe devant, puis la plus petite largeur.
 	// Departager deux ex aequo par leur rendement en records serait rouvrir la porte au critere
 	// que le lot V13 a refute ; a egalite, on ne choisit pas, on garde ce qu on avait.
-	sort.SliceStable(scores, func(i, j int) bool {
-		switch {
-		case scores[i].located != scores[j].located:
-			return scores[i].located > scores[j].located
-		case (scores[i].cfg.IDLowBits == defautLow) != (scores[j].cfg.IDLowBits == defautLow):
-			return scores[i].cfg.IDLowBits == defautLow
-		default:
-			return scores[i].cfg.IDLowBits < scores[j].cfg.IDLowBits
-		}
+	slices.SortStableFunc(scores, func(a, b frameConfigScore) int {
+		return cmp.Or(cmp.Compare(b.located, a.located),
+			cmp.Compare(unSi(b.cfg.IDLowBits == defautLow), unSi(a.cfg.IDLowBits == defautLow)),
+			cmp.Compare(a.cfg.IDLowBits, b.cfg.IDLowBits))
 	})
 	meilleur, dauphin = scores[0], scores[1]
 	if meilleur.located < calibDominationMin*max(dauphin.located, 1) {

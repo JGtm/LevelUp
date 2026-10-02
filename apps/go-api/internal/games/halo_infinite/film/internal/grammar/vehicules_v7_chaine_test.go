@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_chaine_test.go — INSTRUMENT (lot V7) : LES TROIS REFERENCES D'UN EVENEMENT, LUES
@@ -150,7 +152,7 @@ func TestV7Chaine3(t *testing.T) {
 		"veh", "bip", "hors")
 	for _, ty := range tys {
 		a := acc[ty]
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			st := a.refs[i]
 			if st.n == 0 {
 				continue

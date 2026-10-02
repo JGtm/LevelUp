@@ -7,6 +7,7 @@ package replay
 // le tri teste : soit l'ordre d'un tri STABLE (rang d'entree), soit un ordre lexicographique.
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -301,7 +302,7 @@ func TestVehicleLives_ExAequoDepartagesParGeneration(t *testing.T) {
 		kf.SeenUS[types.LifeKey{Slot: 7, Gen: g}] = []uint64{1000, 2000}
 	}
 	for run := range 50 {
-		lives, _ := vehicleLives(kf, nil)
+		lives, _ := vehicleLives(context.Background(), kf, nil)
 		for i, l := range lives {
 			if l.key.Gen != uint32(i) {
 				t.Fatalf("execution %d, rang %d : generation %d — vies d'un slot hors de l'ordre", run, i, l.key.Gen)

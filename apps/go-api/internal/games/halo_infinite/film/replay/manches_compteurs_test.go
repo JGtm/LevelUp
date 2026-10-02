@@ -88,7 +88,7 @@ func manchesBloc(round, debut, n int, slots []int) []types.StatRecord {
 	var recs []types.StatRecord
 	for j, slot := range slots {
 		recs = append(recs, coreLine(slot, round, debut, 0, 0, 0, 0)...)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			k := int64(i + 1)
 			t := debut + 500 + j*manchesDecalageSlot + i*manchesPasProgression
 			recs = append(recs, coreLine(slot, round, t, k, k, k, k*10)...)
@@ -100,7 +100,7 @@ func manchesBloc(round, debut, n int, slots []int) []types.StatRecord {
 // manchesInstants rend les trois instants de progression du slot d'index j dans une manche.
 func manchesInstants(j, debut int) []int {
 	out := make([]int, 0, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		out = append(out, debut+500+j*manchesDecalageSlot+i*manchesPasProgression)
 	}
 	return out
@@ -124,7 +124,7 @@ func manchesMorts() []types.Death {
 // assistsDuSlot rend la serie d'assistances par manche d'un slot, telle que la production la
 // decoupe.
 func assistsDuSlot(recs []types.StatRecord, slot int) map[int][]types.ScorePoint {
-	return objectives.SeriesByRound(recs, objectives.AssistsComponent, false, nil)[slot]
+	return objectives.SeriesByRound(recs, objectives.AssistsComponent(), false, nil)[slot]
 }
 
 // dernierPoint rend l'instant et la valeur du dernier point d'une suite, ou (-1, -1).
@@ -201,7 +201,7 @@ func TestTotalNonChronologiqueEstRefuse(t *testing.T) {
 		{TimeMS: 3_057, Slot: 12, Value: 61},
 		{TimeMS: 4_225, Slot: 12, Value: 62},
 	}
-	got := objectives.ChronologicalTotal(pts)
+	got := objectives.ChronologicalTotal(pts, nil)
 	if len(got) != 3 {
 		t.Fatalf("%d points retenus, attendu 3 (le point qui recule doit etre ecarte) : %+v", len(got), got)
 	}
@@ -227,7 +227,7 @@ func TestSerieCumuleeParSlotResteChronologique(t *testing.T) {
 	recs := manchesCorps(0, 30_000)
 	recs = append(recs, manchesCorps(1, manchesDebutR0)...)
 
-	series := objectives.SeriesTotal(recs, objectives.AssistsComponent, false, nil)
+	series := objectives.SeriesTotal(recs, objectives.AssistsComponent(), false, nil)
 	if len(series) == 0 {
 		t.Fatal("aucune serie cumulee : le corpus ne prouve rien")
 	}

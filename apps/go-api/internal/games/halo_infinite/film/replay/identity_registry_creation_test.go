@@ -2,6 +2,7 @@ package replay
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"testing"
@@ -59,7 +60,7 @@ func filmDeuxCorps() IdentityInput {
 // MUTATION : retirer l'appel a `nommerViesParCreations` -> les vies sont anonymes (aucune mort
 // dans cette entree), rouge.
 func TestCreationNommeLaVieQuiPorteSonRecord(t *testing.T) {
-	reg := BuildIdentityRegistry(filmDeuxCorps())
+	reg := BuildIdentityRegistry(context.Background(), filmDeuxCorps())
 	var vu bool
 	for _, l := range reg.Vies() {
 		if l.slot != 100 || l.from != 1_000_000 {
@@ -90,7 +91,7 @@ func TestCreationNommeLaVieQuiPorteSonRecord(t *testing.T) {
 // MUTATION : rendre `indexPour` sans repli (« un record dans l'intervalle, ou rien ») -> la
 // seconde vie du slot 100 reste anonyme, rouge.
 func TestCreationSePropageAuxAutresViesDuMemeCorps(t *testing.T) {
-	reg := BuildIdentityRegistry(filmDeuxCorps())
+	reg := BuildIdentityRegistry(context.Background(), filmDeuxCorps())
 	var propagees int
 	for _, l := range reg.Vies() {
 		if l.slot == 100 && l.from > 10_000_000 {
@@ -138,7 +139,7 @@ func TestCreationPartageUnSlotRecycleEntreSesDeuxCorps(t *testing.T) {
 		in.Positions = append(in.Positions, posAt(100, t, 1, 1, 1))
 	}
 	in.Clock.FrameCount = 281
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	var vues, propagees int
 	for _, l := range reg.Vies() {
 		if l.slot != 100 {
@@ -190,7 +191,7 @@ func TestCreationSeTaitSurUneVieAnterieureAuxLecturesDivergentes(t *testing.T) {
 		creationDe(100, 30_000_000, 1),
 		creationDe(200, 1_000_000, 1),
 	}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	for _, l := range reg.Vies() {
 		if l.slot == 100 && l.from < 10_000_000 && l.xuid != 0 {
 			t.Fatalf("la vie 100[%d..%d] a ete nommee (%d) alors qu'aucun record ne la precede "+
@@ -216,7 +217,7 @@ func TestCreationNeRattachePasUnIndexHorsTable(t *testing.T) {
 		creationDe(100, 1_000_000, 0),
 		creationDe(200, 1_000_000, 8), // 8 : l'index de `c75f33b8` que rien ne publie
 	}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	for _, l := range reg.Vies() {
 		if l.slot == 200 && l.xuid != 0 {
 			t.Fatalf("le slot 200 porte le xuid %d alors que son index (8) n'est pas publie", l.xuid)
@@ -239,7 +240,7 @@ func TestCouvertureBipedeVentileChaqueNonResolu(t *testing.T) {
 		"index hors table":     entreeHorsTable(),
 		"aucune creation":      entreeDeuxJoueurs([]uint64{111}),
 	} {
-		c := BuildIdentityRegistry(in).Section.Coverage.BipedSlot
+		c := BuildIdentityRegistry(context.Background(), in).Section.Coverage.BipedSlot
 		if c.UnresolvedByCause.Total() != c.Unresolved {
 			t.Errorf("%s : causes = %d, non_resolu = %d (%+v) — un non-resolu sans cause ne se "+
 				"corrige pas", nom, c.UnresolvedByCause.Total(), c.Unresolved, c)
@@ -270,7 +271,7 @@ func TestCreationPubliePourLeSlotDUnBotSonIndexSansXuid(t *testing.T) {
 		creationDe(100, 1_000_000, 0), creationDe(200, 1_000_000, 9),
 	}
 	in.Bots = []BotIdentity{{FilmIndex: 9, Name: "343 Flippant [bot]", BotID: 7}}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	if reg.LecturesDIndexDeBot() != 1 {
 		t.Fatalf("lectures d'index de bot = %d, attendu 1", reg.LecturesDIndexDeBot())
 	}
@@ -285,7 +286,7 @@ func TestCreationPubliePourLeSlotDUnBotSonIndexSansXuid(t *testing.T) {
 // TestCauseSansRecordQuandLeFilmNePorteAucuneCreation : un producteur sans le canal des creations
 // degrade EN ENTIER — le pont nomme, et le registre le DIT.
 func TestCauseSansRecordQuandLeFilmNePorteAucuneCreation(t *testing.T) {
-	reg := BuildIdentityRegistry(entreeDeuxJoueurs(nil))
+	reg := BuildIdentityRegistry(context.Background(), entreeDeuxJoueurs(nil))
 	if reg.CorpsAvecCreation() != 0 {
 		t.Fatalf("corps avec creation = %d, attendu 0", reg.CorpsAvecCreation())
 	}
@@ -335,7 +336,7 @@ func TestAlarmerSurLesRefusNeSoustraitPasDeuxPopulationsNonComparables(t *testin
 	// la base n'a AUCUNE trace, n'est pas une degradation muette).
 	in.Participants = []Participant{{ID: "bid(1.0)"}}
 
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	if reg.creation.IndexBot != 2 {
 		t.Fatalf("IndexBot (lecture directe) = %d, attendu 2 — la figure a change", reg.creation.IndexBot)
 	}
@@ -350,7 +351,7 @@ func TestAlarmerSurLesRefusNeSoustraitPasDeuxPopulationsNonComparables(t *testin
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
 	defer slog.SetDefault(prev)
 
-	reg.creation.alarmerSurLesRefus("test", c.UnresolvedByCause)
+	reg.creation.alarmerSurLesRefus(context.Background(), "test", c.UnresolvedByCause)
 
 	vies := viesAlarmeesIndexHorsTable(t, buf.Bytes())
 	if vies != 1 {
@@ -364,7 +365,7 @@ func TestAlarmerSurLesRefusNeSoustraitPasDeuxPopulationsNonComparables(t *testin
 // sortie DU TOUT — c'est exactement le silence que l'ancien calcul produisait.
 func viesAlarmeesIndexHorsTable(t *testing.T, journal []byte) int {
 	t.Helper()
-	for _, ligne := range bytes.Split(journal, []byte("\n")) {
+	for ligne := range bytes.SplitSeq(journal, []byte("\n")) {
 		if len(ligne) == 0 {
 			continue
 		}

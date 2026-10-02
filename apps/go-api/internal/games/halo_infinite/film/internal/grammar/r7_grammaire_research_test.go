@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_grammaire_research_test.go — lot R7 du PLAN_PERCER_TRAME_FILM : la TABLE DE GRAMMAIRE
@@ -166,7 +168,7 @@ func r7Refs3(br *Lecteur, typ int) ([3]r7RefVal, bool) {
 	if !ok {
 		return out, false
 	}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		v, dec := r7Ref(br, doms[i])
 		if !dec {
 			return out, false

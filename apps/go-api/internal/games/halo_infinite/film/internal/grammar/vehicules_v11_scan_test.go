@@ -29,7 +29,7 @@ package grammar
 // LECTURE SEULE : aucun fichier ecrit, aucune base ouverte.
 //
 //	CGO_ENABLED=0 V11_ROOT=<cache> V11_FILMS=0d76e8f1,fccc61cd \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV11ScanSansI0 -v -timeout 120m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV11ScanSansI0 -v -timeout 120m
 
 import (
 	"fmt"
@@ -274,7 +274,7 @@ func v11BalayePayload(pay []byte, classe map[uint32]string, res map[string]*v11C
 func v11MasqueCroissant(pay []byte, at, count int) ([]int, bool) {
 	out := make([]int, 0, count)
 	prev := -1
-	for k := 0; k < count; k++ {
+	for k := range count {
 		v := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if v <= prev || v >= v11MaxComposants {
 			return nil, false

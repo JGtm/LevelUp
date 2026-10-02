@@ -3,6 +3,7 @@ package main
 // workroot.go — LE CYCLE DE VIE DE LA RACINE DE TRAVAIL : creee jetable, nettoyee par defaut.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -13,7 +14,7 @@ import (
 // EXPLICITE (`--work-root`) n'est jamais efface automatiquement — l'operateur qui l'a nomme en
 // garde la responsabilite ; seul un dossier temporaire genere ICI est nettoye, sauf
 // `--keep-work` (debug : inspecter l'artefact frais, le manifeste copie, les chunks recus).
-func prepareWorkRoot(workRootFlag string, keepWork bool) (workRoot string, cleanup func(), err error) {
+func prepareWorkRoot(ctx context.Context, workRootFlag string, keepWork bool) (workRoot string, cleanup func(), err error) {
 	if workRootFlag != "" {
 		if err := os.MkdirAll(workRootFlag, 0o750); err != nil {
 			return "", nil, fmt.Errorf("racine de travail explicite %s : %w", workRootFlag, err)
@@ -26,11 +27,11 @@ func prepareWorkRoot(workRootFlag string, keepWork bool) (workRoot string, clean
 	}
 	cleanup = func() {
 		if keepWork {
-			slog.Info("replay-corpus-gate: racine de travail conservee (--keep-work)", "chemin", dir)
+			slog.InfoContext(ctx, "replay-corpus-gate: racine de travail conservee (--keep-work)", "chemin", dir)
 			return
 		}
 		if rmErr := os.RemoveAll(dir); rmErr != nil {
-			slog.Warn("replay-corpus-gate: nettoyage de la racine de travail", "chemin", dir, "err", rmErr)
+			slog.WarnContext(ctx, "replay-corpus-gate: nettoyage de la racine de travail", "chemin", dir, "err", rmErr)
 		}
 	}
 	return dir, cleanup, nil

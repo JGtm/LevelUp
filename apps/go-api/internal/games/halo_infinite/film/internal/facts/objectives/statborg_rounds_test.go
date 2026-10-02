@@ -1,7 +1,6 @@
 package objectives
 
 import (
-	"context"
 	"encoding/binary"
 	"testing"
 
@@ -140,7 +139,7 @@ func TestStatborgListeDenseLue(t *testing.T) {
 // TestStatRecordsPlafond verifie la garde memoire : au-dela du plafond, la lecture s'arrete et le
 // resultat est marque tronque. La source rend le meme paquet en boucle — un film pathologique.
 func TestStatRecordsPlafond(t *testing.T) {
-	recs, truncated := StatRecordsCtx(context.Background(), filmRepete(t, vecRound0.data), "test")
+	recs, truncated, _ := StatRecordsBornes(filmRepete(t, vecRound0.data), "test")
 	if !truncated {
 		t.Fatal("le plafond n'a pas ete atteint : la garde ne protege rien")
 	}
@@ -185,7 +184,7 @@ const (
 // de repeatPackets paquets FRAME portant tous le meme enregistrement.
 func chunkRepete(data []byte) []byte {
 	out := make([]byte, 0, repeatPackets*(repeatHdrSize+len(data)))
-	for i := 0; i < repeatPackets; i++ {
+	for i := range repeatPackets {
 		hdr := make([]byte, repeatHdrSize)
 		binary.LittleEndian.PutUint16(hdr[0:], packetFrame)
 		binary.LittleEndian.PutUint32(hdr[4:], uint32(len(data)))

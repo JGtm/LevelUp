@@ -398,20 +398,20 @@ func TestGoldenControleNegatif(t *testing.T) {
 
 // sectionDe : le corps d une section du golden, jusqu a la suivante.
 func sectionDe(g, titre string) string {
-	i := strings.Index(g, titre)
-	if i < 0 {
+	_, after, ok := strings.Cut(g, titre)
+	if !ok {
 		return ""
 	}
-	reste := g[i+len(titre):]
-	if j := strings.Index(reste, "\n## "); j >= 0 {
-		return reste[:j]
+	reste := after
+	if before, _, ok := strings.Cut(reste, "\n## "); ok {
+		return before
 	}
 	return reste
 }
 
 // ligneChiffres : la premiere ligne d une section qui commence par un chiffre.
 func ligneChiffres(bloc string) string {
-	for _, l := range strings.Split(bloc, "\n") {
+	for l := range strings.SplitSeq(bloc, "\n") {
 		if l != "" && l[0] >= '0' && l[0] <= '9' {
 			return l
 		}

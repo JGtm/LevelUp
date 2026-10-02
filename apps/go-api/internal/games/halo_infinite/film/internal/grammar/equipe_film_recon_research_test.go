@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipe_film_recon_research_test.go — PHASE 3, RECENSEMENT (pas de verdict).

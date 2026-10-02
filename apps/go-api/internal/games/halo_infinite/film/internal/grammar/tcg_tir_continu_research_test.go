@@ -93,14 +93,14 @@ func tcgLireCadre(t *testing.T) tcgCadre {
 	}
 	c.origineUS = o
 	c.index, _ = strconv.Atoi(os.Getenv("TCG_INDEX"))
-	for _, s := range strings.Split(os.Getenv("TCG_EPISODES"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("TCG_EPISODES"), ",") {
 		e := tcgEpisode{index: c.index}
 		n, _ := fmt.Sscanf(s, "%d-%d:%d:%d:%d", &e.t0, &e.t1, &e.pilote, &e.vehicule, &e.index)
 		if n >= 4 {
 			c.episodes = append(c.episodes, e)
 		}
 	}
-	for _, s := range strings.Split(os.Getenv("TCG_FRAGS"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("TCG_FRAGS"), ",") {
 		if f, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
 			c.frags = append(c.frags, f)
 		}
@@ -271,7 +271,7 @@ func tcgComposantes36(br *Lecteur, nComp, nCib int, kindUn map[int]bool, x *tcgT
 		base = 12
 	}
 	dernierQ, vuQ := uint64(1), false
-	for i := 0; i < nComp; i++ {
+	for range nComp {
 		br.Skip(4)
 		if !br.ReadBit() {
 			continue

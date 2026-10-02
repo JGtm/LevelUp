@@ -67,7 +67,7 @@ func (r *refEvReader) skip(n int) {
 // refBitsWide est `bitsWide` d avant : boucle bit a bit, sans chemin par mot.
 func refBitsWide(d []byte, bp, n int) uint64 {
 	var v uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v = v<<1 | uint64(refBitAt(d, bp+i))
 	}
 	return v
@@ -86,7 +86,7 @@ func refBitAt(d []byte, p int) int {
 func refBits32(d []byte, p int) uint32 {
 	i, sh := p>>3, uint(p&7)
 	var v uint64
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		v <<= 8
 		if i+k < len(d) {
 			v |= uint64(d[i+k])
@@ -98,7 +98,7 @@ func refBits32(d []byte, p int) uint32 {
 // refBitsN est `bitsN` d avant : n <= 8 bits, bit a bit.
 func refBitsN(d []byte, p, n int) int {
 	v := 0
-	for k := 0; k < n; k++ {
+	for k := range n {
 		v = v<<1 | refBitAt(d, p+k)
 	}
 	return v
@@ -244,7 +244,7 @@ func positionsReelles(pl []byte) []int {
 func marquerBornesDeChaine(pl []byte, depart int, vues map[int]bool) {
 	for _, g15 := range []bool{false, true} {
 		r := nouveauCurseurEv(pl, depart)
-		for n := 0; n < maxChainProbe; n++ {
+		for range maxChainProbe {
 			vues[r.pos()] = true
 			fin, ok := evStep(r, g15)
 			vues[r.pos()] = true

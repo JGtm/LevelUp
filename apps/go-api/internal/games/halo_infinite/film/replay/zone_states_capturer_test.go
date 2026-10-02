@@ -224,7 +224,7 @@ func TestElectionEstDeterministe(t *testing.T) {
 	a := []zoneSample{{t: 105, v: 1}, {t: 305, v: 0}}
 	b := []zoneSample{{t: 106, v: 1}, {t: 306, v: 0}}
 	ser := serieTemoin(map[uint32][]zoneSample{5: owner, 6: a, 9: b})
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{owner: owner, ownerSlot: 5, win: 20})
 		if len(capt) != 2 || capt[0].t != 105 {
 			t.Fatalf("passe %d : canal elu = %v, attendu celui du slot 6", i, capt)

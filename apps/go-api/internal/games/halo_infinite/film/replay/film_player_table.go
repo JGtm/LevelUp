@@ -10,6 +10,7 @@ package replay
 // expvar du build inconnu.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -25,22 +26,22 @@ import (
 // TYPEE chez `grammar`, traduite en [grammar.FilmTableRefusal] NOMMEE, journalisee ici avec
 // l erreur qui l a motivee, et publiee dans la couverture de l artefact. Un refus se compte ; il
 // ne se tait pas.
-func consignerLaTableDuFilm(t grammar.FilmPlayerTable, err error, matchID string) grammar.FilmPlayerTable {
+func consignerLaTableDuFilm(ctx context.Context, t grammar.FilmPlayerTable, err error, matchID string) grammar.FilmPlayerTable {
 	if t.Refusal != grammar.FilmTableRead {
 		if t.Refusal == grammar.FilmTableUnknownBuild {
 			// D-4 : le film est mis de cote AVEC son compteur, pour que le refus se voie en
 			// production et non seulement dans le journal du jour de la cuisson.
 			publierBuildInconnu(t.Build)
 		}
-		slog.Warn("rejeu : table des joueurs du film NON LUE — le registre d'identite retombe sur "+
+		slog.WarnContext(ctx, "rejeu : table des joueurs du film NON LUE — le registre d'identite retombe sur "+
 			"la lecture des chunks de replication", "match_id", matchID, "build", t.Build,
 			"cause", string(t.Refusal), "err", err)
 		return t
 	}
-	slog.Info("rejeu : table des joueurs du film lue", "match_id", matchID, "build", t.Build,
+	slog.InfoContext(ctx, "rejeu : table des joueurs du film lue", "match_id", matchID, "build", t.Build,
 		"sieges", t.Occupied, "vacants", t.Vacant, "vacantIntercale", t.InterleavedVacant)
 	if t.InterleavedVacant {
-		slog.Warn("rejeu : siege VACANT INTERCALE dans la table du film — le rang absolu et "+
+		slog.WarnContext(ctx, "rejeu : siege VACANT INTERCALE dans la table du film — le rang absolu et "+
 			"l'index parmi les occupes divergent, le lien direct n'est PAS affirme",
 			"match_id", matchID, "build", t.Build)
 	}

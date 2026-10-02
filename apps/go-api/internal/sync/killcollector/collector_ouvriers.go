@@ -153,12 +153,10 @@ func (c *KillSourceCollector) CollectMatchesOuvriers(
 	}()
 
 	var groupe sync.WaitGroup
-	for i := 0; i < ouvriers; i++ {
-		groupe.Add(1)
-		go func() {
-			defer groupe.Done()
+	for range ouvriers {
+		groupe.Go(func() {
 			c.ouvrier(ctx, travaux, resultats)
-		}()
+		})
 	}
 	go func() {
 		groupe.Wait()

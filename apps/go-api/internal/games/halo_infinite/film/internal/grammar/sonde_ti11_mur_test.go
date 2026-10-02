@@ -34,7 +34,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 TI11_FILM=<repo>/data/cache/film_chunks/64e8adfa \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TI11Mur -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TI11Mur -v
 
 import (
 	"sort"
@@ -123,7 +123,7 @@ func ti11WalkArchetype(dir string, reg *Registry, wantTI int) ti11WallStats {
 // ti11MaskIndices rend les index de composant presents dans un masque, croissants.
 func ti11MaskIndices(mask uint64) []int {
 	var out []int
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if mask&(uint64(1)<<uint(i)) != 0 {
 			out = append(out, i)
 		}

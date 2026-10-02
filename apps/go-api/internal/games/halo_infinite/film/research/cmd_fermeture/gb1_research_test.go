@@ -11,6 +11,8 @@ package main
 //	go test -tags=research ./internal/games/halo_infinite/film/research/cmd_fermeture/ -run GB1 -v
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,7 +63,7 @@ func TestModeGB1EcritSesSortiesEtSesInvariants(t *testing.T) {
 		}
 		t.Logf("%s :\n%s", nom, premieresLignes(string(brut), 8))
 	}
-	if _, err := os.Stat(filepath.Join(dir, "fermeture_films.tsv")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(dir, "fermeture_films.tsv")); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("fermeture_films.tsv cree en mode gb1 seul")
 	}
 }

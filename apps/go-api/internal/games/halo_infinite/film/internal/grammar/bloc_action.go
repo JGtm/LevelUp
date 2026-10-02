@@ -91,8 +91,8 @@ func lireBlocDAction(br *Lecteur) BlocDAction {
 		return b
 	}
 	if br.ReadBit() { // gachettes : main 0 entrees 0..2, puis main 1 entrees 0..2
-		for main := 0; main < 2; main++ {
-			for entree := 0; entree < entreesDeGachetteParMain; entree++ {
+		for main := range 2 {
+			for entree := range entreesDeGachetteParMain {
 				if br.ReadBit() {
 					b.Gachettes[main] |= 1 << entree
 				}
@@ -100,8 +100,8 @@ func lireBlocDAction(br *Lecteur) BlocDAction {
 		}
 	}
 	if br.ReadBit() { // barillets : main 0 barillets 0..1, puis main 1
-		for main := 0; main < 2; main++ {
-			for barillet := 0; barillet < barilletsParMain; barillet++ {
+		for main := range 2 {
+			for barillet := range barilletsParMain {
 				if br.ReadBit() {
 					b.Barillets[main] |= 1 << barillet
 				}
@@ -115,7 +115,7 @@ func lireBlocDAction(br *Lecteur) BlocDAction {
 		lireVecteur1431a0cbc(br)
 	}
 	br.ReadBits(largeurQueue1406d0f20) // FUN_1406d0f20 -> +6
-	for main := 0; main < 2; main++ {
+	for main := range 2 {
 		if b.Gachettes[main]|b.Barillets[main] != 0 { // garde du champ de la main (+7, +8)
 			b.Arme[main] = lireIndexArme(br)
 		}

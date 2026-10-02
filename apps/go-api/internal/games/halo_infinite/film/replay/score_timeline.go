@@ -181,9 +181,9 @@ func buildScoreTimeline(in *ScoreInput, deaths []types.Death, c scoreClock,
 		return nil, nil
 	}
 	recs := in.Records
-	teamScore := loadScoreSeries(recs, objectives.ModeScoreComponent, true, c.cons)
-	teamFrags := loadScoreSeries(recs, objectives.KillsComponent, true, c.cons)
-	playerFrags := loadScoreSeries(recs, objectives.KillsComponent, false, c.cons)
+	teamScore := loadScoreSeries(recs, objectives.ModeScoreComponent(), true, c.cons)
+	teamFrags := loadScoreSeries(recs, objectives.KillsComponent(), true, c.cons)
+	playerFrags := loadScoreSeries(recs, objectives.KillsComponent(), false, c.cons)
 	// L'identite PLATE par TOTAUX reste la source de la preuve (b) d'identite des CAMPS
 	// (`resolveTeamIdentity`) : les courbes d'equipe ne bougent pas. En MONO-MANCHE elle nomme
 	// aussi les joueurs (le slot n'est pas reattribue) ; en MULTI-MANCHE, `buildPlayerScores`

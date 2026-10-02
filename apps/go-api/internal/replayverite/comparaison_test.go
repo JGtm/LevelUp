@@ -164,3 +164,36 @@ func TestRendre_BloquantsDAbordEtDetailTronque(t *testing.T) {
 		t.Errorf("les FAUX doivent preceder les MANQUE :\n%s", txt)
 	}
 }
+
+// documentReattribue : le kill de B (222, qui en manquait un) passe a A (111, qui etait juste) —
+// avant, A 3/3 et B 0/1 ; apres, A 2/3 et B 1/1. Les totaux FP/FN sont EGAUX des deux cotes.
+func documentsReattribues() (avant, apres *Document) {
+	avant, apres = documentJuste(), documentJuste()
+	avant.ScoreTimeline.Players[1].Kills = serie(Pas{0, 0})
+	apres.ScoreTimeline.Players[0].Kills = serie(Pas{0, 0}, Pas{50, 2})
+	return avant, apres
+}
+
+// TestComparer_ReattributionEstVisible — revue finale P1-e (2026-10-02) : un kill qui change de
+// joueur sans changer les totaux FP/FN laissait `ok` SANS AUCUN CONSTAT. On ne sait pas lequel est
+// juste ; la reattribution doit etre VISIBLE : un constat non bloquant, joueur par joueur.
+// Mutation vue rouge : ne plus rendre de constat quand seuls les ecarts par joueur bougent.
+func TestComparer_ReattributionEstVisible(t *testing.T) {
+	avant, apres := documentsReattribues()
+	c := comparerDocs(avant, apres, nil)
+	if c.Statut != StatutOK {
+		t.Fatalf("statut %s : une reattribution n'est pas bloquante", c.Statut)
+	}
+	x := exigerConstat(t, c, ScoreKills, sensReattribution)
+	if len(x.Detail) != 2 || !strings.Contains(x.Detail[0], "111") || !strings.Contains(x.Detail[1], "222") {
+		t.Fatalf("detail %v, veut les deux joueurs nommes (111 puis 222)", x.Detail)
+	}
+	var b strings.Builder
+	if err := Rendre(&b, "t", c); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "["+string(sensReattribution)+"] "+ScoreKills) ||
+		!strings.Contains(b.String(), "222 : publie 0 / officiel 1 -> exact") {
+		t.Fatalf("la reattribution n'est pas rendue au rapport texte :\n%s", b.String())
+	}
+}

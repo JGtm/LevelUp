@@ -358,7 +358,7 @@ func v2dParseFilms(t *testing.T) []v2dFilmSpec {
 		t.Skipf("V2D_FILMS absent : instrument mort-coincidente saute")
 	}
 	var out []v2dFilmSpec
-	for _, tok := range strings.Split(raw, ",") {
+	for tok := range strings.SplitSeq(raw, ",") {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {
 			continue

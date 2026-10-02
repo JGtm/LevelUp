@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_oracle117_research_test.go — lot R7 : L'ORACLE 117, temoin de NON-REGRESSION permanent.
@@ -22,7 +24,7 @@ package grammar
 // LECTURE SEULE, skip par defaut, CGO_ENABLED=0.
 //
 //	CGO_ENABLED=0 R7_ROOT=... R7_ARTS=... R7_CAT=... R7_MAPS=... R7_IDS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR7Oracle117$' -count=1 -timeout 30m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR7Oracle117$' -count=1 -timeout 30m -v
 
 import (
 	"math"
@@ -49,7 +51,7 @@ func r7Decode117(pay []byte, bitApresType int, e r6CatEntry) (int, r7Pos117, r7P
 	}
 	slot = int(br.ReadBits(8)) + 512
 	br.Skip(2) // generation
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if br.ReadBit() { // refs 1 et 2 : domaines 0 et 7, 13 bits
 			br.Skip(13 + 2)
 		}
@@ -70,7 +72,7 @@ func r7Decode117(pay []byte, bitApresType int, e r6CatEntry) (int, r7Pos117, r7P
 			bits = [3]uint{22, 22, 22}
 		}
 		var out [3]float64
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			q := br.ReadBits(bits[i])
 			out[i] = min[i] + (float64(q)+0.5)*(max[i]-min[i])/float64(uint64(1)<<bits[i])
 		}

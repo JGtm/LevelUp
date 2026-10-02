@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // residus_slots_research_test.go — PHASE 5b, RESIDU 2 DE LA TABLE DES SLOTS.
@@ -83,10 +85,7 @@ func rsNomLE(d []byte, e *s3sEnr, from, to int) (pos, touches int) {
 // rsFinGamertag rend la position de bit qui suit le champ de gamertag (`sub+0xc14`) d'un
 // enregistrement deja decode. Calculee, pas cherchee : tous les termes sont lus dans le flux.
 func rsFinGamertag(e *s3sEnr) int {
-	unites := len(utf16.Encode([]rune(e.gamertag))) + 1
-	if unites > s3sGtMax {
-		unites = s3sGtMax
-	}
+	unites := min(len(utf16.Encode([]rune(e.gamertag)))+1, s3sGtMax)
 	return e.debut + s3rEnteteBits + 64 + s3sPrefixeMasque + e.compteMasque +
 		s3sLargeurN + e.n*8 + s3sLargeurM + e.m*32 + s3sBloc104 + unites*16
 }
@@ -137,24 +136,6 @@ func rsDecoupe(d []byte, e *s3sEnr, ecart int) rsCoupe {
 	return c
 }
 
-// les slots vacants (R1).
-func rsEcarts(d []byte) ([]*s3sEnr, []int) {
-	fin := (dernierNonNul(d) + 1) * 8
-	var es []*s3sEnr
-	for _, h := range profilRosterTable(d) {
-		if e := s3sDecode(d, h.bit-s3rEnteteBits, fin); e != nil && s3sImprimable(e.gamertag) {
-			es = append(es, e)
-		}
-	}
-	ecarts := make([]int, len(es))
-	for i := range es {
-		if i+1 < len(es) {
-			ecarts[i] = es[i+1].debut - es[i].debut
-		}
-	}
-	return es, ecarts
-}
-
 // TestResidusSlotTransposition execute R2-COUPE : ou tombe la transposition du build ?
 //
 // Critere ecrit avant la mesure : si la moitie APRES est la MEME sur tous les builds, alors la
@@ -192,67 +173,6 @@ func TestResidusSlotTransposition(t *testing.T) {
 			filepath.Base(dir), build, s3pDist(transpo), s3pDist(avants), s3pDist(apress),
 			rsApresRef, s3pDist(zeross), s3pDist(rsEnOctets(zeross)), s3pDist(restes), amb)
 	}
-}
-
-// rsDelta rend la transposition MODALE d'un film : la valeur de `mesure - predit` qui couvre le
-// plus d'ecarts. C'est la calibration du lecteur corrige, et elle se fait SUR LE FILM, sans
-// table de build ecrite a la main — donc elle vaut aussi pour un build inconnu.
-func rsDelta(d []byte) (delta, couverts, total int) {
-	es, ecarts := rsEcarts(d)
-	comptes := map[int]int{}
-	for i, e := range es {
-		if ecarts[i] == 0 {
-			continue
-		}
-		comptes[ecarts[i]-s3sPredite(e)]++
-		total++
-	}
-	best := -1
-	for k, n := range comptes {
-		if n > best || (n == best && k < delta) {
-			delta, best = k, n
-		}
-	}
-	if best < 0 {
-		return 0, 0, 0
-	}
-	return delta, best, total
-}
-
-// rsChaine est le LECTEUR CANONIQUE CORRIGE : `s3sChaine`, mais le pas predit est corrige de la
-// constante du build, CALIBREE SUR LE FILM par `rsDelta`. Le depart est le premier
-// enregistrement a nom imprimable du balayage CORRIGE (critere `slot+0x08` leve, phase 4).
-func rsChaine(d []byte, delta int) (enrs []*s3sEnr, vacants int) {
-	fin := (dernierNonNul(d) + 1) * 8
-	hs := profilRosterBalaye(d, profilRosterCritCorrigee())
-	deb := -1
-	for _, h := range hs {
-		e := s3sDecode(d, h.bit-s3rEnteteBits, fin)
-		if e != nil && s3sImprimable(e.gamertag) {
-			deb = e.debut
-			break
-		}
-	}
-	if deb < 0 {
-		return nil, 0
-	}
-	for p, lus := deb, 0; lus < 32; lus++ {
-		if rsVacant(d, p) {
-			// Slot VACANT : le balayage ne peut pas le voir, mais la grammaire en connait la
-			// longueur EXACTE. On l'enjambe sans le compter comme un joueur — c'est la cause
-			// des deux ecarts aberrants de R1.
-			vacants++
-			p += rsVide(delta)
-			continue
-		}
-		e := s3sDecode(d, p, fin)
-		if e == nil || !s3sImprimable(e.gamertag) {
-			break
-		}
-		enrs = append(enrs, e)
-		p += s3sPredite(e) + delta
-	}
-	return enrs, vacants
 }
 
 // TestResidusSlotChaineParBuild execute R2-LEC : le lecteur par GRAMMAIRE, calibre sur le film,

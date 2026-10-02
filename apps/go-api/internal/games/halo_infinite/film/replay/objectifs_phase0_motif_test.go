@@ -117,7 +117,7 @@ func objContexteDePayload(pay []byte, val uint32, ctx *objContexte, offsets *[]i
 // objMot32 lit 32 bits a la position bit p.
 func objMot32(pay []byte, p int) uint32 {
 	var w uint32
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		b := p + i
 		if b>>3 >= len(pay) {
 			return w << uint(32-i)

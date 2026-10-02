@@ -118,7 +118,7 @@ func (e MapQuantEntry) Layout() I0Layout {
 // Range convertit l'entrée en plage de déquantification.
 func (e MapQuantEntry) Range() Vec3Range {
 	var r Vec3Range
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		r[ax] = AxisRange{Min: e.Min[ax], Max: e.Max[ax]}
 	}
 	return r

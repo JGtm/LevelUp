@@ -88,13 +88,17 @@ func main() {
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	// LE CONTEXTE NAIT ICI (lot J12.3), avant la premiere ligne de journal : tout ce que l ouvrier
+	// journalise le porte, erreurs d usage comprises.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	if *token == "" {
-		slog.Error("replay-worker: jeton d'ouvrier absent — passer --token ou LEVELUP_BUILD_WORKER_TOKEN")
+		slog.ErrorContext(ctx, "replay-worker: jeton d'ouvrier absent — passer --token ou LEVELUP_BUILD_WORKER_TOKEN")
 		os.Exit(2)
 	}
 	if *repoRoot == "" {
-		slog.Error("replay-worker: racine du dépôt absente — passer --repo ou LEVELUP_REPO_ROOT")
+		slog.ErrorContext(ctx, "replay-worker: racine du dépôt absente — passer --repo ou LEVELUP_REPO_ROOT")
 		os.Exit(2)
 	}
 	host, _ := os.Hostname()
@@ -115,9 +119,6 @@ func main() {
 		workDir = repoCache
 	}
 	keepsFilms := sameDir(workDir, repoCache)
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	w := &worker{
 		identity:    identity,

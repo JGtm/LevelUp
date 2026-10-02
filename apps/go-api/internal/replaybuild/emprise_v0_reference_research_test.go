@@ -1,3 +1,5 @@
+//go:build research
+
 package replaybuild
 
 // emprise_v0_reference_research_test.go — LOT V0 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`,
@@ -91,7 +93,7 @@ type v0Reference struct {
 func TestEmpriseV0Reference(t *testing.T) {
 	dir, cache := os.Getenv("EMPRISE_V0_DIR"), os.Getenv("EMPRISE_V0_CACHE")
 	var films []string
-	for _, f := range strings.Split(os.Getenv("EMPRISE_V0_FILMS"), ",") {
+	for f := range strings.SplitSeq(os.Getenv("EMPRISE_V0_FILMS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			films = append(films, f)
 		}
@@ -111,7 +113,7 @@ func TestEmpriseV0Reference(t *testing.T) {
 	})
 	defer garde.Disarm()
 	for _, id := range films {
-		b, err := NewBuilder(repoRoot, title.DefaultSlug)
+		b, err := NewBuilder(context.Background(), repoRoot, title.DefaultSlug)
 		if err != nil {
 			t.Fatalf("builder : %v", err)
 		}
@@ -182,9 +184,9 @@ func v0Document(t *testing.T, b *Builder, id string, ident v0Identite, filmDir s
 		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
-	cat := b.collecterEntreesCatalogue(id, ident.Noms, facts, &stats, src)
-	opts := b.buildReplayOptions(entry, facts, cat, &stats)
-	doc, faits, err := replay.BuildFromFilmAvecFaits(id, b.titleSlug, src.film, opts)
+	cat := b.collecterEntreesCatalogue(ctx, id, ident.Noms, facts, &stats, src)
+	opts := b.buildReplayOptions(ctx, entry, facts, cat, &stats)
+	doc, faits, err := replay.BuildFromFilmAvecFaits(ctx, id, b.titleSlug, src.film, opts)
 	if err != nil {
 		t.Fatalf("%s : decodage : %v", id, err)
 	}

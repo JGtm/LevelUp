@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -337,16 +338,17 @@ func objHex(vs []uint32) string {
 	if len(vs) == 0 {
 		return "[]"
 	}
-	s := "["
+	var s strings.Builder
+	s.WriteString("[")
 	for i, v := range vs {
 		if i > 0 {
-			s += " "
+			s.WriteString(" ")
 		}
 		if i >= 12 {
-			s += "..."
+			s.WriteString("...")
 			break
 		}
-		s += fmt.Sprintf("0x%08X", v)
+		s.WriteString(fmt.Sprintf("0x%08X", v))
 	}
-	return s + "]"
+	return s.String() + "]"
 }

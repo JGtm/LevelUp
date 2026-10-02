@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_repulseur_research_test.go — lot R7 : LE REPULSEUR CONFRONTE A LA TRAJECTOIRE.
@@ -28,7 +30,7 @@ package grammar
 // LECTURE SEULE, skip par defaut, CGO_ENABLED=0.
 //
 //	CGO_ENABLED=0 R7_ROOT=... R7_ARTS=... R7_CAT=... R7_MAPS=... R7_IDS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR7Repulseur$' -count=1 -timeout 60m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR7Repulseur$' -count=1 -timeout 60m -v
 
 import (
 	"math"
@@ -55,7 +57,7 @@ func r7DecodeKnock(pay []byte, bitType int) (r7Knock, bool) {
 	br.Skip(bitType + 7)
 	var k r7Knock
 	// refs : domaines {0, 0, 7} — 13 bits chacune.
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if !br.ReadBit() {
 			continue
 		}

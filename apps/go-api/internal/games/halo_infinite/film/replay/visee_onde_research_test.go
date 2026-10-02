@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_onde_research_test.go — LOT C : LA CORRELATION D'ONDE CARREE (moteur de mesure).
@@ -227,7 +229,7 @@ func ondeBatColonnes(pk []ondePaquet, queue bool) *ondeCol {
 			src = p.fin
 		}
 		mot, bit := i/64, uint(i%64)
-		for b := 0; b < nbits; b++ {
+		for b := range nbits {
 			if src[b>>3]>>(7-uint(b&7))&1 == 1 {
 				c.col[b][mot] |= 1 << bit
 			}

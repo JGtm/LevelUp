@@ -39,6 +39,7 @@ package replay
 // d'evenements ENTIERE, qui rendra le plafond inutile (cf. PLAN_PERCER_TRAME_FILM_2026-08-30.md).
 
 import (
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -124,7 +125,7 @@ func finsDeVieParSlot(lives []lifeSpan) map[uint32][]uint64 {
 		out[l.slot] = append(out[l.slot], uint64(l.to))
 	}
 	for s, fs := range out {
-		sort.Slice(fs, func(i, j int) bool { return fs[i] < fs[j] })
+		slices.Sort(fs)
 		out[s] = fs
 	}
 	return out

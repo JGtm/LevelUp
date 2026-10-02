@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_visee_ghidra_research_test.go — LOT 1 : RECALER LA VISEE SUR LA GRAMMAIRE GHIDRA.
@@ -41,6 +43,7 @@ package grammar
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -141,10 +144,7 @@ func TestLot1ViseeGhidra(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	var (
 		modalBug, modalFix              int
 		at113Bug, at113Fix              int
@@ -176,7 +176,7 @@ func TestLot1ViseeGhidra(t *testing.T) {
 			isFEEmpty := false
 			if len(pay)*8 >= fireAimBit+int(FireAimBits) {
 				var fl [5]uint8
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					fl[i] = uint8(uint32(source.BitsStricts(pay, fireFlagsBit+i, 1)))
 				}
 				if fl[2] == 1 && fl[3] == 0 && fl[4] == 0 {
@@ -269,7 +269,7 @@ func (a *lot1AimConc) maxSousSeuil() float64 {
 		return 0
 	}
 	m := 0
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if a.sousSeuil[i] > m {
 			m = a.sousSeuil[i]
 		}
@@ -291,12 +291,12 @@ func lot1TopPos(m map[int]int, k int) string {
 			}
 		}
 	}
-	out := ""
+	var out strings.Builder
 	for i := 0; i < k && i < len(s); i++ {
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
-		out += itoa(s[i].p) + ":" + itoa(s[i].n)
+		out.WriteString(itoa(s[i].p) + ":" + itoa(s[i].n))
 	}
-	return out
+	return out.String()
 }

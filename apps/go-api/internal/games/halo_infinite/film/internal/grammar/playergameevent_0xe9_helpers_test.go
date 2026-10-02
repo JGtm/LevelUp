@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // playergameevent_0xe9_helpers_test.go — decodeur et collecteurs de l'instrument
@@ -72,7 +74,7 @@ func pgesDecodePayload(br *Lecteur) pgesPayload {
 	p.fieldA = br.ReadBits(32)
 	p.fieldB = br.ReadBits(8)
 	cnt := int(br.ReadBits(3))
-	for i := 0; i < cnt; i++ {
+	for range cnt {
 		pr := pgesProp{name: br.ReadBits(32), sel: int(br.ReadBits(3))}
 		switch pr.sel {
 		case 0:
@@ -82,7 +84,7 @@ func pgesDecodePayload(br *Lecteur) pgesPayload {
 		case 4:
 			pr.val, pr.hasVal = br.ReadBits(1), true
 		case 5:
-			for k := 0; k < 16; k++ {
+			for range 16 {
 				if br.ReadBits(8) == 0 {
 					break
 				}

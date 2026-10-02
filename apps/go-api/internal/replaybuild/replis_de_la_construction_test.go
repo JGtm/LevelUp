@@ -12,6 +12,7 @@ package replaybuild
 // [Builder.buildReplayOptions] fait rougir `TestLeRapportDeLaConstructionVoyageDansLesOptions`.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
@@ -61,9 +62,9 @@ func TestLaFeuilleDeMatchCompteSesRetraits(t *testing.T) {
 // sans etat de zone, et le repli se compte a chaque cuisson (la table memorisee ne l efface pas).
 func TestUnTitreSansTableDObjectifsCompteSonRepliAChaqueCuisson(t *testing.T) {
 	b := &Builder{repoRoot: t.TempDir(), titleSlug: title.DefaultSlug}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		fb := decfilm.NouveauCompteur()
-		if zones, _ := b.matchZones("m", "carte", "Arena:Strongholds", fb); zones != nil {
+		if zones, _ := b.matchZones(context.Background(), "m", "carte", "Arena:Strongholds", fb); zones != nil {
 			t.Fatalf("titre sans table : zones %v", zones)
 		}
 		if got := fb.Compte(decfilm.NomCatalogueDeZonesAbsent); got != 1 {
@@ -80,7 +81,7 @@ func TestLeRapportDeLaConstructionVoyageDansLesOptions(t *testing.T) {
 	cat := entreesCatalogue{replis: decfilm.NouveauCompteur()}
 	cat.replis.Declenche(decfilm.NomRelaisDeBotAbandonne)
 	facts := port.MatchFacts{Players: []port.MatchPlayerFact{{XUID: "", TeamID: -1}}}
-	opt := b.buildReplayOptions(decfilm.MapQuantEntry{}, facts, cat, &filmStats{})
+	opt := b.buildReplayOptions(context.Background(), decfilm.MapQuantEntry{}, facts, cat, &filmStats{})
 	got := map[decfilm.Nom]int{}
 	for _, d := range opt.ReplisHorsBalayage.Construction {
 		got[d.Nom] = d.Declenchements

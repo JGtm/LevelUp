@@ -87,7 +87,7 @@ func b3UnFilm(t *testing.T, racine, id string, utiles UsagesProduit, out map[str
 		return
 	}
 	b := cmLireBlocs(f)
-	wr := profile.QuantRangeCEBiped
+	wr := profile.QuantRangeCEBiped()
 	cre, _, _ := ScanVehicleCreations(f.fc, &wr)
 	col := nouveauCollecteur(f, b, cre)
 	diag := b3NouveauDiag(f, b, true)

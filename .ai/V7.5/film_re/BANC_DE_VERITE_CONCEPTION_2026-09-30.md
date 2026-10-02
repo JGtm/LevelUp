@@ -1,6 +1,6 @@
 # Banc de vérité du décodeur de film — conception (phase 1, 2026-09-30)
 
-> Contexte : `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md` (ADR 0034). Branche
+> Contexte : `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md` (ADR 0034). Branche
 > `feat/suite-audit-decodeur-verite`, base `8cd560673`. Phase 1 = inventaire et conception, AUCUN code de
 > production. Chiffres d'essai calculés en lecture seule sur des artefacts déjà cuits (aucun décodage,
 > aucune base ouverte) : `C:/Users/GUILLA~1/AppData/Local/Temp/j11/art/<révision>/<short8>.json` et

@@ -40,6 +40,7 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautArmementGate -v -timeout 60m
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,6 +59,13 @@ import (
 // d'avant.
 const agFenetreMS = 600
 
+type agUneBombeCas struct {
+	id                    string
+	publie                bool
+	couvertes, explosions int
+	raison                string
+}
+
 // agUneBombe : les trois films de la variante One Bomb du corpus (même découpage que
 // `grammar.ti12UneBombe`, antérieur à toute mesure de ce lot), et CE QUE LA GARDE 2 EN DIT —
 // FIGÉ SUR LA MESURE DU 2026-09-04, jamais sur une attente.
@@ -75,13 +83,6 @@ const agFenetreMS = 600
 // seconde rend 27 845 ms là où les trois autres du même film s'accordent à ~16 000. La garde 2
 // n'invente donc pas un défaut, elle retrouve celui que la partition avait déjà relevé — et
 // elle refuse de publier un film qu'elle n'explique qu'aux trois quarts.
-type agUneBombeCas struct {
-	id                    string
-	publie                bool
-	couvertes, explosions int
-	raison                string
-}
-
 var agUneBombe = []agUneBombeCas{
 	{"9f57c612", true, 4, 4,
 		"les 4 explosions ont leur armement, meche mesuree ~16 183 ms (CV 0,010)"},
@@ -191,7 +192,7 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)
 	}
-	reads := decodeFilmBombReads(grammar.NewFilmContext(film), id, BombInput{Scanned: true, ChunkStartMS: clock})
+	reads := decodeFilmBombReads(context.Background(), grammar.NewFilmContext(film), id, BombInput{Scanned: true, ChunkStartMS: clock})
 	agDiagnostiquerSegments(t, id, reads, a5ExplosionTimes(id))
 	// Grille synthétique : originMS=0, pas 100 ms, axe assez long pour tout le film — le gate
 	// juge les délais en ms, la conversion en frames est couverte par les tests unitaires.

@@ -29,7 +29,6 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run VIPPeriodes -v
 
 import (
-	"context"
 	"encoding/json"
 	"math/rand"
 	"os"
@@ -85,7 +84,7 @@ func TestVIPPeriodes(t *testing.T) {
 	if !okF {
 		t.Fatalf("%s : film absent du cache", id)
 	}
-	recs, truncated := objectives.StatRecordsCtx(context.Background(), src, id)
+	recs, truncated, _ := objectives.StatRecordsBornes(src, id)
 	if truncated {
 		t.Logf("%s : enregistrements TRONQUES — periodes partielles, et cela se dit", id)
 	}

@@ -80,7 +80,7 @@ func m59Repartition(t *testing.T, rec *m57Rec) {
 	}
 	noms := map[uint64]string{m59BrutAucune: "aucune fente", m59BrutEsquive: "fente 0 'saev'",
 		m59BrutSprint: "fente 1 'sasp' SPRINT", m59BrutGrappin: "fente 2 'sagh' grappin"}
-	for v := uint64(0); v < 4; v++ {
+	for v := range uint64(4) {
 		t.Logf("  brut %d = %-24s : %5d lectures", v, noms[v], par[v])
 	}
 }

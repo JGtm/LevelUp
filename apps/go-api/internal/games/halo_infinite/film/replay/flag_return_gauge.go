@@ -56,6 +56,8 @@ package replay
 // d un drapeau tombe, un ennemi ne conteste pas, il RAMASSE (cf. FlagReturnZone).
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -140,10 +142,10 @@ func flagGaugeSlotsOf(reads []grammar.ManagedPropertyRead, c matchClock) []flagG
 	}
 	out := make([]flagGaugeSlot, 0, len(bySlot))
 	for slot, ss := range bySlot {
-		sort.SliceStable(ss, func(i, j int) bool { return ss[i].t < ss[j].t })
+		slices.SortStableFunc(ss, func(a, b zoneSample) int { return cmp.Compare(a.t, b.t) })
 		out = append(out, flagGaugeSlot{slot: slot, samples: ss})
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].slot < out[j].slot })
+	slices.SortStableFunc(out, func(a, b flagGaugeSlot) int { return cmp.Compare(a.slot, b.slot) })
 	return out
 }
 
@@ -176,11 +178,8 @@ func bindFlagGauges(slots []flagGaugeSlot, carries []FlagCarry) map[int]flagGaug
 			cs = append(cs, flagGaugeCouple{flag: f, slot: si, share: share, inside: inside})
 		}
 	}
-	sort.SliceStable(cs, func(i, j int) bool {
-		if cs[i].share != cs[j].share {
-			return cs[i].share > cs[j].share
-		}
-		return cs[i].inside > cs[j].inside
+	slices.SortStableFunc(cs, func(a, b flagGaugeCouple) int {
+		return cmp.Or(cmp.Compare(b.share, a.share), cmp.Compare(b.inside, a.inside))
 	})
 	out := map[int]flagGaugeSlot{}
 	pris := map[int]bool{}

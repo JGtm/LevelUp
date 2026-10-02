@@ -1,5 +1,5 @@
 // Package halo_5 implémente l'adapter Halo 5: Guardians, 2e titre du registre
-// multi-titre (cf. .ai/HANDOFF_HALO5_EXPERIMENTAL.md). status=active.
+// multi-titre (cf. .ai/archive/V7/HANDOFF_HALO5_EXPERIMENTAL.md). status=active.
 //
 // État (Phase 1a livrée) : le titre est SERVI. Source de données = API cryptum
 // LIVE (SpartanToken résolu par requête via la SourceFactory), identité

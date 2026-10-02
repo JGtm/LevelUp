@@ -10,7 +10,7 @@ package weaponv3
 // IMMÉDIATEMENT AVANT le motif trouvé portent le player_index (0-31).
 //
 // Cette résolution corrige l'hypothèse v2 (player_index = ordre DB) signalée
-// fausse dans .ai/RESEARCH_THEATER_RE.md / PLAN §pi-fix.
+// fausse dans .ai/archive/V7/RESEARCH_THEATER_RE.md / PLAN §pi-fix.
 
 import (
 	"math/bits"

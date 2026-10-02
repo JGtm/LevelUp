@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // e192_i0_catalogue_mesure_research_test.go — LOT 1.9.2, LA MESURE AVANT DE CODER.
@@ -39,7 +41,7 @@ package grammar
 // n'est jamais deviné.
 //
 //	CHUNK00_FILMS='C:/.../film_chunks/bcb6d393;C:/.../film_chunks/60ae07c4' \
-//	  CGO_ENABLED=0 go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  CGO_ENABLED=0 go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestE192CatalogueContreDetection$' -v -count=1 -timeout 3600s
 
 import (

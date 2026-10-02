@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_victime_slot_research_test.go — LOT 1 : RESOUDRE la reference domaine-1 de
@@ -32,10 +34,7 @@ func TestLot1VictimeSlot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	// bases candidates (0, 256, 384, 448, 512 = debut plage bipede, etc.)
 	bases := []int{0, 128, 256, 384, 448, 480, 500, 508, 510, 512, 514, 516, 520, 544, 576}
 	// pour chaque (ref#, base) : nombre de fois ou (base+index) est un bipede lie.
@@ -109,7 +108,7 @@ func TestLot1VictimeSlot(t *testing.T) {
 				idx[2] = int(br.ReadBits(13))
 				br.Skip(2)
 			}
-			for r := 0; r < 3; r++ {
+			for r := range 3 {
 				if idx[r] < 0 {
 					continue
 				}
@@ -126,7 +125,7 @@ func TestLot1VictimeSlot(t *testing.T) {
 			}
 		}
 	}
-	for r := 0; r < 3; r++ {
+	for r := range 3 {
 		if totalRef[r] == 0 {
 			continue
 		}

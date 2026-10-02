@@ -21,9 +21,11 @@ package grammar
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 )
 
@@ -290,7 +292,8 @@ type KFQAnchorShape struct {
 // forme de ses ancres. Il REUTILISE WalkKeyframeWorld : aucun second balayeur.
 func MeasureKeyframeAnchors(pay []byte) KFQAnchorShape {
 	recs := WalkKeyframeWorld(pay)
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
+	// Tri total (J12.1, DT-9) : Bit unique, la marche avance strictement (ancre suivante >= Bit+64).
+	slices.SortFunc(recs, func(a, b KeyframeRec) int { return cmp.Compare(a.Bit, b.Bit) })
 	out := KFQAnchorShape{
 		Records:   len(recs),
 		GapMod8:   map[int]int{},

@@ -44,6 +44,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // defaultCacheDir : la racine du cache de films, relative a `apps/go-api/`. Meme valeur que
@@ -229,6 +230,9 @@ func decoder(film, cache string, carte decfilm.MapQuantEntry) (*rapport, error) 
 	opts := decfilm.DefaultOptions()
 	opts.Carte = &carte
 	res, err := decfilm.Decode(context.Background(), name, src, &opts)
+	if res != nil {
+		replay.JournaliserDiagnostics(context.Background(), res.Diagnostics) // lot J12.3, ADR 0034 D-4
+	}
 	if err != nil {
 		return nil, fmt.Errorf("film %s : %w", name, err)
 	}

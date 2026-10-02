@@ -14,6 +14,7 @@
 package replaybuild
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 )
@@ -101,10 +102,10 @@ func ValidPlacementSetting(setting string) bool {
 // LogPlacement journalise une décision dégradée, une seule ligne par appel.
 // Passer par ce helper évite que chaque appelant réinvente le niveau de log : un
 // réglage qui ne s'applique pas est un WARN, jamais un silence (règle n°3).
-func LogPlacement(where string, p Placement, err error) {
+func LogPlacement(ctx context.Context, where string, p Placement, err error) {
 	if err == nil {
 		return
 	}
-	slog.Warn("rejeu 2D : lieu de construction dégradé",
+	slog.WarnContext(ctx, "rejeu 2D : lieu de construction dégradé",
 		"appelant", where, "placement", string(p), "raison", err.Error())
 }

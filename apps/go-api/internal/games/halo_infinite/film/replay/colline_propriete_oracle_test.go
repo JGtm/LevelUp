@@ -109,7 +109,7 @@ func ctIncrements(t *testing.T, e ctEntree) []ctIncrement {
 	t.Helper()
 	src := p2aBobine(t, e.dir)
 	recs := objectives.StatRecords(src)
-	series := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true, nil)
+	series := objectives.SeriesTotal(recs, objectives.ModeScoreComponent(), true, nil)
 	var out []ctIncrement
 	for slot, pts := range series {
 		if !objectives.IsTeamSlot(slot) {
@@ -386,7 +386,7 @@ func ctHasardN(incs []ctIncrement, n int, t0, t1 int64, horsTerminal bool) float
 	}
 	rng := rand.New(rand.NewSource(20260819)) //nolint:gosec // temoin de mesure, pas de securite
 	sum := 0.0
-	for k := 0; k < ctTirages; k++ {
+	for range ctTirages {
 		b := make([]int64, n)
 		for i := range b {
 			b[i] = t0 + rng.Int63n(t1-t0)

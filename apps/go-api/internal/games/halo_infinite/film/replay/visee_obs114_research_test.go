@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_obs114_research_test.go — LOT A2 (suite) : INSTRUMENT D'OBSERVATION DU TYPE 114, OUVERT
@@ -60,10 +62,7 @@ const (
 
 // obs114Prefixe rend la longueur du plus long prefixe commun de deux paquets a partir de depuis.
 func obs114Prefixe(a, b env114Paquet, depuis int) int {
-	n := a.nBits
-	if b.nBits < n {
-		n = b.nBits
-	}
+	n := min(b.nBits, a.nBits)
 	for i := depuis; i < n; i++ {
 		if grammar.ReadBitsAtForDiag(a.pay, i, 1) != grammar.ReadBitsAtForDiag(b.pay, i, 1) {
 			return i - depuis
@@ -125,7 +124,7 @@ func obs114Jumelles(t *testing.T, pk []env114Paquet, trans []int64) {
 		i, j, n int
 	}
 	var fortes []paire
-	for i := 0; i < len(pk); i++ {
+	for i := range pk {
 		for j := i + 1; j < len(pk); j++ {
 			n := obs114Prefixe(pk[i], pk[j], 24)
 			hist[n/8]++

@@ -171,7 +171,7 @@ func TestSansPreuveLeDouteRattrapeLaPerte(t *testing.T) {
 // personne ; un en-tete dont le record est lu dans la meme image-cle n'est pas un doute.
 func TestDoutesDAbsence(t *testing.T) {
 	a := nouvelAccumulateurDEntites()
-	for rang := 0; rang < 4; rang++ {
+	for rang := range 4 {
 		a.ouvrirImageCle(uint64(100 * (rang + 1)))
 	}
 	lire := func(slot, de, a2 int) {

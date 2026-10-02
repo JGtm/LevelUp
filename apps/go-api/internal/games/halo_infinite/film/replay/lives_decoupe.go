@@ -43,7 +43,7 @@ package replay
 // joueur qui meurt au moins une fois.
 
 import (
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -68,7 +68,7 @@ func buildLifeSpans(tracks map[uint32]slotTrack) []lifeSpan {
 	for s := range tracks {
 		slots = append(slots, s)
 	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	slices.Sort(slots)
 	var out []lifeSpan
 	for _, s := range slots {
 		pts := tracks[s].pts
@@ -216,7 +216,7 @@ func creationsParSlot(creations []grammar.BipedCreation) map[uint32][]uint64 {
 		out[c.Slot] = append(out[c.Slot], c.TimestampUS)
 	}
 	for s := range out {
-		sort.Slice(out[s], func(i, j int) bool { return out[s][i] < out[s][j] })
+		slices.Sort(out[s])
 	}
 	return out
 }

@@ -320,7 +320,7 @@ func consumeBipedActionTag(br *Lecteur, tag uint64) {
 func consumeBipedAction(br *Lecteur) {
 	masque := consumeBipedActionSubBlock(br) // FUN_142f21b10 start: 96 bits = le masque
 	count1 := int(br.ReadBits(4))            // inline R(4)
-	for i := 0; i < count1; i++ {
+	for range count1 {
 		consumeBipedActionLoop1Item(br)
 	}
 	for i, n := 0, bipedActionLoop2Count(masque); i < n; i++ {

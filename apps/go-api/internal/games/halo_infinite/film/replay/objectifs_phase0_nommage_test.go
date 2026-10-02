@@ -108,14 +108,14 @@ func objMotsString(ms []objMotFrequent) string {
 	if len(ms) == 0 {
 		return "(aucun)"
 	}
-	s := ""
+	var s strings.Builder
 	for i, m := range ms {
 		if i > 0 {
-			s += ", "
+			s.WriteString(", ")
 		}
-		s += "0x" + strings.ToUpper(strconv.FormatUint(uint64(m.Mot), 16)) + " x" + itoa(m.Compte)
+		s.WriteString("0x" + strings.ToUpper(strconv.FormatUint(uint64(m.Mot), 16)) + " x" + itoa(m.Compte))
 	}
-	return s
+	return s.String()
 }
 
 // objSignature est le resultat de la recherche structurelle d'un objet porte.

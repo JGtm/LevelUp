@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -184,7 +185,7 @@ func TestRapportDuGate_BancAvantLeDetailSurUnArtefactReel(t *testing.T) {
 	}
 	var b bytes.Buffer
 	imprimerTableau(&b, []ligneRapport{l}, "base")
-	imprimerVerite(&b, []ligneRapport{l}, true)
+	imprimerVerite(context.Background(), &b, []ligneRapport{l}, true)
 	imprimerDetailPertes(&b, []ligneRapport{l})
 	imprimerDetailChangements(&b, []ligneRapport{l})
 	out := b.String()
@@ -209,13 +210,42 @@ func TestRegistreDeLaBase_SansOutilEstInconnu(t *testing.T) {
 // TestImprimerVerite_RegistreInconnuLeDit : le rapport dit quand le registre d'avant est inconnu.
 func TestImprimerVerite_RegistreInconnuLeDit(t *testing.T) {
 	var b bytes.Buffer
-	imprimerVerite(&b, []ligneRapport{ligneJugee(comparaisonDe(replayverite.StatutFaux))}, false)
+	imprimerVerite(context.Background(), &b, []ligneRapport{ligneJugee(comparaisonDe(replayverite.StatutFaux))}, false)
 	if !strings.Contains(b.String(), "registre des replis d'avant INCONNU") {
 		t.Errorf("rendu :\n%s", b.String())
 	}
 	b.Reset()
-	imprimerVerite(&b, []ligneRapport{{Temoin: Temoin{ID: "x"}, Absent: true}}, false)
+	imprimerVerite(context.Background(), &b, []ligneRapport{{Temoin: Temoin{ID: "x"}, Absent: true}}, false)
 	if b.String() != "" {
 		t.Errorf("aucun temoin juge : section attendue vide, obtenu %q", b.String())
+	}
+}
+
+// TestRapportDuGate_ReattributionVisibleNonBloquante — revue finale P1-e (2026-10-02) : un kill qui
+// passe d'un joueur juste (111) a un joueur qui en manquait un (222) laisse les totaux FP/FN
+// egaux. Le temoin reste `ok` (on ne sait pas lequel est juste), mais la section du banc du
+// rapport texte et le JSON montrent la reattribution, joueur par joueur.
+func TestRapportDuGate_ReattributionVisibleNonBloquante(t *testing.T) {
+	bulletin := func(ecarts map[string]replayverite.Ecart) replayverite.Bulletin {
+		return replayverite.Bulletin{Scores: map[string]replayverite.Score{
+			replayverite.ScoreKills: {VP: 3, FN: 1, Ecarts: ecarts},
+		}}
+	}
+	c := replayverite.Comparer(bulletin(map[string]replayverite.Ecart{"222": {Pub: 0, Off: 1}}),
+		bulletin(map[string]replayverite.Ecart{"111": {Pub: 2, Off: 3}}), nil)
+	l := ligneJugee(&c)
+	if l.statut() != statutOK {
+		t.Fatalf("statut %q, veut %q : une reattribution n'est pas bloquante", l.statut(), statutOK)
+	}
+	var b bytes.Buffer
+	imprimerVerite(context.Background(), &b, []ligneRapport{l}, true)
+	if out := b.String(); !strings.Contains(out, "[reattribution] "+replayverite.ScoreKills) ||
+		!strings.Contains(out, "111 : exact -> publie 2 / officiel 3") ||
+		!strings.Contains(out, "222 : publie 0 / officiel 1 -> exact") {
+		t.Fatalf("la section du banc ne montre pas la reattribution joueur par joueur :\n%s", out)
+	}
+	v := veriteVersJSON(l)
+	if v == nil || len(v.Constats) != 1 || v.Constats[0].Sens != "reattribution" || len(v.Constats[0].Detail) != 2 {
+		t.Fatalf("JSON du banc = %+v, veut un constat de reattribution a deux joueurs", v)
 	}
 }

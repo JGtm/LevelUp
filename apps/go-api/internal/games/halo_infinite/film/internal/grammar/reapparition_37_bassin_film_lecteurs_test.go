@@ -21,7 +21,7 @@ import (
 // reap37LireVolumes : i13 — R(13) de compte, puis un bit par volume.
 func reap37LireVolumes(br *Lecteur) {
 	n := br.ReadBits(reap37KillVolumeCptBits)
-	for k := uint64(0); k < n; k++ {
+	for range n {
 		br.ReadBit()
 	}
 }
@@ -31,12 +31,12 @@ func reap37LireVolumes(br *Lecteur) {
 func reap37LireLetterbox(br *Lecteur) {
 	br.ReadBit()
 	br.ReadBits(reap37LetterboxQuantBits)
-	for k := 0; k < reap37LetterboxSlots; k++ {
+	for range reap37LetterboxSlots {
 		if !br.ReadBit() { // FUN_142efd284 : le bit A UN veut dire ABSENT
 			br.ReadBits(reap37LetterboxOptBits)
 		}
 	}
-	for k := 0; k < reap37LetterboxSlots; k++ {
+	for range reap37LetterboxSlots {
 		if br.ReadBit() {
 			br.ReadBits(reap37LetterboxQuantBits)
 		}
@@ -47,7 +47,7 @@ func reap37LireLetterbox(br *Lecteur) {
 func reap37LireBassin(br *Lecteur) (uint64, []reap37Fente) {
 	masque := br.ReadBits(reap37BassinFentes)
 	var out []reap37Fente
-	for k := 0; k < reap37BassinFentes; k++ {
+	for k := range reap37BassinFentes {
 		if masque&(uint64(1)<<uint(k)) == 0 {
 			continue
 		}

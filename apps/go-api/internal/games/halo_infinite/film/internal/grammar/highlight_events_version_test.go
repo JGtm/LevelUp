@@ -11,7 +11,7 @@ package grammar
 // produit en production tant que 0 etait passe en dur), et la version 0 — film sans registre —
 // garde le comportement historique « gamertag en tete ».
 //
-// Cause et mesures : .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md.
+// Cause et mesures : .ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md.
 
 import (
 	"encoding/binary"

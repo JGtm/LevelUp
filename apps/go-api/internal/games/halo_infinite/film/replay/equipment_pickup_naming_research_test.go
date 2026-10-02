@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_pickup_naming_research_test.go — LOT 4, ÉTAPES 1 ET 2 : NOMMER l'objet des
@@ -43,6 +45,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -211,18 +214,18 @@ func eqnHist(m map[int]int, noms map[int]string) string {
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)
-	out := ""
+	var out strings.Builder
 	for i, k := range keys {
 		if i > 0 {
-			out += " · "
+			out.WriteString(" · ")
 		}
 		nom := noms[k]
 		if nom == "" {
 			nom = "(non nommé par la palette)"
 		}
-		out += fmt.Sprintf("%d x%d = %s", k, m[k], nom)
+		out.WriteString(fmt.Sprintf("%d x%d = %s", k, m[k], nom))
 	}
-	return out
+	return out.String()
 }
 
 func eqnClassHist(m map[uint8]int) string {
@@ -231,14 +234,14 @@ func eqnClassHist(m map[uint8]int) string {
 		keys = append(keys, int(k))
 	}
 	sort.Ints(keys)
-	out := ""
+	var out strings.Builder
 	for i, k := range keys {
 		if i > 0 {
-			out += ","
+			out.WriteString(",")
 		}
-		out += fmt.Sprintf("%d:%d", k, m[uint8(k)])
+		out.WriteString(fmt.Sprintf("%d:%d", k, m[uint8(k)]))
 	}
-	return out
+	return out.String()
 }
 
 func pct100(n, d int) float64 {

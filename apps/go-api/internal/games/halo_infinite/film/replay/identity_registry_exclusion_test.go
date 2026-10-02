@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
@@ -67,7 +68,7 @@ func vieDuSlot(reg IdentityRegistry, slot uint32) *lifeSpan {
 //
 // MUTATION : retirer l'appel a `resolveByTemporalExclusion` -> la vie reste anonyme, rouge.
 func TestExclusionNommeLaVieDuSeulJoueurLibre(t *testing.T) {
-	reg := BuildIdentityRegistry(filmExclusion())
+	reg := BuildIdentityRegistry(context.Background(), filmExclusion())
 	v := vieDuSlot(reg, 400)
 	if v == nil {
 		t.Fatal("le slot 400 n'a aucune vie : le film synthetique ne joue pas le cas")
@@ -89,7 +90,7 @@ func TestExclusionNommeLaVieDuSeulJoueurLibre(t *testing.T) {
 // MUTATION : ne plus marquer `deducedLives` -> le gate de presence des portages eteint son
 // abstention, rouge.
 func TestExclusionMarqueLaVieDeduiteEtSaProvenance(t *testing.T) {
-	reg := BuildIdentityRegistry(filmExclusion())
+	reg := BuildIdentityRegistry(context.Background(), filmExclusion())
 	deduites := 0
 	for i, l := range reg.Vies() {
 		if l.slot == 400 && reg.VieDeduite(i) {
@@ -131,7 +132,7 @@ func TestExclusionSeTaitADeuxCandidats(t *testing.T) {
 		types.Death{XUID: 333, Gamertag: "TROIS", TimeMS: 38_000})
 	in.PlayerIndices.ByXUID[333] = 2
 	in.RosterXUIDs = []uint64{111, 222, 333}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	if v := vieDuSlot(reg, 400); v != nil && v.xuid != 0 {
 		t.Fatalf("un candidat a ete choisi malgre l'ambiguite : xuid %d", v.xuid)
 	}
@@ -148,7 +149,7 @@ func TestExclusionSeTaitADeuxCandidats(t *testing.T) {
 func TestExclusionSeTaitSansRosterDeLaFeuille(t *testing.T) {
 	in := filmExclusion()
 	in.RosterXUIDs = nil
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	if v := vieDuSlot(reg, 400); v != nil && v.xuid != 0 {
 		t.Fatalf("une identite est apparue sans roster de la feuille : xuid %d", v.xuid)
 	}
@@ -161,7 +162,7 @@ func TestExclusionSeTaitSansRosterDeLaFeuille(t *testing.T) {
 func TestExclusionSeTaitQuandUnBotEstDeclare(t *testing.T) {
 	in := filmExclusion()
 	in.Bots = []BotIdentity{{FilmIndex: 5, BotID: 7, Name: "343 Bot"}}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	if v := vieDuSlot(reg, 400); v != nil && v.xuid != 0 {
 		t.Fatalf("une identite humaine est posee alors qu'un bot est declare : xuid %d", v.xuid)
 	}
@@ -180,7 +181,7 @@ func TestExclusionSeTaitQuandLOccupationDepasseLeRoster(t *testing.T) {
 	// vie-la reste uniquement attribuable a 222 et serait nommee. C'est ce que le test pince.
 	in.Positions = sejour(in.Positions, 500, 30, 33)
 	in.Positions = sejour(in.Positions, 600, 30, 33)
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	for _, l := range reg.Vies() {
 		if l.nomPar == NomParExclusionTemporelle {
 			t.Fatalf("l'exclusion a tourne malgre 4 vies simultanees pour 2 joueurs (slot %d)",
@@ -213,7 +214,7 @@ func TestExclusionSeTaitSansAucunCandidat(t *testing.T) {
 		Clock:       IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 300},
 		MatchID:     "test-contradiction",
 	}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	if v := vieDuSlot(reg, 400); v != nil && v.xuid != 0 {
 		t.Fatalf("une identite est posee sans aucun candidat libre : xuid %d", v.xuid)
 	}
@@ -251,7 +252,7 @@ func TestExclusionSeTaitSurDeuxViesQuiSeDisputentLeMemeJoueur(t *testing.T) {
 		Clock:       IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 320},
 		MatchID:     "test-conflit",
 	}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	for _, l := range reg.Vies() {
 		if (l.slot == 400 || l.slot == 500) && l.xuid != 0 {
 			t.Fatalf("slot %d nomme %d malgre le conflit : le meme joueur occuperait deux corps",
@@ -289,7 +290,7 @@ func TestExclusionRendAmbiguUnSlotQueDeuxJoueursSePartagent(t *testing.T) {
 		Clock:         IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 380},
 		MatchID:       "test-slot-partage",
 	}
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	var deduite bool
 	for _, l := range reg.Vies() {
 		if l.slot == 400 && l.nomPar == NomParExclusionTemporelle && l.xuid == 222 {

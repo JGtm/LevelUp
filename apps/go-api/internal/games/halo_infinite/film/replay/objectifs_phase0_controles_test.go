@@ -33,7 +33,7 @@ func objControlePositif(recs []objRecord) (avec, total int, moyenne float64) {
 		total++
 		n := 0
 		for _, v := range r.Vals {
-			if _, ok := weaponv3.KnownWeaponHigh32[v]; ok {
+			if _, ok := weaponv3.KnownWeaponHigh32Lookup(v); ok {
 				n++
 			}
 		}
@@ -209,7 +209,7 @@ func objPorte(r objRecord, val uint32) bool {
 func objFamillesConnuesParCamp(t objTable) []objCandidat {
 	var out []objCandidat
 	for v, c := range t.Par {
-		if _, ok := weaponv3.KnownWeaponHigh32[v]; !ok {
+		if _, ok := weaponv3.KnownWeaponHigh32Lookup(v); !ok {
 			continue
 		}
 		tp, th := 0.0, 0.0

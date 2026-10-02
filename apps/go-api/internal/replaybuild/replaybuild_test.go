@@ -1,6 +1,7 @@
 package replaybuild
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -98,7 +99,7 @@ func TestResolveMapEntry_SurLeCatalogueLivre(t *testing.T) {
 	if err != nil {
 		t.Fatalf("racine du dépôt introuvable : %v", err)
 	}
-	b, err := NewBuilder(repoRoot, title.DefaultSlug)
+	b, err := NewBuilder(context.Background(), repoRoot, title.DefaultSlug)
 	if err != nil {
 		t.Fatalf("NewBuilder: %v", err)
 	}

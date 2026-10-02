@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // deto_attribution_research_test.go — ATTRIBUER les TOUCHES EXPLOSIVES a leur TIREUR par la

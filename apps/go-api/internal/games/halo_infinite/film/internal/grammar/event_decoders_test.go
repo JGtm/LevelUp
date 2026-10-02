@@ -42,7 +42,7 @@ func (w *bitw) put(v uint64, width int) {
 }
 
 func (w *bitw) pad(n int) {
-	for i := 0; i < n; i++ {
+	for range n {
 		w.put(0, 1)
 	}
 }
@@ -157,7 +157,7 @@ func TestGrenadeWhitelistIsWhatMakesTheMarkerSelective(t *testing.T) {
 		t.Errorf("%d lancer(s) sur un marqueur suivi d un identifiant HORS liste blanche : la "+
 			"selectivite ne vient plus de la liste, et le decodeur rendrait du bruit", len(got))
 	}
-	for want, id := range GrenadeTypeIDsByRank {
+	for want, id := range GrenadeTypeIDsByRank() {
 		got := scanGrenadesDeReference(buildGrenadeRecord(0, id, 1))
 		if len(got) != 1 {
 			t.Errorf("identifiant %08x (rang %d) : %d lancer(s) reconnu(s)", id, want, len(got))
@@ -185,7 +185,7 @@ func buildProjectileRecord(slot, gen uint32, comps []int, q [3]uint64) []byte {
 		w.put(uint64(c), 6)
 	}
 	w.put(0, 3) // porte de position : precHigh, index-sel, region tous nuls
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		w.put(q[a], int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]))
 	}
 	w.pad(64)
@@ -312,18 +312,18 @@ func TestWorldObjectPositionRejectsSaturatedAxes(t *testing.T) {
 	wr := projTestRange()
 	w := &bitw{}
 	w.put(0, 3)
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		w.put(4096, int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]))
 	}
 	w.pad(16)
 	if _, ok := decodeWorldObjectPos(w.buf, 0, &wr, ProfilDeBalayageParDefaut().LargeursObjetDuMonde()); !ok {
 		t.Fatal("une position valide a ete refusee")
 	}
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		for _, q := range []uint64{0, (1 << ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]) - 1} {
 			g := &bitw{}
 			g.put(0, 3)
-			for b := 0; b < 3; b++ {
+			for b := range 3 {
 				v := uint64(4096)
 				if b == a {
 					v = q
@@ -344,7 +344,7 @@ func TestWorldObjectPositionGateIsClosedUnlessAllThreeAreZero(t *testing.T) {
 	for gate := uint64(1); gate < 8; gate++ {
 		w := &bitw{}
 		w.put(gate, 3)
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			w.put(4096, int(ProfilDeBalayageParDefaut().LargeursObjetDuMonde().AxisW[a]))
 		}
 		w.pad(16)

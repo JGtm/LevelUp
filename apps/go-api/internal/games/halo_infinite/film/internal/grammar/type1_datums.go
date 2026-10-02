@@ -234,7 +234,7 @@ func lireEntreesDeDatum(pay []byte, out []DatumEntry) int {
 		// LE MASQUE PAR VUE EST ECRIT LSB D ABORD (`1L << i` dans `FUN_140e74e6c`) : c est
 		// l inverse de l ordre des trois champs precedents, et le confondre decale les 33
 		// vues bout a bout.
-		for k := 0; k < datumMasqueBits; k++ {
+		for k := range datumMasqueBits {
 			e.MasqueVue |= uint64(source.BitAt(pay, pos+k)) << uint(k)
 		}
 		pos += datumMasqueBits
@@ -254,7 +254,7 @@ func lireEntreesDeDatum(pay []byte, out []DatumEntry) int {
 //
 // `math/bits`, pas `encoding/binary` : le ratchet de `filmdec` refuse le second.
 func lireBitmapsDeDatum(pay []byte, pos, n int, b *BlocDeDatums) int {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for m := range b.Entrees[i].Composants {
 			mot := source.BitsBourres(pay, pos, 64)
 			b.Entrees[i].Composants[m] = bits.Reverse64(mot)

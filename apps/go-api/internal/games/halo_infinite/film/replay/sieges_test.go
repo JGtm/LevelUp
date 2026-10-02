@@ -20,6 +20,7 @@ package replay
 //	P-VIES      sans entite, le dernier occupant d'une place reste jusqu'a la fin (repli compte).
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -69,7 +70,7 @@ func TestPlaceRepriseEcriteEstLue(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(0, "200")}
 	occ := occupantsFabriques([]int{1, 1}, iv(0, 40), iv(60, siegeFrames-1))
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(fb)})
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(fb)})
 
 	if roster[0].Seat != 0 || roster[1].Seat != 0 {
 		t.Fatalf("places %d et %d : le film REUTILISE l'index, les deux occupants la partagent",
@@ -94,7 +95,7 @@ func TestPlaceIndexNeufEstChainee(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(1, "200"), entree(9, "300")}
 	occ := occupantsFabriques([]int{1, 0, 1}, iv(0, 40), iv(0, siegeFrames-1), iv(60, siegeFrames-1))
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1), horloge: horlogeDeSieges(fb)})
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1), horloge: horlogeDeSieges(fb)})
 
 	if roster[2].Seat != 0 || roster[2].SeatSource != SeatSourceApparie {
 		t.Fatalf("arrivant : place %d (%s), attendu 0 (apparie) — la place LIBEREE de son equipe",
@@ -116,7 +117,7 @@ func TestPlaceIndexNeufEstChainee(t *testing.T) {
 func TestPlaceOccupeeNEstPasReprise(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(9, "200")}
 	occ := occupantsFabriques([]int{1, 1}, iv(0, 80), iv(60, siegeFrames-1))
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0),
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0),
 		horloge: horlogeDeSieges(nil)})
 
 	if roster[1].Seat != 9 || roster[1].SeatSource != SeatSourceIndex {
@@ -142,7 +143,7 @@ func TestPlacesLaCapaciteBorneLesPlacesJamaisTenues(t *testing.T) {
 	}
 	occ := occupantsFabriques([]int{0, 0, 1, 1, 1, 0, 1}, iv(0, 99), iv(0, 99), iv(0, 99), nil,
 		iv(0, 99), iv(50, 99), nil)
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 3),
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 3),
 		horloge: horlogeDeSieges(nil)})
 
 	if roster[4].Seat != 3 || roster[4].SeatSource != SeatSourceApparie {
@@ -163,7 +164,7 @@ func TestPlaceSansTableDuFilmNeDecideRien(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(1, "200")}
 	occ := occupantsFabriques([]int{1, 1}, iv(0, 40), iv(60, siegeFrames-1))
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{horloge: horlogeDeSieges(fb)})
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{horloge: horlogeDeSieges(fb)})
 
 	if !cov.SansTableDuFilm {
 		t.Fatal("la couverture doit DIRE que la table manque : une abstention tue est un silence")
@@ -187,7 +188,7 @@ func TestPlaceLueDansLesTirs(t *testing.T) {
 		{FilmIndex: 0, TimestampUS: 4_000_000}, // le tir du titulaire de la place 0 ne vote pas
 	}
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 5), fire: tirs,
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 5), fire: tirs,
 		horloge: horlogeDeSieges(fb)})
 
 	if roster[2].Seat != 5 || roster[2].SeatSource != SeatSourceTirs {
@@ -205,7 +206,7 @@ func TestPlaceDesTirsContesteeRetombeSurLeChainage(t *testing.T) {
 		entree(10, "310")}
 	occ := occupantsFabriques([]int{0, 0, 0, 0}, iv(0, 99), nil, nil, iv(20, 99))
 	tirs := []FireEventRef{{FilmIndex: 4, TimestampUS: 3_000_000}, {FilmIndex: 5, TimestampUS: 5_000_000}}
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 4, 5), fire: tirs,
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 4, 5), fire: tirs,
 		horloge: horlogeDeSieges(nil)})
 
 	if cov.TirsContestes != 1 || roster[3].SeatSource != SeatSourceApparie {
@@ -220,7 +221,7 @@ func TestPlaceBorneeAuSuccesseur(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(9, "900")}
 	occ := occupantsFabriques([]int{1, 1}, []intervalleDePresence{{de: 0, a: 50, aMax: 70}},
 		iv(55, siegeFrames-1))
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(nil)})
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(nil)})
 
 	if roster[1].Seat != 0 {
 		t.Fatalf("remplacant : place %d, attendu 0", roster[1].Seat)
@@ -241,7 +242,7 @@ func TestPresenceSansEntiteTientLeDernierJusquALaFin(t *testing.T) {
 	occ := occupantsFabriques([]int{1}, iv(0, 40))
 	occ.balaye = false
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(fb)})
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(fb)})
 
 	p := roster[0].Presence
 	if len(p) != 1 || p[0].To != 40 || p[0].ToMax == nil || *p[0].ToMax != siegeFrames-1 {

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_etiquettes_delta_test.go — LOT G : LA CORRELATION SUR LES RECORDS DELTA.
@@ -157,10 +159,7 @@ func vgUneColonne(id int, cs []vfComp, temps []int64, slots []uint32, echMin int
 			vc.largMax = c.larg
 		}
 	}
-	vc.offsets = vc.largMin
-	if vc.offsets > vfOffsetMax {
-		vc.offsets = vfOffsetMax
-	}
+	vc.offsets = min(vc.largMin, vfOffsetMax)
 	if vc.offsets <= 0 {
 		return vgColonne{}, false
 	}

@@ -9,6 +9,7 @@ package replay
 // ligne n a change : memes fonctions, meme ordre, memes seuils.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -97,11 +98,11 @@ func tallyVehicleRides(rides []VehicleRide, cov *VehicleCoverage) {
 // « un film sans vehicule reconnaissable », c est une lecture qui a echoue en bloc — largeurs du
 // bloc MPP non reinstallees, ou grammaire du default-state qui a bouge. Sans ce warn, un film
 // entier sortirait avec zero sprite sans que rien ne le signale.
-func logVehicleCoverage(c *VehicleCoverage) {
+func logVehicleCoverage(ctx context.Context, c *VehicleCoverage) {
 	if c == nil {
 		return
 	}
-	slog.Info("rejeu : vehicules",
+	slog.InfoContext(ctx, "rejeu : vehicules",
 		"balaye", c.Scanned, "viesRecensees", c.Lives, "publiees", c.Published,
 		"relaisFusionnes", c.Merged,
 		"sansPosition", c.NoPosition, "avecNaissance", c.WithSpawn, "avecChassis", c.WithChassis,
@@ -110,12 +111,12 @@ func logVehicleCoverage(c *VehicleCoverage) {
 	// LA PORTE DES POSITIONS (lot M1 des retours du rejeu) : ce qu elle a ecarte, et les silences
 	// avec deplacement qu elle a laisses publies faute de preuve pour trancher.
 	if c.EchantillonsHorsEmprise+c.SpawnsHorsEmprise+c.EchantillonsAuTraversDUnSilence+c.SilencesNonTranches > 0 {
-		slog.Info("rejeu : porte des positions de vehicule",
+		slog.InfoContext(ctx, "rejeu : porte des positions de vehicule",
 			"echantillonsHorsEmprise", c.EchantillonsHorsEmprise, "spawnsHorsEmprise", c.SpawnsHorsEmprise,
 			"echantillonsAuTraversDUnSilence", c.EchantillonsAuTraversDUnSilence,
 			"silencesNonTranches", c.SilencesNonTranches)
 	}
-	slog.Info("rejeu : occupation des vehicules",
+	slog.InfoContext(ctx, "rejeu : occupation des vehicules",
 		"episodes", c.Rides, "vehiculesOccupes", c.VehiclesRidden, "occupantsNommes", c.RidesNamed,
 		"lus", c.RidesRead, "parProximite", c.RidesProximity,
 		"avecSiege", c.RidesWithSeat, "ambigus", c.Ambiguous,
@@ -126,7 +127,7 @@ func logVehicleCoverage(c *VehicleCoverage) {
 	// qui a passe la regle de stabilite, `manques` les occasions perdues faute d une fin datee.
 	// Sans eux, « 0 cycle » ne distinguerait pas un film sans emplacement d un film dont tous les
 	// ecarts etaient trop disperses.
-	slog.Info("rejeu : cycle de reapparition des vehicules",
+	slog.InfoContext(ctx, "rejeu : cycle de reapparition des vehicules",
 		"emplacements", c.CycleLocations, "cycles", c.Cycles,
 		"ecarts", c.CycleGaps, "manques", c.CycleMissing)
 	// LE SILENCE QU IL FAUT ROMPRE, et il est le pendant exact du warn de `logVehicleCoverage` :
@@ -134,7 +135,7 @@ func logVehicleCoverage(c *VehicleCoverage) {
 	// regardait », c est le balayage `i21` sans position qui n a rien rendu. La mesure V11 rend
 	// 35 episodes attestes sur 35 porteurs d au moins une lecture, sur 5 films.
 	if c.Rides > 0 && c.RidesWithAim == 0 {
-		slog.Warn("rejeu : AUCUN episode d occupation ne porte de visee alors que des episodes"+
+		slog.WarnContext(ctx, "rejeu : AUCUN episode d occupation ne porte de visee alors que des episodes"+
 			" existent — le balayage des records de visee SANS position n a rien rendu, le cone"+
 			" retombe partout sur le cap du chassis",
 			"episodes", c.Rides, "lecturesBrutes", c.AimReads)
@@ -145,18 +146,16 @@ func logVehicleCoverage(c *VehicleCoverage) {
 	// de routine. Ce journal est le pendant lisible du repli
 	// `repli_chassis_vehicule_marqueur_neutre`, compte par `tallyVehicleCoverage`.
 	//
-	// `slog.Warn` ET NON `slog.WarnContext` : toute la chaine d assemblage du calque est PURE et
-	// ne porte aucun `context.Context` (meme convention que les douze autres journaux de ce
-	// fichier et de `build_vehicles.go`). Lui en faire traverser un pour cette seule ligne
-	// changerait la signature de six fonctions du lot voisin 1.9.10.
+	// Le journal porte le `ctx` de l appelant de la cuisson (lot J12.3), comme les autres journaux
+	// de ce fichier et de `build_vehicles.go`.
 	for id, n := range c.UnknownChassis {
-		slog.Warn("rejeu : chassis de vehicule ABSENT DE LA TABLE DES FAMILLES — vies publiees"+
+		slog.WarnContext(ctx, "rejeu : chassis de vehicule ABSENT DE LA TABLE DES FAMILLES — vies publiees"+
 			" sans sprite, dessinees en marqueur neutre ; le mot d identite est LU, c est la table"+
 			" qui ne le nomme pas",
 			"chassis", id, "vies", n, "repli", string(fallback.NomChassisVehiculeMarqueurNeutre))
 	}
 	if c.WithChassis > 0 && c.FamilyResolved == 0 {
-		slog.Warn("rejeu : AUCUN chassis de vehicule resolu alors que le mot d identite a ete lu"+
+		slog.WarnContext(ctx, "rejeu : AUCUN chassis de vehicule resolu alors que le mot d identite a ete lu"+
 			" — table de familles a completer, ou lecture du bloc MPP a verifier",
 			"chassisLus", c.WithChassis)
 	}

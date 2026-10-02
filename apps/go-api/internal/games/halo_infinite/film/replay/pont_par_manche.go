@@ -34,7 +34,7 @@ type PontParManche struct {
 	resolu bool
 	id     objectives.RoundIdentity
 	// cons : l enregistreur des replis a la consultation du document (lot J8.7-bis du plan
-	// `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) — le pont le passe a sa resolution, et les
+	// `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) — le pont le passe a sa resolution, et les
 	// lectures de series de l appelant le recoivent de lui ([PontParManche.Consultations]). Nil
 	// (tests) : rien n est note.
 	cons *objectives.ReplisALaConsultation

@@ -49,7 +49,7 @@ func TestHookPlacement(t *testing.T) {
 		"hook nil":                {nil, replaybuild.PlacementOff},
 	}
 	for nom, c := range cases {
-		if got := c.hook.Placement(); got != c.attend {
+		if got := c.hook.Placement(context.Background()); got != c.attend {
 			t.Errorf("%s : placement = %q, attendu %q", nom, got, c.attend)
 		}
 	}

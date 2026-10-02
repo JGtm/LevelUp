@@ -136,7 +136,7 @@ func TestMergeWeaponSides_LaMedianeDesFragsPrimeSurCelleDesMorts(t *testing.T) {
 }
 
 // TestWeaponRangeSideOf_MinEtMaxPortesJusquAuContrat — D5 du plan
-// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md : les deux extrêmes observés traversent
+// .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md : les deux extrêmes observés traversent
 // l'agrégat jusqu'au contrat de réponse, où ils servent l'INFOBULLE du Face-à-face.
 //
 // LA FIXTURE EST À DISTANCES VARIÉES, ET C'EST TOUT L'ENJEU : `wrKills` pose n frags à la MÊME

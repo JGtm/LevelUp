@@ -1,6 +1,6 @@
 // Package sync — skill_rating_postsync_persist.go : chemin batch pour
 // upsertLUSRRatings, basé sur le AppendOnlyLUSRPersister (Phase 2.C du
-// plan d'éradication ART, cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md).
+// plan d'éradication ART, cf. .ai/archive/V7/PLAN_LUSR_ART_HOME_CRASH.md).
 //
 // **Sémantique append-only** : chaque batch est un INSERT pur (pas de
 // DELETE, pas d'UPDATE). La table match_skill_rank stocke N versions

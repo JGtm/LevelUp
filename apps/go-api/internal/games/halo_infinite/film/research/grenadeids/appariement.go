@@ -158,7 +158,7 @@ func compteurs(d types.InventoryDelta) [rangsGrenade]uint32 {
 // a avoir bouge. Toute autre transition (ramassage, vidage, deux rangs) est refusee.
 func rangDecremente(avant, apres [rangsGrenade]uint32) (int, bool) {
 	rang, trouve := -1, false
-	for r := 0; r < rangsGrenade; r++ {
+	for r := range rangsGrenade {
 		switch {
 		case avant[r] == apres[r]:
 		case avant[r] == apres[r]+1:

@@ -153,7 +153,7 @@ func d1Uniformite(t *testing.T, c *d1Compte) {
 	}
 	attendu := float64(c.atteintI55) / 4
 	ecart := 0.0
-	for tag := uint64(0); tag < 4; tag++ {
+	for tag := range uint64(4) {
 		d := float64(c.tags[tag]) - attendu
 		ecart += d * d / attendu
 	}

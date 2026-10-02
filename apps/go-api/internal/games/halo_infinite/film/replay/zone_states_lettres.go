@@ -7,7 +7,10 @@ package replay
 // lettre est le morceau le plus autonome du volet — elle ne lit que la carte des slots de
 // jauge et le catalogue —, donc c'est elle qui sort. Aucune ligne n'a change.
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 // zoneLetterMax est le nombre de lettres que le HUD du jeu affiche sur une carte a bases
 // simultanees : A, B, C. Au-dela, le fallback se tait — un « D » serait une invention, et les
@@ -55,11 +58,8 @@ func zoneLetterRanks(gauge map[int]uint32, catalog int, hill bool) map[int]int {
 	// slot laissaient donc l'ordre d'iteration de la MAP `gauge`, tire au sort a chaque
 	// execution, decider quelle zone s'appelle A et laquelle s'appelle B. La reference de zone
 	// ferme l'egalite avec une donnee de l'element, jamais un rang d'iteration.
-	sort.Slice(refs, func(i, j int) bool {
-		if gauge[refs[i]] != gauge[refs[j]] {
-			return gauge[refs[i]] < gauge[refs[j]]
-		}
-		return refs[i] < refs[j]
+	slices.SortFunc(refs, func(a, b int) int {
+		return cmp.Or(cmp.Compare(gauge[a], gauge[b]), cmp.Compare(a, b))
 	})
 	out := make(map[int]int, len(refs))
 	for i, ref := range refs {

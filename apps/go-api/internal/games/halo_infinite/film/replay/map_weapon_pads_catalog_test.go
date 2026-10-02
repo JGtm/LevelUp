@@ -12,6 +12,7 @@ package replay
 //     garde-fou de la régénération : le jour où un dump change, le chiffre bouge ici.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"math"
@@ -261,7 +262,7 @@ func TestLoadMapWeaponPadsMerged_OverlayAbsentEstNominal(t *testing.T) {
 	versionne := filepath.Join(dir, "map_weapon_pads.json")
 	ecrireCatalogueA(t, versionne, catalogueAvec(map[string]int{"relue": 100}))
 
-	cat, err := LoadMapWeaponPadsMerged(versionne, filepath.Join(dir, "generated", "map_weapon_pads.json"))
+	cat, err := LoadMapWeaponPadsMerged(context.Background(), versionne, filepath.Join(dir, "generated", "map_weapon_pads.json"))
 	if err != nil {
 		t.Fatalf("overlay absent doit être le cas NOMINAL, obtenu : %v", err)
 	}
@@ -277,7 +278,7 @@ func TestLoadMapWeaponPadsMerged_OverlayComplete(t *testing.T) {
 	ecrireCatalogueA(t, versionne, catalogueAvec(map[string]int{"relue": 100}))
 	ecrireCatalogueA(t, overlay, catalogueAvec(map[string]int{"rattrapee": 200}))
 
-	cat, err := LoadMapWeaponPadsMerged(versionne, overlay)
+	cat, err := LoadMapWeaponPadsMerged(context.Background(), versionne, overlay)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +305,7 @@ func TestLoadMapWeaponPadsMerged_LeVersionnePrime(t *testing.T) {
 	ecrireCatalogueA(t, versionne, catalogueAvec(map[string]int{"partagee": 100}))
 	ecrireCatalogueA(t, overlay, catalogueAvec(map[string]int{"partagee": 999}))
 
-	cat, err := LoadMapWeaponPadsMerged(versionne, overlay)
+	cat, err := LoadMapWeaponPadsMerged(context.Background(), versionne, overlay)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,7 +324,7 @@ func TestLoadMapWeaponPadsMerged_OverlayIllisibleDegrade(t *testing.T) {
 	ecrireCatalogueA(t, versionne, catalogueAvec(map[string]int{"relue": 100}))
 	ecrireCatalogueA(t, overlay, "{ pas du json")
 
-	cat, err := LoadMapWeaponPadsMerged(versionne, overlay)
+	cat, err := LoadMapWeaponPadsMerged(context.Background(), versionne, overlay)
 	if err != nil {
 		t.Fatalf("un overlay corrompu ne doit PAS faire échouer la lecture : %v", err)
 	}
@@ -332,7 +333,7 @@ func TestLoadMapWeaponPadsMerged_OverlayIllisibleDegrade(t *testing.T) {
 	}
 
 	// Le VERSIONNÉ absent reste une erreur : c'est une installation incomplète.
-	if _, err := LoadMapWeaponPadsMerged(filepath.Join(dir, "absent.json"), overlay); err == nil {
+	if _, err := LoadMapWeaponPadsMerged(context.Background(), filepath.Join(dir, "absent.json"), overlay); err == nil {
 		t.Error("un catalogue versionné absent doit rester une erreur")
 	}
 }

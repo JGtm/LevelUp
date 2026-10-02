@@ -19,6 +19,8 @@
 // le nom n'a pas été retrouvé mais dont le rôle est établi par la géométrie et un film.
 package mapvar
 
+import "slices"
+
 // labelNames : hash murmur3_x86_32(seed=0) → nom du label de mode de jeu.
 //
 // Vérification de non-régression : mapvar_test.go recalcule le murmur3 de chaque
@@ -167,12 +169,7 @@ const LabelCTFNeutralInclude = "ctf_neutral_include"
 //
 // Le label, lui, ne se trompe sur aucune des 63 entrees — c'est donc lui qui tranche.
 func (o Objective) IsCTFNeutral() bool {
-	for _, l := range o.Labels {
-		if l == LabelCTFNeutralInclude {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(o.Labels, LabelCTFNeutralInclude)
 }
 
 // Role est le rôle d'objectif d'un objet, tel que le rejeu doit l'afficher.

@@ -85,7 +85,7 @@ func cmUnFilm(t *testing.T, racine, id string, utiles UsagesProduit, tables map[
 		return
 	}
 	b := cmLireBlocs(f)
-	wr := profile.QuantRangeCEBiped
+	wr := profile.QuantRangeCEBiped()
 	cre, _, _ := ScanVehicleCreations(f.fc, &wr)
 	col := nouveauCollecteur(f, b, cre)
 	rep, obs, _ := cmMarcher(f, cmVariante{}, col)

@@ -18,6 +18,7 @@ package main
 //     service laisserait ces tests verts et l inventaire faux.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -56,7 +57,7 @@ func poseSidecar(t *testing.T, dir, cle string, noms ...string) {
 
 func indexDe(t *testing.T, dir string) *replay.MapBackgroundIndex {
 	t.Helper()
-	idx, err := replay.BuildMapBackgroundIndex(dir)
+	idx, err := replay.BuildMapBackgroundIndex(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("index des fonds : %v", err)
 	}

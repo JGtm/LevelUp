@@ -63,7 +63,7 @@ func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
 		return nil, err
 	}
 	idx26 := -1
-	for id := 0; id < archetypeBlockSlots; id++ {
+	for id := range archetypeBlockSlots {
 		if arch.component(id) == "unit-equipment-component" {
 			idx26 = id
 			break

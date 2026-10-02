@@ -12,6 +12,7 @@ package replay
 //   - LE REFUS D'UNE FAMILLE NON MESURÉE, qui est ce qui garde le répulseur dehors.
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
 )
@@ -322,7 +323,7 @@ func TestBuildFromPositions_PasDeCouvertureQuandLeBalayageNAPasTourne(t *testing
 	base := Options{FilmClockOriginUS: 1_000_000}
 
 	// (a) BALAYAGE EN ECHEC (le repli de BuildFromFilm) : AUCUNE couverture.
-	doc := BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourOrigine(), nil, base)
 	if doc.Coverage == nil {
 		t.Fatal("document sans couverture du tout : le scenario ne mesure plus rien")
 	}
@@ -334,7 +335,7 @@ func TestBuildFromPositions_PasDeCouvertureQuandLeBalayageNAPasTourne(t *testing
 	// (b) BALAYAGE ABOUTI SUR UN FILM QUI NE DECLARE PAS LE COMPOSANT : la couverture EST
 	// publiee, et elle porte `componentAbsent`. Un zero de balayage n'est pas l'autre.
 	base.AbilityImpulseStats = types.AbilityImpulseStats{Scanned: true, Absent: true}
-	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
+	doc = BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourOrigine(), nil, base)
 	cov := doc.Coverage.AbilityImpulses
 	if cov == nil {
 		t.Fatal("balayage abouti mais aucune couverture : un resultat de lecture s est perdu")
@@ -347,7 +348,7 @@ func TestBuildFromPositions_PasDeCouvertureQuandLeBalayageNAPasTourne(t *testing
 	// couverture est publiee, a zero et SANS `componentAbsent` — le troisieme zero, distinct
 	// des deux autres.
 	base.AbilityImpulseStats = types.AbilityImpulseStats{Scanned: true, Records: 1234}
-	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
+	doc = BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourOrigine(), nil, base)
 	cov = doc.Coverage.AbilityImpulses
 	if cov == nil || cov.ComponentAbsent || cov.Reads != 0 {
 		t.Fatalf("couverture %+v : attendue publiee, a zero, sans componentAbsent", cov)

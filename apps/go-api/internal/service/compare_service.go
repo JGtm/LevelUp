@@ -103,8 +103,8 @@ const csrUnrankedLabel = "unranked"
 //   - "" (label vide)  → données NON récupérées (pas d'auth/erreur) → N/A.
 //   - "unranked"       → récupéré mais joueur non classé (clé canonique, D5).
 //   - "Or III" / "Onyx" etc. → classé (cf. découverte consignée : ce libellé
-//     lui-même reste en dur, famille plus large que ce lot — .ai/PLAN_LIBELLES_
-//     EN_DUR_GO_2026-09-07.md §9).
+//     lui-même reste en dur, famille plus large que ce lot —
+//     .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §9).
 func (s *CompareService) fetchCSRSummary(ctx context.Context, xuid string) csrSummary {
 	if s.csr == nil || xuid == "" || s.currentSeasonID == "" {
 		return csrSummary{} // non configuré → non récupéré

@@ -18,13 +18,14 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 EQUIP_CREATION_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestEquipmentCreationWidth$' -timeout 60m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestEquipmentCreationWidth$' -timeout 60m -v
 
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -138,12 +139,12 @@ func equipWidthScores(byWidths map[profile.MPPWidths]int) string {
 		}
 	}
 	sort.Slice(ws, func(i, j int) bool { return byWidths[ws[i]] > byWidths[ws[j]] })
-	out := ""
+	var out strings.Builder
 	for _, w := range ws {
-		out += fmt.Sprintf(" %s:%d", w, byWidths[w])
+		out.WriteString(fmt.Sprintf(" %s:%d", w, byWidths[w]))
 	}
-	if out == "" {
+	if out.String() == "" {
 		return " (aucun accord)"
 	}
-	return out
+	return out.String()
 }

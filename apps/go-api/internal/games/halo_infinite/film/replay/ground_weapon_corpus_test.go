@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_corpus_test.go — RECENSEMENT DE CORPUS : sur quels films `ti=42` est-il
@@ -38,7 +40,7 @@ func TestGroundWeaponCorpusCensus(t *testing.T) {
 		t.Skipf("%s absent : recensement de corpus sauté", gwCorpusEnv)
 	}
 
-	for _, dir := range strings.Split(raw, ",") {
+	for dir := range strings.SplitSeq(raw, ",") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue

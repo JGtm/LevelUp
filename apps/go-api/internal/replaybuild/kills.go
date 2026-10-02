@@ -31,7 +31,7 @@ import (
 // balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
 // lecture ratée ici mais un refus en amont — `decfilm.Decode` rend alors `ErrNoChunk`, et le
 // journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
-func (b *Builder) decodeKillSource(matchID string, entry decfilm.MapQuantEntry, film *decfilm.Film) *decfilm.Result {
+func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry decfilm.MapQuantEntry, film *decfilm.Film) *decfilm.Result {
 	opts := decfilm.DefaultOptions()
 	// LA CARTE DU MATCH DESCEND DANS LE DECODAGE DES MORTS (lot 3.4.1). Les largeurs d'axe du
 	// chemin absolu de position sont une constante PAR CARTE ; jusqu'à ce lot `killsource` les
@@ -45,9 +45,12 @@ func (b *Builder) decodeKillSource(matchID string, entry decfilm.MapQuantEntry, 
 	// branche « largeurs par défaut », ont disparu avec le repli — « le flux du film est la seule
 	// source fiable. Pas de repli. »
 	opts.Carte = &entry
-	res, err := decfilm.Decode(context.Background(), matchID, film, &opts)
+	res, err := decfilm.Decode(ctx, matchID, film, &opts)
+	if res != nil {
+		replay.JournaliserDiagnostics(ctx, res.Diagnostics) // lot J12.3, ADR 0034 D-4
+	}
 	if err != nil {
-		slog.Info("replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
+		slog.InfoContext(ctx, "replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
 			"err", err, "match_id", matchID)
 		return nil
 	}
@@ -113,17 +116,17 @@ func profilDeBalayageDeLaCuisson(res *decfilm.Result) *decfilm.ProfilDeBalayage 
 //
 // `fb` recoit les deux replis de la resolution (assistant non resolu, gamertag a deux xuids) — le
 // compteur de la CONSTRUCTION (lot J8.7), que l assemblage verse ; nil ne compte rien.
-func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *decfilm.Result, fb *decfilm.Compteur) (replay.KillsInput, replay.MatchKillsInput) {
+func (b *Builder) killRefs(ctx context.Context, matchID string, deaths filmDeaths, res *decfilm.Result, fb *decfilm.Compteur) (replay.KillsInput, replay.MatchKillsInput) {
 	if res == nil {
 		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
 	if !res.LineByLinePublishable() {
-		slog.Info("replaybuild: attribution ligne par ligne refusée — frags sous effet actif et porteurs tués non mesurés",
+		slog.InfoContext(ctx, "replaybuild: attribution ligne par ligne refusée — frags sous effet actif et porteurs tués non mesurés",
 			"match_id", matchID, "kills", len(res.Kills))
 		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
 	if deaths.err != nil {
-		slog.Info("replaybuild: fil des morts illisible — frags sous effet actif et porteurs tués non mesurés",
+		slog.InfoContext(ctx, "replaybuild: fil des morts illisible — frags sous effet actif et porteurs tués non mesurés",
 			"err", deaths.err, "match_id", matchID)
 		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
@@ -131,7 +134,7 @@ func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *decfilm.Resul
 	fb.DeclencheN(decfilm.NomGamertagPremierXuidGagne, divergences)
 	r := resolveKills(res.Kills, parGamertag)
 	fb.DeclencheN(decfilm.NomAssistantNonResoluAbandonne, r.assistantsNonResolus)
-	r.log(matchID, len(res.Kills))
+	r.log(ctx, matchID, len(res.Kills))
 	return replay.KillsInput{Read: true, Kills: r.refs, Paths: voiesDesMorts(res)},
 		replay.MatchKillsInput{Read: true, Kills: r.pairs, Dropped: len(res.Kills) - len(r.pairs)}
 }
@@ -193,13 +196,13 @@ func resolveKills(kills []decfilm.Kill, byGamertag map[string]uint64) killResolu
 // gravité : un tueur non résolu reste une anomalie du pont d'identité (WARN, message inchangé
 // depuis le lot F.1), une victime non résolue est le cas NOMINAL des morts de bot (INFO). Aucun
 // des deux n'est tu : un producteur qui tait ses trous laisse croire à l'exhaustivité.
-func (r killResolution) log(matchID string, total int) {
+func (r killResolution) log(ctx context.Context, matchID string, total int) {
 	if r.killerUnresolved > 0 {
-		slog.Warn("replaybuild: tueur non résolu en xuid — frag omis de la jointure équipement",
+		slog.WarnContext(ctx, "replaybuild: tueur non résolu en xuid — frag omis de la jointure équipement",
 			"match_id", matchID, "non_resolus", r.killerUnresolved, "total", total)
 	}
 	if r.victimUnresolved > 0 {
-		slog.Info("replaybuild: victime non résolue en xuid — couple omis de la jointure porteurs tués",
+		slog.InfoContext(ctx, "replaybuild: victime non résolue en xuid — couple omis de la jointure porteurs tués",
 			"match_id", matchID, "non_resolues", r.victimUnresolved, "couples", len(r.pairs),
 			"total", total)
 	}

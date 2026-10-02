@@ -1,7 +1,7 @@
 package replay
 
 import (
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -121,7 +121,7 @@ func respawnWindow(lives []lifeSpan, deaths []types.Death, off int64) (int64, in
 	if len(d) == 0 {
 		return 0, 0
 	}
-	sort.Slice(d, func(i, j int) bool { return d[i] < d[j] })
+	slices.Sort(d)
 	med := d[len(d)/2] * 1000 // en microsecondes
 	return med - respawnHalfWidthUS, med + respawnHalfWidthUS
 }
@@ -192,7 +192,7 @@ func sortedVictims(m map[uint64][]int) []uint64 {
 	for x := range m {
 		out = append(out, x)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 
@@ -204,10 +204,5 @@ func onlyPlayerIndex(m map[int]int) int {
 }
 
 func containsXUID(xs []uint64, x uint64) bool {
-	for _, v := range xs {
-		if v == x {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(xs, x)
 }

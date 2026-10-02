@@ -1,6 +1,6 @@
 # Mesures de cloture J11.3 — 2026-10-01
 
-> Plan : `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, lot J11.3. Code mesure : tete de
+> Plan : `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, lot J11.3. Code mesure : tete de
 > `feat/suite-audit-decodeur` (`97fbe8f55`), worktree `LevelUp-wt-suite-audit`. Lecture seule des films
 > (`data/cache/film_chunks`, jonctions du worktree) ; aucune base DuckDB ; sorties sous `$TEMP/j113/`.
 > « Avant » = la reference d'avant le plan : GB-1 `MESURE_GB1_2026-09-27.md`, carte de fermeture

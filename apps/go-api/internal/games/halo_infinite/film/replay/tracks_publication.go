@@ -11,8 +11,10 @@ package replay
 // DEPLACEMENT PUR pour `decimateTracks` : aucune ligne de logique ne change.
 
 import (
+	"cmp"
+	"context"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -193,7 +195,7 @@ func bornesDesVies(sorted []grammar.BipedPosition, in decoupeDesTraces) map[uint
 		out[l.slot] = append(out[l.slot], l)
 	}
 	for s := range out {
-		sort.SliceStable(out[s], func(i, j int) bool { return out[s][i].from < out[s][j].from })
+		slices.SortStableFunc(out[s], func(a, b lifeSpan) int { return cmp.Compare(a.from, b.from) })
 	}
 	return out
 }
@@ -245,11 +247,11 @@ func vieDuPoint(spans []lifeSpan, courant int, tsUS uint64) int {
 // construite ici mais POSÉE plus tard, avec les autres — `doc.Coverage` n'existe qu'à partir de
 // `buildCoverage`, et l'assemblage se fait dans l'ordre des DÉPENDANCES, pas dans celui des
 // champs.
-func poserLesTraces(doc *ReplayDocument, sorted []grammar.BipedPosition,
+func poserLesTraces(ctx context.Context, doc *ReplayDocument, sorted []grammar.BipedPosition,
 	in decoupeDesTraces) TrackCoverage {
 	tracks, trackCov := decimateTracks(sorted, in)
 	doc.Tracks = tracks
-	logTrackCoverage(doc.MatchID, trackCov)
+	logTrackCoverage(ctx, doc.MatchID, trackCov)
 	bounds, ecartes := boundsOf(doc.Tracks)
 	doc.Bounds = bounds
 	if ecartes == 0 {
@@ -258,7 +260,7 @@ func poserLesTraces(doc *ReplayDocument, sorted []grammar.BipedPosition,
 	// JOURNALISE, JAMAIS AVALE (regle n°3 du depot). Un artefact de decodage qui passe la
 	// porte des bornes n est pas un detail : il decadre la scene et fait disparaitre le fond
 	// de carte. Le compte doit se voir en production, meme quand le correctif marche.
-	slog.Info("rejeu : echantillons aberrants ecartes des bornes",
+	slog.InfoContext(ctx, "rejeu : echantillons aberrants ecartes des bornes",
 		"match_id", doc.MatchID, "ecartes", ecartes, "seuil_etendues", boundsRejectSpreads)
 	return trackCov
 }
@@ -333,16 +335,16 @@ type TrackCoverage struct {
 // JOURNALISE, JAMAIS AVALÉ (règle n° 3 du dépôt) : le refus du seuil était muet des DEUX côtés —
 // ni compteur publié, ni ligne de journal. Les LACUNES l'étaient plus encore : elles découpaient
 // les vies, donc elles ne ressemblaient même pas à un silence.
-func logTrackCoverage(matchID string, c TrackCoverage) {
+func logTrackCoverage(ctx context.Context, matchID string, c TrackCoverage) {
 	if c.Gaps > 0 {
-		slog.Info("rejeu : lacunes de replication DANS une vie",
+		slog.InfoContext(ctx, "rejeu : lacunes de replication DANS une vie",
 			"match_id", matchID, "lacunes", c.Gaps, "duree_ms", c.GapMS,
 			"vies", c.Published, "seuil_ms", lifeGapUS/1000)
 	}
 	if c.RefusedMinPoints == 0 {
 		return
 	}
-	slog.Info("rejeu : vies refusees par le seuil de publication",
+	slog.InfoContext(ctx, "rejeu : vies refusees par le seuil de publication",
 		"match_id", matchID, "vies", c.RefusedMinPoints, "points", c.RefusedPoints,
 		"seuil", c.MinPoints, "viesPubliees", c.Published)
 }

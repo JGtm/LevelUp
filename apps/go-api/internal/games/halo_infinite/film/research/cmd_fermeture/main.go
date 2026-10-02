@@ -246,7 +246,7 @@ func preparerSortie(dir string) error {
 	if err != nil {
 		return fmt.Errorf("-sortie %q : %w", dir, err)
 	}
-	for _, seg := range strings.Split(filepath.ToSlash(filepath.Clean(abs)), "/") {
+	for seg := range strings.SplitSeq(filepath.ToSlash(filepath.Clean(abs)), "/") {
 		if strings.EqualFold(seg, repertoireInterdit) {
 			return errors.New("-sortie : le rapport s ecrit HORS de data/ (" + abs + ")")
 		}
@@ -257,7 +257,7 @@ func preparerSortie(dir string) error {
 // decouper rend les identifiants non vides de la liste.
 func decouper(v string) []string {
 	var out []string
-	for _, p := range strings.Split(v, ",") {
+	for p := range strings.SplitSeq(v, ",") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}

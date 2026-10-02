@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 import "testing"
@@ -36,42 +38,6 @@ import "testing"
 // ref0 presente 1+8+2 = 11 · ref1 absente 1 · ref2 absente 1 · charge 3+1+32 = 36 ·
 // bit de fin de liste 1  =  **50**. C'est EXACTEMENT le pic du scan empirique (etape 2),
 // obtenu sans aucun ajustement : deux chaines independantes se ferment.
-
-// bpkEvent est un evenement biped_pickup decode.
-type bpkEvent struct {
-	TimestampUS  uint64
-	Ref0         uint64 // domaine 2, R(8) — le ramasseur presume
-	Ref0Present  bool
-	Ref1Present  bool
-	Ref2Present  bool
-	Kind         uint64 // R(3) de tete de charge
-	Objet        uint32 // R(32) : le handle de l'objet ramasse (0xFFFFFFFF = absent)
-	ObjetPresent bool
-	// FinBit : position du bit qui suit le bit de fin de liste, donc le debut de la trame
-	// quand l'evenement est seul dans sa liste.
-	FinBit int
-	// Suite : un autre evenement suit dans la meme liste.
-	Suite bool
-}
-
-// bpkDecode consomme UN evenement type 9 a partir d'un lecteur place juste apres le champ de
-// type, puis le bit de fin de liste. La grammaire est celle lue dans l'exe (ci-dessus).
-func bpkDecode(br *Lecteur) bpkEvent {
-	var e bpkEvent
-	e.Ref0, e.Ref0Present = bpkRef(br, 2)
-	_, e.Ref1Present = bpkRef(br, 8)
-	_, e.Ref2Present = bpkRef(br, 7)
-	e.Kind = br.ReadBits(3)
-	if br.ReadBit() {
-		e.Objet = uint32(br.ReadBits(32))
-		e.ObjetPresent = true
-	} else {
-		e.Objet = 0xFFFFFFFF
-	}
-	e.Suite = br.ReadBit()
-	e.FinBit = br.BitPos()
-	return e
-}
 
 // bpkGramStats accumule ce que le decodage rend, et le publie.
 type bpkGramStats struct {
@@ -336,22 +302,6 @@ func TestBipedPickupEchecs(t *testing.T) {
 		bpkVerdict(bpkPct(echecsSansCadrage, echecs) >= 80))
 }
 
-// TestBipedPickupLargeurRef0 — LA LARGEUR DU DOMAINE 2 EST UNE VALEUR DE RUNTIME, PAS UNE
-// CONSTANTE DU FORMAT. Le lecteur de reference de l'exe (FUN_1406d3140) lit sa largeur dans
-// la table DAT_1451f98d0/d4 indexee par le domaine, peuplee au chargement de carte :
-//
-//	si le bit de configuration du paquet vaut 1 : base = DAT_1451f98d0[dom*2] et
-//	   largeur = FUN_1406d310c(DAT_1451f98d4[dom*2]) ; sinon largeur globale de repli.
-//	seul le domaine 1 porte une sonde R(1) qui bascule sur un second couple (0x1451f98f0/f4).
-//	Puis, TOUJOURS, R(2) de generation. La reference vaut (gen<<30) | (base + index).
-//
-// C'est la MEME table que celle qui donne FrameConfig.IDLowBits — et sur ce film IDLowBits
-// se calibre a 9, pas a la valeur par defaut 13. Il faut donc calibrer la largeur du
-// domaine 2 sur le film au lieu de la supposer.
-//
-// SEUIL ECRIT AVANT LA MESURE : la largeur retenue est celle qui maximise le taux de trames
-// exactes ; elle n'est acceptee que si ce taux atteint au moins 80 % du PLAFOND mesure sur
-// unit_zoom (grammaire prouvee) et si les largeurs voisines restent sous 20 %.
 // bpkEssaieLargeur decode UN evenement type 9 en supposant la largeur w pour l'index de
 // ref0, puis soumet le cadrage obtenu a l'oracle. Alimente les compteurs du balayage.
 func bpkEssaieLargeur(f bpkFilm, snap WorldSnapshot, pay []byte, w int, cfg FrameConfig,
@@ -383,6 +333,22 @@ func bpkEssaieLargeur(f bpkFilm, snap WorldSnapshot, pay []byte, w int, cfg Fram
 	}
 }
 
+// TestBipedPickupLargeurRef0 — LA LARGEUR DU DOMAINE 2 EST UNE VALEUR DE RUNTIME, PAS UNE
+// CONSTANTE DU FORMAT. Le lecteur de reference de l'exe (FUN_1406d3140) lit sa largeur dans
+// la table DAT_1451f98d0/d4 indexee par le domaine, peuplee au chargement de carte :
+//
+//	si le bit de configuration du paquet vaut 1 : base = DAT_1451f98d0[dom*2] et
+//	   largeur = FUN_1406d310c(DAT_1451f98d4[dom*2]) ; sinon largeur globale de repli.
+//	seul le domaine 1 porte une sonde R(1) qui bascule sur un second couple (0x1451f98f0/f4).
+//	Puis, TOUJOURS, R(2) de generation. La reference vaut (gen<<30) | (base + index).
+//
+// C'est la MEME table que celle qui donne FrameConfig.IDLowBits — et sur ce film IDLowBits
+// se calibre a 9, pas a la valeur par defaut 13. Il faut donc calibrer la largeur du
+// domaine 2 sur le film au lieu de la supposer.
+//
+// SEUIL ECRIT AVANT LA MESURE : la largeur retenue est celle qui maximise le taux de trames
+// exactes ; elle n'est acceptee que si ce taux atteint au moins 80 % du PLAFOND mesure sur
+// unit_zoom (grammaire prouvee) et si les largeurs voisines restent sous 20 %.
 func TestBipedPickupLargeurRef0(t *testing.T) {
 	f, ok := bpkOpen(t)
 	if !ok {

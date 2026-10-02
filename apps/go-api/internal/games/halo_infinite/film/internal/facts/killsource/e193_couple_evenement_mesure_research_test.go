@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // e193_couple_evenement_mesure_research_test.go — LOT 1.9.3, LA MESURE AVANT DE CODER.
@@ -131,7 +133,7 @@ func (l e193Ligne) n(p e193Population, v e193Verdict) int { return l.Par[p][v] }
 func e193Films() []string {
 	dirs := []string{filepath.Join("testdata", "minibobine_000d5950")}
 
-	for _, d := range strings.Split(os.Getenv("CHUNK00_FILMS"), ";") {
+	for d := range strings.SplitSeq(os.Getenv("CHUNK00_FILMS"), ";") {
 		if d = strings.TrimSpace(d); d != "" {
 			dirs = append(dirs, d)
 		}
@@ -372,7 +374,7 @@ func e193Mesurer(dir string) e193Ligne {
 		}
 	}
 	for v, n := range e193Assigner(kf, recs, nom, bot) {
-		for k := 0; k < n; k++ {
+		for range n {
 			l.compte(e193KillSansMort, v)
 		}
 	}
@@ -440,11 +442,12 @@ var e193Verdicts = []e193Verdict{e193Accord, e193DesaccordVictime, e193VictimeBo
 func e193Tableau(t *testing.T, titre string, lignes []e193Ligne, p e193Population) {
 	t.Logf("")
 	t.Logf("==== %s ====", titre)
-	entete := fmt.Sprintf("%-10s %6s", "film", "total")
+	var entete strings.Builder
+	entete.WriteString(fmt.Sprintf("%-10s %6s", "film", "total"))
 	for _, v := range e193Verdicts {
-		entete += fmt.Sprintf(" %18s", v)
+		entete.WriteString(fmt.Sprintf(" %18s", v))
 	}
-	t.Logf("%s", entete)
+	t.Logf("%s", entete.String())
 	cumul := map[e193Verdict]int{}
 	total := 0
 	for _, l := range lignes {
@@ -460,15 +463,17 @@ func e193Tableau(t *testing.T, titre string, lignes []e193Ligne, p e193Populatio
 			continue
 		}
 		total += n
-		ligne := fmt.Sprintf("%-10s %6d", l.Film, n)
+		var ligne strings.Builder
+		ligne.WriteString(fmt.Sprintf("%-10s %6d", l.Film, n))
 		for _, v := range e193Verdicts {
-			ligne += fmt.Sprintf(" %18d", l.n(p, v))
+			ligne.WriteString(fmt.Sprintf(" %18d", l.n(p, v)))
 		}
-		t.Logf("%s", ligne)
+		t.Logf("%s", ligne.String())
 	}
-	ligne := fmt.Sprintf("%-10s %6d", "TOTAL", total)
+	var ligne strings.Builder
+	ligne.WriteString(fmt.Sprintf("%-10s %6d", "TOTAL", total))
 	for _, v := range e193Verdicts {
-		ligne += fmt.Sprintf(" %18d", cumul[v])
+		ligne.WriteString(fmt.Sprintf(" %18d", cumul[v]))
 	}
-	t.Logf("%s", ligne)
+	t.Logf("%s", ligne.String())
 }

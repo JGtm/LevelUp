@@ -6,6 +6,7 @@ package revision_test
 import (
 	"errors"
 	"flag"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,9 +36,7 @@ func moduleDeFixture(t *testing.T, retouches map[string]string) (revision.Module
 		"couches/z/z.go":      "package z\n\nconst Z = 1\n",
 		"couches/z/zz/zz.go":  "package zz\n\nconst ZZ = 1\n",
 	}
-	for nom, texte := range retouches {
-		fichiers[nom] = texte
-	}
+	maps.Copy(fichiers, retouches)
 	m, err := revision.ModuleDe(couche(t, fichiers))
 	if err != nil {
 		t.Fatalf("module de fixture : %v", err)

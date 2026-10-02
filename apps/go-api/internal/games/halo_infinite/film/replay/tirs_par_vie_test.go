@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -26,7 +27,7 @@ func entreeDeuxJoueursUnSlot() IdentityInput {
 // MUTATION : faire lire a `slotFor` le pont par slot (`occupantsPlats(o.plat)`) -> rouge.
 func TestTirsEtLancers_AttribuesALaVieALInstant(t *testing.T) {
 	in := entreeDeuxJoueursUnSlot()
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	occ := reg.Occupants()
 	const t16 = 16_000_000
 	origin, step := in.Clock.OriginUS, in.Clock.StepUS

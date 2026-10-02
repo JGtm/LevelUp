@@ -55,7 +55,7 @@ func TestRegionAxisWidthIsNotDefaultTable(t *testing.T) {
 		{"Highpower", [3]float64{4040.7920, 5507.8433, 1803.5107}, [3]uint{18, 19, 17}},
 	}
 	for _, c := range cases {
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			if got := referenceAxisWidth(c.extent[ax], 16); got != c.want[ax] {
 				t.Errorf("%s axe %d : largeur région = %d, mesurée dans le film = %d", c.name, ax, got, c.want[ax])
 			}

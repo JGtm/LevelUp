@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // held_weapon_delta_research_test.go — INSTRUMENT DE MESURE (pas de production).
@@ -18,7 +20,7 @@ package grammar
 // test se saute — les films ne sont pas versionnes.
 //
 //	CGO_ENABLED=0 HW_FILM=<depot>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run HeldWeapon -v -timeout 30m
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run HeldWeapon -v -timeout 30m
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -89,7 +91,7 @@ func hwResolve(t *testing.T, dir string) hwSetup {
 		t.Fatalf("archetype biped illisible : %v", err)
 	}
 	widx, sel := map[int]bool{}, -1
-	for id := 0; id < 64; id++ {
+	for id := range 64 {
 		switch arch.component(id) {
 		case compWeaponStateTypeInfo:
 			widx[id] = true

@@ -26,7 +26,7 @@ func manche2SansManche1Records() []types.StatRecord {
 // huit slots de joueur, un point de score de mode a la fin pour le slot qui marque.
 func manchesRecordsDeSlotJoueur(round, startMS, n int, scoreFinal int64) []types.StatRecord {
 	out := make([]types.StatRecord, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out = append(out, types.StatRecord{
 			TimeMS: startMS + i*100, Slot: 10 + 2*(i%8), Round: round,
 			Comps: map[int]types.StatValue{0: {A: 0}},

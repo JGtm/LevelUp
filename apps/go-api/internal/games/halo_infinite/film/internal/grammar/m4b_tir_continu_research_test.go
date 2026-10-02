@@ -47,7 +47,7 @@ func m4bRecouvre(cad s3Cadre, r types.ContinuousFireBurst, a, b int) bool {
 // TestM4bTirContinu publie ce que la marche de production rend (en-tete du fichier).
 func TestM4bTirContinu(t *testing.T) {
 	cad := s3LireCadre(t)
-	for _, s := range strings.Split(os.Getenv("M4B_MONTURES"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_MONTURES"), ",") {
 		var a, b int
 		if _, err := fmt.Sscanf(s, "%d-%d", &a, &b); err == nil {
 			cad.episodes = append(cad.episodes, [2]int{a, b})

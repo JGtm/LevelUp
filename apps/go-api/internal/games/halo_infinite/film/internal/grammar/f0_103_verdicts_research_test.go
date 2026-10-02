@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // f0_103_verdicts_research_test.go — LOT F.0, QUESTIONS 1 a 3 : les references du type 103
@@ -262,7 +264,7 @@ func f0Question1(t *testing.T, f f0Film, census map[uint64]map[int]int,
 	film := f0NouvelAgg()
 	for _, ev := range f.Ev103 {
 		for _, b := range f0Bases {
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				film[b][i].ajoute(ev.Refs[i], b, ev.TsUS, census, vies, index, proj)
 				parc[b][i].ajoute(ev.Refs[i], b, ev.TsUS, census, vies, index, proj)
 			}

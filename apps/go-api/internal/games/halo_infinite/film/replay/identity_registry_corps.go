@@ -22,7 +22,7 @@ package replay
 //	memeCorps / pontDuCorps        le nommage final par occupation borne au corps (unnamed_lives.go)
 
 import (
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -98,7 +98,7 @@ func (o occupantsDesSlots) slotsDe(pi int, tUS int64) []uint32 {
 	for s := range o.corps {
 		essayer(s)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 
@@ -146,7 +146,7 @@ func corpsDuSlotA(corps map[uint32]corpsLu, slot uint32, tUS int64) corpsDuSlot 
 // COLLISION (deux joueurs dans un corps indiscernable) et, sinon, si le siege est RECYCLE (deux
 // joueurs dans deux corps etablis distincts).
 func classerLeSlot(lives []lifeSpan, vies []int, corps map[uint32]corpsLu) (collision, recycle bool) {
-	for a := 0; a < len(vies); a++ {
+	for a := range vies {
 		la := lives[vies[a]]
 		for b := a + 1; b < len(vies); b++ {
 			lb := lives[vies[b]]

@@ -30,6 +30,8 @@ package replay
 // PUR : aucune I/O, aucune lecture de film.
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -109,11 +111,8 @@ func (f vehicleFilmRides) ajouter(key types.LifeKey, r VehicleRide) {
 func (f vehicleFilmRides) trier() {
 	for k := range f.rides {
 		v := f.rides[k]
-		sort.SliceStable(v, func(i, j int) bool {
-			if v[i].T0 != v[j].T0 {
-				return v[i].T0 < v[j].T0
-			}
-			return v[i].Slot < v[j].Slot
+		slices.SortStableFunc(v, func(a, b VehicleRide) int {
+			return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.Slot, b.Slot))
 		})
 	}
 }
@@ -203,7 +202,7 @@ func vehicleOccupancyBySlot(
 	}
 	for s := range out {
 		v := out[s]
-		sort.SliceStable(v, func(i, j int) bool { return v[i].TimestampUS < v[j].TimestampUS })
+		slices.SortStableFunc(v, func(a, b types.VehicleOccupancy) int { return cmp.Compare(a.TimestampUS, b.TimestampUS) })
 	}
 	return out
 }

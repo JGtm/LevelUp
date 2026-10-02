@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v6_longueur_test.go — INSTRUMENT (lot V6) : LA LONGUEUR D'UN EVENEMENT PAR TYPE.

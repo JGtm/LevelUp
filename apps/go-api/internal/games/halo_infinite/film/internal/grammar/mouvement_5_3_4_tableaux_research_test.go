@@ -122,10 +122,7 @@ func m534Histo(xs []float64) string {
 	classes := map[int]int{}
 	maxC := 0
 	for _, x := range xs {
-		c := int(x)
-		if c > 11 {
-			c = 11
-		}
+		c := min(int(x), 11)
 		classes[c]++
 		if c > maxC {
 			maxC = c

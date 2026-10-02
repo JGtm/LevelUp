@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vitesse_filtre_outils_research_test.go — outillage de TestVitesseFiltre (lot R3, plan
@@ -11,6 +13,7 @@ import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -196,10 +199,8 @@ func vitfFusionnerParChunk(groupes []vitfGroupe) []vitfGroupe {
 
 func vitfChunksCommuns(a, b []int) bool {
 	for _, x := range a {
-		for _, y := range b {
-			if x == y {
-				return true
-			}
+		if slices.Contains(b, x) {
+			return true
 		}
 	}
 	return false

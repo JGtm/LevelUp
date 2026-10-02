@@ -47,6 +47,7 @@ package replaybuild
 // positions au lieu des captures nommees) — c'est le mode qui la decide, pas le catalogue.
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"log/slog"
@@ -78,13 +79,13 @@ var heldZoneRoles = map[mapvar.Role]bool{
 //
 // `fb` recoit `repli_catalogue_de_zones_absent` quand le titre n a pas de table d objectifs : le
 // rejeu sort alors sans aucun etat de zone (lot J8.7). nil ne compte rien.
-func (b *Builder) matchZones(matchID, mapID, variant string, fb *decfilm.Compteur) ([]replay.Zone, string) {
+func (b *Builder) matchZones(ctx context.Context, matchID, mapID, variant string, fb *decfilm.Compteur) ([]replay.Zone, string) {
 	if mapID == "" {
-		slog.Debug("replaybuild: match sans map_id — rejeu sans etat de zone",
+		slog.DebugContext(ctx, "replaybuild: match sans map_id — rejeu sans etat de zone",
 			"match_id", matchID, "titleSlug", b.titleSlug)
 		return nil, ""
 	}
-	roles := b.zoneRoles(variant)
+	roles := b.zoneRoles(ctx, variant)
 	if len(roles) == 0 {
 		if b.tableDObjectifsAbsente {
 			fb.Declenche(decfilm.NomCatalogueDeZonesAbsent)
@@ -93,13 +94,13 @@ func (b *Builder) matchZones(matchID, mapID, variant string, fb *decfilm.Compteu
 		// quand la carte declare des volumes sous d'autres roles.
 		return nil, ""
 	}
-	cat := b.objectivesCatalog()
+	cat := b.objectivesCatalog(ctx)
 	if cat == nil {
 		return nil, ""
 	}
 	entry, err := cat.Lookup(mapID)
 	if err != nil {
-		slog.Debug("replaybuild: carte hors catalogue d'objectifs — rejeu sans etat de zone",
+		slog.DebugContext(ctx, "replaybuild: carte hors catalogue d'objectifs — rejeu sans etat de zone",
 			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
 		return nil, ""
 	}
@@ -116,9 +117,9 @@ func (b *Builder) matchZones(matchID, mapID, variant string, fb *decfilm.Compteu
 }
 
 // zoneRoles rend les roles de zone TENUE du mode, dans l'ordre de la table du titre.
-func (b *Builder) zoneRoles(variant string) []mapvar.Role {
+func (b *Builder) zoneRoles(ctx context.Context, variant string) []mapvar.Role {
 	var out []mapvar.Role
-	for _, r := range b.tableRoles(variant) {
+	for _, r := range b.tableRoles(ctx, variant) {
 		if heldZoneRoles[r] {
 			out = append(out, r)
 		}
@@ -142,8 +143,8 @@ func isHillVariant(variant string) bool {
 // `Strongholds:Arena` et `KOTH:Arena`. Normaliser y garderait « Arena » et perdrait le mode.
 // `ExtractKnownMode` cherche le jeton comme MOT ENTIER : applique a la chaine brute, il trouve
 // « Strongholds » dans les deux ordres, et rend donc le meme jeu de roles que le service.
-func (b *Builder) tableRoles(variant string) []mapvar.Role {
-	set := b.objectiveRoles()
+func (b *Builder) tableRoles(ctx context.Context, variant string) []mapvar.Role {
+	set := b.objectiveRoles(ctx)
 	if set == nil || variant == "" {
 		return nil
 	}
@@ -168,7 +169,7 @@ func (b *Builder) tableRoles(variant string) []mapvar.Role {
 //
 // LE CHARGEMENT NE SE RETENTE PAS, meme regle que le catalogue d'objectifs : une passe de masse
 // construit des centaines d'artefacts, et une table absente le resterait a chaque appel.
-func (b *Builder) objectiveRoles() *mappings.ObjectiveRoleSet {
+func (b *Builder) objectiveRoles(ctx context.Context) *mappings.ObjectiveRoleSet {
 	if b.rolesTried {
 		return b.roles
 	}
@@ -180,14 +181,14 @@ func (b *Builder) objectiveRoles() *mappings.ObjectiveRoleSet {
 	// errors.Is ET NON os.IsNotExist : le chargeur ENVELOPPE l erreur de lecture (`%w`), et
 	// os.IsNotExist ne deroule pas l enveloppe (lot J2.11, constat CONV-1, 2026-09-26).
 	case errors.Is(err, fs.ErrNotExist):
-		slog.Debug("replaybuild: titre sans table d'objectifs — rejeu sans etat de zone",
+		slog.DebugContext(ctx, "replaybuild: titre sans table d'objectifs — rejeu sans etat de zone",
 			"titleSlug", b.titleSlug)
 		b.tableDObjectifsAbsente = true
 		return nil
 	case err != nil:
 		// Une table PRESENTE mais invalide est une erreur de configuration, pas une donnee
 		// absente : elle doit se voir dans les journaux (meme regle que cote service).
-		slog.Warn("replaybuild: table d'objectifs illisible — rejeu sans etat de zone",
+		slog.WarnContext(ctx, "replaybuild: table d'objectifs illisible — rejeu sans etat de zone",
 			"err", err, "path", path, "titleSlug", b.titleSlug)
 		return nil
 	}

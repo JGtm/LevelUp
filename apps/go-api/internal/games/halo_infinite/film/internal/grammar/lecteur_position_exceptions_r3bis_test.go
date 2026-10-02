@@ -27,7 +27,7 @@ func TestLesExceptionsR3bisLisentLeFormatDuFlux(t *testing.T) {
 	enTeteActeur := seul(fixe(32), fixe(32), fixe(8), fixe(4))
 	absents := func(n int) []champDeFlux {
 		var f []champDeFlux
-		for i := 0; i < n; i++ {
+		for range n {
 			f = append(f, bit(false))
 		}
 		return f

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // assaut_a9_interaction_test.go — L'ARMEMENT EST UNE INTERACTION TENUE : ou le film la porte-t-il ?

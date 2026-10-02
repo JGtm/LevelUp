@@ -3,6 +3,7 @@ package grammar
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
+	"slices"
 	"sort"
 )
 
@@ -109,7 +110,7 @@ func TeleportExemptionsOf(evts []types.TranslocatorTeleport) TeleportExemptions 
 		out[e.Slot] = append(out[e.Slot], e.TimestampUS)
 	}
 	for _, ts := range out {
-		sort.Slice(ts, func(i, j int) bool { return ts[i] < ts[j] })
+		slices.Sort(ts)
 	}
 	return out
 }

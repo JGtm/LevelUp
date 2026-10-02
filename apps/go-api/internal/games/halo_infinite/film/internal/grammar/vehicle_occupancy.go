@@ -43,7 +43,8 @@ package grammar
 // entière : l'appelant qui la reprendra relèvera ses emprises et les passera ici.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -117,11 +118,8 @@ func VehicleKeyframeStates(spans []KeyframeRecordSpan) []VehicleKeyframeState {
 		}
 		out = append(out, st)
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].TimestampUS != out[j].TimestampUS {
-			return out[i].TimestampUS < out[j].TimestampUS
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b VehicleKeyframeState) int {
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out
 }
@@ -167,7 +165,7 @@ func FindKeyframeBlockInsertion(long, short KeyframeRecordBits) KeyframeBlockIns
 	}
 	// head[i] : accords des i premiers bits, alignés sur le DÉBUT des deux records.
 	head := make([]int, lf+1)
-	for i := 0; i < lf; i++ {
+	for i := range lf {
 		head[i+1] = head[i]
 		if keyframeBitAt(long.Pay, long.BitStart+i) == keyframeBitAt(short.Pay, short.BitStart+i) {
 			head[i+1]++
@@ -175,7 +173,7 @@ func FindKeyframeBlockInsertion(long, short KeyframeRecordBits) KeyframeBlockIns
 	}
 	// tail[i] : accords des i derniers bits, alignés sur la FIN des deux records.
 	tail := make([]int, lf+1)
-	for i := 0; i < lf; i++ {
+	for i := range lf {
 		tail[i+1] = tail[i]
 		if keyframeBitAt(long.Pay, long.BitEnd-1-i) == keyframeBitAt(short.Pay, short.BitEnd-1-i) {
 			tail[i+1]++

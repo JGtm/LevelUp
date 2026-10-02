@@ -110,7 +110,7 @@ func numeroDesTempsForts(film *source.Film, nums []int) (int, bool, error) {
 // LA VERSION DU FILM EST LUE DANS SON REGISTRE (2026-09-12), plus passee a 0 en dur : elle
 // commande le decoupage du gamertag du bloc d event, decale de douze octets sur les versions
 // 39-40 (mars a novembre 2025). Les `Death.Gamertag` publies dans l artefact de rejeu en
-// dependent — cf. .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md. Film sans registre : version 0,
+// dependent — cf. .ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md. Film sans registre : version 0,
 // decoupage historique, et c est L APPELANT qui consigne la degradation (voir le corps).
 func ScanDeaths(film *source.Film) ([]types.Death, error) {
 	out, _, err := scanDeaths(film)

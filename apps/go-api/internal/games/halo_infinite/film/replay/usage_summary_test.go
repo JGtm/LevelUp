@@ -8,8 +8,6 @@ package replay
 
 import "testing"
 
-func strPtr(s string) *string { return &s }
-
 // docSocleTest — un document minimal : deux joueurs, un socle d'ARME et un socle
 // de BONUS, des occupations nommées et anonymes des deux côtés.
 func docSocleTest() *ReplayDocument {
@@ -31,14 +29,14 @@ func docSocleTest() *ReplayDocument {
 			{Weapon: "powerup_camo"}, // socle de BONUS (nom canonique)
 		},
 		PadPickups: []PadPickup{
-			{Pad: 0, TLow: 10, THigh: 20, XUID: strPtr("111")}, // arme, nommée
-			{Pad: 0, TLow: 30, THigh: 40, XUID: nil},           // arme, anonyme
-			{Pad: 1, TLow: 50, THigh: 60, XUID: nil},           // bonus, anonyme (le cas réel)
+			{Pad: 0, TLow: 10, THigh: 20, XUID: new("111")}, // arme, nommée
+			{Pad: 0, TLow: 30, THigh: 40, XUID: nil},        // arme, anonyme
+			{Pad: 1, TLow: 50, THigh: 60, XUID: nil},        // bonus, anonyme (le cas réel)
 			// LE PIÈGE, NOMMÉ : même si un xuid était un jour publié sur un socle
 			// de bonus, il ne doit JAMAIS compter dans pad_pickups — la frontière
 			// est PadWeaponFamilyKey, pas la présence d'un nom.
-			{Pad: 1, TLow: 70, THigh: 80, XUID: strPtr("111")},
-			{Pad: 9, TLow: 90, THigh: 95, XUID: strPtr("111")}, // index hors bornes
+			{Pad: 1, TLow: 70, THigh: 80, XUID: new("111")},
+			{Pad: 9, TLow: 90, THigh: 95, XUID: new("111")}, // index hors bornes
 		},
 	}
 }

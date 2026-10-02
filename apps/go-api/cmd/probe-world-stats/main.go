@@ -2,7 +2,7 @@
 
 // cmd/probe-world-stats — Phase A probe (diagnostic, AUCUN INSERT) pour le
 // leaderboard mondial enrichi. Valide le process complet sur un échantillon
-// avant d'écrire le moindre code de production (cf. .ai/PLAN_WORLD_LEADERBOARD_ENRICHED.md).
+// avant d'écrire le moindre code de production (cf. .ai/archive/V7/PLAN_WORLD_LEADERBOARD_ENRICHED.md).
 //
 // Ce que ce probe valide :
 //  1. Résolution xuid des gamertags du top-100 mondial via PeopleHub

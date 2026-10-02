@@ -3,7 +3,7 @@ package main
 // positions.go — mode POSITIONS du CLI diag_weapons_v3.
 //
 // Pour chaque match (cache film présent), décode les positions joueurs keyframe
-// (decfilm.DecodeKeyframePositions, §N de .ai/RESEARCH_THEATER_RE.md) depuis le
+// (decfilm.DecodeKeyframePositions, §N de .ai/archive/V7/RESEARCH_THEATER_RE.md) depuis le
 // cache disque (chunks BRUTS → décompressés zlib ici), affiche un résumé par
 // match (nb positions, bornes x/y/z, split équipe best-effort). INSPECTION SEULE depuis le
 // 2026-09-06 : `match_player_positions` est PROJETEE de l artefact de rejeu (decision 1),

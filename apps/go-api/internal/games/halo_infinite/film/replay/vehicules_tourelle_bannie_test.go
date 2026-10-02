@@ -21,6 +21,7 @@ package replay
 // jouee et restauree par NOM le 2026-09-16.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -90,7 +91,7 @@ func TestTemoinBfecd02bNeufTourellesNommees(t *testing.T) {
 	fb := fallback.NouveauCompteur()
 	clock := vehClock()
 	clock.fb = fb
-	got, cov, _ := buildVehicleTracks(scanDesTourelles(), nil, IdentityRegistry{}, clock)
+	got, cov, _ := buildVehicleTracks(context.Background(), scanDesTourelles(), nil, IdentityRegistry{}, clock)
 	if len(got) != len(tourellesDeBfecd02b) {
 		t.Fatalf("vies publiees = %d, attendu %d (les neuf tourelles du temoin bfecd02b)",
 			len(got), len(tourellesDeBfecd02b))
@@ -174,7 +175,7 @@ func TestChassisInconnuCompteLeRepli(t *testing.T) {
 	fb := fallback.NouveauCompteur()
 	clock := vehClock()
 	clock.fb = fb
-	_, cov, _ := buildVehicleTracks(scan, nil, IdentityRegistry{}, clock)
+	_, cov, _ := buildVehicleTracks(context.Background(), scan, nil, IdentityRegistry{}, clock)
 	if cov.FamilyUnknown != 1 {
 		t.Fatalf("famillesInconnues = %d, attendu 1", cov.FamilyUnknown)
 	}
@@ -251,7 +252,7 @@ func TestChassisWraithPublieSesOccupants(t *testing.T) {
 		vehPos(bipedSlot, 17_000_000, 3, 3),
 	}
 	own := regDe(OwnerReport{SlotXUID: map[uint32]uint64{bipedSlot: 2533274800000001}})
-	got, cov, _ := buildVehicleTracks(scan, bipeds, own, vehClock())
+	got, cov, _ := buildVehicleTracks(context.Background(), scan, bipeds, own, vehClock())
 	if len(got) != 1 {
 		t.Fatalf("vies publiees = %d, attendu 1", len(got))
 	}

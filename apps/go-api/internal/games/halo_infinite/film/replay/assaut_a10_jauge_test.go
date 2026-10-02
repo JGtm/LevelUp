@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // assaut_a10_jauge_test.go — LA JAUGE, UNE FOIS `ti=11` DECODE.
@@ -86,6 +88,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -420,10 +423,10 @@ func TestAssautA10Detail(t *testing.T) {
 // a10Suite rend la suite datee « instant champ=valeur » d'un slot, bornee pour rester lisible.
 func a10Suite(rs []grammar.ObjectiveRead) string {
 	const max = 14
-	out := ""
+	var out strings.Builder
 	for i, r := range rs {
 		if i >= max {
-			out += fmt.Sprintf(" … (+%d)", len(rs)-max)
+			out.WriteString(fmt.Sprintf(" … (+%d)", len(rs)-max))
 			break
 		}
 		nom := "i12"
@@ -433,7 +436,7 @@ func a10Suite(rs []grammar.ObjectiveRead) string {
 		case grammar.ObjectiveFieldState:
 			nom = "i14"
 		}
-		out += fmt.Sprintf(" %.1fs:%s=%d", float64(r.TimestampUS)/1e6, nom, r.Value)
+		out.WriteString(fmt.Sprintf(" %.1fs:%s=%d", float64(r.TimestampUS)/1e6, nom, r.Value))
 	}
-	return out
+	return out.String()
 }

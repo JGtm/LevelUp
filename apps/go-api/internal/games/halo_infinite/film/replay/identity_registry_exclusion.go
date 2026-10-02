@@ -39,8 +39,9 @@ package replay
 // abstiennent. Une deduction etablit qu'un joueur etait la, jamais qu'un autre n'y etait pas.
 
 import (
+	"context"
 	"log/slog"
-	"sort"
+	"slices"
 )
 
 // NomParExclusionTemporelle : la vie a ete nommee par EXCLUSION TEMPORELLE sur le roster.
@@ -60,12 +61,12 @@ type vieForcee struct {
 
 // resolveByTemporalExclusion nomme les vies dont un SEUL joueur du roster est libre sur tout
 // l'intervalle, et recommence tant qu'il en pose.
-func (r *IdentityRegistry) resolveByTemporalExclusion(in IdentityInput) {
-	roster, ok := universDeLExclusion(in, r.Vies())
+func (r *IdentityRegistry) resolveByTemporalExclusion(ctx context.Context, in IdentityInput) {
+	roster, ok := universDeLExclusion(ctx, in, r.Vies())
 	if !ok {
 		return
 	}
-	for tour := 0; tour < toursExclusionMax; tour++ {
+	for range toursExclusionMax {
 		if pose := r.poserExclusions(viesForcees(r.Vies(), roster), in); pose == 0 {
 			break
 		}
@@ -74,11 +75,11 @@ func (r *IdentityRegistry) resolveByTemporalExclusion(in IdentityInput) {
 	if r.excluded == 0 && r.excludedContradictions == 0 {
 		return
 	}
-	slog.Info("rejeu : exclusion temporelle sur le roster",
+	slog.InfoContext(ctx, "rejeu : exclusion temporelle sur le roster",
 		"match_id", in.MatchID, "viesNommees", r.excluded,
 		"viesSansAucunCandidat", r.excludedContradictions)
 	if r.excludedContradictions > 0 {
-		slog.Warn("rejeu : des vies n'ont AUCUN occupant possible — la lecture se contredit",
+		slog.WarnContext(ctx, "rejeu : des vies n'ont AUCUN occupant possible — la lecture se contredit",
 			"match_id", in.MatchID, "vies", r.excludedContradictions)
 	}
 }
@@ -183,7 +184,7 @@ func seChevauchent(a, b lifeSpan) bool { return a.from <= b.to && b.from <= a.to
 //     « anonyme » au sens du registre, et l'exclusion lui attribuerait un humain.
 //  3. L'OCCUPATION NE DEPASSE PAS LE ROSTER. Plus de vies simultanees que de joueurs, c'est que
 //     la decoupe ou le roster est faux — la premisse « un joueur, un slot » ne tient plus.
-func universDeLExclusion(in IdentityInput, lives []lifeSpan) ([]uint64, bool) {
+func universDeLExclusion(ctx context.Context, in IdentityInput, lives []lifeSpan) ([]uint64, bool) {
 	if len(in.RosterXUIDs) == 0 || len(in.Bots) > 0 || len(lives) == 0 {
 		return nil, false
 	}
@@ -192,7 +193,7 @@ func universDeLExclusion(in IdentityInput, lives []lifeSpan) ([]uint64, bool) {
 		return nil, false
 	}
 	if simultanees := occupationMaximale(lives); simultanees > len(roster) {
-		slog.Warn("rejeu : exclusion temporelle ecartee — plus de vies simultanees que de joueurs",
+		slog.WarnContext(ctx, "rejeu : exclusion temporelle ecartee — plus de vies simultanees que de joueurs",
 			"match_id", in.MatchID, "viesSimultanees", simultanees, "roster", len(roster))
 		return nil, false
 	}
@@ -208,8 +209,8 @@ func occupationMaximale(lives []lifeSpan) int {
 		debuts = append(debuts, l.from)
 		fins = append(fins, l.to+1)
 	}
-	sort.Slice(debuts, func(i, j int) bool { return debuts[i] < debuts[j] })
-	sort.Slice(fins, func(i, j int) bool { return fins[i] < fins[j] })
+	slices.Sort(debuts)
+	slices.Sort(fins)
 	var cour, plafond int64
 	j := 0
 	for _, d := range debuts {

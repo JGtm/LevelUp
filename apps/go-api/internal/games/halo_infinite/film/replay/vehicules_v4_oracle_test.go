@@ -22,6 +22,7 @@ package replay
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -151,12 +152,12 @@ func v4OracleClasse(
 
 // v4OracleLigne rend la ventilation par cause.
 func v4OracleLigne(ag v4OracleAgg) string {
-	s := ""
+	var s strings.Builder
 	for i, n := range ag.parCause {
 		if n == 0 {
 			continue
 		}
-		s += fmt.Sprintf("%s=%d ", v4OracleNoms[i], n)
+		s.WriteString(fmt.Sprintf("%s=%d ", v4OracleNoms[i], n))
 	}
-	return s
+	return s.String()
 }

@@ -36,7 +36,8 @@ package replay
 // chemin de requête.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -112,7 +113,7 @@ func BuildHeldObjectCarry(events []HeldObjectEvent, occupant func(slot uint32, m
 	for _, e := range events {
 		trans = append(trans, heldObjectTransition{tMS: e.TimeMS, slot: e.Slot, pickup: e.Pickup})
 	}
-	sort.SliceStable(trans, func(i, j int) bool { return trans[i].tMS < trans[j].tMS })
+	slices.SortStableFunc(trans, func(a, b heldObjectTransition) int { return cmp.Compare(a.tMS, b.tMS) })
 
 	mortsDe := map[uint64][]int{}
 	for _, d := range deaths {

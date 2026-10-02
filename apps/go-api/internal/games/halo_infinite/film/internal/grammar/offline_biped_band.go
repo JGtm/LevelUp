@@ -21,7 +21,7 @@ package grammar
 import (
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -217,7 +217,7 @@ func filledSlotMap(s map[uint32]bool) map[uint32]bool {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.Sort(keys)
 	out := make(map[uint32]bool, int(keys[len(keys)-1]-keys[0])+1)
 	for k := keys[0]; k <= keys[len(keys)-1]; k++ {
 		out[k] = true

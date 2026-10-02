@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // imagecle_fermeture_research_test.go — PHASE 5a, OBJECTIFS 1 ET 2 : CE QUE LA BONNE FORME
@@ -71,7 +73,6 @@ import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"os"
-	"path/filepath"
 	"sort"
 	"testing"
 )
@@ -120,50 +121,6 @@ func (t imcTable) cellule(modele string, ti int) *imcCompte {
 		t[modele][ti] = c
 	}
 	return c
-}
-
-// imcFilm porte ce qu'un film offre a la mesure.
-type imcFilm struct {
-	Nom, Build string
-	Reg        *Registry
-	Pays       [][]byte
-}
-
-// imcCharger lit le registre et TOUS les payloads d'image-cle d'un film, plus sa chaine de
-// build (lue dans l'en-tete de `chunk_00`, le meme champ que la table de profil de la
-// phase 4).
-func imcCharger(t *testing.T, dir string) (imcFilm, bool) {
-	t.Helper()
-	f := imcFilm{Nom: filepath.Base(dir)}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		t.Logf("%s : ECARTE (aucun chunk)", f.Nom)
-		return f, false
-	}
-	raw, err := ReadFilmChunk(dir, 0)
-	if err != nil {
-		t.Logf("%s : ECARTE (chunk_00 illisible : %v)", f.Nom, err)
-		return f, false
-	}
-	if f.Reg, err = ParseRegistryChunk(raw); err != nil {
-		t.Logf("%s : ECARTE (registre illisible : %v)", f.Nom, err)
-		return f, false
-	}
-	if _, d := readChunk00(t, dir); len(d) > 0 {
-		f.Build, _ = s3bBuild(d)
-	}
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
-			continue
-		}
-		for _, pk := range WalkPackets(data) {
-			if pk.Type == PacketTypeKeyframe {
-				f.Pays = append(f.Pays, pk.Payload(data))
-			}
-		}
-	}
-	return f, len(f.Pays) > 0
 }
 
 // imcBornes : LA MEME POPULATION QUE LA PRODUCTION. Depuis le lot 1.4 (2026-09-14),

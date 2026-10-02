@@ -192,7 +192,7 @@ func TestUsageSummary_GardeJamaisNegatif(t *testing.T) {
 	doc := docIssuesTest()
 	// Quatre poses de mur pour deux prises : une pose est une CHARGE, pas un objet
 	// (piège d'unité n°1 de la référence des canaux).
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		doc.EquipmentPlacements = append(doc.EquipmentPlacements, EquipmentPlacement{
 			Owner: 1, T0: 130 + i, Family: usageFamilyWall,
 			Origin: OriginDeployed, ID: "0x528fce46",
@@ -369,7 +369,7 @@ func TestUsageSummary_ConsommationsAuDelaDesPrises(t *testing.T) {
 		}
 	}
 	// Cinq consommations de capteur pour trois prises et un lâcher.
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		doc.EquipmentChanges = append(doc.EquipmentChanges, EquipmentChange{
 			Slot: 2, T: 230 + i, Kind: EquipmentSpent, R: NoAbilityRank, From: 1,
 		})

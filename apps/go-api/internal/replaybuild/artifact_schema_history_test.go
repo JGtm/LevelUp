@@ -32,9 +32,11 @@ package replaybuild
 // pour ce qu'elle fait — et la difference est consignee au plan (§4), pas corrigee dans ce lot.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -135,12 +137,12 @@ func TestLeDepotRefuseChaqueSchemaAnterieur(t *testing.T) {
 		t.Run(fmt.Sprintf("schema_%d", v), func(t *testing.T) {
 			repoRoot := t.TempDir()
 			path := title.NewPathResolver(repoRoot).ReplayArtifactPath(title.DefaultSlug, matchID)
-			_, err := StoreArtifact(repoRoot, title.DefaultSlug, matchID,
+			_, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, matchID,
 				artefactAuSchema(v, matchID, true))
 			if !errors.Is(err, domain.ErrBuildArtifactInvalid) {
 				t.Fatalf("un depot au schema %d rend %v, attendu ErrBuildArtifactInvalid", v, err)
 			}
-			if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
+			if _, statErr := os.Stat(path); !errors.Is(statErr, fs.ErrNotExist) {
 				t.Errorf("un depot refuse au schema %d a tout de meme ecrit %s", v, path)
 			}
 		})
@@ -163,7 +165,7 @@ func TestLePointDEcritureRefuseLAppauvrissementAChaqueSchema(t *testing.T) {
 			if err := os.WriteFile(path, riche, 0o600); err != nil {
 				t.Fatalf("pose : %v", err)
 			}
-			enPlace, err := writeArtifactBytes(path, title.DefaultSlug, matchID,
+			enPlace, err := writeArtifactBytes(context.Background(), path, title.DefaultSlug, matchID,
 				artefactAuSchema(v, matchID, false))
 			if err != nil {
 				t.Fatalf("writeArtifactBytes : %v", err)

@@ -1,3 +1,5 @@
+//go:build research
+
 package mapvar
 
 // socles_research_test.go — INSTRUMENT DE MESURE : les socles d'armes sont-ils dans le
@@ -317,7 +319,7 @@ func soclesPointsManuels(t *testing.T) []soclesPoint {
 		return nil
 	}
 	var out []soclesPoint
-	for _, bloc := range strings.Split(brut, ";") {
+	for bloc := range strings.SplitSeq(brut, ";") {
 		champs := strings.Split(strings.TrimSpace(bloc), ",")
 		if len(champs) != 3 {
 			t.Fatalf("%s: %q n'est pas un triplet x,y,z", soclesPtsEnv, bloc)
@@ -416,7 +418,7 @@ func soclesTemoin(t *testing.T, objs []Object, pts []soclesPoint, doc soclesOrac
 	}
 	r := rand.New(rand.NewPCG(soclesGraine, soclesGraine))
 	total := 0
-	for tirage := 0; tirage < soclesTirages; tirage++ {
+	for range soclesTirages {
 		for _, p := range pts {
 			q := Vec3{
 				X: doc.Bounds.MinX + r.Float64()*(doc.Bounds.MaxX-doc.Bounds.MinX),

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // pads_proximity_geometry_test.go — LA GEOMETRIE DE LA MESURE DE PROXIMITE : approcher un socle,

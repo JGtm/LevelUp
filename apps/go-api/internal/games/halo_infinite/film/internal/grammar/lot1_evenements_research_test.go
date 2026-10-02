@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_evenements_research_test.go — LOT 1 : LE MODELE « LISTE D'EVENEMENTS PUIS TRAME »,
@@ -43,6 +45,7 @@ import (
 	"math/bits"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -74,10 +77,7 @@ func TestLot1EvenementZoom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	var (
 		paquets, type20, type21, autresTypes int
 		ref0Abs, cont1                       int
@@ -202,12 +202,12 @@ func lot1TopU64(m map[uint64]int, k int) string {
 	if len(s) > k {
 		s = s[:k]
 	}
-	out := ""
+	var out strings.Builder
 	for i, e := range s {
 		if i > 0 {
-			out += " · "
+			out.WriteString(" · ")
 		}
-		out += fmt.Sprintf("%d x%d", e.k, e.v)
+		out.WriteString(fmt.Sprintf("%d x%d", e.k, e.v))
 	}
-	return out
+	return out.String()
 }

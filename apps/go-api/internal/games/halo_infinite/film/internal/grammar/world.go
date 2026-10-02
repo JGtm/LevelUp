@@ -1,8 +1,9 @@
 package grammar
 
 import (
-	"context"
-	"log/slog"
+	"maps"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 )
 
 // World tracks entity-id -> archetype (and the last resolved position) ACROSS FRAME records.
@@ -125,12 +126,12 @@ func (w *World) LierParRepliDAnticipation(id uint32) (uint32, bool) {
 	w.BindDatum(slot, ti)
 	if !w.anticipationDite {
 		w.anticipationDite = true
-		// Pas de `ctx` ici : le monde n en porte pas, et `registry_fingerprint.go` a le meme
-		// besoin — meme geste, meme raison.
-		slog.InfoContext(context.Background(),
-			"liaison par anticipation : le repli du lot 5.23 est ACTIF sur ce film",
-			"slot", slot, "archetype", ti, "chunk", w.chunkCourant, "declarant", declarant,
-			"cles_de_la_table", w.anticipee.Entrees())
+		// UN DIAGNOSTIC, PAS UNE LIGNE DE JOURNAL (lot J12.3, ADR 0034 D-4) : il tombe dans les
+		// diagnostics du contexte dont la table est nee, et l orchestrateur le journalise.
+		w.anticipee.diag.Signaler(constat.Diagnostic{Code: DiagAnticipationActive, Niveau: constat.NiveauInfo,
+			Message: "liaison par anticipation : le repli du lot 5.23 est ACTIF sur ce film",
+			Attrs: []any{cleDiagSlot, slot, "archetype", ti, "chunk", w.chunkCourant, "declarant", declarant,
+				"cles_de_la_table", w.anticipee.Entrees()}})
 	}
 	return ti, true
 }
@@ -370,9 +371,7 @@ func (w *World) Bound() int { return len(w.slots) }
 // cloneSlots returns a shallow copy of the slot table (for per-frame rollback).
 func (w *World) cloneSlots() map[uint32]slotState {
 	m := make(map[uint32]slotState, len(w.slots))
-	for k, v := range w.slots {
-		m[k] = v
-	}
+	maps.Copy(m, w.slots)
 	return m
 }
 

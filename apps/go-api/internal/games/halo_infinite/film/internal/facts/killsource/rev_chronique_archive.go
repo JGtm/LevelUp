@@ -97,7 +97,7 @@ package killsource
 // film (`grammar.FilmMajorVersion`, u32 LE en tete de `chunk_00`). Couverture mesuree sur cinq
 // films Big Team Battle 2025 : 15.0 -> 97.1, 11.2 -> 100.0, 6.8 -> 94.8, 5.1 -> 97.0,
 // 17.3 -> 82.4 % ; temoins 2024 et 2026 inchanges au dixieme
-// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Les lignes en base doivent etre redecodees :
+// (.ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Les lignes en base doivent etre redecodees :
 // d ou ce bump.
 //
 // DECOUVERTE, NON TRAITEE : l empreinte ci-dessous ne hache que `killsource/`. Ce correctif a

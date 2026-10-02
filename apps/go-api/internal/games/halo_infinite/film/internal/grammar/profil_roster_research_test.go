@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // profil_roster_research_test.go — PHASE 4, QUESTION 3 : POURQUOI LE LECTEUR DE LA TABLE DES
@@ -38,69 +40,6 @@ import (
 	"strconv"
 	"testing"
 )
-
-// profilRosterCrit dit quels criteres du balayage sont EXIGES. Tous vrais = le balayage
-// d'origine (`s3rBalayage` + `s3rGrappe`).
-type profilRosterCrit struct {
-	Booleens    bool // b0/b1/b2 == 1/0/0
-	U32Nul      bool // le u32 de `slot+0x04` est nul
-	Deux        bool // le champ de 2 bits de `slot+0x08` est nul
-	TokenNonNul bool // le jeton de 48 bits n'est pas nul
-	EcartMax    int  // seuil de la grappe terminale ; 0 = pas de regroupement
-}
-
-// profilRosterCritPlein rend les criteres d'origine.
-func profilRosterCritPlein() profilRosterCrit {
-	return profilRosterCrit{Booleens: true, U32Nul: true, Deux: true,
-		TokenNonNul: true, EcartMax: s3rEcartMax}
-}
-
-// profilRosterBalaye rejoue le balayage avec les criteres donnes, puis, si `EcartMax > 0`,
-// la grappe terminale. Aucune autre difference avec `s3rBalayage` / `s3rGrappe`.
-func profilRosterBalaye(d []byte, c profilRosterCrit) []s3rTouche {
-	fin := (dernierNonNul(d) + 1) * 8
-	var out []s3rTouche
-	for p := s3rCorpsBit; p+s3rEnteteBits+64 <= fin; p++ {
-		if c.Booleens && s3rBit(d, p, 3) != 4 {
-			continue
-		}
-		if c.U32Nul && s3rBit(d, p+3, 32) != 0 {
-			continue
-		}
-		if c.Deux && s3rBit(d, p+35, 2) != 0 {
-			continue
-		}
-		x := s3rBit(d, p+s3rEnteteBits, 64)
-		if x < s3rXuidLo || x >= s3rXuidHi {
-			continue
-		}
-		tok := s3rBit(d, p+37, 48)
-		if c.TokenNonNul && tok == 0 {
-			continue
-		}
-		if x == s3rXuidLo {
-			continue
-		}
-		out = append(out, s3rTouche{bit: p + s3rEnteteBits, xuid: x, token: tok})
-	}
-	if c.EcartMax <= 0 {
-		return out
-	}
-	return profilRosterGrappe(out, c.EcartMax)
-}
-
-// profilRosterGrappe est `s3rGrappe` avec un seuil parametrable (le filtre de valeurs
-// degenerees est deja applique par `profilRosterBalaye`).
-func profilRosterGrappe(f []s3rTouche, seuil int) []s3rTouche {
-	if len(f) == 0 {
-		return nil
-	}
-	deb := len(f) - 1
-	for deb > 0 && f[deb].bit-f[deb-1].bit <= seuil {
-		deb--
-	}
-	return f[deb:]
-}
 
 // profilRosterAttendu rend le nombre d'entites ti=9 de la trame : l'ORACLE INTERNE.
 func profilRosterAttendu(dir string) int {
@@ -193,23 +132,6 @@ func TestProfilRosterEcarts(t *testing.T) {
 		t.Logf("%-10s : attendu %2d, balayage brut %2d ; %d ecart(s) au-dela de %d ; ecarts %v",
 			filepath.Base(dir), att, len(hs), depasse, s3rEcartMax, ecarts)
 	}
-}
-
-// profilRosterTable est le lecteur CORRIGE, complet : criteres d'en-tete rectifies, puis le
-// filtre de parasite deja etabli par la phase 2 (une position parasite est un motif d'en-tete
-// fortuit A L'INTERIEUR d'un vrai enregistrement, et elle se reconnait sans rien supposer de la
-// grammaire : son champ de nom ne rend pas de texte imprimable).
-func profilRosterTable(d []byte) []s3rTouche {
-	fin := (dernierNonNul(d) + 1) * 8
-	var out []s3rTouche
-	for _, h := range profilRosterBalaye(d, profilRosterCritCorrigee()) {
-		e := s3sDecode(d, h.bit-s3rEnteteBits, fin)
-		if e == nil || !s3sImprimable(e.gamertag) {
-			continue
-		}
-		out = append(out, h)
-	}
-	return out
 }
 
 // profilRosterFermeture est l'ORACLE INTERNE de la lecture, et il est celui de la phase 2 :
@@ -368,23 +290,4 @@ func TestProfilRosterSlots(t *testing.T) {
 			filepath.Base(dir), len(hs), v.Card, equipeTI, slots)
 		t.Logf("%-10s   xuids de la table : %v", filepath.Base(dir), profilRosterXuids(hs))
 	}
-}
-
-// profilRosterCritCorrigee rend les criteres RETENUS apres le diagnostic.
-//
-// LA CORRECTION TIENT EN UNE LIGNE, ET ELLE EST JUSTIFIEE PAR LA SONDE : le champ de 2 bits de
-// `slot+0x08` N'EST PAS constant. `FUN_1407ecb08` l'ecrit comme un octet SIGNE sur 2 bits — son
-// domaine est donc -2..1, pas {0} — et la sonde `TestProfilRosterXuidIntrouvable` l'a mesure a
-// **1** sur deux enregistrements bien reels (`1c4c63c2` xuid 2535450607961405 au bit 11 137 668,
-// `111fa685` xuid 2535454874175468 au bit 10 812 405), tous deux avec `b=1/0/0`, `u32=0` et un
-// jeton non nul. Exiger ce champ nul rendait ces slots INVISIBLES, et leur absence doublait
-// l'ecart au voisin, ce qui faisait perdre a `s3rGrappe` TOUTE LA TETE de la table
-// (`1c4c63c2` : 11 enregistrements lus au lieu de 24).
-//
-// Le seuil de regroupement est INCHANGE : la mesure des ecarts montre qu'une fois le critere
-// corrige, plus aucun ecart intra-table ne depasse 40 000 bits.
-func profilRosterCritCorrigee() profilRosterCrit {
-	c := profilRosterCritPlein()
-	c.Deux = false
-	return c
 }

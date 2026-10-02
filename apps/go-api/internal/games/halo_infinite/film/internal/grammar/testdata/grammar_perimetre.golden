@@ -17,6 +17,7 @@
 paquet	internal/domain/highlightevent
 paquet	internal/domain/playerposition
 paquet	internal/games/halo_infinite/film/finalise
+paquet	internal/games/halo_infinite/film/internal/constat
 paquet	internal/games/halo_infinite/film/internal/grammar
 paquet	internal/games/halo_infinite/film/internal/grammar/positions
 paquet	internal/games/halo_infinite/film/internal/grammar/weaponscan

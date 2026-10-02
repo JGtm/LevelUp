@@ -42,7 +42,7 @@ package grammar
 func consumeBipedSpartanAbilityEnergy(br *Lecteur) {
 	mask := br.ReadBits(3) // FUN_140fc147c
 	var ch [AbilityEnergyCharges]int
-	for i := uint(0); i < AbilityEnergyCharges; i++ {
+	for i := range uint(AbilityEnergyCharges) {
 		ch[i] = AbilityEnergyUnarmed
 		if mask&(1<<i) != 0 {
 			ch[i] = int(br.ReadBits(7)) // bloc froid 0x14246a410

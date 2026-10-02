@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // cle_du_film_recensement_research_test.go — LE RECENSEMENT DES CLEFS DU PARC, SANS DECODER

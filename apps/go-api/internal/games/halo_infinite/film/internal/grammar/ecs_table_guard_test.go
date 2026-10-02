@@ -309,7 +309,7 @@ func TestG3TableSuitLeDocument(t *testing.T) {
 		if r.DocField == "" {
 			continue
 		}
-		for _, ref := range strings.Split(r.DocField, ";") {
+		for ref := range strings.SplitSeq(r.DocField, ";") {
 			n++
 			if !fields[ref] {
 				t.Errorf("G3 : ligne %d (%s) cite %q, absent du paquet %s", r.LineNo, r.Component, ref, docDir)

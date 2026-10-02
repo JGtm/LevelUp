@@ -11,6 +11,7 @@ package replay
 // ChunksApresTrouAbandonnes n arrive pas au compteur »).
 
 import (
+	"context"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -28,8 +29,7 @@ import (
 // par la table, sous UN nom, et ce nom est une entree du registre. Que l entree soit BRANCHEE est
 // tenu ailleurs (`fallback.TestChaqueRepliEstCompte`, direction (E) d `archlint`).
 func TestChaqueChampDuRapportDeGrammaireEstVerse(t *testing.T) {
-	var zero grammar.ComptesDesReplis
-	typ := reflect.TypeOf(zero)
+	typ := reflect.TypeFor[grammar.ComptesDesReplis]()
 	nomsVus := map[fallback.Nom]string{}
 	for i := 0; i < typ.NumField(); i++ {
 		var r grammar.ComptesDesReplis
@@ -115,7 +115,7 @@ func appelsDansLOrdre(t *testing.T, fichier, fonction string) []string {
 // TestChaqueCompteDuKillFeedEstVerse : chaque champ de [killsource.ReplisDuDecodage], et chacun des
 // comptes que le decodeur tenait deja, arrive au compteur sous UN nom, a l assemblage.
 func TestChaqueCompteDuKillFeedEstVerse(t *testing.T) {
-	typ := reflect.TypeOf(killsource.ReplisDuDecodage{})
+	typ := reflect.TypeFor[killsource.ReplisDuDecodage]()
 	poseurs := map[string]func(*killsource.Result){}
 	for i := 0; i < typ.NumField(); i++ {
 		i := i
@@ -148,7 +148,7 @@ func TestChaqueCompteDuKillFeedEstVerse(t *testing.T) {
 // TestChaqueCompteDesObjectifsEstVerse : chaque champ de [objectives.ComptesDesReplis] arrive au
 // compteur sous UN nom, a l assemblage.
 func TestChaqueCompteDesObjectifsEstVerse(t *testing.T) {
-	typ := reflect.TypeOf(objectives.ComptesDesReplis{})
+	typ := reflect.TypeFor[objectives.ComptesDesReplis]()
 	for i := 0; i < typ.NumField(); i++ {
 		var c objectives.ComptesDesReplis
 		reflect.ValueOf(&c).Elem().Field(i).SetInt(7)
@@ -184,7 +184,7 @@ func TestLesReplisHorsBalayageNeSeComptentQuUneFoisDepuisLesFaits(t *testing.T) 
 	optDirect.MapQuant, optDirect.FilmIdentity, optDirect.ReplisHorsBalayage = &entry, id, horsBalayage
 	optDirect.Fallbacks = fallback.NouveauCompteur()
 	optDirect.Fallbacks.Cumuler(repliDuBalayage)
-	direct := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, optDirect)
+	direct := BuildFromPositions(context.Background(), goldenFilm, "halo_infinite", g.Positions, g.Fire, optDirect)
 
 	blob, err := EncodeFilmFactsFile(&FilmFactsFile{
 		Coverage: *couvertureDuDecodeur(id), Facts: *g, Identity: identiteDeFaits(id),
@@ -197,7 +197,7 @@ func TestLesReplisHorsBalayageNeSeComptentQuUneFoisDepuisLesFaits(t *testing.T) 
 	if err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
-	rejoue := BuildFromFacts(goldenFilm, "halo_infinite", f, Options{MapQuant: &entry, ReplisHorsBalayage: horsBalayage})
+	rejoue := BuildFromFacts(context.Background(), goldenFilm, "halo_infinite", f, Options{MapQuant: &entry, ReplisHorsBalayage: horsBalayage})
 
 	attendu := map[string]int{
 		string(fallback.NomPlafondGrenadeParDefaut): 2, string(fallback.NomChunkDuPiedParArgmax): 1,

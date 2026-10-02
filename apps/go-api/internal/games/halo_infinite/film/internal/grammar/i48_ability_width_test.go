@@ -336,7 +336,7 @@ func abilityPatternHits(pay []byte, from, to int) []int {
 func abilityFilmList(root string) ([]string, error) {
 	if v := strings.TrimSpace(os.Getenv(abilityFilmsEnv)); v != "" {
 		var out []string
-		for _, s := range strings.Split(v, ",") {
+		for s := range strings.SplitSeq(v, ",") {
 			if s = strings.TrimSpace(s); s != "" {
 				out = append(out, s)
 			}

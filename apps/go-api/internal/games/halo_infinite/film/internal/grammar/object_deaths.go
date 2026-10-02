@@ -36,7 +36,8 @@ package grammar
 // `.ai/V7.5/film_re/NOTE_V13_DEADSTATE_VEHICULE_2026-09-05.md`.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -186,9 +187,7 @@ func marchPacketsOf(fc *FilmContext) ([]marchKeyframe, []marchDelta) {
 			}
 		}
 	}
-	sort.SliceStable(deltas, func(i, j int) bool {
-		return deltas[i].timestampUS < deltas[j].timestampUS
-	})
+	slices.SortStableFunc(deltas, func(a, b marchDelta) int { return cmp.Compare(a.timestampUS, b.timestampUS) })
 	return kfs, deltas
 }
 
@@ -283,17 +282,9 @@ func dedupObjectDeaths(in []types.ObjectDeath) []types.ObjectDeath {
 	if len(in) == 0 {
 		return nil
 	}
-	sort.SliceStable(in, func(i, j int) bool {
-		switch {
-		case in[i].TimestampUS != in[j].TimestampUS:
-			return in[i].TimestampUS < in[j].TimestampUS
-		case in[i].Slot != in[j].Slot:
-			return in[i].Slot < in[j].Slot
-		case in[i].Gen != in[j].Gen:
-			return in[i].Gen < in[j].Gen
-		default:
-			return !in[i].TailDesync && in[j].TailDesync
-		}
+	slices.SortStableFunc(in, func(a, b types.ObjectDeath) int {
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Slot, b.Slot),
+			cmp.Compare(a.Gen, b.Gen), cmp.Compare(unSi(a.TailDesync), unSi(b.TailDesync)))
 	})
 	type key struct {
 		slot, gen uint32

@@ -21,7 +21,7 @@ import (
 // variante CTF.
 func rosterDe(n int) port.MatchFacts {
 	f := port.MatchFacts{GameVariantName: "CTF:Arena"}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f.Players = append(f.Players, port.MatchPlayerFact{
 			XUID: fmt.Sprintf("25334%03d", i), Kills: i, Deaths: i, Assists: i,
 		})

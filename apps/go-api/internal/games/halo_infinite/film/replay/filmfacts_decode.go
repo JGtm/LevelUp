@@ -60,7 +60,7 @@ func decodeEntete(blob []byte, entry profile.MapQuantEntry) (
 	r := &greader{b: blob, off: len(filmFactsMagic)}
 	g := &FilmFacts{Film: r.str()}
 	g.MapModule = r.str()
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		g.AxisW[a] = uint(r.u())
 	}
 	g.LayoutDetected = r.bool8()
@@ -145,7 +145,7 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 			e.Unit.Gen = uint32(r.u())  //nolint:gosec // ecrit depuis un uint32
 		}
 		if e.HasAim = r.bool8(); e.HasAim {
-			for a := 0; a < 3; a++ {
+			for a := range 3 {
 				e.Aim[a] = r.f32()
 			}
 		}
@@ -183,7 +183,7 @@ func decodeInventaire(r *greader, g *FilmFacts) {
 	for k := 0; k < n && r.err == nil; k++ {
 		inv := types.KeyframeInventory{TimestampUS: r.u(), Slot: uint32(r.u())}
 		inv.GrenadesRead = r.bool8()
-		for j := 0; j < types.InventorySlotCount; j++ {
+		for j := range types.InventorySlotCount {
 			inv.Grenades[j] = uint32(r.u())
 		}
 		inv.SelectedGrenadeRank = int(r.i())
@@ -191,7 +191,7 @@ func decodeInventaire(r *greader, g *FilmFacts) {
 		inv.DrawnSlot = int(r.i())
 		inv.AmmoCandidates = int(r.u())
 		inv.AmmoRead = r.bool8()
-		for j := 0; j < types.InventorySlotCount; j++ {
+		for j := range types.InventorySlotCount {
 			inv.Ammo[j] = decodeAmmo(r)
 		}
 		g.Inventory = append(g.Inventory, inv)
@@ -244,7 +244,7 @@ func decodeCanauxDelta(r *greader, g *FilmFacts) {
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
 		gr := types.GrappleRead{TimestampUS: lastTS, Slot: uint32(r.u()), Heavy: r.bool8()}
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			gr.PosQ[a] = uint32(r.u())
 		}
 		g.GrappleReads = append(g.GrappleReads, gr)
@@ -257,10 +257,10 @@ func decodeCanauxDelta(r *greader, g *FilmFacts) {
 		lastTS += r.u()
 		tr := types.TranslocatorTeleport{TimestampUS: lastTS, Slot: uint32(r.u())}
 		tr.HasPositions = r.bool8()
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			tr.From[a] = r.f32()
 		}
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			tr.To[a] = r.f32()
 		}
 		g.Translocations = append(g.Translocations, tr)

@@ -108,10 +108,7 @@ func avantHistogrammeCaps(t *testing.T, caps []float64) {
 	}
 	var cases [12]int
 	for _, c := range caps {
-		i := int(c / 30)
-		if i > 11 {
-			i = 11
-		}
+		i := min(int(c/30), 11)
 		cases[i]++
 	}
 	t.Logf("  caps reconstruits, par secteur de 30 deg (n = %d) : %v", len(caps), cases)

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // offsets_tir_historiques_test.go — LA LECTURE A OFFSETS FIXES DU RECORD DE TIR D AVANT LE LOT M4b,

@@ -220,7 +220,7 @@ func s3LireVueC(pay []byte, finB int, e0 s3Entree, bilan *s3Paquet, corrige bool
 	br := LecteurSur(pay)
 	br.Skip(finB)
 	var out []s3Entree
-	for tour := 0; tour < plafondToursVueC; tour++ {
+	for range plafondToursVueC {
 		if !placeDisponible(br, frameLen, 1) {
 			return out, br.BitPos(), false
 		}
@@ -285,13 +285,13 @@ func s3LireCadre(t *testing.T) s3Cadre {
 	if v, errI := strconv.Atoi(os.Getenv("S3_INDEX")); errI == nil {
 		c.index = v
 	}
-	for _, s := range strings.Split(os.Getenv("S3_EPISODES"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("S3_EPISODES"), ",") {
 		var a, b int
 		if _, errE := fmt.Sscanf(s, "%d-%d", &a, &b); errE == nil {
 			c.episodes = append(c.episodes, [2]int{a, b})
 		}
 	}
-	for _, s := range strings.Split(os.Getenv("S3_FRAGS"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("S3_FRAGS"), ",") {
 		if v, errF := strconv.Atoi(strings.TrimSpace(s)); errF == nil {
 			c.frags = append(c.frags, v)
 		}

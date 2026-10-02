@@ -51,7 +51,7 @@ import (
 // du registre du film, jamais de constantes : un index de composant est un numéro de build.
 func weaponEmplacements(arch Archetype) map[int]int {
 	out := map[int]int{}
-	for id := 0; id < archetypeBlockSlots; id++ {
+	for id := range archetypeBlockSlots {
 		if arch.component(id) == compWeaponStateTypeInfo {
 			out[id] = len(out)
 		}

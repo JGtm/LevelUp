@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_ecrivain_research_test.go — LA CARTE DE chunk_00 RELUE CHEZ L'ECRIVAIN.
@@ -65,22 +67,6 @@ import (
 	"time"
 )
 
-// Offsets de la tete, lus dans FUN_14299b198. Ils sont en OCTETS du tampon inflate.
-const (
-	s3wRegistreDebut = 0x000008 // le registre commence ici, pas a 0
-	s3wRegistreBits  = 0x659000 // 6 656 000 bits = 832 000 octets = 50 blocs de 0x4100
-	s3wTableDebut    = 0x0CB208 // la table par type
-	s3wTableBits     = 0xF60    // 3 936 bits = 492 octets = 123 u32
-	s3wVersionOff    = 0x0CB3F4 // trois champs de 32 octets
-	s3wBuildOff      = 0x0CB414
-	s3wSaveurOff     = 0x0CB434
-	s3wU32aOff       = 0x0CB454
-	s3wU32bOff       = 0x0CB458
-	s3wBoolOff       = 0x0CB45C // UN bit : tout ce qui suit est decale
-	s3wNomBits       = 0x800    // 256 octets par champ de nom, deux champs
-	s3wCorpsOff      = 0x0CE68C // debut du corps dans le FLUX (FUN_1407ec560) : struct 0x0CE690 - 4
-)
-
 // s3wBitApresBool rend la position en BITS du premier champ qui suit le booleen d'un bit.
 func s3wBitApresBool(decalage int) int { return s3wBoolOff*8 + decalage }
 
@@ -140,7 +126,7 @@ func s3wFermeture(t *testing.T) {
 // l'horodatage du match par le balayage de decalage (controle W-NEG).
 func s3wChampsNom(t *testing.T, d []byte) {
 	t.Helper()
-	for k := 0; k < 2; k++ {
+	for k := range 2 {
 		deb := s3wBoolOff + k*s3wNomBits/8
 		nz := 0
 		for i := deb; i < deb+s3wNomBits/8 && i < len(d); i++ {
@@ -180,7 +166,7 @@ func s3wChampsNom(t *testing.T, d []byte) {
 func s3wBlocs(t *testing.T, d []byte) {
 	t.Helper()
 	deb := s3wBoolOff + 2*s3wNomBits/8 + 16 // apres les deux noms et les quatre u32
-	for k := 0; k < 3; k++ {
+	for k := range 3 {
 		o := deb + k*0x1000
 		nz := 0
 		for i := o; i < o+0x1000 && i < len(d); i++ {
@@ -228,7 +214,7 @@ func TestSection3HorodatageContreRegistre(t *testing.T) {
 // s3wRefs decoupe `film=epoch;film=epoch`.
 func s3wRefs(v string) map[string]int64 {
 	out := map[string]int64{}
-	for _, p := range strings.Split(v, ";") {
+	for p := range strings.SplitSeq(v, ";") {
 		kv := strings.SplitN(strings.TrimSpace(p), "=", 2)
 		if len(kv) != 2 {
 			continue
@@ -245,7 +231,7 @@ func s3wRefs(v string) map[string]int64 {
 // sortis du flux sont ceux de la memoire et se relisent en LE.
 func s3wU32Flux(d []byte, bit int) uint32 {
 	var acc uint32
-	for k := 0; k < 32; k++ {
+	for k := range 32 {
 		b := bit + k
 		if b>>3 >= len(d) {
 			return 0
@@ -263,20 +249,4 @@ func s3wPlausible(v uint32) bool { return v > 1600000000 && v < 1900000000 }
 // s3wUTC formate un temps Unix.
 func s3wUTC(v uint32) string {
 	return time.Unix(int64(v), 0).UTC().Format("2006-01-02 15:04:05Z")
-}
-
-// s3wChaine lit une chaine ASCII terminee par NUL dans un champ de largeur fixe.
-func s3wChaine(d []byte, off, max int) string {
-	if off < 0 || off >= len(d) {
-		return ""
-	}
-	end := off + max
-	if end > len(d) {
-		end = len(d)
-	}
-	s := string(d[off:end])
-	if i := strings.IndexByte(s, 0); i >= 0 {
-		s = s[:i]
-	}
-	return s
 }

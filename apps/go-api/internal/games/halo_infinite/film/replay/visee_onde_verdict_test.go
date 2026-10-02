@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_onde_verdict_test.go — LOT C : LE CONTROLE PAR TRANSLATION ET LE VERDICT.

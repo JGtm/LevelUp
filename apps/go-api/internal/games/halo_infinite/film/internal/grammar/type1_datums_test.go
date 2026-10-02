@@ -19,12 +19,12 @@ func ecrireBlocDeDatums(t *testing.T, ent []DatumEntry, queue [datumQueueMots]ui
 		w.bits(uint64(e.Drapeaux), datumDrapeauxBits)
 		w.bits(uint64(e.Gen), datumGenBits)
 		w.bits(uint64(e.Generation), datumEtatBits)
-		for k := 0; k < datumMasqueBits; k++ { // LSB d abord : `1L << k` chez l ecrivain
+		for k := range datumMasqueBits { // LSB d abord : `1L << k` chez l ecrivain
 			w.bit(e.MasqueVue >> uint(k))
 		}
 	}
 	for _, e := range ent { // le masque de composants, BIT A BIT, LSB d abord
-		for k := 0; k < datumBitmapBits; k++ {
+		for k := range datumBitmapBits {
 			w.bit(e.Composants[k/64] >> uint(k%64))
 		}
 	}

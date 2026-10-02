@@ -33,7 +33,7 @@ func (e *Executable) NomsDeComposants() []string {
 		}
 		c := s.contenu
 		deb := 0
-		for off := 0; off < len(c); off++ {
+		for off := range c {
 			if c[off] != 0 {
 				continue
 			}

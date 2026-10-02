@@ -15,6 +15,7 @@ package replay
 //	               entite ; l'arrivant qui reprend son index, non.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -54,7 +55,7 @@ func poserLaSuccession(idx types.PlayerIndexTable, bots []BotIdentity, scan gram
 	occ := lierLesOccupants(roster, tracks, in)
 	var equipes teamPublication
 	equipes.poserEquipesParEntree(roster, occ)
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 3),
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 3),
 		horloge: horlogeDeSieges(nil)})
 	cov.BotsSuccesseurs = admis
 	return roster, cov, admis
@@ -124,7 +125,7 @@ func TestPresenceParLesViesSurFilmBalaye(t *testing.T) {
 	tracks := []Track{vieDe("130", 12, 20), vieDe("130", 25, 35), vieDe("140", 15, 18)}
 	occ := lierLesOccupants(roster, tracks, entreesDeTest(scan))
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{horloge: horlogeDeSieges(fb)})
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{horloge: horlogeDeSieges(fb)})
 
 	p := roster[0].Presence
 	if len(p) != 1 || p[0].To != 35 || p[0].ToMax == nil || *p[0].ToMax != 49 {
@@ -143,7 +144,7 @@ func TestDepassementContreLaCapacite(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(1, "110"), entree(9, "900"), entree(8, "800")}
 	occ := occupantsFabriques([]int{0, 1, 0, 0}, iv(0, 99), iv(0, 99), iv(40, 99), iv(10, 20))
 	occ.parEntree[3].equipe = nil
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1), horloge: horlogeDeSieges(nil)})
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1), horloge: horlogeDeSieges(nil)})
 
 	if cov.Capacite != 1 || cov.PlacesEnTrop != 1 || cov.Depassements != 60 || cov.SansEquipe != 1 {
 		t.Errorf("couverture %+v : capacite 1, une place en trop, 60 frames au-dela, une entree sans "+
@@ -160,7 +161,7 @@ func TestOccupantDeLaTableTenuDesLeCoupDEnvoi(t *testing.T) {
 	for i := range occ.parEntree {
 		occ.parEntree[i].lue = false
 	}
-	poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(nil)})
+	poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(nil)})
 
 	if roster[0].Presence[0].From != 0 || roster[1].Presence[0].From != 60 {
 		t.Errorf("presences %+v / %+v : l'occupant de la table des f0, l'arrivant a sa vie",

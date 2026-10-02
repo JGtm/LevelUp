@@ -173,7 +173,7 @@ func (h *PostSyncHook) capture(ctx context.Context, d PostSyncDeps) DepsCapture 
 			"de carte cable)", "title", d.TitleSlug)
 		return DepsCapture{}
 	}
-	deps, err := CaptureDepuisCatalogue(h.repoRoot, d.TitleSlug, d.MapNames)
+	deps, err := CaptureDepuisCatalogue(ctx, h.repoRoot, d.TitleSlug, d.MapNames)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: killsource — positions desactivees",
 			"title", d.TitleSlug, "err", err)

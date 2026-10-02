@@ -223,7 +223,7 @@ func TestControleDeCorruptionEstLeBitDe0xCB45C(t *testing.T) {
 		t.Fatalf("la bobine de reference porte le drapeau LEVE — le cas de base du test tombe")
 	}
 	off := temoin.BuildOffset + identBoolOff
-	for bit := 0; bit < 8; bit++ {
+	for bit := range 8 {
 		d := append([]byte(nil), base...)
 		d[off] |= byte(1) << (7 - uint(bit))
 		got, errBit := ReadFilmIdentity(d)

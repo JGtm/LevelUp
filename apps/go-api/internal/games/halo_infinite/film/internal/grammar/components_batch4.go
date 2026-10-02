@@ -12,7 +12,7 @@ package grammar
 
 // statborg-round-outcomes-component (FUN_142ed71a4): 32x R(2).
 func consumeStatborgRoundOutcomes(br *Lecteur) {
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		br.ReadBits(2)
 	}
 }

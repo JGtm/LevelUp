@@ -95,21 +95,31 @@ func TestRegistryFingerprintDomain(t *testing.T) {
 // l'etat de la carte (pas le journal, qui n'est pas interrogeable).
 func TestRegistryFingerprintWarnsOnce(t *testing.T) {
 	data := registryFixture([]uint32{5}, []string{"temoin-de-deduplication"})
-	fp := RegistryFingerprint(parseRegistry(data))
+	reg := parseRegistry(data)
+	fp := RegistryFingerprint(reg)
 	if fp == KnownRegistryFingerprint {
 		t.Fatalf("la fixture porte l'empreinte CONNUE (%#016x) : le test ne mesurerait rien", fp)
 	}
 	t.Cleanup(func() { registryWarned.Delete(fp) })
 
 	registryWarned.Delete(fp)
-	warnUnknownRegistry(fp, 1, 1)
+	d, ok := DiagnosticRegistreInconnu(reg)
+	if !ok || d.Code != DiagRegistreInconnu {
+		t.Fatalf("premier signalement absent ou mal nomme : %v %+v", ok, d)
+	}
 	if _, ok := registryWarned.Load(fp); !ok {
 		t.Fatal("la premiere alerte n'a pas marque l'empreinte comme signalee")
 	}
-	warnUnknownRegistry(fp, 1, 1) // doit etre un no-op
+	if _, ok := DiagnosticRegistreInconnu(reg); ok {
+		t.Fatal("second signalement de la meme empreinte : la deduplication ne tient plus")
+	}
 
 	// L'empreinte CONNUE ne doit jamais entrer dans la carte : elle n'alerte pas.
-	warnUnknownRegistry(KnownRegistryFingerprint, 1, 1)
+	connu := *reg
+	connu.fingerprint = KnownRegistryFingerprint
+	if _, ok := DiagnosticRegistreInconnu(&connu); ok {
+		t.Error("l'empreinte connue produit un diagnostic")
+	}
 	if _, ok := registryWarned.Load(KnownRegistryFingerprint); ok {
 		t.Error("l'empreinte connue a ete traitee comme inconnue")
 	}
@@ -159,7 +169,7 @@ func TestRegistryFingerprintOnFilm(t *testing.T) {
 	// Le cout des N re-parses : mesure sur 4 passes, le compte des chemins de production.
 	deb = time.Now()
 	const reparses = 4
-	for i := 0; i < reparses; i++ {
+	for i := range reparses {
 		if _, err := ParseRegistryChunk(raw); err != nil {
 			t.Fatalf("re-parse %d : %v", i, err)
 		}

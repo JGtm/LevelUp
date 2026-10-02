@@ -50,8 +50,9 @@ package replay
 // par document.
 
 import (
+	"context"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -196,14 +197,14 @@ func axesDesPositions(pos []grammar.BipedPosition) (xs, ys, zs []float32) {
 		}
 		xs, ys, zs = append(xs, p.X), append(ys, p.Y), append(zs, p.Z)
 	}
-	sort.Slice(xs, func(i, j int) bool { return xs[i] < xs[j] })
-	sort.Slice(ys, func(i, j int) bool { return ys[i] < ys[j] })
-	sort.Slice(zs, func(i, j int) bool { return zs[i] < zs[j] })
+	slices.Sort(xs)
+	slices.Sort(ys)
+	slices.Sort(zs)
 	return xs, ys, zs
 }
 
 // poserSur publie ce que la porte a ecarte dans la couverture des traces, et le journalise.
-func (c couverturePorte) poserSur(tc *TrackCoverage, matchID string) {
+func (c couverturePorte) poserSur(ctx context.Context, tc *TrackCoverage, matchID string) {
 	tc.AvantCreation, tc.ViesAvantPremiereCreation, tc.HorsEmprise =
 		c.AvantCreation, c.ViesAvantPremiereCreation, c.HorsEmprise
 	tc.SlotsArmes, tc.SlotsDesarmes = c.SlotsArmes, c.SlotsDesarmes
@@ -211,7 +212,7 @@ func (c couverturePorte) poserSur(tc *TrackCoverage, matchID string) {
 		return
 	}
 	// JOURNALISE, JAMAIS AVALE (regle n° 3 du depot) : ces positions ne sont pas publiees.
-	slog.Info("rejeu : porte des positions de bipede",
+	slog.InfoContext(ctx, "rejeu : porte des positions de bipede",
 		"match_id", matchID, "avantCreation", c.AvantCreation,
 		"viesAvantPremiereCreation", c.ViesAvantPremiereCreation, "horsEmprise", c.HorsEmprise,
 		"slotsArmes", c.SlotsArmes, "slotsDesarmes", c.SlotsDesarmes)

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // assaut_a7_ti13_test.go — L'ARMEMENT DANS LA TROISIEME MAISON : le canal `ti=13`.

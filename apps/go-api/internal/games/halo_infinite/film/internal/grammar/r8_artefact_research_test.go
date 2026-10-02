@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_artefact_research_test.go — SOCLE COMMUN des instruments du lot R8 (usage du
@@ -16,7 +18,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 R8_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR8' -count=1 -timeout 30m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR8' -count=1 -timeout 30m -v
 
 import (
 	"encoding/json"
@@ -122,7 +124,7 @@ func r8LoadCorpus(t *testing.T) []*r8Artifact {
 		t.Skipf("%s absent : instrument de mesure saute", r8ArtifactsEnv)
 	}
 	only := map[string]bool{}
-	for _, s := range strings.Split(os.Getenv(r8IDsEnv), ",") {
+	for s := range strings.SplitSeq(os.Getenv(r8IDsEnv), ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			only[s] = true
 		}
@@ -205,10 +207,7 @@ func r8Quantile(v []float64, q float64) float64 {
 	}
 	s := append([]float64(nil), v...)
 	sort.Float64s(s)
-	i := int(q * float64(len(s)-1))
-	if i < 0 {
-		i = 0
-	}
+	i := max(int(q*float64(len(s)-1)), 0)
 	if i >= len(s) {
 		i = len(s) - 1
 	}

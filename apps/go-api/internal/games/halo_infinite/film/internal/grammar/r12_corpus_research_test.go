@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_corpus_research_test.go — LES TETES SEULES, SUR UN CORPUS : le cadrage CERTAIN.
@@ -25,7 +27,7 @@ package grammar
 // GARDES : `R12_FILMS`, `R12_IDS`. Aucune ecriture, aucune DuckDB, `CGO_ENABLED=0`. USAGE :
 //
 //	CGO_ENABLED=0 R12_FILMS=<repo>/data/cache/film_chunks R12_IDS=a,b,c \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR12Corpus$' -count=1 -timeout 180m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR12Corpus$' -count=1 -timeout 180m -v
 
 import (
 	"fmt"

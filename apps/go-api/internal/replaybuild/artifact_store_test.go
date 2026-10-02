@@ -9,6 +9,7 @@ package replaybuild
 // d'un cycle) : sans ce garde, la perte serait DÉFINITIVE et silencieuse.
 
 import (
+	"context"
 	"encoding/json"
 	"expvar"
 	"os"
@@ -88,7 +89,7 @@ func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
 		TitleSlug:     title.DefaultSlug,
 		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
 	}
-	taille, err := writeArtifact(path, title.DefaultSlug, "000d5950", appauvri)
+	taille, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", appauvri)
 	if err != nil {
 		t.Fatalf("writeArtifact: %v", err)
 	}
@@ -131,7 +132,7 @@ func TestWriteArtifact_MonteeDeSchemaToujoursEcrite(t *testing.T) {
 		TitleSlug:     title.DefaultSlug,
 		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
 	}
-	if _, err := writeArtifact(path, title.DefaultSlug, "000d5950", nouveau); err != nil {
+	if _, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", nouveau); err != nil {
 		t.Fatalf("writeArtifact: %v", err)
 	}
 	surDisque, err := os.ReadFile(path)
@@ -151,14 +152,14 @@ func TestStoreArtifact_RefuseLaRegression(t *testing.T) {
 	const matchID = "000d5950"
 
 	complet := docJSON(t, matchID, true)
-	if _, err := StoreArtifact(repoRoot, title.DefaultSlug, matchID, complet); err != nil {
+	if _, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, matchID, complet); err != nil {
 		t.Fatalf("dépôt initial: %v", err)
 	}
 	path := title.NewPathResolver(repoRoot).ReplayArtifactPath(title.DefaultSlug, matchID)
 
 	// Le dépôt appauvri est ACCEPTÉ (pas d'erreur : l'ouvrier a bien travaillé, avec ce qu'on
 	// lui avait donné) mais il ne doit RIEN écraser.
-	stored, err := StoreArtifact(repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, false))
+	stored, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, false))
 	if err != nil {
 		t.Fatalf("un dépôt appauvri ne doit pas être une erreur de protocole : %v", err)
 	}
@@ -183,11 +184,11 @@ func TestStoreArtifact_EnrichissementAccepte(t *testing.T) {
 	repoRoot := t.TempDir()
 	const matchID = "000d5950"
 
-	if _, err := StoreArtifact(repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, false)); err != nil {
+	if _, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, false)); err != nil {
 		t.Fatalf("dépôt initial: %v", err)
 	}
 	complet := docJSON(t, matchID, true)
-	if _, err := StoreArtifact(repoRoot, title.DefaultSlug, matchID, complet); err != nil {
+	if _, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, matchID, complet); err != nil {
 		t.Fatalf("dépôt enrichi: %v", err)
 	}
 	path := title.NewPathResolver(repoRoot).ReplayArtifactPath(title.DefaultSlug, matchID)
@@ -205,7 +206,7 @@ func TestStoreArtifact_EnrichissementAccepte(t *testing.T) {
 func TestStoreArtifact_PremierDepotToujoursAccepte(t *testing.T) {
 	repoRoot := t.TempDir()
 	const matchID = "000d5950"
-	if _, err := StoreArtifact(repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, false)); err != nil {
+	if _, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, false)); err != nil {
 		t.Fatalf("premier dépôt refusé alors qu'aucun artefact n'existait : %v", err)
 	}
 	if _, err := os.Stat(filepath.Clean(

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // vehicules_v7_temps_test.go — INSTRUMENT (lot V7) : LA COINCIDENCE TEMPORELLE entre un type
@@ -37,6 +39,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -237,11 +240,11 @@ func v7Autour(evs map[int][]uint64, at uint64) string {
 		}
 	}
 	sort.Slice(hits, func(i, j int) bool { return hits[i].dms < hits[j].dms })
-	s := ""
+	var s strings.Builder
 	for _, h := range hits {
-		s += " " + itoa(h.ty) + "@" + itoa(int(h.dms))
+		s.WriteString(" " + itoa(h.ty) + "@" + itoa(int(h.dms)))
 	}
-	return s
+	return s.String()
 }
 
 // v7Accumule croise les fins serrees d'un film avec ses evenements.

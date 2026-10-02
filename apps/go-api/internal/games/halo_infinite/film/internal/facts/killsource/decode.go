@@ -17,8 +17,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -69,6 +69,9 @@ type decodeCtx struct {
 	mult     map[multKey]int
 	calib    calibration
 	bijScore int
+	// diag : les DIAGNOSTICS du decodage (lot J12.3, ADR 0034 D-4) — ce que ce paquet journalisait,
+	// rendu a l orchestrateur par [Result.Diagnostics].
+	diag constat.Diagnostics
 }
 
 // Decode : LA fonction publique. Elle lit un film DEJA CHARGE et rend, pour chaque mort, LES
@@ -173,15 +176,17 @@ func ProfilDeDepartPourCarte(carte *profile.MapQuantEntry) (grammar.ProfilDeBala
 //
 // EXTRAITE DE `prepare` AU LOT 5.18.2 : le second avertissement y portait la fonction a 84
 // lignes, au-dela du seuil de 80 du depot (ratchet `archlint/film_function_length_test.go`).
-func (c *decodeCtx) avertirReplisDeCalibration(ctx context.Context) {
+func (c *decodeCtx) avertirReplisDeCalibration() {
 	if !c.calib.CarteLue {
-		slog.WarnContext(ctx, "killsource: RECHERCHE SANS CARTE — la marche des morts lit ses "+
-			"positions aux largeurs d axe PAR DEFAUT, celles d une autre carte",
+		c.signaler(DiagRechercheSansCarte, constat.NiveauWarn,
+			"killsource: RECHERCHE SANS CARTE — la marche des morts lit ses "+
+				"positions aux largeurs d axe PAR DEFAUT, celles d une autre carte",
 			"film", c.name, "largeurs", c.calib.LueAxisW, "indexW", c.calib.LueIndexW)
 	}
 	if !c.calib.ControleDeCorruptionLu {
-		slog.WarnContext(ctx, "killsource: le film ne declare pas son controle de corruption par "+
-			"composant (pas de section d identification) — la grammaire garde son invariant",
+		c.signaler(DiagControleCorruptionAbsent, constat.NiveauWarn,
+			"killsource: le film ne declare pas son controle de corruption par "+
+				"composant (pas de section d identification) — la grammaire garde son invariant",
 			"film", c.name)
 	}
 }
@@ -196,7 +201,7 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 		// Le film ne porte pas son registre (`chunk_00`) : la version reste inconnue et le
 		// kill-feed se lit avec le decoupage historique « gamertag en tete ». Sur un film de
 		// version 39-40 cela rend un roster effondre — silence interdit, cf. CLAUDE.md n 3.
-		slog.WarnContext(ctx, "killsource: version de film illisible, decoupage historique",
+		c.signaler(DiagVersionIllisible, constat.NiveauWarn, "killsource: version de film illisible, decoupage historique",
 			"film", c.name, "film_major_version", c.film.majorVersion)
 	}
 	if err = ctx.Err(); err != nil {
@@ -210,7 +215,7 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	// ici, et le decodeur retombe alors sur l inference entiere.
 	table := readFilmTable(c.film)
 	if table.Refusal != FilmTableRead {
-		slog.WarnContext(ctx, "killsource: table des joueurs du film NON LUE — la bijection "+
+		c.signaler(DiagTableNonLue, constat.NiveauWarn, "killsource: table des joueurs du film NON LUE — la bijection "+
 			"retombe entierement sur l inference par les votes du kill-feed",
 			"film", c.name, "build", table.Build, "cause", string(table.Refusal))
 	}
@@ -221,14 +226,14 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	// une deuxieme liste.
 	motif := lireIndexParMotif(c.film, table.slots, c.feed)
 	if motif.desaccords > 0 || motif.absents > 0 || motif.tueursEcartes > 0 {
-		slog.DebugContext(ctx, "killsource: lien par motif de xuid",
+		c.signaler(DiagLienParMotif, constat.NiveauDebug, "killsource: lien par motif de xuid",
 			"film", c.name, "lectures", motif.lectures, "epingles", len(motif.nomParIndex),
 			"desaccords", motif.desaccords, "absents", motif.absents, "tueurs_ecartes", motif.tueursEcartes)
 	}
 	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots, table, motif)
 	if n := len(c.roster.unpinned); n > 0 {
 		// FK-1 (lot J7.2) : une perte PUBLIEE (`Coverage.BotsNonEpingles`) et DITE, jamais muette.
-		slog.WarnContext(ctx, "killsource: bot(s) NON EPINGLE(S) — leur slot tombe sur un siege que "+
+		c.signaler(DiagBotsNonEpingles, constat.NiveauWarn, "killsource: bot(s) NON EPINGLE(S) — leur slot tombe sur un siege que "+
 			"la table du film NOMME (un humain le tient), ou hors des 32 indices ; leurs morts et "+
 			"celles qu ils infligent ne se publient pas",
 			"film", c.name, "bots", n, "borne_humains", c.roster.borneHumains)
@@ -240,13 +245,13 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	c.killEvents = scanKillEvents(c.film)
 	c.couples = c.feed.resoudreCouples(c.killEvents.recs, c.roster)
 
-	tl, err := newTimeline(c.film)
+	tl, err := newTimeline(c.film, &c.diag)
 	if err != nil {
 		return err
 	}
 	tl.rewind()
 	c.calib = calibrate(c.film, tl, c.opts.Views, c.opts.Carte)
-	c.avertirReplisDeCalibration(ctx)
+	c.avertirReplisDeCalibration()
 	if err = ctx.Err(); err != nil {
 		return err
 	}
@@ -297,6 +302,7 @@ func (c *decodeCtx) finish() *Result {
 		res.Health.TagOutOfCatalogueScan = probe.Uncovered
 	}
 	res.Stats.Replis = c.replisDuResultat(kills, p.unclaimed, res.Probe != nil)
+	res.Diagnostics = c.diag.Relever()
 	return res
 }
 

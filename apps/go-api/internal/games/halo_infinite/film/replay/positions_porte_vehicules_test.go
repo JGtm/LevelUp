@@ -6,6 +6,7 @@ package replay
 // fixtures, avec leurs deux negatifs : la chute continue (Behemoth) et le vehicule gare.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -25,7 +26,7 @@ func porteVieVehicule(t *testing.T, pos []grammar.BipedPosition) (VehicleTrack, 
 		Creations: []types.EquipmentCreation{vehCreation(key, 1_500_000, -42.07, -21.42, vehChassisKnown)},
 		Positions: pos,
 	}
-	got, cov, _ := buildVehicleTracks(scan, nil, IdentityRegistry{}, vehClock())
+	got, cov, _ := buildVehicleTracks(context.Background(), scan, nil, IdentityRegistry{}, vehClock())
 	if len(got) != 1 {
 		t.Fatalf("vies publiees = %d, attendu 1", len(got))
 	}
@@ -173,7 +174,7 @@ func TestPorteVehiculeHorsEmpriseAuTraversDeLAssemblage(t *testing.T) {
 		Positions: []grammar.BipedPosition{vehPos(770, 3_000_000, 40, 40), horsCarte},
 	}
 	opt := Options{FrameIntervalMS: 100, Vehicles: scan}
-	doc := BuildFromPositions("m", "halo_infinite", porteFoule(300, 0), nil, opt)
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", porteFoule(300, 0), nil, opt)
 	if len(doc.Vehicles) != 1 {
 		t.Fatalf("vies publiees = %d, attendu 1 (la fantome n a plus aucune position)", len(doc.Vehicles))
 	}
@@ -209,7 +210,7 @@ func TestPorteVehiculeContinuiteHorsEmprise(t *testing.T) {
 		p.Z = 5 - 2.4*float32(i)
 		positions = append(positions, p)
 	}
-	for i := 0; i < 3; i++ { // faux en-tete repete, isole
+	for i := range 3 { // faux en-tete repete, isole
 		p := vehPos(770, 12_000_000+uint64(i)*100_000, -19.41, -346.69)
 		p.Z = 323.74
 		positions = append(positions, p)
@@ -223,7 +224,7 @@ func TestPorteVehiculeContinuiteHorsEmprise(t *testing.T) {
 	}
 	scan := VehicleScan{Scanned: true, Keyframes: kf, Positions: positions,
 		Creations: []types.EquipmentCreation{vehCreation(vie, 2_900_000, 20, 20, vehChassisKnown), naissance}}
-	doc := BuildFromPositions("m", "halo_infinite", porteFoule(300, 0), nil, Options{FrameIntervalMS: 100, Vehicles: scan})
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", porteFoule(300, 0), nil, Options{FrameIntervalMS: 100, Vehicles: scan})
 	par := map[uint32]VehicleTrack{}
 	for _, v := range doc.Vehicles {
 		par[v.Slot] = v

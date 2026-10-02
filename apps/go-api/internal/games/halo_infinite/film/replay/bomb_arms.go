@@ -121,7 +121,8 @@ package replay
 // `ArmingsByActiveCarry` <= `Armings`.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strconv"
 )
 
@@ -185,7 +186,7 @@ func bombArmsByXUID(in BombStatsInput, cov *BombStatsCoverage) (map[string]int, 
 	}
 	cov.Armings = len(in.Armings)
 	armings := append([]BombArming(nil), in.Armings...)
-	sort.SliceStable(armings, func(i, j int) bool { return armings[i].TimeMS < armings[j].TimeMS })
+	slices.SortStableFunc(armings, func(a, b BombArming) int { return cmp.Compare(a.TimeMS, b.TimeMS) })
 	if !in.ClockRead {
 		return nil, bombArmsSansHorloge(armings, cov)
 	}
@@ -293,11 +294,8 @@ func bombArmCandidates(in BombStatsInput) []bombArmCandidate {
 			XUID: p.XUID, DebutMS: p.DebutMS, FinMS: p.FinMS, ParLacher: !p.FinParMort,
 		})
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].FinMS != out[j].FinMS {
-			return out[i].FinMS < out[j].FinMS
-		}
-		return out[i].XUID < out[j].XUID
+	slices.SortStableFunc(out, func(a, b bombArmCandidate) int {
+		return cmp.Or(cmp.Compare(a.FinMS, b.FinMS), cmp.Compare(a.XUID, b.XUID))
 	})
 	return out
 }

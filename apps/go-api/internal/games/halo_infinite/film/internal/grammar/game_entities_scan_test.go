@@ -207,7 +207,7 @@ func (s *GameEntityStats) NoiseFloor() float64 {
 		return 0
 	}
 	v := make([]int, 0, worldObjectMaxComponent)
-	for i := 0; i < worldObjectMaxComponent; i++ {
+	for i := range worldObjectMaxComponent {
 		v = append(v, s.MaskCensus[i])
 	}
 	sort.Ints(v)

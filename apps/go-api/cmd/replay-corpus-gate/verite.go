@@ -10,10 +10,11 @@ package main
 //
 //	CALQUE DISPARU    un calque de premier niveau qui passe a zero ou disparait (une revision de
 //	                  calque qui s'en va, `layers/n`, est une perte non couverte, donc un filet) ;
-//	PERTE NON COUVERTE une perte `replaydiff` dans un bloc qu'AUCUNE mesure presente des deux cotes
-//	                  ne couvre (`blocsCouverts`). Un bloc n'est couvert que si le banc a REELLEMENT
-//	                  mesure son oracle sur ce temoin : sans oracle officiel, le score personnel
-//	                  n'est pas couvert ; un O-S1 circulaire (non note) ne couvre rien.
+//	PERTE NON COUVERTE une perte `replaydiff` sur une metrique qu'AUCUNE mesure presente des deux
+//	                  cotes ne lit (`blocsCouverts`, declares A LA FEUILLE pour la couverture). Une
+//	                  metrique n'est couverte que si le banc a REELLEMENT mesure
+//	                  son oracle sur ce temoin : sans oracle officiel, le score personnel n'est
+//	                  pas couvert ; un O-S1 circulaire (non note) ne couvre rien.
 //
 // Pas de drapeau de bascule (regle 11 du depot) : le banc est livre actif.
 
@@ -33,9 +34,35 @@ import (
 
 // blocCouvert : les metriques `replaydiff` qu'une mesure du banc juge — une perte y est donc vue
 // par le banc (faux negatif d'oracle en hausse = MANQUE), et n'a pas a bloquer une seconde fois.
+//
+// LA COUVERTURE SE DECLARE A LA FEUILLE (revue finale P1-d, 2026-10-02). Un bloc `coverage.<x>.`
+// declare entier etait « couvert » par une mesure qui n'en lisait que deux ou trois feuilles : une
+// perte sur une feuille non lue passait `ok` sans que le banc l'ait vue. Les feuilles de couverture
+// sont donc NOMMEES une a une, et `TestBlocsCouverts_ChaqueFeuilleEstLueParSaMesure` confronte chacune
+// au code du banc (changer la feuille dans un artefact doit changer la mesure).
 type blocCouvert struct {
 	mesure string // l'identifiant de la mesure dans le bulletin (un prefixe pour P-4)
-	couvre func(metrique string) bool
+	// feuilles : les feuilles `coverage.*` EXACTES que la mesure lit.
+	feuilles []string
+	// famille : une famille de feuilles a CLE LIBRE dont la mesure lit TOUTES les cles
+	// (`coverage.verdict.<cle>`, une preuve par cle) ; vide sinon.
+	famille string
+	// derivees : les metriques d'EMPREINTE `replaydiff` (par joueur, pistes) que la mesure recompte
+	// depuis les memes donnees du document ; nil sinon.
+	derivees func(metrique string) bool
+}
+
+// couvre dit si la mesure du bloc juge la metrique.
+func (b blocCouvert) couvre(metrique string) bool {
+	for _, f := range b.feuilles {
+		if metrique == f {
+			return true
+		}
+	}
+	if b.famille != "" && strings.HasPrefix(metrique, b.famille) {
+		return true
+	}
+	return b.derivees != nil && b.derivees(metrique)
 }
 
 // suffixeJoueur dit si une metrique `joueur/<xuid>/<s>` porte l'un des suffixes donnes.
@@ -51,27 +78,25 @@ func suffixeJoueur(metrique string, suffixes ...string) bool {
 	return false
 }
 
-func prefixe(p string) func(string) bool {
-	return func(m string) bool { return strings.HasPrefix(m, p) }
-}
-
 // blocsCouverts : la table des blocs couverts, mesure par mesure. Tout le reste (armes, grenades,
-// equipement, vehicules, portages, roster, objectifs hors captures, carte...) n'a pas d'oracle
-// de manque au banc : une perte y reste BLOQUANTE.
+// equipement, vehicules, portages, roster, objectifs hors captures, carte, et les feuilles de
+// couverture qu'aucune mesure ne lit — `coverage.bridge.*`, `coverage.tracks.*`, les feuilles non
+// lues des blocs ci-dessous...) n'a pas d'oracle de manque au banc : une perte y reste BLOQUANTE.
 var blocsCouverts = []blocCouvert{
-	{replayverite.ScoreKills, func(m string) bool { return suffixeJoueur(m, "kills", "present") }},
-	{replayverite.ScoreMorts, func(m string) bool { return suffixeJoueur(m, "deaths") }},
-	{replayverite.ScoreAssists, func(m string) bool { return suffixeJoueur(m, "assists") }},
-	{replayverite.ScorePersonnel, func(m string) bool { return suffixeJoueur(m, "score") }},
-	{replayverite.ScoreMortsVies, func(m string) bool {
-		return strings.HasPrefix(m, "tracks/vies-par-xuid/") || m == "tracks/vies-nommees" ||
-			strings.HasPrefix(m, "coverage.bridge.")
+	{mesure: replayverite.ScoreKills, derivees: func(m string) bool { return suffixeJoueur(m, "kills", "present") }},
+	{mesure: replayverite.ScoreMorts, derivees: func(m string) bool { return suffixeJoueur(m, "deaths") }},
+	{mesure: replayverite.ScoreAssists, derivees: func(m string) bool { return suffixeJoueur(m, "assists") }},
+	{mesure: replayverite.ScorePersonnel, derivees: func(m string) bool { return suffixeJoueur(m, "score") }},
+	{mesure: replayverite.ScoreMortsVies, derivees: func(m string) bool {
+		return strings.HasPrefix(m, "tracks/vies-par-xuid/") || m == "tracks/vies-nommees"
 	}},
-	{replayverite.ScoreFinsDeVie, func(m string) bool { return m == "tracks/n" || m == "coverage.tracks.published" }},
-	{replayverite.ScoreEquipes, prefixe("coverage.teams.")},
-	{replayverite.PreuveFermeture, prefixe("coverage.continuousFire.")},
-	{replayverite.PreuveContradic, prefixe("coverage.keyframes.")},
-	{replayverite.PreuveVerdicts, prefixe("coverage.verdict.")},
+	{mesure: replayverite.ScoreFinsDeVie, derivees: func(m string) bool { return m == "tracks/n" }},
+	{mesure: replayverite.ScoreEquipes,
+		feuilles: []string{"coverage.teams.accord", "coverage.teams.contradiction", "coverage.teams.silence"}},
+	{mesure: replayverite.PreuveFermeture, feuilles: []string{"coverage.continuousFire.closed"}},
+	{mesure: replayverite.PreuveContradic,
+		feuilles: []string{"coverage.keyframes.contradictoryProofs", "coverage.keyframes.refutations"}},
+	{mesure: replayverite.PreuveVerdicts, famille: "coverage.verdict."},
 }
 
 // mesuresPresentes : les mesures NOTEES des deux cotes d'une comparaison (un score non note ou
@@ -208,7 +233,7 @@ func (l ligneRapport) statutVerite() string {
 }
 
 // imprimerVerite ecrit la section du banc, temoin par temoin, AVANT le detail `replaydiff`.
-func imprimerVerite(w io.Writer, lignes []ligneRapport, registreAvantConnu bool) {
+func imprimerVerite(ctx context.Context, w io.Writer, lignes []ligneRapport, registreAvantConnu bool) {
 	var concernes []ligneRapport
 	for _, l := range lignes {
 		if l.Verite != nil || len(l.Filets) > 0 {
@@ -227,7 +252,7 @@ func imprimerVerite(w io.Writer, lignes []ligneRapport, registreAvantConnu bool)
 		_, _ = fmt.Fprintln(w)
 		if l.Verite != nil {
 			if err := replayverite.Rendre(w, l.Temoin.ID, *l.Verite); err != nil {
-				slog.Warn("replay-corpus-gate: rendu du banc de verite", "temoin", l.Temoin.ID, "err", err)
+				slog.WarnContext(ctx, "replay-corpus-gate: rendu du banc de verite", "temoin", l.Temoin.ID, "err", err)
 			}
 		}
 		for _, d := range l.Filets {

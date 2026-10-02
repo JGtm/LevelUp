@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // origin_research_test.go — INSTRUMENT DE MESURE : L'ORIGINE DE L'ARTEFACT (lot 7.2).
@@ -58,7 +60,7 @@ func TestOriginMeasure(t *testing.T) {
 	if cache == "" {
 		t.Fatalf("%s est requis", originCacheEnv)
 	}
-	for _, short := range strings.Split(spec, ",") {
+	for short := range strings.SplitSeq(spec, ",") {
 		short = strings.TrimSpace(short)
 		if short == "" {
 			continue

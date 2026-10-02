@@ -96,7 +96,7 @@ type c514IterC struct {
 // porte une (0, 1, 2) et rend les bits restants. `kind == 3` ne coute rien et la boucle
 // continue. `ferme` dit que la vue a lu son terminateur.
 func c514VueC(br *Lecteur, frameLen int) (iters []c514IterC, ferme bool) {
-	for i := 0; i < 64; i++ {
+	for range 64 {
 		if br.BitPos() >= frameLen {
 			return iters, false
 		}
@@ -382,7 +382,7 @@ func TestClasses514Contenu(t *testing.T) {
 				continue
 			}
 			// la vue C, entree par entree
-			for tour := 0; tour < 64; tour++ {
+			for range 64 {
 				if !placeDisponible(br, frameLen, 1) || !br.ReadBit() {
 					break
 				}

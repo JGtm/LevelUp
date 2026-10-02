@@ -1,7 +1,7 @@
 //go:build integration
 
 // Package duckdb — compare_repo_weapons_test.go : le scope du profil d'armes du Face-à-face
-// (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2 item 2.3, amendé au lot 3-bis).
+// (plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2 item 2.3, amendé au lot 3-bis).
 //
 // Même régime de tag que les autres tests du paquet (`integration`) : ils montent de vraies
 // DB DuckDB `:memory:`.

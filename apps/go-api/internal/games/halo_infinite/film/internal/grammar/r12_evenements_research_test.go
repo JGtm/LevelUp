@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r12_evenements_research_test.go — LA LISTE COMPLETE D'EVENEMENTS SUR UN FILM HORS CATALOGUE.
@@ -29,7 +31,7 @@ package grammar
 // `CGO_ENABLED=0`. USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 R12_FILMS=<repo>/data/cache/film_chunks R12_IDS=215e7022 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR12(Cadrage|Evenements)$' -count=1 -timeout 60m -v
 
 import (
@@ -37,6 +39,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"math"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -44,7 +47,7 @@ import (
 // Voir l'en-tete : la classe d'equivalence rend les memes largeurs que la vraie carte.
 func r12CtxDeLayout(lay profile.I0Layout) r7Ctx {
 	var e [3]float64
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		e[i] = math.Pow(2, float64(lay.AxisW[i])) / 60.0
 	}
 	rb := uint(0)
@@ -58,7 +61,7 @@ func r12CtxDeLayout(lay profile.I0Layout) r7Ctx {
 // Un ecart signifierait que la formule et le detecteur ne parlent pas de la meme grandeur.
 func r12VerifieCtx(t *testing.T, lay profile.I0Layout, ctx r7Ctx) {
 	t.Helper()
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if got := r7BitsAxe(ctx.etendues[i], 16); got != lay.AxisW[i] {
 			t.Fatalf("reconstruction du contexte fausse sur l'axe %d : "+
 				"r7BitsAxe(%.3f, 16) = %d, AxisW = %d", i, ctx.etendues[i], got, lay.AxisW[i])
@@ -179,11 +182,11 @@ func r12TopOpaques(m map[int]int, top int) string {
 	if len(xs) > top {
 		xs = xs[:top]
 	}
-	var out string
+	var out strings.Builder
 	for _, x := range xs {
-		out += fmt.Sprintf("%d %s:%d · ", x.k, r7Noms[x.k], x.v)
+		out.WriteString(fmt.Sprintf("%d %s:%d · ", x.k, r7Noms[x.k], x.v))
 	}
-	return out
+	return out.String()
 }
 
 // --- LE RECENSEMENT ANCRE DES EVENEMENTS ---------------------------------------------------
@@ -328,14 +331,14 @@ func r12JournalTypes(t *testing.T, b *r12EvBilan, types []int) {
 			continue
 		}
 		sort.Slice(xs, func(i, j int) bool { return xs[i] < xs[j] })
-		var s string
+		var s strings.Builder
 		for i, ms := range xs {
 			if i >= 40 {
-				s += fmt.Sprintf("(+%d)", len(xs)-40)
+				s.WriteString(fmt.Sprintf("(+%d)", len(xs)-40))
 				break
 			}
-			s += r12MMSS(ms) + " "
+			s.WriteString(r12MMSS(ms) + " ")
 		}
-		t.Logf("    %-4d %-40s %3d : %s", tp, r7Noms[tp], len(xs), s)
+		t.Logf("    %-4d %-40s %3d : %s", tp, r7Noms[tp], len(xs), s.String())
 	}
 }

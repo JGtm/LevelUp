@@ -14,6 +14,7 @@ package killcollector
 // `TestPontDIdentite_ExemptionsDeTranslocationAppliquees`.
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 	"testing"
@@ -78,7 +79,7 @@ func TestPontDuCollecteur_SeuleLExemptionChange(t *testing.T) {
 		}
 	}
 
-	apres, origineApres, err := lireLePontDuCollecteur(film, entry, ids, "000d5950")
+	apres, origineApres, err := lireLePontDuCollecteur(context.Background(), film, entry, ids, "000d5950")
 	if err != nil {
 		t.Fatalf("etage du pont, politiques du collecteur : %v", err)
 	}

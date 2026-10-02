@@ -44,6 +44,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -325,7 +326,7 @@ func e197Mesurer(dir string) e197Ligne {
 //
 // Rend l indice du premier element de la fenetre satisfaisant la contrainte de couple, -1 sinon.
 func e197ParLaFenetre(n, ms int, instant func(int) int, couple func(int) bool) int {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		dt := instant(i) - ms
 		if dt < -tolMS || dt > tolMS {
 			continue
@@ -481,11 +482,12 @@ func e197TableauParFilm(t *testing.T, lignes []e197Ligne) {
 func e197TableauParTemps(t *testing.T, lignes []e197Ligne) {
 	t.Logf("")
 	t.Logf("==== [2] CE QUE RENDRAIT L APPARIEMENT PAR IDENTITE SEULE, PAR TEMPS DE L HYBRIDE ====")
-	entete := fmt.Sprintf("%-18s %8s", "temps", "appar")
+	var entete strings.Builder
+	entete.WriteString(fmt.Sprintf("%-18s %8s", "temps", "appar"))
 	for _, s := range e197Seuls {
-		entete += fmt.Sprintf(" %10s", s)
+		entete.WriteString(fmt.Sprintf(" %10s", s))
 	}
-	t.Logf("%s", entete)
+	t.Logf("%s", entete.String())
 	cumul := map[e197Seul]int{}
 	total := 0
 	for _, tp := range e197Ordre {
@@ -498,17 +500,19 @@ func e197TableauParTemps(t *testing.T, lignes []e197Ligne) {
 			}
 		}
 		total += n
-		txt := fmt.Sprintf("%-18s %8d", tp, n)
+		var txt strings.Builder
+		txt.WriteString(fmt.Sprintf("%-18s %8d", tp, n))
 		for _, s := range e197Seuls {
-			txt += fmt.Sprintf(" %10d", ligne[s])
+			txt.WriteString(fmt.Sprintf(" %10d", ligne[s]))
 		}
-		t.Logf("%s", txt)
+		t.Logf("%s", txt.String())
 	}
-	txt := fmt.Sprintf("%-18s %8d", "TOTAL", total)
+	var txt strings.Builder
+	txt.WriteString(fmt.Sprintf("%-18s %8d", "TOTAL", total))
 	for _, s := range e197Seuls {
-		txt += fmt.Sprintf(" %10d", cumul[s])
+		txt.WriteString(fmt.Sprintf(" %10d", cumul[s]))
 	}
-	t.Logf("%s", txt)
+	t.Logf("%s", txt.String())
 }
 
 // ==== MESURE 2 — L ASSISTANT : QUEL KILL-EVENT 85 DECRIT CETTE MORT ? ====

@@ -113406,7 +113406,7 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 
 ## [2026-09-25] Plan de suite de l'audit du decodeur de film (perimetre ferme) — En cours (plan PROPOSE, rien lance, rien commite)
 
-**Contexte** : demande utilisateur « plan detaille, au perimetre ferme, pour ce que l'audit recommande ; worktree dedie ; tests en TDD ; couches, responsabilites, non-redondance ». Skills `plan-review`, `plan-execution`, `arch-rules`, `delivery-checklist` appliques. Plan : `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`.
+**Contexte** : demande utilisateur « plan detaille, au perimetre ferme, pour ce que l'audit recommande ; worktree dedie ; tests en TDD ; couches, responsabilites, non-redondance ». Skills `plan-review`, `plan-execution`, `arch-rules`, `delivery-checklist` appliques. Plan : `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`.
 
 **Decision technique principale** : douze jalons ordonnes par dependance — J1 OPS-3 (exclusivite par processus et par titre, fusion AVANT v7.5 -> main), J2 robustesse E/S sans sortie modifiee (ecriture atomique stricte, tailles de chunk, verrou OS par `x/sys`, lecteurs bornes + fuzz, refus types de l'enfant de cuisson), J3 modele de revision (empreinte sans commentaires, perimetre = fermeture des imports, revision par consommateur de faits, gardes de l'appelant et cle de cuisson complete dans les faits), J4 etage de balayage unique, J5 identite (slot, generation) + GB-1, J6 portage unique (conditionnel), J7 killsource, J8 replis D-10 + 81 compteurs, J9 drapeau, J10 determinisme, J11 vague unique de re-decodage, J12 modernisation neutre / docs / CI. Matrice de tracabilite : les 64 identifiants du registre ont chacun un statut. Sept decisions utilisateur (DU-1 a DU-7) avec recommandation ; onze decisions techniques (DT-1 a DT-11) dont la reutilisation de `EquipmentLifeKey` (renomme `LifeKey`), d'`atomicfile`, de `contexteDArret`, du protocole `EmitPeak`, de `SpawnBuildOne` + `StoreArtifact`.
 
@@ -114207,3 +114207,29 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Résultats observés** : la session du chantier de suite d'audit signale (enquête `ENQUETE_SCAN_SEPTEMBRE_2026-10-02.md`, `origin/feat/suite-audit-decodeur` @ `90014fe79`) que la signature du localisateur des paquets à événements est figée sur le slot 123 ; dans les modes à objectif porté le delta « high-frequency » passe par les slots 124 et 126-129, d'où 19,1 % de kills `scan` en septembre. Consigné en D-67 : c'est vraisemblablement une part de la région (ii) de la campagne (L1b), à poser une fois dans le localisateur unifié (LU).
 
 **Conclusion / prochaine étape** : décision utilisateur attendue sur la prise en charge de D-67 par la campagne ; à la fusion de J12, fusionner `feat/v75` dans la branche puis ouvrir la vague 1 sur GO daté.
+## [2026-10-02] Suite de l'audit du décodeur de films — plan CLOS (J1 à J12, vague, revue finale) — Complété (reste fusion finale et vérification visuelle)
+
+**Statut** : Complété côté code ; fusion finale dans `feat/v75` après CI ; vérification visuelle
+de l'utilisateur (J11.5) après fusion.
+
+**Décision technique principale** : registre d'audit du 2026-09-24 traité en douze jalons
+(`.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`). En fin de J11, méthode changée à la
+demande de l'utilisateur : comparaison au dernier état accepté, critères décisifs « lecture
+(fermeture) + données publiées », cache des cuissons de base, et **banc de vérité**
+(`internal/replayverite`) qui juge contre des oracles (K/D/A et score officiels hors cas
+circulaires, fermeture, huit classes de vraisemblance) et rend le verdict du gate. Ordre de fin
+modifié : fusion dans `feat/v75` AVANT la vague (le serveur dev aurait redécodé à l'ancienne).
+
+**Résultats observés** : GB-1 tenu (vies sans position 123/330/77/74 → 0/0/0/8) ; aucune
+lecture de la référence J4.0.5 perdue sur 20 films (quatorze exceptions datées) ; tout repli
+décidant inscrit et compté ; J12 sans différence publiée (document identique à l'octet sur 20
+films) ; vague du 2026-10-01 (11 h 30) : 1 227 rejeux, 1 220 matchs killsource, `healthcheck`
+TOUT OK ; part de `scan` 8,3 % (contre 14 à 39 %), cause résiduelle trouvée (slot 123, confiée à la
+campagne de grammaire). Revue adversariale finale : ronde 1 = 0 P0, 5 P1 + 4 de même classe
+corrigés avec tests et mutations ; ronde 2 = 0 P0/P1, 2 P2 consignés. Agents Sonnet essayés :
+efficaces sur les tâches cadrées, à éviter quand un obstacle impose un arbitrage.
+
+**Conclusion / prochaine étape** : CI de `feat/suite-audit-decodeur`, avance rapide de
+`feat/v75`, CI ; prévenir la campagne de grammaire ; vérification visuelle de l'utilisateur.
+Reports : `.ai/V7.5/REGISTRE_REPORTS.md`, section « Reports du plan de suite d'audit du
+décodeur ».

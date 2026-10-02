@@ -63,7 +63,7 @@ func TestRoundStartsOfEstTotalSurDesManchesExAequo(t *testing.T) {
 	}
 	// L'ITERATION DE MAP EST ALEATOIRE : rejouer la MEME entree est ce qui secoue reellement
 	// l'ordre dans lequel `out` est bati avant le tri.
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		if got := roundStartsOf(base, byRoundExAequo()); !reflect.DeepEqual(got, attendu) {
 			t.Fatalf("tour %d : sortie instable pour la meme entree\n  attendu : %v\n  obtenue : %v",
 				i, attendu, got)

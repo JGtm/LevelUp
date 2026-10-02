@@ -28,7 +28,7 @@ func (a *assemblage) poserLibellesEtInventaire() {
 	// Les morts sans revendication ne sont publiées que pour les joueurs dont une trajectoire
 	// l'est : le client déduit ces lignes DE SES PISTES, une entrée sans piste ne rencontrerait
 	// jamais de ligne à décorer (même règle que les tirs, lancers et actions d'objectif).
-	a.doc.NeutralDeaths = keepNeutralDeathsOfPublishedTracks(a.opt.NeutralDeaths, a.doc.Tracks, a.reg.PontEpure())
+	a.doc.NeutralDeaths = keepNeutralDeathsOfPublishedTracks(a.ctx, a.opt.NeutralDeaths, a.doc.Tracks, a.reg.PontEpure())
 	// LES PISTES ANONYMES QUE LE PONT NOMME, comptees UNE fois par cuisson (lot J8.7) : chaque calque
 	// qui interroge le pont les relit, compter a chaque lecture multiplierait le meme fait.
 	a.opt.Fallbacks.DeclencheN(fallback.NomNomPisteParLePont, pistesNommeesParLePont(a.doc.Tracks, a.reg.PontEpure()))
@@ -43,18 +43,18 @@ func (a *assemblage) poserLibellesEtInventaire() {
 	// de BuildFromFilm —, la couverture reste ABSENTE. Publier {0,0,0,0} affirmerait « lecture
 	// faite, zéro trouvé », qui est le contraire de ce qui s'est passé ; l'ABSENCE dit encore autre
 	// chose, et la doctrine de coverage.go repose sur cette distinction.
-	attachInventoryCoverage(&a.doc, a.opt.Inventory, builtInv, invDroppedOrigin)
+	attachInventoryCoverage(a.ctx, &a.doc, a.opt.Inventory, builtInv, invDroppedOrigin)
 	// POURQUOI UNE LECTURE D'INVENTAIRE EST VIDE : le croisement avec le fil des morts se fait
 	// ICI, où les morts et leur decalage d'horloge existent — pas dans le projecteur
 	// (cf. inventory_dead_readings.go).
-	logInventoryEmptyCoverage(a.doc.Inventory, markInventoryDeadReadings(a.doc.Inventory, a.opt.Deaths, a.reg,
+	logInventoryEmptyCoverage(a.ctx, a.doc.Inventory, markInventoryDeadReadings(a.doc.Inventory, a.opt.Deaths, a.reg,
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks}))
 	// LES GRENADES ONT LEUR PROPRE AXE, alimente par les deux canaux (cf. grenade_reads.go) :
 	// ils n'ont pas la meme cadence, et les verser dans `Inventory` ferait masquer une lecture
 	// pleine par une lecture partielle — la cellule de munitions se viderait.
 	builtGren := buildGrenadeReads(a.opt.Inventory, a.opt.InventoryDeltas, a.origin, a.step)
 	a.doc.GrenadeReads = keepGrenadeReadsOfPublishedTracks(builtGren, a.doc.Tracks)
-	attachGrenadeReadCoverage(&a.doc, builtGren, a.opt.InventoryDeltaAmmoRefused)
+	attachGrenadeReadCoverage(a.ctx, &a.doc, builtGren, a.opt.InventoryDeltaAmmoRefused)
 }
 
 // poserCapacitesEtTranslocations publie les rangs de grenade, les lectures de capacite, les
@@ -80,7 +80,7 @@ func (a *assemblage) poserCapacitesEtTranslocations() {
 	a.doc.Abilities = keepAbilitiesOfPublishedTracks(cleanAbilities, a.doc.Tracks)
 	abilityCov := buildAbilityCoverage(rawAbilities, cleanAbilities, a.doc.Abilities, abilityNoise)
 	a.doc.Coverage.Abilities = &abilityCov
-	logAbilityCoverage(abilityCov)
+	logAbilityCoverage(a.ctx, abilityCov)
 	// LA PALETTE SE CLASSE AVANT DE NOMMER, et un film ambigu ne recoit AUCUN nom : le
 	// meme rang designe des capacites differentes d'une palette a l'autre.
 	// LES RAMASSAGES ET LES CONSOMMATIONS d'equipement, sur le meme axe et avec les MEMES
@@ -90,16 +90,16 @@ func (a *assemblage) poserCapacitesEtTranslocations() {
 		a.opt.EquipmentChanges, a.opt.EquipmentChangeStats, a.origin, a.step)
 	a.doc.EquipmentChanges = keepEquipmentChangesOfPublishedTracks(ecChanges, a.doc.Tracks)
 	a.doc.Coverage.EquipmentChanges = &ecCov
-	logEquipmentChangeCoverage(ecCov)
+	logEquipmentChangeCoverage(a.ctx, ecCov)
 	// LES TÉLÉPORTATIONS du translocateur, datées par l'événement 117 — même axe, même
 	// règle de publication que les autres calques (rien avant l'origine, rien sans piste).
 	var trCov TranslocationCoverage
 	a.doc.Translocations, trCov = buildTranslocations(a.opt.Translocations, a.doc.Tracks, a.origin, a.step)
 	a.doc.Coverage.Translocations = &trCov
-	logTranslocationCoverage(trCov)
+	logTranslocationCoverage(a.ctx, trCov)
 	a.palette = classifyAbilityPalette(a.doc.Abilities, a.opt.Labels.Abilities)
 	a.doc.AbilityLabels = abilityLabelsUsed(a.doc.Abilities, a.palette)
-	slog.Info("rejeu : a.palette de capacites",
+	slog.InfoContext(a.ctx, "rejeu : a.palette de capacites",
 		"a.palette", paletteIDOrNone(a.palette), "lectures", len(a.doc.Abilities),
 		"rangsNommes", len(a.doc.AbilityLabels))
 }
@@ -127,9 +127,9 @@ func (a *assemblage) poserImpulsionsEtCharges() {
 	// vide et meme `componentAbsent`.
 	if a.opt.AbilityImpulseStats.Scanned {
 		a.doc.Coverage.AbilityImpulses = &aiCov
-		logAbilityImpulseCoverage(aiCov)
+		logAbilityImpulseCoverage(a.ctx, aiCov)
 	} else {
-		slog.Warn("rejeu : impulsions de capacite NON BALAYEES — aucune couverture publiee",
+		slog.WarnContext(a.ctx, "rejeu : impulsions de capacite NON BALAYEES — aucune couverture publiee",
 			"lectures", len(a.opt.AbilityImpulses))
 	}
 	// LES CHARGES RESTANTES, par la MEME palette et la MEME jointure d'identite que les
@@ -148,9 +148,9 @@ func (a *assemblage) poserImpulsionsEtCharges() {
 	// meme vide et meme `componentAbsent`.
 	if a.opt.AbilityChargeStats.Scanned {
 		a.doc.Coverage.AbilityCharges = &acCov
-		logAbilityChargeCoverage(acCov)
+		logAbilityChargeCoverage(a.ctx, acCov)
 	} else {
-		slog.Warn("rejeu : charges d equipement NON BALAYEES — aucune couverture publiee",
+		slog.WarnContext(a.ctx, "rejeu : charges d equipement NON BALAYEES — aucune couverture publiee",
 			"lectures", len(a.opt.AbilityCharges))
 	}
 }
@@ -163,7 +163,7 @@ func (a *assemblage) clore() {
 	// événements de « sans slot » vers « rattachés » APRÈS que `buildCoverage` a figé la
 	// couverture. Journaliser `shotCov` publierait un compte périmé à côté d'un artefact à jour.
 	shotsPub := a.doc.Coverage.Shots
-	slog.Info("rejeu : couverture par calque",
+	slog.InfoContext(a.ctx, "rejeu : couverture par calque",
 		"tirsRattaches", shotsPub.Attached, "tirsDisponibles", shotsPub.Available,
 		"tirsSansSlot", shotsPub.NoSlot, "tirsAmbigus", shotsPub.Ambiguous,
 		"tirsHorsFenetre", shotsPub.OutOfWindow, "tirsNonPublies", shotsPub.Unpublished,
@@ -175,5 +175,5 @@ func (a *assemblage) clore() {
 	// le compteur ICI, sur les deux chemins de la cuisson, et jamais dans le rapport du balayage
 	// que les faits persistent (lot J8.7 ; cf. versement_des_replis.go).
 	versementDeLAssemblage(a.opt.Fallbacks, a.opt.ReplisHorsBalayage)
-	attachFallbackCoverage(&a.doc, a.opt.Fallbacks) // EN DERNIER : cf. fallbacks_publication.go
+	attachFallbackCoverage(a.ctx, &a.doc, a.opt.Fallbacks) // EN DERNIER : cf. fallbacks_publication.go
 }

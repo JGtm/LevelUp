@@ -28,7 +28,7 @@ package grammar
 // LECTURE SEULE, sans garde d environnement (bobines versionnees). Aucun composant n est
 // deroule : seul l etat par defaut est joue, donc le balayage est bon marche.
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191cOracleN2$' -v -count=1
+//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191cOracleN2$' -v -count=1
 
 import (
 	"fmt"

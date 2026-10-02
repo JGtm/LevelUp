@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot3_registre_compte_research_test.go — LOT 3 DU PLAN « PERCER LA TRAME » (2026-08-30) :

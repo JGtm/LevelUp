@@ -233,7 +233,7 @@ func TestLeTemoinNegatifEffondreLAttribution(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0), zoneAt(1, 102, 30, 0, 0)}
 	var tracks []Track
 	var actions []ObjectiveAction
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		x := float32(i%2) * 30 // alterne entre les deux zones
 		tracks = append(tracks, track("j", pointAt(i, x, 0, 0)))
 		actions = append(actions, action("j", i))

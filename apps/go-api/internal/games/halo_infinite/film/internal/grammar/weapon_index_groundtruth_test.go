@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -184,10 +185,7 @@ func runWeaponIndexGroundTruth(t *testing.T, dir string, f idxGTFilm) {
 	if err != nil {
 		t.Fatalf("%s registre illisible : %v", f.id, err)
 	}
-	n := CountFilmChunks(dir)
-	if n > geoMaxChunks {
-		n = geoMaxChunks
-	}
+	n := min(CountFilmChunks(dir), geoMaxChunks)
 	shots := precCollectShotsBoth(t, dir, n)
 	nRoster := precDistinct5(shots)
 	raws, _ := geoCollectDamageKills(t, dir, reg, n)
@@ -246,18 +244,19 @@ func logIndexFusions(t *testing.T, table4, table5 map[int32]int) {
 
 // films5For rend, pour un groupe de rosters fusionnes par le 4 bits, leurs indices 5 bits.
 func films5For(rosters []int32, table5 map[int32]int) string {
-	out := "["
+	var out strings.Builder
+	out.WriteString("[")
 	for i, r := range rosters {
 		if i > 0 {
-			out += " "
+			out.WriteString(" ")
 		}
 		if f, ok := table5[r]; ok {
-			out += itoaGT(f)
+			out.WriteString(itoaGT(f))
 		} else {
-			out += "?"
+			out.WriteString("?")
 		}
 	}
-	return out + "]"
+	return out.String() + "]"
 }
 
 // assertWeaponIndexGroundTruth valide le SIGNAL NON CONFONDU (bornes d'indice), pas l'heuristique

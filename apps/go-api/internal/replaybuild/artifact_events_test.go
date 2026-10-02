@@ -12,6 +12,7 @@ package replaybuild
 //	                       annoncerait un fichier que personne n'a touché.
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -38,7 +39,7 @@ func TestPuits_DepotOuvrierPublieUnEvenement(t *testing.T) {
 	const matchID = "000d5950"
 	blob := docJSON(t, matchID, true)
 
-	stored, err := StoreArtifact(repoRoot, title.DefaultSlug, matchID, blob)
+	stored, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, matchID, blob)
 	if err != nil {
 		t.Fatalf("StoreArtifact: %v", err)
 	}
@@ -72,7 +73,7 @@ func TestPuits_ConstructionLocalePublieUnEvenement(t *testing.T) {
 		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
 	}
 
-	if _, err := writeArtifact(path, title.DefaultSlug, "000d5950", doc); err != nil {
+	if _, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", doc); err != nil {
 		t.Fatalf("writeArtifact: %v", err)
 	}
 	if len(*vus) != 1 {
@@ -89,13 +90,13 @@ func TestPuits_ConstructionLocalePublieUnEvenement(t *testing.T) {
 func TestPuits_RegressionRefuseeNePublieRien(t *testing.T) {
 	repoRoot := t.TempDir()
 	const matchID = "000d5950"
-	if _, err := StoreArtifact(repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, true)); err != nil {
+	if _, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, true)); err != nil {
 		t.Fatalf("dépôt initial: %v", err)
 	}
 
 	// Puits installé APRÈS le dépôt initial : seul le dépôt appauvri est observé.
 	vus := capturePuits(t)
-	if _, err := StoreArtifact(repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, false)); err != nil {
+	if _, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, matchID, docJSON(t, matchID, false)); err != nil {
 		t.Fatalf("dépôt appauvri: %v", err)
 	}
 	if len(*vus) != 0 {
@@ -113,7 +114,7 @@ func TestPuits_ErreurDEcritureNePublieRien(t *testing.T) {
 	if err := os.WriteFile(barrage, []byte("x"), 0o644); err != nil {
 		t.Fatalf("pose du barrage: %v", err)
 	}
-	if _, err := writeArtifactBytes(barrage+"/sous/000d5950.json",
+	if _, err := writeArtifactBytes(context.Background(), barrage+"/sous/000d5950.json",
 		title.DefaultSlug, "000d5950", docJSON(t, "000d5950", true)); err == nil {
 		t.Skip("le système de fichiers a accepté un répertoire sous un fichier — cas non exerçable ici")
 	}
@@ -128,13 +129,13 @@ func TestPuits_SansPuitsEtPuitsEnPanique(t *testing.T) {
 	repoRoot := t.TempDir()
 	// Aucun puits câblé (cas nominal des CLI et de l'ouvrier) : aucune panique.
 	SetArtifactStoredSink(nil)
-	if _, err := StoreArtifact(repoRoot, title.DefaultSlug, "000d5950", docJSON(t, "000d5950", true)); err != nil {
+	if _, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, "000d5950", docJSON(t, "000d5950", true)); err != nil {
 		t.Fatalf("dépôt sans puits câblé: %v", err)
 	}
 
 	SetArtifactStoredSink(func(ArtifactStored) { panic("puits cassé") })
 	t.Cleanup(func() { SetArtifactStoredSink(nil) })
-	stored, err := StoreArtifact(repoRoot, title.DefaultSlug, "111e6061", docJSON(t, "111e6061", true))
+	stored, err := StoreArtifact(context.Background(), repoRoot, title.DefaultSlug, "111e6061", docJSON(t, "111e6061", true))
 	if err != nil {
 		t.Fatalf("un puits en panique a fait échouer une écriture d'artefact : %v", err)
 	}

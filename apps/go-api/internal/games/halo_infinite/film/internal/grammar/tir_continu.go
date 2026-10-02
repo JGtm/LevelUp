@@ -41,7 +41,8 @@ package grammar
 // lacher.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -174,13 +175,13 @@ func (c *collecteurTirContinu) entree(e EntreeDeControle) {
 	if e.Index < 0 || e.Index >= joueursDeControle {
 		return
 	}
-	for main := 0; main < 2; main++ {
+	for main := range 2 {
 		arme := e.Action.Arme[main]
-		for rang := 0; rang < entreesDeGachetteParMain; rang++ {
+		for rang := range entreesDeGachetteParMain {
 			k := cleBitDeTir{joueur: e.Index, main: main, rang: rang}
 			c.bit(k, e.Action.Gachettes[main]&(1<<rang) != 0, arme)
 		}
-		for rang := 0; rang < barilletsParMain; rang++ {
+		for rang := range barilletsParMain {
 			k := cleBitDeTir{joueur: e.Index, main: main, barillet: true, rang: rang}
 			c.bit(k, e.Action.Barillets[main]&(1<<rang) != 0, arme)
 		}
@@ -256,19 +257,8 @@ func (c *collecteurTirContinu) terminer() []types.ContinuousFireBurst {
 // sortContinuousFire ordonne les rafales sur un ordre TOTAL (debut, joueur, main, nature, rang) :
 // le document ne doit pas dependre de l iteration d une table.
 func sortContinuousFire(out []types.ContinuousFireBurst) {
-	sort.SliceStable(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		switch {
-		case a.StartUS != b.StartUS:
-			return a.StartUS < b.StartUS
-		case a.FilmIndex != b.FilmIndex:
-			return a.FilmIndex < b.FilmIndex
-		case a.Hand != b.Hand:
-			return a.Hand < b.Hand
-		case a.Barrel != b.Barrel:
-			return !a.Barrel
-		default:
-			return a.Input < b.Input
-		}
+	slices.SortStableFunc(out, func(a, b types.ContinuousFireBurst) int {
+		return cmp.Or(cmp.Compare(a.StartUS, b.StartUS), cmp.Compare(a.FilmIndex, b.FilmIndex),
+			cmp.Compare(a.Hand, b.Hand), cmp.Compare(unSi(a.Barrel), unSi(b.Barrel)), cmp.Compare(a.Input, b.Input))
 	})
 }

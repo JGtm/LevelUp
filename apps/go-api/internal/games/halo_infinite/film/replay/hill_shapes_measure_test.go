@@ -374,7 +374,7 @@ func hillMesure(zones []Zone, ramps []zoneRamp, pts map[int][]Point, ser zoneSer
 // hillHasard rend la part des frames du match ou AU MOINS UNE forme est occupee (tolerance).
 func hillHasard(zones []Zone, pts map[int][]Point, frames int) float64 {
 	occ := 0
-	for f := 0; f < frames; f++ {
+	for f := range frames {
 		for _, z := range zones {
 			if n, _ := hillNear(z, pts, f); n {
 				occ++

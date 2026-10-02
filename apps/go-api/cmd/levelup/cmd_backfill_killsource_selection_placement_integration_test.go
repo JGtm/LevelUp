@@ -125,7 +125,7 @@ func TestMatchsAJour_PontNonPubliable_Converge(t *testing.T) {
 	for ms := int64(0); ms <= 10_000; ms += 100 {
 		pos = append(pos, decfilm.BipedPosition{Slot: 1, TimestampUS: uint64(ms) * 1000, HasWorld: true})
 	}
-	reg := replay.BuildIdentityRegistry(replay.IdentityInput{
+	reg := replay.BuildIdentityRegistry(ctx, replay.IdentityInput{
 		Positions: pos, Deaths: []types.Death{{XUID: 111, TimeMS: 10_000}},
 		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26, Disagreements: 1},
 	})

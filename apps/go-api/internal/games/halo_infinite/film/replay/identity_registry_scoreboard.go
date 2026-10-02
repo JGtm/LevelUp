@@ -44,7 +44,9 @@ package replay
 // entierement, et c'est la degradation voulue.
 
 import (
+	"context"
 	"log/slog"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
@@ -93,7 +95,7 @@ func (s scoreboardReport) Nommees() int { return s.Bots + s.Humains }
 
 // resolveByScoreboard applique les trois regles de l'en-tete aux vies que la lecture directe a
 // refusees faute de table. Elle ne touche AUCUNE vie deja nommee.
-func (r *IdentityRegistry) resolveByScoreboard(in IdentityInput) {
+func (r *IdentityRegistry) resolveByScoreboard(ctx context.Context, in IdentityInput) {
 	r.tableau.Lignes = len(in.Participants)
 	if len(in.Participants) == 0 || len(r.creation.indexLu) == 0 {
 		return
@@ -116,7 +118,7 @@ func (r *IdentityRegistry) resolveByScoreboard(in IdentityInput) {
 		}
 		r.nommerParLeTableau(i, l, int(pi), tab, candidatsDIndex{bots: bots, humains: humains})
 	}
-	r.tableau.alarmer(in.MatchID)
+	r.tableau.alarmer(ctx, in.MatchID)
 }
 
 // candidatsDIndex porte les deux tables qui peuvent revendiquer un index de participant : le
@@ -226,27 +228,22 @@ func bidsParIndex(bots []BotIdentity) map[int]string {
 }
 
 func contientBid(l []string, bid string) bool {
-	for _, v := range l {
-		if v == bid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(l, bid)
 }
 
 // alarmer journalise ce que le tableau a pose et ce qu'il n'a pas su poser. Un refus sans cause
 // ne se corrige pas ; un refus muet ne se voit meme pas.
-func (s scoreboardReport) alarmer(matchID string) {
-	slog.Info("rejeu : nommage par le tableau de l'API",
+func (s scoreboardReport) alarmer(ctx context.Context, matchID string) {
+	slog.InfoContext(ctx, "rejeu : nommage par le tableau de l'API",
 		"match_id", matchID, "lignes", s.Lignes, "bots", s.Bots, "humains", s.Humains,
 		"conflits", s.Conflits, "sansCandidat", s.SansCandidat)
 	if s.Conflits > 0 {
-		slog.Warn("rejeu : siege d'index partage que la fenetre de participation ne departage "+
+		slog.WarnContext(ctx, "rejeu : siege d'index partage que la fenetre de participation ne departage "+
 			"pas — vies laissees non resolues",
 			"match_id", matchID, "vies", s.Conflits)
 	}
 	if s.SansCandidat > 0 {
-		slog.Warn("rejeu : index de participant que NI la table d'index NI BOT_METADATA ne "+
+		slog.WarnContext(ctx, "rejeu : index de participant que NI la table d'index NI BOT_METADATA ne "+
 			"nomme — le tableau n'indexe pas, il ne peut pas le rattacher",
 			"match_id", matchID, "vies", s.SansCandidat)
 	}

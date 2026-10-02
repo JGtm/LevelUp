@@ -29,7 +29,10 @@ package replay
 // l'elimination ne dit COMMENT une vie s'est terminee. Confondre les deux axes est le P0 de la
 // ronde 2 du 2026-09-07, qui avait coute toute une lecture d'isolement.
 
-import "log/slog"
+import (
+	"context"
+	"log/slog"
+)
 
 // NomParElimination : la vie a ete nommee par ELIMINATION sur le roster — une deduction, et
 // surtout PAS une mort. Troisieme valeur de l'axe `nomPar` (cf. lives.go).
@@ -37,7 +40,7 @@ const NomParElimination = "elimination"
 
 // resolveByRosterElimination nomme les vies du seul slot muet quand il ne reste qu'un seul xuid
 // du roster sans aucune vie. Ne fait RIEN dans tout autre cas.
-func (r *IdentityRegistry) resolveByRosterElimination(in IdentityInput) {
+func (r *IdentityRegistry) resolveByRosterElimination(ctx context.Context, in IdentityInput) {
 	if r.ViesNommeesParLaLecture() == 0 || len(r.Vies()) == 0 {
 		return
 	}
@@ -45,7 +48,7 @@ func (r *IdentityRegistry) resolveByRosterElimination(in IdentityInput) {
 	muets := slotsSansVieNommee(r.Vies())
 	if len(libres) != 1 || len(muets) != 1 {
 		if len(libres) > 0 && len(muets) > 0 {
-			slog.Info("rejeu : elimination sur le roster impossible — l'unicite manque",
+			slog.InfoContext(ctx, "rejeu : elimination sur le roster impossible — l'unicite manque",
 				"match_id", in.MatchID, "xuidsLibres", len(libres), "slotsMuets", len(muets))
 		}
 		return
@@ -59,7 +62,7 @@ func (r *IdentityRegistry) resolveByRosterElimination(in IdentityInput) {
 		return
 	}
 	r.eliminatedSlot, r.eliminatedXUID = slot, xuid
-	slog.Info("rejeu : identite posee par elimination sur le roster",
+	slog.InfoContext(ctx, "rejeu : identite posee par elimination sur le roster",
 		"match_id", in.MatchID, "slot", slot, "xuid", xuid, "vies", r.eliminated)
 }
 

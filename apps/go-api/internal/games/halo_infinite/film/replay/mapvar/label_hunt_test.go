@@ -207,7 +207,7 @@ func TestHuntLabelsBrute(t *testing.T) {
 		if depth == n {
 			return
 		}
-		for i := 0; i < len(alphabet); i++ {
+		for i := range len(alphabet) {
 			buf = append(buf, alphabet[i])
 			walk(depth + 1)
 			buf = buf[:len(buf)-1]

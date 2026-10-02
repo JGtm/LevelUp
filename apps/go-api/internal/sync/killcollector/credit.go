@@ -32,7 +32,7 @@ package killcollector
 // La vue `_latest` retient LA DERNIERE PASSE par match. Ce producteur REFUSAIT donc d ecrire un
 // match dont la passe courante venait d un film, pour ne pas effacer la source du degat fatal.
 // Le refus protegeait la source — au prix d un quart des morts : la passe de film ne publie que
-// 74,4 % de ce que le credit porte a 98,5 % (`.ai/CONCEPTION_INVERSION_PRESEANCE.md`).
+// 74,4 % de ce que le credit porte a 98,5 % (`.ai/V7.5/replay2d/CONCEPTION_INVERSION_PRESEANCE.md`).
 //
 // Il ECRIT DESORMAIS TOUJOURS, et il recompose : sa base credit + l enrichissement de la passe de
 // film courante, RELU EN BASE (`persist.FilmPassForMatch`) et fusionne par

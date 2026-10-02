@@ -14,6 +14,7 @@ package replay
 // AUCUN OCTET DE FILM dans aucun de ces tests.
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strings"
@@ -51,7 +52,7 @@ func TestEnteteDesFaitsEgaleLaCouvertureDuDocument(t *testing.T) {
 	} {
 		opt := g.options()
 		opt.MapQuant, opt.FilmIdentity = &entry, id
-		doc := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, opt)
+		doc := BuildFromPositions(context.Background(), goldenFilm, "halo_infinite", g.Positions, g.Fire, opt)
 		if doc.Coverage == nil || doc.Coverage.Decoder == nil {
 			t.Fatal("le document ne publie pas `coverage.decoder` : l invariant n a plus de " +
 				"cote gauche")
@@ -102,7 +103,7 @@ func TestBuildFromFactsEgaleLAssemblageDirect(t *testing.T) {
 	optDirect.MapQuant, optDirect.FilmIdentity = &entry, id
 	optDirect.Fallbacks = fallback.NouveauCompteur()
 	optDirect.Fallbacks.Cumuler(repliDuBalayage)
-	direct := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, optDirect)
+	direct := BuildFromPositions(context.Background(), goldenFilm, "halo_infinite", g.Positions, g.Fire, optDirect)
 
 	// A DROITE : le MEME etat, passe par le fichier de faits.
 	blob, err := EncodeFilmFactsFile(&FilmFactsFile{
@@ -119,7 +120,7 @@ func TestBuildFromFactsEgaleLAssemblageDirect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
-	rejoue := BuildFromFacts(goldenFilm, "halo_infinite", f, Options{MapQuant: &entry})
+	rejoue := BuildFromFacts(context.Background(), goldenFilm, "halo_infinite", f, Options{MapQuant: &entry})
 
 	if renderAssembly(direct) != renderAssembly(rejoue) {
 		t.Error("le document REJOUE DEPUIS LES FAITS differe de l assemblage direct : le fichier " +
@@ -176,7 +177,7 @@ func TestFaitsDuBalayageLaisseExactementDeuxSectionsALAssemblage(t *testing.T) {
 		t.Fatal("faitsDuBalayage rend nil sur un decoupage LU du catalogue : elle ne devrait " +
 			"rendre nil que sur un decoupage illisible")
 	}
-	champs := reflect.VisibleFields(reflect.TypeOf(FilmFactsFile{}))
+	champs := reflect.VisibleFields(reflect.TypeFor[FilmFactsFile]())
 	if len(champs) < 6 {
 		t.Fatalf("%d champ(s) lus sur FilmFactsFile : la reflexion ne mesure plus rien", len(champs))
 	}
@@ -308,8 +309,8 @@ func TestLObservateurNEstPasUnFaitPersiste(t *testing.T) {
 // fait rougir, et le message dit ou l ajouter.
 func TestStatsDeMortDObjetSontToutesPortees(t *testing.T) {
 	const cadre = 1 // `Config`, qui voyage a part sous `Cadre`
-	origine := reflect.TypeOf(grammar.ObjectDeathStats{}).NumField()
-	projection := reflect.TypeOf(statsSansCadre{}).NumField()
+	origine := reflect.TypeFor[grammar.ObjectDeathStats]().NumField()
+	projection := reflect.TypeFor[statsSansCadre]().NumField()
 	if origine-cadre != projection {
 		t.Errorf("grammar.ObjectDeathStats porte %d champ(s), la projection %d (+%d pour le "+
 			"cadre) : un champ n est pas porte.\nL ajouter a `statsSansCadre` ET aux DEUX sens "+

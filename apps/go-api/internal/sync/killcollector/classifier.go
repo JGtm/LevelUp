@@ -18,6 +18,7 @@
 package killcollector
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games"
@@ -30,10 +31,10 @@ import (
 // Nil dans TROIS cas, tous nominaux : `capabilities.toml` illisible, capability
 // `film.kill_source` absente, ou titre sans decodeur. L'appelant lit alors sa source
 // historique — jamais de panique, jamais de silence (l'echec de lecture se journalise).
-func ClassifierPourTitre(repoRoot, slug string) port.KillSourceClassifier {
+func ClassifierPourTitre(ctx context.Context, repoRoot, slug string) port.KillSourceClassifier {
 	caps, err := capabilitiesDuTitre(repoRoot, slug)
 	if err != nil {
-		slog.Warn("kill source: capabilities illisibles, traducteur non arme",
+		slog.WarnContext(ctx, "kill source: capabilities illisibles, traducteur non arme",
 			"title", slug, "err", err)
 		return nil
 	}

@@ -1,7 +1,9 @@
 package replay
 
 import (
+	"cmp"
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -276,20 +278,10 @@ func projectileBirths(proj []types.ProjectileTrack) []projectileBirth {
 			out = append(out, projectileBirth{s: p.Pts[0], raw: raw})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i].s, out[j].s
-		switch {
-		case a.TimestampUS != b.TimestampUS:
-			return a.TimestampUS < b.TimestampUS
-		case a.X != b.X:
-			return a.X < b.X
-		case a.Y != b.Y:
-			return a.Y < b.Y
-		case a.Z != b.Z:
-			return a.Z < b.Z
-		default:
-			return out[i].raw < out[j].raw
-		}
+	slices.SortFunc(out, func(p, q projectileBirth) int {
+		a, b := p.s, q.s
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.X, b.X),
+			cmp.Compare(a.Y, b.Y), cmp.Compare(a.Z, b.Z), cmp.Compare(p.raw, q.raw))
 	})
 	return out
 }

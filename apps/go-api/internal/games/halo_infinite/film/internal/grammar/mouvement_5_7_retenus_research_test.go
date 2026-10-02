@@ -266,7 +266,7 @@ func m57RPosture(t *testing.T, rec *m57RRec, w *World) {
 		parTag[p.tag] = append(parTag[p.tag], v.vz)
 	}
 	var parts []string
-	for tag := uint64(0); tag < 4; tag++ {
+	for tag := range uint64(4) {
 		vz := parTag[tag]
 		sort.Float64s(vz)
 		var monte int

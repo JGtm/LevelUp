@@ -28,6 +28,7 @@ package replay
 // fonction, donc un seul nommage : deux tables du meme film ne peuvent plus diverger.
 
 import (
+	"context"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -195,18 +196,18 @@ type IdentityRegistry struct {
 //     n'occupe qu'un slot a la fois, donc une vie dont un seul joueur du roster est libre sur
 //     tout l'intervalle lui revient (lot P2-bis) ;
 //  5. ce qui resiste est publie « non resolu » AVEC SA CAUSE et COMPTE, avec son alarme.
-func BuildIdentityRegistry(in IdentityInput) IdentityRegistry {
+func BuildIdentityRegistry(ctx context.Context, in IdentityInput) IdentityRegistry {
 	reg := IdentityRegistry{deducedLives: map[int]bool{}, corps: corpsParSlot(in.BipedCreations),
 		fb: in.Fallbacks}
 	// LA TABLE EFFECTIVE SE COMPOSE AVANT TOUT LE RESTE, et `in` la porte ensuite : sans cela,
 	// deux etapes du meme registre liraient deux tables differentes du meme film.
 	reg.filmTable = composerTableDIndex(in)
-	reg.filmTable.alarmerSurLaTableDuFilm(in.MatchID)
+	reg.filmTable.alarmerSurLaTableDuFilm(ctx, in.MatchID)
 	in.PlayerIndices = reg.filmTable.table
-	reg.own, reg.creation, reg.bridge = buildOwners(in)
-	reg.resolveByScoreboard(in)
-	reg.resolveByRosterElimination(in)
-	reg.resolveByTemporalExclusion(in)
+	reg.own, reg.creation, reg.bridge = buildOwners(ctx, in)
+	reg.resolveByScoreboard(ctx, in)
+	reg.resolveByRosterElimination(ctx, in)
+	reg.resolveByTemporalExclusion(ctx, in)
 	reg.Section = buildIdentitySection(reg, in)
 	return reg
 }

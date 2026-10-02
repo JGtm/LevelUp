@@ -32,8 +32,9 @@ package grammar
 // sortie, et c'est à l'appelant d'installer la largeur retenue pour son propre décodage.
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -78,8 +79,15 @@ func EquipmentLifeSpans(tracks []types.ProjectileTrack) map[types.LifeKey][]Equi
 			Points: len(tr.Pts),
 		})
 	}
+	// Tri total (J12.1, DT-9) : naissance, puis la vie elle-meme (points, premier point, fin) —
+	// deux vies d une cle peuvent naitre au meme instant (cf. lessTrack), et MatchEquipmentLife
+	// garde la premiere a egalite d ecart. Deux vies que cet ordre ne separe pas sont identiques.
 	for k := range out {
-		sort.Slice(out[k], func(i, j int) bool { return out[k][i].T0US < out[k][j].T0US })
+		slices.SortFunc(out[k], func(a, b EquipmentLifeSpan) int {
+			return cmp.Or(cmp.Compare(a.T0US, b.T0US), cmp.Compare(a.Points, b.Points),
+				cmp.Compare(a.First[0], b.First[0]), cmp.Compare(a.First[1], b.First[1]),
+				cmp.Compare(a.First[2], b.First[2]), cmp.Compare(a.T1US, b.T1US))
+		})
 	}
 	return out
 }

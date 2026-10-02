@@ -56,7 +56,7 @@ func TestIsObjectiveSubMode(t *testing.T) {
 		{"Truc Inconnu XYZ", false, "sous-mode inconnu"},
 		{"Arena", false, "conteneur de playlist seul, jamais un mode"},
 
-		// LACUNES D-I CORRIGÉES (lot 1bis, .ai/PLAN_PERF_NOTE_OBJECTIFS.md,
+		// LACUNES D-I CORRIGÉES (lot 1bis, .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md,
 		// 2026-08-27) : les 26 matchs du corpus qui tombaient en famille slayer.
 		{"Ranked:CTF 3 Captures on Argyle", true, "D-I corrigé : variante CTF listée"},
 		{"Arena:VIP on Streets", true, "D-I corrigé : VIP listé"},

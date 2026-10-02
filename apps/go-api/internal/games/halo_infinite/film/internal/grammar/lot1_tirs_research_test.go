@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_tirs_research_test.go — LOT 1 : LES INSTRUMENTS DE RECENSEMENT CORPUS ET DE
@@ -117,10 +119,7 @@ func TestLot1TirsEtCibles(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	var (
 		paquets, mauvaisType, court, blocSup, ecartes int
 		refAbs, viseeOK, viseeKO                      int

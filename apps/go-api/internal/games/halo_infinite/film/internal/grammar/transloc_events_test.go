@@ -21,7 +21,7 @@ func (w *translocWriter) put(n int, v uint64) {
 	for need := (w.at + n + 7) / 8; len(w.pay) < need; {
 		w.pay = append(w.pay, 0)
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if v>>(uint(n-1-i))&1 == 1 {
 			w.pay[(w.at+i)/8] |= 1 << (7 - uint((w.at+i)%8))
 		}
@@ -41,7 +41,7 @@ const (
 // l'index de région, puis les trois axes de la carte.
 func translocVecBits(e profile.MapQuantEntry) int {
 	n := 1 + int(e.EffectiveRegionIndexBits())
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		n += int(e.AxisWidths[ax])
 	}
 	return n
@@ -95,7 +95,7 @@ func translocJumpPacket(idx uint32, e profile.MapQuantEntry, region uint64, qa, 
 	for _, q := range [][3]uint32{qa, qb} {
 		w.put(1, 0) // porte de région à 0 = bornes de la carte (piège n°1)
 		w.put(int(e.EffectiveRegionIndexBits()), region)
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			w.put(int(e.AxisWidths[ax]), uint64(q[ax]))
 		}
 	}
@@ -154,7 +154,7 @@ func TestDecodeTranslocJump(t *testing.T) {
 	want := [2][3]float32{{100.5, 200.5, 300.5}, {400.5, 500.5, 600.5}}
 	got := [2][3]float32{ev.From, ev.To}
 	for i, nom := range []string{"départ (A)", "arrivée (B)"} {
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			if math.Abs(float64(got[i][ax]-want[i][ax])) > 1e-3 {
 				t.Fatalf("%s axe %d = %.3f, attendu %.3f (déquantification à mi-quantum) — "+
 					"l'ordre ou les largeurs de la charge ont bougé", nom, ax, got[i][ax], want[i][ax])
@@ -172,9 +172,9 @@ func TestDecodeTranslocJumpPorteInversee(t *testing.T) {
 	w.put(1, 0) // ref1
 	w.put(1, 0) // ref2
 	w.put(1, 0) // pas de mot d'effet : la charge enchaîne sur les positions
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		w.put(1, 1) // porte de région à 1 = bornes PAR DÉFAUT du moteur
-		for ax := 0; ax < 3; ax++ {
+		for range 3 {
 			w.put(22, uint64(1<<21)) // table DEFAUT au niveau 0x10 : 22 bits ; le milieu de la plage
 		}
 	}
@@ -184,7 +184,7 @@ func TestDecodeTranslocJumpPorteInversee(t *testing.T) {
 		t.Fatalf("décodage = %+v (ok=%v) : la branche des bornes par défaut devait être lue", ev, ok)
 	}
 	// Milieu de [-20000, 20000] au quantum près : le demi-pas vaut 40000/2^23 ≈ 0,0048 m.
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		if math.Abs(float64(ev.From[ax])) > 0.01 || math.Abs(float64(ev.To[ax])) > 0.01 {
 			t.Fatalf("axe %d : from=%.4f to=%.4f, attendu ~0 (milieu des bornes par défaut) — "+
 				"la porte de région a été lue dans le mauvais sens", ax, ev.From[ax], ev.To[ax])
@@ -248,10 +248,10 @@ func TestDecodeTranslocJumpDegradation(t *testing.T) {
 		w.put(1, 1) // porte de ref1 PRÉSENTE : la charge n'est plus lisible
 		w.put(1, 0) // porte de ref2
 		w.put(1, 0)
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			w.put(1, 0)
 			w.put(int(e.EffectiveRegionIndexBits()), 0)
-			for ax := 0; ax < 3; ax++ {
+			for ax := range 3 {
 				w.put(int(e.AxisWidths[ax]), 100)
 			}
 		}

@@ -35,7 +35,8 @@ package replay
 // designateur il n'y a pas d'objet de mode, donc pas de slot voisin ou lire le camp.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
@@ -227,7 +228,7 @@ type hillPeriod struct {
 func buildRampHills(zones []Zone, ser zoneSeries, c zoneCtx, cov *ZonesCoverage) []ZoneState {
 	cov.Method = ZoneMethodPositions
 	ramps := zoneRampsOf(ser)
-	sort.SliceStable(ramps, func(i, j int) bool { return ramps[i].t0 < ramps[j].t0 })
+	slices.SortStableFunc(ramps, func(a, b zoneRamp) int { return cmp.Compare(a.t0, b.t0) })
 	if len(ramps) == 0 {
 		return nil
 	}

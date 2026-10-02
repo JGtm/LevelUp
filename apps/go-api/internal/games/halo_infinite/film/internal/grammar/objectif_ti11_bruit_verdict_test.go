@@ -26,9 +26,9 @@ func btJournalFilm(t *testing.T, b *btFilmBilan) {
 		"IMAGE-CLE %d records, %d marches, %d cassees, %d chainees",
 		sc.Records, sc.Walked, sc.Broken, sc.Chained, ti11Part(sc.Chained, sc.Walked),
 		sc.KeyRecords, sc.KeyWalked, sc.KeyBroken, sc.KeyChained)
-	for v := 0; v < btVoies; v++ {
+	for v := range btVoies {
 		var sb strings.Builder
-		for c := 0; c < btChamps; c++ {
+		for c := range btChamps {
 			s := b.voies[v][c]
 			fmt.Fprintf(&sb, " %s %d/%d", btNomChamp(c), len(s.ech), s.distincts)
 		}
@@ -88,8 +88,8 @@ func btPlusProche(w *btFilmBilan, assauts []*btFilmBilan) *btFilmBilan {
 func btGate0(t *testing.T, assauts []*btFilmBilan) {
 	t.Helper()
 	t.Logf("########## GATE 0 PRESENCE — %d film(s) d'Assaut mesures", len(assauts))
-	for v := 0; v < btVoies; v++ {
-		for c := 0; c < btChamps; c++ {
+	for v := range btVoies {
+		for c := range btChamps {
 			n, d, films := 0, 0, 0
 			for _, b := range assauts {
 				n += len(b.voies[v][c].ech)
@@ -115,7 +115,7 @@ func btGate1(t *testing.T, temoins []*btFilmBilan) {
 			"images-cles (le MIROIR du chantier). Sans temoin, la porte ne peut pas trancher.%s", "")
 		return
 	}
-	for c := 0; c < btChamps; c++ {
+	for c := range btChamps {
 		e := btNouvelleEpreuve(temoins, btVoieDelta, c, nil)
 		btPublier(t, "TEMOIN CROISE DELTA "+btNomChamp(c), btEprouver(e), btPMax)
 	}
@@ -126,8 +126,8 @@ func btGate2(t *testing.T, assauts []*btFilmBilan) {
 	t.Helper()
 	t.Logf("########## GATE 2 EXCES — fenetre [%d s, %d s[ avant explosion, %d explosion(s)",
 		btFenetreBasMS/1000, btFenetreHautMS/1000, btNbExplosions(assauts))
-	for v := 0; v < btVoies; v++ {
-		for c := 0; c < btChamps; c++ {
+	for v := range btVoies {
+		for c := range btChamps {
 			e := btNouvelleEpreuve(assauts, v, c, nil)
 			btPublier(t, btNomVoie(v)+" "+btNomChamp(c), btEprouver(e), btPMax)
 		}
@@ -148,7 +148,7 @@ func btGate3(t *testing.T, assauts, temoins []*btFilmBilan) {
 		"p <= %.5f", seuil)
 	btDistribution(t, "ASSAUT", assauts)
 	btDistribution(t, "TEMOIN", temoins)
-	for v := 0; v < btEtats; v++ {
+	for v := range btEtats {
 		val := uint64(v)
 		e := btNouvelleEpreuve(assauts, btVoieDelta, btChampEtat, func(x uint64) bool {
 			return x == val
@@ -164,7 +164,7 @@ func btGate3(t *testing.T, assauts, temoins []*btFilmBilan) {
 // btDistribution publie l'histogramme des huit valeurs de i14, voie par voie.
 func btDistribution(t *testing.T, titre string, bs []*btFilmBilan) {
 	t.Helper()
-	for v := 0; v < btVoies; v++ {
+	for v := range btVoies {
 		var compte [btEtats]int
 		hors := 0
 		for _, b := range bs {
@@ -218,7 +218,7 @@ func btPublier(t *testing.T, titre string, r btResultat, seuil float64) {
 // btHistogramme publie l'histogramme des delais, observe contre temoin B.
 func btHistogramme(t *testing.T, r btResultat) {
 	t.Helper()
-	for i := 0; i < btSeaux; i++ {
+	for i := range btSeaux {
 		haut := "inf"
 		if i+1 < btSeaux {
 			haut = fmt.Sprintf("%d", btBornesMS[i+1]/1000)

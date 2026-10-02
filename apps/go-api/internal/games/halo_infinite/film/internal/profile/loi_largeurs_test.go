@@ -53,7 +53,7 @@ func chargerCatalogueDesCartes(t *testing.T) *profile.MapQuantCatalog {
 
 func bornesDe(e profile.MapQuantEntry) [3][2]float32 {
 	var b [3][2]float32
-	for axe := 0; axe < 3; axe++ {
+	for axe := range 3 {
 		b[axe] = [2]float32{e.Min[axe], e.Max[axe]}
 	}
 	return b

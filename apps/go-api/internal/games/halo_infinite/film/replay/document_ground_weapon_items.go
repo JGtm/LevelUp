@@ -29,8 +29,11 @@ package replay
 // Ici ne sortent que les objets qui ont BOUGÉ : une arme lâchée tombe, une arme de socle non.
 
 import (
+	"cmp"
+	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -330,7 +333,7 @@ func gwItemLinkPickups(
 			takes = append(takes, ch)
 		}
 	}
-	sort.SliceStable(takes, func(i, j int) bool { return takes[i].TimestampUS < takes[j].TimestampUS })
+	slices.SortStableFunc(takes, func(a, b types.HeldWeaponChange) int { return cmp.Compare(a.TimestampUS, b.TimestampUS) })
 	cov.TakesTotal = len(takes)
 	for _, ch := range takes {
 		if ch.Family == grammar.NoWeaponVariant {
@@ -371,8 +374,8 @@ func gwItemTakeInWindow(b gwPickupBounds, apparUS, tUS uint64) bool {
 }
 
 // logGroundWeaponItems journalise le calque avec ses dénominateurs.
-func logGroundWeaponItems(cov GroundWeaponItemsCoverage) {
-	slog.Info("rejeu : armes au sol individuelles",
+func logGroundWeaponItems(ctx context.Context, cov GroundWeaponItemsCoverage) {
+	slog.InfoContext(ctx, "rejeu : armes au sol individuelles",
 		"objets", cov.Objects, "publiees", cov.Published, "auRepos", cov.AtRest,
 		"lacheurNomme", cov.DropperNamed, "prisesRecues", cov.TakesTotal,
 		"ramasseurNomme", cov.PickupLinked,

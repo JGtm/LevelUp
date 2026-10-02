@@ -71,12 +71,12 @@ func consumeNavpointVisibilityDistanceFilters(br *Lecteur, v bool) bool {
 	br.ReadBits(navpointDistanceBits)
 	br.ReadBits(navpointDistanceBits)
 	k := navpointFilterCount(mask)
-	for i := 0; i < k; i++ {
+	for range k {
 		br.ReadBits(navpointDistanceBits)
 		br.ReadBits(navpointDistanceBits)
 	}
 	if !v {
-		for i := 0; i < k; i++ {
+		for range k {
 			br.ReadBits(navpointFilterLegacyByteBits)
 		}
 	}
@@ -98,11 +98,11 @@ func consumeNavpointBoolFilters(br *Lecteur, v bool) bool {
 	}
 	br.ReadBit()
 	k := navpointFilterCount(mask)
-	for i := 0; i < k; i++ {
+	for range k {
 		br.ReadBit()
 	}
 	if !v {
-		for i := 0; i < k; i++ {
+		for range k {
 			br.ReadBits(navpointFilterLegacyByteBits)
 		}
 	}
@@ -114,7 +114,7 @@ func consumeNavpointBoolFilters(br *Lecteur, v bool) bool {
 // sentinelle `0xff` que le jeu pose ensuite est une ECRITURE MEMOIRE : elle ne consomme rien.
 func consumeNavpointFilterOrder(br *Lecteur, k int, v bool) {
 	w := navpointFilterOrderBits(v)
-	for i := 0; i < k; i++ {
+	for range k {
 		br.ReadBits(w)
 	}
 }

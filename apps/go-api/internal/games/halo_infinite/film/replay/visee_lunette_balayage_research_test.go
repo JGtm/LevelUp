@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_lunette_balayage_research_test.go — LE BALAYAGE : QUEL COMPOSANT DU BIPEDE, S'IL EN EST
@@ -122,7 +124,7 @@ type adsTally struct {
 
 func (a *adsTally) ajoute(c adsClasse, masque uint64) {
 	a.instants[c]++
-	for id := 0; id < adsSweepMaxIndex; id++ {
+	for id := range adsSweepMaxIndex {
 		if masque&(1<<uint(id)) != 0 {
 			a.vus[c][id]++
 		}

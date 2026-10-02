@@ -33,7 +33,7 @@ package grammar
 // REGIME : garde ASSAUT_CACHE. Aucune base, aucun reseau, sentinelle memoire armee, un seul
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run NavpointTi12OneBombInspection -v -timeout 30m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run NavpointTi12OneBombInspection -v -timeout 30m
 
 import (
 	"fmt"
@@ -276,7 +276,7 @@ func obVueOrphelines(t *testing.T, series map[uint32][]ti12Ech, exps []int32) {
 	}
 	t.Logf("--- MONTEES CONTIGUES VALIDES : %d suivie(s) d'une explosion sous %d s, "+
 		"%d orpheline(s)", suivies, tpSensMaxMS/1000, orphelines)
-	for _, l := range strings.Split(sb.String(), "] ") {
+	for l := range strings.SplitSeq(sb.String(), "] ") {
 		if l == "" {
 			continue
 		}

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_camera_pov_research_test.go — A QUI APPARTIENT LA CAMERA DU TYPE 97 ?

@@ -12,6 +12,7 @@ package replay
 // (999, slot 9, camp 1), des pistes échantillonnées toutes les 100 ms (`pisteMonde`).
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"testing"
@@ -22,7 +23,7 @@ import (
 
 // decorPlacement assemble une entrée à partir des pistes et des morts du fil, camps du décor.
 func decorPlacement(pos []grammar.BipedPosition, mortsFilm []types.Death) EntreePlacement {
-	reg := BuildIdentityRegistry(IdentityInput{
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{
 		Positions: pos, Deaths: mortsFilm, PlayerIndices: indexDe(111, 222, 999),
 	})
 	return EntreePlacement{

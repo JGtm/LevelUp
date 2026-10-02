@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -103,15 +104,15 @@ func TestClasserLesEcartsSepareLaBrancheDuContenu(t *testing.T) {
 	}
 	// LA PASSE-FAITS REELLE : aucune etape du balayage. Rien a classer, tout a compter.
 	faits := memeChose("1 aaa")
-	for _, e := range replay.BuildFromFilmSteps {
+	for _, e := range replay.BuildFromFilmSteps() {
 		delete(faits, e)
 	}
 	absences, got := classerLesEcarts(a, faits)
 	if len(got) != 0 {
 		t.Errorf("les etapes du balayage sont classees comme ecarts : %v", got)
 	}
-	if absences != len(replay.BuildFromFilmSteps) {
-		t.Errorf("absences de branche = %d, attendu %d", absences, len(replay.BuildFromFilmSteps))
+	if absences != len(replay.BuildFromFilmSteps()) {
+		t.Errorf("absences de branche = %d, attendu %d", absences, len(replay.BuildFromFilmSteps()))
 	}
 	// UN ECART DE CONTENU ne se dilue pas dans les absences.
 	faits["killsource"] = "1 ccc"
@@ -155,12 +156,7 @@ func TestDeuxPassesEtUpdateSontExclusifs(t *testing.T) {
 }
 
 func contient(liste []string, v string) bool {
-	for _, s := range liste {
-		if s == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(liste, v)
 }
 
 // TestModeS8NePeutPasEcrireUneReference : LE MODE S8 NE TOUCHE JAMAIS LES 20 TSV DE REFERENCE.

@@ -1,6 +1,6 @@
 // Package domain — session_usage.go : le bloc « usages d'équipement, socles et
 // objectifs » de la page détail de session (chantier session-usage, S2 —
-// .ai/HANDOFF_SESSION_USAGE_BDD_2026-09-04.md §5/S2).
+// .ai/V7.5/HANDOFF_SESSION_USAGE_BDD_2026-09-04.md §5/S2).
 //
 // DOCTRINE DU CONTRAT (§1 du handoff) : TOUT axe de comparaison est NORMALISÉ —
 // parts en pourcentage, parités (100/effectif), cadences PAR MATCH mesuré. Les

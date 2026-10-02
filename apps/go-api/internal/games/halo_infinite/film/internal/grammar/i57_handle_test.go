@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i57_handle_test.go — INSTRUMENT DE MESURE de la PHASE C du plan
@@ -28,7 +30,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I57H_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI57HandleAndDeployables$' -timeout 60m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI57HandleAndDeployables$' -timeout 60m -v
 
 import (
 	"fmt"

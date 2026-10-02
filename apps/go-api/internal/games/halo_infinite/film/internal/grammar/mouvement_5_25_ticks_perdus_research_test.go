@@ -41,7 +41,9 @@ package grammar
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -234,12 +236,7 @@ func (p *t525Passe) cumuler(tr *t525Trame, recs []FrameRecord) {
 // t525Contient dit si un slot est deja dans la liste (les trois rangs de vue peuvent republier
 // le meme corps ; un tick est un tick, pas deux).
 func t525Contient(s []uint32, v uint32) bool {
-	for _, x := range s {
-		if x == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, v)
 }
 
 // recevoir capte UNE publication du deserialiseur : un etat lu, ou la vitesse qui sert d oracle
@@ -335,13 +332,7 @@ func t525Deciles(t *testing.T, titre string, trs []t525Trame, classe uint8) {
 		if tr.classe != classe || tr.bits == 0 {
 			continue
 		}
-		k := tr.curseur * 10 / tr.bits
-		if k < 0 {
-			k = 0
-		}
-		if k > 10 {
-			k = 10
-		}
+		k := min(max(tr.curseur*10/tr.bits, 0), 10)
 		d[k]++
 		n++
 	}
@@ -365,14 +356,14 @@ func t525HistNormes(t *testing.T, p *t525Passe) {
 		tot += v
 	}
 	sort.Ints(cles)
-	var sb string
+	var sb strings.Builder
 	for _, k := range cles {
 		if k > 20 {
 			continue
 		}
-		sb += fmt.Sprintf(" [%.1f-%.1f m/s]:%d", float64(k)/2, float64(k)/2+0.5, p.normes[k])
+		sb.WriteString(fmt.Sprintf(" [%.1f-%.1f m/s]:%d", float64(k)/2, float64(k)/2+0.5, p.normes[k]))
 	}
-	t.Logf("    VITESSE TENUE a la lecture (%d lectures de bipede) :%s", tot, sb)
+	t.Logf("    VITESSE TENUE a la lecture (%d lectures de bipede) :%s", tot, sb.String())
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -400,13 +391,7 @@ func t525TableauB(t *testing.T, p *t525Passe) {
 		n++
 		sommeLus += tr.records
 		sommeAttendu += att
-		k := int(float64(tr.records) / att * 10)
-		if k < 0 {
-			k = 0
-		}
-		if k > 10 {
-			k = 10
-		}
+		k := min(max(int(float64(tr.records)/att*10), 0), 10)
 		d[k]++
 	}
 	t.Logf("(b) TRAMES ABANDONNEES SUR UN REJET : %d avec voisine fermee · %d sans",

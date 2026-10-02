@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -29,7 +30,7 @@ func TestBuildFromPositions_Timeline(t *testing.T) {
 		pos(slot, 20_000, 3, 3, 0.5), // frame 100
 		pos(slot, 20_100, 4, 4, 0.5), // frame 101
 	}
-	doc := BuildFromPositions("000d5950", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
+	doc := BuildFromPositions(context.Background(), "000d5950", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
 
 	if doc.SchemaVersion != SchemaVersion {
 		t.Errorf("SchemaVersion = %d, attendu %d (l'ajout de champs optionnels ne l'incrémente pas)", doc.SchemaVersion, SchemaVersion)
@@ -76,7 +77,7 @@ func TestBuildFromPositions_Decimation(t *testing.T) {
 		pos(512, 100, 13, 23, 2),
 		pos(600, 50, -5, -5, 0), // 1 seul point -> PUBLIÉ depuis le seuil à 1
 	}
-	doc := BuildFromPositions("m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
 	if len(doc.Tracks) != 2 || doc.Tracks[0].Slot != 512 || doc.Tracks[1].Slot != 600 {
 		t.Fatalf("tracks = %+v, attendues les deux vies (512 puis 600)", doc.Tracks)
 	}
@@ -85,7 +86,7 @@ func TestBuildFromPositions_Decimation(t *testing.T) {
 			doc.Coverage.Tracks.RefusedMinPoints, doc.Coverage.Tracks.Published)
 	}
 	// LE SEUIL RÉGLÉ PAR L'APPELANT écarte toujours, et il le COMPTE.
-	serre := BuildFromPositions("m", "halo_infinite", in, nil,
+	serre := BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil,
 		Options{FrameIntervalMS: 100, MinPoints: 2})
 	if len(serre.Tracks) != 1 || serre.Tracks[0].Slot != 512 {
 		t.Fatalf("au seuil 2, tracks = %+v, attendue la seule 512", serre.Tracks)
@@ -115,7 +116,7 @@ func TestBuildFromPositions_Decimation(t *testing.T) {
 
 // TestBuildFromPositions_Empty : pas de position -> document vide mais bien formé.
 func TestBuildFromPositions_Empty(t *testing.T) {
-	doc := BuildFromPositions("m", "halo_infinite", nil, nil, Options{})
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", nil, nil, Options{})
 	if len(doc.Tracks) != 0 || doc.FrameCount != 0 || doc.DurationMS != 0 {
 		t.Errorf("document non vide: %+v", doc)
 	}
@@ -128,7 +129,7 @@ func TestBuildFromPositions_Empty(t *testing.T) {
 // zone parcourue), et l'absence de géométrie laisse le champ nil.
 func TestGeometryBounds(t *testing.T) {
 	objs := []MapObject{{TypeID: 1, X: -10, Y: 5}, {TypeID: 2, X: 30, Y: -8}}
-	doc := BuildFromPositions("m", "halo_infinite", nil, nil, Options{Geometry: objs})
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", nil, nil, Options{Geometry: objs})
 	if doc.GeometryBounds == nil {
 		t.Fatal("GeometryBounds nil alors que la géométrie est fournie")
 	}
@@ -136,7 +137,7 @@ func TestGeometryBounds(t *testing.T) {
 	if *doc.GeometryBounds != want {
 		t.Errorf("GeometryBounds = %+v, attendu %+v", *doc.GeometryBounds, want)
 	}
-	if BuildFromPositions("m", "halo_infinite", nil, nil, Options{}).GeometryBounds != nil {
+	if BuildFromPositions(context.Background(), "m", "halo_infinite", nil, nil, Options{}).GeometryBounds != nil {
 		t.Error("GeometryBounds devrait être nil sans géométrie")
 	}
 }

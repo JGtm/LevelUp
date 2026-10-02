@@ -83,7 +83,7 @@ func (sc *invDeltaScanner) captureRounds(slot int) {
 // collectAmmo assemble les emplacements lus sur ce record, et applique les garde-rails
 // d'enveloppe. Rend vrai si au moins un emplacement porte quelque chose.
 func (sc *invDeltaScanner) collectAmmo(rec *types.InventoryDelta) bool {
-	for k := 0; k < invDeltaWeaponSlots; k++ {
+	for k := range invDeltaWeaponSlots {
 		acc, hasRes := sc.ammo[k], sc.roundsRead[k]
 		if !acc.Read && !hasRes {
 			continue

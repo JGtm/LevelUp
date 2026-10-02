@@ -14,10 +14,10 @@
 // l'appelant, qui les résout où il veut (registre partagé, flag CLI, fichier). C'est ce qui le
 // garde utilisable hors ligne, et c'est la même frontière que `replay.Options.Objectives`.
 //
-// Il décode le film à DEUX endroits, et pour deux grammaires différentes : `games/halo_infinite/film/replay`
-// pour les positions et les événements de réplication (sérialisé par le verrou process de
-// `grammar`), `film/facts/objectives` pour les enregistrements d'entité d'où sortent la
-// courbe de score et les actions d'objectif (cf. matchfacts.go).
+// Il lit le film par `film/decfilm` et `film/replay` : positions et événements (le balayage vit en
+// `grammar`), enregistrements d'entité des objectifs (`facts/objectives`, cf. matchfacts.go) et source
+// des morts (`killsource`, cf. kills.go). Aucun verrou de paquet ne sérialise ces décodages : il n'en
+// existe plus (`archlint/decode_lock_interdit_test.go`).
 package replaybuild
 
 import (
@@ -104,7 +104,7 @@ type Outcome struct {
 // FATALS : sans bornes aucune carte ne se résout, et un rejeu sans libellés est
 // indistinguable à l'écran d'un rejeu aux armes inconnues (même règle que
 // cmd/replay-build). Les props Forge, eux, sont optionnels (journalisé).
-func NewBuilder(repoRoot, titleSlug string) (*Builder, error) {
+func NewBuilder(ctx context.Context, repoRoot, titleSlug string) (*Builder, error) {
 	pr := title.NewPathResolver(repoRoot)
 	cat, err := decfilm.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titleSlug))
 	if err != nil {
@@ -119,7 +119,7 @@ func NewBuilder(repoRoot, titleSlug string) (*Builder, error) {
 	regulation, err := mappings.LoadRegulationFromFile(
 		filepath.Join(pr.TitleMappingsDir(titleSlug), "regulation.toml"))
 	if err != nil {
-		slog.Warn("replaybuild: table de reglement illisible — artefacts sans cible de victoire",
+		slog.WarnContext(ctx, "replaybuild: table de reglement illisible — artefacts sans cible de victoire",
 			"err", err, "title", titleSlug)
 		regulation = nil
 	}
@@ -147,16 +147,16 @@ func (b *Builder) WithFrameInterval(ms int) *Builder {
 //
 // LE CATALOGUE DES TYPES RESTE CELUI DU TITRE : c'est une table d'emprises par identifiant,
 // elle ne dépend d'aucune carte.
-func (b *Builder) WithGeometryDir(dir string) *Builder {
+func (b *Builder) WithGeometryDir(ctx context.Context, dir string) *Builder {
 	typesDir := title.NewPathResolver(b.repoRoot).MapGeometryDir(b.titleSlug, "")
 	objs, skipped, err := replay.LoadGeometry(dir, typesDir)
 	if err != nil {
-		slog.Warn("replaybuild: géométrie de carte indisponible — artefacts sans props",
+		slog.WarnContext(ctx, "replaybuild: géométrie de carte indisponible — artefacts sans props",
 			"err", err, "dir", dir)
 		b.geometryOverride = []replay.MapObject{}
 		return b
 	}
-	slog.Info("replaybuild: géométrie de carte imposée", "objets", len(objs), "sansEmprise", skipped, "dir", dir)
+	slog.InfoContext(ctx, "replaybuild: géométrie de carte imposée", "objets", len(objs), "sansEmprise", skipped, "dir", dir)
 	// UN REPERTOIRE IMPOSE SANS PROP LISIBLE IMPOSE QUAND MEME ZERO PROP : `LoadGeometry` rend nil
 	// (pas d'erreur) quand le CSV manque ou ne passe aucune emprise, et `geometryFor` distingue
 	// « impose » de « resolu par carte » sur le seul nil. Laisser nil ici rendait la main a la
@@ -176,7 +176,7 @@ func (b *Builder) WithGeometryDir(dir string) *Builder {
 // `LoadGeometry` ne distingue que l'ABSENCE du CSV de carte (nil, sans erreur) ; toute autre
 // erreur — catalogue de TYPES illisible (panne du titre) comme CSV de carte present mais
 // corrompu — remonte telle quelle et merite un Warn, avec `dir` et `module` pour dire lequel.
-func (b *Builder) geometryFor(module string) []replay.MapObject {
+func (b *Builder) geometryFor(ctx context.Context, module string) []replay.MapObject {
 	if b.geometryOverride != nil {
 		return b.geometryOverride
 	}
@@ -187,14 +187,14 @@ func (b *Builder) geometryFor(module string) []replay.MapObject {
 	mapDir := pr.MapGeometryDir(b.titleSlug, module)
 	objs, skipped, err := replay.LoadGeometry(mapDir, pr.MapGeometryDir(b.titleSlug, ""))
 	if err != nil {
-		slog.Warn("replaybuild: catalogue des emprises de props illisible — artefacts sans props",
+		slog.WarnContext(ctx, "replaybuild: catalogue des emprises de props illisible — artefacts sans props",
 			"err", err, "dir", mapDir, "module", module)
 		objs = nil
 	} else if len(objs) == 0 {
-		slog.Debug("replaybuild: aucun prop pour cette carte — artefact sans repères contextuels",
+		slog.DebugContext(ctx, "replaybuild: aucun prop pour cette carte — artefact sans repères contextuels",
 			"dir", mapDir, "module", module)
 	} else {
-		slog.Debug("replaybuild: props de carte chargés",
+		slog.DebugContext(ctx, "replaybuild: props de carte chargés",
 			"objets", len(objs), "sansEmprise", skipped, "module", module)
 	}
 	b.geometries[module] = objs
@@ -217,9 +217,9 @@ func (b *Builder) ResolveMapEntry(mapNames []string) (decfilm.MapQuantEntry, err
 }
 
 // BuildBytes décode le film de filmDir et rend l'artefact SÉRIALISÉ — il n'écrit RIEN.
-// mapNames sont les identités de carte candidates (cf. ResolveMapEntry). Le décodage est
-// sérialisé par le verrou process de filmdec (dans replay.BuildFromFilm) — jamais deux films
-// en parallèle dans un même process.
+// mapNames sont les identités de carte candidates (cf. ResolveMapEntry). Aucun verrou de paquet
+// ne sérialise le décodage (retiré au lot 2.3) : la borne d un décodage à la fois par machine est
+// inter-processus et mémoire (`filmproc.AcquireSolo`, pris par les appelants).
 //
 // C'EST LA MOITIÉ QUI EXPLOSE, ET C'EST POURQUOI ELLE EST SÉPARABLE (lot BUILDALL,
 // 2026-08-26). Le décodage est un amplificateur mémoire (7,9 Go en 2,6 s sur `51101d1d`) ;
@@ -234,7 +234,7 @@ func (b *Builder) ResolveMapEntry(mapNames []string) (decfilm.MapQuantEntry, err
 // où il sait le faire. Des faits vides restent un cas nominal (ouvrier distant, CLI unitaire) :
 // l'artefact sort sans compteurs de joueur ni actions d'objectif, et la dégradation est
 // journalisée.
-func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, facts port.MatchFacts) (Built, error) {
+func (b *Builder) BuildBytes(ctx context.Context, matchID string, mapNames []string, filmDir string, facts port.MatchFacts) (Built, error) {
 	entry, err := b.ResolveMapEntry(mapNames)
 	if err != nil {
 		return Built{}, err
@@ -242,7 +242,6 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	// LES PHASES SONT CHRONOMETREES (cf. timing.go) : ce sont les travaux qui lisent le film, et
 	// le total ci-dessous n'est utile que si on sait lequel l'a mange.
 	debutTotal := time.Now()
-	ctx := context.Background()
 	// LA BASCULE (lot 4.1.2) : APRES l'entree de catalogue — elle sert aux deux branches ET
 	// valide l'en-tete des faits — et AVANT tout chargement de film. Cf. filmfacts_cuisson.go.
 	src, err := b.entreesDeLaCuisson(ctx, matchID, filmDir, entry)
@@ -265,13 +264,14 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
-	cat := b.collecterEntreesCatalogue(matchID, mapNames, facts, &stats, src)
-	opts := b.buildReplayOptions(entry, facts, cat, &stats)
+	cat := b.collecterEntreesCatalogue(ctx, matchID, mapNames, facts, &stats, src)
+	replay.JournaliserDiagnostics(ctx, cat.replis.Diagnostics().Relever()) // replis hors registre (J12.3)
+	opts := b.buildReplayOptions(ctx, entry, facts, cat, &stats)
 	cuit, err := b.documentDeLaCuisson(ctx, matchID, filmDir, opts, src)
 	if err != nil {
 		return Built{}, err
 	}
-	built, err := b.serialiserDocument(matchID, entry, cuit.doc, cuit.depuisLesFaits, debutTotal)
+	built, err := b.serialiserDocument(ctx, matchID, entry, cuit.doc, cuit.depuisLesFaits, debutTotal)
 	if err != nil {
 		return Built{}, err
 	}
@@ -318,7 +318,7 @@ type entreesCatalogue struct {
 // chemin du film, RELU sur le chemin des faits. Le sortir d ici est ce qui rend cette fonction
 // commune aux deux branches sans qu elle connaisse le film. `deaths` est l unique lecture du fil
 // des morts, partagee avec l assemblage des entrees de calque.
-func (b *Builder) collecterEntreesCatalogue(
+func (b *Builder) collecterEntreesCatalogue(ctx context.Context,
 	matchID string, mapNames []string, facts port.MatchFacts, stats *filmStats,
 	src entreesDeCuisson,
 ) entreesCatalogue {
@@ -329,12 +329,12 @@ func (b *Builder) collecterEntreesCatalogue(
 	fb := decfilm.NouveauCompteur()
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
 	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
-	stats.flag.Spawns = b.flagSpawns(matchID, facts.MapID)
+	stats.flag.Spawns = b.flagSpawns(ctx, matchID, facts.MapID)
 	b.observe("flag", stats.flag)
 	// Les ZONES du mode viennent du même catalogue de carte, dans l'ORDRE OÙ LE SERVICE LES SERT :
 	// c'est cet ordre qui donne son sens à `zoneStates[].zoneRef` (cf. zones.go). Aucune zone =
 	// aucun balayage de `ti=13`, donc aucun coût sur les modes qui n'en ont pas.
-	zones, zoneRoles := b.matchZones(matchID, facts.MapID, facts.GameVariantName, fb)
+	zones, zoneRoles := b.matchZones(ctx, matchID, facts.MapID, facts.GameVariantName, fb)
 	b.observe("zones", zones)
 	b.observe("zoneRoles", zoneRoles)
 	// L ETAPE `killsource` RESTE OBSERVEE ICI, A SA PLACE DANS LA SUITE : seul le DECODAGE est
@@ -344,23 +344,23 @@ func (b *Builder) collecterEntreesCatalogue(
 	b.observe("killsource", ksRes)
 	// Les POINTS D'APPARITION viennent du catalogue des socles, par map_id — ils donnent leur
 	// origine aux ramassages non-arme (cf. spawnpoints.go).
-	spawnPts, mapState := b.spawnPoints(matchID, facts.MapID, mapNames)
+	spawnPts, mapState := b.spawnPoints(ctx, matchID, facts.MapID, mapNames)
 	b.observe("spawnPoints", spawnPts)
 	b.observe("spawnPointsState", mapState)
-	neutral := b.neutralDeaths(matchID, ksRes, fb)
+	neutral := b.neutralDeaths(ctx, matchID, ksRes, fb)
 	b.observe("neutralDeaths", neutral)
 	// UNE SEULE ÉTAPE OBSERVÉE, et c'est délibéré : `matchKills` sort de la MÊME passe et n'est
 	// pas un balayage de plus. L'observateur continue de rendre EXACTEMENT `replay.KillsInput`,
 	// sans quoi le harnais d'équivalence aurait vu bouger `killRefs` sur les 13 films alors que
 	// rien de ce qu'il mesure n'a changé.
-	kills, matchKills := b.killRefs(matchID, deaths, ksRes, fb)
+	kills, matchKills := b.killRefs(ctx, matchID, deaths, ksRes, fb)
 	b.observe("killRefs", kills)
 	// Les IDENTITÉS DE BOT et les RELAIS sortent du MÊME décodage killsource (amont
 	// 2026-09-02/03) : ils se calculent ici, où `ksRes` vit, et voyagent avec les autres
 	// entrées. Aucune étape observée ne s'ajoute — ce sont des projections de `killsource`,
 	// déjà observé plus haut.
 	bots := replayidentity.BotIdentities(ksRes)
-	successions := botSuccessions(matchID, facts, ksRes, fb)
+	successions := botSuccessions(ctx, matchID, facts, ksRes, fb)
 	return entreesCatalogue{
 		killsource: ksRes,
 		zones:      zones, zoneRoles: zoneRoles,
@@ -394,13 +394,13 @@ type Built struct {
 // C'est `BuildBytes` suivi de l'écriture — la composition que les appelants IN-PROCESSUS
 // utilisent (CLI unitaire, enfant de backfill, action admin). Le post-sync, lui, sépare les
 // deux moitiés entre son enfant et lui-même.
-func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, facts port.MatchFacts) (Outcome, error) {
-	built, err := b.BuildBytes(matchID, mapNames, filmDir, facts)
+func (b *Builder) BuildMatch(ctx context.Context, matchID string, mapNames []string, filmDir string, facts port.MatchFacts) (Outcome, error) {
+	built, err := b.BuildBytes(ctx, matchID, mapNames, filmDir, facts)
 	if err != nil {
 		return Outcome{}, err
 	}
 	outPath := title.NewPathResolver(b.repoRoot).ReplayArtifactPath(b.titleSlug, matchID)
-	surDisque, err := writeArtifactBytes(outPath, b.titleSlug, matchID, built.Blob)
+	surDisque, err := writeArtifactBytes(ctx, outPath, b.titleSlug, matchID, built.Blob)
 	if err != nil {
 		return Outcome{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
@@ -426,7 +426,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 //
 // TOUT ÉCHEC EST NON FATAL : un film dont la source de dégât ne se décode pas reste un rejeu
 // valide, aux repères génériques. Le refus est JOURNALISÉ (decodeKillSource), jamais avalé.
-func (b *Builder) neutralDeaths(matchID string, res *decfilm.Result, fb *decfilm.Compteur) []replay.NeutralDeath {
+func (b *Builder) neutralDeaths(ctx context.Context, matchID string, res *decfilm.Result, fb *decfilm.Compteur) []replay.NeutralDeath {
 	if res == nil {
 		return nil
 	}
@@ -434,7 +434,7 @@ func (b *Builder) neutralDeaths(matchID string, res *decfilm.Result, fb *decfilm
 	// joueur. Sans marge (BTB) ou en alerte de santé, le décodage reste juste EN AGRÉGAT et
 	// faux ligne par ligne — et une ligne est précisément ce qu'on publierait ici.
 	if !res.LineByLinePublishable() && len(res.UnclaimedDeaths) > 0 {
-		slog.Info("replaybuild: attribution ligne par ligne refusée — morts neutres sans type",
+		slog.InfoContext(ctx, "replaybuild: attribution ligne par ligne refusée — morts neutres sans type",
 			"match_id", matchID, "candidates", len(res.UnclaimedDeaths))
 		return nil
 	}
@@ -461,7 +461,7 @@ func (b *Builder) neutralDeaths(matchID string, res *decfilm.Result, fb *decfilm
 	if len(out) == 0 {
 		return nil
 	}
-	slog.Info("replaybuild: morts sans revendication typées", "match_id", matchID,
+	slog.InfoContext(ctx, "replaybuild: morts sans revendication typées", "match_id", matchID,
 		"publiees", len(out), "orphelines", res.Stats.Unclaimed.Population)
 	return out
 }
@@ -480,7 +480,7 @@ func (b *Builder) neutralDeaths(matchID string, res *decfilm.Result, fb *decfilm
 // BOT_METADATA du décodage killsource (BotID N — la clé exacte), l'instant de la base.
 // Un bot déclaré par la base mais absent du roster du film n'entre pas : sans nom lu, on
 // n'attribue rien — et l'écart se journalise, jamais avalé.
-func botSuccessions(matchID string, facts port.MatchFacts, res *decfilm.Result, fb *decfilm.Compteur) []replay.Succession {
+func botSuccessions(ctx context.Context, matchID string, facts port.MatchFacts, res *decfilm.Result, fb *decfilm.Compteur) []replay.Succession {
 	if res == nil || len(res.Roster.Bots) == 0 {
 		return nil
 	}
@@ -506,7 +506,7 @@ func botSuccessions(matchID string, facts port.MatchFacts, res *decfilm.Result, 
 		}
 		ref, ok := byID[id]
 		if !ok {
-			slog.Warn("replaybuild: bot arrivé en cours de partie absent du roster du film — relais impossible",
+			slog.WarnContext(ctx, "replaybuild: bot arrivé en cours de partie absent du roster du film — relais impossible",
 				"match_id", matchID, "bid", p.XUID)
 			continue
 		}
@@ -521,14 +521,14 @@ func botSuccessions(matchID string, facts port.MatchFacts, res *decfilm.Result, 
 // structureFor charge (et met en cache) le fond structurel d'un module. Son absence n'est
 // PAS fatale : toutes les cartes n'ont pas de fichier figé, un rejeu sans fond reste
 // lisible (même règle que cmd/replay-build).
-func (b *Builder) structureFor(module string) []replay.Surface {
+func (b *Builder) structureFor(ctx context.Context, module string) []replay.Surface {
 	if s, ok := b.structures[module]; ok {
 		return s
 	}
 	path := title.NewPathResolver(b.repoRoot).MapStructurePath(b.titleSlug, module)
 	ms, err := replay.LoadMapStructure(path)
 	if err != nil {
-		slog.Debug("replaybuild: structure de carte indisponible — artefact sans fond structurel",
+		slog.DebugContext(ctx, "replaybuild: structure de carte indisponible — artefact sans fond structurel",
 			"err", err, "path", path, "module", module)
 		b.structures[module] = nil
 		return nil
@@ -552,19 +552,6 @@ func (b *Builder) observe(step string, v any) {
 		b.observer(step, v)
 	}
 }
-
-// BuildBytesStepsBefore et BuildBytesStepsAfter sont les etapes que BuildBytes rend a
-// l'observateur AVANT et APRES le decodage des positions (`replay.BuildFromFilmSteps`), dans
-// l'ordre. Exportees pour le harnais d'equivalence, gardees par observe_test.go.
-var (
-	BuildBytesStepsBefore = []string{
-		"score", "objectives", "vip", "skull", "bomb", "flag", "zones", "zoneRoles",
-		"killsource", "spawnPoints", "spawnPointsState", "neutralDeaths", "killRefs",
-	}
-	// `EtapeRejeuDepuisLesFaits` PRECEDE `artifact` : le harnais doit savoir QUELLE BRANCHE a
-	// servi avant de comparer les octets qu elle a produits (lot 4.1.2).
-	BuildBytesStepsAfter = []string{EtapeRejeuDepuisLesFaits, "artifact"}
-)
 
 // trierSuccessions range les relais de bots dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9) :
 // instant de bascule, index de film, nom. Deux bots rejoignant a la MEME milliseconde restaient ex

@@ -1,7 +1,7 @@
 // Package sync — engagement_recompute.go : recompute des coefficients
 // d'engagement personnels (mediane glissante des paces).
 //
-// Reference plan : .ai/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4 + thought_log
+// Reference plan : .ai/archive/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4 + thought_log
 // 2026-05-05 "Engagement long-term".
 //
 // Pipeline :

@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -370,6 +371,10 @@ type Result struct {
 	// Probe : la sonde a porte de catalogue RELACHEE. NIL quand la couverture est complete —
 	// c est le seul regime ou elle porterait de l information, et elle coute cher.
 	Probe *RelaxedProbe
+	// Diagnostics : ce que le decodage a constate et que l orchestrateur journalise avec SON
+	// contexte (lot J12.3, ADR 0034 D-4 — `killsource` ne journalise pas). HORS de toute
+	// serialisation : un recit, pas une donnee.
+	Diagnostics []constat.Diagnostic `json:"-"`
 }
 
 // LineByLinePublishable : les attributions ligne par ligne sont-elles publiables ?

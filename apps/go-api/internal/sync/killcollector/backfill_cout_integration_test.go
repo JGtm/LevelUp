@@ -266,7 +266,7 @@ func mesurerUnFilm(t *testing.T, ctx context.Context, db *sql.DB, film string) *
 		t.Fatalf("roster %s: %v", film, err)
 	}
 
-	batch := BuildKillSourceBatch(film, res, ids)
+	batch := BuildKillSourceBatch(ctx, film, res, ids)
 	debut = time.Now()
 	fusionne, err := col.write(ctx, batch)
 	c.ecriture = time.Since(debut)

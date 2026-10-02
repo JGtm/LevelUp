@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // e191_composants_research_test.go — LOT 1.9.1 : LE VOCABULAIRE DU JEU, MESURE SUR LES OCTETS.
@@ -45,6 +47,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -197,13 +200,13 @@ func e191MasqueContient(masque []int, i int) bool {
 
 // e191Signature rend la signature COURTE des composants regardes : `i10+ i18- i20+ ...`.
 func e191Signature(masque []int) string {
-	out := ""
+	var out strings.Builder
 	for _, c := range e191Composants {
 		marque := "-"
 		if e191MasqueContient(masque, c.i) {
 			marque = "+"
 		}
-		out += fmt.Sprintf("i%d%s ", c.i, marque)
+		out.WriteString(fmt.Sprintf("i%d%s ", c.i, marque))
 	}
-	return out
+	return out.String()
 }

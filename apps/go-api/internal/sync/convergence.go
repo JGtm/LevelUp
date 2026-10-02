@@ -612,7 +612,7 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 	if e.replayArtifacts == nil {
 		return
 	}
-	placement := e.replayArtifacts.Placement()
+	placement := e.replayArtifacts.Placement(ctx)
 	// GetFilmChunks est une capacité OPTIONNELLE du client (assertion, pas extension de
 	// HaloClient — les mocks des autres étapes n'ont pas à la porter). Son absence
 	// n'interdit QUE la construction locale : mettre en file ne télécharge aucun film

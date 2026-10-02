@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipe_film_oracle_research_test.go — PHASE 3, LA CONFRONTATION A L'ORACLE EXTERNE.
@@ -45,7 +47,7 @@ const equipeVoisinage = 16
 func equipeOracleXuid(t *testing.T) map[string]map[uint64]int {
 	t.Helper()
 	out := map[string]map[uint64]int{}
-	for _, bloc := range strings.Split(os.Getenv("CHUNK00_XUID_EQUIPES"), ";") {
+	for bloc := range strings.SplitSeq(os.Getenv("CHUNK00_XUID_EQUIPES"), ";") {
 		if bloc = strings.TrimSpace(bloc); bloc == "" {
 			continue
 		}
@@ -54,7 +56,7 @@ func equipeOracleXuid(t *testing.T) map[string]map[uint64]int {
 			continue
 		}
 		m := map[uint64]int{}
-		for _, couple := range strings.Split(liste, ",") {
+		for couple := range strings.SplitSeq(liste, ",") {
 			xs, ts, ok := strings.Cut(strings.TrimSpace(couple), ":")
 			if !ok {
 				continue

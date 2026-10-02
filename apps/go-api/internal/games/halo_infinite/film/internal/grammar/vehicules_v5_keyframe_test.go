@@ -27,7 +27,7 @@ package grammar
 // bande, fermeture de trou 90,7 % contre 0 % au témoin, cf. V3_EMBARQUEMENT § 2.4).
 //
 //	CGO_ENABLED=0 V5_ROOT=<cache> V5_FILMS=0d76e8f1,fccc61cd \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV5Keyframe -v -timeout 60m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV5Keyframe -v -timeout 60m
 
 import (
 	"fmt"

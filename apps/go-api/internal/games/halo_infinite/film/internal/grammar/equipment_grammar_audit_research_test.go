@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipment_grammar_audit_research_test.go — LOT 5, ADDENDUM A : AUDIT DE COMPLÉTUDE de la

@@ -26,12 +26,13 @@ package grammar
 // Ce paquet ne tire PAS DuckDB : `go test -race` y tourne sans `-gcflags=all=-d=checkptr=0`.
 // La commande du gate :
 //
-//	go test -race -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/filmdec/
+//	go test -race -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/internal/grammar/
 
 import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 
@@ -120,11 +121,12 @@ func empreinteDeDecodage(t *testing.T, f *source.Film) string {
 		tis = append(tis, int(ti))
 	}
 	sort.Ints(tis)
-	out := fmt.Sprintf("slots=%d decoupage=%v", fc.BipedSlots().Count(), fc.ProfilDeBalayage().MPP)
+	var out strings.Builder
+	out.WriteString(fmt.Sprintf("slots=%d decoupage=%v", fc.BipedSlots().Count(), fc.ProfilDeBalayage().MPP))
 	for _, ti := range tis {
 		s := stats[uint32(ti)] //nolint:gosec // index d archetype, borne par le registre
-		out += fmt.Sprintf(" | ti=%d total=%d ferme=%d bloquant=%q",
-			ti, s.Total, s.Closed, s.Blocking)
+		out.WriteString(fmt.Sprintf(" | ti=%d total=%d ferme=%d bloquant=%q",
+			ti, s.Total, s.Closed, s.Blocking))
 	}
-	return out
+	return out.String()
 }

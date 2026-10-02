@@ -1,7 +1,7 @@
 package skill
 
 // skill_v2_metrics.go — métriques expvar + sentinelle dual-row pour la
-// Stratégie C (cf. ADR 0024 + .ai/LUSR_V2_HANDOFF.md).
+// Stratégie C (cf. ADR 0024 + .ai/archive/V7/LUSR v2/LUSR_V2_HANDOFF.md).
 //
 // Exporte via /debug/vars (stdlib expvar) — conforme à ADR 0009 (pas de
 // Prometheus). Les compteurs sont incrémentés par writeCanonicalLUSRRow

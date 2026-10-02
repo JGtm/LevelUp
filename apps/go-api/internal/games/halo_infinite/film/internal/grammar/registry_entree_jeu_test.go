@@ -230,10 +230,7 @@ func entreeNomBrut(d []byte, off int) string {
 	if off < 0 || off >= len(d) {
 		return ""
 	}
-	end := off + registryEntryNameBytes
-	if end > len(d) {
-		end = len(d)
-	}
+	end := min(off+registryEntryNameBytes, len(d))
 	for i := off; i < end; i++ {
 		if d[i] == 0 {
 			return string(d[off:i])

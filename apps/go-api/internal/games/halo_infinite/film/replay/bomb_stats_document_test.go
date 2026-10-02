@@ -1,6 +1,9 @@
 package replay
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 // bomb_stats_document_test.go — LE CÂBLAGE de `bomb_carriers_killed`, et sa seule vraie
 // question : SUR QUELLE HORLOGE les couples arrivent.
@@ -64,7 +67,7 @@ func TestAttachBombStatsKillsHorlogeDuMatch(t *testing.T) {
 		t.Run(c.nom, func(t *testing.T) {
 			doc := ReplayDocument{MatchID: "m"}
 			opt, own := bombDocOptions(MatchKillsInput{Read: true, Kills: c.kills})
-			attachBombStats(&doc, opt, own, carry)
+			attachBombStats(context.Background(), &doc, opt, own, carry)
 			if doc.BombStats == nil {
 				t.Fatal("aucune statistique posée sur le document")
 			}
@@ -89,7 +92,7 @@ func TestAttachBombStatsKillsNonLus(t *testing.T) {
 		Read:  false,
 		Kills: []KillRef{{KillerXUID: 5, VictimXUID: 7, TimeMS: 11_000}},
 	})
-	attachBombStats(&doc, opt, own, bombCarryDe(bombPeriode(7, 10_000, 12_000)))
+	attachBombStats(context.Background(), &doc, opt, own, bombCarryDe(bombPeriode(7, 10_000, 12_000)))
 	if doc.BombStats == nil {
 		t.Fatal("aucune statistique posée sur le document")
 	}
@@ -110,7 +113,7 @@ func TestAttachBombStatsKillsDenominateur(t *testing.T) {
 		Kills:   []KillRef{{KillerXUID: 5, VictimXUID: 7, TimeMS: 11_000}},
 		Dropped: 4,
 	})
-	attachBombStats(&doc, opt, own, bombCarryDe(bombPeriode(7, 10_000, 12_000)))
+	attachBombStats(context.Background(), &doc, opt, own, bombCarryDe(bombPeriode(7, 10_000, 12_000)))
 	if doc.BombStats == nil {
 		t.Fatal("aucune statistique posée sur le document")
 	}

@@ -26,6 +26,7 @@ package replay
 // AUCUNE GARDE D'ENVIRONNEMENT : ce test tourne en CI, sur des entrées synthétiques.
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
 )
@@ -57,7 +58,7 @@ func TestBuildWiresEachCatalogToItsOwnKind(t *testing.T) {
 		{TimestampUS: 2_100_000, Slot: 1, CatalogID: wirIDEquipement, Class: 2}, // grenade
 	}
 
-	doc := BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, Options{
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourOrigine(), nil, Options{
 		FilmClockOriginUS: 1_000_000,
 		Pickups:           pickups,
 		Labels:            labels,
@@ -102,7 +103,7 @@ func TestBuildWiresEachCatalogToItsOwnKind(t *testing.T) {
 // l'événement, et que le compteur DIT l'absence au lieu de la taire. Sans lui, un câblage qui
 // ne passerait AUCUN catalogue serait indiscernable du bon, `family` étant `omitempty`.
 func TestBuildLeavesFamilyEmptyWithoutCatalogs(t *testing.T) {
-	doc := BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, Options{
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourOrigine(), nil, Options{
 		FilmClockOriginUS: 1_000_000,
 		Pickups: []types.BipedPickup{
 			{TimestampUS: 2_000_000, Slot: 1, CatalogID: wirIDArme, Class: 0},

@@ -20,7 +20,7 @@ import (
 // m4bListe lit une liste d entiers separes par des virgules.
 func m4bListe(nom string) map[uint32]bool {
 	out := map[uint32]bool{}
-	for _, s := range strings.Split(os.Getenv(nom), ",") {
+	for s := range strings.SplitSeq(os.Getenv(nom), ",") {
 		var v uint32
 		if _, err := fmt.Sscanf(s, "%d", &v); err == nil {
 			out[v] = true
@@ -34,7 +34,7 @@ func TestM4bMonture(t *testing.T) {
 	cad := s3LireCadre(t)
 	slots, vehs := m4bListe("M4B_SLOTS"), m4bListe("M4B_VEHICULES")
 	var fen [][2]int
-	for _, s := range strings.Split(os.Getenv("M4B_FENETRES"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_FENETRES"), ",") {
 		var a, b int
 		if _, err := fmt.Sscanf(s, "%d-%d", &a, &b); err == nil {
 			fen = append(fen, [2]int{a, b})
@@ -85,7 +85,7 @@ func TestM4bMontureMarcheDesTrames(t *testing.T) {
 	cad := s3LireCadre(t)
 	slots := m4bListe("M4B_SLOTS")
 	var fen [][2]int
-	for _, s := range strings.Split(os.Getenv("M4B_FENETRES"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_FENETRES"), ",") {
 		var a, b int
 		if _, err := fmt.Sscanf(s, "%d-%d", &a, &b); err == nil {
 			fen = append(fen, [2]int{a, b})
@@ -140,7 +140,7 @@ func TestM4bMontureImagesCles(t *testing.T) {
 	cad := s3LireCadre(t)
 	slots := m4bListe("M4B_SLOTS")
 	var fen [][2]int
-	for _, s := range strings.Split(os.Getenv("M4B_FENETRES"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_FENETRES"), ",") {
 		var a, b int
 		if _, err := fmt.Sscanf(s, "%d-%d", &a, &b); err == nil {
 			fen = append(fen, [2]int{a, b})

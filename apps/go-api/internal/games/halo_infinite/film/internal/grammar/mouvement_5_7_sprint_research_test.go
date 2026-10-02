@@ -214,7 +214,7 @@ func m57SautParTag(t *testing.T, rec *m57Rec) {
 	parSlot := m57ParSlot(rec.vit)
 	t.Logf("SAUT — LES QUATRE TAGS D `i55` SUR LA POPULATION RETENUE (%d lectures) :",
 		len(rec.post))
-	for tag := uint64(0); tag < 4; tag++ {
+	for tag := range uint64(4) {
 		var vz []float64
 		var total, monte int
 		for _, p := range rec.post {

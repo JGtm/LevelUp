@@ -58,8 +58,11 @@ package replay
 // désamorcée pendant la mèche, et ce silence-là est le comportement du jeu, pas un défaut.
 
 import (
+	"cmp"
+	"context"
 	"log/slog"
 	"math"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -151,27 +154,27 @@ type bombFuseVerdict struct {
 // sort sans compte à rebours, jamais avec un compte à rebours deviné.
 //
 // HORS LIGNE — appelée par BuildFromFilm.
-func decodeFilmBombReads(fc *grammar.FilmContext, matchID string, in BombInput) []types.NavpointRadialRead {
+func decodeFilmBombReads(ctx context.Context, fc *grammar.FilmContext, matchID string, in BombInput) []types.NavpointRadialRead {
 	if !bombeBalayable(in) {
 		if in.Scanned {
-			slog.Warn("armement : film armable sans horloge de manifeste — calque non construit",
+			slog.WarnContext(ctx, "armement : film armable sans horloge de manifeste — calque non construit",
 				"match_id", matchID)
 		}
 		return nil
 	}
 	sc, err := grammar.ScanNavpointRadial(fc, in.ChunkStartMS)
 	if err != nil {
-		slog.Warn("armement : anneau ti=12 illisible — rejeu sans compte a rebours",
+		slog.WarnContext(ctx, "armement : anneau ti=12 illisible — rejeu sans compte a rebours",
 			"err", err, "match_id", matchID)
 		return nil
 	}
 	if sc.Truncated {
-		slog.Warn("armement : recolte TRONQUEE au plafond de lectures — armements tardifs possibles manquants",
+		slog.WarnContext(ctx, "armement : recolte TRONQUEE au plafond de lectures — armements tardifs possibles manquants",
 			"match_id", matchID)
 	}
 	// paquetsSansHorloge est un compte NOMINAL non nul (le footer n'a pas de paquet delta de
 	// base) : il s'imprime avec le bilan, il n'alarme pas.
-	slog.Info("armement : anneau ti=12 balaye",
+	slog.InfoContext(ctx, "armement : anneau ti=12 balaye",
 		"match_id", matchID, "slots", sc.SlotsObserved, "records", sc.Records,
 		"marches", sc.Walked, "chainees", sc.Chained, "lectures", len(sc.Reads),
 		"paquetsSansHorloge", sc.PacketsNoClock,
@@ -201,7 +204,7 @@ func publierFermetureImageCle(sc *grammar.NavpointRadialScan) {
 // attachBombArmings pose le calque de l'armement sur le document, avec sa couverture et son
 // journal. Les explosions de la confrontation locale viennent de `doc.Objectives`, DÉJÀ
 // posées — l'appel vient donc après `attachObjectiveActions`.
-func attachBombArmings(doc *ReplayDocument, opt Options, c scoreClock) {
+func attachBombArmings(ctx context.Context, doc *ReplayDocument, opt Options, c scoreClock) {
 	if !opt.Bomb.Scanned {
 		return
 	}
@@ -210,7 +213,7 @@ func attachBombArmings(doc *ReplayDocument, opt Options, c scoreClock) {
 	if doc.Coverage != nil {
 		doc.Coverage.BombArmings = cov
 	}
-	logBombArmings(doc.MatchID, cov, verdict)
+	logBombArmings(ctx, doc.MatchID, cov, verdict)
 }
 
 // buildBombArmings applique la chaîne mesurée : segments -> armements pleins et pauses ->
@@ -422,16 +425,16 @@ func bombDetonationTimes(actions []ObjectiveAction) []int {
 }
 
 // logBombArmings journalise ce que le calque publie — et pourquoi il peut se taire.
-func logBombArmings(matchID string, cov *BombArmingsCoverage, v bombFuseVerdict) {
+func logBombArmings(ctx context.Context, matchID string, cov *BombArmingsCoverage, v bombFuseVerdict) {
 	if cov.Suppressed {
-		slog.Warn("rejeu : armement RETENU A LA SOURCE — le film contredit la lecture "+
+		slog.WarnContext(ctx, "rejeu : armement RETENU A LA SOURCE — le film contredit la lecture "+
 			"(explosion sans armement, ou meches qui se contredisent)",
 			"match_id", matchID, "explosions", cov.Detonations,
 			"couvertes", cov.DetonationsCovered, "armements", cov.Armed, "segments", cov.Rises,
 			"mecheIncoherente", v.Inconsistent, "meche_ms", v.FuseMS, "cv", v.CV)
 		return
 	}
-	slog.Info("rejeu : armement de la bombe",
+	slog.InfoContext(ctx, "rejeu : armement de la bombe",
 		"match_id", matchID, "lectures", cov.Reads, "segments", cov.Rises,
 		"sousLePlein", cov.BelowFull, "armements", cov.Armed, "paireFondue", cov.PairMerged,
 		"publies", cov.Published, "horsFenetre", cov.OutOfWindow,
@@ -448,7 +451,7 @@ func bombReadsBySlot(reads []types.NavpointRadialRead) map[uint32][]types.Navpoi
 	}
 	for slot := range out {
 		s := out[slot]
-		sort.SliceStable(s, func(i, j int) bool { return s[i].TMS < s[j].TMS })
+		slices.SortStableFunc(s, func(a, b types.NavpointRadialRead) int { return cmp.Compare(a.TMS, b.TMS) })
 	}
 	return out
 }

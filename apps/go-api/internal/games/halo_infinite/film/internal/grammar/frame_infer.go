@@ -401,12 +401,6 @@ func validatedResync(buf []byte, from int, w *World, cfg FrameConfig) (int, bool
 	return 0, false
 }
 
-// inferUnboundArchetype tries every registered archetype for the unbound-slot delta at
-// bit `bitpos`; a candidate qualifies if its body decodes cleanly AND the NEXT record is
-// a clean delta on a bound slot (alignment confirmed). Returns the typeIndex + end bit
-// iff EXACTLY ONE archetype qualifies (unambiguous), else ok=false. Hooks are suppressed
-// during the trials (no spurious samples). This is the offline "decode-correctly" path
-// for transient entities absent from the binding dump.
 // inferRequireBoundSuccessor gates the strong confirmation (next record = clean bound
 // delta). Default true (correct, but blocked by transient CHAINS). Set false to infer on
 // unambiguity ALONE — reaches through chains; a wrong choice merely desyncs the frame
@@ -429,6 +423,12 @@ const inferRequireBoundSuccessor = true
 // (lot E, item E.8).
 const inferRepair = false
 
+// inferUnboundArchetype tries every registered archetype for the unbound-slot delta at
+// bit `bitpos`; a candidate qualifies if its body decodes cleanly AND the NEXT record is
+// a clean delta on a bound slot (alignment confirmed). Returns the typeIndex + end bit
+// iff EXACTLY ONE archetype qualifies (unambiguous), else ok=false. Hooks are suppressed
+// during the trials (no spurious samples). This is the offline "decode-correctly" path
+// for transient entities absent from the binding dump.
 func inferUnboundArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (uint32, int, bool) {
 	// LES DEUX CROCHETS SONT NEUTRALISES POUR LA DUREE DES ESSAIS : ce qui suit est une lecture
 	// SPECULATIVE (chaque archetype du registre est essaye sur les memes bits), et une lecture

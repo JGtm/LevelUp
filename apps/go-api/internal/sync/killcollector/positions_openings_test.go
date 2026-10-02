@@ -51,7 +51,7 @@ func registreSynthetique(positions []decfilm.BipedPosition,
 		creations = append(creations, decfilm.BipedCreation{
 			Slot: s, Generation: 1, ParticipantIndex: uint32(i), HasIndex: true})
 	}
-	return replay.BuildIdentityRegistry(replay.IdentityInput{
+	return replay.BuildIdentityRegistry(context.Background(), replay.IdentityInput{
 		Positions: positions, BipedCreations: creations, PlayerIndices: idx})
 }
 

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // emprise_v0_porteurs_research_test.go — LOT V0.2 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :
@@ -77,7 +79,7 @@ const (
 func v0Films(t *testing.T) (films []string, dir, cache string, tours int) {
 	t.Helper()
 	dir, cache, tours = os.Getenv("EMPRISE_V0_DIR"), os.Getenv("EMPRISE_V0_CACHE"), 3
-	for _, f := range strings.Split(os.Getenv("EMPRISE_V0_FILMS"), ",") {
+	for f := range strings.SplitSeq(os.Getenv("EMPRISE_V0_FILMS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			films = append(films, f)
 		}
@@ -248,7 +250,7 @@ func v0ChargerBase(t *testing.T, e v0Entree) (v0Base, uint64) {
 	}
 	b.idx, _ = grammar.ScanPlayerIndices(film, b.roster)
 	b.creations, _, _ = grammar.ScanBipedCreations(b.fc)
-	b.reg = BuildIdentityRegistry(IdentityInput{
+	b.reg = BuildIdentityRegistry(context.Background(), IdentityInput{
 		Positions: b.positions, BipedCreations: b.creations, Deaths: b.deaths,
 		PlayerIndices: b.idx, RosterXUIDs: b.roster, Bots: e.col.Bots,
 		Participants: e.col.Participants, MatchID: e.id,
@@ -268,7 +270,7 @@ func v0RegistreConforme(b v0Base) string {
 	a, c := append([][3]int64(nil), vies...), append([][3]int64(nil), b.col.Vies...)
 	less := func(s [][3]int64) func(i, j int) bool {
 		return func(i, j int) bool {
-			for k := 0; k < 3; k++ {
+			for k := range 3 {
 				if s[i][k] != s[j][k] {
 					return s[i][k] < s[j][k]
 				}
@@ -293,7 +295,7 @@ func v0RegistreConforme(b v0Base) string {
 func v0Chrono(n int, f func()) (float64, uint64) {
 	var durees []float64
 	var pic uint64
-	for i := 0; i < n; i++ {
+	for range n {
 		ech := v0Echantillonner()
 		debut := time.Now()
 		f()
@@ -331,14 +333,14 @@ func v0LireEnPlus(t *testing.T, e v0Entree, b v0Base, famille string) v0Lectures
 	// cuisson (`poserProfilPuisCarte`), pose sur le contexte AVANT toute lecture supplementaire —
 	// sans lui, les objets du monde se liraient aux largeurs d'une autre carte.
 	prof := b.res.ProfilCalibre
-	poserProfilPuisCarte(b.fc, e.id, Options{ProfilDeBalayage: &prof, Fallbacks: fallback.NouveauCompteur()})
+	poserProfilPuisCarte(context.Background(), b.fc, e.id, Options{ProfilDeBalayage: &prof, Fallbacks: fallback.NouveauCompteur()})
 	l.coutA, l.picA = v0Chrono(e.tours, func() {
 		loadouts, _, _ := grammar.ScanKeyframeLoadoutsMarche(b.fc, loadoutFamilies())
 		births, _, _ := grammar.ScanBirthLoadouts(b.fc, b.creations)
 		l.held, _, _ = grammar.ScanHeldWeaponChanges(b.fc, spawnSetFrom(loadouts, births, b.creations))
 	})
 	l.coutStatborg, l.picStat = v0Chrono(e.tours, func() {
-		l.recs, _ = decfilm.StatRecordsCtx(context.Background(), b.film, e.id)
+		l.recs, _, _ = decfilm.StatRecordsBornes(b.film, e.id)
 		l.bursts = decfilm.CaptureBurstTimes(b.film)
 	})
 	lines := make([]types.PlayerLine, 0, len(e.k1.Faits.Players))
@@ -362,8 +364,8 @@ func v0LireEnPlus(t *testing.T, e v0Entree, b v0Base, famille string) v0Lectures
 		// LES OBJETS DU MONDE : les poses calibrent les largeurs MPP dont les socles (et les vies
 		// libres du drapeau) heritent — la chaine de `balayerMonde`, dans son ordre.
 		l.coutMonde, l.picDr = v0Chrono(e.tours, func() {
-			_, st := decodeFilmPlacements(b.fc, e.id, &world)
-			l.pads = decodeFilmPadScans(b.fc, e.id, &world, st.Calibration.Widths)
+			_, st := decodeFilmPlacements(context.Background(), b.fc, e.id, &world)
+			l.pads = decodeFilmPadScans(context.Background(), b.fc, e.id, &world, st.Calibration.Widths)
 		})
 		l.coutDrap, l.picDr = l.coutEquipes+l.coutMonde, max(l.picDr, picEq)
 	}

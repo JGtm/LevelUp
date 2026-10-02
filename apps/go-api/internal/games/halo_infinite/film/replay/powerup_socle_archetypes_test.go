@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // powerup_socle_archetypes_test.go — PHASE 2 : QUI est au socle, archetype par archetype.

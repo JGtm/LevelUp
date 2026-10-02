@@ -132,7 +132,7 @@ func tcgS2Silences(t *testing.T, p *tcgPasse) {
 	t.Helper()
 	par := tcgParIndex(p)
 	t.Logf("== S2.15 SILENCES > 3 s des entrees de controle, par index (t0-t1 sur l axe du document)")
-	for ix := 0; ix < 16; ix++ {
+	for ix := range 16 {
 		es := par[ix]
 		if len(es) < 20 {
 			continue

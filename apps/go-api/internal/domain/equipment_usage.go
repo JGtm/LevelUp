@@ -84,7 +84,7 @@ type EquipmentUsagePlayerLine struct {
 	// PadPickups : prises de socle d'ARME du sujet sur le scope mesuré. Les armes
 	// spéciales suivent la même grammaire que l'équipement (décision P5), mais leur
 	// issue « avoir tiré » n'est PAS persistée au grain session (canal `shots`,
-	// document seulement — .ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md §2 bis) :
+	// document seulement — .ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md §2 bis) :
 	// ce compte est donc servi seul, sans issues, et le dire est le contrat.
 	PadPickups float64 `json:"pad_pickups"`
 }

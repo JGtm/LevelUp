@@ -16,6 +16,7 @@ package replay
 // qui est traite : le client tracait une droite en travers de la carte, a 300 m/s et plus.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -98,7 +99,7 @@ func TestCouvertureDesProjectilesRemonteLesTronquees(t *testing.T) {
 		{Slot: 1024, TimestampUS: 2_100_000, X: 1, Y: 0, HasWorld: true},
 		{Slot: 1024, TimestampUS: 2_200_000, X: 2, Y: 0, HasWorld: true},
 	}
-	doc := BuildFromPositions("m", "halo_infinite", pos, nil, opt)
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", pos, nil, opt)
 	if doc.Coverage.Projectiles == nil {
 		t.Fatal("la couverture des projectiles doit etre publiee des qu'une piste est fournie")
 	}

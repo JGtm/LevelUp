@@ -19,8 +19,10 @@ package replay
 //	                   (contrairement aux calques dates depuis le premier paquet du film).
 
 import (
+	"cmp"
+	"context"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -137,13 +139,13 @@ type zoneSeries struct {
 
 // buildZoneStates rend l'etat des zones et sa couverture. Rend (nil, nil) quand l'appelant n'a
 // rien fourni a lire — ce qui ne dit PAS la meme chose qu'un calque vide.
-func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
+func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 	if !in.Scanned {
 		return nil, nil
 	}
 	cov := &ZonesCoverage{Method: ZoneMethodCaptures, Roles: in.Roles, Catalog: len(in.Zones)}
 	if len(in.Zones) == 0 || c.frames <= 0 || c.step == 0 {
-		slog.Warn("rejeu : etat des zones sans catalogue de carte — aucun intervalle publie",
+		slog.WarnContext(ctx, "rejeu : etat des zones sans catalogue de carte — aucun intervalle publie",
 			"match_id", c.matchID, "zones", len(in.Zones), "frames", c.frames)
 		return nil, cov
 	}
@@ -170,7 +172,7 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 		// aucune capture n'a pu etre attribuee — l'absence d'appariement se PUBLIE en
 		// couverture et ne se comble pas.
 		if !in.Hill {
-			slog.Info("rejeu : aucune capture appariee hors mode a colline — aucun etat de zone",
+			slog.InfoContext(ctx, "rejeu : aucune capture appariee hors mode a colline — aucun etat de zone",
 				"match_id", c.matchID, "zones", len(in.Zones), "captures", cov.Captures,
 				"attribuees", cov.Attributed)
 			return nil, cov
@@ -224,7 +226,7 @@ func zoneSeriesOf(reads []grammar.ManagedPropertyRead, c zoneCtx) zoneSeries {
 	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner, out.desig, out.ownerChained} {
 		for s := range m {
 			ss := m[s]
-			sort.SliceStable(ss, func(i, j int) bool { return ss[i].t < ss[j].t })
+			slices.SortStableFunc(ss, func(a, b zoneSample) int { return cmp.Compare(a.t, b.t) })
 			m[s] = ss
 		}
 	}
@@ -342,7 +344,7 @@ func zoneRampsOf(ser zoneSeries) []zoneRamp {
 	for _, s := range sortedZoneSlots(ser.gauge) {
 		out = append(out, findZoneRamps(s, ser.gauge[s])...)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].tPeak < out[j].tPeak })
+	slices.SortStableFunc(out, func(a, b zoneRamp) int { return cmp.Compare(a.tPeak, b.tPeak) })
 	return out
 }
 
@@ -352,7 +354,7 @@ func sortedZoneSlots[T any](m map[uint32]T) []uint32 {
 	for s := range m {
 		out = append(out, s)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 

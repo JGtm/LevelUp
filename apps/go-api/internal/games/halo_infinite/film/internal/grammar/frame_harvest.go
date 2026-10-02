@@ -118,7 +118,7 @@ func harvestNextBoundClean(buf []byte, pos int, w *World, cfg FrameConfig) bool 
 		if rem < 0 || rem > 15 {
 			return false
 		}
-		for i := 0; i < rem; i++ {
+		for range rem {
 			if br.ReadBit() {
 				return false
 			}

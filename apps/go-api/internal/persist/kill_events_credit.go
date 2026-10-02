@@ -37,7 +37,7 @@ package persist
 //
 // ─── LA PRESEANCE : LE CREDIT EST LA BASE, LE FILM ENRICHIT ────────────────────────────────
 //
-// INVERSEE LE 2026-08-03 (`.ai/CONCEPTION_INVERSION_PRESEANCE.md`). Elle etait FILM > CREDIT : ce
+// INVERSEE LE 2026-08-03 (`.ai/V7.5/replay2d/CONCEPTION_INVERSION_PRESEANCE.md`). Elle etait FILM > CREDIT : ce
 // producteur REFUSAIT d ecrire quand la passe courante venait d un film, pour ne pas effacer la
 // source du degat fatal. Le refus protegeait bien la source — mais il laissait servie une passe
 // qui ne porte que 74,4 % des morts, la ou le credit en porte 98,5 %.

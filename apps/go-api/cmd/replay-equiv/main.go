@@ -55,6 +55,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -94,6 +95,8 @@ type options struct {
 }
 
 func main() {
+	// LE CONTEXTE DE L OUTIL NAIT ICI, ET NULLE PART AILLEURS (lot J12.3).
+	ctx := context.Background()
 	o, err := lireDrapeaux()
 	if err != nil {
 		// Avant la resolution de la racine, rien n'est journalisable proprement : le message
@@ -101,7 +104,7 @@ func main() {
 		_, _ = os.Stderr.WriteString("replay-equiv: " + err.Error() + "\n")
 		os.Exit(2)
 	}
-	os.Exit(executer(o))
+	os.Exit(executer(ctx, o))
 }
 
 // executer aiguille vers l'un des deux roles et rend le code de sortie.
@@ -112,15 +115,15 @@ func main() {
 // absent, socles introuvables, faits vides) passaient en silence. `-update` pouvait figer des
 // digests de vide sans qu'une seule ligne ne le dise. Le tube du lanceur fusionne stdout et
 // stderr de l'enfant : le journal de l'enfant remonte donc dans celui du parent.
-func executer(o options) int {
+func executer(ctx context.Context, o options) int {
 	defer logging.InstallCLILevel(o.repoRoot, logging.ConsoleLevelFromEnv())()
 	if o.child {
-		return enfantEquivalence(o)
+		return enfantEquivalence(ctx, o)
 	}
 	if o.deuxPasses {
-		return parentDeuxPasses(o)
+		return parentDeuxPasses(ctx, o)
 	}
-	return parentEquivalence(o)
+	return parentEquivalence(ctx, o)
 }
 
 // lireDrapeaux analyse la ligne de commande et resout la racine du depot.
@@ -192,7 +195,7 @@ func dossierEquivalence(repoRoot string) string {
 // filmsDemandes rend la liste short8 de `-films`, vide si le drapeau ne l'est pas.
 func filmsDemandes(liste string) []string {
 	var out []string
-	for _, part := range strings.Split(liste, ",") {
+	for part := range strings.SplitSeq(liste, ",") {
 		if s := strings.TrimSpace(part); s != "" {
 			out = append(out, s)
 		}

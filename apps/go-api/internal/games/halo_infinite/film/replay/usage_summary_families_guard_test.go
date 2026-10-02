@@ -131,7 +131,7 @@ func manifesteObjetsEquipement(t *testing.T, raw []byte) map[string]objetEquipem
 		}
 		cur = objetEquipementManifeste{}
 	}
-	for _, ligne := range strings.Split(string(raw), "\n") {
+	for ligne := range strings.SplitSeq(string(raw), "\n") {
 		switch {
 		case strings.TrimSpace(ligne) == "[[equipment_objects]]":
 			ferme()

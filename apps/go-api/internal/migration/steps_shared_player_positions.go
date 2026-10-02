@@ -1,7 +1,7 @@
 package migration
 
 // steps_shared_player_positions.go — CREATION de la table des POSITIONS joueurs (v3 film,
-// §N de .ai/RESEARCH_THEATER_RE.md). C'est la forme D'ORIGINE ; sa forme COURANTE est celle que
+// §N de .ai/archive/V7/RESEARCH_THEATER_RE.md). C'est la forme D'ORIGINE ; sa forme COURANTE est celle que
 // `steps_shared_player_positions_appendonly.go` lui donne — lire les deux ensemble.
 //
 // # CE QUE CE FICHIER POSE, ET CE QUI A CHANGE DEPUIS (decision 1 du plan v2, 2026-09-06)

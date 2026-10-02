@@ -428,10 +428,7 @@ func ti12Quantile(s []int, q float64) int {
 	if len(s) == 0 {
 		return 0
 	}
-	i := int(q * float64(len(s)-1))
-	if i < 0 {
-		i = 0
-	}
+	i := max(int(q*float64(len(s)-1)), 0)
 	if i >= len(s) {
 		i = len(s) - 1
 	}

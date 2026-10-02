@@ -106,7 +106,7 @@ func verifierCadreEgaleConstantes(t *testing.T) {
 	if got := k.CadreBits(); got != 172 {
 		t.Errorf("cadre de %d bits, attendu 172 (108 + 2 x 32)", got)
 	}
-	for ti := uint32(0); ti < objectArchetypeCount; ti++ {
+	for ti := range uint32(objectArchetypeCount) {
 		_, table := defaultStateDeserByTI[ti]
 		attendu := table || ti == BipedTypeIndex
 		if EtatParDefautPorte(ti) != attendu {

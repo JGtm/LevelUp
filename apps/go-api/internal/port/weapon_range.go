@@ -1,7 +1,7 @@
 package port
 
 // weapon_range.go — LE PORT DE LA PORTÉE MESURÉE PAR ARME (plan
-// .ai/PLAN_DUELS_PORTEE_2026-09-06.md, lot 3).
+// .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, lot 3).
 //
 // # CE QUE LE REPO REND, ET CE QU'IL NE FAIT PAS
 //
@@ -107,7 +107,7 @@ type WeaponLabelResolver interface {
 // POURQUOI CE TYPE EXISTE ALORS QUE `WeaponKillRow` PORTE DÉJÀ LES TROIS CHAMPS. Les frags
 // MESURÉS (`analysis.MeasuredKill`) ne passent pas par `WeaponKillRow` : ils portent une clé
 // de registre et rien d'autre. Publier la portée par RÔLE (D1 du plan
-// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) demande donc de traduire des clés en
+// .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) demande donc de traduire des clés en
 // dimensions, sans requête neuve — la résolution canonique existe déjà chez l'implémenteur.
 //
 // Les trois champs sont des CLÉS, jamais des libellés : le nom affichable passe par

@@ -61,7 +61,7 @@ func HuntArchetypeSlots(dir string, ti int, must string) ([]SlotHuntRow, error) 
 	}
 	// Bande OUVERTE : tout slot est accepte par l'ancrage, c'est le principe meme de la chasse.
 	all := make(map[uint32]bool, kfTableCap)
-	for s := uint32(0); s < kfTableCap; s++ {
+	for s := range uint32(kfTableCap) {
 		all[s] = true
 	}
 	rows := map[uint32]*SlotHuntRow{}
@@ -177,7 +177,7 @@ func HuntGameEngineClock(dir string) ([]ClockCandidate, error) {
 	}
 	h := clockHunt{arch: arch, timerIdx: ids[0], acc: map[uint32]*clockAcc{}}
 	all := make(map[uint32]bool, kfTableCap)
-	for s := uint32(0); s < kfTableCap; s++ {
+	for s := range uint32(kfTableCap) {
 		all[s] = true
 	}
 	for ch := 1; ch <= n; ch++ {

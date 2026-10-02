@@ -3,7 +3,6 @@ package replay
 import (
 	"cmp"
 	"slices"
-	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -344,14 +343,8 @@ func buildEquipmentEpisodes(
 	if len(out) == 0 {
 		return nil, nonBinary
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T0 != out[j].T0 {
-			return out[i].T0 < out[j].T0
-		}
-		if out[i].Slot != out[j].Slot {
-			return out[i].Slot < out[j].Slot
-		}
-		return out[i].Fam < out[j].Fam
+	slices.SortStableFunc(out, func(a, b EquipmentEpisode) int {
+		return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Fam, b.Fam))
 	})
 	return out, nonBinary
 }
@@ -373,11 +366,11 @@ func buildCamoEpisodes(
 	for s := range bySlot {
 		slots = append(slots, s)
 	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	slices.Sort(slots)
 	nonBinary := 0
 	for _, s := range slots {
 		list := bySlot[s]
-		sort.SliceStable(list, func(i, j int) bool { return list[i].TimestampUS < list[j].TimestampUS })
+		slices.SortStableFunc(list, func(a, b types.CamoRead) int { return cmp.Compare(a.TimestampUS, b.TimestampUS) })
 		acc := episodeAccum{slot: s, fam: EquipFamilyCamo, windows: windows[s], out: out}
 		for _, r := range list {
 			switch r.Q {

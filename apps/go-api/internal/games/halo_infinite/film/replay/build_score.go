@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -21,11 +22,11 @@ import (
 // depuis le PREMIER PAQUET DU FILM, la grille compte depuis le premier paquet de POSITION, et
 // l'ecart entre les deux zeros est exactement `originMs`. Quand l'origine n'est pas etablie, la
 // soustraction se fait avec zero et `coverage.originResolved` le DIT (cf. origin.go).
-func replayScoreClock(doc *ReplayDocument, intervalMS int, matchID string) scoreClock {
+func replayScoreClock(ctx context.Context, doc *ReplayDocument, intervalMS int, matchID string) scoreClock {
 	return scoreClock{
 		intervalMS: intervalMS,
 		frames:     doc.FrameCount,
-		originMS:   originMSOf(doc.OriginMs, matchID),
+		originMS:   originMSOf(ctx, doc.OriginMs, matchID),
 	}
 }
 
@@ -39,13 +40,13 @@ func replayScoreClock(doc *ReplayDocument, intervalMS int, matchID string) score
 // l'identite PAR MANCHE des joueurs en multi-manche (le slot d'entite est reattribue d'une manche
 // a l'autre), exactement comme la couronne VIP et le drapeau le consomment. En mono-manche il
 // n'est pas lu — le chemin plat par totaux est conserve a l'octet.
-func attachScoreTimeline(doc *ReplayDocument, opt Options, c scoreClock, matchID string) *ScoreCoverage {
+func attachScoreTimeline(ctx context.Context, doc *ReplayDocument, opt Options, c scoreClock, matchID string) *ScoreCoverage {
 	in := opt.Score
 	c.cons = opt.consultations() // l enregistreur du document (lot J8.7-bis) suit l horloge du calque, comme `fb`
 	tl, cov := buildScoreTimeline(in, opt.Deaths, c, opt.Fallbacks)
 	doc.ScoreTimeline = tl
-	logScoreCoverage(matchID, cov, tl)
-	logRoundBounds(matchID, in, cov)
+	logScoreCoverage(ctx, matchID, cov, tl)
+	logRoundBounds(ctx, matchID, in, cov)
 	return cov
 }
 
@@ -62,32 +63,32 @@ func attachScoreTimeline(doc *ReplayDocument, opt Options, c scoreClock, matchID
 // suit pas l'horloge (trois films du parc : `fb1a1a72`, `72b0a25e`, `a4083bd2`). C'est la
 // condition dans laquelle le controle de chronologie du total peut encore avoir a mordre.
 // Rien n'est publie sur un film mono-manche : il n'a pas de borne de manche.
-func logRoundBounds(matchID string, in *ScoreInput, cov *ScoreCoverage) {
+func logRoundBounds(ctx context.Context, matchID string, in *ScoreInput, cov *ScoreCoverage) {
 	if in == nil || len(in.Records) == 0 || cov == nil || cov.Rounds < 2 {
 		return
 	}
 	bornes := objectives.ResolveRoundBounds(in.Records)
-	logKeptSegments(matchID, bornes)
+	logKeptSegments(ctx, matchID, bornes)
 	// LA QUESTION EST « DES BORNES ONT-ELLES ETE POSEES », PAS « COMBIEN A-T-ON ECARTE » (constat
 	// N1 de la revue MANCHES-R2). Zero ecarte arrive AUSSI avec des bornes posees — quand tout ce
 	// qui tombe hors fenetre appartient a un bloc exempte par la garde par slot, ce qui est
 	// exactement le cas que `logKeptSegments` vient de nommer. Trancher sur le compte faisait
 	// alors emettre « aucune borne posee » a la ligne suivante, contredisant le diagnostic fin.
 	if !bornes.Posed() {
-		slog.Warn("rejeu : AUCUNE borne de manche posee sur un film a plusieurs manches — le numero "+
+		slog.WarnContext(ctx, "rejeu : AUCUNE borne de manche posee sur un film a plusieurs manches — le numero "+
 			"de manche ne suit pas l'horloge, les compteurs restent ceux d'avant",
 			"match_id", matchID, "manches", cov.Rounds, "enregistrements", len(in.Records))
 		return
 	}
 	n := bornes.Outliers(in.Records)
 	if n > objectives.OutliersNominalMax {
-		slog.Warn("rejeu : enregistrements hors de la fenetre de leur manche declaree AU-DELA DU "+
+		slog.WarnContext(ctx, "rejeu : enregistrements hors de la fenetre de leur manche declaree AU-DELA DU "+
 			"NOMINAL — l'etiquetage de manche de ce film est a regarder",
 			"match_id", matchID, "ecartes", n, "nominal_max", objectives.OutliersNominalMax,
 			"enregistrements", len(in.Records), "manches", cov.Rounds)
 		return
 	}
-	slog.Info("rejeu : enregistrements hors de la fenetre de leur manche declaree, ecartes",
+	slog.InfoContext(ctx, "rejeu : enregistrements hors de la fenetre de leur manche declaree, ecartes",
 		"match_id", matchID, "ecartes", n, "enregistrements", len(in.Records),
 		"manches", cov.Rounds, "blocs_gardes", len(bornes.KeptSegments()))
 }
@@ -97,9 +98,9 @@ func logRoundBounds(matchID string, in *ScoreInput, cov *ScoreCoverage) {
 // plutot que jete (doctrine « une lecture vraie n'est jamais jetee », revue MANCHES-R1). Aucun
 // bloc n'est dans ce cas sur les douze films multi-manche du parc : une ligne ici veut dire que
 // le consensus et ce slot ne s'accordent pas sur les bornes de la manche.
-func logKeptSegments(matchID string, bornes objectives.RoundBounds) {
+func logKeptSegments(ctx context.Context, matchID string, bornes objectives.RoundBounds) {
 	for _, s := range bornes.KeptSegments() {
-		slog.Warn("rejeu : bloc de manche GARDE hors de la fenetre consensuelle — le slot et le "+
+		slog.WarnContext(ctx, "rejeu : bloc de manche GARDE hors de la fenetre consensuelle — le slot et le "+
 			"consensus ne s'accordent pas sur les bornes de cette manche",
 			"match_id", matchID, "slot", s.Slot, "manche", s.Round,
 			"debut_ms", s.FromMS, "fin_ms", s.ToMS, "ecart_ms", s.GapMS, "enregistrements", s.Records)
@@ -107,7 +108,7 @@ func logKeptSegments(matchID string, bornes objectives.RoundBounds) {
 }
 
 // logScoreCoverage journalise ce que le calque a publie — et ce qu'il n'a pas resolu.
-func logScoreCoverage(matchID string, cov *ScoreCoverage, tl *ScoreTimeline) {
+func logScoreCoverage(ctx context.Context, matchID string, cov *ScoreCoverage, tl *ScoreTimeline) {
 	if cov == nil {
 		return
 	}
@@ -116,14 +117,14 @@ func logScoreCoverage(matchID string, cov *ScoreCoverage, tl *ScoreTimeline) {
 		teams, players = len(tl.Teams), len(tl.Players)
 	}
 	if cov.TeamIdentity == ScoreIdentityUnresolved {
-		slog.Warn("rejeu : identite des camps NON RESOLUE — courbes de score publiees sans equipe",
+		slog.WarnContext(ctx, "rejeu : identite des camps NON RESOLUE — courbes de score publiees sans equipe",
 			"match_id", matchID, "equipes", teams, "joueurs", players, "manches", cov.Rounds)
 	}
 	if cov.Truncated {
-		slog.Warn("rejeu : lecture des enregistrements TRONQUEE — courbes de score incompletes",
+		slog.WarnContext(ctx, "rejeu : lecture des enregistrements TRONQUEE — courbes de score incompletes",
 			"match_id", matchID, "points", cov.Points)
 	}
-	slog.Info("rejeu : courbe de score",
+	slog.InfoContext(ctx, "rejeu : courbe de score",
 		"match_id", matchID, "identiteEquipes", cov.TeamIdentity, "manches", cov.Rounds,
 		"modePorte", cov.ModeSupported, "equipes", teams, "joueurs", players, "points", cov.Points)
 }

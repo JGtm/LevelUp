@@ -33,7 +33,7 @@ package grammar
 //
 //	$env:GOCACHE='<scratch>\gocache_v1b'
 //	CGO_ENABLED=0 VEHICLE_CREATION_FILM=<repo>/data/cache/film_chunks/0d76e8f1 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestVehicleCreationIdentity$' -timeout 60m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestVehicleCreationIdentity$' -timeout 60m -v
 
 import (
 	"os"

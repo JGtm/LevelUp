@@ -160,7 +160,7 @@ type CompareResponse struct {
 	TitleSlug       string                `json:"title_slug"`
 	EncounterBadges []MatchEncounterBadge `json:"encounter_badges,omitempty"`
 	// Weapons : le profil d'armes des deux joueurs (plan
-	// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). ADDITIF et OMIS quand il n'est pas
+	// .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). ADDITIF et OMIS quand il n'est pas
 	// lisible — un titre sans registre d'armes, un joueur B jamais croisé, un câblage
 	// absent : la page affiche alors ses métriques comme avant, sans section vide.
 	Weapons *CompareWeaponProfile `json:"weapons,omitempty"`

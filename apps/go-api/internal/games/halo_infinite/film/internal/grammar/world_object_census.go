@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -96,10 +96,10 @@ func ScanWorldObjectKeyframes(fc *FilmContext, ti int) WorldObjectKeyframes {
 		}
 	}
 	out.Band = slotBandExcluding(seen, others)
-	sort.Slice(out.TimesUS, func(i, j int) bool { return out.TimesUS[i] < out.TimesUS[j] })
+	slices.Sort(out.TimesUS)
 	for k := range out.SeenUS {
 		v := out.SeenUS[k]
-		sort.Slice(v, func(i, j int) bool { return v[i] < v[j] })
+		slices.Sort(v)
 	}
 	return out
 }

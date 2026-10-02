@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_lunette_balayage_verdict_test.go — LA MOITIE « RESTITUTION » du balayage. L'instrument,
@@ -52,7 +54,7 @@ func adsSepare(a, b float64) bool {
 // adsSweepLignes calcule les 64 lignes du balayage.
 func adsSweepLignes(b adsSweepBilan) []adsSweepLigne {
 	out := make([]adsSweepLigne, 0, adsSweepMaxIndex)
-	for i := 0; i < adsSweepMaxIndex; i++ {
+	for i := range adsSweepMaxIndex {
 		l := adsSweepLigne{index: i}
 		l.presSans = adsSweepTaux(b.presence.vus[adsSansLunette][i], b.presence.instants[adsSansLunette])
 		l.presAvec = adsSweepTaux(b.presence.vus[adsAvecLunette][i], b.presence.instants[adsAvecLunette])

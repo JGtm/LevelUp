@@ -428,7 +428,7 @@ func p3FamillesLues(b []byte, debut, annoncees int, cfg FrameConfig) []uint32 {
 	br.poserCadre(cfg)
 	br.SetBitPos(debut)
 	var out []uint32
-	for k := 0; k < annoncees; k++ {
+	for range annoncees {
 		br2 := LecteurSur(b)
 		br2.SetBitPos(br.BitPos())
 		if br2.ReadBit() {

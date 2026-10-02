@@ -49,7 +49,7 @@ func (s *replayService) mapWeaponPadsForKeys(ctx context.Context, matchID string
 	// FUSION VERSIONNE + OVERLAY (cf. PathResolver.MapWeaponPadsOverlayPath) : une carte
 	// rattrapee par le runtime doit servir comme une carte versionnee, sans quoi le rattrapage
 	// remplirait un fichier que personne ne lit.
-	cat, err := replay.LoadMapWeaponPadsMerged(
+	cat, err := replay.LoadMapWeaponPadsMerged(ctx,
 		res.MapWeaponPadsPath(s.titleSlug), res.MapWeaponPadsOverlayPath(s.titleSlug))
 	if err != nil {
 		// Le catalogue est VERSIONNÉ : son absence n'est pas le cas nominal d'une carte sans

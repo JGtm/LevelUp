@@ -232,7 +232,7 @@ func (s *replayService) resolveBackgroundKeyDepuis(
 	// Il rattrape les cartes republiées sous un nouvel asset (le map_id de l'étape 1 est mort)
 	// et les cartes natives, dont le fond est keyé par module installé.
 	dir := title.NewPathResolver(s.repoRoot).MapBackgroundDir(s.titleSlug)
-	idx, err := replay.MapBackgroundIndexFor(dir)
+	idx, err := replay.MapBackgroundIndexFor(ctx, dir)
 	if err != nil {
 		slog.WarnContext(ctx, "rejeu 2D : index des fonds indisponible — pas de fond",
 			"err", err, "path", dir, "titleSlug", s.titleSlug)

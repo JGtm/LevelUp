@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_sonde_precision_research_test.go — SONDE DE FIABILITE pour une future feature
@@ -41,17 +43,12 @@ import (
 	"testing"
 )
 
-// sondePosTolUS : tolerance temporelle evenement<->position. MEME valeur que
-// replay/shots.go shotPosToleranceUS (120 ms) ; recopiee ici pour rester DANS filmdec
-// (pas d'import de internal/games/halo_infinite/film/replay depuis un instrument de filmdec).
-const sondePosTolUS = uint64(120_000)
-
 // sondeMapEnv force la carte quand la signature de largeurs est ambigue.
 const sondeMapEnv = "LOT1_SONDE_MAP"
 
 // sondeDistEdges : bornes (metres) des buckets de distance attaquant<->victime. PRODUCTIONISE :
 // alias des bornes de weapon_hits.go — une seule source pour l'instrument et la table.
-var sondeDistEdges = WeaponHitDistanceEdges
+var sondeDistEdges = WeaponHitDistanceEdges()
 
 // sondeDmgEvt : un evenement damage_aftermath horodate, refs d'en-tete non resolues, source.
 // magClear/magRaw sont additifs (peuples par sondeScanDamage, lus par l'instrument
@@ -87,10 +84,7 @@ func TestLot1SondePrecisionDistance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks balayes ==", filepath.Base(dir), n)
 
 	// M1 — TIRS PAR ARME.
@@ -182,13 +176,7 @@ func sonde3Join(t *testing.T, srcCount, armes map[uint64]int, fires []FireEvent)
 		ns, interVariant, lot1Pct(interVariant, ns))
 	t.Logf("   intersection avec WeaponID moitie basse : %d (%.1f %%) · moitie haute : %d (%.1f %%)",
 		interLo, lot1Pct(interLo, ns), interHi, lot1Pct(interHi, ns))
-	best := interVariant
-	if interLo > best {
-		best = interLo
-	}
-	if interHi > best {
-		best = interHi
-	}
+	best := max(interHi, max(interLo, interVariant))
 	t.Logf("   VERDICT joignable directement (intersection > 50 %% des tags source) : %s — sinon une TABLE (tag de degat -> arme) est requise",
 		lot1Verdict(ns > 0 && best*2 > ns))
 }

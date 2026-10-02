@@ -1,7 +1,7 @@
 // Package objectives — décodage des timelines d'events objectif (CTF
 // captures, Strongholds/KOTH zones, Oddball crâne) depuis les chunks film Halo,
 // vers des []objectiveevent.Event (mode-agnostique, cf.
-// .ai/PLAN_WEAPON_ATTRIBUTION_V3.md §10).
+// plan PLAN_WEAPON_ATTRIBUTION_V3 §10, retiré du dépôt le 2026-07-13 par ca6b1864a).
 //
 // Algos PURS : zéro accès DB, zéro Streamlit, ET DEPUIS LE 2026-09-02 ZÉRO LECTURE DE FILM.
 // Les neuf points d'entrée reçoivent un `*source.Film` DÉJÀ CHARGÉ — chunks décompressés
@@ -41,10 +41,9 @@ package objectives
 import (
 	"bytes"
 	"cmp"
-	"context"
-	"log/slog"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -101,16 +100,18 @@ func manifestChunks(film *source.Film) []manifestChunk {
 	return out
 }
 
-// chunksDatables rend les chunks du manifeste et JOURNALISE le cas où il n'y en a aucun.
+// chunksDatables rend les chunks du manifeste et SIGNALE dans `diag` le cas où il n'y en a aucun
+// (diagnostic depuis le lot J12.3, ADR 0034 D-4 : l orchestrateur le journalise).
 //
 // Un film chargé SANS manifeste porte des paquets mais aucun `start_ms` : rien n'y est datable.
 // Se taire ferait lire « ce film ne porte rien » là où il faut lire « on ne sait pas dater ce
 // film » — deux faits différents, et le second est réparable (le manifeste, lui, se retélécharge).
-func chunksDatables(ctx context.Context, film *source.Film, matchID string) []manifestChunk {
+func chunksDatables(film *source.Film, matchID string, diag *constat.Diagnostics) []manifestChunk {
 	chunks := manifestChunks(film)
 	if len(chunks) == 0 {
-		slog.InfoContext(ctx, "objectives: film sans chunk décrit par le manifeste — rien à dater",
-			"match_id", matchID, "chunks_du_film", filmChunkCount(film))
+		diag.Signaler(constat.Diagnostic{Code: DiagFilmSansManifeste, Niveau: constat.NiveauInfo,
+			Message: "objectives: film sans chunk decrit par le manifeste — rien a dater",
+			Attrs:   []any{"match_id", matchID, "chunks_du_film", filmChunkCount(film)}})
 	}
 	return chunks
 }
@@ -189,7 +190,7 @@ const (
 // pied de film (chunk de type 3).
 //
 // EXPORTÉ SANS CONSOMMATEUR HORS DE CE PAQUET, ET C'EST DÉLIBÉRÉ (lot 1.1.2 du
-// `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`) : [FooterEvent.Team] est l'équipe que le film écrit,
+// `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`) : [FooterEvent.Team] est l'équipe que le film écrit,
 // et le lot 1.7 la fera prendre par `objectiveevent.Event.TeamID` à la place du roster de la
 // base (décision V4 : le film est la seule source). Le champ vit en mémoire dans ce paquet et
 // nulle part ailleurs — ni dans un document cuit, ni dans une colonne DuckDB.
@@ -274,10 +275,7 @@ func scanTh10Events(data []byte) []FooterEvent {
 // d'event puis décode le bloc de 60 octets le précédant. Renvoie ok=false si le
 // bloc n'est pas un th=10. (Le xuid est rempli par l'appelant.)
 func decodeTh10Block(data []byte, xstart, total int) (FooterEvent, bool) {
-	win := xstart + 20000
-	if win > total {
-		win = total
-	}
+	win := min(xstart+20000, total)
 	for b := xstart; b <= win-32; b++ {
 		if source.OctetAuBit(data, b) == 0 && source.OctetAuBit(data, b+8) == 0 &&
 			source.OctetAuBit(data, b+16) == 0x2e && source.OctetAuBit(data, b+24) == 0xe0 {

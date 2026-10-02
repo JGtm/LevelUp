@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // fire_inventory_research_test.go — LA MESURE FONCTIONNELLE : nos changements d'arme

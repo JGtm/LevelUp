@@ -63,9 +63,10 @@
 package damagetag
 
 import (
+	"cmp"
 	_ "embed"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -176,7 +177,7 @@ func Labels() []Label {
 	for _, l := range labels {
 		out = append(out, l)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Tag < out[j].Tag })
+	slices.SortFunc(out, func(a, b Label) int { return cmp.Compare(a.Tag, b.Tag) }) // Tag : cle de la map `labels`, unique
 	return out
 }
 
@@ -189,7 +190,7 @@ func Source() Provenance { return provided }
 
 // headerDate : la valeur `date=` d une ligne de commentaire d en-tete, ou "".
 func headerDate(line string) string {
-	for _, f := range strings.Fields(line) {
+	for f := range strings.FieldsSeq(line) {
 		if v, ok := strings.CutPrefix(f, "date="); ok {
 			return v
 		}
@@ -222,7 +223,7 @@ func parseIDs(raw string) (map[uint32]struct{}, []uint32, string, error) {
 		set[uint32(v)] = struct{}{}
 		list = append(list, uint32(v))
 	}
-	sort.Slice(list, func(i, j int) bool { return list[i] < list[j] })
+	slices.Sort(list)
 	return set, list, date, nil
 }
 

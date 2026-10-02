@@ -25,6 +25,7 @@ package grammar
 
 import (
 	"fmt"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -218,12 +219,12 @@ func (c *FilmContext) bipedArchetype() (Archetype, error) {
 
 // maskHas dit si le masque du record annonce le composant d'index target.
 func maskHas(idx []int, target int) bool {
-	for _, id := range idx {
-		if id == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(idx, target)
+}
+
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (g grammaireRecord) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: g.prof, Obs: g.obs}
 }
 
 // grammaireRecord porte ce qu une marche de record bipede doit connaitre DU FILM : le
@@ -234,11 +235,6 @@ func maskHas(idx []int, target int) bool {
 // LES TROIS VOYAGENT ENSEMBLE parce qu ils viennent du MEME contexte de film : les separer
 // laisserait un appelant en passer deux sur trois, et une marche au profil par defaut lit des
 // largeurs qui ne sont pas celles de ce film — sans rien dire.
-// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
-func (g grammaireRecord) contexte() ContexteDeLecture {
-	return ContexteDeLecture{Profil: g.prof, Obs: g.obs}
-}
-
 type grammaireRecord struct {
 	lay  profile.I0Layout
 	arch Archetype

@@ -319,7 +319,7 @@ func motifXUID(t *testing.T, xuid string) uint64 {
 		v = v*10 + uint64(c-'0')
 	}
 	var out uint64
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		out = out<<8 | (v>>uint(8*i))&0xff
 	}
 	return out

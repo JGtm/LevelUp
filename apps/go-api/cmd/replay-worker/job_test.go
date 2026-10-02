@@ -9,6 +9,8 @@ import (
 	"bytes"
 	"compress/zlib"
 	"context"
+	"errors"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -249,7 +251,7 @@ func TestCleanupFilm_SupprimeLesMorceaux(t *testing.T) {
 	job := &domain.BuildQueueJob{MatchID: "m", Payload: &domain.BuildQueuePayload{ShortID: short}}
 	wk.cleanupFilm(context.Background(), job)
 
-	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+	if _, err := os.Stat(dir); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("le dossier de morceaux existe encore (%v) — cleanup devait le supprimer", err)
 	}
 }

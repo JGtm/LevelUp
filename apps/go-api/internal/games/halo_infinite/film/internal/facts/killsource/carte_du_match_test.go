@@ -108,7 +108,7 @@ func calibrationDeLaBobine(t *testing.T, src *source.Film, carte *profile.MapQua
 	if err != nil {
 		t.Fatalf("film : %v", err)
 	}
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("timeline : %v", err)
 	}

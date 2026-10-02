@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_pads_research_test.go — SOCLES par RECURRENCE SPATIALE, et CYCLE de
@@ -327,13 +329,6 @@ func gwPadsFamilyLine(m map[string]int) string {
 		parts = append(parts, fmt.Sprintf("%s=%d", k, m[k]))
 	}
 	return "(" + strings.Join(parts, " ") + ")"
-}
-
-func gwPadsPart(k, n int) string {
-	if n == 0 {
-		return "-"
-	}
-	return fmt.Sprintf("%d/%d=%.1f%%", k, n, 100*float64(k)/float64(n))
 }
 
 // mapQuantEntryFromEnv charge l'entree de catalogue de bornes de la carte nommee par `mapEnv`.

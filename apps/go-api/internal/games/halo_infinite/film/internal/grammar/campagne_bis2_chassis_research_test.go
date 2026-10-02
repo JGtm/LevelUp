@@ -70,7 +70,7 @@ func TestCampagneBis2IdentiteChassis(t *testing.T) {
 				}
 			}
 		}
-		wr := profile.QuantRangeCEBiped
+		wr := profile.QuantRangeCEBiped()
 		if cre, _, err := ScanVehicleCreations(f.fc, &wr); err == nil {
 			for _, c := range cre {
 				ajouter(b2cCle{chassis: c.MPPVal[MPPWord32], variante: c.MPPVal[MPPVariantName],

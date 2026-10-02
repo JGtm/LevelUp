@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // f1_origine_verdict_research_test.go — LOT F.1 : le VERDICT de la mesure avant / apres.

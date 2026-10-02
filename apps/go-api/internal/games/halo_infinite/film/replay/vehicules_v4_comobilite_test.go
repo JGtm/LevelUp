@@ -21,6 +21,7 @@ package replay
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -187,7 +188,8 @@ func v4CoTop(m map[[3]uint32]*v4CoPaire, ctx v4Ctx) string {
 		all = append(all, p)
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].colles > all[j].colles })
-	s := "top:"
+	var s strings.Builder
+	s.WriteString("top:")
 	for i, p := range all {
 		if i >= 5 {
 			break
@@ -196,9 +198,9 @@ func v4CoTop(m map[[3]uint32]*v4CoPaire, ctx v4Ctx) string {
 		if x, ok := ctx.own.PontEpure()[p.bipSlot]; ok {
 			nom = fmt.Sprintf("/%d", x)
 		}
-		s += fmt.Sprintf(" veh%d.%d<-bip%d%s(%d,run%d,%.0fs)",
+		s.WriteString(fmt.Sprintf(" veh%d.%d<-bip%d%s(%d,run%d,%.0fs)",
 			p.vehSlot, p.vehGen, p.bipSlot, nom, p.colles, p.plusLongRun,
-			float64(p.dernierUS-p.premierUS)/1e6)
+			float64(p.dernierUS-p.premierUS)/1e6))
 	}
-	return s
+	return s.String()
 }

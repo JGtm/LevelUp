@@ -14,6 +14,7 @@ package replay
 // (le crane compte, la bombe non).
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -43,7 +44,7 @@ func TestLaPorteDePresenceCompteLaBombeSousSonNom(t *testing.T) {
 	}}
 	// Le siege 3 est nomme par le pont (xuid 111), mais AUCUNE piste n est publiee : la porte
 	// s abstient faute de vie nommee du porteur.
-	attachBombCarries(&doc, opt, regDeTest(nil, map[uint32]uint64{3: 111}, nil),
+	attachBombCarries(context.Background(), &doc, opt, regDeTest(nil, map[uint32]uint64{3: 111}, nil),
 		replayClock{origin: 0, step: 1000, frames: 100_000, fb: fb}, nil)
 	if len(doc.BombCarries) != 1 {
 		t.Fatalf("portages de bombe publies : %+v, attendu 1", doc.BombCarries)
@@ -63,7 +64,7 @@ func TestLaPorteDePresenceCompteLeCraneSousSonNom(t *testing.T) {
 	doc := ReplayDocument{MatchID: "test", Coverage: &Coverage{}}
 	opt := Options{Skull: SkullInput{Scanned: true, Records: recs,
 		Identity: objectives.ResolveRoundIdentity(recs, deaths, nil)}}
-	attachSkullCarries(&doc, opt, IdentityRegistry{},
+	attachSkullCarries(context.Background(), &doc, opt, IdentityRegistry{},
 		replayClock{origin: 0, step: 1000, frames: 100_000, fb: fb}, nil)
 	if len(doc.SkullCarries) != 4 {
 		t.Fatalf("portages de crane publies : %d, attendu 4", len(doc.SkullCarries))

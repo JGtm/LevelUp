@@ -116,7 +116,7 @@ func passeDesFilmsEnLigne(
 	// mais le RESEAU, borne par `--rps` — paralleliser les decodages ne ferait qu attendre plus
 	// vite, et multiplierait les requetes Halo au-dela du debit qu on s est donne. Sans porte, le
 	// passe-plat rend exactement le comportement d avant le lot.
-	capture, fermerCapture := positionCaptureDeps(cfg, o.titleSlug, db, nil)
+	capture, fermerCapture := positionCaptureDeps(ctx, cfg, o.titleSlug, db, nil)
 	defer fermerCapture()
 
 	collecteur := killcollector.NewKillSourceCollector(

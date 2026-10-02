@@ -15,6 +15,7 @@ package replay
 //     d'usages dérivé (piège (b) de R11).
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
 )
@@ -232,7 +233,7 @@ func TestBuildFromPositions_PasDeCouvertureDeChargesQuandLeBalayageNAPasTourne(t
 	base := Options{FilmClockOriginUS: 1_000_000}
 
 	// (a) BALAYAGE EN ÉCHEC (le repli de BuildFromFilm) : AUCUNE couverture.
-	doc := BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourOrigine(), nil, base)
 	if doc.Coverage == nil {
 		t.Fatal("document sans couverture du tout : le scenario ne mesure plus rien")
 	}
@@ -244,7 +245,7 @@ func TestBuildFromPositions_PasDeCouvertureDeChargesQuandLeBalayageNAPasTourne(t
 	// (b) BALAYAGE ABOUTI SUR UN FILM QUI NE DÉCLARE PAS LE COMPOSANT : la couverture EST
 	// publiée, et elle porte `componentAbsent`. Un zéro de balayage n'est pas l'autre.
 	base.AbilityChargeStats = types.AbilityChargeStats{Scanned: true, Absent: true}
-	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
+	doc = BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourOrigine(), nil, base)
 	cov := doc.Coverage.AbilityCharges
 	if cov == nil {
 		t.Fatal("balayage abouti mais aucune couverture : un resultat de lecture s est perdu")
@@ -257,7 +258,7 @@ func TestBuildFromPositions_PasDeCouvertureDeChargesQuandLeBalayageNAPasTourne(t
 	// la couverture est publiée, à zéro et SANS `componentAbsent` — le troisième zéro,
 	// distinct des deux autres (c'est celui que R11 §4 mesure 485 fois sur six films).
 	base.AbilityChargeStats = types.AbilityChargeStats{Scanned: true, Records: 1234}
-	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
+	doc = BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourOrigine(), nil, base)
 	cov = doc.Coverage.AbilityCharges
 	if cov == nil || cov.ComponentAbsent || cov.Reads != 0 {
 		t.Fatalf("couverture %+v : attendue publiee, a zero, sans componentAbsent", cov)

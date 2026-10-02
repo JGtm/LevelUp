@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_etiquettes_verdict_test.go — LOT G : LA MESURE, LE CONTROLE, LE VERDICT.
@@ -195,10 +197,7 @@ func vgSentinelle(cols []vgColonne, g *vgGrille) vgColonne {
 // decalages, avec un plancher — deux decalages plus proches que le plancher mesureraient deux
 // fois le meme instant sans ajouter d'information.
 func vgPasDecalage(g *vgGrille) int64 {
-	pas := g.dureeMS() / vgCtrlDecalages
-	if pas < vgCtrlPasMinMS {
-		pas = vgCtrlPasMinMS
-	}
+	pas := max(g.dureeMS()/vgCtrlDecalages, vgCtrlPasMinMS)
 	return pas
 }
 

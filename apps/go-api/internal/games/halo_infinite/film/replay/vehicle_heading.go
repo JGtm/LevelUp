@@ -8,6 +8,7 @@ package replay
 // l ASSEMBLAGE des vies reste la-bas, le CAP et sa provenance viennent ici.
 
 import (
+	"context"
 	"log/slog"
 	"math"
 
@@ -84,7 +85,7 @@ func vehicleVelocityHeadingOf(p grammar.BipedPosition) (float32, bool) {
 //
 // IL REND LE NOMBRE D ECHANTILLONS DONT LE CAP SORT DE LA VELOCITE : c est le compte du repli
 // `repli_cap_vehicule_vitesse_insuffisante`, verse par [attachVehicles] (lot J8.7).
-func logVehicleHeadingSource(pos []grammar.BipedPosition) int {
+func logVehicleHeadingSource(ctx context.Context, pos []grammar.BipedPosition) int {
 	var film, velocite, aucun, modeNonPublie int
 	for _, p := range pos {
 		switch {
@@ -99,7 +100,7 @@ func logVehicleHeadingSource(pos []grammar.BipedPosition) int {
 			aucun++
 		}
 	}
-	slog.Info("rejeu : source du cap des vehicules",
+	slog.InfoContext(ctx, "rejeu : source du cap des vehicules",
 		"echantillons", len(pos), "capDuFilm", film, "capParVelocite", velocite,
 		"sansCap", aucun, "roulisLuMaisModeNonPublie", modeNonPublie)
 	return velocite

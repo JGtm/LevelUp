@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r7_partype_research_test.go — lot R7 : L'ORACLE DE TRAME APPLIQUE TYPE PAR TYPE.
@@ -34,7 +36,7 @@ func r7TypesDemandes() map[int]bool {
 		return nil
 	}
 	out := map[int]bool{}
-	for _, s := range strings.Split(v, ",") {
+	for s := range strings.SplitSeq(v, ",") {
 		if n, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
 			out[n] = true
 		}

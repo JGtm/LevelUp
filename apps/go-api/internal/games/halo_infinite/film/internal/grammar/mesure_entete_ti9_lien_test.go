@@ -48,13 +48,13 @@ func mesureLitRosters(t *testing.T) map[string]mesureRoster {
 		t.Skipf("%s absent : confrontation a la table des scores sautee", mesureTI9RosterEnv)
 	}
 	out := map[string]mesureRoster{}
-	for _, bloc := range strings.Split(raw, ";") {
+	for bloc := range strings.SplitSeq(raw, ";") {
 		film, liste, ok := strings.Cut(strings.TrimSpace(bloc), ":")
 		if !ok {
 			continue
 		}
 		r := mesureRoster{}
-		for _, e := range strings.Split(liste, ",") {
+		for e := range strings.SplitSeq(liste, ",") {
 			x, team, ok := strings.Cut(strings.TrimSpace(e), "/")
 			if !ok {
 				continue

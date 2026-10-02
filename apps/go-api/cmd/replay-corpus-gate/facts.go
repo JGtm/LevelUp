@@ -9,7 +9,7 @@ package main
 // de `cmd/levelup`). Une troisieme copie de cette resolution DIVERGERAIT au premier champ
 // ajoute (regle du depot, "une seule ecriture des memes requetes") ; ce fichier invoque donc
 // L'OUTIL CANONIQUE tel quel, exactement comme la methode du balayage
-// (.ai/V7.5/V2/BALAYAGE_PARC_2026-09-06.md §9). Ce gate reste lui-meme compilable SANS CGO
+// (.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md §9). Ce gate reste lui-meme compilable SANS CGO
 // (`go build ./cmd/replay-corpus-gate` marche a vide) : seule CETTE etape, en sous-processus,
 // exige CGO/gcc — comme `go-api-test-gamefiles` exige le jeu pour SA seule etape.
 //
@@ -123,7 +123,7 @@ func exporterAvecReessai(ctx context.Context, tenter func() error, dormir dormeu
 		if essai == reessaisExport {
 			break
 		}
-		slog.Warn("replay-corpus-gate: base partagee tenue en ecriture — nouvel essai de l'export",
+		slog.WarnContext(ctx, "replay-corpus-gate: base partagee tenue en ecriture — nouvel essai de l'export",
 			"essai", essai, "essais", reessaisExport, "attente", delaiEntreReessais, "err", dernier)
 		if err := dormir(ctx, delaiEntreReessais); err != nil {
 			return errors.Join(dernier, err)
@@ -154,7 +154,7 @@ func exportFacts(ctx context.Context, p exportParams, ids []string) error {
 	if err := os.MkdirAll(p.FactsDir, 0o750); err != nil {
 		return fmt.Errorf("dossier des faits : %w", err)
 	}
-	exportFactsAvec(func(id string) error {
+	exportFactsAvec(ctx, func(id string) error {
 		return exporterAvecReessai(ctx, func() error { return exportUnFait(ctx, p, id) }, dormirContexte)
 	}, ids)
 	return nil
@@ -162,10 +162,10 @@ func exportFacts(ctx context.Context, p exportParams, ids []string) error {
 
 // exportFactsAvec applique `exporter` a chaque id, EN CONTINUANT apres un echec — le coeur du
 // correctif C4, teste independamment du sous-processus reel (facts_test.go).
-func exportFactsAvec(exporter exporterUnFait, ids []string) {
+func exportFactsAvec(ctx context.Context, exporter exporterUnFait, ids []string) {
 	for _, id := range ids {
 		if err := exporter(id); err != nil {
-			slog.Warn("replay-corpus-gate: export des faits impossible pour ce temoin — ignore, "+
+			slog.WarnContext(ctx, "replay-corpus-gate: export des faits impossible pour ce temoin — ignore, "+
 				"les autres temoins du manifeste continuent",
 				"temoin", id, "err", err)
 		}

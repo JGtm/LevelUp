@@ -206,7 +206,7 @@ func zsReportVisibility(t *testing.T, sb *strings.Builder, col *zsCollect, o zcO
 	for _, s := range col.visib {
 		v := s.vals[0]
 		distinct[v]++
-		for k := 0; k < 32; k++ {
+		for k := range 32 {
 			if v&(1<<uint(k)) != 0 {
 				perBit[k]++
 			}
@@ -216,7 +216,7 @@ func zsReportVisibility(t *testing.T, sb *strings.Builder, col *zsCollect, o zcO
 		len(col.visib), len(distinct))
 	var bits strings.Builder
 	used := 0
-	for k := 0; k < 32; k++ {
+	for k := range 32 {
 		if perBit[k] == 0 {
 			continue
 		}

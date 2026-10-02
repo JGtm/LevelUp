@@ -52,10 +52,7 @@ func gamePlayerSlotProfile(t *testing.T, sc GameEntityScan) {
 		}
 		top += per[s]
 	}
-	n := len(slots)
-	if n > 8 {
-		n = 8
-	}
+	n := min(len(slots), 8)
 	if n > 0 {
 		t.Logf("ti=5 DEBIT DES 8 SLOTS LES PLUS BAVARDS : %.1f lectures/slot contre %.1f "+
 			"(voisinage) et %.1f (vide) -> x%.2f et x%.2f", float64(top)/float64(n),
@@ -75,7 +72,7 @@ func gamePlayerStateValues(t *testing.T, sc GameEntityScan) {
 		return
 	}
 	t.Logf("ti=5 DISTRIBUTION DES VALEURS (P.0.5)")
-	for f := 0; f < PlayerStateFieldCount; f++ {
+	for f := range PlayerStateFieldCount {
 		fl := PlayerStateField(f)
 		hist, n, gated := map[string]int{}, 0, 0
 		for _, r := range sc.Player {

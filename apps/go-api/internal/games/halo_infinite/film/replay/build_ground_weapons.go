@@ -22,6 +22,7 @@ package replay
 // par `BuildFromFilm`. `attachWeaponPads` est PUR.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -64,12 +65,12 @@ func worldEquipmentArchetype() padArchetype {
 // laisserait l'artefact affirmer « aucun socle de power-up » là où il faudrait dire « pas lu ».
 //
 // HORS LIGNE — appelée par BuildFromFilm.
-func decodeFilmPadScans(
+func decodeFilmPadScans(ctx context.Context,
 	fc *grammar.FilmContext, matchID string, wr *profile.Vec3Range, mpp profile.MPPWidths,
 ) PadScans {
 	return PadScans{
-		Weapons:  decodeFilmPadScan(fc, matchID, wr, mpp, groundWeaponArchetype()),
-		Powerups: decodeFilmPadScan(fc, matchID, wr, mpp, worldEquipmentArchetype()),
+		Weapons:  decodeFilmPadScan(ctx, fc, matchID, wr, mpp, groundWeaponArchetype()),
+		Powerups: decodeFilmPadScan(ctx, fc, matchID, wr, mpp, worldEquipmentArchetype()),
 	}
 }
 
@@ -92,39 +93,36 @@ func decodeFilmPadScans(
 // garde le défaut, et le compteur `kept` de la couverture reste le témoin.
 //
 // HORS LIGNE — appelée par BuildFromFilm.
-func decodeFilmPadScan(
+func decodeFilmPadScan(ctx context.Context,
 	fc *grammar.FilmContext, matchID string, wr *profile.Vec3Range, mpp profile.MPPWidths,
 	arch padArchetype,
 ) WorldObjectScan {
 	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
 	kf := grammar.ScanWorldObjectKeyframes(fc, arch.ti)
 	if len(kf.Band) == 0 {
-		slog.Warn("socles : aucun slot de l archetype aux images-cles — rejeu sans ce calque",
+		slog.WarnContext(ctx, "socles : aucun slot de l archetype aux images-cles — rejeu sans ce calque",
 			"archetype", arch.label, "match_id", matchID, "imagesCles", len(kf.TimesUS))
 		return WorldObjectScan{}
 	}
 	cre, st, err := arch.scan(fc, wr, kf.Band)
 	if err != nil {
-		slog.Warn("socles : records de creation illisibles — rejeu sans ce calque",
+		slog.WarnContext(ctx, "socles : records de creation illisibles — rejeu sans ce calque",
 			"archetype", arch.label, "err", err, "match_id", matchID)
 		return WorldObjectScan{}
 	}
 	tracks, err := grammar.ScanWorldObjectsForBand(fc, wr, kf.Band)
 	if err != nil {
-		slog.Warn("socles : pistes delta illisibles — AUCUN socle publie (sans elles, toute"+
+		slog.WarnContext(ctx, "socles : pistes delta illisibles — AUCUN socle publie (sans elles, toute"+
 			" apparition passerait pour un objet apparu au repos)",
 			"archetype", arch.label, "err", err, "match_id", matchID)
 		return WorldObjectScan{}
 	}
-	slog.Info("socles : balayage d archetype",
+	slog.InfoContext(ctx, "socles : balayage d archetype",
 		"archetype", arch.label, "slots", st.Slots, "ancres", st.Anchors, "acceptees", st.Accepted,
 		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS), "pistesDelta", len(tracks))
 	return WorldObjectScan{Scanned: true, Creations: cre, Stats: st, Keyframes: kf, Tracks: tracks}
 }
 
-// gwInstallMPPWidths installe les largeurs du bloc MPP MESURÉES sur ce film SUR LE CONTEXTE, et
-// rend leur restauration. Largeurs non renseignées (calibration refusée) : rien n'est installé —
-// l'invariant du profil vaut mieux qu'un découpage nul, qui ne lirait aucune identité du tout.
 // gwWidthsForFilm rend les largeurs MPP a INSTALLER pour ce film : celles que porte sa VERSION
 // DE FORMAT quand la grammaire les a relues chez l ecrivain (format 27), sinon les largeurs
 // CALIBREES sur le film.
@@ -168,6 +166,9 @@ func gwWidthsForFilm(fc *grammar.FilmContext, calibrees profile.MPPWidths) profi
 	return calibrees
 }
 
+// gwInstallMPPWidths installe les largeurs du bloc MPP MESURÉES sur ce film SUR LE CONTEXTE, et
+// rend leur restauration. Largeurs non renseignées (calibration refusée) : rien n'est installé —
+// l'invariant du profil vaut mieux qu'un découpage nul, qui ne lirait aucune identité du tout.
 func gwInstallMPPWidths(fc *grammar.FilmContext, w profile.MPPWidths) func() {
 	if !w.Valid() {
 		// Ni relue ni calibree : le balayage se fait aux largeurs de l INVARIANT (9/5), repli
@@ -193,7 +194,7 @@ func gwInstallMPPWidths(fc *grammar.FilmContext, w profile.MPPWidths) func() {
 // selectivite). Tables vides = comportement d avant le 2026-08-18 / le 2026-08-19.
 // Le retour est la liste des OBJETS INDIVIDUELS de la voie des armes : le calque des armes au
 // sol (schéma 27) les consomme après coup — même chaîne, deux publications.
-func attachWeaponPads(
+func attachWeaponPads(ctx context.Context,
 	doc *ReplayDocument, scans PadScans, positions []grammar.BipedPosition, clock replayClock,
 	cat LabelCatalog,
 ) []gwPickupObject {
@@ -203,6 +204,6 @@ func attachWeaponPads(
 	doc.WeaponPads, doc.PadPickups, doc.Coverage.GroundWeapons, objs = buildWeaponPads(
 		scans, positions, clock,
 		padCatalogs{ObjectiveObjects: cat.ObjectiveObjects, EquipmentFamilies: cat.EquipmentFamilies})
-	logGroundWeaponCoverage(doc.Coverage.GroundWeapons)
+	logGroundWeaponCoverage(ctx, doc.Coverage.GroundWeapons)
 	return objs
 }

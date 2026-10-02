@@ -35,12 +35,13 @@ package grammar
 //	  V2_FILMS="0d76e8f1:behemoth,fccc61cd:launch site" \
 //	  V2_BOUNDS=<repo>/data/titles/halo_infinite/reference/map_quant_bounds.json \
 //	  V2_PADS=<repo>/data/titles/halo_infinite/reference/map_weapon_pads.json \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestV2SpawnsCooldowns$' -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestV2SpawnsCooldowns$' -v -timeout 180m
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -204,7 +205,7 @@ func v2BirthsPerLife(cre []types.EquipmentCreation, film string, rng profile.Vec
 // v2ToMeters projette une coordonnee unite [0,1] en metres par les bornes de la carte.
 func v2ToMeters(u [3]float32, rng profile.Vec3Range) [3]float64 {
 	var m [3]float64
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		lo, hi := float64(rng[ax].Min), float64(rng[ax].Max)
 		m[ax] = lo + float64(u[ax])*(hi-lo)
 	}
@@ -269,10 +270,5 @@ func v2ScanI14(dir string, band map[uint32]bool) (ev []v2Ev, withI14, total int)
 }
 
 func v2HasIdx(idx []int, want int) bool {
-	for _, i := range idx {
-		if i == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(idx, want)
 }

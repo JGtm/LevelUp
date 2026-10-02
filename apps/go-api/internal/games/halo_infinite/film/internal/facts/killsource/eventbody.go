@@ -129,7 +129,7 @@ func evBody82(r *curseurEv) bool {
 	r.rd(32)
 	r.rd(8)
 	n1 := int(r.rd(3))
-	for i := 0; i < n1; i++ {
+	for range n1 {
 		r.rd(32)
 		if !evVariantA(r) {
 			return false
@@ -138,7 +138,7 @@ func evBody82(r *curseurEv) bool {
 	if r.g1() == 1 {
 		r.rd(32)
 		n2 := int(r.rd(3))
-		for i := 0; i < n2; i++ {
+		for range n2 {
 			evVariantB(r)
 		}
 	}

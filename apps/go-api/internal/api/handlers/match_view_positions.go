@@ -2,7 +2,7 @@
 // GET .../matches/{match_id}/positions.
 //
 // Sérialise les positions joueurs keyframe v3 (décodées du film, match-level —
-// §N de .ai/RESEARCH_THEATER_RE.md) en JSON camelCase. On NE sérialise PAS
+// §N de .ai/archive/V7/RESEARCH_THEATER_RE.md) en JSON camelCase. On NE sérialise PAS
 // playerposition.PlayerPosition brut (struct sans tags json → clés PascalCase non
 // consommables par le front) : un DTO dédié porte les tags.
 //

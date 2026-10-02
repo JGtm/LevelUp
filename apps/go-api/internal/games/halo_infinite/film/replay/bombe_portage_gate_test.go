@@ -44,6 +44,7 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run BombePortageGate -v -timeout 30m
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -138,7 +139,7 @@ func bpExtraire(t *testing.T, cache, id string) (
 	if err != nil {
 		t.Logf("%s : index de joueur illisible (%v) — pont par le seul fil des morts", id, err)
 	}
-	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
 	slotXUID, own := reg.PontEpure(), reg
 	events := bombHeldEventsOf(changes, own.DeathOffsetMS())
 	carry := BuildHeldObjectCarry(events, occupantFige(slotXUID), deaths)

@@ -154,7 +154,7 @@ func TestPostSyncDeps_SansResolveurDeCarte_LaCaptureEstDesarmee(t *testing.T) {
 // à l'appelant de décider s'il dégrade. Une fonction qui rendrait des deps vides en silence
 // fabriquerait le silence que ce lot corrige.
 func TestCaptureDepuisCatalogue_RefuseUnResolveurNil(t *testing.T) {
-	if _, err := CaptureDepuisCatalogue(t.TempDir(), "halo_infinite", nil); err == nil {
+	if _, err := CaptureDepuisCatalogue(context.Background(), t.TempDir(), "halo_infinite", nil); err == nil {
 		t.Fatal("aucune erreur pour un resolveur nil")
 	}
 }
@@ -163,7 +163,7 @@ func TestCaptureDepuisCatalogue_RefuseUnResolveurNil(t *testing.T) {
 // illisible : l'appelant journalise et dégrade, la fonction ne ment pas.
 func TestCaptureDepuisCatalogue_CatalogueAbsent_RendUneErreur(t *testing.T) {
 	repo := fakeMapNames{keys: port.MatchMapKeys{Names: []string{"Catalyst"}}}
-	if _, err := CaptureDepuisCatalogue(t.TempDir(), "halo_infinite", repo); err == nil {
+	if _, err := CaptureDepuisCatalogue(context.Background(), t.TempDir(), "halo_infinite", repo); err == nil {
 		t.Fatal("aucune erreur alors que le catalogue de bornes n'existe pas dans ce TempDir")
 	}
 }
@@ -204,7 +204,7 @@ func positionsDUneVie() []decfilm.BipedPosition {
 // par la table d'index — la seule entrée publique qui le porte, et celle que la production
 // alimente (`decfilm.ScanPlayerIndices`).
 func registreDeTest(pos []decfilm.BipedPosition, desaccords int) replay.IdentityRegistry {
-	return replay.BuildIdentityRegistry(replay.IdentityInput{
+	return replay.BuildIdentityRegistry(context.Background(), replay.IdentityInput{
 		Positions: pos,
 		Deaths:    []types.Death{{XUID: 111, TimeMS: 10_000}},
 		PlayerIndices: types.PlayerIndexTable{
@@ -241,14 +241,14 @@ func TestRegistreDuCollecteurNommeParElimination(t *testing.T) {
 		},
 	}
 
-	sansRoster := replay.BuildIdentityRegistry(entree)
+	sansRoster := replay.BuildIdentityRegistry(context.Background(), entree)
 	if n := len(sansRoster.ViesNommees()); n != 1 {
 		t.Fatalf("sans roster : %d vie(s) nommee(s), attendu 1 (le seul joueur qui meurt)", n)
 	}
 
 	// AVEC LE ROSTER DE LA FEUILLE — ce que la production passe depuis le lot P2.
 	entree.RosterXUIDs = rosterUint64([]string{"111", "222"})
-	avecRoster := replay.BuildIdentityRegistry(entree)
+	avecRoster := replay.BuildIdentityRegistry(context.Background(), entree)
 	vies := avecRoster.ViesNommees()
 	if len(vies) != 2 {
 		t.Fatalf("avec roster : %d vie(s) nommee(s), attendu 2", len(vies))
@@ -277,7 +277,7 @@ func TestRegistreDuCollecteurSeTaitADeuxCandidats(t *testing.T) {
 			decfilm.BipedPosition{Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true},
 			decfilm.BipedPosition{Slot: 2, TimestampUS: uint64(t) * 1000, HasWorld: true})
 	}
-	reg := replay.BuildIdentityRegistry(replay.IdentityInput{
+	reg := replay.BuildIdentityRegistry(context.Background(), replay.IdentityInput{
 		Positions:     pos,
 		Deaths:        []types.Death{{XUID: 111, TimeMS: 10_000}},
 		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26},

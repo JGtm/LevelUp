@@ -31,7 +31,10 @@ package replay
 // épisodes publiés et les trajectoires sur lesquelles poser les tirs.
 
 import (
+	"cmp"
+	"context"
 	"log/slog"
+	"slices"
 	"sort"
 )
 
@@ -59,7 +62,7 @@ type vehicleShotRide struct {
 
 // attachVehicleShots publie, dans `doc.Shots`, les tirs des joueurs embarqués et met la
 // couverture à jour. Rien à faire sans épisode ni orphelin — le document sort inchangé.
-func attachVehicleShots(
+func attachVehicleShots(ctx context.Context,
 	doc *ReplayDocument, orphans []orphanShot, reg IdentityRegistry, clock replayClock,
 ) {
 	cov := doc.Coverage
@@ -105,10 +108,10 @@ func attachVehicleShots(
 		return
 	}
 	doc.Shots = append(doc.Shots, added...)
-	sort.SliceStable(doc.Shots, func(i, j int) bool { return doc.Shots[i].T < doc.Shots[j].T })
+	slices.SortStableFunc(doc.Shots, func(a, b Shot) int { return cmp.Compare(a.T, b.T) })
 	cov.Verdict["shots"] = verdictOf(cov.Shots)
 	nameVariantsByWeapon(doc.Vehicles, added, cov.Vehicles)
-	logVehicleShots(doc.Coverage.Vehicles, len(added))
+	logVehicleShots(ctx, doc.Coverage.Vehicles, len(added))
 }
 
 // Verdicts d'un orphelin passé devant la porte du véhicule.
@@ -294,16 +297,12 @@ func vehicleShotCandidates(
 			}
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		si, sj := vehicleSeatRank(out[i].ride.Seat), vehicleSeatRank(out[j].ride.Seat)
-		switch {
-		case si != sj:
-			return si < sj
-		case out[i].track != out[j].track:
-			return out[i].track < out[j].track
-		default:
-			return out[i].ride.Slot < out[j].ride.Slot
-		}
+	slices.SortStableFunc(out, func(a, b vehicleShotRide) int {
+		return cmp.Or(
+			cmp.Compare(vehicleSeatRank(a.ride.Seat), vehicleSeatRank(b.ride.Seat)),
+			cmp.Compare(a.track, b.track),
+			cmp.Compare(a.ride.Slot, b.ride.Slot),
+		)
 	})
 	return out
 }
@@ -394,11 +393,11 @@ func vehicleShotTally(cov *VehicleCoverage, v vehicleShotVerdict) {
 }
 
 // logVehicleShots journalise la seconde porte avec ses dénominateurs.
-func logVehicleShots(cov *VehicleCoverage, published int) {
+func logVehicleShots(ctx context.Context, cov *VehicleCoverage, published int) {
 	if cov == nil {
 		return
 	}
-	slog.Info("rejeu : tirs en vehicule",
+	slog.InfoContext(ctx, "rejeu : tirs en vehicule",
 		"publies", published, "poses", cov.Shots, "ambigus", cov.ShotsAmbiguous,
 		"sansPosition", cov.ShotsUnplaced, "orphelinsHorsEpisode", cov.ShotsNoRide)
 }

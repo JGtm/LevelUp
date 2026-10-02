@@ -1,7 +1,7 @@
 package archlint
 
 // no_unregistered_fallback_test.go — UN REPLI HORS REGISTRE EST ROUGE (D14 a, lot 1.9.0 du plan
-// `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034).
+// `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034).
 //
 // # LE DÉFAUT QUE CE GARDE-RAIL FERME
 //
