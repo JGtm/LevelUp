@@ -114197,3 +114197,29 @@ registre des replis, CI `film-race`) ; `go test ./internal/archlint/ -count=1` o
 **Conclusion / prochaine étape** : lot 1.1 (paquet de types `grammar/lecture`, ratchet de couche,
 tests de taille). La phase des trames attend la fusion du lot « définition de la fermeture » de la
 campagne dans `feat/v75`.
+
+## [2026-10-02] Représentation intermédiaire du film, étape 1 — lot 1.1 : paquet de types `grammar/lecture` — Complété (`feat/representation-intermediaire`)
+
+**Statut** : Complété (lot 1.1 du plan `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`).
+
+**Décision technique principale** : paquet feuille
+`apps/go-api/internal/games/halo_infinite/film/internal/grammar/lecture`, types et constantes
+seulement : `Paquet` (arène réutilisée d'un tour à l'autre, payload en sous-tranche), `VueA` /
+`VueB` / `VueC` avec leurs étendues, `Record` (40 o : genre, rang de vue, liaison, preuve,
+archétype, désynchronisation, `LifeKey`, étendue, masque, bornes dans l'arène des composants),
+`Composant` (12 o : index, état interprété / délimité / infranchissable, provenance de largeur,
+étendue), `Fermeture` (verdict fermé / refusé / queue opaque, jamais confondus, cause typée),
+`DebutDeVueB` (début lu en tête ou localisé : la récupération dans la marche est marquée),
+`Liaison` (provenance des liaisons, celles de récupération nommées), `Entites` (table d'entités en
+lecture seule), `Etendue` (16 o). Ratchets : ligne de couche dans `film_layers_deps_test.go` ;
+`film_lecture_test.go` (feuille, sans logique, interdite à `replay` et `decfilm`) ; tailles gelées.
+
+**Résultats observés** : gates verts (`lecture`, `archlint`, `go vet` avec et sans `research`) ;
+cinq mutations rouges puis retirées ; périmètre de `grammar` +1 paquet, empreinte régénérée à
+révision constante (`grammar-2026-09-27.3`), révisions `killsource` / `objectives` inchangées.
+Découverte consignée au plan (§6) : trois tirets corrompus dans un commentaire d'`archlint` que le
+ratchet de mojibake ne voit pas (relecture Latin-1).
+
+**Conclusion / prochaine étape** : le lot 1.2 (phase des trames sur la marche de production)
+attend la fusion du lot « définition de la fermeture » de la campagne dans `feat/v75` (consigne de
+l'utilisateur et prérequis du plan) ; la campagne préviendra. Rien n'est poussé.

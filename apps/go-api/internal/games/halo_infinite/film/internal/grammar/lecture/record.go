@@ -1,0 +1,177 @@
+package lecture
+
+import "levelup/go-api/internal/games/halo_infinite/film/types"
+
+// Genre est le genre d'un record : ce que son en-tête annonce (trame delta), ou l'état complet
+// d'une entité (image-clé). Le terminateur d'une vue n'est pas un record : c'est la sortie de la
+// vue ([SortieVueB]).
+type Genre uint8
+
+// Les genres de record.
+const (
+	// GenreNonRenseigne : sentinelle, jamais posée par la marche.
+	GenreNonRenseigne Genre = iota
+	// GenreNeuf : record NEW — archétype `R(6)`, état par défaut, porte, masque, composants.
+	GenreNeuf
+	// GenreDelta : record DELTA — sélecteur de base, masque, composants présents ; l'archétype vient
+	// de la table d'entités.
+	GenreDelta
+	// GenreSuppression : record DEL — mot de 32 bits, la liaison du slot est retirée.
+	GenreSuppression
+	// GenreEtatComplet : record d'image-clé — tous les composants de l'archétype, dans l'ordre du
+	// registre, sans masque.
+	GenreEtatComplet
+)
+
+// Etat est l'état d'une OCCURRENCE de composant (ADR 0037 IR-4). Le statut de
+// `ecs_table.tsv` (`porte`, `partiel`, `non_porte`) est une capacité statique ; l'état dit ce que
+// la marche a fait de cette occurrence-ci.
+type Etat uint8
+
+// Les états d'une occurrence de composant.
+const (
+	// EtatNonRenseigne : sentinelle, jamais posée par la marche.
+	EtatNonRenseigne Etat = iota
+	// EtatInterprete : la marche a publié une valeur typée de l'occurrence pendant sa lecture.
+	EtatInterprete
+	// EtatDelimite : l'étendue est connue — le composant a été traversé — et aucune valeur n'en a
+	// été publiée.
+	EtatDelimite
+	// EtatInfranchissable : la largeur est inconnue (lecteur non porté) ; la traversée s'arrête au
+	// début de l'occurrence, et le reste de la vue est une queue opaque ([QueueOpaque]).
+	EtatInfranchissable
+)
+
+// ProvenanceLargeur dit d'où vient la largeur avec laquelle une occurrence a été traversée. Elle
+// n'est renseignée que pour une occurrence traversée ([EtatInterprete] ou [EtatDelimite]).
+type ProvenanceLargeur uint8
+
+// Les provenances d'une largeur de composant.
+const (
+	// LargeurNonRenseignee : aucune largeur — l'occurrence n'a pas été traversée.
+	LargeurNonRenseignee ProvenanceLargeur = iota
+	// LargeurEcrivain : le lecteur porté depuis l'écrivain du jeu (ADR 0034 D-3, règle 2).
+	LargeurEcrivain
+	// LargeurPresumee : une largeur trouvée par fermeture pour un composant de taille fixe qu'on ne
+	// fait que sauter, inscrite comme présumée (ADR 0034, amendement D-3 règle 2).
+	LargeurPresumee
+	// LargeurExceptionDatee : un site qui garde son ancien lecteur, en exception datée
+	// (`lecteur_position_exceptions.go`).
+	LargeurExceptionDatee
+	// LargeurCalibree : une largeur de saut posée par un harnais (`LargeursCalibrees` du profil de
+	// balayage) ; jamais en production.
+	LargeurCalibree
+	// LargeurBouchon : une largeur provisoire posée par un harnais sur un composant non porté
+	// (`LargeursBouchon` du profil de balayage) ; jamais en production.
+	LargeurBouchon
+)
+
+// Preuve dit ce qui prouve qu'un record a été lu au bit près.
+type Preuve uint8
+
+// Les preuves d'un record.
+const (
+	// PreuveNonRenseignee : sentinelle, jamais posée par la marche.
+	PreuveNonRenseignee Preuve = iota
+	// PreuveFerme : le record a été lu par la marche et sa fermeture tient — le paquet delta se
+	// ferme ([VerdictFerme]), ou la traversée de l'état complet d'un record d'image-clé finit
+	// exactement sur le record suivant.
+	PreuveFerme
+	// PreuveNonProuve : le record a été lu par la marche, mais rien ne prouve sa frontière : son
+	// paquet ne se ferme pas (fermeture refusée ou queue opaque), ou sa traversée n'atteint pas le
+	// record suivant.
+	PreuveNonProuve
+	// PreuveRecupere : le record n'a pas été lu par la marche ; la couche de récupération l'a
+	// trouvé, par une méthode nommée et comptée au registre des replis (ADR 0037 IR-6).
+	PreuveRecupere
+)
+
+// Liaison dit d'où vient la liaison slot -> archétype d'une entité (ADR 0037 IR-5) : pour un
+// record delta, la liaison sous laquelle il a été lu ; pour un record d'image-clé, comment son
+// identité a été établie. Les liaisons marquées « récupération » ne sont pas des lectures de la
+// marche (ADR 0037 IR-6).
+type Liaison uint8
+
+// Les provenances d'une liaison.
+const (
+	// LiaisonAucune : le record n'est lu sous aucune liaison, ou n'en pose aucune (un NEW refusé ou
+	// désynchronisé, un DEL).
+	LiaisonAucune Liaison = iota
+	// LiaisonLueNeuf : un record NEW lu, traversé sans désynchronisation.
+	LiaisonLueNeuf
+	// LiaisonImageCle : la chaîne des records d'une image-clé, ancre atteinte de proche en proche.
+	LiaisonImageCle
+	// LiaisonImageCleElue : récupération — un record d'image-clé dont l'ancre a été ÉLUE
+	// (`repli_ancre_d_image_cle_par_election`).
+	LiaisonImageCleElue
+	// LiaisonDatum : récupération — la table de datums d'une image-clé, lue à position libre.
+	LiaisonDatum
+	// LiaisonAnticipation : récupération — l'archétype qu'une image-clé ULTÉRIEURE donne à l'eid
+	// (`repli_liaison_par_anticipation`).
+	LiaisonAnticipation
+	// LiaisonInference : récupération — un archétype inféré par la chaîne des records qui suivent.
+	LiaisonInference
+	// LiaisonJoker : un archétype établi par une contrainte structurelle, génération inconnue.
+	LiaisonJoker
+)
+
+// TINonResolu est l'archétype d'un record dont l'archétype n'a pas été résolu.
+const TINonResolu int16 = -1
+
+// SansDesynchronisation est le [Record.Desync] d'un record traversé jusqu'au bout.
+const SansDesynchronisation int16 = -1
+
+// Composant est UNE occurrence de composant dans un record : son index d'itération dans
+// l'archétype, son état, la provenance de sa largeur et son étendue dans le payload.
+//
+// Douze octets : sa taille est gelée par `tailles_test.go`.
+type Composant struct {
+	// Index est l'index d'itération du composant dans son archétype, c'est-à-dire son bit de masque
+	// (moins de 64).
+	Index uint8
+	// Etat est l'état de l'occurrence.
+	Etat Etat
+	// Prov est la provenance de la largeur, [LargeurNonRenseignee] pour une occurrence
+	// infranchissable.
+	Prov ProvenanceLargeur
+	// Debut est le premier bit de l'occurrence.
+	Debut uint32
+	// Bits est sa longueur, zéro pour une occurrence infranchissable.
+	Bits uint32
+}
+
+// Record est UN record lu : son genre, son identité, son archétype, sa liaison, sa preuve, son
+// étendue et ses composants. Ses composants sont la tranche `Comps[0]:Comps[1]` de
+// [Paquet.Comps] : un record ne porte pas de tranche à lui, l'arène du paquet les porte tous.
+//
+// Quarante octets : sa taille est gelée par `tailles_test.go`.
+type Record struct {
+	// Genre est le genre du record.
+	Genre Genre
+	// Vue est le rang de la vue qui le porte, dans la numérotation du film : 1 pour un record de
+	// trame delta (la vue B) ; pour un record d'image-clé, le rang lu dans les deux bits de tête de
+	// son identifiant.
+	Vue uint8
+	// Liaison est la provenance de la liaison sous laquelle le record a été lu ou qu'il établit.
+	Liaison Liaison
+	// Preuve est ce qui prouve sa frontière.
+	Preuve Preuve
+	// TI est l'archétype, [TINonResolu] quand il n'a pas été résolu.
+	TI int16
+	// Desync est l'index d'itération où la traversée s'est arrêtée, [SansDesynchronisation] pour
+	// un record traversé jusqu'au bout. Quand le dernier composant du record est
+	// [EtatInfranchissable], c'est son index ; sinon la traversée s'est arrêtée avant tout
+	// composant (archétype hors du registre, slot non lié).
+	Desync int16
+	// Vie est l'identité du record : le slot et la génération de son handle (ADR 0034, `LifeKey`).
+	Vie types.LifeKey
+	// Debut est le premier bit de l'en-tête du record, mot facultatif d'en-tête compris.
+	Debut uint32
+	// Bits est sa longueur, jusqu'au dernier bit lu de son corps.
+	Bits uint32
+	// Masque est le masque de présence des composants (zéro pour un DEL et pour un record dont le
+	// masque n'a pas été lu).
+	Masque uint64
+	// Comps borne les composants du record dans [Paquet.Comps] : `[début, fin)`.
+	Comps [2]uint32
+}

@@ -136,16 +136,44 @@ après la preuve de différence nulle ; `grammar.Rev` ne monte pas.
   `CLAUDE.md` (grep).
 
 ### Lot 1.1 — Paquet de types `grammar/lecture` (taille S, aucun prérequis)
-- [ ] 1.1.1 Paquet feuille `apps/go-api/internal/games/halo_infinite/film/internal/grammar/lecture`,
+- [x] 1.1.1 Paquet feuille `apps/go-api/internal/games/halo_infinite/film/internal/grammar/lecture`,
       types seuls, d'après le rapport §3.2 : `Etendue`, `Etat` (interprété / délimité /
       infranchissable), `ProvenanceLargeur`, `Composant`, `Record`, `Genre`, `Liaison`, `Preuve`
       (fermé / non prouvé / récupéré), `QueueOpaque` et sa cause, `Fermeture`, `Paquet`, `VueA`,
       `VueC`, `Entites` (interface en lecture seule). Tailles mémoire visées : ~40 o par record,
       ~12 o par composant, arène par paquet (P9).
-- [ ] 1.1.2 Ratchet `archlint/film_layers_deps_test.go` : `grammar/lecture` appartient à la couche
+      *Fait* : cinq fichiers (`doc.go`, `etendue.go`, `record.go`, `paquet.go`, `entites.go`), tous
+      les types demandés, plus ce que 1.2.3 et DT-4/DT-5 exigent de la forme : `VueB` et
+      `SortieVueB` (sortie de vue B typée), `Verdict` (fermé / refusé / queue opaque, jamais
+      confondus) et `CauseDeQueue`, `DebutDeVueB` (début lu en tête ou LOCALISÉ : signature,
+      chaîne, fermeture — la récupération dans la marche marquée), `EtatDeVue`, `EntreeVueC`
+      (tours de la vue C avec étendue, pour T3), `Entite`. Écarts au rapport, motivés dans les
+      commentaires : pas de genre « Fin » (le terminateur est une sortie de vue, pas un record),
+      genre `EtatComplet` pour l'image-clé, `Liaison` porte aussi `ImageCleElue` (DT-5), le champ
+      `Val` du composant retiré (l'interprétation reste aux crochets, DT-7), la queue opaque est
+      une valeur de `Fermeture` et non un pointeur (aucune allocation). Rangs de vue dans la
+      numérotation du FILM (vue B = 1). Tailles : `Record` 40 o, `Composant` 12 o, `EntreeVueC`
+      12 o, `Etendue` 16 o.
+- [x] 1.1.2 Ratchet `archlint/film_layers_deps_test.go` : `grammar/lecture` appartient à la couche
       `grammar` ; règle d'interdiction pour `replay` et `decfilm`.
-- [ ] 1.1.3 Tests de taille des types (`unsafe.Sizeof`) gelés.
+      *Fait* : la ligne de couche dans `film_layers_deps_test.go` ; la règle dans un fichier voisin,
+      `archlint/film_lecture_test.go` (le premier est à 490 lignes, seuil 500), qui tient aussi
+      les deux autres propriétés de DT-1 — la feuille (aucun import du dépôt sauf `film/types`) et
+      « aucune logique » (ni fonction, ni méthode, ni variable). Mutations jouées, toutes rouges
+      puis retirées : import de `source` dans `lecture` (L1), méthode sur `Paquet` (L2), import de
+      `lecture` dans `replay/document.go` (L3), ligne de couche retirée
+      (`TestCouchesDuDecodeurSontPeupleesEtALeurPlace`).
+- [x] 1.1.3 Tests de taille des types (`unsafe.Sizeof`) gelés.
+      *Fait* : `lecture/tailles_test.go` — `TestTaillesDesTypesSontGelees` (mutation : un `uint8`
+      ajouté à `Record` le fait passer à 48 o, rouge) et `TestLesValeursZeroSontLesSentinelles`.
 - Gate : G-unit du paquet, G-arch, G-vet ; empreinte régénérée à révision constante.
+  *Tenu le 2026-10-02* : `go test ./internal/games/halo_infinite/film/internal/grammar/lecture/`
+  ok ; `go test ./internal/archlint/ -count=1` ok ; `go vet ./...` et `go vet -tags=research ./...`
+  sortie 0 ; `grammar_perimetre.golden` (+1 ligne, le paquet `lecture`, aucun autre périmètre ne
+  bouge) et `grammar_rev.golden` régénérés à révision CONSTANTE (`grammar-2026-09-27.3`, empreinte
+  `558380db…` -> `28cc08a8…` ; aucun consommateur n'importe encore `lecture`, aucune sortie ne
+  peut changer) ; `go test ./internal/games/halo_infinite/film/revision/` et les gates de révision
+  de `grammar`, `killsource` et `objectives` verts.
 
 ### Lot 1.2 — Phase delta : la marche de production devient `FilmContext.Trames` (taille M)
 **Prérequis** : lot L0 de la campagne (définition de la fermeture) fusionné dans `feat/v75`, puis
@@ -222,7 +250,12 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
 
 ## 6. Découvertes (consignées, non traitées)
 
-(vide)
+1. (2026-10-02, lot 1.1) `apps/go-api/internal/archlint/film_layers_deps_helpers_test.go`, lignes
+   159-160 et 167 : trois tirets cadratins corrompus dans des commentaires (octets `C3 A2 C2 80 C2 94`,
+   le « — » relu en Latin-1 puis réencodé). `no_mojibake_test.go` ne les voit pas : sa classe de
+   second caractère couvre la relecture CP1252 (`€`, `”`…), pas les contrôles C1 `U+0080`-`U+009F`
+   d'une relecture Latin-1. Hors périmètre (ni fichier du plan, ni sortie) : à confier à un lot de
+   nettoyage, avec l'élargissement du ratchet.
 
 ## 7. Journal
 
@@ -238,3 +271,10 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
   la même machine, et deux commandes `go` sur un même cache le corrompent. Campagne prévenue
   (session `levelup-83`) : accusé de réception, L0 ni commité ni fusionné à cette heure.
 - 2026-10-02 : lot 0 clos (ADR 0037, gate tenu).
+- 2026-10-02 : lot 1.1 clos (paquet `grammar/lecture`, ratchets, tailles gelées, empreinte à
+  révision constante ; gate tenu). Le lot 1.2 attend son prérequis : le lot L0 de la campagne
+  n'est ni commité ni fusionné (accusé de réception de `levelup-83`) ; les lots 1.3 et 1.4 suivent
+  1.2. Report VALIDE (dépendance explicite du plan, consigne de l'utilisateur) ; reprise à la
+  fusion de L0 dans `feat/v75` : `git merge origin/feat/v75`, régénération de l'empreinte à la
+  révision de `feat/v75`, références d'équivalence re-figées, mesure « avant » (critère 4) sur
+  cette base.

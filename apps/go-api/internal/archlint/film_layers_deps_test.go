@@ -242,6 +242,10 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// `grammar.FireEvent` et le `FireEvent` de `weaponscan` designent deux records differents.
 	"internal/games/halo_infinite/film/internal/grammar/weaponscan": coucheGrammar,
 	"internal/games/halo_infinite/film/internal/grammar/positions":  coucheGrammar,
+	// `lecture` porte les TYPES de la representation intermediaire que la marche de la grammaire
+	// remplit (ADR 0037 IR-9) : une feuille de la couche `grammar`, que ni `replay` ni `decfilm`
+	// n importent. Ses regles propres vivent dans `film_lecture_test.go`.
+	"internal/games/halo_infinite/film/internal/grammar/lecture": coucheGrammar,
 
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.
