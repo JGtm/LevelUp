@@ -110,13 +110,16 @@ Each item cites its source so it can be re-verified against the code. Structure:
       `internal/api/server_apiv1.go` `r.Mount("/debug/vars", http.DefaultServeMux)` inside
       the admin group). Confirm an anonymous request is rejected and an admin request
       returns JSON.
-- [ ] **Boot auth migration is a no-op** (ADR 0023 Phase 5, delivered 2026-08-25).
-      The `legacy_source_used_*` counters no longer exist: the legacy auth fallbacks were
-      removed, so there is nothing left to count. What remains is the one-shot boot
-      migration — check `sync.log` for `auth_migration: scan terminé` and confirm
-      `rt_migrated=0` (and no `auth_migration: RT migré vers store` line). Thirty
-      consecutive days at zero arms the removal of the migration itself, scheduled for
-      **2026-10-01** (source: `internal/platform/auth/migration.go`, dated kill-switch).
+- [ ] **No legacy auth reader runs at boot** (ADR 0023 Phase 5, closed 2026-09-13).
+      The legacy auth fallbacks were removed on 2026-08-25, and the one-shot boot
+      migration, their last consumer, on 2026-09-13 (`7fd6d0fcb`), once its criterion
+      held in prod: `auth_migration: scan terminé` with `rt_migrated=0` at every boot
+      since 2026-06-14 (re-checked on 2026-10-02 in `auth.log`: 499 scans, the only two
+      non-zero ones on 2026-06-13). On the first deploy that ships this removal,
+      `auth.log` must show NO new `auth_migration:` line after the boot — one still
+      appearing means the previous binary is running. Refresh tokens come solely from
+      `data/auth/watcher_tokens/{xuid}.json` (source: ADR 0023, Phase 5 closure section;
+      anti-resurrection ratchets in `internal/platform/auth/sentinel_test.go`).
 
 - [ ] **shared_social durability after writes.** Any social write path must `CHECKPOINT`
       shared_social (ADR 0022) — without it the WAL can be lost (incident #7659). If a

@@ -276,11 +276,11 @@ answers 403 in demo mode. `<demo>/runtime/` is git-ignored under `data/demo/` an
 | `RESTIC_REPOSITORY` / `RESTIC_PASSWORD` / `RESTIC_PASSWORD_FILE` | Restic backup target/credentials. |
 | `LEVELUP_BACKUP_DIR` | Local backup directory. |
 
-> Legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` env vars are NO LONGER read at
-> runtime (ADR 0023 Phase 5, 2026-08-25). The only remaining consumer is the
-> one-shot boot migration, which copies a leftover value into the token store —
-> it is scheduled for removal on 2026-10-01. Use `token-capture` /
-> `token-import`, or the Xbox SSO web flow, to seed a refresh token.
+> Legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` env vars are NO LONGER read
+> (ADR 0023 Phase 5, 2026-08-25). Their last consumer, the one-shot boot
+> migration that copied a leftover value into the token store, was removed on
+> 2026-09-13. Use `token-capture` / `token-import`, or the Xbox SSO web flow, to
+> seed a refresh token.
 
 ---
 
