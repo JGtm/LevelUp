@@ -102,7 +102,8 @@ func TestM7DecorParc(t *testing.T) {
 			}
 			if cache {
 				masques++
-				if !pose {
+				// la vie tenue en l air a vide est une vie qui a bouge : seule la regle de pose est jugee ici.
+				if !pose && raison != sceneryReasonAloftUnoccupied {
 					enJeuMasques++
 				}
 			}

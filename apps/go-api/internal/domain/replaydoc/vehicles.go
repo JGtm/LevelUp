@@ -107,8 +107,8 @@ type VehicleCycle struct {
 	Missing int     `json:"missing"`
 }
 
-// VehicleScenery est le verdict de decor des vies de vehicule posees par la carte hors de la
-// zone jouable (lot M7, cf. `replay.VehicleScenery`), resolu a la requete.
+// VehicleScenery est le verdict de decor des vies de vehicule (posees par la carte hors de la zone
+// jouable, ou tenues en l air a vide ; cf. `replay.VehicleScenery`), resolu a la requete.
 type VehicleScenery struct {
 	Zone        string               `json:"zone"`
 	Floor       string               `json:"floor"`

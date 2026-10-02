@@ -116,8 +116,7 @@ type turretTally struct {
 }
 
 // turretRidesKept : les refus de report qui GARDENT l episode d artilleur sur sa piece (cf.
-// `moveTurretRides`). Le troisieme refus publie, `turretRidesNotRideable`, vaut 0 depuis le
-// 2026-09-24 et n a plus de branche (cf. `moveTurretRides`).
+// `moveTurretRides`).
 type turretRidesKept struct {
 	outOfWindow, alreadyAboard int
 }
@@ -255,9 +254,7 @@ func vehicleWindowsOverlap(a, b VehicleTrack) bool {
 // de porteur non pilotable, et `carrierOfTurret` n elit qu un porteur de la famille que la table
 // attend — la branche ne pouvait plus s ouvrir. L invariant vit dans
 // `TestPiecesMonteesOntUnPorteurPilotable` : une piece ajoutee a un Pelican, un Phantom ou un Skiff
-// le fait rougir, et c est une DECISION a ecrire. Son compteur publie
-// `coverage.vehicles.turretRidesNotRideable` reste dans la forme 69 a 0 : il sortira a la prochaine
-// montee de schema (cf. `VehicleCoverage`).
+// le fait rougir, et c est une DECISION a ecrire.
 func moveTurretRides(
 	turret, carrier *VehicleTrack, anchors vehicleBoardingAnchors, fb *fallback.Compteur,
 ) (moved int, kept turretRidesKept) {

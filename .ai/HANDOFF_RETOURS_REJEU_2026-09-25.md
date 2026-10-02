@@ -35,7 +35,12 @@
 
 ## 3. Ce qui reste ouvert — expliqué
 
-### 3.1 Falcon de Behemoth — CORRECTION À FAIRE (fait de l'utilisateur, 25/09)
+### 3.1 Falcon de Behemoth — TRAITÉ le 2026-10-02 (branche `feat/falcon-behemoth`, cf. thought_log)
+
+Règle générale « tenu en l air à vide » (`internal/service/replay_vehicle_scenery_aloft.go`) : les
+Falcon des bornes SUD de Behemoth (montée seule de 2,2 m, vol stationnaire, jamais occupés) sont
+masqués, 15 vies au parc ; ceux des bornes NORD, pilotés dans 7 documents, restent affichés. Texte
+d origine :
 
 Message de l'utilisateur du 25/09 : **« Il n'y a pas de Falcon jouable sur Behemoth. »**
 Origine : le 24/09, l'utilisateur a dit « les Pelican sont toujours du décor, le Falcon ça dépend ». Le
@@ -63,7 +68,7 @@ Mesure sur 22 films : la part des vies dont on ne connaît pas les armes au dép
 films de versions plus anciennes, dont les naissances ne se lisent pas encore. L'objectif du plan était
 ≤ 1 %. Décision de l'utilisateur : accepter, ou ouvrir un lot pour les anciennes versions.
 
-### 3.4 `turretRidesNotRideable` — tâche technique, pas une question
+### 3.4 `turretRidesNotRideable` — RETIRÉ le 2026-10-02 (schéma 77, branche `feat/falcon-behemoth`)
 
 Compteur interne du document de rejeu : « montées sur une tourelle dont le véhicule porteur n'est pas
 pilotable ». Il servait au Falcon quand il était classé non jouable ; depuis M7b il vaut toujours 0.

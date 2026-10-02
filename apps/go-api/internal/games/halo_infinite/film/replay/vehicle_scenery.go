@@ -9,11 +9,12 @@ package replay
 // ce verdict (`internal/service/replay_vehicle_scenery*.go`, ou vivent la regle et sa preuve) ; ce
 // fichier n en porte que la FORME.
 
-// VehicleScenery est le verdict de decor du document. ABSENT quand aucune vie ne remplit les
-// conditions de pose : il n y a alors rien a decider.
+// VehicleScenery est le verdict de decor du document. ABSENT quand aucune vie ne releve d une des
+// deux regles du service (la pose seule hors de la zone jouable, la vie tenue en l air a vide) : il
+// n y a alors rien a decider.
 type VehicleScenery struct {
-	// Zone : `map` (la zone jouable de la carte a ete lue) ou `unknown` (aucune zone connue — rien
-	// n est masque, repli nomme et compte dans `ZoneUnknown`).
+	// Zone : `map` (la zone jouable de la carte a ete lue) ou `unknown` (aucune zone connue — la regle
+	// de pose ne masque rien, repli nomme et compte dans `ZoneUnknown`).
 	Zone string `json:"zone"`
 	// Floor : `played` (le sol FOULE du match est connu : la plus basse altitude ou un joueur est
 	// reste au moins 1 s) ou `unknown` (personne ne s est tenu nulle part — le test de hauteur ne
@@ -33,7 +34,8 @@ type VehicleScenery struct {
 type VehicleSceneryLife struct {
 	Slot uint32 `json:"slot"`
 	Gen  uint32 `json:"gen"`
-	// Reason : `off_play_area` (hors de la matiere praticable de la carte) ou `below_played_floor`
-	// (sous le sol foule du match, repli nomme au registre facts/fallback).
+	// Reason : `off_play_area` (hors de la matiere praticable de la carte), `below_played_floor`
+	// (sous le sol foule du match, repli nomme au registre facts/fallback) ou `aloft_unoccupied`
+	// (jamais occupee, posee seulement au-dessus de sa naissance : repli nomme du meme registre).
 	Reason string `json:"reason"`
 }

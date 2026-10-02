@@ -90,12 +90,10 @@ import { covers } from './replaySpans'
  * près du porteur, et un épisode s'arrête à la naissance de la vie suivante du même joueur
  * (`film/replay/vehicle_turrets_boarding.go`, `vehicle_rides_next_life.go`).
  *
- * LE DÉCOR DU FALCON N'EST DÉCIDÉ PAR AUCUNE RÈGLE À CE JOUR. La règle générale du décor de carte
- * (`vehicleIsScenery`, lot M7) exige une pose SEULE (un échantillon, né à l'origine, vivant jusqu'à
- * la fin, jamais occupé, hors de la zone jouable) : aucun Falcon du parc ne la remplit — ceux de
- * Behemoth PLANENT (0,3-0,7 m/s, mesure du 2026-09-24 sur `1cd3848a`), exactement le profil
- * ci-dessus. Ils sont donc DESSINÉS, et la question est posée à l'utilisateur (reprise du lot M7b,
- * revue adverse RR-M7b-02).
+ * LE DÉCOR DU FALCON EST DÉCIDÉ PAR LE SERVEUR (`vehicleIsScenery`, 2026-10-02). Les Falcon de
+ * Behemoth en Super Fiesta nés aux bornes sud montent seuls de 2,2 m et restent en vol
+ * stationnaire, jamais occupés : la règle générale « tenu en l'air à vide » les masque. Ceux des
+ * bornes nord, posés au sol, restent dessinés (au parc, 9 vies y sont pilotées).
  *
  * CE N'EST PAS UNE CORRECTION DU DOCUMENT. Le serveur a raison de publier ces vies : il recense
  * ce que le film contient (archétype ti=40), et le châssis EST celui d'un Falcon. C'est
@@ -143,8 +141,14 @@ export function vehicleIsDecor(family: string | undefined): boolean {
  * Le film réplique la POSE du décor avant l'origine du match (7 à 117 records, sonde C2) ; la
  * publication n'en garde qu'un échantillon, ramené à la naissance : c'est lui que la règle lit.
  *
- * Verdict absent (carte sans zone connue, document servi sans ce calque) : rien n'est masqué. Le
- * serveur compte ce repli (`vehicleScenery.zoneUnknown`) ; le client ne le devine jamais.
+ * UNE SECONDE RÈGLE, AUSSI CÔTÉ GO (2026-10-02, `replay_vehicle_scenery_aloft.go`) : une vie que
+ * personne n'occupe et qui ne se pose jamais à la hauteur de sa naissance mais seulement au moins
+ * 1,2 m au-dessus, sans s'en éloigner de plus de 8 m, est tenue en l'air par la carte — c'est le
+ * Falcon des bornes sud de Behemoth en Super Fiesta (raison `aloft_unoccupied`).
+ *
+ * Verdict absent (aucune vie de décor, document servi sans ce calque) : rien n'est masqué. Une
+ * carte sans zone connue ne masque rien par la pose ; le serveur compte ce repli
+ * (`vehicleScenery.zoneUnknown`) ; le client ne le devine jamais.
  */
 export function vehicleIsScenery(track: ReplayVehicleTrackReady): boolean {
   return track.scenery === true

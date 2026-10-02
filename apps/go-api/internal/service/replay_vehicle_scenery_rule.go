@@ -4,7 +4,9 @@ package service
 // 2026-09-24), pure : aucun fichier, aucune base. Elle remplace la regle cliente du lot L1.3
 // (`vehiclesLayer.vehicleIsScenery`), dont c etait le critere de retrait : « quand le producteur
 // publie lui-meme le decor de carte, ce predicat lit ce marqueur et ses conditions disparaissent
-// d ici ». Le chargement de la zone vit a cote (replay_vehicle_scenery.go).
+// d ici ». Le chargement de la zone vit a cote (replay_vehicle_scenery.go). Une SECONDE regle,
+// independante de la zone, rejoint le meme verdict : la vie tenue en l air a vide
+// (replay_vehicle_scenery_aloft.go, 2026-10-02).
 //
 // # CE QUE LE FILM DIT, ET CE QU IL NE DIT PAS (sonde C2 du 2026-09-23)
 //
@@ -66,8 +68,6 @@ package service
 // tenu nulle part ne sait pas son sol : le test de hauteur ne s applique pas ([sceneryFloorUnknown]).
 
 import (
-	"math"
-
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -133,11 +133,14 @@ func posedOnlyVehicles(doc *replay.ReplayDocument) []replay.VehicleTrack {
 	return out
 }
 
-// decideVehicleScenery rend le verdict de decor du document. `zone` nil = carte sans zone connue :
-// rien n est masque. Rend nil quand aucune vie n est candidate.
+// decideVehicleScenery rend le verdict de decor du document : les deux regles, la pose seule hors
+// de la zone jouable (ce fichier) et la vie tenue en l air a vide (replay_vehicle_scenery_aloft.go,
+// independante de la zone). `zone` nil = carte sans zone connue : la regle de pose ne masque rien.
+// Rend nil quand aucune vie ne releve de l une ou l autre.
 func decideVehicleScenery(doc *replay.ReplayDocument, zone playArea) *replay.VehicleScenery {
 	candidates := posedOnlyVehicles(doc)
-	if len(candidates) == 0 {
+	aloft := aloftVehicles(doc)
+	if len(candidates) == 0 && len(aloft) == 0 {
 		return nil
 	}
 	floor, floorKnown := playedFloor(doc)
@@ -162,6 +165,11 @@ func decideVehicleScenery(doc *replay.ReplayDocument, zone playArea) *replay.Veh
 		}
 		out.Hidden = append(out.Hidden, replay.VehicleSceneryLife{Slot: v.Slot, Gen: v.Gen, Reason: reason})
 	}
+	for _, v := range aloft {
+		// repli_decor_tenu_en_l_air_a_vide : compte dans `hidden` sous sa raison.
+		out.Hidden = append(out.Hidden, replay.VehicleSceneryLife{Slot: v.Slot, Gen: v.Gen,
+			Reason: sceneryReasonAloftUnoccupied})
+	}
 	return out
 }
 
@@ -184,7 +192,7 @@ func playedFloor(doc *replay.ReplayDocument) (float32, bool) {
 	if doc.FrameIntervalMS <= 0 {
 		return 0, false
 	}
-	minFrames := int(math.Ceil(sceneryStandMinMs / float64(doc.FrameIntervalMS)))
+	minFrames := standMinFrames(doc.FrameIntervalMS)
 	var floor float32
 	found := false
 	for _, tr := range doc.Tracks {
