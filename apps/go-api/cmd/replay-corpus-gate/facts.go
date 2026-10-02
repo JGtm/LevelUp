@@ -9,7 +9,7 @@ package main
 // de `cmd/levelup`). Une troisieme copie de cette resolution DIVERGERAIT au premier champ
 // ajoute (regle du depot, "une seule ecriture des memes requetes") ; ce fichier invoque donc
 // L'OUTIL CANONIQUE tel quel, exactement comme la methode du balayage
-// (.ai/V7.5/V2/BALAYAGE_PARC_2026-09-06.md §9). Ce gate reste lui-meme compilable SANS CGO
+// (.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md §9). Ce gate reste lui-meme compilable SANS CGO
 // (`go build ./cmd/replay-corpus-gate` marche a vide) : seule CETTE etape, en sous-processus,
 // exige CGO/gcc — comme `go-api-test-gamefiles` exige le jeu pour SA seule etape.
 //

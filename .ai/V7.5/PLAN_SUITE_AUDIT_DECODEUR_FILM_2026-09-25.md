@@ -1355,6 +1355,10 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
     ni `UnknownKey` à son bilan ; le filtrage par carte du corpus ne s'interrompt pas sur Ctrl-C
     (`ctxTravail`). Décision utilisateur du 2026-10-02 : les 379 matchs sans film local ne sont
     PAS retéléchargés (lignes killsource d'anciennes révisions conservées).
+37. (2026-10-02, CI) Le ratchet `TestCheminsAiCitesDansLeCodeExistent` vérifie l'existence d'un
+    chemin par `os.Stat`, insensible à la casse sous Windows : une citation `.ai/V7.5/V2/` (dossier
+    suivi `.ai/V7.5/v2/`) passe en local et rougit en CI Linux (corrigée le 2026-10-02). À durcir
+    (comparaison à la casse exacte des entrées de dossier) dans un lot d'outillage.
 
 ---
 
