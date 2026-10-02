@@ -35,7 +35,7 @@
       et `docs/FR/CHANGELOG.md` (une occurrence chacun), tous les `.go` sous `apps/go-api`
       (commentaires et messages de test, ~25 fichiers — `git grep -n 23046 -- '*.go'`).
       Ne PAS toucher `.ai/archive/`, `.ai/migrations/squashed/` ni les rapports datés.
-- [x] B.1.3 `.ai/V7.5/REGISTRE_REPORTS.md` L538 : cause = amont duckdb/duckdb#23645 (ouverte,
+- [x] B.1.3 `.ai/REGISTRE_REPORTS.md` L538 : cause = amont duckdb/duckdb#23645 (ouverte,
       présente en 1.5.5), garde posée (alerte seule, 41 ms/base), condition de reprise =
       sortie d'une 1.5.6 contenant #24744, ou jauge `data_health_psa_index_desync_keys` > 0.
 - [x] B.1.4 Gate : `go test -tags=integration -p 1 ./internal/scheduler/... ./internal/migration/...`

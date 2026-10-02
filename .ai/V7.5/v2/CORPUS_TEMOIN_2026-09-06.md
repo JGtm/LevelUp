@@ -178,7 +178,7 @@ régression de produit.
 `internal/replaydiff` lors du déplacement (§1.1) sans modification de cette fonction. Le nouvel
 axe « durée » (`e.incr`, non affecté) a permis de le remarquer. Non corrigé ici (règle CLAUDE.md
 n°7, zéro fix opportuniste hors périmètre) — **consigné au registre**
-(`.ai/V7.5/REGISTRE_REPORTS.md`).
+(`.ai/REGISTRE_REPORTS.md`).
 
 **7 des 75 pertes brutes** sont des artefacts de ce bug de mesure (`flagCarries.spans/n` sur
 `bcb6d393` et `084a804d`), pas des pertes réelles.

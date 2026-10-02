@@ -897,7 +897,7 @@ $ npm run build       # 0      $ node tools/knip-ratchet.mjs # 0 (files/exports/
       `levelup backfill-bomb-stats --dry-run` pour controle, (3) `levelup backfill-bomb-stats`.
       A signaler a l'utilisateur en cloture.
 - [x] Entree `.ai/thought_log.md` (date, titre, statut, decision, resultats, prochaine etape).
-- [x] Entree au registre `.ai/V7.5/REGISTRE_REPORTS.md` pour le desamorcage, avec sa condition
+- [x] Entree au registre `.ai/REGISTRE_REPORTS.md` pour le desamorcage, avec sa condition
       de reprise (« un corpus portant un desamorcage avere »).
       **FAIT** : la ligne existait deja (posee par la branche) ; elle portait une DEPENDANCE DE
       LIVRAISON devenue fausse (« la garde `isArmableBombVariant` exclut One Bomb — donc etape

@@ -223,7 +223,7 @@ Lot 2 ; consigner en §5 et revenir à l'utilisateur avec la mesure, le volet do
 re-planifié (garde d'âge). Un faux `MBitFilmAbsent` étant permanent, ce n'est pas
 négociable.
 **Sortie possible** : si le compte est 0 sur une fenêtre significative, le volet B
-s'arrête ici — clôture dans `.ai/thought_log.md` et `.ai/V7.5/REGISTRE_REPORTS.md`, aucun
+s'arrête ici — clôture dans `.ai/thought_log.md` et `.ai/REGISTRE_REPORTS.md`, aucun
 code écrit. Si les logs sont rotés et ne permettent pas de conclure, passer au Lot 1 (qui
 EST l'instrument) et revenir mesurer après soak.
 
@@ -333,7 +333,7 @@ défaire.
       résultat observé, prochaine étape.
       Justification : Lot 0 = 0 occurrence sur les deux fenêtres ; clause de sortie du
       plan appliquée le 2026-09-05, volet fermé sans code.
-- [!] B.3.4 `.ai/V7.5/REGISTRE_REPORTS.md` mis à jour si un item sort en `[!]`.
+- [!] B.3.4 `.ai/REGISTRE_REPORTS.md` mis à jour si un item sort en `[!]`.
       Justification : Lot 0 = 0 occurrence sur les deux fenêtres ; clause de sortie du
       plan appliquée le 2026-09-05, volet fermé sans code.
 - [!] B.3.5 Skill `delivery-checklist` passé avant le commit de clôture.
@@ -780,4 +780,4 @@ lignes (≤ 500), `gofmt -l` vide.
       **Report VALIDE** (délai d'observation prescrit, skill `plan-execution` règle 3) :
       la ligne INFO et les deux compteurs n'existent que depuis ce lot, et le seul juge
       est la prod — rien n'est observable avant le déploiement de la v7.5. Inscrit à
-      `.ai/V7.5/REGISTRE_REPORTS.md` le 2026-09-05 avec sa condition de reprise.
+      `.ai/REGISTRE_REPORTS.md` le 2026-09-05 avec sa condition de reprise.

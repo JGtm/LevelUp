@@ -343,7 +343,7 @@ Un écart de hauteur observé se traite par la formule D3, pas par une mesure.
 - [x] Tout item du plan statué `[x]` / `[~]` / `[!]` pour les étapes 1 à 7 et 9. Les cases de
       l'ÉTAPE 8 restent volontairement vides : ce gate appartient à l'utilisateur, qui nomme
       les témoins et fait les captures — l'agent ne les coche pas à sa place.
-- [~] Reports éventuels dans `.ai/V7.5/REGISTRE_REPORTS.md` : AUCUN report de travail à
+- [~] Reports éventuels dans `.ai/REGISTRE_REPORTS.md` : AUCUN report de travail à
       inscrire. Ce que le lot a écarté n'est pas du travail différé mais des découvertes hors
       périmètre (D9), consignées dans la section « Découvertes » ci-dessus — renommage
       « Dépositaire », cible `npm run build-i18n`, absence de job CI sur la dérive

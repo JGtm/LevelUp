@@ -235,7 +235,7 @@ machine qui porte le cache. **Aucun film n'a ete decode par ce lot.**
 
 `go build ./...` · `go vet ./...` · tests des paquets touches ·
 `go test -tags=integration -p 1 ./...` SI persist/sync touche (anti-ART) · `make go-api-lint` ·
-entree `.ai/thought_log.md` · registre `.ai/V7.5/REGISTRE_REPORTS.md` mis a jour (ligne 259).
+entree `.ai/thought_log.md` · registre `.ai/REGISTRE_REPORTS.md` mis a jour (ligne 259).
 
 ---
 

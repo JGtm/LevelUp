@@ -143,7 +143,7 @@ Un canal qui porte l'AUTEUR du dégât avec une densité comparable à celle du 
 - **ou un compteur d'état ECS répliqué** qui daterait le dégât par couple (auteur, blessé) ;
 - ou une source hors film (API de télémétrie par engagement) — aucune connue à ce jour.
 
-Reporté au `.ai/V7.5/REGISTRE_REPORTS.md` avec cette condition.
+Reporté au `.ai/REGISTRE_REPORTS.md` avec cette condition.
 
 ## Reproduire
 

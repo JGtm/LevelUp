@@ -789,7 +789,7 @@ a produits. **Aucun n'est tombe** ; deux ont ete AMENDES et un TROU a ete trouve
 | `replay/identity_registry_section.go:288` `methodeStatborg` | **TROU TROUVE** | `OriginRoundResidue` n'est traduit par aucune methode canonique : le lien part en `MethodNone` (« le lien n'a jamais eu de candidat »). Le compteur de retrait de B2 ne couvre donc **pas** la voie la plus fragile, et le document servi affirme l'absence d'un lien qui existe |
 
 Un constat a ete **ECARTE** en re-lecture : « le pont APLATI (`PontParSlot`) credite les frags au
-premier occupant d'un siege » (entree ouverte de `.ai/V7.5/REGISTRE_REPORTS.md`). Sur pieces, le
+premier occupant d'un siege » (entree ouverte de `.ai/REGISTRE_REPORTS.md`). Sur pieces, le
 pont aplati **n'a plus d'accesseur** depuis le lot 6.1 du 2026-09-10
 (`replay/identity_registry.go:185`) et `sync/killcollector/positions.go:46` documente son retrait.
 L'entree du registre des reports est perimee.

@@ -499,7 +499,7 @@ CGO_ENABLED=1 go run ./cmd/mapstruct-build [--levels DIR] [--maps "Cliffhanger,S
   `map_quant_bounds.json` (lien module <-> nom affiché).
 - À rejouer : quand le décodage des instances de maillage d'une autre carte atteint 100 % de
   couverture. **Avertissement** : le champ `structure` de l'artefact est sous une décision de
-  retrait DIFFÉRÉ (`.ai/V7.5/REGISTRE_REPORTS.md`) — encore lu par deux fichiers web —
+  retrait DIFFÉRÉ (`.ai/REGISTRE_REPORTS.md`) — encore lu par deux fichiers web —
   vérifier cette entrée avant de supposer cet outil sans risque à supprimer.
 
 #### mappos-build
@@ -903,7 +903,7 @@ tourne dans le build par défaut.
 re-basée à 64,7 %). Il est *préexistant*, pas une régression — vérifié le 2026-09-05 en le
 rejouant sur le commit précédent, qui rend des chiffres identiques au bit près. Personne ne
 pouvait le voir : le corpus ne terminait jamais, et la CI ne l’exécute pas. Consigné dans
-`.ai/V7.5/REGISTRE_REPORTS.md`.
+`.ai/REGISTRE_REPORTS.md`.
 
 #### Gate de non-régression du rejeu sur corpus témoin (`cmd/replay-corpus-gate`)
 

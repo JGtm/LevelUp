@@ -466,7 +466,7 @@ si une entrée couvre déjà une famille ci-dessus avant d'en créer une).
 
 - Lot issue en cours : branche `feat/outcome-cle-canonique` (worktree `LevelUp-wt-outcome-cle`),
   empilée sur `feat/v75-frise-pov` — son rapport liste les autres producteurs d'`outcome_label`.
-- Registre : `.ai/V7.5/REGISTRE_REPORTS.md`, entrées du 2026-09-07 (« `header.outcome_label`
+- Registre : `.ai/REGISTRE_REPORTS.md`, entrées du 2026-09-07 (« `header.outcome_label`
   en FR codé en dur » + décision utilisateur « clé canonique côté Go »).
 - Journal : `.ai/thought_log.md`, entrée du 2026-09-06/07 « Frise du rejeu ».
 - Mémoire agent : `project_frise_point_de_vue_chantier`, `project_multititre_gap_register`.

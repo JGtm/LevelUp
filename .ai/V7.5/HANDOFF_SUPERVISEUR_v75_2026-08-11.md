@@ -1,7 +1,7 @@
 # HANDOFF SUPERVISEUR — pipeline v7.5 (2026-08-11)
 
 > Point d'entree unique du role SUPERVISEUR du chantier v7.5. Ecrit avant un auto-compact du
-> contexte. Le document d'autorite reste le REGISTRE (`.ai/V7.5/REGISTRE_REPORTS.md`) pour les
+> contexte. Le document d'autorite reste le REGISTRE (`.ai/REGISTRE_REPORTS.md`) pour les
 > reports, et la memoire agent pour la methode. Ce fichier dit l'etat, ce qui reste, et comment
 > on travaille.
 
@@ -28,7 +28,7 @@ gate visuel utilisateur et son push.
   `memory/feedback_challenge_executor_cr_before_relaying.md`). Traduire, ne pas relayer le
   jargon d'executeur — l'utilisateur pense PRODUIT.
 - **Prompt N+1 proactif** a chaque cloture ; le superviseur ecrit les prompts, PAS les executeurs.
-- **Registre des reports** (`.ai/V7.5/REGISTRE_REPORTS.md`) : tout report y entre avec sa
+- **Registre des reports** (`.ai/REGISTRE_REPORTS.md`) : tout report y entre avec sa
   condition de reprise, a chaque cloture.
 
 ## 2. CE QUI EST LIVRE DANS `feat/v75` (verifie sur pieces)

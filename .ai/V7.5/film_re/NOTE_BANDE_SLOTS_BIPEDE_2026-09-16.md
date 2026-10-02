@@ -249,7 +249,7 @@ profil** a creer pour cette bande : elle ne depend d'aucune donnee de build, de 
 partie. La variabilite observee d'un film a l'autre est un defaut de RELEVE cote decodeur,
 pas une divergence de build.
 
-Ligne portee au registre des reports (`.ai/V7.5/REGISTRE_REPORTS.md`) avec sa condition de
+Ligne portee au registre des reports (`.ai/REGISTRE_REPORTS.md`) avec sa condition de
 reprise : le correctif est un lot M3, et l'identification du record fautif demande un
 decodage de film.
 

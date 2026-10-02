@@ -953,7 +953,7 @@ tenu : **49 étapes** sur les 13 TSV (+ 7 pour `minifilm.tsv`), inchangé.
   | `filmdec/ability_rank.go` | extraire `abilityScanSetup` + `resolveAbilityScan(dir)` + `walkAbilityEmissionsWith(s, …)` pour que `ScanFilmEquipmentChanges` résolve le film UNE fois pour ses DEUX passes (strict, puis récupération gatée) ; scinder `walkComponentsAt` hors de `walkRecordComponents` | L'intention amont — résoudre une fois, partager — EST celle de notre `FilmContext`. La structure amont est reprise TELLE QUELLE, son champ `dir string` devenant `fc *FilmContext` et `slots map[uint32]bool` devenant `SlotBand` ; `resolveAbilityScan(fc)` lit `fc.ChunkNumbers/BipedSlots/I0Layout/bipedArchetype` (messages d'erreur du lot 1 conservés) ; `ReadFilmChunk(s.dir, c)` → `s.fc.ChunkAt(c)`. `walkComponentsAt` pris tel quel. La résolution unique amont est donc conservée ET élargie : le contexte la partage aussi avec les balayages hors de ce setup |
   | `filmdec/equipment_changes.go` | remplacer l'accumulation en ligne par DEUX PASSES (strict + récupération) et une fusion pure `assembleEquipmentChanges` | Corps amont pris INTÉGRALEMENT ; seule la tête change : `ScanEquipmentChanges(fc, bornAt)` fait `resolveAbilityScan(fc)`, et `ScanFilmEquipmentChanges(dir, …)` redevient l'enveloppe D2 (`LoadDir` + `NewFilmContext`). L'import `sort` amont fusionné avec notre import `filmsource` |
   | `.ai/thought_log.md` | deux blocs insérés aux mêmes ancres | UNION : nos entrées en tête, puis celles de l'amont — aucune perdue des deux côtés ; ligne de séparation rétablie |
-  | `.ai/V7.5/REGISTRE_REPORTS.md` | une ligne de report neuve (`TestBancCliffhanger` rouge préexistant du corpus `gamefiles`) | UNION du tableau : notre ligne `hits.go` puis la sienne |
+  | `.ai/REGISTRE_REPORTS.md` | une ligne de report neuve (`TestBancCliffhanger` rouge préexistant du corpus `gamefiles`) | UNION du tableau : notre ligne `hits.go` puis la sienne |
 
   **TROIS BALAYAGES MIGRÉS (D2)**, avec leur enveloppe conservée et son unique raison d'être :
 
@@ -1163,7 +1163,7 @@ tenu : **49 étapes** sur les 13 TSV (+ 7 pour `minifilm.tsv`), inchangé.
   | `filmdec/offline_aim.go` | `scanRecordDirs(pay, …, g dirsGrammar)` + deux lecteurs dyn.-préc. qui allouent chacun leur `BitReader` | Corps de la branche pris INTÉGRALEMENT ; la tête garde NOTRE lecteur partagé : `scanRecordDirs(br, …, g)`, et `readForwardComponentDynPrec` / `readAngularVelocityComponentDynPrec` reçoivent `br` au lieu d'allouer — deux allocations de moins par record, exactement la raison d'être du lecteur partagé |
   | `filmdec/offline_aim_test.go` | deux appels à `scanRecordDirs` | Signature à cinq paramètres, lecteur partagé |
   | `.ai/thought_log.md` (2 blocs) | deux blocs insérés aux mêmes ancres | UNION : nos entrées en tête, puis celles de la branche, ligne de séparation rétablie ; l'entrée V13 du dead-state (second parent) insérée en tête de la section du chantier |
-  | `.ai/V7.5/REGISTRE_REPORTS.md` | une ligne de report (cap i2 réfuté) | UNION du tableau |
+  | `.ai/REGISTRE_REPORTS.md` | une ligne de report (cap i2 réfuté) | UNION du tableau |
   | `.gitignore` | un commentaire sur `.gocache-*/` | UNION (le motif était déjà chez nous, le commentaire est repris) |
   | `api/openapi.yaml`, `web/lib/api/generated.ts` | contrat régénéré au schéma 31 | D11 : `--ours` puis **régénération** (`make openapi-gen && make generate-types && make openapi-check`), JAMAIS à la main |
   | 13 fichiers `web/features/match-replay/` | le calque véhicules dans le tiroir, le contrat, la normalisation, les marqueurs, le cône | UNION partout. Trois résolutions non triviales : (a) `ReplaySettingsLayers.tsx` — la branche pose une liste PLATE, nous des `LayerGroup` ; la bascule `vehicles` entre dans le groupe TERRAIN (l'intention écrite de la branche : « meubles du terrain, pas l'enjeu du mode ») ; (b) `replayAimCone.ts` — la branche extrait `drawAimSector` pour que le calque véhicules réutilise le cône, nous avions ajouté la LUNETTE (ouverture variable + gain d'opacité) ; le secteur extrait reçoit deux options de plus, `halfAngle` et `alphaBoost`, et le cône du pion les lui passe : une seule géométrie, les deux mécaniques intactes ; (c) `ReplayCanvas.tsx` — `showNames` n'existe plus (le calque des noms a quitté le tiroir le 02/09, toujours allumé) : le calque véhicules reçoit `showNames: true` |
@@ -1255,7 +1255,7 @@ tenu : **49 étapes** sur les 13 TSV (+ 7 pour `minifilm.tsv`), inchangé.
   | `sync/no_art_patterns_test.go` | `match_bomb_stats` dans `tablesProtegees` | **UNION** des deux durcissements datés : `match_usage_players`/`match_usage_films` (étape C) ET `match_bomb_stats`, chacun avec son bloc de justification |
   | `sync/append_only_state_guard_test.go` | `match_bomb_stats` dans `appendOnlyStateTables` | **UNION**, même geste (étape 5 de la recette ADR 0026 pour les deux chantiers) |
   | `.ai/thought_log.md` | deux blocs à la même ancre | UNION : nos entrées en tête, les siennes ensuite, ligne de séparation rétablie |
-  | `.ai/V7.5/REGISTRE_REPORTS.md` | la ligne du DÉSAMORÇAGE | UNION du tableau |
+  | `.ai/REGISTRE_REPORTS.md` | la ligne du DÉSAMORÇAGE | UNION du tableau |
 
   **PREUVE** : `git diff --name-only --diff-filter=U` VIDE, `git grep '^<<<<<<< '` VIDE.
 

@@ -127,7 +127,7 @@ Dans l'ordre, avec le SHA de tete de chaque lot :
 
 ## 4. Fichiers a lire dans l'ordre pour reprendre
 
-1. Ce handoff. 2. `.ai/V7.5/REGISTRE_REPORTS.md` (fin de fichier = les lignes du 18/08).
+1. Ce handoff. 2. `.ai/REGISTRE_REPORTS.md` (fin de fichier = les lignes du 18/08).
 3. `.ai/thought_log.md` (tete). 4. `PLAN_ARMES_AU_SOL_2E_LECTURE.md` (item 6, a valider).
 5. `PLAN_ORIGINE_POSES_ET_FAMILLES.md` (dernier lot ferme, W statuee) et
    `PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md` (nommage, translocateur negatif).

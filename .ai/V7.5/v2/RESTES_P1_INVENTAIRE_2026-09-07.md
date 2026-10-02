@@ -542,7 +542,7 @@ Aucune de ces questions n'est devinée ici. Chacune porte la commande exacte qui
   commandes, elles ne les ont pas jouées.
 - **Aucun test `gamefiles` ni `go test ./...`** lancé : hors périmètre d'un lot de journal.
 - **Les découvertes de la lecture ne sont pas traitées** : elles partent au registre
-  (`.ai/V7.5/REGISTRE_REPORTS.md`), avec leur condition de reprise.
+  (`.ai/REGISTRE_REPORTS.md`), avec leur condition de reprise.
 
 ## 6. Découvertes de cette lecture (consignées, NON traitées)
 

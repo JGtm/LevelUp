@@ -378,7 +378,7 @@ func NewRegistry() *Registry {
 			// useCapability('weapon_accuracy') repasse à false et masque les graphes pour
 			// Infinite. La capability reste accordée par Halo 5 (natif, title.toml) ; la
 			// précision GLOBALE d'Infinite reste servie par l'API. Reprise : piste compteur
-			// ECS (cf. .ai/V7.5/REGISTRE_REPORTS.md).
+			// ECS (cf. .ai/REGISTRE_REPORTS.md).
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",

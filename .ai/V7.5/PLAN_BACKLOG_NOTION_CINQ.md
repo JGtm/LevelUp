@@ -6,7 +6,7 @@
 > fois, statuts `[x]` fait / `[~]` couvert ailleurs (référence) / `[!]` non traité
 > (justification), aucune case vide à la clôture d'un lot. Zéro fix hors périmètre :
 > toute trouvaille va en section « Découvertes ». Les exécuteurs ne touchent NI
-> `.ai/thought_log.md` NI `.ai/V7.5/REGISTRE_REPORTS.md` (réservés au superviseur).
+> `.ai/thought_log.md` NI `.ai/REGISTRE_REPORTS.md` (réservés au superviseur).
 > JAMAIS `git add -A` — ajouter les fichiers nommément. Pas de push.
 
 ## Décisions produit TRANCHÉES (utilisateur, 2026-08-24)

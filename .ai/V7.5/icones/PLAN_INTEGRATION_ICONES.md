@@ -272,7 +272,7 @@ la surface produit utilise l'atlas `contour`, dont le lien est lu dans le jeu. C
 ## 5 bis. RENVOYE AU LOT DE FIN DE v7.5 (decisions utilisateur du 2026-08-11)
 
 Trois points, a traiter avec les cartes v2 dans le dernier lot avant le tag. Detail et
-condition de reprise : `.ai/V7.5/REGISTRE_REPORTS.md`.
+condition de reprise : `.ai/REGISTRE_REPORTS.md`.
 
 1. **Armes qui partagent une icone** — 5 index servent 13 etiquettes, et c'est LE JEU qui ne
    les distingue pas (meme `sprite index`, voire un seul tag `weap` pour trois etiquettes).

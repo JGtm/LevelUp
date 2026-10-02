@@ -45,7 +45,7 @@ tests). Trois rouges CI réparés en route : une régression du lot (commentaire
 
 **Prochaine étape** : redémarrage local — plus d'ERROR « index personal_score_awards
 DÉSYNCHRONISÉ ». Découvertes non traitées : unifier les deux splitters SQL (`sync` importe déjà
-`migration`) ; `.ai/V7.5/REGISTRE_REPORTS.md` cite encore `repair_psa_index` comme détecteur
+`migration`) ; `.ai/REGISTRE_REPORTS.md` cite encore `repair_psa_index` comme détecteur
 périodique (seul `repair_msr_index` subsiste) ; le harnais `psa_index_repro_*_test.go` (tag
 `psarepro`) est conservé comme véhicule de reproduction du bug sur `match_skill_rank`.
 
@@ -5185,7 +5185,7 @@ la suite de la vague 5 (E0 + palette hors Grand combat, hygiene XS, hygiene du r
 ## [2026-09-10] Lot 5.3 (hygiene XS du registre des reports) — 15 lignes statuees — Complete
 
 **Decision technique principale.** Worktree dedie `LevelUp-wt-hygiene-xs` (branche
-`wt/hygiene-xs`, depuis `feat/v75`). Chaque ligne du registre (`.ai/V7.5/REGISTRE_REPORTS.md`)
+`wt/hygiene-xs`, depuis `feat/v75`). Chaque ligne du registre (`.ai/REGISTRE_REPORTS.md`)
 verifiee SUR PIECES avant traitement (le fichier a grossi depuis l'ecriture du plan : offset
 constant de +19 lignes entre la numerotation du plan et les lignes reelles, confirme sur les
 15 items). 1 commit de code + 1 commit de cloture registre par ligne (ou groupe coherent) :
@@ -5233,7 +5233,7 @@ constant de +19 lignes entre la numerotation du plan et les lignes reelles, conf
 - `domain.MatchMetrics` (internal/domain/stats.go) est deja mort AVANT ce lot (jamais consomme
   par `ComputeRelativePerformanceScore`, meme avant le retrait de L514) — orpheline preexistante,
   distincte de la cascade de L514.
-- `.ai/V7.5/REGISTRE_REPORTS.md` porte un bloc DUPLIQUE (lignes 614-616 identiques a 617-619,
+- `.ai/REGISTRE_REPORTS.md` porte un bloc DUPLIQUE (lignes 614-616 identiques a 617-619,
   meme defaut de sed sans adresse deja corrige ailleurs par `f2a394c8c` dans le plan maitre) —
   seule la premiere occurrence (cible de L595) a ete cloturee ; le doublon lui-meme n'a pas ete
   merge.
@@ -8219,7 +8219,7 @@ taille).
 le plan interdit explicitement de decouper davantage que ce qu'il demande (« le plan fixe les
 coupes »). Statue `[!]` sur ce point precis (seuil fichier non atteint), consigne au registre des
 reports avec la liste des AUTRES fichiers du paquet deja au-dessus de 500 L (hors perimetre R0,
-non crees par ce lot) : `.ai/V7.5/REGISTRE_REPORTS.md`.
+non crees par ce lot) : `.ai/REGISTRE_REPORTS.md`.
 
 **Gates (tous rejoues apres le renommage du fichier d'identite, sorties collees) :**
 - Preuve de deplacement pur x4 : voir ci-dessus, EXIT=0 sur 1/2/4, glue minimale documentee sur 3.
@@ -8426,7 +8426,7 @@ dependance a l artefact cuit.
   objet, identite de zone, vehicule de l embarquement (partiel), instance <-> socle.
 
 **Conclusion / prochaine etape.** P1 est clos, tous les axes statues, aucun item differe. Trois
-decouvertes consignees au registre (`.ai/V7.5/REGISTRE_REPORTS.md`) : commentaire perime de
+decouvertes consignees au registre (`.ai/REGISTRE_REPORTS.md`) : commentaire perime de
 `vehicle_rides.go:29-31` (doc inversee, a corriger en P4), plomberie ti=0 sans flux (plan decodeur
 d apres v7.5.0, ne rien supprimer), `bid` de bot non publie (a fermer en P2). Prochaine etape : P2 —
 registre des joueurs, fonction pure de `analysis/replay`, bump 49, migration des 17 lecteurs et
@@ -9565,7 +9565,7 @@ la suite `-tags=integration -p 1` sur persist/sync/migration/games a **code de s
 AJOUTER `kill_openings` (durcissement, recette ADR 0026 etape 5).
 
 **Conclusion / prochaine etape.** Items 3.1 a 3.12 tous statues (`[x]` sauf 3.11 et 3.12 `[~]`).
-UN report, inscrit au `.ai/V7.5/REGISTRE_REPORTS.md` et statue `[!]` sous 3.10 bis : le filtre
+UN report, inscrit au `.ai/REGISTRE_REPORTS.md` et statue `[!]` sous 3.10 bis : le filtre
 « meme vie » de la position d entame. `BuildKillPositions` ignore les frontieres de vie, donc une
 reapparition entre T-1,5 s et T ferait publier un point de reapparition comme une entame. La
 correction est `replay.BuildKillOpenings`, attendue sur `feat/duels` et ABSENTE au moment d ecrire
@@ -9667,7 +9667,7 @@ a le RAPPEL sans le LIEN (une chute de bouclier est anonyme). Les deux canaux du
 exactement complementaires dans ce qui leur manque — aucune combinaison ne referme l ecart, il n y
 a pas de troisieme reglage a essayer sur ces deux canaux. Note
 `.ai/V7.5/film_re/SONDE_DUELS_BOUCLIER_2026-09-06.md` ; report inscrit au
-`.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de reprise (un canal portant l AUTEUR du degat a
+`.ai/REGISTRE_REPORTS.md` avec sa condition de reprise (un canal portant l AUTEUR du degat a
 la densite du bouclier : flux de degats dense — refute par mesure ; compteur d etat ECS replique —
 piste ouverte, aucune sonde faite ; source hors film — aucune connue). Les lots 2 a 6 du plan (la
 portee par arme des deux cotes, le denivele signe, le proxy d entame) ne dependent PAS de ce gate
@@ -19923,7 +19923,7 @@ publiera des occupations par joueur.
 **Contexte** : etape 5 close cote code. L'etape 6 est faisable SAUF ses deux gates, qui
 passent tous deux par le paquet `internal/service` casse par une autre session.
 
-**Fait** : quatre lignes au registre `.ai/V7.5/REGISTRE_REPORTS.md` — le lot avec sa mesure
+**Fait** : quatre lignes au registre `.ai/REGISTRE_REPORTS.md` — le lot avec sa mesure
 d'entree et ses deux reserves ouvertes ; la reserve `SOUS_RESERVE` du repulseur avec son
 UNIQUE match datable ; la vignette impossible pour la chute ; les vehicules/tourelles laisses
 hors perimetre alors que le pont existe desormais (le commentaire `frag_distribution.go`
@@ -24428,7 +24428,7 @@ interne au fichier seul. (4) H4 — 2 tests repo-root migres de `title.FindRepoR
 `cmd/mapcallouts-build/classify_test.go`) + retrait des 2 entrees d'allowlist devenues
 obsoletes dans `no_repo_root_walk_test.go`. (5)-(6) H5/H6 — 3 lignes mal formees (dont un
 FAUX VERT : `-run 'A\|B'` est un motif littéral en RE2, 0 test matche malgre le `ok` observe)
-et 2 dettes statuees dans `.ai/V7.5/REGISTRE_REPORTS.md` (tableau 4 colonnes / 5 pipes,
+et 2 dettes statuees dans `.ai/REGISTRE_REPORTS.md` (tableau 4 colonnes / 5 pipes,
 verifie avant/apres CHAQUE edit — une premiere passe H5 avait accidentellement reintroduit
 un `\|` dans le texte explicatif, detectee par le recomptage et corrigee). (7) H7 — lint Go
 (`golangci-lint`, 0 issues) et web (`eslint`, 20 warnings/0 erreur, aucun sur le seul fichier
@@ -26087,7 +26087,7 @@ le reste (build/vet/test) VERT. Non traite par cette session : contrat de la tac
 `085cda41b`, HEAD branche `69d193e3e`) dans le worktree principal, depuis `feat/v75` `5e6a42dd1`.
 Deux conflits, tous deux de la MEME forme (les deux cotes ajoutent a la meme position depuis la
 base, sans toucher au meme contenu) : `.ai/thought_log.md` (nouvelles entrees prependees en tete
-des deux cotes) et `.ai/V7.5/REGISTRE_REPORTS.md` (nouvelles lignes ajoutees en fin de tableau
+des deux cotes) et `.ai/REGISTRE_REPORTS.md` (nouvelles lignes ajoutees en fin de tableau
 des deux cotes). Resolution par UNION explicite, HEAD puis branche, sans arbitrage de contenu —
 verifie AVANT resolution (diff separe HEAD-vs-base et branche-vs-base) qu'aucune ligne n'etait
 modifiee des deux cotes a la fois dans ces deux hunks precis (6 lignes modifiees existent bien,
@@ -26222,7 +26222,7 @@ l'allowlist du ratchet reste VIDE comme le fichier l'exige. Gate : `go test
 `//nolint` d'un autre fichier, non introduit par ce lot).
 
 **Conclusion / prochaine etape.** Ligne registre passee en TRAITE avec la voie retenue
-(`.ai/V7.5/REGISTRE_REPORTS.md`). Rien a reprendre : la voie mecanique (retrait du jeton) a
+(`.ai/REGISTRE_REPORTS.md`). Rien a reprendre : la voie mecanique (retrait du jeton) a
 suffi, la voie de repli (`"sc" + "an"` litteral compose) n'a pas ete necessaire.
 
 ## [2026-08-18] Rejeu 2D — l'origine d'une pose se lit a la FIN de la vie du poseur : `equipmentPlacements` est, a 88,6 %, ce qu'un mort laisse tomber — Complete
@@ -27758,7 +27758,7 @@ sons).
 
 **Conclusion / prochaine etape**. Gate d ECOUTE = utilisateur : quatre explosions doivent
 s entendre differentes, et le coup de melee doit tomber sur la mort qu il cause. Deux lignes au
-`.ai/V7.5/REGISTRE_REPORTS.md` (melee non fatale, grenades AMBIGU) avec leurs conditions de
+`.ai/REGISTRE_REPORTS.md` (melee non fatale, grenades AMBIGU) avec leurs conditions de
 reprise.
 
 ## [2026-08-15] v7.5 rejeu 2D — tir CONTINU et tir CHARGE : deux refus mesures, un instrument
@@ -27817,7 +27817,7 @@ d une automatique et non d un faisceau. Elles n ont ni nom, ni son, ni effet. Li
 de corpus SAUTES sans la variable), ratchet `golangci-lint --new-from-merge-base=origin/main`.
 Aucun fichier de rendu, aucun type servi, aucun contrat touche.
 
-**Conclusion / prochaine etape**. Trois lignes au `.ai/V7.5/REGISTRE_REPORTS.md` avec leurs
+**Conclusion / prochaine etape**. Trois lignes au `.ai/REGISTRE_REPORTS.md` avec leurs
 conditions de reprise. La reprise du tir continu tient a un fait verifiable en une commande :
 un film ou `hinf_sentinel_beam` compte plus de zero tir. Celle du tir charge exige d abord de
 fiabiliser l appariement emplacement -> arme, puis une source lue aux instants de tir
@@ -33618,7 +33618,7 @@ hors migration boot ; `TrySilentRefresh` et `MSALCacheJSON` à 0 dans le code vi
   indépendant de ce lot (Phase 5 ne change pas le contenu de `sync_meta`), donc
   non traité ici — mais à corriger dans un lot dédié, idéalement en même temps
   que le drop physique des colonnes auth de `sync_meta`.
-- `.ai/V7.5/REGISTRE_REPORTS.md` n'existe pas sur `origin/main` (il vit sur
+- `.ai/REGISTRE_REPORTS.md` n'existe pas sur `origin/main` (il vit sur
   `feat/v75`) : l'échéance 2026-10-01 de la migration boot n'a pas pu y être
   inscrite depuis cette branche — à reporter par le superviseur.
 
@@ -94311,7 +94311,7 @@ contrat. **Ce qui est conserve et commite** : le decodeur d'IDENTITE
 (`filmdec/keyframe_ground_weapons.go` + factorisation `familiesByRecord`) et l'instrument de mesure
 `replay/ground_weapon_research_test.go` sous garde `GW_FILM` — sa raison d'etre est de garder la
 REFUTATION REJOUABLE, et c'est ecrit en tete des deux fichiers (les helpers de position n'ont que
-lui comme consommateur, dit noir sur blanc). **Report** : registre `.ai/V7.5/REGISTRE_REPORTS.md`,
+lui comme consommateur, dit noir sur blanc). **Report** : registre `.ai/REGISTRE_REPORTS.md`,
 condition de reprise = default-state de `ti=42` resolu (entree `defaultStateDeserByTI`) OU
 evenements de cycle de vie d'entite decodes offline ; a la reprise, une version NON SPATIALE (liste
 des armes au sol sans position) reste une option produit. **Plan CORRIGE, pas seulement annote** :
@@ -95059,7 +95059,7 @@ transite sans changer le contrat.
 (`origin/feat/v75` : `3cafdfbe8` -> `6e37e8aea`), pas de rebase sur consigne superviseur qui
 fusionnera. Le profiling du film-bombe lui-meme (confirmer `NamedEventsFrom`/`incrementTimes`
 comme structure responsable des ~26 Gio) reste un chantier a part, deja consigne au registre
-(`.ai/V7.5/REGISTRE_REPORTS.md`, ligne « Profiling `51101d1d` ») : ce lot pose le garde-fou de
+(`.ai/REGISTRE_REPORTS.md`, ligne « Profiling `51101d1d` ») : ce lot pose le garde-fou de
 monitoring en attendant, il ne profile rien. A rejouer si besoin sur une machine moins
 contrainte : `go build ./...` en isolation complete (aucun autre process Go/gcc concurrent).
 
@@ -107035,7 +107035,7 @@ de `registry_compressed_test.go` et de `film_fixture_integrite_cgo_test.go` (« 
 la CI decode » — `TestGoldenMiniBobine` et `TestEquivalenceMiniFilm` decodent aussi) ; oracle des
 captures corrige (il comparait `TeamScores[0]` seul quand `coverage.flagCarries.captures` compte
 les DEUX camps) ; epingles 8/4/12 et liste des pontes RETIREES du test E2E ; decouvertes portees
-au `.ai/V7.5/REGISTRE_REPORTS.md`.
+au `.ai/REGISTRE_REPORTS.md`.
 
 **Ce que la revue rouvre, et qui est la vraie instruction.** Le calque `objectives` de
 `c0a82e88` a DERIVE : 17 actions au parc (schema 20) contre 12 au HEAD, les familles
@@ -109030,10 +109030,10 @@ existaient deja, simplement non branches par les tests.
 
 **Decouverte consignee, non traitee** : `TestWorker_Run_PersistFailure_NoACK` (meme fichier,
 ligne ~120) attend un `time.Sleep(200ms)` fixe de la meme famille — non prouve instable a ce jour,
-hors perimetre STRICT du lot (deux tests nommes uniquement). Registre `.ai/V7.5/REGISTRE_REPORTS.md`.
+hors perimetre STRICT du lot (deux tests nommes uniquement). Registre `.ai/REGISTRE_REPORTS.md`.
 
 **Conclusion / prochaine etape** : les deux entrees R8 du `.ai/PLAN_V2_RESTES_2026-09-07.md` sont
-cochees `[x]` avec preuve ; les deux entrees du registre `.ai/V7.5/REGISTRE_REPORTS.md` sont barrees
+cochees `[x]` avec preuve ; les deux entrees du registre `.ai/REGISTRE_REPORTS.md` sont barrees
 et closes ; Q5 coche `[x]` dans `.ai/PLAN_ORCHESTRATION_2026-09-07.md`. Commit(s) sur
 `feat/ci-flakes-import-worker` (worktree dedie `LevelUp-wt-q5-flakes`), push vers origin ; pas de
 fusion dans `feat/v75` (decision utilisateur a la fin de la vague).
@@ -109273,7 +109273,7 @@ verts, 1 fichier / 17 tests skip preexistants).
 
 **Conclusion / prochaine etape.** Lot M2 clos : `.ai/PLAN_V2_RESTES_2026-09-07.md` R6 coche,
 `.ai/PLAN_ORCHESTRATION_2026-09-07.md` M2 coche, `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`
-(tableau Decision/etat, une ligne par P2-N) et `.ai/V7.5/REGISTRE_REPORTS.md` (entree barree et
+(tableau Decision/etat, une ligne par P2-N) et `.ai/REGISTRE_REPORTS.md` (entree barree et
 fermee, nouvelle entree ouverte pour P2-1/P2-2 avec condition de reprise = plan decodeur
 post-v7.5.0) mis a jour. Journal detaille : `.ai/V7.5/v2/RESTES_R6_2026-09-07.md`. Decouverte
 notee au registre, non traitee : `seatLogic.filmIndexByIdentity` porte une 3e copie inline de la
@@ -114117,5 +114117,5 @@ efficaces sur les tâches cadrées, à éviter quand un obstacle impose un arbit
 
 **Conclusion / prochaine étape** : CI de `feat/suite-audit-decodeur`, avance rapide de
 `feat/v75`, CI ; prévenir la campagne de grammaire ; vérification visuelle de l'utilisateur.
-Reports : `.ai/V7.5/REGISTRE_REPORTS.md`, section « Reports du plan de suite d'audit du
+Reports : `.ai/REGISTRE_REPORTS.md`, section « Reports du plan de suite d'audit du
 décodeur ».

@@ -1,5 +1,5 @@
 // Package archlint — no_hardcoded_film_cache_dirs_test.go : garde-rail de la
-// centralisation du lot hygiène 5.3 (`.ai/V7.5/REGISTRE_REPORTS.md`, L62), étendu au NOM DE
+// centralisation du lot hygiène 5.3 (`.ai/REGISTRE_REPORTS.md`, L62), étendu au NOM DE
 // FICHIER des chunks par J2.3 du plan de suite de l'audit du décodeur de film (2026-09-26).
 //
 // Les noms des deux sous-dossiers du cache film disque (`film_manifests`,

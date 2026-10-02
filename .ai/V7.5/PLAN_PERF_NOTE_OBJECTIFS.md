@@ -425,7 +425,7 @@ serveur relancé.
 
 ## Volet C — backfill-killsource (demande utilisateur 2026-08-27, solde le registre lot 6 item 6.5)
 
-Entrée du registre `.ai/V7.5/REGISTRE_REPORTS.md:43` : re-run `backfill-killsource`
+Entrée du registre `.ai/REGISTRE_REPORTS.md:43` : re-run `backfill-killsource`
 COMPLET (couverture arme-du-kill 0-5 % sur les matchs récents avril-juillet 2026).
 Condition de reprise remplie : serveur arrêté avec accord utilisateur (fenêtre du
 lot 4). SÉQUENCEMENT STRICT : APRÈS la fin des recomputes du lot 4 (le backfill tient

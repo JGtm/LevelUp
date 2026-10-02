@@ -610,7 +610,7 @@ grep -n "SchemaVersion = " internal/analysis/replay/document.go -> 78: const Sch
 
 ## 11. Lignes de registre proposees
 
-A verser en une seule fois dans `.ai/V7.5/REGISTRE_REPORTS.md`. **Deux lignes NEUVES**, et
+A verser en une seule fois dans `.ai/REGISTRE_REPORTS.md`. **Deux lignes NEUVES**, et
 **trois lignes a AMENDER** (dont une que R5 avait deja proposee d'amender : l'amendement
 change de nature).
 

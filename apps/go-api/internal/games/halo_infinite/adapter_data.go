@@ -196,7 +196,7 @@ func fallbackCapabilities() games.CapabilityMap {
 		// conservé, seule l'exposition est retirée. Cette clé data-level gate le numérateur
 		// film (collectHits) : not_exposed ⇒ la passe film ne s'exécute pas pour Infinite.
 		// La précision GLOBALE reste servie par l'API. Reprise : piste compteur ECS
-		// (cf. .ai/V7.5/REGISTRE_REPORTS.md). Cf. capabilities.toml.
+		// (cf. .ai/REGISTRE_REPORTS.md). Cf. capabilities.toml.
 		games.CapWeaponAccuracy: games.CapNotExposed,
 		// Libellés de playlist préfixés d'une catégorie matchmaking à retirer pour
 		// l'affichage (analysis.NormalizePlaylistLabel) — trait Halo Infinite,

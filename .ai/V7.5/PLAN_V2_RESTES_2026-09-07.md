@@ -68,7 +68,7 @@
   perdu OU INVENTÉ servi = P0) + L6 + L3, un relecteur par worktree, 2 rondes max, corrections par l'exécuteur,
   ronde 2 sur les corrections seules ; le nombre de P0+P1 doit décroître.
 - Journal : `.ai/V7.5/v2/RESTES_<lot>_<date>.md` par lot (diagnostic chiffré, cause, correctif, mutations, témoins
-  avant/après, découvertes NON traitées) + entrée `.ai/thought_log.md` + registre `.ai/V7.5/REGISTRE_REPORTS.md`
+  avant/après, découvertes NON traitées) + entrée `.ai/thought_log.md` + registre `.ai/REGISTRE_REPORTS.md`
   mis à jour (fermer l'entrée traitée, ouvrir les découvertes avec condition de reprise). Commit par lot, préfixe
   `fix(restes/<lot>):`, push, CI de branche par `gh run view` (jamais `gh run watch` long : sature le disque temporaire).
 - Seuils : fichier ≤ 500 L, fonction ≤ 80 L, ≤ 5 paramètres ; `slog` structuré, aucune erreur avalée ; title-agnostic
@@ -88,7 +88,7 @@
       `film_stats_cables_guard_test.go` relisait le littéral dans `replaybuild.go` par regex — adapté pour lire
       `options.go`. `document.go`/`usage_summary.go`/`replaybuild.go` restent > 500 L après cette extraction unique
       — **statué `[!]`** : le plan ne prescrit qu'une extraction et interdit d'en faire davantage ; consigné au
-      registre (`.ai/V7.5/REGISTRE_REPORTS.md`) pour un lot dédié.
+      registre (`.ai/REGISTRE_REPORTS.md`) pour un lot dédié.
 - [x] `flag_carries_test.go` (575 L) scindé par responsabilité, aucun test renommé : `flag_carries_test.go` (aides
       partagées, 75 L), `flag_carries_guards_test.go` (5 tests de garde, 117 L), `flag_carries_assignment_test.go`
       (6 tests de machine à états, 197 L), `flag_carries_anon_lives_test.go` (5 tests vies anonymes/slot partagé,
@@ -325,7 +325,7 @@ Fait : après le lot pont (schéma 48), écart cumulé K/D/A 69 (avant 94), les 
 - [x] Les 5 P2 de `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` (section « Constats retenus », gravité P2) :
       traiter un par un (correctif + mutation) ou fermer avec preuve de non-lieu ; colonne « Décision/état ».
       P2-1/P2-2 : confirmés sur pièces, racine dans `filmdec` (décodeur gelé §0.6) — correctif hors périmètre,
-      diagnostic + registre (`.ai/V7.5/REGISTRE_REPORTS.md`). P2-3 : non-lieu, déjà corrigé par `f1b4f4ee5`
+      diagnostic + registre (`.ai/REGISTRE_REPORTS.md`). P2-3 : non-lieu, déjà corrigé par `f1b4f4ee5`
       (`fix(manches/MANCHES-R1)`, 2026-09-07 00:05, déjà sur `feat/v75`). P2-4, P2-5 : corrigés, mutations jouées.
       Détail : `.ai/V7.5/v2/RESTES_R6_2026-09-07.md`.
 - [x] Web : `apps/web/src/features/match-replay/model/equippedLogic.ts` `drawnSwapAt` (lecture non bornée à la

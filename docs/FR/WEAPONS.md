@@ -11,7 +11,7 @@ l'arme par kill. Tout le pipeline est implémenté en Go sous `apps/go-api`.
 > et [Limites connues](#limites-connues) avant de s'y fier.
 
 > **Mise à jour Halo Infinite (2026-09-01, doc corrigé le 2026-09-10 — lot
-> hygiène 5.3, `.ai/V7.5/REGISTRE_REPORTS.md`).** Les sections 2 à 10 ci-dessous
+> hygiène 5.3, `.ai/REGISTRE_REPORTS.md`).** Les sections 2 à 10 ci-dessous
 > décrivent le pipeline D'ORIGINE : `weapon_kills` (corrélation par fire-event /
 > snapshot, stockée par kill) + la vue de lecture `v_weapon_kills`. Pour Halo
 > Infinite, tout ce pipeline a été **retiré** par la migration

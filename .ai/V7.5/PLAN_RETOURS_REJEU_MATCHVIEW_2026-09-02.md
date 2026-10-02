@@ -254,7 +254,7 @@ web `make check-types && make test-web` ; gate visuel user sur le film Sylvanus 
   `[x]`/`[~]`/`[!]`) avant N+1. Zéro fix hors périmètre — toute trouvaille va en
   **Découvertes** ci-dessous.
 - Reprise de session : ce fichier (statuts) + `.ai/thought_log.md` (dernière entrée).
-- Tout report → `.ai/V7.5/REGISTRE_REPORTS.md` avec condition de reprise.
+- Tout report → `.ai/REGISTRE_REPORTS.md` avec condition de reprise.
 - Commits : demander avant chaque commit (règle 16). Pas de re-cuisson sans accord.
 
 ## P8 (ajout 02/09) — Graphe « distance des kills par arme » (demande du collègue)

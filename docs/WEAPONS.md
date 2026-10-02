@@ -12,7 +12,7 @@ not expose a per-kill weapon. The whole pipeline is implemented in Go under
 > [Known Limitations](#known-limitations) before relying on it.
 
 > **Halo Infinite update (2026-09-01, doc corrected 2026-09-10 — hygiene lot 5.3,
-> `.ai/V7.5/REGISTRE_REPORTS.md`).** Sections 2-10 below describe the ORIGINAL
+> `.ai/REGISTRE_REPORTS.md`).** Sections 2-10 below describe the ORIGINAL
 > pipeline: `weapon_kills` (fire-event / snapshot correlation, stored per kill) +
 > the `v_weapon_kills` read view. For Halo Infinite that whole pipeline was
 > **retired** by migration `shared_drop_weapon_kills_v1`

@@ -66,8 +66,8 @@ Chemins relatifs a `apps/go-api/internal/analysis/` sauf mention contraire.
 | Le second precedent : l'id 32 bits d'un projectile est le **tag global du groupe `proj` DECALE D'UN BIT A GAUCHE**, trouve au record de CREATION | `filmdec/grenade_events.go:30-49` |
 | L'index de tags des `.module` du jeu est DISPONIBLE en Go (GlobalID + fourCC de groupe) | `internal/himodule/module.go:67-83`, `internal/himap/moduleindex.go:38`, racine par `internal/himap/deploy_root.go:39` |
 | Palette de capacites par film, rang complet publie (`i48`) | `filmdec/ability_rank.go`, `replay/abilities.go` |
-| Rang 19 = mur portatif, rang 22 = capteur de menaces (famille B) — **une seule observation Theater chacun**, report ouvert | `.ai/V7.5/REGISTRE_REPORTS.md` ligne « Rangs 19 et 22 de la famille B » |
-| Le report que ce lot attaque, mot pour mot : « trouver dans le record de CREATION de l'entite la reference de definition de l'objet — meme voie que la famille high-32 des armes au sol » | `.ai/V7.5/REGISTRE_REPORTS.md` ligne « Identite de l'objet ti=37 » (2026-08-15) |
+| Rang 19 = mur portatif, rang 22 = capteur de menaces (famille B) — **une seule observation Theater chacun**, report ouvert | `.ai/REGISTRE_REPORTS.md` ligne « Rangs 19 et 22 de la famille B » |
+| Le report que ce lot attaque, mot pour mot : « trouver dans le record de CREATION de l'entite la reference de definition de l'objet — meme voie que la famille high-32 des armes au sol » | `.ai/REGISTRE_REPORTS.md` ligne « Identite de l'objet ti=37 » (2026-08-15) |
 | `SchemaVersion = 8` (grappin) | `replay/document.go:75` |
 
 ### 2.1 Ce qui est REFUTE — ne pas rejouer
@@ -461,7 +461,7 @@ golangci-lint run --new-from-merge-base=origin/main
 ### Phase 5 — CLORE : registre, journal, statuts
 
 - [x] 5.1 Toutes les cases de ce plan statuees `[x]` / `[~]` / `[!]`.
-- [x] 5.2 Lignes proposees pour `.ai/V7.5/REGISTRE_REPORTS.md` (ecrites EN UNE SEULE FOIS,
+- [x] 5.2 Lignes proposees pour `.ai/REGISTRE_REPORTS.md` (ecrites EN UNE SEULE FOIS,
       a la fin — contrat R4) : la ligne « Identite de l'objet ti=37 » du 2026-08-15 est
       SORTIE (si succes) ou AMENDEE de ce qui a ete refute (si negatif), plus une ligne par
       report neuf.

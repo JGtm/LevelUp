@@ -2,7 +2,7 @@
 
 > Pour l'orchestrateur du chantier v7.5. Branche `feat/v75`, worktree `LevelUp-wt-replay2d`.
 > Aucun merge, `main` intact. Detail technique : `PLAN_PORT_TRIANGLES_GO.md` §3, §7 (D3, D4) ;
-> reports : `.ai/V7.5/REGISTRE_REPORTS.md` ; chiffres carte par carte :
+> reports : `.ai/REGISTRE_REPORTS.md` ; chiffres carte par carte :
 > `RAPPORT_CUISSON_FONDS_2026-08-10.md`.
 
 ## En une phrase

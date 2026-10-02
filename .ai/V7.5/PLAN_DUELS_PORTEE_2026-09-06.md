@@ -175,7 +175,7 @@ cd apps/go-api && CGO_ENABLED=1 \
 DuckDB, qui exige CGO. Un match par process (verrou `filmdec.LockProcessDecode`).
 
 **Clos quand** : les nombres et le verdict (GO / NO-GO lot 7) sont dans la note, l'entrée
-`thought_log.md` est posée. Si NO-GO : report au `.ai/V7.5/REGISTRE_REPORTS.md` avec sa
+`thought_log.md` est posée. Si NO-GO : report au `.ai/REGISTRE_REPORTS.md` avec sa
 condition de reprise, et le lot 7 se statue `[!]`.
 
 **RÉSULTAT (2026-09-06) — NO-GO.** Trois gates sur quatre passent, et nettement : A = 90,5 %,
@@ -443,7 +443,7 @@ aucun seuil de publication ne descend dans le SQL (3.3/3.4).
       `toKillOpeningRows` NE réadditionne plus `replay.OpeningLeadMS` — les deux gestes ont
       basculé ensemble, comme la réserve l'exigeait. Nouveau compteur ADR 0009
       `killsource_openings_cotes_hors_vie` (`rep.OpeningOutOfLife`), journalisé dans les deux
-      traces de la passe. Entrée du `.ai/V7.5/REGISTRE_REPORTS.md` CLOSE. L'énoncé du report
+      traces de la passe. Entrée du `.ai/REGISTRE_REPORTS.md` CLOSE. L'énoncé du report
       d'origine est conservé ci-dessous, pour que la condition de reprise reste lisible.
       <br>_Énoncé du report (2026-09-06, avant merge)_ :
       Consigne du pilote (2026-09-06) : si un joueur a réapparu entre T-1,5 s et T, l'instant
@@ -456,7 +456,7 @@ aucun seuil de publication ne descend dans le SQL (3.3/3.4).
       point d'appel (`buildPositionRows`) avec sa condition de bascule EN DEUX GESTES : l'appel
       devient `replay.BuildKillOpenings(...)` ET `toKillOpeningRows` cesse de rajouter
       `OpeningLeadMS` — l'un sans l'autre décalerait toutes les lignes de 1,5 s. Inscrit au
-      `.ai/V7.5/REGISTRE_REPORTS.md`.
+      `.ai/REGISTRE_REPORTS.md`.
 - [~] 3.11 `backfill-killsource` : la capture d'entame suit `WithPositionCapture` (même
       drapeau, même catalogue de bornes) — aucun nouveau flag.
       COUVERT PAR 3.10, RIEN À ÉCRIRE — vérifié sur pièces :
@@ -1209,7 +1209,7 @@ items ci-dessous sont statués `[!]` — non traités, aucun code écrit.
       tranche. NON TRAITÉ : on ne soumet pas à l'utilisateur une classification dont on a
       mesuré qu'elle se trompe d'adversaire une fois sur deux.
 
-Report inscrit au `.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de reprise (« un canal qui
+Report inscrit au `.ai/REGISTRE_REPORTS.md` avec sa condition de reprise (« un canal qui
 porte l'AUTEUR du dégât à la densité du bouclier : flux de dégâts dense, compteur d'état ECS
 répliqué, ou source hors film »).
 

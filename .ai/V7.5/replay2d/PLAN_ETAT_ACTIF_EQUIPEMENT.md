@@ -198,7 +198,7 @@ inscrit au REGISTRE_REPORTS comme reprise, non execute ici (interdit du plan).
 
 `[x]` / `[~]` (reference) / `[!]` (justification ecrite). Aucune case vide. Entree datee au
 `.ai/thought_log.md` ; verdicts reportes dans `PLAN_EQUIPEMENT_TI37.md` (vision globale) ;
-reports au `.ai/V7.5/REGISTRE_REPORTS.md` avec condition de reprise.
+reports au `.ai/REGISTRE_REPORTS.md` avec condition de reprise.
 
 ## Protocole de reprise
 
