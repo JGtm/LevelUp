@@ -2764,3 +2764,20 @@ package replay
 //	A SCHEMA        lot R2 (2026-09-28, constats C2, C3, C6 du G-corpus J11.1 ; v76 jamais publiee), films a slot bipede reboucle seuls : `tracks`/`bounds` perdent les positions
 //	CONSTANT (R2)   d en-tetes de generation >= 2 anterieurs a la creation de leur corps (filtre date) ; `coverage.bridge.slotCollisions` ne compte plus les SIEGES RECYCLES
 //	                (verdict nominal ; `XUIDAt` y repond par corps) ; `coverage.seats` : un vote de place que l unite du tir contredit ne compte plus.
+
+// v77 (2026-10-02, chantier « Falcon de Behemoth », handoff HANDOFF_RETOURS_REJEU_2026-09-25 §3.1 et
+// §3.4) : UN CHAMP MORT SORT DE LA FORME. Aucune lecture, aucune publication ne change.
+//
+//	`coverage.     `turretRidesNotRideable` est RETIRE : il valait 0 sur tout artefact depuis la
+//	vehicles`      v69 (partie M7b : le refus « porteur non pilotable » n a plus de branche, invariant
+//	               `TestPiecesMonteesOntUnPorteurPilotable`). `turretRidesDropped` est la somme des
+//	               DEUX refus restants, `turretRidesOutOfWindow` et `turretRidesAlreadyAboard`.
+//	A LA REQUETE   hors de l artefact et de son empreinte, `vehicleScenery.hidden[].reason` gagne
+//	(service)      `aloft_unoccupied` : une vie jamais occupee qui ne se pose qu au moins 1,2 m
+//	               au-dessus de sa naissance, sans s en eloigner de plus de 8 m, est du decor (repli
+//	               `repli_decor_tenu_en_l_air_a_vide`, `internal/service/replay_vehicle_scenery_aloft.go`).
+//
+//	CE QUI MONTE    `SchemaVersion` 76 -> 77, seule. `source`, `profile`, `grammar`, `killsource`,
+//	AVEC ELLE       `objectives` et `killcollector.IsolationDecoderRev` gardent leur valeur.
+//
+//	LE PARC         un artefact 76 dont les faits sont sur disque : verdict `republier`.

@@ -77,12 +77,13 @@ func (a mapPlayArea) Praticable(x, y float64) bool {
 	return a.mask.PraticableComble(x, y, mapdecoupe.ToleranceParDefaut)
 }
 
-// resolveVehicleScenery pose `doc.VehicleScenery` : absent quand aucune vie n est candidate ; zone
-// `unknown` (rien de masque) quand la carte n a pas de zone jouable publiee.
+// resolveVehicleScenery pose `doc.VehicleScenery` : absent quand aucune vie ne releve d une des deux
+// regles ; zone `unknown` (la regle de pose ne masque rien) quand la carte n a pas de zone jouable
+// publiee. Sans candidate de pose, le cadre suffit a dire la zone : aucun masque n est decode.
 func (s *replayService) resolveVehicleScenery(ctx context.Context, doc *replay.ReplayDocument,
 	matchID string, keys port.MatchMapKeys) {
 	candidates := posedOnlyVehicles(doc)
-	if len(candidates) == 0 {
+	if len(candidates) == 0 && len(aloftVehicles(doc)) == 0 {
 		return
 	}
 	var area playArea

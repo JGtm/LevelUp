@@ -159,4 +159,30 @@ var registreReplayVehicules = []Repli{
 		CritereRetrait:  "sur le parc de production, `vehicleScenery.zoneUnknown` vaut 0 sur tous les documents servis pendant un trimestre",
 		CompteurBranche: true,
 	},
+	{
+		Nom:  "repli_decor_tenu_en_l_air_a_vide",
+		Fait: "une vie de vehicule que personne n occupe est-elle un vehicule de la partie, ou un objet que la carte tient ?",
+		Mecanisme: "aucun episode d occupation, pas une piece montee, et la plus BASSE station de la vie " +
+			"(au moins 1 s dans une bande de 0,3 m, dernier echantillon tenu jusqu a `T1`) est au moins " +
+			"1,2 m (`aloftMinRiseM`) AU-DESSUS de sa naissance (`spawn`, a defaut le premier echantillon), " +
+			"sans qu aucun echantillon s en eloigne de plus de 8 m en plan (`aloftMaxDriftM`) : un vehicule " +
+			"vide obeit a la pesanteur, celui-ci ne se pose jamais a sa hauteur de naissance. Raison publiee " +
+			"`aloft_unoccupied`",
+		// MESURE DU 2026-10-02 sur 1 227 documents au schema 76 (6 612 vies de vehicule) : 15 vies
+		// masquees, toutes des Falcon nes aux deux bornes SUD de Behemoth en Super Fiesta (montee
+		// seule de 2,2 m puis vol stationnaire, jamais occupees, retirees puis refaites au meme
+		// point) ; 0 vie occupee masquee ; les Falcon des bornes NORD de Behemoth, poses au sol,
+		// restent affiches (9 vies y sont pilotees au parc). Le film ne porte aucun champ « non
+		// pilotable » (sonde C2 du 2026-09-23) : la regle lit le mouvement publie.
+		Condition: CondFilmMuet,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{
+			Fichier: siteDecorM7,
+			Ancre:   "// repli_decor_tenu_en_l_air_a_vide : compte dans `hidden` sous sa raison.",
+		}},
+		DatePose:        "2026-10-02",
+		CibleRetrait:    "un champ du film qui dise qu un vehicule n est pas occupable (proprietes de l objet a sa creation), lu par le decodeur",
+		CritereRetrait:  "sur le parc, le champ lu masque exactement les vies que ce repli masque, sans regarder leur mouvement",
+		CompteurBranche: true,
+	},
 }

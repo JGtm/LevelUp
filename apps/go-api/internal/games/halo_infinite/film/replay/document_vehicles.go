@@ -452,15 +452,10 @@ type VehicleCoverage struct {
 	//	                  parc du 2026-09-23 ; un chiffre non nul sur un film neuf dit que le
 	//	                  voisinage de slot a cesse de designer le porteur.
 	//	TurretRides       episodes d artilleur REPORTES de la tourelle sur son porteur ;
-	//	                  TurretRidesDropped ceux qui sont GARDES sur la piece, somme des TROIS
-	//	                  refus ventiles : TurretRidesNotRideable (le porteur est d une famille
-	//	                  non pilotable — VAUT 0 DEPUIS LE 2026-09-24 : le Falcon est sorti de ces
-	//	                  familles, le refus a ete retire de `moveTurretRides` et aucune piece de la
-	//	                  table n a de porteur non pilotable, invariant
-	//	                  `TestPiecesMonteesOntUnPorteurPilotable` ; CHAMP A RETIRER a la prochaine
-	//	                  montee de schema, 70 de la vague D, critere : aucun lecteur ne le cite),
-	//	                  TurretRidesOutOfWindow (l episode tombe hors de la fenetre du porteur,
-	//	                  dont la vie publiee s arrete avant celle de sa tourelle) et
+	//	                  TurretRidesDropped ceux qui sont GARDES sur la piece, somme des DEUX
+	//	                  refus ventiles : TurretRidesOutOfWindow (l episode tombe hors de la
+	//	                  fenetre du porteur, dont la vie publiee s arrete avant celle de sa
+	//	                  tourelle) et
 	//	                  TurretRidesAlreadyAboard (le meme occupant a deja un episode du porteur
 	//	                  qui RECOUVRE le sien — un changement de siege, qui ne fait que toucher,
 	//	                  n en est pas un). Un episode de REPLI dont la montee a bord ne se voit pas
@@ -476,7 +471,6 @@ type VehicleCoverage struct {
 	TurretCarrierBirthMismatch int `json:"turretCarrierBirthMismatch"`
 	TurretRides                int `json:"turretRides"`
 	TurretRidesDropped         int `json:"turretRidesDropped"`
-	TurretRidesNotRideable     int `json:"turretRidesNotRideable"`
 	TurretRidesOutOfWindow     int `json:"turretRidesOutOfWindow"`
 	TurretRidesAlreadyAboard   int `json:"turretRidesAlreadyAboard"`
 	ShotsOnCarrier             int `json:"shotsOnCarrier"`

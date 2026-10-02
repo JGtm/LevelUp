@@ -1367,8 +1367,11 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   sol, lancers, tirs, fil des morts), la tolerance de siege est une duree, le lien prise -> arme
 	//   au sol respecte `LowUS`. `grammar.Rev` monte avec elle : un v75 doit se lire « a redecoder ».
 	//   Ecrite v75 sur J10, renumerotee a la fusion : J8, fusionne avant, avait pris le 75.
-	if SchemaVersion != 76 {
-		t.Fatalf("SchemaVersion = %d, attendu 76 : incrémenter exige une raison écrite ci-dessus "+
+	// - 77 (2026-10-02, chantier Falcon de Behemoth) : UN CHAMP MORT RETIRE.
+	//   `coverage.vehicles.turretRidesNotRideable`, nul depuis le 69, sort de la forme ; aucune
+	//   lecture ne change. Un v76 se lit « a republier ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 77 {
+		t.Fatalf("SchemaVersion = %d, attendu 77 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

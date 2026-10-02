@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 76
-empreinte-stockee fbd091f06422cb47
-empreinte-servie fbd091f06422cb47
-empreinte-cuite 214a1229f10af442
+schema 77
+empreinte-stockee 32e724fe09216140
+empreinte-servie 32e724fe09216140
+empreinte-cuite abd4864c427ebbac
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -1066,7 +1066,6 @@ VehicleCoverage
   TurretRides json:"turretRides" int
   TurretRidesAlreadyAboard json:"turretRidesAlreadyAboard" int
   TurretRidesDropped json:"turretRidesDropped" int
-  TurretRidesNotRideable json:"turretRidesNotRideable" int
   TurretRidesOutOfWindow json:"turretRidesOutOfWindow" int
   Turrets json:"turrets" int
   TurretsOnCarrier json:"turretsOnCarrier" int

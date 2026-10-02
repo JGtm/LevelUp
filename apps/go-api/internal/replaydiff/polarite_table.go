@@ -200,7 +200,7 @@ var tablePolarites = []blocPolarites{
 			"echantillonsAuTraversDUnSilence echantillonsHorsEmprise endUnknown familyUnknown " +
 			"noPosition samplesAfterEnd shotsAmbiguous shotsNoRide shotsUnplaced " +
 			"silencesNonTranches spawnsHorsEmprise turretCarrierBirthMismatch " +
-			"turretRidesAlreadyAboard turretRidesDropped turretRidesNotRideable " +
+			"turretRidesAlreadyAboard turretRidesDropped " +
 			"turretRidesOutOfWindow unknownChassis.*",
 		Succes: "aimReads aimSamples cycleGaps cycles deathsMatched deathsRead endDestroyed " +
 			"familyResolved lives published rides ridesNamed ridesRead ridesWithAim ridesWithSeat " +
@@ -235,7 +235,10 @@ var tablePolarites = []blocPolarites{
 //   - `vehicles.ridesFromEvent` / `ridesMixed` / `ridesFromGap` : ventilation des episodes par
 //     PRECISION, retiree au schema 67 (5.10.6, l'occupation est LUE, `ridesRead` /
 //     `ridesProximity`). Mesure 2026-09-28 : 63 artefacts du parc local la portent.
+//   - `vehicles.turretRidesNotRideable` : refus « porteur non pilotable », nul depuis le schema 69
+//     (lot M7b, branche retiree), champ retire au schema 77 (2026-10-02, chantier Falcon de
+//     Behemoth). Tout artefact 69 a 76 le porte, a 0.
 var polaritesHeritees = []blocPolarites{
 	{Blocs: []string{"coverage.vehicles."},
-		Neutres: "ridesFromEvent ridesMixed ridesFromGap"},
+		Neutres: "ridesFromEvent ridesMixed ridesFromGap turretRidesNotRideable"},
 }

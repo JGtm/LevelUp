@@ -141,7 +141,7 @@ export type ReplayIdentityReady = Filled<
  */
 export type ReplayVehicleTrackReady = Omit<Filled<ReplayVehicleTrack, 'samples'>, 'rides'> & {
   rides: ReplayVehicleRideReady[]
-  /** Vie déclarée DÉCOR DE CARTE par le serveur (`doc.vehicleScenery.hidden`, lot M7) : jamais
+  /** Vie déclarée DÉCOR DE CARTE par le serveur (`doc.vehicleScenery.hidden`) : jamais
    *  dessinée. Absent = pas de verdict de décor pour cette vie. */
   scenery?: boolean
 }

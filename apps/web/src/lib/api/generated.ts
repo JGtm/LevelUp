@@ -14031,8 +14031,6 @@ export interface components {
             /** Format: int64 */
             turretRidesDropped: number;
             /** Format: int64 */
-            turretRidesNotRideable: number;
-            /** Format: int64 */
             turretRidesOutOfWindow: number;
             /** Format: int64 */
             turrets: number;

@@ -31364,9 +31364,6 @@ components:
         turretRidesDropped:
           format: int64
           type: integer
-        turretRidesNotRideable:
-          format: int64
-          type: integer
         turretRidesOutOfWindow:
           format: int64
           type: integer
@@ -31443,7 +31440,6 @@ components:
         - turretCarrierBirthMismatch
         - turretRides
         - turretRidesDropped
-        - turretRidesNotRideable
         - turretRidesOutOfWindow
         - turretRidesAlreadyAboard
         - shotsOnCarrier

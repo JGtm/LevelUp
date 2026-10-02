@@ -148,9 +148,8 @@ func toVehicleCoverage(v replay.VehicleCoverage) replaydoc.VehicleCoverage {
 		ShotsOnCarrier:                  v.ShotsOnCarrier,
 		Variants:                        v.Variants,
 
-		// Les trois refus ventiles et le temoin de naissance (revue adverse du lot M4a).
+		// Les deux refus ventiles et le temoin de naissance (revue adverse du lot M4a).
 		TurretCarrierBirthMismatch: v.TurretCarrierBirthMismatch,
-		TurretRidesNotRideable:     v.TurretRidesNotRideable,
 		TurretRidesOutOfWindow:     v.TurretRidesOutOfWindow,
 		TurretRidesAlreadyAboard:   v.TurretRidesAlreadyAboard,
 
