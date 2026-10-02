@@ -1,0 +1,47 @@
+package grammar
+
+// lecteur_minuteur.go — LE LECTEUR DE MINUTEUR DU JEU, EN UN SEUL EXEMPLAIRE.
+//
+// Lu dans HaloInfinite.exe (HI_1_13_0, base 0x140000000), lecteur et ecrivain :
+//
+//	FUN_140d580d0(dest, flux, n, max)   FUN_1406d84b4 x 2 (reel quantifie sur n bits, [0, max],
+//	                                    extremites exactes) -> dest+0, dest+4 ; puis FUN_1407f0354
+//	                                    (`+0x2c += 5`) -> dest+0xb. Largeur 2n + 5.
+//	FUN_142b6f76c                       son ecrivain : FUN_1406d22c0 x 2 sur n bits, puis l octet
+//	                                    dest+0xb (FUN_142af2af0).
+//	FUN_142ba78dc(dest, flux, n, max)   FUN_140d580d0 puis un troisieme FUN_1406d84b4 sur n bits
+//	                                    -> dest+0xc. Largeur 3n + 5. Ecrivain : FUN_142ba7c74
+//	                                    (FUN_142b6f76c puis FUN_1406d22c0 sur n bits).
+//
+// Les appelants du jeu passent n et max : `ti=5 i2` (FUN_140d580a8, n = 5), `ti=0 i5`
+// (FUN_1407ee790), `i6` (FUN_14116d3a4), `i7` (FUN_141165d24), `i12` (FUN_1407ee764) et les fentes
+// du bassin `i15` (FUN_1407ee87c), tous a n = 16. Le max ne change aucun bit lu : la valeur reelle
+// reste a l appelant (`DequantEndpoint`), ces lecteurs rendent les quanta bruts.
+//
+// GARDE-RAIL (regle des deux copies) : `lecteur_minuteur_guard_test.go` interdit, hors de ce
+// fichier, la sequence de lectures de FUN_140d580d0 ecrite en ligne, et exige que tout fichier qui
+// cite FUN_140d580d0 ou FUN_142ba78dc appelle l un de ces deux lecteurs.
+
+// largeurQueueMinuteur : la queue de FUN_1407f0354 (`+0x2c += 5`).
+const largeurQueueMinuteur uint = 5
+
+// Minuteur porte les quanta bruts lus par FUN_140d580d0 (et le troisieme de FUN_142ba78dc).
+type Minuteur struct {
+	A, B  uint64 // les deux reels quantifies sur n bits, dans l ordre du flux
+	Queue uint64 // l octet de FUN_1407f0354, R(5)
+	C     uint64 // le troisieme reel de FUN_142ba78dc ; 0 pour FUN_140d580d0
+}
+
+// lireMinuteur140d580d0 lit FUN_140d580d0 sur n bits : R(n) + R(n) + R(5).
+func lireMinuteur140d580d0(br *Lecteur, n uint) Minuteur {
+	a := br.ReadBits(n)
+	b := br.ReadBits(n)
+	return Minuteur{A: a, B: b, Queue: br.ReadBits(largeurQueueMinuteur)}
+}
+
+// lireMinuteur142ba78dc lit FUN_142ba78dc sur n bits : FUN_140d580d0 puis R(n).
+func lireMinuteur142ba78dc(br *Lecteur, n uint) Minuteur {
+	m := lireMinuteur140d580d0(br, n)
+	m.C = br.ReadBits(n)
+	return m
+}

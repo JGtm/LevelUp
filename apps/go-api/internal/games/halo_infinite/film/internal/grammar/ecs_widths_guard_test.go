@@ -99,8 +99,18 @@ const ecsProbeBytes = 512
 //
 // Les quatre autres ports du lot (`ti=47 i2`, `ti=5 i22` et `i24`, `ti=40 i34`) ont une largeur
 // GARDEE par le flux : leur colonne `bits_typ` n est pas un entier et reste hors des deux comptes.
+// 2026-10-02 (lot L3a de la campagne de grammaire) : 123 -> 130 largeurs FIXES, 66 gardees
+// INCHANGEES. SEPT lignes neuves entrant PAR LE HAUT depuis `non_porte`
+// (`components_moteur_de_partie.go`), aucune ligne existante ne change de categorie :
+//
+//	ti=0/1/2 i11 game-engine-soft-ceilings-component    R(128)        128
+//	ti=0/2   i16 scenario-intro-component               R(7) + R(1)     8
+//	ti=0/2   i17 matchflow-isplaying-flags-component    R(8)            8
+//
+// `i13`, `i14` et `i15` ont une largeur gardee par le flux (compte, niveau et portes, masque) : leur
+// colonne `bits_typ` n est pas un entier et reste hors des deux comptes.
 const (
-	ecsLargeursFixes   = 123
+	ecsLargeursFixes   = 130
 	ecsLargeursGardees = 66
 )
 

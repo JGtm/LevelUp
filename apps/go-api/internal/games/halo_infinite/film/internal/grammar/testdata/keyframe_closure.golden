@@ -166,7 +166,13 @@
 #     0 -> 104/104, e5adf7b2 0 -> 80/80, bcb6d393 0 -> 330/331, fb1a1a72 0 -> 209/209.
 #     Le portage unique de `FUN_14076e524` ne bouge aucune autre ligne ; ses trois sites qui
 #     faisaient baisser ti=38 / ti=42 restent en exceptions datees. 0 ligne `fermes` ne descend.
-a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
+#   2026-10-02 lot L3a de la campagne de grammaire : LA FIN DU MOTEUR DE PARTIE, LUE DANS LE JEU
+#     (`ti=0/1/2` i11 a i17, `components_moteur_de_partie.go`). ti=2 ferme ENTIEREMENT sur les six
+#     builds recents : 60ae07c4 0 -> 30/30, 11de8353 0 -> 16/16, 111fa685 0 -> 14/14, e5adf7b2
+#     0 -> 11/11, bcb6d393 0 -> 19/19, fb1a1a72 0 -> 12/12. a521164d (HI_1_4_1) reste 0/11 sans
+#     bloquant nomme (un bit de trop des vieux builds, hors lot) ; ti=1 reste 0/1 sur 60ae07c4 et
+#     fb1a1a72, sans bloquant nomme (non instruit). 0 ligne `fermes` ne descend.
+a521164d	ti=2	0	11	
 a521164d	ti=4	10	10	
 a521164d	ti=5	352	352	
 a521164d	ti=6	0	528	
@@ -196,8 +202,8 @@ a521164d	ti=42	24	698
 a521164d	ti=43	0	1559	i19 device-position-animation-name-component
 a521164d	ti=45	0	11	i0 matchflow-sequence-data-component
 a521164d	ti=47	249	262	
-60ae07c4	ti=1	0	1	i11 game-engine-soft-ceilings-component
-60ae07c4	ti=2	0	30	i11 game-engine-soft-ceilings-component
+60ae07c4	ti=1	0	1	
+60ae07c4	ti=2	30	30	
 60ae07c4	ti=4	21	29	
 60ae07c4	ti=5	960	960	
 60ae07c4	ti=6	1438	1439	
@@ -228,7 +234,7 @@ a521164d	ti=47	249	262
 60ae07c4	ti=43	0	569	i19 device-position-animation-name-component
 60ae07c4	ti=45	0	30	i0 matchflow-sequence-data-component
 60ae07c4	ti=47	16	240	
-11de8353	ti=2	0	16	i11 game-engine-soft-ceilings-component
+11de8353	ti=2	16	16	
 11de8353	ti=4	13	14	
 11de8353	ti=5	512	512	
 11de8353	ti=6	764	766	
@@ -260,7 +266,7 @@ a521164d	ti=47	249	262
 11de8353	ti=43	0	380	i19 device-position-animation-name-component
 11de8353	ti=45	0	16	i0 matchflow-sequence-data-component
 11de8353	ti=47	379	393	
-111fa685	ti=2	0	14	i11 game-engine-soft-ceilings-component
+111fa685	ti=2	14	14	
 111fa685	ti=4	0	13	
 111fa685	ti=5	448	448	
 111fa685	ti=6	670	671	
@@ -290,7 +296,7 @@ a521164d	ti=47	249	262
 111fa685	ti=43	0	260	i19 device-position-animation-name-component
 111fa685	ti=45	0	14	i0 matchflow-sequence-data-component
 111fa685	ti=47	335	336	
-e5adf7b2	ti=2	0	11	i11 game-engine-soft-ceilings-component
+e5adf7b2	ti=2	11	11	
 e5adf7b2	ti=4	10	10	
 e5adf7b2	ti=5	352	352	
 e5adf7b2	ti=6	528	528	
@@ -321,7 +327,7 @@ e5adf7b2	ti=42	13	187
 e5adf7b2	ti=43	0	414	i19 device-position-animation-name-component
 e5adf7b2	ti=45	0	11	i0 matchflow-sequence-data-component
 e5adf7b2	ti=47	246	261	
-bcb6d393	ti=2	0	19	i11 game-engine-soft-ceilings-component
+bcb6d393	ti=2	19	19	
 bcb6d393	ti=3	0	1	i0 low-frequency
 bcb6d393	ti=4	18	18	
 bcb6d393	ti=5	608	608	
@@ -351,8 +357,8 @@ bcb6d393	ti=42	5	445
 bcb6d393	ti=43	0	626	i19 device-position-animation-name-component
 bcb6d393	ti=45	0	19	i0 matchflow-sequence-data-component
 bcb6d393	ti=47	129	152	
-fb1a1a72	ti=1	0	1	i11 game-engine-soft-ceilings-component
-fb1a1a72	ti=2	0	12	i11 game-engine-soft-ceilings-component
+fb1a1a72	ti=1	0	1	
+fb1a1a72	ti=2	12	12	
 fb1a1a72	ti=3	0	26	i0 low-frequency
 fb1a1a72	ti=4	0	11	
 fb1a1a72	ti=5	384	384	

@@ -92,13 +92,14 @@ func (o *Observation) publishPlayerState(f PlayerStateField, present bool, value
 	o.PlayerStateHook(f, values, present)
 }
 
-// consumePlayerSoftKillTimer porte ti=5 i2 (FUN_140d580a8 -> FUN_140d580d0) : 3 x R(5).
+// consumePlayerSoftKillTimer porte ti=5 i2 (FUN_140d580a8 -> FUN_140d580d0, n = 5) : 3 x R(5).
 func consumePlayerSoftKillTimer(br *Lecteur) {
-	a := br.ReadBits(5)
-	b := br.ReadBits(5)
-	c := br.ReadBits(5)
-	br.obs.publishPlayerState(PlayerSoftKill, true, a, b, c)
+	m := lireMinuteur140d580d0(br, largeurMinuteurSoftKill)
+	br.obs.publishPlayerState(PlayerSoftKill, true, m.A, m.B, m.Queue)
 }
+
+// largeurMinuteurSoftKill : le n que FUN_140d580a8 passe a FUN_140d580d0.
+const largeurMinuteurSoftKill uint = 5
 
 // consumePlayerTargetTracking porte ti=5 i3 (FUN_142f044f0) : R(1)+R(1).
 func consumePlayerTargetTracking(br *Lecteur) {

@@ -1,0 +1,70 @@
+package grammar
+
+// lecteur_minuteur_guard_test.go — LE GARDE-RAIL DU LECTEUR DE MINUTEUR (regle des deux copies,
+// CLAUDE.md n. 6). La sequence de FUN_140d580d0 — deux lectures de n bits puis la queue R(5) — a
+// vecu en ligne dans cinq composants ; elle n existe plus qu une fois, dans
+// `lecteur_minuteur.go`. Ce test interdit qu elle revienne ailleurs dans la production du paquet,
+// ecrite en ligne ou sous la forme d un saut de 2n + 5 bits.
+
+import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+// lectureMinuteurLitteral : deux `ReadBits` du meme argument sur deux lignes consecutives, puis
+// un `ReadBits(5)` sur la ligne suivante. Les groupes capturent les deux arguments ; l egalite se
+// verifie a part (RE2 n a pas de reference arriere).
+var lectureMinuteurLitteral = regexp.MustCompile(
+	`ReadBits\(([A-Za-z0-9_]+)\)[^\n]*\n[^\n]*ReadBits\(([A-Za-z0-9_]+)\)[^\n]*\n[^\n]*ReadBits\((5|largeurQueueMinuteur)\)`)
+
+// sautMinuteurLitteral : le saut de la forme 2n + 5 a n = 16 (37 bits) et de la forme
+// 3n + 5 a n = 16 (53 bits). Le saut de 15 bits n est pas interdit : `consumeDevicePosition` le
+// fait pour R(14) + R(1), une autre forme.
+var sautMinuteurLitteral = regexp.MustCompile(`Skip\((37|53)\)`)
+
+// TestLecteurDeMinuteurUnique interdit les copies hors du fichier hote.
+//
+// EXCLUSIONS : les `_test.go` (vecteurs et instruments de mesure, hors production). Le fichier hote
+// doit porter la sequence exactement une fois, sans quoi le garde-rail garde un fantome.
+func TestLecteurDeMinuteurUnique(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatalf("glob : %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("aucun fichier Go vu : le garde-rail ne garde rien")
+	}
+	hote := 0
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		data, err := os.ReadFile(f) //nolint:gosec // fichiers du paquet lui-meme
+		if err != nil {
+			t.Fatalf("lecture de %s : %v", f, err)
+		}
+		copies := 0
+		for _, m := range lectureMinuteurLitteral.FindAllSubmatch(data, -1) {
+			if string(m[1]) == string(m[2]) {
+				copies++
+			}
+		}
+		sauts := len(sautMinuteurLitteral.FindAll(data, -1))
+		if f == "lecteur_minuteur.go" {
+			hote = copies
+			continue
+		}
+		if copies > 0 || sauts > 0 {
+			t.Errorf("%s : %d lecture(s) en ligne et %d saut(s) de la forme de FUN_140d580d0 — "+
+				"appeler lireMinuteur140d580d0 / lireMinuteur142ba78dc (lecteur_minuteur.go)",
+				f, copies, sauts)
+		}
+	}
+	if hote != 1 {
+		t.Errorf("lecteur_minuteur.go porte %d fois la sequence de FUN_140d580d0, 1 attendue — "+
+			"deplacer le garde-rail avec le lecteur", hote)
+	}
+}
