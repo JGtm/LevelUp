@@ -125,6 +125,19 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
 
 - 2026-10-01 (utilisateur) : résidu de film dense rouvert ; campagne bornée commençant par l'outil de
   mesure ; worktree dédié ; ultracode autorisé.
+- 2026-10-02 (utilisateur, questionnaire, recommandations retenues) — décisions FERMES :
+  - **D-RI** : ordre « composants, naissances, RI » : après la fusion de J12, vague 1 = lots de
+    composants + une recuisson ; références re-figées ; vague 2 = LU (unification des localisateurs,
+    zéro différence) puis L1 et L7 + une recuisson ; ensuite seulement l'étape 1 de la représentation
+    intermédiaire (§6.3, D-RI). Remplace l'ordre « marcheur avant la campagne » de l'analyse.
+  - **D-VEH** : oui, tous : `ti=43` en vague 1 ; `ti=40` et l'octet `+0x818` en vague 1 dès que
+    leurs prérequis sont levés (table châssis -> type de physique, D5).
+  - **D2** : les fermetures factices sont EXCLUES de la mesure : fermé = reste du paquet nul ET aucun
+    invariant de l'écrivain violé (lot L0, qui touche l'outil et un fichier lu par la publication).
+  - **D1** : le seuil de 95 % devient un INDICATEUR publié à chaque vague (records utiles,
+    dénominateur fixe, sans factices), plus un déclencheur ; la RI démarre selon l'ordre D-RI.
+  - Restent ouvertes : D3 à D11 (à poser au moment des lots qu'elles concernent) et le GO daté de
+    chaque lot ; rien ne se fusionne avant J12.
 
 ## 4. Journal
 
@@ -420,6 +433,25 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
   `campagne_bis2_lecteurs_research_test.go`) ; plus grand fichier de la campagne relevé par `wc -l` :
   480 lignes. `go test ./internal/archlint/` n'est **pas** rejoué dans ce document : item ouvert du
   gate de phase 1.
+
+- D-67 **Signature du localisateur figée sur le slot 123** (2026-10-02, transmis par la session du
+  chantier de suite d'audit ; enquête `.ai/V7.5/film_re/ENQUETE_SCAN_SEPTEMBRE_2026-10-02.md` sur
+  `origin/feat/suite-audit-decodeur` @ `90014fe79`, non vérifiée ici). Après la vague J11.4, 19,1 %
+  des kills de septembre sont servis par le `scan` de killsource, dont 85,3 % dans 19 matchs à
+  objectif porté unique (Oddball, One Bomb, One Flag, une variante Squad Battle). Cause racine : le
+  localisateur des paquets à événements (`marchLocateStrict` et sa copie dans
+  `facts/killsource/walk.go`) cherche un delta « high-frequency » de 35 bits sur le SEUL slot 123,
+  alors que les images-clés déclarent d'autres objets de cet archétype (124, 126 à 129) qui portent
+  le delta dans ces modes ; le paquet n'est pas localisé et ses morts tombent au repli. Correctif
+  proposé par l'enquête : accepter tout slot lié à cet archétype (lu au registre du film), ordre
+  « slot 123 strict -> autre slot high-frequency -> repli largeur libre », sur LES DEUX sites ;
+  mesuré 362 / 403 kills `scan` rendus à la marche sur trois films. Seconde cause (Banished
+  Narrows) : objet transitoire né entre deux images-clés, liaison non gardée = la région (iii) /
+  `ti=3` de cette campagne (lot L8). Annexe : morts de bot toujours étiquetées `scan`.
+  **Lien avec la campagne** : c'est très probablement une part de la région (ii) « paquets à
+  événements non localisés » (lot L1b, R-L1). Le correctif se poserait UNE fois dans le localisateur
+  unifié par LU (vague 2), ou juste après LU. **Décision utilisateur attendue** : que cette campagne
+  le prenne (la session de suite d'audit le propose et le soumet à l'utilisateur).
 
 ## 6. Phase 2 — lots correctifs (écrits à l'étape 5, révisés le 2026-10-02)
 
