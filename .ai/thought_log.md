@@ -114119,3 +114119,21 @@ efficaces sur les tâches cadrées, à éviter quand un obstacle impose un arbit
 `feat/v75`, CI ; prévenir la campagne de grammaire ; vérification visuelle de l'utilisateur.
 Reports : `.ai/REGISTRE_REPORTS.md`, section « Reports du plan de suite d'audit du
 décodeur ».
+
+## [2026-10-02] Registre des reports — déplacé à la racine de `.ai/` et nettoyé — Complété
+
+**Décision technique principale** : le registre passe de `.ai/V7.5/REGISTRE_REPORTS.md` à
+`.ai/REGISTRE_REPORTS.md` (déplacement voulu par l'utilisateur : il sert au-delà de v7.5) ; les
+lignes déjà traitées sont retirées (git en garde l'historique), les lignes douteuses (fermeture
+partielle, « reste », `[!]`, contradiction entre cellules) sont gardées. Les 162 citations du
+chemin dans 103 fichiers sont réécrites (commentaires Go et documents seulement, aucune ligne
+de code Go hors commentaire modifiée).
+
+**Résultats observés** : 672 → 546 lignes (127 retirées : 76 dans la table principale, 2 R2-V,
+48 dans l'item 4 phase 1.3) ; chaque ligne retirée porte un marqueur de clôture (CLOS, TRAITÉ,
+FAIT, FERMÉ, RETIRÉE, SUPERSEDE, LEVÉ, SOLDÉ, VERDICT RENDU...) vérifié par échantillonnage ;
+ratchets `archlint` des chemins cités verts.
+
+**Conclusion / prochaine étape** : aucune. Les numéros de ligne cités vers le registre dans
+d'anciens documents sont désormais approximatifs (laissés tels quels, les sections et libellés
+restent cherchables).
