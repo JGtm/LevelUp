@@ -4,7 +4,7 @@ This annex holds, verbatim, the sections of [ADR 0034](0034-film-decoder-profile
 that recorded the state of the tree at the closures of milestones M2, M3 and M4 of
 `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, and the corrections found on the tree during that
 effort. They were moved out of the ADR on 2026-09-30 (J12.5 of
-`.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) so the ADR keeps its decisions and a short
+`.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) so the ADR keeps its decisions and a short
 current state. **This is history**: each section describes the tree on its date, not today. For
 the current state, read the "Current state" section of the ADR.
 

@@ -2,7 +2,7 @@
 
 > **Statut : SPÉCIFICATION DE CADRAGE d'un chantier FUTUR — rien n'est planifié ni lancé.**
 > Décidée par l'utilisateur le 2026-09-25 (DU-8 du plan
-> `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) : « tu prépares une spec pour la structure
+> `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`) : « tu prépares une spec pour la structure
 > intermédiaire ». Le chantier démarrera sur décision, quand son déclencheur (§9) sera mesuré par
 > la carte de fermeture (lot J4.0 du plan).
 >

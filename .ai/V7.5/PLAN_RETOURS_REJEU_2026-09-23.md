@@ -910,7 +910,7 @@ de `FireEvent` recensé à l'item M4b.1.
   et sous les sauts du numéro de tir ; LMG du Falcon : aucun document non BTB du parc n'en porte. Ghost
   de l'index 4 sur `8a485699` : fenêtre 745-1169 lue à 27 %, records `ti=38` (corps rigides) mal lus sur
   Launch Site → référence : jalon J6 du plan de suite de l'audit
-  (`.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, `baa0e4e14` de feat/v75). Énoncé d'origine : Gate G2 étendu (décision du 24/09) : par FAMILLE d'arme à tir continu — Ghost, canons de la Banshee,
+  (`.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, `baa0e4e14` de feat/v75). Énoncé d'origine : Gate G2 étendu (décision du 24/09) : par FAMILLE d'arme à tir continu — Ghost, canons de la Banshee,
   Chopper, LAAG, LMG du Falcon, LMG de la Wasp, Rayon de Sentinelle — rafales publiées là où le film
   les porte, cadence propre à chaque arme lue dans son tag.
 - [x] G1 — re-mesuré au code INTÉGRÉ (document publié, racine temporaire, 25/09) : une rafale dans les

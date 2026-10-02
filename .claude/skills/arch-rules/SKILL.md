@@ -110,7 +110,7 @@ Nommage : `1 verbe + 1 complément`. `computeKD` + `renderKD`, jamais `computeAn
 
 ## Commentaires — le code porte le contrat, l'histoire va ailleurs
 
-Décision DU-5 b du plan `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md` (2026-09-25).
+Décision DU-5 b du plan `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md` (2026-09-25).
 
 - **Le commentaire dit le contrat** de ce qu'il documente : ce que fait la déclaration, ses
   invariants, ses unités, ses cas limites, et POURQUOI (la contrainte qui l'impose). Il reste

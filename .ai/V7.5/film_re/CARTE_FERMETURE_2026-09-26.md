@@ -1,6 +1,6 @@
 # Carte de fermeture — mesure de référence (J4.0.5, 2026-09-26)
 
-> Plan : `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, lot J4.0.5. Instrument :
+> Plan : `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, lot J4.0.5. Instrument :
 > `film/research/cmd_fermeture` (tag `research`), bâti sur la branche `feat/suite-audit-decodeur`
 > à `371008278` (J1, J2, J3, J4.0). Base des deltas de J4.6, J5, J6, J10 et J11.3.
 

@@ -361,7 +361,7 @@ the difference is written here; the history of how each decision was reached is 
 
 Source: `.ai/AUDIT_DECODEUR_FILM_2026-09-24.md` (findings SRC-1, RA1-1, RA1-2, RA1-4 and
 architecture weakness 1), decisions DU-2 and DU-9 of
-`.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, milestone J3. No decode revision rose:
+`.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, milestone J3. No decode revision rose:
 `source.Rev`, `profile.Rev`, `grammar.Rev` keep their values and their fingerprints were re-frozen
 at constant revision (tooling); `SchemaVersion` went **71 -> 72** and the facts codec
 (`VersionCodecFaits`) **1 -> 2**, so every persisted facts file is refused on its prefix and
@@ -461,7 +461,7 @@ for used values).
 
 ## Amendment of 2026-09-26 (bis) — one scan stage for the identity bridge (audit follow-up, J4)
 
-Source: `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, decision DU-3 (option S, first half S1),
+Source: `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, decision DU-3 (option S, first half S1),
 finding RA1-3 and architecture weaknesses 3 and 5. No decode revision rose: the moves are pure and
 the fingerprints of `source`, `grammar`, `killsource` and `objectives` were re-frozen at constant
 revision. `IsolationDecoderRev` (the killsource collector's isolation facts) rose to

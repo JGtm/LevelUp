@@ -1342,6 +1342,19 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
     local (dont 29 à `killsource-2026-09-24`, 83 % de `scan`) : `backfill-killsource --online`
     à décider par l'utilisateur. TODO daté échu (`internal/api/handlers/json_huma_coverage_test.go`,
     `groups.go`, échéance 2026-10-01) qui fait rougir `TestNoExpiredTODO` en CI : hors plan.
+34. (2026-10-02, revue finale) Un record de génération 1 arrivé APRÈS qu'un corps de génération 2
+    a repris le slot reste accepté (`grammar/generations_vivantes.go:192-212`, même famille que
+    §8.29, antérieur au plan) : 70 records sur 29 slots de `1c4c63c2`, dont trois positions
+    publiées aberrantes possibles (slots 582, 689, 712).
+35. (2026-10-02, revue finale ronde 2, P2) Sur le chemin du sync, le pont par manche est résolu
+    pour une variante VIP (ou un CTF non reconnu comme film de drapeau) qui ne le lit pas : ses
+    replis sont comptés sans avoir rien décidé (`replay/porteurs_au_sync.go:166`) ; et le registre
+    d'identité du collecteur se construit sans compteur (`killcollector/placement_des_vies.go:126-134`,
+    `IdentityInput.Fallbacks` nil) : ses replis ne sont comptés que sur les variantes à porteur.
+36. (2026-10-02, revue finale) `--online` de `backfill-killsource` n'affiche ni `CarteNonResolue`
+    ni `UnknownKey` à son bilan ; le filtrage par carte du corpus ne s'interrompt pas sur Ctrl-C
+    (`ctxTravail`). Décision utilisateur du 2026-10-02 : les 379 matchs sans film local ne sont
+    PAS retéléchargés (lignes killsource d'anciennes révisions conservées).
 
 ---
 
@@ -1729,3 +1742,18 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   `TestAssautArmementGate` rouge AVANT le plan (§8.32). **Revue adversariale finale** (règle
   5 bis) lancée : quatre relecteurs aveugles (L1 ×2, justesse du décodeur, L3+L6), contrat
   `revue_finale_contrat.md`, périmètre fermé.
+- 2026-10-02 : **Revue adversariale finale (règle 5 bis)**, contrat écrit, périmètre fermé.
+  Ronde 1 : quatre relecteurs aveugles (L1 ×2, justesse du décodeur, L3+L6) — 0 P0 ; 5 P1
+  (backfill-killsource bloqué si `metadata.duckdb` illisible depuis J7 ; replis du sync non
+  versés ; cache de base du gate qui rangeait des faits d'une cuisson précédente ; couverture du
+  banc déclarée par préfixe ; réattribution par joueur invisible au banc) + 3 P2 (tests, commentaires
+  périmés) ; le correcteur a trouvé 4 points de la même classe (replis du statborg et du contexte
+  de film non versés au sync, même défaut de cache côté HEAD, `fmt.Printf` d'erreur) — tous corrigés,
+  chacun avec un test rouge avant / vert après et mutation (`feat/suite-audit-decodeur-revue`,
+  fusionnée `6dac1f548`). Ronde 2 (relecteur frais sur les seules corrections) : 0 P0, 0 P1,
+  2 P2 consignés (§8.35) ; convergence tenue. Justesse du décodeur : aucun défaut recevable,
+  14 conditions vérifiées. Décisions utilisateur du jour : TODO `groups.go` re-daté au
+  2027-01-01 et migration Huma inscrite AVANT la release (Notion) ; 379 matchs sans film non
+  retéléchargés ; correctif du slot 123 confié à la campagne de grammaire (lot LS, D-67).
+  **Plan CLOS** (déplacé sous `.ai/V7.5/`), reste : CI de la branche, fusion finale dans
+  `feat/v75`, vérification visuelle de l'utilisateur (J11.5) après fusion.

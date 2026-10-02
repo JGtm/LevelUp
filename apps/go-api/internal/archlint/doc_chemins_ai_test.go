@@ -1,7 +1,7 @@
 package archlint
 
 // doc_chemins_ai_test.go — deux ratchets de DOCUMENTATION sur tout le module (J12.5 du plan
-// `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, 2026-09-30).
+// `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, 2026-09-30).
 //
 // Un commentaire qui renvoie à un document ou à une commande est un contrat : le lecteur le
 // suit. L'audit du décodeur (`.ai/AUDIT_DECODEUR_FILM_2026-09-24.md`, faiblesse 11) comptait des
