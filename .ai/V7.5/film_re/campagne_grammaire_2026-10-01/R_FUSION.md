@@ -13,6 +13,35 @@ citee ; **suppose** = non verifie.
 
 ---
 
+## Corrections du 2026-10-02 (ajoutees apres coup ; le texte d'origine ci-dessous n'est pas reecrit)
+
+Sources : verdicts adverses du chantier fusion (`VERIFICATIONS_ADVERSES_R.md`, « Chantier fusion »),
+`CRITIQUE_COMPLETUDE_R.md` (points 12, 14, 16, 17) et `SURCOUCHE_UNIQUE.md`.
+
+1. **§3, « Fichiers de la campagne qui violent un ratchet de J12 »** : ce ne sont pas des violations
+   de ratchet mais des RUPTURES DE COMPILATION sous `-tags=research`, dues au changement d'API de
+   J12.4 (`profile.QuantRangeCEBiped` devenu un accesseur). Le pas CI de la base (`ci.yml:253`, vet
+   `research` du paquet `grammar`) les aurait deja vues.
+2. Les « 11 ratchets poses par J12 » sont 9 crees par J12 et 2 resserres
+   (`TestTriTotalAucunNouvelAppel`, `TestTriTotalTableNeFaitQueBaisser` datent de J10.1).
+3. L'empreinte `14b3a79d` et le `ok` de `TestGrammarRev` apres regeneration reposent sur la seule
+   sortie du chantier (retrouves depuis par la vraie fusion `f28a4a816`). Quatre pas n'ont aucun
+   journal conserve : `gofmt -l`, `go vet` sans tag, `archlint -skip TestNoExpiredTODO`, `-race
+   TestDeuxFilmsEnParallele` (rapportes, non contre-verifies).
+4. « Fichiers modifies : aucun » est faux a la lettre : le worktree jetable portait la fusion non
+   commitee dans l'index (1 453 chemins + le golden) et le patch des quatre sondes dans l'arbre.
+5. `r_fusion_commandes.tsv` ligne 17 : « 6 boucles » ; la note et la mesure en donnent **5**.
+6. D-F2 : un seul commentaire (`campagne_bis2_positions_research_test.go:13`) rendrait le ratchet
+   `TestCheminsAiCitesDansLeCodeExistent` rouge, pas deux. « Rouge sur toutes les branches »
+   (`TestNoExpiredTODO`) n'est verifie que pour trois tetes.
+7. **Surcouche (§6)** : `r_fusion_overlay_postj12/` etait bien post-J12, mais restait ROUGE sous le
+   tag commun `campagne_overlay` (sonde `r_veh_delta_research_test.go` sans ses crochets) ; cinq
+   surcouches sur six l'etaient. Ses trois fichiers sont identiques a l'octet a ceux de la surcouche
+   unique `surcouche_unique_postj12/`, qui la remplace.
+8. **D-F3 (equivalence apres J12)** : soldee pour la marche de reference (carte v2 identique a la
+   phase 1, en production et sous la surcouche unique) et pour ce que la surcouche unique a rejoue ;
+   supposee pour le reste (liste au PLAN §6.0, item « Equivalence des mesures apres J12 »).
+
 ## 1. Verdict en une ligne
 
 La fusion est saine a **un** golden pres (conflit attendu, resolu par la porte du depot) et a

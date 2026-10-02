@@ -114302,3 +114302,86 @@ Tout item non confirmé par un vérificateur est marqué « NON CONFIRMÉ » ave
 **Conclusion / prochaine étape** : décisions de l'utilisateur sur D12 à D17 (dénominateur
 consolidé, ordres de LS, lots neufs LM / LK / LP, scissions L3 et L4 et sortie de L1b, seuil de
 L1a, surcouche unique) ; puis surcouche unique post-J12 et R-COMB-2 avant le GO daté de la vague 1.
+
+## [2026-10-02] Campagne de grammaire : surcouche de mesure unique post-J12 (D17, D-100, critique D16) — Complété
+
+**Décision technique** : une seule surcouche, `campagne_grammaire_2026-10-01/surcouche_unique_postj12/`
+(7 fichiers + `overlay.json` + `delta/`), fusion à trois voies (base `fe18bf67c`, ours = tête
+post-J12, theirs = copie de chaque famille), crochets inertes par défaut ; le localisateur R-LS,
+jusqu'ici substitué sans condition par `r_loc_overlay/`, passe derrière `CAMPAGNE_RLOC_LS=1`.
+
+**Résultats observés** (mesuré, note `SURCOUCHE_UNIQUE.md`) :
+- `go vet -tags=research,campagne_overlay -overlay=<unique>` vert sur grammar, killsource,
+  cmd/killsource, cmd_fermeture ; avant, rouge avec 5 surcouches sur 6. Aucun tag propre requis.
+- Inertie : carte v2 (`cmd_fermeture -mode v2`, 20 films) identique en production et sous la
+  surcouche, et identique à la phase 1 (10 TSV) ; killsource identique à l'octet (3 films).
+- Rejouées à l'identique de leurs notes : R-COMB (`r_comb_configs.tsv`, 506 lignes), R-COMP
+  (4 TSV L3), R-VEH (`r_veh_delta.tsv`, `r_veh_ti40_variantes.tsv`), R-LS (carte `ls` 20/20,
+  voies killsource sur 3 films), BIS_2 (`mb2_ti43`, une colonne texte à ex aequo).
+- D-102 : l'édition `python3` de `r_veh_ti40_research_test.go` est juste (vet, gofmt, mesure à
+  l'octet) ; diff de l'édition impossible (aucune version antérieure conservée).
+- Gate : gofmt vide ; `go vet -tags=research ./...` rc=0 ; archlint ok.
+
+**Conclusion / prochaine étape** : toute mesure en surcouche part désormais de
+`surcouche_unique_postj12/overlay.json` ; anciennes surcouches et en-têtes de sondes à retirer ou
+mettre à jour (superviseur) ; R-COMB-2 peut être lancée sur cette surcouche.
+
+## [2026-10-02] Campagne de grammaire : R-COMB-2, tous les leviers ensemble sur la surcouche unique (critique R : A4, B5-B9, C10, C11, E21, E22) — Complété
+
+**Décision technique** : douze leviers mesurés ensemble (L8, L2, LM, L3a, L6a, L6b, L4a, LS ordre `ls2`, L1a
+causale en ligne, LP, L7 exact, L9 oracle dérivé), puis la combinaison privée d'un levier à la fois ;
+surcouche unique étendue de deux fichiers (`frame_infer.go` : bascule L7 ; `rcomb2_leviers.go` : leviers de
+composant pour `cmd/killsource`), inertie remesurée (carte v2 10 TSV, killsource 19/19 à l'octet).
+
+**Résultats observés** (mesuré, `R_COMB_2.md`, `r_comb2_tsv/`) :
+- L7 rejeté : −2 688 sains seul (9 films en baisse), −58 719 dans la combinaison ; combinaison retenue C11
+  (sans L7).
+- Indicateur (utiles sains / fixe consolidé recalculé, HI_1_13_0 3 073 267, corpus 7 758 290) sous C11 :
+  HI_1_13_0 65,4 → 93,8 % (92,3 % sans l'oracle L9) ; HI_1_8_0 95,2 % ; HI_1_11_0 90,6 ; HI_1_12_0 89,7 ;
+  HI_1_9_0 89,4 ; HI_1_10_0 81,5 ; corpus 33,2 → 77,0 %. Gate 2 de C11 tenu sur 21/21 films. Réserves : L9
+  oracle, L1a choisit par le juge, juge à trois invariants.
+- Marginales saines (corpus) : LM +109 844, L8 +37 199, LS +34 222, L1a +29 594, L2 +19 657, L3a +12 000,
+  L6a +8 261, L9 +6 429, L4a +4 440, L6b +1 751, LP +1 281. Gate 2 en défaut : L2 (`1c4c63c2` −916 sains en
+  marginal), L6b (3 films seul), L8 (1 requalifié), L4a (−11 utiles) ; `world-object-i0` infirmé.
+- Gate 3 killsource (19 témoins ; `1c4c63c2`, `81c02726` sans carte) : aucune valeur de mort changée par aucun
+  levier ; voies : LS 229, L6b 8 morts du scan à la marche ; LM, L1a, LP nuls par construction, L9 à mesurer
+  sur le lot.
+- B7 : sous L8, toutes les signatures (123 et high-frequency) tombent sur `ti=4` ; règle proposée : prédicat
+  par table de composant, pas par nom.
+- Écart : une commande `python3 --version` lancée par erreur (aucun script, aucun fichier).
+
+**Conclusion / prochaine étape** : ordre de vague proposé par contribution saine (R_COMB_2 §10) ; décisions
+utilisateur : D6 (LM), réparation de L2 sur HI_1_10_0 et de L6b avant leurs lots, sortie de L7, L0 avant L1a.
+
+## [2026-10-02] Campagne de grammaire : critique R (25 points) traitée dans les documents, avec la surcouche unique et R-COMB-2 — Complété (documents) ; décisions D18 à D22 en attente
+
+**Statut** : Complété pour les documents ; rien n'est commité ; aucune commande `go`, aucun fichier de
+production ni sonde modifiés ; `grammar.Rev` reste `grammar-2026-09-27.3`.
+
+**Décision technique principale** : les 25 points de `CRITIQUE_COMPLETUDE_R.md` sont traités dans le
+PLAN (§5 : D-66, D-67, D-71, D-79, D-93, D-94, D-100, D-102, D-103 annotés, découvertes neuves D-104 à
+D-114 ; §6.0 : règle « Gain » (bornes), dénominateur recalculé, gate 2 (juge de L0, requalifications),
+gate 3 mesuré par levier, gate 5 (`r_nais_marche`), items `[x]` / `[~]` / `[!]`, rejoué / supposé après
+J12, montée de `grammar.Rev` par L0 ; §6.1 réécrit en sains par contribution marginale ; §6.2 par lot ;
+§6.3 : D1, D2, D-RI, D-VEH marquées TRANCHÉES, D18 à D22 neuves, liste courte ; §6.4 périmé ; §6.5.1 à
+§6.5.5 corrigés, §6.5.6 neuf = table de traitement), dans le RAPPORT (§8 annoté, §9 neuf) et dans les
+six notes `R_*.md` (section « Corrections du 2026-10-02 » en tête, alignée sur
+`VERIFICATIONS_ADVERSES_R.md`).
+
+**Résultats observés** :
+- L0 : la définition de la fermeture (`LectureVueC.Fermee`) est lue par la cuisson
+  (`debut_de_liste.go:157`, `tir_continu.go:115`, établi par lecture) : L0 change une sortie, monte
+  `grammar.Rev`, passe en tête de la vague 1 (amendement D18).
+- Ordre en sains marginaux (R-COMB-2, C11) : LM +109 844, L8 +37 199, LS +34 222, L1a +29 594, L2
+  +19 657, L3a +12 000, L6a +8 261, L9 +6 429, L4a +4 440, L6b +1 751, LP +1 281 ; L7 rejeté.
+- Pas prêts au gate par film : L2, L6b ; à instruire : L8, L4a ; extension `world-object-i0` retirée.
+- Formats 24-25 sous LM seul, en sains (awk sur `r_comb2_configs.tsv`) : 49,6 à 79,9 % par film (le
+  « 72 à 84 % » était brut).
+- Écart : un fichier temporaire écrit une fois dans `/tmp` (réécriture d'une table du plan), effacé
+  aussitôt ; à éviter (scratchpad seulement).
+
+**Conclusion / prochaine étape** : décisions utilisateur D18 (amendement de D-RI), D14, D6, D19, D22
+(puis D12, D13, D15, D16, D20, D21, D10 / D17) ; au superviseur : retrait des six anciennes surcouches
+et des en-têtes de sondes (item `[!]` du §6.0), entrée du journal §4 du plan pour l'intégration des
+R-*, la surcouche unique et R-COMB-2 ; mesures préalables proposées au §6.0 (sous-groupes de L0.6, L2
+sur HI_1_10_0, L6b, R-COMB-2 sous le juge de L0).

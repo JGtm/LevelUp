@@ -15,6 +15,45 @@
 >   exclues. « Sain » ne veut pas dire « juste ».
 > - **brut** : tous les paquets fermés, factices compris.
 
+## Corrections du 2026-10-02 (ajoutées après coup ; le texte d'origine ci-dessous n'est pas réécrit)
+
+Sources : verdict adverse du chantier comb (`VERIFICATIONS_ADVERSES_R.md`, « Chantier comb »),
+`CRITIQUE_COMPLETUDE_R.md` (points 10, 11, 21), `SURCOUCHE_UNIQUE.md` §4.5 et `R_COMB_2.md`.
+
+1. **Phrase « la phase 2 seule n'atteindra pas 95 % » (§7)** — NON CONFIRMÉE pour sa partie estimée
+   (vérificateur) : « au plus ~55 700 records, ~90 % » n'est pas une borne (5,95 records par paquet
+   est une densité MOYENNE ; les paquets fermés en portent 9,09, soit ~85 100 records, ~91 % ; seule
+   borne stricte : 99,5 %) ; L6a hors Live Fire était oublié. Puis **réfutée par la mesure**
+   (R-COMB-2) : sous onze leviers (C11), HI_1_13_0 atteint 93,8 % (92,3 % sans l'oracle L9) et
+   HI_1_8_0 95,2 %, sur le fixe consolidé.
+2. « L1 vaut +24 916 paquets bruts dans la combinaison » ne vaut que pour l'ordre D-RI ; avec L1
+   dérivé sans L9 : +26 620 (vérificateur).
+3. Le mécanisme du recouvrement L1 × L2 (naissances ratées parce que `ti=43` n'est pas porté) est
+   ESTIMÉ ; seul le recouvrement des gains est mesuré (vérificateur). R-COMB-2 mesure l'inverse avec
+   un L1a réel : interactions positives (§5.2 de `R_COMB_2.md`).
+4. Gate 2 : le critère du plan est NET par film, et la combinaison le tient ; « aucune perte saine »
+   (pertes brutes) est une information, pas le critère (vérificateur).
+5. §4, L6b : « le gain vient surtout de HI_1_11_0 (+322) » est trompeur ; +322 est la marginale,
+   l'interaction de HI_1_11_0 n'est que de +29 ; le surplus vient de HI_1_8_0 (+218) et de HI_1_13_0
+   (+176) (vérificateur).
+6. `rcaDerivation` exclut du maximum les marches de diagnostic « L1(communes)+L9 » (+24 utiles sur
+   `4f77afc1`, effet < 0,001 point) ; « la marche L9 + liaisons communes rend EXACTEMENT L1 dérivé
+   sans L9 + L9 » est faux sur les utiles lus (+24) et le hors cadre (+8) (vérificateur).
+7. RC-6 « une seule liaison d'oracle de plus » (410 contre 409) est déduit des comptes ; les oracles
+   ne sont pas comparés liaison par liaison (vérificateur).
+8. **Dénominateur** : le fixe de cette note (HI_1_13_0 2 880 403) est remplacé par le fixe consolidé
+   recalculé par R-COMB-2 selon sa règle (HI_1_13_0 3 073 267, corpus 7 758 290). Sur ce fixe, sous
+   les six leviers de cette note, seuls `f75e7053` (98,3 %) et `81c02726` (97,5 %) dépassent 95 % ;
+   `c75f33b8` tombe à 87,7 % (RC-4, critique point 11).
+9. **Vocabulaire** : les « bornes » de cette note (oracle L1, L9) sont des gains d'oracle dans le
+   monde de la référence, pas des majorants (critique point 21, `R_COMB_2.md` §8).
+10. **Rejoué après J12** : `TestRComb` (24 configurations, 21 films, 506 lignes) rend
+    `r_comb_configs.tsv` à l'octet sous la surcouche unique post-J12 ; `TestRCombDerivation` n'est
+    pas rejoué (supposé identique). La surcouche `r_comb_overlay/` de cette note est remplacée par
+    `surcouche_unique_postj12/` (commande : `SURCOUCHE_UNIQUE.md` §7).
+11. Gate de la note : `archlint` était rouge à `fe18bf67c` (`TestNoExpiredTODO`, échéance hors
+    campagne), soldé depuis par `feat/v75`.
+
 ## 0. Réponse
 
 **L'indicateur de la spec** : records utiles fermés dans des paquets sains, sur le dénominateur

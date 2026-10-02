@@ -11,6 +11,51 @@
 > Pourcentages sur dénominateur **fixe** (maximum des records utiles lus par film, sur toutes les
 > marches mesurées de la campagne ET de ce chantier, §6.0 du plan) et **variable**.
 
+## Corrections du 2026-10-02 (ajoutées après coup ; le texte d'origine ci-dessous n'est pas réécrit)
+
+Sources : verdicts adverses du chantier loc (`VERIFICATIONS_ADVERSES_R.md`, « Chantier loc »),
+`CRITIQUE_COMPLETUDE_R.md` (points 7, 8, 10, 14, 21), `SURCOUCHE_UNIQUE.md` §1.3, §4.1, §4.6 et
+`R_COMB_2.md` §6-§7.
+
+1. **« 99,5 % des signatures acceptées »** (§2.2) : recalculé à 64 950 / 65 342 = **99,4 %** pour
+   `ls` (99,78 % pour `ls2`).
+2. Liste des slots liés incomplète : il manque 3072 (`0797ce72`, 2 chunks), 6528 (`1c4c63c2`,
+   6 chunks) et 4 (`e60aaf06`, 1 chunk) ; `e60aaf06` est rangé à tort parmi les « 123 seul ». Les
+   comptes sont pris après `lierLeChunkAuMonde` sur toutes les images-clés du chunk, pas « au début de
+   chunk ».
+3. **Repli à largeur libre** : « −16 673 paquets sains » est la perte BRUTE de sains ; le solde net
+   est 276 316 → 262 175, soit **−14 141** (même correction pour R-LOC-5 et §5).
+4. **Pourcentages « variables »** : ce sont des fermés BRUTS rapportés aux utiles lus ; en sains,
+   HI_1_13_0 80,3 % → 82,9 %.
+5. L'ordre retenu (`ls2`) n'est mesuré que par la sonde ; la copie de recherche de `cmd_fermeture`
+   réalise l'ordre `ls`. Rejoué depuis sous la surcouche unique (bascule `CAMPAGNE_RLOC_LS=1`) : carte
+   `ls` identique 20 / 20 (26 421 non localisés, 296 755 fermés).
+6. **Killsource** : « aucune valeur publiée ne change » est inexact : la voie (`read_path`) est
+   PERSISTÉE (`internal/sync/killcollector/collector_batch.go:72`) ; montée de `killsource.Rev` et
+   backfill killsource DUS. Tag, statut, crédit et origine ne changent pas. Pour `51ebbc0f`, seule
+   l'égalité des comptes et des voies est vérifiable.
+7. **Films de killsource (critique point 8)** : les 28 films sont les 19 témoins + les 9 de l'enquête ;
+   `1c4c63c2` (corpus) et `81c02726` en sont exclus faute de carte lisible. R-COMB-2 retrouve 229 morts
+   du `scan` à la marche sur les 19 témoins. Rejoué sous la surcouche unique sur 3 films de l'enquête :
+   voies identiques à `rloc_killsource_comparaison.tsv` ; les 25 autres non rejoués.
+8. **Signature par NOM (critique point 7)** : la sonde identifie l'archétype par le nom
+   `high-frequency` (`rlocArchetypesHF`), contre la règle de R-HOM. Mesuré par R-COMB-2 : sous L8,
+   toutes les signatures tombent sur `ti=4`, aucune sur `ti=3` ; le prédicat du lot s'écrira par TABLE
+   de composant.
+9. **Surcouche** : `r_loc_overlay/` n'était pas inerte : elle remplaçait sans condition le
+   localisateur des deux sites. Dans la surcouche unique, la règle passe derrière
+   `CAMPAGNE_RLOC_LS=1`.
+10. **Vue A (§4)** : les statistiques de genres et l'oracle portent sur la région `ls` (26 421), pas
+    `ls2` (26 427) ; « HI_1_13_0 de 73,8 % à au plus 75,8 % » mélange deux bases (+1,8 point sur `ls`,
+    non mesuré sur `ls2`) ; 16 066 + 10 350 = 26 416, pas 26 421 ; la « borne saine » de l'oracle
+    n'est pas un majorant (45 % de gains factices) ; « table des gestionnaires construite à
+    l'exécution » = supposé fort ; `FUN_140bbd474` a une seconde table (`DAT_145225910`) non recopiée.
+11. **D-79 / « bornes » (critique point 21)** : LS dépasse l'oracle (ii) de BIS_1 ; en combinaison
+    (C11, R-COMB-2), LS rend +34 222 sains marginaux. Un oracle en référence n'est pas une borne.
+12. **Constaté par la surcouche unique, non instruit** : sous LS, l'alerte de santé « dead-states à tag
+    `jpt!` hors du roster » de `6b0e6f0f` passe de 10 à 42 ; cette note ne la mentionne pas.
+13. Gate de la note : `archlint` rouge à `fe18bf67c` (`TestNoExpiredTODO`, hors chantier), soldé depuis.
+
 ## 0. En bref
 
 1. **D-67 vérifié sur pièces.** Les deux localisateurs (`grammar.marchLocateStrict` et la copie

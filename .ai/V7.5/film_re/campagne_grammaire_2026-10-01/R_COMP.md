@@ -20,6 +20,46 @@
 
 ---
 
+## Corrections du 2026-10-02 (ajoutées après coup ; le texte d'origine ci-dessous n'est pas réécrit)
+
+Sources : verdicts adverses du chantier comp (`VERIFICATIONS_ADVERSES_R.md`, « Chantier comp »),
+`CRITIQUE_COMPLETUDE_R.md` (points 6, 9, 14, 24), `SURCOUCHE_UNIQUE.md` §4.3 et `R_COMB_2.md`.
+
+1. **R-L3, « un bit de trop dans `ti=2 i4` » (§0 et §2.2) — NON CONFIRMÉ.** La note se contredit :
+   son propre TSV (`r_comp_l3_decalages.tsv`) montre qu'un décalage de −1 à l'entrée de `i5`, `i6`,
+   `i7`, `i8`, `i9` OU `i10` ferme 49 / 49 et 19 / 19, comme « `i4` −1 ». Établi : un bit de trop
+   ENTRE le début de `i4` et l'entrée de `i10` ; `i4` est le candidat SUPPOSÉ (porte de
+   `FUN_1407f2058`), non discriminé de `i5`..`i9`, jamais testés en lecture alternative. version-31 ne
+   discrimine même pas `i0`..`i4`. Une correction posée sur `i4` fermerait les records en rendant une
+   valeur fausse si le bit est ailleurs (L3b attend la discrimination).
+2. Dénominateur variable : il baisse sur **5** films (et non 4). Le témoin `i15 −1` ne « gagne ≤ 36 »
+   pas partout : sur `1c4c63c2`, +399 paquets bruts (229 contredits), soit +130 sains.
+3. **L3a « 0 sain perdu » (critique point 9)** : faux à la lettre. Dans le contexte de cette note,
+   3 924 gagnés − 316 contredits = 3 608 gains sains pour un net de +3 575 : 33 sains requalifiés
+   contredits (calcul awk de la critique) ; R-COMB-2 (Live Fire en production) en compte 48
+   (`1c4c63c2` 41), aucun devenu non fermé. Formule juste : « 0 film en baisse nette ; sains
+   requalifiés contredits, aucun perdu non fermé ». En combinaison : +12 000 sains marginaux.
+4. **R-P3** : l'oracle « archétype forcé » prouve une liaison fausse vers une UNITÉ, pas vers un
+   bipède (forcer `ti=40` fait au moins aussi bien, G1 366, 0 perdu) ; « bipède » repose sur les
+   déclarations d'image-clé et de bloc des mêmes slots. G4 → 0 exige la COMBINAISON « `world-object`
+   au jeu + lecture par index » (chacune seule laisse G4 à 157). Le cas (a) des chroniques
+   (`bf15f7ab` slot 553) ressemble à une erreur de la marche d'image-clé par voisinage. G2 « autres
+   ≤ 19 » : `ti=37` tous composants fait 21.
+5. **Extension de L6a au site `ti=41 i0` (§5, critique point 6)** : mesurée ici sur les deux seuls
+   films Live Fire, alors que la lecture « au jeu » de `world-object-i0` est globale. BIS_4 et R-COMB-2
+   la mesurent sur tout le corpus : seule, 6 films en baisse ; dans C11, −494 sains sur `1c4c63c2`.
+   L'extension est RETIRÉE du lot L6a (PLAN D-110).
+6. **LP** (désaveu hors bloc) en combinaison (R-COMB-2) : seul +694 sains, marginal +1 281 / +23 474
+   utiles sains, gate 2 tenu ; gate 3 sans objet (killsource ne lit pas le bloc de type 1).
+7. R-HOM : selon le build, `simulation-state` est à `ti=35 i59/i60` et `ti=40 i42/i43` (pas seulement
+   `i60/i61` et `i43/i44`). Les sains de BIS_3 cités au §3.3 ne sont pas rejugés par le juge ici.
+8. **Rejoué après J12** : `TestRCompL3ImagesCles` et `TestRCompL3Delta` rendent leurs 4 TSV à l'octet
+   sous la surcouche unique ; `TestRCompP3` et `TestRCompP3LiveFire` ne sont pas rejoués (supposés
+   identiques). `r_comp_overlay/` est remplacée par `surcouche_unique_postj12/`.
+9. DC-9 (appel accidentel de `python3`, aucun fichier) : écart consigné au PLAN D-102 ; décision au
+   PLAN §6.3 D21. Gate de la note : `archlint` rouge à `fe18bf67c` (`TestNoExpiredTODO`, hors
+   chantier), tenu seulement sous `-skip` ; soldé depuis.
+
 ## 0. Verdicts
 
 | Recherche | Statut | Résumé |

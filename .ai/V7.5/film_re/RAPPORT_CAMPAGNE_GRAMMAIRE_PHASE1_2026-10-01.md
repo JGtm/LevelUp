@@ -483,6 +483,11 @@ En résumé, trois points structurent la suite :
 Ajouté le 2026-10-02 ; le reste de ce rapport n'est pas réécrit. Le détail, les verdicts adverses et
 les renvois aux notes sont au PLAN §6.5 ; les découvertes neuves au PLAN §5 (D-68 à D-103).
 
+> **Corrigé le même jour** d'après `CRITIQUE_COMPLETUDE_R.md` (25 points), la surcouche unique et
+> R-COMB-2 : les passages faux ou périmés de cette section sont annotés « [corrigé : …] » ; l'état à
+> jour est au §9. Les verdicts adverses des chantiers sont archivés dans
+> `campagne_grammaire_2026-10-01/VERIFICATIONS_ADVERSES_R.md`.
+
 **Ce qui a été fait.** Six chantiers de recherche (workflow `wf_9088d8bd-e43`, worktrees temporaires
 sur `fe18bf67c`, aucun fichier de production), chacun relu par un vérificateur adverse qui a
 recalculé les chiffres sur les TSV et relu Ghidra en lecture seule. Notes : `R_COMB.md`, `R_LOC.md`,
@@ -494,21 +499,25 @@ le même jour (176 fichiers).
 | Question | Réponse | Statut |
 |---|---|---|
 | Les leviers ensemble (R-COMB) | HI_1_13_0 : 86,0 à 88,0 % des records utiles en paquets sains (dénominateur fixe de R-COMB), 83,7 à 85,7 % sur le fixe consolidé ; corpus 50,6 à 51,3 % (46,4 à 47,1 %). Les gains se recouvrent (HI_1_13_0 : somme des seuls +547 609 utiles sains, combinaison +465 529 à +525 771) | mesuré |
-| « La phase 2 seule n'atteindra pas 95 % » (§3) | Vraie pour les six leviers mesurés. Au-delà, l'estimation de R-COMB n'est pas une borne (vérificateur), et LS, LP, LM n'étaient pas dans la combinaison : non décidable sans R-COMB-2 pour HI_1_13_0, HI_1_12_0 et les formats 24-25 | partiel |
+| « La phase 2 seule n'atteindra pas 95 % » (§3) | Vraie pour les six leviers mesurés. Au-delà, l'estimation de R-COMB n'est pas une borne (vérificateur), et LS, LP, LM n'étaient pas dans la combinaison : non décidable sans R-COMB-2 pour HI_1_13_0, HI_1_12_0 et les formats 24-25. [corrigé : R-COMB-2 mesure 93,8 % sur HI_1_13_0 et 95,2 % sur HI_1_8_0 sous onze leviers ; estimation « ≤ 90 % » réfutée, §9] | partiel → mesuré (§9) |
 | Signature du localisateur figée sur le slot 123 (R-LS, D-67) | Confirmée sur pièces. Sur la cuisson, l'ordre « 123 → fermeture par NEW de tête → signature high-frequency » gagne +18 119 paquets (+18 086 sains), 0 film en baisse ; l'ordre de l'enquête fait baisser un film. Killsource : 1 080 morts rendues à la marche, valeurs inchangées, mais la voie est publiée (backfill dû) | établi |
 | Naissances (R-L1) | (a) les « NEW » trouvés derrière un DELTA ne sont pas des records (l'écrivain ne l'écrit jamais) ; (b) les 4 598 fermés après un rejet sont factices ; (c) la vue A ne se lit qu'en portant la charge de 41 genres de messages ; (d) condition par film pour L1a : +15 070 sains, 0 film en baisse, seuil choisi sur le corpus | établi ; (c) partiel |
 | Naissances lointaines (R-P6) | Pas de règle générale ; pas de lot | partiel |
 | Moteur `ti=2` (R-L3) | Portage HI_1_13_0 : +3 575 sains, 0 film en baisse. Vieux builds : un bit de trop, mais sa position (`i4` à `i9`) n'est pas discriminée | établi / NON CONFIRMÉ (position) |
 | Homonymes (R-HOM) | Un seul homonyme de grammaire (`high-frequency`) ; la grammaire de `ti=3 i1` est établie | établi |
-| Décalages résiduels (R-P3) | Lecteurs justes ; liaisons fausses de slot ; règle « désaveu d'une déclaration d'image-clé que le bloc dit non vivante » : +694 sains, 0 perdu ; site `ti=41 i0` à ajouter à L6a | partiel |
-| Véhicules `ti=40` (R-L4) | Trois lectures communes d'image-clé (portée, `i0` écrivain, MPP 8/3) ferment 3 058 / 3 058 records ; delta : +1 436 / −0. Le MPP 8/3 seul rapporte +80 979 paquets sur 6 films des formats 24-25 (pertes non jugées) | établi (MPP : mesuré) |
+| Décalages résiduels (R-P3) | Lecteurs justes ; liaisons fausses de slot ; règle « désaveu d'une déclaration d'image-clé que le bloc dit non vivante » : +694 sains, 0 perdu ; site `ti=41 i0` à ajouter à L6a [corrigé : extension retirée, 6 films en baisse sur le corpus, §9] | partiel |
+| Véhicules `ti=40` (R-L4) | Trois lectures communes d'image-clé (portée, `i0` écrivain, MPP 8/3) ferment 3 058 / 3 058 records ; delta : +1 436 / −0. Le MPP 8/3 seul rapporte +80 979 paquets sur 6 films des formats 24-25 (pertes non jugées) [corrigé : brut ; en sains +78 445 seul, +109 844 en marginal, pertes jugées, aucun film en baisse nette, §9] | établi (MPP : mesuré) |
 | Plages des cartes (R-L6) | Ordre établi ; « index 1 sur une carte à une plage » réfuté ; L6a hors Live Fire réfuté (−15 sains) | établi / réfuté |
 | Fusion de J12 | Un conflit (empreinte de révision), quatre sondes à mettre à l'accesseur de J12.4, 11 ratchets J12 verts ; vraie fusion faite (`f28a4a816`), carte v2 identique après J12 | établi |
 
 **Effet sur les lots (proposé, décisions D12 à D17 au PLAN §6.3)**
 - Vague 1 : L8, L2, L3a (portage, mesuré), L4a (delta, mesuré), L6a (Live Fire + site `ti=41 i0`),
-  L6b, L9 ; candidats neufs LM (MPP 8/3) et LK (image-clé sous portée), puis L4b.
-- Vague 2 : LU avec un paramètre d'ordre, LS, L1a sous condition par film, LP (neuf), L7.
+  L6b, L9 ; candidats neufs LM (MPP 8/3) et LK (image-clé sous portée), puis L4b. [corrigé : L0 en
+  tête (D2) ; L2 et L6b ne tiennent pas le gate par film ; le site `ti=41 i0` est retiré ; ordre par
+  contribution SAINE, §9]
+- Vague 2 : LU avec un paramètre d'ordre, LS, L1a sous condition par film, LP (neuf), L7. [corrigé :
+  L7 rejeté par la mesure ; cette composition amende la décision FERME D-RI et est soumise à
+  l'utilisateur (PLAN §6.3 D18), §9]
 - Sortis : L1b (devient un chantier de grammaire des messages de la vue A), L1c (confirmé), L6a hors
   Live Fire, tout lot P6.
 - L0 : quatre invariants ou témoins de plus (sortie de vue B par rejet, masque au-delà de
@@ -520,6 +529,81 @@ explication de l'ancienne contradiction du MPP ; partie estimée de la phrase de
 
 **Outillage** : les surcouches de mesure des chantiers sont d'avant J12 (sauf celle de la fusion) et
 ne compilent plus ensemble sous le tag commun (`go vet` rouge avec quatre sur cinq) : une surcouche
-unique post-J12 est à faire avant toute mesure de la vague 1 (D17). `archlint` était rouge sur
+unique post-J12 est à faire avant toute mesure de la vague 1 (D17). [corrigé : cinq sur six étaient
+rouges, R-LOC compris ; la surcouche unique est faite, §9] `archlint` était rouge sur
 toutes les têtes du 2026-10-02 (`TestNoExpiredTODO`, échéance du 2026-10-01 hors campagne) ; soldé
 par `feat/v75` (`2f1e7b98b`), vert sur la tête de la campagne.
+
+## 9. Critique R, surcouche unique et R-COMB-2 (2026-10-02)
+
+Ajouté le 2026-10-02. Sources : `CRITIQUE_COMPLETUDE_R.md` (25 points, A1 à E25),
+`SURCOUCHE_UNIQUE.md`, `R_COMB_2.md` (sous `campagne_grammaire_2026-10-01/`). Le traitement point par
+point est au PLAN §6.5.6 ; les découvertes neuves au PLAN §5 (D-104 à D-114) ; les décisions au PLAN
+§6.3 (D18 à D22). Rien n'est commité ; aucun fichier de production modifié ; `grammar.Rev` reste
+`grammar-2026-09-27.3`. Les chiffres sont en SAINS (juge à trois invariants) ; le brut, quand il aide,
+est entre parenthèses.
+
+**Ce qui a été fait (mesuré)**
+- **Surcouche unique** (`surcouche_unique_postj12/`, 7 fichiers fusionnés à trois voies sur la tête
+  post-J12, puis 9) : toutes les sondes compilent sous un même tag ; sans bascule, elle lit comme la
+  production (carte v2 : 10 TSV identiques à la phase 1 ; killsource : JSON identique à l'octet sur
+  19 films). Avant elle, cinq surcouches sur six étaient rouges (et non quatre), et celle de R-LOC
+  n'était pas inerte. Rejoués à l'identique de leur note : R-COMB, R-COMP (L3), R-VEH, R-LS (carte et
+  killsource sur 3 films), BIS_2 (une colonne texte à ex aequo près).
+- **R-COMB-2** : douze leviers ensemble, puis chaque levier retiré à son tour, avec le gate par film
+  et le gate killsource de chaque levier.
+
+**Indicateur (records utiles en paquets sains, dénominateur fixe consolidé recalculé selon sa règle)**
+
+| Build | Référence | Onze leviers (C11) | C11 sans l'oracle L9 |
+|---|---|---|---|
+| HI_1_13_0 | 65,4 % | **93,8 %** | 92,3 % |
+| HI_1_8_0 (un film) | 23,1 % | **95,2 %** | 94,6 % |
+| HI_1_11_0 / HI_1_12_0 / HI_1_9_0 | 20 à 24 % | 89 à 91 % | 89 à 90 % |
+| HI_1_10_0 | 12,2 % | 81,5 % | 76,8 % |
+| HI_1_4_1, version-33, version-31 | ≤ 0,7 % | ≤ 0,7 % | ≤ 0,7 % |
+| Corpus (20 films) | 33,2 % | **77,0 %** | 74,9 % |
+
+Trois réserves tirent ces chiffres vers le haut : L9 est un oracle ; L1a choisit son début de liste
+avec le juge ; le juge n'a que trois invariants (il manque « sortie de vue B par rejet ⇒ non fermé »,
+1 008 faux sains connus). La phrase « la phase 2 seule n'atteindra pas 95 % » tient de justesse sur
+HI_1_13_0, est fausse en mesuré sur HI_1_8_0, et l'estimation « ≤ 90 % » de R-COMB est réfutée.
+
+**Ce que la critique a corrigé (en une ligne chacun)**
+- **L0 en tête** : D2 (FERME) fait de L0 la définition de la fermeture ; elle est lue par la cuisson
+  (début de liste des paquets à événements, tir continu) : L0 change une sortie, monte `grammar.Rev`
+  et passe en tête de la vague 1, avant tout gate de lot.
+- **Ordre en sains** : la vague 1 suit désormais la contribution SAINE marginale : LM +109 844, L8
+  +37 199, L2 +19 657, L3a +12 000, L6a +8 261, L9 +6 429, L4a +4 440, L6b +1 751 ; vague 2 : LU, LS
+  +34 222, L1a +29 594, LP +1 281.
+- **Lots déclarés prêts à tort** : L2 et L6b ne tiennent pas le gate par film (`1c4c63c2` −916 sains
+  pour L2 en combinaison ; trois films pour L6b) ; l'extension de L6a au site `ti=41 i0` fait baisser
+  six films et est retirée ; L3a « 0 sain perdu » était faux à la lettre (48 sains requalifiés).
+- **L7 est nuisible** (−2 688 sains seul, −58 719 en combinaison) : retrait proposé.
+- **« Bornes »** : un oracle de la référence ne borne ni le lot réel en combinaison, ni un autre
+  mécanisme ; le mot est réservé à un majorant démontré.
+- **Killsource** : aucun levier ne change une valeur de mort ; LS (229 morts) et L6b (8) changent la
+  voie, publiée. `1c4c63c2` et `81c02726` n'ont pas de carte lisible : le gate killsource ne les
+  couvre pas.
+- **Dénominateur consolidé** : recalculé selon sa règle (HI_1_13_0 3 073 267, corpus 7 758 290) ;
+  l'ancien maximum venait en partie d'oracles retirés et de variantes rejetées.
+- **Notes R-*** : chacune porte en tête une section « Corrections du 2026-10-02 » alignée sur les
+  verdicts adverses, désormais archivés (`VERIFICATIONS_ADVERSES_R.md`).
+
+**Ce qui reste supposé** : les sondes non rejouées après J12 (`TestRCombDerivation`, `TestRCompP3*`,
+`TestCampagneBis2Positions*`, `TestCampagneBis2ImagesClesTi40`, `TestCampagneBis3*`,
+`TestCampagneBis4JugePositions`, `TestRVehIndex`, `TestRVehImageCle`, les sondes `research` seules de
+R-NAIS et R-LOC) et killsource sur 25 des 28 films de R-LS.
+
+**Décisions demandées à l'utilisateur** (détail et options au PLAN §6.3, liste courte en fin de
+section) :
+- **D18 — amender la décision FERME D-RI** : L0 en tête de la vague 1 ; vague 2 = LU → LS → L1a → LP ;
+  L1b et L7 sortis. Recommandation : oui.
+- **D14 — admettre les lots neufs** LM et LK (vague 1), LP (vague 2). Recommandation : oui, LM sous D6.
+- **D6 — preuve par mesure** pour la largeur MPP de LM. Recommandation : oui pour LM, non pour L3b tant
+  que le bit n'est pas localisé.
+- **D19 — lots en défaut au gate par film** : réparer L2 et L6b ; instruire puis admettre film par film
+  L8 et L4a ; ne pas assouplir le gate.
+- **D22 — gate killsource sans carte** : fournir la carte de `1c4c63c2` et `81c02726`.
+- D12, D13, D15, D16, D20, D21, D10 / D17, D7, D11, D3 à D5, D8, D9 et le GO daté de chaque lot :
+  inchangés ou précisés, voir le PLAN.

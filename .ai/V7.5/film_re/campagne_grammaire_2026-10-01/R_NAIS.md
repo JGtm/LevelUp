@@ -16,6 +16,51 @@
 > ordre de la vue B, masques, vue C) ; « factice » = fermé et contredit (décision D2 : exclu). Sain
 > n'est pas juste (§2 le montre une fois de plus).
 
+## Corrections du 2026-10-02 (ajoutées après coup ; le texte d'origine ci-dessous n'est pas réécrit)
+
+Sources : verdicts adverses du chantier nais (`VERIFICATIONS_ADVERSES_R.md`, « Chantier nais »),
+`CRITIQUE_COMPLETUDE_R.md` (points 14, 20, 23) et `R_COMB_2.md` §5.2.
+
+1. **« Pool unique ≤ 2,3 % »** (§3.1) : faux ; maximum **2,80 %** (HI_1_4_1, 6 / 214), corpus 0,34 %
+   (112 / 33 414). La conclusion ne change pas.
+2. **« Un paquet sur seize »** (§2.2) : le témoin prend `Index%16 == 0`, soit 34 980 paquets, environ
+   **1 / 8** des quelque 280 106 fermés après terminateur (indices des paquets delta espacés).
+3. **R-L1 (b), témoin** : non symétrique (le vrai terminateur et un bit de présence 0 y arrêtent la
+   vue C, barrière absente sous l'hypothèse nulle) : il sous-estime le taux nul sans pouvoir inverser
+   l'écart. Les 95,7 % (sains et contredits) se comparent au témoin COMPLET, 4 129 / 34 980 (11,8 %),
+   pas au témoin des seuls sains (11,0 %). « Les suivantes identiques » vaut pour 3 644 des 3 848
+   paquets de la forme dominante. « Le dernier record a débordé » et « l'en-tête rejeté est une entrée
+   de vue C » sont des DÉDUCTIONS (supposé). T3-C2 n'est sans perte saine que si le 4e invariant
+   entre au juge.
+4. **R-L1 (b), portée de la conclusion (critique point 23)** : « ces 4 598 fermetures sont factices »
+   est établi pour les 4 402 qu'un début antérieur ferme ; 196 restent inexpliqués (32 sains au juge,
+   164 contredits), et le sous-groupe à reste ≤ 8 bits (648 paquets) n'est pas analysé à part. Ces
+   deux sous-groupes sont à mesurer avant d'adopter l'invariant L0.6 (PLAN D-113).
+5. **R-L1 (a)** : les 100 « réalloués sous une autre génération » reposent sur D-43 (non vérifié
+   liaison par liaison) ; sans eux, 994 / 1 289 (77,1 %). Aucun témoin d'attestation fortuite d'un X
+   lu à un mauvais bit. Les tables du pont (0 / 33) et du décalage (64,5 % contre 84,2 %) ne sont que
+   dans le scratchpad du chantier, pas dans `r_nais_tsv/` (PLAN D-101).
+6. **R-L1 (d)** : les pourcentages « variables » (80,57 → 84,70 %, corpus 43,42 → 45,57 %) sont des
+   utiles FERMÉS bruts ; en sains, HI_1_13_0 80,30 → 84,69 %, corpus 43,17 → 45,43 %. L'en-tête de
+   `r_nais_scores.tsv` a 8 colonnes pour 10 ; les lignes « -hors-evenements » viennent d'un code
+   retiré (non reproductibles). `bit_cfg_chunks` « 0 » = 20 chunks sans paquet delta, pas un bit à 0.
+   « Lève le blocage » veut dire désactiver L1a sur HI_1_8_0 à HI_1_11_0 (gain nul) ; seuil choisi
+   dans l'échantillon, sans validation hors échantillon.
+7. **R-L1 (d) en combinaison (R-COMB-2, mesuré)** : sous LM, la condition causale EN LIGNE s'allume sur
+   `084a804d`, `111fa685`, `1c4c63c2`, `60ae07c4` et `e5adf7b2` (52, 26, 19, 42 et 21 chunks) ; « la
+   condition désactive L1a sur HI_1_8_0 à HI_1_11_0 » ne vaut donc plus dans la vague. La forme
+   `|cumul` (score de la référence) ne s'allumerait pas. L1a causal en ligne : +13 374 sains seul,
+   +29 594 en marginal dans C11. Réserve : la copie choisit son début avec le juge (`cmTeteInv`).
+8. **R-P6** : le filtre `propre+pont` de BIS_3 §4 (68 / 72 contre 6 / 72, +295 / −2) est omis et
+   discrimine mieux que `ferme+suivant` ; les taux de faux positifs sont sous-estimés (le témoin ne
+   compte que les cibles qui en ont un) ; `ferme+alloc` mêle propriété d'eid et d'occurrence ;
+   l'extension à (iii') au-delà de 3 paquets est extrapolée.
+9. **Gate 5 (critique point 20)** : `r_nais_marche_research_test.go` (`rnMarcher`) est une seconde
+   recopie de la marche (`cmMarcher` + crochet) : elle suit tout lot qui change le pilotage.
+10. Les sondes de cette note sont taguées `research` seul, sans surcouche ; elles n'ont pas été
+    rejouées après J12 (chiffres supposés identiques, la carte v2 de référence l'étant). Gate de la
+    note : `archlint` rouge à `fe18bf67c` (`TestNoExpiredTODO`, hors chantier), soldé depuis.
+
 ## 0. Synthèse
 
 | Item | Statut | Réponse en une phrase | Chiffre clé (mesuré sauf mention) |

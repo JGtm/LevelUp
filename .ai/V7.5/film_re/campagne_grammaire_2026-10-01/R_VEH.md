@@ -16,6 +16,57 @@
 
 ---
 
+## Corrections du 2026-10-02 (ajoutées après coup ; le texte d'origine ci-dessous n'est pas réécrit)
+
+Sources : verdicts adverses du chantier veh (`VERIFICATIONS_ADVERSES_R.md`, « Chantier veh »),
+`CRITIQUE_COMPLETUDE_R.md` (points 4, 13, 14, 22, 24), `SURCOUCHE_UNIQUE.md` §4.4, §5 et `R_COMB_2.md`.
+
+1. **§0 point 6, « lectures fausses … mesuré pour les trois » — NON CONFIRMÉ.** Mécanisme MPP 8/3
+   mesuré (bits + fermeture) ; lecture fausse ÉTABLIE pour `77ef810a` seulement, SUPPOSÉE pour
+   `4118381d` et `d0b40d0a` (`d0b40d0a` se relit à l'identique sous 8/3 à une ancre décalée, sur un
+   film des formats 20-21 ; 878 châssis restent inconnus à 8/3 ; réutilisation de slot non exclue).
+   La proposition « ne plus les identifier » reste défendable.
+2. **§4, « critère de bascule de `PorteeBaseline` rempli » (R-VEH-1) — NON CONFIRMÉ.** Le critère
+   écrit porte sur les 591 records `ti=35` BORNÉS du corpus R7 (`TestKF35CBaselineScope`), et celui de
+   `GrammaireEcrivainI0` exige une non-régression delta ; ni l'un ni l'autre n'est rejoué ; la seule
+   variante delta qui pose `i0` (avec la portée) perd 9 573 paquets ; sans 8/3, `ti=35` baisse sur
+   `111fa685` (15 → 10) et `11de8353` (11 → 6). Formulation juste : « sur 2 008 voisins `ti=35` du
+   format 27, la lecture portée + `i0` écrivain ferme 2 006 records ; le critère écrit n'a pas été
+   rejoué ».
+3. **`n2` modal de version-31** (§1.4 l. 172, §1.6 l. 194) : **`0x890`** (2192), et non `0x8a0`.
+4. La largeur MPP 8 bits des formats 24-25 est MESURÉE, pas établie (aucun exécutable de ces builds).
+5. §1.2 : la classe « non-VTOL, types 1, 3, 6, 7 » inclut le type 6, qui est VTOL. R-VEH-5 omet un
+   sixième écrivain de la portée, `FUN_142e31bf8`.
+6. §3.2 : la perte de 9 573 paquets (« portée sur les NEW ») est celle de la COMBINAISON portée + `i0`
+   écrivain (`rvehPorteeNeuf` pose les deux) ; « en delta, les NEW restent quantifiés » n'est établi
+   que pour cette combinaison.
+7. **L6a hors Live Fire (§0 point 11, §5.4, §6 ; critique point 13)** : **13** films à deux plages, et
+   non 12 (le tableau §5.4 a 13 lignes). 9 films sur 13 ont des pertes BRUTES ; en net de paquets sains
+   (critère du gate 2, colonne « Sains nets » du §5.4), **7** films baissent (`084a804d`, `111fa685`,
+   `11de8353`, `4f77afc1`, `51ebbc0f`, `c75f33b8`, `fb1a1a72`). Le relevé de type BIS_2 reproduit vaut
+   102 / 139, pas 101 / 136.
+8. **R-VEH-2, explication de l'ancienne contradiction MPP** — démentie par les TSV de la note : 8/3
+   SEUL fait déjà monter les images-clés des formats 24-25 (52 391 → 53 291 fermés), et fait BAISSER
+   les formats 20-21 qui partagent la case (17 398 → 17 038). Cause probable de l'ancienne baisse
+   246 → 182 : ce regroupement (supposé).
+9. **Brut et sains (critique point 4)** : « +26 843 records utiles » (L4 delta, §0 point 7, §3.1, §6)
+   et « 12-26 % à 72-84 % du dénominateur fixe » (formats 24-25 sous LM) sont BRUTS. En sains
+   (R-COMB-2) : L4a seul +1 403 paquets / +27 364 utiles sains, marginal dans C11 +4 440 / +115 847
+   (gate 2 en défaut en marginal : `d9781168` −11 utiles) ; sous LM seul, sur le fixe de R-COMB-2, de
+   49,6 % (`1c4c63c2`) à 79,9 % (`11de8353`) d'utiles sains par film (calcul awk du PLAN §6.5.3).
+10. **Pertes de LM** (« pertes non jugées », §3.3, §6) : jugées par R-COMB-2 (§5.4) : 750 sains perdus
+    en brut (443 devenus contredits, 307 non fermés), 79 195 gains sains, aucun film en baisse nette.
+    LM × L6a mesuré en contexte de production sur `60ae07c4` : +22 194 sains (critique point 22).
+11. **Rejoué après J12** : `r_veh_delta.tsv` et `r_veh_ti40_variantes.tsv` identiques à l'octet sous la
+    surcouche unique ; `TestRVehIndex` et `TestRVehImageCle` non rejoués (supposés identiques).
+    `r_veh_overlay/` (versions d'avant J12 de cinq fichiers) est remplacée par
+    `surcouche_unique_postj12/`.
+12. **§8, édition d'une sonde par `python3` (critique point 24)** : vérifiée juste depuis
+    (`SURCOUCHE_UNIQUE.md` §5 : relecture de `rvVariante`, `gofmt`, `vet`, identité avec la copie de
+    `LevelUp-wt-cg-veh`, mesure à l'octet) ; diff de l'édition impossible. L'en-tête de
+    `r_veh_ti40_variantes.tsv` a 13 colonnes pour 15 (défaut d'en-tête, pas de `rvVariante`).
+13. Gate de la note : `archlint` rouge à `fe18bf67c` (`TestNoExpiredTODO`, hors chantier), soldé depuis.
+
 ## 0. Résultat en onze points
 
 1. **R-L4 (a) — ce n'est pas UNE largeur `ti=40` qui est fausse, ce sont trois LECTURES**, toutes
