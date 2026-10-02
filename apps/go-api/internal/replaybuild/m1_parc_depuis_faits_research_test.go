@@ -61,7 +61,7 @@ func TestM1ParcDepuisLesFaits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("racine repo : %v", err)
 	}
-	b, err := NewBuilder(repoRoot, title.DefaultSlug)
+	b, err := NewBuilder(context.Background(), repoRoot, title.DefaultSlug)
 	if err != nil {
 		t.Fatalf("builder : %v", err)
 	}
@@ -137,15 +137,15 @@ func m1Reconstruire(b *Builder, in m1Entree) string {
 		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
-	cat := b.collecterEntreesCatalogue(matchID, []string{in.carte}, facts, &stats, src)
+	cat := b.collecterEntreesCatalogue(context.Background(), matchID, []string{in.carte}, facts, &stats, src)
 	// AUCUN FILM (lot J3.4) : des faits cuits sous d autres gardes de l appelant (un roster de la
 	// base, que cet outil ne fournit pas) ne se rejouent pas — `documentDeLaCuisson` voudrait
 	// charger le film, et le repertoire vide le refuse : le match est ecarte, jamais publie faux.
-	cuit, err := b.documentDeLaCuisson(ctx, matchID, "", b.buildReplayOptions(entry, facts, cat, &stats), src)
+	cuit, err := b.documentDeLaCuisson(ctx, matchID, "", b.buildReplayOptions(context.Background(), entry, facts, cat, &stats), src)
 	if err != nil {
 		return err.Error()
 	}
-	built, err := b.serialiserDocument(matchID, entry, cuit.doc, cuit.depuisLesFaits, time.Now())
+	built, err := b.serialiserDocument(context.Background(), matchID, entry, cuit.doc, cuit.depuisLesFaits, time.Now())
 	if err != nil {
 		return err.Error()
 	}

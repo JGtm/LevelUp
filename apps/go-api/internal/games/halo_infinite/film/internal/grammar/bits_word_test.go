@@ -29,7 +29,7 @@ import (
 // curseur avance de n quoi qu'il arrive.
 func refReadBitsSeq(buf []byte, pos int, n uint) (uint64, int) {
 	var r uint64
-	for i := uint(0); i < n; i++ {
+	for range n {
 		var bit uint64
 		if idx := pos >> 3; idx < len(buf) {
 			bit = uint64(buf[idx]>>(7-(uint(pos)&7))) & 1

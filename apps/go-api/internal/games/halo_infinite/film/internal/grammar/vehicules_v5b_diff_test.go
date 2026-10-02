@@ -21,7 +21,7 @@ package grammar
 // témoin, une chute d'accord ne dit pas si elle vient du bloc ou de la dérive.
 //
 //	CGO_ENABLED=0 V5_ROOT=<cache> V5_FILMS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV5BDiff -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV5BDiff -v -timeout 180m
 
 import (
 	"fmt"
@@ -56,33 +56,24 @@ func (p *v5bProfil) ajoute(i int, ok bool) {
 
 // v5bDiffAvant remplit le profil aligné sur le DÉBUT des deux records.
 func v5bDiffAvant(p *v5bProfil, a, b v5KfRec) {
-	n := a.LongueurEnBits
-	if b.LongueurEnBits < n {
-		n = b.LongueurEnBits
-	}
-	for i := 0; i < n; i++ {
+	n := min(b.LongueurEnBits, a.LongueurEnBits)
+	for i := range n {
 		p.ajoute(i, keyframeBitAt(a.Payload, a.BitStart+i) == keyframeBitAt(b.Payload, b.BitStart+i))
 	}
 }
 
 // v5bDiffArriere remplit le profil aligné sur la FIN des deux records.
 func v5bDiffArriere(p *v5bProfil, a, b v5KfRec) {
-	n := a.LongueurEnBits
-	if b.LongueurEnBits < n {
-		n = b.LongueurEnBits
-	}
-	for i := 0; i < n; i++ {
+	n := min(b.LongueurEnBits, a.LongueurEnBits)
+	for i := range n {
 		p.ajoute(i, keyframeBitAt(a.Payload, a.Fin-1-i) == keyframeBitAt(b.Payload, b.Fin-1-i))
 	}
 }
 
 // v5bLCP rend la longueur du plus long préfixe commun en bits.
 func v5bLCP(a, b v5KfRec) int {
-	n := a.LongueurEnBits
-	if b.LongueurEnBits < n {
-		n = b.LongueurEnBits
-	}
-	for i := 0; i < n; i++ {
+	n := min(b.LongueurEnBits, a.LongueurEnBits)
+	for i := range n {
 		if keyframeBitAt(a.Payload, a.BitStart+i) != keyframeBitAt(b.Payload, b.BitStart+i) {
 			return i
 		}
@@ -92,11 +83,8 @@ func v5bLCP(a, b v5KfRec) int {
 
 // v5bLCS rend la longueur du plus long suffixe commun en bits.
 func v5bLCS(a, b v5KfRec) int {
-	n := a.LongueurEnBits
-	if b.LongueurEnBits < n {
-		n = b.LongueurEnBits
-	}
-	for i := 0; i < n; i++ {
+	n := min(b.LongueurEnBits, a.LongueurEnBits)
+	for i := range n {
 		if keyframeBitAt(a.Payload, a.Fin-1-i) != keyframeBitAt(b.Payload, b.Fin-1-i) {
 			return i
 		}
@@ -261,10 +249,7 @@ func v5bPublieProfil(t *testing.T, quoi string, p *v5bProfil) {
 	}
 	t.Logf("  [%s] n0=%d comparaisons ; accord par fenêtre de %d bits :", quoi, p.n[0], v5bFenetre)
 	for i := 0; i < len(b); i += 12 {
-		j := i + 12
-		if j > len(b) {
-			j = len(b)
-		}
+		j := min(i+12, len(b))
 		t.Logf("      %v", b[i:j])
 	}
 }

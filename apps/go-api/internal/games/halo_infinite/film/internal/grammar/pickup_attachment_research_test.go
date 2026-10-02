@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // pickup_attachment_research_test.go — LE RAMASSAGE COMME ATTACHEMENT.

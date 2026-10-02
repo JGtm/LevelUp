@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i47_research_test.go — INSTRUMENT DE MESURE de la GRENADE SÉLECTIONNÉE (i47) dans les
@@ -30,6 +32,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -214,7 +217,7 @@ func TestI47LocationInKeyframeRecords(t *testing.T) {
 			}
 			// Décrément d'un SEUL rang entre a et b = un lancer de ce type entre les deux.
 			down, downs := -1, 0
-			for r := 0; r < invGrenadeSlots; r++ {
+			for r := range invGrenadeSlots {
 				if b.gren[r] < a.gren[r] {
 					down = r
 					downs++
@@ -331,15 +334,15 @@ func i47LogTopU32(t *testing.T, label string, dist map[uint32]int) {
 		total += c
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].n > all[j].n })
-	s := ""
+	var s strings.Builder
 	for i, e := range all {
 		if i == 6 {
-			s += " …"
+			s.WriteString(" …")
 			break
 		}
-		s += fmt.Sprintf(" 0x%X×%d", e.v, e.n)
+		s.WriteString(fmt.Sprintf(" 0x%X×%d", e.v, e.n))
 	}
-	t.Logf("  %-32s %d valeurs distinctes / %d hits :%s", label, len(dist), total, s)
+	t.Logf("  %-32s %d valeurs distinctes / %d hits :%s", label, len(dist), total, s.String())
 }
 
 // i47ScanRecord balaye UN record : rend les occurrences du motif attendu, le nombre de types
@@ -380,10 +383,7 @@ func i47ScanRecord(pay []byte, sp invRecordSpan, known map[uint32]bool) ([]i47Hi
 	ammoEnd := -1
 	if hasFam {
 		end := famBit - 1
-		lo := end - invAmmoSearchSpan
-		if lo < sp.from {
-			lo = sp.from
-		}
+		lo := max(end-invAmmoSearchSpan, sp.from)
 		if sols := invSolveAmmoBlock(pay, end, lo); len(sols) > 0 {
 			_, _, e, okp := invParseAmmoBlock(pay, sols[0], end+1)
 			if okp {
@@ -454,13 +454,13 @@ func i47LogTop(t *testing.T, label string, dist map[int]int) {
 		total += c
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].n > all[j].n })
-	s := ""
+	var s strings.Builder
 	for i, e := range all {
 		if i == 8 {
-			s += " …"
+			s.WriteString(" …")
 			break
 		}
-		s += fmt.Sprintf(" %+d×%d", e.off, e.n)
+		s.WriteString(fmt.Sprintf(" %+d×%d", e.off, e.n))
 	}
-	t.Logf("  %-32s %d offsets distincts / %d hits :%s", label, len(dist), total, s)
+	t.Logf("  %-32s %d offsets distincts / %d hits :%s", label, len(dist), total, s.String())
 }

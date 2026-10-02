@@ -27,7 +27,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 KF35_ROOT=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestKF7D' -timeout 60m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestKF7D' -timeout 60m -v
 
 import (
 	"fmt"

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // duels_sonde_research_test.go — SONDE DE FAISABILITE d'une feature « duels » lue dans le film.

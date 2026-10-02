@@ -3,7 +3,7 @@
 // Ce package est entièrement stateless : aucun accès DB, aucun import HTTP.
 // L'entrée est un []MatchRow et la sortie est un PatternReport.
 //
-// Ref : .ai/PLAN_PATTERN_ENGINE_V3.md
+// Ref : .ai/archive/V7/PLAN_PATTERN_ENGINE.md
 package patterns
 
 import "time"

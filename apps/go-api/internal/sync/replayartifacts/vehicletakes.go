@@ -94,8 +94,8 @@ type preparationVehicules struct {
 
 // ClassifierDEngins rend le classificateur de source de degat du titre, ou nil. EXPORTE pour le
 // backfill, qui doit lire les frags comme le fil de l'eau.
-func ClassifierDEngins(repoRoot, titleSlug string) port.KillSourceClassifier {
-	return killcollector.ClassifierPourTitre(repoRoot, titleSlug)
+func ClassifierDEngins(ctx context.Context, repoRoot, titleSlug string) port.KillSourceClassifier {
+	return killcollector.ClassifierPourTitre(ctx, repoRoot, titleSlug)
 }
 
 // LireFragsDEngin lit, pour un lot de matchs, les frags de classe engin de `match_kill_events_latest`
@@ -260,7 +260,7 @@ func lireFragsDuLot(
 	if d.WithRead == nil {
 		return echec("aucun segment de lecture cable", nil)
 	}
-	classifier := ClassifierDEngins(d.RepoRoot, d.TitleSlug)
+	classifier := ClassifierDEngins(ctx, d.RepoRoot, d.TitleSlug)
 	ids := matchIDsDuLot(mesures)
 	var out map[string]VehicleFragsLecture
 	var lecture error

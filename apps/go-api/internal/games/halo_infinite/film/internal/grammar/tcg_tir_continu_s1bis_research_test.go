@@ -139,10 +139,9 @@ func tcgVictimes(t *testing.T, p *tcgPasse, cat func(tcgEv) bool) {
 	sort.Ints(ts)
 	ecarts := map[int]int{}
 	for i := 1; i < len(ts); i++ {
-		d := ts[i] - ts[i-1]
-		if d > 10 {
-			d = 10 // tout ecart > 1 s est range a 1 s
-		}
+		d := min(ts[i]-ts[i-1],
+			// tout ecart > 1 s est range a 1 s
+			10)
 		ecarts[d]++
 	}
 	nom := func(k int) string { return strconv.Itoa(k) }

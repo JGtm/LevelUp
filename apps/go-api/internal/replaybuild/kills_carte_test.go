@@ -12,6 +12,7 @@ package replaybuild
 // porte plus ses largeurs).
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -56,7 +57,7 @@ func entreeDuCatalogue(t *testing.T, nom string) decfilm.MapQuantEntry {
 
 func TestDecodeKillSource_DecodeSousLaCarteResolue(t *testing.T) {
 	b := &Builder{}
-	res := b.decodeKillSource("000d5950", entreeDuCatalogue(t, "Cliffhanger"), bobineKillsource000d5950(t))
+	res := b.decodeKillSource(context.Background(), "000d5950", entreeDuCatalogue(t, "Cliffhanger"), bobineKillsource000d5950(t))
 	if res == nil {
 		t.Fatal("source de degat non decodee sous la carte resolue par la cuisson")
 	}
@@ -69,7 +70,7 @@ func TestDecodeKillSource_DecodeSousLaCarteResolue(t *testing.T) {
 // (sans largeurs) n ouvre pas les largeurs par defaut : la source de degat n est pas decodee.
 func TestDecodeKillSource_EntreeSansLargeursNEstPasDecodee(t *testing.T) {
 	b := &Builder{}
-	if res := b.decodeKillSource("000d5950", decfilm.MapQuantEntry{Module: "vide"}, bobineKillsource000d5950(t)); res != nil {
+	if res := b.decodeKillSource(context.Background(), "000d5950", decfilm.MapQuantEntry{Module: "vide"}, bobineKillsource000d5950(t)); res != nil {
 		t.Errorf("source de degat decodee sans carte (%d ligne(s)) : repli aux largeurs par defaut", len(res.Kills))
 	}
 }

@@ -140,7 +140,7 @@ func ConstruireEtRanger(ctx context.Context, build BuildOneFunc, req BuildOneReq
 	// L'ÉCRITURE RESTE CHEZ LE PARENT : `StoreArtifact` valide, applique le garde
 	// anti-régression et publie l'événement « artefact rangé » — les trois au même endroit
 	// qu'avant ce lot.
-	stored, err := replaybuild.StoreArtifact(req.RepoRoot, req.TitleSlug, req.MatchID, res.Blob)
+	stored, err := replaybuild.StoreArtifact(ctx, req.RepoRoot, req.TitleSlug, req.MatchID, res.Blob)
 	if err != nil {
 		return replaybuild.StoredArtifact{}, BuildOneResult{}, err
 	}

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r2bis_canaux_dates_research_test.go — INSTRUMENT du lot R2-bis (plan de suite de l audit du

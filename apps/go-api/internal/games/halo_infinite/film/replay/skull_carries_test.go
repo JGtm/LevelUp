@@ -124,7 +124,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 	if carries[3].Closed {
 		t.Errorf("le portage de fin d'axe devrait etre OUVERT (borne haute)")
 	}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if !carries[i].Closed {
 			t.Errorf("portage %d devrait etre FERME (un fait le borne avant la fin)", i)
 		}

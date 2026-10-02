@@ -26,7 +26,7 @@ package grammar
 //
 //	CGO_ENABLED=0 V1A_FILM_ROOT=<depot>/data/cache \
 //	  V1A_FILMS="0d76e8f1:Behemoth SF,fccc61cd:Launch Site SF" \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV1aQualification -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV1aQualification -v -timeout 180m
 
 import (
 	"encoding/binary"
@@ -64,7 +64,7 @@ func v1aCorpus(t *testing.T) (string, []v1aFilm) {
 		t.Skipf("mesure non demandee : %s ou %s vide", v1aRootEnv, v1aFilmsEnv)
 	}
 	var out []v1aFilm
-	for _, s := range strings.Split(liste, ",") {
+	for s := range strings.SplitSeq(liste, ",") {
 		if s = strings.TrimSpace(s); s == "" {
 			continue
 		}
@@ -271,7 +271,7 @@ func v1aCondense(pos []BipedPosition) v1aEmpreinte {
 		ecris(uint64(p.Chunk))
 		ecris(uint64(p.PacketIndex))
 		ecris(p.TimestampUS)
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			ecris(uint64(p.Q[ax]))
 			e.SommeQ[ax] += uint64(p.Q[ax])
 		}

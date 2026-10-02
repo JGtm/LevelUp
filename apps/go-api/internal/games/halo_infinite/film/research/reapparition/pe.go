@@ -65,10 +65,7 @@ func Charger(chemin string) (*Executable, error) {
 		if s.Size == 0 || s.Offset == 0 {
 			continue
 		}
-		fin := uint64(s.Offset) + uint64(s.Size)
-		if fin > uint64(len(brut)) {
-			fin = uint64(len(brut))
-		}
+		fin := min(uint64(s.Offset)+uint64(s.Size), uint64(len(brut)))
 		va := oh.ImageBase + uint64(s.VirtualAddress)
 		contenu := brut[s.Offset:fin]
 		ex.sections = append(ex.sections, section{

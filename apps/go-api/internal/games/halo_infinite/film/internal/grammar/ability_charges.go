@@ -146,7 +146,7 @@ func (sc *abilityChargeScanner) account(pay []byte, i0, total int, idx []int,
 // pose 0x7F » (plein) : ce N'EST PAS une lecture, rien n'est publié pour cet emplacement —
 // le piège (a) de R11 §2, tenu ici et nulle part ailleurs.
 func (sc *abilityChargeScanner) publish(slot uint32, chunk int, pk FilmPacket) {
-	for i := 0; i < AbilityEnergyCharges; i++ {
+	for i := range AbilityEnergyCharges {
 		if sc.mask&(1<<uint(i)) == 0 {
 			continue
 		}

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // pickup_report_research_test.go — LA LISTE, ET RIEN D'AUTRE.
@@ -19,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -98,11 +101,11 @@ func prTop(m map[string]int, n int) string {
 	if len(l) > n {
 		l = l[:n]
 	}
-	out := ""
+	var out strings.Builder
 	for _, e := range l {
-		out += fmt.Sprintf("%s=%d  ", e.k, e.v)
+		out.WriteString(fmt.Sprintf("%s=%d  ", e.k, e.v))
 	}
-	return out
+	return out.String()
 }
 
 func TestPickupReport(t *testing.T) {

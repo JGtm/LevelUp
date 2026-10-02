@@ -202,7 +202,7 @@ executees et leur sortie est reproduite.
     SENS » contre un balayage du depot ; la regle 3 ne verifie que les entrees MORTES de son
     allowlist (`:353-360`), jamais la completude de la liste d'enveloppes.
 - **CE QUE L'AUDITEUR N'A PAS VU — la sous-clause (a) est fausse**
-  - `.ai/V7.5/REGISTRE_REPORTS.md:15` porte le report, date, et **nomme les cinq appels**, ces
+  - `.ai/REGISTRE_REPORTS.md:15` porte le report, date, et **nomme les cinq appels**, ces
     deux-la compris : « 5 decompressions du film entier par match : `ReadFilmChunk`,
     `CountFilmChunks`, `ScanFilmWeaponShots`, `ScanFilmWeaponDamages`, `BuildBipedTracks` — plus
     une analyse de registre a lui seul », avec condition de reprise explicite (« le lot qui

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // held_weapon_control_research_test.go — LE CONTROLE DE COMPLETUDE, et la classification.
@@ -22,21 +24,12 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// hwCatalogue rend le predicat d'appartenance au catalogue de production.
-func hwCatalogue() map[uint32]bool {
-	m := make(map[uint32]bool, len(weaponv3.KnownWeaponHigh32))
-	for f := range weaponv3.KnownWeaponHigh32 {
-		m[f] = true
-	}
-	return m
-}
-
 // hwName nomme une famille, ou la rend en hexa si elle est hors catalogue.
 func hwName(v uint32) string {
 	if v == noVariant {
 		return "(vide)"
 	}
-	if n, ok := weaponv3.KnownWeaponHigh32[v]; ok {
+	if n, ok := weaponv3.KnownWeaponHigh32Lookup(v); ok {
 		return n
 	}
 	return fmt.Sprintf("0x%08x", v)

@@ -568,4 +568,4 @@ tenir le décodeur sur les gros matchs est un chantier à part, chiffré à ~9 %
 - Ordre : strict. L'étape N+1 ne commence pas tant que le gate de N n'est pas passé.
 - Branche : `git log --oneline -10` sur le worktree du volet concerné.
 - Contrat : skill `plan-execution`. Avant livraison : skill `delivery-checklist`.
-- Reports : tout report entre au `.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de reprise.
+- Reports : tout report entre au `.ai/REGISTRE_REPORTS.md` avec sa condition de reprise.

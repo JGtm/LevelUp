@@ -34,6 +34,7 @@ package replay
 // prédicat de famille.
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
@@ -86,10 +87,7 @@ func buildBombCarries(carry HeldObjectCarry, ctx matchClock,
 			cov.OutOfWindow++
 			continue
 		}
-		f1 := clampFrame(ctx.frameOfMatchMS(int64(p.FinMS)), ctx.frames)
-		if f1 < f0 {
-			f1 = f0
-		}
+		f1 := max(clampFrame(ctx.frameOfMatchMS(int64(p.FinMS)), ctx.frames), f0)
 		xuid := strconv.FormatUint(p.XUID, 10)
 		// Gate de PRÉSENCE : le porteur doit être sur la carte pendant le portage (même
 		// règle et MÊME code que le crâne — une seule copie, cf. carrierPresence.gate).
@@ -125,7 +123,7 @@ func buildBombCarries(carry HeldObjectCarry, ctx matchClock,
 // grille de frames qui perd les trois. La rendre ici est ce qui évite de la reconstruire une
 // seconde fois (cf. l'en-tête de bomb_stats_document.go). Zéro valeur = rien n'a été
 // reconstruit (hors famille bomb, ou aucun pont).
-func attachBombCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
+func attachBombCarries(ctx context.Context, doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
 	deduced map[int]bool) HeldObjectCarry {
 	if !opt.Bomb.CarryScanned {
 		return HeldObjectCarry{}
@@ -136,7 +134,7 @@ func attachBombCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	var carry HeldObjectCarry
 	if !reg.PontEtabli() {
 		cov = &BombCarriesCoverage{BombFilm: true, Events: len(events)}
-		slog.Warn("rejeu : portage de la bombe sans pont slot->xuid — aucune periode publiable",
+		slog.WarnContext(ctx, "rejeu : portage de la bombe sans pont slot->xuid — aucune periode publiable",
 			"match_id", doc.MatchID, "transitions", len(events))
 	} else {
 		carry = BuildHeldObjectCarry(events, occupantParMatchMS(reg), opt.Deaths)
@@ -156,7 +154,7 @@ func attachBombCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	if doc.Coverage != nil {
 		doc.Coverage.BombCarries = cov
 	}
-	slog.Info("rejeu : portage de la bombe d'Assaut",
+	slog.InfoContext(ctx, "rejeu : portage de la bombe d'Assaut",
 		"transitions", cov.Events, "periodes", cov.Periods, "portages", cov.Carries,
 		"fermes", cov.Closed, "ouverts", cov.Open, "parMort", cov.ByDeath,
 		"sansPont", cov.NoBridge, "horsFenetre", cov.OutOfWindow,

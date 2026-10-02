@@ -31,12 +31,12 @@ func TestLoiHimapEtLoiDuProfilSAccordent(t *testing.T) {
 	cat := chargerCatalogueDesCartes(t)
 	for nom, e := range cat.Maps {
 		var b himap.Bounds
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			b.Min[ax], b.Max[ax] = float64(e.Min[ax]), float64(e.Max[ax])
 		}
 		h := b.AxisWidths()
 		p := profile.LargeursAxeDuNiveau(bornesDe(e), profile.NiveauPositionDObjet)
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			if uint(h[ax]) != p[ax] {
 				t.Errorf("%s axe %d : himap %d, profile %d", nom, ax, h[ax], p[ax])
 			}

@@ -21,7 +21,7 @@ service.
 2. Gates verts, exit codes reels consignes (actionlint 1.7.12 pinne, `bash -n`, archlint).
 3. Le garde-rail `ci_deploy_triggers_test.go` reste vert : aucun motif ajoute au
    `paths-ignore` de `deploy.yml`.
-4. Registre `.ai/V7.5/REGISTRE_REPORTS.md` + `.ai/thought_log.md` a jour, commits propres,
+4. Registre `.ai/REGISTRE_REPORTS.md` + `.ai/thought_log.md` a jour, commits propres,
    aucun push.
 
 ## Repartition superviseur / agent
@@ -154,7 +154,7 @@ un verdict.
 
 ### Etape 4 — Cloture
 
-- [x] Ligne au registre `.ai/V7.5/REGISTRE_REPORTS.md` (lot ouvrier-vps : fichiers livres,
+- [x] Ligne au registre `.ai/REGISTRE_REPORTS.md` (lot ouvrier-vps : fichiers livres,
       activation = condition de reprise a la release).
 - [x] Entree en tete de `.ai/thought_log.md` ([2026-08-25], titre, statut, decision,
       resultats avec exit codes, prochaine etape).

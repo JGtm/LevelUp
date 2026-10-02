@@ -186,7 +186,7 @@ func c2EtatParDefaut(br *Lecteur, seg func(string, func())) {
 	seg("mpp.idx", func() { br.ReadBits(uint(br.mppWidths().Index)) })
 	seg("mpp.liste", func() {
 		if c := br.ReadBits(3); c <= 4 {
-			for i := uint64(0); i < c; i++ {
+			for range c {
 				br.ReadBits(5)
 				consumeOpt32(br)
 			}
@@ -212,7 +212,7 @@ func c2EtatParDefaut(br *Lecteur, seg func(string, func())) {
 			return
 		}
 		n := br.ReadBits(2)
-		for i := uint64(0); i < n; i++ {
+		for range n {
 			consumeOpt32(br)
 		}
 	})
@@ -253,7 +253,7 @@ func c2Masque(m uint64) string {
 		return "plein"
 	}
 	var s []string
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if m&(1<<uint(i)) != 0 {
 			s = append(s, strconv.Itoa(i))
 		}

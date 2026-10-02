@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -337,7 +338,7 @@ func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 		},
 	}
 
-	attachFlagCarries(doc, Options{Flag: in}, IdentityRegistry{},
+	attachFlagCarries(context.Background(), doc, Options{Flag: in}, IdentityRegistry{},
 		replayClock{origin: 0, step: 100_000, frames: 100}, equipes)
 
 	cov := doc.Coverage.FlagCarries

@@ -522,7 +522,7 @@ func (m *mockCompareRepoAB) GetEncounterStats(_ context.Context, _, _ string) (*
 }
 
 // GetWeaponScope — le scope du profil d'armes (plan
-// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2).
+// .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2).
 //
 // NIL PAR DÉFAUT, ET C'EST LE BON DÉFAUT POUR CE MOCK : les tests de ce fichier verrouillent
 // les MÉTRIQUES de la comparaison, pas le profil d'armes. Un scope nil laisse `Weapons`

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i56_rank_cross_test.go — INSTRUMENT DE MESURE de l'item 0.4 du plan
@@ -29,7 +31,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I56X_FILM=<repo>/data/cache/film_chunks/00ba2e1c \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI56CrossI48Rank$' -timeout 30m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI56CrossI48Rank$' -timeout 30m -v
 
 import (
 	"os"
@@ -151,7 +153,7 @@ func i56xDropsBySlot(energy []i56xSample) map[uint32]int {
 	}
 	series := map[key][]i56xSample{}
 	for _, e := range energy {
-		for c := 0; c < AbilityEnergyCharges; c++ {
+		for c := range AbilityEnergyCharges {
 			if e.ch[c] != AbilityEnergyUnarmed {
 				series[key{e.slot, c}] = append(series[key{e.slot, c}], e)
 			}

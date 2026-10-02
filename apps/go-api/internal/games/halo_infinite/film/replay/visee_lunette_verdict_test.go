@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_lunette_verdict_test.go — LA MOITIE « RESTITUTION » de l'instrument de mesure de la

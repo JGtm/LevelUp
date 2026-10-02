@@ -1,5 +1,5 @@
 // Package service — compare_weapons.go : LE PROFIL D'ARMES DU FACE-À-FACE
-// (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 3).
+// (plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 3).
 //
 // # CE QUE CE FICHIER ASSEMBLE
 //

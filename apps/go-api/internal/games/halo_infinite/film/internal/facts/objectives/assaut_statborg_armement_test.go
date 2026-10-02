@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // assaut_statborg_armement_test.go — LE STATBORG CONTRE L'INSTANT D'ARMEMENT, avec plancher.
@@ -61,7 +63,6 @@ package objectives
 //	go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -run AssautStatborgArmement -v -timeout 60m
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -189,7 +190,7 @@ func TestAssautStatborgArmementFenetre(t *testing.T) {
 			t.Errorf("%s : film absent du cache (%s)", id, cache)
 			continue
 		}
-		recs, tronque := StatRecordsCtx(context.Background(), src, id)
+		recs, tronque, _ := StatRecordsBornes(src, id)
 		instants := asInstants(recs)
 		tmin, tmax := 0, 0
 		for _, r := range recs {
@@ -210,7 +211,7 @@ func TestAssautStatborgArmementFenetre(t *testing.T) {
 
 		// PLANCHER — sur TOUS les films : c'est une propriete de densite du flux.
 		if tmax > tmin {
-			for i := 0; i < asTirages; i++ {
+			for range asTirages {
 				instant := tmin + rng.Intn(tmax-tmin)
 				tirages++
 				for k, xs := range instants {

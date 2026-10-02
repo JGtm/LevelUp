@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_visee_compare_research_test.go — LOT 1 : CONFRONTER ma visee modele-M au decodeur de
@@ -18,6 +20,7 @@ package grammar
 import (
 	"math"
 	"os"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -42,7 +45,7 @@ func (a *lot1AimConc) add(pay []byte, pos int) {
 		return
 	}
 	a.n++
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		abs := math.Abs(float64(v[i]))
 		a.absSum[i] += abs
 		if abs < 0.3 {
@@ -68,10 +71,7 @@ func TestLot1ViseeCompare(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	var (
 		modal, aimAt113, feGated, lesDeux, valEgales int
 		aimStartHist                                 = map[int]int{}
@@ -95,7 +95,7 @@ func TestLot1ViseeCompare(t *testing.T) {
 			var feAim uint32
 			if len(pay)*8 >= fireAimBit+int(FireAimBits) {
 				var fl [5]uint8
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					fl[i] = uint8(uint32(source.BitsStricts(pay, fireFlagsBit+i, 1)))
 				}
 				if fl[2] == 1 && fl[3] == 0 && fl[4] == 0 {
@@ -149,11 +149,11 @@ func TestLot1ViseeCompare(t *testing.T) {
 			}
 		}
 	}
-	line := ""
+	var line strings.Builder
 	for i := 0; i < 8 && i < len(hs); i++ {
-		line += " " + itoa(hs[i].pos) + ":" + itoa(hs[i].n)
+		line.WriteString(" " + itoa(hs[i].pos) + ":" + itoa(hs[i].n))
 	}
-	t.Logf("  positions de debut de visee (bit:compte, decroissant) :%s", line)
+	t.Logf("  positions de debut de visee (bit:compte, decroissant) :%s", line.String())
 	t.Logf("CONCENTRATION (une vraie visee est proche de l'horizontale : une composante avec E petit / part<0.3 haute ; le bruit uniforme donne E~0.5, part~26 %%) :")
 	concMine.log(t, "modele-M")
 	concMine32.log(t, "M+32bits")

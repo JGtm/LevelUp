@@ -28,7 +28,9 @@ package replay
 // sans etape observee fait echouer ce test — c'est le but.
 
 import (
+	"context"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 )
@@ -38,11 +40,11 @@ import (
 // ne doit ni les retenir par reference apres le retour, ni les modifier.
 type Observer func(step string, v any)
 
-// BuildFromFilmSteps est la liste FERMEE, DANS L'ORDRE, des etapes que BuildFromFilm rend a
-// l'observateur. Elle est exportee pour que le harnais d'equivalence verifie qu'aucune etape ne
+// buildFromFilmSteps est la liste FERMEE, DANS L'ORDRE, des etapes que BuildFromFilm rend a
+// l'observateur. Elle est lue par [BuildFromFilmSteps], pour que le harnais d'equivalence verifie qu'aucune etape ne
 // manque a un fichier de digests, et gardee par observe_test.go : un balayage ajoute a
 // BuildFromFilm sans etape ici fait echouer le test.
-var BuildFromFilmSteps = []string{
+var buildFromFilmSteps = []string{
 	"translocations",
 	"positions", "bipedCreations", "fire", "loadouts",
 	// LES DOTATIONS DE NAISSANCE (lot M3.2) : apres les images-cles, avant les prises d arme
@@ -68,6 +70,10 @@ var BuildFromFilmSteps = []string{
 	"grenades", "projectiles", "deaths", "filmTable", "playerTeams", "playerIndices", "clockOrigin",
 }
 
+// BuildFromFilmSteps rend une COPIE de la liste fermee des etapes (J12.4 : la liste elle-meme n est
+// plus une variable de paquet exportee, donc plus modifiable de l exterieur).
+func BuildFromFilmSteps() []string { return slices.Clone(buildFromFilmSteps) }
+
 // stepClock date la FIN du balayage precedent. C'est tout ce qu'il faut pour chronometrer les
 // balayages de BuildFromFilm sans y ajouter un seul site d'appel : l'observateur est deja appele
 // juste apres chaque balayage, dans l'ordre, donc la duree d'un balayage est l'ecart entre deux
@@ -87,9 +93,9 @@ type stepClock struct{ last time.Time }
 // la seconde sortie du balayage precedent, emise dans la foulee. Les chronometrer mesurerait
 // zero, et surtout avancer l'horloge sur elles volerait au balayage SUIVANT le temps ecoule
 // entre les deux appels.
-func (o Options) observe(step string, v any) {
+func (o Options) observe(ctx context.Context, step string, v any) {
 	if o.clock != nil && !strings.HasSuffix(step, ".stats") {
-		slog.Debug("replay: balayage", "step", step, "duration", time.Since(o.clock.last))
+		slog.DebugContext(ctx, "replay: balayage", "step", step, "duration", time.Since(o.clock.last))
 		o.clock.last = time.Now()
 	}
 	if o.Observe != nil {

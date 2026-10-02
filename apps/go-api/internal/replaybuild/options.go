@@ -1,6 +1,7 @@
 package replaybuild
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
@@ -9,7 +10,7 @@ import (
 // buildReplayOptions assemble replay.Options a partir de ce que BuildBytes a deja resolu
 // (catalogue d'entrees, faits du match, entrees de catalogue, statistiques du film) — extrait
 // de BuildBytes (lot restes R0, deplacement pur des champs, aucun changement de sortie).
-func (b *Builder) buildReplayOptions(
+func (b *Builder) buildReplayOptions(ctx context.Context,
 	entry decfilm.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
 ) replay.Options {
 	// LES DEUX PROJECTIONS DE LA FEUILLE QUI SE REPLIENT SE CALCULENT AVANT LE RAPPORT de la construction
@@ -19,8 +20,8 @@ func (b *Builder) buildReplayOptions(
 	cat.replis.DeclencheN(decfilm.NomCampInconnuRetireDeLaTable, campsRetires)
 	return replay.Options{
 		FrameIntervalMS: b.interval,
-		Geometry:        b.geometryFor(entry.Module),
-		Structure:       b.structureFor(entry.Module),
+		Geometry:        b.geometryFor(ctx, entry.Module),
+		Structure:       b.structureFor(ctx, entry.Module),
 		Labels:          b.labels,
 		NeutralDeaths:   cat.neutral,
 		Kills:           cat.kills,

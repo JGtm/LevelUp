@@ -13,9 +13,9 @@ package grammar
 // (transloc_positions_film_test.go), sur le film et la carte du cas index.
 //
 //	CGO_ENABLED=0 P1_FILM=<depot>/data/cache/film_chunks/1b2d9e08 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestP1Exemption' -v -timeout 30m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestP1Exemption' -v -timeout 30m
 //	CGO_ENABLED=0 P1_FILM_SANS117=<depot>/data/cache/film_chunks/7344d24f \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestP1Invariance' -v -timeout 30m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestP1Invariance' -v -timeout 30m
 
 import (
 	"os"

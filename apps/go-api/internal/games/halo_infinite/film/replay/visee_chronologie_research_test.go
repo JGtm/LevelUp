@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_chronologie_research_test.go — LA CHRONOLOGIE DE ZOOM RELEVEE A LA MAIN, CONFRONTEE A
@@ -56,11 +58,6 @@ const (
 	chronoGT        = "Nilton410"
 	chronoGTVictime = "Madina97294"
 )
-
-// chronoEpisodes : les periodes zoomees de Nilton410, en SECONDES d'horloge du feed.
-var chronoEpisodes = [][2]float64{
-	{41, 46.3}, {49, 52}, {61, 61.8}, {68, 68.8}, {71, 73}, {85, 86},
-}
 
 // chronoEpisodeMadina : la periode unique de la victime.
 var chronoEpisodeMadina = [2]float64{45, 46.3}
@@ -265,7 +262,7 @@ func chronoMesure114(t *testing.T, dir string, eps [][2]int64, trans []int64) {
 				continue
 			}
 			var sb strings.Builder
-			for b := 0; b < 72; b++ {
+			for b := range 72 {
 				if b == 7 || b == 8 || b == 24 || b == 40 || b == 56 {
 					sb.WriteByte(' ')
 				}
@@ -375,7 +372,7 @@ func chronoMesureTypes(t *testing.T, types [][2]int64, trans []int64) {
 		t.Fatalf("duree de film invalide")
 	}
 	var candidats int
-	for ty := 0; ty < 128; ty++ {
+	for ty := range 128 {
 		var totale int
 		couverts := map[int]bool{}
 		var dansFen int
@@ -453,7 +450,7 @@ func chronoMesureComposants(t *testing.T, pos []grammar.BipedPosition, lives []l
 		}
 		totalRecords++
 		tMS := int64(p.TimestampUS / 1000)
-		for b := 0; b < 64; b++ {
+		for b := range 64 {
 			if p.MaskBits>>uint(b)&1 == 0 {
 				continue
 			}
@@ -473,7 +470,7 @@ func chronoMesureComposants(t *testing.T, pos []grammar.BipedPosition, lives []l
 	_ = dansVie
 	t.Logf("C. BIPEDE — %d records de %s (%.0f s de vies)", totalRecords, chronoGT, dureeVieS)
 	fenS := float64(len(trans)) * 2 * float64(chronoFenetreMS) / 1000
-	for b := 0; b < 64; b++ {
+	for b := range 64 {
 		if compTot[b] == 0 || len(compCouv[b]) < chronoCouvMin {
 			continue
 		}
@@ -488,7 +485,7 @@ func chronoMesureComposants(t *testing.T, pos []grammar.BipedPosition, lives []l
 	if candidats == 0 {
 		t.Logf("C. BIPEDE — aucun composant ne s'aligne sur les transitions aux seuils declares.")
 		var rares []string
-		for b := 0; b < 64; b++ {
+		for b := range 64 {
 			if compTot[b] > 0 && compTot[b] < 60 {
 				rares = append(rares, fmt.Sprintf("i%d=%d(fen %d, couv %d)",
 					b, compTot[b], compFen[b], len(compCouv[b])))

@@ -1,6 +1,6 @@
 // no_mojibake_test.go : interdit toute séquence UTF-8-doublement-encodé (« mojibake »)
 // dans les .go du module et les .toml de config/titles/. Allowlist VIDE — c'est le
-// point : la correction Q3 (2026-09-07, plan .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md
+// point : la correction Q3 (2026-09-07, plan .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md
 // §4 L0) a réencodé les 64 fichiers touchés (61 trouvés au premier balayage + 3 trouvés
 // en écrivant CE garde-rail — voir le journal), aucun ne doit revenir en arrière. Note
 // délibérée : ce fichier ne contient AUCUNE séquence mojibake littérale dans son propre

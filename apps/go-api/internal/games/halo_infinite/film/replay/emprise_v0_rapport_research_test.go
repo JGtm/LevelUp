@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // emprise_v0_rapport_research_test.go — LOT V0 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :
@@ -23,6 +25,7 @@ package replay
 // tableaux colles au journal du lot. Il se saute sans `EMPRISE_V0_DIR`.
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -89,7 +92,7 @@ func v0MesurerFilm(t *testing.T, e v0Entree) v0Resultat {
 	var docB ReplayDocument
 	var picAsm uint64
 	r.CoutAssemblage, picAsm = v0Chrono(e.tours, func() {
-		docB = BuildFromPositions(e.id, title.DefaultSlug, b.positions, nil, v0OptionsSync(e, b, l, fam))
+		docB = BuildFromPositions(context.Background(), e.id, title.DefaultSlug, b.positions, nil, v0OptionsSync(e, b, l, fam))
 	})
 	r.CoutA, r.CoutStatborg, r.CoutPont, r.CoutDrapeau = l.coutA, l.coutStatborg, l.coutPont, l.coutDrap
 	r.CoutEquipes, r.CoutMonde = l.coutEquipes, l.coutMonde
@@ -379,7 +382,7 @@ func (s *v0Echantillon) arreter() uint64 {
 func v0SansObjetsDuMonde(e v0Entree, b v0Base, l v0Lectures, ref map[string]map[string][]v0Iv,
 	r *v0Resultat) {
 	l.pads = PadScans{}
-	doc := BuildFromPositions(e.id, title.DefaultSlug, b.positions, nil, v0OptionsSync(e, b, l, "drapeau"))
+	doc := BuildFromPositions(context.Background(), e.id, title.DefaultSlug, b.positions, nil, v0OptionsSync(e, b, l, "drapeau"))
 	calage := r.CalageCollecteur
 	if doc.Coverage != nil && doc.Coverage.Bridge.DeathOffsetMs != nil {
 		calage = *doc.Coverage.Bridge.DeathOffsetMs

@@ -239,7 +239,7 @@ l'item 0.5.
 
 ## 0.5 — Registre des reports `[x]`
 
-**Huit lignes ajoutees** (`.ai/V7.5/REGISTRE_REPORTS.md:233-240`), origine commune « artefact
+**Huit lignes ajoutees** (`.ai/REGISTRE_REPORTS.md:233-240`), origine commune « artefact
 *Registre du film Theater* + `replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, 2026-08-17 », chacune
 avec sa condition de reprise nommant le lot qui la porte :
 

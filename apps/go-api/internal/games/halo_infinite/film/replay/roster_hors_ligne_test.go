@@ -26,6 +26,7 @@ package replay
 // corpus donne 0 desaccord d'index sur les huit builds — les index rendus sont donc les memes.
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
@@ -48,8 +49,8 @@ func TestRosterHorsLigneEstCompletParLaTableDuFilm(t *testing.T) {
 
 			sansTable := opt
 			sansTable.FilmTable = grammar.FilmPlayerTable{Refusal: grammar.FilmTableNoSection}
-			avant := BuildFromPositions(b.Short8, "halo_infinite", g.Positions, g.Fire, sansTable)
-			apres := BuildFromPositions(b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
+			avant := BuildFromPositions(context.Background(), b.Short8, "halo_infinite", g.Positions, g.Fire, sansTable)
+			apres := BuildFromPositions(context.Background(), b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
 
 			manquants := siegesAbsentsDuRoster(g.FilmTable, apres.Roster)
 			t.Logf("%s | %s | hors ligne : %d joueur(s) sans la table, %d avec (%d siege(s) au "+

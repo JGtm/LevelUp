@@ -10,6 +10,7 @@ package replay
 // rougit sur une machine chargee.
 
 import (
+	"context"
 	"slices"
 	"testing"
 	"time"
@@ -28,7 +29,7 @@ func TestObserveClockNAltereNiEtapesNiValeurs(t *testing.T) {
 
 	attendues := []string{"positions", "heldWeaponChanges", "heldWeaponChanges.stats", "clockOrigin"}
 	for i, step := range attendues {
-		o.observe(step, i)
+		o.observe(context.Background(), step, i)
 	}
 	if !slices.Equal(vues, attendues) {
 		t.Fatalf("etapes observees = %v, attendu %v — l'horloge a modifie la sequence", vues, attendues)
@@ -49,12 +50,12 @@ func TestObserveClockAvanceHorsStats(t *testing.T) {
 	avant := time.Now().Add(-time.Hour)
 	o := Options{clock: &stepClock{last: avant}}
 
-	o.observe("positions", nil)
+	o.observe(context.Background(), "positions", nil)
 	apres := o.clock.last
 	if !apres.After(avant) {
 		t.Fatalf("l'horloge n'a pas avance sur un balayage (%v -> %v)", avant, apres)
 	}
-	o.observe("heldWeaponChanges.stats", nil)
+	o.observe(context.Background(), "heldWeaponChanges.stats", nil)
 	if !o.clock.last.Equal(apres) {
 		t.Fatalf("l'horloge a avance sur une etape .stats (%v -> %v)", apres, o.clock.last)
 	}
@@ -68,8 +69,8 @@ func TestObserveSansClockNeMesureRien(t *testing.T) {
 	if o.clock != nil {
 		t.Fatal("clock devrait etre nil sur des Options non armees")
 	}
-	o.observe("positions", nil)
-	o.observe("positions.stats", nil)
+	o.observe(context.Background(), "positions", nil)
+	o.observe(context.Background(), "positions.stats", nil)
 	if vues != 2 {
 		t.Fatalf("%d etape(s) observee(s), attendu 2", vues)
 	}

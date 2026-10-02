@@ -259,7 +259,7 @@ func TestTI9InputPromptLargeursDuSacTexte(t *testing.T) {
 			nom: "quatre corps : le compteur mene la boucle, sans borne a quatre",
 			ecrire: func(w *bitWriterMSB) {
 				ti9SacTexteEnTete(w, 4)
-				for i := 0; i < 4; i++ {
+				for range 4 {
 					w.put(0, 3)
 				}
 			},

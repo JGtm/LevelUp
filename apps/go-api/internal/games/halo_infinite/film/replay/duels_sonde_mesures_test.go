@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // duels_sonde_mesures_test.go — les mesures M1 a M4 de la sonde duels (scinde de
@@ -189,7 +191,7 @@ func duelsMesureDistance(t *testing.T, morts []duelMort, dmg []duelDmg, tracks m
 	const w = 3_000_000
 	var duels, elims []float64
 	tentees, resolues, denivele, hauteurs := 0, 0, 0, make([]float64, 0, len(morts))
-	buckets := make([]int, len(grammar.WeaponHitDistanceEdges)+1)
+	buckets := make([]int, len(grammar.WeaponHitDistanceEdges())+1)
 	for _, m := range morts {
 		f, ok := duelsFatal(dmg, m.slot, m.ts)
 		if !ok {
@@ -224,7 +226,7 @@ func duelsMesureDistance(t *testing.T, morts []duelMort, dmg []duelDmg, tracks m
 		"engagements a plus d'1 m de denivele %s",
 		duelsMediane(duels), duelsMediane(elims), duelsMediane(hauteurs),
 		duelsPct(denivele, resolues))
-	t.Logf("M3 histogramme des duels sur %v m : %v", grammar.WeaponHitDistanceEdges, buckets)
+	t.Logf("M3 histogramme des duels sur %v m : %v", grammar.WeaponHitDistanceEdges(), buckets)
 }
 
 // duelsMediane rend la mediane formatee, ou « n.d. » sur un echantillon vide.

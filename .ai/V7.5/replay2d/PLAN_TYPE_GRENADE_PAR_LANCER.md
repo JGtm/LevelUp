@@ -257,7 +257,7 @@ utilisateur. — **sans objet.**
 ## Statuts et cloture
 
 `[x]` / `[~]` (reference) / `[!]` (justification). Aucune case vide. Entree datee au
-`.ai/thought_log.md`. Reports au `.ai/V7.5/REGISTRE_REPORTS.md` avec condition de reprise.
+`.ai/thought_log.md`. Reports au `.ai/REGISTRE_REPORTS.md` avec condition de reprise.
 
 ### Cloture — 2026-08-16
 

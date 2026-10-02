@@ -406,7 +406,7 @@ func readMaskIndices(br *Lecteur, comps int) (idx []int, full, ok bool) {
 		// consumeMask, dont la branche éparse pose `mask |= 1 << idx` et que
 		// traverseComponentLoop interroge par `Mask & (1 << i)`.
 		m := br.ReadBits(64)
-		for i := 0; i < 64; i++ {
+		for i := range 64 {
 			if m&(uint64(1)<<uint(i)) == 0 {
 				continue
 			}
@@ -423,7 +423,7 @@ func readMaskIndices(br *Lecteur, comps int) (idx []int, full, ok bool) {
 	}
 	idx = make([]int, cnt)
 	prev := -1
-	for i := 0; i < cnt; i++ {
+	for i := range cnt {
 		v := int(br.ReadBits(6))
 		if v <= prev || v >= comps {
 			return nil, false, false

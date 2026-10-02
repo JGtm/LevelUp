@@ -143,7 +143,7 @@ func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int,
 
 	if err := BackfillMatchCitations(
 		ctx, metaDB, sharedDB, playerHandle.SQLDb(), pve,
-		e.xuid, matchIDs, e.citationWeaponSourceDuMoteur()...,
+		e.xuid, matchIDs, e.citationWeaponSourceDuMoteur(ctx)...,
 	); err != nil {
 		return 0, fmt.Errorf("RunBackfillCitations backfill: %w", err)
 	}
@@ -451,7 +451,7 @@ func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedD
 	defer pve.Close()
 
 	if err := BackfillMatchCitations(ctx, metaDB, sharedDB, playerDB, pve, e.xuid, matchIDs,
-		e.citationWeaponSourceDuMoteur()...); err != nil {
+		e.citationWeaponSourceDuMoteur(ctx)...); err != nil {
 		return 0, fmt.Errorf("backfill: %w", err)
 	}
 	return len(matchIDs), nil

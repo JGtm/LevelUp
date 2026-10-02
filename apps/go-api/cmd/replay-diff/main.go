@@ -50,6 +50,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -59,6 +60,8 @@ import (
 )
 
 func main() {
+	// LE CONTEXTE DE L OUTIL NAIT ICI, ET NULLE PART AILLEURS (lot J12.3).
+	ctx := context.Background()
 	ancien := flag.String("ancien", "", "artefact de REFERENCE (le plus ancien) — obligatoire")
 	nouveau := flag.String("nouveau", "", "artefact RE-CUIT au code courant — obligatoire")
 	sortieJSON := flag.String("json", "", "fichier ou ecrire le rapport JSON de la paire (vide = aucun)")
@@ -71,7 +74,7 @@ func main() {
 		os.Exit(2)
 	}
 	if err := executer(*ancien, *nouveau, *sortieJSON, *tout, *quiet); err != nil {
-		slog.Error("replay-diff", "err", err)
+		slog.ErrorContext(ctx, "replay-diff", "err", err)
 		os.Exit(1)
 	}
 }

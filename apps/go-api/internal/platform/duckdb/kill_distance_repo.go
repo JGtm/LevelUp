@@ -4,7 +4,7 @@
 //
 // Source : la jointure « mort mesurée » — `match_kill_events_latest` × la table
 // de positions — qui ne s'écrit plus ici : elle vit dans kill_measured.go depuis
-// le lot 3 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md (règle n°6 du dépôt : à la
+// le lot 3 du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md (règle n°6 du dépôt : à la
 // troisième copie on centralise ET on migre les copies). Ce fichier n'apporte
 // donc plus que SA clause de portée (`killDistanceWhere`) et sa résolution
 // d'armes. Les gardes (règle ART n°2 — vues `_latest` jamais les tables brutes,
@@ -110,7 +110,7 @@ func (r *KillDistanceRepo) LoadMatch(ctx context.Context, matchID string) ([]dom
 // mesurait avant, sur une position arbitraire, faute de savoir laquelle des
 // deux victimes la ligne de positions plaçait. Impact mesuré sur le corpus :
 // NUL (0 groupe multi-victimes sur 138 293 événements). Changement statué et
-// accepté au résidu 4.0c du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md.
+// accepté au résidu 4.0c du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md.
 const killDistanceWhere = `e.match_id = ?`
 
 // killDistanceFragScope : le MÊME match, borné dans la sous-requête `fragSolo`.

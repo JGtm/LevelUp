@@ -38,7 +38,7 @@ func (a *assemblage) poserLesPistes() {
 	// les lectures directes (index de joueur, `bid`), le pont par morts et l'elimination sur le
 	// roster, publie la provenance de chaque lien, et expose des accesseurs qui portent DEJA
 	// leurs gardes — aucun calque ne reconstruit son propre pont (garde-rail `archlint`).
-	a.reg = BuildIdentityRegistry(IdentityInput{
+	a.reg = BuildIdentityRegistry(a.ctx, IdentityInput{
 		Positions: a.sorted, BipedCreations: a.opt.BipedCreations,
 		Deaths: a.opt.Deaths, PlayerIndices: a.opt.PlayerIndices, FilmTable: a.opt.FilmTable,
 		Bots: a.opt.Bots, Entities: a.opt.PlayerEntities, Fire: refs, RosterXUIDs: a.opt.RosterXUIDs,
@@ -54,13 +54,13 @@ func (a *assemblage) poserLesPistes() {
 	}
 	// LA POSE DES TRACES ET DES BORNES vit dans `tracks_publication.go` (lot 1.9.13) : la
 	// découpe vient des VIES du registre, et ce fichier-ci est déjà au-delà du seuil de 500 L.
-	a.trackCov = poserLesTraces(&a.doc, a.sorted, decoupeDesTraces{
+	a.trackCov = poserLesTraces(a.ctx, &a.doc, a.sorted, decoupeDesTraces{
 		origin: a.origin, step: a.step, minPoints: a.opt.minPoints(), scoped: a.opt.Scoped,
 		vies: a.reg.Vies(), fb: a.opt.Fallbacks,
 	})
 	// CE QUE LA PORTE DES POSITIONS A ECARTE se publie avec la couverture des traces : un point
 	// ecarte est un point que le seuil de publication n a jamais vu (cf. positions_porte.go).
-	a.porte.poserSur(&a.trackCov, a.matchID)
+	a.porte.poserSur(a.ctx, &a.trackCov, a.matchID)
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
 	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
@@ -70,10 +70,10 @@ func (a *assemblage) poserLesPistes() {
 	// partagé, lu par l'entité qui vit à sa création (lot M2.3) —, puis les slots que le pont
 	// attribue à l'index d'un bot unique.
 	nommerLesPistesDeBotParLeurVie(a.doc.Tracks, a.reg.Vies(), a.opt.Bots, a.horloge())
-	nameBotTracks(a.doc.Tracks, a.reg.Occupants(), a.opt.Bots, a.origin, a.step)
+	nameBotTracks(a.ctx, a.doc.Tracks, a.reg.Occupants(), a.opt.Bots, a.origin, a.step)
 	// LES RELAIS EN DERNIER : le remplaçant hérite des vies restées anonymes après tout ce
 	// que la lecture et les fermetures savaient nommer (cf. successions.go). C'est un repli.
-	attributeSuccessions(a.doc.Tracks, a.opt.Successions, calageDesRelais{origin: a.origin,
+	attributeSuccessions(a.ctx, a.doc.Tracks, a.opt.Successions, calageDesRelais{origin: a.origin,
 		step: a.step, deathOffsetMS: a.reg.DeathOffsetMS(), offsetMatches: a.reg.DeathOffsetMatches(),
 		fb: a.opt.Fallbacks}, refs)
 	// LE NOMMAGE FINAL, ET IL EST LA CONSEQUENCE D'UNE DECISION PRODUIT (2026-09-07) : « les vies
@@ -88,7 +88,7 @@ func (a *assemblage) poserLesPistes() {
 	for i := range a.reg.TracesDeduites(a.doc.Tracks, a.origin, a.step) {
 		a.unnamed.deduced[i] = true
 	}
-	logUnnamedLives(a.matchID, a.doc.Tracks, a.unnamed)
+	logUnnamedLives(a.ctx, a.matchID, a.doc.Tracks, a.unnamed)
 }
 
 // poserLesEquipesEtLeRoster pose l equipe du film sur les vies et sur le roster, puis les
@@ -119,7 +119,7 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// L INDEX DE TIREUR N EST LU COMME PLACE QUE S IL L EST SUR CE FILM (lot M4b.4,
 	// tirs_index_fiable.go) : sinon la lecture des places par les tirs s abstient.
 	a.indexTireur = mesurerIndexDeTireur(a.fire, a.reg.Occupants())
-	a.indexTireur.journaliser(a.matchID)
+	a.indexTireur.journaliser(a.ctx, a.matchID)
 	if !a.indexTireur.estLaPlace() {
 		a.opt.Fallbacks.DeclencheN(fallback.NomIndexDeTireurHorsPlace, a.indexTireur.total)
 	}
@@ -130,13 +130,13 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 		// LA VIE QUI TIRE, LUE PAR L UNITE DU TIR (lot R2, constat C6) : elle refuse les votes qu elle contredit.
 		tireurs = tireursDesTirs(a.fire, a.doc.Tracks, a.horloge())
 	}
-	a.siegeCov = poserLesSieges(a.doc.Roster, occ, entreesDesPlaces{
+	a.siegeCov = poserLesSieges(a.ctx, a.doc.Roster, occ, entreesDesPlaces{
 		table: a.opt.FilmTable, fire: tirsDesPlaces, tireurs: tireurs, horloge: a.horloge()})
 	a.siegeCov.BotsSuccesseurs = botsSuccesseurs
 	a.siegeCov.TirsIndexNonPlace = !a.indexTireur.estLaPlace()
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
-	a.doc.OriginMs = resolveOriginMs(a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
-	a.reg.logRegistry(a.matchID)
+	a.doc.OriginMs = resolveOriginMs(a.ctx, a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
+	a.reg.logRegistry(a.ctx, a.matchID)
 }
 
 // poserTirsProjectilesEtGrenades publie les trois calques du combat, chacun avec sa couverture.
@@ -155,7 +155,7 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 	a.doc.Shots = keepShotsOfPublishedTracks(shots, a.doc.Tracks)
 	a.shotCov.Unpublished = countUnpublished(len(shots), len(a.doc.Shots))
 	a.shotCov.Attached = len(a.doc.Shots)
-	a.shotCov.warnIfLossy("tirs")
+	a.shotCov.warnIfLossy(a.ctx, "tirs")
 
 	// LES DOTATIONS DE NAISSANCE (schéma 69, lot M3.2) rejoignent les relevés d'image-clé : elles
 	// sont le premier relevé PASSÉ de chaque vie, posées sur la vie que leur création ouvre.
@@ -180,7 +180,7 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 		if projTronquees > 0 {
 			// JOURNALISE, JAMAIS AVALE (regle n°3) : une coupure protege le rendu, elle ne
 			// repare pas la dequantification qui la cause.
-			slog.Info("rejeu : trajectoires de projectile coupees a un pas impossible",
+			slog.InfoContext(a.ctx, "rejeu : trajectoires de projectile coupees a un pas impossible",
 				"match_id", a.matchID, "tronquees", projTronquees, "pistes", len(a.opt.Projectiles),
 				"seuil_m", projectileMaxStepM)
 		}
@@ -191,7 +191,7 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 	a.doc.Grenades = keepGrenadesOfPublishedTracks(gren, a.doc.Tracks)
 	a.grenCov.Unpublished = countUnpublished(len(gren), len(a.doc.Grenades))
 	a.grenCov.Attached = len(a.doc.Grenades)
-	a.grenCov.warnIfLossy("grenades")
+	a.grenCov.warnIfLossy(a.ctx, "grenades")
 }
 
 // poserScoreEtObjectifs mesure la couverture des equipes, etablit l horloge du score et pose les
@@ -201,10 +201,10 @@ func (a *assemblage) poserScoreEtObjectifs() {
 	// `doc.Coverage` n'existe qu'a partir de `buildCoverage`. Elle a besoin du roster, qui est
 	// son denominateur.
 	a.teamCov = a.equipes.couverture(a.viesTotal, a.viesNommees, a.viesSlotAmbigu, a.doc.Roster)
-	logTeamCoverage(a.matchID, a.teamCov)
-	a.clock = replayScoreClock(&a.doc, a.interval, a.matchID)
-	a.objCov = attachObjectiveActions(&a.doc, a.opt, a.reg, a.clock)
-	a.scoreCov = attachScoreTimeline(&a.doc, a.opt, a.clock, a.matchID)
+	logTeamCoverage(a.ctx, a.matchID, a.teamCov)
+	a.clock = replayScoreClock(a.ctx, &a.doc, a.interval, a.matchID)
+	a.objCov = attachObjectiveActions(a.ctx, &a.doc, a.opt, a.reg, a.clock)
+	a.scoreCov = attachScoreTimeline(a.ctx, &a.doc, a.opt, a.clock, a.matchID)
 }
 
 // poserEpisodesDEquipement publie les episodes d etat actif (camo, surbouclier) et les frags
@@ -223,7 +223,7 @@ func (a *assemblage) poserEpisodesDEquipement() {
 	a.doc.EquipmentEpisodes, camoNonBinary = buildEquipmentEpisodes(a.sorted, a.opt.CamoStates, a.origin, a.step,
 		a.doc.Tracks, a.clotureesParMort)
 	if camoNonBinary > 0 {
-		slog.Warn("rejeu : lectures camo NON BINAIRES ignorees — l'interrupteur mesure ne connait que 0 et 4095",
+		slog.WarnContext(a.ctx, "rejeu : lectures camo NON BINAIRES ignorees — l'interrupteur mesure ne connait que 0 et 4095",
 			"lectures", camoNonBinary)
 	}
 	// Les FRAGS SOUS EFFET ACTIF : jointure des episodes avec les kills resolus par
@@ -238,7 +238,7 @@ func (a *assemblage) poserEpisodesDEquipement() {
 		origin: a.origin, step: a.step, tracks: a.doc.Tracks,
 		closedByDeath: a.clotureesParMort,
 	})
-	slog.Info("rejeu : etats de mouvement",
+	slog.InfoContext(a.ctx, "rejeu : etats de mouvement",
 		"balaye", a.stanceCov.Scanned, "absent", a.stanceCov.Absent,
 		"records", a.stanceCov.Records, "desyncs", a.stanceCov.Desyncs,
 		"lectures", a.stanceCov.Reads, "intervalles", a.stanceCov.Intervals,
@@ -252,7 +252,7 @@ func (a *assemblage) poserEpisodesDEquipement() {
 // precedentes, puis le coup d envoi. C EST ICI QUE `doc.Coverage` NAIT : toute passe qui mesure
 // avant elle garde sa mesure et la pose apres.
 func (a *assemblage) composerLaCouverture() {
-	a.doc.Coverage = buildCoverage(a.shotCov, a.grenCov, a.objCov, a.reg, a.doc.OriginMs != nil, a.scoreCov)
+	a.doc.Coverage = buildCoverage(a.ctx, a.shotCov, a.grenCov, a.objCov, a.reg, a.doc.OriginMs != nil, a.scoreCov)
 	a.doc.Coverage.Projectiles = a.projCov
 	// LES ARMES A L INSTANT (schema 69, lot M3) : la sante de la marche d image-cle et les
 	// dotations de naissance, mesurees avant la couverture et posees ici.
@@ -303,7 +303,7 @@ func (a *assemblage) composerLaCouverture() {
 	// sur l'horloge du fil, et sans origine cette horloge n'est pas etablie — publier une
 	// mesure calee sur zero la rendrait fausse de 3,6 s a 50,8 s selon le match.
 	if a.doc.OriginMs != nil {
-		a.doc.T0FilmMs, a.doc.Coverage.T0Film = DetectT0Film(
+		a.doc.T0FilmMs, a.doc.Coverage.T0Film = DetectT0Film(a.ctx,
 			t0FilmTracksOf(a.doc.Tracks), a.interval, *a.doc.OriginMs, a.matchID)
 	}
 }

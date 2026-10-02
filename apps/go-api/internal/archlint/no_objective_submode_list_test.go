@@ -4,7 +4,7 @@
 // Source unique : internal/games/halo_infinite/skillchain/objective_family.go
 // (IsObjectiveSubMode). Deux consommateurs en dépendent — la chaîne LUSR sociale
 // (arena_objectif) et la chaîne du score de performance classé (ranked_objectif,
-// lot 1 du plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md) : une copie divergerait au premier
+// lot 1 du plan .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md) : une copie divergerait au premier
 // ajout de sous-mode fait d'un seul côté, et le MÊME match tomberait en famille
 // objectif pour le LUSR et en famille slayer pour la performance.
 //

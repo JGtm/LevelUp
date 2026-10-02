@@ -40,6 +40,7 @@ package replay
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"flag"
 	"os"
 	"path/filepath"
@@ -109,8 +110,8 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 		t.Fatalf("le codec n est pas un point fixe : %d octets contre %d — un champ se perd "+
 			"ou se reconstruit differemment a chaque tour", len(got), len(blob))
 	}
-	docA := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, g.options())
-	docB := BuildFromPositions(goldenFilm, "halo_infinite", again.Positions, again.Fire, again.options())
+	docA := BuildFromPositions(context.Background(), goldenFilm, "halo_infinite", g.Positions, g.Fire, g.options())
+	docB := BuildFromPositions(context.Background(), goldenFilm, "halo_infinite", again.Positions, again.Fire, again.options())
 	if renderAssembly(docA) != renderAssembly(docB) {
 		t.Error("l assemblage differe entre les entrees relues et leur re-serialisation : " +
 			"le codec perd un champ que BuildFromPositions consomme")

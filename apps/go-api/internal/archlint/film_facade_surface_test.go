@@ -23,8 +23,8 @@ package archlint
 //
 // « Laisser les deux facades telles quelles, avec un ratchet. » La reduction de la facade (166) et
 // de la surface compagnon (257) est NON RETENUE — ce n est plus un report, c est une decision, et
-// elle est consignee au §1.4 du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md` ainsi qu a l ADR 0034
-// (section « State reached at M4 », D-1). CONSEQUENCE POUR CE FICHIER : il n est plus la mesure
+// elle est consignee au §1.4 du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` ainsi qu a l ADR 0034
+// (annexe `docs/adr/0034-annex-history.md`, section « State reached at M4 », D-1). CONSEQUENCE POUR CE FICHIER : il n est plus la mesure
 // d entree d un lot a venir, il est LA SEULE CHOSE qui tient la ligne — d ou la phrase
 // [exigenceDeJustificationDatee] dans ses trois messages d erreur.
 //
@@ -152,12 +152,13 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // (`replaybuild`) le cree — ses propres lectures (actions nommees, signaux du drapeau, pont par manche) y
 // notent deja — et le passe aux options du rejeu : elle doit NOMMER le type. Aucune constante `Nom*` n entre
 // dans la facade (les trois noms neufs sont verses par `replay`).
-const plafondSurfaceFacade = 187 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 (objectives) + 18 (noms de replis de la construction et du collecteur) ; fusion J7 : + 1 (ErrCarteAbsente, carte obligatoire) ; J8.7-bis : + 1 (ReplisALaConsultation)
+const plafondSurfaceFacade = 186 // 2026-09-30 — J12.4 sur 8cd560673 : 187 - 1 (BuildBipedTracks, renvoi sans aucun lecteur hors de grammar, supprime ; KnownWeaponHigh32 passe de var a func, meme compte)
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
 // 1,5 fois la facade : c est la mesure qui dit ou est le vrai poids de la frontiere (note de
-// preparation de M4, §1.3 point 4). L ADR 0034 `:335` en annoncait 239 a la cloture de M2.
+// preparation de M4, §1.3 point 4). L ADR 0034 en annoncait 239 a la cloture de M2 (section M2,
+// aujourd hui dans `docs/adr/0034-annex-history.md`).
 //
 // HISTORIQUE DES MONTEES, une ligne par commit qui la fait bouger — c est ce qui rend le ratchet
 // lisible plutot qu une valeur qui change sans raison ecrite :
@@ -309,6 +310,13 @@ const plafondSurfaceFacade = 187 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 
 //	                                           que l assemblage verse au compteur
 //	                                           (`replay.ReplisHorsBalayage`). UN symbole neuf,
 //	                                           re-mesure sur la base `5fad0cc93` : 276.
+//	278  J12.3   (2026-09-30)                  les diagnostics des couches (ADR 0034 D-4) : les
+//	                                           orchestrateurs hors de `film/` (`replaybuild`,
+//	                                           `sync/killcollector`, `cmd/killsource`,
+//	                                           `cmd/oddball-terrain`, `cmd/statnames-sweep`)
+//	                                           journalisent par `replay.JournaliserDiagnostics`.
+//	                                           UN symbole neuf, re-mesure sur la base `e3e322b74` :
+//	                                           277.
 //	291  emprise-vies V1 (2026-09-28)           +13, le placement des vies et les porteurs lus au
 //	                                           sync (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`).
 //	                                           HUIT par `replaybuild`, qui appelle desormais le pont
@@ -358,7 +366,21 @@ const plafondSurfaceFacade = 187 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 
 //	                                           reecrits `types.X` a la fusion, ils ne comptent pas.
 //	                                           RE-MESURE A LA FUSION : 278 - 1 + 20 = 297 (`comm`
 //	                                           des inventaires des deux tetes et de l arbre fusionne).
-const plafondSurfaceReplay = 297 // 2026-10-01 — fusion J11.6 (feat/v75 -> feat/suite-audit-decodeur) : 278 - 1 (audit) + 20 (emprise) ; cf. l historique ci-dessus
+//	298  fusion J12 (2026-10-01)                `feat/suite-audit-decodeur` (`8b894a677`, 297)
+//	                                           fusionnee dans `feat/suite-audit-decodeur-j12`
+//	                                           (`78d8d5482`, 278) : les deux histoires ci-dessus
+//	                                           (J12.3 a 278, J11.6 a 297) sont INDEPENDANTES. +1 sur
+//	                                           la branche du plan : `replay.JournaliserDiagnostics`
+//	                                           (J12.3), qu emprise ne citait pas. Aucun retrait.
+//	                                           RE-MESURE A LA FUSION : 297 + 1 = 298 (`comm` des
+//	                                           inventaires des deux tetes et de l arbre fusionne).
+//	299  revue finale D2 (2026-10-02)           base `06afd4566` re-mesuree a 298. +1 :
+//	                                           `replay.VerserLesReplisDuContexte`, la porte par
+//	                                           laquelle le collecteur verse le rapport de SON contexte
+//	                                           de film (la table de versement vit dans `replay`,
+//	                                           sous ADR 0034 DU-2 (c) ; la recopier serait une
+//	                                           seconde table). Aucun retrait.
+const plafondSurfaceReplay = 299 // 2026-10-02 — revue finale D2 sur 06afd4566 : 298 + 1 (replay.VerserLesReplisDuContexte) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
@@ -370,7 +392,7 @@ const plafondSurfaceReplay = 297 // 2026-10-01 — fusion J11.6 (feat/v75 -> fea
 // A quoi elle sert : un total qui ne bouge pas peut cacher un symbole retire d un cote et ajoute
 // de l autre. La ventilation nomme alors la couche qui a grossi.
 var plafondsParFamilleFacade = map[string]int{
-	"grammar":    46, // 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
+	"grammar":    45, // 2026-09-30 — J12.4 : -1 (BuildBipedTracks) ; 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
 	"objectives": 40, // 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs) ; 2026-09-28 — J8.7-bis : +1 (ReplisALaConsultation)
 	"killsource": 37, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire (J7) : +1 (`ErrCarteAbsente`)
 	"fallback":   29, // 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector)

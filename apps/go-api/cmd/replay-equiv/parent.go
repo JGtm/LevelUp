@@ -50,7 +50,7 @@ type passe struct {
 
 // parentEquivalence lance un enfant par film et compare les digests. Code de sortie non nul des
 // qu'un film differe, echoue ou meurt.
-func parentEquivalence(o options) int {
+func parentEquivalence(ctx context.Context, o options) int {
 	films, err := listeDesFilms(o)
 	if err != nil {
 		fmt.Println("corpus illisible :", err)
@@ -74,7 +74,7 @@ func parentEquivalence(o options) int {
 	var b bilan
 	for _, film := range films {
 		sortie := filepath.Join(tmp, film+".tsv")
-		res := runner.Run(context.Background(), argsEnfant(o, film, sortie))
+		res := runner.Run(ctx, argsEnfant(o, film, sortie))
 		fmt.Printf("%-9s %-12s %9s  pic %5.2f Gio\n",
 			film, res.Issue, res.Dur.Round(time.Millisecond), gio(res.Peak))
 		compterIssue(&b, p, res, film, sortie)
@@ -171,9 +171,9 @@ func argsEnfant(o options, film, sortie string) []string {
 // ajoute la-bas devient une etape attendue ici, sans que personne ait a y penser.
 func etapesAttendues() []string {
 	return slices.Concat(
-		replaybuild.BuildBytesStepsBefore,
-		replay.BuildFromFilmSteps,
-		replaybuild.BuildBytesStepsAfter,
+		replaybuild.BuildBytesStepsBefore(),
+		replay.BuildFromFilmSteps(),
+		replaybuild.BuildBytesStepsAfter(),
 	)
 }
 

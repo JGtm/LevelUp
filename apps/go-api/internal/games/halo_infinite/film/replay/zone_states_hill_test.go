@@ -9,6 +9,7 @@ package replay
 // ce volet.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -33,7 +34,7 @@ func TestZoneStatesCollineActivePeriodes(t *testing.T) {
 		pts = append(pts, pointAt(f, -19.5, 0, 0))
 	}
 	c := zoneTestCtx(nil, []Track{track("2533", pts...)})
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if cov.Method != ZoneMethodPositions {
 		t.Fatalf("methode %q, attendu %q", cov.Method, ZoneMethodPositions)
 	}
@@ -86,7 +87,7 @@ func TestZoneStatesCollineUneSeuleZoneActiveALaFois(t *testing.T) {
 		}
 		pts = append(pts, pointAt(f, x, 0, 0))
 	}
-	states, cov := buildZoneStates(in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
+	states, cov := buildZoneStates(context.Background(), in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
 	if cov.HillPeriods != 2 || len(states) != 2 {
 		t.Fatalf("%d periode(s) et %d zone(s), attendu 2 et 2 : %+v", cov.HillPeriods,
 			len(states), states)
@@ -133,7 +134,7 @@ func TestZoneStatesCollineCompteLesRampesNonLocalisees(t *testing.T) {
 	for f := 396; f <= 400; f++ {
 		pts = append(pts, pointAt(f, 500, 500, 0))
 	}
-	states, cov := buildZoneStates(in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
+	states, cov := buildZoneStates(context.Background(), in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
 	if cov.Unpaired != 1 {
 		t.Errorf("rampes non localisees %d, attendu 1", cov.Unpaired)
 	}
@@ -151,7 +152,7 @@ func TestZoneStatesCollineSansGrappeNePublieRien(t *testing.T) {
 	in := zoneTestInput(zoneRampAt(40, 100, 900))
 	in.Hill = true
 	c := zoneTestCtx(nil, []Track{track("2533", pointAt(100, 500, 500, 0))})
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if len(states) != 0 || cov.HillPeriods != 0 {
 		t.Errorf("%d etat(s) et %d periode(s) publies sans grappe", len(states), cov.HillPeriods)
 	}
@@ -174,7 +175,7 @@ func TestZoneStatesHorsCollineNeReplieJamaisSurLesPositions(t *testing.T) {
 	c := zoneTestCtx(nil, []Track{track("2533", pts...)}) // aucune capture nommee : un CTF
 
 	ctf := zoneTestInput(reads) // Hill reste FAUX : le mode n'est pas un mode a colline
-	states, cov := buildZoneStates(ctf, c)
+	states, cov := buildZoneStates(context.Background(), ctf, c)
 	if len(states) != 0 {
 		t.Errorf("%d etat(s) publie(s) hors mode a colline : %+v", len(states), states)
 	}
@@ -191,7 +192,7 @@ func TestZoneStatesHorsCollineNeReplieJamaisSurLesPositions(t *testing.T) {
 
 	koth := zoneTestInput(reads)
 	koth.Hill = true
-	kothStates, kothCov := buildZoneStates(koth, c)
+	kothStates, kothCov := buildZoneStates(context.Background(), koth, c)
 	if len(kothStates) == 0 || kothCov.HillPeriods == 0 {
 		t.Fatalf("le MEME film en mode a colline ne publie rien (%d etats, %d periodes) :"+
 			" la garde doit trancher sur le mode, pas sur la lecture",

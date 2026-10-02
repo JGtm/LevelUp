@@ -80,7 +80,7 @@ cache, environ 2 h 45 de machine, serveur arrêté. Non lancé : à faire seulem
 
 - Ghost de l'index 4 sur Launch Site (8a485699) : une seule rafale lue au lieu d'une douzaine, à cause
   des objets physiques de la carte mal lus. Pris en charge par le jalon J6 de
-  `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md` (autre session).
+  `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md` (autre session).
 - Vies sans nom : 23 vies sur 10 matchs après la campagne, 27 avant (même mesure sur le code
   d'avant) : défaut antérieur, légèrement réduit. Plan §8.33.
 - Autres découvertes consignées, non traitées : plan §8 (points 27 à 33).

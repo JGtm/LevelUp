@@ -192,7 +192,7 @@ var registreReplayIdentites = []Repli{
 			Ancre:   "return vehicleVelocityHeadingOf(p)",
 		}, {
 			Fichier: pkgReplay + "build_vehicles.go",
-			Ancre:   "clock.fb.DeclencheN(fallback.NomCapVehiculeVitesseInsuffisante, logVehicleHeadingSource(scan.Positions))",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomCapVehiculeVitesseInsuffisante, logVehicleHeadingSource(ctx, scan.Positions))",
 		}},
 		DatePose: dateAudit0E,
 		// LE NEGATIF QUI TENAIT ICI EST TOMBE : « i2 REFUTE » datait du lot 5.2b.2, qui avait

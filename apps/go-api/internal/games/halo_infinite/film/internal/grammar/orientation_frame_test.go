@@ -43,7 +43,7 @@ func TestAvantEstUnitaireEtPerpendiculaire(t *testing.T) {
 // HAUT (indetermine a plat) et jetait l angle, qui EST le cap.
 func TestChassisAPlatLeCapEstLAngle(t *testing.T) {
 	up := [3]float32{0, 0, 1}
-	for raw := uint32(0); raw < 256; raw++ {
+	for raw := range uint32(256) {
 		roll := RollAngleFromRaw(raw, 8)
 		f := ForwardFromUpRoll(up, roll)
 		got := math.Atan2(float64(f[1]), float64(f[0]))
@@ -65,7 +65,7 @@ func TestDequantRoulisEgaleLesConstantesRelues(t *testing.T) {
 		demiPasHuit  = math.Pi / 256 // DAT_143cd97a0 = 0x3c490fdb
 		borneSuperio = math.Pi       // DAT_143cd8918 = 0x40490fdb
 	)
-	for raw := uint32(0); raw < 256; raw++ {
+	for raw := range uint32(256) {
 		attendu := float32(float64(raw)*pasHuitBits - borneSuperio + demiPasHuit)
 		if got := RollAngleFromRaw(raw, 8); math.Abs(float64(got-attendu)) > 1e-6 {
 			t.Fatalf("raw %d : RollAngleFromRaw = %.8f, constantes relues = %.8f", raw, got, attendu)

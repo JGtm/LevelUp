@@ -74,7 +74,7 @@ schema_version = 1
 # est conservé, seule l'exposition est retirée. Cette clé data-level gate le numérateur film
 # (collectHits) : not_exposed ⇒ la passe film ne s'exécute pas pour Infinite, et le front
 # useCapability('weapon_accuracy') repasse à false (charts a/c masqués). La précision GLOBALE
-# reste servie par l'API. Reprise : piste compteur ECS (cf. .ai/V7.5/REGISTRE_REPORTS.md).
+# reste servie par l'API. Reprise : piste compteur ECS (cf. .ai/REGISTRE_REPORTS.md).
 # Cohérent avec la note « le taux est match.weapon.accuracy, et il est not_exposed » sur
 # film.weapon_shots plus bas.
 "match.weapon.accuracy"  = "not_exposed"

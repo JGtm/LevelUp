@@ -54,7 +54,7 @@ package grammar
 // six premiers chunks (`detectMaxChunks`), le reste du film n'est pas parcouru.
 //
 //	CHUNK00_FILMS='C:/.../film_chunks/bcb6d393;C:/.../film_chunks/60ae07c4' \
-//	  CGO_ENABLED=0 go test -tags research ./internal/games/halo_infinite/film/filmdec/ \
+//	  CGO_ENABLED=0 go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestE194SignatureContreNomDeMatch$' -v -count=1 -timeout 3600s
 
 import (

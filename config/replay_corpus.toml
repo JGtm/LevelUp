@@ -47,7 +47,7 @@ carte   = "Cliffhanger"
 raison  = "porte le calque objectifs (captures/vols/prises de drapeau) sur un CTF a 1 manche ; residu connu (re-attribution kills dans un gain, cf. BALAYAGE_PARC section C candidate 1) sert de reference de bruit attendu"
 
 # --- CTF multi-manche -----------------------------------------------------------------------
-# Ouvert au registre (.ai/V7.5/REGISTRE_REPORTS.md) : le pont d'identite par manche ne tient
+# Ouvert au registre (.ai/REGISTRE_REPORTS.md) : le pont d'identite par manche ne tient
 # PAS sur ce film (contrairement aux CTF mono-manche corriges par le correctif du 06/09). Tant
 # que ce defaut n'est pas ferme, ce temoin doit rester SURVEILLE explicitement — un differentiel
 # qui ne le nommerait pas laisserait une regression multi-manche invisible, exactement le

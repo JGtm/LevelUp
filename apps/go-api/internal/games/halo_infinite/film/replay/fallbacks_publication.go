@@ -13,6 +13,7 @@ package replay
 // ligne, en toute fin de `BuildFromPositions`.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -36,7 +37,7 @@ type FallbackHit struct {
 // IL S'APPELLE EN DERNIER, ET C'EST OBLIGATOIRE : les calques qui se replient le plus (drapeau,
 // zones, collines, bombe, vehicules) sont poses APRES `buildCoverage`. L'appeler plus haut ne
 // porterait que les replis du balayage et des premiers calques.
-func attachFallbackCoverage(doc *ReplayDocument, c *fallback.Compteur) {
+func attachFallbackCoverage(ctx context.Context, doc *ReplayDocument, c *fallback.Compteur) {
 	if doc.Coverage == nil {
 		return // aucun calque de couverture : rien ou poser le compte
 	}
@@ -44,7 +45,7 @@ func attachFallbackCoverage(doc *ReplayDocument, c *fallback.Compteur) {
 	// UNE LIGNE PAR REPLI DECLENCHE, et pas un total : un total ne designe aucun chantier, alors
 	// qu'un nom en designe un — le registre porte sa cible de retrait en face.
 	for _, h := range doc.Coverage.Fallbacks {
-		slog.Info("rejeu : repli declenche",
+		slog.InfoContext(ctx, "rejeu : repli declenche",
 			"match_id", doc.MatchID, "repli", h.Name, "declenchements", h.Hits)
 	}
 }

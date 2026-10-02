@@ -190,10 +190,7 @@ func scanHighlightEvents(data []byte, version int) []highlightevent.HighlightEve
 // robuste sur des flux synthétiques ou bruités.
 func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (highlightevent.HighlightEvent, error) {
 	totalBits := len(data) * 8
-	windowEndBit := xuidStartBit + eventWindowBits
-	if windowEndBit > totalBits {
-		windowEndBit = totalBits
-	}
+	windowEndBit := min(xuidStartBit+eventWindowBits, totalBits)
 
 	searchFrom := xuidStartBit
 	var lastErr error
@@ -321,7 +318,7 @@ func readBytesAtBit(data []byte, bit, n int) []byte {
 		return nil
 	}
 	out := make([]byte, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out[i] = source.OctetAuBit(data, bit+i*8)
 	}
 	return out
@@ -336,7 +333,7 @@ func readUint64LEAtBit(data []byte, bit int) uint64 {
 		return 0
 	}
 	var x uint64
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		x |= uint64(b[i]) << (uint(i) * 8)
 	}
 	return x
@@ -359,7 +356,7 @@ func findBitMarker(data []byte, startBit, endBit int, pattern []byte) int {
 	}
 	for bit := startBit; bit <= endBit-patBits; bit++ {
 		match := true
-		for i := 0; i < len(pattern); i++ {
+		for i := range pattern {
 			if source.OctetAuBit(data, bit+i*8) != pattern[i] {
 				match = false
 				break

@@ -113,7 +113,7 @@ func rattraperCartesAbsentes(ctx context.Context, d Deps, work []buildWork,
 	// LECTURE FUSIONNEE, ECRITURE DANS L'OVERLAY SEUL. Sans la fusion, une carte deja rattrapee
 	// au cycle precedent serait re-telechargee a chaque cycle : elle n'est pas dans le fichier
 	// versionne, et c'est lui seul que la premiere version de ce code lisait.
-	cat, err := replay.LoadMapWeaponPadsMerged(catPath, overlayPath)
+	cat, err := replay.LoadMapWeaponPadsMerged(ctx, catPath, overlayPath)
 	if err != nil {
 		slog.WarnContext(ctx, "rattrapage mvar: catalogue des cartes illisible — rattrapage "+
 			"saute, les films sont recuperes normalement", "err", err, "path", catPath)

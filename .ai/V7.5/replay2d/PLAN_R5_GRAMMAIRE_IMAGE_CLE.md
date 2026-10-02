@@ -519,7 +519,7 @@ bosse demandee au superviseur.
 
 ## 11. Lignes de registre proposees
 
-A verser en une seule fois dans `.ai/V7.5/REGISTRE_REPORTS.md`. **Deux lignes existantes sont
+A verser en une seule fois dans `.ai/REGISTRE_REPORTS.md`. **Deux lignes existantes sont
 a AMENDER** (elles portent une condition de reprise que ce lot a mesuree comme FAUSSE ou
 INSUFFISANTE), et deux lignes sont NEUVES.
 

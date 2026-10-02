@@ -1,6 +1,6 @@
 // Package sync — engagement.go : calcul batch du score d'engagement par match.
 //
-// Reference plan : .ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md §3 (Sync/Backfill).
+// Reference plan : .ai/archive/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §3 (Sync/Backfill).
 //
 // Pipeline :
 //   - Selection des matchs PvP du joueur sans engagement_score (ou tous si force)

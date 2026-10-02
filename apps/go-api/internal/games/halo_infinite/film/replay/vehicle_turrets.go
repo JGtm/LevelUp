@@ -32,7 +32,8 @@ package replay
 // comptage, pour que la couverture decrive ce qui est publie.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -292,7 +293,7 @@ func moveTurretRides(
 		return 0, kept
 	}
 	carrier.Rides = append(carrier.Rides, ajout...)
-	sort.SliceStable(carrier.Rides, func(a, b int) bool { return carrier.Rides[a].T0 < carrier.Rides[b].T0 })
+	slices.SortStableFunc(carrier.Rides, func(a, b VehicleRide) int { return cmp.Compare(a.T0, b.T0) })
 	return len(ajout), kept
 }
 

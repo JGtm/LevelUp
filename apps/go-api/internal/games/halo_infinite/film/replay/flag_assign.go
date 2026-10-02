@@ -1,7 +1,8 @@
 package replay
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
@@ -101,11 +102,8 @@ func flagGroundTimeline(raws []flagCarryRaw, scan FlagCarryScan,
 	for _, h := range flagObjectHomecomings(scan, ctx) {
 		out = append(out, flagGroundEvent{at: h.at, home: true, carry: -1, flag: h.flag})
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].at != out[j].at {
-			return out[i].at < out[j].at
-		}
-		return flagGroundRang(out[i]) < flagGroundRang(out[j])
+	slices.SortStableFunc(out, func(a, b flagGroundEvent) int {
+		return cmp.Or(cmp.Compare(a.at, b.at), cmp.Compare(flagGroundRang(a), flagGroundRang(b)))
 	})
 	return out
 }

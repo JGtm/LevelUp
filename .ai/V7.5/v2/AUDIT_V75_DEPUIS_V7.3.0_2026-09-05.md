@@ -31,7 +31,7 @@
   `.ai/PLAN_MASTER_FILM_KILLFEED_REJEU.md` §6.
 - **Dette assumée, non remontée** : baseline lint golangci ; protections mémoire `filmproc` et
   verrou process `filmdec` (D10) ; « le VPS ne décode jamais » ; audit perf du 2026-09-02 (C1-C7
-  traités) ; les items de `.ai/V7.5/REGISTRE_REPORTS.md` (cités « au registre ») ; les constats de
+  traités) ; les items de `.ai/REGISTRE_REPORTS.md` (cités « au registre ») ; les constats de
   `.ai/AUDIT_V7.2.0_MAIN_2026-08-06.md` (cités « persistant » quand ils le sont encore).
 - **Limite de méthode, relevée par la vérification** : la base `a2719a68c` (v7.3.0) tombe la
   veille du merge `feat/replay2d-prod` (2026-08-05). Une partie du chantier « neuf » était déjà

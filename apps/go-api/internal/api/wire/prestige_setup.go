@@ -103,7 +103,7 @@ type PrestigeBundle struct {
 // câblage — leur déplacement demanderait une migration dédiée.
 //
 // Ne pas « corriger » ce point en n'isolant qu'une des deux bases : l'analyse
-// complète et les options chiffrées sont dans .ai/V7.2.1/PLAN_V721_NOTION_BATCH.md,
+// complète et les options chiffrées sont dans .ai/archive/V7.2.1/PLAN_V721_NOTION_BATCH.md,
 // lot V721-14a, découverte D-06.
 func NewPrestigeBundleAt(repoRoot, sharedSocialPath, metadataPath string,
 	resolve PlayerResolver, enabled bool) (*PrestigeBundle, error) {

@@ -8,6 +8,7 @@ package replay
 // et chaque section a sa fonction.
 
 import (
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -20,9 +21,6 @@ const (
 	gpHasShield byte = 1 << 3
 )
 
-// EncodeFilmFacts serialise les faits d un film. Le format est decrit en tete de filmfacts.go ;
-// la SUITE DES SECTIONS est celle que `DecodeFilmFacts` relit, dans le meme ordre, et toute
-// insertion au milieu monte `filmFactsMagic` DANS LE MEME COMMIT.
 // EncodeFilmFactsAvecErreur est [EncodeFilmFacts] qui REND SON ECHEC.
 //
 // Le codec est sans erreur sur tout ce qu il ecrit a la main ; une seule charge peut echouer (les
@@ -34,6 +32,9 @@ func EncodeFilmFactsAvecErreur(g *FilmFacts) ([]byte, error) {
 	return w.b, w.echec
 }
 
+// EncodeFilmFacts serialise les faits d un film. Le format est decrit en tete de filmfacts.go ;
+// la SUITE DES SECTIONS est celle que `DecodeFilmFacts` relit, dans le meme ordre, et toute
+// insertion au milieu monte `filmFactsMagic` DANS LE MEME COMMIT.
 func EncodeFilmFacts(g *FilmFacts) []byte {
 	return encodeurDeFaits(g).b
 }
@@ -69,7 +70,7 @@ func encodeEntete(w *gwriter, g *FilmFacts) {
 	// la MAUVAISE, elles se dequantifient en coordonnees FAUSSES, pas approximatives
 	// (cf. DequantBipedAxis). Le module est donc ecrit ici et VERIFIE a la relecture.
 	w.str(g.MapModule)
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		w.u(uint64(g.AxisW[a]))
 	}
 	w.bool8(g.LayoutDetected)
@@ -103,7 +104,7 @@ func encodeEvenements(w *gwriter, g *FilmFacts) {
 		}
 		w.bool8(e.HasAim)
 		if e.HasAim {
-			for a := 0; a < 3; a++ {
+			for a := range 3 {
 				w.f32(e.Aim[a])
 			}
 		}
@@ -195,7 +196,7 @@ func encodeCanauxDelta(w *gwriter, g *FilmFacts) {
 		lastTS = gr.TimestampUS
 		w.u(uint64(gr.Slot))
 		w.bool8(gr.Heavy)
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			w.u(uint64(gr.PosQ[a]))
 		}
 	}
@@ -209,10 +210,10 @@ func encodeCanauxDelta(w *gwriter, g *FilmFacts) {
 		// LE VA-ET-VIENT VOYAGE AVEC SON TEMOIN (v12) : sans lui, un saut sans position
 		// serait indistinguable d un saut vers l origine du monde.
 		w.bool8(tr.HasPositions)
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			w.f32(tr.From[a])
 		}
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			w.f32(tr.To[a])
 		}
 	}
@@ -387,7 +388,7 @@ func encodeQueue(w *gwriter, g *FilmFacts) {
 	for x := range g.PlayerIndices.ByXUID {
 		xuids = append(xuids, x)
 	}
-	sort.Slice(xuids, func(i, j int) bool { return xuids[i] < xuids[j] })
+	slices.Sort(xuids)
 	w.u(uint64(len(xuids)))
 	for _, x := range xuids {
 		w.u(x)

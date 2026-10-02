@@ -75,7 +75,7 @@ func ecrireSignature(ex *Executable, w io.Writer) {
 		}
 	}
 	fmt.Fprintf(w, "== SIGNATURE DE FAMILLE, MESUREE SUR LES TEMOINS ==\n")
-	for i := 0; i < tailleDescripteur/8; i++ {
+	for i := range tailleDescripteur / 8 {
 		vals := map[uint64]int{}
 		for _, d := range descs {
 			vals[d.Slots[i]]++

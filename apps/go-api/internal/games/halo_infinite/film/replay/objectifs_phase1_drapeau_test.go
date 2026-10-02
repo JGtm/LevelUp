@@ -24,6 +24,7 @@ package replay
 // GARDE : `OBJ_FILM` (racine du cache film), comme toute la phase 0. Lecture seule, aucune base.
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -182,7 +183,7 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 		t.Fatalf("%s : marqueurs de portage : %v", id, err)
 	}
 	gw := objGroundWeapons(t, root, id, quant)
-	doc := BuildFromPositions(id, "halo_infinite", pos, nil, Options{
+	doc := BuildFromPositions(context.Background(), id, "halo_infinite", pos, nil, Options{
 		Deaths: b.Deaths, PlayerIndices: table, MapQuant: quant,
 		Labels: goldenCatalog(t), Pads: PadScans{Weapons: gw},
 		Flag: FlagInput{
@@ -433,6 +434,6 @@ func objGroundWeapons(t *testing.T, root, id string, quant *profile.MapQuantEntr
 	}
 	wr := quant.Range()
 	fc := grammar.NewFilmContext(film)
-	_, st := decodeFilmPlacements(fc, id, &wr)
-	return decodeFilmPadScan(fc, id, &wr, st.Calibration.Widths, groundWeaponArchetype())
+	_, st := decodeFilmPlacements(context.Background(), fc, id, &wr)
+	return decodeFilmPadScan(context.Background(), fc, id, &wr, st.Calibration.Widths, groundWeaponArchetype())
 }

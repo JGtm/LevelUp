@@ -111,7 +111,7 @@ func gameLogCensus(t *testing.T, sc GameEntityScan, class int, st *GameEntitySta
 		i, n int
 	}
 	var rows []row
-	for i := 0; i < worldObjectMaxComponent; i++ {
+	for i := range worldObjectMaxComponent {
 		if st.MaskCensus[i] > 0 {
 			rows = append(rows, row{i, st.MaskCensus[i]})
 		}

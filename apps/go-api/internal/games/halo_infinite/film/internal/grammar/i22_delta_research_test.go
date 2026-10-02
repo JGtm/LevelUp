@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i22_delta_research_test.go — SONDE JETABLE (etude de faisabilite du 2026-08-24).
@@ -15,7 +17,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I22_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI22DeltaResearch$' -timeout 30m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI22DeltaResearch$' -timeout 30m -v
 
 import (
 	"encoding/json"
@@ -24,6 +26,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -376,11 +379,11 @@ func i22SortMap(m map[uint64]int) string {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-	s := ""
+	var s strings.Builder
 	for _, k := range keys {
-		s += fmt.Sprintf("%d:%d ", k, m[k])
+		s.WriteString(fmt.Sprintf("%d:%d ", k, m[k]))
 	}
-	return s
+	return s.String()
 }
 
 func i22TopMap(m map[uint64]int, n int) string {
@@ -396,9 +399,10 @@ func i22TopMap(m map[uint64]int, n int) string {
 	if len(all) > n {
 		all = all[:n]
 	}
-	s := fmt.Sprintf("(%d valeurs distinctes) ", len(m))
+	var s strings.Builder
+	s.WriteString(fmt.Sprintf("(%d valeurs distinctes) ", len(m)))
 	for _, e := range all {
-		s += fmt.Sprintf("%d:%d ", e.k, e.v)
+		s.WriteString(fmt.Sprintf("%d:%d ", e.k, e.v))
 	}
-	return s
+	return s.String()
 }

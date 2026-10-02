@@ -29,7 +29,7 @@ import (
 func TestM4bPaquetsDetailles(t *testing.T) {
 	cad := s3LireCadre(t)
 	voulus := map[[2]int]bool{}
-	for _, s := range strings.Split(os.Getenv("M4B_PAQUETS"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_PAQUETS"), ",") {
 		var c, p int
 		if _, err := fmt.Sscanf(s, "%d:%d", &c, &p); err == nil {
 			voulus[[2]int{c, p}] = true
@@ -80,7 +80,7 @@ func TestM4bPaquetsDetailles(t *testing.T) {
 // (naissances et en-tetes NEW de la bande) et la chaine d essai qui en part, pas a pas.
 func TestM4bChainesDeTete(t *testing.T) {
 	voulus := map[[2]int]bool{}
-	for _, s := range strings.Split(os.Getenv("M4B_PAQUETS"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_PAQUETS"), ",") {
 		var c, p int
 		if _, err := fmt.Sscanf(s, "%d:%d", &c, &p); err == nil {
 			voulus[[2]int{c, p}] = true
@@ -162,7 +162,7 @@ func m4bTraceChaine(pay []byte, p0 int, ancres []int, debut int, w *World, cfg F
 // suit le point de rupture. Elle publie aussi les records de la marche du paquet.
 func TestM4bVraieSuite(t *testing.T) {
 	voulus := map[[2]int]bool{}
-	for _, s := range strings.Split(os.Getenv("M4B_PAQUETS"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("M4B_PAQUETS"), ",") {
 		var c, p int
 		if _, err := fmt.Sscanf(s, "%d:%d", &c, &p); err == nil {
 			voulus[[2]int{c, p}] = true

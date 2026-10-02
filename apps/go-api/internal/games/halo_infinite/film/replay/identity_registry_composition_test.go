@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -27,7 +28,7 @@ func TestRegistreComposeLaLectureSeule(t *testing.T) {
 	deaths := []types.Death{{XUID: 111, TimeMS: 2_000 - 500}, {XUID: 222, TimeMS: 21_000 - 500}}
 	idx := types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 5}
 
-	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
 	pont := reg.PontEpure()
 
 	if pont[512] != 111 || pont[513] != 222 {
@@ -45,7 +46,7 @@ func TestRegistreSansMortsRendUnPontVide(t *testing.T) {
 	pos := []grammar.BipedPosition{posAt(512, 1_000_000, 0, 0, 0)}
 	idx := types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}}
 
-	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, PlayerIndices: idx})
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{Positions: pos, PlayerIndices: idx})
 
 	if len(reg.PontEpure()) != 0 {
 		t.Fatalf("attendu un pont vide sans fil des morts, obtenu %+v", reg.PontEpure())
@@ -60,7 +61,7 @@ func TestRegistreSansIndexDeJoueurRendUnPontVide(t *testing.T) {
 	pos := []grammar.BipedPosition{posAt(512, 1_000_000, 0, 0, 0), posAt(512, 2_000_000, 0, 0, 0)}
 	deaths := []types.Death{{XUID: 111, TimeMS: 1_500}}
 
-	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths})
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{Positions: pos, Deaths: deaths})
 
 	if len(reg.PontEpure()) != 0 {
 		t.Fatalf("attendu un pont vide sans index de joueur, obtenu %+v", reg.PontEpure())

@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -107,7 +108,7 @@ func mesureOuvre(t *testing.T) []mesureFilm {
 		t.Skipf("%s absent : banc de mesure saute (les films ne sont pas versionnes)", mesureTI9RootEnv)
 	}
 	var out []mesureFilm
-	for _, id := range strings.Split(os.Getenv(mesureTI9IDsEnv), ",") {
+	for id := range strings.SplitSeq(os.Getenv(mesureTI9IDsEnv), ",") {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			continue
@@ -172,12 +173,7 @@ func mesureParcours(f mesureFilm, visite func(chunk int, pay []byte, r KeyframeR
 }
 
 func mesureTypeVise(ti int) bool {
-	for _, v := range mesureEnteteTypes {
-		if v == ti {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(mesureEnteteTypes, ti)
 }
 
 func TestMesureEnteteTI9(t *testing.T) {

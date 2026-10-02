@@ -1,5 +1,5 @@
 // Package service — weapon_range_section.go : LA SECTION « PORTÉE PAR ARME »
-// (plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md, lot 4).
+// (plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, lot 4).
 //
 // SECTION MIGRÉE LE 2026-09-13 : elle a quitté la Synthèse pour l'onglet Résumé des Séries
 // temporelles, sans changer de producteur. Le chargement vit dans une FONCTION LIBRE

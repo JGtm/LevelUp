@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_spawned_piece_mesure_research_test.go — LOT H.2 : LA MESURE AVANT / APRES DE LA

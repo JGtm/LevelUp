@@ -17,7 +17,8 @@ package replay
 //     bougé, position de création sinon : c'est là qu'il EST au moment où on le prend).
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -117,19 +118,6 @@ type gwPickupObject struct {
 	Ammo    types.GroundWeaponAmmo
 }
 
-// gwPickupDateUS rend l'instant retenu de la disparition : celui du passage quand il existe, la
-// borne haute sinon (règle du plan : « aucun : `unknown`, date = borne haute »).
-//
-// IL NE SE PUBLIE PAS À L'ARTEFACT — l'artefact publie l'INTERVALLE [borne basse, borne haute],
-// que le recensement mesure. Cette date sert au CYCLE (item 2.4 : l'horloge d'un socle repart au
-// ramassage, 24 socles établis sur 57 contre 4 pour l'horloge d'apparition).
-func (o gwPickupObject) gwPickupDateUS() uint64 {
-	if o.Picker.Found {
-		return o.Picker.TUS
-	}
-	return o.Bounds.HighUS
-}
-
 // padObjects retient les créations dont l'identité se résout selon la RÈGLE passée, puis borne
 // et date la disparition de chacune. PUR.
 //
@@ -196,8 +184,17 @@ func padObjects(
 			out = append(out, o)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return gwPickupLess(out[i], out[j]) })
+	slices.SortFunc(out, gwPickupCmp)
 	return out, rejected
+}
+
+// gwPickupCmp est l'ordre de [gwPickupLess] en forme `cmp`, fermé sur les MUNITIONS.
+// Tri total (J12.1, DT-9) : `gwPickupLess` ne lit ni `HasAmmo` ni `Ammo`, seuls champs qui
+// séparent encore deux objets ; restés égaux après eux, deux objets sont identiques.
+func gwPickupCmp(a, b gwPickupObject) int {
+	return cmp.Or(gwCmpDeLess(gwPickupLess, a, b),
+		gwCmpDeLess(func(x, y bool) bool { return !x && y }, a.HasAmmo, b.HasAmmo),
+		cmp.Compare(a.Ammo.Mag, b.Ammo.Mag), cmp.Compare(a.Ammo.Res, b.Ammo.Res))
 }
 
 // naissancesProuvees range les creations du balayage par slot, avec ce qui PROUVE chacune : la regle

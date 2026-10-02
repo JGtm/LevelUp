@@ -77,7 +77,7 @@
 - [x] 0.1 Mettre à jour `.ai/V7.5/PLAN_KILLS_HORS_ARME.md` : GATE 5 / GATE 6 rejouables →
       constats du jour (build+vet+tests service/api/contracttest/platform verts,
       intégration duckdb verte, 4 échecs `team_0_rounds_won` disparus).
-- [x] 0.2 Registre `.ai/V7.5/REGISTRE_REPORTS.md` : ligne datée ajoutée (blocage tiers
+- [x] 0.2 Registre `.ai/REGISTRE_REPORTS.md` : ligne datée ajoutée (blocage tiers
       levé + lot déplacé en worktree dédié + littéral `'marche'` du test d'intégration
       corrigé vers `killscope.ReadPathFilmWalk` — le garde archlint J4R-3 le refusait,
       manqué par les gates par-paquet du lot).

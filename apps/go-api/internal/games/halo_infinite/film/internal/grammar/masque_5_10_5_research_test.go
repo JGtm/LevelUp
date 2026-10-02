@@ -35,6 +35,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -105,7 +106,7 @@ func m5105TempsSeul(t *testing.T, evts []m5105Evt, debuts map[string][]m5105Debu
 		}
 		sort.Slice(tris, func(i, j int) bool { return tris[i] < tris[j] })
 		sort.Slice(decales, func(i, j int) bool { return decales[i] < decales[j] })
-		for bit := 0; bit < 32; bit++ {
+		for bit := range 32 {
 			var n, justes, temoin int
 			for _, e := range evts {
 				if e.mask&(1<<uint(bit)) == 0 {
@@ -236,7 +237,7 @@ func m5105Table(t *testing.T, evts []m5105Evt, debuts map[string][]m5105Debut, r
 	t.Helper()
 	genres := []string{types.MovementJumpDerived, types.MovementSprint, types.MovementCrouch}
 	var nommes []string
-	for bit := 0; bit < 32; bit++ {
+	for bit := range 32 {
 		var poses []m5105Evt
 		for _, e := range evts {
 			if e.mask&(1<<uint(bit)) != 0 {
@@ -246,16 +247,17 @@ func m5105Table(t *testing.T, evts []m5105Evt, debuts map[string][]m5105Debut, r
 		if len(poses) == 0 {
 			continue
 		}
-		ligne := fmt.Sprintf("  bit %2d : %5d evenements", bit, len(poses))
+		var ligne strings.Builder
+		ligne.WriteString(fmt.Sprintf("  bit %2d : %5d evenements", bit, len(poses)))
 		for _, g := range genres {
 			p, r := m5105Score(poses, debuts[g], ref, fenetre)
-			ligne += fmt.Sprintf(" · %s P %.1f %% R %.1f %%", m5105Court(g), p, r)
+			ligne.WriteString(fmt.Sprintf(" · %s P %.1f %% R %.1f %%", m5105Court(g), p, r))
 			if p >= m5105Seuil && r >= m5105Seuil {
 				nommes = append(nommes, fmt.Sprintf("bit %d -> %s (P %.1f %%, R %.1f %%)",
 					bit, g, p, r))
 			}
 		}
-		t.Log(ligne)
+		t.Log(ligne.String())
 	}
 	if len(nommes) == 0 {
 		t.Logf("AUCUN BIT NOMME (juge : P et R au-dessus de %.0f %%) — la table ci-dessus EST le "+

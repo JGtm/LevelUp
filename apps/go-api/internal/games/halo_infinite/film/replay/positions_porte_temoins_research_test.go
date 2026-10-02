@@ -14,6 +14,7 @@ package replay
 //	  go test -tags research -count=1 -run '^TestPortePositionsTemoins$' -v ./internal/games/halo_infinite/film/replay/
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -49,7 +50,7 @@ func TestPortePositionsTemoins(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return BuildFromFacts(court, "halo_infinite", f, Options{FrameIntervalMS: DefaultFrameIntervalMS})
+		return BuildFromFacts(context.Background(), court, "halo_infinite", f, Options{FrameIntervalMS: DefaultFrameIntervalMS})
 	}
 	t.Run("81c02726 Madina et le Mongoose 770", func(t *testing.T) { temoin81c02726(t, doc("81c02726", "Isolation")) })
 	t.Run("ab526724 vies 769 et 770", func(t *testing.T) {

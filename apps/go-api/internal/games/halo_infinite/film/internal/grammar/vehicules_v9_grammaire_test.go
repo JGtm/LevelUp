@@ -28,6 +28,7 @@ package grammar
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -91,7 +92,7 @@ func v9Films(t *testing.T) []string {
 		t.Skip("V9_FILMS absent : instrument de mesure, garde par variable d'environnement")
 	}
 	var out []string
-	for _, s := range strings.Split(raw, ",") {
+	for s := range strings.SplitSeq(raw, ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, s)
 		}
@@ -124,13 +125,7 @@ func v9Replay(name string, recs []v9Record, g dirsGrammar) v9Verdict {
 	v := v9Verdict{name: name}
 	var prevQ int = -1
 	for _, r := range recs {
-		declares := false
-		for _, id := range r.idx[1:] {
-			if id == 4 {
-				declares = true
-				break
-			}
-		}
+		declares := slices.Contains(r.idx[1:], 4)
 		if declares {
 			v.declaredI4++
 		}

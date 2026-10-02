@@ -341,7 +341,7 @@ func (s *AutoSyncScheduler) WithCycleOrchestrator(o syncv2.CycleOrchestrator) *A
 // prochain cycle. V2 est désormais le pipeline PAR DÉFAUT : il isole la fenêtre
 // d'écriture (Discovery/Fetch en RO, Persist writer court) et supprime la
 // contention qui gelait les lectures user-facing pendant un sync V1 (le writer RW
-// shared était tenu pendant tout le fetch réseau — cf. .ai/PLAN_CONTENTION_SYNC_SERVICE.md).
+// shared était tenu pendant tout le fetch réseau — cf. .ai/archive/V7/PLAN_CONTENTION_SYNC_SERVICE.md).
 //
 // shouldUseV2 indique si le pipeline V2 (orchestrator) pilote le cycle. Depuis la
 // suppression du pipeline V1 (lot D1c, ADR 0027), V2 est l'unique moteur : la seule

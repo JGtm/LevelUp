@@ -1,6 +1,6 @@
 // Package duckdb — engagement_response_bins_repo.go : persistence DuckDB des
 // bins de reponse d'engagement (modele lobby-anchored v2, cf.
-// .ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md).
+// .ai/archive/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md).
 //
 // Table engagement_response_bins (player DB) : coef de reponse par (xuid,
 // mode_category, intensity_bin). Ecritures basse frequence, SELECT-then-UPDATE

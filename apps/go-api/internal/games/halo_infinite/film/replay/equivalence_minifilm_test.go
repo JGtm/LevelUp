@@ -191,8 +191,6 @@ const (
 	etapeIndicesJoueur = "playerIndices"
 	etapeProjectiles   = "projectiles"
 	etapePositions     = "positions"
-	// etapeCreationsBipede : les creations de bipede, le lien DIRECT corps -> joueur.
-	etapeCreationsBipede = "bipedCreations"
 )
 
 // etapeMiniBobine : un balayage et sa sortie.

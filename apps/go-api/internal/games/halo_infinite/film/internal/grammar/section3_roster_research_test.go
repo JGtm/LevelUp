@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // section3_roster_research_test.go — LA TABLE DES SLOTS DU MATCH, DANS chunk_00.
@@ -55,43 +57,6 @@ import (
 	"strings"
 	"testing"
 )
-
-const (
-	// s3rXuidLo / s3rXuidHi : la plage des XUID Xbox Live. Bornes ecrites avant la mesure ;
-	// elles servent AUSSI a fabriquer les leurres du controle R-NEG, pour que ceux-ci aient
-	// exactement la meme forme que les vraies valeurs cherchees.
-	s3rXuidLo = uint64(0x0009000000000000)
-	s3rXuidHi = uint64(0x000A000000000000)
-	// s3rEnteteBits : les 85 bits d'en-tete qui precedent l'entier de 64 bits (1+1+1+32+2+48).
-	s3rEnteteBits = 85
-	// s3rCorpsBit : borne basse du balayage, le debut du corps dans le flux.
-	s3rCorpsBit = s3wCorpsOff * 8
-	// s3rEcartMax : au-dela de cet ecart en bits, deux touches n'appartiennent pas a la meme
-	// grappe d'enregistrements. Les longueurs mesurees vont de 16 611 a 28 145 bits ; le seuil
-	// est pose a 40 000, soit 1,4 fois la plus longue.
-	s3rEcartMax = 40000
-	s3rLeurres  = 40
-)
-
-// s3rTouche : une occurrence d'entier de 64 bits precedee d'un en-tete conforme.
-type s3rTouche struct {
-	bit   int
-	xuid  uint64
-	token uint64 // le champ de 48 bits a slot+0x09
-}
-
-// s3rBit lit n bits MSB-first.
-func s3rBit(d []byte, bit, n int) uint64 {
-	var acc uint64
-	for k := 0; k < n; k++ {
-		b := bit + k
-		if b>>3 >= len(d) {
-			return 0
-		}
-		acc = acc<<1 | uint64((d[b>>3]>>(7-uint(b&7)))&1)
-	}
-	return acc
-}
 
 // s3rCherche rend toutes les positions de bit ou la valeur 64 bits `v` apparait MSB-first.
 func s3rCherche(d []byte, v uint64, from, to int) []int {
@@ -196,7 +161,7 @@ func s3rImprime(t *testing.T, d []byte, hits []s3rTouche) {
 func s3rPlancher(d []byte, fin int) int {
 	rng := rand.New(rand.NewSource(7))
 	n := 0
-	for i := 0; i < s3rLeurres; i++ {
+	for range s3rLeurres {
 		v := s3rXuidLo | (rng.Uint64() & 0x0000ffffffffffff)
 		n += len(s3rCherche(d, v, s3rCorpsBit, fin))
 	}
@@ -365,13 +330,13 @@ func TestSection3RosterCorpus(t *testing.T) {
 // s3rRosters decoupe `film=xuid,xuid;film=xuid`.
 func s3rRosters(v string) map[string][]uint64 {
 	out := map[string][]uint64{}
-	for _, p := range strings.Split(v, ";") {
+	for p := range strings.SplitSeq(v, ";") {
 		kv := strings.SplitN(strings.TrimSpace(p), "=", 2)
 		if len(kv) != 2 {
 			continue
 		}
 		var xs []uint64
-		for _, s := range strings.Split(kv[1], ",") {
+		for s := range strings.SplitSeq(kv[1], ",") {
 			if n, err := strconv.ParseUint(strings.TrimSpace(s), 10, 64); err == nil {
 				xs = append(xs, n)
 			}

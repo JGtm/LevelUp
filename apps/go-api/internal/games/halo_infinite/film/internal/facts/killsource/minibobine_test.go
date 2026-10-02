@@ -198,7 +198,7 @@ func TestMiniBobineRegenerer(t *testing.T) {
 	if err := os.MkdirAll(miniBobineDir, 0o750); err != nil {
 		t.Fatalf("creation de %s : %v", miniBobineDir, err)
 	}
-	for i := 0; i < miniBobinePrefixe; i++ {
+	for i := range miniBobinePrefixe {
 		copierChunk(t, cheminSource, i, i)
 	}
 	copierChunk(t, cheminSource, hi, miniBobinePrefixe)

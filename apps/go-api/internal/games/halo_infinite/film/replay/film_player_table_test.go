@@ -9,6 +9,7 @@ package replay
 //	          refuse un build — c'est le cablage que le lot 1.5 a nomme sans le poser.
 
 import (
+	"context"
 	"os"
 
 	"strings"
@@ -55,7 +56,7 @@ func TestScanFilmPlayerTableCableLeCompteurDeBuildInconnu(t *testing.T) {
 		t.Fatalf("chargement du chunk_00 mute : %v", err)
 	}
 	table, err := grammar.ScanFilmPlayerTable(film)
-	got := consignerLaTableDuFilm(table, err, b.Short8)
+	got := consignerLaTableDuFilm(context.Background(), table, err, b.Short8)
 	if got.Refusal != grammar.FilmTableUnknownBuild {
 		t.Fatalf("refus %q, attendu %q", got.Refusal, grammar.FilmTableUnknownBuild)
 	}

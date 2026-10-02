@@ -37,7 +37,7 @@ package grammar
 //
 //	CGO_ENABLED=0 V3_BOARD_ROOT=<depot>/data/cache \
 //	  V3_BOARD_FILMS="0d76e8f1,4898d586,e232ffce" \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV3BoardOccupant -v -timeout 60m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV3BoardOccupant -v -timeout 60m
 
 import (
 	"os"

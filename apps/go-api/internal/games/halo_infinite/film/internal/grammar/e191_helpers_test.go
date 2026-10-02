@@ -11,7 +11,7 @@ import (
 // POURQUOI CE FICHIER EXISTE (2026-09-16). Les instruments `e191b_carte_ti37_*` et `e191c_*`
 // rebalayent les 7 bobines a chaque execution : 72 s des 89,9 s du paquet le jour de la fusion
 // du lot 1.9.1 bis. Ils sont passes derriere `//go:build research` (joues a la demande :
-// `go test -tags research ./internal/games/halo_infinite/film/filmdec/ -run 'TestE191'`, compiles
+// `go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ -run 'TestE191'`, compiles
 // en CI par `go vet -tags research`). Les quatre symboles ci-dessous etaient definis DANS ces
 // instruments et lus par des tests ordinaires ; ils vivent ici, sans tag, pour que le build par
 // defaut compile. Aucun corps n'est modifie — deplacement pur.

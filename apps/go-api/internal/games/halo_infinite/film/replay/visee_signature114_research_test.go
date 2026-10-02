@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_signature114_research_test.go — LOT A2/A3 : ATTRIBUTION DES PAQUETS 114 A UN JOUEUR PAR
@@ -371,10 +373,7 @@ func TestViseeSignature114(t *testing.T) {
 	if len(pk) == 0 {
 		t.Fatalf("aucun paquet 114 dans %s", dir)
 	}
-	nb := env114BitsCommuns(pk)
-	if nb > env114MaxBits {
-		nb = env114MaxBits
-	}
+	nb := min(env114BitsCommuns(pk), env114MaxBits)
 	trans, t0, t1 := sig114Fenetres()
 	t.Logf("ETALON — %d paquets 114 ; %d transitions ; decalage feed->film fige a %d ms",
 		len(pk), len(trans), sig114OffsetMS)

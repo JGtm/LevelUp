@@ -1,11 +1,10 @@
 package grammar
 
 import (
-	"context"
-	"log/slog"
-
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"slices"
 )
 
 // grenade_events.go — LANCERS DE GRENADE, lus par balayage d'un motif d'amorce dans les paquets
@@ -111,12 +110,18 @@ const (
 // appariés aux décréments unitaires du compteur porté, et la table `grenade_types` lue
 // dans le binaire du jeu). C'est lui qui relie un lancer au compteur d'inventaire du
 // même type — le réordonner désaccorderait les deux calques.
-var GrenadeTypeIDsByRank = [...]uint32{
+var grenadeTypeIDsByRank = [GrenadeRankCount]uint32{
 	GrenadeFragmentation,
 	GrenadePlasma,
 	GrenadeDynamo,
 	GrenadeSpike,
 }
+
+// GrenadeRankCount est le nombre de rangs de grenade connus (la longueur de [GrenadeTypeIDsByRank]).
+const GrenadeRankCount = 4
+
+// GrenadeTypeIDsByRank rend la table (un tableau : l appelant en tient une COPIE, J12.4).
+func GrenadeTypeIDsByRank() [GrenadeRankCount]uint32 { return grenadeTypeIDsByRank }
 
 // GrenadeRankOf rend le rang d'un tag de grenade, et s'il est connu. Un tag inconnu n'a
 // PAS de rang 0 par défaut : le second retour existe pour que l'appelant ne confonde
@@ -129,7 +134,7 @@ var GrenadeTypeIDsByRank = [...]uint32{
 // construction et ce compteur vaudrait zéro sur tout film. Le créer serait un compteur mort
 // (règle 7 du dépôt) ; la garantie est ici, en clair.
 func GrenadeRankOf(typeID uint32) (int, bool) {
-	for rank, id := range GrenadeTypeIDsByRank {
+	for rank, id := range grenadeTypeIDsByRank {
 		if id == typeID {
 			return rank, true
 		}
@@ -230,7 +235,7 @@ func ScanGrenadeThrows(fc *FilmContext) ([]GrenadeThrow, error) {
 		return nil, ErrNoReadableFilmChunk
 	}
 	cov.publies = len(out)
-	journaliserCouvertureGrenades(g, cov)
+	signalerCouvertureGrenades(fc.Diagnostics(), g, cov)
 	return out, nil
 }
 
@@ -284,11 +289,8 @@ func tiProjectileParNom(reg *Registry) (int, int) {
 	for _, a := range reg.Archetypes {
 		n := 0
 		for _, nom := range composantsProjectile {
-			for _, c := range a.Components {
-				if c == nom {
-					n++
-					break
-				}
+			if slices.Contains(a.Components, nom) {
+				n++
 			}
 		}
 		if n > vus {
@@ -357,24 +359,28 @@ func typeIndexDuRecord(pay []byte, bp int) (int, bool) {
 // les deux séparément évite qu'une correction de l'une déplace l'autre.
 const bitsTypeIndexBasDuMotif = 5
 
-// journaliserCouvertureGrenades publie ce que le balayage a vu. Une dégradation (clé absente de
-// la table, archétype non résolu par le nom) est journalisée AVANT d'être appliquée — règle 3 du
-// dépôt : jamais d'erreur avalée en silence.
-func journaliserCouvertureGrenades(g grenadeGrammaire, cov grenadeCouverture) {
-	ctx := context.Background()
+// signalerCouvertureGrenades note ce que le balayage a vu. Une degradation (cle absente de la
+// table, archetype non resolu par le nom) est dite AVANT la couverture — regle 3 du depot : jamais
+// d erreur avalee en silence. Ce sont des DIAGNOSTICS depuis le lot J12.3 (ADR 0034 D-4) :
+// l orchestrateur qui a ouvert le contexte les journalise avec son `ctx`.
+func signalerCouvertureGrenades(diag *constat.Diagnostics, g grenadeGrammaire, cov grenadeCouverture) {
 	if !g.amorce.Connue {
-		slog.WarnContext(ctx, "lancers de grenade : cle du film ABSENTE de la table d amorce — "+
-			"profil de reference applique (repli_amorce_grenade_profil_de_reference)",
-			"amorce_bits", g.amorce.Bits, "type_index", g.ti)
+		diag.Signaler(constat.Diagnostic{Code: DiagGrenadeAmorceAbsente, Niveau: constat.NiveauWarn,
+			Message: "lancers de grenade : cle du film ABSENTE de la table d amorce — " +
+				"profil de reference applique (repli_amorce_grenade_profil_de_reference)",
+			Attrs: []any{"amorce_bits", g.amorce.Bits, "type_index", g.ti}})
 	}
 	if !g.tiParNom {
-		slog.WarnContext(ctx, "lancers de grenade : archetype projectile NON RESOLU par le nom "+
-			"de ses composants — archetype de reference applique", "type_index", g.ti)
+		diag.Signaler(constat.Diagnostic{Code: DiagGrenadeArchetypeNonResolu, Niveau: constat.NiveauWarn,
+			Message: "lancers de grenade : archetype projectile NON RESOLU par le nom " +
+				"de ses composants — archetype de reference applique",
+			Attrs: []any{"type_index", g.ti}})
 	}
-	slog.InfoContext(ctx, "lancers de grenade : couverture du balayage",
-		"amorceBits", g.amorce.Bits, "indexAuteurBit", g.amorce.IndexAuteurBit,
-		"typeIndexProjectile", g.ti, "motifs", cov.motifs,
-		"naissancesAutresArchetypes", cov.naissancesAutresArchetypes,
-		"naissancesAutresArchetypesAvecIdentifiant", cov.ecartesAvecIdentifiant,
-		"naissancesTypeIndexIndetermine", cov.tiIndetermines, "lancersPublies", cov.publies)
+	diag.Signaler(constat.Diagnostic{Code: DiagGrenadeCouverture, Niveau: constat.NiveauInfo,
+		Message: "lancers de grenade : couverture du balayage",
+		Attrs: []any{"amorceBits", g.amorce.Bits, "indexAuteurBit", g.amorce.IndexAuteurBit,
+			"typeIndexProjectile", g.ti, "motifs", cov.motifs,
+			"naissancesAutresArchetypes", cov.naissancesAutresArchetypes,
+			"naissancesAutresArchetypesAvecIdentifiant", cov.ecartesAvecIdentifiant,
+			"naissancesTypeIndexIndetermine", cov.tiIndetermines, "lancersPublies", cov.publies}})
 }

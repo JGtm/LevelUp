@@ -48,7 +48,7 @@ func racineDepot(t *testing.T) string {
 		t.Fatal("runtime.Caller a échoué")
 	}
 	dir := filepath.Dir(fichier)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		if _, err := os.Stat(filepath.Join(dir, "apps", "web", "package.json")); err == nil {
 			return dir
 		}

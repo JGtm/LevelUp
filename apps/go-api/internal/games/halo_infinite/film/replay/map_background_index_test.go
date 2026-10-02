@@ -7,8 +7,10 @@ package replay
 // (map_background_index_catalogue_test.go).
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -16,17 +18,18 @@ import (
 // invente sa propre forme ne dirait rien du fichier réel.
 func sidecarFond(t *testing.T, dir, cle string, noms ...string) {
 	t.Helper()
-	blob := `{"schemaVersion":1,"module":"` + cle + `","mapNames":[`
+	var blob strings.Builder
+	blob.WriteString(`{"schemaVersion":1,"module":"` + cle + `","mapNames":[`)
 	for i, n := range noms {
 		if i > 0 {
-			blob += ","
+			blob.WriteString(",")
 		}
-		blob += `"` + n + `"`
+		blob.WriteString(`"` + n + `"`)
 	}
-	blob += `],"image":"` + cle + `.png","source":"test","generatedAt":"2026-08-27T10:00:00Z",` +
+	blob.WriteString(`],"image":"` + cle + `.png","source":"test","generatedAt":"2026-08-27T10:00:00Z",` +
 		`"style":"encre","calibration":{"metersPerPixel":0.05,"originX":-1,"originY":1,` +
-		`"widthPx":10,"heightPx":10,"convention":"test"},"stats":{"anchors":1}}`
-	if err := os.WriteFile(filepath.Join(dir, cle+".json"), []byte(blob), 0o644); err != nil {
+		`"widthPx":10,"heightPx":10,"convention":"test"},"stats":{"anchors":1}}`)
+	if err := os.WriteFile(filepath.Join(dir, cle+".json"), []byte(blob.String()), 0o644); err != nil {
 		t.Fatalf("écriture sidecar %s : %v", cle, err)
 	}
 }
@@ -66,7 +69,7 @@ func TestIndexFondsResoutNomEtModule(t *testing.T) {
 	sidecarFond(t, dir, "btb_exiled", "oasis", "oasis_map", "oasis_sentry_defense_map", "oasis_firefight_map")
 	sidecarFond(t, dir, "cd08bc7a-7ba5-4502-be87-c58b641fc94d", "Salvation", "salvation_map")
 
-	idx, err := BuildMapBackgroundIndex(dir)
+	idx, err := BuildMapBackgroundIndex(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("BuildMapBackgroundIndex : %v", err)
 	}
@@ -115,7 +118,7 @@ func TestIndexFondsVarianteHeriteDeSaBase(t *testing.T) {
 	// Une carte native dont le sidecar déclare déjà sa variante Firefight.
 	sidecarFond(t, dir, "btb_exiled", "Oasis", "oasis_firefight_map")
 
-	idx, err := BuildMapBackgroundIndex(dir)
+	idx, err := BuildMapBackgroundIndex(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("BuildMapBackgroundIndex : %v", err)
 	}
@@ -140,7 +143,7 @@ func TestIndexFondsVarianteHeriteDeSaBase(t *testing.T) {
 	// L'héritage ne remonte pas : une base sans fond ne prend pas celui d'une variante.
 	sansFond := t.TempDir()
 	sidecarFond(t, sansFond, "e8268e75-6583-42ad-9e0f-6a5b0a49b0c9", "Vallaheim Firefight", "vallaheim_firefight_map")
-	idx2, err := BuildMapBackgroundIndex(sansFond)
+	idx2, err := BuildMapBackgroundIndex(context.Background(), sansFond)
 	if err != nil {
 		t.Fatalf("BuildMapBackgroundIndex (2e) : %v", err)
 	}
@@ -151,7 +154,7 @@ func TestIndexFondsVarianteHeriteDeSaBase(t *testing.T) {
 	amb := t.TempDir()
 	sidecarFond(t, amb, "3333cccc-0000-0000-0000-000000000003", "Warehouse", "warehouse_map")
 	sidecarFond(t, amb, "4444dddd-0000-0000-0000-000000000004", "Warehouse", "warehouse_map")
-	idx3, err := BuildMapBackgroundIndex(amb)
+	idx3, err := BuildMapBackgroundIndex(context.Background(), amb)
 	if err != nil {
 		t.Fatalf("BuildMapBackgroundIndex (3e) : %v", err)
 	}
@@ -186,7 +189,7 @@ func TestIndexFondsEcarteLesAmbiguites(t *testing.T) {
 	sidecarFond(t, dir, "bbbb2222-0000-0000-0000-000000000002", "Warehouse", "warehouse_map")
 	sidecarFond(t, dir, "cccc3333-0000-0000-0000-000000000003", "Curfew", "curfew_map")
 
-	idx, err := BuildMapBackgroundIndex(dir)
+	idx, err := BuildMapBackgroundIndex(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("BuildMapBackgroundIndex : %v", err)
 	}
@@ -210,7 +213,7 @@ func TestIndexFondsIgnoreLeModuleGenerique(t *testing.T) {
 	dir := t.TempDir()
 	sidecarFond(t, dir, "105f5d84-8de1-4908-af3a-1c4f3bf9d642", "Vagabond", "map")
 
-	idx, err := BuildMapBackgroundIndex(dir)
+	idx, err := BuildMapBackgroundIndex(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("BuildMapBackgroundIndex : %v", err)
 	}
@@ -234,7 +237,7 @@ func TestIndexFondsSautLesSidecarsAbimes(t *testing.T) {
 		t.Fatalf("écriture png : %v", err)
 	}
 
-	idx, err := BuildMapBackgroundIndex(dir)
+	idx, err := BuildMapBackgroundIndex(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("BuildMapBackgroundIndex : %v", err)
 	}
@@ -247,10 +250,10 @@ func TestIndexFondsSautLesSidecarsAbimes(t *testing.T) {
 }
 
 func TestIndexFondsRepertoireAbsent(t *testing.T) {
-	if _, err := BuildMapBackgroundIndex(filepath.Join(t.TempDir(), "inexistant")); err == nil {
+	if _, err := BuildMapBackgroundIndex(context.Background(), filepath.Join(t.TempDir(), "inexistant")); err == nil {
 		t.Fatal("BuildMapBackgroundIndex sur un répertoire absent : veut une erreur")
 	}
-	if _, err := MapBackgroundIndexFor(filepath.Join(t.TempDir(), "inexistant")); err == nil {
+	if _, err := MapBackgroundIndexFor(context.Background(), filepath.Join(t.TempDir(), "inexistant")); err == nil {
 		t.Fatal("MapBackgroundIndexFor sur un répertoire absent : veut une erreur")
 	}
 }
@@ -262,11 +265,11 @@ func TestIndexFondsCacheSuitLeDisque(t *testing.T) {
 	dir := t.TempDir()
 	sidecarFond(t, dir, "chasm", "Chasm", "chasm_map")
 
-	premier, err := MapBackgroundIndexFor(dir)
+	premier, err := MapBackgroundIndexFor(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("MapBackgroundIndexFor : %v", err)
 	}
-	second, err := MapBackgroundIndexFor(dir)
+	second, err := MapBackgroundIndexFor(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("MapBackgroundIndexFor (2e) : %v", err)
 	}
@@ -275,7 +278,7 @@ func TestIndexFondsCacheSuitLeDisque(t *testing.T) {
 	}
 
 	sidecarFond(t, dir, "ridgeline", "Cliffhanger", "cliffhanger_ridgeline")
-	apres, err := MapBackgroundIndexFor(dir)
+	apres, err := MapBackgroundIndexFor(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("MapBackgroundIndexFor (après ajout) : %v", err)
 	}

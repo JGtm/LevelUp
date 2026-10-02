@@ -3,7 +3,6 @@ package replay
 import (
 	"cmp"
 	"slices"
-	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
@@ -206,7 +205,7 @@ func flagReturnTimes(scan FlagCarryScan) []int64 {
 			out = append(out, int64(e.TimeMS))
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 

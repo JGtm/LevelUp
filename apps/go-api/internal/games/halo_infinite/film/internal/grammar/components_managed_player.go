@@ -113,7 +113,7 @@ func consumeSacTexte(br *Lecteur) sacTexte {
 	sac.Nom = br.ReadBits(32) // FUN_14080dec4(flux, "text", dst)
 	n := br.ReadBits(3)
 	sac.Entrees = make([]entreeSacTexte, 0, n)
-	for i := uint64(0); i < n; i++ {
+	for range n {
 		sac.Entrees = append(sac.Entrees, consumeEntreeSacTexte(br))
 	}
 	return sac

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // h3_aquarius_reperes_research_test.go — LOT H.3 : POURQUOI `0797ce72` ET `c88ec007` NE SE
@@ -244,7 +246,7 @@ func h3RetrouveBornes(t *testing.T, dir, id string, refEntry profile.MapQuantEnt
 		if !vu || len(v[0]) < f1ReperePointsMin {
 			continue
 		}
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			dec[ax] = append(dec[ax], f1Mediane(v[ax]))
 			pub[ax] = append(pub[ax], att[ax])
 		}

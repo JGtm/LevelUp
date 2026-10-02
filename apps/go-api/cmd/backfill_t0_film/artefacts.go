@@ -27,6 +27,7 @@ package main
 // le compte rendu ne les melange jamais aux quatre refus de `t0_film.go`.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -92,7 +93,7 @@ type verdictArtefact struct {
 //
 // Un fichier a la fois : les octets d'un artefact et ses pistes converties ne coexistent que le
 // temps d'un tour de boucle. Le corpus entier ne tient jamais en memoire.
-func scannerArtefacts(dir string) ([]verdictArtefact, error) {
+func scannerArtefacts(ctx context.Context, dir string) ([]verdictArtefact, error) {
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("dossier des artefacts %s: %w", dir, err)
@@ -112,14 +113,14 @@ func scannerArtefacts(dir string) ([]verdictArtefact, error) {
 		if replaybuild.EstMarqueDerivations(e.Name()) {
 			continue
 		}
-		out = append(out, lireUnArtefact(filepath.Join(dir, e.Name())))
+		out = append(out, lireUnArtefact(ctx, filepath.Join(dir, e.Name())))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].fichier < out[j].fichier })
 	return out, nil
 }
 
 // lireUnArtefact decode un artefact et lui applique le detecteur de production.
-func lireUnArtefact(path string) verdictArtefact {
+func lireUnArtefact(ctx context.Context, path string) verdictArtefact {
 	v := verdictArtefact{fichier: filepath.Base(path)}
 	doc, err := decoderMinimal(path)
 	if err != nil {
@@ -135,7 +136,7 @@ func lireUnArtefact(path string) verdictArtefact {
 		v.raison = raisonSansOrigine
 		return v
 	}
-	t0, cov := replay.DetectT0Film(pistesDe(doc), doc.FrameIntervalMS, *doc.OriginMs, v.matchID)
+	t0, cov := replay.DetectT0Film(ctx, pistesDe(doc), doc.FrameIntervalMS, *doc.OriginMs, v.matchID)
 	v.pistes, v.pistesEnMouvement, v.rafale = cov.Tracks, cov.Moving, cov.Burst
 	if t0 == nil {
 		v.raison = cov.Reason

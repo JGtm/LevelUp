@@ -9,6 +9,7 @@ package replay
 // Les fabriques partagees vivent dans `zone_states_test.go`.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -17,7 +18,7 @@ import (
 // gaugeSamples fabrique `n` emissions aux frames t0 + i*pas, de valeur brute v0 + i*dv.
 func gaugeSamples(n, t0, pas int, v0, dv uint64) []zoneSample {
 	out := make([]zoneSample, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out = append(out, zoneSample{t: t0 + i*pas, v: v0 + uint64(i)*dv})
 	}
 	return out
@@ -176,7 +177,7 @@ func TestZoneGaugeTStrictementCroissant(t *testing.T) {
 // en compte les points.
 func TestZoneStatesPublieLaJaugeEnDirect(t *testing.T) {
 	in, c := bastionCase()
-	states, cov := buildZoneStates(in, c)
+	states, cov := buildZoneStates(context.Background(), in, c)
 	if len(states) != 2 {
 		t.Fatalf("%d zone(s) publiee(s), attendu 2", len(states))
 	}
@@ -237,7 +238,7 @@ func TestZoneStatesCollineNePublieAucuneJauge(t *testing.T) {
 	for f := 396; f <= 400; f++ {
 		pts = append(pts, pointAt(f, -19.5, 0, 0)) // zone 0 pendant la seconde
 	}
-	states, cov := buildZoneStates(in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
+	states, cov := buildZoneStates(context.Background(), in, zoneTestCtx(nil, []Track{track("2533", pts...)}))
 	if len(states) != 2 || cov.Method != ZoneMethodPositions {
 		t.Fatalf("%d zone(s), methode %q — attendu 2 et %q", len(states), cov.Method, ZoneMethodPositions)
 	}
@@ -304,7 +305,7 @@ func TestZoneGaugeRetourAZeroFermeLaRampe(t *testing.T) {
 // que le film ecrit (cf. appendGaugeReset).
 func rampeDeJauge(n, t0 int, top float64) []zoneSample {
 	out := make([]zoneSample, 0, n+1)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f := top * float64(i+1) / float64(n)
 		out = append(out, zoneSample{t: t0 + i, v: zoneGaugeQuantZero + uint64(f*zoneGaugeQuantUnit)})
 	}

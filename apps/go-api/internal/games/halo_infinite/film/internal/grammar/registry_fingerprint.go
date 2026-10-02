@@ -31,10 +31,9 @@ package grammar
 // signal, pas une porte.
 
 import (
-	"context"
 	"hash"
 	"hash/fnv"
-	"log/slog"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"sync"
 )
 
@@ -98,7 +97,7 @@ func RegistryFingerprint(reg *Registry) uint64 {
 // PUBLIE AU LOT 2.6.3 parce que l'artefact le porte desormais a cote de l'empreinte
 // (`coverage.decoder.registry`) : une empreinte sans son denominateur ne distingue pas
 // « grammaire d'un autre build » de « registre tronque ». C'est le meme couple que
-// `warnUnknownRegistry` journalise depuis le lot 0.3.
+// `DiagnosticRegistreInconnu` signale depuis le lot 0.3 (journalise par l orchestrateur depuis J12.3).
 func RegistryNamedSlots(reg *Registry) int {
 	if reg == nil {
 		return 0
@@ -116,23 +115,24 @@ func RegistryNamedSlots(reg *Registry) int {
 // partagent leur registre — la propriete mesuree.
 var registryWarned sync.Map
 
-// warnUnknownRegistry signale UNE FOIS par empreinte qu'un registre ne correspond pas au
-// binaire de reference. Le film reste decode : l'empreinte est un signal, pas une porte.
+// DiagnosticRegistreInconnu rend, UNE FOIS par empreinte et par processus, le diagnostic d un
+// registre qui ne correspond pas au binaire de reference. Le film reste decode : l empreinte est
+// un signal, pas une porte. `false` = empreinte connue, registre nil, ou empreinte deja signalee.
 //
-// `context.Background()` : `ParseRegistryChunk` est une fonction de lecture d'octets sans
-// `ctx`, appelee depuis quatre chemins dont deux n'en ont pas non plus. Faire remonter un
-// `ctx` jusqu'ici changerait la signature publique et celle de ses appelants pour une ligne
-// de journal.
-func warnUnknownRegistry(fp uint64, blocks, slots int) {
-	if fp == KnownRegistryFingerprint {
-		return
+// DEPUIS LE LOT J12.3 (ADR 0034 D-4), `grammar` ne journalise plus : l appelant qui a lu le
+// registre note ce diagnostic dans SES [Diagnostics] ([FilmContext.Registry], le decodage
+// `killsource`), et l orchestrateur le journalise avec son `ctx`. La lecture d octets
+// ([ParseRegistryChunk]) reste pure.
+func DiagnosticRegistreInconnu(reg *Registry) (constat.Diagnostic, bool) {
+	if reg == nil || reg.fingerprint == KnownRegistryFingerprint {
+		return constat.Diagnostic{}, false
 	}
-	if _, seen := registryWarned.LoadOrStore(fp, true); seen {
-		return
+	if _, seen := registryWarned.LoadOrStore(reg.fingerprint, true); seen {
+		return constat.Diagnostic{}, false
 	}
-	slog.WarnContext(context.Background(),
-		"empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte "+
+	return constat.Diagnostic{Code: DiagRegistreInconnu, Niveau: constat.NiveauWarn,
+		Message: "empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte " +
 			"(mise a jour du jeu ?) ; le film reste decode",
-		"empreinte", fp, "empreinte_connue", KnownRegistryFingerprint,
-		"blocs", blocks, "slots_non_vides", slots)
+		Attrs: []any{"empreinte", reg.fingerprint, "empreinte_connue", KnownRegistryFingerprint,
+			"blocs", len(reg.Archetypes), "slots_non_vides", reg.namedSlots}}, true
 }

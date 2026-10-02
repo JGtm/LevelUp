@@ -96,7 +96,7 @@ func TestResolveBackgroundKey_RefuseUneCleDIndexHostile(t *testing.T) {
 	// Le decor est bien celui qu'on croit : l'index resout « piege » vers la cle hostile,
 	// et le sidecar de cette cle est LISIBLE. Sans ces deux verifications, un test vert ne
 	// dirait pas si c'est la garde qui a refuse ou le decor qui a manque.
-	idx, err := replay.MapBackgroundIndexFor(dir)
+	idx, err := replay.MapBackgroundIndexFor(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("MapBackgroundIndexFor: %v", err)
 	}

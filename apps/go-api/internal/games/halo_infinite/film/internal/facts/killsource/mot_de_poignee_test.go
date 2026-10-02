@@ -52,7 +52,7 @@ func TestMotDePoigneeRetenu(t *testing.T) {
 			}
 			// DETERMINISME : deux appels, meme verdict. `sort.Slice` n est pas stable, et c est
 			// precisement ce qui rendait la valeur d avant arbitraire sur des ex aequo.
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				r2, _, _, d2 := motDePoigneeRetenu(append([]int(nil), c.scores...), invariant)
 				if r2 != retenu || d2 != disc {
 					t.Fatalf("appel %d : retenu=%d discriminee=%v, want %d / %v", i, r2, d2, retenu, disc)
@@ -83,7 +83,7 @@ func TestUneValeurNonDiscrimineeNEstJamaisEcriteAuProfil(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s : %v", e.Name(), err)
 		}
-		for _, ligne := range strings.Split(string(b), "\n") {
+		for ligne := range strings.SplitSeq(string(b), "\n") {
 			l := strings.TrimSpace(ligne)
 			if strings.HasPrefix(l, "//") || !strings.Contains(l, "Traversal.IndexW =") {
 				continue
@@ -138,7 +138,7 @@ func TestMotDePoigneeDeterministeSurFilm(t *testing.T) {
 			}
 			o.normalize()
 			var prem calibration
-			for passe := 0; passe < 2; passe++ {
+			for passe := range 2 {
 				c := calibrerUnFilm(t, dir, o)
 				t.Logf("passe %d : %s", passe+1, c.String())
 				if passe == 0 {
@@ -178,7 +178,7 @@ func calibrerUnFilm(t *testing.T, dir string, o Options) calibration {
 	if err != nil {
 		t.Fatalf("film %s : %v", dir, err)
 	}
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("timeline %s : %v", dir, err)
 	}

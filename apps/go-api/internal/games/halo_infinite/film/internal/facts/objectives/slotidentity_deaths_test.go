@@ -34,9 +34,9 @@ func deathBridgeFixture(emis func(i int) int) ([]types.StatRecord, []types.Playe
 	var recs []types.StatRecord
 	var lines []types.PlayerLine
 	var deaths []types.DeathInstant
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		slot, xuid, total := 10+2*i, "100"+strconv.Itoa(i), i+6
-		for k := 0; k < total; k++ {
+		for k := range total {
 			t := 10000*(k+1) + 500*(i+1)
 			deaths = append(deaths, types.DeathInstant{XUID: xuid, TimeMS: t})
 			if k < emis(i) {
@@ -96,7 +96,7 @@ func TestSlotIdentityResolvedFilmTronque(t *testing.T) {
 	if len(got) != 8 {
 		t.Fatalf("%d slots nommes sur 8 (ByTotals=%d, ByDeaths=%d)", len(got), st.ByTotals, st.ByDeaths)
 	}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		slot, want := 10+2*i, "100"+strconv.Itoa(i)
 		if got[slot] != want {
 			t.Errorf("slot %d -> %q, attendu %q", slot, got[slot], want)
@@ -112,7 +112,7 @@ func TestSlotIdentityResolvedFilmTronque(t *testing.T) {
 func TestSlotIdentityFromDeathsSeTaitSansMarge(t *testing.T) {
 	var recs []types.StatRecord
 	var deaths []types.DeathInstant
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		t0 := 1000 * (k + 1)
 		recs = append(recs, types.StatRecord{TimeMS: t0, Slot: 10,
 			Comps: map[int]types.StatValue{coreKillsComp: {B: int64(k + 1)}}})
@@ -130,7 +130,7 @@ func TestSlotIdentityFromDeathsSeTaitSansMarge(t *testing.T) {
 func TestSlotIdentityFromDeathsSeTaitSousLeMinimum(t *testing.T) {
 	var recs []types.StatRecord
 	var deaths []types.DeathInstant
-	for k := 0; k < deathInstantMin-1; k++ {
+	for k := range deathInstantMin - 1 {
 		t0 := 1000 * (k + 1)
 		recs = append(recs, types.StatRecord{TimeMS: t0, Slot: 10,
 			Comps: map[int]types.StatValue{coreKillsComp: {B: int64(k + 1)}}})

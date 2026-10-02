@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // respawn_coverage_research_test.go — LA COUVERTURE DU COMPTEUR DE RESPAWN, voie bande
@@ -28,7 +30,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	GAME_FILM=C:/.../data/cache/film_chunks/00162144 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestRespawnCoveragePhase1$' -timeout 30m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestRespawnCoveragePhase1$' -timeout 30m -v
 
 import (
 	"fmt"

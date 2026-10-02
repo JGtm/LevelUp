@@ -10,7 +10,8 @@ package replay
 // est un sujet a lui — les trois canaux qui l'appellent (`usage_summary.go`) restent la-bas.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
@@ -182,8 +183,8 @@ func usageSlotOwners(doc *ReplayDocument, fb *fallback.Compteur) usageOwners {
 	}
 	out := usageOwners{parVie: map[uint32][]usageVie{}, dernier: map[uint32]string{}, fb: fb}
 	for _, j := range ordre {
-		sort.SliceStable(j.lives, func(a, b int) bool {
-			return j.lives[a].StartFrame < j.lives[b].StartFrame
+		slices.SortStableFunc(j.lives, func(a, b *Track) int {
+			return cmp.Compare(a.StartFrame, b.StartFrame)
 		})
 		for _, tr := range j.lives {
 			out.parVie[tr.Slot] = append(out.parVie[tr.Slot],
@@ -197,7 +198,7 @@ func usageSlotOwners(doc *ReplayDocument, fb *fallback.Compteur) usageOwners {
 	}
 	for slot := range out.parVie {
 		vies := out.parVie[slot]
-		sort.SliceStable(vies, func(a, b int) bool { return vies[a].from < vies[b].from })
+		slices.SortStableFunc(vies, func(a, b usageVie) int { return cmp.Compare(a.from, b.from) })
 	}
 	return out
 }

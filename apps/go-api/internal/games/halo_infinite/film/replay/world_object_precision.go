@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -50,15 +51,14 @@ import (
 // Largeurs absentes de l'entrée (catalogue antérieur au champ, entrée fabriquée à la main) :
 // le défaut est CONSERVÉ et l'écart est LOGGÉ. Jamais de dégradation silencieuse.
 //
-// `slog.Warn` et non `WarnContext` : `BuildFromFilm` — le seul appelant — ne prend pas de
-// `ctx`, et tout le fichier `build.go` journalise ainsi.
-func installWorldObjectPrecision(fc *grammar.FilmContext, matchID string, fb *fallback.Compteur) {
+// Le journal porte le `ctx` de l appelant de la cuisson (lot J12.3).
+func installWorldObjectPrecision(ctx context.Context, fc *grammar.FilmContext, matchID string, fb *fallback.Compteur) {
 	e := fc.Profile().Map()
 	if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {
 		// REPLI NOMME ET COMPTE (D14) : le defaut conserve est celui d'UNE carte, applique a
 		// toutes. Le journal le disait deja ; le compte le fait voyager avec l'artefact.
 		fb.Declenche(fallback.NomLargeursAxeParDefautConservees)
-		slog.Warn("largeurs d'axe absentes de l'entrée de catalogue — objets du monde déquantifiés aux largeurs par défaut",
+		slog.WarnContext(ctx, "largeurs d'axe absentes de l'entrée de catalogue — objets du monde déquantifiés aux largeurs par défaut",
 			"module", e.Module, "match_id", matchID,
 			"defaut", fc.ProfilDeBalayage().LargeursObjetDuMonde().AxisW)
 		return

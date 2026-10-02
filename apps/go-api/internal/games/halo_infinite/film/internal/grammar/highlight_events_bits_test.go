@@ -131,7 +131,7 @@ func shiftBitsRight(data []byte, n int) []byte {
 		panic("shiftBitsRight: n must be in [0..7]")
 	}
 	out := make([]byte, len(data)+1)
-	for i := 0; i < len(data); i++ {
+	for i := range data {
 		out[i] |= data[i] >> uint(n)
 		out[i+1] = data[i] << uint(8-n)
 	}

@@ -269,7 +269,7 @@ func p2aMatchRecord(pay []byte, p int, band map[uint32]bool) (p2aRecord, bool) {
 	}
 	idx := make([]int, mc)
 	prev := -1
-	for k := 0; k < mc; k++ {
+	for k := range mc {
 		v := int(source.BitsTolerants(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
 		if v <= prev {
 			return rec, false
@@ -441,7 +441,7 @@ func p2aHeaderAt(pay []byte, p int) bool {
 		return false
 	}
 	prev := -1
-	for k := 0; k < mc; k++ {
+	for k := range mc {
 		v := int(source.BitsTolerants(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
 		if v <= prev {
 			return false

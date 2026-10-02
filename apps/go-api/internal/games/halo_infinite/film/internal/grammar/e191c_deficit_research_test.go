@@ -20,11 +20,12 @@ package grammar
 //
 // LECTURE SEULE, sans garde d environnement (bobines versionnees).
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191cDeficit$' -v -count=1
+//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191cDeficit$' -v -count=1
 
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -92,17 +93,17 @@ func e191cDeficitBobine(t *testing.T, court string) {
 		if len(anc) == 0 {
 			continue
 		}
-		ligne := ""
+		var ligne strings.Builder
 		meilleur, meilleurD := 0.0, 0
 		for _, d := range e191cDeltas {
 			part, _ := e191cN2AvecDelta(anc, ti, d)
 			if part > meilleur {
 				meilleur, meilleurD = part, d
 			}
-			ligne += fmt.Sprintf(" %+d:%.2f", d, part)
+			ligne.WriteString(fmt.Sprintf(" %+d:%.2f", d, part))
 		}
 		t.Logf("  %-10s %-12s ti=%-2d (%4d) meilleur %+d a %.3f |%s",
-			court, build, ti, len(anc), meilleurD, meilleur, ligne)
+			court, build, ti, len(anc), meilleurD, meilleur, ligne.String())
 	}
 }
 

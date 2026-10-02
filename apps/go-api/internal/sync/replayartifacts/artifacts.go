@@ -150,7 +150,7 @@ func (h *Hook) Months() int {
 // Placement rend la décision du cycle courant. Un hook sans mise en file câblée ne
 // peut pas tenir « worker » : il dégrade en « off », jamais en construction locale
 // (le VPS web ne décode jamais, et un repli silencieux le lui ferait faire).
-func (h *Hook) Placement() replaybuild.Placement {
+func (h *Hook) Placement(ctx context.Context) replaybuild.Placement {
 	if h == nil {
 		return replaybuild.PlacementOff
 	}
@@ -159,7 +159,7 @@ func (h *Hook) Placement() replaybuild.Placement {
 		setting = strings.TrimSpace(h.Location())
 	}
 	p, err := replaybuild.DecidePlacement(setting, h.Env)
-	replaybuild.LogPlacement("post-sync", p, err)
+	replaybuild.LogPlacement(ctx, "post-sync", p, err)
 	if p == replaybuild.PlacementWorker && h.Enqueue == nil {
 		slog.Warn("rejeu 2D : mise en file demandée mais aucune file câblée sur ce chemin de sync — aucune construction")
 		return replaybuild.PlacementOff
@@ -358,7 +358,7 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 	// ENFANT, qui monte le sien. Ce que cet appel garde, c'est la degradation par ABSENCE de
 	// donnee — un titre sans catalogue de bornes ni libelles ne doit pas faire naitre sept
 	// processus pour sept echecs de preparation.
-	if _, err := replaybuild.NewBuilder(d.RepoRoot, d.TitleSlug); err != nil {
+	if _, err := replaybuild.NewBuilder(ctx, d.RepoRoot, d.TitleSlug); err != nil {
 		// Titre sans catalogue de bornes / labels : dégradation par absence de donnée
 		// (title-agnostic), journalisée une fois par cycle — jamais un échec de sync.
 		slog.DebugContext(ctx, "post-sync: rejeu 2D indisponible pour ce titre",

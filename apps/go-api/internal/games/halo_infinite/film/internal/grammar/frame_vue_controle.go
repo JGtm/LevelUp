@@ -121,7 +121,7 @@ type FluxVueC struct {
 // Les trois autres portent une charge ; [lireEntreeDeControle] porte celle du `kind` 0.
 func consumeVueC(br *Lecteur, frameLen int) FluxVueC {
 	out := FluxVueC{Arret: ArretVueCPlafond}
-	for tour := 0; tour < plafondToursVueC; tour++ {
+	for tour := range plafondToursVueC {
 		if !placeDisponible(br, frameLen, 1) {
 			out.Arret = ArretVueCDebordement
 			return out

@@ -55,14 +55,14 @@ func decodeBipedI0Pos(pay []byte, at int, lay profile.I0Layout, wr *profile.Vec3
 		return [3]float32{}, false
 	}
 	var q [3]uint32
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		q[ax] = uint32(source.BitsStricts(pay, at+lay.AxisOffset(ax), int(lay.AxisW[ax])))
 	}
 	if saturatedQuantum(q, lay) {
 		return [3]float32{}, false
 	}
 	var v [3]float32
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		v[ax] = DequantBipedAxis(q[ax], ax, lay, *wr)
 	}
 	return v, true

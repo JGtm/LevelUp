@@ -1,3 +1,5 @@
+//go:build research
+
 package killcollector
 
 // duels_bouclier_research_test.go — SONDE N°2 : LA MESURE QUI DECIDE DU LOT 7 (duels).
@@ -14,7 +16,7 @@ package killcollector
 // coups, et c'est un duel. Le bouclier est replique DANS LE RECORD DE POSITION a chaque fois
 // qu'il change (`BipedPosition.ShieldAt`) — deux a dix fois plus dense que le flux de degats.
 //
-// CE QUE CETTE SONDE MESURE (items 1.3 a 1.7 de `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`) :
+// CE QUE CETTE SONDE MESURE (items 1.3 a 1.7 de `.ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md`) :
 //
 //	A  pont du tueur — part des kills du feed dont le TUEUR est localise a T par le pont de
 //	   PRODUCTION (`ResolveSlotXUID` + `BuildKillPositions`). Sans lui, rien d'autre n'a de sens.
@@ -364,7 +366,7 @@ func duelsBPontIdentite(
 	if err != nil {
 		t.Fatalf("index de joueur : %v", err)
 	}
-	owners := replay.BuildIdentityRegistry(replay.IdentityInput{
+	owners := replay.BuildIdentityRegistry(context.Background(), replay.IdentityInput{
 		Positions: positions, Deaths: deaths, PlayerIndices: idx, RosterXUIDs: roster,
 	})
 	// LE PONT EPURE, PAS L'APLATI (lot 6.1) : la sonde s'en sert pour ses propres denominateurs

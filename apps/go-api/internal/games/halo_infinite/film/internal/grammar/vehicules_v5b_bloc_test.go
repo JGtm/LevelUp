@@ -19,7 +19,7 @@ package grammar
 //     taille fixe, les longueurs d'UN véhicule se rangent en base + 89 k.
 //
 //	CGO_ENABLED=0 V5_ROOT=<cache> V5_FILMS=... \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run 'TestV5BBloc|TestV5BLongueurs' -v -timeout 180m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run 'TestV5BBloc|TestV5BLongueurs' -v -timeout 180m
 
 import (
 	"fmt"
@@ -58,7 +58,7 @@ func v5bInsertion(o, f v5KfRec) v5bInsert {
 	}
 	// A[i] = accords des i premiers bits, alignés sur le DÉBUT.
 	a := make([]int, lf+1)
-	for i := 0; i < lf; i++ {
+	for i := range lf {
 		a[i+1] = a[i]
 		if keyframeBitAt(o.Payload, o.BitStart+i) == keyframeBitAt(f.Payload, f.BitStart+i) {
 			a[i+1]++
@@ -66,7 +66,7 @@ func v5bInsertion(o, f v5KfRec) v5bInsert {
 	}
 	// B[i] = accords des i derniers bits, alignés sur la FIN.
 	b := make([]int, lf+1)
-	for i := 0; i < lf; i++ {
+	for i := range lf {
 		b[i+1] = b[i]
 		if keyframeBitAt(o.Payload, o.Fin-1-i) == keyframeBitAt(f.Payload, f.Fin-1-i) {
 			b[i+1]++
@@ -86,7 +86,7 @@ func v5bInsertion(o, f v5KfRec) v5bInsert {
 // v5bBits rend les `n` bits à partir de `at` sous forme de chaîne binaire.
 func v5bBits(pay []byte, at, n int) string {
 	var s strings.Builder
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if keyframeBitAt(pay, at+i) {
 			s.WriteByte('1')
 		} else {

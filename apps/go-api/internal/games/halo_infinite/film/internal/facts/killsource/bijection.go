@@ -143,7 +143,7 @@ func refine(nr *nearIndex, pairs []feedEvent, names []string, perm, free []int) 
 	best := quadScore(nr, pairs, names, cur)
 	for {
 		bi, bj, bs := -1, -1, best
-		for a := 0; a < len(free); a++ {
+		for a := range free {
 			for b := a + 1; b < len(free); b++ {
 				i, j := free[a], free[b]
 				cur[i], cur[j] = cur[j], cur[i]
@@ -180,14 +180,11 @@ func refine(nr *nearIndex, pairs []feedEvent, names []string, perm, free []int) 
 // faire entrer de force a la place d un joueur que la table a lu.
 func hungarianStart(votes [][]int, r *roster, free, freeNames []int) []int {
 	n, m := len(free), len(freeNames)
-	k := n
-	if m > k {
-		k = m
-	}
+	k := max(m, n)
 	cost := make([][]int, k)
-	for a := 0; a < k; a++ {
+	for a := range k {
 		cost[a] = make([]int, k)
-		for b := 0; b < k; b++ {
+		for b := range k {
 			switch {
 			case a >= n:
 				cost[a][b] = 0
@@ -203,7 +200,7 @@ func hungarianStart(votes [][]int, r *roster, free, freeNames []int) []int {
 	for i, p := range r.pin {
 		perm[i] = p
 	}
-	for a := 0; a < n; a++ {
+	for a := range n {
 		if sub[a] < m {
 			perm[free[a]] = freeNames[sub[a]]
 		}
@@ -231,7 +228,7 @@ func solveBijection(r *roster, pairs []feedEvent, cs []candidate, restarts int) 
 	}
 	bestPerm, bestScore := refine(nr, pairs, r.names, hungarianStart(votes, r, free, freeNames), free)
 	rng := newRNG()
-	for i := 0; i < restarts; i++ {
+	for range restarts {
 		p := make([]int, r.nPlay)
 		for k, v := range r.pin {
 			p[k] = v
@@ -271,7 +268,7 @@ func bijectionMargin(r *roster, pairs []feedEvent, cs []candidate, best int) int
 	free, _ := r.freeSlots()
 	cur := append([]int(nil), r.perm...)
 	second := -1
-	for a := 0; a < len(free); a++ {
+	for a := range free {
 		for b := a + 1; b < len(free); b++ {
 			i, j := free[a], free[b]
 			cur[i], cur[j] = cur[j], cur[i]

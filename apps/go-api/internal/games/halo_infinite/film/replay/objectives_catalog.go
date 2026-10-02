@@ -19,11 +19,12 @@ package replay
 // l'invente pas — voir ZoneSet.Zones et le champ SpatialRank.
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"sort"
+	"slices"
 	"time"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
@@ -230,8 +231,8 @@ func (e MapObjectivesEntry) PointsOfRole(role mapvar.Role) []PointObjective {
 			Neutral:    o.IsCTFNeutral(),
 		})
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		return lessSpatially(out[i].Center, out[i].InstanceID, out[j].Center, out[j].InstanceID)
+	slices.SortStableFunc(out, func(a, b PointObjective) int {
+		return cmpSpatially(a.Center, a.InstanceID, b.Center, b.InstanceID)
 	})
 	return out
 }
@@ -242,26 +243,17 @@ func (e MapObjectivesEntry) PointsOfRole(role mapvar.Role) []PointObjective {
 // resteraient sinon dans un ordre dépendant de l'ordre d'entrée, et le rang cesserait
 // d'être stable — ce qui est précisément ce qu'il promet.
 func sortZonesSpatially(zs []Zone) {
-	sort.SliceStable(zs, func(i, j int) bool {
-		return lessSpatially(zs[i].Center, zs[i].InstanceID, zs[j].Center, zs[j].InstanceID)
+	slices.SortStableFunc(zs, func(a, b Zone) int {
+		return cmpSpatially(a.Center, a.InstanceID, b.Center, b.InstanceID)
 	})
 	for i := range zs {
 		zs[i].SpatialRank = i
 	}
 }
 
-// lessSpatially est l'ordre spatial partagé zones/points : x, puis y, puis z, puis
+// cmpSpatially est l'ordre spatial partagé zones/points : x, puis y, puis z, puis
 // InstanceID en dernier recours (deux objets superposés garderaient sinon un ordre
 // dépendant de l'entrée).
-func lessSpatially(a mapvar.Vec3, aID int32, b mapvar.Vec3, bID int32) bool {
-	if a.X != b.X {
-		return a.X < b.X
-	}
-	if a.Y != b.Y {
-		return a.Y < b.Y
-	}
-	if a.Z != b.Z {
-		return a.Z < b.Z
-	}
-	return aID < bID
+func cmpSpatially(a mapvar.Vec3, aID int32, b mapvar.Vec3, bID int32) int {
+	return cmp.Or(cmp.Compare(a.X, b.X), cmp.Compare(a.Y, b.Y), cmp.Compare(a.Z, b.Z), cmp.Compare(aID, bID))
 }

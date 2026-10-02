@@ -30,6 +30,7 @@ package replay
 // C-ter, 18 cartes payaient le balayage en CTF pour une couverture vide).
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -51,18 +52,18 @@ type ti13Partage struct {
 // n apparait aux images-cles, reste un rejeu parfaitement valide — simplement sans etat de zone
 // et sans jauge de retour. Le refus est journalise, jamais avale, et il n est journalise QU UNE
 // FOIS puisque la lecture n a lieu qu une fois.
-func (p *ti13Partage) lire() []grammar.ManagedPropertyRead {
+func (p *ti13Partage) lire(ctx context.Context) []grammar.ManagedPropertyRead {
 	if p.fait {
 		return p.reads
 	}
 	p.fait = true
 	sc, err := grammar.ScanManagedProperties(p.fc)
 	if err != nil {
-		slog.Info("rejeu : proprietes ti=13 illisibles — rejeu sans etat de zone ni jauge de retour",
+		slog.InfoContext(ctx, "rejeu : proprietes ti=13 illisibles — rejeu sans etat de zone ni jauge de retour",
 			"err", err, "match_id", p.matchID)
 		return nil
 	}
-	slog.Info("rejeu : proprietes ti=13 balayees",
+	slog.InfoContext(ctx, "rejeu : proprietes ti=13 balayees",
 		"match_id", p.matchID, "slots", sc.Slots, "records", sc.Records, "marches", sc.Walked,
 		"cassees", sc.Broken, "chainees", sc.Chained, "lectures", len(sc.Reads))
 	p.reads = sc.Reads
@@ -78,22 +79,22 @@ func (p *ti13Partage) lire() []grammar.ManagedPropertyRead {
 // `heldZoneRoles`) : il ne fournit de zones que pour les roles de zone TENUE — Bastion, colline
 // de KOTH. Un CTF sur une carte qui declare des livraisons en cylindre, une Extraction avec ses
 // zones, arrivent ici SANS catalogue et ne paient rien de ce cote.
-func decodeFilmZoneReads(p *ti13Partage, garde bool) []grammar.ManagedPropertyRead {
+func decodeFilmZoneReads(ctx context.Context, p *ti13Partage, garde bool) []grammar.ManagedPropertyRead {
 	if !garde {
-		slog.Debug("rejeu : aucune zone au catalogue — proprietes ti=13 non consommees par les zones",
+		slog.DebugContext(ctx, "rejeu : aucune zone au catalogue — proprietes ti=13 non consommees par les zones",
 			"match_id", p.matchID)
 		return nil
 	}
-	return p.lire()
+	return p.lire(ctx)
 }
 
 // decodeFilmFlagReturnGauge rend les MEMES lectures POUR LA JAUGE DE RETOUR du drapeau — sur les
 // seuls films que les trois signaux reconnaissent CTF (cf. flag_return_gauge.go).
-func decodeFilmFlagReturnGauge(p *ti13Partage, garde bool) []grammar.ManagedPropertyRead {
+func decodeFilmFlagReturnGauge(ctx context.Context, p *ti13Partage, garde bool) []grammar.ManagedPropertyRead {
 	if !garde {
 		return nil
 	}
-	return p.lire()
+	return p.lire(ctx)
 }
 
 // attachZoneStates pose l'etat des zones sur le document, avec sa couverture et son journal.
@@ -101,8 +102,8 @@ func decodeFilmFlagReturnGauge(p *ti13Partage, garde bool) []grammar.ManagedProp
 // LES CAPTURES VIENNENT DE `doc.Objectives`, PAS D'UN SECOND DECODAGE : elles y sont deja posees
 // sur la grille de frames (origine du film retranchee) et filtrees aux joueurs dont une piste est
 // publiee. Les re-decoder ici en ferait un second lecteur du meme fait.
-func attachZoneStates(doc *ReplayDocument, opt Options, reg IdentityRegistry, c replayClock) {
-	states, cov := buildZoneStates(opt.Zone, zoneCtx{
+func attachZoneStates(ctx context.Context, doc *ReplayDocument, opt Options, reg IdentityRegistry, c replayClock) {
+	states, cov := buildZoneStates(ctx, opt.Zone, zoneCtx{
 		origin: c.origin, step: c.step, frames: doc.FrameCount,
 		intervalMS: doc.FrameIntervalMS, tracks: doc.Tracks,
 		actions: doc.Objectives, slotXUID: reg.PontEpure(), matchID: doc.MatchID,
@@ -112,7 +113,7 @@ func attachZoneStates(doc *ReplayDocument, opt Options, reg IdentityRegistry, c 
 	if doc.Coverage != nil {
 		doc.Coverage.Zones = cov
 	}
-	logZoneStatesCoverage(doc.MatchID, cov)
+	logZoneStatesCoverage(ctx, doc.MatchID, cov)
 }
 
 // logZoneStatesCoverage journalise ce que le calque publie — et ce qu'il a ecarte.
@@ -122,7 +123,7 @@ func attachZoneStates(doc *ReplayDocument, opt Options, reg IdentityRegistry, c 
 // appariee dont aucun canal n'a passe le seuil d'accord est un trou de PROPRIETE (la zone est
 // lue, mais on ne sait pas qui la tient) ; une valeur de canal qui n'est pas un camp connu est
 // une SURPRISE — le corpus n'en connait que trois — et elle doit se voir arriver.
-func logZoneStatesCoverage(matchID string, cov *ZonesCoverage) {
+func logZoneStatesCoverage(ctx context.Context, matchID string, cov *ZonesCoverage) {
 	if cov == nil {
 		return
 	}
@@ -131,20 +132,20 @@ func logZoneStatesCoverage(matchID string, cov *ZonesCoverage) {
 		// qu'aucune capture ne rattache, des rampes que la grappe ne localise pas, ou des
 		// periodes designees que la grappe ne localise pas. La methode voyage donc DANS le
 		// message — sans elle, le meme chiffre se lirait de trois facons.
-		slog.Warn("rejeu : appariements ECARTES — zones absentes de l'etat publie",
+		slog.WarnContext(ctx, "rejeu : appariements ECARTES — zones absentes de l'etat publie",
 			"match_id", matchID, "methode", cov.Method, "nonApparies", cov.Unpaired,
 			"apparies", cov.Paired, "captures", cov.Captures, "attribuees", cov.Attributed)
 	}
 	if cov.OwnerUnpaired > 0 {
-		slog.Warn("rejeu : zones SANS canal de proprietaire elu — zones absentes de l'etat publie",
+		slog.WarnContext(ctx, "rejeu : zones SANS canal de proprietaire elu — zones absentes de l'etat publie",
 			"match_id", matchID, "sansProprietaire", cov.OwnerUnpaired, "apparies", cov.Paired,
 			"seuilAccord", zoneOwnerMinAgreements)
 	}
 	if cov.UnknownOwner > 0 {
-		slog.Warn("rejeu : valeurs de proprietaire INCONNUES — intervalles non ouverts",
+		slog.WarnContext(ctx, "rejeu : valeurs de proprietaire INCONNUES — intervalles non ouverts",
 			"match_id", matchID, "valeurs", cov.UnknownOwner)
 	}
-	slog.Info("rejeu : etat des zones",
+	slog.InfoContext(ctx, "rejeu : etat des zones",
 		"match_id", matchID, "methode", cov.Method, "catalogue", cov.Catalog,
 		"slots", cov.Slots, "apparies", cov.Paired, "nonApparies", cov.Unpaired,
 		"sansProprietaire", cov.OwnerUnpaired, "intervalles", cov.Spans,

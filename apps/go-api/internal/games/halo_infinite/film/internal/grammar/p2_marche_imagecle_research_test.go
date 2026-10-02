@@ -58,10 +58,7 @@ type p2Scan struct {
 func p2ScanNext(buf []byte, from, prevSlot, total, maxWin int) p2Scan {
 	r := p2Scan{at: -1}
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
-	end := from + maxWin
-	if end > total {
-		end = total
-	}
+	end := min(from+maxWin, total)
 	sentStreak := 0
 	for q := from; q+64 <= end; q++ {
 		id := source.BitsBourres(buf, q, 32)
@@ -193,7 +190,7 @@ func p2Env(t *testing.T) (film string, chunks []int) {
 	if film == "" {
 		t.Skip("P2_FILM absent : sonde sautee")
 	}
-	for _, s := range strings.Split(os.Getenv("P2_CHUNKS"), ",") {
+	for s := range strings.SplitSeq(os.Getenv("P2_CHUNKS"), ",") {
 		if n, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
 			chunks = append(chunks, n)
 		}
@@ -291,10 +288,7 @@ func p2Depart(t *testing.T, pay []byte, depart *p2Scan, recs []KeyframeRec) {
 		t.Logf("B. DEPART REFUSE au bit 1 -> election : elu bit %d slot %d gen %d parmi %d candidats ; premiers %v",
 			depart.elu.bit, depart.elu.slot, depart.elu.gen, depart.cands, depart.premie)
 	}
-	n := len(recs)
-	if n > 12 {
-		n = 12
-	}
+	n := min(len(recs), 12)
 	t.Logf("B. premieres ancres : %v", recs[:n])
 }
 

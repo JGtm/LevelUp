@@ -42,11 +42,12 @@ package grammar
 // LECTURE SEULE, sans garde d environnement : les 7 bobines par build sont VERSIONNEES
 // (`../replay/testdata/minifilm_*`), comme pour le ratchet 0.A.3.
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191bCarteTI37$' -v -count=1
+//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191bCarteTI37$' -v -count=1
 
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -172,12 +173,7 @@ func e191bPorteLePrefixe(reg *Registry, ti int) bool {
 	if !ok {
 		return false
 	}
-	for _, n := range arch.Components {
-		if n == e191bPrefixeObjet {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(arch.Components, e191bPrefixeObjet)
 }
 
 // e191bLogRegistre imprime la liste ordonnee des composants de ti=37 pour une bobine.

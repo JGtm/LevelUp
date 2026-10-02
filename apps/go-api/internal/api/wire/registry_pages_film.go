@@ -17,7 +17,7 @@ package wire
 //     `shared` commun tourne sur chaque titre additionnel), donc jamais absentes ;
 //  3. sur une table existante mais vide, `LoadMatch` rend `(nil, nil)` — pas une erreur.
 //
-// Résultat mesuré (registre `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`, constat D2) : sur
+// Résultat mesuré (registre `.ai/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`, constat D2) : sur
 // Halo 5, les deux routes répondaient 200 `[]`. Le client ne pouvait pas distinguer « ce
 // titre ne sait pas produire ce calque » de « ce match-là n'en a pas », et le compteur
 // `http_capability_not_supported_total` restait à zéro.

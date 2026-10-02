@@ -91,7 +91,7 @@ func TestNavpointContiguousRisesRejouePareil(t *testing.T) {
 	// navpoints du protocole (+12, un par camp), et elle porte le meme anneau.
 	var reads []types.NavpointRadialRead
 	for _, slot := range []uint32{12, 24} {
-		for i := int32(0); i < 4; i++ {
+		for i := range int32(4) {
 			reads = append(reads, types.NavpointRadialRead{
 				Slot: slot, TMS: 1_000 + i*100, Q: uint8(10 + i*NavpointRiseMinQuanta),
 			})
@@ -104,7 +104,7 @@ func TestNavpointContiguousRisesRejouePareil(t *testing.T) {
 	if reference[0].EndMS != reference[1].EndMS {
 		t.Fatalf("le temoin doit porter deux montees EX AEQUO sur la fin : %v", reference)
 	}
-	for tour := 0; tour < 50; tour++ {
+	for tour := range 50 {
 		if got := NavpointContiguousRises(reads); !reflect.DeepEqual(got, reference) {
 			t.Fatalf("tour %d : sortie differente\n  reference : %v\n  obtenue   : %v",
 				tour, reference, got)

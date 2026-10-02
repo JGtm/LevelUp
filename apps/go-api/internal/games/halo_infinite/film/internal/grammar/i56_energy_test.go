@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i56_energy_test.go — INSTRUMENT DE MESURE de l'ÉTAPE 3 (actualisée) du plan
@@ -31,13 +33,14 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I56_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI56AbilityEnergyVsI54$' -timeout 20m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI56AbilityEnergyVsI54$' -timeout 20m -v
 
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -233,7 +236,7 @@ func i56Drops(t *testing.T, energy []i56Sample) []i56Drop {
 	}
 	series := map[key][]i56Sample{}
 	for _, e := range energy {
-		for c := 0; c < i56Charges; c++ {
+		for c := range i56Charges {
 			if e.ch[c] >= 0 {
 				series[key{e.slot, c}] = append(series[key{e.slot, c}], e)
 			}
@@ -325,12 +328,7 @@ func i56Correlate(t *testing.T, eps []i56Episode, drops []i56Drop) {
 
 // i56InMask dit si la liste d'index du masque contient i56.
 func i56InMask(idx []int) bool {
-	for _, id := range idx {
-		if id == i56Index {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(idx, i56Index)
 }
 
 // i56WalkRecord marche les composants du masque avec les désers de PRODUCTION, capture au
@@ -342,7 +340,7 @@ func i56WalkRecord(
 	pay []byte, i0, total int, idx []int, lay profile.I0Layout, arch Archetype,
 ) (flag1 int, s i56Sample, got bool) {
 	flag1 = -1
-	for c := 0; c < i56Charges; c++ {
+	for c := range i56Charges {
 		s.ch[c] = -1
 	}
 	at := i0 + lay.TotalBits() + i0TailBits
@@ -359,7 +357,7 @@ func i56WalkRecord(
 			}
 			s.mask = uint32(source.BitsStricts(pay, at, 3))
 			p := at + 3
-			for c := 0; c < i56Charges; c++ {
+			for c := range i56Charges {
 				if s.mask&(1<<uint(c)) == 0 {
 					continue
 				}

@@ -406,7 +406,7 @@ d'exécution :
 
 - [x] 6.1 `cd apps/web && npx vitest run` (suite web complète) + `make check-types` + `npx eslint .`
       (depuis `apps/web`) — sorties collées dans le CR.
-- [x] 6.2 Registre `.ai/V7.5/REGISTRE_REPORTS.md` : une ligne par item `[!]` s'il y en a ;
+- [x] 6.2 Registre `.ai/REGISTRE_REPORTS.md` : une ligne par item `[!]` s'il y en a ;
       ligne « hauteur du canvas adaptative à la colonne (480 px figés) » avec condition de
       reprise = retour du gate visuel user.
 - [x] 6.3 `.ai/thought_log.md` : entrée datée (décisions D1-D8, mesures du gate, ce qui a

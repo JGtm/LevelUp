@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // equipment_change_research_test.go — INSTRUMENT DE MESURE (pas de production).
@@ -24,12 +26,14 @@ package grammar
 // GARDE : HW_FILM, meme convention que les autres instruments de ce lot.
 //
 //	CGO_ENABLED=0 HW_FILM=<depot>/data/cache/film_chunks/64e8adfa \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run types.EquipmentChange -v -timeout 30m
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run types.EquipmentChange -v -timeout 30m
 
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -52,12 +56,10 @@ type eqEmission struct {
 // eqAbilityIndex resout l'index d'i48 par NOM dans l'archetype du film.
 func eqAbilityIndex(t *testing.T, arch Archetype) int {
 	t.Helper()
-	for id := 0; id < archetypeBlockSlots; id++ {
+	for id := range archetypeBlockSlots {
 		name := arch.component(id)
-		for _, want := range compBipedDesiredAbilitySet {
-			if name == want {
-				return id
-			}
+		if slices.Contains(compBipedDesiredAbilitySet, name) {
+			return id
 		}
 	}
 	t.Fatalf("aucun %v dans l archetype biped du registre", compBipedDesiredAbilitySet)
@@ -202,12 +204,12 @@ func eqLogChronology(t *testing.T, bySlot map[uint32][]eqEmission, origin uint64
 			continue
 		}
 		shown++
-		seq := ""
+		var seq strings.Builder
 		for _, e := range list {
 			sec := int64(e.TimestampUS-origin) / 1_000_000
-			seq += fmt.Sprintf("%s@%02d:%02ds(c%d)  ", eqRankLabel(e.Rank), sec/60, sec%60, e.Counter)
+			seq.WriteString(fmt.Sprintf("%s@%02d:%02ds(c%d)  ", eqRankLabel(e.Rank), sec/60, sec%60, e.Counter))
 		}
-		t.Logf("   vie %-5d : %s", sl, seq)
+		t.Logf("   vie %-5d : %s", sl, seq.String())
 	}
 	if shown == 0 {
 		t.Log("   aucune : chaque vie ne montre qu un seul rang.")
@@ -264,14 +266,14 @@ func TestEquipmentChangeCanal(t *testing.T) {
 		hist = append(hist, kv{r, n})
 	}
 	sort.Slice(hist, func(i, j int) bool { return hist[i].n > hist[j].n })
-	line := ""
+	var line strings.Builder
 	for i, h := range hist {
 		if i >= 12 {
 			break
 		}
-		line += fmt.Sprintf("%s=%d  ", eqRankLabel(h.r), h.n)
+		line.WriteString(fmt.Sprintf("%s=%d  ", eqRankLabel(h.r), h.n))
 	}
-	t.Logf("RANGS OBSERVES (top 12) : %s", line)
+	t.Logf("RANGS OBSERVES (top 12) : %s", line.String())
 
 	t.Log("CHRONOLOGIE DES VIES A PLUSIEURS RANGS (les 12 premieres) :")
 	eqLogChronology(t, bySlot, ev[0].TimestampUS)

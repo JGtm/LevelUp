@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -43,7 +44,7 @@ func TestRegistre_RecordDeCreationNOuvreQueSaVie(t *testing.T) {
 	}
 	in.PlayerIndices.ByXUID = map[uint64]int{111: 0, 222: 1, 333: 2}
 	in.BipedCreations[2].ParticipantIndex = 2
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	var vue bool
 	for _, l := range reg.Vies() {
 		if l.slot != 100 {
@@ -101,9 +102,9 @@ func TestViesSansNom_NeFranchissentPasUneFrontiereDeCorps(t *testing.T) {
 		in := entreeSlotRecycle(7)
 		fb := fallback.NouveauCompteur()
 		in.Fallbacks = fb
-		reg := BuildIdentityRegistry(in)
+		reg := BuildIdentityRegistry(context.Background(), in)
 		tracks := pistesDuSlotRecycle()
-		nameBotTracks(tracks, reg.Occupants(), in.Bots, in.Clock.OriginUS, in.Clock.StepUS)
+		nameBotTracks(context.Background(), tracks, reg.Occupants(), in.Bots, in.Clock.OriginUS, in.Clock.StepUS)
 		rep := nameRemainingLives(tracks, reg, in.Clock.OriginUS, in.Clock.StepUS)
 		if tracks[1].XUID != "" || tracks[1].Bot != "" {
 			t.Fatalf("la piste du corps de generation 2 a pris l'identite %q/%q du corps precedent",
@@ -119,9 +120,9 @@ func TestViesSansNom_NeFranchissentPasUneFrontiereDeCorps(t *testing.T) {
 	t.Run("bot declare", func(t *testing.T) {
 		in := entreeSlotRecycle(5)
 		in.Bots = []BotIdentity{{FilmIndex: 5, Name: "343 Bot [bot]"}}
-		reg := BuildIdentityRegistry(in)
+		reg := BuildIdentityRegistry(context.Background(), in)
 		tracks := pistesDuSlotRecycle()
-		nameBotTracks(tracks, reg.Occupants(), in.Bots, in.Clock.OriginUS, in.Clock.StepUS)
+		nameBotTracks(context.Background(), tracks, reg.Occupants(), in.Bots, in.Clock.OriginUS, in.Clock.StepUS)
 		nameRemainingLives(tracks, reg, in.Clock.OriginUS, in.Clock.StepUS)
 		if tracks[1].XUID != "" || tracks[1].Bot != "343 Bot [bot]" {
 			t.Fatalf("piste du corps de generation 2 : xuid %q bot %q, attendu le bot de SON corps",
@@ -144,7 +145,7 @@ func TestViesSansNom_LeRepliParOccupationSeCompte(t *testing.T) {
 	}
 	fb := fallback.NouveauCompteur()
 	in.Fallbacks = fb
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	tracks := []Track{
 		{Slot: 100, StartFrame: 130, EndFrame: 170, XUID: "111"},
 		{Slot: 100, StartFrame: 190, EndFrame: 210},

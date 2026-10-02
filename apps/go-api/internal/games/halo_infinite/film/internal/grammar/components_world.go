@@ -22,10 +22,7 @@ func consumeChangeScene(br *Lecteur) {
 	br.ReadBits(6)
 	n := uint(br.ReadBits(12))
 	for rem := n; rem > 0; {
-		take := rem
-		if take > 32 {
-			take = 32
-		}
+		take := min(rem, 32)
 		br.ReadBits(take)
 		rem -= take
 	}
@@ -49,7 +46,7 @@ func consumeSpawnFilterType(br *Lecteur) {
 		lireE494(br, niveauPosition) // FUN_142b6eeec -> FUN_14076e494(0x10), CALL 142b6ef31
 		br.ReadBits(3)
 		count := int(br.ReadBits(4))
-		for i := 0; i < count; i++ {
+		for range count {
 			br.ReadBits(32)
 		}
 		if br.ReadBits(1) == 0 {
@@ -116,7 +113,7 @@ func consumeItemIgnorePlayer(br *Lecteur) {
 // consumeGameEngineSharedTeamLives mirrors FUN_142f03600 (ti=0 i1): 8x R(8) = 64 bits
 // (one lives byte per team, unconditional).
 func consumeGameEngineSharedTeamLives(br *Lecteur) {
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		br.ReadBits(8)
 	}
 }

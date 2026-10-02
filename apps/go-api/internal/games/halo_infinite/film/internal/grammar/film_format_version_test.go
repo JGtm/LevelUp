@@ -72,7 +72,7 @@ func TestFilmFormatVersionDesBobines(t *testing.T) {
 // TestFilmFormatVersionTronquee — un tampon trop court ne rend jamais de version partielle.
 func TestFilmFormatVersionTronquee(t *testing.T) {
 	plein := []byte{0x29, 0, 0, 0, 0x1b, 0, 0, 0, 0xff}
-	for n := 0; n < 8; n++ {
+	for n := range 8 {
 		if v, ok := FilmFormatVersionFromHeader(plein[:n]); ok || v != FilmFormatVersionUnknown {
 			t.Errorf("tampon de %d octets : (%d, %v), (0, false) attendu", n, v, ok)
 		}

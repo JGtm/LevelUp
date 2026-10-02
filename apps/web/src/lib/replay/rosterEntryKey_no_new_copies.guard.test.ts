@@ -4,7 +4,7 @@
  * `rosterEntryKey` (ce fichier) dérive la clé d'un bot par le littéral `` `bot:${name}` ``
  * (`botKey`). Avant ce lot, `equipmentUsageLogic` et `playerCardReadings` en portaient chacun
  * une copie inline (centralisées par le lot R6), et `seatLogic.filmIndexByIdentity` en portait
- * une 3e (migrée le 2026-09-10, lot hygiène 5.3, `.ai/V7.5/REGISTRE_REPORTS.md`, L595). Ce test
+ * une 3e (migrée le 2026-09-10, lot hygiène 5.3, `.ai/REGISTRE_REPORTS.md`, L595). Ce test
  * interdit une 4e réapparition du littéral hors du foyer canonique.
  */
 import { describe, it, expect } from 'vitest'

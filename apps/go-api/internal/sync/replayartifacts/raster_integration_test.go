@@ -156,7 +156,7 @@ func TestRun_DeposeLeSidecarDeRaster(t *testing.T) {
 // compte en echec et laisse le reste du cycle intact. Le sidecar est best-effort : il ne
 // doit jamais casser une synchronisation, mais il ne doit jamais se taire non plus.
 //
-// AVANT LE LOT M6 (double lecture, cf. `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`), ce test
+// AVANT LE LOT M6 (double lecture, cf. `.ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`), ce test
 // corrompait le fichier SUR DISQUE apres rangement et laissait `projeterRastersTactiques`
 // le relire pour declencher l'echec — un usage du meme defaut qu'il fermait ailleurs.
 // `projeterRastersTactiques` prend desormais le document DEJA LU (`artefactLu.doc`, comme

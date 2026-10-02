@@ -31,7 +31,8 @@ package replay
 // deuxieme machine a etats.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -181,19 +182,16 @@ func stancesDesCles(parCle map[stanceKey][]types.MovementStateRead,
 	for k := range parCle {
 		cles = append(cles, k)
 	}
-	sort.Slice(cles, func(i, j int) bool {
-		if cles[i].slot != cles[j].slot {
-			return cles[i].slot < cles[j].slot
-		}
-		return cles[i].kind < cles[j].kind
+	slices.SortFunc(cles, func(a, b stanceKey) int {
+		return cmp.Or(cmp.Compare(a.slot, b.slot), cmp.Compare(a.kind, b.kind))
 	})
 	// DIMENSIONNEE SUR LES CLES : un (vie, genre) rend au moins un intervalle dans le cas
 	// courant, et la borne evite les reallocations sur les films a 200 vies.
 	out := make([]Stance, 0, len(cles))
 	for _, k := range cles {
 		list := parCle[k]
-		sort.SliceStable(list, func(i, j int) bool {
-			return list[i].TimestampUS < list[j].TimestampUS
+		slices.SortStableFunc(list, func(a, b types.MovementStateRead) int {
+			return cmp.Compare(a.TimestampUS, b.TimestampUS)
 		})
 		// LE PLIEUR DE `equipment_episodes.go`, EMPLOYE TEL QUEL (cf. l en-tete) : `fam` porte
 		// le genre le temps du pliage, et la conversion le remet dans `Kind`.
@@ -213,14 +211,7 @@ func stancesDesCles(parCle map[stanceKey][]types.MovementStateRead,
 // sortStances ordonne les intervalles sur (t0, slot, genre) — un ordre TOTAL, comme tous les
 // calques du document. Un tri partiel ferait dependre l artefact du parcours d une map.
 func sortStances(out []Stance) {
-	sort.SliceStable(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		if a.T0 != b.T0 {
-			return a.T0 < b.T0
-		}
-		if a.Slot != b.Slot {
-			return a.Slot < b.Slot
-		}
-		return a.Kind < b.Kind
+	slices.SortStableFunc(out, func(a, b Stance) int {
+		return cmp.Or(cmp.Compare(a.T0, b.T0), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Kind, b.Kind))
 	})
 }

@@ -13,6 +13,7 @@ package replay
 //	       desactive »                   publie pas.
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -54,7 +55,7 @@ func TestTirsNeDonnentPasLaPlaceDUneAutreEquipe(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(1, "110"), entree(5, "500"), entree(10, "310")}
 	occ := occupantsFabriques([]int{0, 1, 0, 1}, iv(0, 99), iv(0, 15), iv(0, 10), iv(20, 99))
 	tirs := []FireEventRef{{FilmIndex: 5, TimestampUS: 3_000_000}, {FilmIndex: 5, TimestampUS: 5_000_000}}
-	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 5), fire: tirs,
+	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 5), fire: tirs,
 		horloge: horlogeDeSieges(nil)})
 	if roster[3].Seat != 1 || roster[3].SeatSource != SeatSourceApparie || cov.PlacesTirs != 0 {
 		t.Errorf("arrivant de l'equipe 1 : place %d (%s), places lues par les tirs %d — attendu la "+
@@ -68,7 +69,7 @@ func TestTirsNeDonnentPasLaPlaceDUneAutreEquipe(t *testing.T) {
 func TestIntervalleVideParLaBorneNeSePubliePas(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(0, "200")}
 	occ := occupantsFabriques([]int{0, 0}, []intervalleDePresence{{de: 0, a: -1, aMax: 30}}, iv(0, 99))
-	poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(nil)})
+	poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(nil)})
 	if len(roster[0].Presence) != 0 {
 		t.Errorf("presence %+v : un affichage vide par la borne ne se publie pas", roster[0].Presence)
 	}

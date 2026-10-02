@@ -1,6 +1,7 @@
 package replaybuild
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -158,17 +159,17 @@ func TestKillRefs_PortesFermees(t *testing.T) {
 	// `BijectionMargin > 0` et aucune alerte de santé : la porte ligne-par-ligne est OUVERTE,
 	// ce qui isole chacun des deux autres refus.
 	ouvert := &decfilm.Result{BijectionMargin: 1, Kills: []decfilm.Kill{killDe("Tueur", "Victime", 10)}}
-	if _, mk := b.killRefs("m", deaths, nil, nil); mk.Read || len(mk.Kills) != 0 {
+	if _, mk := b.killRefs(context.Background(), "m", deaths, nil, nil); mk.Read || len(mk.Kills) != 0 {
 		t.Fatalf("killsource nil : MatchKills = %+v, attendu non lu", mk)
 	}
-	if _, mk := b.killRefs("m", deaths, &decfilm.Result{}, nil); mk.Read {
+	if _, mk := b.killRefs(context.Background(), "m", deaths, &decfilm.Result{}, nil); mk.Read {
 		t.Fatalf("porte ligne-par-ligne fermée : MatchKills lu, attendu non lu")
 	}
-	if _, mk := b.killRefs("m", filmDeaths{err: errFilTest}, ouvert, nil); mk.Read {
+	if _, mk := b.killRefs(context.Background(), "m", filmDeaths{err: errFilTest}, ouvert, nil); mk.Read {
 		t.Fatalf("fil des morts illisible : MatchKills lu, attendu non lu")
 	}
 	// Porte OUVERTE et fil LISIBLE : la sortie est lue, et le compte des écartés est publié.
-	_, mk := b.killRefs("m", deaths, ouvert, nil)
+	_, mk := b.killRefs(context.Background(), "m", deaths, ouvert, nil)
 	if !mk.Read || len(mk.Kills) != 0 || mk.Dropped != 1 {
 		t.Fatalf("MatchKills = %+v, attendu lu, 0 couple, 1 écarté (le tueur est hors roster)", mk)
 	}

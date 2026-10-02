@@ -62,11 +62,11 @@ lue ligne à ligne :
 Et le jeton n'est pas posé : absent de `.env.local.example`, absent de
 `docs/RUNBOOK_GO_LIVE*`, et surtout porté comme **report OUVERT** au registre :
 
-- `.ai/V7.5/REGISTRE_REPORTS.md:150` — « La production n'enfile RIEN tant que
+- `.ai/REGISTRE_REPORTS.md:150` — « La production n'enfile RIEN tant que
   `LEVELUP_BUILD_WORKER_TOKEN` est absent […] **Consequence : ce lot n'active rien en
   prod** […] poser le jeton sur le VPS web au deploiement de l'ouvrier — c'est le SEUL
   geste qui ouvre le fil de l'eau ».
-- `.ai/V7.5/REGISTRE_REPORTS.md:149` — le déploiement du 2e VPS est lui-même un report non
+- `.ai/REGISTRE_REPORTS.md:149` — le déploiement du 2e VPS est lui-même un report non
   soldé.
 
 La conséquence n°1 du constat (« chaque `git reset --hard` jette les cartes que la synchro
@@ -202,7 +202,7 @@ Les seules références externes sont `heightfield_test.go:49,83,90`.
 
 ### Ce qui confirme
 
-**Aucune réservation au registre.** `grep -in "heightfield" .ai/V7.5/REGISTRE_REPORTS.md` →
+**Aucune réservation au registre.** `grep -in "heightfield" .ai/REGISTRE_REPORTS.md` →
 0 résultat. La seule ligne du registre sur une primitive non branchée
 (`REGISTRE_REPORTS.md:55`) vise `ComposanteAccessible`, un autre symbole, et elle est
 explicite (« conservee comme instrument, non branchee ») — ce que `heightfield.go` n'a pas.

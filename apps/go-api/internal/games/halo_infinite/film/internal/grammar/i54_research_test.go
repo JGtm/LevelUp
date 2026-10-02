@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i54_research_test.go — INSTRUMENT DE MESURE de l'item 1.4 du plan
@@ -28,12 +30,13 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I54_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI54MobilityActionUsage$' -timeout 10m -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI54MobilityActionUsage$' -timeout 10m -v
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -209,12 +212,7 @@ func TestI54MobilityActionUsage(t *testing.T) {
 
 // i54InMask dit si la liste d'index du masque contient i54.
 func i54InMask(idx []int) bool {
-	for _, id := range idx {
-		if id == i54Index {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(idx, i54Index)
 }
 
 // i54Flag1 lit flag1 (le gate du corps d'i54, premier bit du composant — cf.

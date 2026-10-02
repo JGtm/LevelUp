@@ -40,7 +40,7 @@ package grammar
 //	CGO_ENABLED=0 PROBE_FILM=<repo>/data/cache/film_chunks/7344d24f \
 //	  PROBE_CACHE=<repo>/data/cache PROBE_SHORT=7344d24f PROBE_OBJTYPE=zone \
 //	  PROBE_TSV=<repo>/.ai/V7.5/replay2d/registre_film/lotEF \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestSondesRegistre -v -timeout 60m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestSondesRegistre -v -timeout 60m
 
 import (
 	"os"
@@ -189,7 +189,7 @@ func probeRecenseKF(dir string, n int) probeCensus {
 func probeResoutArchetypes(t *testing.T, reg *Registry, c probeCensus) [probeRoleCount]*probeArch {
 	t.Helper()
 	var out [probeRoleCount]*probeArch
-	for r := 0; r < probeRoleCount; r++ {
+	for r := range probeRoleCount {
 		var vus []int
 		for _, a := range reg.Archetypes {
 			if len(a.indicesOf(probeRoleNoms[r].comp)) > 0 {

@@ -23,7 +23,7 @@ func TestZoneLetterRanksDepartageDeuxZonesDuMemeSlot(t *testing.T) {
 	refs := []int{5, 2, 9}
 	slots := map[int]uint32{5: 100, 2: 100, 9: 101}
 	attendu := map[int]int{2: 0, 5: 1, 9: 2}
-	for tour := 0; tour < 50; tour++ {
+	for tour := range 50 {
 		gauge := map[int]uint32{}
 		// L'ordre d'INSERTION change de tour en tour ; celui d'ITERATION change de lui-meme.
 		for i := range refs {

@@ -1,7 +1,7 @@
 package migrations
 
 // steps_shared_kill_openings.go — table `kill_openings` : OÙ LES DEUX JOUEURS ÉTAIENT UN
-// TEMPS-POUR-TUER AVANT LE COUP FATAL (plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md, D5).
+// TEMPS-POUR-TUER AVANT LE COUP FATAL (plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, D5).
 //
 // ─── POURQUOI UNE TABLE SŒUR, ET PAS SIX COLONNES DE PLUS SUR kill_positions ──────────────
 //

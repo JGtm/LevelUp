@@ -162,7 +162,7 @@ func (c *KillSourceCollector) buildHitsBatches(
 //
 // L ENTREE ENTIERE, PAS SES SEULES BORNES (lot 1.9.2) : elle porte AUSSI le decoupage d i0 de la
 // carte, que le balayage impose desormais au lieu de le laisser detecter
-// (`decfilm.BuildBipedTracks`). D-3 d ADR 0034.
+// (`grammar.BuildBipedTracks`). D-3 d ADR 0034.
 func (c *KillSourceCollector) resolveHitDistanceFunc(
 	ctx context.Context, matchID, dir string, damages []decfilm.WeaponDamage, n int,
 ) decfilm.WeaponHitDistanceFunc {

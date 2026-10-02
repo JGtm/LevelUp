@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r8_bouffees_research_test.go — LE BALAYAGE SYSTEMATIQUE : quel composant du BIPEDE est
@@ -36,7 +38,7 @@ package grammar
 //
 //	CGO_ENABLED=0 R8_FILMS=<repo>/data/cache/film_chunks \
 //	  R8_BOUNDS=<worktree>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R8_IDS=00ba2e1c go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestR8Bouffees$' \
+//	  R8_IDS=00ba2e1c go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestR8Bouffees$' \
 //	  -timeout 120m -v
 
 import (
@@ -207,7 +209,7 @@ func r8Measure(recs []r8Rec, anchors []r8Anchor) r8Lift {
 		if near {
 			lf.winRecs++
 		}
-		for c := 0; c < r8MaxComponent; c++ {
+		for c := range r8MaxComponent {
 			if r.mask&(1<<uint(c)) == 0 {
 				continue
 			}
@@ -267,7 +269,7 @@ func r8LogLift(t *testing.T, s r8MobSetup, titre string, lf r8Lift) {
 		nWin, nAll     int
 	}
 	var rows []row
-	for c := 0; c < r8MaxComponent; c++ {
+	for c := range r8MaxComponent {
 		if lf.inWin[c] < 10 || lf.inAll[c] == 0 {
 			continue
 		}

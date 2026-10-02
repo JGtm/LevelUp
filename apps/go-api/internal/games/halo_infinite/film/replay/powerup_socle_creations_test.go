@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // powerup_socle_creations_test.go — PHASE 3 (items 3.2 a 3.4) : LES RECORDS DE CREATION,

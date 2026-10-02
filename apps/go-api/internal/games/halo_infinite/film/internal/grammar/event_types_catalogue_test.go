@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // event_types_catalogue_test.go — LE CATALOGUE DES TYPES D'EVENEMENT, TEL QUE L'EXE LE NOMME.

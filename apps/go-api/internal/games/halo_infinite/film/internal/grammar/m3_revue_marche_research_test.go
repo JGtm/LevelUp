@@ -17,6 +17,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
@@ -38,10 +39,7 @@ func m3rvScan(buf []byte, from, prevSlot, total, maxWin int, r m3rvRegle, streak
 	at = -1
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	exact := -1
-	end := from + maxWin
-	if end > total {
-		end = total
-	}
+	end := min(from+maxWin, total)
 	s0 := 0
 	if r.trainePorte {
 		s0 = *streak
@@ -195,11 +193,12 @@ func m3rvParTI(m map[int]int) string {
 		tot += n
 	}
 	sort.Ints(tis)
-	s := fmt.Sprintf("%d [", tot)
+	var s strings.Builder
+	s.WriteString(fmt.Sprintf("%d [", tot))
 	for _, ti := range tis {
-		s += fmt.Sprintf(" ti%d:%d", ti, m[ti])
+		s.WriteString(fmt.Sprintf(" ti%d:%d", ti, m[ti]))
 	}
-	return s + " ]"
+	return s.String() + " ]"
 }
 
 // m3rvVoisinage decrit l ancre qui precede et celle qui suit la position `bit` dans une marche.
@@ -260,11 +259,11 @@ func TestM3RevueNaissancesDuSlot(t *testing.T) {
 		if int(b.Slot) != slot {
 			continue
 		}
-		s := ""
+		var s strings.Builder
 		for _, w := range b.Weapons {
-			s += fmt.Sprintf(" [k%d %08X %s]", w.Emplacement, w.Family, weaponv3.WeaponName(w.Family))
+			s.WriteString(fmt.Sprintf(" [k%d %08X %s]", w.Emplacement, w.Family, weaponv3.WeaponName(w.Family)))
 		}
 		t.Logf("   DOTATION slot %d gen %d a %.1f s (film) :%s", b.Slot, b.Generation,
-			float64(b.TimestampUS-t0)/1e6, s)
+			float64(b.TimestampUS-t0)/1e6, s.String())
 	}
 }

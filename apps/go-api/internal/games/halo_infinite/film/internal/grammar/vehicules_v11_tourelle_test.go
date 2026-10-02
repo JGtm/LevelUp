@@ -23,7 +23,7 @@ package grammar
 // LECTURE SEULE : aucun fichier ecrit, aucune base ouverte.
 //
 //	CGO_ENABLED=0 V11_ROOT=<cache> V11_FILMS=0d76e8f1,fccc61cd \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestV11 -v -timeout 120m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestV11 -v -timeout 120m
 
 import (
 	"fmt"
@@ -53,7 +53,7 @@ func v11Films(t *testing.T) []string {
 		t.Skipf("mesure non demandee : %s ou %s vide", v11RootEnv, v11FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(films, ",") {
+	for s := range strings.SplitSeq(films, ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, root+"/film_chunks/"+s)
 		}
@@ -79,7 +79,7 @@ func newV11SlotStat() *v11SlotStat {
 // v11MasqueIdx rend les index de composants d'un masque 64 bits, en ordre croissant.
 func v11MasqueIdx(m uint64) []int {
 	var out []int
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		if m&(uint64(1)<<uint(i)) != 0 {
 			out = append(out, i)
 		}

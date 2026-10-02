@@ -62,7 +62,7 @@ func TestLiveFirePositionsParPlage(t *testing.T) {
 	t.Logf("catalogue `live fire` : module %s, axes %v, region %d sur %d bits",
 		entree.Module, entree.AxisWidths, entree.Region, entree.EffectiveRegionIndexBits())
 
-	for _, dir := range strings.Split(brut, ";") {
+	for dir := range strings.SplitSeq(brut, ";") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue

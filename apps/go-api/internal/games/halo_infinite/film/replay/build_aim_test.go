@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"encoding/json"
 	"math"
 	"strings"
@@ -89,7 +90,7 @@ func TestPointOmetPQuandLaViseeEstAPlat(t *testing.T) {
 func TestPitchPublieEstToujoursHorsDeLaBandeDOmission(t *testing.T) {
 	var omis int
 	minAbs := float32(math.MaxFloat32)
-	for raw := uint32(0); raw < 2048; raw++ {
+	for raw := range uint32(2048) {
 		var p grammar.BipedPosition
 		p.HasYaw = true
 		p.PitchRaw = raw
@@ -126,7 +127,7 @@ func TestDocumentPortePEtSonSigne(t *testing.T) {
 		p.HasYaw, p.YawRaw, p.PitchRaw = true, 1024, pitch
 		return p
 	}
-	doc := BuildFromPositions("m", "halo_infinite", []grammar.BipedPosition{
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", []grammar.BipedPosition{
 		mk(1_000_000, 1, 1500), // vers le HAUT
 		mk(1_200_000, 2, 500),  // vers le BAS
 		mk(1_400_000, 3, 1024), // quasi a plat, mais publie (cf. test precedent)
@@ -163,7 +164,7 @@ func TestDocumentSansViseeNePubliePasDElevation(t *testing.T) {
 		p.Slot, p.TimestampUS, p.X, p.Y, p.Z, p.HasWorld = 7, ts, x, 1, 0, true
 		return p
 	}
-	doc := BuildFromPositions("m", "halo_infinite", []grammar.BipedPosition{
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", []grammar.BipedPosition{
 		mk(1_000_000, 1), mk(1_200_000, 2),
 	}, nil, Options{})
 	if len(doc.Tracks) != 1 {

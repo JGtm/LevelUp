@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // offsets_tir_historiques_test.go — LES OFFSETS FIXES DU RECORD DE TIR D AVANT LE LOT M4b, pour les

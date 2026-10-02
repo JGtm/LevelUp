@@ -1,7 +1,7 @@
 //go:build art_repro
 
 // Package sync — csr_art_repro_test.go : Phase 1 du plan d'éradication ART
-// (cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md) — volet CSR.
+// (cf. .ai/archive/V7/PLAN_LUSR_ART_HOME_CRASH.md) — volet CSR.
 //
 // **Cible** : les deux chemins CSR qui utilisent `INSERT ... ON CONFLICT
 // DO UPDATE` (pattern A du test art_upsert_patterns_test.go, identifié

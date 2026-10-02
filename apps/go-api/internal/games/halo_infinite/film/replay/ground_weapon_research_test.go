@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // ground_weapon_research_test.go — INSTRUMENT DE MESURE des ARMES AU SOL (Phase 2.1 du plan
@@ -15,7 +17,7 @@ package replay
 // TÉMOIN DE CONTRÔLE OBLIGATOIRE sur la position : une bande de slots FANTÔME de même
 // cardinalité (des slots jamais vus porter ti=42 dans aucun keyframe) passe par le MÊME
 // décodeur. Si le fantôme rend autant d'échantillons que la vraie bande, le signal est sous le
-// bruit — c'est exactement le verdict consigné le 2026-07-28 dans .ai/SUIVI_REPLAY_2D.md
+// bruit — c'est exactement le verdict consigné le 2026-07-28 dans .ai/V7.5/replay2d/SUIVI_REPLAY_2D.md
 // (« 5 échantillons contre 1 006 sur un jeu de slots fantôme »), que cet instrument doit
 // reproduire ou réfuter sur pièces.
 //
@@ -35,8 +37,8 @@ package replay
 //
 // Conséquence : le calque cartographique « armes au sol » est HORS DE PORTÉE offline-pur. Phase 2
 // spatiale abandonnée pour v7.5, reportée avec sa condition de reprise (default-state ti=42 résolu,
-// OU événements de cycle de vie décodés) — .ai/V7.5/REGISTRE_REPORTS.md. Ce verdict CONFIRME celui
-// du 2026-07-28 (.ai/SUIVI_REPLAY_2D.md) que le plan de Phase 2 avait contredit.
+// OU événements de cycle de vie décodés) — .ai/REGISTRE_REPORTS.md. Ce verdict CONFIRME celui
+// du 2026-07-28 (.ai/V7.5/replay2d/SUIVI_REPLAY_2D.md) que le plan de Phase 2 avait contredit.
 //
 // USAGE (depuis apps/go-api) :
 //
@@ -256,7 +258,7 @@ func gwBoxDiagonal(pts []grammar.WorldObjectSample) float32 {
 		}
 	}
 	var sum float64
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		d := float64(mx[a] - mn[a])
 		sum += d * d
 	}

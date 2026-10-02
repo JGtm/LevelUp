@@ -27,6 +27,7 @@ package replay
 //	  ./internal/games/halo_infinite/film/replay/
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -111,7 +112,7 @@ func rrM4AReconstruire(t *testing.T, cat *profile.MapQuantCatalog, labels LabelC
 		return "perime"
 	}
 	id := strings.TrimSuffix(filepath.Base(chemin), ".filmfacts.bin")
-	doc := BuildFromFacts(id, "halo_infinite", f, Options{MapQuant: &entry, Labels: labels})
+	doc := BuildFromFacts(context.Background(), id, "halo_infinite", f, Options{MapQuant: &entry, Labels: labels})
 	enc, err := json.Marshal(doc)
 	if err != nil {
 		t.Fatal(err)

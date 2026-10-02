@@ -47,6 +47,7 @@ package replaybuild
 //	go test -tags=research ./internal/replaybuild/ -run Navpoint51DrapeauSurFilm -v -timeout 60m
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -73,7 +74,7 @@ func TestNavpoint51DrapeauSurFilm(t *testing.T) {
 	if err != nil {
 		t.Fatalf("faits %s : %v", factsPath, err)
 	}
-	b, err := NewBuilder(repoRoot, title.DefaultSlug)
+	b, err := NewBuilder(context.Background(), repoRoot, title.DefaultSlug)
 	if err != nil {
 		t.Fatalf("preparation du builder : %v", err)
 	}
@@ -83,7 +84,7 @@ func TestNavpoint51DrapeauSurFilm(t *testing.T) {
 		cartes = []string{carte}
 	}
 	cacheRoot := title.NewPathResolver(repoRoot).CacheRootDir()
-	built, err := b.BuildBytes(faits.MatchID, cartes,
+	built, err := b.BuildBytes(context.Background(), faits.MatchID, cartes,
 		filmcache.ChunkDir(cacheRoot, court), faits.MatchFacts)
 	if err != nil {
 		t.Fatalf("cuisson de %s : %v", court, err)

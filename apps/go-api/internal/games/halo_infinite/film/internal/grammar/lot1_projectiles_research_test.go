@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_projectiles_research_test.go — LOT 1 : les EVENEMENTS PROJECTILE du film, voie de
@@ -63,10 +65,7 @@ func TestLot1Projectiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks (evenements projectile) ==", filepath.Base(dir), n)
 
 	width := projCalibrateWidth(t, dir, n)

@@ -43,6 +43,7 @@ package replay
 // piece ; d'ici la, on se tait plutot que de choisir.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/canonical"
@@ -175,25 +176,25 @@ func completerParLesChunks(out *filmTableLinks, in IdentityInput) {
 
 // alarmerSurLaTableDuFilm journalise ce que la composition a refuse et ce qu'elle a contredit.
 // Un refus ou une contradiction se disent AVANT toute degradation (regle n° 3 du depot).
-func (l filmTableLinks) alarmerSurLaTableDuFilm(matchID string) {
+func (l filmTableLinks) alarmerSurLaTableDuFilm(ctx context.Context, matchID string) {
 	c := l.couverture
-	slog.Info("rejeu : table du film composee au registre d'identite", "match_id", matchID,
+	slog.InfoContext(ctx, "rejeu : table du film composee au registre d'identite", "match_id", matchID,
 		"lue", c.Read, "refus", c.Refusal, "sieges", c.Seats, "direct", c.Direct,
 		"repli", c.Fallback, "accord", c.Accord, "contradiction", c.Contradiction,
 		"silence", c.Silence, "collisionsIndex", c.IndexCollisions)
 	if c.IndexCollisions > 0 {
-		slog.Warn("rejeu : des INDEX de joueur etaient revendiques par deux xuids dans la table "+
+		slog.WarnContext(ctx, "rejeu : des INDEX de joueur etaient revendiques par deux xuids dans la table "+
 			"composee — l'index est retire POUR LES DEUX, aucune identite n'est tiree au sort",
 			"match_id", matchID, "collisions", c.IndexCollisions, "liens_restants",
 			c.Direct+c.Fallback)
 	}
 	if c.Contradiction > 0 {
-		slog.Warn("rejeu : la lecture des chunks CONTREDIT la table du film sur des index — la "+
+		slog.WarnContext(ctx, "rejeu : la lecture des chunks CONTREDIT la table du film sur des index — la "+
 			"table du film fait foi, l'ecart est compte",
 			"match_id", matchID, "contradictions", c.Contradiction, "accords", c.Accord)
 	}
 	if !c.Read {
-		slog.Warn("rejeu : table du film NON EMPLOYEE — le lien index <-> xuid retombe "+
+		slog.WarnContext(ctx, "rejeu : table du film NON EMPLOYEE — le lien index <-> xuid retombe "+
 			"entierement sur la lecture des chunks de replication",
 			"match_id", matchID, "refus", c.Refusal, "liens", c.Fallback)
 	}

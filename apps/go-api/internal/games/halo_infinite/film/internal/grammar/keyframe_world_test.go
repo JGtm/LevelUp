@@ -40,7 +40,7 @@ func kfPayloadPrefixeBipedes() []byte {
 	w.bits(1<<30|256, 32)
 	w.bits(0, 32)
 	w.bits(0, 1300)
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		w.bits(kfSent, 32)
 	}
 	return w.buf
@@ -75,7 +75,7 @@ func TestKeyframeWorldUneFenetreVideNeCoupePasLaTable(t *testing.T) {
 	kfEcrireRecord(w, 1, 10, 5, 300)
 	w.bits(0, kfScanFenetreBits+5000)
 	kfEcrireRecord(w, 1, 11, 5, 300)
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		w.bits(kfSent, 32)
 	}
 	recs, st := WalkKeyframeWorldStats(w.buf)
@@ -93,7 +93,7 @@ func TestKeyframeWorldLaFinDeTableArreteLeGlissement(t *testing.T) {
 	w := &bitWriter{}
 	w.bit(0)
 	kfEcrireRecord(w, 1, 10, 5, 300)
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		w.bits(kfSent, 32)
 	}
 	// Un record APRÈS la fin de table ne doit jamais être atteint.
@@ -116,7 +116,7 @@ func TestKeyframeWorldLElectionResteLeRepliSansBipede(t *testing.T) {
 	kfEcrireRecord(w, 1, 10, 5, 300)
 	kfEcrireRecord(w, 1, 40, 5, 300) // non consécutif, plus proche
 	kfEcrireRecord(w, 1, 20, 6, 300) // non consécutif, slot plus bas, plus loin
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		w.bits(kfSent, 32)
 	}
 	recs, st := WalkKeyframeWorldStats(w.buf)
@@ -160,7 +160,7 @@ func TestKeyframeWorldUneFinDeTableAChevalSurDeuxFenetres(t *testing.T) {
 	// de 100 mots (3 200 bits) commence 1 600 bits avant sa fin, et la chevauche.
 	debutFenetre := 1 + 64
 	w.bits(0, debutFenetre+kfScanFenetreBits-1600-w.n)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		w.bits(kfSent, 32)
 	}
 	w.bits(0, 500)

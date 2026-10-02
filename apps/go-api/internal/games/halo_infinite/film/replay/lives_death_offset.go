@@ -13,7 +13,6 @@ package replay
 import (
 	"cmp"
 	"slices"
-	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -173,11 +172,8 @@ func voteDeathOffsets(ends []int64, deaths []types.Death) []int64 {
 	}
 	// L'ordre d'itération d'une map n'est pas garanti : à égalité de voix, le plus petit centre
 	// tranche, pour que deux exécutions rendent la même liste.
-	sort.Slice(tous, func(i, j int) bool {
-		if tous[i].voix != tous[j].voix {
-			return tous[i].voix > tous[j].voix
-		}
-		return tous[i].centre < tous[j].centre
+	slices.SortFunc(tous, func(a, b panier) int {
+		return cmp.Or(cmp.Compare(b.voix, a.voix), cmp.Compare(a.centre, b.centre))
 	})
 	out := make([]int64, 0, k)
 	for _, p := range tous {
@@ -353,7 +349,7 @@ func apparierMortsEtVies(lives []lifeSpan, deaths []types.Death, off int64) []de
 		usedD[p.di], usedL[p.li] = true, true
 		out = append(out, deathPair{li: p.li, di: p.di})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].li < out[j].li })
+	slices.SortFunc(out, func(a, b deathPair) int { return cmp.Compare(a.li, b.li) })
 	return out
 }
 

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_canal_zoom_research_test.go — LE CANAL DU ZOOM DANS LES PAQUETS DELTA. Les deux
@@ -104,15 +106,10 @@ func TestViseeCensusTypesCorpus(t *testing.T) {
 	}
 	close(in)
 	var wg sync.WaitGroup
-	workers := runtime.NumCPU()
-	if workers > 8 {
-		workers = 8
-	}
+	workers := min(runtime.NumCPU(), 8)
 	debut := time.Now()
-	for w := 0; w < workers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range workers {
+		wg.Go(func() {
 			for d := range in {
 				dir := filepath.Join(root, d)
 				var loc [128]int
@@ -154,7 +151,7 @@ func TestViseeCensusTypesCorpus(t *testing.T) {
 				}
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	t.Logf("COUT — %d films en %s", len(dirs), time.Since(debut).Round(time.Second))
@@ -205,15 +202,10 @@ func TestViseeCanalFenetres(t *testing.T) {
 	}
 	close(in)
 	var wg sync.WaitGroup
-	workers := runtime.NumCPU()
-	if workers > 8 {
-		workers = 8
-	}
+	workers := min(runtime.NumCPU(), 8)
 	debut := time.Now()
-	for w := 0; w < workers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range workers {
+		wg.Go(func() {
 			for d := range in {
 				dir := filepath.Join(root, d)
 				feed, ok := tirLitFeed(dir)
@@ -238,7 +230,7 @@ func TestViseeCanalFenetres(t *testing.T) {
 				canalFusionne(&autresKills, al)
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	t.Logf("COUT — %d films en %s ; fenetres : %d zoomees, %d non zoomees, %d autres kills"+
@@ -250,7 +242,7 @@ func TestViseeCanalFenetres(t *testing.T) {
 		return
 	}
 	candidats := 0
-	for ty := 0; ty < 128; ty++ {
+	for ty := range 128 {
 		if zoome.avecType[ty] == 0 && nonZoome.avecType[ty] == 0 {
 			continue
 		}
@@ -378,7 +370,7 @@ func canalCompte(c *canalClasse, instants []int64, off int64, types [][2]int64, 
 // canalFusionne verse une classe de film dans l'agregat corpus.
 func canalFusionne(dst *canalClasse, src canalClasse) {
 	dst.fenetres += src.fenetres
-	for ty := 0; ty < 128; ty++ {
+	for ty := range 128 {
 		dst.avecType[ty] += src.avecType[ty]
 		dst.paquets[ty] += src.paquets[ty]
 	}

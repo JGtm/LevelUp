@@ -11,6 +11,7 @@ package replay
 // « film sans registre, ou artefact anterieur au lot G » et ne doit jamais se lire « version 0 ».
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -29,7 +30,7 @@ func positionsPourVersion() []grammar.BipedPosition {
 // TestCoverageFilmMajorVersionPubliee : la version passee en option se retrouve dans la couverture.
 func TestCoverageFilmMajorVersionPubliee(t *testing.T) {
 	version := 40
-	doc := BuildFromPositions("m", "halo_infinite", positionsPourVersion(), nil, Options{
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourVersion(), nil, Options{
 		FrameIntervalMS:  100,
 		FilmMajorVersion: &version,
 	})
@@ -47,7 +48,7 @@ func TestCoverageFilmMajorVersionPubliee(t *testing.T) {
 // 0 EST UNE VALEUR SIGNIFIANTE AILLEURS (`grammar.FilmMajorVersionUnknown`, le decoupage
 // historique du gamertag) : la publier ici ferait passer « on ne sait pas » pour « version 0 ».
 func TestCoverageFilmMajorVersionAbsente(t *testing.T) {
-	doc := BuildFromPositions("m", "halo_infinite", positionsPourVersion(), nil, Options{
+	doc := BuildFromPositions(context.Background(), "m", "halo_infinite", positionsPourVersion(), nil, Options{
 		FrameIntervalMS: 100,
 	})
 	if doc.Coverage.FilmMajorVersion != nil {

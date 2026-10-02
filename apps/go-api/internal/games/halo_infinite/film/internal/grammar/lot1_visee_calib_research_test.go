@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_visee_calib_research_test.go — LOT 1 : CALIBRER (et donc PROUVER ou REFUTER) la visee du
@@ -20,6 +22,7 @@ package grammar
 import (
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -36,10 +39,7 @@ func TestLot1ViseeCalibration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	const kMax = 96
 	depthByK := make([]int, kMax+1) // records totaux de la trame par longueur post-visee K
 	nModal := 0
@@ -120,11 +120,11 @@ func TestLot1ViseeCalibration(t *testing.T) {
 		top = append(top, kd{k, d})
 	}
 	sort.Slice(top, func(i, j int) bool { return top[i].d > top[j].d })
-	line := ""
+	var line strings.Builder
 	for i := 0; i < 6 && i < len(top); i++ {
-		line += " K=" + itoa(top[i].k) + ":" + itoa(top[i].d)
+		line.WriteString(" K=" + itoa(top[i].k) + ":" + itoa(top[i].d))
 	}
-	t.Logf("  profil (K:records, decroissant) :%s", line)
+	t.Logf("  profil (K:records, decroissant) :%s", line.String())
 	net := profBest >= 1.0 && bestD >= 3*median && median > 0
 	t.Logf("VERDICT (pic net : profondeur >= 1/paquet ET >= 3x la mediane) : %s", lot1Verdict(net))
 }
@@ -196,27 +196,4 @@ func lot1Type36AimEnd(pay []byte) (int, bool) {
 	lot1SkipEff64(br)
 	br.Skip(30) // visee R(30)
 	return br.BitPos(), true
-}
-
-// itoa : petit entier -> chaine (evite d'importer strconv pour deux usages).
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	var b [12]byte
-	i := len(b)
-	for n > 0 {
-		i--
-		b[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		i--
-		b[i] = '-'
-	}
-	return string(b[i:])
 }

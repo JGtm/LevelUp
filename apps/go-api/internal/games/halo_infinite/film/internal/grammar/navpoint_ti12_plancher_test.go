@@ -37,7 +37,7 @@ package grammar
 // decodage a la fois (verrou process).
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run NavpointTi12Plancher -v -timeout 60m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run NavpointTi12Plancher -v -timeout 60m
 
 import (
 	"math"
@@ -116,7 +116,7 @@ func TestNavpointTi12Plancher(t *testing.T) {
 	rng := rand.New(rand.NewSource(tpGraine))
 	aussiBien, pleins := 0, 0
 	cvs := make([]float64, 0, tpTirages)
-	for i := 0; i < tpTirages; i++ {
+	for range tpTirages {
 		c, v, _ := tpStatNulle(films, rng)
 		if c == 13 {
 			pleins++
@@ -285,7 +285,7 @@ func tpSentinelle(t *testing.T) func() {
 // explosions sans porteur n'ont pas d'armement replicable). Ce test-ci reste l'instrument
 // temoin de la lecture d'origine.
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run NavpointTi12PlancherVariantes -v -timeout 60m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run NavpointTi12PlancherVariantes -v -timeout 60m
 func TestNavpointTi12PlancherVariantes(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
@@ -334,7 +334,7 @@ func TestNavpointTi12PlancherVariantes(t *testing.T) {
 			grp.nom, total, couv, total, med/1000, cv)
 		rng := rand.New(rand.NewSource(tpGraine))
 		aussiBien, pleins := 0, 0
-		for i := 0; i < tpTirages; i++ {
+		for range tpTirages {
 			c, v, _ := tpStatNulle(films, rng)
 			if c == total {
 				pleins++

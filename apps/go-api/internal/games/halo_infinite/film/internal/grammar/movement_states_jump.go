@@ -57,8 +57,9 @@ package grammar
 // d episodes FERMES ont ete examines, `JumpsDerived` combien sont tombes dans la fenetre.
 
 import (
+	"cmp"
 	"math"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -114,7 +115,7 @@ func (sc *movementStateScanner) deriverLesSauts() {
 	for s := range sc.vit {
 		slots = append(slots, s)
 	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	slices.Sort(slots)
 	for _, s := range slots {
 		for _, e := range episodesDeMontee(s, sc.vit[s]) {
 			sc.st.JumpEpisodes++
@@ -165,7 +166,7 @@ func episodesDeMontee(slot uint32, vs []jumpVelSample) []jumpEpisode {
 func vitessesOrdonnees(vs []jumpVelSample) []jumpVelSample {
 	cp := make([]jumpVelSample, len(vs))
 	copy(cp, vs)
-	sort.SliceStable(cp, func(i, j int) bool { return cp[i].ts < cp[j].ts })
+	slices.SortStableFunc(cp, func(a, b jumpVelSample) int { return cmp.Compare(a.ts, b.ts) })
 	out := cp[:0]
 	var dernier uint64
 	for i, x := range cp {

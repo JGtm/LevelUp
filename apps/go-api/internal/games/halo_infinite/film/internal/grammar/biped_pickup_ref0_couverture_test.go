@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // biped_pickup_ref0_couverture_test.go — LOT 2, SUITE. La base 512 est etablie sur les
@@ -87,7 +89,7 @@ func TestBipedPickupRef0Couverture(t *testing.T) {
 			temoin[e.Kind]++
 		}
 	}
-	for k := uint64(0); k < 8; k++ {
+	for k := range uint64(8) {
 		if total[k] == 0 {
 			continue
 		}

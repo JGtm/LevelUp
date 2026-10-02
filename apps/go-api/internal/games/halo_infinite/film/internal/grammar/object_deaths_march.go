@@ -33,7 +33,8 @@ package grammar
 // seule porte aux octets ») ; la découverte est consignée au plan § 4 (D1 (1.9.10)).
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -75,9 +76,7 @@ type marchTimeline struct {
 // images-clés triées par instant.
 func newMarchTimeline(reg *Registry, kfs []marchKeyframe) *marchTimeline {
 	tl := &marchTimeline{w: NewWorld(reg), events: kfs}
-	sort.SliceStable(tl.events, func(i, j int) bool {
-		return tl.events[i].timestampUS < tl.events[j].timestampUS
-	})
+	slices.SortStableFunc(tl.events, func(a, b marchKeyframe) int { return cmp.Compare(a.timestampUS, b.timestampUS) })
 	seen := map[int]bool{}
 	for _, e := range tl.events {
 		for _, r := range e.recs {

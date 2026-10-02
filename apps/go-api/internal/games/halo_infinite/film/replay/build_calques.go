@@ -29,12 +29,12 @@ func (a *assemblage) poserGrappinEtPoses() {
 		a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieDuTir, grapCov.viesParLeTir)
 		a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieLaPlusProche, grapCov.viesLesPlusProches)
 		a.doc.Coverage.Grapple = grapCov
-		slog.Info("rejeu : tractions de grappin",
+		slog.InfoContext(a.ctx, "rejeu : tractions de grappin",
 			"tirs", grapCov.LightReads, "accroches", grapCov.HeavyReads,
 			"tractions", grapCov.Pulls, "vies", grapCov.PullLives,
 			"rates", grapCov.UnpairedFires, "corpsCasses", grapCov.BrokenBodies)
 	case len(a.opt.GrappleReads) > 0:
-		slog.Warn("rejeu : lectures de grappin sans bornes de carte — aucune traction publiee",
+		slog.WarnContext(a.ctx, "rejeu : lectures de grappin sans bornes de carte — aucune traction publiee",
 			"lectures", len(a.opt.GrappleReads))
 	}
 	// Les POSES d'equipement : famille par le manifeste du titre, poseur et cap MESURES sur le
@@ -54,7 +54,7 @@ func (a *assemblage) poserGrappinEtPoses() {
 		},
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks,
 			families: a.opt.Labels.EquipmentFamilies})
-	logPlacementCoverage(a.doc.Coverage.Placements)
+	logPlacementCoverage(a.ctx, a.doc.Coverage.Placements)
 }
 
 // poserPrisesEtSocles publie les prises et lachers d arme, les ramassages natifs, les socles,
@@ -65,7 +65,7 @@ func (a *assemblage) poserPrisesEtSocles() {
 	var wcCov WeaponChangeCoverage
 	a.doc.WeaponChanges, wcCov = buildWeaponChanges(a.opt.WeaponChanges, a.origin, a.step)
 	a.doc.Coverage.WeaponChanges = &wcCov
-	slog.Info("rejeu : prises et lachers d arme",
+	slog.InfoContext(a.ctx, "rejeu : prises et lachers d arme",
 		"decodes", wcCov.Decoded, "publies", wcCov.Published,
 		"prises", wcCov.Taken, "lachers", wcCov.Dropped, "echanges", wcCov.Swapped,
 		"reannonces", wcCov.Restated, "avantOrigine", wcCov.BeforeOrigin)
@@ -80,7 +80,7 @@ func (a *assemblage) poserPrisesEtSocles() {
 		pickupInputs{occupant: a.reg.XUIDNumAt, st: a.opt.PickupStats,
 			weaponKeys: a.opt.Labels.Keys, judge: judge})
 	a.doc.Coverage.Pickups = &pkCov
-	slog.Info("rejeu : ramassages natifs",
+	slog.InfoContext(a.ctx, "rejeu : ramassages natifs",
 		"decodes", pkCov.Decoded, "publies", pkCov.Published, "nommes", pkCov.Named,
 		"armes", pkCov.Weapons, "objets", pkCov.Items,
 		"origineSocle", pkCov.OriginSpawner, "origineSol", pkCov.OriginGround,
@@ -91,7 +91,7 @@ func (a *assemblage) poserPrisesEtSocles() {
 		"avantOrigine", pkCov.BeforeOrigin, "listesMultiples", pkCov.MultiEvent,
 		"refuses", pkCov.Refused)
 	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
-	a.gwObjs = attachWeaponPads(&a.doc, a.opt.Pads, a.sorted,
+	a.gwObjs = attachWeaponPads(a.ctx, &a.doc, a.opt.Pads, a.sorted,
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks}, a.opt.Labels)
 	// DATATION DES OCCUPATIONS DE SOCLE par l'evenement natif : l'intervalle de vingt secondes
 	// devient un instant, et `xuid` cesse d'etre `null`, QUAND un ramassage natif de la meme
@@ -99,7 +99,7 @@ func (a *assemblage) poserPrisesEtSocles() {
 	// intervalle intact (pad_pickup_dating.go).
 	padDating := datePadPickups(a.doc.WeaponPads, a.doc.PadPickups, a.doc.Pickups)
 	a.doc.Coverage.PadDating = &padDating
-	slog.Info("rejeu : datation des occupations de socle",
+	slog.InfoContext(a.ctx, "rejeu : datation des occupations de socle",
 		"occupations", padDating.Occupations, "datees", padDating.Dated, "nommees", padDating.Named,
 		"ambigues", padDating.Ambiguous, "nonCouvertes", padDating.Uncovered)
 }
@@ -114,7 +114,7 @@ func (a *assemblage) poserArmesAuSolEtVehicules() {
 	a.doc.GroundWeapons, gwiCov = buildGroundWeaponItems(a.gwObjs, a.opt.WeaponChanges, a.sorted,
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
 	a.doc.Coverage.GroundWeaponItems = &gwiCov
-	logGroundWeaponItems(gwiCov)
+	logGroundWeaponItems(a.ctx, gwiCov)
 	// LES VEHICULES, sur le MEME nuage NON decime de bipedes (ce sont ses TROUS qui portent les
 	// episodes d'occupation) et le MEME pont slot -> xuid que les tirs — cf. build_vehicles.go.
 	// Pose APRES la couverture : il publie la sienne.
@@ -122,7 +122,7 @@ func (a *assemblage) poserArmesAuSolEtVehicules() {
 	// MEME emprise que les joueurs, mesuree une fois par `passerLaPorte` (cf.
 	// positions_porte_vehicules.go).
 	vehicules, horsEmprise, naissancesHorsEmprise := ecarterVehiculesHorsEmprise(a.opt.Vehicles, a.emprise, a.opt.Fallbacks)
-	attachVehicles(&a.doc, vehicules, a.sorted, a.reg,
+	attachVehicles(a.ctx, &a.doc, vehicules, a.sorted, a.reg,
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
 	if c := a.doc.Coverage.Vehicles; c != nil {
 		c.EchantillonsHorsEmprise, c.SpawnsHorsEmprise = horsEmprise, naissancesHorsEmprise
@@ -132,16 +132,16 @@ func (a *assemblage) poserArmesAuSolEtVehicules() {
 	// `slotFor` n'a rien a poser sur la carte). Elle exige les episodes d'occupation ET les
 	// trajectoires de vehicule : elle vient donc APRES `attachVehicles`, et elle met a jour la
 	// couverture des tirs deja publiee — cf. vehicle_shots.go.
-	attachVehicleShots(&a.doc, a.shotOrphans, a.reg,
+	attachVehicleShots(a.ctx, &a.doc, a.shotOrphans, a.reg,
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
 	// LE TIR CONTINU (schema 71, lot M4b) : les rafales lues dans la vue de controle, posees sur
 	// l arme de leur monture ou sur l arme en main. APRES les vehicules (episodes et porteurs), les
 	// dotations et les prises (arme en main) et la pose des places (le tireur est l occupant de sa
 	// place) — cf. fire_bursts.go.
-	a.doc.Bursts, a.doc.Coverage.ContinuousFire = buildFireBursts(&a.doc, a.opt.ContinuousFire,
+	a.doc.Bursts, a.doc.Coverage.ContinuousFire = buildFireBursts(a.ctx, &a.doc, a.opt.ContinuousFire,
 		a.opt.ContinuousFireStats, a.reg.Occupants(),
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
-	logFireBursts(a.doc.Coverage.ContinuousFire)
+	logFireBursts(a.ctx, a.doc.Coverage.ContinuousFire)
 }
 
 // poserObjectifsVivants publie les calques portes par les pistes (drapeau, couronne VIP, crane,
@@ -149,7 +149,7 @@ func (a *assemblage) poserArmesAuSolEtVehicules() {
 func (a *assemblage) poserObjectifsVivants() {
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
-	attachFlagCarries(&a.doc, a.opt, a.reg, replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks},
+	attachFlagCarries(a.ctx, &a.doc, a.opt, a.reg, replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks},
 		a.equipes)
 	// LA COURONNE VIP, sur les pistes PUBLIEES (la couronne est a la position de son porteur) —
 	// gardee de mode par l'appelant (opt.Vip.Scanned), cf. vip_crown.go.
@@ -158,33 +158,33 @@ func (a *assemblage) poserObjectifsVivants() {
 	// porteur) — garde de mode par l'appelant (opt.Skull.Scanned), cf. skull_carries.go. Le crane
 	// LIBRE (attachObjectiveObjects, ci-dessous) reste la couche POSITION ; ce calque-ci est la
 	// couche VIVANTE par-dessus.
-	attachSkullCarries(&a.doc, a.opt, a.reg, replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks},
+	attachSkullCarries(a.ctx, &a.doc, a.opt, a.reg, replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks},
 		a.unnamed.deduced)
 	// LE PORTEUR DE LA BOMBE d'Assaut, sur les pistes PUBLIEES (la bombe est a la position de
 	// son porteur) — garde de mode par l'appelant (opt.Bomb.CarryScanned, TOUTES les variantes
 	// de la famille bomb), source : le canal des armes tenues DEJA balaye (opt.WeaponChanges),
 	// cf. bomb_carries.go.
-	bombCarry := attachBombCarries(&a.doc, a.opt, a.reg,
+	bombCarry := attachBombCarries(a.ctx, &a.doc, a.opt, a.reg,
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks}, a.unnamed.deduced)
 	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
 	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
 	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.
-	attachObjectiveObjects(&a.doc, a.opt, replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
+	attachObjectiveObjects(a.ctx, &a.doc, a.opt, replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
 	// L'ETAT DES ZONES, sur la MEME horloge que les positions et sur les captures DEJA posees
 	// (`doc.Objectives`) — cf. build_zones.go.
-	attachZoneStates(&a.doc, a.opt, a.reg, replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
+	attachZoneStates(a.ctx, &a.doc, a.opt, a.reg, replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
 	// L'ARMEMENT DE LA BOMBE, sur la meme horloge que les actions d'objectif et confronte aux
 	// explosions DEJA posees (`doc.Objectives`) — garde de mode par l'appelant
 	// (opt.Bomb.Scanned), cf. bomb_armings.go.
-	attachBombArmings(&a.doc, a.opt, a.clock)
+	attachBombArmings(a.ctx, &a.doc, a.opt, a.clock)
 	// LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT, et les faits datés qui les portent. Elles
 	// se calculent ICI parce que c'est le seul endroit où leurs quatre sources vivent en pleine
 	// fidélité — la chronologie de portage EN MILLISECONDES (rendue par `attachBombCarries`),
 	// les armements DÉJÀ publiés (`attachBombArmings`, juste au-dessus), les actions d'objectif
 	// nommées et le recalage d'horloge. Aucun balayage de plus, aucune étape observée de plus
 	// (cf. bomb_stats_document.go).
-	attachBombStats(&a.doc, a.opt, a.reg, bombCarry)
-	slog.Info("rejeu : episodes d'equipement actif",
+	attachBombStats(a.ctx, &a.doc, a.opt, a.reg, bombCarry)
+	slog.InfoContext(a.ctx, "rejeu : episodes d'equipement actif",
 		"viesPubliees", a.doc.Coverage.Equipment.TracksTotal,
 		"viesCamo", a.doc.Coverage.Equipment.CamoLives,
 		"episodesCamo", a.doc.Coverage.Equipment.CamoEpisodes,

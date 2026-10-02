@@ -148,7 +148,7 @@ func consumeAbilityAnchorBody(br *Lecteur, st *AbilityNonPredictedState) bool {
 		// n'est pas établie : désync propre plutôt qu'une largeur devinée.
 		return false
 	}
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		st.PosQ[ax] = uint32(br.ReadBits(br.worldObjectPrecision().AxisW[ax])) // largeurs de CARTE
 	}
 	st.Mid7 = uint32(br.ReadBits(anchorMidBits))

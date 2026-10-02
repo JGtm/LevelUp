@@ -20,7 +20,7 @@ import (
 // on part d'un enregistrement qui se decode, et on casse UNE contrainte a la fois.
 func setBitsBE(data []byte, bitPos, n int, v uint64) []byte {
 	out := append([]byte(nil), data...)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		bit := (v >> uint(n-1-i)) & 1
 		p := bitPos + i
 		mask := byte(1) << uint(7-p%8)
@@ -168,7 +168,7 @@ func modeSerie(slot, round, startMS int, values ...int64) []types.StatRecord {
 // que le critere de suite coherente ne peut pas admettre.
 func joueurSerie(round, startMS, n int, scoreFinal int64) []types.StatRecord {
 	out := make([]types.StatRecord, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		slot := 10 + 2*(i%8)
 		out = append(out, types.StatRecord{
 			TimeMS: startMS + i*100, Slot: slot, Round: round,
@@ -189,11 +189,11 @@ func joueurSerie(round, startMS, n int, scoreFinal int64) []types.StatRecord {
 // sur les 3 films One Bomb du corpus.
 func TestRealRoundsAdmetUneMancheAUneSeuleEmissionDeScore(t *testing.T) {
 	var recs []types.StatRecord
-	for round := 0; round < 4; round++ {
+	for round := range 4 {
 		recs = append(recs, joueurSerie(round, round*100_000, 200, 1)...)
 	}
 	real := RealRounds(recs)
-	for round := 0; round < 4; round++ {
+	for round := range 4 {
 		if !real[round] {
 			t.Errorf("manche %d refusee alors qu'elle est MATERIELLE (200 enregistrements "+
 				"joueur) : %v", round, real)

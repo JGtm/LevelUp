@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r9_creneaux_research_test.go — DES CRENEAUX A REGARDER DANS LE THEATER, PAS UNE STATISTIQUE.
@@ -31,7 +33,7 @@ package grammar
 //	  R9_MANIFESTS=<repo>/data/cache/film_manifests \
 //	  R9_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
 //	  R8_BOUNDS=<wt>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R9_IDS=8a485699 go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  R9_IDS=8a485699 go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR9(Horloge|CreneauxPropulseur)$' -count=1 -timeout 60m -v
 
 import (
@@ -294,7 +296,7 @@ func r9FilmDirs(t *testing.T) []string {
 		t.Skipf("%s absent : instrument saute", r9FilmsEnv)
 	}
 	var out []string
-	for _, s := range strings.Split(os.Getenv(r9IDsEnv), ",") {
+	for s := range strings.SplitSeq(os.Getenv(r9IDsEnv), ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			out = append(out, filepath.Join(root, s))
 		}

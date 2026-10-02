@@ -100,7 +100,7 @@ signaler au thought_log et rouvrir explicitement, jamais en passant.
 
 Lot 3, puis lot 1, puis lot 2. Chaque lot se clôt par : entrée `.ai/thought_log.md` (décision,
 résultats chiffrés, prochaine étape), mise à jour du registre
-(`.ai/V7.5/REGISTRE_REPORTS.md`) si quelque chose est reporté avec sa condition de reprise, et
+(`.ai/REGISTRE_REPORTS.md`) si quelque chose est reporté avec sa condition de reprise, et
 commit sur une branche dédiée.
 
 ## Journal d'exécution

@@ -42,7 +42,7 @@ package grammar
 func consumeUnitGrenadeCounts(br *Lecteur) {
 	count := br.ReadBits(3) // FUN_1424d0f48
 	var vals []uint64
-	for i := uint64(0); i < count; i++ {
+	for range count {
 		v := br.ReadBits(8)
 		if br.obs != nil && br.obs.GrenadeCountsHook != nil {
 			vals = append(vals, v)
@@ -69,7 +69,7 @@ func consumeUnitMalleableProperty(br *Lecteur, recordStateParam uint32) {
 		br.ReadBit() // FUN_1424cd060
 	}
 	consume1407eee40(br, recordStateParam)
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		consume1411b1ac0(br)
 	}
 }
@@ -77,10 +77,10 @@ func consumeUnitMalleableProperty(br *Lecteur, recordStateParam uint32) {
 // consume1407eee40 mirrors FUN_1407eee40: 7x FUN_1411b1ac0 (R1+optR12) + 4x R(1);
 // if param_3>2: +R(1); if param_3>3: +R(1).
 func consume1407eee40(br *Lecteur, p uint32) {
-	for i := 0; i < 7; i++ {
+	for range 7 {
 		consume1411b1ac0(br)
 	}
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		br.ReadBit() // FUN_1424cd060 = R(1)
 	}
 	if p > 2 {
@@ -109,7 +109,7 @@ func consumeUnitLowFrequency(br *Lecteur) {
 	br.ReadBits(3)          // FUN_1424d9a30
 	br.ReadBit()            // comp+0x7d4
 	count := br.ReadBits(4) // FUN_1424e1d48
-	for i := uint64(0); i < count; i++ {
+	for range count {
 		consume1408f0ac4(br, 0)
 	}
 	br.ReadBits(2) // FUN_140f72efc
@@ -200,7 +200,7 @@ func consumeUnitEquipment(br *Lecteur) {
 	var st UnitEquipmentRead
 	st.Head = uint32(br.ReadBits(3)) // FUN_1406d0f20
 	count := br.ReadBits(3)          // FUN_1424d0f48
-	for i := uint64(0); i < count; i++ {
+	for range count {
 		val, tail, present := consume1408f0ac4Probe(br, 0)
 		st.Entries = append(st.Entries, UnitEquipmentEntry{
 			Val: uint32(val), Tail: uint32(tail), Present: present,
@@ -262,7 +262,7 @@ func consumeUnitActiveCamoState(br *Lecteur) {
 			st.FracQ = uint16(br.ReadBits(12)) // FUN_1406d84b4 dequant (0xc)
 		}
 	}
-	for i := 0; i < 6; i++ { // FUN_1431fc0cc = 6 x FUN_1411b1ac0 (R1 + opt R12)
+	for i := range 6 { // FUN_1431fc0cc = 6 x FUN_1411b1ac0 (R1 + opt R12)
 		if br.ReadBit() {
 			st.SubPresent[i] = true
 			st.SubQ[i] = uint16(br.ReadBits(12))
@@ -398,7 +398,7 @@ func consume1407f0550(br *Lecteur) {
 			br.ReadBit() // R(1) per element
 		}
 	}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		consumeGate0R(br, 6) // FUN_1406d1024 = R(1) gate; if bit==0 R(6) (INVERTED polarity)
 		if br.ReadBit() {    // g1
 			br.ReadBits(12) // dequant 0xc

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // lettres_corpus_test.go — LES ENTREES GELEES du lot « lettres A/B/C des bases » : ce qu'on sait

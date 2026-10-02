@@ -154,7 +154,7 @@ func decodeSlotListes(r *slotReader, e *slotEnr) bool {
 // pleine. Le nombre d'unites CONSOMMEES est rendu : c'est lui qui entre dans la longueur predite.
 func lireGamertag(r *slotReader) (int, string) {
 	u := make([]uint16, 0, slotGamertagMaxUnits)
-	for k := 0; k < slotGamertagMaxUnits; k++ {
+	for range slotGamertagMaxUnits {
 		v := uint16(r.bits(16))
 		if !r.ok {
 			return 0, ""

@@ -130,7 +130,7 @@ func runBackfillVehicleTakes(cfg *config.AppConfig, args []string) error {
 		}
 	}
 	debut := time.Now()
-	classifier := replayartifacts.ClassifierDEngins(cfg.RepoRoot, o.titleSlug)
+	classifier := replayartifacts.ClassifierDEngins(ctx, cfg.RepoRoot, o.titleSlug)
 	b := projeterCorpusVehicules(ctx, db, pr, o, classifier, candidats, dejaEcrits)
 	fmt.Printf("vehicules : %d ecrits (dont %d non mesures, %d sans frags lus), %d deja en base, "+
 		"%d sans artefact, %d echecs — %s\n",

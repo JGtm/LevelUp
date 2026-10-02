@@ -163,7 +163,7 @@ func NewPool(
 	// SUIVANTE (fix 2026-06-11 : l'ancienne boucle `i--` + `poolSize--`
 	// retentait le même index en boucle et abandonnait silencieusement toutes
 	// les sources situées après la première en échec — cf. burst de 7
-	// tentatives DankerGlue au boot, .ai/PLAN_AUTH_WARNING_NOISE.md).
+	// tentatives DankerGlue au boot, .ai/archive/V7/PLAN_AUTH_WARNING_NOISE.md).
 	slots := make([]*slot, 0, capacity)
 	slotsByKey := make(map[string]int)
 

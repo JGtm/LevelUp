@@ -602,7 +602,7 @@ demandee au superviseur. Phase 6 close.
 
 ## 10. Lignes de registre proposees (a verser en une seule fois — §4 item 6.2)
 
-A ajouter a `.ai/V7.5/REGISTRE_REPORTS.md`. Redigees ici pour eviter tout conflit d'edition avec
+A ajouter a `.ai/REGISTRE_REPORTS.md`. Redigees ici pour eviter tout conflit d'edition avec
 le lot jumeau R3, qui ecrit dans le meme fichier.
 
 | sujet | lot / date | ce qui a ete mesure | condition de reprise |

@@ -53,7 +53,7 @@ func TestChamp6DesObjetsForge(t *testing.T) {
 		if f.Float != 0 {
 			flottants = append(flottants, f.Float)
 		}
-		for k := uint16(0); k < 4; k++ {
+		for k := range uint16(4) {
 			if c, ok := f.Field(k); ok && c.Float != 0 {
 				flottants = append(flottants, c.Float)
 			}

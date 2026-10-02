@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // chunk00_carte_research_test.go — LOT D2 : LA CARTE EXHAUSTIVE DE chunk_00.
@@ -33,35 +35,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
-
-// chunk00Films rend les repertoires de film de la garde d'environnement.
-func chunk00Films(t *testing.T, envName string) []string {
-	t.Helper()
-	v := os.Getenv(envName)
-	if v == "" {
-		t.Skipf("%s absent : instrument saute", envName)
-	}
-	var out []string
-	for _, p := range strings.Split(v, ";") {
-		if p = strings.TrimSpace(p); p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
-// readChunk00 lit et decompresse chunk_00.bin d'un repertoire de film.
-func readChunk00(t *testing.T, dir string) (raw, data []byte) {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join(dir, "chunk_00.bin"))
-	if err != nil {
-		t.Fatalf("lecture chunk_00 de %s : %v", dir, err)
-	}
-	return b, source.Inflate(b)
-}
 
 // slotSpan decrit la zone REELLEMENT lue par parseRegistry dans une entree nommee. `off` est
 // l'octet de l'ENTREE (cadrage du jeu, lot 1.2) : [off, off+len(nom)) = le nom, puis son NUL
@@ -75,7 +49,7 @@ func parsedSpans(data []byte) []slotSpan {
 	var out []slotSpan
 	for b := 0; b < len(data)/archetypeBlockSize; b++ {
 		base := registryEntryBase + b*archetypeBlockSize
-		for s := 0; s < archetypeBlockSlots; s++ {
+		for s := range archetypeBlockSlots {
 			off := base + s*registrySlotSize
 			name := entryName(data, off)
 			if name == "" {
@@ -199,9 +173,9 @@ func occupationBlocs(t *testing.T, data []byte, nBlocks int) {
 	t.Helper()
 	var porteurs []string
 	total := 0
-	for b := 0; b < nBlocks; b++ {
+	for b := range nBlocks {
 		n := 0
-		for s := 0; s < archetypeBlockSlots; s++ {
+		for s := range archetypeBlockSlots {
 			if entryName(data, registryEntryBase+b*archetypeBlockSize+s*registrySlotSize) == "" {
 				break
 			}
@@ -328,7 +302,7 @@ func TestChunk00Sections(t *testing.T) {
 		t.Logf("  dernier octet non nul @0x%06x ; %d octets nuls en queue",
 			dernierNonNul, len(data)-1-dernierNonNul)
 		zonesNulles(t, data, 256)
-		for _, spec := range strings.Split(os.Getenv("CHUNK00_HEX"), ",") {
+		for spec := range strings.SplitSeq(os.Getenv("CHUNK00_HEX"), ",") {
 			off, n, ok := parseFenetre(spec)
 			if !ok {
 				continue
@@ -425,7 +399,7 @@ func comparerFilms(t *testing.T, dirs []string, buffers map[string][]byte) {
 		n := min(len(refData), len(other))
 		diffs, premier := 0, -1
 		zones := map[int]int{}
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if refData[i] != other[i] {
 				diffs++
 				if premier < 0 {

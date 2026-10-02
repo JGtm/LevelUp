@@ -59,10 +59,11 @@ package grammar
 // HORS LIGNE (parcours de tous les paquets delta du film) — jamais depuis un chemin de requête.
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"sort"
+	"slices"
 )
 
 // BipedRepresentationName est le mot de 32 bits « player-representation-name » (FUN_14080dec4)
@@ -216,17 +217,17 @@ func (w bipedCreationWalk) scanPayload(pay []byte, pk FilmPacket, chunk int) []B
 	return out
 }
 
+// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
+func (w bipedCreationWalk) contexte() ContexteDeLecture {
+	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
+}
+
 // readCreation rejoue les TROIS premières feuilles de `consumeBipedDefaultState` à l'intérieur
 // d'une ancre, et applique le gate de signature.
 //
 // CHAQUE REFUS EST COMPTÉ À PART, et les catégories ne sont pas décoratives : `ShapeBad` est le
 // rejet ordinaire d'un ancrage bit à bit, `SignatureMismatch` est le seul qui dise quelque chose
 // du FILM, et `GateClosed` est un fait mesuré à zéro dont la remontée serait une découverte.
-// contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
-func (w bipedCreationWalk) contexte() ContexteDeLecture {
-	return ContexteDeLecture{Profil: w.prof, Obs: w.obs}
-}
-
 func (w bipedCreationWalk) readCreation(pay []byte, p, total int) (BipedCreation, bool) {
 	var cre BipedCreation
 	st := w.st
@@ -282,11 +283,8 @@ func motAlternatifModal(m map[uint32]int) (uint32, int) {
 	for w := range m {
 		mots = append(mots, w)
 	}
-	sort.Slice(mots, func(i, j int) bool {
-		if m[mots[i]] != m[mots[j]] {
-			return m[mots[i]] > m[mots[j]]
-		}
-		return mots[i] < mots[j]
+	slices.SortFunc(mots, func(a, b uint32) int { // mots : cles d une map, uniques
+		return cmp.Or(cmp.Compare(m[b], m[a]), cmp.Compare(a, b))
 	})
 	return mots[0], m[mots[0]]
 }

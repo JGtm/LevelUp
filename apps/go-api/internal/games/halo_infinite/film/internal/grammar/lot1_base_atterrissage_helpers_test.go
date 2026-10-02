@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_base_atterrissage_helpers_test.go — LA BASE D'ATTERRISSAGE BIPEDE DES DEGATS, calculee pour

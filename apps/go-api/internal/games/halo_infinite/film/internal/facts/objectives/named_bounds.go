@@ -10,8 +10,8 @@ package objectives
 // rejet des ancrages parasites, cumul des manches).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"log/slog"
 )
 
 // # LES BORNES DE PRUDENCE DU DEROULAGE (lot 4b, 2026-09-03 — decision utilisateur du meme jour)
@@ -116,11 +116,13 @@ type eventBudget struct {
 	tronque bool
 	// journalises compte les avertissements DETAILLES deja emis (cf. maxRejectLogs).
 	journalises int
+	// diag recoit les diagnostics de la passe (lot J12.3, ADR 0034 D-4) ; nil n en garde aucun.
+	diag *constat.Diagnostics
 }
 
 // newEventBudget ouvre le budget d'une passe sur un film.
-func newEventBudget(origine string) *eventBudget {
-	return &eventBudget{origine: origine, reste: maxNamedEventsPerFilm}
+func newEventBudget(origine string, diag *constat.Diagnostics) *eventBudget {
+	return &eventBudget{origine: origine, reste: maxNamedEventsPerFilm, diag: diag}
 }
 
 // rejeter enregistre un deroulage hors borne et le journalise (detail borne, compte exact).
@@ -130,18 +132,20 @@ func (b *eventBudget) rejeter(key statSlotKey, p types.ScorePoint, n int64) {
 		return
 	}
 	b.journalises++
-	slog.Warn("objectives: deroulage aberrant rejete (dernier rempart memoire)",
-		"passe", b.origine, "comp", key.Comp, "cote", key.Side, "slot", p.Slot,
-		"time_ms", p.TimeMS, "deroulage", n, "borne", maxUnrollPerStep)
+	b.diag.Signaler(constat.Diagnostic{Code: DiagDeroulageRejete, Niveau: constat.NiveauWarn,
+		Message: "objectives: deroulage aberrant rejete (dernier rempart memoire)",
+		Attrs: []any{"passe", b.origine, "comp", key.Comp, "cote", key.Side, "slot", p.Slot,
+			"time_ms", p.TimeMS, "deroulage", n, "borne", maxUnrollPerStep}})
 }
 
 // epuiser marque le solde consomme. Une seule ligne de journal : les appels suivants sortent
 // immediatement, il n'y a rien de nouveau a dire a chacun d'eux.
 func (b *eventBudget) epuiser(key statSlotKey, p types.ScorePoint, n int64) {
 	b.tronque = true
-	slog.Warn("objectives: plafond d'evenements du film atteint, deroulage interrompu",
-		"passe", b.origine, "comp", key.Comp, "cote", key.Side, "slot", p.Slot,
-		"time_ms", p.TimeMS, "deroulage", n, "reste", b.reste, "plafond", maxNamedEventsPerFilm)
+	b.diag.Signaler(constat.Diagnostic{Code: DiagPlafondEvenements, Niveau: constat.NiveauWarn,
+		Message: "objectives: plafond d'evenements du film atteint, deroulage interrompu",
+		Attrs: []any{"passe", b.origine, "comp", key.Comp, "cote", key.Side, "slot", p.Slot,
+			"time_ms", p.TimeMS, "deroulage", n, "reste", b.reste, "plafond", maxNamedEventsPerFilm}})
 }
 
 // resume publie, en fin de passe, ce que les bornes ont coute. SILENCIEUX quand elles n'ont
@@ -151,9 +155,10 @@ func (b *eventBudget) resume() {
 	if b.rejetes == 0 && !b.tronque {
 		return
 	}
-	slog.Warn("objectives: bornes de deroulage appliquees sur ce film",
-		"passe", b.origine, "deroulages_rejetes", b.rejetes, "tronque", b.tronque,
-		"evenements_emis", maxNamedEventsPerFilm-b.reste, "plafond", maxNamedEventsPerFilm)
+	b.diag.Signaler(constat.Diagnostic{Code: DiagBornesAppliquees, Niveau: constat.NiveauWarn,
+		Message: "objectives: bornes de deroulage appliquees sur ce film",
+		Attrs: []any{"passe", b.origine, "deroulages_rejetes", b.rejetes, "tronque", b.tronque,
+			"evenements_emis", maxNamedEventsPerFilm - b.reste, "plafond", maxNamedEventsPerFilm}})
 }
 
 // boundedStep est UN point d'une suite cumulee, avec le deroulage qu'il demande et le verdict

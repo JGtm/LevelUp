@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // deto_preuve_robuste_test.go — LA PREUVE : l'attribution DETONATION->tireur des touches
@@ -44,7 +46,7 @@ func detoProofRandomWitness(c detoGTCtx, roster []int, trials int) (okRand, eval
 			continue
 		}
 		// le kill est explosif (relie a une detonation source) : on l'evalue.
-		for tr := 0; tr < trials; tr++ {
+		for range trials {
 			evalRand++
 			if roster[rng.Intn(len(roster))] == trueFilm {
 				okRand++

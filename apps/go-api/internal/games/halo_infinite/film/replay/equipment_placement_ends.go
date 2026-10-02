@@ -11,7 +11,8 @@ package replay
 // plus — exactement comme la chaîne des socles (`gwPickupBoundsFrom`, un seul exemplaire).
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -50,7 +51,9 @@ func placementEnds(
 	parSlot.trier()
 	out := make([]placEnd, len(raw))
 	for life, idxs := range byLife {
-		sort.Slice(idxs, func(a, b int) bool { return raw[idxs[a]].T0US < raw[idxs[b]].T0US })
+		// Tri total (J12.1, DT-9) : clé (T0US, index dans raw) ; l'index est unique et suit
+		// l'ordre du film, et la pose suivante borne la fin de vie de la précédente.
+		slices.SortFunc(idxs, func(a, b int) int { return cmp.Or(cmp.Compare(raw[a].T0US, raw[b].T0US), cmp.Compare(a, b)) })
 		for j, i := range idxs {
 			lifeEnd := filmEnd
 			if j+1 < len(idxs) {

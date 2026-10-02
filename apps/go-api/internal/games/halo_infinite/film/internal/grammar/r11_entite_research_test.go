@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // r11_entite_research_test.go — L'OBJET EN MAIN, ET SES CHARGES.
@@ -27,7 +29,7 @@ package grammar
 //	CGO_ENABLED=0 R9_FILMS=<repo>/data/cache/film_chunks \
 //	  R9_ARTIFACTS=<repo>/data/cache/replays/halo_infinite \
 //	  R8_BOUNDS=<wt>/data/titles/halo_infinite/reference/map_quant_bounds.json \
-//	  R11_IDS=72b0a25e go test ./internal/games/halo_infinite/film/filmdec/ \
+//	  R11_IDS=72b0a25e go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ \
 //	  -run '^TestR11Entite$' -count=1 -timeout 120m -v
 
 import (
@@ -173,7 +175,7 @@ func r11LogWanted(t *testing.T, s r11Setup, samples []EquipmentStateSample, want
 			continue
 		}
 		var parts []string
-		for f := 0; f < EquipmentFieldCount; f++ {
+		for f := range EquipmentFieldCount {
 			if sm.Present[f] {
 				parts = append(parts, fmt.Sprintf("%s=%d", EquipmentField(f), sm.Val[f]))
 			}

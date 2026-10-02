@@ -8,7 +8,8 @@ package replay
 // dans `filmfacts_encode.go`, les denominateurs de pose et les deux codecs de map viennent ici.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -77,11 +78,8 @@ func encodeCouplesTriesParLargeurs(w *gwriter, m map[profile.MPPWidths]int) {
 	for k := range m {
 		cles = append(cles, k)
 	}
-	sort.Slice(cles, func(i, j int) bool {
-		if cles[i].Lead != cles[j].Lead {
-			return cles[i].Lead < cles[j].Lead
-		}
-		return cles[i].Index < cles[j].Index
+	slices.SortFunc(cles, func(a, b profile.MPPWidths) int {
+		return cmp.Or(cmp.Compare(a.Lead, b.Lead), cmp.Compare(a.Index, b.Index))
 	})
 	w.u(uint64(len(cles)))
 	for _, k := range cles {
@@ -109,7 +107,7 @@ func encodeCouplesTriesParID(w *gwriter, m map[uint32]int) {
 	for k := range m {
 		cles = append(cles, k)
 	}
-	sort.Slice(cles, func(i, j int) bool { return cles[i] < cles[j] })
+	slices.Sort(cles)
 	w.u(uint64(len(cles)))
 	for _, k := range cles {
 		w.u(uint64(k))

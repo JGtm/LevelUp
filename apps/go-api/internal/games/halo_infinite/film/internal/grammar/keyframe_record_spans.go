@@ -25,7 +25,10 @@ package grammar
 // APPELANT — son unique consommateur, `ScanFilmVehicleOccupancy`, n en avait pas non plus — et a
 // ete retiree a l integration du 2026-09-05 (regle 0 du depot : pas de code mort « au cas ou »).
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 // KeyframeRecordSpan est l'emprise d'UN record de la table d'image-clé.
 type KeyframeRecordSpan struct {
@@ -58,7 +61,8 @@ func KeyframeRecordSpans(pay []byte) []KeyframeRecordSpan {
 	if len(recs) == 0 {
 		return nil
 	}
-	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
+	// Tri total (J12.1, DT-9) : Bit unique, la marche avance strictement (ancre suivante >= Bit+64).
+	slices.SortFunc(recs, func(a, b KeyframeRec) int { return cmp.Compare(a.Bit, b.Bit) })
 	total := len(pay) * 8
 	out := make([]KeyframeRecordSpan, 0, len(recs))
 	for i, r := range recs {

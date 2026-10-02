@@ -36,7 +36,7 @@ package grammar
 // traitee AVANT de publier un fait tire d un de ces composants.
 //
 //	CHUNK00_FILMS='C:/.../film_chunks/a521164d;C:/.../film_chunks/fb1a1a72' \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191bMasqueTI37$' -v -count=1
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191bMasqueTI37$' -v -count=1
 
 import (
 	"path/filepath"
@@ -73,7 +73,7 @@ func TestE191bMasqueTI37(t *testing.T) {
 	}
 	t.Logf("")
 	t.Logf("  %-4s %-42s %16s %16s", "i", "composant", "NEW (n / %)", "DELTA (n / %)")
-	for i := 0; i < len(e191bNomsTI37); i++ {
+	for i := range e191bNomsTI37 {
 		t.Logf("  i%-3d %-42s %9d %5.1f %%  %9d %5.1f %%", i, e191bNomsTI37[i],
 			neufs.ParIdx[i], e191bPct(neufs.ParIdx[i], neufs.Records),
 			deltas.ParIdx[i], e191bPct(deltas.ParIdx[i], deltas.Records))
@@ -132,10 +132,7 @@ func e191bMasqueDUnFilm(t *testing.T, dir string) (neufs, deltas *e191bComptesMa
 		t.Logf("  %s : registre illisible (%v) — hors mesure", filepath.Base(dir), err)
 		return neufs, deltas
 	}
-	n := CountFilmChunks(dir)
-	if n > e191bMasqueChunks {
-		n = e191bMasqueChunks
-	}
+	n := min(CountFilmChunks(dir), e191bMasqueChunks)
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -183,7 +180,7 @@ func e191bMasqueDUnChunk(data []byte, reg *Registry, neufs, deltas *e191bComptes
 
 // e191bCompterMasque incremente un compteur par bit pose du masque.
 func e191bCompterMasque(dst *e191bComptesMasque, mask uint64) {
-	for i := 0; i < len(e191bNomsTI37); i++ {
+	for i := range e191bNomsTI37 {
 		if mask&(uint64(1)<<uint(i)) != 0 {
 			dst.ParIdx[i]++
 		}

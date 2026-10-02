@@ -1,3 +1,5 @@
+//go:build research
+
 package killcollector
 
 // duels_bouclier_mesures_test.go — les mesures A, O, B, temoin et discrimination de la sonde
@@ -149,7 +151,7 @@ func duelsBPublier(t *testing.T, b duelsBBilan) {
 }
 
 // duelsBVerdict confronte les mesures au gate du plan. IL NE MODIFIE AUCUN SEUIL : les quatre
-// valeurs sont celles ecrites dans `.ai/PLAN_DUELS_PORTEE_2026-09-06.md` avant la mesure.
+// valeurs sont celles ecrites dans `.ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md` avant la mesure.
 //
 // Il n'echoue PAS le test sur un NO-GO : une sonde qui plante ne rend pas ses nombres, et ce
 // sont les nombres qui decident. Le verdict est JOURNALISE, statue dans la note, et le plan

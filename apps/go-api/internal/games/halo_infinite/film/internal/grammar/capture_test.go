@@ -19,7 +19,7 @@ func TestCaptureConsumesSameBitsAsDispatch(t *testing.T) {
 	rng := rand.New(rand.NewSource(20260726))
 	buf := make([]byte, 64)
 	for _, name := range captureNames {
-		for iter := 0; iter < 500; iter++ {
+		for iter := range 500 {
 			for i := range buf {
 				buf[i] = byte(rng.Intn(256))
 			}

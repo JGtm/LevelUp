@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // registre_hachage_research_test.go — LOT D1, VOLET « ET SI LES NOMS ETAIENT HACHES ? »

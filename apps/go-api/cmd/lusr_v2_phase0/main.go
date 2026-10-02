@@ -17,7 +17,7 @@
 //
 // Aucune écriture DB. Output = rapport markdown sur stdout (à pipe dans .ai/).
 //
-// Usage : go run -tags cgo ./apps/go-api/cmd/lusr_v2_phase0 > .ai/lusr_v2_phase0_metrics.md
+// Usage : go run -tags cgo ./apps/go-api/cmd/lusr_v2_phase0 > .ai/archive/V7/LUSR v2/lusr_v2_phase0_metrics.md
 //
 // Si argument(s) gamertag passé(s) en CLI, remplace la liste par défaut
 // (Madina97294, Chocoboflor, JGtm, XxDaemonGamerxX).

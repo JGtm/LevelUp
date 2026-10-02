@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // f0_103_corpus_research_test.go — LOT F.0 : LE RECENSEMENT DU PARC D ARTEFACTS.
@@ -13,7 +15,7 @@ package grammar
 //
 //	CGO_ENABLED=0 F0_ARTS=<depot>/data/cache/replays/halo_infinite \
 //	  F0_LABELS=<depot>/config/titles/halo_infinite/mappings/replay_labels.toml \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestF0CorpusSpent$' -v
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestF0CorpusSpent$' -v
 
 import (
 	"encoding/json"

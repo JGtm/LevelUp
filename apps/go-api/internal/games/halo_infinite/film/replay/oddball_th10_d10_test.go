@@ -168,10 +168,7 @@ func d10Confronte(t *testing.T, id string, evs []d10Th10, naissances, silences [
 	accN, accS, accU := 0, 0, 0
 	for _, ev := range evs {
 		gN, gS := d10EcartMin(ev.ms, naissances), d10EcartMin(ev.ms, silences)
-		g := gN
-		if gS < g {
-			g = gS
-		}
+		g := min(gS, gN)
 		i := 0
 		for i < len(bornes) && g > bornes[i] {
 			i++

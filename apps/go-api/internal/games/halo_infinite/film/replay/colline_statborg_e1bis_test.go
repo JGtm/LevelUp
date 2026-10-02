@@ -256,7 +256,7 @@ func e1bParPoint(t *testing.T, short string, recs []types.StatRecord, oracle []e
 	for _, j := range oracle {
 		team[j.xuid] = j.team
 	}
-	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true, nil)
+	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent(), true, nil)
 	var pts []types.ScorePoint
 	slots := make([]int, 0, len(score))
 	for s := range score {

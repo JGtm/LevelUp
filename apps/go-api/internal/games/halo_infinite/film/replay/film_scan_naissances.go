@@ -25,11 +25,11 @@ import (
 func (s *filmScan) balayerNaissances() {
 	births, st, err := grammar.ScanBirthLoadouts(s.fc, s.in.BipedCreations)
 	if err != nil {
-		slog.Warn("dotations de naissance illisibles — rejeu sans armes de naissance",
+		slog.WarnContext(s.ctx, "dotations de naissance illisibles — rejeu sans armes de naissance",
 			"err", err, "match_id", s.matchID)
 		births, st = nil, types.BirthLoadoutStats{Creations: len(s.in.BipedCreations)}
 	} else {
-		slog.Info("naissance : dotations lues",
+		slog.InfoContext(s.ctx, "naissance : dotations lues",
 			"creations", st.Creations, "lues", st.Read, "desynchronisees", st.Desync,
 			"debordantes", st.Overflow, "nonConfirmees", st.Unconfirmed,
 			"sansEmplacement", st.NoWeaponComponent, "fermeesParDelta", st.ClosedByDelta,
@@ -37,6 +37,6 @@ func (s *filmScan) balayerNaissances() {
 			"fermeesParNouveauAnticipe", st.ClosedByAnticipatedNew, "match_id", s.matchID)
 	}
 	s.in.BirthLoadouts, s.in.BirthLoadoutStats = births, st
-	s.opt.observe("birthLoadouts", s.in.BirthLoadouts)
-	s.opt.observe("birthLoadouts.stats", s.in.BirthLoadoutStats)
+	s.opt.observe(s.ctx, "birthLoadouts", s.in.BirthLoadouts)
+	s.opt.observe(s.ctx, "birthLoadouts.stats", s.in.BirthLoadoutStats)
 }

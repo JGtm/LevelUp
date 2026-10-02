@@ -178,8 +178,7 @@ func corpsAttendu() string {
 	for _, t := range formesFigees {
 		rt := reflect.TypeOf(t.valeur)
 		fmt.Fprintf(&b, "\n## %s (%s)\n", rt.Name(), t.couche)
-		for i := 0; i < rt.NumField(); i++ {
-			f := rt.Field(i)
+		for f := range rt.Fields() {
 			tag, ok := f.Tag.Lookup("json")
 			if !ok {
 				tag = "-"
@@ -305,8 +304,8 @@ func lireGoldenFormes(t *testing.T) (prose, donnees string) {
 
 // premiereLigne rend la premiere ligne d un bloc.
 func premiereLigne(s string) string {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
+	if before, _, ok := strings.Cut(s, "\n"); ok {
+		return before
 	}
 	return s
 }

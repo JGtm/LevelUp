@@ -10,11 +10,11 @@ import (
 // ~50 %). C'est exactement la forme mesurée sur les films (cf. i0_layout.go).
 func synthFlipProfile(gate int, widths []int, tail int) []float64 {
 	out := make([]float64, 0, 72)
-	for i := 0; i < gate; i++ {
+	for range gate {
 		out = append(out, 0)
 	}
 	for _, w := range widths {
-		for k := 0; k < w; k++ {
+		for k := range w {
 			r := 0.5 / float64(uint64(1)<<uint(w-1-k))
 			if r < 0.0009 {
 				r = 0.0009 // plancher observé (respawns / téléportations rares)
@@ -22,7 +22,7 @@ func synthFlipProfile(gate int, widths []int, tail int) []float64 {
 			out = append(out, r)
 		}
 	}
-	for i := 0; i < tail; i++ {
+	for range tail {
 		out = append(out, 0)
 	}
 	return out

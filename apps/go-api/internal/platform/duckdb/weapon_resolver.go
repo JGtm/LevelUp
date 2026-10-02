@@ -1,5 +1,5 @@
 // Package duckdb — weapon_resolver.go : PASSAGE PRINCIPAL de la résolution
-// d'arme (P4, cf. .ai/PLAN_P4_WEAPON_RESOLUTION.md).
+// d'arme (P4, cf. .ai/archive/V7/PLAN_P4_WEAPON_RESOLUTION.md).
 //
 // resolveWeaponMeta est l'unique point d'entrée : pour un lot de weapon_id (dans
 // la metadata du titre courant), il renvoie le NOM d'affichage + les dimensions

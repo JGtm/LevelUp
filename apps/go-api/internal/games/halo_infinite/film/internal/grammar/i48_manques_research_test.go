@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // i48_manques_research_test.go — INSTRUMENT DE MESURE (pas de production). Lot R2 du
@@ -32,7 +34,7 @@ package grammar
 //
 //	CGO_ENABLED=0 I48M_FILM=<depot>/data/cache/film_chunks/1b2d9e08 \
 //	  I48M_SLOT=535 I48M_US_MIN=146862000 I48M_US_MAX=194162000 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI48ManquesFenetre$' -v -timeout 30m
+//	  go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI48ManquesFenetre$' -v -timeout 30m
 
 import (
 	"fmt"
@@ -194,7 +196,7 @@ func i48mStrict(s i48mSetup, usMin, usMax uint64) (ems, unread []i48mCand) {
 // (bit k = composant k) ou inverse (bit k = composant 63-k), et rend les index leves.
 func i48mDenseIdx(pay []byte, at int, msb bool) []int {
 	var idx []int
-	for k := 0; k < 64; k++ {
+	for k := range 64 {
 		if uint32(source.BitsStricts(pay, at+k, 1)) == 1 {
 			comp := k
 			if msb {
@@ -292,7 +294,7 @@ func i48mMatchAt(s i48mSetup, pay []byte, p, total int) (i48mCand, int, bool) {
 func i48mAscending(pay []byte, at, count int) ([]int, bool) {
 	out := make([]int, 0, count)
 	prev := -1
-	for k := 0; k < count; k++ {
+	for k := range count {
 		idx := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if idx <= prev {
 			return nil, false

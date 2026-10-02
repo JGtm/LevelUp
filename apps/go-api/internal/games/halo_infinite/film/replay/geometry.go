@@ -5,7 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 )
 
 // dist3 est LA distance euclidienne 3D du paquet, en mètres — un seul endroit où la formule est
@@ -203,7 +203,7 @@ func axisValues(tracks []Track) (xs, ys, zs []float32) {
 }
 
 func sortFloats(v []float32) {
-	sort.Slice(v, func(i, j int) bool { return v[i] < v[j] })
+	slices.Sort(v)
 }
 
 // rawBounds accumule l'étendue des points que `skip` ne rejette pas (`nil` = tous).

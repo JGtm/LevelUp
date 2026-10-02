@@ -53,7 +53,7 @@ func consumePlayerAndSceneComponent(br *Lecteur, name string, typeIndex uint32, 
 		br.ReadBit()
 		return variant, nil, true
 	case "music-variables-component": // ti=17 i0 (FUN_142ed66bc) — 32x{R(1); si bit==0: R(2)+R(32)+R(32)}
-		for i := 0; i < 32; i++ {
+		for range 32 {
 			if !br.ReadBit() {
 				br.ReadBits(2)
 				br.ReadBits(32)
@@ -159,7 +159,7 @@ func consumeCrewFlockAndMusicComponent(br *Lecteur, name string, typeIndex uint3
 		consumePlayerEngineLoadout(br)
 		return variant, nil, true
 	case "player-fade-properties-component": // ti=5 i13 (FUN_141020bac) — 6xR(12)=72
-		for i := 0; i < 6; i++ {
+		for range 6 {
 			br.ReadBits(12)
 		}
 		return variant, nil, true
@@ -267,7 +267,7 @@ func consumePlayerTailAndGameEngineComponent(br *Lecteur, name string, typeIndex
 		return variant, nil, true
 	case "game-engine-alliance-component": // ti=0 i10 (FUN_140a24968) — R(32) mask + popcount*(R(32)+R(32))
 		mask := uint32(br.ReadBits(32))
-		for i := 0; i < 32; i++ {
+		for i := range 32 {
 			if (mask>>uint(i))&1 != 0 {
 				br.ReadBits(32)
 				br.ReadBits(32)
@@ -340,7 +340,7 @@ func consumeManagedPlayerComponent(br *Lecteur, name string, typeIndex uint32, l
 		br.ReadBits(4)
 		return variant, nil, true
 	case "managed-player-color-override-component": // ti=9 i1 (FUN_142ed5b54) — 8xR(8)=64 (2 couleurs RGBA quant)
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			br.ReadBits(8)
 		}
 		return variant, nil, true

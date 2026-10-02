@@ -30,6 +30,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
@@ -324,9 +325,10 @@ func d10Distribution(t *testing.T, id string, e d8Etat, trous []d10Trou) {
 	}
 	d8Quantiles(t, id, "duree des vies libres INTERIEURES (s)", durees)
 	sort.Float64s(durees)
-	ligne := "D10_INTERIEURES " + id + " :"
+	var ligne strings.Builder
+	ligne.WriteString("D10_INTERIEURES " + id + " :")
 	for _, d := range durees {
-		ligne += " " + strconv.FormatFloat(d, 'f', 2, 64)
+		ligne.WriteString(" " + strconv.FormatFloat(d, 'f', 2, 64))
 	}
-	t.Log(ligne)
+	t.Log(ligne.String())
 }

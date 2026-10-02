@@ -10,7 +10,7 @@
 //
 // Ce test est posé AVANT le déplacement du décodeur de film (`grammar`, `replay`) d'
 // `internal/analysis/` vers `internal/games/halo_infinite/film/` (lot E du plan
-// `.ai/PLAN_FORK_ET_RELEASE_2026-09-11.md`). Sans lui, le déplacement transformerait des
+// `.ai/V7.5/PLAN_FORK_ET_RELEASE_2026-09-11.md`). Sans lui, le déplacement transformerait des
 // imports internes à `analysis/` en franchissements de frontière INVISIBLES : c'est
 // exactement la dette que ce lot doit rendre visible, pas enfouir.
 //

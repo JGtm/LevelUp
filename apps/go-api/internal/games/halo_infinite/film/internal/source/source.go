@@ -15,11 +15,12 @@ package source
 // la source declare son compte, et tout est lu.
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -90,12 +91,12 @@ func newDirSource(dir string) (*dirSource, error) {
 	if len(names) == 0 {
 		return nil, fmt.Errorf("source: aucun chunk_NN.bin dans %s", dir)
 	}
-	sort.Slice(names, func(i, j int) bool {
-		ni, nj := chunkNumberOf(names[i]), chunkNumberOf(names[j])
-		if ni != nj {
-			return sortKeyOfChunkNumber(ni) < sortKeyOfChunkNumber(nj)
+	slices.SortFunc(names, func(a, b string) int {
+		na, nb := chunkNumberOf(a), chunkNumberOf(b)
+		if na != nb {
+			return cmp.Compare(sortKeyOfChunkNumber(na), sortKeyOfChunkNumber(nb))
 		}
-		return names[i] < names[j]
+		return cmp.Compare(a, b) // chemins de fichiers : cle unique
 	})
 	src := &dirSource{files: names, nums: make([]int, len(names))}
 	for i, n := range names {

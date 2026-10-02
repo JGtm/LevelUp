@@ -81,17 +81,17 @@ func (c *collecteur) etape(step string, v any) {
 }
 
 // enfantEquivalence cuit UN film et ecrit ses digests. Rend un code du protocole filmproc.
-func enfantEquivalence(o options) int {
+func enfantEquivalence(ctx context.Context, o options) int {
 	cacheRoot := title.NewPathResolver(o.repoRoot).CacheRootDir()
 	filmproc.LowerOwnPriority(outilNom)
-	lock, err := filmproc.AcquireSoloWait(context.Background(), cacheRoot, outilNom, o.film, attenteVerrouMax)
+	lock, err := filmproc.AcquireSoloWait(ctx, cacheRoot, outilNom, o.film, attenteVerrouMax)
 	if err != nil {
-		slog.Error("decodage refuse", "err", err, "film", o.film)
+		slog.ErrorContext(ctx, "decodage refuse", "err", err, "film", o.film)
 		return filmproc.CodePreparation
 	}
 	defer lock.Release()
 	g := filmproc.Arm(outilNom, o.memGiB, func(peak uint64) {
-		slog.Error("plafond memoire depasse — equivalence abandonnee",
+		slog.ErrorContext(ctx, "plafond memoire depasse — equivalence abandonnee",
 			"pic_octets", peak, "pic_gio", gio(peak), "film", o.film)
 		filmproc.EmitPeak(peak)
 		lock.Release()
@@ -102,33 +102,33 @@ func enfantEquivalence(o options) int {
 		filmproc.EmitPeak(g.Peak())
 	}()
 
-	lignes, err := digestsDuFilm(o, cacheRoot)
+	lignes, err := digestsDuFilm(ctx, o, cacheRoot)
 	if err != nil {
 		if errors.Is(err, replaybuild.ErrMapNotInCatalog) {
-			slog.Warn("film ecarte — carte hors catalogue de bornes", "err", err, "film", o.film)
+			slog.WarnContext(ctx, "film ecarte — carte hors catalogue de bornes", "err", err, "film", o.film)
 			return filmproc.CodeSkipped
 		}
-		slog.Error("equivalence impossible", "err", err, "film", o.film)
+		slog.ErrorContext(ctx, "equivalence impossible", "err", err, "film", o.film)
 		return filmproc.CodeFailed
 	}
 	// LA LIGNE DE GRAMMAIRE OUVRE LE FICHIER : sans elle, un changement du RENDU de `digest`
 	// se lirait chez le parent comme une regression du decodeur (cf. digest/grammar.go).
 	if err := ecrireLignes(o.out, append([]string{digest.GrammarLine()}, lignes...)); err != nil {
-		slog.Error("ecriture des digests", "err", err, "path", o.out, "film", o.film)
+		slog.ErrorContext(ctx, "ecriture des digests", "err", err, "path", o.out, "film", o.film)
 		return filmproc.CodeFailed
 	}
-	slog.Info("digests ecrits", "film", o.film, "etapes", len(lignes), "path", o.out)
+	slog.InfoContext(ctx, "digests ecrits", "film", o.film, "etapes", len(lignes), "path", o.out)
 	return filmproc.CodeOK
 }
 
 // digestsDuFilm cuit le film et rend une ligne `etape\tcompte\tsha` par etape observee.
-func digestsDuFilm(o options, cacheRoot string) ([]string, error) {
+func digestsDuFilm(ctx context.Context, o options, cacheRoot string) ([]string, error) {
 	factsPath := filepath.Join(dossierEquivalence(o.repoRoot), o.film+".facts.json")
 	faits, err := replaybuild.ReadFactsFile(factsPath)
 	if err != nil {
 		return nil, err
 	}
-	b, err := replaybuild.NewBuilder(o.repoRoot, o.titleSlug)
+	b, err := replaybuild.NewBuilder(ctx, o.repoRoot, o.titleSlug)
 	if err != nil {
 		return nil, fmt.Errorf("preparation du builder (titre %s) : %w", o.titleSlug, err)
 	}
@@ -150,17 +150,17 @@ func digestsDuFilm(o options, cacheRoot string) ([]string, error) {
 	if brancheAttendue(o.passe) == passeFilm {
 		b.SansFaitsPersistes()
 	}
-	slog.Info("cuisson d equivalence", "film", o.film, "match", faits.MatchID,
+	slog.InfoContext(ctx, "cuisson d equivalence", "film", o.film, "match", faits.MatchID,
 		"cartes", faits.MapNames, "joueurs", len(faits.Players), "variante", faits.GameVariantName,
 		"passe", o.passe)
-	if _, err := b.BuildBytes(faits.MatchID, faits.MapNames,
+	if _, err := b.BuildBytes(ctx, faits.MatchID, faits.MapNames,
 		filmcache.ChunkDir(cacheRoot, o.film), faits.MatchFacts); err != nil {
 		return nil, err
 	}
 	if err := verifierLaBrancheServie(o.passe, col.booleens); err != nil {
 		return nil, err
 	}
-	alerterCatalogueVide(o.film, faits, col.comptes, col.etats)
+	alerterCatalogueVide(ctx, o.film, faits, col.comptes, col.etats)
 	return col.lignes, nil
 }
 
@@ -218,7 +218,7 @@ func brancheDite(relu bool) string {
 // ELLE NE FAIT PAS ECHOUER L'ENFANT : un film sans zones est LEGITIME (Assassin, CTF, Oddball)
 // et un catalogue partiel reste un cas nominal. Le WARN suffit — le pilote lit les journaux de
 // la passe d'update, et le journal de l'enfant remonte dans celui du parent.
-func alerterCatalogueVide(
+func alerterCatalogueVide(ctx context.Context,
 	film string, faits replaybuild.FactsFile, comptes map[string]int, etats map[string]string,
 ) {
 	if faits.MapID == "" {
@@ -226,12 +226,12 @@ func alerterCatalogueVide(
 		return
 	}
 	if comptes["zones"] == 0 && modeAZones(faits.GameVariantName) {
-		slog.Warn("zones vides malgre MapID : catalogue d'objectifs absent ?",
+		slog.WarnContext(ctx, "zones vides malgre MapID : catalogue d'objectifs absent ?",
 			"film", film, "map_id", faits.MapID, "variante", faits.GameVariantName,
 			"consequence", "les digests de zoneStates figeraient du vide")
 	}
 	if comptes["spawnPoints"] == 0 {
-		slog.Warn("points d'apparition vides malgre MapID : catalogue des socles absent ?",
+		slog.WarnContext(ctx, "points d'apparition vides malgre MapID : catalogue des socles absent ?",
 			"film", film, "map_id", faits.MapID,
 			// L'ETAT EST LA CHAINE RENDUE PAR L'ETAPE (`map_absent` / `not_established` / ...) :
 			// c'est elle qui dit POURQUOI les socles manquent. Le compte, lui, ne donnerait que

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // f1_origine_mesure_research_test.go — LOT F.1 : LA MESURE AVANT / APRES du retrait de la
@@ -205,7 +207,7 @@ func f1Films(t *testing.T) (string, []string) {
 		t.Skipf("instrument F.1 : definir %s et %s", f1RootEnv, f1IDsEnv)
 	}
 	var out []string
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		if id = strings.TrimSpace(id); id != "" {
 			out = append(out, id)
 		}

@@ -152,10 +152,7 @@ func mesureRapportVoisins(t *testing.T, f mesureFilm, ents map[int]*mesureIdenti
 		if !ok {
 			continue
 		}
-		n := len(arch.Components)
-		if n > 3 {
-			n = 3
-		}
+		n := min(len(arch.Components), 3)
 		t.Logf("  ti=%2d (%d composants) : %v", ti, len(arch.Components), arch.Components[:n])
 	}
 }

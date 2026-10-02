@@ -58,7 +58,9 @@ func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) 
 	// la sortie quelle qu elle soit — un abandon rend compte de ce qui s est deja declenche.
 	replis := decfilm.NouveauCompteur()
 	matchCtx = avecReplisDeLaPasse(matchCtx, replis)
-	defer publierReplisDeLaPasse(ctx, matchID, replis)
+	// LES CONTEXTES DE FILM DE LA PASSE VERSENT LEUR RAPPORT AVANT LA PUBLICATION (revue finale,
+	// 2026-10-02, cf. replis_de_la_passe.go).
+	defer cloreLaPasse(ctx, matchCtx, matchID)
 
 	outcome, deaths, err := c.collect(matchCtx, matchID)
 	dur := time.Since(start)
@@ -185,6 +187,10 @@ func (c *KillSourceCollector) decoderSousLaCarte(ctx context.Context, matchID st
 	opts := decfilm.DefaultOptions()
 	opts.Carte = carte
 	res, err := decfilm.Decode(ctx, matchID, film, &opts)
+	// CE QUE LE DECODAGE A CONSTATE (lot J12.3, ADR 0034 D-4) se journalise ici, sous le ctx du match.
+	if res != nil {
+		replay.JournaliserDiagnostics(ctx, res.Diagnostics)
+	}
 	switch {
 	case err == nil:
 		return res, OutcomeWritten, nil
@@ -221,7 +227,7 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 		return OutcomeNoFilm, 0, fmt.Errorf("roster %s: %w", matchID, err)
 	}
 
-	batch := BuildKillSourceBatch(matchID, res, ids)
+	batch := BuildKillSourceBatch(ctx, matchID, res, ids)
 	fusionne, err := c.write(ctx, batch)
 	if err != nil {
 		observability.AddInt(metricWriteError, 1)

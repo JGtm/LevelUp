@@ -95,7 +95,7 @@ un symptôme ; la fragmentation est la maladie.
   `oddball_sommeil_d8_test.go`, `oddball_traversee_d9_test.go`.
 - Mesures brutes figées : `.ai/V7.5/replay2d/registre_film/D4_*.log`, `D6_*.log`/`.json`,
   `D7_sonde_diagnostique.log`, `D8 (dans le log D8)`, `D9 (log D9)`.
-- Registre : entrées datées 2026-08-26/27 dans `.ai/V7.5/REGISTRE_REPORTS.md` (fin).
+- Registre : entrées datées 2026-08-26/27 dans `.ai/REGISTRE_REPORTS.md` (fin).
 - **RÈGLES NON NÉGOCIABLES héritées du chantier** : tout décodage de film passe par
   l'exécuteur borné `internal/filmproc` (un film = un processus, plafond 2 Gio mesure,
   priorité basse — le garde-rail archlint `no_unbounded_film_loop_test` le force) ;

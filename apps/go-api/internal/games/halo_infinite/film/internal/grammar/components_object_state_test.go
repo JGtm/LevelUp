@@ -33,7 +33,7 @@ func TestConsumeObjectDissolverLargeurs(t *testing.T) {
 	for _, c := range cas {
 		w := &bitw{}
 		w.put(c.etat, 4)
-		for i := 0; i < 16; i++ {
+		for range 16 {
 			w.put(0xa5, 8)
 		}
 		br := LecteurSur(append(w.buf, make([]byte, 16)...))
@@ -53,7 +53,7 @@ func TestConsumeObjectDissolverNeutreEstExclusif(t *testing.T) {
 	cout := func(etat uint64) int {
 		w := &bitw{}
 		w.put(etat, 4)
-		for i := 0; i < 16; i++ {
+		for range 16 {
 			w.put(0x5a, 8)
 		}
 		br := LecteurSur(append(w.buf, make([]byte, 16)...))

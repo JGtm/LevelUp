@@ -111,7 +111,7 @@ func TestCollineProprietaireD2(t *testing.T) {
 		e.doc.FrameCount, e.doc.FrameIntervalMS)
 
 	recs := objectives.StatRecords(p2aBobine(t, e.dir))
-	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true, nil)
+	score := objectives.SeriesTotal(recs, objectives.ModeScoreComponent(), true, nil)
 	slots := d2ScoreSlots(score)
 	// DIAGNOSTIC DE L'ORACLE, pose AVANT de s'en servir. Un slot d'equipe manquant peut venir
 	// de DEUX causes tres differentes : le film ne replique pas la serie de ce camp, ou notre

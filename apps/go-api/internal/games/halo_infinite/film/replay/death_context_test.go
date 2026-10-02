@@ -21,6 +21,7 @@ package replay
 // défaut P0-2, où le second occupant d'un slot recyclé hérite des positions du premier.
 
 import (
+	"context"
 	"math"
 	"testing"
 
@@ -49,7 +50,7 @@ func mortFilm(xuid uint64, tMS int64) types.Death { return types.Death{XUID: xui
 
 // dcEntree monte une entrée : le pont est construit par `ResolveSlotXUID`, le vrai.
 func dcEntree(pos []grammar.BipedPosition, mortsFilm []types.Death, journal []MortDuJournal) EntreeContexteMorts {
-	rep := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: mortsFilm, PlayerIndices: indexDe(111, 222, 333, 444, 999)})
+	rep := BuildIdentityRegistry(context.Background(), IdentityInput{Positions: pos, Deaths: mortsFilm, PlayerIndices: indexDe(111, 222, 333, 444, 999)})
 	return EntreeContexteMorts{
 		Positions: pos,
 		Registre:  rep,

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_cadence_detente_research_test.go — DETENTE vs BALLE : le film emet-il un
@@ -89,10 +91,7 @@ func TestLot1CadenceDetente(t *testing.T) {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
 
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	t.Logf("== film %s · %d chunks (detente vs balle) ==", filepath.Base(dir), n)
 
 	shots := attribCollectShots(t, dir, n)

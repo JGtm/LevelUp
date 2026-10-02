@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // i22_confrontation_research_test.go — SONDE JETABLE (etude de faisabilite du 2026-08-24).
@@ -83,7 +85,7 @@ func TestI22Confrontation(t *testing.T) {
 		withPrior++
 		same := len(prior.Values) == 4
 		if same {
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				if uint32(prior.Values[i]) != k.Grenades[i] {
 					same = false
 				}
@@ -136,27 +138,4 @@ func TestI22Confrontation(t *testing.T) {
 	t.Logf("lectures delta STRICTEMENT entre deux images-cles du meme slot = %d / %d", newInfo, len(deltas))
 	t.Logf("age median de la derniere lecture : images-cles seules = %.2f s | fusionne = %.2f s",
 		medianOf(ageKF), medianOf(ageMerged))
-}
-
-func lastAgeS(ts []uint64, at uint64) float64 {
-	var last uint64
-	var got bool
-	for _, t := range ts {
-		if t <= at {
-			last, got = t, true
-		}
-	}
-	if !got {
-		return 0
-	}
-	return float64(at-last) / 1e6
-}
-
-func medianOf(v []float64) float64 {
-	if len(v) == 0 {
-		return 0
-	}
-	c := append([]float64(nil), v...)
-	sort.Float64s(c)
-	return c[len(c)/2]
 }

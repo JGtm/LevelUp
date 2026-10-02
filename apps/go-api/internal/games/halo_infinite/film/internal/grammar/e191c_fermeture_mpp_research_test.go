@@ -25,10 +25,11 @@ package grammar
 //
 // LECTURE SEULE, sans garde d environnement (bobines versionnees).
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestE191cFermetureMPP$' -v -count=1
+//	go test -tags=research ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestE191cFermetureMPP$' -v -count=1
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -84,7 +85,7 @@ func e191cFermetureBobine(t *testing.T, court string) {
 			}
 		}
 	}
-	ligne := ""
+	var ligne strings.Builder
 	for _, l := range e191cLeads {
 		for _, i := range e191cIndexes {
 			p := contexteDInstrument()
@@ -100,10 +101,10 @@ func e191cFermetureBobine(t *testing.T, court string) {
 			if l == 9 && i == 5 {
 				marque = "*"
 			}
-			ligne += " " + itoaN(l) + "/" + itoaN(i) + marque + "=" + itoaN(n)
+			ligne.WriteString(" " + itoaN(l) + "/" + itoaN(i) + marque + "=" + itoaN(n))
 		}
 	}
-	t.Logf("  %-10s %-26s %5d bornes :%s", court, build, len(bornes), ligne)
+	t.Logf("  %-10s %-26s %5d bornes :%s", court, build, len(bornes), ligne.String())
 }
 
 // itoaN formate un entier court.

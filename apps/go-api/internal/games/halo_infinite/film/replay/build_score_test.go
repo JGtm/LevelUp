@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
 )
@@ -20,7 +21,7 @@ import (
 func TestDocumentCarriesScoreLayerWhenInputIsGiven(t *testing.T) {
 	pos := positionsPourOrigine()
 
-	avec := BuildFromPositions("m", "halo_infinite", pos, nil, Options{
+	avec := BuildFromPositions(context.Background(), "m", "halo_infinite", pos, nil, Options{
 		FilmClockOriginUS: 1_000_000,
 		Score:             scoreEntreeSynthetique(),
 	})
@@ -40,7 +41,7 @@ func TestDocumentCarriesScoreLayerWhenInputIsGiven(t *testing.T) {
 		t.Errorf("oracle = %q, attendu %q", avec.Coverage.Score.Oracle, ScoreOracleDisplayed)
 	}
 
-	sans := BuildFromPositions("m", "halo_infinite", pos, nil, Options{FilmClockOriginUS: 1_000_000})
+	sans := BuildFromPositions(context.Background(), "m", "halo_infinite", pos, nil, Options{FilmClockOriginUS: 1_000_000})
 	if sans.ScoreTimeline != nil {
 		t.Errorf("calque publie sans entree : %+v", sans.ScoreTimeline)
 	}

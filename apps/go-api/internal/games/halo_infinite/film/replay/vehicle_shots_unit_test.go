@@ -4,6 +4,7 @@ package replay
 // `vehicle_shots_unit.go`).
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -15,7 +16,7 @@ func TestLeTirSansTireurSePoseSurLUniteEtSonOccupant(t *testing.T) {
 	doc := vsDoc(nil, []VehicleSample{{T: 10, X: 0, Y: 0}, {T: 30, X: 20, Y: 40}})
 	o := vsOrphan(20, 0x11725DC400000000)
 	o.ev.FilmIndex, o.ev.Unit = -1, grammar.UnitRef{Present: true, Slot: 700}
-	attachVehicleShots(doc, []orphanShot{o}, vsOwn(), vsClock())
+	attachVehicleShots(context.Background(), doc, []orphanShot{o}, vsOwn(), vsClock())
 	if len(doc.Shots) != 1 || doc.Shots[0].Slot != 10 || *doc.Shots[0].Vehicle != 700 {
 		t.Fatalf("tirs = %+v, attendu un tir du slot 10 pose sur 700", doc.Shots)
 	}
@@ -34,7 +35,7 @@ func TestLUniteDesigneLeVehiculeQuandLEpisodeHesite(t *testing.T) {
 		Rides:   []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcProximity}}})
 	o := vsOrphan(20, 0x11725DC400000000)
 	o.ev.HasShooter, o.ev.Unit = true, grammar.UnitRef{Present: true, Slot: 701}
-	attachVehicleShots(doc, []orphanShot{o}, vsOwn(), vsClock())
+	attachVehicleShots(context.Background(), doc, []orphanShot{o}, vsOwn(), vsClock())
 	if len(doc.Shots) != 1 || *doc.Shots[0].Vehicle != 701 || doc.Coverage.Vehicles.ShotsAmbiguous != 0 {
 		t.Fatalf("tirs = %+v, ambigus %d : attendu un tir pose sur 701", doc.Shots, doc.Coverage.Vehicles.ShotsAmbiguous)
 	}
@@ -60,7 +61,7 @@ func TestLaReferenceZeroTrancheEntreDeuxPiecesDuMemePorteur(t *testing.T) {
 	})
 	o := vsOrphan(30, 0x0BB6976B00000000)
 	o.ev.HasShooter, o.ev.Unit = true, grammar.UnitRef{Present: true, Slot: 702}
-	attachVehicleShots(doc, []orphanShot{o}, vsOwn(), vsClock())
+	attachVehicleShots(context.Background(), doc, []orphanShot{o}, vsOwn(), vsClock())
 	if len(doc.Shots) != 1 || *doc.Shots[0].Vehicle != 701 || doc.Shots[0].X != 30 {
 		t.Fatalf("tirs = %+v, attendu un tir pose sur le porteur 701 en x = 30", doc.Shots)
 	}

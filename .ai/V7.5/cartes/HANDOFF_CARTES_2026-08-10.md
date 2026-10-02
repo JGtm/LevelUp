@@ -2,7 +2,7 @@
 
 > Worktree `LevelUp-wt-replay2d`, branche `feat/v75`, HEAD `5b5b0d48a`. Aucun merge, `main`
 > intact. Historique complet et chiffre : `HANDOFF_PORT_TRIANGLES_2026-08-08.md` §10 a §14.6.
-> Reports et portes fermees : `.ai/V7.5/REGISTRE_REPORTS.md`.
+> Reports et portes fermees : `.ai/REGISTRE_REPORTS.md`.
 
 ## 0. LOT A FAIT — LES ASSETS SONT PRODUITS (mise a jour du 2026-08-10, seconde session)
 

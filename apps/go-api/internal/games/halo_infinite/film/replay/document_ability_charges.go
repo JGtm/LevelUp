@@ -34,6 +34,7 @@ package replay
 // jamais déguisées en mesure (la leçon H2 de la revue P3, appliquée d'emblée).
 
 import (
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
@@ -209,8 +210,8 @@ func (b *abilityChargeBuilder) resolve(r types.AbilityCharge) (AbilityCharge, bo
 // logAbilityChargeCoverage sort la couverture du calque — le patron de
 // logAbilityImpulseCoverage : un journal qui ne dirait que les publiées laisserait croire
 // que le canal n'a rien refusé.
-func logAbilityChargeCoverage(cov AbilityChargeCoverage) {
-	slog.Info("rejeu : charges d equipement",
+func logAbilityChargeCoverage(ctx context.Context, cov AbilityChargeCoverage) {
+	slog.InfoContext(ctx, "rejeu : charges d equipement",
 		"lectures", cov.Reads, "publiees", cov.Published,
 		"sansIdentite", cov.NoIdentity, "familleNonMesuree", cov.OtherFamily,
 		"attributionIndisponible", cov.NoResolver,

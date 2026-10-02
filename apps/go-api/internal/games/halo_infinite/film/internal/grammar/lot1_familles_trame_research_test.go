@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_familles_trame_research_test.go — LOT 1 DU PLAN « PERCER LA TRAME » (2026-08-30) :
@@ -70,10 +72,9 @@ func TestLot1FamillesTrame(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible dans %s : %v", dir, err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks // meme borne que le temoin de marche : cout et RAM contenus
-	}
+	n := min(CountFilmChunks(dir),
+		// meme borne que le temoin de marche : cout et RAM contenus
+		deltaWitnessChunks)
 	cfg := DefaultFrameConfig()
 	fams := map[byte]*lot1Famille{}
 	for c := 1; c <= n; c++ {
@@ -238,10 +239,7 @@ func TestLot1VuesMultiples(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	cfg := DefaultFrameConfig()
 	type agg struct {
 		packets, recs, viewsSum, ge2, avecRecs int
@@ -341,10 +339,7 @@ func TestLot1AmorceParFamille(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	amorces := []int{1, 2, 3, 4, 5, 6, 8, 10, 12, 16}
 	cibles := map[byte]bool{0xA0: true, 0xC0: true, 0xC2: true, 0xC3: true, 0xC7: true,
 		0xD2: true, 0xD3: true, 0xE9: true, 0xE5: true}

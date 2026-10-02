@@ -1,8 +1,9 @@
 package objectives
 
 import (
+	"cmp"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"sort"
+	"slices"
 )
 
 // score.go — les COURBES tirees des enregistrements d'entite : score de mode et score
@@ -66,41 +67,49 @@ type StatComponent struct {
 	Unitary bool
 }
 
-// Les emplacements que le rejeu publie.
-var (
-	// ModeScoreComponent : le score de MODE (comp 0, valeur A) — celui que l'ECRAN affiche,
-	// et qui n'est pas toujours celui de l'API (phase 0-ter du lot A : Strongholds compte des
-	// ticks, KOTH des secondes de colline).
-	ModeScoreComponent = StatComponent{Comp: modeScoreComp, Strict: true}
-	// PersonalScoreComponent : le score PERSONNEL (comp 1, valeur B).
-	PersonalScoreComponent = StatComponent{Comp: personalScoreComp, SideB: true}
-	// KillsComponent, DeathsComponent, AssistsComponent : les trois compteurs de base,
-	// confirmes nominativement contre `match_participants` (cf. slotidentity.go).
-	//
-	// CE SONT EXACTEMENT LES TROIS EMPLACEMENTS QUE LIT LA CLE D'APPARIEMENT
-	// ([SlotIdentityFrom] -> [countsOf]), d'ou leur `Unitary` : la serie publiee et la cle
-	// derivent alors le meme compteur par le meme verdict de [boundSteps], et ne peuvent plus
-	// annoncer deux totaux differents (correctif 6.R, 2026-09-11).
-	KillsComponent   = StatComponent{Comp: coreKillsComp, Unitary: true}
-	DeathsComponent  = StatComponent{Comp: coreKillsComp, SideB: true, Unitary: true}
-	AssistsComponent = StatComponent{Comp: coreAssistsComp, Unitary: true}
+// ModeScoreComponent : le score de MODE (comp 0, valeur A) — celui que l'ECRAN affiche,
+// et qui n'est pas toujours celui de l'API (phase 0-ter du lot A : Strongholds compte des
+// ticks, KOTH des secondes de colline).
+func ModeScoreComponent() StatComponent { return StatComponent{Comp: modeScoreComp, Strict: true} }
 
-	// SkullTicksComponent : le canal du PORTEUR d'Oddball. C'est le score de MODE par joueur
-	// (`comp 0 A`), qui en Oddball compte les TICS DE POSSESSION du crane (`skull_scoring_ticks`,
-	// identifie par l'oracle films confondus : 47 accords non-nuls sur 7 films). C'est le
-	// ModeScoreComponent SANS la stricte croissance : le composant est reemis a valeur A EGALE
-	// quand sa valeur B bouge, et [longestRun] non strict garde ces repetitions ; c'est la
-	// deduplication par valeur du consommateur (`skullTickInstants`, paquet replay) qui date
-	// ensuite chaque tic a sa PREMIERE emission (la vraie), la ou la stricte croissance le
-	// daterait a la derniere. C'est
-	// l'instrument valide au gate du porteur (principal 7/7 films) — a ne pas changer sans
-	// remesurer.
-	SkullTicksComponent = StatComponent{Comp: modeScoreComp}
-	// SkullGrabsComponent : les PRISES du crane d'Oddball (`comp 21 B` = `skull_grabs`, identifie
-	// par l'oracle films confondus : 21 accords non-nuls, 56 accords totaux sur 7 films). Un
-	// compteur non decroissant, donc non strict.
-	SkullGrabsComponent = StatComponent{Comp: skullGrabsComp, SideB: true}
-)
+// PersonalScoreComponent : le score PERSONNEL (comp 1, valeur B).
+func PersonalScoreComponent() StatComponent {
+	return StatComponent{Comp: personalScoreComp, SideB: true}
+}
+
+// KillsComponent, DeathsComponent, AssistsComponent : les trois compteurs de base,
+// confirmes nominativement contre `match_participants` (cf. slotidentity.go).
+//
+// CE SONT EXACTEMENT LES TROIS EMPLACEMENTS QUE LIT LA CLE D'APPARIEMENT
+// ([SlotIdentityFrom] -> [countsOf]), d'ou leur `Unitary` : la serie publiee et la cle
+// derivent alors le meme compteur par le meme verdict de [boundSteps], et ne peuvent plus
+// annoncer deux totaux differents (correctif 6.R, 2026-09-11).
+func KillsComponent() StatComponent { return StatComponent{Comp: coreKillsComp, Unitary: true} }
+
+// DeathsComponent : voir [KillsComponent] (meme famille, valeur B).
+func DeathsComponent() StatComponent {
+	return StatComponent{Comp: coreKillsComp, SideB: true, Unitary: true}
+}
+
+// AssistsComponent : voir [KillsComponent] (meme famille).
+func AssistsComponent() StatComponent { return StatComponent{Comp: coreAssistsComp, Unitary: true} }
+
+// SkullTicksComponent : le canal du PORTEUR d'Oddball. C'est le score de MODE par joueur
+// (`comp 0 A`), qui en Oddball compte les TICS DE POSSESSION du crane (`skull_scoring_ticks`,
+// identifie par l'oracle films confondus : 47 accords non-nuls sur 7 films). C'est le
+// ModeScoreComponent SANS la stricte croissance : le composant est reemis a valeur A EGALE
+// quand sa valeur B bouge, et [longestRun] non strict garde ces repetitions ; c'est la
+// deduplication par valeur du consommateur (`skullTickInstants`, paquet replay) qui date
+// ensuite chaque tic a sa PREMIERE emission (la vraie), la ou la stricte croissance le
+// daterait a la derniere. C'est
+// l'instrument valide au gate du porteur (principal 7/7 films) — a ne pas changer sans
+// remesurer.
+func SkullTicksComponent() StatComponent { return StatComponent{Comp: modeScoreComp} }
+
+// SkullGrabsComponent : les PRISES du crane d'Oddball (`comp 21 B` = `skull_grabs`, identifie
+// par l'oracle films confondus : 21 accords non-nuls, 56 accords totaux sur 7 films). Un
+// compteur non decroissant, donc non strict.
+func SkullGrabsComponent() StatComponent { return StatComponent{Comp: skullGrabsComp, SideB: true} }
 
 // skullGrabsComp est l'index du composant des prises du crane (`skull_grabs`), en valeur B.
 const skullGrabsComp = 21
@@ -139,7 +148,7 @@ func SeriesByRound(recs []types.StatRecord, c StatComponent, teams bool,
 			if !real[round] {
 				continue
 			}
-			sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
+			slices.SortStableFunc(pts, func(a, b types.ScorePoint) int { return cmp.Compare(a.TimeMS, b.TimeMS) })
 			kept := longestRun(pts, c.Strict)
 			if c.Unitary {
 				kept = boundedSeries(kept)
@@ -169,7 +178,7 @@ func SeriesByRound(recs []types.StatRecord, c StatComponent, teams bool,
 // `cons` : l enregistreur des replis a la consultation du document ([ReplisALaConsultation], lot
 // J8.7-bis) ; nil hors production.
 func SeriesTotal(recs []types.StatRecord, c StatComponent, teams bool, cons *ReplisALaConsultation) map[int][]types.ScorePoint {
-	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams, cons), RealRounds(recs))
+	out := cumulateRounds(rawSeriesByRound(recs, c.key(), teams, cons), RealRounds(recs), cons.Diagnostics())
 	for slot, pts := range out {
 		if c.Unitary {
 			pts = boundedSeries(pts)

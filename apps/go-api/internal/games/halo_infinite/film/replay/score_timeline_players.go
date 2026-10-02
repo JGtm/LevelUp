@@ -10,6 +10,8 @@ package replay
 // ordre, memes commentaires de mesure.
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -60,10 +62,10 @@ func buildPlayerScoresFlat(recs []types.StatRecord, identity map[int]string, c s
 	if len(identity) == 0 {
 		return nil
 	}
-	personal := loadScoreSeries(recs, objectives.PersonalScoreComponent, false, c.cons)
-	kills := loadScoreSeries(recs, objectives.KillsComponent, false, c.cons)
-	deaths := loadScoreSeries(recs, objectives.DeathsComponent, false, c.cons)
-	assists := loadScoreSeries(recs, objectives.AssistsComponent, false, c.cons)
+	personal := loadScoreSeries(recs, objectives.PersonalScoreComponent(), false, c.cons)
+	kills := loadScoreSeries(recs, objectives.KillsComponent(), false, c.cons)
+	deaths := loadScoreSeries(recs, objectives.DeathsComponent(), false, c.cons)
+	assists := loadScoreSeries(recs, objectives.AssistsComponent(), false, c.cons)
 
 	slots := make([]int, 0, len(identity))
 	for slot := range identity {
@@ -85,7 +87,7 @@ func buildPlayerScoresFlat(recs []types.StatRecord, identity map[int]string, c s
 		}
 		out = append(out, p)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].XUID < out[j].XUID })
+	slices.SortStableFunc(out, func(a, b PlayerScore) int { return cmp.Compare(a.XUID, b.XUID) })
 	if len(out) == 0 {
 		return nil
 	}
@@ -97,10 +99,10 @@ func buildPlayerScoresFlat(recs []types.StatRecord, identity map[int]string, c s
 // fusionnes en une entree — courbe recomposee dans l'ordre du temps.
 func buildPlayerScoresByRound(recs []types.StatRecord,
 	round objectives.RoundIdentity, c scoreClock) []PlayerScore {
-	personal := playerRoundsByXUID(recs, objectives.PersonalScoreComponent, round, c.cons)
-	kills := playerRoundsByXUID(recs, objectives.KillsComponent, round, c.cons)
-	deaths := playerRoundsByXUID(recs, objectives.DeathsComponent, round, c.cons)
-	assists := playerRoundsByXUID(recs, objectives.AssistsComponent, round, c.cons)
+	personal := playerRoundsByXUID(recs, objectives.PersonalScoreComponent(), round, c.cons)
+	kills := playerRoundsByXUID(recs, objectives.KillsComponent(), round, c.cons)
+	deaths := playerRoundsByXUID(recs, objectives.DeathsComponent(), round, c.cons)
+	assists := playerRoundsByXUID(recs, objectives.AssistsComponent(), round, c.cons)
 
 	out := make([]PlayerScore, 0)
 	for _, xuid := range sortedXUIDs(personal, kills, deaths, assists) {
@@ -150,11 +152,12 @@ func playerRoundsByXUID(recs []types.StatRecord, comp objectives.StatComponent,
 //
 // LE CUMUL PASSE PAR [objectives.ChronologicalTotal] : concatener les manches dans l'ordre
 // des MANCHES ne donne une courbe chronologique que si la decoupe par manche est juste. Le
-// controle refuse de publier une courbe qui recule dans le temps, et le dit au journal.
+// controle refuse de publier une courbe qui recule dans le temps, et le dit (diagnostic de
+// l enregistreur des consultations, journalise en fin d assemblage — lot J12.3).
 func seriesOfRounds(byRound map[int][]types.ScorePoint, c scoreClock) ScoreSeries {
 	return ScoreSeries{
 		Rounds: scoreRoundsOf(byRound, c),
-		Total:  scoreTicksOf(objectives.ChronologicalTotal(cumulateXUIDRounds(byRound)), c),
+		Total:  scoreTicksOf(objectives.ChronologicalTotal(cumulateXUIDRounds(byRound), c.cons.Diagnostics()), c),
 	}
 }
 

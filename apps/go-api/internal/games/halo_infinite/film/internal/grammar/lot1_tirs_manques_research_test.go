@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_tirs_manques_research_test.go — LOT 1 : LES TIRS MANQUES (demande utilisateur). Un tir
@@ -26,10 +28,7 @@ func TestLot1TirsManques(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	var (
 		tirs, degats int
 		parTireur    = map[uint64]int{}

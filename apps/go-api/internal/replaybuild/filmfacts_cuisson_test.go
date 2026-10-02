@@ -115,10 +115,10 @@ func TestLesDeuxBranchesNommentLeurOrigine(t *testing.T) {
 		t.Fatal("l etape de branche n a pas de nom : le harnais d equivalence ne pourrait pas " +
 			"distinguer « relu » de « decode »")
 	}
-	if len(BuildBytesStepsAfter) == 0 || BuildBytesStepsAfter[0] != EtapeRejeuDepuisLesFaits {
-		t.Errorf("BuildBytesStepsAfter = %v : l etape de branche doit PRECEDER `artifact` — le "+
+	if len(BuildBytesStepsAfter()) == 0 || BuildBytesStepsAfter()[0] != EtapeRejeuDepuisLesFaits {
+		t.Errorf("BuildBytesStepsAfter() = %v : l etape de branche doit PRECEDER `artifact` — le "+
 			"harnais doit savoir quelle branche a servi avant de comparer les octets.",
-			BuildBytesStepsAfter)
+			BuildBytesStepsAfter())
 	}
 }
 

@@ -27,7 +27,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 KF35_ROOT=<repo>/data/cache/film_chunks \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestKF7E' -timeout 90m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestKF7E' -timeout 90m -v
 
 import (
 	"bytes"
@@ -69,10 +69,7 @@ func kf7eCString(d []byte, off, max int) string {
 	if off < 0 || off >= len(d) {
 		return ""
 	}
-	end := off + max
-	if end > len(d) {
-		end = len(d)
-	}
+	end := min(off+max, len(d))
 	if i := bytes.IndexByte(d[off:end], 0); i >= 0 {
 		return string(d[off : off+i])
 	}
@@ -96,7 +93,7 @@ func TestKF7ETableLayout(t *testing.T) {
 
 	base := bipedDefaultStateTypeIndex * archetypeBlockSize
 	nonZeroKind, nonZeroTail := 0, 0
-	for s := 0; s < archetypeBlockSlots; s++ {
+	for s := range archetypeBlockSlots {
 		off := base + s*registrySlotSize
 		if off+registrySlotSize > len(d) {
 			break
@@ -187,7 +184,7 @@ func kf7eWalkOne(f kf35Film, pay []byte, b kf35Bound, c kf7eCase, tal *kf7eTally
 func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound) bool {
 	total := len(pay) * 8
 	pos, prev := from, b.Rec.Slot
-	for n := 0; n < kf35ChainMax; n++ {
+	for range kf35ChainMax {
 		if pos == b.Want {
 			return true
 		}

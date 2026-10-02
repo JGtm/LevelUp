@@ -1,7 +1,8 @@
 package grammar
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -171,7 +172,7 @@ func GroundWeaponSlotBand(dir string) map[uint32]bool {
 // mesurer leur immobilité n'a pas de sens. La position publiable d'une arme au sol est celle de
 // son record de CRÉATION, pas la dispersion de ses deltas.
 //
-// Report et condition de reprise : .ai/V7.5/REGISTRE_REPORTS.md (2026-08-12, amendé les
+// Report et condition de reprise : .ai/REGISTRE_REPORTS.md (2026-08-12, amendé les
 // 2026-08-17).
 //
 // HORS LIGNE (I/O disque sur tout le film).
@@ -225,9 +226,13 @@ func WorldObjectPositionsForBand(dir string, wr *profile.Vec3Range, band map[uin
 			}
 		}
 	}
+	// Tri total (J12.1, DT-9) : instant, puis generation et position — deux echantillons qu il ne
+	// separe pas sont identiques ; NearestWorldObjectSample garde le premier a egalite d ecart.
 	for slot := range out {
-		pts := out[slot]
-		sort.Slice(pts, func(i, j int) bool { return pts[i].TimestampUS < pts[j].TimestampUS })
+		slices.SortFunc(out[slot], func(a, b WorldObjectSample) int {
+			return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Gen, b.Gen),
+				cmp.Compare(a.X, b.X), cmp.Compare(a.Y, b.Y), cmp.Compare(a.Z, b.Z))
+		})
 	}
 	return out
 }

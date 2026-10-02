@@ -25,7 +25,7 @@ func pisteDe(pts [][3]float32) Track {
 // nuageRegulier rend n points repartis sur un terrain plat de 40 m, sol a 100 m.
 func nuageRegulier(n int) [][3]float32 {
 	out := make([][3]float32, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f := float32(i%40) - 20
 		out = append(out, [3]float32{f, f / 2, 100 + float32(i%5)})
 	}
@@ -100,7 +100,7 @@ func TestBoundsOf_TerrainPlatNeRejettePasLeDeplacement(t *testing.T) {
 	// Tout le monde sur le meme plan : l etendue de Z est NULLE. Sans plancher d etendue, le
 	// moindre pas en Z passerait pour un artefact.
 	pts := make([][3]float32, 0, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		pts = append(pts, [3]float32{float32(i % 30), float32(i % 20), 12})
 	}
 	pts = append(pts, [3]float32{15, 10, 14}) // deux metres plus haut : une marche, pas un bug

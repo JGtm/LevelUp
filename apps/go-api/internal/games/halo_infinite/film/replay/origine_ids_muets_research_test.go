@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // origine_ids_muets_research_test.go — ADDENDUM : NOMMER LES DEUX IDENTIFIANTS DE CLASSE ARME

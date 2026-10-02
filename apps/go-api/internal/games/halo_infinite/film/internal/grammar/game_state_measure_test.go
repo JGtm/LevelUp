@@ -26,10 +26,12 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 GAME_FILM=C:/.../data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestGameEntitiesPhase0$' -timeout 30m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestGameEntitiesPhase0$' -timeout 30m -v
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -125,7 +127,7 @@ func gameSummary(t *testing.T, short string, st GameChainStats, recs []GameEntit
 					active++
 				}
 			}
-			for f := 0; f < PlayerStateFieldCount; f++ {
+			for f := range PlayerStateFieldCount {
 				if r.PlayerSeen[PlayerStateField(f)] {
 					fields[f]++
 				}
@@ -149,7 +151,7 @@ func gameSummary(t *testing.T, short string, st GameChainStats, recs []GameEntit
 		fmt.Sprint(st.RecordsClean), fmt.Sprint(engine), fmt.Sprint(player),
 		fmt.Sprint(len(perSlot)), fmt.Sprint(top8), fmt.Sprint(respawn), fmt.Sprint(active),
 	}
-	for f := 0; f < PlayerStateFieldCount; f++ {
+	for f := range PlayerStateFieldCount {
 		cells = append(cells, fmt.Sprint(fields[f]))
 	}
 	gameAppendLine(t, filepath.Join(out, "synthese_films.tsv"),
@@ -163,7 +165,7 @@ func gameSummary(t *testing.T, short string, st GameChainStats, recs []GameEntit
 func gameAppendLine(t *testing.T, path, header, line string) {
 	t.Helper()
 	_, err := os.Stat(path)
-	fresh := os.IsNotExist(err)
+	fresh := errors.Is(err, fs.ErrNotExist)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		t.Fatalf("synthese %s : %v", path, err)
@@ -240,7 +242,7 @@ func gameChainSlots(t *testing.T, recs []GameEntityRecord) {
 func gameChainFields(t *testing.T, recs []GameEntityRecord) {
 	t.Helper()
 	t.Logf("CHAINE · ti=0 CHAMPS")
-	for f := 0; f < GameEngineFieldCount; f++ {
+	for f := range GameEngineFieldCount {
 		fl := GameEngineField(f)
 		hist, n, gated := map[string]int{}, 0, 0
 		for _, r := range recs {
@@ -265,7 +267,7 @@ func gameChainFields(t *testing.T, recs []GameEntityRecord) {
 	}
 	t.Logf("    %-48s CAPTURE : %d lectures certaines", compGameEngineRoundTimer, nrt)
 	t.Logf("CHAINE · ti=5 CHAMPS")
-	for f := 0; f < PlayerStateFieldCount; f++ {
+	for f := range PlayerStateFieldCount {
 		fl := PlayerStateField(f)
 		hist, n, gated := map[string]int{}, 0, 0
 		for _, r := range recs {
@@ -354,7 +356,7 @@ func gameLogEngineFields(t *testing.T, sc GameEntityScan) {
 		return
 	}
 	t.Logf("ti=0 CHAMPS (records dont la marche a abouti : %d)", st.Walked)
-	for f := 0; f < GameEngineFieldCount; f++ {
+	for f := range GameEngineFieldCount {
 		t.Logf("    %-48s masque %6d · LU %6d · porte fermee %6d",
 			GameEngineField(f), st.WithField[f], st.Read[f], st.Gated[f])
 	}
@@ -375,7 +377,7 @@ func gameLogPlayerFields(t *testing.T, sc GameEntityScan) {
 		return
 	}
 	t.Logf("ti=5 CHAMPS (records dont la marche a abouti : %d)", st.Walked)
-	for f := 0; f < PlayerStateFieldCount; f++ {
+	for f := range PlayerStateFieldCount {
 		t.Logf("    %-48s masque %6d · LU %6d · porte fermee %6d",
 			PlayerStateField(f), st.WithField[f], st.Read[f], st.Gated[f])
 	}

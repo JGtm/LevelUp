@@ -1,5 +1,5 @@
 // Package sessionusage — AGRÉGAT DE SESSION des usages d'équipement et de socles
-// (chantier session-usage S2, .ai/HANDOFF_SESSION_USAGE_BDD_2026-09-04.md §5/S2).
+// (chantier session-usage S2, .ai/V7.5/HANDOFF_SESSION_USAGE_BDD_2026-09-04.md §5/S2).
 //
 // Fonctions PURES (zéro DB, zéro HTTP) : la couche repo (platform/duckdb,
 // SessionUsageRepo) lit les vues `match_usage_players_latest` /

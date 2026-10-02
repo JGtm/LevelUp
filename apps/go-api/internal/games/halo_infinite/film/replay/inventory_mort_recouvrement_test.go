@@ -23,6 +23,7 @@ package replay
 // L'extension a un corpus de films est gatee par INV_MORT_FILMS (ci-dessous), non jouee en CI.
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -63,7 +64,7 @@ func invMortMeasure(
 	pos []grammar.BipedPosition, fire []grammar.FireEvent,
 	inv []types.KeyframeInventory, deaths []types.Death, idx types.PlayerIndexTable,
 ) (vide, plein *invMortStat, own IdentityRegistry) {
-	own = BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths,
+	own = BuildIdentityRegistry(context.Background(), IdentityInput{Positions: pos, Deaths: deaths,
 		PlayerIndices: idx, Fire: fireRefs(fire)})
 	// LES MEMES PIECES QUE LA PRODUCTION : le regroupement des morts par victime et la recherche
 	// de la mort qui precede viennent de inventory_dead_readings.go. Une seconde implementation
@@ -155,7 +156,7 @@ func TestInventaireRecordVideCorpus(t *testing.T) {
 		t.Skip("corpus : INV_MORT_FILMS non defini")
 	}
 	totalVide, totalPlein := newInvMortStat(), newInvMortStat()
-	for _, dir := range strings.Split(raw, ",") {
+	for dir := range strings.SplitSeq(raw, ",") {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue

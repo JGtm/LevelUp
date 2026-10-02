@@ -112,7 +112,7 @@ func m522ControlesDuPaquet(pay []byte, w *World, cfg FrameConfig,
 		return nil, m522PaquetRang1
 	}
 	var out []m522Entree
-	for tour := 0; tour < plafondToursVueC; tour++ {
+	for range plafondToursVueC {
 		if !placeDisponible(br, frameLen, 1) || !br.ReadBit() {
 			return out, m522PaquetLu
 		}

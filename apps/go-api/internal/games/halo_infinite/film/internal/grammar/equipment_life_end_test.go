@@ -21,13 +21,14 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 EQUIP_CREATION_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestEquipmentLifeEnd$' -timeout 60m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestEquipmentLifeEnd$' -timeout 60m -v
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -118,7 +119,7 @@ func lifeEndRawSamples(
 	}
 	for k := range out {
 		pts := out[k]
-		sort.Slice(pts, func(i, j int) bool { return lessSample(pts[i], pts[j]) })
+		slices.SortFunc(pts, compareSample) // le tri de production (J12.1)
 		out[k] = pts
 	}
 	return out
@@ -349,7 +350,7 @@ func lifeEndTailProbe(
 	// TÉMOIN : mêmes fenêtres, sur des clés que le film ne porte pas.
 	ctrl, ctrlHits := 0, 0
 	for slot := range band {
-		for gen := uint32(0); gen < 4; gen++ {
+		for gen := range uint32(4) {
 			k := types.LifeKey{Slot: slot, Gen: gen}
 			if len(raw[k]) > 0 {
 				continue
@@ -418,10 +419,9 @@ func lifeEndDelSelectivity(t *testing.T, dir string, n int, band map[uint32]bool
 	lg profile.PrecisionDescriptor) {
 	t.Helper()
 	cands, payloads := 0, 0
-	limit := n
-	if limit > 4 {
-		limit = 4 // quatre chunks suffisent à établir un ordre de grandeur
-	}
+	limit := min(n,
+		// quatre chunks suffisent à établir un ordre de grandeur
+		4)
 	for c := 1; c <= limit; c++ {
 		chunk, err := ReadFilmChunk(dir, c)
 		if err != nil {

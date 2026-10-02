@@ -487,7 +487,7 @@ d'image-clé 108b. Reprise = câbler les 7 feuilles ti=11 d'un coup et mesurer l
 passe, B1->B2->B3. NO-GO si A échoue (mur = format type-2, écrivain absent de l'EXE).
 ```
 
-## 10. Ligne prête pour `.ai/V7.5/REGISTRE_REPORTS.md` (NON écrite par cette passe)
+## 10. Ligne prête pour `.ai/REGISTRE_REPORTS.md` (NON écrite par cette passe)
 
 ```
 [2026-08-27] ti=11 i16-i31 managed-objective-sub-objective-entities (16 slots) — feuille RÉSOLUE

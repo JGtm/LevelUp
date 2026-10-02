@@ -973,7 +973,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   déclenchée. Le lien « voir dans le rejeu » posé depuis une cellule Tactique (lot M1)
 	//   ouvrait une APPROXIMATION pour 4 questions sur 6 (`morts`/`kills`/`gagne`/`isole`, sur
 	//   l'horloge du MATCH) faute de ce calage publié — cf.
-	//   `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`. Détail : `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
+	//   `.ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`. Détail : `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
 	// v49 -> v50 (2026-09-08, lot P2 — REGISTRE D'IDENTITÉ DES JOUEURS) : la section `identity`
 	//   naît (`players`, `bipedSlots`, `statborgSlots`, `coverage`), `roster[].bid` publie
 	//   l'identifiant stable des bots, et LE CONTENU CUIT CHANGE — la règle exige donc le bump,
@@ -1020,7 +1020,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact < 52 porte des lancers posés sur le mauvais
 	//   joueur, des vols traversant la carte, et le décor d'une autre carte. `coverage.projectiles`
 	//   s'ajoute au passage — un champ optionnel, qui ne l'aurait pas exigé à lui seul.
-	//   Détail : `document_chronicle.go` et `.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
+	//   Détail : `document_chronicle.go` et `.ai/V7.5/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`.
 	// v53 (2026-09-12, lot B-bis — LE BIT DE TROP PEU DE LA PORTE D'i0). UN changement de
 	//   contenu cuit, sur une seule carte. `decodeWorldObjectPos` écrivait la porte
 	//   d'`object-position-component` en dur à 3 bits (precHigh + index-sel + UN bit d'index de
@@ -1057,7 +1057,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `coverage.filmMajorVersion` s'ajoute au passage — la version lue voyage desormais AVEC
 	//   l'artefact, au lieu d'exiger une relecture du film. Champ OPTIONNEL : il ne l'aurait pas
 	//   exigé à lui seul, et il sert la mesure par version du lot H.
-	//   Détail : `document_chronicle.go` et `.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
+	//   Détail : `document_chronicle.go` et `.ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md`.
 	// v55 (2026-09-14, lot 1.0.4 — LE REFUS DE PUBLICATION D'UNE VIE CESSE D'ÊTRE MUET).
 	//   `decimateTracks` écarte toute vie dont la trajectoire décimée porte moins de `minPoints`
 	//   échantillons (défaut 2 : une vie d'un seul point n'est pas une trajectoire). Depuis

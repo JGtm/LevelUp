@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_degats_research_test.go — LOT 1 : damage_aftermath (type 0, octet 0xC0, 872k), LE VRAI
@@ -37,10 +39,7 @@ func TestLot1Degats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	var (
 		paquets, type0                       int
 		trameOK, trameKO, deltasLies, masqOK int

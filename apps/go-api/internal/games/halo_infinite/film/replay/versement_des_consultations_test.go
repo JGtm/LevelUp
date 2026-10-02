@@ -23,8 +23,8 @@ func TestLesReplisALaConsultationSontVersesAlaCloture(t *testing.T) {
 		Comps: map[int]types.StatValue{0: {A: -115}}})
 	cons := &objectives.ReplisALaConsultation{}
 	// TROIS LECTURES DE LA MEME EMISSION, par deux calques (score, crane) : un evenement.
-	loadScoreSeries(recs, objectives.ModeScoreComponent, false, cons)
-	loadScoreSeries(recs, objectives.ModeScoreComponent, false, cons)
+	loadScoreSeries(recs, objectives.ModeScoreComponent(), false, cons)
+	loadScoreSeries(recs, objectives.ModeScoreComponent(), false, cons)
 	skullCarryIntervals(recs, objectives.ResolveRoundIdentity(recs, deaths, cons), cons)
 	// UN INSTANT anterieur a toute manche, lu par le resolveur puis par une copie : un evenement.
 	ri := objectives.ResolveRoundIdentity(recs, deaths, cons)

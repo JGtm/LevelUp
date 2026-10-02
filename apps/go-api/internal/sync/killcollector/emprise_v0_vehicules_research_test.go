@@ -1,3 +1,5 @@
+//go:build research
+
 package killcollector
 
 // emprise_v0_vehicules_research_test.go — LOT V0.1 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :

@@ -170,10 +170,7 @@ func d7Vitesses(t *testing.T, id string, vies []flagFreeLife) {
 		if n < 2 {
 			continue
 		}
-		i := n - 4
-		if i < 0 {
-			i = 0
-		}
+		i := max(n-4, 0)
 		dt := float64(l.Pts[n-1].TUS-l.Pts[i].TUS) / 1e6
 		if dt <= 0 {
 			continue

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // equipment_uses_research_test.go — DATER L'USAGE D'UN EQUIPEMENT PAR SES CHARGES (lot D,
@@ -214,7 +216,7 @@ func eqUsesRawTransitions(t *testing.T, samples []grammar.EquipmentStateSample) 
 	for _, ss := range series {
 		sort.SliceStable(ss, func(a, b int) bool { return ss[a].TimestampUS < ss[b].TimestampUS })
 		for i := 1; i < len(ss); i++ {
-			for f := 0; f < grammar.EquipmentFieldCount; f++ {
+			for f := range grammar.EquipmentFieldCount {
 				if !ss[i-1].Present[f] || !ss[i].Present[f] {
 					continue
 				}
@@ -300,7 +302,7 @@ func eqUsesLogVolumes(t *testing.T, st grammar.EquipmentStateStats) {
 	t.Helper()
 	t.Logf("== D.0.1 VOLUMES == records delta ti=37 %d · slots %d · masque∋(un des 6) %d"+
 		" · marche ABOUTIE %d · CASSEE %d", st.Records, st.Slots, st.WithAny, st.Walked, st.Broken)
-	for f := 0; f < grammar.EquipmentFieldCount; f++ {
+	for f := range grammar.EquipmentFieldCount {
 		t.Logf("  %-46s masque %6d · LU %6d · porte fermee %5d",
 			grammar.EquipmentField(f), st.WithField[f], st.Read[f], st.Gated[f])
 	}

@@ -1,7 +1,7 @@
 //go:build cgo
 
 // recompute_perfnote — recompute RÉEL des notes de performance et du LUSR sur les
-// DBs joueur locales (lot 4 du plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md).
+// DBs joueur locales (lot 4 du plan .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md).
 //
 // Outil jetable, à exécuter SERVEUR ARRÊTÉ (modèle mono-process : un writer par
 // DB). Il existe parce qu'aucun binaire existant ne réunit les trois exigences du

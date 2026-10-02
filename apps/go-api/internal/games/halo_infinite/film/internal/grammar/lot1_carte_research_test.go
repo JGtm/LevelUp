@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // lot1_carte_research_test.go — LOT 1 : LA CARTE DES COMPOSANTS DES TRAMES CADREES.
@@ -45,10 +47,7 @@ func TestLot1BalayageMondePropre(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	amorces := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16}
 	cibles := map[byte]bool{0xC0: true, 0xC2: true, 0xC3: true, 0xC7: true,
 		0xD2: true, 0xD3: true, 0xE5: true, 0xE9: true}
@@ -182,10 +181,7 @@ func TestLot1LargeurEnTete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	cibles := map[byte]bool{0xC0: true, 0xC2: true, 0xC3: true, 0xC7: true,
 		0xD2: true, 0xD3: true, 0xE5: true, 0xE9: true}
 	ks := map[byte]map[int]int{}       // famille -> argmax k -> paquets
@@ -297,10 +293,7 @@ func TestLot1CarteComposants(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registre illisible : %v", err)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	familleK := map[byte]int{0xC2: 6, 0xD2: 8}
 	comps := map[byte]map[string]int{}
 	recTIs := map[byte]map[string]int{}

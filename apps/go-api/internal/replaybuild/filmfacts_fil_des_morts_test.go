@@ -33,7 +33,7 @@ func bobineV40(t *testing.T) [][]byte {
 	dir := filepath.Join("..", "games", "halo_infinite", "film", "internal", "facts", "killsource",
 		"testdata", "minibobine_e5adf7b2")
 	out := make([][]byte, 0, 3)
-	for k := 0; k < 3; k++ {
+	for k := range 3 {
 		b, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", k)))
 		if err != nil {
 			t.Fatalf("bobine v40 : %v", err)

@@ -10,6 +10,8 @@ package replay
 // (ici). Aucune ligne n a change : memes fonctions, meme ordre, memes commentaires de mesure.
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -84,7 +86,7 @@ func hillStatesOf(periods []hillPeriod, owner []zoneSample, teams map[uint64]boo
 	out := make([]ZoneState, 0, len(refs))
 	for _, ref := range refs {
 		spans := byRef[ref]
-		sort.SliceStable(spans, func(i, j int) bool { return spans[i].T0 < spans[j].T0 })
+		slices.SortStableFunc(spans, func(a, b ZoneSpan) int { return cmp.Compare(a.T0, b.T0) })
 		out = append(out, ZoneState{ZoneRef: ref, Spans: spans})
 	}
 	return out

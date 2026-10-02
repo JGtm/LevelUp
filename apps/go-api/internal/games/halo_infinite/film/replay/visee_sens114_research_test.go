@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_sens114_research_test.go — LOT A3 : LE SENS ENTREE / SORTIE DE LUNETTE.

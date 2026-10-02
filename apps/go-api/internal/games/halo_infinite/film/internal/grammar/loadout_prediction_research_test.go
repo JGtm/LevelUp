@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // loadout_prediction_research_test.go — LA MESURE QUI COMPTE : sait-on, a tout instant, ce
@@ -23,6 +25,7 @@ package grammar
 import (
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -46,11 +49,11 @@ func lpKeys(set map[uint32]bool) string {
 		out = append(out, f)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
-	s := ""
+	var s strings.Builder
 	for _, f := range out {
-		s += hwName(f) + "|"
+		s.WriteString(hwName(f) + "|")
 	}
-	return s
+	return s.String()
 }
 
 // TestLoadoutPrediction mesure la prediction d'inventaire d'une image-cle a la suivante.

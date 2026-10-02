@@ -149,7 +149,7 @@ func (c *FilmContext) noterI0ParDefaut(err error) {
 
 // noterRegistre compte `repli_registre_inconnu_sans_lecteur_de_troncature` UNE fois par contexte :
 // le registre lu ne porte pas l empreinte du binaire de reference, et le seul signal qui sort
-// (`warnUnknownRegistry`) ne distingue pas un autre build d un tampon tronque.
+// (`DiagnosticRegistreInconnu`) ne distingue pas un autre build d un tampon tronque.
 func (c *FilmContext) noterRegistre(reg *Registry) {
 	if c == nil || reg == nil || c.replis.regNote || reg.fingerprint == KnownRegistryFingerprint {
 		return

@@ -39,7 +39,8 @@ package replay
 //	                 une famille inconnue le dit ici).
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -162,7 +163,7 @@ func fenetresParSlot(tracks []Track) map[uint32][]fenetre {
 	}
 	for slot := range out {
 		l := out[slot]
-		sort.SliceStable(l, func(i, j int) bool { return l[i].debut < l[j].debut })
+		slices.SortStableFunc(l, func(a, b fenetre) int { return cmp.Compare(a.debut, b.debut) })
 	}
 	return out
 }
@@ -262,11 +263,8 @@ func mergeLoadouts(images, naissances []Loadout) []Loadout {
 	out := make([]Loadout, 0, len(images)+len(naissances))
 	out = append(out, images...)
 	out = append(out, naissances...)
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T != out[j].T {
-			return out[i].T < out[j].T
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b Loadout) int {
+		return cmp.Or(cmp.Compare(a.T, b.T), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out
 }

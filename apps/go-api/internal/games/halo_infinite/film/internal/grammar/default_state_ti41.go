@@ -120,7 +120,7 @@ func consume142f04664(br *Lecteur, c bool) {
 		return
 	}
 	br.ReadBits(2)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		br.ReadBits(largeurAxe142f04664)
 	}
 	consumeGateR(br, 16)

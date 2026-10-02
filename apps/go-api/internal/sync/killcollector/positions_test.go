@@ -533,7 +533,7 @@ func TestEntreeDuRegistrePorteLesBotsEtLesParticipants(t *testing.T) {
 	bots := []replay.BotIdentity{{FilmIndex: 9, Name: "343 Doomfruit [bot]", BotID: 7}}
 
 	in := entreeDuRegistre(l, ids, bots, "m1")
-	reg := replay.BuildIdentityRegistry(in)
+	reg := replay.BuildIdentityRegistry(context.Background(), in)
 
 	var viesDe222 []replay.VieNommee
 	for _, v := range reg.ViesNommees() {

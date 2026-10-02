@@ -122,7 +122,7 @@ func TestTourelleDuFalconPorteurASlotPlusDeux(t *testing.T) {
 		vtChassis(102, familleFalcon),
 	}
 	tally := poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, nil)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if tracks[i].Carrier == nil || tracks[i].Carrier.Slot != 102 {
 			t.Errorf("piece %d : porteur %+v, attendu 102", i, tracks[i].Carrier)
 		}

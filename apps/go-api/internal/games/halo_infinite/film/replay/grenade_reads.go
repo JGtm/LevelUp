@@ -1,8 +1,10 @@
 package replay
 
 import (
+	"cmp"
+	"context"
 	"log/slog"
-	"sort"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -116,14 +118,8 @@ func buildGrenadeReads(
 	if len(out) == 0 {
 		return nil
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T != out[j].T {
-			return out[i].T < out[j].T
-		}
-		if out[i].Slot != out[j].Slot {
-			return out[i].Slot < out[j].Slot
-		}
-		return out[i].Src < out[j].Src
+	slices.SortStableFunc(out, func(a, b GrenadeRead) int {
+		return cmp.Or(cmp.Compare(a.T, b.T), cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.Src, b.Src))
 	})
 	return out
 }
@@ -160,7 +156,7 @@ type GrenadeReadCoverage struct {
 // aucune couverture n'est publiée. Un {0,0} affirmerait « lecture faite, rien trouvé » là où
 // l'ABSENCE dit « ce film ne transmet pas de grenades » — deux choses différentes, et le
 // diagnostic repose sur cette distinction.
-func attachGrenadeReadCoverage(doc *ReplayDocument, built []GrenadeRead, ammoRefused bool) {
+func attachGrenadeReadCoverage(ctx context.Context, doc *ReplayDocument, built []GrenadeRead, ammoRefused bool) {
 	if doc.Coverage == nil || len(built) == 0 {
 		return
 	}
@@ -176,7 +172,7 @@ func attachGrenadeReadCoverage(doc *ReplayDocument, built []GrenadeRead, ammoRef
 		}
 	}
 	doc.Coverage.GrenadeReads = cov
-	slog.Info("rejeu : couverture des grenades portees",
+	slog.InfoContext(ctx, "rejeu : couverture des grenades portees",
 		"imagesCles", cov.FromKeyframe, "delta", cov.FromDelta,
 		"ecarteesSansPiste", cov.Unpublished, "canalMunitionsRefuse", cov.AmmoRefused)
 }

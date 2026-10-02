@@ -101,6 +101,23 @@
 # aveugle) et un échec de compilation n'émet pas d'event fail test-level
 # (contrôle 2 aveugle). Le seul signal restant est l'event fail PACKAGE-level.
 #
+# RETRAIT DU 2026-09-30 (jalon J12.7 du PLAN_SUITE_AUDIT_DECODEUR_FILM, DU-5 a) : 159 tests
+# retirés (12 de `film/internal/facts/objectives`, 5 de `film/internal/grammar`, 134 de
+# `film/replay`, 8 de `film/replay/mapvar`). Leurs fichiers (`*_research_test.go` et les
+# compagnons qui ne compilent qu'avec eux) sont passés sous `//go:build research` : ils ne
+# tournent plus dans le build par défaut, donc plus dans le run CI. 159 lignes JSONL, 159 paires
+# (Package, Test), vérifié par différence avant/après — compte PARTIEL d'absences volontaires,
+# remède prescrit ici même. La CI les COMPILE toujours (`go vet -tags=research ./...`).
+#
+# CORRECTION DU MÊME JOUR (J12.7 bis) : le tag « par fermeture » avait sorti des GARDES du build
+# par défaut (`*_gate_test.go`, `ground_weapon_pads_cluster_test.go`, `visee_zoom_cablage_test.go`,
+# `inventory_delta_corpus_test.go`, `powerup_socle_oracle/temoin_test.go`...). Détaguées, leurs
+# symboles de recherche déplacés dans des helpers non tagués (`instruments_partages*_test.go`) :
+# 24 tests REMIS à leur place d'origine (3 de `film/internal/grammar`, 21 de `film/replay`).
+# Restent retirés 135 tests (12 de `film/internal/facts/objectives`, 2 de `film/internal/grammar`,
+# 113 de `film/replay`, 8 de `film/replay/mapvar`), tous définis dans un fichier tagué `research` ;
+# ratchet `archlint/research_tag_test.go` (TestGardeNeCachePasDerriereResearch).
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

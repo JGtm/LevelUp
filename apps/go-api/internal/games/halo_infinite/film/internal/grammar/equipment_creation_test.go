@@ -30,7 +30,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 EQUIP_CREATION_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestEquipmentCreationRecord$' -timeout 60m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestEquipmentCreationRecord$' -timeout 60m -v
 //
 // `EQUIP_MPP_LEAD=<n>` force la largeur du PREMIER champ du bloc MPP au lieu de calibrer les
 // deux. Il ne sert plus qu'à rejouer une hypothèse à la main : depuis le 2026-08-18 la
@@ -47,6 +47,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -198,7 +199,7 @@ func equipCreationLogFields(t *testing.T, label string, cre []types.EquipmentCre
 // quelque part dans son record de naissance, c'est le premier endroit où la chercher.
 func equipCreationLogMPP(t *testing.T, cre []types.EquipmentCreation) {
 	t.Helper()
-	for f := 0; f < MPPFieldCount; f++ {
+	for f := range MPPFieldCount {
 		h := map[uint32]int{}
 		lives := map[uint32]map[equipCreationLifeKey]bool{}
 		for _, c := range cre {
@@ -230,11 +231,11 @@ func equipCreationSum(h map[uint32]int) int {
 }
 
 func equipCreationLine(h map[uint32]int, limit int) string {
-	out := ""
+	var out strings.Builder
 	for _, e := range equipCreationTop(h, limit) {
-		out += fmt.Sprintf(" %d:%d", e.key, e.count)
+		out.WriteString(fmt.Sprintf(" %d:%d", e.key, e.count))
 	}
-	return out
+	return out.String()
 }
 
 // equipCreationLogLives compte les VIES d'objet (slot, génération) et dit combien portent un

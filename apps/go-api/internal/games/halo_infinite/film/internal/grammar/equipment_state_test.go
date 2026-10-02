@@ -38,7 +38,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 EQUIP_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestEquipmentEntityState$' -timeout 30m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestEquipmentEntityState$' -timeout 30m -v
 
 import (
 	"fmt"
@@ -66,7 +66,7 @@ func TestEquipmentEntityState(t *testing.T) {
 	t.Logf("MESURE A1 — RECORDS delta ti=%d %d · slots retenus %d · masque∋(un des 4) %d "+
 		"· marche ABOUTIE %d · marche CASSÉE %d",
 		EquipmentTypeIndex, st.Records, st.Slots, st.WithAny, st.Walked, st.Broken)
-	for f := 0; f < EquipmentFieldCount; f++ {
+	for f := range EquipmentFieldCount {
 		fl := EquipmentField(f)
 		t.Logf("  %-32s i%-2d · masque %6d · LU %6d · porte fermée %6d",
 			fl, arch.indicesOfFirst(fl.String()), st.WithField[f], st.Read[f], st.Gated[f])
@@ -161,7 +161,7 @@ func equipLogDatableEvents(t *testing.T, samples []EquipmentStateSample) {
 		if b, ok := birth[k]; !ok || s.TimestampUS < b {
 			birth[k] = s.TimestampUS
 		}
-		for f := 0; f < EquipmentFieldCount; f++ {
+		for f := range EquipmentFieldCount {
 			if !s.Present[f] {
 				continue
 			}
@@ -174,7 +174,7 @@ func equipLogDatableEvents(t *testing.T, samples []EquipmentStateSample) {
 		}
 	}
 	t.Logf("== MESURE A2 — PREMIÈRE VALEUR PAR VIE D'OBJET (%d vies) ==", len(birth))
-	for f := 0; f < EquipmentFieldCount; f++ {
+	for f := range EquipmentFieldCount {
 		n, late := 0, 0
 		for k, m := range first {
 			ts, ok := m[f]
@@ -195,7 +195,7 @@ func equipLogDatableEvents(t *testing.T, samples []EquipmentStateSample) {
 // un nombre de transitions ne veut rien dire : un champ à valeur unique n'en produit aucune.
 func equipLogValues(t *testing.T, samples []EquipmentStateSample) {
 	t.Log("== MESURE A2 — DISTRIBUTION DES VALEURS TRANSMISES ==")
-	for f := 0; f < EquipmentFieldCount; f++ {
+	for f := range EquipmentFieldCount {
 		hist := map[uint64]int{}
 		n := 0
 		for _, s := range samples {
@@ -227,7 +227,7 @@ func equipLogTransitions(t *testing.T, samples []EquipmentStateSample) {
 	for _, ss := range series {
 		sort.Slice(ss, func(a, b int) bool { return ss[a].TimestampUS < ss[b].TimestampUS })
 		for i := 1; i < len(ss); i++ {
-			for f := 0; f < EquipmentFieldCount; f++ {
+			for f := range EquipmentFieldCount {
 				if !ss[i-1].Present[f] || !ss[i].Present[f] {
 					continue
 				}
@@ -242,7 +242,7 @@ func equipLogTransitions(t *testing.T, samples []EquipmentStateSample) {
 		}
 	}
 	t.Logf("== MESURE A2 — TRANSITIONS, sur %d vies d'objet (slot, génération) ==", len(series))
-	for f := 0; f < EquipmentFieldCount; f++ {
+	for f := range EquipmentFieldCount {
 		if pairs[f] == 0 {
 			t.Logf("  %-32s aucune paire consécutive : transition non calculable", EquipmentField(f))
 			continue
@@ -368,7 +368,7 @@ func equipBipedBox(t *testing.T, dir string, lay profile.I0Layout) equipBox {
 	var box equipBox
 	for _, p := range pos {
 		var v [3]float32
-		for a := 0; a < 3; a++ {
+		for a := range 3 {
 			v[a] = (float32(p.Q[a]) + 0.5) / float32(uint64(1)<<lay.AxisW[a])
 		}
 		box.add(v)
@@ -386,7 +386,7 @@ func (b *equipBox) add(v [3]float32) {
 	if b.n == 0 {
 		b.min, b.max = v, v
 	}
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		if v[a] < b.min[a] {
 			b.min[a] = v[a]
 		}
@@ -400,7 +400,7 @@ func (b *equipBox) add(v [3]float32) {
 // contains teste l'appartenance à l'emprise, avec une marge de 5 % de l'étendue par axe :
 // un objet posé contre un mur peut sortir de quelques centimètres du nuage des pas.
 func (b equipBox) contains(v [3]float32) bool {
-	for a := 0; a < 3; a++ {
+	for a := range 3 {
 		m := 0.05 * (b.max[a] - b.min[a])
 		if v[a] < b.min[a]-m || v[a] > b.max[a]+m {
 			return false

@@ -34,6 +34,8 @@ package grammar
 // DERNIERE variable de paquet ECRITE de `filmdec` — et l une des deux raisons pour lesquelles
 // tout decodage passait.
 
+import "maps"
+
 // Observation porte tout ce qui regarde un decodage sans le changer. Ses champs de fonction
 // sont NULS en production.
 type Observation struct {
@@ -341,9 +343,7 @@ func (o *Observation) prendreIndexAbsolus() map[int]int {
 		return map[int]int{}
 	}
 	out := make(map[int]int, len(o.IndexAbsolus))
-	for k, v := range o.IndexAbsolus {
-		out[k] = v
-	}
+	maps.Copy(out, o.IndexAbsolus)
 	o.IndexAbsolus = map[int]int{}
 	return out
 }

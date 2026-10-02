@@ -240,7 +240,7 @@ func aimJournaliseDistribution(t *testing.T, d aimDist) {
 		aimPitchCentreTheorique, sous, 100*float64(sous)/float64(d.avecVisee),
 		sur, 100*float64(sur)/float64(d.avecVisee), d.hist[aimPitchCentreTheorique])
 	t.Logf("  histogramme en 32 classes de 64 valeurs (classe : borne basse · compte · %% ) :")
-	for c := 0; c < 32; c++ {
+	for c := range 32 {
 		n := 0
 		for q := c * 64; q < (c+1)*64; q++ {
 			n += d.hist[q]

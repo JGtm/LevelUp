@@ -246,7 +246,7 @@ func v2cScorePads(pads []*v2cPad, ag *v2cMapAgg) {
 				gaps[2] = append(gaps[2], float64(b.birthUS-a.departUS)/1e6)
 			}
 		}
-		for k := 0; k < 3; k++ {
+		for k := range 3 {
 			if len(gaps[k]) < 2 {
 				continue
 			}
@@ -266,7 +266,7 @@ func v2cScorePads(pads []*v2cPad, ag *v2cMapAgg) {
 func v2cReport(t *testing.T, mapKey string, ag *v2cMapAgg) {
 	t.Logf("\n############## COOLDOWN (methode des socles) — CARTE %q (%d films, %d pads) ##############",
 		mapKey, ag.films, ag.pads)
-	for k := 0; k < 3; k++ {
+	for k := range 3 {
 		cvMed := 0.0
 		if len(ag.pooledCV[k]) > 0 {
 			s := append([]float64{}, ag.pooledCV[k]...)
@@ -310,7 +310,7 @@ func v2cParseFilms(t *testing.T) []v2cFilmSpec {
 		t.Skipf("V2B_CD_FILMS absent : instrument cooldown saute")
 	}
 	var out []v2cFilmSpec
-	for _, tok := range strings.Split(raw, ",") {
+	for tok := range strings.SplitSeq(raw, ",") {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {
 			continue

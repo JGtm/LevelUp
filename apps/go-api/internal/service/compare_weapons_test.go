@@ -1,7 +1,7 @@
 package service
 
 // compare_weapons_test.go — LE PROFIL D'ARMES DU FACE-À-FACE, sans DuckDB
-// (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 3, item 3.7).
+// (plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 3, item 3.7).
 //
 // # CE QUE CES TESTS VERROUILLENT, DANS L'ORDRE D'IMPORTANCE
 //

@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // weapon_burst_research_test.go — L'INVENTAIRE FERME DES ARMES AUTOMATIQUES, MESURE AVANT
@@ -397,7 +399,7 @@ func wbrSoundsDir(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("repertoire courant : %v", err)
 	}
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		cand := filepath.Join(dir, "static", "sounds", "halo_infinite")
 		if _, err := os.Stat(cand); err == nil {
 			return cand

@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -30,7 +31,7 @@ func TestPont_SiegeRecycleNEstPasUneCollision(t *testing.T) {
 	in.PlayerIndices.ByXUID = map[uint64]int{111: 0, 222: 1, 333: 2}
 	fb := fallback.NouveauCompteur()
 	in.Fallbacks = fb
-	reg := BuildIdentityRegistry(in)
+	reg := BuildIdentityRegistry(context.Background(), in)
 	if n := reg.CollisionsDeSlot(); n != 0 {
 		t.Fatalf("slotCollisions = %d, attendu 0 : deux corps etablis distincts ne sont pas une collision", n)
 	}

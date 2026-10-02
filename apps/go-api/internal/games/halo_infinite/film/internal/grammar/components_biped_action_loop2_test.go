@@ -84,7 +84,7 @@ func TestBipedActionCoutEnBits(t *testing.T) {
 				w.put(0, 1)
 			}
 		}
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			w.put(0, 32) // la queue FUN_142f21b10
 		}
 		br := LecteurSur(w.buf)

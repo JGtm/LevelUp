@@ -33,7 +33,8 @@ package replay
 // Explication structurelle cohérente mais invérifiable : comptés comme désaccords.
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -44,8 +45,9 @@ import (
 // production dérivée de l'enum d'armes (weaponv3, elle-même dérivée de filmshell.WeaponIDToName).
 // C'est la SEULE source de vérité sur ce qu'est une arme ici — pas de liste parallèle.
 func loadoutFamilies() map[uint32]bool {
-	m := make(map[uint32]bool, len(weaponv3.KnownWeaponHigh32))
-	for f := range weaponv3.KnownWeaponHigh32 {
+	connues := weaponv3.KnownWeaponHigh32Copie()
+	m := make(map[uint32]bool, len(connues))
+	for f := range connues {
 		m[f] = true
 	}
 	return m
@@ -88,11 +90,8 @@ func buildLoadouts(raw []types.KeyframeLoadout, origin, step uint64) []Loadout {
 	if len(out) == 0 {
 		return nil
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T != out[j].T {
-			return out[i].T < out[j].T
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b Loadout) int {
+		return cmp.Or(cmp.Compare(a.T, b.T), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out
 }

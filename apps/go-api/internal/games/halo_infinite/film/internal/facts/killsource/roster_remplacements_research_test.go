@@ -1,3 +1,5 @@
+//go:build research
+
 package killsource
 
 // roster_remplacements_research_test.go — L INSTRUMENT DU LOT 5.2b.1 : QUI LE ROSTER DU
@@ -31,6 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -210,14 +213,14 @@ func indicesLisibles(par map[int]int) string {
 		idx = append(idx, i)
 	}
 	sort.Ints(idx)
-	s := ""
+	var s strings.Builder
 	for _, i := range idx {
-		s += fmt.Sprintf("%d (x%d) ", i, par[i])
+		s.WriteString(fmt.Sprintf("%d (x%d) ", i, par[i]))
 	}
 	if len(idx) > 1 {
-		s += "DESACCORD"
+		s.WriteString("DESACCORD")
 	}
-	return s
+	return s.String()
 }
 
 // journaliserRoster : ce que le decodeur RETIENT aujourd hui.
@@ -252,7 +255,7 @@ func journaliserHorsRoster(t *testing.T, f *film) {
 	}
 	tbl := readFilmTable(f)
 	r := buildRoster(kf, loadBotMeta(f), opts.Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
-	tl, err := newTimeline(f)
+	tl, err := newTimeline(f, nil)
 	if err != nil {
 		t.Fatalf("timeline : %v", err)
 	}

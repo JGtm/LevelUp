@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // e191_origine_rapport_research_test.go — LOT 1.9.1 : LES TABLEAUX DE LA MESURE.
@@ -18,6 +20,7 @@ package replay
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -276,17 +279,18 @@ func e191Histo(poses []e191Pose, of func(e191Pose) float64) string {
 		vals = append(vals, v)
 	}
 	sort.Float64s(vals)
-	out := fmt.Sprintf("n=%d sans signal=%d", n, sans)
+	var out strings.Builder
+	out.WriteString(fmt.Sprintf("n=%d sans signal=%d", n, sans))
 	if len(vals) > 0 {
-		out += fmt.Sprintf(" min=%.1f p50=%.1f p90=%.1f max=%.1f",
-			vals[0], e191Quantile(vals, 0.5), e191Quantile(vals, 0.9), vals[len(vals)-1])
+		out.WriteString(fmt.Sprintf(" min=%.1f p50=%.1f p90=%.1f max=%.1f",
+			vals[0], e191Quantile(vals, 0.5), e191Quantile(vals, 0.9), vals[len(vals)-1]))
 	}
-	out += " | cumul :"
+	out.WriteString(" | cumul :")
 	for _, s := range e191SeuilsMS {
 		k := sort.SearchFloat64s(vals, s+1e-9)
-		out += fmt.Sprintf(" <=%gms:%d", s, k)
+		out.WriteString(fmt.Sprintf(" <=%gms:%d", s, k))
 	}
-	return out
+	return out.String()
 }
 
 // e191Quantile rend le quantile d une tranche DEJA TRIEE.

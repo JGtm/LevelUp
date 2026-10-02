@@ -36,6 +36,7 @@ package objectives
 import (
 	"sync"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -45,6 +46,9 @@ type ReplisALaConsultation struct {
 	mu        sync.Mutex
 	emissions map[cleDEmission]struct{}
 	instants  map[int]struct{}
+	// diag : les DIAGNOSTICS des lectures faites sous cet enregistreur (bornes de deroulage, serie
+	// non chronologique — lot J12.3, ADR 0034 D-4). L assemblage qui le porte les releve.
+	diag constat.Diagnostics
 }
 
 // cleDEmission : la serie (composant, cote, slot, manche) et l instant de l emission jetee.
@@ -53,6 +57,15 @@ type cleDEmission struct {
 	slot   int
 	round  int
 	timeMS int
+}
+
+// Diagnostics rend les diagnostics des lectures faites sous cet enregistreur (lot J12.3). nil
+// sur un enregistreur nil : les outils hors production n en recueillent pas.
+func (r *ReplisALaConsultation) Diagnostics() *constat.Diagnostics {
+	if r == nil {
+		return nil
+	}
+	return &r.diag
 }
 
 // noterEmissionJetee note une emission que le filtre de domaine jette (`repli_emission_hors_domaine_jetee`).

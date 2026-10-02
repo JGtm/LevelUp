@@ -34,7 +34,7 @@ func TestCandidatsAvecCarte_LaPlaceVaAuSuivant(t *testing.T) {
 		t.Fatalf("racine du depot : %v", err)
 	}
 	cartes := cartesDuTest{"b": {"Bazaar"}, "c": {"Forge Personnalisee"}, "d": {"Bazaar"}, "e": {"Bazaar"}}
-	deps, err := killcollector.CaptureDepuisCatalogue(racine, title.DefaultSlug, cartes)
+	deps, err := killcollector.CaptureDepuisCatalogue(context.Background(), racine, title.DefaultSlug, cartes)
 	if err != nil {
 		t.Fatalf("capture : %v", err)
 	}

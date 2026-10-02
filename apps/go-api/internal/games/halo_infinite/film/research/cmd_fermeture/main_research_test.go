@@ -10,6 +10,8 @@ package main
 //	go test -tags=research ./internal/games/halo_infinite/film/research/cmd_fermeture/
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,7 +73,7 @@ func TestSortieSousDataRefusee(t *testing.T) {
 	if err := preparerSortie(dir); err == nil {
 		t.Fatalf("%s accepte : le rapport doit s ecrire hors de data/", dir)
 	}
-	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+	if _, err := os.Stat(dir); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("%s a ete cree malgre le refus", dir)
 	}
 }

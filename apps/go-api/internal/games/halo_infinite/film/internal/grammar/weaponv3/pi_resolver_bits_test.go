@@ -36,7 +36,7 @@ func refBit(data []byte, total, p int) int {
 // refReadBits est `bitReader.readBits` d'avant : lecture bit a bit.
 func refReadBits(data []byte, total, bp, n int) uint64 {
 	var v uint64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v = (v << 1) | uint64(refBit(data, total, bp+i))
 	}
 	return v
@@ -99,7 +99,7 @@ func TestFindPattern64MatchesReference(t *testing.T) {
 	rng := rand.New(rand.NewSource(0x1701_B175))
 	const target = uint64(0x0123456789ABCDEF)
 	for _, size := range []int{9, 16, 24, 40, 41} {
-		for shift := 0; shift < 8; shift++ {
+		for shift := range 8 {
 			for _, atByte := range []int{0, 1, 3} {
 				buf := make([]byte, size)
 				rng.Read(buf)
@@ -156,7 +156,7 @@ func TestResolveXuidToPIMatchesReference(t *testing.T) {
 
 // writeBitsBE ecrit les n bits de poids faible de v a la position bit bp, MSB d'abord.
 func writeBitsBE(buf []byte, bp, n int, v uint64) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p := bp + i
 		bit := byte((v >> uint(n-1-i)) & 1)
 		mask := byte(1) << uint(7-(p&7))

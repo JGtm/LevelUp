@@ -31,7 +31,7 @@ func TestGwPadsClassRendToujoursLeMemeLacheurEntreExAequo(t *testing.T) {
 	// Trois slots dont une vie s'acheve AU MEME instant et A LA MEME distance : la regle ne les
 	// separe pas, et c'est exactement le cas qui tirait au sort.
 	slots := []uint32{556, 553, 601}
-	for tour := 0; tour < 50; tour++ {
+	for tour := range 50 {
 		lives := map[uint32][]equipLife{}
 		// L'ordre d'INSERTION change de tour en tour ; celui d'ITERATION change de lui-meme.
 		for i := range slots {

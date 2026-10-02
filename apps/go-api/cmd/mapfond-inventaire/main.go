@@ -139,7 +139,7 @@ func inventorie(ctx context.Context, chemins cheminsInventaire) ([]verdict, erro
 		slog.InfoContext(ctx, "noms d'asset lus", "assets", len(noms), "path", chemins.Metadata)
 	}
 
-	idx, err := replay.MapBackgroundIndexFor(chemins.Fonds)
+	idx, err := replay.MapBackgroundIndexFor(ctx, chemins.Fonds)
 	if err != nil {
 		return nil, fmt.Errorf("index des fonds : %w", err)
 	}

@@ -27,7 +27,6 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautA0Qualification -v
 
 import (
-	"context"
 	"math"
 	"os"
 	"sort"
@@ -117,7 +116,7 @@ func TestAssautA0Qualification(t *testing.T) {
 // a0RelevesScore publie les manches reelles et chaque increment du score de MODE par equipe.
 func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 	t.Helper()
-	recs, truncated := objectives.StatRecordsCtx(context.Background(), src, id)
+	recs, truncated, _ := objectives.StatRecordsBornes(src, id)
 	if truncated {
 		t.Logf("%s : lecture des enregistrements TRONQUEE — les releves de score sont partiels "+
 			"et cela se reporte au protocole", id)
@@ -147,7 +146,7 @@ func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 	}
 
 	// Increments du score de mode, PAR MANCHE (la forme que l'ecran affiche) puis en cumule.
-	parManche := objectives.SeriesByRound(recs, objectives.ModeScoreComponent, true, nil)
+	parManche := objectives.SeriesByRound(recs, objectives.ModeScoreComponent(), true, nil)
 	slots := make([]int, 0, len(parManche))
 	for s := range parManche {
 		slots = append(slots, s)
@@ -160,7 +159,7 @@ func a0RelevesScore(t *testing.T, id string, src *objDiskFilm) {
 			}
 		}
 	}
-	total := objectives.SeriesTotal(recs, objectives.ModeScoreComponent, true, nil)
+	total := objectives.SeriesTotal(recs, objectives.ModeScoreComponent(), true, nil)
 	for _, s := range slots {
 		pts := total[s]
 		if len(pts) == 0 {

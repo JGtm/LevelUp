@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -101,7 +102,7 @@ func TestActionsSansTrajectoirePubliéeSontQuandMemePubliees(t *testing.T) {
 		t.Fatalf("actions sans trajectoire = %d, attendu 1", n)
 	}
 	doc := ReplayDocument{Tracks: []Track{{XUID: "a"}}}
-	cov := attachObjectiveActions(&doc, Options{
+	cov := attachObjectiveActions(context.Background(), &doc, Options{
 		Objectives: []objectives.IdentifiedEvent{
 			ident(100, "a", objectives.StatFlagCaptures),
 			ident(200, "fantome", objectives.StatFlagReturns),

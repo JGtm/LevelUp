@@ -40,7 +40,7 @@ package grammar
 //
 //	CGO_ENABLED=0 TI47_FILM=<repo>/data/cache/film_chunks/7344d24f \
 //	  TI47_CACHE=<repo>/data/cache TI47_SHORT=7344d24f TI47_OBJTYPE=zone \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run TestTI47Annonces -v -timeout 60m
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestTI47Annonces -v -timeout 60m
 
 import (
 	"os"
@@ -237,7 +237,7 @@ func ti47Candidates(t *testing.T) []int {
 		return nil
 	}
 	var out []int
-	for _, part := range strings.Split(v, ",") {
+	for part := range strings.SplitSeq(v, ",") {
 		w, err := strconv.Atoi(strings.TrimSpace(part))
 		if err != nil || w <= 0 || w > ti47MaxDecalage {
 			t.Fatalf("%s = %q : largeur candidate invalide", ti47RunEnv, part)

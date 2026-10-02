@@ -110,7 +110,7 @@ func TestKillOpeningPersistPass_ReDecodeSupersede(t *testing.T) {
 }
 
 // TestKillOpeningPersistPass_PasseVideNeRetractePas — LA BORNE DE LA RÉTRACTATION (résidu 4.0b
-// du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md), assertée TELLE QU ELLE EST et non telle qu on
+// du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md), assertée TELLE QU ELLE EST et non telle qu on
 // l aimerait.
 //
 // Une passe B qui ne resout AUCUNE entame de tout le match n ecrit RIEN : ni ligne, ni

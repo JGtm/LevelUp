@@ -35,7 +35,6 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautA5Explosions -v -timeout 30m
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -88,7 +87,7 @@ func TestAssautA5Explosions(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache (%s) : %v — la mesure serait partielle", id, cache, err)
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+		recs, _, _ := objectives.StatRecordsBornes(src, id)
 		attendus := map[int]bool{}
 		for _, ms := range a5Explosions[id] {
 			attendus[ms] = true
@@ -179,7 +178,7 @@ func TestAssautA5PontIdentite(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
-		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
+		recs, _, _ := objectives.StatRecordsBornes(src, id)
 		deaths, err := grammar.ScanFilmDeaths(filepath.Join(cache, "film_chunks", id))
 		if err != nil {
 			t.Fatalf("%s : fil des morts illisible : %v", id, err)

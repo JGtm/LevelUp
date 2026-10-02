@@ -7,7 +7,7 @@ package replayartifacts
 // Jusqu'au 2026-09-05, TOUTE la chaîne du rejeu (le pont disque, la mise en file chez
 // l'ouvrier, le rattrapage du catalogue de cartes, la cuisson) tournait pour n'importe quel
 // titre : aucune clé de capability ne la gouvernait (registre
-// `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`, constats D1 et D3). La seule sonde de titre
+// `.ai/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`, constats D1 et D3). La seule sonde de titre
 // arrivait APRÈS la mise en file et APRÈS le rattrapage des cartes, et c'était un
 // `replaybuild.NewBuilder` — une dégradation par ABSENCE DE DONNÉE (« ce titre n'a pas de
 // catalogue de bornes »), pas une déclaration d'intention. Un titre sans décodeur de film y

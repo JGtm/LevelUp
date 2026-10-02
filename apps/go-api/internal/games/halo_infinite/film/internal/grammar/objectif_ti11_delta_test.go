@@ -69,7 +69,7 @@ package grammar
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11Delta -v -timeout 60m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11Delta -v -timeout 60m
 
 import (
 	"os"
@@ -140,7 +140,7 @@ func TestObjectifTi11DeltaChainage(t *testing.T) {
 			n, b.tailles[n], ti11Part(b.taillesChaine[n], b.tailles[n]))
 	}
 	t.Logf("PAR COMPOSANT PRESENT — l'ecart entre les deux colonnes DESIGNE la largeur fausse :")
-	for i := 0; i < ti11Composants; i++ {
+	for i := range ti11Composants {
 		if b.avec[i] == 0 {
 			continue
 		}
@@ -181,7 +181,7 @@ func ti11DeltaPayload(pay []byte, band map[uint32]bool, arch Archetype, b *ti11D
 				presents[id] = true
 			}
 		}
-		for i := 0; i < ti11Composants; i++ {
+		for i := range ti11Composants {
 			switch {
 			case presents[i] && chaine:
 				b.avec[i]++

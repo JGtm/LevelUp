@@ -5,6 +5,7 @@ package replay
 // de 500 lignes (CLAUDE.md regle 5). La doctrine reste en tete de coverage.go.
 
 import (
+	"context"
 	"log/slog"
 )
 
@@ -98,7 +99,7 @@ func (c *LayerCoverage) count(r rejectReason) {
 // RIEN (le calque se tait entièrement), et son alarme est émise à la source, là où la décision
 // se prend et où l'effectif est connu — `replaybuild.identifiedEvents`. L'ajouter ici ferait
 // journaliser deux fois le même refus.
-func (c LayerCoverage) warnIfLossy(layer string) {
+func (c LayerCoverage) warnIfLossy(ctx context.Context, layer string) {
 	if c.Available == 0 {
 		return
 	}
@@ -110,7 +111,7 @@ func (c LayerCoverage) warnIfLossy(layer string) {
 		if float64(cat.n)/float64(c.Available) < rejectSampleThreshold {
 			continue
 		}
-		slog.Warn("rejeu : rejets au-dessus du seuil",
+		slog.WarnContext(ctx, "rejeu : rejets au-dessus du seuil",
 			"calque", layer, "cause", cat.name, "rejetes", cat.n, "disponibles", c.Available,
 			"rattaches", c.Attached)
 	}

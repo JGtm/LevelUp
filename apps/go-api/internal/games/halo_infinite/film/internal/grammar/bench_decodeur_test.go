@@ -24,8 +24,8 @@ package grammar
 //
 // # LA LIGNE DE BASE
 //
-//	go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ \
-//	  > internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt
+//	go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ \
+//	  > internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt
 //
 // Comparaison a chaque cloture de M2, SUR LA MEDIANE (ce que `benchstat` compare) :
 //
@@ -35,8 +35,8 @@ package grammar
 // ecart suit la charge de la machine ; un budget de +10 % dessus ferait rougir des lots innocents
 // et laisserait passer de vrais ralentissements. Detail : `testdata/bench_baseline.txt`.
 //
-//	go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/filmdec/ > apres.txt
-//	benchstat internal/games/halo_infinite/film/filmdec/testdata/bench_baseline.txt apres.txt
+//	go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ > apres.txt
+//	benchstat internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt apres.txt
 
 import (
 	"path/filepath"

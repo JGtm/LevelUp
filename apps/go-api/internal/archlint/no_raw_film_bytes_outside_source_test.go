@@ -88,7 +88,7 @@ package archlint
 //
 // # L INVENTAIRE RE-MESURE, ET L ECART AVEC LA NOTE DE PREPARATION
 //
-// `.ai/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §1.1 annonce 6 lecteurs de bits, 9 paquets et
+// `.ai/V7.5/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §1.1 annonce 6 lecteurs de bits, 9 paquets et
 // environ 120 sites. Re-mesure du 2026-09-17 sur `24b67e339`, par ce balayage : **77 couples
 // (fichier, motif) de production**, tous mis en allowlist ce jour-la. Les deux comptes ne mesurent
 // pas la meme chose (la note compte les SITES, ce ratchet compte les couples fichier x motif,

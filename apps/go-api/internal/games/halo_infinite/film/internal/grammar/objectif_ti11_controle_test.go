@@ -34,7 +34,7 @@ import (
 //
 // Sans ce controle, tout ce qui precede se compare a un chiffre venu d'ailleurs.
 //
-//	go test ./internal/games/halo_infinite/film/filmdec/ -run ObjectifTi11DeltaControleTi13 -v -timeout 40m
+//	go test ./internal/games/halo_infinite/film/internal/grammar/ -run ObjectifTi11DeltaControleTi13 -v -timeout 40m
 func TestObjectifTi11DeltaControleTi13(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {

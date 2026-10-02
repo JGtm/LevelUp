@@ -2,6 +2,7 @@ package replay
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"strings"
 	"testing"
@@ -142,7 +143,7 @@ func journalDeCuisson(t *testing.T, recs []types.StatRecord, manches int) string
 	precedent := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&tampon, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	defer slog.SetDefault(precedent)
-	logRoundBounds("test", &ScoreInput{Records: recs}, &ScoreCoverage{Rounds: manches})
+	logRoundBounds(context.Background(), "test", &ScoreInput{Records: recs}, &ScoreCoverage{Rounds: manches})
 	return tampon.String()
 }
 

@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // victime_degat_recu_research_test.go — LOT 1 : le bipède (ti=35) réplique-t-il, CÔTÉ VICTIME,
@@ -223,10 +225,7 @@ func TestVictimeDeadStateEstMortPasCoup(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument saute", lot1TrameFilmEnv)
 	}
-	n := CountFilmChunks(dir)
-	if n > deltaWitnessChunks {
-		n = deltaWitnessChunks
-	}
+	n := min(CountFilmChunks(dir), deltaWitnessChunks)
 	chunks := make([]int, 0, n)
 	for c := 1; c <= n; c++ {
 		chunks = append(chunks, c)

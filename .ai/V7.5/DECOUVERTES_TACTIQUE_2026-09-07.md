@@ -176,4 +176,4 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
   le rejeu au bon instant, meme pour `temps`/`routes` ; corrige dans ce meme lot
   (`openAtFrame` sur `ReplayCanvas`/`useReplayPlayback`). Detail :
   `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`. Reste ouvert : le parc d'artefacts anterieur au
-  schema 49 n'a pas ce calage — recuisson necessaire (`.ai/V7.5/REGISTRE_REPORTS.md`).
+  schema 49 n'a pas ce calage — recuisson necessaire (`.ai/REGISTRE_REPORTS.md`).

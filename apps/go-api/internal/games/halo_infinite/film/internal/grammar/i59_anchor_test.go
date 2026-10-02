@@ -43,7 +43,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 I59A_FILM=<repo>/data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestI59Anchor' -timeout 60m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestI59Anchor' -timeout 60m -v
 
 import (
 	"fmt"
@@ -53,6 +53,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -343,11 +344,11 @@ func i59aRenderInt(h map[int]int) string {
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)
-	out := ""
+	var out strings.Builder
 	for _, k := range keys {
-		out += fmt.Sprintf("%d:%d ", k, h[k])
+		out.WriteString(fmt.Sprintf("%d:%d ", k, h[k]))
 	}
-	return out
+	return out.String()
 }
 
 // ---------------------------------------------------------------------------
@@ -507,7 +508,7 @@ func TestI59AnchorTemplate(t *testing.T) {
 					continue
 				}
 				bits := make([]byte, fieldLen)
-				for i := 0; i < fieldLen; i++ {
+				for i := range fieldLen {
 					bits[i] = byte(uint32(source.BitsStricts(pay, at+i, 1)))
 				}
 				classes[fieldLen] = append(classes[fieldLen], bits)
@@ -522,7 +523,7 @@ func TestI59AnchorTemplate(t *testing.T) {
 	for _, l := range lens {
 		rows := classes[l]
 		tpl := make([]byte, l)
-		for i := 0; i < l; i++ {
+		for i := range l {
 			ones := 0
 			for _, r := range rows {
 				ones += int(r[i])
@@ -536,22 +537,19 @@ func TestI59AnchorTemplate(t *testing.T) {
 				tpl[i] = '.'
 			}
 		}
-		grouped := ""
+		var grouped strings.Builder
 		for i := 0; i < l; i += 8 {
-			hi := i + 8
-			if hi > l {
-				hi = l
-			}
-			grouped += string(tpl[i:hi]) + " "
+			hi := min(i+8, l)
+			grouped.WriteString(string(tpl[i:hi]) + " ")
 		}
-		t.Logf("classe %3d bits (%d corps) : %s", l, len(rows), grouped)
+		t.Logf("classe %3d bits (%d corps) : %s", l, len(rows), grouped.String())
 	}
 }
 
 // i59aBits rend n bits en clair depuis la position bit `at`, groupés par 8.
 func i59aBits(pay []byte, at, n int) string {
 	out := make([]byte, 0, n+n/8)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p := at + i
 		if p >= len(pay)*8 {
 			break
@@ -610,7 +608,7 @@ func TestI59AnchorControls(t *testing.T) {
 	// carte). C'est elle qu'on teste d'abord — les vecteurs dir/mag ne servent que si la
 	// position ne porte pas l'ancre.
 	i59aPosVerdict(t, s, wr, tracks, box, events, pairs)
-	for k := 0; k < 3; k++ {
+	for k := range 3 {
 		slope, n := i59aFitK(t, tracks, pairs, k)
 		if n >= 4 && slope > 0 {
 			i59aVerdictK(t, tracks, events, pairs, k, slope, box)
@@ -626,7 +624,7 @@ func TestI59AnchorControls(t *testing.T) {
 // carte (mêmes largeurs que le découpage i0 du film — vérifié par i59aWorldRange).
 func i59aDequantPos(q [3]uint32, s eaFilmSetup, wr profile.Vec3Range) [3]float64 {
 	var out [3]float64
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		out[ax] = float64(DequantBipedAxis(q[ax], ax, s.lay, wr))
 	}
 	return out
@@ -838,7 +836,7 @@ func i59aTracks(pos []BipedPosition) map[uint32][]BipedPosition {
 func i59aBox(pos []BipedPosition) (box [3][2]float32) {
 	for i, p := range pos {
 		v := [3]float32{p.X, p.Y, p.Z}
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			if i == 0 || v[ax] < box[ax][0] {
 				box[ax][0] = v[ax]
 			}
@@ -958,7 +956,7 @@ func i59aFitK(t *testing.T, tracks map[uint32][]BipedPosition, pairs []i59aPair,
 			continue
 		}
 		var r float64
-		for ax := 0; ax < 3; ax++ {
+		for ax := range 3 {
 			d := m1*float64(d1[ax]) - m2*float64(d2[ax]) - e[ax]
 			r += d * d
 		}
@@ -1084,7 +1082,7 @@ func i59aDist(a [3]float64, p BipedPosition) float64 {
 }
 
 func i59aInBox(a [3]float64, box [3][2]float32) bool {
-	for ax := 0; ax < 3; ax++ {
+	for ax := range 3 {
 		lo, hi := float64(box[ax][0]), float64(box[ax][1])
 		margin := (hi - lo) * 0.05
 		if a[ax] < lo-margin || a[ax] > hi+margin {

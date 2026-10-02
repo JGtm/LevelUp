@@ -74,7 +74,7 @@ func TestFilmMajorVersionFilmSansRegistre(t *testing.T) {
 // TestFilmMajorVersionCacheReel lit la version des films du cache local. GARDE PAR ENV : la CI n'a
 // pas de cache film.
 //
-//	FILMDEC_CACHE_CHUNKS=<racine>/film_chunks go test ./internal/games/halo_infinite/film/filmdec/ -run TestFilmMajorVersionCacheReel -v
+//	FILMDEC_CACHE_CHUNKS=<racine>/film_chunks go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestFilmMajorVersionCacheReel -v
 //
 // Les trois attendus sont ceux verifies sur pieces le 2026-09-12 (cf. l'en-tete du fichier).
 func TestFilmMajorVersionCacheReel(t *testing.T) {

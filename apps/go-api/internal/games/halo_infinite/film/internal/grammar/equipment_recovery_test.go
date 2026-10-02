@@ -225,7 +225,7 @@ func TestMasqueDenseOrdreDeBitsFige(t *testing.T) {
 // ecrisBits pose v sur n bits MSB-first à la position at — l'inverse de readBitsAt, pour
 // fabriquer des motifs d'essai lisibles.
 func ecrisBits(pay []byte, at, n int, v uint32) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if v>>(uint(n-1-i))&1 == 1 {
 			pay[(at+i)/8] |= 1 << (7 - uint((at+i)%8))
 		}

@@ -107,7 +107,7 @@ func TestEtatVivantOddballPortage(t *testing.T) {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
 	identity := objectives.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
-	perso := objectives.SeriesTotal(recs, objectives.PersonalScoreComponent, false, nil)
+	perso := objectives.SeriesTotal(recs, objectives.PersonalScoreComponent(), false, nil)
 	t.Logf("%s : pont %d slot(s) nomme(s) ; score personnel sur %d slot(s)",
 		id, len(identity), len(perso))
 	if len(perso) < 2 {
@@ -221,10 +221,7 @@ func d4Mesure(t *testing.T, id string, trous, libres []d4Intervalle,
 		t.Logf("NON EXPLOITABLE %s : aucun trou d'au moins %d ms. NI POUR NI CONTRE.", id, d4TrancheMS)
 		return
 	}
-	pire := tem
-	if joueur > pire {
-		pire = joueur
-	}
+	pire := max(joueur, tem)
 	t.Logf("SIGNAL %s : %d/%d = %.1f %% des trous a porteur UNIQUE (seuil %.0f %%) ; temoin le "+
 		"plus DEFAVORABLE %s (seuil <= %.0f %%)", id, mes.unSeul, mes.exploitables,
 		100*mes.taux(), 100*d4PartMinimale, d4Part(pire, essais), 100*d4TemoinMax)
@@ -284,7 +281,7 @@ func d4CroitPartout(pts []types.ScorePoint, iv d4Intervalle) bool {
 	if n == 0 {
 		return false
 	}
-	for i := int64(0); i < n; i++ {
+	for i := range n {
 		debut := iv.debutMS + i*d4TrancheMS
 		fin := debut + d4TrancheMS
 		if i == n-1 {

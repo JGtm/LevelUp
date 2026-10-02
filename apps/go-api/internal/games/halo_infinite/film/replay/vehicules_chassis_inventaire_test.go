@@ -1,7 +1,7 @@
 package replay
 
 // vehicules_chassis_inventaire_test.go — L INVENTAIRE DES CHASSIS DE VEHICULE RENCONTRES,
-// mesure AVANT de coder le lot 1.9.9 (plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`).
+// mesure AVANT de coder le lot 1.9.9 (plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`).
 //
 // CE QU IL MESURE, ET SUR QUOI. Les ARTEFACTS DE REJEU DEJA CUITS
 // (`data/cache/replays/{slug}/*.json`), en LECTURE SEULE : aucun film n est redecode, aucune
@@ -108,7 +108,7 @@ func TestInventaireChassisDesArtefacts(t *testing.T) {
 func inventaireFichiers(t *testing.T, dir string) (fichiers []string, manquants []string) {
 	t.Helper()
 	if ids := strings.TrimSpace(os.Getenv(parcIDsEnv)); ids != "" {
-		for _, raw := range strings.Split(ids, ",") {
+		for raw := range strings.SplitSeq(ids, ",") {
 			id := strings.TrimSpace(raw)
 			if id == "" {
 				continue

@@ -141,7 +141,7 @@ func traiter(racine, id string, opt grenadeids.Options, rg reglages) error {
 // decouper rend les identifiants non vides de la liste.
 func decouper(v string) []string {
 	var out []string
-	for _, p := range strings.Split(v, ",") {
+	for p := range strings.SplitSeq(v, ",") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}

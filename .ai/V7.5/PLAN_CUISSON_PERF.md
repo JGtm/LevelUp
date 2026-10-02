@@ -2355,7 +2355,7 @@ main dans le nouveau fichier, jamais reintroduit dans l'ancienne forme.
 | `sync/replayartifacts/cuisson.go` | apres `b.construits++`, lire `t0FilmMs` sur l'artefact RANGE et l'empiler dans `bilanCuisson.t0Film` (report en base a la fin du lot, cf. `t0film.go`) | Le lot 5 a extrait `cuireUnMatch` de `buildAll` : le geste amont est rejoue LA, sur `out.stored.Path` (notre `storedOne{stored, dur, peak}` au lieu du `stored` nu de l'amont). Le champ `t0Film` du bilan et le `reporterT0Film` d'`artifacts.go` se sont fusionnes seuls. |
 | `.ai/thought_log.md` | deux blocs d'entrees inseres aux memes ancres (tete de fichier, et une ancre au milieu) | UNION des deux, nos entrees en tete de chaque bloc puis celles de l'amont — aucune entree perdue des deux cotes. Le separateur `---` en double laisse par le merge a ete supprime (meme defaut que le commit amont `63583b45e`). |
 
-`.ai/V7.5/REGISTRE_REPORTS.md` a fusionne seul en UNION (nos trois clotures + les lignes de
+`.ai/REGISTRE_REPORTS.md` a fusionne seul en UNION (nos trois clotures + les lignes de
 l'amont) — verifie ligne a ligne.
 
 **DEUX RUPTURES DE COMPILATION LAISSEES PAR L'AUTO-MERGE**, toutes deux dans des tests de recherche

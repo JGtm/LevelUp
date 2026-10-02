@@ -23,7 +23,7 @@ package grammar
 //
 //	$env:CGO_ENABLED=0
 //	$env:ZONE_FILM="C:/Users/Guillaume/Projects/LevelUp/data/cache/film_chunks/7344d24f"
-//	go test -count=1 -run TestTi13VariantLotCbis -v ./internal/games/halo_infinite/film/filmdec/
+//	go test -count=1 -run TestTi13VariantLotCbis -v ./internal/games/halo_infinite/film/internal/grammar/
 
 import (
 	"fmt"

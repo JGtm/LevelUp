@@ -33,10 +33,12 @@ package replay
 // que le canal possède, et il vient d'un relevé, pas d'un modèle.
 
 import (
+	"cmp"
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
-	"sort"
+	"slices"
 )
 
 // abilityImpulseEpisodeGapUS : deux lectures du même slot séparées de moins d'une seconde
@@ -280,11 +282,8 @@ type abilityImpulseEpisode struct {
 func foldAbilityImpulses(reads []types.AbilityImpulse) []abilityImpulseEpisode {
 	ordered := make([]types.AbilityImpulse, len(reads))
 	copy(ordered, reads)
-	sort.SliceStable(ordered, func(i, j int) bool {
-		if ordered[i].Slot != ordered[j].Slot {
-			return ordered[i].Slot < ordered[j].Slot
-		}
-		return ordered[i].TimestampUS < ordered[j].TimestampUS
+	slices.SortStableFunc(ordered, func(a, b types.AbilityImpulse) int {
+		return cmp.Or(cmp.Compare(a.Slot, b.Slot), cmp.Compare(a.TimestampUS, b.TimestampUS))
 	})
 	last := map[uint32]uint64{}
 	out := make([]abilityImpulseEpisode, 0, len(ordered))
@@ -299,11 +298,8 @@ func foldAbilityImpulses(reads []types.AbilityImpulse) []abilityImpulseEpisode {
 		last[r.Slot] = r.TimestampUS
 		out = append(out, abilityImpulseEpisode{slot: r.Slot, tsUS: r.TimestampUS})
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].tsUS != out[j].tsUS {
-			return out[i].tsUS < out[j].tsUS
-		}
-		return out[i].slot < out[j].slot
+	slices.SortStableFunc(out, func(a, b abilityImpulseEpisode) int {
+		return cmp.Or(cmp.Compare(a.tsUS, b.tsUS), cmp.Compare(a.slot, b.slot))
 	})
 	return out
 }
@@ -370,8 +366,8 @@ func (idx *abilityRankIndex) rankInLife(slot uint32, at uint64) (int, bool) {
 // logAbilityImpulseCoverage sort la couverture du calque. Un journal qui ne dirait que les
 // publiées laisserait croire que le canal n'a rien refusé — or il refuse deux choses de
 // natures différentes, et c'est justement ce qu'il faut pouvoir lire.
-func logAbilityImpulseCoverage(cov AbilityImpulseCoverage) {
-	slog.Info("rejeu : impulsions de capacite",
+func logAbilityImpulseCoverage(ctx context.Context, cov AbilityImpulseCoverage) {
+	slog.InfoContext(ctx, "rejeu : impulsions de capacite",
 		"lectures", cov.Reads, "episodes", cov.Episodes, "publiees", cov.Published,
 		"sansIdentite", cov.NoIdentity, "familleNonMesuree", cov.OtherFamily,
 		"attributionIndisponible", cov.NoResolver,

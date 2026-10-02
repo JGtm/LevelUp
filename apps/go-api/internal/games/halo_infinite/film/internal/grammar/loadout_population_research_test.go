@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // loadout_population_research_test.go — POURQUOI LA PREDICTION NE BOUGE PAS.

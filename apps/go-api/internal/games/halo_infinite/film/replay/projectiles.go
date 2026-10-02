@@ -1,8 +1,9 @@
 package replay
 
 import (
+	"cmp"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
-	"sort"
+	"slices"
 )
 
 // projectiles.go — TRAJECTOIRES DE PROJECTILE projetées sur la grille du rejeu.
@@ -47,7 +48,7 @@ type Projectile struct {
 // plutôt X et le bit plus bas (étendue / 2^7 majoritaire).
 //
 // LA CAUSE EST EN AMONT, dans la déquantification (`grammar`), et elle N'EST PAS corrigée ici :
-// elle est caractérisée (`.ai/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`). Ce qui est corrigé
+// elle est caractérisée (`.ai/V7.5/RAPPORT_LOT_B_DECODEUR_FORK_2026-09-11.md`). Ce qui est corrigé
 // ici est la PUBLICATION d'une position fausse, qui faisait tracer au client une droite en
 // travers de toute la carte, à 300 m/s et plus.
 //
@@ -126,20 +127,15 @@ func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64) ([]Pr
 	// pas l'exception. Départager par la première position publiée puis par la longueur rend
 	// l'ordre indépendant de celui des `tracks` reçues ; l'index brut ferme le dernier ex æquo
 	// pour que le LIEN publié par un lancer ne dépende pas non plus du rang d'arrivée.
-	sort.Slice(kept, func(i, j int) bool {
-		a, b := kept[i].p, kept[j].p
-		switch {
-		case a.T0 != b.T0:
-			return a.T0 < b.T0
-		case a.P[0][1] != b.P[0][1]:
-			return a.P[0][1] < b.P[0][1]
-		case a.P[0][2] != b.P[0][2]:
-			return a.P[0][2] < b.P[0][2]
-		case len(a.P) != len(b.P):
-			return len(a.P) < len(b.P)
-		default:
-			return kept[i].raw < kept[j].raw
-		}
+	slices.SortFunc(kept, func(x, y withRaw) int {
+		a, b := x.p, y.p
+		return cmp.Or(
+			cmp.Compare(a.T0, b.T0),
+			cmp.Compare(a.P[0][1], b.P[0][1]),
+			cmp.Compare(a.P[0][2], b.P[0][2]),
+			cmp.Compare(len(a.P), len(b.P)),
+			cmp.Compare(x.raw, y.raw),
+		)
 	})
 	out := make([]Projectile, len(kept))
 	pubByRaw := make(map[int]int, len(kept))

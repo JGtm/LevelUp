@@ -690,7 +690,7 @@ cliquable sans pause)._
       restent `[ ]` : ils appartiennent à l'utilisateur, pas à l'exécution).
 - [x] `.ai/thought_log.md` : entrée datée (règle CLAUDE.md, obligatoire avant commit) — tenue
       par le superviseur dans le checkout principal, mise à jour à chaque lot.
-- [x] Tout report éventuel inscrit à `.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de
+- [x] Tout report éventuel inscrit à `.ai/REGISTRE_REPORTS.md` avec sa condition de
       reprise : 4 entrées (2026-09-07) — `useReplaySound` à 7 paramètres ; deux règles d'encre
       pour un camp inconnu (fil / frise) ; banc `replayModel.bench.test.ts` hors dépôt ;
       `header.outcome_label` en FR codé en dur côté Go (pré-existant, révélé par le menu).

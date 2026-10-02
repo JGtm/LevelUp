@@ -31,7 +31,7 @@ package grammar
 // USAGE (depuis apps/go-api) :
 //
 //	CGO_ENABLED=0 BRIDGE_FILM=C:/.../data/cache/film_chunks/000d5950 \
-//	  go test ./internal/games/halo_infinite/film/filmdec/ -run '^TestPlayerChannelsPhase0$' -timeout 30m -v
+//	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run '^TestPlayerChannelsPhase0$' -timeout 30m -v
 
 import (
 	"os"

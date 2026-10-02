@@ -1,9 +1,11 @@
 package replay
 
 import (
+	"cmp"
+	"context"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
-	"sort"
+	"slices"
 )
 
 // inventory.go — L'INVENTAIRE porté à la grille du rejeu.
@@ -190,11 +192,8 @@ func buildInventory(raw []types.KeyframeInventory, origin, step uint64) ([]Inven
 	if len(out) == 0 {
 		return nil, droppedBeforeOrigin
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T != out[j].T {
-			return out[i].T < out[j].T
-		}
-		return out[i].Slot < out[j].Slot
+	slices.SortStableFunc(out, func(a, b Inventory) int {
+		return cmp.Or(cmp.Compare(a.T, b.T), cmp.Compare(a.Slot, b.Slot))
 	})
 	return out, droppedBeforeOrigin
 }
@@ -273,13 +272,13 @@ func buildInventoryCoverage(decoded []types.KeyframeInventory, built, published 
 // de couverture, et son ABSENCE est l'information. Une tranche VIDE mais NON NULLE est l'autre
 // cas — la lecture a eu lieu et n'a rien rendu —, et celle-là publie bien {0,0,0,0}. Confondre
 // les deux fait passer une panne de décodage pour un film sans inventaire.
-func attachInventoryCoverage(doc *ReplayDocument, decoded []types.KeyframeInventory, built []Inventory, droppedBeforeOrigin int) {
+func attachInventoryCoverage(ctx context.Context, doc *ReplayDocument, decoded []types.KeyframeInventory, built []Inventory, droppedBeforeOrigin int) {
 	if decoded == nil || doc.Coverage == nil {
 		return
 	}
 	cov := buildInventoryCoverage(decoded, built, doc.Inventory, droppedBeforeOrigin)
 	doc.Coverage.Inventory = cov
-	slog.Info("rejeu : couverture inventaire",
+	slog.InfoContext(ctx, "rejeu : couverture inventaire",
 		"decodees", cov.Decoded,
 		"ecarteesAvantOrigine", cov.DroppedBeforeOrigin,
 		"ecarteesSansPiste", cov.Unpublished,

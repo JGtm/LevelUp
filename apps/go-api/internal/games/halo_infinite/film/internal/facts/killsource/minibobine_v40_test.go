@@ -5,7 +5,7 @@ package killsource
 // # LE DEFAUT QU IL FERME
 //
 // Le correctif du 2026-09-12 fait LIRE la version du film dans l en-tete de son registre au lieu
-// de passer 0 en dur au parseur d events (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Revue
+// de passer 0 en dur au parseur d events (.ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Revue
 // adversariale du meme jour, constat P1-1 : REPASSER 0 a la place de `f.majorVersion` dans
 // [loadKillFeed] laissait toute la CI verte. La raison est mecanique — la seule bobine versionnee
 // etait `minibobine_000d5950`, un film de version 41, et sur une version >= 41 le decoupage 0 et

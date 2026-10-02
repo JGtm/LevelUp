@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // registre_events_research_test.go — LOT D1 : Y A-T-IL UNE TABLE DE NOMS D'EVENEMENTS DANS LE

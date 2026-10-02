@@ -178,7 +178,7 @@ func (o *Observation) publishObjective(f ObjectiveField, values ...uint64) {
 // signifie donc « pas de minuteur » (cf. ObjectiveTimerValue).
 func consumeObjectiveTimers(br *Lecteur) {
 	vals := make([]uint64, 0, objectiveTimerCount)
-	for i := 0; i < objectiveTimerCount; i++ {
+	for range objectiveTimerCount {
 		vals = append(vals, br.ReadBits(objectiveTimerBits))
 	}
 	br.obs.publishObjective(ObjectiveFieldTimers, vals...)
@@ -188,7 +188,7 @@ func consumeObjectiveTimers(br *Lecteur) {
 // (FUN_142ed1a78 -> FUN_140dc6248, 0x100 niveaux). Consomme sans publier : le camp d'un objectif
 // se lit deja par des voies mesurees, et une couleur brute n'aurait pas de consommateur.
 func consumeObjectiveColor(br *Lecteur) {
-	for i := 0; i < objectiveColorChannels; i++ {
+	for range objectiveColorChannels {
 		br.ReadBits(objectiveColorChannelBits)
 	}
 }

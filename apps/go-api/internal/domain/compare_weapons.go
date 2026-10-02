@@ -1,5 +1,5 @@
 // Package domain — compare_weapons.go : LE PROFIL D'ARMES DU FACE-À-FACE
-// (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+// (plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
 //
 // # DEUX FAMILLES DE TYPES, ET ELLES NE SE CONFONDENT PAS
 //

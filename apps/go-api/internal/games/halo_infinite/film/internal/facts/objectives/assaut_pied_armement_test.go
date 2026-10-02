@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // assaut_pied_armement_test.go — LE PIED DE FILM D'ASSAUT : RECENSEMENT DES INDICES, puis la
@@ -243,7 +245,7 @@ func TestAssautPiedArmementFenetre(t *testing.T) {
 		// PASSE 1 — le plancher, sur des instants quelconques du meme pied. Il se mesure sur
 		// TOUS les films, y compris One Bomb : c'est une propriete de densite du flux.
 		tmin, tmax := blocs[0].t, blocs[len(blocs)-1].t
-		for i := 0; i < apTiragesPlancher; i++ {
+		for range apTiragesPlancher {
 			if tmax <= tmin {
 				break
 			}

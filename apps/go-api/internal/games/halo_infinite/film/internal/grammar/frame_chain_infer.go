@@ -237,7 +237,7 @@ func (c *chainCtx) endOfFrameConfirms(pos int) bool {
 	}
 	br := LecteurSur(c.buf)
 	br.Skip(pos)
-	for i := 0; i < rem; i++ {
+	for range rem {
 		if br.ReadBit() {
 			return false
 		}
@@ -378,10 +378,7 @@ func resolveAlignment(c *chainCtx, order []int) (winEnd int, immediate, ok bool)
 	// to collect 2 then 3 confirmations (flush-end counts as final). A rung that
 	// eliminates EVERY candidate is skipped rather than taken as evidence (short
 	// frames often cannot satisfy it at all).
-	c.minComps = chainConfirmMinComps
-	if c.minComps < 1 {
-		c.minComps = 1
-	}
+	c.minComps = max(chainConfirmMinComps, 1)
 	for nc := 1; nc <= 3 && len(cands) > 1; nc++ {
 		c.needConfirms = nc
 		next := confirmedEnds(c, cands, chainMaxDepth-1, chainMaxRecords)

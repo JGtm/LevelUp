@@ -1,3 +1,5 @@
+//go:build research
+
 package grammar
 
 // f0_103_pieces_research_test.go — LOT F.0, QUESTION 4 : LA PIECE ENGENDREE.

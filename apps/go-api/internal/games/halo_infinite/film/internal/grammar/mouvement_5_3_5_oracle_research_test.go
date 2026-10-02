@@ -135,10 +135,7 @@ func m535Distribution(t *testing.T, rec *m535Rec) {
 	t.Logf("VITESSE AU SOL : %d lectures · %s", len(sol), m535Quant(sol))
 	classes := make([]int, 26) // 0..24 m/s par pas de 1, la derniere = >= 25
 	for _, x := range sol {
-		c := int(x)
-		if c > 25 {
-			c = 25
-		}
+		c := min(int(x), 25)
 		classes[c]++
 	}
 	var parts []string

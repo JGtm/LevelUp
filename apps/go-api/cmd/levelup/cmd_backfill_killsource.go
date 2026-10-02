@@ -361,12 +361,13 @@ func passeDesFilms(
 	// seuls chemins par lesquels cette passe parle a la base. A tout instant, au plus un ouvrier
 	// y parle : ADR 0013 est tenue par une piece, plus par la forme de la boucle.
 	porte := killcollector.NouvellePorteDeLaBase()
-	// CAPTURE DES POSITIONS (G.2bis), BEST-EFFORT : catalogue de bornes illisible ou metadata
-	// indisponible degrade en « positions desactivees » (le collecteur continue sans elles, la
-	// passe des morts/tirs n en depend pas). ACTIVEE PAR DEFAUT ici, PAS derriere un flag CLI —
+	// CAPTURE DES POSITIONS (G.2bis) : elle porte la resolution de carte, OBLIGATOIRE au decodage
+	// depuis le 2026-09-27. Metadata indisponible : cartes resolues sans traduction d asset ;
+	// catalogue de bornes illisible : aucun film ne se decode, chacun est mis de cote et compte
+	// (cf. positionCaptureDeps). ACTIVEE PAR DEFAUT ici, PAS derriere un flag CLI —
 	// c est la seule commande de backfill de ce producteur, et une feature OFF « pour plus tard »
 	// est l anti-pattern que CLAUDE.md interdit (regle 11) : la capture est prete, elle capture.
-	capture, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db, porte)
+	capture, cleanupPositions := positionCaptureDeps(ctxTravail, cfg, o.titleSlug, db, porte)
 	defer cleanupPositions()
 
 	collecteur := collecteurHorsLigne(cache, db, porte, caps, capture).AvecArretDoux(ctx)

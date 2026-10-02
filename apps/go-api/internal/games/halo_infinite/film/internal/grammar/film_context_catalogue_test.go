@@ -30,7 +30,7 @@ import (
 	"testing"
 )
 
-// cheminCatalogueBornes : le catalogue versionne, depuis `internal/games/halo_infinite/film/filmdec`.
+// cheminCatalogueBornes : le catalogue versionne, depuis `internal/games/halo_infinite/film/internal/grammar`.
 func cheminCatalogueBornes() string {
 	return filepath.Join("..", "..", "..", "..", "..", "..", "..", "..", "data", "titles", "halo_infinite",
 		"reference", "map_quant_bounds.json")

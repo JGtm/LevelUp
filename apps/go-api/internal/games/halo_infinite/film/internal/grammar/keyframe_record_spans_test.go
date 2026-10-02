@@ -9,7 +9,7 @@ import "testing"
 // kfSpanEcrire pose `n` bits de `v` à la position `pos` dans `buf` (MSB d'abord — la même
 // convention que kfReadBits).
 func kfSpanEcrire(buf []byte, pos, n int, v uint64) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		bit := (v >> uint(n-1-i)) & 1
 		p := pos + i
 		if idx := p >> 3; idx < len(buf) {

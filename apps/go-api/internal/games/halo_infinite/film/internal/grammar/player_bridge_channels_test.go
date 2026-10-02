@@ -67,7 +67,7 @@ func pbHeldWeaponCensus(t *testing.T, in pbInputs) {
 		parts = append(parts, fmt.Sprintf("i%d:%d", i, in.chain.BipedMask[i]))
 	}
 	top := 0
-	for i := 0; i < len(in.chain.BipedMask); i++ {
+	for i := range len(in.chain.BipedMask) {
 		if in.chain.BipedMask[i] > top {
 			top = in.chain.BipedMask[i]
 		}

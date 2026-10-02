@@ -32,6 +32,7 @@ package replaybuild
 // generation d'un artefact.
 
 import (
+	"context"
 	"log/slog"
 	"strings"
 
@@ -46,15 +47,15 @@ import (
 // carte peut etre absente du catalogue, y figurer SANS points etablis (sautee pour derive de
 // source), ou y figurer avec des points etablis dont le nombre est zero. Les trois se
 // distinguent, et le client ne peut lire une absence d'origine qu'en les distinguant.
-func (b *Builder) spawnPoints(matchID, mapID string, mapNames []string,
+func (b *Builder) spawnPoints(ctx context.Context, matchID, mapID string, mapNames []string,
 ) ([]replay.MapSpawnPoint, string) {
-	cat := b.padsCatalog()
+	cat := b.padsCatalog(ctx)
 	if cat == nil {
 		return nil, replay.SpawnPointsMapAbsent
 	}
 	entry, ok := cat.Maps[mapID]
 	if !ok && mapID != "" {
-		slog.Debug("replaybuild: carte hors catalogue des socles — ramassages sans origine",
+		slog.DebugContext(ctx, "replaybuild: carte hors catalogue des socles — ramassages sans origine",
 			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
 	}
 	// REPLI PAR NOM PUBLIC, et il a un usage precis : la CLI `replay-build` cuit un film a
@@ -83,7 +84,7 @@ func (b *Builder) spawnPoints(matchID, mapID string, mapNames []string,
 		}
 	}
 	if !ok {
-		slog.Debug("replaybuild: carte introuvable au catalogue des socles (ni map_id ni nom) "+
+		slog.DebugContext(ctx, "replaybuild: carte introuvable au catalogue des socles (ni map_id ni nom) "+
 			"— aucun ramassage ne pourra etre `spawner`",
 			"map_id", mapID, "noms", mapNames, "match_id", matchID, "titleSlug", b.titleSlug)
 		return nil, replay.SpawnPointsMapAbsent
@@ -91,7 +92,7 @@ func (b *Builder) spawnPoints(matchID, mapID string, mapNames []string,
 	// LA CLE ABSENTE EST UNE INFORMATION : la carte est au catalogue, mais ses points n'y sont
 	// pas etablis (generateur en mode ajout-seul, carte sautee pour derive de source).
 	if entry.SpawnPoints == nil {
-		slog.Debug("replaybuild: points d'apparition NON ETABLIS pour cette carte",
+		slog.DebugContext(ctx, "replaybuild: points d'apparition NON ETABLIS pour cette carte",
 			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
 		return nil, replay.SpawnPointsNotEstablished
 	}
@@ -106,7 +107,7 @@ func (b *Builder) spawnPoints(matchID, mapID string, mapNames []string,
 
 // padsCatalog charge le catalogue des socles au plus une fois par Builder — meme motif et meme
 // raison que `objectivesCatalog` : une passe de masse rejoue la meme carte des dizaines de fois.
-func (b *Builder) padsCatalog() *replay.MapWeaponPadsCatalog {
+func (b *Builder) padsCatalog(ctx context.Context) *replay.MapWeaponPadsCatalog {
 	if b.padsTried {
 		return b.pads
 	}
@@ -116,11 +117,11 @@ func (b *Builder) padsCatalog() *replay.MapWeaponPadsCatalog {
 	// FUSION VERSIONNE + OVERLAY : les cartes rattrapees au fetch de film vivent dans l'overlay
 	// non versionne, et c'est precisement pour la CUISSON qu'elles sont rattrapees (sans elles,
 	// `coverage.pickups.spawnPointsState == "map_absent"`).
-	cat, err := replay.LoadMapWeaponPadsMerged(path, res.MapWeaponPadsOverlayPath(b.titleSlug))
+	cat, err := replay.LoadMapWeaponPadsMerged(ctx, path, res.MapWeaponPadsOverlayPath(b.titleSlug))
 	if err != nil {
 		// Le catalogue est VERSIONNE : son absence est une installation incomplete, pas le cas
 		// nominal. On le dit, puis on degrade.
-		slog.Warn("replaybuild: catalogue des socles illisible — ramassages sans origine",
+		slog.WarnContext(ctx, "replaybuild: catalogue des socles illisible — ramassages sans origine",
 			"err", err, "path", path, "titleSlug", b.titleSlug)
 		return nil
 	}

@@ -149,7 +149,7 @@ func TestPreuveRefuseUnRecordVide(t *testing.T) {
 	largeur := cadre.EnTeteBits + 2*cadre.MotDeTailleBits
 	pay := make([]byte, (1+2*largeur+64)/8+8)
 	ecrire := func(bit int, v uint64, n int) {
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if v>>(uint(n-1-i))&1 == 1 {
 				pay[(bit+i)>>3] |= 0x80 >> uint((bit+i)&7)
 			}
@@ -182,7 +182,7 @@ func TestLesPreuvesContradictoiresSeComptent(t *testing.T) {
 	kfEcrireRecord(w, 1, 20, 40, 50)
 	b := w.n
 	kfEcrireRecord(w, 1, 15, 40, 50)
-	for i := 0; i < 2100; i++ {
+	for range 2100 {
 		w.bits(kfSent, 32)
 	}
 	r := &kfRecherche{buf: w.buf, total: len(w.buf) * 8, maxWin: kfScanFenetreBits,

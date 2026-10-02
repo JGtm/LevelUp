@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // visee_lunette_research_test.go — INSTRUMENT DE MESURE : LE FILM DIT-IL QU'UN JOUEUR EST A LA

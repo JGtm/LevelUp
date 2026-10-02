@@ -11,7 +11,7 @@ package canonical
 // events`, JSON propre — tueur·victime·arme·type·position·instant). Infinite la
 // reconstitue depuis `highlight_events` (+ appariement temporel killer/victim) au
 // référentiel T0 ; l'arme-par-kill (RE film en cours) et les positions monde y
-// sont absentes → dégradation par capability. Cf. `.ai/PLAN_CANONICAL_MATCH_EVENTS.md`.
+// sont absentes → dégradation par capability. Cf. `.ai/archive/V7/PLAN_CANONICAL_MATCH_EVENTS.md`.
 //
 // MAPPING Infinite `highlight_events.event_type` → MatchEventType (Phase 2) :
 //   - kill + death (2 rows, 1 xuid chacune) → 1 MatchEventKill (appariement

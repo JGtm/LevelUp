@@ -23,7 +23,9 @@ package killsource
 // Theater).
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/domain/highlightevent"
@@ -91,7 +93,7 @@ type killFeed struct {
 // gamertag dans le bloc d event. Le 0 qui trainait ici designait « gamertag en tete » pour TOUS les films, y
 // compris les versions 39-40 ou il vit douze octets plus loin — d ou 68 a 96 % de morts sans
 // source de degat sur les films de mars a novembre 2025
-// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Film sans registre : `f.versionLue` est faux,
+// (.ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Film sans registre : `f.versionLue` est faux,
 // `f.majorVersion` vaut 0 et le comportement historique tient — l appelant l a consigne.
 func loadKillFeed(f *film) (*killFeed, error) {
 	var best []highlightevent.HighlightEvent
@@ -171,7 +173,7 @@ func buildFeed(evs []highlightevent.HighlightEvent) *killFeed {
 	for _, v := range byTime {
 		kf.events = append(kf.events, *v)
 	}
-	sort.Slice(kf.events, func(i, j int) bool { return kf.events[i].timeMS < kf.events[j].timeMS })
+	slices.SortFunc(kf.events, func(a, b feedEvent) int { return cmp.Compare(a.timeMS, b.timeMS) }) // timeMS : cle de `byTime`, unique
 	return kf
 }
 

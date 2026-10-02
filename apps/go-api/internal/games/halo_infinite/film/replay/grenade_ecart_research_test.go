@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // grenade_ecart_research_test.go — BANC DE MESURE : un lancer de grenade est-il posé sur SON
@@ -46,6 +48,7 @@ package replay
 //	  go test ./internal/games/halo_infinite/film/replay -run TestBancEcartLancerLanceur -v -timeout 1800s
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -89,7 +92,7 @@ func TestBancEcartLancerLanceur(t *testing.T) {
 // donc le séparateur de champ est la virgule et celui de paire le signe égal.
 func grenEcartFilmsDeEnv(s string) []grenEcartFilm {
 	var out []grenEcartFilm
-	for _, part := range strings.Split(s, ",") {
+	for part := range strings.SplitSeq(s, ",") {
 		id, carte, ok := strings.Cut(strings.TrimSpace(part), "=")
 		if !ok || id == "" || carte == "" {
 			continue
@@ -161,7 +164,7 @@ func grenEcartCas2(doc ReplayDocument, l *grenEcartLectures) []grenEcartCas {
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TimestampUS < sorted[j].TimestampUS })
 	origin := sorted[0].TimestampUS
 	step := uint64(doc.FrameIntervalMS) * 1000
-	reg := BuildIdentityRegistry(IdentityInput{
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{
 		Positions: sorted, BipedCreations: l.creations,
 		Deaths: l.deaths, PlayerIndices: l.indices, Fire: fireRefs(l.fire),
 		Clock:   IdentityClock{OriginUS: origin, StepUS: step, FrameCount: doc.FrameCount},

@@ -249,10 +249,10 @@ func (c *chainScan) attribute(
 // et eux seuls, qui font avancer la file d'evenements.
 var chainTrackedNames = func() map[string]bool {
 	m := map[string]bool{}
-	for f := 0; f < GameEngineFieldCount; f++ {
+	for f := range GameEngineFieldCount {
 		m[GameEngineField(f).String()] = true
 	}
-	for f := 0; f < PlayerStateFieldCount; f++ {
+	for f := range PlayerStateFieldCount {
 		m[PlayerStateField(f).String()] = true
 	}
 	return m

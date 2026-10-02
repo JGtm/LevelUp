@@ -1,3 +1,5 @@
+//go:build research
+
 package objectives
 
 // d6_manches_research_test.go — INSTRUMENT D6 : D OU VIENNENT LES MANCHES D UN FILM, SLOT PAR SLOT ?
@@ -83,7 +85,7 @@ func d6Films(t *testing.T) []string {
 		t.Skipf("%s absent : instrument saute", d6FilmsEnv)
 	}
 	var out []string
-	for _, p := range strings.Split(v, ",") {
+	for p := range strings.SplitSeq(v, ",") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}

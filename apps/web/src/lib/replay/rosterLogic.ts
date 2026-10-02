@@ -61,7 +61,7 @@ export function botKey(name: string): string {
  * deux jointures roster -> joueur du dépôt qui en avaient besoin partagent une seule
  * dérivation (règle des ≤ 2 copies, CLAUDE.md n°6). `seatLogic.filmIndexByIdentity` portait une
  * 3e copie inline (correcte, mais non centralisée) : migrée le 2026-09-10 (lot hygiène 5.3,
- * `.ai/V7.5/REGISTRE_REPORTS.md`) — garde-rail grep :
+ * `.ai/REGISTRE_REPORTS.md`) — garde-rail grep :
  * `apps/web/src/lib/replay/rosterEntryKey_no_new_copies.guard.test.ts`.
  */
 export function rosterEntryKey(entry: Pick<ReplayRosterEntry, 'xuid' | 'bot' | 'name'>): string {

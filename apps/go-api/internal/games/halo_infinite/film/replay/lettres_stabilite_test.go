@@ -1,3 +1,5 @@
+//go:build research
+
 package replay
 
 // lettres_stabilite_test.go — LA CLAUSE DE STABILITE du lot « lettres A/B/C des bases » :
@@ -86,7 +88,7 @@ func lettresLitMesures(t *testing.T, dir string) map[string][]lettresLigne {
 		if err != nil {
 			t.Fatalf("mesure illisible (%s) : %v", e.Name(), err)
 		}
-		for _, line := range strings.Split(string(blob), "\n") {
+		for line := range strings.SplitSeq(string(blob), "\n") {
 			f := strings.Split(strings.TrimRight(line, "\r"), "\t")
 			if len(f) < 28 || f[0] != "film" {
 				continue

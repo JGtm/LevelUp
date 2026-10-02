@@ -31,7 +31,7 @@ import (
 	"context"
 	"log/slog"
 	"math/bits"
-	"sort"
+	"slices"
 	"strconv"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
@@ -215,7 +215,7 @@ func chercherDansChunk(
 ) {
 	var fenetre uint64
 	total := len(data) * 8
-	for pos := 0; pos < total; pos++ {
+	for pos := range total {
 		fenetre = fenetre<<1 | uint64((data[pos>>3]>>uint(7-(pos&7)))&1)
 		if pos < 63 || !prefiltre[fenetre>>48] {
 			continue
@@ -287,7 +287,7 @@ func sortedWeaponIDs(byWeapon map[uint64]int) []uint64 {
 	for id := range byWeapon {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 	return ids
 }
 

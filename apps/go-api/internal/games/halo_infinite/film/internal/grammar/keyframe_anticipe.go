@@ -59,6 +59,7 @@ package grammar
 
 import (
 	"cmp"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"slices"
 )
 
@@ -81,6 +82,9 @@ type declarationAnticipee struct {
 // Construite par une passe unique sur les images-cles ([ConstruireTableAnticipee]), consultee
 // au point de rejet de la marche de trames ([TableAnticipee.ArchetypeApres]).
 type TableAnticipee struct {
+	// diag : les diagnostics du contexte dont la table est nee ([ConstruireTableAnticipee]) — la
+	// liaison par anticipation y signale son premier usage (lot J12.3). nil hors contexte.
+	diag    *constat.Diagnostics
 	entrees map[cleAnticipee][]declarationAnticipee
 	// declarations est le nombre d entrees d image-cle versees (un slot declare par vingt
 	// chunks en compte vingt) : c est le VOLUME de la passe, pas la taille de la table.
@@ -118,6 +122,7 @@ func ConstruireTableAnticipee(fc *FilmContext) *TableAnticipee {
 	if fc == nil {
 		return t
 	}
+	t.diag = fc.Diagnostics()
 	t.marche = fc.MarcheDImageCle()
 	for _, c := range fc.ChunkNumbers() {
 		data, pks, ok := fc.ChunkAt(c)
