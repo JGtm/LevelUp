@@ -146,7 +146,14 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
 - 2026-10-02, soir (utilisateur) : **GO DE LA VAGUE 1** (« tu as mon feu vert »), donné en réponse à
   la demande de GO de la vague 1 après R-COMB-2. Les décisions de composition de la vague (D18, D14,
   D6, D19 et les ratifications techniques) restent à confirmer au questionnaire avant le premier lot.
-- 2026-10-02, soir (utilisateur, questionnaire, recommandations retenues) — décisions FERMES :
+- **2026-10-02, plus tard le soir (utilisateur) : les réponses au questionnaire ci-dessous sont
+  SUSPENDUES** — « je n'ai pas bien compris les questions donc mes réponses ne sont pas forcément
+  éclairées ; j'avais la légère impression qu'on divergeait un peu trop et que c'était vraiment du
+  spécifique ». Elles ne valent PAS décision ; aucun lot de la vague 1 n'est lancé. Les questions
+  étaient formulées en codes de lots (jargon) au lieu de fonctionnalités. À reposer en langage
+  clair, après recentrage (voir le journal §4).
+- 2026-10-02, soir (utilisateur, questionnaire, recommandations retenues) — décisions SUSPENDUES (voir
+  l'entrée ci-dessus), d'abord notées comme FERMES :
   - **D18 / D14 (amendement de D-RI)** : ordre mesuré. Vague 1 = L0 EN TÊTE (fermeture sans
     factices ; il change aussi la marche via `debutParFermeture`), puis par contribution marginale
     saine : LM, L8, L2, L3a, L6a (Live Fire), L9, L4a, L6b (LK quand son critère est rejoué). Vague 2 =
