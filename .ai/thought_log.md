@@ -114156,3 +114156,21 @@ ratchets `archlint` des chemins cités verts.
 **Conclusion / prochaine étape** : aucune. Les numéros de ligne cités vers le registre dans
 d'anciens documents sont désormais approximatifs (laissés tels quels, les sections et libellés
 restent cherchables).
+
+## [2026-10-02] Représentation intermédiaire du film — plan d'exécution de l'étape 1, confié à une autre conversation
+
+**Statut** : Complété (plan écrit ; exécution confiée à une autre conversation).
+
+**Décision technique principale** : l'utilisateur confie la représentation intermédiaire à une
+autre conversation, en parallèle de la campagne de grammaire. Plan exécutable
+`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md` : ADR 0037, paquet de types
+`grammar/lecture`, marche de production devenue `FilmContext.Trames` puis `ImagesCles`, tests
+T1/T3/T5/T6, zéro différence de sortie. Propriété des fichiers partagée avec la campagne (§1.3) :
+la phase delta attend la fusion du lot « définition de la fermeture », la phase images-clés celle
+de la marche d'image-clé.
+
+**Résultats observés** : symboles et fichiers cités vérifiés dans le code de `feat/v75`
+(430cdd7b4) ; ADR suivant libre = 0037.
+
+**Conclusion / prochaine étape** : l'autre conversation démarre par l'ADR et le paquet de types,
+qui ne dépendent de rien ; la campagne de grammaire continue dans son worktree.
