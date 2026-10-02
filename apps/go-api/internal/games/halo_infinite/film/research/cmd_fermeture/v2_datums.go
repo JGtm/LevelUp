@@ -5,9 +5,9 @@ package main
 // v2_datums.go — LE SLOT REJETE CONTRE LE BLOC DE TYPE 1 (item 1.2 de la carte v2).
 //
 // Chaque chunk porte, juste avant son image-cle, un bloc de type 1 : la table de datums du jeu a
-// cet instant (`grammar.LireBlocDeDatums`, lot 5.21). Pour chaque paquet dont la vue B sort sur un
+// cet instant (`grammar.LireBlocDeDatums`). Pour chaque paquet dont la vue B sort sur un
 // en-tete REJETE, la carte demande au bloc du MEME chunk ce qu il sait du slot — la mesure de
-// `TestBloc521Rejets` (lot 5.21, `bfecd02b` seul), etendue au corpus et aux deux sorties — et
+// `TestBloc521Rejets` (un seul film), etendue au corpus et aux deux sorties — et
 // au bloc du chunk SUIVANT si l eid y est ne entre-temps :
 //
 //	etat au bloc du chunk     vivant / trace (generation ou drapeau poses) / vide / absent

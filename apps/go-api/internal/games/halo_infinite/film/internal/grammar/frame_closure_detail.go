@@ -1,14 +1,13 @@
 package grammar
 
-// frame_closure_detail.go — LA CARTE DE FERMETURE V2 : LE DETAIL DE CHAQUE PAQUET (campagne de
-// recherche sur la grammaire, phase 1, etape 1, 2026-10-01). UN INSTRUMENT, comme
-// [FrameClosure] : ni la cuisson ni le collecteur ne l appellent, et aucune sortie de production ne
-// change.
+// frame_closure_detail.go — LA CARTE DE FERMETURE DETAILLEE : LE DETAIL DE CHAQUE PAQUET. UN
+// INSTRUMENT, comme [FrameClosure] : ni la cuisson ni le collecteur ne l appellent, et aucune
+// sortie de production ne change.
 //
 // # CE QU ELLE AJOUTE A LA CARTE
 //
-// [FrameClosure] dit QUELLE cause arrete un paquet. La cause n 1 du corpus, « vue C : terminateur
-// hors cadre » (92,5 % des records utiles non fermes sur HI_1_13_0), ne dit pas OU la lecture
+// [FrameClosure] dit QUELLE cause arrete un paquet. La cause « vue C : terminateur hors cadre »
+// ne dit pas OU la lecture
 // s est faussee : la vue C a lu son terminateur, le paquet ne se ferme pas, donc une largeur est
 // fausse QUELQUE PART devant. [FrameClosureDetaillee] rend, pour chaque paquet, ce qu il faut pour
 // la ventiler : comment la vue B s est arretee (son terminateur, ou un REJET d en-tete — et
@@ -24,7 +23,7 @@ package grammar
 // `mesureDesTrames`). Le garde-fou de la recopie est un test : sur les bobines du depot, la carte
 // rendue par [FrameClosureDetaillee] est IDENTIQUE, champ a champ, a celle de [FrameClosure]
 // (`frame_closure_detail_test.go`). La sortie de vue B se lit aux compteurs que l observateur
-// tenait deja (`RejetsHorsDatum`, `RejetsDeVue`, lot 5.16.4), avant et apres la boucle.
+// tient ([Observation.RejetsHorsDatum], [Observation.RejetsDeVue]), avant et apres la boucle.
 
 import "fmt"
 
@@ -124,7 +123,8 @@ type PaquetDeCarte struct {
 	// records NEW traverses proprement sur un corps qui deborde (donc lies au monde, sauf refus
 	// contre une entite vivante).
 	RecordsDebordants, ComposantsDebordants, NeufsPropresDebordants int
-	// Anticipations : les liaisons posees par le repli d anticipation (lot 5.23) dans ce paquet.
+	// Anticipations : les liaisons posees par le repli d anticipation (table anticipee) dans ce
+	// paquet.
 	Anticipations int
 }
 

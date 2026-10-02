@@ -6,7 +6,7 @@ package main
 //
 // Le chunk de type 3 (temps forts) se decoupe en paquets comme un chunk de replication ; son
 // paquet de type 9 commence par un u32 BIG-ENDIAN, le nombre d evenements que l ecrivain y a mis
-// (port Rust, `parser/v41/chunks/summary/mod.rs:38-50`, rapport du 2026-10-01 §4.7). Notre lecteur
+// (meme lecture que le port Rust du decodeur, `parser/v41/chunks/summary/mod.rs`). Notre lecteur
 // (`grammar.ParseHighlightEvents`, balayage bit a bit des XUID) ne le lit pas : c est un oracle de
 // completude gratuit. La carte le confronte a ce que le lecteur TROUVE dans le meme chunk — tous
 // types, puis par type (kill-feed : `kill` ; fil des morts : `death`, et `grammar.ScanDeaths`).

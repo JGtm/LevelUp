@@ -2,9 +2,8 @@
 
 package main
 
-// v2.go — LA CARTE DE FERMETURE V2 (campagne de recherche sur la grammaire, phase 1, etape 1,
-// 2026-10-01), mode `-mode v2` : la carte de `fermeture` (memes TSV, memes colonnes, memes
-// valeurs : la mesure passe par `grammar.FrameClosureDetaillee`, qui rend la carte de
+// v2.go — LA CARTE DE FERMETURE DETAILLEE, mode `-mode v2` : la carte de `fermeture` (memes
+// TSV, memes colonnes, memes valeurs : la mesure passe par `grammar.FrameClosureDetaillee`, qui rend la carte de
 // `grammar.FrameClosure`), PLUS ce que le detail de chaque paquet permet de ventiler :
 //
 //   - item 1.1 : « vue C : terminateur hors cadre » par sortie de la vue B, par vue C (vide ou
