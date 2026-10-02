@@ -10,8 +10,10 @@ package grammar
 // Une trame se lit en sequence : la premiere chose qui arrete la marche arrete tout ce qui suit.
 // Le bloquant d un paquet est donc, dans l ordre de la marche : la liste d evenements non
 // localisee, le message de la vue A non porte, le composant sans lecteur (ou le slot non lie) du
-// record de la vue B qui a desynchronise, la fin de payload atteinte dans la vue B, la cause
-// d arret de la vue C, et enfin le terminateur de la vue C qui ne ferme pas le paquet — ce
+// record de la vue B qui a desynchronise, la fin de payload atteinte dans la vue B, la sortie de
+// la vue B sur un en-tete rejete (la vue C lue derriere n est pas celle de l ecrivain), la cause
+// d arret de la vue C, la regle de l ecrivain qu un paquet ferme au bit pres contredit
+// (`ecrivain_invariants.go`), et enfin le terminateur de la vue C qui ne ferme pas le paquet — ce
 // dernier dit qu une largeur est fausse QUELQUE PART devant, sans dire ou.
 
 import "fmt"
@@ -34,7 +36,7 @@ func nomArretVueC(a ArretVueC) string {
 	case ArretVueCKindNonPorte:
 		return "vue C : kind non porte"
 	case ArretVueCBlocBC:
-		return "vue C : bloc 0xbc non porte"
+		return "vue C : bloc 0xbc (desalignement)"
 	case ArretVueCPlafond:
 		return "vue C : plafond de tours"
 	}
@@ -48,12 +50,18 @@ type paquetMarche struct {
 	recs   []FrameRecord
 	// rangs : les vues lues jusqu a leur terminateur, comptees depuis le point de depart.
 	rangs int
-	// vueC : le verdict publie au crochet ; `Atteinte` dit que la vue B s est terminee.
+	// vueC : le verdict publie au crochet ; `Atteinte` dit que la vue B a clos sa liste.
 	vueC LectureVueC
 }
 
 // vueBAtteinte : la marche est entree dans la vue B — la vue A s est terminee, ou n etait pas a lire.
 func (p paquetMarche) vueBAtteinte() bool { return !p.enTete || p.rangs >= 1 }
+
+// vueBTerminee : la vue B s est arretee sur son TERMINATEUR. Un en-tete rejete clot la liste sans
+// la terminer : la vue C lue derriere lui n est pas celle de l ecrivain (`ecrivain_invariants.go`).
+func (p paquetMarche) vueBTerminee() bool {
+	return p.vueC.Atteinte && p.vueC.Invariant != InvariantSortieParRejet
+}
 
 // bloquant est une cause d arret, nommee, avec le composant qu elle designe s il y en a un.
 type bloquant struct {
@@ -70,6 +78,9 @@ func (m *mesureDesTrames) classer(p paquetMarche) {
 	m.rep.Paquets++
 	ferme := p.vueC.Fermee
 	var cause bloquant
+	if p.vueC.FermeeAuBit {
+		m.rep.PaquetsFermesAuBit++
+	}
 	if ferme {
 		m.rep.PaquetsFermes++
 		m.rep.Utiles.EntreesDeControleFermees += len(p.vueC.Entrees)
@@ -77,7 +88,7 @@ func (m *mesureDesTrames) classer(p paquetMarche) {
 		cause = m.bloquantDuPaquet(p)
 	}
 	m.classerLesVues(p, cause.nom)
-	enJeu := m.classerLesRecords(p.recs, ferme, cause)
+	enJeu := m.classerLesRecords(p.recs, p.vueC, cause)
 	if !ferme {
 		m.compterBloquant(cause, enJeu)
 	}
@@ -102,8 +113,12 @@ func (m *mesureDesTrames) bloquantDuPaquet(p paquetMarche) bloquant {
 			}
 		}
 		return causeSimple(causeFinDePayloadVueB)
+	case p.vueC.Invariant == InvariantSortieParRejet:
+		return causeSimple(p.vueC.Invariant.String())
 	case p.vueC.Arret != ArretVueCAucun:
 		return causeSimple(nomArretVueC(p.vueC.Arret))
+	case p.vueC.Invariant != InvariantAucun:
+		return causeSimple(p.vueC.Invariant.String())
 	}
 	return causeSimple(causeTerminateurHorsCadre)
 }
@@ -117,9 +132,9 @@ func (m *mesureDesTrames) classerLesVues(p paquetMarche, cause string) {
 		m.compterVue(VueMessages, terminee, ferme, cause)
 	}
 	if p.vueBAtteinte() {
-		m.compterVue(VueEntites, p.vueC.Atteinte, ferme, cause)
+		m.compterVue(VueEntites, p.vueBTerminee(), ferme, cause)
 	}
-	if p.vueC.Atteinte {
+	if p.vueBTerminee() {
 		s := &m.rep.Vues[VueControle]
 		s.Atteints++
 		if p.vueC.Arret == ArretVueCAucun {
@@ -159,8 +174,9 @@ func compterArret(s *FrameViewStat, cause string) {
 // classerLesRecords range les records NEW et DELTA de la vue B par archetype et rend le nombre de
 // records utiles non fermes. Un record ne ferme que dans un paquet ferme ; un record non ferme est
 // impute a SA desynchronisation s il en a une, a la cause du paquet sinon.
-func (m *mesureDesTrames) classerLesRecords(recs []FrameRecord, ferme bool, cause bloquant) int {
+func (m *mesureDesTrames) classerLesRecords(recs []FrameRecord, l LectureVueC, cause bloquant) int {
 	enJeu := 0
+	ferme := l.Fermee
 	for _, r := range recs {
 		if r.Type != recNew && r.Type != recDelta {
 			continue
@@ -173,6 +189,9 @@ func (m *mesureDesTrames) classerLesRecords(recs []FrameRecord, ferme bool, caus
 		if utile {
 			s.Utiles++
 			m.rep.Utiles.Records++
+			if l.FermeeAuBit && r.DesyncAt < 0 {
+				m.rep.Utiles.RecordsFermesAuBit++
+			}
 			if fermeR {
 				s.UtilesFermes++
 				m.rep.Utiles.RecordsFermes++

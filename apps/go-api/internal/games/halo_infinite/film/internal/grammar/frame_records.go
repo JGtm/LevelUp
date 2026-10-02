@@ -208,7 +208,7 @@ func decodeDelta(br *Lecteur, w *World, slot uint32) EntityTrace {
 		t.EndBit = br.BitPos()
 		return t
 	}
-	t.Mask = consumeMask(br) // FIRST and only header read of a delta (no R6/default-state/gate).
+	t.Mask, t.MasqueNonEcrit = lireMasque(br) // FIRST and only header read of a delta (no R6/default-state/gate).
 	traverseComponentLoop(br, arch, &t)
 	t.EndBit = br.BitPos()
 	return t

@@ -1,0 +1,1575 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	71	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	26	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · epars non croissant	2	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	498	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	32	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · sain	1	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · bit hors archetype	5	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · epars non croissant	7	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · sain	1482	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	28	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	9	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	1716	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	12	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · epars non croissant	2	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	9024	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	83	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	29	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	49	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	7	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	212	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	4	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n 48-63 · epars · epars non croissant	2	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n 48-63 · epars · sain	4	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	56	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	66	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	31	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	19	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n=64+ · epars · epars non croissant	4	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · NEW · n=64+ · epars · sain	3	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · bit hors archetype	7	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	14	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	743	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	1321	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	4	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	2	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	152	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	8	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	1857	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	5	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	12	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	22	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 48-63 · epars · sain	1	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	29	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	113	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · epars non croissant	1	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · sain	7	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	11	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	87	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	676	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	3	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	2	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	4	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · sain	4	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	7	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	6	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · sain	2	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	8	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	17	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	7	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · bit hors archetype	3	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	888	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	701	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · dense · bit hors archetype	4	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	5368	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	39	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	29912	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	157	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	7	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	478	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	7	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	15	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · epars · sain	78	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	22	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · epars · sain	1	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	8	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	64254	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	670	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	19341	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	114	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	110200	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	435	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	17	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	1422	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · bit hors archetype	2	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	2	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	7	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · sain	1	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	73	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+0797ce72	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · sain	1	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	5	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n 11-47 · epars · sain	535	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n 48-63 · dense · sain	41	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n 48-63 · epars · sain	908	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	3	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n<=10 · epars · sain	626	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n=64+ · dense · sain	55	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · DELTA · n=64+ · epars · sain	5906	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	45	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	36	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · NEW · n 11-47 · epars · sain	51	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	3	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	2	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · NEW · n<=10 · epars · sain	4	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	6633	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	5	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	7997	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	781	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	9	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	7442	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	14	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	28	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	7	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	4	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · dense · sain	2	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · sain	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	26	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	25	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	33	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · sain	21	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	4	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · sain	19	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	23404	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	63	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	51744	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · DELTA · n<=10 · dense · bit hors archetype	10	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	27194	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	963	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	365202	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	40	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	29	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	112	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n 48-63 · dense · sain	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	14	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	3	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · epars · epars non croissant	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · epars · sain	3	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	1	0	0	0	0
+084a804d	HI_1_10_0	hors cadre, record anterieur · NEW · n=64+ · epars · sain	1	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	12	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	7	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n 11-47 · epars · sain	22255	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n 48-63 · dense · sain	13	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n 48-63 · epars · bit hors archetype	3	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n 48-63 · epars · sain	12039	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	10	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n<=10 · epars · bit hors archetype	9	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n<=10 · epars · sain	6189	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n=64+ · dense · sain	157	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · DELTA · n=64+ · epars · sain	64995	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	173	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n 11-47 · dense · sain	1	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	199	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	14	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n 11-47 · epars · sain	125	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n 48-63 · epars · bit hors archetype	5	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n 48-63 · epars · sain	7	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	41	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	42	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n<=10 · epars · epars non croissant	1	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n<=10 · epars · sain	27	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n=64+ · dense · sain	3	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	5	0	0	0	0
+084a804d	HI_1_10_0	paquet ferme · NEW · n=64+ · epars · sain	10	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	29	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	8	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n 11-47 · epars · sain	198	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	2	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n 48-63 · epars · sain	66	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	158	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n<=10 · epars · sain	249	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n=64+ · dense · sain	23	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · DELTA · n=64+ · epars · sain	3433	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	56	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	49	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n 11-47 · epars · sain	34	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	2	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n 48-63 · epars · epars non croissant	1	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n 48-63 · epars · sain	1	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	11	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	6	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n<=10 · epars · sain	1	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · NEW · n=64+ · dense · sain	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · bit hors archetype	20	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	2632	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · epars non croissant	2	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	2613	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	363	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	3	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	2	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	4696	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	40	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	42	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	10	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	5	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	4	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · epars · sain	2	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	8	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	8	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	3	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	211	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · dense · sain	2	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · sain	4	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	23	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	46	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	25	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · sain	2	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	4	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	4	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · dense · sain	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · bit hors archetype	11	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	5248	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	2955	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	172	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	10704	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	523	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	185033	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	25	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	32	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	24	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · NEW · n 48-63 · dense · sain	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · NEW · n 48-63 · epars · sain	1	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	3	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	3	0	0	0	0
+111fa685	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · epars · sain	26	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	4	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n 11-47 · epars · sain	8515	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n 48-63 · dense · sain	1	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n 48-63 · epars · sain	1918	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n<=10 · epars · bit hors archetype	2	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n<=10 · epars · sain	3949	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n=64+ · dense · sain	77	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · DELTA · n=64+ · epars · sain	35983	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	52	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	49	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	7	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n 11-47 · epars · sain	49	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n 48-63 · epars · epars non croissant	1	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n 48-63 · epars · sain	2	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	15	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	16	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n<=10 · epars · sain	5	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n=64+ · dense · sain	1	0	0	0	0
+111fa685	HI_1_10_0	paquet ferme · NEW · n=64+ · epars · sain	4	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	19	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n 11-47 · epars · sain	158	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n 48-63 · dense · sain	12	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n 48-63 · epars · bit hors archetype	2	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n 48-63 · epars · sain	149	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	242	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n<=10 · epars · sain	329	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n=64+ · dense · sain	14	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n=64+ · epars · epars non croissant	2	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · DELTA · n=64+ · epars · sain	5145	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	130	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	53	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	5	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n 11-47 · epars · sain	33	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	4	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n 48-63 · epars · epars non croissant	1	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	6	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	13	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n<=10 · epars · sain	4	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n=64+ · dense · sain	1	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n=64+ · epars · epars non croissant	4	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · NEW · n=64+ · epars · sain	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	2797	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	2	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · epars non croissant	2	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	4231	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	388	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	122	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	5	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · epars non croissant	4	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	1896	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	41	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · sain	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	38	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	17	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	10	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · sain	2	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	20	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · bit hors archetype	3	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	42	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · dense · sain	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · sain	5	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	35	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	30	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	15	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · sain	4	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	36	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	2	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · dense · sain	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · epars non croissant	2	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	5312	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	11	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	10560	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	72	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	9478	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	341	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · DELTA · n=64+ · epars · epars non croissant	2	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	158450	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	18	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	18	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	23	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · NEW · n<=10 · epars · sain	1	0	0	0	0
+11de8353	HI_1_9_0	hors cadre, record anterieur · NEW · n=64+ · epars · sain	1	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n 11-47 · dense · sain	9	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n 11-47 · epars · sain	10187	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n 48-63 · dense · sain	2	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n 48-63 · epars · sain	5352	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n<=10 · epars · sain	4780	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n=64+ · dense · sain	97	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · DELTA · n=64+ · epars · sain	54080	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	47	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	59	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n 11-47 · epars · sain	31	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n 48-63 · epars · sain	1	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	14	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	3	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n<=10 · epars · sain	6	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n=64+ · dense · sain	1	0	0	0	0
+11de8353	HI_1_9_0	paquet ferme · NEW · n=64+ · epars · sain	2	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	10	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	10	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n 11-47 · epars · epars non croissant	4	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n 11-47 · epars · sain	434	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n 48-63 · dense · sain	2	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n 48-63 · epars · sain	126	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	1005	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n<=10 · epars · sain	1127	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n=64+ · dense · sain	4	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · DELTA · n=64+ · epars · sain	10212	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	59	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n 11-47 · dense · sain	4	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	55	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	7	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n 11-47 · epars · sain	55	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	3	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	3	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	5	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n<=10 · epars · sain	13	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n=64+ · dense · sain	6	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n=64+ · epars · epars non croissant	2	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · NEW · n=64+ · epars · sain	4	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · bit hors archetype	3	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · epars non croissant	2	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	7256	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	12894	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	90	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	8900	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	2	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	16417	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	28	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · sain	2	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	42	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · epars non croissant	3	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	9	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	6	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · dense · sain	6	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · epars · epars non croissant	6	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · epars · sain	6	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	2	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	26	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	4	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	35	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	36	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	66	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · sain	3	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	3	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	3	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	2	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · dense · sain	9	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · epars non croissant	28	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · sain	1	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	6	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	26022	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	33130	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	34	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	37397	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	122	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	533012	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	30	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	27	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	81	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · NEW · n 48-63 · dense · sain	4	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	8	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	4	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · NEW · n<=10 · epars · sain	30	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	5	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	183	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 11-47 · dense · sain	505	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	170	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 11-47 · epars · epars non croissant	3	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 11-47 · epars · sain	29525	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 48-63 · dense · bit hors archetype	4	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 48-63 · dense · sain	4	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 48-63 · epars · bit hors archetype	6	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 48-63 · epars · epars non croissant	5	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n 48-63 · epars · sain	18751	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	114	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n<=10 · epars · bit hors archetype	246	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n<=10 · epars · sain	34860	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n=64+ · dense · sain	42	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n=64+ · epars · epars non croissant	10	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · DELTA · n=64+ · epars · sain	136715	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	1293	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	2320	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	56	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n 11-47 · epars · sain	2661	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n 48-63 · epars · bit hors archetype	18	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n 48-63 · epars · epars non croissant	30	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n 48-63 · epars · sain	17	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	401	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	1554	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n<=10 · epars · epars non croissant	1	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n<=10 · epars · sain	499	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n=64+ · dense · sain	23	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	15	0	0	0	0
+1c4c63c2	HI_1_10_0	paquet ferme · NEW · n=64+ · epars · sain	28	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	1834	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · sain	2	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · sain	46	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	299	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	11	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	1242	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	62	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	56	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	3	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	9	0	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	2	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	4617	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	390	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	1	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	3338	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	12	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	29941	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	1	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	99	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	10626	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	23	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	46593	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	110	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	212	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	10	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	26	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	159819	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · DELTA · n 48-63 · dense · sain	2	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	267	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	31376	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	65	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	130152	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	3	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	278	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	328	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	60	0	0	0	0
+396cfc92	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · sain	1	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	2115	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · sain	22	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · sain	2436	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	708	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	70	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	9159	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	232	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	196	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · NEW · n 48-63 · dense · sain	83	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	6	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	25	0	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	8	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	2264	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	5	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	4585	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	1238	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	2	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	1376	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	6	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	38	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	8	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	2	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	1	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · sain	19	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	7046	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	42	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	30226	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	8297	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	285	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	138928	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	586	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	8	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	487	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · NEW · n 48-63 · dense · sain	31	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · NEW · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	5	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	77	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	10	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	77	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	19	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	148691	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n 48-63 · dense · sain	183	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · epars non croissant	2	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	94583	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	9	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · bit hors archetype	8	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	26659	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	674	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	353923	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense tout a un · bit hors archetype	1	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	299	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	1112	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	353	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	17	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	2177	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 48-63 · dense · bit hors archetype	2	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 48-63 · dense · sain	7	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · bit hors archetype	3	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · epars non croissant	3	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · sain	11	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	126	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	152	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · epars non croissant	3	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · sain	53	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	217	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	5	0	0	0	0
+4f77afc1	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · sain	5	0	0	0	0
+50247b26	version-31	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	3	0	0	0	0
+50247b26	version-31	autre non ferme · DELTA · n 11-47 · dense · sain	19	0	0	0	0
+50247b26	version-31	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+50247b26	version-31	autre non ferme · DELTA · n 11-47 · epars · sain	52450	0	0	0	0
+50247b26	version-31	autre non ferme · DELTA · n 48-63 · dense · sain	38	0	0	0	0
+50247b26	version-31	autre non ferme · DELTA · n 48-63 · epars · sain	29594	0	0	0	0
+50247b26	version-31	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+50247b26	version-31	autre non ferme · DELTA · n<=10 · epars · sain	1671	0	0	0	0
+50247b26	version-31	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	17	0	0	0	0
+50247b26	version-31	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	7	0	0	0	0
+50247b26	version-31	autre non ferme · NEW · n 11-47 · epars · sain	12	0	0	0	0
+50247b26	version-31	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+50247b26	version-31	autre non ferme · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+50247b26	version-31	autre non ferme · NEW · n<=10 · epars · sain	25	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · sain	1	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	10028	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	626	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	1	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	5	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	4	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · NEW · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie rejet hors datum · NEW · n 48-63 · epars · sain	1	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	2889	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · dense · sain	1	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	8	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	5	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	6	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	54	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · sain	3	0	0	0	0
+50247b26	version-31	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · DELTA · n 11-47 · dense · sain	48	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	216390	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	279	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	213683	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	13701	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	5	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	6	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	48	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · NEW · n 48-63 · epars · epars non croissant	2	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · NEW · n 48-63 · epars · sain	1	0	0	0	0
+50247b26	version-31	hors cadre, record anterieur · NEW · n<=10 · epars · sain	4	0	0	0	0
+50247b26	version-31	paquet ferme · DELTA · n 11-47 · dense · sain	8	0	0	0	0
+50247b26	version-31	paquet ferme · DELTA · n 11-47 · epars · sain	496	0	0	0	0
+50247b26	version-31	paquet ferme · DELTA · n 48-63 · epars · sain	23	0	0	0	0
+50247b26	version-31	paquet ferme · DELTA · n<=10 · epars · sain	236	0	0	0	0
+50247b26	version-31	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+50247b26	version-31	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+50247b26	version-31	paquet ferme · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+50247b26	version-31	paquet ferme · NEW · n 11-47 · epars · sain	6	0	0	0	0
+50247b26	version-31	paquet ferme · NEW · n 48-63 · epars · sain	2	0	0	0	0
+50247b26	version-31	paquet ferme · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+50247b26	version-31	paquet ferme · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	3	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	549	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · bit hors archetype	3	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · epars non croissant	2	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · sain	41	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	13	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	370	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	4	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	261	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	10	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	21	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	19	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	3	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	20	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	54	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	35	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	462	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	8	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · NEW · n=64+ · epars · sain	5	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	1685	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	170	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	14	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	9931	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	3301	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · sain	2	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	5	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	21	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	35	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · sain	7	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	13	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	154	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	16	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	105	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	4510	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	11	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	2307	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	5	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	5476	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	4	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	24665	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	134	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	237	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	34	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	21	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · epars · sain	1	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	12	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	27	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	34618	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n 48-63 · dense · sain	2	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	1467	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · bit hors archetype	4	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	12179	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	23	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	46521	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	24	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	131	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	24	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	175	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · epars non croissant	1	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	14	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	18	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · sain	6	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	31	0	0	0	0
+51ebbc0f	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	74	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	14	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n 11-47 · epars · epars non croissant	2	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n 11-47 · epars · sain	907	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	12	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n 48-63 · epars · bit hors archetype	2	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n 48-63 · epars · sain	1525	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	17	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	12	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n<=10 · epars · sain	1615	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n=64+ · dense · sain	20	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n=64+ · epars · epars non croissant	5	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · DELTA · n=64+ · epars · sain	7842	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	81	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n 11-47 · dense · dense <= 7 bits	1	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n 11-47 · dense · sain	1	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	32	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n 11-47 · epars · sain	67	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	2	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n 48-63 · epars · sain	4	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	60	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	31	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n<=10 · epars · sain	45	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n=64+ · dense · dense <= 7 bits	2	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n=64+ · dense · sain	16	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n=64+ · epars · epars non croissant	7	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · NEW · n=64+ · epars · sain	7	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	6	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	4978	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	1254	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	2	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	231	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	7	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	22495	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	4	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	5	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	8	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	27	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	69	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · sain	15	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · dense · sain	1	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	6	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	28	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	41	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	640	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	5	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	4	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	2	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · dense · sain	4	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · sain	29	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	5	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	6	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	38	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	6	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	9	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	4	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · dense · sain	1	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · sain	6	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	4717	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	4704	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	29992	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	67	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	147989	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	2	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	7	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	32	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	6	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	4	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · NEW · n<=10 · epars · sain	62	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	1	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	5	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n 11-47 · dense · sain	49	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n 11-47 · epars · sain	17144	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n 48-63 · dense · sain	8	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n 48-63 · epars · sain	2575	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n<=10 · epars · bit hors archetype	2	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n<=10 · epars · sain	15544	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n=64+ · dense · sain	29	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · DELTA · n=64+ · epars · sain	71513	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	44	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	53	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n 11-47 · epars · sain	58	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n 48-63 · epars · epars non croissant	1	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n 48-63 · epars · sain	1	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	18	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	10	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n<=10 · epars · sain	8	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+60ae07c4	HI_1_8_0	paquet ferme · NEW · n=64+ · epars · sain	4	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	24	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	7	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n 11-47 · epars · epars non croissant	2	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n 11-47 · epars · sain	8699	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n 48-63 · dense · sain	27	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n 48-63 · epars · sain	5101	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	3	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n<=10 · epars · sain	1628	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n=64+ · dense · sain	72	0	0	0	0
+a349fea8	version-33	autre non ferme · DELTA · n=64+ · epars · sain	24541	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	33	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n 11-47 · dense · sain	4	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	11	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n 11-47 · epars · sain	33	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	13	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n 48-63 · epars · bit hors archetype	2	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n 48-63 · epars · epars non croissant	2	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n 48-63 · epars · sain	3	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n<=10 · dense · bit hors archetype	8	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n<=10 · epars · bit hors archetype	4	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n<=10 · epars · sain	7	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n=64+ · dense · sain	4	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n=64+ · epars · epars non croissant	2	0	0	0	0
+a349fea8	version-33	autre non ferme · NEW · n=64+ · epars · sain	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · bit hors archetype	8	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	5161	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	6	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	9226	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	2	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	517	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	16	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	4239	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	16	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · sain	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	13	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	2	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · sain	3	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · dense · sain	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · epars · epars non croissant	2	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	4	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	1591	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · epars non croissant	2	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	167	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	3	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	820	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · dense · sain	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · sain	52	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	14	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · epars non croissant	5	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	47	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · sain	4	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	4	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	10	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+a349fea8	version-33	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · sain	3	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n 11-47 · dense · bit hors archetype	4	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	5	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	48534	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	22	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	63129	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	27582	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	523	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	345629	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	9	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	13	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	78	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · NEW · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	12	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	7	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · NEW · n<=10 · epars · sain	2	0	0	0	0
+a349fea8	version-33	hors cadre, record anterieur · NEW · n=64+ · epars · sain	1	0	0	0	0
+a349fea8	version-33	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	3	0	0	0	0
+a349fea8	version-33	paquet ferme · DELTA · n 11-47 · epars · sain	4195	0	0	0	0
+a349fea8	version-33	paquet ferme · DELTA · n 48-63 · epars · sain	178	0	0	0	0
+a349fea8	version-33	paquet ferme · DELTA · n<=10 · epars · sain	412	0	0	0	0
+a349fea8	version-33	paquet ferme · DELTA · n=64+ · epars · sain	27	0	0	0	0
+a349fea8	version-33	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	6	0	0	0	0
+a349fea8	version-33	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	22	0	0	0	0
+a349fea8	version-33	paquet ferme · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+a349fea8	version-33	paquet ferme · NEW · n 11-47 · epars · sain	9	0	0	0	0
+a349fea8	version-33	paquet ferme · NEW · n 48-63 · epars · sain	1	0	0	0	0
+a349fea8	version-33	paquet ferme · NEW · n<=10 · dense · bit hors archetype	4	0	0	0	0
+a349fea8	version-33	paquet ferme · NEW · n<=10 · epars · bit hors archetype	4	0	0	0	0
+a349fea8	version-33	paquet ferme · NEW · n<=10 · epars · sain	5	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	10	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	5	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n 11-47 · epars · epars non croissant	2	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n 11-47 · epars · sain	3528	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n 48-63 · dense · sain	10	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n 48-63 · epars · epars non croissant	2	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n 48-63 · epars · sain	2086	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n<=10 · epars · sain	1569	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n=64+ · dense · sain	22	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · DELTA · n=64+ · epars · sain	7299	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	17	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n 11-47 · dense · sain	3	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	14	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n 11-47 · epars · sain	21	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	8	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n 48-63 · epars · epars non croissant	4	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n<=10 · dense · bit hors archetype	9	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n<=10 · epars · bit hors archetype	9	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n<=10 · epars · sain	5	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · NEW · n=64+ · dense · sain	4	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	2833	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	12	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · epars non croissant	2	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	3026	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	3	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	43	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	4	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	378	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	8	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · sain	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	8	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	5	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	2	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	2	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · dense · sain	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · epars · sain	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	1263	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · epars non croissant	2	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	195	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	336	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · sain	17	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	6	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	9	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	14	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · sain	2	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	2	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	3	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · dense · sain	2	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · sain	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n 11-47 · dense · sain	50	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	25720	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	17	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	28242	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	17071	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	236	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	131110	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	7	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	54	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n 48-63 · epars · epars non croissant	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	7	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	4	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n<=10 · epars · sain	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n=64+ · dense · sain	1	0	0	0	0
+a521164d	HI_1_4_1	hors cadre, record anterieur · NEW · n=64+ · epars · sain	2	0	0	0	0
+a521164d	HI_1_4_1	paquet ferme · DELTA · n 11-47 · epars · sain	134	0	0	0	0
+a521164d	HI_1_4_1	paquet ferme · DELTA · n 48-63 · epars · sain	16	0	0	0	0
+a521164d	HI_1_4_1	paquet ferme · DELTA · n<=10 · epars · sain	509	0	0	0	0
+a521164d	HI_1_4_1	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+a521164d	HI_1_4_1	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+a521164d	HI_1_4_1	paquet ferme · NEW · n 11-47 · epars · sain	1	0	0	0	0
+a521164d	HI_1_4_1	paquet ferme · NEW · n<=10 · epars · sain	1	0	0	0	0
+a521164d	HI_1_4_1	paquet ferme · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n 11-47 · epars · sain	15387	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n 48-63 · dense · sain	1	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n 48-63 · epars · sain	160	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n<=10 · epars · sain	12316	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n=64+ · dense · sain	62	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · DELTA · n=64+ · epars · sain	66556	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	47	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n 11-47 · dense · sain	173	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	9	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	3	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n 11-47 · epars · sain	195	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	2	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n<=10 · epars · sain	9	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n=64+ · dense · sain	29	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	540	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	2	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	2648	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · sain	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	16	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	10	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	1070	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	38	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	3914	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	18	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	15225	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	42	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	5	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	108	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · NEW · n 48-63 · epars · sain	1	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	2	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · DELTA · n 11-47 · dense · sain	38	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · DELTA · n 11-47 · epars · sain	14062	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · DELTA · n 48-63 · epars · sain	94	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · DELTA · n<=10 · epars · sain	8579	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · DELTA · n=64+ · dense · sain	34	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · DELTA · n=64+ · epars · sain	26315	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · NEW · n 11-47 · dense · sain	115	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · NEW · n 11-47 · epars · sain	63	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · NEW · n 48-63 · epars · sain	1	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · NEW · n=64+ · dense · sain	21	0	0	0	0
+bcb6d393	HI_1_12_0	paquet ferme · NEW · n=64+ · epars · sain	1	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	25	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	5	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	234	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	387	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	402	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	2	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	2759	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	20	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	12	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	9	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	2	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	186	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	7	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	173	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	162	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	1	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	1089	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · sain	2	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	2	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	32	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	1	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · sain	1	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	281	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	14	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	11	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	1717	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	8	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	8480	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	20	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	60	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	1	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	8	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	76551	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n 48-63 · dense · sain	4	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	439	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · bit hors archetype	1	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	28290	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	111	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	160978	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	4	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	619	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	5	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	489	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · sain	1	0	0	0	0
+bf15f7ab	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	74	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	502	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · sain	1	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · sain	821	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	823	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	5	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	4983	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	24	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	17	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · NEW · n 48-63 · dense · sain	1	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	9	0	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	3	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	389	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	2	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	2055	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	110	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	587	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	7	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	2	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	1134	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	2	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	434	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	3044	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	17	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	19171	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	65	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	36	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	7	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	1	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	78784	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	15586	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	26299	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	105	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	153365	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	8	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	430	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	11	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	257	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n 48-63 · dense · sain	1	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · epars non croissant	1	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · sain	1	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	2	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	75	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+bfecd02b	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · sain	1	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	285	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · sain	5	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	204	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	1	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	256	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	10	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	11	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	37	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	2	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	16	0	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	2	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · sain	1	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	676	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	369	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	1234	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	12	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · sain	15	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	775	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	8	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	2176	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	8465	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	1	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	4	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	26	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	60919	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n 48-63 · dense · sain	15	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	321	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	3	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	41031	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	77	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	102567	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	27	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	390	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	29	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	195	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	24	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	9	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · epars non croissant	1	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · sain	4	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	62	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+c75f33b8	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · sain	1	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	341	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · sain	20	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	33	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	6	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	111	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	36	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	14	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	2	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	9	0	0	0	0
+d9781168	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	3	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	4745	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	123	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	1	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	6181	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · sain	9	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	2	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	186	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	1	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	8172	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	1079	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	10931	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	13	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	51790	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	34	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	37	0	0	0	0
+d9781168	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	4	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	3	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	93	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	5	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	80085	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n 48-63 · dense · sain	29	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	4796	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · bit hors archetype	3	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	32792	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	105	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	129816	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	90	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	514	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	123	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	3	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	416	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · epars non croissant	7	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	18	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	6	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · sain	8	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	103	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	5	0	0	0	0
+d9781168	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · sain	5	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	13	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n 11-47 · epars · bit hors archetype	8	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n 11-47 · epars · sain	414	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n 48-63 · dense · sain	17	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n 48-63 · epars · sain	472	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	3	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	130	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n<=10 · epars · sain	537	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n=64+ · dense · sain	29	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · DELTA · n=64+ · epars · sain	5982	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	23	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n 11-47 · dense · sain	2	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	35	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	4	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n 11-47 · epars · sain	38	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n 48-63 · dense · bit hors archetype	3	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n 48-63 · epars · epars non croissant	5	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n 48-63 · epars · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	11	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	12	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n<=10 · epars · sain	4	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n=64+ · dense · sain	4	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n=64+ · epars · epars non croissant	2	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · NEW · n=64+ · epars · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · dense · bit hors archetype	10	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	12	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	3361	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · dense · sain	3	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	6167	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · dense · bit hors archetype	3	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	64	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · dense · sain	5	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	152	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · bit hors archetype	9	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · dense · sain	2	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · bit hors archetype	45	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · epars non croissant	4	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	11	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	4	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	9	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · sain	2	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · dense · sain	2	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n=64+ · epars · sain	2	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · dense · bit hors archetype	6	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · epars non croissant	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	104	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	2	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	18	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · DELTA · n=64+ · epars · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	6	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	37	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · epars non croissant	7	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	51	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · NEW · n 48-63 · epars · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	4	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	7	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · epars non croissant	3	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · sain	4	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · bit hors archetype	6	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · sain	8	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	3	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	9078	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	17	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	21136	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	53	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	10008	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	424	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n=64+ · epars · epars non croissant	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	173492	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	9	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	28	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n 11-47 · epars · epars non croissant	3	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	27	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	4	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	6	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n<=10 · epars · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre, record anterieur · NEW · n=64+ · epars · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	4	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n 11-47 · dense · sain	16	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n 11-47 · epars · sain	16794	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n 48-63 · dense · sain	4	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n 48-63 · epars · sain	10288	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n<=10 · epars · sain	4165	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n=64+ · dense · sain	87	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · DELTA · n=64+ · epars · sain	59233	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	64	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	72	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n 11-47 · epars · epars non croissant	2	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n 11-47 · epars · sain	36	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n 48-63 · dense · bit hors archetype	1	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n 48-63 · epars · bit hors archetype	2	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n 48-63 · epars · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	12	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	16	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n<=10 · epars · sain	7	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n=64+ · dense · sain	1	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+e5adf7b2	HI_1_11_0	paquet ferme · NEW · n=64+ · epars · sain	1	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	688	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · DELTA · n 48-63 · dense · sain	5	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · sain	48	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	134	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	14	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	624	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	31	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	26	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	1	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	9	0	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	3	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	1669	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	440	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	2178	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · sain	2	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	2797	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · dense · sain	1	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	147	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	4485	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	23	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	21328	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	60	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	75	0	0	0	0
+f75e7053	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	14	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	26	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	44635	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	1121	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	27781	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	108	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	128071	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	5	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	259	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	251	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · sain	1	0	0	0	0
+f75e7053	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	70	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · DELTA · n 11-47 · dense · bit hors archetype	3	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · DELTA · n 11-47 · epars · sain	1387	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · DELTA · n 48-63 · epars · sain	46	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · DELTA · n<=10 · dense · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · bit hors archetype	11	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · DELTA · n<=10 · epars · sain	745	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · DELTA · n=64+ · dense · sain	6	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · DELTA · n=64+ · epars · sain	1682	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · bit hors archetype	6	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n 11-47 · dense · sain	35	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · epars non croissant	1	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n 11-47 · epars · sain	73	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n 48-63 · dense · sain	1	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n<=10 · dense · bit hors archetype	67	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · bit hors archetype	41	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n<=10 · epars · sain	744	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n=64+ · dense · sain	4	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · NEW · n=64+ · epars · epars non croissant	2	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 11-47 · epars · sain	1257	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n 48-63 · epars · sain	14	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · bit hors archetype	15	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n<=10 · epars · sain	21039	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · DELTA · n=64+ · epars · sain	990	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 11-47 · epars · sain	4	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n 48-63 · epars · sain	4	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · dense · bit hors archetype	41	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · bit hors archetype	27	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie rejet hors datum · NEW · n<=10 · epars · sain	39	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · bit hors archetype	4	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 11-47 · epars · sain	9	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · epars non croissant	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n 48-63 · epars · sain	6	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · bit hors archetype	62	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · DELTA · n<=10 · epars · sain	226	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n 11-47 · epars · sain	3	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · dense · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · bit hors archetype	87	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n<=10 · epars · sain	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, dernier record, sortie terminateur · NEW · n=64+ · epars · epars non croissant	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · DELTA · n 11-47 · epars · sain	5078	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · DELTA · n 48-63 · epars · sain	409	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · bit hors archetype	13	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · DELTA · n<=10 · epars · sain	3222	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · dense · sain	14	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · DELTA · n=64+ · epars · sain	12118	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · dense · sain	506	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · bit hors archetype	2	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · NEW · n 11-47 · epars · sain	364	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · dense · bit hors archetype	115	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · NEW · n<=10 · epars · bit hors archetype	19	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre, record anterieur · NEW · n=64+ · dense · sain	54	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · DELTA · n 11-47 · dense · sain	3	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · bit hors archetype	1	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · DELTA · n 11-47 · epars · sain	98853	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · DELTA · n 48-63 · epars · sain	390	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · DELTA · n<=10 · dense · bit hors archetype	2	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · DELTA · n<=10 · epars · sain	23865	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · DELTA · n=64+ · dense · sain	83	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · DELTA · n=64+ · epars · sain	118298	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · bit hors archetype	16	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n 11-47 · dense · sain	457	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · bit hors archetype	11	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n 11-47 · epars · sain	346	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n 48-63 · epars · sain	1	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n<=10 · dense · bit hors archetype	4	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · bit hors archetype	10	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n<=10 · epars · sain	1	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n=64+ · dense · sain	78	0	0	0	0
+fb1a1a72	HI_1_13_0	paquet ferme · NEW · n=64+ · epars · sain	1	0	0	0	0

@@ -1,6 +1,6 @@
 //go:build research
 
-// Command cmd_fermeture mesure un corpus de films, UN A LA FOIS, sous l un ou l autre de ses deux
+// Command cmd_fermeture mesure un corpus de films, UN A LA FOIS, sous l un ou l autre de ses trois
 // MODES (`-mode`, liste separee par des virgules ; defaut `fermeture`) :
 //
 //   - `fermeture` : la CARTE DE FERMETURE DES TRAMES DELTA (lot J4.0 du plan de suite de l audit
@@ -11,7 +11,12 @@
 //   - `gb1` : la MESURE PREALABLE DU CONSTAT GB-1 (lot J5.0) : les vies (slot, generation) du
 //     bipede, celles que le filtre de production laisse sans position (la generation 1 seule
 //     avant le lot J5.2, les generations vivantes depuis), `durationMs` contre la duree
-//     du film, et les en-tetes dont (slot, tag) n est aucune vie connue (cf. gb1.go).
+//     du film, et les en-tetes dont (slot, tag) n est aucune vie connue (cf. gb1.go) ;
+//   - `v2` : la CARTE DE FERMETURE V2 (campagne de recherche sur la grammaire, phase 1, etape 1,
+//     2026-10-01) : la carte de `fermeture` A L IDENTIQUE (memes TSV, memes valeurs), plus la
+//     ventilation de « vue C : terminateur hors cadre », les rejets de la vue B contre le bloc de
+//     type 1, le denominateur des entrees de controle utiles, le compte declare du chunk des temps
+//     forts et le mode borne (cf. v2.go). `v2` implique `fermeture`.
 //
 // Il ne compile QUE sous le tag `research`. Il lit les films EN PLACE, UN A LA FOIS, dans l ordre
 // donne, sous la sentinelle memoire de `filmproc` armee film par film ; il n ecrit que dans le
@@ -20,10 +25,10 @@
 //	cd apps/go-api
 //	go run -tags=research ./internal/games/halo_infinite/film/research/cmd_fermeture \
 //	  -racine <parc>/data/cache/film_chunks -films 0797ce72,bfecd02b -sortie <dossier hors data> \
-//	  [-mode fermeture,gb1]
+//	  [-mode fermeture,gb1,v2]
 //
 // La mesure de fermeture est `grammar.FrameClosure` (la marche de production, aucune lecture de
-// bits de plus), sous le contexte des instruments (`grammar.ContexteDeFilm` : largeurs d axe lues
+// bits de plus) — `grammar.FrameClosureDetaillee` en mode `v2`, qui rend la meme carte — sous le contexte des instruments (`grammar.ContexteDeFilm` : largeurs d axe lues
 // dans le film, profil par defaut). Le verrou de decodage de `filmproc` n est PAS pris : il
 // ecrirait un fichier sous la racine du cache ; la serialisation des decodages sur la machine est
 // celle de l operateur, comme pour `cmd_grenadeids`.
@@ -33,6 +38,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -61,10 +67,11 @@ const repertoireInterdit = "data"
 const (
 	modeFermeture = "fermeture"
 	modeGB1       = "gb1"
+	modeV2        = "v2"
 )
 
-// modes dit quelles mesures l outil fait sur chaque film.
-type modes struct{ fermeture, gb1 bool }
+// modes dit quelles mesures l outil fait sur chaque film. `v2` implique `fermeture`.
+type modes struct{ fermeture, gb1, v2 bool }
 
 func main() {
 	racine := flag.String("racine", "", "racine portant les repertoires de films (lecture seule)")
@@ -74,20 +81,27 @@ func main() {
 	table := flag.String("table", tableParDefaut, "chemin de ecs_table.tsv (usage produit et statuts)")
 	top := flag.Int("top", 30, "nombre de causes d arret classees dans le resume ; 0 = toutes")
 	plafond := flag.Int("plafond-gib", plafondParDefautGiB, "plafond memoire par film ; 0 desarme")
-	mode := flag.String("mode", modeFermeture, "mesures par film : fermeture, gb1, ou les deux (fermeture,gb1)")
+	mode := flag.String("mode", modeFermeture, "mesures par film, separees par des virgules : fermeture, gb1, v2 (v2 implique fermeture)")
+	fixe := flag.String("denominateur-fixe", "", "v2 : TSV du denominateur fixe consolide (colonnes film et fixe)")
+	paquets := flag.Bool("paquets", false, "v2 : ecrire fermeture_paquets.tsv, une ligne par paquet delta")
 	flag.Parse()
 
 	ids := borner(decouper(*films), *limite)
 	md, errMode := lireModes(*mode)
 	if *racine == "" || len(ids) == 0 || *sortie == "" || errMode != nil {
 		fmt.Fprintln(os.Stderr, "usage : -racine <dir> -films <id,id,...> -sortie <dir hors data> "+
-			"[-limite N] [-mode fermeture,gb1]")
+			"[-limite N] [-mode fermeture,gb1,v2]")
 		if errMode != nil {
 			fmt.Fprintln(os.Stderr, errMode)
 		}
 		os.Exit(2)
 	}
-	rap, err := preparer(*sortie, *table, md)
+	opts, errFixe := lireOptionsV2(*fixe, *paquets)
+	if errFixe != nil {
+		fmt.Fprintln(os.Stderr, errFixe)
+		os.Exit(2)
+	}
+	rap, err := preparer(*sortie, *table, md, opts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
@@ -111,7 +125,7 @@ func main() {
 
 // preparer verifie et cree le repertoire du rapport, relit la table ECS si le mode `fermeture`
 // la demande, et ouvre le rapport.
-func preparer(sortie, table string, md modes) (*rapport, error) {
+func preparer(sortie, table string, md modes, opts optionsV2) (*rapport, error) {
 	if err := preparerSortie(sortie); err != nil {
 		return nil, err
 	}
@@ -122,7 +136,7 @@ func preparer(sortie, table string, md modes) (*rapport, error) {
 			return nil, err
 		}
 	}
-	return ouvrirRapport(sortie, tab, md)
+	return ouvrirRapport(sortie, tab, md, opts)
 }
 
 // lireModes lit la valeur de `-mode`.
@@ -134,8 +148,10 @@ func lireModes(v string) (modes, error) {
 			md.fermeture = true
 		case modeGB1:
 			md.gb1 = true
+		case modeV2:
+			md.fermeture, md.v2 = true, true
 		default:
-			return modes{}, fmt.Errorf("-mode : %q inconnu (fermeture, gb1)", m)
+			return modes{}, fmt.Errorf("-mode : %q inconnu (fermeture, gb1, v2)", m)
 		}
 	}
 	if !md.fermeture && !md.gb1 {
@@ -159,7 +175,7 @@ func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport) error {
 	}
 	build := buildDuFilm(fc)
 	if rap.modes.fermeture {
-		carte, err := grammar.FrameClosure(fc, rap.tab.utiles)
+		carte, v2, err := mesurerLaCarte(fc, id, filepath.Join(racine, id), rap)
 		if err != nil {
 			return err
 		}
@@ -171,6 +187,11 @@ func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport) error {
 		if err := rap.ajouter(m); err != nil {
 			return err
 		}
+		if v2 != nil {
+			if err := rap.v2.ajouter(id, build, v2); err != nil {
+				return err
+			}
+		}
 	}
 	if rap.modes.gb1 {
 		if err := mesurerEtEcrireGB1(fc, id, build, garde, rap); err != nil {
@@ -179,6 +200,30 @@ func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport) error {
 	}
 	rap.mesures++
 	return nil
+}
+
+// mesurerLaCarte mesure la carte de fermeture d un film deja ouvert : `grammar.FrameClosure` en
+// mode `fermeture`, `grammar.FrameClosureDetaillee` (la meme carte, plus le detail de chaque
+// paquet, et le chunk des temps forts) en mode `v2`. La mesure v2 est nil hors de ce mode.
+func mesurerLaCarte(fc *grammar.FilmContext, id, dir string, rap *rapport) (grammar.FrameClosureReport, *mesureV2, error) {
+	if !rap.modes.v2 {
+		carte, err := grammar.FrameClosure(fc, rap.tab.utiles)
+		return carte, nil, err
+	}
+	var paquets io.Writer
+	if rap.v2.paquets != nil {
+		paquets = rap.v2.paquets
+	}
+	col := nouveauCollecteurV2(fc, id, paquets)
+	carte, err := grammar.FrameClosureDetaillee(fc, rap.tab.utiles, col.voir)
+	if err == nil {
+		err = col.err
+	}
+	if err != nil {
+		return carte, nil, err
+	}
+	col.m.chunk3 = mesurerChunk3(dir)
+	return carte, col.m, nil
 }
 
 // mesurerEtEcrireGB1 fait la mesure GB-1 d un film deja ouvert et l ajoute au rapport.

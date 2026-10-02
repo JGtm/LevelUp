@@ -18,11 +18,14 @@ package source
 // # LA SEMANTIQUE, ET C EST CELLE DU MOTEUR (arbitrage V15 (3))
 //
 // Lecture MSB-first big-endian : le i-eme bit consomme est le bit (7-(i mod 8)) de l octet
-// (i div 8). LES BITS AU-DELA DU TAMPON VALENT ZERO, silencieusement — c est le bourrage de
-// queue du moteur, et c est la convention que le lecteur canonique garde. Le lecteur ne porte
-// AUCUN drapeau d erreur : un consommateur qui a besoin de se mefier d un flux desynchronise
-// (la chaine d evenements de `killsource`) teste [Bits.Remaining] AVANT sa lecture et porte son
-// propre drapeau. Le drapeau appartient au marcheur, pas au lecteur.
+// (i div 8). LES BITS AU-DELA DU TAMPON VALENT ZERO, comme ceux que rend la primitive du moteur
+// (`FUN_1406d6c7c`) : aucune valeur lue ne change avec la position. Le moteur, lui, COMPTE les
+// bits consommes et declare EN ECHEC un paquet qui en consomme plus que `8 x taille`
+// (`FUN_14298816c` : `lecteur+0x2c > 8 x lecteur+0x18`) ; le seul bourrage d un flux valide est
+// celui de l ECRIVAIN, de 0 a 7 bits nuls apres le dernier bit ecrit (`FUN_14299d2c8`,
+// `FUN_1406d6d94`). Ce lecteur garde la valeur (des zeros) ET le verdict : [Bits.Deborde] dit
+// qu une lecture a depasse la fin du tampon. Un consommateur qui refuse de lire au-dela teste
+// [Bits.Remaining] AVANT sa lecture (la chaine d evenements de `killsource`).
 //
 // # LECTURE PAR MOT DE 64 BITS
 //
@@ -64,6 +67,9 @@ import "encoding/binary"
 type Bits struct {
 	buf []byte
 	pos int // position EN BITS du prochain bit a lire
+	// haut : la position la plus avancee quittee par [Bits.SetBitPos]. La lecture n avance que
+	// vers l avant ; seul un repositionnement peut ramener `pos` sous une position deja atteinte.
+	haut int
 }
 
 // NewBits rend un lecteur positionne sur le premier bit de `buf`.
@@ -82,7 +88,15 @@ func (b *Bits) BitPos() int { return b.pos }
 
 // SetBitPos deplace la lecture a une position de bit ABSOLUE (resynchronisation d un lecteur
 // partage entre plusieurs vues de replication, sans en allouer un second).
-func (b *Bits) SetBitPos(p int) { b.pos = p }
+func (b *Bits) SetBitPos(p int) {
+	b.haut = max(b.haut, b.pos)
+	b.pos = p
+}
+
+// Deborde dit si la lecture a atteint, a un moment, une position au-dela du dernier bit du
+// tampon : le verdict d echec que le moteur pose sur un paquet (`FUN_14298816c`, cf. l en-tete).
+// Collant : un repositionnement en arriere ne l efface pas.
+func (b *Bits) Deborde() bool { return max(b.haut, b.pos) > len(b.buf)*8 }
 
 // Remaining rend le nombre de bits non lus. C EST LA PORTE DE LA MEFIANCE : un marcheur qui
 // refuse de lire au-dela du tampon teste `Remaining() >= n` avant sa lecture (cf. l en-tete).

@@ -1,0 +1,361 @@
+film	build	mesure	valeur
+0797ce72	HI_1_13_0	T1-6 images-cles	cles 891, conflits 0, tetes 1:8345 2:1
+0797ce72	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+0797ce72	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+0797ce72	HI_1_13_0	T4-C3 index absolus i0	-1:222 0:149947 1:4241
+0797ce72	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+0797ce72	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+0797ce72	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+0797ce72	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+084a804d	HI_1_10_0	T1-6 images-cles	cles 3496, conflits 1, tetes 1:37910 2:2
+084a804d	HI_1_10_0	T2-5 groupes d homonymes	25 groupes, 0 a niveaux multiples
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+084a804d	HI_1_10_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+084a804d	HI_1_10_0	T4-C3 index absolus i0	-1:12008 0:586674 1:6280
+084a804d	HI_1_10_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+084a804d	HI_1_10_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+084a804d	HI_1_10_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+084a804d	HI_1_10_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+111fa685	HI_1_10_0	T1-6 images-cles	cles 2010, conflits 14, tetes 1:12985 3:1
+111fa685	HI_1_10_0	T2-5 groupes d homonymes	25 groupes, 0 a niveaux multiples
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+111fa685	HI_1_10_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+111fa685	HI_1_10_0	T4-C3 index absolus i0	-1:5021 0:300337 1:2866
+111fa685	HI_1_10_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+111fa685	HI_1_10_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+111fa685	HI_1_10_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+111fa685	HI_1_10_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+11de8353	HI_1_9_0	T1-6 images-cles	cles 1818, conflits 4, tetes 1:14924
+11de8353	HI_1_9_0	T2-5 groupes d homonymes	25 groupes, 0 a niveaux multiples
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+11de8353	HI_1_9_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+11de8353	HI_1_9_0	T4-C3 index absolus i0	-1:5252 0:284078 1:2854
+11de8353	HI_1_9_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+11de8353	HI_1_9_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+11de8353	HI_1_9_0	T7-3 empreinte ti=43	41 entrees 45559433c06ecb05
+11de8353	HI_1_9_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+1c4c63c2	HI_1_10_0	T1-6 images-cles	cles 4334, conflits 20, tetes 1:35214 2:296
+1c4c63c2	HI_1_10_0	T2-5 groupes d homonymes	25 groupes, 0 a niveaux multiples
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+1c4c63c2	HI_1_10_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+1c4c63c2	HI_1_10_0	T4-C3 index absolus i0	-1:35427 0:1293921 1:18961
+1c4c63c2	HI_1_10_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+1c4c63c2	HI_1_10_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+1c4c63c2	HI_1_10_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+1c4c63c2	HI_1_10_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+396cfc92	HI_1_13_0	T1-6 images-cles	cles 1024, conflits 0, tetes 1:14396 2:1
+396cfc92	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+396cfc92	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+396cfc92	HI_1_13_0	T4-C3 index absolus i0	-1:367 0:179864 1:777
+396cfc92	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+396cfc92	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+396cfc92	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+396cfc92	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+4f77afc1	HI_1_13_0	T1-6 images-cles	cles 3516, conflits 1, tetes 1:36869
+4f77afc1	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+4f77afc1	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+4f77afc1	HI_1_13_0	T4-C3 index absolus i0	-1:12008 0:675510 1:7225
+4f77afc1	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+4f77afc1	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+4f77afc1	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+4f77afc1	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+50247b26	version-31	T1-6 images-cles	cles 2179, conflits 0, tetes 1:23386
+50247b26	version-31	T2-5 groupes d homonymes	25 groupes, 0 a niveaux multiples
+50247b26	version-31	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+50247b26	version-31	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+50247b26	version-31	T4-C3 index absolus i0	-1:8730 0:312128 1:4787
+50247b26	version-31	T7-3 empreinte ti=0	26 entrees 2dde5749b44aae59
+50247b26	version-31	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+50247b26	version-31	T7-3 empreinte ti=43	40 entrees 9940aad6bf25d842
+50247b26	version-31	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+51ebbc0f	HI_1_13_0	T1-6 images-cles	cles 1431, conflits 1, tetes 1:13561
+51ebbc0f	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+51ebbc0f	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+51ebbc0f	HI_1_13_0	T4-C3 index absolus i0	-1:486 0:107102 1:264
+51ebbc0f	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+51ebbc0f	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+51ebbc0f	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+51ebbc0f	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+60ae07c4	HI_1_8_0	T1-6 images-cles	cles 1232, conflits 3, tetes 1:14246
+60ae07c4	HI_1_8_0	T2-5 groupes d homonymes	25 groupes, 0 a niveaux multiples
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+60ae07c4	HI_1_8_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+60ae07c4	HI_1_8_0	T4-C3 index absolus i0	-1:552 0:280256 1:4416
+60ae07c4	HI_1_8_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+60ae07c4	HI_1_8_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+60ae07c4	HI_1_8_0	T7-3 empreinte ti=43	41 entrees 45559433c06ecb05
+60ae07c4	HI_1_8_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+a349fea8	version-33	T1-6 images-cles	cles 3670, conflits 0, tetes 1:42666 2:18
+a349fea8	version-33	T2-5 groupes d homonymes	25 groupes, 0 a niveaux multiples
+a349fea8	version-33	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+a349fea8	version-33	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+a349fea8	version-33	T4-C3 index absolus i0	-1:14318 0:515961 1:8983
+a349fea8	version-33	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+a349fea8	version-33	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+a349fea8	version-33	T7-3 empreinte ti=43	40 entrees 9940aad6bf25d842
+a349fea8	version-33	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+a521164d	HI_1_4_1	T1-6 images-cles	cles 1860, conflits 0, tetes 1:15353
+a521164d	HI_1_4_1	T2-5 groupes d homonymes	25 groupes, 0 a niveaux multiples
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+a521164d	HI_1_4_1	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+a521164d	HI_1_4_1	T4-C3 index absolus i0	-1:5369 0:190027 1:3327
+a521164d	HI_1_4_1	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+a521164d	HI_1_4_1	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+a521164d	HI_1_4_1	T7-3 empreinte ti=43	40 entrees 9940aad6bf25d842
+a521164d	HI_1_4_1	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+bcb6d393	HI_1_12_0	T1-6 images-cles	cles 785, conflits 1, tetes 1:7927
+bcb6d393	HI_1_12_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+bcb6d393	HI_1_12_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+bcb6d393	HI_1_12_0	T4-C3 index absolus i0	-1:160 0:110133 1:84
+bcb6d393	HI_1_12_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+bcb6d393	HI_1_12_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+bcb6d393	HI_1_12_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+bcb6d393	HI_1_12_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+bf15f7ab	HI_1_13_0	T1-6 images-cles	cles 904, conflits 4, tetes 1:11797
+bf15f7ab	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+bf15f7ab	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+bf15f7ab	HI_1_13_0	T4-C3 index absolus i0	-1:210 0:171200 1:95
+bf15f7ab	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+bf15f7ab	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+bf15f7ab	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+bf15f7ab	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+bfecd02b	HI_1_13_0	T1-6 images-cles	cles 1015, conflits 0, tetes 1:12688
+bfecd02b	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+bfecd02b	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+bfecd02b	HI_1_13_0	T4-C3 index absolus i0	-1:595 0:182790 1:388
+bfecd02b	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+bfecd02b	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+bfecd02b	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+bfecd02b	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+c75f33b8	HI_1_13_0	T1-6 images-cles	cles 1189, conflits 0, tetes 1:9383
+c75f33b8	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+c75f33b8	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+c75f33b8	HI_1_13_0	T4-C3 index absolus i0	-1:334 0:138826 1:129
+c75f33b8	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+c75f33b8	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+c75f33b8	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+c75f33b8	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+d9781168	HI_1_13_0	T1-6 images-cles	cles 1709, conflits 2, tetes 1:15634
+d9781168	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+d9781168	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+d9781168	HI_1_13_0	T4-C3 index absolus i0	-1:558 0:242509 1:325
+d9781168	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+d9781168	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+d9781168	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+d9781168	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+e5adf7b2	HI_1_11_0	T1-6 images-cles	cles 2244, conflits 12, tetes 1:13982
+e5adf7b2	HI_1_11_0	T2-5 groupes d homonymes	25 groupes, 0 a niveaux multiples
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+e5adf7b2	HI_1_11_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+e5adf7b2	HI_1_11_0	T4-C3 index absolus i0	-1:5461 0:317451 1:3069
+e5adf7b2	HI_1_11_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+e5adf7b2	HI_1_11_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+e5adf7b2	HI_1_11_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+e5adf7b2	HI_1_11_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+f75e7053	HI_1_13_0	T1-6 images-cles	cles 849, conflits 0, tetes 1:11196
+f75e7053	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+f75e7053	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+f75e7053	HI_1_13_0	T4-C3 index absolus i0	-1:158 0:156373 1:65
+f75e7053	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+f75e7053	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+f75e7053	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+f75e7053	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0
+fb1a1a72	HI_1_13_0	T1-6 images-cles	cles 1571, conflits 2, tetes 1:22737
+fb1a1a72	HI_1_13_0	T2-5 groupes d homonymes	29 groupes, 0 a niveaux multiples
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i10 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i11 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i2 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i3 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i4 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i5 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i6 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i7 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i8 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=21 i9 flock-destination-component L2
+fb1a1a72	HI_1_13_0	T4-C2 niveau	ti=34 i7 tacmap-waypointstate L2
+fb1a1a72	HI_1_13_0	T4-C3 index absolus i0	-1:361 0:139573 1:291
+fb1a1a72	HI_1_13_0	T7-3 empreinte ti=0	27 entrees e2470409afb116b4
+fb1a1a72	HI_1_13_0	T7-3 empreinte ti=2	18 entrees a174ead68f0cf44b
+fb1a1a72	HI_1_13_0	T7-3 empreinte ti=43	41 entrees bbd8fe0003acd701
+fb1a1a72	HI_1_13_0	cadre	IDLowBits=13 IDBase=0 HasExtraFields=false Region=0

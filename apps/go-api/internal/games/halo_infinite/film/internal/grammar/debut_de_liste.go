@@ -30,10 +30,13 @@ import (
 // de records le lit : NEW traverse sans desynchronisation, DEL, delta qui se decode sur un slot que
 // le monde connait — finit EXACTEMENT sur le debut que le localisateur a trouve : deux lectures
 // independantes, l en-tete en tete et la signature du slot 123 en queue, qui s accordent au bit
-// pres. Quand le localisateur ne trouve rien, la preuve est la FERMETURE de la vue C ([vueCFermee])
-// par la marche complete qui part du candidat. Sinon le debut du localisateur est garde, et rien
-// ne change d un bit. Ce n est pas un repli : aucun bit n est devine, les records sont LUS ; les
-// listes ainsi etendues sont comptees ([types.MovementStateStats.EventPacketsNewRecordStart]).
+// pres. Quand le localisateur ne trouve rien, la preuve est la FERMETURE du paquet par la marche
+// complete qui part du candidat ([debutParFermeture]) ; a defaut, le candidat d ou le paquet ferme
+// au bit pres seulement est garde, et ce second rang N EST PAS une preuve : c est le repli nomme
+// `repli_debut_de_liste_ferme_au_bit`, compte a part. Sinon le debut du localisateur est garde, et
+// rien ne change d un bit. Par la chaine et au premier rang, aucun bit n est devine, les records
+// sont LUS ; les listes ainsi etendues sont comptees
+// ([types.MovementStateStats.EventPacketsNewRecordStart]).
 
 // debutDeLaListe rend le debut de la marche d un paquet a evenements : le premier record NEW de
 // tete prouve ([debutParChaine], [debutParFermeture]), sinon le localisateur strict. `-1` : liste
@@ -143,25 +146,49 @@ func pasDEssai(pay []byte, pos, extra int, w *World, essai FrameConfig) (int, bo
 }
 
 // debutParFermeture rend, pour un paquet dont le localisateur ne trouve pas la liste, le PREMIER
-// candidat d ou la marche complete (monde restaure apres chaque essai) FERME la vue C au bit pres
-// ([vueCFermee]) ; -1 sinon.
+// candidat d ou la marche complete (monde restaure apres chaque essai) FERME le paquet
+// ([LectureVueC.Fermee] : au bit pres, sans regle de l ecrivain contredite) ; s il n y en a aucun,
+// le premier d ou elle le ferme au bit pres ([LectureVueC.FermeeAuBit]) ; -1 sinon.
+//
+// LE PREMIER RANG EST UNE PREUVE : le paquet ferme, aucune regle de l ecrivain contredite.
+//
+// LE SECOND RANG EST UN REPLI NOMME, `repli_debut_de_liste_ferme_au_bit` (lecture non portee : un
+// tel debut porte un en-tete de record juste dont le corps est mal lu). Il garde la tete, pas la
+// fermeture : le paquet lu depuis ce debut reste NON ferme (son verdict contredit l ecrivain, le
+// tir continu y voit un trou), mais ses records sont lus et ses NEW lies, comme ceux de tout paquet
+// lu et non ferme. Chaque liste prise a ce rang est comptee
+// ([Observation.DebutsDeListeParRepliFermeAuBit]).
 func debutParFermeture(pay []byte, candidats []int, w *World, cfg FrameConfig) (int, bool) {
 	extra := motFacultatifDEnTete(cfg)
+	auBit := -1
 	for _, p := range candidats {
 		if p-extra < 0 {
 			continue
 		}
-		essai := cfg
-		obs := NouvelleObservation()
-		ferme := false
-		obs.VueControleHook = func(l LectureVueC) { ferme = l.Fermee }
-		essai.Obs = obs
-		snap := w.Snapshot()
-		DecodeFrameViewsCurseur(pay, w, essai, MovementStateViews, p-extra)
-		w.Restore(snap)
-		if ferme {
+		l := lectureDEssai(pay, w, cfg, p-extra)
+		if l.Fermee {
 			return p - extra, true
 		}
+		if l.FermeeAuBit && auBit < 0 {
+			auBit = p - extra
+		}
 	}
-	return -1, false
+	if auBit >= 0 {
+		cfg.Obs.compterDebutDeListeParRepliFermeAuBit()
+	}
+	return auBit, auBit >= 0
+}
+
+// lectureDEssai marche le paquet depuis `debut` sur le monde, puis le restaure, et rend le verdict
+// de sa vue C.
+func lectureDEssai(pay []byte, w *World, cfg FrameConfig, debut int) LectureVueC {
+	essai := cfg
+	obs := NouvelleObservation()
+	var l LectureVueC
+	obs.VueControleHook = func(x LectureVueC) { l = x }
+	essai.Obs = obs
+	snap := w.Snapshot()
+	DecodeFrameViewsCurseur(pay, w, essai, MovementStateViews, debut)
+	w.Restore(snap)
+	return l
 }

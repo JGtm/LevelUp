@@ -1,0 +1,81 @@
+
+void FUN_14076d11c(longlong param_1,uint param_2,undefined8 *param_3)
+
+{
+  undefined4 uVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  undefined8 uVar12;
+  undefined8 uVar13;
+  undefined8 uVar14;
+  undefined8 uVar15;
+  undefined8 uVar16;
+  undefined8 uVar17;
+  undefined8 uVar18;
+  undefined8 uVar19;
+  undefined8 uVar20;
+  undefined8 uVar21;
+  undefined8 uVar22;
+  undefined8 uVar23;
+  undefined8 *puVar24;
+  
+  uVar3 = param_3[1];
+  uVar4 = param_3[2];
+  uVar5 = param_3[3];
+  uVar6 = param_3[4];
+  uVar7 = param_3[5];
+  uVar8 = param_3[6];
+  uVar9 = param_3[7];
+  uVar10 = param_3[8];
+  uVar11 = param_3[9];
+  uVar12 = param_3[10];
+  uVar13 = param_3[0xb];
+  uVar14 = param_3[0xc];
+  uVar15 = param_3[0xd];
+  uVar16 = param_3[0xe];
+  uVar17 = param_3[0xf];
+  uVar18 = param_3[0x10];
+  uVar19 = param_3[0x11];
+  uVar2 = param_3[0x16];
+  uVar20 = param_3[0x12];
+  uVar21 = param_3[0x13];
+  puVar24 = (undefined8 *)(param_1 + 0x32f0 + (longlong)(int)param_2 * 0xbc);
+  uVar22 = param_3[0x14];
+  uVar23 = param_3[0x15];
+  uVar1 = *(undefined4 *)(param_3 + 0x17);
+  *puVar24 = *param_3;
+  puVar24[1] = uVar3;
+  puVar24[2] = uVar4;
+  puVar24[3] = uVar5;
+  puVar24[4] = uVar6;
+  puVar24[5] = uVar7;
+  puVar24[6] = uVar8;
+  puVar24[7] = uVar9;
+  puVar24[8] = uVar10;
+  puVar24[9] = uVar11;
+  puVar24[10] = uVar12;
+  puVar24[0xb] = uVar13;
+  puVar24[0xc] = uVar14;
+  puVar24[0xd] = uVar15;
+  puVar24[0xe] = uVar16;
+  puVar24[0xf] = uVar17;
+  puVar24[0x10] = uVar18;
+  puVar24[0x11] = uVar19;
+  puVar24[0x12] = uVar20;
+  puVar24[0x13] = uVar21;
+  puVar24[0x14] = uVar22;
+  puVar24[0x15] = uVar23;
+  puVar24[0x16] = uVar2;
+  *(undefined4 *)(puVar24 + 0x17) = uVar1;
+  *(uint *)(param_1 + 0x2558) = *(uint *)(param_1 + 0x2558) | 1 << (param_2 & 0x1f);
+  return;
+}
+

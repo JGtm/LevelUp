@@ -313,6 +313,12 @@ type Observation struct {
 	// ([MarcheDesTrames.LiaisonsParRepliDAnticipation]) et `replay` le verse au compteur de replis de
 	// la cuisson. `Observation` elle-meme n est jamais publiee, et la forme des faits ne change pas.
 	LiaisonsParRepliDAnticipation map[uint32]int
+	// DebutsDeListeParRepliFermeAuBit compte les listes d evenements dont [debutParFermeture] prend
+	// le debut au SECOND RANG (repli `repli_debut_de_liste_ferme_au_bit`) : aucun candidat ne ferme
+	// le paquet, le premier qui le ferme au bit pres est garde. La marche des trames le rend
+	// ([MarcheDesTrames.DebutsDeListeParRepliFermeAuBit]) et `replay` le verse au compteur de replis
+	// de la cuisson ; la forme des faits ne change pas.
+	DebutsDeListeParRepliFermeAuBit int
 	// NeufsContreUnVivant : NEW refuses ([contreditUneEntiteVivante]), ventiles par le verdict de
 	// l image-cle suivante (DFIX-R6, `keyframe_liaison.go`) ; `neufsRefuses` attend ce verdict.
 	NeufsContreUnVivant                                                            int
@@ -448,4 +454,12 @@ func (o *Observation) compterLiaisonParRepliDAnticipation(ti uint32) {
 		o.LiaisonsParRepliDAnticipation = map[uint32]int{}
 	}
 	o.LiaisonsParRepliDAnticipation[ti]++
+}
+
+// compterDebutDeListeParRepliFermeAuBit compte une liste dont le debut est pris au second rang de
+// [debutParFermeture] (cf. [Observation.DebutsDeListeParRepliFermeAuBit]).
+func (o *Observation) compterDebutDeListeParRepliFermeAuBit() {
+	if o != nil {
+		o.DebutsDeListeParRepliFermeAuBit++
+	}
 }
