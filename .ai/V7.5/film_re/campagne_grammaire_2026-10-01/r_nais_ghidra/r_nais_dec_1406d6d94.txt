@@ -1,0 +1,48 @@
+
+ulonglong FUN_1406d6d94(longlong param_1)
+
+{
+  ulonglong *puVar1;
+  int iVar2;
+  int iVar3;
+  ulonglong uVar4;
+  
+  iVar2 = *(int *)(param_1 + 0x38);
+  if (iVar2 == 0x40) {
+    uVar4 = *(ulonglong *)(param_1 + 0x30);
+  }
+  else {
+    uVar4 = *(longlong *)(param_1 + 0x30) << (0x40U - (char)iVar2 & 0x3f);
+  }
+  puVar1 = *(ulonglong **)(param_1 + 0x40);
+  if (*(ulonglong **)(param_1 + 0x10) < puVar1 + 1) {
+    if (puVar1 < *(ulonglong **)(param_1 + 0x10)) {
+      do {
+        **(undefined1 **)(param_1 + 0x40) = (char)(uVar4 >> 0x38);
+        *(longlong *)(param_1 + 0x40) = *(longlong *)(param_1 + 0x40) + 1;
+        uVar4 = uVar4 << 8;
+      } while (*(ulonglong *)(param_1 + 0x40) < *(ulonglong *)(param_1 + 0x10));
+    }
+  }
+  else {
+    *puVar1 = uVar4 >> 0x38 | (uVar4 & 0xff000000000000) >> 0x28 | (uVar4 & 0xff0000000000) >> 0x18
+              | (uVar4 & 0xff00000000) >> 8 | (uVar4 & 0xff000000) << 8 | (uVar4 & 0xff0000) << 0x18
+              | (uVar4 & 0xff00) << 0x28 | uVar4 << 0x38;
+    *(longlong *)(param_1 + 0x40) = *(longlong *)(param_1 + 0x40) + 8;
+  }
+  *(int *)(param_1 + 0x28) = *(int *)(param_1 + 0x28) + iVar2;
+  *(undefined8 *)(param_1 + 0x30) = 0;
+  *(undefined4 *)(param_1 + 0x38) = 0;
+  uVar4 = (longlong)(*(int *)(param_1 + 0x28) + 7) / 8;
+  iVar2 = (int)uVar4;
+  *(int *)(param_1 + 0x18) = iVar2;
+  uVar4 = (ulonglong)(uint)(iVar2 >> 0x1f) << 0x20 | uVar4 & 0xffffffff;
+  *(longlong *)(param_1 + 0x10) = (longlong)iVar2 + *(longlong *)(param_1 + 8);
+  iVar3 = (int)((longlong)uVar4 % (longlong)*(int *)(param_1 + 0x1c));
+  if (iVar3 != 0) {
+    *(int *)(param_1 + 0x18) = (iVar2 - iVar3) + *(int *)(param_1 + 0x1c);
+  }
+  *(undefined4 *)(param_1 + 0x20) = 2;
+  return (longlong)uVar4 / (longlong)*(int *)(param_1 + 0x1c) & 0xffffffff;
+}
+

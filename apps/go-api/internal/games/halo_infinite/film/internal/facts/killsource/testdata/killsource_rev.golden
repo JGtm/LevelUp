@@ -264,6 +264,12 @@
 #               n est rouvert. Le perimetre perd `objectives/` et `fallback/`, que `killsource`
 #               n importe pas (`testdata/killsource_perimetre.golden`) ; aucune source ne change.
 #
+#   2026-10-02  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot L0 de la campagne de grammaire).
+#               L empreinte bouge par la VALEUR de `grammar.Rev` (`grammar-2026-10-02` : la
+#               fermeture d un paquet suit les regles de l ecrivain). Aucun lecteur de `killsource`
+#               ne lit `LectureVueC.Fermee` ni `debutParFermeture` ; aucune source de la couche ne
+#               change. Sortie `cmd/killsource json` IDENTIQUE A L OCTET sur les 19 temoins de
+#               `config/replay_corpus.toml` : aucune ligne en base n est candidate au backlog.
 #   2026-10-02  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (retrait des replis nuls, DU-7).
 #               `repli_gamertag_par_xuid_brut` et `repli_roster_indice_hors_bijection` sortent de
 #               la couche ; leurs conditions comptent zero sur les 1 222 films du parc (passe
@@ -292,4 +298,4 @@ killsource-2026-09-22	eb0c32d7d98f49b8f90979270d6925327033adcf6cede45b6c945883f5
 killsource-2026-09-22.2	7043543f50cecfdb485f382e9738d5d67b45776a44a4cb763af472497852b875
 killsource-2026-09-24	09915f2ee616b1f40398caefbb4d1f30c1a76a7a5d5907fe9e56da3a9c33fa22
 killsource-2026-09-26	1a0c2d3b04f1a00cefced573870bbd49504d3b9b1062c1469bd7dbfef09dd801
-killsource-2026-09-27	71a44c9ad918b1cbec9716215e3270ee4cad2528282f37176d193adef468c5cb
+killsource-2026-09-27	3175e71ec180b68a42b5b163d220d905007d94ec884a0b0c417786acc1b633ad

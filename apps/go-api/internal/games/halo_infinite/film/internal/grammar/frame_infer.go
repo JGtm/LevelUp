@@ -240,9 +240,10 @@ func (o *Observation) refuserUnNeuf(w *World, rec *FrameRecord) {
 // so several replication "views" of one packet (frame-processor FUN_142987460 = a
 // leading config bit then 3 view record-loops) can be decoded in sequence sharing one
 // reader. Returns the records, the number of inferred transients, and hitEnd = whether
-// it stopped on a clean end-of-records marker (true) vs a desync/EOF (false).
+// it stopped on a clean end-of-records marker or on a REJECTED delta header (true ;
+// `br.rejetVueB` tells which) vs a desync/EOF (false).
 //
-// EXEMPTION DE LONGUEUR (114 lignes, seuil 80 — CLAUDE.md regle 5, examinee au lot 2.7 le
+// EXEMPTION DE LONGUEUR (109 lignes, seuil 80 — CLAUDE.md regle 5, examinee au lot 2.7 le
 // 2026-09-16). Raison STRUCTURELLE : c est une boucle de decodage a sortie multiple. Chaque
 // branche du `switch` sur le type de record ou bien `continue` (le stall a recupere le
 // curseur), ou bien rend les trois valeurs et arrete la trame ; la fermeture `stall` capture
@@ -252,6 +253,7 @@ func (o *Observation) refuserUnNeuf(w *World, rec *FrameRecord) {
 // il ne touche pas a cette boucle. Reexamen au lot 3.6 (ports de composants), qui la rouvre.
 func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int, bool) {
 	var out []FrameRecord
+	br.rejetVueB = false
 	inferred := 0
 	frameLen := len(buf) * 8
 	guard := 0
@@ -290,6 +292,7 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 		rec := FrameRecord{Type: typ, ID: id, Slot: slot, DesyncAt: -1}
 		if rejetDeVue(typ, id, w, cfg) {
 			br.SetBitPos(finEntete)
+			br.rejetVueB = true
 			return out, inferred, true
 		}
 		switch typ {

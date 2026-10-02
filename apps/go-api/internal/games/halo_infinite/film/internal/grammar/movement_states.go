@@ -127,6 +127,10 @@ type MarcheDesTrames struct {
 	// N EST PAS dans [types.MovementStateStats] : il ne se persiste pas avec les faits, il voyage
 	// dans le rapport des replis que le fichier de faits porte deja.
 	LiaisonsParRepliDAnticipation int
+	// DebutsDeListeParRepliFermeAuBit : les listes dont le debut est pris au second rang de
+	// [debutParFermeture] (repli `repli_debut_de_liste_ferme_au_bit`). Comme le compte precedent,
+	// il voyage dans le rapport des replis, pas dans [types.MovementStateStats].
+	DebutsDeListeParRepliFermeAuBit int
 }
 
 // ScanMarcheDesTrames deroule la marche du frame-processeur sur un film DEJA CHARGE et rend ses
@@ -167,6 +171,7 @@ func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
 	absent := sc.crouch < 0 && sc.slide < 0 && sc.mobility < 0 && sc.ability < 0
 	sc.marcher(fc, reg, chunks, !absent)
 	m.LiaisonsParRepliDAnticipation = sc.liaisonsDuRepliDAnticipation()
+	m.DebutsDeListeParRepliFermeAuBit = sc.obs.DebutsDeListeParRepliFermeAuBit
 	m.ContinuousFire = sc.tir.terminer()
 	m.ContinuousFireStats.Scanned = true
 	if absent {

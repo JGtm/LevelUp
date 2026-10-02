@@ -1,0 +1,91 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	vue C : bloc 0xbc non porte · rejet hors datum	162	162	0	0	1140
+0797ce72	HI_1_13_0	vue C : bloc 0xbc non porte · terminateur	34	34	0	0	231
+0797ce72	HI_1_13_0	vue C : debordement · rejet hors datum	9	9	0	0	62
+0797ce72	HI_1_13_0	vue C : debordement · terminateur	12	12	0	0	87
+0797ce72	HI_1_13_0	vue C : kind non porte · rejet hors datum	679	679	0	0	4009
+0797ce72	HI_1_13_0	vue C : kind non porte · terminateur	235	235	0	0	1373
+084a804d	HI_1_10_0	vue C : bloc 0xbc non porte · rejet hors datum	6	6	0	0	48
+084a804d	HI_1_10_0	vue C : bloc 0xbc non porte · terminateur	8	8	0	0	17
+084a804d	HI_1_10_0	vue C : debordement · terminateur	1	1	0	0	0
+084a804d	HI_1_10_0	vue C : kind non porte · rejet hors datum	44	44	0	0	120
+084a804d	HI_1_10_0	vue C : kind non porte · terminateur	24	24	0	0	84
+111fa685	HI_1_10_0	vue C : bloc 0xbc non porte · rejet hors datum	10	10	0	0	71
+111fa685	HI_1_10_0	vue C : bloc 0xbc non porte · terminateur	35	35	0	0	378
+111fa685	HI_1_10_0	vue C : debordement · terminateur	1	1	0	0	0
+111fa685	HI_1_10_0	vue C : kind non porte · rejet hors datum	93	93	0	0	697
+111fa685	HI_1_10_0	vue C : kind non porte · terminateur	76	76	0	0	878
+11de8353	HI_1_9_0	vue C : bloc 0xbc non porte · rejet hors datum	11	11	0	0	108
+11de8353	HI_1_9_0	vue C : bloc 0xbc non porte · terminateur	7	7	0	0	14
+11de8353	HI_1_9_0	vue C : debordement · terminateur	1	1	0	0	0
+11de8353	HI_1_9_0	vue C : kind non porte · rejet hors datum	157	157	0	0	2114
+11de8353	HI_1_9_0	vue C : kind non porte · terminateur	32	32	0	0	205
+1c4c63c2	HI_1_10_0	vue C : bloc 0xbc non porte · rejet hors datum	12	12	0	0	127
+1c4c63c2	HI_1_10_0	vue C : bloc 0xbc non porte · terminateur	9	9	0	0	18
+1c4c63c2	HI_1_10_0	vue C : debordement · terminateur	1	1	0	0	0
+1c4c63c2	HI_1_10_0	vue C : kind non porte · rejet hors datum	83	83	0	0	232
+1c4c63c2	HI_1_10_0	vue C : kind non porte · terminateur	36	36	0	0	77
+396cfc92	HI_1_13_0	vue C : debordement · terminateur	1	1	0	0	0
+396cfc92	HI_1_13_0	vue C : kind non porte · rejet hors datum	1	1	0	0	0
+4f77afc1	HI_1_13_0	vue C : bloc 0xbc non porte · rejet hors datum	2	2	0	0	5
+4f77afc1	HI_1_13_0	vue C : bloc 0xbc non porte · terminateur	1	1	0	0	26
+4f77afc1	HI_1_13_0	vue C : debordement · terminateur	1	1	0	0	0
+4f77afc1	HI_1_13_0	vue C : kind non porte · rejet hors datum	9	9	0	0	139
+4f77afc1	HI_1_13_0	vue C : kind non porte · terminateur	7	7	0	0	113
+50247b26	version-31	vue C : bloc 0xbc non porte · rejet hors datum	4	4	0	0	68
+50247b26	version-31	vue C : bloc 0xbc non porte · terminateur	548	548	0	0	13501
+50247b26	version-31	vue C : debordement · terminateur	1	1	0	0	0
+50247b26	version-31	vue C : kind non porte · rejet hors datum	12	12	0	0	111
+50247b26	version-31	vue C : kind non porte · terminateur	884	884	0	0	23208
+51ebbc0f	HI_1_13_0	vue C : bloc 0xbc non porte · rejet hors datum	34	34	0	0	1
+51ebbc0f	HI_1_13_0	vue C : bloc 0xbc non porte · terminateur	5	5	0	0	1
+51ebbc0f	HI_1_13_0	vue C : debordement · terminateur	1	1	0	0	0
+51ebbc0f	HI_1_13_0	vue C : kind non porte · rejet hors datum	19	19	0	0	26
+51ebbc0f	HI_1_13_0	vue C : kind non porte · terminateur	77	77	0	0	9
+60ae07c4	HI_1_8_0	vue C : bloc 0xbc non porte · rejet hors datum	116	116	0	0	747
+60ae07c4	HI_1_8_0	vue C : bloc 0xbc non porte · terminateur	29	29	0	0	179
+60ae07c4	HI_1_8_0	vue C : debordement · rejet hors datum	9	9	0	0	14
+60ae07c4	HI_1_8_0	vue C : debordement · terminateur	17	17	0	0	112
+60ae07c4	HI_1_8_0	vue C : kind non porte · rejet hors datum	485	485	0	0	2775
+60ae07c4	HI_1_8_0	vue C : kind non porte · terminateur	244	244	0	0	1308
+a349fea8	version-33	vue C : bloc 0xbc non porte · rejet hors datum	76	76	0	0	82
+a349fea8	version-33	vue C : bloc 0xbc non porte · terminateur	76	76	0	0	2005
+a349fea8	version-33	vue C : debordement · rejet hors datum	7	7	0	0	0
+a349fea8	version-33	vue C : debordement · terminateur	1	1	0	0	0
+a349fea8	version-33	vue C : kind non porte · rejet hors datum	77	77	0	0	138
+a349fea8	version-33	vue C : kind non porte · terminateur	850	850	0	0	21266
+a521164d	HI_1_4_1	vue C : bloc 0xbc non porte · rejet hors datum	50	50	0	0	57
+a521164d	HI_1_4_1	vue C : bloc 0xbc non porte · terminateur	89	89	0	0	2265
+a521164d	HI_1_4_1	vue C : debordement · rejet hors datum	38	38	0	0	0
+a521164d	HI_1_4_1	vue C : debordement · terminateur	1	1	0	0	0
+a521164d	HI_1_4_1	vue C : kind non porte · rejet hors datum	69	69	0	0	83
+a521164d	HI_1_4_1	vue C : kind non porte · terminateur	185	185	0	0	4631
+bcb6d393	HI_1_12_0	vue C : bloc 0xbc non porte · rejet hors datum	7	7	0	0	1
+bcb6d393	HI_1_12_0	vue C : bloc 0xbc non porte · terminateur	1	1	0	0	0
+bcb6d393	HI_1_12_0	vue C : debordement · terminateur	1	1	0	0	0
+bcb6d393	HI_1_12_0	vue C : kind non porte · rejet hors datum	61	61	0	0	8
+bcb6d393	HI_1_12_0	vue C : kind non porte · terminateur	2	2	0	0	0
+bf15f7ab	HI_1_13_0	vue C : bloc 0xbc non porte · terminateur	106	106	0	0	743
+bf15f7ab	HI_1_13_0	vue C : debordement · terminateur	1	1	0	0	0
+bf15f7ab	HI_1_13_0	vue C : kind non porte · rejet hors datum	136	136	0	0	937
+bf15f7ab	HI_1_13_0	vue C : kind non porte · terminateur	9	9	0	0	58
+bfecd02b	HI_1_13_0	vue C : debordement · terminateur	1	1	0	0	0
+bfecd02b	HI_1_13_0	vue C : kind non porte · rejet hors datum	2	2	0	0	0
+c75f33b8	HI_1_13_0	vue C : debordement · terminateur	1	1	0	0	0
+c75f33b8	HI_1_13_0	vue C : kind non porte · rejet hors datum	11	11	0	0	0
+c75f33b8	HI_1_13_0	vue C : kind non porte · terminateur	4	4	0	0	0
+d9781168	HI_1_13_0	vue C : debordement · terminateur	1	1	0	0	0
+d9781168	HI_1_13_0	vue C : kind non porte · rejet hors datum	1	1	0	0	0
+e5adf7b2	HI_1_11_0	vue C : bloc 0xbc non porte · rejet hors datum	85	85	0	0	271
+e5adf7b2	HI_1_11_0	vue C : bloc 0xbc non porte · terminateur	3	3	0	0	0
+e5adf7b2	HI_1_11_0	vue C : debordement · rejet hors datum	37	37	0	0	0
+e5adf7b2	HI_1_11_0	vue C : debordement · terminateur	1	1	0	0	0
+e5adf7b2	HI_1_11_0	vue C : kind non porte · rejet hors datum	136	136	0	0	1248
+e5adf7b2	HI_1_11_0	vue C : kind non porte · terminateur	86	86	0	0	864
+f75e7053	HI_1_13_0	vue C : debordement · terminateur	1	1	0	0	0
+f75e7053	HI_1_13_0	vue C : kind non porte · rejet hors datum	1	1	0	0	0
+fb1a1a72	HI_1_13_0	vue C : bloc 0xbc non porte · rejet hors datum	42	42	0	0	17
+fb1a1a72	HI_1_13_0	vue C : bloc 0xbc non porte · terminateur	2	2	0	0	0
+fb1a1a72	HI_1_13_0	vue C : debordement · terminateur	1	1	0	0	0
+fb1a1a72	HI_1_13_0	vue C : kind non porte · rejet hors datum	39	39	0	0	14
+fb1a1a72	HI_1_13_0	vue C : kind non porte · terminateur	105	105	0	0	5

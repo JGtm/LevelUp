@@ -1,0 +1,71 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · naissance de cet eid au bloc suivant	3	0	0	0	0
+0797ce72	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	37	30	0	0	0
+0797ce72	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	1	0	0	0	0
+0797ce72	HI_1_13_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	1	0	0	0	0
+0797ce72	HI_1_13_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	2	0	0	0	0
+0797ce72	HI_1_13_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	45	5	0	0	0
+084a804d	HI_1_10_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	12	1	0	0	0
+084a804d	HI_1_10_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	2	0	0	0	0
+084a804d	HI_1_10_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	13	0	0	0	0
+111fa685	HI_1_10_0	indecis · NEW apres DELTA/DEL (ordre viole) · naissance de cet eid au bloc suivant	3	0	0	0	0
+111fa685	HI_1_10_0	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	1	0	0	0	0
+111fa685	HI_1_10_0	indecis · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	3	0	0	0	0
+111fa685	HI_1_10_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	1	0	0	0	0
+111fa685	HI_1_10_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	7	0	0	0	0
+111fa685	HI_1_10_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	6	0	0	0	0
+11de8353	HI_1_9_0	creation perdue · groupe NEW respecte · ni naissance ni occupant au bloc	1	0	0	0	0
+11de8353	HI_1_9_0	indecis · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	1	0	0	0	0
+11de8353	HI_1_9_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	1	0	0	0	0
+11de8353	HI_1_9_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	4	0	0	0	0
+11de8353	HI_1_9_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	4	0	0	0	0
+1c4c63c2	HI_1_10_0	creation perdue · groupe NEW respecte · naissance de cet eid au bloc suivant	2	0	0	0	0
+1c4c63c2	HI_1_10_0	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	27	0	0	0	0
+1c4c63c2	HI_1_10_0	indecis · groupe NEW respecte · naissance de cet eid au bloc suivant	12	0	0	0	0
+1c4c63c2	HI_1_10_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	488	0	0	0	0
+1c4c63c2	HI_1_10_0	indecis · groupe NEW respecte · occupant vivant au bloc du chunk	5	0	0	0	0
+1c4c63c2	HI_1_10_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	31	0	0	0	0
+1c4c63c2	HI_1_10_0	lecture fausse · groupe NEW respecte · ni naissance ni occupant au bloc	2	0	0	0	0
+1c4c63c2	HI_1_10_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	66	0	0	0	0
+396cfc92	HI_1_13_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	2	0	0	0	0
+4f77afc1	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	1	0	0	0	0
+4f77afc1	HI_1_13_0	indecis · groupe NEW respecte · naissance de cet eid au bloc suivant	5	0	0	0	0
+4f77afc1	HI_1_13_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	16	0	0	0	0
+4f77afc1	HI_1_13_0	indecis · groupe NEW respecte · occupant vivant au bloc du chunk	1	0	0	0	0
+4f77afc1	HI_1_13_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	22	8	0	0	0
+4f77afc1	HI_1_13_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	13	0	0	0	0
+50247b26	version-31	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	3	0	0	0	0
+51ebbc0f	HI_1_13_0	creation perdue · groupe NEW respecte · naissance de cet eid au bloc suivant	2	0	0	0	0
+51ebbc0f	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	44	3	0	0	0
+51ebbc0f	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	2	0	0	0	0
+51ebbc0f	HI_1_13_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	5	0	0	0	0
+51ebbc0f	HI_1_13_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	42	6	0	0	0
+51ebbc0f	HI_1_13_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	1	0	0	0	0
+60ae07c4	HI_1_8_0	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	52	74	0	0	0
+60ae07c4	HI_1_8_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	8	0	0	0	0
+60ae07c4	HI_1_8_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	18	9	0	0	0
+60ae07c4	HI_1_8_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	4	0	0	0	0
+a349fea8	version-33	indecis · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	1	0	0	0	0
+a349fea8	version-33	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	15	1	0	0	0
+a349fea8	version-33	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	6	0	0	0	0
+a521164d	HI_1_4_1	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	1	0	0	0	0
+a521164d	HI_1_4_1	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	9	0	0	0	0
+a521164d	HI_1_4_1	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	1	0	0	0	0
+bcb6d393	HI_1_12_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	1	0	0	0	0
+bcb6d393	HI_1_12_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	1	0	0	0	0
+c75f33b8	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	1	0	0	0	0
+c75f33b8	HI_1_13_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	6	0	0	0	0
+c75f33b8	HI_1_13_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	2	0	0	0	0
+d9781168	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	1	0	0	0	0
+d9781168	HI_1_13_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	20	0	0	0	0
+d9781168	HI_1_13_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	1	0	0	0	0
+e5adf7b2	HI_1_11_0	indecis · groupe NEW respecte · ni naissance ni occupant au bloc	2	0	0	0	0
+e5adf7b2	HI_1_11_0	indecis · groupe NEW respecte · occupant vivant au bloc du chunk	1	0	0	0	0
+e5adf7b2	HI_1_11_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	19	0	0	0	0
+e5adf7b2	HI_1_11_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	6	0	0	0	0
+fb1a1a72	HI_1_13_0	creation perdue · groupe NEW respecte · naissance de cet eid au bloc suivant	2	0	0	0	0
+fb1a1a72	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · ni naissance ni occupant au bloc	44	0	0	0	0
+fb1a1a72	HI_1_13_0	indecis · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	4	0	0	0	0
+fb1a1a72	HI_1_13_0	indecis · groupe NEW respecte · naissance de cet eid au bloc suivant	2	0	0	0	0
+fb1a1a72	HI_1_13_0	lecture fausse · NEW apres DELTA/DEL (ordre viole) · occupant vivant au bloc du chunk	59	0	0	0	0
+fb1a1a72	HI_1_13_0	lecture fausse · groupe NEW respecte · occupant vivant au bloc du chunk	1	0	0	0	0

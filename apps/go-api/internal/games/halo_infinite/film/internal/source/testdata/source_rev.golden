@@ -76,5 +76,13 @@
 #               lecteur existant ne change ; la recherche d ancres d image-cle de `grammar` les
 #               appelle et rend les memes positions (differentiel `keyframe_world_motif_test.go`,
 #               `replay-equiv` sur les 20 films).
+#
+#   2026-10-02  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot L0 de la campagne de grammaire).
+#               UN ACCESSEUR NEUF, AUCUNE VALEUR LUE CHANGEE : [Bits.Deborde] dit qu une lecture a
+#               depasse la fin du tampon (le verdict d echec du moteur, `FUN_14298816c`) ; il se
+#               tient sur un champ que seul [Bits.SetBitPos] pose, et aucune primitive ne rend une
+#               valeur differente (`bits_conventions_test.go`, `bits_deborde_test.go`). L en-tete de
+#               `bits.go` dit desormais les deux moities de la semantique du moteur (des zeros, ET le
+#               verdict). Le seul appelant est la carte de fermeture detaillee de `grammar`.
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	15f925176025d41c10eb46d730b55423dca7591a11bfbc76ed2dd2bc9f62baae
+source-2026-09-16.2	08e339b280983ff44c5a3c16a404c12f0ffde6f3338bc04ec726744f4dd83618

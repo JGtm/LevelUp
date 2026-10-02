@@ -1,0 +1,4 @@
+fichier	lignes_changees_par_J12(base 8b894a677 -> bc0e2511a)	nature_J12	delta_mesure_campagne(fe18bf67c -> mesures_bis2_overlay, +/-)	delta_postj12(J12 -> r_fusion_overlay_postj12, +/-)	conflits_merge_file	ecart_ancienne_surcouche_vs_neuve	sha256_neuf
+capture.go	0	aucune	22/0	22/0	0	0 ligne	5fe1d790989bc5c3211a5c1f5f801e9de0b7fcabc918e12c77d2d362ac9a3a12
+lecteur_position.go	2 (1 ligne remplacee)	go fix : for axe := range 3	52/0	52/0	0	1 boucle (l.115)	bd41baa1cba1f8064326c29c62dfbe87acdab2940e00381a2b342713dcd6db8c
+lecteur_position_exceptions.go	8 (4 lignes remplacees)	go fix : for a := range 3, for i := range uint(8), for axe := range 3	152/3	152/3	0	4 boucles (l.56, 118, 124, 431)	b77a0c32b7b850ae1554b7130a615e89fd9572379f07e0c1be7d03a517176578

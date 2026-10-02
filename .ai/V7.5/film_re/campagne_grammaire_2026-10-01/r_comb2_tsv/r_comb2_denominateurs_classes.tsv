@@ -1,0 +1,221 @@
+source	variante	classe	lignes
+bis1	bande+inv	inclus	20
+bis1	oracle-(i)	inclus	20
+bis1	oracle-(i)+(ii)	inclus	20
+bis1	oracle-(ii)	inclus	20
+bis1	oracle-(iii')-ouverte	exclu:oracle de L1c (retire)	20
+bis1	oracle-(iii')-rejet	exclu:oracle de L1c (retire)	20
+bis1	oracle-(iii)	exclu:oracle de L1c (retire)	20
+bis1	oracle-NEW	inclus	20
+bis1	oracle-bloc	inclus	20
+bis1	oracle-bloc+tete-bloc	inclus	20
+bis1	reference	inclus	20
+bis1	tete-bloc	inclus	20
+bis1	tete-bloc+inv	inclus	20
+bis1	tete-bloc+inv+paquet	inclus	20
+bis2-positions	jeu:crew-order	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:flock-destination	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:flock-position	inclus	20
+bis2-positions	jeu:i0-bipede-prechigh	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:respawn-location	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:tacmap-areaofinterest	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:tacmap-cooptetherarea	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:tacmap-displayasset	inclus	20
+bis2-positions	jeu:tacmap-poiicon	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:tacmap-waypointstate	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:ti38-i18	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:tous	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:unit-actor-state	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:waypoint-position-seule	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:waypoint-queue-seule	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	20
+bis2-positions	jeu:world-object-i0	inclus	20
+bis2-positions	reference	inclus	20
+bis2-positions-prod	jeu:tous	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	19
+bis2-positions-prod	jeu:tous+lecture-par-index	exclu:site rejete ou melange de sites rejetes (BIS_2/BIS_4)	15
+bis2-positions-prod	reference	inclus	19
+bis2-positions-prod	reference+lecture-par-index	inclus	15
+bis2-ti43	grammaire-ti43-T7	inclus	21
+bis2-ti43	reference	inclus	21
+bis3	largeur-10	exclu:temoin negatif	20
+bis3	largeur-11	exclu:temoin negatif	20
+bis3	largeur-12	exclu:temoin negatif	20
+bis3	largeur-14	exclu:temoin negatif	20
+bis3	largeur-15	exclu:temoin negatif	20
+bis3	oracle-NEW	inclus	20
+bis3	oracle-NEW+P1-pont	inclus	20
+bis3	oracle-NEW+P6-propre+alloc+suivant	exclu:oracle sans lot (P6, D3)	20
+bis3	oracle-NEW+P6-propre+pont+suivant	exclu:oracle sans lot (P6, D3)	20
+bis3	oracle-P1	inclus	20
+bis3	oracle-P1-pont	inclus	20
+bis3	oracle-P2	inclus	20
+bis3	oracle-P3	inclus	20
+bis3	oracle-P4	inclus	20
+bis3	oracle-P6-propre	exclu:oracle sans lot (P6, D3)	20
+bis3	oracle-P6-propre+alloc	exclu:oracle sans lot (P6, D3)	20
+bis3	oracle-P6-propre+alloc+suivant	exclu:oracle sans lot (P6, D3)	20
+bis3	oracle-P6-propre+pont	exclu:oracle sans lot (P6, D3)	20
+bis3	oracle-P6-propre+pont+suivant	exclu:oracle sans lot (P6, D3)	20
+bis3	oracle-P6-propre+suivant	exclu:oracle sans lot (P6, D3)	20
+bis3	oracle-P6-region	exclu:oracle sans lot (P6, D3)	20
+bis3	reference	inclus	20
+bis3-ti3	reference	inclus	20
+bis3-ti3	ti3-i0	inclus	20
+bis3-ti3	ti3-i0+i1-26	inclus	20
+bis3-ti3	ti3-i1-26	inclus	20
+bis3-ti3	ti4-i0-26 (temoin)	exclu:temoin negatif	20
+r-comb	L1	inclus	21
+r-comb	L1+L9	inclus	21
+r-comb	L2	inclus	21
+r-comb	L6a	inclus	21
+r-comb	L6b	inclus	21
+r-comb	L8	inclus	21
+r-comb	L9	inclus	21
+r-comb	controle:reference-instruments	exclu:controle	2
+r-comb	full	inclus	21
+r-comb	full-L1	inclus	21
+r-comb	full-L1-L9 (composants)	inclus	21
+r-comb	full-L2	inclus	21
+r-comb	full-L2-L1	inclus	21
+r-comb	full-L2-L1-L9	inclus	21
+r-comb	full-L6a	inclus	21
+r-comb	full-L6a-L1	inclus	21
+r-comb	full-L6a-L1-L9	inclus	21
+r-comb	full-L6b	inclus	21
+r-comb	full-L6b-L1	inclus	21
+r-comb	full-L6b-L1-L9	inclus	21
+r-comb	full-L8	inclus	21
+r-comb	full-L8-L1	inclus	21
+r-comb	full-L8-L1-L9	inclus	21
+r-comb	full-L9	inclus	21
+r-comb	reference	inclus	21
+r-comb-2	L1a	inclus	21
+r-comb-2	L1a-ref	inclus	21
+r-comb-2	L2	inclus	21
+r-comb-2	L3a	inclus	21
+r-comb-2	L4a	inclus	21
+r-comb-2	L6a	inclus	21
+r-comb-2	L6a+WO	inclus	21
+r-comb-2	L6b	inclus	21
+r-comb-2	L6b-flock	inclus	21
+r-comb-2	L7	inclus	21
+r-comb-2	L8	inclus	21
+r-comb-2	L8+LS	inclus	21
+r-comb-2	L9	inclus	21
+r-comb-2	LM	inclus	21
+r-comb-2	LM+L6a	inclus	21
+r-comb-2	LP	inclus	21
+r-comb-2	LS	inclus	21
+r-comb-2	WO	inclus	21
+r-comb-2	controle:reference-instruments	exclu:controle	2
+r-comb-2	full	inclus	21
+r-comb-2	full+WO	inclus	21
+r-comb-2	full+WO-L9	inclus	21
+r-comb-2	full-L1a	inclus	21
+r-comb-2	full-L1a-L9	inclus	21
+r-comb-2	full-L2	inclus	21
+r-comb-2	full-L2-L9	inclus	21
+r-comb-2	full-L3a	inclus	21
+r-comb-2	full-L3a-L9	inclus	21
+r-comb-2	full-L4a	inclus	21
+r-comb-2	full-L4a-L9	inclus	21
+r-comb-2	full-L6a	inclus	21
+r-comb-2	full-L6a-L9	inclus	21
+r-comb-2	full-L6b	inclus	21
+r-comb-2	full-L6b-L9	inclus	21
+r-comb-2	full-L7	inclus	21
+r-comb-2	full-L7-L9	inclus	21
+r-comb-2	full-L8	inclus	21
+r-comb-2	full-L8-L9	inclus	21
+r-comb-2	full-L9	inclus	21
+r-comb-2	full-LM	inclus	21
+r-comb-2	full-LM-L9	inclus	21
+r-comb-2	full-LP	inclus	21
+r-comb-2	full-LP-L9	inclus	21
+r-comb-2	full-LS	inclus	21
+r-comb-2	full-LS-L9	inclus	21
+r-comb-2	passe2:controle:reference-instruments	inclus	2
+r-comb-2	passe2:full	inclus	21
+r-comb-2	passe2:full+WO	inclus	21
+r-comb-2	passe2:full+WO-L9	inclus	21
+r-comb-2	passe2:full-L1a	inclus	21
+r-comb-2	passe2:full-L1a-L9	inclus	21
+r-comb-2	passe2:full-L2	inclus	21
+r-comb-2	passe2:full-L2-L9	inclus	21
+r-comb-2	passe2:full-L3a	inclus	21
+r-comb-2	passe2:full-L3a-L9	inclus	21
+r-comb-2	passe2:full-L4a	inclus	21
+r-comb-2	passe2:full-L4a-L9	inclus	21
+r-comb-2	passe2:full-L6a	inclus	21
+r-comb-2	passe2:full-L6a-L9	inclus	21
+r-comb-2	passe2:full-L6b	inclus	21
+r-comb-2	passe2:full-L6b-L9	inclus	21
+r-comb-2	passe2:full-L7	inclus	21
+r-comb-2	passe2:full-L7-L9	inclus	21
+r-comb-2	passe2:full-L8	inclus	21
+r-comb-2	passe2:full-L8-L9	inclus	21
+r-comb-2	passe2:full-L9	inclus	21
+r-comb-2	passe2:full-LM	inclus	21
+r-comb-2	passe2:full-LM-L9	inclus	21
+r-comb-2	passe2:full-LP	inclus	21
+r-comb-2	passe2:full-LP-L9	inclus	21
+r-comb-2	passe2:full-LS	inclus	21
+r-comb-2	passe2:full-LS-L9	inclus	21
+r-comb-2	passe2:reference	inclus	21
+r-comb-2	reference	inclus	21
+r-comb-deriv	L1(avec L9)+L9	inclus	42
+r-comb-deriv	L1(communes)+L9	inclus	42
+r-comb-deriv	L1(sans L9)+L9	inclus	42
+r-comp-l3	i15	inclus	20
+r-comp-l3	i4 -1 bit seul	exclu:hypothese de format des vieux builds (L3b non discrimine)	20
+r-comp-l3	moteur	inclus	20
+r-comp-l3	moteur + i4 R(5) sans porte	exclu:hypothese de format des vieux builds (L3b non discrimine)	20
+r-comp-l3	moteur + i4 porte + R(4)	exclu:hypothese de format des vieux builds (L3b non discrimine)	20
+r-comp-l3	moteur, i15 +1 (temoin)	exclu:temoin negatif	20
+r-comp-l3	moteur, i15 -1 (temoin)	exclu:temoin negatif	20
+r-comp-l3	reference	inclus	20
+r-comp-p3	desaveu NEW a masque impossible	exclu:rejete par la mesure (R_COMP 4.4)	20
+r-comp-p3	desaveu des deux	exclu:rejete par la mesure (R_COMP 4.4)	20
+r-comp-p3	desaveu image-cle hors bloc	inclus	20
+r-comp-p3	oracle archetype force ti=35	inclus	20
+r-comp-p3	oracle archetype force ti=40	inclus	20
+r-comp-p3	oracle du pont (masque impossible)	inclus	20
+r-comp-p3	reference	inclus	20
+r-comp-p3	ti20 i0 cas 2 du jeu	inclus	20
+r-loc	libre	exclu:repli libre, rejete (D-77)	30
+r-loc	ls	inclus	60
+r-loc	ls+libre	exclu:repli libre, rejete (D-77)	30
+r-loc	ls+vueA	exclu:oracle de la vue A (L1b retire, D15 ; 45 % de gains factices)	30
+r-loc	ls2	inclus	30
+r-loc	ref	inclus	60
+r-nais	P6-ferme	exclu:oracle sans lot (P6, D3)	20
+r-nais	P6-ferme+alloc	exclu:oracle sans lot (P6, D3)	20
+r-nais	P6-ferme+suivant	exclu:oracle sans lot (P6, D3)	20
+r-nais	P6-ferme-(i)(ii)	exclu:oracle sans lot (P6, D3)	20
+r-nais	P6-ferme-(iii')	exclu:oracle sans lot (P6, D3)	20
+r-nais	P6-propre+alloc+suivant	exclu:oracle sans lot (P6, D3)	20
+r-nais	a-(iii')-rejet	exclu:oracle de L1c (retire)	20
+r-nais	a-(iii')-rejet-Q-ferme-sain	exclu:oracle de L1c (retire)	20
+r-nais	a-(iii')-rejet-Q-non-ferme-sain	exclu:oracle de L1c (retire)	20
+r-nais	oracle-(i)+(ii)	inclus	20
+r-nais	oracle-(i)+(ii)+P6-ferme	exclu:oracle sans lot (P6, D3)	20
+r-nais	reference	inclus	20
+r-nais	tete-bloc+inv	inclus	20
+r-nais	tete-bloc+inv|chunk	inclus	20
+r-nais	tete-bloc+inv|chunk-hors-evenements	exclu:rejete par la mesure (R_NAIS 3.2)	20
+r-nais	tete-bloc+inv|cumul	inclus	20
+r-nais	tete-bloc+inv|cumul-hors-evenements	exclu:rejete par la mesure (R_NAIS 3.2)	20
+r-nais	tete-bloc+inv|film	inclus	20
+r-nais	tete-bloc+inv|film-hors-evenements	exclu:rejete par la mesure (R_NAIS 3.2)	20
+r-veh	mpp8/3	exclu:mpp 8/3 hors formats 24-25 (temoin)	15
+r-veh	mpp8/3	inclus	6
+r-veh	mpp8/3+ti40-composants	exclu:mpp 8/3 hors formats 24-25 (temoin)	15
+r-veh	mpp8/3+ti40-composants	inclus	6
+r-veh	mpp8/3+ti40-composants+feuille4-brute	exclu:mpp 8/3 hors formats 24-25 (temoin)	15
+r-veh	mpp8/3+ti40-composants+feuille4-brute	exclu:rejete par la mesure (R_VEH 3.2)	6
+r-veh	mpp8/3+ti40-composants+portee-neuf	exclu:mpp 8/3 hors formats 24-25 (temoin)	15
+r-veh	mpp8/3+ti40-composants+portee-neuf	exclu:rejete par la mesure (R_VEH 3.2)	6
+r-veh	portee-neuf	exclu:rejete par la mesure (R_VEH 3.2)	21
+r-veh	reference	inclus	21
+r-veh	ti40-composants	inclus	21
+r-veh	ti40-composants+feuille4-brute	exclu:rejete par la mesure (R_VEH 3.2)	21
+r-veh	ti40-composants+portee-neuf	exclu:rejete par la mesure (R_VEH 3.2)	21

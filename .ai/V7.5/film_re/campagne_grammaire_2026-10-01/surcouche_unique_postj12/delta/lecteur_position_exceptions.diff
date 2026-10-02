@@ -1,0 +1,252 @@
+--- a/apps/go-api/internal/games/halo_infinite/film/internal/grammar/lecteur_position_exceptions.go (post-J12, df228c24c)
++++ b/surcouche_unique_postj12/lecteur_position_exceptions.go
+@@ -33,6 +33,19 @@
+ // et BAISSE sur les anciens (ti=38 : 11de8353 99 -> 83, a521164d 122 -> 119 ; ti=42 : 60ae07c4
+ // 5 -> 4, 11de8353 3 -> 2, 111fa685 2 -> 1). La garde de pleine precision n est pas lue non plus.
+ func consumeObjectPositionMonde(br *Lecteur) {
++	if bis2Jeu(bis2SiteWorldObject) { // FUN_14076e29c : e420(0x10), queue de poignee FUN_14076e3e4, R(2) si finie
++		precHigh, pos := lireE420(br, niveauPosition)
++		if precHigh {
++			consume1408f0ac4(br, 0)
++			if br.ReadBit() {
++				br.ReadBits(11)
++			}
++		}
++		if !pos.brute {
++			br.ReadBits(2)
++		}
++		return
++	}
+ 	if br.ReadBit() { // precHigh (FUN_14076e420 R(1))
+ 		br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)
+ 		return
+@@ -55,6 +68,10 @@
+ // monte sur ks_000d5950 (paquets 1823 -> 1847, ti=21 44/490 -> 84/536, ti=35 3549 -> 3638) et
+ // BAISSE sur ks_e5adf7b2 (paquets 371 -> 370, ti=21 1/60 -> 0/60, ti=4 240 -> 239).
+ func consumeFlockPosition(br *Lecteur, level uint) {
++	if bis2Jeu(bis2SiteFlockPosition) { // FUN_140ee7270 : e494(0x10)
++		lireE494(br, niveauPosition)
++		return
++	}
+ 	if fullPrecisionGate(br) {
+ 		br.ReadBits(rawVec3Bits) // FUN_1411b259c -> FUN_1406d676c(..., 0x60)
+ 		return
+@@ -87,6 +104,16 @@
+ // fermeture d image-cle ti=38 BAISSE sans aucune hausse (fb1a1a72 317 -> 245, 111fa685 72 -> 30,
+ // 11de8353 99 -> 19) ; lue R(96) brut, elle baisse aussi (281, 30, 19).
+ func consumeGenericRigidBodyTransforms(br *Lecteur) {
++	if bis2Jeu(bis2SiteTi38I18) { // FUN_142f036f0 : R(8), par bit FUN_140c1e79c + e494(0x10)
++		masque := br.ReadBits(8)
++		for i := uint(0); i < 8; i++ {
++			if masque&(1<<i) != 0 {
++				consumeCompressedDir140c1e79c(br)
++				lireE494(br, niveauPosition)
++			}
++		}
++		return
++	}
+ 	mask := br.ReadBits(8)
+ 	for i := range uint(8) {
+ 		if mask&(1<<i) != 0 {
+@@ -112,6 +139,14 @@
+ // 29 et 4 bits, la lecture du jeu sur 52 et 70. Elle en ferme une autre, `000d5950` (HI_1_13_0) chunk 20
+ // paquet 1322 (8 entrees) : le format depend du build ou du contenu, ce que ce lot n etablit pas.
+ func consumeFlockDestination(br *Lecteur, level uint32) {
++	if bis2Jeu(bis2SiteFlockDestination) { // FUN_140fb8af0 : R(1), e494(0x10), R(2) si param_4 > 1
++		br.ReadBit()
++		lireE494(br, niveauPosition)
++		if level > 1 || bis2QueuesSansCondition {
++			br.ReadBits(2)
++		}
++		return
++	}
+ 	br.ReadBit()
+ 	lireVecteurAncienAuNiveauDuRegistre(br, level)
+ 	if level > 1 {
+@@ -128,6 +163,21 @@
+ // lecteur fermait au bit pres (0 entree de controle), ne se localise plus : le composant passe de
+ // 239 a 264 bits ; aucune fermeture ne monte sur les huit builds.
+ func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
++	if bis2Jeu(bis2SitePoiIcon) { // FUN_142ed8418 : le vecteur est e494(0x10)
++		br.ReadBits(32)
++		br.ReadBits(32)
++		br.ReadBit()
++		br.ReadBits(3)
++		br.ReadBits(32)
++		br.ReadBits(32)
++		br.ReadBits(9)
++		br.ReadBits(9)
++		lireE494(br, niveauPosition)
++		br.ReadBits(32)
++		br.ReadBit()
++		br.ReadBits(32)
++		return
++	}
+ 	br.ReadBits(32) // icon-id
+ 	br.ReadBits(32) // icon-missionid
+ 	br.ReadBit()
+@@ -157,6 +207,13 @@
+ // pres, ne se localise plus (le composant passe de 44 a 71 bits) ; elle en ferme deux autres
+ // (`e5adf7b2` chunk 6 paquet 50, 4 entrees ; `111fa685` chunk 14 paquet 552, 2 entrees).
+ func consumePlayerDesiredRespawnLocation(br *Lecteur, level uint32) {
++	if bis2Jeu(bis2SiteRespawn) { // FUN_142f03ec8 : R(1) ; e494(0x10) ; R(19)
++		if br.ReadBit() {
++			lireE494(br, niveauPosition)
++			br.ReadBits(19)
++		}
++		return
++	}
+ 	if !br.ReadBit() {
+ 		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
+ 		return
+@@ -207,6 +264,18 @@
+ // aucune forme ne ferme les deux familles : l ancien lecteur sur la seule porte posee ferme les dix
+ // et perd 14:42, 7:2380 et 32:2062 ; sur la seule porte a 0, il perd 46:10 et 29:208 sans rien fermer.
+ func consumeTacmapDisplayAsset(br *Lecteur) {
++	if bis2Jeu(bis2SiteDisplayAsset) { // FUN_142ed7d38 -> FUN_1424e0e38(0x10)
++		br.ReadBits(32)
++		br.ReadBits(32)
++		br.ReadBits(2)
++		lireE494(br, niveauPosition)
++		br.ReadBits(64)
++		br.ReadBits(32)
++		br.ReadBits(64)
++		br.ReadBits(32)
++		br.ReadBits(1)
++		return
++	}
+ 	br.ReadBits(32)
+ 	br.ReadBits(32)
+ 	br.ReadBits(2)
+@@ -227,6 +296,13 @@
+ // `11de8353` 19:394 (liste, 13 entrees), `fb1a1a72` 38:8 (6), `60ae07c4` 3:1790 (0) ; scindee par la
+ // porte, aucune forme ne ferme les deux familles.
+ func consumeTacmapAreaOfInterest(br *Lecteur) {
++	if bis2Jeu(bis2SiteAreaOfInterest) { // FUN_142ed7764 -> FUN_1424e0e38(0x10)
++		br.ReadBits(32)
++		br.ReadBits(3)
++		lireE494(br, niveauPosition)
++		br.ReadBits(12)
++		return
++	}
+ 	br.ReadBits(32)
+ 	br.ReadBits(3)
+ 	lireCorpsDeTraverseeAncien(br)
+@@ -241,6 +317,12 @@
+ // fermait au bit pres, ne se localise plus (+48 bits, porte posee) ; aucune fermeture ne monte sur
+ // les douze films.
+ func consumeTacmapCoopTetherArea(br *Lecteur) {
++	if bis2Jeu(bis2SiteCoopTether) { // FUN_142ed4198 -> FUN_1424e0e38(0x10)
++		lireE494(br, niveauPosition)
++		br.ReadBits(12)
++		br.ReadBits(12)
++		return
++	}
+ 	lireCorpsDeTraverseeAncien(br)
+ 	br.ReadBits(12)
+ 	br.ReadBits(12)
+@@ -256,6 +338,13 @@
+ // `084a804d` (HI_1_10_0, 14 entrees), que l ancien lecteur fermait au bit pres, ne se localise plus
+ // (+26 bits) ; elle en ferme une autre, `e5adf7b2` chunk 4 paquet 900 (liste, 12 entrees).
+ func consumeCrewOrder(br *Lecteur, level uint32) {
++	if bis2Jeu(bis2SiteCrewOrder) { // FUN_142ed9120 : R(3), porte, e494(0x10)
++		br.ReadBits(3)
++		if br.ReadBit() {
++			lireE494(br, niveauPosition)
++		}
++		return
++	}
+ 	br.ReadBits(3)    // FUN_142b1cf3c
+ 	if br.ReadBit() { // presence du vecteur
+ 		lireVecteurAncienAuNiveauDuRegistre(br, level)
+@@ -273,7 +362,12 @@
+ // paquet 356 (21 entrees ; delta du slot 685, dont la lecture d accroupi) et chunk 37 paquet 22 (10
+ // entrees ; NEW ti=35 slot 527) ; aucune fermeture ne monte sur les douze films. Les deux autres
+ // sites a precHigh (grammaire d ecrivain d i0, delta predit a cVar1 = 1) gardent la lecture du jeu.
+-func consumePrecHautDuBipede(_ *Lecteur) {}
++func consumePrecHautDuBipede(br *Lecteur) {
++	if bis2Jeu(bis2SitePrecHautBipede) { // FUN_141f85880(+/-100, 0x10) puis le R(2) de LAB_1406cffd7
++		lireF85880(br, niveauPosition)
++		br.ReadBits(2)
++	}
++}
+ 
+ // LOT R3-BIS (2026-09-30) — DEUX SITES DE PLUS, LOCALISES AU PAQUET.
+ //
+@@ -297,6 +391,10 @@
+ // lit la lecture du jeu ne departagent pas les deux familles (porte a 0, index 0 et 1 de part et
+ // d autre ; la porte posee n apparait que chez les secondes).
+ func lireViseeDActeurAncienne(br *Lecteur) {
++	if bis2Jeu(bis2SiteUnitActorState) { // FUN_14076e494(..., 0x10, 0, param_3, 0)
++		lireE494(br, niveauPosition)
++		return
++	}
+ 	br.ReadBits(16)
+ }
+ 
+@@ -311,8 +409,15 @@
+ // R(1)) pour la rendre. Aucune fermeture ne monte sur les vingt films.
+ func consumeTacmapWaypointState(br *Lecteur) {
+ 	br.ReadBit()
+-	br.ReadBits(32) // FUN_14080dec4 "waypoint-lockedto"
+-	lireCorpsDeTraverseeAncien(br)
++	br.ReadBits(32)                // FUN_14080dec4 "waypoint-lockedto"
++	if bis2Jeu(bis2SiteWaypoint) { // FUN_140f04d88 : e524(0x10) sous la garde
++		lireE494(br, niveauPosition)
++	} else {
++		lireCorpsDeTraverseeAncien(br)
++	}
++	if bis2WaypointQueue { // R(1) si param_4 > 1 ; ecrit sans condition (T4-C2)
++		br.ReadBit()
++	}
+ }
+ 
+ // lireCorpsDeTraverseeAncien est la position que les sites tacmap lisaient avant le lot J6.3
+@@ -327,3 +432,47 @@
+ 		br.ReadBits(br.traversal().AxisW[axe])
+ 	}
+ }
++
++// ---- SURCOUCHE DE RECHERCHE (mesures bis 2, 2026-10-01) -------------------------------------
++// Ce fichier n est PAS le fichier de production : c est une copie que `go test -overlay`
++// substitue a `lecteur_position_exceptions.go` pour la seule duree d une mesure (point 25 de la
++// critique de completude). Chaque site d exception peut etre bascule, SEUL ou avec d autres, sur
++// la LECTURE DU JEU (celle que le lot J6.3 portait et que les lots J6-bis, R3 et R3-bis ont
++// retiree : diffs `0fc3277b5`, `562e060ba`, `26ef60122` ; world-object, flock-position et
++// ti38-i18 d apres les releves T4 §1.2-1.3 et Ghidra FUN_14076e29c / FUN_14076e3e4 relus le
++// 2026-10-01). Sans bascule, chaque fonction lit exactement comme la production.
++
++// Les treize sites.
++const (
++	bis2SiteWorldObject = iota
++	bis2SiteFlockPosition
++	bis2SiteTi38I18
++	bis2SiteFlockDestination
++	bis2SitePoiIcon
++	bis2SiteRespawn
++	bis2SiteDisplayAsset
++	bis2SiteAreaOfInterest
++	bis2SiteCoopTether
++	bis2SiteCrewOrder
++	bis2SitePrecHautBipede
++	bis2SiteUnitActorState
++	bis2SiteWaypoint
++	bis2NombreDeSites
++)
++
++// bis2NomsDeSites : les noms des sites, dans l ordre des constantes.
++var bis2NomsDeSites = [bis2NombreDeSites]string{"world-object-i0", "flock-position", "ti38-i18",
++	"flock-destination", "tacmap-poiicon", "respawn-location", "tacmap-displayasset",
++	"tacmap-areaofinterest", "tacmap-cooptetherarea", "crew-order", "i0-bipede-prechigh",
++	"unit-actor-state", "tacmap-waypointstate"}
++
++// bis2SitesJeu : vrai -> le site lit comme le jeu.
++var bis2SitesJeu [bis2NombreDeSites]bool
++
++// bis2QueuesSansCondition : la queue R(2) de flock-destination est lue sans condition (T4-C2).
++var bis2QueuesSansCondition bool
++
++// bis2WaypointQueue : le R(1) de queue de tacmap-waypointstate est lu.
++var bis2WaypointQueue bool
++
++func bis2Jeu(site int) bool { return bis2SitesJeu[site] }

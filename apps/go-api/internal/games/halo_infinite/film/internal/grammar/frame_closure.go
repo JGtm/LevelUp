@@ -111,7 +111,8 @@ type FrameArchetypeStat struct {
 // FrameUtileStat est la fermeture de ce que le produit lit : le declencheur de la spec, §9.
 type FrameUtileStat struct {
 	// Records / RecordsFermes : records de la vue B dont le masque annonce un composant utile.
-	Records, RecordsFermes int
+	// RecordsFermesAuBit : ceux d un paquet ferme au bit pres, regles de l ecrivain contredites ou non.
+	Records, RecordsFermes, RecordsFermesAuBit int
 	// EntreesDeControleFermees : entrees `kind 0` lues dans les vues C FERMEES.
 	EntreesDeControleFermees int
 }
@@ -134,8 +135,10 @@ type FrameBlockerStat struct {
 type FrameClosureReport struct {
 	// Paquets : paquets delta marches (listes d evenements non localisees comprises).
 	Paquets int
-	// PaquetsFermes : paquets fermes au bit pres (oracle de la vue C).
-	PaquetsFermes int
+	// PaquetsFermes : paquets fermes ([LectureVueC.Fermee] : au bit pres ET sans regle de l ecrivain
+	// contredite). PaquetsFermesAuBit : paquets fermes au bit pres, regles contredites ou non ; la
+	// difference, ce sont les fermetures que les regles de l ecrivain retirent.
+	PaquetsFermes, PaquetsFermesAuBit int
 	// ListesNonLocalisees : paquets a liste d evenements dont le debut n a pas ete trouve — aucune
 	// vue n est lue.
 	ListesNonLocalisees int

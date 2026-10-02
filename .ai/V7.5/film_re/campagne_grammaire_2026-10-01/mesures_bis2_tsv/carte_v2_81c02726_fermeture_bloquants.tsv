@@ -1,0 +1,18 @@
+film	build	cause	ti	index	composant	statut	usage_produit	paquets	utiles_en_jeu
+81c02726	HI_1_13_0	liste d evenements non localisee	-1	-1				309	0
+81c02726	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	4	12
+81c02726	HI_1_13_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	4	22
+81c02726	HI_1_13_0	ti=12 i18 managed-navpoint-position-offset	12	18	managed-navpoint-position-offset	non_porte	aucun	1	0
+81c02726	HI_1_13_0	ti=12 i20 managed-navpoint-visual-state-groups-component-0	12	20	managed-navpoint-visual-state-groups-component-0	non_porte	aucun	19	178
+81c02726	HI_1_13_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	46	353
+81c02726	HI_1_13_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	36	309
+81c02726	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	146	0
+81c02726	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	5	0
+81c02726	HI_1_13_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	4	27
+81c02726	HI_1_13_0	ti=40 i47 vehicle-low-frequency-component	40	47	vehicle-low-frequency-component	non_porte	aucun	1	6
+81c02726	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	1
+81c02726	HI_1_13_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	13	115
+81c02726	HI_1_13_0	ti=51 archetype hors registre	51	-1				1	15
+81c02726	HI_1_13_0	vue C : debordement	-1	-1				1	0
+81c02726	HI_1_13_0	vue C : kind non porte	-1	-1				1	0
+81c02726	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				4150	30018
