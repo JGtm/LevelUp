@@ -114233,3 +114233,11 @@ efficaces sur les tâches cadrées, à éviter quand un obstacle impose un arbit
 `feat/v75`, CI ; prévenir la campagne de grammaire ; vérification visuelle de l'utilisateur.
 Reports : `.ai/V7.5/REGISTRE_REPORTS.md`, section « Reports du plan de suite d'audit du
 décodeur ».
+
+## [2026-10-02] Campagne de grammaire : J12 fusionné dans la campagne — Complété
+
+**Décision technique principale** : dès le signal de la session de suite d'audit (J12 dans `feat/v75`, `95b19e635`), fusion de `origin/feat/v75` dans `feat/campagne-grammaire` (`f28a4a816`) après un essai `git merge-tree` (un seul conflit annoncé, confirmé) et un essai complet dans un worktree jetable (chantier « fusion » des recherches préalables). Conflit `grammar_rev.golden` résolu en reprenant la version de `feat/v75` puis en régénérant l'empreinte à révision constante (`grammar-2026-09-27.3`, `14b3a79d…`, valeur prédite par l'essai) ; quatre sondes passées à l'accesseur `profile.QuantRangeCEBiped()` de J12.4 ; règle 17 de CLAUDE.md appliquée aux commentaires du code neuf (`32ba9078d`).
+
+**Résultats observés** : gates verts sur l'arbre fusionné (`gofmt`, `go vet` film, `go vet -tags=research ./...` du module, `go vet` avec surcouche, `go test ./internal/archlint/` complet — `TestNoExpiredTODO` vert grâce au TODO re-daté par `feat/v75` —, `go test` des 17 paquets du film, `cmd_fermeture` research, tests de révision). Carte de fermeture v2 rejouée sur les 20 films avec l'outil de l'arbre fusionné : TSV identiques à la phase 1 hors pic mémoire et durée. Chemins `.ai` cités par le code de la campagne vérifiés à la casse exacte. Le checkout principal porte du travail non commité d'une autre session (registre, thought_log, docs ADR 0023) et n'a pas été touché.
+
+**Conclusion / prochaine étape** : la campagne est à jour de `feat/v75` ; intégrer les recherches préalables à la fin du workflow en cours, puis vague 1 sur GO daté de l'utilisateur. Push de la branche (première CI Linux) à proposer à l'utilisateur.

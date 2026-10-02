@@ -180,6 +180,16 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   +391 mais −6 records utiles sur `60ae07c4`. Gate de l'agent : `gofmt`, `go vet -tags=research`,
   `go vet` avec surcouche, `archlint` verts. **Phase 1 close** : tous les items du §2 statués ;
   commit sur `feat/campagne-grammaire` (sans push) ; décisions du §6.3 soumises à l'utilisateur.
+- 2026-10-02 : décisions de l'utilisateur consignées au §3 ; lot LS (D-67) confié à la campagne.
+  Recherches préalables R-* lancées (workflow `wf_9088d8bd-e43`, six chantiers en worktrees
+  temporaires `LevelUp-wt-cg-*`, détachés sur `fe18bf67c`). J12 fusionné dans `feat/v75`
+  (`95b19e635`) par la session de suite d'audit ; **fusion de `feat/v75` dans la campagne faite**
+  (`f28a4a816`) : un conflit (`grammar_rev.golden`, régénéré à révision constante), quatre sondes
+  mises à l'accesseur de J12.4 ; gates verts sur l'arbre fusionné (`gofmt`, `go vet` film, `go vet
+  -tags=research ./...`, surcouche, `archlint` complet, `go test` film 17 paquets, `cmd_fermeture`
+  research, révision) ; règle 17 sur le code neuf (`32ba9078d`) ; carte v2 rejouée après J12 :
+  identique à la phase 1. Chemins `.ai` cités par le code de la campagne vérifiés à la casse exacte
+  contre `git ls-files` (piège CI Linux signalé par l'autre session).
 
 ## 5. Découvertes (consignées, non traitées)
 
@@ -618,22 +628,38 @@ Détail par item :
   rejoue donc à l'identique avant et après J12 (attendu, à confirmer).
 
 **Items à la fusion de `feat/v75` post-J12 dans `feat/campagne-grammaire`** (ajoutés le 2026-10-02 ;
-aucun n'est fait) :
-- [ ] **Essai de fusion AVANT tout développement de phase 2** (N9) : `git merge-tree` de `feat/v75`
+fusion FAITE le 2026-10-02, commit `f28a4a816`, `origin/feat/v75` = `95b19e635`) :
+- [x] **Essai de fusion AVANT tout développement de phase 2** (N9) — fait : `git merge-tree` contre
+  `bc0e2511a` puis contre `95b19e635`, UN seul conflit (`grammar_rev.golden`), le reste fusionné
+  seul ; essai complet dans un worktree jetable (`R_FUSION.md`), puis vraie fusion `f28a4a816`.
+  Énoncé d'origine : : `git merge-tree` de `feat/v75`
   post-J12 contre la branche, lecture seule. Il liste les conflits réels et confirme ou infirme la
   classe « mécanique » ci-dessus. Tant que J12 n'est pas fusionné, un essai contre
   `origin/feat/suite-audit-decodeur-j12` peut servir d'aperçu ; il ne remplace pas l'essai contre
   `feat/v75` post-J12.
-- [ ] **Re-synchroniser les copies de la surcouche** (N3, D10) : `capture.go`,
+- [~] **Re-synchroniser les copies de la surcouche** (N3, D10) — copies post-J12 produites par l'essai
+  de fusion (`r_fusion_overlay_postj12/`, fusion à trois voies sans conflit ; seul écart : cinq
+  boucles du `go fix` de J12), intégrées avec les recherches préalables. Toute mesure en surcouche de
+  la phase 2 part de `r_fusion_overlay_postj12/overlay_campagne.json` ; `mesures_bis2_overlay/` reste
+  pour rejouer à l'identique les chiffres de la phase 1. Énoncé d'origine : `capture.go`,
   `lecteur_position.go` et `lecteur_position_exceptions.go` de `mesures_bis2_overlay/` sont des
   fichiers ENTIERS, substitués par chemin absolu. J12 modifie `lecteur_position.go` (+1/−1) et
   `lecteur_position_exceptions.go` (+4/−4). Sans re-synchronisation depuis les fichiers post-J12, une
   mesure en surcouche annulerait ces changements. Reporter les ajouts de recherche sur les fichiers
   post-J12, puis rejouer les contrôles de la surcouche (référence = carte v2).
-- [ ] `go test ./internal/archlint/` (ratchets de J12 compris, et ratchet de taille D-66), et mise en
+- [x] `go test ./internal/archlint/` (ratchets de J12 compris, et ratchet de taille D-66), et mise en
   conformité des instruments de la campagne (tris à comparateur total, `errors.Is`,
-  `strings.SplitSeq`, aucun `slog` dans `grammar`).
-- [ ] Re-régénérer `grammar_rev.golden` et `grammar_perimetre.golden` par la commande du dépôt.
+  `strings.SplitSeq`, aucun `slog` dans `grammar`) — VERT et complet sur l'arbre fusionné ; seule
+  non-conformité : quatre sondes suivaient la variable `profile.QuantRangeCEBiped`, devenue un
+  accesseur par J12.4, corrigées dans la fusion (les tris des sondes sont dans des `_test.go`, que le
+  cliquet de tri exclut). Règle 17 (commentaires) appliquée au code neuf de production et de l'outil
+  (`32ba9078d`).
+- [x] Re-régénérer `grammar_rev.golden` et `grammar_perimetre.golden` par la commande du dépôt —
+  `grammar_rev.golden` régénéré à révision constante `grammar-2026-09-27.3` (empreinte `14b3a79d…`) ;
+  `grammar_perimetre.golden` inchangé, tests de révision verts.
+- [x] **Équivalence des mesures après J12** (item ouvert de l'essai de fusion) : la carte v2 rejouée sur
+  les 20 films avec l'outil construit sur l'arbre fusionné rend des TSV IDENTIQUES à ceux de la
+  phase 1 (seuls le pic mémoire et la durée diffèrent) : les chiffres de la phase 1 valent après J12.
 
 **Méthode de la surcouche (`go test -overlay`), règles recommandées (D10)**
 - Outillage de MESURE seulement : aucune preuve de gate ne repose sur elle. Les gates se jouent sur
