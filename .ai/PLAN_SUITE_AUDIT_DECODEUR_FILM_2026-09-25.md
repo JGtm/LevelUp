@@ -179,14 +179,14 @@ traité (justification au journal §9). Aucune case vide.
 | 1 | Fraîcheur et révisions mal calées sur les sorties | J3 (+ J4 pour RA1-3) | [x] |
 | 2 | Identité (slot, génération) non typée | J5 | [x] |
 | 3 | Portages jumeaux ; 7 lectures de bits artisanales hors `source` | J6 (portages) ; J4.6 (lectures, S2) | [x] |
-| 4 | D-10 tenue par un ratchet de vocabulaire ; 81/99 compteurs non câblés | J8 | [ ] |
+| 4 | D-10 tenue par un ratchet de vocabulaire ; 81/99 compteurs non câblés | J8 | [x] |
 | 5 | `film/replay` paquet-dieu ; seconde séquence de balayage dans `killcollector` | J4 (séquence unique) ; découpe complète : DU-4 | [x] |
-| 6 | Décodage multi-passes | `[!]` hors périmètre (§1.4) | [ ] |
-| 7 | CI : `-race` absent du film ; instruments `research` non tagués | J12.6 ; J12.7 (DU-5) | [ ] |
-| 8 | Contexte et journalisation (`context.Background()`, `slog` sans contexte, D-4 à moitié, variables exportées modifiables) | J12.3, J12.4 | [ ] |
-| 9 | Déterminisme par chance (43 `sort.Slice`) | J10.1 (tris qui décident d une sortie + cliquet, DT-9 amendé) ; conversion du reste : J12.1 | [ ] |
-| 10 | Bibliothèque standard moderne quasi absente | J12.1, J12.2 | [ ] |
-| 11 | Documentation périmée | J12.5 | [ ] |
+| 6 | Décodage multi-passes | `[!]` hors périmètre (§1.4) | [!] |
+| 7 | CI : `-race` absent du film ; instruments `research` non tagués | J12.6 ; J12.7 (DU-5) | [x] |
+| 8 | Contexte et journalisation (`context.Background()`, `slog` sans contexte, D-4 à moitié, variables exportées modifiables) | J12.3, J12.4 | [x] |
+| 9 | Déterminisme par chance (43 `sort.Slice`) | J10.1 (tris qui décident d une sortie + cliquet, DT-9 amendé) ; conversion du reste : J12.1 | [x] |
+| 10 | Bibliothèque standard moderne quasi absente | J12.1, J12.2 | [x] |
+| 11 | Documentation périmée | J12.5 | [x] |
 
 ### 2.4 Écarts ADR 0034 / arbre
 
@@ -194,10 +194,10 @@ traité (justification au journal §9). Aucune case vide.
 |---|---|---|
 | « replay ne décode rien » | J4.2 | [x] |
 | « seule porte aux octets » (lectures artisanales, façade qui ré-expose `LecteurSur`/`Paquets`/`Inflate`) | J4.5 (façade), J4.6 (lecteurs, S2 ; sinon ADR D-2 corrigé) | [x] |
-| « D-5 prouvé sous -race » | J12.6 | [ ] |
+| « D-5 prouvé sous -race » | J12.6 | [x] |
 | « un seul étage de balayage » | J4.3 | [x] |
 | « verrou pris par les SIX points d'entrée » (un septième ne le prend pas) | J2.13 (identifier le septième au J2.13, avant de coder) | [x] |
-| « D-10 Reached as written » | J8 puis J12.5 | [ ] |
+| « D-10 Reached as written » | J8 puis J12.5 | [x] |
 
 ### 2.5 Escalades (§Suite du registre)
 
@@ -208,8 +208,8 @@ traité (justification au journal §9). Aucune case vide.
 | 3 | Modèle de révision / fraîcheur | J3 (DU-2) | [x] |
 | 4 | Identité (slot, génération) de première classe | J5 | [x] |
 | 5 | GA2-1 / GA2-2 (résidu de film dense clos le 23/09) | DU-1 = oui → J6 (GA2-1 : `[~]` reprise M4b) | [!] (GA2-2 en exception datée ; le reste de J6 fait) |
-| 6 | Découpe de `film/replay` et façade (décision V25) | DU-4 = hors plan (`[!]` à la clôture, motif : décision du 2026-09-25) | [ ] |
-| 7 | Politique de commentaires, tag `research` | DU-5 → J12.7, J12.8 | [ ] |
+| 6 | Découpe de `film/replay` et façade (décision V25) | DU-4 = hors plan (`[!]` à la clôture, motif : décision du 2026-09-25) | [!] |
+| 7 | Politique de commentaires, tag `research` | DU-5 → J12.7, J12.8 | [x] |
 
 ---
 
@@ -1118,31 +1118,31 @@ G-web, G-CI. **Taille** : M.
       sur le corpus (→ liste de retrait soumise à DU-7), assistants `?N` = 0, bots épinglés ;
       carte de fermeture rejouée contre la référence de J4.0.5 (→ état du déclencheur de la
       représentation intermédiaire, rapporté à l'utilisateur).
-- [ ] J11.4 **GO utilisateur**, puis vague locale, serveur arrêté, PRÉVENIR :
+- [x] J11.4 **GO utilisateur**, puis vague locale, serveur arrêté, PRÉVENIR :
       `levelup backfill-replay` (un film à la fois, verrou solo) → `levelup backfill-usage-summary`
       → `levelup backfill-pad-tiers --force` → `levelup backfill-killsource` (3 ouvriers ;
       positions si `IsolationDecoderRev` a monté) → `levelup backfill-bomb-stats` (si J9.6) ;
       `levelup healthcheck` ; redémarrage du serveur.
-- [ ] J11.5 Vérification visuelle par l'utilisateur sur les témoins QU'IL nomme.
-- [ ] J11.6 Fusion `feat/suite-audit-decodeur` → `feat/v75` (G-push, push, CI verte au niveau
+- [~] J11.5 (APRÈS la fusion, décision utilisateur du 2026-09-30) Vérification visuelle par l'utilisateur sur les témoins QU'IL nomme.
+- [x] J11.6 (AVANT J11.4, §9 2026-10-01) Fusion `feat/suite-audit-decodeur` → `feat/v75` (G-push, push, CI verte au niveau
       job) ; séquence de production écrite (identique, au déploiement — geste de l'utilisateur).
 
 ---
 
 ### J12 — Modernisation neutre, documentation, CI (zéro différence)
 
-- [ ] J12.1 `go fix` (Go 1.26) + stdlib sur le périmètre, SAUF les quatre pièges (DT-10) ; test
+- [x] J12.1 `go fix` (Go 1.26) + stdlib sur le périmètre, SAUF les quatre pièges (DT-10) ; test
       `TestBijectionPermutationGraineFixe` posé AVANT ; G-equiv 0, équivalence killsource 0 ;
       empreintes régénérées à révision constante.
-- [ ] J12.2 `errors.Is` partout où `os.IsNotExist` / `IsExist` / `IsPermission` restent ; ratchet.
-- [ ] J12.3 Contexte : les points d'entrée de `replay`/`replaybuild` reçoivent le `ctx` de
+- [x] J12.2 `errors.Is` partout où `os.IsNotExist` / `IsExist` / `IsPermission` restent ; ratchet.
+- [x] J12.3 Contexte : les points d'entrée de `replay`/`replaybuild` reçoivent le `ctx` de
       l'appelant (`BuildBytes` ne crée plus de `context.Background()`) ; les 219 appels `slog` du
       périmètre passent aux variantes `…Context` ; D-4 : plus de `slog` dans `grammar` et `facts`
       (diagnostics typés remontés à l'orchestrateur) ; deux ratchets (allowlists vides).
-- [ ] J12.4 Les 22 variables de paquet exportées modifiables deviennent non exportées, `const` ou
+- [x] J12.4 Les 22 variables de paquet exportées modifiables deviennent non exportées, `const` ou
       champs ; ratchet étendu (famille `filmdec_package_vars_test.go`) à `replay`, `replaybuild`,
       `killcollector`.
-- [ ] J12.5 Documentation : 13 affirmations d'état fausses (liste rétablie sur pièces, dont la doc
+- [x] J12.5 Documentation : 13 affirmations d'état fausses (liste rétablie sur pièces, dont la doc
       de paquet de `killsource`) ; chemins `.ai/` morts (12 relevés + ~60 de rr §8.26) et ratchet
       `TestCheminsAiCitesDansLeCodeExistent` ; 170 commandes `go test` visant `film/filmdec/` et
       ratchet sur ce littéral ; 10 doc comments recollés à leur déclaration ; CLAUDE.md :
@@ -1150,13 +1150,13 @@ G-web, G-CI. **Taille** : M.
       court, l'historique M2-M4 déplacé en annexe (`docs/adr/0034-annex-history.md`, EN) ; les six
       affirmations du §2.4 alignées sur l'arbre. Avec J3.1, les commentaires ne bougent plus les
       empreintes.
-- [ ] J12.6 CI : job `film-race` —
+- [x] J12.6 CI : job `film-race` —
       `go test -race -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/internal/grammar/`
       (mini-bobines du dépôt, sans DuckDB) ; D-5 devient vrai.
-- [ ] J12.7 (DU-5 a) Tag `research` sur les 218 fichiers ; ratchet `archlint/research_tag_test.go` ;
+- [x] J12.7 (DU-5 a) Tag `research` sur les 218 fichiers ; ratchet `archlint/research_tag_test.go` ;
       `go vet -tags=research` de la CI étendu au module ; baseline JSONL nettoyée dans le même
       commit.
-- [ ] J12.8 (DU-5 b) Règle des commentaires écrite dans CLAUDE.md et `arch-rules`.
+- [x] J12.8 (DU-5 b) Règle des commentaires écrite dans CLAUDE.md et `arch-rules`.
 
 **Gate J12.** G-unit, G-arch, G-vet, G-lint, G-film, G-equiv 0, équivalence killsource 0,
 `go test ./... -count=1` complet, G-CI, G-push → fusion. **Taille** : L.
@@ -1325,6 +1325,23 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
 30. (2026-09-29, R1) Sur un siège statborg recyclé, `AtRound` (manches du crâne, courbes de score
     multi-manche) et la courbe mono-manche restent liés à la manche entière ; les heures
     d'arrivée/départ de l'API ne sont pas sur l'horloge du film (écart jusqu'à 25 s).
+31. (2026-10-02, après J11.4) Part de `scan` killsource : 19 % sur les matchs de septembre, 2,6 %
+    hors modes à objectif porté ; cause : signature du localisateur de la marche figée sur le slot
+    123 du record high-frequency (`facts/killsource/walk.go` et `grammar/object_deaths_march.go`),
+    alors que Oddball / One Bomb / One Flag / Squad Battle le portent sur 126-129 ; correctif
+    proposé (362/403 kills rendus à la marche sur trois films), confié à la campagne de grammaire
+    (D-67 de son plan) ; cause secondaire Banished Narrows (objet transitoire ti=3 né entre deux
+    images-clés) ; morts de bot toujours étiquetées `scan`. Enquête :
+    `.ai/V7.5/film_re/ENQUETE_SCAN_SEPTEMBRE_2026-10-02.md`.
+32. (2026-10-02) `TestAssautArmementGate` rouge depuis le lot 5.1.1 (`1fe3352ce`, AVANT le plan) :
+    un trou de lecture coupe le compte à rebours de la mèche, le morceau suivant passe pour une
+    tenue de désarmement (`1c01e34f`, explosion 335 637 ms) ; correctif proposé dans
+    `classifyBombSegments` ; et dérive de la mèche One Bomb publiée (`9f57c612` : 16 183 →
+    19 386 ms) par la même famille. Non traités (antérieurs au plan).
+33. (2026-10-02) 379 matchs gardent des lignes killsource d'anciennes révisions faute de film
+    local (dont 29 à `killsource-2026-09-24`, 83 % de `scan`) : `backfill-killsource --online`
+    à décider par l'utilisateur. TODO daté échu (`internal/api/handlers/json_huma_coverage_test.go`,
+    `groups.go`, échéance 2026-10-01) qui fait rougir `TestNoExpiredTODO` en CI : hors plan.
 
 ---
 
@@ -1696,3 +1713,19 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   (superviseur, à confirmer par l'utilisateur) : fusion J11.6 dans `feat/v75` AVANT la vague J11.4,
   parce que le serveur dev du checkout principal tourne le code de `feat/v75` et redécoderait à
   l'ancienne ce que la vague aura recuit.
+- 2026-10-02 : **J11.6 avant J11.4** (décision superviseur, accord utilisateur) : `feat/v75`
+  fusionné dans la branche (`8b894a677`, emprise-vies et emprise-vehicules adaptés), poussé en
+  avance rapide sur `feat/v75`, CI VERTE. **J11.4** : vague du 2026-10-01 17 h 47 au 2026-10-02
+  5 h 18 (11 h 30), binaire de `8b894a677`, serveur arrêté ; `backfill-replay` 1 227 construits,
+  63 cartes hors catalogue (voulu), 2 erreurs (dossiers de film vides), 0 mort mémoire ;
+  `usage-summary`, `pad-tiers --force`, `killsource` (1 220 matchs à `killsource-2026-09-27`,
+  vies et placement réécrits), `bomb-stats --force`, `vehicle-takes --force` (ajouté : les
+  dérivations emprise ne rejouent pas un artefact recuit), `healthcheck` TOUT OK ; serveur
+  redémarré sur le nouveau code. Part de `scan` : 8,3 % (contre 14 à 39 % avant) → enquête
+  (§8.31). **J12** fusionné dans la branche (`78558fa6f`) après preuve sur 20 films (document
+  identique à l'octet ; quatre digests d'étape expliqués) ; références re-figées (`6d3c1aca4`) ;
+  G-film, intégration, `-race`, web verts ; deux gardes Assaut jamais exécutées sur films avant
+  J12.7 bis : `TestBombeB2Assaut` re-figée (correction prouvée, `5558133c8`),
+  `TestAssautArmementGate` rouge AVANT le plan (§8.32). **Revue adversariale finale** (règle
+  5 bis) lancée : quatre relecteurs aveugles (L1 ×2, justesse du décodeur, L3+L6), contrat
+  `revue_finale_contrat.md`, périmètre fermé.
