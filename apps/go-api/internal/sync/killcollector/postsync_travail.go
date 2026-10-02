@@ -108,7 +108,7 @@ func lectureDesPages(ctx context.Context, d PostSyncDeps, horizon int) func(offs
 
 // argsBacklog : les parametres de [conditionBacklog], une seule copie pour la jauge et la liste.
 func argsBacklog() []any {
-	return []any{matchflags.MBitFilmAbsent, decfilm.Rev, killscope.ReadPathCreditBackfill}
+	return []any{matchflags.MBitFilmAbsent, decfilm.Rev, decfilm.Rev, killscope.ReadPathCreditBackfill}
 }
 
 // backlogAJour rend la premiere page de travail (bornee) et la taille TOTALE du backlog — le seul

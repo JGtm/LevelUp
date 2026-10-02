@@ -102,7 +102,7 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 ) {
 	chunks, found, err := FilmChunksForMatch(ctx, c.client, matchID)
 	if filmPasEncoreFinalise(ctx, matchID, err) {
-		return nil, nil, nil, OutcomeNoKillFeed, nil
+		return nil, nil, nil, OutcomeSansKillFeedARelire, nil
 	}
 	if err != nil {
 		// EXPIRATION PARTIELLE = DEFINITIVE (bilan fork ChaseWoodhams 2026-09-11, point 4b) :
@@ -151,11 +151,35 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 	}
 
 	res, outcome, err := c.decoderSousLaCarte(ctx, matchID, film)
+	if outcome == OutcomeNoKillFeed && !tempsFortsServis(chunks) {
+		slog.InfoContext(ctx, "killsource: morceau des temps forts non servi — sans kill-feed ce "+
+			"cycle, repris au suivant", "match_id", matchID, "chunks", len(chunks))
+		return nil, nil, nil, OutcomeSansKillFeedARelire, nil
+	}
 	if outcome != OutcomeWritten {
 		return nil, nil, nil, outcome, err
 	}
 	return chunks, film, res, OutcomeWritten, nil
 }
+
+// tempsFortsServis dit si le morceau des temps forts (le kill-feed) fait partie des chunks servis,
+// avec ses octets. Sans lui, « aucun kill lu » ne dit rien du film : le cache saute un chunk
+// declare au manifeste mais absent du disque (cf. `LocalCacheFilms.GetFilmChunks`), et ce film-la
+// ne doit pas sortir du backlog.
+func tempsFortsServis(chunks []haloclient.FilmChunk) bool {
+	for _, ch := range chunks {
+		if finalise.EstTempsForts(ch.ChunkType) && len(ch.Data) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// decoderLeFilm : le decodeur de la passe. Une variable de paquet pour une seule raison : la
+// couture qui laisse un test d integration obtenir une issue que les mini-bobines du depot ne
+// produisent pas (aucune ne porte de paquet de replication de type 0, cf.
+// postsync_sans_killfeed_integration_test.go).
+var decoderLeFilm = decfilm.Decode
 
 // decoderSousLaCarte : LA PORTE DE LA CARTE, puis le decodage des morts sous elle.
 //
@@ -186,7 +210,7 @@ func (c *KillSourceCollector) decoderSousLaCarte(ctx context.Context, matchID st
 	// entree de catalogue que la passe des positions resout deja (`resolveMapBounds`).
 	opts := decfilm.DefaultOptions()
 	opts.Carte = carte
-	res, err := decfilm.Decode(ctx, matchID, film, &opts)
+	res, err := decoderLeFilm(ctx, matchID, film, &opts)
 	// CE QUE LE DECODAGE A CONSTATE (lot J12.3, ADR 0034 D-4) se journalise ici, sous le ctx du match.
 	if res != nil {
 		replay.JournaliserDiagnostics(ctx, res.Diagnostics)
@@ -363,7 +387,7 @@ func (c *KillSourceCollector) writeShots(ctx context.Context, batch persist.Weap
 // FILM PAS ENCORE FINALISE = SANS KILL-FEED, PAS UNE PANNE (lot L3, 2026-09-23 ; constat L3-R2 de
 // sa revue adverse). Le client (`haloclient.fetchFilmChunks`) et le cache local
 // (`LocalCacheFilms`) refusent un manifeste sans morceau des temps forts : le film existe, son
-// kill-feed n est juste pas encore publie. C est mot pour mot [OutcomeNoKillFeed], qui ne pose
+// kill-feed n est juste pas encore publie. Il sort en [OutcomeSansKillFeedARelire], qui ne pose
 // AUCUN marqueur (le match reste candidat au cycle suivant, film complet). Le classer en erreur,
 // comme la branche generique de `decodeFilmForMatch` le ferait, journalisait un ERROR et
 // comptait un echec pour chaque match detecte moins d une minute apres sa fin — 23 sur 96 au

@@ -257,7 +257,7 @@ func (s *suiviDeLaPasse) comptabiliser(ev killcollector.EvenementDeFilm) {
 		f.Morts += ev.Morts
 	case ev.Outcome == killcollector.OutcomeNoFilm:
 		f.SansFilm++
-	case ev.Outcome == killcollector.OutcomeNoKillFeed:
+	case ev.Outcome.SansKillFeed():
 		f.SansKillFeed++
 	case ev.Outcome == killcollector.OutcomeUnknownKey:
 		f.CleInconnue++
