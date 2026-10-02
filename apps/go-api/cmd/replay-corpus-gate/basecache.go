@@ -49,8 +49,9 @@ package main
 // marqueur de validation. Un crash avant lui laisse des fichiers sans meta, ignores a la lecture.
 //
 // LES FAITS DU FILM (`<short8>.filmfacts.bin`, `PathResolver.FilmFactsPath`) sont ceux que la
-// cuisson de la base depose sous sa racine de travail : le banc de verite les relit pour les kills
-// individuels. Une entree est COMPLETE avec artefact ET faits, sinon elle est recuite ; une
+// cuisson de la base depose sous sa racine de travail. Ils sont RANGES pour la phase 2b du banc de
+// verite (kills individuels, section 5 des faits du film, decision D-3) ; AUCUN lecteur ne les lit
+// aujourd'hui. Une entree est COMPLETE avec artefact ET faits, sinon elle est recuite ; une
 // cuisson qui ne laisse pas de faits (puits d'artefact qui refuse) ne range rien, journalise.
 // La cuisson de la base part SANS faits pour ce film (`cuissonDeLaBase`) et seuls des faits ecrits
 // depuis son debut se rangent (`ecritsDepuis`) : une racine de travail reutilisee entre deux bases

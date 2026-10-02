@@ -129,3 +129,23 @@ func TestToleranceSurLesFlottants(t *testing.T) {
 		t.Fatalf("217 -> 1,5 doit etre un ecart, sens %q", got)
 	}
 }
+
+// TestFeuilleTextuelleDeCouvertureDisparueResteUnePerte — revue finale P2 (2026-10-02) : la
+// polarite declaree ne s'applique qu'aux feuilles NUMERIQUES de couverture (`estNumerique`). Un
+// verdict textuel (`coverage.verdict.shots`) qui disparait reste une PERTE ; lu selon une polarite
+// il deviendrait un changement (non bloquant).
+// Mutation vue rouge : retirer `estNumerique(a, b)` de la condition de `ajouter`.
+func TestFeuilleTextuelleDeCouvertureDisparueResteUnePerte(t *testing.T) {
+	ancien := doc(t, `{"schemaVersion":76,"matchId":"a","tracks":[],"coverage":{"verdict":{"shots":"nominal"}}}`)
+	nouveau := doc(t, `{"schemaVersion":76,"matchId":"a","tracks":[],"coverage":{"verdict":{}}}`)
+	r := Comparer(Empreindre(ancien), Empreindre(nouveau))
+	for _, d := range r.Differences {
+		if d.Metrique == "coverage.verdict.shots" {
+			if d.Sens != SensDisparu {
+				t.Fatalf("verdict textuel disparu : sens %q, veut %q", d.Sens, SensDisparu)
+			}
+			return
+		}
+	}
+	t.Fatalf("aucun ecart sur coverage.verdict.shots : %+v", r.Differences)
+}

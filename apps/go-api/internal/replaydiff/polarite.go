@@ -20,7 +20,8 @@ package replaydiff
 // (`polarite_ratchet_test.go`) derive l'inventaire des feuilles de la forme du document et rougit
 // sur toute feuille non classee. Une feuille de couverture INCONNUE a l'execution (artefact d'un
 // schema que la table ne connait pas) se lit en CHANGEMENT : ni gain ni perte presumes, mais
-// visible et bloquante au gate de corpus — jamais un gain silencieux.
+// visible au rapport du gate de corpus — jamais un gain silencieux. Un changement n'y bloque plus
+// (le verdict est celui du banc de verite, `cmd/replay-corpus-gate/verite.go`).
 
 import (
 	"strings"

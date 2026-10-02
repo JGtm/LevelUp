@@ -124,3 +124,17 @@ func TestBlocsCouverts_ChaqueFeuilleEstLueParSaMesure(t *testing.T) {
 		}
 	}
 }
+
+// TestCalqueDisparu_BaisseSansZeroContreZero — revue finale P2 (2026-10-02) : sous O-V2, des pistes
+// en BAISSE (`tracks/n` 80 -> 40) sont des fins de vie que le banc juge — pas de filet ; des pistes
+// qui tombent A ZERO sont un calque disparu — filet, meme sous O-V2.
+// Mutation vue rouge : `estCalqueDisparu` rend vrai pour toute baisse d'un `<cle>/n` de premier niveau.
+func TestCalqueDisparu_BaisseSansZeroContreZero(t *testing.T) {
+	ok := comparaisonDe(replayverite.StatutOK, replayverite.ScoreFinsDeVie)
+	if l := ligneJugee(ok, perte("pistes", "tracks/n", "80", "40")); len(l.Filets) != 0 {
+		t.Errorf("tracks/n 80 -> 40 sous O-V2 : filets %v, veut aucun", l.Filets)
+	}
+	if l := ligneJugee(ok, perte("pistes", "tracks/n", "80", "0")); len(l.Filets) != 1 {
+		t.Errorf("tracks/n 80 -> 0 sous O-V2 : filets %v, veut un (calque disparu)", l.Filets)
+	}
+}
