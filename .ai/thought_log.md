@@ -114174,3 +114174,42 @@ de la marche d'image-clé.
 
 **Conclusion / prochaine étape** : l'autre conversation démarre par l'ADR et le paquet de types,
 qui ne dépendent de rien ; la campagne de grammaire continue dans son worktree.
+
+## [2026-10-02] Passe killsource : un film lu sans kill reste au backlog et occupe tout le cycle — Complété (branche `fix/killsource-sans-killfeed-a-jour`)
+
+**Constat** (`logs/general.log` du checkout principal, 05:18 → 15:45) : 448 décodages, dont 440
+« film sans kill-feed, rien a publier » sur 8 match_id seulement (48 à 56 fois chacun). Ce sont
+des matchs de ~55 s dont le film est complet (en-tête, 3-4 réplications, temps forts présents
+sur disque) et ne porte aucun kill. Coût CPU faible (66 à 100 ms par film, 33,4 s au total,
+~0,6 s par cycle), mais dégât réel : `perCycle = 8` et le backlog trié du plus récent au plus
+vieux. De 05:34 à 07:19, 7 places sur 8 prises (1 film utile par cycle) ; depuis 07:34 (arrivée du
+8e, `279ac3dd`), 48 cycles à 8/8, 0 film écrit, `backlog_restant` figé à 7 351.
+
+**Cause** : `conditionBacklog` (et `matchsAJour` du backfill) ne tient un match pour à jour que
+s'il a une ligne `match_kill_events_latest` à `decfilm.Rev` hors voie crédit, ou le bit terminal
+`MBitFilmAbsent`. Un film sans kill n'écrit aucune ligne et ne reçoit délibérément aucun bit (une
+révision future pourrait le lire) : rien ne le sortait du backlog.
+
+**Décision technique principale** : nouvelle colonne `match_registry.killsource_sans_killfeed_rev`
+(migration `shared_registry_killsource_sans_killfeed_rev_v1`, ALTER additive), écrite par
+`persist.KillSourceSansKillFeedPersister` (UPDATE par match sous le writer, forme autorisée
+anti-ART ; `match_registry` n'est pas append-only) avec `decfilm.Rev`. Une révision et non un
+bit : à la révision suivante le match redevient candidat. Lue par `conditionBacklog` (liste et
+jauge) et `matchsAJour` (backfill hors ligne et `--online`). Posée UNIQUEMENT pour un film
+complet décodé sans kill : nouvelle issue `OutcomeSansKillFeedARelire` pour le film non finalisé
+(qui sortait jusqu'ici en `OutcomeNoKillFeed`) et pour le morceau des temps forts déclaré mais non
+servi — comptée avec « sans kill-feed » dans les synthèses, ne pose rien. Couture de test
+`decoderLeFilm` (aucune mini-bobine du dépôt n'atteint `ErrNoKillFeed` : pas de paquet type 0).
+Aucun changement pour les films qui ont un kill-feed. SYNC_GUIDE EN + FR complétés.
+
+**Résultats observés** : test d'intégration rouge sur le code d'avant (backlog `[ancien courant]`
+au lieu de `[ancien]`), vert après ; trois mutations (révision non posée, condition retirée du
+backlog, garde des temps forts retirée) refont rougir le test attendu. Suites vertes :
+killcollector (unitaire + integration), migration, persist, sync, archlint (dont le ratchet du
+prédicat unique des temps forts, qui a imposé `finalise.EstTempsForts`), cmd/levelup integration ;
+golangci-lint 0 nouvelle issue (avec et sans tag integration).
+
+**Conclusion / prochaine étape** : commit sur la branche puis fusion dans feat/v75 sur accord
+utilisateur. Au premier cycle après redémarrage, les 8 films sont décodés une dernière fois, la
+colonne est posée, et le backlog doit recommencer à baisser (`killsource_postsync_backlog_restant`
+sous 7 351, `sans_killfeed` à 0 aux cycles suivants).

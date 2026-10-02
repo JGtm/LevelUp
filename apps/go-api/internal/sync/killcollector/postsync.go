@@ -424,7 +424,7 @@ const PostSyncBacklogHorizon = 64
 // conditionBacklog : le predicat commun a la liste et a la jauge. UNE seule copie, parce que
 // deux copies divergent et la jauge se met alors a decrire un autre ensemble que le travail.
 //
-// TROIS CONDITIONS, TROIS RAISONS — les retirer casse l etape en silence :
+// QUATRE CONDITIONS, QUATRE RAISONS — les retirer casse l etape en silence :
 //
 //	match_kill_events_latest        la VUE, jamais la table (ADR 0026) : une passe perimee
 //	                                ferait sauter un match qui a besoin d etre redecode.
@@ -440,9 +440,16 @@ const PostSyncBacklogHorizon = 64
 //	                                2026-08-29, 581 des 999 candidats sont dans ce cas, tous
 //	                                anterieurs a 2026. Ils occupaient toute la liste de travail
 //	                                et les 415 matchs de 2026 n etaient JAMAIS atteints.
+//	killsource_sans_killfeed_rev    le film COMPLET a ete decode sous la revision courante sans
+//	                                aucun kill : il n ecrit aucune ligne, donc sans cette
+//	                                condition il reste candidat a vie. Une REVISION et non un
+//	                                bit : une nouvelle revision le rend de nouveau candidat.
+//	                                Mesure du 2026-10-02 : huit films de ~55 s redecodes a chaque
+//	                                cycle occupaient les huit places, backlog fige a 7 351.
 const conditionBacklog = `
 		FROM match_registry r
 		WHERE COALESCE(r.backfill_completed, 0) & ? = 0
+		  AND r.killsource_sans_killfeed_rev IS DISTINCT FROM ?
 		  AND NOT EXISTS (
 			SELECT 1 FROM match_kill_events_latest e
 			WHERE e.match_id = r.match_id

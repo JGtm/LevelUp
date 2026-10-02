@@ -226,9 +226,16 @@ const (
 	// OutcomeNoFilm : aucun film pour ce match. Cas NORMAL — les films Theater expirent cote
 	// serveur, au moins 28 % des matchs n en auront jamais.
 	OutcomeNoFilm KillSourceOutcome = "film-absent"
-	// OutcomeNoKillFeed : film present mais sans chunk HIGHLIGHT : aucun couple tueur/victime
-	// n est reconstituable, il n y a rien a publier.
+	// OutcomeNoKillFeed : film COMPLET (son morceau des temps forts a ete servi) decode sans aucun
+	// kill : aucun couple tueur/victime n est reconstituable, il n y a rien a publier. Il pose
+	// `killsource_sans_killfeed_rev` (cf. registry_flags.go) : le match quitte le backlog pour la
+	// revision courante.
 	OutcomeNoKillFeed KillSourceOutcome = "sans-killfeed"
+	// OutcomeSansKillFeedARelire : rien a publier CE cycle parce que le kill-feed n a pas ete lu
+	// en entier — film pas encore finalise par le serveur, ou morceau des temps forts declare mais
+	// non servi. Compte avec [OutcomeNoKillFeed] dans les syntheses, mais il NE POSE RIEN : le
+	// match reste candidat et sera relu.
+	OutcomeSansKillFeedARelire KillSourceOutcome = "sans-killfeed-a-relire"
 	// OutcomeTimeout : le decodage a depasse la limite de temps du match.
 	OutcomeTimeout KillSourceOutcome = "abandon-delai"
 	// OutcomeNotSupported : le titre n expose pas la capability. Le cycle continue.
@@ -254,3 +261,9 @@ const (
 	// se resout.
 	OutcomeCarteNonResolue KillSourceOutcome = "ecarte-carte-non-resolue"
 )
+
+// SansKillFeed dit si l issue est un film sans kill-feed, lu en entier ou a relire : la colonne
+// « sans kill-feed » des syntheses les compte ensemble.
+func (o KillSourceOutcome) SansKillFeed() bool {
+	return o == OutcomeNoKillFeed || o == OutcomeSansKillFeedARelire
+}

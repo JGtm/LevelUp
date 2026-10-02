@@ -37,6 +37,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/matchflags"
 )
 
@@ -65,7 +67,9 @@ func marquerRegistre(ctx context.Context, db *sql.DB, matchID string, bit int) e
 //	OutcomeNoFilm                      MBitFilmAbsent   le film est perdu, definitivement
 //	OutcomeWritten avec morts > 0      MBitWeaponKills  le detail par arme existe
 //	OutcomeWritten avec morts == 0     rien             bit-honnete : pas de ligne, pas de bit
-//	OutcomeNoKillFeed                  rien             le film EXISTE, il est juste muet
+//	OutcomeNoKillFeed                  rien             le film EXISTE, il est juste muet (bit :
+//	                                                    rien ; revision : cf. [marquerFilm])
+//	OutcomeSansKillFeedARelire         rien             kill-feed pas encore lu en entier
 //	OutcomeTimeout / NotSupported      rien             etat transitoire ou hors titre
 //	OutcomeUnknownKey                  rien             le film EXISTE, la TABLE lui manque
 //	OutcomeCarteNonResolue             rien             le film EXISTE, sa CARTE n est pas resolue
@@ -93,23 +97,44 @@ func marquerFilmParOutcome(outcome KillSourceOutcome, morts int) (bit int, aMarq
 
 // marquerFilm ecrit le marqueur d UN match, sous un lease RW court.
 //
+// LE FILM LU SANS KILL ([OutcomeNoKillFeed]) NE RECOIT PAS DE BIT, MAIS SA REVISION : la colonne
+// `killsource_sans_killfeed_rev` prend `decfilm.Rev` (persist.KillSourceSansKillFeedPersister).
+// Elle sort le match du backlog pour la revision courante seulement — sans elle, il n ecrit
+// aucune ligne et revient a chaque cycle (huit films le 2026-10-02, 440 decodages en dix heures).
+//
 // BEST-EFFORT SIGNALE : un echec d ecriture ne remet pas en cause la passe (les morts sont
 // deja en base) mais il se journalise — un marqueur manquant se traduit par un match
 // redemande au cycle suivant, jamais par une perte de donnee.
 func (c *KillSourceCollector) marquerFilm(ctx context.Context, matchID string, outcome KillSourceOutcome, morts int) {
 	bit, aMarquer := marquerFilmParOutcome(outcome, morts)
-	if !aMarquer || c.acquireShared == nil {
+	sansKill := luSansKill(outcome)
+	if (!aMarquer && !sansKill) || c.acquireShared == nil {
 		return
 	}
 	db, release, err := c.acquireShared(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "killsource: marqueur de film non pose — lease shared indisponible",
-			"match_id", matchID, "bit", bit, "err", err)
+			"match_id", matchID, "outcome", string(outcome), "err", err)
 		return
 	}
 	defer release()
-	if err := marquerRegistre(ctx, db, matchID, bit); err != nil {
-		slog.WarnContext(ctx, "killsource: marqueur de film non pose",
-			"match_id", matchID, "bit", bit, "err", err)
+	if aMarquer {
+		if err := marquerRegistre(ctx, db, matchID, bit); err != nil {
+			slog.WarnContext(ctx, "killsource: marqueur de film non pose",
+				"match_id", matchID, "bit", bit, "err", err)
+		}
 	}
+	if sansKill {
+		err := persist.NewKillSourceSansKillFeedPersister(db).MarkSansKillFeed(ctx, matchID, decfilm.Rev)
+		if err != nil {
+			slog.WarnContext(ctx, "killsource: revision « lu sans kill » non posee",
+				"match_id", matchID, "rev", decfilm.Rev, "err", err)
+		}
+	}
+}
+
+// luSansKill dit si l issue pose `killsource_sans_killfeed_rev` : SEUL le film complet decode sans
+// kill. [OutcomeSansKillFeedARelire] (film non finalise, temps forts non servis) n affirme rien.
+func luSansKill(o KillSourceOutcome) bool {
+	return o == OutcomeNoKillFeed
 }

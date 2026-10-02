@@ -130,8 +130,8 @@ func TestRemoteFilms_ManifesteLocalPartiel_RepliEnInfo(t *testing.T) {
 
 // TestDecodeFilmForMatch_NonFinalise_SansKillFeedPasUnePanne : CONSTAT L3-R2. Le cas de la passe
 // HORS LIGNE (`backfill-killsource`, `LocalCacheFilms` seul) sur le manifeste partiel : l'issue est
-// « sans kill-feed » (aucun marqueur), pas une erreur de decodage — qui comptait un echec et
-// journalisait un ERROR a chaque passe pour un film qui n'etait que frais.
+// « sans kill-feed, a relire » (aucun marqueur, ni bit ni revision), pas une erreur de decodage —
+// qui comptait un echec et journalisait un ERROR a chaque passe pour un film qui n'etait que frais.
 func TestDecodeFilmForMatch_NonFinalise_SansKillFeedPasUnePanne(t *testing.T) {
 	racine := cacheAvecManifestePartiel(t)
 	c := &KillSourceCollector{client: NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine))}
@@ -139,9 +139,9 @@ func TestDecodeFilmForMatch_NonFinalise_SansKillFeedPasUnePanne(t *testing.T) {
 	erreurs := observability.LoadCounter(metricDecodeError)
 
 	_, film, res, outcome, err := c.decodeFilmForMatch(context.Background(), matchRemote)
-	if err != nil || outcome != OutcomeNoKillFeed || film != nil || res != nil {
+	if err != nil || outcome != OutcomeSansKillFeedARelire || film != nil || res != nil {
 		t.Fatalf("decodeFilmForMatch = (%v, %v, film=%v, res=%v), attendu (%s, nil, rien)",
-			outcome, err, film != nil, res != nil, OutcomeNoKillFeed)
+			outcome, err, film != nil, res != nil, OutcomeSansKillFeedARelire)
 	}
 	if n := observability.LoadCounter(metricNonFinalise) - nonFinalises; n != 1 {
 		t.Errorf("%s : +%d, attendu +1", metricNonFinalise, n)
@@ -151,6 +151,10 @@ func TestDecodeFilmForMatch_NonFinalise_SansKillFeedPasUnePanne(t *testing.T) {
 	}
 	if _, marquer := marquerFilmParOutcome(outcome, 0); marquer {
 		t.Error("l'issue d'un film non finalise pose un marqueur de registre")
+	}
+	if luSansKill(outcome) {
+		t.Error("l'issue d'un film non finalise pose la revision « lu sans kill » : il ne serait plus relu " +
+			"une fois finalise, avant la prochaine revision")
 	}
 	var sum KillSourceSummary
 	comptabiliserFilm(&sum, EvenementDeFilm{Outcome: outcome})
