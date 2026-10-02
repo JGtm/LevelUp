@@ -26,7 +26,7 @@ func mesurerLesBobines(t *testing.T, md modes) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rap, err := ouvrirRapport(dir, tab, md)
+	rap, err := ouvrirRapport(dir, tab, md, optionsV2{paquets: md.v2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,11 @@ func TestV2RendLesSortiesDeFermetureALIdentique(t *testing.T) {
 		"fermeture_entrees.tsv":            "minibobine_000d5950\t",
 		"fermeture_chunk3.tsv":             "minibobine_000d5950\t",
 		"fermeture_borne.tsv":              "minibobine_000d5950\t",
-		"fermeture_resume.md":              "## Carte v2",
+		"fermeture_resume.md":              "## Lot L0",
+		"fermeture_ecrivain.tsv":           "\tpaquets\tfermes au bit\t",
+		"fermeture_denominateurs.tsv":      "utiles_lus\tutiles_fermes_au_bit",
+		"fermeture_temoins_decales.tsv":    "minibobine_000d5950\t",
+		"fermeture_paquets.tsv":            "minibobine_000d5950\t",
 	}
 	for nom, marque := range attendus {
 		if !strings.Contains(lireSansMesureDeMachine(t, v2, nom), marque) {
@@ -118,7 +122,7 @@ func collecteurDeDeuxBlocs(avant, apres grammar.DatumEntry) *collecteurV2 {
 		return blocDuChunk{present: true, entrees: en}
 	}
 	return &collecteurV2{m: nouvelleMesureV2(), suivant: map[int]int{1: 2}, chunk: 1,
-		neufs: map[uint32]bool{}, blocs: map[int]blocDuChunk{1: bloc(avant), 2: bloc(apres)}}
+		neufs: map[uint32]bool{}, neufsDesync: map[uint32]bool{}, blocs: map[int]blocDuChunk{1: bloc(avant), 2: bloc(apres)}}
 }
 
 // TestNaissanceDUnEidRejete : les classes de naissance, sur l eid `1<<30 | 7` (generation 1).
@@ -163,5 +167,29 @@ func TestNaissanceDUnEidRejete(t *testing.T) {
 	}
 	if got := etatAuBloc(col.bloc(1), 900); got != "absent" {
 		t.Errorf("slot hors table : %q", got)
+	}
+}
+
+// TestNaissanceGenerationZeroEtNeufDesynchronise : les deux classes corrigees du lot L0 (L0.2).
+// `FUN_142f2e598` pose `gen = (gen + 1) & 3` a chaque allocation : un slot trace sous la generation
+// 3 au bloc du chunk et a la generation 0 sans drapeau au bloc suivant a ete alloue sous la
+// generation 0 puis libere — une naissance, que la regle « generation ou drapeau poses » rangeait
+// en « realloue » (D-43). Un NEW lu dont la traversee a desynchronise n est pas une naissance non
+// lue (D-44).
+func TestNaissanceGenerationZeroEtNeufDesynchronise(t *testing.T) {
+	const eid0 = 0<<30 | 7
+	trace3 := grammar.DatumEntry{Gen: 3, Generation: 4}
+	if got := collecteurDeDeuxBlocs(trace3, grammar.DatumEntry{}).naissance(eid0); got != "naissance non lue, generation 0" {
+		t.Errorf("generation 0 nee puis liberee : %q", got)
+	}
+	if got := collecteurDeDeuxBlocs(grammar.DatumEntry{}, grammar.DatumEntry{}).naissance(eid0); got != "aucune allocation" {
+		t.Errorf("slot jamais alloue aux deux blocs : %q", got)
+	}
+	const eid1 = 1<<30 | 7
+	vivant := grammar.DatumEntry{Drapeaux: grammar.DatumAlloue | grammar.DatumPublie, Gen: 1, Generation: 2}
+	col := collecteurDeDeuxBlocs(grammar.DatumEntry{}, vivant)
+	col.neufsDesync[7] = true
+	if got := col.naissance(eid1); got != "NEW lu desynchronise · naissance non lue" {
+		t.Errorf("NEW lu desynchronise : %q", got)
 	}
 }

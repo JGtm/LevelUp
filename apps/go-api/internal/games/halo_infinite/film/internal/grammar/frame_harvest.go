@@ -340,16 +340,12 @@ func decodeFrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 	// le tableau que `FUN_142987460` applique par `vtable[0x48]`, et ce ne sont pas des deltas
 	// d entite. La marche hors ligne n en publie donc aucun — c est ce qui supprime les records
 	// DEL fantomes du pied de trame. Ses ENTREES DE CONTROLE (le tir continu, lot M4b) sont
-	// publiees au hook, avec le verdict de l oracle de cadrage : une vue qui ne ferme pas le
-	// paquet ne rend rien.
+	// publiees au hook, avec le verdict de fermeture ([verdictDeVueC]) : une vue qui ne ferme pas
+	// le paquet ne rend rien.
 	c := consumeVueC(br, frameLen)
 	if c.Porte {
 		rangs++
 	}
-	l := LectureVueC{Atteinte: true, Arret: c.Arret, Fermee: c.Porte && vueCFermee(buf, br.BitPos())}
-	if l.Fermee {
-		l.Entrees = c.Entrees
-	}
-	br.publierVueC(l)
+	br.publierVueC(verdictDeVueC(buf, br.BitPos(), c, recs, br.rejetVueB))
 	return recs, rangs, br.BitPos()
 }

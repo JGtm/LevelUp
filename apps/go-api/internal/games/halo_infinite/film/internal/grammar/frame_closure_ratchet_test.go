@@ -151,6 +151,8 @@ func mesurerCarteBobines(t *testing.T) string {
 func ecrireCarte(b *strings.Builder, film string, r FrameClosureReport) {
 	fmt.Fprintf(b, "%s\tpaquets\t%d\t%d\t%s\tlistes_non_localisees=%d\n", film, r.PaquetsFermes,
 		r.Paquets, r.BloquantPrincipal(), r.ListesNonLocalisees)
+	fmt.Fprintf(b, "%s\tpaquets_au_bit\t%d\t%d\t\tutiles_fermes_au_bit=%d\n", film, r.PaquetsFermesAuBit,
+		r.Paquets, r.Utiles.RecordsFermesAuBit)
 	for v, nom := range []string{"A", "B", "C"} {
 		s := r.Vues[v]
 		fmt.Fprintf(b, "%s\tvue=%s\t%d\t%d\t%s\tterminees=%d arrets=%s\n", film, nom, s.Fermes,
@@ -239,4 +241,12 @@ const enteteCarteDeFermeture = "" +
 	"#     ti=42 i0/i20 (socles). SORTENT, faute d appelant de production : ti=11 i0/i3/i5/i12/i13/i14\n" +
 	"#     (ScanObjectives) et ti=37 i20/i21/i23/i24 (ScanEquipmentState). AUCUN compte de paquet ni de\n" +
 	"#     record ne bouge ; seuls les UTILES : ks_000d5950 5 889/30 428 -> 6 608/31 200,\n" +
-	"#     ks_e5adf7b2 0/1 -> 0/23. 0 ligne `fermes` ne descend.\n"
+	"#     ks_e5adf7b2 0/1 -> 0/23. 0 ligne `fermes` ne descend.\n" +
+	"#   2026-10-02 lot L0 de la campagne de grammaire (decision D2) : FERME = FERME AU BIT PRES ET\n" +
+	"#     AUCUNE REGLE DE L ECRIVAIN CONTREDITE (`ecrivain_invariants.go`). Ligne NEUVE par film :\n" +
+	"#     `paquets_au_bit` (fermes au bit pres, regles contredites ou non). ks_e5adf7b2 : un paquet\n" +
+	"#     ferme au bit pres apres une sortie de vue B par rejet n est plus ferme (paquets 371 -> 370 ;\n" +
+	"#     vues A, B, C, ti=4 et ti=21 un de moins) : la BAISSE est une fermeture factice retiree,\n" +
+	"#     l exception de la decision D2. ks_000d5950 : aucun compte `fermes` ne bouge. Causes\n" +
+	"#     renommees : `vue B : sortie par rejet` (avant les causes de la vue C) et\n" +
+	"#     `vue C : bloc 0xbc (desalignement)` ; une regle de l ecrivain contredite est une cause nommee.\n"

@@ -155,6 +155,8 @@ func (b *cmBlocs) naissance(c int, eid uint32, neufLu bool) string {
 	switch nxA, curA := cmAlloueSous(nx, gen), cmAlloueSous(cur, gen); {
 	case nxA && !curA:
 		return "naissance non lue"
+	case gen == 0 && nx.Gen == 0 && nx.Drapeaux == 0 && cur.Gen != 0:
+		return "naissance non lue, generation 0" // FUN_142f2e598 : gen = (gen + 1) & 3 a l allocation
 	case curA && cur.Vivante():
 		return "vivant au bloc du chunk"
 	case curA:
@@ -169,7 +171,7 @@ func (b *cmBlocs) naissance(c int, eid uint32, neufLu bool) string {
 func (b *cmBlocs) plausibilite(classeNaissance string, eid uint32) string {
 	slot, gen := eid&0x3fffffff, uint8(eid>>30) //nolint:gosec // deux bits
 	switch {
-	case classeNaissance == "naissance non lue":
+	case strings.HasPrefix(classeNaissance, "naissance non lue"):
 		return "atteste : naissance au bloc suivant"
 	case b.gens[slot]&(1<<gen) != 0:
 		return "atteste : un bloc du film (meme tete)"

@@ -111,6 +111,10 @@ const (
 	// NomLiaisonParAnticipation : `grammar/world.go`, `World.LierParRepliDAnticipation` ; compte par
 	// `replay/film_scan_mouvement.go`, `balayerEtatsDeMouvement` (lot J8.1, constat GA1-2).
 	NomLiaisonParAnticipation Nom = "repli_liaison_par_anticipation"
+	// NomDebutDeListeFermeAuBit : `grammar/debut_de_liste.go`, `debutParFermeture` (second rang) ;
+	// compte par `replay/film_scan_mouvement.go`, `balayerEtatsDeMouvement` (lot L0 de la campagne
+	// de grammaire).
+	NomDebutDeListeFermeAuBit Nom = "repli_debut_de_liste_ferme_au_bit"
 	// NomOrigineAuSolLacheeParFenetre : `replay/ground_weapon_rules.go`, `gwPadsClass` ; compte par
 	// `replay/ground_weapon_pads.go`, `buildWeaponPads` (lot J8.3, constat RB2-8).
 	NomOrigineAuSolLacheeParFenetre Nom = "repli_origine_au_sol_lachee_par_fenetre"

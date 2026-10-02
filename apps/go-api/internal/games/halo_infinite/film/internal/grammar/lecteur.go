@@ -49,6 +49,9 @@ type Lecteur struct {
 	// qui n observe rien. Il ne change AUCUNE consommation de bits : c est la propriete
 	// qui le distingue du profil (cf. l en-tete de `observateur.go`).
 	obs *Observation
+	// rejetVueB : la derniere boucle de records de la vue B ([decodeInferLoop]) s est arretee sur un
+	// en-tete REJETE et non sur son terminateur ; le curseur est a la fin de cet en-tete.
+	rejetVueB bool
 }
 
 // LecteurSur rend un lecteur de grammaire positionne sur le premier bit de `buf`. C est la

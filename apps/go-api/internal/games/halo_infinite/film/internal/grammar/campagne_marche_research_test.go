@@ -147,6 +147,7 @@ func cmPaquetDe(md *marcheDetaillee, tete func([]byte, *World, FrameConfig) (int
 			p.d.ListeNonLocalisee, p.d.Cause, p.debut = true, causeListeNonLocalisee, -1
 			return p
 		}
+		p.d.ListeLocalisee = true
 		if p.strict >= 0 && debut < p.strict {
 			p.chaine = cmChaine(pay, debut, p.strict, w, md.cfg)
 		}
@@ -160,7 +161,8 @@ func cmPaquetDe(md *marcheDetaillee, tete func([]byte, *World, FrameConfig) (int
 	pm := paquetMarche{enTete: enTete, recs: recs, rangs: rangs, vueC: l}
 	avantLus, avantFermes := md.rep.Utiles.Records, md.rep.Utiles.RecordsFermes
 	md.classer(pm)
-	p.d.UtilesEnJeu = (md.rep.Utiles.Records - avantLus) - (md.rep.Utiles.RecordsFermes - avantFermes)
+	p.d.UtilesLus = md.rep.Utiles.Records - avantLus
+	p.d.UtilesEnJeu = p.d.UtilesLus - (md.rep.Utiles.RecordsFermes - avantFermes)
 	p.utilesFermes = md.rep.Utiles.RecordsFermes - avantFermes
 	p.d.Fermee = l.Fermee
 	if !l.Fermee {

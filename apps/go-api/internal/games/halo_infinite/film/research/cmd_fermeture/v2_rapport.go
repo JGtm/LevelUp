@@ -35,11 +35,12 @@ type cumulV2 struct {
 	entrees                   entreesV2
 	borne                     borneV2
 	sansBloc, blocsIllisibles int
+	l0                        ecrivainV2
 }
 
 func nouveauCumulV2() *cumulV2 {
 	return &cumulV2{sorties: map[string]*sortieStat{}, horsCadre: map[cleHorsCadre]*compte{},
-		dernier: map[cleDernier]*compte{}, rejets: map[cleRejet]*compte{}}
+		dernier: map[cleDernier]*compte{}, rejets: map[cleRejet]*compte{}, l0: nouvelEcrivainV2()}
 }
 
 // filmV2 est ce que le resume garde d un film (tables par film).
@@ -51,14 +52,17 @@ type filmV2 struct {
 // rapportV2 porte les TSV de la carte v2 et ses cumuls.
 type rapportV2 struct {
 	sorties, horsCadre, dernier, rejets, entrees, chunk3, borne *os.File
-	parBuild                                                    map[string]*cumulV2
-	corpus                                                      *cumulV2
-	films                                                       []filmV2
+	// ecrivain, denominateurs, temoinsDecales et paquets : les sorties du lot L0 (v2_ecrivain_tsv.go).
+	ecrivain, denominateurs, temoinsDecales, paquets *os.File
+	opts                                             optionsV2
+	parBuild                                         map[string]*cumulV2
+	corpus                                           *cumulV2
+	films                                            []filmV2
 }
 
 // ouvrirRapportV2 cree les sept TSV de la carte v2.
-func ouvrirRapportV2(dir string) (*rapportV2, error) {
-	r := &rapportV2{parBuild: map[string]*cumulV2{}, corpus: nouveauCumulV2()}
+func ouvrirRapportV2(dir string, opts optionsV2) (*rapportV2, error) {
+	r := &rapportV2{parBuild: map[string]*cumulV2{}, corpus: nouveauCumulV2(), opts: opts}
 	tsv := []struct {
 		f           **os.File
 		nom, entete string
@@ -75,7 +79,7 @@ func ouvrirRapportV2(dir string) (*rapportV2, error) {
 		{&r.borne, "fermeture_borne.tsv", "film\tbuild\trecords_lus\trecords_debordants\tcomposants_debordants\t" +
 			"neufs_propres_debordants\tpaquets_avec_debordement\tterminateurs_au_dela\tchunks_consultes_sans_bloc_type1\tblocs_type1_illisibles"},
 	}
-	for _, t := range tsv {
+	for _, t := range append(tsv, tsvL0(r)...) {
 		f, err := creerTSV(dir, t.nom, t.entete)
 		if err != nil {
 			return nil, errors.Join(err, r.fermer())
@@ -87,13 +91,15 @@ func ouvrirRapportV2(dir string) (*rapportV2, error) {
 
 // fermer ferme les TSV ouverts.
 func (r *rapportV2) fermer() error {
-	return fermerTSV(r.sorties, r.horsCadre, r.dernier, r.rejets, r.entrees, r.chunk3, r.borne)
+	return fermerTSV(r.sorties, r.horsCadre, r.dernier, r.rejets, r.entrees, r.chunk3, r.borne,
+		r.ecrivain, r.denominateurs, r.temoinsDecales, r.paquets)
 }
 
 // ajouter ecrit les lignes v2 d un film et le cumule.
 func (r *rapportV2) ajouter(id, build string, m *mesureV2) error {
 	ecrire := []func(id, build string, m *mesureV2) error{r.ecrireSorties, r.ecrireHorsCadre,
-		r.ecrireDernier, r.ecrireRejets, r.ecrireEntrees, r.ecrireChunk3, r.ecrireBorne}
+		r.ecrireDernier, r.ecrireRejets, r.ecrireEntrees, r.ecrireChunk3, r.ecrireBorne, r.ecrireEcrivain,
+		r.ecrireDenominateurs, r.ecrireTemoinsDecales}
 	for _, e := range ecrire {
 		if err := e(id, build, m); err != nil {
 			return err
@@ -227,6 +233,7 @@ func (c *cumulV2) cumuler(m *mesureV2) {
 	b.terminateursAuDela += m.borne.terminateursAuDela
 	c.sansBloc += m.sansBloc
 	c.blocsIllisibles += m.blocsIllisibles
+	c.l0.cumuler(m.l0)
 }
 
 // sommer ajoute une table de comptes a une autre.

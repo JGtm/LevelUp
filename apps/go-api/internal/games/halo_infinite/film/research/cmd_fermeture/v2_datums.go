@@ -12,11 +12,18 @@ package main
 //
 //	etat au bloc du chunk     vivant / trace (generation ou drapeau poses) / vide / absent
 //	                          (slot au-dela de la table) / sans bloc (chunk sans bloc lisible)
-//	naissance                 « NEW lu dans le chunk » : un record NEW de ce slot a ete lu dans ce
-//	                          chunk, avant ce paquet ou dans lui ;
+//	naissance                 « NEW lu dans le chunk » : un record NEW de ce slot a ete lu et
+//	                          traverse dans ce chunk, avant ce paquet ou dans lui ;
+//	                          « NEW lu desynchronise · <classe> » : un NEW de ce slot a ete lu dans
+//	                          ce chunk mais sa traversee a desynchronise (le slot n est pas lie) ;
+//	                          la classe que les blocs donnent suit ;
 //	                          « naissance non lue » : le bloc SUIVANT porte une allocation de ce
 //	                          slot sous la generation de l eid (vivante, ou deja liberee), que le
 //	                          bloc du chunk ne portait pas, et aucun NEW n a ete lu ;
+//	                          « naissance non lue, generation 0 » : le bloc suivant porte la
+//	                          generation 0 sans drapeau la ou le bloc du chunk portait une autre
+//	                          generation. `FUN_142f2e598` pose `gen = (gen + 1) & 3` a chaque
+//	                          allocation : le slot a ete alloue sous la generation 0, puis libere ;
 //	                          « vivant au bloc du chunk » : deja vivant sous cette generation au
 //	                          debut du chunk ;
 //	                          « libere avant le chunk (meme generation) » : l entree du chunk porte
@@ -26,11 +33,13 @@ package main
 //	                          « aucune allocation » : les deux blocs ne montrent rien pour cet eid ;
 //	                          « non mesurable » : pas de bloc lisible au chunk suivant.
 //
-// LIMITE ECRITE : une entite de generation 0 nee ET morte entre deux blocs laisse une entree
-// `drapeaux 0, generation 0` — celle d un slot jamais alloue. Elle tombe en « aucune allocation ».
+// LIMITE ECRITE : sur un slot JAMAIS alloue au bloc du chunk (generation 0, aucun drapeau), une
+// entite de generation 0 nee ET morte avant le bloc suivant laisse la meme entree. Elle tombe en
+// « aucune allocation ».
 
 import (
 	"errors"
+	"io"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
@@ -62,18 +71,25 @@ type collecteurV2 struct {
 	suivant map[int]int
 	chunk   int
 	neufs   map[uint32]bool
-	blocs   map[int]blocDuChunk
+	// neufsDesync : les slots d un NEW lu dans le chunk dont la traversee a desynchronise.
+	neufsDesync map[uint32]bool
+	blocs       map[int]blocDuChunk
+	// id et paquets : le film et `fermeture_paquets.tsv` (nil hors de `-paquets`) ; err : la
+	// premiere erreur d ecriture de ce fichier.
+	id      string
+	paquets io.Writer
+	err     error
 }
 
 // nouveauCollecteurV2 ouvre la collecte d un film.
-func nouveauCollecteurV2(fc *grammar.FilmContext) *collecteurV2 {
+func nouveauCollecteurV2(fc *grammar.FilmContext, id string, paquets io.Writer) *collecteurV2 {
 	nums := fc.ChunkNumbers()
 	suivant := make(map[int]int, len(nums))
 	for i := 0; i+1 < len(nums); i++ {
 		suivant[nums[i]] = nums[i+1]
 	}
 	return &collecteurV2{fc: fc, m: nouvelleMesureV2(), suivant: suivant, chunk: -1,
-		neufs: map[uint32]bool{}, blocs: map[int]blocDuChunk{}}
+		neufs: map[uint32]bool{}, neufsDesync: map[uint32]bool{}, blocs: map[int]blocDuChunk{}, id: id, paquets: paquets}
 }
 
 // voir est le rappel de `grammar.FrameClosureDetaillee`.
@@ -82,7 +98,13 @@ func (c *collecteurV2) voir(p grammar.PaquetDeCarte) {
 	for _, s := range p.NeufsLus {
 		c.neufs[s] = true
 	}
+	for _, s := range p.NeufsDesynchronises {
+		c.neufsDesync[s] = true
+	}
 	c.m.compterPaquet(p)
+	if c.paquets != nil && c.err == nil {
+		c.err = ecrirePaquet(c.paquets, c.id, p)
+	}
 	if !p.Sortie.EstUnRejet() {
 		return
 	}
@@ -99,6 +121,7 @@ func (c *collecteurV2) changerDeChunk(n int) {
 	}
 	c.chunk = n
 	c.neufs = map[uint32]bool{}
+	c.neufsDesync = map[uint32]bool{}
 	for k := range c.blocs {
 		if k != n && k != c.suivant[n] {
 			delete(c.blocs, k)
@@ -169,6 +192,15 @@ func (c *collecteurV2) naissance(eid uint32) string {
 	if c.neufs[slot] {
 		return "NEW lu dans le chunk"
 	}
+	parBlocs := c.naissanceParBlocs(slot, gen)
+	if c.neufsDesync[slot] {
+		return "NEW lu desynchronise · " + parBlocs
+	}
+	return parBlocs
+}
+
+// naissanceParBlocs classe un eid d apres le bloc du chunk et celui du chunk suivant.
+func (c *collecteurV2) naissanceParBlocs(slot uint32, gen uint8) string {
 	n, ok := c.suivant[c.chunk]
 	if !ok {
 		return "non mesurable"
@@ -183,6 +215,8 @@ func (c *collecteurV2) naissance(eid uint32) string {
 	switch {
 	case nxAlloue && !curAlloue:
 		return "naissance non lue"
+	case gen == 0 && nx.Gen == 0 && nx.Drapeaux == 0 && cur.Gen != 0:
+		return "naissance non lue, generation 0"
 	case curAlloue && cur.Vivante():
 		return "vivant au bloc du chunk"
 	case curAlloue:

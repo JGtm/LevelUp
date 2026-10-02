@@ -12,13 +12,15 @@ package grammar
 // fausse QUELQUE PART devant. [FrameClosureDetaillee] rend, pour chaque paquet, ce qu il faut pour
 // la ventiler : comment la vue B s est arretee (son terminateur, ou un REJET d en-tete — et
 // lequel des deux), l eid rejete, ce que la vue C a lu (vide, nombre d entrees), le reste du
-// payload derriere elle, le dernier composant lu, et les lectures qui ont depasse la fin du payload.
+// payload derriere elle, le dernier composant lu, les lectures qui ont depasse la fin du payload,
+// les regles de l ecrivain que la lecture contredit (`ecrivain_invariants.go`) et les departs de
+// vue C decales d ou elle referme le paquet (`frame_closure_temoins.go`).
 //
 // # LA MARCHE EST CELLE DE PRODUCTION, PILOTEE A LA MAIN
 //
 // [decodeFrameParRangs] ne rend ni la fin de la vue B ni le flux de la vue C : la marche de ce
 // fichier ([marcheDetaillee.marcherParRangs]) en recopie le PILOTAGE — dix lignes : bit de
-// configuration, [consumeVueA], [decodeInferLoop], [consumeVueC], [vueCFermee] — et appelle les
+// configuration, [consumeVueA], [decodeInferLoop], [consumeVueC], [verdictDeVueC] — et appelle les
 // MEMES lecteurs, sans lire un bit a cote. Le classement est celui de [FrameClosure] (meme
 // `mesureDesTrames`). Le garde-fou de la recopie est un test : sur les bobines du depot, la carte
 // rendue par [FrameClosureDetaillee] est IDENTIQUE, champ a champ, a celle de [FrameClosure]
@@ -91,11 +93,26 @@ type PaquetDeCarte struct {
 	Chunk, Index int
 	TimestampUS  uint64
 	Bits         int
-	// ListeNonLocalisee : aucune vue n a ete lue (cf. [CauseListeNonLocalisee]).
-	ListeNonLocalisee bool
-	// Fermee : le paquet se ferme au bit pres. Cause : la premiere cause d arret, vide s il ferme.
+	// ListeNonLocalisee : aucune vue n a ete lue (cf. [CauseListeNonLocalisee]). ListeLocalisee :
+	// le paquet porte une liste d evenements dont le debut a ete trouve ([debutDeLaListe]).
+	ListeNonLocalisee, ListeLocalisee bool
+	// Fermee : le paquet se ferme ([LectureVueC.Fermee]). Cause : la premiere cause d arret, vide
+	// s il ferme.
 	Fermee bool
 	Cause  string
+	// FermeeAuBit et Invariant : le verdict de cadrage et la premiere regle de l ecrivain
+	// contredite ([LectureVueC]). Invariants : TOUTES les regles contredites par la lecture (un bit
+	// par [InvariantEcrivain]), jugees sur tout paquet dont la vue B est atteinte.
+	FermeeAuBit bool
+	Invariant   InvariantEcrivain
+	Invariants  uint32
+	// Deborde : la lecture a depasse la fin du payload ([source.Bits.Deborde]) — le verdict
+	// d echec du moteur (`FUN_14298816c`).
+	Deborde bool
+	// TemoinsDecales : pour un paquet ferme au bit pres, les departs de vue C DECALES de k bits
+	// (k de -8 a -1 : bits 0 a 7 ; k de 1 a 8 : bits 8 a 15) d ou la vue C ferme AUSSI le
+	// paquet au bit pres ([temoinsDecales]).
+	TemoinsDecales uint16
 	// Sortie : comment la vue B s est arretee. EIDRejete : l identifiant COMPLET (tete de
 	// generation comprise) de l en-tete rejete, quand [SortieDeVueB.EstUnRejet].
 	Sortie    SortieDeVueB
@@ -110,13 +127,16 @@ type PaquetDeCarte struct {
 	// Curseur : la position ou la marche s est arretee ; Bits - Curseur est le reste du payload.
 	Curseur int
 	// RecordsLus : les records de la vue B rendus par la marche ; NeufsLus les slots de ses records
-	// NEW traverses proprement (`DesyncAt == -1`).
-	RecordsLus int
-	NeufsLus   []uint32
+	// NEW traverses proprement (`DesyncAt == -1`), NeufsDesynchronises ceux des NEW lus dont la
+	// traversee a desynchronise.
+	RecordsLus          int
+	NeufsLus            []uint32
+	NeufsDesynchronises []uint32
 	// DernierLu decrit le dernier record de la vue B et son dernier composant lu.
 	DernierLu string
-	// UtilesEnJeu : les records utiles lus et non fermes du paquet.
-	UtilesEnJeu int
+	// UtilesEnJeu : les records utiles lus et non fermes du paquet ; UtilesLus : ses records
+	// utiles lus.
+	UtilesEnJeu, UtilesLus int
 	// LE MODE BORNE : ce qu un lecteur qui refuserait de lire au-dela du payload changerait.
 	// RecordsDebordants : records dont la lecture finit APRES le dernier bit du payload ;
 	// ComposantsDebordants : composants dont la lecture finit apres lui ; NeufsPropresDebordants :
@@ -190,6 +210,7 @@ func (md *marcheDetaillee) paquet(c int, pk FilmPacket, data []byte, w *World) {
 			md.publier(d)
 			return
 		}
+		d.ListeLocalisee = true
 	}
 	md.marcherPaquetDetaille(pay, w, debut, &d)
 	md.publier(d)
@@ -210,7 +231,8 @@ func (md *marcheDetaillee) marcherPaquetDetaille(pay []byte, w *World, debut int
 	p := paquetMarche{enTete: enTete, recs: recs, rangs: rangs, vueC: l}
 	avantLus, avantFermes := md.rep.Utiles.Records, md.rep.Utiles.RecordsFermes
 	md.classer(p)
-	d.UtilesEnJeu = (md.rep.Utiles.Records - avantLus) - (md.rep.Utiles.RecordsFermes - avantFermes)
+	d.UtilesLus = md.rep.Utiles.Records - avantLus
+	d.UtilesEnJeu = d.UtilesLus - (md.rep.Utiles.RecordsFermes - avantFermes)
 	d.Fermee = l.Fermee
 	if !l.Fermee {
 		d.Cause = md.bloquantDuPaquet(p).nom
@@ -231,7 +253,7 @@ func (md *marcheDetaillee) marcherParRangs(pay []byte, w *World, debut int,
 	if debut == cfg.PacketPreambleBits && cfg.PacketPreambleBits >= 1 {
 		br.Skip(cfg.PacketPreambleBits - 1)
 		if a := consumeVueA(br, frameLen); !a.Porte {
-			d.Curseur = br.BitPos()
+			d.Curseur, d.Deborde = br.BitPos(), br.Deborde()
 			return nil, rangs, LectureVueC{}
 		}
 		rangs++
@@ -249,6 +271,8 @@ func (md *marcheDetaillee) marcherParRangs(pay []byte, w *World, debut int,
 		d.EIDRejete = eidDeLEnTeteRejete(pay, cfg, d.FinVueB)
 	}
 	if !hitEnd {
+		d.Deborde = br.Deborde()
+		d.Invariants = jugerLePaquet(recs, false, FluxVueC{}, true).ensemble
 		return recs, rangs, LectureVueC{}
 	}
 	rangs++
@@ -256,11 +280,13 @@ func (md *marcheDetaillee) marcherParRangs(pay []byte, w *World, debut int,
 	if c.Porte {
 		rangs++
 	}
-	l := LectureVueC{Atteinte: true, Arret: c.Arret, Fermee: c.Porte && vueCFermee(pay, br.BitPos())}
-	if l.Fermee {
-		l.Entrees = c.Entrees
+	l := verdictDeVueC(pay, br.BitPos(), c, recs, br.rejetVueB)
+	d.VueCAtteinte, d.VueC, d.Curseur, d.Deborde = true, c, br.BitPos(), br.Deborde()
+	d.FermeeAuBit, d.Invariant = l.FermeeAuBit, l.Invariant
+	d.Invariants = jugerLePaquet(recs, br.rejetVueB, c, true).ensemble
+	if l.FermeeAuBit {
+		d.TemoinsDecales = temoinsDecales(pay, cfg, d.FinVueB)
 	}
-	d.VueCAtteinte, d.VueC, d.Curseur = true, c, br.BitPos()
 	return recs, rangs, l
 }
 

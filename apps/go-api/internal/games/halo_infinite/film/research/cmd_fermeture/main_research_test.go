@@ -33,7 +33,7 @@ func TestOutilEcritSesQuatreSorties(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rap, err := ouvrirRapport(dir, tab, modes{fermeture: true})
+	rap, err := ouvrirRapport(dir, tab, modes{fermeture: true}, optionsV2{})
 	if err != nil {
 		t.Fatal(err)
 	}

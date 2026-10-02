@@ -15,7 +15,9 @@ import (
 // TestFrameClosureDetailleeRendLaCarteDeFrameClosure : LE GARDE-FOU DE LA RECOPIE DU PILOTAGE.
 // Sur chaque bobine du ratchet qui porte un registre, la carte rendue par
 // [FrameClosureDetaillee] est IDENTIQUE a celle de [FrameClosure] ; et le detail se recoupe avec
-// elle (un detail par paquet, les paquets « hors cadre » et leurs records en jeu).
+// elle (un detail par paquet, les paquets « hors cadre » et leurs records en jeu). Les deux
+// branches du pilotage d un paquet a liste d evenements sont exercees sur chaque bobine qui en porte :
+// au moins une liste LOCALISEE et une NON localisee ([listesDeLaBobine]).
 func TestFrameClosureDetailleeRendLaCarteDeFrameClosure(t *testing.T) {
 	utiles := usagesProduitDeLaTable(t)
 	mesurees := 0
@@ -45,6 +47,11 @@ func TestFrameClosureDetailleeRendLaCarteDeFrameClosure(t *testing.T) {
 				bo.nom, got, want)
 		}
 		recouperLeDetail(t, bo.nom, got, details)
+		loc, nonLoc := listesDeLaBobine(details)
+		t.Logf("%s : %d liste(s) d evenements localisee(s), %d non localisee(s)", bo.nom, loc, nonLoc)
+		if want.Paquets > 0 && (loc == 0 || nonLoc == 0) {
+			t.Errorf("%s : %d liste(s) localisee(s), %d non localisee(s) : les deux branches du pilotage doivent etre exercees", bo.nom, loc, nonLoc)
+		}
 		if want.Paquets > 0 {
 			mesurees++
 		}
@@ -64,6 +71,9 @@ func recouperLeDetail(t *testing.T, nom string, r FrameClosureReport, details []
 	for _, d := range details {
 		if d.Fermee {
 			fermes++
+		}
+		if d.VueCAtteinte && d.Sortie.EstUnRejet() != (d.Invariant == InvariantSortieParRejet) {
+			t.Errorf("%s : chunk %d paquet %d, sortie %q et regle %q en desaccord", nom, d.Chunk, d.Index, d.Sortie, d.Invariant)
 		}
 		if d.Sortie == SortieVueBAutre {
 			t.Errorf("%s : chunk %d paquet %d, sortie de vue B « autre »", nom, d.Chunk, d.Index)
@@ -132,8 +142,10 @@ func TestFrameClosureDetaillee_SortieParTerminateur(t *testing.T) {
 
 // TestFrameClosureDetaillee_SortieParRejetHorsDatum : un en-tete DELTA d un slot que le monde ne
 // lie pas arrete la vue B (garde vive) ; le curseur reste a la fin de l en-tete, l eid COMPLET est
-// relu, et la vue C qui suit est lue de la. MUTATION : relire l eid un bit trop tot — l eid rendu
-// change, ROUGE.
+// relu, et la vue C qui suit est lue de la. Le paquet se ferme au bit pres mais n est PAS ferme :
+// `FUN_142f2e174` n ecrit un DELTA que pour une entite que le lecteur a deja (sortie par rejet,
+// `ecrivain_invariants.go`). MUTATION : relire l eid un bit trop tot — l eid rendu change, ROUGE ;
+// retirer la regle de la sortie par rejet — le paquet est ferme, ROUGE.
 func TestFrameClosureDetaillee_SortieParRejetHorsDatum(t *testing.T) {
 	var bw bitWriter
 	bw.teteDePaquet()
@@ -144,8 +156,11 @@ func TestFrameClosureDetaillee_SortieParRejetHorsDatum(t *testing.T) {
 	if d.Sortie != SortieVueBRejetHorsDatum || d.EIDRejete != 1<<30|500 {
 		t.Fatalf("sortie %q, eid %#x : attendu rejet hors datum de 0x%x", d.Sortie, d.EIDRejete, uint32(1<<30|500))
 	}
-	if !d.Fermee || !d.VueC.Vide || d.FinVueB != 2+(1+13+2+1+1+3)+(1+13+2) {
-		t.Errorf("detail %+v : attendu ferme, vue C vide, fin de vue B a la fin de l en-tete rejete", d)
+	if d.Fermee || !d.FermeeAuBit || !d.VueC.Vide || d.FinVueB != 2+(1+13+2+1+1+3)+(1+13+2) {
+		t.Errorf("detail %+v : attendu ferme au bit pres, non ferme, vue C vide, fin de vue B a la fin de l en-tete rejete", d)
+	}
+	if d.Invariant != InvariantSortieParRejet || d.Cause != InvariantSortieParRejet.String() {
+		t.Errorf("regle %s, cause %q : attendu la sortie par rejet", d.Invariant, d.Cause)
 	}
 }
 
@@ -163,4 +178,17 @@ func TestFrameClosureDetaillee_ModeBorne(t *testing.T) {
 	if d.Fermee || d.Sortie != SortieVueBOuverte {
 		t.Errorf("detail %+v : attendu un paquet ouvert, non ferme", d)
 	}
+}
+
+// listesDeLaBobine compte les paquets a liste d evenements localisee et non localisee d un detail.
+func listesDeLaBobine(details []PaquetDeCarte) (localisees, nonLocalisees int) {
+	for _, d := range details {
+		switch {
+		case d.ListeLocalisee:
+			localisees++
+		case d.ListeNonLocalisee:
+			nonLocalisees++
+		}
+	}
+	return localisees, nonLocalisees
 }

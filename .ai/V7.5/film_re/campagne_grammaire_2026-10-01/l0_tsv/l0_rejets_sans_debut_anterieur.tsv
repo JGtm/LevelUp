@@ -1,0 +1,197 @@
+film	build	chunk	paquet	etat	reste_apres_entete	eid_rejete	classe_au_bloc	dernier_lu	records	entrees_vue_c
+0797ce72	HI_1_13_0	14	322	ferme au bit, sain au juge	226	0x1202	aucune allocation	DELTA ti=40 i25 unit-command-tick-component	10	7
+0797ce72	HI_1_13_0	14	334	ferme au bit, sain au juge	229	0x1202	aucune allocation	DELTA ti=40 i25 unit-command-tick-component	9	7
+0797ce72	HI_1_13_0	3	596	ferme au bit, contredit au juge	235	0x400006a3	aucune allocation	DELTA ti=40 i25 unit-command-tick-component	10	7
+0797ce72	HI_1_13_0	3	866	ferme au bit, contredit au juge	292	0x7db	aucune allocation	NEW ti=13 i15 managed-object-player-masked-property-component	9	7
+084a804d	HI_1_10_0	11	1146	ferme au bit, contredit au juge	806	0xc64	aucune allocation	NEW ti=9 i7 managed-player-campaign-progress-component	1	22
+084a804d	HI_1_10_0	12	116	ferme au bit, contredit au juge	687	0xc0001848	aucune allocation	NEW ti=12 sans composant	1	20
+084a804d	HI_1_10_0	17	340	ferme au bit, contredit au juge	807	0x10e	aucune allocation	DEL	3	20
+084a804d	HI_1_10_0	23	1118	ferme au bit, contredit au juge	328	0x1ef8	aucune allocation	NEW ti=12 sans composant	1	10
+084a804d	HI_1_10_0	28	68	ferme au bit, contredit au juge	761	0x4000031f	libere avant le chunk	NEW ti=43 sans composant	1	24
+084a804d	HI_1_10_0	44	1062	ferme au bit, contredit au juge	671	0x1dfe	aucune allocation	NEW ti=38 sans composant	1	21
+084a804d	HI_1_10_0	48	378	ferme au bit, contredit au juge	712	0x10a4	aucune allocation	NEW ti=42 i18 item-at-rest-component	1	20
+084a804d	HI_1_10_0	51	408	ferme au bit, contredit au juge	700	0x1f6e	aucune allocation	NEW ti=42 i20 weapon-ammo-component	1	22
+084a804d	HI_1_10_0	53	134	ferme au bit, contredit au juge	655	0xc0000c3d	aucune allocation	NEW ti=42 i19 item-ignore-player-component	1	21
+084a804d	HI_1_10_0	7	1106	ferme au bit, contredit au juge	793	0x11c6	aucune allocation	NEW ti=38 i19 animated-mesh-dynamic-state-component	1	21
+111fa685	HI_1_10_0	25	734	ferme au bit, contredit au juge	629	0x688	aucune allocation	NEW ti=9 i3 managed-player-back-button-scoreboard-flair-component	1	20
+111fa685	HI_1_10_0	6	458	ferme au bit, contredit au juge	677	0x40001064	aucune allocation	NEW ti=9 i8 managed-player-current-season-component	1	17
+111fa685	HI_1_10_0	6	932	ferme au bit, sain au juge	596	0x80e	aucune allocation	NEW ti=42 sans composant	1	19
+11de8353	HI_1_9_0	21	22	ferme au bit, contredit au juge	546	0x92	aucune allocation	NEW ti=5 sans composant	1	17
+11de8353	HI_1_9_0	24	234	ferme au bit, sain au juge	555	0xe46	aucune allocation	DEL	2	16
+1c4c63c2	HI_1_10_0	10	930	ferme au bit, contredit au juge	658	0x9fa	aucune allocation	NEW ti=0 sans composant	1	21
+1c4c63c2	HI_1_10_0	12	1942	ferme au bit, contredit au juge	599	0x1b6e	aucune allocation	DEL	2	19
+1c4c63c2	HI_1_10_0	15	402	ferme au bit, contredit au juge	2	0x950	aucune allocation	NEW ti=0 i2 game-engine-current-state-component	1	0
+1c4c63c2	HI_1_10_0	17	1820	ferme au bit, contredit au juge	657	0x18e8	aucune allocation	NEW ti=17 sans composant	1	21
+1c4c63c2	HI_1_10_0	17	58	ferme au bit, contredit au juge	623	0x668	aucune allocation	DEL	2	20
+1c4c63c2	HI_1_10_0	18	582	ferme au bit, contredit au juge	592	0x3cc	aucune allocation	NEW ti=17 sans composant	3	19
+1c4c63c2	HI_1_10_0	20	1030	ferme au bit, contredit au juge	655	0x163c	aucune allocation	NEW ti=38 sans composant	1	21
+1c4c63c2	HI_1_10_0	21	362	ferme au bit, contredit au juge	713	0xc88	aucune allocation	NEW ti=39 i18 generic-rigid-body-transforms-component	2	23
+1c4c63c2	HI_1_10_0	22	436	ferme au bit, contredit au juge	545	0x80000201	aucune allocation	NEW ti=11 i32 managed-objective-outro-phase-duration-component	1	18
+1c4c63c2	HI_1_10_0	23	1506	ferme au bit, contredit au juge	717	0x1a04	aucune allocation	NEW ti=38 i15 object-low-frequency-component	1	21
+1c4c63c2	HI_1_10_0	24	708	ferme au bit, contredit au juge	638	0x1972	aucune allocation	DELTA ti=42 i18 item-at-rest-component	2	20
+1c4c63c2	HI_1_10_0	25	1850	ferme au bit, contredit au juge	728	0x164	aucune allocation	NEW ti=37 i29 equipment-command-tick-component	1	23
+1c4c63c2	HI_1_10_0	25	696	ferme au bit, contredit au juge	678	0x40000476	aucune allocation	NEW ti=38 sans composant	1	21
+1c4c63c2	HI_1_10_0	25	746	ferme au bit, contredit au juge	663	0x916	aucune allocation	NEW ti=10 sans composant	1	21
+1c4c63c2	HI_1_10_0	26	1636	ferme au bit, contredit au juge	461	0xc0001b80	aucune allocation	NEW ti=37 i20 equipment-deployed-component	1	15
+1c4c63c2	HI_1_10_0	26	2194	ferme au bit, contredit au juge	598	0x7fe	aucune allocation	NEW ti=38 i19 animated-mesh-dynamic-state-component	1	19
+1c4c63c2	HI_1_10_0	26	286	ferme au bit, contredit au juge	699	0x1824	aucune allocation	DEL	2	20
+1c4c63c2	HI_1_10_0	27	1814	ferme au bit, contredit au juge	658	0x1d08	aucune allocation	NEW ti=4 sans composant	1	21
+1c4c63c2	HI_1_10_0	27	2274	ferme au bit, contredit au juge	685	0x1ad6	aucune allocation	NEW ti=37 i30 equipment-has-infinite-uses-component	1	20
+1c4c63c2	HI_1_10_0	28	1010	ferme au bit, contredit au juge	458	0xc0000b3d	aucune allocation	NEW ti=4 i0 high-frequency	1	15
+1c4c63c2	HI_1_10_0	28	1450	ferme au bit, sain au juge	7	0x182	aucune allocation	NEW ti=4 sans composant	1	0
+1c4c63c2	HI_1_10_0	31	564	ferme au bit, contredit au juge	686	0x2c2	aucune allocation	NEW ti=38 i12 object-scale-component	1	20
+1c4c63c2	HI_1_10_0	32	1030	ferme au bit, contredit au juge	669	0x140	aucune allocation	DELTA ti=42 i0 object-position-component	3	20
+1c4c63c2	HI_1_10_0	33	1760	ferme au bit, contredit au juge	394	0x8f4	aucune allocation	NEW ti=0 i4 game-engine-current-round-component	1	11
+1c4c63c2	HI_1_10_0	33	2248	ferme au bit, contredit au juge	354	0x1cc0	aucune allocation	NEW ti=4 sans composant	1	11
+1c4c63c2	HI_1_10_0	33	2258	ferme au bit, contredit au juge	360	0x1cd0	aucune allocation	NEW ti=4 sans composant	1	11
+1c4c63c2	HI_1_10_0	33	2262	ferme au bit, contredit au juge	347	0x1cd0	aucune allocation	NEW ti=4 sans composant	1	11
+1c4c63c2	HI_1_10_0	33	886	ferme au bit, contredit au juge	681	0x80000201	vivant au bloc du chunk	NEW ti=38 i18 generic-rigid-body-transforms-component	1	23
+1c4c63c2	HI_1_10_0	34	380	ferme au bit, contredit au juge	198	0x1ce8	aucune allocation	NEW ti=4 sans composant	1	4
+1c4c63c2	HI_1_10_0	34	390	ferme au bit, contredit au juge	193	0x1a58	aucune allocation	NEW ti=4 sans composant	1	4
+1c4c63c2	HI_1_10_0	34	392	ferme au bit, contredit au juge	192	0x1c48	aucune allocation	NEW ti=4 sans composant	1	4
+1c4c63c2	HI_1_10_0	34	40	ferme au bit, contredit au juge	629	0x1e6c	aucune allocation	NEW ti=13 i29 managed-object-player-masked-property-component	1	18
+1c4c63c2	HI_1_10_0	34	400	ferme au bit, contredit au juge	196	0x1c88	aucune allocation	NEW ti=4 sans composant	1	4
+1c4c63c2	HI_1_10_0	34	460	ferme au bit, contredit au juge	143	0x1d20	aucune allocation	NEW ti=4 sans composant	1	4
+1c4c63c2	HI_1_10_0	34	964	ferme au bit, contredit au juge	776	0x1040	aucune allocation	NEW ti=35 i54 biped-mobility-action-component	1	22
+1c4c63c2	HI_1_10_0	34	972	ferme au bit, contredit au juge	727	0x4000085a	libere avant le chunk	NEW ti=37 sans composant	2	22
+1c4c63c2	HI_1_10_0	35	1244	ferme au bit, contredit au juge	434	0x1d08	aucune allocation	NEW ti=4 sans composant	1	12
+1c4c63c2	HI_1_10_0	35	146	ferme au bit, contredit au juge	718	0x1eb0	aucune allocation	NEW ti=37 i23 equipment-creator-component	1	21
+1c4c63c2	HI_1_10_0	35	1592	ferme au bit, contredit au juge	453	0x3e8	aucune allocation	NEW ti=0 i8 game-engine-round-condition-flags-component	1	14
+1c4c63c2	HI_1_10_0	35	1598	ferme au bit, contredit au juge	457	0x7f0	aucune allocation	NEW ti=0 i8 game-engine-round-condition-flags-component	1	14
+1c4c63c2	HI_1_10_0	35	1600	ferme au bit, contredit au juge	457	0x7f0	aucune allocation	NEW ti=0 i8 game-engine-round-condition-flags-component	1	14
+1c4c63c2	HI_1_10_0	35	1686	ferme au bit, contredit au juge	499	0x1d78	aucune allocation	NEW ti=4 sans composant	1	14
+1c4c63c2	HI_1_10_0	35	626	ferme au bit, contredit au juge	680	0x10fc	aucune allocation	NEW ti=21 sans composant	2	18
+1c4c63c2	HI_1_10_0	36	1258	ferme au bit, contredit au juge	4	0xc0000745	aucune allocation	NEW ti=4 i0 high-frequency	1	0
+1c4c63c2	HI_1_10_0	36	1262	ferme au bit, contredit au juge	3	0xc0000745	aucune allocation	NEW ti=4 i0 high-frequency	1	0
+1c4c63c2	HI_1_10_0	37	214	ferme au bit, contredit au juge	640	0x7e2	aucune allocation	NEW ti=42 i4 object-body-vitality-component	1	20
+1c4c63c2	HI_1_10_0	37	922	ferme au bit, sain au juge	740	0xa18	aucune allocation	NEW ti=43 i13 object-maximum-vitalities-component	1	23
+1c4c63c2	HI_1_10_0	38	646	ferme au bit, contredit au juge	705	0xca0	aucune allocation	DELTA ti=38 i19 animated-mesh-dynamic-state-component	3	20
+1c4c63c2	HI_1_10_0	38	650	ferme au bit, contredit au juge	358	0x1400	aucune allocation	NEW ti=4 sans composant	1	11
+1c4c63c2	HI_1_10_0	39	1882	ferme au bit, contredit au juge	741	0x10e	aucune allocation	DEL	2	22
+1c4c63c2	HI_1_10_0	40	1488	ferme au bit, contredit au juge	677	0x182	aucune allocation	NEW ti=42 sans composant	1	20
+1c4c63c2	HI_1_10_0	40	58	ferme au bit, contredit au juge	505	0x1e8	aucune allocation	NEW ti=41 sans composant	3	16
+1c4c63c2	HI_1_10_0	42	1670	ferme au bit, sain au juge	2	0x1a34	aucune allocation	NEW ti=0 sans composant	1	0
+1c4c63c2	HI_1_10_0	42	974	ferme au bit, contredit au juge	664	0x80000201	libere avant le chunk	NEW ti=37 i30 equipment-has-infinite-uses-component	1	20
+1c4c63c2	HI_1_10_0	43	1076	ferme au bit, contredit au juge	619	0x800003aa	aucune allocation	NEW ti=4 i0 high-frequency	1	20
+1c4c63c2	HI_1_10_0	44	486	ferme au bit, contredit au juge	659	0x118a	aucune allocation	NEW ti=43 sans composant	1	19
+1c4c63c2	HI_1_10_0	45	1782	ferme au bit, contredit au juge	624	0x40000c30	libere avant le chunk	NEW ti=0 sans composant	1	19
+1c4c63c2	HI_1_10_0	45	2184	ferme au bit, contredit au juge	665	0x34c	aucune allocation	NEW ti=17 sans composant	1	20
+1c4c63c2	HI_1_10_0	46	1012	ferme au bit, sain au juge	548	0x19bc	aucune allocation	NEW ti=42 sans composant	1	18
+1c4c63c2	HI_1_10_0	46	2012	ferme au bit, sain au juge	6	0x1182	aucune allocation	NEW ti=4 sans composant	1	0
+1c4c63c2	HI_1_10_0	46	2020	ferme au bit, sain au juge	3	0x400008c2	libere avant le chunk	NEW ti=4 sans composant	1	0
+1c4c63c2	HI_1_10_0	47	1810	ferme au bit, contredit au juge	624	0x80000110	aucune allocation	NEW ti=47 i0 managed-object-networked-splash-message-static-component	2	20
+1c4c63c2	HI_1_10_0	47	668	ferme au bit, contredit au juge	545	0x10ce	aucune allocation	NEW ti=37 i30 equipment-has-infinite-uses-component	1	18
+1c4c63c2	HI_1_10_0	48	160	ferme au bit, contredit au juge	620	0x19be	aucune allocation	NEW ti=17 sans composant	1	20
+1c4c63c2	HI_1_10_0	48	286	ferme au bit, contredit au juge	668	0x1602	aucune allocation	NEW ti=0 i1 game-engine-shared-team-lives-component	1	22
+1c4c63c2	HI_1_10_0	49	1350	ferme au bit, contredit au juge	575	0x158e	aucune allocation	DEL	3	18
+1c4c63c2	HI_1_10_0	49	1458	ferme au bit, contredit au juge	563	0x778	aucune allocation	DEL	2	18
+1c4c63c2	HI_1_10_0	49	1728	ferme au bit, contredit au juge	664	0x10e	aucune allocation	NEW ti=38 sans composant	1	19
+1c4c63c2	HI_1_10_0	49	1760	ferme au bit, contredit au juge	715	0x83e	aucune allocation	NEW ti=4 sans composant	1	21
+1c4c63c2	HI_1_10_0	49	954	ferme au bit, contredit au juge	678	0xc00011ae	aucune allocation	DELTA ti=37 i30 equipment-has-infinite-uses-component	2	20
+1c4c63c2	HI_1_10_0	5	654	ferme au bit, contredit au juge	341	0x1bf0	aucune allocation	NEW ti=4 sans composant	1	11
+1c4c63c2	HI_1_10_0	50	1206	ferme au bit, contredit au juge	623	0xd4e	aucune allocation	NEW ti=38 i19 animated-mesh-dynamic-state-component	1	18
+1c4c63c2	HI_1_10_0	50	1348	ferme au bit, contredit au juge	62	0x1ef8	aucune allocation	NEW ti=4 sans composant	1	2
+1c4c63c2	HI_1_10_0	50	592	ferme au bit, contredit au juge	567	0x966	aucune allocation	NEW ti=0 sans composant	1	18
+1c4c63c2	HI_1_10_0	50	872	ferme au bit, contredit au juge	486	0xb56	aucune allocation	DEL	3	16
+1c4c63c2	HI_1_10_0	51	1376	ferme au bit, contredit au juge	592	0x11a6	aucune allocation	NEW ti=42 i16 object-physics-flags-component	1	19
+1c4c63c2	HI_1_10_0	51	246	ferme au bit, contredit au juge	610	0x1b48	aucune allocation	NEW ti=38 i15 object-low-frequency-component	1	20
+1c4c63c2	HI_1_10_0	51	610	ferme au bit, contredit au juge	571	0x9d6	aucune allocation	NEW ti=35 i49 biped-control-context-component	1	19
+1c4c63c2	HI_1_10_0	52	2214	ferme au bit, contredit au juge	570	0x80001854	aucune allocation	NEW ti=0 sans composant	1	18
+1c4c63c2	HI_1_10_0	52	226	ferme au bit, contredit au juge	490	0x846	aucune allocation	NEW ti=13 i30 managed-object-player-masked-property-component	1	16
+1c4c63c2	HI_1_10_0	53	1210	ferme au bit, contredit au juge	542	0x80000201	libere avant le chunk	NEW ti=37 i2 object-forward-and-up-component	1	18
+1c4c63c2	HI_1_10_0	53	1964	ferme au bit, contredit au juge	582	0x17e	aucune allocation	DELTA ti=35 i62 biped-slide-component	2	17
+1c4c63c2	HI_1_10_0	54	1748	ferme au bit, contredit au juge	482	0x1472	aucune allocation	DEL	2	16
+1c4c63c2	HI_1_10_0	54	1936	ferme au bit, sain au juge	7	0x182	aucune allocation	NEW ti=4 sans composant	1	0
+1c4c63c2	HI_1_10_0	54	474	ferme au bit, contredit au juge	392	0x1d40	aucune allocation	NEW ti=10 sans composant	1	13
+1c4c63c2	HI_1_10_0	54	938	ferme au bit, contredit au juge	653	0x9fc	aucune allocation	DEL	3	19
+1c4c63c2	HI_1_10_0	56	1394	ferme au bit, sain au juge	2	0xe8a	aucune allocation	NEW ti=11 sans composant	1	0
+1c4c63c2	HI_1_10_0	56	668	ferme au bit, sain au juge	3	0x1e24	aucune allocation	NEW ti=11 sans composant	1	0
+1c4c63c2	HI_1_10_0	56	670	ferme au bit, sain au juge	2	0x1e24	aucune allocation	NEW ti=11 sans composant	1	0
+1c4c63c2	HI_1_10_0	56	754	ferme au bit, contredit au juge	742	0x1b66	aucune allocation	DEL	3	21
+1c4c63c2	HI_1_10_0	57	1056	ferme au bit, contredit au juge	695	0x800019d7	aucune allocation	NEW ti=38 i19 animated-mesh-dynamic-state-component	1	20
+1c4c63c2	HI_1_10_0	58	1844	ferme au bit, contredit au juge	66	0x1d58	aucune allocation	NEW ti=4 sans composant	1	2
+1c4c63c2	HI_1_10_0	58	1848	ferme au bit, contredit au juge	65	0x1d58	aucune allocation	NEW ti=4 sans composant	1	2
+1c4c63c2	HI_1_10_0	58	1864	ferme au bit, contredit au juge	63	0x1d58	aucune allocation	NEW ti=4 sans composant	1	2
+1c4c63c2	HI_1_10_0	59	1606	ferme au bit, sain au juge	650	0xb74	aucune allocation	DEL	2	21
+1c4c63c2	HI_1_10_0	6	334	ferme au bit, contredit au juge	558	0x1cf8	aucune allocation	NEW ti=4 sans composant	1	17
+1c4c63c2	HI_1_10_0	6	344	ferme au bit, contredit au juge	627	0x1cf8	aucune allocation	NEW ti=4 sans composant	1	17
+1c4c63c2	HI_1_10_0	6	6	ferme au bit, contredit au juge	667	0x374	aucune allocation	DEL	3	19
+1c4c63c2	HI_1_10_0	60	1308	ferme au bit, contredit au juge	654	0xc0001d95	aucune allocation	NEW ti=37 i27 equipment-charges-remaining-component	2	21
+1c4c63c2	HI_1_10_0	60	1522	ferme au bit, contredit au juge	617	0x148e	aucune allocation	NEW ti=42 sans composant	1	20
+1c4c63c2	HI_1_10_0	60	768	ferme au bit, contredit au juge	676	0x1db8	aucune allocation	NEW ti=17 sans composant	1	22
+1c4c63c2	HI_1_10_0	61	2114	ferme au bit, contredit au juge	656	0xd54	aucune allocation	DEL	3	21
+1c4c63c2	HI_1_10_0	61	470	ferme au bit, contredit au juge	362	0x1de0	aucune allocation	NEW ti=4 sans composant	1	12
+1c4c63c2	HI_1_10_0	63	1798	ferme au bit, contredit au juge	708	0x938	aucune allocation	NEW ti=37 i3 object-angular-velocity-component	1	23
+1c4c63c2	HI_1_10_0	64	1594	ferme au bit, contredit au juge	575	0x19d2	aucune allocation	NEW ti=37 i30 equipment-has-infinite-uses-component	1	19
+1c4c63c2	HI_1_10_0	65	1710	ferme au bit, contredit au juge	557	0x80000424	aucune allocation	DELTA ti=17 i1 music-state-component	2	19
+1c4c63c2	HI_1_10_0	65	324	ferme au bit, contredit au juge	678	0x80000a5e	aucune allocation	DEL	2	20
+1c4c63c2	HI_1_10_0	66	1656	ferme au bit, contredit au juge	520	0x8e8	aucune allocation	NEW ti=4 sans composant	1	17
+396cfc92	HI_1_13_0	1	150	ferme au bit, contredit au juge	32	0x8000030b	aucune allocation	NEW ti=38 i19 animated-mesh-dynamic-state-component	1	1
+4f77afc1	HI_1_13_0	11	1134	ferme au bit, contredit au juge	713	0x49e	aucune allocation	NEW ti=42 i3 object-angular-velocity-component	1	21
+4f77afc1	HI_1_13_0	14	892	ferme au bit, contredit au juge	669	0x9f0	aucune allocation	NEW ti=42 i12 object-scale-component	1	22
+4f77afc1	HI_1_13_0	24	998	ferme au bit, sain au juge	547	0x1ac8	aucune allocation	NEW ti=0 i8 game-engine-round-condition-flags-component	1	18
+4f77afc1	HI_1_13_0	25	368	ferme au bit, sain au juge	486	0x1400	aucune allocation	NEW ti=0 i8 game-engine-round-condition-flags-component	1	15
+4f77afc1	HI_1_13_0	29	1020	ferme au bit, contredit au juge	278	0xff0	aucune allocation	NEW ti=47 sans composant	1	9
+4f77afc1	HI_1_13_0	33	624	ferme au bit, contredit au juge	722	0x80000201	aucune allocation	DELTA ti=37 sans composant	2	22
+4f77afc1	HI_1_13_0	33	962	ferme au bit, contredit au juge	706	0x4e2	realloue sous une autre generation	NEW ti=42 i20 weapon-ammo-component	1	21
+4f77afc1	HI_1_13_0	39	422	ferme au bit, sain au juge	656	0x400010ff	libere avant le chunk	NEW ti=38 i7 object-damage-sections-component	1	21
+4f77afc1	HI_1_13_0	39	832	ferme au bit, sain au juge	636	0xd92	aucune allocation	NEW ti=37 sans composant	1	20
+4f77afc1	HI_1_13_0	43	332	ferme au bit, contredit au juge	692	0xf24	aucune allocation	NEW ti=42 i20 weapon-ammo-component	1	21
+4f77afc1	HI_1_13_0	49	1128	ferme au bit, contredit au juge	714	0x1514	aucune allocation	NEW ti=42 i20 weapon-ammo-component	1	21
+4f77afc1	HI_1_13_0	50	754	ferme au bit, contredit au juge	4	0x1be0	aucune allocation	NEW ti=9 sans composant	1	0
+4f77afc1	HI_1_13_0	51	498	ferme au bit, contredit au juge	573	0x1d5a	aucune allocation	NEW ti=9 sans composant	1	18
+4f77afc1	HI_1_13_0	52	862	ferme au bit, contredit au juge	621	0x1102	aucune allocation	NEW ti=8 sans composant	2	20
+4f77afc1	HI_1_13_0	53	782	ferme au bit, contredit au juge	658	0x1bfe	aucune allocation	NEW ti=0 sans composant	1	21
+50247b26	version-31	10	718	ferme au bit, sain au juge	5	0x1b04	aucune allocation	NEW ti=12 sans composant	1	0
+50247b26	version-31	10	726	ferme au bit, contredit au juge	15	0xff4	aucune allocation	NEW ti=38 i19 animated-mesh-dynamic-state-component	1	1
+50247b26	version-31	24	180	ferme au bit, contredit au juge	5	0x1a98	aucune allocation	NEW ti=43 i0 object-position-component	1	0
+50247b26	version-31	25	190	ferme au bit, contredit au juge	7	0x400007a4	libere avant le chunk	NEW ti=38 i17 object-frame-configuration-component	1	0
+50247b26	version-31	25	330	ferme au bit, sain au juge	35	0x80001857	aucune allocation	NEW ti=38 sans composant	1	1
+50247b26	version-31	28	810	ferme au bit, sain au juge	1	0x1a84	aucune allocation	NEW ti=6 sans composant	1	0
+50247b26	version-31	28	812	ferme au bit, sain au juge	4	0x1c8c	aucune allocation	NEW ti=6 sans composant	1	0
+50247b26	version-31	29	234	ferme au bit, contredit au juge	7	0xcb	aucune allocation	NEW ti=12 i14 managed-navpoint-radial-progress	1	0
+51ebbc0f	HI_1_13_0	19	1632	ferme au bit, contredit au juge	255	0x10e	aucune allocation	DEL	2	8
+51ebbc0f	HI_1_13_0	19	1806	ferme au bit, contredit au juge	251	0x10e	aucune allocation	DEL	2	8
+51ebbc0f	HI_1_13_0	23	970	ferme au bit, contredit au juge	158	0x1862	aucune allocation	NEW ti=42 sans composant	1	5
+51ebbc0f	HI_1_13_0	24	758	ferme au bit, contredit au juge	124	0x1e32	aucune allocation	DELTA ti=47 sans composant	2	4
+51ebbc0f	HI_1_13_0	25	294	ferme au bit, contredit au juge	218	0x10e	aucune allocation	DEL	2	7
+60ae07c4	HI_1_8_0	1	1418	ferme au bit, contredit au juge	306	0x40000880	aucune allocation	DEL	3	8
+60ae07c4	HI_1_8_0	13	2154	ferme au bit, contredit au juge	184	0x616	aucune allocation	NEW ti=38 sans composant	10	6
+60ae07c4	HI_1_8_0	2	1506	ferme au bit, contredit au juge	253	0x80001d79	aucune allocation	DELTA ti=40 i25 unit-command-tick-component	2	9
+60ae07c4	HI_1_8_0	2	1514	ferme au bit, contredit au juge	253	0x80001d79	aucune allocation	DELTA ti=40 i25 unit-command-tick-component	2	9
+60ae07c4	HI_1_8_0	20	2120	ferme au bit, contredit au juge	213	0xa62	aucune allocation	NEW ti=42 i18 item-at-rest-component	1	7
+60ae07c4	HI_1_8_0	31	1764	ferme au bit, sain au juge	217	0x608	aucune allocation	NEW ti=41 sans composant	1	7
+60ae07c4	HI_1_8_0	32	1206	ferme au bit, contredit au juge	153	0x1e08	aucune allocation	NEW ti=42 i15 object-low-frequency-component	1	5
+60ae07c4	HI_1_8_0	33	48	ferme au bit, contredit au juge	173	0x80000203	aucune allocation	NEW ti=11 sans composant	1	6
+60ae07c4	HI_1_8_0	34	588	ferme au bit, sain au juge	185	0x11a8	aucune allocation	NEW ti=6 i42 statborg-finalized-rounds-values-stat-component	1	6
+a349fea8	version-33	1	502	ferme au bit, sain au juge	52	0xc0001ca2	aucune allocation	DELTA ti=21 i16 flock-position-component	2	2
+a349fea8	version-33	10	332	ferme au bit, sain au juge	3	0x1058	aucune allocation	NEW ti=37 i18 item-at-rest-component	1	0
+a349fea8	version-33	10	912	ferme au bit, contredit au juge	4	0x1488	aucune allocation	NEW ti=43 i9 object-multiplayer-properties-component	1	0
+a349fea8	version-33	11	470	ferme au bit, contredit au juge	2	0x1f89	aucune allocation	DEL	2	0
+a349fea8	version-33	13	1000	ferme au bit, contredit au juge	8	0xc00002c9	aucune allocation	NEW ti=38 i17 object-frame-configuration-component	1	0
+a349fea8	version-33	20	1092	ferme au bit, contredit au juge	8	0x800010de	aucune allocation	NEW ti=12 i6 managed-navpoint-docking-filter-component	1	0
+a349fea8	version-33	22	638	ferme au bit, sain au juge	6	0x1d7e	aucune allocation	NEW ti=47 sans composant	1	0
+a349fea8	version-33	23	524	ferme au bit, contredit au juge	7	0x13fa	aucune allocation	NEW ti=42 i18 item-at-rest-component	1	0
+a349fea8	version-33	24	782	ferme au bit, contredit au juge	1	0x1496	aucune allocation	NEW ti=38 sans composant	1	0
+a349fea8	version-33	24	784	ferme au bit, contredit au juge	6	0x1516	aucune allocation	NEW ti=38 sans composant	1	0
+a349fea8	version-33	28	912	ferme au bit, sain au juge	5	0x1cfc	aucune allocation	NEW ti=6 sans composant	1	0
+a349fea8	version-33	31	44	ferme au bit, contredit au juge	1	0x1cfc	aucune allocation	NEW ti=37 i0 object-position-component	1	0
+a349fea8	version-33	33	1014	ferme au bit, contredit au juge	47	0x1a0a	aucune allocation	NEW ti=12 i10 managed-navpoint-timers-component	1	1
+a349fea8	version-33	34	76	ferme au bit, sain au juge	3	0x63b	aucune allocation	NEW ti=43 sans composant	1	0
+a349fea8	version-33	39	1186	ferme au bit, contredit au juge	6	0x4a6	aucune allocation	NEW ti=22 sans composant	1	0
+a349fea8	version-33	39	618	ferme au bit, sain au juge	6	0x1d24	aucune allocation	NEW ti=38 sans composant	1	0
+a349fea8	version-33	40	998	ferme au bit, contredit au juge	3	0x123a	aucune allocation	NEW ti=41 i20 projectile-command_tick	1	0
+a349fea8	version-33	47	538	ferme au bit, contredit au juge	19	0x1d59	aucune allocation	NEW ti=9 i0 managed-player-team-designator-component	1	1
+a349fea8	version-33	8	68	ferme au bit, contredit au juge	4	0x15ec	aucune allocation	NEW ti=30 sans composant	2	0
+a521164d	HI_1_4_1	1	996	ferme au bit, contredit au juge	20	0xc0001dad	aucune allocation	DELTA ti=21 i16 flock-position-component	2	1
+a521164d	HI_1_4_1	10	672	ferme au bit, contredit au juge	4	0x1370	aucune allocation	NEW ti=13 i10 managed-object-player-masked-property-component	1	0
+a521164d	HI_1_4_1	11	1158	ferme au bit, contredit au juge	4	0x1b2c	aucune allocation	NEW ti=35 i35 weapon-state-overheated	2	0
+a521164d	HI_1_4_1	2	344	ferme au bit, contredit au juge	20	0x80001fb8	aucune allocation	DELTA ti=21 i16 flock-position-component	2	1
+a521164d	HI_1_4_1	2	374	ferme au bit, contredit au juge	20	0x1fc4	aucune allocation	DELTA ti=21 i16 flock-position-component	2	1
+a521164d	HI_1_4_1	2	434	ferme au bit, contredit au juge	20	0x80001fda	aucune allocation	DELTA ti=21 i16 flock-position-component	2	1
+d9781168	HI_1_13_0	26	384	ferme au bit, contredit au juge	187	0x4000172e	aucune allocation	NEW ti=11 i26 managed-objective-sub-objective-entities-component	1	5
+d9781168	HI_1_13_0	3	1296	ferme au bit, sain au juge	248	0x14f2	aucune allocation	DEL	4	8
+d9781168	HI_1_13_0	30	310	ferme au bit, contredit au juge	184	0xc86	aucune allocation	NEW ti=13 i32 managed-object-player-masked-property-component	1	6
+d9781168	HI_1_13_0	35	412	ferme au bit, contredit au juge	202	0x80000a3a	aucune allocation	NEW ti=37 i25 equipment-being-hacked-component	1	6
+e5adf7b2	HI_1_11_0	1	540	ferme au bit, contredit au juge	20	0xc0001dad	aucune allocation	DELTA ti=21 i16 flock-position-component	2	1
+e5adf7b2	HI_1_11_0	23	1104	ferme au bit, contredit au juge	341	0x1c98	aucune allocation	NEW ti=12 sans composant	1	11

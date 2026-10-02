@@ -90,6 +90,7 @@ func (r *rapportV2) ecrireSection(w io.Writer, top int) {
 	r.ecrireEntreesDuResume(w)
 	r.ecrireChunk3DuResume(w)
 	r.ecrireBorneDuResume(w)
+	r.ecrireSectionL0(w)
 }
 
 // filmsTries rend les films par build puis par identifiant.

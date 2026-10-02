@@ -194,6 +194,18 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   replis des couches grammar/profile et `registre_filmdec*.go` restent à la campagne) et « Falcon de
   Behemoth » (rejeu seulement ; fusion dans `feat/v75` avant la fin de la vague 1 pour une seule
   recuisson). Règle commune : le premier qui fusionne dans `feat/v75` prévient les autres.
+- **2026-10-02, soir (utilisateur, relayé par le pilote, en ces termes) : « CORRECTIONS D'ABORD,
+  uniquement générales lues dans le jeu ; GO vague 1 (L0 en tête) »** — reprend en une ligne les deux
+  entrées ci-dessus (« GO DE LA VAGUE 1 » et « CORRECTIONS D'ABORD »).
+- **2026-10-02, vers 19 h 20 (utilisateur, relayé par le pilote) : L0 est fusionné SEUL dans
+  `feat/v75` dès qu'il est vérifié (tests, corpus, CI verte), sans recuisson ; la recuisson reste
+  groupée en fin de vague.**
+- 2026-10-02, soir (pilote, décision D-A des corrections du contrôle de L0) : le SECOND RANG de
+  `debutParFermeture` (le premier candidat d'où le paquet ferme au bit près, quand aucun ne le ferme)
+  est GARDÉ — il conserve exactement le comportement d'avant L0, et sa suppression perd 29 paquets
+  sains en cascade sur `e5adf7b2` — comme REPLI NOMMÉ ET COMPTÉ au sens de l'ADR 0034 D-10 :
+  `repli_debut_de_liste_ferme_au_bit` (`registre_filmdec_marche.go`), compte = listes dont le début
+  est pris à ce rang, publié dans `coverage.fallbacks`.
 
 ## 4. Journal
 
@@ -267,6 +279,30 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   statuts à corriger. Traités au démarrage de la vague 1 (mesures préalables), avant le premier lot.
   Trois écarts aux interdits consignés par les agents (un `python3 --version`, deux écritures dans
   `/tmp` effacées aussitôt), sans effet sur les livrables.
+- 2026-10-02 (soir) : **lot L0 exécuté** (rien de commité ; `campagne_grammaire_2026-10-01/LOT_L0.md`,
+  statuts au §6.2 L0). Mesures préalables faites (L0.6 adopté, L0.7 adopté, L0.8 non retenu) ;
+  définition « fermé = fermé au bit près et aucune règle de l'écrivain contredite » dans
+  `LectureVueC.Fermee` (`ecrivain_invariants.go`), lue par `debutParFermeture` (deux rangs, décision du
+  lot à confirmer) et le tir continu ; `grammar.Rev` -> `grammar-2026-10-02`, `source.Rev` et
+  `killsource.Rev` inchangées (goldens à révision constante). Gates : `gofmt`, `go vet` film et
+  `-tags=research ./...`, `archlint`, tests film (17 paquets), `cmd_fermeture` research verts ;
+  mutations 12 / 12 rouges ; carte v2 : 284 704 fermés au bit -> 276 327 fermés, 0 sain perdu sur 20
+  films sous le juge de L0, +1 019 sains ; killsource 19 / 19 identiques ; `replay-equiv` 5 étapes sur 61 divergentes,
+  toutes expliquées (tir continu, têtes de liste) ; banc de vérité MANQUE sur P-1 seul (requalification
+  D2, D-L0-4).
+- 2026-10-02 (soir) : **corrections du contrôle de L0** (contrôleur : « non conforme en l'état,
+  corrigeable » ; rien de commité ; détail `LOT_L0.md` §3, §5, §7, §7.1). Second rang de
+  `debutParFermeture` nommé et compté (`repli_debut_de_liste_ferme_au_bit`, D-A au §3) ; commentaire
+  ramené au contrat ; test neuf qui fait rougir M15 (16 / 16 mutations rouges). Trois écarts du compte
+  rendu corrigés : les gates n'étaient PAS tous verts (banc de vérité MANQUE sur P-1, joué sur 2 films ;
+  `replay-corpus-gate` non joué) ; `repli_liaison_par_anticipation` bouge sur `1c4c63c2` (1 440 -> 1 414) ;
+  « 0 sain perdu » vaut sous le juge de L0 seulement (environ 1 008 sains de l'ancien juge requalifiés
+  par L0.6, objet de D2). Rejoués : `gofmt`, `go vet` film (avec et sans `research`), `archlint`, G-film
+  (19 paquets) ; `replay-equiv` 20 films : mêmes étapes que le lot, l'artefact ne gagne que l'entrée du
+  repli neuf (déclenché sur les 20 films, 7 620 listes) ; killsource identique à l'octet (`e5adf7b2`,
+  `084a804d`) ; `replay-corpus-gate` (base `ff42fcf40`, parc copié au scratchpad) : FAUX sur les 19
+  témoins, par P-1 (MANQUE) et le repli neuf (FAUX, D-L0-5) seulement, pertes limitées au tir continu,
+  aux états de mouvement (3 témoins) et au nombre de replis.
 
 ## 5. Découvertes (consignées, non traitées)
 
@@ -817,6 +853,28 @@ n'est traitée.
   11 records utiles sains de moins dans un même paquet de `d9781168`, en marginal) ; L3a, qui
   tient le gate net, requalifie aussi 48 sains en contredits (aucun non fermé). L'exception du gate 2
   (« fermeture factice retirée ») ne couvre aucun de ces cas. [§6.0 gate 2, §6.3 D19]
+
+**Découvertes du lot L0 (2026-10-02, `campagne_grammaire_2026-10-01/LOT_L0.md` §9)**
+
+- D-L0-1 Mots de DEL non nuls et STRUCTURÉS (`0x8021203b`, `0x7e21209b`…) sur des slots que le monde
+  hors ligne lie à `ti=5`, `ti=8`, `ti=18`, `ti=25` (slots 52-55, 117, 119, 246), dans des paquets
+  sains de plusieurs films ; `FUN_142f304a8` n'écrit un mot que pour l'archétype 0x10 : liaison
+  d'archétype du monde probablement fausse pour ces slots. Non instruit. [L0.8 non retenu]
+- D-L0-2 Têtes de liste dont l'en-tête NEW est juste et le corps mal lu (`e5adf7b2` 10:20, NEW 0x434
+  `ti=41`, masque au-delà de l'archétype, entité relue proprement par 23 paquets) : piste de l'état
+  par défaut de `ti=41` dans un record NEW. Non instruit.
+- D-L0-3 Le commentaire de `frame_chain_infer.go` (« un masque trop large est inoffensif ») contredit
+  `FUN_142e2da44` ; chemin d'inférence hors production. Non traité.
+- D-L0-4 Le banc de vérité nomme P-1 « paquets fermés au bit près » et lit
+  `coverage.continuousFire.closed`, qui compte depuis L0 les paquets fermés (règles tenues) : tout lot
+  qui change la définition sort en MANQUE par construction. Non traité.
+- D-L0-5 (corrections du contrôle) Le banc de vérité (`R-1`) classe FAUX tout repli nommé pour la
+  première fois (« repli nouveau ») : nommer et compter un repli existant, ce que D-10 exige, fait sortir
+  le banc en FAUX par construction (`repli_debut_de_liste_ferme_au_bit`, 19 / 19 témoins). Non traité.
+- D-L0-6 (corrections du contrôle) `replay-equiv` et `replay-corpus-gate` ne tournent pas sur un
+  worktree dédié sans données, et `replay-corpus-gate` écrit son cache de base et son verrou sous
+  `data/cache` du parc (aucune option pour le cache) : joués sur des racines factices du scratchpad.
+  Non traité.
 
 ## 6. Phase 2 — lots correctifs (écrits à l'étape 5, révisés le 2026-10-02)
 
@@ -1772,18 +1830,18 @@ l'outil et un fichier lu par la publication) ». Conséquences, établies par le
 - L0.6 ne s'adopte qu'après la mesure de ses deux sous-groupes (D-113) ;
 - le placement de L0 dans la vague 1 change la composition fixée par D-RI : il fait partie de
   l'amendement soumis à l'utilisateur (§6.3 D18).
-- L0.1 : invariants de l'écrivain et sortie de vue B dans la carte (`bloquantDuPaquet` : la sortie de
+- [x] L0.1 : invariants de l'écrivain et sortie de vue B dans la carte (`bloquantDuPaquet` : la sortie de
   vue B passe avant toutes les causes de vue C), accesseur `Deborde()` de `source.Bits` (T8-C2).
-- L0.2 : classements corrigés, à savoir :
+- [x] L0.2 : classements corrigés, à savoir :
   - naissance de génération 0 (D-43) ;
   - NEW lu-désynchronisé distinct de « naissance non lue » (D-44) ;
   - « bloc `0xbc` » requalifié en désalignement (D-53).
-- L0.3 : garde-fou de la recopie étendu (D-61) : compte des paquets à événements localisés et non
+- [x] L0.3 : garde-fou de la recopie étendu (D-61) : compte des paquets à événements localisés et non
   localisés par bobine. Si aucune bobine du dépôt n'en porte de localisé, ajouter une bobine ou un
   paquet synthétique.
-- L0.4 : publier les records utiles lus et les deux dénominateurs, fixe (recalculé par vague) et
+- [x] L0.4 : publier les records utiles lus et les deux dénominateurs, fixe (recalculé par vague) et
   variable (D-42, règle « Pourcentages » du §6.0).
-- L0.5 (ajouté le 2026-10-02, N14) : mesurer la part des NEW lus mais désynchronisés (D-44) dans
+- [x] L0.5 (ajouté le 2026-10-02, N14) : mesurer la part des NEW lus mais désynchronisés (D-44) dans
   les 213 033 « naissances attestées » du corpus, une fois la classe L0.2 corrigée (D-63).
 - Fichiers : `frame_closure_classement.go`, `frame_closure_detail*.go`, `research/cmd_fermeture/`,
   `frame_closure.golden`, `frame_closure_detail_test.go`, `source/bits.go`. Aucun fichier lu par
@@ -1793,14 +1851,37 @@ l'outil et un fichier lu par la publication) ». Conséquences, établies par le
   définition passe le gate complet du §6.0 avec montée de `grammar.Rev`.)*
 - Taille M.
 - *Ajouts proposés le 2026-10-02* :
-  - L0.6 : invariant « sortie de vue B par rejet ⇒ paquet non fermé » (T3-C1 ; R-L1 (b)) : requalifie
+  - [x] L0.6 : invariant « sortie de vue B par rejet ⇒ paquet non fermé » (T3-C1 ; R-L1 (b)) : requalifie
     4 598 fermetures, dont 1 008 jugées saines aujourd'hui (0,36 % des sains de référence) ;
-  - L0.7 : « masque au-delà du dernier composant de l'archétype » classé violé à la LECTURE (D-85) ;
+  - [x] L0.7 : « masque au-delà du dernier composant de l'archétype » classé violé à la LECTURE (D-85) ;
     le libellé `DEL ti=0` de `dernier_composant_x_classe` désigne un en-tête mal lu (R-P3) ;
-  - L0.8 (candidat, à mesurer d'abord) : mot de 32 bits d'un DEL non nul hors archétype `0x10`
+  - [!] L0.8 (candidat, à mesurer d'abord) : mot de 32 bits d'un DEL non nul hors archétype `0x10`
     (D-83) ;
-  - L0.9 : témoins décalés de 2 à 8 bits en plus de ±1 (D-99), et prise en compte de
+  - [x] L0.9 : témoins décalés de 2 à 8 bits en plus de ±1 (D-99), et prise en compte de
     l'auto-synchronisation de la vue C (D-80) dans la lecture des témoins.
+- **Statuts du 2026-10-02 (exécution du lot, rien de commité ; détail et chiffres :
+  `campagne_grammaire_2026-10-01/LOT_L0.md`)** :
+  - L0.1 fait : règles de l'écrivain dans `ecrivain_invariants.go` (`LectureVueC.FermeeAuBit`,
+    `Invariant`, `Fermee`), carte et classement (sortie par rejet avant les causes de vue C, règle
+    contredite nommée), `source.Bits.Deborde()` ;
+  - L0.2 fait : génération 0 (« naissance non lue, génération 0 », 12 855 paquets), NEW lu
+    désynchronisé, « vue C : bloc 0xbc (désalignement) » ;
+  - L0.3 fait : `ks_000d5950` 446 listes localisées / 27 non localisées, `ks_e5adf7b2` 52 / 2 ; aucun
+    ajout nécessaire ;
+  - L0.4 fait : `cmd_fermeture -denominateur-fixe`, `fermeture_denominateurs.tsv` (corpus après L0 :
+    43,4 % variable, 33,3 % fixe) ;
+  - L0.5 fait : 23 338 / 213 040 paquets « naissance non lue » (11,0 %) ont un NEW lu désynchronisé ;
+  - L0.6 fait et adopté : sous-groupes mesurés (648 / 648 à reste < 9 bits, établis par la place
+    minimale d'un DELTA ; les 32 sains sans début antérieur instruits un par un) ;
+  - L0.7 fait et adopté : marqué à la traversée (`EntityTrace.MasqueNonEcrit`) ;
+  - L0.8 **non retenu** : la règle se juge contre l'archétype du datum (`FUN_142f304a8`), que le paquet
+    ne porte pas ; 26 DEL à mot non nul et structuré sur des slots que le monde lie hors 0x10 dans des
+    paquets sains (D-L0-1) ;
+  - L0.9 fait : témoins de -8 à +8 bits, même définition (règles de la vue C comprises) ;
+  - définition faite : `grammar.Rev` -> `grammar-2026-10-02` ; `debutParFermeture` à deux rangs
+    (décision du lot, gardée par le pilote (D-A, §3) comme repli nommé et compté `repli_debut_de_liste_ferme_au_bit` : la forme pure perd 29 paquets sains en cascade) ; carte v2 :
+    284 704 fermés au bit -> 276 327 fermés, 0 paquet sain perdu sous le juge de L0, +1 019 sains ; killsource identique
+    à l'octet sur 19 témoins (révision inchangée).
 
 **L10 — Garde-fou du cardinal du bloc de type 1**
 - Un film dont un bloc de type 1 n'a pas 8 191 entrées est refusé ou daté, et sa largeur est lue sur

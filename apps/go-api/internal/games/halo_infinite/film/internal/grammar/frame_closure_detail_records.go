@@ -13,8 +13,11 @@ func decrireLesRecords(reg *Registry, recs []FrameRecord, frameLen int, d *Paque
 	d.DernierLu = dernierLu(reg, recs)
 	for _, r := range recs {
 		propre := r.DesyncAt < 0
-		if r.Type == recNew && propre {
+		switch {
+		case r.Type == recNew && propre:
 			d.NeufsLus = append(d.NeufsLus, r.Slot)
+		case r.Type == recNew:
+			d.NeufsDesynchronises = append(d.NeufsDesynchronises, r.Slot)
 		}
 		if r.Trace.EndBit > frameLen {
 			d.RecordsDebordants++

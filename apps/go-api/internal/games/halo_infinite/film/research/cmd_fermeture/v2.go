@@ -62,11 +62,13 @@ type mesureV2 struct {
 	// sansBloc / blocsIllisibles : chunks CONSULTES (celui d un rejet et son suivant) sans paquet de
 	// type 1, et blocs de type 1 que `grammar.LireBlocDeDatums` refuse.
 	sansBloc, blocsIllisibles int
+	// l0 : les mesures du lot L0 (v2_ecrivain.go).
+	l0 ecrivainV2
 }
 
 func nouvelleMesureV2() *mesureV2 {
 	return &mesureV2{sorties: map[string]*sortieStat{}, horsCadre: map[cleHorsCadre]*compte{},
-		dernier: map[cleDernier]*compte{}, rejets: map[cleRejet]*compte{}}
+		dernier: map[cleDernier]*compte{}, rejets: map[cleRejet]*compte{}, l0: nouvelEcrivainV2()}
 }
 
 // classeDeVueC rend la classe de la vue C d un paquet « hors cadre » : vide (son terminateur
@@ -111,6 +113,7 @@ func classeDePaquet(p grammar.PaquetDeCarte) string {
 // compterPaquet range un paquet dans les mesures qui ne dependent pas du bloc de type 1.
 func (m *mesureV2) compterPaquet(p grammar.PaquetDeCarte) {
 	m.compterEntrees(p)
+	m.l0.compterEcrivain(p)
 	m.compterBorne(p)
 	if p.Sortie == grammar.SortieVueBNonAtteinte {
 		return

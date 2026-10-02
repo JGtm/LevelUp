@@ -73,7 +73,7 @@ type rapport struct {
 }
 
 // ouvrirRapport cree les TSV des modes demandes et ecrit leurs en-tetes.
-func ouvrirRapport(dir string, tab tableECS, md modes) (*rapport, error) {
+func ouvrirRapport(dir string, tab tableECS, md modes, opts optionsV2) (*rapport, error) {
 	r := &rapport{dir: dir, modes: md, tab: tab, parBuild: map[string]*cumulBuild{},
 		parBloquant: map[string]*cumulBloquant{}}
 	if md.fermeture {
@@ -89,7 +89,7 @@ func ouvrirRapport(dir string, tab tableECS, md modes) (*rapport, error) {
 	}
 	if md.v2 {
 		var err error
-		if r.v2, err = ouvrirRapportV2(dir); err != nil {
+		if r.v2, err = ouvrirRapportV2(dir, opts); err != nil {
 			return nil, errors.Join(err, r.fermer())
 		}
 	}

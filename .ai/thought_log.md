@@ -114385,3 +114385,65 @@ six notes `R_*.md` (section « Corrections du 2026-10-02 » en tête, alignée s
 et des en-têtes de sondes (item `[!]` du §6.0), entrée du journal §4 du plan pour l'intégration des
 R-*, la surcouche unique et R-COMB-2 ; mesures préalables proposées au §6.0 (sous-groupes de L0.6, L2
 sur HI_1_10_0, L6b, R-COMB-2 sous le juge de L0).
+
+## [2026-10-02] Campagne de grammaire : lot L0, la fermeture d'un paquet suit les règles de l'écrivain (D2) — Complété (non commité)
+
+**Statut** : Complété, rien de commité (`feat/campagne-grammaire`, tête `ff42fcf40`). Détail :
+`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md` ; statuts au §6.2 L0 du plan.
+
+**Décision technique principale** : `LectureVueC` porte `FermeeAuBit`, la première règle de
+l'écrivain contredite (`Invariant`) et `Fermee = FermeeAuBit && aucune règle` (`ecrivain_invariants.go`) :
+sortie de vue B par rejet (`FUN_142f2e174`, `FUN_142f2cee0`, `FUN_142f2cc78`), ordre NEW*/DELTA*/DEL* à
+slots croissants (`FUN_14076b9c8`), masque écrivable (`FUN_142e2da44`, bit au-delà de l'archétype jugé à
+la traversée), vue C de l'enregistreur (`FUN_142f2c3b0`, `FUN_14076b0e8`, `FUN_1406d5bf4`). Mot du DEL
+(L0.8) non retenu : il se juge contre l'archétype du datum, que le paquet ne porte pas.
+`debutParFermeture` prend le premier candidat qui ferme, à défaut le premier qui ferme au bit près
+(décision du lot : la forme pure perd 29 paquets sains en cascade, `e5adf7b2`). `grammar.Rev` ->
+`grammar-2026-10-02` ; `source.Rev`, `killsource.Rev`, `SchemaVersion` inchangés (goldens à révision
+constante, fixtures de contrat identiques hors chaîne de révision).
+
+**Résultats observés** :
+- Mesures préalables : 4 598 fermés après rejet tous factices (976 + 3 426 par le début antérieur,
+  648 / 648 par la place minimale d'un DELTA, les 32 sains un par un) ; juge relu et règles de
+  production d'accord sur les 284 704 fermés au bit ; D-44 = 23 338 / 213 040 paquets.
+- Carte v2 (20 films) : 284 704 fermés au bit -> 276 327 fermés ; sains 275 308 -> 276 327, utiles
+  sains 2 572 823 -> 2 585 919 ; 0 sain perdu, aucun film en baisse ; corpus 43,4 % (variable), 33,3 %
+  (fixe consolidé).
+- killsource 19 / 19 identiques à l'octet ; `replay-equiv` : 5 étapes sur 61 divergent (tir continu,
+  états de mouvement de quelques têtes de liste, artefact), 56 identiques ; rafales du tir continu en
+  baisse sur 9 films (`1c4c63c2` 399 -> 196) ; pic de `1c4c63c2` +18 %.
+- Banc de vérité (`e5adf7b2`, `1c4c63c2`) : MANQUE sur P-1 seul, qui est la requalification D2
+  (D-L0-4) ; aucun oracle ni violation ne bouge.
+- Gates verts : `gofmt`, `go vet` film et `-tags=research ./...`, `archlint`, 17 paquets film,
+  `cmd_fermeture` research ; mutations 12 / 12 rouges.
+
+**Conclusion / prochaine étape** : à confirmer par l'utilisateur : `debutParFermeture` à deux rangs,
+L0.8 non retenu, baisse des rafales du tir continu au rejeu ; commit du lot sur sa décision ; puis le
+lot suivant de la vague 1 jugé sous ce juge. Découvertes D-L0-1 à D-L0-4 consignées au §5 du plan.
+
+## [2026-10-02] Lot L0 — corrections du contrôle — Complété (non commité)
+
+**Statut** : Complété, rien de commité (`feat/campagne-grammaire`, tête `ff42fcf40`). Contrôleur :
+« non conforme en l'état, corrigeable » ; corrections D-A à D-E du pilote. Détail :
+`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md` §3, §5, §7.1, §9.
+
+**Décision technique principale** : le second rang de `debutParFermeture` est gardé comme repli nommé
+et compté (ADR 0034 D-10) : `repli_debut_de_liste_ferme_au_bit` (`registre_filmdec_marche.go`, lecture
+non portée, après lecture), compté par l'observation de la marche
+(`Observation.DebutsDeListeParRepliFermeAuBit` -> `MarcheDesTrames` -> `replay/film_scan_mouvement.go`,
+`coverage.fallbacks`), sans champ persisté neuf. Commentaire ramené au contrat, en-tête corrigé (le
+second rang n'est pas une preuve). Empreinte `grammar_rev` régénérée à révision constante
+`grammar-2026-10-02`.
+
+**Résultats observés** : mutations 16 / 16 rouges (M15 rougit par
+`TestTemoinDecaleJugeParLesReglesDeLaVueC`, M16 par `TestLeRepliDuDebutFermeAuBitEstCompte`) ; gofmt,
+vet, archlint, G-film verts ; `replay-equiv` : mêmes étapes que le lot, l'artefact ne gagne que
+l'entrée du repli (7 620 listes sur 20 films, dont 6 039 sur `1c4c63c2`) ; killsource identique à
+l'octet sur `e5adf7b2` et `084a804d` ; `replay-corpus-gate` (base `ff42fcf40`, parc copié au
+scratchpad) FAUX sur 19 / 19 par P-1 (MANQUE, D-L0-4) et le repli neuf (FAUX, D-L0-5) seulement.
+LOT_L0.md et le plan corrigés (gates non tous verts, compteur d'anticipation, « 0 sain perdu » sous le
+juge de L0, asymétrie L0.7 / L0.8 et réserve des builds sans exécutable marquées estimées) ; décisions
+du 2026-10-02 au §3 du plan.
+
+**Conclusion / prochaine étape** : commit par le pilote ; fusion de L0 seul dans `feat/v75` une fois
+vérifié (CI verte), selon la décision de l'utilisateur ; D-L0-5 et D-L0-6 consignées au §5.

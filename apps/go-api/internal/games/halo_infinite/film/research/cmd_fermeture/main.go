@@ -38,6 +38,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -81,6 +82,8 @@ func main() {
 	top := flag.Int("top", 30, "nombre de causes d arret classees dans le resume ; 0 = toutes")
 	plafond := flag.Int("plafond-gib", plafondParDefautGiB, "plafond memoire par film ; 0 desarme")
 	mode := flag.String("mode", modeFermeture, "mesures par film, separees par des virgules : fermeture, gb1, v2 (v2 implique fermeture)")
+	fixe := flag.String("denominateur-fixe", "", "v2 : TSV du denominateur fixe consolide (colonnes film et fixe)")
+	paquets := flag.Bool("paquets", false, "v2 : ecrire fermeture_paquets.tsv, une ligne par paquet delta")
 	flag.Parse()
 
 	ids := borner(decouper(*films), *limite)
@@ -93,7 +96,12 @@ func main() {
 		}
 		os.Exit(2)
 	}
-	rap, err := preparer(*sortie, *table, md)
+	opts, errFixe := lireOptionsV2(*fixe, *paquets)
+	if errFixe != nil {
+		fmt.Fprintln(os.Stderr, errFixe)
+		os.Exit(2)
+	}
+	rap, err := preparer(*sortie, *table, md, opts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
@@ -117,7 +125,7 @@ func main() {
 
 // preparer verifie et cree le repertoire du rapport, relit la table ECS si le mode `fermeture`
 // la demande, et ouvre le rapport.
-func preparer(sortie, table string, md modes) (*rapport, error) {
+func preparer(sortie, table string, md modes, opts optionsV2) (*rapport, error) {
 	if err := preparerSortie(sortie); err != nil {
 		return nil, err
 	}
@@ -128,7 +136,7 @@ func preparer(sortie, table string, md modes) (*rapport, error) {
 			return nil, err
 		}
 	}
-	return ouvrirRapport(sortie, tab, md)
+	return ouvrirRapport(sortie, tab, md, opts)
 }
 
 // lireModes lit la valeur de `-mode`.
@@ -167,7 +175,7 @@ func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport) error {
 	}
 	build := buildDuFilm(fc)
 	if rap.modes.fermeture {
-		carte, v2, err := mesurerLaCarte(fc, filepath.Join(racine, id), rap)
+		carte, v2, err := mesurerLaCarte(fc, id, filepath.Join(racine, id), rap)
 		if err != nil {
 			return err
 		}
@@ -197,13 +205,20 @@ func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport) error {
 // mesurerLaCarte mesure la carte de fermeture d un film deja ouvert : `grammar.FrameClosure` en
 // mode `fermeture`, `grammar.FrameClosureDetaillee` (la meme carte, plus le detail de chaque
 // paquet, et le chunk des temps forts) en mode `v2`. La mesure v2 est nil hors de ce mode.
-func mesurerLaCarte(fc *grammar.FilmContext, dir string, rap *rapport) (grammar.FrameClosureReport, *mesureV2, error) {
+func mesurerLaCarte(fc *grammar.FilmContext, id, dir string, rap *rapport) (grammar.FrameClosureReport, *mesureV2, error) {
 	if !rap.modes.v2 {
 		carte, err := grammar.FrameClosure(fc, rap.tab.utiles)
 		return carte, nil, err
 	}
-	col := nouveauCollecteurV2(fc)
+	var paquets io.Writer
+	if rap.v2.paquets != nil {
+		paquets = rap.v2.paquets
+	}
+	col := nouveauCollecteurV2(fc, id, paquets)
 	carte, err := grammar.FrameClosureDetaillee(fc, rap.tab.utiles, col.voir)
+	if err == nil {
+		err = col.err
+	}
 	if err != nil {
 		return carte, nil, err
 	}
