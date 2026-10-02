@@ -269,9 +269,8 @@ func TestTourelleChangementDeSiegeBornesJointivesReporte(t *testing.T) {
 
 // TestTourelleRefusVentilesParRaison — revue adverse du lot M4a (F4) : les refus qui GARDENT un
 // episode sur sa piece sont comptes chacun sous leur raison par `poseTurretsOnCarriers`, et
-// `turretRidesDropped` est leur somme. Depuis la reprise du lot M7b (2026-09-24) : le porteur non
-// pilotable n a plus de branche (`turretRidesNotRideable` = 0), et la montee a bord non vue pres
-// du porteur ECARTE l episode — elle ne compte pas parmi les episodes gardes.
+// `turretRidesDropped` est leur somme. La montee a bord non vue pres du porteur ECARTE l episode —
+// elle ne compte pas parmi les episodes gardes.
 func TestTourelleRefusVentilesParRaison(t *testing.T) {
 	porteurCourt := vtChassis(101, familleWarthog, vtRide(21, 5, 30))
 	porteurCourt.T1, porteurCourt.T1Max = 50, 50
@@ -288,7 +287,7 @@ func TestTourelleRefusVentilesParRaison(t *testing.T) {
 	}
 	var cov VehicleCoverage
 	tally.applyTo(&cov)
-	if cov.TurretRidesDropped != 2 || cov.TurretRidesNotRideable != 0 ||
+	if cov.TurretRidesDropped != 2 ||
 		cov.TurretRidesOutOfWindow != 1 || cov.TurretRidesAlreadyAboard != 1 {
 		t.Errorf("couverture = %+v", cov)
 	}

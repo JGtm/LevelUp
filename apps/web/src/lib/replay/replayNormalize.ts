@@ -252,9 +252,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     vehicleCycles: raw.vehicleCycles ?? [],
     vehicles: (raw.vehicles ?? []).map((v) => ({
       ...v,
-      // LE DÉCOR DE CARTE (lot M7, 2026-09-24) : le serveur nomme les vies posées par la carte
-      // hors de sa zone jouable (`vehicleScenery.hidden`) ; la vie le porte, pour que le calque
-      // n'ait qu'un prédicat à lire (`vehicleIsScenery`). Absent = aucun verdict de décor.
+      // LE DÉCOR DE CARTE : le serveur nomme les vies de décor (`vehicleScenery.hidden` — posées
+      // hors de la zone jouable, ou tenues en l'air sans occupant) ; la vie le porte, pour que le
+      // calque n'ait qu'un prédicat à lire (`vehicleIsScenery`). Absent = aucun verdict de décor.
       ...(sceneryLives.has(vehicleLifeKey(v.slot, v.gen)) ? { scenery: true } : {}),
       samples: v.samples ?? [],
       // LA SÉRIE DE VISÉE D'UN OCCUPANT (schéma 31) SE COMBLE AU TROISIÈME NIVEAU : c'est un

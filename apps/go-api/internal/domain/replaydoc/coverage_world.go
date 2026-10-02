@@ -141,7 +141,6 @@ type VehicleCoverage struct {
 	TurretCarrierBirthMismatch int `json:"turretCarrierBirthMismatch"`
 	TurretRides                int `json:"turretRides"`
 	TurretRidesDropped         int `json:"turretRidesDropped"`
-	TurretRidesNotRideable     int `json:"turretRidesNotRideable"`
 	TurretRidesOutOfWindow     int `json:"turretRidesOutOfWindow"`
 	TurretRidesAlreadyAboard   int `json:"turretRidesAlreadyAboard"`
 	ShotsOnCarrier             int `json:"shotsOnCarrier"`

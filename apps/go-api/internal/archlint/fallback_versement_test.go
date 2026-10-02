@@ -62,6 +62,8 @@ var replisComptesAuDocumentServi = map[decfilm.Nom]struct{ Fichier, Ancre, Date,
 		"compte dans `vehicleScenery.zoneUnknown` du document servi (lot M7 des retours rejeu) : regle du service, pas de la cuisson"},
 	"repli_decor_sous_le_sol_foule_du_match": {"internal/service/replay_vehicle_scenery_rule.go", "return sceneryReasonBelowPlayedFloor", "2026-09-27",
 		"compte dans `vehicleScenery.hidden` sous la raison `below_played_floor` du document servi : regle du service, pas de la cuisson"},
+	"repli_decor_tenu_en_l_air_a_vide": {"internal/service/replay_vehicle_scenery_rule.go", "Reason: sceneryReasonAloftUnoccupied", "2026-10-02",
+		"compte dans `vehicleScenery.hidden` sous la raison `aloft_unoccupied` du document servi (chantier Falcon de Behemoth) : regle du service, pas de la cuisson"},
 }
 
 // perimetreDeclenchementsHorsDecodeur : les repertoires HORS du perimetre du decodeur ou un repli du

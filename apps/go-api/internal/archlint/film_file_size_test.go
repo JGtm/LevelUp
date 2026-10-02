@@ -221,7 +221,11 @@ var plafondsParFichier = map[string]int{
 	// +30 : l entree v76 (le determinisme des tris, la tolerance de siege, le lien prise -> arme au
 	// sol, les tables de la grammaire, les revisions qui montent ou non, l effet au parc ; ecrite v75
 	// sur J10, renumerotee a la fusion). Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2766,
+	// SCHEMA 76 -> 77 (2026-10-02, chantier Falcon de Behemoth), +17 : l entree v77 (le retrait de
+	// `turretRidesNotRideable`, la raison `aloft_unoccupied` du decor servi a la requete, les
+	// revisions qui ne montent pas, l effet au parc). Exception ecrite, dans le commit qui monte
+	// `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2783,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -308,7 +312,9 @@ var plafondsParFichier = map[string]int{
 	// justification de la montee (les replis D-10, un contenu qui change sans champ neuf).
 	// SCHEMA 75 -> 76 (2026-09-27, lot J10.7 du PLAN_SUITE_AUDIT_DECODEUR_FILM, fusionne apres J8) :
 	// 1369 -> 1374, la justification de la montee (le determinisme des tris).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1374,
+	// SCHEMA 76 -> 77 (2026-10-02, chantier Falcon de Behemoth) : 1374 -> 1377, la justification
+	// de la montee (un champ mort retire).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1377,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).
