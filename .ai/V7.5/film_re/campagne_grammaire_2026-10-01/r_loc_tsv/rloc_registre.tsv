@@ -1,0 +1,121 @@
+film	build	mesure	valeur
+0797ce72	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+0797ce72	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+0797ce72	HI_1_13_0	chunks	24
+0797ce72	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:23 3072:2
+084a804d	HI_1_10_0	archetypes high-frequency (seul composant)	ti=4
+084a804d	HI_1_10_0	autres archetypes portant high-frequency	ti=3 i1/2
+084a804d	HI_1_10_0	chunks	56
+084a804d	HI_1_10_0	slots lies high-frequency (slot:chunks)	123:55
+111fa685	HI_1_10_0	archetypes high-frequency (seul composant)	ti=4
+111fa685	HI_1_10_0	autres archetypes portant high-frequency	ti=3 i1/2
+111fa685	HI_1_10_0	chunks	30
+111fa685	HI_1_10_0	slots lies high-frequency (slot:chunks)	123:29
+11de8353	HI_1_9_0	archetypes high-frequency (seul composant)	ti=4
+11de8353	HI_1_9_0	autres archetypes portant high-frequency	ti=3 i1/2
+11de8353	HI_1_9_0	chunks	32
+11de8353	HI_1_9_0	slots lies high-frequency (slot:chunks)	123:30
+1c4c63c2	HI_1_10_0	archetypes high-frequency (seul composant)	ti=4
+1c4c63c2	HI_1_10_0	autres archetypes portant high-frequency	ti=3 i1/2
+1c4c63c2	HI_1_10_0	chunks	68
+1c4c63c2	HI_1_10_0	slots lies high-frequency (slot:chunks)	123:15 126:12 127:13 128:13 129:14 6528:6
+396cfc92	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+396cfc92	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+396cfc92	HI_1_13_0	chunks	28
+396cfc92	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:27
+4f77afc1	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+4f77afc1	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+4f77afc1	HI_1_13_0	chunks	62
+4f77afc1	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:60
+50247b26	version-31	archetypes high-frequency (seul composant)	ti=4
+50247b26	version-31	autres archetypes portant high-frequency	ti=3 i1/2
+50247b26	version-31	chunks	31
+50247b26	version-31	slots lies high-frequency (slot:chunks)	123:30
+51ebbc0f	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+51ebbc0f	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+51ebbc0f	HI_1_13_0	chunks	27
+51ebbc0f	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:12 304:14
+60ae07c4	HI_1_8_0	archetypes high-frequency (seul composant)	ti=4
+60ae07c4	HI_1_8_0	autres archetypes portant high-frequency	ti=3 i1/2
+60ae07c4	HI_1_8_0	chunks	43
+60ae07c4	HI_1_8_0	slots lies high-frequency (slot:chunks)	123:21 127:21
+6b0e6f0f	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+6b0e6f0f	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+6b0e6f0f	HI_1_13_0	chunks	67
+6b0e6f0f	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:14 126:13 127:13 128:13 129:12
+72b0a25e	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+72b0a25e	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+72b0a25e	HI_1_13_0	chunks	25
+72b0a25e	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:24
+81c02726	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+81c02726	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+81c02726	HI_1_13_0	chunks	18
+81c02726	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:17
+8f7f5806	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+8f7f5806	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+8f7f5806	HI_1_13_0	chunks	60
+8f7f5806	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:17 127:23 128:19
+9c0ec856	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+9c0ec856	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+9c0ec856	HI_1_13_0	chunks	30
+9c0ec856	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:17 124:12
+a349fea8	version-33	archetypes high-frequency (seul composant)	ti=4
+a349fea8	version-33	autres archetypes portant high-frequency	ti=3 i1/2
+a349fea8	version-33	chunks	50
+a349fea8	version-33	slots lies high-frequency (slot:chunks)	123:49
+a521164d	HI_1_4_1	archetypes high-frequency (seul composant)	ti=4
+a521164d	HI_1_4_1	autres archetypes portant high-frequency	ti=3 i1/2
+a521164d	HI_1_4_1	chunks	20
+a521164d	HI_1_4_1	slots lies high-frequency (slot:chunks)	123:19
+a765f61d	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+a765f61d	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+a765f61d	HI_1_13_0	chunks	64
+a765f61d	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:19 127:23 128:21
+af3af607	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+af3af607	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+af3af607	HI_1_13_0	chunks	66
+af3af607	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:23 124:20 125:22
+bcb6d393	HI_1_12_0	archetypes high-frequency (seul composant)	ti=4
+bcb6d393	HI_1_12_0	autres archetypes portant high-frequency	ti=3 i1/2
+bcb6d393	HI_1_12_0	chunks	20
+bcb6d393	HI_1_12_0	slots lies high-frequency (slot:chunks)	123:19
+bf15f7ab	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+bf15f7ab	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+bf15f7ab	HI_1_13_0	chunks	27
+bf15f7ab	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:26
+bfecd02b	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+bfecd02b	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+bfecd02b	HI_1_13_0	chunks	28
+bfecd02b	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:27
+c46ef9d1	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+c46ef9d1	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+c46ef9d1	HI_1_13_0	chunks	63
+c46ef9d1	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:19 124:19 125:24
+c75f33b8	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+c75f33b8	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+c75f33b8	HI_1_13_0	chunks	25
+c75f33b8	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:5 127:14 135:4
+d1a18847	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+d1a18847	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+d1a18847	HI_1_13_0	chunks	23
+d1a18847	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:22
+d9781168	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+d9781168	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+d9781168	HI_1_13_0	chunks	38
+d9781168	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:11 133:11 134:15
+e5adf7b2	HI_1_11_0	archetypes high-frequency (seul composant)	ti=4
+e5adf7b2	HI_1_11_0	autres archetypes portant high-frequency	ti=3 i1/2
+e5adf7b2	HI_1_11_0	chunks	30
+e5adf7b2	HI_1_11_0	slots lies high-frequency (slot:chunks)	123:29
+e60aaf06	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+e60aaf06	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+e60aaf06	HI_1_13_0	chunks	23
+e60aaf06	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:22 4:1
+f75e7053	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+f75e7053	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+f75e7053	HI_1_13_0	chunks	25
+f75e7053	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:24
+fb1a1a72	HI_1_13_0	archetypes high-frequency (seul composant)	ti=4
+fb1a1a72	HI_1_13_0	autres archetypes portant high-frequency	ti=3 i1/2
+fb1a1a72	HI_1_13_0	chunks	42
+fb1a1a72	HI_1_13_0	slots lies high-frequency (slot:chunks)	123:41

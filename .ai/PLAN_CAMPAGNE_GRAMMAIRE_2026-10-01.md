@@ -203,8 +203,16 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
   ses fermés). `vueCFermee` est nécessaire, pas suffisant. [L0, décision D2]
 - D-2 4 598 paquets ferment au bit près après une sortie de vue B par rejet (3 756 sur HI_1_10_0) :
   pied de trame d'une vue vide ou fermeture factice, non tranché. [R-L1]
+  **Tranché le 2026-10-02 (R-L1 (b), `R_NAIS.md` §2)** : fermetures FACTICES, y compris les 1 008
+  que le juge actuel dit saines. Un début de vue C antérieur ferme le paquet pour 4 402 / 4 598
+  (95,7 %) contre 11,0 % au témoin (mesuré) ; « la vue B a débordé son terminateur » est une
+  déduction (supposé). [L0, invariant « sortie de vue B par rejet ⇒ non fermé », §6.5]
 - D-3 Région (iii') : 1 289 NEW trouvés derrière le point de rejet d'un paquet antérieur (témoin 90),
   contraire à l'ordre NEW-avant-DELTA de l'écrivain. Non tranché. [R-L1]
+  **Tranché le 2026-10-02 (R-L1 (a), `R_NAIS.md` §1)** : l'écrivain n'écrit jamais un NEW après un
+  DELTA dans un paquet (lu, Ghidra : `FUN_14076b9c8`, `FUN_142f2cc78`, `FUN_142f2cee0`,
+  `FUN_14076a148`). Les « NEW » de (iii') ne sont pas des records (X attesté 1 094 / 1 289, soit
+  994 / 1 289 sans les 100 « réalloués » qui reposent sur D-43). L1c reste retiré.
 - D-4 Naissances ratées = entités nées et mortes dans le chunk : 5 714 des 6 033 eid ont un masque
   vide au bloc suivant ; la table anticipée ne peut pas les rattraper.
 - D-5 Image-clé incomplète : 87 eid vivants au bloc du chunk, ni liés au début du chunk ni déclarés
@@ -222,6 +230,9 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
   144 fois. Non tranché.
 - D-8 Allocateur : la table de pools par plage de slots ne prédit rien avant HI_1_12_0 (≤ 15 % au
   rang 0) : autre table, ou `DAT_144706104` à 0 sur ces films.
+  **Seconde branche réfutée le 2026-10-02 (R-L1 (d), `R_NAIS.md` §3.1)** : le bit vaut 1 dans
+  629 142 / 629 142 paquets delta ; le modèle à pool unique prédit au plus 2,80 % (HI_1_4_1). La
+  cause de la faible prédiction avant HI_1_12_0 reste ouverte (D-81).
 - D-9 Chunk des temps forts : le nombre de kills diffère de celui des deaths de 0 à 5 par film ; non
   étudié.
 - D-10 T4-C3 : `IndexAbsolus` sous le contexte des instruments (`Region = 0`) contredit en apparence
@@ -333,6 +344,10 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
     référence ; sous `ti=43`, HI_1_12_0 en lit 139 947 contre 121 628.
   - Tout pourcentage du déclencheur est donc une borne haute tant que la lecture n'est pas complète.
   - (Mesuré : `mb3_ti3.tsv`, `mb2_ti43.tsv`.)
+  - **Confirmé le 2026-10-02 par les recherches préalables** : chaque chantier a recalculé son
+    propre fixe (HI_1_13_0 : R-COMB 2 880 403, R-LS 2 931 799, R-L1 (d) 2 850 786) ; le maximum
+    consolidé des quatre chantiers vaut 2 959 104 sur HI_1_13_0 et 7 176 150 sur le corpus (§6.5.3,
+    calcul awk sur leurs TSV). Le fixe14 de bis 1 est périmé (HI_1_12_0 y afficherait 103,7 %).
 - D-43 **La carte v2 et les sondes rangent une naissance de génération 0 en « réalloué sous une autre
   génération »** : 12 854 des 12 906 paquets. La cause : `cmAlloueSous` et `v2_datums.go` exigent
   `Gen != 0 || Drapeaux != 0` (bis 3 §3.1). [L0]
@@ -345,6 +360,10 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
   annuler (utiles sains −1 953, −1 404, −21 094, −1 904). Il faut chercher une condition mesurable
   PAR FILM, par exemple la prédiction de l'allocateur vérifiée sur les NEW lus du chunk. Une branche
   sur le build est interdite. [R-L1 d]
+  **Instruit le 2026-10-02 (`R_NAIS.md` §3)** : condition trouvée (allocateur à cinq pools ≥ 50 %
+  des NEW propres du film, ≥ 30 NEW) ; 0 film en baisse, +15 070 paquets sains. Le seuil est choisi
+  sur le corpus même (aucune validation hors échantillon) et la condition DÉSACTIVE L1a sur
+  HI_1_8_0 à HI_1_11_0 (gain nul sur ces builds, pas une correction). [§6.5, D16]
 - D-47 **Coquilles des documents** :
   - « 2 836 eid introuvables » doit se lire 2 856 ;
   - « 6 451 » (CARTE §4, compté rejet par rejet) et « 6 455 » (compté par eid) sont tous deux
@@ -364,6 +383,9 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
 
   Le dispatch route par NOM (`dispatch_item.go:122`). D'autres homonymes peuvent exister : il faut
   recenser, dans le binaire, les tables de composant par nom. [L8]
+  **Recensé le 2026-10-02 (R-HOM, `R_COMP.md` §3)** : 326 noms, un seul homonyme de grammaire
+  (`high-frequency`) ; la table de `ti=3 i1` est lue dans l'enregistrement de `ti=3`
+  (`FUN_140e460fc`, `+0x4754 = 3`) : sa grammaire `R(16)+R(8)+R(2)` est ÉTABLIE.
 - D-50 **`ti=3 i0 low-frequency` n'est pas porté** (`FUN_142ed4aec`). Toutes ses briques existent
   déjà dans le Go. [L8]
 - D-51 **La génération 0 est une génération valide du jeu, mais le Go la traite comme nulle** :
@@ -374,12 +396,22 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
   restent non fermés.
   - Une autre largeur de l'archétype est fausse en image-clé ; elle n'est pas identifiée.
   - Les pièces montées dépassent toutes leur frontière : 326 sur 326 sur `4f77afc1`. [R-L4]
+  - **Identifié le 2026-10-02 (R-L4 (a), `R_VEH.md` §1)** : ce n'est pas une largeur propre à
+    `ti=40` mais trois lectures communes : la portée `DAT_144e61ea0` posée par l'écrivain d'image-clé
+    (`FUN_142e2bfd0`, `FUN_142e2c690`) qui fait lire `R(96)` ; le chemin absolu d'`i0` de l'écrivain ;
+    le découpage MPP 8/3 sur les formats 24-25 (largeur MESURÉE, aucun exécutable de ces builds).
+    Les trois ensemble : 3 058 / 3 058 voisins fermés sur les formats 24 à 27 ; formats 20-21 :
+    0 / 2 036 (D-92).
 - D-53 **Bloc `0xbc` de la vue C** : jamais lu au bon bit sur le corpus. Ses 1 570 arrêts marquent
   un désalignement, de même nature que les kinds 1/2/3. La fourche `+0x74` reste ouverte : rôle de
   `FUN_1404f293c` en relecture Theater. [L0 : requalification]
 - D-54 **Cartes à un seul sbsp** (Illusion, Fragmentation) : 101 et 136 paquets fermés y lisent un
   index de plage 1. Soit la carte déclare une plage de plus, soit ces fermetures sont factices. Par
   ailleurs, l'ordre des plages des cartes à deux sbsp n'est pas lu. [R-L6]
+  **Réfuté le 2026-10-02 (R-L6, `R_VEH.md` §5)** : en lecture FINALE des records retenus, 0 paquet
+  fermé ne porte d'index impossible ; les 101 et 136 venaient des lectures d'essai de l'inférence,
+  que le relevé `bis2NoterIndex` compte aussi (D-96). Ordre des plages ÉTABLI (plage 0 = arène,
+  plage 1 = décor lointain, huit modules) ; Illusion et Fragmentation n'ont qu'une plage.
 - D-55 **`world-object-i0` lu comme le jeu** : +12 338 records d'image-clé fermés, sauf sur
   version-31 (−364) ; seulement +31 paquets delta nets. [L6b, décision D4]
 - D-56 **Coupables non attribués des décalages de curseur** : `ti=20 i1 spawn-filter-weight`
@@ -390,6 +422,12 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
     de `ti=21 i16 flock-position`.
   - Porter la branche de niveau de `spawn-filter-type` ne change rien (sortie identique à l'octet).
   - Son cas 3 (`p5 = 1`, `FUN_1407f1ff4`) n'est pas relu. [R-P3]
+  - **Instruit le 2026-10-02 (R-P3, `R_COMP.md` §4, statut partiel)** : aucun lecteur n'est en
+    cause (Ghidra). G1 (`ti=20 i1`) et G3 (`ti=14 i1`) sont des deltas lus sous une liaison fausse du
+    slot vers une unité (bipède d'après les déclarations des slots, l'A/B ne discrimine pas bipède et
+    véhicule) ; G2 (`DEL ti=0`) est un en-tête mal lu après un décalage antérieur (635 / 684 eid sans
+    allocation) ; G4 (`ti=41 i2`) vient de `consumeObjectPositionMonde`, qui lit les largeurs de la
+    plage de la carte au lieu de la ligne de l'index lu. [L6a, LP, L7, §6.5]
 - D-57 **`ecs_table.tsv`** : la `deser_addr` de `ti=20 i1` vaut `FUN_14076ce9c`, qui est l'entrée
   commune `+0x20` de toutes les tables. Le vrai lecteur est `FUN_142ed70b8`.
 - D-58 **`1c4c63c2` alloue le slot 8 190**, un de moins que la limite qui ferait passer la largeur à
@@ -462,6 +500,159 @@ n'est traitée ; certaines deviennent un lot au §6 (renvoi entre crochets).
   événements non localisés » (lot L1b, R-L1). Le correctif se poserait UNE fois dans le localisateur
   unifié par LU (vague 2), ou juste après LU. **Statut (2026-10-02)** : CONFIÉ À LA CAMPAGNE, lot
   LS (§6.1 et §6.2), par accord entre les deux sessions, l'utilisateur leur ayant laissé la décision.
+  **Vérifié et mesuré le 2026-10-02 (R-LS, `R_LOC.md` §2-§3)** : les deux sites comparent bien au
+  littéral 123 (code relu à `fe18bf67c`). L'ordre de l'enquête fait baisser `1c4c63c2` sur le site de
+  la cuisson ; l'ordre « 123 strict → fermeture par NEW de tête → signature high-frequency » n'en
+  fait baisser aucun (+18 119 / −2 paquets, +169 439 records utiles sains, région (ii) de 48 720 à
+  26 427). Killsource (28 films) : 1 080 morts passent du `scan` à la marche, tag, statut, crédit et
+  origine inchangés ; la voie (`read_path`) est persistée, donc publiée (D-74). [LS, LU, §6.5]
+
+**Découvertes des recherches préalables (2026-10-02)**
+
+Rendues par les six chantiers du workflow `wf_9088d8bd-e43` (notes `R_COMB.md`, `R_LOC.md`,
+`R_NAIS.md`, `R_COMP.md`, `R_VEH.md`, `R_FUSION.md` sous `campagne_grammaire_2026-10-01/`) et par
+leurs vérificateurs adverses, puis par l'intégration. Aucune n'est traitée. Les codes d'origine des
+notes (RC-n, R-LOC-n, N-n, DC-n, R-VEH-n, D-F-n) sont rappelés entre parenthèses.
+
+*Mesure et instrument*
+
+- D-68 **Dénominateur fixe : quatre valeurs, une par chantier** (RC-3). R-COMB, R-LS, R-L1 (d) et
+  R-L4 ont chacun pris le maximum de LEURS marches (HI_1_13_0 : 2 880 403, 2 931 799, 2 850 786 ;
+  R-L4 ne monte que sur les six films des formats 24-25). Le maximum consolidé par film vaut
+  2 959 104 sur HI_1_13_0 et 7 176 150 sur le corpus (§6.5.3). Aucun chiffre de chantier n'est donc
+  publié sur le même dénominateur qu'un autre ; la comparaison passe par §6.5.3.
+- D-69 **L'oracle L1 dérivé dans un monde où L9 est posé fait perdre 2 381 paquets à `4f77afc1`**
+  (RC-1, mesuré) : 18 à 19 liaisons de plus (`ti` 41, 42, 35, 40, 0 ; chunks 27 à 54). Dérivé sans
+  L9, il ne perd que 5. L'oracle L1 n'est pas une borne stable en combinaison (réserve D-7).
+- D-70 **L1 et L2 se recouvrent** (RC-2). Recouvrement des gains mesuré (sur `81c02726`, marginale
+  de L1 = 0 sous L2 contre +2 884 seul ; sur HI_1_13_0, la marginale de L1 remonte à +16 137 sains
+  quand L2 est retiré) ; le mécanisme (naissances ratées parce que `ti=43` n'est pas porté) est
+  ESTIMÉ, non vérifié record par record.
+- D-71 **Trois films HI_1_13_0 dépassent 95 % sous la combinaison** (RC-4) : `f75e7053` 98,3 %,
+  `c75f33b8` 97,2 %, `81c02726` (hors corpus) 98,2 %, sur le fixe de R-COMB.
+- D-72 **L8 a une marginale négative sur `084a804d`** (−73 sains dans la combinaison) (RC-6). « Une
+  seule liaison d'oracle de plus » (410 contre 409) est déduit des comptes ; les oracles ne sont pas
+  comparés liaison par liaison.
+- D-73 **Les deux sites du localisateur n'ont déjà pas le même ordre** (R-LOC-1) : la cuisson
+  (`debutDeLaListe`) n'a pas de repli à largeur libre ; killsource et `marchLocalise` en ont un.
+  L'enquête de suite d'audit et D-67 supposaient une seule règle.
+- D-74 **La voie de lecture d'une mort est publiée** (vérificateur de R-LS) :
+  `internal/sync/killcollector/collector_batch.go:72` écrit `ReadPath` dans `match_kill_events`. Un
+  lot qui fait passer une mort du `scan` à la marche change donc une colonne publiée : montée de
+  `killsource.Rev` et backfill killsource DUS, pas conditionnels.
+- D-75 **Le slot 123 n'est lié à `ti=4` que dans une partie des chunks des films à objectif porté**
+  (R-LOC-2 ; `c75f33b8` 5 sur 25, `d9781168` 11 sur 38) ; 392 signatures high-frequency tombent sur
+  des slots liés en cours de chunk seulement (R-LOC-3 ; `1c4c63c2` 359). Liste des slots liés
+  incomplète dans la note (manquent 3072, 6528 et 4, vérificateur). Justesse non instruite.
+- D-76 **`51ebbc0f` : la carte gagne +3 378 paquets sains sous LS, killsource ne change pas**
+  (R-LOC-4) ; seule l'égalité des comptes et des voies est vérifiable dans les TSV. Non instruit.
+- D-77 **Le repli à largeur libre du slot 123, ajouté à la cuisson, détruit des fermetures**
+  (R-LOC-5) : net −14 141 paquets sains (16 673 sains perdus en brut), 12 films en baisse,
+  `4f77afc1` de 22 910 à 11 051 fermés. Sa valeur dans killsource n'est pas remesurée.
+- D-78 **L'ordre entre « fermeture par NEW de tête » et « signature high-frequency » n'est pas décidé
+  par la grammaire** (R-LOC-6) : l'ordre de l'enquête bat l'ordre retenu en records utiles sains
+  sur `d9781168` et `c46ef9d1`, mais fait baisser `1c4c63c2` ; l'ordre retenu est le seul mesuré
+  sans baisse.
+- D-79 **LS gagne plus que la borne de L1b mesurée sur la même région** (arithmétique sur
+  `R_LOC.md` §3.1 et BIS_1 §4) : +18 119 paquets sur la région (ii), contre +11 540 nets pour
+  l'oracle (ii) de bis 1. La borne de bis 1 n'était donc pas un majorant de tout correctif de la
+  région (ii). Cause non instruite (définitions des deux mesures à confronter).
+- D-80 **La vue C se resynchronise d'elle-même** (N-2) : 15,5 % des paquets sains fermés après
+  terminateur se ferment encore depuis un départ décalé de 1 à 24 bits. « Fermé au bit près » est
+  un témoin plus faible que supposé (D2, L0).
+- D-81 **Cause de la faible prédiction de l'allocateur avant HI_1_12_0 : ouverte** (N-6, D-8
+  réfuté) ; hypothèse non vérifiée : une table de pools propre à ces builds.
+- D-82 **`1c4c63c2`** : l'allocateur prédit 65,5 % des NEW propres des paquets sans liste
+  d'événements, mais 5,1 % de tous ses NEW propres (N-4) : les NEW lus dans ses paquets à
+  événements sont probablement souvent faux. Non étudié.
+- D-83 **Invariant candidat pour le juge** (N-5) : le mot de 32 bits des 441 DEL lus juste avant un
+  rejet fermé est non nul 441 fois sur 441, alors que l'écrivain l'écrit à 0 hors archétype `0x10`.
+  Non mesuré sur les autres DEL. [L0]
+- D-84 **Les occurrences de (iii') sont concentrées 16 à 255 bits derrière l'en-tête rejeté** (N-7 ;
+  64,5 %, témoin ≥ 256 bits 84,2 %) : hypothèse d'une référence d'entité dans un corps de composant,
+  non vérifiée.
+
+*Grammaire et code (constats, aucune correction faite)*
+
+- D-85 **`traverseComponentLoop` ignore en silence les bits de masque au-delà du dernier composant de
+  l'archétype** (DC-1) : un masque impossible ne désynchronise pas le record ; 1 017 records
+  coupables G1/G3 en portent un. [L0 : invariant violé à la lecture]
+- D-86 **`ecs_table.tsv`** (DC-2) : `ti=3 i1 high-frequency` porte `deser_addr = FUN_14076d034`
+  (lecteur de `ti=4 i0`) ; le bon lecteur est `FUN_142ed4880`. La remarque « KEYFRAME : 26 bits » de
+  `ti=4 i0` est à revoir. [L8]
+- D-87 **`equipment-charges-used-component`** (`ti=37 i27`, version-31) est absent de HI_1_13_0 et du
+  dispatch Go (renommé `-remaining`) (DC-3).
+- D-88 **`spawn-filter-type` cas 2** (DC-4) : le Go lit `readQuantStat(1)`, le jeu lit
+  `R(1)[0→R(13)]` puis `R(6)` (`FUN_142b6ee08` / `FUN_142b67f08`). Presque jamais exercé (+1 / −1).
+- D-89 **Un garde-fou « dispatch par table » est constructible hors ligne** (DC-5) : les fonctions
+  d'enregistrement statiques (`FUN_14064dd28`, `+0x4754 = ti`, 54 fonctions) donnent la table de
+  chaque (ti, index) ; index compactés quand un enregistrement conditionnel est inactif. [L8]
+- D-90 **Des images-clés du moteur ne ferment pas sous la grammaire complète** (DC-6 ; 15 / 41 sur
+  `51ebbc0f`, 1 / 68 sur `1c4c63c2`) et aucun décalage unique ne les ferme.
+- D-91 **Un crochet de composant voit aussi les marches d'essai des localisateurs** (DC-7) : les
+  comptes par crochet de la marche delta en sont gonflés ; non publiés comme preuve.
+- D-92 **Les vieux builds (HI_1_4_1, version-31, version-33) lisent au moins un bit de trop** :
+  - `ti=2` (R-L3, mesuré) : un bit de moins ferme 98 / 98 images-clés du moteur ; la position est
+    entre le début d'`i4` et l'entrée d'`i10`, NON discriminée entre `i4` et `i9` (vérificateur) ;
+  - `ti=40` (R-VEH-3, mesuré) : 0 / 2 036 voisins fermés sous la lecture des formats 24 à 27, état
+    par défaut juste, largeur fautive non identifiée ;
+  - une cause commune (composant ou champ partagé) est SUPPOSÉE, non instruite. [L3b, L4b]
+- D-93 **La portée `DAT_144e61ea0` plus le chemin `i0` de l'écrivain ferment aussi le bipède
+  `ti=35` en image-clé** (R-VEH-1) : 142 → 2 006 / 2 008 voisins (format 27) ; aucun archétype du
+  format 27 ne baisse. NON CONFIRMÉ comme « critère de bascule de `PorteeBaseline` rempli » : le
+  critère écrit (591 records bornés de R7 + non-régression delta pour `GrammaireEcrivainI0`) n'a pas
+  été rejoué, et la seule variante delta qui pose les deux perd 9 573 paquets. Sans 8/3, `ti=35`
+  baisse sur `111fa685` (15 → 10) et `11de8353` (11 → 6). [LK]
+- D-94 **Le découpage MPP 8/3 contredit la case vide de `MPPPourFormat`**
+  (`profile/build_profile.go:263`, `:323`) (R-VEH-2) : +80 979 / −2 105 paquets sur les six films
+  des formats 24-25. L'explication de la note (« fermeture mesurée alors sans la portée ni `i0` »)
+  est démentie par ses propres TSV : 8/3 seul fait déjà monter ces images-clés, et fait BAISSER les
+  formats 20-21 qui partagent la case. Cause probable de l'ancienne baisse 246 → 182 : ce
+  regroupement 20-21 + 24-25 (supposé). Pertes non jugées. [LM]
+- D-95 **Records d'image-clé à voisin non consécutif** : ils s'arrêtent 108·k bits avant la
+  frontière, sans en-tête lisible (R-VEH-4) ; hypothèse : des records d'en-tête seul. [L9, D-51]
+- D-96 **Le relevé d'index `bis2NoterIndex` compte les lectures d'essai de l'inférence**
+  (R-VEH-7) : D-54 et les comptes d'index de BIS_2 §3.3 sont à relire.
+- D-97 **Six écrivains posent la portée**, dont `FUN_142e31bf8` omis par la note (R-VEH-5,
+  vérificateur) ; les NEW du film ne sont pas lus sous elle (mesuré). La documentation de
+  `profil_balayage.go` est incomplète pour `FUN_142e2c690`. La valeur modale `n2` de version-31 est
+  `0x890`, non `0x8a0` (vérificateur).
+- D-98 **`ScanVehicleCreations` produit des créations à châssis inexistant** (`4118381d`,
+  `d0b40d0a`) (R-VEH-6) : faux positifs SUPPOSÉS (vérificateur : `d0b40d0a` se relit à l'identique
+  sous 8/3 à une ancre décalée, sur un film des formats 20-21 ; réutilisation de slot non exclue).
+- D-99 **Témoins décalés d'un bit peu discriminants sur `396cfc92` et `60ae07c4`** (R-VEH-8) : un
+  témoin à décalages de 2 à 8 bits serait plus robuste. [L0]
+
+*Outillage, livrables et règles*
+
+- D-100 **Les surcouches de mesure ne compilent plus ensemble** (intégration du 2026-10-02) :
+  - sous le tag commun `campagne_overlay`, toutes les sondes taggées se compilent avec la surcouche
+    passée ; `r_veh_delta_research_test.go` exige `rvehPorteeNeuf` et `rvehPorteeEtat`, qui
+    n'existent que dans `r_veh_overlay/` : `go vet -tags=research,campagne_overlay` est ROUGE avec
+    les surcouches de fusion, R-COMB et R-COMP (vert si cette seule sonde est masquée) ;
+  - `r_loc_overlay/` ne remplace pas `capture.go` et s'emploie avec `-tags=research` seul (vert
+    ainsi) ;
+  - les surcouches de R-COMB, R-COMP, R-LS et R-L4 sont bâties sur `fe18bf67c` et remplacent cinq
+    fichiers modifiés depuis par J12 (`default_state_ti40.go` 2 lignes, `lecteur_position.go` 2,
+    `lecteur_position_exceptions.go` 8, `object_deaths_march.go` 7, `traverse.go` 6) : elles
+    réintroduisent les versions d'avant J12 dans la mesure. Seule `r_fusion_overlay_postj12/` est
+    post-J12. [§6.0, D10, D17]
+- D-101 **Livrables incomplets ou inexacts** (vérificateurs) :
+  - R-L1 (a) : les tables du pont (0 / 33) et du décalage (64,5 % contre 84,2 %) ne sont que dans le
+    scratchpad du chantier, pas dans `r_nais_tsv/` ;
+  - R-L1 (d) : les lignes « -hors-evenements » de `r_nais_scores.tsv` viennent d'un code retiré
+    (non reproductibles) et l'en-tête a 8 colonnes pour 10 ;
+  - R-COMB : `rcaDerivation` exclut du maximum les marches de diagnostic (+24 utiles sur
+    `4f77afc1`, effet < 0,001 point) ;
+  - fusion : la ligne 17 de `r_fusion_commandes.tsv` dit « 6 boucles », la mesure en donne 5.
+- D-102 **Écarts aux règles de mission** : deux chantiers ont appelé `python3` en ligne de commande
+  (R-COMP : script vide, aucun fichier ; R-L4 : remplacement de texte dans une sonde, aucun fichier
+  Python créé). Déclarés par les chantiers eux-mêmes (`R_COMP.md` DC-9, `R_VEH.md` §8).
+- D-103 **Chemin `.ai/` cité par une sonde** (D-F2, corrigé par le vérificateur) :
+  `campagne_bis2_positions_research_test.go:13` cite `mesures_bis2_overlay/` sous un chemin
+  `.ai/` complet, que `TestCheminsAiCitesDansLeCodeExistent` attrape ;
+  `campagne_bis3_ti3_research_test.go:9` le cite sans préfixe `.ai/` (non attrapé). Supprimer ou
+  renommer ce dossier exige de corriger ce commentaire dans le même commit.
 
 ## 6. Phase 2 — lots correctifs (écrits à l'étape 5, révisés le 2026-10-02)
 
@@ -495,6 +686,10 @@ Abréviations :
   - L'ensemble actuel est celui des 14 marches de bis 1 (HI_1_13_0 : 2 574 513). Il s'élargit dès
     qu'on y verse les marches mesurées de L8 et de L2 : 2 759 700 sur HI_1_13_0 sous `ti=3`, et la
     référence y tombe à 73,1 % (RAPPORT §3, arithmétique sur les TSV).
+  - **Mis à jour le 2026-10-02 (recherches préalables, D-68)** : l'ensemble s'élargit aux marches
+    des quatre chantiers qui ont lu les films. Maximum consolidé par film : HI_1_13_0 **2 959 104**,
+    corpus **7 176 150** (§6.5.3). Le fixe14 ci-dessus est périmé. Le gate de la vague 1 part de ce
+    maximum consolidé, recalculé avec les marches des lots de la vague.
 
 **Gate de tout lot qui change une sortie** (lot marqué « sortie : oui »)
 
@@ -632,6 +827,41 @@ fusion FAITE le 2026-10-02, commit `f28a4a816`, `origin/feat/v75` = `95b19e635`)
 - [x] **Essai de fusion AVANT tout développement de phase 2** (N9) — fait : `git merge-tree` contre
   `bc0e2511a` puis contre `95b19e635`, UN seul conflit (`grammar_rev.golden`), le reste fusionné
   seul ; essai complet dans un worktree jetable (`R_FUSION.md`), puis vraie fusion `f28a4a816`.
+  **Résultat de l'essai (`R_FUSION.md`, contre `bc0e2511a`, sans commit, vérifié par un contexte
+  adverse)** :
+  - conflits : UN (`grammar/testdata/grammar_rev.golden`, ligne `.3` régénérée des deux côtés :
+    base `4bc8e05a`, campagne `3cbd64ac`, J12 `558380db`), confirmé indépendamment par
+    `git merge-tree --write-tree` ; `cmd_fermeture/main.go` et `gb1_research_test.go` fusionnés
+    seuls (les `strings.SplitSeq` / `errors.Is` de J12 et le mode v2 coexistent). Résolution : version
+    J12 du golden puis porte du dépôt ; empreinte `14b3a79d…` à révision constante (valeur rapportée
+    par l'essai, non recalculable sans `go` par le vérificateur ; retrouvée par la vraie fusion,
+    journal §4) ;
+  - ruptures dues à J12 : quatre sondes (`campagne_bis1_research_test.go:275`,
+    `campagne_bis2_chassis_research_test.go:73`, `campagne_bis3_research_test.go:90`,
+    `campagne_mesures_research_test.go:88`) prenaient l'adresse de `profile.QuantRangeCEBiped`,
+    devenu un accesseur (J12.4). Ce sont des ruptures de COMPILATION sous `-tags=research`, pas des
+    violations de ratchet (vérificateur) ; le pas CI de la base (`ci.yml:253`, vet `research` du
+    paquet `grammar`) les aurait déjà vues. Patch `r_fusion_patchs/r_fusion_ratchets_j12.patch`
+    (une ligne par sonde, valeur identique) ; la vraie fusion a appliqué la même correction.
+    Deux sondes neuves des recherches préalables avaient la même ligne
+    (`r_veh_chassis_research_test.go:192`, `r_comb_research_test.go:184`), corrigées à
+    l'intégration ;
+  - ratchets de J12 : 11 / 11 PASS sur l'arbre fusionné (9 créés par J12, 2 resserrés : les deux
+    `TestTriTotal*` datent de J10.1) ; lint ratchet 0 issue sur `grammar` et `research` ; aucun autre
+    fichier de la campagne en défaut (14 appels `sort.*`, tous dans des `_test.go`, exclus du
+    cliquet) ;
+  - gates de l'essai : `gofmt` vide ; `go vet` film et `go vet -tags=research ./...` (module) exit 0
+    avec le patch ; `go test` film 17 paquets ok ; `-race TestDeuxFilmsEnParallele` ok ; `archlint`
+    rouge sur `TestNoExpiredTODO` seul (quatre pas sans journal conservé : `gofmt`, vet sans tag,
+    `archlint -skip`, `-race`, rapportés et non contre-vérifiés) ;
+  - `TestNoExpiredTODO` : `TODO(expiry:2026-10-01)` échu dans
+    `internal/api/handlers/json_huma_coverage_test.go:34`, même blob dans `fe18bf67c`, `bc0e2511a`
+    et `origin/feat/v75` : rouge sur ces trois têtes à partir du 2026-10-02 (tous les chantiers l'ont
+    vu). SOLDÉ hors campagne par `feat/v75` (`2f1e7b98b`, échéance re-datée au 2027-01-01, décision
+    utilisateur du 2026-10-02), arrivé par `da7c2c764` : `archlint` complet vert sur la tête ;
+  - découvertes de l'essai : D-F1 (règle 17 sur `frame_closure_detail.go`) SOLDÉE par `32ba9078d` ;
+    D-F2 réduite à un commentaire (D-103) ; D-F3 (équivalence des mesures sur films) SOLDÉE par la
+    carte v2 rejouée (item ci-dessous) ; D-F4 = `TestNoExpiredTODO` (ci-dessus).
   Énoncé d'origine : : `git merge-tree` de `feat/v75`
   post-J12 contre la branche, lecture seule. Il liste les conflits réels et confirme ou infirme la
   classe « mécanique » ci-dessus. Tant que J12 n'est pas fusionné, un essai contre
@@ -647,6 +877,14 @@ fusion FAITE le 2026-10-02, commit `f28a4a816`, `origin/feat/v75` = `95b19e635`)
   `lecteur_position_exceptions.go` (+4/−4). Sans re-synchronisation depuis les fichiers post-J12, une
   mesure en surcouche annulerait ces changements. Reporter les ajouts de recherche sur les fichiers
   post-J12, puis rejouer les contrôles de la surcouche (référence = carte v2).
+  **Reste ouvert (intégration du 2026-10-02, D-100)** : les surcouches des chantiers R-COMB, R-COMP,
+  R-LS et R-L4 (`r_comb_overlay/`, `r_comp_overlay/`, `r_loc_overlay/`, `r_veh_overlay/`) sont
+  bâties sur `fe18bf67c` et réintroduisent dans la mesure les versions d'avant J12 de cinq fichiers ;
+  sous le tag commun `campagne_overlay`, `go vet` est rouge avec les surcouches de fusion, R-COMB et
+  R-COMP (sonde `r_veh_delta_research_test.go` sans ses crochets) et vert avec celle de R-L4. Quatre
+  `overlay_campagne.json` pointant sur ce worktree ont été écrits à l'intégration. À faire avant
+  toute mesure en surcouche de la phase 2 : UNE surcouche post-J12 qui réunit les crochets de tous
+  les chantiers (base `r_fusion_overlay_postj12/`), ou un tag par chantier (D17).
 - [x] `go test ./internal/archlint/` (ratchets de J12 compris, et ratchet de taille D-66), et mise en
   conformité des instruments de la campagne (tris à comparateur total, `errors.Is`,
   `strings.SplitSeq`, aucun `slog` dans `grammar`) — VERT et complet sur l'arbre fusionné ; seule
@@ -670,10 +908,16 @@ fusion FAITE le 2026-10-02, commit `f28a4a816`, `origin/feat/v75` = `95b19e635`)
   correspondant est fusionné (L2, L6a, L6b, L8 ; `capture.go` quand le dernier des quatre l'est).
 
 **Mesures ouvertes avant la phase 2** (recherche, aucun fichier de production)
-- [ ] **R-COMB** (N10) : mesurer L1 (oracle (i)+(ii)) + L8 + L2 + L9 ENSEMBLE sur HI_1_13_0, en copie
+- [x] **R-COMB** (N10) : mesurer L1 (oracle (i)+(ii)) + L8 + L2 + L9 ENSEMBLE sur HI_1_13_0, en copie
   de recherche (surcouche + oracle de la sonde). Les leviers ne sont mesurés que séparément ; leur
   combinaison n'est ni mesurée ni estimée. La phrase « la phase 2 seule n'atteindra pas le
   déclencheur » reste une estimation tant que R-COMB n'est pas joué.
+  — Fait le 2026-10-02 (`R_COMB.md`, 20 films + `81c02726`, avec L6a et L6b en plus) : résultat et
+  reformulation de la phrase au §6.5.1 et §6.5.3.
+- [ ] **R-COMB-2** (proposée le 2026-10-02) : la même combinaison, plus LS, L3a, L4a, LP et LM
+  (§6.5.2), sur la surcouche unique post-J12 (D-100). Sans elle, la phrase « la phase 2 seule
+  n'atteindra pas 95 % » n'est plus décidable pour HI_1_13_0 (LS n'était pas dans R-COMB) ni pour
+  les formats 24-25 (LM non combiné).
 - [ ] **Part de D-44 sur le corpus** (N14, D-63) : avec L0 (L0.2).
 
 **Chaîne qui bloque J12** (sources : SUITE §5 et journal ; `J12_RECOUPEMENTS_2026-10-01.md` pour les
@@ -724,38 +968,59 @@ chaîne ci-dessus suit les faits transmis ; sur ce point, le schéma de l'ANALYS
 
 ### 6.1 Lots, classés par gain mesuré
 
+Mis à jour le 2026-10-02 d'après les recherches préalables (§6.5). « Sains » = paquets fermés sans
+invariant contredit (D2). Les lots marqués « proposé » ne sont pas admis : ils attendent la
+décision de l'utilisateur (§6.3, D14 et D15).
+
 | Lot | Nature | Titre | Gain mesuré (borne ou A/B) | Sortie | Taille |
 |---|---|---|---|---|---|
-| **L8** | composant | `ti=3` : `low-frequency` porté, `high-frequency` routé par archétype (BIS_3 §6) | **+30 618 / −10 paquets, +234 454 utiles** (A/B surcouche) ; 34 gains contredits ; 3 films HI_1_13_0 | oui | S-M |
-| **L1** | marche | Lire les naissances, régions (i) et (ii) | borne oracle (i)+(ii) **+28 168 nets, +360 182 utiles** ; L1a seul +16 383 / +196 804 ; L1b seul +11 540 / +162 964. Localisateur réel L1a filtré (`tete-bloc+inv`) : +15 714 paquets sains nets, mais pertes saines sur 4 builds | oui | L |
-| **L2** | composant | Dispositifs `ti=43` (grammaire T7) | **+18 105 / −12 paquets, +143 314 utiles** (A/B surcouche) ; HI_1_13_0 hors cadre −5 872 ; `81c02726` +3 580 ; HI_1_10_0 382/401 gains factices | oui | M |
-| L6a | composant + donnée de carte | Largeurs par index de plage (T4-C3) | Live Fire `0797ce72` +3 269 / −3, `60ae07c4` +1 806 / −49 (contexte de production) ; ailleurs nul ou non mesurable | oui | M |
-| L9 | marche (image-clé) | Marche d'image-clé toutes générations (BIS_3 §2) | oracle +1 784 / −1, +45 694 utiles ; 20 gains contredits | oui | S-M |
-| L6b | composant | Sites de position au jeu : `flock-position`, `tacmap-displayasset` | +416 / −10 ; +77 / −16 (A/B surcouche, instruments) | oui | S |
-| L3 | composant | Moteur `ti=2` / `ti=0` + helper `FUN_140d580d0` | **estimé** ≤ 4 331 paquets (`ti=2` 4 208 + `ti=0` 123, causes nommées de la carte v2) ; portage non mesuré | oui | S-M |
-| L4 | composant | Véhicules `ti=40` : porte lue + composants | image-clé **mesuré** : 14 → 137 records fermés sur 7 059 (98 % restent bloqués, R-L4) ; delta **estimé** ≤ 1 666 paquets (causes nommées) | oui | M-L |
-| L7 | marche | NEW sur slot occupé | ≤ 137 paquets (mesuré) | oui | S |
-| LU | marche (structure) | Unifier les localisateurs jumeaux (`marchLocateStrict` et sa copie `facts/killsource/walk.go`), zéro différence, premier lot de la vague 2 | 0 (sortie identique exigée) | non | S-M |
-| LS | marche | Signature du localisateur : tout slot lié à l archétype « high-frequency » (123 strict, puis autre slot high-frequency, puis repli largeur libre), posée UNE fois dans le localisateur unifié par LU (D-67, confié à la campagne le 2026-10-02) | mesuré par l enquête de suite d audit : 362 / 403 kills `scan` rendus à la marche sur trois films ; effet sur la fermeture à mesurer (part de la région (ii)) | oui | S |
-| L0 | instrument | Invariants de l'écrivain, sortie de vue B, classements corrigés | 0 fermeture ; requalifie 8 388 fermés, 2 832 causes, 12 854 « réalloués », 3 560 « naissances non lues » sur `81c02726`, 1 570 arrêts « bloc 0xbc » | carte seulement | M |
+| **L8** | composant | `ti=3` : `low-frequency` porté, `high-frequency` routé par archétype (BIS_3 §6) | **+30 618 / −10 paquets, +234 454 utiles** (A/B surcouche) ; 34 gains contredits ; 3 films HI_1_13_0. Marginale dans la combinaison R-COMB (HI_1_13_0) : +32 108 sains. Prérequis R-HOM levé : grammaire de `i1` établie | oui | S-M |
+| **L1** | marche | Lire les naissances, régions (i) et (ii) | borne oracle (i)+(ii) **+28 168 nets, +360 182 utiles** (L1a seul +16 383 / +196 804 ; L1b seul +11 540 / +162 964) ; dans la combinaison R-COMB : +24 916 (ordre D-RI) ou +26 620 nets (L1 dérivé sans L9). **L1a sous condition par film (R-L1 (d)) : +15 070 paquets sains, +159 864 utiles sains, 0 film en baisse** (seuil choisi sur le corpus). L1b : voir LS et §6.5.2 (proposé : sortir de la vague 2) | oui | L |
+| **L2** | composant | Dispositifs `ti=43` (grammaire T7) | **+18 105 / −12 paquets, +143 314 utiles** (A/B surcouche) ; HI_1_13_0 hors cadre −5 872 ; `81c02726` +3 580 ; HI_1_10_0 382/401 gains factices. Recouvre L1 (D-70) : marginale dans la combinaison HI_1_13_0 +2 341 sains (seul : +6 332) | oui | M |
+| **LS** | marche | Signature du localisateur : tout slot lié à l'archétype « high-frequency », ordre propre à chaque site (D-67, R-LS) | **carte v2 : +18 119 / −2 paquets, +18 086 sains, +169 439 utiles sains, 0 film en baisse** (ordre « 123 strict → fermeture par NEW de tête → signature high-frequency » sur la cuisson) ; killsource : 1 080 morts du `scan` à la marche sur 28 films (dont 362 / 403 sur les trois films de l'enquête), valeurs inchangées, voie publiée (D-74). Non combiné avec L1 (D-79) | oui | S |
+| L6a | composant + donnée de carte | Largeurs par index de plage (T4-C3), Live Fire seulement, plus le site `ti=41 i0` (R-P3) | Live Fire `0797ce72` +3 269 / −3, `60ae07c4` +1 806 / −49 (contexte de production) ; site `ti=41 i0` en plus : `0797ce72` +495 sains, `60ae07c4` −28. **Hors Live Fire : réfuté** (13 films, +15 / −18, −15 sains, R-L6) | oui | M |
+| **LM** (proposé) | composant (profil) | Découpage MPP 8/3 sur les formats 24-25 (R-VEH-2, D-94) | **+80 979 / −2 105 paquets** sur 6 films (2 646 gains contredits) ; avec les composants `ti=40` : +83 050 / −2 092. Pertes NON jugées (`1c4c63c2` −1 606). Formats 20-21 en baisse sous 8/3 ; format 27 −118 413 (témoin négatif) | oui | à estimer |
+| L3a | composant | Moteur `ti=2` / `ti=0` + helper `FUN_140d580d0`, portage HI_1_13_0 | **A/B mesuré (R-L3) : +3 575 paquets sains, +53 521 utiles sains, 0 sain perdu, 0 film en baisse** (remplace l'estimation ≤ 4 331) | oui | S-M |
+| L3b (proposé) | composant | Vieux builds : un bit de trop dans `ti=2` | images-clés du moteur 0/98 → 98/98 avec un bit de moins ; position NON discriminée entre `i4` et `i9` (vérificateur) ; delta +0 / +0 / +4 sains | oui | S |
+| L9 | marche (image-clé) | Marche d'image-clé toutes générations (BIS_3 §2) | oracle +1 784 / −1, +45 694 utiles ; 20 gains contredits. Dans la combinaison : marginale −1 112 sains (ordre D-RI, artefact de l'oracle L1, D-69) ou +1 078 (L1 dérivé sans L9) | oui | S-M |
+| **LP** (proposé) | marche (image-clé) | Désavouer une déclaration d'image-clé que le bloc de type 1 du même chunk dit non vivante (R-P3) | **+699 / −8 paquets, +694 sains, 0 sain perdu, +7 800 utiles sains** ; G1 694 → 388 ; `bf15f7ab` 93,40 → 95,85 % (son fixe). Exige le bloc de type 1 en production (gate 4) | oui | S |
+| L4a | composant | Véhicules `ti=40` en delta : 16 composants, porte posée (loi de l'écrivain) | **A/B mesuré (R-L4) : +1 436 / −0 paquets, 35 contredits (+1 401 sains), +26 843 utiles**, 0 film en baisse (remplace l'estimation ≤ 1 666) | oui | M |
+| L4b (proposé) | composant | Véhicules `ti=40` en image-clé (porte lue par châssis) | 14 → 3 058 / 3 058 voisins fermés (formats 24 à 27), à condition de LK et LM ; formats 20-21 : 0 / 2 036 | oui | M |
+| LK (proposé) | composant (image-clé) | Lecture d'image-clé sous la portée `DAT_144e61ea0` + chemin `i0` de l'écrivain, tous archétypes (R-VEH-1, D-93) | `ti=40` 3 058 / 3 058 (avec LM sur 24-25) ; `ti=35` (format 27) 142 → 2 006 / 2 008 voisins. Non confirmé comme bascule de `PorteeBaseline` (critère écrit non rejoué) ; image-clé seulement (en delta, la variante qui pose portée ET `i0` perd 9 573) | oui | M |
+| L6b | composant | Sites de position au jeu : `flock-position`, `tacmap-displayasset` | +416 / −10 ; +77 / −16 (A/B surcouche, instruments) ; marginale dans la combinaison : +241 sains (HI_1_13_0) | oui | S |
+| L7 | marche | NEW sur slot occupé | ≤ 137 paquets (mesuré) ; R-P3 y rattache le NEW refusé après une liaison à masque impossible (`11de8353`) | oui | S |
+| LU | marche (structure) | Unifier les localisateurs jumeaux (`marchLocateStrict` et sa copie `facts/killsource/walk.go`), zéro différence, premier lot de la vague 2. Doit porter un paramètre d'ordre (les deux sites n'ont pas le même ordre, D-73) | 0 (sortie identique exigée) | non | S-M |
+| L0 | instrument | Invariants de l'écrivain, sortie de vue B, classements corrigés | 0 fermeture ; requalifie 8 388 fermés, 2 832 causes, 12 854 « réalloués », 3 560 « naissances non lues » sur `81c02726`, 1 570 arrêts « bloc 0xbc ». Ajouts proposés le 2026-10-02 : « sortie de vue B par rejet ⇒ non fermé » (4 598 requalifiés, dont 1 008 jugés sains aujourd'hui), « masque au-delà de l'archétype » (D-85), candidat « mot de DEL non nul » (D-83) | carte seulement | M |
 | L10 | garde-fou | Cardinal du bloc de type 1 ≠ 8 191 : refusé ou daté, largeur lue sur le cardinal | 0 sur le corpus (mesuré : 8 191 partout) | non sur le corpus | S |
+| ~~L1c~~ | — | Naissances lointaines par recherche d'en-tête | **RETIRÉ** (confirmé par R-L1 (a) : les « NEW » de (iii') ne sont pas des records ; R-P6 : aucun filtre d'occurrence général) | — | — |
 | ~~L5~~ | — | Bloc `0xbc` de la vue C | **SORTI** : mesuré 6 et 9 paquets sous les deux formes, contre 11 et 10 pour les témoins décalés (BIS_2 §2) ; borne ≤ 953 réfutée | — | — |
 
-Recherches préalables (research, aucun fichier de production) :
+Recherches préalables (research, aucun fichier de production) — **toutes jouées le 2026-10-02**
+(workflow `wf_9088d8bd-e43`) ; statut détaillé au §6.5.1 :
 
-| Recherche | Objet | Bloque |
-|---|---|---|
-| R-L1 | (a) région (iii') ; (b) les 4 598 paquets fermés après un rejet (D-2, D-56) ; (c) lecture de la vue A des paquets à événements par grammaire ; (d) condition PAR FILM qui sépare les chaînes de tête justes des fausses avant HI_1_12_0 (D-46) | L1b (c), L1a (d) |
-| R-L3 | bassin `i15` « tout à un » sur HI_1_4_1, v31, v33 (critique, point 30) ; porteur, méthode et gate au §6.2 | gate « aucun film en baisse » de L3 |
-| R-COMB | L1 (oracle (i)+(ii)) + L8 + L2 + L9 ensemble sur HI_1_13_0, en copie de recherche (N10) | la phrase « la phase 2 seule n'atteindra pas le déclencheur » (estimée) |
-| R-L4 | largeur `ti=40` fausse en image-clé (D-52) ; châssis inconnus (§6.2 L4) | L4 |
-| R-L6 | ordre des plages des cartes à deux sbsp ; index 1 sur les cartes à un sbsp (D-54) | L6a hors Live Fire |
-| R-P3 | coupables résiduels des décalages : `ti=20 i1`, `DEL ti=0`, `ti=14 i1`, `ti=41 i2` (D-56) ; gate = ces quatre comptes | — |
-| R-P6 | naissances à plus de 3 paquets (6 724 eid, 61 858 paquets hors cadre) : règle qui localise une naissance lointaine. Bornes mesurées : `propre+alloc+suivant` +3 227 / −578 ; `propre+pont` +295 / −2 (BIS_3 §4) | élargit L1 |
-| R-HOM | recensement des composants homonymes (nom → tables de composant du binaire, D-49) | L8 (prérequis léger) |
+| Recherche | Objet | Bloque | Statut (2026-10-02) |
+|---|---|---|---|
+| R-L1 | (a) région (iii') ; (b) les 4 598 paquets fermés après un rejet (D-2, D-56) ; (c) lecture de la vue A des paquets à événements par grammaire ; (d) condition PAR FILM qui sépare les chaînes de tête justes des fausses avant HI_1_12_0 (D-46) | L1b (c), L1a (d) | (a) établi ; (b) établi ; (c) structure établie, gain partiel (estimé) ; (d) établi sur le corpus, seuil choisi sur le corpus (`R_NAIS.md`, `R_LOC.md` §4) |
+| R-L3 | bassin `i15` « tout à un » sur HI_1_4_1, v31, v33 (critique, point 30) ; porteur, méthode et gate au §6.2 | gate « aucun film en baisse » de L3 | portage : gate tenu (établi) ; vieux builds : un bit de trop mesuré, localisation à `i4` NON CONFIRMÉE (`R_COMP.md` §2) |
+| R-COMB | L1 (oracle (i)+(ii)) + L8 + L2 + L9 ensemble sur HI_1_13_0, en copie de recherche (N10) | la phrase « la phase 2 seule n'atteindra pas le déclencheur » (estimée) | mesuré ; la partie estimée de la phrase n'est pas une borne (vérificateur) ; R-COMB-2 proposée (`R_COMB.md`) |
+| R-L4 | largeur `ti=40` fausse en image-clé (D-52) ; châssis inconnus (§6.2 L4) | L4 | (a) établi (MPP 8 bits : mesuré) ; (b) mécanisme mesuré, lecture fausse établie pour `77ef810a`, supposée pour les deux autres (`R_VEH.md` §1-§3) |
+| R-L6 | ordre des plages des cartes à deux sbsp ; index 1 sur les cartes à un sbsp (D-54) | L6a hors Live Fire | ordre établi ; D-54 réfuté ; L6a hors Live Fire réfuté (`R_VEH.md` §5) |
+| R-P3 | coupables résiduels des décalages : `ti=20 i1`, `DEL ti=0`, `ti=14 i1`, `ti=41 i2` (D-56) ; gate = ces quatre comptes | — | partiel : G2, G3, G4 expliqués, G1 694 → 388 (`R_COMP.md` §4) |
+| R-P6 | naissances à plus de 3 paquets (6 724 eid, 61 858 paquets hors cadre) : règle qui localise une naissance lointaine. Bornes mesurées : `propre+alloc+suivant` +3 227 / −578 ; `propre+pont` +295 / −2 (BIS_3 §4) | élargit L1 | partiel : pas de règle générale, pas de lot (`R_NAIS.md` §4) |
+| R-HOM | recensement des composants homonymes (nom → tables de composant du binaire, D-49) | L8 (prérequis léger) | établi : un seul homonyme de grammaire (`R_COMP.md` §3) |
+| R-LS | vérification et mesure de D-67 (ajoutée au workflow) | LS, LU | établi (`R_LOC.md` §2-§3) |
 
 **Non retenus** (mesurés nuls ou négatifs) :
-- T3-C2, « ne pas lire la vue C après un rejet » : 0 paquet gagné, jusqu'à 4 598 perdus.
+- T3-C2, « ne pas lire la vue C après un rejet » : 0 paquet gagné, jusqu'à 4 598 perdus. **Réévalué
+  le 2026-10-02 (R-L1 (b), N-3)** : ces 4 598 fermetures sont factices ; si l'invariant « sortie de
+  vue B par rejet ⇒ non fermé » entre au juge (L0), T3-C2 ne perd plus aucun paquet sain (sous le
+  juge actuel, il en perd 1 008).
+- Ajoutés le 2026-10-02 : L6a hors Live Fire (−15 sains, 9 films sur 13 en baisse, R-L6) ; le repli
+  à largeur libre du slot 123 dans la cuisson (net −14 141 sains, D-77) ; l'ordre de l'enquête
+  pour LS sur le site de la cuisson (`1c4c63c2` en baisse) ; le désaveu des NEW à masque impossible
+  (G3 → 0 mais −257 sains, R-P3) ; la portée sur les NEW du flux delta (−9 573 sur le format 27,
+  avec `i0` écrivain, R-L4) ; la feuille 4 brute dans les NEW (−3 à −7) ; la variante de L1a par
+  chunk (`60ae07c4` −59, R-L1 (d)).
 - T1-6, garde par eid complet : ≤ 325 paquets.
 - T2 et T8-C1/C3 : aucun écart.
 - T5-5, kinds 1/2 : jamais écrits dans un film.
@@ -779,6 +1044,8 @@ Recherches préalables (research, aucun fichier de production) :
   `FUN_142f2c050` / `FUN_1406d60f4`) ?
 - (d) La condition par film qui empêche L1a de perdre sur les vieux builds (D-46).
 - Gate : vet et tests `-tags=research` ; aucun fichier de production. Taille S-M. J12 : non.
+- **Jouée le 2026-10-02** (`R_NAIS.md` pour (a), (b), (d) ; `R_LOC.md` §4 pour (c)) : (a), (b) et (d)
+  établis, (c) partiel ; résultats au §6.5.1.
 
 **R-L3 — Recherche préalable à L3 (research, sonde + Ghidra)** (porteur, méthode et gate ajoutés le
 2026-10-02, point 30 de la critique n° 1)
@@ -795,6 +1062,9 @@ Recherches préalables (research, aucun fichier de production) :
 - Gate : vet et tests `-tags=research` ; publier, par film des trois builds, les paquets fermés sains
   sous le portage contre la référence. R-L3 rend « aucun film en baisse », ou la liste des films en
   baisse avec leur cause. Aucun fichier de production. Taille S.
+- **Jouée le 2026-10-02** (`R_COMP.md` §2) : « aucun film en baisse » pour le portage HI_1_13_0 ;
+  registre `ti=2` identique sur les 21 films ; sur les trois vieux builds, un bit de trop entre
+  `i4` et `i10` (localisation à `i4` non confirmée, §6.5.1). Proposé : scinder L3 (§6.5.2).
 
 **L1 — Lire les naissances d'entités (marche)**
 
@@ -858,6 +1128,17 @@ passe en diagnostic typé.
 unifié par le lot LU. Les fichiers `object_deaths_march.go` et `facts/killsource/walk.go` ci-dessus
 se réduisent alors au localisateur unifié.
 
+*Mis à jour le 2026-10-02 (recherches préalables, §6.5.2)* :
+- L1a : condition par film de R-L1 (d) (allocateur à cinq pools ≥ 50 % des NEW propres du film)
+  — 0 film en baisse, +15 070 sains ; deux passes, ou forme causale (−1 689 sains de gain) ; seuil
+  choisi sur le corpus (D16).
+- L1b : n'est plus un correctif de localisateur. LS localise 45,8 % de la région (ii) ; le reste
+  (26 427 paquets) exige les grammaires de charge des messages de la vue A (41 genres de tête).
+  Proposé : sortir L1b de la vague 2 (D15).
+- Gate : jouer L1 sur une tête qui porte déjà L9, avec `4f77afc1` pour témoin nommé (D-69) ; nommer
+  aussi `1c4c63c2` et `084a804d` (l'oracle y perd 1 216 et 214 sains en brut, le critère du gate 2
+  restant net par film).
+
 **LU — Unifier les localisateurs jumeaux (zéro différence, vague 2, premier lot)** (ajouté le
 2026-10-02)
 - Objet : `marchLocateStrict` (`grammar/object_deaths_march.go`) et sa copie
@@ -868,6 +1149,10 @@ se réduisent alors au localisateur unifié.
   `frame_closure.golden` identique, `grammar.Rev` et `killsource.Rev` inchangés (révision constante),
   plus un garde-rail (test grep) qui interdit une seconde copie (règle 6).
 - Taille S-M. Sortie : non.
+- *Mis à jour le 2026-10-02 (R-LS, D-73)* : les deux sites n'ont déjà pas le même ordre (la cuisson
+  n'a pas de repli à largeur libre) et LS leur en donne deux différents. Le localisateur unifié porte
+  donc un paramètre d'ordre (ou deux appelants d'un même cœur) ; « posé une fois » vaut pour le test
+  de la signature, pas pour l'ordre.
 
 **LS — Signature du localisateur figée sur le slot 123 (marche, vague 2, juste après LU)** (confié à
 la campagne le 2026-10-02 par accord avec la session du chantier de suite d audit, l utilisateur
@@ -884,6 +1169,21 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
 - Gate : §6.0 complet, dont le gate killsource (delta déclaré, montée de `killsource.Rev`, backfill
   killsource déclaré) et le gate par film ; test d après les films de l enquête (trois films cités).
 - Taille S. Sortie : oui.
+- *Mesuré le 2026-10-02 (R-LS, `R_LOC.md` §3 ; 20 films + 9 de l'enquête)* :
+  - l'ordre de l'enquête N'EST PAS retenu pour la cuisson : il fait baisser `1c4c63c2` (13 540 →
+    12 691 paquets sains) ;
+  - cuisson (`debutDeLaListe`) : « 123 strict → fermeture par NEW de tête → signature
+    high-frequency », sans repli à largeur libre : +18 119 / −2 paquets, +18 086 sains, +169 439
+    utiles sains, 0 film en baisse sur 30 ; HI_1_13_0 de 68,6 % à 73,8 % sur le fixe de R-LS ;
+  - killsource et `marchLocalise` : « 123 strict → signature high-frequency → repli libre du slot
+    123 » : 1 080 morts du `scan` à la marche sur 4 366, aucune mort apparue ni disparue, tag,
+    statut, crédit et origine inchangés ; les trois films de l'enquête redonnent exactement
+    362 / 403 ;
+  - la voie (`read_path`) est publiée (D-74) : montée de `killsource.Rev` et backfill killsource DUS ;
+  - non mesuré : la marche des morts d'objet (`ScanMarchFacts`) sous LS ; l'ordre retenu n'est
+    mesuré que par la sonde (la surcouche de `cmd_fermeture` ne réalise que l'ordre de l'enquête) ;
+    `51ebbc0f` (D-76) ;
+  - pourcentages « variables » de la note = fermés BRUTS ; en sains, HI_1_13_0 80,3 % → 82,9 %.
 
 **L8 — `ti=3` low-frequency et routage des homonymes (composant)**
 - Gain mesuré (BIS_3 §6, surcouche) : +30 618 / −10 paquets, +234 454 utiles, hors cadre de 264 757 à
@@ -901,7 +1201,11 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
 - Fichiers : `grammar/dispatch_item.go` (routage par archétype ou par descripteur, l. 122) ;
   `components_probe.go` (`compHighFrequency`) ; un lecteur `ti=3 i0` ; `registry.go` (sur sa forme
   post-J12.4, contrainte de structure) ; `ecs_table.tsv`.
-- Prérequis : R-HOM (recensement léger).
+- Prérequis : R-HOM (recensement léger). **Levé le 2026-10-02** (`R_COMP.md` §3) : la table
+  `0x143d07af0` est enregistrée par `FUN_140e460fc` avec `+0x4754 = 3` : la grammaire de `i1` est
+  ÉTABLIE. Routage par archétype ou par table, jamais par nom ; corriger `ecs_table.tsv` (D-86) ; un
+  garde-fou « dispatch par table » est constructible (D-89). Recalcul en paquets sains (BIS_3) :
+  +30 596 sains.
 - Gate : §6.0, points 1, 2, 3 (killsource, étendu le 2026-10-02 : N1), 6 et 7.
 - Taille S-M. Ne dépend d'aucune recherche de marche.
 
@@ -948,6 +1252,15 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
 - Gate : §6.0, avec les pertes de `60ae07c4` (49) jugées par le juge des invariants. Hors Live Fire,
   attend R-L6.
 - Taille M.
+- *Mis à jour le 2026-10-02* :
+  - R-L6 (`R_VEH.md` §5) : ordre des plages établi pour toutes les cartes, mais la lecture par
+    index ne gagne rien hors Live Fire (13 films : +15 / −18, −15 sains, 9 films en baisse). L6a
+    reste LIMITÉ à Live Fire sur le corpus ;
+  - R-P3 (`R_COMP.md` §4) : étendre le lot au site `ti=41 i0` (`consumeObjectPositionMonde`, qui lit
+    les largeurs de la plage de la carte au lieu de la ligne de l'index lu, `FUN_14076e524`). G4
+    (160) ne tombe à 0 qu'avec LES DEUX lectures (position d'objet du monde au jeu ET lecture par
+    index) ; `0797ce72` +495 sains de plus, `60ae07c4` −28 (perte déjà vue par D-55, à juger sous
+    D4).
 
 **L6b — Sites de position lus comme le jeu (composant)**
 - Gain mesuré (BIS_2 §3.1, contexte des instruments) :
@@ -975,6 +1288,12 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
 - Gate : §6.0, avec en plus `keyframe_closure.golden` et la recherche exhaustive d'en-tête comme témoin
   (87 sur 87). Aucune déclaration nouvelle ne doit contredire un bloc.
 - Taille S-M.
+- *Mis à jour le 2026-10-02* : dans la combinaison R-COMB, la marginale de L9 est négative sur
+  HI_1_13_0 (−1 112 sains) quand l'oracle L1 est dérivé après L9, positive (+1 078) sinon : c'est un
+  artefact de l'oracle L1 (D-69), pas un défaut de L9. R-P3 propose un lot voisin, LP (désaveu des
+  déclarations que le bloc de type 1 dit non vivantes), qui exige la lecture du bloc en production
+  (§6.5.2) ; le cas (a) de R-P3 ressemble à une erreur de la marche d'image-clé par voisinage
+  (vérificateur, `bf15f7ab` slot 553).
 
 **L3 — Moteur `ti=2` / `ti=0` et helper `FUN_140d580d0` (composant)**
 - Gain : **estimé** ≤ 4 331 paquets (`ti=2` 4 208, dont `i15` 3 996 ; `ti=0` 123). Sur HI_1_13_0,
@@ -987,6 +1306,17 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   `dispatch_player.go`. Migration des cinq copies de `FUN_140d580d0` (D-15) : un helper, plus un
   garde-rail grep (règle 6).
 - Taille S-M.
+- *Mis à jour le 2026-10-02 (R-L3, `R_COMP.md` §2)* : A/B delta du portage en surcouche, 20 films :
+  +3 575 paquets sains, +53 521 utiles sains, 3 924 gagnés dont 316 contredits, 0 sain perdu,
+  aucun film en baisse (gate par film tenu). Témoins `i15 ±1` : 0 / 715 images-clés fermées. Proposé :
+  - L3a = ce portage (vague 1) ;
+  - L3b = vieux builds : un bit de moins ferme 98 / 98 images-clés du moteur, mais la position du
+    bit n'est pas discriminée entre `i4` et `i9` (vérificateur : un décalage de −1 à l'entrée de
+    `i5` à `i10` ferme autant). Une correction posée sur `i4` fermerait les records en rendant une
+    valeur fausse si le bit est ailleurs. Prérequis : relire en Ghidra (HI_1_13_0) les lecteurs `i5`
+    à `i9`, ou trouver un oracle de VALEUR (numéro de manche, minuteurs). Condition mesurable par
+    film (pas de branche sur le build) ; preuve par mesure sous D6. Effet delta mesuré : +0 / +0 /
+    +4 sains sur ces trois builds.
 
 **L4 — Véhicules `ti=40` : porte lue et composants (composant)**
 - Gain :
@@ -1015,6 +1345,22 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   registre des replis (`facts/fallback/noms.go`, `registre_filmdec_marche.go`), `ecs_table.tsv`.
 - Gate : §6.0. Porte LUE et composants dans le MÊME lot.
 - Taille M-L.
+- *Mis à jour le 2026-10-02 (R-L4, `R_VEH.md`)* :
+  - prérequis 1 LEVÉ : la « largeur fausse » est en fait trois lectures communes (portée
+    `DAT_144e61ea0` en image-clé, chemin `i0` de l'écrivain, MPP 8/3 sur les formats 24-25) ; les
+    trois ensemble ferment 3 058 / 3 058 voisins (formats 24 à 27 ; témoins ±1 bit ≤ 7,7 %). Les
+    pièces montées portent toutes `bVar14 = 1` : feuille 4 en `R(96)`. La porte par châssis est
+    confirmée par la fermeture (120 posée partout, 2 952 levée partout, 3 058 par châssis). Formats
+    20-21 : 0 / 2 036 (D-92) ;
+  - delta mesuré : 16 composants, porte posée en delta : +1 436 / −0 paquets, +1 401 sains, +26 843
+    utiles, aucun film en baisse ;
+  - prérequis 2 : les trois châssis sont des LECTURES FAUSSES selon la note (MPP lu à 9 bits au lieu
+    de 8 sur les formats ≤ 25 : 0 / 5 417 châssis connus à 9/5 contre 4 526 / 5 417 à 8/3). Établi
+    pour `77ef810a` (NEW faux) ; SUPPOSÉ pour `4118381d` et `d0b40d0a` (vérificateur, D-98). La
+    proposition « ne plus les identifier » tient, avec cette justification ;
+  - « NE PAS PORTER » `i41`/`i42` : démenti en image-clé (D-14) ;
+  - proposé : scinder L4 en L4a (delta, prêt sous D5) et L4b (image-clé, après LK et LM) (§6.5.2,
+    D15).
 
 **L7 — NEW sur slot occupé (marche)**
 - ≤ 137 paquets. Lieu : `grammar/frame_infer.go` (`contreditUneEntiteVivante`).
@@ -1022,6 +1368,9 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   pas pour le slot.
 - Place : vague 2, avec L1, dans le localisateur unifié (§6.3 D-RI).
 - Priorité basse. Taille S.
+- *Mis à jour le 2026-10-02 (R-P3)* : chronique `11de8353` slot 688 : un NEW `ti=14` à masque
+  impossible est lié, puis le vrai NEW du bipède est refusé sur ce slot « occupé ». Désavouer les
+  NEW à masque impossible ne convient pas (−257 sains).
 
 **L0 — Instrument (carte seulement)**
 - L0.1 : invariants de l'écrivain et sortie de vue B dans la carte (`bloquantDuPaquet` : la sortie de
@@ -1042,6 +1391,15 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   une cuisson, sauf décision D2.
 - Gate : Gate 1 du §2, à révision constante.
 - Taille M.
+- *Ajouts proposés le 2026-10-02* :
+  - L0.6 : invariant « sortie de vue B par rejet ⇒ paquet non fermé » (T3-C1 ; R-L1 (b)) : requalifie
+    4 598 fermetures, dont 1 008 jugées saines aujourd'hui (0,36 % des sains de référence) ;
+  - L0.7 : « masque au-delà du dernier composant de l'archétype » classé violé à la LECTURE (D-85) ;
+    le libellé `DEL ti=0` de `dernier_composant_x_classe` désigne un en-tête mal lu (R-P3) ;
+  - L0.8 (candidat, à mesurer d'abord) : mot de 32 bits d'un DEL non nul hors archétype `0x10`
+    (D-83) ;
+  - L0.9 : témoins décalés de 2 à 8 bits en plus de ±1 (D-99), et prise en compte de
+    l'auto-synchronisation de la vue C (D-80) dans la lecture des témoins.
 
 **L10 — Garde-fou du cardinal du bloc de type 1**
 - Un film dont un bloc de type 1 n'a pas 8 191 entrées est refusé ou daté, et sa largeur est lue sur
@@ -1065,6 +1423,9 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   - Recommandation : (a), en publiant les deux dénominateurs. Le fixe est le maximum des records
     utiles lus sur {référence, lots déjà fusionnés, oracles mesurés}, recalculé à chaque vague
     (§6.0, « Pourcentages », N7).
+  - *Tranchée le 2026-10-02 (D1 du §3 : indicateur publié à chaque vague)*. Chiffre à jour (§6.5.3) :
+    sous les six leviers de R-COMB, HI_1_13_0 vaut 86,0 à 88,0 % sur le fixe de R-COMB, 83,7 à
+    85,7 % sur le fixe consolidé.
 - **D-RI (nouvelle) — Où atterrissent les lots, par rapport à la représentation intermédiaire ?**
   - ANALYSE §5.1 et §6 recommandaient « marcheur avant la campagne » : les correctifs de grammaire
     atterrissent une fois, dans un seul marcheur. La version précédente de ce §6 faisait atterrir
@@ -1110,6 +1471,7 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
        refactore une marche déjà juste, à zéro différence contre les références de la fin de la
        vague 2. Puis 2.1 à 2.6, 2.7, 3.x.
     - R-L1, R-L3, R-L4, R-L6, R-P3, R-P6, R-HOM, R-COMB : sans sortie, possibles tout de suite.
+      **Toutes jouées le 2026-10-02** (et R-LS) ; ordre de vague révisé proposé au §6.5.4.
   - **Ce que cet ordre règle** :
     - N4 : L1 n'attend plus le lot 2.7 ; c'est 2.7 qui attend L1. C'est conforme à ANALYSE §7 (2)
       (« le lot 2.7 attend la campagne ») ;
@@ -1141,14 +1503,26 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   (R-P6, borne +3 227 / −578, filtre non validé au niveau de l'occurrence), ou n'admettre que la
   lecture par grammaire (L1a, L1b) ? Recommandation : grammaire seule tant que R-P6 n'a pas de filtre
   d'occurrence.
+  - *Mis à jour le 2026-10-02 (R-P6, `R_NAIS.md` §4)* : des filtres d'occurrence existent mais ne
+    couvrent que 40 à 111 eid (`ferme+suivant` +474 / −4, faux positifs estimés ≈ 13 % et
+    sous-estimés : le témoin ne compte que les cibles qui en ont un). Le filtre `propre+pont` de
+    BIS_3 §4 (68 / 72 contre 6 / 72, +295 / −2), omis par la note, discrimine mieux (vérificateur).
+    La borne propre+alloc+suivant (+3 227 / −578) repose sur une propriété de l'eid. La
+    recommandation « grammaire seule » est maintenue ; aucun lot P6 n'est proposé.
 - **D4** : le critère de retrait des exceptions de position (« monter sans aucune baisse ») est-il
   maintenu ? Aucun site ne le remplit sur tous les builds (BIS_2 §3.4). Avec le juge des invariants,
   les pertes factices peuvent être écartées.
 - **D5** : où vit la table châssis -> type de physique (la couche `grammar` ne dépend pas de
   `replay`) ? La mention « NE PAS PORTER » de `ti=40 i41/i42` peut-elle être levée en image-clé ? Et
   l'abandon de l'identification des trois châssis (§6.2 L4) est-il accepté ?
+  - *Mis à jour le 2026-10-02 (R-L4)* : `i41`/`i42` se lisent en image-clé (3 058 / 3 058 avec
+    LK et LM) ; l'abandon des trois châssis se justifie désormais par des lectures fausses (établi
+    pour `77ef810a`, supposé pour les deux autres, D-98).
 - **D6** : un seul exécutable (HI_1_13_0) : la preuve d'une grammaire des vieux builds par mesure
   (stabilité, fermeture, juge des invariants) est-elle acceptée ?
+  - *Cas concrets apparus le 2026-10-02* : MPP 8 bits des formats 24-25 (LM, mesuré, aucun
+    exécutable) ; bit de trop de `ti=2` sur les formats 20-21 (L3b), où la fermeture seule ne
+    localise pas le bit (D-92) : la mesure de fermeture ne suffit pas à fixer une valeur.
 - **D7** : ordre (D-RI) et GO par lot. Sur la branche, une montée de `grammar.Rev` par lot qui change
   une sortie ; au parc, UNE recuisson par vague fusionnée (deux vagues, donc deux recuissons). La
   première périme le parc recuit par J11.4 : décider quand, et par qui.
@@ -1177,6 +1551,38 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
     après le lot.
   - **Recommandation** : **+10 % de durée de cuisson et +10 % de pic mémoire au plus**, mesurés sur
     trois témoins et un BTB. Au-delà, le lot est revu avant tout GO de fusion.
+  - *2026-10-02* : LP (proposé) lit aussi le bloc de type 1 en production et tombe sous ce gate.
+
+**Décisions nouvelles, issues des recherches préalables du 2026-10-02 (proposées, NON tranchées)**
+
+- **D12 — Dénominateur fixe consolidé.** Adopter, comme fixe de départ de la vague 1, le maximum par
+  film sur les marches de TOUS les chantiers (HI_1_13_0 2 959 104, corpus 7 176 150 ; §6.5.3) ?
+  Recommandation : oui ; c'est la règle N7 appliquée à la lettre (les A/B en surcouche comptent comme
+  oracles mesurés).
+- **D13 — LS : deux ordres, un par site.** Accepter « 123 strict → fermeture par NEW de tête →
+  signature high-frequency » pour la cuisson, et « 123 strict → signature high-frequency → repli
+  libre » pour killsource et `marchLocalise` (LU porte un paramètre d'ordre) ? Cela s'écarte de la
+  règle unique proposée par l'enquête de suite d'audit (D-67, D-73). Conséquence déclarée : montée
+  de `killsource.Rev` et backfill killsource (D-74). Recommandation : oui (seul ordre mesuré sans
+  baisse).
+- **D14 — Lots neufs.** Admettre LM (MPP 8/3, formats 24-25), LK (image-clé sous portée + `i0`
+  écrivain) et LP (désaveu des déclarations d'image-clé que le bloc dit non vivantes) ?
+  Recommandation : LM et LK en vague 1 (composants), après le jugement des pertes de LM (2 105
+  paquets, dont 1 606 sur `1c4c63c2`) et le rejeu du critère écrit de `PorteeBaseline` pour LK
+  (D-93) ; LP en vague 2 avec L1 (il lit le bloc de type 1 en production).
+- **D15 — Scissions et retraits.** L3 → L3a (portage, vague 1) + L3b (vieux builds, après
+  discrimination `i4`..`i9`) ; L4 → L4a (delta, vague 1) + L4b (image-clé, après LK et LM) ; L1b sort
+  de la vague 2 et devient un chantier « grammaire des messages de la vue A » (41 genres de tête,
+  borne estimée +8 826 sains à 45 % de gains factices près). Recommandation : oui pour les trois.
+- **D16 — Condition par film de L1a.** Le seuil (50 %) est choisi sur le corpus même ; aucune
+  validation hors échantillon. L'accepter tel quel, ou exiger d'abord une validation sur des films
+  hors corpus (les 9 films de l'enquête, `81c02726`) ? Et deux passes (+15 070 sains) ou la forme
+  causale à une passe (+13 381) ? Recommandation : validation hors échantillon d'abord (recherche,
+  sans sortie), forme causale si le plafond D11 est menacé par la seconde passe.
+- **D17 — Surcouche unique post-J12** (complète D10). Les surcouches des chantiers sont mutuellement
+  incompatibles sous le tag commun et quatre sur cinq sont d'avant J12 (D-100). Recommandation : UNE
+  surcouche post-J12 (base `r_fusion_overlay_postj12/`) réunissant les crochets des cinq chantiers,
+  avant R-COMB-2 et toute mesure en surcouche de la vague 1.
 
 ### 6.4 Statuts proposés pour le §2 (à reporter par le superviseur ; ce §6 ne modifie pas le §2)
 
@@ -1189,3 +1595,129 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
 - **Gate 1** : trace déjà dans le journal du §4, à compléter par les gates des mesures bis (BIS_1
   §10, BIS_2 §8, BIS_3 §10). Il manque `go test ./internal/archlint/` (critique n° 2, N2 ; D-66) :
   à jouer et consigner avant de clore la phase 1.
+
+### 6.5 Recherches préalables du 2026-10-02 : résultats et effet sur les lots
+
+**Provenance.** Workflow `wf_9088d8bd-e43` : six chantiers en worktrees temporaires détachés sur
+`fe18bf67c` (avant J12), chacun suivi d'un vérificateur adverse qui a recalculé les chiffres par awk
+sur les TSV et relu Ghidra en lecture seule, sans commande `go`. Notes et pièces intégrées le
+2026-10-02 sous `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/` (176 fichiers copiés à l'identique,
+aucune collision) : `R_COMB.md`, `R_LOC.md`, `R_NAIS.md`, `R_COMP.md`, `R_VEH.md`, `R_FUSION.md`,
+leurs dossiers `r_*_tsv/`, `r_*_ghidra/`, `r_*_overlay/`, et 25 sondes `r_*_research_test.go` (24 sous
+`grammar/`, une sous `internal/himap/`). Les chiffres sont mesurés sur `fe18bf67c` ; la carte v2 étant
+identique après J12 (§6.0), ils valent pour la tête, sauf ce qui passe par une surcouche d'avant J12
+(D-100 ; J12 étant prouvé neutre, l'écart attendu est nul : supposé, non mesuré).
+
+Convention : « mesuré » = compté sur les films ; « établi » = lu (Ghidra ou code) et confirmé par la
+mesure ; « estimé » / « supposé » = non mesuré. Un item que le vérificateur ne confirme pas est
+marqué **NON CONFIRMÉ** avec sa raison.
+
+#### 6.5.1 Statut de chaque recherche
+
+| Recherche | Statut | Résultat (chiffres) | Verdict adverse | Note |
+|---|---|---|---|---|
+| R-COMB | mesuré | Six leviers ensemble (L1 oracle, L8, L2, L9, L6a, L6b), 20 films. Indicateur (utiles sains / fixe de R-COMB) : HI_1_13_0 69,8 → **86,0 %** (ordre D-RI) ou **88,0 %** (L1 dérivé sans L9) ; HI_1_12_0 24,1 → 88,8 % ; HI_1_8_0 → 51,3 % ; HI_1_9_0 → 37,0 % ; HI_1_11_0 → 35,4 % ; HI_1_10_0 → 22,2 % ; vieux builds ≤ 0,7 % ; corpus 39,1 → 50,6 / 51,3 % ; `81c02726` 77,1 → 98,2 %. Variable HI_1_13_0 80,3 → 86,9 / 88,3 %. Les leviers ne s'additionnent pas (HI_1_13_0 : somme des seuls +547 609 utiles sains, combinaison +465 529 ou +525 771). Aucun film en baisse nette | tient (chiffres recalculés) ; corrections : « L1 +24 916 dans la combinaison » vaut pour l'ordre D-RI seulement (+26 620 sinon) ; mécanisme L1×L2 estimé ; le gate 2 est NET par film (tenu), les pertes brutes sont une information | `R_COMB.md` |
+| R-COMB, phrase « la phase 2 seule n'atteindra pas 95 % » | partiel | Mesuré : aucun build n'atteint 95 % sous les six leviers. HI_1_13_0 : il manque 200 319 utiles sains (6,95 points) | **NON CONFIRMÉ pour la partie estimée** : « au plus ~55 700 records, ~90 % » n'est pas une borne (densité moyenne 5,95 par paquet, alors que les paquets fermés en portent 9,09 : ~85 100 records, ~91 % ; seule borne stricte = 99,5 %) ; L6a hors Live Fire était oublié (mesuré depuis par R-L6 : −15 sains). Reformulation retenue au §6.5.3 | `R_COMB.md` §7 |
+| R-L1 (a) | établi | L'écrivain n'écrit jamais un NEW après un DELTA dans un paquet (Ghidra : ordre NEW → DELTA → DEL, budget, retrait du record qui ne tient pas). 1 289 liaisons : X attesté 1 094 (84,9 %) ; paquet relu depuis l'occurrence ferme sain 5 / 2 143 (témoin 2 / 177) ; `R(6)` = pont 0 / 33 | tient ; corrections : sans les 100 « réalloués » (reposent sur D-43), 994 / 1 289 (77,1 %) ; pas de témoin d'attestation fortuite ; tables pont et décalage hors du livrable (D-101) | `R_NAIS.md` §1 |
+| R-L1 (b) | établi | Les 4 598 fermés après un rejet sont FACTICES : eid nul 0 / 4 598 ; un début de vue C antérieur ferme 4 402 / 4 598 (95,7 %) contre 11,0 % au témoin ; juge actuel : 3 590 contredits, 1 008 « sains » | tient ; corrections : témoin non symétrique (sous-estime le taux nul sans pouvoir inverser l'écart), échantillon ≈ 1/8 et non 1/16, témoin complet 11,8 % ; « débordement du terminateur » = déduction ; T3-C2 sans perte saine SEULEMENT si l'invariant entre au juge | `R_NAIS.md` §2 |
+| R-L1 (c) | structure établie ; gain partiel (estimé) | Vue A = messages déjà sérialisés recopiés sans longueur (`FUN_142f2c050`, `FUN_140bbd474`, lecteur `FUN_14080a9d4`, 123 genres) : se lit jusqu'au bout seulement en portant la charge de chaque genre. Après LS, 26 427 paquets non localisés ; 41 genres de tête, 56,9 % sans grammaire Go. Oracle « départ de vue C » : +8 826 sains / +83 609 utiles sains, dont 45 % de gains factices | tient ; corrections : statistiques et oracle faits sur la région de l'ordre de l'enquête (26 421), pas sur l'ordre retenu ; HI_1_13_0 +1,8 point sur cet ordre-là, non mesuré sur l'ordre retenu ; ce n'est pas un majorant ; « table des gestionnaires construite à l'exécution » = supposé fort | `R_LOC.md` §4 |
+| R-L1 (d) | établi sur le corpus | Condition par film : allocateur à cinq pools ≥ 50 % des NEW propres (≥ 30 NEW). +15 070 paquets sains, +159 864 utiles sains, 0 film en baisse (deux passes) ; causal +13 381 / +141 294, 0 film en baisse. HI_1_13_0 70,54 → 75,93 % (fixe de R-L1 (d)). D-8 réfuté (bit à 1 partout) | tient ; corrections : les pourcentages « variables » de la note sont BRUTS (en sains : HI_1_13_0 80,30 → 84,69 %) ; pool unique max 2,80 % et non 2,3 % ; la condition désactive L1a sur HI_1_8_0 à HI_1_11_0 (gain nul) ; seuil choisi sur le corpus, sans validation hors échantillon | `R_NAIS.md` §3 |
+| R-LS | établi | Code relu ; registre : un seul archétype `high-frequency` (`ti=4`) sur 30 films. Carte v2 : ordre retenu +18 119 / −2, +18 086 sains, +169 439 utiles sains, 0 film en baisse ; région (ii) 48 720 → 26 427 ; HI_1_13_0 68,6 → 73,8 % (fixe de R-LS). Killsource : 1 080 morts du `scan` à la marche, valeurs inchangées ; 362 / 403 de l'enquête retrouvés | tient ; corrections : voie publiée (D-74), donc `killsource.Rev` et backfill DUS ; 99,4 % (et non 99,5 %) des signatures sur les slots du registre ; repli libre net −14 141 (16 673 = perte brute) ; « variables » = bruts ; l'ordre retenu n'est mesuré que par la sonde | `R_LOC.md` §2-§3 |
+| R-P6 | partiel | Pas de règle générale. Filtres d'occurrence : `ferme` 111 liaisons +344 / −26 (témoin 111 contre 47) ; `ferme+suivant` 40 liaisons +474 / −4 (39 contre 5). Pas de lot P6 | tient ; corrections : le filtre `propre+pont` de BIS_3 (68 / 72 contre 6 / 72, +295 / −2) est meilleur et omis ; taux de faux positifs sous-estimés (témoin biaisé) ; extension à (iii') au-delà de 3 paquets extrapolée | `R_NAIS.md` §4 |
+| R-L3 | portage : établi ; vieux builds : partiel | Registre `ti=2` identique sur 21 films (empreinte `cb77b82e`) : ni le registre ni `i15` ne sont la cause. A/B delta du portage : +3 575 sains, +53 521 utiles sains, 0 sain perdu, 0 film en baisse. Vieux builds : images-clés moteur 0 / 98 → 98 / 98 avec un bit de moins ; témoins `i15 ±1` 0 / 715 | **NON CONFIRMÉ : la localisation « un bit de trop dans `i4` »**. Le TSV du chantier montre qu'un décalage de −1 à l'entrée de `i5` à `i10` ferme autant : le bit est dans `i4`..`i9`, non discriminé (`i5`..`i9` jamais testés en lecture alternative). Le reste tient (dénominateur variable : baisse sur 5 films et non 4 ; le témoin `i15 −1` gagne +130 sains sur `1c4c63c2`) | `R_COMP.md` §2 |
+| R-HOM | établi | 326 noms : 314 à table unique, 8 par tableau de noms, 1 absent de HI_1_13_0, 3 à deux tables dont UN homonyme de grammaire (`high-frequency` : `ti=3 i1` = `R(16)+R(8)+R(2)`, `ti=4 i0` = `R(8)`) ; `simulation-state*` : thunks vers la même fonction. 147 / 147 concordances d'enregistrement | tient (Ghidra relu, thunks décodés à la main) | `R_COMP.md` §3 |
+| R-P3 | partiel | Comptes de référence 694 / 658 / 241 / 161 reproduits. Lecteurs justes (Ghidra). G1, G3 : liaison fausse du slot ; G2 : en-tête mal lu (92,8 % sans allocation) ; G4 : `consumeObjectPositionMonde`. Désaveu hors bloc : +694 sains, 0 perdu, +7 800 utiles sains, G1 → 388. Live Fire (position au jeu + index) : G4 160 → 0, `0797ce72` +495, `60ae07c4` −28 | tient ; corrections : l'oracle prouve une liaison fausse vers une UNITÉ, pas un bipède (forcer `ti=40` fait au moins aussi bien) ; G4 → 0 exige la COMBINAISON des deux lectures ; le cas (a) ressemble à une erreur de la marche d'image-clé | `R_COMP.md` §4 |
+| R-L4 (a) | établi (MPP 8 bits : mesuré) | Trois lectures communes en image-clé (portée, `i0` écrivain, MPP 8/3) : 3 058 / 3 058 voisins fermés (production 14, BIS_2 137) ; formats 20-21 0 / 2 036. Oracle `n2` (`0x8d8`) 4 166 / 4 189 | tient ; corrections : MPP 8 bits = mesuré, pas établi ; `n2` version-31 = `0x890` ; la classe « non-VTOL » de la note inclut le type 6 (VTOL) ; un 6e écrivain de la portée (`FUN_142e31bf8`) | `R_VEH.md` §1 |
+| R-L4 delta | mesuré | 16 composants `ti=40`, porte posée en delta : +1 436 / −0, 35 contredits, +26 843 utiles, 21 films | tient ; correction : la perte de 9 573 de la « portée sur les NEW » est celle de la combinaison portée + `i0`, pas de la portée seule | `R_VEH.md` §3.1 |
+| R-L4 (b) | partiel | MPP lu à 9 bits au lieu de 8 sur les formats ≤ 25 : 0 / 5 417 châssis connus à 9/5, 4 526 / 5 417 à 8/3 ; format 27 : 1 457 / 1 642 à 9/5, 0 à 8/3 | **NON CONFIRMÉ : « lecture fausse » pour `4118381d` et `d0b40d0a`** (établi pour `77ef810a` seulement) : `d0b40d0a` se relit à l'identique sous 8/3 à une ancre décalée, sur un film des formats 20-21 ; 878 châssis restent inconnus à 8/3 ; réutilisation de slot non exclue | `R_VEH.md` §2 |
+| R-L6 | établi / réfuté | Ordre des plages établi (Ghidra `FUN_140be9a14`, `FUN_140770640` ; modules : plage 0 = arène, 1 = décor lointain ; Illusion et Fragmentation : 1 plage). D-54 réfuté (0 fermé à index impossible en lecture finale). L6a hors Live Fire réfuté : +15 / −18, −15 sains | tient ; corrections : 13 films hors Live Fire et non 12 (9 sur 13 en baisse) ; le relevé type BIS_2 reproduit vaut 102 / 139, pas 101 / 136 | `R_VEH.md` §5 |
+| R-VEH-1 (découverte) | partiel | Portée + `i0` écrivain en image-clé ferment `ti=35` (format 27) : 142 → 2 006 / 2 008 | **NON CONFIRMÉ : « critère de bascule de `PorteeBaseline` rempli »** (critère écrit = 591 records bornés de R7 + non-régression delta, non rejoué ; seule variante delta qui pose `i0` : −9 573) | `R_VEH.md` §4 |
+| R-VEH-2 (découverte) | mesuré, pertes non jugées | MPP 8/3 sur les formats 24-25 : +80 979 / −2 105 (6 films) | tient pour les chiffres ; **NON CONFIRMÉE : l'explication** de l'ancienne contradiction (8/3 seul fait déjà monter les images-clés ; il fait baisser les formats 20-21 de la même case) | `R_VEH.md` §3.3 |
+| Fusion de J12 | établi | Voir §6.0, « Items à la fusion » | « fichiers modifiés : aucun » du rendu est faux à la lettre (le worktree jetable portait la fusion non commitée et le patch des quatre sondes) ; sans effet, worktree jetable | `R_FUSION.md` |
+
+#### 6.5.2 Effet sur les lots (proposé ; ce qui relève de l'utilisateur est en §6.3)
+
+- **Prêts pour la vague 1** (composants ; gain mesuré, gate par film tenu dans la mesure) : L8
+  (prérequis levé), L2, L3a, L4a (sous D5), L6a limité à Live Fire et étendu au site `ti=41 i0`, L6b
+  (sous D4), L9.
+- **À ajouter (D14)** : LM (MPP 8/3, gain massif sur les formats 24-25 mais pertes à juger) ; LK
+  (lecture d'image-clé sous portée + `i0`, prérequis de L4b, critère à rejouer) ; LP (désaveu hors
+  bloc, +694 sains, 0 perdu, lit le bloc de type 1 : vague 2).
+- **À scinder (D15)** : L3 → L3a / L3b ; L4 → L4a / L4b.
+- **À retirer ou déplacer (D15)** : L1b sort de la vague 2 (chantier « grammaire des messages de la
+  vue A ») ; L1c reste retiré ; pas de lot P6 (D3) ; L6a hors Live Fire non retenu.
+- **Gates modifiés** :
+  - L1 : joué sur une tête qui porte L9, témoin `4f77afc1` (D-69) ; un L1 réel doit faire mieux
+    que son oracle sur `1c4c63c2` et `084a804d` en brut (information ; le critère reste net) ;
+  - LS : delta killsource déclaré, `killsource.Rev` et backfill DUS (D-74) ; `ScanMarchFacts` à
+    mesurer ; aucun repli libre dans la cuisson ;
+  - LU : zéro différence avec un paramètre d'ordre (D-73) ;
+  - L2 et L1 : le recouvrement (D-70) se mesure dans R-COMB-2, pas par addition ;
+  - L0 : invariants L0.6 à L0.9 ;
+  - tout gate en surcouche : surcouche unique post-J12 (D17).
+- **Gains à ne plus additionner** : les gains « seuls » du §6.1 se recouvrent (R-COMB) ; seule une
+  combinaison mesurée (R-COMB-2) dit ce que donne une vague.
+
+#### 6.5.3 Indicateur (D1) et dénominateur fixe consolidé
+
+Calcul fait le 2026-10-02 pour ce document (awk, aucune commande `go`) : par film, maximum de la
+colonne fixe des quatre TSV `r_comb_tsv/r_comb_denominateurs.tsv`,
+`r_loc_tsv/rloc_denominateur_fixe_max.tsv`, `r_nais_tsv/r_nais_denominateur_fixe.tsv` et
+`r_veh_tsv/r_veh_delta_synthese.tsv` (colonne 3, TSV sans en-tête : lue comme `fixe_max`, valeur
+recoupée sur `084a804d` = 731 523, citée par `R_VEH.md` §3.3) ; numérateurs : colonne
+`utiles_fermes_sains` de `r_comb_par_build.tsv`.
+
+| Groupe | Fixe R-COMB | Fixe consolidé | Référence | Six leviers, ordre D-RI | Six leviers, L1 dérivé sans L9 |
+|---|---|---|---|---|---|
+| HI_1_13_0 (10 films) | 2 880 403 | **2 959 104** | 67,9 % | **83,7 %** | **85,7 %** |
+| HI_1_12_0 | 146 098 | 146 098 | 24,1 % | 88,8 % | 88,8 % |
+| HI_1_8_0 | 290 393 | 316 124 | 26,2 % | 47,1 % | 46,5 % |
+| HI_1_9_0 | 255 371 | 316 305 | 20,6 % | 29,8 % | 29,7 % |
+| HI_1_11_0 | 305 812 | 359 795 | 22,1 % | 30,1 % | 30,0 % |
+| HI_1_10_0 | 1 661 058 | 2 030 145 | 14,6 % | 18,1 % | 17,8 % |
+| Corpus (20 films) | 6 585 067 | **7 176 150** | 35,8 % | 46,4 % | 47,1 % |
+
+Le fixe consolidé monte surtout par LM (formats 24-25) et LS (HI_1_13_0, `c75f33b8`, `d9781168`,
+`1c4c63c2`), qui lisent plus loin mais ne sont pas dans le numérateur de R-COMB : ces pourcentages
+sont donc plus bas que ce que donnerait la combinaison avec LS et LM (non mesurée).
+
+**Phrase « la phase 2 seule n'atteindra pas 95 % », reformulée (vérificateur de R-COMB, complétée)** :
+- mesuré : 86,0 à 88,0 % sous les six leviers sur HI_1_13_0 (fixe de R-COMB ; 83,7 à 85,7 % sur le
+  fixe consolidé) ; aucun build à 95 % ;
+- HI_1_13_0 : environ 90-91 % avec L3, L4, L7 et R-P6 SI leurs paquets ont la densité moyenne
+  (hypothèse ; il faudrait 21,4 records par paquet pour 95 %) — mais LS (+5,2 points seul sur
+  HI_1_13_0, fixe de R-LS) et LP n'étaient pas dans R-COMB et recouvrent en partie L1 : la phrase
+  n'est **plus décidable** pour HI_1_13_0 sans R-COMB-2 ;
+- HI_1_12_0 : non décidé ; formats 24-25 : non décidé depuis LM (72 à 84 % par film sous LM et les
+  composants `ti=40`, hors leviers de R-COMB) ; formats 20-21 : la phrase tient largement (≤ 0,7 %).
+
+#### 6.5.4 Ordre proposé (révise la recommandation D-RI du §6.3, sans changer les décisions FERMES du §3)
+
+1. Avant la vague 1 (recherche, sans sortie) : surcouche unique post-J12 (D17) ; R-COMB-2 ;
+   jugement des pertes de LM ; discrimination `i4`..`i9` pour L3b ; rejeu du critère de
+   `PorteeBaseline` pour LK ; validation hors échantillon de la condition de L1a (D16).
+2. **Vague 1, composants**, dans l'ordre du gain mesuré : L8 (+30 618), L2 (+18 105), LM (si admis,
+   +80 979 sur 6 films, pertes jugées), L3a (+3 575 sains), L6a Live Fire + `ti=41 i0`, L9
+   (+1 784), L4a (+1 436), L6b, puis LK et L4b (si admis). Une recuisson (D7).
+3. Références re-figées.
+4. **Vague 2, marche** : LU (avec paramètre d'ordre) → LS (+18 119) → L1a sous condition par film
+   (+15 070 sains) → LP (+694 sains) → L7. Une recuisson.
+5. Étape 1 de la représentation intermédiaire (D-RI inchangée).
+6. Hors vagues : chantier « grammaire des messages de la vue A » (ex-L1b) ; L3b dès que la position
+   du bit est discriminée.
+
+#### 6.5.5 Intégration du 2026-10-02 (rapportée par l'agent d'intégration, non rejouée ici)
+
+- 176 fichiers copiés à l'identique (`cmp`), aucune collision ; aucun fichier suivi modifié ;
+  `git status` : fichiers non suivis seulement ; tête `da7c2c764` (postérieure à J12, alors que les
+  chantiers sont partis de `fe18bf67c`).
+- Deux sondes intégrées corrigées pour l'accesseur de J12.4 (`r_veh_chassis_research_test.go:192`,
+  `r_comb_research_test.go:184`) ; quatre `overlay_campagne.json` écrits (R-COMB, R-COMP, R-LS, R-L4),
+  32 chemins vérifiés.
+- Gates : `gofmt -l` vide sur les 41 `.go` intégrés (tag en ligne 1, plus grand fichier 462 lignes) ;
+  `go vet -tags=research ./internal/games/halo_infinite/film/... ./internal/himodule/` rc 0 après
+  les deux corrections (rc 1 avant) ; `go vet -tags=research ./internal/himap/` rc 0 ;
+  `go vet -tags=research,campagne_overlay` : vert avec `r_veh_overlay`, ROUGE avec les surcouches de
+  fusion, R-COMB, R-COMP et R-LS (D-100) ; `go test -count=1 ./internal/archlint/` ok (32 s) ;
+  `go test -count=1 -run 'Closure|Fermeture|GrammarRev'` sur `grammar` ok (12 PASS) ; `grammar.Rev`
+  = `grammar-2026-09-27.3`.

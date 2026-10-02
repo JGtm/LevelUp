@@ -114269,3 +114269,36 @@ ratchets `archlint` des chemins cités verts.
 **Conclusion / prochaine étape** : aucune. Les numéros de ligne cités vers le registre dans
 d'anciens documents sont désormais approximatifs (laissés tels quels, les sections et libellés
 restent cherchables).
+
+## [2026-10-02] Campagne de grammaire : recherches préalables de la phase 2 intégrées aux documents — Complété (documents) ; décisions D12 à D17 en attente
+
+**Statut** : Complété pour les documents ; rien n'est commité ; aucun lot lancé.
+
+**Décision technique principale** : les six chantiers de recherche (`wf_9088d8bd-e43` : fusion,
+R-COMB, R-LS + R-L1 (c), R-L1 (a)(b)(d) + R-P6, R-L3 + R-HOM + R-P3, R-L4 + R-L6) et leurs
+vérificateurs adverses sont reportés dans le plan (§5 : annotations de D-2, D-3, D-8, D-42, D-46,
+D-49, D-52, D-54, D-56, D-67 et découvertes neuves D-68 à D-103 ; §6.0 : résultat de l'essai de
+fusion de J12, surcouches, R-COMB coché, R-COMB-2 proposée ; §6.1 : tables mises à jour ; §6.2 :
+mises à jour par lot ; §6.3 : décisions D12 à D17 proposées ; §6.5 neuf : statut par recherche,
+effet sur les lots, dénominateur consolidé, ordre proposé, intégration) et dans le rapport (§8).
+Tout item non confirmé par un vérificateur est marqué « NON CONFIRMÉ » avec sa raison.
+
+**Résultats observés** :
+- R-COMB : sous six leviers, HI_1_13_0 86,0 à 88,0 % (fixe de R-COMB) ; aucun build à 95 % ; la
+  partie estimée de la phrase des 95 % n'est pas une borne.
+- R-LS : ordre par site ; cuisson +18 119 / −2 paquets, 0 film en baisse ; killsource 1 080 morts
+  rendues à la marche, voie publiée (backfill dû).
+- R-L1 : (iii') sans records, 4 598 fermetures factices, vue A = 41 genres de messages à porter,
+  condition par film de L1a (+15 070 sains, seuil choisi sur le corpus).
+- R-L3 : portage +3 575 sains, 0 film en baisse ; position du bit des vieux builds non discriminée.
+- R-HOM : un seul homonyme ; R-P3 : désaveu hors bloc +694 sains, 0 perdu.
+- R-L4 : 3 058 / 3 058 records `ti=40` d'image-clé sous trois lectures communes ; delta +1 436 / −0 ;
+  MPP 8/3 +80 979 paquets sur 6 films (pertes non jugées). R-L6 : L6a hors Live Fire réfuté.
+- Dénominateur fixe consolidé (awk sur les TSV des chantiers) : HI_1_13_0 2 959 104, corpus
+  7 176 150 ; sous les six leviers de R-COMB, HI_1_13_0 83,7 à 85,7 %.
+- Surcouches : quatre sur cinq d'avant J12, incompatibles sous le tag commun (vet rouge avec
+  quatre).
+
+**Conclusion / prochaine étape** : décisions de l'utilisateur sur D12 à D17 (dénominateur
+consolidé, ordres de LS, lots neufs LM / LK / LP, scissions L3 et L4 et sortie de L1b, seuil de
+L1a, surcouche unique) ; puis surcouche unique post-J12 et R-COMB-2 avant le GO daté de la vague 1.

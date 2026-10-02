@@ -477,3 +477,49 @@ En résumé, trois points structurent la suite :
 | 1 (reste) | `world.go`, `diagnostics.go`, `equivalence_lecteur_test.go` absents de l'inventaire | Ajoutés au PLAN §6.0. |
 | 3 (reste) | ANALYSE §6 et SUITE non réconciliés | PLAN §6.0 : la chaîne suit les faits transmis ; le schéma de l'ANALYSE §6 est périmé sur ce point. |
 | 5 (reste) | « 0 code mort » non traité | PLAN D-62 et D9 : question posée (déplacer sous `film/research/` ou justifier), non tranchée. |
+
+## 8. Recherches préalables du 2026-10-02
+
+Ajouté le 2026-10-02 ; le reste de ce rapport n'est pas réécrit. Le détail, les verdicts adverses et
+les renvois aux notes sont au PLAN §6.5 ; les découvertes neuves au PLAN §5 (D-68 à D-103).
+
+**Ce qui a été fait.** Six chantiers de recherche (workflow `wf_9088d8bd-e43`, worktrees temporaires
+sur `fe18bf67c`, aucun fichier de production), chacun relu par un vérificateur adverse qui a
+recalculé les chiffres sur les TSV et relu Ghidra en lecture seule. Notes : `R_COMB.md`, `R_LOC.md`,
+`R_NAIS.md`, `R_COMP.md`, `R_VEH.md`, `R_FUSION.md` (sous `campagne_grammaire_2026-10-01/`), intégrées
+le même jour (176 fichiers).
+
+**En bref**
+
+| Question | Réponse | Statut |
+|---|---|---|
+| Les leviers ensemble (R-COMB) | HI_1_13_0 : 86,0 à 88,0 % des records utiles en paquets sains (dénominateur fixe de R-COMB), 83,7 à 85,7 % sur le fixe consolidé ; corpus 50,6 à 51,3 % (46,4 à 47,1 %). Les gains se recouvrent (HI_1_13_0 : somme des seuls +547 609 utiles sains, combinaison +465 529 à +525 771) | mesuré |
+| « La phase 2 seule n'atteindra pas 95 % » (§3) | Vraie pour les six leviers mesurés. Au-delà, l'estimation de R-COMB n'est pas une borne (vérificateur), et LS, LP, LM n'étaient pas dans la combinaison : non décidable sans R-COMB-2 pour HI_1_13_0, HI_1_12_0 et les formats 24-25 | partiel |
+| Signature du localisateur figée sur le slot 123 (R-LS, D-67) | Confirmée sur pièces. Sur la cuisson, l'ordre « 123 → fermeture par NEW de tête → signature high-frequency » gagne +18 119 paquets (+18 086 sains), 0 film en baisse ; l'ordre de l'enquête fait baisser un film. Killsource : 1 080 morts rendues à la marche, valeurs inchangées, mais la voie est publiée (backfill dû) | établi |
+| Naissances (R-L1) | (a) les « NEW » trouvés derrière un DELTA ne sont pas des records (l'écrivain ne l'écrit jamais) ; (b) les 4 598 fermés après un rejet sont factices ; (c) la vue A ne se lit qu'en portant la charge de 41 genres de messages ; (d) condition par film pour L1a : +15 070 sains, 0 film en baisse, seuil choisi sur le corpus | établi ; (c) partiel |
+| Naissances lointaines (R-P6) | Pas de règle générale ; pas de lot | partiel |
+| Moteur `ti=2` (R-L3) | Portage HI_1_13_0 : +3 575 sains, 0 film en baisse. Vieux builds : un bit de trop, mais sa position (`i4` à `i9`) n'est pas discriminée | établi / NON CONFIRMÉ (position) |
+| Homonymes (R-HOM) | Un seul homonyme de grammaire (`high-frequency`) ; la grammaire de `ti=3 i1` est établie | établi |
+| Décalages résiduels (R-P3) | Lecteurs justes ; liaisons fausses de slot ; règle « désaveu d'une déclaration d'image-clé que le bloc dit non vivante » : +694 sains, 0 perdu ; site `ti=41 i0` à ajouter à L6a | partiel |
+| Véhicules `ti=40` (R-L4) | Trois lectures communes d'image-clé (portée, `i0` écrivain, MPP 8/3) ferment 3 058 / 3 058 records ; delta : +1 436 / −0. Le MPP 8/3 seul rapporte +80 979 paquets sur 6 films des formats 24-25 (pertes non jugées) | établi (MPP : mesuré) |
+| Plages des cartes (R-L6) | Ordre établi ; « index 1 sur une carte à une plage » réfuté ; L6a hors Live Fire réfuté (−15 sains) | établi / réfuté |
+| Fusion de J12 | Un conflit (empreinte de révision), quatre sondes à mettre à l'accesseur de J12.4, 11 ratchets J12 verts ; vraie fusion faite (`f28a4a816`), carte v2 identique après J12 | établi |
+
+**Effet sur les lots (proposé, décisions D12 à D17 au PLAN §6.3)**
+- Vague 1 : L8, L2, L3a (portage, mesuré), L4a (delta, mesuré), L6a (Live Fire + site `ti=41 i0`),
+  L6b, L9 ; candidats neufs LM (MPP 8/3) et LK (image-clé sous portée), puis L4b.
+- Vague 2 : LU avec un paramètre d'ordre, LS, L1a sous condition par film, LP (neuf), L7.
+- Sortis : L1b (devient un chantier de grammaire des messages de la vue A), L1c (confirmé), L6a hors
+  Live Fire, tout lot P6.
+- L0 : quatre invariants ou témoins de plus (sortie de vue B par rejet, masque au-delà de
+  l'archétype, mot de DEL non nul, témoins à 2-8 bits).
+
+**Points non confirmés par les vérificateurs** : position du bit de trop des vieux builds (`i4`) ;
+« lecture fausse » de deux châssis sur trois ; « critère de bascule de `PorteeBaseline` rempli » ;
+explication de l'ancienne contradiction du MPP ; partie estimée de la phrase des 95 %.
+
+**Outillage** : les surcouches de mesure des chantiers sont d'avant J12 (sauf celle de la fusion) et
+ne compilent plus ensemble sous le tag commun (`go vet` rouge avec quatre sur cinq) : une surcouche
+unique post-J12 est à faire avant toute mesure de la vague 1 (D17). `archlint` était rouge sur
+toutes les têtes du 2026-10-02 (`TestNoExpiredTODO`, échéance du 2026-10-01 hors campagne) ; soldé
+par `feat/v75` (`2f1e7b98b`), vert sur la tête de la campagne.
