@@ -19,7 +19,7 @@ func Rendre(w io.Writer, temoin string, c Comparaison) error {
 		e.constat(x)
 	}
 	for _, x := range c.Constats {
-		if x.Sens == sensGain || x.Sens == sensInfo {
+		if x.Sens == sensGain || x.Sens == sensInfo || x.Sens == sensReattribution {
 			e.constat(x)
 		}
 	}

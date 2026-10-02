@@ -1,8 +1,9 @@
 // Command replay-verite juge un artefact de rejeu APRES contre un artefact AVANT du meme temoin,
 // avec le banc de verite (`internal/replayverite`).
 //
-// C'est l'appel autonome du banc en attendant son integration au gate de corpus
-// (`cmd/replay-corpus-gate`) : il ne cuit rien, ne decode aucun film et n'ouvre aucune base. Il lit
+// C'est l'appel AUTONOME du banc. Le gate de corpus (`cmd/replay-corpus-gate`) l'a integre (D-5) : il
+// juge avec le meme paquet `internal/replayverite`, et compile CET outil a la base pour en lire le
+// registre des replis (`-registre`). Il ne cuit rien, ne decode aucun film et n'ouvre aucune base. Il lit
 // deux artefacts deja cuits, les faits du match qui les ont cuits, et — en option — le registre des
 // replis de la revision d'AVANT (produit par ce meme outil, compile a cette revision).
 //

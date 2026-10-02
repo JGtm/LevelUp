@@ -77,6 +77,9 @@ type EntreePorteursAuSync struct {
 	Socles []FlagSpawn
 	// Libelles : le catalogue de libellés du titre (objets d'objectif du drapeau).
 	Libelles LabelCatalog
+	// lireStatborg : le lecteur du statborg, [objectives.StatRecordsAvecReplis] quand nil. NON
+	// EXPORTE : seul le test des replis du sync y substitue des comptes, sans film.
+	lireStatborg func(*source.Film, string) ([]types.StatRecord, bool, objectives.ComptesDesReplis, []constat.Diagnostic)
 }
 
 // BilanPortages dit ce que la lecture a fait, pour que l'appelant le compte et le journalise.
@@ -93,6 +96,13 @@ type BilanPortages struct {
 	XUIDIllisibles int
 	// DrapeauOuverts : portages `carried_open` (borne haute) écartés.
 	DrapeauOuverts int
+	// Replis : le compteur des replis que la lecture et l'assemblage ont déclenchés (pose des
+	// largeurs, calques, consultations des séries nommées et du pont par manche), ou nil quand
+	// rien n'a été lu. Ce chemin n'écrit aucun document : sans ce champ, ces comptes mouraient ici
+	// (revue finale P1-b). L'appelant les VERSE une fois à son propre compteur de passe — le
+	// collecteur, `portagesDuMatch` — qui les publie avec les autres replis du film. Pointeur, et
+	// pas rapport, pour que le bilan reste comparable.
+	Replis *fallback.Compteur
 }
 
 // LecturesDesPorteurs dit quelles lectures du film ont été faites en plus de la passe de positions.
@@ -107,6 +117,7 @@ func PortagesAuSync(ctx context.Context, e EntreePorteursAuSync) (map[uint64][]I
 		return nil, b
 	}
 	fb := fallback.NouveauCompteur()
+	b.Replis = fb
 	poserProfilPuisCarte(ctx, e.Contexte, e.MatchID, Options{ProfilDeBalayage: e.ProfilDeBalayage, Fallbacks: fb})
 	opt := e.optionsDuRegistre(fb)
 	b.Lectures = e.lireLesPorteurs(ctx, b.Gardes, &opt)
@@ -135,9 +146,10 @@ func (e EntreePorteursAuSync) lireLesPorteurs(ctx context.Context, g GardesDesPo
 	var lu LecturesDesPorteurs
 	var recs []types.StatRecord
 	var bursts []int
+	var replisDuStatborg objectives.ComptesDesReplis
 	if g.Drapeau || g.Crane || g.VIP {
 		var diags []constat.Diagnostic
-		recs, _, diags = objectives.StatRecordsBornes(e.Film, e.MatchID)
+		recs, _, replisDuStatborg, diags = e.statborg()(e.Film, e.MatchID)
 		JournaliserDiagnostics(ctx, diags)
 		lu.Statborg = true
 		bursts = objectives.CaptureBurstTimes(e.Film)
@@ -147,6 +159,12 @@ func (e EntreePorteursAuSync) lireLesPorteurs(ctx context.Context, g GardesDesPo
 	// dans les options.
 	opt.ReplisHorsBalayage.Consultations = opt.enregistreurDesConsultations()
 	pont := NouveauPontParManche(recs, deathInstantsOf(e.Identite.Deaths), e.Lignes, opt.consultations())
+	if lu.Statborg {
+		// LES REPLIS DU STATBORG ET DE LA CONSTRUCTION DU PONT (revue finale, 2026-10-02), comme a la
+		// cuisson (`replaybuild`, `replisObjectifs`) : poses dans les options, ils sont verses UNE fois
+		// au compteur, a la cloture de l assemblage (`versementDeLAssemblage`). Ils etaient jetes.
+		opt.ReplisHorsBalayage.Objectifs = replisDuStatborg.Plus(pont.Identite().ComptesDesReplis())
+	}
 	if g.Drapeau {
 		opt.Flag = EntreeDuDrapeau(recs, bursts, pont)
 		opt.Flag.Spawns = e.Socles
@@ -249,4 +267,14 @@ func portagesDuDocument(doc ReplayDocument, origine uint64, b *BilanPortages) ma
 		})
 	}
 	return out
+}
+
+// statborg rend le lecteur du statborg de l'entree ([objectives.StatRecordsAvecReplis] par defaut).
+func (e EntreePorteursAuSync) statborg() func(*source.Film, string) (
+	[]types.StatRecord, bool, objectives.ComptesDesReplis, []constat.Diagnostic,
+) {
+	if e.lireStatborg != nil {
+		return e.lireStatborg
+	}
+	return objectives.StatRecordsAvecReplis
 }

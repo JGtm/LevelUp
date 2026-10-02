@@ -126,7 +126,13 @@ func (c *KillSourceCollector) portagesDuMatch(
 	if !mat.registre.PontPubliable() {
 		return nil, replay.BilanPortages{}
 	}
-	return replay.PortagesAuSync(ctx, c.placement.entreeDesPorteurs(ctx, matchID, mat, ids))
+	portages, lus := replay.PortagesAuSync(ctx, c.placement.entreeDesPorteurs(ctx, matchID, mat, ids))
+	// LES REPLIS DE LA LECTURE DES PORTEURS (revue finale P1-b, 2026-10-02) rejoignent le compteur
+	// de la passe, publie a la sortie du film (`publierReplisDeLaPasse`). UNE fois, ici, le seul
+	// appelant : leurs sources (pose des largeurs, calques, consultations) ne sont comptees par
+	// aucun autre etage du collecteur.
+	replisDeLaPasse(ctx).Cumuler(lus.Replis.Rapport())
+	return portages, lus
 }
 
 // entreeDesPorteurs assemble ce que le collecteur donne a `replay.PortagesAuSync`. PURE hors du

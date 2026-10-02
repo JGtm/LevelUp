@@ -374,7 +374,13 @@ const plafondSurfaceFacade = 186 // 2026-09-30 — J12.4 sur 8cd560673 : 187 - 1
 //	                                           (J12.3), qu emprise ne citait pas. Aucun retrait.
 //	                                           RE-MESURE A LA FUSION : 297 + 1 = 298 (`comm` des
 //	                                           inventaires des deux tetes et de l arbre fusionne).
-const plafondSurfaceReplay = 298 // 2026-10-01 — fusion J12 (8b894a677 -> 78d8d5482) : 297 (plan) + 1 (replay.JournaliserDiagnostics, J12.3) ; cf. l historique ci-dessus
+//	299  revue finale D2 (2026-10-02)           base `06afd4566` re-mesuree a 298. +1 :
+//	                                           `replay.VerserLesReplisDuContexte`, la porte par
+//	                                           laquelle le collecteur verse le rapport de SON contexte
+//	                                           de film (la table de versement vit dans `replay`,
+//	                                           sous ADR 0034 DU-2 (c) ; la recopier serait une
+//	                                           seconde table). Aucun retrait.
+const plafondSurfaceReplay = 299 // 2026-10-02 — revue finale D2 sur 06afd4566 : 298 + 1 (replay.VerserLesReplisDuContexte) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
