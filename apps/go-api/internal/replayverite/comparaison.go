@@ -108,21 +108,29 @@ func comparerScores(avant, apres map[string]Score) []Constat {
 			}
 			continue
 		}
-		detail := ecartsQuiBougent(a.Ecarts, b.Ecarts)
-		if b.FP > a.FP {
-			out = append(out, Constat{Mesure: id + " (faux positifs)", Sens: StatutFaux, Avant: formatScore(a), Apres: formatScore(b), Detail: detail})
-		}
-		if b.FN > a.FN {
-			out = append(out, Constat{Mesure: id + " (faux negatifs)", Sens: StatutManque, Avant: formatScore(a), Apres: formatScore(b), Detail: detail})
-		}
-		if (b.FP < a.FP && b.FN <= a.FN) || (b.FN < a.FN && b.FP <= a.FP) {
-			out = append(out, Constat{Mesure: id, Sens: sensGain, Avant: formatScore(a), Apres: formatScore(b), Detail: detail})
-		}
-		// LA REATTRIBUTION (revue finale P1-e) : une unite qui gagne ce qu une autre perd laisse les
-		// totaux egaux ; seul le detail par unite la montre.
-		if b.FP == a.FP && b.FN == a.FN && len(detail) > 0 {
-			out = append(out, Constat{Mesure: id, Sens: sensReattribution, Avant: formatScore(a), Apres: formatScore(b), Detail: detail})
-		}
+		out = append(out, constatsDesNotes(id, a, b)...)
+	}
+	return out
+}
+
+// constatsDesNotes rend les constats d UN score note des deux cotes : faux positifs ou negatifs en
+// hausse, gain, ou reattribution.
+func constatsDesNotes(id string, a, b Score) []Constat {
+	var out []Constat
+	detail := ecartsQuiBougent(a.Ecarts, b.Ecarts)
+	if b.FP > a.FP {
+		out = append(out, Constat{Mesure: id + " (faux positifs)", Sens: StatutFaux, Avant: formatScore(a), Apres: formatScore(b), Detail: detail})
+	}
+	if b.FN > a.FN {
+		out = append(out, Constat{Mesure: id + " (faux negatifs)", Sens: StatutManque, Avant: formatScore(a), Apres: formatScore(b), Detail: detail})
+	}
+	if (b.FP < a.FP && b.FN <= a.FN) || (b.FN < a.FN && b.FP <= a.FP) {
+		out = append(out, Constat{Mesure: id, Sens: sensGain, Avant: formatScore(a), Apres: formatScore(b), Detail: detail})
+	}
+	// LA REATTRIBUTION (revue finale P1-e) : une unite qui gagne ce qu une autre perd laisse les
+	// totaux egaux ; seul le detail par unite la montre.
+	if b.FP == a.FP && b.FN == a.FN && len(detail) > 0 {
+		out = append(out, Constat{Mesure: id, Sens: sensReattribution, Avant: formatScore(a), Apres: formatScore(b), Detail: detail})
 	}
 	return out
 }
