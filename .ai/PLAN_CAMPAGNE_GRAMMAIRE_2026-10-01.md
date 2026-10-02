@@ -146,6 +146,24 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
 - 2026-10-02, soir (utilisateur) : **GO DE LA VAGUE 1** (« tu as mon feu vert »), donné en réponse à
   la demande de GO de la vague 1 après R-COMB-2. Les décisions de composition de la vague (D18, D14,
   D6, D19 et les ratifications techniques) restent à confirmer au questionnaire avant le premier lot.
+- 2026-10-02, soir (utilisateur, questionnaire, recommandations retenues) — décisions FERMES :
+  - **D18 / D14 (amendement de D-RI)** : ordre mesuré. Vague 1 = L0 EN TÊTE (fermeture sans
+    factices ; il change aussi la marche via `debutParFermeture`), puis par contribution marginale
+    saine : LM, L8, L2, L3a, L6a (Live Fire), L9, L4a, L6b (LK quand son critère est rejoué). Vague 2 =
+    LU, LS, L1a (condition par film), LP. L7 (nuisible) et L1b sortent.
+  - **D6 (LM)** : preuve par mesure ACCEPTÉE pour le découpage MPP 8/3 des formats 24-25, bien que ses
+    valeurs soient utilisées et qu'aucun exécutable de ces builds n'existe (exception explicite à la
+    règle du 2026-09-25 « Ghidra pour toute valeur utilisée ») : marqué « présumé par mesure », liste
+    gelée, DOUBLE preuve exigée au gate (fermeture au bit près sur tous les films de ces builds ET
+    châssis lus = châssis connus des fichiers du jeu installé).
+  - **D19** : réparer L2 et L6b avant fusion ; instruire L8 et L4a perte par perte, admis seulement si
+    chaque perte est expliquée ; le gate « aucun film en baisse » n'est JAMAIS assoupli ; si L2 ne se
+    répare pas, il passe en vague 2 (les dispositifs restent dans la campagne, D-VEH).
+  - **Ratifications techniques** : D10/D17 (surcouche = outil de mesure seulement, hors CI ; surcouche
+    unique post-J12), D11 (plafond du gate 4 : +10 % de durée et +10 % de pic mémoire), D12
+    (dénominateur fixe consolidé, recalculé à chaque vague), D13 (deux ordres de localisation pour LS,
+    un par site), D15 (scinder L3 et L4), D20 (écart de LM côté killsource déclaré au gate 3 et traité
+    dans un lot séparé), D21 (garder la sonde éditée par Python, écarts consignés).
 - 2026-10-02, soir (utilisateur) : deux chantiers indépendants lancés dans d'autres conversations sur
   l'autre PC, avec les prompts fournis par la campagne : « retrait des replis nuls » (DU-7 ; les neuf
   replis des couches grammar/profile et `registre_filmdec*.go` restent à la campagne) et « Falcon de
