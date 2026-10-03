@@ -114519,7 +114519,7 @@ sous 7 351, `sans_killfeed` à 0 aux cycles suivants).
 
 **Conclusion / prochaine étape** : accord utilisateur pour commit + push, CI au niveau job, fusion dans `feat/v75` avant la recuisson de la vague 1. Gate visuel utilisateur après fusion : `1cd3848a` (plus de Falcon), un match Behemoth Super Fiesta à Falcon piloté (`2cd7ce01`, `0d76e8f1`), Launch Site Super Fiesta (`6efac636`).
 
-## [2026-10-02] Retrait des replis nuls (DU-7) — mesure du parc, 19 replis retirés — Complété (reste push + CI)
+## [2026-10-02] Retrait des replis nuls (DU-7) — mesure du parc, 19 replis retirés — Complété
 
 **Décision technique principale** : compter le parc sans cuisson à partir de quatre sources
 lues seulement — `coverage.fallbacks` des 1 227 artefacts recuits par la vague J11.4 (schéma 76),
@@ -114548,5 +114548,13 @@ constante (sortie inchangée), aucune recuisson. Gates verts : build, vet, tests
 `flag`, `killsource` et `skull` diffèrent sur les 20 par la FORME des objets observés (champs
 de compte retirés), même motif que les lots 1.9.3 et 1.9.10 du CORPUS.txt. Re-fige `-update`
 sur accord de l'utilisateur : 20 identiques ensuite ; git = 20 fichiers, 60 lignes, toutes
-`flag`/`killsource`/`skull`, aucun `.facts.json` ; consigné dans CORPUS.txt. Commité, non poussé :
-reste le push (sur accord) et la CI au niveau job. Statut : Complété localement.
+`flag`/`killsource`/`skull`, aucun `.facts.json` ; consigné dans CORPUS.txt.
+
+**Livraison** : `feat/v75` fusionné deux fois dans la branche (campagne de grammaire L0 +
+correctif killsource sans kill-feed, puis Falcon de Behemoth schéma 77 ; conflits
+`killsource_rev.golden` — empreinte régénérée, révision constante — et thought_log). CI de
+`3244de534` verte au niveau job (9 jobs ; E2E sauté hors `main`) ; `feat/v75` avancé à
+`3244de534`. Sur l'arbre fusionné, `replay-equiv` diverge sur les 5 étapes déclarées par L0
+(continuousFire, movementStates, leurs stats, artifact), références non re-figées par la
+campagne : signalé à la campagne. Reste : supprimer à la main les films copiés dans
+`data/cache/` du worktree.
