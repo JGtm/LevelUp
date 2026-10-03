@@ -78,12 +78,12 @@ func TestHooksConsumeSameBitsWithoutHook(t *testing.T) {
 
 			clearAllHooks(t)
 			sans := lecteurDInstrument(buf)
-			_, _, portedSans := consumeByName(sans, name, BipedTypeIndex, level)
+			_, _, portedSans := consumeByName(sans, name, archetypeDuHook(name), level)
 
 			appels := 0
 			installCountingHooks(&appels)
 			avec := lecteurDInstrument(buf)
-			_, _, portedAvec := consumeByName(avec, name, BipedTypeIndex, level)
+			_, _, portedAvec := consumeByName(avec, name, archetypeDuHook(name), level)
 
 			if sans.BitPos() != avec.BitPos() {
 				t.Fatalf("%s (iteration %d, niveau %d) : %d bits sans hook, %d avec — la "+
@@ -132,7 +132,7 @@ func TestHookedNamesCoversMovedCases(t *testing.T) {
 		appels := 0
 		installCountingHooks(&appels)
 		br := lecteurDInstrument(make([]byte, 64))
-		if _, _, ported := consumeByName(br, n, BipedTypeIndex, 0); !ported {
+		if _, _, ported := consumeByName(br, n, archetypeDuHook(n), 0); !ported {
 			t.Errorf("%s : le dispatch rend ported=false sur un tampon nul", n)
 		}
 		if appels == 0 {
@@ -468,6 +468,7 @@ func TestManagedObjectHookFlagOrder(t *testing.T) {
 // Le hook doit rendre le `typeIndex` que la traversee lui passe, JAMAIS une constante : deux
 // registres differents ont ete mesures sur le corpus (item 0.3), donc cabler un numero
 // d'archetype serait faux par avance. Le test appelle le meme composant sous deux `ti`.
+// Sans `high-frequency`, lu par la table de l archetype (cf. TestHauteFrequenceSeLitParLaTableDeLArchetype).
 func TestProbeHookPassesRegistryTypeIndex(t *testing.T) {
 	cas := []struct {
 		nom  string
@@ -477,7 +478,6 @@ func TestProbeHookPassesRegistryTypeIndex(t *testing.T) {
 		bits int
 	}{
 		{"ti=47 i1 message dynamique", compSplashMessageDynamic, ProbeSplashDynamic, 0xabcdef, 24},
-		{"ti=4 i0 haute frequence", compHighFrequency, ProbeHighFrequency, 0x5a, 8},
 		{"ti=13 i0 nom de propriete", compManagedObjectPropName, ProbeManagedObjectPropertyName, 0xdeadbeef, 32},
 	}
 	for _, c := range cas {

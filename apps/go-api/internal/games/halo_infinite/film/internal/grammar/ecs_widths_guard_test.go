@@ -99,8 +99,12 @@ const ecsProbeBytes = 512
 //
 // Les quatre autres ports du lot (`ti=47 i2`, `ti=5 i22` et `i24`, `ti=40 i34`) ont une largeur
 // GARDEE par le flux : leur colonne `bits_typ` n est pas un entier et reste hors des deux comptes.
+// 2026-10-02 (lot L8) : 123 -> 125 largeurs FIXES, 66 gardees INCHANGEES. DEUX lignes entrent PAR LE
+// HAUT, les deux tables de `high-frequency` : `ti=3 i1` (FUN_142ed4880, 26) et `ti=4 i0`
+// (FUN_14076d034, 8, dont la colonne portait « 8 (frame) »). `ti=3 i0 low-frequency`, porte au meme
+// lot, a une largeur gardee par son compte d entrees (« variable ») et reste hors des deux comptes.
 const (
-	ecsLargeursFixes   = 123
+	ecsLargeursFixes   = 125
 	ecsLargeursGardees = 66
 )
 

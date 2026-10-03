@@ -438,3 +438,19 @@ package grammar
 // tir continu (compteurs, rafales lues sur des paquets factices retirees) et les etats de mouvement
 // de quelques listes, que la revision de grammaire des calques signale deja ; `replay-equiv` : 5
 // etapes sur 61 divergent sur les 20 films, les 56 autres sont identiques a l octet.
+//
+// ENTREE `grammar-2026-10-02.2` (2026-10-02, lot L8 de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `ti=3 low-frequency` EST PORTE, ET `high-frequency`
+// SE LIT PAR LA TABLE DE L ARCHETYPE.
+//
+// `low-frequency` (`ti=3 i0`) se lit par FUN_142ed4aec (table 0x143d07b40, ecrivain FUN_142eda938) :
+// position, orientation, R(16) + R(8) + R(2), puis R(6) entrees {R(3) drapeaux, position et
+// orientation sous drapeau, R(16), R(5)} ; il n etait pas porte (traversee arretee). `high-frequency`
+// est enregistre sous DEUX tables : `ti=3 i1` (FUN_140e460fc, table 0x143d07af0, FUN_142ed4880 :
+// R(16) + R(8) + R(2), 26 bits), lu jusqu ici par le R(8) de `ti=4 i0` (FUN_140e462d8, table
+// 0x143d06a60, FUN_14076d034), qui ne change pas ; un autre archetype ne le lit plus
+// (`components_frequences.go`). `ecs_table.tsv` porte les trois lecteurs ; le controle G6
+// (`ecs_dispatch_table_guard_test.go`) tient le routage par table.
+//
+// Ce qui change en sortie : les records `ti=3` se traversent, les paquets qui les portent se lisent
+// plus loin (carte de fermeture et mesures : `campagne_grammaire_2026-10-01/LOT_L8.md`).
