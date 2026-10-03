@@ -87,6 +87,9 @@ Chaque session prévient l'autre (Remote Control, message direct) quand elle fus
   après la fusion de J12 (fait le 2026-10-02, `feat/v75` post-J12).
 - 2026-10-02 : la représentation intermédiaire est menée dans une autre conversation, en parallèle de
   la campagne de grammaire.
+- 2026-10-03 : la mémoire de la marche des images-clés n'est PAS partagée entre la cuisson et
+  killsource à cette étape (lot 1.3.1) ; elle se reprend à l'étape 2, où killsource devient un
+  canal de la même marche (« ok avec toi »).
 
 **Techniques** (issues de l'analyse §2 et §7, retenues pour ce plan ; une objection de l'utilisateur
 les rouvre) :
@@ -264,14 +267,15 @@ coordonné (§1.3).
       les comptes de `KeyframeClosure` (fermés, bornés, composant bloquant), invariants de la
       structure, restauration du contexte à l'arrêt anticipé (mutation « prouver un record qui
       dépasse sa frontière », rouge). Reste : la marque d'élection par record (après la fusion de
-      la vague de la campagne, cf. journal). Mémoire partagée : `[!]` proposé — neutre par
+      la vague de la campagne, cf. journal). Mémoire partagée : REPORTÉE À L'ÉTAPE 2 par décision de
+      l'utilisateur du 2026-10-03 (§2) — neutre par
       construction (la preuve se joue au profil invariant du film, `keyframe_world_preuve.go`),
       mais les deux contextes naissent dans deux couches qui ne partagent que le `source.Film`
       (`killsource/world.go`, `replay/build_from_film.go`) : la partager demande soit un magasin
       attaché au `source.Film` (responsabilité neuve de la porte aux octets, `source.Rev`), soit de
       la surface de façade (`decfilm`) et une plomberie à travers `killsource`, `replay` et
       `replaybuild` — deux constructions que l'étape 2 rend jetables, puisque killsource y
-      deviendra un canal de la MÊME marche (`Distribuer`). À trancher avec l'utilisateur.
+      deviendra un canal de la MÊME marche (`Distribuer`).
 - [ ] 1.3.2 `KeyframeClosure` en devient le consommateur.
 - Gate : `keyframe_closure.golden` identique ; G-equiv zéro divergence ; G-film ; killsource identique.
 
@@ -432,3 +436,14 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
   partagée entre les contextes de la cuisson et de killsource touche la construction des
   contextes dans `replay` et `killsource` : à analyser, retenue seulement si aucune sortie ne
   change.
+- 2026-10-03 (matin) : branche poussée sur accord de l'utilisateur (`6c0a6541d`). `ImagesCles`
+  écrit en fichiers neufs (`018c00188`, local). Décision de l'utilisateur : la mémoire de la marche
+  des images-clés n'est pas partagée entre la cuisson et killsource à cette étape (reprise à
+  l'étape 2, §2). Coordination avec la campagne : elle préviendra dès que sa vague 1, marche
+  d'image-clé comprise, sera fusionnée dans `feat/v75` ; la marque « ancre élue » par record est
+  pour ce plan, APRÈS cette fusion (l'agent de son lot a pour consigne de ne pas changer la forme
+  publique de `MarcheDImageCle.Records` ni des types de records d'image-clé : le champ ajouté à
+  `KeyframeRec` restera à ce plan, sans conflit). Calendrier sans date : son lot de la marche
+  d'image-clé, relancé le 2026-10-03 au matin, sera assemblé après ses quatre autres lots puis
+  contrôlé, et la fusion attend l'accord de l'utilisateur. Report VALIDE de 1.3.2 et de la marque
+  d'élection (dépendance explicite du §1.3).
