@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -171,37 +172,43 @@ func scanBipedChunks(film *source.Film, chunks []int, band SlotBand, lay profile
 	return out, read
 }
 
-// bipedSlotBand construit l'ensemble des slots biped plausibles : union des ti=35 des
-// keyframes de tous les chunks balayés (+ le suivant, car un biped créé en cours de chunk
+// bipedSlotBand construit l'ensemble des slots biped plausibles : union des ti=35 de la PREMIÈRE
+// image-clé de chacun des chunks balayés (+ le suivant, car un biped créé en cours de chunk
 // n'apparaît que dans le keyframe d'après), trous comblés entre min et max — les slots
 // biped sont alloués dans une bande contiguë, et un biped créé PUIS détruit à l'intérieur
-// d'un chunk n'apparaît dans aucun keyframe.
+// d'un chunk n'apparaît dans aucun keyframe. Les slots se relèvent dans la phase des images-clés
+// de ces chunks ([releveDeLaBandeBipede]).
 func bipedSlotBand(fc *FilmContext, chunks []int) SlotBand {
-	seen := map[uint32]bool{}
-	marche := fc.MarcheDImageCle()
-	scan := append(append([]int{}, chunks...), chunks[len(chunks)-1]+1)
-	for _, c := range scan {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range marche.Records(pk.Payload(data)) {
-				if r.TI == BipedTypeIndex && r.Slot >= 0 {
-					seen[uint32(r.Slot)] = true
-				}
-			}
-			break
-		}
-	}
-	band := fillSlotBand(seen)
+	r := &releveDeLaBandeBipede{vus: map[uint32]bool{}, chunk: -1}
+	distribuerLesImagesClesDesChunks(fc, append(append([]int{}, chunks...), chunks[len(chunks)-1]+1), []Canal{r})
+	band := fillSlotBand(r.vus)
 	// Repli `repli_bande_bipede_comblee` : les slots que le comblement AJOUTE a ceux vus (lot J8.7).
-	fc.NoterReplis(ComptesDesReplis{SlotsBipedesComblees: band.Count() - len(seen)})
+	fc.NoterReplis(ComptesDesReplis{SlotsBipedesComblees: band.Count() - len(r.vus)})
 	return band
 }
+
+// releveDeLaBandeBipede releve les slots ti=35 de la PREMIERE image-cle de chaque chunk de la phase.
+type releveDeLaBandeBipede struct {
+	vus map[uint32]bool
+	// chunk : le chunk de la derniere image-cle relevee, -1 avant la premiere.
+	chunk int
+}
+
+func (*releveDeLaBandeBipede) Interets() []Interet { return nil }
+
+func (r *releveDeLaBandeBipede) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
+	if p.Chunk == r.chunk {
+		return
+	}
+	r.chunk = p.Chunk
+	for _, rec := range p.Records {
+		if int(rec.TI) == BipedTypeIndex {
+			r.vus[rec.Vie.Slot] = true
+		}
+	}
+}
+
+func (*releveDeLaBandeBipede) Clore(BilanDeMarche) {}
 
 // fillSlotBand comble les trous entre le min et le max de l'ensemble (bande contiguë) et
 // rend la bande DENSE consultable par bit candidat.

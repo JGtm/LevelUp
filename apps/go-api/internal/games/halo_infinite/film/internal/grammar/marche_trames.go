@@ -6,11 +6,12 @@ package grammar
 // # C EST LA MARCHE DE PRODUCTION, PAS UN SECOND MARCHEUR
 //
 // Le pilotage qui suit — la table anticipee posee une fois, puis chunk par chunk la liaison des
-// images-cles au monde ([lierLeChunkAuMonde]), puis paquet par paquet la localisation des listes
-// d evenements ([localiserLaListe]) et la marche par rangs ([lireTrameParRangs]) — est celui des
-// etats de mouvement et du tir continu ([ScanMarcheDesTrames]) et de la carte de fermeture
+// images-cles au monde ([lierLesImagesClesDuChunk]), puis paquet par paquet la localisation des
+// listes d evenements ([localiserLaListe]) et la marche par rangs ([lireTrameParRangs]) — est celui
+// des etats de mouvement et du tir continu ([ScanMarcheDesTrames]) et de la carte de fermeture
 // ([FrameClosure], [FrameClosureDetaillee]) : ils le CONSOMMENT, aucun ne le recopie. Garde-rail :
-// `marche_trames_unique_test.go`.
+// `marche_trames_unique_test.go`. La table et la liaison sont lues dans la phase des images-cles
+// (`marche_trames_preliminaires.go`).
 //
 // # CE QU ELLE RANGE, ET CE QU ELLE NE CHANGE PAS
 //
@@ -33,14 +34,14 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
-// marcheurDesTrames porte l etat d UNE marche des trames d un film : le monde, la marche des
-// images-cles, l arene du paquet en cours et ce que la marche a lu de lui.
+// marcheurDesTrames porte l etat d UNE marche des trames d un film : le monde, ses preliminaires
+// lus dans les images-cles, l arene du paquet en cours et ce que la marche a lu de lui.
 type marcheurDesTrames struct {
 	fc     *FilmContext
 	cfg    FrameConfig
 	chunks []int
 	monde  *World
-	images MarcheDImageCle
+	prel   *preliminairesDesTrames
 	// paquet : l arene, reutilisee d un paquet a l autre ; entites : la table d entites du monde,
 	// en lecture seule.
 	paquet  lecture.Paquet
@@ -85,29 +86,39 @@ func (c *FilmContext) Trames(obs *Observation) iter.Seq2[*lecture.Paquet, error]
 
 // nouveauMarcheurDesTrames prepare la marche des trames du film sous le cadre de balayage du
 // contexte, construit depuis l en-tete de la marche ([FilmContext.EnTete]), et l observation
-// `obs` : le monde, et la table anticipee posee une fois, avant la premiere trame (les
-// preliminaires bornes de l ADR 0037 IR-3).
+// `obs` : ses preliminaires lus dans une phase des images-cles qu elle joue seule, puis le monde.
 func (c *FilmContext) nouveauMarcheurDesTrames(obs *Observation) (*marcheurDesTrames, error) {
-	chunks := c.ChunkNumbers()
-	if len(chunks) == 0 {
+	if len(c.ChunkNumbers()) == 0 {
 		return nil, ErrNoFilmChunk
 	}
 	reg, err := c.Registry()
 	if err != nil {
 		return nil, err
 	}
+	return c.marcheurDesTramesDepuis(reg, obs, c.lireLesPreliminaires())
+}
+
+// marcheurDesTramesDepuis prepare la marche des trames du film depuis ses preliminaires deja lus
+// (les preliminaires bornes de l ADR 0037 IR-3) : le monde, et la table anticipee posee une fois,
+// avant la premiere trame.
+func (c *FilmContext) marcheurDesTramesDepuis(reg *Registry, obs *Observation, prel *preliminairesDesTrames) (
+	*marcheurDesTrames, error,
+) {
+	chunks := c.ChunkNumbers()
+	if len(chunks) == 0 {
+		return nil, ErrNoFilmChunk
+	}
 	cfg := c.CadreDeBalayage()
 	cfg.IDLowBits = c.EnTete().IDLowBits.Valeur
 	cfg.Obs = obs
-	m := &marcheurDesTrames{fc: c, cfg: cfg, chunks: chunks, monde: NewWorld(reg),
-		images: c.MarcheDImageCle()}
+	m := &marcheurDesTrames{fc: c, cfg: cfg, chunks: chunks, monde: NewWorld(reg), prel: prel}
 	m.entites = entitesDuMonde{w: m.monde}
 	m.trame.paquet = &m.paquet
-	// LE REPLI DU LOT 5.23 ENTRE EN PRODUCTION ICI. La table anticipee est construite en UNE
-	// passe sur les images-cles de tous les chunks, sans decodage de trame ; au point de rejet, la
-	// marche y lit l archetype qu une image-cle ULTERIEURE donne a un eid que le monde ne connait
-	// pas encore. Cf. `keyframe_anticipe.go` et [World.LierParRepliDAnticipation].
-	m.monde.PoserTableAnticipee(ConstruireTableAnticipee(c))
+	// LE REPLI DU LOT 5.23 ENTRE EN PRODUCTION ICI. La table anticipee est construite dans la phase
+	// des images-cles de tous les chunks, sans decodage de trame ; au point de rejet, la marche y lit
+	// l archetype qu une image-cle ULTERIEURE donne a un eid que le monde ne connait pas encore. Cf.
+	// `keyframe_anticipe.go` et [World.LierParRepliDAnticipation].
+	m.monde.PoserTableAnticipee(prel.table)
 	return m, nil
 }
 
@@ -121,7 +132,7 @@ func (m *marcheurDesTrames) parcourir(rendre func(*trameLue) bool) {
 		}
 		// La table anticipee ne rend qu une declaration STRICTEMENT POSTERIEURE a ce chunk.
 		m.monde.PoserChunkCourant(c)
-		m.liaisons.ajouter(lierLeChunkAuMonde(m.monde, m.images, data, pks, m.cfg.Obs))
+		m.liaisons.ajouter(lierLesImagesClesDuChunk(m.monde, m.prel.liaison.rendre(c), m.cfg.Obs))
 		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta || pk.Size < 1 {
 				continue

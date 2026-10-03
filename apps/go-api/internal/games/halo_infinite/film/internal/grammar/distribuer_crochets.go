@@ -2,9 +2,10 @@ package grammar
 
 // distribuer_crochets.go — LES CROCHETS DES CANAUX, FONDUS DANS L OBSERVATION DE LA MARCHE.
 //
-// Chaque canal pose ses crochets sur une observation a lui ([Canal.Brancher]) ; le distributeur
-// recopie ensuite chaque crochet pose dans l observation de la marche. Un crochet qu un second canal
-// pose aussi est refuse ([ErrCrochetDejaPose]) : il ecraserait le premier sans que rien ne le dise.
+// Chaque canal des trames pose ses crochets sur une observation a lui ([CanalDesTrames.Brancher]) ;
+// le distributeur recopie ensuite chaque crochet pose dans l observation de la marche. Un crochet
+// qu un second canal pose aussi est refuse ([ErrCrochetDejaPose]) : il ecraserait le premier sans
+// que rien ne le dise.
 // Seuls les CROCHETS (champs de fonction) se fondent — les compteurs de l observation sont ceux de
 // la marche, et un canal les lit dans le bilan ([BilanDeMarche.Obs]).
 
@@ -16,9 +17,9 @@ import (
 // ErrCrochetDejaPose : deux canaux d une marche posent le meme crochet de l observation.
 const ErrCrochetDejaPose = registryError("deux canaux posent le meme crochet de l observation")
 
-// brancherLesCanaux fait poser a chaque canal ses crochets et rend l observation de la marche qui
-// les porte tous.
-func brancherLesCanaux(m *MarcheDistribuee, canaux []Canal) (*Observation, error) {
+// brancherLesCanaux fait poser a chaque canal des trames ses crochets et rend l observation de la
+// marche qui les porte tous.
+func brancherLesCanaux(m *MarcheDistribuee, canaux []CanalDesTrames) (*Observation, error) {
 	obs := NouvelleObservation()
 	for i, c := range canaux {
 		propre := NouvelleObservation()

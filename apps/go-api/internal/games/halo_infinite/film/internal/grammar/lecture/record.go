@@ -123,6 +123,11 @@ const TINonResolu int16 = -1
 // SansDesynchronisation est le [Record.Desync] d'un record traversé jusqu'au bout.
 const SansDesynchronisation int16 = -1
 
+// CorpsNonParcouru est le [Record.Desync] d'un record d'image-clé dont la marche n'a pas parcouru
+// l'état complet : aucun canal de la distribution ne lit les composants de son archétype. Le record
+// garde son identité, son ancre et sa liaison ; il n'a ni composant, ni longueur, ni preuve.
+const CorpsNonParcouru int16 = -2
+
 // Composant est UNE occurrence de composant dans un record : son index d'itération dans
 // l'archétype, son état, la provenance de sa largeur et son étendue dans le payload.
 //
@@ -161,9 +166,10 @@ type Record struct {
 	// TI est l'archétype, [TINonResolu] quand il n'a pas été résolu.
 	TI int16
 	// Desync est l'index d'itération où la traversée s'est arrêtée, [SansDesynchronisation] pour
-	// un record traversé jusqu'au bout. Quand le dernier composant du record est
-	// [EtatInfranchissable], c'est son index ; sinon la traversée s'est arrêtée avant tout
-	// composant (archétype hors du registre, slot non lié).
+	// un record traversé jusqu'au bout, [CorpsNonParcouru] pour un record d'image-clé dont le
+	// corps n'a pas été parcouru. Quand le dernier composant du record est [EtatInfranchissable],
+	// c'est son index ; sinon la traversée s'est arrêtée avant tout composant (archétype hors du
+	// registre, slot non lié).
 	Desync int16
 	// Vie est l'identité du record (ADR 0034, `LifeKey`) : son slot et les deux bits de tête de son
 	// identifiant, la « tête » que la table d'entités compare — la génération du handle d'un record

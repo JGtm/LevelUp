@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -144,7 +145,8 @@ func ScanPlayerTeams(fc *FilmContext) (map[int]int, TeamScanReport, PlayerEntity
 }
 
 // scanPlayerTeamsAvec est [ScanPlayerTeams] sous une marche donnee : les tests y rejouent la marche
-// SANS preuve, pour eprouver le principe des doutes sur de vrais octets.
+// SANS preuve, pour eprouver le principe des doutes sur de vrais octets. La lecture est un canal de
+// la phase des images-cles ([canalDesEquipes]) qui parcourt les corps des records ti=9.
 func scanPlayerTeamsAvec(fc *FilmContext, marche MarcheDImageCle) (map[int]int, TeamScanReport, PlayerEntityScan) {
 	var rep TeamScanReport
 	reg, err := fc.Registry()
@@ -162,37 +164,33 @@ func scanPlayerTeamsAvec(fc *FilmContext, marche MarcheDImageCle) (map[int]int, 
 		rep.ComponentMismatch = true
 		return nil, rep, PlayerEntityScan{}
 	}
-	entites := nouvelAccumulateurDEntites()
-	parIndex := map[int]map[int]int{} // index de joueur -> designateur -> compte
-	for _, c := range fc.ChunkNumbers() {
-		raw, paquets, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range paquets {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			scanPaquetEquipes(pk.Payload(raw), pk.TimestampUS, reg, &rep, lecturesDEquipe{
-				entites: entites, parIndex: parIndex, ctx: fc.ContexteDeLecture(), marche: marche})
-		}
-	}
-	rep.Entities = len(entites.entites)
-	rep.EntityDivergences = entites.divergences()
-	return publierEquipes(parIndex, &rep), rep, entites.publier()
+	c := &canalDesEquipes{rep: rep, arch: arch, ctx: fc.ContexteDeLecture(), entites: nouvelAccumulateurDEntites(),
+		parIndex: map[int]map[int]int{}}
+	distribuerLaDemande(fc, demandeDImagesCles{marche: &marche}, []Canal{c})
+	c.rep.Entities = len(c.entites.entites)
+	c.rep.EntityDivergences = c.entites.divergences()
+	return publierEquipes(c.parIndex, &c.rep), c.rep, c.entites.publier()
 }
 
-// lecturesDEquipe porte ce que chaque paquet alimente : les entites, la table de controle par
-// index, le contexte de lecture et la marche d'ancres du film. Une structure plutot que quatre
-// parametres de plus : le depot borne a cinq, et les quatre voyagent toujours ensemble.
-type lecturesDEquipe struct {
-	entites  *accumulateurDEntites
-	parIndex map[int]map[int]int
+// canalDesEquipes lit l'equipe de chaque joueur gere dans la phase des images-cles : il interprete
+// le designateur d'equipe, i0 de ti=9, et la phase parcourt donc les corps de ti=9.
+type canalDesEquipes struct {
+	rep  TeamScanReport
+	arch Archetype
+	// ctx est le contexte de lecture du film sous lequel l'etat par defaut de ti=9 se relit (cadre,
+	// controle de corruption) : celui du balayage, pris avant la phase.
 	ctx      ContexteDeLecture
-	marche   MarcheDImageCle
+	entites  *accumulateurDEntites
+	parIndex map[int]map[int]int // index de joueur -> designateur -> compte
 }
 
-// scanPaquetEquipes lit les records ti=9 d'UN payload d'image-cle. Chaque refus est compte.
+func (*canalDesEquipes) Interets() []Interet {
+	return []Interet{{Phase: PhaseImagesCles, TI: managedPlayerTypeIndex, Composant: teamDesignatorComponent}}
+}
+
+func (*canalDesEquipes) Clore(BilanDeMarche) {}
+
+// ImageCle lit les records ti=9 d'UN paquet d'image-cle. Chaque refus est compte.
 //
 // L'IMAGE-CLE N'EST INSCRITE QUE SI ELLE EST PORTEUSE (au moins un record ti=9) : c'est le pas
 // des presences, et une image-cle qui ne porte aucun occupant (le preambule) ne dit l'absence de
@@ -203,36 +201,37 @@ type lecturesDEquipe struct {
 // chemin de la marche, ou atteint mais illisible — est un occupant peut-etre present ; son absence a
 // cette image-cle n'est pas prouvee ([PlayerEntityScan.AbsenceProuvee],
 // `player_entities_entetes.go`).
-func scanPaquetEquipes(pay []byte, ts uint64, reg *Registry, rep *TeamScanReport, l lecturesDEquipe) {
+func (c *canalDesEquipes) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
 	rang := -1
-	mp := l.marche.Marcher(pay)
 	lus := map[int]bool{}
-	for _, b := range keyframeBornesDe(mp.Records) {
-		if b.TI != managedPlayerTypeIndex {
+	for i := range p.Records {
+		r := &p.Records[i]
+		if int(r.TI) != managedPlayerTypeIndex {
 			continue
 		}
 		if rang < 0 {
-			rang = l.entites.ouvrirImageCle(ts)
-			rep.Packets++
+			rang = c.entites.ouvrirImageCle(p.TS)
+			c.rep.Packets++
 		}
-		rep.Records++
-		idx, brut, ok := lireEquipeDuRecord(pay, b.Bit, reg, l.ctx)
+		c.rep.Records++
+		slot := int(r.Vie.Slot)
+		idx, brut, ok := lireEquipeALEtendue(p, r, c.arch, c.ctx)
 		switch {
 		case !ok:
-			rep.Unreached++
+			c.rep.Unreached++
 		case idx < 0 || idx >= playerTableSlots:
-			rep.OutOfDomainIndex++
+			c.rep.OutOfDomainIndex++
 		case brut < 0 || brut > teamDesignatorRawMax:
-			rep.OutOfDomainValue++
+			c.rep.OutOfDomainValue++
 		default:
-			rep.Read++
-			lus[b.Slot] = true
-			l.entites.noter(rang, b.Slot, idx, brut-1)
-			noter(l.parIndex, idx, brut-1)
+			c.rep.Read++
+			lus[slot] = true
+			c.entites.noter(rang, slot, idx, brut-1)
+			noter(c.parIndex, idx, brut-1)
 		}
 	}
 	if rang >= 0 {
-		l.entites.douterDe(rang, lus, slotsDEntetesExacts(pay))
+		c.entites.douterDe(rang, lus, slotsDEntetesExacts(p.Payload))
 	}
 }
 
@@ -245,7 +244,8 @@ func noter(m map[int]map[int]int, cle, valeur int) {
 }
 
 // lireEquipeDuRecord rejoue UN record ti=9 et rend l'index de joueur et la valeur BRUTE du
-// designateur.
+// designateur. C'est la forme des instruments, qui marchent leurs records hors de la phase des
+// images-cles ; la production lit le record que la phase a parcouru ([lireEquipeALEtendue]).
 //
 // DEUX DERIVATIONS INDEPENDANTES, ET LEUR CONCORDANCE EST VERIFIEE. L'index sort de l'etat par
 // defaut rejoue a `en-tete + n1` ; le designateur sort de la boucle de composants de
@@ -256,7 +256,28 @@ func lireEquipeDuRecord(pay []byte, recBit int, reg *Registry, ctx ContexteDeLec
 	if len(tr.Comps) == 0 || tr.Comps[0].Name != teamDesignatorComponent || !tr.Comps[0].Ported {
 		return 0, 0, false
 	}
-	i0 := tr.Comps[0].StartBit
+	return lireEquipeA(pay, recBit, tr.Comps[0].StartBit, ctx)
+}
+
+// lireEquipeALEtendue rend l'index de joueur et la valeur BRUTE du designateur du record ti=9 `r`
+// du paquet d'image-cle `p`, dont la phase a parcouru le corps : i0 est la premiere occurrence du
+// record, l'etendue que la marche lui a donnee. Memes derivations, meme concordance que
+// [lireEquipeDuRecord].
+func lireEquipeALEtendue(p *lecture.Paquet, r *lecture.Record, arch Archetype, ctx ContexteDeLecture) (idx, brut int, ok bool) {
+	if r.Comps[1] == r.Comps[0] {
+		return 0, 0, false
+	}
+	c0 := p.Comps[r.Comps[0]]
+	if int(c0.Index) >= len(arch.Components) || arch.Components[c0.Index] != teamDesignatorComponent ||
+		c0.Etat == lecture.EtatInfranchissable {
+		return 0, 0, false
+	}
+	return lireEquipeA(p.Payload, int(r.Debut), int(c0.Debut), ctx)
+}
+
+// lireEquipeA relit l'etat par defaut du record ti=9 de premier bit `recBit` pour son index de
+// joueur, verifie que son composant i0 commence bien en `i0`, et y lit le designateur BRUT.
+func lireEquipeA(pay []byte, recBit, i0 int, ctx ContexteDeLecture) (idx, brut int, ok bool) {
 	br := LecteurSur(pay)
 	br.PoserContexte(ctx)
 	// LE CADRE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c) : cette lecture REJOUE le cadre

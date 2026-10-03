@@ -114,8 +114,8 @@ func keyframeGroundWeapons(pay []byte, known map[uint32]bool) []KeyframeGroundWe
 	out := make([]KeyframeGroundWeapon, 0, len(rf))
 	for _, r := range rf {
 		out = append(out, KeyframeGroundWeapon{
-			Slot:     uint32(r.Rec.Slot),
-			Gen:      uint32(r.Rec.Gen),
+			Slot:     r.Rec.Vie.Slot,
+			Gen:      r.Rec.Vie.Gen,
 			Families: r.Families,
 		})
 	}

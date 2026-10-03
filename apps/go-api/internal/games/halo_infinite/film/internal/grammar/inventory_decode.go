@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -128,7 +129,8 @@ func ScanFilmKeyframeInventory(
 	return ScanKeyframeInventory(NewFilmContext(film), known, grenMax)
 }
 
-// ScanKeyframeInventory décode l'inventaire des images-clés d'un film DEJA CHARGE.
+// ScanKeyframeInventory décode l'inventaire des images-clés d'un film DEJA CHARGE, dans la phase
+// des images-clés ([canalDInventaire]).
 //
 // Les records viennent de la marche d'image-clé DU FILM ([FilmContext.MarcheDImageCle],
 // lot D-fix) : celle des autres balayages de la cuisson.
@@ -140,49 +142,52 @@ func ScanFilmKeyframeInventory(
 func ScanKeyframeInventory(
 	fc *FilmContext, known map[uint32]bool, grenMax uint32,
 ) ([]types.KeyframeInventory, types.KeyframeInventoryStats, error) {
-	var st types.KeyframeInventoryStats
 	if len(known) == 0 {
-		return nil, st, nil
+		return nil, types.KeyframeInventoryStats{}, nil
 	}
 	if grenMax == 0 {
 		grenMax = DefaultGrenadeMax
 	}
-	nums := fc.ChunkNumbers()
-	st.Chunks = len(nums)
-	marche := fc.MarcheDImageCle()
-	var out []types.KeyframeInventory
-	for _, c := range nums {
-		chunk, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			st.ChunksUnread++
-			continue
-		}
-		for _, p := range pks {
-			if p.Type != PacketTypeKeyframe {
-				continue
-			}
-			st.Keyframes++
-			pay := p.Payload(chunk)
-			invs := keyframeInventoriesDe(pay, invRecordSpansDe(pay, marche.Records(pay)), known, grenMax)
-			st.Records += len(invs)
-			for _, inv := range invs {
-				inv.TimestampUS, inv.Chunk, inv.PacketIndex = p.TimestampUS, c, p.Index
-				switch {
-				case !inv.GrenadesRead:
-				case inv.GrenadesByPosition:
-					st.GrenadesByPosition++
-				default:
-					st.GrenadesByAnchor++
-				}
-				out = append(out, inv)
-			}
-		}
+	c := &canalDInventaire{known: known, grenMax: grenMax}
+	distribuerLesImagesClesSeules(fc, []Canal{c})
+	c.st.Chunks = len(fc.ChunkNumbers())
+	c.st.ChunksUnread = c.st.Chunks - c.lus
+	if c.st.ChunksUnread == c.st.Chunks {
+		return nil, c.st, ErrNoReadableFilmChunk
 	}
-	if st.ChunksUnread == st.Chunks {
-		return nil, st, ErrNoReadableFilmChunk
-	}
-	return out, st, nil
+	return c.out, c.st, nil
 }
+
+// canalDInventaire lit, dans la phase des images-clés, l'inventaire de chaque record bipède.
+type canalDInventaire struct {
+	known   map[uint32]bool
+	grenMax uint32
+	out     []types.KeyframeInventory
+	st      types.KeyframeInventoryStats
+	// lus : les chunks que la phase a pu lire.
+	lus int
+}
+
+func (*canalDInventaire) Interets() []Interet { return nil }
+
+func (c *canalDInventaire) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
+	c.st.Keyframes++
+	invs := keyframeInventoriesDe(p.Payload, invRecordSpansDe(p.Payload, p.Records), c.known, c.grenMax)
+	c.st.Records += len(invs)
+	for _, inv := range invs {
+		inv.TimestampUS, inv.Chunk, inv.PacketIndex = p.TS, p.Chunk, p.Index
+		switch {
+		case !inv.GrenadesRead:
+		case inv.GrenadesByPosition:
+			c.st.GrenadesByPosition++
+		default:
+			c.st.GrenadesByAnchor++
+		}
+		c.out = append(c.out, inv)
+	}
+}
+
+func (c *canalDInventaire) Clore(b BilanDeMarche) { c.lus = b.ChunksLus }
 
 // keyframeInventories décode un payload de keyframe, un inventaire par record de biped.
 // PUR (aucune I/O) — c'est le cœur testable. Sans preuve (marche des instruments) ; la cuisson passe
@@ -246,11 +251,12 @@ type invRecordSpan struct {
 // invRecordSpans découpe le payload en records, bornes données par WalkKeyframeWorld — le même
 // walker que keyframe_loadout.go, déjà validé 249/250 entités et 8/8 bipeds.
 func invRecordSpans(pay []byte) []invRecordSpan {
-	return invRecordSpansDe(pay, WalkKeyframeWorld(pay))
+	return invRecordSpansDe(pay, recordsDIdentite(WalkKeyframeWorld(pay)))
 }
 
-// invRecordSpansDe borne des records DEJA marches (cf. [invRecordSpans]).
-func invRecordSpansDe(pay []byte, recs []KeyframeRec) []invRecordSpan {
+// invRecordSpansDe borne des records DEJA marches, dans l'ordre de la marche (cf.
+// [invRecordSpans]) : un record va de son ancre à celle du suivant, le dernier au bout du payload.
+func invRecordSpansDe(pay []byte, recs []lecture.Record) []invRecordSpan {
 	if len(recs) == 0 {
 		return nil
 	}
@@ -259,9 +265,9 @@ func invRecordSpansDe(pay []byte, recs []KeyframeRec) []invRecordSpan {
 	for i, r := range recs {
 		to := total
 		if i+1 < len(recs) {
-			to = recs[i+1].Bit
+			to = int(recs[i+1].Debut)
 		}
-		out = append(out, invRecordSpan{slot: r.Slot, ti: r.TI, from: r.Bit, to: to})
+		out = append(out, invRecordSpan{slot: int(r.Vie.Slot), ti: int(r.TI), from: int(r.Debut), to: to})
 	}
 	return out
 }

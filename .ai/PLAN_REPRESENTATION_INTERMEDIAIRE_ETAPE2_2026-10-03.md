@@ -211,14 +211,77 @@ devant ; les lots 2.2 et 2.3, qui consomment le distributeur, passent devant la 
   T1/T3/T6 verts.
 
 ### Lot 2.2 — Canaux d'image-clé (taille M) — coordination §1.3
-- [ ] 2.2.1 Armes portées (`keyframe_loadout.go`), inventaire (`inventory_decode.go`), marques de
+*Décisions d'exécution du 2026-10-03* (relu sur pièces : chaque consommateur pilote aujourd'hui sa
+propre boucle chunks -> paquets d'image-clé -> mémoire d'ancres ; seul `ScanPlayerTeams` parcourt
+des corps, ceux de ti=9 ; coût mesuré de la phase complète des images-clés, mémoire chaude : 18 à
+65 ms par film, contre 14 à 99 s de décodage, cinq films) :
+1. *Un canal d'image-clé ne fait pas marcher les trames.* `Canal` = intérêts, image-clé, clôture ;
+   `CanalDesTrames` y ajoute les crochets et la trame. Une distribution dont aucun canal ne lit les
+   trames ne les marche pas.
+2. *Les intérêts ont une phase.* `Interet.Phase` (trames par défaut, ou images-clés) : la phase des
+   images-clés ne marque interprétées que les occurrences qu'un canal y lit. Correction du premier
+   temps de 2.1, qui y marquait les intérêts d'un canal des trames alors qu'aucun crochet n'y reçoit
+   de valeur (IR-4 : interprétée = un canal l'interprète).
+3. *Un corps n'est parcouru que s'il est lu.* Dans une distribution, la phase des images-clés
+   parcourt l'état complet des records des archétypes qu'un canal y interprète ; les autres records
+   gardent leur identité, leur ancre et leur liaison (chaînée ou élue), sans composant, marqués
+   `lecture.CorpsNonParcouru`. L'itérateur `ImagesCles` garde la marche complète (son consommateur,
+   `KeyframeClosure`, mesure tous les corps). Le coût de chaque consommateur ne change pas : ceux qui
+   lisent des identités ne parcourent aucun corps (comme aujourd'hui), les équipes parcourent ti=9.
+4. *Sans registre, les ancres.* La marche d'ancres n'a pas besoin du registre : une phase des
+   images-clés sans corps à parcourir rend ses ancres sur un film sans `chunk_00`, comme les
+   consommateurs le font aujourd'hui (bobine historique `minifilm_000d5950`, goldens du rejeu). Le
+   registre est exigé par un corps à parcourir et par la phase des trames.
+5. *La marche d'ancres du paquet est exposée* (`MarcheDistribuee.Ancres` : ancres dans l'ordre de la
+   marche, écartés, décisions) : la couverture des armes portées et la liaison la lisent sans remarcher.
+6. *Pas de mutualisation entre consommateurs dans ce lot* : chaque point d'entrée public garde sa
+   signature et devient une distribution à un canal ; le nombre de parcours d'images-clés de la
+   cuisson ne change pas (critère 5), sauf dans la marche des trames, dont les deux préliminaires
+   (table anticipée, liaison) partagent désormais une phase des images-clés au lieu de deux
+   parcours. Mettre les canaux d'une cuisson dans une seule distribution est le lot 3.1 (un contexte
+   par cuisson).
+7. *2.2.2* : prévu — la fenêtre de 32 bits (armes portées, marque de portage) et les motifs des
+   emprises d'inventaire deviennent des méthodes de récupération nommées au registre et comptées
+   par film. RELU SUR PIÈCES AVANT D'ÉCRIRE (découverte 8) : la grammaire atteint ces composants
+   dans l'état complet du bipède, et ces fenêtres décident donc devant une lecture disponible ;
+   2.2.2 est statué `[!]`, décision de l'utilisateur demandée. La recherche exhaustive de l'en-tête
+   exact de ti=9 (`player_entities_entetes.go`) n'est pas une fenêtre de valeur : elle prouve une
+   absence, et ses doutes sont déjà comptés et publiés (`coverage.seats`).
+- [x] 2.2.1 Armes portées (`keyframe_loadout.go`), inventaire (`inventory_decode.go`), marques de
       portage (`keyframe_carrier_mark.go`), équipes (`player_teams.go`), recensements et bandes
       (`world_object_census.go`, `slot_band_*.go`, `offline_biped_band.go`), générations vivantes
       (partie image-clé, `generations_vivantes.go`), table anticipée (`keyframe_anticipe.go`) et
       liaison (`keyframe_liaison.go`) consomment la phase `ImagesCles`.
-- [ ] 2.2.2 Les fenêtres lues bit à bit À L'INTÉRIEUR des images-clés (armes : fenêtre de 32 bits,
+      *Fait* : chaque lecteur est un canal de la phase des images-clés et son point d'entrée public
+      une distribution à un canal (signature inchangée) : armes portées (`canalDesArmesPortees`, la
+      couverture de la marche lue dans `MarcheDistribuee.Ancres`), inventaire (`canalDInventaire`),
+      marques de portage (`canalDesMarquesDePortage`), équipes (`canalDesEquipes` : il interprète i0
+      de ti=9, la phase parcourt les corps de ti=9 et eux seuls ; l'index se relit à l'étendue d'i0,
+      sans seconde traversée), recensement (`canalDuRecensement`), bandes (`releveDesSlots`, partagé
+      par la règle comblée, la règle observée et le recensement ; `releveDeLaBandeBipede` sur la phase
+      restreinte aux chunks demandés), générations vivantes (`releveDesViesBipedes`), table anticipée
+      (`canalDeLaTableAnticipee`). La marche des trames lit ses deux préliminaires (table anticipée,
+      liaison avec la table de datums de chaque image-clé) dans UNE phase des images-clés
+      (`marche_trames_preliminaires.go`) et pose la liaison chunk par chunk
+      (`lierLesImagesClesDuChunk`). Formes instrument (`lierLeChunkAuMonde`,
+      `TableAnticipee.AjouterChunk`) passées dans les tests ; garde-rail neuf
+      `marche_images_cles_unique_test.go` (un seul pilotage des images-clés, sites restants nommés :
+      découverte 7 ; mutation jouée rouge). Distributeur : décisions 1 à 5, tests neufs (corps lu
+      seulement s'il est lu, phase des intérêts, film sans registre ; trois mutations jouées rouges).
+- [!] 2.2.2 Les fenêtres lues bit à bit À L'INTÉRIEUR des images-clés (armes : fenêtre de 32 bits,
       inventaire : emprises) deviennent des méthodes de la couche de récupération (DT2-4), marquées.
+      *Non traité, décision de l'utilisateur demandée* (découverte 8) : la grammaire atteint ces
+      composants dans l'état complet du bipède ; les inscrire comme replis les déclarerait
+      `devant_la_lecture`, que le cliquet `NbDevantLaLecture` interdit d'augmenter. Proposition : les
+      lire par la grammaire et retirer les fenêtres, en changement de comportement déclaré avec 2.7.
 - Gate : T4 ; comptes de replis déclarés si la bande n'est plus relevée deux fois (rapport §1.6).
+  *Passé* (passe `ri22a` contre la référence `ri21a`) : `replay-equiv` 20/20 identiques, tous
+  décodés depuis le film (`depuis_les_faits=false` ×20) ; faits 20/20 et killsource 19/19 identiques
+  à l'octet. La bande reste relevée deux fois (cache du contexte et positions) : aucun compte de
+  repli ne change. G-film, archlint, G-race, `go vet` (avec et sans `research`), `golangci-lint`
+  (0 problème) verts ; empreinte de la grammaire régénérée à révision constante. Parcours
+  d'images-clés de la cuisson : un de moins (les deux préliminaires de la marche des trames
+  partagent une phase), aucun corps parcouru de plus.
 
 ### Lot 2.3 — Canaux de tête de vue A (taille M) — coordination §1.3
 - [ ] 2.3.1 Tirs (36), translocations (117), lunette, ramassages, apparitions (103), événements de
@@ -376,6 +439,27 @@ plan y sont reprises comme items (3.1.2).
    Les records NEW d'objets du monde que la marche des trames traverse le lisent donc aux largeurs
    par défaut sur les formats qui en ont d'autres. Gardé tel quel (différence nulle) ; à mesurer
    avant de l'unifier (une montée de `grammar.Rev`).
+7. *(lot 2.2)* **Des parcours d'images-clés restent hors de la phase**, hors de la liste fermée de
+   2.2.1 : la marche des naissances (`birth_loadouts.go` : sa marche d'ancres et `LierTableDeDatums`
+   chunk par chunk), l'anneau de la bombe (`navpoint_radial_scan.go`, état complet de ti=12), les
+   objectifs (`objective_scan.go`, état complet de ti=11), les morts d'objet (`object_deaths.go`,
+   `marchPacketsOf`, lot LU de la campagne), killsource (`facts/killsource/world.go`, 2.7.c),
+   `roster_type8.go`. À porter par 3.1 (une distribution par cuisson) ; non traité.
+8. *(lot 2.2)* **Les fenêtres de bits des images-clés décident DEVANT une lecture que la grammaire
+   atteint.** Mesure du 2026-10-03 sur trois bobines par build (phase complète des images-clés) : la
+   traversée de l'état complet du bipède (ti=35) atteint les compteurs de grenades (i22), le bloc
+   des munitions (i30 à i42), les quatre `weapon-state-type-info` (i43 à i46, l'identifiant d'arme
+   en clair), les ensembles de grenades et de capacité (i47, i48) dans 188 records sur 237
+   (`e5adf7b2`), 80 sur 80 (`fb1a1a72`) et 188 sur 209 (`a521164d`) ; elle s'arrête ensuite à i59 ou
+   i60 (`simulation-state-component`, non porté), donc aucun record n'est prouvé fermé. Les inscrire
+   au registre comme méthodes de récupération (2.2.2 tel qu'écrit) les déclarerait
+   `devant_la_lecture` — la violation de D14 (b) que le cliquet `NbDevantLaLecture` interdit de
+   faire monter. La forme juste est de LIRE ces valeurs par la grammaire (intérêts de la phase des
+   images-clés sur ti=35, lecture à l'étendue de l'occurrence) et de retirer les fenêtres :
+   changement de comportement (une fenêtre retient toute famille connue où qu'elle tombe dans
+   l'emprise du record, alias compris ; la grammaire lirait les emplacements que l'écrivain écrit),
+   donc un lot de 2.7, prouvé au corpus et au banc de vérité. Décision de l'utilisateur demandée
+   (2.2.2 statué `[!]`).
 
 ## 7. Journal
 
@@ -412,3 +496,15 @@ plan y sont reprises comme items (3.1.2).
   à l'octet) ; G-film, archlint, G-race, vet (avec et sans `research`), lint verts ; empreinte de la
   grammaire régénérée à révision constante. Les lots 2.2 et 2.3 passent devant le second temps
   (règle d'ordre du §3 : le reste de 2.1 attend la fusion de la vague 1).
+- 2026-10-03 : CI verte au niveau job sur `3be61faf3` (premier temps de 2.1, run `37127379956`).
+- 2026-10-03 : signal « machine calme » de la campagne (vague 1 décodée) : la passe de preuve de 2.2
+  est arrêtée pour jouer la mesure de performance de l'étape 1 (critère 4), qui l'attendait : aucune
+  régression (détail au plan de l'étape 1, qui est CLOS) ; campagne prévenue de la fin de la mesure.
+- 2026-10-03 : lot 2.2 — 2.2.1 fait et prouvé (cf. le lot), clôture à la CI verte du commit du lot ;
+  2.2.2 statué `[!]` (découverte 8),
+  décision de l'utilisateur demandée. Décisions d'exécution 1 à 7 écrites au lot avant le code ;
+  la décision 2 corrige le premier temps de 2.1 (un test de 2.1 ne passait que par des marques de la
+  phase des images-clés : l'accroupissement n'est jamais traversé dans les trames de la bobine
+  `000d5950` ; le test prend désormais le bouclier). Différence nulle prouvée. ADR 0037 amendé
+  (IR-3 : distribution de la phase des images-clés, corps lus seulement par un canal, film sans
+  registre ; IR-4 : intérêts par phase). Suite : lot 2.3 (canaux de tête de vue A).

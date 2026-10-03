@@ -1,7 +1,9 @@
 # ADR 0037 — Film intermediate representation: the production walk becomes the grammar's single reading
 
-**Status**: Accepted (2026-10-02). Step 1 is merged into `feat/v75` (`67c379fc1`, 2026-10-03);
-step 2 is being executed on the branch below, step 3 is planned. Amends
+**Status**: Accepted (2026-10-02). Step 1 is merged into `feat/v75` (`67c379fc1`, 2026-10-03), and
+its calm-machine measurement shows no regression (cook durations within 1 % of the base, memory
+peaks within the base's own spread); step 2 is being executed on the branch below, step 3 is
+planned. Amends
 [ADR 0034](0034-film-decoder-profile-and-layers.md) D-1, D-2, D-6, D-7 and D-10 (section
 "Amendments to ADR 0034").
 
@@ -111,15 +113,30 @@ walker therefore has two phases, each an `iter.Seq2[*lecture.Paquet, error]` in 
 The bounded preliminaries (anticipated table, biped slot band, living generations) run before the
 delta phase, as they do today.
 
+Since step 2 (lot 2.2), every keyframe consumer is a channel of the keyframe phase
+(`grammar.Distribuer`), and so are the delta walk's own preliminaries: the anticipated table and
+the binding of keyframes to the world (chain, discarded candidates, datum table) are read in the
+keyframe phase that precedes the delta walk, and the binding is applied chunk by chunk during it.
+A distribution walks a keyframe record's full state only when one of its channels reads that
+archetype in the keyframe phase; the other records keep their identity, anchor and binding,
+without components, marked `lecture.CorpsNonParcouru`. The iterator `FilmContext.ImagesCles` keeps
+walking every body (the keyframe closure map measures them all). The anchor walk does not read the
+registry: a distribution whose channels read no body runs on a film without `chunk_00`, as the
+keyframe scans did; the delta phase and any body need the registry. A channel that reads only the
+keyframe phase does not make the delta phase run.
+
 ### IR-4 — Three states per component, three closure states per packet, never conflated (correction C3)
 
 A component occurrence is **interpreted** (a channel of the walk interprets it: its archetype and
 index are in the union of the channels' interests, and it was traversed), **delimited** (its extent
 is known and no channel interprets it) or **untraversable** (its width is unknown: the rest of the
 view becomes an opaque tail). Interests are (archetype, component) pairs resolved in the film's
-registry, never a component name alone (two component tables share a name). A value is published
-to the channel's `Observation` hook and stays outside the structure (IR-8); a walk without channels
-interprets nothing. Since step 2 the state no longer depends on the trace's capture. The `status`
+registry, never a component name alone (two component tables share a name), and each belongs to
+one phase: a delta channel's hooks receive no keyframe value, so its interests mark no keyframe
+occurrence. A value is published to the channel's `Observation` hook — or, in the keyframe phase,
+read by the channel at the occurrence's extent — and stays outside the structure (IR-8); a walk
+without channels interprets nothing. Since step 2 the state no longer depends on the trace's
+capture. The `status`
 column of `internal/grammar/testdata/ecs_table.tsv` (`porte`, `partiel`, `non_porte`) is a static
 capability; the state belongs to the occurrence.
 

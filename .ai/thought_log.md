@@ -114832,3 +114832,33 @@ trames) — gardé, à mesurer avant d'unifier.
 
 **Conclusion / prochaine étape** : lot 2.2 (canaux d'image-clé, sur le distributeur), puis 2.3 ;
 second temps de 2.1 à la fusion de la vague 1.
+
+## [2026-10-03] Représentation intermédiaire du film — mesure de l'étape 1 à machine calme, et étape 2, lot 2.2 : canaux d'image-clé — Complété (2.2.2 en attente d'une décision de l'utilisateur) (`feat/ri-etape2`)
+
+**Statut** : Complété pour l'étape 1 (mesure de performance, dernier item) et pour l'item 2.2.1 ;
+l'item 2.2.2 est statué `[!]`, décision de l'utilisateur demandée.
+
+**Décision technique principale** : chaque lecteur d'image-clé de la cuisson devient un canal de la
+phase des images-clés (`grammar.Distribuer`), son point d'entrée public une distribution à un canal
+(signatures inchangées) : armes portées, inventaire, marques de portage, équipes, recensements, bandes
+(un relevé partagé par la règle comblée, la règle observée et le recensement), générations vivantes,
+table anticipée ; la marche des trames lit ses deux préliminaires (table anticipée, liaison) dans UNE
+phase. Le distributeur gagne : `Canal` (images-clés) et `CanalDesTrames` (une distribution sans canal
+des trames ne marche pas les trames) ; des intérêts PAR PHASE (correction du premier temps de 2.1 :
+la phase des images-clés marquait les intérêts d'un canal des trames) ; un corps d'image-clé parcouru
+seulement si un canal le lit (`lecture.CorpsNonParcouru`), l'itérateur `ImagesCles` restant complet ;
+une phase sans corps à lire qui n'exige pas le registre (film sans `chunk_00`) ; la marche d'ancres du
+paquet exposée aux canaux. Garde-rail neuf : un seul pilotage des images-clés, sites restants nommés.
+
+**Résultats observés** : étape 1 à machine calme (signal de la campagne) — base `922704424` contre
+`67c379fc1`, deux tours alternés, quatre films : durées à ±1 % par paire, pics dans la dispersion de
+la base ; l'étape 1 est close. Lot 2.2 : différence nulle (`replay-equiv` 20/20 décodés depuis le
+film, faits 20/20 et killsource 19/19 à l'octet contre la passe de référence) ; quatre mutations
+jouées rouges ; G-film, archlint, G-race, vet (avec et sans `research`), lint verts ; empreinte de la
+grammaire régénérée à révision constante. Découverte 8 : la traversée de l'état complet du bipède
+atteint les munitions, l'identifiant d'arme, les grenades et les ensembles (i22, i30 à i48) dans 80 à
+100 % des records ; inscrire les fenêtres de bits comme replis les déclarerait « devant la lecture »
+(cliquet) — proposition : les lire par la grammaire en changement de comportement déclaré (2.7).
+
+**Conclusion / prochaine étape** : CI du commit du lot, puis lot 2.3 (canaux de tête de vue A) ;
+décision de l'utilisateur sur 2.2.2 ; second temps de 2.1 à la fusion de la vague 1 de la campagne.

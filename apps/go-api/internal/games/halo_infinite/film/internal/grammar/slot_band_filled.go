@@ -29,29 +29,11 @@ package grammar
 // LA FORME JUSTE est donc : combler la plage de l'archétype, PUIS retirer tout slot vu porter un
 // AUTRE archétype. On récupère la couverture sans la contamination, et le retrait est fondé sur
 // une observation, pas sur une heuristique.
+//
+// Les slots se relèvent dans la phase des images-clés ([releverLesSlots]).
 func worldObjectSlotBand(fc *FilmContext, typeIndex int) map[uint32]bool {
-	seen := map[uint32]bool{}
-	others := map[uint32]bool{}
-	marche := fc.MarcheDImageCle()
-	for _, c := range fc.ChunkNumbers() {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range marche.Records(pk.Payload(data)) {
-				if r.TI == typeIndex {
-					seen[uint32(r.Slot)] = true
-				} else {
-					others[uint32(r.Slot)] = true
-				}
-			}
-		}
-	}
-	return slotBandExcluding(seen, others)
+	r := releverLesSlots(fc, typeIndex)
+	return slotBandExcluding(r.vus, r.autres)
 }
 
 // slotBandExcluding applique la règle ci-dessus à des ensembles DÉJÀ RELEVÉS : combler la plage

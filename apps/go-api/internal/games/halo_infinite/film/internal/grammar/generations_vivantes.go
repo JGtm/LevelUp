@@ -81,6 +81,7 @@ import (
 	"cmp"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -283,7 +284,8 @@ func (c *FilmContext) GenerationsVivantesA(tUS uint64) *GenerationsVivantes {
 
 // viesConnuesDuFilm rend les vies (slot, generation) que les deux lectures de production designent.
 // Une creation illisible n est pas une erreur ici : les images-cles restent, et un slot que rien ne
-// designe retombe sur le repli nomme.
+// designe retombe sur le repli nomme. Les vies des images-cles se relevent dans la phase des
+// images-cles ([releveDesViesBipedes]).
 func viesConnuesDuFilm(c *FilmContext) []types.LifeKey {
 	var out []types.LifeKey
 	if cre, _, err := c.CreationsDeBipede(); err == nil {
@@ -291,22 +293,22 @@ func viesConnuesDuFilm(c *FilmContext) []types.LifeKey {
 			out = append(out, types.LifeKey{Slot: x.Slot, Gen: x.Generation})
 		}
 	}
-	marche := c.MarcheDImageCle()
-	for _, n := range c.ChunkNumbers() {
-		data, pks, ok := c.ChunkAt(n)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range marche.Records(pk.Payload(data)) {
-				if r.TI == BipedTypeIndex && r.Slot >= 0 && r.Gen >= 0 {
-					out = append(out, types.LifeKey{Slot: uint32(r.Slot), Gen: uint32(r.Gen)}) //nolint:gosec // bornes verifiees
-				}
-			}
+	r := &releveDesViesBipedes{vies: out}
+	distribuerLesImagesClesSeules(c, []Canal{r})
+	return r.vies
+}
+
+// releveDesViesBipedes ajoute aux vies connues celles des records ti=35 de chaque image-cle.
+type releveDesViesBipedes struct{ vies []types.LifeKey }
+
+func (*releveDesViesBipedes) Interets() []Interet { return nil }
+
+func (r *releveDesViesBipedes) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
+	for _, rec := range p.Records {
+		if int(rec.TI) == BipedTypeIndex {
+			r.vies = append(r.vies, rec.Vie)
 		}
 	}
-	return out
 }
+
+func (*releveDesViesBipedes) Clore(BilanDeMarche) {}

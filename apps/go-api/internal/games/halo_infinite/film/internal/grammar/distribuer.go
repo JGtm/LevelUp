@@ -2,62 +2,95 @@ package grammar
 
 // distribuer.go — UNE MARCHE, N CANAUX (ADR 0037 ; decision DT2-1 du plan de l etape 2).
 //
-// [Distribuer] marche UNE fois les deux phases du film — les images-cles, puis les trames delta —
-// et donne chaque paquet range a chaque canal, dans l ordre des canaux. Un canal ([Canal]) declare
-// ses interets et pose ses crochets sur l observation de la marche des trames : l interpretation
-// reste PENDANT la marche (ADR 0037 IR-8), la ou elle a lieu aujourd hui — la phase des images-cles
-// se lit sous l observation du contexte, comme [FilmContext.ImagesCles]. Un canal ne lit jamais un
-// octet ; il lit la structure ([lecture.Paquet]) et ce que ses crochets recoivent.
+// [Distribuer] marche UNE fois les phases du film — les images-cles, puis les trames delta quand un
+// canal les lit — et donne chaque paquet range a chaque canal, dans l ordre des canaux. Un canal
+// ([Canal]) declare ses interets ; un canal des trames ([CanalDesTrames]) pose en plus ses crochets
+// sur l observation de la marche des trames : l interpretation reste PENDANT la marche (ADR 0037
+// IR-8), la ou elle a lieu aujourd hui — la phase des images-cles se lit sous l observation du
+// contexte, comme [FilmContext.ImagesCles]. Un canal ne lit jamais un octet ; il lit la structure
+// ([lecture.Paquet]), la marche d ancres du paquet ([MarcheDistribuee.Ancres]) et ce que ses crochets
+// recoivent.
 //
-// # LES INTERETS SONT DES PAIRES (ARCHETYPE, COMPOSANT)
+// # LES INTERETS SONT DES PAIRES (ARCHETYPE, COMPOSANT), DANS UNE PHASE
 //
 // Resolues dans le registre du film, jamais un nom de composant seul : deux tables de composant
 // homonymes existent (« high-frequency », ti=3 et ti=4, deux grammaires — regle « routage par
 // archetype ou par table de composant » de la campagne de grammaire). Une occurrence est
-// INTERPRETEE quand son archetype et son index sont dans l union des interets et qu elle est
-// traversee (decision DT2-2) ; la structure la marque [lecture.EtatInterprete].
+// INTERPRETEE quand son archetype et son index sont dans l union des interets de SA phase et qu elle
+// est traversee (decision DT2-2) ; la structure la marque [lecture.EtatInterprete]. Dans la phase
+// des images-cles, un archetype interprete est aussi un CORPS A PARCOURIR : les records des autres
+// archetypes gardent leur identite et leur ancre, sans composant ([lecture.CorpsNonParcouru],
+// decision 3 du lot 2.2).
 //
 // # DEUX CANAUX NE POSENT PAS LE MEME CROCHET
 //
-// Chaque canal pose les siens sur une observation a lui, que le distributeur fond dans celle de la
-// marche ([fondreLesCrochets]) : un crochet pose par deux canaux est une erreur, parce que le second
-// ecraserait le premier sans que rien ne le dise.
+// Chaque canal des trames pose les siens sur une observation a lui, que le distributeur fond dans
+// celle de la marche ([fondreLesCrochets]) : un crochet pose par deux canaux est une erreur, parce
+// que le second ecraserait le premier sans que rien ne le dise.
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
-// Interet est une paire (archetype, composant) qu un canal interprete : l index de type de
-// l archetype dans le registre du film, et le nom du composant tel que le registre l ecrit (un
-// canal qui connait deux orthographes declare les deux).
+// Phase est la phase de la marche ou un canal interprete un composant.
+type Phase uint8
+
+// Les phases d une marche.
+const (
+	// PhaseTrames : les trames delta. Le canal y interprete l occurrence par ses crochets.
+	PhaseTrames Phase = iota
+	// PhaseImagesCles : les images-cles. Le canal y lit l occurrence dans la structure du paquet ;
+	// la phase parcourt l etat complet des records de l archetype.
+	PhaseImagesCles
+	// nombreDePhases borne l index des interets resolus.
+	nombreDePhases
+)
+
+// Interet est une paire (archetype, composant) qu un canal interprete dans une phase de la marche
+// (celle des trames par defaut) : l index de type de l archetype dans le registre du film, et le nom
+// du composant tel que le registre l ecrit (un canal qui connait deux orthographes declare les deux).
 type Interet struct {
+	Phase     Phase
 	TI        int
 	Composant string
 }
 
-// Canal est un consommateur de la marche du film.
+// Canal est un consommateur de la marche du film : il recoit chaque paquet d image-cle, puis le
+// bilan. Un canal qui lit aussi les trames est un [CanalDesTrames].
 type Canal interface {
-	// Interets rend les paires (archetype, composant) que le canal interprete.
+	// Interets rend ce que le canal interprete.
 	Interets() []Interet
-	// Brancher pose les crochets du canal sur `obs`, une observation a lui que la marche des trames
-	// portera ; `m` est ce que la marche expose pendant ses tours.
-	Brancher(obs *Observation, m *MarcheDistribuee)
-	// ImageCle recoit chaque paquet d image-cle, dans l ordre du flux.
-	ImageCle(p *lecture.Paquet)
-	// Trame recoit chaque trame delta, dans l ordre du flux, apres sa marche.
-	Trame(p *lecture.Paquet)
-	// Clore recoit le bilan de la marche, une fois les deux phases finies.
+	// ImageCle recoit chaque paquet d image-cle, dans l ordre du flux ; `m` expose la marche
+	// d ancres du paquet ([MarcheDistribuee.Ancres]).
+	ImageCle(p *lecture.Paquet, m *MarcheDistribuee)
+	// Clore recoit le bilan de la marche, une fois ses phases finies.
 	Clore(b BilanDeMarche)
 }
 
-// MarcheDistribuee est ce qu un canal voit de la marche. Le paquet et la table d entites sont ceux
-// de l arene : valides le temps du tour qui les rend et des crochets qu il declenche.
+// CanalDesTrames est un canal qui lit AUSSI la phase des trames. Une distribution dont aucun canal
+// ne lit les trames ne les marche pas.
+type CanalDesTrames interface {
+	Canal
+	// Brancher pose les crochets du canal sur `obs`, une observation a lui que la marche des trames
+	// portera ; `m` est ce que la marche expose pendant ses tours.
+	Brancher(obs *Observation, m *MarcheDistribuee)
+	// Trame recoit chaque trame delta, dans l ordre du flux, apres sa marche.
+	Trame(p *lecture.Paquet)
+}
+
+// MarcheDistribuee est ce qu un canal voit de la marche. Le paquet, la marche d ancres et la table
+// d entites sont ceux de la marche : valides le temps du tour qui les rend et des crochets qu il
+// declenche.
 type MarcheDistribuee struct {
 	// EnTete porte les parametres hors flux de la marche ([FilmContext.EnTete]).
 	EnTete EnTete
 	// Paquet est le paquet en cours, image-cle ou trame ; son en-tete est pose AVANT sa marche, et
 	// les crochets le lisent.
 	Paquet *lecture.Paquet
+	// Ancres est la marche d ancres du paquet d image-cle en cours ([FilmContext.MarcheDImageCle]) :
+	// ses ancres dans l ordre de la marche, les candidats que son repli a ecartes, ses decisions.
+	// Vide pendant les trames.
+	Ancres MarcheDePayload
 	// Entites est la table d entites de la phase delta ; nil pendant les images-cles, qui ne tiennent
 	// pas de monde.
 	Entites lecture.Entites
@@ -65,90 +98,182 @@ type MarcheDistribuee struct {
 
 // BilanDeMarche est ce que la marche rend d elle-meme a la cloture.
 type BilanDeMarche struct {
-	// Obs est l observation de la marche, crochets fondus, NEW refuses soldes.
+	// Obs est l observation de la marche des trames, crochets fondus, NEW refuses soldes ; nil quand
+	// aucun canal ne lit les trames.
 	Obs *Observation
 	// Liaisons est ce que la liaison des images-cles a fait au monde, sommee sur les chunks.
 	Liaisons LiaisonDUnChunk
+	// ChunksLus est le nombre de chunks de donnees que la phase des images-cles a pu lire, porteurs
+	// d image-cle ou non ([FilmContext.ChunkAt]).
+	ChunksLus int
 }
 
-// Distribuer marche les deux phases du film une fois et donne chaque paquet a chaque canal. Le
-// decoupage MPP du format est pose sur le contexte pendant la phase des images-cles seulement,
-// comme [FilmContext.ImagesCles] ; la phase delta se lit sous le cadre du contexte
-// ([FilmContext.Trames]).
+// Distribuer marche les phases du film une fois et donne chaque paquet a chaque canal : les
+// images-cles toujours, les trames quand un canal les lit. Le decoupage MPP du format est pose sur
+// le contexte pendant la phase des images-cles seulement, comme [FilmContext.ImagesCles] ; la phase
+// delta se lit sous le cadre du contexte ([FilmContext.Trames]).
+//
+// La phase des trames exige le registre du film, et c est la seule erreur d une distribution avec
+// [ErrCrochetDejaPose] : une distribution aux seuls canaux d image-cle ne peut pas echouer
+// ([distribuerLesImagesClesSeules]).
 func Distribuer(fc *FilmContext, canaux ...Canal) error {
+	trames := canauxDesTrames(canaux)
+	if len(trames) == 0 {
+		distribuerLesImagesClesSeules(fc, canaux)
+		return nil
+	}
 	reg, err := fc.Registry()
 	if err != nil {
 		return err
 	}
+	return distribuerLesDeuxPhases(fc, reg, canaux, trames)
+}
+
+// distribuerLesImagesClesSeules marche la seule phase des images-cles pour des canaux qui ne lisent
+// pas les trames, et les clot.
+//
+// LE REGISTRE N Y EST PAS EXIGE : la marche d ancres ne le lit pas. Sans lui, aucun interet ne se
+// resout, donc aucun corps n est parcouru, et les canaux recoivent les ancres — ce que les balayages
+// d image-cle lisent sur un film sans `chunk_00` (decision 4 du lot 2.2). L erreur du registre reste
+// celle du contexte ([FilmContext.Registry]) : un canal qui lit des corps la consulte.
+func distribuerLesImagesClesSeules(fc *FilmContext, canaux []Canal) {
+	distribuerLaDemande(fc, demandeDImagesCles{}, canaux)
+}
+
+// distribuerLesImagesClesDesChunks est [distribuerLesImagesClesSeules] sur les seuls chunks
+// `chunks`, dans leur ordre : un chunk que le film ne porte pas est saute, comme
+// [FilmContext.ChunkAt] le dit.
+func distribuerLesImagesClesDesChunks(fc *FilmContext, chunks []int, canaux []Canal) {
+	distribuerLaDemande(fc, demandeDImagesCles{chunks: chunks}, canaux)
+}
+
+// distribuerLaDemande marche la seule phase des images-cles selon `d` (ses chunks, sa marche
+// d ancres), le registre et les interets des canaux resolus ici, et clot les canaux.
+func distribuerLaDemande(fc *FilmContext, d demandeDImagesCles, canaux []Canal) {
+	reg, err := fc.Registry()
+	if err != nil {
+		reg = nil
+	}
+	d.reg, d.interets = reg, resoudreLesInterets(reg, canaux)[PhaseImagesCles]
+	lus := distribuerLesImagesCles(fc, d, &MarcheDistribuee{EnTete: fc.EnTete()}, canaux, nil)
+	for _, c := range canaux {
+		c.Clore(BilanDeMarche{ChunksLus: lus})
+	}
+}
+
+// distribuerLesDeuxPhases marche les images-cles puis les trames, les preliminaires de la marche
+// des trames lus dans la meme phase des images-cles que les canaux.
+func distribuerLesDeuxPhases(fc *FilmContext, reg *Registry, canaux []Canal, trames []CanalDesTrames) error {
 	interets := resoudreLesInterets(reg, canaux)
 	m := &MarcheDistribuee{EnTete: fc.EnTete()}
-	obs, err := brancherLesCanaux(m, canaux)
+	obs, err := brancherLesCanaux(m, trames)
 	if err != nil {
 		return err
 	}
-	if err := distribuerLesImagesCles(fc, interets, m, canaux); err != nil {
-		return err
-	}
-	mt, err := fc.nouveauMarcheurDesTrames(obs)
+	prel := nouveauxPreliminaires(fc)
+	lus := distribuerLesImagesCles(fc, demandeDImagesCles{reg: reg, interets: interets[PhaseImagesCles]}, m, canaux, prel)
+	mt, err := fc.marcheurDesTramesDepuis(reg, obs, prel)
 	if err != nil {
 		return err
 	}
-	mt.interets = interets
+	mt.interets = interets[PhaseTrames]
 	m.Paquet, m.Entites = &mt.paquet, mt.entites
 	mt.parcourir(func(t *trameLue) bool {
-		for _, c := range canaux {
+		for _, c := range trames {
 			c.Trame(t.paquet)
 		}
 		return true
 	})
 	obs.solderLesNeufsRefuses()
-	b := BilanDeMarche{Obs: obs, Liaisons: mt.liaisons}
+	b := BilanDeMarche{Obs: obs, Liaisons: mt.liaisons, ChunksLus: lus}
 	for _, c := range canaux {
 		c.Clore(b)
 	}
 	return nil
 }
 
-// distribuerLesImagesCles marche la phase des images-cles et en donne chaque paquet aux canaux.
-func distribuerLesImagesCles(fc *FilmContext, interets interetsResolus, m *MarcheDistribuee, canaux []Canal) error {
-	k, restaurer, err := fc.nouvelleMarcheDesImagesCles(interets)
-	if err != nil {
-		return err
-	}
-	defer restaurer()
-	m.Paquet = &k.paquet
-	k.parcourir(func(p *lecture.Paquet) bool {
-		for _, c := range canaux {
-			c.ImageCle(p)
-		}
-		return true
-	})
-	return nil
+// demandeDImagesCles est ce qu une distribution demande a la phase des images-cles : le registre
+// (nil : aucun corps n est parcouru), les interets de la phase, les chunks marches (nil : ceux du
+// film) et la marche d ancres (nil : celle du film, [FilmContext.MarcheDImageCle] ; le principe des
+// doutes d absence se teste sous la marche sans preuve, `player_entities_test.go`).
+type demandeDImagesCles struct {
+	reg      *Registry
+	interets interetsResolus
+	chunks   []int
+	marche   *MarcheDImageCle
 }
 
-// interetsResolus est l union des interets des canaux d une marche, resolue dans le registre du
-// film : par archetype, le masque des index d iteration (moins de 64) que les canaux interpretent.
+// distribuerLesImagesCles marche la phase des images-cles, en donne chaque paquet aux canaux puis
+// aux preliminaires de la marche des trames quand il y en a (qu elle clot), et rend le nombre de
+// chunks lus.
+func distribuerLesImagesCles(fc *FilmContext, d demandeDImagesCles, m *MarcheDistribuee, canaux []Canal,
+	prel *preliminairesDesTrames) int {
+	k, restaurer := fc.nouvelleMarcheDesImagesCles(d, false)
+	defer restaurer()
+	m.Paquet = &k.paquet
+	lus := k.parcourir(func(p *lecture.Paquet) bool {
+		m.Ancres = k.ancres
+		for _, c := range canaux {
+			c.ImageCle(p, m)
+		}
+		prel.recevoir(p, m)
+		return true
+	})
+	m.Ancres = MarcheDePayload{}
+	prel.clore()
+	return lus
+}
+
+// canauxDesTrames rend les canaux qui lisent aussi les trames, dans l ordre des canaux.
+func canauxDesTrames(canaux []Canal) []CanalDesTrames {
+	var out []CanalDesTrames
+	for _, c := range canaux {
+		if t, ok := c.(CanalDesTrames); ok {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// interetsResolus est l union des interets des canaux d une marche dans UNE phase, resolue dans le
+// registre du film : par archetype, le masque des index d iteration (moins de 64) que les canaux
+// interpretent. Dans la phase des images-cles, un archetype present est un corps a parcourir.
 type interetsResolus map[int]uint64
+
+// interetsDesPhases : les interets resolus de chaque phase, indexes par [Phase].
+type interetsDesPhases [nombreDePhases]interetsResolus
 
 // contient dit si l occurrence d index `index` de l archetype `ti` est interpretee.
 func (r interetsResolus) contient(ti, index int) bool {
 	return index >= 0 && index < 64 && r[ti]>>uint(index)&1 == 1
 }
 
-// resoudreLesInterets resout les interets des canaux dans le registre du film. Un composant que
-// l archetype ne declare pas n est l interet de rien : un canal ne lit pas ce que le build ne porte
-// pas.
-func resoudreLesInterets(reg *Registry, canaux []Canal) interetsResolus {
-	out := interetsResolus{}
+// parcourt dit si un canal lit les composants de l archetype `ti`.
+func (r interetsResolus) parcourt(ti int) bool {
+	_, ok := r[ti]
+	return ok
+}
+
+// resoudreLesInterets resout les interets des canaux dans le registre du film, phase par phase. Un
+// composant que l archetype ne declare pas n est l interet de rien : un canal ne lit pas ce que le
+// build ne porte pas. Sans registre (nil), rien ne se resout.
+func resoudreLesInterets(reg *Registry, canaux []Canal) interetsDesPhases {
+	var out interetsDesPhases
+	for i := range out {
+		out[i] = interetsResolus{}
+	}
+	if reg == nil {
+		return out
+	}
 	for _, c := range canaux {
 		for _, it := range c.Interets() {
 			arch, ok := reg.Archetype(it.TI)
-			if !ok {
+			if !ok || it.Phase >= nombreDePhases {
 				continue
 			}
 			for _, i := range arch.indicesOf(it.Composant) {
 				if i < 64 {
-					out[it.TI] |= 1 << uint(i)
+					out[it.Phase][it.TI] |= 1 << uint(i)
 				}
 			}
 		}
