@@ -165,7 +165,10 @@ type Record struct {
 	// [EtatInfranchissable], c'est son index ; sinon la traversée s'est arrêtée avant tout
 	// composant (archétype hors du registre, slot non lié).
 	Desync int16
-	// Vie est l'identité du record : le slot et la génération de son handle (ADR 0034, `LifeKey`).
+	// Vie est l'identité du record (ADR 0034, `LifeKey`) : son slot et les deux bits de tête de son
+	// identifiant, la « tête » que la table d'entités compare — la génération du handle d'un record
+	// de trame delta ; pour un record d'image-clé, le monde lit ces deux bits comme le rang de sa
+	// vue ([Record.Vue]).
 	Vie types.LifeKey
 	// Debut est le premier bit de l'en-tête du record, mot facultatif d'en-tête compris.
 	Debut uint32

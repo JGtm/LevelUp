@@ -255,6 +255,23 @@ coordonné (§1.3).
 - [ ] 1.3.1 `FilmContext.ImagesCles` sur la mémoire existante de `MarcheDImageCle`
       (`keyframe_world_marche.go`), étendues de l'état complet, mémoire PARTAGÉE entre les contextes
       de la cuisson et de killsource si cela ne change aucune sortie (sinon, découverte consignée).
+      *En cours (2026-10-03)* : `marche_images_cles.go` (fichier neuf, option convenue avec la
+      campagne) — `FilmContext.ImagesCles()`, un record d'état complet par ancre de la marche du
+      film (mémoire du contexte), traversé par `WalkKeyframeFullState`, ses composants, son
+      étendue et sa preuve (fermé quand la traversée finit sur l'ancre suivante) ; découpage MPP du
+      format posé pour la durée de l'itération et restauré. Tests (`marche_images_cles_test.go`) :
+      sur les sept bobines par build, les preuves de la structure rendent archétype par archétype
+      les comptes de `KeyframeClosure` (fermés, bornés, composant bloquant), invariants de la
+      structure, restauration du contexte à l'arrêt anticipé (mutation « prouver un record qui
+      dépasse sa frontière », rouge). Reste : la marque d'élection par record (après la fusion de
+      la vague de la campagne, cf. journal). Mémoire partagée : `[!]` proposé — neutre par
+      construction (la preuve se joue au profil invariant du film, `keyframe_world_preuve.go`),
+      mais les deux contextes naissent dans deux couches qui ne partagent que le `source.Film`
+      (`killsource/world.go`, `replay/build_from_film.go`) : la partager demande soit un magasin
+      attaché au `source.Film` (responsabilité neuve de la porte aux octets, `source.Rev`), soit de
+      la surface de façade (`decfilm`) et une plomberie à travers `killsource`, `replay` et
+      `replaybuild` — deux constructions que l'étape 2 rend jetables, puisque killsource y
+      deviendra un canal de la MÊME marche (`Distribuer`). À trancher avec l'utilisateur.
 - [ ] 1.3.2 `KeyframeClosure` en devient le consommateur.
 - Gate : `keyframe_closure.golden` identique ; G-equiv zéro divergence ; G-film ; killsource identique.
 

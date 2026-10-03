@@ -114602,3 +114602,28 @@ poussé.
 - Gates : `go test ./...` vert (un premier passage a rougi sur trois points, corrigés : surface de façade 300 > 299 par un `replay.VehicleEndUnknown` de fixture, retiré ; polarité du champ retiré, déplacée en héritée ; test de durée LUSR 2,005 s sous charge vitest, rejoué seul vert). `make gate-push` : golangci-lint 0 constat, typecheck et lint web verts ; étape baseline injouable sur ce poste (elle force `CC=gcc` -> gcc msys64 qui ne lie pas DuckDB, cf. mémoire CGO), couverte par `go test ./...` et la CI Linux. vitest du rejeu : 3 517 tests verts. `replay-corpus-gate` (mode base) : 19 témoins, tous builds de la version 31 à 41, 76 -> 77, 0 perte, 0 changement, banc de vérité `ok` sur les 19.
 
 **Conclusion / prochaine étape** : accord utilisateur pour commit + push, CI au niveau job, fusion dans `feat/v75` avant la recuisson de la vague 1. Gate visuel utilisateur après fusion : `1cd3848a` (plus de Falcon), un match Behemoth Super Fiesta à Falcon piloté (`2cd7ce01`, `0d76e8f1`), Launch Site Super Fiesta (`6efac636`).
+
+## [2026-10-03] Représentation intermédiaire du film, étape 1 — lot 1.3 : phase des images-clés (`FilmContext.ImagesCles`) — En cours (`feat/representation-intermediaire`)
+
+**Statut** : En cours (lot 1.3 du plan `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`).
+
+**Décision technique principale** : option convenue avec la campagne de grammaire (son lot sur la
+marche d'image-clé n'est ni écrit ni fusionné) — fichiers NEUFS d'abord, `KeyframeClosure`
+branchée après la fusion de sa vague. `marche_images_cles.go` : `FilmContext.ImagesCles()` range
+chaque paquet d'image-clé dans la structure, un record d'état complet par ancre de la marche du
+film (mémoire du contexte), traversé par `WalkKeyframeFullState`, avec ses composants, son étendue
+et sa preuve (fermé quand la traversée finit sur l'ancre suivante). Les deux bits de tête de
+l'identifiant d'une image-clé vont dans `Record.Vue` (rang de vue, lecture du monde) et dans
+`Record.Vie` (la tête que la table compare) ; doc de `lecture.Record.Vie` précisée.
+
+**Résultats observés** : sur les sept bobines par build, les preuves de la structure rendent les
+comptes de `KeyframeClosure` archétype par archétype (test et mutation) ; tests de grammaire et de
+révision verts, `go vet` avec `research` vert, `golangci-lint` 0 problème ; empreinte régénérée à
+révision constante (aucun appelant de production : aucune sortie ne peut changer). Branche poussée
+sur accord de l'utilisateur (`6c0a6541d` : phase des trames, refusion de `feat/v75` post-falcon,
+références re-figées — seule l'étape `artifact` change sur les 20 films).
+
+**Conclusion / prochaine étape** : marque d'élection par record et branchement de
+`KeyframeClosure` après la fusion de la vague de la campagne ; mémoire partagée entre la cuisson et
+killsource proposée en `[!]` (neutre par construction, mais plomberie que l'étape 2 rend jetable) —
+à trancher avec l'utilisateur.
