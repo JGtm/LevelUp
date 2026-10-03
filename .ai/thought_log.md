@@ -114766,3 +114766,36 @@ campagne ; GO daté de l'utilisateur pour l'étape 2 (plan validé le 2026-10-03
 **Résultats observés** (rejoués par le contrôle indépendant, à l'unité) : carte v2, 20 films : +30 597 paquets sains, +234 374 records utiles sains, aucun film en baisse (1 sain perdu en brut, `fb1a1a72` 7:92, expliqué par D-L8-1, déjà corrigé dans L2) ; `fb1a1a72` 22 276 → 42 035, `51ebbc0f` 9 759 → 19 782, `c75f33b8` 22 854 → 23 669 ; HI_1_13_0 65,8 % → 73,5 %, corpus 33,3 % → 36,4 % (indicateur fixe). Killsource : aucune mort, valeur ni voie ne change (seule la ligne `calibration`). Instruction complète du rc 1 du gate de corpus (LOT_L8 §8.2) : 7 NEW refusés neufs sur 5 témoins, tous sur des en-têtes que l'écrivain ne peut pas écrire (4 lectures fausses confirmées, 3 indécis), dont 3 désynchronisations devenues refus comptés et 3 têtes par chaîne sur un NEW contredit (D-L8-1) ; 5 `jumpDerived` disparus de `fb1a1a72` : 3 faux positifs de la base, 2 profils de saut sortis au bord de la fenêtre de la dérivation (D-L8-10) ; étape `vehicles` : seul `DeathStats` change sur les 6 films. Gates après corrections : gofmt vide, vet et vet research rc 0, archlint ok, G-film 19 paquets ok, golangci 0 issue, carte v2 identique sur les 6 films concernés.
 
 **Conclusion / prochaine étape** : consigner la décision sur le rc 1 (LOT_L8 §6), puis fusion dans `feat/campagne-grammaire` avec renumérotation de la révision et des goldens à l'intégration (collision attendue avec L2, qui porte aussi D-L8-1) ; remesurer la carte en combinaison L2 + L8.
+
+## [2026-10-03] Campagne de grammaire : lot L4a, véhicules `ti=40` en delta, et corrections du contrôle — Complété (branche `feat/cg-l4a`, à fusionner par l'intégrateur de la vague)
+
+**Statut** : Complété. Commit du lot `9e02dabbb` puis commit des corrections du contrôle indépendant
+(« campagne(grammaire) L4a: corrections du controle »). Détail :
+`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L4a.md` (§12 pour les corrections).
+
+**Décision technique principale** : dernier maillon de la chaîne de dispatch,
+`composants_vehicule_ti40.go` : les seize composants propres au véhicule (`i30`-`i47` hors `i43`,
+`i44`), chacun lu chez son désérialiseur (Ghidra, lecture seule). `i33` / `i34` sont lus dès que le
+masque les annonce : la porte `+0x818` est une loi de l'écrivain (les deux écrivains du masque,
+`FUN_142f09c74` et `FUN_142f0cca0`, ne posent les bits 33 et 34 que sous cet octet), aucun châssis
+consulté. En état complet d'image-clé (`Lecteur.etatComplet`, posé par la seule marche sans masque),
+aucun n'est lu sauf `i37` : image-clé inchangée, L4b. Repli `repli_physique_de_type_de_vehicule_supposee`
+retiré ; compteur `VehicleTypePhysicsAssumed` -> `VehicleTypePhysicsByWriterLaw`. `grammar.Rev` ->
+`grammar-2026-10-03`.
+
+**Résultats observés** : carte v2 sur 20 films, +1 416 paquets sains et +27 482 records utiles sains,
+0 sain perdu, aucun film en baisse (retrouvé à l'unité par le contrôle) ; killsource identique sauf un
+diagnostic d'oracle non persisté (`e5adf7b2`) ; `replay-equiv` : étapes divergentes toutes
+rattachées ; gate de corpus rc 1, rattaché (couverture, fins de vie de véhicules lues). Contrôle
+indépendant : sain sur le fond, sept corrections, toutes faites — deux tests par les chemins de
+production et un garde-rail (mutations A3, B3, B5 désormais rouges), argument « table de datums » de
+`d9781168` `17:1356` retiré (le bloc de chunk dit non vivants sept slots où la lecture concurrente
+écrit des DELTA ; tête factice ESTIMÉE), « NE PAS PORTER » `i41` / `i42` levé (D-14), « quinze lignes
+partiel ». Revue adversariale (deux relecteurs `claude -p` en contexte frais) : 0 P0, 0 P1, 3 P2 dont
+2 soldés par les corrections et 1 consigné (D-L4a-9, instrument de recherche). Gates rejoués : gofmt
+vide, vet rc 0 (et research), archlint ok, G-film 19 / 19 ok, golangci 0 issue, carte v2 identique.
+
+**Conclusion / prochaine étape** : fusion dans la vague par l'intégrateur. À regarder par
+l'utilisateur à la recuisson : pièces montées qui meurent avec leur porteur, `samplesAfterEnd` en
+hausse (D-L4a-1). D5 (table châssis -> type de physique) reste ouverte pour L4b ; D-L4a-2 (règle de
+datum, qui exigerait de suivre l'allocateur dans le chunk) à instruire avant la vague 2.

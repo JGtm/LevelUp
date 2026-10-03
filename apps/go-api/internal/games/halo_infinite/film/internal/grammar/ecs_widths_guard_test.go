@@ -100,7 +100,7 @@ const ecsProbeBytes = 512
 // Les quatre autres ports du lot (`ti=47 i2`, `ti=5 i22` et `i24`, `ti=40 i34`) ont une largeur
 // GARDEE par le flux : leur colonne `bits_typ` n est pas un entier et reste hors des deux comptes.
 const (
-	ecsLargeursFixes   = 132
+	ecsLargeursFixes   = 140
 	ecsLargeursGardees = 66
 )
 

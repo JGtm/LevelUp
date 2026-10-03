@@ -59,6 +59,11 @@ type Lecteur struct {
 	// (`lecteur_position_exceptions.go`) ; la boucle de composants le remet a faux avant chaque
 	// composant ([traverseComponentLoopFrom]).
 	exceptionDatee bool
+	// etatComplet : le record en cours est un ETAT COMPLET d image-cle (`FUN_142e2c690`), lu sans
+	// masque de presence. Pose par [walkKeyframeFullState] seul ; faux pour tout record dont un
+	// masque est lu (record NEW, DELTA). Les composants dont la lecture depend d une loi du masque
+	// le consultent ([consumeComposantsVehiculeTi40]).
+	etatComplet bool
 }
 
 // noterExceptionDatee marque le composant en cours : sa largeur vient d un lecteur en exception

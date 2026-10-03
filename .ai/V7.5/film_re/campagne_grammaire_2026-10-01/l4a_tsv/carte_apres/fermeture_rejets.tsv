@@ -1,0 +1,191 @@
+film	build	sortie_vueB	paquet	etat_bloc_type1	naissance	paquets	utiles_en_jeu
+bcb6d393	HI_1_12_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	1983	12106
+bcb6d393	HI_1_12_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	1054	6203
+bcb6d393	HI_1_12_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	204	17
+bcb6d393	HI_1_12_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · naissance non lue	27	213
+bcb6d393	HI_1_12_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	1	0
+bcb6d393	HI_1_12_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	1	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	NEW lu desynchronise · naissance non lue	8373	349
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · naissance non lue	5229	1202
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	NEW lu desynchronise · naissance non lue, generation 0	4085	72
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	2235	8978
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	2045	4497
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	663	23
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · non mesurable	277	1
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	257	141
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	134	16
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	112	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	non mesurable	81	313
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	NEW lu desynchronise · vivant au bloc du chunk	28	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	13	17
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	8	16
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu dans le chunk	3	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	NEW lu dans le chunk	3	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · aucune allocation	2	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	NEW lu desynchronise · aucune allocation	1	0
+d9781168	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	8363	50550
+d9781168	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	2513	13599
+d9781168	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	174	129
+d9781168	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	98	31
+d9781168	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	8	3
+c75f33b8	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	2120	10201
+c75f33b8	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · naissance non lue	160	0
+c75f33b8	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	36	31
+c75f33b8	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	1	0
+bf15f7ab	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	625	4544
+bf15f7ab	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	476	3005
+bf15f7ab	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	336	764
+bf15f7ab	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	302	2058
+bf15f7ab	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · aucune allocation	20	141
+bf15f7ab	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	1	6
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	NEW lu desynchronise · naissance non lue	6205	72
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	3376	16675
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · naissance non lue	3292	92
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	3056	11651
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	260	709
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	NEW lu desynchronise · non mesurable	247	0
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	188	121
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	20	24
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	non mesurable	12	56
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	NEW lu dans le chunk	6	0
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu dans le chunk	4	0
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · aucune allocation	2	0
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	NEW lu desynchronise · aucune allocation	2	0
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	realloue sous une autre generation	1	0
+51ebbc0f	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	1	0
+084a804d	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	11809	202933
+084a804d	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	8824	205828
+084a804d	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	1221	29698
+084a804d	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	1107	3553
+084a804d	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	233	267
+084a804d	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	71	150
+084a804d	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · naissance non lue	38	939
+084a804d	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	13	45
+084a804d	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	3	11
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	2642	16558
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	1293	8917
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	692	5114
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	230	1745
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	211	68
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	126	890
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	124	707
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	58	365
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu dans le chunk	19	28
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	12	97
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	NEW lu dans le chunk	4	28
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · aucune allocation	3	14
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	aucune allocation	3	19
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	NEW lu desynchronise · aucune allocation	2	18
+0797ce72	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	realloue sous une autre generation	1	6
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	5030	96033
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	2838	54831
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	1338	27206
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	534	4537
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	347	6269
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	non mesurable	214	3906
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	189	1677
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	179	1771
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	50	533
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	realloue sous une autre generation	4	23
+111fa685	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	4	42
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	5076	107263
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	3450	71775
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	1022	21150
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	621	3290
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	56	1201
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	43	303
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	30	106
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	11	138
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	trace	realloue sous une autre generation	7	24
+e5adf7b2	HI_1_11_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · aucune allocation	1	0
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	17547	98836
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	8266	52523
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	2146	12598
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	1485	8733
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	204	201
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	196	1128
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	85	457
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · aucune allocation	27	153
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu dans le chunk	19	28
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	14	92
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	vivant	aucune allocation	5	35
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	2	12
+60ae07c4	HI_1_8_0	rejet hors datum	vue B : sortie par rejet	vivant	realloue sous une autre generation	2	14
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	8835	216828
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	8100	146554
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	1457	2650
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	641	15456
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	412	951
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	67	404
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	22	116
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	4	5
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	2	8
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	absent	aucune allocation	1	0
+a349fea8	version-33	rejet hors datum	vue B : sortie par rejet	vivant	realloue sous une autre generation	1	1
+a521164d	HI_1_4_1	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	5238	115901
+a521164d	HI_1_4_1	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	606	14116
+a521164d	HI_1_4_1	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	365	458
+a521164d	HI_1_4_1	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	261	1969
+a521164d	HI_1_4_1	rejet hors datum	vue B : sortie par rejet	trace	non mesurable	71	1194
+a521164d	HI_1_4_1	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	22	62
+a521164d	HI_1_4_1	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	9	32
+a521164d	HI_1_4_1	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	5	0
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	4723	92004
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	2973	55543
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	1116	20101
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	539	6327
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	153	1979
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	126	30
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	72	1533
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	vivant	non mesurable	64	184
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	40	631
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	trace	NEW lu desynchronise · libere avant le chunk (meme generation)	3	50
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · aucune allocation	2	0
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	2	0
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	trace	NEW lu desynchronise · aucune allocation	1	16
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	trace	non mesurable	1	0
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	trace	realloue sous une autre generation	1	15
+11de8353	HI_1_9_0	rejet hors datum	vue B : sortie par rejet	vivant	aucune allocation	1	0
+50247b26	version-31	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	6745	151239
+50247b26	version-31	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	3454	81252
+50247b26	version-31	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	456	3946
+50247b26	version-31	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	70	625
+50247b26	version-31	rejet hors datum	vue B : sortie par rejet	trace	non mesurable	30	677
+50247b26	version-31	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	14	143
+50247b26	version-31	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	4	44
+50247b26	version-31	rejet hors datum	vue B : sortie par rejet	vivant	realloue sous une autre generation	1	27
+bfecd02b	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	2012	13998
+bfecd02b	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	1195	9742
+bfecd02b	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	11	15
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	3034	58520
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	2847	68405
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	1875	9227
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	852	20939
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	374	1168
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	51	266
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · naissance non lue	8	212
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	5	50
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	realloue sous une autre generation	5	71
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	3	28
+4f77afc1	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vivant	realloue sous une autre generation	1	0
+396cfc92	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	5686	42557
+396cfc92	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	2066	13249
+396cfc92	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	592	947
+396cfc92	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	11	38
+f75e7053	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	3645	24481
+f75e7053	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	641	1950
+f75e7053	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	3	0
+f75e7053	HI_1_13_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	1	8
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue	22095	303335
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	naissance non lue	13478	277119
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vivant	vivant au bloc du chunk	9251	8891
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	aucune allocation	2142	1128
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	aucune allocation	1180	234
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	non mesurable	380	588
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	naissance non lue, generation 0	314	5773
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	libere avant le chunk (meme generation)	143	50
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	realloue sous une autre generation	93	26
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	realloue sous une autre generation	13	12
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	trace	NEW lu desynchronise · naissance non lue	6	3
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	NEW lu desynchronise · aucune allocation	4	15
+1c4c63c2	HI_1_10_0	rejet hors datum	vue B : sortie par rejet	vide	non mesurable	2	0
