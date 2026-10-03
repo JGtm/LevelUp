@@ -182,16 +182,31 @@ règle D-89 de la campagne, « routage par archétype ou par table de composant,
 par `ecs_dispatch_table_guard_test.go` qui arrive avec L8). Le lot 2.6, indépendant, est passé
 devant ; les lots 2.2 et 2.3, qui consomment le distributeur, passent devant la fin de 2.1 dès que
 2.1.1 est fait (règle d'ordre du §3 : le reste de 2.1 attend une dépendance du plan).
-- [ ] 2.1.0 L'en-tête (ex-2.0) : `lecture.Provenance` (relue, mesurée, présumée — la table du profil
+- [x] 2.1.0 L'en-tête (ex-2.0) : `lecture.Provenance` (relue, mesurée, présumée — la table du profil
       —, calibrée sur le film, imposée à la construction) et `lecture.Parametre[T]`, sans logique ;
       `grammar.EnTete` (`IDLowBits`, découpage MPP du format, découpage d'i0) résolu par le contexte ;
       la marche est construite DEPUIS l'en-tête, et le distributeur le rend aux canaux.
-- [ ] 2.1.1 `Canal`, `Distribuer` (DT2-1), dans des fichiers neufs `grammar/distribuer*.go`.
+      *Fait* (`lecture/entete.go`, `grammar/entete.go`) : largeur de l'identifiant bas présumée (13,
+      image statique), MPP du format présumé (la table, dérivation unique `mppDuFormat` que
+      `InstallFilmFormatMPP` et `PreuveDImageCle` partagent), i0 imposé par l'appelant ou présumé par
+      le catalogue — non résolu sinon : l'auto-détection reste à la demande, sans compter son repli
+      avant qu'un balayage la demande. La marche des trames lit l'identifiant bas sous l'en-tête, la
+      phase des images-clés pose son MPP ; découverte 6.
+- [x] 2.1.1 `Canal`, `Distribuer` (DT2-1), dans des fichiers neufs `grammar/distribuer*.go`.
+      *Fait* : une marche des deux phases (images-clés puis trames), chaque paquet à chaque canal ;
+      intérêts par paires (archétype, composant) ; crochets posés par canal puis fondus dans
+      l'observation de la marche des trames (un crochet posé deux fois est refusé) ; la phase des
+      images-clés reste sous l'observation du contexte, comme aujourd'hui. Pas de consommateur de
+      production avant le second temps (2.1.2) ; tests : phases égales à leurs itérateurs, crochets.
 - [ ] 2.1.2 États de mouvement (`movement_states*.go`) et tir continu (`tir_continu.go`) deviennent
       deux canaux ; `ScanMarcheDesTrames` les distribue ; `replay/film_scan_mouvement.go` inchangé
       dans ce qu'il publie.
 - [ ] 2.1.3 « Interprété » exact (DT2-2) ; T3 de l'étape 1 resserré : chaque lecture d'état cite
       l'occurrence marquée interprétée.
+      *Premier temps fait* : la marque — interprétée quand un canal l'interprète et qu'elle est
+      traversée ; la règle « valeur capturée par la trace » est retirée (aucun lecteur de cet état ;
+      sans canal, rien n'est interprété) ; mutation jouée rouge. *Reste* : le resserrage de T3, au
+      second temps (il lit les états de mouvement, branchés en canal en 2.1.2).
 - Gate : T4 (étapes `movementStates` et `continuousFire` de `replay-equiv`), killsource identique,
   T1/T3/T6 verts.
 
@@ -355,6 +370,12 @@ plan y sont reprises comme items (3.1.2).
    `signaux.decodeComponents` (l'une rend `scanFrameAvecReplis` sans compte, l'autre
    `decodeComponentsAvecArret` sans le drapeau d'arrêt). Dette antérieure (CLAUDE.md règle 7) ; non
    traitée.
+6. *(lot 2.1)* **Les deux phases ne lisent pas sous le même découpage MPP** : la phase des
+   images-clés pose celui du FORMAT du film (`EnTete.MPP`, comme `InstallFilmFormatMPP` avant), la
+   marche des trames lit sous celui du CONTEXTE — l'invariant (9/5), sauf installation en cours.
+   Les records NEW d'objets du monde que la marche des trames traverse le lisent donc aux largeurs
+   par défaut sur les formats qui en ont d'autres. Gardé tel quel (différence nulle) ; à mesurer
+   avant de l'unifier (une montée de `grammar.Rev`).
 
 ## 7. Journal
 
@@ -385,3 +406,9 @@ plan y sont reprises comme items (3.1.2).
   l'utilisateur) : les lots 2.2 et 2.3 peuvent partir ; LU et LS prendront `marchLocateStrict`,
   `facts/killsource/walk.go`, `object_deaths_march.go` et la signature du slot 123, LP la lecture du
   bloc de type 1 et `keyframe_world*.go` — à signaler si un lot de ce plan doit y toucher.
+- 2026-10-03 : lot 2.1, PREMIER TEMPS fait (2.1.0, 2.1.1, marque de 2.1.3), convenu avec la campagne :
+  fichiers neufs et fichiers de la marche seulement. Différence nulle sur le binaire du lot contre la
+  référence du lot 2.6 (`replay-equiv` 20/20 décodés depuis le film, faits 20/20 et killsource 19/19
+  à l'octet) ; G-film, archlint, G-race, vet (avec et sans `research`), lint verts ; empreinte de la
+  grammaire régénérée à révision constante. Les lots 2.2 et 2.3 passent devant le second temps
+  (règle d'ordre du §3 : le reste de 2.1 attend la fusion de la vague 1).

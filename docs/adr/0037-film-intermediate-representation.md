@@ -113,12 +113,15 @@ delta phase, as they do today.
 
 ### IR-4 — Three states per component, three closure states per packet, never conflated (correction C3)
 
-A component occurrence is **interpreted** (the walk captured a typed value of it), **delimited**
-(its extent is known, the structure does not carry its value) or **untraversable** (its width is
-unknown: the rest of the view becomes an opaque tail). A value published to an `Observation` hook
-stays outside the structure (IR-8): its occurrence is delimited until its channel reads from the
-structure (step 2). The `status` column of `internal/grammar/testdata/ecs_table.tsv` (`porte`,
-`partiel`, `non_porte`) is a static capability; the state belongs to the occurrence.
+A component occurrence is **interpreted** (a channel of the walk interprets it: its archetype and
+index are in the union of the channels' interests, and it was traversed), **delimited** (its extent
+is known and no channel interprets it) or **untraversable** (its width is unknown: the rest of the
+view becomes an opaque tail). Interests are (archetype, component) pairs resolved in the film's
+registry, never a component name alone (two component tables share a name). A value is published
+to the channel's `Observation` hook and stays outside the structure (IR-8); a walk without channels
+interprets nothing. Since step 2 the state no longer depends on the trace's capture. The `status`
+column of `internal/grammar/testdata/ecs_table.tsv` (`porte`, `partiel`, `non_porte`) is a static
+capability; the state belongs to the occurrence.
 
 A delta packet carries one of three closure states:
 

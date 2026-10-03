@@ -145,7 +145,7 @@ const DefaultPacketPreambleBits = 2
 // processus. Le cadre par defaut dit donc la meme chose qu elles disaient. Au repos, l heritage
 // VAUT l invariant [profile.MouvementParDefaut].
 func DefaultFrameConfig() FrameConfig {
-	return FrameConfig{HasExtraFields: false, IDLowBits: 13, IDBase: 0, NewDefaultStateBits: 0,
+	return FrameConfig{HasExtraFields: false, IDLowBits: idLowBitsPresume, IDBase: 0, NewDefaultStateBits: 0,
 		PacketPreambleBits: DefaultPacketPreambleBits, Profil: ProfilDeBalayageParDefaut()}
 }
 

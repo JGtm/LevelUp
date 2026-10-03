@@ -49,6 +49,9 @@ type marcheurDesTrames struct {
 	trame trameLue
 	// liaisons : ce que la liaison des images-cles a fait au monde, sommee sur les chunks.
 	liaisons LiaisonDUnChunk
+	// interets : les occurrences que les canaux de la marche interpretent ([Distribuer]) ; vide hors
+	// du distributeur.
+	interets interetsResolus
 }
 
 // trameLue est ce que la marche rend pour UNE trame delta : la structure, et ce que la marche par
@@ -81,8 +84,9 @@ func (c *FilmContext) Trames(obs *Observation) iter.Seq2[*lecture.Paquet, error]
 }
 
 // nouveauMarcheurDesTrames prepare la marche des trames du film sous le cadre de balayage du
-// contexte et l observation `obs` : le monde, et la table anticipee posee une fois, avant la
-// premiere trame (les preliminaires bornes de l ADR 0037 IR-3).
+// contexte, construit depuis l en-tete de la marche ([FilmContext.EnTete]), et l observation
+// `obs` : le monde, et la table anticipee posee une fois, avant la premiere trame (les
+// preliminaires bornes de l ADR 0037 IR-3).
 func (c *FilmContext) nouveauMarcheurDesTrames(obs *Observation) (*marcheurDesTrames, error) {
 	chunks := c.ChunkNumbers()
 	if len(chunks) == 0 {
@@ -93,6 +97,7 @@ func (c *FilmContext) nouveauMarcheurDesTrames(obs *Observation) (*marcheurDesTr
 		return nil, err
 	}
 	cfg := c.CadreDeBalayage()
+	cfg.IDLowBits = c.EnTete().IDLowBits.Valeur
 	cfg.Obs = obs
 	m := &marcheurDesTrames{fc: c, cfg: cfg, chunks: chunks, monde: NewWorld(reg),
 		images: c.MarcheDImageCle()}
@@ -155,7 +160,7 @@ func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 		t.lecture.recs, t.lecture.rangs, t.lecture.curseur = DecodeFrameViewsCurseur(pay, m.monde, m.cfg,
 			MovementStateViews, t.debut)
 	}
-	rangerLaTrame(p, &t.lecture, t.parRangs)
+	rangerLaTrame(p, &t.lecture, t.parRangs, m.interets)
 }
 
 // viderLePaquet remet l arene a zero en gardant la capacite de ses tranches.

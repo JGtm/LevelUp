@@ -114799,3 +114799,36 @@ fichiers de la marche d'abord : en-tête, `Canal`, `Distribuer`, marque « inter
 des états de mouvement et du tir continu après la fusion de sa vague 1), puis 2.2 (canaux
 d'image-clé) et 2.3 (tête de vue A) — LP et les naissances par la vue A n'ont pas démarré. Fusion
 dans `feat/v75` sur accord de l'utilisateur, par groupe de lots.
+
+## [2026-10-03] Représentation intermédiaire du film, étape 2 — lot 2.1, premier temps : en-tête de la marche, distributeur, « interprété » par les intérêts — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours. Premier temps du lot 2.1, convenu avec la campagne de grammaire (fichiers
+neufs et fichiers de la marche seulement) ; le second temps — les états de mouvement et le tir continu
+branchés en canaux (2.1.2) et le resserrage de T3 — attend la fusion de sa vague 1, qui touche
+`movement_states.go`, `tir_continu.go` et `lecteur.go`.
+
+**Décision technique principale** : `lecture.Provenance` et `lecture.Parametre[T]` (types seuls) ;
+`grammar.EnTete` résolu par le contexte sans lire un bit de trame — identifiant bas présumé (13,
+image statique du binaire), MPP du format présumé (dérivation unique `mppDuFormat`, partagée avec
+`InstallFilmFormatMPP` et `PreuveDImageCle`), i0 imposé par l'appelant ou présumé par le catalogue,
+non résolu sinon (l'auto-détection reste à la demande et ne compte pas son repli plus tôt). La marche
+des trames lit l'identifiant bas sous l'en-tête, la phase des images-clés pose son MPP. `Canal` et
+`Distribuer` (`grammar/distribuer*.go`) : une marche des deux phases, chaque paquet à chaque canal,
+intérêts par paires (archétype, composant) résolues dans le registre (jamais un nom seul : règle D-89
+de la campagne), crochets posés par canal puis fondus dans l'observation de la marche des trames —
+un crochet posé deux fois est refusé (`ErrCrochetDejaPose`) ; la phase des images-clés reste sous
+l'observation du contexte, là où l'interprétation a lieu aujourd'hui. DT2-2 : une occurrence est
+interprétée quand un canal l'interprète et qu'elle est traversée ; la règle de la capture par la trace
+est retirée (aucun lecteur ; sans canal, rien n'est interprété). ADR 0037 IR-4 et doc de
+`lecture.EtatInterprete` alignés.
+
+**Résultats observés** : différence nulle contre la référence du lot du statborg — `replay-equiv`
+20/20 décodés depuis le film, faits 20/20 et killsource 19/19 à l'octet ; tests neufs (provenances de
+l'en-tête, distributeur égal aux itérateurs des deux phases, marque d'interprétation, crochets) verts,
+mutation de la marque jouée rouge ; G-film, archlint, G-race, vet (avec et sans `research`),
+golangci-lint verts ; empreinte de la grammaire régénérée à révision constante. Découverte 6 : les
+deux phases ne lisent pas sous le même découpage MPP (format pour les images-clés, contexte pour les
+trames) — gardé, à mesurer avant d'unifier.
+
+**Conclusion / prochaine étape** : lot 2.2 (canaux d'image-clé, sur le distributeur), puis 2.3 ;
+second temps de 2.1 à la fusion de la vague 1.

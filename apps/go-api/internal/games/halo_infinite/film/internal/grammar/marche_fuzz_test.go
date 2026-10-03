@@ -30,7 +30,7 @@ func marcherUnPayloadQuelconque(t *testing.T, pay []byte) {
 	var l lectureDeTrame
 	lireTrameParRangs(br, pay, w, cfg, DefaultPacketPreambleBits, &l)
 	p := &lecture.Paquet{Payload: pay, Debut: lecture.DebutEnTete}
-	rangerLaTrame(p, &l, true)
+	rangerLaTrame(p, &l, true, nil)
 	if len(p.Records) > bits || len(p.Comps) > 64*len(p.Records) || len(p.VueC.Entrees) > bits+1 {
 		t.Fatalf("trame de %d bits : %d record(s), %d composant(s), %d tour(s) de vue C — hors des bornes",
 			bits, len(p.Records), len(p.Comps), len(p.VueC.Entrees))

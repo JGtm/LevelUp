@@ -42,47 +42,71 @@ import (
 // range dans la structure de lecture — un record d etat complet par ancre, ses composants, son
 // etendue et sa preuve. Les crochets qui interpretent pendant la traversee sont ceux de
 // l observation du contexte ([FilmContext.Observation]). La phase ne tient pas de monde : la table
-// d entites du paquet n est pas renseignee.
+// d entites du paquet n est pas renseignee. Sans canal, aucune occurrence n est interpretee
+// ([Distribuer] declare les interets).
 //
-// Le decoupage MPP du format du film est pose sur le contexte pour la duree de l iteration
-// ([InstallFilmFormatMPP]), comme pour la mesure de fermeture, et restaure a la sortie, arret
-// anticipe compris. Le paquet rendu n est valide que pendant le tour qui le rend.
+// Le decoupage MPP du format du film ([EnTete.MPP]) est pose sur le contexte pour la duree de
+// l iteration, comme pour la mesure de fermeture, et restaure a la sortie, arret anticipe compris.
+// Le paquet rendu n est valide que pendant le tour qui le rend.
 func (c *FilmContext) ImagesCles() iter.Seq2[*lecture.Paquet, error] {
 	return func(rendre func(*lecture.Paquet, error) bool) {
-		reg, err := c.Registry()
+		m, restaurer, err := c.nouvelleMarcheDesImagesCles(nil)
 		if err != nil {
 			rendre(nil, err)
 			return
 		}
-		if restaurer, err := InstallFilmFormatMPP(c); err == nil {
-			defer restaurer()
-		}
-		m := marcheDesImagesCles{reg: reg, ctx: c.ContexteDeLecture(), marche: c.MarcheDImageCle()}
-		for _, num := range c.ChunkNumbers() {
-			data, pks, ok := c.ChunkAt(num)
-			if !ok {
-				continue
-			}
-			for _, pk := range pks {
-				if pk.Type != PacketTypeKeyframe {
-					continue
-				}
-				m.marcherLePaquet(num, pk, data)
-				if !rendre(&m.paquet, nil) {
-					return
-				}
-			}
-		}
+		defer restaurer()
+		m.parcourir(func(p *lecture.Paquet) bool { return rendre(p, nil) })
 	}
 }
 
-// marcheDesImagesCles porte l etat d UNE marche des images-cles d un film : le registre, le
-// contexte de lecture, la marche d ancres du film et l arene du paquet en cours.
+// marcheDesImagesCles porte l etat d UNE marche des images-cles d un film : le contexte, le
+// registre, le contexte de lecture, la marche d ancres du film, les interets des canaux et l arene
+// du paquet en cours.
 type marcheDesImagesCles struct {
-	reg    *Registry
-	ctx    ContexteDeLecture
-	marche MarcheDImageCle
-	paquet lecture.Paquet
+	fc       *FilmContext
+	reg      *Registry
+	ctx      ContexteDeLecture
+	marche   MarcheDImageCle
+	interets interetsResolus
+	paquet   lecture.Paquet
+}
+
+// nouvelleMarcheDesImagesCles prepare la phase des images-cles sous le contexte de lecture du film
+// et les interets des canaux de la marche. Elle pose le decoupage MPP du format ([EnTete.MPP]) sur
+// le contexte, et rend sa restauration.
+func (c *FilmContext) nouvelleMarcheDesImagesCles(interets interetsResolus) (*marcheDesImagesCles, func(), error) {
+	reg, err := c.Registry()
+	if err != nil {
+		return nil, func() {}, err
+	}
+	restaurer := func() {}
+	if mpp := c.EnTete().MPP; mpp.Provenance != lecture.ProvenanceNonRenseignee {
+		prev := c.PoserMPP(mpp.Valeur)
+		restaurer = func() { c.PoserMPP(prev) }
+	}
+	return &marcheDesImagesCles{fc: c, reg: reg, ctx: c.ContexteDeLecture(), marche: c.MarcheDImageCle(),
+		interets: interets}, restaurer, nil
+}
+
+// parcourir range chaque paquet d image-cle du film, dans l ordre du flux, et le rend a `rendre` ;
+// faux arrete la marche.
+func (m *marcheDesImagesCles) parcourir(rendre func(*lecture.Paquet) bool) {
+	for _, num := range m.fc.ChunkNumbers() {
+		data, pks, ok := m.fc.ChunkAt(num)
+		if !ok {
+			continue
+		}
+		for _, pk := range pks {
+			if pk.Type != PacketTypeKeyframe {
+				continue
+			}
+			m.marcherLePaquet(num, pk, data)
+			if !rendre(&m.paquet) {
+				return
+			}
+		}
+	}
 }
 
 // marcherLePaquet range UN paquet d image-cle dans l arene : ses ancres, dans l ordre des bits, et
@@ -96,7 +120,7 @@ func (m *marcheDesImagesCles) marcherLePaquet(chunk int, pk FilmPacket, data []b
 		tr := WalkKeyframeFullState(p.Payload, b.Bit, m.reg, m.ctx)
 		premier := uint32(len(p.Comps)) //nolint:gosec // l arene d un paquet tient sur 32 bits
 		for k := range tr.Comps {
-			p.Comps = append(p.Comps, composantLu(&tr, k))
+			p.Comps = append(p.Comps, composantLu(&tr, k, m.interets.contient(b.TI, tr.Comps[k].Index)))
 		}
 		tete := uint32(recs[i].Gen) //nolint:gosec // deux bits
 		p.Records = append(p.Records, lecture.Record{

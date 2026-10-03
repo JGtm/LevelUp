@@ -94,6 +94,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -114,10 +115,10 @@ type FilmContext struct {
 	slots    SlotBand
 	slotsLus bool
 
-	// impose est le decoupage d'i0 que la REGLE DU CATALOGUE tranche a la construction (cf.
-	// resolveI0Layout). Non nil = les trois champs `lay*` ci-dessous ne servent pas : aucune
-	// auto-detection n'a lieu, et c'est aussi ce qui la retire du chemin de cuisson.
-	impose *profile.I0Layout
+	// impose est le decoupage d'i0 que la REGLE DU CATALOGUE tranche a la construction, avec sa
+	// provenance (cf. resolveI0Layout). Non nil = les trois champs `lay*` ci-dessous ne servent pas :
+	// aucune auto-detection n'a lieu, et c'est aussi ce qui la retire du chemin de cuisson.
+	impose *lecture.Parametre[profile.I0Layout]
 
 	lay    profile.I0Layout
 	layErr error
@@ -309,20 +310,19 @@ func (c *FilmContext) Diagnostics() *constat.Diagnostics {
 	return &c.diag
 }
 
-// resolveI0Layout EST LA REGLE, ecrite une fois : le decoupage FORCE s'il y en a un, sinon celui
-// du CATALOGUE quand il est valide, sinon nil — l'auto-detection.
+// resolveI0Layout EST LA REGLE, ecrite une fois : le decoupage FORCE s'il y en a un (impose), sinon
+// celui du CATALOGUE quand il est valide (presume), sinon nil — l'auto-detection.
 //
 // Le repli sur nil n'est pas une tolerance : une entree de catalogue anterieure au champ des
 // largeurs (`axisWidths` absent, donc `Valid()` faux) doit laisser lire le film plutot
 // qu'imposer des largeurs nulles, exactement comme le chemin world-object garde son defaut.
-func resolveI0Layout(forced *profile.I0Layout, entry *profile.MapQuantEntry) *profile.I0Layout {
+func resolveI0Layout(forced *profile.I0Layout, entry *profile.MapQuantEntry) *lecture.Parametre[profile.I0Layout] {
 	if forced != nil {
-		lay := *forced
-		return &lay
+		return &lecture.Parametre[profile.I0Layout]{Valeur: *forced, Provenance: lecture.ProvenanceImposee}
 	}
 	if entry != nil {
 		if lay := entry.Layout(); lay.Valid() {
-			return &lay
+			return &lecture.Parametre[profile.I0Layout]{Valeur: lay, Provenance: lecture.ProvenancePresumee}
 		}
 	}
 	return nil
@@ -335,7 +335,7 @@ func (c *FilmContext) ImposedLayout() *profile.I0Layout {
 	if c == nil || c.impose == nil {
 		return nil
 	}
-	lay := *c.impose
+	lay := c.impose.Valeur
 	return &lay
 }
 
@@ -401,7 +401,7 @@ func (c *FilmContext) I0Layout() (profile.I0Layout, error) {
 		return profile.I0Layout{}, ErrNoFilmChunk
 	}
 	if c.impose != nil {
-		return *c.impose, nil
+		return c.impose.Valeur, nil
 	}
 	if !c.layLu {
 		c.lay, _, c.layErr = DetectI0LayoutOf(c.film)
