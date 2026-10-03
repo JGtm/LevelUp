@@ -114850,3 +114850,13 @@ second rang de `debutParFermeture` lie au monde (D-L2-12), puis rejouer C11.
 **Résultats observés** : mutations M11 et M12 de la revue ROUGES (vertes contre l'ancien test) ; copie du minuteur sur une ligne ROUGE (verte contre l'ancien garde-rail) ; copie du jeu d'armes de la tête et sur une ligne ROUGES. Contre `8390543a8` (binaires de `git archive`) : carte v2 20 films, `fermeture_paquets.tsv` identique à l'octet ; killsource 19 témoins identiques à l'octet ; `replay-equiv` 20 films, digests identiques à l'octet. Empreinte `grammar` régénérée à révision constante `grammar-2026-10-03.2`. gofmt, vet (module et research), archlint, G-film 20 paquets, golangci 0 issue.
 
 **Conclusion / prochaine étape** : rien de neuf à décider ; restent ouverts D23 (révision killsource), rc 1 du gate de corpus (pilote), LK (D-REV-2). Détail : plan §4 (2026-10-03, « mineurs de la revue »), `LOT_L4a.md` §14, `LOT_L3a.md` §11.
+
+## [2026-10-03] Campagne de grammaire — vague 1 fusionnée dans feat/v75, 4 témoins recuits
+
+**Statut** : Complété (vague 1) ; recuisson du parc en attente du feu vert de l'utilisateur.
+
+**Décision technique principale** : vague 1 (L8 `ti=3`, L3a moteur HI_1_13_0, L4a `ti=40` en delta) fusionnée dans `feat/v75` par avance rapide (`2393d7db7`) après CI verte (un test de performance de `sync/killcollector`, `TestRosterDesFilms_AnnuaireContreJointure`, sous son seuil de facteur 10 à 8,9 sur le runner, repassé à la relance du job ; fichier non touché par la vague) et `make gate-push` vert. D23 tranchée par le pilote : `killsource.Rev` constante. rc 1 du gate de corpus admis (repli existant nommé pour la première fois, pertes `[FILET]` instruites). L2 et L9 écartés (gate 2). Décision utilisateur : intégrer puis recuire 4 témoins seulement.
+
+**Résultats observés** : corpus 20 films, paquets sains 276 327 -> 313 495, records utiles sains 2 585 919 -> 2 922 510 ; indicateur D1 fixe 33,3 % -> 37,7 % (HI_1_13_0 65,8 % -> 76,6 %) ; 2 747 morts identiques sur 19 témoins. Recuisson locale `backfill-replay --one` (binaire de `2393d7db7`) : `fb1a1a72` 27 s, `51ebbc0f` 17 s, `bfecd02b` 19 s, `4f77afc1` 124 s ; les anciens artefacts (schéma 71, gardés au scratchpad) ne mesurent pas la vague seule. Sur `fb1a1a72`, le tir continu ferme 43 450 paquets contre 22 318 et les intervalles d'état passent de 534 à 1 109.
+
+**Conclusion / prochaine étape** : coup d'œil de l'utilisateur sur les 4 témoins, puis recuisson du parc (115 rejeux, environ 40 min, serveur arrêté) sur son feu vert ; vague 2 (LU, LS, LP, naissances par la vue A) sur GO daté. Découverte : le test de coût `TestRosterDesFilms_AnnuaireContreJointure` est sensible au bruit du runner (facteur 8,9 contre 10 exigé), à instruire hors campagne.

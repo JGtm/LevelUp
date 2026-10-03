@@ -206,6 +206,16 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   sains en cascade sur `e5adf7b2` — comme REPLI NOMMÉ ET COMPTÉ au sens de l'ADR 0034 D-10 :
   `repli_debut_de_liste_ferme_au_bit` (`registre_filmdec_marche.go`), compte = listes dont le début
   est pris à ce rang, publié dans `coverage.fallbacks`.
+- 2026-10-03 (pilote) : **D23 tranchée — révision killsource CONSTANTE** (`killsource-2026-09-27`) pour la
+  vague 1 : seuls le diagnostic `Result.Calibration` et deux compteurs expvar changent, aucune mort,
+  valeur ni voie sur 19 témoins ; une montée ferait redécoder tout le parc par le hook post-sync pour
+  réécrire des lignes identiques. Le **rc 1 du gate de corpus** de la vague est ADMIS : le seul FAUX
+  est un repli existant nommé pour la première fois (`111fa685`), et toutes les PERTES sont `[FILET]`
+  dans des familles instruites par les lots.
+- **2026-10-03, soir (utilisateur, question en langage clair) : « Intégrer + quelques films »** — la
+  vague 1 est fusionnée dans `feat/v75` dès la CI verte (fait : `2393d7db7`, avance rapide), puis 4
+  films témoins seulement sont recuits localement (`fb1a1a72`, `51ebbc0f`, `bfecd02b`, `4f77afc1`) ;
+  la recuisson du parc (115 rejeux) attend le feu vert de l'utilisateur après son coup d'œil.
 
 ## 4. Journal
 
