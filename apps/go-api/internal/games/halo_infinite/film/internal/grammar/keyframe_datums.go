@@ -59,8 +59,10 @@ import (
 //
 // # DEUX CONTRAINTES, LES DEUX PRISES DE L ECRIVAIN
 //
-//  1. LES GARDES D EN-TETE (`kfAnchorFromID`) : generation non nulle, slot sous le cardinal de
-//     la table, `field26` nul, `ti` sous le cap objet de 50.
+//  1. LES GARDES D EN-TETE (`kfAnchorFromID`) : slot sous le cardinal de la table, `field26` nul,
+//     `ti` sous le cap objet de 50 — et les deux bits de tete non nuls, garde de la marche et non
+//     regle de l ecrivain : l allocateur `FUN_142f2e598` pose aussi la valeur 0
+//     (`gen = (gen+1)&3`), le seul identifiant nul est `0xffffffff`.
 //  2. LA CROISSANCE DES SLOTS. `FUN_142f2e174` parcourt la table de sa vue par INDEX CROISSANT
 //     (`uVar9` de 0 vers le cardinal, sous le bitmap `vue+0x58`) et serialise une entree par
 //     entite vivante : les entrees du payload sont donc en SLOTS CROISSANTS. On retient la plus

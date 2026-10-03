@@ -149,11 +149,13 @@ func marcherLaTable(r *kfRecherche) MarcheDePayload {
 	seen := map[int]int{}
 	pos := 1 // préfixe 1 bit
 	prev := -1
+	// elue : l ancre `pos` a ete choisie par l election (le repli nomme) ; chaque record le porte.
+	elue := false
 	if _, _, _, ok := kfValidAnchor(r.buf, pos, prev, r.total); !ok {
 		iss := r.glissante(pos, prev)
 		mp.Stats.compter(iss)
 		mp.noterEcartes(r, iss, prev)
-		pos = iss.at
+		pos, elue = iss.at, iss.dec == kfElection
 	}
 	for pos >= 0 {
 		slot, ti, gen, ok := kfValidAnchor(r.buf, pos, prev, r.total)
@@ -161,7 +163,7 @@ func marcherLaTable(r *kfRecherche) MarcheDePayload {
 			break
 		}
 		startState := pos + 64
-		nat := -1
+		nat, suivanteElue := -1, false
 		// fast-path saut-de-largeur : n'accepte QUE gen==1 (non ambigu). Les faux ancres
 		// gen 2/3 de la zone d'état peuvent tomber pile sur startState+w ; on ne saute pas
 		// dessus. Un vrai record gen≥2 (mid-match) est résolu par la recherche glissante.
@@ -175,9 +177,9 @@ func marcherLaTable(r *kfRecherche) MarcheDePayload {
 			iss := r.glissante(startState, slot)
 			mp.Stats.compter(iss)
 			mp.noterEcartes(r, iss, slot)
-			nat = iss.at
+			nat, suivanteElue = iss.at, iss.dec == kfElection
 		}
-		mp.Records = append(mp.Records, KeyframeRec{Slot: slot, TI: ti, Gen: gen, Bit: pos})
+		mp.Records = append(mp.Records, KeyframeRec{Slot: slot, TI: ti, Gen: gen, Bit: pos, Elue: elue})
 		if ti == BipedTypeIndex {
 			mp.Stats.Bipedes++
 		}
@@ -186,7 +188,7 @@ func marcherLaTable(r *kfRecherche) MarcheDePayload {
 			break
 		}
 		kfApprendreLargeur(width, seen, ti, nat-startState)
-		pos = nat
+		pos, elue = nat, suivanteElue
 	}
 	mp.Stats.Records = len(mp.Records)
 	return mp

@@ -1,16 +1,15 @@
 package grammar
 
 // marche_images_cles_test.go — LA PHASE IMAGES-CLES RANGE CE QUE LA MARCHE LIT (ADR 0037 IR-1,
-// IR-4) : sur les bobines par build, la fermeture que la structure porte est celle que
-// [KeyframeClosure] mesure, archetype par archetype, et chaque paquet tient les invariants de la
-// structure.
+// IR-4, IR-6) : sur les bobines par build, chaque paquet tient les invariants de la structure, et
+// chaque ancre elue par le repli est marquee. La fermeture par archetype que la carte en tire
+// ([KeyframeClosure]) est tenue par son golden (`keyframe_closure_ratchet_test.go`).
 
 import (
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
@@ -18,7 +17,7 @@ import (
 )
 
 // bobineParBuild charge la mini-bobine par build `court` du rejeu.
-func bobineParBuild(t *testing.T, court string) (string, *source.Film) {
+func bobineParBuild(t *testing.T, court string) *source.Film {
 	t.Helper()
 	dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+court)
 	if _, err := os.Stat(dir); err != nil {
@@ -28,86 +27,49 @@ func bobineParBuild(t *testing.T, court string) (string, *source.Film) {
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}
-	return dir, film
+	return film
 }
 
-// TestLaPhaseDesImagesClesPorteLaFermetureDeKeyframeClosure : sur les sept bobines par build, les
-// preuves des records de la structure rendent, archetype par archetype, les comptes de
-// [KeyframeClosure] — fermes, bornes, composant bloquant le plus frequent. Chaque paquet tient les
-// invariants de la structure. MUTATION — prouver un record dont la traversee depasse la frontiere
-// (`tr.EndBit >= b.Want` dans [preuveDeLEtatComplet]) : les fermes montent, ROUGE.
-func TestLaPhaseDesImagesClesPorteLaFermetureDeKeyframeClosure(t *testing.T) {
+// TestLaPhaseDesImagesClesTientSesInvariants : sur les sept bobines par build, chaque paquet
+// d image-cle tient les invariants de la structure ([verifierLeRecordDEtatComplet]), et chaque
+// ancre que le repli a elue — une par election comptee par la marche — est marquee.
+// MUTATION — ne plus marquer l ancre elue (`Elue: elue && pos < 0` dans `marcherLaTable`) : ROUGE.
+func TestLaPhaseDesImagesClesTientSesInvariants(t *testing.T) {
+	electionsVues := 0
 	for _, court := range closureMiniFilms() {
-		dir, film := bobineParBuild(t, court)
-		want, err := fermetureMemo(dir)
-		if err != nil {
-			t.Fatal(err)
-		}
-		fc := NewFilmContext(film)
-		reg, err := fc.Registry()
-		if err != nil {
-			t.Fatalf("%s : registre : %v", court, err)
-		}
-		f := fermetureDeLaStructure{stats: map[uint32]KeyframeClosureStat{}, bloquants: map[uint32]map[string]int{}}
-		paquets := 0
+		fc := NewFilmContext(bobineParBuild(t, court))
+		marche := fc.MarcheDImageCle()
+		paquets, elues, elections := 0, 0, 0
 		for p, err := range fc.ImagesCles() {
 			if err != nil {
 				t.Fatalf("%s : %v", court, err)
 			}
 			paquets++
 			verifierLeRecordDEtatComplet(t, court, p)
-			f.accumuler(reg, p)
-		}
-		got := f.rendre()
-		if paquets == 0 || !reflect.DeepEqual(got, want) {
-			t.Errorf("%s : %d paquet(s) ; la structure rend\n %v\n KeyframeClosure\n %v", court, paquets, got, want)
-		}
-	}
-}
-
-// fermetureDeLaStructure recompte, depuis les preuves de la structure, ce que [KeyframeClosure]
-// mesure : les records bornes (tous sauf le dernier de chaque paquet), les fermes, et le composant
-// qui arrete le plus de records bornes.
-type fermetureDeLaStructure struct {
-	stats     map[uint32]KeyframeClosureStat
-	bloquants map[uint32]map[string]int
-}
-
-// accumuler compte les records bornes d un paquet.
-func (f *fermetureDeLaStructure) accumuler(reg *Registry, p *lecture.Paquet) {
-	for i := 0; i+1 < len(p.Records); i++ {
-		r := p.Records[i]
-		ti := uint32(r.TI) //nolint:gosec // archetype d une ancre, jamais negatif
-		s := f.stats[ti]
-		s.Total++
-		switch {
-		case r.Desync >= 0:
-			if f.bloquants[ti] == nil {
-				f.bloquants[ti] = map[string]int{}
+			for _, r := range p.Records {
+				if r.Liaison == lecture.LiaisonImageCleElue {
+					elues++
+				}
 			}
-			f.bloquants[ti][nomComposantBloquant(reg, int(r.TI), int(r.Desync))]++
-		case r.Preuve == lecture.PreuveFerme:
-			s.Closed++
+			_, st := marche.RecordsStats(p.Payload)
+			elections += st.Elections
 		}
-		f.stats[ti] = s
+		if paquets == 0 || elues != elections {
+			t.Errorf("%s : %d paquet(s), %d ancre(s) marquee(s) elue(s) pour %d election(s) de la marche",
+				court, paquets, elues, elections)
+		}
+		electionsVues += elections
 	}
-}
-
-// rendre rend les comptes, chaque archetype avec son composant le plus bloquant.
-func (f *fermetureDeLaStructure) rendre() map[uint32]KeyframeClosureStat {
-	for ti, parComposant := range f.bloquants {
-		s := f.stats[ti]
-		s.Blocking = composantLePlusBloquant(parComposant)
-		f.stats[ti] = s
+	if electionsVues == 0 {
+		t.Fatal("aucune election sur les sept bobines : la marque d election n est pas exercee")
 	}
-	return f.stats
 }
 
 // verifierLeRecordDEtatComplet verifie les invariants d UN paquet d image-cle : des records d etat
-// complet tries par bit, lies par l image-cle, leur rang de vue egal a la tete de leur identite ; un
-// record ferme finit sur le record suivant ; ses composants sont dans son etendue, contigus, et un
-// composant infranchissable est le dernier et en porte la desynchronisation ; aucun verdict de
-// paquet.
+// complet tries par bit, lies par l image-cle (de proche en proche ou par election), leur rang de
+// vue egal a la tete de leur identite ; un record ferme finit sur le record suivant ; ses
+// composants sont dans son etendue, contigus, et un composant infranchissable est le dernier et en
+// porte la desynchronisation ; aucun verdict de paquet.
 func verifierLeRecordDEtatComplet(t *testing.T, nom string, p *lecture.Paquet) {
 	t.Helper()
 	ou := fmt.Sprintf("%s chunk %d paquet %d", nom, p.Chunk, p.Index)
@@ -116,7 +78,8 @@ func verifierLeRecordDEtatComplet(t *testing.T, nom string, p *lecture.Paquet) {
 	}
 	arene := uint32(0)
 	for i, r := range p.Records {
-		if r.Genre != lecture.GenreEtatComplet || r.Liaison != lecture.LiaisonImageCle || uint32(r.Vue) != r.Vie.Gen {
+		lie := r.Liaison == lecture.LiaisonImageCle || r.Liaison == lecture.LiaisonImageCleElue
+		if r.Genre != lecture.GenreEtatComplet || !lie || uint32(r.Vue) != r.Vie.Gen {
 			t.Errorf("%s : record %d %+v, attendu un etat complet lie par l image-cle", ou, i, r)
 		}
 		if i+1 < len(p.Records) {
@@ -147,8 +110,7 @@ func verifierLeRecordDEtatComplet(t *testing.T, nom string, p *lecture.Paquet) {
 // et le restaure a la sortie, arret anticipe compris ; un film sans registre rend son erreur, une
 // fois.
 func TestLaPhaseDesImagesClesRestaureLeContexte(t *testing.T) {
-	_, film := bobineParBuild(t, "fb1a1a72")
-	fc := NewFilmContext(film)
+	fc := NewFilmContext(bobineParBuild(t, "fb1a1a72"))
 	avant := fc.ProfilDeBalayage().MPP
 	n := 0
 	for _, err := range fc.ImagesCles() {
@@ -162,7 +124,7 @@ func TestLaPhaseDesImagesClesRestaureLeContexte(t *testing.T) {
 	if n != 2 || fc.ProfilDeBalayage().MPP != avant {
 		t.Errorf("%d paquet(s) avant l arret, decoupage MPP %+v apres contre %+v avant", n, fc.ProfilDeBalayage().MPP, avant)
 	}
-	_, sansRegistre := bobineParBuild(t, "000d5950") // la bobine historique, sans `chunk_00`
+	sansRegistre := bobineParBuild(t, "000d5950") // la bobine historique, sans `chunk_00`
 	rendus := 0
 	for p, err := range NewFilmContext(sansRegistre).ImagesCles() {
 		rendus++

@@ -259,29 +259,39 @@ après la preuve de différence nulle ; `grammar.Rev` ne monte pas.
 ### Lot 1.3 — Phase images-clés : `FilmContext.ImagesCles` (taille M)
 **Prérequis** : lot 1.2 clos ; lot de la campagne sur la marche d'image-clé (L9) fusionné ou
 coordonné (§1.3).
-- [ ] 1.3.1 `FilmContext.ImagesCles` sur la mémoire existante de `MarcheDImageCle`
+- [x] 1.3.1 `FilmContext.ImagesCles` sur la mémoire existante de `MarcheDImageCle`
       (`keyframe_world_marche.go`), étendues de l'état complet, mémoire PARTAGÉE entre les contextes
       de la cuisson et de killsource si cela ne change aucune sortie (sinon, découverte consignée).
-      *En cours (2026-10-03)* : `marche_images_cles.go` (fichier neuf, option convenue avec la
-      campagne) — `FilmContext.ImagesCles()`, un record d'état complet par ancre de la marche du
-      film (mémoire du contexte), traversé par `WalkKeyframeFullState`, ses composants, son
-      étendue et sa preuve (fermé quand la traversée finit sur l'ancre suivante) ; découpage MPP du
-      format posé pour la durée de l'itération et restauré. Tests (`marche_images_cles_test.go`) :
-      sur les sept bobines par build, les preuves de la structure rendent archétype par archétype
-      les comptes de `KeyframeClosure` (fermés, bornés, composant bloquant), invariants de la
-      structure, restauration du contexte à l'arrêt anticipé (mutation « prouver un record qui
-      dépasse sa frontière », rouge). Reste : la marque d'élection par record (après la fusion de
-      la vague de la campagne, cf. journal). Mémoire partagée : REPORTÉE À L'ÉTAPE 2 par décision de
-      l'utilisateur du 2026-10-03 (§2) — neutre par
-      construction (la preuve se joue au profil invariant du film, `keyframe_world_preuve.go`),
-      mais les deux contextes naissent dans deux couches qui ne partagent que le `source.Film`
-      (`killsource/world.go`, `replay/build_from_film.go`) : la partager demande soit un magasin
-      attaché au `source.Film` (responsabilité neuve de la porte aux octets, `source.Rev`), soit de
-      la surface de façade (`decfilm`) et une plomberie à travers `killsource`, `replay` et
-      `replaybuild` — deux constructions que l'étape 2 rend jetables, puisque killsource y
-      deviendra un canal de la MÊME marche (`Distribuer`).
-- [ ] 1.3.2 `KeyframeClosure` en devient le consommateur.
+      *Fait* : `marche_images_cles.go` — `FilmContext.ImagesCles()`, un record d'état complet par
+      ancre de la marche du film (mémoire du contexte), traversé par `WalkKeyframeFullState`, ses
+      composants, son étendue et sa preuve (fermé quand la traversée finit sur l'ancre suivante) ;
+      découpage MPP du format posé pour la durée de l'itération et restauré. Récupération marquée :
+      `KeyframeRec.Elue`, posé sur le chemin d'élection de `marcherLaTable`, devient
+      `LiaisonImageCleElue` dans la structure (autant de records marqués que d'élections comptées par
+      la marche sur les sept bobines ; mutation rouge). Mémoire partagée : REPORTÉE À L'ÉTAPE 2 par
+      décision de l'utilisateur du 2026-10-03 (§2) — neutre par construction (la preuve se joue au
+      profil invariant du film, `keyframe_world_preuve.go`), mais les deux contextes naissent dans
+      deux couches qui ne partagent que le `source.Film` (`killsource/world.go`,
+      `replay/build_from_film.go`) : la partager demande soit un magasin attaché au `source.Film`,
+      soit de la surface de façade (`decfilm`) et une plomberie à travers `killsource`, `replay` et
+      `replaybuild` — deux constructions que l'étape 2 rend jetables (killsource y devient un canal
+      de la MÊME marche, `Distribuer`). Report valide.
+- [x] 1.3.2 `KeyframeClosure` en devient le consommateur.
+      *Fait* : `KeyframeClosure` itère `fc.ImagesCles()` et classe les records bornés (tous sauf le
+      dernier de chaque paquet) par leur preuve et leur désynchronisation ; sa boucle chunk → paquet,
+      son appel à `WalkKeyframeFullState` et sa pose du découpage MPP ont disparu (l'itérateur les
+      porte). Le test d'équivalence écrit avant le branchement, devenu circulaire, est remplacé par
+      les invariants de la phase et le test de la marque d'élection ; la fermeture par archétype
+      reste tenue par `keyframe_closure.golden`.
 - Gate : `keyframe_closure.golden` identique ; G-equiv zéro divergence ; G-film ; killsource identique.
+  *Tenu le 2026-10-03* : `keyframe_closure.golden` inchangé (`TestKeyframeClosureRatchet` vert) ;
+  G-equiv : `replay-equiv` 20/20 identiques aux références de `6c0a6541d`, que la passe de
+  référence sur la tête fusionnée `28d891a8a` a confirmées sans en changer une, chaque film
+  DÉCODÉ (faits de référence mis de côté) ; les 20 fichiers de faits identiques à l'octet à ceux de
+  la passe de référence ; killsource `json` 19/19 témoins identiques à l'octet, journaux identiques
+  hors horodatage ; G-film vert (21 paquets, `archlint` compris) ; `go vet` vert avec et sans
+  `research` ; `golangci-lint` 0 problème ; empreinte régénérée à révision CONSTANTE
+  (`grammar-2026-10-02`, `681e4e8f…`). Lot 1.3 clos.
 
 ### Lot 1.4 — Tests de la spec (taille S)
 *Avancé pendant l'attente de 1.3.2, exception accordée par l'utilisateur le 2026-10-03 (§2).*
@@ -318,8 +328,9 @@ coordonné (§1.3).
 - Gate : G-unit, G-arch, `go test -race -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/internal/grammar/`.
   *Tenu le 2026-10-03* : `grammar/...` et `archlint` verts ; `go vet -tags=research` vert ;
   `golangci-lint` 0 problème ; sous `-race`, `TestDeuxFilmsEnParallele` et
-  `TestDeuxFilmsEnParalleleLaStructure` verts, aucune course. Le lot ne se clôt qu'avec 1.3 :
-  T1 et T6 couvrent aussi la phase des images-clés, à rejouer après le branchement de 1.3.2.
+  `TestDeuxFilmsEnParalleleLaStructure` verts, aucune course. Rejoués après le branchement de 1.3.2
+  (T1 et T6 couvrent aussi la phase des images-clés) : verts, aucune course. Lot 1.4 clos le
+  2026-10-03.
 
 ### Clôture de l'étape 1
 - [ ] Mesure de performance avant/après (critère 4) publiée.
@@ -485,3 +496,18 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
   d'image-clé, relancé le 2026-10-03 au matin, sera assemblé après ses quatre autres lots puis
   contrôlé, et la fusion attend l'accord de l'utilisateur. Report VALIDE de 1.3.2 et de la marque
   d'élection (dépendance explicite du §1.3).
+- 2026-10-03 (fin de matinée) : la campagne ne retient PAS son lot sur la marche d'image-clé (L9)
+  dans sa vague 1 — il échouait à son gate « aucun film en baisse » (102 902 paquets sains perdus
+  par 5 368 fausses ancres de génération 0 ; aucune variante sans lecture du bloc de type 1 ne
+  tient) ; rien de production n'en est committé. `keyframe_world*.go` et `keyframe_closure.go` sont
+  rendus à ce plan : 1.3.2 et la marque d'élection ne dépendent plus de la fusion de la vague. Une
+  variante appuyée sur le bloc de type 1 pourrait revenir en vague 2 de la campagne (coordination
+  à ce moment-là). `feat/v75` (retrait des replis nuls, DU-7) refusionné (`28d891a8a`) : la passe de
+  référence sur la tête fusionnée rend 20/20 identiques sans changer une référence. Lot 1.3 clos
+  (marque d'élection, `KeyframeClosure` sur `ImagesCles`, différence nulle prouvée) ; lot 1.4 clos
+  (T1 et T6 rejoués après le branchement). Commentaires faux corrigés dans les lignes touchées
+  (règle 17) : la valeur 0 des deux bits de tête d'un identifiant d'image-clé n'est pas un handle nul
+  (`keyframe_world.go`, `keyframe_datums.go` ; constat D-L9-8 de la campagne, relu sur
+  `FUN_142f2e598`). Restent les trois items de clôture de l'étape : mesure de performance sur
+  machine calme (après l'assemblage de la vague 1 de la campagne), CI, `make gate-push`, accord de
+  l'utilisateur et fusion dans `feat/v75`, puis le plan de l'étape 2.

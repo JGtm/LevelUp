@@ -114692,3 +114692,25 @@ correctif killsource sans kill-feed, puis Falcon de Behemoth schéma 77 ; confli
 (continuousFire, movementStates, leurs stats, artifact), références non re-figées par la
 campagne : signalé à la campagne. Reste : supprimer à la main les films copiés dans
 `data/cache/` du worktree.
+
+## [2026-10-03] Représentation intermédiaire du film, étape 1 — lots 1.3 et 1.4 clos : `KeyframeClosure` sur `ImagesCles`, marque d'élection — Complété (`feat/representation-intermediaire`)
+
+**Statut** : Complété (lots 1.3 et 1.4 du plan `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`).
+
+**Décision technique principale** : la campagne de grammaire ne retient pas son lot sur la marche
+d'image-clé (L9) et rend `keyframe_world*.go` / `keyframe_closure.go`. `KeyframeClosure` consomme
+désormais `FilmContext.ImagesCles()` (sa boucle, sa traversée et sa pose du découpage MPP ont
+disparu) ; chaque record d'image-clé dit si son ancre a été élue par le repli
+(`KeyframeRec.Elue` posé sur le chemin d'élection de `marcherLaTable`, `LiaisonImageCleElue` dans la
+structure). Commentaires « génération 0 = handle nul » corrigés (constat D-L9-8 de la campagne :
+`FUN_142f2e598` alloue la valeur 0, le seul identifiant nul est `0xffffffff`).
+
+**Résultats observés** : `feat/v75` (retrait des replis nuls) refusionné sans changer une
+référence ; différence nulle prouvée — `replay-equiv` 20/20 (décodés), faits 20/20 et killsource
+19/19 identiques à l'octet, `keyframe_closure.golden` inchangé ; autant d'ancres marquées élues que
+d'élections comptées par la marche (908 sur `a521164d`, mutation rouge) ; G-film, `go vet` (avec et
+sans `research`), `golangci-lint`, `-race` verts ; empreinte régénérée à révision constante.
+
+**Conclusion / prochaine étape** : clôture de l'étape 1 — CI de la branche, `make gate-push`, mesure
+de performance sur machine calme (après l'assemblage de la vague 1 de la campagne), accord de
+l'utilisateur et fusion dans `feat/v75`, plan de l'étape 2.

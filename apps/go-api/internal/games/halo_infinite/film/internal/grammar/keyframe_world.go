@@ -8,7 +8,10 @@ package grammar
 // En-tête RÉEL d'un record keyframe type-2 (RE FUN_141f86704) :
 //   [id:32][field:26][ti:6] = 64 bits.
 //   ti  = readBits(q+58, 6)  (== mot 32-bit à q+32 quand field26==0, cas du spawn)
-//   gen = id>>30 ∈ {1,2,3}   (respawns mid-match ; gen==0 = handle null rejeté)
+//   gen = id>>30             (les deux bits de tete ; la valeur 0 n est pas un handle nul :
+//                            l allocateur FUN_142f2e598 pose gen = (gen+1)&3 et
+//                            eid = gen<<30|slot, le seul identifiant nul est 0xffffffff ;
+//                            la marche refuse pourtant 0, cf. [kfAnchorFromID])
 //   slot = id & 0x3FFFFFFF
 //
 // WorldFromKeyframe binde chaque record via World.BindFull(fullID, ti). Aucun input CE :
@@ -37,9 +40,13 @@ const (
 	keyframeRecordTIBit = 58
 )
 
-// KeyframeRec est un record de la table keyframe reconstruit offline.
+// KeyframeRec est un record de la table keyframe reconstruit offline : son slot, son archetype,
+// les deux bits de tete de son identifiant (Gen), son premier bit, et — Elue — si son ancre a ete
+// choisie par le repli nomme `repli_ancre_d_image_cle_par_election` plutot qu atteinte de proche
+// en proche (voisin, saut de largeur, recalage sur l en-tete exact d un bipede).
 type KeyframeRec struct {
 	Slot, TI, Gen, Bit int
+	Elue               bool
 }
 
 // kfValidAnchor : en-tête de record valide ? gen∈{1,2,3}, prev<slot<cap. FILTRE FORT
@@ -70,7 +77,11 @@ func kfAnchorFromID(buf []byte, q int, id uint64, prevSlot, total int) (slot, ti
 		return
 	}
 	gen = int(id >> 30)
-	if gen == 0 { // handle null / zone de données
+	// LA VALEUR 0 N EST PAS UN HANDLE NUL : l allocateur FUN_142f2e598 la pose a la quatrieme
+	// allocation d un slot (gen = (gen+1)&3), et le seul identifiant nul est 0xffffffff ([kfSent],
+	// rejete ci-dessus). La marche la refuse quand meme : sans la lecture du bloc de type 1,
+	// l accepter fait entrer de fausses ancres qui coutent des paquets sains.
+	if gen == 0 {
 		return
 	}
 	slot = int(id & 0x3FFFFFFF)

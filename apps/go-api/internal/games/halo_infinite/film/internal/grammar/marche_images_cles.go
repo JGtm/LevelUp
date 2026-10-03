@@ -9,7 +9,15 @@ package grammar
 // ([FilmContext.MarcheDImageCle] : la memoire du contexte rend un payload deja marche sans le
 // remarcher) ; l etat complet de chacun est traverse sous le cadre que la production lit
 // ([WalkKeyframeFullState]) ; la frontiere d un record est l ancre qui le suit
-// ([keyframeBornesDe]). Rien n est relu ni recopie.
+// ([keyframeBornesDe]). Rien n est relu ni recopie. La carte de fermeture des images-cles
+// ([KeyframeClosure]) consomme cette phase.
+//
+// # LA RECUPERATION EST MARQUEE
+//
+// Un record dont l ancre a ete ELUE par le repli nomme `repli_ancre_d_image_cle_par_election`
+// porte la liaison [lecture.LiaisonImageCleElue] ; une ancre atteinte de proche en proche (voisin,
+// saut de largeur, recalage sur l en-tete exact d un bipede), [lecture.LiaisonImageCle]
+// (ADR 0037 IR-6).
 //
 // # LA PREUVE D UN RECORD D IMAGE-CLE
 //
@@ -92,7 +100,7 @@ func (m *marcheDesImagesCles) marcherLePaquet(chunk int, pk FilmPacket, data []b
 		}
 		tete := uint32(recs[i].Gen) //nolint:gosec // deux bits
 		p.Records = append(p.Records, lecture.Record{
-			Genre: lecture.GenreEtatComplet, Vue: uint8(tete), Liaison: lecture.LiaisonImageCle,
+			Genre: lecture.GenreEtatComplet, Vue: uint8(tete), Liaison: liaisonDeLAncre(recs[i]),
 			Preuve: preuveDeLEtatComplet(tr, b), TI: int16(b.TI), Desync: int16(tr.DesyncAt), //nolint:gosec // archetype < 50, index de composant < 64
 			Vie:   types.LifeKey{Slot: uint32(b.Slot), Gen: tete}, //nolint:gosec // slot < 8192
 			Debut: uint32(b.Bit), Bits: uint32(tr.EndBit - b.Bit), //nolint:gosec // positions d un payload
@@ -100,6 +108,16 @@ func (m *marcheDesImagesCles) marcherLePaquet(chunk int, pk FilmPacket, data []b
 			Comps:  [2]uint32{premier, uint32(len(p.Comps))}, //nolint:gosec // idem
 		})
 	}
+}
+
+// liaisonDeLAncre rend la provenance de l identite d un record d image-cle : son ancre atteinte de
+// proche en proche, ou ELUE par le repli nomme `repli_ancre_d_image_cle_par_election` — la
+// recuperation que la structure marque (ADR 0037 IR-6).
+func liaisonDeLAncre(r KeyframeRec) lecture.Liaison {
+	if r.Elue {
+		return lecture.LiaisonImageCleElue
+	}
+	return lecture.LiaisonImageCle
 }
 
 // preuveDeLEtatComplet rend la preuve d un record d image-cle : ferme quand la traversee de son

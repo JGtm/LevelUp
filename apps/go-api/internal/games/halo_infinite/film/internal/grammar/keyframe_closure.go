@@ -39,6 +39,8 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
 // KeyframeClosureStat est la fermeture d'UN archetype sur un film.
@@ -123,9 +125,12 @@ func seulesBornees(toutes []keyframeBorne) []keyframeBorne {
 // KeyframeClosure mesure, archetype par archetype, la fermeture des records d'image-cle d'un
 // film, sous le cadre d'etat complet — celui que la production lit depuis le lot 1.4.
 //
-// LES RECORDS MESURES SONT CEUX DE LA MARCHE DE PRODUCTION (lot D-fix, 2026-09-24) : la marche du
-// film ([FilmContext.MarcheDImageCle]), qui refuse l'elu qu'un record prouve contredit. La mesure
-// porte donc sur la population que les balayages lisent.
+// LA MESURE CONSOMME LA PHASE IMAGES-CLES DE LA STRUCTURE DE LECTURE ([FilmContext.ImagesCles]) :
+// les records sont les ancres de la marche du film ([FilmContext.MarcheDImageCle], qui refuse
+// l'elu qu'un record prouve contredit), chacun avec sa preuve — la population que les balayages
+// lisent. Le decoupage MPP du format du film est pose pour la duree de la marche (lot 1.9.1 bis) :
+// sans lui, la fermeture des archetypes qui portent ce bloc (ti=36, 37, 38, 39, 42, 43) serait
+// mesuree au decoupage d un AUTRE build.
 func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if fc == nil {
 		return nil, fmt.Errorf("filmdec: contexte de film nil — aucune fermeture a mesurer")
@@ -134,29 +139,12 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("filmdec: registre illisible, la fermeture n'a pas de grammaire: %w", err)
 	}
-	marche := fc.MarcheDImageCle()
-	// LE PROFIL DU BUILD EST INSTALLE POUR LA DUREE DE LA MESURE (lot 1.9.1 bis, pas 3).
-	// Les largeurs du bloc MPP varient par build et vivent dans `build_profile.go` ; sans
-	// elles, la fermeture des archetypes qui portent ce bloc (ti=36, 37, 38, 39, 42, 43) est
-	// mesuree au decoupage d un AUTRE build. Un build inconnu ne change rien et n est pas une
-	// erreur ICI : la mesure continue au defaut de paquet, et c est la PRODUCTION qui doit
-	if restore, err := InstallFilmFormatMPP(fc); err == nil {
-		defer restore()
-	}
-	m := mesureDeFermeture{reg: reg, ctx: fc.ContexteDeLecture(),
-		stats: map[uint32]KeyframeClosureStat{}, bloquants: map[uint32]map[string]int{}}
-	for _, num := range fc.ChunkNumbers() {
-		data, packets, ok := fc.ChunkAt(num)
-		if !ok {
-			continue
+	m := mesureDeFermeture{reg: reg, stats: map[uint32]KeyframeClosureStat{}, bloquants: map[uint32]map[string]int{}}
+	for p, err := range fc.ImagesCles() {
+		if err != nil {
+			return nil, err
 		}
-		for _, pk := range packets {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			pay := pk.Payload(data)
-			m.accumuler(pay, seulesBornees(keyframeBornesDe(marche.Records(pay))))
-		}
+		m.accumuler(p)
 	}
 	for ti, parComposant := range m.bloquants {
 		s := m.stats[ti]
@@ -166,35 +154,34 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	return m.stats, nil
 }
 
-// mesureDeFermeture porte ce que la mesure accumule d'un payload a l'autre.
+// mesureDeFermeture porte ce que la mesure accumule d'un paquet a l'autre.
 type mesureDeFermeture struct {
 	reg *Registry
-	ctx ContexteDeLecture
 	// stats : les comptes par archetype ; bloquants : par archetype, combien de records chaque
 	// composant non porte a arretes.
 	stats     map[uint32]KeyframeClosureStat
 	bloquants map[uint32]map[string]int
 }
 
-// accumuler classe les records BORNES d'un payload dans les comptes par archetype.
+// accumuler classe les records BORNES d'un paquet d'image-cle dans les comptes par archetype.
 //
-// Le dernier record d'un payload est ecarte : sans record suivant il n'a pas de frontiere visee,
+// Le dernier record d'un paquet est ecarte : sans record suivant il n'a pas de frontiere visee,
 // donc la question « ferme-t-il ? » ne se pose pas. Le compter en echec gonflerait le
-// denominateur d'un record par payload sans qu'aucun port ne puisse jamais le fermer.
-func (m *mesureDeFermeture) accumuler(pay []byte, bornes []keyframeBorne) {
-	for _, b := range bornes {
-		ti := uint32(b.TI) //nolint:gosec // TI est un index d'archetype, jamais negatif
-		tr := WalkKeyframeFullState(pay, b.Bit, m.reg, m.ctx)
+// denominateur d'un record par paquet sans qu'aucun port ne puisse jamais le fermer.
+func (m *mesureDeFermeture) accumuler(p *lecture.Paquet) {
+	for i := 0; i+1 < len(p.Records); i++ {
+		r := &p.Records[i]
+		ti := uint32(r.TI) //nolint:gosec // TI est l archetype d une ancre, jamais negatif
 		s := m.stats[ti]
 		s.Total++
 		switch {
-		case tr.DesyncAt >= 0:
-			nom := nomComposantBloquant(m.reg, b.TI, tr.DesyncAt)
+		case r.Desync >= 0:
+			nom := nomComposantBloquant(m.reg, int(r.TI), int(r.Desync))
 			if m.bloquants[ti] == nil {
 				m.bloquants[ti] = map[string]int{}
 			}
 			m.bloquants[ti][nom]++
-		case tr.EndBit == b.Want:
+		case r.Preuve == lecture.PreuveFerme:
 			s.Closed++
 		}
 		m.stats[ti] = s
