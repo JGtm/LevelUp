@@ -114627,3 +114627,29 @@ références re-figées — seule l'étape `artifact` change sur les 20 films).
 `KeyframeClosure` après la fusion de la vague de la campagne ; mémoire partagée entre la cuisson et
 killsource proposée en `[!]` (neutre par construction, mais plomberie que l'étape 2 rend jetable) —
 à trancher avec l'utilisateur.
+
+## [2026-10-03] Représentation intermédiaire du film, étape 1 — lot 1.4 : tests de la spécification (T1, T3, T5, T6) — Complété (items ; clôture conjointe avec 1.3)
+
+**Statut** : items faits et vérifiés ; le lot se clôt avec la phase des images-clés (T1 et T6 la
+couvrent aussi, à rejouer après le branchement de `KeyframeClosure`). Avancé pendant l'attente de
+la campagne, exception à l'ordre strict accordée par l'utilisateur le 2026-10-03.
+
+**Décision technique principale** : chaque test juge la structure par la grammaire, sans seconde
+définition. T1 (`marche_fermeture_test.go`) : la fermeture au bit près portée par la structure est
+`vueCFermee` appliquée aux bits qu'elle dit consommés, plus un golden « aucune baisse » des trames
+fermées et des records prouvés par bobine. T3 (`marche_provenance_test.go`) : chaque lecture d'état
+de mouvement publiée pendant la marche d'un paquet cite le record de son slot et l'occurrence
+traversée du composant publié ; chaque entrée de contrôle du tir continu cite son tour de vue C.
+T5 (`marche_fuzz_test.go`) : la marche des deux phases appelée par le harnais de fuzz, bornes de ce
+qu'elle range. T6 (`marche_determinisme_test.go`) : empreinte de la structure ; deux marches, même
+empreinte ; série contre parallèle sous `-race` (pris par le filtre du job CI `film-race`).
+
+**Résultats observés** : 23 454 lectures d'état et 11 735 entrées de contrôle citées, aucune
+orpheline ; campagne de fuzz de 90 s (780 000 exécutions) sans panique ; aucune course sous
+`-race` ; mutations rouges (T1, T3). T3 a révélé une étiquette inexacte (`EtatVitesse` nomme le
+variant world-object, la vitesse est lue par le variant `-dynamic-precision`) : découverte §6.6,
+sans effet sur les sorties.
+
+**Conclusion / prochaine étape** : attendre la fusion de la vague 1 de la campagne (elle prévient) ;
+puis refusion, références re-figées, `KeyframeClosure` sur `ImagesCles`, marque d'élection par
+record, preuve de différence nulle, clôture de 1.3 et 1.4, mesure de performance sur machine calme.

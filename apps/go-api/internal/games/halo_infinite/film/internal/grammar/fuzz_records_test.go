@@ -106,6 +106,9 @@ func FuzzFilmRecordReaders(f *testing.F) {
 		// font `ScanVehicleEvents` et `ScanEquipmentSpawnEvents`, sans autre garde que la leur.
 		_, _ = decodeVehicleEvent(payload, 0, NewSlotBand(nil))
 		_, _, _ = decodeEquipmentSpawnEvent(payload)
+		// La marche des deux phases de la representation intermediaire, et les bornes de ce
+		// qu elle range (`marche_fuzz_test.go`).
+		marcherUnPayloadQuelconque(t, payload)
 	})
 }
 

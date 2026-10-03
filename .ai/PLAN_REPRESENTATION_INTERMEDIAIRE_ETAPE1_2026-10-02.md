@@ -90,6 +90,10 @@ Chaque session prévient l'autre (Remote Control, message direct) quand elle fus
 - 2026-10-03 : la mémoire de la marche des images-clés n'est PAS partagée entre la cuisson et
   killsource à cette étape (lot 1.3.1) ; elle se reprend à l'étape 2, où killsource devient un
   canal de la même marche (« ok avec toi »).
+- 2026-10-03 : le lot 1.4 (tests de la spécification) et tout ce qui n'attend pas la fin de la
+  campagne avancent PENDANT l'attente de 1.3.2 — exception à l'ordre strict accordée par
+  l'utilisateur (« tu peux y aller pour les tests et les choses qui n'attendent pas la fin de la
+  campagne »).
 
 **Techniques** (issues de l'analyse §2 et §7, retenues pour ce plan ; une objection de l'utilisateur
 les rouvre) :
@@ -280,15 +284,42 @@ coordonné (§1.3).
 - Gate : `keyframe_closure.golden` identique ; G-equiv zéro divergence ; G-film ; killsource identique.
 
 ### Lot 1.4 — Tests de la spec (taille S)
-- [ ] 1.4.1 T1 fermeture : pour chaque paquet de la structure, bits consommés et état de fermeture
+*Avancé pendant l'attente de 1.3.2, exception accordée par l'utilisateur le 2026-10-03 (§2).*
+- [x] 1.4.1 T1 fermeture : pour chaque paquet de la structure, bits consommés et état de fermeture
       cohérents ; ratchet « aucune baisse » sur les bobines du dépôt.
-- [ ] 1.4.2 T3 provenance : toute lecture d'état de mouvement et de tir continu cite une étendue qui
+      *Fait* : `marche_fermeture_test.go` — la fermeture au bit près que la structure porte est le
+      prédicat de la grammaire (`vueCFermee`) appliqué aux bits qu'elle dit consommés ; fermé ⇒ au
+      bit près sans règle contredite, refusé ⇒ non, queue opaque avant le curseur ; golden
+      `testdata/structure_fermeture.golden` (trames fermées, records de trame et d'image-clé
+      prouvés, par bobine ; porte `-update-structure-fermeture`, comparateur des cartes : une baisse
+      ou une ligne disparue rougit). Mutation « fermé dès le bit près, sans la règle » : rouge.
+- [x] 1.4.2 T3 provenance : toute lecture d'état de mouvement et de tir continu cite une étendue qui
       existe dans la structure.
-- [ ] 1.4.3 T5 robustesse : le fuzz des lecteurs de records (`FuzzFilmRecordReaders`) étendu au
+      *Fait* : `marche_provenance_test.go` — sur les bobines, chaque lecture d'état de mouvement
+      publiée pendant la marche d'un paquet a, dans ce paquet, le record de son slot et l'occurrence
+      traversée du composant publié ; chaque entrée de contrôle rendue au tir continu a son tour de
+      contrôle (même index, dans l'ordre du flux). 23 454 lectures d'état et 11 735 entrées
+      citées, aucune orpheline. Mutation « records rangés sans leurs composants » : rouge.
+      Découverte (§6, 6) : l'étiquette d'`EtatVitesse` nomme le variant world-object, pas celui qui
+      publie.
+- [x] 1.4.3 T5 robustesse : le fuzz des lecteurs de records (`FuzzFilmRecordReaders`) étendu au
       marcheur ; aucune panique, allocations bornées par les octets restants.
-- [ ] 1.4.4 T6 déterminisme : deux marches du même film donnent la même empreinte ; marches
+      *Fait* : `marche_fuzz_test.go` (`marcherUnPayloadQuelconque`, appelée par le corps du
+      harnais) — marche par rangs et rangement d'une trame, puis rangement d'un paquet d'image-clé,
+      sur tout payload ; bornes : un record par bit, 64 composants par record, un tour de vue C par
+      bit, une ancre d'image-clé par 64 bits. Les graines rejouent à chaque `go test` ; campagne de
+      90 s jouée (780 000 exécutions, aucune panique).
+- [x] 1.4.4 T6 déterminisme : deux marches du même film donnent la même empreinte ; marches
       parallèles identiques sous `-race` (job CI `film-race`).
+      *Fait* : `marche_determinisme_test.go` — empreinte de tout ce que la structure range (deux
+      phases) ; deux marches du même film, deux contextes neufs : même empreinte, et les deux
+      bobines en rendent deux différentes ; `TestDeuxFilmsEnParalleleLaStructure` (série contre
+      parallèle, deux builds), que le filtre du job `film-race` prend par son nom.
 - Gate : G-unit, G-arch, `go test -race -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/internal/grammar/`.
+  *Tenu le 2026-10-03* : `grammar/...` et `archlint` verts ; `go vet -tags=research` vert ;
+  `golangci-lint` 0 problème ; sous `-race`, `TestDeuxFilmsEnParallele` et
+  `TestDeuxFilmsEnParalleleLaStructure` verts, aucune course. Le lot ne se clôt qu'avec 1.3 :
+  T1 et T6 couvrent aussi la phase des images-clés, à rejouer après le branchement de 1.3.2.
 
 ### Clôture de l'étape 1
 - [ ] Mesure de performance avant/après (critère 4) publiée.
@@ -354,6 +385,13 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
    (`inferResyncTargets` toujours nil depuis le retrait de son réglage, 2026-09-05). Code mort
    antérieur à ce plan ; hors périmètre (aucune sortie ne change à le retirer, mais
    `decodeInferLoop` est sous plafond de longueur et la campagne y travaille).
+6. (2026-10-03, lot 1.4, révélé par T3) L'étiquette de `EtatVitesse`
+   (`EtatMouvementComposant.String()`, `grammar/etats_mouvement_hooks.go`) vaut
+   `object-translational-velocity-component`, le composant du chemin world-object
+   (`dispatch_object.go`, FUN_14076e228) ; la vitesse publiée est lue par le variant
+   `object-translational-velocity-dynamic-precision-component` (i1, FUN_14076d45c). Aucune
+   sortie n'en dépend (l'étiquette ne sert qu'au texte) ; T3 compare les noms sans leurs suffixes.
+   Fichier des composants (campagne) : signalé, non traité.
 
 ## 7. Journal
 

@@ -1,0 +1,34 @@
+# FERMETURE PORTEE PAR LA STRUCTURE DE LECTURE (ADR 0037, T1 de la specification).
+# Une ligne par bobine et par mesure : bobine, mesure, fermes (ou prouves), total.
+#   trames fermees               paquets delta au verdict ferme / paquets delta
+#   records de trame prouves     records de trame prouves / records de trame
+#   records d image-cle prouves  records d image-cle prouves / records d image-cle
+# Le ratchet rougit sur une BAISSE ou une ligne qui disparait ; une hausse se fige par :
+#   go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestLaFermetureDeLaStructureNeDescendPas -update-structure-fermeture
+a521164d	trames fermees	0	0
+a521164d	records de trame prouves	0	0
+a521164d	records d image-cle prouves	2024	8321
+60ae07c4	trames fermees	0	0
+60ae07c4	records de trame prouves	0	0
+60ae07c4	records d image-cle prouves	5223	10110
+11de8353	trames fermees	0	0
+11de8353	records de trame prouves	0	0
+11de8353	records d image-cle prouves	3386	7396
+111fa685	trames fermees	0	0
+111fa685	records de trame prouves	0	0
+111fa685	records d image-cle prouves	2940	5759
+e5adf7b2	trames fermees	0	0
+e5adf7b2	records de trame prouves	0	0
+e5adf7b2	records d image-cle prouves	2300	5244
+bcb6d393	trames fermees	0	0
+bcb6d393	records de trame prouves	0	0
+bcb6d393	records d image-cle prouves	3611	7927
+fb1a1a72	trames fermees	0	0
+fb1a1a72	records de trame prouves	0	0
+fb1a1a72	records d image-cle prouves	2514	6472
+ks_000d5950	trames fermees	1823	5957
+ks_000d5950	records de trame prouves	9297	41355
+ks_000d5950	records d image-cle prouves	878	1474
+ks_e5adf7b2	trames fermees	370	584
+ks_e5adf7b2	records de trame prouves	257	728
+ks_e5adf7b2	records d image-cle prouves	202	408
