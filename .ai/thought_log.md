@@ -114737,3 +114737,22 @@ GO).
 **Conclusion / prochaine étape** : clôture de l'étape 1 — mesure de performance sur machine calme
 (signal de la campagne), CI, `make gate-push`, accord de l'utilisateur et fusion dans `feat/v75` ;
 validation du plan de l'étape 2 par l'utilisateur.
+
+## [2026-10-03] Représentation intermédiaire du film, étape 1 — fusion dans `feat/v75` — Complété (mesure de performance sur machine calme en attente)
+
+**Statut** : Complété ; reste la mesure de performance sur machine calme (report valide, signal de la
+campagne).
+
+**Décision technique principale** : avance rapide de `feat/v75` jusqu'à la tête de
+`feat/representation-intermediaire` (la branche contient `feat/v75` 922704424), sur accord de
+l'utilisateur, après CI verte au niveau job et `make gate-push` vert ; campagne prévenue avant et
+après.
+
+**Résultats observés** : CI verte sur les trois têtes poussées (`6c0a6541d`, `2ce901b97`,
+`202a86331`) ; `make gate-push` vert (22 min 54 : lint Go, typage et lint du front sans erreur,
+baseline sans échec). L'étape 1 livre : la structure de lecture, la marche des trames et la phase des
+images-clés consommées par leurs lecteurs, la récupération dans la marche marquée, les tests T1, T3,
+T5, T6, différence nulle prouvée à chaque lot.
+
+**Conclusion / prochaine étape** : mesure de performance machine calme (critère 4) au signal de la
+campagne ; GO daté de l'utilisateur pour l'étape 2 (plan validé le 2026-10-03).

@@ -334,7 +334,16 @@ coordonné (§1.3).
 
 ### Clôture de l'étape 1
 - [ ] Mesure de performance avant/après (critère 4) publiée.
-- [ ] G-CI vert au niveau job ; G-push ; accord de l'utilisateur ; fusion dans `feat/v75`.
+      *Sous charge le 2026-10-02* (gate du lot 1.2 : non conclusif en deçà de 10 %, durée ET pic) ;
+      *à rejouer machine calme*, au signal de la campagne, sur la tête fusionnée — report valide
+      (ressource indisponible : trois agents de la campagne décodent).
+- [x] G-CI vert au niveau job ; G-push ; accord de l'utilisateur ; fusion dans `feat/v75`.
+      *Fait le 2026-10-03* : CI verte au niveau job sur `6c0a6541d` (run `37107700880`),
+      `2ce901b97` (`37109627470`) et `202a86331` (`37113310763`), E2E sauté comme prévu hors PR
+      vers `main` ; `make gate-push` vert sur `34fb1a317` (lint Go, typage et lint du front sans
+      erreur, baseline : 9 541 tests de référence présents, aucun échec) ; accord de l'utilisateur
+      (« Oui tu as mon accord ») ; `feat/v75` avancé par avance rapide jusqu'à la tête de la branche,
+      campagne prévenue.
 - [x] Plan de l'étape 2 écrit (migration des canaux et récupération mutualisée, analyse §3.3 lots 2.1
       à 2.7, 3.1, 3.2), en tenant compte de l'état de la campagne à ce moment.
       *Fait le 2026-10-03* (accord de l'utilisateur : « les choses qui n'attendent pas la fin de la
