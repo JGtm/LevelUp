@@ -114799,3 +114799,34 @@ vide, vet rc 0 (et research), archlint ok, G-film 19 / 19 ok, golangci 0 issue, 
 l'utilisateur à la recuisson : pièces montées qui meurent avec leur porteur, `samplesAfterEnd` en
 hausse (D-L4a-1). D5 (table châssis -> type de physique) reste ouverte pour L4b ; D-L4a-2 (règle de
 datum, qui exigerait de suivre l'allocateur dans le chunk) à instruire avant la vague 2.
+
+## [2026-10-03] Campagne de grammaire, lot L2 : corrections du contrôle (C1 à C6) — Complété (lot non retenu, code retiré)
+
+**Décision technique principale** : appliquer les six corrections du contrôle indépendant de L2, puis
+juger le lot sur la mesure que D19 exigeait : la contribution marginale du L2 de production dans C11
+(surcouche unique refusionnée sur `af6e93e23`). Le gate 2 « aucun film en baisse » n'est pas
+assoupli ; une perte non expliquée par une fermeture factice retirée retire le lot.
+
+**Résultats observés** : C1 (V31c, N = 8) et C2 (masques dense court et épars non croissant, NEW et
+delta, avec témoins) rendent ROUGES les deux mutations vertes du contrôle (16 / 16 rouges). C5 et C6
+appliqués (histoire reportée dans LOT_L2.md §9.2). C3 : `1c4c63c2` −447 sains / −8 520 utiles sains
+en marginale (`084a804d` +3, `111fa685` +1) ; 501 des 571 sains perdus se désynchronisent sur le
+slot 736 lié à `ti=45` par un faux NEW lu dans une liste contredite prise au second rang de
+`debutParFermeture` (tête : faux NEW `ti=43`) — chemin que la réparation (`debutParChaine`) ne vise
+pas. C4 : sur `bcb6d393` et `4f77afc1`, toutes les valeurs de contenu changées viennent de paquets
+sains ; sur HI_1_10_0, des listes contredites du second rang (états) et de paquets non localisés
+(dotations, non publiées). Détail : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L2.md` §9.
+
+**Conclusion / prochaine étape** : L2 non retenu ; le code du lot est retiré par un commit de
+retrait (l'arbre de code revient à `af6e93e23`). Reprise : fonder une règle générale sur ce que le
+second rang de `debutParFermeture` lie au monde (D-L2-12), puis rejouer C11.
+
+## [2026-10-03] Campagne de grammaire — vague 1, lots de composants — Complété (intégration commitée sur `feat/campagne-grammaire`, non poussée)
+
+**Statut** : Complété. L8, L3a et L4a fusionnés (`git merge --no-ff`) sur la structure de `feat/v75` = `67c379fc1` (étape 1 de la représentation intermédiaire) ; L2 et L9 non retenus (documents et sonde de recherche seulement). Rien n'est poussé.
+
+**Décision technique principale** : les lots se portent sur la marche de la représentation intermédiaire (feat/v75 a raison) : compteur de L4a dans `movementStateScanner.trame`, test du compteur par `marcheurDesTrames.marcherLePaquet`, `etatComplet` à côté des champs de la RI dans `lecteur.go`. Chaîne de révisions renumérotée : `grammar-2026-10-02` → `.2` (L8) → `.3` (L3a) → `grammar-2026-10-03` (L4a), une empreinte par commit de fusion ; `killsource-2026-10-02` gardé (la sortie JSON change à la tête : calibration, deux compteurs de santé) ; format des faits inchangé. Chronique de `grammar` rotationnée (archive 7).
+
+**Résultats observés** : gate 2 sur 20 films contre `67c379fc1` : aucun film en baisse ; +37 168 paquets sains, +336 591 records utiles sains ; 5 sains perdus bruts, tous devenus contredits et déjà instruits par L8 et L3a (tête de liste sur un NEW au masque impossible). D1 : corpus 33,3 % → 37,7 % (fixe), HI_1_13_0 65,8 % → 76,6 %. Killsource : 2 747 morts inchangées. `replay-equiv` : 11 étapes sur 61, familles des lots. `replay-corpus-gate` rc 1 : banc 18 / 19 ok, `111fa685` FAUX sur un repli existant vu pour la première fois, aucun oracle touché. Gates de code verts (gofmt, vet module et research, archlint, G-film 20 paquets, golangci 0). Détail : plan §4 (2026-10-03), `campagne_grammaire_2026-10-01/vague1_tsv/`.
+
+**Conclusion / prochaine étape** : décision du pilote sur le rc 1 du gate de corpus ; recuisson unique de la vague (geste de l'utilisateur) ; références `replay-equiv` à re-figer avant la vague 2 ; lot de marche « tête de liste contredite » à fonder (D-L8-1, D-L3a-1, D-L2-12).

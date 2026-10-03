@@ -1,0 +1,1615 @@
+{
+  "couverture_incomplete": false,
+  "temoins": [
+    {
+      "id": "bcb6d393",
+      "famille": "ctf_mono_manche",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 21,
+      "pertes": 7,
+      "changements": 2,
+      "dureeMs": 9049,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "5830",
+            "apres": "17126"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "4",
+            "apres": "5"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "10",
+            "apres": "18"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale",
+            "sens": "perte",
+            "ancien": "7184",
+            "nouveau": "7132"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/548",
+            "sens": "perte",
+            "ancien": "149",
+            "nouveau": "95"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.burstsWithHole",
+            "sens": "perte",
+            "ancien": "1",
+            "nouveau": "2"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.heldHoleMs",
+            "sens": "perte",
+            "ancien": "95",
+            "nouveau": "206"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holeRuns",
+            "sens": "perte",
+            "ancien": "301",
+            "nouveau": "910"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "3254",
+            "nouveau": "4035"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.innerHoles",
+            "sens": "perte",
+            "ancien": "6",
+            "nouveau": "11"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale",
+          "sens": "perte",
+          "ancien": "7184",
+          "nouveau": "7132"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/548",
+          "sens": "perte",
+          "ancien": "149",
+          "nouveau": "95"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.burstsWithHole",
+          "sens": "perte",
+          "ancien": "1",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.heldHoleMs",
+          "sens": "perte",
+          "ancien": "95",
+          "nouveau": "206"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holeRuns",
+          "sens": "perte",
+          "ancien": "301",
+          "nouveau": "910"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "3254",
+          "nouveau": "4035"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.innerHoles",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "11"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.notContinuous",
+          "sens": "changement",
+          "ancien": "1",
+          "nouveau": "4"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.sprint",
+          "sens": "changement",
+          "ancien": "347",
+          "nouveau": "348"
+        }
+      ]
+    },
+    {
+      "id": "fb1a1a72",
+      "famille": "ctf_multi_manche",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 7,
+      "pertes": 5,
+      "changements": 0,
+      "dureeMs": 23049,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "22276",
+            "apres": "22397"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "81",
+            "apres": "79"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holeRuns",
+            "sens": "perte",
+            "ancien": "13711",
+            "nouveau": "13753"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "144",
+            "nouveau": "145"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "23983",
+            "nouveau": "23994"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNewFalseReads",
+            "sens": "perte",
+            "ancien": "60",
+            "nouveau": "61"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNews",
+            "sens": "perte",
+            "ancien": "112",
+            "nouveau": "113"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holeRuns",
+          "sens": "perte",
+          "ancien": "13711",
+          "nouveau": "13753"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "144",
+          "nouveau": "145"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "23983",
+          "nouveau": "23994"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNewFalseReads",
+          "sens": "perte",
+          "ancien": "60",
+          "nouveau": "61"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNews",
+          "sens": "perte",
+          "ancien": "112",
+          "nouveau": "113"
+        }
+      ]
+    },
+    {
+      "id": "d9781168",
+      "famille": "oddball",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 6,
+      "pertes": 2,
+      "changements": 0,
+      "dureeMs": 20464,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "26210",
+            "apres": "26211"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "254",
+            "apres": "259"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "11503",
+            "nouveau": "11508"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.forgottenBindings",
+            "sens": "perte",
+            "ancien": "1298",
+            "nouveau": "1303"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "11503",
+          "nouveau": "11508"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "1298",
+          "nouveau": "1303"
+        }
+      ]
+    },
+    {
+      "id": "c75f33b8",
+      "famille": "assaut_bombe",
+      "statut": "ok",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 4,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 11235,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "22854",
+            "apres": "22855"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf15f7ab",
+      "famille": "slayer",
+      "statut": "ok",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 4,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 11118,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "28465",
+            "apres": "28466"
+          }
+        ]
+      }
+    },
+    {
+      "id": "51ebbc0f",
+      "famille": "deux_manches",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 7,
+      "pertes": 6,
+      "changements": 0,
+      "dureeMs": 14879,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "9759",
+            "apres": "9787"
+          },
+          {
+            "mesure": "R-1 repli repli_deadstate_hors_bande_bipede",
+            "sens": "info",
+            "avant": "2",
+            "apres": "3"
+          },
+          {
+            "mesure": "R-1 repli repli_record_desynchronise_jete",
+            "sens": "info",
+            "avant": "1",
+            "apres": "0"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holeRuns",
+            "sens": "perte",
+            "ancien": "5849",
+            "nouveau": "5854"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "96",
+            "nouveau": "97"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "17017",
+            "nouveau": "17019"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.forgottenBindings",
+            "sens": "perte",
+            "ancien": "1396",
+            "nouveau": "1397"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNewFalseReads",
+            "sens": "perte",
+            "ancien": "43",
+            "nouveau": "44"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNews",
+            "sens": "perte",
+            "ancien": "96",
+            "nouveau": "97"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holeRuns",
+          "sens": "perte",
+          "ancien": "5849",
+          "nouveau": "5854"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "96",
+          "nouveau": "97"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "17017",
+          "nouveau": "17019"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "1396",
+          "nouveau": "1397"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNewFalseReads",
+          "sens": "perte",
+          "ancien": "43",
+          "nouveau": "44"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNews",
+          "sens": "perte",
+          "ancien": "96",
+          "nouveau": "97"
+        }
+      ]
+    },
+    {
+      "id": "084a804d",
+      "famille": "vehicules",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 17,
+      "pertes": 3,
+      "changements": 1,
+      "dureeMs": 87092,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "4773",
+            "apres": "4779"
+          },
+          {
+            "mesure": "R-1 repli repli_deadstate_hors_bande_bipede",
+            "sens": "info",
+            "avant": "25",
+            "apres": "27"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "457",
+            "apres": "494"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "920",
+            "apres": "924"
+          },
+          {
+            "mesure": "R-1 repli repli_physique_de_type_de_vehicule_supposee",
+            "sens": "info",
+            "avant": "8914",
+            "apres": "8915"
+          },
+          {
+            "mesure": "R-1 repli repli_record_desynchronise_jete",
+            "sens": "info",
+            "avant": "29",
+            "apres": "27"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.birthLoadouts.noDisplayable",
+            "sens": "perte",
+            "ancien": "15",
+            "nouveau": "16"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "23544",
+            "nouveau": "23576"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.forgottenBindings",
+            "sens": "perte",
+            "ancien": "3649",
+            "nouveau": "3653"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.noDisplayable",
+          "sens": "perte",
+          "ancien": "15",
+          "nouveau": "16"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "23544",
+          "nouveau": "23576"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "3649",
+          "nouveau": "3653"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.nonWeapon",
+          "sens": "changement",
+          "ancien": "13",
+          "nouveau": "14"
+        }
+      ]
+    },
+    {
+      "id": "0797ce72",
+      "famille": "region_index_2_bits",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 2,
+      "pertes": 5,
+      "changements": 0,
+      "dureeMs": 13288,
+      "verite": {
+        "statut": "ok",
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "940",
+            "nouveau": "941"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "5609",
+            "nouveau": "5610"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.forgottenBindings",
+            "sens": "perte",
+            "ancien": "1270",
+            "nouveau": "1271"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNewUndecided",
+            "sens": "perte",
+            "ancien": "42",
+            "nouveau": "44"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNews",
+            "sens": "perte",
+            "ancien": "90",
+            "nouveau": "92"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "940",
+          "nouveau": "941"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "5609",
+          "nouveau": "5610"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "1270",
+          "nouveau": "1271"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNewUndecided",
+          "sens": "perte",
+          "ancien": "42",
+          "nouveau": "44"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNews",
+          "sens": "perte",
+          "ancien": "90",
+          "nouveau": "92"
+        }
+      ]
+    },
+    {
+      "id": "111fa685",
+      "famille": "version_39",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 4,
+      "pertes": 5,
+      "changements": 0,
+      "dureeMs": 31547,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "R-1 repli repli_deadstate_indice_hors_roster",
+            "sens": "info",
+            "avant": "80",
+            "apres": "82"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "138",
+            "apres": "143"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "587",
+            "apres": "588"
+          },
+          {
+            "mesure": "R-1 repli repli_record_desynchronise_jete",
+            "sens": "info",
+            "avant": "10",
+            "apres": "8"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "169",
+            "nouveau": "170"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "11084",
+            "nouveau": "11089"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.forgottenBindings",
+            "sens": "perte",
+            "ancien": "1924",
+            "nouveau": "1926"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNewFalseReads",
+            "sens": "perte",
+            "ancien": "13",
+            "nouveau": "14"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNews",
+            "sens": "perte",
+            "ancien": "21",
+            "nouveau": "22"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "169",
+          "nouveau": "170"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "11084",
+          "nouveau": "11089"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "1924",
+          "nouveau": "1926"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNewFalseReads",
+          "sens": "perte",
+          "ancien": "13",
+          "nouveau": "14"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNews",
+          "sens": "perte",
+          "ancien": "21",
+          "nouveau": "22"
+        }
+      ]
+    },
+    {
+      "id": "e5adf7b2",
+      "famille": "version_40_build_1_11",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 11,
+      "pertes": 4,
+      "changements": 0,
+      "dureeMs": 35812,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "4123",
+            "apres": "4125"
+          },
+          {
+            "mesure": "R-1 repli repli_deadstate_indice_hors_roster",
+            "sens": "info",
+            "avant": "25",
+            "apres": "26"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "158",
+            "apres": "169"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "783",
+            "apres": "785"
+          },
+          {
+            "mesure": "R-1 repli repli_record_desynchronise_jete",
+            "sens": "info",
+            "avant": "12",
+            "apres": "11"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.birthLoadouts.noWeaponComponent",
+            "sens": "perte",
+            "ancien": "6",
+            "nouveau": "12"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "222",
+            "nouveau": "224"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "10360",
+            "nouveau": "10373"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.forgottenBindings",
+            "sens": "perte",
+            "ancien": "2092",
+            "nouveau": "2094"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.noWeaponComponent",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "12"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "222",
+          "nouveau": "224"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "10360",
+          "nouveau": "10373"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "2092",
+          "nouveau": "2094"
+        }
+      ]
+    },
+    {
+      "id": "60ae07c4",
+      "famille": "version_37",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 11,
+      "pertes": 1,
+      "changements": 0,
+      "dureeMs": 24789,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "13802",
+            "apres": "13804"
+          },
+          {
+            "mesure": "R-1 repli repli_deadstate_hors_bande_bipede",
+            "sens": "info",
+            "avant": "6",
+            "apres": "7"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "103",
+            "apres": "104"
+          },
+          {
+            "mesure": "R-1 repli repli_record_desynchronise_jete",
+            "sens": "info",
+            "avant": "1",
+            "apres": "0"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesBlockBC",
+            "sens": "perte",
+            "ancien": "145",
+            "nouveau": "146"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesBlockBC",
+          "sens": "perte",
+          "ancien": "145",
+          "nouveau": "146"
+        }
+      ]
+    },
+    {
+      "id": "a349fea8",
+      "famille": "version_33_sans_identification",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 5,
+      "pertes": 3,
+      "changements": 1,
+      "dureeMs": 131512,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "992",
+            "apres": "991"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.birthLoadouts.noDisplayable",
+            "sens": "perte",
+            "ancien": "10",
+            "nouveau": "11"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "927",
+            "nouveau": "942"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "22249",
+            "nouveau": "22333"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.noDisplayable",
+          "sens": "perte",
+          "ancien": "10",
+          "nouveau": "11"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "927",
+          "nouveau": "942"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "22249",
+          "nouveau": "22333"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.nonWeapon",
+          "sens": "changement",
+          "ancien": "4",
+          "nouveau": "5"
+        }
+      ]
+    },
+    {
+      "id": "a521164d",
+      "famille": "version_33_build_1_4_1",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 2,
+      "pertes": 4,
+      "changements": 0,
+      "dureeMs": 33557,
+      "verite": {
+        "statut": "ok",
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesBlockBC",
+            "sens": "perte",
+            "ancien": "139",
+            "nouveau": "141"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "254",
+            "nouveau": "255"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "8373",
+            "nouveau": "8400"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.forgottenBindings",
+            "sens": "perte",
+            "ancien": "1076",
+            "nouveau": "1078"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesBlockBC",
+          "sens": "perte",
+          "ancien": "139",
+          "nouveau": "141"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "254",
+          "nouveau": "255"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "8373",
+          "nouveau": "8400"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "1076",
+          "nouveau": "1078"
+        }
+      ]
+    },
+    {
+      "id": "11de8353",
+      "famille": "version_38_build_1_9_0",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 10,
+      "pertes": 5,
+      "changements": 1,
+      "dureeMs": 29027,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "5612",
+            "apres": "5615"
+          },
+          {
+            "mesure": "R-1 repli repli_deadstate_indice_hors_roster",
+            "sens": "info",
+            "avant": "44",
+            "apres": "46"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "125",
+            "apres": "154"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "501",
+            "apres": "505"
+          },
+          {
+            "mesure": "R-1 repli repli_record_desynchronise_jete",
+            "sens": "info",
+            "avant": "15",
+            "apres": "13"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesBlockBC",
+            "sens": "perte",
+            "ancien": "18",
+            "nouveau": "21"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "9919",
+            "nouveau": "9975"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.forgottenBindings",
+            "sens": "perte",
+            "ancien": "1700",
+            "nouveau": "1763"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNewFalseReads",
+            "sens": "perte",
+            "ancien": "8",
+            "nouveau": "10"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNews",
+            "sens": "perte",
+            "ancien": "11",
+            "nouveau": "13"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesBlockBC",
+          "sens": "perte",
+          "ancien": "18",
+          "nouveau": "21"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "9919",
+          "nouveau": "9975"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "1700",
+          "nouveau": "1763"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNewFalseReads",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "10"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNews",
+          "sens": "perte",
+          "ancien": "11",
+          "nouveau": "13"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.jumpEpisodes",
+          "sens": "changement",
+          "ancien": "4152",
+          "nouveau": "4153"
+        }
+      ]
+    },
+    {
+      "id": "50247b26",
+      "famille": "version_31_sans_identification",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 5,
+      "pertes": 3,
+      "changements": 0,
+      "dureeMs": 62509,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "139",
+            "apres": "140"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "650",
+            "apres": "652"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesBlockBC",
+            "sens": "perte",
+            "ancien": "552",
+            "nouveau": "556"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "896",
+            "nouveau": "918"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "13794",
+            "nouveau": "13870"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesBlockBC",
+          "sens": "perte",
+          "ancien": "552",
+          "nouveau": "556"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "896",
+          "nouveau": "918"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "13794",
+          "nouveau": "13870"
+        }
+      ]
+    },
+    {
+      "id": "bfecd02b",
+      "famille": "vehicules_v41_utilisateur",
+      "statut": "ok",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 7,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 16919,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "26380",
+            "apres": "26382"
+          }
+        ]
+      }
+    },
+    {
+      "id": "4f77afc1",
+      "famille": "equipement_origine_utilisateur",
+      "statut": "PERTE",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 38,
+      "pertes": 4,
+      "changements": 6,
+      "dureeMs": 89798,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "22260",
+            "apres": "22759"
+          },
+          {
+            "mesure": "R-1 repli repli_deadstate_indice_hors_roster",
+            "sens": "info",
+            "avant": "7",
+            "apres": "8"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "991",
+            "apres": "1009"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "297",
+            "apres": "259"
+          },
+          {
+            "mesure": "R-1 repli repli_physique_de_type_de_vehicule_supposee",
+            "sens": "info",
+            "avant": "14117",
+            "apres": "14164"
+          },
+          {
+            "mesure": "R-1 repli repli_record_desynchronise_jete",
+            "sens": "info",
+            "avant": "36",
+            "apres": "35"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.noTrack",
+            "sens": "perte",
+            "ancien": "79",
+            "nouveau": "80"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNewFalseReads",
+            "sens": "perte",
+            "ancien": "32",
+            "nouveau": "33"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNewUndecided",
+            "sens": "perte",
+            "ancien": "29",
+            "nouveau": "30"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNews",
+            "sens": "perte",
+            "ancien": "61",
+            "nouveau": "63"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.noTrack",
+          "sens": "perte",
+          "ancien": "79",
+          "nouveau": "80"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNewFalseReads",
+          "sens": "perte",
+          "ancien": "32",
+          "nouveau": "33"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNewUndecided",
+          "sens": "perte",
+          "ancien": "29",
+          "nouveau": "30"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNews",
+          "sens": "perte",
+          "ancien": "61",
+          "nouveau": "63"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/558",
+          "sens": "changement",
+          "ancien": "1355",
+          "nouveau": "1328"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/697",
+          "sens": "changement",
+          "ancien": "1258",
+          "nouveau": "1256"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/735",
+          "sens": "changement",
+          "ancien": "830",
+          "nouveau": "814"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.jumpDerived",
+          "sens": "changement",
+          "ancien": "1512",
+          "nouveau": "1513"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.sprint",
+          "sens": "changement",
+          "ancien": "2034",
+          "nouveau": "2042"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.jumpEpisodes",
+          "sens": "changement",
+          "ancien": "7944",
+          "nouveau": "7951"
+        }
+      ]
+    },
+    {
+      "id": "396cfc92",
+      "famille": "strongholds_zones",
+      "statut": "ok",
+      "baseDuCache": true,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 15,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 18266,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "22819",
+            "apres": "26904"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "9",
+            "apres": "11"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "81",
+            "apres": "48"
+          }
+        ]
+      }
+    },
+    {
+      "id": "f75e7053",
+      "famille": "koth_collines",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 76,
+      "schemaHead": 76,
+      "gains": 12,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 10744,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "23416",
+            "apres": "25038"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "7",
+            "apres": "8"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "47",
+            "apres": "32"
+          }
+        ]
+      }
+    }
+  ]
+}

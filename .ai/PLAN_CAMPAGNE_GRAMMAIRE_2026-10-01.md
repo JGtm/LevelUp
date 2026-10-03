@@ -303,6 +303,80 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   `084a804d`) ; `replay-corpus-gate` (base `ff42fcf40`, parc copié au scratchpad) : FAUX sur les 19
   témoins, par P-1 (MANQUE) et le repli neuf (FAUX, D-L0-5) seulement, pertes limitées au tir continu,
   aux états de mouvement (3 témoins) et au nombre de replis.
+- 2026-10-03 : **intégration de la vague 1** dans `feat/campagne-grammaire` (worktree de la campagne,
+  aucun push ; mesures et outils : `campagne_grammaire_2026-10-01/vague1_tsv/`). Référence de mesure :
+  `67c379fc1` (= `origin/feat/v75`, étape 1 de la représentation intermédiaire et retrait des replis
+  nuls ; la carte de cette tête est identique à l'octet à celle d'`af6e93e23`, base des lots).
+  - **Fusionnés** (`git merge --no-ff`, portés sur la structure de `feat/v75`) : L8 (`614884624`), L3a
+    (`7b14deed4`), L4a (`1fe894672`). Portages : le compteur de L4a se pose dans
+    `movementStateScanner.trame` (boucle sur `t.lecture.recs`), son test passe par
+    `marcheurDesTrames.marcherLePaquet` (mutations B3, B5 rouges) ; `etatComplet` rejoint les champs de
+    la représentation intermédiaire dans `lecteur.go` ; chaîne de dispatch à douze maillons ; G4 = 140
+    largeurs fixes ; chronique de `grammar` rotationnée (`rev_chronique_archive_7.go`, déplacement pur).
+    Fixtures de contrat des lots (schéma 76) abandonnées, régénérées au schéma 77 à chaque fusion
+    (identiques hors chaînes de révision).
+  - **Non retenus** : L2 (`[!]`, D-L2-12) et L9 (`[!]`, D-L9-3) ; n'entrent que `LOT_L2.md`, `l2_tsv/`,
+    `LOT_L9.md` et la sonde `l9_generations_research_test.go` (checkout de chemins), plus l'entrée de
+    L2 du journal des pensées.
+  - **Révisions** : `grammar-2026-10-02` (L0) → `.2` (L8) → `.3` (L3a, rang provisoire `.2` du lot
+    renuméroté) → `grammar-2026-10-03` (L4a) ; empreintes régénérées à chaque commit de fusion.
+    `killsource-2026-09-27` → `killsource-2026-10-02` (L3a), JUSTIFIÉE à la tête : la sortie
+    `cmd/killsource json` change (§6.0 point 3) ; `source.Rev`, `objectives.Rev`, `profile.Rev`,
+    `replay.SchemaVersion` (77) inchangées. Format des faits inchangé (`REPLAYINPUTS28`, le compteur
+    renommé reste à sa place).
+  - **Gate 2** (carte v2, 20 films, `-denominateur-fixe`, base contre tête, paquet par paquet,
+    `vague1_tsv/gate2_tete.tsv`) : **aucun film en baisse**, ni en paquets sains ni en records utiles
+    sains. Corpus 276 327 → 313 495 sains (+37 168), utiles sains 2 585 919 → 2 922 510 (+336 591).
+    Sains perdus en brut : **5**, tous « devenus contredits » (masque au-delà de l'archétype), aucun
+    « devenu non fermé » : `fb1a1a72` 7:92 (celui de L8), `1c4c63c2` 11:1620 et `4f77afc1` 25:874,
+    37:1188, 59:682 (ceux de L3a) — aucun perdu propre à la combinaison. Gains au bit 37 658, dont 538
+    contredits (1,4 % de factices ; `1c4c63c2` 408 / 456). 19 paquets fermés au bit perdus, tous
+    contredits avant (fermetures factices retirées).
+  - **Indicateur D1** (records utiles sains ; dénominateur fixe recalculé avec les marches de L8, L3a,
+    L4a et de la tête : aucune ne lit plus que le fixe consolidé, qui reste 7 758 290) : corpus
+    **33,3 % → 37,7 %** fixe, 43,4 % → 46,4 % variable ; HI_1_13_0 **65,8 % → 76,6 %** fixe, 80,7 % →
+    83,8 % variable ; HI_1_10_0 12,2 → 12,3 % ; HI_1_8_0 23,0 → 23,3 % ; HI_1_9_0 20,1 → 20,2 % ;
+    HI_1_11_0 20,7 → 20,9 % ; HI_1_12_0 23,7 → 24,0 % ; HI_1_4_1, v31, v33 inchangés (≤ 0,7 %).
+  - **Killsource** (19 témoins, `vague1_tsv/killsource_base_contre_tete.tsv`) : 2 747 morts avant et
+    après, **aucune mort, valeur ni voie changée** ; 6 témoins identiques à l'octet, 12 ne changent que
+    la chaîne de diagnostic `calibration`, `111fa685` deux compteurs de santé (candidats 226 → 227,
+    couples inexpliqués 24 → 25, comme L3a seul).
+  - **`replay-equiv`** (recette de L0, racine factice au scratchpad, références de `67c379fc1`) : base
+    20 / 20 identiques aux références ; tête 20 / 20 différents sur 11 étapes sur 61 (`artifact`,
+    `continuousFire.stats`, `movementStates.stats`, `killsource` 20 ; `movementStates` 18 ; `vehicles`
+    10 ; `continuousFire` 9 ; `birthLoadouts(.stats)` 8 ; `heldWeaponChanges` 3 ; `killRefs` 1) : la
+    réunion des familles déjà instruites par L8, L3a et L4a, aucune famille neuve ; positions, morts,
+    identités, équipes, objectifs, équipement identiques. Durées et pics semblables (± 3 %).
+  - **Compteur `repli_debut_de_liste_ferme_au_bit`** (`vague1_tsv/replis_changes.tsv`,
+    `gate_repli_ferme_au_bit.txt`) : en hausse sur 13 des 20 films d'équivalence (`1c4c63c2` 6 039 →
+    6 428, `084a804d` 457 → 472, `d9781168` 254 → 261, autres +1 à +3) et sur 15 des 19 témoins du
+    gate de corpus (`4f77afc1` 991 → 1 013, `51ebbc0f` 74 → 90) : le second rang de
+    `debutParFermeture` sert plus souvent quand plus de composants se traversent (D-L2-5).
+    `repli_physique_de_type_de_vehicule_supposee` → 0 (retiré par L4a).
+  - **`replay-corpus-gate`** (`--base=67c379fc1`, parc copié au scratchpad) : **rc 1** ; banc de vérité
+    **18 / 19 ok**, `111fa685` FAUX sur une ligne (`R-1 repli_deadstate_hors_bande_bipede : 0 -> 1`,
+    repli existant vu pour la première fois, D-L0-5, déjà au lot L4a) ; aucun oracle ne bouge (kills,
+    morts, assistances, équipes, vies, V-1 à V-8) ; P-1 en gain sur 17 témoins ; statut PERTE sur 17,
+    ok sur `51ebbc0f`. Les pertes sont toutes `[FILET]` et des familles instruites par les lots :
+    durée des stances recoupée (D-L8-9), couverture du tir continu et des NEW refusés (D-L8-8),
+    `weaponChanges/taken` −1 sur 3 témoins (prise devenue échange, L3a), fins de vie de véhicules lues
+    et pièces montées 795, 812, 870, 876, 976 de `4f77afc1` (D-L4a-1), un trou de rafale de moins sur
+    `4f77afc1` (non instruit). Proposition de l'intégrateur, sur le précédent de L0 : admettre ce rc 1 (et celui de
+    L8, C2d) ; la décision reste au pilote ou à l'utilisateur, non consignée ici.
+  - **Gates de code** (depuis `apps/go-api`) : `gofmt -l` vide ; `go vet ./...` rc 0 ; `go vet
+    -tags=research` film rc 0 ; `go test ./internal/archlint/` ok ; G-film (film, `replaybuild`,
+    `killcollector`) 20 paquets ok ; `cmd_fermeture` research ok ; `golangci-lint --new-from-rev
+    67c379fc1` (grammar, facts, replay, types) 0 issue. Goldens de fermeture : `frame_closure.golden`
+    inchangé, `keyframe_closure.golden` re-figé (aucun compte ne bouge, `ti=3` perd son bloquant
+    `i0 low-frequency`), `structure_fermeture.golden` re-figé après la preuve « aucune baisse »
+    (hausses seules, 10 lignes).
+  - Fichiers de production de `grammar` touchés parmi ceux de la représentation intermédiaire :
+    `lecteur.go` (champ `etatComplet`) et `movement_states.go` (une ligne, le compteur renommé) ;
+    aucun autre (`frame_*`, `traverse.go`, `world.go`, `debut_de_liste.go`, `marche_*`,
+    `keyframe_world*.go`, `keyframe_closure.go` intacts).
+  - Suite : recuisson de la vague (une seule, geste de l'utilisateur, D7 ; backlog killsource de
+    datation) ; références `replay-equiv` à re-figer avant la vague 2 (§6.0 point 6) ; lot de marche
+    « tête de liste contredite » à fonder (§5, découvertes de la vague 1).
 
 ## 5. Découvertes (consignées, non traitées)
 
@@ -875,6 +949,48 @@ n'est traitée.
   worktree dédié sans données, et `replay-corpus-gate` écrit son cache de base et son verrou sous
   `data/cache` du parc (aucune option pour le cache) : joués sur des racines factices du scratchpad.
   Non traité.
+
+**Découvertes de la vague 1 (lots L8, L3a, L4a, L2, L9 et intégration du 2026-10-03)** — reportées
+des `LOT_<lot>.md` (texte complet et pièces dans chacun), non traitées :
+- **Règle de tête de liste (convergence de trois lots)** : la marche accepte comme tête un NEW dont le
+  masque contredit `FUN_142e2da44` (bits au-delà du dernier composant de l'archétype) — `pasDEssai` /
+  `debutParChaine` (D-L8-1, D-L8-8), le localisateur de tête en général (D-L3a-1), le second rang de
+  `debutParFermeture` (D-L2-5, D-L2-12). Les 5 sains perdus bruts de la vague (`fb1a1a72` 7:92 ;
+  `1c4c63c2` 11:1620 ; `4f77afc1` 25:874, 37:1188, 59:682) en viennent tous. Correctif de marche
+  mesuré en surcouche par L8 (0 perte, +37 sains au-delà de L8) ; restreindre le second rang perd
+  23 sains sur `e5adf7b2` (D-L2-12) : règle générale à fonder, lot de marche à part (gate 5).
+- L8 : D-L8-2 (format des révisions sans suffixe de lot ; renumérotation à l'intégration, faite ici),
+  D-L8-3 (`ti=4 i0` lu `R(8)` en image-clé aussi, remarque de la table corrigée), D-L8-4 (branche
+  `DAT_145121140 == 1` de `FUN_140c5f938` non portée, comme à tous les sites), D-L8-5 (compte de
+  `low-frequency` non borné face à 32 places), D-L8-6 (`cmMarcher` sans `HeaderBit`), D-L8-7 (règle
+  de `TestProbeHookPassesRegistryTypeIndex` fausse pour un homonyme), D-L8-9 (le gate de corpus classe
+  PERTE la durée des stances recoupée par des lectures neuves), D-L8-10 (`jumpDerived` sensible à la
+  densité des lectures), D-L8-11 (NEW `slot 2048 ti=10` de `d9781168` refusé quatre fois).
+- L3a : D-L3a-2 (ligne `ti=2 i0` de `ecs_table.tsv` porte la grammaire d'`i12`), D-L3a-3 (sources
+  `fichier:ligne` périmées dans la table, G1 ne vérifie que l'existence), D-L3a-5 (`ti=1` et 20
+  records `ti=2` d'image-clé non fermés, non instruits), D-L3a-6 (`forge-engine-*` `i18`..`i26`,
+  cause suivante : 100 paquets), D-L3a-7 et D-L2-7 (garde-rails qui lisent les sources : mutations en
+  place), D-L3a-9 (`111fa685` : un candidat killsource et un couple inexpliqué de plus, retrouvés à la
+  tête intégrée).
+- L4a : D-L4a-1 (pièces montées vivantes après leur porteur), D-L4a-2 (tête au bit 1856 de
+  `d9781168` 17:1356 dans C11, à rejuger avec L1a / LS), D-L4a-3 (sens de `vehicles/par-end/unknown`
+  au gate de corpus), D-L4a-4 (`repli_deadstate_indice_hors_roster` monte), D-L4a-5 (L4b), D-L4a-7
+  (`i40` pourrait lire le rattachement pièce -> porteur), D-L4a-8 (inventaire des marquages explicites
+  incomplet), D-L4a-9 (variante sans masque de l'instrument `walkKeyframeBody` sans `etatComplet`).
+- L2 (non retenu) : D-L2-1 à D-L2-6, D-L2-10 à D-L2-12 (`LOT_L2.md` §8). **D-L2-13 soldée par la
+  vague** : le lecteur unique de `FUN_140d580d0` / `FUN_142ba78dc` vient de L3a (`lecteur_minuteur.go`,
+  garde-rail `lecteur_minuteur_guard_test.go`), les trois sites de minuteur l'appellent.
+- L9 (non retenu) : D-L9-1 à D-L9-9 (`LOT_L9.md` §8), dont D-L9-3 (décision demandée à l'utilisateur
+  sur la marche « toutes générations sous le témoin de la table de datums ») et D-L9-8 (deux
+  commentaires faux sur la génération 0, règle 17, à corriger avec le lot qui changera ces gardes).
+- Intégration : D-INT-1 — la chronique de `grammar` a passé 500 lignes avec L4a ; rotation par
+  déplacement pur dans `rev_chronique_archive_7.go` (rang `grammar-2026-09-24`), ajoutée aux deux
+  listes qui l'excluent de l'empreinte (`grammar/rev_test.go`, `revision/equivalence_test.go`).
+  D-INT-2 — les commentaires datés de comptes de largeurs de `ecs_widths_guard_test.go` (L3a, L4a)
+  sont retirés du code comme L8 l'avait fait (règle 17 ; le compte vit dans les `LOT_<lot>.md`) ; la
+  constante vaut 140 (123 + 2 + 7 + 8). D-INT-3 — les fixtures de contrat des lots (schéma 76) sont
+  périmées par `feat/v75` (schéma 77) : régénérées à chaque fusion, identiques hors chaînes de
+  révision.
 
 ## 6. Phase 2 — lots correctifs (écrits à l'étape 5, révisés le 2026-10-02)
 
@@ -1600,6 +1716,12 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
 - Gate : §6.0, points 1, 2, 3 (killsource, étendu le 2026-10-02 : N1), 6 et 7.
 - Taille S-M. Ne dépend d'aucune recherche de marche.
 
+- **Statut (intégration de la vague 1, 2026-10-03) : [x] FUSIONNÉ** dans `feat/campagne-grammaire`
+  (commit de fusion `614884624`, révision `grammar-2026-10-02.2`). Corrections du contrôle comprises
+  (`LOT_L8.md` §8). Le rc 1 du gate de corpus du lot (C2d) attend la décision du pilote ou de
+  l'utilisateur (proposition au journal §4, 2026-10-03). En combinaison : seul sain perdu brut du lot, `fb1a1a72` 7:92 (devenu
+  contredit, D-L8-1), aucun film en baisse nette.
+
 **L2 — Dispositifs `ti=43` (composant), reclassé le 2026-10-02**
 - Gain mesuré (BIS_2 §5, surcouche, 21 films) :
   - corpus : +18 105 / −12 paquets, +143 314 utiles ;
@@ -1632,6 +1754,12 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   grammaire T7 de `ti=43` est à réparer (ou à restreindre par une condition mesurable par film, sans
   branche sur le build) sur HI_1_10_0 avant le lot (§6.3 D19). Gate 3 : aucune mort changée (un
   compteur de santé sur `bfecd02b`).
+
+- **Statut (intégration de la vague 1, 2026-10-03) : [!] NON RETENU** — `LOT_L2.md` §0 et §9.3 :
+  marginale du L2 de production dans C11 en baisse sur `1c4c63c2` (−447 sains / −8 520 utiles
+  sains), perte non expliquée par une fermeture factice retirée (D-L2-12) ; code retiré par la branche
+  elle-même (`d09fcf989`). Seuls `LOT_L2.md` et `l2_tsv/` entrent (checkout de chemins explicites),
+  aucune ligne de production. Reprise : D-L2-12 (ce que lie le second rang de `debutParFermeture`).
 
 **L6a — Largeurs par index de plage (composant et donnée de carte)**
 - Gain mesuré (BIS_2 §3.3, contexte de production) :
@@ -1714,6 +1842,13 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   tenu). Le « +1 784 » n'est qu'une mesure en référence (critique R point 21). Le lot RÉEL reste à
   mesurer, et son gate 3 aussi : `MarcheDImageCle` est lue par killsource (`world.go:72-73`).
 
+- **Statut (intégration de la vague 1, 2026-10-03) : [!] NON RETENU** — `LOT_L9.md` §0 : la variante
+  écrite (lever la garde de génération 0) perd au gate 2 sur 18 films sur 20 (−102 902 sains) ; la
+  variante V3e (témoin de la table de datums) perd encore sur 3 films, lit le bloc de type 1 en
+  production (gate 4, voisin de LP) et repose sur une prémisse contredite par 850 records (D-L9-3,
+  décision demandée à l'utilisateur). Entrent `LOT_L9.md` et la sonde `l9_generations_research_test.go`
+  (tag `research`, compilée et jouée sur `bcb6d393` à la tête intégrée), aucune ligne de production.
+
 **L3 — Moteur `ti=2` / `ti=0` et helper `FUN_140d580d0` (composant)**
 - Gain : **estimé** ≤ 4 331 paquets (`ti=2` 4 208, dont `i15` 3 996 ; `ti=0` 123). Sur HI_1_13_0,
   2 260 paquets `ti=2`, 229 utiles. Le portage n'est pas mesuré : il faut un A/B en surcouche avant le
@@ -1744,6 +1879,12 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   de la critique). Formule juste : « 0 film en baisse nette ; 48 (ou 33 selon le contexte) sains
   requalifiés contredits, aucun perdu non fermé ». En combinaison : marginal +12 000 sains / +215 560
   utiles sains, gate 2 tenu, gate 3 nul (diagnostic d'oracle de `calibration` seulement).
+
+- **Statut de L3a (intégration de la vague 1, 2026-10-03) : [x] FUSIONNÉ** (commit de fusion
+  `7b14deed4`, révision renumérotée `grammar-2026-10-02.3`, `killsource-2026-10-02`). Les 4 sains
+  requalifiés contredits du lot (`1c4c63c2` 11:1620, `4f77afc1` 25:874, 37:1188, 59:682 ; D-L3a-1)
+  se retrouvent tels quels en combinaison, aucun autre ; aucun film en baisse nette. L3b reste mis de
+  côté (§3, 2026-10-02).
 
 **L4 — Véhicules `ti=40` : porte lue et composants (composant)**
 - Gain :
@@ -1793,6 +1934,13 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   sains (« +1 436 » et « +26 843 utiles » sont BRUTS) ; marginal dans C11 +4 440 / +115 847. Gate 2
   tenu seul, **en défaut en marginal** : `d9781168` 0 / −11 records utiles sains (un même paquet ;
   §6.3 D19). Gate 3 : aucune mort changée.
+
+- **Statut de L4a (intégration de la vague 1, 2026-10-03) : [x] FUSIONNÉ** (commit de fusion
+  `1fe894672`, révision `grammar-2026-10-03`), porté sur la marche de la représentation
+  intermédiaire (compteur posé dans `movementStateScanner.trame`, test du compteur passé par
+  `marcheurDesTrames.marcherLePaquet`, mutations B3 et B5 rouges). En combinaison : aucun sain perdu
+  imputable au lot. La perte marginale de R-COMB-2 sur `d9781168` (D-L4a-2) n'existe pas sans L1a / LS
+  (vague 2). L4b reste mis de côté (§3, 2026-10-02).
 
 **L7 — NEW sur slot occupé (marche)**
 - ≤ 137 paquets. Lieu : `grammar/frame_infer.go` (`contreditUneEntiteVivante`).

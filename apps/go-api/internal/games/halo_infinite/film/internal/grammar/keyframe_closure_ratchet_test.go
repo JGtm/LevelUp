@@ -350,6 +350,10 @@ func mesurerFermetureBobines(t *testing.T) string {
 	b.WriteString("#     0 -> 11/11, bcb6d393 0 -> 19/19, fb1a1a72 0 -> 12/12. a521164d (HI_1_4_1) reste 0/11 sans\n")
 	b.WriteString("#     bloquant nomme (un bit de trop des vieux builds, hors lot) ; ti=1 reste 0/1 sur 60ae07c4 et\n")
 	b.WriteString("#     fb1a1a72, sans bloquant nomme (non instruit). 0 ligne `fermes` ne descend.\n")
+	b.WriteString("#   2026-10-03 vague 1 de la campagne de grammaire (L8, L3a, L4a reunis) : AUCUN compte ne bouge.\n")
+	b.WriteString("#     ti=3 de bcb6d393 (0/1) et de fb1a1a72 (0/26) perd son bloquant `i0 low-frequency`, porte par\n")
+	b.WriteString("#     L8 (`components_frequences.go`) ; ces records ne ferment toujours pas, sans bloquant nomme\n")
+	b.WriteString("#     (non instruit). 0 ligne `fermes` ne descend.\n")
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+court)
 		stats := fermetureDUneBobine(t, dir)
