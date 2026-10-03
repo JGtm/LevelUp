@@ -32,7 +32,7 @@ func TestM4bCompteurDeTir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ScanMarcheDesTrames : %v", err)
 	}
-	fire, err := ScanFireEvents(m511Film(t))
+	fire, err := ScanFireEvents(NewFilmContext(m511Film(t)))
 	if err != nil {
 		t.Fatalf("ScanFireEvents : %v", err)
 	}

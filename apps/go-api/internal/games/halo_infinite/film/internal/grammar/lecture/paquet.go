@@ -46,12 +46,15 @@ type EtatDeVue uint8
 
 // Les états d'une vue.
 const (
-	// VueNonLue : la marche n'a pas lu la vue — vue A derrière un début localisé, vue C derrière
-	// une vue B qui ne s'est pas terminée.
+	// VueNonLue : la marche n'a pas lu la vue — la vue C derrière une vue B qui ne s'est pas
+	// terminée ; les vues d'un paquet d'image-clé, qui n'en a pas.
 	VueNonLue EtatDeVue = iota
 	// VueTerminee : la vue a été lue jusqu'à son terminateur.
 	VueTerminee
-	// VueArretee : la marche s'est arrêtée dans la vue ; la cause est [Fermeture.Queue].
+	// VueArretee : la marche s'est arrêtée dans la vue. Une vue A s'arrête au premier corps de
+	// message, dont la charge n'est pas portée : la marche repart d'un début de vue B localisé
+	// ([Paquet.Debut]) ou s'arrête là ([Fermeture.Queue]) ; une vue C arrêtée porte sa cause dans
+	// [Fermeture.Queue].
 	VueArretee
 )
 
@@ -179,7 +182,9 @@ type Fermeture struct {
 	Queue QueueOpaque
 }
 
-// VueA est la vue des messages (rang 0) d'une trame delta, telle que la marche l'a lue.
+// VueA est la vue des messages (rang 0) d'une trame delta, telle que la marche l'a lue — au moins
+// sa tête : la continuation et, quand elle annonce un message, son genre, que la marche lit sur
+// chaque trame avant d'en décider la suite.
 type VueA struct {
 	// Debut et Bits sont son étendue ; zéro bit pour une vue non lue.
 	Debut, Bits uint32

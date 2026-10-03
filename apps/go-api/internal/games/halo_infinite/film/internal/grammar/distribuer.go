@@ -2,12 +2,13 @@ package grammar
 
 // distribuer.go — UNE MARCHE, N CANAUX (ADR 0037 ; decision DT2-1 du plan de l etape 2).
 //
-// [Distribuer] marche UNE fois les phases du film — les images-cles, puis les trames delta quand un
-// canal les lit — et donne chaque paquet range a chaque canal, dans l ordre des canaux. Un canal
-// ([Canal]) declare ses interets ; un canal des trames ([CanalDesTrames]) pose en plus ses crochets
-// sur l observation de la marche des trames : l interpretation reste PENDANT la marche (ADR 0037
-// IR-8), la ou elle a lieu aujourd hui — la phase des images-cles se lit sous l observation du
-// contexte, comme [FilmContext.ImagesCles]. Un canal ne lit jamais un octet ; il lit la structure
+// [Distribuer] marche UNE fois les phases du film que ses canaux lisent — les images-cles
+// ([CanalDImageCle]), les trames delta ([CanalDesTrames]), ou leurs seules tetes ([CanalDesTetes])
+// — et donne chaque paquet range a chaque canal, dans l ordre des canaux. Un canal ([Canal])
+// declare ses interets ; un canal des trames pose en plus ses crochets sur l observation de la
+// marche des trames : l interpretation reste PENDANT la marche (ADR 0037 IR-8), la ou elle a lieu
+// aujourd hui — la phase des images-cles se lit sous l observation du contexte, comme
+// [FilmContext.ImagesCles]. Un canal ne lit jamais un octet ; il lit la structure
 // ([lecture.Paquet]), la marche d ancres du paquet ([MarcheDistribuee.Ancres]) et ce que ses crochets
 // recoivent.
 //
@@ -55,20 +56,26 @@ type Interet struct {
 	Composant string
 }
 
-// Canal est un consommateur de la marche du film : il recoit chaque paquet d image-cle, puis le
-// bilan. Un canal qui lit aussi les trames est un [CanalDesTrames].
+// Canal est un consommateur de la marche du film : il declare ses interets et recoit le bilan. Ce
+// qu il lit dit quelles phases la marche joue : un canal est aussi un [CanalDImageCle], un
+// [CanalDesTrames] ou un [CanalDesTetes], ou plusieurs d entre eux.
 type Canal interface {
 	// Interets rend ce que le canal interprete.
 	Interets() []Interet
-	// ImageCle recoit chaque paquet d image-cle, dans l ordre du flux ; `m` expose la marche
-	// d ancres du paquet ([MarcheDistribuee.Ancres]).
-	ImageCle(p *lecture.Paquet, m *MarcheDistribuee)
 	// Clore recoit le bilan de la marche, une fois ses phases finies.
 	Clore(b BilanDeMarche)
 }
 
-// CanalDesTrames est un canal qui lit AUSSI la phase des trames. Une distribution dont aucun canal
-// ne lit les trames ne les marche pas.
+// CanalDImageCle est un canal qui lit la phase des images-cles.
+type CanalDImageCle interface {
+	Canal
+	// ImageCle recoit chaque paquet d image-cle, dans l ordre du flux ; `m` expose la marche
+	// d ancres du paquet ([MarcheDistribuee.Ancres]).
+	ImageCle(p *lecture.Paquet, m *MarcheDistribuee)
+}
+
+// CanalDesTrames est un canal qui lit la phase des trames. Une distribution dont aucun canal ne lit
+// les trames ne les marche pas.
 type CanalDesTrames interface {
 	Canal
 	// Brancher pose les crochets du canal sur `obs`, une observation a lui que la marche des trames
@@ -76,6 +83,15 @@ type CanalDesTrames interface {
 	Brancher(obs *Observation, m *MarcheDistribuee)
 	// Trame recoit chaque trame delta, dans l ordre du flux, apres sa marche.
 	Trame(p *lecture.Paquet)
+}
+
+// CanalDesTetes est un canal qui lit la TETE de chaque trame delta : la continuation de sa vue A
+// et, quand elle annonce un message, son genre ([lecture.Paquet.VueA], [rangerLaTete]). Une
+// distribution sans canal des trames n en marche pas les records : elle n en lit que les tetes.
+type CanalDesTetes interface {
+	Canal
+	// Tete recoit chaque trame delta (payload non vide), dans l ordre du flux, sa tete rangee.
+	Tete(p *lecture.Paquet)
 }
 
 // MarcheDistribuee est ce qu un canal voit de la marche. Le paquet, la marche d ancres et la table
@@ -103,39 +119,83 @@ type BilanDeMarche struct {
 	Obs *Observation
 	// Liaisons est ce que la liaison des images-cles a fait au monde, sommee sur les chunks.
 	Liaisons LiaisonDUnChunk
-	// ChunksLus est le nombre de chunks de donnees que la phase des images-cles a pu lire, porteurs
-	// d image-cle ou non ([FilmContext.ChunkAt]).
+	// ChunksLus est le nombre de chunks de donnees que la marche a pu lire, porteurs d image-cle ou
+	// de trame ou non ([FilmContext.ChunkAt]).
 	ChunksLus int
 }
 
-// Distribuer marche les phases du film une fois et donne chaque paquet a chaque canal : les
-// images-cles toujours, les trames quand un canal les lit. Le decoupage MPP du format est pose sur
-// le contexte pendant la phase des images-cles seulement, comme [FilmContext.ImagesCles] ; la phase
-// delta se lit sous le cadre du contexte ([FilmContext.Trames]).
+// Distribuer marche les phases du film que ses canaux lisent, une fois chacune, et donne chaque
+// paquet a chaque canal qui le lit : les images-cles a qui les lit — et a la marche des trames, qui
+// y lit ses preliminaires —, les trames marchees quand un canal les lit, sinon leurs seules tetes
+// quand un canal de tete les lit. Le decoupage MPP du format est pose sur le contexte pendant la
+// phase des images-cles seulement, comme [FilmContext.ImagesCles] ; la phase delta se lit sous le
+// cadre du contexte ([FilmContext.Trames]).
 //
-// La phase des trames exige le registre du film, et c est la seule erreur d une distribution avec
-// [ErrCrochetDejaPose] : une distribution aux seuls canaux d image-cle ne peut pas echouer
-// ([distribuerLesImagesClesSeules]).
+// La marche des trames exige le registre du film, et c est la seule erreur d une distribution avec
+// [ErrCrochetDejaPose] : une distribution sans canal des trames ne peut pas echouer
+// ([distribuerSansMarcherLesTrames]).
 func Distribuer(fc *FilmContext, canaux ...Canal) error {
-	trames := canauxDesTrames(canaux)
-	if len(trames) == 0 {
-		distribuerLesImagesClesSeules(fc, canaux)
+	l := lecteursDe(canaux)
+	if len(l.trames) == 0 {
+		distribuerSansMarcherLesTrames(fc, canaux)
 		return nil
 	}
 	reg, err := fc.Registry()
 	if err != nil {
 		return err
 	}
-	return distribuerLesDeuxPhases(fc, reg, canaux, trames)
+	return distribuerLesDeuxPhases(fc, reg, canaux, l)
 }
 
-// distribuerLesImagesClesSeules marche la seule phase des images-cles pour des canaux qui ne lisent
-// pas les trames, et les clot.
+// lecteursDesPhases : les canaux d une distribution, ranges par phase lue, dans l ordre des canaux.
+type lecteursDesPhases struct {
+	images []CanalDImageCle
+	trames []CanalDesTrames
+	tetes  []CanalDesTetes
+}
+
+// lecteursDe range les canaux par phase lue.
+func lecteursDe(canaux []Canal) lecteursDesPhases {
+	var l lecteursDesPhases
+	for _, c := range canaux {
+		if k, ok := c.(CanalDImageCle); ok {
+			l.images = append(l.images, k)
+		}
+		if t, ok := c.(CanalDesTrames); ok {
+			l.trames = append(l.trames, t)
+		}
+		if t, ok := c.(CanalDesTetes); ok {
+			l.tetes = append(l.tetes, t)
+		}
+	}
+	return l
+}
+
+// distribuerSansMarcherLesTrames joue, pour des canaux qui ne lisent pas les trames marchees, la
+// phase des images-cles quand l un d eux la lit, puis la passe des tetes quand l un d eux les lit
+// ([distribuerLesTetes]), et clot les canaux.
 //
-// LE REGISTRE N Y EST PAS EXIGE : la marche d ancres ne le lit pas. Sans lui, aucun interet ne se
-// resout, donc aucun corps n est parcouru, et les canaux recoivent les ancres — ce que les balayages
-// d image-cle lisent sur un film sans `chunk_00` (decision 4 du lot 2.2). L erreur du registre reste
-// celle du contexte ([FilmContext.Registry]) : un canal qui lit des corps la consulte.
+// LE REGISTRE N Y EST PAS EXIGE : la marche d ancres ne le lit pas, la passe des tetes non plus.
+// Sans lui, aucun interet ne se resout, donc aucun corps n est parcouru, et les canaux recoivent
+// les ancres — ce que les balayages d image-cle lisent sur un film sans `chunk_00` (decision 4 du
+// lot 2.2). L erreur du registre reste celle du contexte ([FilmContext.Registry]) : un canal qui lit
+// des corps la consulte.
+func distribuerSansMarcherLesTrames(fc *FilmContext, canaux []Canal) {
+	l := lecteursDe(canaux)
+	lus := 0
+	if len(l.images) > 0 {
+		lus = distribuerLaPhaseDesImagesCles(fc, demandeDImagesCles{}, canaux, l.images)
+	}
+	if len(l.tetes) > 0 {
+		lus = distribuerLesTetes(fc, l.tetes)
+	}
+	for _, c := range canaux {
+		c.Clore(BilanDeMarche{ChunksLus: lus})
+	}
+}
+
+// distribuerLesImagesClesSeules marche la seule phase des images-cles pour des canaux d image-cle,
+// et les clot.
 func distribuerLesImagesClesSeules(fc *FilmContext, canaux []Canal) {
 	distribuerLaDemande(fc, demandeDImagesCles{}, canaux)
 }
@@ -148,30 +208,40 @@ func distribuerLesImagesClesDesChunks(fc *FilmContext, chunks []int, canaux []Ca
 }
 
 // distribuerLaDemande marche la seule phase des images-cles selon `d` (ses chunks, sa marche
-// d ancres), le registre et les interets des canaux resolus ici, et clot les canaux.
+// d ancres) pour les canaux d image-cle, et clot les canaux.
 func distribuerLaDemande(fc *FilmContext, d demandeDImagesCles, canaux []Canal) {
-	reg, err := fc.Registry()
-	if err != nil {
-		reg = nil
-	}
-	d.reg, d.interets = reg, resoudreLesInterets(reg, canaux)[PhaseImagesCles]
-	lus := distribuerLesImagesCles(fc, d, &MarcheDistribuee{EnTete: fc.EnTete()}, canaux, nil)
+	lus := distribuerLaPhaseDesImagesCles(fc, d, canaux, lecteursDe(canaux).images)
 	for _, c := range canaux {
 		c.Clore(BilanDeMarche{ChunksLus: lus})
 	}
 }
 
+// distribuerLaPhaseDesImagesCles marche la phase des images-cles hors de la marche des trames selon
+// `d`, le registre et les interets des canaux resolus ici (sans registre : les ancres seules), et
+// rend le nombre de chunks lus.
+func distribuerLaPhaseDesImagesCles(fc *FilmContext, d demandeDImagesCles, canaux []Canal,
+	images []CanalDImageCle) int {
+	reg, err := fc.Registry()
+	if err != nil {
+		reg = nil
+	}
+	d.reg, d.interets = reg, resoudreLesInterets(reg, canaux)[PhaseImagesCles]
+	return distribuerLesImagesCles(fc, d, &MarcheDistribuee{EnTete: fc.EnTete()}, images, nil)
+}
+
 // distribuerLesDeuxPhases marche les images-cles puis les trames, les preliminaires de la marche
-// des trames lus dans la meme phase des images-cles que les canaux.
-func distribuerLesDeuxPhases(fc *FilmContext, reg *Registry, canaux []Canal, trames []CanalDesTrames) error {
+// des trames lus dans la meme phase des images-cles que les canaux ; chaque trame marchee va aux
+// canaux des trames puis aux canaux de tete.
+func distribuerLesDeuxPhases(fc *FilmContext, reg *Registry, canaux []Canal, l lecteursDesPhases) error {
 	interets := resoudreLesInterets(reg, canaux)
 	m := &MarcheDistribuee{EnTete: fc.EnTete()}
-	obs, err := brancherLesCanaux(m, trames)
+	obs, err := brancherLesCanaux(m, l.trames)
 	if err != nil {
 		return err
 	}
 	prel := nouveauxPreliminaires(fc)
-	lus := distribuerLesImagesCles(fc, demandeDImagesCles{reg: reg, interets: interets[PhaseImagesCles]}, m, canaux, prel)
+	lus := distribuerLesImagesCles(fc, demandeDImagesCles{reg: reg, interets: interets[PhaseImagesCles]}, m,
+		l.images, prel)
 	mt, err := fc.marcheurDesTramesDepuis(reg, obs, prel)
 	if err != nil {
 		return err
@@ -179,8 +249,11 @@ func distribuerLesDeuxPhases(fc *FilmContext, reg *Registry, canaux []Canal, tra
 	mt.interets = interets[PhaseTrames]
 	m.Paquet, m.Entites = &mt.paquet, mt.entites
 	mt.parcourir(func(t *trameLue) bool {
-		for _, c := range trames {
+		for _, c := range l.trames {
 			c.Trame(t.paquet)
+		}
+		for _, c := range l.tetes {
+			c.Tete(t.paquet)
 		}
 		return true
 	})
@@ -206,7 +279,7 @@ type demandeDImagesCles struct {
 // distribuerLesImagesCles marche la phase des images-cles, en donne chaque paquet aux canaux puis
 // aux preliminaires de la marche des trames quand il y en a (qu elle clot), et rend le nombre de
 // chunks lus.
-func distribuerLesImagesCles(fc *FilmContext, d demandeDImagesCles, m *MarcheDistribuee, canaux []Canal,
+func distribuerLesImagesCles(fc *FilmContext, d demandeDImagesCles, m *MarcheDistribuee, canaux []CanalDImageCle,
 	prel *preliminairesDesTrames) int {
 	k, restaurer := fc.nouvelleMarcheDesImagesCles(d, false)
 	defer restaurer()
@@ -222,17 +295,6 @@ func distribuerLesImagesCles(fc *FilmContext, d demandeDImagesCles, m *MarcheDis
 	m.Ancres = MarcheDePayload{}
 	prel.clore()
 	return lus
-}
-
-// canauxDesTrames rend les canaux qui lisent aussi les trames, dans l ordre des canaux.
-func canauxDesTrames(canaux []Canal) []CanalDesTrames {
-	var out []CanalDesTrames
-	for _, c := range canaux {
-		if t, ok := c.(CanalDesTrames); ok {
-			out = append(out, t)
-		}
-	}
-	return out
 }
 
 // interetsResolus est l union des interets des canaux d une marche dans UNE phase, resolue dans le

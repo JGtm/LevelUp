@@ -125,6 +125,16 @@ registry: a distribution whose channels read no body runs on a film without `chu
 keyframe scans did; the delta phase and any body need the registry. A channel that reads only the
 keyframe phase does not make the delta phase run.
 
+A distribution runs the phases its channels read (lot 2.3): the keyframe phase for keyframe
+channels and for the delta walk's preliminaries, the delta walk for frame channels, and — with
+only head channels — a head pass that ranges each delta frame's head into view A (the
+continuation, then the genre of the first message, where the walk stops since message payloads
+are not ported) without walking any record. The delta walk ranges the same head on every frame,
+including the frames whose event list it locates, which it used to leave with an unread view A
+although it read their head to decide. The six view-A head readers (shots, translocator, scope,
+pickups, type-103 spawns, vehicle events) decode their event body from the ranged head; a head
+that does not fit the payload keeps the tolerant reading they had.
+
 ### IR-4 — Three states per component, three closure states per packet, never conflated (correction C3)
 
 A component occurrence is **interpreted** (a channel of the walk interprets it: its archetype and

@@ -245,7 +245,7 @@ func v8ScanFilm(dir string) (sortie v8Compte, board v8Board, chance float64, ok 
 				continue
 			}
 			pay := p.Payload(data)
-			ev, decode := decodeVehicleEvent(pay, base, NewSlotBand(bip))
+			ev, decode := decodeVehicleEventDuPayload(pay, base, NewSlotBand(bip))
 			if !decode {
 				continue
 			}

@@ -51,6 +51,7 @@ import (
 	"slices"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -103,33 +104,32 @@ func ScanFilmZoomEvents(dir string) []ZoomEvent {
 	if err != nil {
 		return nil // meme degradation silencieuse qu'un chunk illisible : couverture moindre
 	}
-	return ScanZoomEvents(film)
+	return ScanZoomEvents(NewFilmContext(film))
 }
 
-// ScanZoomEvents lit les bascules de lunette d'un film DEJA CHARGE, triées par instant.
-func ScanZoomEvents(film *source.Film) []ZoomEvent {
-	var out []ZoomEvent
-	for _, c := range FilmChunkNumbers(film) {
-		chunk, pks, ok := FilmChunkAt(film, c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta || pk.Size < 2 {
-				continue
-			}
-			pay := pk.Payload(chunk)
-			if pay[0] != zoomFamilyByte {
-				continue
-			}
-			if ev, ok := decodeZoomHead(pay, pk.TimestampUS); ok {
-				out = append(out, ev)
-			}
-		}
-	}
-	trierBasculesDeLunette(out)
-	return out
+// ScanZoomEvents lit les bascules de lunette d'un film DEJA CHARGE, dans la passe des têtes
+// ([canalDeLaLunette]), triées par instant.
+func ScanZoomEvents(fc *FilmContext) []ZoomEvent {
+	c := &canalDeLaLunette{}
+	distribuerLesTetesSeules(fc, []Canal{c})
+	return c.out
 }
+
+// canalDeLaLunette lit l'événement de lunette de tête des trames de la famille.
+type canalDeLaLunette struct{ out []ZoomEvent }
+
+func (*canalDeLaLunette) Interets() []Interet { return nil }
+
+func (c *canalDeLaLunette) Tete(p *lecture.Paquet) {
+	if len(p.Payload) < 2 || p.Payload[0] != zoomFamilyByte {
+		return
+	}
+	if ev, ok := decodeZoomHead(p.Payload, p.TS, teteDe(p)); ok {
+		c.out = append(c.out, ev)
+	}
+}
+
+func (c *canalDeLaLunette) Clore(BilanDeMarche) { trierBasculesDeLunette(c.out) }
 
 // trierBasculesDeLunette range les bascules dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9) :
 // instant, puis slot, les ex aequo restants dans l ORDRE DU FILM. Cet ordre est PERSISTE (faits du
@@ -140,17 +140,17 @@ func trierBasculesDeLunette(out []ZoomEvent) {
 	})
 }
 
-// decodeZoomHead lit l'événement de tête d'un paquet de la famille et rend sa bascule.
-// ok=false si l'en-tête n'est pas un `unit_zoom` ou si l'unité n'est pas désignée.
-func decodeZoomHead(pay []byte, tsUS uint64) (ZoomEvent, bool) {
-	br := LecteurSur(pay)
-	h := readPacketHead(br) // [config][continuation][R(7) type] — event_list.go
-	if !h.More {
+// decodeZoomHead lit l'événement de tête d'un paquet de la famille, de tête `t`, et rend sa
+// bascule. ok=false si l'en-tête n'est pas un `unit_zoom` ou si l'unité n'est pas désignée.
+func decodeZoomHead(pay []byte, tsUS uint64, t teteDeTrame) (ZoomEvent, bool) {
+	if !t.liste {
 		return ZoomEvent{}, false // liste vide : pas d'événement en tête
 	}
-	if h.Type != zoomEventType {
+	if t.genre != zoomEventType {
 		return ZoomEvent{}, false
 	}
+	br := LecteurSur(pay)
+	br.SetBitPos(eventPayloadStartBit)            // le corps suit la tête (event_list.go)
 	idx, ok := readZoomRef(br, zoomRefDomains[0]) // l'unité qui zoome
 	readZoomRef(br, zoomRefDomains[1])
 	readZoomRef(br, zoomRefDomains[2])

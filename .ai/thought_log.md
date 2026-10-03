@@ -114862,3 +114862,27 @@ atteint les munitions, l'identifiant d'arme, les grenades et les ensembles (i22,
 
 **Conclusion / prochaine étape** : CI du commit du lot, puis lot 2.3 (canaux de tête de vue A) ;
 décision de l'utilisateur sur 2.2.2 ; second temps de 2.1 à la fusion de la vague 1 de la campagne.
+
+## [2026-10-03] Représentation intermédiaire du film, étape 2 — lot 2.3 : canaux de tête de vue A — Complété (`feat/ri-etape2`)
+
+**Statut** : Complété (clôture à la CI verte du commit du lot).
+
+**Décision technique principale** : les phases d'une distribution sont celles que ses canaux lisent
+— `CanalDImageCle`, `CanalDesTrames`, et le nouveau `CanalDesTetes` : sans canal des trames, une
+distribution ne marche aucun record et joue une PASSE DES TÊTES (aucune image-clé, aucun registre).
+La tête d'une trame (continuation de la vue A, puis genre du premier message) se range dans la vue A
+de la structure (`rangerLaTete`) ; la marche complète la range aussi pour les listes qu'elle localise
+et décide de la localisation sur elle. Six lecteurs (tirs, translocations, lunette, ramassages,
+apparitions 103, événements de véhicule) deviennent des canaux de tête qui décodent le corps de leur
+événement à partir de la tête rangée ; une tête qui ne tient pas dans le payload garde la lecture
+tolérante d'avant (2.3.2). `ScanFireEvents`, `ScanZoomEvents` et `ScanTranslocatorTeleports` prennent
+le contexte du film.
+
+**Résultats observés** : différence nulle (`replay-equiv` 20/20 décodés depuis le film, faits 20/20 et
+killsource 19/19 à l'octet contre la passe du lot 2.2) ; golden des mini-bobines inchangé ; deux
+mutations jouées rouges ; G-film, archlint, vet (avec et sans `research`), lint verts ; empreinte de
+la grammaire régénérée à révision constante.
+
+**Conclusion / prochaine étape** : CI du commit, puis la mesure M avant 2.4 et 2.5 (machine calme,
+au signal de la campagne) ; second temps de 2.1 à la fusion de la vague 1 ; décision de l'utilisateur
+sur 2.2.2 toujours attendue.

@@ -3,6 +3,7 @@ package grammar
 import (
 	"math"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -123,37 +124,41 @@ func ScanFilmFireEvents(dir string) ([]FireEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanFireEvents(film)
+	return ScanFireEvents(NewFilmContext(film))
 }
 
 // ScanFireEvents décode les événements de tir d'un film DEJA CHARGE : le record type 36 EN TÊTE
-// de la liste d'un paquet delta. Les chunks illisibles sont ignorés (le film peut être partiel).
-func ScanFireEvents(film *source.Film) ([]FireEvent, error) {
-	var out []FireEvent
-	read := 0
-	for _, c := range FilmChunkNumbers(film) {
-		chunk, pks, ok := FilmChunkAt(film, c)
-		if !ok {
-			continue
-		}
-		read++
-		for _, p := range pks {
-			if p.Type != PacketTypeDelta || p.Size < 1 {
-				continue
-			}
-			e, ok := decodeFireEvent(p.Payload(chunk))
-			if !ok {
-				continue // autre type d'événement de tête, ou record tronqué
-			}
-			e.Chunk, e.PacketIndex, e.TimestampUS = c, p.Index, p.TimestampUS
-			out = append(out, e)
-		}
-	}
-	if read == 0 {
+// de la liste d'un paquet delta, lu dans la passe des têtes ([canalDesTirs]). Les chunks
+// illisibles sont ignorés (le film peut être partiel).
+func ScanFireEvents(fc *FilmContext) ([]FireEvent, error) {
+	c := &canalDesTirs{}
+	distribuerLesTetesSeules(fc, []Canal{c})
+	if c.lus == 0 {
 		return nil, ErrNoReadableFilmChunk
 	}
-	return out, nil
+	return c.out, nil
 }
+
+// canalDesTirs lit le record de tir de tête de chaque trame delta.
+type canalDesTirs struct {
+	out []FireEvent
+	// lus : les chunks que la passe a pu lire.
+	lus int
+}
+
+func (*canalDesTirs) Interets() []Interet { return nil }
+
+func (c *canalDesTirs) Tete(p *lecture.Paquet) {
+	h, ok := lireEnteteTir36Sous(p.Payload, teteDe(p))
+	if !ok {
+		return // autre type d'événement de tête, ou record tronqué
+	}
+	e := evenementDeTir(p.Payload, h)
+	e.Chunk, e.PacketIndex, e.TimestampUS = p.Chunk, p.Index, p.TS
+	c.out = append(c.out, e)
+}
+
+func (c *canalDesTirs) Clore(b BilanDeMarche) { c.lus = b.ChunksLus }
 
 // enteteTir36 est la tête du record lue par la grammaire, jusqu'aux drapeaux `i`, `j` inclus.
 type enteteTir36 struct {
@@ -170,15 +175,21 @@ type enteteTir36 struct {
 // lireEnteteTir36 lit la tête d'un record `action_weapon_fire` en tête de liste. Rend ok=false
 // quand le paquet ne porte pas ce type en tête, ou que la tête déborde du payload.
 func lireEnteteTir36(pay []byte) (enteteTir36, bool) {
-	h := enteteTir36{tireur: -1, longueurPayload: len(pay) * 8}
 	if len(pay) < 2 {
+		return enteteTir36{tireur: -1, longueurPayload: len(pay) * 8}, false
+	}
+	return lireEnteteTir36Sous(pay, teteDuPayload(pay))
+}
+
+// lireEnteteTir36Sous est [lireEnteteTir36] sous la tête `t` de la trame, déjà lue : le corps du
+// record se lit à partir du bit qui la suit.
+func lireEnteteTir36Sous(pay []byte, t teteDeTrame) (enteteTir36, bool) {
+	h := enteteTir36{tireur: -1, longueurPayload: len(pay) * 8}
+	if len(pay) < 2 || !t.liste || t.genre != TypeTirArme {
 		return h, false
 	}
 	br := LecteurSur(pay)
-	tete := readPacketHead(br)
-	if !tete.More || tete.Type != TypeTirArme {
-		return h, false
-	}
+	br.SetBitPos(eventPayloadStartBit)
 	h.unite = lireRefDomaine1(br)
 	for _, dom := range []int{8, 7} { // ref1 domaine 8, ref2 domaine 7 : gardees, sautees
 		if br.ReadBit() {
@@ -236,6 +247,12 @@ func decodeFireEvent(pay []byte) (FireEvent, bool) {
 	if !ok {
 		return FireEvent{}, false
 	}
+	return evenementDeTir(pay, h), true
+}
+
+// evenementDeTir rend l'événement de tir que la tête de record `h`, lue dans le payload `pay`,
+// décrit : tireur, numéro, arme, unité, et la visée du record modal quand elle se lit.
+func evenementDeTir(pay []byte, h enteteTir36) FireEvent {
 	e := FireEvent{FilmIndex: h.tireur, HasShooter: h.tireur >= 0, FireNumber: h.numero,
 		Short: h.court, Bloc: h.bloc,
 		WeaponID: uint64(h.armeHaute)<<32 | uint64(h.armeBasse)}
@@ -246,7 +263,7 @@ func decodeFireEvent(pay []byte) (FireEvent, bool) {
 	if aimBit, okAim := modalAimBitFrom(pay, h); okAim {
 		readAimAt(pay, &e, aimBit)
 	}
-	return e, true
+	return e
 }
 
 // TireurDuTir rend l'indice de tireur (cinq bits) du record type 36 en tête d'un payload, ou -1

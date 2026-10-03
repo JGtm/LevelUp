@@ -52,7 +52,7 @@ func TestBoardEventGrammar(t *testing.T) {
 		{0, 8},                  // rembourrage
 	})
 	band := map[uint32]bool{base + idxOcc: true}
-	ev, ok := decodeVehicleEvent(pay, base, NewSlotBand(band))
+	ev, ok := decodeVehicleEventDuPayload(pay, base, NewSlotBand(band))
 	if !ok || ev.Kind != EventBipedBoardVehicle {
 		t.Fatalf("embarquement non décodé : ok=%v kind=%d", ok, ev.Kind)
 	}
@@ -70,7 +70,7 @@ func TestBoardEventGrammar(t *testing.T) {
 	// 1/1/7, avec sonde). Seul le champ de type change ; tout ce qui suit est identique.
 	sortie := append([]byte(nil), pay...)
 	evbForceType(sortie, EventUnitExitVehicle)
-	evx, ok := decodeVehicleEvent(sortie, base, NewSlotBand(band))
+	evx, ok := decodeVehicleEventDuPayload(sortie, base, NewSlotBand(band))
 	if !ok || evx.Kind != EventUnitExitVehicle {
 		t.Fatalf("témoin sortie non décodé : ok=%v kind=%d", ok, evx.Kind)
 	}

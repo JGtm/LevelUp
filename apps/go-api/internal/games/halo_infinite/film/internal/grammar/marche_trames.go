@@ -145,9 +145,9 @@ func (m *marcheurDesTrames) parcourir(rendre func(*trameLue) bool) {
 	}
 }
 
-// marcherLePaquet marche UNE trame delta et la range dans l arene. Les paquets a liste
-// d evenements partent du debut que [localiserLaListe] leur trouve ; une liste non localisee
-// n est pas lue.
+// marcherLePaquet marche UNE trame delta et la range dans l arene. Sa tete est rangee d abord
+// ([rangerLaTete]) ; les paquets dont la tete annonce une liste d evenements partent du debut que
+// [localiserLaListe] leur trouve, et une liste non localisee n est pas lue.
 func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 	t, p := &m.trame, &m.paquet
 	pay := pk.Payload(data)
@@ -156,7 +156,8 @@ func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 	t.debut, p.Debut = movementStateSkipLeadBits, lecture.DebutEnTete
 	t.parRangs = m.cfg.Profil.Grammaire.ClassesDeVue
 	t.lecture = lectureDeTrame{debutVueB: -1, finVueB: -1}
-	if _, present := PacketHeadEventType(pay); present {
+	rangerLaTete(p)
+	if p.VueA.Etat == lecture.VueArretee { // la continuation annonce une liste d evenements
 		t.debut, p.Debut = localiserLaListe(pay, m.monde, m.cfg)
 		if t.debut < 0 {
 			rangerUneListeNonLocalisee(p)

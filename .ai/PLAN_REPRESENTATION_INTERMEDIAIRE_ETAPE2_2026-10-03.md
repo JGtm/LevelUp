@@ -210,7 +210,7 @@ devant ; les lots 2.2 et 2.3, qui consomment le distributeur, passent devant la 
 - Gate : T4 (étapes `movementStates` et `continuousFire` de `replay-equiv`), killsource identique,
   T1/T3/T6 verts.
 
-### Lot 2.2 — Canaux d'image-clé (taille M) — coordination §1.3
+### Lot 2.2 — Canaux d'image-clé (taille M) — coordination §1.3 — CLOS le 2026-10-03 (2.2.2 en attente d'une décision de l'utilisateur)
 *Décisions d'exécution du 2026-10-03* (relu sur pièces : chaque consommateur pilote aujourd'hui sa
 propre boucle chunks -> paquets d'image-clé -> mémoire d'ancres ; seul `ScanPlayerTeams` parcourt
 des corps, ceux de ti=9 ; coût mesuré de la phase complète des images-clés, mémoire chaude : 18 à
@@ -283,13 +283,52 @@ des corps, ceux de ti=9 ; coût mesuré de la phase complète des images-clés, 
   d'images-clés de la cuisson : un de moins (les deux préliminaires de la marche des trames
   partagent une phase), aucun corps parcouru de plus.
 
-### Lot 2.3 — Canaux de tête de vue A (taille M) — coordination §1.3
-- [ ] 2.3.1 Tirs (36), translocations (117), lunette, ramassages, apparitions (103), événements de
+### Lot 2.3 — Canaux de tête de vue A (taille M) — coordination §1.3 — fait, clôture à la CI verte
+*Décisions d'exécution du 2026-10-03* (relu sur pièces : six balayages de tête parcourent chacun
+tous les paquets delta et relisent le préambule de 9 bits, `readPacketHead`, avant de décoder le
+corps de leur événement ; la marche des trames lit déjà ce préambule, `PacketHeadEventType`, pour
+décider de localiser la liste d'événements, sans le ranger dans la structure) :
+1. *Les phases d'une distribution sont celles que ses canaux lisent.* `Canal` = intérêts et
+   clôture ; `CanalDImageCle` (images-clés), `CanalDesTrames` (crochets et trames), `CanalDesTetes`
+   (tête de chaque trame). La phase des images-clés tourne quand un canal la lit ou quand la marche
+   des trames en a besoin (ses préliminaires) ; la marche des trames quand un canal des trames est
+   là ; sinon, une PASSE DES TÊTES (aucun record marché, aucun registre) pour les canaux de tête.
+2. *La tête se range dans la vue A* : la continuation puis, quand elle annonce un message, son genre
+   (`consumeVueA`), vue arrêtée au premier corps — la forme que la marche par rangs donne déjà à une
+   vue A lue depuis la tête. La marche complète la range aussi pour les paquets à liste localisée
+   ou non localisée (vue A « non lue » aujourd'hui, alors qu'elle a lu la tête pour en décider).
+3. *Les décodeurs partent de la tête rangée* : chaque canal de tête prend la continuation et le
+   genre dans la structure ; une tête qui ne tient pas dans le payload (paquet d'un octet) garde la
+   lecture tolérante d'aujourd'hui (`readPacketHead`, zéros au-delà du payload) : c'est 2.3.2.
+4. *Pas de mutualisation entre canaux dans ce lot* (même règle que 2.2) : chaque point d'entrée
+   public devient une distribution à un canal de tête. `ScanFireEvents`, `ScanZoomEvents` et
+   `ScanTranslocatorTeleports` prennent le contexte du film au lieu du film, pour distribuer dans
+   le contexte de la cuisson au lieu d'en ouvrir un second (cible de l'étape 3 : un contexte par
+   cuisson).
+- [x] 2.3.1 Tirs (36), translocations (117), lunette, ramassages, apparitions (103), événements de
       véhicule : la marche lit la tête de chaque paquet UNE fois (`event_list.go`) et la donne aux
       canaux (`fire_events.go`, `transloc_events.go`, `zoom_events.go`, `biped_pickups.go`,
       `equipment_spawn_events.go` ; les événements de véhicule vivent dans `event_list.go`).
-- [ ] 2.3.2 Les paquets dont la tête n'est pas lisible gardent la règle d'aujourd'hui.
+      *Fait* : `CanalDesTetes` et la passe des têtes (`distribuer_tetes.go` : `rangerLaTete` range
+      la continuation et le genre dans la vue A, `teteDe` la rend aux canaux) ; six canaux
+      (`canalDesTirs`, `canalDesTeleportations`, `canalDeLaLunette`, `canalDesRamassages`,
+      `canalDesApparitions`, `canalDesEvenementsDeVehicule`), chaque point d'entrée une distribution
+      à un canal ; les décodeurs de corps partent du bit qui suit la tête (`eventPayloadStartBit`).
+      La marche complète range la tête de chaque trame avant de la marcher et décide de localiser la
+      liste sur elle (plus de seconde lecture du préambule). `PacketHeadEventType` reste la forme
+      des instruments (fabrique de mini-films du rejeu, comptes par type). Tests : formes de la
+      tête, passe des têtes égale à la tête de la marche complète, aucune image-clé ni record marché
+      par la passe ; deux mutations jouées rouges.
+- [x] 2.3.2 Les paquets dont la tête n'est pas lisible gardent la règle d'aujourd'hui.
+      *Fait* : une tête qui ne tient pas dans le payload (paquet d'un octet : la vue A s'arrête sans
+      genre) garde la lecture tolérante d'avant (`teteDuPayload`, zéros au-delà du payload) — c'est
+      ce que comptaient les apparitions et les événements de véhicule sur ces paquets.
 - Gate : T4.
+  *Passé* (passe `ri23a` contre `ri22a`) : `replay-equiv` 20/20 identiques, tous décodés depuis le
+  film ; faits 20/20 et killsource 19/19 identiques à l'octet. G-film, archlint, vet (avec et sans
+  `research`), `golangci-lint` (0 problème) verts ; empreinte de la grammaire régénérée à révision
+  constante. Parcours de la cuisson : inchangés (chaque lecteur de tête garde son parcours des
+  trames, désormais sans relire la tête ni la marche) ; leur mise en commun est le lot 3.1.
 
 ### Mesure avant 2.4 et 2.5 (DT2-5) — taille S
 - [ ] M.1 Durées par étape et pic mémoire de la cuisson, trois témoins et un BTB, machine calme,
@@ -500,7 +539,8 @@ plan y sont reprises comme items (3.1.2).
 - 2026-10-03 : signal « machine calme » de la campagne (vague 1 décodée) : la passe de preuve de 2.2
   est arrêtée pour jouer la mesure de performance de l'étape 1 (critère 4), qui l'attendait : aucune
   régression (détail au plan de l'étape 1, qui est CLOS) ; campagne prévenue de la fin de la mesure.
-- 2026-10-03 : lot 2.2 — 2.2.1 fait et prouvé (cf. le lot), clôture à la CI verte du commit du lot ;
+- 2026-10-03 : lot 2.2 CLOS — 2.2.1 fait et prouvé (cf. le lot), CI verte au niveau job sur `6063f13b5`
+  (run `37133432247`) ;
   2.2.2 statué `[!]` (découverte 8),
   décision de l'utilisateur demandée. Décisions d'exécution 1 à 7 écrites au lot avant le code ;
   la décision 2 corrige le premier temps de 2.1 (un test de 2.1 ne passait que par des marques de la
@@ -508,3 +548,11 @@ plan y sont reprises comme items (3.1.2).
   `000d5950` ; le test prend désormais le bouclier). Différence nulle prouvée. ADR 0037 amendé
   (IR-3 : distribution de la phase des images-clés, corps lus seulement par un canal, film sans
   registre ; IR-4 : intérêts par phase). Suite : lot 2.3 (canaux de tête de vue A).
+- 2026-10-03 : lot 2.3 fait et prouvé (cf. le lot), clôture à la CI verte du commit du lot. Décisions
+  d'exécution 1 à 4 écrites au lot avant le code : les phases d'une distribution sont celles que ses
+  canaux lisent (`CanalDImageCle`, `CanalDesTrames`, `CanalDesTetes`), la tête se range dans la vue
+  A (la marche complète la range aussi pour les listes localisées), les décodeurs partent de la tête
+  rangée, chaque point d'entrée est une distribution à un canal. Deux instruments de recherche anciens
+  (retours rejeu : `m4b_compteur_research_test.go`, `p4_entites_ti9_research_test.go`) ajustés
+  mécaniquement au contexte de `ScanFireEvents` ; campagne prévenue. Suite : la mesure M (machine
+  calme, signal de la campagne) ; le second temps de 2.1 à la fusion de la vague 1.

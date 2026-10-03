@@ -104,8 +104,8 @@ func FuzzFilmRecordReaders(f *testing.F) {
 		_, _ = decodeFireEvent(payload)
 		// Les lecteurs de REFERENCES D EVENEMENT (lot J2.9, constats GA1-1/GB-2) : appeles comme le
 		// font `ScanVehicleEvents` et `ScanEquipmentSpawnEvents`, sans autre garde que la leur.
-		_, _ = decodeVehicleEvent(payload, 0, NewSlotBand(nil))
-		_, _, _ = decodeEquipmentSpawnEvent(payload)
+		_, _ = decodeVehicleEventDuPayload(payload, 0, NewSlotBand(nil))
+		_, _, _ = decodeEquipmentSpawnEvent(payload, teteDuPayload(payload))
 		// La marche des deux phases de la representation intermediaire, et les bornes de ce
 		// qu elle range (`marche_fuzz_test.go`).
 		marcherUnPayloadQuelconque(t, payload)

@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -89,23 +90,6 @@ func readPacketHead(br *Lecteur) packetHead {
 	h.More = br.ReadBit()
 	h.Type = int(br.ReadBits(eventTypeBits))
 	return h
-}
-
-// PacketHeadEventType lit le type de l'ÉVÉNEMENT DE TÊTE d'un payload de paquet delta. Si la
-// continuation est nulle, la liste est vide (le paquet est une trame de records pure) et present
-// vaut false. Aucune charge n'est décodée : O(1), sans allocation au-delà du reader.
-//
-// C'est le CADRAGE MINIMAL de la liste : il suffit à compter les familles par type de tête
-// (validation des comptes corpus) sans porter la grammaire de charge de chaque type.
-func PacketHeadEventType(pay []byte) (typ int, present bool) {
-	if len(pay) < 1 {
-		return 0, false
-	}
-	h := readPacketHead(LecteurSur(pay))
-	if !h.More {
-		return 0, false
-	}
-	return h.Type, true
 }
 
 // --- Référence gardée -------------------------------------------------------------------------
@@ -275,9 +259,9 @@ const vehicleSeatBits = 6
 //   - EMBARQUEMENT (`biped_board_vehicle`) : réfs en domaines 2, 3, 7 puis R(6) siège. AUCUNE
 //     sonde (elle n'existe que pour le domaine 1). La réf 0 est l'occupant, slot = base +
 //     index(8).
-func decodeVehicleEvent(pay []byte, base uint32, inBand SlotBand) (types.VehicleEvent, bool) {
-	typ, present := PacketHeadEventType(pay)
-	if !present || (typ != EventBipedBoardVehicle && typ != EventUnitExitVehicle) {
+func decodeVehicleEvent(pay []byte, base uint32, inBand SlotBand, t teteDeTrame) (types.VehicleEvent, bool) {
+	typ := t.genre
+	if !t.liste || (typ != EventBipedBoardVehicle && typ != EventUnitExitVehicle) {
 		return types.VehicleEvent{}, false
 	}
 	ev := types.VehicleEvent{Kind: typ}
@@ -391,34 +375,36 @@ func ScanFilmVehicleEvents(dir string) ([]types.VehicleEvent, error) {
 // est board/exit. Les chunks illisibles sont ignorés (film partiel) ; erreur seulement si aucun
 // chunk lisible.
 func ScanVehicleEvents(fc *FilmContext) ([]types.VehicleEvent, error) {
-	nums := fc.ChunkNumbers()
-	band := fc.BipedSlots()
-	base := uint32(0)
-	if slots := band.Slots(); len(slots) > 0 {
-		base = slots[0] // la bande est rendue en ordre croissant : le premier EST le minimum
+	c := &canalDesEvenementsDeVehicule{band: fc.BipedSlots()}
+	if slots := c.band.Slots(); len(slots) > 0 {
+		c.base = slots[0] // la bande est rendue en ordre croissant : le premier EST le minimum
 	}
-	var out []types.VehicleEvent
-	read := 0
-	for _, c := range nums {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		read++
-		for _, p := range pks {
-			if p.Type != PacketTypeDelta || p.Size < 1 {
-				continue
-			}
-			ev, ok := decodeVehicleEvent(p.Payload(data), base, band)
-			if !ok {
-				continue
-			}
-			ev.Chunk, ev.PacketIndex, ev.TimestampUS = c, p.Index, p.TimestampUS
-			out = append(out, ev)
-		}
-	}
-	if read == 0 {
+	distribuerLesTetesSeules(fc, []Canal{c})
+	if c.lus == 0 {
 		return nil, ErrNoReadableFilmChunk
 	}
-	return out, nil
+	return c.out, nil
 }
+
+// canalDesEvenementsDeVehicule lit l'événement d'embarquement ou de sortie de tête de chaque trame
+// delta, dans la passe des têtes.
+type canalDesEvenementsDeVehicule struct {
+	band SlotBand
+	base uint32
+	out  []types.VehicleEvent
+	// lus : les chunks que la passe a pu lire.
+	lus int
+}
+
+func (*canalDesEvenementsDeVehicule) Interets() []Interet { return nil }
+
+func (c *canalDesEvenementsDeVehicule) Tete(p *lecture.Paquet) {
+	ev, ok := decodeVehicleEvent(p.Payload, c.base, c.band, teteDe(p))
+	if !ok {
+		return
+	}
+	ev.Chunk, ev.PacketIndex, ev.TimestampUS = p.Chunk, p.Index, p.TS
+	c.out = append(c.out, ev)
+}
+
+func (c *canalDesEvenementsDeVehicule) Clore(b BilanDeMarche) { c.lus = b.ChunksLus }

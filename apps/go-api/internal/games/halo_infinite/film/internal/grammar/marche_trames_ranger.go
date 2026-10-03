@@ -107,11 +107,14 @@ func composantLu(t *EntityTrace, k int, interesse bool) lecture.Composant {
 	return c
 }
 
-// rangerLesVues range l etendue et l etat des trois vues.
+// rangerLesVues range l etendue et l etat des trois vues. Une marche partie de la tete re-range la
+// vue A qu elle a lue (la tete rangee avant la marche n en est que le debut) ; depuis un debut
+// localise, la vue A reste la tete ([rangerLaTete]).
 func rangerLesVues(p *lecture.Paquet, l *lectureDeTrame) {
 	if l.enTete {
 		p.VueA.Debut, p.VueA.Bits = uint32(l.debutVueA), uint32(l.finVueA-l.debutVueA) //nolint:gosec // positions
 		p.VueA.Etat = etatDeVue(l.vueA.Porte)
+		p.VueA.Genres = p.VueA.Genres[:0]
 		for _, g := range l.vueA.Genres {
 			p.VueA.Genres = append(p.VueA.Genres, uint8(g)) //nolint:gosec // genre R(7)
 		}
