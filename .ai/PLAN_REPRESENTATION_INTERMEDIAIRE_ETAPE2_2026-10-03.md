@@ -1,12 +1,12 @@
 # PLAN — Représentation intermédiaire du film, étape 2 (2026-10-03)
 
-> **Statut : VALIDÉ PAR L'UTILISATEUR le 2026-10-03 (« Oui tu as mon accord ») ; GO D'EXÉCUTION À
-> CONFIRMER après la fusion de l'étape 1** — dernier item de clôture de l'étape 1
-> (`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`), rédigé le 2026-10-03 par la session
-> qui a exécuté l'étape 1, sur accord de l'utilisateur (« tu peux y aller pour les choses qui
-> n'attendent pas la fin de la campagne »). Aucun lot ne démarre avant : la fusion de l'étape 1 dans
-> `feat/v75` (accord de l'utilisateur) et un « GO étape 2 » daté. Contrat : skill `plan-execution`
-> (ce plan fait foi en cas de divergence).
+> **Statut : EN COURS — validé et lancé par l'utilisateur le 2026-10-03** (« Oui tu as mon
+> accord », puis « je t'ai dit que je te le donnais » : l'accord est le GO) — dernier item de clôture
+> de l'étape 1 (`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`), rédigé le 2026-10-03
+> par la session qui a exécuté l'étape 1. L'étape 1 est fusionnée dans `feat/v75` (`67c379fc1`).
+> Contrat : skill `plan-execution` (ce plan fait foi en cas de divergence). On ne revient vers
+> l'utilisateur que pour une fusion dans `feat/v75` ou une décision produit nouvelle ; les pushes de
+> la branche de travail pour la CI se font sans redemander.
 >
 > **Pour qui** : l'agent qui exécutera l'étape 2, et la session de la campagne de grammaire, qui
 > travaille sur des fichiers voisins (§1.3).
@@ -67,7 +67,7 @@ le contexte d'une cuisson et mesure.
 
 ### 1.1 Branche et worktree
 - Branche **`feat/ri-etape2`**, créée depuis `origin/feat/v75` APRÈS la fusion de l'étape 1.
-- Worktree dédié à côté du checkout principal (`LevelUp-wt-ri2`), jonctions `apps/web/node_modules`,
+- Worktree de l'étape 1 réutilisé (`LevelUp-wt-ri`, un seul exécutant), jonctions `apps/web/node_modules`,
   `data/cache/film_chunks` et `data/cache/film_manifests` vers le checkout principal ; toutes retirées
   par `(Get-Item <jonction>).Delete()` AVANT tout `git worktree remove` (jamais `--force`).
 - Cache de compilation Go DÉDIÉ (`GOCACHE=%LOCALAPPDATA%\go-build-ri2`) : la campagne compile en
@@ -110,7 +110,7 @@ fichier de l'autre se signale, ne se corrige pas.
 - 2026-10-03 : la mémoire de la marche des images-clés n'est pas partagée entre la cuisson et
   killsource à l'étape 1 ; elle se reprend à l'étape 2 (lot 2.7 (c) puis 3.1 : killsource devient un
   canal de la même marche, contexte unique par cuisson).
-- À DEMANDER au début de l'étape : le « GO étape 2 » daté, rien d'autre — l'ordre des lots qui attendent la
+- GO de l'étape 2 : DONNÉ le 2026-10-03 (statut ci-dessus) ; l'ordre des lots qui attendent la
   campagne est réglé au §3 (report par le plan), la mutualisation par DT2-5.
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
@@ -310,3 +310,6 @@ de ce plan y sont reprises comme items : 3.1.2.)
 - 2026-10-03 : plan validé par l'utilisateur (« Oui tu as mon accord », en réponse à la présentation
   du plan et à la demande d'accord de fusion de l'étape 1) ; le GO d'exécution daté se confirme après
   la fusion de l'étape 1.
+- 2026-10-03 : GO de l'utilisateur (« je t'ai dit que je te le donnais ») ; branche `feat/ri-etape2`
+  créée depuis `origin/feat/v75` = `67c379fc1` (amont désactivé), dans le worktree de l'étape 1.
+  Ouverture du lot 2.0.
