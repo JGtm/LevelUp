@@ -52,6 +52,11 @@ type Lecteur struct {
 	// rejetVueB : la derniere boucle de records de la vue B ([decodeInferLoop]) s est arretee sur un
 	// en-tete REJETE et non sur son terminateur ; le curseur est a la fin de cet en-tete.
 	rejetVueB bool
+	// etatComplet : le record en cours est un ETAT COMPLET d image-cle (`FUN_142e2c690`), lu sans
+	// masque de presence. Pose par [walkKeyframeFullState] seul ; faux pour tout record dont un
+	// masque est lu (record NEW, DELTA). Les composants dont la lecture depend d une loi du masque
+	// le consultent ([consumeComposantsVehiculeTi40]).
+	etatComplet bool
 }
 
 // LecteurSur rend un lecteur de grammaire positionne sur le premier bit de `buf`. C est la

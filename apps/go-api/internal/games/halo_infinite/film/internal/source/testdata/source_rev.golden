@@ -84,5 +84,11 @@
 #               valeur differente (`bits_conventions_test.go`, `bits_deborde_test.go`). L en-tete de
 #               `bits.go` dit desormais les deux moities de la semantique du moteur (des zeros, ET le
 #               verdict). Le seul appelant est la carte de fermeture detaillee de `grammar`.
+#
+#   2026-10-03  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot L4a de la campagne de grammaire).
+#               AUCUNE SOURCE DE LA COUCHE NE CHANGE : `film/types`, que la fermeture rencontre par
+#               ses jetons, renomme un compteur de `MovementStateStats` (`VehicleTypePhysicsAssumed`
+#               -> `VehicleTypePhysicsByWriterLaw`, meme place dans le blob des faits). Aucune
+#               lecture d octets ne change.
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	08e339b280983ff44c5a3c16a404c12f0ffde6f3338bc04ec726744f4dd83618
+source-2026-09-16.2	23e87562013d85e21536e7c35247f695bbeb7fc64ec4eec801182edbb614af73

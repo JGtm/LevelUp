@@ -178,10 +178,10 @@ type MovementStateStats struct {
 	// par la chaine de records qui finit sur le debut localise, ou, liste non localisee, par la
 	// fermeture de la vue C. Ils sont aussi comptes dans `EventPacketsLocated`.
 	EventPacketsNewRecordStart int
-	// VehicleTypePhysicsAssumed : les lectures de `ti=40 i34 vehicle-type-physics` dont la porte
-	// RUNTIME (octet +0x818 du vehicule) est supposee posee — le repli nomme
-	// `repli_physique_de_type_de_vehicule_supposee` (lot M4b, `grammar/composants_vue_b_m4b.go`).
-	VehicleTypePhysicsAssumed int
+	// VehicleTypePhysicsByWriterLaw : les lectures de `ti=40 i34 vehicle-type-physics` dans les
+	// records de la marche des trames ; leur porte (octet +0x818 du vehicule) est posee par la loi
+	// du masque : l ecrivain n annonce `i34` que porte posee (`grammar/composants_vehicule_ti40.go`).
+	VehicleTypePhysicsByWriterLaw int
 	// Desyncs est le nombre de records `ti=35` desynchronises pendant la marche. Mesure de
 	// reference (lot 5.3.5) : 3 sur 97 447 sur `bfecd02b`, 51 sur 315 251 sur `4f77afc1`.
 	Desyncs int

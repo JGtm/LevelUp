@@ -99,8 +99,16 @@ const ecsProbeBytes = 512
 //
 // Les quatre autres ports du lot (`ti=47 i2`, `ti=5 i22` et `i24`, `ti=40 i34`) ont une largeur
 // GARDEE par le flux : leur colonne `bits_typ` n est pas un entier et reste hors des deux comptes.
+// 2026-10-03 (lot L4a de la campagne de grammaire) : 123 -> 131 largeurs FIXES, 66 gardees
+// INCHANGEES. HUIT lignes `ti=40` (`composants_vehicule_ti40.go`) entrent par le haut depuis
+// `non_porte`, aucune ligne existante ne change de categorie :
+//
+//	i30 3  i31 19  i32 9  i36 4  i39 2  i41 16  i42 16  i45 24
+//
+// Les six autres (`i33`, `i35`, `i38`, `i40`, `i46`, `i47`) ont une largeur GARDEE par le flux :
+// leur colonne `bits_typ` est un intervalle, hors des deux comptes.
 const (
-	ecsLargeursFixes   = 123
+	ecsLargeursFixes   = 131
 	ecsLargeursGardees = 66
 )
 

@@ -20,11 +20,13 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 //	ti=40 i37 vehicle-emp-timer             8a485699 : 608 paquets ouverts ; 1cd3848a : 31
 //	ti=10 i24 managed-object-looping-sound  81c02726 : 206 paquets ouverts (125 DELTA, 81 NEW)
 //
+// Les deux ports `ti=40` vivent avec les autres composants du vehicule
+// (`composants_vehicule_ti40.go`), maillon suivant de la chaine.
+//
 // Chaque grammaire est lue chez l ECRIVAIN (Ghidra, HaloInfinite.exe, base 0x140000000) : nom ->
 // accesseur de nom -> descripteur de replication -> deserialiseur a +0x28 (meme gabarit que
 // `ti=47 i1`, `FUN_140daebd0` a `143d085d8 + 0x28`). Aucune valeur n est interpretee ni publiee :
-// ces ports rendent la LARGEUR juste, pour que la liste continue. Une seule porte n est pas dans
-// le flux (i34) : elle est un repli NOMME et COMPTE ([compVehicleTypePhysics]).
+// ces ports rendent la LARGEUR juste, pour que la liste continue.
 
 // --- ti=47 i2 -------------------------------------------------------------------------------
 
@@ -83,59 +85,6 @@ func consumePlayerAimAssist(br *Lecteur) {
 // ([consume1407f0550]).
 const compPlayerDesiredFrameConfiguration = "player-desired-frame-configuration-component"
 
-// --- ti=40 i34 et i37 -----------------------------------------------------------------------
-
-// compVehicleTypePhysics est l etiquette de registre de `ti=40 i34` : nom `143d0a838`, accesseur
-// `141177260`, descripteur `143d0b308`, deser `FUN_142f02498` :
-//
-//	si objet[+0x818] :                        porte RUNTIME, hors du flux
-//	   c = R(1)                               mode = c ? 2 : 0
-//	   FUN_140c5f938(lecteur, +0x7f4, +0x800, mode)   mode 2 : R(192) ; 0 : [decodeObjectForwardAndUp]
-//	   FUN_14076e1c8(lecteur, +0x80c, mode)           mode 2 : R(96)  ; 0 : [consumeDynPrecVec3]
-//
-// C est EXACTEMENT la paire (avant/haut, vitesse angulaire) des composants dynamiques de precision
-// de l archetype (`FUN_14076e1c8` est le lecteur de [consumeObjectAngularVelocity]). L ecrivain
-// (`FUN_142f04e90`, descripteur +0x10) teste le MEME octet et n ecrit rien sans lui.
-//
-// LA PORTE EST UN REPLI NOMME (`repli_physique_de_type_de_vehicule_supposee`, 2026-09-25). L octet
-// `+0x818` n est pas ecrit par le flux lu (ni par ce composant, ni par `i33`, qui le teste aussi) ;
-// il est pose au moment ou le jeu construit le vehicule. Le port le suppose POSE des que le masque
-// annonce le composant, et la preuve est l ORACLE DE CADRAGE : sur `1cd3848a`, la fenetre de la LAAG
-// (vehicule 806) passe de 0 a 765 paquets fermes sur 785 — la vue C finit au bit pres sur ses
-// 0 a 7 bits de bourrage nuls. Chaque lecture supposee est COMPTEE
-// ([types.MovementStateStats.VehicleTypePhysicsAssumed]) ; le retrait attend la lecture de
-// l ecrivain de l octet.
-const compVehicleTypePhysics = "vehicle-type-physics-component"
-
-// consumeVehicleTypePhysics lit `ti=40 i34`, porte runtime supposee posee (cf. la constante).
-func consumeVehicleTypePhysics(br *Lecteur) {
-	if br.ReadBit() { // c : mode 2, les deux vecteurs bruts puis la vitesse brute
-		br.ReadBits(fwdUpDynPrecMode2Bits)
-		br.ReadBits(rawVec3Bits)
-		return
-	}
-	consumeObjectForwardAndUp(br)                            // FUN_140c5f938 mode 0 -> FUN_140c5fa84
-	consumeDynPrecVec3(br, angularMagBits, angularScaleBits) // FUN_14076e1c8 mode 0 -> FUN_14076d528
-}
-
-// compVehicleEmpTimer est l etiquette de registre de `ti=40 i37` : nom `143c995e8`, accesseur
-// `141177300`, descripteur `143d0b498`, deser `FUN_142f049dc` -> `FUN_1432065d8` =
-// `FUN_1406d84b4(..., 8, ...)` : R(8), le meme minuteur quantifie que celui du bipede (`i51`).
-const compVehicleEmpTimer = "vehicle-emp-timer-component"
-
-// lecturesDeComposant rend le nombre de lectures du composant `nom` dans un record (0 ou 1).
-func lecturesDeComposant(r FrameRecord, nom string) int {
-	for _, cr := range r.Trace.Comps {
-		if cr.Name == nom {
-			return 1
-		}
-	}
-	return 0
-}
-
-// largeurMinuteurEMPVehicule : la largeur de `FUN_1432065d8`.
-const largeurMinuteurEMPVehicule = 8
-
 // --- ti=10 i24 ------------------------------------------------------------------------------
 
 // compLoopingSound est l etiquette de registre de `ti=10 i24` : nom `143c94ac0`, accesseur
@@ -146,7 +95,7 @@ const compLoopingSound = "managed-object-looping-sound-component"
 // largeurSonEnBoucle : la largeur du mot de `FUN_140fb89f4` (`+0x2c += 0x20`).
 const largeurSonEnBoucle = 32
 
-// consumeComposantsVueBM4b est le DERNIER maillon de la chaine de dispatch (cf. l en-tete de
+// consumeComposantsVueBM4b est l AVANT-DERNIER maillon de la chaine de dispatch (cf. l en-tete de
 // `dispatch_object.go`) : les ports du lot M4b. Un maillon a lui plutot qu un case de plus dans un
 // maillon existant : ceux-ci sont au plafond du ratchet de longueur de fonction.
 func consumeComposantsVueBM4b(br *Lecteur, name string) (variant uint32, dead *types.DeadState, ported bool) {
@@ -160,14 +109,8 @@ func consumeComposantsVueBM4b(br *Lecteur, name string) (variant uint32, dead *t
 		consume1407f0550(br)
 	case compLoopingSound: // ti=10 i24 et i25 (FUN_140fb89f4) — R(32)
 		br.ReadBits(largeurSonEnBoucle)
-	case compVehicleTypePhysics: // ti=40 i34 (FUN_142f02498) — porte runtime supposee : repli nomme
-		consumeVehicleTypePhysics(br)
-	case compVehicleEmpTimer: // ti=40 i37 (FUN_142f049dc -> FUN_1432065d8) — R(8)
-		br.ReadBits(largeurMinuteurEMPVehicule)
 	default:
-		// Non porte (object position/velocity/angular/region/damage/constraint/parent/
-		// scale/..., unit-actor-control/state/malleable, biped-* tail) : arret propre.
-		return variant, nil, false
+		return consumeComposantsVehiculeTi40(br, name)
 	}
 	return variant, nil, true
 }

@@ -438,3 +438,32 @@ package grammar
 // tir continu (compteurs, rafales lues sur des paquets factices retirees) et les etats de mouvement
 // de quelques listes, que la revision de grammaire des calques signale deja ; `replay-equiv` : 5
 // etapes sur 61 divergent sur les 20 films, les 56 autres sont identiques a l octet.
+//
+// ENTREE `grammar-2026-10-03` (2026-10-03, lot L4a de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LES COMPOSANTS PROPRES AU VEHICULE (`ti=40`, i30 a
+// i47) SE LISENT DANS LES RECORDS A MASQUE, ET LA PORTE `+0x818` EST UNE LOI DU MASQUE.
+//
+// Ce qui change : `composants_vehicule_ti40.go`, dernier maillon de la chaine de dispatch, lit
+// `i30` a `i47` chez leurs deserialiseurs (`FUN_142f04994`, `FUN_14115f33c`, `FUN_142f04b70`,
+// `FUN_142f0496c`, `FUN_142f04b34`, `14116d3cc` -> `FUN_1406d01fc`, `FUN_142f04884`, `FUN_142f04a00`,
+// `FUN_142f04a4c`, `FUN_142f04ac0`, `FUN_142f02508`, `FUN_142f04bcc`, `FUN_142f04a20`), et `i33`
+// (`FUN_142f02474` -> `FUN_14320c4c8`) et `i34` sous la porte `+0x818`. Les deux ecrivains du
+// masque (`FUN_142f09c74`, difference ; `FUN_142f0cca0` via `FUN_143208c18`, capture qui remplace
+// le masque complet de `FUN_142e32138`) ne posent les bits 33 et 34 que porte posee : dans un record
+// lu avec un masque (DELTA, NEW), l annonce PROUVE la porte. Le repli
+// `repli_physique_de_type_de_vehicule_supposee` est retire ; son compteur s appelle
+// `VehicleTypePhysicsByWriterLaw`. Un etat complet d image-cle (sans masque, `FUN_142e2c690`) ne
+// lit aucun de ces composants hors `i37` ([Lecteur.etatComplet]) : la porte y depend du chassis
+// (lot L4b), et la marche d image-cle est inchangee.
+//
+// Mesure sur 20 films (`campagne_grammaire_2026-10-01/LOT_L4a.md`) : 276 327 -> 277 743 paquets
+// sains (+1 416), records utiles sains +27 482, AUCUN sain perdu sur aucun film ; 1 435 paquets
+// gagnes fermes au bit, dont 35 contredits par une regle de l ecrivain (2,4 %). Les 1 666 paquets
+// arretes par un composant `ti=40` non porte passent a 0.
+//
+// `killsource.Rev`, `source.Rev` et `objectives.Rev` NE MONTENT PAS (goldens regeneres a revision
+// constante) : sortie `cmd/killsource json` identique a l octet sur 18 des 19 temoins, et sur
+// `e5adf7b2` seul le diagnostic de l oracle de calibration (non persiste) change. Le document
+// change par les morts de vehicule lues (records qui ne se desynchronisent plus apres l etat de
+// mort), les compteurs de repli de killsource et du tir continu, et quelques listes de plus :
+// `replay.SchemaVersion` reste 76, la revision des calques le signale.

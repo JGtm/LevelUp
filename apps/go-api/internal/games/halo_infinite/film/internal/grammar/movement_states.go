@@ -306,7 +306,7 @@ func (sc *movementStateScanner) paquet(chunk int, pk FilmPacket, data []byte, cf
 	recs, _ := DecodeFrameViews(pay, sc.monde, cfg, MovementStateViews, debut)
 	sc.tir.fermer(false) // le verdict de la vue C, publie par la marche
 	for _, r := range recs {
-		sc.st.VehicleTypePhysicsAssumed += lecturesDeComposant(r, compVehicleTypePhysics)
+		sc.st.VehicleTypePhysicsByWriterLaw += lecturesDeComposant(r, compVehicleTypePhysics)
 		if r.TypeIndex != BipedTypeIndex {
 			continue
 		}

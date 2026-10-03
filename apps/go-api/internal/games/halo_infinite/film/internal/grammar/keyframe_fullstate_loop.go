@@ -108,6 +108,7 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDe
 		return t
 	}
 	t.Mask = ^uint64(0) // etat complet : aucun masque de presence, tous les composants presents
+	br.etatComplet = true
 	traverseComponentLoop(br, arch, &t)
 	t.EndBit = br.BitPos()
 	return t

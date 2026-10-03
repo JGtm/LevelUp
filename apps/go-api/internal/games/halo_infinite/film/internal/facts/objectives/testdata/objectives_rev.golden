@@ -27,5 +27,9 @@
 #               internal/domain/objectiveevent) : le perimetre perd internal/domain,
 #               internal/domain/title et internal/games/canonical. Renommage mecanique, aucune
 #               sortie ne change ; serie nee sur cette branche, jamais publiee.
+#   2026-10-03  EMPREINTE SEULE, REVISION CONSTANTE (lot L4a de la campagne de grammaire). Aucune
+#               source de la couche ne change : `film/types` renomme un compteur de
+#               `MovementStateStats` (`VehicleTypePhysicsAssumed` -> `VehicleTypePhysicsByWriterLaw`),
+#               que les objectifs ne lisent pas. La sortie des objectifs ne peut pas changer.
 objectives-2026-09-26	f6cb78cf7aa0e0a20fb5fbbd543449a404d786fd8c049f97c5d2faacbf97912e
-objectives-2026-09-27	1272824fc632da0c5933d333f79efb36dbb0165327c2d5a83e0e383b3491aa7f
+objectives-2026-09-27	6e3d9a1b71915c75e03069e36e10d06819df706d0dca23912fc643e7e10b940e
