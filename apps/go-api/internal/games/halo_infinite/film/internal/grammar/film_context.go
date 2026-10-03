@@ -153,6 +153,8 @@ type FilmContext struct {
 	replis replisDuContexte
 	// marches : la marche d ancres de chaque payload d image-cle, faite une fois ([memoireDesMarches]).
 	marches *memoireDesMarches
+	// ancres : l ancrage bipede des trames delta, fait une fois ([ancresBipedes]).
+	ancres *ancresBipedes
 	// diag : les DIAGNOSTICS de ce film (diagnostic.go, lot J12.3) — ce que la couche journalisait,
 	// rendu a l orchestrateur qui l a ouvert ([FilmContext.Diagnostics]).
 	diag constat.Diagnostics

@@ -169,7 +169,7 @@ valeur de l'image statique (`DAT_144706100` = 0x1FFF, catégorie 7 de `FUN_1406d
 des morts d'objet la CALIBRE de 10 à 15 (`object_deaths_calibrate.go`). `gate15` est un choix de
 killsource (`pickGate15`) : il entre à 2.7.c ; l'octet `+0x818` reste un repli nommé du registre.
 
-### Lot 2.1 — L'en-tête et le distributeur ; canaux des états de mouvement et du tir continu (taille M) — fait, clôture à la CI verte
+### Lot 2.1 — L'en-tête et le distributeur ; canaux des états de mouvement et du tir continu (taille M) — CLOS le 2026-10-03
 *EN DEUX TEMPS, convenu avec la campagne le 2026-10-03 (même formule que le lot 1.3 de l'étape 1)* :
 2.1.0, 2.1.1 et la marque « interprété » de 2.1.3 d'abord, en fichiers neufs (`grammar/lecture`,
 `grammar/entete.go`, `grammar/distribuer*.go`) et dans les fichiers de la marche
@@ -263,7 +263,8 @@ pour ses crochets :
   l'octet. G-film et archlint (T1, T3, T6 compris), `go vet` (avec et sans `research`),
   `golangci-lint` (0 problème) verts ; empreinte de la grammaire régénérée à révision constante.
   Parcours de la cuisson : inchangés (une phase des images-clés pour les préliminaires, une marche
-  des trames).
+  des trames). CI verte au niveau job sur la fusion (`2f8346d42`, run `37145047635`) et sur le
+  commit du lot (`04208d803`, run `37146393269`).
 
 ### Lot 2.2 — Canaux d'image-clé (taille M) — coordination §1.3 — CLOS le 2026-10-03 (2.2.2 en attente d'une décision de l'utilisateur)
 *Décisions d'exécution du 2026-10-03* (relu sur pièces : chaque consommateur pilote aujourd'hui sa
@@ -417,18 +418,81 @@ décider de localiser la liste d'événements, sans le ranger dans la structure)
       au point d'étape du 2026-10-03 ; une objection la rouvre. 2.4 et 2.5 attendent la fusion de
       la vague 1 (§1.3).
 
-### Lot 2.4 — Récupération ancrée mutualisée (taille L)
-- [ ] 2.4.1 UN ancrage bipède par film (positions et les huit passes du marcheur ancré, véhicules
+### Lot 2.4 — Récupération ancrée mutualisée (taille L) — fait, clôture à la CI verte (la marque et le registre en attente d'une décision de l'utilisateur)
+*Décisions d'exécution du 2026-10-03* — relu sur pièces et mesuré avant le code (instrument
+`grammar/ancrage_partage_research_test.go`) : la cuisson ancre les records bipèdes NEUF fois avec
+les mêmes paramètres (positions, puis changements d'arme, deltas d'inventaire, rangs de capacité,
+changements d'équipement, camouflage, grappin, impulsions et charges de capacité). L'ancrage
+(curseur bit à bit) coûte 0,6 à 1,8 s par passe sur quatre films ; au-delà de l'ancrage, chaque
+balayage coûte 0 à 140 ms (les changements d'équipement 0,17 à 0,95 s, leur récupération gatée) ;
+la marche de TOUS les corps ancrés jusqu'au bout de leur masque coûte 31 à 159 ms (240 000 à
+488 000 records par film). Le gain est donc dans l'ancrage, pas dans les corps.
+1. *Un ancrage par film, mémorisé dans le contexte.* Les records bipèdes ancrés sous les paramètres
+   du contexte (`ChunkNumbers`, `BipedSlots`, `I0Layout`, générations vivantes datées par paquet) sont
+   relevés une fois, rangés compacts (par paquet : chunk et rang ; par record : bit d'i0, slot,
+   génération, masque d'au plus sept index), et les neuf lecteurs les parcourent dans l'ordre du flux.
+   `walkDeltaBipedRecords` reste la primitive d'ancrage et n'a plus que la mémoire pour appelant ;
+   le garde-rail « pas de dixième site » reste vert. La visée sans position (`offline_aim_only.go`,
+   masque qui ne commence pas à i0) et la récupération gatée des équipements
+   (`equipment_recovery.go`, fenêtres de saut) ancrent sous d'AUTRES prédicats : autres méthodes,
+   autres records, une passe chacune — elles ne partagent pas cet ancrage. La bande `ti=40` des
+   véhicules n'a qu'un lecteur : rien à mettre en commun.
+2. *Les positions bipèdes lisent cet ancrage* quand la cuisson ne force ni chunks, ni découpage, ni
+   générations (c'est le cas de la cuisson) : paramètres et suites ancrées prouvés égaux paquet par
+   paquet sur les vingt films du corpus (2.4.2). Les positions des véhicules (bande `ti=40`, toutes
+   générations) et les instruments qui forcent leurs options gardent l'ancrage du payload
+   (`ScanBipedRecords`). La bande bipède n'est plus relevée deux fois : `repli_bande_bipede_comblee`
+   compte une fois par film — changement DÉCLARÉ (DT2-4, ADR 0037 D-10), la seule différence
+   attendue à la preuve (coverage et rapport de replis des faits).
+3. *La marque « récupéré » et le compte au registre attendent une décision de l'utilisateur*
+   (2.4.1, partie statuée `[!]`, découverte 10) : l'ancrage décide aujourd'hui DEVANT la lecture de la
+   marche pour les records qu'elle lit — même question que 2.2.2.
+4. *Les étendues de composants des records ancrés ne sont pas rangées* : aucun lecteur ne les lit —
+   chaque balayage marche son record jusqu'à son composant, mesuré bon marché ci-dessus (règle 7 :
+   une donnée sans lecteur est du code mort). Elles se rangeront avec leur premier lecteur.
+- [!] 2.4.1 UN ancrage bipède par film (positions et les huit passes du marcheur ancré, véhicules
       compris), mémorisé ; records `PreuveRecupere`, méthode nommée, étendues de composants jusqu'au
       premier infranchissable (`delta_biped_walk.go`, `offline_biped*.go`, `ability_*.go`,
       `camo_state.go`, `grapple_state.go`, `held_weapon_changes.go`, `inventory_delta.go`,
       `equipment_changes.go`, `equipment_recovery.go`, `offline_aim_only.go`, `replay/film_scan.go`).
       Le garde-rail `delta_biped_walk_guard_test.go` (pas de dixième site d'ancrage) reste vert.
-- [ ] 2.4.2 Égalité de bande (`fc.BipedSlots()` contre `bipedSlotBand` recalculée) et de découpage
+      *Fait* : l'ancrage unique mémorisé (`ancres_bipedes.go` : `FilmContext.ancresBipedes`,
+      `parcourirLesAncresBipedes`), lu par les huit balayages et par les positions de la cuisson
+      (`ancrageDuContexte`, `balayerLesPositions`, `positionsDesAncres`, `lireLaPosition` sortie de
+      `ScanBipedRecords`) ; véhicules, visée sans position et récupération gatée : décision 1 ;
+      `replay/film_scan.go` inchangé (mêmes points d'entrée). Garde-rail vert. *Non fait* : la
+      marque `PreuveRecupere`, la méthode nommée et le compte au registre attendent la décision de
+      l'utilisateur (décision 3, découverte 10) ; les étendues de composants ne sont pas rangées,
+      faute de lecteur (décision 4).
+- [x] 2.4.2 Égalité de bande (`fc.BipedSlots()` contre `bipedSlotBand` recalculée) et de découpage
       prouvée film par film AVANT la bascule.
-- [ ] 2.4.3 Le harnais `FuzzFilmRecordReaders` couvre la couche de récupération (aucune panique,
+      *Fait* (`ancrage_partage_research_test.go`, avant la bascule) : sur les vingt films du corpus
+      d'équivalence, chunks, bande (36 à 256 slots), découpage et générations des positions égaux à
+      ceux du contexte, et suites ancrées identiques paquet par paquet (11 130 à 79 550 paquets
+      delta par film, aucun différent).
+- [x] 2.4.3 Le harnais `FuzzFilmRecordReaders` couvre la couche de récupération (aucune panique,
       records récupérés bornés par les bits du payload), comme il couvre la marche depuis l'étape 1.
+      *Fait* (`ancres_bipedes_fuzz_test.go`) : l'ancrage d'un payload quelconque sous la bande de
+      tous les slots, le rangement compact de chaque record et sa relecture (égalité exigée), la
+      lecture de sa position avec directions et vitalité ; bornes : i0 dans le payload, masque de
+      deux à sept index, records sans chevauchement. Campagne de 45 s : 2,5 millions d'exécutions,
+      aucune panique.
 - Gate : T4 sur les données ; `coverage.fallbacks` déclaré ; banc `b.Loop` ; critère 4.
+  *Passé* (passe `ri24a` contre `ri31`) : digests `replay-equiv` identiques sur toutes les étapes
+  de données des vingt films, tous décodés depuis le film ; seule l'étape `artifact` diffère, sur
+  seize films, et la seule différence de l'artefact est le compte déclaré de
+  `repli_bande_bipede_comblee` (vérifié en entier sur deux films : 2 → 1, 4 → 2) ; les faits
+  diffèrent sur les mêmes seize films par leur rapport de replis ; killsource 19/19 identique à
+  l'octet. Banc `BenchmarkRecuperationAncree` (`b.Loop`, mini-bobine, dix paires alternées) :
+  médiane 904 → 316 ms (−65 %). Critère 4 (machine calme, binaires alternés, deux tours) : durées
+  de cuisson −13 à −16 % (BTB 112,9 → 98,2 s ; `e5adf7b2` 45,4 → 39,0 ; `60ae07c4` 32,2 → 27,0 ;
+  `11de8353` 39,1 → 34,1), pics dans la dispersion (BTB 0,92 à 1,09 Gio des deux côtés) ; trace
+  du ramasse-miettes : le tas vivant du décodage monte de 15 à 30 Mo (l'ancrage mémorisé, ≈ 11 Mo
+  rangés sur le BTB), sans effet sur le pic de fin de cuisson. G-film, archlint, `go vet` (avec et
+  sans `research`), `golangci-lint` (0 problème) verts ; empreinte de la grammaire régénérée à
+  révision CONSTANTE : aucune donnée décodée ne change, seul le compte déclaré. Parcours de la
+  cuisson : huit balayages bit à bit des trames delta de moins (neuf ancrages bipèdes → un), et un
+  relevé de la bande bipède de moins.
 
 ### Lot 2.5 — Récupération des objets du monde (taille L)
 - [ ] 2.5.1 Créations multi-archétypes en une passe ; pistes sur l'union des bandes
@@ -591,6 +655,15 @@ plan y sont reprises comme items (3.1.2).
    critère 4 ne se décide pas sur lui avec quelques paires. Les mesures du critère 4 (après 2.4,
    2.5, 2.7, 3.1) et 3.2 gagneraient à lire aussi le tas vivant par phase (trace du ramasse-miettes,
    comme à M.1). Non traité.
+10. *(lot 2.4)* **L'ancrage d'en-tête bipède décide devant la lecture de la marche.** Les neuf
+   lecteurs ancrés (positions et huit canaux) lisent tous les records qu'ils ancrent, y compris ceux
+   que la marche des trames lit (97 447 records `ti=35` marchés contre 162 444 ancrés sur
+   `bfecd02b`, en-tête de `movement_states.go`). Inscrire l'ancrage au registre comme méthode de
+   récupération (DT2-4 ; ADR 0037 D-10 : nommée, ordonnée après la lecture, comptée, retirée) le
+   déclarerait `devant_la_lecture`, ce que le cliquet `NbDevantLaLecture` interdit de faire monter.
+   Même question que 2.2.2 (découverte 8) ; la forme juste est 2.7.b (les canaux lus par la marche
+   là où elle couvre au moins autant, l'ancrage seulement après). Décision de l'utilisateur
+   demandée.
 
 ## 7. Journal
 
@@ -673,3 +746,12 @@ plan y sont reprises comme items (3.1.2).
   mutation rejouée rouge sur le nouveau site) et elle en est prévenue. ADR 0037 amendé (IR-2 : les
   états de mouvement et le tir continu sont deux canaux du distributeur). Suite : lot 2.4
   (récupération ancrée mutualisée), que la fusion de la vague 1 débloque.
+- 2026-10-03 : lot 2.1 CLOS (CI verte au niveau job sur la fusion et sur le commit du lot). Lot 2.4
+  ouvert sur la même base (`feat/v75` n'a pas bougé, référence : passe `ri31`) ; décisions 1 à 4
+  écrites au lot avant le code, après la mesure (l'ancrage domine les neuf lecteurs ancrés, la
+  marche des corps est bon marché) et la preuve d'égalité des paramètres sur les vingt films
+  (2.4.2). Lot fait et prouvé (cf. le lot) : un ancrage par film au lieu de neuf, cuisson plus
+  courte de 13 à 16 %, la seule différence publiée étant le compte déclaré de
+  `repli_bande_bipede_comblee`. Partie de 2.4.1 en attente : la marque « récupéré » et le registre
+  (découverte 10, même question que 2.2.2). ADR 0037 amendé (IR-6). Campagne prévenue avant la
+  passe et la mesure, et à leur fin.

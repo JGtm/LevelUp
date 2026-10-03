@@ -82,7 +82,7 @@ func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
 
 	var out []UnitEquipmentEmission
 	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
-	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
+	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
 		if !maskHas(r.Mask, idx26) {
 			return
 		}

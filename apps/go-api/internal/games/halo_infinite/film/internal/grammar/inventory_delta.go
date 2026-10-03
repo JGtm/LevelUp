@@ -92,7 +92,7 @@ func ScanInventoryDeltas(fc *FilmContext) ([]types.InventoryDelta, InventoryDelt
 	}
 	sc.gram.obs = sc.installHooks()
 
-	walkDeltaBipedRecords(fc, sc.chunks, sc.slots, sc.gram.lay, func(r deltaBipedRecord) {
+	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
 		sc.st.Records++
 		sc.readRecord(r.Chunk, r.Packet, r.Payload, r.I0, r.Total, r.Slot, r.Mask)
 	})

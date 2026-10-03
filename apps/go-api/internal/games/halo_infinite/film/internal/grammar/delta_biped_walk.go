@@ -28,7 +28,9 @@ import (
 //   - `walkDeltaBipedPayload` marche UN payload deja en main. C'est l'etage que `ScanBipedRecords`
 //     utilise : il est PUR, sans film ni chunk, et c'est le coeur testable du decodeur.
 //   - `walkDeltaBipedRecords` ajoute les deux boucles externes (chunks du contexte de film, puis
-//     paquets delta) et delegue au premier. C'est l'etage des huit balayages de canal.
+//     paquets delta) et delegue au premier. C'est l'etage de l'ancrage du contexte, fait une fois
+//     par film (`ancres_bipedes.go`) : les huit balayages de canal et les positions de la cuisson
+//     le parcourent.
 //
 // # CE QUE LE MARCHEUR NE DECIDE PAS
 //
@@ -73,8 +75,8 @@ func deltaBipedMinRecord(i0Bits int) int {
 // walkDeltaBipedPayload ancre tous les records bipedes d'UN payload de paquet delta et appelle
 // `visit` pour chacun, dans l'ordre du flux.
 //
-// `gens` est le FILTRE DE GENERATION (lot J5.2, DT-8), passe tel quel a `matchBipedHeader` : les
-// huit balayages de canal recoivent les generations VIVANTES du film datees a l instant du paquet
+// `gens` est le FILTRE DE GENERATION (lot J5.2, DT-8), passe tel quel a `matchBipedHeader` : l
+// ancrage du contexte recoit les generations VIVANTES du film datees a l instant du paquet
 // ([FilmContext.GenerationsVivantesA], lot R2-bis), `ScanBipedRecords` celles de ses options
 // (datees par paquet dans `scanBipedChunks`, lot R2). nil : tous les slots dans le repli nomme
 // (generation 1).

@@ -80,6 +80,15 @@ func ScanFilmBipedPositionsForBand(dir string, band SlotBand, opt ScanFilmOption
 // donc le minimum de deux est franchi sans réglage.
 func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptions) (
 	[]BipedPosition, error) {
+	return balayerLesPositions(fc, band, opt, false)
+}
+
+// balayerLesPositions est le corps des deux entrées : les refus d'entrée, le découpage, la lecture
+// des records, puis les filtres de post-traitement. `parContexte` : les records sont ceux de
+// l'ancrage du contexte ([FilmContext.parcourirLesAncresBipedes]), dont la bande est `band` ;
+// sinon chaque payload est ancré sous `band`.
+func balayerLesPositions(fc *FilmContext, band SlotBand, opt ScanFilmOptions, parContexte bool) (
+	[]BipedPosition, error) {
 	film := fc.Film()
 	chunks, err := bipedScanChunks(film, opt)
 	if err != nil {
@@ -103,7 +112,13 @@ func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptio
 		// fois par le contexte, sur les creations de bipede et les images-cles.
 		opt.Generations = fc.GenerationsVivantes()
 	}
-	out, read := scanBipedChunks(film, chunks, band, lay, opt, fc.ContexteDeLecture())
+	var out []BipedPosition
+	var read int
+	if parContexte {
+		out, read = positionsDesAncres(fc, chunks, lay, opt)
+	} else {
+		out, read = scanBipedChunks(film, chunks, band, lay, opt, fc.ContexteDeLecture())
+	}
 	if read == 0 {
 		return nil, ErrNoReadableFilmChunk
 	}
@@ -169,6 +184,34 @@ func scanBipedChunks(film *source.Film, chunks []int, band SlotBand, lay profile
 			}
 		}
 	}
+	return out, read
+}
+
+// positionsDesAncres lit les positions des records de l'ancrage du contexte et rend, comme
+// [scanBipedChunks], le nombre de chunks LUS parmi `chunks`. Les records d'un payload arrivent à la
+// suite : ils partagent un lecteur, comme dans [ScanBipedRecords].
+func positionsDesAncres(fc *FilmContext, chunks []int, lay profile.I0Layout, opt ScanFilmOptions) (
+	[]BipedPosition, int) {
+	read := 0
+	for _, c := range chunks {
+		if _, _, ok := fc.ChunkAt(c); ok {
+			read++
+		}
+	}
+	var out []BipedPosition
+	ctx, g := fc.ContexteDeLecture(), grammaireDOrientation(opt)
+	var br *Lecteur
+	paquet := [2]int{-1, -1}
+	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
+		if cle := [2]int{r.Chunk, r.Packet.Index}; cle != paquet {
+			paquet, br = cle, LecteurSur(r.Payload)
+			br.PoserContexte(ctx)
+		}
+		if rec, ok := lireLaPosition(br, r, lay, opt, g); ok {
+			rec.Chunk, rec.PacketIndex, rec.TimestampUS = r.Chunk, r.Packet.Index, r.Packet.TimestampUS
+			out = append(out, rec)
+		}
+	})
 	return out, read
 }
 

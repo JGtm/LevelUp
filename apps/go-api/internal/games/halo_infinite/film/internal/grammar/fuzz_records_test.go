@@ -80,6 +80,7 @@ func FuzzFilmRecordReaders(f *testing.F) {
 	for s := uint32(1400); s < 1500; s++ {
 		band[s] = true
 	}
+	tousLesSlots := bandeDeTousLesSlots()
 	f.Fuzz(func(t *testing.T, payload []byte) {
 		if len(payload) > fuzzMaxSeed*8 {
 			t.Skip("entree hors du domaine borne du harnais")
@@ -109,6 +110,9 @@ func FuzzFilmRecordReaders(f *testing.F) {
 		// La marche des deux phases de la representation intermediaire, et les bornes de ce
 		// qu elle range (`marche_fuzz_test.go`).
 		marcherUnPayloadQuelconque(t, payload)
+		// La recuperation ancree : ancrage, rangement compact et relecture, lecture des positions
+		// (`ancres_bipedes_fuzz_test.go`).
+		recupererUnPayloadQuelconque(t, payload, tousLesSlots)
 	})
 }
 

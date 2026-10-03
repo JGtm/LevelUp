@@ -115030,3 +115030,31 @@ sans `research`, golangci-lint verts ; empreinte de la grammaire régénérée �
 **Conclusion / prochaine étape** : CI du commit, puis le lot 2.4 (récupération ancrée mutualisée :
 un ancrage bipède par film au lieu de neuf passes), débloqué par la vague 1. Décision de
 l'utilisateur sur 2.2.2 toujours attendue.
+
+## [2026-10-03] Représentation intermédiaire du film, étape 2 — lot 2.1 clos, lot 2.4 : un ancrage bipède par film — Complété (`feat/ri-etape2`, marque « récupéré » en attente d'une décision)
+
+**Statut** : lot 2.1 clos (CI verte sur la fusion `2f8346d42` et le commit `04208d803`) ; lot 2.4 fait
+et prouvé, clôture à la CI verte ; la marque « récupéré » et le compte au registre attendent une
+décision de l'utilisateur (même question que 2.2.2).
+
+**Décision technique principale** : mesurer avant d'écrire. L'instrument
+`ancrage_partage_research_test.go` montre que l'ancrage bipède (curseur bit à bit) fait l'essentiel du
+coût des neuf lecteurs ancrés (0,6 à 1,8 s par passe, contre 31 à 159 ms pour marcher tous les corps
+ancrés), et que les positions ancrent avec exactement les paramètres du contexte sur les vingt films
+du corpus (suites ancrées identiques paquet par paquet). D'où un ancrage par film, mémorisé compact
+dans le contexte (`ancres_bipedes.go`), lu par les huit balayages et par les positions de la cuisson ;
+les corps restent marchés par chaque balayage jusqu'à son composant. La bande bipède n'est plus
+relevée deux fois : `repli_bande_bipede_comblee` compte une fois par film, changement déclaré.
+L'inscription de l'ancrage au registre est suspendue : elle le déclarerait « devant la lecture »
+(cliquet `NbDevantLaLecture`), l'ordre juste venant avec 2.7.b.
+
+**Résultats observés** : passe de preuve — toutes les étapes de données identiques sur les vingt
+films, seule l'étape `artifact` diffère, par le seul compte déclaré (vérifié en entier sur deux
+films) ; killsource 19/19 identique. Banc (`b.Loop`) : 904 → 316 ms. Cuisson (machine calme,
+binaires alternés) : −13 à −16 % (BTB 112,9 → 98,2 s), pics dans la dispersion ; le tas vivant du
+décodage prend 15 à 30 Mo. Fuzz : 2,5 millions d'exécutions sur la couche ancrée, aucune panique.
+G-film, archlint, vet, lint verts ; empreinte régénérée à révision constante.
+
+**Conclusion / prochaine étape** : CI du commit, puis le lot 2.5 (récupération des objets du monde,
+créations multi-archétypes, pistes sur l'union des bandes). Décision de l'utilisateur attendue sur
+la marque « récupéré » des lectures heuristiques (fenêtres de bits des images-clés, ancrage bipède).

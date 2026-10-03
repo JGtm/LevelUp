@@ -194,6 +194,22 @@ start of its view B was found (read from the packet head, or located), a binding
 from, a keyframe record says whether its anchor was chained or elected — and its behaviour does not
 change. Without the mark, a closure measured on the structure would mix grammar and recovery.
 
+Since step 2 (lot 2.4), the anchored biped recovery runs once per film. The positions and the eight
+channel scans that anchor biped records in delta frames used the same parameters (the context's
+chunks, biped slot band, i0 layout and dated living generations) and each anchored on its own;
+the bit-by-bit cursor was most of their cost (0.6 to 1.8 s per pass on four films, against 31 to
+159 ms to walk every anchored body). The anchored records are now kept in the film context, in a
+compact form (per carrying packet; per record its i0 bit, slot, generation and mask), and the nine
+readers walk them in stream order. The positions use them when the cook forces no chunks,
+generations or layout other than the context's; the parameters and the anchored sequences were
+proven equal, packet by packet, on the twenty-film corpus. The biped band is then derived once per
+film, which halves the published `repli_bande_bipede_comblee` count, a declared change. Two
+anchored recoveries keep their own pass, because they use other predicates and find other records:
+the aim-only records, whose mask does not start at i0, and the gated equipment recovery. Marking the
+anchored records as recovered and counting them in the registry waits for a decision. The anchoring
+decides in front of the walk's reading for the records the walk reads, and the registry would
+declare that `devant_la_lecture`. The order is fixed by lot 2.7.b.
+
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 
 A value that the payload does not carry (`IDLowBits`, the MPP widths, the i0 layout, `gate15`, the
