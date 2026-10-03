@@ -516,3 +516,9 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
   `FUN_142f2e598`). Restent les trois items de clôture de l'étape : mesure de performance sur
   machine calme (après l'assemblage de la vague 1 de la campagne), CI, `make gate-push`, accord de
   l'utilisateur et fusion dans `feat/v75`, puis le plan de l'étape 2.
+- 2026-10-03 : ACCORD DE L'UTILISATEUR pour la fusion de l'étape 1 dans `feat/v75` et validation du
+  plan de l'étape 2 (« Oui tu as mon accord »). Avant la fusion : CI verte au niveau job sur la tête
+  poussée, `make gate-push` vert, campagne prévenue. La mesure de performance sur machine calme
+  (critère 4) n'est pas faisable avant le signal de la campagne (trois agents décodent) : report
+  VALIDE (ressource indisponible) ; elle se joue au signal, sur la tête fusionnée, et une régression
+  de plus de 10 % rouvrirait l'étape (ADR 0037, conséquences).

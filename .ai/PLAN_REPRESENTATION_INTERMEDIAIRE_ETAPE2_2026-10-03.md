@@ -1,6 +1,7 @@
 # PLAN — Représentation intermédiaire du film, étape 2 (2026-10-03)
 
-> **Statut : ÉCRIT, À VALIDER PAR L'UTILISATEUR** — dernier item de clôture de l'étape 1
+> **Statut : VALIDÉ PAR L'UTILISATEUR le 2026-10-03 (« Oui tu as mon accord ») ; GO D'EXÉCUTION À
+> CONFIRMER après la fusion de l'étape 1** — dernier item de clôture de l'étape 1
 > (`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`), rédigé le 2026-10-03 par la session
 > qui a exécuté l'étape 1, sur accord de l'utilisateur (« tu peux y aller pour les choses qui
 > n'attendent pas la fin de la campagne »). Aucun lot ne démarre avant : la fusion de l'étape 1 dans
@@ -306,3 +307,6 @@ de ce plan y sont reprises comme items : 3.1.2.)
 - 2026-10-03 : plan écrit par la session de l'étape 1, à partir de l'ADR 0037, de l'analyse du
   2026-10-01 (§3.3), du rapport de cartographie (§1.3, §1.6, §3.3, §3.6, §3.8), de l'état de la
   campagne au 2026-10-03 et des décisions de l'utilisateur ; à valider par l'utilisateur.
+- 2026-10-03 : plan validé par l'utilisateur (« Oui tu as mon accord », en réponse à la présentation
+  du plan et à la demande d'accord de fusion de l'étape 1) ; le GO d'exécution daté se confirme après
+  la fusion de l'étape 1.
