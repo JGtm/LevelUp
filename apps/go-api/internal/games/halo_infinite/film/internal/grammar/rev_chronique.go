@@ -454,3 +454,19 @@ package grammar
 //
 // Ce qui change en sortie : les records `ti=3` se traversent, les paquets qui les portent se lisent
 // plus loin (carte de fermeture et mesures : `campagne_grammaire_2026-10-01/LOT_L8.md`).
+// ENTREE `grammar-2026-10-02.3` (2026-10-02, lot L3a de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FIN DU MOTEUR DE PARTIE, LUE DANS LE JEU.
+//
+// Six composants des archetypes du moteur (`ti=0`, `ti=1`, `ti=2`, index `i11` a `i17`) passent de
+// « non porte » (arret du record) a porte, chacun sur son lecteur et son ecrivain relus dans
+// HaloInfinite.exe HI_1_13_0 (`components_moteur_de_partie.go`) : `i11` R(128) ; `i13` compte R(13)
+// puis un bit par volume ; `i14` tronc commun puis la forme que le NIVEAU du registre du film
+// designe (`CMP R9D, 2` de `FUN_142f0328c`) ; `i15` masque R(64) puis les fentes presentes
+// (`FUN_1407ee87c`) ; `i16` R(7) + R(1) ; `i17` R(8). Le lecteur de minuteur `FUN_140d580d0` (et sa
+// forme longue `FUN_142ba78dc`) n existe plus qu une fois (`lecteur_minuteur.go`, garde-rail
+// `lecteur_minuteur_guard_test.go`) ; ses cinq copies (`ti=5 i2`, `ti=0 i5`, `i6`, `i7`, `i12`)
+// lisent les memes bits qu avant.
+//
+// Ce qui change en sortie : les records du moteur se lisent jusqu au bout au lieu de s arreter sur
+// le premier de ces composants ; les paquets qui les portent peuvent fermer. Mesures et pertes
+// instruites : `campagne_grammaire_2026-10-01/LOT_L3a.md`.

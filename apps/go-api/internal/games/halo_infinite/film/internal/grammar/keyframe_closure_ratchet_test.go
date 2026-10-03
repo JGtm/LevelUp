@@ -344,6 +344,12 @@ func mesurerFermetureBobines(t *testing.T) string {
 	b.WriteString("#     0 -> 104/104, e5adf7b2 0 -> 80/80, bcb6d393 0 -> 330/331, fb1a1a72 0 -> 209/209.\n")
 	b.WriteString("#     Le portage unique de `FUN_14076e524` ne bouge aucune autre ligne ; ses trois sites qui\n")
 	b.WriteString("#     faisaient baisser ti=38 / ti=42 restent en exceptions datees. 0 ligne `fermes` ne descend.\n")
+	b.WriteString("#   2026-10-02 lot L3a de la campagne de grammaire : LA FIN DU MOTEUR DE PARTIE, LUE DANS LE JEU\n")
+	b.WriteString("#     (`ti=0/1/2` i11 a i17, `components_moteur_de_partie.go`). ti=2 ferme ENTIEREMENT sur les six\n")
+	b.WriteString("#     builds recents : 60ae07c4 0 -> 30/30, 11de8353 0 -> 16/16, 111fa685 0 -> 14/14, e5adf7b2\n")
+	b.WriteString("#     0 -> 11/11, bcb6d393 0 -> 19/19, fb1a1a72 0 -> 12/12. a521164d (HI_1_4_1) reste 0/11 sans\n")
+	b.WriteString("#     bloquant nomme (un bit de trop des vieux builds, hors lot) ; ti=1 reste 0/1 sur 60ae07c4 et\n")
+	b.WriteString("#     fb1a1a72, sans bloquant nomme (non instruit). 0 ligne `fermes` ne descend.\n")
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+court)
 		stats := fermetureDUneBobine(t, dir)

@@ -316,7 +316,7 @@ func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant u
 	case compNavpointRadialProgress: // ti=12 i14 (FUN_140fc8d14) — R(8), publie
 		consumeNavpointRadialProgress(br)
 	default:
-		return consumeComposantsVueBM4b(br, name)
+		return consumeMoteurDePartie(br, name, level)
 	}
 	return variant, nil, true
 }
