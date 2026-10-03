@@ -335,8 +335,13 @@ coordonné (§1.3).
 ### Clôture de l'étape 1
 - [ ] Mesure de performance avant/après (critère 4) publiée.
 - [ ] G-CI vert au niveau job ; G-push ; accord de l'utilisateur ; fusion dans `feat/v75`.
-- [ ] Plan de l'étape 2 écrit (migration des canaux et récupération mutualisée, analyse §3.3 lots 2.1
+- [x] Plan de l'étape 2 écrit (migration des canaux et récupération mutualisée, analyse §3.3 lots 2.1
       à 2.7, 3.1, 3.2), en tenant compte de l'état de la campagne à ce moment.
+      *Fait le 2026-10-03* (accord de l'utilisateur : « les choses qui n'attendent pas la fin de la
+      campagne ») : `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md` — lots 2.0 (en-tête
+      de la marche, IR-7) à 2.7, mesure avant la mutualisation, 3.1 et 3.2 ; coordination avec les
+      vagues 1 et 2 de la campagne (§1.3) ; relu à la grille `plan-review`. À valider par
+      l'utilisateur ; aucun lot ne démarre avant la fusion de l'étape 1 et un GO daté.
 
 ## 4. Contrat d'exécution
 

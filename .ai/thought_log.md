@@ -114714,3 +114714,26 @@ sans `research`), `golangci-lint`, `-race` verts ; empreinte régénérée à r�
 **Conclusion / prochaine étape** : clôture de l'étape 1 — CI de la branche, `make gate-push`, mesure
 de performance sur machine calme (après l'assemblage de la vague 1 de la campagne), accord de
 l'utilisateur et fusion dans `feat/v75`, plan de l'étape 2.
+
+## [2026-10-03] Représentation intermédiaire du film — plan de l'étape 2 écrit — Complété (document, à valider)
+
+**Statut** : Complété (dernier item de clôture de l'étape 1 ; le plan est à valider par l'utilisateur).
+
+**Décision technique principale** : `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md` —
+un distributeur (`grammar.Distribuer`, des `Canal` qui déclarent leurs intérêts et ne lisent aucun
+octet), l'en-tête de la marche avec la provenance des paramètres hors flux (lot 2.0, IR-7), les
+canaux migrés dans l'ordre de l'ADR (mouvement et tir continu, images-clés, tête de vue A), une
+mesure avant la récupération mutualisée (règle : mutualiser si ces balayages pèsent plus de 10 % de
+la cuisson), le statborg dans la grammaire, puis les changements de comportement déclarés (2.7) et
+l'étape 3 (3.1, 3.2). Coordination écrite avec les vagues 1 et 2 de la campagne : les lots qui
+touchent ses fichiers sont différés par le plan, le retrait des localisateurs jumeaux reste à LU.
+« Interprété » deviendra exact par l'union des intérêts des canaux.
+
+**Résultats observés** : chemins et fichiers cités vérifiés à la tête (un fichier corrigé : les
+événements de véhicule vivent dans `event_list.go`) ; `archlint` des chemins `.ai` vert ; plan relu
+à la grille `plan-review` (gates en commandes, ordre et reports réglés, décisions tranchées sauf le
+GO).
+
+**Conclusion / prochaine étape** : clôture de l'étape 1 — mesure de performance sur machine calme
+(signal de la campagne), CI, `make gate-push`, accord de l'utilisateur et fusion dans `feat/v75` ;
+validation du plan de l'étape 2 par l'utilisateur.
