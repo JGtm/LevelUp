@@ -92,7 +92,7 @@ naissances lues par la grammaire des messages de la vue A.
 | Lot de ce plan | Fichiers de la campagne qu'il touche ou qu'il lit | Règle |
 |---|---|---|
 | 2.0, 2.6 | aucun | libres dès la fusion de l'étape 1 |
-| 2.1 | `movement_states.go` et `lecteur.go` (L4a de la vague 1 : renommage de `VehicleTypePhysicsAssumed`, champ `etatComplet`) | après la fusion de la vague 1 (constaté avec la campagne le 2026-10-03 ; la ligne d'origine disait « aucun ») |
+| 2.1 | `movement_states.go`, `tir_continu.go` et `lecteur.go` (L4a de la vague 1 : renommage de `VehicleTypePhysicsAssumed`, champ `etatComplet`) | ces trois fichiers après la fusion de la vague 1 ; les fichiers neufs et ceux de la marche avant (convenu le 2026-10-03 ; la ligne d'origine disait « aucun ») |
 | 2.2 (canaux d'image-clé) | `keyframe_anticipe.go`, `keyframe_liaison.go`, `keyframe_datums.go`, `keyframe_world*.go` (LP, variante de la marche d'image-clé) | avant que LP ne démarre, ou après sa fusion — CONVENU le 2026-10-03 : LP n'a pas démarré, 2.2 part ; LP se construira sur la structure |
 | 2.3 (tête de vue A) | `frame_vue_messages.go` et les naissances par la vue A | après la fusion du lot des naissances, ou avec lui — CONVENU le 2026-10-03 : les naissances par la vue A sont un chantier de recherche sans lot écrit, 2.3 n'a pas à l'attendre |
 | 2.4, 2.5 (récupération) | lecteurs de composants des vagues 1 et 2 (`dispatch_*.go`, `components_*.go`) en LECTURE seulement ; créations (`equipment_creation*.go`, `vehicle_creation.go`) | après la fusion de la vague 1 ; les lecteurs sont des briques, inchangées |
@@ -170,9 +170,18 @@ des morts d'objet la CALIBRE de 10 à 15 (`object_deaths_calibrate.go`). `gate15
 killsource (`pickGate15`) : il entre à 2.7.c ; l'octet `+0x818` reste un repli nommé du registre.
 
 ### Lot 2.1 — L'en-tête et le distributeur ; canaux des états de mouvement et du tir continu (taille M)
-*DIFFÉRÉ PAR LE PLAN (règle d'ordre du §3)* : il touche `movement_states.go` et `lecteur.go`, que le
-lot L4a de la vague 1 de la campagne modifie ; il reprend à la fusion de la vague 1 dans `feat/v75`,
-que la campagne signale. Le lot 2.6, indépendant, passe devant.
+*EN DEUX TEMPS, convenu avec la campagne le 2026-10-03 (même formule que le lot 1.3 de l'étape 1)* :
+2.1.0, 2.1.1 et la marque « interprété » de 2.1.3 d'abord, en fichiers neufs (`grammar/lecture`,
+`grammar/entete.go`, `grammar/distribuer*.go`) et dans les fichiers de la marche
+(`marche_trames*.go`) ; 2.1.2 et le resserrage de T3 (2.1.3) après la fusion de la vague 1 dans
+`feat/v75`, que la campagne signale (L4a touche `movement_states.go`, `tir_continu.go` et
+`lecteur.go`). Les canaux déclarent leurs intérêts par PAIRES (archétype, composant), résolues dans le
+registre du film : jamais une liste figée (la vague 1 ajoute des lecteurs), jamais un nom de composant
+seul (« high-frequency » désigne deux tables de composant aux grammaires différentes, ti=3 et ti=4 :
+règle D-89 de la campagne, « routage par archétype ou par table de composant, jamais par nom », gardée
+par `ecs_dispatch_table_guard_test.go` qui arrive avec L8). Le lot 2.6, indépendant, est passé
+devant ; les lots 2.2 et 2.3, qui consomment le distributeur, passent devant la fin de 2.1 dès que
+2.1.1 est fait (règle d'ordre du §3 : le reste de 2.1 attend une dépendance du plan).
 - [ ] 2.1.0 L'en-tête (ex-2.0) : `lecture.Provenance` (relue, mesurée, présumée — la table du profil
       —, calibrée sur le film, imposée à la construction) et `lecture.Parametre[T]`, sans logique ;
       `grammar.EnTete` (`IDLowBits`, découpage MPP du format, découpage d'i0) résolu par le contexte ;
@@ -369,7 +378,9 @@ plan y sont reprises comme items (3.1.2).
 - 2026-10-03 : lot 2.6 CLOS (cf. le lot). Premier essai dans `grammar` même : refusé à la compilation
   des tests (cycle d'imports, découverte 1) ; sous-paquet feuille `grammar/signaux`. Preuve à
   différence nulle passée sur le binaire du lot contre la passe de référence (`replay-equiv` 20/20,
-  faits 20/20 et killsource 19/19 à l'octet). La campagne confirme que LP et les naissances par la
+  faits 20/20 et killsource 19/19 à l'octet). Baseline des tests de la CI : 9 lignes relocalisées
+  de `objectives` vers `grammar/signaux` (mêmes noms), datées dans `scripts/check_test_baseline.sh`
+  — oubliées au premier commit du lot, la CI les aurait refusées. La campagne confirme que LP et les naissances par la
   vue A n'ont pas démarré (la vague 2 attend la fusion de la vague 1, une recuisson et le GO de
   l'utilisateur) : les lots 2.2 et 2.3 peuvent partir ; LU et LS prendront `marchLocateStrict`,
   `facts/killsource/walk.go`, `object_deaths_march.go` et la signature du slot 123, LP la lecture du

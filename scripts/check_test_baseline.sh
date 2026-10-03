@@ -128,6 +128,13 @@
 # TestRosterResoutParLaVueCanonique). Les remplaçants sont dans le run courant. 5 lignes JSONL,
 # 5 paires (Package, Test), vérifié par différence avant/après.
 #
+# RELOCALISATION DU 2026-10-03 (lot 2.6 de la représentation intermédiaire : la lecture du statborg
+# descend de `film/internal/facts/objectives` dans `film/internal/grammar/signaux`, avec ses tests) :
+# 9 lignes changent de PAQUET, rien d'autre — TestDecodeComponentsRefuseUnCoupleDepareille,
+# TestDecodeComponentsRefuseUneMancheHorsBorne, TestStatRecordsPlafond, TestStatborgListeDenseLue,
+# TestStatborgManche2RejeteeParLAncienneGrammaire, TestStatborgVectorsReels et ses trois sous-tests.
+# Mêmes noms, même code, désormais dans `grammar/signaux` ; vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
