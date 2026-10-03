@@ -171,15 +171,14 @@ type RoundTimer struct {
 	Tail   uint8   // queue R(5)
 }
 
-// decodeGameEngineRoundTimer lit ti=0 i5 (FUN_1407ee790).
+// decodeGameEngineRoundTimer lit ti=0 i5 (FUN_1407ee790 -> FUN_140d580d0, n = 16).
 func decodeGameEngineRoundTimer(br *Lecteur) RoundTimer {
-	qa := uint16(br.ReadBits(roundTimerBits))
-	qb := uint16(br.ReadBits(roundTimerBits))
+	m := lireMinuteur140d580d0(br, roundTimerBits)
 	return RoundTimer{
-		A:    DequantEndpoint(uint64(qa), 0, RoundTimerMax, roundTimerBits, false, true),
-		B:    DequantEndpoint(uint64(qb), 0, RoundTimerMax, roundTimerBits, false, true),
-		QA:   qa,
-		QB:   qb,
-		Tail: uint8(br.ReadBits(5)),
+		A:    DequantEndpoint(m.A, 0, RoundTimerMax, roundTimerBits, false, true),
+		B:    DequantEndpoint(m.B, 0, RoundTimerMax, roundTimerBits, false, true),
+		QA:   uint16(m.A),
+		QB:   uint16(m.B),
+		Tail: uint8(m.Queue),
 	}
 }

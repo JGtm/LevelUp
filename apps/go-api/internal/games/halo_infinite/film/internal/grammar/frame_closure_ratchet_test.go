@@ -249,4 +249,9 @@ const enteteCarteDeFermeture = "" +
 	"#     vues A, B, C, ti=4 et ti=21 un de moins) : la BAISSE est une fermeture factice retiree,\n" +
 	"#     l exception de la decision D2. ks_000d5950 : aucun compte `fermes` ne bouge. Causes\n" +
 	"#     renommees : `vue B : sortie par rejet` (avant les causes de la vue C) et\n" +
-	"#     `vue C : bloc 0xbc (desalignement)` ; une regle de l ecrivain contredite est une cause nommee.\n"
+	"#     `vue C : bloc 0xbc (desalignement)` ; une regle de l ecrivain contredite est une cause nommee.\n" +
+	"#   2026-10-02 lot L3a de la campagne de grammaire : fin du moteur de partie (`ti=0/1/2` i11 a i17)\n" +
+	"#     portee depuis le jeu (`components_moteur_de_partie.go`). ks_000d5950 : paquets 1 823 -> 1 825,\n" +
+	"#     utiles 6 608/31 200 -> 6 609/31 202, ti=2 20/163 -> 23/164 ; les causes `ti=0/2 i11..i17`\n" +
+	"#     disparaissent (la suivante, `ti=0 i18 forge-engine-player-roles`, apparait : 1 paquet).\n" +
+	"#     ks_e5adf7b2 : aucune ligne ne bouge. 0 ligne `fermes` ne descend.\n"

@@ -31,5 +31,9 @@
 #               `repli_instant_sur_la_premiere_manche` et `repli_mort_sans_xuid_ignoree` sortent
 #               de la couche ; leurs conditions comptent zero sur les 1 227 artefacts du parc :
 #               aucun calque ni fait persiste ne change, aucune recuisson (cf. `rev.go`).
+#   2026-10-03  EMPREINTE SEULE, REVISION CONSTANTE (lot L4a de la campagne de grammaire). Aucune
+#               source de la couche ne change : `film/types` renomme un compteur de
+#               `MovementStateStats` (`VehicleTypePhysicsAssumed` -> `VehicleTypePhysicsByWriterLaw`),
+#               que les objectifs ne lisent pas. La sortie des objectifs ne peut pas changer.
 objectives-2026-09-26	f6cb78cf7aa0e0a20fb5fbbd543449a404d786fd8c049f97c5d2faacbf97912e
-objectives-2026-09-27	e1b4001e7caefb92353bd3dc81391d3d46e6f0aceb7b2261ad54bb9af5fcdd72
+objectives-2026-09-27	f72550381937a3ed39a34fd421eb71d62db25f4ff77e9a326eec71550be8f628

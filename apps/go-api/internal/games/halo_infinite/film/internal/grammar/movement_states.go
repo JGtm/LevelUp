@@ -273,7 +273,7 @@ func (sc *movementStateScanner) trame(t *trameLue) bool {
 	}
 	sc.tir.fermer(false)
 	for _, r := range t.lecture.recs {
-		sc.st.VehicleTypePhysicsAssumed += lecturesDeComposant(r, compVehicleTypePhysics)
+		sc.st.VehicleTypePhysicsByWriterLaw += lecturesDeComposant(r, compVehicleTypePhysics)
 	}
 	for _, r := range p.Records {
 		if r.TI != BipedTypeIndex {

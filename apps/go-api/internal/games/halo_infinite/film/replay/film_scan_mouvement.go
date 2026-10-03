@@ -47,7 +47,6 @@ func (s *filmScan) balayerEtatsDeMouvement() {
 			"rafales", tc.Bursts, "rafalesTouchees", tc.BurstsWithHole, "tirTenuTuMs", tc.HeldHoleMS,
 			"match_id", s.matchID)
 	}
-	s.opt.Fallbacks.DeclencheN(fallback.NomPhysiqueDeTypeDeVehiculeSupposee, st.VehicleTypePhysicsAssumed)
 	s.opt.Fallbacks.DeclencheN(fallback.NomLiaisonParAnticipation, m.LiaisonsParRepliDAnticipation)
 	s.opt.Fallbacks.DeclencheN(fallback.NomDebutDeListeFermeAuBit, m.DebutsDeListeParRepliFermeAuBit)
 	s.in.MovementStates, s.in.MovementStateStats = m.MovementStates, st

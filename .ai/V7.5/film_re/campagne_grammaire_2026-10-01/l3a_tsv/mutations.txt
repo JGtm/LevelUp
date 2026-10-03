@@ -1,0 +1,18 @@
+BASE (sans mutation) : VERT
+M1 i11 largeur 127 : ROUGE (TestComposantsDuMoteurSuiventLEcrivain TestG4LargeursEntieresSuiventLeCode TestKeyframeClosureRatchet )
+M2 i13 bits de volume non lus : ROUGE (TestComposantsDuMoteurSuiventLEcrivain TestCompteDeVolumesNonBorne TestKeyframeClosureRatchet )
+M3 i13 compte sur 12 bits : ROUGE (TestComposantsDuMoteurSuiventLEcrivain TestCompteDeVolumesNonBorne TestKeyframeClosureRatchet )
+M4 i14 niveau ignore (forme longue toujours) : ROUGE (TestComposantsDuMoteurSuiventLEcrivain )
+M5 i14 porte inversee lue droite : ROUGE (TestComposantsDuMoteurSuiventLEcrivain TestKeyframeClosureRatchet )
+M6 i15 etiquette 1 lue en forme courte : ROUGE (TestComposantsDuMoteurSuiventLEcrivain )
+M7 i15 fente eteinte lue comme une fente : ROUGE (TestComposantsDuMoteurSuiventLEcrivain )
+M8 i16 sur 8 bits : ROUGE (TestComposantsDuMoteurSuiventLEcrivain TestG4LargeursEntieresSuiventLeCode TestKeyframeClosureRatchet )
+M9 i17 sur 7 bits : ROUGE (TestComposantsDuMoteurSuiventLEcrivain TestFrameClosureRatchet TestG4LargeursEntieresSuiventLeCode TestKeyframeClosureRatchet )
+M10 queue du minuteur sur 4 bits : ROUGE (TestComposantsDuMoteurSuiventLEcrivain TestFrameClosureRatchet TestG4LargeursEntieresSuiventLeCode TestKeyframeClosureRatchet TestLecteurDeMinuteurRendLesQuanta )
+M13 maillon non chaine : ROUGE (TestComposantsDuMoteurSuiventLEcrivain TestCompteDeVolumesNonBorne TestFrameClosureRatchet TestG4LargeursEntieresSuiventLeCode TestKeyframeClosureRatchet )
+M11 copie en ligne revenue (ti=5 i2) (en place) : ROUGE (TestLecteurDeMinuteurUnique )
+  restaure a l octet : components_player.go
+M12 saut de 37 bits revenu (i12) (en place) : ROUGE (TestLecteurDeMinuteurUnique )
+  restaure a l octet : components_walk_batch9.go
+M14 lecteur hote sans la sequence (en place) : ROUGE (TestLecteurDeMinuteurUnique )
+  restaure a l octet : lecteur_minuteur.go

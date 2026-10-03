@@ -232,7 +232,9 @@ import (
 // etats de mouvement dont il partage la marche. La reprise du lot (2026-09-25) ajoute, dans la MEME
 // version, deux compteurs a la queue de `MovementStateStats` : les listes qui commencent a un record
 // NEW de tete (`EventPacketsNewRecordStart`) et les lectures de `ti=40 i34` a porte supposee
-// (`VehicleTypePhysicsAssumed`, le repli `repli_physique_de_type_de_vehicule_supposee`).
+// (`VehicleTypePhysicsAssumed`, le repli `repli_physique_de_type_de_vehicule_supposee`) ; le
+// champ s appelle `VehicleTypePhysicsByWriterLaw` depuis que la porte est une loi du masque
+// (lot L4a de la campagne de grammaire, 2026-10-03), a la meme place dans le blob.
 //
 // v28 (2026-09-28, jalon J11.0 de la suite d audit) : cinq compteurs de `MovementStateStats` que le
 // blob ne portait pas entrent a la queue de la section : `VelocityReads`, `DatumBindings`,

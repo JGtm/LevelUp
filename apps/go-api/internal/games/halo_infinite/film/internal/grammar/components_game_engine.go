@@ -50,8 +50,8 @@ type GameEngineField int
 const (
 	GameEngineState           GameEngineField = iota // i2 : R(3)
 	GameEngineRound                                  // i4 : R(1) porte [si 0 -> R(5)]
-	GameEngineSuddenDeath                            // i6 : R(16)+R(16)+R(5)
-	GameEngineGracePeriod                            // i7 : R(16)+R(16)+R(5)
+	GameEngineSuddenDeath                            // i6 : FUN_140d580d0, n = 16
+	GameEngineGracePeriod                            // i7 : FUN_140d580d0, n = 16
 	GameEngineRoundConditions                        // i8 : R(10)
 	GameEngineFieldCount      = 5
 )
@@ -95,25 +95,19 @@ func consumeGameEngineCurrentRound(br *Lecteur) {
 	br.obs.publishGameEngine(GameEngineRound, false)
 }
 
-// consumeGameEngineSuddenDeath porte ti=0 i6 (FUN_14116d3a4) : R(16)+R(16)+R(5), sans porte.
-// C'est la source candidate de la prolongation (lot B, D5) — mesuree, jamais devinee.
-// Les trois lectures sont des VARIABLES et non des arguments : l'ordre d'evaluation des
-// arguments est bien garanti a gauche-droite par le langage, mais l'ordre des bits est ce que
-// ce paquet a de plus fragile et il doit se LIRE, pas se deduire d'une regle du spec.
+// consumeGameEngineSuddenDeath porte ti=0 i6 (FUN_14116d3a4 -> FUN_140d580d0, n = 16) :
+// R(16)+R(16)+R(5), sans porte. C'est la source candidate de la prolongation (lot B, D5) —
+// mesuree, jamais devinee.
 func consumeGameEngineSuddenDeath(br *Lecteur) {
-	a := br.ReadBits(16)
-	b := br.ReadBits(16)
-	c := br.ReadBits(5)
-	br.obs.publishGameEngine(GameEngineSuddenDeath, true, a, b, c)
+	m := lireMinuteur140d580d0(br, roundTimerBits)
+	br.obs.publishGameEngine(GameEngineSuddenDeath, true, m.A, m.B, m.Queue)
 }
 
-// consumeGameEngineGracePeriod porte ti=0 i7 (FUN_141165d24) : R(16)+R(16)+R(5), meme forme
-// que i6 et que le round-timer i5.
+// consumeGameEngineGracePeriod porte ti=0 i7 (FUN_141165d24 -> FUN_140d580d0, n = 16) :
+// R(16)+R(16)+R(5), meme forme que i6 et que le round-timer i5.
 func consumeGameEngineGracePeriod(br *Lecteur) {
-	a := br.ReadBits(16)
-	b := br.ReadBits(16)
-	c := br.ReadBits(5)
-	br.obs.publishGameEngine(GameEngineGracePeriod, true, a, b, c)
+	m := lireMinuteur140d580d0(br, roundTimerBits)
+	br.obs.publishGameEngine(GameEngineGracePeriod, true, m.A, m.B, m.Queue)
 }
 
 // consumeGameEngineRoundConditionFlags porte ti=0 i8 (FUN_141132dc0) : R(10), sans porte.

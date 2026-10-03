@@ -114912,3 +114912,96 @@ plan) : la vague 1 (fusion annoncée par la campagne dans l'heure, après une re
 le second temps de 2.1 puis 2.4 et 2.5 ; LU et LS débloquent 2.7 et 3.1. À la fusion : `feat/v75`
 dans `feat/ri-etape2`, passe de référence re-figée, puis le second temps de 2.1. Décision de
 l'utilisateur sur 2.2.2 toujours attendue.
+## [2026-10-03] Campagne de grammaire, lot L8 : `ti=3 low-frequency` porté, `high-frequency` lu par la table de l'archétype, et corrections du contrôle — Complété (branche `feat/cg-l8`, non fusionnée ; décision sur le rc 1 du gate de corpus en attente du pilote)
+
+**Statut** : Complété côté code et documents (commits `9edb99121` puis « L8: corrections du contrôle ») ; la décision d'admettre le rc 1 de `replay-corpus-gate` reste au pilote ou à l'utilisateur.
+
+**Décision technique principale** : lecteurs portés depuis le jeu (Ghidra, lecture seule) : `ti=3 i0 low-frequency` = `FUN_142ed4aec` (écrivain `FUN_142eda938`) ; `high-frequency`, seul nom à deux tables de grammaire, se lit par l'archétype du record (`ti=3` → `FUN_142ed4880`, 26 bits ; `ti=4` → `FUN_14076d034`, `R(8)`, delta et image-clé ; autre archétype → non porté). Garde-fou G6 (homonymes de la table ECS). Révision `grammar-2026-10-02.2`. Corrections du contrôle : vecteurs couvrant les deux branches de la porte d'orientation `FUN_140c5fa84` (mutations X17 et X18 désormais rouges sur `TestBasseFrequenceSuitSonEcrivain`), histoire datée et comptes du jour sortis du code (règle 17), commentaire faux de `ProbeHighFrequency` corrigé.
+
+**Résultats observés** (rejoués par le contrôle indépendant, à l'unité) : carte v2, 20 films : +30 597 paquets sains, +234 374 records utiles sains, aucun film en baisse (1 sain perdu en brut, `fb1a1a72` 7:92, expliqué par D-L8-1, déjà corrigé dans L2) ; `fb1a1a72` 22 276 → 42 035, `51ebbc0f` 9 759 → 19 782, `c75f33b8` 22 854 → 23 669 ; HI_1_13_0 65,8 % → 73,5 %, corpus 33,3 % → 36,4 % (indicateur fixe). Killsource : aucune mort, valeur ni voie ne change (seule la ligne `calibration`). Instruction complète du rc 1 du gate de corpus (LOT_L8 §8.2) : 7 NEW refusés neufs sur 5 témoins, tous sur des en-têtes que l'écrivain ne peut pas écrire (4 lectures fausses confirmées, 3 indécis), dont 3 désynchronisations devenues refus comptés et 3 têtes par chaîne sur un NEW contredit (D-L8-1) ; 5 `jumpDerived` disparus de `fb1a1a72` : 3 faux positifs de la base, 2 profils de saut sortis au bord de la fenêtre de la dérivation (D-L8-10) ; étape `vehicles` : seul `DeathStats` change sur les 6 films. Gates après corrections : gofmt vide, vet et vet research rc 0, archlint ok, G-film 19 paquets ok, golangci 0 issue, carte v2 identique sur les 6 films concernés.
+
+**Conclusion / prochaine étape** : consigner la décision sur le rc 1 (LOT_L8 §6), puis fusion dans `feat/campagne-grammaire` avec renumérotation de la révision et des goldens à l'intégration (collision attendue avec L2, qui porte aussi D-L8-1) ; remesurer la carte en combinaison L2 + L8.
+
+## [2026-10-03] Campagne de grammaire : lot L4a, véhicules `ti=40` en delta, et corrections du contrôle — Complété (branche `feat/cg-l4a`, à fusionner par l'intégrateur de la vague)
+
+**Statut** : Complété. Commit du lot `9e02dabbb` puis commit des corrections du contrôle indépendant
+(« campagne(grammaire) L4a: corrections du controle »). Détail :
+`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L4a.md` (§12 pour les corrections).
+
+**Décision technique principale** : dernier maillon de la chaîne de dispatch,
+`composants_vehicule_ti40.go` : les seize composants propres au véhicule (`i30`-`i47` hors `i43`,
+`i44`), chacun lu chez son désérialiseur (Ghidra, lecture seule). `i33` / `i34` sont lus dès que le
+masque les annonce : la porte `+0x818` est une loi de l'écrivain (les deux écrivains du masque,
+`FUN_142f09c74` et `FUN_142f0cca0`, ne posent les bits 33 et 34 que sous cet octet), aucun châssis
+consulté. En état complet d'image-clé (`Lecteur.etatComplet`, posé par la seule marche sans masque),
+aucun n'est lu sauf `i37` : image-clé inchangée, L4b. Repli `repli_physique_de_type_de_vehicule_supposee`
+retiré ; compteur `VehicleTypePhysicsAssumed` -> `VehicleTypePhysicsByWriterLaw`. `grammar.Rev` ->
+`grammar-2026-10-03`.
+
+**Résultats observés** : carte v2 sur 20 films, +1 416 paquets sains et +27 482 records utiles sains,
+0 sain perdu, aucun film en baisse (retrouvé à l'unité par le contrôle) ; killsource identique sauf un
+diagnostic d'oracle non persisté (`e5adf7b2`) ; `replay-equiv` : étapes divergentes toutes
+rattachées ; gate de corpus rc 1, rattaché (couverture, fins de vie de véhicules lues). Contrôle
+indépendant : sain sur le fond, sept corrections, toutes faites — deux tests par les chemins de
+production et un garde-rail (mutations A3, B3, B5 désormais rouges), argument « table de datums » de
+`d9781168` `17:1356` retiré (le bloc de chunk dit non vivants sept slots où la lecture concurrente
+écrit des DELTA ; tête factice ESTIMÉE), « NE PAS PORTER » `i41` / `i42` levé (D-14), « quinze lignes
+partiel ». Revue adversariale (deux relecteurs `claude -p` en contexte frais) : 0 P0, 0 P1, 3 P2 dont
+2 soldés par les corrections et 1 consigné (D-L4a-9, instrument de recherche). Gates rejoués : gofmt
+vide, vet rc 0 (et research), archlint ok, G-film 19 / 19 ok, golangci 0 issue, carte v2 identique.
+
+**Conclusion / prochaine étape** : fusion dans la vague par l'intégrateur. À regarder par
+l'utilisateur à la recuisson : pièces montées qui meurent avec leur porteur, `samplesAfterEnd` en
+hausse (D-L4a-1). D5 (table châssis -> type de physique) reste ouverte pour L4b ; D-L4a-2 (règle de
+datum, qui exigerait de suivre l'allocateur dans le chunk) à instruire avant la vague 2.
+
+## [2026-10-03] Campagne de grammaire, lot L2 : corrections du contrôle (C1 à C6) — Complété (lot non retenu, code retiré)
+
+**Décision technique principale** : appliquer les six corrections du contrôle indépendant de L2, puis
+juger le lot sur la mesure que D19 exigeait : la contribution marginale du L2 de production dans C11
+(surcouche unique refusionnée sur `af6e93e23`). Le gate 2 « aucun film en baisse » n'est pas
+assoupli ; une perte non expliquée par une fermeture factice retirée retire le lot.
+
+**Résultats observés** : C1 (V31c, N = 8) et C2 (masques dense court et épars non croissant, NEW et
+delta, avec témoins) rendent ROUGES les deux mutations vertes du contrôle (16 / 16 rouges). C5 et C6
+appliqués (histoire reportée dans LOT_L2.md §9.2). C3 : `1c4c63c2` −447 sains / −8 520 utiles sains
+en marginale (`084a804d` +3, `111fa685` +1) ; 501 des 571 sains perdus se désynchronisent sur le
+slot 736 lié à `ti=45` par un faux NEW lu dans une liste contredite prise au second rang de
+`debutParFermeture` (tête : faux NEW `ti=43`) — chemin que la réparation (`debutParChaine`) ne vise
+pas. C4 : sur `bcb6d393` et `4f77afc1`, toutes les valeurs de contenu changées viennent de paquets
+sains ; sur HI_1_10_0, des listes contredites du second rang (états) et de paquets non localisés
+(dotations, non publiées). Détail : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L2.md` §9.
+
+**Conclusion / prochaine étape** : L2 non retenu ; le code du lot est retiré par un commit de
+retrait (l'arbre de code revient à `af6e93e23`). Reprise : fonder une règle générale sur ce que le
+second rang de `debutParFermeture` lie au monde (D-L2-12), puis rejouer C11.
+
+## [2026-10-03] Campagne de grammaire — vague 1, lots de composants — Complété (intégration commitée sur `feat/campagne-grammaire`, non poussée)
+
+**Statut** : Complété. L8, L3a et L4a fusionnés (`git merge --no-ff`) sur la structure de `feat/v75` = `67c379fc1` (étape 1 de la représentation intermédiaire) ; L2 et L9 non retenus (documents et sonde de recherche seulement). Rien n'est poussé.
+
+**Décision technique principale** : les lots se portent sur la marche de la représentation intermédiaire (feat/v75 a raison) : compteur de L4a dans `movementStateScanner.trame`, test du compteur par `marcheurDesTrames.marcherLePaquet`, `etatComplet` à côté des champs de la RI dans `lecteur.go`. Chaîne de révisions renumérotée : `grammar-2026-10-02` → `.2` (L8) → `.3` (L3a) → `grammar-2026-10-03` (L4a), une empreinte par commit de fusion ; `killsource-2026-10-02` gardé (la sortie JSON change à la tête : calibration, deux compteurs de santé) ; format des faits inchangé. Chronique de `grammar` rotationnée (archive 7).
+
+**Résultats observés** : gate 2 sur 20 films contre `67c379fc1` : aucun film en baisse ; +37 168 paquets sains, +336 591 records utiles sains ; 5 sains perdus bruts, tous devenus contredits et déjà instruits par L8 et L3a (tête de liste sur un NEW au masque impossible). D1 : corpus 33,3 % → 37,7 % (fixe), HI_1_13_0 65,8 % → 76,6 %. Killsource : 2 747 morts inchangées. `replay-equiv` : 11 étapes sur 61, familles des lots. `replay-corpus-gate` rc 1 : banc 18 / 19 ok, `111fa685` FAUX sur un repli existant vu pour la première fois, aucun oracle touché. Gates de code verts (gofmt, vet module et research, archlint, G-film 20 paquets, golangci 0). Détail : plan §4 (2026-10-03), `campagne_grammaire_2026-10-01/vague1_tsv/`.
+
+**Conclusion / prochaine étape** : décision du pilote sur le rc 1 du gate de corpus ; recuisson unique de la vague (geste de l'utilisateur) ; références `replay-equiv` à re-figer avant la vague 2 ; lot de marche « tête de liste contredite » à fonder (D-L8-1, D-L3a-1, D-L2-12).
+
+## [2026-10-03] Campagne de grammaire — vague 1 : corrections de la revue adverse — Complété (commit local sur `feat/campagne-grammaire`, non poussé ; D23 à confirmer par l'utilisateur)
+
+**Statut** : Complété. Trois constats majeurs de la revue, tous vérifiés sur pièces (Ghidra lecture seule, git, code) et vrais ; aucun lot ne tombe.
+
+**Décision technique principale** : (1) `low-frequency` (`ti=3 i0`, L8) n'est plus porté dans un état complet d'image-clé : la boucle du jeu `FUN_142e2c690` pose la portée `DAT_144e61ea0` sur tous ses composants (R(96) pour les positions), portée que la marche du dépôt ne pose pas ; la pose générale de la portée est le lot LK, mis de côté par l'utilisateur, non appliqué. (2) Tête en `grammar-2026-10-03.2`, valeur qu'aucune branche de lot n'a portée. (3) `killsource.Rev` ramené à `killsource-2026-09-27` (empreinte recopiée) : la vague ne change que des sorties non persistées, et une montée ferait redécoder tout le parc par le hook post-sync installé par défaut ; réversible, décision D23 à confirmer avant push.
+
+**Résultats observés** : contre la tête intégrée `a552c43f5` : carte v2 20 films identique (paquets, records utiles), killsource 19 témoins identique à l'octet, `replay-equiv` 60 étapes sur 61 identiques (seule `artifact`), fixtures identiques hors chaînes de révision ; `keyframe_closure.golden` : aucun compte ne bouge, `ti=3` retrouve son bloquant. Gate 2 de la vague inchangé (aucun film en baisse). gofmt, vet (module et research), archlint, G-film 20 paquets, golangci 0 issue. Détail : plan §4 (2026-10-03, « corrections de la revue »), `LOT_L8.md` §9, `LOT_L3a.md` §10, `LOT_L4a.md` §13, `vague1_tsv/revue_*`.
+
+**Conclusion / prochaine étape** : l'utilisateur tranche D23 (révision killsource) avant tout push ; LK (portée sur toute la boucle d'état complet, D-REV-2) reste à mesurer dans son lot ; rc 1 du gate de corpus au pilote.
+
+## [2026-10-03] Campagne de grammaire — vague 1 : mineurs de la revue adverse — Complété (commit local sur `feat/campagne-grammaire`, non poussé)
+
+**Statut** : Complété. Cinq constats mineurs de la revue et celui de la lentille « jeu », tous vérifiés sur pièces et vrais ; aucun rejeté.
+
+**Décision technique principale** : corriger sans changer un bit lu. Règle 6 : `consumeWeaponStateTail` passe par `lireJeuDArmes` (`FUN_1406d01fc`), le doublon `consumeOpt2` de `consumeID2` est retiré, garde-rail neuf. Les garde-rails de lecteur unique lisent la suite des appels dans l'arbre syntaxique (instrument partagé `grammar/sequence_appels_test.go`, appels d'un même bloc) au lieu de lignes consécutives. Test de comportement du chemin DELTA `ti=40` (`decodeDelta` et `decodeDeltaWithArch`). G4 : contrat et liste par archétype à la place de l'historique (recopié dans `LOT_L4a.md` §14.2). `Minuteur.C` retiré (règle 7). En-tête de `composants_vehicule_ti40.go` : l'arrêt dès `i30` en état complet est dit choix conservateur, pas règle du jeu.
+
+**Résultats observés** : mutations M11 et M12 de la revue ROUGES (vertes contre l'ancien test) ; copie du minuteur sur une ligne ROUGE (verte contre l'ancien garde-rail) ; copie du jeu d'armes de la tête et sur une ligne ROUGES. Contre `8390543a8` (binaires de `git archive`) : carte v2 20 films, `fermeture_paquets.tsv` identique à l'octet ; killsource 19 témoins identiques à l'octet ; `replay-equiv` 20 films, digests identiques à l'octet. Empreinte `grammar` régénérée à révision constante `grammar-2026-10-03.2`. gofmt, vet (module et research), archlint, G-film 20 paquets, golangci 0 issue.
+
+**Conclusion / prochaine étape** : rien de neuf à décider ; restent ouverts D23 (révision killsource), rc 1 du gate de corpus (pilote), LK (D-REV-2). Détail : plan §4 (2026-10-03, « mineurs de la revue »), `LOT_L4a.md` §14, `LOT_L3a.md` §11.

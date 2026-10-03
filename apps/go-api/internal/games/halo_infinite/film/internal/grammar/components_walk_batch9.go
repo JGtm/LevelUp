@@ -40,15 +40,11 @@ func consumeManagedObjectBoundaryVisibility(br *Lecteur) {
 //	FUN_1406cf008                               = R(1) flag (state+0x582 bit 4)
 func consumeDevicePosition(br *Lecteur) { br.Skip(15) }
 
-// consumeGameEngineCampaignTimer (ti2) — deser FUN_1407ee764 -> FUN_140d580d0(dst, reader,
-// width=0x10, table) = R(16) + R(16) + FUN_1407f0354 = R(5). Meme forme que
-// game-engine-round-timer-component (FUN_1407ee790), deja porte en R(16)+R(16)+R(5).
-//
-// NOTE 2026-07-25 (rapatriee ici le 2026-08-01 a la suppression de components_batch5.go) :
-// un port anterieur attribuait ce composant a FUN_14076e744 — mauvaise fonction, et mort
-// faute d'appelant. La chaine statique nom -> getName -> descripteur -> bloc+0x40 donne
-// FUN_1407ee764, porte ci-dessous.
-func consumeGameEngineCampaignTimer(br *Lecteur) { br.Skip(37) }
+// consumeGameEngineCampaignTimer (ti=0/1/2 i12) — deser FUN_1407ee764 -> FUN_140d580d0(dst,
+// reader, n = 0x10, max = DAT_143cd8a84) : meme forme que game-engine-round-timer-component
+// (FUN_1407ee790). La chaine statique nom -> getName -> descripteur -> bloc+0x40 donne
+// FUN_1407ee764 (et non FUN_14076e744).
+func consumeGameEngineCampaignTimer(br *Lecteur) { lireMinuteur140d580d0(br, roundTimerBits) }
 
 // (consumeBipedPosturePhysics — ti35 i55 — A DEMENAGE dans `components_biped_posture.go` au
 // lot 5.7 : la glose « FUN_141fd997c : resolution d'etat, 0 bit lu » etait FAUSSE, c'est le

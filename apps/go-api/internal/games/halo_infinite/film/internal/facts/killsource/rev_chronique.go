@@ -453,3 +453,18 @@ package killsource
 // `match_kill_events` deja ecrite sous `killsource-2026-09-27` est celle que ce code ecrirait. La
 // revision reste, AUCUN backlog n est ouvert ; golden regenere a revision constante. Seule la FORME du
 // resultat observe change (`Stats.Replis` perd deux champs nuls).
+//
+// COMPLEMENT DU 2026-10-03 (vague 1 de la campagne de grammaire : lots L8, L3a, L4a et corrections
+// de la revue de la vague, `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, REVISION CONSTANTE) : la
+// VALEUR de `grammar.Rev` monte jusqu a `grammar-2026-10-03.2`, donc l empreinte ; aucune source de
+// la couche ne change. Sortie `cmd/killsource json` sur les 19 temoins de
+// `config/replay_corpus.toml`, binaire de `67c379fc1` contre binaire de la vague : AUCUNE mort,
+// aucune valeur, aucune voie ne change. Ne changent que des sorties NON PERSISTEES : le diagnostic
+// d ORACLE `Result.Calibration` (lu par `cmd/killsource` seul) et, sur `111fa685`, deux compteurs de
+// sante publies en expvar par `Health.ExpvarPairs` (`killsource_candidates_total` 226 -> 227,
+// `killsource_unexplained_pair` 24 -> 25). Chaque ligne de `match_kill_events` deja ecrite sous
+// `killsource-2026-09-27` est celle que ce code ecrirait : la revision reste et aucun backlog n est
+// ouvert. Une montee rendrait tout le parc candidat (`conditionBacklog`), et le hook post-sync,
+// installe par defaut (`sync/engine_options.go`), le redecoderait de lui-meme, huit films par cycle,
+// pour reecrire des lignes identiques. Golden regenere a revision constante. Mesures :
+// `campagne_grammaire_2026-10-01/vague1_tsv/`.

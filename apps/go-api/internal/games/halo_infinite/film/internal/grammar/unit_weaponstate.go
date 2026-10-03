@@ -361,13 +361,25 @@ func consumeWeaponStateOverheated(br *Lecteur) {
 // i42 biped-desired-weapon-set  (thunk -> FUN_1406d01fc)
 // ---------------------------------------------------------------------------
 
+// consumeBipedDesiredWeaponSet lit `i42` du bipede ([lireJeuDArmes]) et publie l emplacement
+// desire au crochet du bipede.
 func consumeBipedDesiredWeaponSet(br *Lecteur) {
-	sel := uint32(br.ReadBits(3)) // FUN_1406d0f20
-	consumeID2(br)                // FUN_1406d00ec
-	consumeID2(br)                // FUN_1406d00ec
+	sel := lireJeuDArmes(br)
 	if br.obs != nil && br.obs.DesiredWeaponSetHook != nil {
 		br.obs.DesiredWeaponSetHook(sel)
 	}
+}
+
+// lireJeuDArmes porte `FUN_1406d01fc`, le jeu d armes d une unite : `FUN_1406d0f20` R(3)
+// (l emplacement desire, rendu), puis deux `FUN_1406d00ec` (R(1) ; si 0, R(2)). Lu par le bipede
+// (`i42`, thunk), par le vehicule (`ti=40 i38`, `14116d3cc` : `ADD RCX,0x84c ; JMP 1406d01fc`) et
+// par la queue de l arme tenue ([consumeWeaponStateTail], `FUN_1407f06bc`). Seule copie de la
+// sequence : `lecteur_jeu_darmes_guard_test.go` interdit qu elle revienne en ligne.
+func lireJeuDArmes(br *Lecteur) uint32 {
+	sel := uint32(br.ReadBits(3)) // FUN_1406d0f20
+	consumeID2(br)                // FUN_1406d00ec
+	consumeID2(br)                // FUN_1406d00ec
+	return sel
 }
 
 // ---------------------------------------------------------------------------
