@@ -114503,3 +114503,36 @@ golangci-lint 0 nouvelle issue (avec et sans tag integration).
 utilisateur. Au premier cycle après redémarrage, les 8 films sont décodés une dernière fois, la
 colonne est posée, et le backlog doit recommencer à baisser (`killsource_postsync_backlog_restant`
 sous 7 351, `sans_killfeed` à 0 aux cycles suivants).
+
+## [2026-10-03] Campagne de grammaire : lot L4a, véhicules `ti=40` en delta, et corrections du contrôle — Complété (branche `feat/cg-l4a`, à fusionner par l'intégrateur de la vague)
+
+**Statut** : Complété. Commit du lot `9e02dabbb` puis commit des corrections du contrôle indépendant
+(« campagne(grammaire) L4a: corrections du controle »). Détail :
+`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L4a.md` (§12 pour les corrections).
+
+**Décision technique principale** : dernier maillon de la chaîne de dispatch,
+`composants_vehicule_ti40.go` : les seize composants propres au véhicule (`i30`-`i47` hors `i43`,
+`i44`), chacun lu chez son désérialiseur (Ghidra, lecture seule). `i33` / `i34` sont lus dès que le
+masque les annonce : la porte `+0x818` est une loi de l'écrivain (les deux écrivains du masque,
+`FUN_142f09c74` et `FUN_142f0cca0`, ne posent les bits 33 et 34 que sous cet octet), aucun châssis
+consulté. En état complet d'image-clé (`Lecteur.etatComplet`, posé par la seule marche sans masque),
+aucun n'est lu sauf `i37` : image-clé inchangée, L4b. Repli `repli_physique_de_type_de_vehicule_supposee`
+retiré ; compteur `VehicleTypePhysicsAssumed` -> `VehicleTypePhysicsByWriterLaw`. `grammar.Rev` ->
+`grammar-2026-10-03`.
+
+**Résultats observés** : carte v2 sur 20 films, +1 416 paquets sains et +27 482 records utiles sains,
+0 sain perdu, aucun film en baisse (retrouvé à l'unité par le contrôle) ; killsource identique sauf un
+diagnostic d'oracle non persisté (`e5adf7b2`) ; `replay-equiv` : étapes divergentes toutes
+rattachées ; gate de corpus rc 1, rattaché (couverture, fins de vie de véhicules lues). Contrôle
+indépendant : sain sur le fond, sept corrections, toutes faites — deux tests par les chemins de
+production et un garde-rail (mutations A3, B3, B5 désormais rouges), argument « table de datums » de
+`d9781168` `17:1356` retiré (le bloc de chunk dit non vivants sept slots où la lecture concurrente
+écrit des DELTA ; tête factice ESTIMÉE), « NE PAS PORTER » `i41` / `i42` levé (D-14), « quinze lignes
+partiel ». Revue adversariale (deux relecteurs `claude -p` en contexte frais) : 0 P0, 0 P1, 3 P2 dont
+2 soldés par les corrections et 1 consigné (D-L4a-9, instrument de recherche). Gates rejoués : gofmt
+vide, vet rc 0 (et research), archlint ok, G-film 19 / 19 ok, golangci 0 issue, carte v2 identique.
+
+**Conclusion / prochaine étape** : fusion dans la vague par l'intégrateur. À regarder par
+l'utilisateur à la recuisson : pièces montées qui meurent avec leur porteur, `samplesAfterEnd` en
+hausse (D-L4a-1). D5 (table châssis -> type de physique) reste ouverte pour L4b ; D-L4a-2 (règle de
+datum, qui exigerait de suivre l'allocateur dans le chunk) à instruire avant la vague 2.

@@ -14,7 +14,8 @@
 ## 0. Statut
 
 **[x] retenu.** Gate 2 tenu sur les 20 films (aucun paquet sain perdu, aucun record utile sain perdu,
-sur aucun film) ; gate 3 sans aucune mort changée ; mutations 18 / 18 rouges. Les divergences de
+sur aucun film) ; gate 3 sans aucune mort changée ; mutations 18 / 18 rouges, plus A3, B3 et B5 du
+contrôle indépendant rouges après ses corrections ; revue adversariale passée (0 P0, 0 P1, §12). Les divergences de
 `replay-equiv` et du gate de corpus sont toutes rattachées à un mécanisme (§6, §7) ; deux d'entre
 elles changent ce que voit le rejeu (durée de vie des pièces montées, fin de vie des véhicules) et
 sont à regarder par l'utilisateur à la recuisson de la vague (§9, D-L4a-1).
@@ -26,8 +27,9 @@ sont à regarder par l'utilisateur à la recuisson de la vague (§9, D-L4a-1).
 | Image-clé (état complet) | inchangée | aucun composant du véhicule lu hors `i37` ; L4b |
 | Table châssis -> type de physique (D5) | non ajoutée | le delta n'en a pas besoin (décision du pilote) |
 | Repli `repli_physique_de_type_de_vehicule_supposee` | retiré | critère de retrait tenu : porte lue à l'écrivain, 0 lecture supposée |
-| `d9781168` 0 / −11 en marginal (R-COMB-2) | instruit | un paquet, `17:1356` ; tête de liste factice choisie par L1a / LS en C11 ; absent du gate du lot (§5) |
+| `d9781168` 0 / −11 en marginal (R-COMB-2) | instruit | un paquet, `17:1356`, absent du gate du lot ; tête de liste au bit 1856 factice ESTIMÉE, non établie (§5) |
 | Révisions | faites | `grammar-2026-10-03` ; source, killsource, objectives à révision constante |
+| Corrections du contrôle indépendant | faites | §12 : deux tests et un garde-rail (mutations A3, B3 rouges), §5 et D-L4a-2 requalifiés, `ecs_table` i41/i42, revue adversariale, journal |
 
 ## 1. Ce qui est lu dans le jeu
 
@@ -86,7 +88,7 @@ par les deux écrivains ci-dessus. Réserve gardée (D-L4a-8).
 | `grammar/unit_weaponstate.go` | `lireJeuDArmes` (`FUN_1406d01fc`) extrait, partagé par le bipède `i42` et le véhicule `i38` (le crochet du bipède n'est pas appelé pour le véhicule) |
 | `grammar/movement_states.go`, `types/grammar_mouvement.go`, `replay/filmfacts_{encode,decode}.go` | compteur `VehicleTypePhysicsAssumed` -> `VehicleTypePhysicsByWriterLaw` (même place dans le blob des faits) |
 | `facts/fallback/noms.go`, `registre_filmdec_marche.go`, `replay/film_scan_mouvement.go` | repli `repli_physique_de_type_de_vehicule_supposee` retiré (nom, entrée, versement) |
-| `grammar/testdata/ecs_table.tsv` | seize lignes `ti=40` : statut `partiel` (le maillon refuse en état complet), désérialiseur, grammaire, largeur, source ; quatre sources `composants_vue_b_m4b.go:N` recalées |
+| `grammar/testdata/ecs_table.tsv` | quinze lignes `ti=40` passent à `partiel` (`i30`-`i36`, `i38`-`i42`, `i45`-`i47` : le maillon refuse en état complet), avec désérialiseur, grammaire, largeur, source ; `i37` reste `porte` (lu en tout contexte), seule sa source change (`composants_vehicule_ti40.go:178`) ; quatre sources `composants_vue_b_m4b.go:N` recalées ; la note « NE PAS PORTER » de `i41` / `i42` est marquée LEVÉE (§12) |
 | `grammar/ecs_widths_guard_test.go` | G4 : 123 -> 131 largeurs fixes (`i30` 3, `i31` 19, `i32` 9, `i36` 4, `i39` 2, `i41` 16, `i42` 16, `i45` 24) |
 | `grammar/composants_vehicule_ti40_test.go` (neuf) | vecteurs d'après l'écrivain (§4) |
 | `rev.go`, `rev_chronique.go`, goldens | §8 |
@@ -169,6 +171,15 @@ Vecteurs construits d'après les désérialiseurs (T6 §6.1, relus §1), `compos
   `ti=40`, `n1 = 0`, `n2 = 1`) passé par `WalkKeyframeFullState` s'arrête à `i30` après `i37` ; la
   même liste lue avec un masque va au bout.
 - G1 et G4 de la table ECS (statuts, sources, largeurs fixes) verts.
+- Ajoutés par les corrections du contrôle (§12), `composants_vehicule_ti40_chemins_test.go` — par
+  les CHEMINS DE PRODUCTION :
+  - `TestRecordNeufTi40TraverseJusquAuBout` : un record NEW `ti=40` (état par défaut nul, masque
+    `{i30, i31}`) lu par `TraverseEntity` va au bout, `DesyncAt == -1`, fin au bit près ;
+  - `TestLeCompteurPublieCompteLesLecturesDeI34` : un paquet delta dont la vue B porte un NEW `ti=40`
+    annonçant `i34`, passé par `movementStateScanner.paquet`, fait compter 1 à
+    `VehicleTypePhysicsByWriterLaw` ; un NEW annonçant `i37` seul ne le fait pas monter ;
+  - `TestEtatCompletPoseParLaSeuleMarcheDEtatComplet` : garde-rail grep, `etatComplet = true`
+    n'est écrit (hors tests) que dans `keyframe_fullstate_loop.go`, exactement une fois.
 
 Mutations (`l4a_tsv/mutations.sh`, copie mutée + `go test -overlay`, sortie `l4a_tsv/mutations.txt`) :
 **18 / 18 ROUGES** — M1 marche d'état complet sans `etatComplet`, M2 `i33`/`i34` lus en état complet
@@ -176,6 +187,16 @@ Mutations (`l4a_tsv/mutations.sh`, copie mutée + `go test -overlay`, sortie `l4
 faux, M5 à M16 une largeur ou une porte fausse par composant (`i30`, `i31`, `i32`, `i35`, `i36`,
 `i39`, `i40`, `i41`/`i42`, `i45`, `i46`, `i47`, `i38` via `FUN_1406d01fc`), M17 `i37` refusé en
 état complet. L'arbre non muté est vert.
+
+Mutations du contrôle indépendant restées VERTES sur le lot, rejouées après les corrections
+(`scratchpad/L4a/mut_ctl/`, sortie `l4a_tsv/mutations_controle.txt` ; `-overlay` sur le paquet `grammar` entier ; le garde-rail lisant les
+fichiers sur disque, A3 y est aussi posée en place puis le fichier restauré) :
+
+| Mutation | Avant les corrections | Après |
+|---|---|---|
+| A3 : `br.etatComplet = true` avant `traverseComponentLoop` dans `TraverseEntity` | verte (G-film entier) | **ROUGE** : `TestRecordNeufTi40TraverseJusquAuBout` (overlay) et `TestEtatCompletPoseParLaSeuleMarcheDEtatComplet` (en place) |
+| B3 : `lecturesDeComposant` rend toujours 0 | verte (`film/...`) | **ROUGE** : `TestLeCompteurPublieCompteLesLecturesDeI34` |
+| B5 : ligne `VehicleTypePhysicsByWriterLaw += ...` retirée de `movement_states.go` | non jouée | **ROUGE** : même test |
 
 ## 5. Les pertes instruites
 
@@ -192,18 +213,29 @@ production) : un seul paquet diffère, **`17:1356`**, sain dans les deux configu
 - Avec L4a : la tête de liste choisie est le bit **1856**, un seul record lu : un NEW `ti=40` sur le
   slot 1338 (eid `0x4000053a`), masque `{i40}`, fermé, **0 record utile**. Le bit 1856 tombe DANS le
   record #8 de la lecture à douze records (`ti=42`, bits 1746-1861).
-- Le bloc de type 1 du chunk 17 dit le slot 1338 **vivant, génération 1**, et l'image-clé le déclare
-  **`ti=14`** : un NEW `ti=40` sur ce slot contredit la table de datums (l'écrivain n'écrit un NEW que
-  pour une entité nouvellement allouée). La lecture à un record est factice ; le juge de L0 ne porte
-  pas de règle de datum (L0.8 non retenu) et la classe « sain ».
+- Le bloc de type 1 du chunk 17 ne tranche PAS entre les deux lectures. Il dit bien le slot 1338
+  vivant (`Gen:1`) et l'image-clé le déclare `ti=14` ; mais le MÊME bloc, dans le même vidage, déclare
+  NON vivants (`vivante=false`, `Gen:0`) les slots 580, 581, 2513, 2514, 2515, 2517 et 2518, sur
+  lesquels la lecture à douze records écrit des DELTA (records #5 à #11). Le bloc ne reflète donc
+  pas l'état des entités au paquet 1356 (l'instant qu'il décrit par rapport à ce paquet n'est pas
+  établi ; des allocations et libérations ont pu se produire entre les deux) : il n'est pas un
+  oracle de ce paquet, et l'argument « le NEW `ti=40` contredit la table de
+  datums » n'est pas établi (retiré, contrôle indépendant du 2026-10-03).
+- Ce qui reste : le caractère factice de la tête au bit 1856 est **ESTIMÉ**, sur la seule cohérence
+  de la lecture à douze records (douze records qui s'enchaînent sans désynchronisation sur les bits
+  526 à 2206, fermeture au bit, onze records utiles, contre un record isolé qui commence à
+  l'intérieur du record #8). Rien dans le jeu ne l'établit ici. Le juge de L0 ne porte pas de règle
+  de datum (L0.8 non retenu) et classe les deux lectures « saines ».
 - Mécanisme : le lecteur de `i40` est juste (lu chez `FUN_142f04a00`) ; il rend fermable un candidat
   de tête qui ne l'était pas (avant L4a, `i40` non porté arrêtait ce candidat), et le choix de la
   tête des leviers de marche de C11 (L1a / LS : paquet à événements non localisé par le localisateur
   strict, `strict = -1`) prend ce candidat. En production (base + L4a), le même paquet reste « liste
   d'événements non localisée » avant et après (`fermeture_paquets.tsv`) : la perte n'existe pas sans
   L1a / LS.
-- Conclusion : perte de COMBINAISON, imputable au choix de tête des leviers de marche, pas à la
-  lecture de L4a. À rejuger quand L1a / LS entrent (vague 2), avec une règle de datum (D-L4a-2).
+- Conclusion : perte de COMBINAISON (mesuré : elle n'existe pas sans L1a / LS), dont le mécanisme
+  est le choix de tête des leviers de marche ; que la tête retenue soit la mauvaise est estimé
+  (ci-dessus). À rejuger quand L1a / LS entrent (vague 2) ; une règle de datum tirée du bloc de
+  chunk ne suffirait pas à la trancher (D-L4a-2).
 
 ## 6. Gate 3 (killsource) et `replay-equiv`
 
@@ -311,6 +343,20 @@ Depuis `apps/go-api`, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg-l4a`
 | `replay-corpus-gate` | rc 1, §7 |
 | Mutations | 18 / 18 rouges |
 
+Rejoués après les corrections du contrôle (§12), même commande, même cache :
+
+| Gate | Sortie |
+|---|---|
+| `gofmt -l ./internal/games/halo_infinite/film/ ./cmd/` | vide |
+| `go vet ./internal/games/halo_infinite/film/...` / `-tags=research` | rc 0 / rc 0 |
+| `go test ./internal/archlint/` | `ok` (46,8 s) |
+| G-film (même liste) | 19 paquets `ok`, 0 `FAIL` (`grammar` 33,7 s, `replay` 26,2 s) |
+| `go test -tags=research .../research/cmd_fermeture/` | `ok` |
+| `golangci-lint run --new-from-rev af6e93e23` (grammar, facts, replay, types) | `0 issues.` |
+| Carte v2, 20 films, binaire et table du tree corrigé (`scratchpad/L4a/carte_corr`) | identique à `carte_apres` sur tous les TSV (`fermeture_films.tsv` hors pic et durée) ; `fermeture_resume.md` ne diffère que par le chemin de la table et les pics |
+| killsource, `replay-equiv`, gate de corpus | non rejoués : aucun code de production ne change (tests, une note de `ecs_table.tsv` que ni la marche ni l'outil ne lisent — l'outil lit `ti`, `component`, `status`, `product_use`) |
+| Mutations du contrôle | A3, B3 et B5 rouges (§4) |
+
 ## 10. Écarts
 
 - **Image-clé hors périmètre** : les composants à largeur du flux ne sont pas lus dans un état
@@ -322,8 +368,8 @@ Depuis `apps/go-api`, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg-l4a`
   l'écrivain, 0 lecture supposée) ; l'autre session qui retire des replis n'en touche pas d'autre.
 - **Compteur renommé** : `film/types` change, donc l'empreinte de `source` et d'`objectives` (révisions
   constantes) et `shapes.golden`. Garder l'ancien nom aurait gardé un nom faux.
-- **Revue adversariale de fin de lot** (plan §6.0 : L4 est un lot à risque) : non faite ici, aucun
-  agent disponible dans cette exécution ; à faire par le pilote ou l'intégrateur.
+- **Revue adversariale de fin de lot** (plan §6.0 : L4 est un lot à risque) : absente du commit
+  `9e02dabbb`, faite lors des corrections du contrôle (§12.2).
 - **`replay-corpus-gate` rouge** (rc 1) : toutes les lignes sont rattachées §7 ; deux familles
   changent ce que montre le rejeu des véhicules (fin de vie lue, pièces montées) — à regarder par
   l'utilisateur à la recuisson de la vague.
@@ -342,10 +388,14 @@ Depuis `apps/go-api`, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg-l4a`
   (Wraith 813) finit à 2537 ; idem pour 795, 870, 876, 976. Le lot lit la mort (porteur et pièce au
   même instant) ; les échantillons de la pièce après cette mort (`samplesAfterEnd` +1 059 sur
   `4f77afc1`) restent inexpliqués (slot republié ? épave ?). Non instruit.
-- **D-L4a-2** — Tête de liste factice dans C11 (`d9781168` `17:1356`) : un NEW `ti=40` sur un slot
-  que la table de datums dit vivant sous un autre archétype (`ti=14`). Une règle de datum (NEW
-  seulement sur un slot nouvellement alloué, `FUN_142f2e598`) l'écarterait ; à poser au juge avant
-  la vague 2 (L1a, LS) ou avec LP.
+- **D-L4a-2** (requalifiée le 2026-10-03, contrôle indépendant) — Choix de tête de liste dans C11
+  (`d9781168` `17:1356`) : la tête au bit 1856 (un NEW `ti=40` sur le slot 1338) est estimée
+  factice, pas établie (§5). Le bloc de type 1 du chunk ne peut pas servir d'oracle : il déclare non
+  vivants sept slots sur lesquels la lecture concurrente écrit des DELTA. Une règle de datum (un NEW
+  seulement sur une entrée libre, `FUN_142f2e598`) tirée de ce bloc exigerait de SUIVRE
+  L'ALLOCATEUR à l'intérieur du chunk (allocations et libérations depuis le bloc jusqu'au paquet),
+  ce qu'aucun lecteur du dépôt ne fait aujourd'hui. À instruire avant la vague 2 (L1a, LS) ou avec
+  LP ; non traitée ici.
 - **D-L4a-3** — Le gate de corpus classe « perte » la baisse de `vehicles/par-end/unknown` (des vies
   qui gagnent une fin lue) et la hausse des trous comptés quand plus de paquets sont atteints : le
   sens de ces axes est à revoir (même famille que D-L0-4 / D-L0-5).
@@ -362,3 +412,80 @@ Depuis `apps/go-api`, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg-l4a`
   _voisin_de_slot`, 55 -> 61 sur un témoin), pourrait la LIRE (T6 §8). Non instruit.
 - **D-L4a-8** — Inventaire des marquages explicites (`FUN_1406c99ac`, `FUN_142ed0364`) toujours
   incomplet (réserve de la vérification adverse T6-C3) ; la loi repose sur les deux écrivains relus.
+- **D-L4a-9** (revue adversariale, 2026-10-03) — L'instrument de recherche `walkKeyframeBody`
+  (`keyframe_body_variants_instrument_helpers_test.go:116-125`), dans sa variante SANS MASQUE, ne pose
+  pas `etatComplet` : sur un film, il lirait les composants `ti=40` que la marche d'état complet de
+  production refuse, et ses taux de fermeture d'image-clé ne compareraient plus la lecture de
+  production. Instrument hors production, sous variable d'environnement ; non traité.
+
+## 12. Corrections du contrôle indépendant (2026-10-03)
+
+Contrôle indépendant du commit `9e02dabbb` (worktree jetable du contrôleur) : lot sain sur le fond
+(lecteurs relus dans le jeu, gate 2 retrouvé à l'unité, killsource identique hors diagnostic, gates
+de code verts), non intégrable en l'état pour quatre raisons. Sept corrections exigées, toutes
+vérifiées sur pièces avant d'être appliquées ; aucune autre modification.
+
+### 12.1 Tableau
+
+| # | Correction | Statut | Pièce |
+|---|---|---|---|
+| 1 | Test qui fait passer un record `ti=40` à masque par les chemins de production (mutation A3 verte) | [x] | les deux formes : (a) `TestRecordNeufTi40TraverseJusquAuBout` (NEW `ti=40`, masque `{i30, i31}`, par `TraverseEntity`, `DesyncAt == -1`, fin exacte) ; (b) garde-rail `TestEtatCompletPoseParLaSeuleMarcheDEtatComplet`, qui couvre aussi les chemins DELTA et les autres appelants de `traverseComponentLoop`. A3 ROUGE (§4) |
+| 2 | Test du compteur publié `VehicleTypePhysicsByWriterLaw` (mutation B3 verte) | [x] | `TestLeCompteurPublieCompteLesLecturesDeI34`, par `movementStateScanner.paquet` (paquet delta, vue B à un NEW `ti=40`) : 1 pour `i34`, 0 de plus pour `i37`. B3 et B5 ROUGES (§4) |
+| 3 | §5 et D-L4a-2 : retirer l'argument « table de datums » | [x] | vérifié sur `l4a_tsv/rcomb2_d9781168_paquet_17_1356.txt` : le bloc de type 1 du chunk 17 dit `vivante=false` pour 580, 581, 2513, 2514, 2515, 2517, 2518, où la lecture à douze records écrit les DELTA #5 à #11. §5 réécrit (tête factice ESTIMÉE), D-L4a-2 requalifiée (suivre l'allocateur dans le chunk), §0 aligné |
+| 4 | `ecs_table.tsv` `ti=40` i41/i42 : « NE PAS PORTER » contredit `partiel` | [x] | les deux notes marquent la décision du lot 5.5 LEVÉE par L4a, avec sa raison ; §12.3 |
+| 5 | §2 : « seize lignes partiel » | [x] | compté dans la table : 15 lignes `ti=40` passent à `partiel` (i30-i36, i38-i42, i45-i47) ; `i37` reste `porte`, source `composants_vehicule_ti40.go:178`. §2 corrigé (le titre « seize composants » reste juste : i30-i47 hors i43, i44) |
+| 6 | Revue adversariale de fin de lot, diff `af6e93e23..9e02dabbb` | [x] | §12.2 |
+| 7 | Entrée `[2026-10-03]` du lot dans `.ai/thought_log.md` | [x] | ajoutée dans ce commit |
+
+### 12.2 Revue adversariale (skill `adversarial-review`)
+
+Deux relecteurs en contexte frais, aveugles l'un à l'autre et à l'auteur : deux processus
+`claude -p --model opus` indépendants, outils en lecture seule (`Read`, `Grep`, `Glob`,
+`git diff/show/log/grep`), sur le code AU COMMIT `9e02dabbb` (`git show`), avec le contrat à six
+lignes du skill, la règle de recevabilité littérale et une lentille chacun. Prompts et sorties :
+`l4a_tsv/revue_adversariale/` (`prompt_A.txt`, `prompt_B.txt`, `sortie_A.txt`, `sortie_B.txt`).
+
+- **Relecteur A** (correction du code + les dix anti-patterns de CLAUDE.md) : **aucun défaut
+  recevable**, 14 conditions vérifiées qui tiennent (drapeau `etatComplet` sans fuite, aucun autre
+  chemin sans masque, marche d'image-clé `ti=40` inchangée, chaîne de dispatch, G1/G4, sources
+  `fichier:ligne`, extraction `lireJeuDArmes` à bits identiques, compteur à la même place du blob,
+  retrait du repli complet, seuils). Deux points pesés et écartés par lui-même : deux copies (et non
+  trois) de `FUN_1406d01fc`, et la note « NE PAS PORTER » (corrigée de toute façon, correction 4).
+- **Relecteur B** (L6, ce que les tests ne couvrent pas) : **aucun défaut de correction**, 14
+  conditions qui tiennent ; trois constats de couverture, tous proposés P2 :
+  1. `movement_states.go:309` retirée : aucun test ne rougit (= mutation B5 / B3 du contrôle) —
+     **soldé par la correction 2** (`TestLeCompteurPublieCompteLesLecturesDeI34` rouge sous B3 et B5) ;
+  2. `etatComplet = true` posé dans le chemin DELTA (`frame_records.go:212`) ou NEW
+     (`traverse.go:140`) : suite verte (= mutation A3 du contrôle) — **soldé par la correction 1**
+     (test (a) pour le chemin NEW, garde-rail (b) pour tout chemin) ;
+  3. `keyframe_body_variants_instrument_helpers_test.go:119` : la variante SANS MASQUE de l'instrument
+     `walkKeyframeBody` (fichier de test, instruments A/B d'image-clé lancés sous variable
+     d'environnement) ne pose pas `etatComplet` ; elle lirait donc `i30`-`i47` là où la production
+     s'arrête à `i30`. Vérifié sur pièces (lignes 116-125). **P2, consigné (D-L4a-9), non traité** :
+     hors des sept corrections, instrument de mesure hors production, aucun gate du lot ne l'exécute.
+
+Triage : 0 P0, 0 P1 ; 3 P2 dont 2 soldés par les corrections 1 et 2 et 1 consigné. Aucune ronde 2
+(elle relit les corrections de P0/P1, il n'y en a pas). **Verdict : le lot passe la revue
+adversariale.**
+
+
+### 12.3 « NE PAS PORTER » `i41` / `i42` : décision levée (lien avec D-14)
+
+Le lot 5.5 (2026-09-21) avait écrit « NE PAS PORTER » pour `vehicle-seats-override-pitch` (`i41`) et
+`vehicle-seats-override-yaw` (`i42`) : grammaire connue, mais aucun record `ti=40` ne les annonce
+(0 sur 253 863 masques, `4f77afc1` et `084a804d`). L4a les lit (deux R(8), `FUN_142f04a4c` et
+`FUN_142f04ac0`, relus au §1) : la décision est LEVÉE. Raison : la lecture est générale, lue chez le
+désérialiseur du jeu, et SANS EFFET tant que le composant n'est jamais annoncé (le masque ne pose pas
+son bit, la boucle ne lit rien) ; si un film l'annonce, la liste continue au bit juste au lieu de
+s'arrêter. Les deux notes de `ecs_table.tsv` le disent. La découverte D-14 du plan (« NE PAS PORTER »
+ne vaut que pour le delta, les deux composants étant lus en image-clé) portait déjà sur cette note ;
+pour le delta, elle est soldée par L4a ; l'image-clé reste à L4b (le maillon refuse `i41` / `i42` en
+état complet).
+
+### 12.4 Écarts de l'exécution des corrections
+
+- Deux invocations de Python sans effet se sont glissées dans des commandes shell (`python -` sur
+  une entrée vide, `python3 -c 1`) ; rien lu ni écrit par elles, les éditions sont faites en `perl`
+  et `sed`. Interdit « pas de Python » enfreint, sans effet sur les livrables.
+- `traverse.go` a été muté EN PLACE le temps d'un test (A3 contre le garde-rail, qui lit les
+  fichiers sur disque), puis restauré par copie ; `git status` n'y voit aucune modification.
