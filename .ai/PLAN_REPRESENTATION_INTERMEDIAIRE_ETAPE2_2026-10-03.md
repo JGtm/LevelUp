@@ -70,7 +70,7 @@ le contexte d'une cuisson et mesure.
 - Worktree de l'étape 1 réutilisé (`LevelUp-wt-ri`, un seul exécutant), jonctions `apps/web/node_modules`,
   `data/cache/film_chunks` et `data/cache/film_manifests` vers le checkout principal ; toutes retirées
   par `(Get-Item <jonction>).Delete()` AVANT tout `git worktree remove` (jamais `--force`).
-- Cache de compilation Go DÉDIÉ (`GOCACHE=%LOCALAPPDATA%\go-build-ri2`) : la campagne compile en
+- Cache de compilation Go DÉDIÉ (`GOCACHE=%LOCALAPPDATA%\go-build-ri`) : la campagne compile en
   parallèle sur la même machine.
 
 ### 1.2 Fusions
@@ -153,23 +153,26 @@ Tous les lots hors 2.7 : différence nulle, ou comptes de replis déclarés d'av
 changent la forme du paquet `grammar` régénèrent l'empreinte à RÉVISION CONSTANTE après la preuve
 (`LEVELUP_UPDATE_GRAMMAR_REV=1 go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestGrammarRevSuitLaGrammaire -update-grammar-rev`).
 
-**Ordre.** 2.0, 2.1, 2.6, puis 2.2 et 2.3 selon la coordination du §1.3, la mesure M, 2.4, 2.5,
+**Ordre.** 2.1 (en-tête compris), 2.6, puis 2.2 et 2.3 selon la coordination du §1.3, la mesure M, 2.4, 2.5,
 2.7, 3.1, 3.2. Un lot qui attend la campagne (§1.3) est DIFFÉRÉ PAR CE PLAN (exception de la règle 1
 du contrat) : le lot indépendant suivant passe devant, et le report s'écrit au journal avec sa
 dépendance. Aucun autre réordonnancement.
 
-### Lot 2.0 — En-tête de la marche : paramètres hors flux et leur provenance (taille S-M)
-- [ ] 2.0.1 Types `lecture.EnTete` et `lecture.Provenance` (lu / calibré / supposé), sans logique.
-- [ ] 2.0.2 Résolution dans la grammaire (`FilmContext.EnTete()`), portée par `Trames` et
-      `ImagesCles` ; aujourd'hui `IDLowBits` vaut 13 en dur (`DefaultFrameConfig`) dans la marche des
-      trames et dans `runWalk`, et se calibre de 10 à 15 dans `ScanMarchFacts`
-      (`object_deaths_calibrate.go`) : l'en-tête porte les DEUX, avec leur provenance, sans les
-      unifier (l'unification change une sortie : 2.7).
-- [ ] 2.0.3 `gate15` (`facts/killsource/assist.go`, `pickGate15`) et l'octet `+0x818` (repli du
-      registre `registre_filmdec_marche.go`) : inscrits avec leur provenance.
-- Gate : G-unit, G-arch, G-vet ; T4 (aucune sortie ne change) ; empreinte à révision constante.
+### Lot 2.0 — En-tête de la marche — FUSIONNÉ DANS 2.1
+*Décision d'exécution du 2026-10-03* : seul, l'en-tête n'a pas de consommateur de production à
+différence nulle (règle 7 : un accesseur lu par les seuls tests est du code mort) ; son
+consommateur est le distributeur, qui prend l'en-tête comme ENTRÉE de la marche (2.1.0), et son
+unification est 2.7.c. Relu sur pièces le 2026-10-03 : `IDLowBits` = 13 n'est pas « en dur » mais la
+valeur de l'image statique (`DAT_144706100` = 0x1FFF, catégorie 7 de `FUN_1406d3140`,
+`varwidth.go`), que deux écrivains du jeu réécrivent au runtime — provenance PRÉSUMÉE ; la marche
+des morts d'objet la CALIBRE de 10 à 15 (`object_deaths_calibrate.go`). `gate15` est un choix de
+killsource (`pickGate15`) : il entre à 2.7.c ; l'octet `+0x818` reste un repli nommé du registre.
 
-### Lot 2.1 — Le distributeur ; canaux des états de mouvement et du tir continu (taille S-M)
+### Lot 2.1 — L'en-tête et le distributeur ; canaux des états de mouvement et du tir continu (taille M)
+- [ ] 2.1.0 L'en-tête (ex-2.0) : `lecture.Provenance` (relue, mesurée, présumée — la table du profil
+      —, calibrée sur le film, imposée à la construction) et `lecture.Parametre[T]`, sans logique ;
+      `grammar.EnTete` (`IDLowBits`, découpage MPP du format, découpage d'i0) résolu par le contexte ;
+      la marche est construite DEPUIS l'en-tête, et le distributeur le rend aux canaux.
 - [ ] 2.1.1 `Canal`, `Distribuer` (DT2-1), dans des fichiers neufs `grammar/distribuer*.go`.
 - [ ] 2.1.2 États de mouvement (`movement_states*.go`) et tir continu (`tir_continu.go`) deviennent
       deux canaux ; `ScanMarcheDesTrames` les distribue ; `replay/film_scan_mouvement.go` inchangé
@@ -313,3 +316,7 @@ de ce plan y sont reprises comme items : 3.1.2.)
 - 2026-10-03 : GO de l'utilisateur (« je t'ai dit que je te le donnais ») ; branche `feat/ri-etape2`
   créée depuis `origin/feat/v75` = `67c379fc1` (amont désactivé), dans le worktree de l'étape 1.
   Ouverture du lot 2.0.
+- 2026-10-03 : lot 2.0 fusionné dans 2.1 (décision d'exécution, consignée au lot : sans le
+  distributeur, l'en-tête n'aurait pas de consommateur de production) ; `IDLowBits` relu sur pièces
+  (`varwidth.go`) : 13 est la valeur présumée de l'image statique, la marche des morts d'objet la
+  calibre. Ouverture du lot 2.1.
