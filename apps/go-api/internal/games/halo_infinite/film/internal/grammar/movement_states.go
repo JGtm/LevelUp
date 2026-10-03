@@ -20,10 +20,11 @@ package grammar
 // population PAUVRE `{i0, i1, i21, i25}` (113 bits, l etalon Rosette), celle ou les etats de
 // mouvement ne sont precisement pas.
 //
-// Elle emploie donc la marche des trames ([FilmContext.Trames], `marche_trames.go`) — le port du
-// frame-processeur `FUN_142987460` — avec les paquets a liste d evenements pleine localises par
-// `marchLocateStrict`. Sur le meme film cette marche rend 97 447 records `ti=35` dont 3
-// desynchronises, 1 407 lectures d accroupi et 1 507 de glissade (lot 5.3.5).
+// Il est donc un CANAL de la marche des trames ([CanalDesTrames], [Distribuer], `marche_trames.go`)
+// — le port du frame-processeur `FUN_142987460` — avec les paquets a liste d evenements pleine
+// localises par `marchLocateStrict`. Sur le meme film cette marche rend 97 447 records `ti=35` dont
+// 3 desynchronises, 1 407 lectures d accroupi et 1 507 de glissade (lot 5.3.5). Le canal lit la
+// structure de chaque trame et ce que son crochet recoit ; il ne pilote pas la marche.
 //
 // # LES LARGEURS D AXE DE LA CARTE SONT UN PRE-REQUIS, ET L APPELANT LES POSE
 //
@@ -76,6 +77,10 @@ const (
 	mobilityComponentName  = "biped-mobility-action-component"
 	mobilityComponentAlt   = "biped-mobility-action"
 )
+
+// velocityComponentName est l etiquette de registre d `i1` du bipede, la seule que le deserialiseur
+// de la vitesse de translation lit et publie ([EtatVitesse], `dispatch_object.go`).
+const velocityComponentName = "object-translational-velocity-dynamic-precision-component"
 
 // MovementStateViews est le nombre de vues de replication deroulees par paquet.
 //
@@ -135,7 +140,7 @@ type MarcheDesTrames struct {
 }
 
 // ScanMarcheDesTrames deroule la marche du frame-processeur sur un film DEJA CHARGE et rend ses
-// deux canaux.
+// deux canaux, distribues sur UNE marche ([Distribuer]) : les etats de mouvement et le tir continu.
 //
 // UN FILM SANS ETATS DE MOUVEMENT EST MARCHE QUAND MEME depuis le lot M4b : son archetype bipede
 // ne declare aucun des composants d etat (`Absent`), mais sa vue de controle porte le tir continu.
@@ -148,33 +153,24 @@ func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
 	if len(fc.ChunkNumbers()) == 0 {
 		return m, ErrNoFilmChunk
 	}
-	if _, err := fc.Registry(); err != nil {
+	reg, err := fc.Registry()
+	if err != nil {
 		return m, err
 	}
 	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return m, err
 	}
-	sc := &movementStateScanner{st: st,
-		crouch:   componentIndexOfAny(arch, crouchComponentName, crouchComponentNameAlt),
-		slide:    componentIndexOfAny(arch, slideComponentName, slideComponentNameAlt),
-		mobility: componentIndexOfAny(arch, mobilityComponentName, mobilityComponentAlt),
-		ability:  componentIndexOfAny(arch, abilityComponentName, abilityComponentAlt),
-		vues:     map[movementStateKey]types.MovementStateRead{},
-		tir:      nouveauCollecteurTirContinu(&m.ContinuousFireStats),
-	}
-	// AUCUNE ERREUR quand les trois manquent, et c est delibere : un film dont l archetype
-	// bipede ne declare aucun des trois ne transmet pas les etats de mouvement. C est un fait
-	// MESURE, que `Absent` publie au lieu de le confondre avec un film ou personne ne s accroupit.
-	absent := sc.crouch < 0 && sc.slide < 0 && sc.mobility < 0 && sc.ability < 0
-	if err := sc.marcher(fc, !absent); err != nil {
+	sc := nouveauCanalDesEtats(st, reg, arch)
+	tir := nouveauCollecteurTirContinu(&m.ContinuousFireStats)
+	if err := Distribuer(fc, sc, tir); err != nil {
 		return m, err
 	}
 	m.LiaisonsParRepliDAnticipation = sc.liaisonsDuRepliDAnticipation()
 	m.DebutsDeListeParRepliFermeAuBit = sc.obs.DebutsDeListeParRepliFermeAuBit
-	m.ContinuousFire = sc.tir.terminer()
+	m.ContinuousFire = tir.out
 	m.ContinuousFireStats.Scanned = true
-	if absent {
+	if !sc.transmet {
 		*st = types.MovementStateStats{MapWidths: st.MapWidths, Absent: true, Scanned: true}
 		return m, nil
 	}
@@ -185,30 +181,19 @@ func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
 	return m, nil
 }
 
-// marcher deroule LA marche des trames du film ([FilmContext.Trames], `marche_trames.go`) et en
-// consomme chaque trame. `etats` : la porte des etats de mouvement est branchee (faux pour un film
-// qui ne les transmet pas).
-func (sc *movementStateScanner) marcher(fc *FilmContext, etats bool) error {
-	obs := NouvelleObservation()
-	if etats {
-		obs.EtatMouvementHook = sc.recevoir
-	}
-	mt, err := fc.nouveauMarcheurDesTrames(obs)
-	if err != nil {
-		return err
-	}
-	// Le paquet de la marche est son arene : son en-tete est pose AVANT la marche du paquet, et la
-	// porte des etats de mouvement le lit pendant ([movementStateScanner.recevoir]).
-	sc.obs, sc.paquet, sc.entites = obs, &mt.paquet, mt.entites
-	mt.parcourir(sc.trame)
-	obs.solderLesNeufsRefuses()
-	sc.st.DatumBindings, sc.st.DatumAmbiguous = mt.liaisons.Datums, mt.liaisons.Ambigus
-	sc.st.LiaisonsOubliees = mt.liaisons.Oubliees
-	sc.st.NeufsContreUnVivant = obs.NeufsContreUnVivant
-	sc.st.NeufsRefusesLecturesFausses = obs.NeufsRefusesLecturesFausses
-	sc.st.NeufsRefusesCreationsPerdues = obs.NeufsRefusesCreationsPerdues
-	sc.st.NeufsRefusesIndecis = obs.NeufsRefusesIndecis
-	return nil
+// nouveauCanalDesEtats prepare le canal des etats de mouvement d un film de registre `reg` et
+// d archetype bipede `arch`.
+//
+// AUCUNE ERREUR quand les quatre etats manquent, et c est delibere : un film dont l archetype
+// bipede ne declare aucun des quatre ne transmet pas les etats de mouvement. C est un fait MESURE,
+// que `Absent` publie au lieu de le confondre avec un film ou personne ne s accroupit.
+func nouveauCanalDesEtats(st *types.MovementStateStats, reg *Registry, arch Archetype) *movementStateScanner {
+	transmet := componentIndexOfAny(arch, crouchComponentName, crouchComponentNameAlt) >= 0 ||
+		componentIndexOfAny(arch, slideComponentName, slideComponentNameAlt) >= 0 ||
+		componentIndexOfAny(arch, mobilityComponentName, mobilityComponentAlt) >= 0 ||
+		componentIndexOfAny(arch, abilityComponentName, abilityComponentAlt) >= 0
+	return &movementStateScanner{st: st, transmet: transmet, vues: map[movementStateKey]types.MovementStateRead{},
+		physique: occurrencesDe(reg, compVehicleTypePhysics)}
 }
 
 // movementStateKey deduplique une lecture : le chemin d inference de la marche ([decodeInferLoop])
@@ -221,46 +206,66 @@ type movementStateKey struct {
 	ts   uint64
 }
 
-// movementStateScanner porte l etat du balayage.
+// movementStateScanner est le CANAL DES ETATS DE MOUVEMENT de la marche des trames
+// ([CanalDesTrames]) : son crochet recoit ce que le deserialiseur publie, chaque trame ses comptes,
+// lus dans la structure.
 type movementStateScanner struct {
-	st                      *types.MovementStateStats
-	out                     []types.MovementStateRead
-	crouch, slide, mobility int
-	// ability est l index d `i57` dans l archetype bipede — la fente de capacite active, donc
-	// le SPRINT (cf. `sprintAbilitySlotRaw`). Il entre dans la garde d absence : un film dont
-	// l archetype ne declare AUCUN des quatre ne transmet pas les etats de mouvement.
-	ability int
-	vues    map[movementStateKey]types.MovementStateRead
-	// paquet : le paquet que la marche des trames lit, son en-tete pose avant sa marche ;
-	// entites : la table d entites de la marche, en lecture seule.
-	paquet  *lecture.Paquet
-	entites lecture.Entites
+	st  *types.MovementStateStats
+	out []types.MovementStateRead
+	// transmet : l archetype bipede du film declare au moins un des quatre etats (accroupi,
+	// glissade, mobilite, capacite active — `i57`, la fente de capacite active, donc le SPRINT, cf.
+	// `sprintAbilitySlotRaw`). Faux : ni crochet ni interet, `Absent` publie.
+	transmet bool
+	vues     map[movementStateKey]types.MovementStateRead
+	// m : ce que le canal voit de la marche — le paquet en cours, son en-tete pose avant sa marche
+	// (le crochet le lit pendant), et la table d entites, en lecture seule.
+	m *MarcheDistribuee
+	// physique : les occurrences de `compVehicleTypePhysics` dans les archetypes du registre, que
+	// [types.MovementStateStats.VehicleTypePhysicsByWriterLaw] compte par record.
+	physique occurrencesDuComposant
 	// vit porte les lectures de vitesse verticale par vie — la matiere du saut DERIVE
 	// (`movement_states_jump.go`). Elle n est pas publiee telle quelle : seules les montees
 	// reconnues a leur hauteur deviennent des transitions.
 	vit map[uint32][]jumpVelSample
-	// obs : l observation de la marche des trames, dont les NEW refuses attendent le verdict de
-	// l image-cle suivante (constat DFIX-R6, `keyframe_liaison.go`).
+	// obs : l observation de la marche des trames, recue au bilan, NEW refuses soldes (constat
+	// DFIX-R6, `keyframe_liaison.go`) : les comptes de replis de la marche s y lisent.
 	obs *Observation
-	// tir : le collecteur du TIR CONTINU (lot M4b) — il recoit le verdict de la vue C de chaque
-	// paquet delta, et c est la MEME marche qui le lui donne.
-	tir *collecteurTirContinu
 }
 
-// trame consomme UNE trame delta de la marche. Les paquets a liste d evenements PLEINE sont
-// localises par la marche ([localiserLaListe]) ; ceux qu elle ne localise pas sont comptes et
-// sautes, parce que sauter la liste bit-exactement demanderait la grammaire de charge de chaque
-// type d evenement. Le verdict de la vue C va au tir continu ; les records du bipede se comptent
-// dans la structure.
-func (sc *movementStateScanner) trame(t *trameLue) bool {
-	p := t.paquet
-	sc.tir.ouvrir(p.TS)
+// Interets : sur le bipede, dans les trames, les quatre etats et la vitesse de translation, la
+// matiere du saut derive — ce que le crochet garde. La posture et le controle d unite, que le meme
+// deserialiseur publie, ne sont pas interpretes. Rien pour un film qui ne transmet pas les etats.
+func (sc *movementStateScanner) Interets() []Interet {
+	if !sc.transmet {
+		return nil
+	}
+	noms := []string{crouchComponentName, crouchComponentNameAlt, slideComponentName, slideComponentNameAlt,
+		mobilityComponentName, mobilityComponentAlt, abilityComponentName, abilityComponentAlt, velocityComponentName}
+	out := make([]Interet, len(noms))
+	for i, nom := range noms {
+		out[i] = Interet{Phase: PhaseTrames, TI: BipedTypeIndex, Composant: nom}
+	}
+	return out
+}
+
+// Brancher pose la porte des etats de mouvement, pour un film qui les transmet.
+func (sc *movementStateScanner) Brancher(obs *Observation, m *MarcheDistribuee) {
+	sc.m = m
+	if sc.transmet {
+		obs.EtatMouvementHook = sc.recevoir
+	}
+}
+
+// Trame compte UNE trame delta de la marche, dans la structure. Les paquets a liste d evenements
+// PLEINE sont localises par la marche ([localiserLaListe]) ; ceux qu elle ne localise pas sont
+// comptes et sautes, parce que sauter la liste bit-exactement demanderait la grammaire de charge de
+// chaque type d evenement.
+func (sc *movementStateScanner) Trame(p *lecture.Paquet) {
 	if p.Debut != lecture.DebutEnTete {
 		sc.st.EventPackets++
 		if p.Debut == lecture.DebutNonLocalise {
 			sc.st.EventPacketsUnlocated++
-			sc.tir.fermer(true) // liste non localisee : la vue C n est pas lue, c est un TROU
-			return true
+			return
 		}
 		sc.st.EventPacketsLocated++
 		if p.Debut != lecture.DebutParSignature {
@@ -268,14 +273,8 @@ func (sc *movementStateScanner) trame(t *trameLue) bool {
 		}
 	}
 	sc.st.Packets++
-	if t.parRangs {
-		sc.tir.recevoir(t.lecture.verdict) // le verdict de la vue C, publie par la marche
-	}
-	sc.tir.fermer(false)
-	for _, r := range t.lecture.recs {
-		sc.st.VehicleTypePhysicsByWriterLaw += lecturesDeComposant(r, compVehicleTypePhysics)
-	}
 	for _, r := range p.Records {
+		sc.st.VehicleTypePhysicsByWriterLaw += sc.physique.lu(p, r)
 		if r.TI != BipedTypeIndex {
 			continue
 		}
@@ -284,12 +283,55 @@ func (sc *movementStateScanner) trame(t *trameLue) bool {
 			sc.st.Desyncs++
 		}
 	}
-	return true
+}
+
+// Clore recoit le bilan de la marche : ce que la liaison des images-cles a fait au monde, et le
+// verdict des NEW refuses.
+func (sc *movementStateScanner) Clore(b BilanDeMarche) {
+	sc.obs = b.Obs
+	sc.st.DatumBindings, sc.st.DatumAmbiguous = b.Liaisons.Datums, b.Liaisons.Ambigus
+	sc.st.LiaisonsOubliees = b.Liaisons.Oubliees
+	sc.st.NeufsContreUnVivant = b.Obs.NeufsContreUnVivant
+	sc.st.NeufsRefusesLecturesFausses = b.Obs.NeufsRefusesLecturesFausses
+	sc.st.NeufsRefusesCreationsPerdues = b.Obs.NeufsRefusesCreationsPerdues
+	sc.st.NeufsRefusesIndecis = b.Obs.NeufsRefusesIndecis
+}
+
+// occurrencesDuComposant : par archetype du registre (son rang), le masque des index d iteration ou
+// il declare un composant.
+type occurrencesDuComposant map[int16]uint64
+
+// occurrencesDe releve, dans le registre, les index ou chaque archetype declare le composant `nom`.
+func occurrencesDe(reg *Registry, nom string) occurrencesDuComposant {
+	out := occurrencesDuComposant{}
+	for ti, a := range reg.Archetypes {
+		for _, i := range a.indicesOf(nom) {
+			if i < 64 {
+				out[int16(ti)] |= 1 << uint(i) //nolint:gosec // rang d un archetype, sur 6 bits
+			}
+		}
+	}
+	return out
+}
+
+// lu rend 1 quand le record `r` du paquet `p` porte une occurrence du composant — traversee ou
+// infranchissable : une lecture du composant au sens de la trace de la marche —, 0 sinon.
+func (o occurrencesDuComposant) lu(p *lecture.Paquet, r lecture.Record) int {
+	masque, ok := o[r.TI]
+	if !ok {
+		return 0
+	}
+	for _, c := range p.Comps[r.Comps[0]:r.Comps[1]] {
+		if masque>>c.Index&1 == 1 {
+			return 1
+		}
+	}
+	return 0
 }
 
 // archetypeDuSlot rend l archetype que la table d entites de la marche donne a un slot.
 func (sc *movementStateScanner) archetypeDuSlot(slot uint32) (uint32, bool) {
-	e, ok := sc.entites.Entite(slot)
+	e, ok := sc.m.Entites.Entite(slot)
 	return uint32(e.TI), ok
 }
 
@@ -341,8 +383,9 @@ func (sc *movementStateScanner) recevoir(comp EtatMouvementComposant, slot uint3
 		sc.st.SlotUnbound++
 		return
 	}
-	lu.Slot, lu.Chunk, lu.PacketIndex, lu.TimestampUS = slot, sc.paquet.Chunk, sc.paquet.Index, sc.paquet.TS
-	k := movementStateKey{slot: slot, kind: lu.Kind, ts: sc.paquet.TS}
+	p := sc.m.Paquet
+	lu.Slot, lu.Chunk, lu.PacketIndex, lu.TimestampUS = slot, p.Chunk, p.Index, p.TS
+	k := movementStateKey{slot: slot, kind: lu.Kind, ts: p.TS}
 	if _, deja := sc.vues[k]; deja {
 		sc.st.Duplicates++
 		return

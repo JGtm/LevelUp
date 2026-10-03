@@ -169,7 +169,7 @@ valeur de l'image statique (`DAT_144706100` = 0x1FFF, catégorie 7 de `FUN_1406d
 des morts d'objet la CALIBRE de 10 à 15 (`object_deaths_calibrate.go`). `gate15` est un choix de
 killsource (`pickGate15`) : il entre à 2.7.c ; l'octet `+0x818` reste un repli nommé du registre.
 
-### Lot 2.1 — L'en-tête et le distributeur ; canaux des états de mouvement et du tir continu (taille M)
+### Lot 2.1 — L'en-tête et le distributeur ; canaux des états de mouvement et du tir continu (taille M) — fait, clôture à la CI verte
 *EN DEUX TEMPS, convenu avec la campagne le 2026-10-03 (même formule que le lot 1.3 de l'étape 1)* :
 2.1.0, 2.1.1 et la marque « interprété » de 2.1.3 d'abord, en fichiers neufs (`grammar/lecture`,
 `grammar/entete.go`, `grammar/distribuer*.go`) et dans les fichiers de la marche
@@ -231,17 +231,39 @@ pour ses crochets :
 5. *T3 resserré* (2.1.3) : le test de provenance distribue le canal de production, dont il double le
    crochet ; chaque lecture que le canal interprète cite une occurrence `EtatInterprete`, la posture
    et le contrôle d'unité une occurrence délimitée.
-- [ ] 2.1.2 États de mouvement (`movement_states*.go`) et tir continu (`tir_continu.go`) deviennent
+- [x] 2.1.2 États de mouvement (`movement_states*.go`) et tir continu (`tir_continu.go`) deviennent
       deux canaux ; `ScanMarcheDesTrames` les distribue ; `replay/film_scan_mouvement.go` inchangé
       dans ce qu'il publie.
-- [ ] 2.1.3 « Interprété » exact (DT2-2) ; T3 de l'étape 1 resserré : chaque lecture d'état cite
+      *Fait* : `movementStateScanner` et `collecteurTirContinu` sont deux `CanalDesTrames` ;
+      `ScanMarcheDesTrames` les distribue (`Distribuer`) et ne pilote plus la marche (`marcher`
+      retiré) ; les comptes de la marche (liaisons, NEW refusés, replis) arrivent par le bilan. Le
+      tir continu prend le verdict au crochet et le clôt à la trame (`ouvrir` retiré, la clôture du
+      canal finit et trie les rafales). `VehicleTypePhysicsByWriterLaw` se compte dans la structure,
+      par paire (archétype du record, `compVehicleTypePhysics`, masque résolu au registre :
+      `occurrencesDuComposant`) ; `lecturesDeComposant` retirée avec l'accord de la campagne, la
+      ligne MUTATION de son test désigne le nouveau site, mutation rejouée rouge.
+      `replay/film_scan_mouvement.go` inchangé. Le commentaire de garde d'absence disait « trois »
+      états pour quatre testés : corrigé (règle 17).
+- [x] 2.1.3 « Interprété » exact (DT2-2) ; T3 de l'étape 1 resserré : chaque lecture d'état cite
       l'occurrence marquée interprétée.
       *Premier temps fait* : la marque — interprétée quand un canal l'interprète et qu'elle est
       traversée ; la règle « valeur capturée par la trace » est retirée (aucun lecteur de cet état ;
-      sans canal, rien n'est interprété) ; mutation jouée rouge. *Reste* : le resserrage de T3, au
-      second temps (il lit les états de mouvement, branchés en canal en 2.1.2).
+      sans canal, rien n'est interprété) ; mutation jouée rouge. *Second temps fait* : T3 distribue
+      les deux canaux de production doublés de témoins ; chaque lecture que le crochet garde (un
+      état autre que la posture et le contrôle d'unité, sur un bipède) cite une occurrence
+      `EtatInterprete`, les autres une occurrence délimitée — 23 456 lectures dont 23 427
+      interprétées, 11 751 entrées de contrôle citées. Deux mutations jouées rouges (la vitesse
+      retirée des intérêts du canal ; la posture ajoutée) ; l'accroupi n'est pas une cible de
+      mutation, il n'est jamais traversé dans les trames de ces bobines (lot 2.2, décision 2).
 - Gate : T4 (étapes `movementStates` et `continuousFire` de `replay-equiv`), killsource identique,
   T1/T3/T6 verts.
+  *Passé* (passe `ri31` contre la référence fusionnée `ri30`) : `replay-equiv` 20/20 identiques
+  et digests identiques, tous décodés depuis le film ; faits 20/20 (dont
+  `VehicleTypePhysicsByWriterLaw`, condition de la campagne) et killsource 19/19 identiques à
+  l'octet. G-film et archlint (T1, T3, T6 compris), `go vet` (avec et sans `research`),
+  `golangci-lint` (0 problème) verts ; empreinte de la grammaire régénérée à révision constante.
+  Parcours de la cuisson : inchangés (une phase des images-clés pour les préliminaires, une marche
+  des trames).
 
 ### Lot 2.2 — Canaux d'image-clé (taille M) — coordination §1.3 — CLOS le 2026-10-03 (2.2.2 en attente d'une décision de l'utilisateur)
 *Décisions d'exécution du 2026-10-03* (relu sur pièces : chaque consommateur pilote aujourd'hui sa
@@ -646,3 +668,8 @@ plan y sont reprises comme items (3.1.2).
   `ri30`, références de la vague 1). Ouverture du second temps de 2.1 (décisions 1 à 5 au lot,
   écrites avant le code ; le retrait de `lecturesDeComposant`, fichier de la campagne, convenu avec
   elle à trois conditions).
+- 2026-10-03 : lot 2.1 fait et prouvé (cf. le lot), clôture à la CI verte du commit du lot ; les
+  trois conditions de la campagne sont tenues (paire et constante, faits identiques par film,
+  mutation rejouée rouge sur le nouveau site) et elle en est prévenue. ADR 0037 amendé (IR-2 : les
+  états de mouvement et le tir continu sont deux canaux du distributeur). Suite : lot 2.4
+  (récupération ancrée mutualisée), que la fusion de la vague 1 débloque.

@@ -115005,3 +115005,28 @@ second rang de `debutParFermeture` lie au monde (D-L2-12), puis rejouer C11.
 **Résultats observés** : mutations M11 et M12 de la revue ROUGES (vertes contre l'ancien test) ; copie du minuteur sur une ligne ROUGE (verte contre l'ancien garde-rail) ; copie du jeu d'armes de la tête et sur une ligne ROUGES. Contre `8390543a8` (binaires de `git archive`) : carte v2 20 films, `fermeture_paquets.tsv` identique à l'octet ; killsource 19 témoins identiques à l'octet ; `replay-equiv` 20 films, digests identiques à l'octet. Empreinte `grammar` régénérée à révision constante `grammar-2026-10-03.2`. gofmt, vet (module et research), archlint, G-film 20 paquets, golangci 0 issue.
 
 **Conclusion / prochaine étape** : rien de neuf à décider ; restent ouverts D23 (révision killsource), rc 1 du gate de corpus (pilote), LK (D-REV-2). Détail : plan §4 (2026-10-03, « mineurs de la revue »), `LOT_L4a.md` §14, `LOT_L3a.md` §11.
+
+## [2026-10-03] Représentation intermédiaire du film, étape 2 — vague 1 refusionnée, lot 2.1 (second temps) : états de mouvement et tir continu en canaux — Complété (`feat/ri-etape2`)
+
+**Statut** : Complété (clôture du lot à la CI verte du commit).
+
+**Décision technique principale** : la vague 1 de la campagne (`2393d7db7`) est refusionnée et sa
+fusion PROUVÉE par une passe du binaire de la campagne contre le binaire fusionné (tout identique à
+l'octet) avant de re-figer les références. Puis le balayage des états de mouvement et le collecteur
+du tir continu deviennent deux canaux des trames du distributeur : `ScanMarcheDesTrames` les
+distribue et ne pilote plus la marche ; le tir continu prend le verdict de la vue C au crochet ;
+les comptes se lisent dans la structure — dont `VehicleTypePhysicsByWriterLaw`, par paire (archétype
+du record, `compVehicleTypePhysics`), ce qui retire `lecturesDeComposant` d'un fichier de la
+campagne, avec son accord à trois conditions. T3 resserré : chaque lecture que le canal garde cite
+une occurrence marquée interprétée.
+
+**Résultats observés** : fusion — digests `replay-equiv` 20/20, faits 20/20, killsource 19/19
+identiques entre la tête de la campagne et la tête fusionnée. Lot — mêmes identités contre la
+référence fusionnée (passe `ri31` contre `ri30`), tous décodés depuis le film ; T3 : 23 456
+lectures dont 23 427 interprétées, 11 751 entrées de contrôle ; trois mutations jouées rouges
+(compteur de `i34`, vitesse retirée des intérêts, posture ajoutée). G-film, archlint, vet avec et
+sans `research`, golangci-lint verts ; empreinte de la grammaire régénérée à révision constante.
+
+**Conclusion / prochaine étape** : CI du commit, puis le lot 2.4 (récupération ancrée mutualisée :
+un ancrage bipède par film au lieu de neuf passes), débloqué par la vague 1. Décision de
+l'utilisateur sur 2.2.2 toujours attendue.

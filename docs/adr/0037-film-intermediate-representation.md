@@ -98,6 +98,12 @@ and the closure map — consume it from step 1 on. The copy of that loop in `fra
 disappears. A walker that nobody consumes would be a second parser, which is what this ADR exists
 to remove.
 
+Since step 2 (lot 2.1), movement states and continuous fire are two frame channels of
+`grammar.Distribuer`: `ScanMarcheDesTrames` distributes them and no longer drives the walk. They
+read the structure and what their hooks receive: continuous fire takes the view-C verdict from the
+walk's hook, and the movement-state counts (event-list frames, biped records, the readings of the
+vehicle type-physics component) are read from the ranged frame, not from the walk's trace.
+
 ### IR-3 — Two phases and bounded preliminaries, not one pass (correction C2)
 
 A single forward pass is impossible as the walk stands: the anticipated table reads later keyframes

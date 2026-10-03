@@ -8,8 +8,9 @@ package grammar
 // Le pilotage qui suit — la table anticipee posee une fois, puis chunk par chunk la liaison des
 // images-cles au monde ([lierLesImagesClesDuChunk]), puis paquet par paquet la localisation des
 // listes d evenements ([localiserLaListe]) et la marche par rangs ([lireTrameParRangs]) — est celui
-// des etats de mouvement et du tir continu ([ScanMarcheDesTrames]) et de la carte de fermeture
-// ([FrameClosure], [FrameClosureDetaillee]) : ils le CONSOMMENT, aucun ne le recopie. Garde-rail :
+// des canaux du distributeur ([Distribuer] : les etats de mouvement et le tir continu de
+// [ScanMarcheDesTrames]) et de la carte de fermeture ([FrameClosure], [FrameClosureDetaillee]) : ils
+// le CONSOMMENT, aucun ne le recopie. Garde-rail :
 // `marche_trames_unique_test.go`. La table et la liaison sont lues dans la phase des images-cles
 // (`marche_trames_preliminaires.go`).
 //

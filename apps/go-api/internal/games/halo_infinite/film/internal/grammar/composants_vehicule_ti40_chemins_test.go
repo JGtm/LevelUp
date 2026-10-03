@@ -204,14 +204,14 @@ func paquetDeltaNeufTi40(t *testing.T, i34 bool) []byte {
 	return w.buf
 }
 
-// TestLeCompteurPublieCompteLesLecturesDeI34 : la marche des etats de mouvement compte dans
+// TestLeCompteurPublieCompteLesLecturesDeI34 : le canal des etats de mouvement compte dans
 // [types.MovementStateStats.VehicleTypePhysicsByWriterLaw] chaque record qui lit `i34`, et lui
 // seul. Le paquet passe par la marche des trames de production
-// ([marcheurDesTrames.marcherLePaquet]) puis par le balayage ([movementStateScanner.trame]).
-// MUTATION : [lecturesDeComposant] rend toujours 0 — ROUGE.
+// ([marcheurDesTrames.marcherLePaquet]) puis par le canal ([movementStateScanner.Trame]), qui le
+// compte dans la structure, par paire (archetype du record, `compVehicleTypePhysics`).
+// MUTATION : [occurrencesDuComposant.lu] rend toujours 0 — ROUGE.
 func TestLeCompteurPublieCompteLesLecturesDeI34(t *testing.T) {
 	var st types.MovementStateStats
-	var tir types.ContinuousFireStats
 	cfg := DefaultFrameConfig()
 	cfg.Obs = NouvelleObservation()
 	for _, c := range []struct {
@@ -223,9 +223,7 @@ func TestLeCompteurPublieCompteLesLecturesDeI34(t *testing.T) {
 		m.trame.paquet = &m.paquet
 		pay := paquetDeltaNeufTi40(t, c.i34)
 		m.marcherLePaquet(0, FilmPacket{Type: PacketTypeDelta, Size: len(pay)}, pay)
-		sc := &movementStateScanner{st: &st, obs: cfg.Obs, paquet: &m.paquet, entites: m.entites,
-			tir: nouveauCollecteurTirContinu(&tir)}
-		sc.trame(&m.trame)
+		nouveauCanalDesEtats(&st, archetypeTi40(), Archetype{}).Trame(&m.paquet)
 		if st.VehicleTypePhysicsByWriterLaw != c.compte {
 			t.Fatalf("apres un NEW ti=40 (i34 %v) : compteur %d, attendu %d", c.i34,
 				st.VehicleTypePhysicsByWriterLaw, c.compte)
