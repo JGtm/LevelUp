@@ -5,74 +5,15 @@ import (
 	"testing"
 )
 
-// statborg_guards_test.go — LES CONTROLES NEGATIFS DES GARDES D'ANCRAGE (revue R1, 2026-08-18).
+// statborg_guards_test.go — LES CONTROLES NEGATIFS DES GARDES CONTRE LES MANCHES FANTOMES (revue
+// R1, 2026-08-18).
 //
-// POURQUOI CE FICHIER EXISTE. Les tests d'A.1.0 prouvaient que la grammaire relachee LIT ce
-// qu'elle doit lire (manche 2, forme dense, plafond memoire). Aucun ne prouvait qu'elle REFUSE
-// ce qu'elle doit refuser — or c'est exactement ce que le relachement met en jeu : la contrainte
-// « les deux en-tetes de 5 bits sont nuls » a saute, et ce sont deux autres contraintes qui la
-// remplacent. Un test qui n'echouerait pas si on les inversait ne prouve rien.
+// POURQUOI CE FICHIER EXISTE. Le relachement de l'assertion d'en-tete laisse passer un residu
+// d'ancrages fortuits ; les gardes d'ANCRAGE qui le bornent sont tenues par la grammaire
+// (`grammar/signaux/statborg_lecture_test.go`). Celles d'ici sont les gardes qui separent une manche
+// REELLE d'une manche fantome : un test qui n'echouerait pas si on les inversait ne prouve rien.
 //
 // Chaque test ci-dessous ECHOUE si la garde qu'il vise est retiree.
-
-// setBitsBE ecrit n bits big-endian a bitPos dans une COPIE de data. C'est l'inverse exact de
-// readBitsBE, et il ne sert qu'a fabriquer des vecteurs NEGATIFS a partir de vecteurs reels :
-// on part d'un enregistrement qui se decode, et on casse UNE contrainte a la fois.
-func setBitsBE(data []byte, bitPos, n int, v uint64) []byte {
-	out := append([]byte(nil), data...)
-	for i := range n {
-		bit := (v >> uint(n-1-i)) & 1
-		p := bitPos + i
-		mask := byte(1) << uint(7-p%8)
-		if bit == 1 {
-			out[p/8] |= mask
-		} else {
-			out[p/8] &^= mask
-		}
-	}
-	return out
-}
-
-// TestDecodeComponentsRefuseUnCoupleDepareille — LA PREMIERE GARDE.
-//
-// Les deux en-tetes de 5 bits portent le MEME numero de manche : ils sont redondants dans le
-// format, et c'est cette redondance qui remplace la contrainte « nuls » comme filtre
-// anti-faux-positifs. Un couple depareille est un ancrage fortuit.
-func TestDecodeComponentsRefuseUnCoupleDepareille(t *testing.T) {
-	_, idx, at, ok := matchRecordHeader(vecRound0.data, vecRound0.bits)
-	if !ok {
-		t.Fatal("le vecteur de reference ne s'ancre plus — revoir les vecteurs avant ce test")
-	}
-	if comps, _ := decodeComponents(vecRound0.data, at, idx); len(comps) == 0 {
-		t.Fatal("le vecteur de reference ne se decode plus")
-	}
-	// Le SECOND en-tete passe de 0 a 1 : les deux ne disent plus la meme manche.
-	casse := setBitsBE(vecRound0.data, at+statHdrBits, statHdrBits, 1)
-	if comps, _ := decodeComponents(casse, at, idx); len(comps) != 0 {
-		t.Errorf("un couple d'en-tetes DEPAREILLE (0 puis 1) a ete accepte : %d composant(s) — "+
-			"la garde qui remplace « en-tetes nuls » ne filtre plus rien", len(comps))
-	}
-}
-
-// TestDecodeComponentsRefuseUneMancheHorsBorne — LA SECONDE GARDE.
-//
-// Le numero de manche est borne (statMaxRound) : huit manches sont au-dela de tout format
-// observe, et la borne conserve deux bits de contrainte sur chacun des deux en-tetes. Sans elle,
-// l'ancrage laisserait passer 151 faux positifs par film (mesure d'A.1.0).
-func TestDecodeComponentsRefuseUneMancheHorsBorne(t *testing.T) {
-	_, idx, at, ok := matchRecordHeader(vecRound0.data, vecRound0.bits)
-	if !ok {
-		t.Fatal("le vecteur de reference ne s'ancre plus")
-	}
-	horsBorne := uint64(statMaxRound + 1)
-	casse := setBitsBE(vecRound0.data, at, statHdrBits, horsBorne)
-	casse = setBitsBE(casse, at+statHdrBits, statHdrBits, horsBorne)
-	// Les deux en-tetes CONCORDENT : seule la borne peut refuser ce vecteur.
-	if comps, round := decodeComponents(casse, at, idx); len(comps) != 0 {
-		t.Errorf("une manche %d (borne %d) a ete acceptee : %d composant(s), round=%d",
-			horsBorne, statMaxRound, len(comps), round)
-	}
-}
 
 // TestRealRoundsRefuseUneValeurHorsDomaine — GARDE ANTI-MANCHE-FANTOME n 1 : la borne de domaine.
 //

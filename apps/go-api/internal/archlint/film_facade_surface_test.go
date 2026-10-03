@@ -393,7 +393,7 @@ const plafondSurfaceReplay = 299 // 2026-10-02 — revue finale D2 sur 06afd4566
 // de l autre. La ventilation nomme alors la couche qui a grossi.
 var plafondsParFamilleFacade = map[string]int{
 	"grammar":    45, // 2026-09-30 — J12.4 : -1 (BuildBipedTracks) ; 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
-	"objectives": 40, // 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs) ; 2026-09-28 — J8.7-bis : +1 (ReplisALaConsultation)
+	"objectives": 39, // 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs) ; 2026-09-28 — J8.7-bis : +1 (ReplisALaConsultation) ; 2026-10-03 — lot 2.6 de la RI sur 129512162 : -1 (CaptureBurstTimes, re-exporte depuis signaux ; total inchange)
 	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire (J7) : +1 (`ErrCarteAbsente`) ; 2026-10-02 — retrait des replis nuls (DU-7) : -1 (`XUIDNamePrefix`)
 	"fallback":   23, // 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector) ; 2026-10-02 — retrait des replis nuls (DU-7) : -6 (noms des replis retires)
 	"types":      10,
@@ -402,6 +402,7 @@ var plafondsParFamilleFacade = map[string]int{
 	"weaponscan": 5,
 	"weaponv3":   4,
 	"positions":  2,
+	"signaux":    1, // 2026-10-03 — lot 2.6 de la RI sur 129512162 : +1 (CaptureBurstTimes, lu par la grammaire ; venu de la famille objectives, total inchange)
 }
 
 // TestSurfaceDeLaFacadeDuDecodeur : (a) — le compte par AST, et sa ventilation par famille.

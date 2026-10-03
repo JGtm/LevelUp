@@ -11,7 +11,7 @@ import (
 //
 // Complement direct des events d'objectif : ceux-ci disent QUI prend une base ou capture un
 // drapeau, celles-ci disent OU EN EST le score a cet instant. Meme horloge, superposables
-// sans recalage. Le decodage des enregistrements lui-meme vit dans statborg.go.
+// sans recalage. La lecture des enregistrements elle-meme vit dans `grammar/signaux/statborg.go`.
 //
 // # Ou vit quoi, et c'est mesure et non suppose
 //

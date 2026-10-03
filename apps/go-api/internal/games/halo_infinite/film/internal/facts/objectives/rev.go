@@ -88,6 +88,16 @@ package objectives
 // [ReplisALaConsultation] partent avec eux. LA SORTIE NE CHANGE SUR AUCUN FILM DU PARC (les deux
 // conditions y comptent zero) : les faits persistes et les calques dates `objectives-2026-09-27`
 // restent frais, aucune recuisson. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-03 (lot 2.6 de la representation intermediaire, REVISION CONSTANTE) : LA
+// LECTURE DU STATBORG, DU PIED DE FILM ET DES RAFALES DE CAPTURE DESCEND DANS LA GRAMMAIRE
+// (`grammar/signaux`, ADR 0037 : D-2 amende). Ce paquet ne lit plus d octet : ses points d entree
+// passent le film a la grammaire et portent ce qu elle rend (enregistrements, comptes des deux
+// replis du statborg, constats). LE PERIMETRE CHANGE DE FORME : la couche entre desormais `grammar`
+// par sa VALEUR (`amont grammar`), et une montee de `grammar.Rev` demande la decision de ce gate —
+// golden regenere a revision constante quand la lecture des signaux ne change pas, montee sinon.
+// AUCUNE SORTIE NE CHANGE (`replay-equiv` sur les 20 films de reference, faits et killsource
+// identiques a l octet) ; golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

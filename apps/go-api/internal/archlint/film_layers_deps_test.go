@@ -246,6 +246,12 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// remplit (ADR 0037 IR-9) : une feuille de la couche `grammar`, que ni `replay` ni `decfilm`
 	// n importent. Ses regles propres vivent dans `film_lecture_test.go`.
 	"internal/games/halo_infinite/film/internal/grammar/lecture": coucheGrammar,
+	// `signaux` LIT les signaux de score et d objectif hors de la marche (statborg, pied de film,
+	// rafales de capture), descendus de `facts/objectives` au lot 2.6 de la representation
+	// intermediaire (ADR 0037, D-2 amende) : couche `grammar`. Une FEUILLE de cette couche — elle
+	// n importe pas `grammar` —, parce que des tests de `grammar` importent `facts/objectives`, qui
+	// la consomme.
+	"internal/games/halo_infinite/film/internal/grammar/signaux": coucheGrammar,
 
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.

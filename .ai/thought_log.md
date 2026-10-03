@@ -114756,3 +114756,40 @@ T5, T6, différence nulle prouvée à chaque lot.
 
 **Conclusion / prochaine étape** : mesure de performance machine calme (critère 4) au signal de la
 campagne ; GO daté de l'utilisateur pour l'étape 2 (plan validé le 2026-10-03).
+
+## [2026-10-03] Représentation intermédiaire du film, étape 2 — lot 2.6 : le statborg descend dans la grammaire (`grammar/signaux`) — Complété (`feat/ri-etape2`)
+
+**Statut** : Complété (lot 2.6 du plan `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) ;
+le lot 2.1 est DIFFÉRÉ PAR LE PLAN (il touche `movement_states.go` et `lecteur.go`, que le lot L4a de
+la vague 1 de la campagne modifie) et reprend à la fusion de la vague 1.
+
+**Décision technique principale** : la lecture du statborg, du pied de film (événements th=10) et des
+rafales de capture quitte `facts/objectives` pour un SOUS-PAQUET FEUILLE de l'arbre de la grammaire,
+`grammar/signaux` (`LireLeStatborg`, `FooterEvents`, `CaptureBurstTimes`, bornes de format exportées) ;
+`objectives` garde ses points d'entrée et en fait des passe-plats (comptes des deux replis du statborg
+portés dans `ComptesDesReplis`, constats rendus sous les mêmes codes). Feuille parce que deux
+instruments de test de `grammar` importent `facts/objectives` pour leurs oracles : un `objectives` qui
+importerait `grammar` fermerait un cycle d'imports dans le binaire de test de `grammar` (constaté à la
+compilation ; découverte 1 du plan). Conséquence de révision écrite dans l'ADR 0037 (D-6) et dans les
+deux SYNC_GUIDE : `objectives` entre désormais `grammar` par sa VALEUR, chaque montée de `grammar.Rev`
+demande la décision du gate des objectifs (sans recuisson de plus : les faits persistés portent déjà
+toutes les révisions). Nouveau ratchet `archlint/film_faits_sans_octets_test.go` : un fichier de
+production de la couche des faits ne nomme de `source` que `Film`, n'appelle ni `Chunk` ni `Packets`,
+ne lit pas `Payload` ; `killsource` est l'exception datée (retrait au lot 2.7.c), trois mutations
+jouées rouges. Tolérance du ratchet du prédicat « finalisé » retirée (`finalise.EstTempsForts`), plafond
+de taille de `objectives/statborg.go` retiré (687 -> 365 lignes), façade : `CaptureBurstTimes` passe de
+la famille `objectives` à `signaux` (total 179 inchangé). Tests de lecture déplacés avec leur fixture
+(`signaux/testdata/pied_bloc_53ce4390.*`, provenance recoupée sur le film) ; les instruments de mesure
+restés dans `objectives` (oracle et analyse des manches) portent une copie de test des primitives.
+
+**Résultats observés** : différence nulle prouvée sur le binaire du lot contre la passe de
+référence (même code que la base) — `replay-equiv` 20/20 identiques, tous décodés depuis le film
+(`depuis_les_faits=false` ×20), faits 20/20 et killsource 19/19 identiques à l'octet ; `go test ./...`
+vert (195 paquets) ; archlint et G-film verts ; `go vet` et `go vet -tags=research` verts sur tout le module ;
+`golangci-lint --new-from-merge-base=origin/main` : 0 problème ; empreintes de `grammar` et
+d'`objectives` régénérées à révision constante, périmètres : `paquet grammar/signaux` chez la
+grammaire, `amont grammar` chez les objectifs.
+
+**Conclusion / prochaine étape** : CI de la branche ; lot suivant : 2.2 (canaux d'image-clé), puis
+2.3 (tête de vue A) — la campagne confirme que LP et les naissances par la vue A n'ont pas démarré.
+Fusion dans `feat/v75` sur accord de l'utilisateur.

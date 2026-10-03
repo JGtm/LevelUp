@@ -5,8 +5,9 @@
 // paquets découpés, métadonnées du manifeste portées par le film) et un Roster (xuid->team_id,
 // résolu en amont depuis match_participants), et ne fait AUCUN accès DB ni FS lui-même —
 // l'appelant charge le film une fois pour toute sa chaîne (`filmcache.LoadFilm`,
-// `source.LoadDir`). Le dispatch de mode se fait sur match_registry.game_variant_name
-// (cf. PLAN §10).
+// `source.LoadDir`). Les événements du pied et les rafales de capture sont LUS PAR LA GRAMMAIRE
+// ([signaux.FooterEvents], [signaux.CaptureBurstTimes]) ; ce fichier les compose. Le dispatch de
+// mode se fait sur match_registry.game_variant_name (cf. PLAN §10).
 package objectives
 
 import (
@@ -15,6 +16,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/objectiveevent"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -64,7 +66,7 @@ const captureClusterWindowMS = 2000
 // Roster résout xuid -> team_id (depuis match_participants).
 //
 // IL N'EST PLUS LA SOURCE DE `TeamID`, IL EN EST LE CONTRÔLE (lot 1.7.3, 2026-09-14). L'équipe
-// d'un événement vient du PIED, à l'octet 37 de son bloc ([FooterEvent.Team], 665/665 sur
+// d'un événement vient du PIED, à l'octet 37 de son bloc ([signaux.FooterEvent.Team], 665/665 sur
 // quatorze films) ; ce roster-ci dit ce que la feuille de match en aurait dit, et [TeamControl]
 // compte les accords, les contradictions et les silences. Une contradiction ne se corrige pas en
 // silence : le film fait foi, l'écart se compte.
@@ -181,38 +183,21 @@ func classifyObjectiveMode(gameVariantName string) string {
 	}
 }
 
-// footerData renvoie le contenu DÉCOMPRESSÉ du footer (chunk de plus haut index,
-// chunk_type 3), ou (nil,false). Le footer porte les events th=10. Si le footer
-// n'est pas en cache, l'équipe par-event manque -> dégradation gracieuse : le film chargé ne
-// porte QUE les chunks réellement présents, donc un pied manquant au cache n'a pas d'entrée.
-func footerData(film *source.Film) ([]byte, bool) {
-	footerPos, footerIdx := -1, -1
-	for _, c := range manifestChunks(film) {
-		if c.meta.ChunkType == chunkTypePied && c.meta.Index > footerIdx {
-			footerPos, footerIdx = c.pos, c.meta.Index
-		}
-	}
-	if footerPos < 0 {
-		return nil, false
-	}
-	return film.Chunk(footerPos), true
-}
-
 // extractCTF décode les captures CTF : pour chaque burst (tiers==6, ms via FRAME
 // sur les chunks gameplay), l'acteur est l'event th=10 de t MAX dans le cluster coïncident du
 // footer, et son ÉQUIPE est celle que ce même événement porte à l'octet 37.
 // players=[{scorer xuid}].
 func extractCTF(matchID string, film *source.Film, roster Roster,
 	ctl *TeamControl) []objectiveevent.Event {
-	bursts := collectCaptureBursts(film)
-	th10 := FooterEvents(film)
+	bursts := signaux.CaptureBurstTimes(film)
+	th10 := signaux.FooterEvents(film)
 	// Capacité EXACTE : un événement par burst, sans continue dans la boucle. Le nil
 	// éventuel n'est pas perdu — finalize() ramène une tranche vide à nil.
 	out := make([]objectiveevent.Event, 0, len(bursts))
-	for _, b := range bursts {
+	for _, ms := range bursts {
 		ev := objectiveevent.Event{
 			MatchID:       matchID,
-			TimeMS:        new(b.matchMS),
+			TimeMS:        new(ms),
 			ObjectiveType: ObjectiveTypeFlag,
 			EventType:     EventTypeCapture,
 			Value:         new(1), // +1 capture
@@ -220,7 +205,7 @@ func extractCTF(matchID string, film *source.Film, roster Roster,
 			Confidence:    ConfidenceExact,
 			Details:       "{}",
 		}
-		if scorer, ok := captureScorer(th10, b.matchMS); ok {
+		if scorer, ok := captureScorer(th10, ms); ok {
 			xuid := formatXUID(scorer.XUID)
 			ev.Players = []objectiveevent.Player{{XUID: xuid, Role: RoleScorer}}
 			ev.TeamID = new(scorer.Team)
@@ -231,25 +216,11 @@ func extractCTF(matchID string, film *source.Film, roster Roster,
 	return out
 }
 
-// collectCaptureBursts parcourt tous les chunks gameplay (type 2) et concatène
-// leurs bursts de capture, ordonnés par ms.
-func collectCaptureBursts(film *source.Film) []captureBurst {
-	var out []captureBurst
-	for _, c := range manifestChunks(film) {
-		if c.meta.ChunkType != chunkTypeJeu {
-			continue
-		}
-		out = append(out, scanCaptureBursts(framesOf(film, c.pos), c.meta.StartMS)...)
-	}
-	slices.SortFunc(out, func(a, b captureBurst) int { return cmp.Compare(a.matchMS, b.matchMS) }) // seul champ : ex aequo indiscernables
-	return out
-}
-
 // captureScorer renvoie l'event th=10 de t MAX dans la fenêtre de coïncidence du
 // burst (la capture reset les drapeaux -> cluster ; le dernier event = l'acteur
 // de la capture). ok=false si aucun event coïncident (footer absent/partiel).
-func captureScorer(th10 []FooterEvent, burstMS int) (FooterEvent, bool) {
-	best := FooterEvent{TimeMS: -1}
+func captureScorer(th10 []signaux.FooterEvent, burstMS int) (signaux.FooterEvent, bool) {
+	best := signaux.FooterEvent{TimeMS: -1}
 	found := false
 	for _, e := range th10 {
 		if abs(e.TimeMS-burstMS) > captureClusterWindowMS {
@@ -273,7 +244,7 @@ func extractFromTh10(
 	matchID string, film *source.Film, roster Roster, ctl *TeamControl, objType, evType string,
 ) []objectiveevent.Event {
 	var out []objectiveevent.Event //nolint:prealloc // nil contractuel, cf. ci-dessus
-	for _, e := range FooterEvents(film) {
+	for _, e := range signaux.FooterEvents(film) {
 		xuid := formatXUID(e.XUID)
 		ev := objectiveevent.Event{
 			MatchID:       matchID,
@@ -306,27 +277,4 @@ func finalize(matchID string, events []objectiveevent.Event) []objectiveevent.Ev
 		events[i].MatchID = matchID
 	}
 	return events
-}
-
-// CaptureBurstTimes rend les instants (ms, horloge du match) des BURSTS DE CAPTURE de
-// drapeau du film — le seul signal de mode CTF qui vive DANS le film.
-//
-// POURQUOI IL EST EXPORTE (2026-08-18, plan objectifs vivants, item 1.1). L'artefact de rejeu
-// 2D est construit HORS LIGNE, a partir des seuls chunks : il ne connait ni la carte ni le
-// `game_variant_name`, donc il ne peut pas demander a [ObjectiveTypeOf] de quel mode il s'agit.
-// Or publier le portage du drapeau exige de savoir qu'on est en CTF : la table d'emplacements
-// de statistiques du drapeau lue sur un film d'un AUTRE mode rendrait des « prises » qui n'en
-// sont pas. Le burst repond a la question sans base : c'est l'evenement de score qui accompagne
-// une capture de drapeau, detecte a 6 tiers distincts — 0 manque et 0 faux positif sur les
-// matchs de verite terrain (cf. scanCaptureBursts).
-//
-// CE QU'IL NE DIT PAS : une partie CTF ou personne ne capture n'en produit aucun. Le rejeu
-// publie alors un calque de drapeau VIDE, et sa couverture le dit.
-func CaptureBurstTimes(film *source.Film) []int {
-	bursts := collectCaptureBursts(film)
-	out := make([]int, 0, len(bursts))
-	for _, b := range bursts {
-		out = append(out, b.matchMS)
-	}
-	return out
 }

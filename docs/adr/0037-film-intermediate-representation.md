@@ -1,11 +1,12 @@
 # ADR 0037 — Film intermediate representation: the production walk becomes the grammar's single reading
 
-**Status**: Accepted (2026-10-02). Step 1 is being executed on the branch below; steps 2 and 3 are
-planned, not started. Amends [ADR 0034](0034-film-decoder-profile-and-layers.md) D-1, D-2, D-6,
-D-7 and D-10 (section "Amendments to ADR 0034").
+**Status**: Accepted (2026-10-02). Step 1 is merged into `feat/v75` (`67c379fc1`, 2026-10-03);
+step 2 is being executed on the branch below, step 3 is planned. Amends
+[ADR 0034](0034-film-decoder-profile-and-layers.md) D-1, D-2, D-6, D-7 and D-10 (section
+"Amendments to ADR 0034").
 
-**Branch**: `feat/representation-intermediaire` (worktree `LevelUp-wt-ri`, base `feat/v75`
-`93cea7cdc`).
+**Branch**: `feat/ri-etape2` (worktree `LevelUp-wt-ri`, base `feat/v75` `67c379fc1`); step 1 was
+`feat/representation-intermediaire`.
 
 **Relates to**: [ADR 0034](0034-film-decoder-profile-and-layers.md) (five layers, one gate to the
 bytes, one revision per layer, facts persisted apart from publication, named fallbacks),
@@ -237,10 +238,21 @@ nothing" is unchanged.
 ### D-2 — One gate to the bytes. **Amended: the facts read the structure.**
 
 "Nobody outside `source` reads a bit" stays. The target adds: nobody outside the grammar walks the
-packets of a film; the facts read the structure. Two facts consumers still walk packets themselves,
-named here so they are not rediscovered: the statborg scan of `internal/facts/objectives` (it moves
-into the grammar at step 2) and the killsource walk `internal/facts/killsource/walk.go` (it folds
-into the single walker at the end of step 2, then disappears at step 3).
+packets of a film; the facts read the structure. Two facts consumers walked packets themselves:
+
+- the statborg scan of `internal/facts/objectives`, with the footer events and the capture bursts
+  it read alongside, **moved into the grammar at step 2**: `internal/grammar/signaux` reads them
+  and `objectives` consumes what it returns. `signaux` is a leaf of the grammar's tree — it does
+  not import `internal/grammar` — because test instruments of `internal/grammar` import
+  `internal/facts/objectives` for their oracles, and an `objectives` that imported `grammar` would
+  close an import cycle in their test binaries;
+- the killsource walk `internal/facts/killsource/walk.go` folds into the single walker at the end
+  of step 2, then disappears at step 3.
+
+`internal/archlint/film_faits_sans_octets_test.go` holds the rule for the facts layer: a
+production file there names nothing of `source` but the loaded film's type, and neither reads a
+chunk, nor the packets of a chunk, nor a packet's payload. `killsource` is its one dated
+exception, retired with the step-2 lot that folds its walk.
 
 ### D-6 — One revision per thing that can change. **Amended: the shape of the structure is the grammar's.**
 
@@ -250,6 +262,12 @@ difference (`cmd/replay-equiv`, the closure goldens) regenerates the grammar's f
 perimeter at constant revision, as the structural lots of the audit follow-up did. `grammar.Rev` rises only for
 a behaviour lot; each rise raises `killsource.Rev` and reopens the killsource backlog, on user
 signal.
+
+Since the statborg moved (D-2), `internal/facts/objectives` enters the grammar by its value too
+(`amont grammar` in its perimeter): each rise of `grammar.Rev` also asks the objectives gate to
+decide. When the reading of `internal/grammar/signaux` does not change, the objectives golden is
+regenerated at constant revision; otherwise `objectives.Rev` rises. This adds no re-cook: the
+persisted facts carry every layer revision and are stale as soon as `grammar.Rev` rises.
 
 ### D-7 — Facts and publication are separate. **Amended: the structure is not persisted.**
 

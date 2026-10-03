@@ -4,7 +4,8 @@ package objectives_test
 //
 // NE AU LOT J3.3 (2026-09-26, DU-2 (c)) avec la revision qu il garde : il hache le perimetre du
 // paquet — la fermeture de ses imports de production, figee par
-// `testdata/objectives_perimetre.golden` — et la VALEUR de `source.Rev`, et compare au golden.
+// `testdata/objectives_perimetre.golden` — et les VALEURS de `source.Rev` et de `grammar.Rev` (la
+// lecture du statborg, du pied et des rafales vit dans `grammar/signaux`), et compare au golden.
 // Toucher la couche le fait rougir ; le remettre au vert demande de DECIDER si la sortie des
 // objectifs change. Une montee n ouvre AUCUN backlog killsource : elle perime les calques
 // d objectifs et les faits persistes.
@@ -17,6 +18,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/revision"
 )
@@ -71,7 +73,7 @@ func empreinteDeLaCoucheObjectives(t *testing.T) (string, int) {
 	t.Helper()
 	res, err := revision.EmpreinteDeCouche(racineDeLaCoucheObjectives(t), "objectives",
 		func(rel string) bool { return rel == fichierPorteurDeRevisionObjectives },
-		map[string]string{"source": source.Rev})
+		map[string]string{"source": source.Rev, "grammar": grammar.Rev})
 	if err != nil {
 		t.Fatalf("empreinte de la couche objectives : %v", err)
 	}

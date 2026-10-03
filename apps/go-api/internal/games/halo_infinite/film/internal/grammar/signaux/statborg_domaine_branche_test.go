@@ -1,4 +1,4 @@
-package objectives
+package signaux
 
 // statborg_domaine_branche_test.go — LE BRANCHEMENT DU FILTRE DE DOMAINE DANS LE BALAYAGE
 // (revue 6.R, constat C3, 2026-09-11).
@@ -89,5 +89,34 @@ func TestLeBalayageJETTELEnregistrementHorsDomaine(t *testing.T) {
 	if statPorteComp(recs, hors) {
 		t.Errorf("le balayage rend un enregistrement dont le canal A vaut %d : le filtre de "+
 			"domaine n'est plus branche sur scanFrameForRecords", hors)
+	}
+}
+
+// TestLeBalayageDuStatborgCompteSesAbandons : un enregistrement dont un compteur sort du domaine
+// est abandonne ET compte ; un composant non decodable arrete la boucle et le dit (lot J8.7). Les
+// deux comptes voyagent dans [LectureDuStatborg] ; la couche des faits les porte jusqu au
+// versement (`objectives.ComptesDesReplis`).
+func TestLeBalayageDuStatborgCompteSesAbandons(t *testing.T) {
+	var c LectureDuStatborg
+	if recs := scanFrameAvecReplis(statVecteurUnCompo(statMaxCounter+1), 764967, &c); len(recs) != 0 {
+		t.Fatalf("enregistrement hors domaine publie : %v", recs)
+	}
+	if c.EnregistrementsAbandonnes == 0 {
+		t.Error("l enregistrement hors domaine est abandonne sans etre compte")
+	}
+	var sain LectureDuStatborg
+	if recs := scanFrameAvecReplis(statVecteurUnCompo(10), 764967, &sain); len(recs) == 0 {
+		t.Fatal("l enregistrement sain n est plus lu")
+	}
+	pay := statVecteurUnCompo(10)
+	_, idx, at, ok := matchRecordHeader(pay, 1)
+	if !ok {
+		t.Fatal("le vecteur sain ne porte plus d en-tete a son bit d ancrage")
+	}
+	if comps, _, arrete := decodeComponentsAvecArret(pay, at, idx); len(comps) == 0 || arrete {
+		t.Errorf("vecteur sain : %d composant(s), arret %v — attendu une lecture complete", len(comps), arrete)
+	}
+	if _, _, arrete := decodeComponentsAvecArret(make([]byte, 2), 0, []int{0, 1}); !arrete { // tampon trop court : le premier composant deborde
+		t.Error("un composant non decodable doit arreter la boucle ET le dire")
 	}
 }

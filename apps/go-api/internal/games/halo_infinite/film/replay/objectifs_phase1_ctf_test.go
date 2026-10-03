@@ -10,7 +10,7 @@ package replay
 // « prises » qui n'en sont pas — un calque de drapeau sur une partie de Bastion.
 //
 // PREMIER DISCRIMINANT ESSAYE, ET REFUTE PAR CETTE MESURE : le BURST DE CAPTURE seul
-// (`objectives.CaptureBurstTimes`), l evenement de score a 6 tiers distincts qui accompagne
+// (`signaux.CaptureBurstTimes`), l evenement de score a 6 tiers distincts qui accompagne
 // une capture de drapeau. Il etait deja mesure « 0 manque / 0 faux positif » sur les matchs de
 // verite terrain de son propre chantier — mais SUR DES FILMS CTF. L autre moitie, mesuree ici,
 // le refute : QUATRE films non-CTF en portent (Oddball 2, une colline 4, un Slayer 2).
@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
 )
 
 // objModeCorpus — les films de mode CONNU. Le mode vient de `game_variant_name`, releve dans
@@ -66,7 +67,7 @@ func TestObjectifsPhase1DiscriminantCTF(t *testing.T) {
 		}
 		joues++
 		evs := objectives.NamedEvents(src, objectives.ObjectiveTypeFlag)
-		sig := objectives.FlagFilmSignalsFrom(objectives.CaptureBurstTimes(src), evs)
+		sig := objectives.FlagFilmSignalsFrom(signaux.CaptureBurstTimes(src), evs)
 		compte := objCompteStats(evs)
 		verdict, attendu := sig.IsFlagFilm(), f.Mode == objectives.ObjectiveTypeFlag
 		t.Logf("%s (mode %q) : bursts %d ; table DRAPEAU appliquee -> grabs %d, steals %d, "+

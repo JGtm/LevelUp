@@ -49,6 +49,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -152,7 +153,7 @@ func (e EntreePorteursAuSync) lireLesPorteurs(ctx context.Context, g GardesDesPo
 		recs, _, replisDuStatborg, diags = e.statborg()(e.Film, e.MatchID)
 		JournaliserDiagnostics(ctx, diags)
 		lu.Statborg = true
-		bursts = objectives.CaptureBurstTimes(e.Film)
+		bursts = signaux.CaptureBurstTimes(e.Film)
 	}
 	// UN SEUL ENREGISTREUR DES REPLIS A LA CONSULTATION pour le pont et les calques du document,
 	// comme a la cuisson (lot J8.7-bis) : le pont le passe a sa resolution, les calques le relisent

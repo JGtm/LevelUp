@@ -81,9 +81,12 @@ func couchesDeLOracle() []revision.Couche {
 //
 // LE SENS UNIQUE SE LIT DANS LA COLONNE DES VALEURS : `source` et `profile` n en ont aucune (la
 // fermeture de leurs imports ne rencontre aucune couche), `grammar` rencontre `profile` et
-// `source`, `killsource` rencontre `source`, `profile` et `grammar`, `objectives` rencontre `source` seule (lot J3.3 : une revision par consommateur de faits). Chaque couche hache SES jetons,
-// ceux des paquets qu elle importe hors couche, et les VALEURS des couches qu elle importe —
-// jamais leurs octets (ADR 0034 D-1, decision V15 (12), lot J3.2).
+// `source`, `killsource` rencontre `source`, `profile` et `grammar`, `objectives` rencontre
+// `source` et `grammar` (lot J3.3 : une revision par consommateur de faits ; `grammar` depuis le
+// lot 2.6 de la representation intermediaire, qui a descendu la lecture du statborg dans
+// `grammar/signaux`). Chaque couche hache SES jetons, ceux des paquets qu elle importe hors
+// couche, et les VALEURS des couches qu elle importe — jamais leurs octets (ADR 0034 D-1,
+// decision V15 (12), lot J3.2).
 func couchesMesurees(t *testing.T) []coucheMesuree {
 	t.Helper()
 	film := filepath.Join(racineAPI(t), "internal", "games", "halo_infinite", "film", "internal")
@@ -118,7 +121,7 @@ func couchesMesurees(t *testing.T) []coucheMesuree {
 		{
 			nom: "objectives", revisionDuCode: objectives.Rev,
 			horsCouche: []string{"rev.go"},
-			valeurs:    map[string]string{"source": source.Rev},
+			valeurs:    map[string]string{"source": source.Rev, "grammar": grammar.Rev},
 			golden:     filepath.Join(film, "facts", "objectives", "testdata", "objectives_rev.golden"),
 		},
 	}
@@ -197,7 +200,7 @@ func TestUneMutationRougitSaCoucheEtCellesQuiEnDependent(t *testing.T) {
 	dependants := map[string][]string{
 		"source":  {"grammar", "killsource", "objectives"},
 		"profile": {"grammar", "killsource"},
-		"grammar": {"killsource"},
+		"grammar": {"killsource", "objectives"},
 	}
 	for mute, attendus := range dependants {
 		for _, aval := range attendus {

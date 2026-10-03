@@ -242,7 +242,6 @@ var plafondsParFichier = map[string]int{
 	"internal/games/halo_infinite/film/replay/document_shape_test.go":                                          511,
 	"internal/games/halo_infinite/film/internal/facts/killsource/e197_identite_paquet_mesure_research_test.go": 654,
 	"internal/games/halo_infinite/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        524,
-	"internal/games/halo_infinite/film/internal/facts/objectives/statborg.go":                                  687,
 	"internal/replaybuild/replaybuild.go":                                                                      577,
 	// `equipment_creation.go` EST SORTI DE CETTE TABLE LE 2026-09-17 (lot 2.6.2, volet grammaire /
 	// rejeu), pour la meme raison qu `assist.go` au volet facts : `EquipmentCreation` et

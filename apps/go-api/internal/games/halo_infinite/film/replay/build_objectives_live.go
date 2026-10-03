@@ -60,7 +60,7 @@ type FlagInput struct {
 	// MEME balayage que celui de la courbe de score : ils portent les evenements nommes du
 	// drapeau et les progressions du compteur de morts qui identifient les slots.
 	Records []types.StatRecord
-	// Bursts sont les instants des BURSTS DE CAPTURE (`objectives.CaptureBurstTimes`) —
+	// Bursts sont les instants des BURSTS DE CAPTURE (`signaux.CaptureBurstTimes`) —
 	// une autre grammaire du film, et le signal sans lequel le discriminant de mode ne tient
 	// pas (un film Oddball rend 1 470 « prises » a la table du drapeau).
 	Bursts []int

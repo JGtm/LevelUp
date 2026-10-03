@@ -91,9 +91,10 @@ naissances lues par la grammaire des messages de la vue A.
 
 | Lot de ce plan | Fichiers de la campagne qu'il touche ou qu'il lit | Règle |
 |---|---|---|
-| 2.0, 2.1, 2.6 | aucun | libres dès la fusion de l'étape 1 |
-| 2.2 (canaux d'image-clé) | `keyframe_anticipe.go`, `keyframe_liaison.go`, `keyframe_datums.go`, `keyframe_world*.go` (LP, variante de la marche d'image-clé) | avant que LP ne démarre, ou après sa fusion — à convenir avec la campagne au début du lot |
-| 2.3 (tête de vue A) | `frame_vue_messages.go` et les naissances par la vue A | après la fusion du lot des naissances, ou avec lui |
+| 2.0, 2.6 | aucun | libres dès la fusion de l'étape 1 |
+| 2.1 | `movement_states.go` et `lecteur.go` (L4a de la vague 1 : renommage de `VehicleTypePhysicsAssumed`, champ `etatComplet`) | après la fusion de la vague 1 (constaté avec la campagne le 2026-10-03 ; la ligne d'origine disait « aucun ») |
+| 2.2 (canaux d'image-clé) | `keyframe_anticipe.go`, `keyframe_liaison.go`, `keyframe_datums.go`, `keyframe_world*.go` (LP, variante de la marche d'image-clé) | avant que LP ne démarre, ou après sa fusion — CONVENU le 2026-10-03 : LP n'a pas démarré, 2.2 part ; LP se construira sur la structure |
+| 2.3 (tête de vue A) | `frame_vue_messages.go` et les naissances par la vue A | après la fusion du lot des naissances, ou avec lui — CONVENU le 2026-10-03 : les naissances par la vue A sont un chantier de recherche sans lot écrit, 2.3 n'a pas à l'attendre |
 | 2.4, 2.5 (récupération) | lecteurs de composants des vagues 1 et 2 (`dispatch_*.go`, `components_*.go`) en LECTURE seulement ; créations (`equipment_creation*.go`, `vehicle_creation.go`) | après la fusion de la vague 1 ; les lecteurs sont des briques, inchangées |
 | 2.7 (a) morts d'objet, 3.1 localisateurs | `object_deaths_march.go`, `facts/killsource/walk.go` (LU, LS) | APRÈS la fusion de LU ; le retrait des localisateurs jumeaux est LU, pas ce plan |
 | 2.7 (b) canaux delta par la marche | fermeture des trames (toute la campagne) | seulement là où la marche couvre AU MOINS autant que la recherche d'ancres, canal par canal, mesuré sur le corpus |
@@ -169,6 +170,9 @@ des morts d'objet la CALIBRE de 10 à 15 (`object_deaths_calibrate.go`). `gate15
 killsource (`pickGate15`) : il entre à 2.7.c ; l'octet `+0x818` reste un repli nommé du registre.
 
 ### Lot 2.1 — L'en-tête et le distributeur ; canaux des états de mouvement et du tir continu (taille M)
+*DIFFÉRÉ PAR LE PLAN (règle d'ordre du §3)* : il touche `movement_states.go` et `lecteur.go`, que le
+lot L4a de la vague 1 de la campagne modifie ; il reprend à la fusion de la vague 1 dans `feat/v75`,
+que la campagne signale. Le lot 2.6, indépendant, passe devant.
 - [ ] 2.1.0 L'en-tête (ex-2.0) : `lecture.Provenance` (relue, mesurée, présumée — la table du profil
       —, calibrée sur le film, imposée à la construction) et `lecture.Parametre[T]`, sans logique ;
       `grammar.EnTete` (`IDLowBits`, découpage MPP du format, découpage d'i0) résolu par le contexte ;
@@ -225,11 +229,26 @@ killsource (`pickGate15`) : il entre à 2.7.c ; l'octet `+0x818` reste un repli 
       calibration MPP gardée en préliminaire.
 - Gate : T4 ; critère 4.
 
-### Lot 2.6 — Le statborg descend dans la grammaire (taille M)
-- [ ] 2.6.1 La lecture du statborg (`facts/objectives/statborg.go`, `film.go`, `extract.go`) devient
+### Lot 2.6 — Le statborg descend dans la grammaire (taille M) — CLOS le 2026-10-03
+- [x] 2.6.1 La lecture du statborg (`facts/objectives/statborg.go`, `film.go`, `extract.go`) devient
       une méthode de récupération de la grammaire ; `objectives` consomme ; les faits ne lisent plus
       d'octet (ADR 0034 D-2 amendé).
+      *Fait* : le statborg, le pied de film et les rafales de capture sont lus par
+      `grammar/signaux` (`LireLeStatborg`, `FooterEvents`, `CaptureBurstTimes`), une FEUILLE de
+      l'arbre de la grammaire (découverte 1) ; `objectives` garde ses points d'entrée, porte les deux
+      replis du statborg dans `ComptesDesReplis` et rend ses constats sous les mêmes codes ; `film.go`
+      supprimé (sa doc de paquet passe dans `doc.go`). Ce que la méthode rend est un type à part
+      (`types.StatRecord`), jamais mêlé à la structure : la marque `PreuveRecupere` n'a pas d'objet
+      tant que ces records n'y entrent pas, et les deux replis restent nommés et comptés au registre
+      (sites déplacés). Garde-rail neuf `archlint/film_faits_sans_octets_test.go` (exception datée :
+      `killsource`, retrait en 2.7.c ; trois mutations jouées rouges). Conséquence de révision écrite
+      (ADR 0037 D-6, SYNC_GUIDE EN et FR) : `objectives` entre `grammar` par sa valeur.
 - Gate : T4 ; killsource inchangé ; `archlint` (extraction de bits hors `source`).
+  *Passé* : `replay-equiv` 20/20 identiques, tous décodés depuis le film
+  (`depuis_les_faits=false` ×20) ; faits 20/20 et killsource 19/19 identiques à l'octet à la
+  passe de référence (même code que la base) ; archlint, G-film, `go vet` (avec et sans
+  `research`), `golangci-lint` (0 problème) verts ; empreintes de `grammar` et d'`objectives`
+  régénérées à révision constante.
 
 ### Lot 2.7 — Changements de comportement déclarés (taille L) — coordination §1.3
 - [ ] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
@@ -302,8 +321,31 @@ fusionné un lot depuis la dernière reprise (et refusionner, re-figer).
 
 ## 6. Découvertes (consignées, non traitées)
 
-(vide — les découvertes encore ouvertes de l'étape 1 restent dans son plan, §6 ; celles qui relèvent
-de ce plan y sont reprises comme items : 3.1.2.)
+Les découvertes encore ouvertes de l'étape 1 restent dans son plan, §6 ; celles qui relèvent de ce
+plan y sont reprises comme items (3.1.2).
+
+1. *(lot 2.6)* **Deux instruments de `grammar` importent `facts/objectives`** pour leurs oracles
+   (`sonde_registre_verdicts_test.go`, `zone_census_report_test.go`, non étiquetés, gardés par
+   l'environnement) : tout paquet des faits qui consomme la grammaire fermerait un cycle d'imports
+   dans le binaire de test de `grammar`. Le lot 2.6 l'a contourné par une FEUILLE de l'arbre de la
+   grammaire (`grammar/signaux`, qui n'importe pas `grammar`). Le contournement tient tant que
+   `objectives` ne consomme que des feuilles ; à rouvrir le jour où il devrait consommer `grammar`
+   lui-même (déplacer ces deux instruments, ou leurs oracles).
+2. *(lot 2.6)* **Deux lecteurs du même pied de film** vivent dans l'arbre de la grammaire :
+   `signaux.FooterEvents` (blocs th=10, équipe à l'octet 37) et `grammar.ParseHighlightEvents`
+   (tous les types, gamertag par version). Même balayage (xuid au bit, marqueur de fin, bloc de 60
+   octets), bornes de xuid recopiées. Les unifier demanderait une preuve d'équivalence ; non traité.
+3. *(lot 2.6)* **L'horloge du statborg est recopiée** : base = premier paquet delta du chunk,
+   `start_ms` du manifeste ; `navpoint_radial_scan.go` et plusieurs instruments de `grammar` disent
+   « la MÊME base que `objectives.StatRecords` » et la recalculent. `signaux` pourrait la porter pour
+   tous ; non traité.
+4. *(lot 2.6)* **Le statut de l'ADR 0037 était périmé** depuis la fusion de l'étape 1 (« Step 1 is
+   being executed ») : corrigé dans le lot (affirmation fausse rencontrée, CLAUDE.md règle 17).
+5. *(lot 2.6)* **Deux enveloppes de production lues par les seuls tests**, déplacées telles quelles
+   pour garder le déplacement vérifiable : `signaux.scanFrameForRecords` et
+   `signaux.decodeComponents` (l'une rend `scanFrameAvecReplis` sans compte, l'autre
+   `decodeComponentsAvecArret` sans le drapeau d'arrêt). Dette antérieure (CLAUDE.md règle 7) ; non
+   traitée.
 
 ## 7. Journal
 
@@ -320,3 +362,15 @@ de ce plan y sont reprises comme items : 3.1.2.)
   distributeur, l'en-tête n'aurait pas de consommateur de production) ; `IDLowBits` relu sur pièces
   (`varwidth.go`) : 13 est la valeur présumée de l'image statique, la marche des morts d'objet la
   calibre. Ouverture du lot 2.1.
+- 2026-10-03 : lot 2.1 DIFFÉRÉ PAR LE PLAN : le lot L4a de la vague 1 de la campagne touche
+  `movement_states.go` (renommage d'une constante dans `trame()`) et `lecteur.go` (champ
+  `etatComplet`) ; la ligne du §1.3 qui disait « aucun » est corrigée. Reprise à la fusion de la vague
+  1, que la campagne signale. Ouverture du lot 2.6, indépendant.
+- 2026-10-03 : lot 2.6 CLOS (cf. le lot). Premier essai dans `grammar` même : refusé à la compilation
+  des tests (cycle d'imports, découverte 1) ; sous-paquet feuille `grammar/signaux`. Preuve à
+  différence nulle passée sur le binaire du lot contre la passe de référence (`replay-equiv` 20/20,
+  faits 20/20 et killsource 19/19 à l'octet). La campagne confirme que LP et les naissances par la
+  vue A n'ont pas démarré (la vague 2 attend la fusion de la vague 1, une recuisson et le GO de
+  l'utilisateur) : les lots 2.2 et 2.3 peuvent partir ; LU et LS prendront `marchLocateStrict`,
+  `facts/killsource/walk.go`, `object_deaths_march.go` et la signature du slot 123, LP la lecture du
+  bloc de type 1 et `keyframe_world*.go` — à signaler si un lot de ce plan doit y toucher.

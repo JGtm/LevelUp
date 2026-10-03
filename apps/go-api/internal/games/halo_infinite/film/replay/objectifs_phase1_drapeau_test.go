@@ -33,6 +33,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
@@ -188,7 +189,7 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 		Labels: goldenCatalog(t), Pads: PadScans{Weapons: gw},
 		Flag: FlagInput{
 			Scanned: true, Records: objectives.StatRecords(src),
-			Bursts: objectives.CaptureBurstTimes(src), Spawns: objFlagSpawns(t, id), Marks: marks,
+			Bursts: signaux.CaptureBurstTimes(src), Spawns: objFlagSpawns(t, id), Marks: marks,
 		},
 	})
 	out := objDoc{doc: doc, originUS: pos[0].TimestampUS, gw: gw}

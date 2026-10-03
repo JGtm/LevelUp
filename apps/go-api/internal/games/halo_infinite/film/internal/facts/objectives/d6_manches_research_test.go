@@ -21,7 +21,7 @@ package objectives
 // # POURQUOI ICI, ET PAS DANS `grammar` SOUS `CHUNK00_FILMS`
 //
 // Les enregistrements statborg ne sont lus que dans les chunks DECRITS PAR LE MANIFESTE
-// ([manifestChunks], `film.go`) : un film charge par `source.LoadDir(dir, nil)` — la forme
+// (`signaux.LireLeStatborg`, `grammar/signaux/statborg_film.go`) : un film charge par `source.LoadDir(dir, nil)` — la forme
 // que prend `CHUNK00_FILMS` — n a aucun type de chunk, donc ZERO enregistrement, et la mesure
 // serait vide sans le dire. L instrument passe donc par `filmcache.LoadFilm` (manifeste +
 // chunks), exactement comme la production, via le `newDiskFilm` deja present dans ce paquet.
