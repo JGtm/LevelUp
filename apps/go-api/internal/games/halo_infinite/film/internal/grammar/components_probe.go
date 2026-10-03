@@ -35,7 +35,7 @@ type ProbeComponent int
 const (
 	ProbeSplashStatic              ProbeComponent = iota // ti=47 i0 : R(24) toujours lu, plus un corps garde
 	ProbeSplashDynamic                                   // ti=47 i1 : R(24)
-	ProbeHighFrequency                                   // ti=4  i0 : R(8) en variante FRAME
+	ProbeHighFrequency                                   // ti=4  i0 : R(8), delta et image-cle (FUN_14076d034)
 	ProbeManagedObjectPropertyName                       // ti=13 i0 : R(32)
 	ProbeComponentCount            = 4
 )

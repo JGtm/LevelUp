@@ -38,6 +38,9 @@ type ecsRow struct {
 	Component string
 	Level     uint32
 	Status    string
+	// DeserAddr est le lecteur de la table que le jeu enregistre a cet (archetype, index) ; le
+	// controle G6 y lit les homonymes de grammaire.
+	DeserAddr string
 	// BitsTyp est la colonne `bits_typ` quand elle porte un ENTIER, -1 sinon (« variable »,
 	// « inconnu », « 11-30 », vide...). Seul l entier se confronte au code (controle G4).
 	BitsTyp    int
@@ -90,7 +93,7 @@ func loadECSTable(t *testing.T) []ecsRow {
 		if n, err := strconv.Atoi(c[8]); err == nil {
 			bits = n
 		}
-		out = append(out, ecsRow{TI: ti, I: i, Component: c[3], Level: uint32(lv), Status: c[5], BitsTyp: bits,
+		out = append(out, ecsRow{TI: ti, I: i, Component: c[3], Level: uint32(lv), Status: c[5], DeserAddr: c[6], BitsTyp: bits,
 			CodeSource: c[9], DocField: c[10], ProductUse: c[11], Notes: c[15], LineNo: n + 2})
 	}
 	for k := 1; k < len(out); k++ {
