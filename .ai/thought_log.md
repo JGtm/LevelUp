@@ -114790,6 +114790,12 @@ vert (195 paquets) ; archlint et G-film verts ; `go vet` et `go vet -tags=resear
 d'`objectives` régénérées à révision constante, périmètres : `paquet grammar/signaux` chez la
 grammaire, `amont grammar` chez les objectifs.
 
-**Conclusion / prochaine étape** : CI de la branche ; lot suivant : 2.2 (canaux d'image-clé), puis
-2.3 (tête de vue A) — la campagne confirme que LP et les naissances par la vue A n'ont pas démarré.
-Fusion dans `feat/v75` sur accord de l'utilisateur.
+**CI** : verte au niveau job sur `71557f3c3`. Le premier passage (`caa5a21e9`) a rougi sur la seule
+baseline des tests : 9 tests relocalisés d'`objectives` vers `grammar/signaux` y gardaient leur
+ancien paquet (`go test` exit 0) ; relocalisés et datés dans `scripts/check_test_baseline.sh`.
+
+**Conclusion / prochaine étape** : lot 2.1 en deux temps convenu avec la campagne (fichiers neufs et
+fichiers de la marche d'abord : en-tête, `Canal`, `Distribuer`, marque « interprété » ; branchement
+des états de mouvement et du tir continu après la fusion de sa vague 1), puis 2.2 (canaux
+d'image-clé) et 2.3 (tête de vue A) — LP et les naissances par la vue A n'ont pas démarré. Fusion
+dans `feat/v75` sur accord de l'utilisateur, par groupe de lots.
