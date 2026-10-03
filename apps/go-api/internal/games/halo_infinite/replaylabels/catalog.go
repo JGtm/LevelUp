@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain/title"
+	halo "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/games/weapons"
 )
@@ -44,13 +46,132 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 		return replay.LabelCatalog{}, fmt.Errorf("libellés de rejeu du titre %s: %w", titleSlug, err)
 	}
 
-	return replay.NewLabelCatalog(
+	cat := replay.NewLabelCatalog(
 		weapons.FilmshellWeaponKeysByFamily(),
 		weaponNames(names.Names()),
 		labels.ShotEffects(),
-		toLabels(labels.GrenadeRanks()),
-		abilitiesByIndex(labels.Abilities()),
-	), nil
+		toLabels(titleSlug, labels.GrenadeRanks()),
+		abilityPalettes(titleSlug, labels.AbilityPalettes()),
+	)
+	cat.Icons = weaponIcons(weapons.FilmshellWeaponKeysByFamily())
+	// La TEINTE d'un tir (nature de la décharge) est posée après construction, comme les
+	// icônes : elle n'entre dans aucune jointure du catalogue, elle voyage jusqu'au
+	// document telle quelle (cf. replay_labels.toml, [shot_tints]).
+	cat.Tints = labels.ShotTints()
+	// Le RÔLE d'une arme (filtre « armes spéciales » du calque des armes au sol, lot
+	// 2026-09-10) vient du registre canonique CROSS-TITRE, jamais du TOML du titre — c'est
+	// une dimension du référentiel d'armes (internal/games/weapons), pas un mapping versionné.
+	cat.Roles = weapons.RolesByKey()
+	// La FAMILLE d'un objet d'équipement posé se pose après construction, comme les icônes
+	// et les teintes : elle est keyée par GlobalID de tag `eqip` (lu dans le film), et
+	// n'entre dans aucune jointure du catalogue.
+	cat.EquipmentFamilies = labels.EquipmentObjects()
+	// Les familles dont l'USAGE est MESURÉ par le canal d'impulsion se posent après
+	// construction, pour la même raison : c'est une déclaration du titre (ce que SA mesure
+	// établit), pas une jointure du catalogue. Le paquet `replay` ne saurait pas, seul, que
+	// le propulseur est le seul équipement que ce canal enregistre.
+	cat.AbilityImpulseFamilies = labels.AbilityImpulseFamilies()
+	// Les familles dont les CHARGES RESTANTES sont mesurées par le canal d'énergie (i56) se
+	// posent par le même chemin et pour la même raison : le paquet `replay` ne saurait pas,
+	// seul, que le grappin et le propulseur sont les deux seuls équipements que ce canal
+	// enregistre (rapport R11).
+	cat.AbilityChargeFamilies = labels.AbilityChargeFamilies()
+	// Les OBJETS D'OBJECTIF PORTÉS : les identifiants d'objet du monde que le manifeste déclare
+	// de l'une des familles portées, projetés vers la table d'identité du rejeu. Le filtrage par
+	// famille se fait ICI — c'est la couche titre qui sait ce que `flag` et `ball` veulent dire
+	// dans son manifeste ; le paquet `replay` ne reçoit que « ces identifiants-là sont des objets
+	// d'objectif », jamais la chaîne.
+	cat.ObjectiveObjects = objectiveObjects(labels.ObjectiveObjects())
+	cat.ObjectiveFamilies = objectiveFamilies(labels.ObjectiveObjects())
+	// La RÈGLE DE RETOUR DU DRAPEAU voyage telle quelle, comme les icônes et les teintes : le
+	// paquet `replay` ne sait pas ce qu'est le CTF d'Halo, il reçoit un rayon et deux durées.
+	cat.FlagReturnZone = flagReturnZone(labels.FlagReturnZone())
+	// Les FAMILLES DE CHASSIS QUALIFIÉES par le titre — libellé bilingue, nature, asset servi ou
+	// non — voyagent telles quelles, pour la même raison que la règle de retour du drapeau : le
+	// paquet `replay` ne sait pas qu'une tourelle automatique bannie est un élément de carte, et
+	// il ne doit pas l'apprendre. Il reçoit ce que le manifeste du titre déclare.
+	cat.VehicleFamilies = vehicleFamilies(labels.VehicleFamilies())
+	return cat, nil
+}
+
+// vehicleFamilies projette les familles de châssis qualifiées vers la forme du rejeu. Table
+// PARTIELLE par nature (cf. `LabelCatalog.VehicleFamilies`) : nil quand le titre n'en qualifie
+// aucune, ce qui est le régime normal.
+func vehicleFamilies(in map[string]mappings.VehicleFamily) map[string]replay.VehicleFamilyInfo {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]replay.VehicleFamilyInfo, len(in))
+	for fam, v := range in {
+		out[fam] = replay.VehicleFamilyInfo{En: v.En, Fr: v.Fr, Kind: v.Kind, Sprite: v.Sprite}
+	}
+	return out
+}
+
+// objectiveFamilies rend la NATURE de chaque objet d'objectif porté, keyée comme son libellé.
+// Le paquet `replay` ne déduit jamais qu'un objet est un crâne de son nom — il le lit ici.
+func objectiveFamilies(in map[uint32]mappings.ObjectiveObject) map[uint32]string {
+	out := map[uint32]string{}
+	for id, o := range in {
+		if !objectiveObjectFamilies[o.Family] {
+			continue
+		}
+		out[id] = o.Family
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// objectiveObjectFamilies — les familles d'objet d'objectif PORTÉ que la table projette.
+//
+// POURQUOI UNE LISTE ET NON UNE ÉGALITÉ (2026-08-27). La table servait le seul drapeau, et le
+// filtre était un `!=` sur `ObjectiveFamilyFlag`. Le crâne d'Oddball l'a rejointe : garder le
+// `!=` aurait exigé de le déclarer `flag`, c'est-à-dire de faire dire au manifeste que le crâne
+// EST un drapeau pour obtenir un effet de bord. Les deux familles sont donc énumérées, et la
+// liste est le seul endroit à toucher quand une troisième arrivera.
+var objectiveObjectFamilies = map[string]bool{
+	mappings.ObjectiveFamilyFlag: true,
+	mappings.ObjectiveFamilyBall: true,
+}
+
+// objectiveObjects retient les objets d'objectif PORTÉS et les rend sous la forme que
+// l'artefact connaît. nil quand le titre n'en déclare aucun : la chaîne des socles se comporte
+// alors comme avant, et le calque des vies libres reste vide.
+func objectiveObjects(in map[uint32]mappings.ObjectiveObject) map[uint32]replay.Label {
+	out := map[uint32]replay.Label{}
+	for id, o := range in {
+		if !objectiveObjectFamilies[o.Family] {
+			continue
+		}
+		out[id] = replay.Label{En: o.Label.En, Fr: o.Label.Fr}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// weaponIcons pointe, par famille, l'icône EXTRAITE que le titre sert (fiches joueur du
+// rejeu). La clé d'icône EST la famille (le tag `weap` est la moitié haute de
+// l'identifiant) : la jointure passe par l'adapter d'assets du titre, jamais par un nom.
+// Une famille sans visuel n'entre pas — le client garde le libellé.
+func weaponIcons(families map[uint32]string) map[uint32]replay.WeaponIconRef {
+	adapter := halo.NewAssetURLAdapter()
+	out := map[uint32]replay.WeaponIconRef{}
+	for family := range families {
+		id := int64(uint64(family) << 32) //nolint:gosec // recomposition voulue : le tag est la moitié haute
+		url := adapter.WeaponImageURL(id)
+		if url == "" {
+			continue
+		}
+		out[family] = replay.WeaponIconRef{URL: url, Tinted: adapter.WeaponImageIsTinted(id)}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // weaponNames convertit les noms d'armes du loader vers le DTO d'artefact. La JOINTURE
@@ -66,24 +187,57 @@ func weaponNames(in map[string]mappings.WeaponName) map[string]replay.Label {
 
 // toLabels convertit les libellés bilingues du loader vers le DTO d'artefact, en
 // PRÉSERVANT L'ORDRE — pour les grenades, l'ordre EST le rang.
-func toLabels(in []mappings.BilingualLabel) []replay.Label {
+func toLabels(slug string, in []mappings.BilingualLabel) []replay.Label {
 	if len(in) == 0 {
 		return nil
 	}
 	out := make([]replay.Label, 0, len(in))
 	for _, l := range in {
-		out = append(out, replay.Label{En: l.En, Fr: l.Fr})
+		out = append(out, toLabel(slug, l))
 	}
 	return out
 }
 
-func abilitiesByIndex(in map[int]mappings.BilingualLabel) map[int]replay.Label {
+// abilityPalettes convertit les palettes du loader vers le DTO d'artefact. Les MARQUEURS
+// voyagent avec les noms : c'est l'assemblage (replay/abilities.go) qui classe le film, et
+// il ne peut pas classer sans eux.
+func abilityPalettes(slug string, in []mappings.AbilityPalette) []replay.AbilityPalette {
 	if len(in) == 0 {
 		return nil
 	}
-	out := make(map[int]replay.Label, len(in))
-	for idx, l := range in {
-		out[idx] = replay.Label{En: l.En, Fr: l.Fr}
+	out := make([]replay.AbilityPalette, 0, len(in))
+	for _, p := range in {
+		ranks := make(map[int]replay.Label, len(p.Ranks))
+		for rank, l := range p.Ranks {
+			ranks[rank] = toLabel(slug, l)
+		}
+		out = append(out, replay.AbilityPalette{
+			ID: p.ID, Markers: p.Markers, Ranks: ranks, Families: p.Families})
 	}
 	return out
+}
+
+// toLabel joint le libellé et sa vignette de HUD quand le TOML en pointe une. Les
+// vignettes sont des masques (blanc/gris + alpha) : Tinted, comme les icônes d'arme
+// extraites — le client les teint à l'encre du thème.
+func toLabel(slug string, l mappings.BilingualLabel) replay.Label {
+	out := replay.Label{En: l.En, Fr: l.Fr}
+	if l.Icon != "" {
+		out.Img = static.URL(static.KindWeapon, slug, l.Icon, ".png")
+		out.Tinted = true
+	}
+	return out
+}
+
+// flagReturnZone projette la règle de retour du manifeste vers le document. Une règle non
+// déclarée reste à zéro, et le calque du drapeau ne publie alors rien.
+func flagReturnZone(z mappings.FlagReturnZone) replay.FlagReturnZone {
+	if !z.Declared() {
+		return replay.FlagReturnZone{}
+	}
+	return replay.FlagReturnZone{
+		RadiusM:      float32(z.RadiusM),
+		ResetSeconds: float32(z.ResetSeconds),
+		SoloSeconds:  float32(z.SoloSeconds),
+	}
 }

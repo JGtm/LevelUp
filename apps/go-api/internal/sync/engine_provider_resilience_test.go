@@ -133,11 +133,16 @@ func TestE2E_SyncEngine_ContextCancel_ReadersUnaffected_integration(t *testing.T
 }
 
 // TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration : le mock
-// client retourne une erreur de GetMatchHistory. Le sync renvoie status=success
-// avec inserted=0 et warnings≥1 (comportement engine : best-effort, continue
-// si l'API ne répond pas). Le Provider doit terminer proprement (release
-// writer, retour à StateRO). Le run suivant avec un mock fonctionnel doit
+// client retourne une erreur de GetMatchHistory. Le Provider doit terminer proprement
+// (release writer, retour à StateRO) et le run suivant, avec un mock fonctionnel, doit
 // processer les matchs normalement — preuve de la résilience.
+//
+// ASSERTION RETOURNÉE le 2026-09-16 (D1, plan robustesse). Ce test exigeait
+// `warnings ≥ 1` et un statut `success` : c'était précisément le défaut C-A. Une
+// pagination interrompue rend la passe INCOMPLÈTE ; elle compte maintenant en `Errors`
+// et `Status()` rend `failure` quand rien n'a été inséré. Le test est retourné, pas
+// supprimé : il garde son nom et vérifie le NOUVEAU contrat (la résilience du Provider,
+// elle, est inchangée).
 func TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration(t *testing.T) {
 	env := newE2EEnv(t)
 	env.mock.history = nil
@@ -145,7 +150,7 @@ func TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration(t *testing.
 
 	ctx := context.Background()
 
-	// 1er run : GetMatchHistory échoue → warnings ≥ 1, inserted = 0.
+	// 1er run : GetMatchHistory échoue → errors ≥ 1, statut failure, inserted = 0.
 	opts := domain.SyncOptions{
 		MatchType:         "matchmaking",
 		MaxMatches:        5,
@@ -160,9 +165,13 @@ func TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration(t *testing.
 	if result.MatchesInserted != 0 {
 		t.Errorf("MatchesInserted = %d (attendu 0)", result.MatchesInserted)
 	}
-	if len(result.Warnings) < 1 {
-		t.Errorf("Warnings count = %d (attendu ≥ 1 pour signaler l'échec API)",
-			len(result.Warnings))
+	if len(result.Errors) < 1 {
+		t.Errorf("Errors count = %d (attendu ≥ 1 : une pagination interrompue rend la passe "+
+			"incomplète, elle ne se signale plus par un simple avertissement — D1, 2026-09-16)",
+			len(result.Errors))
+	}
+	if got := result.Status(); got != "failure" {
+		t.Errorf("Status() = %q (attendu failure : 0 match inséré et l'historique a échoué)", got)
 	}
 
 	// Provider doit être revenu à StateRO malgré l'échec API.

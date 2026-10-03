@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/analysis/relations"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -44,6 +45,7 @@ func buildTeamTabFull(
 	friendsExtras map[string]port.FriendMatchExtras,
 	sharedCSRs map[string]*domain.SkillRankRaw,
 	assetURL games.TitleAssetURLAdapter, //nolint:PLR0913 — coordinator function
+	outcomes *mappings.OutcomeMappingSet, //nolint:PLR0913 — clé canonique d'issue (D5, 2026-09-07)
 ) domain.MatchTeamTab {
 	// Index bulk medals et weapons par XUID pour O(1) lookup (extract helpers).
 	medalsByXUID := indexBulkMedalsByXUID(bulkMedals, assetURL, len(scoreboard))
@@ -52,6 +54,13 @@ func buildTeamTabFull(
 	extremes := analysis.ComputeMVPLVP(scoreboard)
 
 	rows := make([]domain.MatchScoreboardRow, 0, len(scoreboard))
+	rfc3339Ptr := func(t *time.Time) *string {
+		if t == nil {
+			return nil
+		}
+		s := t.Format(time.RFC3339)
+		return &s
+	}
 	for _, s := range scoreboard {
 		oc, dr, dpk, dpd := computeScoreboardRowCombatYield(s, games.EffectiveHpToKill(titleSlug))
 
@@ -59,6 +68,10 @@ func buildTeamTabFull(
 			XUID:                s.XUID,
 			Gamertag:            s.Gamertag,
 			IsBot:               s.IsBot,
+			JoinedInProgress:    s.JoinedInProgress,
+			LeftInProgress:      s.LeftInProgress,
+			FirstJoinedTime:     rfc3339Ptr(s.FirstJoinedTime),
+			LastLeaveTime:       rfc3339Ptr(s.LastLeaveTime),
 			IsMe:                s.XUID == myXUID,
 			IsMVP:               extremes.MVPXUID != "" && s.XUID == extremes.MVPXUID,
 			IsLVP:               extremes.LVPXUID != "" && s.XUID == extremes.LVPXUID,
@@ -81,7 +94,7 @@ func buildTeamTabFull(
 			AssassinationKills:  s.AssassinationKills,
 			GroundPoundKills:    s.GroundPoundKills,
 			ShoulderBashKills:   s.ShoulderBashKills,
-			OutcomeLabel:        outcomeLabel(s.OutcomeCode),
+			Outcome:             outcomeKey(outcomes, s.OutcomeCode),
 			Score:               toIntPtr(s.PersonalScore),
 			PerfectKills:        &s.PerfectKills,
 			TopWeaponID:         s.TopWeaponID,
@@ -280,13 +293,15 @@ func buildMediaTab(media []domain.MediaAssocRaw) domain.MatchMediaTab {
 	items := make([]domain.MatchAssociatedMedia, 0, len(media))
 	for _, m := range media {
 		items = append(items, domain.MatchAssociatedMedia{
-			FileID:       m.FileID,
-			FileName:     m.FileName,
-			FilePath:     m.FilePath,
-			Kind:         m.Kind,
-			ThumbnailURL: m.ThumbnailPath,
-			CaptureTime:  m.CaptureTime,
-			Liked:        m.Liked,
+			FileID:           m.FileID,
+			FileName:         m.FileName,
+			FilePath:         m.FilePath,
+			Kind:             m.Kind,
+			ThumbnailURL:     m.ThumbnailPath,
+			DurationSeconds:  m.DurationSeconds,
+			CaptureStartTime: m.CaptureStartTime,
+			CaptureTime:      m.CaptureTime,
+			Liked:            m.Liked,
 		})
 	}
 	return domain.MatchMediaTab{MediaItems: items}
@@ -310,6 +325,12 @@ func buildNemesisMap(
 
 	result := make(map[string]*nemesisEntry)
 	for _, kv := range kvPairs {
+		// Un xuid vide désigne un BOT (NULL de la canonique, cf. GetMatchKVPairs) : les bots
+		// n'entrent JAMAIS dans les duels (décision user 2026-09-02) — et les agréger sous la
+		// clé "" fusionnerait tous les bots en un némésis fantôme.
+		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+			continue
+		}
 		if kv.VictimXUID == myXUID {
 			if _, ok := result[kv.KillerXUID]; !ok {
 				gt := gtMap[kv.KillerXUID]

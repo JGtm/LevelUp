@@ -10,7 +10,9 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -20,6 +22,11 @@ import (
 )
 
 const provisionTestSlug = "provision_test_title"
+
+// provisionFailMetaSlug — titre de test dont la migration METADATA échoue, comme halo_5
+// entre le 2026-09-12 et le 2026-09-20 (name_en NOT NULL violé par le seed du registre
+// d'armes).
+const provisionFailMetaSlug = "provision_fail_meta_title"
 
 // registerProvisionTestSet enregistre un jeu de migrations minimal multi-target
 // pour le titre de test (shared + metadata + shared_social + shared_pve), sans
@@ -148,5 +155,81 @@ func TestProvisionAdditionalTitle_NoFirefightSkipsPvE(t *testing.T) {
 	}
 	if !fileExists(pr.SharedDBPath(provisionTestSlug)) {
 		t.Error("DB shared devrait être provisionnée")
+	}
+}
+
+// registerProvisionFailMetaSet — même jeu minimal, mais la migration METADATA échoue.
+// Reproduit l'anomalie de boot du 2026-09-12 : la metadata de halo_5 tombait sur une
+// contrainte NOT NULL, et la boucle de provisioning sortait à cet échec.
+func registerProvisionFailMetaSet() {
+	step := func(name string, tgt migration.TargetDB) migration.Migration {
+		return migration.Migration{
+			Name:        name,
+			TargetDB:    tgt,
+			Description: "titre de test (metadata fautive) — table de base " + string(tgt),
+			ApplySchema: func(db *sql.DB) error {
+				if tgt == migration.TargetMetadata {
+					return errors.New("NOT NULL constraint failed: weapons.name_en")
+				}
+				_, err := db.Exec("CREATE TABLE IF NOT EXISTS provisiontest_marker (k VARCHAR PRIMARY KEY)")
+				return err
+			},
+		}
+	}
+	migration.RegisterMigrationSet(migration.TitleMigrationSet{
+		Slug:           provisionFailMetaSlug,
+		CanonicalOrder: []string{"pfm_shared", "pfm_meta", "pfm_social", "pfm_pve"},
+		Steps: func(target migration.TargetDB) []migration.Migration {
+			switch target {
+			case migration.TargetShared:
+				return []migration.Migration{step("pfm_shared", migration.TargetShared)}
+			case migration.TargetMetadata:
+				return []migration.Migration{step("pfm_meta", migration.TargetMetadata)}
+			case migration.TargetSharedSocial:
+				return []migration.Migration{step("pfm_social", migration.TargetSharedSocial)}
+			case migration.TargetSharedPvE:
+				return []migration.Migration{step("pfm_pve", migration.TargetSharedPvE)}
+			default:
+				return nil
+			}
+		},
+	})
+}
+
+// TestProvisionAdditionalTitle_MetadataEnEchecNEmportePasLesAutresBases — LA régression
+// du 2026-09-12 : la metadata échoue, et shared + social doivent malgré tout recevoir
+// leurs migrations. L'erreur retournée nomme la SEULE base fautive.
+func TestProvisionAdditionalTitle_MetadataEnEchecNEmportePasLesAutresBases(t *testing.T) {
+	registerProvisionFailMetaSet()
+
+	repoRoot := t.TempDir()
+	pr := title.NewPathResolver(repoRoot)
+	desc := &title.TitleDescriptor{
+		Slug:         provisionFailMetaSlug,
+		Name:         "Provision Fail Meta",
+		Provider:     "test",
+		Status:       title.StatusActive,
+		Capabilities: []title.Capability{title.CapMatchmaking},
+	}
+
+	err := provisionAdditionalTitle(pr, desc)
+	if err == nil {
+		t.Fatal("provisionAdditionalTitle: erreur attendue (la metadata échoue)")
+	}
+
+	// 1. Les bases NON fautives ont bien été créées ET migrées.
+	if !markerTableExists(t, pr.SharedDBPath(provisionFailMetaSlug)) {
+		t.Error("marqueur absent de shared — la base a été ABANDONNÉE après l'échec de la metadata")
+	}
+	if !markerTableExists(t, pr.SharedSocialDBPath(provisionFailMetaSlug)) {
+		t.Error("marqueur absent de shared_social — la base a été ABANDONNÉE après l'échec de la metadata")
+	}
+
+	// 2. L'erreur nomme la base fautive, et elle seule.
+	if got := failedProvisionTargets(err); len(got) != 1 || got[0] != string(migration.TargetMetadata) {
+		t.Errorf("failedProvisionTargets = %v, want [%s]", got, migration.TargetMetadata)
+	}
+	if !strings.Contains(err.Error(), "name_en") {
+		t.Errorf("l'erreur ne porte pas la cause de l'échec metadata : %v", err)
 	}
 }

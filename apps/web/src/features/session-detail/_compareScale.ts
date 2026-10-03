@@ -9,7 +9,7 @@
  * Les dérivations ci-dessous RÉPLIQUENT (volontairement, en version minimale) celles des
  * graphes concernés ; gardées en phase via le commentaire de renvoi `cf. <Composant>`.
  */
-import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
+import type { MatchRangeBlock, SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
 import { netLives } from '@/lib/charts/netLives'
 import { engagementGapEvents } from '@/lib/charts/engagementGap'
@@ -33,6 +33,38 @@ export interface CompareScale {
   placementAxisMax?: number
   /** Max du compte de modes (axe Y). */
   modeMaxCount?: number
+  /**
+   * [min, max] de l'écart de portée au lobby (mètres, signé), 0 inclus — l'axe Y partagé
+   * de la carte « Portée des engagements ».
+   *
+   * Il N'ENTRE PAS dans `computeCompareScale` : celui-ci ne reçoit que des matchs et des
+   * entries, et lui passer deux blocs de plus le porterait à sept paramètres (seuil
+   * CLAUDE.md n°5). La page compose les deux résultats.
+   */
+  rangeDelta?: [number, number]
+}
+
+/**
+ * rangeDeltaDomain — les bornes Y COMMUNES des deux cartes de portée : l'amplitude la plus
+ * large des deux sessions, symétrique autour de la ligne du lobby (0).
+ *
+ * Symétrique parce que le zéro est un REPÈRE, pas un minimum : un axe qui commence à -3 et
+ * finit à +12 fait lire « plus loin » à un joueur qui joue court. `undefined` quand aucun
+ * écart n'est mesuré des deux côtés — l'axe retombe alors sur le calcul local du graphe.
+ */
+export function rangeDeltaDomain(
+  a: MatchRangeBlock | null | undefined,
+  b: MatchRangeBlock | null | undefined,
+): [number, number] | undefined {
+  const ecarts = [a, b].flatMap(
+    (bloc) =>
+      bloc?.profiles?.flatMap((p) =>
+        (p.players ?? []).filter((j) => j.measured > 0).map((j) => Math.abs(j.lobby_delta_m)),
+      ) ?? [],
+  )
+  if (ecarts.length === 0) return undefined
+  const borne = Math.ceil(Math.max(...ecarts)) + 1
+  return [-borne, borne]
 }
 
 /** cf. SessionNetScoreArea : cumul de (kills − deaths), trié par start_time. */

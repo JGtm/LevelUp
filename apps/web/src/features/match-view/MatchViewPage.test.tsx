@@ -10,8 +10,11 @@
  *
  * Couvre aussi la structure de l'onglet Général : le bloc Médias est SORTI de la
  * grille Médailles/Citations — dernier bloc, seul sur sa rangée, pleine largeur
- * (règle produit : aucun bloc jamais seul à largeur partielle). Les enfants lourds
- * (charts ECharts, header) sont mockés — seule la structure des rangées est testée.
+ * (règle produit : aucun bloc jamais seul à largeur partielle). Depuis le 2026-09-22 il
+ * porte le gabarit de titre commun (`DetailSection`) au lieu de son bandeau de carte
+ * inline, et la grille Médailles/Citations vit sous la section « Récompenses ». Les
+ * enfants lourds (charts ECharts, header) sont mockés — seule la structure des rangées
+ * est testée.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -47,8 +50,8 @@ vi.mock('./queries', () => ({
   useMatchPositions: () => ({ data: undefined }),
 }))
 
-vi.mock('@/features/settings/queries', () => ({
-  useSettings: () => ({ data: { friend_gamertags: [] } }),
+vi.mock('@/features/friends/queries', () => ({
+  useFriendGamertags: () => [],
 }))
 
 // availableTitles vide → useCapability (FeatureGate) fail-open : le bloc Médias est rendu.
@@ -72,14 +75,13 @@ vi.mock('./MatchSummaryCharts', () => ({
   MatchSpreeChart: () => <div data-testid="chart-spree" />,
   MatchSummaryRadarChart: () => <div data-testid="chart-radar" />,
 }))
-vi.mock('./MatchFragCard', () => ({
-  MatchFragCard: () => <div data-testid="frag-card" />,
-}))
 vi.mock('./MatchSummaryMedalsAndCitations', () => ({
   MatchMedalsSection: () => <div data-testid="medals" />,
   MatchCitationsSection: () => <div data-testid="citations" />,
   MatchNativeCommendationsSection: () => <div data-testid="native-commendations" />,
 }))
+// `hasMediaItems` (module `blockPredicates`, non mocké) reste LE vrai prédicat : c'est lui
+// que la page lit pour poser, ou non, le titre « Médias » (2026-09-22).
 vi.mock('./MatchMediaTab', () => ({
   MatchMediaTab: () => <div data-testid="media-tab" />,
 }))
@@ -126,7 +128,8 @@ describe('MatchViewPage — onglet Général : structure des rangées', () => {
       summary_tab: { kpis: {}, expected_stats: null, medals: [], citations: [] },
       combat_tab: {},
       team_tab: {},
-      media_tab: { media_items: [] },
+      // Au moins une capture : sans média, la page ne pose plus ni titre ni bloc (2026-09-22).
+      media_tab: { media_items: [{ file_path: 'c1.png' }] },
       citations_tab: { native_commendations: [] },
       radar: null,
     }
@@ -141,11 +144,14 @@ describe('MatchViewPage — onglet Général : structure des rangées', () => {
     // Le bloc Médias n'est PAS dans cette grille…
     const mediaTab = screen.getByTestId('media-tab')
     expect(grid.contains(mediaTab)).toBe(false)
-    // …c'est le DERNIER bloc de la pile summary, frère direct de la grille (pleine largeur).
-    const summaryStack = grid.parentElement as HTMLElement
-    const mediaCard = mediaTab.closest('.rounded-lg') as HTMLElement
-    expect(mediaCard.parentElement).toBe(summaryStack)
-    expect(summaryStack.lastElementChild).toBe(mediaCard)
+    // …c'est le DERNIER bloc de la pile summary, sa propre section titrée, frère de la
+    // section « Récompenses » qui porte la grille (pleine largeur).
+    const rewardsSection = grid.closest('section') as HTMLElement
+    const summaryStack = rewardsSection.parentElement as HTMLElement
+    const mediaSection = mediaTab.closest('section') as HTMLElement
+    expect(mediaSection.parentElement).toBe(summaryStack)
+    expect(summaryStack.lastElementChild).toBe(mediaSection)
     expect(screen.getByText('Médias')).toBeInTheDocument()
+    expect(screen.getByText('Récompenses')).toBeInTheDocument()
   })
 })

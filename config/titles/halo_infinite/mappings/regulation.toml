@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 1
+schema_version = 8
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -42,3 +42,424 @@ schema_version = 1
 "Strongholds:Arena"           = 720
 "Arena:Slayer"                = 720
 "Arena:Team Slayer"           = 720
+
+# ---------------------------------------------------------------------------------------
+# CIBLE DE VICTOIRE par variante (score qui termine le match quand il est atteint) —
+# socle du remplissage des barres du bandeau de score du rejeu 2D (schema_version 2).
+#
+# MEME DOCTRINE QUE regulation_seconds : cle = game_variant_name exact, valeur MESUREE,
+# jamais « au juge ». Mesure du 2026-08-24 sur le registre complet : pour chaque variante,
+# la distribution de GREATEST(team_0_score, team_1_score) presente (ou non) un PLATEAU —
+# la valeur maximale observee, atteinte par >= 2 matchs, sans aucun match au-dessus.
+# Les valeurs sous le plateau sont les victoires au chrono (le cas que la cible sert
+# precisement a bien afficher : barre non pleine a la fin).
+#
+# GARDE COTE PRODUCTEUR : une cible n'est publiee dans l'artefact que si AUCUN score
+# final du film ne la depasse — une table perimee (343 change une regle) se tait au lieu
+# de publier une cible fausse.
+#
+# VOLONTAIREMENT ABSENTS :
+#   - Oddball : mode a MANCHES — le total du match deborde le plateau d'une manche
+#     (Ranked:Oddball observe a 286-287 au-dessus du 200). Une cible unique n'a pas de
+#     sens sur le TOTAL.
+#   - "Arena:King of the Hill" : le plateau n'est atteint que par UN SEUL match (3 sur
+#     3 matchs, les deux autres finissent a 2) — la regle des >= 2 matchs au plateau
+#     n'est pas tenue. Ses matchs gardent le repli du bandeau.
+#   - Attrition, Extraction, Land Grab, Sentry Defense, Escalation BTB, variantes UUID,
+#     Firefight PvE : plateau non mesurable (n < 2 au plateau, ou distribution etalee).
+#
+# Exception justifiee : "Ranked:CTF 3 Captures" n'a qu'un match (fini 1) mais la cible
+# est DECLAREE par 343 dans le nom meme de la variante.
+[score_target]
+# Slayer arene : plateau 50 (mesure massive — 417 matchs a 50 sur Super Fiesta seule).
+"Slayer:Arena"               = 50
+"Team Slayer:Arena"          = 50
+"Slayer:Arena Super Fiesta"  = 50
+"Slayer:Arena Fiesta"        = 50
+"Slayer:Arena Tactical"      = 50
+"Arena:Slayer"               = 50
+"Arena:Team Slayer"          = 50
+"Arena:Team Snipers"         = 50
+"Team Snipers:Arena"         = 50
+"Fiesta:Slayer"              = 50
+"Super Fiesta:Slayer"        = 50
+"Tactical:Slayer"            = 50
+"Ranked:Slayer"              = 50
+# Slayer BTB : plateau 100.
+"BTB:Slayer"                 = 100
+"BTB Heavies:Slayer"         = 100
+"BTB:Fiesta Slayer"          = 100
+"BTB:Team Snipers"           = 100
+# CTF : 3 captures partout, SAUF Neutral Flag arene (plateau net a 5, 25 matchs).
+"CTF:Arena"                  = 3
+"Arena:CTF"                  = 3
+"Ranked:CTF"                 = 3
+"Ranked:CTF 3 Captures"      = 3
+"BTB:CTF"                    = 3
+"BTB Heavies:CTF"            = 3
+"BTB:Fiesta CTF"             = 3
+"CTF:BTB"                    = 3
+"Husky Raid:CTF"             = 3
+"Husky Raid:Super CTF"       = 3
+"Super Husky Raid:CTF"       = 3
+"Arena:One Flag CTF"         = 3
+"BTB:One Flag CTF"           = 3
+"CTF:Arena Neutral Flag"     = 5
+# Strongholds : 200 en social, 250 en classe (plateaux mesures ; c'est le score AFFICHE
+# par le jeu, celui que porte la courbe du film — l'API compte des ticks, cf.
+# games/halo_infinite/film/replay/document_score.go).
+"Strongholds:Arena"          = 200
+"Arena:Strongholds"          = 200
+"Ranked:Strongholds"         = 250
+# KOTH : il n'y a pas de capture, la colline se marque a la GARDE — et le score EST le
+# compte de collines gagnees. Plateaux mesures le 2026-08-30 sur les 52 matchs KOTH du
+# registre : 3 en social (45 matchs sur 46 finissent a 3 ; le 46e finit a 2 sur 511 s,
+# c'est-a-dire au chrono) et 4 en classe (3 matchs sur 3, duree moyenne 770 s).
+# CETTE ENTREE ETAIT ECARTEE AU MOTIF QUE « l'oracle du film differe de l'API » : le motif
+# est PERIME. Verifie le 2026-08-30, le registre porte desormais des COLLINES (606d9844 a
+# 3-0, 8076f97f a 0-3) la ou il portait des SECONDES (105/8, 78/105) au releve du lot A —
+# le backfill du 2026-08-24 a homogeneise la colonne.
+"KOTH:Arena"                 = 3
+"Ranked:King of the Hill"    = 4
+# Total Control : 3 series de zones.
+"BTB:Total Control"          = 3
+"BTB Heavies:Total Control"  = 3
+"BTB:Fiesta Total Control"   = 3
+# Autres plateaux mesures.
+"BTB:Stockpile"              = 5
+"Assault:Neutral Bomb"       = 3
+"Assault:One Bomb"           = 3
+"Arena:VIP"                  = 10
+"Arena:Escalation Slayer"    = 11
+"Event:Escalation Slayer"    = 11
+
+# ---------------------------------------------------------------------------------------
+# TICS DE GARDE PAR POINT (schema_version 4, mesure du 2026-08-30) — le DENOMINATEUR de
+# la progression vers le prochain point sur un mode ou l'on marque en TENANT une zone.
+#
+# EN KOTH IL N'Y A PAS DE CAPTURE : la colline se prend instantanement quand aucun adversaire
+# n'y est ; c'est la GARDE qui marque, et la colline tourne a chaque point. Cette table dit
+# combien de TICS de garde valent un point — sans elle, le rejeu sait QUI tient la colline mais
+# pas OU EN EST la progression.
+#
+# MEME DOCTRINE QUE LES TROIS TABLES CI-DESSUS : cle = game_variant_name exact, valeur
+# MESUREE, variante absente = pas de denominateur, donc AUCUNE jauge affichee (jamais une
+# jauge remplie au juge).
+#
+# 35 EST UN COMPTE, PAS UN REGLAGE. Le compteur est `comp 23 A` du statborg, qui reproduit
+# `ZonesStats.StrongholdScoringTicks` de l'API EXACTEMENT joueur par joueur (31 joueurs sur 31,
+# 4 films). La barre d'un camp est l'UNION des instants de tic de ses joueurs — ni la somme
+# (elle compterait deux fois le meme tic) ni le maximum sur la periode (il perd les relais).
+# Mesure : le camp QUI MARQUE rend exactement 35 sur 15 periodes sur 16 (4 films, 4 cartes ;
+# l'unique ecart vaut 33), tandis que le camp qui NE marque pas rend 1 a 25 et JAMAIS 35 — le
+# controle est dans la mesure elle-meme. 35 est aussi le chiffre annonce par la documentation
+# du jeu : deux chaines independantes concordent.
+#
+# CE CHIFFRE NE SE CALE PAS SUR LE RENDU. Une version anterieure de cette table portait 43,
+# mesure sur le canal de PROPRIETE (une reconstruction), et la tentation etait de le monter pour
+# que la jauge tombe pleine pile au point. La voie propre etait de changer de SOURCE, pas de
+# corriger la constante. Detail des trois lots : `.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`
+# §E1, §E1-bis et §E1-ter ; instrument `internal/games/halo_infinite/film/replay/colline_statborg_e1bis_test.go`.
+#
+# VOLONTAIREMENT ABSENTS :
+#   - "Ranked:King of the Hill" : les 3 matchs classes du registre sont INEXPLOITABLES (deux
+#     sans film en cache, un sur « Solitude - Ranked », carte absente de map_quant_bounds.json).
+#     Rien ne dit que le classe partage le seuil du social, et lui recopier la valeur serait
+#     la devinette que cette table interdit. Reprise : un film classe en cache AVEC bornes.
+#   - Strongholds et Total Control : modes a zones SIMULTANEES, dont la progression se lit
+#     directement dans la jauge du film (`ZoneState.gauge`, schema 18). Le tic de `comp 23 A`
+#     y existe aussi (l API le nomme StrongholdScoringTicks pour les deux modes), mais rien ne
+#     dit qu il s y accumule de la meme facon : non mesure, donc non declare.
+#
+# Consommation : mappings.LoadRegulation -> RegulationSet.HoldTicksPerPoint(variante)
+# -> replaybuild -> ScoreTimeline.{HoldTicks, HoldTicksPerPoint} -> lisere de garde du bandeau.
+[hold_ticks_per_point]
+"KOTH:Arena" = 35
+
+# ---------------------------------------------------------------------------------------
+# VARIANTES DONT LE RESULTAT SE LIT EN MANCHES (schema_version 3, mesure du 2026-08-29).
+#
+# Pour ces variantes, `CoreStats.Score` est un CUMUL DE POINTS sur toutes les manches : il
+# ne dit PAS qui a gagne. Sur 4 matchs Oddball du corpus, l'equipe VICTORIEUSE affiche
+# MOINS de points que la perdante (ex. 181-186 pour une victoire 2 manches a 1). L'app
+# affiche donc, pour ces variantes, les MANCHES gagnees/perdues, et relegue le score de
+# l'API en second plan.
+#
+# MEME DOCTRINE QUE LES DEUX TABLES CI-DESSUS : cle = game_variant_name exact, contenu
+# MESURE, jamais « au juge ». Une variante absente garde les points — degradation sure.
+# Mesure : `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md` (1 942 matchs re-lus, 0 erreur).
+#
+# VOLONTAIREMENT ABSENTS, et ce n'est pas un oubli :
+#   - One Flag CTF, Assault:One Bomb, Attrition : modes A MANCHES eux aussi, mais leur
+#     `Score` EST DEJA le compte de manches (3-1 = trois manches a une, verifie sur 14 des
+#     16 matchs). Les declarer ne changerait rien a l'ecran, et transformerait les 2 matchs
+#     a manche nulle (score 3-3 contre 2-2 manches gagnees) en un affichage dont rien ne
+#     prouve qu'il soit celui du jeu.
+#   - CTF:Arena et Ranked:CTF : le score du jeu est le TOTAL DE CAPTURES (2-3), pas un compte
+#     de manches — c'est lui qu'on affiche, et le compte de manches y vaudrait 0-1, ce qui
+#     serait un contresens. En prime la meme variante est tantot a une manche tantot a deux.
+#     CORRIGE LE 2026-09-13 (decision utilisateur, mecanique de jeu) : la redaction precedente
+#     disait « deux MI-TEMPS ». IL N'Y A PAS DE MI-TEMPS EN HALO INFINITE — il y a des MANCHES
+#     et des PROLONGATIONS. Le motif d'exclusion de cette table ne change pas (le score n'est
+#     pas un compte de manches sur ces variantes) ; seul le mot etait faux. Voir le lot 0.D.1
+#     bis du PLAN_DECODEUR_FILM : sur `fb1a1a72` (CTF:Arena, 814 s pour 720 s reglementaires)
+#     le film ecrit un designateur de manche 2 que deux temoins CTF:Arena sans depassement
+#     (`53ce4390`, `51101d1d`) n'ecrivent PAS.
+#   - KOTH : mesure du 2026-08-24, une seule manche dans le corpus.
+#
+# Consommation : mappings.LoadRegulation -> RegulationSet.RoundsDecide(variante) ->
+# analysis.TeamScoreDisplay (source unique de la regle d'affichage).
+[rounds_decide]
+"Arena:Oddball"  = true
+"Ranked:Oddball" = true
+"Oddball:Arena"  = true
+
+# ---------------------------------------------------------------------------------------
+# COMMENT LE SCORE SE MONTRE DANS LE TEMPS (schema_version 5, decision produit 2026-09-03).
+#
+# LE BLOC « Score dans le temps » DE LA VUE MATCH NE VA PAS A TOUS LES MODES, et c'est un
+# fait de la donnee, pas un gout. Trois lectures :
+#
+#   hidden   Le mode marque au FRAG : la courbe de score REDIT ce que « Frags cumules »
+#            montre deja, deux fois de suite dans le meme onglet. On ne l'affiche pas.
+#   events   Le mode marque en 3 a 5 POINTS sur tout le match (une capture de drapeau, une
+#            colline, une bombe). Une courbe sur cinq paliers est un escalier vide : ce sont
+#            les INSTANTS de marque qui portent l'information, donc des barres verticales.
+#   curve    Le mode marque en continu (Oddball au tic, Bastion a la garde) : la courbe est
+#            la bonne lecture, et c'est le REPLI.
+#
+# LA CLE EST UN JETON DE MODE, cherche comme MOT ENTIER (insensible a la casse, jeton le plus
+# long gagnant) DANS LE `pair_name` BRUT du match, dont on n'a retire que le suffixe de carte
+# (« on <carte> » / « sur <carte> »).
+#
+# CETTE TABLE N'APPARIE DONC PAS COMME `objective_roles.toml`, ET LA DIFFERENCE EST LE COEUR
+# DE LA DECISION. `objective_roles` apparie sur le libelle NORMALISE
+# (`analysis.NormalizeModeLabel`), qui MANGE le jeton de mode sur toute une famille de
+# pair_name. Comptage sur le registre local (2026-09-03), matchs qui auraient recu le mauvais
+# verdict :
+#
+#   "Super Fiesta:Slayer"      -> "Super Fiesta"        429 matchs   attendu hidden
+#   "Super Husky Raid:CTF"     -> "Super Husky Raid"     11 matchs   attendu events
+#   "Arena:Team Snipers"       -> "Team Snipers"          8 matchs   attendu hidden
+#   "Husky Raid:CTF"           -> "Husky Raid"            3 matchs   attendu events
+#   "Team Slayer:Arena"        -> "Arena"                 3 matchs   attendu hidden
+#   "CTF:Arena"                -> "Arena"                 2 matchs   attendu events
+#   "BTB:Team Snipers"         -> "Team Snipers"          2 matchs   attendu hidden
+#   "Husky Raid:Assault"       -> "Husky Raid"            1 match    attendu events
+#   "Slayer:Arena"             -> "Arena"                 1 match    attendu hidden
+#
+# 460 matchs, dont le mode LE PLUS JOUE du corpus. Deux causes : la normalisation garde le
+# prefixe d'identite de playlist et jette le sous-mode (Super Fiesta, Husky Raid), et certains
+# pair_name sont de forme `Mode:Playlist` — elle prend alors la partie DROITE et rend
+# « Arena ». Sur le brut, les neuf lignes retombent justes.
+#
+# LE RETRAIT DU SUFFIXE DE CARTE NE SE SAUTE PAS : c'est lui qui protege des collisions entre
+# un jeton de mode et un nom de carte. Verifie sur les 70 pair_name distincts du registre, le
+# brut ainsi coupe rend le bon verdict sur TOUS. Aucune contradiction prefixe/mode dans le
+# corpus : les seuls pair_name en « Assault: » sont Neutral Bomb et One Bomb (events tous les
+# deux), et « Husky Raid:Assault » est bien un mode Assaut.
+#
+# CE QUE CET APPARIEMENT ATTRAPE EN PLUS, ET QUI EST SANS CONSEQUENCE : les libelles Firefight
+# (« Firefight:Heroic King of the Hill », « Gruntpocalypse:Heroic KOTH ») tombent en `events`.
+# Ces matchs PvE n'ont pas de calque de score d'EQUIPE, donc le graphe ne rend rien de toute
+# facon — mais mieux vaut l'ecrire ici que le decouvrir.
+#
+# MEME DOCTRINE QUE LES QUATRE TABLES CI-DESSUS pour le reste : contenu explicite, jamais « au
+# juge ». L'ABSENCE EST LE REPLI SUR, et c'est le comportement d'avant le 2026-09-03 : un mode
+# non declare, un titre sans cette table, un `pair_name` illisible -> `curve`, la courbe.
+# Jamais un bloc qui disparait par accident.
+#
+# VOLONTAIREMENT ABSENTS, faute de decision produit : Stockpile, Extraction, VIP, Total
+# Control, Land Grab. Tous restent au repli `curve`. Les declarer choisirait a la place de
+# l'utilisateur une lecture qu'aucune mesure ne recommande.
+#
+# Consommation : mappings.LoadRegulation -> RegulationSet.ScoreTimelineKind(pair_name brut,
+# carte retiree) -> MatchViewHeader.score_timeline_kind -> MatchViewTabChronology (courbe /
+# barres / rien).
+[score_timeline]
+# Le mode marque au frag : « Frags cumules » le dit deja, juste au-dessus dans l'onglet.
+# « Slayer » attrape Team Slayer, Tactical Slayer, Super Fiesta:Slayer, Escalation Slayer.
+"Slayer"       = "hidden"
+# Team Snipers est une variante Slayer (meme cible 50 au [score_target] ci-dessus) que le
+# jeton « Slayer » n'attrape pas : elle a son propre jeton. 10 matchs au registre local.
+"Team Snipers" = "hidden"
+# Drapeau : 3 a 5 captures sur tout le match. Memes jetons que objective_roles.toml —
+# « CTF » attrape One Flag CTF / Fiesta CTF / CTF 3 Captures / Husky Raid:CTF, et
+# « Neutral Flag » attrape « Arena Neutral Flag ».
+"CTF"              = "events"
+"Neutral Flag"     = "events"
+# Roi de la colline : le score EST le compte de collines gagnees (3 en social, 4 en classe).
+"King of the Hill" = "events"
+"KOTH"             = "events"
+# Assaut : 3 bombes. Memes jetons que objective_roles.toml — les variantes bombe sont des
+# habillages d'Assaut.
+"Assault"          = "events"
+"Neutral Bomb"     = "events"
+"One Bomb"         = "events"
+
+# ---------------------------------------------------------------------------------------
+# PORTÉE DU RADAR par variante, en mètres (schema_version 6, décision utilisateur
+# 2026-09-05) — socle de la lecture « où je meurs isolé » de l'onglet Tactique.
+#
+# CE QUE LA VALEUR EST : la distance à laquelle deux joueurs se voient sur le radar du jeu.
+# C'est elle qui définit « un coéquipier était à portée » — donc « la mort était accompagnée ».
+#
+#   Arène  18 m
+#   BTB    24 m
+#
+# SOURCE : utilisateur, 2026-09-05 (le joueur tranche sur la mécanique de jeu — c'est une
+# règle du titre, pas une grandeur qu'on mesure sur le registre comme le temps réglementaire
+# ou la cible de victoire). Elle est écrite ici, et non en dur dans le code, pour la même
+# raison que les quatre tables ci-dessus : une règle de jeu se corrige dans un fichier de
+# configuration, sans recompiler ni redéployer.
+#
+# MÊME DOCTRINE QUE `regulation_seconds` : clé = `match_registry.game_variant_name` exact.
+# VARIANTE ABSENTE = PAS DE LECTURE — les morts de ce match ne sont ni examinées ni comptées
+# isolées, et le nombre de matchs ainsi écartés est PUBLIÉ (`matchs_sans_rayon`). Un rayon
+# deviné (« 18 m, c'est l'usage ») rendrait une mesure d'apparence normale sur un mode dont
+# on n'a pas établi la règle : c'est exactement le faux positif que ce fichier refuse
+# partout ailleurs.
+#
+# COUVERTURE — décision superviseur du 2026-09-06 : cette table couvre TOUTES les variantes
+# connues des autres tables de ce fichier. La règle d'affectation est celle de l'utilisateur
+# (2026-09-05) : famille BTB (`BTB:*`, `BTB Heavies:*`, `*:BTB`) = 24 m, tout le reste = 18 m.
+# Un test le vérifie (`TestRadarRangeM_TableLivree`) : une variante identifiée par
+# `score_target` ou `regulation_seconds` et absente d'ici sortirait de la lecture « où je
+# meurs isolé » sans que rien ne l'explique.
+#
+# UNE VARIANTE ABSENTE DE TOUTES LES TABLES RESTE SANS LECTURE : on ne l'ajoute pas « au
+# jugé » ici juste pour combler un trou.
+#
+# CONSOMMATEUR : la lecture « où je meurs isolé » de l'onglet Tactique (lot 7C, livré le
+# 2026-09-07). Chemin : `mappings.RegulationSet.RadarRangeMap` → câblage par titre
+# (`server_apiv1` → `ServiceRegistry.WithRadarRange`) → `TacticalService.rayonsParMatch`, qui
+# résout le rayon PAR MATCH depuis `match_registry.game_variant_name`.
+#
+# ⚠ LA CLÉ SE NETTOIE À LA RÉSOLUTION (`strings.TrimSpace`). Le nom vient de la base, donc de ce
+# que l'API a envoyé, et des variantes y arrivent avec un blanc de tête ou de queue. Une clé non
+# nettoyée manque la table, et le match sort SILENCIEUSEMENT de la lecture — un défaut de donnée
+# déguisé en trou de référentiel, qui envoie chercher la panne au mauvais endroit.
+#
+# UNE VARIANTE ABSENTE N'EST PAS UN RAYON PAR DÉFAUT : ses matchs sortent de la lecture et se
+# comptent à part (`matchs_sans_rayon`). Un rayon deviné rendrait une mesure d'apparence normale
+# sur une règle de jeu qu'on n'a pas établie.
+
+[radar_range_m]
+"Arena:CTF"                       = 18
+"Arena:Escalation Slayer"         = 18
+"Arena:Oddball"                   = 18
+"Arena:One Flag CTF"              = 18
+"Arena:Slayer"                    = 18
+"Arena:Strongholds"               = 18
+"Arena:Team Slayer"               = 18
+"Arena:Team Snipers"              = 18
+"Arena:VIP"                       = 18
+"Assault:Neutral Bomb"            = 18
+"Assault:One Bomb"                = 18
+"BTB Heavies:CTF"                 = 24
+"BTB Heavies:Slayer"              = 24
+"BTB Heavies:Total Control"       = 24
+"BTB:CTF"                         = 24
+"BTB:Fiesta CTF"                  = 24
+"BTB:Fiesta Slayer"               = 24
+"BTB:Fiesta Total Control"        = 24
+"BTB:One Flag CTF"                = 24
+"BTB:Slayer"                      = 24
+"BTB:Stockpile"                   = 24
+"BTB:Team Snipers"                = 24
+"BTB:Total Control"               = 24
+"CTF:Arena"                       = 18
+"CTF:Arena Neutral Flag"          = 18
+"CTF:BTB"                         = 24
+"Event:Escalation Slayer"         = 18
+"Fiesta:Slayer"                   = 18
+"Husky Raid:CTF"                  = 18
+"Husky Raid:Super CTF"            = 18
+"KOTH:Arena"                      = 18
+"Oddball:Arena"                   = 18
+"Ranked:CTF"                      = 18
+"Ranked:CTF 3 Captures"           = 18
+"Ranked:King of the Hill"         = 18
+"Ranked:Oddball"                  = 18
+"Ranked:Slayer"                   = 18
+"Ranked:Strongholds"              = 18
+"Slayer:Arena"                    = 18
+"Slayer:Arena Fiesta"             = 18
+"Slayer:Arena Super Fiesta"       = 18
+"Slayer:Arena Tactical"           = 18
+"Strongholds:Arena"               = 18
+"Super Fiesta:Slayer"             = 18
+"Super Husky Raid:CTF"            = 18
+"Tactical:Slayer"                 = 18
+"Team Slayer:Arena"               = 18
+"Team Snipers:Arena"              = 18
+
+# ---------------------------------------------------------------------------------------
+# FENETRE DE JONGLAGE DU DRAPEAU (schema_version 7, mesure du 2026-09-13).
+#
+# CE QUE LA VALEUR EST : la duree en deca de laquelle un LACHER suivi d'une REPRISE par le
+# MEME joueur, sur le MEME drapeau, est UN SEUL geste — le porteur lance le drapeau devant
+# lui pour courir plus vite, puis le ramasse. Le compteur officiel `flag_grabs` compte ces
+# deux ramassages ; les « prises nettes » n'en comptent qu'un.
+#
+# SCALAIRE ET NON TABLE PAR VARIANTE, contrairement aux six tables ci-dessus : la coupure
+# vit dans le GESTE, pas dans le reglage d'une playlist. Mesure sur les 13 films CTF du parc
+# local (404 delais lacher -> reprise par le meme joueur) : l'effectif tombe de 99 sur la
+# tranche [1,0 ; 1,5) s a 27 sur [1,5 ; 2,0) s — un facteur 3,7, la SEULE discontinuite de la
+# distribution ; au-dela c'est un plateau plat. 1,5 s capte 93 % du mode dense sans mordre
+# sur le plateau. A cette fenetre, 40 % du compteur officiel est du jonglage (617 prises
+# brutes, 370 nettes). Detail, histogramme et controles :
+# `.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`.
+#
+# MEME DOCTRINE QUE TOUT CE FICHIER : cle ABSENTE = PAS DE LECTURE. Un titre qui ne declare
+# pas cette fenetre ne publie AUCUNE prise nette (jamais un zero, jamais une fenetre par
+# defaut). Une valeur negative est refusee au chargement ; pour ne pas publier la grandeur,
+# on RETIRE la ligne — l'absence EST l'interrupteur.
+#
+# Consommation : mappings.RegulationSet.FlagJuggleWindow() -> objectiveevents.NetFlagGrabs
+# -> persist.FlagGrabsNetPersister (match_flag_grabs_net) -> cartes d'objectif.
+[flag_grabs_net]
+flag_juggle_window_s = 1.5
+
+# ---------------------------------------------------------------------------------------
+# MODES A DEPARTS ALEATOIRES (schema_version 8, mesure du 2026-09-14).
+#
+# CE QUE CETTE LISTE DECIDE, ET RIEN D'AUTRE : sur ces modes, le niveau « arme de base » du
+# bloc « controle des armes » N'EST PAS PUBLIE. L'equipement de debut de vie y est tire au
+# sort, donc « l'arme avec laquelle on spawn » n'existe pas comme fait du match. Les deux
+# autres niveaux (terrain, puissance) restent lisibles tels quels.
+#
+# VALEUR = JETON, cherche comme un MOT dans le `pair_name` ENTIER (insensible a la casse).
+#
+# SURTOUT PAS un prefixe, et pas davantage une categorie de mode — MESURE DU 2026-09-14, faite
+# apres une revue qui prescrivait la categorie :
+#
+#   "Slayer:Arena Super Fiesta" -> categorie "Other"          (417 matchs au plateau de score)
+#   "Slayer:Arena Fiesta"       -> categorie "Other"
+#   "BTB:Fiesta Slayer"         -> categorie "BTB"
+#   "BTB:Fiesta CTF"            -> categorie "BTB"
+#
+# La taxonomie du titre (`InferModeCategoryFromPairName`) prend le prefixe avant le « : » et
+# jette le sous-mode : elle ne reconnait PAS ces quatre formes, qui sont pourtant les plus
+# nombreuses. Ni le prefixe gauche, ni la categorie ne suffisent donc ; le jeton, cherche dans
+# la chaine entiere, les couvre toutes — « Super Fiesta » et « Super Husky Raid » contiennent
+# deja « Fiesta » et « Husky Raid ».
+#
+# Le garde-rail (`weapon_tiers_categories_guard_test.go`) verrouille les deux moities : ces
+# formes reelles, ET la coherence avec la taxonomie (tout mode dont la CATEGORIE est a departs
+# aleatoires doit aussi etre reconnu par un jeton).
+#
+# MESURE QUI JUSTIFIE LA LISTE (76 artefacts du parc, 2026-09-14) : en mode regulier les trois
+# armes de depart pesent 94,4 % des equipements de premiere emission (Assassin) et 92,6 %
+# (BTB) ; en Super Fiesta la distribution est PLATE sur 22 cles, entre 3,2 % et 7,3 %.
+#
+# ABSENCE = AUCUN MODE ALEATOIRE, et ce n'est pas une panne : le niveau « base » se mesure
+# alors partout et se verifie de lui-meme. C'est la difference avec [flag_grabs_net], dont la
+# fenetre est indispensable au calcul.
+#
+# Consommation : mappings.RegulationSet.HasRandomStarts(pair_name) ->
+# replayartifacts.ProjeterNiveauxDArmes -> persist.PadTiersPersister
+# (match_pad_pickups_by_tier), et le champ `randomStarts` servi avec le document de rejeu
+# (vue match).
+[weapon_tiers]
+random_start_mode_tokens = ["Castle Wars", "Fiesta", "Husky Raid"]

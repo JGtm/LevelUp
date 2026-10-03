@@ -1,0 +1,16 @@
+ok  	levelup/go-api/internal/analysis	101.374s
+ok  	levelup/go-api/internal/analysis/breakdown	3.234s
+ok  	levelup/go-api/internal/analysis/filmdec	51.919s
+ok  	levelup/go-api/internal/analysis/narrative	2.745s
+ok  	levelup/go-api/internal/analysis/objectiveevents	3.106s
+ok  	levelup/go-api/internal/analysis/patterns	2.589s
+ok  	levelup/go-api/internal/analysis/positions	2.411s
+ok  	levelup/go-api/internal/analysis/prestigetuning	2.079s
+ok  	levelup/go-api/internal/analysis/relations	2.771s
+ok  	levelup/go-api/internal/analysis/replay	85.471s
+ok  	levelup/go-api/internal/analysis/replay/mapvar	1.893s
+ok  	levelup/go-api/internal/analysis/skill_v2	1.904s
+ok  	levelup/go-api/internal/analysis/skill_v2/ep	2.031s
+ok  	levelup/go-api/internal/analysis/temporal	2.054s
+ok  	levelup/go-api/internal/analysis/timeline	2.093s
+ok  	levelup/go-api/internal/analysis/weaponv3	1.390s

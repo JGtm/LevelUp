@@ -8,7 +8,7 @@ package migration
 //
 // MAIS les 6 helpers RESTENT ici (exportés) car ApplyResolutionViews + ApplyMvPlayerMatchesView
 // sont appelés par RebuildMatchParticipantsART (steps_shared_rebuild_match_participants.go),
-// util runtime appelé par cmd/server au boot + cmd/force_rebuild_art + internal/sync — qui DOIT
+// util runtime appelé par cmd/server au boot + cmd/rebuild_mp + internal/sync — qui DOIT
 // rester dans le package migration. Les déplacer au titre créerait un cycle migration→titre.
 // Les steps title-owned appellent migration.ApplyResolutionViews etc.
 //

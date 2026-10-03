@@ -1,0 +1,5 @@
+film	build	sortie_vueB	vue_c	reste	paquets	utiles_en_jeu
+81c02726	HI_1_13_0	rejet hors datum	vide	>= 64	4130	30011
+81c02726	HI_1_13_0	rejet hors datum	vide	8-63	17	0
+81c02726	HI_1_13_0	rejet hors datum	1 entree(s)	>= 64	2	0
+81c02726	HI_1_13_0	terminateur	vide	>= 64	1	7

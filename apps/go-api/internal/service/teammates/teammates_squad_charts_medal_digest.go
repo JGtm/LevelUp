@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -89,6 +90,7 @@ func (s *TeammatesService) buildMedalDigest(
 	teammates []domain.TeammateRow,
 	locale string,
 ) []domain.MedalDigestEntry {
+	defer timing.FromContext(ctx).Section("medal_digest")()
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		return nil
 	}

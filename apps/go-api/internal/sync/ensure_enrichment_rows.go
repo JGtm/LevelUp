@@ -53,7 +53,7 @@ import (
 //
 // Retourne le nombre de rows créées + erreur si la query DB échoue.
 //
-// Append-only #23046 : on INSERT une row baseline stage='live' (match_id seul,
+// Append-only #23645 : on INSERT une row baseline stage='live' (match_id seul,
 // autres champs NULL/DEFAULT). Le post-sync (INSERT-pur taggé par stage) peuplera
 // ensuite performance_score/session_id/etc., reconstitués par la vue merge-on-read.
 // Ce réparateur reste nécessaire pour les matchs orphelins cross-watcher (cf. incident
@@ -139,7 +139,7 @@ func ensurePlayerEnrichmentRows(
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// Append-only #23046 : INSERT pur d'une row baseline stage='live' pour chaque
+	// Append-only #23645 : INSERT pur d'une row baseline stage='live' pour chaque
 	// match orphelin (le delta `missing` exclut déjà les matchs ayant une row PME,
 	// donc aucun conflit — plus d'INSERT OR IGNORE). Le post-sync (INSERT-pur taggé)
 	// override ensuite par stage via la vue merge-on-read.

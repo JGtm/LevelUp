@@ -13,7 +13,7 @@ package migration
 // `player_match_enrichment` (PK simple match_id, 8 colonnes).
 //
 // Stratégie identique au rebuild shared : swap CTAS sans sentinel pour
-// permettre des re-runs au runtime via le CLI force_rebuild_art (ou plus
+// permettre des re-runs au runtime via le CLI rebuild_pme_art (ou plus
 // tard un mécanisme auto-heal périodique).
 
 import (
@@ -27,12 +27,12 @@ import (
 // append-only (id PK + stage + written_at + vue _latest), en déléguant à la
 // migration idempotente applyAppendOnlyMatchEnrichment.
 //
-// Append-only #23046 (2026-06-21) : l'ANCIEN rebuild swap re-posait
+// Append-only #23645 (2026-06-21) : l'ANCIEN rebuild swap re-posait
 // `ADD PRIMARY KEY (match_id)` ET rejouait dynamiquement les ex-index ART
 // (idx_pme_session / idx_pme_engagement_history / idx_pme_engagement_paces via
-// loadSecondaryIndexDDL) → il RÉINTRODUISAIT le vecteur DuckDB #23046 dès qu'il
-// était invoqué (exposé via cmd/rebuild_pme_art, cmd/force_rebuild_art,
-// levelup rebuild-pme-art). On délègue désormais :
+// loadSecondaryIndexDDL) → il RÉINTRODUISAIT le vecteur DuckDB #23645 dès qu'il
+// était invoqué (exposé via cmd/rebuild_pme_art, levelup rebuild-pme-art).
+// On délègue désormais :
 //   - table legacy (id absent)      → swap CTAS vers append-only (id seq + stage),
 //   - table déjà append-only        → refresh vue _latest + idx_pme_match_lookup.
 //

@@ -1,14 +1,11 @@
-// Package auth — token_store.go : persistence des tokens Xbox/XSTS sur disque.
+// Package auth — token_store.go : état du watcher RTA mono-user sur disque.
 //
-// Les tokens sont stockés dans un fichier JSON :
-//
-//	data/auth/tokens.json
+// Fichier : data/auth/watcher_tokens.json
 //
 // Structure :
 //
 //	{
 //	  "access_token": "...",
-//	  "refresh_token": "...",       // permanent, survit aux redémarrages
 //	  "xsts_token": "...",
 //	  "xsts_user_hash": "...",
 //	  "xsts_gamertag": "...",
@@ -16,6 +13,12 @@
 //	  "xsts_expires_at": "2026-04-20T15:30:00Z",
 //	  "oauth_expires_at": "2026-04-20T14:00:00Z"
 //	}
+//
+// ADR 0023 Phase 5 (2026-08-25) : ce store ne porte PLUS de refresh_token. Il
+// n'est plus une source de credentials — le refresh_token du tracker vit dans
+// le MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json), source unique.
+// La clé `refresh_token` des fichiers écrits avant cette date est ignorée au
+// décodage et disparaît à la première réécriture.
 package auth
 
 import (
@@ -31,7 +34,6 @@ import (
 // StoredTokens représente les tokens persistés sur disque.
 type StoredTokens struct {
 	AccessToken    string    `json:"access_token"`
-	RefreshToken   string    `json:"refresh_token"`
 	XSTSToken      string    `json:"xsts_token"`
 	XSTSUserHash   string    `json:"xsts_user_hash"`
 	XSTSGamertag   string    `json:"xsts_gamertag"`
@@ -54,11 +56,6 @@ func (t *StoredTokens) IsOAuthValid(margin time.Duration) bool {
 		return false
 	}
 	return time.Now().Add(margin).Before(t.OAuthExpiresAt)
-}
-
-// HasRefreshToken retourne true si un refresh_token permanent est disponible.
-func (t *StoredTokens) HasRefreshToken() bool {
-	return t.RefreshToken != ""
 }
 
 // TokenStore persiste et lit les tokens sur disque (thread-safe).
@@ -97,7 +94,7 @@ func (s *TokenStore) Load() (*StoredTokens, error) {
 	}
 	slog.Debug("token_store: tokens chargés",
 		"path", s.path,
-		"has_refresh", tokens.HasRefreshToken(),
+		"has_access", tokens.AccessToken != "",
 		"xsts_valid", tokens.IsXSTSValid(0),
 	)
 	return &tokens, nil
@@ -150,16 +147,15 @@ func (s *TokenStore) UpdateXSTS(result *XSTSResult, fallbackTTL time.Duration) e
 	return s.Save(tokens)
 }
 
-// UpdateOAuth met à jour l'access_token et optionnellement le refresh_token.
-func (s *TokenStore) UpdateOAuth(accessToken, refreshToken string, expiresIn time.Duration) error {
+// UpdateOAuth met à jour l'access_token du watcher et sa date d'expiration.
+// Ne persiste JAMAIS de refresh_token : celui-ci vit dans le MultiUserTokenStore
+// (source unique ADR 0023).
+func (s *TokenStore) UpdateOAuth(accessToken string, expiresIn time.Duration) error {
 	tokens, err := s.Load()
 	if err != nil {
 		return err
 	}
 	tokens.AccessToken = accessToken
 	tokens.OAuthExpiresAt = time.Now().Add(expiresIn)
-	if refreshToken != "" {
-		tokens.RefreshToken = refreshToken
-	}
 	return s.Save(tokens)
 }

@@ -238,15 +238,26 @@ type HighlightSlide struct {
 
 // RecentMatchItem représente un match récent dans la timeline.
 type RecentMatchItem struct {
-	MatchID         string     `json:"match_id"`
-	Title           string     `json:"title"`
-	Detail          string     `json:"detail"`
-	StartedAt       *time.Time `json:"started_at,omitempty"`
-	OutcomeLabel    string     `json:"outcome_label"`
-	OutcomeTone     string     `json:"outcome_tone"`
-	ScoreLabel      *string    `json:"score_label,omitempty"`
-	NarrativeBadges []string   `json:"narrative_badges,omitempty"`
-	IsFavorite      bool       `json:"is_favorite"`
+	MatchID   string     `json:"match_id"`
+	Detail    string     `json:"detail"`
+	StartedAt *time.Time `json:"started_at,omitempty"`
+	// OutcomeLabel supprimé le 2026-09-07 (D4/D5, lot Q4) : 0 lecteur dans
+	// apps/web/src/features/home (grep vérifié) — le mot FR/EN venait de deux maps Go
+	// (home_locale.go), la 3e source du même mot avec match_history et l'accueil legacy.
+	// git garde l'historique si un lecteur apparaît un jour ; alors passer par la clé
+	// canonique OutcomeTone (win|loss|tie|dnf) + useOutcomeLabel côté web.
+	//
+	// Title (composite Go "<mot d'issue> · <carte>") supprimé le 2026-09-07 (lot M5,
+	// L2) : seul lecteur web (MatchCard.buildMatchHeading) ne l'utilisait qu'en
+	// DERNIER repli, quand map_ui ET mode_ui manquaient tous les deux — un cas où le
+	// mot d'issue résolu côté Go n'apportait rien de plus qu'un texte de repli
+	// générique. Le web compose désormais le repli depuis les clés déjà servies
+	// (OutcomeTone est la clé canonique win|loss|tie|dnf, cf. outcomes.toml) : plus
+	// besoin d'un texte pré-assemblé côté serveur pour ce DTO. git garde l'historique.
+	OutcomeTone     string   `json:"outcome_tone"`
+	ScoreLabel      *string  `json:"score_label,omitempty"`
+	NarrativeBadges []string `json:"narrative_badges,omitempty"`
+	IsFavorite      bool     `json:"is_favorite"`
 	// S56 — champs enrichis pour MatchCard
 	MapUI                    *string `json:"map_ui,omitempty"`
 	ModeUI                   *string `json:"mode_ui,omitempty"`
@@ -294,6 +305,16 @@ type RecentMatchItem struct {
 	// IsRanked : true si la playlist est classée (CSR officiel).
 	// Source : canonical.MatchSummary.IsRanked (issu de match_registry.is_ranked).
 	IsRanked bool `json:"is_ranked,omitempty"`
+	// HasReplay : un artefact de rejeu 2D existe pour ce match — la tuile peut donc
+	// porter un lien vers la page de rejeu. Résolu en UN listing de dossier par requête
+	// (port.ReplayAvailability), jamais un accès disque par tuile. Faux/absent quand le
+	// titre n'a pas de rejeu construit : le front n'affiche alors rien (pas de lien mort).
+	HasReplay bool `json:"has_replay,omitempty"`
+	// AssistedFrags : part des frags du joueur assistés par un coéquipier sur ce match,
+	// par tranche de part de dégâts (relation_assists.go). Nil quand le match n'a aucune
+	// ligne mesurée pour ce joueur (film non décodé, titre sans décodeur) : la tuile
+	// n'affiche alors rien — jamais un « 0 » fabriqué pour une mesure absente.
+	AssistedFrags *MatchAssistedFrags `json:"assisted_frags,omitempty"`
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.

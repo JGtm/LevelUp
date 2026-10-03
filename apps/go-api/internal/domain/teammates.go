@@ -102,30 +102,6 @@ type SquadMatchSeriesPoint struct {
 	SessionLabel     *string  `json:"session_label,omitempty"`
 }
 
-// SquadWeaponBar est une ligne du chart kills par arme teammates.09 :
-// 1 arme avec ses kills par joueur de l'escouade + total cumulé.
-type SquadWeaponBar struct {
-	WeaponID int64  `json:"weapon_id"`
-	Label    string `json:"label"`
-	// Class : classe d'arme du registre (axe manipulation : shoulder/sidearm/heavy/
-	// melee/grenade/…) résolue via ResolveRoles. Omise ("") si non résolue (dont les
-	// sentinels grenade/mêlée, absents du registre) — omitempty : classe vide == absente,
-	// cohérent avec SynthesisWeaponKillEntry.class. Sert au split gun/non-gun côté front
-	// (buildSquadFragTools → « Outils de destruction »).
-	Class          string         `json:"class,omitempty"`
-	IsGrenadeMelee bool           `json:"is_grenade_melee,omitempty"`
-	KillsByPlayer  map[string]int `json:"kills_by_player"` // gamertag → kills
-	TotalSquad     int            `json:"total_squad"`
-}
-
-// SquadWeaponKills alimente teammates.09 (barres horizontales groupées par
-// arme, 1 trace par joueur). Players est l'ordre canonique (main puis
-// teammates) ; Bars est trié par TotalSquad ASC (peu utilisées en haut).
-type SquadWeaponKills struct {
-	Players []string         `json:"players"`
-	Bars    []SquadWeaponBar `json:"bars"`
-}
-
 // SquadWeaponAccuracyBar est une ligne du comparatif « Précision par rôle » de la page
 // Escouade : agrégat PAR RÔLE d'arme (precision/automatic/sniper/…) — les ~30 armes sont
 // regroupées par rôle pour la lisibilité — avec sa précision (0..1) par joueur, le volume
@@ -241,16 +217,29 @@ type SquadIntensityMatchRow struct {
 	Phases  [10]float64 `json:"phases"`
 }
 
-// SquadIntensityOption est une entrée du segmented control du heatmap
-// d'intensité (toggle "all" ou un joueur).
+// Clés STABLES des deux lignes agrégées du profil d'intensité (le front les
+// lit telles quelles dans `intensity_profile.rows`, ce sont des clés, pas des
+// libellés) :
+//   - SquadIntensityKeyTeam  : frags de l'ÉQUIPE ALLIÉE du joueur principal,
+//     par match (main inclus) ;
+//   - SquadIntensityKeyLobby : frags de TOUT le match (les deux camps).
+//
+// Les autres clés sont des gamertags (un panneau par joueur).
+const (
+	SquadIntensityKeyTeam  = "team"
+	SquadIntensityKeyLobby = "lobby"
+)
+
+// SquadIntensityOption est une entrée du profil d'intensité (ligne agrégée
+// `team` / `lobby` ou un joueur).
 type SquadIntensityOption struct {
-	Key   string `json:"key"`   // "all" | gamertag (utilisé pour l'index `Rows`)
-	Label string `json:"label"` // texte affiché dans le toggle
+	Key   string `json:"key"`   // SquadIntensityKeyTeam | SquadIntensityKeyLobby | gamertag (index de `Rows`)
+	Label string `json:"label"` // texte affiché (= la clé pour les lignes agrégées, le front traduit)
 }
 
-// SquadIntensityProfile alimente teammates.15 (heatmap d'intensité avec
-// toggle Tous/joueur). Les phases sont déjà bucket-isées et normalisées
-// côté serveur.
+// SquadIntensityProfile alimente teammates.15 (profil d'intensité : un panneau
+// par joueur + deux courbes de référence `team` / `lobby`). Les phases sont
+// déjà bucket-isées et normalisées côté serveur.
 type SquadIntensityProfile struct {
 	Options []SquadIntensityOption              `json:"options"`
 	Rows    map[string][]SquadIntensityMatchRow `json:"rows"` // optionKey → lignes (1 par match)
@@ -357,11 +346,19 @@ type SquadMatchHistoryRow struct {
 	// TeamMMRAvg : MMR moyen de l'équipe. nil quand le titre ne fournit pas de MMR
 	// d'équipe (Halo 5, games.ProvidesTeamMMR=false) → le front masque la colonne MMR
 	// au lieu d'afficher 0. omitempty pour distinguer nil (masquer) de 0 (réel).
-	TeamMMRAvg      *float64 `json:"team_mmr_avg,omitempty"`
-	EnemyMMRAvg     *float64 `json:"enemy_mmr_avg,omitempty"`
-	DeltaMMR        *float64 `json:"delta_mmr,omitempty"`
-	ScoreLabel      string   `json:"score_label,omitempty"`
-	DurationSeconds int      `json:"duration_seconds,omitempty"`
+	TeamMMRAvg  *float64 `json:"team_mmr_avg,omitempty"`
+	EnemyMMRAvg *float64 `json:"enemy_mmr_avg,omitempty"`
+	DeltaMMR    *float64 `json:"delta_mmr,omitempty"`
+	ScoreLabel  string   `json:"score_label,omitempty"`
+	// ScoreKind dit CE QUE porte ScoreLabel : "points" ou "rounds" (manches gagnées).
+	// Même contrat que la vue match et l'Explorateur — l'infobulle d'en-tête de colonne
+	// l'explique, et le client localise le mot (ADR 0032). Vide = pas de score.
+	ScoreKind string `json:"score_kind,omitempty"`
+	// HasReplay : un artefact de rejeu 2D existe pour ce match → la ligne porte un
+	// lien vers la page de rejeu. Résolu en UN listing de dossier par requête, jamais
+	// un accès disque par ligne. Faux/absent = rien n'est rendu (pas de lien mort).
+	HasReplay       bool `json:"has_replay,omitempty"`
+	DurationSeconds int  `json:"duration_seconds,omitempty"`
 	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché),
 	// préférée par le front pour l'affichage de la durée du match.
 	GameplayDurationSeconds int `json:"gameplay_duration_seconds,omitempty"`
@@ -416,6 +413,40 @@ type SessionLabelsList struct {
 	Squad []SessionLabelEntry `json:"squad"`
 }
 
+// CompositionExcludedMatch décrit UN match du roster (« commencés ensemble »)
+// écarté par l'option composition exacte (filter_exact_composition=true) : un
+// coéquipier connu HORS sélection (extraPool) figurait sur l'équipe alliée du
+// joueur principal. ExtraGamertags nomme le(s) responsable(s) (repli "Joueur
+// <4 derniers>" si le gamertag n'est pas résolu) — ADR 0033 critère 3. La liste
+// est VIDE dans un seul cas, documenté et testé : l'équipe alliée du match n'est
+// pas connue (aucune ligne de participant chargée — couverture partielle), donc le
+// filtre a écarté le match sans pouvoir nommer un fautif ; le web affiche alors le
+// repli « coéquipier inconnu ». Revue adversariale vague 1, 2026-09-09.
+//
+// Nommage CompositionExcludedMatch (et non ExcludedMatch) pour éviter la
+// collision avec domain.ExcludedMatch (match_exclusion.go), qui couvre un
+// concept sans rapport : l'exclusion MANUELLE d'un match par l'utilisateur.
+type CompositionExcludedMatch struct {
+	MatchID        string    `json:"match_id"`
+	StartTime      time.Time `json:"start_time"`
+	MapUI          string    `json:"map_ui"`
+	ExtraGamertags []string  `json:"extra_gamertags"`
+}
+
+// CompositionSessionEntry embarque SessionLabelEntry (MatchCount = compte
+// POST-filtre composition exacte, SOURCE UNIQUE d'un compte de session en
+// contexte escouade — ADR 0033) et publie l'écart quand l'option exclusive est
+// active : MatchCountRoster est le compte AVANT ce filtre (intersection du
+// roster, matchs "commencés ensemble", indépendante de la présence à la fin —
+// ADR 0033), ExcludedByExactComposition liste les matchs écartés de CETTE
+// session avec le(s) coéquipier(s) responsable(s), nommés (critère 3). Vide/nil
+// hors option ou sans écart.
+type CompositionSessionEntry struct {
+	SessionLabelEntry
+	MatchCountRoster           int                        `json:"match_count_roster,omitempty"`
+	ExcludedByExactComposition []CompositionExcludedMatch `json:"excluded_by_exact_composition,omitempty"`
+}
+
 // MedalDigestItem est une médaille agrégée sur tous les matchs partagés
 // pour un joueur donné.
 //
@@ -461,7 +492,7 @@ type TeammatesPageResponse struct {
 	Teammates     []TeammateRow     `json:"teammates"`
 	TotalMatches  int               `json:"total_matches"`
 	SessionLabels SessionLabelsList `json:"session_labels"`
-	// FriendsCount : nombre total d'amis configurés (settings.friend_gamertags).
+	// FriendsCount : nombre total d'amis configurés pour le joueur consulté.
 	// Le label UI "parmi N amis" s'appuie dessus.
 	FriendsCount int `json:"friends_count"`
 	// Sprint N : données graphiques par coéquipier sélectionné
@@ -484,8 +515,9 @@ type TeammatesPageResponse struct {
 	// SynergyRadar alimente teammates.06 (radar 6 axes par joueur sur les
 	// matchs PARTAGÉS). Nil si aucun match commun.
 	SynergyRadar []SquadSynergyRadarSeries `json:"synergy_radar,omitempty"`
-	// IntensityProfile alimente teammates.15 (heatmap d'intensité avec toggle
-	// Tous/joueur). Nil si <3 matchs ou aucun kill event.
+	// IntensityProfile alimente teammates.15 (profil d'intensité : un panneau par
+	// joueur + lignes de référence `team` / `lobby`). Nil si <3 matchs ou aucun
+	// kill event.
 	IntensityProfile *SquadIntensityProfile `json:"intensity_profile,omitempty"`
 	// PerformanceSeries alimente teammates.16 (8 sous-charts par joueur sur
 	// matchs partagés). Map gamertag → série triée par MatchOrder ASC. Nil
@@ -497,10 +529,9 @@ type TeammatesPageResponse struct {
 	// par-joueur ici → pas de classe spartan_ability (hasMechanics=false, cf. §6
 	// D-P6-2). Nil si aucune donnée d'arme.
 	FragClasses map[string][]FragClassEntry `json:"frag_classes,omitempty"`
-	// WeaponKills alimente teammates.09 (kills par arme, comparatif multi-joueurs).
-	// Nil si aucune donnée weapon_kills disponible (capability absente ou shared
-	// match_ids vides).
-	WeaponKills *SquadWeaponKills `json:"weapon_kills,omitempty"`
+	// WeaponTools alimente « Outils de destruction » (frags par outil et par joueur,
+	// D8). Nil si aucune donnée d'arme (capability absente ou matchs partagés vides).
+	WeaponTools *SquadWeaponTools `json:"weapon_tools,omitempty"`
 	// WeaponAccuracy alimente la comparaison « Précision par arme » multi-joueurs
 	// (heatmap joueurs×armes + dot plot). Précision NATIVE Halo 5 ; OMISE sur Infinite
 	// (capability weapon_accuracy absente) ou si aucune arme à précision pertinente.
@@ -509,6 +540,23 @@ type TeammatesPageResponse struct {
 	// (assassinats + compétences spartiate, barres empilées). Nil hors h5
 	// (capability native_kill_mechanics) ou aucune mécanique sur les matchs partagés.
 	NativeKillMechanics *SquadKillMechanics `json:"native_kill_mechanics,omitempty"`
+	// AssistPairs alimente le tableau « qui assiste qui » de la page Synergies :
+	// les paires (assistant → tueur assisté) INTERNES à l'escouade sur les matchs de
+	// la sélection, avec la couverture de la mesure. Nil quand aucun match de la
+	// sélection n'a d'assistance mesurée (dont : titre sans décodeur de film).
+	AssistPairs *SquadAssistPairs `json:"assist_pairs,omitempty"`
+	// Echange alimente les trois surfaces de l'ECHANGE (une mort vengee dans les 5 s) :
+	// la matrice « qui echange pour qui » et le KPI sur Synergies, la distribution du
+	// delai sur Dynamique. Nil quand le titre ne nomme pas le tueur de chaque mort
+	// (games.JournalDesMortsFiable) ou quand aucun match de la selection ne porte de
+	// journal des morts — une OMISSION, jamais des zeros.
+	Echange *SquadEchange `json:"echange,omitempty"`
+	// RangeProfiles alimente les « rôles de portée » de la page Escouade (D22-5) : un
+	// profil par match du périmètre filtré, portant la médiane de portée de chaque joueur
+	// du roster ET celle du LOBBY ENTIER du match, qui en est le référentiel — sans quoi
+	// la courbe ne raconterait que la playlist de la soirée. Nil quand le titre n'a pas de
+	// décodeur de film ou quand aucun match du périmètre ne porte de frag mesuré.
+	RangeProfiles *MatchRangeBlock `json:"range_profiles,omitempty"`
 	// FirstBlood alimente le chart « Premier frag / première mort » (lanes) de
 	// l'onglet Dynamique : une série PAR JOUEUR de l'escouade, valeurs par match
 	// (aucun bucketing serveur). Vide si aucune donnée highlight_events.
@@ -530,7 +578,7 @@ type TeammatesPageResponse struct {
 	// matchs, historique complet (non filtré par session). Alimente le
 	// SessionMultiSelect ET le ré-ancrage front. Sans coéquipier sélectionné,
 	// reprend les sessions squad du joueur principal (SessionLabels.Squad).
-	CompositionSessions []SessionLabelEntry `json:"composition_sessions,omitempty"`
+	CompositionSessions []CompositionSessionEntry `json:"composition_sessions,omitempty"`
 	// LatestCompositionSession : label de la session la plus récente de la
 	// composition exacte (1re entrée de CompositionSessions). Vide si la
 	// composition n'a jamais joué ensemble. Le front s'y ré-ancre quand la
@@ -540,6 +588,24 @@ type TeammatesPageResponse struct {
 	// de la page. Non vide = les nombres affichés sont partiels ; le front DOIT le
 	// signaler (fin des chiffres non reproductibles). Vide/absent = page complète.
 	DataIssues []DataIssue `json:"data_issues,omitempty"`
+	// SquadFormes : le bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) sur
+	// le périmètre D2 de la page (PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : composition
+	// exacte ∩ scope filtré, scope filtré seul sans coéquipier) ; lu par les cartes d'objectif de
+	// Contributions (le bloc « servi ou gâché », `equipment_usage`, a quitté cette réponse au lot
+	// L5.4 : plus de lecteur). Nil si le périmètre n'a aucun match ; Available=false avec raison
+	// machine pour un titre sans film.usage_summary.
+	SquadFormes *SquadFormesBlock `json:"formes_retenues,omitempty"`
+
+	// SquadObjectiveHistory : le rapport de force à l'objectif, soirée après soirée (lot L3 du
+	// plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, D6/D7) — la soirée affichée (le
+	// périmètre D2) et les dix soirées précédentes de la composition d'au moins trois matchs à
+	// objectif. Nil sans coéquipier sélectionné, sans stats d'objectif (titre) ou sur lecture
+	// en échec.
+	SquadObjectiveHistory *SquadObjectiveHistory `json:"squad_objective_history,omitempty"`
+
+	// SquadEmprise : l'onglet « Emprise » (lot L4 du même plan) — qui a tenu la carte, par
+	// ressource, sur le périmètre D2 (cf. squad_emprise.go). Nil si le périmètre n'a aucun match.
+	SquadEmprise *SquadEmpriseBlock `json:"squad_emprise,omitempty"`
 }
 
 // DataIssue décrit un chargement dégradé (best-effort) d'une page.

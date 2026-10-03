@@ -1,0 +1,25 @@
+﻿# cuisson par le CLI cmd/replay-build --facts (schema 18, HEAD b13e0721d : renumerotation apres fusion des socles v17), un processus, LEVELUP_REPO_ROOT = worktree, film = main tree data/cache/film_chunks/696a9d7c, carte vagabond
+2026/08/19 20:30:28 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-jauge-live\.ai\V7.5\replay2d\registre_film\lotCbis\faits_696a9d7c.json match=696a9d7c joueurs=8 variante=Strongholds:Arena
+2026/08/19 20:30:30 INFO replaybuild: actions d'objectif identifiees match_id=696a9d7c famille=zone nommees=224 identifiees=224 slotsApparies=8
+2026/08/19 20:30:49 INFO replaybuild: morts sans revendication typées match_id=696a9d7c publiees=1 orphelines=1
+2026/08/19 20:31:45 INFO capacites : lectures d i48 recordsDelta=183513 masqueAvecI48=42 lues=42 illisibles=0 sansIdentite=9
+2026/08/19 20:32:01 INFO camouflage : lectures d i28 queue[1] recordsDelta=183513 masqueAvecI28=1548 lues=1548 illisibles=0 sansVoie=725
+2026/08/19 20:32:17 INFO grappin : lectures d i59 tag==3 recordsDelta=183513 masqueAvecI59=1450 lues=1433 illisibles=17 tag3=29 corpsCasses=0
+2026/08/19 20:32:41 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=12 ancres=7082 acceptes=379 confirmes=172 poses=172
+2026/08/19 20:32:54 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=1050 ancres=10474 acceptees=395 imagesCles=29 viesRecensees=199 pistesDelta=681
+2026/08/19 20:33:07 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=1124 ancres=7082 acceptees=379 imagesCles=29 viesRecensees=263 pistesDelta=581
+2026/08/19 20:33:19 INFO rejeu : proprietes ti=13 balayees match_id=696a9d7c slots=26 records=36677 marches=8558 cassees=28119 chainees=3777 lectures=11478
+2026/08/19 20:35:12 INFO pont slot->joueur slots=107 viesNommees=103 viesTotal=110 lecturesIndex=29 desaccordsIndex=0 collisionsSlot=0
+2026/08/19 20:35:13 INFO rejeu : courbe de score match_id=696a9d7c identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=1526
+2026/08/19 20:35:13 INFO rejeu : tractions de grappin tirs=16 accroches=13 tractions=13 vies=9 rates=3 corpsCasses=0
+2026/08/19 20:35:13 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=172 nommees=172 autres=0 avecPoseur=172 avecCap=166 deployees=15 lachees=157 origineInconnue=0
+2026/08/19 20:35:13 INFO rejeu : socles d'arme au sol balaye=true ancres=10474 acceptees=395 retenues=281 ecartees=114 objetsDObjectif=0 lachees=201 apparues=80 auRepos=43 grappes=11 socles=10 occupations=52 datees=43 sansPassage=1 jamaisVidees=8 cyclesEtablis=4
+2026/08/19 20:35:13 INFO rejeu : socles de power-up balaye=true acceptees=379 retenues=11 socles=1
+2026/08/19 20:35:13 WARN rejeu : appariements ECARTES — zones absentes de l'etat publie match_id=696a9d7c methode=captures+geometry nonApparies=2 apparies=3 captures=77 attribuees=66
+2026/08/19 20:35:13 WARN rejeu : valeurs de proprietaire INCONNUES — intervalles non ouverts match_id=696a9d7c valeurs=1
+2026/08/19 20:35:13 INFO rejeu : etat des zones match_id=696a9d7c methode=captures+geometry catalogue=3 slots=20 apparies=3 nonApparies=2 sansProprietaire=0 intervalles=37 periodesColline=0 proprietaireVerifie=51 proprietaireConcordant=51
+2026/08/19 20:35:13 INFO rejeu : episodes d'equipement actif viesPubliees=110 viesCamo=4 episodesCamo=5 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/19 20:35:13 INFO rejeu : palette de capacites palette=famille_a lectures=33 rangsNommes=4
+2026/08/19 20:35:13 INFO rejeu : couverture par calque tirsRattaches=2088 tirsDisponibles=2246 tirsSansSlot=117 tirsAmbigus=41 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=167 grenadesDisponibles=168 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+2026/08/19 20:35:13 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-jauge-live\data\cache\replays\halo_infinite\696a9d7c.json tracks=110 module=fo08_wetland bytes=2109409 match=696a9d7c title=halo_infinite
+# watchdog : peakRAM_MB=159 duree_s=284 exit= (plafond 3072 Mo / 900 s)

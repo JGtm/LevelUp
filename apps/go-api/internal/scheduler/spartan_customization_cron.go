@@ -324,8 +324,12 @@ func (c *SpartanCustomizationCron) refreshOne(ctx context.Context, p domain.Play
 	if p.XUID == "" || p.Gamertag == "" {
 		return refreshSkipped, nil
 	}
+	// SEULE exemption légitime à D1 (plan 2026-09-16, 2.6) : l'appel qui suit est
+	// PolicyPinnedPlayer — la personnalisation Spartan est privacy-gated, aucun autre
+	// token du parc ne peut la lire. Partout ailleurs (sync CLI, auto-sync), un profil
+	// suivi sans token propre est servi par le pool et ne DOIT pas être sauté.
 	if !c.pool.HasPlayer(p.Gamertag) {
-		slog.DebugContext(ctx, "spartan_cron: skip (not in pool)",
+		slog.DebugContext(ctx, "spartan_cron: skip (pas de token propre, endpoint privacy-gated)",
 			"gamertag", p.Gamertag)
 		return refreshSkipped, nil
 	}

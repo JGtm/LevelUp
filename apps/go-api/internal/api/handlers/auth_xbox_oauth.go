@@ -25,7 +25,7 @@ import (
 	"levelup/go-api/internal/platform/session"
 )
 
-// InviteValidator valide un code d'invitation (flow "rejoindre un groupe").
+// InviteValidator valide un code d'invitation (avec ou sans groupe).
 // Satisfait par *userstore.InviteStore.
 type InviteValidator interface {
 	Validate(code string) error
@@ -40,7 +40,7 @@ type XboxOAuthHandler struct {
 	linkStrategy auth_platform.LinkStrategy   // post-flow : login user
 	postLoginURL string                       // où rediriger après succès (typiquement "/")
 	authStore    auth_platform.UserTokenStore // ADR 0023 : persister le RT post-SSO
-	invites      InviteValidator              // optionnel : flow "rejoindre un groupe"
+	invites      InviteValidator              // optionnel : flow d'invitation
 }
 
 // NewXboxOAuthHandler crée un XboxOAuthHandler.
@@ -84,7 +84,7 @@ func (h *XboxOAuthHandler) WithPostLoginURL(url string) *XboxOAuthHandler {
 	return h
 }
 
-// WithInviteStore injecte le validateur d'invitations (flow "rejoindre un groupe").
+// WithInviteStore injecte le validateur d'invitations (flow d'invitation).
 // Quand présent, LoginRedirect valide le code ?invite= et le stocke en session pour
 // que la LinkStrategy l'applique après login (bypass instance lock + ajout au groupe).
 func (h *XboxOAuthHandler) WithInviteStore(inv InviteValidator) *XboxOAuthHandler {
@@ -128,7 +128,7 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 	}
 	sess.OAuthCodeVerifier = verifier
 
-	// Flow "rejoindre un groupe" : capter le code ?invite= et le porter en session
+	// Flow d'invitation : capter le code ?invite= et le porter en session
 	// jusqu'au callback. Un code invalide est ignoré (login normal) plutôt que de
 	// casser la redirection plein écran vers Microsoft.
 	if code := r.URL.Query().Get("invite"); code != "" {

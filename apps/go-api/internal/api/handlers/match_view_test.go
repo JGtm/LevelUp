@@ -11,9 +11,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
@@ -21,9 +22,9 @@ import (
 type mockMatchViewService struct {
 	resp        domain.MatchViewResponse
 	err         error
-	objEvents   []domain.ObjectiveEvent
+	objEvents   []objectiveevent.Event
 	objEventErr error
-	positions   []positions.PlayerPosition
+	positions   []playerposition.PlayerPosition
 	posErr      error
 }
 
@@ -39,11 +40,11 @@ func (m *mockMatchViewService) GetMatchNeighborsFiltered(_ context.Context, _ st
 	return domain.MatchNeighbors{}, nil
 }
 
-func (m *mockMatchViewService) GetObjectiveEvents(_ context.Context, _ string) ([]domain.ObjectiveEvent, error) {
+func (m *mockMatchViewService) GetObjectiveEvents(_ context.Context, _ string) ([]objectiveevent.Event, error) {
 	return m.objEvents, m.objEventErr
 }
 
-func (m *mockMatchViewService) GetMatchPositions(_ context.Context, _ string) ([]positions.PlayerPosition, error) {
+func (m *mockMatchViewService) GetMatchPositions(_ context.Context, _ string) ([]playerposition.PlayerPosition, error) {
 	return m.positions, m.posErr
 }
 
@@ -283,12 +284,12 @@ func newObjectiveEventsRouter(factory handlers.ServiceFactory[port.MatchViewServ
 func TestMatchViewHandler_ObjectiveEvents_OK(t *testing.T) {
 	tms := 12000
 	team := 0
-	events := []domain.ObjectiveEvent{
+	events := []objectiveevent.Event{
 		{
 			MatchID: "abc123", Seq: 0, TimeMS: &tms,
 			ObjectiveType: "flag", EventType: "capture", TeamID: &team,
 			Source: "ctf", Confidence: "high",
-			Players: []domain.ObjectiveEventPlayer{{XUID: "2535", Role: "capturer"}},
+			Players: []objectiveevent.Player{{XUID: "2535", Role: "capturer"}},
 		},
 		{
 			MatchID: "abc123", Seq: 1,
@@ -375,9 +376,9 @@ func newPositionsRouter(factory handlers.ServiceFactory[port.MatchViewService]) 
 // TestMatchViewHandler_Positions_OK : le service renvoie 2 positions → 200 +
 // JSON décodable avec des clés camelCase (timeMs, x, y, z, team).
 func TestMatchViewHandler_Positions_OK(t *testing.T) {
-	pos := []positions.PlayerPosition{
+	pos := []playerposition.PlayerPosition{
 		{TimeMS: 0, X: 25.6, Y: 10.4, Z: 1.2, Team: 0},
-		{TimeMS: 20000, X: 34.8, Y: 13.5, Z: 0.5, Team: positions.TeamUnknown},
+		{TimeMS: 20000, X: 34.8, Y: 13.5, Z: 0.5, Team: playerposition.TeamUnknown},
 	}
 	factory := func(_ context.Context, slug string) (port.MatchViewService, error) {
 		if slug != testPlayerSlug {

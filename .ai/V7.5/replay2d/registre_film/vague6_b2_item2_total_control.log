@@ -1,0 +1,19 @@
+# vague6_b2_item2_total_control.log — lot 6.7 phase B2, item 2 (audit L7, cause C7)
+# Mesure du 2026-09-11 sur le film de l'audit lui-meme (5676a9ba, BTB:Total Control on Insolence).
+# Instrument : D3-ter verrou 2 (protocole .ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md).
+# Commande : ZONE_FILM=<cache>/film_chunks/5676a9ba CGO_ENABLED=0 go test ./internal/analysis/replay/ -run TotalControlInstant -count=1 -v
+# AUCUNE base ouverte, chunks lus en lecture seule, aucune recuisson.
+#
+# Ce film n'etait PAS dans le corpus D3-ter du 2026-08-27 (66aa5f0b, bf831a6b, a521164d,
+# d2c64f8c) : c'est une mesure NEUVE, sur la cible exacte du gate de l'audit.
+
+=== RUN   TestTotalControlInstantCardinal
+2026/09/11 10:12:55 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+    totalcontrol_instant_d3ter_test.go:96: 5676a9ba : 4 emission(s) de tag 5 chainees sur 4 slot(s) ; serie [334844 ; 678643] ms sur un match de 669887 ms — couverture 51.3 %
+    totalcontrol_instant_d3ter_test.go:106: 5676a9ba : 2 point(s) de changement, 1 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 339799 ms sur un match de 669887 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 339799 ms (339799/339799 = 100.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL 5676a9ba : cardinal 3 pendant 0/339799 = 0.0 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: 5676a9ba : pic memoire observe 0.09 Gio
+--- PASS: TestTotalControlInstantCardinal (4.56s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	4.630s

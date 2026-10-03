@@ -54,3 +54,12 @@ schema_version = 1
 # objectifs (durées non fiables, impulses partiels) → not_exposed au lancement.
 # Promotion degraded (agrégation d'impulses) = chantier ultérieur distinct.
 "match.objective.stats"  = "not_exposed"
+# Artefact de rejeu 2D (data/cache/replays/{slug}/{match}.json) : DÉCLARÉE EXPLICITEMENT
+# not_exposed, là où les cinq autres clés film.* sont simplement absentes de ce fichier.
+# Pourquoi cette exception d'écriture : celle-ci ne gouverne pas qu'une production, elle
+# gouverne aussi DEUX ROUTES SERVIES (/objective-events, /positions) qui répondaient jusqu'ici
+# 200 [] sur Halo 5 alors que le code promettait un 503 (registre 2026-09-05, constat D2). Un
+# refus explicite se lit dans le manifeste ; une absence se déduisait. Effet identique côté
+# code (CapabilityMap.Has est faux dans les deux cas).
+# Halo 5 n'a AUCUN décodeur de film (autre format), donc aucun artefact : silence propre.
+"film.replay_artifact"   = "not_exposed"

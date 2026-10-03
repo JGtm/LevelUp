@@ -1,0 +1,389 @@
+package grammar
+
+// movement_states.go — LE BALAYAGE DES ETATS DE MOUVEMENT (lot 5.3.6, 2026-09-21).
+//
+// # LE HOOK EST LA GRAMMAIRE
+//
+// Ce balayage ne relit AUCUN bit a cote du deserialiseur : il branche
+// [Observation.EtatMouvementHook] et laisse le decodeur publier. C est la regle de
+// `ScanAbilityImpulses`, `ScanFilmGrappleReads` et `ScanFilmAbilityRanks` — celle qui garantit
+// que la valeur publiee est celle que la production decode, et non une seconde lecture qui
+// pourrait deriver.
+//
+// # LA MARCHE EST CELLE DU FRAME-PROCESSEUR, ET C EST UNE DECISION MESUREE
+//
+// Elle n emploie PAS `walkDeltaBipedRecords`, la marche par CHERCHEUR D ANCRES des autres
+// balayages de capacite. Mesure sur `bfecd02b` (lot 5.3.6, sonde de production) : sur
+// 162 444 records reconnus par cette marche, les masques annoncent `i29` **ZERO** fois et `i62`
+// **UNE** fois. C est le defaut meme que le lot 5.3.2 avait constate et nomme — un chercheur
+// d ancres ne retient que les records qui RESSEMBLENT a un en-tete de bipede, c est-a-dire la
+// population PAUVRE `{i0, i1, i21, i25}` (113 bits, l etalon Rosette), celle ou les etats de
+// mouvement ne sont precisement pas.
+//
+// Elle emploie donc la marche des trames ([FilmContext.Trames], `marche_trames.go`) — le port du
+// frame-processeur `FUN_142987460` — avec les paquets a liste d evenements pleine localises par
+// `marchLocateStrict`. Sur le meme film cette marche rend 97 447 records `ti=35` dont 3
+// desynchronises, 1 407 lectures d accroupi et 1 507 de glissade (lot 5.3.5).
+//
+// # LES LARGEURS D AXE DE LA CARTE SONT UN PRE-REQUIS, ET L APPELANT LES POSE
+//
+// Le contexte doit porter le descripteur d axes de la carte du match — l installateur de
+// `replay` (`replay/world_object_precision.go`), appele juste apres `NewFilmContextForMap`.
+// Sans lui le
+// chemin absolu d `i0` lit ses trois axes aux largeurs d UNE carte — `cliffhanger` — appliquees
+// a toutes : cinq bits de trop par record sur `snowbound`, et tout ce qui suit est du bruit.
+// Mesure de l ecart (lot 5.3.5) : records `ti=35` 31 530 contre 97 447, desyncs 38 contre 3.
+// [types.MovementStateStats.MapWidths] publie le triplet employe pour que le document le dise.
+//
+// # CE QUI EST LU, ET CE QUI NE PEUT PAS L ETRE
+//
+// QUATRE etats LUS — `i29` accroupi, `i62` glissade, `i54` ESCALADE (`clamber`, nommee au lot
+// 5.22.4 par neuf verdicts Theater sur neuf), `i57` SPRINT
+// (l index de la fente de capacite active, lot 5.9.5) — et UN genre DERIVE, `jumpDerived`, qui
+// n est pas lu mais integre depuis la vitesse verticale d `i1` (`movement_states_jump.go`,
+// lot 5.9.4). Les noms disent la difference, et c est delibere. L en-tete de
+// `types/grammar_mouvement.go` porte les chiffres.
+
+import (
+	"cmp"
+	"slices"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
+
+// Les etiquettes de registre des trois composants, avec leurs deux orthographes : les films
+// portent l une OU l autre (avec ou sans `-component`), comme toute la famille.
+// sprintAbilitySlotRaw est la valeur BRUTE d `i57` qui designe la fente du sprint.
+//
+// DEUX, ET PAS UN : le flux lit `R(2)` et l ecrivain pose `bloc+3 = valeur - 1`
+// (`FUN_142f268c4`), donc la fente `1` — celle de `'sasp'`, nommee par `FUN_14319d1ec` — se lit
+// `2` dans le flux. Le decalage vit ICI, en un seul point, plutot que dans chaque lecteur.
+const sprintAbilitySlotRaw = 2
+
+// abilityComponentName / abilityComponentAlt : l etiquette de registre d `i57`, deux orthographes.
+const (
+	abilityComponentName = "biped-spartan-ability-component"
+	abilityComponentAlt  = "biped-spartan-ability"
+)
+
+const (
+	crouchComponentName    = "unit-crouch-component"
+	crouchComponentNameAlt = "unit-crouch"
+	slideComponentName     = "biped-slide-component"
+	slideComponentNameAlt  = "biped-slide"
+	mobilityComponentName  = "biped-mobility-action-component"
+	mobilityComponentAlt   = "biped-mobility-action"
+)
+
+// MovementStateViews est le nombre de vues de replication deroulees par paquet.
+//
+// TROIS, ET C EST CE QUE L ECRIVAIN DEROULE : `FUN_142987460` boucle exactement trois fois
+// (`do { ... } while (uVar7 < 3)`), chaque vue portant sa propre fin de trame. Le depot emploie
+// HUIT ailleurs (`marchViews`, `killsource.Options.Views`) ; la mesure du lot 5.3.3-b dit que 8
+// lit au-dela de la trame — 7 000 records de plus, mais un etalon `i25` degrade de 0,8 point et
+// 1 251 records `ti=35` de MOINS. Trois rend le meilleur etalon, et trois est ce que le code
+// fait.
+const MovementStateViews = 3
+
+// movementStateSkipLeadBits est l amorce de paquet consommee avant le premier record d un
+// paquet a liste d evenements VIDE : [drapeau de configuration][continuation = 0]. C est la
+// valeur de [DefaultPacketPreambleBits], nommee ici pour que le site de lecture la dise.
+const movementStateSkipLeadBits = DefaultPacketPreambleBits
+
+// ScanFilmMovementStates est l ENVELOPPE D2, HORS PRODUCTION : elle charge le film et ouvre un
+// contexte pour elle seule. ATTENTION — ce contexte n a PAS les largeurs d axe de la carte (cf.
+// l en-tete) : cette enveloppe sert aux instruments, pas a la cuisson.
+func ScanFilmMovementStates(dir string) ([]types.MovementStateRead, types.MovementStateStats,
+	error) {
+	film, err := source.LoadDir(dir, nil)
+	if err != nil {
+		return nil, types.MovementStateStats{}, err
+	}
+	return ScanMovementStates(contexteDeBobine(film))
+}
+
+// ScanMovementStates decode les etats de mouvement d un film DEJA CHARGE. C est la PROJECTION de
+// [ScanMarcheDesTrames] sur ses etats de mouvement : la marche est la meme, et le tir continu
+// qu elle lit aussi est simplement laisse de cote (les instruments qui n en ont pas besoin).
+func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.MovementStateStats,
+	error) {
+	m, err := ScanMarcheDesTrames(fc)
+	return m.MovementStates, m.MovementStateStats, err
+}
+
+// MarcheDesTrames est ce que LA marche du frame-processeur rend : les etats de mouvement du
+// Spartan (vue B) et le TIR CONTINU (vue C, lot M4b). UNE marche, deux canaux : lire la vue C
+// dans une seconde marche doublerait le cout du decodage le plus cher du film pour relire des
+// paquets que celle-ci traverse deja.
+type MarcheDesTrames struct {
+	MovementStates      []types.MovementStateRead
+	MovementStateStats  types.MovementStateStats
+	ContinuousFire      []types.ContinuousFireBurst
+	ContinuousFireStats types.ContinuousFireStats
+	// LiaisonsParRepliDAnticipation : les liaisons que le repli `repli_liaison_par_anticipation`
+	// ([World.LierParRepliDAnticipation]) a posees pendant la marche, tous archetypes confondus.
+	// `replay` les verse au compteur de replis de la cuisson (lot J8.1, constat GA1-2). Ce compte
+	// N EST PAS dans [types.MovementStateStats] : il ne se persiste pas avec les faits, il voyage
+	// dans le rapport des replis que le fichier de faits porte deja.
+	LiaisonsParRepliDAnticipation int
+	// DebutsDeListeParRepliFermeAuBit : les listes dont le debut est pris au second rang de
+	// [debutParFermetureRangee] (repli `repli_debut_de_liste_ferme_au_bit`). Comme le compte precedent,
+	// il voyage dans le rapport des replis, pas dans [types.MovementStateStats].
+	DebutsDeListeParRepliFermeAuBit int
+}
+
+// ScanMarcheDesTrames deroule la marche du frame-processeur sur un film DEJA CHARGE et rend ses
+// deux canaux.
+//
+// UN FILM SANS ETATS DE MOUVEMENT EST MARCHE QUAND MEME depuis le lot M4b : son archetype bipede
+// ne declare aucun des composants d etat (`Absent`), mais sa vue de controle porte le tir continu.
+// Les etats de mouvement y restent EXACTEMENT ce qu ils etaient — aucune lecture, `Absent` et
+// `Scanned` poses, les compteurs de marche remis a zero.
+func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
+	var m MarcheDesTrames
+	st := &m.MovementStateStats
+	st.MapWidths = fc.LargeursObjetDuMonde().AxisW
+	if len(fc.ChunkNumbers()) == 0 {
+		return m, ErrNoFilmChunk
+	}
+	if _, err := fc.Registry(); err != nil {
+		return m, err
+	}
+	arch, err := fc.bipedArchetype()
+	if err != nil {
+		return m, err
+	}
+	sc := &movementStateScanner{st: st,
+		crouch:   componentIndexOfAny(arch, crouchComponentName, crouchComponentNameAlt),
+		slide:    componentIndexOfAny(arch, slideComponentName, slideComponentNameAlt),
+		mobility: componentIndexOfAny(arch, mobilityComponentName, mobilityComponentAlt),
+		ability:  componentIndexOfAny(arch, abilityComponentName, abilityComponentAlt),
+		vues:     map[movementStateKey]types.MovementStateRead{},
+		tir:      nouveauCollecteurTirContinu(&m.ContinuousFireStats),
+	}
+	// AUCUNE ERREUR quand les trois manquent, et c est delibere : un film dont l archetype
+	// bipede ne declare aucun des trois ne transmet pas les etats de mouvement. C est un fait
+	// MESURE, que `Absent` publie au lieu de le confondre avec un film ou personne ne s accroupit.
+	absent := sc.crouch < 0 && sc.slide < 0 && sc.mobility < 0 && sc.ability < 0
+	if err := sc.marcher(fc, !absent); err != nil {
+		return m, err
+	}
+	m.LiaisonsParRepliDAnticipation = sc.liaisonsDuRepliDAnticipation()
+	m.DebutsDeListeParRepliFermeAuBit = sc.obs.DebutsDeListeParRepliFermeAuBit
+	m.ContinuousFire = sc.tir.terminer()
+	m.ContinuousFireStats.Scanned = true
+	if absent {
+		*st = types.MovementStateStats{MapWidths: st.MapWidths, Absent: true, Scanned: true}
+		return m, nil
+	}
+	sc.deriverLesSauts()
+	sc.publier()
+	st.Scanned = true
+	m.MovementStates = sc.out
+	return m, nil
+}
+
+// marcher deroule LA marche des trames du film ([FilmContext.Trames], `marche_trames.go`) et en
+// consomme chaque trame. `etats` : la porte des etats de mouvement est branchee (faux pour un film
+// qui ne les transmet pas).
+func (sc *movementStateScanner) marcher(fc *FilmContext, etats bool) error {
+	obs := NouvelleObservation()
+	if etats {
+		obs.EtatMouvementHook = sc.recevoir
+	}
+	mt, err := fc.nouveauMarcheurDesTrames(obs)
+	if err != nil {
+		return err
+	}
+	// Le paquet de la marche est son arene : son en-tete est pose AVANT la marche du paquet, et la
+	// porte des etats de mouvement le lit pendant ([movementStateScanner.recevoir]).
+	sc.obs, sc.paquet, sc.entites = obs, &mt.paquet, mt.entites
+	mt.parcourir(sc.trame)
+	obs.solderLesNeufsRefuses()
+	sc.st.DatumBindings, sc.st.DatumAmbiguous = mt.liaisons.Datums, mt.liaisons.Ambigus
+	sc.st.LiaisonsOubliees = mt.liaisons.Oubliees
+	sc.st.NeufsContreUnVivant = obs.NeufsContreUnVivant
+	sc.st.NeufsRefusesLecturesFausses = obs.NeufsRefusesLecturesFausses
+	sc.st.NeufsRefusesCreationsPerdues = obs.NeufsRefusesCreationsPerdues
+	sc.st.NeufsRefusesIndecis = obs.NeufsRefusesIndecis
+	return nil
+}
+
+// movementStateKey deduplique une lecture : le chemin d inference de la marche ([decodeInferLoop])
+// re-parcourt un record quand une chaine de transitoires le demande, et le deserialiseur
+// re-publie alors la MEME transition. Compter deux fois la meme gonflerait les denominateurs
+// sans qu aucun compteur ne le dise.
+type movementStateKey struct {
+	slot uint32
+	kind string
+	ts   uint64
+}
+
+// movementStateScanner porte l etat du balayage.
+type movementStateScanner struct {
+	st                      *types.MovementStateStats
+	out                     []types.MovementStateRead
+	crouch, slide, mobility int
+	// ability est l index d `i57` dans l archetype bipede — la fente de capacite active, donc
+	// le SPRINT (cf. `sprintAbilitySlotRaw`). Il entre dans la garde d absence : un film dont
+	// l archetype ne declare AUCUN des quatre ne transmet pas les etats de mouvement.
+	ability int
+	vues    map[movementStateKey]types.MovementStateRead
+	// paquet : le paquet que la marche des trames lit, son en-tete pose avant sa marche ;
+	// entites : la table d entites de la marche, en lecture seule.
+	paquet  *lecture.Paquet
+	entites lecture.Entites
+	// vit porte les lectures de vitesse verticale par vie — la matiere du saut DERIVE
+	// (`movement_states_jump.go`). Elle n est pas publiee telle quelle : seules les montees
+	// reconnues a leur hauteur deviennent des transitions.
+	vit map[uint32][]jumpVelSample
+	// obs : l observation de la marche des trames, dont les NEW refuses attendent le verdict de
+	// l image-cle suivante (constat DFIX-R6, `keyframe_liaison.go`).
+	obs *Observation
+	// tir : le collecteur du TIR CONTINU (lot M4b) — il recoit le verdict de la vue C de chaque
+	// paquet delta, et c est la MEME marche qui le lui donne.
+	tir *collecteurTirContinu
+}
+
+// trame consomme UNE trame delta de la marche. Les paquets a liste d evenements PLEINE sont
+// localises par la marche ([localiserLaListe]) ; ceux qu elle ne localise pas sont comptes et
+// sautes, parce que sauter la liste bit-exactement demanderait la grammaire de charge de chaque
+// type d evenement. Le verdict de la vue C va au tir continu ; les records du bipede se comptent
+// dans la structure.
+func (sc *movementStateScanner) trame(t *trameLue) bool {
+	p := t.paquet
+	sc.tir.ouvrir(p.TS)
+	if p.Debut != lecture.DebutEnTete {
+		sc.st.EventPackets++
+		if p.Debut == lecture.DebutNonLocalise {
+			sc.st.EventPacketsUnlocated++
+			sc.tir.fermer(true) // liste non localisee : la vue C n est pas lue, c est un TROU
+			return true
+		}
+		sc.st.EventPacketsLocated++
+		if p.Debut != lecture.DebutParSignature {
+			sc.st.EventPacketsNewRecordStart++
+		}
+	}
+	sc.st.Packets++
+	if t.parRangs {
+		sc.tir.recevoir(t.lecture.verdict) // le verdict de la vue C, publie par la marche
+	}
+	sc.tir.fermer(false)
+	for _, r := range t.lecture.recs {
+		sc.st.VehicleTypePhysicsByWriterLaw += lecturesDeComposant(r, compVehicleTypePhysics)
+	}
+	for _, r := range p.Records {
+		if r.TI != BipedTypeIndex {
+			continue
+		}
+		sc.st.Records++
+		if r.Desync != lecture.SansDesynchronisation {
+			sc.st.Desyncs++
+		}
+	}
+	return true
+}
+
+// archetypeDuSlot rend l archetype que la table d entites de la marche donne a un slot.
+func (sc *movementStateScanner) archetypeDuSlot(slot uint32) (uint32, bool) {
+	e, ok := sc.entites.Entite(slot)
+	return uint32(e.TI), ok
+}
+
+// recevoir capte UNE publication du deserialiseur.
+//
+// LE FILTRE EST ICI, ET IL RESTE NECESSAIRE : `i54` est un composant du bipede, et la lecture ne
+// vaut que sur un slot LIE AU BIPEDE. Jusqu au lot J5.4, `decodeInferLoop` ne posait pas le slot
+// de capture d un record NEW, qui publiait sous le slot du record precedent (D13 de la note 5.3,
+// levee par GA1-3) ; le NEW publie desormais sous SON slot, mais ce slot n est lie qu APRES la
+// traversee — la lecture d un NEW sur un slot neuf est donc ecartee ici, et `SlotUnbound` dit
+// combien.
+func (sc *movementStateScanner) recevoir(comp EtatMouvementComposant, slot uint32, v []uint64) {
+	var lu types.MovementStateRead
+	switch comp {
+	case EtatAccroupi:
+		if len(v) < 2 {
+			return
+		}
+		lu = types.MovementStateRead{Kind: types.MovementCrouch, On: v[0] != 0,
+			Progress: uint32(v[1])} //nolint:gosec // R(10), borne a 1023
+	case EtatGlissade:
+		if len(v) < 1 {
+			return
+		}
+		lu = types.MovementStateRead{Kind: types.MovementSlide, On: v[0] != 0}
+	case EtatMobilite:
+		if len(v) < 1 {
+			return
+		}
+		lu = types.MovementStateRead{Kind: types.MovementClamber, On: v[0] != 0}
+	case EtatCapaciteActive:
+		if len(v) < 1 {
+			return
+		}
+		// LA FENTE 1 EST LE SPRINT, et l image la nomme (cf. `types.MovementSprint`). Le flux
+		// ecrit la fente DECALEE DE +1, donc le brut `2`. Toute autre valeur — y compris `0`,
+		// « aucune fente active » — LEVE l etat : ce sont des transitions, et le plieur en fait
+		// des intervalles.
+		lu = types.MovementStateRead{Kind: types.MovementSprint, On: v[0] == sprintAbilitySlotRaw}
+	case EtatVitesse:
+		// PAS UN ETAT, LA MATIERE D UN ETAT : la vitesse verticale sert a DERIVER le saut
+		// (`movement_states_jump.go`), qui publiera ses propres transitions apres la marche.
+		sc.vitesse(slot, v)
+		return
+	case EtatPosture, EtatControleUnite:
+		return // lus par le meme deserialiseur, hors du perimetre de ce calque
+	}
+	if ti, ok := sc.archetypeDuSlot(slot); !ok || ti != BipedTypeIndex {
+		sc.st.SlotUnbound++
+		return
+	}
+	lu.Slot, lu.Chunk, lu.PacketIndex, lu.TimestampUS = slot, sc.paquet.Chunk, sc.paquet.Index, sc.paquet.TS
+	k := movementStateKey{slot: slot, kind: lu.Kind, ts: sc.paquet.TS}
+	if _, deja := sc.vues[k]; deja {
+		sc.st.Duplicates++
+		return
+	}
+	sc.vues[k] = lu
+	sc.st.Read++
+}
+
+// publier vide la table de deduplication dans la sortie, TRIEE.
+func (sc *movementStateScanner) publier() {
+	sc.out = make([]types.MovementStateRead, 0, len(sc.vues))
+	for _, r := range sc.vues {
+		sc.out = append(sc.out, r)
+	}
+	sortMovementStates(sc.out)
+}
+
+// sortMovementStates ordonne les lectures sur (instant, slot, genre) — un ordre TOTAL. Un tri
+// partiel laisserait l ordre des lectures d un meme paquet dependre du parcours, donc le
+// document dependre d un detail de balayage.
+func sortMovementStates(out []types.MovementStateRead) {
+	slices.SortStableFunc(out, func(a, b types.MovementStateRead) int {
+		return cmp.Or(cmp.Compare(a.TimestampUS, b.TimestampUS), cmp.Compare(a.Slot, b.Slot),
+			cmp.Compare(a.Kind, b.Kind))
+	})
+}
+
+// liaisonsDuRepliDAnticipation somme, tous archetypes confondus, les liaisons que le repli
+// `repli_liaison_par_anticipation` a posees pendant la marche.
+//
+// UNE SEULE SOURCE DEPUIS LE LOT J8.7 (2026-09-27) : l observation de la marche
+// ([Observation.LiaisonsParRepliDAnticipation]), incrementee au point de rejet. Le monde tenait un
+// second compte du MEME fait (`World.anticipations`), retire : deux compteurs d un seul fait
+// finissent par diverger sans que rien ne dise lequel publier.
+func (sc *movementStateScanner) liaisonsDuRepliDAnticipation() int {
+	if sc.obs == nil {
+		return 0
+	}
+	n := 0
+	for _, k := range sc.obs.LiaisonsParRepliDAnticipation {
+		n += k
+	}
+	return n
+}

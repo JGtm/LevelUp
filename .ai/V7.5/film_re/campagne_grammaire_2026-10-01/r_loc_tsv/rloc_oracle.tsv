@@ -1,0 +1,158 @@
+film	build	variante	cle	paquets
+0797ce72	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	13
+0797ce72	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	2
+0797ce72	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	34
+0797ce72	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	131
+0797ce72	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	129
+084a804d	HI_1_10_0	ls+vueA	aucun debut · 17-255 essais	426
+084a804d	HI_1_10_0	ls+vueA	aucun debut · plafond de 256 essais	433
+084a804d	HI_1_10_0	ls+vueA	debut trouve · 1-3 essais	26
+084a804d	HI_1_10_0	ls+vueA	debut trouve · 17-255 essais	2398
+084a804d	HI_1_10_0	ls+vueA	debut trouve · 4-16 essais	127
+084a804d	HI_1_10_0	ls+vueA	debut trouve · plafond de 256 essais	5
+111fa685	HI_1_10_0	ls+vueA	aucun debut · 17-255 essais	264
+111fa685	HI_1_10_0	ls+vueA	aucun debut · plafond de 256 essais	84
+111fa685	HI_1_10_0	ls+vueA	debut trouve · 1-3 essais	24
+111fa685	HI_1_10_0	ls+vueA	debut trouve · 17-255 essais	1441
+111fa685	HI_1_10_0	ls+vueA	debut trouve · 4-16 essais	77
+111fa685	HI_1_10_0	ls+vueA	debut trouve · plafond de 256 essais	2
+11de8353	HI_1_9_0	ls+vueA	aucun debut · 17-255 essais	210
+11de8353	HI_1_9_0	ls+vueA	aucun debut · 4-16 essais	1
+11de8353	HI_1_9_0	ls+vueA	aucun debut · plafond de 256 essais	60
+11de8353	HI_1_9_0	ls+vueA	debut trouve · 1-3 essais	42
+11de8353	HI_1_9_0	ls+vueA	debut trouve · 17-255 essais	1210
+11de8353	HI_1_9_0	ls+vueA	debut trouve · 4-16 essais	119
+11de8353	HI_1_9_0	ls+vueA	debut trouve · plafond de 256 essais	1
+1c4c63c2	HI_1_10_0	ls+vueA	aucun debut · 17-255 essais	304
+1c4c63c2	HI_1_10_0	ls+vueA	aucun debut · 4-16 essais	1
+1c4c63c2	HI_1_10_0	ls+vueA	aucun debut · plafond de 256 essais	118
+1c4c63c2	HI_1_10_0	ls+vueA	debut trouve · 1-3 essais	21
+1c4c63c2	HI_1_10_0	ls+vueA	debut trouve · 17-255 essais	2116
+1c4c63c2	HI_1_10_0	ls+vueA	debut trouve · 4-16 essais	117
+1c4c63c2	HI_1_10_0	ls+vueA	debut trouve · plafond de 256 essais	1
+396cfc92	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	24
+396cfc92	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	3
+396cfc92	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	36
+396cfc92	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	232
+396cfc92	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	185
+4f77afc1	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	51
+4f77afc1	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	156
+4f77afc1	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	92
+4f77afc1	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	1465
+4f77afc1	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	513
+50247b26	version-31	ls+vueA	aucun debut · 17-255 essais	14
+50247b26	version-31	ls+vueA	aucun debut · plafond de 256 essais	2229
+50247b26	version-31	ls+vueA	debut trouve · 17-255 essais	14
+51ebbc0f	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	13
+51ebbc0f	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	8
+51ebbc0f	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	23
+51ebbc0f	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	264
+51ebbc0f	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	109
+60ae07c4	HI_1_8_0	ls+vueA	aucun debut · 17-255 essais	232
+60ae07c4	HI_1_8_0	ls+vueA	aucun debut · plafond de 256 essais	4
+60ae07c4	HI_1_8_0	ls+vueA	debut trouve · 1-3 essais	6
+60ae07c4	HI_1_8_0	ls+vueA	debut trouve · 17-255 essais	372
+60ae07c4	HI_1_8_0	ls+vueA	debut trouve · 4-16 essais	121
+6b0e6f0f	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	302
+6b0e6f0f	HI_1_13_0	ls+vueA	aucun debut · 4-16 essais	1
+6b0e6f0f	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	20
+6b0e6f0f	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	194
+6b0e6f0f	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	949
+6b0e6f0f	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	754
+72b0a25e	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	6
+72b0a25e	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	2
+72b0a25e	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	14
+72b0a25e	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	298
+72b0a25e	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	97
+81c02726	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	20
+81c02726	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	1
+81c02726	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	20
+81c02726	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	123
+81c02726	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	145
+8f7f5806	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	70
+8f7f5806	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	8
+8f7f5806	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	61
+8f7f5806	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	463
+8f7f5806	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	555
+9c0ec856	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	18
+9c0ec856	HI_1_13_0	ls+vueA	aucun debut · 4-16 essais	1
+9c0ec856	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	4
+9c0ec856	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	37
+9c0ec856	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	170
+9c0ec856	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	282
+a349fea8	version-33	ls+vueA	aucun debut · 17-255 essais	48
+a349fea8	version-33	ls+vueA	aucun debut · plafond de 256 essais	3939
+a349fea8	version-33	ls+vueA	debut trouve · 17-255 essais	52
+a349fea8	version-33	ls+vueA	debut trouve · 4-16 essais	1
+a521164d	HI_1_4_1	ls+vueA	aucun debut · 17-255 essais	111
+a521164d	HI_1_4_1	ls+vueA	aucun debut · plafond de 256 essais	1145
+a521164d	HI_1_4_1	ls+vueA	debut trouve · 17-255 essais	35
+a765f61d	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	53
+a765f61d	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	7
+a765f61d	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	58
+a765f61d	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	426
+a765f61d	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	620
+af3af607	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	29
+af3af607	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	8
+af3af607	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	53
+af3af607	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	489
+af3af607	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	753
+bcb6d393	HI_1_12_0	ls+vueA	aucun debut · 17-255 essais	35
+bcb6d393	HI_1_12_0	ls+vueA	aucun debut · 4-16 essais	1
+bcb6d393	HI_1_12_0	ls+vueA	aucun debut · plafond de 256 essais	2
+bcb6d393	HI_1_12_0	ls+vueA	debut trouve · 1-3 essais	5
+bcb6d393	HI_1_12_0	ls+vueA	debut trouve · 17-255 essais	201
+bcb6d393	HI_1_12_0	ls+vueA	debut trouve · 4-16 essais	39
+bf15f7ab	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	5
+bf15f7ab	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	3
+bf15f7ab	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	35
+bf15f7ab	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	84
+bf15f7ab	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	235
+bfecd02b	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	8
+bfecd02b	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	4
+bfecd02b	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	38
+bfecd02b	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	227
+bfecd02b	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	249
+c46ef9d1	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	42
+c46ef9d1	HI_1_13_0	ls+vueA	aucun debut · 4-16 essais	1
+c46ef9d1	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	6
+c46ef9d1	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	61
+c46ef9d1	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	578
+c46ef9d1	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	682
+c75f33b8	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	12
+c75f33b8	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	11
+c75f33b8	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	42
+c75f33b8	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	81
+c75f33b8	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	158
+d1a18847	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	7
+d1a18847	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	3
+d1a18847	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	37
+d1a18847	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	131
+d1a18847	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	132
+d9781168	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	25
+d9781168	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	6
+d9781168	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	58
+d9781168	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	206
+d9781168	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	337
+e5adf7b2	HI_1_11_0	ls+vueA	aucun debut · 17-255 essais	199
+e5adf7b2	HI_1_11_0	ls+vueA	aucun debut · 4-16 essais	1
+e5adf7b2	HI_1_11_0	ls+vueA	aucun debut · plafond de 256 essais	84
+e5adf7b2	HI_1_11_0	ls+vueA	debut trouve · 1-3 essais	29
+e5adf7b2	HI_1_11_0	ls+vueA	debut trouve · 17-255 essais	1279
+e5adf7b2	HI_1_11_0	ls+vueA	debut trouve · 4-16 essais	113
+e5adf7b2	HI_1_11_0	ls+vueA	debut trouve · plafond de 256 essais	1
+e60aaf06	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	50
+e60aaf06	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	10
+e60aaf06	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	9
+e60aaf06	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	310
+e60aaf06	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	93
+f75e7053	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	33
+f75e7053	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	4
+f75e7053	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	15
+f75e7053	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	152
+f75e7053	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	273
+fb1a1a72	HI_1_13_0	ls+vueA	aucun debut · 17-255 essais	16
+fb1a1a72	HI_1_13_0	ls+vueA	aucun debut · plafond de 256 essais	8
+fb1a1a72	HI_1_13_0	ls+vueA	debut trouve · 1-3 essais	23
+fb1a1a72	HI_1_13_0	ls+vueA	debut trouve · 17-255 essais	461
+fb1a1a72	HI_1_13_0	ls+vueA	debut trouve · 4-16 essais	184

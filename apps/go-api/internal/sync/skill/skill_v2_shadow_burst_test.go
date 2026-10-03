@@ -3,15 +3,19 @@
 package skill
 
 // skill_v2_shadow_burst_test.go — verrouille le fix hotfix/lusr-shadow-ro
-// (régression prod 2026-07-03) : le shadow LUSR v2 persiste via des bursts Write
-// (RW), jamais sur le handle de LECTURE (RO en mode burst). Deux propriétés :
+// (régression prod 2026-07-03) : le shadow LUSR v2 persiste via une rafale Write
+// (RW), jamais sur le handle de LECTURE (RO en mode burst). Propriétés :
 //   1. Read-only guard : Read sert un attach READ_ONLY (la sélection y passe),
 //      Write sert un attach RW (le persist y passe) → le run traite ET persiste,
 //      le watermark avance. Sur l'ancien code (persist via le handle unique de
 //      lecture) l'INSERT échouait « attached in read-only mode » → processed=0.
-//   2. Anti-deadlock : aucun burst Write n'est demandé pendant qu'un Read du même
-//      accès est en vol (le garde de SharedAccess.Write transformerait le bug en
-//      erreur) — vérifié y compris sur > 1 chunk.
+//   2. Anti-deadlock : aucune rafale Write n'est demandée pendant qu'un Read du
+//      même accès est en vol (le garde de SharedAccess.Write transformerait le bug
+//      en erreur).
+//   3. Lot perf L6 (2026-09-23, D6.2) : UNE rafale d'écrivain par joueur et par
+//      cycle tant que la file tient dans les bornes d'une rafale (avant : une par lot
+//      de 3 candidats, déjà traités compris). Au-delà de 50 matchs ou de 2 s, la file
+//      se découpe en rafales bornées (lot L9-go : skill_v2_bounded_bursts_test.go).
 
 import (
 	"context"
@@ -196,10 +200,13 @@ func (a *orderTrackingAccess) Write(_ context.Context, step string) (*sql.DB, fu
 	return a.db, func() {}, nil
 }
 
-// TestLUSRV2Shadow_ReleasesReadBeforeWriteBurst_MultiChunk : sur 4 matchs (> 1
-// chunk de 3), le shadow traite tout, acquiert plusieurs bursts Write, et ne
-// demande JAMAIS un Write pendant qu'un Read est en vol.
-func TestLUSRV2Shadow_ReleasesReadBeforeWriteBurst_MultiChunk(t *testing.T) {
+// TestLUSRV2Shadow_OneWriterBurstPerCycle (lot perf L6, D6.2) : une file qui tient
+// dans les bornes d'une rafale (lot L9-go : 50 matchs, 2 s) prend UNE rafale
+// d'écrivain par joueur et par cycle, jamais demandée pendant qu'un Read est en vol.
+// Cycle 1 : 4 matchs neufs (plus qu'un ancien lot de 3) ; cycle 2 : 3 neufs
+// par-dessus cet historique déjà traité, plus un candidat sans chaîne LUSR → une
+// seule rafale de plus.
+func TestLUSRV2Shadow_OneWriterBurstPerCycle(t *testing.T) {
 	t.Setenv(lusrV2EnvFlag, "1")
 	t.Setenv(lusrCanonicalEnvFlag, "")
 
@@ -212,15 +219,36 @@ func TestLUSRV2Shadow_ReleasesReadBeforeWriteBurst_MultiChunk(t *testing.T) {
 	acc := &orderTrackingAccess{db: db}
 	processed, err := RunLUSRV2ShadowOwnerOnly(context.Background(), nil, acc, "owner")
 	if err != nil {
-		t.Fatalf("RunLUSRV2ShadowOwnerOnly: %v", err)
+		t.Fatalf("cycle 1 : RunLUSRV2ShadowOwnerOnly: %v", err)
 	}
 	if processed != 4 {
-		t.Errorf("processed = %d, want 4 (tous les matchs des 2 chunks)", processed)
+		t.Errorf("cycle 1 : processed = %d, want 4", processed)
+	}
+	if acc.writeCalls != 1 {
+		t.Errorf("cycle 1 : writeCalls = %d, want 1 (4 matchs neufs, une seule rafale)", acc.writeCalls)
+	}
+
+	// Cycle 2 : 3 neufs au-dessus du filigrane + 1 candidat sans chaîne.
+	for i := 4; i < 7; i++ {
+		seedShadow2v2(t, db, fmt.Sprintf("mc%d", i), base.Add(time.Duration(i)*time.Hour))
+	}
+	seedShadowFixtures(t, db, shadowFixture{"mc_nochain", pairNoChain, base.Add(30 * time.Minute), seats2v2(2, 9, 9)})
+	buf, restore := captureSlog(t)
+	defer restore()
+	processed, err = RunLUSRV2ShadowOwnerOnly(context.Background(), nil, acc, "owner")
+	if err != nil {
+		t.Fatalf("cycle 2 : RunLUSRV2ShadowOwnerOnly: %v", err)
+	}
+	if processed != 3 {
+		t.Errorf("cycle 2 : processed = %d, want 3", processed)
+	}
+	if acc.writeCalls != 2 {
+		t.Errorf("writeCalls cumulés = %d, want 2 (une rafale par cycle)", acc.writeCalls)
 	}
 	if acc.violation != "" {
 		t.Errorf("garde anti-deadlock violée : %s", acc.violation)
 	}
-	if acc.writeCalls < 2 {
-		t.Errorf("writeCalls = %d, want >= 2 (4 matchs → chunks de 3 → 2 bursts)", acc.writeCalls)
-	}
+	requireLogLine(t, buf.String(), `msg="lusr_v2: rafale terminée"`,
+		"xuid=owner", "candidates=8", "new=3", "processed=3",
+		"skipped_already_seen=4", "skipped_chain=1")
 }

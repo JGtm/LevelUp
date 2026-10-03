@@ -1,0 +1,75 @@
+## bcb6d393 : classes de liste (paquets a evenements), base -> tete
+chaine/au_bit_contredit	1	1
+chaine/ferme	63	204
+chaine/non_ferme	188	44
+fermeture_rang1/ferme	11	31
+fermeture_rang2/au_bit_contredit	4	5
+non_localisee	283	262
+sans_liste	19134	19134
+strict/ferme	555	1606
+strict/non_ferme	1625	577
+## bcb6d393 : lectures d etat retenues : base 2125, tete 2128
+## bcb6d393 : lectures seulement en base : 0 ; classe du paquet (base -> tete) :
+## bcb6d393 : lectures seulement en head : 3 ; classe du paquet (base -> tete) :
+      3 non_localisee/-/-  ->  fermeture_rang1/true/aucun
+## bcb6d393 : dotations de naissance (B), lignes qui different
+## 4f77afc1 : classes de liste (paquets a evenements), base -> tete
+chaine/au_bit_contredit	18	2
+chaine/ferme	798	835
+chaine/non_ferme	565	538
+fermeture_rang1/ferme	1411	1446
+fermeture_rang2/au_bit_contredit	991	1009
+non_localisee	2250	2197
+sans_liste	18058	18058
+strict/ferme	7264	7433
+strict/non_ferme	4144	3981
+## 4f77afc1 : lectures d etat retenues : base 6588, tete 6601
+## 4f77afc1 : lectures seulement en base : 0 ; classe du paquet (base -> tete) :
+## 4f77afc1 : lectures seulement en head : 13 ; classe du paquet (base -> tete) :
+      5 non_localisee/-/-  ->  fermeture_rang1/true/aucun
+      3 fermeture_rang1/true/aucun  ->  fermeture_rang1/true/aucun
+      1 sans_liste/false/aucun  ->  sans_liste/true/aucun
+      1 sans_liste/false/aucun  ->  sans_liste/false/vue B : sortie par rejet
+      1 non_localisee/-/-  ->  fermeture_rang2/false/ecrivain : masque epars non croissant
+      1 non_localisee/-/-  ->  fermeture_rang2/false/ecrivain : masque au-dela de l archetype
+      1 fermeture_rang2/false/ecrivain : masque au-dela de l archetype  ->  fermeture_rang1/true/aucun
+## 4f77afc1 : dotations de naissance (B), lignes qui different
+## 084a804d : classes de liste (paquets a evenements), base -> tete
+chaine/au_bit_contredit	5	0
+chaine/ferme	10	10
+chaine/non_ferme	125	78
+fermeture_rang1/ferme	94	95
+fermeture_rang2/au_bit_contredit	457	494
+non_localisee	3414	3376
+sans_liste	15308	15308
+strict/ferme	1536	1541
+strict/non_ferme	11508	11555
+## 084a804d : lectures d etat retenues : base 8322, tete 8323
+## 084a804d : lectures seulement en base : 0 ; classe du paquet (base -> tete) :
+## 084a804d : lectures seulement en head : 1 ; classe du paquet (base -> tete) :
+      1 non_localisee/-/-  ->  fermeture_rang2/false/ecrivain : masque au-dela de l archetype
+## 084a804d : dotations de naissance (B), lignes qui different
+265c265
+< B	43	198	558	655	non_confirmee	fin=2436 rien
+---
+> B	43	198	558	655	lue	fin=2436 delta slot=1536 ti=43
+## 1c4c63c2 : classes de liste (paquets a evenements), base -> tete
+chaine/ferme	6	6
+chaine/non_ferme	22	11
+fermeture_rang1/ferme	2154	2161
+fermeture_rang2/au_bit_contredit	6039	6377
+non_localisee	12820	12475
+sans_liste	54553	54553
+strict/ferme	844	845
+strict/non_ferme	3112	3122
+## 1c4c63c2 : lectures d etat retenues : base 7597, tete 7602
+## 1c4c63c2 : lectures seulement en base : 0 ; classe du paquet (base -> tete) :
+## 1c4c63c2 : lectures seulement en head : 5 ; classe du paquet (base -> tete) :
+      2 fermeture_rang2/false/vue B : sortie par rejet  ->  fermeture_rang2/false/vue B : sortie par rejet
+      2 fermeture_rang2/false/vue B : sortie par rejet  ->  fermeture_rang2/false/ecrivain : masque au-dela de l archetype
+      1 non_localisee/-/-  ->  fermeture_rang2/false/vue B : sortie par rejet
+## 1c4c63c2 : dotations de naissance (B), lignes qui different
+442c442
+< B	54	1940	733	8848	non_confirmee	fin=10200 rien
+---
+> B	54	1940	733	8848	lue	fin=10200 delta slot=4637 ti=43

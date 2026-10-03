@@ -200,7 +200,8 @@ func loadModeFRBatch(ctx context.Context, pdb *PlayerDB, modeENSet map[string]st
 // loadPairAssetNamesFR charge asset_translations[asset_type='pair', lang='fr'|'fr-FR']
 // pour les pair_id donnés. Helper partagé entre match_history et filters pour
 // le fallback de re-lookup mode_name_tr (cf. analysis.ResolvePairNameFR).
-// Best-effort : retourne nil en cas d'erreur.
+// Best-effort : une erreur est journalisée et consignée (noteDegraded : un
+// chargement mis en cache qui l'appelle n'est pas caché) ; rend nil, ou ce qui a été lu.
 func loadPairAssetNamesFR(ctx context.Context, meta *DB, pairIDs []string) map[string]string {
 	if meta == nil || len(pairIDs) == 0 {
 		return nil
@@ -220,6 +221,7 @@ func loadPairAssetNamesFR(ctx context.Context, meta *DB, pairIDs []string) map[s
 	if err != nil {
 		if !isTableNotFoundErr(err) {
 			slog.WarnContext(ctx, "fr_translations: loadPairAssetNamesFR failed", "err", err)
+			noteDegraded(ctx, "pair_asset_names_fr")
 		}
 		return nil
 	}
@@ -232,6 +234,9 @@ func loadPairAssetNamesFR(ctx context.Context, meta *DB, pairIDs []string) map[s
 				out[id] = strings.TrimSpace(name)
 			}
 		}
+	}
+	if err := rows.Err(); err != nil {
+		bestEffortFailed(ctx, "pair_asset_names_fr", err)
 	}
 	return out
 }

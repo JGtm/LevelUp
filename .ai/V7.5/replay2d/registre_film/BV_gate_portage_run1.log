@@ -1,0 +1,84 @@
+=== RUN   TestBombePortageGate
+2026/09/01 17:34:19 INFO plafond memoire arme pour ce decodage outil=TestBombePortageGate souple_gib=2 dur_octets=2684354560
+2026/09/01 17:34:26 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=1872162450444512260 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    bombe_portage_gate_test.go:67: 35b75a31 : 95 transitions, 58 periodes, 57 portages publies (57 fermes dont 20 par mort, 0 ouverts), 1 sansPont, 0 horsFenetre
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [72860, 88167] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535434638359191 [90509, 91439] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274797735697 [94797, 96431] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274824432629 [105192, 115868] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535460750735339 [125778, 128246] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274858283686 [149168, 156458] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [174410, 175310] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535445743480343 [182601, 184533] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535460750735339 [187458, 198011] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535434638359191 [200687, 208995] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535460750735339 [214552, 244343] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274858283686 [246316, 247383] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274824432629 [249653, 252018] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535434638359191 [254675, 255743] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535434638359191 [256377, 262413] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535460750735339 [263720, 270623] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [277648, 278198] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [284789, 285155] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535460750735339 [290194, 308258] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [313901, 335317] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535434638359191 [337808, 342926] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274824432629 [345750, 359583] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535441223342887 [364054, 365200] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274824432629 [367257, 369141] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274824432629 [371678, 376767] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [380537, 381288] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [385343, 422128] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [422128, 429118] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [431571, 432734] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535460750735339 [434123, 434269] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274858283686 [435858, 440179] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535441223342887 [459582, 471629] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [476468, 476835] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [477869, 479983] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [485610, 486092] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [487728, 488178] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [489547, 490096] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [503310, 523046] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [525116, 531767] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274824432629 [535325, 536576] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2533274858283686 [549356, 569853] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [574464, 574831] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [577534, 578084] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [578869, 579970] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [587278, 587911] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535434638359191 [602694, 634671] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [638780, 639264] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [640683, 641182] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [654165, 662866] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535445743480343 [664590, 679655] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535406578258524 [690382, 705576] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535460750735339 [710436, 728854] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535441223342887 [736144, 746315] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [757266, 758284] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [759018, 759501] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [760470, 760903] closed=true
+    bombe_portage_gate_test.go:67:   35b75a31 : portage 2535420196688895 [762405, 762889] closed=true
+    bombe_portage_gate_test.go:83: 35b75a31 : explosion  304013 ms <- poseur = detonateur 2535460750735339 (portage [290194, 308258], delai fin -> explosion -4245 ms)
+    bombe_portage_gate_test.go:83: 35b75a31 : explosion  541270 ms <- poseur = detonateur 2533274824432629 (portage [535325, 536576], delai fin -> explosion 4694 ms)
+    bombe_portage_gate_test.go:83: 35b75a31 : explosion a 787051 ms — porteur 2535420196688895, detonateur 2533274824432629 (portage [762405, 762889]) : critere (c) NON tenu (aucun desaccord attendu sur ce film)
+    bombe_portage_gate_test.go:67: 9f57c612 : 19 transitions, 11 periodes, 10 portages publies (10 fermes dont 3 par mort, 0 ouverts), 1 sansPont, 0 horsFenetre
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2535470127489792 [96522, 98457] closed=true
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2535470127489792 [99175, 100994] closed=true
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2535470127489792 [101561, 102512] closed=true
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2535470127489792 [103079, 106767] closed=true
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2535470823750470 [186997, 190151] closed=true
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2535470823750470 [257318, 270783] closed=true
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2535470823750470 [272351, 279441] closed=true
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2535419279251362 [311559, 335532] closed=true
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2535470823750470 [366731, 388702] closed=true
+    bombe_portage_gate_test.go:67:   9f57c612 : portage 2533274796620553 [406188, 421120] closed=true
+    bombe_portage_gate_test.go:83: 9f57c612 : explosion a 83322 ms SANS periode de portage active a la pose ni dans les 60 s avant — critere (b) NON tenu
+    bombe_portage_gate_test.go:83: 9f57c612 : explosion  298489 ms <- poseur = detonateur 2535470823750470 (portage [272351, 279441], delai fin -> explosion 19048 ms)
+    bombe_portage_gate_test.go:83: 9f57c612 : explosion  353160 ms <- portage [311559, 335532] de 2535419279251362 ; detonateur NON nomme par le statborg — hors denominateur (c)
+    bombe_portage_gate_test.go:83: 9f57c612 : explosion  469057 ms <- poseur = detonateur 2533274796620553 (portage [406188, 421120], delai fin -> explosion 47937 ms)
+    assaut_manches_research_test.go:652: pic memoire observe : 0.18 Gio (plafond souple 2 Gio)
+--- FAIL: TestBombePortageGate (149.24s)
+FAIL
+FAIL	levelup/go-api/internal/analysis/replay	149.698s
+FAIL

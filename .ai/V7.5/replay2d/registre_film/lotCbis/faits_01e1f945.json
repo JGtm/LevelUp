@@ -1,0 +1,15 @@
+{
+  "gameVariantName": "KOTH:Arena",
+  "mapId": "f7e8cde9-0c0a-487c-94a3-61bfa0f20465",
+  "teamScores": [3, 2],
+  "players": [
+    {"xuid":"2533274832680942","kills":11,"deaths":18,"assists":7,"teamId":0},
+    {"xuid":"2533274969015015","kills":13,"deaths":15,"assists":7,"teamId":0},
+    {"xuid":"2535451337001599","kills":14,"deaths":15,"assists":8,"teamId":0},
+    {"xuid":"2535455052477469","kills":11,"deaths":10,"assists":7,"teamId":0},
+    {"xuid":"2533274824966873","kills":18,"deaths":13,"assists":4,"teamId":1},
+    {"xuid":"2535459782888916","kills":9,"deaths":11,"assists":8,"teamId":1},
+    {"xuid":"2535462158176179","kills":23,"deaths":9,"assists":6,"teamId":1},
+    {"xuid":"2535469190789936","kills":7,"deaths":14,"assists":3,"teamId":1}
+  ]
+}

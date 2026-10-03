@@ -26,7 +26,7 @@ import (
 type PlayerXUIDResolver func(ctx context.Context, slug string) (xuid string, found bool)
 
 // FamilyXUIDResolver retourne l'ensemble des xuids du groupe famille/amis pour
-// le titre courant (FriendGamertags résolus). Peut retourner nil (pas d'amis
+// le titre courant (co-membres de groupe résolus). Peut retourner nil (pas de
 // configurés) → CanAccessPlayer retombe sur le comportement strict.
 type FamilyXUIDResolver func(ctx context.Context) map[string]bool
 

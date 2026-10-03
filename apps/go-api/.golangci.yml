@@ -152,7 +152,33 @@ linters:
       # cmd/ (CLI tools / scripts ponctuels) : permissifs sur tout
       # Les scripts de diag/migration/seed/repair n'ont pas vocation a etre
       # production-grade (utilises rarement, manipules manuellement).
-      - path: "^cmd/"
+      #
+      # SAUF LES BINAIRES DE PRODUCTION (2026-09-05, registre d'audit constat H7).
+      # L'exemption disait « scripts ponctuels » et couvrait en realite cmd/server
+      # (deploye par release.yml:62), cmd/replay-worker (deploye par
+      # scripts/deploy-worker.sh:100), cmd/levelup (la CLI d'exploitation) et les deux
+      # commandes du rejeu. Le gate de lint est un RATCHET
+      # (--new-from-merge-base=origin/main, Makefile:307) : l'exemption ne dispensait
+      # donc pas le passe, elle dispensait le code NEUF de ces binaires — exactement
+      # l'inverse de ce qu'on veut. Ces cinq repassent au regime normal ; les autres
+      # cmd/ (170+ sondes et scripts) gardent l'exemption.
+      #
+      # SIXIEME AJOUT (2026-09-07, CORPUS-R1 C7) : cmd/replay-corpus-gate — l'exemption
+      # masquait 12 constats sur ce binaire NEUF (unused : freshArtifactPath mort dans
+      # compare.go ; unparam ; gocyclo ; 7 noctx ; goconst), exactement le defaut que le
+      # H7 ci-dessus corrigeait deja pour les cinq autres. Corriges dans le meme commit
+      # que cet ajout.
+      #
+      # POURQUOI CETTE FORME, ET PAS `path` + `path-except` : golangci-lint v2 REFUSE
+      # les deux sur la meme regle (« path and path-except should not be set at the
+      # same time », erreur de chargement — et `config verify` ne l'attrape pas, seule
+      # l'execution le dit). `path-except` seul doit donc porter TOUTE la condition
+      # negative, y compris « hors de cmd/ ». RE2 n'a pas de lookahead : la premiere
+      # alternative nie le prefixe `cmd/` caractere par caractere (tout chemin qui ne
+      # commence pas par `cmd/`), la seconde nomme les six binaires. Une regle qui
+      # oublierait la premiere alternative exempterait TOUT `internal/` de ces douze
+      # linters.
+      - path-except: "^(?:[^c]|c[^m]|cm[^d]|cmd[^/])|^cmd/(server|levelup|replay-worker|replay-build|replay-equiv|replay-corpus-gate)/"
         linters:
           - funlen
           - lll
@@ -176,6 +202,25 @@ linters:
 
       # Analyses stats : algorithmes multi-metriques (fidelite portage Python)
       - path: "internal/analysis/"
+        linters:
+          - gocyclo
+          - funlen
+          - lll
+
+      # Decodeur de film : MEME exemption que `internal/analysis/` ci-dessus, transposee au
+      # nouveau chemin le 2026-09-12 (lot E.2). `filmdec` et `replay` vivaient sous
+      # `internal/analysis/` et en heritaient ; leur descente sous
+      # `internal/games/halo_infinite/film/` (ADR 0012) est un deplacement PUR, elle ne doit
+      # rien changer au regime de lint. Sans cette regle, le meme code se mettrait a rougir
+      # au seul motif d'avoir change de repertoire.
+      # LES COUCHES DE L'ADR 0034 AJOUTEES LE 2026-09-16 (lot 2.5) : `facts/`, `source/`,
+      # `grammar/` et `profile/` recueillent, par deplacements PURS, du code qui vivait sous
+      # `internal/analysis/` ou dans `filmdec` — donc sous l'une ou l'autre des deux exemptions
+      # ci-dessus. Sans cette ligne, le meme code se remettrait a rougir au seul motif d'avoir
+      # change de repertoire, exactement ce que le paragraphe precedent refuse.
+      # 2026-09-17 (lot 2.5.e) : les quatre couches passent sous `film/internal/` — meme regle,
+      # meme code, nouveau prefixe ; `replay` reste exportee au meme endroit.
+      - path: "internal/games/halo_infinite/film/(replay|internal/(facts|source|grammar|profile))/"
         linters:
           - gocyclo
           - funlen
@@ -207,12 +252,6 @@ linters:
         linters:
           - gocyclo
 
-      # cmd/server/main.go : init server inevitablement long
-      - path: "cmd/server/main.go"
-        linters:
-          - funlen
-          - gocyclo
-
       # validation : gate check multi-etapes
       - path: "internal/validation/"
         linters:
@@ -241,12 +280,6 @@ linters:
       - path: "internal/sync/backfill"
         linters:
           - revive
-
-      # main.go CLI : switch volumineux accepte
-      - path: "cmd/levelup/main\\.go"
-        linters:
-          - funlen
-          - gocyclo
 
       # Multi-titres : packages Go nommes avec underscore par convention produit
       # (coherence avec title.DefaultSlug = "halo_infinite" et les configs

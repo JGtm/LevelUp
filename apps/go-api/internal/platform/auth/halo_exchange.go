@@ -21,6 +21,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -155,20 +156,103 @@ func ExchangeXSTSForHaloTokensWithDescriptor(ctx context.Context, xstsToken stri
 // XBL user-token la lit pour choisir le préfixe RpsTicket déterministe.
 type tokenClientFamilyCtxKey struct{}
 
-// withTokenClientFamily attache la famille de client OAuth (TokenFamilyAzure /
+// WithTokenClientFamily attache la famille de client OAuth (TokenFamilyAzure /
 // TokenFamilyXboxNative) au contexte. Une famille vide laisse le ctx inchangé.
-func withTokenClientFamily(ctx context.Context, family string) context.Context {
+// Exportée : le pool de tokens (paquet auth/pool) pose la famille persistée du
+// joueur avant l'échange.
+func WithTokenClientFamily(ctx context.Context, family string) context.Context {
 	if family == "" {
 		return ctx
 	}
 	return context.WithValue(ctx, tokenClientFamilyCtxKey{}, family)
 }
 
-// tokenClientFamilyFromCtx lit la famille de client posée par withTokenClientFamily
+// TokenClientFamilyFromContext lit la famille posée par WithTokenClientFamily
 // ("" = provenance inconnue).
-func tokenClientFamilyFromCtx(ctx context.Context) string {
+func TokenClientFamilyFromContext(ctx context.Context) string {
 	f, _ := ctx.Value(tokenClientFamilyCtxKey{}).(string)
 	return f
+}
+
+// tokenFamilyObserverCtxKey porte l'observateur de provenance MESURÉE.
+type tokenFamilyObserverCtxKey struct{}
+
+// TokenFamilyObserver recueille la provenance RÉELLEMENT acceptée par l'endpoint
+// XBL user-token : le préfixe RpsTicket qui a rendu un token.
+//
+// POURQUOI UNE MESURE ET PAS LA FAMILLE DU CLIENT OAUTH (constat du 2026-09-20).
+// La famille déduite du endpoint de refresh (Azure vs MSA natif) NE PRÉDIT PAS le
+// préfixe accepté : sur les 13 comptes du poste, les 13 refresh passent par l'app
+// Azure (zéro repli MSA dans 87 Mo de auth.log) et pourtant 5 d'entre eux se font
+// refuser « d= » en 401 et ne passent qu'en « t= ». Persister la famille du client
+// aurait donc reconduit le mauvais préfixe. La seule donnée fiable est le résultat
+// de l'échange précédent — d'où cet observateur : le chokepoint XBL écrit ce qui a
+// marché, le caller le persiste, l'échange suivant commence par là.
+type TokenFamilyObserver struct {
+	mu     sync.Mutex
+	family string
+}
+
+// Observed rend la famille mesurée au dernier échange XBL user-token
+// ("" si aucun échange n'a eu lieu — cache, échec amont).
+func (o *TokenFamilyObserver) Observed() string {
+	if o == nil {
+		return ""
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.family
+}
+
+func (o *TokenFamilyObserver) record(family string) {
+	if o == nil || family == "" {
+		return
+	}
+	o.mu.Lock()
+	o.family = family
+	o.mu.Unlock()
+}
+
+// WithTokenFamilyObserver attache un observateur de provenance au contexte et le
+// rend. Le caller lit Observed() APRÈS l'échange et persiste la valeur si elle
+// diffère de celle qu'il connaissait.
+func WithTokenFamilyObserver(ctx context.Context) (context.Context, *TokenFamilyObserver) {
+	o := &TokenFamilyObserver{}
+	return context.WithValue(ctx, tokenFamilyObserverCtxKey{}, o), o
+}
+
+// RecordObservedTokenFamily écrit la provenance mesurée dans l'observateur du ctx
+// (no-op si le caller n'en a pas installé). Appelée par le chokepoint XBL
+// user-token ; exportée pour qu'un échangeur substitué (double de test du pool,
+// futur fournisseur) renseigne la même mesure.
+func RecordObservedTokenFamily(ctx context.Context, family string) {
+	o, _ := ctx.Value(tokenFamilyObserverCtxKey{}).(*TokenFamilyObserver)
+	o.record(family)
+}
+
+// Préfixes RpsTicket de l'échange XBL user-token, et leur correspondance avec les
+// familles persistées. Source UNIQUE de cette correspondance (le choix du préfixe
+// et la lecture de la mesure la partagent).
+const (
+	rpsPrefixAzure      = "d="
+	rpsPrefixXboxNative = "t="
+)
+
+// rpsPrefixesForFamily rend (préfixe à essayer d'abord, préfixe de repli) pour une
+// provenance connue. Provenance inconnue → ordre historique « d= » puis « t= ».
+func rpsPrefixesForFamily(family string) (primary, fallback string) {
+	if family == TokenFamilyXboxNative {
+		return rpsPrefixXboxNative, rpsPrefixAzure
+	}
+	return rpsPrefixAzure, rpsPrefixXboxNative
+}
+
+// familyForRpsPrefix rend la provenance correspondant à un préfixe accepté.
+func familyForRpsPrefix(prefix string) string {
+	if prefix == rpsPrefixXboxNative {
+		return TokenFamilyXboxNative
+	}
+	return TokenFamilyAzure
 }
 
 // requestUserToken obtient un User Token XBL depuis un access_token Microsoft.
@@ -183,16 +267,23 @@ func tokenClientFamilyFromCtx(ctx context.Context) string {
 // (401) — désormais logué WarnContext pour rendre visible un 401 qui n'est PAS un
 // simple mauvais préfixe (token révoqué, etc.), là où l'ancien Debug le masquait.
 func requestUserToken(ctx context.Context, client *http.Client, accessToken string) (string, error) {
-	primary, fallback := "d=", "t="
-	if tokenClientFamilyFromCtx(ctx) == TokenFamilyXboxNative {
-		primary, fallback = "t=", "d="
-	}
+	primary, fallback := rpsPrefixesForFamily(TokenClientFamilyFromContext(ctx))
 	token, err := requestUserTokenPrefixed(ctx, client, accessToken, primary)
+	if err == nil {
+		// Provenance MESURÉE : le caller la persiste pour commencer par là au
+		// prochain échange (cf. TokenFamilyObserver).
+		RecordObservedTokenFamily(ctx, familyForRpsPrefix(primary))
+		return token, nil
+	}
 	var herr *xblHTTPError
-	if err != nil && errors.As(err, &herr) && herr.Status == http.StatusUnauthorized {
+	if errors.As(err, &herr) && herr.Status == http.StatusUnauthorized {
 		slog.WarnContext(ctx, "halo_exchange: RpsTicket refusé (401) — retry sur l'autre préfixe (filet provenance)",
-			"primary", primary, "fallback", fallback, "family", tokenClientFamilyFromCtx(ctx))
-		return requestUserTokenPrefixed(ctx, client, accessToken, fallback)
+			"primary", primary, "fallback", fallback, "family", TokenClientFamilyFromContext(ctx))
+		token, err = requestUserTokenPrefixed(ctx, client, accessToken, fallback)
+		if err == nil {
+			RecordObservedTokenFamily(ctx, familyForRpsPrefix(fallback))
+		}
+		return token, err
 	}
 	return token, err
 }

@@ -13,10 +13,13 @@
 package teammates
 
 import (
+	"context"
+	"log/slog"
 	"sort"
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // intersectSquadRowsByMatchID retourne les matchs présents chez TOUS les
@@ -93,7 +96,7 @@ func collectSelectedXUIDs(teammates []domain.TeammateRow) []string {
 	return out
 }
 
-// resolveFriendXUIDs traduit les gamertags amis (settings.friend_gamertags) en
+// resolveFriendXUIDs traduit les gamertags amis du joueur consulté en
 // xuids via la table gamertag→xuid des top coéquipiers déjà chargés (Q29). Les
 // amis hors top-50 ne sont pas résolus ici (co-jouer avec eux serait de toute
 // façon marginal ; le pool top les couvre pour l'essentiel). Case-insensitive.
@@ -237,26 +240,50 @@ func matchHasExactComposition(
 	return true
 }
 
-// filterExactComposition ne garde que les matchs dont l'équipe du main correspond
-// EXACTEMENT à la composition sélectionnée (cf. matchHasExactComposition).
-// mainTeamByMatch nil (chargement échoué / non tenté) => rows inchangés
-// (dégradation gracieuse, page non blanchie).
+// extraPresentOn nomme les xuids de l'extraPool (autres coéquipiers connus)
+// présents sur l'équipe alliée du main pour un match — le frère "qui" du
+// prédicat booléen matchHasExactComposition (verrouillé par ses propres tests,
+// inchangé). Sert à publier l'écart (ADR 0033 critère 3) : un match écarté doit
+// NOMMER son ou ses responsables, jamais rester un simple booléen. Tri
+// alphabétique pour un résultat déterministe (plusieurs responsables possibles).
+func extraPresentOn(team map[string]struct{}, extraPool map[string]struct{}) []string {
+	if len(team) == 0 || len(extraPool) == 0 {
+		return nil
+	}
+	var out []string
+	for x := range team {
+		if _, ok := extraPool[x]; ok {
+			out = append(out, x)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// filterExactComposition sépare, en un seul balayage, les matchs dont l'équipe
+// du main correspond EXACTEMENT à la composition sélectionnée (kept, cf.
+// matchHasExactComposition) de ceux qui en sont écartés (excluded) — jamais deux
+// règles distinctes pour ces deux issues, sous peine de diverger (ADR 0033).
+// mainTeamByMatch nil (chargement échoué / non tenté) => rows inchangés, aucun
+// exclu (dégradation gracieuse, page non blanchie).
 func filterExactComposition(
 	rows []domain.SquadMatchRow,
 	mainTeamByMatch map[string]map[string]struct{},
 	extraPool map[string]struct{},
 	selectedXUIDs []string,
-) []domain.SquadMatchRow {
+) (kept, excluded []domain.SquadMatchRow) {
 	if mainTeamByMatch == nil || len(rows) == 0 {
-		return rows
+		return rows, nil
 	}
-	out := rows[:0:0]
+	kept = rows[:0:0]
 	for _, r := range rows {
 		if matchHasExactComposition(mainTeamByMatch[r.MatchID], extraPool, selectedXUIDs) {
-			out = append(out, r)
+			kept = append(kept, r)
+		} else {
+			excluded = append(excluded, r)
 		}
 	}
-	return out
+	return kept, excluded
 }
 
 // exactCompositionFilter porte les données du filtre "composition exacte" pour
@@ -285,4 +312,47 @@ func (f *exactCompositionFilter) applyShared(matches []domain.SquadSharedMatch) 
 		}
 	}
 	return out
+}
+
+// loadMainTeamAllies charge UNE fois l'équipe alliée du main par match (Q32b,
+// LoadMainTeamParticipants, par lireEquipeAlliee — le SEUL appel de Q32b du service)
+// et l'indexe (buildMainTeamXUIDSet) : ses trois consommateurs de la page (filtre
+// composition exacte, matrice d'impact, courbe « équipe » du profil d'intensité) lisent le
+// résultat (CLAUDE.md n°6). Sans xuid ni match : rien à charger. Best-effort :
+// en échec, warn + (nil, nil) — chaque consommateur dégrade seul ; l'issue
+// DataIssueMainTeamParticipants n'est posée que si l'option composition exacte
+// la réclamait (son libellé UI décrit cette option, pas la courbe).
+func (s *TeammatesService) loadMainTeamAllies(
+	ctx context.Context, playerXUID string, matchIDs []string, reportIssue bool, issues *dataIssues,
+) ([]domain.AllyParticipant, map[string]map[string]struct{}) {
+	allies, teamByMatch, err := s.lireEquipeAlliee(ctx, playerXUID, matchIDs)
+	if err != nil {
+		if reportIssue {
+			// issues.add journalise déjà (ERROR, DEBUG si la requête a pris fin).
+			issues.add(ctx, domain.DataIssueMainTeamParticipants, "", err)
+		} else {
+			slog.WarnContext(ctx, "teammates_main_team_load_failed",
+				"main_xuid", playerXUID, "matches", len(matchIDs), "err", err)
+		}
+		return nil, nil
+	}
+	return allies, teamByMatch
+}
+
+// lireEquipeAlliee : la lecture Q32b et son index, l'erreur RENDUE (le seul appel de Q32b
+// du service). loadMainTeamAllies (la page) la dégrade ; la lecture légère des sessions
+// d'une composition, sous l'option composition exacte, la rend au handler (lot perf L9-go :
+// jamais un 200 avec un roster non filtré).
+func (s *TeammatesService) lireEquipeAlliee(
+	ctx context.Context, playerXUID string, matchIDs []string,
+) ([]domain.AllyParticipant, map[string]map[string]struct{}, error) {
+	defer timing.FromContext(ctx).Section("main_team_allies")()
+	if playerXUID == "" || len(matchIDs) == 0 {
+		return nil, nil, nil
+	}
+	allies, err := s.repo.LoadMainTeamParticipants(ctx, playerXUID, matchIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	return allies, buildMainTeamXUIDSet(allies), nil
 }

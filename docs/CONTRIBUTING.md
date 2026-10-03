@@ -129,6 +129,7 @@ Applied rules:
 - Create a new branch for every new feature/fix from the current branch (`git checkout -b <type>/<name>`).
 - Do not switch branches if unrelated work is already in progress on the current branch.
 - Pushing `main` triggers an automatic production deploy — merge to `main` deliberately.
+- **Merges to `main` are squash merges only** (enforced in GitHub: only "Squash and merge" is enabled). One branch = one commit on `main`; the squash title follows Conventional Commits and summarizes the task. The branch is deleted after merge. Never run a local `git merge` into `main`.
 
 Commit message format (Conventional Commits):
 

@@ -40,6 +40,38 @@ func (r *XSTSResult) AuthHeader() string {
 	return fmt.Sprintf("XBL3.0 x=%s;%s", r.UserHash, r.Token)
 }
 
+// AcquireXSTSForRTAWithProvenance acquiert le XSTS RTA en posant la provenance
+// persistée du joueur (préfixe RpsTicket connu → aucun 401 inutile à l'échange
+// XBL), puis persiste celle qui a été MESURÉE si elle a changé.
+//
+// À préférer à AcquireXSTSForRTA partout où l'appelant dispose du store et du
+// xuid. Sans elle, l'échange repart du préfixe par défaut « d= » et les comptes
+// qui n'acceptent que « t= » encaissent un 401 puis un retry à CHAQUE boot.
+//
+// store ou xuid absents → dégrade proprement en AcquireXSTSForRTA (aucune
+// provenance posée, aucune mesure persistée).
+func AcquireXSTSForRTAWithProvenance(
+	ctx context.Context, store *MultiUserTokenStore, xuid, accessToken string,
+) (*XSTSResult, error) {
+	if store == nil || xuid == "" {
+		return AcquireXSTSForRTA(ctx, accessToken)
+	}
+	known := ""
+	if ut, err := store.Load(xuid); err == nil && ut != nil {
+		known = ut.TokenClientFamily
+	}
+	ctx, observer := WithTokenFamilyObserver(WithTokenClientFamily(ctx, known))
+
+	res, err := AcquireXSTSForRTA(ctx, accessToken)
+	if observed := observer.Observed(); observed != "" && observed != known {
+		if uerr := store.UpdateTokenClientFamily(xuid, observed); uerr != nil {
+			slog.ErrorContext(ctx, "xsts: persistance de la provenance échouée — 401 RpsTicket au prochain échange",
+				"xuid", xuid, "family", observed, "err", uerr)
+		}
+	}
+	return res, err
+}
+
 // AcquireXSTSForRTA obtient un token XSTS avec RelyingParty=http://xboxlive.com.
 // Ce token est nécessaire pour la connexion WebSocket RTA.
 func AcquireXSTSForRTA(ctx context.Context, accessToken string) (*XSTSResult, error) {

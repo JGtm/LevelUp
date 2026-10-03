@@ -1,18 +1,22 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : hors perimetre du lot D (modele web du rejeu) : l'exemption DATE la dette, elle ne l'absout pas — le decoupage revient au lot qui touchera ce fichier. */
 /**
  * MatchCard — tuile de match (Sprint 56).
  *
  * Affiche :
  *  - Image de la map (h-48, object-cover)
  *  - Titre centré `mode sur carte`
- *  - Playlist en sous-titre
+ *  - Playlist en sous-titre (+ lien vers le rejeu 2D quand l'artefact existe
+ *    ET que `playerSlug` est fourni — la route de rejeu est par joueur)
  *  - Section score colorée selon le résultat avec badges narratifs
  */
 import type { RecentMatchItem } from '@/lib/api/types'
+import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
 import { getPerfColor } from '@/lib/perf-color'
 import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
 import { CitationProgressRing } from './citation-progress-ring'
 import { citationMastery } from '@/lib/citations/mastery'
 import { CombatYieldDisplay } from './combat-yield-display'
+import { MatchCardAssistedFrags } from './match-card-assisted-frags'
 import { MedalIcon } from './MedalIcon'
 import { skillDeltaScale, kdaDivergentScale, mmrDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -27,6 +31,9 @@ export interface MatchCardProps {
   match: RecentMatchItem
   locale?: Locale
   timezone?: string
+  /** Slug du joueur de la page : requis pour construire le lien vers le rejeu 2D
+   *  (route par joueur). Absent → aucun lien, même si l'artefact existe. */
+  playerSlug?: string
   onClick?: () => void
   onToggleFavorite?: () => void
   favoriteDisabled?: boolean
@@ -60,10 +67,13 @@ function buildMatchHeading(match: RecentMatchItem, locale: Locale): string {
     return `${normalizedMode} ${connector} ${match.map_ui}`
   }
 
-  return normalizedMode ?? match.map_ui ?? match.title
+  // Dernier repli (mode ET carte absents) : plus de composite pré-assemblé côté
+  // Go (`title` supprimé le 2026-09-07, lot M5 L2 — D5, jamais de texte composé
+  // côté backend) — même texte-clé que le placeholder d'image ci-dessous.
+  return normalizedMode ?? match.map_ui ?? formatMessage(commonManifest, 'common.match_card.map_unknown', locale)
 }
 
-export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
+export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlug, onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
   const heading = buildMatchHeading(m, locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   // KDA NET ((k+a/3)−d) pour les 2 titres (API Infinite / FDA Halo 5), possiblement
@@ -95,6 +105,14 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
   const deaths = m.deaths ?? 0
   const hasKDA = m.kills != null || m.assists != null || m.deaths != null
   const kdaTotal = kills + assists + deaths
+  // Segments non vides de la barre composite, dans l'ordre frags / assistances / morts.
+  const kdaSegments = (
+    [
+      { token: 'stat-kills', count: kills },
+      { token: 'stat-assists', count: assists },
+      { token: 'stat-deaths', count: deaths },
+    ] as const
+  ).filter((seg) => seg.count > 0)
 
   const hasDamageBar = m.offensive_conversion != null || m.defensive_resistance != null
   // Dégâts par frag-équivalent (frags + assists/3) : aligné sur offensive_conversion
@@ -118,7 +136,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
         {m.map_image_url ? (
           <img
             src={m.map_image_url}
-            alt={m.map_ui ?? m.title}
+            alt={m.map_ui ?? t('common.match_card.map_unknown')}
             className="w-full h-full object-cover"
             loading="lazy"
             onError={(e) => {
@@ -182,16 +200,14 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             </p>
           )}
           {m.playlist_ui && (
-            <p className="text-xs text-muted-foreground leading-tight">
-              {m.playlist_ui}
-            </p>
+            <p className="text-xs text-muted-foreground leading-tight">{m.playlist_ui}</p>
           )}
           <div
             data-testid="match-card-badges-row"
             className="min-h-[1.625rem] flex flex-wrap items-center justify-center gap-1.5 pt-1"
           >
             {narrativeBadges.map((badgeType) => {
-              const badgeMeta = getMatchNarrativeBadgeMeta(badgeType)
+              const badgeMeta = getMatchNarrativeBadgeMeta(badgeType, locale)
               if (!badgeMeta) return null
               return (
                 <span
@@ -226,7 +242,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
           </p>
         </div>
 
-        {/* Badge solo/escouade + placement — zone réservée h fixe pour alignement */}
+        {/* Badge solo/escouade + placement + rejeu — zone réservée h fixe pour alignement */}
         <div className="min-h-[2rem] flex items-center justify-center gap-3">
           {hasMatchMeta && (
             <>
@@ -247,6 +263,20 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
               </span>
             )}
             </>
+          )}
+          {/* Bouton rejeu 2D, à DROITE du placement (retour utilisateur 2026-09-09) :
+              il vivait collé au nom de playlist, en icône nue de 20x16 px à 60 %
+              d'opacité — invisible en pratique sur une tuile. Rendu UNIQUEMENT si
+              l'artefact existe (has_replay) : jamais de lien vers un 404. Hors du
+              `hasMatchMeta` : un match sans placement ni badge garde son bouton. */}
+          {playerSlug && (
+            <MatchReplayLink
+              available={m.has_replay === true}
+              matchId={m.match_id}
+              playerSlug={playerSlug}
+              label={t('common.match_card.replay_aria')}
+              variant="button"
+            />
           )}
         </div>
 
@@ -324,26 +354,38 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
 
             {/* Barre composite frags / assistances / décès */}
             {hasKDA && (
-              <div data-testid="match-card-kda-bar" className="px-3 pt-2.5 pb-2 space-y-1.5">
-                <div className="h-2 w-full rounded-full overflow-hidden flex">
-                  {kills > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(kills / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('outcome-win') }} />}
-                  {assists > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(assists / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('perf-tier-2') }} />}
-                  {deaths > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(deaths / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('outcome-loss') }} />}
+              <div data-testid="match-card-kda-bar" className="px-3 pt-2.5 pb-1">
+                {/* Les bouts arrondis sont portés par les SEGMENTS (premier / dernier), comme
+                    combat-yield-bar : un conteneur `rounded-full overflow-hidden` rognait ses
+                    enfants sans anti-crénelage aux coins — le dernier segment (morts) débordait
+                    de la pilule et se lisait plus épais / décalé (constaté 2026-09-19). */}
+                <div className="h-2 w-full flex">
+                  {kdaSegments.map((seg, i) => (
+                    <div
+                      key={seg.token}
+                      className={`h-full ${i === 0 ? 'rounded-l-full' : ''} ${i === kdaSegments.length - 1 ? 'rounded-r-full' : ''}`}
+                      style={{ width: `${(seg.count / kdaTotal) * 100}%`, backgroundColor: tokenCssVar(seg.token) }}
+                    />
+                  ))}
                 </div>
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{kills}</span>
-                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>{t('common.match_card.frags')}</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('stat-kills') }}>{t('common.match_card.frags')}</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{assists}</span>
-                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>{t('common.match_card.assists')}</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('stat-assists') }}>{t('common.match_card.assists')}</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{deaths}</span>
-                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('outcome-loss') }}>{t('common.match_card.deaths')}</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('stat-deaths') }}>{t('common.match_card.deaths')}</span>
                   </div>
                 </div>
+                {/* Part des frags assistés par un coéquipier (film analysé). L'emplacement est
+                    RÉSERVÉ (même hauteur sans mesure) : sur la grille de l'accueil, les tuiles
+                    voisines gardent leurs stats alignées, qu'elles aient une mesure ou non. */}
+                <MatchCardAssistedFrags assisted={m.assisted_frags} locale={locale} />
               </div>
             )}
 
@@ -351,7 +393,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             {hasDamageBar && (
               <>
                 {m.kda != null && (
-                  <div className="flex items-center justify-center gap-0 pt-3 pb-2">
+                  <div className="flex items-center justify-center gap-0 pt-2.5 pb-2">
                     {/* Colonne gauche : Tirs à la tête — espace réservé même si absent */}
                     <div className="w-16 flex flex-col items-center gap-0.5">
                       {m.headshot_kills != null && m.headshot_kills > 0 ? (
@@ -450,7 +492,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             {m.top_medals && m.top_medals.length > 0 && (
               <div
                 data-testid="match-card-medals"
-                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-border/40 mt-3"
+                className="px-3 pb-2.5 pt-2 flex justify-center gap-3 border-t border-border/40 mt-2"
               >
                 {m.top_medals.slice(0, 4).map((medal) => (
                   <div
@@ -492,7 +534,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             {m.top_citations && m.top_citations.length > 0 && (
               <div
                 data-testid="match-card-citations"
-                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-border/40 mt-3"
+                className="px-3 pb-2.5 pt-2 flex justify-center gap-3 border-t border-border/40 mt-2"
               >
                 {m.top_citations.map((cit) => {
                   // Maîtrisée = palier final franchi (cette partie OU avant), sinon

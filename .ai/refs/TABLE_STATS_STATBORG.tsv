@@ -9,6 +9,7 @@ flag	21	A	flag_captures	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
 flag	21	B	flag_carriers_killed	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
 flag	22	A	flag_grabs	named.go	exact 8/8 — NOM CORRIGE, ce n est PAS flag_taken (recompense)
 flag	23	A	flag_returns	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
+flag	23	B	flag_secures	named.go	exact 11 films / 79 slots, 0 desaccord (balayage 2026-09-11, lot 6.7 B2) — seul emplacement exact sur 260
 flag	24	A	flag_steals	named.go	exact 8/8 (oracle 8 joueurs, 2026-08-02)
 zone	2	A	kills	named.go+slotidentity.go	ancre — exact 8/8 contre match_participants
 zone	2	B	deaths	slotidentity.go	exact 8/8 contre match_participants (2026-08-02)
@@ -17,6 +18,8 @@ zone	12	A	kills	named.go	redondant de 2 A — controle croise exact (2026-08-02)
 zone	12	B	assists	named.go	redondant de 3 A — controle croise exact (2026-08-02)
 zone	20	B	zone_captures	named.go	exact 8/8 (oracle 8 joueurs) + total film 61
 zone	21	A	zone_secures	named.go	exact 8/8 (oracle 8 joueurs) + total film 16
+vip	22	A	vip_selected	named.go	exact 8/8 x3 (bazaar/bazaar/catalyst) — TimesSelectedAsVip, somme-film decale 0, gate corrige (VIP_temoin_corrige.log)
+bomb	0	A	bomb_detonations	named.go	exact 8/8 films (somme des slots joueurs = explosions du film), moities disjointes 4/4 + 4/4, controle morts 37/37 — lot A phase A4, 2026-08-27
 core	0	A	Score	score.go	score de mode — CoreStats_ rang 0 (binaire)
 core	1	B	PersonalScore	score.go	CoreStats_ rang 1 — verifie 950/1050/1775/1900 par le bareme
 hill	-	-	AUCUN	-	les compteurs de colline ne sont repliques nulle part (2 films, §21)

@@ -17,7 +17,7 @@
 // mêmes données ne produit pas de notifs en double (PB déjà persisté →
 // pas de NewPB ; alerte déjà émise dans la fenêtre → filtrée).
 //
-// Réf : .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.2.
+// Réf : .ai/archive/V7/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.2.
 
 package wire
 

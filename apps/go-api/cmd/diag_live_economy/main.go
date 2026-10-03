@@ -24,12 +24,18 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/titleseams"
 	authpkg "levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: diag_live_economy <gamertag>")
 		os.Exit(1)
@@ -51,11 +57,7 @@ func main() {
 
 	provider := authpkg.NewSISUProvider()
 	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := authpkg.LegacyAuthInputs{Source: "duckdb"}
-	legacy.MSALCache, _ = duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
-	legacy.OAuthRT, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
-
-	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag, legacy)
+	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag)
 	if rerr != nil {
 		fmt.Fprintf(os.Stderr, "AUTH FAIL: %v\n", rerr)
 		os.Exit(1)

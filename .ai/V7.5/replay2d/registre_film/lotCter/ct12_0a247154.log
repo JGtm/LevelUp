@@ -1,0 +1,256 @@
+=== RUN   TestCollineProprieteOracle
+2026/08/19 00:14:25 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=2988684478930051889 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    colline_propriete_oracle_test.go:86: carte 4a5e5612-2b2e-4375-a0b3-9335a68815f3 ABSENTE du catalogue de formes : aucune zone (appariement impossible)
+2026/08/19 00:18:05 INFO pont slot->joueur slots=159 viesNommees=158 viesTotal=169 lecturesIndex=40 desaccordsIndex=0 collisionsSlot=0
+2026/08/19 00:18:05 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/19 00:18:05 INFO rejeu : poses d'equipement balaye=false calibre=false decoupage="" poses=0 nommees=0 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=0
+2026/08/19 00:18:05 INFO rejeu : socles d'arme au sol balaye=false ancres=0 acceptees=0 retenues=0 ecartees=0 objetsDObjectif=0 lachees=0 apparues=0 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/19 00:18:05 WARN rejeu : etat des zones sans catalogue de carte — aucun intervalle publie match_id=0a247154 zones=0 frames=7838
+2026/08/19 00:18:05 INFO rejeu : etat des zones match_id=0a247154 methode=captures+geometry catalogue=0 slots=0 apparies=0 nonApparies=0 sansProprietaire=0 intervalles=0 periodesColline=0 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/19 00:18:05 INFO rejeu : episodes d'equipement actif viesPubliees=161 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/19 00:18:05 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
+2026/08/19 00:18:05 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
+    colline_propriete_oracle_test.go:88: FILM 0a247154 (KOTH, solitude) — 7742 lectures ti=13 sur 44 slots de bande comblee (20 en bande stricte) · 6709 records ancres, 3676 marches, 1096 chainees (29.8 %) · lectures chainees 3522 (45.5 %), en bande stricte 5090 dont 3470 chainees (68.2 %) · rejeu 7838 frames de 100 ms, origine 9204 ms · film 0 zones au catalogue
+    colline_propriete_oracle_test.go:89:   SCORE equipe (slot 8) : 3 points, final 2
+    colline_propriete_oracle_test.go:89:   SCORE equipe (slot 6) : 4 points, final 4
+    colline_propriete_oracle_test.go:98: 
+    colline_propriete_oracle_test.go:98: === ORACLE PRINCIPAL — 6 increments du score affiche (le dernier est TERMINAL)
+    colline_propriete_oracle_test.go:98:   increment equipe 8 -> 1 a  201041 ms (frame  1918)
+    colline_propriete_oracle_test.go:98:   increment equipe 8 -> 2 a  251758 ms (frame  2425)
+    colline_propriete_oracle_test.go:98:   increment equipe 6 -> 1 a  384609 ms (frame  3754)
+    colline_propriete_oracle_test.go:98:   increment equipe 6 -> 2 a  511338 ms (frame  5021)
+    colline_propriete_oracle_test.go:98:   increment equipe 6 -> 3 a  635180 ms (frame  6259)
+    colline_propriete_oracle_test.go:98:   increment equipe 6 -> 4 a  785502 ms (frame  7762)  <- TERMINAL (la capture qui clot le match)
+    colline_propriete_oracle_test.go:98:   NIVEAU DU HASARD d'une bascule : 1.5 % du match [9204 ; 793004] est a +/- 1000 ms d'un increment
+    colline_propriete_oracle_test.go:99: 
+    colline_propriete_oracle_test.go:99: === ORACLE SECONDAIRE — 0 periodes actives publiees aujourd'hui (positions), 0 rampes brutes de la jauge
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode A tag 2  lecture F (candidat) : SANS OBJET — aucune lecture chainee valuee sur ce film
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode A tag 1  lecture F (candidat) : 2 slot(s), candidat = slot 1555 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1555  :   1 bascules · premiere  374285 ms · [374.3] s
+    colline_propriete_oracle_test.go:101:     slot 1565  :   1 bascules · premiere  581361 ms · [581.4] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 49.5 % des 4188 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 374285 ms du debut du film, 365081 ms de l'origine du rejeu (frame 3650) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode A tag 1  lecture D (candidat) : 2 slot(s), candidat = slot 1555 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1555  :   1 bascules · premiere  374285 ms · [374.3] s
+    colline_propriete_oracle_test.go:101:     slot 1565  :   1 bascules · premiere  581361 ms · [581.4] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 49.5 % des 4188 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 374285 ms du debut du film, 365081 ms de l'origine du rejeu (frame 3650) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode A tag 6  lecture D (candidat) : 1 slot(s), candidat = slot 1596 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1596  :   1 bascules · premiere  279207 ms · [279.2] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 100.0 % des 5138 frames jugees (seuil 95 %) : TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = sans objet (un seul slot) · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 279207 ms du debut du film, 270003 ms de l'origine du rejeu (frame 2700) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a -1 ms, derniere absente 780152 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode A tag 5  lecture D (hors liste) : 4 slot(s), candidat = slot 1622 (5 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1622  :   5 bascules · premiere  201062 ms · [201.1 251.8 384.6 511.4 635.2] s
+    colline_propriete_oracle_test.go:101:     slot 1565  :   1 bascules · premiere  785524 ms · [785.5] s
+    colline_propriete_oracle_test.go:101:     slot 1566  :   1 bascules · premiere  785524 ms · [785.5] s
+    colline_propriete_oracle_test.go:101:     slot 1567  :   1 bascules · premiere  785524 ms · [785.5] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 98.7 % des 5920 frames jugees (seuil 95 %) : TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 5/6 = 83.3 % · HORS TERMINAL 5/5 = 100.0 % (seuil 90 %) : NON TENU / TENU · ecarts bascule-increment [21 21 20 21 20] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 16.7 % · HASARD : une bascule 1.5 %, N bascules 1.4 % (moitie du reel = 41.7 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 201062 ms du debut du film, 191858 ms de l'origine du rejeu (frame 1918) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 40001 ms, derniere absente 19996 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode A tag 4  lecture D (temoin) : 1 slot(s), candidat = slot 1623 (205 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1623  : 205 bascules · premiere   41918 ms · [41.9 42.3 48.2 52.2 52.9 53.2 56.6 59.9 61.7 70.1 73.8 75.2 ...] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 100.0 % des 7511 frames jugees (seuil 95 %) : TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 5/6 = 83.3 % · HORS TERMINAL 5/5 = 100.0 % (seuil 90 %) : NON TENU / TENU · ecarts bascule-increment [21 21 20 21 20] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 66.7 % · slots permutes = sans objet (un seul slot) · HASARD : une bascule 1.5 %, N bascules 40.0 % (moitie du reel = 41.7 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 41918 ms du debut du film, 32714 ms de l'origine du rejeu (frame 327) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 40001 ms, derniere absente 19996 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode A tag 3  lecture D (temoin) : 2 slot(s), candidat = slot 1557 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1557  :   1 bascules · premiere   44704 ms · [44.7] s
+    colline_propriete_oracle_test.go:101:     slot 1576  :   1 bascules · premiere  212640 ms · [212.6] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 22.5 % des 7483 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 44704 ms du debut du film, 35500 ms de l'origine du rejeu (frame 355) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 7  lecture D (candidat) : 6 slot(s), candidat = slot 1560 (398 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1560  : 398 bascules · premiere   49175 ms · [49.2 50.2 51.2 52.2 57.7 58.7 59.7 62.7 63.7 64.7 65.7 66.7 ...] s
+    colline_propriete_oracle_test.go:101:     slot 1562  : 397 bascules · premiere   49175 ms · [49.2 50.2 51.2 52.2 57.7 58.7 59.7 62.7 63.7 64.7 65.7 66.7 ...] s
+    colline_propriete_oracle_test.go:101:     slot 1555  :   1 bascules · premiere  207401 ms · [207.4] s
+    colline_propriete_oracle_test.go:101:     slot 1559  :   1 bascules · premiere   40750 ms · [40.8] s
+    colline_propriete_oracle_test.go:101:     slot 1564  :   1 bascules · premiere  363074 ms · [363.1] s
+    colline_propriete_oracle_test.go:101:     slot 1601  :   1 bascules · premiere   35328 ms · [35.3] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 0.7 % des 7577 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 4/6 = 66.7 % · HORS TERMINAL 3/5 = 60.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [-997 -998 -998 -997] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 66.7 % · slots permutes = 13.3 % · HASARD : une bascule 1.5 %, N bascules 61.9 % (moitie du reel = 33.3 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 49175 ms du debut du film, 39971 ms de l'origine du rejeu (frame 399) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 8  lecture D (candidat) : 9 slot(s), candidat = slot 1553 (7 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1553  :   7 bascules · premiere   57667 ms · [57.7 201.0 251.8 384.6 511.3 635.2 785.5] s
+    colline_propriete_oracle_test.go:101:     slot 1619  :   3 bascules · premiere   88614 ms · [88.6 593.9 716.2] s
+    colline_propriete_oracle_test.go:101:     slot 1554  :   1 bascules · premiere  485332 ms · [485.3] s
+    colline_propriete_oracle_test.go:101:     slot 1567  :   1 bascules · premiere  732449 ms · [732.4] s
+    colline_propriete_oracle_test.go:101:     slot 1574  :   1 bascules · premiere  733884 ms · [733.9] s
+    colline_propriete_oracle_test.go:101:     slot 1596  :   1 bascules · premiere  485949 ms · [485.9] s
+    colline_propriete_oracle_test.go:101:     slot 1615  :   1 bascules · premiere  343888 ms · [343.9] s
+    colline_propriete_oracle_test.go:101:     slot 1618  :   1 bascules · premiere  716166 ms · [716.2] s
+    colline_propriete_oracle_test.go:101:     slot 1621  :   1 bascules · premiere   97690 ms · [97.7] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 4.2 % des 7354 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 6/6 = 100.0 % · HORS TERMINAL 5/5 = 100.0 % (seuil 90 %) : TENU / TENU · ecarts bascule-increment [4 5 3 4 3 4] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 1.7 % (moitie du reel = 50.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 57667 ms du debut du film, 48463 ms de l'origine du rejeu (frame 484) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 9  lecture D (candidat) : 5 slot(s), candidat = slot 1558 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1558  :   1 bascules · premiere  783637 ms · [783.6] s
+    colline_propriete_oracle_test.go:101:     slot 1560  :   1 bascules · premiere  348159 ms · [348.2] s
+    colline_propriete_oracle_test.go:101:     slot 1561  :   1 bascules · premiere  231792 ms · [231.8] s
+    colline_propriete_oracle_test.go:101:     slot 1564  :   1 bascules · premiere  120763 ms · [120.8] s
+    colline_propriete_oracle_test.go:101:     slot 1590  :   1 bascules · premiere  560374 ms · [560.4] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 16.5 % des 6723 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 783637 ms du debut du film, 774433 ms de l'origine du rejeu (frame 7744) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 10 lecture F (candidat) : 1 slot(s), candidat = slot 1560 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1560  :   1 bascules · premiere  451030 ms · [451.0] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 100.0 % des 3420 frames jugees (seuil 95 %) : TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = sans objet (un seul slot) · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 451030 ms du debut du film, 441826 ms de l'origine du rejeu (frame 4418) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 10 lecture D (candidat) : 9 slot(s), candidat = slot 1553 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1553  :   1 bascules · premiere  440020 ms · [440.0] s
+    colline_propriete_oracle_test.go:101:     slot 1554  :   1 bascules · premiere  628943 ms · [628.9] s
+    colline_propriete_oracle_test.go:101:     slot 1559  :   1 bascules · premiere  556770 ms · [556.8] s
+    colline_propriete_oracle_test.go:101:     slot 1560  :   1 bascules · premiere  451030 ms · [451.0] s
+    colline_propriete_oracle_test.go:101:     slot 1573  :   1 bascules · premiere  186012 ms · [186.0] s
+    colline_propriete_oracle_test.go:101:     slot 1574  :   1 bascules · premiere  109736 ms · [109.7] s
+    colline_propriete_oracle_test.go:101:     slot 1592  :   1 bascules · premiere  119979 ms · [120.0] s
+    colline_propriete_oracle_test.go:101:     slot 1595  :   1 bascules · premiere  518298 ms · [518.3] s
+    colline_propriete_oracle_test.go:101:     slot 1612  :   1 bascules · premiere  177471 ms · [177.5] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 1.5 % des 6833 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 440020 ms du debut du film, 430816 ms de l'origine du rejeu (frame 4308) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 11 lecture F (candidat) : 2 slot(s), candidat = slot 1555 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1555  :   1 bascules · premiere  405951 ms · [406.0] s
+    colline_propriete_oracle_test.go:101:     slot 1563  :   1 bascules · premiere  346941 ms · [346.9] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 13.2 % des 4461 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 405951 ms du debut du film, 396747 ms de l'origine du rejeu (frame 3967) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 11 lecture D (candidat) : 3 slot(s), candidat = slot 1555 (2 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1555  :   2 bascules · premiere  405951 ms · [406.0 618.3] s
+    colline_propriete_oracle_test.go:101:     slot 1563  :   2 bascules · premiere  346941 ms · [346.9 618.3] s
+    colline_propriete_oracle_test.go:101:     slot 1574  :   1 bascules · premiere  733884 ms · [733.9] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 13.2 % des 4461 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.5 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 405951 ms du debut du film, 396747 ms de l'origine du rejeu (frame 3967) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 12 lecture F (candidat) : 2 slot(s), candidat = slot 1555 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1555  :   1 bascules · premiere  618332 ms · [618.3] s
+    colline_propriete_oracle_test.go:101:     slot 1563  :   1 bascules · premiere  618315 ms · [618.3] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 0.0 % des 1747 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 618332 ms du debut du film, 609128 ms de l'origine du rejeu (frame 6091) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 12 lecture D (candidat) : 2 slot(s), candidat = slot 1555 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1555  :   1 bascules · premiere  618332 ms · [618.3] s
+    colline_propriete_oracle_test.go:101:     slot 1563  :   1 bascules · premiere  618315 ms · [618.3] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 0.0 % des 1747 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 618332 ms du debut du film, 609128 ms de l'origine du rejeu (frame 6091) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 13 lecture F (candidat) : 5 slot(s), candidat = slot 1593 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1593  :   1 bascules · premiere   59319 ms · [59.3] s
+    colline_propriete_oracle_test.go:101:     slot 1615  :   1 bascules · premiere  371266 ms · [371.3] s
+    colline_propriete_oracle_test.go:101:     slot 1616  :   1 bascules · premiere  128454 ms · [128.5] s
+    colline_propriete_oracle_test.go:101:     slot 1619  :   1 bascules · premiere  371249 ms · [371.2] s
+    colline_propriete_oracle_test.go:101:     slot 1623  :   1 bascules · premiere  371232 ms · [371.2] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 9.4 % des 7337 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 59319 ms du debut du film, 50115 ms de l'origine du rejeu (frame 501) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a -1 ms, derniere absente 780152 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 13 lecture D (candidat) : 7 slot(s), candidat = slot 1619 (2 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1619  :   2 bascules · premiere  371249 ms · [371.2 684.4] s
+    colline_propriete_oracle_test.go:101:     slot 1573  :   1 bascules · premiere  186012 ms · [186.0] s
+    colline_propriete_oracle_test.go:101:     slot 1593  :   1 bascules · premiere   59319 ms · [59.3] s
+    colline_propriete_oracle_test.go:101:     slot 1615  :   1 bascules · premiere  371266 ms · [371.3] s
+    colline_propriete_oracle_test.go:101:     slot 1616  :   1 bascules · premiere  128454 ms · [128.5] s
+    colline_propriete_oracle_test.go:101:     slot 1623  :   1 bascules · premiere  371232 ms · [371.2] s
+    colline_propriete_oracle_test.go:101:     slot 1625  :   1 bascules · premiere  371216 ms · [371.2] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 9.4 % des 7337 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.5 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 371249 ms du debut du film, 362045 ms de l'origine du rejeu (frame 3620) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a -1 ms, derniere absente 780152 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 14 lecture F (candidat) : 3 slot(s), candidat = slot 1554 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1554  :   1 bascules · premiere  628943 ms · [628.9] s
+    colline_propriete_oracle_test.go:101:     slot 1619  :   1 bascules · premiere  593858 ms · [593.9] s
+    colline_propriete_oracle_test.go:101:     slot 1624  :   1 bascules · premiere  140416 ms · [140.4] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 69.5 % des 6526 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 628943 ms du debut du film, 619739 ms de l'origine du rejeu (frame 6197) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 14 lecture D (candidat) : 3 slot(s), candidat = slot 1554 (1 bascules)
+    colline_propriete_oracle_test.go:101:     slot 1554  :   1 bascules · premiere  628943 ms · [628.9] s
+    colline_propriete_oracle_test.go:101:     slot 1619  :   1 bascules · premiere  593858 ms · [593.9] s
+    colline_propriete_oracle_test.go:101:     slot 1624  :   1 bascules · premiere  140416 ms · [140.4] s
+    colline_propriete_oracle_test.go:101:   (i)   EXCLUSIVITE : exactement un slot porteur sur 69.5 % des 6526 frames jugees (seuil 95 %) : NON TENU
+    colline_propriete_oracle_test.go:101:   (ii)  SYNCHRONIE : increments a +/- 1000 ms d'une bascule : TOUS 0/6 = 0.0 % · HORS TERMINAL 0/5 = 0.0 % (seuil 90 %) : NON TENU / NON TENU · ecarts bascule-increment [] ms
+    colline_propriete_oracle_test.go:101:   (iii) TEMOINS : decale +20 s = 0.0 % · slots permutes = 0.0 % · HASARD : une bascule 1.5 %, N bascules 0.2 % (moitie du reel = 0.0 %)
+    colline_propriete_oracle_test.go:101:   DELAI : premiere bascule a 628943 ms du debut du film, 619739 ms de l'origine du rejeu (frame 6197) ; 6 increments · CREATION du slot candidat : presente des l'image-cle a 19996 ms, derniere absente 0 ms (40 images-cles) · PREMIER CONTACT (jauge/proprietaire) a 41918 ms du film, 32714 ms de l'origine du rejeu
+    colline_propriete_oracle_test.go:101:   SECOND ORACLE : 0 periodes actives publiees aujourd'hui, dont 0 debutent a +/- 1 s d'une bascule et 0 a +/- 5 s
+    colline_propriete_oracle_test.go:101:   VERDICT : NON TENU [hors terminal : NON TENU]
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 15 lecture F (candidat) : SANS OBJET — aucune lecture chainee valuee sur ce film
+    colline_propriete_oracle_test.go:101: 
+    colline_propriete_oracle_test.go:101: === mode B tag 15 lecture D (candidat) : SANS OBJET — aucune lecture chainee valuee sur ce film
+--- PASS: TestCollineProprieteOracle (617.11s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	626.326s

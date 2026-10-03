@@ -110,7 +110,7 @@ func (h *CareerHandler) handleGetCareer(ctx context.Context, in *careerPlayerInp
 	}
 	resp, err := svc.GetCareerPage(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "career_error", err.Error())
+		return nil, mapServiceError(ctx, err, "career_error")
 	}
 	return &careerPageOutput{Body: resp}, nil
 }
@@ -123,7 +123,7 @@ func (h *CareerHandler) handleGetTopMatches(ctx context.Context, in *careerPlaye
 	}
 	resp, err := svc.GetTopMatches(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "top_matches_error", err.Error())
+		return nil, mapServiceError(ctx, err, "top_matches_error")
 	}
 	return &careerTopMatchesOutput{Body: resp}, nil
 }
@@ -136,7 +136,7 @@ func (h *CareerHandler) handleGetEncounters(ctx context.Context, in *careerPlaye
 	}
 	resp, err := svc.GetEncounters(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "encounters_error", err.Error())
+		return nil, mapServiceError(ctx, err, "encounters_error")
 	}
 	return &careerEncountersOutput{Body: resp}, nil
 }
@@ -168,7 +168,7 @@ func (h *CareerHandler) handleGetHighlightMatches(ctx context.Context, in *caree
 	input := parseHighlightFilterInput(in.highlightQuery())
 	data, err := svc.GetHighlightMatchIDs(ctx, input)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "highlight_matches_error", err.Error())
+		return nil, mapServiceError(ctx, err, "highlight_matches_error")
 	}
 
 	var bestRows, worstRows []domain.HighlightMatchIDRow
@@ -181,13 +181,16 @@ func (h *CareerHandler) handleGetHighlightMatches(ctx context.Context, in *caree
 		}
 	}
 
-	bestMatches, err := enrichHighlightMatches(ctx, mhSvc, bestRows)
+	bestMatches, worstMatches, err := enrichHighlightSections(ctx, mhSvc, bestRows, worstRows)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "highlight_best_enrich_error", err.Error())
-	}
-	worstMatches, err := enrichHighlightMatches(ctx, mhSvc, worstRows)
-	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "highlight_worst_enrich_error", err.Error())
+		// Même code qu'avant la requête unique : l'échec était celui de la première
+		// section non vide. Erreur routée par mapServiceError (lot L3 : 499 client
+		// parti, 503 base occupée, sinon 500 avec ce code).
+		code := "highlight_best_enrich_error"
+		if len(bestRows) == 0 {
+			code = "highlight_worst_enrich_error"
+		}
+		return nil, mapServiceError(ctx, err, code)
 	}
 
 	return &careerHighlightOutput{Body: domain.CareerHighlightMatchesResponse{
@@ -250,7 +253,7 @@ func (h *CareerHandler) handleGetTopEncountersRich(ctx context.Context, in *care
 	}
 	resp, err := svc.GetTopEncounters(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "top_encounters_error", err.Error())
+		return nil, mapServiceError(ctx, err, "top_encounters_error")
 	}
 	return &careerTopEncountersOutput{Body: resp}, nil
 }
@@ -266,7 +269,7 @@ func (h *CareerHandler) handleGetRivals(ctx context.Context, in *careerPlayerInp
 	}
 	resp, err := svc.GetRivals(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "rivals_error", err.Error())
+		return nil, mapServiceError(ctx, err, "rivals_error")
 	}
 	return &careerRivalsOutput{Body: resp}, nil
 }
@@ -282,7 +285,7 @@ func (h *CareerHandler) handleGetCareerCSRs(ctx context.Context, in *careerCSRsI
 	season := strings.TrimSpace(in.Season)
 	resp, err := svc.GetCareerCSRs(ctx, season)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "csrs_error", err.Error())
+		return nil, mapServiceError(ctx, err, "csrs_error")
 	}
 	return &careerCSRsOutput{Body: resp}, nil
 }
@@ -297,18 +300,20 @@ func (h *CareerHandler) resolve(ctx context.Context, slug string) (port.CareerSe
 	return svc, nil
 }
 
-// enrichHighlightMatches enrichit une liste de rows highlight via
-// MatchHistoryService.GetPage(MatchIDs=...) puis projette en ExplorerMatchesRow.
-// Préserve l'ordre d'entrée (Q9b trie par dominance prio + perf, ordre que le
-// MatchHistoryService.sortItems casserait sinon) et propage HadBotTeammate
-// depuis la row source (le service de match history ne lit pas ce flag).
-func enrichHighlightMatches(ctx context.Context, mhSvc port.MatchHistoryService, rows []domain.HighlightMatchIDRow) ([]domain.ExplorerMatchesRow, error) {
-	if len(rows) == 0 {
-		return []domain.ExplorerMatchesRow{}, nil
-	}
-	matchIDs := make([]string, len(rows))
-	for i, r := range rows {
-		matchIDs[i] = r.MatchID
+// enrichHighlightSections enrichit les deux sections (meilleurs, pires matchs) en
+// UNE requête MatchHistoryService.GetPage sur l'union de leurs identifiants, puis
+// projette chaque section en ExplorerMatchesRow (plan perf 2026-09-23, D5b.6 :
+// une requête par section chargeait deux fois tout l'historique). L'enrichissement
+// d'une ligne ne dépend que d'elle et de l'historique complet (taux de victoire par
+// carte, placements) : l'union rend les mêmes lignes que deux requêtes séparées.
+func enrichHighlightSections(
+	ctx context.Context,
+	mhSvc port.MatchHistoryService,
+	best, worst []domain.HighlightMatchIDRow,
+) (bestOut, worstOut []domain.ExplorerMatchesRow, err error) {
+	matchIDs := highlightMatchIDs(best, worst)
+	if len(matchIDs) == 0 {
+		return []domain.ExplorerMatchesRow{}, []domain.ExplorerMatchesRow{}, nil
 	}
 	req := domain.MatchHistoryQueryRequest{
 		MatchIDs: matchIDs,
@@ -319,14 +324,37 @@ func enrichHighlightMatches(ctx context.Context, mhSvc port.MatchHistoryService,
 	}
 	resp, err := mhSvc.GetPage(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	// Index par match_id pour réordonner selon la liste d'entrée (préserve
-	// le tri Q9b dominance+perf que sortItems aurait écrasé).
 	byID := make(map[string]domain.MatchHistoryRow, len(resp.Table.Items))
 	for _, item := range resp.Table.Items {
 		byID[item.MatchID] = item
 	}
+	return projectHighlightRows(best, byID), projectHighlightRows(worst, byID), nil
+}
+
+// highlightMatchIDs rend l'union ordonnée (sans doublon) des identifiants des deux
+// sections : un match peut figurer dans les deux quand l'historique est court.
+func highlightMatchIDs(sections ...[]domain.HighlightMatchIDRow) []string {
+	seen := make(map[string]struct{})
+	var ids []string
+	for _, rows := range sections {
+		for _, r := range rows {
+			if _, dup := seen[r.MatchID]; dup {
+				continue
+			}
+			seen[r.MatchID] = struct{}{}
+			ids = append(ids, r.MatchID)
+		}
+	}
+	return ids
+}
+
+// projectHighlightRows projette une section en ExplorerMatchesRow. Préserve l'ordre
+// d'entrée (Q9b trie par dominance prio + perf, ordre que MatchHistoryService.sortItems
+// casserait sinon) et propage HadBotTeammate depuis la row source (le service de
+// match history ne lit pas ce flag).
+func projectHighlightRows(rows []domain.HighlightMatchIDRow, byID map[string]domain.MatchHistoryRow) []domain.ExplorerMatchesRow {
 	out := make([]domain.ExplorerMatchesRow, 0, len(rows))
 	for _, src := range rows {
 		item, ok := byID[src.MatchID]
@@ -337,5 +365,5 @@ func enrichHighlightMatches(ctx context.Context, mhSvc port.MatchHistoryService,
 		row.HadBotTeammate = src.HadBotTeammate
 		out = append(out, row)
 	}
-	return out, nil
+	return out
 }

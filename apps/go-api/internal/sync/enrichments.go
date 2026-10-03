@@ -189,7 +189,7 @@ func scanMatchIDs(rows *sql.Rows) ([]string, error) {
 }
 
 // setHadBotFlag INSÈRE had_bot_teammate (stage='bot', valeur explicite) pour les
-// matchs dont la valeur mergée courante diffère. Append-only #23046 — bidirectionnel
+// matchs dont la valeur mergée courante diffère. Append-only #23645 — bidirectionnel
 // (appelé avec value=false pour effacer), jamais NULL.
 func setHadBotFlag(ctx context.Context, playerDB *sql.DB, matchIDs []string, value bool) (int, error) {
 	return insertEnrichmentBoolFlagDelta(ctx, playerDB, matchIDs, "had_bot_teammate", "bot", value)
@@ -197,7 +197,7 @@ func setHadBotFlag(ctx context.Context, playerDB *sql.DB, matchIDs []string, val
 
 // insertEnrichmentBoolFlagDelta INSÈRE une row partielle (colonne booléenne `col`,
 // `stage`) avec la valeur EXPLICITE `value` pour chaque match dont la valeur mergée
-// courante (vue player_match_enrichment_latest) DIFFÈRE — append-only #23046,
+// courante (vue player_match_enrichment_latest) DIFFÈRE — append-only #23645,
 // idempotence + croissance bornée. Les matchs sans aucune row PME sont ignorés
 // (parité avec l'ancien UPDATE no-op-on-absent). Retourne le nombre de rows insérées.
 func insertEnrichmentBoolFlagDelta(ctx context.Context, playerDB *sql.DB, matchIDs []string, col, stage string, value bool) (int, error) {

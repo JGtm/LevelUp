@@ -3,7 +3,7 @@
  *
  * Sources possibles (cf. canonical/narrative côté Go) :
  *
- *   - DominanceBadge   : flag dominance (1..5) + LabelKey + ColorToken
+ *   - DominanceBadge   : flag dominance (1..7) + LabelKey + ColorToken
  *   - EncounterBadge   : kind (ally_plus / tough_enemy / ordinal) + détail
  *   - ImpactRole       : 8 rôles d'impact (silent_hero, top_killer, etc.)
  *

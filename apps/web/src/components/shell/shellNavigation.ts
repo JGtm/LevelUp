@@ -35,6 +35,30 @@ export function isCommunityPath(pathname: string): boolean {
   return community || legacy
 }
 
+// Routes _personal : PersonalStatsLayout gère sa propre barre de filtres. Matchers
+// sur le SUFFIXE relatif au joueur (playerRelativePath) — aucun littéral `/players/`.
+const PERSONAL_STATS_RE = /^\/stats\/(summary|maps-modes|distributions|progression|advanced)/
+// Synthèse : sa propre barre (PeriodePill/SaisonPill), pas la barre solo.
+const SYNTHESIS_RE = /^\/stats\/synthesis/
+const STATS_RE = /^\/stats\//
+
+/**
+ * La page courante montre-t-elle la barre de filtres SOLO (FilterOmnibar + rail du
+ * store solo) ? Pages Stats uniquement, hors stats personnelles et Synthèse, qui
+ * ont chacune leur propre barre.
+ *
+ * Source UNIQUE (lot perf L4a, D4.4, 2026-09-23) : NavL2 s'en sert pour rendre la
+ * barre, PlayerLayout pour n'activer QUE là la résolution des filtres solo et le
+ * suivi de la dernière session solo — ailleurs (Escouade, Carrière, Accueil…)
+ * personne ne lit ce résolu, et il coûtait un POST /filters/resolve par page.
+ */
+export function routeShowsSoloFilters(pathname: string): boolean {
+  const suffix = playerRelativePath(pathname)
+  if (suffix === null) return false
+  if (PERSONAL_STATS_RE.test(suffix) || SYNTHESIS_RE.test(suffix)) return false
+  return STATS_RE.test(suffix)
+}
+
 /**
  * Verdict de routage de la route index ('/'). Fonction pure (logique hors
  * composant, règle 7) : IndexPage se contente de projeter le résultat.
@@ -116,4 +140,22 @@ export function resolvePlayerFallback(
   if (availablePlayers.length === 0) return { kind: 'index' }
   if (availablePlayers.some((p) => p.player_slug === playerSlug)) return { kind: 'ok' }
   return { kind: 'redirect', slug: availablePlayers[0].player_slug }
+}
+
+/**
+ * Chemins consultables SANS compte, en dehors des écrans d'authentification
+ * eux-mêmes (/login, /register, traités séparément dans `routes/__root.tsx`).
+ *
+ * Aujourd'hui : la politique de confidentialité. Un visiteur de la démo publique
+ * doit pouvoir lire ce qui est fait de ses données AVANT de décider de connecter
+ * son compte Microsoft — l'éjecter vers /login rendrait le lien du pied de page
+ * inutilisable et la page inatteignable.
+ *
+ * Le préfixe est comparé avec sa frontière de segment : `/privacy-autre` n'est
+ * PAS anonyme.
+ */
+const ANONYMOUS_PATHS: readonly string[] = ['/privacy']
+
+export function isAnonymousPath(pathname: string): boolean {
+  return ANONYMOUS_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 }

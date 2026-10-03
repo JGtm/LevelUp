@@ -23,7 +23,7 @@ func TestLoadKnownMatchIDs_EmptyTable(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Append-only #23046 : loadKnownMatchIDs lit la vue player_match_enrichment_latest.
+	// Append-only #23645 : loadKnownMatchIDs lit la vue player_match_enrichment_latest.
 	// La vue référence TOUTES les colonnes métier de la table → schéma complet
 	// (EnsurePlayerSchema) requis avant la création de la vue (un CREATE TABLE
 	// minimal manuel casse le binder de la vue).
@@ -50,7 +50,7 @@ func TestLoadKnownMatchIDs_WithMatches(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Append-only #23046 : schéma complet requis avant la vue _latest (lue par
+	// Append-only #23645 : schéma complet requis avant la vue _latest (lue par
 	// loadKnownMatchIDs) — un CREATE TABLE minimal casse le binder de la vue.
 	if err := EnsurePlayerSchema(t.Context(), db); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
@@ -108,7 +108,7 @@ func TestLoadKnownMatchIDs_UnionWithSharedParticipants(t *testing.T) {
 	defer sharedDB.Close()
 
 	// Player DB : 1 enrichment row (match "self-1") déjà connu localement.
-	// Append-only #23046 : schéma complet + vue _latest (lue par loadKnownMatchIDs).
+	// Append-only #23645 : schéma complet + vue _latest (lue par loadKnownMatchIDs).
 	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	defer playerDB.Close()
-	// Append-only #23046 : schéma complet + vue _latest (lue par loadKnownMatchIDs).
+	// Append-only #23645 : schéma complet + vue _latest (lue par loadKnownMatchIDs).
 	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
 	}

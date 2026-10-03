@@ -1,0 +1,514 @@
+film	build	table	cle	n
+0797ce72	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	3
+0797ce72	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	1
+0797ce72	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	2021
+0797ce72	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	277
+0797ce72	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	82
+0797ce72	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	28
+0797ce72	HI_1_13_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	2
+0797ce72	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	4
+0797ce72	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	1
+0797ce72	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	2
+0797ce72	HI_1_13_0	debut_anterieur_apres_rejet	sain · aucun debut anterieur qui ferme	2
+0797ce72	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	4
+0797ce72	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	8
+0797ce72	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+0797ce72	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	3
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	1
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	2171
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	15
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	22
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	127
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	6
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 1	3
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	50
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	3
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	8
+0797ce72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	3
+084a804d	HI_1_10_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	24
+084a804d	HI_1_10_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	7
+084a804d	HI_1_10_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 3-8	2
+084a804d	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	448
+084a804d	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	65
+084a804d	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	27
+084a804d	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	63
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	10
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	4
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 1	3
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	113
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 2	1
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	16
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	11
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	3
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 3-8	1
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	4
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	5
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	3
+084a804d	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	1
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	15
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	2
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	1
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	14
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	1
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	510
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	6
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	7
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	66
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 2	1
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	8
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	3
+084a804d	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	1
+111fa685	HI_1_10_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	4
+111fa685	HI_1_10_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	1
+111fa685	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	296
+111fa685	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	4
+111fa685	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	36
+111fa685	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	160
+111fa685	HI_1_10_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	2
+111fa685	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	47
+111fa685	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 2	1
+111fa685	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	3
+111fa685	HI_1_10_0	debut_anterieur_apres_rejet	sain · aucun debut anterieur qui ferme	1
+111fa685	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	4
+111fa685	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	1
+111fa685	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	1
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	1
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	3
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	416
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	2
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	4
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	56
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 2	13
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	3
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+111fa685	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+11de8353	HI_1_9_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	6
+11de8353	HI_1_9_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	3
+11de8353	HI_1_9_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 3-8	1
+11de8353	HI_1_9_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	420
+11de8353	HI_1_9_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	33
+11de8353	HI_1_9_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	126
+11de8353	HI_1_9_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	122
+11de8353	HI_1_9_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	1
+11de8353	HI_1_9_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+11de8353	HI_1_9_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	42
+11de8353	HI_1_9_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	5
+11de8353	HI_1_9_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+11de8353	HI_1_9_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	1
+11de8353	HI_1_9_0	debut_anterieur_apres_rejet	sain · aucun debut anterieur qui ferme	1
+11de8353	HI_1_9_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	1
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	4
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	1
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	5
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	646
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	5
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	8
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	34
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	6
+11de8353	HI_1_9_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	1
+1c4c63c2	HI_1_10_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	299
+1c4c63c2	HI_1_10_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	52
+1c4c63c2	HI_1_10_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 2	10
+1c4c63c2	HI_1_10_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 3-8	24
+1c4c63c2	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	1100
+1c4c63c2	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	135
+1c4c63c2	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	109
+1c4c63c2	HI_1_10_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	257
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	97
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	17
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 1	151
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 2	2
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 3-8	3
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : <0	4
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	2194
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	7
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 1	6
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 2	3
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 3-8	4
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	102
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	113
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	2
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 1	2
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 2	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 3-8	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	22
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	9
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 3-8	9
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	sain · aucun debut anterieur qui ferme	11
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 1	46
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	676
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	16
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	17
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 3-8	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	127
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	12
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	8
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 1	3
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	220
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	8
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	2
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 3-8	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	1351
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	9
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	68
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	127
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 2	9
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	3
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 0	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	24
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	2
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	4
+1c4c63c2	HI_1_10_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 3-8	1
+396cfc92	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	2708
+396cfc92	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	3
+396cfc92	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	85
+396cfc92	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	32
+396cfc92	HI_1_13_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	1
+396cfc92	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	1
+396cfc92	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	1
+396cfc92	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	2437
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	20
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	26
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	308
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	3
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	4
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	19
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : <0	3
+396cfc92	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	6
+4f77afc1	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	83
+4f77afc1	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	12
+4f77afc1	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 2	2
+4f77afc1	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 3-8	2
+4f77afc1	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	2231
+4f77afc1	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	197
+4f77afc1	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	147
+4f77afc1	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	137
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	11
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	183
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 3-8	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	18
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	22
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 1	3
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	sain · aucun debut anterieur qui ferme	4
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	135
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	3
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	10
+4f77afc1	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	61
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	6
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	30
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	2472
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	19
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	35
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	120
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 2	13
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	6
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 0	2
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	24
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	2
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	6
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	8
+4f77afc1	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	1
+50247b26	version-31	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	1
+50247b26	version-31	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	1
+50247b26	version-31	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	13
+50247b26	version-31	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	9
+50247b26	version-31	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	4
+50247b26	version-31	debut_anterieur_apres_rejet	sain · aucun debut anterieur qui ferme	4
+50247b26	version-31	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	1
+50247b26	version-31	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	16
+50247b26	version-31	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	1
+50247b26	version-31	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	6
+51ebbc0f	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	4
+51ebbc0f	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 3-8	2
+51ebbc0f	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	894
+51ebbc0f	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	126
+51ebbc0f	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	48
+51ebbc0f	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	126
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	5
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	15
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 3-8	1
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	4
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	2
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	1066
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	3
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	22
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	74
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 2	1
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	2
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	17
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	2
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	5
+51ebbc0f	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	1
+60ae07c4	HI_1_8_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	8
+60ae07c4	HI_1_8_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	1
+60ae07c4	HI_1_8_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 2	1
+60ae07c4	HI_1_8_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	1533
+60ae07c4	HI_1_8_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	66
+60ae07c4	HI_1_8_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	31
+60ae07c4	HI_1_8_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	69
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	7
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	11
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	42
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	9
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	1
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	sain · aucun debut anterieur qui ferme	2
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	20
+60ae07c4	HI_1_8_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	3
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	3
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 2	1
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	1
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	5
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	1510
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	17
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	27
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	75
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 2	4
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	3
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	2
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 0	2
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	50
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	2
+60ae07c4	HI_1_8_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	6
+a349fea8	version-33	auto_sync_apres_terminateur	contredit · decalages qui ferment : 3-8	1
+a349fea8	version-33	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	3
+a349fea8	version-33	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	4
+a349fea8	version-33	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	29
+a349fea8	version-33	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	15
+a349fea8	version-33	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	13
+a349fea8	version-33	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	3
+a349fea8	version-33	debut_anterieur_apres_rejet	sain · aucun debut anterieur qui ferme	6
+a349fea8	version-33	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	1
+a349fea8	version-33	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	1
+a349fea8	version-33	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	39
+a349fea8	version-33	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	7
+a349fea8	version-33	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	4
+a349fea8	version-33	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	1
+a521164d	HI_1_4_1	auto_sync_apres_terminateur	contredit · decalages qui ferment : 2	1
+a521164d	HI_1_4_1	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	44
+a521164d	HI_1_4_1	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	44
+a521164d	HI_1_4_1	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	6
+a521164d	HI_1_4_1	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+a521164d	HI_1_4_1	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	1
+a521164d	HI_1_4_1	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	70
+a521164d	HI_1_4_1	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	18
+bcb6d393	HI_1_12_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	585
+bcb6d393	HI_1_12_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	37
+bcb6d393	HI_1_12_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	24
+bcb6d393	HI_1_12_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	77
+bcb6d393	HI_1_12_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+bcb6d393	HI_1_12_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	1
+bcb6d393	HI_1_12_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	668
+bcb6d393	HI_1_12_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	3
+bcb6d393	HI_1_12_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	5
+bcb6d393	HI_1_12_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	34
+bcb6d393	HI_1_12_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+bcb6d393	HI_1_12_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+bcb6d393	HI_1_12_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	10
+bcb6d393	HI_1_12_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	1
+bf15f7ab	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	1
+bf15f7ab	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	3219
+bf15f7ab	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	82
+bf15f7ab	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	93
+bf15f7ab	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	164
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	2
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	1
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	3196
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	40
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	32
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	175
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 2	8
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	25
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	2
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	63
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	2
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	4
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 2	1
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 0	2
+bf15f7ab	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	7
+bfecd02b	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	2
+bfecd02b	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	1
+bfecd02b	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 3-8	1
+bfecd02b	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	3090
+bfecd02b	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	16
+bfecd02b	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	128
+bfecd02b	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	79
+bfecd02b	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	5
+bfecd02b	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	1
+bfecd02b	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	1
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	3
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	2987
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	20
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	58
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	146
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	7
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	4
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 0	1
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	63
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	4
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	5
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	11
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	4
+bfecd02b	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 3-8	1
+c75f33b8	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	6
+c75f33b8	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	3
+c75f33b8	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	2059
+c75f33b8	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	305
+c75f33b8	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	302
+c75f33b8	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	195
+c75f33b8	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	2
+c75f33b8	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	16
+c75f33b8	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	3
+c75f33b8	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+c75f33b8	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	1
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	6
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	1
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	2
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	2545
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	13
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	40
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	164
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 2	6
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	8
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	2
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 0	2
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	70
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	5
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+c75f33b8	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	5
+d9781168	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	16
+d9781168	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 1	3
+d9781168	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 2	3
+d9781168	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 3-8	2
+d9781168	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	3011
+d9781168	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	75
+d9781168	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	50
+d9781168	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	135
+d9781168	HI_1_13_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	3
+d9781168	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	3
+d9781168	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+d9781168	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	69
+d9781168	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	11
+d9781168	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	4
+d9781168	HI_1_13_0	debut_anterieur_apres_rejet	sain · aucun debut anterieur qui ferme	1
+d9781168	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+d9781168	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	2
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	10
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	3
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	1
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	8
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	2884
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	36
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	32
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	196
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 2	7
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	8
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	7
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 0	1
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	88
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	6
+d9781168	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	6
+e5adf7b2	HI_1_11_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	13
+e5adf7b2	HI_1_11_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 3-8	2
+e5adf7b2	HI_1_11_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	416
+e5adf7b2	HI_1_11_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	28
+e5adf7b2	HI_1_11_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	31
+e5adf7b2	HI_1_11_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	44
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_rejet	contredit · aucun debut anterieur qui ferme	2
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 1	1
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : <0	1
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	48
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	6
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	2
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	1
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	7
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	1
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	6
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	434
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	12
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	14
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	47
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	10
+e5adf7b2	HI_1_11_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+f75e7053	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	2468
+f75e7053	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	281
+f75e7053	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	93
+f75e7053	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	92
+f75e7053	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	2
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	2686
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	29
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	27
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	122
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	7
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	4
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 0	1
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	49
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	1
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 3-8	1
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	6
+f75e7053	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	1
+fb1a1a72	HI_1_13_0	auto_sync_apres_terminateur	contredit · decalages qui ferment : 0	2
+fb1a1a72	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 0	2525
+fb1a1a72	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 1	55
+fb1a1a72	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 2	78
+fb1a1a72	HI_1_13_0	auto_sync_apres_terminateur	sain · decalages qui ferment : 3-8	129
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	1
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	7
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	1
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_rejet	contredit · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 2	2
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	2
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_rejet	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	1
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	contredit · aucun debut anterieur qui ferme	2
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · aucun debut anterieur qui ferme	2499
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche PAS en suffixe · entrees en plus : 0	15
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 0	57
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 0-15 · entrees de la marche en suffixe · entrees en plus : 1	141
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : 0	7
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche PAS en suffixe · entrees en plus : <0	4
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 16-63 · entrees de la marche en suffixe · entrees en plus : 1	40
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche PAS en suffixe · entrees en plus : <0	2
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 1	21
+fb1a1a72	HI_1_13_0	debut_anterieur_apres_terminateur	sain · debut anterieur qui ferme · decalage 64-255 · entrees de la marche en suffixe · entrees en plus : 2	1

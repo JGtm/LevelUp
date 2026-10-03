@@ -26,16 +26,6 @@ import (
 	"levelup/go-api/internal/service/fragdist"
 )
 
-// explorerKillMechanicsLoader est la capability OPTIONNELLE (type-assertion, même
-// pattern que lobbySizeProvider/objectiveScoreProvider côté session page) permettant de
-// charger les mécaniques de kill NATIVES Halo 5 (assassinats + capacités spartanes)
-// agrégées par xuid. Le repo weapon_kills DuckDB concret (duckdb.WeaponKillsRepo)
-// l'implémente ; un loader qui ne l'implémente pas dégrade proprement (Mêlée non
-// splittée, pas de classe « Capacités spartanes »).
-type explorerKillMechanicsLoader interface {
-	LoadKillMechanicsAggregated(ctx context.Context, filters port.WeaponKillFilters) ([]port.KillMechanicsRow, error)
-}
-
 // targetFragDistribution construit la « Répartition des frags » v2 (sunburst classe→rôle)
 // + le top armes enrichi de la cible sur les matchs communs. Best-effort : nil/nil si pas
 // de repo weapon_kills, pas de kills, ou aucune arme résolue (cible sans données d'arme —
@@ -66,7 +56,7 @@ func (s *ExplorerService) targetFragDistribution(
 		Total:   sample.Kills,
 	}
 	if hasMechanics {
-		if m := s.loadTargetKillMechanics(ctx, targetXUID, matchIDs); m != nil {
+		if m := loadKillMechanicsForXUID(ctx, s.weaponKillsRepo, targetXUID, matchIDs); m != nil {
 			counts.Assassination = m.Assassinations
 			counts.GroundPound = m.GroundPound
 			counts.ShoulderBash = m.ShoulderBash
@@ -102,37 +92,4 @@ func (s *ExplorerService) loadTargetWeaponKillRows(
 		return nil
 	}
 	return rows
-}
-
-// loadTargetKillMechanics charge les mécaniques de kill NATIVES Halo 5 (assassinats +
-// capacités spartanes) de la cible agrégées sur les matchs communs, via la capability
-// OPTIONNELLE explorerKillMechanicsLoader (type-assertion sur le repo weapon_kills).
-// nil best-effort si le repo ne fournit pas la capability, si le scope est vide, ou en
-// cas d'erreur/aucune donnée (loggée Debug, jamais avalée — parité loadSquadMechanicsByGT).
-func (s *ExplorerService) loadTargetKillMechanics(
-	ctx context.Context, targetXUID string, matchIDs []string,
-) *port.KillMechanicsRow {
-	loader, ok := s.weaponKillsRepo.(explorerKillMechanicsLoader)
-	if !ok || targetXUID == "" || len(matchIDs) == 0 {
-		return nil
-	}
-	rows, err := loader.LoadKillMechanicsAggregated(ctx, port.WeaponKillFilters{
-		MatchIDs: matchIDs, XUIDs: []string{targetXUID},
-	})
-	if err != nil {
-		slog.DebugContext(ctx, "explorer target: kill mechanics skipped (best-effort)",
-			"xuid", targetXUID, "err", err)
-		return nil
-	}
-	if len(rows) == 0 {
-		return nil
-	}
-	// Au plus une ligne par xuid ; on somme par sûreté (parité loadSquadMechanicsByGT).
-	agg := port.KillMechanicsRow{XUID: targetXUID}
-	for _, r := range rows {
-		agg.Assassinations += r.Assassinations
-		agg.GroundPound += r.GroundPound
-		agg.ShoulderBash += r.ShoulderBash
-	}
-	return &agg
 }

@@ -19,6 +19,8 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/killcollector"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // NewSyncEngine crée un moteur de sync pour un joueur sur le titre par défaut.
@@ -69,6 +71,14 @@ func NewSyncEngineForTitle(
 		syncCacheDir:   pr.SyncCacheDir(),
 		tokens:         tokens,
 		provider:       provider,
+		// ÉTAPE 1.57 INSTALLÉE PAR DÉFAUT, DANS LE CONSTRUCTEUR — pas au wiring.
+		// `assist_known` n'a qu'une origine (le kill-feed du film) et son producteur était
+		// une commande manuelle : le jour où plus personne ne l'a lancée, la donnée s'est
+		// arrêtée sans un log, cinq mois durant. La remettre à la charge de sites de
+		// wiring qui doivent y penser reproduirait exactement ce défaut. Le hook est inerte
+		// là où il n'a rien à faire : client sans GetFilmChunks, capability absente, ou
+		// backlog vide (cf. killcollector.RunPostSync).
+		killSource: killcollector.NewPostSyncHook(repoRoot, 0),
 	}
 }
 
@@ -101,7 +111,7 @@ func (e *SyncEngine) WithSharedProvider(p sharedprovider.Provider) *SyncEngine {
 	return e
 }
 
-// WithFriendsLoader attache un loader settings.FriendGamertags pour le hook
+// WithFriendsLoader attache un loader des amis du joueur pour le hook
 // auto-recompute is_with_friends post-sync delta. Sans ce hook, les nouveaux
 // matchs sync restent is_with_friends=FALSE jusqu'au prochain recompute
 // manuel (PATCH /settings ou CLI levelup recompute-friends).
@@ -164,6 +174,14 @@ func (e *SyncEngine) SetCustomClient(client HaloClient) {
 // À construire via service.BuildMediaScanHook (injecté depuis scheduler + SyncHandler).
 func (e *SyncEngine) WithMediaScanHook(hook func(ctx context.Context)) *SyncEngine {
 	e.mediaHook = hook
+	return e
+}
+
+// WithReplayArtifacts installe le fil de l'eau des artefacts de rejeu 2D (étape 1.58,
+// implémentée par internal/sync/replayartifacts). À N'APPELER QU'EN LOCAL
+// (cfg.IsProduction() == false) : le VPS web ne décode jamais.
+func (e *SyncEngine) WithReplayArtifacts(h *replayartifacts.Hook) *SyncEngine {
+	e.replayArtifacts = h
 	return e
 }
 

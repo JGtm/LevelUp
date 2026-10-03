@@ -85,9 +85,10 @@ func queryModeNameTrFR(ctx context.Context, meta *DB, modeENs []string) (map[str
 }
 
 // loadModeNamesFRForKeys — variante BEST-EFFORT de queryModeNameTrFR : plafonne
-// la requête (modeNameTrQueryTimeout) et absorbe l'erreur en la loguant, pour les
-// chemins d'enrichissement qui ne doivent jamais échouer (match_history,
-// filters, media). Retourne nil si rien n'est résolu.
+// la requête (modeNameTrQueryTimeout) et absorbe l'erreur en la loguant et en la
+// consignant (noteDegraded : un chargement mis en cache qui l'appelle n'est pas
+// caché), pour les chemins d'enrichissement qui ne doivent jamais échouer
+// (match_history, filters, media). Retourne nil si rien n'est résolu.
 func loadModeNamesFRForKeys(ctx context.Context, meta *DB, enKeys []string) map[string]string {
 	if meta == nil || len(enKeys) == 0 {
 		return nil
@@ -97,6 +98,7 @@ func loadModeNamesFRForKeys(ctx context.Context, meta *DB, enKeys []string) map[
 	out, err := queryModeNameTrFR(ctx2, meta, enKeys)
 	if err != nil {
 		slog.WarnContext(ctx, "fr_translations: loadModeNamesFRForKeys failed", "err", err)
+		noteDegraded(ctx, "mode_names_fr")
 		return nil
 	}
 	return out

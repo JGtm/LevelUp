@@ -1,0 +1,72 @@
+# LOT C-ter volet 3 (jauge de capture EN DIRECT) — gates du 2026-08-19, worktree LevelUp-wt-jauge-live, branche wt/jauge-live
+# HEAD au lancement des gates : 118be01b6
+# verdict = les lignes EXIT_*=0 ci-dessous (un pipe masquerait le code de sortie : chaque gate ecrit le sien)
+EXIT_GOFMT=0 (fichiers non formates : 0)
+EXIT_VET=0
+EXIT_TEST_ANALYSIS=0
+EXIT_TEST_REPLAYBUILD_CONTRACT=0
+EXIT_TEST_ARCHLINT=0
+EXIT_BUILD=0
+EXIT_GOLANGCI=0
+EXIT_TSC=0
+EXIT_VITEST=0
+EXIT_ESLINT=0
+# eslint : 20 avertissements, 0 erreur (plafond : baseline 19 + 1 connu ReplayFeedName.tsx:50)
+EXIT_CROSSFEATURE=0
+
+# --- revue ronde 1 (2026-08-19) : 4 constats de forme corriges, 0 changement de comportement ---
+# HEAD au lancement : 9039fb646 ; worktree LevelUp-wt-jauge-live, branche wt/jauge-live
+# perimetre : Go = internal/analysis/replay (CGO_ENABLED=0) ; web = src/features/match-replay + src/lib
+EXIT_GOFMT=0 (fichiers non formates : 0)
+EXIT_VET=0
+EXIT_TEST_REPLAY=0 (go test -count=1 ./internal/analysis/replay/ — ok, 38,5 s)
+EXIT_TSC=0 (npx tsc -b --force, node_modules/.tmp purge avant)
+EXIT_VITEST=0 (npx vitest run src/features/match-replay src/lib — 148 fichiers, 1829 tests)
+# controle negatif du point 1 (mutation `last := false`, hors commit, annulee par git checkout --) :
+#   --- FAIL: TestZoneGaugeDernierPointToujoursPublie (7 points publies pour 8 emissions)
+#   SEUL rouge du paquet internal/analysis/replay (41 s) : la clause `!last` n'avait aucun autre gardien
+
+# --- schema 18 (2026-08-19) : renumerotation apres fusion avec les socles de power-up (le 17 est le leur) ---
+# HEAD au lancement des trois cuissons : b13e0721d ; worktree LevelUp-wt-jauge-live, branche wt/jauge-live
+# gates go, fichier _gates_s18_go.log (2026-08-19 12:56:55), consolide ici puis supprime :
+EXIT_GOFMT=0 (fichiers non formates : 0)
+EXIT_VET=0
+EXIT_TEST_REPLAY_FILMDEC=0
+EXIT_TEST_REPLAYBUILD_CONTRACT=0
+EXIT_TEST_ARCHLINT=0
+EXIT_BUILD=0
+EXIT_GOLANGCI=0
+# gates web, fichier _gates_s18_web.log (2026-08-19 12:57:03), consolide ici puis supprime :
+EXIT_TSC=0
+EXIT_VITEST=0
+EXIT_ESLINT=0
+# eslint a l'epoque : 22 avertissements consignes (plafond attendu 20). RE-MESURE le 2026-08-19
+# 20:46 (npm run lint depuis apps/web, deux runs consecutifs, aucun fichier de code touche, HEAD
+# inchange, pas de cache eslint) : 20/20 avertissements, 0 erreur — plafond TENU. L'ecart de 2
+# ne s'est pas reproduit ; cause non identifiee. Detail : LOTCTER_VOLET3.md S11.
+EXIT_CROSSFEATURE=0
+#
+# trois temoins recuits en schema 18 (cmd/replay-build --facts, un processus par film,
+# LEVELUP_REPO_ROOT = worktree, films lus dans le tronc principal, plafond watchdog 3072 Mo / 900 s) :
+#   7344d24f (Strongholds, Vagabond, deja cuit avant ce volet) : peak 0 Mo (watchdog silencieux), 260 s, 2 238 996 o, exit=0
+#   696a9d7c (Strongholds, Vagabond)                           : peak 159 Mo, 284 s, 2 109 409 o, exit vide (meme limite que la cuisson schema 17 d'origine de ce temoin)
+#   01e1f945 (KOTH, Catalyst)                                  : peak 120 Mo, 278 s, 1 818 031 o, exit vide (idem)
+# verdict cuisson : les 3 artefacts sont ecrits et valides (schemaVersion 18, gaugePoints et
+# zoneStates[].gauge conformes ci-dessous) — l'exit vide du watchdog sur deux temoins reproduit
+# une limite deja presente dans leur cuisson schema 17 d'origine (memes logs lotCter avant ce
+# volet) ; la reussite est etablie par l'artefact ecrit et verifie, pas par ce champ.
+# Verifie sur chaque artefact : schemaVersion 18 ; zoneStates[].gauge present sur les 3 zones des
+# deux Bastion (gaugePoints 1701 et 1794), absent sur les 6 zones de la colline (gaugePoints 0,
+# aucune cle "gauge" sous zoneStates — le seul "gauge" du fichier 01e1f945 est Inventory.Am[].Gauge,
+# jauge de consommation de munitions d'une arme a charge, champ preexistant sans rapport).
+# Temoin CT.3.3 (TestZoneGaugeTemoin, ZONE_ARTEFACT, un run par artefact) rejoue en schema 18 :
+#   7344d24f : 36/36 bascules precedees d'une montee = 100,0 % (seuil 90 %) TENU ; serie 34 960 o = 1,561 % de l'artefact
+#   696a9d7c : 34/34 = 100,0 % TENU ; serie 36 858 o = 1,747 % de l'artefact
+#   01e1f945 : sans objet (0 bascule, mode a colline) ; serie 24 o = 0,001 % de l'artefact
+# Poids v18 vs reference v16 (2 202 930 / 2 071 392 / 1 816 953 o) : +36 066 o (+1,637 %) /
+# +38 017 o (+1,835 %) / +1 078 o (+0,059 %) — clause <= +2 % par artefact TENUE sur les trois.
+# Ce delta brut cumule socles (schema 17 de l'autre session) et jauge ; le poids v17-socles pour
+# CE trio n'est pas discernable (aucun poids par match dans PLAN_SOCLES_MVAR.md /
+# PLAN_POWERUP_SOCLE_CATALYST.md) — delta publie brut, comme convenu si non discernable. Le poids
+# attribuable a la JAUGE SEULE se lit directement sur les series (ligne au-dessus, mesure sur v18).
+# fin schema 18

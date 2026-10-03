@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,6 +45,7 @@ type AppConfig struct {
 	SessionDir      string
 	DemoMode        bool
 	DemoFixturesDir string
+	stateFromRepo   bool // Load : chemins d'état du dépôt même en démo (B-C10) ; LoadServer : faux
 	// DemoLocale : locale UI forcée en mode démo (vitrine publique). Défaut "en"
 	// (audience internationale). Surchargeable via LEVELUP_DEMO_LOCALE — les tests
 	// E2E la pinnent à "fr" pour exercer l'UI française (specs FR). Le visiteur peut
@@ -168,6 +170,20 @@ type AppConfig struct {
 	// Lit LEVELUP_EVENTS_CONVERGENCE_MAX (valeur <= 0 ignorée). Défaut :
 	// DefaultEventsConvergenceMax.
 	EventsConvergenceMax int
+	// BuildWorkerToken authentifie les OUVRIERS de la file de construction sur les
+	// routes /internal/build-queue/* (piste F §1/§2). Lit
+	// LEVELUP_BUILD_WORKER_TOKEN. VIDE PAR DÉFAUT, et c'est le comportement voulu :
+	// sans jeton, le protocole ouvrier répond 503 et la feature n'existe pas — le
+	// dépôt est PUBLIC, personne ne doit hériter d'une porte ouverte en installant
+	// LevelUp. Ce jeton n'ouvre AUCUN accès Halo ni base : il ne donne que le droit
+	// de prendre un travail déjà résolu, d'y DÉPOSER l'artefact construit, et d'en
+	// rendre le résultat.
+	//
+	// IL COMMANDE AUSSI LE FIL DE L'EAU : sans jeton, le placement « ouvrier »
+	// (replay_build_location) dégrade en « aucune construction » — enfiler quand
+	// personne ne viendra vider la file résoudrait un manifeste Halo par match, à
+	// chaque cycle, pour rien (cf. replaybuild.DecidePlacement).
+	BuildWorkerToken string
 }
 
 // DefaultEventsConvergenceMax est le plafond par défaut de matchs traités par la
@@ -197,24 +213,24 @@ func BootstrapEnvLocal() {
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
 }
 
-// Load charge la configuration depuis les variables d'environnement.
-// Les valeurs par défaut correspondent au développement local.
-func Load() (*AppConfig, error) {
+// load charge la configuration de l'environnement (défauts = dév local) ; fromRepo : cf. Load/LoadServer.
+func load(fromRepo bool) (*AppConfig, error) {
 	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
 	// Charger .env.local avant toute lecture de variable d'environnement,
-	// pour que SPNKR_OAUTH_REFRESH_TOKEN_* et autres vars locales soient disponibles.
+	// pour que les variables locales (SPNKR_AZURE_*, LEVELUP_*) soient disponibles.
 	// (No-op si main() a déjà appelé BootstrapEnvLocal — loadEnvLocal n'écrase
 	// jamais une var déjà définie.)
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
-	demoMode := strings.ToLower(getEnvOrDefault("LEVELUP_DEMO_MODE", "false")) == "true"
+	st := loadStatePaths(repoRoot, fromRepo) // mode démo + chemins d'état et d'exécution, cf. config_demo.go
+	appSettingsPath := st.path("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"), titlePkg.DemoLayout.AppSettingsPath)
 
 	cfg := &AppConfig{
 		RepoRoot:          repoRoot,
-		DBProfilesPath:    getEnvOrDefault("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json")),
-		AppSettingsPath:   getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json")),
-		SessionDir:        getEnvOrDefault("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions")),
-		DemoMode:          demoMode,
-		DemoFixturesDir:   getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "data", "demo")),
+		DBProfilesPath:    st.path("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json"), titlePkg.DemoLayout.DBProfilesPath),
+		AppSettingsPath:   appSettingsPath,
+		SessionDir:        st.path("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions"), titlePkg.DemoLayout.SessionDir),
+		DemoMode:          st.demoMode,
+		DemoFixturesDir:   st.fixturesDir,
 		DemoLocale:        getEnvOrDefault("LEVELUP_DEMO_LOCALE", "en"),
 		APIHost:           getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),
 		APIPort:           getEnvInt("LEVELUP_API_PORT", 8000),
@@ -222,8 +238,8 @@ func Load() (*AppConfig, error) {
 		CORSOrigins:       parseCORSOrigins(getEnvOrDefault("LEVELUP_CORS_ORIGINS", "")),
 		Lang:              getEnvOrDefault("LEVELUP_LANG", "fr"),
 		AppVersion:        getEnvOrDefault("LEVELUP_APP_VERSION", "dev"),
-		DiscordWebhookURL: loadDiscordWebhookURL(getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))),
-		AuthDir:           getEnvOrDefault("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth")),
+		DiscordWebhookURL: loadDiscordWebhookURL(appSettingsPath),
+		AuthDir:           st.path("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth"), titlePkg.DemoLayout.AuthDir),
 		AuthMode:          getEnvOrDefault("LEVELUP_AUTH_MODE", "none"),
 		OAuthRedirectURI:  getEnvOrDefault("LEVELUP_OAUTH_REDIRECT_URI", ""),
 		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
@@ -234,18 +250,18 @@ func Load() (*AppConfig, error) {
 		WebDistDir:        getEnvOrDefault("LEVELUP_WEB_DIST", ""),
 		RateLimitRPM:      getEnvInt("LEVELUP_RATE_LIMIT_RPM", DefaultRateLimitRPM),
 	}
-	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
-	cfg.Backup = loadBackupConfig(repoRoot, appSettingsPath)
+	cfg.Backup = st.backupConfig(repoRoot, appSettingsPath)
 	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
-	cfg.PersistBatchAsync = getEnvOrDefault("LEVELUP_PERSIST_BATCH_ASYNC", "") != "0"
+	cfg.PersistBatchAsync = st.persistBatchAsync()
 	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"
 	cfg.EventsConvergenceMax = getEnvInt("LEVELUP_EVENTS_CONVERGENCE_MAX", DefaultEventsConvergenceMax)
 	if cfg.EventsConvergenceMax <= 0 {
 		cfg.EventsConvergenceMax = DefaultEventsConvergenceMax
 	}
+	cfg.BuildWorkerToken = strings.TrimSpace(getEnvOrDefault("LEVELUP_BUILD_WORKER_TOKEN", ""))
 	return cfg, nil
 }
 
@@ -253,6 +269,43 @@ func Load() (*AppConfig, error) {
 // ce qui active le garde-fou fail-fast de Validate().
 func (c *AppConfig) IsProduction() bool {
 	return strings.EqualFold(strings.TrimSpace(c.Environment), "production")
+}
+
+// IsExposedDeployment indique si cette instance est réellement JOIGNABLE depuis
+// l'extérieur — c'est-à-dire si les réglages listés par SecurityWarnings ont une
+// portée opérationnelle. Deux signaux suffisent :
+//
+//   - l'hôte d'écoute n'est pas une boucle locale (LEVELUP_API_HOST : vide =
+//     toutes les interfaces, "0.0.0.0", une IP publique… ; "127.0.0.1",
+//     "localhost" et "::1" sont des boucles) ;
+//   - LEVELUP_ENV est renseigné à autre chose que "development" (staging,
+//     production…), le déployeur ayant alors déclaré un environnement.
+//
+// Sert à choisir le NIVEAU du log de démarrage : un poste de dev qui écoute sur
+// 127.0.0.1 sans LEVELUP_ENV n'a rien d'exposé, et le WARN inconditionnel qui y
+// était émis à chaque boot n'était que du bruit (2026-09-20). Ne change RIEN au
+// garde-fou fail-fast : Validate() reste piloté par la seule production.
+func (c *AppConfig) IsExposedDeployment() bool {
+	env := strings.TrimSpace(c.Environment)
+	if env != "" && !strings.EqualFold(env, "development") {
+		return true
+	}
+	return !isLoopbackHost(c.APIHost)
+}
+
+// isLoopbackHost : l'hôte d'écoute est-il une boucle locale ? Un hôte VIDE écoute
+// sur toutes les interfaces — ce n'est donc pas une boucle.
+func isLoopbackHost(host string) bool {
+	h := strings.TrimSpace(host)
+	h = strings.TrimSuffix(strings.TrimPrefix(h, "["), "]")
+	if h == "" {
+		return false
+	}
+	if strings.EqualFold(h, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // SecurityWarnings retourne la liste des réglages non sûrs pour un déploiement
@@ -297,7 +350,7 @@ func (c *AppConfig) corsAllLocalhost() bool {
 // et hors DemoMode, refuse de démarrer si la configuration est non sûre. Hors
 // production, ne renvoie jamais d'erreur — les avertissements restent consultables
 // via SecurityWarnings() pour un log au boot. À appeler explicitement depuis
-// cmd/server ; Load() ne valide pas (les CLI et tests réutilisent Load avec des
+// cmd/server ; LoadServer et Load ne valident pas (Load sert les CLI et les tests, avec des
 // défauts de dev).
 func (c *AppConfig) Validate() error {
 	if c.DemoMode || !c.IsProduction() {

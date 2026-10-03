@@ -27,6 +27,7 @@ package sync
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -72,6 +73,53 @@ func (c *cachedHaloClient) GetMatchFilm(ctx context.Context, matchID string) (ma
 	// Films chunks = volume gros. Pas cachés ici — utiliser LocalFilmCache pour ça.
 	return c.inner.GetMatchFilm(ctx, matchID)
 }
+
+// GetFilmChunks : passe-plat vers inner. IL N'EST PAS OPTIONNEL, ET C'EST LA LEÇON DU
+// 2026-08-29.
+//
+// `GetFilmChunks` ne fait pas partie de l'interface HaloClient (délibéré : les mocks des
+// autres étapes n'ont pas à la porter). L'étape 1.57 du post-sync l'obtient donc par
+// ASSERTION DE TYPE sur le client. Or ce wrapper est posé SYSTÉMATIQUEMENT sur le chemin V1
+// (engine.go, NewCachedHaloClient) : sans cette méthode, l'assertion échouait, l'étape sortait
+// en silence, et `assist_known` restait FALSE — le défaut exact que cette étape existe pour
+// corriger. Un wrapper qui n'expose pas ce qu'il enveloppe le DÉSACTIVE.
+//
+// Le repli sur `inner` qui ne porterait pas la méthode rend `found = false` sans erreur : un
+// client de test minimal reste utilisable, et le collecteur traite ce cas comme « film absent ».
+func (c *cachedHaloClient) GetFilmChunks(ctx context.Context, matchID string) ([]FilmChunk, bool, error) {
+	f, ok := c.inner.(interface {
+		GetFilmChunks(ctx context.Context, matchID string) ([]FilmChunk, bool, error)
+	})
+	if !ok {
+		return nil, false, nil
+	}
+	return f.GetFilmChunks(ctx, matchID)
+}
+
+// FetchMvarForMap : passe-plat vers inner. MEME LECON QUE `GetFilmChunks` JUSTE AU-DESSUS, et
+// elle vient d'etre re-payee.
+//
+// Le rattrapage du catalogue de cartes obtient cette capacite par ASSERTION DE TYPE sur le
+// client. Or ce wrapper est pose SYSTEMATIQUEMENT sur le chemin V1 (engine.go,
+// NewCachedHaloClient) : sans cette methode, l'assertion echouait, le rattrapage sortait en
+// silence, et AUCUNE carte absente n'entrait jamais au catalogue — indistinguable d'un lot non
+// deploye. Un wrapper qui n'expose pas ce qu'il enveloppe le DESACTIVE.
+//
+// Le repli sur un `inner` qui ne porterait pas la methode rend une erreur explicite plutot
+// qu'un succes vide : ici, se taire ferait croire a un `.mvar` introuvable cote serveur.
+func (c *cachedHaloClient) FetchMvarForMap(ctx context.Context, mapID, mvarFile string,
+) ([]byte, string, error) {
+	f, ok := c.inner.(interface {
+		FetchMvarForMap(ctx context.Context, mapID, mvarFile string) ([]byte, string, error)
+	})
+	if !ok {
+		return nil, "", errPasDeCapaciteMvar
+	}
+	return f.FetchMvarForMap(ctx, mapID, mvarFile)
+}
+
+// errPasDeCapaciteMvar : le client enveloppe ne sait pas rapatrier de variante de carte.
+var errPasDeCapaciteMvar = errors.New("client sans capacite FetchMvarForMap")
 
 func (c *cachedHaloClient) GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error) {
 	return c.inner.GetCareerRank(ctx, xuid)

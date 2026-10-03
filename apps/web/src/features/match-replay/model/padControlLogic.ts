@@ -1,0 +1,331 @@
+/**
+ * padControlLogic.ts — QUI A PRIS LES ARMES DE SOCLE, joueur par joueur et camp par camp.
+ *
+ * CE QUE LA PAGE NE SAVAIT PAS DIRE. Un socle d'arme de puissance est un point de bascule d'une
+ * partie : le fusil de précision, l'épée, le lance-roquettes. Le rejeu 2D montre chaque socle se
+ * vider à l'image où il se vide, et le bilan d'équipement voisin compte ces vidages SANS
+ * RAMASSEUR — « le socle s'est vidé N fois », jamais « untel l'a pris ». Ce module-ci nomme le
+ * ramasseur, et c'est tout ce qu'il ajoute : aucune donnée nouvelle, aucun appel de plus.
+ *
+ * LA SOURCE EST `padPickups[].xuid`, ET IL N'EST PAS DEVINÉ. Le contrat d'origine de ce champ
+ * portait la mesure qui l'avait refusé (88,1 % en suivant le slot de vie, 79,7 % en suivant le
+ * joueur, contre >= 90 % exigé) ; l'événement natif de ramassage l'a levé (SCHÉMA 30,
+ * `pad_pickup_dating.go`) : quand un ramassage natif de la MÊME FAMILLE d'arme tombe dans la
+ * fenêtre `[tLow, tHigh]` d'une occupation, le service publie l'instant exact ET son ramasseur —
+ * le slot est exact sur 32/32 paires de vérité terrain. Quand PLUSIEURS y tombent, il s'abstient.
+ * Ce module ne rattrape ni ne complète cette abstention : une occupation sans `xuid` n'est
+ * comptée pour PERSONNE.
+ *
+ * CE QUI N'EST PAS ATTRIBUÉ NE DISPARAÎT PAS. Les occupations hors tableau sont comptées et
+ * comptées hors tableau : ambiguës, non couvertes, datées sans ramasseur nommé, socles de
+ * bonus structurellement hors jointure, et ramasseur nommé mais absent du film. La somme des
+ * lignes plus ces manques redonne le nombre d'occupations du document — sans quoi le tableau
+ * laisserait croire que le match n'a connu que les prises qu'il affiche.
+ *
+ * LES SOCLES DE BONUS N'ONT PAS DE RAMASSEUR ICI, ET CE N'EST PAS UN OUBLI : l'identité d'un tel
+ * socle est un NOM canonique (`powerup_overshield`), pas un identifiant de famille d'arme, donc
+ * aucun ramassage natif ne peut s'y apparier — jamais. Ils sont comptés à part
+ * (`powerupOccupations`) plutôt que noyés dans les non couvertes, qui feraient lire « on a
+ * cherché et on n'a pas trouvé » là où il n'y avait rien à chercher.
+ *
+ * LE PONT XUID -> JOUEUR -> ÉQUIPE EST CELUI DU REJEU, réutilisé tel quel (`buildPlayers`,
+ * `groupByTeam` de rosterLogic) : le film ne porte AUCUNE équipe (`Track.Team` vaut -1 partout),
+ * elle vient du scoreboard. Un joueur du film sans ligne de scoreboard garde sa ligne, sans
+ * camp : le trou se montre, il ne se comble pas.
+ *
+ * Tout est PUR : aucun React, aucune couleur, AUCUNE LANGUE — ce fichier compte, il ne nomme
+ * rien. Les libellés d'arme (`padNameFor`) et le rendu vivent dans `MatchPadControlSection.tsx`.
+ */
+import type { MatchScoreboardRow } from '@/lib/api/types'
+import { displayPlayerName } from '@/lib/players/displayName'
+
+import { isGameChangerFamily, isGameChangerWeaponKey } from './gameChangers'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { buildPlayers, groupByTeam, playerName, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import { buildPadTierMatch, padTierOf, PAD_TIER_TIEBREAK, type PadTier } from './weaponTier'
+import { padEquipmentFamilyOf } from './weaponPadFamilies'
+
+/** Les prises comptées, sans identité — la ligne d'un joueur comme le total d'un camp. */
+export interface PadControlTally {
+  /** Prises de socle attribuées, tous socles confondus. */
+  total: number
+  /** Détail par identifiant d'arme du socle (`weaponPads[].weapon`), jamais un libellé. */
+  byWeapon: Record<string, number>
+}
+
+/** La ligne d'un joueur : son identité, son camp, ses prises. */
+export interface PadControlRow extends PadControlTally {
+  xuid: string
+  /** Nom d'affichage (`displayPlayerName`), jamais un xuid brut. */
+  name: string
+  /** `team_side` du scoreboard ; `null` = joueur du film absent du scoreboard. */
+  side: string | null
+}
+
+/** Un camp, ses joueurs (triés par total décroissant) et son total. */
+export interface PadControlTeam {
+  side: string | null
+  players: PadControlRow[]
+  total: PadControlTally
+}
+
+/**
+ * CE QUE LA DATATION A PU FAIRE, repris TEL QUEL de `coverage.padDating` — jamais recalculé, et
+ * pas recopié champ par champ : une seconde déclaration divergerait au premier compteur ajouté
+ * côté service.
+ */
+export type PadControlCoverage = NonNullable<
+  NonNullable<ReplayDocumentReady['coverage']>['padDating']
+>
+
+/** Le résultat complet : les camps, les colonnes d'arme, et ce qui reste hors tableau. */
+export interface PadControl {
+  byTeam: PadControlTeam[]
+  /**
+   * Identifiants d'arme à mettre en ligne, ordre écrit (cf. `weaponsOf`) : les socles DÉCISIFS
+   * d'abord, les autres ensuite, chaque bloc trié du plus disputé au moins disputé.
+   *
+   * LE VOTE « GAME CHANGERS » EST UN ORDRE, PLUS UN REPLI (2026-09-13). Le plan du 2026-09-05
+   * (décision D3) n'affichait d'emblée que les socles élus, le reste derrière « Voir plus (N) » ;
+   * l'utilisateur l'a révoqué — « pourquoi il est constamment replié et n'affiche jamais rien
+   * par défaut ? ». Toutes les armes sont désormais rendues ; le vote ne décide plus que de
+   * l'ordre de lecture.
+   */
+  weapons: string[]
+  /**
+   * Le bloc de datation du document. `null` n'arrive PAS en production — le service le pose
+   * inconditionnellement, et un artefact qui porte un `xuid` d'occupation le porte forcément —
+   * c'est un garde-fou de typage, pas un cas d'écran : le tableau reste rendu, la note de bas
+   * de tableau est simplement omise.
+   */
+  coverage: PadControlCoverage | null
+  /** Somme des lignes : les prises que le tableau montre réellement. */
+  attributed: number
+  /**
+   * Prises NOMMÉES par le service mais rattachables à aucun joueur du film (xuid inconnu du
+   * roster, ou index de socle hors bornes). Distinct des abstentions de la datation.
+   */
+  unjoined: number
+  /**
+   * LES OCCUPATIONS SANS RAMASSEUR NOMMÉ, SOCLE PAR SOCLE (clé = `weaponPads[].weapon`).
+   *
+   * Ce compte ramène les manques à l'ARME, parce que l'écran les annote ligne par ligne
+   * (« + N sans nom ») et qu'un
+   * lecteur doit pouvoir dire « le lance-roquettes a changé de mains trois fois de plus que ce
+   * que la ligne montre ». Elles ne sont JAMAIS versées à un camp : ce serait inventer un
+   * ramasseur, exactement ce que la datation a refusé de faire.
+   */
+  unnamedByWeapon: Record<string, number>
+  /** Faux = aucune prise attribuée : l'écran ne doit rien rendre (double porte). */
+  hasData: boolean
+  /**
+   * LE NIVEAU DE CHAQUE ARME (`weaponTier.ts`) : base, terrain, puissance, non classé.
+   *
+   * UNE ARME, UN NIVEAU, ET LE PLUS SERVI L'EMPORTE. Une arme peut en théorie se trouver sur
+   * deux emplacements de natures différentes dans le même match ; c'est mesuré, et c'est rare :
+   * UNE arme sur 59 matchs et 2 881 prises (0,17 %), et le conflit était `terrain` contre
+   * `non classé`, jamais `terrain` contre `puissance`. La ligne du bloc reste donc une ligne
+   * par arme, et son niveau est celui qui porte le plus de prises ; à égalité, l'ordre écrit
+   * `PAD_TIER_TIEBREAK` départage, pour que deux relectures donnent le même bloc (ordre
+   * PROPRE au départage depuis le 2026-09-21 : il ne suit pas l'ordre d'affichage).
+   *
+   * IL N'Y A PAS DE SOUS-TOTAUX PAR NIVEAU ICI, ET C'EST VOULU (revue du 2026-09-14). Le bloc
+   * en publiait, personne ne les lisait, et l'écran additionnait ses propres lignes : deux
+   * vérités pour un même chiffre. C'est la SOMME DES LIGNES AFFICHÉES qui doit se recomposer
+   * sous les yeux du lecteur — elle seule est vérifiable à l'écran.
+   */
+  tierOfWeapon: Record<string, PadTier>
+  /** Le mode distribue des départs aléatoires : le niveau « base » n'est pas publié. */
+  randomStarts: boolean
+  /**
+   * FAUX quand aucun emplacement de la carte n'a confirmé de socle : le bloc doit dire que les
+   * niveaux ne sont PAS ÉTABLIS, et surtout pas ranger tout le match sous « Non classé ».
+   */
+  tiersMeasured: boolean
+}
+
+/** Un compteur vide. Chaque appel rend un NOUVEL objet : les tables ne se partagent pas. */
+function emptyTally(): PadControlTally {
+  return { total: 0, byWeapon: {} }
+}
+
+/** Ajoute une prise à un compteur. */
+function addPick(tally: PadControlTally, weapon: string): void {
+  tally.total += 1
+  tally.byWeapon[weapon] = (tally.byWeapon[weapon] ?? 0) + 1
+}
+
+/**
+ * buildPadControl — l'agrégation complète, en une passe sur `padPickups`.
+ *
+ * `scoreboard` peut manquer (chargement, titre sans tableau des scores) : les joueurs existent
+ * alors tous sans camp, et le tableau les range sous « sans équipe ». Aucun camp n'est deviné.
+ */
+export function buildPadControl(
+  doc: ReplayDocumentReady,
+  scoreboard: MatchScoreboardRow[] | undefined,
+): PadControl {
+  // LE CLASSEMENT DU MATCH, une fois pour toutes : nature de chaque socle et armes de départ.
+  // Le caractère ALÉATOIRE des départs vient du SERVEUR (`doc.weaponTiers`), pas d'une liste de
+  // catégories tenue ici — la règle vit dans le TOML du titre et gouverne aussi l'écriture en
+  // base (revue du 2026-09-14).
+  const tiers = buildPadTierMatch(doc)
+  const tierPicks = new Map<string, Map<PadTier, number>>()
+  // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ont une ligne, même règle que le bilan
+  // d'équipement : une entrée de roster sans aucune vie n'a pu prendre aucun socle, et une
+  // ligne de zéros la ferait passer pour quelqu'un qui n'en a pris aucun.
+  const players = buildPlayers(doc, scoreboard ?? []).filter((p) => p.lives.length > 0)
+  const known = new Set(players.map((p) => p.xuid))
+  const tallies = new Map<string, PadControlTally>()
+  const matchTotal: Record<string, number> = {}
+  const unnamedByWeapon: Record<string, number> = {}
+  let unjoined = 0
+
+  for (const pick of doc.padPickups) {
+    // `pad` est un INDEX dans `weaponPads` (ordre stable garanti côté build) : un index hors
+    // bornes ne compte pour aucun socle voisin — il rejoint les prises non rattachées.
+    const pad = doc.weaponPads[pick.pad]
+    // Pas de ramasseur nommé : la datation s'est abstenue, et on ne rattrape rien. L'occupation
+    // est réelle : elle est comptée SUR SON SOCLE, pour que l'écran puisse l'annoter.
+    if (!pick.xuid) {
+      if (pad) unnamedByWeapon[pad.weapon] = (unnamedByWeapon[pad.weapon] ?? 0) + 1
+      continue
+    }
+    if (!pad || !known.has(pick.xuid)) {
+      unjoined += 1
+      continue
+    }
+    let tally = tallies.get(pick.xuid)
+    if (!tally) {
+      tally = emptyTally()
+      tallies.set(pick.xuid, tally)
+    }
+    addPick(tally, pad.weapon)
+    matchTotal[pad.weapon] = (matchTotal[pad.weapon] ?? 0) + 1
+    // Le niveau se lit SUR LE SOCLE de la prise, pas sur l'arme : c'est la carte qui décide.
+    const tier = padTierOf(tiers, pick.pad, pad.weapon)
+    let parNiveau = tierPicks.get(pad.weapon)
+    if (!parNiveau) {
+      parNiveau = new Map<PadTier, number>()
+      tierPicks.set(pad.weapon, parNiveau)
+    }
+    parNiveau.set(tier, (parNiveau.get(tier) ?? 0) + 1)
+  }
+
+  const byTeam = teamsOf(players, tallies)
+  const attributed = byTeam.reduce((sum, team) => sum + team.total.total, 0)
+  return {
+    byTeam,
+    weapons: weaponsOf(matchTotal, doc.weaponLabels),
+    coverage: doc.coverage?.padDating ?? null,
+    attributed,
+    unjoined,
+    unnamedByWeapon,
+    hasData: attributed > 0,
+    tierOfWeapon: tierOfWeaponOf(tierPicks),
+    randomStarts: tiers.randomStarts,
+    tiersMeasured: tiers.tiersMeasured,
+  }
+}
+
+/** Le niveau retenu pour chaque arme : le plus servi, `PAD_TIER_TIEBREAK` départageant. */
+function tierOfWeaponOf(picks: ReadonlyMap<string, Map<PadTier, number>>): Record<string, PadTier> {
+  const out: Record<string, PadTier> = {}
+  for (const [weapon, parNiveau] of picks) {
+    let meilleur: PadTier = 'unclassified'
+    let n = -1
+    for (const tier of PAD_TIER_TIEBREAK) {
+      const c = parNiveau.get(tier) ?? 0
+      if (c > n) {
+        meilleur = tier
+        n = c
+      }
+    }
+    out[weapon] = meilleur
+  }
+  return out
+}
+
+
+/**
+ * teamsOf range les joueurs par camp, somme chaque camp, et TRIE PAR TOTAL DÉCROISSANT — à
+ * l'intérieur d'un camp comme entre les camps.
+ *
+ * LE TRI EST LE SUJET DU TABLEAU : « qui a contrôlé les socles » se lit de haut en bas, et un
+ * ordre de roster obligerait à comparer des nombres dispersés. À égalité, le nom (puis le camp)
+ * départage : deux relectures du même match donnent le même tableau.
+ */
+function teamsOf(
+  players: readonly ReplayPlayer[],
+  tallies: ReadonlyMap<string, PadControlTally>,
+): PadControlTeam[] {
+  const teams = groupByTeam([...players]).map((group) => {
+    const total = emptyTally()
+    const rows: PadControlRow[] = group.players.map((p) => {
+      const tally = tallies.get(p.xuid) ?? emptyTally()
+      total.total += tally.total
+      for (const [weapon, n] of Object.entries(tally.byWeapon)) {
+        total.byWeapon[weapon] = (total.byWeapon[weapon] ?? 0) + n
+      }
+      return {
+        ...tally,
+        xuid: p.xuid,
+        name: displayPlayerName(playerName(p), p.xuid),
+        side: group.side,
+      }
+    })
+    rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
+    return { side: group.side, players: rows, total }
+  })
+  // Le sentinelle de tri des camps sans nom est celui de `groupByTeam` : ils passent en dernier.
+  teams.sort(
+    (a, b) => b.total.total - a.total.total || (a.side ?? '￿').localeCompare(b.side ?? '￿'),
+  )
+  return teams
+}
+
+/**
+ * weaponsOf retient les socles qu'au moins une prise attribuée justifie, ORDONNÉS par le vote
+ * « game changers » PUIS du plus disputé au moins disputé dans chaque bloc (plan 2026-09-05,
+ * G2.1, amendé le 2026-09-13 : le vote ordonne, il ne cache plus rien).
+ *
+ * UNE COLONNE DE ZÉROS N'EST PAS UNE MESURE : un socle que personne n'a pris n'a pas de colonne,
+ * il reste dans le compte des occupations non attribuées. À égalité, l'identifiant départage —
+ * l'ordre ne dépend jamais de l'ordre de rencontre dans le film.
+ *
+ * LE JUGEMENT SUIT LES DEUX VOCABULAIRES D'UN SOCLE (décision D6, même cascade que
+ * `padScaleFor`) : un socle de BONUS publie sa famille d'équipement — la table écrite
+ * `padEquipmentFamilyOf` la reconnaît, jamais un test de préfixe — et se juge par elle ; un
+ * socle d'ARME publie un hexadécimal, et se juge par la clé canonique du catalogue
+ * (`weaponLabels[hex].key`). Un label SANS clé (artefact ancien, arme hors catalogue) passe en
+ * second : dégradation voulue, on ne promeut pas ce qu'on ne sait pas nommer.
+ */
+function weaponsOf(
+  matchTotal: Record<string, number>,
+  labels: ReplayDocumentReady['weaponLabels'],
+): string[] {
+  const enAvant = (weapon: string): boolean => {
+    const family = padEquipmentFamilyOf(weapon)
+    if (family) return isGameChangerFamily(family)
+    return isGameChangerWeaponKey(labels?.[weapon]?.key)
+  }
+  const parVolume = (a: string, b: string) =>
+    matchTotal[b] - matchTotal[a] || a.localeCompare(b)
+  const weapons = Object.keys(matchTotal)
+  return [
+    ...weapons.filter(enAvant).sort(parVolume),
+    ...weapons.filter((w) => !enAvant(w)).sort(parVolume),
+  ]
+}
+
+
+/**
+ * hasPadControl — LA double porte de la carte « Contrôle des armes spéciales », en fonction
+ * pure : pas d'artefact de rejeu (`control` null) ou aucune prise attribuée -> pas de carte.
+ *
+ * Elle vit ICI, avec la mesure qu'elle juge (mêmes raisons que `hasEquipmentUsage`) : le
+ * parent la lit pour poser ou non le titre de section, la carte pour son `return null`.
+ */
+export function hasPadControl(control: PadControl | null | undefined): control is PadControl {
+  return control?.hasData === true
+}

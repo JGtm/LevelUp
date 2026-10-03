@@ -1,0 +1,277 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	72	0	0	0	0
+0797ce72	HI_1_13_0	rejete · (ii) paquet a evenements non localise	94	0	0	0	0
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte	33	0	0	0	0
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	501	0	0	0	0
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur	60	0	0	0	0
+0797ce72	HI_1_13_0	rejete · (v) introuvable	665	0	0	0	0
+0797ce72	HI_1_13_0	rejete · dans un record lu (faux positif probable)	660	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut	58	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (ii) paquet a evenements non localise	77	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte	30	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	361	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur	54	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (v) introuvable	833	0	0	0	0
+0797ce72	HI_1_13_0	temoin · dans un record lu (faux positif probable)	672	0	0	0	0
+084a804d	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut	237	0	0	0	0
+084a804d	HI_1_10_0	rejete · (ii) paquet a evenements non localise	329	0	0	0	0
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte	20	0	0	0	0
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	342	0	0	0	0
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : terminateur	2	0	0	0	0
+084a804d	HI_1_10_0	rejete · (v) introuvable	61	0	0	0	0
+084a804d	HI_1_10_0	rejete · dans un record lu (faux positif probable)	46	0	0	0	0
+084a804d	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut	60	0	0	0	0
+084a804d	HI_1_10_0	temoin · (ii) paquet a evenements non localise	201	0	0	0	0
+084a804d	HI_1_10_0	temoin · (iii') apres l arret de la vue B : ouverte	17	0	0	0	0
+084a804d	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	211	0	0	0	0
+084a804d	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur	4	0	0	0	0
+084a804d	HI_1_10_0	temoin · (v) introuvable	253	0	0	0	0
+084a804d	HI_1_10_0	temoin · dans un record lu (faux positif probable)	291	0	0	0	0
+111fa685	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut	161	0	0	0	0
+111fa685	HI_1_10_0	rejete · (ii) paquet a evenements non localise	348	0	0	0	0
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte	14	0	0	0	0
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	334	0	0	0	0
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : terminateur	30	0	0	0	0
+111fa685	HI_1_10_0	rejete · (v) introuvable	131	0	0	0	0
+111fa685	HI_1_10_0	rejete · dans un record lu (faux positif probable)	127	0	0	0	0
+111fa685	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut	68	0	0	0	0
+111fa685	HI_1_10_0	temoin · (ii) paquet a evenements non localise	216	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : ouverte	9	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	324	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur	24	0	0	0	0
+111fa685	HI_1_10_0	temoin · (v) introuvable	276	0	0	0	0
+111fa685	HI_1_10_0	temoin · dans un record lu (faux positif probable)	228	0	0	0	0
+11de8353	HI_1_9_0	rejete · (i) tete d un paquet a evenements, avant le debut	151	0	0	0	0
+11de8353	HI_1_9_0	rejete · (ii) paquet a evenements non localise	281	0	0	0	0
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : ouverte	9	0	0	0	0
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	297	0	0	0	0
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : terminateur	2	0	0	0	0
+11de8353	HI_1_9_0	rejete · (iii) NEW lu desynchronise	1	0	0	0	0
+11de8353	HI_1_9_0	rejete · (v) introuvable	126	0	0	0	0
+11de8353	HI_1_9_0	rejete · dans un record lu (faux positif probable)	176	0	0	0	0
+11de8353	HI_1_9_0	temoin · (i) tete d un paquet a evenements, avant le debut	67	0	0	0	0
+11de8353	HI_1_9_0	temoin · (ii) paquet a evenements non localise	172	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : ouverte	12	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	210	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : terminateur	8	0	0	0	0
+11de8353	HI_1_9_0	temoin · (v) introuvable	279	0	0	0	0
+11de8353	HI_1_9_0	temoin · dans un record lu (faux positif probable)	295	0	0	0	0
+1c4c63c2	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut	557	0	0	0	0
+1c4c63c2	HI_1_10_0	rejete · (ii) paquet a evenements non localise	784	0	0	0	0
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte	34	0	0	0	0
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	793	0	0	0	0
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : terminateur	21	0	0	0	0
+1c4c63c2	HI_1_10_0	rejete · (v) introuvable	341	0	0	0	0
+1c4c63c2	HI_1_10_0	rejete · dans un record lu (faux positif probable)	151	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut	521	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (ii) paquet a evenements non localise	754	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : ouverte	38	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	778	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur	18	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (v) introuvable	344	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · dans un record lu (faux positif probable)	228	0	0	0	0
+396cfc92	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	111	0	0	0	0
+396cfc92	HI_1_13_0	rejete · (ii) paquet a evenements non localise	19	0	0	0	0
+396cfc92	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte	1	0	0	0	0
+396cfc92	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	27	0	0	0	0
+396cfc92	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur	1	0	0	0	0
+396cfc92	HI_1_13_0	rejete · (v) introuvable	5	0	0	0	0
+396cfc92	HI_1_13_0	rejete · dans un record lu (faux positif probable)	2	0	0	0	0
+396cfc92	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut	5	0	0	0	0
+396cfc92	HI_1_13_0	temoin · (ii) paquet a evenements non localise	7	0	0	0	0
+396cfc92	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte	1	0	0	0	0
+396cfc92	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	11	0	0	0	0
+396cfc92	HI_1_13_0	temoin · (v) introuvable	81	0	0	0	0
+396cfc92	HI_1_13_0	temoin · dans un record lu (faux positif probable)	61	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	130	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · (ii) paquet a evenements non localise	173	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte	24	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	163	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur	7	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · (iii) NEW lu desynchronise	2	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · (v) introuvable	57	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · dans un record lu (faux positif probable)	82	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut	103	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (ii) paquet a evenements non localise	109	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte	19	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	101	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur	7	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (v) introuvable	106	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · dans un record lu (faux positif probable)	193	0	0	0	0
+50247b26	version-31	rejete · (i) tete d un paquet a evenements, avant le debut	92	0	0	0	0
+50247b26	version-31	rejete · (ii) paquet a evenements non localise	169	0	0	0	0
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : ouverte	8	0	0	0	0
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : rejet hors datum	158	0	0	0	0
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : terminateur	1	0	0	0	0
+50247b26	version-31	rejete · (v) introuvable	2	0	0	0	0
+50247b26	version-31	rejete · dans un record lu (faux positif probable)	7	0	0	0	0
+50247b26	version-31	temoin · (i) tete d un paquet a evenements, avant le debut	11	0	0	0	0
+50247b26	version-31	temoin · (ii) paquet a evenements non localise	85	0	0	0	0
+50247b26	version-31	temoin · (iii') apres l arret de la vue B : ouverte	2	0	0	0	0
+50247b26	version-31	temoin · (iii') apres l arret de la vue B : rejet hors datum	166	0	0	0	0
+50247b26	version-31	temoin · (iii') apres l arret de la vue B : terminateur	12	0	0	0	0
+50247b26	version-31	temoin · (v) introuvable	93	0	0	0	0
+50247b26	version-31	temoin · dans un record lu (faux positif probable)	68	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	37	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · (ii) paquet a evenements non localise	157	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte	16	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	288	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur	2	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · (iii) NEW lu desynchronise	175	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · (iv) NEW lu refuse	1	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · (v) introuvable	45	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · dans un record lu (faux positif probable)	8	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut	5	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (ii) paquet a evenements non localise	62	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte	11	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	185	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur	1	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (v) introuvable	384	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · dans un record lu (faux positif probable)	81	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · (i) tete d un paquet a evenements, avant le debut	165	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · (ii) paquet a evenements non localise	250	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : ouverte	81	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	455	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : terminateur	36	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · (iii) NEW lu desynchronise	3	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · (v) introuvable	634	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · dans un record lu (faux positif probable)	456	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (i) tete d un paquet a evenements, avant le debut	81	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (ii) paquet a evenements non localise	112	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : ouverte	56	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	278	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : terminateur	23	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (v) introuvable	962	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · dans un record lu (faux positif probable)	568	0	0	0	0
+a349fea8	version-33	rejete · (i) tete d un paquet a evenements, avant le debut	219	0	0	0	0
+a349fea8	version-33	rejete · (ii) paquet a evenements non localise	328	0	0	0	0
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : ouverte	25	0	0	0	0
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : rejet hors datum	324	0	0	0	0
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : terminateur	13	0	0	0	0
+a349fea8	version-33	rejete · (v) introuvable	173	0	0	0	0
+a349fea8	version-33	rejete · dans un record lu (faux positif probable)	38	0	0	0	0
+a349fea8	version-33	temoin · (i) tete d un paquet a evenements, avant le debut	27	0	0	0	0
+a349fea8	version-33	temoin · (ii) paquet a evenements non localise	218	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : ouverte	41	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : rejet hors datum	394	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : terminateur	19	0	0	0	0
+a349fea8	version-33	temoin · (v) introuvable	307	0	0	0	0
+a349fea8	version-33	temoin · dans un record lu (faux positif probable)	114	0	0	0	0
+a521164d	HI_1_4_1	rejete · (i) tete d un paquet a evenements, avant le debut	84	0	0	0	0
+a521164d	HI_1_4_1	rejete · (ii) paquet a evenements non localise	144	0	0	0	0
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : ouverte	18	0	0	0	0
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : rejet hors datum	188	0	0	0	0
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : terminateur	11	0	0	0	0
+a521164d	HI_1_4_1	rejete · (v) introuvable	142	0	0	0	0
+a521164d	HI_1_4_1	rejete · dans un record lu (faux positif probable)	39	0	0	0	0
+a521164d	HI_1_4_1	temoin · (i) tete d un paquet a evenements, avant le debut	19	0	0	0	0
+a521164d	HI_1_4_1	temoin · (ii) paquet a evenements non localise	102	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : ouverte	17	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : rejet hors datum	193	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : terminateur	27	0	0	0	0
+a521164d	HI_1_4_1	temoin · (v) introuvable	192	0	0	0	0
+a521164d	HI_1_4_1	temoin · dans un record lu (faux positif probable)	76	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · (i) tete d un paquet a evenements, avant le debut	24	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · (ii) paquet a evenements non localise	17	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : ouverte	17	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	31	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : terminateur	1	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · (iii) NEW lu desynchronise	1	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · (v) introuvable	87	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · dans un record lu (faux positif probable)	69	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (i) tete d un paquet a evenements, avant le debut	9	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (ii) paquet a evenements non localise	7	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (iii') apres l arret de la vue B : ouverte	19	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	34	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (iii') apres l arret de la vue B : terminateur	2	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (v) introuvable	105	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · dans un record lu (faux positif probable)	71	0	0	0	0
+bf15f7ab	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	11	0	0	0	0
+bf15f7ab	HI_1_13_0	rejete · (ii) paquet a evenements non localise	10	0	0	0	0
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte	14	0	0	0	0
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	22	0	0	0	0
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur	7	0	0	0	0
+bf15f7ab	HI_1_13_0	rejete · (v) introuvable	39	0	0	0	0
+bf15f7ab	HI_1_13_0	rejete · dans un record lu (faux positif probable)	114	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut	2	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (ii) paquet a evenements non localise	4	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte	6	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	5	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur	3	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (v) introuvable	89	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · dans un record lu (faux positif probable)	108	0	0	0	0
+bfecd02b	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	21	0	0	0	0
+bfecd02b	HI_1_13_0	rejete · (ii) paquet a evenements non localise	8	0	0	0	0
+bfecd02b	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte	1	0	0	0	0
+bfecd02b	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	9	0	0	0	0
+bfecd02b	HI_1_13_0	rejete · (v) introuvable	6	0	0	0	0
+bfecd02b	HI_1_13_0	rejete · dans un record lu (faux positif probable)	2	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · (ii) paquet a evenements non localise	1	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte	4	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	7	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · (v) introuvable	18	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · dans un record lu (faux positif probable)	17	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	2	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · (ii) paquet a evenements non localise	38	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte	2	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	12	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur	3	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · (iii) NEW lu desynchronise	4	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · (v) introuvable	15	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · dans un record lu (faux positif probable)	4	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · (ii) paquet a evenements non localise	10	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	3	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · (v) introuvable	46	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · dans un record lu (faux positif probable)	21	0	0	0	0
+d9781168	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	16	0	0	0	0
+d9781168	HI_1_13_0	rejete · (ii) paquet a evenements non localise	137	0	0	0	0
+d9781168	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte	1	0	0	0	0
+d9781168	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	58	0	0	0	0
+d9781168	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur	1	0	0	0	0
+d9781168	HI_1_13_0	rejete · (v) introuvable	21	0	0	0	0
+d9781168	HI_1_13_0	rejete · dans un record lu (faux positif probable)	14	0	0	0	0
+d9781168	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut	6	0	0	0	0
+d9781168	HI_1_13_0	temoin · (ii) paquet a evenements non localise	61	0	0	0	0
+d9781168	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	27	0	0	0	0
+d9781168	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur	1	0	0	0	0
+d9781168	HI_1_13_0	temoin · (v) introuvable	99	0	0	0	0
+d9781168	HI_1_13_0	temoin · dans un record lu (faux positif probable)	54	0	0	0	0
+e5adf7b2	HI_1_11_0	rejete · (i) tete d un paquet a evenements, avant le debut	150	0	0	0	0
+e5adf7b2	HI_1_11_0	rejete · (ii) paquet a evenements non localise	311	0	0	0	0
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : ouverte	12	0	0	0	0
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	346	0	0	0	0
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : terminateur	12	0	0	0	0
+e5adf7b2	HI_1_11_0	rejete · (v) introuvable	220	0	0	0	0
+e5adf7b2	HI_1_11_0	rejete · dans un record lu (faux positif probable)	119	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (i) tete d un paquet a evenements, avant le debut	69	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (ii) paquet a evenements non localise	178	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : ouverte	12	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	277	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : terminateur	4	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (v) introuvable	378	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · dans un record lu (faux positif probable)	252	0	0	0	0
+f75e7053	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	32	0	0	0	0
+f75e7053	HI_1_13_0	rejete · (ii) paquet a evenements non localise	13	0	0	0	0
+f75e7053	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	1	0	0	0	0
+f75e7053	HI_1_13_0	rejete · (v) introuvable	2	0	0	0	0
+f75e7053	HI_1_13_0	temoin · (ii) paquet a evenements non localise	1	0	0	0	0
+f75e7053	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte	1	0	0	0	0
+f75e7053	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	2	0	0	0	0
+f75e7053	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur	1	0	0	0	0
+f75e7053	HI_1_13_0	temoin · (v) introuvable	22	0	0	0	0
+f75e7053	HI_1_13_0	temoin · dans un record lu (faux positif probable)	21	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut	106	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · (ii) paquet a evenements non localise	41	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte	34	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum	424	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur	6	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · (iii) NEW lu desynchronise	349	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · (v) introuvable	64	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · dans un record lu (faux positif probable)	14	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut	15	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (ii) paquet a evenements non localise	13	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte	18	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum	280	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur	3	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (v) introuvable	584	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · dans un record lu (faux positif probable)	125	0	0	0	0

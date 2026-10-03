@@ -1,7 +1,7 @@
 /**
  * dominance — source UNIQUE des correspondances `dominance_flag` → i18n / token.
  *
- * Le drapeau (canonical.DominanceFlag côté Go) vaut 0 (aucun badge) ou 1..5.
+ * Le drapeau (canonical.DominanceFlag côté Go) vaut 0 (aucun badge) ou 1..7.
  * Trois surfaces l'affichent : la colonne Dominance de l'Explorateur, les badges
  * narratifs Career/Match view, et le marqueur de la bande de résultats
  * (Timeseries + Escouade). Les libellés et les couleurs DOIVENT être identiques
@@ -20,6 +20,8 @@ export const DOMINANCE_LABEL_KEYS: Record<DominanceValue, MatchViewManifestKey> 
   3: 'narrative.dominance.remontada',
   4: 'narrative.dominance.debandade',
   5: 'narrative.dominance.contre_remontada',
+  6: 'narrative.dominance.sabordage',
+  7: 'narrative.dominance.abnegation',
 }
 
 /** Drapeau → token sémantique de couleur (cf. semantic-tokens.ts). */
@@ -29,10 +31,12 @@ export const DOMINANCE_COLOR_TOKENS: Record<DominanceValue, SemanticToken> = {
   3: 'narrative-remontada',
   4: 'narrative-debacle',
   5: 'narrative-contre-remontada',
+  6: 'narrative-sabordage',
+  7: 'narrative-abnegation',
 }
 
 /**
- * dominanceLabels — libellés localisés des 5 drapeaux, prêts pour le tooltip de
+ * dominanceLabels — libellés localisés des 7 drapeaux, prêts pour le tooltip de
  * la bande de résultats (`OutcomeSequenceTape.dominanceLabels`).
  */
 export function dominanceLabels(locale: Locale): Record<DominanceValue, string> {
@@ -42,5 +46,7 @@ export function dominanceLabels(locale: Locale): Record<DominanceValue, string> 
     3: formatMessage(matchViewManifest, DOMINANCE_LABEL_KEYS[3], locale),
     4: formatMessage(matchViewManifest, DOMINANCE_LABEL_KEYS[4], locale),
     5: formatMessage(matchViewManifest, DOMINANCE_LABEL_KEYS[5], locale),
+    6: formatMessage(matchViewManifest, DOMINANCE_LABEL_KEYS[6], locale),
+    7: formatMessage(matchViewManifest, DOMINANCE_LABEL_KEYS[7], locale),
   }
 }

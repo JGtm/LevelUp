@@ -23,7 +23,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 )
 
-// acquireDiagTokens fait le pipeline ADR 0023 : MultiUserTokenStore → env var fallback.
+// acquireDiagTokens fait le pipeline ADR 0023 : MultiUserTokenStore, source unique.
 // Persiste la rotation au store si applicable. Pour CLI diagnostic one-shot.
 func acquireDiagTokens(ctx context.Context, gamertag string) (*domain.HaloTokens, error) {
 	provider := auth.NewSISUProvider()
@@ -38,11 +38,7 @@ func acquireDiagTokens(ctx context.Context, gamertag string) (*domain.HaloTokens
 		xuid = user.XUID
 	}
 
-	legacy := auth.LegacyAuthInputs{
-		OAuthRT: os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)),
-		Source:  "env_var",
-	}
-	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag, legacy)
+	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag)
 	if err != nil {
 		return nil, err
 	}

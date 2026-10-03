@@ -31,7 +31,7 @@ import "levelup/go-api/internal/sync/matchflags"
 const (
 	snapReasonLUSRIneligible = "lusr_ineligible" // ranked / firefight / FFA / non-2-team
 	snapReasonLUSRSkipped    = "lusr_skipped"    // 2-team éligible mais pas de row (imbalance/DNF/group-hold)
-	snapReasonWeaponsAbsent  = "weapons_absent"  // film 404/expiré (matchflags.MBitWeaponKillsNoFilm) — terminal
+	snapReasonWeaponsAbsent  = "weapons_absent"  // film 404/expiré (matchflags.MBitFilmAbsent) — terminal
 	snapReasonForced         = "forced"          // pose forcée : grâce dépassée malgré dérivation(s) bloquée(s)
 
 	snapReasonBlockedEvents    = "blocked_events"
@@ -100,7 +100,7 @@ func isMatchSnapshotReady(f matchReadinessFacts, c titleReadinessCaps, agedOut b
 		switch {
 		case f.backfillCompleted&matchflags.MBitWeaponKills != 0:
 			// calculé → rien
-		case f.backfillCompleted&matchflags.MBitWeaponKillsNoFilm != 0:
+		case f.backfillCompleted&matchflags.MBitFilmAbsent != 0:
 			partial = append(partial, snapReasonWeaponsAbsent) // terminal-absent
 		default:
 			blocked = append(blocked, snapReasonBlockedWeapons)

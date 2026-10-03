@@ -125,9 +125,16 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	}
 
 	// Team scores (depuis Teams[].Stats.CoreStats.Score)
-	t0, t1 := extractTeamScoresByID(matchJSON)
+	t0, t1 := ExtractTeamScoresByID(matchJSON)
 	row.Team0Score = t0
 	row.Team1Score = t1
+
+	// Manches (depuis Teams[].Stats.CoreStats.RoundsWon/Lost/Tied) — la seule grandeur qui
+	// dise le résultat quand le mode se décide aux manches (cf. ExtractTeamRoundsByID).
+	rw0, rw1, rTotal := ExtractTeamRoundsByID(matchJSON)
+	row.Team0RoundsWon = rw0
+	row.Team1RoundsWon = rw1
+	row.RoundsTotal = rTotal
 
 	// Team PersonalScore aggregates (somme par équipe sur Players[].PersonalScore).
 	// L'API ne fournit pas d'agrégat — on le calcule depuis les participants.

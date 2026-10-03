@@ -2,7 +2,7 @@
  * SessionFragCard — « Répartition des frags » v2 d'UNE session : sunburst hiérarchique
  * classe→rôle (FragSunburst) + un 2e graphe qui DÉPEND du titre :
  *   - titre fournissant la précision par arme (Halo 5, table weapon_accuracy) →
- *     « Précision par arme » (SynthesisWeaponAccuracyChart, survol lié au sunburst) ;
+ *     « Précision par arme » (WeaponAccuracyChart, survol lié au sunburst) ;
  *   - sinon (Infinite) → « Détails des frags » (FragWeaponBreakdown = armes du registre
  *     + détail mêlée/grenade/capacités via buildFragDetailBreakdown).
  * MÊME rendu final que le Match view : compteur SEUL centré, légende à gauche, survol
@@ -28,11 +28,13 @@ import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdow
 // Précision par arme : réutilise le graphe Synthesis (déjà recoloré par classe + survol
 // lié). Import cross-feature durable déclaré (session-detail=>synthesis, cf.
 // tools/lint-cross-feature-imports.mjs) — analogue à session-detail=>explorer.
-import { SynthesisWeaponAccuracyChart } from '@/features/synthesis/SynthesisWeaponAccuracyChart'
+import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
 import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { SessionCompareEntry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+
+import { sessionFragCardHasContent } from './sessionSectionVisibility'
 
 /** Hauteur fixe PARTAGÉE par le sunburst et le 2e graphe (I5 — même hauteur des deux cartes
  *  dans les deux états compare/non-compare). Alignée sur le défaut ChartCard. */
@@ -52,13 +54,14 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
   const classLabel = (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale)
   const roleLabel = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale)
   const detailTitle = formatMessage(fragsManifest, 'frags.charts.detail_title', appLocale)
-  const breakdown = buildFragDetailBreakdown(distribution, entry?.top_weapon_kills ?? [], { roleLabel, classLabel })
+  const breakdown = buildFragDetailBreakdown(distribution, entry?.top_weapon_kills ?? [], { roleLabel, classLabel, locale: appLocale })
   // Précision par arme native (Halo 5) : quand l'agrégat de session la porte, le 2e graphe
   // devient « Précision par arme » à la place de « Détails des frags » (Infinite = vide → repli).
   const accuracy = entry?.weapon_accuracy ?? []
 
-  const hasSunburst = (distribution?.total_kills ?? 0) > 0
-  if (!hasSunburst && breakdown.length === 0) return null
+  // Porte partagée avec le TITRE DE SECTION « Frags et usages » (sessionSectionVisibility) :
+  // une seule écriture de « y a-t-il quelque chose à dessiner ».
+  if (!sessionFragCardHasContent(entry)) return null
 
   return (
     <div className={stacked ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 gap-4 xl:grid-cols-3'}>
@@ -74,7 +77,7 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
       />
       {accuracy.length > 0 ? (
         <div className={stacked ? 'flex min-w-0 flex-col' : 'flex min-w-0 flex-col xl:col-span-1'}>
-          <SynthesisWeaponAccuracyChart
+          <WeaponAccuracyChart
             weapons={accuracy}
             weaponKills={entry?.top_weapon_kills ?? []}
             hoveredClass={hoveredClass}
@@ -99,3 +102,4 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
     </div>
   )
 }
+

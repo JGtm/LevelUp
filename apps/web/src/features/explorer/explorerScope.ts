@@ -12,6 +12,7 @@
  *   start → startDate · end → endDate · scope → squadScope · mid → matchIDSearch
  *   exp → expTypes · pl → playlists · maps → mapNames · modes → modeNames
  *   perf → perfTiers · skill → skillTiers · outcome → outcomeFilter
+ *   replay → replayScope
  *
  * Le tri du tableau (mode Matchs) est CLIENT et éphémère (état interne du tableau,
  * non persisté dans l'URL) — cf. thought_log 2026-07-17.
@@ -24,12 +25,15 @@ import { csvToSet, setToCsv } from '@/lib/page-scope/serialize'
 import type { MatchFilterOutcome, MatchFilterSpec } from '@/lib/match-nav/navContext'
 
 export type SquadScope = '' | 'solo' | 'squad'
+/** Présence d'un rejeu 2D : tous / avec / sans. Même forme à 3 états que SquadScope. */
+export type ReplayScope = '' | 'with' | 'without'
 
 /** État riche consommé par ExplorerPage. */
 export interface ExplorerScope {
   startDate: string
   endDate: string
   squadScope: SquadScope
+  replayScope: ReplayScope
   matchIDSearch: string
   expTypes: Set<string>
   playlists: Set<string>
@@ -45,6 +49,7 @@ export interface EncodedExplorerScope {
   start?: string
   end?: string
   scope?: SquadScope
+  replay?: ReplayScope
   mid?: string
   exp?: string
   pl?: string
@@ -60,6 +65,7 @@ export const EXPLORER_URL_KEYS: readonly (keyof EncodedExplorerScope)[] = [
   'start',
   'end',
   'scope',
+  'replay',
   'mid',
   'exp',
   'pl',
@@ -77,6 +83,7 @@ export function encodeExplorerScope(s: ExplorerScope): EncodedExplorerScope {
     start: s.startDate || undefined,
     end: s.endDate || undefined,
     scope: s.squadScope || undefined,
+    replay: s.replayScope || undefined,
     mid: s.matchIDSearch || undefined,
     exp: setToCsv(s.expTypes),
     pl: setToCsv(s.playlists),
@@ -91,10 +98,12 @@ export function encodeExplorerScope(s: ExplorerScope): EncodedExplorerScope {
 /** URL (partielle) → App. Remplit les défauts pour les params absents. */
 export function decodeExplorerScope(raw: Partial<EncodedExplorerScope>): ExplorerScope {
   const sc = raw.scope
+  const rp = raw.replay
   return {
     startDate: raw.start ?? '',
     endDate: raw.end ?? '',
     squadScope: sc === 'solo' || sc === 'squad' ? sc : '',
+    replayScope: rp === 'with' || rp === 'without' ? rp : '',
     matchIDSearch: raw.mid ?? '',
     expTypes: csvToSet(raw.exp),
     playlists: csvToSet(raw.pl),
@@ -121,6 +130,7 @@ export const explorerSearchSchema = z.object({
   start: z.string().optional(),
   end: z.string().optional(),
   scope: z.enum(['solo', 'squad']).optional(),
+  replay: z.enum(['with', 'without']).optional(),
   mid: z.string().optional(),
   exp: z.string().optional(),
   pl: z.string().optional(),

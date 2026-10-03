@@ -26,10 +26,14 @@ en Go ou TypeScript. **SQLite interdit** : DuckDB uniquement.
 
 **AVANT TOUTE ACTION** :
 - `.ai/thought_log.md` — journal des décisions (lire les entrées récentes)
-- Le plan actif du chantier en cours (`.ai/V7/PLAN_*.md`) s'il existe
+- Le plan actif du chantier en cours (`.ai/PLAN_*.md`, les plans clos vivent sous `.ai/V7.5/`) s'il existe
 - `docs/ARCHITECTURE_V6.md` + `docs/FOUNDATIONS_GUIDE.md` (onboarding)
 - `.ai/project_map.md` — cartographie (vérifier la date : doctrine RE-VÉRIFIER, les
   documents `.ai/` rotent plus vite qu'ils ne sont maintenus)
+- **Équipement (usages, poses, lâchers, ramassages, charges)** :
+  `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` — À LIRE AVANT toute affirmation sur le
+  sujet, y compris en conversation. Les faits sont éparpillés sur quatre documents et
+  répondre de mémoire y produit des contradictions (constaté le 2026-09-09).
 - Recherche / rétro-ingénierie (film Theater, arme par kill, rejeu 2D, cartes) :
   `.ai/V7.5/README.md` — index du dossier. La racine de `.ai/` ne garde que le chantier
   vivant (états de l'art, plans et handoffs à traiter).
@@ -93,14 +97,27 @@ Tous les chemins passent par `PathResolver` (`internal/domain/title/registry.go`
 | Enrichissements joueur | `data/titles/{slug}/players/{gamertag}/stats.duckdb` |
 | Aliases Xbox globaux | `data/global/xbox_aliases.duckdb` |
 | Tokens auth (source unique) | `data/auth/watcher_tokens/{xuid}.json` |
+| Comptes utilisateurs (rôle, mot de passe, xuid lié) | `data/auth/users.json` |
+| Groupes / escouades | `data/auth/groups.json` |
+| Profils suivis (db_path, sync par titre, `auth_only`) | `db_profiles.json` |
 | Sessions HTTP | `data/sessions/` |
 | Manifests par titre | `config/titles/{slug}/title.toml` + `mappings/{fields,assets,outcomes,capabilities}.toml` |
 
 Détail des tables : skill `db-schema`. Slugs actifs : `halo_infinite` (défaut), `halo_5`.
 
+**Identités joueurs (ADR 0035)** : quatre registres (profils, comptes, tokens, suivi live du
+watcher) et une seule clé de jointure, le **xuid** (gamertag/slug = affichage et chemin FS).
+Lecture composite et écritures d'onboarding/purge passent par le port `PlayerDirectory`
+(`internal/service/playerdirectory/`) : `Onboard` est le SEUL appelant de
+`ProfileService.CreatePlayer` (ratchet), aucun sync ni suivi live sans profil suivi
+(`domain.ProfileGate` sur le coordinateur, le daemon et le SSO), le verrou d'instance se lit
+UNIQUEMENT via `authz.InstanceLocked` (ratchet), la purge (`levelup identity purge`) ne
+touche jamais la base partagée. Vue admin : `GET /admin/identities` / section « Identités ».
+
 ## Règles critiques — écritures DuckDB (anti-corruption ART)
 
-Contexte : le bug DuckDB ART #23046 (`Failed to delete all rows from index`) a corrompu
+Contexte : le bug DuckDB ART #23645 (`Failed to delete all rows from index`, ouvert, présent
+en 1.5.5 embarquée) a corrompu
 des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON NÉGOCIABLES :
 
 1. **Toute écriture per-match sur une DB partagée** (shared, player, pve, metadata) passe
@@ -129,8 +146,12 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 
 ## Règle auth tokens (ADR 0023)
 
-- **Source unique** : `data/auth/watcher_tokens/{xuid}.json` via `*auth.MultiUserTokenStore`
-  (`OAuthRefreshToken` + `MSALCacheJSON` par xuid).
+- **Source unique et EXCLUSIVE** : `data/auth/watcher_tokens/{xuid}.json` via
+  `*auth.MultiUserTokenStore` (champ `OAuthRefreshToken` par xuid). Depuis la Phase 5
+  (2026-08-25), **plus aucun fallback** : ni `sync_meta.oauth_refresh_token` /
+  `msal_token_cache`, ni `SPNKR_OAUTH_REFRESH_TOKEN_*`, ni le store mono-user
+  `data/auth/watcher_tokens.json` (celui-ci ne porte plus que l'état du watcher RTA :
+  access_token + XSTS). Un joueur absent du store n'a pas de token.
 - **JAMAIS de re-capture de token** pour « réparer » une auth : un refresh token valide se
   rafraîchit ; s'il est mort, diagnostiquer la cause (rotation perdue, mauvais xuid) avant
   tout. `AADSTS70000` = vieille app / RT étranger, pas une raison de re-capturer.
@@ -138,10 +159,13 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   ou `token-import` (RT sur stdin). Pré-requis : joueur déclaré dans `db_profiles.json`.
 - **Cache process** : après rotation externe d'un RT, appeler
   `halo.InvalidateCachedPlayerTokens(xuid)` (sinon le cache 50 min sert l'ancien chain).
-- **Fallbacks legacy en transition** (`sync_meta.*`, `SPNKR_OAUTH_REFRESH_TOKEN_*`) :
-  encore lus ; la télémétrie `legacy_source_used` puis leur suppression (Phase 5) sont
-  planifiées (plan audits, lots D1a/D2). Aucune logique métier dans le package `auth`.
-- Helper canonique CLI : `auth.RefreshHaloTokensViaStoreFirst(...)`.
+- **Aucune exception legacy** : la migration one-shot du boot a été retirée le 2026-09-13
+  (critère tenu en prod depuis le 2026-06-14 : `rt_migrated=0` à chaque boot). Plus aucun
+  code ne lit env ni `sync_meta` pour un credential. Garde-rails : `auth/sentinel_test.go`
+  (allowlists des guards 2 et 3 VIDES — ce sont des ratchets anti-résurrection),
+  `sync/no_legacy_source_used_test.go`. Aucune logique métier dans le package `auth`.
+- Helper canonique CLI : `auth.RefreshHaloTokensViaStoreFirst(...)` ; access_token brut :
+  `auth.ResolveMSAccessTokenStoreFirst(...)`.
 
 ## Multi-titre — title-agnostic (règle transverse)
 
@@ -161,6 +185,7 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 make go-api-test            # tests Go rapides (domain/analysis/contracttest)
 cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
+make go-api-test-gamefiles  # corpus cartes internal/himap (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
 make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests ; la CI reste le gate d'autorité
 
@@ -180,6 +205,15 @@ go run apps/go-api/cmd/inspect_bp/main.go            # outil Go (CGO : gcc msys6
 # CLI principal
 go run ./apps/go-api/cmd/levelup --help              # sync, backfill, diag
 ```
+
+**Tag `gamefiles` (2026-09-05)** : les 59 `*_gamefiles_test.go` de `internal/himap/` lisent
+l'installation locale de Halo Infinite et coûtent des dizaines de minutes
+(`TestBalayageCoquille` seul : 203 s pour 26 cartes ; 1 246 s avant le passage du lecteur
+ de modules en projection mémoire le 2026-09-05). Ils sont derrière
+`//go:build gamefiles` — sans quoi `go test ./internal/himap/` ne terminait jamais sur un
+poste où le jeu est installé, alors que la CI (pas de jeu → `t.Skip`) restait verte. Un test
+qui ouvre le jeu se nomme `*_gamefiles_test.go` ET porte le tag : garde-rails dans
+`internal/archlint/gamefiles_tag_test.go` (ratchet sur tout le module, 2026-09-06 ; remplace `internal/himap/corpus_tag_test.go`).
 
 Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/RUNBOOK_GO_LIVE*`
 — **push sur `main` = déploiement prod automatique** : prévenir l'utilisateur avant.
@@ -226,6 +260,10 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
     même PR. **ADRs et runbooks = EN-only** (pas de traduction à créer ni maintenir).
 16. **Git** : jamais `git stash` (commit WIP à la place) ; demander avant tout commit ;
     jamais travailler sur `main` ; ne pas changer de branche si un travail est en cours.
+17. **Commentaires** : le code porte le contrat (ce que fait la déclaration, ses invariants,
+    pourquoi) ; l'histoire (mesures datées, lots, comptes du jour) va dans l'ADR, la chronique
+    ou le journal. S'applique au code neuf et à toute affirmation fausse rencontrée, pas de
+    réécriture de masse. Détail : skill `arch-rules`.
 
 ## Diagnostic de revue de code — anti-patterns interdits
 
@@ -264,6 +302,10 @@ git commit -m "refactor(phase2): ..."
 5. Pas de nom fourni → en proposer un avant de créer
 6. Entre sessions : `git log --oneline -10` pour reprendre au bon endroit
 7. Plusieurs branches uniquement pour des tâches réellement indépendantes/parallèles
+8. **Merge vers `main` = squash merge uniquement** (imposé par GitHub : seul « Squash and
+   merge » est activé). Une branche = un commit sur `main` ; le titre du squash suit
+   Conventional Commits et résume la tâche. Branche supprimée après merge. Ne jamais
+   faire de `git merge` local vers `main`.
 
 ## Décisions architecturales (ADRs) — `docs/adr/`
 
@@ -279,12 +321,38 @@ git commit -m "refactor(phase2): ..."
   `0020` coach→pont Prestige · `0021` recovery WAL shared_social ·
   `0022` shared_social Collect→Persist · `0023` **tokens source unique** ·
   `0024` LUSR v2 TrueSkill2 · `0025` refactor title-agnostic (master :
-  `.ai/V7/PLAN_TITLE_AGNOSTIC_REFACTORING.md`) · `0026` **append-only ART eradication**
+  `.ai/archive/V7/PLAN_TITLE_AGNOSTIC_REFACTORING.md`) · `0026` **append-only ART eradication**
   (+ vues `_latest`) · `0027` sync pipeline V2 cycle orchestrator ·
   `0028` template synthesis coach · `0029` ownership joueur multi-user ·
   `0030` **persist write aggregates** (durcissement compile-time anti-ART : batch opaque,
   allowlist datée `OpenReadWrite`, garde-rail lecture `_latest`) · `0031` frontière source
-  de données par titre (mutualisation HTTP `platform/httpx`, `TitleSyncRunner` ; amende 0027).
+  de données par titre (mutualisation HTTP `platform/httpx`, `TitleSyncRunner` ; amende 0027) ·
+  `0032` **score des modes à manches** (table mesurée `regulation.toml [rounds_decide]` +
+  `analysis.ReadTeamScore` : sur ces modes le score en points peut donner la victoire au
+  perdant — afficher les manches) · `0033` **population escouade, un seul compte**
+  (appartenance d'un match à la session d'une composition indépendante de la présence à la
+  fin — quitter un match n'est pas quitter la session ; `composition_sessions[].match_count`
+  seule source d'un compte de session, `/filters/resolve` en repli de chargement seulement ;
+  2 ratchets) · `0034` **décodeur de film** (profil immuable par build ; cinq couches
+  `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `film/internal/`,
+  fermées par le compilateur ; hors de `film/`, on passe par la façade `film/decfilm`, dont la
+  surface est tenue par `archlint/film_facade_surface_test.go` (186 symboles et 277
+  identifiants `replay.X` hors de `film/` au 2026-09-30 ; réduction non retenue, V25) ;
+  porte unique aux octets ; build inconnu = erreur typée + film mis de côté + compteur ; une
+  révision par couche, empreinte insensible aux commentaires ; faits PERSISTÉS, la
+  publication rejoue depuis eux quand ils sont frais ; équipe = le film seul ; replis
+  nommés, comptés, retirés (D-10) ; état courant court dans l'ADR, historique M2-M4 dans
+  `docs/adr/0034-annex-history.md`) ·
+  `0035` **annuaire des joueurs** (xuid = clé d'identité unique ; port `PlayerDirectory` ;
+  aucun sync ni suivi sans profil suivi ; `Onboard` seul chemin de création ; verrou décidé
+  en un point, défauts sûrs en mode appliqué ; purge sans toucher la base partagée) ·
+  `0036` **lectures par périmètre** (ni `v_gamertag_lookup` ni fenêtre `_latest` non bornée dans
+  une lecture de page ; un chargement par requête ; cache invalidé au sync ; sync stationnaire sans
+  écrivain ; sections de durée ; bornes DuckDB lues à l'ouverture — 7 invariants à garde-rail nommé) ·
+  `0037` **représentation intermédiaire du film** (la marche de production devient la lecture unique de
+  la grammaire : structure typée à étendues en bits, deux phases images-clés puis trames, une seule table
+  d'entités, fermeture refusée distincte de la queue opaque, récupération marquée ; types dans
+  `grammar/lecture`, que ni `replay` ni `decfilm` n'importent ; amende 0034 D-1, D-2, D-6, D-7, D-10).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

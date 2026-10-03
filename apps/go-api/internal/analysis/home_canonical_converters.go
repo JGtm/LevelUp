@@ -1,7 +1,7 @@
-// Package analysis â€” home_canonical_converters.go : converters
-// canonical.PlayerMatchRow â†’ legacymatch.HomeMatchRow / HomeSessionRow.
+// Package analysis — home_canonical_converters.go : converters
+// canonical.PlayerMatchRow → legacymatch.HomeMatchRow / HomeSessionRow.
 //
-// EncapsulÃ©s ici (plus visibles dans service/home_service.go â€” cf. ADR 0011).
+// Encapsulés ici (plus visibles dans service/home_service.go — cf. ADR 0011).
 package analysis
 
 import (
@@ -12,15 +12,15 @@ import (
 	"levelup/go-api/internal/legacymatch"
 )
 
-// HomeMatchRowFromCanonical convertit canonical.PlayerMatchRow â†’ HomeMatchRow.
+// HomeMatchRowFromCanonical convertit canonical.PlayerMatchRow → HomeMatchRow.
 //
 // Mapping selon ADR 0011 :
-//   - DonnÃ©es brutes (kills/deaths/MMR/Outcome/scores Ã©quipes/SkillSnapshot
+//   - Données brutes (kills/deaths/MMR/Outcome/scores équipes/SkillSnapshot
 //     data fields) : depuis canonical.
 //   - Labels FR map/playlist/game_variant : via AssetReference.Labels["fr"]
 //     avec fallback DefaultLabel.
-//   - SkillTierLabel / SkillRankImageURL / PairName : laissÃ©s vides
-//     (TitleSemanticAdapter / TitleAssetURLAdapter / composite Halo-only â€”
+//   - SkillTierLabel / SkillRankImageURL / PairName : laissés vides
+//     (TitleSemanticAdapter / TitleAssetURLAdapter / composite Halo-only —
 //     enrichissement P4.3 finale).
 func HomeMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.HomeMatchRow {
 	out := legacymatch.HomeMatchRow{
@@ -138,8 +138,8 @@ func HomeMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []legacymatch.H
 	return out
 }
 
-// HomeSessionsFromCanonical dÃ©rive []HomeSessionRow depuis canonical.
-// SessionID : canonical *string â†’ home *int via strconv.
+// HomeSessionsFromCanonical dérive []HomeSessionRow depuis canonical.
+// SessionID : canonical *string → home *int via strconv.
 func HomeSessionsFromCanonical(rows []canonical.PlayerMatchRow) []legacymatch.HomeSessionRow {
 	out := make([]legacymatch.HomeSessionRow, 0, len(rows))
 	for _, r := range rows {

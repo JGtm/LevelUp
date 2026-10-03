@@ -60,18 +60,17 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 		svc = svc.WithRankImageURLs(imgs)
 	}
 	// Wiring des amis — utilisé par GetTopEncounters pour le tableau "joueurs
-	// les plus croisés (hors amis)". Si le settingsStore n'est pas attaché ou
-	// que la liste est vide, GetTopEncounters n'exclut personne (dégradation
-	// gracieuse).
-	if resolver := r.friendGamertagsResolver(); resolver != nil {
+	// les plus croisés (hors amis)". Amis DU joueur consulté. Si le store d'amis
+	// n'est pas attaché ou que la liste est vide, GetTopEncounters n'exclut
+	// personne (dégradation gracieuse).
+	if resolver := r.friendGamertagsResolver(pdb.XUID); resolver != nil {
 		svc = svc.WithFriendGamertagsResolver(resolver)
 	}
-	// Résolveur gamertag → xuid : ExplorerRepo.ResolveXUIDByGamertag interroge
-	// shared.v_gamertag_lookup (cascade xuid_aliases ∪ match_participants),
-	// donc capture les amis qui ne sont pas encore dans xuid_aliases mais
-	// déjà apparus en match. Source unique de vérité partagée avec Explorer.
-	explorerRepo := duckdb.NewExplorerRepo(pdb, pdb.XUID)
-	svc = svc.WithFriendXUIDResolver(explorerRepo.ResolveXUIDByGamertag)
+	// Amis → xuids (rencontres « hors amis ») : les profils suivis d'abord (xuid connu, aucune
+	// lecture), puis UNE lecture pour les autres (alias, participants de l'historique du
+	// joueur). Plus aucune lecture de v_gamertag_lookup par ami (lot perf L9-go ; avant :
+	// ExplorerRepo.ResolveXUIDByGamertag, 1,8 à 2,8 s PAR AMI).
+	svc = svc.WithFriendXUIDSources(r.followedPlayersXUIDs(pdb.TitleSlug), careerRepo.ResolveFriendXUIDs)
 	// SeasonsCatalog (TOML + DB + lazy-fetch) — alimente le filtre Saisons
 	// + cascade counts dans la section "Matchs marquants". Mêmes seasons
 	// que la SaisonPill côté Squad/Explorer.
@@ -111,6 +110,31 @@ func (r *ServiceRegistry) RelationsCtx(ctx context.Context, slug string) (port.R
 		svc = svc.WithCrossGame(cg)
 	}
 	return svc, nil
+}
+
+// followedPlayersXUIDs : gamertag → xuid des profils suivis du titre (db_profiles.json, relu
+// seulement quand il change). Registre d'abord de la résolution des amis de la Carrière. nil
+// sans configuration.
+func (r *ServiceRegistry) followedPlayersXUIDs(titleSlug string) func(context.Context) map[string]string {
+	if r.cfg == nil {
+		return nil
+	}
+	cfg := r.cfg
+	return func(ctx context.Context) map[string]string {
+		players, err := cfg.LoadPlayers(titleSlug)
+		if err != nil {
+			slog.WarnContext(ctx, "career.friends: registre des profils illisible — amis lus en base",
+				"titleSlug", titleSlug, "err", err)
+			return nil
+		}
+		out := make(map[string]string, len(players))
+		for _, p := range players {
+			if p.XUID != "" {
+				out[p.Gamertag] = p.XUID
+			}
+		}
+		return out
+	}
 }
 
 // buildFriendsXPLoader construit un loader d'historique XP pour tous les amis

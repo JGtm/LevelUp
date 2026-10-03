@@ -138,4 +138,44 @@ type SessionPageResponse struct {
 	// graphes — MIROIR du bloc Timeseries. Vide sans repo highlight events ni event.
 	FirstBlood        []FirstBloodPlayerSeries `json:"first_blood,omitempty"`
 	CompareFirstBlood []FirstBloodPlayerSeries `json:"compare_first_blood,omitempty"`
+	// Usage / CompareUsage : bloc « usages d'équipement, armes spéciales et
+	// objectifs », pour la session courante et pour la session comparée — MIROIR
+	// d'IntensityRows/CompareIntensityRows et de FirstBlood/CompareFirstBlood.
+	// Best-effort : nil si la session n'a aucun match ; Available=false avec raison
+	// machine si le titre ne déclare pas film.usage_summary ou si la lecture échoue
+	// (jamais un 500). CompareUsage reste nil hors comparaison : c'est cette
+	// absence, et non un drapeau, qui dit au client de ne rien rendre à droite.
+	Usage        *SessionUsageBlock `json:"usage,omitempty"`
+	CompareUsage *SessionUsageBlock `json:"compare_usage,omitempty"`
+	// RangeProfiles / CompareRangeProfiles : bloc « portée des engagements » (D22-4) —
+	// un profil par match de la session, portant la médiane de portée du joueur consulté
+	// et celle du LOBBY ENTIER du match, qui en est le référentiel. MIROIR d'Usage /
+	// CompareUsage : les deux colonnes du drawer parlent des mêmes matchs. Nil (jamais un
+	// bloc vide) quand le titre n'a pas de décodeur de film, quand la lecture échoue ou
+	// quand aucun match de la session ne porte de frag mesuré.
+	RangeProfiles        *MatchRangeBlock `json:"range_profiles,omitempty"`
+	CompareRangeProfiles *MatchRangeBlock `json:"compare_range_profiles,omitempty"`
+	// RangeReference : la PÉRIODE DE RÉFÉRENCE de la portée (lot U, décision D23-4) — les
+	// mêmes profils, du seul joueur consulté, sur les matchs du FILTRE de la page (la MÊME
+	// référence que l'habituel des usages et de la coordination), plus les bandes de rôle
+	// et la médiane de la période. Un SEUL bloc pour les deux colonnes du drawer : la
+	// référence ne dépend pas de la session affichée, elle dépend du filtre.
+	RangeReference *RangeReferenceBlock `json:"range_reference,omitempty"`
+	// Coordination : le bloc « Riposte » et « Appui reçu » de la session (lot N1,
+	// décisions D22) — les morts de mon camp ripostées dans les 5 s, ma part des
+	// ripostes, mes frags préparés, ma part des appuis distribués dans mon camp, plus
+	// une case par match pour la bande de régularité.
+	//
+	// À CÔTÉ DU BLOC D'USAGE, ET SERVI PAR LE MÊME APPEL : c'est une section de plus de
+	// la colonne de session, pas un endpoint. Même contrat de dégradation que `Usage` :
+	// nil si la session n'a aucun match, Available=false avec raison machine si le titre
+	// ne nomme pas le tueur de chaque mort ou si la lecture échoue. MÊME producteur que
+	// le bloc de la page Séries temporelles (service/coordination_block.go).
+	//
+	// CompareCoordination est le MÊME bloc pour la session COMPARÉE, produit par le même
+	// producteur sur les matchs de cette session — miroir exact d'Usage / CompareUsage et
+	// de RangeProfiles / CompareRangeProfiles. Nil hors comparaison : c'est cette absence,
+	// et non un drapeau, qui dit au client de ne rien rendre à droite.
+	Coordination        *CoordinationBlock `json:"coordination,omitempty"`
+	CompareCoordination *CoordinationBlock `json:"compare_coordination,omitempty"`
 }

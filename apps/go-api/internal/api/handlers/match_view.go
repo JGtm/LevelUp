@@ -30,10 +30,6 @@ import (
 // paramètres préparés. Limite 64 chars (cf. plan Phase 2b §5).
 var playlistOrSessionPattern = regexp.MustCompile(`^[A-Za-z0-9 _:.\-]{1,64}$`)
 
-// xuidPattern : XUID Halo = entier décimal (jusqu'à 32 chars). Phase 2c
-// (with_player). Mêmes contraintes que côté front (parseFilterSpecFromSearch).
-var xuidPattern = regexp.MustCompile(`^\d{1,32}$`)
-
 // parseNeighborsFilterSpec : extrait MatchFilterSpec depuis r.URL.Query().
 // Tout filtre invalide est silencieusement ignoré + log warning. Jamais 400.
 //
@@ -89,7 +85,10 @@ func parseNeighborsFilterSpec(r *http.Request) *domain.MatchFilterSpec {
 		}
 	}
 	if v := strings.TrimSpace(q.Get("with_player")); v != "" {
-		if xuidPattern.MatchString(v) {
+		// `domain.XUIDValide` est LA definition du motif XUID du dépôt (unification
+		// 2026-09-06) : le même prédicat garde la composition de l'onglet Tactique.
+		// Contraintes inchangées côté front (parseFilterSpecFromSearch).
+		if domain.XUIDValide(v) {
 			spec.WithPlayerXuid = &v
 		} else {
 			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
@@ -221,9 +220,10 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 		if errors.As(err, &apiErr) && apiErr.Code == "not_found" {
 			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", apiErr.Message)
 		}
-		if strings.Contains(err.Error(), "no rows") || strings.Contains(err.Error(), "no rows in result set") {
-			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", "match introuvable : "+matchID)
-		}
+		// PAS DE RENIFLAGE DE CHAÎNE « no rows » ICI (retiré le 2026-08-29) : l'absence
+		// est désormais TYPÉE par le service (domain.ErrNotFound, branche ci-dessus).
+		// Cette branche textuelle était la dernière échappatoire par laquelle une panne
+		// technique dont le message contenait « no rows » se déguisait en 404.
 		return nil, humacore.NewError(http.StatusInternalServerError, "match_view_error", err.Error())
 	}
 	// Onglet médias : réécrire les chemins bruts en URLs servables (même

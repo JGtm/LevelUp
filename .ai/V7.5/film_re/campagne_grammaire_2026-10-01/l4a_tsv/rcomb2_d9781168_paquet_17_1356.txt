@@ -1,0 +1,30 @@
+== full
+debut=1856 strict=-1 ferme=true utiles_fermes=0 recs=1
+  #0 type=1 slot=1338 eid=0x4000053a ti=40 desync=-1 hdr=0 fin=2193 comps=[40]
+  bloc type 1, chunk 17 slot 1338 : present=true {Drapeaux:5 Gen:1 Generation:2 MasqueVue:0 Composants:[0 0 0 0]} vivante=true declare_image_cle=14
+== full-L4a
+debut=526 strict=-1 ferme=true utiles_fermes=11 recs=12
+  #0 type=3 slot=133 eid=0x40000085 ti=4 desync=-1 hdr=0 fin=561 comps=[0]
+  #1 type=3 slot=575 eid=0x4000023f ti=35 desync=-1 hdr=0 fin=726 comps=[0,1,21,25]
+  #2 type=3 slot=577 eid=0x40000241 ti=35 desync=-1 hdr=0 fin=907 comps=[0,1,21,25,30]
+  #3 type=3 slot=578 eid=0x40000242 ti=35 desync=-1 hdr=0 fin=1070 comps=[0,5,21,25]
+  #4 type=3 slot=579 eid=0x40000243 ti=35 desync=-1 hdr=0 fin=1270 comps=[0,1,5,21,25]
+  #5 type=3 slot=580 eid=0x40000244 ti=35 desync=-1 hdr=0 fin=1435 comps=[0,1,21,25]
+  #6 type=3 slot=581 eid=0x40000245 ti=35 desync=-1 hdr=0 fin=1563 comps=[0,21,25]
+  #7 type=3 slot=2513 eid=0x400009d1 ti=42 desync=-1 hdr=0 fin=1746 comps=[0,1,2,3]
+  #8 type=3 slot=2514 eid=0x400009d2 ti=42 desync=-1 hdr=0 fin=1861 comps=[0,1]
+  #9 type=3 slot=2515 eid=0x400009d3 ti=42 desync=-1 hdr=0 fin=1976 comps=[0,1]
+  #10 type=3 slot=2517 eid=0x400009d5 ti=37 desync=-1 hdr=0 fin=2091 comps=[0,1]
+  #11 type=3 slot=2518 eid=0x400009d6 ti=37 desync=-1 hdr=0 fin=2206 comps=[0,1]
+  bloc type 1, chunk 17 slot 133 : present=true {Drapeaux:5 Gen:1 Generation:2 MasqueVue:0 Composants:[1 0 0 0]} vivante=true declare_image_cle=4
+  bloc type 1, chunk 17 slot 575 : present=true {Drapeaux:5 Gen:1 Generation:2 MasqueVue:0 Composants:[374498087590617671 0 0 0]} vivante=true declare_image_cle=35
+  bloc type 1, chunk 17 slot 577 : present=true {Drapeaux:5 Gen:1 Generation:2 MasqueVue:0 Composants:[374498087590617671 0 0 0]} vivante=true declare_image_cle=35
+  bloc type 1, chunk 17 slot 578 : present=true {Drapeaux:5 Gen:1 Generation:2 MasqueVue:0 Composants:[1095214765726687815 0 0 0]} vivante=true declare_image_cle=35
+  bloc type 1, chunk 17 slot 579 : present=true {Drapeaux:5 Gen:1 Generation:2 MasqueVue:0 Composants:[1095214765726687815 0 0 0]} vivante=true declare_image_cle=35
+  bloc type 1, chunk 17 slot 580 : present=true {Drapeaux:0 Gen:0 Generation:1 MasqueVue:0 Composants:[0 0 0 0]} vivante=false declare_image_cle=0
+  bloc type 1, chunk 17 slot 581 : present=true {Drapeaux:0 Gen:0 Generation:1 MasqueVue:0 Composants:[0 0 0 0]} vivante=false declare_image_cle=0
+  bloc type 1, chunk 17 slot 2513 : present=true {Drapeaux:0 Gen:0 Generation:1 MasqueVue:0 Composants:[0 0 0 0]} vivante=false declare_image_cle=0
+  bloc type 1, chunk 17 slot 2514 : present=true {Drapeaux:0 Gen:0 Generation:1 MasqueVue:0 Composants:[0 0 0 0]} vivante=false declare_image_cle=0
+  bloc type 1, chunk 17 slot 2515 : present=true {Drapeaux:0 Gen:0 Generation:1 MasqueVue:0 Composants:[0 0 0 0]} vivante=false declare_image_cle=0
+  bloc type 1, chunk 17 slot 2517 : present=true {Drapeaux:0 Gen:0 Generation:1 MasqueVue:0 Composants:[0 0 0 0]} vivante=false declare_image_cle=0
+  bloc type 1, chunk 17 slot 2518 : present=true {Drapeaux:0 Gen:0 Generation:1 MasqueVue:0 Composants:[0 0 0 0]} vivante=false declare_image_cle=0

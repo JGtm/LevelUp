@@ -12,7 +12,7 @@ export type OutcomeValue = 'win' | 'loss' | 'tie' | 'dnf'
  * `0`/absent = match ordinaire OU titre sans timeline de score (Halo 5) →
  * AUCUN marqueur : l'absence de drapeau ne raconte rien de faux.
  */
-export type DominanceValue = 1 | 2 | 3 | 4 | 5
+export type DominanceValue = 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 export interface OutcomePoint {
   outcome: OutcomeValue
@@ -29,13 +29,13 @@ export interface OutcomePoint {
 }
 
 /**
- * asDominance — normalise un `dominance_flag` d'API (0..5, éventuellement absent)
- * vers `DominanceValue | undefined`. Toute valeur hors 1..5 (dont 0 et les codes
+ * asDominance — normalise un `dominance_flag` d'API (0..7, éventuellement absent)
+ * vers `DominanceValue | undefined`. Toute valeur hors 1..7 (dont 0 et les codes
  * inconnus d'un futur titre) devient `undefined` : pas de marqueur inventé.
  */
 export function asDominance(flag: number | null | undefined): DominanceValue | undefined {
   if (flag == null) return undefined
-  return flag >= 1 && flag <= 5 ? (flag as DominanceValue) : undefined
+  return flag >= 1 && flag <= 7 ? (flag as DominanceValue) : undefined
 }
 
 export interface Run {

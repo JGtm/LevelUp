@@ -66,7 +66,7 @@ func findCount(opts []domain.LabelValue, value string) int {
 
 func TestComputeAvailableOutcomes_NoFilter(t *testing.T) {
 	rows := fixtureExplorerRows()
-	got := computeAvailableOutcomes(rows, domain.MatchHistoryQueryRequest{})
+	got := computeAvailableOutcomes(rows, domain.MatchHistoryQueryRequest{}, nil)
 
 	// 4 Wins (m0/m1/m6/m7), 2 Loss (m2/m3), 1 Tie (m4), 1 DNF (m5).
 	cases := map[string]int{"2": 4, "3": 2, "1": 1, "4": 1}
@@ -81,7 +81,7 @@ func TestComputeAvailableOutcomes_OneSelectedAddsOR(t *testing.T) {
 	rows := fixtureExplorerRows()
 	// Si selected={Win=2}, count(Loss=3) doit refléter "Win OR Loss" = 6.
 	req := domain.MatchHistoryQueryRequest{OutcomeFilter: []int{2}}
-	got := computeAvailableOutcomes(rows, req)
+	got := computeAvailableOutcomes(rows, req, nil)
 
 	if c := findCount(got, "2"); c != 4 {
 		t.Errorf("Win already selected: want 4, got %d", c)
@@ -100,7 +100,7 @@ func TestComputeAvailableOutcomes_OneSelectedAddsOR(t *testing.T) {
 
 func TestComputeAvailablePerfTiers_NoFilter(t *testing.T) {
 	rows := fixtureExplorerRows()
-	got := computeAvailablePerfTiers(rows, domain.MatchHistoryQueryRequest{})
+	got := computeAvailablePerfTiers(rows, domain.MatchHistoryQueryRequest{}, nil)
 
 	// tier 1 (≥80) : m0(90), m1(85), m6(95) = 3
 	// tier 2 (65..80) : m7(70) = 1
@@ -118,7 +118,7 @@ func TestComputeAvailablePerfTiers_NoFilter(t *testing.T) {
 func TestComputeAvailablePerfTiers_OneSelectedAddsOR(t *testing.T) {
 	rows := fixtureExplorerRows()
 	req := domain.MatchHistoryQueryRequest{PerfTiers: []int{1}}
-	got := computeAvailablePerfTiers(rows, req)
+	got := computeAvailablePerfTiers(rows, req, nil)
 
 	if c := findCount(got, "1"); c != 3 {
 		t.Errorf("tier 1 already selected: want 3, got %d", c)
@@ -134,7 +134,7 @@ func TestComputeAvailablePerfTiers_OneSelectedAddsOR(t *testing.T) {
 
 func TestComputeAvailableSkillTiers_NoRankedContext_AllZero(t *testing.T) {
 	rows := fixtureExplorerRows()
-	got := computeAvailableSkillTiers(rows, domain.MatchHistoryQueryRequest{})
+	got := computeAvailableSkillTiers(rows, domain.MatchHistoryQueryRequest{}, nil)
 
 	// Sans ranked_context, skill_tier n'est pas applicable → tous les counts = 0.
 	for _, opt := range got {
@@ -147,7 +147,7 @@ func TestComputeAvailableSkillTiers_NoRankedContext_AllZero(t *testing.T) {
 func TestComputeAvailableSkillTiers_RankedContext_NonZero(t *testing.T) {
 	rows := fixtureExplorerRows()
 	req := domain.MatchHistoryQueryRequest{RankedContext: "ranked"}
-	got := computeAvailableSkillTiers(rows, req)
+	got := computeAvailableSkillTiers(rows, req, nil)
 
 	// Avec ranked_context="ranked" : m0,m1,m2,m6 sont IsRanked=true.
 	//   Diamond : m0+m1 = 2
@@ -167,7 +167,7 @@ func TestComputeAvailableSkillTiers_RankedContext_NonZero(t *testing.T) {
 
 func TestComputeAvailableRankedContexts_NoFilter(t *testing.T) {
 	rows := fixtureExplorerRows()
-	got := computeAvailableRankedContexts(rows, domain.MatchHistoryQueryRequest{})
+	got := computeAvailableRankedContexts(rows, domain.MatchHistoryQueryRequest{}, nil)
 
 	// IsRanked=true : m0,m1,m2,m6 = 4
 	// IsRanked=false : m3,m4,m5,m7 = 4
@@ -185,7 +185,7 @@ func TestComputeAvailableRankedContexts_WithOutcomeFilter(t *testing.T) {
 	// Filtre Win uniquement → m0,m1,m6,m7 (4 wins).
 	// Parmi ces 4 : ranked=m0,m1,m6 = 3 ; unranked=m7 = 1 ; all=4.
 	req := domain.MatchHistoryQueryRequest{OutcomeFilter: []int{2}}
-	got := computeAvailableRankedContexts(rows, req)
+	got := computeAvailableRankedContexts(rows, req, nil)
 
 	cases := map[string]int{"": 4, "ranked": 3, "unranked": 1}
 	for v, want := range cases {
@@ -201,7 +201,7 @@ func TestComputeAvailableRankedContexts_WithOutcomeFilter(t *testing.T) {
 
 func TestComputeAvailableSquadScopes_NoFilter(t *testing.T) {
 	rows := fixtureExplorerRows()
-	got := computeAvailableSquadScopes(rows, domain.MatchHistoryQueryRequest{})
+	got := computeAvailableSquadScopes(rows, domain.MatchHistoryQueryRequest{}, nil)
 
 	// IsWithFriends=true : m0,m2,m3,m6,m7 = 5 (squad)
 	// IsWithFriends=false : m1,m4,m5 = 3 (solo)
@@ -221,7 +221,7 @@ func TestComputeAvailableSquadScopes_RespectsOtherFilters(t *testing.T) {
 	//   squad : m0,m6,m7 = 3
 	//   all   : 4
 	req := domain.MatchHistoryQueryRequest{OutcomeFilter: []int{2}}
-	got := computeAvailableSquadScopes(rows, req)
+	got := computeAvailableSquadScopes(rows, req, nil)
 
 	cases := map[string]int{"": 4, "solo": 1, "squad": 3}
 	for v, want := range cases {
@@ -244,11 +244,11 @@ func TestComputeAvailable_AllReturnExpectedCardinalities(t *testing.T) {
 		got  []domain.LabelValue
 		want int
 	}{
-		{"outcomes", computeAvailableOutcomes(rows, req), 4},
-		{"perf_tiers", computeAvailablePerfTiers(rows, req), 5},
-		{"skill_tiers", computeAvailableSkillTiers(rows, req), 6},
-		{"ranked_contexts", computeAvailableRankedContexts(rows, req), 3},
-		{"squad_scopes", computeAvailableSquadScopes(rows, req), 3},
+		{"outcomes", computeAvailableOutcomes(rows, req, nil), 4},
+		{"perf_tiers", computeAvailablePerfTiers(rows, req, nil), 5},
+		{"skill_tiers", computeAvailableSkillTiers(rows, req, nil), 6},
+		{"ranked_contexts", computeAvailableRankedContexts(rows, req, nil), 3},
+		{"squad_scopes", computeAvailableSquadScopes(rows, req, nil), 3},
 	}
 	for _, c := range checks {
 		if len(c.got) != c.want {

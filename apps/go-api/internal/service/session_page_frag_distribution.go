@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
 )
@@ -55,6 +56,7 @@ func (s *SessionPageService) sessionFragDistribution(
 	canonRows []canonical.PlayerMatchRow,
 	matchIDs []string,
 ) (*domain.FragDistribution, []domain.SynthesisWeaponKillEntry) {
+	defer timing.FromContext(ctx).Section("frag_distribution")()
 	if len(matchIDs) == 0 {
 		return nil, nil
 	}
@@ -127,6 +129,7 @@ func (s *SessionPageService) loadSessionWeaponKillRows(
 func (s *SessionPageService) loadSessionWeaponAccuracy(
 	ctx context.Context, matchIDs []string,
 ) []port.WeaponAccuracyRow {
+	defer timing.FromContext(ctx).Section("weapon_accuracy")()
 	if s.weaponAccuracyRepo == nil || s.gamertag == "" || len(matchIDs) == 0 {
 		return nil
 	}

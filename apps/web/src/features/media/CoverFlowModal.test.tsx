@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : suite de cas d'un meme module, qui partagent leur montage : la decouper separerait des cas que le lecteur lit ensemble. */
 /**
  * Tests CoverFlowModal — vérifient que le lecteur reste stable sur l'item courant
  * même quand l'array `items` change (mutations like, réassociation, refetch).
@@ -255,7 +256,7 @@ describe('CoverFlowModal — stabilité de l\'item courant', () => {
       />,
     )
 
-    const likeButton = screen.getByRole('button', { name: /Liker|Retirer le like/ })
+    const likeButton = screen.getByRole('button', { name: /^Aimer$|^Retirer la mention/ })
     fireEvent.click(likeButton)
 
     expect(onToggleLike).toHaveBeenCalledTimes(1)
@@ -648,5 +649,32 @@ describe('CoverFlowModal — enchaînement automatique effectif', () => {
       vi.advanceTimersByTime(7500)
     })
     expect(screen.getByText(/ImgC/)).toBeInTheDocument()
+  })
+})
+
+describe('CoverFlowModal — vignette en poster du lecteur', () => {
+  // Les voisins HLS ne chargent aucun segment (autoStartLoad:false) et le clip
+  // centré n'a pas encore décodé sa première image : sans poster, le slot est un
+  // cadre noir. La vignette déjà produite par le pipeline média le remplit.
+  it('la vignette sert de poster au lecteur', () => {
+    const item = makeItem({
+      basename: 'A.mp4',
+      file_path: '/media/A.mp4',
+      thumbnail_path: '/media/thumbs/A.jpg',
+    })
+    const { container } = renderWithProviders(
+      <CoverFlowModal items={[item]} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
+    )
+    const video = container.querySelector('video') as HTMLVideoElement
+    expect(video.getAttribute('poster')).toBe('/media/thumbs/A.jpg')
+  })
+
+  it('aucun poster quand le média n\'a pas de vignette', () => {
+    const item = makeItem({ basename: 'A.mp4', file_path: '/media/A.mp4', thumbnail_path: null })
+    const { container } = renderWithProviders(
+      <CoverFlowModal items={[item]} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
+    )
+    const video = container.querySelector('video') as HTMLVideoElement
+    expect(video.hasAttribute('poster')).toBe(false)
   })
 })

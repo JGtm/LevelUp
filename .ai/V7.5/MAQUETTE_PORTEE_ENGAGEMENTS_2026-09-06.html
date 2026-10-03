@@ -1,0 +1,337 @@
+<title>Portée des engagements</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Jetons de l'app (apps/web/src/styles/globals.css) — repris à l'identique, jamais inventés. */
+  :root {
+    --background: oklch(0.985 0.004 255);
+    --foreground: oklch(0.255 0.02 255);
+    --card: oklch(0.995 0.002 255);
+    --border: oklch(0.9 0.01 255);
+    --muted: oklch(0.96 0.008 255);
+    --muted-foreground: oklch(0.52 0.015 255);
+    --popover: oklch(0.995 0.002 255);
+    --info: oklch(0.62 0.12 220);
+    /* palettes/default.ts */
+    --chart-series-1: #93C5FD;
+    --chart-series-3: #4F46E5;
+    --chart-series-4: #4338CA;
+    --perf-tier-2: #06B6D4;
+    --radius: 0.5rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --background: oklch(0.145 0 0);
+      --foreground: oklch(0.985 0 0);
+      --card: oklch(0.205 0 0);
+      --border: oklch(0.275 0 0);
+      --muted: oklch(0.269 0 0);
+      --muted-foreground: oklch(0.708 0 0);
+      --popover: oklch(0.269 0 0);
+      --info: oklch(0.70 0.12 220);
+    }
+  }
+  :root[data-theme="dark"] {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0);
+    --info: oklch(0.70 0.12 220);
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: 'Roboto', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 1180px; margin: 0 auto; padding: 24px 20px 48px; }
+
+  .crumb { font-size: 12px; color: var(--muted-foreground); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .crumb .sep { opacity: .5; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px dashed var(--border); border-radius: 999px; padding: 2px 10px;
+    font-size: 11px; color: var(--muted-foreground); letter-spacing: .02em; text-transform: uppercase;
+  }
+
+  section.block { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+  header h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--foreground); text-wrap: balance; }
+  header p.lede { margin: 2px 0 0; font-size: 12px; color: var(--muted-foreground); max-width: 68ch; }
+
+  /* AccentCard (SynthesisPage.tsx) */
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .accent-card { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); background: var(--card); }
+  .accent-card .bar { height: 3px; }
+  .accent-card .body { padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+  .accent-card .label { font-size: 12px; color: var(--muted-foreground); }
+  .accent-card .value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .accent-card .sub { font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+
+  /* SectionCard (components/ui/section-card.tsx) */
+  .section-card { position: relative; display: flex; flex-direction: column; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); min-width: 0; }
+  .section-card > h3 { margin: 0; flex: none; border-bottom: 1px solid var(--border); padding: 8px 12px; font-size: 14px; font-weight: 500; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .section-card > h3 .count { font-size: 11px; font-weight: 400; color: var(--muted-foreground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sub-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 12px 0; flex-wrap: wrap; }
+  .sub-title { font-size: 12px; font-weight: 600; color: var(--foreground); margin: 0; }
+  .sub-title span { font-weight: 400; color: var(--muted-foreground); }
+  /* Légende HTML : deux séries, l'identité n'est jamais confiée à la couleur seule (position + libellé). */
+  .legend { display: flex; gap: 14px; font-size: 11px; color: var(--muted-foreground); margin: 0; padding: 0; list-style: none; }
+  .legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 12px; height: 8px; border-radius: 2px; }
+  .legend b { font-weight: 500; color: var(--foreground); }
+  .chart { width: 100%; }
+  .note { padding: 4px 12px 8px; font-size: 11px; color: var(--muted-foreground); margin: 0; }
+  .threshold { margin: 6px 0 0; padding: 8px 12px 0; font-size: 11px; color: var(--muted-foreground); border-top: 1px solid var(--border); }
+  .threshold b { font-weight: 500; color: var(--foreground); }
+
+  details { margin-top: 4px; }
+  summary { cursor: pointer; font-size: 12px; color: var(--muted-foreground); padding: 4px 12px; }
+  summary:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; border-radius: 4px; }
+  .table-wrap { overflow-x: auto; padding: 0 12px 8px; }
+  table { border-collapse: collapse; font-size: 12px; min-width: 720px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-weight: 500; color: var(--muted-foreground); }
+  th.group { text-align: center; border-bottom: none; padding-bottom: 0; }
+
+  @media (max-width: 860px) {
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+
+<div class="page">
+  <div class="crumb">
+    <span>Synthèse</span><span class="sep">/</span><span>Frags</span><span class="sep">/</span><span>Portée des engagements</span>
+    <span class="chip">Maquette · données d'illustration</span>
+  </div>
+
+  <section class="block" aria-labelledby="titre">
+    <header>
+      <h3 id="titre">Portée des engagements</h3>
+      <p class="lede">À quelle distance vous fraguez, à quelle distance vous mourez — par arme, sur la période filtrée. Une portée d'usage : la vôtre, pas celle de l'arme.</p>
+    </header>
+
+    <div class="kpis" role="list">
+      <div class="accent-card" role="listitem">
+        <div class="bar" style="background: var(--chart-series-1)"></div>
+        <div class="body"><span class="label">Portée médiane de mes frags</span><span class="value">7,4 m</span><span class="sub">1 214 frags mesurés sur 1 602</span></div>
+      </div>
+      <div class="accent-card" role="listitem">
+        <div class="bar" style="background: var(--chart-series-3)"></div>
+        <div class="body"><span class="label">Portée médiane de mes morts</span><span class="value">11,8 m</span><span class="sub">1 087 morts mesurées sur 1 455</span></div>
+      </div>
+      <div class="accent-card" role="listitem">
+        <div class="bar" style="background: var(--perf-tier-2)"></div>
+        <div class="body"><span class="label">Distance d'entame médiane</span><span class="value">9,1 m</span><span class="sub">1,5 s avant le frag · 618 frags mesurés</span></div>
+      </div>
+      <div class="accent-card" role="listitem">
+        <div class="bar" style="background: var(--chart-series-4)"></div>
+        <div class="body"><span class="label">Entame → frag</span><span class="value">−1,7 m</span><span class="sub">Vous fermez la distance dans 61 % des frags</span></div>
+      </div>
+    </div>
+
+    <section class="section-card" aria-label="Portée par arme — mes frags et mes morts">
+      <h3>Portée par arme — mes frags et mes morts <span class="count">10 armes · 1 214 frags et 1 087 morts mesurés</span></h3>
+
+      <div class="sub-row">
+        <p class="sub-title">Portée <span>— bâton du 10<sup>e</sup> au 90<sup>e</sup> centile, losange sur la médiane</span></p>
+        <ul class="legend" aria-label="Légende">
+          <li><i style="background: var(--chart-series-1)"></i><b>Mes frags</b> (bâton du haut)</li>
+          <li><i style="background: var(--chart-series-3)"></i><b>Mes morts</b> (bâton du bas, l'arme est celle du tueur)</li>
+        </ul>
+      </div>
+      <div class="chart" id="range"></div>
+
+      <div class="sub-row">
+        <p class="sub-title">Dénivelé <span>— d'où vous avez fragué, d'où l'on vous a fragué, à ±1 m près</span></p>
+        <ul class="legend" aria-label="Légende du dénivelé" id="elev-legend"></ul>
+      </div>
+      <div class="chart" id="elev"></div>
+
+      <p class="threshold"><b>Sous le seuil de 8 mesures</b> — frags : Hydra (6), Disrupteur (4), Marteau antigrav (2) · morts : Ravager (5), Tourelle (3).</p>
+      <p class="note">Ne compte que les frags et les morts dont la position du tueur ET de la victime est mesurée ; tous n'ont pas de position (couverture partielle).</p>
+      <details>
+        <summary>Voir en tableau</summary>
+        <div class="table-wrap" id="table"></div>
+      </details>
+    </section>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.6.0/echarts.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── Données d'illustration — un joueur d'arène, « 3 derniers mois ». Ordres de grandeur de
+  // la sonde du 2026-09-06 (éliminations à 5,8-6,9 m). Une ligne par arme ; `f` = mes frags,
+  // `m` = mes morts (l'arme est celle du tueur) ; null = pas de mesure de ce côté.
+  const ROWS = [
+    { label: 'Mêlée',                 f: { n: 133, p10: 0.9,  med: 1.4,  p90: 2.6,  above: 18, level: 74, below: 8  }, m: { n: 96,  p10: 0.9,  med: 1.5,  p90: 2.8,  above: 9,  level: 72, below: 19 } },
+    { label: 'Épée à énergie',        f: { n: 41,  p10: 0.8,  med: 1.6,  p90: 3.1,  above: 12, level: 79, below: 9  }, m: { n: 38,  p10: 1.0,  med: 1.9,  p90: 3.6,  above: 8,  level: 75, below: 17 } },
+    { label: 'Bulldog',               f: { n: 58,  p10: 2.1,  med: 4.3,  p90: 8.9,  above: 22, level: 66, below: 12 }, m: { n: 44,  p10: 2.4,  med: 4.8,  p90: 9.3,  above: 11, level: 64, below: 25 } },
+    { label: 'MA40',                  f: { n: 296, p10: 3.4,  med: 6.1,  p90: 11.2, above: 21, level: 63, below: 16 }, m: { n: 187, p10: 3.7,  med: 6.6,  p90: 12.1, above: 14, level: 61, below: 25 } },
+    { label: 'Sidekick',              f: { n: 212, p10: 3.9,  med: 7.0,  p90: 13.8, above: 26, level: 58, below: 16 }, m: { n: 142, p10: 4.2,  med: 7.8,  p90: 14.5, above: 13, level: 60, below: 27 } },
+    { label: 'Mangler',               f: { n: 47,  p10: 4.6,  med: 8.2,  p90: 15.0, above: 31, level: 55, below: 14 }, m: { n: 61,  p10: 5.1,  med: 9.0,  p90: 16.2, above: 12, level: 58, below: 30 } },
+    { label: 'Aiguilleur',            f: { n: 39,  p10: 5.2,  med: 9.4,  p90: 16.7, above: 19, level: 67, below: 14 }, m: null },
+    { label: 'Commando VK78',         f: { n: 64,  p10: 6.3,  med: 11.9, p90: 21.4, above: 34, level: 52, below: 14 }, m: null },
+    { label: 'Fusil de combat BR75',  f: { n: 281, p10: 7.1,  med: 13.6, p90: 24.9, above: 37, level: 49, below: 14 }, m: { n: 402, p10: 8.9,  med: 16.4, p90: 29.7, above: 10, level: 52, below: 38 } },
+    { label: 'Fusil de précision S7', f: { n: 43,  p10: 14.8, med: 28.3, p90: 46.2, above: 48, level: 41, below: 11 }, m: { n: 117, p10: 19.6, med: 33.1, p90: 52.0, above: 7,  level: 44, below: 49 } },
+  ];
+  // Tri par médiane de frags croissante : le graphe se lit du contact vers la longue portée.
+  ROWS.sort((a, b) => a.f.med - b.f.med);
+
+  // ── Jetons résolus au runtime (getEChartsThemeColors), normalisés en hex par le navigateur :
+  // le canvas accepte oklch, le moteur d'ECharts ne le parse pas au survol.
+  const probe = document.createElement('canvas').getContext('2d');
+  function toHex(css) { if (!css || !probe) return css; probe.fillStyle = '#000'; probe.fillStyle = css; return probe.fillStyle; }
+  function themeColors() {
+    const cs = getComputedStyle(document.documentElement);
+    const get = (n) => toHex(cs.getPropertyValue(n).trim());
+    return {
+      axisLabel: get('--muted-foreground'), axisLine: get('--border'), splitLine: get('--border'),
+      text: get('--foreground'), tooltipBg: get('--popover'), tooltipBorder: get('--border'), card: get('--card'),
+      frags: get('--chart-series-1'), morts: get('--chart-series-3'), median: get('--perf-tier-2'),
+      above: get('--chart-series-3'), level: get('--muted-foreground'), below: get('--chart-series-1'),
+    };
+  }
+  const fmt = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const fmtM = (m) => fmt.format(m) + ' m';
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const FONT = 'Roboto, system-ui, sans-serif';
+  const axisBase = (tc) => ({
+    axisLine: { lineStyle: { color: tc.axisLine } }, axisTick: { show: false },
+    splitLine: { lineStyle: { color: tc.splitLine } }, axisLabel: { color: tc.axisLabel, fontSize: 10, fontFamily: FONT },
+  });
+  const tooltipBase = (tc) => ({
+    backgroundColor: tc.tooltipBg, borderColor: tc.tooltipBorder,
+    textStyle: { color: tc.text, fontSize: 11, fontFamily: FONT },
+    extraCssText: 'border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4)',
+  });
+  // Deux bâtons par ligne : la bande passe de 26 à 34 px (chartHeight de l'app, élargi).
+  const ROW = 34;
+  const chartHeight = (n) => 48 + ROW * n;
+  const cats = () => [...ROWS].reverse(); // ECharts empile l'axe Y du bas vers le haut
+  const catLabel = (r) => `${r.label} ×${r.f.n}${r.m ? '/' + r.m.n : ''}`;
+
+  // ── Portée : série `custom` — deux bâtons arrondis par ligne, un losange sur chaque médiane.
+  // C'est le rendu du bâton flottant de _killDistanceChart.ts (socle transparent + barre), écrit
+  // en un renderItem parce qu'un scatter ne sait pas se décaler d'un demi-bâton sur un axe de
+  // catégories : ici la position est exacte, pas approchée.
+  function rangeOption(tc, xMax) {
+    const ordered = cats();
+    const axis = axisBase(tc);
+    const H = 7, GAP = 4;
+    function renderItem(params, api) {
+      const r = ordered[params.dataIndex];
+      const yc = api.coord([0, params.dataIndex])[1];
+      const x = (v) => api.coord([v, 0])[0];
+      const children = [];
+      const side = (s, color, dy) => {
+        if (!s) return;
+        const y = yc + dy - H / 2;
+        children.push({ type: 'rect', shape: { x: x(s.p10), y, width: Math.max(2, x(s.p90) - x(s.p10)), height: H, r: 4 }, style: { fill: color } });
+        const cx = x(s.med), d = 5;
+        children.push({ type: 'polygon', shape: { points: [[cx, yc + dy - d], [cx + d, yc + dy], [cx, yc + dy + d], [cx - d, yc + dy]] }, style: { fill: tc.median, stroke: tc.card, lineWidth: 1 } });
+      };
+      side(r.f, tc.frags, -(H / 2 + GAP / 2));
+      side(r.m, tc.morts, +(H / 2 + GAP / 2));
+      return { type: 'group', children };
+    }
+    const line = (name, s) => s ? `${name} — ${s.n} : ${esc(fmtM(s.p10))} · <b>${esc(fmtM(s.med))}</b> · ${esc(fmtM(s.p90))}` : `${name} — aucune mesure`;
+    return {
+      backgroundColor: 'transparent',
+      grid: { top: 8, right: 16, bottom: 24, left: 8, containLabel: true },
+      tooltip: {
+        ...tooltipBase(tc), trigger: 'item',
+        formatter: (p) => { const r = ordered[p.dataIndex]; return [`<b>${esc(r.label)}</b> — p10 · médiane · p90`, line('Mes frags', r.f), line('Mes morts', r.m)].join('<br/>'); },
+      },
+      xAxis: { type: 'value', max: xMax, ...axis, axisLabel: { ...axis.axisLabel, formatter: (v) => fmtM(v) } },
+      yAxis: { type: 'category', data: ordered.map(catLabel), ...axis, splitLine: { show: false } },
+      series: [{ type: 'custom', renderItem, encode: { x: [1, 2], y: 0 }, data: ordered.map((r, i) => [i, 0, xMax]) }],
+    };
+  }
+
+  // ── Dénivelé : deux barres empilées 100 % par ligne (frags en haut, morts en bas), trois
+  // segments, même teinte du clair (d'en bas) au foncé (d'en haut), gris à niveau.
+  const ELEV = [
+    { key: 'above', name: "d'en haut (> +1 m)", tok: 'above' },
+    { key: 'level', name: 'à niveau',           tok: 'level' },
+    { key: 'below', name: "d'en bas (< −1 m)",  tok: 'below' },
+  ];
+  function elevationOption(tc) {
+    const ordered = cats();
+    const axis = axisBase(tc);
+    const seg = (e, sideKey, stack) => ({
+      name: e.name, type: 'bar', stack, barWidth: 7, barGap: '55%',
+      itemStyle: { color: tc[e.tok], borderColor: tc.card, borderWidth: 1 },
+      label: { show: true, color: tc.text, fontSize: 9, fontFamily: FONT, formatter: (p) => (p.value >= 18 ? p.value + ' %' : '') },
+      data: ordered.map((r) => (r[sideKey] ? r[sideKey][e.key] : 0)),
+    });
+    return {
+      backgroundColor: 'transparent',
+      grid: { top: 8, right: 16, bottom: 24, left: 8, containLabel: true },
+      tooltip: {
+        ...tooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: (params) => {
+          const list = Array.isArray(params) ? params : [params];
+          const r = ordered[list[0].dataIndex];
+          const fmtSide = (name, s) => s ? `${name} : ${s.above} % d'en haut · ${s.level} % à niveau · ${s.below} % d'en bas` : `${name} : aucune mesure`;
+          return [`<b>${esc(r.label)}</b>`, fmtSide('Mes frags', r.f), fmtSide('Mes morts', r.m)].join('<br/>');
+        },
+      },
+      xAxis: { type: 'value', max: 100, ...axis, axisLabel: { ...axis.axisLabel, formatter: (v) => v + ' %' } },
+      yAxis: { type: 'category', data: ordered.map(catLabel), ...axis, splitLine: { show: false } },
+      // Deux piles côte à côte : ECharts les dispose dans l'ordre des séries, frags AU-DESSUS.
+      series: [].concat(ELEV.map((e) => seg(e, 'f', 'frags')), ELEV.map((e) => seg(e, 'm', 'morts'))),
+    };
+  }
+
+  function elevLegend(tc) {
+    document.getElementById('elev-legend').innerHTML = ELEV.map((e) => `<li><i style="background:${tc[e.tok]}"></i>${esc(e.name)}</li>`).join('');
+  }
+  function table() {
+    const host = document.getElementById('table');
+    const cell = (s, k, f) => s ? f(s[k]) : '—';
+    const pct = (v) => v + ' %';
+    host.innerHTML = '<table><thead>' +
+      '<tr><th></th><th class="group" colspan="6">Mes frags</th><th class="group" colspan="6">Mes morts</th></tr>' +
+      '<tr><th>Arme</th>' + ['Mesurés', 'p10', 'Médiane', 'p90', 'Haut', 'Bas', 'Mesurées', 'p10', 'Médiane', 'p90', 'Haut', 'Bas'].map((h) => `<th>${h}</th>`).join('') + '</tr></thead><tbody>' +
+      ROWS.map((r) => `<tr><td>${esc(r.label)}</td>` +
+        [['f', 'n', String], ['f', 'p10', fmtM], ['f', 'med', fmtM], ['f', 'p90', fmtM], ['f', 'above', pct], ['f', 'below', pct],
+         ['m', 'n', String], ['m', 'p10', fmtM], ['m', 'med', fmtM], ['m', 'p90', fmtM], ['m', 'above', pct], ['m', 'below', pct]]
+          .map(([s, k, f]) => `<td>${esc(cell(r[s], k, f))}</td>`).join('') + '</tr>').join('') +
+      '</tbody></table>';
+  }
+
+  const charts = [];
+  if (typeof echarts === 'undefined') {
+    document.querySelectorAll('.chart').forEach((el) => { el.style.padding = '8px 12px'; el.style.fontSize = '12px'; el.style.color = 'var(--muted-foreground)'; el.textContent = 'La bibliothèque de graphes ne s’est pas chargée.'; });
+    return;
+  }
+  function mount(id, height, build) {
+    const el = document.getElementById(id);
+    el.style.height = height + 'px';
+    const c = echarts.init(el, null, { renderer: 'canvas' });
+    charts.push({ c, build });
+    c.setOption(build(themeColors()));
+  }
+  const xMax = 55;
+  mount('range', chartHeight(ROWS.length), (tc) => rangeOption(tc, xMax));
+  mount('elev', chartHeight(ROWS.length), (tc) => elevationOption(tc));
+  elevLegend(themeColors());
+  table();
+
+  const rerender = () => { const tc = themeColors(); charts.forEach(({ c, build }) => c.setOption(build(tc), true)); elevLegend(tc); };
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rerender);
+  new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  window.addEventListener('resize', () => charts.forEach(({ c }) => c.resize()));
+})();
+</script>

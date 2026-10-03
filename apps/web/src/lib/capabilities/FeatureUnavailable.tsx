@@ -30,6 +30,15 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
   expected_stats: { fr: 'l écart au FDA attendu', en: 'expected KDA stats' },
   waypoint_match_url: { fr: 'les liens Halo Waypoint', en: 'Halo Waypoint links' },
   objective_stats: { fr: 'les stats objectifs (CTF/Zones/Oddball)', en: 'objective stats (CTF/Zones/Oddball)' },
+  replay: { fr: 'le rejeu 2D des matchs', en: '2D match replay' },
+  weapon_range: {
+    fr: 'la portée mesurée des engagements',
+    en: 'measured engagement range',
+  },
+  expected_win_prob: {
+    fr: 'la probabilité de victoire attendue',
+    en: 'expected win probability',
+  },
 }
 
 interface FeatureUnavailableProps {

@@ -1,0 +1,611 @@
+film	build	variante	table	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	production	g2_del	eid du DEL : aucune allocation · lie au monde apres le paquet : false	248	248	248	0	1497
+0797ce72	HI_1_13_0	production	g2_del	eid du DEL : libere avant le chunk · lie au monde apres le paquet : false	6	6	6	0	30
+0797ce72	HI_1_13_0	production	g2_del	eid du DEL : naissance non lue · lie au monde apres le paquet : false	4	4	4	0	22
+0797ce72	HI_1_13_0	production	g2_del	eid du DEL : realloue sous une autre generation · lie au monde apres le paquet : false	2	2	2	0	17
+0797ce72	HI_1_13_0	production	g2_del	eid du DEL : vivant au bloc du chunk · lie au monde apres le paquet : false	2	2	2	0	15
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	10 records lus	44	44	44	0	335
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	11 records lus	53	53	53	0	445
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	12 records lus	18	18	18	0	155
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	13 records lus	3	3	3	0	24
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	14 records lus	1	1	1	0	11
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	15 records lus	2	2	2	0	24
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	16 records lus	1	1	1	0	12
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	3 records lus	34	34	34	0	4
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	4 records lus	8	8	8	0	10
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	5 records lus	2	2	2	0	5
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	6 records lus	5	5	5	0	16
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	7 records lus	16	16	16	0	77
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	8 records lus	33	33	33	0	190
+0797ce72	HI_1_13_0	production	g2_del_nombre_de_records	9 records lus	42	42	42	0	273
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=16 i0(575)+i1(38)+i3(38)+i5(8) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=2 aucun composant · masque possible · pont ti=2 (= archetype lie)	2	2	2	0	15
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=21 i16(20) · masque possible · pont : masque vide	30	30	30	0	0
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=25 aucun composant · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	3	3	3	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(198) · masque possible · pont : masque vide	2	2	2	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	3
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	5
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i5(29)+i25(10)+i59(54) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i1(97)+i2(28)+i6(151)+i11(79)+i23(91)+i24(123)+i29(11)+i34(11)+i36(14)+i40(11)+i43(178)+i45(241)+i52(68)+i53(89)+i56(17)+i60(211)+i62(26) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i1(97)+i2(28)+i6(151)+i11(79)+i23(91)+i24(78)+i29(11)+i34(11)+i36(14)+i40(11)+i43(263)+i45(11)+i53(95)+i54(2)+i56(3)+i60(1)+i62(26) · masque possible · pont : masque vide	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i0(41)+i4(11)+i13(40)+i14(113)+i15(109)+i17(109)+i18(1)+i22(5)+i27(8) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i28(20)+i29(2) · masque possible · pont : masque vide	2	2	2	0	16
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=38 i11(1)+i15(74)+i17(117)+i18(84)+i19(25) · masque IMPOSSIBLE sous l archetype lie · pont ti=38 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(18)+i3(97)+i25(13) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(2)+i25(10) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	14
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(29)+i25(6) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	18
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(29)+i3(29)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(29)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(31)+i3(2)+i25(15) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(31)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(31)+i3(97)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(33)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(33)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(34)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(34)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(34)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	10
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(5)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(5)+i3(29)+i25(22) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	14
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(63)+i25(2) · masque possible · pont ti=40 (= archetype lie)	18	18	18	0	152
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(63)+i3(2)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(63)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	11	11	11	0	95
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(63)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(64)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	18
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(64)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	14
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(9)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(9)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	10
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i25(22) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	4	4	4	0	26
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	8	8	8	0	43
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(23) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(12)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(18)+i3(2)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(18)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(194)+i3(29)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(194)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(25)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i25(22) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i25(6) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i3(2)+i12(1)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	15
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i3(29)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	15
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(33)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(33)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	8	8	8	0	65
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(34)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(63)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(63)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(63)+i3(29)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(64)+i12(49)+i25(6) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(64)+i3(2)+i25(22) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	12
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(64)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(9)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	53	53	53	0	366
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(21) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(22) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	18
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=42 i11(1)+i19(1) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=12 i0(32)	1	1	1	0	1
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=13 aucun composant	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=16 aucun composant	3	3	3	0	24
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=16 i2(38)+i3(38)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=3 aucun composant	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=32 aucun composant	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=35 aucun composant	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=39 aucun composant	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=44 i0(399)	1	1	1	0	5
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=5 i3(2)+i4(10)+i5(5)+i9(3)+i11(64)+i14(7)+i15(6)+i19(1)+i21(32)+i23(32)+i25(16)+i26(1)	1	1	1	0	5
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	2	2	2	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	3
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	2
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	2
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	1	1	1	0	5
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(12)+i3(2)+i25(8) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(12)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(194)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(194)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	6	6	6	0	41
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(1)+i2(28) · masque possible · pont : masque vide	2	2	2	0	12
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(30)+i2(28) · masque possible · pont : masque vide	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	2 DEL · NEW ti=41 i0(41)+i2(28)+i14(113)+i15(420)+i20(1)	1	1	1	0	1
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	3 DEL · DELTA ti=40 i0(43)+i1(97)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production	g2_del_premier_non_del_avant	3 DEL · DELTA ti=41 i0(41)+i1(30)+i2(28) · masque possible · pont : masque vide	1	1	1	0	7
+0797ce72	HI_1_13_0	production	g4_ti41	masque 0x7 · i0(41)+i1(1)+i2(28) · i0 tete 0011	112	112	112	0	752
+0797ce72	HI_1_13_0	production	g4_ti41	masque 0x7 · i0(41)+i1(30)+i2(28) · i0 tete 0011	14	14	14	0	90
+0797ce72	HI_1_13_0	production	g4_ti41	masque 0x7 · i0(41)+i1(30)+i2(9) · i0 tete 0011	31	31	31	0	208
+0797ce72	HI_1_13_0	production	g4_ti41_pont	masque possible · pont : masque vide	157	157	157	0	1050
+0797ce72	HI_1_13_0	production	genre	DEL ti=0	262	262	262	0	1581
+0797ce72	HI_1_13_0	production	genre	DELTA ti=41	157	157	157	0	1050
+0797ce72	HI_1_13_0	production	liaison_du_masque_impossible	NEW (eid complet) · slot non declare par la 1re image-cle du chunk · bloc : gen 1 (eid gen 0), vivante false	1	1	0	0	0
+0797ce72	HI_1_13_0	production	liaison_du_masque_impossible	NEW (eid complet), generation differente · slot non declare par la 1re image-cle du chunk · bloc : gen 0 (eid gen 3), vivante false	1	1	0	0	0
+0797ce72	HI_1_13_0	production	liaison_du_masque_impossible	image-cle ou joker · 1re image-cle du chunk : ti=38 · bloc : gen 1 (eid gen 3), vivante true	1	1	0	0	0
+0797ce72	HI_1_13_0	production	liaison_du_masque_impossible	table de datums ou anticipation · slot non declare par la 1re image-cle du chunk · bloc : gen 0 (eid gen 1), vivante false	2	2	0	0	0
+0797ce72	HI_1_13_0	production + lecture par index	g2_del	eid du DEL : aucune allocation · lie au monde apres le paquet : false	56	56	56	0	97
+0797ce72	HI_1_13_0	production + lecture par index	g2_del	eid du DEL : libere avant le chunk · lie au monde apres le paquet : false	8	8	8	0	56
+0797ce72	HI_1_13_0	production + lecture par index	g2_del	eid du DEL : naissance non lue · lie au monde apres le paquet : false	3	3	3	0	13
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	10 records lus	2	2	2	0	15
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	11 records lus	1	1	1	0	7
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	12 records lus	2	2	2	0	16
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	13 records lus	3	3	3	0	28
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	14 records lus	1	1	1	0	11
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	3 records lus	34	34	34	0	4
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	4 records lus	7	7	7	0	9
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	5 records lus	2	2	2	0	5
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	6 records lus	4	4	4	0	12
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	7 records lus	3	3	3	0	13
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	8 records lus	5	5	5	0	27
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_nombre_de_records	9 records lus	3	3	3	0	19
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=21 i16(20) · masque possible · pont : masque vide	30	30	30	0	0
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	3	3	3	0	8
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(198) · masque possible · pont : masque vide	2	2	2	0	8
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	3
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	5
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i5(29)+i25(10)+i59(54) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i1(97)+i2(28)+i6(151)+i11(79)+i23(91)+i24(78)+i29(11)+i34(11)+i36(14)+i40(11)+i43(263)+i45(11)+i53(95)+i54(2)+i56(3)+i60(1)+i62(26) · masque possible · pont : masque vide	1	1	1	0	7
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i0(41)+i4(11)+i13(40)+i14(113)+i15(109)+i17(109)+i18(1)+i22(5)+i27(8) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	8
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i28(20)+i29(2) · masque possible · pont : masque vide	2	2	2	0	16
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	2	2	2	0	7
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	3
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	2
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	2
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	1	1	1	0	5
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(1)+i2(28) · masque possible · pont : masque vide	2	2	2	0	12
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(30) · masque possible · pont : masque vide	5	5	5	0	44
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(30)+i2(28) · masque possible · pont : masque vide	1	1	1	0	7
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · NEW ti=41 i0(41)+i2(28)+i14(113)+i15(420)+i20(1)	1	1	1	0	1
+0797ce72	HI_1_13_0	production + lecture par index	g2_del_premier_non_del_avant	3 DEL · DELTA ti=41 i0(41)+i1(30)+i2(28) · masque possible · pont : masque vide	1	1	1	0	7
+0797ce72	HI_1_13_0	production + lecture par index	g4_ti41	masque 0x7 · i0(41)+i1(1)+i2(28) · i0 tete 0011	112	112	112	0	752
+0797ce72	HI_1_13_0	production + lecture par index	g4_ti41	masque 0x7 · i0(41)+i1(30)+i2(28) · i0 tete 0011	14	14	14	0	90
+0797ce72	HI_1_13_0	production + lecture par index	g4_ti41	masque 0x7 · i0(41)+i1(30)+i2(9) · i0 tete 0011	31	31	31	0	208
+0797ce72	HI_1_13_0	production + lecture par index	g4_ti41_pont	masque possible · pont : masque vide	157	157	157	0	1050
+0797ce72	HI_1_13_0	production + lecture par index	genre	DEL ti=0	67	67	67	0	166
+0797ce72	HI_1_13_0	production + lecture par index	genre	DELTA ti=41	157	157	157	0	1050
+0797ce72	HI_1_13_0	production + lecture par index	liaison_du_masque_impossible	table de datums ou anticipation · slot non declare par la 1re image-cle du chunk · bloc : gen 0 (eid gen 1), vivante false	1	1	0	0	0
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del	eid du DEL : aucune allocation · lie au monde apres le paquet : false	249	249	249	0	1501
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del	eid du DEL : libere avant le chunk · lie au monde apres le paquet : false	6	6	6	0	30
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del	eid du DEL : naissance non lue · lie au monde apres le paquet : false	4	4	4	0	22
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del	eid du DEL : realloue sous une autre generation · lie au monde apres le paquet : false	2	2	2	0	17
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del	eid du DEL : vivant au bloc du chunk · lie au monde apres le paquet : false	2	2	2	0	15
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	10 records lus	44	44	44	0	335
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	11 records lus	53	53	53	0	445
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	12 records lus	18	18	18	0	155
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	13 records lus	3	3	3	0	24
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	14 records lus	1	1	1	0	11
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	15 records lus	2	2	2	0	24
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	16 records lus	1	1	1	0	12
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	3 records lus	34	34	34	0	4
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	4 records lus	8	8	8	0	10
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	5 records lus	2	2	2	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	6 records lus	5	5	5	0	16
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	7 records lus	16	16	16	0	77
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	8 records lus	34	34	34	0	194
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_nombre_de_records	9 records lus	42	42	42	0	273
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=16 i0(575)+i1(38)+i3(38)+i5(8) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=2 aucun composant · masque possible · pont ti=2 (= archetype lie)	2	2	2	0	15
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=21 i16(20) · masque possible · pont : masque vide	30	30	30	0	0
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=25 aucun composant · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	3	3	3	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(198) · masque possible · pont : masque vide	2	2	2	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	3
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i5(29)+i25(10)+i59(54) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i1(97)+i2(28)+i6(151)+i11(79)+i23(91)+i24(123)+i29(11)+i34(11)+i36(14)+i40(11)+i43(178)+i45(241)+i52(68)+i53(89)+i56(17)+i60(211)+i62(26) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i1(97)+i2(28)+i6(151)+i11(79)+i23(91)+i24(78)+i29(11)+i34(11)+i36(14)+i40(11)+i43(263)+i45(11)+i53(95)+i54(2)+i56(3)+i60(1)+i62(26) · masque possible · pont : masque vide	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i0(41)+i4(11)+i13(40)+i14(113)+i15(109)+i17(109)+i18(1)+i22(5)+i27(8) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i28(20)+i29(2) · masque possible · pont : masque vide	2	2	2	0	16
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=38 i11(1)+i15(74)+i17(117)+i18(84)+i19(25) · masque IMPOSSIBLE sous l archetype lie · pont ti=38 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(18)+i3(97)+i25(13) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(2)+i25(10) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	14
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(29)+i25(6) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	18
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(29)+i3(29)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(29)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(31)+i3(2)+i25(15) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(31)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(31)+i3(97)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(33)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(33)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(34)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(34)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(34)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	10
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(5)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(5)+i3(29)+i25(22) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	14
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(63)+i25(2) · masque possible · pont ti=40 (= archetype lie)	18	18	18	0	152
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(63)+i3(2)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(63)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	11	11	11	0	95
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(63)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(64)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	18
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(64)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	14
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(9)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(9)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	10
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i25(22) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	4	4	4	0	26
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	8	8	8	0	43
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(23) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(12)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(18)+i3(2)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(18)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(194)+i3(29)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(194)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(25)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i25(22) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i25(6) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i3(2)+i12(1)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	15
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i3(29)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(31)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	15
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(33)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(33)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	8	8	8	0	65
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(34)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(63)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(63)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(63)+i3(29)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(64)+i12(49)+i25(6) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(64)+i3(2)+i25(22) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	12
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(64)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(9)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	53	53	53	0	366
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(21) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(22) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	18
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=42 i11(1)+i19(1) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=12 i0(32)	1	1	1	0	1
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=13 aucun composant	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=16 aucun composant	3	3	3	0	24
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=16 i2(38)+i3(38)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=3 aucun composant	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=32 aucun composant	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=35 aucun composant	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=38 i0(73)+i8(57)	1	1	1	0	4
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=39 aucun composant	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=44 i0(399)	1	1	1	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=5 i3(2)+i4(10)+i5(5)+i9(3)+i11(64)+i14(7)+i15(6)+i19(1)+i21(32)+i23(32)+i25(16)+i26(1)	1	1	1	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	2	2	2	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	3
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	2
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	2
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	1	1	1	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(194)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(12)+i3(2)+i25(8) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(12)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(194)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(194)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	6	6	6	0	41
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(1)+i2(28) · masque possible · pont : masque vide	2	2	2	0	12
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(30)+i2(28) · masque possible · pont : masque vide	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · NEW ti=41 i0(41)+i2(28)+i14(113)+i15(420)+i20(1)	1	1	1	0	1
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	3 DEL · DELTA ti=40 i0(43)+i1(97)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu	g2_del_premier_non_del_avant	3 DEL · DELTA ti=41 i0(41)+i1(30)+i2(28) · masque possible · pont : masque vide	1	1	1	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu	g4_ti41	masque 0x7 · i0(41)+i1(1)+i2(28) · i0 tete 0011	112	112	112	0	752
+0797ce72	HI_1_13_0	production + world-object au jeu	g4_ti41	masque 0x7 · i0(41)+i1(30)+i2(28) · i0 tete 0011	14	14	14	0	90
+0797ce72	HI_1_13_0	production + world-object au jeu	g4_ti41	masque 0x7 · i0(41)+i1(30)+i2(9) · i0 tete 0011	31	31	31	0	208
+0797ce72	HI_1_13_0	production + world-object au jeu	g4_ti41_pont	masque possible · pont : masque vide	157	157	157	0	1050
+0797ce72	HI_1_13_0	production + world-object au jeu	genre	DEL ti=0	263	263	263	0	1585
+0797ce72	HI_1_13_0	production + world-object au jeu	genre	DELTA ti=41	157	157	157	0	1050
+0797ce72	HI_1_13_0	production + world-object au jeu	liaison_du_masque_impossible	NEW (eid complet) · slot non declare par la 1re image-cle du chunk · bloc : gen 1 (eid gen 0), vivante false	1	1	0	0	0
+0797ce72	HI_1_13_0	production + world-object au jeu	liaison_du_masque_impossible	NEW (eid complet), generation differente · slot non declare par la 1re image-cle du chunk · bloc : gen 0 (eid gen 3), vivante false	1	1	0	0	0
+0797ce72	HI_1_13_0	production + world-object au jeu	liaison_du_masque_impossible	image-cle ou joker · 1re image-cle du chunk : ti=38 · bloc : gen 1 (eid gen 3), vivante true	1	1	0	0	0
+0797ce72	HI_1_13_0	production + world-object au jeu	liaison_du_masque_impossible	table de datums ou anticipation · slot non declare par la 1re image-cle du chunk · bloc : gen 0 (eid gen 1), vivante false	2	2	0	0	0
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del	eid du DEL : aucune allocation · lie au monde apres le paquet : false	52	52	52	0	74
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del	eid du DEL : libere avant le chunk · lie au monde apres le paquet : false	2	2	2	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del	eid du DEL : naissance non lue · lie au monde apres le paquet : false	1	1	1	0	1
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	14 records lus	1	1	1	0	11
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	3 records lus	33	33	33	0	3
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	4 records lus	7	7	7	0	9
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	5 records lus	2	2	2	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	6 records lus	4	4	4	0	12
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	7 records lus	3	3	3	0	13
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	8 records lus	5	5	5	0	27
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=21 i16(20) · masque possible · pont : masque vide	30	30	30	0	0
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	1	1	1	0	6
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	3	3	3	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(198) · masque possible · pont : masque vide	2	2	2	0	8
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	3
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i5(29)+i25(10)+i59(54) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	4
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i28(20)+i29(2) · masque possible · pont : masque vide	2	2	2	0	16
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	2	2	2	0	7
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i21(25)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	3
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i59(162) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	2
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i57(10)+i59(5) · masque possible · pont ti=35 (= archetype lie)	2	2	2	0	2
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i21(25)+i25(10)+i59(162) · masque possible · pont : masque vide	1	1	1	0	5
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	genre	DEL ti=0	55	55	55	0	80
+60ae07c4	HI_1_8_0	production	g1_g3_slot	ti=14 slot 1352 gen 2 · archetypes declares au film [14]	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del	eid du DEL : aucune allocation · lie au monde apres le paquet : false	167	167	167	0	879
+60ae07c4	HI_1_8_0	production	g2_del	eid du DEL : libere avant le chunk · lie au monde apres le paquet : false	4	4	4	0	29
+60ae07c4	HI_1_8_0	production	g2_del	eid du DEL : naissance non lue · lie au monde apres le paquet : false	5	5	5	0	39
+60ae07c4	HI_1_8_0	production	g2_del	eid du DEL : realloue sous une autre generation · lie au monde apres le paquet : false	1	1	1	0	9
+60ae07c4	HI_1_8_0	production	g2_del	eid du DEL : vivant au bloc du chunk · lie au monde apres le paquet : false	1	1	1	0	4
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	10 records lus	34	34	34	0	250
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	11 records lus	27	27	27	0	206
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	12 records lus	15	15	15	0	123
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	13 records lus	3	3	3	0	27
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	2 records lus	1	1	1	0	1
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	3 records lus	24	24	24	0	8
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	4 records lus	9	9	9	0	12
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	5 records lus	5	5	5	0	15
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	6 records lus	17	17	17	0	68
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	7 records lus	9	9	9	0	40
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	8 records lus	10	10	10	0	57
+60ae07c4	HI_1_8_0	production	g2_del_nombre_de_records	9 records lus	24	24	24	0	153
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=21 i16(20) · masque possible · pont : masque vide	16	16	16	0	0
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i23(19)+i25(10)+i53(36)+i58(31) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i53(72) · masque possible · pont : masque vide	1	1	1	0	5
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i23(19)+i25(10)+i53(36)+i58(31) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	3
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i5(29)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i0(41)+i2(9)+i8(5)+i9(1) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	9
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i12(1)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	3
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(11)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(2)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	7	7	7	0	55
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(29)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(97)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	8	8	8	0	51
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(97)+i25(21) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	4
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(28)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(2)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(97)+i25(8) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	20
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(4)+i25(21) · masque possible · pont ti=40 (= archetype lie)	11	11	11	0	13
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(4)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(8)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(2)+i25(14) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	10
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i12(17)+i25(2) · masque possible · pont ti=40 (= archetype lie)	6	6	6	0	21
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	15
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i12(17)+i25(2) · masque possible · pont ti=40 (= archetype lie)	16	16	16	0	65
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(11)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	3
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(17)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(17)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(2)+i25(16) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(2)+i25(8) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	4	4	4	0	28
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(29)+i25(5) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	4	4	4	0	28
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(24)+i3(2)+i25(10) · masque possible · pont ti=40 (= archetype lie)	7	7	7	0	51
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(2)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(2)+i25(24) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	22
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(8)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	7	7	7	0	54
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(13) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(15) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	14
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i2(193)+i3(29)+i25(23) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i2(193)+i3(97)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=1 i1(64)	1	1	1	0	4
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=11 i5(32)+i12(32)+i22(32)	1	1	1	0	5
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=16 aucun composant	1	1	1	0	9
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=17 i1(101)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=21 i0(1)+i8(4)+i16(20)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=22 aucun composant	1	1	1	0	7
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=32 aucun composant	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=36 i11(1)+i19(1)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	1 DEL · NEW ti=42 i2(28)+i5(55)+i16(5)+i20(31)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i12(49)+i25(2) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	18
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(13)+i3(29)+i25(14) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	22
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	17
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(2)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(8)+i3(29)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(29)+i12(1)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(97)+i12(49)+i25(32) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	4
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(24)+i3(2)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(4)+i3(97)+i25(6) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(8)+i3(97)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(5) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i25(10) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	24
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(30)+i2(28)+i20(9) · masque possible · pont ti=41 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	3 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g2_del_premier_non_del_avant	3 DEL · DELTA ti=40 i0(43)+i1(97)+i2(8)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g3_ti14	masque 0x402000200 · aucun composant	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g3_ti14_pont	masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	g4_ti41	masque 0x7 · i0(41)+i1(1)+i2(28) · i0 tete 0011	3	3	3	0	22
+60ae07c4	HI_1_8_0	production	g4_ti41_pont	masque possible · pont ti=41 (= archetype lie)	3	3	3	0	22
+60ae07c4	HI_1_8_0	production	genre	DEL ti=0	178	178	178	0	960
+60ae07c4	HI_1_8_0	production	genre	DELTA ti=14	1	1	1	0	6
+60ae07c4	HI_1_8_0	production	genre	DELTA ti=41	3	3	3	0	22
+60ae07c4	HI_1_8_0	production	liaison_du_masque_impossible	image-cle ou joker · 1re image-cle du chunk : ti=14 · bloc : gen 1 (eid gen 2), vivante true	1	1	0	0	0
+60ae07c4	HI_1_8_0	production	liaison_du_masque_impossible	table de datums ou anticipation · slot non declare par la 1re image-cle du chunk · bloc : gen 0 (eid gen 1), vivante false	1	1	0	0	0
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del	eid du DEL : aucune allocation · lie au monde apres le paquet : false	25	25	25	0	21
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del	eid du DEL : libere avant le chunk · lie au monde apres le paquet : false	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_nombre_de_records	11 records lus	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_nombre_de_records	12 records lus	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_nombre_de_records	2 records lus	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_nombre_de_records	3 records lus	21	21	21	0	4
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_nombre_de_records	5 records lus	1	1	1	0	3
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_nombre_de_records	7 records lus	1	1	1	0	5
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=21 i16(20) · masque possible · pont : masque vide	17	17	17	0	0
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i23(19)+i25(10)+i53(36)+i58(31) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i53(72) · masque possible · pont : masque vide	1	1	1	0	5
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i23(19)+i25(10)+i53(36)+i58(31) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	3
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i5(29)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i28(20)+i29(2) · masque possible · pont : masque vide	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	1 DEL · NEW ti=42 i2(28)+i5(55)+i16(5)+i20(31)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + lecture par index	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(30)+i2(28)+i20(9) · masque possible · pont ti=41 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + lecture par index	g4_ti41	masque 0x7 · i0(41)+i1(1)+i2(28) · i0 tete 0011	3	3	3	0	22
+60ae07c4	HI_1_8_0	production + lecture par index	g4_ti41_pont	masque possible · pont ti=41 (= archetype lie)	3	3	3	0	22
+60ae07c4	HI_1_8_0	production + lecture par index	genre	DEL ti=0	26	26	26	0	29
+60ae07c4	HI_1_8_0	production + lecture par index	genre	DELTA ti=41	3	3	3	0	22
+60ae07c4	HI_1_8_0	production + world-object au jeu	g1_g3_slot	ti=14 slot 1352 gen 2 · archetypes declares au film [14]	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del	eid du DEL : aucune allocation · lie au monde apres le paquet : false	169	169	169	0	880
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del	eid du DEL : libere avant le chunk · lie au monde apres le paquet : false	4	4	4	0	29
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del	eid du DEL : naissance non lue · lie au monde apres le paquet : false	5	5	5	0	39
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del	eid du DEL : realloue sous une autre generation · lie au monde apres le paquet : false	1	1	1	0	9
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del	eid du DEL : vivant au bloc du chunk · lie au monde apres le paquet : false	1	1	1	0	4
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	10 records lus	34	34	34	0	250
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	11 records lus	27	27	27	0	206
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	12 records lus	15	15	15	0	123
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	13 records lus	3	3	3	0	27
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	2 records lus	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	3 records lus	25	25	25	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	4 records lus	10	10	10	0	13
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	5 records lus	5	5	5	0	15
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	6 records lus	17	17	17	0	68
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	7 records lus	9	9	9	0	40
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	8 records lus	10	10	10	0	57
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_nombre_de_records	9 records lus	24	24	24	0	153
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=21 i16(20) · masque possible · pont : masque vide	16	16	16	0	0
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i23(19)+i25(10)+i53(36)+i58(31) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i53(72) · masque possible · pont : masque vide	1	1	1	0	5
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i23(19)+i25(10)+i53(36)+i58(31) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	3
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i5(29)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i0(41)+i2(9)+i8(5)+i9(1) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	9
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i12(1)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	3
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(11)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(2)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	7	7	7	0	55
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(29)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(97)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	8	8	8	0	51
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(97)+i25(21) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	4
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(28)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(2)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(97)+i25(8) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	20
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(4)+i25(21) · masque possible · pont ti=40 (= archetype lie)	11	11	11	0	13
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(4)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i2(8)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(2)+i25(14) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	10
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i12(17)+i25(2) · masque possible · pont ti=40 (= archetype lie)	6	6	6	0	21
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	15
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i12(17)+i25(2) · masque possible · pont ti=40 (= archetype lie)	16	16	16	0	65
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(11)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	3
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(17)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(17)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(2)+i25(16) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(2)+i25(8) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	4	4	4	0	28
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(29)+i25(5) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	4	4	4	0	28
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(24)+i3(2)+i25(10) · masque possible · pont ti=40 (= archetype lie)	7	7	7	0	51
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(2)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(2)+i25(24) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	22
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i2(8)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(10) · masque possible · pont ti=40 (= archetype lie)	7	7	7	0	54
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(13) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(15) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	14
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i2(193)+i3(29)+i25(23) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=40 i0(43)+i2(193)+i3(97)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · DELTA ti=42 i1(30) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	0
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=1 i1(64)	1	1	1	0	4
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=1 i5(37)+i8(10)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=11 i5(32)+i12(32)+i22(32)	1	1	1	0	5
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=16 aucun composant	1	1	1	0	9
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=17 i1(101)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=21 i0(1)+i8(4)+i16(20)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=22 aucun composant	1	1	1	0	7
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=32 aucun composant	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=36 i11(1)+i19(1)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	1 DEL · NEW ti=42 i2(28)+i5(55)+i16(5)+i20(31)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i12(49)+i25(2) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	18
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(13)+i3(29)+i25(14) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	22
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(193)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	17
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(2)+i25(15) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(30)+i3(97)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(31)+i2(8)+i3(29)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(29)+i12(1)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(193)+i3(97)+i12(49)+i25(32) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	4
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(24)+i3(2)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	9
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i25(24) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(2)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(30)+i3(29)+i25(2) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(4)+i3(97)+i25(6) · masque possible · pont ti=40 (= archetype lie)	2	2	2	0	12
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i2(8)+i3(97)+i25(7) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i1(97)+i3(29)+i25(5) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	5
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=40 i0(43)+i25(10) · masque possible · pont ti=40 (= archetype lie)	3	3	3	0	24
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	2 DEL · DELTA ti=41 i0(41)+i1(30)+i2(28)+i20(9) · masque possible · pont ti=41 (= archetype lie)	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	3 DEL · DELTA ti=40 i0(43)+i1(31)+i3(97)+i25(16) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g2_del_premier_non_del_avant	3 DEL · DELTA ti=40 i0(43)+i1(97)+i2(8)+i3(29)+i25(10) · masque possible · pont ti=40 (= archetype lie)	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g3_ti14	masque 0x402000200 · aucun composant	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g3_ti14_pont	masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	g4_ti41	masque 0x7 · i0(41)+i1(1)+i2(28) · i0 tete 0011	3	3	3	0	22
+60ae07c4	HI_1_8_0	production + world-object au jeu	g4_ti41_pont	masque possible · pont ti=41 (= archetype lie)	3	3	3	0	22
+60ae07c4	HI_1_8_0	production + world-object au jeu	genre	DEL ti=0	180	180	180	0	961
+60ae07c4	HI_1_8_0	production + world-object au jeu	genre	DELTA ti=14	1	1	1	0	6
+60ae07c4	HI_1_8_0	production + world-object au jeu	genre	DELTA ti=41	3	3	3	0	22
+60ae07c4	HI_1_8_0	production + world-object au jeu	liaison_du_masque_impossible	NEW (eid complet), generation differente · slot non declare par la 1re image-cle du chunk · bloc : gen 0 (eid gen 1), vivante false	1	1	0	0	0
+60ae07c4	HI_1_8_0	production + world-object au jeu	liaison_du_masque_impossible	image-cle ou joker · 1re image-cle du chunk : ti=14 · bloc : gen 1 (eid gen 2), vivante true	1	1	0	0	0
+60ae07c4	HI_1_8_0	production + world-object au jeu	liaison_du_masque_impossible	table de datums ou anticipation · slot non declare par la 1re image-cle du chunk · bloc : gen 0 (eid gen 1), vivante false	1	1	0	0	0
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del	eid du DEL : aucune allocation · lie au monde apres le paquet : false	26	26	26	0	21
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	12 records lus	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	2 records lus	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	3 records lus	22	22	22	0	4
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	5 records lus	1	1	1	0	3
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_nombre_de_records	7 records lus	1	1	1	0	5
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=21 i16(20) · masque possible · pont : masque vide	17	17	17	0	0
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i23(19)+i25(10)+i53(36)+i58(31) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i53(72) · masque possible · pont : masque vide	1	1	1	0	5
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i23(19)+i25(10)+i53(36)+i58(31) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i1(31)+i5(29)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	3
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=35 i0(43)+i5(29)+i25(10)+i53(72) · masque possible · pont ti=35 (= archetype lie)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=37 i28(20)+i29(2) · masque possible · pont : masque vide	1	1	1	0	8
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · DELTA ti=42 i1(30) · masque IMPOSSIBLE sous l archetype lie · pont : masque vide	1	1	1	0	0
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	g2_del_premier_non_del_avant	1 DEL · NEW ti=42 i2(28)+i5(55)+i16(5)+i20(31)	1	1	1	0	1
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	genre	DEL ti=0	26	26	26	0	21
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	liaison_du_masque_impossible	NEW (eid complet), generation differente · slot non declare par la 1re image-cle du chunk · bloc : gen 0 (eid gen 1), vivante false	1	1	0	0	0

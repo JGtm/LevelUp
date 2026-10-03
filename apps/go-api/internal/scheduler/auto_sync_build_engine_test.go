@@ -16,7 +16,7 @@
 // Ces tests garantissent qu'une régression future ne peut PAS retirer
 // silencieusement un .WithXxx critique :
 //   - SharedProvider câblé quand cfg.SharedProvider != nil
-//   - FriendsLoader câblé quand settings != nil
+//   - FriendsLoader câblé quand le store d'amis != nil et le xuid non vide
 //   - PostSyncRunner câblé quand WithPostSyncRunner(runner)
 //   - MediaScanHook câblé quand settings != nil
 //   - CSRSeasonID câblé quand cfg.CurrentCSRSeasonID != ""
@@ -31,6 +31,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/friendstore"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/scheduler"
@@ -55,7 +56,6 @@ func newFullyWiredScheduler(t *testing.T) (*scheduler.AutoSyncScheduler, *config
 	if err := os.WriteFile(settingsPath, []byte(`{
 		"spnkr_auto_sync_enabled": true,
 		"spnkr_auto_sync_interval_hours": 1,
-		"friend_gamertags": ["F1"],
 		"media_captures_base_dir": "/tmp/caps",
 		"user_timezone": "Europe/Paris"
 	}`), 0o644); err != nil {
@@ -71,7 +71,14 @@ func newFullyWiredScheduler(t *testing.T) (*scheduler.AutoSyncScheduler, *config
 		DBProfilesPath:  dbProfilesPath,
 		AppSettingsPath: settingsPath,
 	}
-	s := scheduler.New(cfg, store, &fakeProvider{}, nil)
+	// Amis PAR JOUEUR : le FriendsLoader du moteur vient de ce store, plus des
+	// settings. Une entrée pour le xuid utilisé par le test golden.
+	friendsPath := filepath.Join(repoRoot, "data", "global", "player_friends.json")
+	friendStore := friendstore.NewFriendStore(friendsPath)
+	if _, err := friendStore.Set("2533274823110022", "JGtm", []string{"F1"}); err != nil {
+		t.Fatalf("écriture amis: %v", err)
+	}
+	s := scheduler.New(cfg, store, &fakeProvider{}, nil).WithFriendStore(friendStore)
 	return s, cfg
 }
 
@@ -145,9 +152,9 @@ func TestBuildEngine_NilDeps_ProducesPartiallyWiredEngine(t *testing.T) {
 	if engine.HasSharedProvider() {
 		t.Error("SharedProvider câblé alors que cfg.SharedProvider est nil — fuite")
 	}
-	// Sans settings, pas de FriendsLoader ni MediaScanHook.
+	// Sans store d'amis, pas de FriendsLoader ; sans settings, pas de MediaScanHook.
 	if engine.HasFriendsLoader() {
-		t.Error("FriendsLoader câblé alors que settings est nil — fuite")
+		t.Error("FriendsLoader câblé alors que le store d'amis est nil — fuite")
 	}
 	if engine.HasMediaScanHook() {
 		t.Error("MediaScanHook câblé alors que settings est nil — fuite")

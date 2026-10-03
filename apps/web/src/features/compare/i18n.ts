@@ -22,6 +22,27 @@ export interface CompareText {
   catCombat: string
   catPrecision: string
   catBilan: string
+  /**
+   * Profil d'armes (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 4).
+   *
+   * FR SANS ANGLICISME : « frags », « morts », « portée », « armes les plus utilisées » —
+   * jamais « kills », « range » ou « top weapons ». La parité stricte des clés FR/EN est
+   * tenue par le typage `Record<Locale, CompareText>` et par `i18n.test.ts`.
+   */
+  catWeapons: string
+  weaponsRangeKills: string
+  weaponsRangeDeaths: string
+  weaponsTopTitle: string
+  /** Préfixe de la ligne min–max de l'infobulle. */
+  weaponsObserved: string
+  /** Corps de carte quand aucun rôle ne passe le seuil de publication. */
+  weaponsNoRange: string
+  /** En-tête d'infobulle : la grammaire du bâton. */
+  weaponsPercentiles: string
+  /** Un côté sans aucune mesure — jamais un zéro. */
+  weaponsNoMeasure: string
+  /** « sur N matchs » — affiché pour CHAQUE joueur de la section. */
+  weaponsMatches: (n: number) => string
   metrics: Record<string, string>
 }
 
@@ -46,6 +67,15 @@ const FR_TEXT: CompareText = {
   catCombat: 'Combat',
   catPrecision: 'Précision & Survie',
   catBilan: 'Bilan & Rang',
+  catWeapons: 'Profil d\'armes',
+  weaponsRangeKills: 'Où ils fraguent',
+  weaponsRangeDeaths: 'Où ils meurent',
+  weaponsTopTitle: 'Armes les plus utilisées',
+  weaponsObserved: 'observé',
+  weaponsNoRange: 'Les portées mesurées restent trop rares pour être publiées.',
+  weaponsPercentiles: '10e centile · médiane · 90e centile',
+  weaponsNoMeasure: 'aucune mesure',
+  weaponsMatches: (n) => `sur ${n} matchs`,
   // N'entrent ici que les métriques SANS FieldKey canonique équivalent (cf.
   // METRIC_TO_FIELD_KEY plus bas) : toutes les autres viennent du registre.
   metrics: {
@@ -81,6 +111,15 @@ const EN_TEXT: CompareText = {
   catCombat: 'Combat',
   catPrecision: 'Precision & Survival',
   catBilan: 'Stats & Rank',
+  catWeapons: 'Weapon profile',
+  weaponsRangeKills: 'Where they kill',
+  weaponsRangeDeaths: 'Where they die',
+  weaponsTopTitle: 'Most used weapons',
+  weaponsObserved: 'observed',
+  weaponsNoRange: 'Measured ranges are still too sparse to publish.',
+  weaponsPercentiles: '10th percentile · median · 90th percentile',
+  weaponsNoMeasure: 'no measurement',
+  weaponsMatches: (n) => `over ${n} matches`,
   // Voir la note du dictionnaire FR : parité stricte des clés.
   metrics: {
     kills_per_game: 'Kills/game',

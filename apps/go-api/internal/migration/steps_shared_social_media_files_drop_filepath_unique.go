@@ -7,7 +7,7 @@ package migration
 //   - ops/media.go (insertMediaFile, conversion de format)  : SET file_path, kind WHERE id
 //   - ops/media_hls.go (finalizeMediaHLS)                   : SET file_path, hls_path WHERE file_path
 //   - ops/media_reconcile.go (reconcileOrphanFiles)         : SET file_path WHERE id
-// Muter une colonne couverte par un index ART = vecteur du bug DuckDB amont #23046
+// Muter une colonne couverte par un index ART = vecteur du bug DuckDB amont #23645
 // ("Failed to delete all rows from index" → DB FATAL invalidated). shared_social est le
 // handle RW PARTAGÉ → 1 FATAL = TOUTE l'app (blast MAX).
 //
@@ -45,7 +45,7 @@ func init() {
 	Register(Migration{
 		Name:        "media_files_drop_filepath_unique_v1",
 		TargetDB:    TargetSharedSocial,
-		Description: "Rebuild media_files sans contrainte UNIQUE sur file_path via swap CTAS transactionnel — élimine la surface ART (UPDATE file_path conversion/HLS/reconcile, #23046, blast MAX)",
+		Description: "Rebuild media_files sans contrainte UNIQUE sur file_path via swap CTAS transactionnel — élimine la surface ART (UPDATE file_path conversion/HLS/reconcile, #23645, blast MAX)",
 		ApplySchema: applyMediaFilesDropFilePathUnique,
 	})
 }

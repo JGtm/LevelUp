@@ -157,11 +157,27 @@ function wrapFetch(): void {
       }
       return response
     } catch (err) {
-      // Erreur réseau (DNS, offline, CORS…) : status=0 par convention
-      recordFailedRequest({ url, method, status: 0, timestamp: Date.now() })
+      // Annulation VOLONTAIRE (signal abandonné : clic du rail, page quittée) : pas une
+      // panne, rien à enregistrer — cf. isAbortError.
+      if (!isAbortError(err)) {
+        // Erreur réseau (DNS, offline, CORS…) : status=0 par convention
+        recordFailedRequest({ url, method, status: 0, timestamp: Date.now() })
+      }
       throw err
     }
   }
+}
+
+/**
+ * Rejet d'un fetch ANNULÉ par son `AbortSignal` (`DOMException` nommée `AbortError`).
+ *
+ * Lot perf L9-web (2026-09-23, revue C) : depuis que les pages transmettent le `signal` de
+ * TanStack Query à fetch (lot L3), chaque requête devenue inutile est annulée. Enregistrées
+ * en « status 0 », ces annulations évinçaient les vraies erreurs du tampon de 5 requêtes
+ * échouées joint aux tickets du drawer feedback.
+ */
+function isAbortError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { name?: unknown }).name === 'AbortError'
 }
 
 function resolveUrl(input: RequestInfo | URL): string {

@@ -4,7 +4,7 @@ package skill
 // delta μ vers les autres playlist_groups du même joueur, avec cap w_d ≤ 0.4.
 //
 // Extrait de skill_v2_shadow.go (2026-05-27). Activation gated par env
-// `LEVELUP_LUSR_V2_MODE_COUPLING=1`. Cf. .ai/LUSR_V2_HANDOFF.md "Mode
+// `LEVELUP_LUSR_V2_MODE_COUPLING=1`. Cf. .ai/archive/V7/LUSR v2/LUSR_V2_HANDOFF.md "Mode
 // correlation cap w_d ≤ 0.4".
 
 import (

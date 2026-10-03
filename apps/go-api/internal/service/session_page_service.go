@@ -1,4 +1,4 @@
-// Package service â€” SessionPageService : page dÃ©tail de session avec suggestion de comparaison.
+// Package service — SessionPageService : page détail de session avec suggestion de comparaison.
 package service
 
 import (
@@ -16,14 +16,16 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // errCodeSessionNotFound est le code machine renvoyé quand une session
 // explicitement demandée est introuvable (ADR 0029, Couche B).
 const errCodeSessionNotFound = "session_not_found"
 
-// SessionPageService construit la page de dÃ©tail d'une session.
+// SessionPageService construit la page de détail d'une session.
 type SessionPageService struct {
 	statsRepo port.StatsRepository
 	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
@@ -60,9 +62,35 @@ type SessionPageService struct {
 	// gated par la capability match.objective.stats (jamais slug==) ; nil → axe retiré.
 	objectiveIndex port.ObjectiveIndexRepository
 	objectiveXUID  string
+	// sessionUsageRepo / usageXUID / usageFriends (optionnels) : bloc « usages
+	// d'équipement, socles et objectifs » de la session (chantier session-usage
+	// S2). Câblé gated par la capability film.usage_summary (jamais slug==) ;
+	// nil → bloc Available=false avec raison machine. Cf. session_page_usage.go.
+	sessionUsageRepo port.SessionUsageRepository
+	usageXUID        string
+	usageFriends     teammates.FriendGamertagsResolver
+	// matchRangeRepo / matchRangeXUID (optionnels) : le bloc « portée des engagements »
+	// de la session (lot N2, D22-4). Le repo lit les frags mesurés de TOUT le lobby de
+	// chaque match — le référentiel sans lequel une médiane de portée n'est pas lisible.
+	// nil / xuid vide → bloc omis (dégradation gracieuse). Cf. session_page_range.go.
+	matchRangeRepo port.MatchRangeRepository
+	matchRangeXUID string
+	// repoRoot (optionnel) : racine du dépôt, pour charger le catalogue d'armes du
+	// TITRE et nommer les familles de socle du bloc usage (session_page_usage_labels.go).
+	// Vide → les familles gardent leur clé, ce qui est un rendu valide, pas une panne.
+	repoRoot string
+	// coordTactical / coordAppuis / coordCaps (optionnels) : bloc « Coordination »
+	// (riposte + appui recu) de la session, lot N1. Le journal des morts vient du MEME
+	// lecteur que l'onglet Tactique et la page Escouade ; les appuis de leur lecteur
+	// dedie. Cables gated par la capability du journal des morts (jamais slug==) ;
+	// tactical nil -> bloc Available=false avec raison machine.
+	// Cf. service/coordination_block.go.
+	coordTactical port.TacticalRepository
+	coordAppuis   port.CoordinationRepository
+	coordCaps     games.CapabilityMap
 }
 
-// NewSessionPageService crÃ©e un SessionPageService.
+// NewSessionPageService crée un SessionPageService.
 func NewSessionPageService(statsRepo port.StatsRepository) *SessionPageService {
 	return &SessionPageService{statsRepo: statsRepo}
 }
@@ -82,8 +110,6 @@ func (s *SessionPageService) WithCSRThresholds(resolver CSRThresholdResolver) *S
 	return s
 }
 
-// WithWeaponKillsRepo injecte le loader weapon_kills (P5) alimentant la répartition
-// hiérarchique des frags (sunburst v2) par session. Optionnel.
 func (s *SessionPageService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *SessionPageService {
 	s.weaponKillsRepo = repo
 	return s
@@ -126,7 +152,7 @@ func (s *SessionPageService) WithObjectiveIndexRepo(repo port.ObjectiveIndexRepo
 	return s
 }
 
-// GetPage retourne la page dÃ©tail d'une session avec suggestion de comparaison.
+// GetPage retourne la page détail d'une session avec suggestion de comparaison.
 func (s *SessionPageService) GetPage(
 	ctx context.Context,
 	req domain.SessionPageRequest,
@@ -137,11 +163,13 @@ func (s *SessionPageService) GetPage(
 
 	// P4.3 finale (ADR 0011) : path canonical exclusif.
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
+		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
+	stop := timing.FromContext(ctx).Section("player_matches")
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
+	stop()
 	if err != nil {
 		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage: %w", err)
 	}
@@ -276,6 +304,22 @@ func (s *SessionPageService) GetPage(
 	// des placements — best-effort, dégrade gracieusement si le repo ne le fournit pas.
 	s.attachLobbySizes(ctx, resp.Matches, resp.CompareMatches)
 
+	// Blocs « usages » et « Coordination » — session courante ET session comparée (D8),
+	// best-effort, cf. session_page_usage.go et session_page_coordination.go.
+	// compareMatchesForEvents : le même sous-ensemble que les blocs event-based, donc les
+	// deux colonnes du drawer parlent bien des mêmes matchs. `filtered` est la PÉRIODE DE
+	// RÉFÉRENCE du repère d'habituel (celle du filtre de la page, toutes sessions).
+	blocsScope := sessionBlocksScope{
+		Matches: currentMatches, CompareMatches: compareMatchesForEvents,
+		ReferenceMatches: filtered, MatchContext: req.Filters.MatchContext, Locale: req.Locale,
+	}
+	s.attachSessionUsage(ctx, &resp, blocsScope)
+
+	// Blocs « portée des engagements » (D22-4) et « période de référence » (D23-4) : même
+	// périmètre de matchs que les deux blocs ci-dessus, et la MÊME période de référence,
+	// best-effort, cf. session_page_range.go.
+	s.attachSessionRange(ctx, &resp, blocsScope)
+
 	slog.InfoContext(ctx, "session page generated",
 		"resolved_session", currentLabel,
 		"view_sessions", len(labels),
@@ -309,6 +353,7 @@ func (s *SessionPageService) attachSessionEventBlocks(
 	canonicalRows []canonical.PlayerMatchRow,
 	currentMatches, compareMatches []legacymatch.StatsMatchRow,
 ) {
+	defer timing.FromContext(ctx).Section("event_blocks")()
 	if s.highlightEventsRepo == nil || s.playerXUID == "" || len(currentMatches) == 0 {
 		return
 	}
@@ -347,12 +392,12 @@ func (s *SessionPageService) attachSessionEventBlocks(
 	currentEvents := filterHighlightEventsByMatches(corrected, currentMatches)
 	resp.IntensityRows = buildIntensityRows(currentEvents, currentMatches, s.playerXUID, durations)
 	resp.FirstBlood = buildSoloFirstBlood(s.gamertag, narrative.ComputeFirstEventsPerMatch(
-		currentEvents, s.playerXUID, matchIDsFromStatsRows(currentMatches)))
+		currentEvents, s.playerXUID, matchIDsFromStatsRows(currentMatches)), currentMatches)
 	if len(compareMatches) > 0 {
 		compareEvents := filterHighlightEventsByMatches(corrected, compareMatches)
 		resp.CompareIntensityRows = buildIntensityRows(compareEvents, compareMatches, s.playerXUID, durations)
 		resp.CompareFirstBlood = buildSoloFirstBlood(s.gamertag, narrative.ComputeFirstEventsPerMatch(
-			compareEvents, s.playerXUID, matchIDsFromStatsRows(compareMatches)))
+			compareEvents, s.playerXUID, matchIDsFromStatsRows(compareMatches)), compareMatches)
 	}
 }
 
@@ -388,6 +433,7 @@ type lobbySizeProvider interface {
 // n'est pas câblé (titre sans capability match.objective.stats), si le xuid est
 // inconnu, ou en cas d'erreur (best-effort) → l'axe est retiré du profil.
 func (s *SessionPageService) objectiveIndexFor(ctx context.Context, matches []legacymatch.StatsMatchRow) narrative.ObjectiveIndexInput {
+	defer timing.FromContext(ctx).Section("objective_index")()
 	if s.objectiveIndex == nil || s.objectiveXUID == "" || len(matches) == 0 {
 		return nil
 	}
@@ -406,6 +452,7 @@ func (s *SessionPageService) objectiveIndexFor(ctx context.Context, matches []le
 // attachLobbySizes renseigne LobbySize sur chaque row à partir du provider optionnel.
 // Best-effort : no-op si le repo ne fournit pas la capability ou si la requête échoue.
 func (s *SessionPageService) attachLobbySizes(ctx context.Context, rowSets ...[]domain.SessionDetailMatchRow) {
+	defer timing.FromContext(ctx).Section("lobby_sizes")()
 	provider, ok := s.playerMatchesRepo.(lobbySizeProvider)
 	if !ok {
 		return
@@ -526,6 +573,7 @@ type sessionPlacement struct {
 // vieux par chaîne. `rows` DOIT contenir TOUS les matchs (pas que la session) pour
 // que le calcul LUSR (chronologique global par chaîne) soit correct.
 func (s *SessionPageService) computeSessionPlacements(ctx context.Context, rows []legacymatch.StatsMatchRow) map[string]sessionPlacement {
+	defer timing.FromContext(ctx).Section("placements")()
 	if len(rows) == 0 {
 		return nil
 	}

@@ -150,10 +150,10 @@ func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*
 			"attempt_id", attempt.AttemptID, "err", err)
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = "msal_init_error"
+			a.ErrorCode = "device_flow_init_error"
 			a.ErrorDetail = err.Error()
 		})
-		return nil, humacore.NewError(http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
+		return nil, humacore.NewError(http.StatusInternalServerError, "device_flow_init_error", "impossible de démarrer le Device Code Flow")
 	}
 
 	// Remplir les champs de la tentative.
@@ -176,7 +176,7 @@ func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*
 // Lit des Snapshot (copies sous mutex) — jamais l'objet vivant, dont la lecture
 // hors verrou pendant que le créateur le remplit serait un data race.
 //   - prête (user_code posé ou statut ≠ pending) → snapshot
-//   - échec du créateur → même 500 msal_init_error que le chemin créateur
+//   - échec du créateur → même 500 device_flow_init_error que le chemin créateur
 //   - timeout (créateur anormalement lent) → 503 retryable, jamais un payload vide
 func (h *AuthHandler) waitDeviceFlowReady(ctx context.Context, attemptID string) (*auth_platform.Attempt, error) {
 	deadline := time.After(deviceFlowReadyTimeout)
@@ -191,7 +191,7 @@ func (h *AuthHandler) waitDeviceFlowReady(ctx context.Context, attemptID string)
 		if snap.Status == auth_platform.AttemptStatusFailed {
 			code := snap.ErrorCode
 			if code == "" {
-				code = "msal_init_error"
+				code = "device_flow_init_error"
 			}
 			return nil, humacore.NewError(http.StatusInternalServerError, code, "impossible de démarrer le Device Code Flow")
 		}
@@ -286,7 +286,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = errCodeMSALAcquire
+			a.ErrorCode = errCodeDeviceFlowAcquire
 			a.ErrorDetail = err.Error()
 		})
 		return

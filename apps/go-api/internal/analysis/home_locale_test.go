@@ -85,54 +85,12 @@ func TestLabelForLocale_FR_FallbackEN(t *testing.T) {
 	}
 }
 
-// ─── outcomeLabelForLocale ────────────────────────────────────────────────
+// outcomeLabelForLocale et outcomeLabel (analysis) ont été supprimés le 2026-09-07 (D5,
+// lot Q4) : la clé canonique d'issue vient du titre (mappings.Canonical), jamais d'une map
+// Go FR/EN. Le texte du composite Title, quand il existe, est injecté par le service depuis
+// l'adapter sémantique (RecentMatchesOptions.OutcomeText) — testé côté service.
 
-func TestOutcomeLabelForLocale_EN_Win(t *testing.T) {
-	t.Parallel()
-	if got := outcomeLabelForLocale(homeOutcomeWin, "en"); got != "Victory" {
-		t.Errorf("outcomeLabelForLocale(WIN, en) = %q, want Victory", got)
-	}
-}
-
-func TestOutcomeLabelForLocale_EN_Loss(t *testing.T) {
-	t.Parallel()
-	if got := outcomeLabelForLocale(homeOutcomeLoss, "en"); got != "Defeat" {
-		t.Errorf("outcomeLabelForLocale(LOSS, en) = %q, want Defeat", got)
-	}
-}
-
-func TestOutcomeLabelForLocale_EN_Unknown(t *testing.T) {
-	t.Parallel()
-	if got := outcomeLabelForLocale(99, "en"); got != "Match" {
-		t.Errorf("outcomeLabelForLocale(99, en) = %q, want Match", got)
-	}
-}
-
-func TestOutcomeLabelForLocale_FR_Win(t *testing.T) {
-	t.Parallel()
-	got := outcomeLabelForLocale(homeOutcomeWin, "fr")
-	if got == "" || got == "Match" {
-		t.Errorf("outcomeLabelForLocale(WIN, fr) = %q, want non-empty FR label", got)
-	}
-}
-
-func TestOutcomeLabelForLocale_FR_Unknown(t *testing.T) {
-	t.Parallel()
-	if got := outcomeLabelForLocale(99, "fr"); got != "Match" {
-		t.Errorf("outcomeLabelForLocale(99, fr) = %q, want Match", got)
-	}
-}
-
-// ─── outcomeLabel & outcomeTone (round-out) ───────────────────────────────
-
-func TestOutcomeLabel_AllKnown(t *testing.T) {
-	t.Parallel()
-	for _, code := range []int{homeOutcomeWin, homeOutcomeLoss, homeOutcomeTie, homeOutcomeDNF} {
-		if got := outcomeLabel(code); got == "" {
-			t.Errorf("outcomeLabel(%d) returned empty", code)
-		}
-	}
-}
+// ─── outcomeTone (round-out) ───────────────────────────────────────────────
 
 func TestOutcomeTone_AllKnown(t *testing.T) {
 	t.Parallel()
@@ -155,8 +113,8 @@ func TestBuildHomeScoreLabel_TeamZero(t *testing.T) {
 	t.Parallel()
 	m := legacymatch.HomeMatchRow{TeamID: 0, Team0Score: 50, Team1Score: 30}
 	got := buildHomeScoreLabel(m)
-	if got == nil || *got != "50-30" {
-		t.Errorf("buildHomeScoreLabel(team0) = %v, want 50-30", got)
+	if got == nil || *got != "50 - 30" {
+		t.Errorf("buildHomeScoreLabel(team0) = %v, want 50 - 30", got)
 	}
 }
 
@@ -165,8 +123,8 @@ func TestBuildHomeScoreLabel_TeamOne_Swaps(t *testing.T) {
 	// TeamID=1 doit inverser l'ordre des scores (perspective du joueur).
 	m := legacymatch.HomeMatchRow{TeamID: 1, Team0Score: 50, Team1Score: 30}
 	got := buildHomeScoreLabel(m)
-	if got == nil || *got != "30-50" {
-		t.Errorf("buildHomeScoreLabel(team1) = %v, want 30-50", got)
+	if got == nil || *got != "30 - 50" {
+		t.Errorf("buildHomeScoreLabel(team1) = %v, want 30 - 50", got)
 	}
 }
 
@@ -184,8 +142,8 @@ func TestBuildHomeScoreLabel_ZeroZero(t *testing.T) {
 	// 0-0 reste un score valide (égalité, match court).
 	m := legacymatch.HomeMatchRow{TeamID: 0, Team0Score: 0, Team1Score: 0}
 	got := buildHomeScoreLabel(m)
-	if got == nil || *got != "0-0" {
-		t.Errorf("buildHomeScoreLabel(0-0) = %v, want 0-0", got)
+	if got == nil || *got != "0 - 0" {
+		t.Errorf("buildHomeScoreLabel(0-0) = %v, want 0 - 0", got)
 	}
 }
 
@@ -199,6 +157,8 @@ func TestBuildHomeNarrativeBadges_AllFlags(t *testing.T) {
 		homeDominanceRemontada:        "remontada",
 		homeDominanceDebacle:          "debacle",
 		homeDominanceCounterRemontada: "contre_remontada",
+		homeDominanceSabordage:        "sabordage",
+		homeDominanceAbnegation:       "abnegation",
 	}
 	for flag, want := range cases {
 		got := buildHomeNarrativeBadges(flag)

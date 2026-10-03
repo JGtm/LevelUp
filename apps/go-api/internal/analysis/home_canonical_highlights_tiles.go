@@ -1,6 +1,6 @@
-// Package analysis â€” home_canonical_highlights_tiles.go : sous-tuiles
-// composites des highlights canonical (MaÃ®trise / Per-minute / SÃ©rie),
-// avec leurs slides associÃ©es (best killing spree, best win streak,
+// Package analysis — home_canonical_highlights_tiles.go : sous-tuiles
+// composites des highlights canonical (Maîtrise / Per-minute / Série),
+// avec leurs slides associées (best killing spree, best win streak,
 // favorite map).
 package analysis
 
@@ -11,7 +11,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 )
 
-// buildMaitriseHighlightCanonical : tuile MaÃ®trise (3 slides : HS sum,
+// buildMaitriseHighlightCanonical : tuile Maîtrise (3 slides : HS sum,
 // perfect kills sum, accuracy avg).
 func buildMaitriseHighlightCanonical(window []canonical.PlayerMatchRow) *domain.HighlightItem {
 	var slides []domain.HighlightSlide
@@ -95,7 +95,7 @@ func buildPerMinuteHighlightCanonical(window []canonical.PlayerMatchRow) *domain
 	}
 }
 
-// buildSerieHighlightCanonical : tuile SÃ©rie.
+// buildSerieHighlightCanonical : tuile Série.
 func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow, locale string) *domain.HighlightItem {
 	var slides []domain.HighlightSlide
 	if s := sliceBestKillingSpreeCanonical(window, locale); s != nil {

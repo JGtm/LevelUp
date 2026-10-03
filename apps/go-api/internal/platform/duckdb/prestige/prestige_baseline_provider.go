@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
@@ -78,8 +79,9 @@ var _ prestige.BaselineProvider = (*HaloBaselineProvider)(nil)
 
 // RecentMatches retourne les N derniers matchs PvP du joueur LIÉ à ce provider,
 // avec la métrique demandée. Aucun paramètre d'identité (cf. doc du type) : le
-// premier paramètre string est le titleSlug, ignoré ici car la base partagée est
-// déjà isolée PAR CHEMIN pour le titre (ADR 0008).
+// premier paramètre string est le titleSlug : la base partagée est déjà isolée PAR
+// CHEMIN pour le titre (ADR 0008), le slug ne sert qu'à exclure la Campagne (D-5,
+// backlog B4 ; no-op pour un titre sans variante de Campagne).
 //
 // Mapping des FieldKey canoniques vers les colonnes de match_participants.
 // Les métriques SANS équivalent colonne (medal:*, maps_played_distinct,
@@ -92,7 +94,7 @@ var _ prestige.BaselineProvider = (*HaloBaselineProvider)(nil)
 // métrique agrégat (`matches_played` = COUNT(*), `wins` = COUNT filtré sur le
 // résultat) n'est pas une colonne par match et demande une expression dédiée —
 // manque FONCTIONNEL distinct, non traité ici.
-func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, _, metric string, window int) ([]prestige.MatchData, error) {
+func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, titleSlug, metric string, window int) ([]prestige.MatchData, error) {
 	if p.xuid == "" {
 		// Dégradation VISIBLE : sans xuid, aucun match n'est attribuable. C'est
 		// exactement le silence qui a laissé le défaut d'identité survivre en prod
@@ -131,10 +133,10 @@ func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, _, metric stri
 		SELECT mp.match_id, %s, COALESCE(CAST(%s AS DOUBLE), 0)
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?
+		WHERE mp.xuid = ?%s
 		ORDER BY %s DESC
 		LIMIT ?
-	`, startTime, col, startTime)
+	`, startTime, col, analysis.SQLExcludeCampaignVariants(titleSlug, "mr"), startTime)
 
 	db, release, err := p.reader.Get(ctx)
 	if err != nil {
@@ -173,8 +175,9 @@ func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, _, metric stri
 // avec l'historique antérieur à sa création.
 //
 // Aucun paramètre d'identité (cf. doc du type) ; le premier string est le
-// titleSlug, ignoré ici (base partagée isolée par chemin, ADR 0008).
-func (p *HaloBaselineProvider) CumulativeSince(ctx context.Context, _, metric string, since time.Time) (float64, int, error) {
+// titleSlug : base partagée isolée par chemin (ADR 0008), le slug ne sert qu'à exclure la
+// Campagne (D-5, backlog B4 ; no-op pour un titre sans variante de Campagne).
+func (p *HaloBaselineProvider) CumulativeSince(ctx context.Context, titleSlug, metric string, since time.Time) (float64, int, error) {
 	if p.xuid == "" {
 		slog.ErrorContext(ctx, "prestige_baseline_provider_missing_xuid",
 			"metric", metric,
@@ -199,7 +202,7 @@ func (p *HaloBaselineProvider) CumulativeSince(ctx context.Context, _, metric st
 	// et « requête xuid » DANS UNE MÊME fonction — extraire la requête le
 	// rendrait aveugle. Timestamp : fragment canonique partagé (CLAUDE.md n°8).
 	startTime := duckdb.StartTimeCanonicalSQL("mr")
-	where := "mp.xuid = ?"
+	where := "mp.xuid = ?" + analysis.SQLExcludeCampaignVariants(titleSlug, "mr")
 	args := []any{p.xuid}
 	if !since.IsZero() {
 		where += " AND " + startTime + " >= ?"

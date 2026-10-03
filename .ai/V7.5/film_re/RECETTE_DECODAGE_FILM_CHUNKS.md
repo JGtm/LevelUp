@@ -1,5 +1,11 @@
 # RECETTE — Décodage des films Halo Infinite (chunks → world)
 
+> **LA TABLE DE REFERENCE EST `apps/go-api/internal/analysis/filmdec/testdata/ecs_table.tsv`.**
+> Archetype x composant, statut de portage, niveau, source `fichier:ligne`, adresse du deser :
+> tout cela se lit LA, tenu par les garde-rails G1-G3 (`filmdec/ecs_table_guard_test.go`).
+> Cette recette porte la METHODE et les grammaires ; les tables qu’elle cite sont des
+> illustrations datees, la table `.tsv` fait foi sur les statuts.
+
 > Consolidation de la RE du décodeur de replication ECS. Objectif : reconstruire le
 > « world » (entités + positions) d'un film **hors-ligne**, à partir des chunks.
 > Dernière mise à jour : 2026-07-01 (extraction live de la table ECS via Cheat Engine).

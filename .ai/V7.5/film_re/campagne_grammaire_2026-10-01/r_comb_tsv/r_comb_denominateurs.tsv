@@ -1,0 +1,22 @@
+film	build	dans_le_corpus	fixe	source_du_fixe	fixe14_bis1	utiles_lus_reference	utiles_lus_full
+0797ce72	HI_1_13_0	true	217328	r-comb : full	212766	205133	217328
+084a804d	HI_1_10_0	true	554006	bis1 : oracle-bloc	554006	535881	523871
+111fa685	HI_1_10_0	true	250115	r-comb : L1+L9	249166	245554	250115
+11de8353	HI_1_9_0	true	255371	bis3 : oracle-NEW+P6-propre+alloc+suivant	255021	248285	255239
+1c4c63c2	HI_1_10_0	true	856937	r-comb : full-L1	815323	777616	704728
+396cfc92	HI_1_13_0	true	234778	r-comb : full	234713	225495	234778
+4f77afc1	HI_1_13_0	true	795031	r-comb : full (L1 derive sans L9)	751491	735384	771617
+50247b26	version-31	true	328128	r-comb : full	327953	319053	328128
+51ebbc0f	HI_1_13_0	true	183341	r-comb : full	93089	88493	183341
+60ae07c4	HI_1_8_0	true	290393	r-comb : full	286401	268340	290393
+81c02726	HI_1_13_0	false	160288	r-comb : full	0	154600	160288
+a349fea8	version-33	true	519304	r-comb : full (L1 derive sans L9)	492746	469451	518793
+a521164d	HI_1_4_1	true	198500	r-comb : full	190059	181607	198500
+bcb6d393	HI_1_12_0	true	146098	r-comb : full	125048	121628	146098
+bf15f7ab	HI_1_13_0	true	230167	bis1 : tete-bloc+inv	230167	227637	228391
+bfecd02b	HI_1_13_0	true	264840	bis1 : oracle-bloc+tete-bloc	264840	254963	259723
+c75f33b8	HI_1_13_0	true	161678	r-comb : full	159366	155136	161678
+d9781168	HI_1_13_0	true	253988	bis3 : oracle-NEW+P6-propre+alloc+suivant	253746	244872	253748
+e5adf7b2	HI_1_11_0	true	305812	r-comb : full	297630	289378	305812
+f75e7053	HI_1_13_0	true	192371	r-comb : full	192166	187304	192371
+fb1a1a72	HI_1_13_0	true	346881	r-comb : full	182169	179254	346881

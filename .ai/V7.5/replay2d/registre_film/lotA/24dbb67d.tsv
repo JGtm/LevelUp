@@ -1,0 +1,18 @@
+meta	24dbb67d	Ranked:Oddball	skull	Recharge - Ranked	200	121	519	8	7271	3579	3692	3288	518050	31848	981
+team	6	200	200	200	71479	518032	oui
+team	8	121	121	121	61336	513729	oui
+a01	exact	200/121	200/121	2
+player	10	-	-	20	-	9	-	6	-	non	non	0
+player	12	-	-	10	-	14	-	8	-	non	non	0
+player	14	-	-	12	-	10	-	3	-	non	non	0
+player	16	-	-	5	-	10	-	3	-	non	non	0
+player	18	-	-	9	-	12	-	2	-	non	non	0
+player	20	-	2535463185952034	10	14	10	10	6	6	non	non	0
+player	22	-	-	9	-	11	-	9	-	non	non	0
+player	24	-	-	13	-	12	-	2	-	non	non	0
+a03	0	1	0	0	8	8	0
+a02	a	0	1	scores finaux distincts
+a01b	exact	200/121	200/121	2	2
+volume	178	0	0	0	0	3589	25	3614
+probe	total	0
+cost	981	1030	22	3	76	7271

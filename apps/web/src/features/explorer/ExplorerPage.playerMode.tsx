@@ -155,6 +155,7 @@ export function ExplorerPlayerMode({
               profile={playerQuery.data.target_profile}
               gamertag={playerQuery.data.target_gamertag || targetGamertag}
               encounterStats={playerQuery.data.encounter_stats}
+              commonMatches={playerQuery.data.common_matches}
             />
           )}
 
@@ -173,6 +174,7 @@ export function ExplorerPlayerMode({
               locale={locale}
               t={t}
               topMedals={playerQuery.data.target_profile.top_medals ?? []}
+              topMedalsLocal={playerQuery.data.target_profile.top_medals_local ?? []}
               combatLiveStatus={playerQuery.data.target_profile.live_status?.combat_live}
             />
           ) : null}

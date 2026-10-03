@@ -61,13 +61,15 @@ type CareerService struct {
 	dataAdapter   games.TitleDataAdapter
 	rankCatalog   *mappings.RankCatalog // optionnel — nil = pas de nom prochain rang
 	rankImageURLs map[int]*string       // optionnel — nil = pas d'images de rang
-	// friendGamertags : resolver des gamertags amis (cf. settings.FriendGamertags).
+	// friendGamertags : resolver des gamertags amis DU joueur consulté.
 	// Utilisé par GetTopEncounters pour exclure les amis du tableau "joueurs les
 	// plus croisés (hors amis)". Si nil, aucune exclusion (équivalent à 0 ami).
 	friendGamertags teammates.FriendGamertagsResolver
-	// friendXUIDResolver : optionnel — résout un gamertag en XUID via xuid_aliases.
-	// Si nil, GetTopEncounters dégrade gracieusement (pas d'exclusion d'amis).
-	friendXUIDResolver func(ctx context.Context, gamertag string) (string, error)
+	// friendsSuivis / friendXUIDs : résolution des amis en xuids pour GetTopEncounters (lot
+	// perf L9-go) — d'abord le registre des profils suivis (gamertag → xuid connu, aucune
+	// lecture), puis UNE lecture pour les autres. friendXUIDs nil : aucune exclusion d'amis.
+	friendsSuivis func(ctx context.Context) map[string]string
+	friendXUIDs   FriendXUIDsReader
 	// seasonsCatalog : optionnel — résolveur saisons (TOML + DB + lazy fetch).
 	// Utilisé par GetHighlightMatchIDs pour traduire les SeasonIDs sélectionnés
 	// en fenêtres temporelles SQL et pour calculer les cascade counts. Quand
@@ -127,19 +129,25 @@ func (s *CareerService) WithRankImageURLs(imgs map[int]*string) *CareerService {
 	return s
 }
 
-// WithFriendGamertagsResolver injecte le resolver d'amis configurés (lit
-// app_settings.friend_gamertags). Quand nil, GetTopEncounters n'exclut aucun
+// WithFriendGamertagsResolver injecte le resolver d'amis du joueur consulté
+// (data/global/player_friends.json). Quand nil, GetTopEncounters n'exclut aucun
 // joueur (le tableau "hors amis" affichera tous les plus croisés).
 func (s *CareerService) WithFriendGamertagsResolver(r teammates.FriendGamertagsResolver) *CareerService {
 	s.friendGamertags = r
 	return s
 }
 
-// WithFriendXUIDResolver injecte un résolveur gamertag → XUID (typiquement
-// délégué à ExplorerRepo.ResolveXUIDByGamertag). Requis pour exclure les amis
-// dans GetTopEncounters (la query travaille en XUIDs).
-func (s *CareerService) WithFriendXUIDResolver(fn func(ctx context.Context, gamertag string) (string, error)) *CareerService {
-	s.friendXUIDResolver = fn
+// FriendXUIDsReader résout des gamertags en xuids en UNE lecture (clé : le gamertag tel que
+// demandé ; absent = non résolu) — CareerRepo.ResolveFriendXUIDs en production.
+type FriendXUIDsReader func(ctx context.Context, gamertags []string) (map[string]string, error)
+
+// WithFriendXUIDSources injecte la résolution des amis de GetTopEncounters (la requête
+// travaille en xuids) : `suivis` rend gamertag → xuid des profils suivis (db_profiles.json ;
+// nil = pas de registre), `lire` résout les autres en une lecture. Avant (lot perf L9-go) :
+// un ExplorerRepo.ResolveXUIDByGamertag par ami, 1,8 à 2,8 s chacun (vue des noms entière).
+func (s *CareerService) WithFriendXUIDSources(suivis func(ctx context.Context) map[string]string, lire FriendXUIDsReader) *CareerService {
+	s.friendsSuivis = suivis
+	s.friendXUIDs = lire
 	return s
 }
 

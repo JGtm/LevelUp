@@ -1,0 +1,91 @@
+# levelup-worker.service — l'OUVRIER de construction des rejeux 2D (cmd/replay-worker).
+#
+# CE QU'IL FAIT : il TIRE son travail au serveur web en HTTPS, telecharge les morceaux de
+# film par des URL CDN pre-signees, decode, POUSSE l'artefact, puis rend son compte. Il
+# n'a aucun token Halo, aucun acces a une DuckDB, aucun port entrant — c'est ce qui permet
+# de le faire tourner sur une machine qui n'est pas celle de la production.
+#
+# OU IL VIT : /opt/levelup (clone du depot public, propriete `deploy`). Le binaire est
+# construit et installe par scripts/deploy-worker.sh, joue par le job `deploy-worker` de
+# .github/workflows/deploy.yml. Sequence d'activation et rollback :
+# docs/RUNBOOK_REPLAY_WORKER.md.
+#
+# INSTALLATION — PAR LIEN, PAS PAR COPIE :
+#   sudo systemctl link /opt/levelup/packaging/systemd/levelup-worker.service
+#   sudo systemctl daemon-reload
+# Le compte `deploy` a un sudoers restreint a `daemon-reload` et `restart levelup-worker` :
+# il ne peut donc PAS recopier ce fichier. Le lien fait suivre le contenu au `git reset` du
+# script de deploiement, et le daemon-reload suffit a le prendre en compte. Une copie
+# figee divergerait silencieusement du depot ; le script la signale s'il en trouve une.
+#
+# A NE PAS CONFONDRE avec les unites de scripts/systemd/ (prune docker, sauvegarde restic) :
+# celles-la vivent sur l'HOTE de production et se recopient a la main (cf. leur README).
+# Celle-ci est un artefact de deploiement, rafraichi par la chaine ci-dessus.
+
+[Unit]
+Description=LevelUp - ouvrier de construction des rejeux 2D
+Documentation=file:///opt/levelup/docs/RUNBOOK_REPLAY_WORKER.md
+# L'ouvrier ne fait QUE des appels sortants : sans reseau il tourne en erreurs de
+# protocole (arret sur erreur, exit 1) au lieu d'attendre. network-online, donc.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+
+# WorkingDirectory NE RENSEIGNE PAS la racine du depot pour ce binaire : `--repo` a pour
+# defaut la variable LEVELUP_REPO_ROOT et, a defaut, le processus sort en EXIT 2
+# (« racine du depot absente », cmd/replay-worker/main.go:87-90). D'ou le `--repo` EXPLICITE
+# de l'ExecStart ci-dessous : ecrit dans le fichier versionne, il ne depend pas du contenu
+# d'un fichier d'environnement pose a la main sur la machine.
+WorkingDirectory=/opt/levelup
+
+# Le JETON arrive par ici, et NULLE PART ailleurs : `--token` a pour defaut
+# LEVELUP_BUILD_WORKER_TOKEN (main.go:71). Le passer en argument l'exposerait dans `ps`.
+# Fichier root 0600 : systemd le lit en tant que root AVANT de descendre vers `deploy` —
+# c'est voulu, le compte de service n'a jamais besoin de pouvoir lire le secret lui-meme.
+# Sans ce fichier, le demarrage echoue explicitement (pas de `-` : un ouvrier sans jeton
+# ne servirait a rien et sortirait en exit 2).
+EnvironmentFile=/etc/levelup-worker.env
+
+# --work HORS du depot : c'est ce qui autorise l'ouvrier a EFFACER les morceaux apres
+# chaque job. Quand le dossier de travail est le cache film du depot (le defaut), le
+# binaire n'y supprime rien — ce cache est une archive irremplacable (main.go:99-108,
+# job.go:282-299). Ici le dossier est distinct, donc `keepsFilms` est faux et chaque job
+# rend son disque. Le sous-dossier `work/` est cree au premier job (filmcache.Write).
+# --mem-limit-gib 3 : plafond memoire dur du decodage de CHAQUE job (memlimit.go), sur une
+# machine de 7,7 Gio. Un film hors norme est isole au lieu de spiraler en GC.
+ExecStart=/opt/levelup/bin/replay-worker --url https://lvelup.info/api/v1/internal --repo /opt/levelup --id csstat --mem-limit-gib 3 --work /var/lib/levelup-worker/work
+
+# /var/lib/levelup-worker, cree et donne a `deploy` par systemd. Contient uniquement des
+# morceaux de film en transit — rien a sauvegarder.
+StateDirectory=levelup-worker
+
+# POURQUOI Restart=on-failure EST SUR VIS-A-VIS DE L'EXIT 3 (memory_exceeded).
+# Quand la sentinelle memoire isole un film-bombe, l'ouvrier RAPPORTE D'ABORD au serveur
+# un echec explicite (error_code=memory_exceeded) et ARRETE ENSUITE le processus :
+# reportMemoryExceeded (job.go:135-138) appelle completeMemoryExceeded (job.go:143-153),
+# qui envoie le compte rendu sur un contexte FRAIS, puis os.Exit(3). Le job est donc deja
+# rendu `failed` avec son motif AVANT l'arret. Un redemarrage ne le reprend pas : il repart
+# sur la file. Sans ce compte rendu, le job serait reste `running` jusqu'a l'expiration de
+# son bail et serait reparti avec un motif generique — c'est precisement ce que la
+# sentinelle evite.
+# Les autres codes : 1 = erreur de protocole (serveur injoignable, jeton refuse) ;
+# 2 = configuration manquante (jeton ou racine du depot). Ces deux-la rebouclent toutes
+# les 30 s en laissant une trace au journal, et c'est voulu : une fois la cause corrigee
+# (jeton repose, serveur revenu), l'ouvrier repart seul. Une unite qui abandonnerait
+# definitivement obligerait a une intervention manuelle pour un incident deja resolu.
+Restart=on-failure
+RestartSec=30s
+
+# Durcissement minimal et sans effet de bord connu pour un binaire Go sans setuid.
+# Volontairement PAS de ProtectSystem=strict ni de ProtectHome ici : ils n'ont pas pu etre
+# verifies dans ce lot (`systemd-analyze verify` n'existe pas sous Windows) et une unite
+# qui refuse de demarrer pour un durcissement non teste couterait plus qu'elle ne protege.
+# A instruire sur csstat, ou l'unite tourne pour de vrai.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

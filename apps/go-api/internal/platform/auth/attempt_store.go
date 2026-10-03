@@ -64,8 +64,7 @@ type Attempt struct {
 	// Ils sont consommés par XboxSSOLinkStrategy.OnAuthSuccess pour persister
 	// les tokens RTA dans MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json).
 	MicrosoftAccessToken string    // access_token MS brut (durée vie ~1h)
-	MSALCacheJSON        string    // cache MSAL sérialisé (contient le refresh_token pour TrySilentRefresh ultérieur)
-	OAuthRefreshToken    string    // refresh_token Microsoft brut (flow SISU natif — équivalent du RT du cache MSAL)
+	OAuthRefreshToken    string    // refresh_token Microsoft brut (flow SISU natif)
 	XSTSRTAToken         string    // XSTS audience http://xboxlive.com (RTA)
 	XSTSRTAUserHash      string    // userhash associé au XSTS RTA
 	XSTSRTAExpiresAt     time.Time // expiration du XSTS RTA (typiquement ~55min)

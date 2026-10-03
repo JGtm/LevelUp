@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 
+import { useAppShellStore } from '@/stores/appShellStore'
+
 import { ChartCard, type ChartSeries } from './ChartCard'
 
 // Mock echarts-for-react pour eviter le cout d'instancier le canvas en jsdom
@@ -39,7 +41,47 @@ describe('ChartCard', () => {
 
   it('rend l\'etat empty quand series est vide', () => {
     render(<ChartCard {...baseProps} emptyMessage="Pas de matchs" />)
-    expect(screen.getByTestId('chart-card-empty').textContent).toBe('Pas de matchs')
+    expect(screen.getByTestId('chart-card-empty').textContent).toContain('Pas de matchs')
+  })
+
+  // L'etat vide d'une carte de graphe se dessine comme TOUS les autres de l'app
+  // (`components/ui/empty-state.tsx`) : titre en gras + description grise dans un cadre
+  // pointille. Decision utilisateur du 2026-09-22.
+  it("l'etat vide rend le gabarit canonique : titre en gras + description grise", () => {
+    render(<ChartCard {...baseProps} emptyTitle="Rien ici" emptyMessage="Pas de matchs" />)
+    const empty = screen.getByTestId('chart-card-empty')
+
+    const titleEl = screen.getByText('Rien ici')
+    expect(titleEl.className).toContain('font-semibold')
+    expect(titleEl.className).toContain('text-foreground')
+
+    const descEl = screen.getByText('Pas de matchs')
+    expect(descEl.className).toContain('text-muted-foreground')
+
+    // Le cadre pointille du gabarit canonique, et la hauteur du graphe conservee.
+    expect(empty.querySelector('.border-dashed')).not.toBeNull()
+    expect(empty.style.minHeight).toBe('320px')
+  })
+
+  it("etat vide sans props : defauts FR de la locale du shell", () => {
+    useAppShellStore.setState({ locale: 'fr' })
+    render(<ChartCard {...baseProps} />)
+    const empty = screen.getByTestId('chart-card-empty')
+    expect(empty.textContent).toContain('Aucune donnée')
+    expect(empty.textContent).toContain('Aucune donnée à afficher pour cette sélection')
+  })
+
+  it("etat vide sans props : defauts EN quand la locale est 'en'", () => {
+    useAppShellStore.setState({ locale: 'en' })
+    try {
+      render(<ChartCard {...baseProps} />)
+      const empty = screen.getByTestId('chart-card-empty')
+      expect(empty.textContent).toContain('No data')
+      expect(empty.textContent).toContain('No data to display for this selection')
+      expect(empty.textContent).not.toContain('Aucune')
+    } finally {
+      useAppShellStore.setState({ locale: 'fr' })
+    }
   })
 
   it('rend ECharts quand series contient des datapoints', async () => {

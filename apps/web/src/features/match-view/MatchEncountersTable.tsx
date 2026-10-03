@@ -41,8 +41,14 @@ import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { tokenVar } from '@/lib/accessibility'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
+import { formatKDCross, formatKDRatio, formatRelativeFor } from '@/features/_shared/encounters/format'
+import { AssistExchangeCell } from '@/features/_shared/assists/AssistExchangeCell'
+import { assistSortValue } from '@/features/_shared/assists/assistExchange'
+import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
+import { displayPlayerName } from '@/lib/players/displayName'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
+import { useFieldLabel } from '@/lib/i18n/fieldMappings'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
@@ -64,6 +70,17 @@ interface Props {
    * page Carrière, où le user a explicitement demandé "pas de bloc").
    */
   hideCardWrapper?: boolean
+  /**
+   * Construit ou non la colonne « Assistances ». Défaut `true` (vue match, où
+   * le bloc `assists` est posé par le chargeur du match).
+   *
+   * À passer à `false` quand la source de lignes ne pose JAMAIS le bloc
+   * `assists` — cas de la page Carrière (`CareerService.GetTopEncounters`), où
+   * la colonne n'afficherait que des « — » avec une infobulle et un tri sans
+   * objet. C'est une décision d'appelant, PAS une déduction sur les données :
+   * une vue match dont aucune ligne n'est mesurée garde la colonne et ses « — ».
+   */
+  showAssists?: boolean
 }
 
 function isSemanticToken(s: string): s is SemanticToken {
@@ -134,17 +151,6 @@ function EncounterBadgesInline({
   )
 }
 
-function formatKDCross(kills: number | null | undefined, deaths: number | null | undefined): string {
-  if (kills == null && deaths == null) return '—'
-  return `${kills ?? 0}/${deaths ?? 0}`
-}
-
-function formatKDRatio(kills: number | null | undefined, deaths: number | null | undefined): string {
-  if (kills == null || deaths == null) return '—'
-  if (deaths === 0) return kills > 0 ? '∞' : '—'
-  return (kills / deaths).toFixed(2)
-}
-
 /** Valeur numérique triable du ratio F/D (I16) — même logique que formatKDRatio,
  *  0 mort + 0 frag → non triable (`undefined`, rangé en bas), 0 mort + N frags →
  *  `Infinity` (ratio le plus favorable possible, en tête en tri descendant). */
@@ -182,51 +188,19 @@ function EncounterTh({ header, idx }: { header: Header<MatchEncounterRow, unknow
 // SplitBar / AllyEnemySplitBar / KDSplitBar : extraits vers
 // features/_shared/EncounterSplitBars.tsx (dédup #6 — cf. import ci-dessus).
 
-function formatRelativeFR(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  const diffMs = Date.now() - date.getTime()
-  const minutes = Math.round(diffMs / 60_000)
-  if (minutes < 1) return "à l'instant"
-  if (minutes < 60) return `il y a ${minutes} min`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return hours <= 1 ? 'il y a 1 h' : `il y a ${hours} h`
-  const days = Math.round(hours / 24)
-  if (days === 1) return 'hier'
-  if (days < 7) return `il y a ${days} j`
-  const weeks = Math.round(days / 7)
-  if (weeks < 5) return weeks <= 1 ? 'il y a 1 sem.' : `il y a ${weeks} sem.`
-  const months = Math.round(days / 30)
-  if (months < 12) return months <= 1 ? 'il y a 1 mois' : `il y a ${months} mois`
-  const years = Math.round(days / 365)
-  return years <= 1 ? 'il y a 1 an' : `il y a ${years} ans`
-}
-
-function formatRelativeEN(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  const diffMs = Date.now() - date.getTime()
-  const minutes = Math.round(diffMs / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} h ago`
-  const days = Math.round(hours / 24)
-  if (days === 1) return 'yesterday'
-  if (days < 7) return `${days} d ago`
-  const weeks = Math.round(days / 7)
-  if (weeks < 5) return `${weeks} w ago`
-  const months = Math.round(days / 30)
-  if (months < 12) return `${months} mo ago`
-  const years = Math.round(days / 365)
-  return years <= 1 ? '1 y ago' : `${years} y ago`
-}
-
-export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideCardWrapper = false }: Props) {
+export function MatchEncountersTable({
+  rows,
+  locale = 'fr',
+  onPlayerClick,
+  hideCardWrapper = false,
+  showAssists = true,
+}: Props) {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug?: string }
   const navigate = useNavigate()
   const titleSlug = useTitleSlug()
-  const formatRelative = locale === 'en' ? formatRelativeEN : formatRelativeFR
+  const formatRelative = formatRelativeFor(locale)
+  // Libellé de colonne « Assistances » title-aware (mappings du titre, champ `assists`).
+  const assistsLabel = useFieldLabel('assists')
 
   const labels = useMemo(
     () =>
@@ -312,7 +286,9 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
           const r = ctx.row.original
           // Pas de lien Explorer pour les bots (xuid 'bid(...)' sans historique cross-match).
           const linkable = !r.is_bot && (Boolean(playerSlug) || Boolean(onPlayerClick))
-          const displayGamertag = r.gamertag
+          // Suffixe « [bot] » = marqueur de DONNÉES (killsource), pas d'affichage —
+          // le badge Bot ci-dessous le dit déjà (chokepoint displayName.ts).
+          const displayGamertag = displayPlayerName(r.gamertag, r.xuid)
           return (
             <span className="whitespace-nowrap">
               {linkable ? (
@@ -412,6 +388,25 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
           return <span className="font-mono">{formatKDCross(r.kills_dealt, r.deaths_suffered)}</span>
         },
       },
+      ...(showAssists
+        ? ([
+            {
+              id: 'assists',
+              // Tri sur les assistances échangées (données + reçues) ; non mesuré → en bas.
+              accessorFn: (r) => assistSortValue(r.assists),
+              ...NUMERIC_SORT,
+              header: assistsLabel,
+              meta: { headerTooltip: ASSISTS_TEXT[locale].columnTooltip },
+              cell: (ctx) => (
+                <AssistExchangeCell
+                  assists={ctx.row.original.assists}
+                  teammateMatches={ctx.row.original.ally_count}
+                  locale={locale}
+                />
+              ),
+            },
+          ] satisfies ColumnDef<MatchEncounterRow>[])
+        : []),
       {
         id: 'ratio',
         accessorFn: (r) => ratioValue(r.kills_dealt, r.deaths_suffered),
@@ -447,7 +442,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labels, playerSlug, formatRelative, onPlayerClick],
+    [labels, playerSlug, formatRelative, onPlayerClick, assistsLabel, showAssists],
   )
 
   // I16 : tri CLIENT par clic sur les en-têtes (pattern DetectionsPanel minimal).

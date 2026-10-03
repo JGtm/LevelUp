@@ -62,9 +62,9 @@ export function SessionKillsDonut({ title, matches, kda, height = 260, compact }
 
   // Couleurs sémantiques mappées par nom de slice (résolu via tokens).
   const sliceColors: Record<string, SemanticToken> = {
-    [labels.kills]: 'outcome-win',
-    [labels.deaths]: 'outcome-loss',
-    [labels.assists]: 'outcome-draw',
+    [labels.kills]: 'stat-kills',
+    [labels.deaths]: 'stat-deaths',
+    [labels.assists]: 'stat-assists',
   }
 
   if (total === 0) return null

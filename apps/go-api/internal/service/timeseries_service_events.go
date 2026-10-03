@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -60,6 +61,7 @@ func enrichMatchesMaxKillingSpree(
 func (s *TimeseriesService) loadHighlightEvents(
 	ctx context.Context, matchIDs []string,
 ) ([]canonical.HighlightEvent, error) {
+	defer timing.FromContext(ctx).Section("highlight_events")()
 	filters := port.HighlightEventFilters{
 		MatchIDs: matchIDs,
 		EventTypes: []canonical.HighlightEventType{
@@ -88,17 +90,36 @@ func buildIntensityRows(
 	playerXUID string,
 	gameplayDurationsMS map[string]int64,
 ) []domain.IntensityMatchRow {
-	// Filtrer les events où le joueur est tueur (frags du joueur uniquement).
+	return buildIntensityRowsPour(events, matches, gameplayDurationsMS,
+		func(_, killer string) bool { return killer == playerXUID })
+}
+
+// tueurDeLEvent rend le xuid du TUEUR d'un event de frag — `KillerXUID` quand il est
+// posé, sinon `XUID` (repli legacy : sur un kill event, l'acteur EST le tueur).
+func tueurDeLEvent(ev canonical.HighlightEvent) string {
+	if ev.KillerXUID != nil {
+		return *ev.KillerXUID
+	}
+	return ev.XUID
+}
+
+// buildIntensityRowsPour est le NOYAU COMMUN des trois courbes d'intensité de la page :
+// le joueur, son ÉQUIPE et le LOBBY ne diffèrent que par la population de tueurs retenue
+// (`garde`). Un second calcul par population aurait fait trois profils d'intensité libres
+// de diverger — le même piège que la page Escouade évite avec `intensityEventFilter`.
+func buildIntensityRowsPour(
+	events []canonical.HighlightEvent,
+	matches []legacymatch.StatsMatchRow,
+	gameplayDurationsMS map[string]int64,
+	garde func(matchID, killerXUID string) bool,
+) []domain.IntensityMatchRow {
 	playerKills := make([]canonical.HighlightEvent, 0, len(events))
 	for _, ev := range events {
-		killer := ""
-		if ev.KillerXUID != nil {
-			killer = *ev.KillerXUID
-		} else {
-			killer = ev.XUID // fallback legacy : XUID = tueur sur kill events
+		if ev.EventType != string(canonical.EventKill) &&
+			ev.EventType != string(canonical.EventFirstKill) {
+			continue
 		}
-		if killer == playerXUID && (ev.EventType == string(canonical.EventKill) ||
-			ev.EventType == string(canonical.EventFirstKill)) {
+		if garde(ev.MatchID, tueurDeLEvent(ev)) {
 			playerKills = append(playerKills, ev)
 		}
 	}
@@ -170,22 +191,99 @@ func buildIntensityRows(
 }
 
 // buildSoloFirstBlood projette les rows d'agrégation « premier événement » du
-// joueur suivi en série produit (chart lanes « Premier frag / première mort »).
+// joueur suivi en série produit (chart lanes « Premier frag / première mort »),
+// enrichie des métadonnées d'affichage du match (carte/mode/date — DEC-4,
+// retours utilisateur 2026-08-29 : le tooltip ne doit plus jamais montrer
+// l'uuid du match).
 //
 // Solo : une seule série. Partagé par la page Timeseries et la page Session —
 // même contrat par match, même conversion ms → secondes (domain.NewFirstBloodPoint).
+// matches sert UNIQUEMENT à la résolution carte/mode/date (même scope que rows
+// côté appelants : les matchIDs qui produisent rows sont dérivés de ces mêmes
+// matches) — StartTime est déjà la valeur canonique de la ligne, jamais
+// recalculée ici (règle 8, timezone canonique).
 // Retourne nil si aucun match ne porte de premier frag ni de première mort.
-func buildSoloFirstBlood(player string, rows []narrative.FirstEventsRow) []domain.FirstBloodPlayerSeries {
+func buildSoloFirstBlood(
+	player string,
+	rows []narrative.FirstEventsRow,
+	matches []legacymatch.StatsMatchRow,
+) []domain.FirstBloodPlayerSeries {
 	if player == "" || len(rows) == 0 {
 		return nil
 	}
+	metaByMatch := make(map[string]domain.FirstBloodMatchMeta, len(matches))
+	for _, m := range matches {
+		metaByMatch[m.MatchID] = statsMatchRowFirstBloodMeta(m)
+	}
 	points := make([]domain.FirstBloodMatchPoint, 0, len(rows))
 	for _, r := range rows {
-		points = append(points, domain.NewFirstBloodPoint(r.MatchID, r.FirstKillMS, r.FirstDeathMS))
+		points = append(points, domain.NewFirstBloodPoint(
+			r.MatchID, r.FirstKillMS, r.FirstDeathMS, metaByMatch[r.MatchID]))
 	}
 	series := domain.FirstBloodPlayerSeries{Player: player, Matches: points}
 	if !series.HasEvents() {
 		return nil
 	}
 	return []domain.FirstBloodPlayerSeries{series}
+}
+
+// statsMatchRowFirstBloodMeta résout les métadonnées d'affichage (carte, mode,
+// date) d'un match pour le chart « premier frag / première mort ». Carte : FR
+// si disponible sinon l'anglais brut (même repli que buildIntensityRows
+// ci-dessus ; 2e occurrence du pattern, sous le seuil ≤2 copies avant
+// centralisation — règle CLAUDE.md). Mode : analysis.ResolveModeUIWithVariant,
+// résolveur canonique pair-sinon-variant déjà utilisé dans tout le package
+// service — ne pas dupliquer sa logique ici.
+func statsMatchRowFirstBloodMeta(m legacymatch.StatsMatchRow) domain.FirstBloodMatchMeta {
+	mapUI := m.MapNameFR
+	if mapUI == "" {
+		mapUI = m.MapName
+	}
+	meta := domain.FirstBloodMatchMeta{MapUI: mapUI, StartTime: m.StartTime}
+	if modeUI := analysis.ResolveModeUIWithVariant(
+		&m.PairName, &m.PairNameFR, &m.GameVariantName, &m.GameVariantNameFR,
+	); modeUI != nil {
+		meta.ModeUI = *modeUI
+	}
+	return meta
+}
+
+// attachIntensityOverlays pose les DEUX COURBES DE RÉFÉRENCE du profil d'intensité —
+// l'ÉQUIPE alliée du joueur et le LOBBY entier — à côté de sa courbe à lui
+// (PLAN_AJUSTEMENTS_PRE_V75, item 1.G du 2026-09-19 : la page Escouade les montrait déjà,
+// la page Timeseries ne montrait que le joueur, et une courbe seule ne dit pas si le match
+// était intense en général).
+//
+// LE LOBBY NE COÛTE RIEN : les highlight events du scope couvrent déjà les deux camps
+// (`loadHighlightEvents` ne filtre pas par joueur). L'ÉQUIPE exige de savoir qui était
+// allié PAR MATCH : elle se lit dans `match_participants`, par la lecture UNIQUE du scope
+// (`lireEquipesDuScope`, partagée avec l'effectif de camp de la coordination — lot L5a,
+// 2026-09-23), et le MÊME `sessionusage.BuildTeamContext` que le bloc d'usage — jamais une
+// seconde définition de « mon équipe ».
+//
+// DÉGRADATION NOMMÉE : port non câblé (titre sans résumé d'usage) ou lecture en échec ⇒
+// la courbe d'équipe est absente, le reste est servi. Jamais une courbe plate.
+func attachIntensityOverlays(
+	resp *domain.TimeseriesPageResponse,
+	events []canonical.HighlightEvent,
+	matches []legacymatch.StatsMatchRow,
+	gameplayDurationsMS map[string]int64,
+	equipes equipesDuScope,
+) {
+	resp.IntensityRowsLobby = buildIntensityRowsPour(events, matches, gameplayDurationsMS,
+		func(string, string) bool { return true })
+
+	if !equipes.lues {
+		return
+	}
+	tc := equipes.tc
+	resp.IntensityRowsTeam = buildIntensityRowsPour(events, matches, gameplayDurationsMS,
+		func(matchID, killer string) bool {
+			camp, connu := tc.PlayerTeam[matchID]
+			if !connu {
+				return false
+			}
+			campDuTueur, ok := tc.TeamOf[matchID][killer]
+			return ok && campDuTueur == camp
+		})
 }

@@ -200,7 +200,8 @@ func collectMissingHomeAssetIDs(matches []legacymatch.HomeMatchRow, assetType st
 //
 // Remplace les ex-`loadHomeAssetTranslationNames` (FR) et
 // `loadHomeAssetTranslationNamesEN` (EN) — un seul helper paramétré au lieu
-// de deux wrappers spécialisés (refactor 2026-05-08).
+// de deux wrappers spécialisés (refactor 2026-05-08). Un échec est journalisé et
+// consigné (noteDegraded : l'historique enrichi qui l'appelle n'est pas mis en cache).
 func (r *HomeRepo) resolveAssetNames(ctx context.Context, assetType string, assetIDs []string, locale string) map[string]string {
 	if len(assetIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return nil
@@ -211,6 +212,7 @@ func (r *HomeRepo) resolveAssetNames(ctx context.Context, assetType string, asse
 	if err != nil && !isTableNotFoundErr(err) {
 		slog.WarnContext(ctx, "home: resolveAssetNames failed",
 			"asset_type", assetType, "locale", locale, "err", err)
+		noteDegraded(ctx, "asset_names")
 	}
 	return out
 }

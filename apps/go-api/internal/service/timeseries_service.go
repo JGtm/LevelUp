@@ -33,13 +33,16 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/timeline"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // Cles metriques canoniques utilisees dans MetricXKey/MetricYKey.
@@ -66,6 +69,10 @@ type TimeseriesService struct {
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
+	// repoRoot : racine du depot, pour le SEUL catalogue d'armes du titre (nommage du
+	// detail par niveau du bloc usage, cf. squadagg.NommerArmesDesNiveaux). Vide = les armes
+	// s'affichent sous leur cle, jamais un nom approchant.
+	repoRoot string
 	// weaponKillsRepo (chart .04 Top weapons) : optionnel, degradation gracieuse.
 	// Si nil, TopWeapons reste vide.
 	weaponKillsRepo port.WeaponKillsRepository
@@ -91,6 +98,28 @@ type TimeseriesService struct {
 	// du joueur suivi sur le scope. Câblé gated (capability match.objective.stats,
 	// Infinite) ; nil → bloc ObjectiveStats omis. Best-effort.
 	objectiveStatsRepo port.ObjectiveStatsRepository
+	// weaponRangeRepo / sessionUsageRepo + usageFriends : les deux sections migrées depuis
+	// la Synthèse le 2026-09-13. Optionnels, gated au câblage — cf.
+	// timeseries_service_sections.go.
+	weaponRangeRepo  port.WeaponRangeRepository
+	sessionUsageRepo port.SessionUsageRepository
+	usageFriends     teammates.FriendGamertagsResolver
+	// formesUsageRepo / formesObjectiveRepo : le bloc « Les formes retenues », contexte
+	// SOLO, migré depuis l'Escouade le 2026-09-19. Optionnels, gated au câblage — cf.
+	// timeseries_service_sections.go.
+	formesUsageRepo     port.SquadFormesUsageRepository
+	formesObjectiveRepo port.SquadFormesObjectiveRepository
+	// coordTactical / coordAppuis / coordCaps : le bloc « Coordination » (riposte +
+	// appui reçu) par SOIRÉE, lot N1. Optionnels, gated au câblage — cf.
+	// timeseries_service_sections.go.
+	coordTactical port.TacticalRepository
+	coordAppuis   port.CoordinationRepository
+	coordCaps     games.CapabilityMap
+	// matchRangeRepo / matchRangeXUID : le nuage des rôles de portée (lot U, décision
+	// D23-a) — LE MÊME lecteur et LE MÊME producteur que la page Sessions et l'Escouade,
+	// sur la fenêtre de cette page. Optionnels, gated au câblage.
+	matchRangeRepo port.MatchRangeRepository
+	matchRangeXUID string
 }
 
 // highlightEventsLoader expose la sous-API du HighlightEventsRepo per-player
@@ -127,8 +156,6 @@ func (s *TimeseriesService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposit
 	return s
 }
 
-// WithWeaponKillsRepo injecte le repo weapon_kills pour alimenter le chart .04
-// (Top weapons by kills). Optionnel : si non cable, TopWeapons reste vide.
 func (s *TimeseriesService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *TimeseriesService {
 	s.weaponKillsRepo = repo
 	return s
@@ -174,9 +201,11 @@ func (s *TimeseriesService) GetPage(
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
 		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: PlayerMatchesRepo non cable (P4.3 finale exige le wiring DI)")
 	}
+	stop := timing.FromContext(ctx).Section("player_matches")
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
+	stop()
 	if err != nil {
 		slog.ErrorContext(ctx, "timeseries: chargement canonical", "error", err)
 		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: %w", err)
@@ -253,6 +282,7 @@ func (s *TimeseriesService) GetPage(
 	// AssistsExpected + le terme /3 de l'écart au FDA attendu (chart Résumé).
 	assistsExpected := computeExpectedAssistsBatch(ctx, s.expectedAssistsModels, s.expectedAssistsCoefs, matches)
 
+	stop = timing.FromContext(ctx).Section("tabs")
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches: len(matches),
 		MatchRows:    buildMatchRows(matches, provideSpree, assistsExpected, careerXPEras),
@@ -267,6 +297,7 @@ func (s *TimeseriesService) GetPage(
 		TopWeapons:       []domain.TimeseriesWeaponKill{},
 		KillTypes:        buildTimeseriesKillTypes(matches),
 	}
+	stop()
 
 	// KPI objectifs (cumul CTF/Zones/Oddball sur le scope) : best-effort, gated (repo
 	// nil hors capability match.objective.stats). Bloc omis si aucun match à objectif.
@@ -284,6 +315,7 @@ func (s *TimeseriesService) GetPage(
 	// par les classes API (melee/grenade/spartan + total), les frags d'arme non résolus
 	// retombant dans « Non attribué » (résidu).
 	var weaponRows []port.WeaponKillRow
+	stop = timing.FromContext(ctx).Section("weapon_kills")
 	if s.weaponKillsRepo != nil && len(matches) > 0 && s.gamertag != "" {
 		matchIDs := make([]string, 0, len(matches))
 		for _, m := range matches {
@@ -304,6 +336,7 @@ func (s *TimeseriesService) GetPage(
 			}
 		}
 	}
+	stop()
 	// FragDistribution (sunburst v2) : RÉUTILISE buildFragDistribution (partagé
 	// Synthesis/Match view — aucune duplication). Construite même sans weaponRows.
 	resp.FragDistribution = s.buildTimeseriesFragDistribution(ctx, weaponRows, resp.KillTypes)
@@ -318,25 +351,35 @@ func (s *TimeseriesService) GetPage(
 		synthesisWeaponChartTopN,
 	)
 
-	// First events distribution (chart .11) + Intensity heatmap : RÉUTILISE les events
-	// déjà chargés (highlightEvents). Correction chronologie T0 ici (ramène les TimeMS
-	// au référentiel gameplay) — distincte du fallback spree, qui reste order-based sur
-	// les events bruts (invariant par décalage T0).
+	// First events (chart .11) + Intensity : RÉUTILISE les events déjà chargés et les
+	// participants lus UNE fois (`equipes`, partagés avec la coordination). Correction T0 ici,
+	// distincte du fallback spree (order-based sur les events bruts, invariant par T0).
+	equipes := s.lireEquipesDuScope(ctx, matchIDsFromStatsRows(matches))
+	stop = timing.FromContext(ctx).Section("event_blocks")
 	if len(highlightEvents) > 0 {
 		timelines := timeline.BuildTimelinesFromPlayerMatches(canonicalRows)
 		corrected := timeline.CorrectEvents(highlightEvents, timelines)
 		resp.FirstBlood = buildSoloFirstBlood(
 			s.gamertag,
 			narrative.ComputeFirstEventsPerMatch(corrected, s.playerXUID, matchIDs),
+			matches,
 		)
-		resp.IntensityRows = buildIntensityRows(corrected, matches, s.playerXUID, timeline.GameplayDurationsMS(timelines))
+		durations := timeline.GameplayDurationsMS(timelines)
+		resp.IntensityRows = buildIntensityRows(corrected, matches, s.playerXUID, durations)
+		attachIntensityOverlays(&resp, corrected, matches, durations, equipes)
 	}
+	stop()
+
+	// Portée des engagements (onglet Résumé) + Usages d'équipement (onglet Progression) :
+	// sections migrées depuis la Synthèse, MÊME producteur, MÊME scope filtré.
+	filteredCanon := filterCanonicalByMatchIDs(canonicalRows, matches)
+	s.attachMigratedSections(ctx, &resp, filteredCanon, ctxkeys.Locale(ctx), equipes)
 
 	// BriefingKPIs : KPIs sur les rows canoniques filtres (memes match_ids que
 	// matches). Alimente le composant <SessionBriefing> en mode solo. Reutilise
 	// ComputeKPIStats sans re-filtrer les filtres metier.
-	if filtered := filterCanonicalByMatchIDs(canonicalRows, matches); len(filtered) > 0 {
-		briefingKPIs := analysis.ComputeKPIStats(filtered, games.EffectiveHpToKill(s.titleSlug))
+	if len(filteredCanon) > 0 {
+		briefingKPIs := analysis.ComputeKPIStats(filteredCanon, games.EffectiveHpToKill(s.titleSlug))
 		resp.BriefingKPIs = &briefingKPIs
 	}
 
@@ -352,6 +395,7 @@ func (s *TimeseriesService) GetPage(
 // loadObjectiveStats agrège (SUM) les stats objectifs du joueur suivi sur le scope.
 // Best-effort : nil si erreur SQL ou aucun match à objectif (bloc omis de la réponse).
 func (s *TimeseriesService) loadObjectiveStats(ctx context.Context, matchIDs []string) *domain.ObjectiveAggregate {
+	defer timing.FromContext(ctx).Section("objective_stats")()
 	byXUID, err := s.objectiveStatsRepo.LoadAggregatedByXUID(ctx, matchIDs, []string{s.playerXUID})
 	if err != nil {
 		slog.WarnContext(ctx, "timeseries: objective stats query failed (best-effort)",
@@ -366,6 +410,7 @@ func (s *TimeseriesService) buildTimeseriesFragDistribution(
 	weaponRows []port.WeaponKillRow,
 	kt *domain.TimeseriesKillTypes,
 ) *domain.FragDistribution {
+	defer timing.FromContext(ctx).Section("frag_distribution")()
 	if kt == nil || kt.TotalKills <= 0 {
 		return nil
 	}
@@ -390,6 +435,7 @@ func (s *TimeseriesService) buildTimeseriesFragDistribution(
 func (s *TimeseriesService) loadTimeseriesWeaponAccuracy(
 	ctx context.Context, matchIDs []string,
 ) []port.WeaponAccuracyRow {
+	defer timing.FromContext(ctx).Section("weapon_accuracy")()
 	if s.weaponAccuracyRepo == nil || s.gamertag == "" || len(matchIDs) == 0 {
 		return nil
 	}

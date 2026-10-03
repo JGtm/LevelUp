@@ -1,0 +1,49 @@
+
+uint FUN_142f2f634(undefined8 *param_1,undefined4 param_2)
+
+{
+  byte *pbVar1;
+  byte bVar2;
+  byte bVar3;
+  uint uVar4;
+  longlong lVar5;
+  longlong lVar6;
+  uint uVar7;
+  ulonglong uVar8;
+  undefined8 *puVar9;
+  
+  uVar4 = FUN_142f2f0cc();
+  uVar8 = 0;
+  if (uVar4 == 0xffffffff) {
+    if (DAT_144706104 == '\0') {
+      return 0xffffffff;
+    }
+    DAT_144706104 = '\0';
+    uVar4 = FUN_142f2f0cc(param_1,param_2);
+    if (uVar4 == 0xffffffff) {
+      return 0xffffffff;
+    }
+  }
+  lVar5 = (longlong)(int)uVar4;
+  lVar6 = param_1[0x24];
+  bVar2 = *(byte *)(lVar6 + lVar5 * 0x18);
+  if (((bVar2 & 1) != 0) && ((bVar2 & 2) != 0)) {
+    *(byte *)(lVar6 + lVar5 * 0x18) = bVar2 | 0x10;
+    bVar2 = *(byte *)(param_1[0x24] + 1 + lVar5 * 0x18);
+    puVar9 = param_1;
+    do {
+      puVar9 = puVar9 + 1;
+      if (((ulonglong)param_1[0x22] >> (uVar8 & 0x3f) & 1) != 0) {
+        FUN_142f2e710(*puVar9,(uint)bVar2 << 0x1e | uVar4);
+      }
+      bVar3 = *(byte *)(param_1[0x24] + lVar5 * 0x18);
+    } while (((bVar3 & 1) != 0) &&
+            (uVar7 = (int)uVar8 + 1, uVar8 = (ulonglong)uVar7, (int)uVar7 < 0x21));
+    *(byte *)(param_1[0x24] + lVar5 * 0x18) = bVar3 & 0xef;
+    lVar6 = param_1[0x24];
+  }
+  pbVar1 = (byte *)(lVar6 + lVar5 * 0x18);
+  *pbVar1 = *pbVar1 | 1;
+  return uVar4;
+}
+

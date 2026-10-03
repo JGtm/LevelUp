@@ -76,7 +76,7 @@ type SeedDemoOptions struct {
 	// sous-répertoire de sortie : le titre par défaut écrit au layout PLAT legacy
 	// (OutDir/warehouse, OutDir/players/DEMO — byte-identique à la démo mono-titre) ;
 	// un titre additionnel écrit sous OutDir/titles/{slug}/ (miroir du PathResolver
-	// prod). Cf. demoTitleSubdir.
+	// prod). Cf. title.DemoLayout.
 	TitleSlug string
 	// SkipConfigs : ne pas écrire db_profiles.json/app_settings.json à la fin (true
 	// quand l'orchestrateur multi-titre les écrit une seule fois, en v3, après tous
@@ -265,16 +265,16 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		return res, fmt.Errorf("seed-demo: %w", err)
 	}
 
-	// titleOut : sous-répertoire de sortie title-scopé. Titre par défaut → OutDir
+	// Disposition de l'arbre démo (title.DemoLayout, source unique) : titre par défaut → OutDir
 	// plat (byte-identique mono-titre) ; titre additionnel → OutDir/titles/{slug}/.
-	titleOut := demoTitleSubdir(opts.OutDir, opts.TitleSlug)
+	layout := titlePkg.NewDemoLayout(opts.OutDir)
 
 	slog.InfoContext(ctx, "seed-demo: démarrage",
 		"title_slug", opts.TitleSlug,
 		"source_gamertag", opts.SourceLabel,
 		"source_xuid", opts.SourceXUID,
 		"max_matches", opts.MaxMatches,
-		"out_dir", titleOut,
+		"out_dir", layout.TitleDir(opts.TitleSlug),
 		"include_media", opts.IncludeMedia,
 	)
 
@@ -287,7 +287,7 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	res.MatchIDs = matchIDs
 
 	// Phases 2-4 : warehouse démo (metadata copiée + shared extrait + anonymisé + migré).
-	metaCopied, sharedRows, err := buildDemoWarehouse(ctx, opts, titleOut, matchIDs, roster)
+	metaCopied, sharedRows, err := buildDemoWarehouse(ctx, opts, layout, matchIDs, roster)
 	res.MetadataCopied = metaCopied
 	if err != nil {
 		return res, err
@@ -295,7 +295,7 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	res.SharedRows = sharedRows
 
 	// 5. Player DB du roster (DemoPlayer principal + coéquipiers principaux).
-	seeded, playerRows, err := seedDemoPlayerDBs(ctx, opts, titleOut, matchIDs, roster)
+	seeded, playerRows, err := seedDemoPlayerDBs(ctx, opts, layout, matchIDs, roster)
 	if err != nil {
 		return res, err
 	}
@@ -305,14 +305,14 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	// 5b. shared_social démo : reconstruite AVANT les phases qui y écrivent (médias
 	// puis Prestige). Un seul propriétaire du cycle de vie du fichier → un reseed ne
 	// peut pas empiler deux générations de lignes.
-	outSocial := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
+	outSocial := layout.SharedSocialDBPath(opts.TitleSlug)
 	if err := rebuildDemoSharedSocial(ctx, outSocial); err != nil {
 		return res, fmt.Errorf("seed-demo: %w", err)
 	}
 
 	// 6. Médias (DemoPlayer principal).
 	if opts.IncludeMedia {
-		mediaCount, mediaErr := seedDemoMediaFiles(ctx, opts, titleOut, matchIDs)
+		mediaCount, mediaErr := seedDemoMediaFiles(ctx, opts, layout, matchIDs)
 		if mediaErr != nil {
 			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)
 		}
@@ -322,7 +322,7 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	// 6b. Échantillons Prestige (arcs, objectifs, points de progression, séries,
 	// records, jalons, escouade) dérivés du corpus démo. Sans cette phase les pages
 	// Prestige/Ascension sont accessibles (prestige_enabled=true) mais vides.
-	prestigeRows, prestigeErr := seedDemoPrestige(ctx, titleOut, opts.TitleSlug, matchIDs)
+	prestigeRows, prestigeErr := seedDemoPrestige(ctx, layout, opts.TitleSlug, matchIDs)
 	if prestigeErr != nil {
 		return res, fmt.Errorf("seed-demo: %w", prestigeErr)
 	}
@@ -401,17 +401,17 @@ func resolveDemoCorpusAndRoster(ctx context.Context, opts SeedDemoOptions) (matc
 // universellement (xuid+gamertag → identités démo, aucun vrai gamertag ne fuite) puis migre
 // le shared (append-only + vues _latest, idempotent). Phases 2-4 de SeedDemo (K2d).
 // metaCopied=true dès que la copie metadata a réussi (préservé même si une phase suivante échoue).
-func buildDemoWarehouse(ctx context.Context, opts SeedDemoOptions, titleOut string,
+func buildDemoWarehouse(ctx context.Context, opts SeedDemoOptions, layout titlePkg.DemoLayout,
 	matchIDs []string, roster []demoRosterEntry) (metaCopied bool, sharedRows map[string]int, err error) {
 	// 2. Copie metadata.duckdb.
-	outMeta := filepath.Join(titleOut, "warehouse", "metadata.duckdb")
+	outMeta := layout.MetadataDBPath(opts.TitleSlug)
 	if err = copyMetadataFile(opts.SourceMetaDB, outMeta); err != nil {
 		return false, nil, fmt.Errorf("seed-demo: copy metadata: %w", err)
 	}
 	slog.InfoContext(ctx, "seed-demo: metadata copiée", "out", outMeta)
 
 	// 3. Extraction shared.
-	outShared := filepath.Join(titleOut, "warehouse", "shared_matches_v2.duckdb")
+	outShared := layout.SharedDBPath(opts.TitleSlug)
 	sharedRows, err = extractSharedTables(ctx, opts.SourceSharedDB, outShared, matchIDs, opts.SourceXUID, opts.DemoXUID)
 	if err != nil {
 		return true, nil, fmt.Errorf("seed-demo: extract shared: %w", err)
@@ -436,7 +436,7 @@ func buildDemoWarehouse(ctx context.Context, opts SeedDemoOptions, titleOut stri
 // chacune filtrée sur le corpus + anonymisée vers son xuid démo + migrée. Identité Spartan
 // empruntée pour le principal (le source n'a pas de customization propre). Phase 5 (K2d).
 // playerRows = compteurs du DemoPlayer principal (i==0).
-func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, titleOut string,
+func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, layout titlePkg.DemoLayout,
 	matchIDs []string, roster []demoRosterEntry) (seeded []seededDemoPlayer, playerRows map[string]int, err error) {
 	mains := rosterMains(roster)
 	for i, m := range mains {
@@ -453,7 +453,7 @@ func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, titleOut strin
 			srcPlayerDB = filepath.Join(opts.RepoRoot, rel)
 		}
 		demoDir := demoDirForIndex(i)
-		outP := filepath.Join(titleOut, "players", demoDir, "stats.duckdb")
+		outP := layout.PlayerDBPath(opts.TitleSlug, demoDir)
 		rows, perr := extractPlayerTables(ctx, srcPlayerDB, outP, matchIDs, m.SourceXUID, m.DemoXUID)
 		if perr != nil {
 			if i == 0 {
@@ -483,9 +483,9 @@ func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, titleOut strin
 // seedDemoMediaFiles extrait les médias du DemoPlayer principal (fichiers → dir média PLAT
 // servi par ServeMediaFile ; shared_social title-scopé). Infinite : flux HLS + attribution
 // par carte ; titre additionnel : clips mp4 + association réelle indexée. Phase 6 (K2d).
-func seedDemoMediaFiles(ctx context.Context, opts SeedDemoOptions, titleOut string, matchIDs []string) (int, error) {
-	flatMediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
-	outSocial := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
+func seedDemoMediaFiles(ctx context.Context, opts SeedDemoOptions, layout titlePkg.DemoLayout, matchIDs []string) (int, error) {
+	flatMediaDir := filepath.Join(layout.PlayerDir(titlePkg.DefaultSlug, DefaultDemoGamertag), "media")
+	outSocial := layout.SharedSocialDBPath(opts.TitleSlug)
 	// shared_social SOURCE (prod) : même dossier warehouse que shared_matches_v2.
 	srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
 	if opts.TitleSlug == titlePkg.DefaultSlug {
@@ -983,7 +983,7 @@ func recreateSharedViews(ctx context.Context, db *sql.DB) error {
 		CREATE OR REPLACE VIEW v_match_full AS SELECT mr.* FROM match_registry mr`); err != nil {
 		return fmt.Errorf("v_match_full: %w", err)
 	}
-	// v_weapon_kills : tolère table absente. Append-only #23046 (Phase 2) : la vue
+	// v_weapon_kills : tolère table absente. Append-only #23645 (Phase 2) : la vue
 	// ne retourne que la dernière génération par (match_id,xuid) — comme la migration
 	// shared_append_only_weapon_kills_v1 (le demo copie prod qui porte generation_id).
 	_, _ = db.ExecContext(ctx, `

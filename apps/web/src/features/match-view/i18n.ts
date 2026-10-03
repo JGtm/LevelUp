@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : table de donnees (une entree par cle, aucun embranchement) : la decouper repartirait la meme table sur plusieurs fichiers a tenir en phase, sans retirer une seule decision au lecteur. */
 /**
  * i18n strings — feature match-view (header refonte 2026-05-05, mock C).
  *
@@ -19,8 +20,15 @@ export interface MatchViewText {
   copied: string
   copyShort: string
   copyTooltip: string
-  replayShort: string
   replayTooltip: string
+  /**
+   * Aide du score quand le mode se joue en MANCHES : le nombre affiché est le compte de
+   * manches gagnées / perdues, pas le score en points de l'API — lequel, sur ces modes,
+   * peut donner la victoire au camp qui en a le moins.
+   */
+  scoreRoundsHint: string
+  /** Étiquette du score de l'API affiché en second plan, à côté du compte de manches. */
+  scorePointsAside: (label: string) => string
   markIrrelevant: string
   reactivate: string
   excludeShort: string
@@ -94,10 +102,48 @@ export interface MatchViewText {
   labelGroundPound: string
   labelShoulderBash: string
   weaponUnknownPrefix: string
-  // Section médias (dans onglet Résumé)
+  // Distance par arme, par joueur — POC (LOT G.3, 2026-08-30, plan
+  // retours-utilisateur §3bis DEC-8). Vue match uniquement, kills du TUEUR
+  // seulement (arme/distance de l'assistant hors périmètre).
+  killDistanceTitle: string
+  killDistanceColKills: string
+  killDistanceColAvg: string
+  killDistanceMinLabel: string
+  killDistanceMaxLabel: string
+  killDistanceEmpty: string
+  /** En-tête d'un groupe joueur : gamertag + kills mesurés / total du match. */
+  killDistancePlayerHeaderFmt: (gamertag: string, measured: number, total: number) => string
+  /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
+  killDistanceAvgFmt: (m: number) => string
+  killDistanceReserve: string
+  // Hauteur d'engagement (D24, 2026-09-22 ; vocabulaire D26) — nuage distance × hauteur.
+  elevationTitle: string
+  /** Infobulle ⓘ du titre : trois phrases (ce qu'est la hauteur, le signe, la couverture). */
+  elevationInfo: string
+  elevationAxisDistance: string
+  elevationAxisDelta: string
+  /** Légende : mes frags (N), mes morts (N), la bande, le lobby quand il est affiché. */
+  elevationLegendKillsFmt: (n: number) => string
+  elevationLegendDeathsFmt: (n: number) => string
+  elevationLegendBand: string
+  elevationLegendLobbyFmt: (n: number) => string
+  /** Bouton de comparaison au lobby (bascule, état local à la carte). */
+  elevationCompare: string
+  elevationSideKill: string
+  elevationSideDeath: string
+  /** Première ligne d'infobulle : côté, distance, hauteur signée. */
+  elevationPointFmt: (side: string, distance: string, delta: string) => string
+  /** Deuxième ligne : arme et instant, l'un ou l'autre pouvant manquer. */
+  elevationPointWeaponFmt: (weapon: string, clock: string) => string
+  elevationOpenReplay: string
+  elevationLobbyMedianFmt: (m: string) => string
+  /** Réserve de couverture en pied : frags mesurés sur frags du match. */
+  elevationCoverageFmt: (measured: number, total: number) => string
+  /** État vide NOMMÉ : le titre mesure les positions, mais pas sur ce match. */
+  elevationEmpty: string
+  // Section médias (dans onglet Général) — le bloc et son titre ne s'affichent que si le
+  // match a au moins une capture (2026-09-22) : plus d'état vide « Aucune capture ».
   sectionMedia: string
-  mediaNoCaptures: string
-  mediaNoCapturesDesc: string
   // Résumé — médailles & citations
   sectionMedals: string
   sectionCitations: string
@@ -111,6 +157,25 @@ export interface MatchViewText {
   combatHighlights: string
   combatKdCumulTitle: string
   combatTugOfWarTitle: string
+  /**
+   * LA COURBE DE SCORE, décodée du film du match (schéma 12). Elle n'apparaît que pour les
+   * matchs dont un artefact de rejeu existe — d'où la note de source, qui dit à
+   * l'utilisateur pourquoi cette carte est là sur ce match et pas sur le précédent.
+   */
+  scoreCurveTitle: string
+  scoreCurveSource: string
+  scoreCurveTruncated: string
+  scoreCurveLead: string
+  /**
+   * LES POINTS MARQUÉS DANS LE TEMPS — la lecture que prennent les modes qui marquent en
+   * trois à cinq fois sur tout le match (drapeau, colline, bombe), là où la courbe serait
+   * un escalier vide. Même source, même réserve de pied que la courbe.
+   */
+  scoreEventsTitle: string
+  /** Points pris à cet instant, dans l'infobulle (ex. « +1 point »). */
+  scoreEventsScoredFmt: (points: number) => string
+  /** Score cumulé du camp juste après cette marque (ex. « Score : 2 »). */
+  scoreEventsTotalFmt: (total: number) => string
   combatCadenceTitle: string
   combatKillsLabel: string
   combatDeathsLabel: string
@@ -119,6 +184,8 @@ export interface MatchViewText {
   // Histogramme momentum (carte Dominance) — libellés de tooltip.
   combatMomentumDelta: string
   combatMomentumCumul: string
+  /** Décompte headshot dans le tooltip de vague (G.1) — n toujours >= 1 à l'appel. */
+  combatHeadshotCountFmt: (n: number) => string
   combatNemesisTitle: string
   combatBullyTitle: string
   combatNoNemesis: string
@@ -138,15 +205,79 @@ export interface MatchViewText {
   impactBadgeNames: Record<string, string>
   // Breadcrumb retour (MatchBreadcrumb)
   back: string
-  // Onglets de la page (GH2-B2)
+  // Onglets de la page (GH2-B2 ; « Détails » scindé en Chronologie + Joueurs ;
+  // troisième onglet ajouté le 2026-09-19 — équipement, armes, occupation du terrain —
+  // renommé « Armes et terrain » le 2026-09-22 quand il a repris de Général la
+  // répartition des frags et la distance des frags)
   tabGeneral: string
-  tabDetails: string
+  tabChronology: string
+  tabArsenal: string
+  tabPlayers: string
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
-  // Sections de l'onglet Détails (titres type-1 du catalogue d'harmonisation)
+  // Graphe des ASSISTANCES (assistant -> tueur assisté). Les DEUX états vides sont
+  // distincts et ne se remplacent jamais l'un l'autre : « non disponibles » dit qu'on ne
+  // peut rien lire, « aucune » dit qu'on a mesuré zéro.
+  //
+  // `assistNotUsable` couvre DEUX causes que le contrat ne sépare pas (measured_deaths
+  // vaut 0 dans les deux cas) : l'assistance n'a pas été mesurée sur ce match, OU elle
+  // l'a été sans être publiable ligne à ligne — le cas BTB, où nommer deux joueurs sur
+  // une mort n'est pas permis (filtre `publishable`, cf. en-tête de
+  // `platform/duckdb/match_view_repo_assist_pairs.go`). Écrire « non mesurée » y serait
+  // faux.
+  assistTitle: string
+  assistNotUsable: string
+  assistNoData: string
+  // Note d'infobulle d'un segment : les éliminations volées de ce couple
+  // (part de dégâts de l'assistant supérieure à celle du tueur crédité).
+  assistStolenNote: (n: number) => string
+  // Note d'infobulle d'un segment : la part moyenne de participation de l'assistant sur
+  // ce couple. Vocabulaire « part » (comme le kill feed du rejeu), jamais « dégâts ».
+  assistAvgShareNote: (pct: number) => string
+  // Les deux rôles du graphe (décision utilisateur 2026-09-17, même vocabulaire que la page
+  // Escouade) : la barre est le LARBIN (il a assisté), le segment le PATRON (frag crédité).
+  // Titres d'axes et infobulle.
+  assistRoleAssistant: string
+  assistRoleBeneficiary: string
+  // ─── Bloc « Riposte » (D22-2) ───────────────────────────────────────────────────────
+  // Des COMPTES, jamais un taux (D21). Aucune phrase de lecteur sur la carte
+  // (D22-verbosité) : l'explication tient dans l'infobulle ⓘ du titre, en trois phrases.
+  riposteTitle: string
+  riposteInfo: string
+  /** Les deux côtés de l'axe, et la légende qui les nomme en entier. */
+  riposteSideAvenged: string
+  riposteSideDid: string
+  riposteLegendAvenged: string
+  riposteLegendDid: string
+  /** Couples nommés de l'infobulle d'une barre (`s` = délai en secondes, déjà formaté). */
+  riposteAvengedByFmt: (name: string, s: string) => string
+  riposteAvengedForFmt: (name: string, s: string) => string
+  riposteMoreFmt: (n: number) => string
+  /** Pied de carte : les morts vengées sur les morts lues au journal. */
+  riposteFooterFmt: (avenged: number, measured: number) => string
+  /** Le film est là mais aucune mort n'y est lisible ligne à ligne. */
+  riposteNotUsable: string
+  /** Mesuré : personne n'a riposté. */
+  riposteNoData: string
+  assistValueAxis: string
+  // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
+  // d'harmonisation)
   sectionFlow: string
   sectionDuels: string
   sectionEncounters: string
+  // Sections des onglets Général et Armes et terrain (2026-09-22) — même gabarit de titre
+  // type-1. Général : la bande de KPI reste sans titre (comme l'accueil), « Combat » coiffe
+  // les trois graphes et « Récompenses » les médailles + citations. Armes et terrain :
+  // « Frags et armes » coiffe la répartition des frags + la distance, « Équipement et
+  // terrain » les trois blocs tirés du film.
+  sectionCombat: string
+  sectionRewards: string
+  sectionKillsWeapons: string
+  sectionEquipmentTerrain: string
+  // Onglet Armes et terrain quand AUCUNE de ses deux sections n'a de quoi s'afficher (un
+  // titre sans positions de film, sur un match sans frag) : un onglet ne reste jamais vide.
+  arsenalEmptyTitle: string
+  arsenalEmptyDescription: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   scoreboardNoData: string
@@ -209,6 +340,15 @@ export interface MatchViewText {
   sbColTopWeaponTooltip: string
   sbColOffensiveTooltip: string
   sbColDefensiveTooltip: string
+  /**
+   * LES DEUX EN-TÊTES COURTS du tableau des scores (2026-09-13). Le libellé canonique du
+   * registre (« Rendement » / « Résistance », servi par `/field-mappings`) reste la source de
+   * vérité du NOM de la mesure : il est écrit en tête de l'infobulle d'en-tête. Ces deux
+   * chaînes ne sont qu'un affichage abrégé, propre à cette table étroite — ce ne sont PAS des
+   * libellés de `FieldKey` et elles n'en forment pas un dictionnaire.
+   */
+  sbColOffensiveShort: string
+  sbColDefensiveShort: string
   sbViewHistoryFmt: (gamertag: string) => string
   /** Format du score (séparateurs locale-sensitive : "12 345" FR / "12,345" EN). */
   sbFormatScore: (v: number) => string
@@ -230,7 +370,18 @@ export interface MatchViewText {
    *  libellé + tooltip d'en-tête par clé de colonne objectif. */
   objectives: {
     title: string
-    teamTotal: string
+    /**
+     * LES DEUX VUES EMPILEES (2026-09-03). Le tableau a ete remplace par un graphe :
+     * `viewByPlayer` classe les joueurs grandeur par grandeur, `viewTeamTotals` oppose les
+     * deux camps sur chacune. Les deux titres sont necessaires — sans eux, deux blocs de
+     * barres dans la meme carte se lisent comme deux lectures de la meme chose.
+     */
+    viewByPlayer: string
+    viewTeamTotals: string
+    /** Infobulle d'une barre de la grille : joueur, grandeur, valeur DEJA ecrite. */
+    gridTipFmt: (player: string, metric: string, value: string) => string
+    /** Infobulle d'un cote du face-a-face : equipe, grandeur, total DEJA ecrit. */
+    duelTipFmt: (team: string, metric: string, value: string) => string
     cols: Record<string, { label: string; tooltip: string }>
   }
 }
@@ -244,8 +395,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     copied: 'Copié',
     copyShort: 'Copier ID',
     copyTooltip: "Copier l'identifiant unique de ce match dans le presse-papier",
-    replayShort: 'Rejeu 2D',
     replayTooltip: 'Voir le rejeu 2D de ce match (vue du dessus)',
+    scoreRoundsHint:
+      "Ce mode se joue en manches : le score affiché est le nombre de manches gagnées et perdues. Le score en points renvoyé par l'API est indiqué à côté — sur ces modes, il peut donner l'avantage au camp qui a perdu.",
+    scorePointsAside: (label: string) => `${label} points`,
     markIrrelevant: 'Marquer comme non pertinent',
     reactivate: 'Réactiver',
     excludeShort: 'Exclure',
@@ -314,9 +467,46 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelGroundPound: 'Coup au sol',
     labelShoulderBash: 'Charge spartane',
     weaponUnknownPrefix: 'Arme inconnue',
+    killDistanceTitle: 'Distance par arme',
+    killDistanceColKills: 'Frags mesurés',
+    killDistanceColAvg: 'Distance moyenne',
+    killDistanceMinLabel: 'Plus proche',
+    killDistanceMaxLabel: 'Plus loin',
+    // CE MESSAGE A ÉTÉ CORRIGÉ LE 2026-09-08 PARCE QU'IL ÉTAIT FAUX. Il annonçait un décodage
+    // « pas encore joué » sur des matchs où le film EST décodé : le témoin du diagnostic, Origin
+    // du 7 septembre, porte 65 positions de kill — plus que le match voisin qui, lui, affiche le
+    // bloc. La vraie cause est ailleurs : la passe de décodage n'a pas autorisé la publication
+    // LIGNE PAR LIGNE (`match_kill_events.publishable`, marge de bijection nulle), et le lecteur
+    // de distances l'exige. Le message envoyait donc l'utilisateur relancer un travail déjà fait
+    // — l'anti-pattern « doc inversée » du CLAUDE.md, appliqué à une chaîne d'interface.
+    killDistanceEmpty:
+      'Distances non mesurées sur ce match — le film a bien été décodé, mais la passe n’a pas pu attribuer chaque élimination avec assez de certitude pour publier une distance par frag.',
+    killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
+      `${gamertag} — ${measured}/${total} frags mesurés`,
+    killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
+    killDistanceReserve:
+      "Ne compte que les frags dont la position du tueur ET de la victime est mesurée ; tous les frags n'ont pas de position (couverture partielle).",
+    elevationTitle: "Hauteur d'engagement",
+    elevationInfo:
+      "La hauteur d'engagement est l'écart de hauteur entre les deux joueurs à l'instant du coup fatal, en mètres. Elle est signée de votre côté : au-dessus de la ligne vous étiez en surplomb, en dessous vous étiez en contrebas, pour un frag comme pour une mort. Ne comptent que les engagements dont la position des deux joueurs est mesurée.",
+    elevationAxisDistance: "Distance de l'engagement (m)",
+    elevationAxisDelta: 'Hauteur (m)',
+    elevationLegendKillsFmt: (n) => `Mes frags — ${n}`,
+    elevationLegendDeathsFmt: (n) => `Mes morts — ${n}`,
+    elevationLegendBand: 'Bande à niveau (± 1 m)',
+    elevationLegendLobbyFmt: (n) => `Lobby — ${n}`,
+    elevationCompare: 'Comparer au lobby',
+    elevationSideKill: 'Frag',
+    elevationSideDeath: 'Mort',
+    elevationPointFmt: (side, distance, delta) => `${side} · ${distance} m · ${delta} m`,
+    elevationPointWeaponFmt: (weapon, clock) => [weapon, clock].filter(Boolean).join(' · '),
+    elevationOpenReplay: "Ouvrir le rejeu à cet instant",
+    elevationLobbyMedianFmt: (m) => `Médiane du lobby ${m} m`,
+    elevationCoverageFmt: (measured, total) =>
+      `${measured}/${total} frags mesurés`,
+    elevationEmpty:
+      "Hauteur d'engagement non mesurée sur ce match — le film a bien été décodé, mais aucun engagement n'y porte la position des deux joueurs.",
     sectionMedia: 'Médias',
-    mediaNoCaptures: 'Aucune capture',
-    mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
     sectionMedals: 'Médailles',
     sectionCitations: 'Citations',
     newlyMastered: 'Maîtrisé !',
@@ -327,6 +517,15 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatHighlights: 'Faits marquants',
     combatKdCumulTitle: 'Frags cumulés',
     combatTugOfWarTitle: 'Dominance',
+    scoreCurveTitle: 'Score dans le temps',
+    scoreCurveSource:
+      'Décodé du film du match : le score des deux camps, tel qu’il s’affichait en jeu.',
+    scoreCurveTruncated:
+      'Lecture du film incomplète — la courbe s’arrête avant la fin du match.',
+    scoreCurveLead: 'Retournement',
+    scoreEventsTitle: 'Points marqués dans le temps',
+    scoreEventsScoredFmt: (points) => `+${points} point${points > 1 ? 's' : ''}`,
+    scoreEventsTotalFmt: (total) => `Score : ${total}`,
     combatCadenceTitle: 'Cadence des frags',
     combatKillsLabel: 'Frags',
     combatDeathsLabel: 'Morts',
@@ -334,6 +533,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatEnemyLabel: 'Adversaires',
     combatMomentumDelta: 'Écart',
     combatMomentumCumul: 'Cumul',
+    combatHeadshotCountFmt: (n) => `${n} tir${n > 1 ? 's' : ''} à la tête`,
     combatNemesisTitle: 'Némésis',
     combatBullyTitle: 'Souffre-douleur',
     combatNoNemesis: '—',
@@ -359,11 +559,42 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     },
     back: 'Retour',
     tabGeneral: 'Général',
-    tabDetails: 'Détails',
+    tabChronology: 'Chronologie',
+    tabArsenal: 'Armes et terrain',
+    tabPlayers: 'Joueurs',
     antagonistTitle: 'Antagonistes',
+    assistTitle: 'Assistances',
+    assistNotUsable: 'Assistances non disponibles pour ce match (non mesurées ou non publiables).',
+    assistNoData: 'Aucune assistance sur ce match.',
+    assistStolenNote: (n) => `dont ${n} volée${n > 1 ? 's' : ''}`,
+    assistAvgShareNote: (pct) => `part moyenne ${pct} %`,
+    assistRoleAssistant: 'Larbin',
+    assistRoleBeneficiary: 'Patron',
+    riposteTitle: 'Riposte',
+    riposteInfo:
+      'Une riposte, c’est la mort d’un joueur reprise par son camp sur son tueur dans les secondes qui suivent. Ce sont des comptes exhaustifs du match, jamais un taux. Ils demandent le journal des morts du film : sans film décodé, aucun ordre des morts.',
+    riposteSideAvenged: 'a été riposté',
+    riposteSideDid: 'a riposté',
+    riposteLegendAvenged: 'ses morts vengées par son camp',
+    riposteLegendDid: 'les ripostes qu’il a portées',
+    riposteAvengedByFmt: (name, s) => `vengée par ${name}, ${s} s`,
+    riposteAvengedForFmt: (name, s) => `a vengé ${name}, ${s} s`,
+    riposteMoreFmt: (n) => `+${n}`,
+    riposteFooterFmt: (avenged, measured) =>
+      `${avenged} mort${avenged > 1 ? 's' : ''} vengée${avenged > 1 ? 's' : ''} sur ${measured} mesurée${measured > 1 ? 's' : ''}`,
+    riposteNotUsable: 'Riposte non disponible pour ce match (aucune mort lisible ligne à ligne).',
+    riposteNoData: 'Aucune riposte sur ce match.',
+    assistValueAxis: 'Assistances par patron',
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
+    sectionCombat: 'Combat',
+    sectionRewards: 'Récompenses',
+    sectionKillsWeapons: 'Frags et armes',
+    sectionEquipmentTerrain: 'Équipement et terrain',
+    arsenalEmptyTitle: "Aucune donnée d'armes ni de film pour ce match",
+    arsenalEmptyDescription:
+      "Ni la répartition des frags ni les calques décodés du film ne sont disponibles ici.",
     scoreboardTitle: 'Tableau des scores',
     scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
@@ -422,6 +653,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColTopWeaponTooltip: 'Arme ayant réalisé le plus de frags dans le match.',
     sbColOffensiveTooltip: 'Rendement offensif : frags et assistances obtenus par dégât infligé.',
     sbColDefensiveTooltip: 'Résistance : dégâts encaissés avant chaque mort.',
+    sbColOffensiveShort: 'Rend.',
+    sbColDefensiveShort: 'Résist.',
     sbViewHistoryFmt: (gamertag) => `Voir l'historique avec ${gamertag}`,
     sbFormatScore: (v) => new Intl.NumberFormat('fr-FR').format(v),
     ctxRecent: 'récents',
@@ -438,7 +671,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     matchCounterCtxFmt: (label, n, total) => `Matchs ${label} ${n}/${total}`,
     objectives: {
       title: 'Objectifs',
-      teamTotal: 'Total équipe',
+      viewByPlayer: "Actions d'objectif par joueur",
+      viewTeamTotals: "Total d'objectif par équipe",
+      gridTipFmt: (player, metric, value) => `${player} — ${metric} : ${value}`,
+      duelTipFmt: (team, metric, value) => `${team} — ${metric} : ${value}`,
       cols: {
         flag_captures: { label: 'Captures', tooltip: 'Captures de drapeau' },
         flag_returns: { label: 'Retours', tooltip: 'Retours de drapeau' },
@@ -502,6 +738,18 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
           label: 'Meilleur temps',
           tooltip: 'Plus longue survie en tant que VIP',
         },
+        bomb_detonations: { label: 'Explosions', tooltip: 'Bombes ayant explosé' },
+        bomb_arms: { label: 'Armements', tooltip: 'Bombes armées (poses menées à terme)' },
+        bomb_grabs: { label: 'Récup.', tooltip: 'Récupérations de la bombe' },
+        time_as_bomb_carrier_seconds: {
+          label: 'Temps porteur',
+          tooltip: 'Temps en tant que porteur de la bombe',
+        },
+        bomb_carriers_killed: {
+          label: 'Porteurs tués',
+          tooltip:
+            'Porteurs de la bombe éliminés (un tir ami sur un porteur de son propre camp compte)',
+        },
       },
     },
   },
@@ -513,8 +761,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     copied: 'Copied',
     copyShort: 'Copy ID',
     copyTooltip: "Copy this match's unique identifier to clipboard",
-    replayShort: '2D replay',
     replayTooltip: 'Watch the 2D replay of this match (top-down view)',
+    scoreRoundsHint:
+      'This mode is played in rounds: the score shown is the number of rounds won and lost. The point score returned by the API is shown next to it — in these modes it can favour the losing side.',
+    scorePointsAside: (label: string) => `${label} points`,
     markIrrelevant: 'Mark as irrelevant',
     reactivate: 'Reactivate',
     excludeShort: 'Exclude',
@@ -583,9 +833,40 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelGroundPound: 'Ground Pound',
     labelShoulderBash: 'Shoulder Bash',
     weaponUnknownPrefix: 'Unknown weapon',
+    killDistanceTitle: 'Distance by weapon',
+    killDistanceColKills: 'Measured kills',
+    killDistanceColAvg: 'Average distance',
+    killDistanceMinLabel: 'Closest',
+    killDistanceMaxLabel: 'Farthest',
+    // Cf. la note attachée à la version FR : ce message annonçait un décodage non joué sur des
+    // matchs où le film EST décodé.
+    killDistanceEmpty:
+      'No measured distances on this match — the film was decoded, but the pass could not attribute each kill confidently enough to publish a per-kill distance.',
+    killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
+      `${gamertag} — ${measured}/${total} measured kills`,
+    killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
+    killDistanceReserve:
+      'Only counts kills where both the killer and victim position are measured; not all kills have a position (partial coverage).',
+    elevationTitle: 'Engagement height',
+    elevationInfo:
+      'Engagement height is the height gap between both players at the moment of the killing blow, in metres. It is signed from your side: above the line you were on high ground, below it you were on low ground — for a kill as for a death. Only engagements where both positions are measured are counted.',
+    elevationAxisDistance: 'Engagement distance (m)',
+    elevationAxisDelta: 'Height (m)',
+    elevationLegendKillsFmt: (n) => `My kills — ${n}`,
+    elevationLegendDeathsFmt: (n) => `My deaths — ${n}`,
+    elevationLegendBand: 'Level band (± 1 m)',
+    elevationLegendLobbyFmt: (n) => `Lobby — ${n}`,
+    elevationCompare: 'Compare with lobby',
+    elevationSideKill: 'Kill',
+    elevationSideDeath: 'Death',
+    elevationPointFmt: (side, distance, delta) => `${side} · ${distance} m · ${delta} m`,
+    elevationPointWeaponFmt: (weapon, clock) => [weapon, clock].filter(Boolean).join(' · '),
+    elevationOpenReplay: 'Open the replay at this moment',
+    elevationLobbyMedianFmt: (m) => `Lobby median ${m} m`,
+    elevationCoverageFmt: (measured, total) => `${measured}/${total} measured kills`,
+    elevationEmpty:
+      'No engagement height measured on this match — the film was decoded, but no engagement carries both player positions.',
     sectionMedia: 'Media',
-    mediaNoCaptures: 'No captures',
-    mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',
     sectionMedals: 'Medals',
     sectionCitations: 'Commendations',
     newlyMastered: 'Mastered!',
@@ -596,6 +877,14 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatHighlights: 'Highlights',
     combatKdCumulTitle: 'Cumulative frags',
     combatTugOfWarTitle: 'Dominance',
+    scoreCurveTitle: 'Score over time',
+    scoreCurveSource: 'Decoded from the match film: both teams’ score, as it showed in game.',
+    scoreCurveTruncated:
+      'Incomplete film reading — the curve stops before the end of the match.',
+    scoreCurveLead: 'Lead change',
+    scoreEventsTitle: 'Scoring moments',
+    scoreEventsScoredFmt: (points) => `+${points} point${points > 1 ? 's' : ''}`,
+    scoreEventsTotalFmt: (total) => `Score: ${total}`,
     combatCadenceTitle: 'Kill cadence',
     combatKillsLabel: 'Kills',
     combatDeathsLabel: 'Deaths',
@@ -603,6 +892,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatEnemyLabel: 'Opponents',
     combatMomentumDelta: 'Delta',
     combatMomentumCumul: 'Cumulative',
+    combatHeadshotCountFmt: (n) => `${n} headshot${n > 1 ? 's' : ''}`,
     combatNemesisTitle: 'Nemesis',
     combatBullyTitle: 'Bully target',
     combatNoNemesis: '—',
@@ -628,11 +918,42 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     },
     back: 'Back',
     tabGeneral: 'General',
-    tabDetails: 'Details',
+    tabChronology: 'Timeline',
+    tabArsenal: 'Weapons and terrain',
+    tabPlayers: 'Players',
     antagonistTitle: 'Antagonists',
+    assistTitle: 'Assists',
+    assistNotUsable: 'Assists unavailable for this match (not measured or not publishable).',
+    assistNoData: 'No assists in this match.',
+    assistStolenNote: (n) => `${n} stolen`,
+    assistAvgShareNote: (pct) => `avg share ${pct}%`,
+    assistRoleAssistant: 'Lackey',
+    assistRoleBeneficiary: 'Boss',
+    riposteTitle: 'Payback',
+    riposteInfo:
+      'A payback is a player’s death taken back by their team on the killer within the following seconds. These are exhaustive counts for the match, never a rate. They require the film’s death log: without a decoded film there is no ordering of deaths.',
+    riposteSideAvenged: 'was avenged',
+    riposteSideDid: 'avenged',
+    riposteLegendAvenged: 'their deaths avenged by their team',
+    riposteLegendDid: 'the paybacks they made',
+    riposteAvengedByFmt: (name, s) => `avenged by ${name}, ${s} s`,
+    riposteAvengedForFmt: (name, s) => `avenged ${name}, ${s} s`,
+    riposteMoreFmt: (n) => `+${n}`,
+    riposteFooterFmt: (avenged, measured) =>
+      `${avenged} death${avenged > 1 ? 's' : ''} avenged out of ${measured} measured`,
+    riposteNotUsable: 'Payback unavailable for this match (no death readable line by line).',
+    riposteNoData: 'No payback in this match.',
+    assistValueAxis: 'Assists per boss',
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',
+    sectionCombat: 'Combat',
+    sectionRewards: 'Rewards',
+    sectionKillsWeapons: 'Kills and weapons',
+    sectionEquipmentTerrain: 'Equipment and terrain',
+    arsenalEmptyTitle: 'No weapon or film data for this match',
+    arsenalEmptyDescription:
+      'Neither the kill breakdown nor the decoded film layers are available here.',
     scoreboardTitle: 'Scoreboard',
     scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,
@@ -691,6 +1012,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColTopWeaponTooltip: 'Weapon with the most kills this match.',
     sbColOffensiveTooltip: 'Offensive yield: kills and assists per damage dealt.',
     sbColDefensiveTooltip: 'Resistance: damage absorbed before each death.',
+    sbColOffensiveShort: 'Eff.',
+    sbColDefensiveShort: 'Resist.',
     sbViewHistoryFmt: (gamertag) => `View history with ${gamertag}`,
     sbFormatScore: (v) => new Intl.NumberFormat('en-US').format(v),
     ctxRecent: 'recent',
@@ -707,7 +1030,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     matchCounterCtxFmt: (label, n, total) => `${capitalize(label)} matches ${n}/${total}`,
     objectives: {
       title: 'Objectives',
-      teamTotal: 'Team total',
+      viewByPlayer: 'Objective actions by player',
+      viewTeamTotals: 'Objective totals by team',
+      gridTipFmt: (player, metric, value) => `${player} — ${metric}: ${value}`,
+      duelTipFmt: (team, metric, value) => `${team} — ${metric}: ${value}`,
       cols: {
         flag_captures: { label: 'Captures', tooltip: 'Flag captures' },
         flag_returns: { label: 'Returns', tooltip: 'Flag returns' },
@@ -755,6 +1081,17 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
         longest_time_as_vip_seconds: {
           label: 'Longest',
           tooltip: 'Longest survival as VIP',
+        },
+        bomb_detonations: { label: 'Explosions', tooltip: 'Bombs detonated' },
+        bomb_arms: { label: 'Arms', tooltip: 'Bombs armed (completed plants)' },
+        bomb_grabs: { label: 'Grabs', tooltip: 'Bomb grabs' },
+        time_as_bomb_carrier_seconds: {
+          label: 'Carrier time',
+          tooltip: 'Time as bomb carrier',
+        },
+        bomb_carriers_killed: {
+          label: 'Carriers killed',
+          tooltip: 'Bomb carriers eliminated (friendly fire on your own carrier counts)',
         },
       },
     },

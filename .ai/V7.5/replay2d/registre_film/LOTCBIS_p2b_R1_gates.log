@@ -1,0 +1,63 @@
+=== RONDE 1 (revue adversariale phase 2b) — verdicts par point ===
+[R1-1] gofmt -l internal/analysis/replay internal/replaybuild : vide
+[R1-1] CGO_ENABLED=0 go vet ./internal/analysis/replay/            EXIT_VET=0
+[R1-1] CGO_ENABLED=0 go build ./internal/replaybuild/              EXIT_BUILD=0
+[R1-1] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
+[R1-2] npx tsc -b --force (apps/web)                               EXIT_TSC=0
+[R1-2] npx vitest run src/features/match-replay/objectivesLayer.test.ts  EXIT_VITEST=0 (27 tests)
+[R1-2] grep originFrames|originMs dans features/match-replay et lib/replay : 0 soustraction residuelle
+[R1-3] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
+[R1-3] CGO_ENABLED=1 go run ./cmd/openapi-gen                     EXIT_OPENAPIGEN=0 (626921 o, +ownerUnpaired)
+[R1-3] npm run generate-types (apps/web)                          EXIT_GENTYPES=0
+[R1-3] npx tsc -b --force (apps/web)                              EXIT_TSC=0
+[R1-3] CGO_ENABLED=1 go test -count=1 ./contracttest/ ./internal/replaybuild/   EXIT_TEST=0
+[R1-4] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
+[R1-4] (hook pre-commit contourne par erreur sur ce commit) equivalent rejoue a la main :
+       gofmt -l internal contracttest cmd : vide · CGO_ENABLED=0 go vet ./internal/analysis/... ./internal/replaybuild/  EXIT_VET=0
+[R1-5] contre-epreuve : avec l ANCIENNE fusion, TestZoneStatesCollineUneSeuleZoneActiveALaFois
+       ECHOUE (« zone 0 [150 ; 599] et zone 1 [100 ; 200] ») — le verrou est discriminant
+[R1-5] CGO_ENABLED=0 go test -count=1 -run TestZoneStates ./internal/analysis/replay/   EXIT_TEST=0
+[R1-6] npx vitest run src/features/match-replay/useZoneStates.test.ts   EXIT_VITEST=0 (5 tests)
+[R1-6] npx tsc -b --force                                          EXIT_TSC=0
+[R1-6] npm run lint                                                EXIT_LINT=0 (19 warnings = baseline)
+[R1-7] npx tsc -b --force (apps/web)                               EXIT_TSC=0
+[R1-7] npx vitest run objectivesLayer.test.ts useZoneStates.test.ts placementFamily.guard.test.ts   EXIT_VITEST=0 (42 tests ; ReplayCanvas 858 L = plafond tenu)
+[R1-7] contre-epreuve : garde `!zones.joinable` retiree de drawZoneStates -> « jointure REFUSEE ... ne peint rien » ECHOUE (1 failed | 27 passed) ; garde remise
+[R1-7] npx eslint sur les 5 fichiers touches                       EXIT_ESLINT=0
+[R1-8] grep Names|dominantName|hasName|SetProbeHook hors zone_state_scan.go : aucun consommateur (build_zones.go et le temoin ne lisent que Reads/Slots/Records/Walked/Broken/Chained)
+[R1-8] gofmt -l internal/analysis/filmdec internal/analysis/replay : vide
+[R1-8] CGO_ENABLED=0 go vet ./internal/analysis/filmdec/ ./internal/analysis/replay/   EXIT_VET=0
+[R1-8] CGO_ENABLED=0 go test -count=1 ./internal/analysis/filmdec/   EXIT_TEST=0
+[R1-9] contre-epreuve (DDL de HEAD) : 4/4 TestReplayFacts* ECHOUENT « Binder Error: Referenced column "map_id" not found » — c est bien la CI qui rougissait
+[R1-9] CGO_ENABLED=1 go test -tags=integration -count=1 -v -run TestReplayFacts ./internal/platform/duckdb/   EXIT_TEST=0 (4 PASS ; MapID blanchi et NULL -> vide verifies)
+[R1-9] gofmt -l internal/platform/duckdb : vide
+=== FUSION origin/feat/v75 (5e40de47f) + RENUMEROTATION schema 15 -> 16 ===
+[FUSION] conflits : document.go (chronique v15 = drapeau, v16 = zones, SchemaVersion = 16) ; structure_test.go (deux justifications dans l ordre, attendu 16) — resolus a la main
+[FUSION] CGO_ENABLED=0 go vet ./internal/analysis/replay/ ./internal/replaybuild/ ./internal/analysis/filmdec/   EXIT_VET=0
+[FUSION] golden : TestGoldenAssembly ECHOUAIT sur la seule ligne 9 (schema 15 -> 16) ; regenere avec -update, diff = 1 ligne   EXIT_UPDATE=0
+[FUSION] CGO_ENABLED=1 go run ./cmd/openapi-gen                     EXIT_OPENAPIGEN=0 (627301 o, identique a la fusion automatique)
+[FUSION] npm run generate-types (apps/web)                          EXIT_GENTYPES=0 (identique a la fusion automatique)
+[FUSION] wantReplayDocumentFields = 36 (leur 35 + zoneStates ; flagObjects non publie)
+[FUSION] CGO_ENABLED=0 go test -count=1 ./internal/analysis/replay/ ./internal/analysis/filmdec/   EXIT_TEST=0
+[FUSION] CGO_ENABLED=1 go test -count=1 ./internal/replaybuild/ ./contracttest/   EXIT_TEST=0
+[FUSION] purge node_modules/.tmp ; npx tsc -b --force                EXIT_TSC=0
+[FUSION] npx vitest run src/features/match-replay src/lib            EXIT_VITEST=0 (144 fichiers, 1777 tests ; ReplayCanvas 812 L = cliquet feat/v75 tenu, 1 commentaire condense)
+[FUSION] grep « schema 15 » zoneStates (web + coverage.go) : 0 residu ; les mentions restantes du 15 sont celles du drapeau (item 4)
+=== GATES DE CLOTURE (apres fusion, HEAD d80de6d19) ===
+[CLOTURE] CGO_ENABLED=1 go build ./...                              EXIT_BUILD=0
+[CLOTURE] CGO_ENABLED=1 go vet ./...                                EXIT_VET=0
+[CLOTURE] CGO_ENABLED=0 go test -count=1 ./internal/analysis/...    EXIT_TEST=0 (16 paquets ok)
+[CLOTURE] CGO_ENABLED=1 go test -count=1 ./internal/replaybuild/ ./contracttest/   EXIT_TEST=0
+[CLOTURE] CGO_ENABLED=1 go test -tags=integration -count=1 -run TestReplayFacts ./internal/platform/duckdb/   EXIT_TEST=0
+[CLOTURE] golangci-lint run --new-from-merge-base=origin/main ./... EXIT_LINT=0 (0 issues)
+[CLOTURE] purge node_modules/.tmp ; npx tsc -b --force              EXIT_TSC=0
+[CLOTURE] npx vitest run src/features/match-replay src/lib          EXIT_VITEST=0 (144 fichiers, 1777 tests)
+[CLOTURE] npm run lint                                              EXIT_LINT=0 (20 warnings : 19 baseline + 1 `ReplayFeedName.tsx:50` react-refresh/only-export-components — fichier de feat/v75 fea5f2686 (R3.5), identique a origin/feat/v75, HORS perimetre : note, non traite)
+[CLOTURE] node tools/lint-cross-feature-imports.mjs (racine)        EXIT_CROSS=0 (7 <= 7)
+=== TEMOINS (apres fusion, schema 16) ===
+[TEMOINS] CLI cmd/replay-build --facts, un processus, watchdog 3 Go / 10 min :
+          7344d24f vagabond  exit=0 pic 187 Mo 239 s  -> 2 202 930 o  schemaVersion=16
+          696a9d7c vagabond  exit=0 pic 145 Mo 230 s  -> 2 071 392 o  schemaVersion=16
+          01e1f945 catalyst  exit=0 pic  97 Mo 208 s  -> 1 816 953 o  schemaVersion=16
+[TEMOINS] instrument (ZONE_FILM, TestZoneEtatPhase2bTemoin, un film par processus) : 7344d24f 57/59 = 96,6 % · 696a9d7c 64/66 = 97,0 % · 01e1f945 colline 4975/5343 = 93,1 %   EXIT_TEMOIN=0 x3
+[TEMOINS] DuckDB read_json sur l artefact CLI 01e1f945 : 20 periodes actives, union 4975 frames / 5343 = 93,1 %, 6 zones, 0 chevauchement

@@ -1,19 +1,48 @@
 /**
  * Tests unitaires — MatchCard (Sprint 56).
  *
- * Vérifie : image map, hiérarchie titre/sous-titre, score et badges narratifs.
+ * Vérifie : image map, hiérarchie titre/sous-titre, score, badges narratifs et
+ * lien rejeu 2D à droite de la playlist.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+
+// TanStack Router : <Link> (MatchReplayLink) exige un RouterProvider, absent en test
+// unitaire. Remplacé par un <a> qui INTERPOLE les params dans le template de route —
+// ce que le test vérifie (la route ciblée et ses params), pas le rendu du routeur.
+// Patron : features/explorer/ExplorerMatchesTable.test.tsx.
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  type LinkStubProps = {
+    children?: React.ReactNode
+    to: string
+    params?: Record<string, string>
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
+  return {
+    ...actual,
+    Link: ({ children, to, params, ...rest }: LinkStubProps) => {
+      let href = to
+      for (const [key, value] of Object.entries(params ?? {})) {
+        href = href.replace(`$${key}`, value)
+      }
+      return (
+        <a href={href} {...rest}>
+          {children}
+        </a>
+      )
+    },
+  }
+})
+
 import { MatchCard } from './match-card'
+import { assistTierTone } from '@/features/_shared/assists/assistTierTone'
+import { tokenCssVar } from '@/lib/accessibility'
 import type { RecentMatchItem } from '@/lib/api/types'
 
 const WIN_MATCH: RecentMatchItem = {
   match_id: 'match-001',
-  title: 'Aquarius · Slayer',
   detail: '15K / 2D',
   started_at: '2026-04-10T20:00:00Z',
-  outcome_label: 'Victoire',
   outcome_tone: 'win',
   score_label: '50-42',
   narrative_badges: ['dominant', 'remontada'],
@@ -34,10 +63,8 @@ const WIN_MATCH: RecentMatchItem = {
 
 const LOSS_MATCH: RecentMatchItem = {
   match_id: 'match-002',
-  title: 'Empyrean · CTF',
   detail: '5K / 10D',
   started_at: '2026-04-11T18:00:00Z',
-  outcome_label: 'Défaite',
   outcome_tone: 'loss',
   kills: 5,
   assists: 2,
@@ -70,9 +97,13 @@ describe('MatchCard', () => {
     expect(screen.queryByText('Slayer on Forest sur Forêt')).toBeNull()
   })
 
-  it('rend sans crasher quand les champs S56 sont absents', () => {
+  it('rend sans crasher quand les champs S56 sont absents (repli clé, plus de composite Go)', () => {
     render(<MatchCard match={LOSS_MATCH} />)
-    expect(screen.getByText('Empyrean · CTF')).toBeTruthy()
+    // title (composite Go) supprimé le 2026-09-07 (lot M5 L2) : le dernier repli
+    // (mode ET carte absents) rend désormais le même texte-clé que le placeholder
+    // d'image (deux occurrences : le titre et le placeholder), jamais un composite
+    // pré-assemblé côté backend.
+    expect(screen.getAllByText('Map inconnue').length).toBeGreaterThan(0)
     expect(screen.getByTestId('match-card-score').textContent).toBe('')
   })
 
@@ -123,6 +154,17 @@ describe('MatchCard', () => {
     expect(bar.textContent).toContain('2')
   })
 
+  it('arrondit les bouts de la barre KDA sur les segments eux-mêmes, pas par rognage du conteneur', () => {
+    render(<MatchCard match={WIN_MATCH} />)
+    const bar = screen.getByTestId('match-card-kda-bar').querySelector('.h-2.w-full') as HTMLElement
+    expect(bar.className).not.toContain('overflow-hidden')
+    const segments = [...bar.children] as HTMLElement[]
+    expect(segments).toHaveLength(3)
+    expect(segments[0].className).toContain('rounded-l-full')
+    expect(segments[2].className).toContain('rounded-r-full')
+    expect(segments[1].className).not.toMatch(/rounded-[lr]-full/)
+  })
+
   it('affiche la barre KDA même sans bloc perf/skill', () => {
     render(<MatchCard match={LOSS_MATCH} />)
     const bar = screen.getByTestId('match-card-kda-bar')
@@ -139,6 +181,96 @@ describe('MatchCard', () => {
     const matchNoKDA: RecentMatchItem = { ...LOSS_MATCH, kills: null, assists: null, deaths: null }
     render(<MatchCard match={matchNoKDA} />)
     expect(screen.queryByTestId('match-card-kda-bar')).toBeNull()
+  })
+
+  // Part des frags assistés par un coéquipier (film analysé) : barre à trois tons sous la
+  // barre frags / assistances / décès, puis sa légende dessous (sans la part en %).
+  // Sans mesure : l'emplacement reste réservé (même hauteur), vide.
+  describe('frags assistés', () => {
+    const MEASURED: RecentMatchItem = {
+      ...WIN_MATCH,
+      assisted_frags: { frags_measured: 12, received: { total: 7, low: 2, mid: 3, high: 1 } },
+    }
+
+    it('affiche « 7 / 12 frags assistés » sous la barre, sans la part en %, segments aux largeurs = parts', () => {
+      render(<MatchCard match={MEASURED} locale="fr" />)
+      const block = screen.getByTestId('match-card-assisted-frags')
+      expect(block.textContent).toContain('7 / 12 frags assistés')
+      expect(block.textContent).not.toContain('%')
+      // La légende vient APRÈS la barre (bar-then-legend, comme la barre du dessus).
+      const bar = screen.getByTestId('match-card-assist-segment-low').closest('.h-2') as HTMLElement
+      const legend = screen.getByText('7 / 12 frags assistés')
+      expect(bar.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      // Légende dans le ton fort du sens (pas le jeton brut, trop terne en texte).
+      expect(legend.style.color).toBe(assistTierTone(tokenCssVar('assist-received'), 'high'))
+      const widthOf = (tier: string) =>
+        parseFloat((screen.getByTestId(`match-card-assist-segment-${tier}`).closest('[style*="width"]') as HTMLElement).style.width)
+      expect(widthOf('low')).toBeCloseTo((2 / 12) * 100)
+      expect(widthOf('mid')).toBeCloseTo((3 / 12) * 100)
+      expect(widthOf('high')).toBeCloseTo((1 / 12) * 100)
+    })
+
+    it('dit « assisted kills » sous la locale EN', () => {
+      render(<MatchCard match={MEASURED} locale="en" />)
+      expect(screen.getByTestId('match-card-assisted-frags').textContent).toContain('7 / 12 assisted kills')
+    })
+
+    it('réserve l’emplacement sans mesure (même hauteur, ni texte, ni segment, ni « — »)', () => {
+      render(<MatchCard match={WIN_MATCH} locale="fr" />)
+      expect(screen.queryByTestId('match-card-assisted-frags')).toBeNull()
+      expect(screen.queryByTestId('match-card-assist-segment-low')).toBeNull()
+      expect(screen.getByTestId('match-card-kda-bar').textContent).not.toContain('—')
+      const slot = screen.getByTestId('match-card-assisted-frags-slot')
+      expect(slot.textContent).toBe('')
+      expect(screen.getByTestId('match-card-kda-bar').contains(slot)).toBe(true)
+    })
+
+    it('le bloc mesuré et l’emplacement vide ont le même gabarit', () => {
+      const { unmount } = render(<MatchCard match={MEASURED} locale="fr" />)
+      const measured = screen.getByTestId('match-card-assisted-frags').className
+      unmount()
+      render(<MatchCard match={WIN_MATCH} locale="fr" />)
+      expect(screen.getByTestId('match-card-assisted-frags-slot').className).toBe(measured)
+    })
+  })
+
+  // Bouton rejeu 2D à droite du placement : rendu UNIQUEMENT si l'artefact existe
+  // (has_replay) ET que la tuile connaît le joueur (playerSlug — route par joueur).
+  describe('lien rejeu 2D', () => {
+    const REPLAY_LABEL = 'Ouvrir le rejeu 2D du match'
+
+    it('affiche le bouton de rejeu quand has_replay', () => {
+      render(<MatchCard match={{ ...WIN_MATCH, has_replay: true }} playerSlug="chief" />)
+      const link = screen.getByLabelText(REPLAY_LABEL)
+      expect(link.getAttribute('href')).toContain('/matches/match-001/replay')
+      expect(link.getAttribute('href')).toContain('/players/chief/')
+    })
+
+    // Le bouton vit dans la rangée « badge solo/escouade + placement », APRÈS le
+    // placement — pas dans la ligne de playlist où il passait inaperçu.
+    it('se pose à droite du placement, pas sur la ligne de playlist', () => {
+      const withRank: RecentMatchItem = { ...WIN_MATCH, has_replay: true, rank_in_team: 2 }
+      render(<MatchCard match={withRank} playerSlug="chief" />)
+      const row = screen.getByLabelText(REPLAY_LABEL).parentElement
+      expect(row?.textContent).toContain('2')
+      expect(row?.textContent).not.toContain('Arène classée')
+    })
+
+    it('n\'affiche rien sans artefact de rejeu (pas de lien mort)', () => {
+      render(<MatchCard match={WIN_MATCH} playerSlug="chief" />)
+      expect(screen.queryByLabelText(REPLAY_LABEL)).toBeNull()
+    })
+
+    it('n\'affiche rien sans playerSlug (la route de rejeu est par joueur)', () => {
+      render(<MatchCard match={{ ...WIN_MATCH, has_replay: true }} />)
+      expect(screen.queryByLabelText(REPLAY_LABEL)).toBeNull()
+    })
+
+    it('affiche le bouton même sans playlist', () => {
+      const noPlaylist: RecentMatchItem = { ...WIN_MATCH, playlist_ui: null, has_replay: true }
+      render(<MatchCard match={noPlaylist} playerSlug="chief" />)
+      expect(screen.getByLabelText(REPLAY_LABEL)).toBeTruthy()
+    })
   })
 
   // V72-34 : la perf peut être structurellement absente (chaîne de performance en

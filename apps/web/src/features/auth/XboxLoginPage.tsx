@@ -3,7 +3,7 @@
  *
  * Affichée par LoginPage quand auth_mode='xbox'. Permet à un user de se connecter
  * via son compte Xbox Live (login.live.com/devicelogin). Côté backend, la session
- * est créée par XboxSSOLinkStrategy (PR 2) après l'échange MSAL.
+ * est créée par XboxSSOLinkStrategy (PR 2) après l'échange OAuth.
  *
  * En mode xbox, le login password est réservé aux admins (PR 1, D3). Cette page
  * propose un toggle "Connexion admin (mot de passe)" pour le fallback.
@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
+import { AppFooter } from '@/components/shell/AppFooter'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/queries'
@@ -23,6 +24,7 @@ import { api, API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client
 import type { BootstrapResponse } from '@/lib/api/types'
 import { postLoginDestination } from '@/features/auth/postLoginDestination'
 import { verificationLinkLabel } from '@/lib/formatters'
+import { CopyCodeButton } from '@/features/auth/CopyCodeButton'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -98,6 +100,8 @@ export function XboxLoginPage() {
             </p>
           </CardContent>
         </Card>
+
+        <AppFooter variant="minimal" />
       </div>
     </div>
   )
@@ -325,9 +329,12 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       </p>
       <div className="rounded-lg bg-card border px-6 py-4 text-center">
         <p className="mb-2 text-xs text-muted-foreground">{t('common.auth.xbox_code_to_enter')}</p>
-        <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
-          {userCode}
-        </span>
+        <div className="flex items-center justify-center gap-3">
+          <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
+            {userCode}
+          </span>
+          <CopyCodeButton code={userCode} />
+        </div>
       </div>
       {secondsLeft != null && secondsLeft > 0 && (
         <p className="text-center text-xs text-muted-foreground">
@@ -382,12 +389,12 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
         onError: (err) => {
           const apiErr = err as unknown as ApiError
           if (apiErr.code === 'invalid_credentials') {
-            setError('Identifiants incorrects.')
+            setError(t('common.auth.xbox_error_invalid_credentials'))
           } else if (apiErr.code === 'password_login_admin_only') {
             // D3 : utilisateur valide mais pas admin en mode xbox.
-            setError('En mode SSO Xbox, le login par mot de passe est réservé aux administrateurs. Utilisez la connexion Xbox.')
+            setError(t('common.auth.xbox_error_password_admin_only'))
           } else {
-            setError(apiErr.message ?? 'Erreur de connexion.')
+            setError(apiErr.message ?? t('common.auth.xbox_error_generic'))
           }
         },
       },

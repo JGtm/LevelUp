@@ -2,7 +2,7 @@ package duckdb
 
 // kill_events_source.go — LE SUBSTRAT DE LECTURE DU KILL-FEED, en un seul endroit.
 //
-// Bascule du 2026-08-03 (phase 2 de `.ai/PLAN_BRANCHEMENT_KILLSOURCE.md`) : les lecteurs de
+// Bascule du 2026-08-03 (phase 2 de `.ai/V7.5/killweapon/PLAN_BRANCHEMENT_KILLSOURCE.md`) : les lecteurs de
 // ce paquet lisaient `killer_victim_pairs`, qui porte 46,5 % de doublons exacts — le flux
 // primaire INSERT pendant que la complétion fait DELETE-then-INSERT, sur une table sans PK.
 // Les agrégats carrière en étaient gonflés d'un facteur mesuré à 1,879 en moyenne : sur le

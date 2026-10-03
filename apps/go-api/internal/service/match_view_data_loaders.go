@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -40,9 +41,28 @@ type matchViewData struct {
 	// via Q23b. Permet narrative.ComputeEncounterBadges (ally_plus +
 	// tough_enemy). Optionnel — degradation gracieuse vers badge ordinal
 	// seul si la repo retourne nil.
-	encounterStats []domain.EncounterStatsRaw
-	kvPairs        []domain.KVPairRaw
-	skillRank      *domain.SkillRankRaw
+	encounterStats   []domain.EncounterStatsRaw
+	encounterAssists map[string]domain.RelationAssists // colonne « Assistances » (cf. match_view_encounter_assists.go)
+	// killSources : source de dégât par (tueur, instant), pour l'arme du kill feed
+	// (Q21b). Vide si le titre n'a pas de décodeur de film ou si le match n'y est pas
+	// passé — le feed s'affiche alors sans icône d'arme.
+	killSources []domain.KillSourceRaw
+	// killAssists : assistance par (tueur, instant), pour l'assistant du kill feed
+	// (Q21c). Une mort absente de la tranche reste « on ne sait pas » — jamais
+	// « pas d'assistant ».
+	killAssists []domain.KillAssistRaw
+	// assistPairs / assistScope : agrégat (assistant → tueur assisté) du match et la
+	// PORTÉE de sa lecture (Q21d). assistScope.MatchDeaths à 0 = aucune ligne de film :
+	// le builder n'émet alors aucun bloc. Sans clé temporelle — donc jamais recalé T0
+	// (cf. correctMatchViewEventsT0, qui ne le touche pas).
+	assistPairs []domain.MatchAssistPairRaw
+	assistScope domain.MatchAssistScopeRaw
+	kvPairs     []domain.KVPairRaw
+	// kvPairsFeed : COPIE des paires killer→victim corrigée T0, réservée à la
+	// décoration du kill feed (clé exacte tueur+instant contre les events corrigés).
+	// kvPairs reste sur l'horloge brute : tug-of-war et KD timeline en dépendent.
+	kvPairsFeed []domain.KVPairRaw
+	skillRank   *domain.SkillRankRaw
 	// sharedCSRs : CSR de tous les participants depuis shared.match_csrs_latest.
 	// Nil si match non-ranked ou table absente. Utilisé comme fallback pour les
 	// joueurs non-trackés dans buildTeamTabFull.
@@ -55,6 +75,15 @@ type matchViewData struct {
 	matchCitations []domain.CitationMatchViewRow
 	richCitations  []domain.HomeMatchCitationRaw
 	histRows       []domain.MatchHistAvgRow
+	// killDistances : POC (LOT G.3, plan retours-utilisateur §3bis DEC-8) —
+	// distance mesurée par (xuid, weapon_key) pour CE match, tous les joueurs
+	// (pas seulement le viewer). Nil si le titre n'a pas de killDistanceRepo
+	// câblé, ou si aucun kill n'a de position mesurée.
+	killDistances []domain.MatchKillDistancePlayer
+	// elevationKills : LES MÊMES frags, un par ligne (lot Y, décision D24) — la matière
+	// de la carte « Dénivelé ». Même porte que killDistances (même repo, même
+	// capability), et chargée EN PARALLÈLE d'elle : le mur d'attente n'en garde qu'une.
+	elevationKills []domain.MatchElevationKillRaw
 	objectiveScore int
 }
 
@@ -131,6 +160,21 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
 	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus
 	// bas, après `g.Wait()`.
+	goLoad(gctx, g, matchID, "kill_sources", func() error {
+		var e error
+		d.killSources, e = s.repo.GetMatchKillSources(gctx, matchID)
+		return e
+	})
+	goLoad(gctx, g, matchID, "kill_assists", func() error {
+		var e error
+		d.killAssists, e = s.repo.GetMatchKillAssists(gctx, matchID)
+		return e
+	})
+	goLoad(gctx, g, matchID, "assist_pairs", func() error {
+		var e error
+		d.assistPairs, d.assistScope, e = s.repo.GetMatchAssistPairs(gctx, matchID)
+		return e
+	})
 	goLoad(gctx, g, matchID, "kv_pairs", func() error {
 		var e error
 		d.kvPairs, e = s.repo.GetMatchKVPairs(gctx, matchID)
@@ -157,6 +201,7 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.encounterStats, e = s.repo.GetMatchEncounterStats(gctx, matchID, s.xuid)
 		return e
 	})
+	s.loadEncounterAssists(gctx, g, matchID, &d)
 	goLoad(gctx, g, matchID, "media", func() error {
 		var e error
 		// Q24 retourne tous les auteurs (cross-joueur) : un coéquipier peut
@@ -184,6 +229,21 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.histRows, e = s.repo.GetHistoryForAvg(gctx, s.xuid)
 		return e
 	})
+	// Le GATE de capability est posé au CÂBLAGE (wire.killDistanceRepoFor) : un repo
+	// posé au câblage (wire.killDistanceRepoFor) — un repo non nil veut dire que
+	// le titre a film.kill_source. Zéro comparaison de slug.
+	if s.killDistanceRepo != nil {
+		goLoad(gctx, g, matchID, "kill_distances", func() error {
+			var e error
+			d.killDistances, e = s.killDistanceRepo.LoadMatch(gctx, matchID)
+			return e
+		})
+		goLoad(gctx, g, matchID, "kill_elevation", func() error {
+			var e error
+			d.elevationKills, e = s.killDistanceRepo.LoadMatchElevation(gctx, matchID)
+			return e
+		})
+	}
 	if s.citationsRepo != nil {
 		goLoad(gctx, g, matchID, "citations", func() error {
 			var e error
@@ -302,16 +362,35 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// portée par le service, pas par le builder — buildMatchHeader est déjà à la
 	// limite de paramètres). Titre sans table → no-op.
 	applyMatchHeaderOvertime(&header, meta, s.regulationSeconds)
+	// Jeu d'outcomes du titre, résolu UNE FOIS et réutilisé pour l'en-tête, le résumé et le
+	// scoreboard (2026-09-07, décision D5) : la CLÉ canonique de l'issue (win|loss|tie|dnf),
+	// jamais un texte — le web localise via useOutcomeLabel.
+	outcomes := outcomesOf(s.semantic)
+	// LA CLÉ DE L'ISSUE. Ici et pas dans le builder, pour la même raison que la ligne
+	// au-dessus : le jeu d'outcomes vient de l'adapter sémantique, porté par le service.
+	applyMatchHeaderOutcomeKey(&header, outcomes)
+	// Score de l'en-tête : points ou MANCHES. Ici et pas dans le builder, pour la même
+	// raison que la ligne au-dessus — la table `[rounds_decide]` est portée par le
+	// service. Table absente → lecture en points, comportement d'avant le 2026-08-29.
+	applyMatchHeaderScore(&header, meta, d.stats, s.roundsDecide)
+	// Lecture du bloc « Score dans le temps » (rien / barres d'instants / courbe) : même
+	// raison d'être ici que les deux lignes au-dessus — la règle est portée par le service.
+	// Règle absente → champ vide → le client garde la courbe.
+	applyMatchHeaderScoreTimeline(&header, meta, s.scoreTimelineKind)
 	// Présence de l'artefact de rejeu 2D : un os.Stat, jamais une lecture. Même
 	// raison d'être ici que le flag « Prolongation » — la dépendance est portée par
 	// le service, pas par le builder.
 	applyMatchHeaderReplay(ctx, &header, matchID, s.replaySvc)
+	// ModeCategory : catégorie custom résolue depuis pair_name (taxonomie injectée,
+	// WithModeTaxonomy) — pour que la garde Fiesta du rejeu 2D corrèle sur la
+	// résolution de mode de l'app plutôt que deviner sur ModeUI/PlaylistLabel.
+	applyMatchHeaderModeCategory(&header, meta, s.modeTaxonomy)
 	rank := buildRankBlock(d.skillRank, s.assetURL)
 	curDurSec := 0
 	if meta != nil && meta.DurationSeconds != nil {
 		curDurSec = int(*meta.DurationSeconds)
 	}
-	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations, curDurSec)
+	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations, curDurSec, outcomes)
 	// Proba de victoire pré-match (LUSR v2) → card « Résultat attendu ». Source :
 	// match_skill_rank_latest.expected_win_prob via d.skillRank (même lecture que le
 	// player-matches scan). Best-effort : nil pour les matchs pré-v2 / sans donnée.
@@ -333,6 +412,30 @@ func (s *MatchViewService) buildMatchViewFromData(
 		}
 	}
 	combat := buildCombatTabFull(matchID, d.bulkWeapons, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
+	// L'arme du kill et l'équipe du tueur se posent APRÈS l'assemblage : ce sont des
+	// décorations du feed, pas des entrées du calcul de dominance (les bins, les vagues
+	// et les cumuls ne dépendent d'aucune des deux). Les séparer garde buildCombatTabFull
+	// à sa responsabilité et rend la décoration testable seule.
+	decorateKillFeed(ctx, combat.HighlightEvents, killFeedInputs{
+		sources:    d.killSources,
+		assists:    d.killAssists,
+		victims:    d.kvPairsFeed,
+		scoreboard: d.scoreboard,
+		assetURL:   s.assetURL,
+	})
+	// L'identité des médailles se pose par le même modèle : une décoration du feed,
+	// résolue contre le référentiel du titre (best-effort).
+	decorateMedalEvents(ctx, combat.HighlightEvents, s.repo, s.assetURL)
+	// Les paires d'assistance sont un AGRÉGAT PAR MATCH, pas une décoration du feed :
+	// elles sortent déjà comptées de Q21d et n'ont besoin que du scoreboard pour nommer
+	// le tueur. Posées ici pour la même raison que FragDistribution — hors de
+	// buildCombatTabFull, dont la signature est déjà à la limite de paramètres.
+	combat.AssistPairs = buildAssistPairs(ctx, d.assistPairs, d.assistScope, d.scoreboard)
+	// La riposte se lit sur les MÊMES paires killer→victim que le chart antagoniste, plus
+	// le camp du scoreboard : aucune requête de plus. Sur les paires BRUTES, pas sur
+	// `kvPairsFeed` : un délai entre deux morts est invariant par décalage T0, et la copie
+	// corrigée est réservée à la décoration du feed.
+	combat.Riposte = buildMatchRiposte(d.kvPairs, d.scoreboard)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
 	// → map vide (section "Local" inactive sauf pour `is_me`).
@@ -404,7 +507,8 @@ func (s *MatchViewService) buildMatchViewFromData(
 			}
 		}
 	}
-	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL)
+	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL, outcomes)
+	attachEncounterAssists(team.Encounters, d.encounterAssists)
 	// Halo 5 persisté : libellés d'équipe « Rouge/Bleu » depuis team_colors (no-op HINF
 	// et si le référentiel est vide → le front garde son libellé existant).
 	s.applyTeamNames(ctx, team.Scoreboard)
@@ -412,11 +516,22 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// scoreboard (compteurs natifs melee/grenade/spartan de la ligne is_me) + les bulk
 	// weapon kills du viewer (classes gun). hasMechanics via capability (jamais slug==).
 	combat.FragDistribution = buildViewerFragDistribution(
-		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons, titleHasNativeKillMechanics(s.titleSlug),
+		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons,
+		titleHasNativeKillMechanics(s.titleSlug),
 	)
 	if combat.FragDistribution != nil {
 		logFragDistribution(ctx, "match view", s.titleSlug, s.xuid, *combat.FragDistribution)
 	}
+	// KillDistanceByWeapon (POC LOT G.3) : déjà agrégé par (xuid, weapon_key) côté
+	// repo (kill_positions_latest × match_kill_events_latest) — assemblage direct,
+	// contrairement à FragDistribution qui doit croiser scoreboard+bulkWeapons.
+	combat.KillDistanceByWeapon = d.killDistances
+	// Elevation (lot Y, D24) : le MÊME chargement, lu au grain du frag et ramené au point
+	// de vue du joueur de la page. Le total de frags vient de SA ligne de scoreboard — il
+	// est le dénominateur de la réserve de couverture, pas une mesure de plus.
+	combat.Elevation = analysis.BuildMatchElevation(
+		d.elevationKills, s.xuid, viewerKillCount(findViewerScoreboardRow(team.Scoreboard)),
+	)
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar calculé depuis le scoreboard (kills/HS/PK/assists/accuracy/
@@ -469,6 +584,15 @@ func correctMatchViewEventsT0(d *matchViewData, matchID string, tl domain.MatchT
 		)
 	}
 	d.events = timeline.CorrectEventRaws(d.events, tl)
+	// Q21b/Q21c s'apparient aux events par clé EXACTE (xuid, time_ms) dans
+	// decorateKillFeed : ils DOIVENT subir la même correction que d.events.
+	// Sans ça, sur tout match à T0 non nul, aucun kill ne recevait son arme ni
+	// son assistance (décalage constant de T0 ms entre les clés — 2026-08-12).
+	d.killSources = timeline.CorrectKillSourceRaws(d.killSources, tl)
+	d.killAssists = timeline.CorrectKillAssistRaws(d.killAssists, tl)
+	// La VICTIME s'apparie par la même clé exacte : copie corrigée, kvPairs intact
+	// (tug-of-war et KD timeline restent sur l'horloge brute).
+	d.kvPairsFeed = timeline.CorrectKVPairRaws(d.kvPairs, tl)
 }
 
 // loadAwardsForScoreboard charge les awards pour tous les xuids du scoreboard

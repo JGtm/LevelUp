@@ -3,9 +3,13 @@ package mappings
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"levelup/go-api/internal/analysis/modelabel"
 )
 
 // RegulationSet porte le temps RÉGLEMENTAIRE par variante de jeu d'un titre
@@ -22,12 +26,108 @@ type RegulationSet struct {
 	schemaVersion int
 	// seconds : game_variant_name → temps réglementaire en secondes (> 0).
 	seconds map[string]int
+	// targets : game_variant_name → CIBLE DE VICTOIRE du mode (score qui termine le match
+	// quand il est atteint). Même doctrine que seconds : valeurs MESURÉES (plateau du score
+	// du vainqueur au registre), variante inconnue → pas de cible, jamais une devinette.
+	// Consommateur : le constructeur d'artefact de rejeu (ScoreTimeline.TargetScore).
+	targets map[string]int
+	// roundsDecide : game_variant_name → la variante se décide aux MANCHES, donc son
+	// `CoreStats.Score` (un cumul de points sur toutes les manches) ne dit PAS le résultat.
+	// Même doctrine encore : contenu MESURÉ (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`),
+	// variante absente → on garde les points. Consommateur : analysis.TeamScoreDisplay.
+	roundsDecide map[string]bool
+	// holdTicks : game_variant_name → TICS DE GARDE qui valent un point, sur un mode
+	// où l'on marque en TENANT une zone (KOTH : la colline se prend instantanément, c'est la
+	// garde qui compte). Même doctrine que targets : valeur MESURÉE, variante inconnue → pas
+	// de dénominateur, donc aucune jauge de progression — jamais une jauge au jugé.
+	// Consommateur : le constructeur d'artefact (ScoreTimeline.HoldTicksPerPoint).
+	holdTicks map[string]int
+	// radarRange : game_variant_name → PORTEE DU RADAR en metres, c'est-a-dire la distance
+	// a laquelle deux joueurs se voient sur le radar du jeu. Meme doctrine que les quatre
+	// tables ci-dessus : valeur arretee et datee, variante inconnue → PAS DE LECTURE. Elle
+	// borne l'isolement (« mourir sans coequipier a portee ») : un rayon devine rendrait une
+	// mesure d'apparence normale sur une regle de jeu qu'on n'a pas etablie.
+	// Consommateur : le service Tactique (lecture « ou je meurs isole »).
+	radarRange map[string]int
+	// scoreTimeline : JETON DE MODE → comment le score se montre dans le temps
+	// (`hidden` / `events` / `curve`). Contrairement aux quatre tables ci-dessus, la clé
+	// n'est PAS un game_variant_name mais un jeton de mode apparié comme dans
+	// objective_roles.toml : la règle porte sur la FAMILLE de mode, pas sur une déclinaison
+	// de playlist qu'un renommage de saison ferait tomber. Mode non déclaré → repli sûr
+	// `curve`, le comportement d'avant la table. Consommateur : MatchViewHeader.
+	scoreTimeline map[string]string
+	// scoreTimelineTokens : les jetons déclarés, dans un ordre stable — l'appariement
+	// (mot entier, jeton le plus long gagnant) les prend tels quels.
+	scoreTimelineTokens []string
+	// flagJuggleWindowS : la FENÊTRE DE JONGLAGE du drapeau, en secondes. Un porteur qui
+	// lance le drapeau devant lui puis le reprend dans cette fenêtre a fait UN geste, pas
+	// deux prises (`objectives.NetFlagGrabs`).
+	//
+	// SCALAIRE ET NON TABLE PAR VARIANTE, et c'est une conséquence de la mesure : la coupure
+	// vit dans le GESTE (la durée d'un jet de drapeau suivi d'une reprise à la course), pas
+	// dans le réglage d'une playlist. La mesure du 2026-09-13 la situe entre 1,4 et 1,6 s sur
+	// les treize films CTF du parc, toutes variantes confondues
+	// (`.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`).
+	//
+	// MÊME DOCTRINE QUE LES TABLES CI-DESSUS : absent = PAS DE LECTURE. Un titre qui ne la
+	// déclare pas ne publie pas les prises nettes — jamais une fenêtre par défaut, qui
+	// rendrait une mesure d'apparence normale sur une règle qu'on n'a pas établie.
+	flagJuggleWindowS float64
+	// randomStartModeTokens : les JETONS des modes dont l'equipement de debut de vie est TIRE
+	// AU SORT (Fiesta et consorts). Sur ces modes, le niveau « arme de
+	// base » du bloc « controle des armes » n'est pas publie : « l'arme avec laquelle on
+	// spawn » n'y est pas un fait du match.
+	//
+	// VIDE = aucun mode aleatoire, et ce n'est pas une panne : le niveau se mesure alors
+	// partout. C'est la difference avec la fenetre ci-dessus, indispensable au calcul.
+	randomStartModeTokens []string
+}
+
+// Les trois lectures possibles du bloc « Score dans le temps » de la vue match. Ce sont
+// les SEULES valeurs admises par la table `[score_timeline]` : toute autre est une erreur
+// de configuration refusée au chargement, jamais un silence.
+const (
+	// ScoreTimelineHidden : le bloc ne s'affiche pas (le mode marque au frag — la courbe
+	// redirait « Frags cumulés », juste au-dessus dans le même onglet).
+	ScoreTimelineHidden = "hidden"
+	// ScoreTimelineEvents : des barres verticales aux INSTANTS de marque (le mode marque
+	// en 3 à 5 points sur tout le match : une courbe y serait un escalier vide).
+	ScoreTimelineEvents = "events"
+	// ScoreTimelineCurve : la courbe en escalier — et le REPLI de tout mode non déclaré.
+	ScoreTimelineCurve = "curve"
+)
+
+// scoreTimelineKinds — la liste FERMÉE des lectures admises.
+var scoreTimelineKinds = map[string]bool{
+	ScoreTimelineHidden: true,
+	ScoreTimelineEvents: true,
+	ScoreTimelineCurve:  true,
 }
 
 // regulationTOML — projection brute de regulation.toml.
 type regulationTOML struct {
-	Meta    metaSection    `toml:"meta"`
-	Seconds map[string]int `toml:"regulation_seconds"`
+	Meta          metaSection       `toml:"meta"`
+	Seconds       map[string]int    `toml:"regulation_seconds"`
+	Targets       map[string]int    `toml:"score_target"`
+	RoundsDecide  map[string]bool   `toml:"rounds_decide"`
+	HoldTicks     map[string]int    `toml:"hold_ticks_per_point"`
+	RadarRange    map[string]int    `toml:"radar_range_m"`
+	ScoreTimeline map[string]string `toml:"score_timeline"`
+	FlagGrabsNet  flagGrabsNetTOML  `toml:"flag_grabs_net"`
+	WeaponTiers   weaponTiersTOML   `toml:"weapon_tiers"`
+}
+
+// flagGrabsNetTOML — la section `[flag_grabs_net]`, un seul réglage à ce jour.
+type flagGrabsNetTOML struct {
+	// FlagJuggleWindowS : secondes. Absente (0) = le titre ne déclare pas la règle.
+	FlagJuggleWindowS float64 `toml:"flag_juggle_window_s"`
+}
+
+// weaponTiersTOML — la section `[weapon_tiers]`, un seul reglage a ce jour.
+type weaponTiersTOML struct {
+	// RandomStartModeTokens : jetons cherches comme des MOTS dans le `pair_name` ENTIER.
+	// Absente = aucun mode aleatoire.
+	RandomStartModeTokens []string `toml:"random_start_mode_tokens"`
 }
 
 // Seconds retourne le temps réglementaire de la variante et true s'il est connu.
@@ -38,6 +138,131 @@ func (s *RegulationSet) Seconds(gameVariantName string) (int, bool) {
 	}
 	v, ok := s.seconds[strings.TrimSpace(gameVariantName)]
 	return v, ok
+}
+
+// ScoreTarget retourne la cible de victoire de la variante et true si elle est connue.
+// nil-safe et variante inconnue → (0, false) : l'appelant retombe sur son repli.
+func (s *RegulationSet) ScoreTarget(gameVariantName string) (int, bool) {
+	if s == nil {
+		return 0, false
+	}
+	v, ok := s.targets[strings.TrimSpace(gameVariantName)]
+	return v, ok
+}
+
+// RadarRangeMap retourne une COPIE de la table complete, pour le câblage par titre (même
+// forme que RoundsDecideMap).
+//
+// CONSOMMATEUR : la lecture « où je meurs isolé » de l'onglet Tactique (lot 7C, livré le
+// 2026-09-07) — `server_apiv1` → `ServiceRegistry.WithRadarRange` →
+// `TacticalService.rayonsParMatch`, qui résout le rayon PAR MATCH.
+//
+// ⚠ LA CLÉ SE NETTOIE À LA RÉSOLUTION, chez le consommateur : le nom vient de
+// `match_registry.game_variant_name`, donc de ce que l'API a envoyé, et des variantes y
+// arrivent avec un blanc. Une clé non nettoyée manque la table et sort le match
+// SILENCIEUSEMENT de la lecture.
+//
+// Les 48 valeurs sont une campagne de mesure du 2026-09-05, gardée par son ratchet de
+// couverture : les perdre coûterait de la refaire.
+func (s *RegulationSet) RadarRangeMap() map[string]int {
+	if s == nil {
+		return nil
+	}
+	out := make(map[string]int, len(s.radarRange))
+	for k, v := range s.radarRange {
+		out[k] = v
+	}
+	return out
+}
+
+// HoldTicksPerPoint retourne le nombre de secondes de GARDE qui valent un point sur la
+// variante, et true s'il est connu.
+//
+// nil-safe et variante inconnue → (0, false) : l'appelant ne publie aucun dénominateur, donc
+// le client n'affiche AUCUNE jauge de progression. Une jauge absente ne ment pas ; une jauge
+// remplie sur un dénominateur inventé, si.
+func (s *RegulationSet) HoldTicksPerPoint(gameVariantName string) (int, bool) {
+	if s == nil {
+		return 0, false
+	}
+	v, ok := s.holdTicks[strings.TrimSpace(gameVariantName)]
+	return v, ok
+}
+
+// ScoreTimelineKind dit COMMENT le score du mode se montre dans le temps :
+// `hidden` (le mode marque au frag — la courbe redirait « Frags cumulés »),
+// `events` (3 à 5 points sur tout le match — des barres aux instants de marque), ou
+// `curve` (le score monte en continu — la courbe en escalier).
+//
+// `pairName` est le `pair_name` BRUT du match, dont on n'a retiré que le suffixe de CARTE
+// (modelabel.StripMapSuffix). La table est indexée par JETON de mode, cherché comme mot
+// entier, insensible à la casse, jeton le plus long gagnant (analysis/modelabel, une seule
+// implémentation dans le dépôt).
+//
+// ET NON PAS UN LIBELLÉ NORMALISÉ, contrairement à objective_roles.toml : la normalisation
+// MANGE le jeton de mode sur toute une famille de pair_name — « Super Fiesta:Slayer » y
+// devient « Super Fiesta », « Team Slayer:Arena » devient « Arena ». Mesure du 2026-09-03
+// sur le registre local : 460 matchs recevraient le mauvais verdict, dont les 429 du mode le
+// plus joué du corpus. Le détail des neuf familles est dans le commentaire de la table
+// (config/titles/halo_infinite/mappings/regulation.toml).
+//
+// LE RETRAIT DU SUFFIXE DE CARTE, LUI, EST INDISPENSABLE : c'est lui qui empêche un nom de
+// carte de porter un jeton de mode.
+//
+// nil-safe, table absente, libellé vide ou mode non déclaré → `curve` : le REPLI SÛR,
+// c'est-à-dire le comportement d'avant la table. Un mode inconnu ne fait jamais
+// disparaître le bloc.
+func (s *RegulationSet) ScoreTimelineKind(pairName string) string {
+	if s == nil || len(s.scoreTimeline) == 0 {
+		return ScoreTimelineCurve
+	}
+	token := modelabel.ExtractKnownMode(pairName, s.scoreTimelineTokens)
+	if token == "" {
+		return ScoreTimelineCurve
+	}
+	if kind, ok := s.scoreTimeline[token]; ok {
+		return kind
+	}
+	return ScoreTimelineCurve
+}
+
+// RoundsDecide dit si le RÉSULTAT de la variante se lit en MANCHES plutôt qu'en points.
+// nil-safe et variante inconnue → false : l'appelant garde les points (dégradation sûre,
+// jamais un affichage inventé).
+func (s *RegulationSet) RoundsDecide(gameVariantName string) bool {
+	if s == nil {
+		return false
+	}
+	return s.roundsDecide[strings.TrimSpace(gameVariantName)]
+}
+
+// RoundsDecideVariants retourne les variantes déclarées, triées (ordre déterministe pour
+// les appelants qui les injectent dans une requête ou un journal). nil-safe : liste vide.
+// Utilisé par `cmd/backfill-team-rounds` pour ne re-lire que l'historique qui en a besoin.
+func (s *RegulationSet) RoundsDecideVariants() []string {
+	if s == nil {
+		return nil
+	}
+	out := make([]string, 0, len(s.roundsDecide))
+	for k := range s.roundsDecide {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// RoundsDecideMap retourne une copie de la table variante → « se lit en manches ». nil-safe
+// (map vide). Pendant de SecondsMap : le wiring injecte la table dans les services sans
+// exposer le type interne.
+func (s *RegulationSet) RoundsDecideMap() map[string]bool {
+	out := make(map[string]bool)
+	if s == nil {
+		return out
+	}
+	for k, v := range s.roundsDecide {
+		out[k] = v
+	}
+	return out
 }
 
 // SecondsMap retourne une copie de la table variante → secondes. nil-safe (map
@@ -94,20 +319,231 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 	if doc.Meta.SchemaVersion <= 0 {
 		return nil, fmt.Errorf("%s: [meta].schema_version doit être > 0 (reçu %d)", path, doc.Meta.SchemaVersion)
 	}
-	seconds := make(map[string]int, len(doc.Seconds))
-	for rawName, secs := range doc.Seconds {
+	// LES QUATRE TABLES D'ENTIERS SE VALIDENT PAREIL — clé non vide, valeur > 0 — et ce
+	// contrôle vivait en QUATRE exemplaires. La quatrième (la portée du radar, 2026-09-06)
+	// a fait franchir à cette fonction le seuil de complexité : le dépôt impose alors un
+	// helper (CLAUDE.md n°6, « ≤ 2 copies d'un même pattern »). Chaque table garde son nom
+	// de section et son libellé de grandeur, donc ses messages d'erreur restent nominatifs.
+	seconds, err := tableEntiereValidee(path, "regulation_seconds", "temps réglementaire", doc.Seconds)
+	if err != nil {
+		return nil, err
+	}
+	targets, err := tableEntiereValidee(path, "score_target", "cible de victoire", doc.Targets)
+	if err != nil {
+		return nil, err
+	}
+	holds, err := tableEntiereValidee(path, "hold_ticks_per_point", "secondes de garde par point", doc.HoldTicks)
+	if err != nil {
+		return nil, err
+	}
+	radar, err := tableEntiereValidee(path, "radar_range_m", "portée du radar", doc.RadarRange)
+	if err != nil {
+		return nil, err
+	}
+	rounds := make(map[string]bool, len(doc.RoundsDecide))
+	for rawName, decides := range doc.RoundsDecide {
 		key := strings.TrimSpace(rawName)
 		if key == "" {
-			return nil, fmt.Errorf("%s: game_variant_name vide", path)
+			return nil, fmt.Errorf("%s: [rounds_decide] game_variant_name vide", path)
 		}
-		if secs <= 0 {
-			return nil, fmt.Errorf("%s: variante %q : temps réglementaire doit être > 0 (reçu %d)", path, key, secs)
+		// Une entrée `false` n'existe pas : l'absence EST le « non ». L'accepter ferait
+		// croire qu'on peut désactiver quelque chose depuis cette table, alors que la
+		// dégradation se lit par l'absence de clé.
+		if !decides {
+			return nil, fmt.Errorf("%s: [rounds_decide] variante %q à false — retirer la ligne (l'absence vaut « non »)", path, key)
 		}
-		seconds[key] = secs
+		rounds[key] = true
+	}
+	timeline, timelineTokens, err := parseScoreTimeline(path, doc.ScoreTimeline)
+	if err != nil {
+		return nil, err
+	}
+	// La fenêtre de jonglage suit la règle de tout ce fichier : ABSENTE veut dire « pas de
+	// lecture », NÉGATIVE OU NULLE veut dire une erreur de configuration. Écrire 0 pour
+	// désactiver la grandeur ferait croire à un interrupteur là où l'absence de clé EST
+	// l'interrupteur.
+	if doc.FlagGrabsNet.FlagJuggleWindowS < 0 {
+		return nil, fmt.Errorf("%s: [flag_grabs_net].flag_juggle_window_s négative (%v) — retirer la ligne pour ne pas publier la grandeur",
+			path, doc.FlagGrabsNet.FlagJuggleWindowS)
 	}
 	return &RegulationSet{
-		titleSlug:     doc.Meta.TitleSlug,
-		schemaVersion: doc.Meta.SchemaVersion,
-		seconds:       seconds,
+		titleSlug:             doc.Meta.TitleSlug,
+		schemaVersion:         doc.Meta.SchemaVersion,
+		seconds:               seconds,
+		targets:               targets,
+		roundsDecide:          rounds,
+		holdTicks:             holds,
+		radarRange:            radar,
+		scoreTimeline:         timeline,
+		scoreTimelineTokens:   timelineTokens,
+		flagJuggleWindowS:     doc.FlagGrabsNet.FlagJuggleWindowS,
+		randomStartModeTokens: jetonsNettoyes(doc.WeaponTiers.RandomStartModeTokens),
 	}, nil
+}
+
+// FlagJuggleWindow retourne la fenêtre de jonglage du drapeau et true si le titre la
+// déclare. nil-safe ; clé absente → (0, false), et l'appelant NE PUBLIE PAS la grandeur
+// (jamais un repli sur une durée devinée).
+func (s *RegulationSet) FlagJuggleWindow() (time.Duration, bool) {
+	if s == nil || s.flagJuggleWindowS <= 0 {
+		return 0, false
+	}
+	return time.Duration(s.flagJuggleWindowS * float64(time.Second)), true
+}
+
+// tableEntiereValidee lit une table `game_variant_name → entier` et la valide : clé non
+// vide après rognage, valeur strictement positive.
+//
+// UNE VALEUR NULLE OU NÉGATIVE EST UNE ERREUR DE CHARGEMENT, JAMAIS UN SILENCE. Chaque
+// grandeur de ce fichier se lit « absent = pas de lecture » ; un zéro, lui, se lirait comme
+// une VALEUR — une portée de radar à 0 ferait « personne n'est jamais à portée », donc
+// « tout le monde meurt isolé », sur une simple faute de frappe.
+func tableEntiereValidee(path, section, grandeur string, brut map[string]int) (map[string]int, error) {
+	out := make(map[string]int, len(brut))
+	for rawName, v := range brut {
+		key := strings.TrimSpace(rawName)
+		if key == "" {
+			return nil, fmt.Errorf("%s: [%s] game_variant_name vide", path, section)
+		}
+		if v <= 0 {
+			return nil, fmt.Errorf("%s: [%s] variante %q : %s doit être > 0 (reçu %d)",
+				path, section, key, grandeur, v)
+		}
+		out[key] = v
+	}
+	return out, nil
+}
+
+// parseScoreTimeline valide la table `[score_timeline]` : jeton non vide, lecture DANS la
+// liste fermée (`hidden` / `events` / `curve`).
+//
+// UNE VALEUR INCONNUE EST UNE ERREUR DE CHARGEMENT, JAMAIS UN SILENCE. Une faute de frappe
+// (`event` au lieu de `events`) tomberait sinon sur le repli `curve` et se lirait à l'écran
+// comme une décision produit — le mode garderait sa courbe alors que la table dit le
+// contraire, et rien ne le signalerait.
+//
+// Les jetons sortent TRIÉS : l'appariement (`ExtractKnownMode`) départage sur la longueur,
+// mais l'ordre stable garde le comportement reproductible et les journaux comparables.
+func parseScoreTimeline(path string, raw map[string]string) (map[string]string, []string, error) {
+	kinds := make(map[string]string, len(raw))
+	tokens := make([]string, 0, len(raw))
+	for rawToken, rawKind := range raw {
+		token := strings.TrimSpace(rawToken)
+		if token == "" {
+			return nil, nil, fmt.Errorf("%s: [score_timeline] jeton de mode vide", path)
+		}
+		kind := strings.TrimSpace(rawKind)
+		if !scoreTimelineKinds[kind] {
+			return nil, nil, fmt.Errorf(
+				"%s: [score_timeline] jeton %q : lecture %q inconnue — attendu %q, %q ou %q",
+				path, token, rawKind, ScoreTimelineHidden, ScoreTimelineEvents, ScoreTimelineCurve)
+		}
+		kinds[token] = kind
+		tokens = append(tokens, token)
+	}
+	sort.Strings(tokens)
+	return kinds, tokens, nil
+}
+
+// RandomStartModeTokens rend les JETONS de mode a equipement de depart ALEATOIRE, tries
+// (ordre deterministe pour les journaux et les tests). nil-safe : liste vide.
+//
+// LISTE VIDE = AUCUN MODE ALEATOIRE, et c est un etat NORMAL, pas une configuration manquante :
+// le niveau « arme de base » se mesure alors sur tous les modes du titre.
+func (s *RegulationSet) RandomStartModeTokens() []string {
+	if s == nil || len(s.randomStartModeTokens) == 0 {
+		return nil
+	}
+	out := make([]string, len(s.randomStartModeTokens))
+	copy(out, s.randomStartModeTokens)
+	return out
+}
+
+// HasRandomStarts dit si le `pair_name` d un match designe un mode a equipement de debut de vie
+// TIRE AU SORT.
+//
+// ─── POURQUOI UN JETON CHERCHE DANS LA CHAINE ENTIERE, NI UN PREFIXE NI UNE CATEGORIE ───
+//
+// Deux versions ont ete fausses avant celle-ci, et la seconde l a ete APRES une revue qui la
+// prescrivait. Mesure du 2026-09-14, sur les formes que le registre porte reellement :
+//
+//	"Slayer:Arena Super Fiesta"   prefixe gauche "Slayer"   categorie "Other"
+//	"Slayer:Arena Fiesta"         prefixe gauche "Slayer"   categorie "Other"
+//	"BTB:Fiesta Slayer"           prefixe gauche "BTB"      categorie "BTB"
+//	"BTB:Fiesta CTF"              prefixe gauche "BTB"      categorie "BTB"
+//
+// Ni le prefixe gauche ni la CATEGORIE resolue par la taxonomie du titre ne reconnaissent ces
+// quatre formes — qui sont pourtant les plus nombreuses (417 matchs Super Fiesta au seul
+// plateau de score). La taxonomie prend le prefixe avant le ":" et jette le sous-mode : c est
+// son contrat, bon pour ce qu elle fait, mais il ne repond pas a la question posee ici. Le
+// jeton, cherche comme un MOT dans le `pair_name` ENTIER, les couvre toutes.
+//
+// ─── "COMME UN MOT", ET C EST CE QUI EMPECHE LE FAUX POSITIF ───
+//
+// La comparaison exige une frontiere non alphanumerique de part et d autre : "Fiestaval" ne
+// contient pas le mot "Fiesta". Sans cette clause, tout mode dont le nom commencerait par un
+// jeton basculerait en departs aleatoires.
+func (s *RegulationSet) HasRandomStarts(pairName string) bool {
+	if s == nil || len(s.randomStartModeTokens) == 0 {
+		return false
+	}
+	nom := strings.ToLower(strings.TrimSpace(pairName))
+	if nom == "" {
+		return false
+	}
+	for _, jeton := range s.randomStartModeTokens {
+		if contientLeMot(nom, strings.ToLower(jeton)) {
+			return true
+		}
+	}
+	return false
+}
+
+// contientLeMot dit si `jeton` apparait dans `nom` borne par des frontieres non alphanumeriques.
+// Les deux chaines sont attendues en minuscules.
+func contientLeMot(nom, jeton string) bool {
+	if jeton == "" {
+		return false
+	}
+	for depart := 0; depart < len(nom); {
+		i := strings.Index(nom[depart:], jeton)
+		if i < 0 {
+			return false
+		}
+		i += depart
+		if frontiereAGauche(nom, i) && frontiereADroite(nom, i+len(jeton)) {
+			return true
+		}
+		depart = i + 1
+	}
+	return false
+}
+
+// frontiereAGauche : le caractere qui precede la position est-il un separateur (ou le bord) ?
+func frontiereAGauche(nom string, i int) bool {
+	return i == 0 || !estAlphanumerique(nom[i-1])
+}
+
+// frontiereADroite : le caractere qui suit la position est-il un separateur (ou le bord) ?
+func frontiereADroite(nom string, i int) bool {
+	return i >= len(nom) || !estAlphanumerique(nom[i])
+}
+
+// estAlphanumerique borne la notion de MOT. ASCII suffit : les noms de mode du titre le sont.
+func estAlphanumerique(c byte) bool {
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9'
+}
+
+// jetonsNettoyes rogne, ecarte les entrees vides et TRIE. Aucune validation de contenu : un
+// jeton est un mot du titre, ce paquet n a pas de vocabulaire pour en juger — le garde-rail qui
+// confronte cette liste a la taxonomie du titre vit cote `games/halo_infinite`.
+func jetonsNettoyes(brut []string) []string {
+	out := make([]string, 0, len(brut))
+	for _, p := range brut {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	sort.Strings(out)
+	return out
 }

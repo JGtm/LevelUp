@@ -20,7 +20,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	auth_platform "levelup/go-api/internal/platform/auth"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -40,16 +39,11 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 
 	ctx := context.Background()
 
-	// 1. Résoudre le joueur.
-	player, err := loadPlayerSummary(cfg, *gamertag)
-	if err != nil {
+	// 1. Vérifier que le joueur est un profil suivi (précondition ; le client poolé ne
+	// prend plus de joueur, ses endpoints sont tous publics).
+	if _, err := loadPlayerSummary(cfg, *gamertag); err != nil {
 		return err
 	}
-	refreshToken := oauthRefreshTokenForPlayer(player.Gamertag)
-	if refreshToken == "" {
-		return fmt.Errorf("aucun refresh token OAuth trouvé pour %s (%s)", player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
-	}
-
 	// 2. Ouvrir la shared DB en RW (échoue si serveur tient le lock).
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	sharedPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
@@ -84,19 +78,16 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 		return nil
 	}
 
-	// 4. Auth OAuth + exchange Halo.
-	provider := auth_platform.NewSISUProvider()
-	tok, err := provider.TryOAuthRefresh(ctx, refreshToken)
+	// 4. Client Halo servi par le POOL (source unique ADR 0023 ; D1 du plan 2026-09-16) :
+	// le rejeu ne lit que des endpoints publics (film, chunks d'evenements), donc le
+	// joueur vise n'a pas besoin de son propre refresh token.
+	client, closePool, err := newPooledClient(ctx, cfg, *rps)
 	if err != nil {
-		return fmt.Errorf("oauth refresh: %w", err)
+		return err
 	}
-	exch, err := auth_platform.ExchangeAccessToken(ctx, tok)
-	if err != nil {
-		return fmt.Errorf("exchange: %w", err)
-	}
+	defer closePool()
 
-	// 5. Client + replay.
-	client := go_sync.NewHaloAPIClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, *rps)
+	// 5. Replay.
 	beforeAnomaly := observability.LoadCounter("highlight_events_parse_anomaly_total")
 
 	progress := func(done, total int, matchID, status string) {

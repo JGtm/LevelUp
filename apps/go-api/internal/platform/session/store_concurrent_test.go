@@ -41,7 +41,9 @@ func TestStore_ConcurrentLoadDuringSave(t *testing.T) {
 		saveErrs atomic.Int64
 	)
 
-	// Writers : rechargent la session puis la re-touchent, sur une COPIE fraîche
+	// Writers : rechargent la session puis la RÉÉCRIVENT par Save — Touch s'abstient
+	// depuis le 2026-09-23 pour une session inchangée écrite il y a moins de 5 min, la
+	// rafale d'écritures que ce garde-rail exige passe donc par Save —, sur une COPIE fraîche
 	// par itération (évite une data-race Go sur un pointeur *SessionData partagé).
 	for i := 0; i < 4; i++ {
 		wg.Add(1)
@@ -57,7 +59,7 @@ func TestStore_ConcurrentLoadDuringSave(t *testing.T) {
 				if cur == nil {
 					continue // l'ancienne impl pouvait déjà renvoyer nil ici
 				}
-				if err := store.Touch(cur); err != nil {
+				if err := store.Save(cur); err != nil {
 					saveErrs.Add(1)
 				}
 			}
@@ -131,7 +133,8 @@ func TestStore_PurgeExpiredDuringLiveSession(t *testing.T) {
 		loadNil atomic.Int64
 	)
 
-	// Writer : recharge puis re-touche la session vivante, sur une COPIE fraîche par
+	// Writer : recharge puis RÉÉCRIT (Save, cf. TestStore_ConcurrentLoadDuringSave) la
+	// session vivante, sur une COPIE fraîche par
 	// itération (évite une data-race Go sur un *SessionData partagé).
 	wg.Add(1)
 	go func() {
@@ -143,7 +146,7 @@ func TestStore_PurgeExpiredDuringLiveSession(t *testing.T) {
 			default:
 			}
 			if cur := store.Load(context.Background(), id); cur != nil {
-				_ = store.Touch(cur)
+				_ = store.Save(cur)
 			}
 		}
 	}()

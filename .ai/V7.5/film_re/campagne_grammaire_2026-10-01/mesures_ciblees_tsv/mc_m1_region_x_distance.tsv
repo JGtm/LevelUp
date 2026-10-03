@@ -1,0 +1,658 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	2	121	121	0	928
+0797ce72	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	27	1602	1602	0	10493
+0797ce72	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	44	60	34	1	403
+0797ce72	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	1	1	1	0	9
+0797ce72	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	7	9	7	0	62
+0797ce72	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	8	10	10	0	74
+0797ce72	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	78	89	70	0	655
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	2	2	2	0	12
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	1	2	2	0	0
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	2	2	2	0	14
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	28	33	25	3	185
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	26	227	216	0	1572
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	35	144	134	0	438
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	42	189	166	1	1326
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	408	779	621	4	4839
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · 2-3 paquets avant	3	3	3	0	25
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · paquet precedent	4	9	8	0	64
+0797ce72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	53	65	29	2	441
+0797ce72	HI_1_13_0	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	10	14	6	1	93
+0797ce72	HI_1_13_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	33	38	27	0	264
+0797ce72	HI_1_13_0	rejete · dans un record lu (faux positif probable) · paquet precedent	18	32	17	0	219
+0797ce72	HI_1_13_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	599	759	543	9	5190
+0797ce72	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	1	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · paquet precedent	1	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	56	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	4	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	1	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	72	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	2	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	28	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	2	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	6	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	2	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	351	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	2	0	0	0	0
+0797ce72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	52	0	0	0	0
+0797ce72	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	4	0	0	0	0
+0797ce72	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	18	0	0	0	0
+0797ce72	HI_1_13_0	temoin · dans un record lu (faux positif probable) · paquet precedent	2	0	0	0	0
+0797ce72	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	648	0	0	0	0
+084a804d	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	29	1958	1956	2	29294
+084a804d	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	24	728	721	6	14035
+084a804d	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	136	6102	6100	2	112810
+084a804d	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	48	61	29	29	564
+084a804d	HI_1_10_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	55	1977	1976	0	29402
+084a804d	HI_1_10_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	33	524	515	9	11356
+084a804d	HI_1_10_0	rejete · (ii) paquet a evenements non localise · paquet precedent	183	3815	3815	0	90632
+084a804d	HI_1_10_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	58	335	295	36	6436
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	1	46	46	0	1150
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	3	61	61	0	1450
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	6	202	202	0	4474
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	10	63	58	3	1167
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	67	1164	1162	2	27278
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	81	2246	2240	5	48933
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	67	1703	1699	4	38367
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	127	968	923	31	18726
+084a804d	HI_1_10_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	2	2	0	2	0
+084a804d	HI_1_10_0	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	2	2	1	1	25
+084a804d	HI_1_10_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	4	4	0	2	17
+084a804d	HI_1_10_0	rejete · dans un record lu (faux positif probable) · paquet precedent	5	26	25	1	475
+084a804d	HI_1_10_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	35	37	15	14	130
+084a804d	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	1	0	0	0	0
+084a804d	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	4	0	0	0	0
+084a804d	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	55	0	0	0	0
+084a804d	HI_1_10_0	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	4	0	0	0	0
+084a804d	HI_1_10_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	15	0	0	0	0
+084a804d	HI_1_10_0	temoin · (ii) paquet a evenements non localise · paquet precedent	9	0	0	0	0
+084a804d	HI_1_10_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	173	0	0	0	0
+084a804d	HI_1_10_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	17	0	0	0	0
+084a804d	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	6	0	0	0	0
+084a804d	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	10	0	0	0	0
+084a804d	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	2	0	0	0	0
+084a804d	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	193	0	0	0	0
+084a804d	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	4	0	0	0	0
+084a804d	HI_1_10_0	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	8	0	0	0	0
+084a804d	HI_1_10_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	18	0	0	0	0
+084a804d	HI_1_10_0	temoin · dans un record lu (faux positif probable) · paquet precedent	1	0	0	0	0
+084a804d	HI_1_10_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	264	0	0	0	0
+111fa685	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	8	211	211	0	3786
+111fa685	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	17	119	117	1	2368
+111fa685	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	83	1765	1765	0	34039
+111fa685	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	62	111	93	11	1406
+111fa685	HI_1_10_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	20	174	173	1	3185
+111fa685	HI_1_10_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	33	276	269	3	5350
+111fa685	HI_1_10_0	rejete · (ii) paquet a evenements non localise · paquet precedent	183	3806	3806	0	73024
+111fa685	HI_1_10_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	135	356	328	9	4328
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	1	10	10	0	205
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	3	38	38	0	788
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	4	86	86	0	1740
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	6	6	6	0	53
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	25	339	337	1	6071
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	57	1111	1109	2	20913
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	49	734	733	0	14612
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	220	1013	973	13	17152
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	3	3	2	1	23
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : terminateur · paquet precedent	2	3	3	0	54
+111fa685	HI_1_10_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	25	34	32	0	310
+111fa685	HI_1_10_0	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	2	2	1	1	9
+111fa685	HI_1_10_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	7	7	6	0	103
+111fa685	HI_1_10_0	rejete · dans un record lu (faux positif probable) · paquet precedent	3	4	4	0	88
+111fa685	HI_1_10_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	116	122	99	8	1385
+111fa685	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	2	0	0	0	0
+111fa685	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	7	0	0	0	0
+111fa685	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	59	0	0	0	0
+111fa685	HI_1_10_0	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	7	0	0	0	0
+111fa685	HI_1_10_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	9	0	0	0	0
+111fa685	HI_1_10_0	temoin · (ii) paquet a evenements non localise · paquet precedent	5	0	0	0	0
+111fa685	HI_1_10_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	195	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	9	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	6	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	12	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	3	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	303	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	1	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur · paquet precedent	1	0	0	0	0
+111fa685	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	22	0	0	0	0
+111fa685	HI_1_10_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	10	0	0	0	0
+111fa685	HI_1_10_0	temoin · dans un record lu (faux positif probable) · paquet precedent	2	0	0	0	0
+111fa685	HI_1_10_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	216	0	0	0	0
+11de8353	HI_1_9_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	16	196	195	1	3531
+11de8353	HI_1_9_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	17	325	323	2	6402
+11de8353	HI_1_9_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	70	1039	1039	0	20340
+11de8353	HI_1_9_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	48	75	58	7	1023
+11de8353	HI_1_9_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	34	471	471	0	8827
+11de8353	HI_1_9_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	23	430	426	2	7946
+11de8353	HI_1_9_0	rejete · (ii) paquet a evenements non localise · paquet precedent	137	2991	2989	1	56652
+11de8353	HI_1_9_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	87	290	260	6	5166
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	1	1	1	0	0
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	4	16	15	0	374
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	4	4	0	1	46
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	34	560	559	1	10273
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	56	1279	1277	0	22639
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	40	623	617	4	10288
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	175	975	923	13	17253
+11de8353	HI_1_9_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	2	2	1	0	32
+11de8353	HI_1_9_0	rejete · (iii) NEW lu desynchronise · 4-10 paquets avant	1	1	0	0	16
+11de8353	HI_1_9_0	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	1	1	0	1	0
+11de8353	HI_1_9_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	4	9	8	0	133
+11de8353	HI_1_9_0	rejete · dans un record lu (faux positif probable) · paquet precedent	6	7	7	0	91
+11de8353	HI_1_9_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	165	245	198	3	3670
+11de8353	HI_1_9_0	temoin · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	1	0	0	0	0
+11de8353	HI_1_9_0	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	3	0	0	0	0
+11de8353	HI_1_9_0	temoin · (i) tete d un paquet a evenements, avant le debut · paquet precedent	1	0	0	0	0
+11de8353	HI_1_9_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	62	0	0	0	0
+11de8353	HI_1_9_0	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	2	0	0	0	0
+11de8353	HI_1_9_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	12	0	0	0	0
+11de8353	HI_1_9_0	temoin · (ii) paquet a evenements non localise · paquet precedent	4	0	0	0	0
+11de8353	HI_1_9_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	154	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	1	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	11	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	3	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	9	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	2	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	196	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : terminateur · paquet precedent	1	0	0	0	0
+11de8353	HI_1_9_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	7	0	0	0	0
+11de8353	HI_1_9_0	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	5	0	0	0	0
+11de8353	HI_1_9_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	14	0	0	0	0
+11de8353	HI_1_9_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	276	0	0	0	0
+1c4c63c2	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	42	2993	2971	22	34665
+1c4c63c2	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	39	1733	1667	65	14326
+1c4c63c2	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	140	11227	11187	40	178007
+1c4c63c2	HI_1_10_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	342	1713	1161	537	20108
+1c4c63c2	HI_1_10_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	73	4359	4334	25	62694
+1c4c63c2	HI_1_10_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	58	434	353	78	7251
+1c4c63c2	HI_1_10_0	rejete · (ii) paquet a evenements non localise · paquet precedent	107	8156	8134	22	114375
+1c4c63c2	HI_1_10_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	551	2008	1158	837	15209
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	3	97	94	3	1835
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	7	15	9	5	166
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	3	92	91	1	1855
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	28	69	34	34	117
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	60	2185	2071	114	36496
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	79	2208	2151	57	42428
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	67	1212	1158	53	21692
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	589	3094	2326	742	41920
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	2	2	0	2	0
+1c4c63c2	HI_1_10_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	19	36	8	27	30
+1c4c63c2	HI_1_10_0	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	1	1	0	1	0
+1c4c63c2	HI_1_10_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	8	8	2	5	13
+1c4c63c2	HI_1_10_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	143	225	20	196	195
+1c4c63c2	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	14	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	23	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · paquet precedent	9	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	475	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	8	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	35	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (ii) paquet a evenements non localise · paquet precedent	7	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	704	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	1	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	2	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : ouverte · paquet precedent	2	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	33	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	13	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	42	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	13	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	710	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur · 2-3 paquets avant	1	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	2	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur · paquet precedent	1	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	14	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	7	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	7	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · dans un record lu (faux positif probable) · paquet precedent	3	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	211	0	0	0	0
+396cfc92	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	1	1	1	0	8
+396cfc92	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	100	5300	5300	0	37805
+396cfc92	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	11	441	440	1	3626
+396cfc92	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	4	69	68	1	579
+396cfc92	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	13	564	564	0	3415
+396cfc92	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	3	131	131	0	1115
+396cfc92	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	1	3	3	0	19
+396cfc92	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	7	455	455	0	2916
+396cfc92	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	6	431	431	0	3433
+396cfc92	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	1	57	57	0	434
+396cfc92	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	16	895	895	0	3408
+396cfc92	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	1	1	1	0	7
+396cfc92	HI_1_13_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	1	1	1	0	4
+396cfc92	HI_1_13_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	1	1	0	1	0
+396cfc92	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	5	0	0	0	0
+396cfc92	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	7	0	0	0	0
+396cfc92	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	1	0	0	0	0
+396cfc92	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	1	0	0	0	0
+396cfc92	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	10	0	0	0	0
+396cfc92	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	2	0	0	0	0
+396cfc92	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	59	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	12	605	602	3	5795
+4f77afc1	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	9	358	352	6	8711
+4f77afc1	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	42	994	993	1	23880
+4f77afc1	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	67	400	343	56	7411
+4f77afc1	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	16	217	217	0	5503
+4f77afc1	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	15	211	201	10	5017
+4f77afc1	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	57	1794	1793	1	42573
+4f77afc1	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	85	931	865	63	14738
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	1	25	25	0	598
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	2	2	0	2	0
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	4	146	145	1	3205
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	17	19	0	19	0
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	25	603	603	0	13548
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	28	352	339	13	7865
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	38	998	996	2	22524
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	72	554	494	58	9837
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · 2-3 paquets avant	1	1	0	1	0
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	1	2	0	2	0
+4f77afc1	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	5	17	0	17	0
+4f77afc1	HI_1_13_0	rejete · (iii) NEW lu desynchronise · plus de 10 paquets avant	2	8	8	0	212
+4f77afc1	HI_1_13_0	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	2	2	1	1	29
+4f77afc1	HI_1_13_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	5	9	5	3	137
+4f77afc1	HI_1_13_0	rejete · dans un record lu (faux positif probable) · paquet precedent	3	48	46	1	1237
+4f77afc1	HI_1_13_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	72	88	7	79	205
+4f77afc1	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	1	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	3	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · paquet precedent	2	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	97	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	2	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	3	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (ii) paquet a evenements non localise · paquet precedent	2	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	102	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	1	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	18	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	3	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	10	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	88	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	3	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	4	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	2	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	10	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · dans un record lu (faux positif probable) · paquet precedent	1	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	180	0	0	0	0
+50247b26	version-31	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	7	359	359	0	7948
+50247b26	version-31	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	5	138	138	0	3007
+50247b26	version-31	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	65	1892	1892	0	39845
+50247b26	version-31	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	16	303	303	0	7324
+50247b26	version-31	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	19	527	527	0	13019
+50247b26	version-31	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	19	153	151	1	3315
+50247b26	version-31	rejete · (ii) paquet a evenements non localise · paquet precedent	103	3128	3128	0	71163
+50247b26	version-31	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	29	189	183	3	3764
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	2	6	6	0	158
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	2	148	148	0	3852
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	4	90	90	0	2466
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	31	831	831	0	17378
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	37	1177	1176	1	25961
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	38	854	854	0	19038
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	61	897	886	2	17863
+50247b26	version-31	rejete · (iii') apres l arret de la vue B : terminateur · 2-3 paquets avant	1	7	7	0	137
+50247b26	version-31	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	1	1	1	0	0
+50247b26	version-31	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	6	6	4	1	73
+50247b26	version-31	temoin · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	3	0	0	0	0
+50247b26	version-31	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	8	0	0	0	0
+50247b26	version-31	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	3	0	0	0	0
+50247b26	version-31	temoin · (ii) paquet a evenements non localise · paquet precedent	4	0	0	0	0
+50247b26	version-31	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	78	0	0	0	0
+50247b26	version-31	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	2	0	0	0	0
+50247b26	version-31	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	6	0	0	0	0
+50247b26	version-31	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	3	0	0	0	0
+50247b26	version-31	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	157	0	0	0	0
+50247b26	version-31	temoin · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	2	0	0	0	0
+50247b26	version-31	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	10	0	0	0	0
+50247b26	version-31	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	1	0	0	0	0
+50247b26	version-31	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	4	0	0	0	0
+50247b26	version-31	temoin · dans un record lu (faux positif probable) · paquet precedent	1	0	0	0	0
+50247b26	version-31	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	62	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	14	410	410	0	658
+51ebbc0f	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	1	15	15	0	0
+51ebbc0f	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	10	393	393	0	2627
+51ebbc0f	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	12	266	265	1	9
+51ebbc0f	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	68	1492	1486	0	3461
+51ebbc0f	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	14	258	237	0	372
+51ebbc0f	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	39	1378	1377	0	8731
+51ebbc0f	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	40	563	553	9	348
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	5	129	129	0	3
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	3	73	73	0	149
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	1	92	92	0	593
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	9	307	306	1	609
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	97	1940	1940	0	2956
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	20	328	328	0	847
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	24	1112	1112	0	6432
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	160	3191	3180	7	1402
+51ebbc0f	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	2	5	4	0	0
+51ebbc0f	HI_1_13_0	rejete · (iii) NEW lu desynchronise · 2-3 paquets avant	167	4443	4443	0	112
+51ebbc0f	HI_1_13_0	rejete · (iii) NEW lu desynchronise · 4-10 paquets avant	11	192	192	0	1
+51ebbc0f	HI_1_13_0	rejete · (iii) NEW lu desynchronise · plus de 10 paquets avant	1	9	9	0	0
+51ebbc0f	HI_1_13_0	rejete · (iv) NEW lu refuse · 4-10 paquets avant	1	4	4	0	0
+51ebbc0f	HI_1_13_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	2	2	1	0	0
+51ebbc0f	HI_1_13_0	rejete · dans un record lu (faux positif probable) · paquet precedent	1	3	3	0	0
+51ebbc0f	HI_1_13_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	6	6	5	1	18
+51ebbc0f	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	5	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	2	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	3	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	57	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	1	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	10	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	3	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	2	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	180	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	1	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	1	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	1	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	79	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	6	469	469	0	2559
+60ae07c4	HI_1_8_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	3	63	62	0	373
+60ae07c4	HI_1_8_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	91	6773	6773	0	41786
+60ae07c4	HI_1_8_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	65	110	79	9	619
+60ae07c4	HI_1_8_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	22	1264	1261	2	6615
+60ae07c4	HI_1_8_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	21	775	771	3	4124
+60ae07c4	HI_1_8_0	rejete · (ii) paquet a evenements non localise · paquet precedent	133	9559	9557	2	57824
+60ae07c4	HI_1_8_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	75	249	223	13	1451
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	3	4	4	0	28
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	4	11	5	1	73
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	7	271	271	0	1649
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	67	82	54	2	516
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	56	1873	1866	0	10891
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	79	3762	3749	3	19575
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	42	1053	1047	0	5881
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	279	2034	1919	16	11364
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : terminateur · 2-3 paquets avant	1	1	0	0	8
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	3	4	3	0	21
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : terminateur · paquet precedent	8	12	12	0	87
+60ae07c4	HI_1_8_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	24	55	42	0	209
+60ae07c4	HI_1_8_0	rejete · (iii) NEW lu desynchronise · 4-10 paquets avant	1	5	5	0	7
+60ae07c4	HI_1_8_0	rejete · (iii) NEW lu desynchronise · plus de 10 paquets avant	2	2	2	0	13
+60ae07c4	HI_1_8_0	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	10	14	12	0	93
+60ae07c4	HI_1_8_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	17	27	18	0	182
+60ae07c4	HI_1_8_0	rejete · dans un record lu (faux positif probable) · paquet precedent	18	32	25	0	183
+60ae07c4	HI_1_8_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	411	522	343	19	3119
+60ae07c4	HI_1_8_0	temoin · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	1	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	3	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (i) tete d un paquet a evenements, avant le debut · paquet precedent	1	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	76	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	4	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (ii) paquet a evenements non localise · paquet precedent	2	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	106	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	1	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	1	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	54	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	1	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	5	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	272	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : terminateur · 2-3 paquets avant	1	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : terminateur · paquet precedent	1	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	21	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	4	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	18	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · dans un record lu (faux positif probable) · paquet precedent	1	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	545	0	0	0	0
+a349fea8	version-33	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	24	997	997	0	17604
+a349fea8	version-33	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	13	203	203	0	4720
+a349fea8	version-33	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	127	4553	4553	0	87915
+a349fea8	version-33	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	55	677	671	0	15644
+a349fea8	version-33	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	48	1066	1065	1	25909
+a349fea8	version-33	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	36	628	626	1	15585
+a349fea8	version-33	rejete · (ii) paquet a evenements non localise · paquet precedent	150	4041	4041	0	85539
+a349fea8	version-33	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	95	709	695	4	15099
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	2	10	9	0	255
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	4	6	5	0	103
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	8	204	204	0	4766
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	11	33	33	0	702
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	64	1510	1509	0	35042
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	53	1019	1015	1	25559
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	36	945	945	0	15547
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	171	1388	1351	9	27672
+a349fea8	version-33	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	13	14	7	2	35
+a349fea8	version-33	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	3	3	1	0	7
+a349fea8	version-33	rejete · dans un record lu (faux positif probable) · paquet precedent	2	2	2	0	43
+a349fea8	version-33	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	33	33	20	0	64
+a349fea8	version-33	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	2	0	0	0	0
+a349fea8	version-33	temoin · (i) tete d un paquet a evenements, avant le debut · paquet precedent	1	0	0	0	0
+a349fea8	version-33	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	24	0	0	0	0
+a349fea8	version-33	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	4	0	0	0	0
+a349fea8	version-33	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	7	0	0	0	0
+a349fea8	version-33	temoin · (ii) paquet a evenements non localise · paquet precedent	9	0	0	0	0
+a349fea8	version-33	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	198	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	3	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : ouverte · paquet precedent	2	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	36	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	9	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	24	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	5	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	356	0	0	0	0
+a349fea8	version-33	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	19	0	0	0	0
+a349fea8	version-33	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	2	0	0	0	0
+a349fea8	version-33	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	9	0	0	0	0
+a349fea8	version-33	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	103	0	0	0	0
+a521164d	HI_1_4_1	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	11	361	361	0	8919
+a521164d	HI_1_4_1	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	6	109	109	0	2462
+a521164d	HI_1_4_1	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	57	1222	1222	0	26047
+a521164d	HI_1_4_1	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	12	37	32	0	569
+a521164d	HI_1_4_1	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	17	448	447	0	9564
+a521164d	HI_1_4_1	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	14	191	188	0	4002
+a521164d	HI_1_4_1	rejete · (ii) paquet a evenements non localise · paquet precedent	63	1349	1346	0	28344
+a521164d	HI_1_4_1	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	56	260	251	1	4790
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	4	95	94	0	1987
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	1	1	1	0	1
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	6	72	72	0	1751
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	7	7	3	0	28
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	25	471	469	0	10875
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	29	579	578	0	13333
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	20	645	644	0	13048
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	117	485	455	1	6956
+a521164d	HI_1_4_1	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	11	11	10	0	3
+a521164d	HI_1_4_1	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	4	4	3	0	0
+a521164d	HI_1_4_1	rejete · dans un record lu (faux positif probable) · paquet precedent	1	1	1	0	1
+a521164d	HI_1_4_1	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	34	34	26	0	20
+a521164d	HI_1_4_1	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	1	0	0	0	0
+a521164d	HI_1_4_1	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	18	0	0	0	0
+a521164d	HI_1_4_1	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	2	0	0	0	0
+a521164d	HI_1_4_1	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	1	0	0	0	0
+a521164d	HI_1_4_1	temoin · (ii) paquet a evenements non localise · paquet precedent	6	0	0	0	0
+a521164d	HI_1_4_1	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	93	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	4	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	13	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	2	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	5	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	2	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	184	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : terminateur · 2-3 paquets avant	1	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	5	0	0	0	0
+a521164d	HI_1_4_1	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	21	0	0	0	0
+a521164d	HI_1_4_1	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	1	0	0	0	0
+a521164d	HI_1_4_1	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	1	0	0	0	0
+a521164d	HI_1_4_1	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	74	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	2	179	179	0	1226
+bcb6d393	HI_1_12_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	18	1292	1292	0	7792
+bcb6d393	HI_1_12_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	4	13	11	1	82
+bcb6d393	HI_1_12_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	1	57	57	0	288
+bcb6d393	HI_1_12_0	rejete · (ii) paquet a evenements non localise · paquet precedent	14	637	637	0	3879
+bcb6d393	HI_1_12_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	2	2	1	0	0
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	4	240	240	0	1498
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	13	28	25	0	91
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	2	169	169	0	800
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	1	22	22	0	129
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	6	418	418	0	2556
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	22	34	29	0	59
+bcb6d393	HI_1_12_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	1	1	0	0	0
+bcb6d393	HI_1_12_0	rejete · (iii) NEW lu desynchronise · 4-10 paquets avant	1	11	11	0	122
+bcb6d393	HI_1_12_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	69	71	49	0	3
+bcb6d393	HI_1_12_0	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	1	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	8	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	7	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	1	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (iii') apres l arret de la vue B : ouverte · paquet precedent	1	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	17	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	34	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	2	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	1	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	4	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	66	0	0	0	0
+bf15f7ab	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	1	127	127	0	30
+bf15f7ab	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	8	661	661	0	4414
+bf15f7ab	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	5	11	5	0	77
+bf15f7ab	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	1	1	1	0	7
+bf15f7ab	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	9	11	4	0	77
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	1	1	1	0	7
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	13	21	16	0	147
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	3	241	240	0	1742
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	10	261	261	0	1332
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	4	5	5	0	7
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	18	65	56	0	162
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · paquet precedent	1	107	107	0	837
+bf15f7ab	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	6	8	5	1	49
+bf15f7ab	HI_1_13_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	1	3	1	0	21
+bf15f7ab	HI_1_13_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	113	184	98	1	1271
+bf15f7ab	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	2	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	4	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	6	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	5	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	3	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	1	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	107	0	0	0	0
+bfecd02b	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	2	133	133	0	843
+bfecd02b	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	2	102	102	0	773
+bfecd02b	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	16	1793	1793	0	13672
+bfecd02b	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	1	1	0	1	0
+bfecd02b	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	3	7	7	0	60
+bfecd02b	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	4	428	428	0	2717
+bfecd02b	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	1	1	0	1	0
+bfecd02b	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	1	1	0	1	0
+bfecd02b	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	5	583	583	0	4771
+bfecd02b	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	2	45	45	0	378
+bfecd02b	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	1	51	51	0	1
+bfecd02b	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	1	1	1	0	9
+bfecd02b	HI_1_13_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	2	2	1	1	7
+bfecd02b	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	1	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	4	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	7	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	2	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	15	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	1	1	1	0	11
+c75f33b8	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	1	1	0	1	0
+c75f33b8	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	8	353	353	0	1826
+c75f33b8	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	2	2	1	1	9
+c75f33b8	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	16	1182	1182	0	5468
+c75f33b8	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	12	105	102	3	294
+c75f33b8	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	2	24	23	1	0
+c75f33b8	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	2	237	237	0	1188
+c75f33b8	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	1	6	6	0	24
+c75f33b8	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	9	270	266	4	1401
+c75f33b8	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	3	3	0	3	0
+c75f33b8	HI_1_13_0	rejete · (iii) NEW lu desynchronise · 2-3 paquets avant	3	86	86	0	0
+c75f33b8	HI_1_13_0	rejete · (iii) NEW lu desynchronise · paquet precedent	1	25	25	0	0
+c75f33b8	HI_1_13_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	1	1	0	1	0
+c75f33b8	HI_1_13_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	3	3	0	3	0
+c75f33b8	HI_1_13_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	1	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · (ii) paquet a evenements non localise · paquet precedent	1	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	8	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	3	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	1	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	20	0	0	0	0
+d9781168	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	1	9	9	0	90
+d9781168	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	13	935	935	0	5920
+d9781168	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	2	3	0	3	0
+d9781168	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	20	1191	1190	1	7694
+d9781168	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	7	114	108	6	828
+d9781168	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	78	5411	5409	2	31022
+d9781168	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	33	214	183	31	921
+d9781168	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	1	136	136	0	769
+d9781168	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	9	539	539	0	3812
+d9781168	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	19	1604	1604	0	7999
+d9781168	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	11	480	479	1	3113
+d9781168	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	23	467	458	9	2110
+d9781168	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	1	1	0	1	0
+d9781168	HI_1_13_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	14	18	1	17	6
+d9781168	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	6	0	0	0	0
+d9781168	HI_1_13_0	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	1	0	0	0	0
+d9781168	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	60	0	0	0	0
+d9781168	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	1	0	0	0	0
+d9781168	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	26	0	0	0	0
+d9781168	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	1	0	0	0	0
+d9781168	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	1	0	0	0	0
+d9781168	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	53	0	0	0	0
+e5adf7b2	HI_1_11_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	14	418	418	0	9128
+e5adf7b2	HI_1_11_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	10	87	84	2	1856
+e5adf7b2	HI_1_11_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	78	1484	1482	1	31561
+e5adf7b2	HI_1_11_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	48	58	30	14	534
+e5adf7b2	HI_1_11_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	26	416	415	1	8760
+e5adf7b2	HI_1_11_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	26	234	230	1	4830
+e5adf7b2	HI_1_11_0	rejete · (ii) paquet a evenements non localise · paquet precedent	158	2539	2537	0	52232
+e5adf7b2	HI_1_11_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	101	307	272	7	5401
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	1	1	0	0	19
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	2	53	53	0	1113
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	9	10	6	0	70
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	39	753	753	0	15332
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	63	1505	1502	0	31995
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	57	1122	1120	2	23439
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	187	851	789	13	15543
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : terminateur · 4-10 paquets avant	1	1	0	0	21
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : terminateur · paquet precedent	1	1	1	0	16
+e5adf7b2	HI_1_11_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	10	12	10	0	82
+e5adf7b2	HI_1_11_0	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	1	1	1	0	0
+e5adf7b2	HI_1_11_0	rejete · dans un record lu (faux positif probable) · 4-10 paquets avant	9	9	5	2	38
+e5adf7b2	HI_1_11_0	rejete · dans un record lu (faux positif probable) · paquet precedent	4	5	5	0	94
+e5adf7b2	HI_1_11_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	105	106	72	10	382
+e5adf7b2	HI_1_11_0	temoin · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	3	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	5	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	61	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (ii) paquet a evenements non localise · 2-3 paquets avant	4	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (ii) paquet a evenements non localise · 4-10 paquets avant	5	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (ii) paquet a evenements non localise · paquet precedent	6	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	163	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	1	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	11	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	6	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	9	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	3	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	259	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	4	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · dans un record lu (faux positif probable) · 2-3 paquets avant	4	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	14	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · dans un record lu (faux positif probable) · paquet precedent	5	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	229	0	0	0	0
+f75e7053	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	2	75	75	0	271
+f75e7053	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	32	2284	2284	0	14832
+f75e7053	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	10	1467	1467	0	9860
+f75e7053	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	3	128	127	1	896
+f75e7053	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	4	94	94	0	0
+f75e7053	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	3	111	111	0	124
+f75e7053	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	2	128	128	0	456
+f75e7053	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	1	1	1	0	0
+f75e7053	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	1	0	0	0	0
+f75e7053	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	1	0	0	0	0
+f75e7053	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	2	0	0	0	0
+f75e7053	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	1	0	0	0	0
+f75e7053	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	21	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant	55	1762	1762	0	2712
+fb1a1a72	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant	4	98	98	0	147
+fb1a1a72	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · paquet precedent	13	414	414	0	2805
+fb1a1a72	HI_1_13_0	rejete · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	35	726	721	4	19
+fb1a1a72	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 2-3 paquets avant	12	298	298	0	364
+fb1a1a72	HI_1_13_0	rejete · (ii) paquet a evenements non localise · 4-10 paquets avant	3	53	53	0	436
+fb1a1a72	HI_1_13_0	rejete · (ii) paquet a evenements non localise · paquet precedent	10	289	289	0	1498
+fb1a1a72	HI_1_13_0	rejete · (ii) paquet a evenements non localise · plus de 10 paquets avant	17	385	384	0	123
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	2	46	46	0	345
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · 4-10 paquets avant	3	62	61	1	282
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · paquet precedent	5	213	213	0	1258
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	24	568	564	1	535
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant	147	2112	2112	0	745
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	15	277	275	0	344
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	17	355	347	0	1958
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	253	5782	5763	6	1257
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · 2-3 paquets avant	1	13	13	0	0
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · paquet precedent	3	44	40	0	271
+fb1a1a72	HI_1_13_0	rejete · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	2	2	2	0	0
+fb1a1a72	HI_1_13_0	rejete · (iii) NEW lu desynchronise · 2-3 paquets avant	340	9424	9424	0	300
+fb1a1a72	HI_1_13_0	rejete · (iii) NEW lu desynchronise · 4-10 paquets avant	13	303	301	0	31
+fb1a1a72	HI_1_13_0	rejete · (iii) NEW lu desynchronise · plus de 10 paquets avant	5	71	71	0	116
+fb1a1a72	HI_1_13_0	rejete · dans un record lu (faux positif probable) · 2-3 paquets avant	2	9	9	0	0
+fb1a1a72	HI_1_13_0	rejete · dans un record lu (faux positif probable) · paquet precedent	5	25	6	0	0
+fb1a1a72	HI_1_13_0	rejete · dans un record lu (faux positif probable) · plus de 10 paquets avant	7	7	4	2	4
+fb1a1a72	HI_1_13_0	temoin · (i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant	15	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (ii) paquet a evenements non localise · plus de 10 paquets avant	13	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · 2-3 paquets avant	2	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant	16	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant	3	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · paquet precedent	1	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant	276	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · (iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant	3	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · dans un record lu (faux positif probable) · 4-10 paquets avant	5	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · dans un record lu (faux positif probable) · plus de 10 paquets avant	120	0	0	0	0

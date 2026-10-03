@@ -6,7 +6,8 @@
  * oubliés en FR » (règle projet n°6 : à la 3e occurrence, centraliser +
  * garde-rail qui interdit l'ancien littéral). Ce test interdit la
  * RÉ-introduction, côté FRANÇAIS uniquement, des anglicismes purgés par I15 :
- * PB, kill(s), assist(s), streak, win rate, leaderboard.
+ * PB, kill(s), assist(s), streak, win rate, leaderboard — et, depuis le
+ * 2026-09-05 (décision utilisateur n°6), « heatmap », à dire « carte de chaleur ».
  *
  * PÉRIMÈTRE — fichiers traités par I15 + complément I15-bis (2026-07-24, lot
  * dédié à la dette listée comme point de vigilance dans le rapport I15) :
@@ -14,9 +15,13 @@
  * périmètre, cf. rapports I15/I15-bis) :
  *   - 5 dictionnaires hand-written (features/<feature>/i18n.ts) : notifications,
  *     ascension, match-view, squad, _shared/SessionBriefing.
- *   - 9 manifests TOML (lib/i18n/manifests/*.toml) : profile, squad, common,
+ *   - 10 manifests TOML (lib/i18n/manifests/*.toml) : profile, squad, common,
  *     palmares, admin, match_view, timeseries, explorer, session (les 3
- *     derniers ajoutés par I15-bis — anciennement exclus, dette résorbée).
+ *     derniers ajoutés par I15-bis — anciennement exclus, dette résorbée),
+ *     tactical (2026-09-06, phase 4 du plan Tactique : manifeste NEUF, entré
+ *     dans le périmètre dès sa création plutôt qu'après coup — c'est aussi
+ *     celui où « heatmap » serait le plus tentant, ses lectures de placement
+ *     étant des cartes de chaleur).
  *
  * EXCLU DÉLIBÉRÉMENT — `coaching_tips.toml` (~80 entrées, registre esport) :
  * relecture éditoriale dédiée faite le 2026-07-24 (hors I15/I15-bis, périmètre
@@ -63,9 +68,16 @@
  *     template de clé) confirmant AUCUNE référence ailleurs dans
  *     apps/web/src : section entière morte (Onglet Résumé superseded),
  *     supprimée du manifest (FR+EN). Plus d'exception nécessaire ici.
- *   - `badge` et `playlist` ne sont volontairement PAS dans la liste des
- *     patterns interdits (mots jugés assimilés / cas au cas par cas ailleurs)
- *     — rien à exempter pour eux.
+ *   - MOTS ASSIMILÉS, volontairement PAS dans la liste des patterns interdits
+ *     (rien à exempter pour eux) :
+ *       · `badge`, `playlist` — jugés assimilés, cas au cas par cas ailleurs ;
+ *       · `lobby` (décision utilisateur du 2026-09-05, escalade 6) — c'est le
+ *         DÉNOMINATEUR d'une part : « les 8 ou 12 joueurs du match », tous camps
+ *         confondus. « Partie » désigne le match lui-même et « salon » n'a pas ce
+ *         sens en français de jeu vidéo : aucun équivalent FR net dans ce rôle, et
+ *         le mot est déjà servi en prose FR par les manifestes du titre
+ *         (`config/titles/halo_infinite/mappings/engagement.toml`). Le remplacer
+ *         par une périphrase rendrait la mesure moins lisible, pas plus française.
  *   - Noms propres (Kamikaze, Top Gun) : ne matchent aucun des patterns
  *     interdits, aucune exception nécessaire.
  */
@@ -91,11 +103,28 @@ const MANIFESTS_DIR = join(process.cwd(), 'src', 'lib', 'i18n', 'manifests')
 // anglicisme en début de phrase ("Kills", "Streak"...).
 const FORBIDDEN_PATTERNS: { name: string; re: RegExp }[] = [
   { name: 'PB', re: /\bPB\b/i },
-  { name: 'kill(s)', re: /\bkills?\b/i },
-  { name: 'assist(s)', re: /\bassists?\b/i },
+  // Fin de mot Unicode, pas `\b` (ASCII en JS) : « assisté », « assistée » sont du
+  // FRANÇAIS — `\b` voyait une frontière avant le « é » et les signalait (faux positif
+  // sur la description du badge « Voleur », CI rouge du 2026-09-17).
+  { name: 'kill(s)', re: /\bkills?(?![\p{L}\p{N}_])/iu },
+  { name: 'assist(s)', re: /\bassists?(?![\p{L}\p{N}_])/iu },
   { name: 'streak', re: /\bstreak\b/i },
+  // LES COMPOSÉS SOUDÉS PASSAIENT (constat du 2026-09-17). `\bkills?(?!…)` et `\bstreak\b`
+  // exigent une frontière APRÈS le mot : « killstreak », « killfeed », « winstreak » les
+  // franchissaient tous les trois sans être vus. Deux motifs dédiés, parce que les deux
+  // familles se recouvrent sans se contenir (« killfeed » n'est pas un composé de streak,
+  // « winstreak » n'est pas un composé de kill).
+  // Ni « skill » ni « killer » ne sont visés : ils ne l'étaient pas avant (pas de frontière
+  // de mot avant le « kill » de « skill », et « killer » n'est aucun de ces composés), et
+  // l'ajout ne doit rien élargir d'autre que les soudures ci-dessus.
+  { name: 'kill composé (killstreak/killfeed/killcam)', re: /\bkill(streak|feed|cam)s?(?![\p{L}\p{N}_])/iu },
+  { name: 'streak composé (winstreak/lossstreak/killstreak)', re: /\b(win|loss|kill)streaks?(?![\p{L}\p{N}_])/iu },
   { name: 'win rate', re: /\bwin rate\b/i },
   { name: 'leaderboard', re: /\bleaderboard\b/i },
+  // « heatmap » -> « carte de chaleur » (décision utilisateur du 2026-09-05, n°6).
+  // Deux manifestes le servaient encore en FR (`explorer.toml`, `timeseries.toml`) et
+  // passaient : le mot n'était tout simplement pas dans cette liste.
+  { name: 'heatmap', re: /\bheatmap\b/i },
 ]
 
 // Exceptions explicites : clé = `${source}:${path}`. Chaque entrée est datée
@@ -222,7 +251,7 @@ describe('garde-rail anti-anglicismes FR (I15 + I15-bis, périmètre = fichiers 
     expect(offenders, `Anglicismes détectés :\n${formatOffenders(offenders)}`).toEqual([])
   })
 
-  it('manifests TOML (profile/squad/common/palmares/admin/match_view/timeseries/explorer/session) : aucun anglicisme interdit côté FR', () => {
+  it('manifests TOML (profile/squad/common/palmares/admin/match_view/timeseries/explorer/session/tactical) : aucun anglicisme interdit côté FR', () => {
     const offenders = [
       ...scanManifest('profile.toml'),
       ...scanManifest('squad.toml'),
@@ -233,7 +262,50 @@ describe('garde-rail anti-anglicismes FR (I15 + I15-bis, périmètre = fichiers 
       ...scanManifest('timeseries.toml'),
       ...scanManifest('explorer.toml'),
       ...scanManifest('session.toml'),
+      // Onglet Tactique (2026-09-06, phase 4) : manifeste NEUF, donc aucune dette à
+      // résorber — il entre dans le périmètre dès sa création. C'est aussi le manifeste
+      // où « heatmap » serait le plus tentant : ses lectures de placement sont des cartes
+      // de chaleur, et le mot anglais est interdit par la décision utilisateur du
+      // 2026-09-05.
+      ...scanManifest('tactical.toml'),
     ]
     expect(offenders, `Anglicismes détectés :\n${formatOffenders(offenders)}`).toEqual([])
+  })
+})
+
+describe("motifs anti-anglicismes — frontières de mot Unicode", () => {
+  const pattern = (name: string) => FORBIDDEN_PATTERNS.find((p) => p.name === name)!.re
+  it("ne signale pas le français accentué (assisté, assistée)", () => {
+    expect(pattern("assist(s)").test("assisté par cet ami")).toBe(false)
+    expect(pattern("assist(s)").test("frag assistée")).toBe(false)
+  })
+  it("signale toujours l’anglicisme", () => {
+    expect(pattern("assist(s)").test("3 assists")).toBe(true)
+    expect(pattern("assist(s)").test("Assist")).toBe(true)
+    expect(pattern("kill(s)").test("kills totaux")).toBe(true)
+  })
+  it("signale les composés soudés (killstreak, killfeed, winstreak)", () => {
+    const composeKill = pattern("kill composé (killstreak/killfeed/killcam)")
+    const composeStreak = pattern("streak composé (winstreak/lossstreak/killstreak)")
+    expect(composeKill.test("killstreak")).toBe(true)
+    expect(composeKill.test("Killfeed")).toBe(true)
+    expect(composeKill.test("killcams sauvegardées")).toBe(true)
+    expect(composeStreak.test("winstreak")).toBe(true)
+    expect(composeStreak.test("Winstreaks")).toBe(true)
+    expect(composeStreak.test("killstreak")).toBe(true)
+  })
+  it("n’élargit rien : skill, killer et le français ne sont pas signalés", () => {
+    const composeKill = pattern("kill composé (killstreak/killfeed/killcam)")
+    const composeStreak = pattern("streak composé (winstreak/lossstreak/killstreak)")
+    for (const re of [composeKill, composeStreak]) {
+      expect(re.test("skill")).toBe(false)
+      expect(re.test("killer")).toBe(false)
+      expect(re.test("frags en série")).toBe(false)
+      expect(re.test("fil des frags")).toBe(false)
+    }
+    // Rappel : ces deux-là n'étaient DÉJÀ pas détectés par les motifs simples — l'ajout
+    // des composés ne doit pas les faire entrer par la bande.
+    expect(pattern("kill(s)").test("skill")).toBe(false)
+    expect(pattern("kill(s)").test("killer")).toBe(false)
   })
 })

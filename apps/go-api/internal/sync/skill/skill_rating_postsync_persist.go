@@ -1,6 +1,6 @@
 // Package sync — skill_rating_postsync_persist.go : chemin batch pour
 // upsertLUSRRatings, basé sur le AppendOnlyLUSRPersister (Phase 2.C du
-// plan d'éradication ART, cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md).
+// plan d'éradication ART, cf. .ai/archive/V7/PLAN_LUSR_ART_HOME_CRASH.md).
 //
 // **Sémantique append-only** : chaque batch est un INSERT pur (pas de
 // DELETE, pas d'UPDATE). La table match_skill_rank stocke N versions
@@ -28,7 +28,7 @@ import (
 
 // NB : la compaction des versions superseded de match_skill_rank (ancien
 // compactMatchSkillRankSuperseded : DELETE id NOT IN MAX(id)…) a été SUPPRIMÉE —
-// elle déclenchait le bug ART DuckDB amont #23046 (crash JGtm 2026-06-20) malgré
+// elle déclenchait le bug ART DuckDB amont #23645 (crash JGtm 2026-06-20) malgré
 // mono-writer + PK BIGINT. La table reste append-only pur ; la vue
 // match_skill_rank_latest (MAX(id)) reste correcte avec les versions superseded.
 

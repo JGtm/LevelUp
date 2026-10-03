@@ -1,8 +1,8 @@
 // Package port — engagement_score.go : interfaces de persistence et service
 // pour la metrique EngagementScore.
 //
-// Reference conceptuelle : .ai/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md
-// Plan d'implementation : .ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md
+// Reference conceptuelle : .ai/archive/V7/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md
+// Plan d'implementation : .ai/archive/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md
 //
 // Phase 1.4 du plan : decouplage handler/service via interface, et
 // service/repository via interface. Le service ne connait pas l'implementation

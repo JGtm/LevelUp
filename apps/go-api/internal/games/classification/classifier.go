@@ -15,7 +15,7 @@
 // classées (HopperId pour Halo 5). La plus universelle — tout titre Halo a des
 // playlists + une notion autoritative de « classé ». Réutilisation = DATA seule
 // (un nouveau titre fournit son TOML d'ids) → zéro code. Cf.
-// .ai/HANDOFF_H5_RANKED_CLASSIFICATION.md §7 (extensibilité Halo 7).
+// .ai/archive/V7/HANDOFF_H5_RANKED_CLASSIFICATION.md §7 (extensibilité Halo 7).
 package classification
 
 // RankedClassifier détermine, pour une playlist donnée (par son id), si le match

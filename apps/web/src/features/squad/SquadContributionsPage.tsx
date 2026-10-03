@@ -2,21 +2,31 @@
  * SquadContributionsPage — onglet Contributions de l'Escouade.
  *
  * Consomme le contexte SquadContext fourni par SquadLayout. Affiche les
- * charts de contribution par joueur : K/D/A par minute, synergies radar,
- * performance, mécaniques de frag. Le « Premier frag / première mort » a
- * rejoint l'onglet Dynamique (chart lanes).
+ * charts de contribution par joueur : K/D/A par minute, synergies radar, frags et armes
+ * (Répartition des frags, Outils de destruction — arrivés d'Usages au lot L2 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), objectif (quatre cartes, lot L3 du même plan),
+ * performance, impact des coéquipiers, médailles, mécaniques de frag. Le
+ * « Premier frag / première mort » a rejoint l'onglet Dynamique (chart lanes) ;
+ * l'impact et les médailles sont arrivés de Synergies (lot 3, 2026-09-22).
  *
  * Multi-titres : strings UI via getSquadText.
  */
+import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
+import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
+import type { MedalDigestEntry, TeammatesPageResponse } from '@/lib/api/types'
 import { useSquadContext } from './SquadContext'
-import { getSquadText } from './i18n'
+import { getSquadText, type SquadText } from './i18n'
 import { SquadPerMinuteChart } from './SquadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
+import { SquadFragSection } from './SquadFragSection'
+import { SquadObjectiveSection } from './objectif/SquadObjectiveSection'
+import { SquadImpactScoreboard } from './SquadImpactScoreboard'
+import { MedalDigest } from './MedalDigest'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { getSquadPlayerColors } from './colors'
 
@@ -24,23 +34,49 @@ export function SquadContributionsPage() {
   const { confirmedGamertags, pageData, playerSlug } = useSquadContext()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
-  const perMinuteRows = pageData?.per_minute_stats ?? []
-  const synergyRadar = pageData?.synergy_radar ?? []
+  // Tous les dérivés de cette page sont MÉMOÏSÉS : ils descendent en props dans
+  // des ChartCard, qui reconstruisent leur option ECharts (et rejouent donc leur
+  // animation d'entrée) dès qu'une prop change d'identité — même si sa valeur
+  // est la même. Les `?? []` / `?? {}` écrits à la volée en fabriquaient une
+  // neuve à chaque rendu.
+  const perMinuteRows = useMemo(() => pageData?.per_minute_stats ?? [], [pageData?.per_minute_stats])
+  const synergyRadar = useMemo(() => pageData?.synergy_radar ?? [], [pageData?.synergy_radar])
   const performanceSeries = pageData?.performance_series
+  const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
   // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que le mapping couleurs matche les clés des SquadPerMinuteEntry.player
   // / SquadSynergyRadarSeries.player etc.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
-  const playerColors = getSquadPlayerColors(mainPlayerKey, confirmedGamertags)
-  const synergyAxisLabels: Record<string, string> = {
-    combat: t.synergyRadar.axes.combat,
-    survival: t.synergyRadar.axes.survival,
-    support: t.synergyRadar.axes.support,
-    score: t.synergyRadar.axes.score,
-    objective: t.synergyRadar.axes.objective,
-    impact: t.synergyRadar.axes.impact,
-  }
+  const playerColors = useMemo(
+    () => getSquadPlayerColors(mainPlayerKey, confirmedGamertags),
+    [mainPlayerKey, confirmedGamertags],
+  )
+  const playerOrder = useMemo(
+    () => [mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p]),
+    [mainPlayerKey, confirmedGamertags, performanceSeries],
+  )
+  // Frags et armes : joueurs ayant des classes de frags OU une série de performance
+  // (même prédicat que l'onglet Usages qui les montait jusqu'au lot L2).
+  const fragClasses = pageData?.frag_classes
+  const fragClassesByPlayer = useMemo(() => fragClasses ?? {}, [fragClasses])
+  const fragPlayerOrder = useMemo(
+    () => [mainPlayerKey, ...confirmedGamertags].filter((p) => fragClasses?.[p] || performanceSeries?.[p]),
+    [mainPlayerKey, confirmedGamertags, fragClasses, performanceSeries],
+  )
+  const matchHistory = useMemo(() => pageData?.match_history ?? [], [pageData?.match_history])
+  const medalDigest = useMemo(() => pageData?.medal_digest ?? [], [pageData?.medal_digest])
+  const synergyAxisLabels = useMemo<Record<string, string>>(
+    () => ({
+      combat: t.synergyRadar.axes.combat,
+      survival: t.synergyRadar.axes.survival,
+      support: t.synergyRadar.axes.support,
+      score: t.synergyRadar.axes.score,
+      objective: t.synergyRadar.axes.objective,
+      impact: t.synergyRadar.axes.impact,
+    }),
+    [t],
+  )
 
   return (
     <div className="space-y-4">
@@ -61,26 +97,7 @@ export function SquadContributionsPage() {
         />
 
         <SquadSynergyRadarChart
-          title={
-            <span className="flex items-center gap-1.5">
-              {t.synergyRadar.title}
-              <InfoTooltip
-                content={
-                  <div className="space-y-1">
-                    <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>
-                    <Link to="/help" search={{ tab: 'glossary' }} className="block mt-2 text-primary hover:underline">
-                      {t.synergyRadar.tooltip.glossaryLink}
-                    </Link>
-                  </div>
-                }
-              />
-            </span>
-          }
+          title={<SynergyRadarTitle t={t} />}
           rows={synergyRadar}
           emptyMessage={t.empty.noBlockData}
           colorByPlayer={playerColors}
@@ -89,14 +106,122 @@ export function SquadContributionsPage() {
         />
       </div>
 
+      {/* FRAGS ET ARMES — arrivés d'Usages (lot L2 du plan
+          PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : qui apporte quoi à l'escouade.
+          « Répartition des frags » pleine largeur (à côté de « Précision par rôle » sur
+          Halo 5), « Outils de destruction » juste en dessous, pleine largeur. Toujours
+          montés, comme les autres graphes de la page : chaque carte gère son état vide. */}
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t.performanceCharts.title}</h3>
+        <SectionTitle>{t.sections.fragsArmes}</SectionTitle>
+        <SquadFragSection
+          fragClassesByPlayer={fragClassesByPlayer}
+          weaponTools={pageData?.weapon_tools}
+          weaponAccuracy={pageData?.weapon_accuracy}
+          playerColors={playerColors}
+          playerOrder={fragPlayerOrder}
+          locale={locale}
+          t={t}
+        />
+      </section>
+
+      {/* OBJECTIF — quatre cartes (lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) :
+          rapport de force par famille | au fil de la session, puis la répartition dans
+          l'escouade, puis soirée après soirée. Périmètre D2 (composition exacte ∩ filtres) ;
+          la section se retire sans match à objectif. */}
+      <SquadObjectiveSection
+        block={pageData?.formes_retenues}
+        matchHistory={matchHistory}
+        objectiveHistory={pageData?.squad_objective_history}
+        medalDigest={medalDigest}
+        mainPlayerLabel={mainPlayerKey}
+        locale={locale}
+      />
+
+      <section className="space-y-3">
+        <SectionTitle>{t.performanceCharts.title}</SectionTitle>
         <SquadPerformanceCharts
           emptyMessage={t.empty.noBlockData}
-          rowsByPlayer={performanceSeries ?? {}}
-          playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
+          rowsByPlayer={perfSeriesByPlayer}
+          playerOrder={playerOrder}
           colorByPlayer={playerColors}
           labels={t.performanceCharts}
+        />
+      </section>
+
+      <ImpactMedalsMechanics
+        pageData={pageData}
+        mainPlayer={pageData?.main_player ?? playerSlug}
+        medalDigest={medalDigest}
+        playerColors={playerColors}
+        t={t}
+      />
+    </div>
+  )
+}
+
+/** Le titre du radar synergie, avec l'aide de ses six axes et le lien vers le glossaire. */
+function SynergyRadarTitle({ t }: { t: SquadText }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      {t.synergyRadar.title}
+      <InfoTooltip
+        content={
+          <div className="space-y-1">
+            <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>
+            <Link to="/help" search={{ tab: 'glossary' }} className="block mt-2 text-primary hover:underline">
+              {t.synergyRadar.tooltip.glossaryLink}
+            </Link>
+          </div>
+        }
+      />
+    </span>
+  )
+}
+
+/**
+ * Impact des coéquipiers, médailles, puis mécaniques de frag (Halo 5). Sorti de la page à la
+ * revue L6.1 (fonction ramenée sous sa taille d'avant le chantier) ; rendu inchangé.
+ */
+function ImpactMedalsMechanics({
+  pageData,
+  mainPlayer,
+  medalDigest,
+  playerColors,
+  t,
+}: {
+  pageData: TeammatesPageResponse | null
+  mainPlayer: string
+  medalDigest: MedalDigestEntry[]
+  playerColors: Record<string, string>
+  t: SquadText
+}) {
+  return (
+    <>
+      {/* IMPACT DES COÉQUIPIERS — arrivé de Synergies (lot 3 « sections », 2026-09-22) :
+          c'est une contribution par joueur, pas une production de la composition.
+          Section non-graphe toujours montée : titre + état vide géré par le composant
+          (cadre bordé / carte), au lieu de disparaître. */}
+      <section className="space-y-3">
+        <SectionTitle>{t.impact.title}</SectionTitle>
+        <SquadImpactScoreboard
+          matrix={pageData?.impact_matrix ?? { matches: [], players: [], cells: [], badge_ord: [] }}
+        />
+      </section>
+
+      {/* MÉDAILLES — arrivées de Synergies avec l'impact. Elles restent EN DERNIER de
+          leur groupe (décision utilisateur, 2026-09-13) : c'est un palmarès, pas une
+          mesure — il se lit après tout ce qui explique le jeu, jamais avant. */}
+      <section className="space-y-3">
+        <SectionTitle>{t.medals.title}</SectionTitle>
+        <MedalDigest
+          entries={medalDigest}
+          mainPlayer={mainPlayer}
+          t={t.medals}
         />
       </section>
 
@@ -111,6 +236,6 @@ export function SquadContributionsPage() {
           labelOf={(m) => t.killMechanics.labels[m as keyof typeof t.killMechanics.labels] ?? m}
         />
       </FeatureGate>
-    </div>
+    </>
   )
 }

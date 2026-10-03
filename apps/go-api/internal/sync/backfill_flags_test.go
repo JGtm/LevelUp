@@ -75,7 +75,7 @@ func TestMatchBits_NumericIdenticalToPython(t *testing.T) {
 		{"MBitKillerVictim", MBitKillerVictim, 524288},
 		{"MBitPVEStats", MBitPVEStats, 1048576},
 		{"MBitWeaponKills", MBitWeaponKills, 2097152},
-		{"MBitWeaponKillsNoFilm", MBitWeaponKillsNoFilm, 4194304},
+		{"MBitFilmAbsent", MBitFilmAbsent, 4194304},
 	}
 	for _, tc := range cases {
 		if tc.got != tc.wantDec {

@@ -1,0 +1,30 @@
+TEMOIN DE PRODUCTION — le PORTEUR du crane reconstruit par le CODE PUBLIE (skullCarrySecondsByXUID
++ ResolveRoundIdentity + SkullTicksComponent) reproduit le gate oracle. Genere 2026-08-28 par
+TestSkullCarrierWitness. Confronter a TERRAIN_gate_oracle.log (memes chiffres).
+
+===== d9781168 =====
+    skull_carries_witness_test.go:71: d9781168 : 3 manche(s) resolue(s), 8 joueur(s) porteur(s) reconstruit(s) ; prises reconstruites=10 oracle=10
+    skull_carries_witness_test.go:78:   scuderiasven     reconstruit=107.1s  oracle=116.1s
+    skull_carries_witness_test.go:78:   L0UDEN13         reconstruit= 95.1s  oracle=105.0s
+    skull_carries_witness_test.go:78:   SHROOM GOD3261   reconstruit= 39.0s  oracle= 49.1s
+    skull_carries_witness_test.go:78:   JGtm             reconstruit= 29.0s  oracle= 37.1s
+    skull_carries_witness_test.go:78:   DinoR00          reconstruit= 25.0s  oracle= 51.1s
+    skull_carries_witness_test.go:78:   LadyJezz         reconstruit= 19.0s  oracle= 25.5s
+    skull_carries_witness_test.go:78:   EvilestSmile946  reconstruit=  8.0s  oracle= 10.1s
+    skull_carries_witness_test.go:78:   OFB4203689       reconstruit=  5.0s  oracle=  9.7s
+    skull_carries_witness_test.go:80: PORTEUR PRINCIPAL d9781168 : reconstruit=scuderiasven (107.1s) oracle=scuderiasven (116.1s)
+    skull_carries_witness_test.go:90: VERDICT d9781168 : porteur principal CORRECT (scuderiasven).
+
+===== c88ec007 =====
+    skull_carries_witness_test.go:71: c88ec007 : 3 manche(s) resolue(s), 8 joueur(s) porteur(s) reconstruit(s) ; prises reconstruites=3 oracle=3
+    skull_carries_witness_test.go:78:   Ratsolla         reconstruit=106.1s  oracle=116.8s
+    skull_carries_witness_test.go:78:   Isaacshark1053   reconstruit= 53.1s  oracle= 58.9s
+    skull_carries_witness_test.go:78:   DireBounce       reconstruit= 53.1s  oracle= 60.8s
+    skull_carries_witness_test.go:78:   Chocoboflor      reconstruit= 39.0s  oracle= 45.8s
+    skull_carries_witness_test.go:78:   KingOfTheHillll  reconstruit= 31.0s  oracle= 33.6s
+    skull_carries_witness_test.go:78:   DonKhaled420     reconstruit= 15.0s  oracle= 40.8s
+    skull_carries_witness_test.go:78:   RIMADON          reconstruit=  1.0s  oracle=  2.5s
+    skull_carries_witness_test.go:78:   xXBystanderXx    reconstruit=  1.0s  oracle=  2.6s
+    skull_carries_witness_test.go:80: PORTEUR PRINCIPAL c88ec007 : reconstruit=Ratsolla (106.1s) oracle=Ratsolla (116.8s)
+    skull_carries_witness_test.go:90: VERDICT c88ec007 : porteur principal CORRECT (Ratsolla).
+

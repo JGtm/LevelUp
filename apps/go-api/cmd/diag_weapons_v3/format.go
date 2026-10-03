@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 )
 
 // fmtTimeMS rend un *int de ms en secondes (ou "?" si nil).
@@ -23,7 +23,7 @@ func fmtTeam(p *int) string {
 }
 
 // fmtScorer rend le xuid du premier joueur (scorer) ou "" si aucun.
-func fmtScorer(players []domain.ObjectiveEventPlayer) string {
+func fmtScorer(players []objectiveevent.Player) string {
 	if len(players) == 0 {
 		return ""
 	}

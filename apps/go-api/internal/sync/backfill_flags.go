@@ -73,12 +73,12 @@ const (
 // sync↔snapshot) et RÉ-EXPORTÉS ici : tous les usages existants (sync + domain/ops/scheduler/
 // cmd) restent inchangés ; sync/snapshot importe matchflags directement (feuille pure).
 const (
-	MBitEvents            = matchflags.MBitEvents
-	MBitKillerVictim      = matchflags.MBitKillerVictim
-	MBitPVEStats          = matchflags.MBitPVEStats
-	MBitWeaponKills       = matchflags.MBitWeaponKills
-	MBitWeaponKillsNoFilm = matchflags.MBitWeaponKillsNoFilm
-	MBitObjectiveStats    = matchflags.MBitObjectiveStats
+	MBitEvents         = matchflags.MBitEvents
+	MBitKillerVictim   = matchflags.MBitKillerVictim
+	MBitPVEStats       = matchflags.MBitPVEStats
+	MBitWeaponKills    = matchflags.MBitWeaponKills
+	MBitFilmAbsent     = matchflags.MBitFilmAbsent
+	MBitObjectiveStats = matchflags.MBitObjectiveStats
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

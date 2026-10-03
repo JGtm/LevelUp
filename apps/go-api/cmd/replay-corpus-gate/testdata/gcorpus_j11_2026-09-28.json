@@ -1,0 +1,2960 @@
+{
+  "couverture_incomplete": false,
+  "temoins": [
+    {
+      "id": "bcb6d393",
+      "famille": "ctf_mono_manche",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 34,
+      "pertes": 11,
+      "changements": 2,
+      "dureeMs": 17466,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "16",
+          "nouveau": "12"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "16",
+          "nouveau": "12"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535429985869093",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "3"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.walk.population",
+          "sens": "perte",
+          "ancien": "52",
+          "nouveau": "51"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "4"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "16",
+          "nouveau": "12"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "16",
+          "nouveau": "12"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.sansEquipe",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "3"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.sansPlace",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "3"
+        },
+        {
+          "axe": "objectifs",
+          "metrique": "objectives/par-joueur/2533274876732804/kills",
+          "sens": "disparu",
+          "ancien": "2"
+        },
+        {
+          "axe": "objectifs",
+          "metrique": "objectives/par-joueur/2535460750735339/kills",
+          "sens": "disparu",
+          "ancien": "1"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "objectifs",
+          "metrique": "objectives/par-xuid/2533274876732804",
+          "sens": "changement",
+          "ancien": "2"
+        },
+        {
+          "axe": "objectifs",
+          "metrique": "objectives/par-xuid/2535460750735339",
+          "sens": "changement",
+          "ancien": "1"
+        }
+      ]
+    },
+    {
+      "id": "fb1a1a72",
+      "famille": "ctf_multi_manche",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 15,
+      "pertes": 13,
+      "changements": 0,
+      "dureeMs": 33740,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274795950878",
+          "sens": "disparu",
+          "ancien": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "33",
+          "nouveau": "26"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "33",
+          "nouveau": "26"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274823110022",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535408981717353",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holeRuns",
+          "sens": "perte",
+          "ancien": "13718",
+          "nouveau": "13716"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holes",
+          "sens": "perte",
+          "ancien": "26453",
+          "nouveau": "26451"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "23941",
+          "nouveau": "23932"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesOpenViewB",
+          "sens": "perte",
+          "ancien": "1631",
+          "nouveau": "1621"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "14"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "33",
+          "nouveau": "26"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "33",
+          "nouveau": "26"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "1533",
+          "nouveau": "1525"
+        }
+      ]
+    },
+    {
+      "id": "d9781168",
+      "famille": "oddball",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 10,
+      "pertes": 8,
+      "changements": 0,
+      "dureeMs": 32383,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "27",
+          "nouveau": "21"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "27",
+          "nouveau": "21"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274977810162",
+          "sens": "perte",
+          "ancien": "10",
+          "nouveau": "8"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535435655459376",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "4"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535455182553276",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "3"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "14"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "27",
+          "nouveau": "21"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "27",
+          "nouveau": "21"
+        }
+      ]
+    },
+    {
+      "id": "c75f33b8",
+      "famille": "assaut_bombe",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 31,
+      "pertes": 13,
+      "changements": 0,
+      "dureeMs": 19495,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "20",
+          "nouveau": "15"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "20",
+          "nouveau": "15"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535415634552853",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535453226752724",
+          "sens": "perte",
+          "ancien": "9",
+          "nouveau": "6"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.closed",
+          "sens": "perte",
+          "ancien": "22944",
+          "nouveau": "22943"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.reached",
+          "sens": "perte",
+          "ancien": "25256",
+          "nouveau": "25255"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.population",
+          "sens": "perte",
+          "ancien": "63",
+          "nouveau": "61"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "8"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "20",
+          "nouveau": "15"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "20",
+          "nouveau": "15"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.sansEquipe",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.sansPlace",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "716",
+          "nouveau": "714"
+        }
+      ]
+    },
+    {
+      "id": "bf15f7ab",
+      "famille": "slayer",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 2,
+      "pertes": 7,
+      "changements": 0,
+      "dureeMs": 18092,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "23",
+          "nouveau": "17"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "23",
+          "nouveau": "17"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535425179403277",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535447949934592",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "14"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "23",
+          "nouveau": "17"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "23",
+          "nouveau": "17"
+        }
+      ]
+    },
+    {
+      "id": "51ebbc0f",
+      "famille": "deux_manches",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 10,
+      "pertes": 28,
+      "changements": 0,
+      "dureeMs": 23724,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "15",
+          "nouveau": "10"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "15",
+          "nouveau": "10"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535407463474361",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535458847428879",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "4"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances.kind/presents",
+          "sens": "perte",
+          "ancien": "372",
+          "nouveau": "371"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances.slot/presents",
+          "sens": "perte",
+          "ancien": "372",
+          "nouveau": "371"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances.t0/presents",
+          "sens": "perte",
+          "ancien": "372",
+          "nouveau": "371"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances.t1/presents",
+          "sens": "perte",
+          "ancien": "372",
+          "nouveau": "371"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale",
+          "sens": "perte",
+          "ancien": "11438",
+          "nouveau": "11433"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/526",
+          "sens": "perte",
+          "ancien": "349",
+          "nouveau": "344"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/n",
+          "sens": "perte",
+          "ancien": "372",
+          "nouveau": "371"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/par-kind/jumpDerived",
+          "sens": "perte",
+          "ancien": "230",
+          "nouveau": "229"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.closed",
+          "sens": "perte",
+          "ancien": "9847",
+          "nouveau": "9837"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.entries",
+          "sens": "perte",
+          "ancien": "55558",
+          "nouveau": "55496"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.firing",
+          "sens": "perte",
+          "ancien": "473",
+          "nouveau": "463"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holeRuns",
+          "sens": "perte",
+          "ancien": "5875",
+          "nouveau": "5872"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "16929",
+          "nouveau": "16920"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.innerHoles",
+          "sens": "perte",
+          "ancien": "328",
+          "nouveau": "327"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.reached",
+          "sens": "perte",
+          "ancien": "26912",
+          "nouveau": "26908"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.withAction",
+          "sens": "perte",
+          "ancien": "55558",
+          "nouveau": "55496"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "11"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "15",
+          "nouveau": "10"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "15",
+          "nouveau": "10"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.jumpDerived",
+          "sens": "perte",
+          "ancien": "230",
+          "nouveau": "229"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.intervals",
+          "sens": "perte",
+          "ancien": "372",
+          "nouveau": "371"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.jumpsDerived",
+          "sens": "perte",
+          "ancien": "230",
+          "nouveau": "229"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.reads",
+          "sens": "perte",
+          "ancien": "968",
+          "nouveau": "965"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.records",
+          "sens": "perte",
+          "ancien": "74832",
+          "nouveau": "74789"
+        }
+      ]
+    },
+    {
+      "id": "084a804d",
+      "famille": "vehicules",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 617,
+      "pertes": 68,
+      "changements": 25,
+      "dureeMs": 133965,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274817603732",
+          "sens": "disparu",
+          "ancien": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274838592080",
+          "sens": "disparu",
+          "ancien": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "groundWeapons/par-end/seen",
+          "sens": "perte",
+          "ancien": "899",
+          "nouveau": "889"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "89",
+          "nouveau": "49"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "89",
+          "nouveau": "49"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274806581989",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274827106080",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274858283686",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274872064646",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274966102798",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533275023541803",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "4"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535413695138897",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "5"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535419608696209",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535430265968559",
+          "sens": "perte",
+          "ancien": "2",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535434739117735",
+          "sens": "perte",
+          "ancien": "2",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535438799115472",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535452889356435",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535464635796745",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535471203149377",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "shots.v/presents",
+          "sens": "perte",
+          "ancien": "257",
+          "nouveau": "194"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/par-kind/crouch",
+          "sens": "disparu",
+          "ancien": "1"
+        },
+        {
+          "axe": "carte",
+          "metrique": "bounds.minZ",
+          "sens": "perte",
+          "ancien": "81.5800",
+          "nouveau": "23.0100"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.wall/unknown",
+          "sens": "disparu",
+          "ancien": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.crouch",
+          "sens": "disparu",
+          "ancien": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.teams.tracksSlotAmbiguous",
+          "sens": "disparu",
+          "ancien": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.nonWeapon",
+          "sens": "perte",
+          "ancien": "13",
+          "nouveau": "10"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.unconfirmed",
+          "sens": "perte",
+          "ancien": "336",
+          "nouveau": "330"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.bridge.slotCollisions",
+          "sens": "perte",
+          "ancien": "1",
+          "nouveau": "114"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holes",
+          "sens": "perte",
+          "ancien": "27224",
+          "nouveau": "27218"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "68",
+          "nouveau": "65"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesUnlocated",
+          "sens": "perte",
+          "ancien": "3416",
+          "nouveau": "3410"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeaponItems.endSeen",
+          "sens": "perte",
+          "ancien": "899",
+          "nouveau": "889"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeapons.spawned",
+          "sens": "perte",
+          "ancien": "709",
+          "nouveau": "511"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeapons.unknown",
+          "sens": "perte",
+          "ancien": "175",
+          "nouveau": "126"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "35",
+          "nouveau": "81"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "89",
+          "nouveau": "49"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "89",
+          "nouveau": "49"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.uncovered",
+          "sens": "perte",
+          "ancien": "71",
+          "nouveau": "65"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.pickups.originUnknown",
+          "sens": "perte",
+          "ancien": "222",
+          "nouveau": "207"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byCause.no_owner",
+          "sens": "perte",
+          "ancien": "273",
+          "nouveau": "111"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grapple/unknown",
+          "sens": "perte",
+          "ancien": "24",
+          "nouveau": "16"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grenade_dynamo/unknown",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grenade_frag/unknown",
+          "sens": "perte",
+          "ancien": "246",
+          "nouveau": "151"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grenade_plasma/unknown",
+          "sens": "perte",
+          "ancien": "19",
+          "nouveau": "7"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grenade_spike/unknown",
+          "sens": "perte",
+          "ancien": "21",
+          "nouveau": "13"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.repair_field/unknown",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "4"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.repulsor/unknown",
+          "sens": "perte",
+          "ancien": "9",
+          "nouveau": "4"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.sensor/unknown",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.thruster/unknown",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.unknown",
+          "sens": "perte",
+          "ancien": "343",
+          "nouveau": "200"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.eventPacketsUnlocated",
+          "sens": "perte",
+          "ancien": "3416",
+          "nouveau": "3410"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.aimRideFrames",
+          "sens": "perte",
+          "ancien": "26004",
+          "nouveau": "21500"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.shots",
+          "sens": "perte",
+          "ancien": "257",
+          "nouveau": "194"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.turretRidesAlreadyAboard",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.turretRidesDropped",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "2"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274858283686",
+          "sens": "disparu",
+          "ancien": "2378"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274872064646",
+          "sens": "disparu",
+          "ancien": "284"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535464635796745",
+          "sens": "disparu",
+          "ancien": "604"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2674682457276537",
+          "sens": "disparu",
+          "ancien": "855"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale",
+          "sens": "perte",
+          "ancien": "26004",
+          "nouveau": "21500"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274806581989",
+          "sens": "perte",
+          "ancien": "2746",
+          "nouveau": "582"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274838592080",
+          "sens": "perte",
+          "ancien": "360",
+          "nouveau": "152"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274966102798",
+          "sens": "perte",
+          "ancien": "1775",
+          "nouveau": "218"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535438799115472",
+          "sens": "perte",
+          "ancien": "2852",
+          "nouveau": "1257"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535442829120831",
+          "sens": "perte",
+          "ancien": "1856",
+          "nouveau": "728"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535456423427614",
+          "sens": "perte",
+          "ancien": "3002",
+          "nouveau": "2275"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535467063146739",
+          "sens": "perte",
+          "ancien": "1645",
+          "nouveau": "984"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535471203149377",
+          "sens": "perte",
+          "ancien": "255",
+          "nouveau": "54"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2533274827106080",
+          "sens": "changement",
+          "ancien": "36",
+          "nouveau": "33"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2533274838592080",
+          "sens": "changement",
+          "ancien": "11",
+          "nouveau": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2533274858283686",
+          "sens": "changement",
+          "ancien": "29",
+          "nouveau": "23"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2533274872064646",
+          "sens": "changement",
+          "ancien": "30",
+          "nouveau": "15"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535430265968559",
+          "sens": "changement",
+          "ancien": "23",
+          "nouveau": "8"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535434739117735",
+          "sens": "changement",
+          "ancien": "7",
+          "nouveau": "4"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535452889356435",
+          "sens": "changement",
+          "ancien": "19",
+          "nouveau": "17"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535456423427614",
+          "sens": "changement",
+          "ancien": "14",
+          "nouveau": "12"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535458504956067",
+          "sens": "changement",
+          "ancien": "23",
+          "nouveau": "18"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535466502328447",
+          "sens": "changement",
+          "ancien": "12",
+          "nouveau": "4"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2674682457276537",
+          "sens": "changement",
+          "ancien": "6",
+          "nouveau": "1"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/685",
+          "sens": "changement",
+          "ancien": "815",
+          "nouveau": "243"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.shotsAmbiguous",
+          "sens": "perte",
+          "ancien": "90",
+          "nouveau": "0"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.bridge.namedByPreviousLife",
+          "sens": "changement",
+          "ancien": "1",
+          "nouveau": "0"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.flagCarries.assignedByPlay",
+          "sens": "changement",
+          "ancien": "1",
+          "nouveau": "2"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2533274806581989",
+          "sens": "changement",
+          "ancien": "7",
+          "nouveau": "6"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2533274858283686",
+          "sens": "changement",
+          "ancien": "3"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2533274872064646",
+          "sens": "changement",
+          "ancien": "1"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2533274966102798",
+          "sens": "changement",
+          "ancien": "4",
+          "nouveau": "2"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2535438799115472",
+          "sens": "changement",
+          "ancien": "9",
+          "nouveau": "8"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2535442829120831",
+          "sens": "changement",
+          "ancien": "5",
+          "nouveau": "3"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2535464635796745",
+          "sens": "changement",
+          "ancien": "1"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2535467063146739",
+          "sens": "changement",
+          "ancien": "10",
+          "nouveau": "7"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2535471203149377",
+          "sens": "changement",
+          "ancien": "2",
+          "nouveau": "1"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2674682457276537",
+          "sens": "changement",
+          "ancien": "1"
+        }
+      ]
+    },
+    {
+      "id": "0797ce72",
+      "famille": "region_index_2_bits",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 7,
+      "pertes": 8,
+      "changements": 0,
+      "dureeMs": 19935,
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.closed",
+          "sens": "perte",
+          "ancien": "19124",
+          "nouveau": "19123"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.entries",
+          "sens": "perte",
+          "ancien": "116653",
+          "nouveau": "116647"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesOpenViewB",
+          "sens": "perte",
+          "ancien": "589",
+          "nouveau": "588"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.withAction",
+          "sens": "perte",
+          "ancien": "116652",
+          "nouveau": "116646"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.dropped",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "5"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "1270",
+          "nouveau": "1269"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.reads",
+          "sens": "perte",
+          "ancien": "2583",
+          "nouveau": "2580"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.records",
+          "sens": "perte",
+          "ancien": "150964",
+          "nouveau": "150961"
+        }
+      ]
+    },
+    {
+      "id": "111fa685",
+      "famille": "version_39",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 13,
+      "pertes": 11,
+      "changements": 0,
+      "dureeMs": 48317,
+      "pertesDetail": [
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/par-kind/slide",
+          "sens": "disparu",
+          "ancien": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.slide",
+          "sens": "disparu",
+          "ancien": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.closed",
+          "sens": "perte",
+          "ancien": "9",
+          "nouveau": "8"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.desync",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "5"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.noDisplayable",
+          "sens": "perte",
+          "ancien": "9",
+          "nouveau": "8"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holes",
+          "sens": "perte",
+          "ancien": "13210",
+          "nouveau": "13209"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "10944",
+          "nouveau": "10943"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesUnlocated",
+          "sens": "perte",
+          "ancien": "1892",
+          "nouveau": "1891"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.walk.population",
+          "sens": "perte",
+          "ancien": "206",
+          "nouveau": "204"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.eventPacketsUnlocated",
+          "sens": "perte",
+          "ancien": "1892",
+          "nouveau": "1891"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.reads",
+          "sens": "perte",
+          "ancien": "7442",
+          "nouveau": "7441"
+        }
+      ]
+    },
+    {
+      "id": "e5adf7b2",
+      "famille": "version_40_build_1_11",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 34,
+      "pertes": 10,
+      "changements": 0,
+      "dureeMs": 53322,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "groundWeapons/par-end/pickup",
+          "sens": "perte",
+          "ancien": "47",
+          "nouveau": "45"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.heldHoleMs",
+          "sens": "perte",
+          "ancien": "156859",
+          "nouveau": "156825"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holes",
+          "sens": "perte",
+          "ancien": "12539",
+          "nouveau": "12536"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesBlockBC",
+          "sens": "perte",
+          "ancien": "88",
+          "nouveau": "87"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "221",
+          "nouveau": "220"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesUnlocated",
+          "sens": "perte",
+          "ancien": "1727",
+          "nouveau": "1725"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeaponItems.endPickup",
+          "sens": "perte",
+          "ancien": "47",
+          "nouveau": "45"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeaponItems.pickupLinked",
+          "sens": "perte",
+          "ancien": "47",
+          "nouveau": "45"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.dropped",
+          "sens": "perte",
+          "ancien": "12",
+          "nouveau": "10"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.eventPacketsUnlocated",
+          "sens": "perte",
+          "ancien": "1727",
+          "nouveau": "1725"
+        }
+      ]
+    },
+    {
+      "id": "60ae07c4",
+      "famille": "version_37",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 13,
+      "pertes": 12,
+      "changements": 0,
+      "dureeMs": 38052,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "15",
+          "nouveau": "11"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "15",
+          "nouveau": "11"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274809233885",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535406399121492",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.unconfirmed",
+          "sens": "perte",
+          "ancien": "160",
+          "nouveau": "158"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holes",
+          "sens": "perte",
+          "ancien": "35731",
+          "nouveau": "35729"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "30283",
+          "nouveau": "30281"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesUnlocated",
+          "sens": "perte",
+          "ancien": "3264",
+          "nouveau": "3263"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "4"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "15",
+          "nouveau": "11"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "15",
+          "nouveau": "11"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.eventPacketsUnlocated",
+          "sens": "perte",
+          "ancien": "3264",
+          "nouveau": "3263"
+        }
+      ]
+    },
+    {
+      "id": "a349fea8",
+      "famille": "version_33_sans_identification",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 343,
+      "pertes": 36,
+      "changements": 2,
+      "dureeMs": 176124,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "groundWeapons/par-end/seen",
+          "sens": "perte",
+          "ancien": "768",
+          "nouveau": "760"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "87",
+          "nouveau": "77"
+        },
+        {
+          "axe": "carte",
+          "metrique": "bounds.minX",
+          "sens": "perte",
+          "ancien": "-0.1400",
+          "nouveau": "-981.5000"
+        },
+        {
+          "axe": "carte",
+          "metrique": "bounds.minY",
+          "sens": "perte",
+          "ancien": "-76.2500",
+          "nouveau": "-688.7600"
+        },
+        {
+          "axe": "carte",
+          "metrique": "bounds.minZ",
+          "sens": "perte",
+          "ancien": "-0.3900",
+          "nouveau": "-108.1200"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.nonWeapon",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "3"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.unconfirmed",
+          "sens": "perte",
+          "ancien": "286",
+          "nouveau": "284"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.bridge.unnamedLives",
+          "sens": "perte",
+          "ancien": "330",
+          "nouveau": "414"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holes",
+          "sens": "perte",
+          "ancien": "28288",
+          "nouveau": "28287"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesBlockBC",
+          "sens": "perte",
+          "ancien": "153",
+          "nouveau": "152"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesUnlocated",
+          "sens": "perte",
+          "ancien": "4041",
+          "nouveau": "4040"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeaponItems.endSeen",
+          "sens": "perte",
+          "ancien": "768",
+          "nouveau": "760"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeapons.spawned",
+          "sens": "perte",
+          "ancien": "655",
+          "nouveau": "565"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeapons.unknown",
+          "sens": "perte",
+          "ancien": "100",
+          "nouveau": "67"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "38",
+          "nouveau": "49"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "87",
+          "nouveau": "77"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.uncovered",
+          "sens": "perte",
+          "ancien": "72",
+          "nouveau": "71"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.pickups.originUnknown",
+          "sens": "perte",
+          "ancien": "138",
+          "nouveau": "103"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byCause.no_owner",
+          "sens": "perte",
+          "ancien": "190",
+          "nouveau": "135"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.repulsor/unknown",
+          "sens": "perte",
+          "ancien": "35",
+          "nouveau": "34"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.wall/unknown",
+          "sens": "perte",
+          "ancien": "16",
+          "nouveau": "15"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.dropped",
+          "sens": "perte",
+          "ancien": "29",
+          "nouveau": "13"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.eventPacketsUnlocated",
+          "sens": "perte",
+          "ancien": "4041",
+          "nouveau": "4040"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.forgottenBindings",
+          "sens": "perte",
+          "ancien": "3052",
+          "nouveau": "3051"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.aimRideFrames",
+          "sens": "perte",
+          "ancien": "55315",
+          "nouveau": "39804"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale",
+          "sens": "perte",
+          "ancien": "55315",
+          "nouveau": "39804"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/520",
+          "sens": "perte",
+          "ancien": "1605",
+          "nouveau": "341"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/522",
+          "sens": "perte",
+          "ancien": "348",
+          "nouveau": "14"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/524",
+          "sens": "perte",
+          "ancien": "2730",
+          "nouveau": "284"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/527",
+          "sens": "perte",
+          "ancien": "356",
+          "nouveau": "77"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/531",
+          "sens": "perte",
+          "ancien": "1793",
+          "nouveau": "562"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/537",
+          "sens": "perte",
+          "ancien": "1525",
+          "nouveau": "105"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/554",
+          "sens": "perte",
+          "ancien": "7462",
+          "nouveau": "96"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/558",
+          "sens": "perte",
+          "ancien": "14132",
+          "nouveau": "244"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/561",
+          "sens": "perte",
+          "ancien": "422",
+          "nouveau": "190"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/573",
+          "sens": "perte",
+          "ancien": "714",
+          "nouveau": "13"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.shotsNoRide",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "404"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.verdict.shots",
+          "sens": "changement",
+          "ancien": "partiel : moins des deux tiers rattachés",
+          "nouveau": "nominal"
+        }
+      ]
+    },
+    {
+      "id": "a521164d",
+      "famille": "version_33_build_1_4_1",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 10,
+      "pertes": 13,
+      "changements": 0,
+      "dureeMs": 53185,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274808061956",
+          "sens": "disparu",
+          "ancien": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274813083991",
+          "sens": "disparu",
+          "ancien": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535438935722042",
+          "sens": "disparu",
+          "ancien": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535439208563665",
+          "sens": "disparu",
+          "ancien": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "40",
+          "nouveau": "27"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "40",
+          "nouveau": "27"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274885125728",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535439688275895",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.desync",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "254",
+          "nouveau": "252"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "21"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "40",
+          "nouveau": "27"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "40",
+          "nouveau": "27"
+        }
+      ]
+    },
+    {
+      "id": "11de8353",
+      "famille": "version_38_build_1_9_0",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 15,
+      "pertes": 10,
+      "changements": 0,
+      "dureeMs": 46508,
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.closed",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "6"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.desync",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.noDisplayable",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "6"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.nonWeapon",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.heldHoleMs",
+          "sens": "perte",
+          "ancien": "221225",
+          "nouveau": "213884"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holes",
+          "sens": "perte",
+          "ancien": "11891",
+          "nouveau": "11888"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "189",
+          "nouveau": "188"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesOpenViewB",
+          "sens": "perte",
+          "ancien": "249",
+          "nouveau": "248"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesUnlocated",
+          "sens": "perte",
+          "ancien": "1642",
+          "nouveau": "1639"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.eventPacketsUnlocated",
+          "sens": "perte",
+          "ancien": "1642",
+          "nouveau": "1639"
+        }
+      ]
+    },
+    {
+      "id": "50247b26",
+      "famille": "version_31_sans_identification",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 13,
+      "pertes": 5,
+      "changements": 1,
+      "dureeMs": 99208,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "38",
+          "nouveau": "34"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.unconfirmed",
+          "sens": "perte",
+          "ancien": "158",
+          "nouveau": "157"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "12",
+          "nouveau": "16"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "38",
+          "nouveau": "34"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.shotsNoRide",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "338"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.verdict.shots",
+          "sens": "changement",
+          "ancien": "partiel : moins des deux tiers rattachés",
+          "nouveau": "nominal"
+        }
+      ]
+    },
+    {
+      "id": "bfecd02b",
+      "famille": "vehicules_v41_utilisateur",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 2,
+      "pertes": 8,
+      "changements": 0,
+      "dureeMs": 25645,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "34",
+          "nouveau": "23"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "34",
+          "nouveau": "23"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274801148251",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "4"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274822500253",
+          "sens": "perte",
+          "ancien": "11",
+          "nouveau": "4"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274975255322",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "6"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "1",
+          "nouveau": "12"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "34",
+          "nouveau": "23"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "34",
+          "nouveau": "23"
+        }
+      ]
+    },
+    {
+      "id": "4f77afc1",
+      "famille": "equipement_origine_utilisateur",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 441,
+      "pertes": 59,
+      "changements": 24,
+      "dureeMs": 136864,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535432826033393",
+          "sens": "disparu",
+          "ancien": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535445318491907",
+          "sens": "disparu",
+          "ancien": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "130",
+          "nouveau": "91"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "130",
+          "nouveau": "91"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274818676576",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "4"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274823110022",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274858283686",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274988198027",
+          "sens": "perte",
+          "ancien": "2",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535420159292452",
+          "sens": "perte",
+          "ancien": "10",
+          "nouveau": "7"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535437483090324",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535449476496795",
+          "sens": "perte",
+          "ancien": "14",
+          "nouveau": "9"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535457217346540",
+          "sens": "perte",
+          "ancien": "9",
+          "nouveau": "7"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535461484006747",
+          "sens": "perte",
+          "ancien": "11",
+          "nouveau": "4"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535461788192443",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "2"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535462209962245",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535462972817970",
+          "sens": "perte",
+          "ancien": "8",
+          "nouveau": "6"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535469763661810",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grapple/unknown",
+          "sens": "disparu",
+          "ancien": "3"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.birthLoadouts.noLife",
+          "sens": "perte",
+          "ancien": "75",
+          "nouveau": "0"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.bridge.deathOffsetMs",
+          "sens": "perte",
+          "ancien": "7288465",
+          "nouveau": "7288455"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.bridge.slotCollisions",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "66"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holeRuns",
+          "sens": "perte",
+          "ancien": "2294",
+          "nouveau": "2293"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holes",
+          "sens": "perte",
+          "ancien": "12590",
+          "nouveau": "12527"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesBlockBC",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "16",
+          "nouveau": "15"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "9535",
+          "nouveau": "9486"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesUnlocated",
+          "sens": "perte",
+          "ancien": "2278",
+          "nouveau": "2266"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.innerHoles",
+          "sens": "perte",
+          "ancien": "1019",
+          "nouveau": "1011"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.vehicleNoWeapon",
+          "sens": "perte",
+          "ancien": "45",
+          "nouveau": "44"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeapons.spawned",
+          "sens": "perte",
+          "ancien": "795",
+          "nouveau": "697"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.groundWeapons.unknown",
+          "sens": "perte",
+          "ancien": "121",
+          "nouveau": "87"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "58",
+          "nouveau": "97"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "130",
+          "nouveau": "91"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "130",
+          "nouveau": "91"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.pickups.originUnknown",
+          "sens": "perte",
+          "ancien": "45",
+          "nouveau": "30"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byCause.no_owner",
+          "sens": "perte",
+          "ancien": "227",
+          "nouveau": "132"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grenade_dynamo/unknown",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grenade_frag/unknown",
+          "sens": "perte",
+          "ancien": "203",
+          "nouveau": "148"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grenade_plasma/unknown",
+          "sens": "perte",
+          "ancien": "14",
+          "nouveau": "8"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.grenade_spike/unknown",
+          "sens": "perte",
+          "ancien": "12",
+          "nouveau": "10"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.repulsor/unknown",
+          "sens": "perte",
+          "ancien": "3",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.shroud_screen/unknown",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "3"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.byFamilyOrigin.wall/unknown",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "4"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.placements.unknown",
+          "sens": "perte",
+          "ancien": "251",
+          "nouveau": "177"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.placesOuvertes",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.placesTirs",
+          "sens": "perte",
+          "ancien": "2",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.sansEquipe",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.sansPlace",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.sansPresence",
+          "sens": "perte",
+          "ancien": "1",
+          "nouveau": "0"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.tirsContestes",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.seats.tirsParPlace",
+          "sens": "perte",
+          "ancien": "527",
+          "nouveau": "447"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.dropped",
+          "sens": "perte",
+          "ancien": "17",
+          "nouveau": "15"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.eventPacketsUnlocated",
+          "sens": "perte",
+          "ancien": "2278",
+          "nouveau": "2266"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.ambiguous",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "8"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.shotsOnCarrier",
+          "sens": "perte",
+          "ancien": "202",
+          "nouveau": "193"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.turretRides",
+          "sens": "perte",
+          "ancien": "27",
+          "nouveau": "26"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.turretRidesAlreadyAboard",
+          "sens": "perte",
+          "ancien": "2",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.vehicles.turretRidesDropped",
+          "sens": "perte",
+          "ancien": "6",
+          "nouveau": "5"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides.turret/presents",
+          "sens": "perte",
+          "ancien": "27",
+          "nouveau": "26"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2533274798159764",
+          "sens": "changement",
+          "ancien": "11",
+          "nouveau": "10"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2533274827096894",
+          "sens": "changement",
+          "ancien": "29",
+          "nouveau": "26"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2533274988198027",
+          "sens": "changement",
+          "ancien": "12",
+          "nouveau": "11"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535420159292452",
+          "sens": "changement",
+          "ancien": "21",
+          "nouveau": "17"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535432826033393",
+          "sens": "changement",
+          "ancien": "9",
+          "nouveau": "1"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535445318491907",
+          "sens": "changement",
+          "ancien": "10",
+          "nouveau": "7"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535447170907787",
+          "sens": "changement",
+          "ancien": "13",
+          "nouveau": "12"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535449476496795",
+          "sens": "changement",
+          "ancien": "28",
+          "nouveau": "27"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535461484006747",
+          "sens": "changement",
+          "ancien": "25",
+          "nouveau": "22"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535461788192443",
+          "sens": "changement",
+          "ancien": "18",
+          "nouveau": "16"
+        },
+        {
+          "axe": "armes",
+          "metrique": "pickups/par-xuid/2535468801188298",
+          "sens": "changement",
+          "ancien": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.equipment.killsRead",
+          "sens": "changement",
+          "ancien": "false",
+          "nouveau": "true"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.verdict.bridge",
+          "sens": "changement",
+          "ancien": "nominal",
+          "nouveau": "non publiable : un slot change de porteur"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/524",
+          "sens": "changement",
+          "ancien": "9"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/536",
+          "sens": "changement",
+          "ancien": "404"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-slot/707",
+          "sens": "changement",
+          "ancien": "74",
+          "nouveau": "73"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274809500684",
+          "sens": "changement",
+          "ancien": "1717",
+          "nouveau": "1065"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535432037056604",
+          "sens": "changement",
+          "ancien": "67",
+          "nouveau": "26"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535457514480546",
+          "sens": "changement",
+          "ancien": "2813",
+          "nouveau": "1879"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535461788192443",
+          "sens": "changement",
+          "ancien": "1638",
+          "nouveau": "1436"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2535469763661810",
+          "sens": "changement",
+          "ancien": "1582",
+          "nouveau": "1380"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2533274809500684",
+          "sens": "changement",
+          "ancien": "8",
+          "nouveau": "7"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2535461788192443",
+          "sens": "changement",
+          "ancien": "6",
+          "nouveau": "4"
+        },
+        {
+          "axe": "vehicules",
+          "metrique": "vehicles.rides/par-xuid/2535469763661810",
+          "sens": "changement",
+          "ancien": "10",
+          "nouveau": "8"
+        }
+      ]
+    },
+    {
+      "id": "396cfc92",
+      "famille": "strongholds_zones",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 2,
+      "pertes": 7,
+      "changements": 0,
+      "dureeMs": 28448,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535450759128461",
+          "sens": "disparu",
+          "ancien": "3"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "20",
+          "nouveau": "14"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "20",
+          "nouveau": "14"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2533274823110022",
+          "sens": "perte",
+          "ancien": "5",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "10",
+          "nouveau": "16"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "20",
+          "nouveau": "14"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "20",
+          "nouveau": "14"
+        }
+      ]
+    },
+    {
+      "id": "f75e7053",
+      "famille": "koth_collines",
+      "statut": "PERTE",
+      "schemaReference": 71,
+      "schemaHead": 76,
+      "gains": 5,
+      "pertes": 9,
+      "changements": 0,
+      "dureeMs": 16638,
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "padPickups.t/presents",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "5"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups.xuid/presents",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "5"
+        },
+        {
+          "axe": "armes",
+          "metrique": "padPickups/par-xuid/2535408319544327",
+          "sens": "perte",
+          "ancien": "4",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holes",
+          "sens": "perte",
+          "ancien": "5079",
+          "nouveau": "5078"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesUnlocated",
+          "sens": "perte",
+          "ancien": "477",
+          "nouveau": "476"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.ambiguous",
+          "sens": "perte",
+          "ancien": "1",
+          "nouveau": "3"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.dated",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "5"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.padDating.named",
+          "sens": "perte",
+          "ancien": "7",
+          "nouveau": "5"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.eventPacketsUnlocated",
+          "sens": "perte",
+          "ancien": "477",
+          "nouveau": "476"
+        }
+      ]
+    }
+  ]
+}

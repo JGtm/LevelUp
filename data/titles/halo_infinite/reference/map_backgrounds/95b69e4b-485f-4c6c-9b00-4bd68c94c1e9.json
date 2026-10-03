@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "95b69e4b-485f-4c6c-9b00-4bd68c94c1e9",
+  "mapNames": [
+    "Sylvanus",
+    "sylvanus_map"
+  ],
+  "image": "95b69e4b-485f-4c6c-9b00-4bd68c94c1e9.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T22:58:25.5043151Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04523473103841146,
+    "originX": -27.187734642028808,
+    "originY": -129.9455352783203,
+    "widthPx": 1240,
+    "heightPx": 1410,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 17,
+    "anchorsInFrame": 17,
+    "anchorsWithGround": 17,
+    "anchorMedianGapM": 1.4382066313229984,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 161.70205017089845,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.9914458177637252,
+    "covered": true,
+    "cellsSubstituted": 347900,
+    "forgeObjects": 5394,
+    "forgeObjectsDrawn": 5300,
+    "forgeObjectsWithoutModel": 65,
+    "forgeDeathVolumes": 29
+  }
+}

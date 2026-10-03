@@ -1,33 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { formatSignedPoints, isFullHistoryScope, signOf } from './ExplorerBriefing.logic'
+import { favoriteWeaponSlots, signOf } from './ExplorerBriefing.logic'
 
 // formatSignedFixed a migré vers `@/lib/formatters` (number.ts) — testé dans
 // `lib/formatters/formatters.test.ts`.
-
-describe('formatSignedPoints', () => {
-  it('convertit un ratio en points de pourcentage signés', () => {
-    expect(formatSignedPoints(0.3)).toBe('+30 pts')
-    expect(formatSignedPoints(-0.12)).toBe('−12 pts')
-    expect(formatSignedPoints(0)).toBe('±0 pts')
-  })
-})
-
-describe('isFullHistoryScope', () => {
-  it('vrai quand scope == baseline (aucun filtre)', () => {
-    expect(isFullHistoryScope(120, 120)).toBe(true)
-  })
-  it('faux quand le scope est un sous-ensemble filtré', () => {
-    expect(isFullHistoryScope(30, 120)).toBe(false)
-  })
-  it('faux sans baseline (aucun delta à masquer de toute façon)', () => {
-    expect(isFullHistoryScope(120, null)).toBe(false)
-    expect(isFullHistoryScope(120, undefined)).toBe(false)
-  })
-  it('faux quand le scope est absent', () => {
-    expect(isFullHistoryScope(null, 120)).toBe(false)
-    expect(isFullHistoryScope(undefined, undefined)).toBe(false)
-  })
-})
+//
+// formatSignedPoints et isFullHistoryScope ont migré vers `@/lib/baseline` le
+// 2026-09-06 (2e consommateur : le KPI d'échange de l'Escouade) — testés dans
+// `lib/baseline.test.ts`.
 
 describe('signOf', () => {
   it('retourne -1 / 0 / 1', () => {
@@ -35,5 +14,44 @@ describe('signOf', () => {
     expect(signOf(-2)).toBe(-1)
     expect(signOf(0)).toBe(0)
     expect(signOf(null)).toBe(0)
+  })
+})
+
+describe('favoriteWeaponSlots', () => {
+  it('en cellule propre : deux armes dès que la rangée offre deux lignes au-delà de deux', () => {
+    const seul = (dimensionLines: number[], rankedLines = 0) =>
+      favoriteWeaponSlots({ dimensionLines, rankedLines, stacked: false })
+    expect(seul([6, 3, 2])).toBe(2)
+    expect(seul([6])).toBe(2)
+    expect(seul([3])).toBe(1)
+    expect(seul([2, 2])).toBe(1)
+    expect(seul([2])).toBe(1)
+  })
+
+  it('empilé : deux lignes de plus à payer, donc la seconde arme demande une rangée plus haute', () => {
+    const empile = (dimensionLines: number[], rankedLines = 0) =>
+      favoriteWeaponSlots({ dimensionLines, rankedLines, stacked: true })
+    expect(empile([6])).toBe(2)
+    expect(empile([5])).toBe(1)
+    expect(empile([4])).toBe(1)
+    expect(empile([3])).toBe(1)
+  })
+
+  it('ne rend JAMAIS zéro : le bloc est toujours là, au minimum une arme', () => {
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 0, stacked: false })).toBe(1)
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 0, stacked: true })).toBe(1)
+    expect(favoriteWeaponSlots({ dimensionLines: [1], rankedLines: 0, stacked: true })).toBe(1)
+  })
+
+  it('compte le Classement comme les dimensions', () => {
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 3, stacked: false })).toBe(1)
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 4, stacked: false })).toBe(2)
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 6, stacked: true })).toBe(2)
+    expect(favoriteWeaponSlots({ dimensionLines: [], rankedLines: 3, stacked: true })).toBe(1)
+  })
+
+  it('retient le maximum quand dimensions et Classement coexistent', () => {
+    expect(favoriteWeaponSlots({ dimensionLines: [6], rankedLines: 3, stacked: false })).toBe(2)
+    expect(favoriteWeaponSlots({ dimensionLines: [3], rankedLines: 6, stacked: true })).toBe(2)
   })
 })

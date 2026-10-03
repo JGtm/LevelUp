@@ -43,6 +43,8 @@ export const queryKeys = {
   settings: ['settings'] as const,
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
+  // Amis d'un joueur (liste par profil, pas un réglage d'instance).
+  playerFriends: (playerSlug: string) => ['player-friends', playerSlug] as const,
 
   // Par joueur (titleSlug en 2e segment — invariant structurel, cf. en-tête).
   // Le titre courant scope la clé (même motif que `home` ci-dessous) : la
@@ -52,12 +54,19 @@ export const queryKeys = {
   // implicite ») — servait des options périmées de l'autre titre, la clé ne
   // changeant pas. Défense en profondeur du chantier D7 (titre dans l'URL) — cf.
   // §7 PLAN_TITLE_SLUG_URL.
-  filtersResolve: (playerSlug: string, titleSlug: string, filterHash: string) =>
-    ['filters-resolve', playerSlug, titleSlug, filterHash] as const,
+  // `matchContext` ('solo' | 'squad' | 'all') : même filterContext, populations
+  // différentes — le store escouade résout en 'squad' (lot perf L4a, D4.3,
+  // 2026-09-23), le solo sans contexte (= 'all' côté serveur). Sans ce segment,
+  // deux stores au même hash partageraient une entrée de cache.
+  filtersResolve: (playerSlug: string, titleSlug: string, filterHash: string, matchContext: string) =>
+    ['filters-resolve', playerSlug, titleSlug, filterHash, matchContext] as const,
   filtersPreview: (playerSlug: string, titleSlug: string, filterHash: string) =>
     ['filters-preview', playerSlug, titleSlug, filterHash] as const,
 
   // Carrière (Slice 2)
+  // Prefixe large : tout le domaine Carriere d un joueur (invalidation apres une
+  // ecriture de sa liste d amis : les rencontres « hors amis » sont filtrees serveur).
+  careerAll: (playerSlug: string) => ['career', playerSlug] as const,
   career: (playerSlug: string, titleSlug: string) => ['career', playerSlug, titleSlug] as const,
   careerEncounters: (playerSlug: string, titleSlug: string) =>
     ['career', playerSlug, titleSlug, 'encounters'] as const,
@@ -112,6 +121,18 @@ export const queryKeys = {
     ['match-positions', playerSlug, titleSlug, matchId] as const,
   matchReplay: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-replay', playerSlug, titleSlug, matchId] as const,
+  // Fond de carte du rejeu : clé DISTINCTE de l'artefact. Les deux ne s'invalident pas
+  // ensemble — l'artefact est propre au match, le fond est propre à la carte et ne change
+  // qu'à une re-cuisson.
+  matchReplayBackground: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay-background', playerSlug, titleSlug, matchId] as const,
+  // L'IMAGE a sa propre cle : elle pese jusqu'a 1,4 Mio et ne se charge qu'apres le calage.
+  matchReplayBackgroundImage: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay-background-image', playerSlug, titleSlug, matchId] as const,
+  // Zones nommées (callouts) : même logique que le fond — propres à la CARTE, servies par
+  // match, figées entre deux régénérations du catalogue versionné.
+  matchReplayCallouts: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay-callouts', playerSlug, titleSlug, matchId] as const,
 
   // Engagement (Phase 4 plan engagement)
   engagementMatch: (playerSlug: string, titleSlug: string, matchId: string) =>
@@ -133,6 +154,9 @@ export const queryKeys = {
   // X-LevelUp-Locale à l'instant du fetch. Sans la locale dans la clé, un switch
   // de langue laissait le cache (y compris le fetch background prefetch/poll)
   // baké dans l'ancienne langue — invalidation naturelle à la bascule.
+  // Prefixe large : toutes les locales et tous les titres de l accueil d un joueur
+  // (tuiles escouade filtrees serveur sur la liste d amis).
+  homeAll: (playerSlug: string) => ['home', playerSlug] as const,
   home: (playerSlug: string, titleSlug: string, locale: string) =>
     ['home', playerSlug, titleSlug, locale] as const,
 
@@ -149,12 +173,61 @@ export const queryKeys = {
   // exactComposition : l'option « composition exacte » change la POPULATION servie
   // (matchs commencés ensemble vs composition exclusive) — sans elle dans la clé,
   // le cache resservirait les nombres de l'autre réglage.
-  teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '', exactComposition = false) =>
-    ['teammates', playerSlug, titleSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale, exactComposition] as const,
+  // Pas de segment « sessions pickées » (retiré le 2026-09-23, lot perf L4a, D4.1) :
+  // la session pickée vit UNIQUEMENT dans le store escouade
+  // (`filterContext.sessions.picked_sessions`), déjà couvert par `filterHash`.
+  // Deux segments pour une même information faisaient d'un snap ou d'un clic du
+  // rail DEUX clés successives, donc une requête intermédiaire jamais affichée
+  // (mesurée : 8,2 s + 26,8 s par clic).
+  teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], locale = '', exactComposition = true) =>
+    ['teammates', playerSlug, titleSlug, filterHash, [...selectedGts].sort().join(','), locale, exactComposition] as const,
+  // Sessions de la composition SANS la page (GET /pages/teammates/sessions, lot perf L4b,
+  // 2026-09-23). Sous le préfixe `teammates` : toute invalidation de l'Escouade la couvre
+  // (un ami ajouté entre dans l'extraPool de la composition exacte). Ni filtres ni locale :
+  // la réponse se calcule sur l'historique COMPLET de la composition et ne porte aucun
+  // libellé traduit.
+  compositionSessions: (playerSlug: string, titleSlug: string, selectedGts: string[], exactComposition: boolean) =>
+    ['teammates', playerSlug, titleSlug, 'composition-sessions', [...selectedGts].sort().join(','), exactComposition] as const,
   /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami).
    *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
   teammatesAll: ['teammates'] as const,
 
+  // Onglet Tactique (Ascension) — la grille des cartes jouées.
+  // `filterHash` : le filtre courant entre dans la clé parce qu'il change la POPULATION
+  // servie (quelles cartes, et combien de matchs sur chacune). Sans lui, changer de
+  // période resservirait la grille de la période précédente.
+  tacticalMaps: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['tactical-maps', playerSlug, titleSlug, filterHash] as const,
+  // Le PÉRIMÈTRE de l'onglet : les match_id que la barre L2 fait résoudre par
+  // /filters/match-ids. Clé DISTINCTE de la grille (2026-09-06) parce que la
+  // résolution est partagée par toutes les lectures de l'onglet — la grille
+  // aujourd'hui, la vue par carte demain — et qu'une seule requête doit la servir.
+  tacticalMatchIDs: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['tactical-match-ids', playerSlug, titleSlug, filterHash] as const,
+  // Le FOND d'une carte : propre à la CARTE, indépendant du filtre, figé entre deux
+  // cuissons — d'où une clé distincte de la grille (même raison que
+  // `matchReplayBackgroundImage` vis-à-vis de `matchReplay`), et un staleTime infini.
+  //
+  // SANS `playerSlug`, et c'est délibéré (revue R1, W4) : l'image d'une carte est une
+  // donnée de RÉFÉRENCE du titre, identique pour tout le monde. La clé par joueur retenait
+  // N images par joueur consulté dans la session, pour exactement le même contenu.
+  // `titleSlug` reste en 1er segment — une carte n'existe que dans son titre — et l'URL de
+  // fetch garde le joueur (la route est derrière l'ownership).
+  tacticalMapBackground: (titleSlug: string, mapId: string) =>
+    ['tactical-map-background', titleSlug, mapId] as const,
+  /** Calage monde du fond d'une carte — même donnée de référence que l'image, donc même
+   *  régime : versionnée par titre, jamais par joueur. */
+  tacticalMapBackgroundFrame: (titleSlug: string, mapId: string) =>
+    ['tactical', 'map-background-frame', titleSlug, mapId] as const,
+
+  // Raster de placement pour UNE carte et UNE question.
+  tacticalRaster: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
+    ['tactical-raster', playerSlug, titleSlug, mapId, paramHash] as const,
+  // Détail d'UNE cellule (lien « voir dans le rejeu », lot M1) : mêmes raisons que
+  // `tacticalRaster` (une carte n'existe que dans son titre), clé DISTINCTE parce que le
+  // périmètre inclut en plus l'adresse de la cellule cliquée.
+  tacticalCellule: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
+    ['tactical-cellule', playerSlug, titleSlug, mapId, paramHash] as const,
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, titleSlug: string, scopeHash: string) =>
     ['synthesis', playerSlug, titleSlug, scopeHash] as const,
@@ -242,6 +315,12 @@ export const queryKeys = {
   notificationsPreferences: (playerSlug: string, titleSlug: string) =>
     ['notifications', playerSlug, titleSlug, 'preferences'] as const,
 
+  // Capabilities DATA-LEVEL du titre (GET /titles/{slug}/capabilities) — « ce titre
+  // produit-il cette donnee ? ». Title-scopee par son PREMIER argument, comme les cles
+  // asset* : la reponse EST celle d'un titre, il n'y a pas de dimension joueur.
+  // Cf. lib/capabilities/dataCapabilities.ts (regle des deux portes).
+  titleDataCapabilities: (titleSlug: string) => ['title-data-capabilities', titleSlug] as const,
+
   // Asset Drawer (Phase 2)
   assetMaps: (titleSlug: string, q: string) => ['assets', titleSlug, 'maps', q] as const,
   assetWeapons: (titleSlug: string, q: string) => ['assets', titleSlug, 'weapons', q] as const,
@@ -276,6 +355,9 @@ export const queryKeys = {
   // Admin — Contention DB (B-swap shared) + santé des tokens auth
   adminDbContention: ['admin', 'db-contention'] as const,
   adminTokenHealth: ['admin', 'token-health'] as const,
+  // Admin — Annuaire des joueurs (ADR 0035) : les 4 registres d'identité lus
+  // ensemble par xuid (compte, profils, identifiants, suivi live).
+  adminIdentities: ['admin', 'identities'] as const,
   // Admin — Dashboard monitoring (overview agrégé, scheduler + historique,
   // jobs récents du JobStore, convergence, qualité données)
   adminMonitoringOverview: ['admin', 'monitoring', 'overview'] as const,
@@ -283,11 +365,11 @@ export const queryKeys = {
   adminMonitoringJobs: ['admin', 'monitoring', 'jobs'] as const,
   adminMonitoringConvergence: ['admin', 'monitoring', 'convergence'] as const,
   adminMonitoringPerf: ['admin', 'monitoring', 'perf'] as const,
-  adminMonitoringErrors: ['admin', 'monitoring', 'errors'] as const,
   adminMonitoringDetections: ['admin', 'monitoring', 'detections'] as const,
   adminMonitoringFreshness: ['admin', 'monitoring', 'freshness'] as const,
   adminMonitoringResources: ['admin', 'monitoring', 'resources'] as const,
   adminMonitoringCrons: ['admin', 'monitoring', 'crons'] as const,
+  adminMonitoringBuildQueue: ['admin', 'monitoring', 'build-queue'] as const,
   adminActionJournal: ['admin', 'actions', 'journal'] as const,
   adminWeaponCoverage: (slug: string) => ['admin', 'monitoring', 'weapon-coverage', slug] as const,
   adminLusrGaps: (slug: string) => ['admin', 'monitoring', 'lusr-gaps', slug] as const,
@@ -305,6 +387,7 @@ export const queryKeys = {
   adminTitleDiagnostic: (slug: string) => ['admin', 'titles', slug, 'diagnostic'] as const,
   // Admin — Gestion des utilisateurs (ex-adminKeys, L5)
   adminUsers: ['admin', 'users'] as const,
+  adminInvites: ['admin', 'invites'] as const,
   // Admin — Diagnostic apparence Spartan ID (volet 2). MUTATION à la demande
   // (aucune query auto/refetch au focus) : clé stable pour l'identité/devtools.
   adminAppearanceDiagMutation: ['admin', 'diag', 'appearance'] as const,
@@ -366,6 +449,11 @@ export const queryKeys = {
     authPoll: (attemptId: string) => ['watcher', 'auth', attemptId] as const,
   },
 
+  /** Présence en jeu du shell (joueurs suivis + amis). Title-scopée : la réponse
+   *  ne liste que les joueurs du titre courant — sans le slug, un switch de titre
+   *  laisserait la manette sur le sélecteur de l'autre titre le temps du refetch. */
+  presence: (titleSlug: string) => ['presence', titleSlug] as const,
+
   // Clés feature diverses ex-inline (L5, CLAUDE.md n°13) — centralisées ici.
   changelog: ['changelog'] as const,
   releaseNotes: (lang: string) => ['release-notes', lang] as const,
@@ -381,7 +469,7 @@ export const queryKeys = {
     filePath: string | null,
     windowMinutes: number,
   ) => ['media', 'match-candidates', playerSlug, titleSlug, filePath, windowMinutes] as const,
-  /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *, *)`.
+  /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *, *, *)` (solo ET escouade).
    *  RESTE broad PAR JOUEUR (n'inclut PAS le titre) : son unique usage
    *  (invalidation post-sync, $playerSlug.tsx) doit rafraîchir la résolution du
    *  joueur, et le préfixe `['filters-resolve', playerSlug]` matche toujours la clé

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "2be34415-bc96-4d02-875c-c4f2aa135f89",
+  "mapNames": [
+    "Nemesis",
+    "nemesis_map"
+  ],
+  "image": "2be34415-bc96-4d02-875c-c4f2aa135f89.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T22:28:04.2725867Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04250165557861328,
+    "originX": 57.46559090423584,
+    "originY": 112.52408756256104,
+    "widthPx": 1355,
+    "heightPx": 1353,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 26,
+    "anchorsInFrame": 26,
+    "anchorsWithGround": 26,
+    "anchorMedianGapM": -0.30741455405306084,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 61.15699859619141,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 1,
+    "covered": true,
+    "cellsSubstituted": 502895,
+    "forgeObjects": 5180,
+    "forgeObjectsDrawn": 5120,
+    "forgeObjectsWithoutModel": 34,
+    "forgeDeathVolumes": 26
+  }
+}

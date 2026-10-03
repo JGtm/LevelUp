@@ -14,7 +14,7 @@
 //     un score per-équipe — mesuré sur films réels, la valeur brute plafonnait
 //     quel que soit le final, et ne « retombait dessus » que par calibration.
 //     Le seul pont possible pour ces modes passe donc par la source
-//     ÉVÉNEMENTIELLE (analysis/objectiveevents), une fois qu'elle sera peuplée
+//     ÉVÉNEMENTIELLE (film/facts/objectives), une fois qu'elle sera peuplée
 //     en live — pas par un décodeur de score à réimplémenter.
 //  2. Chemin HISTORIQUE sinon, y compris pour un mode à objectif sans courbe.
 //     Dans l'ordre : DOMINATION si la médaille Steaktacular (ID 1169390319) est
@@ -31,6 +31,10 @@
 //
 // Les valeurs 3-5 utilisent l'algo ComputeDominanceFlag (analysis/comeback.go)
 // avec la sensibilité "standard", quelle que soit la source de courbe.
+//
+// Dernier recours, modes à objectifs seulement : si aucun badge n'est attribué,
+// SABORDAGE (6) / ABNÉGATION (7) confrontent le résultat à la domination aux frags
+// dans la durée (analysis.ComputeFragContrastDominance, timeline dédoublonnée).
 package sync
 
 import (
@@ -41,9 +45,9 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // steaktacularMedalIDForTitle résout l'ID de la médaille "killing spree"
@@ -89,18 +93,146 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 
 	gameVariant, err := loadGameVariant(ctx, db, matchID)
 	if err != nil {
+		// Non critique (repli dominance_flag=0), mais l'erreur est tracée AVANT la
+		// dégradation (règle CLAUDE.md n3) : un match_registry absent/verrouillé ne doit
+		// pas disparaître en silence, même si le chemin historique n'est pas tenté ici.
+		slog.WarnContext(ctx, "computeMatchDominanceFlag: lecture du game variant",
+			"match_id", matchID, "err", err)
 		return 0, nil // non critique
 	}
 
 	// CTF : la courbe de captures prime quand elle existe. Les autres modes à
 	// objectif (zone/hill/skull) marquent au tick, pas à l'event : leur courbe de
 	// score reste non décodée en live, ils passent directement au repli.
-	if objectiveevents.ObjectiveTypeOf(gameVariant) == objectiveevents.ObjectiveTypeFlag {
-		if flag, ok := objectiveCurveDominanceFlag(ctx, db, matchID, myTeamID, outcome); ok {
-			return flag, nil
+	objectiveType := decfilm.ObjectiveTypeOf(gameVariant)
+	flag, curveOK := 0, false
+	if objectiveType == decfilm.ObjectiveTypeFlag {
+		flag, curveOK = objectiveCurveDominanceFlag(ctx, db, matchID, myTeamID, outcome)
+	}
+	if !curveOK {
+		flag, err = computeHistoricalDominanceFlag(ctx, db, matchID, gameVariant, myTeamID, outcome)
+		if err != nil {
+			return 0, err
 		}
 	}
-	return computeHistoricalDominanceFlag(ctx, db, matchID, gameVariant, myTeamID, outcome)
+	// SABORDAGE / ABNÉGATION : modes à objectifs seulement (en Slayer frags et
+	// score se confondent), et seulement si aucun autre badge ne s'applique.
+	if flag == analysis.DominanceFlagNone && objectiveType != "" {
+		return fragContrastDominanceFlag(ctx, db, matchID, myTeamID, outcome), nil
+	}
+	return flag, nil
+}
+
+// fragContrastDominanceFlag applique SABORDAGE / ABNÉGATION depuis la timeline
+// de frags dédoublonnée et la durée du match. Sans timeline (film non décodé,
+// titre sans kill-feed) : pas de badge — les frags finaux seuls ne distinguent
+// rien (mesure du 2026-09-16, cf. analysis).
+//
+// LA GARDE EST LE COMPTAGE DES ÉQUIPES du match : le badge oppose DEUX camps, donc un
+// match qui n'en compte pas exactement deux est ÉCARTÉ, pas rétréci. Le test
+// `myTeamID in {0,1}` et le filtre `mp.team_id IN (0, 1)` de la timeline restent en
+// ceinture : seuls, ils retiraient les équipes 2+ d'un Multi Team à objectifs et
+// rendaient un verdict sur une fraction du match (revue du 2026-09-17).
+func fragContrastDominanceFlag(ctx context.Context, db *sql.DB, matchID string, myTeamID, outcome int) int {
+	if myTeamID != 0 && myTeamID != 1 {
+		return analysis.DominanceFlagNone
+	}
+	teams, err := countMatchTeams(ctx, db, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: comptage des équipes du match",
+			"match_id", matchID, "err", err)
+		return analysis.DominanceFlagNone
+	}
+	if teams != 2 {
+		// Cas NORMAL (Multi Team, FFA, roster incomplet) : Debug, pas Warn.
+		slog.DebugContext(ctx, "fragContrastDominanceFlag: match hors deux camps, badge écarté",
+			"match_id", matchID, "equipes", teams)
+		return analysis.DominanceFlagNone
+	}
+	events, err := loadDistinctTeamKillEvents(ctx, db, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: lecture de la timeline de frags",
+			"match_id", matchID, "err", err)
+		return analysis.DominanceFlagNone
+	}
+	if len(events) == 0 {
+		return analysis.DominanceFlagNone
+	}
+	return analysis.ComputeFragContrastDominance(
+		events, matchEndFromDurationMS(ctx, db, matchID), myTeamID, outcome)
+}
+
+// countMatchTeams compte les équipes DISTINCTES du match (participants à team_id connu).
+// 2 = le match oppose deux camps ; toute autre valeur (Multi Team, FFA, roster vide) sort
+// du domaine de SABORDAGE / ABNÉGATION.
+func countMatchTeams(ctx context.Context, db *sql.DB, matchID string) (int, error) {
+	var teams int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(DISTINCT team_id) FROM match_participants
+		 WHERE match_id = ? AND team_id IS NOT NULL`, matchID,
+	).Scan(&teams); err != nil {
+		return 0, err
+	}
+	return teams, nil
+}
+
+// matchEndFromDurationMS rend la fin du match en ms depuis `match_registry`, ou 0 quand la
+// durée est inconnue (erreur de lecture, ligne absente, colonne NULL, valeur <= 0).
+//
+// 0 fait retomber ComputeFragContrastDominance sur la DERNIÈRE FRAG comme fin de match :
+// repli VOULU (décision de la revue du 2026-09-17, le badge reste calculable), mais qui
+// raccourcit le match de référence et déplace donc le seuil « en tête ≥ 75 % du temps ».
+// Il est tracé à chaque fois : un NULL ne lève aucune erreur, il ne se verrait pas sinon.
+func matchEndFromDurationMS(ctx context.Context, db *sql.DB, matchID string) int64 {
+	var durationS sql.NullInt64
+	if err := db.QueryRowContext(ctx,
+		`SELECT duration_seconds FROM match_registry WHERE match_id = ? LIMIT 1`, matchID,
+	).Scan(&durationS); err != nil {
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: durée absente, fin = dernière frag",
+			"match_id", matchID, "raison", "lecture de duration_seconds", "err", err)
+		return 0
+	}
+	if !durationS.Valid || durationS.Int64 <= 0 {
+		slog.WarnContext(ctx, "fragContrastDominanceFlag: durée absente, fin = dernière frag",
+			"match_id", matchID, "raison", "duration_seconds NULL ou <= 0",
+			"duree_connue", durationS.Valid, "duree_s", durationS.Int64)
+		return 0
+	}
+	return durationS.Int64 * 1000
+}
+
+// loadDistinctTeamKillEvents charge les frags des équipes 0/1, DÉDOUBLONNÉES sur
+// (xuid, time_ms) : highlight_events porte des doublons exacts sur certains
+// matchs (jusqu'à 2x le total officiel, mesuré le 2026-09-16 ; une fois
+// dédoublonnée la timeline égale SUM(kills) sur les 364 matchs à objectifs
+// mesurés). loadKillEventsWithTeam ne dédoublonne pas : écart relevé, non
+// traité ici (hors périmètre).
+func loadDistinctTeamKillEvents(ctx context.Context, db *sql.DB, matchID string) ([]analysis.KillEvent, error) {
+	rows, err := db.QueryContext(ctx, `
+SELECT DISTINCT he.xuid, he.time_ms, mp.team_id
+FROM highlight_events he
+JOIN match_participants mp
+    ON mp.match_id = he.match_id AND mp.xuid = he.xuid
+WHERE he.match_id = ?
+  AND he.event_type = 'kill'
+  AND he.xuid IS NOT NULL
+  AND mp.team_id IN (0, 1)
+ORDER BY he.time_ms ASC, he.xuid ASC`, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []analysis.KillEvent
+	for rows.Next() {
+		var xuid string
+		var e analysis.KillEvent
+		if err := rows.Scan(&xuid, &e.TimeMS, &e.TeamID); err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, rows.Err()
 }
 
 // computeHistoricalDominanceFlag applique le chemin historique : médaille

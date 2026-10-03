@@ -15,12 +15,24 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/port"
 )
 
 // ExplorerRepo implémente port.ExplorerRepository sur DuckDB.
 type ExplorerRepo struct {
 	pdb  *PlayerDB
 	xuid string
+	// killSourceClassifier : le traducteur « source de degat -> cle du registre » du titre,
+	// injecte au cablage (nil pour un titre qui n en fournit pas). Non nil = le top armes
+	// se lit dans la source de degat du film. Aucun `slug ==`.
+	killSourceClassifier port.KillSourceClassifier
+}
+
+// WithKillSourceClassifier injecte le traducteur de source de degat du titre. nil (ou non
+// appele) : le top armes reste lu dans `v_weapon_kills`.
+func (r *ExplorerRepo) WithKillSourceClassifier(c port.KillSourceClassifier) *ExplorerRepo {
+	r.killSourceClassifier = c
+	return r
 }
 
 // NewExplorerRepo crée un ExplorerRepo.
@@ -178,8 +190,8 @@ func (r *ExplorerRepo) GetMedalCountsForMatches(
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
 	// Frags parfaits = set de médailles « frag parfait » du titre du joueur
-	// (source unique analysis.PerfectKillMedalIDs ; HINF = {1512363953},
-	// même approche que Q12MatchScoreboard / Q30 queries_squad.go).
+	// (source unique analysis.PerfectKillMedalIDs ; HINF = {1512363953}, même clause
+	// perfectKillMedalInClause que le jeton /*__PERFECT_KILL_IN__*/ de Q12 et de Q30 queries_squad.go).
 	perfectClause := perfectKillMedalInClause("medal_name_id", pdbTitleSlug(r.pdb))
 	q := fmt.Sprintf(`
 		SELECT
@@ -552,6 +564,10 @@ func (r *ExplorerRepo) GetTopWeaponsForMatches(
 ) ([]domain.WeaponHighlight, error) {
 	if strings.TrimSpace(xuid) == "" || len(matchIDs) == 0 || limit <= 0 {
 		return nil, nil
+	}
+	// Titre a decodeur de film : l arme vient de la SOURCE DU DEGAT (bascule 2026-09-01).
+	if r.killSourceClassifier != nil {
+		return r.topWeaponsFromSource(ctx, xuid, matchIDs, limit), nil
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
 	q := fmt.Sprintf(`

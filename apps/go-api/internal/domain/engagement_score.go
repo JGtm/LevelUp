@@ -5,7 +5,7 @@ import "time"
 // EngagementScoreResult est le resultat canonique d'un calcul d'engagement
 // pour un joueur sur un match.
 //
-// Reference conceptuelle : .ai/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md
+// Reference conceptuelle : .ai/archive/V7/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md
 //
 // Concept central : la forme/engagement du joueur = ecart entre son engagement
 // observe et son engagement attendu (vu son style historique et le contexte
@@ -63,7 +63,7 @@ type EngagementScoreResult struct {
 	PlayerActivity int `json:"player_activity"`
 
 	// ExpectedBasis qualifie la base de calcul de l'attendu (PaceAttendu),
-	// modele lobby-anchored v2 (cf. .ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md) :
+	// modele lobby-anchored v2 (cf. .ai/archive/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md) :
 	//   - "bin"        : coef du bin d'intensite du match (>= MinMatchesForBin echantillons)
 	//   - "global"     : coef lobby global (fallback, >= MinMatchesForCoef echantillons)
 	//   - "cold_start" : aucun historique exploitable → coef 1.0 ; la serie
@@ -117,7 +117,7 @@ const (
 // d'intensite (tercile de pace_lobby), pour une categorie de mode. Modele
 // lobby-anchored v2 (2026-07-07) : l'attendu du joueur est « sa reponse
 // habituelle a un match d'intensite similaire », pas une part relative a son
-// equipe. cf .ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md.
+// equipe. cf .ai/archive/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md.
 type EngagementResponseBins struct {
 	XUID         string                   `json:"xuid,omitempty"`
 	ModeCategory string                   `json:"mode_category,omitempty"`

@@ -2,9 +2,9 @@
 // partir des .module du jeu installé, et l'écrit dans
 // data/titles/{slug}/reference/map_quant_bounds.json (PathResolver).
 //
-// Le film ne porte que des indices de quantum ; les bornes (AABB du BSP principal,
-// `world bounds x/y/z` du tag sbsp) ne vivent que dans le module de la carte. Sans elles,
-// aucune coordonnée monde n'est produite (refus explicite côté décodeur).
+// Le film ne porte que des indices de quantum ; les bornes (`world bounds x/y/z` du tag sbsp
+// de la RÉGION 0 de la carte, cf. `himap.BSPQuantification`) ne vivent que dans le module de
+// la carte. Sans elles, aucune coordonnée monde n'est produite (refus explicite côté décodeur).
 //
 // Le lien nom de carte affiché -> dossier de module est déclaré ici, EXPLICITEMENT, et
 // n'est retenu que lorsqu'il est établi hors de toute mesure (identité du nom, ou preuve
@@ -16,20 +16,24 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/himap"
 )
 
-// defaultLevelsDir : arborescence des cartes multijoueur d'une installation Steam.
-const defaultLevelsDir = `D:/SteamLibrary/steamapps/common/Halo Infinite/deploy/ds/levels/multi`
+// deployVariant : les bornes monde du BSP se lisent dans le build serveur dédié. La racine
+// de l'installation est résolue par himap.LevelsDir (emplacements connus ou
+// LEVELUP_HALO_DEPLOY), jamais écrite en dur ici.
+const deployVariant = "ds"
 
 // mapModule associe le nom de carte affiché (celui de match_registry.map_name) au dossier
 // du module. Chaque entrée porte la RAISON pour laquelle le lien est tenu pour établi.
@@ -43,39 +47,301 @@ const defaultLevelsDir = `D:/SteamLibrary/steamapps/common/Halo Infinite/deploy/
 //
 // Vagabond : le module `fo08_wetland` est établi par le `level_id` du .mvar, pas par le
 // nom. `vagabond_fo08_wetland.mvar` porte level_id 88891201 (0x054C5F41) ; balayé sur les
-// 88 modules de `deploy/any` + `deploy/ds`, il rend EXACTEMENT UNE occurrence,
+// modules de `deploy/any` + `deploy/ds`, il rend EXACTEMENT UNE occurrence,
 // `multi/fo08_wetland/fo08_wetland-rtx-new.module` à +0x28, groupe `levl`. Témoin de la
 // méthode : le level_id de Catalyst (−1044063363) rend de même une seule occurrence,
 // `multi/catalyst`. Preuve externe à toute mesure de largeur (plan maître §J0.2, 2026-07-31).
 // Vagabond est une carte Forge : `fo08_wetland` est sa TOILE, et c'est bien la toile qui
 // porte les bornes de déquantification.
 //
-// NON CATALOGUÉES faute de module établi : Live Fire, Recharge, Prism. Leurs largeurs
-// mesurées désignent un module compatible, mais rien n'établit le lien ; les cataloguer
-// reviendrait à deviner des coordonnées.
+// Les 6 entrées du 2026-08-13 (Corpo, Deadlock, Oasis, Prism, Recharge, Scarr) sont
+// établies par la MÊME méthode level_id, désormais REJOUÉE en continu par le test
+// gamefiles `TestPreuveLevelIDCartes` (internal/himap/sonde_levelid_gamefiles_test.go) :
+// level_id lu dans `<carte>_map.mvar` (variante par défaut, nom sans module), corroboré par
+// le fichier-lien `<carte>_<module>.mvar`, unicité exigée sur les 64 modules de
+// `any/levels` + `ds/levels`. Level_id mesurés (2026-08-13, unicité 1/1 chacun) :
+//
+//	Corpo     426470249  (0x196B6B69) -> fo11_blank (Forge : sa toile porte les bornes)
+//	Deadlock  -785503777 (0xD12E29DF) -> btb_drydock
+//	Oasis     -611378397 (0xDB8F1B23) -> btb_exiled
+//	Prism     2068765158 (0x7B4ED9E6) -> sgh_crystalcaves
+//	Recharge  -687782121 (0xD7014717) -> sgh_blueprint
+//	Scarr     799711266  (0x2FAAA022) -> btb_engine
+//
+// Live Fire (level_id 1253388187 / 0x4AB52F9B -> `sgh_interlock`, unicité 1/1, rejouée par
+// le même test) : son module ds ne porte AUCUN tag sbsp (mesuré le 2026-08-13,
+// `himap.ErrAucunTagSbsp`) — la carte est restée hors catalogue jusqu'au 2026-08-27 (lot C
+// catalogues). Ses régions de compression sont portées par `ds/globals/common` et résolues
+// par `himap.RegionsBSPExternes` (le levl les référence par GlobalID, deux blocs donnent le
+// même ordre — le critère moteur de sbsp_region.go, résolu à travers l'installation). La
+// carte déclare 4 régions (index d'i0 sur 2 bits) et la région JOUÉE est la 1 — pas la 0 :
+// preuve statique rejouée en continu par `himap.TestPreuveRegionsLiveFire` (les 48 ancres
+// d'objectifs du catalogue tombent toutes dans la région 1, qui est aussi la plus petite
+// englobante — le contrôle croisé historique), corroborée par ses 2 films (59 376/59 377
+// records i0 à l'index 01, découpage lu [13 12 11] au gate 5 = [12 12 11] à l'index près).
+// La déclaration vit dans `regionExterneDeclarations` ; toute carte dans ce cas SANS
+// déclaration reste refusée : une région choisie par défaut serait une coordonnée devinée.
+//
+// Les 2 pilotes du lot fonds par map_id (2026-08-13), même méthode level_id, unicité 1/1
+// chacun, rejoués en continu par `TestPreuveLevelIDCartes` :
+//
+//	Starboard -747133697 (0xD377A4FF) -> fo03_space   (Forge : sa toile porte les bornes)
+//	Dredge    2123870979 (0x7E97B303) -> fo06_deepsea (Forge : idem)
+//
+// La MASSE du même lot (33 cartes Forge, 2026-08-13) : même méthode, même sonde. Le
+// level_id d'une carte Forge désigne son CANEVAS — les cartes d'un même canevas portent
+// donc le MÊME level_id (mesuré, unicité 1/1 par carte via son fichier-lien) :
+//
+//	fo05_desert  1804860316 (0x6B93FB9C) : Banished Narrows, Cliffside, Domicile,
+//	             Fortitude, Kaiketsu, Shiro, Sylvanus
+//	fo08_wetland 88891201   (0x054C5F41) : Dynasty, High Ground, Isolation, Kiken'na,
+//	             Nemesis, Origin, Perilous, Refuge, Smallhalla (+ Vagabond, témoin)
+//	fo09_academy 1437677928 (0x55B13968) : Absolution, Command, Fortress, Houseki,
+//	             Obituary, The Pit
+//	fo11_blank   426470249  (0x196B6B69) : Critical Dewpoint, Curfew, Elevation,
+//	             Empyrean, Goliath, Opulence, Salvation, Shogun, Solitude, Takamanohara
+//	             (+ Corpo, témoin)
+//	fo13_frost   -992358985 (0xC4D9CDB7) : Snowbound
+//
+// LE RELIQUAT DU REGISTRE, INSTRUIT LE 2026-08-16 (PLAN_ALERTES_REPLAY_PARTOUT phase 3). Le
+// lot du 2026-08-13 n'avait catalogue que les cartes Forge de 9 matchs et plus ; 22 cartes de
+// 1 a 8 matchs restaient dehors. Leur module a ete PROUVE par la meme methode level_id (les
+// 22 sont dans `preuvesLevelID`, unicite 1/1 chacune). Huit sont entrees le 2026-08-16 ; les
+// QUATORZE AUTRES ont ete refusees par le controle `DetectI0Layout`, qui confronte les
+// largeurs DEDUITES des bornes du module au decoupage LU dans le film. Verdict par CANEVAS
+// (19 films) : ACCORD sur `fo08_wetland` 4/4 et `fo09_academy` 3/3 ; DESACCORD systematique
+// sur `fo05_desert` 3/3, `fo11_blank` 7/7 et `fo13_frost` 2/2 — bornes -> [18 18 18], films
+// -> [15 15 17].
+//
+// LA CAUSE, TROUVEE ET CORRIGEE LE 2026-08-16 (PLAN_BORNES_CANEVAS_FORGE) : ce binaire
+// retenait `ReadModuleBSPBounds(...)[0]`, c'est-a-dire LE PLUS GROS TAG sbsp du module. La
+// taille d'un tag mesure sa geometrie compilee, pas son role. Six modules de l'installation
+// portent un DECOR LOINTAIN plus lourd que leur arene — les six canevas Forge `fo03_space`,
+// `fo05_desert`, `fo06_deepsea`, `fo10_deadland`, `fo11_blank`, `fo13_frost` — et sur ceux-la
+// le catalogue portait les bornes du decor (3 867 x 3 662 x 2 664 unites) quand le jeu
+// quantifie dans l'arene (463 x 453 x 1 189). `fo08_wetland` et `fo09_academy` portent LES
+// MEMES DEUX AABB : ils tombaient juste parce que leur arene pese plus d'octets, pas parce que
+// le critere disait quelque chose de vrai.
+//
+// LE CRITERE EST DESORMAIS CELUI DU MOTEUR : `himap.BSPQuantification` lit l'ordre des REGIONS
+// de compression dans le bloc structure-BSP du tag de niveau (`levl`) et retient la region 0 —
+// celle que le composant i0 designe par defaut. Lisible sur les 29 modules porteurs de sbsp de
+// l'installation, confirme par un controle croise independant (le plus petit AABB) sur les 29,
+// et verrouille par `himap.TestBSPQuantificationTousModules`.
+//
+// PORTEE DE LA CORRECTION, mesuree sur le registre (snapshot v77+) : 21 entrees vivaient sur
+// ces six canevas avec de fausses bornes — 11 sur `fo11_blank`, 7 sur `fo05_desert`, 1 sur
+// `fo13_frost`, plus Starboard (`fo03_space`) et Dredge (`fo06_deepsea`) que le controle du
+// 2026-08-16 n'avait jamais joues — soit 316 matchs. Les 14 cartes refusees entrent en meme
+// temps (41 matchs). Cette correction ferme aussi le report « ecart vertical de ~1 270 m » du
+// 2026-08-14 : ses cartes touchees sont sur ces canevas.
+//
+// Les huit entrees du 2026-08-16, toutes controlees ACCORD (Cole Protocol n'a aucun film : elle
+// entre sur le controle de son CANEVAS, 3/3 — les bornes sont celles du module, pas de la
+// carte) :
+//
+//	fo08_wetland  Thunderhead, Ronin, Rat's Nest, Scarlett's Landing
+//	fo09_academy  Insolence, Merchant's Square, Urban Raid, Cole Protocol
+//
+// Les quatorze entrees du 2026-08-16 (PLAN_BORNES_CANEVAS_FORGE phase 2), debloquees par le
+// changement de critere et controlees film par film :
+//
+//	fo11_blank   Ecotone, Threshold, Pharaoh, Credence, Disciple, Nadair, Warehouse
+//	fo05_desert  Solution, Flood Gulch, Dawnbreaker, Vallaheim Firefight
+//	fo13_frost   Outlook, Lattice - Ranked, 944396dd-5661-4a16-b1d8-a6053f762c55
 var mapModule = map[string]string{
-	"Aquarius":      "ctf_aquarius",
-	"Bazaar":        "ctf_bazaar",
-	"Behemoth":      "va_behemoth",
-	"Breaker":       "ctf_breaker",
-	"Catalyst":      "catalyst",
-	"Chasm":         "chasm",
-	"Cliffhanger":   "ridgeline",
-	"Forbidden":     "ctf_forbidden",
-	"Forest":        "forest",
-	"Fragmentation": "btb_fragmentation",
-	"Highpower":     "btb_highpower",
-	"Illusion":      "ctf_illusion",
-	"Launch Site":   "va_launchsite",
-	"Streets":       "sgh_streets",
-	"Vagabond":      "fo08_wetland",
+	"Absolution":          "fo09_academy",
+	"Aquarius":            "ctf_aquarius",
+	"Banished Narrows":    "fo05_desert",
+	"Bazaar":              "ctf_bazaar",
+	"Behemoth":            "va_behemoth",
+	"Breaker":             "ctf_breaker",
+	"Catalyst":            "catalyst",
+	"Chasm":               "chasm",
+	"Cliffhanger":         "ridgeline",
+	"Cliffside":           "fo05_desert",
+	"Cole Protocol":       "fo09_academy",
+	"Command":             "fo09_academy",
+	"Corpo":               "fo11_blank",
+	"Credence":            "fo11_blank",
+	"Critical Dewpoint":   "fo11_blank",
+	"Curfew":              "fo11_blank",
+	"Dawnbreaker":         "fo05_desert",
+	"Deadlock":            "btb_drydock",
+	"Disciple":            "fo11_blank",
+	"Domicile":            "fo05_desert",
+	"Dredge":              "fo06_deepsea",
+	"Dynasty":             "fo08_wetland",
+	"Ecotone":             "fo11_blank",
+	"Elevation":           "fo11_blank",
+	"Empyrean":            "fo11_blank",
+	"Flood Gulch":         "fo05_desert",
+	"Forbidden":           "ctf_forbidden",
+	"Forest":              "forest",
+	"Fortitude":           "fo05_desert",
+	"Fortress":            "fo09_academy",
+	"Fragmentation":       "btb_fragmentation",
+	"Goliath":             "fo11_blank",
+	"High Ground":         "fo08_wetland",
+	"Highpower":           "btb_highpower",
+	"Houseki":             "fo09_academy",
+	"Illusion":            "ctf_illusion",
+	"Insolence":           "fo09_academy",
+	"Isolation":           "fo08_wetland",
+	"Kaiketsu":            "fo05_desert",
+	"Kiken'na":            "fo08_wetland",
+	"Lattice - Ranked":    "fo13_frost",
+	"Launch Site":         "va_launchsite",
+	"Live Fire":           "sgh_interlock",
+	"Merchant's Square":   "fo09_academy",
+	"Nadair":              "fo11_blank",
+	"Nemesis":             "fo08_wetland",
+	"Oasis":               "btb_exiled",
+	"Obituary":            "fo09_academy",
+	"Opulence":            "fo11_blank",
+	"Origin":              "fo08_wetland",
+	"Outlook":             "fo13_frost",
+	"Perilous":            "fo08_wetland",
+	"Pharaoh":             "fo11_blank",
+	"Prism":               "sgh_crystalcaves",
+	"Rat's Nest":          "fo08_wetland",
+	"Recharge":            "sgh_blueprint",
+	"Refuge":              "fo08_wetland",
+	"Ronin":               "fo08_wetland",
+	"Salvation":           "fo11_blank",
+	"Scarlett's Landing":  "fo08_wetland",
+	"Scarr":               "btb_engine",
+	"Shiro":               "fo05_desert",
+	"Shogun":              "fo11_blank",
+	"Smallhalla":          "fo08_wetland",
+	"Snowbound":           "fo13_frost",
+	"Solitude":            "fo11_blank",
+	"Solution":            "fo05_desert",
+	"Starboard":           "fo03_space",
+	"Streets":             "sgh_streets",
+	"Sylvanus":            "fo05_desert",
+	"Takamanohara":        "fo11_blank",
+	"The Pit":             "fo09_academy",
+	"Threshold":           "fo11_blank",
+	"Thunderhead":         "fo08_wetland",
+	"Urban Raid":          "fo09_academy",
+	"Vagabond":            "fo08_wetland",
+	"Vallaheim Firefight": "fo05_desert",
+	"Warehouse":           "fo11_blank",
+	// Carte dont l'API n'a jamais resolu le nom d'affichage : `map_name` vaut l'identifiant
+	// d'asset. Sa preuve level_id est jouee comme les autres par `TestPreuveLevelIDCartes`.
+	"944396dd-5661-4a16-b1d8-a6053f762c55": "fo13_frost",
+}
+
+// regionExterneDeclarations : cartes dont le module ne porte aucun tag sbsp — les regions
+// vivent dans `ds/globals` et la region JOUEE est DECLAREE ici avec sa preuve (voir le
+// paragraphe Live Fire de l'en-tete ; test de preuve `himap.TestPreuveRegionsLiveFire`).
+// Une carte `ErrAucunTagSbsp` sans declaration reste REFUSEE.
+var regionExterneDeclarations = map[string]uint32{
+	"Live Fire": 1,
+}
+
+// avertitSiEcarte publie, en AVERTISSEMENT, les cas où le critère de région a écarté le plus
+// gros tag sbsp. C'est la trace qui rend le catalogue relisible : sur les six canevas Forge de
+// l'installation, cet avertissement est la ligne qui dit que les bornes ont changé de BSP.
+func avertitSiEcarte(name, mod string, q himap.BSP, candidats []himap.BSP) {
+	if len(candidats) < 2 || q.GlobalID == candidats[0].GlobalID {
+		return
+	}
+	w, wPlusGros := q.Bounds.AxisWidths(), candidats[0].Bounds.AxisWidths()
+	slog.Warn("le plus gros tag sbsp n'est PAS la région 0 — bornes prises sur la région 0",
+		"carte", name, "module", mod, "candidats", len(candidats),
+		"region0", fmt.Sprintf("gid=%08x W=%d/%d/%d étendue=%.1f/%.1f/%.1f",
+			q.GlobalID, w[0], w[1], w[2], q.Bounds.Extent(0), q.Bounds.Extent(1), q.Bounds.Extent(2)),
+		"plusGrosTag", fmt.Sprintf("gid=%08x W=%d/%d/%d étendue=%.1f/%.1f/%.1f",
+			candidats[0].GlobalID, wPlusGros[0], wPlusGros[1], wPlusGros[2],
+			candidats[0].Bounds.Extent(0), candidats[0].Bounds.Extent(1), candidats[0].Bounds.Extent(2)))
+}
+
+// entreeRegionExterne construit l'entrée d'une carte dont les régions vivent dans
+// `ds/globals` (module sans sbsp, région jouée déclarée). La largeur de l'index d'i0 est
+// `decfilm.LargeurIndexDePlage` — la loi du moteur (`FUN_140be9a14` : 1 si une seule plage,
+// sinon ceilLog2 du compte), transcrite une seule fois depuis le lot 3.4.1.
+func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (decfilm.MapQuantEntry, error) {
+	globals, err := filepath.Glob(filepath.Join(levels, "..", "..", "globals", "*.module"))
+	if err != nil || len(globals) == 0 {
+		return decfilm.MapQuantEntry{}, fmt.Errorf("globals introuvables sous %s (%w)", levels, err)
+	}
+	regions, err := himap.RegionsBSPExternes(modulePath, globals)
+	if err != nil {
+		return decfilm.MapQuantEntry{}, err
+	}
+	if int(region) >= len(regions) {
+		return decfilm.MapQuantEntry{}, fmt.Errorf("région déclarée %d hors des %d régions résolues", region, len(regions))
+	}
+	b := regions[region].BSP
+	if !b.Bounds.Valid() {
+		return decfilm.MapQuantEntry{}, fmt.Errorf("AABB dégénérée (région %d)", region)
+	}
+	// LA LOI VIT DANS LE DECODEUR DEPUIS LE LOT 3.4.1 (`profile/loi_largeurs.go`,
+	// transcription de `FUN_140be9a14`) : cet outil la recopiait en boucle a la main, et une
+	// meme largeur du jeu ne s ecrit qu une fois (CLAUDE.md regle 6).
+	bits := decfilm.LargeurIndexDePlage(len(regions))
+	e := decfilm.MapQuantEntry{Module: mod, Region: region, RegionIndexBits: bits}
+	w := b.Bounds.AxisWidths()
+	for ax := 0; ax < 3; ax++ {
+		e.Min[ax] = float32(b.Bounds.Min[ax])
+		e.Max[ax] = float32(b.Bounds.Max[ax])
+		e.AxisWidths[ax] = uint(w[ax])
+	}
+	slog.Info("bornes lues (régions externes)", "carte", name, "module", mod,
+		"porteur", regions[region].Module, "region", region, "regions", len(regions),
+		"indexBits", bits, "W", fmt.Sprintf("%d/%d/%d", w[0], w[1], w[2]),
+		"extent", fmt.Sprintf("%.3f/%.3f/%.3f", b.Bounds.Extent(0), b.Bounds.Extent(1), b.Bounds.Extent(2)))
+	return e, nil
+}
+
+// methodeDesBornes : la MÉTHODE de dérivation, invariante d'un poste à l'autre. C'est elle qui
+// vaut provenance dans le fichier commis ; le dossier n'est qu'une précision.
+const methodeDesBornes = "world bounds x/y/z du tag sbsp de la RÉGION 0 " +
+	"(ordre du bloc structure-BSP du tag de niveau), lus dans "
+
+// sourceDuCatalogue rend la valeur du champ `source` du catalogue : la méthode, puis le dossier
+// des niveaux RELATIF à la racine de l'installation (`ds/levels/multi`).
+//
+// POURQUOI RELATIF (découverte D2 (3.1.2), 2026-09-16) : le fichier est VERSIONNÉ, et il portait
+// le chemin d'installation ABSOLU du poste qui l'a produit
+// (`D:\<bibliotheque>\<jeux>\common\Halo Infinite\deploy\ds\levels\multi`). Deux postes qui
+// régénèrent le MÊME catalogue rendaient donc deux fichiers différents alors qu'aucune borne
+// n'avait bougé — un gate « commis = régénéré » à l'octet rougissait pour une trace de
+// fabrication. Le lot 3.1.2 l'avait contourné en excluant `source` de l'empreinte du profil
+// (`TestEmpreinteDesBornesIgnoreLaTraceDeFabrication`) ; ceci en retire la cause.
+//
+// Quand le dossier n'est PAS sous l'installation détectée (`--levels` pointé ailleurs, ou aucune
+// installation), aucun chemin n'est écrit : mieux vaut une provenance qui ne dit que la méthode
+// qu'une provenance qui dit le disque de quelqu'un.
+func sourceDuCatalogue(levels string) string {
+	root, err := himap.DeployRoot()
+	if err != nil {
+		return methodeDesBornes + "le dossier des niveaux passé par --levels"
+	}
+	rel, err := filepath.Rel(root, levels)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return methodeDesBornes + "le dossier des niveaux passé par --levels"
+	}
+	return methodeDesBornes + filepath.ToSlash(rel) + " (relatif à la racine de l'installation)"
 }
 
 func main() {
-	levels := flag.String("levels", defaultLevelsDir, "racine des dossiers de cartes (.module)")
+	levels := flag.String("levels", "", "racine des dossiers de cartes (.module) ; vide = installation détectée")
 	titleSlug := flag.String("title", title.DefaultSlug, "slug du titre")
 	out := flag.String("out", "", "fichier de sortie (défaut : PathResolver.MapQuantBoundsPath)")
 	flag.Parse()
+
+	if *levels == "" {
+		dir, err := himap.LevelsDir(deployVariant)
+		if err != nil {
+			slog.Error("installation du jeu", "err", err)
+			os.Exit(1)
+		}
+		*levels = dir
+		slog.Info("installation détectée", "levels", dir)
+	}
 
 	outPath := *out
 	if outPath == "" {
@@ -87,10 +353,10 @@ func main() {
 		outPath = title.NewPathResolver(root).MapQuantBoundsPath(*titleSlug)
 	}
 
-	cat := filmdec.MapQuantCatalog{
-		SchemaVersion: filmdec.MapQuantSchemaVersion,
-		Source:        "world bounds x/y/z du tag sbsp principal, lus dans " + *levels,
-		Maps:          map[string]filmdec.MapQuantEntry{},
+	cat := decfilm.MapQuantCatalog{
+		SchemaVersion: decfilm.MapQuantSchemaVersion,
+		Source:        sourceDuCatalogue(*levels),
+		Maps:          map[string]decfilm.MapQuantEntry{},
 	}
 	names := make([]string, 0, len(mapModule))
 	for n := range mapModule {
@@ -106,29 +372,45 @@ func main() {
 			missing++
 			continue
 		}
-		bsps, err := himap.ReadModuleBSPBounds(mods[0])
+		// LE BSP DE DÉQUANTIFICATION EST LA RÉGION 0 DU TAG DE NIVEAU, jamais le plus gros
+		// tag : `BSPQuantification` refuse plutôt que de deviner quand l'ordre des régions
+		// est illisible, et ce refus doit rester une erreur qui arrête le catalogue.
+		// Cas EXTERNE (module sans aucun sbsp, régions dans ds/globals) : seulement sur
+		// déclaration explicite de la région jouée — cf. `regionExterneDeclarations`.
+		q, candidats, err := himap.BSPQuantification(mods[0])
 		if err != nil {
-			slog.Error("lecture des bornes", "err", err, "carte", name, "module", mod)
-			missing++
+			region, declaree := regionExterneDeclarations[name]
+			if !errors.Is(err, himap.ErrAucunTagSbsp) || !declaree {
+				slog.Error("choix du BSP de déquantification", "err", err, "carte", name, "module", mod)
+				missing++
+				continue
+			}
+			e, err := entreeRegionExterne(name, mod, mods[0], *levels, region)
+			if err != nil {
+				slog.Error("régions externes", "err", err, "carte", name, "module", mod)
+				missing++
+				continue
+			}
+			cat.Maps[decfilm.NormalizeMapName(name)] = e
 			continue
 		}
-		main := bsps[0] // BSP principal = le plus gros tag sbsp
-		if !main.Bounds.Valid() {
+		if !q.Bounds.Valid() {
 			slog.Error("AABB dégénérée", "carte", name, "module", mod)
 			missing++
 			continue
 		}
-		e := filmdec.MapQuantEntry{Module: mod}
-		w := main.Bounds.AxisWidths()
+		avertitSiEcarte(name, mod, q, candidats)
+		e := decfilm.MapQuantEntry{Module: mod}
+		w := q.Bounds.AxisWidths()
 		for ax := 0; ax < 3; ax++ {
-			e.Min[ax] = float32(main.Bounds.Min[ax])
-			e.Max[ax] = float32(main.Bounds.Max[ax])
+			e.Min[ax] = float32(q.Bounds.Min[ax])
+			e.Max[ax] = float32(q.Bounds.Max[ax])
 			e.AxisWidths[ax] = uint(w[ax])
 		}
-		cat.Maps[filmdec.NormalizeMapName(name)] = e
+		cat.Maps[decfilm.NormalizeMapName(name)] = e
 		slog.Info("bornes lues", "carte", name, "module", mod,
 			"W", fmt.Sprintf("%d/%d/%d", w[0], w[1], w[2]),
-			"extent", fmt.Sprintf("%.3f/%.3f/%.3f", main.Bounds.Extent(0), main.Bounds.Extent(1), main.Bounds.Extent(2)))
+			"extent", fmt.Sprintf("%.3f/%.3f/%.3f", q.Bounds.Extent(0), q.Bounds.Extent(1), q.Bounds.Extent(2)))
 	}
 	if missing > 0 {
 		slog.Error("catalogue incomplet — rien écrit", "manquantes", missing)

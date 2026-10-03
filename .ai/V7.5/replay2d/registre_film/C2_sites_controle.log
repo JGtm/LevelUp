@@ -1,0 +1,315 @@
+# C2.3 — CONTROLE SPATIAL DES SITES CANDIDATS D'ASSAUT (lot C catalogues, 2026-08-27)
+# Sites candidats figes AVANT mesure : C2_sites_candidats.json (hashs -1537427652 centre / -1843278509 bases).
+# Gate (plan, inchange) : signal >= 75 % des explosions a <= 10 m d'un site, temoin (+12 m) <= 25 %.
+# Parametres ecrits avant mesure : fenetre [t-5000 ms, t], distance 2D (x,y). Un film par processus.
+
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:21:05 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:91: 35b75a31 : carte Origin (b302eb62-da9a-480b-a409-3c89df8c1a04) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:113: 35b75a31 : site base (hash -1843278509, team 1) @ 20.00 0.00 61.51 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 35b75a31 : site base (hash -1843278509, team 1) @ 20.00 0.00 61.72 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 35b75a31 : site base (hash -1843278509, team 0) @ -20.00 0.00 61.52 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 35b75a31 : site base (hash -1843278509, team 0) @ -20.00 0.00 61.72 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 35b75a31 : site centre (hash -1537427652, team -1) @ 0.00 -6.00 58.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 35b75a31 : site centre (hash -1537427652, team -1) @ 0.00 -6.00 57.98 — dans les bornes : true
+    catalogues_c2_sites_test.go:123: 35b75a31 : explosion t=304013 ms — dmin signal 2.03 m, dmin temoin 0.22 m
+    catalogues_c2_sites_test.go:123: 35b75a31 : explosion t=541270 ms — dmin signal 4.29 m, dmin temoin 1.10 m
+    catalogues_c2_sites_test.go:123: 35b75a31 : explosion t=787051 ms — dmin signal 0.10 m, dmin temoin 1.39 m
+    catalogues_c2_sites_test.go:123: C2.3 35b75a31 : 3 explosion(s) — signal 3/3 = 100.0 % (seuil >= 75 %), temoin 3/3 = 100.0 % (seuil <= 25 %) ; dmin mediane 2.03 m
+    catalogues_c2_sites_test.go:88: 35b75a31 : pic memoire observe 0.08 Gio
+--- PASS: TestCataloguesC2SitesControle (8.41s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	8.849s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:21:15 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:91: 69b16f5d : carte Origin (b302eb62-da9a-480b-a409-3c89df8c1a04) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:113: 69b16f5d : site base (hash -1843278509, team 1) @ 20.00 0.00 61.51 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 69b16f5d : site base (hash -1843278509, team 1) @ 20.00 0.00 61.72 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 69b16f5d : site base (hash -1843278509, team 0) @ -20.00 0.00 61.52 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 69b16f5d : site base (hash -1843278509, team 0) @ -20.00 0.00 61.72 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 69b16f5d : site centre (hash -1537427652, team -1) @ 0.00 -6.00 58.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 69b16f5d : site centre (hash -1537427652, team -1) @ 0.00 -6.00 57.98 — dans les bornes : true
+    catalogues_c2_sites_test.go:123: 69b16f5d : explosion t=154305 ms — dmin signal 1.20 m, dmin temoin 1.20 m
+    catalogues_c2_sites_test.go:123: 69b16f5d : explosion t=278617 ms — dmin signal 4.12 m, dmin temoin 0.83 m
+    catalogues_c2_sites_test.go:123: 69b16f5d : explosion t=310215 ms — dmin signal 3.54 m, dmin temoin 4.53 m
+    catalogues_c2_sites_test.go:123: C2.3 69b16f5d : 3 explosion(s) — signal 3/3 = 100.0 % (seuil >= 75 %), temoin 3/3 = 100.0 % (seuil <= 25 %) ; dmin mediane 3.54 m
+    catalogues_c2_sites_test.go:88: 69b16f5d : pic memoire observe 0.01 Gio
+--- PASS: TestCataloguesC2SitesControle (2.72s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	3.163s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:21:19 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:91: 3d58eb37 : carte Absolution (78da545f-a168-4a5e-9c8d-dd379067c352) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:113: 3d58eb37 : site base (hash -1843278509, team 1) @ -6.51 49.71 83.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 3d58eb37 : site base (hash -1843278509, team 1) @ -6.51 49.71 84.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 3d58eb37 : site base (hash -1843278509, team 0) @ -31.42 15.74 83.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 3d58eb37 : site base (hash -1843278509, team 0) @ -31.42 15.74 84.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 3d58eb37 : site centre (hash -1537427652, team -1) @ -18.93 32.73 86.68 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 3d58eb37 : site centre (hash -1537427652, team -1) @ -18.93 32.73 86.48 — dans les bornes : true
+    catalogues_c2_sites_test.go:123: 3d58eb37 : explosion t=203065 ms — dmin signal 0.70 m, dmin temoin 5.97 m
+    catalogues_c2_sites_test.go:123: 3d58eb37 : explosion t=342196 ms — dmin signal 2.99 m, dmin temoin 5.55 m
+    catalogues_c2_sites_test.go:123: 3d58eb37 : explosion t=386280 ms — dmin signal 3.05 m, dmin temoin 2.49 m
+    catalogues_c2_sites_test.go:123: C2.3 3d58eb37 : 3 explosion(s) — signal 3/3 = 100.0 % (seuil >= 75 %), temoin 3/3 = 100.0 % (seuil <= 25 %) ; dmin mediane 2.99 m
+    catalogues_c2_sites_test.go:88: 3d58eb37 : pic memoire observe 0.05 Gio
+--- PASS: TestCataloguesC2SitesControle (5.06s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	5.495s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:21:25 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:91: 34bb3bc8 : carte Rat's Nest (133c0185-24ed-4bc2-b834-62db5c936257) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:113: 34bb3bc8 : site base (hash -1843278509, team 1) @ -97.60 -7.40 165.03 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 34bb3bc8 : site base (hash -1843278509, team 0) @ -97.60 -7.40 165.23 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 34bb3bc8 : site base (hash -1843278509, team 1) @ -97.60 28.80 165.03 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 34bb3bc8 : site base (hash -1843278509, team 1) @ -97.60 28.80 165.23 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 34bb3bc8 : site centre (hash -1537427652, team -1) @ -116.45 10.72 166.73 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 34bb3bc8 : site centre (hash -1537427652, team -1) @ -116.45 10.72 166.53 — dans les bornes : true
+    catalogues_c2_sites_test.go:123: 34bb3bc8 : explosion t=427120 ms — dmin signal 1.70 m, dmin temoin 0.51 m
+    catalogues_c2_sites_test.go:123: C2.3 34bb3bc8 : 1 explosion(s) — signal 1/1 = 100.0 % (seuil >= 75 %), temoin 1/1 = 100.0 % (seuil <= 25 %) ; dmin mediane 1.70 m
+    catalogues_c2_sites_test.go:88: 34bb3bc8 : pic memoire observe 0.14 Gio
+--- PASS: TestCataloguesC2SitesControle (18.95s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	19.400s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:21:46 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:91: df8fcbef : carte Curfew (63d634be-0319-489d-8c21-9c4e012f664f) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:113: df8fcbef : site base (hash -1843278509, team 1) @ -34.14 22.19 105.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: df8fcbef : site base (hash -1843278509, team 0) @ -34.14 22.19 106.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: df8fcbef : site base (hash -1843278509, team 1) @ -3.37 7.73 106.79 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: df8fcbef : site base (hash -1843278509, team 1) @ -3.37 7.73 106.99 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: df8fcbef : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.38 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: df8fcbef : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:123: df8fcbef : explosion t=255767 ms — dmin signal 0.96 m, dmin temoin 3.00 m
+    catalogues_c2_sites_test.go:123: df8fcbef : explosion t=309284 ms — dmin signal 0.04 m, dmin temoin 2.69 m
+    catalogues_c2_sites_test.go:123: df8fcbef : explosion t=485860 ms — dmin signal 2.66 m, dmin temoin 2.68 m
+    catalogues_c2_sites_test.go:123: df8fcbef : explosion t=778033 ms — dmin signal 2.05 m, dmin temoin 2.17 m
+    catalogues_c2_sites_test.go:123: C2.3 df8fcbef : 4 explosion(s) — signal 4/4 = 100.0 % (seuil >= 75 %), temoin 4/4 = 100.0 % (seuil <= 25 %) ; dmin mediane 2.05 m
+    catalogues_c2_sites_test.go:88: df8fcbef : pic memoire observe 0.08 Gio
+--- PASS: TestCataloguesC2SitesControle (5.69s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	6.116s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:21:53 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:91: c75f33b8 : carte Curfew (63d634be-0319-489d-8c21-9c4e012f664f) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:113: c75f33b8 : site base (hash -1843278509, team 1) @ -34.14 22.19 105.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: c75f33b8 : site base (hash -1843278509, team 0) @ -34.14 22.19 106.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: c75f33b8 : site base (hash -1843278509, team 1) @ -3.37 7.73 106.79 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: c75f33b8 : site base (hash -1843278509, team 1) @ -3.37 7.73 106.99 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: c75f33b8 : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.38 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: c75f33b8 : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:123: c75f33b8 : explosion t=109549 ms — dmin signal 0.46 m, dmin temoin 4.69 m
+    catalogues_c2_sites_test.go:123: c75f33b8 : explosion t=395724 ms — dmin signal 1.10 m, dmin temoin 1.45 m
+    catalogues_c2_sites_test.go:123: c75f33b8 : explosion t=450833 ms — dmin signal 2.68 m, dmin temoin 1.70 m
+    catalogues_c2_sites_test.go:123: C2.3 c75f33b8 : 3 explosion(s) — signal 3/3 = 100.0 % (seuil >= 75 %), temoin 3/3 = 100.0 % (seuil <= 25 %) ; dmin mediane 1.10 m
+    catalogues_c2_sites_test.go:88: c75f33b8 : pic memoire observe 0.04 Gio
+--- PASS: TestCataloguesC2SitesControle (4.58s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	5.011s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:21:59 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:91: 9f57c612 : carte Curfew (63d634be-0319-489d-8c21-9c4e012f664f) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:113: 9f57c612 : site base (hash -1843278509, team 1) @ -34.14 22.19 105.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 9f57c612 : site base (hash -1843278509, team 0) @ -34.14 22.19 106.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 9f57c612 : site base (hash -1843278509, team 1) @ -3.37 7.73 106.79 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 9f57c612 : site base (hash -1843278509, team 1) @ -3.37 7.73 106.99 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 9f57c612 : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.38 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 9f57c612 : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:123: 9f57c612 : explosion t=83322 ms — dmin signal 3.17 m, dmin temoin 3.93 m
+    catalogues_c2_sites_test.go:123: 9f57c612 : explosion t=298489 ms — dmin signal 1.55 m, dmin temoin 3.93 m
+    catalogues_c2_sites_test.go:123: 9f57c612 : explosion t=353160 ms — dmin signal 1.78 m, dmin temoin 1.65 m
+    catalogues_c2_sites_test.go:123: 9f57c612 : explosion t=469057 ms — dmin signal 2.01 m, dmin temoin 4.52 m
+    catalogues_c2_sites_test.go:123: C2.3 9f57c612 : 4 explosion(s) — signal 4/4 = 100.0 % (seuil >= 75 %), temoin 4/4 = 100.0 % (seuil <= 25 %) ; dmin mediane 2.01 m
+    catalogues_c2_sites_test.go:88: 9f57c612 : pic memoire observe 0.04 Gio
+--- PASS: TestCataloguesC2SitesControle (4.69s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	5.124s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:22:05 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:91: 1c01e34f : carte Urban Raid (be848f91-3d87-4b80-8eb9-df3b52cb8d10) — 3 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:113: 1c01e34f : site base (hash -1843278509, team 1) @ 3.70 -16.00 54.84 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 1c01e34f : site base (hash -1843278509, team 0) @ 3.70 10.70 54.84 — dans les bornes : true
+    catalogues_c2_sites_test.go:113: 1c01e34f : site centre (hash -1537427652, team -1) @ 3.70 -2.55 54.85 — dans les bornes : true
+    catalogues_c2_sites_test.go:123: 1c01e34f : explosion t=150546 ms — dmin signal 0.91 m, dmin temoin 9.20 m
+    catalogues_c2_sites_test.go:123: 1c01e34f : explosion t=273787 ms — dmin signal 0.24 m, dmin temoin 10.29 m
+    catalogues_c2_sites_test.go:123: 1c01e34f : explosion t=335637 ms — dmin signal 0.02 m, dmin temoin 8.84 m
+    catalogues_c2_sites_test.go:123: 1c01e34f : explosion t=400853 ms — dmin signal 1.08 m, dmin temoin 9.23 m
+    catalogues_c2_sites_test.go:123: C2.3 1c01e34f : 4 explosion(s) — signal 4/4 = 100.0 % (seuil >= 75 %), temoin 3/4 = 75.0 % (seuil <= 25 %) ; dmin mediane 0.91 m
+    catalogues_c2_sites_test.go:88: 1c01e34f : pic memoire observe 0.06 Gio
+--- PASS: TestCataloguesC2SitesControle (4.55s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	4.980s
+
+# ---------------------------------------------------------------------------
+# RE-MESURE V2 (amendement UNIQUE de l'instrument, 2026-08-27) : la V1 ci-dessus ne
+# discriminait rien (temoin sature par construction — rayon 10 m vs decalage 12 m,
+# fenetre 5 s x tous les joueurs). V2 : presence SOUTENUE d'un meme (slot, site)
+# — >= 3 echantillons, etendue >= 2000 ms, fenetre [t-15000, t]. Seuils du plan inchanges.
+# ---------------------------------------------------------------------------
+
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:24:50 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:106: 35b75a31 : carte Origin (b302eb62-da9a-480b-a409-3c89df8c1a04) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:128: 35b75a31 : site base (hash -1843278509, team 1) @ 20.00 0.00 61.51 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 35b75a31 : site base (hash -1843278509, team 1) @ 20.00 0.00 61.72 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 35b75a31 : site base (hash -1843278509, team 0) @ -20.00 0.00 61.52 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 35b75a31 : site base (hash -1843278509, team 0) @ -20.00 0.00 61.72 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 35b75a31 : site centre (hash -1537427652, team -1) @ 0.00 -6.00 58.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 35b75a31 : site centre (hash -1537427652, team -1) @ 0.00 -6.00 57.98 — dans les bornes : true
+    catalogues_c2_sites_test.go:138: 35b75a31 : explosion t=304013 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 35b75a31 : explosion t=541270 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 35b75a31 : explosion t=787051 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: C2.3 35b75a31 : 3 explosion(s) — signal 3/3 = 100.0 % (seuil >= 75 %), temoin 3/3 = 100.0 % (seuil <= 25 %)
+    catalogues_c2_sites_test.go:103: 35b75a31 : pic memoire observe 0.11 Gio
+--- PASS: TestCataloguesC2SitesControle (7.81s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	8.247s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:24:59 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:106: 69b16f5d : carte Origin (b302eb62-da9a-480b-a409-3c89df8c1a04) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:128: 69b16f5d : site base (hash -1843278509, team 1) @ 20.00 0.00 61.51 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 69b16f5d : site base (hash -1843278509, team 1) @ 20.00 0.00 61.72 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 69b16f5d : site base (hash -1843278509, team 0) @ -20.00 0.00 61.52 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 69b16f5d : site base (hash -1843278509, team 0) @ -20.00 0.00 61.72 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 69b16f5d : site centre (hash -1537427652, team -1) @ 0.00 -6.00 58.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 69b16f5d : site centre (hash -1537427652, team -1) @ 0.00 -6.00 57.98 — dans les bornes : true
+    catalogues_c2_sites_test.go:138: 69b16f5d : explosion t=154305 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 69b16f5d : explosion t=278617 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 69b16f5d : explosion t=310215 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: C2.3 69b16f5d : 3 explosion(s) — signal 3/3 = 100.0 % (seuil >= 75 %), temoin 3/3 = 100.0 % (seuil <= 25 %)
+    catalogues_c2_sites_test.go:103: 69b16f5d : pic memoire observe 0.03 Gio
+--- PASS: TestCataloguesC2SitesControle (2.62s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	3.070s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:25:03 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:106: 3d58eb37 : carte Absolution (78da545f-a168-4a5e-9c8d-dd379067c352) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:128: 3d58eb37 : site base (hash -1843278509, team 1) @ -6.51 49.71 83.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 3d58eb37 : site base (hash -1843278509, team 1) @ -6.51 49.71 84.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 3d58eb37 : site base (hash -1843278509, team 0) @ -31.42 15.74 83.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 3d58eb37 : site base (hash -1843278509, team 0) @ -31.42 15.74 84.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 3d58eb37 : site centre (hash -1537427652, team -1) @ -18.93 32.73 86.68 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 3d58eb37 : site centre (hash -1537427652, team -1) @ -18.93 32.73 86.48 — dans les bornes : true
+    catalogues_c2_sites_test.go:138: 3d58eb37 : explosion t=203065 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 3d58eb37 : explosion t=342196 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 3d58eb37 : explosion t=386280 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: C2.3 3d58eb37 : 3 explosion(s) — signal 3/3 = 100.0 % (seuil >= 75 %), temoin 3/3 = 100.0 % (seuil <= 25 %)
+    catalogues_c2_sites_test.go:103: 3d58eb37 : pic memoire observe 0.03 Gio
+--- PASS: TestCataloguesC2SitesControle (5.01s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	5.448s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:25:10 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:106: 34bb3bc8 : carte Rat's Nest (133c0185-24ed-4bc2-b834-62db5c936257) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:128: 34bb3bc8 : site base (hash -1843278509, team 1) @ -97.60 -7.40 165.03 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 34bb3bc8 : site base (hash -1843278509, team 0) @ -97.60 -7.40 165.23 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 34bb3bc8 : site base (hash -1843278509, team 1) @ -97.60 28.80 165.03 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 34bb3bc8 : site base (hash -1843278509, team 1) @ -97.60 28.80 165.23 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 34bb3bc8 : site centre (hash -1537427652, team -1) @ -116.45 10.72 166.73 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 34bb3bc8 : site centre (hash -1537427652, team -1) @ -116.45 10.72 166.53 — dans les bornes : true
+    catalogues_c2_sites_test.go:138: 34bb3bc8 : explosion t=427120 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: C2.3 34bb3bc8 : 1 explosion(s) — signal 1/1 = 100.0 % (seuil >= 75 %), temoin 1/1 = 100.0 % (seuil <= 25 %)
+    catalogues_c2_sites_test.go:103: 34bb3bc8 : pic memoire observe 0.25 Gio
+--- PASS: TestCataloguesC2SitesControle (19.29s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	19.749s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:25:31 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:106: df8fcbef : carte Curfew (63d634be-0319-489d-8c21-9c4e012f664f) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:128: df8fcbef : site base (hash -1843278509, team 1) @ -34.14 22.19 105.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: df8fcbef : site base (hash -1843278509, team 0) @ -34.14 22.19 106.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: df8fcbef : site base (hash -1843278509, team 1) @ -3.37 7.73 106.79 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: df8fcbef : site base (hash -1843278509, team 1) @ -3.37 7.73 106.99 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: df8fcbef : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.38 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: df8fcbef : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:138: df8fcbef : explosion t=255767 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: df8fcbef : explosion t=309284 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: df8fcbef : explosion t=485860 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: df8fcbef : explosion t=778033 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: C2.3 df8fcbef : 4 explosion(s) — signal 4/4 = 100.0 % (seuil >= 75 %), temoin 4/4 = 100.0 % (seuil <= 25 %)
+    catalogues_c2_sites_test.go:103: df8fcbef : pic memoire observe 0.09 Gio
+--- PASS: TestCataloguesC2SitesControle (5.70s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	6.177s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:25:38 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:106: c75f33b8 : carte Curfew (63d634be-0319-489d-8c21-9c4e012f664f) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:128: c75f33b8 : site base (hash -1843278509, team 1) @ -34.14 22.19 105.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: c75f33b8 : site base (hash -1843278509, team 0) @ -34.14 22.19 106.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: c75f33b8 : site base (hash -1843278509, team 1) @ -3.37 7.73 106.79 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: c75f33b8 : site base (hash -1843278509, team 1) @ -3.37 7.73 106.99 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: c75f33b8 : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.38 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: c75f33b8 : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:138: c75f33b8 : explosion t=109549 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: c75f33b8 : explosion t=395724 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: c75f33b8 : explosion t=450833 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: C2.3 c75f33b8 : 3 explosion(s) — signal 3/3 = 100.0 % (seuil >= 75 %), temoin 3/3 = 100.0 % (seuil <= 25 %)
+    catalogues_c2_sites_test.go:103: c75f33b8 : pic memoire observe 0.05 Gio
+--- PASS: TestCataloguesC2SitesControle (4.57s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	5.010s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:25:44 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:106: 9f57c612 : carte Curfew (63d634be-0319-489d-8c21-9c4e012f664f) — 6 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:128: 9f57c612 : site base (hash -1843278509, team 1) @ -34.14 22.19 105.88 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 9f57c612 : site base (hash -1843278509, team 0) @ -34.14 22.19 106.08 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 9f57c612 : site base (hash -1843278509, team 1) @ -3.37 7.73 106.79 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 9f57c612 : site base (hash -1843278509, team 1) @ -3.37 7.73 106.99 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 9f57c612 : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.38 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 9f57c612 : site centre (hash -1537427652, team -1) @ -17.66 10.31 103.18 — dans les bornes : true
+    catalogues_c2_sites_test.go:138: 9f57c612 : explosion t=83322 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 9f57c612 : explosion t=298489 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 9f57c612 : explosion t=353160 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 9f57c612 : explosion t=469057 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: C2.3 9f57c612 : 4 explosion(s) — signal 4/4 = 100.0 % (seuil >= 75 %), temoin 4/4 = 100.0 % (seuil <= 25 %)
+    catalogues_c2_sites_test.go:103: 9f57c612 : pic memoire observe 0.04 Gio
+--- PASS: TestCataloguesC2SitesControle (4.71s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	5.152s
+=== RUN   TestCataloguesC2SitesControle
+2026/08/27 17:25:50 INFO plafond memoire arme pour ce decodage outil=c2-sites souple_gib=2 dur_octets=2684354560
+    catalogues_c2_sites_test.go:106: 1c01e34f : carte Urban Raid (be848f91-3d87-4b80-8eb9-df3b52cb8d10) — 3 site(s) candidat(s) figes
+    catalogues_c2_sites_test.go:128: 1c01e34f : site base (hash -1843278509, team 1) @ 3.70 -16.00 54.84 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 1c01e34f : site base (hash -1843278509, team 0) @ 3.70 10.70 54.84 — dans les bornes : true
+    catalogues_c2_sites_test.go:128: 1c01e34f : site centre (hash -1537427652, team -1) @ 3.70 -2.55 54.85 — dans les bornes : true
+    catalogues_c2_sites_test.go:138: 1c01e34f : explosion t=150546 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 1c01e34f : explosion t=273787 ms — presence soutenue au site : signal true, temoin false
+    catalogues_c2_sites_test.go:138: 1c01e34f : explosion t=335637 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: 1c01e34f : explosion t=400853 ms — presence soutenue au site : signal true, temoin true
+    catalogues_c2_sites_test.go:138: C2.3 1c01e34f : 4 explosion(s) — signal 4/4 = 100.0 % (seuil >= 75 %), temoin 3/4 = 75.0 % (seuil <= 25 %)
+    catalogues_c2_sites_test.go:103: 1c01e34f : pic memoire observe 0.06 Gio
+--- PASS: TestCataloguesC2SitesControle (4.53s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	4.959s
+
+# ============================================================================
+# VERDICT C2.3 (fige le 2026-08-27)
+#
+# ASSAUT — GATE NON TENU, RIEN N'ENTRE AU CATALOGUE. Les deux mesures (V1 puis V2 apres
+# l'amendement unique declare) rendent un SIGNAL maximal : 25/25 explosions avec activite
+# au site (V1 dmin mediane 0,91-3,54 m ; V2 presence soutenue d'un meme joueur au meme
+# site : 25/25) — mais le TEMOIN (+12 m) est a 75-100 % sur les 8 films, contre <= 25 %
+# exige. CAUSE NOMMEE, chiffree par les dmin temoin de V1 (0,22-5,97 m sur les cartes
+# arene ; 8,84-10,29 m sur Urban Raid seule) : le temoin du plan est INSATURABLE sur ces
+# cartes — (a) geometriquement, le decalage de 12 m est inferieur a 2 x le rayon de 10 m
+# (disques recouvrants : une presence a 2 m du vrai site compte au temoin) ; (b) surtout,
+# dans toute fenetre de 5-15 s, l'activite de 8-16 joueurs couvre le voisinage de
+# n'importe quel point des zones de combat (les sites decales tombent dans les lanes).
+# Ce zero ne refute PAS les sites candidats : il refute l'INSTRUMENT « activite de
+# joueurs » a cette echelle. Les sites candidats restent figes dans
+# C2_sites_candidats.json avec leur motif (hashs -1537427652 centre / -1843278509 bases,
+# stables sur les 5 cartes, topologie centre neutre + 2 bases par equipe, chasse murmur3
+# 2173 candidats sans nom — patron KOTH).
+#
+# CONDITION DE REPRISE : un temoin d'echelle coherente (decalage >= 4 x le rayon
+# d'activite retenu), OU la validation par la naissance de l'OBJET (le gate A1 lui-meme :
+# UN mot MPP ne aux sites ET coincidant avec les remises en jeu, temoin de selectivite
+# interne = 0 autre candidat — non circulaire, la jambe temporelle est independante des
+# sites). Arbitrage superviseur au CR.
+#
+# LATTICE — ENTREE AU CATALOGUE (hors du perimetre du controle spatial, qui gouverne
+# « One Bomb/Neutral Bomb ») : label RESOLU oddball_spawn, meme chaine que les 72 entrees
+# existantes (mapobj-build --from-file, map.mvar version 3a382104 telecharge ce jour par
+# la chaine reseau du CLI). COMPTE : 1 socle (attendu 1-2), team -1,
+# @ (-59.70, -34.42, 53.91), DANS les bornes de la carte (X[-231;231.6] Y[-227;226.3]
+# Z[-946;242.3]). Entree complete : 9 objectifs (5 hill, 1 oddball_spawn,
+# 3 strongholds_zone), level_id -992358985 (= fo13_frost, la preuve de canevas).
+# ============================================================================

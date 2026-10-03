@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "ctf_bazaar",
+  "mapNames": [
+    "Bazaar",
+    "bazaar_map"
+  ],
+  "image": "ctf_bazaar.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-26T16:10:39.6314007Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.034,
+    "originX": -33.934,
+    "originY": 24.32307030487062,
+    "widthPx": 2032,
+    "heightPx": 1462,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 17,
+    "anchorsInFrame": 17,
+    "anchorsWithGround": 17,
+    "anchorMedianGapM": -3.1974619499052883,
+    "instancesDrawn": 8483,
+    "instancesScenery": 272,
+    "playLevelZ": 1.1847501611709594,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 12404357,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.052642673349229854,
+    "covered": false,
+    "cellsSubstituted": 729471,
+    "cellsClipped": 20856
+  },
+  "degradations": [
+    "eau : aucun volume d'eau dans le sddt de ctf_bazaar-rtx-new.module"
+  ]
+}

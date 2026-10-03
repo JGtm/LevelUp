@@ -19,18 +19,22 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 func comparer(args []string, o options) error {
 	if len(args) != 2 {
 		return errors.New("comparer prend exactement deux films")
 	}
-	a, err := decoder(args[0], o.cache)
+	cartes, err := cartesDesFilms(o, 2)
 	if err != nil {
 		return err
 	}
-	b, err := decoder(args[1], o.cache)
+	a, err := decoder(args[0], o.cache, cartes[0])
+	if err != nil {
+		return err
+	}
+	b, err := decoder(args[1], o.cache, cartes[1])
 	if err != nil {
 		return err
 	}
@@ -97,11 +101,11 @@ func ouiNon(b bool) string {
 }
 
 func divergences(r *rapport) int {
-	return compte(r.result.Kills, func(k killsource.Kill) bool { return k.Diverges })
+	return compte(r.result.Kills, func(k decfilm.Kill) bool { return k.Diverges })
 }
 
 func sansNom(r *rapport) int {
-	return compte(r.result.Kills, func(k killsource.Kill) bool { return !k.Source.Named })
+	return compte(r.result.Kills, func(k decfilm.Kill) bool { return !k.Source.Named })
 }
 
 // sourcesComparees : les sources les plus frequentes de chaque film. C est le controle le plus

@@ -1,0 +1,94 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	autre non ferme · a=b=0	75	0	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · bloc 0x68	40	0	0	0	0
+0797ce72	HI_1_13_0	ferme · a=b=0	1	0	0	0	0
+0797ce72	HI_1_13_0	ferme · bloc 0x68	117142	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre · a=b=0	456	0	0	0	0
+0797ce72	HI_1_13_0	hors cadre · bloc 0x68	89	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · a=b=0	1	0	0	0	0
+084a804d	HI_1_10_0	autre non ferme · bloc 0x68	4	0	0	0	0
+084a804d	HI_1_10_0	ferme · a=b=0	7	0	0	0	0
+084a804d	HI_1_10_0	ferme · bloc 0x68	91933	0	0	0	0
+084a804d	HI_1_10_0	hors cadre · a=b=0	10	0	0	0	0
+084a804d	HI_1_10_0	hors cadre · bloc 0x68	10	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · a=b=0	25	0	0	0	0
+111fa685	HI_1_10_0	autre non ferme · bloc 0x68	10	0	0	0	0
+111fa685	HI_1_10_0	ferme · bloc 0x68	55013	0	0	0	0
+111fa685	HI_1_10_0	hors cadre · a=b=0	43	0	0	0	0
+111fa685	HI_1_10_0	hors cadre · bloc 0x68	32	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · a=b=0	4	0	0	0	0
+11de8353	HI_1_9_0	autre non ferme · bloc 0x68	2	0	0	0	0
+11de8353	HI_1_9_0	ferme · bloc 0x68	75327	0	0	0	0
+11de8353	HI_1_9_0	hors cadre · a=b=0	21	0	0	0	0
+11de8353	HI_1_9_0	hors cadre · bloc 0x68	8	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · a=b=0	5	0	0	0	0
+1c4c63c2	HI_1_10_0	autre non ferme · bloc 0x68	3	0	0	0	0
+1c4c63c2	HI_1_10_0	ferme · a=b=0	65	0	0	0	0
+1c4c63c2	HI_1_10_0	ferme · bloc 0x68	273666	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre · a=b=0	24	0	0	0	0
+1c4c63c2	HI_1_10_0	hors cadre · bloc 0x68	9	0	0	0	0
+396cfc92	HI_1_13_0	ferme · bloc 0x68	148761	0	0	0	0
+396cfc92	HI_1_13_0	hors cadre · a=b=0	3	0	0	0	0
+4f77afc1	HI_1_13_0	ferme · a=b=0	5	0	0	0	0
+4f77afc1	HI_1_13_0	ferme · bloc 0x68	408157	0	0	0	0
+4f77afc1	HI_1_13_0	hors cadre · a=b=0	5	0	0	0	0
+50247b26	version-31	autre non ferme · a=b=0	88	0	0	0	0
+50247b26	version-31	autre non ferme · bloc 0x68	1170	0	0	0	0
+50247b26	version-31	ferme · a=b=0	1	0	0	0	0
+50247b26	version-31	ferme · bloc 0x68	2	0	0	0	0
+50247b26	version-31	hors cadre · a=b=0	69	0	0	0	0
+50247b26	version-31	hors cadre · bloc 0x68	3010	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · a=b=0	9	0	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · bloc 0x68	4	0	0	0	0
+51ebbc0f	HI_1_13_0	ferme · bloc 0x68	55558	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre · a=b=0	151	0	0	0	0
+51ebbc0f	HI_1_13_0	hors cadre · bloc 0x68	13	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · a=b=0	30	0	0	0	0
+60ae07c4	HI_1_8_0	autre non ferme · bloc 0x68	40	0	0	0	0
+60ae07c4	HI_1_8_0	ferme · a=b=0	15	0	0	0	0
+60ae07c4	HI_1_8_0	ferme · bloc 0x68	79279	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre · a=b=0	291	0	0	0	0
+60ae07c4	HI_1_8_0	hors cadre · bloc 0x68	64	0	0	0	0
+a349fea8	version-33	autre non ferme · a=b=0	21	0	0	0	0
+a349fea8	version-33	autre non ferme · bloc 0x68	822	0	0	0	0
+a349fea8	version-33	ferme · a=b=0	3	0	0	0	0
+a349fea8	version-33	ferme · bloc 0x68	3	0	0	0	0
+a349fea8	version-33	hors cadre · a=b=0	523	0	0	0	0
+a349fea8	version-33	hors cadre · bloc 0x68	2799	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · a=b=0	49	0	0	0	0
+a521164d	HI_1_4_1	autre non ferme · bloc 0x68	162	0	0	0	0
+a521164d	HI_1_4_1	ferme · a=b=0	5	0	0	0	0
+a521164d	HI_1_4_1	hors cadre · a=b=0	120	0	0	0	0
+a521164d	HI_1_4_1	hors cadre · bloc 0x68	1853	0	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · bloc 0x68	1	0	0	0	0
+bcb6d393	HI_1_12_0	ferme · a=b=0	1	0	0	0	0
+bcb6d393	HI_1_12_0	ferme · bloc 0x68	30136	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre · a=b=0	12	0	0	0	0
+bcb6d393	HI_1_12_0	hors cadre · bloc 0x68	9	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · a=b=0	10	0	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · bloc 0x68	4	0	0	0	0
+bf15f7ab	HI_1_13_0	ferme · bloc 0x68	180861	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre · a=b=0	13	0	0	0	0
+bf15f7ab	HI_1_13_0	hors cadre · bloc 0x68	24	0	0	0	0
+bfecd02b	HI_1_13_0	ferme · bloc 0x68	169159	0	0	0	0
+bfecd02b	HI_1_13_0	hors cadre · a=b=0	1	0	0	0	0
+c75f33b8	HI_1_13_0	ferme · a=b=0	2	0	0	0	0
+c75f33b8	HI_1_13_0	ferme · bloc 0x68	120526	0	0	0	0
+c75f33b8	HI_1_13_0	hors cadre · a=b=0	2	0	0	0	0
+d9781168	HI_1_13_0	ferme · a=b=0	4	0	0	0	0
+d9781168	HI_1_13_0	ferme · bloc 0x68	150726	0	0	0	0
+d9781168	HI_1_13_0	hors cadre · a=b=0	1	0	0	0	0
+d9781168	HI_1_13_0	hors cadre · bloc 0x68	9	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · a=b=0	25	0	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · bloc 0x68	20	0	0	0	0
+e5adf7b2	HI_1_11_0	ferme · a=b=0	2	0	0	0	0
+e5adf7b2	HI_1_11_0	ferme · bloc 0x68	76222	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre · a=b=0	131	0	0	0	0
+e5adf7b2	HI_1_11_0	hors cadre · bloc 0x68	31	0	0	0	0
+f75e7053	HI_1_13_0	ferme · bloc 0x68	139891	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · a=b=0	16	0	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · bloc 0x68	4	0	0	0	0
+fb1a1a72	HI_1_13_0	ferme · a=b=0	1	0	0	0	0
+fb1a1a72	HI_1_13_0	ferme · bloc 0x68	128720	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre · a=b=0	134	0	0	0	0
+fb1a1a72	HI_1_13_0	hors cadre · bloc 0x68	20	0	0	0	0

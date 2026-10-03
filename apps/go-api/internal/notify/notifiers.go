@@ -76,7 +76,7 @@ func NotifySync(
 // ─────────────────────────────────────────────────────────────────────────────
 
 // NotifyFriendAdded envoie une notification Discord quand un gamertag est
-// ajouté à friend_gamertags via PATCH /settings.
+// ajouté à la liste d'amis du joueur via PUT /players/{slug}/friends.
 //
 // Failsafe : panic récupéré, webhook vide / NotifyFriends off → no-op silencieux.
 func NotifyFriendAdded(cfg NotifyConfig, gamertag string) {

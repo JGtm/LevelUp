@@ -1,0 +1,14 @@
+base	rc=0
+M1	ROUGE	pas de chaine NEW : regle du masque retiree	debut_de_liste_masque_test.go:72: NEW, bit au-dela de l archetype : debut 5 (true), attendu 61 garde — un masque que l ecrivain n ecrit pa
+M2	ROUGE	pas de chaine delta : regle du masque retiree	debut_de_liste_masque_test.go:72: delta, bit au-dela de l archetype : debut 5 (true), attendu 61 garde — un masque que l ecrivain n ecrit 
+M3	ROUGE	i35 : condition du poids ignoree	components_device_ti43_test.go:76: V35b (device-animation-layer-state-component) : 129 bits consommes, l ecrivain en a ecrit 43 (1 | 1 00000
+M4	ROUGE	i31 : N borne a 8 au lieu d echouer	components_device_ti43_test.go:72: V31b (device-dispenser-monitors-changed-component) : porte true, attendu false
+M5	ROUGE	i36 : categorie 1 (sonde) au lieu de 0	components_device_ti43_test.go:76: V36 (device-dispenser-state-component) : 25 bits consommes, l ecrivain en a ecrit 24 (0 101 | 1 1 0000001
+M6	ROUGE	i37 : troisieme Q(n) de FUN_142ba78dc omis	components_device_ti43_test.go:76: V37 (device-object-dispenser-timer-component) : 27 bits consommes, l ecrivain en a ecrit 37 (0 | 1 111111
+M7	ROUGE	i34 : un Q(14) de moins par couche	components_device_ti43_test.go:76: V34b (device-animation-layer-settings-component) : 225 bits consommes, l ecrivain en a ecrit 95 (1 | 1 00
+M8	ROUGE	i21 : porte du groupe omise	components_device_ti43_test.go:76: V21a (device-position-group-component) : 32 bits consommes, l ecrivain en a ecrit 41 (0000000000000000000
+M9	ROUGE	i24, i29 : categorie 0 au lieu de 1	components_device_ti43_test.go:76: V24b (device-interaction-in-progress-component) : 16 bits consommes, l ecrivain en a ecrit 17 (1 0 000000
+M10	VERTE	minuteur de campagne recopie hors du lecteur unique	
+M11	ROUGE	i36 : queue R(3) omise	components_device_ti43_test.go:76: V36 (device-dispenser-state-component) : 3 bits consommes, l ecrivain en a ecrit 24 (0 101 | 1 1 00000010
+M12	ROUGE	maillon des dispositifs debranche de la chaine	components_device_ti43_test.go:72: V35a (device-animation-layer-state-component) : porte false, attendu true
+M10bis	ROUGE	minuteur de campagne recopie hors du lecteur unique (en place, fichier rendu)	lecteur_140d580d0_guard_test.go:51: components_walk_batch9.go:51:1 : consumeGameEngineCampaignTimer cite [FUN_140d580d0 FUN_142ba78dc] mais 

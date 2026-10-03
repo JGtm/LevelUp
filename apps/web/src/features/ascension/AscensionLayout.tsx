@@ -7,15 +7,23 @@
  *   /ascension/objectifs     → tab "Objectifs" (couche Prestige)
  *   /ascension/coaching      → tab "Entraînement"
  *   /ascension/realisations  → tab "Réalisations"
+ *   /ascension/tactique      → tab "Tactique" (2026-09-06)
  *
  * Le layout fournit le header (H1 + sous-titre), le bandeau TipsTicker
  * partagé, et la barre d'onglets. Le contenu de chaque tab est rendu
  * via <Outlet />.
  *
  * Refonte Ascension UX (2026-07) : restructuration 3 → 4 onglets (DEC-3).
+ * Phase 4 du plan Tactique (2026-09-06) : 5e onglet « Tactique », derrière
+ * `FeatureGate capability="replay"` — un titre sans décodage de film ne produit
+ * aucune position mesurée, donc aucune lecture de placement : l'onglet n'apparaît
+ * pas plutôt que de mener à une page morte. C'est la PREMIÈRE des deux portes ; la
+ * seconde est sur la route elle-même (cf. `features/tactical/TacticalTab`), parce
+ * qu'une URL peut être ouverte directement sans passer par cette barre.
  */
 import { useMemo } from 'react'
 import { Link, Outlet, useMatchRoute, useParams } from '@tanstack/react-router'
+import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTitleSlug } from '@/lib/title-routing'
 import { TipsTicker } from '@/components/ui/tips-ticker'
@@ -56,10 +64,12 @@ export function AscensionLayout() {
   const objectivesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs' as const
   const coachingRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching' as const
   const realisationsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations' as const
+  const tacticalRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique' as const
   const isObjectives = !!matchRoute({ to: objectivesRoute })
   const isCoaching = !!matchRoute({ to: coachingRoute })
   const isRealisations = !!matchRoute({ to: realisationsRoute })
-  const isProfile = !isObjectives && !isCoaching && !isRealisations
+  const isTactical = !!matchRoute({ to: tacticalRoute })
+  const isProfile = !isObjectives && !isCoaching && !isRealisations && !isTactical
 
   return (
     <main className="container mx-auto max-w-6xl space-y-6 px-4 py-6">
@@ -115,6 +125,17 @@ export function AscensionLayout() {
         >
           {t.tabRealisations}
         </Link>
+        <FeatureGate capability="replay">
+          <Link
+            to={tacticalRoute}
+            params={{ titleSlug, playerSlug }}
+            role="tab"
+            aria-selected={isTactical}
+            className={tabClass(isTactical)}
+          >
+            {t.tabTactical}
+          </Link>
+        </FeatureGate>
       </nav>
 
       <Outlet />

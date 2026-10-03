@@ -44,6 +44,40 @@ var noSecondaryIndexTables = []string{
 	"battlepass_track_definitions",
 	"battlepass_item_definitions",
 	"engagement_coefficients", // PK (xuid,mode_category) ; idx_xuid redondant retiré (surface ART)
+	// personal_score_awards (2026-09-20) — SEUL membre de la liste qui n'est PAS muté
+	// (append-only INSERT-only, ADR 0026) : il y entre pour une raison MESURÉE, pas
+	// doctrinale. La sonde data-health trouvait ses index DÉSYNCHRONISÉS à chaque boot et
+	// la réparation manuelle du 2026-09-20 (3 joueurs) a montré que les clés en écart
+	// étaient des match_id du mois courant : le défaut #23645 se reforme sur les
+	// insertions COURANTES, un INSERT pur suffit. Aucun lecteur n'y perd — tous passent
+	// par personal_score_awards_latest, dont la fonction de fenêtre impose un Sequential
+	// Scan (mesuré sur 5 000 lignes : 0,800 ms avec index, 0,841 ms sans, même plan).
+	// Cinq index retirés en tout : idx_psa_xuid et idx_psa_match_xuid (2026-08-05),
+	// idx_psa_match, idx_psa_category et idx_psa_gen (2026-09-20).
+	"personal_score_awards",
+	// match_skill_rank (2026-09-27, plan backlog 2026-09-26, lot B3) — append-only comme
+	// personal_score_awards, et pour la même raison MESURÉE : le 2026-09-13,
+	// idx_msr_playlist désynchronisé servait 22 lignes pour 1 826 réelles (player DB de
+	// JGtm), et des lecteurs bruts EMPRUNTENT ces index — lectures fausses, pas seulement
+	// lentes. Mesure D-4 amendée (psa_index_repro_msr_planprobe_test.go, tag psarepro) :
+	// aucune des sept formes de lecture ne ralentit sans eux ; la seule qui les empruntait
+	// (rating_type = 'CSR') est ~10x plus rapide sans. Trois index retirés :
+	// idx_msr_match_lookup, idx_msr_rating_type, idx_msr_playlist.
+	"match_skill_rank",
+}
+
+// noSecondaryIndexExemptions — dispenses DATÉES de la règle 1, par (fichier, table). Une
+// dispense qui ne couvre plus aucun CREATE INDEX fait échouer le test (pas de dispense
+// morte).
+var noSecondaryIndexExemptions = []struct{ file, table, since, why string }{
+	{
+		file: "games/halo_infinite/migrations/steps_player_baseline.go", table: "match_skill_rank",
+		since: "2026-09-27",
+		why: "baseline squashée SCELLÉE (golden testdata/squash/player_block_golden.snapshot, " +
+			"TestSquashInvariant_PlayerBaselineEquivalent) : elle pose idx_msr_rating_type et " +
+			"idx_msr_playlist sur DB vierge, le step drop_msr_secondary_art_indexes_v1 les retire " +
+			"dans la même passe (précédent idx_career_xuid)",
+	},
 }
 
 // Règle 2 — colonnes mutées par un UPDATE qui ne doivent jamais être indexées.
@@ -58,7 +92,7 @@ var forbiddenIndexedColumns = map[string][]string{
 	"preset_arc":           {"title_slug"},                           // PrestigePresetArcRepo.Replace
 	"citation_mappings":    {"medal_id", "mapping_type"},             // SeedCitationMappings UPDATE
 	"media_files":          {"kind", "file_path"},                    // insertMediaFile mute kind + file_path (conversion/HLS/reconcile)
-	// player_match_enrichment (append-only #23046) : les 3 ex-index ART sur colonnes
+	// player_match_enrichment (append-only #23645) : les 3 ex-index ART sur colonnes
 	// taggées par stage ne doivent JAMAIS revenir. Seul idx_pme_match_lookup(match_id,
 	// written_at) est toléré (d'où PAS de noSecondaryIndexTables ici).
 	"player_match_enrichment": {"session_id", "mode_category", "engagement_score_brut"},
@@ -110,8 +144,18 @@ func TestNoARTSurfaceIndexInMigrations(t *testing.T) {
 	// (internal/games/{slug}/migrations) : depuis la relocation voie B (ADR 0025), les
 	// créateurs de tables metadata/shared vivent côté titre. Sans cette extension, un
 	// CREATE INDEX ART réintroduit dans games/.../steps.go échapperait au garde (le bug
-	// de classe #23046 reviendrait sans rien déclencher).
-	roots := []string{dir, filepath.Join(internalDir, "games")}
+	// de classe #23645 reviendrait sans rien déclencher).
+	// + internal/sync/schema.go (2026-09-27) : le soin rejoué à CHAQUE OpenPlayerDB est une
+	// troisième autorité de fait — un CREATE INDEX qui y survit reposerait l'index sur
+	// toutes les player DB à chaque ouverture, quoi que fasse la chaîne.
+	roots := []string{dir, filepath.Join(internalDir, "games"), filepath.Join(internalDir, "sync", "schema.go")}
+	if _, err := os.Stat(roots[2]); err != nil {
+		t.Fatalf("soin player introuvable (%s) : le balayage de sync/schema.go serait muet: %v", roots[2], err)
+	}
+	exempt := make(map[string]int, len(noSecondaryIndexExemptions))
+	for _, e := range noSecondaryIndexExemptions {
+		exempt[e.file+"|"+e.table] = 0
+	}
 
 	var violations []string
 	scan := func(path string, info os.FileInfo, werr error) error {
@@ -131,6 +175,10 @@ func TestNoARTSurfaceIndexInMigrations(t *testing.T) {
 			rel, _ := filepath.Rel(internalDir, path)
 			rel = filepath.ToSlash(rel)
 			if _, bad := noIndex[table]; bad {
+				if n, ok := exempt[rel+"|"+table]; ok {
+					exempt[rel+"|"+table] = n + 1
+					continue
+				}
 				violations = append(violations,
 					"index interdit sur table PK-only '"+table+"' ("+rel+")")
 				continue
@@ -157,6 +205,12 @@ func TestNoARTSurfaceIndexInMigrations(t *testing.T) {
 			t.Fatalf("walk %s: %v", root, walkErr)
 		}
 	}
+	for _, e := range noSecondaryIndexExemptions {
+		if exempt[e.file+"|"+e.table] == 0 {
+			violations = append(violations, "dispense MORTE ("+e.since+") : "+e.file+
+				" ne crée plus d'index sur "+e.table+" — retirer la dispense (motif : "+e.why+")")
+		}
+	}
 
 	if len(violations) > 0 {
 		t.Errorf("RÉGRESSION ART : %d index sur surface mutée (UPDATE/DELETE per-row sur "+
@@ -168,7 +222,7 @@ func TestNoARTSurfaceIndexInMigrations(t *testing.T) {
 // reMediaFilesUnique détecte une contrainte UNIQUE sur media_files.file_path, sous ses
 // deux formes : colonne inline (`file_path VARCHAR ... UNIQUE`) et contrainte de table
 // (`UNIQUE(file_path)`). file_path est MUTÉE par 3 UPDATE (conversion/HLS/reconcile) →
-// un index ART UNIQUE dessus = bug #23046 (FATAL, blast MAX shared_social). La dédup
+// un index ART UNIQUE dessus = bug #23645 (FATAL, blast MAX shared_social). La dédup
 // passe en applicatif (insertMediaFile SELECT-then-INSERT).
 var (
 	reMediaFilesUniqueInline = regexp.MustCompile(`(?is)\bfile_path\b[^,\n;]*\bVARCHAR\b[^,\n;]*\bUNIQUE\b`)
@@ -213,7 +267,7 @@ func TestNoMediaFilesFilePathUnique(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("RÉGRESSION ART : UNIQUE(file_path) réintroduit sur media_files (colonne mutée → "+
-			"bug DuckDB #23046, FATAL invalidated, blast MAX). Retirer la contrainte ; la dédup file_path "+
+			"bug DuckDB #23645, FATAL invalidated, blast MAX). Retirer la contrainte ; la dédup file_path "+
 			"est applicative (insertMediaFile/persistMediaFiles SELECT-then-INSERT) :\n  - %s",
 			strings.Join(violations, "\n  - "))
 	}

@@ -216,7 +216,8 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `LEVELUP_INSTANCE_LOCKED` | Verrouille l'instance aux utilisateurs existants. | `false` |
 | `LEVELUP_RATE_LIMIT_RPM` | Rate limit HTTP (requêtes/minute). | défaut interne |
 | `LEVELUP_WEB_DIST` | Chemin du frontend buildé (`apps/web/dist`), posé par l'image Docker. | (aucun) |
-| `LEVELUP_DEMO_MODE` | `true` active le mode démo. | `false` |
+| `LEVELUP_DEMO_MODE` | `true` active le mode démo. En démo, le serveur API (et lui seul) place les défauts d'état et d'exécution ci-dessus (`db_profiles.json`, `app_settings.json`, auth, sessions, logs, sauvegardes) sous la racine démo : voir [Chemins du mode démo](#chemins-du-mode-démo). | `false` |
+| `LEVELUP_DEMO_FIXTURES_DIR` | Racine démo (fixture générée par `levelup seed-demo`). | `<root>/data/demo` |
 | `LEVELUP_LANG` | Langue UI/CLI par défaut. | `fr` |
 | `LEVELUP_APP_VERSION` | Version applicative reportée. | `dev` |
 | `LEVELUP_USE_SHARED_PROVIDER` | Active le swap RO↔RW du SharedDBProvider (ADR 0016). | (off) |
@@ -231,6 +232,32 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `LEVELUP_LOGS_ENABLED` | Mettre `false` pour désactiver les logs fichiers. | activé |
 | `LEVELUP_LOGS_MAX_SIZE_MB` | Taille max de chaque `{catégorie}.log` avant rotation. `0` désactive la rotation (croissance illimitée). | `100` |
 | `LEVELUP_LOGS_MAX_BACKUPS` | Archives conservées par catégorie (`{catégorie}.log.1..N`). `0` = aucune. | `3` |
+
+### Chemins du mode démo
+
+Avec `LEVELUP_DEMO_MODE=true`, `LEVELUP_REPO_ROOT` fournit toujours la configuration versionnée
+(`config/titles/**`, `data/titles/*/reference/**`, `static/`, `.env.local`), mais rien de ce que
+le serveur lit comme état ou écrit en tournant n'y vit (décision D-7, lot B5 du backlog). Les
+défauts dérivent alors de la racine démo `<démo>` = `LEVELUP_DEMO_FIXTURES_DIR` ; une variable
+posée explicitement garde la main. Cela ne vaut que pour le processus serveur API
+(`config.LoadServer`) : tout autre binaire (`levelup seed-demo` et les autres outils opérateurs, les
+tests) garde les défauts du dépôt quelle que soit `LEVELUP_DEMO_MODE`, puisqu'il travaille sur les
+vraies données (lot B-C10 du backlog) :
+
+| Élément | Défaut en démo |
+|---------|----------------|
+| `db_profiles.json`, `app_settings.json` | `<démo>/db_profiles.json`, `<démo>/app_settings.json` (écrits par `seed-demo`) |
+| Auth (`users.json`, `groups.json`, magasin de tokens) | `<démo>/auth/` (vide : la démo ne se connecte à rien) |
+| Sessions, logs, sauvegardes | `<démo>/runtime/sessions`, `<démo>/runtime/logs`, `<démo>/runtime/backups` |
+| Caches et état d'administration (`jobs.json`, cache de l'aide, amis, `admin_state/`, artefacts de rejeu) | `<démo>/runtime/data/…` |
+| Magasin de monitoring | en mémoire (aucun `monitoring.duckdb`) |
+
+Les tâches de fond qui écriraient ou supprimeraient hors de la racine démo (janitor, file
+persist asynchrone et reprise du WAL, santé données, purge des rejeux, surveillance disque,
+crons catalogue, noms d'assets, Spartan et classement mondial, watcher, pool de tokens,
+migrations des amis et du groupe au boot) ne sont pas lancées ; une ligne de log
+`demo_mode: tâches de fond coupées` les liste au boot. `POST /settings/backup/run` répond 403 en
+démo. `<démo>/runtime/` est ignoré par git sous `data/demo/` et `tests/fixtures/demo-root/`.
 
 ### Sync / feature flags
 
@@ -253,9 +280,10 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `RESTIC_REPOSITORY` / `RESTIC_PASSWORD` / `RESTIC_PASSWORD_FILE` | Cible/credentials des backups Restic. |
 | `LEVELUP_BACKUP_DIR` | Répertoire de backup local. |
 
-> Les variables legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` ne sont lues qu'en
-> fallback transitoire (warn-loggé, migré dans le store de tokens au boot). Ne
-> pas s'appuyer dessus pour un nouveau setup — utiliser `token-capture` /
+> Les variables legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` ne sont PLUS lues
+> (ADR 0023 Phase 5, 2026-08-25). Leur dernier lecteur, la migration one-shot du
+> boot qui recopiait une valeur résiduelle dans le store de tokens, a été retiré
+> le 2026-09-13. Pour semer un refresh token : SSO Xbox web, `token-capture` ou
 > `token-import`.
 
 ---
@@ -296,6 +324,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `discord_notify_coach` | bool | `false` | Relaie les proposals coach les plus fortes (signaux de progression) vers le webhook Discord. **OFF par défaut — opt-in** : requiert `discord_notifications_enabled` + un webhook. Émettre vers un service externe est une décision vie privée volontaire, jamais activée par défaut. Catégories relayées = catégories coach uniquement. |
 | `discord_notify_new_media` | bool | `true` | Notifie sur nouveau média. |
 | `discord_notify_disk` | bool | `true` | Alertes disque (warn > 80 % utilisés ou < 2 Go libres, critical > 90 % ou < 500 Mo) sur le volume data, envoyées au changement de statut + rappel quotidien + rétablissement. |
+| `discord_notify_replay` | bool | `true` | Notification groupée « rejeux 2D prêts ». Un message par fenêtre de 10 minutes et par titre, jamais un par artefact : le premier artefact rangé arme la fenêtre, le message énumère les matchs à l'échéance. Couvre tous les chemins d'écriture du serveur — construction locale post-sync, livraison d'un ouvrier distant et action admin. Le backfill CLI tourne dans un autre process et ne notifie jamais. |
 | `discord_webhook_url` | string | `""` | URL webhook Discord (les vars d'env priment). |
 | `tailscale_enabled` | bool | `false` | Active l'accès distant Tailscale Funnel. |
 | `user_timezone` | string | `"Europe/Paris"` | Timezone IANA pour l'affichage. |
@@ -309,6 +338,8 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `backup_keep_monthly` | int | `12` | Backups mensuels conservés. |
 | `prestige_enabled` | bool | `true` | Active le module Prestige (surchargeable via `PRESTIGE_ENABLED`). |
 | `instance_locked` | bool | `false` | Verrouille l'instance aux utilisateurs existants (aussi via `LEVELUP_INSTANCE_LOCKED`). |
+| `replay_sound_variation_percent` | int | `100` | Sons d'armes du rejeu 2D : variation du volume et de la hauteur à chaque tir, dans les fourchettes déclarées par le jeu. `100` = fourchettes du jeu telles quelles, `0` = toujours le même fichier. Réglage d'instance, modifié depuis Admin · Système. |
+| `replay_sound_distance_percent` | int | `0` | Sons d'armes du rejeu 2D : effet de distance (atténuation + passe-bas). `0` = son pur, aucun nœud dans le chemin du signal. Réglage d'instance, modifié depuis Admin · Système. |
 
 ---
 

@@ -1,0 +1,3 @@
+﻿slot 1474 tag3 : 3455 emissions, 60 rampes · min 8388607 · p01 8388607 · p10 8395598 · mediane 8429152 · p90 8462720 · max 8471108 · mode 8388607 (x101) · premieres : [{66416 8394200} {66417 8402589} {66418 8410977} {66419 8419366} {66420 8427755} {66421 8436143}]
+--- PASS: TestZoneGaugeEchelleTemoin (16.12s)
+ok  	levelup/go-api/internal/analysis/replay	17.920s

@@ -3,7 +3,11 @@
  *
  * Découpé depuis TimeseriesPage.tsx (audit #6 god-file split).
  * Contenu : outcome sequence + KDA trend + KDA density + avg life + assists +
- * top weapons + KDA trend value + perf session/week/month + map win-rate/perf.
+ * balance des dégâts cumulée + top weapons + KDA trend value + perf session/week/month +
+ * map win-rate/perf.
+ *
+ * « Portée des engagements » a quitté cet onglet pour « Usages » (tout ce qui vient du film
+ * décodé y est réuni, cf. TimeseriesPage.usages.tsx).
  */
 import { useMemo, useState } from 'react'
 
@@ -21,13 +25,17 @@ import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdow
 // — même choix que SessionFragCard. Import cross-feature durable déclaré
 // (timeseries=>synthesis, cf. tools/lint-cross-feature-imports.mjs), analogue à
 // session-detail=>synthesis.
-import { SynthesisWeaponAccuracyChart } from '@/features/synthesis/SynthesisWeaponAccuracyChart'
+import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
 import {
   TimeseriesAssistsTrend,
   TimeseriesAvgLifeTrend,
   TimeseriesKdaValueTrend,
 } from './TimeseriesFormCharts'
 import { TimeseriesFdaGapTrend } from './TimeseriesFdaGapTrend'
+import {
+  TimeseriesNetLivesTrend,
+  type TimeseriesNetLivesLabels,
+} from './TimeseriesNetLivesTrend'
 import { TimeseriesSessionPerformance } from './TimeseriesSquadAdapted'
 import { WinRateVsHistoryBulletChart } from '@/features/squad/WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from '@/features/squad/MapPerfVsHistoryChart'
@@ -90,6 +98,17 @@ export function TimeseriesSummaryTab({
   // partagée avec la colonne Dominance de l'Explorateur. Mémoïsé : la bande
   // recalcule son option ECharts quand cette référence change.
   const dominanceLabels = useMemo(() => buildDominanceLabels(appLocale), [appLocale])
+  // Libellés d'infobulle de la balance des dégâts, mémoïsés : le composant les reçoit
+  // en objet et les passe à un useMemo d'option (un littéral inline le ferait tourner à
+  // chaque rendu de la page). Les clés restent sous `timeseries.progression.*` : elles
+  // nomment la mesure, pas l'onglet, et les renommer laisserait des clés orphelines.
+  const netLivesLabels = useMemo<TimeseriesNetLivesLabels>(
+    () => ({
+      series: t('timeseries.progression.net_lives_series'),
+      match: t('timeseries.progression.net_lives_match'),
+    }),
+    [t],
+  )
   const [hoveredClass, setHoveredClass] = useState<string | null>(null)
   const classLabel = (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale)
   const roleLabel = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale)
@@ -98,7 +117,7 @@ export function TimeseriesSummaryTab({
   // destruction » (buildFragDetailBreakdown) ET la recoloration par classe du graphe
   // précision (l'entrée précision de l'API ne porte pas la classe).
   const topWeaponsMapped = (data.top_weapons ?? []).map((w) => ({ label: w.label, kills: w.kills, class: w.class }))
-  const breakdown = buildFragDetailBreakdown(data.frag_distribution ?? null, topWeaponsMapped, { roleLabel, classLabel })
+  const breakdown = buildFragDetailBreakdown(data.frag_distribution ?? null, topWeaponsMapped, { roleLabel, classLabel, locale: appLocale })
   // Précision par arme native (Halo 5) ; vide sur Infinite → 2e rangée = tendance FDA seule.
   const accuracy = data.weapon_accuracy ?? []
   const fdaTrend = (
@@ -154,7 +173,7 @@ export function TimeseriesSummaryTab({
             labels={{
               win: outcomeLabels.win,
               loss: outcomeLabels.loss,
-              tie: fieldMappings?.outcomes?.tie?.label ?? 'Égalité',
+              tie: fieldMappings?.outcomes?.tie?.label ?? t('timeseries.distributions.outcome_tie_fallback'),
               dnf: outcomeLabels.unknown,
             }}
             dominanceLabels={dominanceLabels}
@@ -197,7 +216,7 @@ export function TimeseriesSummaryTab({
       {/* Durée de vie moyenne (gauche) | Assistances (droite) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <TimeseriesAvgLifeTrend
-          title={fieldMappings?.fields['avg_life_seconds']?.label ?? 'Durée de vie moyenne'}
+          title={fieldMappings?.fields['avg_life_seconds']?.label ?? t('timeseries.summary.avg_life_fallback')}
           emptyMessage={emptyMsg}
           rows={data.match_rows ?? []}
           lifeLabel={t('timeseries.summary.avg_life_axis')}
@@ -211,6 +230,24 @@ export function TimeseriesSummaryTab({
           smoothingLabel={t('timeseries.summary.trend')}
         />
       </div>
+
+      {/* Balance des dégâts cumulée — pleine largeur, SOUS « Assistances » (demande
+          utilisateur du 2026-09-22 ; elle vivait auparavant sur l'onglet Progression,
+          sous « Rendement & Résistance »). Pleine largeur assumée : la série est par
+          match et peut porter des centaines de points (l'intervalle des étiquettes est
+          déjà adaptatif) — la scinder en deux colonnes l'écraserait. Même carte que
+          Sessions et Escouade, aucune requête neuve : les dégâts arrivent avec
+          `match_rows`. */}
+      <TimeseriesNetLivesTrend
+        rows={data.match_rows ?? []}
+        locale={appLocale}
+        title={t('timeseries.progression.net_lives_title')}
+        tooltip={t('timeseries.progression.net_lives_tooltip')}
+        labels={netLivesLabels}
+        avgCaption={t('timeseries.progression.net_lives_average_caption')}
+        avgUnit={t('timeseries.progression.net_lives_average_unit')}
+        emptyMessage={t('timeseries.progression.net_lives_empty')}
+      />
 
       {/* Répartition des frags v2 — MÊME rendu que Match view / Sessions : sunburst
           hiérarchique classe→rôle (compteur seul, légende à gauche, maxW 480) +
@@ -244,7 +281,7 @@ export function TimeseriesSummaryTab({
           et exclut `expected_stats` → le chart Écart (masqué sur H5) ne s'insère pas ici. */}
       {accuracy.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <SynthesisWeaponAccuracyChart
+          <WeaponAccuracyChart
             weapons={accuracy}
             weaponKills={topWeaponsMapped}
             hoveredClass={hoveredClass}
@@ -279,7 +316,7 @@ export function TimeseriesSummaryTab({
           fieldMappings?.fields['win_rate']?.label ??
           t('timeseries.summary.win_rate_label')
         }
-        mmrLabel={fieldMappings?.fields['team_mmr']?.label ?? 'MMR équipe'}
+        mmrLabel={fieldMappings?.fields['team_mmr']?.label ?? t('timeseries.distributions.team_mmr_fallback')}
         showMmr={hasTeamMmr}
       />
 

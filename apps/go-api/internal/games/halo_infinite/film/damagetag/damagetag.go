@@ -63,9 +63,10 @@
 package damagetag
 
 import (
+	"cmp"
 	_ "embed"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -165,6 +166,21 @@ func Lookup(tag uint32) (Label, bool) {
 	return l, ok
 }
 
+// Labels : TOUTES les etiquettes, triees par tag. La tranche rendue est une copie.
+//
+// Sert aux tables DERIVEES de celle-ci (pont vers les icones du kill feed : paquet
+// `killicon`) : elles doivent enumerer les etiquettes pour s indexer par tag a
+// l initialisation, sans relire le fichier embarque une seconde fois — deux lectures,
+// c est deux verites.
+func Labels() []Label {
+	out := make([]Label, 0, len(labels))
+	for _, l := range labels {
+		out = append(out, l)
+	}
+	slices.SortFunc(out, func(a, b Label) int { return cmp.Compare(a.Tag, b.Tag) }) // Tag : cle de la map `labels`, unique
+	return out
+}
+
 // Source : la provenance des tables embarquees.
 func Source() Provenance { return provided }
 
@@ -174,7 +190,7 @@ func Source() Provenance { return provided }
 
 // headerDate : la valeur `date=` d une ligne de commentaire d en-tete, ou "".
 func headerDate(line string) string {
-	for _, f := range strings.Fields(line) {
+	for f := range strings.FieldsSeq(line) {
 		if v, ok := strings.CutPrefix(f, "date="); ok {
 			return v
 		}
@@ -207,7 +223,7 @@ func parseIDs(raw string) (map[uint32]struct{}, []uint32, string, error) {
 		set[uint32(v)] = struct{}{}
 		list = append(list, uint32(v))
 	}
-	sort.Slice(list, func(i, j int) bool { return list[i] < list[j] })
+	slices.Sort(list)
 	return set, list, date, nil
 }
 

@@ -161,6 +161,29 @@ en = "Settings"
 fr = "Thème"
 en = "Theme"
 
+# components/ui/carousel.tsx — bilan fork ChaseWoodhams 2026-09-11, point 6 :
+# littéraux FR courts (1 mot), sous le seuil de la règle eslint
+# `no-hardcoded-strings` (≥ 3 mots OU ≥ 15 caractères).
+[common.carousel.prev]
+fr = "Précédent"
+en = "Previous"
+
+[common.carousel.next]
+fr = "Suivant"
+en = "Next"
+
+# ThemeToggle.tsx — bilan fork ChaseWoodhams 2026-09-11, point 6 : le libellé
+# aria-label/title était un littéral FR assigné à une variable AVANT d'être
+# posé sur l'attribut JSX, hors de portée de la règle eslint
+# `no-hardcoded-strings` (qui ne suit pas les littéraux via une variable).
+[common.shell.theme_toggle_to_light]
+fr = "Passer au thème clair"
+en = "Switch to light theme"
+
+[common.shell.theme_toggle_to_dark]
+fr = "Passer au thème sombre"
+en = "Switch to dark theme"
+
 [common.shell.nav_game]
 fr = "Jeu"
 en = "Game"
@@ -192,6 +215,19 @@ en = "Change title"
 [common.shell.player_select]
 fr = "Sélectionner un joueur"
 en = "Select a player"
+
+# Présence en jeu (sélecteur de joueur, point Notion 4).
+[common.shell.player_in_game]
+fr = "En jeu"
+en = "In game"
+
+[common.shell.player_in_game_on]
+fr = "En jeu sur {title}"
+en = "In game on {title}"
+
+[common.shell.friends_in_game]
+fr = "{n, plural, one {# ami en jeu} other {# amis en jeu}}"
+en = "{n, plural, one {# friend in game} other {# friends in game}}"
 
 # ─── Filter pills (FiltresPill, etc.) ────────────────────────────────────
 
@@ -597,9 +633,9 @@ en = "XSTS expires on"
 fr = "Refresh"
 en = "Refresh"
 
-[common.admin.token_msal]
-fr = "MSAL"
-en = "MSAL"
+[common.admin.token_access]
+fr = "Accès"
+en = "Access"
 
 [common.admin.token_xsts]
 fr = "XSTS"
@@ -1128,6 +1164,17 @@ en = "Duration:"
 fr = "Date :"
 en = "Date:"
 
+[common.match_card.replay_aria]
+fr = "Ouvrir le rejeu 2D du match"
+en = "Open the 2D replay of the match"
+
+# Part des frags assistés par un coéquipier sur le match (film analysé). {assisted} et
+# {frags} sont des comptes déjà formatés, {share} un pourcentage déjà formaté (« 58 % »).
+# Les tranches de part (bornes) ne vivent que dans assistsI18n.ts (infobulles de segment).
+[common.match_card.assisted_frags]
+fr = "{assisted} / {frags} frags assistés"
+en = "{assisted} / {frags} assisted kills"
+
 # ─── Setup wizard (StepDeviceCode, StepInitialSync, StepPlayer) ─────────
 
 [common.setup.device_starting]
@@ -1254,6 +1301,27 @@ en = "Matches to sync"
 fr = "Jeu {current} sur {total}"
 en = "Game {current} of {total}"
 
+# StepPlayer.tsx — bilan fork ChaseWoodhams 2026-09-11, point 6.
+[common.setup.create_profile_error]
+fr = "Erreur lors de la création du profil."
+en = "Error while creating the profile."
+
+[common.setup.gamertag_placeholder]
+fr = "MonGamertag"
+en = "MyGamertag"
+
+[common.setup.creating_ellipsis]
+fr = "Création…"
+en = "Creating…"
+
+[common.setup.confirm_create_profile]
+fr = "Confirmer et créer mon profil"
+en = "Confirm and create my profile"
+
+[common.setup.add_action]
+fr = "Ajouter"
+en = "Add"
+
 # ─── Auth Xbox login page ───────────────────────────────────────────────
 
 [common.auth.xbox_admin_login]
@@ -1288,6 +1356,14 @@ en = "Generating code…"
 fr = "Code à saisir"
 en = "Code to enter"
 
+[common.auth.xbox_copy_code]
+fr = "Copier le code"
+en = "Copy code"
+
+[common.auth.xbox_code_copied]
+fr = "Code copié"
+en = "Code copied"
+
 [common.auth.xbox_only_if_you_clicked]
 fr = "Ne saisis ce code que si TU viens de cliquer \"Se connecter avec Xbox\" sur LevelUp."
 en = "Only enter this code if YOU just clicked 'Sign in with Xbox' on LevelUp."
@@ -1299,6 +1375,21 @@ en = "Admin login only. Normal users sign in through Xbox."
 [common.auth.xbox_back_to_xbox]
 fr = "← Retour à la connexion Xbox"
 en = "← Back to Xbox sign-in"
+
+# Erreurs du formulaire login admin (XboxLoginPage.tsx handleLogin) — bilan
+# fork ChaseWoodhams 2026-09-11, point 6 (littéral relevé : le message de
+# repli générique ; les deux voisins directs du même handler corrigés avec lui).
+[common.auth.xbox_error_invalid_credentials]
+fr = "Identifiants incorrects."
+en = "Incorrect credentials."
+
+[common.auth.xbox_error_password_admin_only]
+fr = "En mode SSO Xbox, le login par mot de passe est réservé aux administrateurs. Utilisez la connexion Xbox."
+en = "In Xbox SSO mode, password login is reserved for administrators. Use Xbox sign-in instead."
+
+[common.auth.xbox_error_generic]
+fr = "Erreur de connexion."
+en = "Sign-in error."
 
 # ─── Onboarding (OpenSpartan import) ────────────────────────────────────
 
@@ -1556,18 +1647,6 @@ en = "America/Chicago"
 fr = "Onglets paramètres"
 en = "Settings tabs"
 
-[common.settings.my_squad_default]
-fr = "Coéquipiers par défaut (page Escouade)"
-en = "Default teammates (Squad page)"
-
-[common.settings.squad_intro]
-fr = "Gamertags des coéquipiers présélectionnés à l'ouverture de la page Escouade. Les joueurs déjà configurés dans l'app apparaissent en priorité."
-en = "Gamertags of teammates preselected when opening the Squad page. Already configured players appear first."
-
-[common.settings.gamertag_search_placeholder]
-fr = "Rechercher ou saisir un gamertag…"
-en = "Search or enter a gamertag…"
-
 # ─── Changelog ──────────────────────────────────────────────────────────
 
 [common.changelog.load_failed]
@@ -1641,9 +1720,31 @@ en = "Output = offensive efficiency: how well damage is turned into kills. Resis
 # Aide pédagogique UNIQUE du graphe « Écart cumulé au FDA attendu » (Séries
 # temporelles + Sessions) : le graphe n'en avait aucune. Langage simple, pas de
 # vocabulaire statistique — l'important est la PENTE, pas la valeur absolue.
+#
+# Reecrit le 2026-09-09 (retour utilisateur : trop long) — 4 phrases ramenees a 2. Ce qui
+# a saute : la ligne 0 et le pointille, tous deux LISIBLES sur le graphe. Ce qui reste :
+# ce que l'ecart mesure, et la pente comme seul signal a suivre.
 [common.charts.fda_gap_tooltip]
-fr = "À chaque match, le FDA réel est comparé au FDA attendu (le niveau prévu face à cette opposition). La courbe additionne ces écarts match après match : elle monte quand la performance dépasse l'attendu, elle descend quand elle est en dessous. Sa pente est le signal à suivre — au-dessus de la ligne 0 la performance est en avance sur l'attendu, en dessous elle est en retard. Le trait fin en pointillés est le FDA attendu de chaque match."
-en = "For every match, actual KDA is compared to the KDA expected against that opposition. The line adds up those gaps match after match: it rises when performance beats expectations and falls when it falls short. Watch its slope above all — above the 0 line performance is ahead of expectations, below it it is behind. The thin dashed line is each match's expected KDA."
+fr = "La courbe additionne, match après match, l'écart entre le FDA réel et le FDA attendu face à l'opposition rencontrée. Elle monte quand la performance dépasse l'attendu, elle descend sinon : c'est la pente qui compte."
+en = "The line adds up, match after match, the gap between actual KDA and the KDA expected against the opposition faced. It rises when performance beats expectations and falls when it does not: the slope is what counts."
+
+# Aide pedagogique UNIQUE du profil « Intensite » (Sessions + Series temporelles +
+# Escouade). Elle vivait en TROIS copies quasi identiques — une par surface, deja
+# divergentes de formulation. Centralisee ici le 2026-09-09 avec son garde-rail
+# (`components/charts/intensityTooltipText.guard.test.ts`), sur le patron de
+# `fda_gap_tooltip`. Reecrite au passage : 4 phrases ramenees a 3.
+[common.charts.intensity_tooltip]
+fr = "Le match est découpé en 10 tranches. Le trait plein montre à quel moment arrivent les frags, du début (gauche) à la fin (droite). La zone colorée dit à quel point le profil varie d'un match à l'autre."
+en = "The match is split into 10 slices. The solid line shows when kills happen, from the start (left) to the end (right). The shaded band shows how much the profile varies from match to match."
+
+# Phrase AJOUTEE a la precedente sur la seule surface Escouade, la seule qui superpose
+# des courbes de reference. Separee et non dupliquee : le tronc commun reste unique.
+# Deux courbes depuis le lot « intensite : equipe + lobby » (2026-09-18) : ÉQUIPE =
+# les allies du joueur principal (des 3 joueurs), LOBBY = tout le match, les deux
+# camps (des 1 joueur).
+[common.charts.intensity_tooltip_team]
+fr = "Deux repères neutres se superposent : la courbe « Lobby » en pointillé montre le même profil pour tout le match (les deux camps) ; à partir de 3 joueurs, la courbe « Équipe » en trait fin montre celui de l'équipe alliée. Au-dessus d'un repère, le joueur est plus actif que cette population sur la tranche."
+en = 'Two neutral references are overlaid: the dashed "Lobby" curve shows the same profile for the whole match (both sides); from 3 players on, the thin "Team" curve shows the allied team. Above a reference, the player is more active than that population on the slice.'
 
 # Axes du profil « Intensité » (Escouade / Séries temporelles / Sessions). L'axe X
 # ne montre que 3 repères (début / milieu / fin du match) ; rangeSuffix complète la
@@ -1722,12 +1823,14 @@ fr = "Impossible de générer l'invitation."
 en = "Could not generate the invitation."
 
 [common.groups.join_title]
-fr = "Rejoindre un groupe"
-en = "Join a group"
+fr = "Rejoindre LevelUp"
+en = "Join LevelUp"
 
+# Texte NEUTRE : le front ne sait pas si le code porte un groupe (il ne lit pas
+# l'invitation), et une invitation sans groupe ne fait rejoindre personne.
 [common.groups.join_intro]
-fr = "Tu as été invité à rejoindre un groupe. Connecte-toi avec Xbox pour rejoindre — ton compte est créé automatiquement."
-en = "You have been invited to join a group. Sign in with Xbox to join — your account is created automatically."
+fr = "Tu as été invité. Connecte-toi avec Xbox pour accepter l'invitation — ton compte est créé automatiquement."
+en = "You have been invited. Sign in with Xbox to accept the invitation — your account is created automatically."
 
 [common.groups.invite_code_label]
 fr = "Code d'invitation"
@@ -2043,6 +2146,10 @@ en = "Coaching"
 fr = "Réalisations"
 en = "Achievements"
 
+[common.nav.tab_tactique]
+fr = "Tactique"
+en = "Tactical"
+
 [common.nav.tab_leaderboard]
 fr = "Classements"
 en = "Leaderboards"
@@ -2173,3 +2280,167 @@ en = "Back to the active title"
 [common.title_gate.retry]
 fr = "Réessayer"
 en = "Retry"
+
+# ─── Pied de page (AppFooter) ────────────────────────────────────────────────
+# Rendu en bas de l'application ET sur les pages de connexion (seul écran vu par
+# un visiteur anonyme de la démo publique).
+
+[common.footer.aria]
+fr = "Pied de page"
+en = "Footer"
+
+[common.footer.project_heading]
+fr = "Le projet"
+en = "The project"
+
+[common.footer.source_code]
+fr = "Code source"
+en = "Source code"
+
+[common.footer.report_issue]
+fr = "Signaler un problème"
+en = "Report an issue"
+
+[common.footer.changelog]
+fr = "Nouveautés"
+en = "What's new"
+
+[common.footer.license]
+fr = "Licence MIT"
+en = "MIT licence"
+
+[common.footer.support_heading]
+fr = "Soutenir"
+en = "Support"
+
+[common.footer.sponsors]
+fr = "GitHub Sponsors"
+en = "GitHub Sponsors"
+
+[common.footer.paypal]
+fr = "PayPal"
+en = "PayPal"
+
+[common.footer.disclaimer]
+fr = "Projet indépendant, sans lien avec Microsoft ni Halo Studios."
+en = "Independent project, not affiliated with Microsoft or Halo Studios."
+
+[common.footer.copyright]
+fr = "© JGtm — LevelUp"
+en = "© JGtm — LevelUp"
+
+[common.footer.elsewhere_heading]
+fr = "Ailleurs"
+en = "Elsewhere"
+
+[common.footer.developer]
+fr = "Développeur"
+en = "Developer"
+
+[common.footer.csinsight]
+fr = "CSinsight — stats CS2"
+en = "CSinsight — CS2 stats"
+
+[common.footer.privacy]
+fr = "Confidentialité"
+en = "Privacy"
+
+# ── Amis d'un joueur (liste par profil, remplace l'ancien réglage d'instance) ──
+[common.friends.page_title]
+fr = "Amis et groupes"
+en = "Friends and groups"
+
+[common.friends.section_title]
+fr = "Amis de {gamertag}"
+en = "{gamertag}'s friends"
+
+[common.friends.section_intro]
+fr = "Les amis servent à repérer tes parties en escouade : les matchs joués avec eux sont classés « en escouade », et leurs noms sont mis en avant dans la vue d'un match."
+en = "Friends mark your squad games: matches played with them are flagged as squad games, and their names stand out in the match view."
+
+[common.friends.empty]
+fr = "Aucun ami pour l'instant."
+en = "No friends yet."
+
+[common.friends.loading]
+fr = "Chargement des amis…"
+en = "Loading friends…"
+
+[common.friends.add_placeholder]
+fr = "Gamertag à ajouter"
+en = "Gamertag to add"
+
+[common.friends.add]
+fr = "Ajouter"
+en = "Add"
+
+[common.friends.remove]
+fr = "Retirer"
+en = "Remove"
+
+[common.friends.remove_label]
+fr = "Retirer {gamertag} des amis"
+en = "Remove {gamertag} from friends"
+
+[common.friends.read_only]
+fr = "Liste en lecture seule : seul le propriétaire de ce profil peut la modifier."
+en = "Read-only list: only this profile's owner can change it."
+
+[common.friends.no_player]
+fr = "Aucun joueur sélectionné."
+en = "No player selected."
+
+[common.friends.error]
+fr = "Impossible de charger la liste d'amis."
+en = "Unable to load the friends list."
+
+[common.friends.removed]
+fr = "{gamertag} retiré des amis."
+en = "{gamertag} removed from friends."
+
+# Etat vide et repli d'erreur des cartes de graphe (`components/charts/ChartCard.tsx`).
+# Transverses par nature : tout wrapper ECharts de l'app les affiche quand l'appelant
+# ne fournit ni `emptyTitle` ni `emptyMessage`. Alignes sur l'etat vide canonique
+# (`components/ui/empty-state.tsx` : titre en gras + description grise).
+[common.charts.empty_title]
+fr = "Aucune donnée"
+en = "No data"
+
+[common.charts.empty_description]
+fr = "Aucune donnée à afficher pour cette sélection"
+en = "No data to display for this selection"
+
+[common.charts.error_fallback]
+fr = "Erreur de chargement"
+en = "Loading error"
+
+# Etat vide et repli d'erreur de la courbe d'engagement (`components/charts/EngagementCurve.tsx`).
+[common.charts.engagement_empty]
+fr = "Aucune donnée d'engagement pour ce match"
+en = "No engagement data for this match"
+
+[common.charts.engagement_error]
+fr = "Engagement momentanément indisponible"
+en = "Engagement temporarily unavailable"
+
+# Libelles par defaut des courbes d'engagement (le parent localise fournit les siens).
+[common.charts.engagement_trace_team]
+fr = "Équipe réelle"
+en = "Actual team"
+
+[common.charts.engagement_trace_expected]
+fr = "Joueur attendu"
+en = "Expected player"
+
+[common.charts.engagement_trace_player]
+fr = "Joueur réel"
+en = "Actual player"
+
+[common.charts.engagement_trace_lobby]
+fr = "Partie"
+en = "Lobby"
+
+# Libelle par defaut de l'axe Y d'un histogramme (`components/charts/HistogramChart.tsx`).
+[common.charts.axis_matches]
+fr = "Matchs"
+en = "Matches"

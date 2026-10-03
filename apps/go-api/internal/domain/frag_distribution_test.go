@@ -29,12 +29,20 @@ func TestIsNonCombatFragClass(t *testing.T) {
 	}
 }
 
-// TestIsPerWeaponFragClass fige les classes dont le niveau 2 se ventile par ENGIN
-// (weapon_key) et non par rôle de combat : véhicule et tourelle SEULEMENT. Sur ces
-// classes le registre porte class == role == family, un niveau 2 par rôle serait donc
-// un arc unique sans information (V73-3.2).
+// TestIsPerWeaponFragClass fige les classes dont le niveau 2 se ventile par OBJET
+// (weapon_key) et non par rôle de combat.
+//
+// Véhicule et tourelle y sont depuis V73-3.2 : sur ces classes le registre porte
+// class == role == family, un niveau 2 par rôle serait donc un arc unique sans
+// information. Équipement et environnement les ont rejointes le 2026-09-01 avec la
+// bascule de l'arme du kill : « Bobine à plasma » est une information, « environnement »
+// n'en est pas une — même exigence.
+//
+// Ce prédicat décrit la FORME du niveau 2, jamais la PROVENANCE des frags : savoir SI une
+// classe est servie se tranche dans fragdist.isRegistryFragClass, qui regarde d'où vient
+// la ligne (verrou Halo 5 : fragdist_halo5_golden_test.go).
 func TestIsPerWeaponFragClass(t *testing.T) {
-	for _, c := range []string{FragClassVehicle, FragClassTurret} {
+	for _, c := range []string{FragClassVehicle, FragClassTurret, FragClassEquipment, FragClassEnvironmental} {
 		if !IsPerWeaponFragClass(c) {
 			t.Errorf("IsPerWeaponFragClass(%q) = false, want true", c)
 		}
@@ -42,7 +50,7 @@ func TestIsPerWeaponFragClass(t *testing.T) {
 	notPerWeapon := []string{
 		FragClassShoulder, FragClassSidearm, FragClassHeavy, FragClassMelee,
 		FragClassGrenade, FragClassSpartanAbility, FragClassUnattributed,
-		FragClassEnvironmental, FragClassOther, "", "precision",
+		FragClassOther, "", "precision",
 	}
 	for _, c := range notPerWeapon {
 		if IsPerWeaponFragClass(c) {

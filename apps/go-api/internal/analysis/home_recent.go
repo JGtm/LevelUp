@@ -1,4 +1,4 @@
-// Package analysis â€” home_recent.go : projection des matchs rÃ©cents pour la
+// Package analysis — home_recent.go : projection des matchs récents pour la
 // timeline home (BuildRecentMatches*) + helpers nullable et URL d'image map.
 package analysis
 
@@ -27,7 +27,7 @@ func mmrDelta(team, enemy *float64) *float64 {
 	return &v
 }
 
-// float64PtrVal retourne la valeur pointÃ©e ou 0 si nil.
+// float64PtrVal retourne la valeur pointée ou 0 si nil.
 func float64PtrVal(p *float64) float64 {
 	if p == nil {
 		return 0

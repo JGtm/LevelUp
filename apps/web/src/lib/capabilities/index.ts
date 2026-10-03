@@ -9,3 +9,10 @@ export {
   hasCapabilityIn,
   type TitleCapability,
 } from './capabilities'
+export {
+  DATA_CAPABILITIES,
+  useDataCapability,
+  useTitleDataCapabilities,
+  hasDataCapabilityIn,
+  type DataCapabilityKey,
+} from './dataCapabilities'

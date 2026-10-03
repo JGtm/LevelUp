@@ -15,7 +15,7 @@
  *   - MatchHeader.utils.ts : formatDuration() + nextTierLabel()
  *   - MatchHeader.card.tsx : MatchHeaderCard + sous-sections (Map, Title, Outcome, PerfRank)
  */
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, type ReactNode } from 'react'
 import { Link, useRouter } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 import { Button } from '@/components/ui/button'
@@ -33,16 +33,40 @@ import {
 export { MatchHeaderCard, DominanceBadgeInline } from './MatchHeader.card'
 
 // ────────────────────────────────────────────────────────────────────────────
-// Breadcrumb (inchangé)
+// Breadcrumb
+//
+// OUVERT AUX PAGES FILLES LE 2026-09-02 (compaction de la tête du rejeu). Le rejeu avait
+// SA propre tête sous ce fil : un titre, un rappel du match et un bouton, soit ~84 px qui
+// répétaient ce que le fil disait déjà — `buildMatchHeadingStr` y était appelé DEUX fois
+// sur les mêmes arguments, et « Slayer sur Streets » s'imprimait deux fois à 50 px d'écart.
+// Les trois emplacements ci-dessous accueillent cette tête SUR la ligne du fil. Ils sont
+// tous optionnels : sans eux, le rendu est celui d'avant, au pixel près.
 // ────────────────────────────────────────────────────────────────────────────
 
 interface MatchBreadcrumbProps {
   playerSlug: string
   matchLabel: string
   locale: MatchViewLocale
+  /**
+   * LE SEGMENT FEUILLE — la page courante quand ce n'est PAS la fiche du match. Sa présence
+   * rétrograde `matchLabel` au rang de parent : c'est la feuille qui prend l'encre vive, le
+   * match repasse en gris. C'est aussi là que vit le `h1` de la page fille.
+   */
+  leaf?: ReactNode
+  /** Complément de la feuille (date, playlist). Il porte sa propre ponctuation. */
+  detail?: ReactNode
+  /** Action poussée à droite de la MÊME ligne (cf. rejeu : « Fiche du match »). */
+  action?: ReactNode
 }
 
-export function MatchBreadcrumb({ playerSlug, matchLabel, locale }: MatchBreadcrumbProps) {
+export function MatchBreadcrumb({
+  playerSlug,
+  matchLabel,
+  locale,
+  leaf,
+  detail,
+  action,
+}: MatchBreadcrumbProps) {
   const router = useRouter()
   const titleSlug = useTitleSlug()
   const t = MATCH_VIEW_TEXT[locale]
@@ -91,7 +115,17 @@ export function MatchBreadcrumb({ playerSlug, matchLabel, locale }: MatchBreadcr
         {playerSlug}
       </Link>
       <span aria-hidden="true">›</span>
-      <span className="text-foreground truncate">{matchLabel}</span>
+      <span className={leaf ? 'truncate' : 'text-foreground truncate'}>{matchLabel}</span>
+      {leaf && (
+        <>
+          <span aria-hidden="true">›</span>
+          <span className="flex shrink-0 items-center gap-1.5 text-foreground">{leaf}</span>
+        </>
+      )}
+      {detail}
+      {/* `ml-auto` plutôt qu'un `justify-between` sur le conteneur : sans action, la ligne
+          doit rester exactement celle d'avant — segments serrés à gauche. */}
+      {action && <span className="ml-auto shrink-0">{action}</span>}
     </div>
   )
 }

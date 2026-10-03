@@ -107,6 +107,48 @@ describe('GamertagCombobox', () => {
     expect(screen.queryByText(/Aucun joueur trouvé pour/)).not.toBeInTheDocument()
   })
 
+  // ─── LA PROP `sources` — CE QU'ON NE PROPOSE PAS, ON NE L'INTERROGE PAS ──────────
+  //
+  // Le filtrage par source s'applique au RESULTAT ; sans desarmer la requete, chaque
+  // frappe de deux caracteres partait quand meme vers l'annuaire pour une reponse jetee.
+
+  it('sources=[frequent] : AUCUNE requete annuaire, la ou un combobox libre en emet une', async () => {
+    // PREUVE D'UN NON-EVENEMENT : on monte les DEUX comboboxes cote a cote et on tape
+    // dans chacun. L'arrivee de la requete du combobox LIBRE prouve que la fenetre de
+    // debounce est passee pour les deux — sans ce temoin, « aucune requete » serait vrai
+    // simplement parce qu'on a regarde trop tot.
+    useAppShellStore.setState({ availablePlayers: [] })
+    const vues: string[] = []
+    server.use(
+      http.get('*/directory/gamertags/search', ({ request }) => {
+        vues.push(new URL(request.url).searchParams.get('q') ?? '')
+        return HttpResponse.json<GamertagSearchResponse>({ query: 'x', items: [] })
+      }),
+    )
+
+    renderWithProviders(
+      <>
+        <GamertagCombobox
+          selected={[]}
+          onChange={() => {}}
+          placeholder="restreint"
+          sources={['frequent']}
+          frequentOptions={[
+            { gamertag: 'CharlieX', xuid: 'xuid-CharlieX', encounter_count: 12, last_seen_at: undefined },
+          ]}
+        />
+        <GamertagCombobox selected={[]} onChange={() => {}} placeholder="libre" />
+      </>,
+    )
+    fireEvent.change(screen.getByPlaceholderText('restreint'), { target: { value: 'aaa' } })
+    fireEvent.change(screen.getByPlaceholderText('libre'), { target: { value: 'bbb' } })
+
+    await waitFor(() => expect(vues).toContain('bbb'), { timeout: 2000 })
+    expect(vues).not.toContain('aaa')
+    // …et la source distante n'est pas rendue non plus.
+    expect(screen.queryByText('Autres joueurs')).toBeNull()
+  })
+
   it('affiche les presets (escouades/groupes) et charge le roster au clic', () => {
     let loaded: string[] | null = null
     renderWithProviders(

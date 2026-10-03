@@ -56,6 +56,9 @@ function useSunburstLabels(): FragSunburstBaseLabels {
     classLabel: (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale),
     roleLabel: (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale),
     formatValue: (n: number) => n.toLocaleString(numLoc),
+    othersLabel: (n: number) =>
+      formatMessage(fragsManifest, 'frags.charts.others_slice', appLocale, { n }),
+    locale: appLocale,
   }
 }
 
@@ -259,7 +262,12 @@ export function FragSunburst({
                 <text x={co.tx} y={co.ly - 2} textAnchor={co.anchor} fill={tc.text} style={{ fontSize: 10, opacity: 0.9 }}>
                   {co.label}
                 </text>
-                <text x={co.tx} y={co.ly + 10} textAnchor={co.anchor} fill={co.color} style={{ fontSize: 10, fontWeight: 600 }}>
+                {/* Valeur peinte au token de TEXTE du thème (comme le nom du rôle
+                    juste au-dessus), jamais à la couleur de l'arc : les teintes de rôle
+                    sont des éclaircissements de la couleur de classe, illisibles en
+                    texte sur le fond de carte. Le lien visuel arc→étiquette reste porté
+                    par la polyline, qui garde `co.color`. */}
+                <text x={co.tx} y={co.ly + 10} textAnchor={co.anchor} fill={tc.text} style={{ fontSize: 10, fontWeight: 600 }}>
                   {co.valueLabel}
                 </text>
               </g>

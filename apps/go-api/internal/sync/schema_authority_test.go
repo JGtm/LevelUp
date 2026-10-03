@@ -198,7 +198,7 @@ func TestPlayerSchemaAuthority_EnsureIsNoOpOnFreshMigrations(t *testing.T) {
 
 // TestPlayerSchemaAuthority_NoCareerXuidIndex — décision A du 2026-08-05 :
 // idx_career_xuid est supprimé PARTOUT (xuid quasi constant dans une player DB →
-// sélectivité nulle ; surface ART #23046 pure perte). Ni la chaîne, ni le soin ne
+// sélectivité nulle ; surface ART #23645 pure perte). Ni la chaîne, ni le soin ne
 // doivent le laisser en place.
 func TestPlayerSchemaAuthority_NoCareerXuidIndex(t *testing.T) {
 	db := freshMigratedPlayerDB(t)
@@ -247,6 +247,107 @@ func TestPlayerSchemaAuthority_NoPersonalScoreAwardsMatchXuidIndex(t *testing.T)
 		t.Error("idx_psa_match_xuid présent après migrations + soin — l'index doit être supprimé " +
 			"partout (step drop_psa_match_xuid_art_index_v1 + retrait du PostSwap " +
 			"d'applyAppendOnlyPersonalScoreAwards, sa seule autorité)")
+	}
+}
+
+// TestPlayerSchemaAuthority_NoPersonalScoreAwardsSecondaryIndex — clôture du
+// 2026-09-20 : personal_score_awards n'a plus AUCUN index secondaire. Les trois
+// derniers (idx_psa_match, idx_psa_category, idx_psa_gen) ont été retirés des deux
+// autorités (PlayerPersonalScoreAwardsDDL, PostSwap d'EnsurePersonalScoreAwardsAppendOnly)
+// et des DB existantes par le step drop_psa_secondary_art_indexes_v1. Motif : la sonde
+// data-health les trouvait DÉSYNCHRONISÉS à chaque boot et les clés en écart étaient des
+// match_id du mois courant — le défaut #23645 se reforme sur les insertions COURANTES.
+// Aucun lecteur n'y perd (tout passe par la vue _latest, plan Sequential Scan).
+func TestPlayerSchemaAuthority_NoPersonalScoreAwardsSecondaryIndex(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	keys := snapshotSchemaKeys(t, db)
+	for _, idx := range []string{"idx_psa_match", "idx_psa_category", "idx_psa_gen"} {
+		if keys["index "+idx+" ON personal_score_awards"] {
+			t.Errorf("%s présent après migrations + soin — les index secondaires de "+
+				"personal_score_awards sont supprimés partout (step "+
+				"drop_psa_secondary_art_indexes_v1 + retrait de PlayerPersonalScoreAwardsDDL "+
+				"et du PostSwap d'applyAppendOnlyPersonalScoreAwards)", idx)
+		}
+	}
+}
+
+// retiredMSRIndexes / retiredPSAIndexes — index secondaires retirés des player DB :
+// match_skill_rank le 2026-09-27 (plan backlog 2026-09-26, lot B3, D-4 amendé),
+// personal_score_awards le 2026-09-20. Clé = nom, valeur = DDL d'avant le retrait.
+var (
+	retiredMSRIndexes = map[string]string{
+		"idx_msr_match_lookup": `CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at)`,
+		"idx_msr_rating_type":  `CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type)`,
+		"idx_msr_playlist":     `CREATE INDEX IF NOT EXISTS idx_msr_playlist ON match_skill_rank(playlist_group)`,
+	}
+	retiredPSAIndexes = map[string]string{
+		"idx_psa_match":    `CREATE INDEX IF NOT EXISTS idx_psa_match ON personal_score_awards(match_id)`,
+		"idx_psa_category": `CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category)`,
+		"idx_psa_gen":      `CREATE INDEX IF NOT EXISTS idx_psa_gen ON personal_score_awards(match_id, xuid, generation_id)`,
+	}
+)
+
+// TestPlayerSchemaAuthority_NoMatchSkillRankSecondaryIndex — 2026-09-27 : match_skill_rank
+// n'a plus AUCUN index secondaire. idx_msr_playlist désynchronisé servait 22 lignes pour
+// 1 826 réelles (JGtm, 2026-09-13) : un index ART désynchronisé ET emprunté rend des
+// lectures fausses. Ni la chaîne (step drop_msr_secondary_art_indexes_v1), ni le soin ne
+// doivent les laisser en place.
+func TestPlayerSchemaAuthority_NoMatchSkillRankSecondaryIndex(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	keys := snapshotSchemaKeys(t, db)
+	for idx := range retiredMSRIndexes {
+		if keys["index "+idx+" ON match_skill_rank"] {
+			t.Errorf("%s présent après migrations + soin — les index secondaires de "+
+				"match_skill_rank sont supprimés partout (step drop_msr_secondary_art_indexes_v1 "+
+				"+ retrait de playerSchemaSQL et des steps de la chaîne)", idx)
+		}
+	}
+}
+
+// TestPlayerSchemaAuthority_EnsureDropsRetiredARTIndexes — convergence (D-4) : un binaire
+// plus ancien (autre worktree, retour arrière) RECRÉE les index retirés par son propre
+// CREATE INDEX IF NOT EXISTS, et la migration one-shot ne rejoue jamais. Le soin rejoué à
+// chaque ouverture doit donc les retirer à nouveau — MSR ET PSA.
+func TestPlayerSchemaAuthority_EnsureDropsRetiredARTIndexes(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	for _, ddl := range []map[string]string{retiredMSRIndexes, retiredPSAIndexes} {
+		for name, stmt := range ddl {
+			if _, err := db.Exec(stmt); err != nil {
+				t.Fatalf("recréation de %s (binaire ancien): %v", name, err)
+			}
+		}
+	}
+	pre := snapshotSchemaKeys(t, db)
+	for name := range retiredMSRIndexes {
+		if !pre["index "+name+" ON match_skill_rank"] {
+			t.Fatalf("préalable : %s absent après recréation — le test ne mordrait pas", name)
+		}
+	}
+	for name := range retiredPSAIndexes {
+		if !pre["index "+name+" ON personal_score_awards"] {
+			t.Fatalf("préalable : %s absent après recréation — le test ne mordrait pas", name)
+		}
+	}
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	keys := snapshotSchemaKeys(t, db)
+	for table, ddl := range map[string]map[string]string{
+		"match_skill_rank":      retiredMSRIndexes,
+		"personal_score_awards": retiredPSAIndexes,
+	} {
+		for name := range ddl {
+			if keys["index "+name+" ON "+table] {
+				t.Errorf("%s recréé par un binaire ancien et TOUJOURS présent après "+
+					"EnsurePlayerSchema — le soin doit porter son DROP INDEX IF EXISTS", name)
+			}
+		}
 	}
 }
 

@@ -67,7 +67,7 @@ func seedSteaktacularMedal(t *testing.T, sharedDB *sql.DB, matchID, xuid string)
 func readDominanceFlag(t *testing.T, playerDB *sql.DB, matchID string) int {
 	t.Helper()
 	var flag sql.NullInt64
-	// Append-only #23046 : lire la vue merge (dominance vit sur le stage 'dominance' ;
+	// Append-only #23645 : lire la vue merge (dominance vit sur le stage 'dominance' ;
 	// une row legacy/live peut coexister).
 	row := playerDB.QueryRowContext(context.Background(),
 		`SELECT dominance_flag FROM player_match_enrichment_latest WHERE match_id = ?`, matchID)
@@ -232,7 +232,7 @@ func TestSelectMatchesForComebackBadges_DefaultExcludesAlreadyFlagged(t *testing
 		t.Fatalf("pre-insert: %v", err)
 	}
 	// m2 : flag=0 = dominance CALCULÉE, résultat non-dominant (état terminal, pas un
-	// défaut). Append-only #23046 — le re-traiter le ferait ré-INSÉRER stage='dominance'
+	// défaut). Append-only #23645 — le re-traiter le ferait ré-INSÉRER stage='dominance'
 	// à chaque backfill → croissance non bornée. Aligné sur le chemin per-sync
 	// (engine_postsync_csr.go : WHERE dominance_flag IS NULL = jamais calculé). flag=0
 	// est DÉJÀ traité → exclu. Seul m3 (aucune row → NULL) reste à calculer. Le re-calcul

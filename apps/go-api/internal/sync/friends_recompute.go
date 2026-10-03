@@ -23,6 +23,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
@@ -41,7 +42,8 @@ type FriendsRecomputeResult struct {
 // un match où au moins un xuid d'ami (résolu via xuid_aliases) a participé
 // dans la même équipe que le joueur.
 //
-// friendGamertags : liste des amis (settings.friend_gamertags). Vide → no-op.
+// friendGamertags : liste des amis du joueur. Vide → démotion complète (plus aucun
+// ami : tous les matchs TRUE repassent FALSE) — ce n est PAS un no-op, cf. en-tête.
 // Les gamertags non résolus dans xuid_aliases sont logués Warn et ignorés.
 //
 // provider : si non-nil, passe par Provider.AcquireWriter pour coordonner avec
@@ -57,6 +59,7 @@ func RecomputeIsWithFriends(
 	playerDBPath, sharedDBPath, playerXUID string,
 	friendGamertags []string,
 ) (FriendsRecomputeResult, error) {
+	defer duckdbpkg.InvalidatePlayerReadCaches(ctx, playerXUID, "") // perf L5b : is_with_friends recalculé hors sync = lectures joueur cachées périmées
 	// Sémantique convergente : on NE court-circuite PLUS sur liste vide — une liste
 	// vide signifie « plus aucun ami », donc tous les matchs TRUE doivent être
 	// démotés. On acquiert les leases et on laisse Core réconcilier.
@@ -221,7 +224,7 @@ func loadMatchesWithFriends(
 }
 
 // updateIsWithFriendsBatch fait passer is_with_friends à TRUE pour les matchs fournis.
-// Append-only #23046 : INSERT pur stage='friends' valeur TRUE EXPLICITE (le bug NULL
+// Append-only #23645 : INSERT pur stage='friends' valeur TRUE EXPLICITE (le bug NULL
 // historique — badge "Solo" persistant, cf. thought_log 2026-05-08 — disparaît
 // nativement). Pré-filtre delta via _latest (ne réécrit que les matchs réellement FALSE).
 func updateIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []string) (int64, error) {
@@ -233,7 +236,7 @@ func updateIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []
 // actuellement TRUE qui ne figurent PLUS dans targetIDs (ami retiré / dernier ami
 // supprimé → targetIDs vide → démotion complète). Convergent.
 func demoteStaleIsWithFriends(ctx context.Context, playerDB *sql.DB, targetIDs []string) (int64, error) {
-	// Append-only #23046 : lire la valeur mergée (vue _latest) — sinon de vieilles
+	// Append-only #23645 : lire la valeur mergée (vue _latest) — sinon de vieilles
 	// rows TRUE + nouvelles FALSE coexistent et la démotion opère sur un état faux.
 	rows, err := playerDB.QueryContext(ctx,
 		`SELECT match_id FROM player_match_enrichment_latest WHERE COALESCE(is_with_friends, FALSE) = TRUE`)
@@ -273,7 +276,7 @@ func demoteStaleIsWithFriends(ctx context.Context, playerDB *sql.DB, targetIDs [
 }
 
 // demoteIsWithFriendsBatch fait passer is_with_friends à FALSE pour les matchs fournis.
-// Append-only #23046 : INSERT pur stage='friends' valeur FALSE EXPLICITE (jamais NULL).
+// Append-only #23645 : INSERT pur stage='friends' valeur FALSE EXPLICITE (jamais NULL).
 func demoteIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []string) (int64, error) {
 	n, err := insertEnrichmentBoolFlagDelta(ctx, playerDB, matchIDs, "is_with_friends", "friends", false)
 	return int64(n), err

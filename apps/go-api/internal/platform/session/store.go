@@ -56,6 +56,13 @@ const (
 	// vivante sur une corruption illusoire ; seule une corruption qui persiste
 	// au-delà du délai est réellement supprimée.
 	corruptSessionTTL = time.Hour
+
+	// touchPersistInterval : Touch ne réécrit une session INCHANGÉE que si le last_seen_at
+	// que porte son fichier a plus de cet âge (plan perf 2026-09-23, D3.5). Avant : une
+	// écriture de fichier sous le verrou du store à CHAQUE requête, pollings compris (état
+	// des lieux perf, C8). Le TTL glissant (basé sur last_seen_at) reste exact à cet
+	// intervalle près.
+	touchPersistInterval = 5 * time.Minute
 )
 
 // Store gère la persistance des sessions dans des fichiers JSON.
@@ -78,26 +85,61 @@ type Store struct {
 	// atomique de Save (rename(2)/MoveFileEx REPLACE_EXISTING) : un lecteur d'un
 	// autre process voit toujours un fichier complet (l'ancien ou le nouveau).
 	mu sync.RWMutex
+	// now : horloge du store (time.Now ; WithClock la remplace dans les tests).
+	now func() time.Time
+	// marksMu protège marks. Verrou DISTINCT de mu : Delete, qui oublie une marque, est
+	// appelé par Load sous mu.RLock. Quand les deux sont tenus : mu d'abord, marksMu ensuite.
+	marksMu sync.Mutex
+	// marks : pour chaque session, ce que porte son fichier d'après la DERNIÈRE écriture de
+	// ce process — en mémoire seulement, jamais dans le JSON. Marque absente (session jamais
+	// écrite par ce process, redémarrage) : Touch écrit.
+	marks map[string]persistMark
+}
+
+// persistMark : ce que porte le fichier d'une session d'après la dernière écriture de ce
+// process (plan perf 2026-09-23, D3.5).
+type persistMark struct {
+	// LastPersistedAt : le last_seen_at que porte cette écriture — et non l'heure de
+	// l'écriture. Un Save de handler qui réécrit le last_seen_at ancien d'une session
+	// chargée ne doit pas dispenser Touch de rafraîchir la présence sur disque.
+	LastPersistedAt time.Time
+	// content : empreinte du contenu hors last_seen_at (contentDigest).
+	content [sha256.Size]byte
+}
+
+// StoreOption règle un Store à sa construction.
+type StoreOption func(*Store)
+
+// WithClock remplace l'horloge du Store (défaut : time.Now). Sert aux tests du throttle
+// de Touch, qui avancent le temps sans dormir.
+func WithClock(now func() time.Time) StoreOption {
+	return func(s *Store) { s.now = now }
 }
 
 // NewStore crée un Store. Le répertoire sera créé s'il n'existe pas.
-func NewStore(dir string, ttl time.Duration, secret string) *Store {
+func NewStore(dir string, ttl time.Duration, secret string, opts ...StoreOption) *Store {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		// Non fatal — les writes échoueront proprement — mais on trace : sans
 		// répertoire, toute session devient non persistable (login cassé). Pas de
 		// ctx au montage ; module auto-détecté = "session" → logs/session.log.
 		slog.Error("session: création du répertoire de sessions échouée", "dir", dir, "err", err)
 	}
-	return &Store{
+	s := &Store{
 		dir:    dir,
 		ttl:    ttl,
 		secret: []byte(secret),
+		now:    time.Now,
+		marks:  make(map[string]persistMark),
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // New crée une nouvelle session avec un ID UUID v4.
 func (s *Store) New() *domain.SessionData {
-	now := time.Now().Unix()
+	now := s.now().Unix()
 	locale := "fr"
 	return &domain.SessionData{
 		SessionID:    uuid.New().String(),
@@ -146,7 +188,17 @@ func (s *Store) Load(ctx context.Context, sessionID string) *domain.SessionData 
 // C'était la cause racine de la « boucle /login » : os.WriteFile (truncate+write
 // non atomique) exposait un fichier vide/partiel aux Load concurrents déclenchés
 // par la rafale refetchOnWindowFocus → session lue nil → anonyme transitoire.
+// Save écrit toujours ; seul Touch s'abstient quand l'écriture serait inutile.
 func (s *Store) Save(sess *domain.SessionData) error {
+	content, err := contentDigest(sess)
+	if err != nil {
+		return err
+	}
+	return s.save(sess, content)
+}
+
+// save écrit le fichier (cf. Save) puis retient la marque de cette écriture.
+func (s *Store) save(sess *domain.SessionData, content [sha256.Size]byte) error {
 	data, err := json.Marshal(sess)
 	if err != nil {
 		return fmt.Errorf("session marshal: %w", err)
@@ -173,17 +225,31 @@ func (s *Store) Save(sess *domain.SessionData) error {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("session rename: %w", err)
 	}
+	s.remember(sess.SessionID, persistMark{LastPersistedAt: time.Unix(sess.LastSeenAt, 0), content: content})
 	return nil
 }
 
-// Touch met à jour last_seen_at et sauvegarde la session.
+// Touch rafraîchit last_seen_at et persiste la session — sauf si l'écriture est inutile
+// (plan perf 2026-09-23, D3.5) : même contenu (hors last_seen_at) que la dernière écriture
+// de ce process, dont le last_seen_at a moins de touchPersistInterval. Une session MODIFIÉE
+// (login, préférence, flux OAuth, joueur courant...) est donc toujours écrite ; une session
+// inchangée l'est au plus une fois par intervalle, ce qui borne le retard du TTL glissant.
 func (s *Store) Touch(sess *domain.SessionData) error {
-	sess.LastSeenAt = time.Now().Unix()
-	return s.Save(sess)
+	content, err := contentDigest(sess)
+	if err != nil {
+		return err
+	}
+	now := s.now()
+	sess.LastSeenAt = now.Unix()
+	if s.persistedRecently(sess.SessionID, content, now) {
+		return nil
+	}
+	return s.save(sess, content)
 }
 
-// Delete supprime le fichier de session.
+// Delete supprime le fichier de session (et oublie la marque de sa dernière écriture).
 func (s *Store) Delete(sessionID string) error {
+	s.forget(sessionID)
 	err := os.Remove(s.path(sessionID))
 	if os.IsNotExist(err) {
 		return nil
@@ -200,6 +266,7 @@ func (s *Store) Delete(sessionID string) error {
 // concurrent d'un Save pouvait faire échouer le os.Rename du Save (sharing violation)
 // — exactement la course que s.mu ferme (Save=Lock, Load=RLock). Le verrouillage par
 // fichier évite de bloquer les requêtes pendant tout le scan.
+// Oublie enfin les marques d'écriture périmées (pruneMarks, plan perf 2026-09-23).
 func (s *Store) PurgeExpired() int {
 	entries, err := os.ReadDir(s.dir)
 	if err != nil {
@@ -231,6 +298,7 @@ func (s *Store) PurgeExpired() int {
 			removed++
 		}
 	}
+	s.pruneMarks()
 	return removed
 }
 
@@ -339,7 +407,61 @@ func (s *Store) path(sessionID string) string {
 // isExpired retourne true si la session a dépassé le TTL (basé sur last_seen_at).
 func (s *Store) isExpired(sess *domain.SessionData) bool {
 	lastSeen := time.Unix(sess.LastSeenAt, 0)
-	return time.Since(lastSeen) > s.ttl
+	return s.now().Sub(lastSeen) > s.ttl
+}
+
+// contentDigest : empreinte SHA-256 du JSON de la session, last_seen_at exclu — seul champ
+// que Touch change à chaque requête. Copie superficielle : la session de l'appelant n'est
+// pas modifiée.
+func contentDigest(sess *domain.SessionData) ([sha256.Size]byte, error) {
+	c := *sess
+	c.LastSeenAt = 0
+	data, err := json.Marshal(&c)
+	if err != nil {
+		return [sha256.Size]byte{}, fmt.Errorf("session digest: %w", err)
+	}
+	return sha256.Sum256(data), nil
+}
+
+// persistedRecently : le fichier de la session porte déjà ce contenu, avec un last_seen_at
+// de moins de touchPersistInterval (d'après la dernière écriture de ce process). Une
+// horloge revenue en arrière (âge négatif) force l'écriture.
+func (s *Store) persistedRecently(sessionID string, content [sha256.Size]byte, now time.Time) bool {
+	s.marksMu.Lock()
+	mark, ok := s.marks[sessionID]
+	s.marksMu.Unlock()
+	if !ok || mark.content != content {
+		return false
+	}
+	age := now.Sub(mark.LastPersistedAt)
+	return age >= 0 && age < touchPersistInterval
+}
+
+// remember retient la marque de la dernière écriture d'une session.
+func (s *Store) remember(sessionID string, mark persistMark) {
+	s.marksMu.Lock()
+	s.marks[sessionID] = mark
+	s.marksMu.Unlock()
+}
+
+// forget oublie la marque d'une session supprimée.
+func (s *Store) forget(sessionID string) {
+	s.marksMu.Lock()
+	delete(s.marks, sessionID)
+	s.marksMu.Unlock()
+}
+
+// pruneMarks oublie les marques dont le last_seen_at a dépassé le TTL : leur session est
+// expirée (ou supprimée hors de ce process) ; les garder ferait croître la table sans fin.
+func (s *Store) pruneMarks() {
+	limit := s.now().Add(-s.ttl)
+	s.marksMu.Lock()
+	defer s.marksMu.Unlock()
+	for id, mark := range s.marks {
+		if mark.LastPersistedAt.Before(limit) {
+			delete(s.marks, id)
+		}
+	}
 }
 
 // sanitizeID conserve uniquement les caractères alphanumériques et tirets.

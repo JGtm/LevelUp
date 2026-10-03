@@ -1,0 +1,70 @@
+{
+  "players": [
+    {
+      "xuid": "2533274803754807",
+      "kills": 23,
+      "deaths": 17,
+      "assists": 8,
+      "teamId": 1
+    },
+    {
+      "xuid": "2533274823110022",
+      "kills": 6,
+      "deaths": 12,
+      "assists": 3,
+      "teamId": 1
+    },
+    {
+      "xuid": "2533274830881544",
+      "kills": 25,
+      "deaths": 13,
+      "assists": 2,
+      "teamId": 1
+    },
+    {
+      "xuid": "2533274840602701",
+      "kills": 16,
+      "deaths": 19,
+      "assists": 4,
+      "teamId": 0
+    },
+    {
+      "xuid": "2533274860882060",
+      "kills": 15,
+      "deaths": 13,
+      "assists": 5,
+      "teamId": 0
+    },
+    {
+      "xuid": "2535430195856593",
+      "kills": 7,
+      "deaths": 12,
+      "assists": 2,
+      "teamId": 1
+    },
+    {
+      "xuid": "2535439497055986",
+      "kills": 13,
+      "deaths": 17,
+      "assists": 6,
+      "teamId": 0
+    },
+    {
+      "xuid": "2535462641971683",
+      "kills": 10,
+      "deaths": 14,
+      "assists": 5,
+      "teamId": 0
+    }
+  ],
+  "teamScores": [
+    1,
+    2
+  ],
+  "gameVariantName": "CTF:Arena",
+  "mapId": "e9a5a982-6c4e-4db6-9383-7b03671460eb",
+  "matchId": "53ce4390-efa0-455d-acbc-2208865a68b6",
+  "mapNames": [
+    "Behemoth"
+  ]
+}

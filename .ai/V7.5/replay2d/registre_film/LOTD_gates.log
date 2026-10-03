@@ -1,0 +1,32 @@
+# lot D phase 0 - cout machine (D17 d : 3 films avant les 12), 2026-08-18
+# un film par PROCESSUS, avant-plan, PeakWorkingSet64 surveille, kill au-dela de 3 Go.
+COUT 000d5950 SEC=39.7  PEAK_MB=68.3  KILLED=False VERDICT=PASS
+COUT 7344d24f SEC=52.1  PEAK_MB=21.8  KILLED=False VERDICT=PASS
+COUT 64e8adfa SEC=106.2 PEAK_MB=24.2  KILLED=False VERDICT=PASS
+COUT 06dfe6d9 SEC=426.6 PEAK_MB=32.4  KILLED=False VERDICT=PASS
+COUT 53ce4390 SEC=75.5  PEAK_MB=24.3  KILLED=False VERDICT=PASS
+COUT 0a247154 SEC=53.7  PEAK_MB=22.2  KILLED=False VERDICT=PASS
+COUT 01e1f945 SEC=39.5  PEAK_MB=21.3  KILLED=False VERDICT=PASS
+COUT 530820e5 SEC=28.8  PEAK_MB=21.9  KILLED=False VERDICT=PASS
+COUT 696a9d7c SEC=55.9  PEAK_MB=21.2  KILLED=False VERDICT=PASS
+COUT 24dbb67d SEC=44.1  PEAK_MB=82.6  KILLED=False VERDICT=PASS
+COUT 00162144 SEC=72.6  PEAK_MB=23.4  KILLED=False VERDICT=PASS
+COUT 02784ce1 SEC=56.2  PEAK_MB=21.8  KILLED=False VERDICT=PASS
+COUT 606d9844 SEC=24.2  PEAK_MB=21.9  KILLED=False VERDICT=PASS
+COUT 8076f97f SEC=38.0  PEAK_MB=22.1  KILLED=False VERDICT=PASS
+
+# gates de cloture lot D phase 0 - 2026-08-18
+EXIT_VET=0        go vet ./internal/analysis/... ./internal/replaybuild/... ./internal/games/halo_infinite/film/... ./contracttest/...
+EXIT_TEST=0       CGO_ENABLED=0 go test -count=1 ./internal/analysis/filmdec/ ./internal/analysis/replay/   (42,0 s + 41,3 s)
+EXIT_LINT_CGO1=0  golangci-lint run --new-from-merge-base=origin/main ./...   0 issue
+
+# NOTES DE LECTURE
+# - EXIT_LINT=7 au premier essai : lint joue sous CGO_ENABLED=0, erreur de TYPECHECK
+#   (internal/ooz exclu par contrainte de build), 0 issue de lint pour autant. Le lint doit
+#   tourner CGO ACTIVE ; les tests filmdec/replay restent a CGO_ENABLED=0. Deux reglages
+#   differents pour deux gates voisins.
+# - un 15e lancement figure dans lhistorique de session sous le nom 53082000000 : PowerShell
+#   avait interprete largument 530820e5 comme un litteral en notation scientifique. Le film a
+#   ete rejoue quote et figure ci-dessus a PASS. Aucune mesure na ete tiree du lancement rate.
+# - le code de sortie du processus nest pas releve (Start-Process -PassThru ne le renseigne pas
+#   ici) : le verdict PASS/FAIL est lu dans la queue du log de chaque film.

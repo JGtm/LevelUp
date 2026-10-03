@@ -1,6 +1,7 @@
 // replay_contract_test.go — LE CONTRAT DU DOCUMENT DE REJEU, CHAMP PAR CHAMP.
 //
-// CE QUE CE FICHIER FERME. L artefact de rejeu publie 22 champs. Le contrat OpenAPI n en a
+// CE QUE CE FICHIER FERME. L artefact de rejeu publie des dizaines de champs (le compte du
+// jour et son historique : wantReplayDocumentFields). Le contrat OpenAPI n en a
 // longtemps decrit que 6, et les types TypeScript etaient ECRITS A LA MAIN hors du fichier
 // genere : trois verites parallelles, dont deux se corrigeaient a la main. Le cout de cette
 // divergence a ete paye — l interface manuelle nommait `weapon` le champ que le contrat nomme
@@ -19,6 +20,16 @@
 // LE VOLET TypeScript est teste ailleurs, et il le doit : la frontiere de nullabilite vit dans
 // `apps/web/src/features/match-replay/replayNormalize.ts`, et c est la que se verifie qu aucun
 // tableau du contrat ne lui echappe (cf. replayContract.test.ts).
+//
+// CE FICHIER A CHANGE DE COTE LE 2026-09-05 (lot B du plan v2). Jusque-la il reflechissait sur
+// `internal/games/halo_infinite/film/replay` — le format du FICHIER d artefact, qui etait AUSSI le contrat. La
+// separation du document stocke et du document servi lui donne son vrai sujet : il reflechit
+// desormais sur `internal/domain/replaydoc`, la forme de FIL, et confronte ce contrat au
+// fichier `api/openapi.yaml` qui en derive. Ce qu il ne regarde plus — que la cuisson ecrive
+// bien tout ce que le contrat promet — est tenu par le test de parite du convertisseur
+// (`internal/service/replayview/parity_test.go`), qui exige une decision ecrite pour chaque
+// champ du document stocke. Les deux gardes se completent : celui-ci tient contrat <-> Go,
+// l autre tient Go stocke <-> Go servi.
 //
 // LES CHAMPS QUE PERSONNE NE LIT — INVENTAIRE CONSIGNE, NON TRAITE (leur sort est le lot 3.6 du
 // plan de finalisation ; ce jalon-ci VERROUILLE, il ne supprime pas). Re-mesure du 2026-07-31,
@@ -56,10 +67,11 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain/replaydoc"
 )
 
-// replaySchemas apparie chaque type Go publie dans l artefact au schema qui doit le decrire.
+// replaySchemas apparie chaque type Go du document SERVI (`domain/replaydoc`) au schema qui
+// doit le decrire.
 //
 // LA LISTE EST ECRITE, PAS DERIVEE : un parcours automatique des types atteignables depuis
 // ReplayDocument aurait le defaut de suivre le code — si un type sortait du document, il
@@ -68,34 +80,672 @@ var replaySchemas = []struct {
 	schema string
 	value  any
 }{
-	{"ReplayDocument", replay.ReplayDocument{}},
-	{"Track", replay.Track{}},
-	{"Point", replay.Point{}},
-	{"Shot", replay.Shot{}},
-	{"Grenade", replay.Grenade{}},
-	{"Projectile", replay.Projectile{}},
-	{"Loadout", replay.Loadout{}},
-	{"Inventory", replay.Inventory{}},
-	{"AmmoSlot", replay.AmmoSlot{}},
-	{"Surface", replay.Surface{}},
-	{"MapObject", replay.MapObject{}},
-	{"Bounds", replay.Bounds{}},
-	{"RosterEntry", replay.RosterEntry{}},
-	{"ObjectiveAction", replay.ObjectiveAction{}},
-	{"Coverage", replay.Coverage{}},
-	{"LayerCoverage", replay.LayerCoverage{}},
-	{"BridgeHealth", replay.BridgeHealth{}},
+	{"ReplayDocument", replaydoc.ReplayDocument{}},
+	{"Track", replaydoc.Track{}},
+	{"Point", replaydoc.Point{}},
+	{"Shot", replaydoc.Shot{}},
+	{"Grenade", replaydoc.Grenade{}},
+	{"Projectile", replaydoc.Projectile{}},
+	{"Loadout", replaydoc.Loadout{}},
+	{"Inventory", replaydoc.Inventory{}},
+	{"InventoryCoverage", replaydoc.InventoryCoverage{}},
+	{"AbilityRead", replaydoc.AbilityRead{}},
+	{"EquipmentEpisode", replaydoc.EquipmentEpisode{}},
+	{"EquipmentCoverage", replaydoc.EquipmentCoverage{}},
+	{"GrappleLine", replaydoc.GrappleLine{}},
+	{"GrappleCoverage", replaydoc.GrappleCoverage{}},
+	{"EquipmentPlacement", replaydoc.EquipmentPlacement{}},
+	{"EquipmentPlacementCoverage", replaydoc.EquipmentPlacementCoverage{}},
+	{"WeaponPad", replaydoc.WeaponPad{}},
+	{"PadPresence", replaydoc.PadPresence{}},
+	{"PadCycle", replaydoc.PadCycle{}},
+	{"PadPickup", replaydoc.PadPickup{}},
+	{"GroundWeaponCoverage", replaydoc.GroundWeaponCoverage{}},
+	{"AmmoSlot", replaydoc.AmmoSlot{}},
+	{"Surface", replaydoc.Surface{}},
+	{"MapObject", replaydoc.MapObject{}},
+	{"Bounds", replaydoc.Bounds{}},
+	{"RosterEntry", replaydoc.RosterEntry{}},
+	{"ObjectiveAction", replaydoc.ObjectiveAction{}},
+	{"ScoreTimeline", replaydoc.ScoreTimeline{}},
+	{"TeamScore", replaydoc.TeamScore{}},
+	{"PlayerScore", replaydoc.PlayerScore{}},
+	{"ScoreSeries", replaydoc.ScoreSeries{}},
+	{"ScoreRound", replaydoc.ScoreRound{}},
+	{"ScoreTick", replaydoc.ScoreTick{}},
+	{"ScoreCoverage", replaydoc.ScoreCoverage{}},
+	{"FlagCarry", replaydoc.FlagCarry{}},
+	{"FlagSpan", replaydoc.FlagSpan{}},
+	{"FlagCarriesCoverage", replaydoc.FlagCarriesCoverage{}},
+	{"VipPeriod", replaydoc.VipPeriod{}},
+	{"VipCrownCoverage", replaydoc.VipCrownCoverage{}},
+	{"SkullCarry", replaydoc.SkullCarry{}},
+	{"SkullCarriesCoverage", replaydoc.SkullCarriesCoverage{}},
+	{"BombArming", replaydoc.BombArming{}},
+	{"BombArmingsCoverage", replaydoc.BombArmingsCoverage{}},
+	{"BombCarry", replaydoc.BombCarry{}},
+	{"BombCarriesCoverage", replaydoc.BombCarriesCoverage{}},
+	{"ZoneState", replaydoc.ZoneState{}},
+	{"ZoneSpan", replaydoc.ZoneSpan{}},
+	{"GaugePoint", replaydoc.GaugePoint{}},
+	{"ZonesCoverage", replaydoc.ZonesCoverage{}},
+	// AJOUTES LE 2026-09-01 (revue adversariale du schema 31, P2-3). Le RAMASSAGE NATIF vivait
+	// en production depuis le schema 30 SANS entrer dans cette table : ses deux types
+	// n etaient donc couverts par AUCUN des deux gardes champ<->contrat de ce fichier, alors
+	// meme que le schema 31 leur ajoutait `family` (non requis) et `unknownFamilies` (requis)
+	// — exactement le couple que le garde omitempty<->required existe pour verifier.
+	{"Pickup", replaydoc.Pickup{}},
+	{"PickupCoverage", replaydoc.PickupCoverage{}},
+	{"T0FilmCoverage", replaydoc.T0FilmCoverage{}},
+	// AJOUTES AU SCHEMA 38 (2026-09-03), DANS LE MEME LOT que le champ — la lecon P2-3 du
+	// 2026-09-01 (`Pickup` absent de cette table pendant deux schemas) appliquee d'emblee :
+	// le couple `recovered`/`gap` (optionnels) contre `recovered` de la couverture (requis)
+	// est exactement ce que les gardes omitempty<->required jugent.
+	{"Translocation", replaydoc.Translocation{}},
+	{"TranslocationCoverage", replaydoc.TranslocationCoverage{}},
+	{"AbilityImpulse", replaydoc.AbilityImpulse{}},
+	{"AbilityImpulseCoverage", replaydoc.AbilityImpulseCoverage{}},
+	// AJOUTES AU LOT P5 (2026-09-04), DANS LE MEME LOT que le champ (lecon P2-3 appliquee
+	// d'emblee) : `charges` est un int NU (zero = une mesure, jamais omis) la ou
+	// `componentAbsent` de la couverture est omitempty — exactement le couple que les gardes
+	// omitempty<->required jugent.
+	{"AbilityCharge", replaydoc.AbilityCharge{}},
+	{"AbilityChargeCoverage", replaydoc.AbilityChargeCoverage{}},
+	// AJOUTES AU SCHEMA 39 (2026-09-05, etape G.2 de l integration), DANS LE MEME LOT que les
+	// deux champs (lecon P2-3 appliquee d emblee). Les quatre types portent EXACTEMENT le couple
+	// que les gardes omitempty<->required jugent : les cinq mesures de `BombPlayerStats` sont
+	// des POINTEURS omitempty (« absent n est pas zero »), la couverture n a que des compteurs
+	// NUS (requis), et `BombEvent` melange les deux (`type`/`timeMs` requis, `xuid`/`actorSource`
+	// optionnels — un fait sans acteur reste un fait).
+	{"BombMatchStats", replaydoc.BombMatchStats{}},
+	{"BombPlayerStats", replaydoc.BombPlayerStats{}},
+	{"BombEvent", replaydoc.BombEvent{}},
+	{"BombStatsCoverage", replaydoc.BombStatsCoverage{}},
+	{"Coverage", replaydoc.Coverage{}},
+	{"LayerCoverage", replaydoc.LayerCoverage{}},
+	{"BridgeHealth", replaydoc.BridgeHealth{}},
+	{"IdentitySection", replaydoc.IdentitySection{}},
+	{"IdentityPlayer", replaydoc.IdentityPlayer{}},
+	{"IdentityBipedSlot", replaydoc.IdentityBipedSlot{}},
+	{"IdentityStatborgSlot", replaydoc.IdentityStatborgSlot{}},
+	{"IdentityCoverage", replaydoc.IdentityCoverage{}},
+	{"LinkCounts", replaydoc.LinkCounts{}},
+	{"BipedLinkCounts", replaydoc.BipedLinkCounts{}},
+	{"UnresolvedCauses", replaydoc.UnresolvedCauses{}},
+	{"Link", replaydoc.Link{}},
 }
 
 // wantReplayDocumentFields : le nombre de champs que l artefact publie. Ecrit ici pour que le
-// chiffre du chantier — « 22 champs publies », 23 depuis le 2026-08-05 — soit verifiable et
-// pas seulement affirme.
+// chiffre du chantier soit verifiable et pas seulement affirme.
 //
-// Le 23e est `objectives`, le calque d actions d objectif entre a l integration de
-// `feat/re-mode-score`. Ce test l a ATTRAPE : la branche publiait le champ sans que le
-// contrat le decrive, exactement le defaut qu il existe pour empecher. Contrat regenere
-// (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 23
+// CHRONIQUE DU COMPTE (un champ n entre au document que par cette ligne) :
+//
+//	22 -> 23  2026-08-05  `objectives`, le calque d actions d objectif, entre a l integration
+//	                      de `feat/re-mode-score`.
+//	23 -> 25  2026-08-13/14  DEUX champs, un par lot de la v7.5 :
+//	                      - `killEffects` (lot 2) : la table qui donne leur famille de RENDU
+//	                        aux effets de MORT. Les kills du feed portent un weapon_key resolu
+//	                        cote base, jamais un identifiant d arme film — sans cette table le
+//	                        client ne peut joindre aucun effet a un kill.
+//	                      - `mapObjectives` (lot 4) : le calque STATIQUE des objectifs du mode
+//	                        joue (zones, apparitions et livraisons de drapeau, socles), rempli
+//	                        A LA REQUETE par le service et jamais ecrit dans l artefact —
+//	                        l artefact ne connait ni sa carte ni son mode.
+//	25 -> 27  2026-08-14  DEUX champs, un par item du lot 7 :
+//	                      - `originMs` (7.2) : l ORIGINE de la frame 0 sur l horloge du fil.
+//	                        L horodatage de paquet du film est une horloge MOTEUR (des milliers
+//	                        de secondes depuis le demarrage du jeu) : sans cette origine publiee,
+//	                        le client n a aucun zero commun avec les events de la Match View, et
+//	                        le fil arrivait 3,6 s a 40 s apres le flash des fiches.
+//	                      - `neutralDeaths` (7.1) : les morts que personne ne revendique
+//	                        (suicide, environnement...), avec la NATURE du degat fatal — c est
+//	                        elle qui choisit l icone du type de mort au fil.
+//
+//	27 -> 28  2026-08-14  `abilities` (plan PLAN_RANG_CAPACITE_I48, etape 1.2) : le RANG de
+//	                      palette de la capacite d armure portee. UN CHAMP ENTRE, mais un
+//	                      autre CHANGE DE SENS en meme temps et c est le vrai evenement :
+//	                      `Inventory.a` portait `rang - 16` (l ancre du canal d image-cle se
+//	                      termine par `010`, les bits de poids fort du rang, si bien que ce
+//	                      canal ne voit que 16..23). Le champ `a` est RETIRE plutot que
+//	                      reinterprete — republier une autre grandeur sous la meme cle aurait
+//	                      laisse tout client non mis a jour lire un nombre qui ne veut plus dire
+//	                      la meme chose. `abilityLabels` change de cle avec (rang, plus index).
+//
+//	28 -> 29  2026-08-16  `equipmentEpisodes` (plan PLAN_EQUIPEMENT_TI37, phase 1) : l etat
+//	                      ACTIF du camouflage et du surbouclier, en episodes dates par vie
+//	                      — les DEUX familles dont l etat est MESURE (i28 queue[1] binaire
+//	                      0/4095 exclusif aux vies rang 8 ; i5 non clampe, regle q > 64, 0
+//	                      faux positif sur ~150 000 mesures hors porteurs). Les autres
+//	                      familles restent SANS etat : les deployables ne se datent pas par
+//	                      les canaux mesures, la mobilite n a pas d instant d usage par i54.
+//	                      `Coverage` gagne en meme temps son bloc `equipment` (vies
+//	                      porteuses / vies publiees, par famille) : N episodes sans
+//	                      denominateur se lirait comme une exhaustivite.
+//
+//	29 -> 30  2026-08-16  `grappleLines` (plan PLAN_GRAPPIN_LIGNE, phase 1) : les TRACTIONS
+//	                      de grappin — fenetre datee par vie [t0, t1], du tir a l ARRIVEE
+//	                      mesuree sur la trajectoire, et point d accroche en coordonnees
+//	                      monde. Source : le corps tag==3 d i59, porte sur grammaire MESUREE
+//	                      et prouve au gate 0 du plan (marche a l ecart zero sur 3 films,
+//	                      ancre fixe a 0,05-0,07 u pres, distance joueur->ancre decroissante
+//	                      contre temoins melanges effondres). `Coverage` gagne son bloc
+//	                      `grapple` (tirs, accroches, tractions, rates, corps non
+//	                      decodables) : N tractions sans ses rejets se lirait comme une
+//	                      exhaustivite.
+//
+//	30 -> 31  2026-08-18  `equipmentPlacements` (plan PLAN_POSES_EQUIPEMENT_PUBLICATION,
+//	                      phase 2) : les POSES d objets d equipement — position monde,
+//	                      fenetre [t0, t1] de la creation a la disparition, famille
+//	                      (`wall` / `sensor` / `other`), identifiant `eqip` du jeu, poseur
+//	                      MESURE (bipede le plus proche a 250 ms et moins de 3 m ; mediane
+//	                      0,52-0,60 m sur 11 films contre 11-36 m pour le temoin) et cap de
+//	                      visee du poseur quand il a ete lu. Source : le mot de 32 bits du
+//	                      bloc `object-multiplayer-properties` du record de CREATION de
+//	                      l archetype 37 — 21 valeurs sur 21 resolues dans le groupe `eqip`
+//	                      du jeu. `Coverage` gagne son bloc `placements`, qui porte le
+//	                      DECOUPAGE de bloc calibre sur le film : sans lui, zero pose par
+//	                      absence d equipement et zero pose par calibration refusee seraient
+//	                      indistinguables.
+//
+//	31 -> 33  2026-08-17  DEUX champs, un seul calque (plan PLAN_ARMES_AU_SOL_2E_LECTURE,
+//	                      phase 3) : les SOCLES D ARME du match.
+//	                      - `weaponPads` : position monde du socle, famille d arme (meme
+//	                        ecriture que `Loadout.W`, donc meme cle dans `weaponLabels`),
+//	                        instants d apparition, intervalles de presence BORNES par le
+//	                        recensement des images-cles, et cycle de reapparition SEULEMENT s il
+//	                        est etabli. Source : le record de CREATION de l archetype 42, dont
+//	                        le mot MPP de 32 bits est l identite de l arme — 282 atterrissages
+//	                        exacts sur 289 pour l oracle de position, 937 accords sur 947 pour
+//	                        l identite croisee avec les images-cles.
+//	                      - `padPickups` : les occupations qui se sont ACHEVEES, publiees comme
+//	                        un INTERVALLE et non un instant (le film ne porte aucun evenement de
+//	                        ramassage, le recensement est espace de ~20 s). Le champ `xuid`
+//	                        existe et vaut `null` PARTOUT : l oracle des loadouts donne 88,1 %
+//	                        par slot de vie et 79,7 % par joueur, contre >= 90 % exige.
+//	                        LEVE AU SCHEMA 30 (2026-08-31) : l evenement natif `biped_pickup`
+//	                        date l occupation et PORTE son ramasseur — `xuid` est renseigne
+//	                        quand le canal natif couvre la fenetre, `null` sinon.
+//	                      `Coverage` gagne son bloc `groundWeapons` : un film sans socle, un film
+//	                      dont toutes les armes sont des lachers et un film qu on n a pas su
+//	                      balayer rendent tous trois zero socle, et seuls ces compteurs les
+//	                      distinguent.
+//
+//	33 -> 34  2026-08-18  `scoreTimeline` (plan PLAN_EXPLOITATION_REGISTRE_FILM, lot A phase 1) :
+//	                      LE SCORE DANS LE TEMPS. Un seul champ de document, mais SEPT schemas
+//	                      de plus, parce que la courbe a deux formes et deux porteurs :
+//	                      `teams[]` (le camp, sa courbe par MANCHE et son total cumule) et
+//	                      `players[]` (score personnel, frags, morts, assistances, chacun sous
+//	                      les deux memes formes). Les manches ne sont pas un detail : le score
+//	                      de mode repart de zero a chaque manche, et lire la derniere valeur
+//	                      brute donnait 100/78 la ou l oracle affiche dit 200/121.
+//	                      Source : les enregistrements d entite des paquets FRAME, dont la
+//	                      grammaire a ete calibree sur 1 078 en-tetes et 2 708 lectures de
+//	                      composant issus d une capture Cheat Engine. Oracle : le score
+//	                      AFFICHE (16/16 exact sur les films ou l API le porte, 5 modes sur 5) —
+//	                      et il est NOMME dans le document (`coverage.score.oracle`), parce que
+//	                      l API compte autre chose en Strongholds (des ticks) et en KOTH (des
+//	                      secondes de colline).
+//	                      `Coverage` gagne son bloc `score` : identite des camps (`a` par le
+//	                      score final, `b` par la somme des frags, `unresolved`), manches lues,
+//	                      mode porte, lecture tronquee, points publies. Une courbe sans ces
+//	                      compteurs se lirait comme une certitude — et l ABSENCE du bloc dit
+//	                      encore autre chose : l appelant n a rien fourni a lire.
+//
+//	34 -> 34  2026-08-18  RIEN, ET C EST ECRIT (plan PLAN_EXPLOITATION_REGISTRE_FILM, lot E
+//	                      phase 1). Le schema 13 publie `Point.p` — l ELEVATION DE VISEE — mais
+//	                      `Point` n est pas un champ RACINE du document : il vit sous
+//	                      `tracks[].points[]`. Le compte ci-dessous ne compte que la racine, il
+//	                      ne bouge donc pas. La ligne existe quand meme parce que l absence de
+//	                      ligne pour une montee de schema se lit comme un OUBLI ; le champ, lui,
+//	                      est bel et bien verrouille — par
+//	                      TestReplayContractDescribesEveryPublishedField, qui compare le type Go
+//	                      `Point` au schema `Point` du contrat, dans les DEUX sens.
+//
+//	34 -> 35  2026-08-18  `flagCarries` (plan PLAN_OBJECTIFS_VIVANTS_2E_LECTURE, phase 1
+//	                      item 1.3) : LA VIE DE CHAQUE DRAPEAU de CTF, en intervalles d etat sur
+//	                      l axe de frames du rejeu. Un champ de document, deux schemas de plus
+//	                      (`FlagCarry`, `FlagSpan`) et un bloc de couverture
+//	                      (`FlagCarriesCoverage`).
+//	                      Sources, toutes dans le film : les bornes viennent des evenements de
+//	                      statistique NOMMES du statborg (`flag_grabs`, `flag_steals`,
+//	                      `flag_captures`, `flag_returns`) et du fil des morts ; le porteur du
+//	                      pont par INSTANTS DE MORT (aucune ligne de match, donc aucune base) ;
+//	                      la position de la piste PUBLIEE du porteur — le drapeau porte EST a la
+//	                      position de son porteur, rien de l objet n est decode ; le mode de
+//	                      l accord de trois signaux du film (15 films de mode connu, 15 verdicts
+//	                      justes). Seuls les SOCLES viennent d ailleurs : du catalogue versionne
+//	                      d objectifs, joint par `map_id`.
+//	                      QUATRE ETATS, ET LE QUATRIEME EST LE RESULTAT : `carried` (un fait date
+//	                      a ferme le portage), `carried_open` (rien ne le ferme — borne haute a
+//	                      la fin de l axe, incertitude publiee comme telle), `dropped`, `home`.
+//	                      Le controle independant du marqueur d image-cle confirme 37/37 des
+//	                      portages FERMES et 0/5 des ouverts : les confondre ferait juger la
+//	                      justesse des bornes par des portages qui n en ont pas.
+//	                      `Coverage` gagne son bloc `flagCarries` : un film d un autre mode et un
+//	                      film CTF sans aucun portage publie rendent tous deux un calque vide, et
+//	                      seuls ces compteurs les distinguent.
+//
+//	35 -> 36  2026-08-18  `zoneStates` (plan PLAN_EXPLOITATION_REGISTRE_FILM, lot C-bis phase 2b) :
+//	                      L ETAT DE CHAQUE ZONE du mode, en intervalles de propriete sur l axe de
+//	                      frames du rejeu. Un champ de document, deux schemas de plus
+//	                      (`ZoneState`, `ZoneSpan`) et un bloc de couverture (`ZonesCoverage`).
+//	                      Source, toute dans le film : l archetype `ti=13`
+//	                      (`managed-object-property-*`), dont UN SLOT EST UNE PROPRIETE RESEAU
+//	                      NOMMEE et non une zone — la JAUGE de capture (tag 3) et le PROPRIETAIRE
+//	                      (tag 4) vivent sur des slots DISJOINTS. L appariement slot -> zone se
+//	                      refait A CHAQUE MATCH, par la coincidence d un sommet de jauge avec une
+//	                      capture nommee attribuee geometriquement : coherence 93,1 % et 98,4 %
+//	                      (seuil 90 %) contre des temoins a 41-48 % (permutation des slots) et
+//	                      51-57 % (sommet decale de 20 s). La VALEUR du tag 4 est l index d equipe
+//	                      du capteur a 100,0 % (48/48) et 91,1 % (51/56) hors emissions neutres.
+//	                      L EQUIPE vient du ROSTER, jamais du film : `game-engine-team-mapping`
+//	                      lit ses bits sans les publier.
+//	                      `zoneRef` est un INDEX dans `mapObjectives.zones` — le calque statique
+//	                      servi a la requete —, et `coverage.zones.roles` publie les roles qui
+//	                      composent cette liste pour que la jointure se VERIFIE au lieu d etre
+//	                      supposee. `Coverage` gagne son bloc `zones` : un film d un autre mode,
+//	                      un film a zones dont l appariement echoue et une carte hors du
+//	                      catalogue rendent tous trois un calque vide, et seuls ces compteurs les
+//	                      distinguent.
+//
+//	36 -> 36  2026-08-18  RIEN A LA RACINE, ET C EST ECRIT (plan PLAN_EXPLOITATION_REGISTRE_FILM,
+//	                      lot C-ter volet 3). Le schema 18 publie `zoneStates[].gauge` — LA JAUGE
+//	                      DE CAPTURE EN DIRECT (serie datee `[{t, v}]`, allegee : un point par
+//	                      variation >= 0,02 ou par seconde de rampe, rien hors rampe, chaque rampe
+//	                      fermee par son retour a zero, sur l echelle de `progress`, modes a zones
+//	                      SIMULTANEES seulement — jamais sur une colline de KOTH, volet 1) et
+//	                      `coverage.zones.gaugePoints` — mais ni l un ni l autre
+//	                      n est un champ RACINE du document : le premier vit sous `zoneStates[]`,
+//	                      le second sous `coverage.zones`. Le compte ci-dessous ne compte que la
+//	                      racine, il ne bouge donc pas. La ligne existe pour la meme raison que
+//	                      celle du schema 13 : une montee de schema sans ligne se lit comme un
+//	                      OUBLI. Les champs, eux, sont verrouilles — `GaugePoint` entre dans
+//	                      replaySchemas, et TestReplayContractDescribesEveryPublishedField compare
+//	                      `ZoneState`, `ZonesCoverage` et `GaugePoint` a leur schema dans les DEUX
+//	                      sens. `progress` reste tel quel : le sommet par intervalle est CONSERVE
+//	                      dans le contrat, c est le client qui cesse de le dessiner.
+//	                      RENUMEROTE LE 2026-08-19 : la jauge visait le 17, une autre session l a
+//	                      pris en fusionnant avant nous (socles de power-up dans `weaponPads`,
+//	                      eux aussi SANS champ racine neuf). Le compte reste donc 36 des DEUX
+//	                      cotes de la fusion — aucun des deux lots n ajoute de champ a la racine.
+//	                      PRECISION 2026-08-20 (re-fusion d origin) : le compte racine passe
+//	                      bien a 37, mais par l entree SUIVANTE (`mapWeaponPads`, un champ servi
+//	                      a la requete) — la jauge, elle, n y est toujours pour rien.
+//
+//	36 -> 37  2026-08-19  `mapWeaponPads` (plan PLAN_SOCLES_MVAR, section 8 ter) : LES
+//	                      EMPLACEMENTS DE SOCLE de la carte, CROISES avec les socles du match.
+//	                      Un champ de document et deux schemas de plus (`MapWeaponPads`,
+//	                      `MapWeaponPadDTO`), rempli A LA REQUETE par le service comme
+//	                      `mapObjectives` et jamais ecrit dans l artefact — d ou un SchemaVersion
+//	                      d artefact INCHANGE a 17 : rien n a bouge dans l artefact.
+//	                      Source : les trois type_id de socle du fichier de carte
+//	                      (0x5F379533 pouvoir, 0x6253CFC0 ratelier, 0x5E86D110 power-up), figes
+//	                      hors ligne en catalogue versionne — 72 cartes, 1 454 emplacements,
+//	                      32 positions d oracle appariees sur 32 a une mediane de 0,01 m.
+//	                      LE CHAMP NE PORTE QUE LES EMPLACEMENTS ALLUMES : le fichier de carte
+//	                      POSE les socles, le mode les ALLUME, et Cliffhanger en porte dix-huit
+//	                      dont dix servis en CTF et ZERO en Super Fiesta. Un emplacement qu aucun
+//	                      socle du match ne confirme a moins d un metre reste au serveur
+//	                      (decision utilisateur du 2026-08-19) ; `catalogN` dit combien la carte
+//	                      en porte, pour que le calque avoue ce qu il n affiche pas.
+//
+//	38 -> 39  2026-08-27  `objectiveObjects` (plan PLAN_OBJECTIFS_ETAT_VIVANT, phase D5-bis) :
+//	                      OU SE TROUVE L OBJET D OBJECTIF QUAND PERSONNE NE LE PORTE — les vies
+//	                      LIBRES du crane d Oddball. Le canal est une PRESENCE, pas une
+//	                      deduction : un objet du monde replique sa position tant qu il est
+//	                      libre et CESSE de la repliquer des qu on le porte. Le champ publie
+//	                      donc exactement les positions que le film a emises.
+//	                      L IDENTITE DU CRANE EST MESUREE (phase D4) : mot MPP `0x0017592C`,
+//	                      elu sur 4 films sur 4, ne a 0,0 m du socle `oddball_spawn` unique de
+//	                      sa carte et coincidant a 3-6 ms d un evenement `th=10`. Le compteur
+//	                      `coverage.groundWeapons.objectives` le corrobore a l unite pres :
+//	                      23 / 16 / 21 / 47 creations, exactement les comptes de D4.
+//	                      CE QUE LE CHAMP NE DIT PAS, ET C EST ECRIT DANS SON SCHEMA : QUI porte
+//	                      l objet pendant les trous. L oracle du porteur a ete mesure et REFUSE
+//	                      par son propre protocole (40,6 a 66,7 % de trous a porteur unique
+//	                      contre un seuil de 90 %, temoin hors trou a 66,7 et 71,4 %).
+//	                      LE DRAPEAU N Y EST PAS, et ce n est pas un report : le controle 3 de
+//	                      son propre lot a ECHOUE sur ses vies libres (149/197 = 75,6 % pour un
+//	                      seuil de 90 %). La forme publiee porte `family` pour qu il puisse la
+//	                      rejoindre sans qu aucune cle ne bouge.
+//	                      SCHEMA D ARTEFACT INCHANGE A 21 : le bump du lot a eu lieu dans le
+//	                      meme lot et n a quitte ni le poste ni les temoins locaux — aucun
+//	                      artefact 21 n existe ailleurs, le bump unique reste unique.
+//
+//	39 -> 40  2026-08-27  `vipCrown` (lot VIP COURONNE, `.ai/V7.5/replay2d/registre_film/
+//	                      VIP_COURONNE_PROTOCOLE.md`) : LES PERIODES DE PORT DE LA COURONNE VIP,
+//	                      en intervalles de frames nommes par le xuid du VIP. Un champ de
+//	                      document, un schema de plus (`VipPeriod`) et un bloc de couverture
+//	                      (`VipCrownCoverage`). Source, toute dans le film : les SELECTIONS
+//	                      `vip_selected` (`comp 22 A` = `TimesSelectedAsVip`, resolu au gate
+//	                      corrige — 100 % par joueur x3 films, temoin decale 0) et le fil des
+//	                      morts ; le VIP nomme par le pont d INSTANTS DE MORT (aucune base). La
+//	                      reconstruction a ete MESUREE : les periodes somment, par joueur, a
+//	                      `TimeAsVip` de l API au SUB-SECONDE (recouv 100 % 3/3, 24/24 joueurs a
+//	                      +0,2-0,3 s), contre un temoin d attribution aleatoire effondre
+//	                      (exactitude 8/8 contre 0-1/8). GARDE DE MODE chez l appelant : `comp
+//	                      22 A` vaut `flag_grabs` en CTF, donc la couronne n est lue que sur un
+//	                      film reconnu VIP par `game_variant_name` — jamais devinee dans le film.
+//	                      Le SchemaVersion d artefact monte a 22 (reprise du backfill).
+//	                      `Coverage` gagne son bloc `vipCrown` : un film non-VIP (bloc absent) et
+//	                      un film VIP sans periode publiee se distinguent par lui.
+//
+//	40 -> 41  2026-08-28  `skullCarries` (lot PORTEUR ODDBALL, `.ai/V7.5/replay2d/registre_film/
+//	                      ODDBALL_PORTEUR_PROTOCOLE.md`) : LES PERIODES DE PORTAGE DU CRANE, en
+//	                      intervalles de frames nommes par le xuid du porteur. Un champ de
+//	                      document, un schema de plus (`SkullCarry`) et un bloc de couverture
+//	                      (`SkullCarriesCoverage`). Source, toute dans le film : le porteur est le
+//	                      joueur dont les TICS DE SCORE DE MODE montent (`comp 0 A` =
+//	                      `skull_scoring_ticks`), un TRAIN de tics ETANT une periode de portage ;
+//	                      le porteur nomme par le pont d INSTANTS DE MORT PAR MANCHE (le slot est
+//	                      reattribue d une manche a l autre, aucune base). Le portage avait resiste
+//	                      a CINQ campagnes (proximite, traversee, score personnel : negatifs) ; le
+//	                      canal des tics tient — gate oracle porteur PRINCIPAL correct 7/7 films,
+//	                      gate terrain manche 1 de d9781168 prises 9/9 et porteurs 8/9 (seuil 8/9),
+//	                      emplacement identifie par l oracle films confondus. GARDE DE MODE chez l
+//	                      appelant : `comp 0 A` est le score de mode de tout mode, donc le porteur
+//	                      n est lu que sur un film reconnu Oddball par `game_variant_name`. Le
+//	                      SchemaVersion d artefact monte a 23 (reprise du backfill). `Coverage`
+//	                      gagne son bloc `skullCarries`. Le crane LIBRE (`objectiveObjects`, v21)
+//	                      reste la couche POSITION ; celle-ci est la couche PORTEUR par-dessus.
+//
+//	41 -> 44  2026-08-30  TROIS champs, le chantier ramassage (schemas 25-28) :
+//	                      - `weaponChanges` (v25) : les prises et lachers d arme, dates a la
+//	                        milliseconde, re-annonces ecartees ;
+//	                      - `equipmentChanges` (v26) : ramassages et consommations d equipement
+//	                        (i48), avec temoin de completude au compteur de rotation ;
+//	                      - `groundWeapons` (v27) : les armes au sol individuelles, bornees par
+//	                        l observation (pickup date / census) — la minuterie `until` de v25
+//	                        est retiree en meme temps. La v28 (fins des poses) n ajoute AUCUN
+//	                        champ au document : `until`/`untilMax`/`end` vivent sur
+//	                        EquipmentPlacement, pas a la racine.
+//
+//	44 -> 45  2026-08-31  UN champ, le RAMASSAGE NATIF (schema 30) :
+//	                      - `pickups` : l evenement `biped_pickup` de la bobine (type 9 de la
+//	                        liste d evenements en tete des paquets delta), decode pour la
+//	                        premiere fois. Grammaire lue dans l exe, cadrage juge par l oracle
+//	                        de trame (longueur 50 bits sur 160/160 evenements de deux films,
+//	                        contre 0,0 % a +/-1, 2 ou 3 bits). Il DATE a la milliseconde,
+//	                        ATTRIBUE (sa reference vaut `512 + index` = le slot du ramasseur,
+//	                        exact sur 32/32 paires de verite terrain) et NOMME l objet par son
+//	                        identifiant de catalogue.
+//	                      Ce lot ajoute AUSSI, sans nouveau champ racine : `t` sur PadPickup
+//	                      (l instant exact d une occupation de socle, la ou il n y avait qu un
+//	                      intervalle de vingt secondes) et deux blocs de Coverage (`pickups`,
+//	                      `padDating`).
+//
+//	45 -> 45  2026-09-01  AUCUN champ racine, et c est note ICI pour qu on ne le cherche pas :
+//	                      le schema 31 (nommage des ramassages) ajoute `family` sur Pickup et
+//	                      `unknownFamilies` sur PickupCoverage — deux champs IMBRIQUES. Ce
+//	                      cliquet ne compte que les champs de la RACINE du document, il ne
+//	                      pouvait donc pas bouger, et son silence n est pas un oubli.
+//	                      LE GATE QUI A ATTRAPE CE LOT EST L AUTRE : `TestOpenAPIYAMLIsUpToDate`
+//	                      (internal/api, tag cgo), joue AVANT regeneration — il ECHOUE en
+//	                      nommant `family`, puis PASSE apres. C est exactement la lecon P1-1 de
+//	                      la ronde 2 du chantier precedent : « contracttest vert » ne veut pas
+//	                      dire « contrat a jour », les deux gates ne voient pas la meme chose.
+//	                      CORRECTIF DE REVUE (P2-3), et il corrige une lecture trop indulgente
+//	                      de la ligne ci-dessus : le silence de CE fichier ne tenait PAS qu au
+//	                      comptage racine. `Pickup` et `PickupCoverage` etaient absents de
+//	                      `replaySchemas` depuis le schema 30 — les deux gardes champ<->contrat
+//	                      (dans les DEUX sens) et le garde omitempty<->required ne les voyaient
+//	                      simplement pas. Ils y sont desormais, et `family` (optionnel) contre
+//	                      `unknownFamilies` (requis) est precisement le couple que ces gardes
+//	                      savent juger.
+//
+//	45 -> 45  2026-09-01  SCHEMA 32, ET LE COMPTE RACINE NE BOUGE PAS — l entree est ecrite
+//	                      quand meme, parce que la convention posee au schema 31 serait
+//	                      abandonnee sinon : cette chronique suit le CONTRAT, pas seulement le
+//	                      nombre de champs a la racine.
+//	                      `Pickup.origin` entre (`spawner` : le ramassage a eu lieu sur un
+//	                      point d apparition catalogue de la CARTE ; `ground` : sur une pose
+//	                      dont l origine mesuree est `dropped`), et `PickupCoverage` gagne
+//	                      `originSpawner`/`originGround`/`originUnknown`, `spawnPointsState`,
+//	                      `mapCatalogPoints` et `spawnerByPointKind`.
+//	                      DEUX CORRECTIFS DE REVUE SONT DANS CE CONTRAT, et ils expliquent sa
+//	                      forme. (1) `spawnPointsState` a TROIS valeurs la ou l ancien booleen
+//	                      `mapCatalogMissing` en donnait deux — ce booleen est RETIRE du contrat
+//	                      au meme schema : les cartes dont les points ne sont PAS ETABLIS
+//	                      (source `.mvar` derivee, 16 cartes au 2026-09-01)
+//	                      sortaient `false` avec zero point, ce qui se lit « carte connue,
+//	                      aucun point » — le drapeau cense faire VOIR le trou affirmait que
+//	                      tout allait bien. Le booleen est RETIRE, pas complete : deux verites
+//	                      concurrentes sur une meme question valent moins qu une.
+//	                      (2) `spawnerByPointKind` ventile les `spawner` par NATURE DU POINT :
+//	                      il donne l ORDRE DE GRANDEUR de ce qui est atteint dans un match, et
+//	                      montre un match qui tombe surtout sur des points `unknown`. Ce n est
+//	                      PAS un detecteur d inversion du typage — un echange complet
+//	                      grenade <-> equipement rendrait les memes totaux ; ce croisement-la se
+//	                      calcule cote client, qui a deja `kind` et `origin` sur chaque prise.
+//	                      `origin` est OPTIONNEL et son absence est une ABSTENTION : un client
+//	                      qui ne trouve pas la cle conclut « non etabli », jamais `ground`.
+//
+//	45 -> 47  2026-09-01  DEUX champs, les deux calques de LA BOMBE d Assaut :
+//	                      - `bombArmings` (v33) : le debut du hold, l instant arme et la meche
+//	                        (anneau ti=12 i14, protocole 0/1000 — jamais One Bomb, ou le canal
+//	                        est refute CV 0,725) ;
+//	                      - `bombCarries` (v34) : les periodes de PORTAGE, patron de
+//	                        `skullCarries` sur le canal des armes tenues (famille 0x3fee4fcf,
+//	                        B1/B2 2026-09-01) — TOUTES les variantes bomb, One Bomb comprise,
+//	                        car le negatif de v33 vise l anneau, pas ce canal. La ligne v33
+//	                        etait DUE : le commit du schema (pris 29 sur wt/bombe-visuel,
+//	                        renumerote 33 au merge — les schemas 29-32 etaient pris sur
+//	                        feat/v75) a regen le contrat sans passer ici, et ce test etait
+//	                        rouge — la seizieme prise.
+//
+//	47 -> 48  2026-09-02  UN champ, le chantier de la zone de retour du drapeau (schema 35,
+//	                      pris 29 sur wt/ctf-zone-retour et renumerote au merge — les schemas
+//	                      29-34 etaient pris sur feat/v75) :
+//	                      - `flagReturnZone` : la REGLE du mode de CTF — rayon de la zone autour
+//	                        d un drapeau tombe, minuterie qui le ramene tout seul, duree quand UN
+//	                        defenseur s y tient. Elle ne decrit pas ce match-ci mais le MODE,
+//	                        d ou un champ a la racine et non une cle par lacher. Le titre la
+//	                        declare (`replay_labels.toml [flag_return_zone]`) ; absente, le client
+//	                        ne dessine ni cercle ni jauge. L OCCUPATION, elle, n est pas publiee :
+//	                        l equipe d un joueur n est pas dans le film, le client la joint.
+//	                      L autre moitie du schema 35 n ajoute AUCUN champ : le retour AUTOMATIQUE
+//	                      se lit dans les etats `home` de `flagCarries`, et son compte dans
+//	                      `coverage.flagCarries.homeByObject`.
+//
+//	48 -> 49  2026-09-02  UN champ, LE COUP D ENVOI DATE PAR LE FILM (schema 36, pris sur
+//	                      wt/t0-film alors que le 35 venait d arriver sur feat/v75 —
+//	                      renumeroter au merge si un autre lot a pris le 36) :
+//	                      - `t0FilmMs` : l instant ou la grille se leve, sur la MEME horloge
+//	                        qu `originMs`, lu dans le PREMIER MOUVEMENT des pistes au lieu d
+//	                        etre estime des `first_joined_time` de l API (degeneres a ~0 ms sur
+//	                        10-15 % des matchs). Mesure du 2026-09-02 : ecart-type 9 752 ms
+//	                        contre 12 764 ms pour l etalon sur 49 matchs sains, marge interne
+//	                        au film de CV 0,013 sur 83 matchs.
+//	                      POINTEUR ET NON int64, comme `originMs` : le PIEGE omitempty ferme —
+//	                      un coup d envoi mesure a zero resterait une mesure. ABSENT = le
+//	                      detecteur a REFUSE, et `coverage.t0Film.reason` dit lequel des trois
+//	                      refus (aucun mouvement / rafale a moins de deux partants / plus de
+//	                      120 s apres la frame 0). Le bloc `T0FilmCoverage` entre au meme
+//	                      moment dans `replaySchemas` : la lecon P2-3 du 2026-09-01 (`Pickup`
+//	                      absent de la table pendant deux schemas) est appliquee tout de suite.
+//
+//	49 -> 51  2026-09-03  DEUX champs, la LECTURE FIABLE des usages d equipement (schema 38,
+//	                      lots P1, P1bis et P3 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03) :
+//	                      - `translocations` : LES TELEPORTATIONS DU TRANSLOCATEUR, datees
+//	                        ET SITUEES par l evenement type 117 du film (precision 18/18,
+//	                        rappel 8/8 sur 5 films — rapport R1). Le client cessera d en
+//	                        deviner par seuil spatial (> 4 m : aveugle a un saut de 3,24 m
+//	                        mesure) ou de les dater du `spent` (jusqu a 16,5 s de retard
+//	                        mesure).
+//	                      Ce lot ajoute AUSSI, sans nouveau champ racine : `recovered` et
+//	                      `gap` sur EquipmentChange (la recuperation gatee par le temoin de
+//	                      compteur, et le saut residuel — decisions D1/D3), `recovered` sur
+//	                      EquipmentChangeCoverage, et le bloc `coverage.translocations`.
+//	                      Puis, au lot P1bis et TOUJOURS sans nouveau champ racine (le schema
+//	                      38 est enrichi avant sa premiere cuisson, pas remplace par un 39) :
+//	                      `fx/fy/fz` -> `tx/ty/tz` sur Translocation — le VA-ET-VIENT lu dans
+//	                      la CHARGE de l evenement (layout source de l executable, valide
+//	                      18/18 a 0,00-0,26 m des discontinuites de piste, rapport R6 par.1),
+//	                      six champs SOLIDAIRES absents en bloc quand la charge n a pas pu
+//	                      etre dequantifiee — et `positioned` sur TranslocationCoverage, qui
+//	                      en porte le denominateur.
+//	                      Les deux types du calque entrent dans replaySchemas DANS LE MEME
+//	                      LOT (lecon P2-3 du 2026-09-01).
+//	                      Puis, au lot P3 et TOUJOURS sur le schema 38 (aucun artefact 38
+//	                      n existe hors repertoires de test : on enrichit avant la premiere
+//	                      cuisson plutot que d empiler un 39), LE SECOND champ racine :
+//	                      - `abilityImpulses` : L USAGE MESURE DU PROPULSEUR, date par le
+//	                        corps `tag == 1` des composants i57/i59 — le MEME dont le tag 3
+//	                        porte le grappin — et ATTRIBUE par le rang i48 lu dans la MEME VIE
+//	                        et ANTERIEUREMENT (rapport R8 par. 8.8 : 0,361 impulsion par vie de
+//	                        propulseur contre 0,011 par vie de repulseur, PLUS porte, et 0,000
+//	                        sur 132 vies de grappin ; verite terrain Theater sur `1cd3848a` :
+//	                        5 usages releves, 5 rendus, ecart <= 1 s). LE CALQUE NE COUVRE PAS
+//	                        TOUS LES EQUIPEMENTS et le DIT : seules les familles que le titre
+//	                        declare mesurees y entrent, les autres sont ecartees et comptees
+//	                        (`otherFamily`). Le REPULSEUR n y est pas — negatif MESURE (R9).
+//	                        `noResolver` est le CINQUIEME refus, ajoute a la revue de ronde 1 :
+//	                        quand la chaine d attribution n a pas pu tourner (palette du match
+//	                        non classee, titre sans famille declaree, aucune vie), les gestes y
+//	                        tombent au lieu de se deguiser en « autre equipement » ou en « rang
+//	                        non lu » — deux compteurs qui affirmaient une mesure non faite.
+//	                      Avec lui, le bloc `coverage.abilityImpulses` et les deux types dans
+//	                      replaySchemas, MEME LOT (lecon P2-3).
+//
+//	51 -> 52  2026-09-04  UN champ, les CHARGES RESTANTES (lot P5, schema 38 ENRICHI) :
+//	                      - `abilityCharges` : LES LECTURES du compteur de charges entieres
+//	                        (i56, quartet HAUT de la valeur 7 bits — rapport R11 : serie
+//	                        4, 3, 2, 1, 0 sur `1cd3848a` exactement aux cinq usages du releve
+//	                        Theater ; 36/36 accroches de grappin appariees a une baisse,
+//	                        temoin decale 2/36), attribuees par le rang i48 de la MEME VIE et
+//	                        ANTERIEUREMENT — la meme jointure que les impulsions. Ce sont les
+//	                        LECTURES, jamais un compte d usages derive (une baisse peut valoir
+//	                        plusieurs usages), et rien n est affirme avant la premiere lecture
+//	                        (le film ne transmet rien au ramassage). Seules les familles que
+//	                        le titre declare mesurees y entrent ([ability_charges] : grapple,
+//	                        thruster) — le REPULSEUR n arme jamais i56 (218 vies, 0 baisse,
+//	                        negatif MESURE R11 §4-5).
+//	                      LE SCHEMA RESTE 38 ALORS QUE DES ARTEFACTS 38 CUITS EXISTENT
+//	                      (verifie sur pieces le 2026-09-04 : `1b2d9e08`, `1cd3848a` — les
+//	                      temoins du gate visuel, hors repertoires de test) : les ajouts sont
+//	                      purement additifs et omitempty, un lecteur 38 reste correct, et une
+//	                      montee a 39 n aurait protege aucun lecteur de plus — justification
+//	                      complete a la chronique de document.go.
+//	                      Avec lui, le bloc `coverage.abilityCharges` et les deux types dans
+//	                      replaySchemas, MEME LOT (lecon P2-3).
+//
+//	52 -> 54  2026-09-05  DEUX champs, le chantier VEHICULES ET TOURELLES (ses schemas 29-31,
+//	                      poses ici sur le 38 et fondus en UNE montee 39 — decision D3 du plan
+//	                      d integration) :
+//	                      - `vehicles` : la vie de chaque vehicule du film — naissance,
+//	                        trajectoire echantillonnee avec son cap, episodes d occupation
+//	                        (`rides`, avec la serie de visee par occupant), et borne d
+//	                        affichage. Lu par le calque du rejeu 2D, qui dessine le chassis a sa
+//	                        taille reelle, teinte a l equipe du conducteur ;
+//	                      - `vehicleLabels` : la table des FAMILLES employees par le film et
+//	                        leur sprite, posee A LA REQUETE par le service (jamais dans l artefact
+//	                        stocke) — meme patron que `weaponLabels` et `grenadeLabels`.
+//	                      Le champ `end` de `VehicleTrack` vaut TOUJOURS `unknown` a ce jour : la
+//	                      datation de la destruction a ete mesuree et refutee sur les 28 types d
+//	                      evenements (lot V7), et `tEnd` est declare en avance de phase pour que
+//	                      l effet d explosion (image ET son) s allume sans re-livraison le jour ou
+//	                      le Go publiera `destroyed`. Le marqueur `v` des tirs en vehicule est un
+//	                      champ IMBRIQUE de `shots`, il ne compte pas ici.
+//	54 -> 56  2026-09-05  DEUX champs, les STATISTIQUES D OBJECTIF DE L ASSAUT (etape G.2 de
+//	                      l integration, chantier `wt/assaut-stats`), poses sur la MEME montee 39
+//	                      que les vehicules — le 39 n avait encore cuit aucun artefact :
+//	                      - `bombStats` : les cinq statistiques par joueur (`bomb_detonations`,
+//	                        `bomb_arms`, `bomb_grabs`, `time_as_bomb_carrier_seconds`,
+//	                        `bomb_carriers_killed`) et leur COUVERTURE. L API 343 n en publie
+//	                        AUCUNE pour ce mode : elles sont reconstruites du film. Chaque
+//	                        mesure est un POINTEUR — `null` dit « source non lue », `0` dit
+//	                        « mesure a zero » ;
+//	                      - `bombEvents` : les faits DATES (armements, explosions) sur l horloge
+//	                        du film, chacun avec la REGLE qui a nomme son acteur (`actorSource`)
+//	                        quand la jointure y est parvenue.
+//	                      Les quatre types imbriques (`BombMatchStats`, `BombPlayerStats`,
+//	                      `BombEvent`, `BombStatsCoverage`) entrent a `replaySchemas` DANS CE LOT.
+//	                      `bomb_carriers_killed` est `null` partout a ce jour : la paire
+//	                      tueur/victime qu il demande n existe pas dans la chaine de cuisson.
+//
+//	56 -> 56  2026-09-05  AUCUN CHAMP NEUF, ET POURTANT LE GEL CHANGE DE NATURE (lot B du plan
+//	                      v2). Le compte portait sur `games/halo_infinite/film/replay.ReplayDocument`, le format
+//	                      du FICHIER d artefact ; il porte desormais sur
+//	                      `domain/replaydoc.ReplayDocument`, la forme de FIL. Le chiffre est le
+//	                      meme parce que la separation laisse le contrat strictement inchange
+//	                      (`openapi.yaml` et `generated.ts` sans diff, gate du lot) — mais les
+//	                      deux nombres sont desormais libres de diverger : un calque ajoute a la
+//	                      cuisson ne fera plus monter celui-ci. Le champ `schemaVersion` du corps
+//	                      continue de porter la version STOCKEE, celle qui pilote la re-cuisson.
+//
+//
+//	56 -> 57  2026-09-08  UN champ, LE REGISTRE D IDENTITE (lot P2 du plan v2, schema stocke 50) :
+//	                      - `identity` : les liens entre les entites du film et les joueurs
+//	                        (`players`, `bipedSlots`, `statborgSlots`) avec la PROVENANCE de
+//	                        chacun (`direct` / `catalogue` / `externe` / `deduit` /
+//	                        `non_resolu`), la voie exacte qui l a produit, et les BORNES de
+//	                        frames entre lesquelles il vaut. Plus `identity.coverage`, le
+//	                        decompte par famille et par provenance — ce que le gate corpus
+//	                        compare pour refuser qu un lien `direct` redevienne `deduit`.
+//	                      Sept types imbriques entrent a `replaySchemas` DANS CE LOT :
+//	                      `IdentitySection`, `IdentityPlayer`, `IdentityBipedSlot`,
+//	                      `IdentityStatborgSlot`, `IdentityCoverage`, `LinkCounts`, `Link`.
+//	                      `roster[].bid` nait au meme moment SANS faire monter ce compte : il
+//	                      est un champ de `RosterEntry`, pas du document.
+//
+//	58 (2026-09-14) : `weaponTiers` — LES REGLAGES DE NIVEAU D ARME DU MATCH, resolus A LA
+//	                      REQUETE comme `mapObjectives` et `mapWeaponPads`, et pour la meme
+//	                      raison : ils dependent du MODE, que l artefact ne nomme pas. UN SEUL
+//	                      champ dedans (`randomStarts`), et il est servi PLUTOT QUE DEDUIT par
+//	                      le client : la regle vit dans le TOML du titre et gouverne aussi
+//	                      l ecriture en base — une copie cote web a derive en une semaine
+//	                      (revue du 2026-09-14). `SchemaVersion` NE MONTE PAS : rien n a change
+//	                      dans l artefact (cf. `calquesALaRequete`, document_shape_test.go).
+//
+//	59 (2026-09-17) : `layers` — SOUS QUELLE REVISION CHAQUE CALQUE A ETE PRODUIT (lot 4.2.1,
+//	                      schema 61 -> 62). Une table `nom de calque -> revision de couche`, sans
+//	                      aucun type imbrique : les valeurs sont des chaines, l une des cinq
+//	                      revisions connues. `coverage.deathsPaths` nait au meme commit SANS
+//	                      faire monter ce compte — il est un champ de `Coverage`, pas du
+//	                      document, exactement comme `roster[].bid` a 57. `vehicleLabels` passe
+//	                      a `calquesALaRequete` au meme commit et reste un champ du document :
+//	                      le compte ne bouge pas pour lui.
+//
+//	60 (2026-09-19) : `vehicleCycles` — LE CYCLE DE REAPPARITION PAR EMPLACEMENT de naissance
+//	                      de vehicule (post-chantier lot 5.1, schema 62 -> 63). Une liste
+//	                      d emplacements ETABLIS, meme forme et meme juge que `PadCycle`.
+//	                      `flagCarries[].spans[].returnProgress` nait au meme commit SANS faire
+//	                      monter ce compte — il est un champ d un type imbrique, pas du document,
+//	                      exactement comme `roster[].bid` a 57 ; les neuf compteurs de couverture
+//	                      non plus, pour la meme raison que `coverage.deathsPaths` a 59.
+//
+//	61 (2026-09-21) : `stances` — LES ETATS DE MOUVEMENT DU SPARTAN, en intervalles par vie
+//	                      (post-chantier lot 5.3.6, schema 64 -> 65). Une liste
+//	                      d intervalles `{slot, kind, t0, t1}` pour trois genres : `crouch`,
+//	                      `slide`, `mobility`. `coverage.stances` nait au meme commit SANS faire
+//	                      monter ce compte — il est un champ de `Coverage`, pas du document,
+//	                      exactement comme `coverage.deathsPaths` a 59.
+//	                      TROIS GENRES SEULEMENT, et c est mesure : le sprint est REFUTE comme
+//	                      observable par la vitesse, le saut est LU mais PAS PROUVE (lot 5.3.5).
+//
+//	62 (2026-09-23) : `vehicleWeapons` — LE REGISTRE DES ARMES DE VEHICULE du titre (retours du
+//	                      rejeu, lot M4a, schema 68 -> 69), RESOLU A LA REQUETE comme
+//	                      `vehicleLabels` et keye par `Shot.w` : forme, teinte, son (ou silence
+//	                      decide), montage, libelle FR/EN. Il remplace trois tables client clees
+//	                      par des tags jamais vus dans un film. `vehicles[].part` / `carrier` /
+//	                      `variant`, `rides[].turret` et les six compteurs de `coverage.vehicles`
+//	                      naissent au meme commit SANS faire monter ce compte (types imbriques).
+//
+//	63 (2026-09-24) : `vehicleScenery` — LE VERDICT DE DECOR DE CARTE (retours du rejeu, lot M7,
+//	                      sans montee de schema), RESOLU A LA REQUETE comme `vehicleWeapons` : les
+//	                      vies posees par la carte hors de sa zone jouable (masque du fond publie,
+//	                      sol joue du match) et les compteurs du repli « zone inconnue ». Il
+//	                      remplace la regle cliente `vehicleIsScenery` du lot L1.3.
+//
+//	64 (2026-09-24) : `bursts` — LES RAFALES DE TIR CONTINU (retours du rejeu, lot M4b, schema
+//	                      71) : la gachette tenue lue dans la vue de controle, posee sur l arme de sa
+//	                      monture ou sur l arme en main, avec la cadence du tag. `coverage
+//	                      .continuousFire` et les compteurs neufs de `coverage.shots` / `.seats` /
+//	                      `.vehicles` naissent au meme commit SANS faire monter ce compte.
+//
+// Les vingt-sept fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+// chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
+const wantReplayDocumentFields = 64
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
@@ -132,11 +782,20 @@ func TestReplayContractDescribesEveryPublishedField(t *testing.T) {
 	}
 }
 
-// TestReplayDocumentPublishesTwentyTwoFields : le chiffre du chantier, verifie des deux cotes.
-func TestReplayDocumentPublishesTwentyTwoFields(t *testing.T) {
-	got := jsonFieldsOf(reflect.TypeOf(replay.ReplayDocument{}))
+// TestReplayDocumentFieldCountIsFrozen : le chiffre du chantier, verifie des deux cotes.
+//
+// LE NOM NE PORTE PLUS LE CHIFFRE (il a dit « TwentyTwo » jusqu au 2026-08-14 alors que le
+// document en publiait 25) : un compte qui bouge se lit dans wantReplayDocumentFields et sa
+// chronique, pas dans un identifiant que personne ne pense a renommer.
+//
+// LES DEUX COTES SONT LE CONTRAT DEPUIS LE 2026-09-05 : le type Go du document SERVI, et le
+// schema qui en est genere. Ce que la CUISSON publie n est plus juge ici (elle a le droit
+// d ecrire des champs que le contrat ne sert pas encore) — c est parity_test.go qui exige que
+// chaque champ stocke ait une decision.
+func TestReplayDocumentFieldCountIsFrozen(t *testing.T) {
+	got := jsonFieldsOf(reflect.TypeOf(replaydoc.ReplayDocument{}))
 	if len(got) != wantReplayDocumentFields {
-		t.Errorf("%d champ(s) publie(s) par l artefact, attendu %d : %v",
+		t.Errorf("%d champ(s) servi(s) par le contrat, attendu %d : %v",
 			len(got), wantReplayDocumentFields, got)
 	}
 	props := propertyNamesOf(loadReplaySchemas(t)["ReplayDocument"])
@@ -159,8 +818,8 @@ func TestReplayContractCarriesTupleArity(t *testing.T) {
 		goType       reflect.Type
 		goField      string
 	}{
-		{"Surface", "poly", reflect.TypeOf(replay.Surface{}), "Poly"},
-		{"Projectile", "p", reflect.TypeOf(replay.Projectile{}), "P"},
+		{"Surface", "poly", reflect.TypeOf(replaydoc.Surface{}), "Poly"},
+		{"Projectile", "p", reflect.TypeOf(replaydoc.Projectile{}), "P"},
 	} {
 		t.Run(c.schema+"."+c.prop, func(t *testing.T) {
 			f, ok := c.goType.FieldByName(c.goField)
@@ -226,13 +885,32 @@ func loadReplaySchemas(t *testing.T) map[string]map[string]any {
 
 // jsonFieldsOf rend les noms JSON des champs serialises d une struct.
 func jsonFieldsOf(rt reflect.Type) []string {
+	out := champsJSONAPlat(rt)
+	sort.Strings(out)
+	return out
+}
+
+// champsJSONAPlat rend les noms JSON d un type, LES STRUCTS EMBARQUES APLATIS.
+//
+// POURQUOI L APLATISSEMENT (lot E2, 2026-09-08). `encoding/json` promeut les champs d un struct
+// anonyme SANS balise au niveau du parent, et le generateur de contrat fait de meme. Une lecture
+// naive de `NumField` voyait, elle, un champ nomme du nom du TYPE embarque : elle aurait accuse
+// le contrat d oublier un champ « LinkCounts » qui n existe dans aucun JSON, et de promettre cinq
+// proprietes que le Go publie pourtant. Le premier type embarque du contrat
+// (`BipedLinkCounts`) a revele l ecart ; sans ce correctif, le garde-rail refusait le contrat
+// exact.
+func champsJSONAPlat(rt reflect.Type) []string {
 	var out []string
 	for i := 0; i < rt.NumField(); i++ {
-		if name, ok := jsonNameOf(rt.Field(i)); ok {
+		f := rt.Field(i)
+		if f.Anonymous && f.Tag.Get("json") == "" && f.Type.Kind() == reflect.Struct {
+			out = append(out, champsJSONAPlat(f.Type)...)
+			continue
+		}
+		if name, ok := jsonNameOf(f); ok {
 			out = append(out, name)
 		}
 	}
-	sort.Strings(out)
 	return out
 }
 

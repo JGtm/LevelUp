@@ -1,6 +1,6 @@
 // Package haloclient — appearance_inputs.go : accès aux champs BRUTS du payload
 // /customization/appearance nécessaires au diagnostic apparence par composant
-// (volet 2 du plan .ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md, Lot F).
+// (volet 2 du plan .ai/archive/V7.1/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md, Lot F).
 //
 // GetSpartanCustomization ne renvoie que les URLs RÉSOLUES (bannière/emblème/
 // backdrop) et jette l'EmblemPath + la ConfigurationId : or les primitives de

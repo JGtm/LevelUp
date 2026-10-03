@@ -1,0 +1,284 @@
+=== E1 seuil de garde KOTH — 2026-08-30 12:54 — un film par processus ===
+    colline_seuil_garde_e1_test.go:194: 01e1f945 (catalyst) : designateur slot 1471, propriete slot 1472 (99 emissions), 5 periode(s), bijection direct (5 contre 0), axe 5343 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	01e1f945	catalyst	signal	0	45.6	60.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	01e1f945	catalyst	temoin_a	0	0.0	60.6
+    colline_seuil_garde_e1_test.go:217: E1DATA	01e1f945	catalyst	temoin_b	0	19.5	60.6
+    colline_seuil_garde_e1_test.go:222: E1DATA	01e1f945	catalyst	controle_20s	0	36.0	60.6
+    colline_seuil_garde_e1_test.go:210: E1DATA	01e1f945	catalyst	signal	1	50.3	119.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	01e1f945	catalyst	temoin_a	1	18.5	119.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	01e1f945	catalyst	temoin_b	1	36.1	119.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	01e1f945	catalyst	controle_20s	1	51.9	119.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	01e1f945	catalyst	signal	2	43.5	116.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	01e1f945	catalyst	temoin_a	2	17.6	116.7
+    colline_seuil_garde_e1_test.go:217: E1DATA	01e1f945	catalyst	temoin_b	2	57.7	116.7
+    colline_seuil_garde_e1_test.go:222: E1DATA	01e1f945	catalyst	controle_20s	2	42.6	116.7
+    colline_seuil_garde_e1_test.go:210: E1DATA	01e1f945	catalyst	signal	3	45.6	88.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	01e1f945	catalyst	temoin_a	3	24.1	88.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	01e1f945	catalyst	temoin_b	3	29.9	88.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	01e1f945	catalyst	controle_20s	3	49.3	88.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	01e1f945	catalyst	signal	4	49.1	105.0
+    colline_seuil_garde_e1_test.go:213: E1DATA	01e1f945	catalyst	temoin_a	4	16.8	105.0
+--- 01e1f945 termine
+    colline_seuil_garde_e1_test.go:194: 0c009149 (snowbound) : designateur slot 1696, propriete slot 1697 (35 emissions), 4 periode(s), bijection croise (4 contre 0), axe 3954 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	0c009149	snowbound	signal	0	46.1	89.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	0c009149	snowbound	temoin_a	0	34.1	89.7
+    colline_seuil_garde_e1_test.go:217: E1DATA	0c009149	snowbound	temoin_b	0	34.9	89.7
+    colline_seuil_garde_e1_test.go:222: E1DATA	0c009149	snowbound	controle_20s	0	40.6	89.7
+    colline_seuil_garde_e1_test.go:210: E1DATA	0c009149	snowbound	signal	1	64.2	117.1
+    colline_seuil_garde_e1_test.go:213: E1DATA	0c009149	snowbound	temoin_a	1	18.9	117.1
+    colline_seuil_garde_e1_test.go:217: E1DATA	0c009149	snowbound	temoin_b	1	70.1	117.1
+    colline_seuil_garde_e1_test.go:222: E1DATA	0c009149	snowbound	controle_20s	1	75.0	117.1
+    colline_seuil_garde_e1_test.go:210: E1DATA	0c009149	snowbound	signal	2	36.6	65.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	0c009149	snowbound	temoin_a	2	18.7	65.6
+    colline_seuil_garde_e1_test.go:217: E1DATA	0c009149	snowbound	temoin_b	2	28.3	65.6
+    colline_seuil_garde_e1_test.go:222: E1DATA	0c009149	snowbound	controle_20s	2	38.5	65.6
+    colline_seuil_garde_e1_test.go:210: E1DATA	0c009149	snowbound	signal	3	40.9	78.1
+    colline_seuil_garde_e1_test.go:213: E1DATA	0c009149	snowbound	temoin_a	3	14.6	78.1
+--- 0c009149 termine
+    colline_seuil_garde_e1_test.go:194: 1b370ce1 (curfew) : designateur slot 1547, propriete slot 1548 (51 emissions), 4 periode(s), bijection croise (4 contre 0), axe 3955 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	1b370ce1	curfew	signal	0	39.4	80.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	1b370ce1	curfew	temoin_a	0	29.3	80.6
+    colline_seuil_garde_e1_test.go:217: E1DATA	1b370ce1	curfew	temoin_b	0	13.0	80.6
+    colline_seuil_garde_e1_test.go:222: E1DATA	1b370ce1	curfew	controle_20s	0	36.2	80.6
+    colline_seuil_garde_e1_test.go:210: E1DATA	1b370ce1	curfew	signal	1	37.9	45.8
+    colline_seuil_garde_e1_test.go:213: E1DATA	1b370ce1	curfew	temoin_a	1	0.0	45.8
+    colline_seuil_garde_e1_test.go:217: E1DATA	1b370ce1	curfew	temoin_b	1	25.6	45.8
+    colline_seuil_garde_e1_test.go:222: E1DATA	1b370ce1	curfew	controle_20s	1	34.4	45.8
+    colline_seuil_garde_e1_test.go:210: E1DATA	1b370ce1	curfew	signal	2	42.3	72.8
+    colline_seuil_garde_e1_test.go:213: E1DATA	1b370ce1	curfew	temoin_a	2	10.8	72.8
+    colline_seuil_garde_e1_test.go:217: E1DATA	1b370ce1	curfew	temoin_b	2	39.8	72.8
+    colline_seuil_garde_e1_test.go:222: E1DATA	1b370ce1	curfew	controle_20s	2	33.6	72.8
+    colline_seuil_garde_e1_test.go:210: E1DATA	1b370ce1	curfew	signal	3	53.6	147.4
+    colline_seuil_garde_e1_test.go:213: E1DATA	1b370ce1	curfew	temoin_a	3	49.8	147.4
+--- 1b370ce1 termine
+    colline_seuil_garde_e1_test.go:194: 21ece4d8 (live fire) : designateur slot 1597, propriete slot 1598 (51 emissions), 4 periode(s), bijection croise (3 contre 1), axe 4272 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	21ece4d8	live fire	signal	0	55.3	120.9
+    colline_seuil_garde_e1_test.go:213: E1DATA	21ece4d8	live fire	temoin_a	0	44.7	120.9
+    colline_seuil_garde_e1_test.go:217: E1DATA	21ece4d8	live fire	temoin_b	0	67.6	120.9
+    colline_seuil_garde_e1_test.go:222: E1DATA	21ece4d8	live fire	controle_20s	0	59.7	120.9
+    colline_seuil_garde_e1_test.go:210: E1DATA	21ece4d8	live fire	signal	1	43.7	90.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	21ece4d8	live fire	temoin_a	1	34.8	90.7
+    colline_seuil_garde_e1_test.go:217: E1DATA	21ece4d8	live fire	temoin_b	1	30.5	90.7
+    colline_seuil_garde_e1_test.go:222: E1DATA	21ece4d8	live fire	controle_20s	1	29.7	90.7
+    colline_seuil_garde_e1_test.go:210: E1DATA	21ece4d8	live fire	signal	2	37.7	96.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	21ece4d8	live fire	temoin_a	2	40.5	96.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	21ece4d8	live fire	temoin_b	2	13.0	96.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	21ece4d8	live fire	controle_20s	2	33.7	96.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	21ece4d8	live fire	signal	3	46.1	72.2
+    colline_seuil_garde_e1_test.go:213: E1DATA	21ece4d8	live fire	temoin_a	3	6.8	72.2
+--- 21ece4d8 termine
+    colline_seuil_garde_e1_test.go:194: 240759c5 (absolution) : designateur slot 1626, propriete slot 1627 (35 emissions), 4 periode(s), bijection direct (3 contre 1), axe 4200 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	240759c5	absolution	signal	0	65.8	140.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	240759c5	absolution	temoin_a	0	38.0	140.7
+    colline_seuil_garde_e1_test.go:217: E1DATA	240759c5	absolution	temoin_b	0	87.4	140.7
+    colline_seuil_garde_e1_test.go:222: E1DATA	240759c5	absolution	controle_20s	0	72.0	140.7
+    colline_seuil_garde_e1_test.go:210: E1DATA	240759c5	absolution	signal	1	36.8	49.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	240759c5	absolution	temoin_a	1	0.0	49.6
+    colline_seuil_garde_e1_test.go:217: E1DATA	240759c5	absolution	temoin_b	1	45.0	49.6
+    colline_seuil_garde_e1_test.go:222: E1DATA	240759c5	absolution	controle_20s	1	34.9	49.6
+    colline_seuil_garde_e1_test.go:210: E1DATA	240759c5	absolution	signal	2	38.6	100.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	240759c5	absolution	temoin_a	2	45.0	100.6
+    colline_seuil_garde_e1_test.go:217: E1DATA	240759c5	absolution	temoin_b	2	68.8	100.6
+    colline_seuil_garde_e1_test.go:222: E1DATA	240759c5	absolution	controle_20s	2	41.4	100.6
+    colline_seuil_garde_e1_test.go:210: E1DATA	240759c5	absolution	signal	3	40.9	83.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	240759c5	absolution	temoin_a	3	30.2	83.6
+--- 240759c5 termine
+    colline_seuil_garde_e1_test.go:194: 257d1457 (ecotone) : designateur slot 1562, propriete slot 1563 (43 emissions), 5 periode(s), bijection direct (5 contre 0), axe 4383 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	257d1457	ecotone	signal	0	37.3	66.4
+    colline_seuil_garde_e1_test.go:213: E1DATA	257d1457	ecotone	temoin_a	0	25.2	66.4
+    colline_seuil_garde_e1_test.go:217: E1DATA	257d1457	ecotone	temoin_b	0	31.1	66.4
+    colline_seuil_garde_e1_test.go:222: E1DATA	257d1457	ecotone	controle_20s	0	37.3	66.4
+    colline_seuil_garde_e1_test.go:210: E1DATA	257d1457	ecotone	signal	1	41.8	109.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	257d1457	ecotone	temoin_a	1	38.6	109.6
+    colline_seuil_garde_e1_test.go:217: E1DATA	257d1457	ecotone	temoin_b	1	32.7	109.6
+    colline_seuil_garde_e1_test.go:222: E1DATA	257d1457	ecotone	controle_20s	1	28.8	109.6
+    colline_seuil_garde_e1_test.go:210: E1DATA	257d1457	ecotone	signal	2	42.4	80.0
+    colline_seuil_garde_e1_test.go:213: E1DATA	257d1457	ecotone	temoin_a	2	16.9	80.0
+    colline_seuil_garde_e1_test.go:217: E1DATA	257d1457	ecotone	temoin_b	2	15.2	80.0
+    colline_seuil_garde_e1_test.go:222: E1DATA	257d1457	ecotone	controle_20s	2	32.1	80.0
+    colline_seuil_garde_e1_test.go:210: E1DATA	257d1457	ecotone	signal	3	44.6	57.8
+    colline_seuil_garde_e1_test.go:213: E1DATA	257d1457	ecotone	temoin_a	3	0.0	57.8
+    colline_seuil_garde_e1_test.go:217: E1DATA	257d1457	ecotone	temoin_b	3	7.9	57.8
+    colline_seuil_garde_e1_test.go:222: E1DATA	257d1457	ecotone	controle_20s	3	36.4	57.8
+    colline_seuil_garde_e1_test.go:210: E1DATA	257d1457	ecotone	signal	4	38.5	76.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	257d1457	ecotone	temoin_a	4	13.9	76.6
+--- 257d1457 termine
+    colline_seuil_garde_e1_test.go:194: 262e1c57 (salvation) : designateur slot 1638, propriete slot 1639 (39 emissions), 5 periode(s), bijection croise (5 contre 0), axe 4035 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	262e1c57	salvation	signal	0	37.5	44.1
+    colline_seuil_garde_e1_test.go:213: E1DATA	262e1c57	salvation	temoin_a	0	0.0	44.1
+    colline_seuil_garde_e1_test.go:217: E1DATA	262e1c57	salvation	temoin_b	0	14.9	44.1
+    colline_seuil_garde_e1_test.go:222: E1DATA	262e1c57	salvation	controle_20s	0	22.6	44.1
+    colline_seuil_garde_e1_test.go:210: E1DATA	262e1c57	salvation	signal	1	45.6	95.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	262e1c57	salvation	temoin_a	1	23.7	95.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	262e1c57	salvation	temoin_b	1	33.5	95.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	262e1c57	salvation	controle_20s	1	49.9	95.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	262e1c57	salvation	signal	2	40.8	60.4
+    colline_seuil_garde_e1_test.go:213: E1DATA	262e1c57	salvation	temoin_a	2	11.5	60.4
+    colline_seuil_garde_e1_test.go:217: E1DATA	262e1c57	salvation	temoin_b	2	1.9	60.4
+    colline_seuil_garde_e1_test.go:222: E1DATA	262e1c57	salvation	controle_20s	2	37.9	60.4
+    colline_seuil_garde_e1_test.go:210: E1DATA	262e1c57	salvation	signal	3	38.5	51.0
+    colline_seuil_garde_e1_test.go:213: E1DATA	262e1c57	salvation	temoin_a	3	0.0	51.0
+    colline_seuil_garde_e1_test.go:217: E1DATA	262e1c57	salvation	temoin_b	3	20.6	51.0
+    colline_seuil_garde_e1_test.go:222: E1DATA	262e1c57	salvation	controle_20s	3	29.2	51.0
+    colline_seuil_garde_e1_test.go:210: E1DATA	262e1c57	salvation	signal	4	50.5	105.8
+    colline_seuil_garde_e1_test.go:213: E1DATA	262e1c57	salvation	temoin_a	4	21.4	105.8
+--- 262e1c57 termine
+    colline_seuil_garde_e1_test.go:194: 381230b2 (forbidden) : designateur slot 1510, propriete slot 1511 (33 emissions), 4 periode(s), bijection croise (4 contre 0), axe 3486 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	381230b2	forbidden	signal	0	41.6	64.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	381230b2	forbidden	temoin_a	0	13.1	64.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	381230b2	forbidden	temoin_b	0	36.8	64.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	381230b2	forbidden	controle_20s	0	50.7	64.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	381230b2	forbidden	signal	1	45.1	98.4
+    colline_seuil_garde_e1_test.go:213: E1DATA	381230b2	forbidden	temoin_a	1	32.6	98.4
+    colline_seuil_garde_e1_test.go:217: E1DATA	381230b2	forbidden	temoin_b	1	53.7	98.4
+    colline_seuil_garde_e1_test.go:222: E1DATA	381230b2	forbidden	controle_20s	1	59.1	98.4
+    colline_seuil_garde_e1_test.go:210: E1DATA	381230b2	forbidden	signal	2	41.5	70.2
+    colline_seuil_garde_e1_test.go:213: E1DATA	381230b2	forbidden	temoin_a	2	17.8	70.2
+    colline_seuil_garde_e1_test.go:217: E1DATA	381230b2	forbidden	temoin_b	2	43.7	70.2
+    colline_seuil_garde_e1_test.go:222: E1DATA	381230b2	forbidden	controle_20s	2	41.5	70.2
+    colline_seuil_garde_e1_test.go:210: E1DATA	381230b2	forbidden	signal	3	40.4	66.9
+    colline_seuil_garde_e1_test.go:213: E1DATA	381230b2	forbidden	temoin_a	3	13.3	66.9
+--- 381230b2 termine
+    colline_seuil_garde_e1_test.go:194: 3b1de706 (curfew) : designateur slot 1547, propriete slot 1548 (83 emissions), 4 periode(s), bijection direct (4 contre 0), axe 5403 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	3b1de706	curfew	signal	0	45.4	78.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	3b1de706	curfew	temoin_a	0	7.1	78.7
+    colline_seuil_garde_e1_test.go:217: E1DATA	3b1de706	curfew	temoin_b	0	22.8	78.7
+    colline_seuil_garde_e1_test.go:222: E1DATA	3b1de706	curfew	controle_20s	0	29.9	78.7
+    colline_seuil_garde_e1_test.go:210: E1DATA	3b1de706	curfew	signal	1	40.6	114.8
+    colline_seuil_garde_e1_test.go:213: E1DATA	3b1de706	curfew	temoin_a	1	29.0	114.8
+    colline_seuil_garde_e1_test.go:217: E1DATA	3b1de706	curfew	temoin_b	1	35.2	114.8
+    colline_seuil_garde_e1_test.go:222: E1DATA	3b1de706	curfew	controle_20s	1	40.6	114.8
+    colline_seuil_garde_e1_test.go:210: E1DATA	3b1de706	curfew	signal	2	43.4	139.9
+    colline_seuil_garde_e1_test.go:213: E1DATA	3b1de706	curfew	temoin_a	2	37.5	139.9
+    colline_seuil_garde_e1_test.go:217: E1DATA	3b1de706	curfew	temoin_b	2	39.7	139.9
+    colline_seuil_garde_e1_test.go:222: E1DATA	3b1de706	curfew	controle_20s	2	43.4	139.9
+    colline_seuil_garde_e1_test.go:210: E1DATA	3b1de706	curfew	signal	3	57.7	156.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	3b1de706	curfew	temoin_a	3	33.3	156.7
+--- 3b1de706 termine
+    colline_seuil_garde_e1_test.go:194: 3b941a2a (nemesis) : designateur slot 1590, propriete slot 1591 (52 emissions), 4 periode(s), bijection direct (4 contre 0), axe 4327 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	3b941a2a	nemesis	signal	0	40.5	108.9
+    colline_seuil_garde_e1_test.go:213: E1DATA	3b941a2a	nemesis	temoin_a	0	30.0	108.9
+    colline_seuil_garde_e1_test.go:217: E1DATA	3b941a2a	nemesis	temoin_b	0	38.7	108.9
+    colline_seuil_garde_e1_test.go:222: E1DATA	3b941a2a	nemesis	controle_20s	0	37.3	108.9
+    colline_seuil_garde_e1_test.go:210: E1DATA	3b941a2a	nemesis	signal	1	47.4	94.0
+    colline_seuil_garde_e1_test.go:213: E1DATA	3b941a2a	nemesis	temoin_a	1	29.7	94.0
+    colline_seuil_garde_e1_test.go:217: E1DATA	3b941a2a	nemesis	temoin_b	1	14.2	94.0
+    colline_seuil_garde_e1_test.go:222: E1DATA	3b941a2a	nemesis	controle_20s	1	44.4	94.0
+    colline_seuil_garde_e1_test.go:210: E1DATA	3b941a2a	nemesis	signal	2	37.7	52.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	3b941a2a	nemesis	temoin_a	2	2.2	52.7
+    colline_seuil_garde_e1_test.go:217: E1DATA	3b941a2a	nemesis	temoin_b	2	9.7	52.7
+    colline_seuil_garde_e1_test.go:222: E1DATA	3b941a2a	nemesis	controle_20s	2	30.4	52.7
+    colline_seuil_garde_e1_test.go:210: E1DATA	3b941a2a	nemesis	signal	3	46.3	128.1
+    colline_seuil_garde_e1_test.go:213: E1DATA	3b941a2a	nemesis	temoin_a	3	38.1	128.1
+--- 3b941a2a termine
+    colline_seuil_garde_e1_test.go:194: 4a49d994 (elevation) : designateur slot 1721, propriete slot 1722 (83 emissions), 5 periode(s), bijection direct (5 contre 0), axe 5599 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a49d994	elevation	signal	0	57.3	124.2
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a49d994	elevation	temoin_a	0	55.8	124.2
+    colline_seuil_garde_e1_test.go:217: E1DATA	4a49d994	elevation	temoin_b	0	65.1	124.2
+    colline_seuil_garde_e1_test.go:222: E1DATA	4a49d994	elevation	controle_20s	0	49.4	124.2
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a49d994	elevation	signal	1	64.0	120.2
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a49d994	elevation	temoin_a	1	30.3	120.2
+    colline_seuil_garde_e1_test.go:217: E1DATA	4a49d994	elevation	temoin_b	1	44.9	120.2
+    colline_seuil_garde_e1_test.go:222: E1DATA	4a49d994	elevation	controle_20s	1	64.0	120.2
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a49d994	elevation	signal	2	53.0	138.8
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a49d994	elevation	temoin_a	2	13.5	138.8
+    colline_seuil_garde_e1_test.go:217: E1DATA	4a49d994	elevation	temoin_b	2	48.3	138.8
+    colline_seuil_garde_e1_test.go:222: E1DATA	4a49d994	elevation	controle_20s	2	51.8	138.8
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a49d994	elevation	signal	3	24.3	58.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a49d994	elevation	temoin_a	3	13.0	58.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	4a49d994	elevation	temoin_b	3	15.8	58.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	4a49d994	elevation	controle_20s	3	26.9	58.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a49d994	elevation	signal	4	32.5	70.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a49d994	elevation	temoin_a	4	15.8	70.3
+--- 4a49d994 termine
+    colline_seuil_garde_e1_test.go:194: 4a4a872d (ecotone) : designateur slot 1562, propriete slot 1563 (65 emissions), 5 periode(s), bijection direct (5 contre 0), axe 4732 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a4a872d	ecotone	signal	0	42.3	90.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a4a872d	ecotone	temoin_a	0	39.0	90.7
+    colline_seuil_garde_e1_test.go:217: E1DATA	4a4a872d	ecotone	temoin_b	0	21.5	90.7
+    colline_seuil_garde_e1_test.go:222: E1DATA	4a4a872d	ecotone	controle_20s	0	35.4	90.7
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a4a872d	ecotone	signal	1	40.1	83.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a4a872d	ecotone	temoin_a	1	13.2	83.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	4a4a872d	ecotone	temoin_b	1	37.1	83.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	4a4a872d	ecotone	controle_20s	1	38.3	83.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a4a872d	ecotone	signal	2	46.3	89.5
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a4a872d	ecotone	temoin_a	2	20.1	89.5
+    colline_seuil_garde_e1_test.go:217: E1DATA	4a4a872d	ecotone	temoin_b	2	37.2	89.5
+    colline_seuil_garde_e1_test.go:222: E1DATA	4a4a872d	ecotone	controle_20s	2	53.7	89.5
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a4a872d	ecotone	signal	3	47.0	93.4
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a4a872d	ecotone	temoin_a	3	21.6	93.4
+    colline_seuil_garde_e1_test.go:217: E1DATA	4a4a872d	ecotone	temoin_b	3	31.2	93.4
+    colline_seuil_garde_e1_test.go:222: E1DATA	4a4a872d	ecotone	controle_20s	3	52.6	93.4
+    colline_seuil_garde_e1_test.go:210: E1DATA	4a4a872d	ecotone	signal	4	42.7	71.4
+    colline_seuil_garde_e1_test.go:213: E1DATA	4a4a872d	ecotone	temoin_a	4	7.1	71.4
+--- 4a4a872d termine
+    colline_seuil_garde_e1_test.go:194: 4ea58db8 (forbidden) : designateur slot 1510, propriete slot 1511 (43 emissions), 4 periode(s), bijection croise (4 contre 0), axe 4274 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	4ea58db8	forbidden	signal	0	48.1	98.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	4ea58db8	forbidden	temoin_a	0	26.1	98.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	4ea58db8	forbidden	temoin_b	0	42.7	98.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	4ea58db8	forbidden	controle_20s	0	61.4	98.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	4ea58db8	forbidden	signal	1	45.6	91.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	4ea58db8	forbidden	temoin_a	1	35.9	91.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	4ea58db8	forbidden	temoin_b	1	54.2	91.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	4ea58db8	forbidden	controle_20s	1	48.0	91.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	4ea58db8	forbidden	signal	2	40.7	96.3
+    colline_seuil_garde_e1_test.go:213: E1DATA	4ea58db8	forbidden	temoin_a	2	34.9	96.3
+    colline_seuil_garde_e1_test.go:217: E1DATA	4ea58db8	forbidden	temoin_b	2	49.2	96.3
+    colline_seuil_garde_e1_test.go:222: E1DATA	4ea58db8	forbidden	controle_20s	2	40.7	96.3
+    colline_seuil_garde_e1_test.go:210: E1DATA	4ea58db8	forbidden	signal	3	45.8	96.5
+    colline_seuil_garde_e1_test.go:213: E1DATA	4ea58db8	forbidden	temoin_a	3	27.1	96.5
+--- 4ea58db8 termine
+    colline_seuil_garde_e1_test.go:183: ECARTE   5156838d (empyrean) : bijection DEGENEREE (2 periodes expliquees dans les deux sens) — le film ne dit pas quelle valeur est quel camp
+--- 5156838d termine
+    colline_seuil_garde_e1_test.go:160: ECARTE   5d4295b8 (prism) : 1 slot(s) d'equipe au score de mode — sans les deux camps, une periode ne peut pas nommer son marqueur
+--- 5d4295b8 termine
+    colline_seuil_garde_e1_test.go:160: ECARTE   606d9844 (chasm) : 1 slot(s) d'equipe au score de mode — sans les deux camps, une periode ne peut pas nommer son marqueur
+--- 606d9844 termine
+    colline_seuil_garde_e1_test.go:160: ECARTE   8076f97f (shogun) : 1 slot(s) d'equipe au score de mode — sans les deux camps, une periode ne peut pas nommer son marqueur
+--- 8076f97f termine
+    colline_seuil_garde_e1_test.go:194: 61a0b5d2 (goliath) : designateur slot 1543, propriete slot 1544 (31 emissions), 4 periode(s), bijection croise (4 contre 0), axe 3530 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	61a0b5d2	goliath	signal	0	48.4	86.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	61a0b5d2	goliath	temoin_a	0	13.2	86.6
+    colline_seuil_garde_e1_test.go:217: E1DATA	61a0b5d2	goliath	temoin_b	0	21.9	86.6
+    colline_seuil_garde_e1_test.go:222: E1DATA	61a0b5d2	goliath	controle_20s	0	46.6	86.6
+    colline_seuil_garde_e1_test.go:210: E1DATA	61a0b5d2	goliath	signal	1	49.5	68.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	61a0b5d2	goliath	temoin_a	1	8.0	68.7
+    colline_seuil_garde_e1_test.go:217: E1DATA	61a0b5d2	goliath	temoin_b	1	1.0	68.7
+    colline_seuil_garde_e1_test.go:222: E1DATA	61a0b5d2	goliath	controle_20s	1	38.6	68.7
+    colline_seuil_garde_e1_test.go:210: E1DATA	61a0b5d2	goliath	signal	2	43.6	68.8
+    colline_seuil_garde_e1_test.go:213: E1DATA	61a0b5d2	goliath	temoin_a	2	0.0	68.8
+    colline_seuil_garde_e1_test.go:217: E1DATA	61a0b5d2	goliath	temoin_b	2	33.1	68.8
+    colline_seuil_garde_e1_test.go:222: E1DATA	61a0b5d2	goliath	controle_20s	2	53.1	68.8
+    colline_seuil_garde_e1_test.go:210: E1DATA	61a0b5d2	goliath	signal	3	42.5	81.9
+    colline_seuil_garde_e1_test.go:213: E1DATA	61a0b5d2	goliath	temoin_a	3	23.1	81.9
+--- 61a0b5d2 termine
+    colline_seuil_garde_e1_test.go:194: 61a47400 (empyrean) : designateur slot 1596, propriete slot 1597 (21 emissions), 4 periode(s), bijection croise (4 contre 0), axe 3193 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	61a47400	empyrean	signal	0	41.0	90.7
+    colline_seuil_garde_e1_test.go:213: E1DATA	61a47400	empyrean	temoin_a	0	40.3	90.7
+    colline_seuil_garde_e1_test.go:217: E1DATA	61a47400	empyrean	temoin_b	0	49.6	90.7
+    colline_seuil_garde_e1_test.go:222: E1DATA	61a47400	empyrean	controle_20s	0	29.8	90.7
+    colline_seuil_garde_e1_test.go:210: E1DATA	61a47400	empyrean	signal	1	35.1	47.4
+    colline_seuil_garde_e1_test.go:213: E1DATA	61a47400	empyrean	temoin_a	1	0.0	47.4
+    colline_seuil_garde_e1_test.go:217: E1DATA	61a47400	empyrean	temoin_b	1	4.1	47.4
+    colline_seuil_garde_e1_test.go:222: E1DATA	61a47400	empyrean	controle_20s	1	27.3	47.4
+    colline_seuil_garde_e1_test.go:210: E1DATA	61a47400	empyrean	signal	2	38.8	51.6
+    colline_seuil_garde_e1_test.go:213: E1DATA	61a47400	empyrean	temoin_a	2	4.1	51.6
+    colline_seuil_garde_e1_test.go:217: E1DATA	61a47400	empyrean	temoin_b	2	25.8	51.6
+    colline_seuil_garde_e1_test.go:222: E1DATA	61a47400	empyrean	controle_20s	2	38.8	51.6
+    colline_seuil_garde_e1_test.go:210: E1DATA	61a47400	empyrean	signal	3	49.6	84.8
+    colline_seuil_garde_e1_test.go:213: E1DATA	61a47400	empyrean	temoin_a	3	28.2	84.8
+--- 61a47400 termine
+    colline_seuil_garde_e1_test.go:194: 63a45b8b (dredge) : designateur slot 1577, propriete slot 1578 (73 emissions), 3 periode(s), bijection croise (3 contre 0), axe 5062 frames a 100 ms
+    colline_seuil_garde_e1_test.go:210: E1DATA	63a45b8b	dredge	signal	0	49.7	119.5
+    colline_seuil_garde_e1_test.go:213: E1DATA	63a45b8b	dredge	temoin_a	0	28.0	119.5
+    colline_seuil_garde_e1_test.go:217: E1DATA	63a45b8b	dredge	temoin_b	0	21.4	119.5
+    colline_seuil_garde_e1_test.go:222: E1DATA	63a45b8b	dredge	controle_20s	0	42.1	119.5
+    colline_seuil_garde_e1_test.go:210: E1DATA	63a45b8b	dredge	signal	1	35.1	41.2
+    colline_seuil_garde_e1_test.go:213: E1DATA	63a45b8b	dredge	temoin_a	1	0.0	41.2
+    colline_seuil_garde_e1_test.go:217: E1DATA	63a45b8b	dredge	temoin_b	1	3.7	41.2
+    colline_seuil_garde_e1_test.go:222: E1DATA	63a45b8b	dredge	controle_20s	1	21.1	41.2
+    colline_seuil_garde_e1_test.go:210: E1DATA	63a45b8b	dredge	signal	2	42.7	135.2
+    colline_seuil_garde_e1_test.go:213: E1DATA	63a45b8b	dredge	temoin_a	2	12.6	135.2
+    colline_seuil_garde_e1_test.go:217: E1DATA	63a45b8b	dredge	temoin_b	2	57.8	135.2
+    colline_seuil_garde_e1_test.go:222: E1DATA	63a45b8b	dredge	controle_20s	2	42.7	135.2
+--- 63a45b8b termine
+=== FIN E1 ===

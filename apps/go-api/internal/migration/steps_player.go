@@ -11,7 +11,7 @@ package migration
 // challenge_snapshots, cache de cartes de défis hors-ligne) a été ajouté côté title-owned
 // (steps_player_base.go), juste après add_challenge_snapshots.
 //
-// Éradication ART (#23046) : add_pme_session_index DROP désormais idx_pme_session
+// Éradication ART (#23645) : add_pme_session_index DROP désormais idx_pme_session
 // (session_id muté) au lieu de le créer ; les ex-index ART sur player_match_enrichment
 // (session_id/mode_category/engagement_score_brut) sont retirés par
 // player_append_only_match_enrichment_v1. match_citations passe en append-only

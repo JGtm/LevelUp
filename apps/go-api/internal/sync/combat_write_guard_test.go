@@ -8,7 +8,7 @@
 // Cause racine gardée : la complétion post-sync écrivait highlight_events /
 // killer_victim_pairs en db.Exec direct sur un handle non garanti RW → 31h de
 // panne silencieuse (graphiques onglet Détails vides). Cf.
-// .ai/HANDOFF_sync_combat_completion.md. Modèle : no_art_patterns_test.go.
+// .ai/archive/V7/HANDOFF_sync_combat_completion.md. Modèle : no_art_patterns_test.go.
 package sync
 
 import (

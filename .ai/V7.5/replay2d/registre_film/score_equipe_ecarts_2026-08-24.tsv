@@ -1,0 +1,81 @@
+match_id	game_variant_name	pair_name	db_t0	db_t1	api_t0	api_t1	ticks_t0	ticks_t1	cause	first_sync_by	first_sync_at	start_time
+f395b462-9335-430f-899d-535e571a7e68	Arena:Attrition	Arena:Attrition on Catalyst	2	1950	2	0	NULL	NULL	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2022-11-11 00:00:00 +0000 UTC
+293a763e-7255-4df4-9dc9-cfcec5469e8b	Arena:Oddball	Arena:Oddball on Live Fire	186	181	181	186	NULL	NULL	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-03-21 00:00:00 +0000 UTC
+9fa3100c-cb5f-4f32-ae0b-3f9665537f9a	Arena:Oddball	Arena:Oddball on Live Fire	155	218	218	155	NULL	NULL	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-03-23 00:00:00 +0000 UTC
+adb93fb7-aea8-479a-90e3-75c82929f83a	Arena:Oddball	Arena:Oddball on Recharge	234	277	277	234	NULL	NULL	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2021-11-22 00:00:00 +0000 UTC
+ca738284-0aee-4587-bb95-a7196117eccc	Arena:Oddball	Arena:Oddball on Starboard	168	176	176	168	NULL	NULL	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-04-01 00:00:00 +0000 UTC
+1141896d-17b4-40ad-82c3-e7bbf3ee3c6d	Arena:Strongholds	Arena:Strongholds on Solution	188	182	200	199	182	188	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-10-26 00:00:00 +0000 UTC
+443426df-4bd9-4427-8d17-d2b5a10f40b2	BTB:One Flag CTF	BTB:One Flag CTF on Refuge	0	2	0	3	NULL	NULL	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-03-26 00:00:00 +0000 UTC
+d1e89330-88a3-483f-9738-9ed8b6cfa988	BTB:One Flag CTF	BTB:One Flag CTF on Refuge	0	2	0	3	NULL	NULL	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2024-06-01 00:00:00 +0000 UTC
+50de9126-8357-42db-942c-1686755fbdd1	BTB:Sentry Defense	BTB:Sentry Defense on Oasis Sentry Defense	165	319	319	165	NULL	NULL	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-04-01 00:00:00 +0000 UTC
+d9781168-5fd6-4b00-a862-56e3a0a1f956	Oddball:Arena	Arena:Oddball on Dredge	196	191	191	196	NULL	NULL	autre	JGtm	2026-02-14 00:00:00 +0000 UTC	2025-12-27 00:00:00 +0000 UTC
+3338df70-bf9b-4406-9ab7-db143ba74702	Ranked:Oddball	Ranked:Oddball on Streets	286	212	212	286	NULL	NULL	autre	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-03-13 00:00:00 +0000 UTC
+4ef7415a-eddd-4758-9823-75baa43cec0d	Arena:Strongholds	Arena:Strongholds on Fortress	137	183	139	200	137	183	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-10-22 00:00:00 +0000 UTC
+6d49207d-e39a-4cdc-99b3-605c5c6eebca	Arena:Strongholds	Arena:Strongholds on Illusion	176	146	200	158	176	146	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-10-23 00:00:00 +0000 UTC
+ad2472a1-5d07-4a33-ba39-7efc175b8bfa	Arena:Strongholds	Arena:Strongholds on Snowbound	15	183	15	200	15	183	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-10-13 00:00:00 +0000 UTC
+af13e2b2-6a78-4430-8eed-6f3156148086	Arena:Strongholds	Arena:Strongholds on Origin	3	134	3	200	3	134	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-10-26 00:00:00 +0000 UTC
+b974a390-1e9c-4ad6-bc3e-a8018a29b841	Arena:Strongholds	Arena:Strongholds on Streets	197	162	200	174	197	162	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-10-22 00:00:00 +0000 UTC
+c5094b31-695f-4459-83b8-7b62989521a0	Arena:Strongholds	Arena:Strongholds on Cliffside	164	75	200	79	164	75	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-10-22 00:00:00 +0000 UTC
+ca6b8980-5070-4cd6-80aa-b126c5a4a8db	Arena:Strongholds	Arena:Strongholds on Solitude	184	130	200	149	184	130	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-10-21 00:00:00 +0000 UTC
+bf831a6b-3dd3-4b97-b4b5-b67da6291079	BTB:Fiesta Total Control	BTB:Fiesta Total Control on Command	0	0	3	0	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-03-29 00:00:00 +0000 UTC
+0ec6323d-9b7f-4d71-bad4-79bd3921600a	BTB:Total Control	BTB:Total Control on Breaker	0	0	0	3	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-11-25 00:00:00 +0000 UTC
+289a0045-9668-414c-bfc5-c5f992de53f4	BTB:Total Control	BTB:Total Control on Obituary	0	0	0	1	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2024-05-26 00:00:00 +0000 UTC
+35fca325-4091-4ff4-9cdc-3593b3729582	BTB:Total Control	BTB:Total Control on Oasis	0	0	0	3	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-12-25 00:00:00 +0000 UTC
+4398e086-6749-4b80-a181-64c38bca6a5c	BTB:Total Control	BTB:Total Control on Fragmentation	0	0	3	0	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2024-01-16 00:00:00 +0000 UTC
+454808bd-c1fe-4d3c-acc0-c5eb4f27e89f	BTB:Total Control	BTB:Total Control on Breaker	0	0	1	0	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-11-12 00:00:00 +0000 UTC
+53c5b097-959b-4bb7-ab75-41cfcd37b7d6	BTB:Total Control	BTB:Total Control on Breaker	0	0	2	0	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-11-28 00:00:00 +0000 UTC
+5cf4dca1-1400-426d-acc4-e66b4eb6e593	BTB:Total Control	BTB:Total Control on Highpower	0	0	0	2	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-12-13 00:00:00 +0000 UTC
+6632434d-b79b-4fc6-a6cd-0d1ce42d55ac	BTB:Total Control	BTB:Total Control on Breaker	0	0	0	3	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2024-01-03 00:00:00 +0000 UTC
+66aa5f0b-0cc7-46bb-b537-6f5372eb991f	BTB:Total Control	BTB:Total Control on Command	0	0	3	0	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-07-07 00:00:00 +0000 UTC
+7a6159b8-347f-4471-9c51-88a12c6395e7	BTB:Total Control	BTB:Total Control on Fragmentation	0	0	3	0	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-12-12 00:00:00 +0000 UTC
+9f3f7d7b-11be-4a2a-b53a-a098b53c2107	BTB:Total Control	BTB:Total Control on Oasis	0	0	0	3	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-11-22 00:00:00 +0000 UTC
+a08f4e20-3283-4075-b0da-1b813b1678bf	BTB:Total Control	BTB:Total Control on Oasis	0	0	0	3	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-12-21 00:00:00 +0000 UTC
+a197345f-043c-4a3f-a3b9-fd9e4a171c91	BTB:Total Control	BTB:Total Control on Scarr	0	0	0	3	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2023-12-17 00:00:00 +0000 UTC
+eb4d2c8c-3ab5-411e-a617-40109ddee15a	BTB:Total Control	BTB:Total Control on Scarr	0	0	0	3	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2024-01-06 00:00:00 +0000 UTC
+fbe2ae2f-22fa-4285-b333-1f2b80bf9cb6	BTB:Total Control	BTB:Total Control on Oasis	0	0	0	3	0	0	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2024-01-14 00:00:00 +0000 UTC
+606d9844-4f22-42c1-8fb6-e9d541e5ff4c	KOTH:Arena	Arena:King of the Hill on Chasm	105	8	3	0	105	8	ticks_de_zone	JGtm	2026-02-14 00:00:00 +0000 UTC	2025-12-24 00:00:00 +0000 UTC
+8076f97f-b8aa-4949-ab51-6be5221d41e8	KOTH:Arena	Arena:King of the Hill on Shogun	78	105	0	3	78	105	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-10-31 00:00:00 +0000 UTC
+d2b74083-5dcd-4d41-871f-6096e831040e	KOTH:Arena	Arena:King of the Hill on Illusion	105	32	3	0	105	32	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-10-31 00:00:00 +0000 UTC
+2ce58582-43d4-488b-bbe1-f6e89b3ac03a	Ranked:Strongholds	Ranked:Strongholds on Live Fire	197	120	250	120	197	120	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2024-10-17 00:00:00 +0000 UTC
+0727867d-ca7a-43dc-9845-bef7093a88e5	Strongholds:Arena	Arena:Strongholds on Illusion	161	196	169	200	161	196	ticks_de_zone	Chocoboflor	2026-03-31 00:00:00 +0000 UTC	2026-03-31 00:00:00 +0000 UTC
+10ed320d-f893-4385-aea9-d057d2bf1a14	Strongholds:Arena	Arena:Strongholds on Forest	174	169	200	170	174	169	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-18 00:00:00 +0000 UTC
+1b1e380f-705a-488c-a788-5656c759e111	Strongholds:Arena	Arena:Strongholds on Solitude	189	61	200	61	189	61	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-01-13 00:00:00 +0000 UTC
+1e26f641-5570-475c-a52d-d7afc6b49fd8	Strongholds:Arena	Arena:Strongholds on Fortress	132	73	200	73	132	73	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-01-08 00:00:00 +0000 UTC
+28d77409-591c-48bc-9d86-4d94ff6172e7	Strongholds:Arena	Arena:Strongholds on Forest	78	178	78	200	78	178	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-10 00:00:00 +0000 UTC
+2b2c5aa3-c05b-4307-a82a-1c9c4c0f42d8	Strongholds:Arena	Arena:Strongholds on Kaiketsu	14	183	14	200	14	183	ticks_de_zone	JGtm	2026-03-01 00:00:00 +0000 UTC	2026-03-01 00:00:00 +0000 UTC
+305a6b15-6fd8-48e1-b7ca-16bfe8ed866e	Strongholds:Arena	Arena:Strongholds on Houseki	180	17	200	17	180	17	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-01-08 00:00:00 +0000 UTC
+316205b8-34fe-404e-955f-29291827a12e	Strongholds:Arena	Arena:Strongholds on Kaiketsu	71	171	80	200	71	171	ticks_de_zone	JGtm	2026-02-14 00:00:00 +0000 UTC	2026-01-29 00:00:00 +0000 UTC
+353367d6-c02d-45dc-a28d-1d2f27c3bcbc	Strongholds:Arena	Arena:Strongholds on Prism	66	197	72	200	66	197	ticks_de_zone	Chocoboflor	2026-04-06 00:00:00 +0000 UTC	2026-04-06 00:00:00 +0000 UTC
+369bb77f-d1ef-490d-ae53-a97b1e657ff2	Strongholds:Arena	Arena:Strongholds on Snowbound	130	161	147	200	130	161	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-29 00:00:00 +0000 UTC
+415f2c6c-e882-428a-baf2-56570df3effb	Strongholds:Arena	Arena:Strongholds on Illusion	162	197	166	200	162	197	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-11-13 00:00:00 +0000 UTC
+418eee76-72ab-4833-95f1-77e49f11004b	Strongholds:Arena	Arena:Strongholds on Domicile	188	136	200	145	188	136	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2025-10-31 00:00:00 +0000 UTC
+47149c49-ae40-43b9-91a1-dbd8cbf9400c	Strongholds:Arena	Arena:Strongholds on High Ground	194	158	200	161	194	158	ticks_de_zone	Madina97294	2026-03-03 00:00:00 +0000 UTC	2026-03-03 00:00:00 +0000 UTC
+563cc1ba-ef21-4b04-8a78-911704eb2836	Strongholds:Arena	Arena:Strongholds on Curfew	136	189	138	200	136	189	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-15 00:00:00 +0000 UTC
+63415f8c-df8e-4575-a94b-9267db0fbccd	Strongholds:Arena	Arena:Strongholds on Shogun	140	14	200	14	140	14	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-06 00:00:00 +0000 UTC
+68e58d18-c158-4605-be7f-5f9999d80856	Strongholds:Arena	Arena:Strongholds on Forbidden	55	187	56	200	55	187	ticks_de_zone	JGtm	2026-02-14 00:00:00 +0000 UTC	2026-01-24 00:00:00 +0000 UTC
+6bc544a1-8581-4bd5-bdba-015938c24ff7	Strongholds:Arena	Arena:Strongholds on The Pit	184	0	200	0	184	0	ticks_de_zone	Madina97294	2026-03-03 00:00:00 +0000 UTC	2026-03-03 00:00:00 +0000 UTC
+7344d24f-0154-4949-80ad-e2b781c122f1	Strongholds:Arena	Arena:Strongholds on Vagabond	193	112	200	126	193	112	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-02-05 00:00:00 +0000 UTC
+7ddb5c8d-cb54-4659-9119-71067f1bec96	Strongholds:Arena	Arena:Strongholds on Snowbound	124	157	131	200	124	157	ticks_de_zone	Chocoboflor	2026-03-24 00:00:00 +0000 UTC	2026-03-24 00:00:00 +0000 UTC
+7e91de02-ee2e-421a-a6fd-ad2fadd7ce27	Strongholds:Arena	Arena:Strongholds on Opulence	4	186	4	200	4	186	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-01-24 00:00:00 +0000 UTC
+81eda4a6-9906-4c7e-b64a-9013b795dde7	Strongholds:Arena	Arena:Strongholds on Recharge	198	111	200	116	198	111	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-03 00:00:00 +0000 UTC
+838e4624-6e29-4108-8863-77401b9b9e1c	Strongholds:Arena	Arena:Strongholds on The Pit	28	145	28	200	28	145	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-20 00:00:00 +0000 UTC
+83fe35b3-2043-4c3d-b1b3-2e3e2433e5e0	Strongholds:Arena	Arena:Strongholds on Isolation	149	28	168	28	149	28	ticks_de_zone	JGtm	2026-03-12 00:00:00 +0000 UTC	2026-03-12 00:00:00 +0000 UTC
+8d827e90-289b-4f15-8a41-17700443e3a0	Strongholds:Arena	Arena:Strongholds on High Ground	155	153	200	181	155	153	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-01-24 00:00:00 +0000 UTC
+8e9fca5f-8156-4fec-b8f6-d002963c45d3	Strongholds:Arena	Arena:Strongholds on Fortress	91	197	99	200	91	197	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-06 00:00:00 +0000 UTC
+aaaf6c76-2a93-4e4b-abab-b9c685a7fdce	Strongholds:Arena	Arena:Strongholds on Kaiketsu	193	197	198	200	193	197	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-30 00:00:00 +0000 UTC
+acf6ad8b-ffbb-49a0-921d-915c646b5596	Strongholds:Arena	Arena:Strongholds on Goliath	182	75	200	75	182	75	ticks_de_zone	Madina97294	2026-03-03 00:00:00 +0000 UTC	2026-03-03 00:00:00 +0000 UTC
+ade6c182-b91b-40b6-bb65-d19866982f92	Strongholds:Arena	Arena:Strongholds on Live Fire	88	195	91	200	88	195	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-02-11 00:00:00 +0000 UTC
+b77dffd4-cb6b-49a4-af00-3656aeb7794b	Strongholds:Arena	Arena:Strongholds on Snowbound	30	189	30	200	30	189	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-02-11 00:00:00 +0000 UTC
+bdd4b8f5-3afb-451f-870e-290f560fd5a8	Strongholds:Arena	Arena:Strongholds on Opulence	194	131	200	137	194	131	ticks_de_zone	JGtm	2026-03-27 00:00:00 +0000 UTC	2026-03-27 00:00:00 +0000 UTC
+c029cf8c-c6d0-4d0a-9dbc-f972f8cfeaa3	Strongholds:Arena	Arena:Strongholds on Perilous	141	53	200	53	141	53	ticks_de_zone	Madina97294	2026-02-14 00:00:00 +0000 UTC	2026-01-11 00:00:00 +0000 UTC
+c139818f-9378-4b24-8d9a-43f767ca8656	Strongholds:Arena	Arena:Strongholds on Illusion	187	198	190	200	187	198	ticks_de_zone	Chocoboflor	2026-03-31 00:00:00 +0000 UTC	2026-03-31 00:00:00 +0000 UTC
+ce927bd2-997b-4674-80c6-108b4499771b	Strongholds:Arena	Arena:Strongholds on Live Fire	0	147	0	200	0	147	ticks_de_zone	Madina97294	2026-03-01 00:00:00 +0000 UTC	2026-03-01 00:00:00 +0000 UTC
+d39926cb-ea6c-4271-a562-2c4e953c0d65	Strongholds:Arena	Arena:Strongholds on Domicile	72	185	75	200	72	185	ticks_de_zone	Madina97294	2026-03-03 00:00:00 +0000 UTC	2026-03-03 00:00:00 +0000 UTC
+d4230304-1096-42f4-95a3-27d2dbb2693d	Strongholds:Arena	Arena:Strongholds on Cliffhanger	143	187	153	200	143	187	ticks_de_zone	JGtm	2026-03-27 00:00:00 +0000 UTC	2026-03-27 00:00:00 +0000 UTC
+d9701ca6-68c6-4f67-a9b7-8fc24c7197e9	Strongholds:Arena	Arena:Strongholds on Isolation	175	73	200	73	175	73	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-10 00:00:00 +0000 UTC
+ddac1f87-b55f-429f-8d5a-f8df6a84a51b	Strongholds:Arena	Arena:Strongholds on Prism	119	199	119	200	119	199	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-01-21 00:00:00 +0000 UTC
+dec3e8e6-8b46-41be-b0df-a72ac096e67b	Strongholds:Arena	Arena:Strongholds on Origin	156	100	200	106	156	100	ticks_de_zone	Chocoboflor	2026-03-15 00:00:00 +0000 UTC	2026-03-14 00:00:00 +0000 UTC
+e6ccc947-05b6-4c69-8494-dd9d52ee0a76	Strongholds:Arena	Arena:Strongholds on Vagabond	191	52	200	54	191	52	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-11-25 00:00:00 +0000 UTC
+f36db941-10d4-4ee2-b744-5dde8dadd7df	Strongholds:Arena	Arena:Strongholds on Houseki	188	14	200	14	188	14	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2025-12-15 00:00:00 +0000 UTC
+f6a9d127-0114-4fd5-bb09-d51412f5e4de	Strongholds:Arena	Arena:Strongholds on Illusion	166	160	200	189	166	160	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-01-21 00:00:00 +0000 UTC
+ff4f7e7b-9efb-450e-b758-6d1ca62855fc	Strongholds:Arena	Arena:Strongholds on Opulence	188	21	200	21	188	21	ticks_de_zone	Chocoboflor	2026-02-14 00:00:00 +0000 UTC	2026-01-08 00:00:00 +0000 UTC

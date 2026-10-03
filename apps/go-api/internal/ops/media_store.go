@@ -32,7 +32,7 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 			player_slug VARCHAR,
 			-- file_path NON UNIQUE : file_path est MUTÉE par 3 UPDATE (conversion/HLS/
 			-- reconcile) → une contrainte UNIQUE (index ART) sur une colonne mutée
-			-- déclenche le bug DuckDB #23046 (FATAL invalidated, blast MAX shared_social).
+			-- déclenche le bug DuckDB #23645 (FATAL invalidated, blast MAX shared_social).
 			-- La dédup file_path passe en applicatif (insertMediaFile SELECT-then-INSERT).
 			-- Migration media_files_drop_filepath_unique_v1 retire l'UNIQUE des DB existantes.
 			file_path VARCHAR,

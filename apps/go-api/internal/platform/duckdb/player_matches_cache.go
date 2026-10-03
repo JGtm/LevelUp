@@ -1,13 +1,17 @@
-// Package duckdb — player_matches_cache.go : decorateur cache pour
-// PlayerMatchesRepo.
+// Package duckdb — player_matches_cache.go : l'historique canonique ENRICHI d'un
+// joueur derrière le cache des lectures joueur (plan perf 2026-09-23, lot L5b,
+// décision D5b.4).
 //
-// Strategie : TTL court (5 min par defaut) + eviction FIFO a la capacite +
-// coalescence des appels concurrents (singleflight). Pas de LRU stricte
-// (recency-based) : la duree de vie courte rend l'eviction FIFO suffisante
-// et evite la dependance a une lib externe.
+// CachedPlayerMatchesRepo est le port.PlayerMatchesRepository câblé par le registre
+// (wire.playerMatchesAdapterFor). Il enveloppe PlayerMatchesAdapter, donc met en cache
+// les lignes APRÈS l'enrichissement FR/EN des libellés : un hit ne relance ni les
+// quatre requêtes du chargement ni les lectures metadata de l'enrichissement. Un
+// enrichissement en échec (étape consignée par noteDegraded) ou une requête annulée
+// en cours de chargement rend les lignes dégradées : jamais mises en cache.
 //
-// Cle de cache : SHA-256 hex sur la representation JSON canonique des
-// filtres (slices tries pour stabilite).
+// Clé : (xuid, titre, base) + une variante par jeu de filtres (filtersCacheKey,
+// SHA-256 du JSON canonique des filtres, slices triés). TTL, coalescence,
+// invalidation et copie à la lecture : player_read_cache.go.
 package duckdb
 
 import (
@@ -15,95 +19,111 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"maps"
 	"sort"
-	"sync"
-	"sync/atomic"
-	"time"
-
-	"golang.org/x/sync/singleflight"
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
 
-// playerMatchesLoader est l'interface minimale consommee par
-// CachedPlayerMatchesRepo. *PlayerMatchesRepo l'implemente naturellement.
-// Permet le test du cache sans PlayerDB reel (mock loader).
-type playerMatchesLoader interface {
-	Load(ctx context.Context, filters port.PlayerMatchFilters) ([]canonical.PlayerMatchRow, error)
+// playerMatchesReadCache : historique canonique enrichi, une variante par jeu de
+// filtres.
+var playerMatchesReadCache = newPlayerReadCache("player_matches_cache", clonePlayerMatchRows)
+
+// playerMatchesSource est l'adapter que le cache enveloppe : *PlayerMatchesAdapter
+// en production (lignes enrichies), un faux en test.
+type playerMatchesSource interface {
+	LoadPlayerMatches(ctx context.Context, slug, gamertag string, filters port.PlayerMatchFilters) ([]canonical.PlayerMatchRow, error)
+	LobbySizesAtCompletion(ctx context.Context, slug string, matchIDs []string) (map[string]int, error)
 }
 
-// CachedPlayerMatchesRepo decore un loader avec un cache TTL + eviction FIFO +
-// coalescence singleflight. Threadsafe.
+// CachedPlayerMatchesRepo implémente port.PlayerMatchesRepository (plus la
+// capacité optionnelle LobbySizesAtCompletion, lue par SessionPageService) derrière
+// le cache process-wide des lectures joueur. Threadsafe.
 type CachedPlayerMatchesRepo struct {
-	inner   playerMatchesLoader
-	cache   *ttlCache
-	sf      singleflight.Group
-	metrics cacheMetrics
+	inner playerMatchesSource
+	cache *playerReadCache[[]canonical.PlayerMatchRow]
+	scope playerCacheScope
 }
 
-// cacheMetrics expose les compteurs hit/miss via Snapshot. Mis a jour atomiquement.
+// NewCachedPlayerMatchesRepo construit l'historique canonique enrichi du joueur
+// derrière le cache process-wide.
+func NewCachedPlayerMatchesRepo(pdb *PlayerDB) *CachedPlayerMatchesRepo {
+	return &CachedPlayerMatchesRepo{
+		inner: NewPlayerMatchesAdapter(NewPlayerMatchesRepo(pdb), pdb.TitleSlug, pdb.Gamertag),
+		cache: playerMatchesReadCache,
+		scope: scopeOf(pdb),
+	}
+}
+
+// LoadPlayerMatches rend une copie des lignes cachées pour ces filtres, ou les
+// charge (chargement + enrichissement) via l'adapter.
+func (c *CachedPlayerMatchesRepo) LoadPlayerMatches(
+	ctx context.Context,
+	slug string,
+	gamertag string,
+	filters port.PlayerMatchFilters,
+) ([]canonical.PlayerMatchRow, error) {
+	return c.cache.load(ctx, c.scope, filtersCacheKey(filters), func(ctx context.Context) ([]canonical.PlayerMatchRow, error) {
+		return c.inner.LoadPlayerMatches(ctx, slug, gamertag, filters)
+	})
+}
+
+// LobbySizesAtCompletion délègue à l'adapter (lecture non cachée).
+func (c *CachedPlayerMatchesRepo) LobbySizesAtCompletion(ctx context.Context, slug string, matchIDs []string) (map[string]int, error) {
+	return c.inner.LobbySizesAtCompletion(ctx, slug, matchIDs)
+}
+
+// InvalidatePlayer retire du cache toutes les variantes du joueur de ce repo (les
+// arguments sont ignorés, comme par l'adapter : le joueur est fixé au constructeur).
+func (c *CachedPlayerMatchesRepo) InvalidatePlayer(_, _ string) {
+	c.cache.invalidate(c.scope.xuid, c.scope.titleSlug)
+}
+
+// clonePlayerMatchRows copie l'historique rendu : nouvelle tranche (trier ou
+// modifier les lignes reste sans effet sur le cache) et copie des références que
+// des consommateurs modifient — les quatre AssetReference du résumé : Home et
+// Synthèse ré-appliquent EnrichCanonicalAssetTranslations aux lignes reçues, qui
+// écrit Labels[...], DefaultLabel et IconURL (une écriture de map partagée entre
+// requêtes serait une erreur fatale « concurrent map writes »). Les autres
+// références (pointeurs de scalaires, Teams, FriendsXUIDs, SkillSnapshot) restent
+// partagées : aucun consommateur n'écrit à travers elles (grep du 2026-09-23 sur
+// internal/service et internal/analysis). Inventaire figé par
+// TestClonePlayerMatchRows_ReferenceInventory.
+func clonePlayerMatchRows(rows []canonical.PlayerMatchRow) []canonical.PlayerMatchRow {
+	if rows == nil {
+		return nil
+	}
+	out := make([]canonical.PlayerMatchRow, len(rows))
+	copy(out, rows)
+	for i := range out {
+		s := &out[i].Summary
+		s.Playlist = cloneAssetRef(s.Playlist)
+		s.Map = cloneAssetRef(s.Map)
+		s.GameVariant = cloneAssetRef(s.GameVariant)
+		s.PairMode = cloneAssetRef(s.PairMode)
+	}
+	return out
+}
+
+func cloneAssetRef(ref *canonical.AssetReference) *canonical.AssetReference {
+	if ref == nil {
+		return nil
+	}
+	c := *ref
+	c.Labels = maps.Clone(ref.Labels)
+	return &c
+}
+
+// cacheMetrics compte les hits/misses d'un cache décorateur. Reste consommé par
+// highlight_events_cache.go (CachedHighlightEventsRepo).
 type cacheMetrics struct {
 	hits   int64
 	misses int64
 }
 
-// NewCachedPlayerMatchesRepo construit le wrapper. `capacity` = nombre max
-// d'entrees ; `ttl` = duree de vie d'une entree.
-//
-// Defaults raisonnables : 200, 5 * time.Minute.
-func NewCachedPlayerMatchesRepo(inner playerMatchesLoader, capacity int, ttl time.Duration) *CachedPlayerMatchesRepo {
-	if capacity <= 0 {
-		capacity = 200
-	}
-	if ttl <= 0 {
-		ttl = 5 * time.Minute
-	}
-	return &CachedPlayerMatchesRepo{
-		inner: inner,
-		cache: newTTLCache(capacity, ttl),
-	}
-}
-
-// Load delegue a inner.Load avec cache + coalescence.
-func (c *CachedPlayerMatchesRepo) Load(
-	ctx context.Context,
-	filters port.PlayerMatchFilters,
-) ([]canonical.PlayerMatchRow, error) {
-	key := filtersCacheKey(filters)
-	if v, ok := c.cache.Get(key); ok {
-		atomic.AddInt64(&c.metrics.hits, 1)
-		return v, nil
-	}
-	atomic.AddInt64(&c.metrics.misses, 1)
-
-	v, err, _ := c.sf.Do(key, func() (any, error) {
-		rows, err := c.inner.Load(ctx, filters)
-		if err != nil {
-			return nil, err
-		}
-		c.cache.Set(key, rows)
-		return rows, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return v.([]canonical.PlayerMatchRow), nil
-}
-
-// Invalidate vide entierement le cache (appel apres sync joueur, par
-// exemple). InvalidateKey pourrait etre ajoute si un usage plus fin emerge.
-func (c *CachedPlayerMatchesRepo) Invalidate() {
-	c.cache.InvalidateAll()
-}
-
-// MetricsSnapshot retourne hits/misses observes (lecture atomique).
-func (c *CachedPlayerMatchesRepo) MetricsSnapshot() (hits, misses int64) {
-	return atomic.LoadInt64(&c.metrics.hits), atomic.LoadInt64(&c.metrics.misses)
-}
-
-// filtersCacheKey produit une cle stable pour des filtres equivalents,
-// independante de l'ordre des slices. SHA-256 hex sur JSON canonique.
+// filtersCacheKey produit une clé stable pour des filtres équivalents,
+// indépendante de l'ordre des slices. SHA-256 hex sur JSON canonique.
 func filtersCacheKey(f port.PlayerMatchFilters) string {
 	canonicalFilters := struct {
 		Period               *string  `json:"period,omitempty"`
@@ -144,104 +164,4 @@ func filtersCacheKey(f port.PlayerMatchFilters) string {
 	buf, _ := json.Marshal(canonicalFilters)
 	sum := sha256.Sum256(buf)
 	return hex.EncodeToString(sum[:])
-}
-
-// ttlCache est un cache map-based avec TTL et eviction FIFO a la capacite.
-// Threadsafe (mu sync.Mutex). Pas de LRU recency-based : la duree de vie
-// courte (5 min) rend la perte d'efficacite negligeable.
-type ttlCache struct {
-	mu       sync.Mutex
-	entries  map[string]ttlCacheEntry
-	keyOrder []string // FIFO order pour eviction
-	capacity int
-	ttl      time.Duration
-}
-
-type ttlCacheEntry struct {
-	value     []canonical.PlayerMatchRow
-	expiresAt time.Time
-}
-
-func newTTLCache(capacity int, ttl time.Duration) *ttlCache {
-	return &ttlCache{
-		entries:  make(map[string]ttlCacheEntry, capacity),
-		keyOrder: make([]string, 0, capacity),
-		capacity: capacity,
-		ttl:      ttl,
-	}
-}
-
-// Get retourne la valeur si presente ET non expiree.
-func (c *ttlCache) Get(key string) ([]canonical.PlayerMatchRow, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	e, ok := c.entries[key]
-	if !ok {
-		return nil, false
-	}
-	if time.Now().After(e.expiresAt) {
-		c.removeLocked(key)
-		return nil, false
-	}
-	return e.value, true
-}
-
-// Set insere ou remplace une entree. Evince si capacite depassee (FIFO).
-func (c *ttlCache) Set(key string, value []canonical.PlayerMatchRow) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if _, exists := c.entries[key]; !exists {
-		if len(c.entries) >= c.capacity {
-			c.evictOldestLocked()
-		}
-		c.keyOrder = append(c.keyOrder, key)
-	}
-	c.entries[key] = ttlCacheEntry{
-		value:     value,
-		expiresAt: time.Now().Add(c.ttl),
-	}
-}
-
-// Invalidate retire une cle precise.
-func (c *ttlCache) Invalidate(key string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.removeLocked(key)
-}
-
-// InvalidateAll vide le cache.
-func (c *ttlCache) InvalidateAll() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.entries = make(map[string]ttlCacheEntry, c.capacity)
-	c.keyOrder = c.keyOrder[:0]
-}
-
-// Len retourne le nombre d'entrees actuellement stockees (utile en test).
-func (c *ttlCache) Len() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return len(c.entries)
-}
-
-func (c *ttlCache) removeLocked(key string) {
-	if _, ok := c.entries[key]; !ok {
-		return
-	}
-	delete(c.entries, key)
-	for i, k := range c.keyOrder {
-		if k == key {
-			c.keyOrder = append(c.keyOrder[:i], c.keyOrder[i+1:]...)
-			return
-		}
-	}
-}
-
-func (c *ttlCache) evictOldestLocked() {
-	if len(c.keyOrder) == 0 {
-		return
-	}
-	oldest := c.keyOrder[0]
-	c.keyOrder = c.keyOrder[1:]
-	delete(c.entries, oldest)
 }

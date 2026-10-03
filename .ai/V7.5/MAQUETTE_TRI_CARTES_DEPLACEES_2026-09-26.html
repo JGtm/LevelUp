@@ -1,0 +1,822 @@
+<title>Tri des cartes déplacées</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Jetons de l'app (apps/web/src/styles/globals.css + lib/accessibility/palettes/default.ts). */
+  :root {
+    --background: oklch(0.985 0.004 255); --foreground: oklch(0.255 0.02 255);
+    --card: oklch(0.995 0.002 255); --border: oklch(0.9 0.01 255); --muted: oklch(0.96 0.008 255);
+    --muted-foreground: oklch(0.52 0.015 255); --popover: oklch(0.995 0.002 255);
+    --warning: #F59E0B; --pos: #22C55E; --neg: #EF4444; --info: #3B82F6;
+    --ally: #3B82F6; --enemy: #EF4444; --win: #10B981; --loss: #EF4444;
+    --r-take: #4F46E5; --r-def: #0891B2; --r-hold: #A21CAF;
+    --p1: #2563EB; --p2: #D97706; --p3: #DB2777;
+    --rest: color-mix(in oklab, var(--ally) 55%, var(--muted));
+    --res-power: #7C3AED; --res-vehicle: #D55E00;
+    --f-shoulder: #06B6D4; --f-sidearm: #10B981; --f-heavy: #7C3AED; --f-melee: #EC4899; --f-grenade: #F59E0B;
+    --f-vehicle: #3730A3; --f-turret: #D55E00; --f-env: #0072B2; --f-unatt: #60A5FA;
+    --radius: 0.5rem;
+    --hatch: repeating-linear-gradient(45deg, transparent 0 4px, color-mix(in oklab, var(--muted-foreground) 55%, transparent) 4px 6px);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0); color-scheme: dark; --res-power: #8B5CF6; --res-vehicle: #DD5F14; --r-take: #7B80F7; --r-def: #0891B2; --r-hold: #A924BD;
+  } }
+  :root[data-theme="dark"] {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0); color-scheme: dark; --res-power: #8B5CF6; --res-vehicle: #DD5F14; --r-take: #7B80F7; --r-def: #0891B2; --r-hold: #A924BD;
+  }
+  body { background: var(--background); color: var(--foreground); font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 24px 80px; box-sizing: border-box; }
+  @media (max-width: 520px) { .page { padding-inline: 16px; } }
+  .crumb { font-size: 12px; color: var(--muted-foreground); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .toolbar { margin-left: auto; display: flex; gap: 6px; }
+  button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); cursor: pointer; }
+  button[aria-pressed="true"] { border-color: var(--foreground); }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+  h1 { font-size: 22px; margin: 16px 0 6px; text-wrap: balance; }
+  p.lede { margin: 0; font-size: 13.5px; color: var(--muted-foreground); max-width: 92ch; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  nav.toc a { font-size: 12px; text-decoration: none; color: var(--muted-foreground); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+  section.block { display: flex; flex-direction: column; gap: 12px; margin-top: 44px; scroll-margin-top: 12px; }
+  section.block > header h2 { margin: 0; font-size: 19px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 6px; text-wrap: balance; }
+  section.block > header p { margin: 6px 0 0; font-size: 13px; color: var(--muted-foreground); max-width: 92ch; }
+  .pq { font-size: 15px; font-weight: 500; margin: 8px 0 0; color: var(--foreground) !important; }
+  .pq small { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); font-weight: 400; margin-right: 8px; }
+  h3.sub { margin: 14px 0 2px; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted-foreground); font-weight: 500; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-weight: 500; color: var(--muted-foreground); font-size: 11px; letter-spacing: .03em; text-transform: uppercase; }
+  td.v { white-space: nowrap; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 9px; font-size: 11px; border: 1px solid var(--border); color: var(--foreground); white-space: nowrap; }
+  .chip.keep { border-color: var(--pos); }
+  .chip.form { border-color: var(--info); }
+  .chip.merge { border-color: var(--warning); }
+  .qlist { display: grid; grid-template-columns: 230px minmax(0, 1fr); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+  .qlist > div { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .qlist > div:nth-last-child(-n+2) { border-bottom: 0; }
+  .qlist .qp { font-size: 13px; font-weight: 500; }
+  .qlist .qq { font-size: 15px; font-weight: 500; }
+  .qlist .qq small { display: block; font-size: 12px; font-weight: 400; color: var(--muted-foreground); margin-top: 2px; }
+  @media (max-width: 640px) { .qlist { grid-template-columns: minmax(0, 1fr); } .qlist > div.qp { border-bottom: 0; padding-bottom: 0; } }
+
+  .ba { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  @media (max-width: 900px) { .ba { grid-template-columns: minmax(0, 1fr); } }
+  .ba > div > .lab { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted-foreground); margin-bottom: 6px; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); min-width: 0; display: flex; flex-direction: column; }
+  .card > h5 { margin: 0; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .card .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .card.ctx { border-style: dashed; opacity: .75; }
+  .card.ctx .body { font-size: 12.5px; color: var(--muted-foreground); }
+  .ctxrow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ctxrow span { font-size: 12px; color: var(--muted-foreground); border: 1px dashed var(--border); border-radius: var(--radius); padding: 5px 10px; background: var(--card); }
+  .ctxrow span b { color: var(--foreground); font-weight: 500; }
+  .why { font-size: 13px; max-width: 96ch; margin: 0; }
+  .why b { font-weight: 500; }
+  .info { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--muted-foreground); color: var(--muted-foreground); font-size: 10px; font-weight: 700; cursor: help; font-style: normal; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px; color: var(--muted-foreground); }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+  .legend i.parity { width: 2px; height: 12px; border-radius: 0; background: repeating-linear-gradient(to bottom, var(--warning) 0 3px, transparent 3px 5px); }
+  .legend i.hatch { background-color: var(--muted); background-image: var(--hatch); }
+  .legend i.round { border-radius: 50%; }
+  .mnote { border: 1px dashed var(--info); border-radius: var(--radius); padding: 8px 12px; font-size: 12px; color: var(--muted-foreground); background: color-mix(in oklab, var(--info) 5%, transparent); }
+  .mnote b { color: var(--foreground); font-weight: 500; }
+
+  .brow { display: grid; grid-template-columns: 110px minmax(0, 1fr) 36px; gap: 10px; align-items: center; font-size: 12.5px; }
+  .brow.nototal { grid-template-columns: 110px minmax(0, 1fr); }
+  .blab { line-height: 1.2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .blab small { display: block; color: var(--muted-foreground); font-size: 11px; }
+  .btot { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .track { position: relative; height: 22px; border-radius: 3px; background: var(--muted); }
+  .track.clear { background: transparent; }
+  .seg { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; overflow: hidden; }
+  .seg + .seg { box-shadow: -2px 0 0 var(--card); }
+  .seg.hatch { background-color: var(--muted); background-image: var(--hatch); }
+  .sl { font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: #fff; pointer-events: none; }
+  .sl.dark { color: #1a1a1a; }
+  .parity { position: absolute; top: -3px; bottom: -3px; left: 50%; width: 0; border-left: 2px dashed var(--warning); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; background: var(--ink); }
+  .rdot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; background: var(--rc); }
+  .axis { position: relative; height: 14px; font-size: 10.5px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .axis span { position: absolute; transform: translateX(-50%); }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+  .pills span { border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; }
+  .fold { all: unset; cursor: pointer; font-size: 12.5px; color: var(--foreground); }
+  .fold small { color: var(--muted-foreground); }
+  .fold:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; border-radius: 3px; }
+  .dgrid { display: grid; grid-template-columns: minmax(120px, 1.4fr) repeat(3, minmax(64px, 1fr)); gap: 3px 8px; font-size: 12px; align-items: center; }
+  .dgrid .h { font-size: 11px; color: var(--muted-foreground); text-align: center; }
+  .dgrid .g { grid-column: 1 / -1; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); margin-top: 6px; }
+  .dgrid .c { height: 18px; display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+  .dgrid .c i { display: block; height: 8px; border-radius: 2px; background: var(--ink); }
+  .dgrid .c.zero { color: var(--muted-foreground); }
+  .orow { display: grid; grid-template-columns: 150px minmax(0, 1fr) 120px; gap: 10px; align-items: center; font-size: 12px; }
+  .orow .oval { font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+  .orow .oval b { color: var(--foreground); font-weight: 500; }
+  svg.ch { width: 100%; height: auto; display: block; overflow: visible; }
+  svg.ch .grd { stroke: var(--border); stroke-width: 1; }
+  svg.ch .zero { stroke: var(--muted-foreground); stroke-width: 1.2; }
+  svg.ch .ax { font-size: 10.5px; fill: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  svg.ch .ln { fill: none; stroke-width: 2.5; stroke-linejoin: round; }
+  svg.ch .pt { stroke: var(--card); stroke-width: 1.5; }
+  svg.ch .end { font-size: 12px; font-weight: 700; }
+  .swrow { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 12.5px; }
+  .sw { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .sw i { width: 22px; height: 12px; border-radius: 2px; background: var(--c); display: inline-block; }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+  .soirees { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rolecards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+  .rcard { border: 1px solid var(--border); border-top: 3px solid var(--ink); border-radius: var(--radius); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; background: color-mix(in oklab, var(--ink) 5%, var(--card)); min-width: 0; }
+  .rcard-h { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-bottom: 2px; }
+  .rcard-h i { width: 9px; height: 9px; border-radius: 50%; background: var(--ink); display: inline-block; }
+  .rcard-h b { font-weight: 600; font-size: 13.5px; }
+  .rcard-h span { font-size: 11px; color: var(--muted-foreground); width: 100%; }
+  .rcard-i { display: grid; grid-template-columns: minmax(0, 1fr) auto 20px; gap: 8px; align-items: center; font-size: 12.5px; min-height: 20px; }
+  .rcard-i.none { color: var(--muted-foreground); }
+  .rcard-l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rcard-n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .rcard-i.none .rcard-n { font-weight: 400; }
+  .rcard-g { font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); margin-top: 6px; }
+  #fiches .rcard-i { grid-template-columns: minmax(0, 1fr) 64px 54px; }
+  .fbar { display: block; height: 8px; border-radius: 2px; background: var(--muted); position: relative; overflow: hidden; }
+  .fbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); border-radius: 2px; }
+  .rcard-n.t { font-weight: 500; font-size: 11.5px; }
+  .chip.new { border-color: var(--foreground); }
+  /* Fiches : rendu des fiches de médailles de l'Escouade (MedalDigest.tsx). */
+  .famblock { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .famhead { display: flex; align-items: baseline; gap: 8px; padding: 7px 12px; background: var(--muted); border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; }
+  .famhead span { font-size: 11.5px; font-weight: 400; color: var(--muted-foreground); }
+  .fambody { padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 5px; }
+  .mfiches .rcard-i { grid-template-columns: minmax(0, 1fr) 56px 50px; }
+  .mfiches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 1000px) { .mfiches { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .mfiches { grid-template-columns: minmax(0, 1fr); } }
+  .mcard { display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--border); border-left: 4px solid var(--ink); border-radius: var(--radius); background: var(--card); padding: 16px; min-width: 0; }
+  .mf-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .mf-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .mf-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; font-weight: 700; color: #fff; }
+  .mf-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mf-dom { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+  .mf-cap { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-foreground); line-height: 1; }
+  .mf-pill { font-size: 12px; font-weight: 600; margin-top: 2px; border-radius: 4px; padding: 2px 6px; }
+  .mf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mf-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border); background: var(--muted); border-radius: 999px; padding: 2px 8px 2px 3px; font-size: 12px; }
+  .mf-chip.zero { opacity: .45; }
+  .mf-ic { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; background: color-mix(in oklab, var(--muted-foreground) 20%, transparent); }
+  .mf-lab { color: color-mix(in oklab, var(--foreground) 80%, transparent); max-width: 7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mf-n { border-radius: 999px; padding: 0 4px; font-size: 10px; font-weight: 700; line-height: 1.3; background: var(--muted); color: var(--foreground); border: 1.5px solid var(--background); min-width: 1.1rem; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mf-foot { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted-foreground); border-top: 1px solid var(--border); padding-top: 8px; }
+  .mf-foot b { font-weight: 500; color: var(--foreground); }
+  .stackwrap { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .repli { display: flex; gap: 8px; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; box-sizing: border-box; }
+  .repli i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 3px; }
+  /* Propositions : légende en bas du graphe, centrée. */
+  .prop .body > .legend { order: 99; justify-content: center; }
+  .card > .body { flex: 1; }
+  .card .cmain { display: flex; flex-direction: column; gap: 10px; margin-block: auto; }
+  .card .body > .legend { justify-content: center; padding-top: 4px; }
+  #tip { position: fixed; z-index: 10; pointer-events: none; display: none; background: var(--popover); color: var(--foreground); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.25); max-width: 320px; line-height: 1.4; }
+</style>
+
+<div class="page">
+  <div class="crumb">
+    <span>Suite de la refonte de l’onglet Usages (futur Emprise) · 26/09/2026</span>
+    <span class="toolbar" role="group" aria-label="Thème">
+      <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">Clair</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">Sombre</button>
+    </span>
+  </div>
+  <h1>Les cinq cartes qui quittent l’onglet Usages</h1>
+  <p class="lede">Une carte vers Dynamique, quatre vers Contributions. Pour chacune : sa forme d'aujourd'hui, la proposition dans sa nouvelle page, et un verdict. Les autres cartes de ces pages ne changent pas ; elles sont rappelées en pointillé pour situer la carte. Chiffres de ta soirée du 22/09 (JGtm, Chocoboflor, Madina97294, sept matchs), relevés dans la base en lecture seule.</p>
+  <nav class="toc" aria-label="Sommaire">
+    <a href="#questions">Les questions</a>
+    <a href="#tri">Le tri</a>
+    <a href="#fda">Écart au FDA attendu</a>
+    <a href="#frags">Répartition des frags</a><a href="#outils">Outils de destruction</a>
+    <a href="#objectif">Cartes d'objectif</a>
+  </nav>
+
+  <section class="block" id="questions">
+    <header>
+      <h2>À confirmer : la question des deux pages d'arrivée</h2>
+      <p>Une carte arrivante reste si elle répond à la question de sa page mieux qu'une carte déjà présente.</p>
+    </header>
+    <div class="qlist">
+      <div class="qp">Escouade › Dynamique</div>
+      <div class="qq">Comment la soirée évolue-t-elle au fil des matchs ?<small>Cumuls, intensité, engagement.</small></div>
+      <div class="qp">Escouade › Contributions</div>
+      <div class="qq">Qui apporte quoi à l'escouade ?<small>Frags et armes, objectif, impact, médailles.</small></div>
+    </div>
+  </section>
+
+  <section class="block" id="tri">
+    <header><h2>Le tri</h2></header>
+    <div class="tablewrap"><table id="tri-table"></table></div>
+  </section>
+
+  <!-- ===== 1. FDA ===== -->
+  <section class="block" id="fda">
+    <header>
+      <h2>Écart cumulé au FDA attendu → Dynamique</h2>
+      <p class="pq"><small>Question de la page</small>Comment la soirée évolue-t-elle au fil des matchs ?</p>
+    </header>
+    <div class="ctxrow"><span>Déjà sur la page : <b>Intensité</b></span><span><b>Premier frag, première mort</b></span><span><b>Rendement | Résistance</b></span><span><b>Balance des dégâts cumulée</b></span><span><b>Engagement</b></span><span><b>Écart d'engagement cumulé</b></span></div>
+    <div class="ba">
+      <div><div class="lab">Aujourd'hui (onglet Usages)</div>
+        <div class="card"><h5>Écart cumulé au FDA attendu</h5><div class="body">
+          <div class="legend" id="lg-fda0"></div>
+          <div id="fda0"></div>
+          <div style="font-size:12px;color:var(--muted-foreground)">Écart moyen par match</div>
+          <div class="pills"><span><i class="dot" style="--ink:var(--p1)"></i>+0,4</span><span><i class="dot" style="--ink:var(--p2)"></i>+0,5</span><span><i class="dot" style="--ink:var(--p3)"></i>+2,2</span></div>
+        </div></div>
+      </div>
+      <div class="prop"><div class="lab">Proposition (Dynamique, à côté de la balance des dégâts)</div>
+        <div class="card"><h5>Écart cumulé au FDA attendu <i class="info" tabindex="0" data-tip="La FDA de chaque match moins celle que le modèle attendait de ce joueur dans ce match, cumulée depuis le premier match. Au-dessus de zéro : mieux qu'attendu.">i</i></h5><div class="body">
+          <div class="legend" id="lg-fda1"></div>
+          <div id="fda1"></div>
+        </div></div>
+        <div class="card ctx" style="margin-top:10px"><h5>Balance des dégâts cumulée <span class="chip" style="margin-left:auto">déjà sur la page, inchangée</span></h5><div class="body">Mêmes joueurs, même abscisse. Fin de soirée : JGtm −36,3, Chocoboflor −18,9, Madina97294 +23,4 vies.</div></div>
+      </div>
+    </div>
+    <p class="why"><b>Ce qui change</b> : les pastilles « écart moyen par match » sortent (des chiffres sous le graphe), la valeur de fin va au bout de chaque courbe, l'abscisse reprend celle de la balance des dégâts (#1 à #7). Couleurs de joueur inchangées.</p>
+    <p class="why"><b>Pourquoi elle ne fait pas doublon avec la balance des dégâts</b> : ce soir les deux disent autre chose. JGtm finit à +3,0 frags sur l'attendu, mais à −36,3 vies de dégâts : il frague ce que le match laissait attendre et encaisse beaucoup plus qu'il ne donne.</p>
+  </section>
+
+  <!-- ===== 2. REPARTITION DES FRAGS ===== -->
+  <section class="block" id="frags">
+    <header>
+      <h2>Répartition des frags → Contributions</h2>
+      <p class="pq"><small>Question de la page</small>Qui apporte quoi à l'escouade ?</p>
+    </header>
+    <div class="ctxrow"><span>Déjà sur la page : <b>Stats par minute</b></span><span><b>Radar synergie</b></span><span><b>Performance</b> (neuf graphes par match)</span><span><b>Impact des coéquipiers</b></span><span><b>Médailles</b></span><span><b>Mécaniques de frag</b> (Halo 5)</span></div>
+    <div class="ba">
+      <div><div class="lab">Aujourd'hui (onglet Usages)</div>
+        <div class="card"><h5>Répartition des frags</h5><div class="body">
+          <div class="legend" id="lg-rf0"></div>
+          <div id="rf0" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div></div>
+      </div>
+      <div class="prop"><div class="lab">Proposition (Contributions)</div>
+        <div class="card"><h5>Répartition des frags <i class="info" tabindex="0" data-tip="Les frags de chacun sur la soirée, par classe d'arme. Le nombre écrit dans un segment est son compte de frags ; le total est au bout de la barre.">i</i></h5><div class="body">
+          <div class="legend" id="lg-rf1"></div>
+          <div id="rf1" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div></div>
+      </div>
+    </div>
+    <p class="why"><b>Ce qui change</b> : le compte de chaque classe s'écrit dans son segment (aujourd'hui au survol seulement), le total au bout de la barre. Même forme, mêmes couleurs.</p>
+    <div class="card"><div class="body">
+      <div style="font-weight:500;font-size:13px">Couleurs des classes face au code des ressources</div>
+      <div class="swrow"><span class="sw"><i style="--c:var(--f-heavy)"></i>Lourde</span>= <span class="sw"><i style="--c:var(--res-power)"></i>armes spéciales</span><span style="color:var(--muted-foreground);font-size:12px">déjà la même valeur, rien à faire.</span></div>
+      <div class="swrow"><span class="sw"><i style="--c:var(--f-vehicle)"></i>Véhicule (indigo)</span><span class="sw"><i style="--c:var(--f-turret)"></i>Tourelle (orange)</span>→ <span class="sw"><i style="--c:var(--f-turret)"></i>Véhicule</span><span class="sw"><i style="--c:var(--f-vehicle)"></i>Tourelle</span></div>
+      <div style="font-size:12px;color:var(--muted-foreground)">Recommandation : échanger les deux valeurs. L'orange est celui des véhicules dans le code des ressources ; la tourelle n'est pas une ressource. Aucun frag de véhicule ni de tourelle le 22/09 : rien ne change à l'écran ce soir-là.</div>
+    </div></div>
+  </section>
+
+  <!-- ===== 3. OUTILS DE DESTRUCTION ===== -->
+  <section class="block" id="outils">
+    <header>
+      <h2>Outils de destruction → Contributions</h2>
+      <p class="pq"><small>Question de la page</small>Qui apporte quoi à l'escouade ?</p>
+    </header>
+    <div class="ba">
+      <div><div class="lab">Aujourd'hui (onglet Usages)</div>
+        <div class="card"><h5>Outils de destruction</h5><div class="body">
+          <div id="od0"></div>
+        </div></div>
+      </div>
+      <div class="prop"><div class="lab">Proposition (Contributions, sous la Répartition des frags)</div>
+        <div class="card"><h5>Outils de destruction <i class="info" tabindex="0" data-tip="Les frags de chacun, arme par arme, sur la soirée. La pastille devant l'arme est la couleur de sa classe dans la Répartition des frags.">i</i></h5><div class="body">
+          <div class="legend" id="lg-od1"></div>
+          <div id="od1"></div>
+        </div></div>
+      </div>
+    </div>
+    <p class="why"><b>Forme</b> : une légende des joueurs (aujourd'hui aucune), le compte de frags au bout de chaque barre (aujourd'hui un pourcentage du total du joueur, effacé sous 5 %), et une pastille à la couleur de la classe devant chaque arme, pour la relier à la Répartition des frags. Le pourcentage passe au survol. « Précision par rôle », propre à Halo 5, reste une carte à part, inchangée.</p>
+    <p class="why"><b>Données : chaque frag nommé par le film.</b> Aujourd'hui la carte garde huit armes et range le reste dans « Autres armes » : ce soir, le Mutilateur (1) et le VK78 Commando (1) de JGtm. Elle prend aussi la mêlée et les grenades sur la feuille de match, qui diffère du film d'un frag : Madina97294 a 4 frags à la grenade à fragmentation au film, 3 sur la feuille ; le code abandonne alors le détail et affiche une ligne « Grenade ». Les bidons et l'environnement n'y figurent pas. La proposition lit tout dans le film : toutes les armes, chaque type de grenade, la mêlée, les bidons et les chutes. Un seul frag reste sans ligne : Madina97294 en compte 121 sur la feuille et 120 au film.</p>
+  </section>
+
+  <!-- ===== 4-5. LES DEUX CARTES D'OBJECTIF ===== -->
+  <section class="block" id="objectif">
+    <header>
+      <h2>Rapport de force par famille de mode · Ce que mon camp prend de l'objectif → Contributions</h2>
+      <p class="pq"><small>Question de la page</small>Qui apporte quoi à l'escouade ?</p>
+      <p>Choisis une soirée : toutes les cartes de la section (l'existant et la proposition) se redessinent avec ses chiffres. Aucune soirée récente de la composition n'a de Crâne : la plus récente est celle du 06/11/2025.</p>
+    </header>
+    <div class="soirees" role="group" aria-label="Soirée">
+      <button type="button" data-s="2209" aria-pressed="false">22/09/2026 · Drapeau</button>
+      <button type="button" data-s="0709" aria-pressed="true">07/09/2026 · Bases + Drapeau</button>
+      <button type="button" data-s="0611" aria-pressed="false">06/11/2025 · Crâne + Roi de la colline + Drapeau</button>
+    </div>
+    <div class="ctxrow" id="obj-matches"></div>
+
+    <h3 class="sub">L'existant (onglet Usages aujourd'hui)</h3>
+    <div class="grid2">
+      <div class="card"><h5>Rapport de force par famille de mode</h5><div class="body">
+        <div class="legend"><span><i style="background:color-mix(in oklab, var(--pos) 80%, var(--muted))"></i>Au-dessus de la parité</span><span><i style="background:color-mix(in oklab, var(--neg) 80%, var(--muted))"></i>En dessous</span><span><i class="parity"></i>Parité</span></div>
+        <div id="rdf0" style="display:flex;flex-direction:column;gap:12px"></div>
+      </div></div>
+      <div class="card"><h5>Ce que mon camp prend de l'objectif</h5><div class="body">
+        <div class="legend" id="lg-cmc0"></div>
+        <div id="cmc0" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div></div>
+    </div>
+
+    <h3 class="sub">Proposition (Contributions) : quatre cartes, dans l'ordre d'un débrief</h3>
+    <div class="grid2 prop">
+      <div class="card"><h5>Rapport de force par famille de mode <i class="info" tabindex="0" data-tip="Pour chaque action de l'objectif, ce que notre camp a fait face à l'adversaire, famille par famille. Le trait orange marque 50 % : autant que l'adversaire.">i</i></h5><div class="body">
+        <div class="legend"><span><i style="background:var(--ally)"></i>Notre camp</span><span><i style="background:var(--enemy)"></i>Adversaire</span><span><i class="parity"></i>50 % : autant que l'adversaire</span></div>
+        <div id="rdf1" style="display:flex;flex-direction:column;gap:12px"></div>
+      </div></div>
+      <div class="card"><h5>Rapport de force au fil de la session <i class="info" tabindex="0" data-tip="Notre part de ce que le lobby a fait à l'objectif, en trois rôles, cumulée depuis le premier match à objectif de la soirée, quel que soit le mode. Chaque match compte pareil ; les petits points sont la part de chaque match, leur taille son volume.">i</i></h5><div class="body">
+        <div class="legend"><span><i style="background:var(--r-take)"></i>Prendre</span><span><i style="background:var(--r-def)"></i>Défendre</span><span><i style="background:var(--r-hold)"></i>Tenir</span><span><i style="background:var(--win)"></i><i style="background:var(--loss);margin-left:-3px"></i>Victoire, défaite</span><span><i class="parity"></i>50 % : autant que l'adversaire</span></div>
+        <div id="fil"></div>
+      </div></div>
+    </div>
+    <div class="card prop" style="margin-top:14px"><h5>Répartition de l’objectif dans l’escouade <i class="info" tabindex="0" data-tip="Une fiche par joueur, plus le reste du camp : ce que chacun a fait à l'objectif, rôle par rôle. Mêmes actions dans le même ordre sur chaque fiche ; un zéro reste affiché, atténué.">i</i></h5><div class="body">
+      <div class="mfiches" id="fiches"></div>
+    </div></div>
+    <div class="card prop" style="margin-top:14px"><h5>Rapport de force, soirée après soirée <i class="info" tabindex="0" data-tip="Notre part de ce que le lobby a fait à l'objectif, en trois rôles, pour chaque soirée d'au moins trois matchs à objectif, quels que soient les modes. Ce soir à droite ; le pointillé fin est la médiane des soirées précédentes. Sous chaque soirée : ses modes et ses victoires.">i</i></h5><div class="body">
+      <div class="legend"><span><i style="background:var(--r-take)"></i>Prendre</span><span><i style="background:var(--r-def)"></i>Défendre</span><span><i style="background:var(--r-hold)"></i>Tenir</span><span><i class="parity"></i>50 % : autant que l'adversaire</span><span><i style="height:2px;background:repeating-linear-gradient(to right, var(--muted-foreground) 0 3px, transparent 3px 5px)"></i>Médiane des soirées précédentes</span><span><i style="background:var(--win)"></i><i style="background:var(--loss);margin-left:-3px"></i>Matchs gagnés, perdus</span></div>
+      <div id="conv"></div>
+      <div class="mnote" id="conv-note"></div>
+    </div></div>
+
+    <p class="why"><b>Quatre lectures sans redite.</b> Le rapport de force : notre camp face à l'adversaire, action par action. Au fil de la session : la même chose, ramenée à trois rôles, match après match. Les fiches : qui, chez nous, a fait quoi (la question de la page). Soirée après soirée : la même mesure face aux soirées précédentes. « Ce que mon camp prend de l'objectif » disparaît sous sa forme actuelle : sa part par joueur passe dans les fiches, sa part camp contre camp dans le rapport de force et dans la courbe.</p>
+    <p class="why"><b>Rapport de force</b> : la barre camp contre camp validée pour « Contrôle des ressources », actions rangées sous Prendre, Défendre et Tenir ; les temps en durée.</p>
+    <p class="why"><b>Au fil de la session, l'axe commun.</b> Prendre, Défendre et Tenir existent dans tous les modes à objectif, et une part (notre camp sur le lobby) n'a pas d'unité : une soirée Bases + Drapeau se lit sur une seule courbe par rôle. Chaque match compte pareil, pour que quatre Bases à 200 actions n'écrasent pas trois Drapeau à 60 ; la taille des points garde la trace du volume. Sous trois matchs à objectif, la carte se masque (le 22/09 n'en a que deux).</p>
+    <p class="why"><b>Rapport de force, soirée après soirée</b> : la même mesure que « Rapport de force au fil de la session » (notre part de Prendre, Défendre, Tenir ; 50 % = autant que l'adversaire), une soirée par point, pour comparer ce soir aux dix soirées précédentes d'au moins trois matchs à objectif, quels que soient leurs modes. Les parts n'ayant pas d'unité, une soirée Bases + Drapeau se compare à une soirée tout Drapeau. Sous chaque soirée : ses modes et ses victoires aux matchs à objectif.</p>
+    <p class="why"><b>Pourquoi pas un seul ratio d'efficacité</b> : un indice qui fondrait les trois rôles et le résultat serait un chiffre de plus à apprendre, sans unité ; il cacherait lequel des trois axes a bougé ; et il tournerait en rond, parce que tenir fait déjà le score aux Bases et au Crâne. Les trois parts disent déjà comment on a tenu chaque axe face à l'adversaire ; le résultat reste à côté, visible, sans être mélangé.</p>
+    <p class="why"><b>Fiches</b> : le style des fiches de médailles de l'Escouade (liseré gauche, emblème, « Rôle dominant » en haut à droite, étiquettes en capitales, pied de fiche Prendre / Défendre / Tenir). Le contenu est celui que tu as validé : une ligne par action, famille par famille, barre à l'échelle de la même ligne sur les quatre fiches, un zéro reste une ligne.</p>
+    <div class="mnote"><b>Le point « deux rendus d'objectifs à réconcilier » du handoff est sans objet.</b> Les neuf tuiles d'objectifs au-dessus des onglets ne s'affichent jamais : le champ qu'elles lisent n'est servi que par l'ancienne route de l'Escouade, que le web n'appelle plus.</div>
+  </section>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  function el(tag, attrs, html) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) { if (k === 'style') e.style.cssText = attrs[k]; else if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); }
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  var nf = function (v, d) { return v.toLocaleString('fr-FR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); };
+  var sgn = function (v, d) { return (v > 0 ? '+' : v < 0 ? '−' : '') + nf(Math.abs(v), d); };
+  var dur = function (s) { s = Math.round(s); var m = Math.floor(s / 60); return m ? m + ' min ' + String(s % 60).padStart(2, '0') : s + ' s'; };
+  var P = [{ k: 'J', label: 'JGtm', ink: 'var(--p1)' }, { k: 'C', label: 'Chocoboflor', ink: 'var(--p2)' }, { k: 'M', label: 'Madina97294', ink: 'var(--p3)' }];
+  function playerLegend(id, extra) {
+    document.getElementById(id).innerHTML = P.map(function (p) { return '<span><i class="round" style="background:' + p.ink + '"></i>' + p.label + '</span>'; }).join('') + (extra || '');
+  }
+
+  // ---------- Tri ----------
+  var TRI = [
+    ['Écart cumulé au FDA attendu', 'Dynamique', 'form', 'Garder, changer la forme', 'Un cumul au fil de la soirée : la question de la page. Valeur de fin au bout des courbes, pastilles de texte retirées ; elle ne redit pas la balance des dégâts (ce soir, les deux divergent).'],
+    ['Répartition des frags', 'Contributions', 'form', 'Garder, changer la forme', 'Qui frague et avec quelle classe d\u2019arme : la réponse directe. Même forme, le compte de chaque classe écrit dans son segment et le total au bout.'],
+    ['Outils de destruction (et Précision par rôle sur Halo 5)', 'Contributions', 'form', 'Garder, changer la forme', 'Le même apport vu arme par arme : une autre lecture que la classe. Légende des joueurs, compte au bout de chaque barre, pastille de classe devant l\u2019arme, chaque frag nommé par le film (plus de « Autres armes »). Précision par rôle (Halo 5) reste à part, inchangée.'],
+    ['Rapport de force par famille de mode', 'Contributions', 'form', 'Garder, changer la forme', 'Ce que notre camp fait à l\u2019objectif face à l\u2019adversaire, action par action, famille par famille. Il prend la barre camp contre camp validée sur l’onglet Emprise, comptes dans les segments.'],
+    ['Ce que mon camp prend de l’objectif', 'Contributions', 'form', 'Garder, changer la forme', 'Devient « Répartition de l’objectif dans l’escouade » : une fiche par joueur au rendu des fiches de médailles, rôle par rôle, la question de la page. Sa part camp contre camp est déjà celle du rapport de force.'],
+    ['Rapport de force, soirée après soirée', 'Contributions', 'new', 'Nouvelle', 'Notre part de Prendre, Défendre et Tenir sur chaque soirée d\u2019au moins trois matchs à objectif, tous modes confondus, avec le résultat : ce soir face à d\u2019habitude. Remplace la conversion au Drapeau, qui ne valait que pour un mode.'],
+    ['Rapport de force au fil de la session', 'Contributions', 'new', 'Nouvelle', 'Notre part de l’objectif en trois rôles (prendre, défendre, tenir), cumulée match après match : un axe commun à tous les modes pour lire la soirée entière. Masquée sous trois matchs à objectif.']
+  ];
+  (function () {
+    var h = '<thead><tr><th>Carte</th><th>Arrive sur</th><th>Verdict</th><th>Pourquoi</th></tr></thead><tbody>';
+    TRI.forEach(function (r) { h += '<tr><td>' + r[0] + '</td><td class="v">' + r[1] + '</td><td class="v"><span class="chip ' + r[2] + '">' + r[3] + '</span></td><td>' + r[4] + '</td></tr>'; });
+    document.getElementById("tri-table").innerHTML = h + '</tbody>';
+  })();
+
+  // ---------- 1. FDA ----------
+  var FDA = [[1.24, 0.56, -2.13, 3.83, 11.62, 8.92, 3.03], [0.78, 0.85, 5.04, 5.65, -1.28, 3.39, 3.61], [5.61, 6.40, 14.39, 17.98, 18.74, 19.44, 15.41]];
+  function fdaChart(hostId, withEnds) {
+    var W = 480, H = 220, L = 34, R = withEnds ? 50 : 12, T = 10, B = 24, n = 7, y0 = -5, y1 = 20;
+    var xOf = function (i) { return L + (i + 0.5) * (W - L - R) / n; };
+    var yOf = function (v) { return T + (1 - (v - y0) / (y1 - y0)) * (H - T - B); };
+    var s = '<svg class="ch" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Écart cumulé au FDA attendu">';
+    for (var v = y0; v <= y1; v += 5) s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yOf(v) + '" y2="' + yOf(v) + '" class="' + (v === 0 ? 'zero' : 'grd') + '"/><text x="' + (L - 6) + '" y="' + (yOf(v) + 3.5) + '" text-anchor="end" class="ax">' + sgn(v) + '</text>';
+    var ends = [];
+    FDA.forEach(function (sr, k) {
+      s += '<polyline points="' + sr.map(function (v, i) { return xOf(i) + ',' + yOf(v); }).join(' ') + '" class="ln" style="stroke:' + P[k].ink + '"/>';
+      sr.forEach(function (v, i) { var last = i === 6; s += '<circle cx="' + xOf(i) + '" cy="' + yOf(v) + '" r="' + (last && withEnds ? 4.5 : 2.8) + '" class="pt" style="fill:' + P[k].ink + '" data-tip="<b>' + P[k].label + '</b> · match #' + (i + 1) + '<br>Cumul : ' + sgn(v, 2) + '"/>'; });
+      ends.push({ x: xOf(6), y: yOf(sr[6]), t: sgn(sr[6], 1), ink: P[k].ink });
+    });
+    if (withEnds) {
+      ends.sort(function (a, b) { return a.y - b.y; });
+      for (var i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 13) ends[i].y = ends[i - 1].y + 13;
+      ends.forEach(function (e) { s += '<text x="' + (e.x + 9) + '" y="' + (e.y + 4) + '" class="end" style="fill:' + e.ink + '">' + e.t + '</text>'; });
+    }
+    for (var j = 0; j < n; j++) s += '<text x="' + xOf(j) + '" y="' + (H - 6) + '" text-anchor="middle" class="ax">#' + (j + 1) + '</text>';
+    document.getElementById(hostId).innerHTML = s + '</svg>';
+  }
+  playerLegend('lg-fda0'); playerLegend('lg-fda1');
+  fdaChart('fda0', false); fdaChart('fda1', true);
+
+  // ---------- 2. Répartition des frags ----------
+  var CLASSES = [
+    ['Arme d’épaule', '--f-shoulder', [28, 24, 45], true], ['Arme de poing', '--f-sidearm', [13, 19, 37], false], ['Lourde', '--f-heavy', [11, 4, 16], true],
+    ['Mêlée', '--f-melee', [6, 13, 16], true], ['Grenade', '--f-grenade', [5, 2, 3], false], ['Environnement', '--f-env', [0, 1, 1], true], ['Non attribué', '--f-unatt', [2, 0, 3], false]
+  ];
+  function classBars(hostId, withValues) {
+    var host = document.getElementById(hostId), max = 121;
+    P.forEach(function (p, pi) {
+      var tot = CLASSES.reduce(function (a, c) { return a + c[2][pi]; }, 0);
+      var row = el('div', { class: 'brow' + (withValues ? '' : ' nototal') });
+      row.appendChild(el('div', { class: 'blab' }, '<i class="dot" style="--ink:' + p.ink + '"></i>' + p.label));
+      var t = el('div', { class: 'track clear' }), x = 0;
+      CLASSES.forEach(function (c) {
+        var v = c[2][pi]; if (!v) return;
+        var w = v / max * 100;
+        t.appendChild(el('div', { class: 'seg', 'data-v': v, 'data-ink': 'var(' + c[1] + ')', 'data-name': c[0], style: 'left:' + x + '%;width:' + w + '%;background:var(' + c[1] + ');' + (x === 0 ? 'border-radius:3px 0 0 3px' : ''), 'data-tip': '<b>' + p.label + '</b> · ' + c[0] + '<br>' + v + ' frags sur ' + tot }, withValues ? '<span class="sl' + (c[3] ? '' : ' dark') + '">' + v + '</span>' : ''));
+        x += w;
+      });
+      if (withValues) {
+        // Repli : les comptes des segments trop étroits s'écrivent sur une ligne au-dessus de la barre.
+        var wrap = el('div', { class: 'stackwrap' });
+        wrap.appendChild(el('div', { class: 'repli' }));
+        wrap.appendChild(t);
+        row.appendChild(wrap);
+      } else row.appendChild(t);
+      if (withValues) row.appendChild(el('div', { class: 'btot' }, tot));
+      host.appendChild(row);
+    });
+  }
+  var clsLegend = CLASSES.map(function (c) { return '<span><i style="background:var(' + c[1] + ')"></i>' + c[0] + '</span>'; }).join('');
+  document.getElementById('lg-rf0').innerHTML = clsLegend;
+  document.getElementById('lg-rf1').innerHTML = clsLegend;
+  classBars('rf0', false);
+  classBars('rf1', true);
+
+  // ---------- 3. Outils de destruction ----------
+  // [ligne, classe, [JGtm, Chocoboflor, Madina97294]].
+  // Aujourd'hui : 8 armes, puis « Autres armes », puis mêlée et grenades (totaux de la feuille de match) ;
+  // environnement et non attribué exclus.
+  var TOOLS_TODAY = [
+    ['BR75', '--f-shoulder', [22, 22, 35]], ['MK50 Sidekick', '--f-sidearm', [13, 17, 34]], ['M41 SPNKr', '--f-heavy', [11, 4, 5]],
+    ['S7 Sniper', '--f-heavy', [0, 0, 11]], ['MA40 AR', '--f-shoulder', [1, 2, 6]], ['Bandit EVO', '--f-shoulder', [2, 0, 4]],
+    ['Déchiqueteur', '--f-sidearm', [0, 2, 3]], ['Carabine Vestige', '--f-shoulder', [1, 0, 0]], ['Autres armes', '--f-shoulder', [2, 0, 0]],
+    ['Mêlée', '--f-melee', [6, 13, 16]], ['Fragmentation', '--f-grenade', [2, 1, 0]], ['Plasma', '--f-grenade', [2, 1, 0]],
+    ['Dynamo', '--f-grenade', [1, 0, 0]], ['Grenade', '--f-grenade', [0, 0, 3]]
+  ];
+  // Proposition : chaque frag nommé par le film, arme par arme, sans regroupement.
+  var TOOLS_PROP = [
+    ['BR75', '--f-shoulder', [22, 22, 35]], ['MK50 Sidekick', '--f-sidearm', [13, 17, 34]], ['Mêlée', '--f-melee', [6, 12, 15]],
+    ['M41 SPNKr', '--f-heavy', [11, 4, 5]], ['S7 Sniper', '--f-heavy', [0, 0, 11]], ['MA40 AR', '--f-shoulder', [1, 2, 6]],
+    ['Grenade à fragmentation', '--f-grenade', [2, 1, 4]], ['Bandit EVO', '--f-shoulder', [2, 0, 4]], ['Déchiqueteur', '--f-sidearm', [0, 2, 3]],
+    ['Objet explosif (bidon)', '--f-unatt', [2, 1, 2]], ['Grenade plasma', '--f-grenade', [2, 1, 0]], ['Chute, environnement', '--f-env', [0, 1, 1]],
+    ['Grenade dynamo', '--f-grenade', [1, 0, 0]], ['Carabine Vestige', '--f-shoulder', [1, 0, 0]], ['Mutilateur', '--f-shoulder', [1, 0, 0]],
+    ['VK78 Commando', '--f-shoulder', [1, 0, 0]], ['Sans ligne au film', '--f-unatt', [0, 0, 1]]
+  ];
+  function toolsChart(hostId, rows, proposal) {
+    var base = [0, 1, 2].map(function (k) { return rows.reduce(function (a, r) { return a + r[2][k]; }, 0); });
+    var W = 480, rowH = 30, labW = proposal ? 150 : 104, padR = 40, top = 4, H = top + rows.length * rowH;
+    var xOf = function (v) { return labW + v / 35 * (W - labW - padR); };
+    var s = '<svg class="ch" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Frags par arme et par joueur">';
+    rows.forEach(function (r, i) {
+      var y = top + i * rowH;
+      if (i % 2 === 0) s += '<rect x="0" y="' + y + '" width="' + W + '" height="' + rowH + '" style="fill:var(--muted);opacity:.5"/>';
+      var lx = 4;
+      if (proposal) { s += '<rect x="4" y="' + (y + rowH / 2 - 4.5) + '" width="9" height="9" rx="2" style="fill:var(' + r[1] + ')"/>'; lx = 18; }
+      s += '<text x="' + lx + '" y="' + (y + rowH / 2 + 3.5) + '" class="ax" style="fill:var(--foreground)">' + r[0] + '</text>';
+      r[2].forEach(function (v, k) {
+        var by = y + 3 + k * 8;
+        var pc = base[k] ? v / base[k] * 100 : 0;
+        if (v) s += '<rect x="' + labW + '" y="' + by + '" width="' + (xOf(v) - labW) + '" height="7" rx="2" style="fill:' + P[k].ink + '" data-tip="<b>' + P[k].label + '</b> · ' + r[0] + '<br>' + v + ' frags (' + nf(pc) + ' % des siens)"/>';
+        if (proposal) { if (v) s += '<text x="' + (xOf(v) + 4) + '" y="' + (by + 6.5) + '" class="ax" style="font-size:9.5px;fill:var(--foreground)">' + v + '</text>'; }
+        else if (pc >= 5) s += '<text x="' + (xOf(v) + 4) + '" y="' + (by + 6.5) + '" class="ax" style="font-size:9.5px">' + nf(pc) + ' %</text>';
+      });
+    });
+    document.getElementById(hostId).innerHTML = s + '</svg>';
+  }
+  playerLegend('lg-od1');
+  toolsChart('od0', TOOLS_TODAY, false);
+  toolsChart('od1', TOOLS_PROP, true);
+
+  // ---------- 4-5. Cartes d'objectif ----------
+  // Colonnes de chaque famille (libellés du code), rangées par rôle.
+  var COLS = {
+    flag: [['Drapeaux capturés', 'Prendre'], ['Aides à la capture', 'Prendre'], ['Drapeaux volés', 'Prendre'], ['Rapatrieurs abattus', 'Prendre'], ['Prises nettes', 'Prendre'],
+      ['Retours', 'Défendre'], ['Drapeaux sécurisés', 'Défendre'], ['Porteurs abattus', 'Défendre'], ['Temps de portage', 'Tenir', true]],
+    zone: [['Zones capturées', 'Prendre'], ['Frags offensifs de zone', 'Prendre'], ['Zones sécurisées', 'Défendre'], ['Frags défensifs de zone', 'Défendre'], ['Temps en zone', 'Tenir', true]],
+    skull: [['Crânes récupérés', 'Prendre'], ['Porteurs de crâne abattus', 'Défendre'], ['Temps de portage', 'Tenir', true]]
+  };
+  // Par soirée : matchs à objectif, familles [nom, type, n matchs, [notre camp, lobby] par colonne (null = colonne absente)],
+  // et les trois rôles de « Ce que mon camp prend » [JGtm, Chocoboflor, Madina97294, allié hors escouade, adversaire].
+  var SOIREES = {
+    '2209': {
+      matches: [['21:23', 'Starboard', 'Drapeau', 'V 3–0'], ['21:46', 'Origin', 'Drapeau', 'D 1–3']],
+      fams: [['Drapeau', 'flag', 2, [[4, 7], [2, 5], [14, 26], [2, 5], [22, 48], [14, 23], [11, 23], [8, 20], [137.5, 248.8]]]],
+      roles: [[7, 5, 7, 3, 21], [10, 6, 11, 6, 33], [64.9, 19.7, 44.8, 8.1, 111.3]]
+    },
+    '0709': {
+      matches: [['21:26', 'Banished Narrows', 'Bases', 'D 82–200'], ['21:34', 'Isolation', 'Bases', 'D 31–200'], ['21:42', 'Illusion', 'Bases', 'V 200–183'], ['21:52', 'Fortress', 'Bases', 'D 89–200'],
+        ['22:00', 'Origin', 'Drapeau', 'D 1–3'], ['22:10', 'Domicile', 'Drapeau', 'D 0–3'], ['22:14', 'Absolution', 'Drapeau', 'D 0–3']],
+      fams: [['Bases', 'zone', 4, [[71, 150], [22, 52], [10, 37], [20, 53], [1067.8, 1993.9]]],
+        ['Drapeau', 'flag', 3, [[1, 10], [1, 8], [15, 31], [0, 6], [29, 70], [7, 22], [24, 54], [10, 17], [170.5, 515.4]]]],
+      roles: [[28, 36, 36, 10, 147], [32, 6, 27, 6, 112], [342.3, 332.6, 348.6, 214.8, 1271.0]]
+    },
+    '0611': {
+      matches: [['21:12', 'Lattice', 'Crâne', 'V 200–113'], ['21:31', 'Recharge', 'Crâne', 'D 121–200'], ['23:08', 'Absolution', 'Roi de la colline', 'V 3–1'], ['23:17', 'Dredge', 'Drapeau', 'V 3–0']],
+      fams: [['Crâne', 'skull', 2, [[3, 4], [6, 20], [331.8, 657.3]]],
+        ['Roi de la colline', 'zone', 1, [[16, 23], [12, 31], [2, 3], [12, 19], [380.4, 616.7]]],
+        ['Drapeau', 'flag', 1, [[3, 3], [1, 1], [6, 14], [2, 3], null, [11, 14], [7, 13], [2, 5], [143.6, 263.5]]]],
+      roles: [[10, 7, 19, 7, 36], [8, 9, 17, 6, 34], [195.5, 143.2, 394.9, 122.2, 681.7]]
+    }
+  };
+  var ROLES = [['Prendre', 'zones capturées · drapeaux saisis'], ['Défendre', 'zones sécurisées · retours'], ['Tenir', 'temps en zone · temps de portage', true]];
+  var NAMES = ['JGtm', 'Chocoboflor', 'Madina97294', 'Coéquipier hors escouade', 'Adversaire'];
+  var famHead = function (f) { return el('div', { style: 'font-size:12px;font-weight:500;margin-top:2px' }, f[0] + ' <span style="color:var(--muted-foreground);font-weight:400">— ' + f[2] + ' match' + (f[2] > 1 ? 's' : '') + '</span>'); };
+
+  function renderObjectives(key) {
+    var S = SOIREES[key];
+    document.getElementById('obj-matches').innerHTML = S.matches.map(function (m) { return '<span>' + m[0] + ' · <b>' + m[1] + '</b> · ' + m[2] + ' · ' + m[3] + '</span>'; }).join('');
+
+    // Existant : écart à la parité, valeur au bout.
+    var h0 = document.getElementById('rdf0'); h0.innerHTML = '';
+    S.fams.forEach(function (f) {
+      var box = el('div', { style: 'display:flex;flex-direction:column;gap:5px' });
+      box.appendChild(famHead(f));
+      COLS[f[1]].forEach(function (c, i) {
+        var v = f[3][i]; if (!v) return;
+        var pc = v[0] / v[1] * 100, gap = pc - 50;
+        var row = el('div', { class: 'orow' });
+        row.appendChild(el('div', {}, c[0]));
+        var t = el('div', { class: 'track', style: 'height:14px' });
+        t.appendChild(el('div', { class: 'seg', style: 'left:' + Math.min(50, pc) + '%;width:' + Math.abs(gap) + '%;background:color-mix(in oklab, var(' + (gap >= 0 ? '--pos' : '--neg') + ') 80%, var(--muted))' }));
+        t.appendChild(el('div', { class: 'parity' }));
+        row.appendChild(t);
+        row.appendChild(el('div', { class: 'oval' }, '<b>' + nf(pc, 1) + ' %</b> · ' + sgn(gap, 1) + ' pts'));
+        box.appendChild(row);
+      });
+      h0.appendChild(box);
+    });
+
+    // Proposition : notre camp contre l'adversaire, rangé par rôle.
+    var h1 = document.getElementById('rdf1'); h1.innerHTML = '';
+    S.fams.forEach(function (f) {
+      var block = el('div', { class: 'famblock' });
+      block.appendChild(el('div', { class: 'famhead' }, f[0] + ' <span>' + f[2] + ' match' + (f[2] > 1 ? 's' : '') + '</span>'));
+      var box = el('div', { class: 'fambody' });
+      block.appendChild(box);
+      var lastRole = '';
+      COLS[f[1]].forEach(function (c, i) {
+        var v = f[3][i]; if (!v) return;
+        if (c[1] !== lastRole) { lastRole = c[1]; box.appendChild(el('div', { style: 'font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-foreground);margin-top:3px' }, c[1])); }
+        var us = v[0], them = v[1] - v[0], sh = us / v[1] * 100, fm = c[2] ? dur : String;
+        var row = el('div', { class: 'brow nototal', style: 'grid-template-columns:150px minmax(0,1fr);font-size:12px' });
+        row.appendChild(el('div', { class: 'blab' }, c[0]));
+        var t = el('div', { class: 'track', style: 'height:20px' });
+        if (us > 0) t.appendChild(el('div', { class: 'seg', style: 'left:0;width:' + sh + '%;background:var(--ally);border-radius:' + (them > 0 ? '3px 0 0 3px' : '3px'), 'data-tip': '<b>Notre camp</b> · ' + c[0] + '<br>' + fm(us) + ' (' + nf(sh) + ' %)' }, '<span class="sl">' + fm(us) + ' · ' + nf(sh) + ' %</span>'));
+        if (them > 0) t.appendChild(el('div', { class: 'seg', style: 'left:' + sh + '%;width:' + (100 - sh) + '%;background:var(--enemy);border-radius:' + (us > 0 ? '0 3px 3px 0' : '3px'), 'data-tip': '<b>Adversaire</b> · ' + c[0] + '<br>' + fm(them) + ' (' + nf(100 - sh) + ' %)' }, '<span class="sl">' + (us > 0 ? '' : 'nous 0 · ') + fm(them) + '</span>'));
+        t.appendChild(el('div', { class: 'parity' }));
+        row.appendChild(t);
+        box.appendChild(row);
+      });
+      h1.appendChild(block);
+    });
+
+    // Ce que mon camp prend : existant (parts écrites au-dessus de 12 %, adversaire hachuré).
+    var c0 = document.getElementById('cmc0'); c0.innerHTML = '';
+    var inks0 = ['var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--rest)', null];
+    ROLES.forEach(function (r, ri) {
+      var vals = S.roles[ri], tot = vals.reduce(function (a, b) { return a + b; }, 0);
+      var row = el('div', { class: 'brow nototal' });
+      row.appendChild(el('div', { class: 'blab' }, r[0] + '<small>' + r[1] + '</small>'));
+      var t = el('div', { class: 'track' }), x = 0;
+      vals.forEach(function (v, i) {
+        var w = v / tot * 100; if (!v) return;
+        t.appendChild(el('div', { class: 'seg' + (i === 4 ? ' hatch' : ''), style: 'left:' + x + '%;width:' + w + '%;' + (inks0[i] ? 'background:' + inks0[i] : ''), 'data-tip': '<b>' + NAMES[i] + '</b><br>' + nf(v, r[2] ? 1 : 0) }, w >= 12 ? '<span class="sl' + (i >= 3 ? ' dark' : '') + '">' + nf(w) + ' %</span>' : ''));
+        x += w;
+      });
+      row.appendChild(t);
+      c0.appendChild(row);
+    });
+
+    // Répartition de l’objectif dans l’escouade : style des fiches de médailles de l'Escouade,
+    // contenu validé : une ligne par action, famille par famille, barre à l'échelle de la ligne.
+    var fh = document.getElementById('fiches'); fh.innerHTML = '';
+    var FI = FICHES[key];
+    var who = [['JGtm', 'var(--p1)', 'J'], ['Chocoboflor', 'var(--p2)', 'C'], ['Madina97294', 'var(--p3)', 'M'], ['Reste du camp', 'var(--rest)', '+']];
+    var ROLE_NAMES = ['Prendre', 'Défendre', 'Tenir'];
+    who.forEach(function (w, wi) {
+      // Rôle dominant : celui où le joueur pèse le plus dans notre camp.
+      var shares = S.roles.map(function (r) { var camp = r[0] + r[1] + r[2] + r[3]; return camp ? r[wi] / camp : 0; });
+      var dom = shares.indexOf(Math.max.apply(null, shares));
+      var h = '<div class="mf-head"><div class="mf-who"><span class="mf-av" style="background:' + w[1] + '">' + w[2] + '</span><span class="mf-name">' + w[0] + '</span></div>' +
+        '<div class="mf-dom"><span class="mf-cap">Rôle dominant</span><span class="mf-pill" style="background:color-mix(in oklab, ' + w[1] + ' 14%, transparent);color:' + w[1] + '">' + ROLE_NAMES[dom] + '</span></div></div>';
+      FI.forEach(function (f, fi) {
+        var fam = S.fams[fi];
+        h += '<div><p class="mf-cap" style="margin:0 0 6px">' + fam[0] + '</p>';
+        COLS[fam[1]].forEach(function (c, ci) {
+          var r = f[ci]; if (!r) return;
+          var v = r[wi], max = Math.max.apply(null, r) || 1;
+          var txt = c[2] ? dur(v) : String(v);
+          h += '<div class="rcard-i' + (v === 0 ? ' none' : '') + '" data-tip="<b>' + w[0] + '</b> · ' + fam[0] + '<br>' + c[0] + ' : ' + txt + '"><span class="rcard-l">' + c[0] + '</span>' +
+            '<span class="fbar">' + (v ? '<i style="width:' + (v / max * 100) + '%"></i>' : '') + '</span><span class="rcard-n' + (c[2] ? ' t' : '') + '">' + txt + '</span></div>';
+        });
+        h += '</div>';
+      });
+      h += '<div class="mf-foot"><span><b>' + S.roles[0][wi] + '</b> Prendre</span><span><b>' + S.roles[1][wi] + '</b> Défendre</span><span><b>' + dur(S.roles[2][wi]) + '</b> Tenir</span></div>';
+      fh.appendChild(el('div', { class: 'mcard', style: '--ink:' + w[1] }, h));
+    });
+
+    renderFil(key);
+    // Rapport de force, soirée après soirée.
+    renderHabit(key);
+    fitLabels();
+  }
+
+  // Colonnes des fiches, dans l'ordre de COLS : [JGtm, Chocoboflor, Madina97294, reste du camp].
+  var FICHES = {
+    '2209': [[[4, 0, 0, 0], [0, 1, 1, 0], [3, 4, 5, 2], [0, 0, 1, 1], [7, 5, 8, 2], [3, 4, 3, 4], [5, 2, 4, 0], [2, 0, 4, 2], [64.9, 19.7, 44.8, 8.1]]],
+    '0709': [[[18, 26, 20, 7], [5, 6, 11, 0], [7, 1, 2, 0], [7, 1, 10, 2], [271.3, 286.0, 308.5, 202.0]],
+      [[0, 1, 0, 0], [0, 0, 0, 1], [5, 3, 5, 2], [0, 0, 0, 0], [12, 6, 8, 3], [4, 0, 2, 1], [12, 4, 7, 1], [2, 0, 6, 2], [71.0, 46.6, 40.1, 12.8]]],
+    '0611': [[[1, 1, 1, 0], [1, 1, 4, 0], [128.1, 38.5, 158.6, 6.6]],
+      [[3, 5, 5, 3], [3, 1, 5, 3], [1, 0, 1, 0], [1, 2, 7, 2], [36.6, 101.9, 126.3, 115.6]],
+      [[1, 0, 2, 0], [0, 0, 1, 0], [1, 0, 5, 0], [1, 0, 0, 1], null, [4, 4, 0, 3], [1, 1, 5, 0], [0, 1, 0, 1], [30.8, 2.8, 110.0, 0]]]
+  };
+
+  // Rapport de force au fil de la session : par match à objectif, [heure, carte, mode, résultat, score,
+  // [notre camp, lobby] pour Prendre, Défendre, Tenir (s)].
+  var PERMATCH = {
+    '2209': [['21:23', 'Starboard', 'Drapeau', 'V', '3–0', [14, 21], [23, 40], [87.7, 121.8]], ['21:46', 'Origin', 'Drapeau', 'D', '1–3', [8, 22], [10, 26], [49.8, 127.0]]],
+    '0709': [['21:26', 'Banished Narrows', 'Bases', 'D', '82–200', [29, 56], [12, 33], [285.7, 599.9]], ['21:34', 'Isolation', 'Bases', 'D', '31–200', [14, 35], [3, 13], [140.8, 316.4]],
+      ['21:42', 'Illusion', 'Bases', 'V', '200–183', [29, 64], [8, 23], [401.3, 619.8]], ['21:52', 'Fortress', 'Bases', 'D', '89–200', [21, 47], [7, 21], [240.0, 457.8]],
+      ['22:00', 'Origin', 'Drapeau', 'D', '1–3', [7, 20], [13, 38], [86.0, 209.3]], ['22:10', 'Domicile', 'Drapeau', 'D', '0–3', [3, 11], [7, 18], [32.7, 110.1]],
+      ['22:14', 'Absolution', 'Drapeau', 'D', '0–3', [7, 24], [21, 37], [51.8, 196.0]]],
+    '0611': [['21:12', 'Lattice', 'Crâne', 'V', '200–113', [1, 2], [0, 8], [206.6, 326.1]], ['21:31', 'Recharge', 'Crâne', 'D', '121–200', [2, 2], [6, 12], [125.2, 331.2]],
+      ['23:08', 'Absolution', 'Roi de la colline', 'V', '3–1', [28, 54], [14, 22], [380.4, 616.7]], ['23:17', 'Dredge', 'Drapeau', 'V', '3–0', [12, 21], [20, 32], [143.6, 263.5]]]
+  };
+  var FIL_ROLES = [['Prendre', 'var(--r-take)', 5, false], ['Défendre', 'var(--r-def)', 6, false], ['Tenir', 'var(--r-hold)', 7, true]];
+  function renderFil(key) {
+    var M = PERMATCH[key], n = M.length, host = document.getElementById('fil');
+    if (n < 3) {
+      host.innerHTML = '<div class="mnote"><b>' + n + ' matchs à objectif ce soir</b> : sous le minimum de trois, la carte se masque. Choisis le 07/09 ou le 06/11 pour la voir.</div>';
+      return;
+    }
+    var W = 480, H = 262, L = 36, R = 46, T = 10, B = 62;
+    var xOf = function (i) { return L + (i + 0.5) * (W - L - R) / n; };
+    var yOf = function (p) { return T + (1 - p / 100) * (H - T - B); };
+    var s = '<svg class="ch" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Notre part de l’objectif, cumulée au fil de la soirée, par rôle">';
+    [0, 25, 50, 75, 100].forEach(function (p) {
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yOf(p) + '" y2="' + yOf(p) + '" ' + (p === 50 ? 'style="stroke:var(--warning);stroke-width:1.5;stroke-dasharray:4 3"' : 'class="grd"') + '/>';
+      s += '<text x="' + (L - 6) + '" y="' + (yOf(p) + 3.5) + '" text-anchor="end" class="ax">' + p + (p === 100 ? ' %' : '') + '</text>';
+    });
+    var ends = [];
+    FIL_ROLES.forEach(function (ro) {
+      var maxVol = Math.max.apply(null, M.map(function (m) { return m[ro[2]][1]; }));
+      var sum = 0, line = [];
+      M.forEach(function (m, i) {
+        var v = m[ro[2]], share = v[1] ? v[0] / v[1] * 100 : 0;
+        sum += share;
+        var cum = sum / (i + 1);
+        line.push([xOf(i), yOf(cum)]);
+        var r = 2 + Math.sqrt(v[1] / maxVol) * 5;
+        var f = ro[3] ? dur : String;
+        s += '<circle cx="' + xOf(i) + '" cy="' + yOf(share) + '" r="' + r.toFixed(1) + '" style="fill:' + ro[1] + ';opacity:.45;stroke:var(--card);stroke-width:1" data-tip="<b>' + m[0] + ' · ' + m[1] + '</b> (' + m[2] + ', ' + (m[3] === 'V' ? 'victoire' : 'défaite') + ' ' + m[4] + ')<br>' + ro[0] + ' : ' + f(v[0]) + ' sur ' + f(v[1]) + ' (' + nf(share) + ' %)<br>Cumul : ' + nf(cum) + ' %"/>';
+      });
+      s += '<polyline points="' + line.map(function (p) { return p[0] + ',' + p[1]; }).join(' ') + '" class="ln" style="stroke:' + ro[1] + '"/>';
+      var last = line[line.length - 1];
+      s += '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="4.5" style="fill:' + ro[1] + ';stroke:var(--card);stroke-width:2"/>';
+      ends.push({ x: last[0], y: last[1], t: nf(sum / n) + ' %', ink: ro[1] });
+    });
+    ends.sort(function (a, b) { return a.y - b.y; });
+    for (var k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 13) ends[k].y = ends[k - 1].y + 13;
+    ends.forEach(function (e) { s += '<text x="' + (e.x + 9) + '" y="' + (e.y + 4) + '" class="end" style="fill:' + e.ink + '">' + e.t + '</text>'; });
+    M.forEach(function (m, i) {
+      var cw = (W - L - R) / n - 3, cy = H - B + 8;
+      s += '<text x="' + xOf(i) + '" y="' + (H - B + 2) + '" text-anchor="middle" class="ax" style="font-size:9.5px">' + m[0] + '</text>';
+      s += '<rect x="' + (xOf(i) - cw / 2) + '" y="' + cy + '" width="' + cw + '" height="8" rx="2" style="fill:var(' + (m[3] === 'V' ? '--win' : '--loss') + ')" data-tip="<b>' + m[0] + ' · ' + m[1] + '</b><br>' + m[2] + ', ' + (m[3] === 'V' ? 'victoire' : 'défaite') + ' ' + m[4] + '"/>';
+      s += '<text x="' + xOf(i) + '" y="' + (cy + 21) + '" text-anchor="middle" class="ax" style="font-size:9.5px;fill:var(--foreground)">' + (m[1].length > 11 ? m[1].slice(0, 10) + '.' : m[1]) + '</text>';
+      s += '<text x="' + xOf(i) + '" y="' + (cy + 33) + '" text-anchor="middle" class="ax" style="font-size:9.5px">' + m[2] + '</text>';
+    });
+    host.innerHTML = s + '</svg>';
+  }
+
+  // Rapport de force, soirée après soirée : soirées d'au moins 3 matchs à objectif (toutes familles, drapeau neutre exclu).
+  // [date, modes, matchs à objectif, victoires, Prendre, Défendre, Tenir] ; parts = moyenne des parts par match.
+  var HAB_ALL = [
+    ['06/04', '2 D · 1 B', 3, 1, 51.6, 49.9, 50.5], ['19/04', '2 B · 2 D', 4, 2, 50.9, 53.9, 56.8], ['27/04', '5 B · 1 D', 6, 2, 48.0, 49.3, 56.7],
+    ['05/05', '3 D · 1 B', 4, 2, 49.2, 61.7, 60.2], ['11/05', '2 B · 2 D', 4, 2, 52.4, 52.6, 56.2], ['21/05', '6 D', 6, 3, 47.6, 49.6, 48.3],
+    ['03/06', '2 B · 2 D', 4, 3, 51.5, 52.3, 54.1], ['09/06', '2 D · 1 B', 3, 2, 50.8, 55.0, 53.0], ['28/07', '3 D', 3, 0, 25.9, 40.1, 24.1],
+    ['31/07', '2 D · 1 B', 3, 2, 46.5, 47.5, 54.8], ['07/09', '4 B · 3 D', 7, 1, 39.0, 36.8, 43.8]
+  ];
+  var HAB = {
+    '2209': { rows: null, note: '<b>Deux matchs à objectif ce soir</b> : sous le minimum de trois, la soirée n’a pas de point et la carte se masque. C’est fréquent : 24 soirées de la composition sur 49 avec de l’objectif n’en ont qu’un ou deux.' },
+    '0709': { rows: HAB_ALL, note: 'Les dix soirées précédentes d’au moins trois matchs à objectif, quels que soient leurs modes (B : Bases, D : Drapeau). Chaque match pèse pareil dans la part d’une soirée, comme dans « Rapport de force au fil de la session ».' },
+    '0611': { rows: null, note: '<b>Première soirée à objectif de la composition</b> (trois matchs ou plus) : pas d’historique. Ce soir-là : Prendre 65 %, Défendre 44 %, Tenir 54 %, 3 victoires sur 4.' }
+  };
+  function renderHabit(key) {
+    var C = HAB[key], host = document.getElementById('conv');
+    document.getElementById('conv-note').innerHTML = C.note;
+    if (!C.rows) { host.innerHTML = ''; return; }
+    var rows = C.rows, n = rows.length;
+    var W = 760, H = 290, L = 40, R = 52, T = 12, B = 64;
+    var xOf = function (i) { return L + (i + 0.5) * (W - L - R) / n; };
+    var yOf = function (p) { return T + (1 - p / 100) * (H - T - B); };
+    var cw = (W - L - R) / n;
+    var s = '<svg class="ch" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Notre part de l’objectif par rôle, soirée après soirée">';
+    s += '<rect x="' + (xOf(n - 1) - cw / 2) + '" y="' + T + '" width="' + cw + '" height="' + (H - T - B) + '" style="fill:color-mix(in oklab, var(--muted) 75%, transparent)"/>';
+    [0, 25, 50, 75, 100].forEach(function (p) {
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yOf(p) + '" y2="' + yOf(p) + '" ' + (p === 50 ? 'style="stroke:var(--warning);stroke-width:1.5;stroke-dasharray:4 3"' : 'class="grd"') + '/>';
+      s += '<text x="' + (L - 6) + '" y="' + (yOf(p) + 3.5) + '" text-anchor="end" class="ax">' + p + (p === 100 ? ' %' : '') + '</text>';
+    });
+    var ends = [];
+    [['Prendre', 'var(--r-take)', 4], ['Défendre', 'var(--r-def)', 5], ['Tenir', 'var(--r-hold)', 6]].forEach(function (ro) {
+      var vals = rows.map(function (r) { return r[ro[2]]; });
+      var past = vals.slice(0, n - 1).sort(function (a, b) { return a - b; });
+      var med = (past[Math.floor((past.length - 1) / 2)] + past[Math.ceil((past.length - 1) / 2)]) / 2;
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yOf(med) + '" y2="' + yOf(med) + '" style="stroke:' + ro[1] + ';stroke-width:1;stroke-dasharray:2 3" data-tip="<b>' + ro[0] + '</b><br>Médiane des soirées précédentes : ' + nf(med) + ' %"/>';
+      s += '<polyline points="' + vals.map(function (v, i) { return xOf(i) + ',' + yOf(v); }).join(' ') + '" class="ln" style="stroke:' + ro[1] + '"/>';
+      vals.forEach(function (v, i) {
+        var r = rows[i], last = i === n - 1;
+        s += '<circle cx="' + xOf(i) + '" cy="' + yOf(v) + '" r="' + (last ? 5 : 3) + '" class="pt" style="fill:' + ro[1] + '" data-tip="<b>' + ro[0] + '</b> · ' + (last ? 'ce soir' : 'soirée du ' + r[0]) + '<br>Notre part : ' + nf(v, 1) + ' % (médiane des précédentes ' + nf(med, 1) + ' %)"/>';
+      });
+      ends.push({ x: xOf(n - 1), y: yOf(vals[n - 1]), t: nf(vals[n - 1]) + ' %', ink: ro[1] });
+    });
+    ends.sort(function (a, b) { return a.y - b.y; });
+    for (var k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 13) ends[k].y = ends[k - 1].y + 13;
+    ends.forEach(function (e) { s += '<text x="' + (e.x + 9) + '" y="' + (e.y + 4) + '" class="end" style="fill:' + e.ink + '">' + e.t + '</text>'; });
+    rows.forEach(function (r, i) {
+      var cur = i === n - 1, x0 = xOf(i) - cw / 2 + 3, bw = cw - 6, by = H - B + 8;
+      s += '<text x="' + xOf(i) + '" y="' + (H - B + 2) + '" text-anchor="middle" class="ax"' + (cur ? ' style="fill:var(--foreground);font-weight:600"' : '') + '>' + (cur ? 'ce soir' : r[0]) + '</text>';
+      // Résultat de la soirée : part des matchs à objectif gagnés en vert, le reste en rouge.
+      var wv = r[3] / r[2] * bw;
+      s += '<g data-tip="<b>' + (cur ? 'Ce soir' : 'Soirée du ' + r[0]) + '</b><br>' + r[3] + ' victoire' + (r[3] > 1 ? 's' : '') + ' sur ' + r[2] + ' matchs à objectif (' + r[1] + ')">';
+      if (r[3]) s += '<rect x="' + x0 + '" y="' + by + '" width="' + wv + '" height="10" rx="2" style="fill:var(--win)"/>';
+      if (r[3] < r[2]) s += '<rect x="' + (x0 + wv) + '" y="' + by + '" width="' + (bw - wv) + '" height="10" rx="2" style="fill:var(--loss)"/>';
+      s += '</g>';
+      s += '<text x="' + xOf(i) + '" y="' + (by + 23) + '" text-anchor="middle" class="ax" style="font-size:9.5px;fill:var(--foreground)">' + r[3] + ' sur ' + r[2] + '</text>';
+      s += '<text x="' + xOf(i) + '" y="' + (by + 36) + '" text-anchor="middle" class="ax" style="font-size:9.5px">' + r[1] + '</text>';
+    });
+    host.innerHTML = s + '</svg>';
+  }
+  playerLegend('lg-cmc0', '<span><i style="background:var(--rest)"></i>Coéquipier hors escouade</span><span><i class="hatch"></i>Équipe adverse</span>');
+  document.querySelectorAll('.soirees button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.soirees button').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+      renderObjectives(b.getAttribute('data-s'));
+    });
+  });
+
+  renderObjectives('0709');
+
+
+
+  // Légendes toujours en bas du bloc et centrées ; le graphe centré verticalement dans le bloc.
+  document.querySelectorAll('.card > .body').forEach(function (body) {
+    var legends = Array.prototype.filter.call(body.children, function (c) { return c.classList.contains('legend'); });
+    var main = el('div', { class: 'cmain' });
+    Array.prototype.slice.call(body.children).forEach(function (c) { if (legends.indexOf(c) < 0) main.appendChild(c); });
+    body.appendChild(main);
+    legends.forEach(function (l) { body.appendChild(l); });
+  });
+
+  // Libellés dans les segments : masqués s'ils ne tiennent pas (jamais tronqués).
+  function fitLabels() {
+    // Une étiquette ne s'écrit dans son segment que si elle y tient avec 6 px de marge de chaque côté.
+    document.querySelectorAll('.seg > .sl').forEach(function (s) {
+      s.style.visibility = 'visible';
+      if (s.getBoundingClientRect().width + 12 > s.parentElement.getBoundingClientRect().width) s.style.visibility = 'hidden';
+    });
+    document.querySelectorAll('.stackwrap').forEach(function (w) {
+      var hidden = [];
+      w.querySelectorAll('.seg').forEach(function (g) {
+        var s = g.querySelector('.sl');
+        if (s && s.style.visibility === 'hidden') hidden.push('<span title="' + g.getAttribute('data-name') + '"><i style="background:' + g.getAttribute('data-ink') + '"></i>' + g.getAttribute('data-v') + '</span>');
+      });
+      var r = w.querySelector('.repli');
+      r.innerHTML = hidden.join('');
+      r.hidden = !hidden.length;
+      var first = w.querySelector(".seg .sl[style*=hidden]");
+      r.style.paddingLeft = first ? first.parentElement.style.left : "0";
+    });
+  }
+  fitLabels();
+  var fp = false;
+  window.addEventListener('resize', function () { if (fp) return; fp = true; requestAnimationFrame(function () { fp = false; fitLabels(); }); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLabels);
+
+  var tip = document.getElementById('tip');
+  function show(t, x, y) {
+    tip.innerHTML = t.getAttribute('data-tip'); tip.style.display = 'block';
+    var r = tip.getBoundingClientRect();
+    tip.style.left = Math.max(8, Math.min(x + 14, window.innerWidth - r.width - 8)) + 'px';
+    tip.style.top = Math.max(8, y + 14 + r.height > window.innerHeight ? y - r.height - 10 : y + 14) + 'px';
+  }
+  document.addEventListener('mousemove', function (e) { var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (t) show(t, e.clientX, e.clientY); else tip.style.display = 'none'; });
+  document.addEventListener('focusin', function (e) { var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (!t) return; var r = t.getBoundingClientRect(); show(t, r.left, r.bottom); });
+  document.addEventListener('focusout', function () { tip.style.display = 'none'; });
+  document.querySelectorAll('[data-theme-set]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var v = b.getAttribute('data-theme-set');
+      if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v);
+      document.querySelectorAll('[data-theme-set]').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    });
+  });
+})();
+</script>

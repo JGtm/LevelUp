@@ -251,6 +251,14 @@ func (s *Store) purgeExpiredLocked() {
 	}
 }
 
+// NewID génère un identifiant de job non énumérable — LE générateur du dépôt.
+//
+// Exporté pour la file durable de construction (internal/ops/build_queue.go),
+// qui a besoin d'identifiants de job de la même forme : dupliquer le schéma
+// aurait fait diverger deux générateurs d'ID de job, dont un seul est audité par
+// jobid_test.go.
+func NewID() string { return newJobID() }
+
 // newJobID génère un identifiant de job non énumérable.
 //
 // V3 (sécurité) : l'ancien format `job_<UnixNano>` était horodaté donc énumérable

@@ -60,19 +60,6 @@ func TestNewSISUProvider_DefaultIDs(t *testing.T) {
 	}
 }
 
-// ─── TrySilentRefresh ─────────────────────────────────────────────────────────
-
-func TestSISUProvider_TrySilentRefresh_AlwaysEmpty(t *testing.T) {
-	p := NewSISUProvider()
-	token, err := p.TrySilentRefresh(context.Background(), "some-cache-json")
-	if err != nil {
-		t.Fatalf("TrySilentRefresh erreur inattendue : %v", err)
-	}
-	if token != "" {
-		t.Errorf("TrySilentRefresh retourne %q, want vide", token)
-	}
-}
-
 // ─── TryOAuthRefresh ──────────────────────────────────────────────────────────
 
 func TestSISUProvider_TryOAuthRefresh_EmptyToken(t *testing.T) {

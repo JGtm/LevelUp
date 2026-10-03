@@ -18,7 +18,7 @@
 // que la fenêtre de retry est marqué no-film définitif (sort du retry set).
 //
 // Tout est composé des briques existantes (fetchHighlightChunkResilient,
-// analysis.ParseHighlightEvents, persistCombatCompletion, isNoFilmDefinitive,
+// decfilm.ParseHighlightEvents, persistCombatCompletion, isNoFilmDefinitive,
 // EventsCompletionPersister.MarkNoFilmDefinitive) — zéro logique dupliquée.
 package sync
 
@@ -31,8 +31,9 @@ import (
 	"strconv"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -261,7 +262,7 @@ type chunkFetch struct {
 	matchID string
 	found   bool
 	err     error
-	events  []analysis.HighlightEvent
+	events  []highlightevent.HighlightEvent
 }
 
 // processChunk fetche tout le lot HORS lease, puis persiste le lot en UNE fenêtre
@@ -278,7 +279,7 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 		data, ver, found, err := fetchHighlightChunkResilient(ctx, cfg.Client, mid, time.Time{})
 		f := chunkFetch{matchID: mid, found: found && len(data) > 0, err: err}
 		if err == nil && f.found {
-			if evs, perr := analysis.ParseHighlightEvents(data, ver); perr != nil {
+			if evs, perr := decfilm.ParseHighlightEvents(data, ver); perr != nil {
 				f.err = perr
 			} else {
 				f.events = evs

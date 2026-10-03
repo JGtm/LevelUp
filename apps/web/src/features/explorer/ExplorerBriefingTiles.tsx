@@ -24,7 +24,8 @@ import type {
 } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { BriefingTile } from './BriefingTile'
-import { deltaToken, formatSignedPoints } from './ExplorerBriefing.logic'
+import { formatSignedPoints } from '@/lib/baseline'
+import { deltaToken } from './ExplorerBriefing.logic'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 

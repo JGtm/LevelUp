@@ -23,12 +23,13 @@ const (
 	KindCSRRank      Kind = "csr-rank"
 	KindWeapon       Kind = "weapon"
 	KindCommendation Kind = "commendation"
+	KindVehicle      Kind = "vehicle"
 )
 
 // Valid retourne vrai si k est un Kind connu de ce package.
 func (k Kind) Valid() bool {
 	switch k {
-	case KindMap, KindMedal, KindCSRRank, KindWeapon, KindCommendation:
+	case KindMap, KindMedal, KindCSRRank, KindWeapon, KindCommendation, KindVehicle:
 		return true
 	}
 	return false

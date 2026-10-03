@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ func UpsertXUIDAlias(ctx context.Context, db *sql.DB, xuid, gamertag string) err
 // ──────────────────────────────────────────────────────────────────────────────
 
 // UpsertPlayerEnrichment écrit la row baseline stage='live' d'un match collecté
-// (chemin legacy non-batch : engine_fetch / engine_process_match). Append-only #23046 :
+// (chemin legacy non-batch : engine_fetch / engine_process_match). Append-only #23645 :
 // INSERT pur (plus d'ON CONFLICT). teammates_signature écrit si fourni (sinon NULL —
 // un stage 'teammates' ultérieur ou la baseline fournira la valeur via la vue merge).
 // Marque le match comme collecté pour le known-set (loadKnownMatchIDs). L'idempotence
@@ -144,7 +145,7 @@ func InsertWeaponKills(ctx context.Context, db *sql.DB, matchID, xuid string, at
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	// Append-only #23046 (Phase 2) : plus de DELETE WHERE (match_id,xuid) sur idx_wk
+	// Append-only #23645 (Phase 2) : plus de DELETE WHERE (match_id,xuid) sur idx_wk
 	// (vecteur ART, DB shared multi-writer). Chaque write alloue UNE génération
 	// (weapon_kills_generation_seq) partagée par tous les kills du (match,xuid) ; la
 	// vue v_weapon_kills ne lit que la génération MAX → supersède l'ancienne.
@@ -184,30 +185,12 @@ func ubigintArg(p *uint64) any {
 // 2026-05-23 pour casser le cycle d'import sync ⇄ persist).
 type WeaponKillRow = domain.WeaponKillRow
 
-// MarkWeaponKillsDone met à jour le bit MBitWeaponKills ou MBitWeaponKillsNoFilm
-// dans match_registry.backfill_completed.
-func MarkWeaponKillsDone(ctx context.Context, db *sql.DB, matchID string, noFilm bool) error {
-	bit := MBitWeaponKills
-	if noFilm {
-		bit = MBitWeaponKillsNoFilm
-	}
-	_, err := db.ExecContext(ctx, `
-		UPDATE match_registry
-		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
-		WHERE match_id = ?
-	`, bit, matchID)
-	if err != nil {
-		return fmt.Errorf("MarkWeaponKillsDone(%s): %w", matchID, err)
-	}
-	return nil
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Personal score awards writes
 // ──────────────────────────────────────────────────────────────────────────────
 
 // InsertPersonalScoreAwards remplace l'ENSEMBLE des awards d'un (matchID, xuid)
-// par la nouvelle extraction, en APPEND-ONLY (#23046, Phase 2 — plus de
+// par la nouvelle extraction, en APPEND-ONLY (#23645, Phase 2 — plus de
 // DELETE+INSERT, vecteur ART sur les 4 index idx_psa_*).
 //
 // Sémantique REPLACE préservée sans mutation : chaque appel alloue UN
@@ -260,7 +243,7 @@ func InsertPersonalScoreAwards(ctx context.Context, db *sql.DB, matchID, xuid st
 
 // InsertHighlightEvents insère les événements highlight en lot (INSERT OR IGNORE).
 // Retourne le nombre de lignes effectivement insérées.
-func InsertHighlightEvents(ctx context.Context, db *sql.DB, matchID string, events []analysis.HighlightEvent) (int, error) {
+func InsertHighlightEvents(ctx context.Context, db *sql.DB, matchID string, events []highlightevent.HighlightEvent) (int, error) {
 	if len(events) == 0 {
 		return 0, nil
 	}

@@ -1,13 +1,14 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : hors perimetre du lot D (modele web du rejeu) : l'exemption DATE la dette, elle ne l'absout pas — le decoupage revient au lot qui touchera ce fichier. */
 /**
  * SynthesisPage --- Vue synthese / bilan periodique (Slice 7).
  * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
-import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { tokenCssVar } from '@/lib/accessibility'
 import { useSynthesisPage } from './queries'
 import { useFiltersPreview } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
@@ -16,8 +17,10 @@ import { ProportionalBar } from '@/components/ui/proportional-bar'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { FragSunburst } from '@/components/charts/FragSunburst'
 import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
-import { SynthesisWeaponAccuracyChart } from './SynthesisWeaponAccuracyChart'
+import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
+import { AccentCard, SectionSubtitle } from '@/components/ui/section-primitives'
 import { useSynthesisFragCharts } from './useSynthesisFragCharts'
+import { WeaponRecordsRuler } from './WeaponRecordsRuler'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
@@ -30,7 +33,6 @@ import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeaso
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
-import { hijacksLabelKey } from './hijacksLabel'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import type {
@@ -45,9 +47,9 @@ import type {
   SynthesisQueryRequest,
   SynthesisWeaponKillEntry,
   SynthesisWeaponAccuracyEntry,
+  SynthesisWeaponRecords,
   ObjectiveAggregate,
 } from '@/lib/api/types'
-import { formatDurationMMSS } from '@/lib/formatters/duration'
 // EXPERIENCE_TO_CASCADE + setsEqual : source unique partagée avec useLocalFilterBar (H3).
 import { EXPERIENCE_TO_CASCADE, setsEqual } from '@/features/_shared/experienceCascade'
 
@@ -62,16 +64,6 @@ function formatTimePlayed(seconds: number): string {
   if (h > 0 || d > 0) parts.push(`${h}h`)
   parts.push(`${m}m`)
   return parts.join(' ')
-}
-
-// Sous-titre de section (type 6 du catalogue) : petit uppercase semibold + filet 1px.
-function SectionSubtitle({ children }: { children: ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-3xs font-semibold uppercase tracking-label-md text-foreground/90">{children}</p>
-      <div className="h-px w-full rounded-full bg-border" />
-    </div>
-  )
 }
 
 // ─── Bloc 1 — Vue d'ensemble (D4) ─────────────────────────────────────────────
@@ -120,40 +112,6 @@ function CombatProfileInlineRow({ combatProfile, locale }: { combatProfile: Comb
   )
 }
 
-interface AccentCardProps {
-  label: string
-  value: string
-  accent: SemanticToken
-  onOpenMatch?: () => void
-  openMatchLabel?: string
-}
-function AccentCard({ label, value, accent, onOpenMatch, openMatchLabel }: AccentCardProps) {
-  return (
-    <div className="rounded-lg overflow-hidden border border-border bg-card">
-      <div className="h-[3px]" style={{ backgroundColor: tokenCssVar(accent) }} />
-      <div className="p-3">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground block">{label}</span>
-          {onOpenMatch && (
-            <button
-              type="button"
-              onClick={onOpenMatch}
-              aria-label={openMatchLabel}
-              className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" aria-hidden="true">
-                <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
-                <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
-              </svg>
-            </button>
-          )}
-        </div>
-        <span className="text-xl font-bold">{value}</span>
-      </div>
-    </div>
-  )
-}
-
 interface SynthesisOverviewSectionProps {
   overview: SynthesisOverview
   detailedStats?: SynthesisDetailedStats
@@ -162,20 +120,15 @@ interface SynthesisOverviewSectionProps {
   weaponAccuracy?: SynthesisWeaponAccuracyEntry[]
   combatProfile?: CombatProfileBlock | null
   objectiveStats?: ObjectiveAggregate | null
+  weaponRecords?: SynthesisWeaponRecords | null
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, weaponRecords, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = (key: keyof typeof synthesisManifest) => synthesisManifest[key][locale]
-  // Libellé « vol à la tire » PAR TITRE : Halo 5 = « Vol à la tire », Infinite (défaut)
-  // = « Dépositaire ». Sélection par currentTitleSlug (précédent NavL2 : slug== toléré
-  // côté front pour un simple choix de libellé, jamais côté Go). Logique extraite en
-  // helper pur (hijacksLabelKey) pour testabilité hors rendu.
-  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const hijacksLabel = t(hijacksLabelKey(currentTitleSlug))
   // Format nombre locale-aware (séparateurs "12 345" FR / "12,345" EN) — I2.
   const numLoc = intlLocale(locale)
   const navigateToMatch = useNavigateToMatch(playerSlug)
@@ -208,6 +161,9 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
   const hasWeaponAccuracy = useCapability('weapon_accuracy')
   // KPI objectifs (CTF/Zones/Oddball) : gated capability + data-driven (KPI > 0 seulement).
   const hasObjectiveStats = useCapability('objective_stats')
+  // Records de distance par arme : positions par kill du décodeur de film (Infinite).
+  // Capability-gated + data-driven (le service omet le bloc sans frag mesuré).
+  const hasWeaponRange = useCapability('weapon_range')
 
   // Graphes frags : état survol LIÉ + « Détails des frags » + coach, remontés ici car le
   // sunburst (rangée 1) et le breakdown (rangée 2) sont sur DEUX rangées distinctes.
@@ -362,15 +318,15 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                     <p className="text-xl font-bold text-primary">{kd}</p>
                     <div className="mt-1.5 w-full">
                       <ProportionalBar segments={[
-                        { value: overview.total_kills,   color: 'outcome-win' },
-                        { value: overview.total_assists,  color: 'outcome-draw' },
-                        { value: overview.total_deaths,   color: 'outcome-loss' },
+                        { value: overview.total_kills,   color: 'stat-kills' },
+                        { value: overview.total_assists,  color: 'stat-assists' },
+                        { value: overview.total_deaths,   color: 'stat-deaths' },
                       ]} />
                     </div>
                     <div className="mt-1 flex justify-center gap-2 text-xs font-semibold tabular-nums">
-                      <span style={{ color: tokenCssVar('outcome-win') }}>{overview.total_kills}</span>
-                      <span style={{ color: tokenCssVar('outcome-draw') }}>{overview.total_assists}</span>
-                      <span style={{ color: tokenCssVar('outcome-loss') }}>{overview.total_deaths}</span>
+                      <span style={{ color: tokenCssVar('stat-kills') }}>{overview.total_kills}</span>
+                      <span style={{ color: tokenCssVar('stat-assists') }}>{overview.total_assists}</span>
+                      <span style={{ color: tokenCssVar('stat-deaths') }}>{overview.total_deaths}</span>
                     </div>
                   </div>
 
@@ -412,13 +368,13 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
 
                   <div className="grid grid-cols-2 gap-2">
                     <AccentCard label={t('synthesis.combat_profile.perfect_kills')} value={detailedStats.total_perfect_kills.toLocaleString(numLoc)} accent="perf-tier-3" />
-                    <AccentCard label={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'} value={detailedStats.total_headshot_kills.toLocaleString(numLoc)} accent="perf-tier-2" />
+                    <AccentCard label={fieldMappings?.fields['headshot_kills']?.label ?? t('synthesis.stats_detail.headshot_kills_fallback')} value={detailedStats.total_headshot_kills.toLocaleString(numLoc)} accent="perf-tier-2" />
                   </div>
 
                   <div>
                     <div className="grid grid-cols-2 gap-2">
-                      <AccentCard label={fieldMappings?.fields['shots_fired']?.label ?? 'Tirs effectués'} value={detailedStats.total_shots_fired.toLocaleString(numLoc)} accent="info" />
-                      <AccentCard label={fieldMappings?.fields['shots_hit']?.label ?? 'Tirs au but'}      value={detailedStats.total_shots_hit.toLocaleString(numLoc)}   accent="info" />
+                      <AccentCard label={fieldMappings?.fields['shots_fired']?.label ?? t('synthesis.stats_detail.shots_fired_fallback')} value={detailedStats.total_shots_fired.toLocaleString(numLoc)} accent="info" />
+                      <AccentCard label={fieldMappings?.fields['shots_hit']?.label ?? t('synthesis.stats_detail.shots_hit_fallback')}      value={detailedStats.total_shots_hit.toLocaleString(numLoc)}   accent="info" />
                       {detailedStats.total_shots_fired > 0 && (
                         <AccentCard
                           label={t('synthesis.kpi.raw_accuracy')}
@@ -438,9 +394,9 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
 
                   <div>
                     <div className="grid grid-cols-2 gap-2">
-                      <AccentCard label={fieldMappings?.fields['damage_dealt']?.label ?? 'Dégâts infligés'} value={Math.round(detailedStats.total_damage_dealt).toLocaleString(numLoc)} accent="outcome-win" />
+                      <AccentCard label={fieldMappings?.fields['damage_dealt']?.label ?? t('synthesis.stats_detail.damage_dealt_fallback')} value={Math.round(detailedStats.total_damage_dealt).toLocaleString(numLoc)} accent="outcome-win" />
                       {hasDamageTaken && (
-                        <AccentCard label={fieldMappings?.fields['damage_taken']?.label ?? 'Dégâts reçus'} value={Math.round(detailedStats.total_damage_taken).toLocaleString(numLoc)} accent="outcome-loss" />
+                        <AccentCard label={fieldMappings?.fields['damage_taken']?.label ?? t('synthesis.stats_detail.damage_taken_fallback')} value={Math.round(detailedStats.total_damage_taken).toLocaleString(numLoc)} accent="outcome-loss" />
                       )}
                     </div>
                   </div>
@@ -464,7 +420,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                           <AccentCard label={t('synthesis.kpi.vehicles_destroyed')} value={detailedStats.total_vehicles_destroyed.toLocaleString(numLoc)} accent="warning" />
                         )}
                         {detailedStats.total_hijacks > 0 && (
-                          <AccentCard label={hijacksLabel} value={detailedStats.total_hijacks.toLocaleString(numLoc)} accent="chart-series-4" />
+                          <AccentCard label={t('synthesis.combat_profile.hijacks')} value={detailedStats.total_hijacks.toLocaleString(numLoc)} accent="chart-series-4" />
                         )}
                       </div>
                     </div>
@@ -478,29 +434,11 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                         {(objectiveStats.flag_captures ?? 0) > 0 && (
                           <AccentCard label={t('synthesis.kpi.flag_captures')} value={(objectiveStats.flag_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
                         )}
-                        {(objectiveStats.flag_returns ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.flag_returns')} value={(objectiveStats.flag_returns ?? 0).toLocaleString(numLoc)} accent="chart-series-2" />
-                        )}
-                        {(objectiveStats.flag_steals ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.flag_steals')} value={(objectiveStats.flag_steals ?? 0).toLocaleString(numLoc)} accent="chart-series-3" />
-                        )}
-                        {(objectiveStats.flag_carrier_seconds ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.flag_carrier_time')} value={formatDurationMMSS(objectiveStats.flag_carrier_seconds)} accent="chart-series-4" />
-                        )}
                         {(objectiveStats.zone_captures ?? 0) > 0 && (
                           <AccentCard label={t('synthesis.kpi.zone_captures')} value={(objectiveStats.zone_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
                         )}
-                        {(objectiveStats.zone_secures ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.zone_secures')} value={(objectiveStats.zone_secures ?? 0).toLocaleString(numLoc)} accent="chart-series-2" />
-                        )}
-                        {(objectiveStats.zone_seconds ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.zone_time')} value={formatDurationMMSS(objectiveStats.zone_seconds)} accent="chart-series-3" />
-                        )}
                         {(objectiveStats.skull_grabs ?? 0) > 0 && (
                           <AccentCard label={t('synthesis.kpi.skull_grabs')} value={(objectiveStats.skull_grabs ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
-                        )}
-                        {(objectiveStats.skull_carrier_seconds ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.skull_carrier_time')} value={formatDurationMMSS(objectiveStats.skull_carrier_seconds)} accent="chart-series-4" />
                         )}
                       </div>
                     </div>
@@ -522,7 +460,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                 )}
                 {hasWeaponAccuracy && (
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <SynthesisWeaponAccuracyChart
+                    <WeaponAccuracyChart
                       weapons={weaponAccuracy ?? []}
                       weaponKills={topWeaponKills}
                       hoveredClass={frags.hovered}
@@ -534,11 +472,18 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
 
               </div>
 
+              {/* Rangée 3 — la règle des records de distance, pleine largeur sous les frags
+                  (rendu A, PLAN_RECORDS_DISTANCE_2026-09-20.md). */}
+              {hasWeaponRange && weaponRecords && (
+                <div className="mt-4">
+                  <WeaponRecordsRuler records={weaponRecords} playerSlug={playerSlug} />
+                </div>
+              )}
+
             </div>
 
           </div>
         )}
-
 
     </section>
   )
@@ -818,6 +763,7 @@ export function SynthesisPage() {
           weaponAccuracy={data.weapon_accuracy}
           combatProfile={data.combat_profile}
           objectiveStats={data.objective_stats}
+          weaponRecords={data.weapon_records}
           playerSlug={playerSlug}
         />
       )}

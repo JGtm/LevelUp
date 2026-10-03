@@ -38,8 +38,11 @@ func MountAdminMonitoringRoutes(
 	reg.WithAutoSyncScheduler(sched)
 
 	monitoringH := handlers.NewAdminMonitoringHandler(
-		reg.MonitoringOverview, reg.ConvergenceReport, reg.PerfStats, reg.ErrorStats,
-		reg.DetectionsReport, reg.SetDetectionStatus, reg.FreshnessReport, reg.ResourcesReport, reg.CronsReport, sched, jobStore)
+		reg.MonitoringOverview, reg.ConvergenceReport, reg.PerfStats,
+		reg.DetectionsReport, reg.SetDetectionStatus, reg.FreshnessReport, reg.ResourcesReport, reg.CronsReport, sched, jobStore).
+		// File de construction + ouvriers : l'état vit côté web, donc le dashboard
+		// voit le travail distant sans jamais interroger l'ouvrier (piste F §4bis).
+		WithBuildQueue(reg.BuildQueueReport)
 	// 6 GET /monitoring/* migrés vers Huma (Phase 3b), NoStore.
 	monitoringH.Mount(r.With(middleware.NoStore), apiOpt)
 
@@ -82,6 +85,13 @@ func MountAdminMonitoringRoutes(
 	// catalog/refresh zéro-réseau en hydratant les assets absents de match_registry.
 	drainH := handlers.NewAdminCatalogDrainHandler(reg.RunCatalogUGCDrain, jobStore, serverCtx)
 	drainH.Mount(r, apiOpt) // POST /actions/catalog/ugc-drain
+
+	// Construction du rejeu 2D d'un match (job asynchrone — décodage hors ligne du film
+	// en cache dans un ENFANT borne, sous le verrou solo, cf. registry_replay_build.go).
+	replayBuildH := handlers.NewAdminReplayBuildActionHandler(reg.RunReplayBuild, jobStore, serverCtx).
+		WithEnqueuer(reg.EnqueueReplayBuild).
+		WithPlacement(reg.ReplayPlacement)
+	replayBuildH.Mount(r, apiOpt) // POST /actions/replay-build/{run,enqueue}
 
 	// Viewer de logs : modules + tail filtré (lecture par la fin chunkée).
 	logsH := handlers.NewAdminLogsHandler(logging.LoadConfig(reg.cfg.RepoRoot).LogsDir)
