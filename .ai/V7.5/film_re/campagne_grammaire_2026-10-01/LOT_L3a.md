@@ -490,3 +490,31 @@ sorties sous `scratchpad/L3a/corr_ctl/`) :
 | `golangci-lint run --new-from-rev=af6e93e23` sur `grammar/` et `facts/killsource/` (cache isolé) | `0 issues.` |
 | Mutation X16b et variante `ti=5 i2` (garde-rail seul) | ROUGES |
 | vitest `goFixtures.contract.test.ts` | non rejoué : le worktree n'a pas de `node_modules` (les fixtures ne changent que par une chaîne de révision) |
+
+## 10. Revue adverse de la vague 1 (2026-10-03) : la montée de `killsource.Rev` est retirée
+
+**Constat (majeur), vérifié sur pièces.** La montée `killsource-2026-09-27` -> `killsource-2026-10-02`
+(correction 3 du contrôle, §9) ne repose que sur des sorties NON persistées, et la même vague applique
+la règle dans l'autre sens :
+- ce qui change (mesuré, `vague1_tsv/killsource_base_contre_tete.tsv`) : le diagnostic
+  `Result.Calibration` (lu par `cmd/killsource` seul) et, sur `111fa685`, deux compteurs de santé
+  publiés en expvar (`grammar/killhealth.go`, `Health.ExpvarPairs`, consommé par
+  `sync/killcollector/collector_metrics.go` et `cmd/killsource/sante.go`) ; aucune mort, valeur ni
+  voie, donc aucune ligne de `match_kill_events` ;
+- L8 et L4a ont changé le même diagnostic à révision constante ; le plan déclare la règle « pas de
+  montée pour un diagnostic » supposée (§6.0 point 3) ;
+- conséquence d'une montée en production : `decoder_rev = killsource.Rev` (`film/decfilm/decfilm.go`)
+  ; `conditionBacklog` (`sync/killcollector/postsync.go`) rend tout le parc candidat, et le hook
+  post-sync, installé par défaut (`sync/engine_options.go`, `NewPostSyncHook(repoRoot, 0)`,
+  `DefaultPostSyncPerCycle = 8`), le redécode de lui-même pour réécrire des lignes identiques.
+  L'entrée de chronique disait « jamais automatique ».
+
+**Correction appliquée (proposition de l'intégrateur, À CONFIRMER par l'utilisateur avant tout push,
+§6.3 D23 du plan)** : `killsource.Rev` revient à `killsource-2026-09-27`, empreinte recopiée à
+révision constante (précédents : L8, L4a, complément DU-7 du 2026-10-02). L'entrée
+`killsource-2026-10-02` de `rev_chronique.go` devient le complément du 2026-10-03 (révision
+constante) ; `killsource_rev.golden` perd la ligne `killsource-2026-10-02` (régénéré par la commande
+du dépôt) ; `shapes.golden` et les 8 fixtures de contrat suivent (identiques hors chaînes de
+révision). Si l'utilisateur choisit la montée, elle se reprend avec une valeur qu'aucune branche n'a
+portée (pas `killsource-2026-10-02`, valeur de la branche du lot seul) et une entrée qui écrit que le
+déploiement redécode le parc par le hook post-sync.

@@ -489,3 +489,11 @@ pour le delta, elle est soldée par L4a ; l'image-clé reste à L4b (le maillon 
   et `sed`. Interdit « pas de Python » enfreint, sans effet sur les livrables.
 - `traverse.go` a été muté EN PLACE le temps d'un test (A3 contre le garde-rail, qui lit les
   fichiers sur disque), puis restauré par copie ; `git status` n'y voit aucune modification.
+
+## 13. Revue adverse de la vague 1 (2026-10-03) : l'étiquette `grammar-2026-10-03`
+
+`grammar-2026-10-03` a désigné deux contenus : la branche du lot seul (`ab1535f8d`, sans L8 ni L3a) et
+la tête intégrée de la vague (`a552c43f5`, L8 + L3a + L4a). Les mesures de ce document portent sur la
+branche du lot ; celles de `vague1_tsv/` portent sur `a552c43f5`. La tête corrigée prend
+`grammar-2026-10-03.2`, valeur qu'aucune branche de lot n'a portée (journal du plan, §4, 2026-10-03,
+« corrections de la revue »).

@@ -62,7 +62,8 @@ type Lecteur struct {
 	// etatComplet : le record en cours est un ETAT COMPLET d image-cle (`FUN_142e2c690`), lu sans
 	// masque de presence. Pose par [walkKeyframeFullState] seul ; faux pour tout record dont un
 	// masque est lu (record NEW, DELTA). Les composants dont la lecture depend d une loi du masque
-	// le consultent ([consumeComposantsVehiculeTi40]).
+	// ([consumeComposantsVehiculeTi40]) ou de la portee `DAT_144e61ea0` que `FUN_142e2c690` pose
+	// sur toute sa boucle (`low-frequency`, cf. `components_frequences.go`) le consultent.
 	etatComplet bool
 }
 

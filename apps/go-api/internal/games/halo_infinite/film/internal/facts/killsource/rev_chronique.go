@@ -453,24 +453,18 @@ package killsource
 // `match_kill_events` deja ecrite sous `killsource-2026-09-27` est celle que ce code ecrirait. La
 // revision reste, AUCUN backlog n est ouvert ; golden regenere a revision constante. Seule la FORME du
 // resultat observe change (`Stats.Replis` perd deux champs nuls).
-
-// ENTREE `killsource-2026-10-02` (2026-10-02, lot L3a de la campagne de grammaire,
-// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.0 points 1 et 3) : LA REVISION MONTE DERRIERE LA
-// GRAMMAIRE, PARCE QUE LA SORTIE CHANGE.
 //
-// AUCUNE SOURCE DE LA COUCHE N EST TOUCHEE. Ce qui monte est la VALEUR de `grammar.Rev`
-// (`grammar-2026-10-02.3` : la fin du moteur de partie `ti=0/1/2 i11..i17` portee, lecteur de
-// minuteur unique), que la fermeture des imports de cette couche hache. La regle du plan est
-// ecrite : un lot qui change une sortie monte `grammar.Rev` et `facts.Rev` (cette constante) suit ;
-// `killsource.Rev` monte si la sortie change.
-//
-// CE QUI CHANGE DANS LA SORTIE `cmd/killsource json` (19 temoins de `config/replay_corpus.toml`,
-// binaire de la base contre binaire du lot) : AUCUNE mort, aucune valeur, aucune voie. Changent le
-// diagnostic d ORACLE de `calibration` (scores du profil plat et de `indexW_poignee`, 11 films) et,
-// sur `111fa685`, deux compteurs de sante (`killsource_candidates_total` 226 -> 227,
-// `killsource_unexplained_pair` 24 -> 25, d ou la population de la voie sequentielle 205 -> 206).
-// Mesures : `campagne_grammaire_2026-10-01/LOT_L3a.md` §5.3.
-//
-// LE BACKLOG QU ELLE OUVRE EST UN BACKLOG DE DATATION : les lignes de `match_kill_events` deja en
-// base deviennent candidates au redecodage (`conditionBacklog`, `sync/killcollector/postsync.go`),
-// geste de PRODUCTION pris sur signal utilisateur (D6, D7 du plan), jamais automatique.
+// COMPLEMENT DU 2026-10-03 (vague 1 de la campagne de grammaire : lots L8, L3a, L4a et corrections
+// de la revue de la vague, `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, REVISION CONSTANTE) : la
+// VALEUR de `grammar.Rev` monte jusqu a `grammar-2026-10-03.2`, donc l empreinte ; aucune source de
+// la couche ne change. Sortie `cmd/killsource json` sur les 19 temoins de
+// `config/replay_corpus.toml`, binaire de `67c379fc1` contre binaire de la vague : AUCUNE mort,
+// aucune valeur, aucune voie ne change. Ne changent que des sorties NON PERSISTEES : le diagnostic
+// d ORACLE `Result.Calibration` (lu par `cmd/killsource` seul) et, sur `111fa685`, deux compteurs de
+// sante publies en expvar par `Health.ExpvarPairs` (`killsource_candidates_total` 226 -> 227,
+// `killsource_unexplained_pair` 24 -> 25). Chaque ligne de `match_kill_events` deja ecrite sous
+// `killsource-2026-09-27` est celle que ce code ecrirait : la revision reste et aucun backlog n est
+// ouvert. Une montee rendrait tout le parc candidat (`conditionBacklog`), et le hook post-sync,
+// installe par defaut (`sync/engine_options.go`), le redecoderait de lui-meme, huit films par cycle,
+// pour reecrire des lignes identiques. Golden regenere a revision constante. Mesures :
+// `campagne_grammaire_2026-10-01/vague1_tsv/`.

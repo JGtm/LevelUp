@@ -135,6 +135,29 @@ func TestBasseFrequenceSuitSonEcrivain(t *testing.T) {
 	}
 }
 
+// TestBasseFrequenceNonPorteeDansUnEtatComplet : sous la boucle d etat complet (`FUN_142e2c690`,
+// portee `DAT_144e61ea0` posee), `ti=3 i0` n est pas lu aux largeurs du delta ; le composant rend
+// « non porte » sans consommer un bit, et le meme vecteur se lit en entier hors etat complet.
+func TestBasseFrequenceNonPorteeDansUnEtatComplet(t *testing.T) {
+	for _, etatComplet := range []bool{false, true} {
+		w := &bitWriter{}
+		ecrireBasseFrequence(w, true, []entreeBasseFrequence{{drapeaux: 3, mot: 0x8001, code: 16}})
+		br, fin := lireAuTemoin(w)
+		br.etatComplet = etatComplet
+		_, _, porte := consumeByName(br, compLowFrequency, archetypeFrequences, 0)
+		if etatComplet {
+			if porte || br.BitPos() != 0 {
+				t.Fatalf("etat complet : porte=%v, %d bits lus ; attendu non porte, 0 bit", porte, br.BitPos())
+			}
+			continue
+		}
+		if !porte {
+			t.Fatal("record a masque : low-frequency declare non porte")
+		}
+		verifierTemoin(t, br, fin, "record a masque")
+	}
+}
+
 // TestHauteFrequenceSeLitParLaTableDeLArchetype : le meme nom, deux tables. `ti=3 i1` lit les
 // 26 bits de FUN_142eda744 sans sonde ; `ti=4 i0` lit le R(8) de FUN_142eda680 et le publie a la
 // sonde ; un archetype sans table connue ne lit rien et rend « non porte ».

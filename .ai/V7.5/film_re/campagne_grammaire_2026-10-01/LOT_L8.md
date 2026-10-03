@@ -585,3 +585,55 @@ est inchangée (`TestGrammarRevSuitLaGrammaire` vert), la révision reste `gramm
 
 Verdict après corrections : **[x] retenu**, gate 2 tenu (la carte ne change pas), rc 1 du gate de
 corpus instruit en entier ; la décision de l'admettre appartient au pilote ou à l'utilisateur (§6).
+
+## 9. Revue adverse de la vague 1 (2026-10-03) : `low-frequency` en image-clé
+
+**Constat (majeur), vérifié sur pièces.** Dans un état complet d'image-clé, `low-frequency` était lu
+aux largeurs du delta, alors que le jeu le lit sous une portée que la marche du dépôt ne pose pas.
+
+- Ghidra (HTTP 127.0.0.1:8089, lecture seule ; extraits dans `vague1_tsv/revue_ghidra/`) :
+  - `disassemble_function 0x142e2c690` : `142e2c6b0 MOV ESI,0x1` ; `142e2c6b8 MOV byte ptr
+    [0x144e61ea0],SIL` à l'entrée ; `142e2c76a MOV byte ptr [0x144e61ea0],0x0` à la sortie commune
+    (`142e2c765`, atteinte par `142e2c762` et par `142e2c890`) ; `142e2c7c9 CALL qword ptr [RAX +
+    0x28]` (le lecteur du composant) entre les deux ;
+  - chaîne : `FUN_142e2bfd0` (`142e2c646 CALL 0x1428e2b68`) -> `FUN_1428e2b68` (`1428e2c4d CALL
+    0x142e2c690`) ;
+  - `decompile 0x14076f91c` : rend 1 si `DAT_144e61ea0 != 0` ou `DAT_145121140 == 1` ;
+  - `disassemble 0x14076e494` : `CALL 0x14076f91c ; TEST AL,AL ; JNZ 0x14076e4dc` -> `CALL
+    0x1411b259c` ; `disassemble 0x1411b259c` : `MOV R9D,0x60 ; CALL 0x1406d676c` = R(96) ;
+  - `FUN_142ed4aec` appelle `FUN_1424e0e38` (`142ed4b1f`, `142ed4e7f`), qui appelle `FUN_14076e494`
+    (`1424e0e47`) : la tête et chaque entrée à position sont touchées ;
+  - `get_xrefs_to 0x144e61ea0` : écrivains `FUN_142e2bfd0`, `FUN_142e2c690`, `FUN_142e2d08c`,
+    `FUN_142e2d6d4`, `FUN_142e309b4`, `FUN_142e30b9c`, `FUN_142e31a0c`, `FUN_142e31bf8` ; aucun dans
+    `FUN_14076cb60` (boucle delta) : la lecture du lot reste juste en record à masque.
+- Déjà établi par la campagne (`R_VEH.md` §1.3) : « dans une image-clé, l'état par défaut ET les
+  composants se lisent sous la portée ». Côté Go, `PorteeBaseline` est faux et
+  `walkKeyframeFullState` ne le pose pas : `lireE494` passait par la branche quantifiée.
+
+**Correction retenue (générale, sans réglage) : `low-frequency` n'est pas porté dans un état
+complet.** `consumeLowFrequency` rend faux, sans lire un bit, sous `Lecteur.etatComplet`, et le
+`case` de `dispatch_item.go` rend sa valeur (la traversée s'arrête, comme avant le lot, et comme L4a
+pour les composants `ti=40` hors `i37`) ; la lecture en record à masque ne change pas. Contrat écrit
+dans l'en-tête de `components_frequences.go` ; `ecs_table.tsv` : statut `porte` -> `partiel` (G1,
+même statut que `ti=40 i30` et `i33`) ; vecteur `TestBasseFrequenceNonPorteeDansUnEtatComplet`
+(même composant lu en entier hors état complet, 0 bit et « non porté » en état complet ; mutation
+sans la garde : ROUGE, 227 bits lus). Première écriture de la garde dans le `case` : refusée par le
+cliquet de longueur de `consumeItemAndTacmapComponent` (142 lignes contre 139 figées), d'où la garde
+dans le lecteur (138 lignes).
+
+**Correction proposée par la revue et NON appliquée** : poser la portée sur toute la boucle de
+composants de l'état complet (`PorteeBaseline` vrai pendant `traverseComponentLoop` dans
+`walkKeyframeFullState`). C'est la lecture du jeu, mais elle change TOUTES les positions lues en
+image-clé, tous archétypes : c'est le lot LK (portée + chemin `i0` de l'écrivain), mis de côté par
+l'utilisateur le 2026-10-02 (« lecture d'image-clé non confirmée », §3 du plan ; D14). Elle reste à
+mesurer sur le parc (gate 2 et carte d'image-clé) dans ce lot-là. La sonde A/B de la revue
+(`scratchpad/revue2-jeu/`, `KeyframeClosure` sur 7 bobines) donne `fb1a1a72` ti=3 0/26 -> 19/26 et
+aucune baisse : indication pour LK, pas une preuve de gate.
+
+**Mesures après correction** (tête corrigée contre tête intégrée `a552c43f5`) : carte v2 20 films,
+14 TSV sur 15 identiques à l'octet (`fermeture_paquets.tsv` compris), seul `fermeture_films.tsv`
+diffère par le pic mémoire et la durée : le gate 2 de la vague est inchangé. Killsource 19 témoins :
+JSON identique à l'octet. `keyframe_closure.golden` : aucun compte ne bouge, `ti=3` de `bcb6d393`
+(0/1) et `fb1a1a72` (0/26) retrouve son bloquant `i0 low-frequency`. Fixtures de contrat :
+identiques hors chaînes de révision. `replay-equiv` 20 films : 60 étapes sur 61 identiques, seule
+`artifact` (chaînes de révision) diffère.

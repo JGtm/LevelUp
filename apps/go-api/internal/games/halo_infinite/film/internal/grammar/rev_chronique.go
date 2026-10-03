@@ -301,3 +301,25 @@ package grammar
 // change par les morts de vehicule lues (records qui ne se desynchronisent plus apres l etat de
 // mort), les compteurs de repli de killsource et du tir continu, et quelques listes de plus :
 // `replay.SchemaVersion` ne monte pas, la revision des calques le signale.
+//
+// ENTREE `grammar-2026-10-03.2` (2026-10-03, integration de la vague 1 de la campagne de grammaire
+// et corrections de sa revue adverse, `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `low-frequency`
+// N EST PAS PORTE DANS UN ETAT COMPLET D IMAGE-CLE, ET LA TETE PORTE UNE VALEUR A ELLE.
+//
+// La boucle d etat complet du jeu (`FUN_142e2c690`) pose la portee `DAT_144e61ea0` sur toute la
+// boucle de composants (142e2c6b8 / 142e2c76a, lecteur appele en 142e2c7c9) ; sous elle,
+// `FUN_14076e494` lit la position brute, R(96) (`FUN_14076f91c`, `FUN_1411b259c`). La marche d image-cle
+// du depot ne pose pas cette portee : `ti=3 i0` (FUN_142ed4aec), porte au rang `.2` du 2026-10-02,
+// y etait lu a la largeur du delta. Il rend desormais « non porte » sous [Lecteur.etatComplet] (la
+// traversee s arrete, comme avant ce rang) ; sa lecture en record a masque ne change pas.
+//
+// LA VALEUR : `grammar-2026-10-03` etait aussi celle de la branche du lot L4a seul, sans L8 ni L3a.
+// Une revision designe un contenu : la tete de la vague prend un rang qu aucune branche de lot n a
+// porte, pour qu aucun fait ecrit par un lot seul ne se relise a jour.
+//
+// Ce qui change en sortie, contre la tete integree du rang precedent (`campagne_grammaire_2026-10-01/
+// vague1_tsv/revue_*`) : carte de fermeture v2 des 20 films identique (paquets, records utiles,
+// bloquants) ; `cmd/killsource json` identique a l octet sur les 19 temoins ; `keyframe_closure.golden`
+// sans compte qui bouge, `ti=3` retrouve son bloquant `i0 low-frequency` ; fixtures de contrat
+// identiques hors chaines de revision. `killsource.Rev` reste `killsource-2026-09-27` (empreinte
+// recopiee, cf. sa chronique) ; `replay.SchemaVersion` reste 77.

@@ -285,16 +285,15 @@
 #               largeurs decidees inchangees). Aucune mort, valeur ni voie ne change ;
 #               `Result.Calibration` n est lu que par `cmd/killsource` : aucune ligne en base n est
 #               candidate au backlog.
-#   2026-10-02  killsource-2026-09-27 -> killsource-2026-10-02 (lot L3a de la campagne de
-#               grammaire), par la regle ecrite du plan (§6.0 points 1 et 3 : `killsource.Rev` monte
-#               si la sortie change). L empreinte bouge par la VALEUR de `grammar.Rev`
-#               (`grammar-2026-10-02.3` : la fin du moteur de partie `ti=0/1/2 i11..i17` portee,
-#               lecteur de minuteur unique). Aucune source de la couche ne change. Sortie
-#               `cmd/killsource json` sur les 19 temoins : AUCUNE mort, aucune valeur, aucune voie
-#               ne change ; changent le diagnostic d ORACLE de `calibration` (scores du profil plat
-#               et de `indexW_poignee`, 11 films) et, sur `111fa685`, deux compteurs de sante
-#               (candidats 226 -> 227, couples inexpliques 24 -> 25). Backlog de datation, sur
-#               signal utilisateur (D6).
+#   2026-10-02  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot L3a de la campagne de grammaire ;
+#               la montee a `killsource-2026-10-02` portee par la branche du lot est RETIREE a la
+#               revue de la vague 1, cf. l entree du 2026-10-03). L empreinte bouge par la VALEUR de
+#               `grammar.Rev` (`grammar-2026-10-02.3` : la fin du moteur de partie `ti=0/1/2
+#               i11..i17` portee, lecteur de minuteur unique). Aucune source de la couche ne change.
+#               Sortie `cmd/killsource json` sur les 19 temoins : AUCUNE mort, aucune valeur, aucune
+#               voie ne change ; changent le diagnostic d ORACLE de `calibration` (scores du profil
+#               plat et de `indexW_poignee`, 11 films) et, sur `111fa685`, deux compteurs de sante
+#               publies en expvar (candidats 226 -> 227, couples inexpliques 24 -> 25), non persistes.
 #   2026-10-03  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot L4a de la campagne de grammaire).
 #               L empreinte bouge par la VALEUR de `grammar.Rev` (`grammar-2026-10-03` : les
 #               composants `ti=40` i30 a i47 se lisent dans les records a masque, porte `+0x818`
@@ -304,6 +303,14 @@
 #               diagnostic de l ORACLE de calibration change (`PROFIL PLAT (score 523` -> `524`),
 #               qui n est pas persiste (`Result.Calibration`) : aucune mort, aucune arme, aucune voie
 #               ne change, aucune ligne en base n est candidate au backlog.
+#   2026-10-03  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (vague 1 de la campagne de grammaire
+#               integree, corrections de la revue). L empreinte bouge par la VALEUR de `grammar.Rev`
+#               (`grammar-2026-10-03.2` : `low-frequency` non porte dans un etat complet d image-cle,
+#               valeur de tete qu aucune branche de lot n a portee). Sortie `cmd/killsource json`,
+#               base `67c379fc1` contre la vague, 19 temoins : aucune mort, aucune valeur, aucune voie
+#               ne change ; seuls changent des sorties non persistees (`Result.Calibration`, deux
+#               compteurs de sante en expvar sur `111fa685`). Aucune ligne en base n est candidate au
+#               backlog (cf. `rev_chronique.go`, complement du 2026-10-03).
 killsource-2026-09-16.2	d09f5d19636bbb5eff1c4d38b54489868bafa127c01ce91b6cb028e9dd7bc131
 killsource-2026-09-16.3	8c87a14f4d72f8f2b05350a39c9a93b80479a372d61f3a9416628689e2b8e67e
 killsource-2026-09-16.4	a3fcc9fed6be58eeab197aaa212dd2e0e386750671ff6a67858454d76935eac8
@@ -327,5 +334,4 @@ killsource-2026-09-22	eb0c32d7d98f49b8f90979270d6925327033adcf6cede45b6c945883f5
 killsource-2026-09-22.2	7043543f50cecfdb485f382e9738d5d67b45776a44a4cb763af472497852b875
 killsource-2026-09-24	09915f2ee616b1f40398caefbb4d1f30c1a76a7a5d5907fe9e56da3a9c33fa22
 killsource-2026-09-26	1a0c2d3b04f1a00cefced573870bbd49504d3b9b1062c1469bd7dbfef09dd801
-killsource-2026-09-27	53325b614c1f1ced32e968683ad8cdbf46ad62c7d81a987fb1fe21baa3b107ec
-killsource-2026-10-02	dc6ca0a8660db0321d43f5ae8d17bacb97a1cb567d063c491a5ee2307775f017
+killsource-2026-09-27	eb0fe3c1e883a9263369ba3495688785818e685ff99ad6b1a9baee19ea6e37de

@@ -377,6 +377,43 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   - Suite : recuisson de la vague (une seule, geste de l'utilisateur, D7 ; backlog killsource de
     datation) ; références `replay-equiv` à re-figer avant la vague 2 (§6.0 point 6) ; lot de marche
     « tête de liste contredite » à fonder (§5, découvertes de la vague 1).
+- 2026-10-03 : **corrections de la revue adverse de la vague 1** (trois constats majeurs, tous vérifiés
+  sur pièces et VRAIS ; tête de mesure `a552c43f5` ; pièces : `vague1_tsv/revue_*`) :
+  - **Constat 1 — `low-frequency` lu en image-clé à une largeur que le jeu n'y emploie pas.** Ghidra
+    (`vague1_tsv/revue_ghidra/`) : `FUN_142e2c690` pose `DAT_144e61ea0 = 1` en `142e2c6b8` et le
+    remet à 0 en `142e2c76a`, sortie commune ; le lecteur du composant (`142e2c7c9`) s'exécute entre
+    les deux ; `FUN_14076f91c` -> `FUN_14076e494` -> `FUN_1411b259c` = R(96) ; aucune écriture de la
+    portée dans `FUN_14076cb60`. Correction : `low-frequency` non porté sous `Lecteur.etatComplet`
+    (retour à l'arrêt propre d'avant L8 en image-clé, lecture delta inchangée ; `LOT_L8.md` §9). La
+    correction de la revue (portée sur toute la boucle d'état complet) est la lecture du jeu pour
+    TOUTES les positions d'image-clé : c'est LK (D14, mis de côté le 2026-10-02), non appliqué ici
+    (D-REV-2). `keyframe_closure.golden` re-figé : aucun compte ne bouge, `ti=3` retrouve son bloquant
+    nommé ; `ecs_table.tsv` : `porte` -> `partiel`.
+  - **Constat 2 — la valeur de tête ne désignait pas un contenu unique** (`grammar-2026-10-03` = branche
+    L4a seule = tête intégrée ; `killsource-2026-10-02` = branche L3a seule = tête). Correction : tête
+    `grammar-2026-10-03.2` (entrée de chronique, empreinte régénérée) ; les mesures étiquetées
+    `grammar-2026-10-03` dans `vague1_tsv/` portent sur `a552c43f5`, celles de `LOT_L4a.md` sur
+    `ab1535f8d` (`LOT_L4a.md` §13).
+  - **Constat 3 — la montée `killsource-2026-10-02` ne reposait que sur des sorties non persistées**
+    (diagnostic `calibration`, deux compteurs de santé en expvar), et un hook post-sync installé par
+    défaut aurait redécodé tout le parc au déploiement. Correction appliquée par l'intégrateur,
+    réversible, À CONFIRMER par l'utilisateur avant tout push (D23) : révision constante
+    `killsource-2026-09-27`, empreinte recopiée ; l'entrée L3a devient un complément à révision
+    constante ; `killsource_rev.golden`, `shapes.golden` et les 8 fixtures de contrat régénérés
+    (fixtures identiques hors chaînes de révision).
+  - **Mesures** (tête corrigée contre `a552c43f5`) : carte v2 20 films, 14 TSV sur 15 identiques à
+    l'octet et `fermeture_films.tsv` identique hors pic mémoire et durée, avec la table d'avant comme
+    avec la table corrigée : le gate 2 de la vague (`gate2_tete.tsv`, aucun film en baisse) vaut tel
+    quel ; killsource 19 témoins identique à l'octet ; `replay-equiv` 20 films : 60 étapes sur 61
+    identiques à la tête intégrée, seule `artifact` diffère (attendu, elle porte les chaînes de
+    révision ; non décomposé ici, les 8 fixtures de contrat le sont : identiques hors révisions).
+  - **Gates de code** : `gofmt` vide ; `go vet ./...` rc 0 ; `go vet -tags=research` film rc 0 ;
+    `archlint` ok (après passage de la garde du `case` au lecteur : cliquet de longueur de
+    `consumeItemAndTacmapComponent`, 139 lignes) ; G-film (film, `replaybuild`, `killcollector`) 20 paquets ok ; `golangci-lint --new-from-rev
+    a552c43f5` (grammar, killsource) 0 issue. `replay-corpus-gate` non rejoué (sorties identiques à la
+    tête intégrée hors chaînes de révision).
+  - **État de la vague** : L8, L3a, L4a restent fusionnés (aucun lot ne tombe au gate 2) ; L2 et L9
+    non retenus. Ouvert : D23, rc 1 du gate de corpus (pilote), LK (D-REV-2).
 
 ## 5. Découvertes (consignées, non traitées)
 
@@ -991,6 +1028,20 @@ des `LOT_<lot>.md` (texte complet et pièces dans chacun), non traitées :
   constante vaut 140 (123 + 2 + 7 + 8). D-INT-3 — les fixtures de contrat des lots (schéma 76) sont
   périmées par `feat/v75` (schéma 77) : régénérées à chaque fusion, identiques hors chaînes de
   révision.
+- Revue adverse de la vague (2026-10-03) : D-REV-1 — la documentation du kill-switch `PorteeBaseline`
+  (`grammar/components_movement.go`, doc de `keyframeBaselineScope` ; `profil_balayage.go`, champ
+  `PorteeBaseline` ; en-tête de `keyframe_baseline_scope_test.go`) dit la portée levée « juste avant
+  `vtable[0x60]` et remise à 0 juste après » : c'est vrai de `FUN_142e2bfd0` (`142e2c46f` /
+  `142e2c530`), faux pour la boucle de composants, que `FUN_142e2c690` place entière sous la portée
+  (`142e2c6b8` / `142e2c76a` ; déjà établi par `R_VEH.md` §1.3). Règle 17, à corriger avec le lot LK
+  qui touchera ce kill-switch. D-REV-2 — la portée sur toute la boucle de l'état complet est la
+  correction générale lue dans le jeu pour TOUTES les positions d'image-clé (pas seulement `ti=3`) :
+  c'est le lot LK (D14), mis de côté le 2026-10-02 ; la sonde de la revue (`KeyframeClosure`,
+  7 bobines, portée posée) donne `fb1a1a72` ti=3 0/26 -> 19/26 et aucune baisse, à mesurer au gate 2
+  dans ce lot. D-REV-3 — « jamais automatique » (`facts/killsource/rev.go`, message `Question` de
+  `rev_test.go`) est contredit par le hook post-sync installé par défaut (`sync/engine_options.go`) :
+  une montée de `killsource.Rev` fait redécoder le parc au déploiement, sans geste. Non traité (hors
+  vague), lié à D23.
 
 ## 6. Phase 2 — lots correctifs (écrits à l'étape 5, révisés le 2026-10-02)
 
@@ -1720,7 +1771,8 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   (commit de fusion `614884624`, révision `grammar-2026-10-02.2`). Corrections du contrôle comprises
   (`LOT_L8.md` §8). Le rc 1 du gate de corpus du lot (C2d) attend la décision du pilote ou de
   l'utilisateur (proposition au journal §4, 2026-10-03). En combinaison : seul sain perdu brut du lot, `fb1a1a72` 7:92 (devenu
-  contredit, D-L8-1), aucun film en baisse nette.
+  contredit, D-L8-1), aucun film en baisse nette. Revue de la vague (2026-10-03) : `low-frequency` n'est
+  plus porté dans un état complet d'image-clé (portée `DAT_144e61ea0` de `FUN_142e2c690`, `LOT_L8.md` §9).
 
 **L2 — Dispositifs `ti=43` (composant), reclassé le 2026-10-02**
 - Gain mesuré (BIS_2 §5, surcouche, 21 films) :
@@ -1881,7 +1933,9 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   utiles sains, gate 2 tenu, gate 3 nul (diagnostic d'oracle de `calibration` seulement).
 
 - **Statut de L3a (intégration de la vague 1, 2026-10-03) : [x] FUSIONNÉ** (commit de fusion
-  `7b14deed4`, révision renumérotée `grammar-2026-10-02.3`, `killsource-2026-10-02`). Les 4 sains
+  `7b14deed4`, révision renumérotée `grammar-2026-10-02.3`, `killsource-2026-10-02` ; cette montée
+  de `killsource.Rev` est retirée à la revue de la vague, révision constante `killsource-2026-09-27`,
+  à confirmer par l'utilisateur, D23). Les 4 sains
   requalifiés contredits du lot (`1c4c63c2` 11:1620, `4f77afc1` 25:874, 37:1188, 59:682 ; D-L3a-1)
   se retrouvent tels quels en combinaison, aucun autre ; aucun film en baisse nette. L3b reste mis de
   côté (§3, 2026-10-02).
@@ -2311,6 +2365,17 @@ tranchées)**
   sur les 19 témoins et le déclarer. Recommandation : (a), car `1c4c63c2` porte la plupart des pertes
   de carte et les 359 signatures hors registre de D-75.
 
+- **D23 (nouvelle, 2026-10-03, revue adverse de la vague 1, constat 3) — `killsource.Rev` pour un
+  changement de sortie NON persistée.** La vague change le diagnostic `Result.Calibration` (L8, L3a,
+  L4a) et deux compteurs de santé publiés en expvar sur `111fa685` (L3a) ; aucune mort, valeur ni voie
+  (19 témoins). L3a montait la révision (règle écrite, §6.0 point 3), L8 et L4a non. Une montée rend
+  tout le parc candidat (`conditionBacklog`), et le hook post-sync, installé par défaut
+  (`sync/engine_options.go`), le redécode de lui-même, huit films par cycle, pour réécrire des lignes
+  identiques. **Appliqué par l'intégrateur, réversible : révision constante `killsource-2026-09-27`**
+  (empreinte recopiée, comme L8, L4a et le complément DU-7). Alternative : maintenir la montée sous
+  une valeur qu'aucune branche n'a portée, en écrivant que le déploiement redécode le parc par le hook
+  post-sync. Recommandation : révision constante ; à trancher AVANT tout push.
+
 **Liste courte des décisions ouvertes (2026-10-02), avec recommandation**
 
 | Décision | Question | Recommandation |
@@ -2329,6 +2394,7 @@ tranchées)**
 | D10 / D17 | Méthode de la surcouche, surcouche unique | ratifier (mesure seulement, hors CI) |
 | D7 | Calendrier des deux recuissons (la première périme le parc de J11.4) | à fixer après la fusion de la vague 1 |
 | D11 | Plafond du gate 4 (L1a, LP, L10) | +10 % de durée et de pic mémoire |
+| D23 | `killsource.Rev` pour un diagnostic et des compteurs non persistés (vague 1) | révision constante (appliquée, à confirmer avant push) |
 | D3, D4, D5, D8, D9 | inchangées (texte ci-dessus) | voir chaque entrée |
 | GO daté | chaque lot, après les décisions qui le concernent | — |
 

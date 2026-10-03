@@ -1,0 +1,6 @@
+1424e0e38: SUB RSP,0x38 
+1424e0e3c: AND qword ptr [RSP + 0x28],0x0 
+1424e0e42: MOV byte ptr [RSP + 0x20],0x0 
+1424e0e47: CALL 0x14076e494 
+1424e0e4c: ADD RSP,0x38 
+1424e0e50: RET 

@@ -23,6 +23,16 @@ package grammar
 // connue : le composant n y est pas porte (la traversee s arrete), plutot que lu sous la
 // grammaire d un autre archetype. Le garde-fou de cette regle est
 // `TestG6LesHomonymesSeRoutentParTable` (`ecs_dispatch_table_guard_test.go`).
+//
+// `low-frequency` NE SE LIT QUE DANS UN RECORD A MASQUE (DELTA, NEW). La boucle de l etat complet
+// d image-cle, `FUN_142e2c690`, pose `DAT_144e61ea0 = 1` a son entree (142e2c6b8) et le remet a 0
+// a sa sortie commune (142e2c76a) ; chaque lecteur de composant (CALL 142e2c7c9) s y execute sous
+// cette portee, ou `FUN_14076f91c` rend vrai et `FUN_14076e494` lit la position BRUTE
+// (`FUN_1411b259c` = `FUN_1406d676c(..., 0x60)`, R(96)) : la tete et chaque entree de
+// FUN_142ed4aec y ont une autre largeur. La boucle delta (`FUN_14076cb60`) ne pose pas la portee.
+// La marche d etat complet du depot ne la pose pas ([GrammaireBalayage.PorteeBaseline] reste
+// faux) : dans un etat complet ([Lecteur.etatComplet]), le composant n est pas porte (la
+// traversee s arrete) plutot que lu a une largeur que le jeu n emploie pas dans cette boucle.
 
 // Les archetypes qui enregistrent `high-frequency`, lus dans leurs fonctions d enregistrement.
 const (
@@ -48,7 +58,12 @@ const largeurEntreesBasseFrequence = 6
 //	         si f & 1 : position (FUN_1424e0e38, niveau 0x10) ;
 //	         si f & 2 : avant / haut (FUN_140c5f938, mode 0) ;
 //	         R(16) (+0x24) ; R(5) (FUN_1424ccc74, +0x26)
-func consumeLowFrequency(br *Lecteur) {
+//
+// Rend faux, sans lire un bit, dans un etat complet d image-cle ([Lecteur.etatComplet], cf. l en-tete).
+func consumeLowFrequency(br *Lecteur) bool {
+	if br.etatComplet {
+		return false
+	}
 	lireE494(br, niveauPosition)
 	consumeObjectForwardAndUp(br)
 	consumeChampsDeFrequence(br)
@@ -63,6 +78,7 @@ func consumeLowFrequency(br *Lecteur) {
 		br.ReadBits(16)
 		br.ReadBits(5)
 	}
+	return true
 }
 
 // consumeChampsDeFrequence lit les trois champs que les deux lecteurs de l archetype 3 partagent,

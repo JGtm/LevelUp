@@ -176,6 +176,11 @@
 #     ti=3 de bcb6d393 (0/1) et de fb1a1a72 (0/26) perd son bloquant `i0 low-frequency`, porte par
 #     L8 (`components_frequences.go`) ; ces records ne ferment toujours pas, sans bloquant nomme
 #     (non instruit). 0 ligne `fermes` ne descend.
+#   2026-10-03 corrections de la revue de la vague 1 : AUCUN compte ne bouge. ti=3 de bcb6d393
+#     (0/1) et de fb1a1a72 (0/26) retrouve son bloquant `i0 low-frequency` : la boucle d etat
+#     complet du jeu (`FUN_142e2c690`) lit ce composant sous la portee `DAT_144e61ea0`, que la
+#     marche d image-cle ne pose pas ; il n y est donc pas porte (`components_frequences.go`).
+#     0 ligne `fermes` ne descend.
 a521164d	ti=2	0	11	
 a521164d	ti=4	10	10	
 a521164d	ti=5	352	352	
@@ -332,7 +337,7 @@ e5adf7b2	ti=43	0	414	i19 device-position-animation-name-component
 e5adf7b2	ti=45	0	11	i0 matchflow-sequence-data-component
 e5adf7b2	ti=47	246	261	
 bcb6d393	ti=2	19	19	
-bcb6d393	ti=3	0	1	
+bcb6d393	ti=3	0	1	i0 low-frequency
 bcb6d393	ti=4	18	18	
 bcb6d393	ti=5	608	608	
 bcb6d393	ti=6	910	911	
@@ -363,7 +368,7 @@ bcb6d393	ti=45	0	19	i0 matchflow-sequence-data-component
 bcb6d393	ti=47	129	152	
 fb1a1a72	ti=1	0	1	
 fb1a1a72	ti=2	12	12	
-fb1a1a72	ti=3	0	26	
+fb1a1a72	ti=3	0	26	i0 low-frequency
 fb1a1a72	ti=4	0	11	
 fb1a1a72	ti=5	384	384	
 fb1a1a72	ti=6	574	575	
