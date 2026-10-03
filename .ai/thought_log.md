@@ -114886,3 +114886,29 @@ la grammaire régénérée à révision constante.
 **Conclusion / prochaine étape** : CI du commit, puis la mesure M avant 2.4 et 2.5 (machine calme,
 au signal de la campagne) ; second temps de 2.1 à la fusion de la vague 1 ; décision de l'utilisateur
 sur 2.2.2 toujours attendue.
+
+## [2026-10-03] Représentation intermédiaire du film, étape 2 — lot 2.3 clos, mesure avant la récupération (M.1, M.2) — Complété (`feat/ri-etape2`)
+
+**Statut** : Complété. Lot 2.3 clos (CI verte au niveau job sur `2aae5c7e1`, run `37137855861`) ;
+mesure M close.
+
+**Décision technique principale** : la règle de DT2-5 s'applique — les balayages ancrés et ceux des
+objets du monde pèsent bien plus que 10 % d'une cuisson, donc 2.4 et 2.5 MUTUALISENT (pas de simple
+marquage des records récupérés). Le pic mémoire se juge sur le tas vivant par phase (trace du
+ramasse-miettes), pas sur la seule empreinte maximale, qui se forme en fin de cuisson.
+
+**Résultats observés** : binaire de la base de l'étape (`67c379fc1`) contre celui du lot 2.3, machine
+calme, binaires alternés. Durées de −0,9 % à +0,3 % sur les quatre films. Étapes du BTB `084a804d`
+(`replay-build`, journal debug) : cuisson 98,6 s, killsource 23,3 s, décodage 73,2 s ; balayages
+ancrés 24,2 s (pont d'identité 8,9 s, huit passes du marcheur ancré 15,3 s) et objets du monde 38,1 s
+(placements, pads, véhicules, projectiles) : 63 % de la cuisson ; 68 à 76 % sur les témoins. Pic du
+BTB : 1,01 → 1,10 Gio sur cinq paires (+9 %), mais 1,03 → 0,90 sous trace du ramasse-miettes ; la
+trace montre un tas vivant identique à ±5 Mo pendant tout le décodage et un pic formé dans la
+dernière seconde (assemblage et écriture), dont la hauteur dépend du calage du cycle — découverte 9
+du plan. Profil de tas : +267 Mo d'allocations sur 41,9 Go.
+
+**Conclusion / prochaine étape** : tous les lots restants attendent la campagne (report par le
+plan) : la vague 1 (fusion annoncée par la campagne dans l'heure, après une relance de CI) débloque
+le second temps de 2.1 puis 2.4 et 2.5 ; LU et LS débloquent 2.7 et 3.1. À la fusion : `feat/v75`
+dans `feat/ri-etape2`, passe de référence re-figée, puis le second temps de 2.1. Décision de
+l'utilisateur sur 2.2.2 toujours attendue.

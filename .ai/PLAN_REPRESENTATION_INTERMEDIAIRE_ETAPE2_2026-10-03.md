@@ -283,7 +283,7 @@ des corps, ceux de ti=9 ; coût mesuré de la phase complète des images-clés, 
   d'images-clés de la cuisson : un de moins (les deux préliminaires de la marche des trames
   partagent une phase), aucun corps parcouru de plus.
 
-### Lot 2.3 — Canaux de tête de vue A (taille M) — coordination §1.3 — fait, clôture à la CI verte
+### Lot 2.3 — Canaux de tête de vue A (taille M) — coordination §1.3 — CLOS le 2026-10-03
 *Décisions d'exécution du 2026-10-03* (relu sur pièces : six balayages de tête parcourent chacun
 tous les paquets delta et relisent le préambule de 9 bits, `readPacketHead`, avant de décoder le
 corps de leur événement ; la marche des trames lit déjà ce préambule, `PacketHeadEventType`, pour
@@ -328,12 +328,39 @@ décider de localiser la liste d'événements, sans le ranger dans la structure)
   film ; faits 20/20 et killsource 19/19 identiques à l'octet. G-film, archlint, vet (avec et sans
   `research`), `golangci-lint` (0 problème) verts ; empreinte de la grammaire régénérée à révision
   constante. Parcours de la cuisson : inchangés (chaque lecteur de tête garde son parcours des
-  trames, désormais sans relire la tête ni la marche) ; leur mise en commun est le lot 3.1.
+  trames, désormais sans relire la tête ni la marche) ; leur mise en commun est le lot 3.1. CI
+  verte au niveau job sur `2aae5c7e1` (run `37137855861`).
 
-### Mesure avant 2.4 et 2.5 (DT2-5) — taille S
-- [ ] M.1 Durées par étape et pic mémoire de la cuisson, trois témoins et un BTB, machine calme,
+### Mesure avant 2.4 et 2.5 (DT2-5) — taille S — CLOSE le 2026-10-03
+- [x] M.1 Durées par étape et pic mémoire de la cuisson, trois témoins et un BTB, machine calme,
       binaires alternés ; part des balayages ancrés et des balayages d'objets du monde.
-- [ ] M.2 Proposition chiffrée à l'utilisateur : mutualiser (2.4, 2.5 complets) ou marquer seulement.
+      *Fait* (machine calme, signal de la campagne) : binaire de la base de l'étape (`67c379fc1`)
+      contre celui du lot 2.3 (`2aae5c7e1`), deux tours alternés sur les quatre films
+      (`replay-equiv`, journal des étapes), trois tours de plus sur le BTB, puis une cuisson de
+      chaque binaire sous profil de tas et une sous trace du ramasse-miettes (`replay-build`).
+      **Durées** (moyennes) : `084a804d` 108,98 → 107,99 s (−0,9 %), `e5adf7b2` 43,70 → 43,84 s
+      (+0,3 %), `60ae07c4` 31,54 → 31,31 s (−0,7 %), `11de8353` 37,91 → 37,76 s (−0,4 %).
+      **Pic** : témoins 0,49 → 0,52, 0,49 → 0,50 et 0,48 → 0,44 Gio (les deux sens) ; BTB 1,01 →
+      1,10 Gio sur les cinq paires alternées (+9 %), 1,05 → 1,09 sous profil de tas, 1,03 → 0,90
+      sous trace (−13 %). La trace explique l'écart (découverte 9) : le pic se forme dans la
+      dernière seconde de la cuisson et dépend du calage du cycle du ramasse-miettes ; pendant le
+      décodage, le tas vivant des deux binaires est le même à ±5 Mo par fenêtre de cinq secondes,
+      et le profil n'attribue aux lots que +267 Mo d'allocations sur 41,9 Go (+0,6 %). Aucune
+      structure retenue : critère 4 tenu. **Étapes** (BTB, `replay-build`, sans le hachage du
+      harnais) : cuisson 98,6 s, dont killsource 23,3 s et décodage 73,2 s ; balayages ancrés
+      24,2 s (pont d'identité, positions par l'ancrage des bipèdes, porté par l'étape
+      `translocations` : 8,9 s ; les huit passes du marcheur ancré : 15,3 s, ≈ 1,75 s chacune) ;
+      balayages d'objets du monde 38,1 s (placements 6,0, pads 12,0, véhicules 16,8, projectiles
+      3,3) ; ensemble 62,3 s, **63 % de la cuisson**. Témoins (`replay-equiv`) : objets du monde
+      seuls 35 à 42 % de la cuisson ; avec les balayages ancrés, 68 à 76 % (borne haute : le
+      harnais hache les positions dans l'étape qui les suit).
+- [x] M.2 Proposition chiffrée à l'utilisateur : mutualiser (2.4, 2.5 complets) ou marquer seulement.
+      *Fait* : les deux familles pèsent bien plus que le seuil de 10 % → **2.4 et 2.5 mutualisent**
+      (règle de DT2-5 ; aucune objection de l'utilisateur au GO). À gagner sur le BTB : les huit
+      passes du marcheur ancré refont chacune le même parcours (15,3 s), les quatre balayages
+      d'objets du monde parcourent chacun le film (38,1 s). Proposition présentée à l'utilisateur
+      au point d'étape du 2026-10-03 ; une objection la rouvre. 2.4 et 2.5 attendent la fusion de
+      la vague 1 (§1.3).
 
 ### Lot 2.4 — Récupération ancrée mutualisée (taille L)
 - [ ] 2.4.1 UN ancrage bipède par film (positions et les huit passes du marcheur ancré, véhicules
@@ -499,6 +526,16 @@ plan y sont reprises comme items (3.1.2).
    l'emprise du record, alias compris ; la grammaire lirait les emplacements que l'écrivain écrit),
    donc un lot de 2.7, prouvé au corpus et au banc de vérité. Décision de l'utilisateur demandée
    (2.2.2 statué `[!]`).
+9. *(mesure M)* **Le pic d'une cuisson n'est pas dans le décodage.** Trace du ramasse-miettes sur
+   le BTB (`084a804d`, les deux binaires) : le tas vivant reste sous 260 Mo pendant tout le
+   décodage, puis monte à 450-525 Mo dans la dernière seconde (fin du décodage, assemblage,
+   écriture des faits et de l'artefact) ; l'empreinte que la sentinelle mesure y approche le double
+   (la cible de croissance du ramasse-miettes) et varie de 0,90 à 1,14 Gio d'une cuisson à l'autre,
+   selon le calage du cycle sur ce pic d'allocations. Deux conséquences : un gain de la
+   représentation intermédiaire sur le décodage ne se verra pas dans ce pic, et le seuil de 10 % du
+   critère 4 ne se décide pas sur lui avec quelques paires. Les mesures du critère 4 (après 2.4,
+   2.5, 2.7, 3.1) et 3.2 gagneraient à lire aussi le tas vivant par phase (trace du ramasse-miettes,
+   comme à M.1). Non traité.
 
 ## 7. Journal
 
@@ -556,3 +593,13 @@ plan y sont reprises comme items (3.1.2).
   (retours rejeu : `m4b_compteur_research_test.go`, `p4_entites_ti9_research_test.go`) ajustés
   mécaniquement au contexte de `ScanFireEvents` ; campagne prévenue. Suite : la mesure M (machine
   calme, signal de la campagne) ; le second temps de 2.1 à la fusion de la vague 1.
+- 2026-10-03 : lot 2.3 CLOS (CI verte au niveau job sur `2aae5c7e1`, run `37137855861`). Mesure M
+  CLOSE (cf. M.1 et M.2) : aucune régression (durées de −0,9 % à +0,3 % ; l'écart de pic du BTB est
+  le calage du ramasse-miettes, découverte 9) ; balayages ancrés et d'objets du monde = 63 % d'une
+  cuisson du BTB, donc 2.4 et 2.5 mutualisent (DT2-5). TOUS LES LOTS RESTANTS ATTENDENT LA CAMPAGNE
+  (report par le plan, §3) : le second temps de 2.1, 2.4 et 2.5 attendent la fusion de la vague 1 ;
+  2.7 ne peut pas se finir avant LU (2.7.a) et LS (2.7.c), et un lot commencé se finit (règle 2 du
+  contrat) ; 3.1 suit 2.7.c, 3.2 clôt. 2.2.2 attend la décision de l'utilisateur. Campagne
+  prévenue de la fin de la mesure ; elle annonce la fusion de la vague 1 dans l'heure (après la
+  relance d'un job de CI). Reprise à son signal : `feat/v75` dans cette branche, passe de référence
+  re-figée, puis le second temps de 2.1.
