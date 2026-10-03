@@ -23,10 +23,11 @@ import (
 	"testing"
 )
 
-// homonymesDeGrammaire : les noms enregistres sous deux tables de grammaires differentes, recenses
-// dans le binaire sur les 326 noms des registres du corpus (`simulation-state-component` et
-// `simulation-state-playback-component` ont deux tables mais un seul lecteur derriere leurs
-// thunks : ce ne sont pas des homonymes de grammaire).
+// homonymesDeGrammaire : les noms enregistres sous deux tables de grammaires differentes, lus dans
+// le binaire pour les noms des registres du corpus ; G6 exige que les homonymes de la table soient
+// exactement cette liste (`simulation-state-component` et `simulation-state-playback-component`
+// ont deux tables mais un seul lecteur derriere leurs thunks : ce ne sont pas des homonymes de
+// grammaire).
 var homonymesDeGrammaire = []string{compHighFrequency}
 
 // homonymesDeLaTable rend, par nom, les lignes de la table dont le nom porte au moins deux

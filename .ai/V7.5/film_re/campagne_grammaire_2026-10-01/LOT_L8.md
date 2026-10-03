@@ -21,9 +21,10 @@
 | L8.4 garde-fou « dispatch par table » (D-89) | [x] | contrôle G6 `TestG6LesHomonymesSeRoutentParTable` |
 | L8.5 `1c4c63c2` (−1 sain au juge à trois règles) | [x] | instruit paquet par paquet (`24:510`) : tête de liste lue sur un NEW au masque impossible ; déjà résolu par L0 (§4.2) |
 | L8.6 révision | [x] | `grammar-2026-10-02` → `grammar-2026-10-02.2` (le format n'admet pas de suffixe de lot, D-L8-2) |
-| Gates 1, 2, 3, 6, 7 | voir §5 | 1, 2, 3, 7 tenus ; 6 : `replay-equiv` instruit, `replay-corpus-gate` rc 1 (banc 19 / 19 ok, PERTE sur 8 témoins : durée des stances et compteurs de couverture, instruits §5.4 sauf les NEW refusés) |
+| Gates 1, 2, 3, 6, 7 | voir §5 | 1, 2, 3, 7 tenus ; 6 : `replay-equiv` instruit, `replay-corpus-gate` rc 1 (banc 19 / 19 ok, PERTE sur 8 témoins : durée des stances et compteurs de couverture, instruits §5.4 et, NEW refusés compris, §8.2) |
+| Corrections du contrôle (2026-10-03) | [x] sauf C2d [!] | vecteurs des deux branches de la porte d'orientation, instruction complète du gate de corpus, règle 17, thought_log (§8) ; la décision sur le rc 1 reste au pilote ou à l'utilisateur (§6) |
 
-Verdict : **[x] retenu** (voir §5 et §6 pour les écarts).
+Verdict : **[x] retenu** (voir §5, §6 et §8 pour les écarts).
 
 ## 1. Ce qui est lu dans le jeu (établi)
 
@@ -291,13 +292,13 @@ par révision (`cmd/replay-build --facts`, racine factice, trois films, un proce
   après : `fb1a1a72` 178, dont 162 recouverts par un intervalle de même slot et même genre (recoupés
   par les lectures neuves) et 16 `jumpDerived` sans recouvrement (genre CALCULÉ, pas lu) : 3 décalés
   de quelques trames, 8 au contact d'un `sprint` désormais lu, **5 sans voisin à ±10 trames**
-  (slots 515, 531, 533, 582, 620 — non instruits un par un) ; `9f57c612` : 2, tous recouverts ;
+  (slots 515, 531, 533, 582, 620 — instruits un par un au §8.2 b) ; `9f57c612` : 2, tous recouverts ;
 - `killsource` (`9f57c612`, `fb1a1a72`) : l'étape hache le `Result` entier ; le document ne change pas
   sur les morts ; le seul champ qui bouge est le diagnostic `Calibration` (§5.2, mesuré par la CLI
   sur `fb1a1a72` ; `9f57c612` n'est pas un des 19 témoins, supposé de même nature) ;
 - `vehicles` : l'étape hache l'entrée du balayage (`FilmInputs.Vehicles`) ; `coverage.vehicles` et le
-  document de `084a804d` sont inchangés (mesuré) ; pour les 6 autres films, non cuit : supposé de
-  même nature (compteurs internes du balayage qui lit désormais les records `ti=3`).
+  document de `084a804d` sont inchangés (mesuré) ; pour les 5 autres films (et non 6) : mesuré au
+  §8.2 c, seul `DeathStats` (dénominateurs de la marche des morts) change.
 - Durées et pics (base → lot, `re_durees.txt`) : semblables à ± 10 % (machine partagée), sauf le pic
   de `1c4c63c2` 1,80 → 2,10 Gio ; L0 avait mesuré 1,79 → 2,11 Gio en passant à cette même base :
   écart non instruit (variance estimée), gate 4 sans objet pour L8.
@@ -353,8 +354,8 @@ Instruction :
   depuis « `ti=3 low-frequency` » : fin de payload 4, rejet 1 ; un rejet devenu vue C hors cadre),
   tous non fermés avant comme après : c'est l'ordre de grandeur des compteurs de la cuisson (`holesOpenViewB` +12, `reached` −12),
   rafales du tir continu inchangées (`continuousFire` identique au `replay-equiv`). Les comptes de NEW
-  refusés (+1, +2) : supposés de même nature (un NEW `ti=3` qui se désynchronisait se traverse et entre
-  dans les comptes), non instruits un par un (D-L8-8).
+  refusés (+1, +2) : instruits un par un au §8.2 a (7 refus neufs, tous sur des en-têtes que
+  l'écrivain ne peut pas écrire ; D-L8-1 et D-L8-8).
 
 ## 6. Écarts
 
@@ -370,13 +371,18 @@ Instruction :
 - Commande hors liste jouée par erreur : un `python3 -` vide (aucun script, aucune sortie), sans
   effet ; aucun Python écrit. Une redirection vers `/tmp_none` (racine du disque) tapée par erreur a
   été refusée par le système (« Permission denied ») : rien n'a été créé.
-- `replay-equiv` : 5 intervalles `jumpDerived` de `fb1a1a72` disparus sans voisin, non instruits un
-  par un (§5.3).
-- `replay-corpus-gate` sort rc 1 (PERTE sur 8 témoins, §5.4) : le plan exige « sans perte » ; le lot
-  est retenu parce que le banc de vérité est ok sur 19 / 19 et que les pertes sont la durée des
-  stances recoupée par des lectures neuves (D-L8-9) et des compteurs de couverture de paquets non
-  fermés (D-L8-8) ; les comptes de NEW refusés restent non instruits un par un. À trancher par le
-  pilote ou l'utilisateur.
+- `replay-equiv` : 5 intervalles `jumpDerived` de `fb1a1a72` disparus sans voisin, instruits un par
+  un au §8.2 b (trois faux positifs de la base, deux profils de saut sortis au bord de la fenêtre de
+  la dérivation, D-L8-10).
+- `replay-corpus-gate` sort rc 1 (PERTE sur 8 témoins, §5.4) : le plan exige « sans perte ». Le rc 1
+  est désormais instruit en entier : banc de vérité ok sur 19 / 19 ; durée des stances recoupée par
+  des lectures neuves (D-L8-9) ; compteurs de couverture de paquets non fermés (D-L8-8) ; NEW refusés
+  instruits un par un (§8.2 a : 7 refus neufs, tous sur des en-têtes que l'écrivain ne peut pas
+  écrire, aucune lecture fausse créée) ; étape `vehicles` mesurée (§8.2 c : dénominateurs seulement).
+  **Décision sur le rc 1 : NON CONSIGNÉE.** Elle appartient au pilote ou à l'utilisateur ; l'exécutant
+  des corrections (2026-10-03) n'a reçu aucune décision datée et n'en écrit pas à leur place.
+  Proposition de l'exécutant, sur le précédent L0 (rc 1 admis après instruction) : admettre le rc 1.
+  Ligne à compléter par le décideur : « Décision du [pilote | utilisateur], [date] : … ».
 
 ## 7. Découvertes
 
@@ -412,3 +418,170 @@ Instruction :
   aucune mesure du banc de vérité ne couvre ce bloc (sprint à vitesse constante, oracle physique
   connu, non branché sur le banc). Tout lot qui fait lire plus de paquets à événements sortira le gate
   de corpus en PERTE sur ce bloc par construction, comme D-L0-4 pour P-1.
+- **D-L8-10** (corrections du contrôle) : la dérivation `jumpDerived` dépend de la densité des
+  lectures de vitesse : un silence de plus de 250 ms compte nul dans l'intégrale, et un échantillonnage
+  plus dense déplace la hauteur intégrée de quelques centimètres. Sur `fb1a1a72`, deux épisodes au
+  profil de saut (slots 533 et 620) sortent de la fenêtre 0,85 m ± 10 % quand le lot densifie leurs
+  lectures (1,0328 m et 0,7635 m) ; trois faux positifs de la base en sortent aussi (§8.2 b). Non
+  instruit au-delà ; relève de la dérivation, pas de la grammaire.
+- **D-L8-11** (corrections du contrôle) : le NEW `slot 2048 gén. 2 ti=10 masque 0` de `d9781168` est
+  refusé quatre fois au chunk 25 (25:788, 25:1728, 25:2122 dans la base, 25:506 de plus au lot),
+  chaque fois premier record lu au début de liste retenu : une même lecture fausse récurrente
+  (masque nul, aucune règle de l'écrivain contredite ; l'image-clé suivante ne porte pas ce slot).
+  Par quel rang de `debutDeLaListe` ces débuts sont pris : non mesuré. Non instruit.
+
+## 8. Corrections du contrôle indépendant (2026-10-03)
+
+Le contrôle (`feat/cg-l8` `9edb99121`, base `af6e93e23`, rapport du 2026-10-03) a confirmé sur pièces
+le critère du jeu, les chiffres par film, les pertes, killsource et les gates de code, et demandé cinq
+corrections. Instruments et sorties : `scratchpad/L8/` (`mutations_ctl.*`, `refus/`, `veh/`,
+`carte_ctl/`, `gfilm_ctl.txt`). Aucun instrument n'est versionné : tous jouent par `-overlay`
+(fichiers du worktree intacts).
+
+| # | Correction | Statut |
+|---|---|---|
+| C1 | vecteurs : les deux branches de la porte d'orientation, en tête et en entrée | [x] |
+| C2a | NEW refusés +1 / +2 sur `084a804d`, `111fa685`, `60ae07c4`, `d9781168`, `4f77afc1` | [x] instruits un par un (§8.2) |
+| C2b | 5 intervalles `jumpDerived` de `fb1a1a72` sans voisin | [x] instruits un par un (§8.2) |
+| C2c | étape `vehicles` de `replay-equiv` sur les films non cuits | [x] mesurée (§8.2) |
+| C2d | décision explicite du pilote ou de l'utilisateur sur le rc 1 | [!] à consigner par le pilote (§6) : l'exécutant des corrections n'a reçu aucune décision datée |
+| C3 | règle 17 : histoire datée et comptes du jour hors du code | [x] |
+| C4 | commentaire faux de `ProbeHighFrequency` | [x] |
+| C5 | entrée `.ai/thought_log.md` | [x] |
+
+### 8.1 C1 — la porte de `FUN_140c5fa84` jouée des deux côtés
+
+`FUN_140c5f938` mode 0 → `FUN_140c5fa84` : `R(1)`, puis `R(19)` si la porte vaut 0, puis `R(8)`. Les
+vecteurs n'écrivaient la tête qu'AVEC direction et les entrées que SANS. `ecrireBasseFrequence` prend
+désormais la branche de la tête, chaque entrée porte la sienne (`direction`) ; six cas : liste vide
+tête avec / sans direction, drapeaux 0 à 4 (dont deux entrées à orientation avec direction et une
+sans) sous les deux têtes, une entrée seule avec direction, 63 entrées aux directions alternées par
+huit. Mutations du contrôle rejouées (`mutations_ctl.sh`, `-overlay`,
+`-run TestBasseFrequenceSuitSonEcrivain`) :
+
+```
+X17 orientation d'entrée R(1)+R(8)               : ROUGE — « drapeaux 0 a 4, tete avec direction : le lecteur s arrete au bit 380, l ecrivain a ecrit 570 bits »
+X18 orientation de tête R(1)+R(19)+R(8) toujours : ROUGE — « liste vide, tete sans direction : le lecteur s arrete au bit 127, l ecrivain a ecrit 108 bits »
+X17 sur les vecteurs de 9edb99121                : ok (survivant, comme mesuré par le contrôle)
+X18 sur les vecteurs de 9edb99121                : ok (survivant)
+```
+
+### 8.2 C2 — l'instruction restante du gate de corpus
+
+**(a) NEW refusés.** Instrument : la marche de PRODUCTION (`ScanMarcheDesTrames`, contexte
+`ContexteDeFilm`) avec un journal de chaque refus compté par l'observation de production (chunk,
+paquet, phase, record refusé, masque, règle de l'écrivain, archétype du vivant, verdict de l'image-clé
+suivante), le détail record par record de paquets nommés, le compte de records par paquet et
+l'historique de liaison de slots nommés (`refus/ov/` ; base = fichiers de `grammar` de `af6e93e23` par
+surcouche). Les totaux de l'instrument sont ceux du gate, base et lot, au compteur près
+(`refusedNews`, `refusedNewFalseReads`, `refusedNewUndecided`, `forgottenBindings`, `records`,
+`eventPacketsUnlocated`, cinq films) : mesuré. Aucun refus de la base ne disparaît ; les refus neufs
+sont exactement :
+
+| Film | Paquet | NEW refusé (slot, `ti`, masque) | Règle de l'écrivain contredite | Vivant | Verdict | Cause, lien avec `ti=3` |
+|---|---|---|---|---|---|---|
+| `084a804d` | 11:872 | 91, `ti=3`, `0xf3e082ebef820dbe` | masque au-delà de l'archétype | `ti=17` | lecture fausse | base : liste NON LOCALISÉE ; lot : `high-frequency` de `ti=3` lu sur 26 bits (et non 8) ferme une chaîne [NEW 3933 `ti=42` au masque impossible, DELTA bipède 637, NEW 91 `ti=3`] : tête par chaîne sur un NEW contredit (D-L8-1). Le DELTA 637 est le `stances.records` +1 du film |
+| `111fa685` | 23:14 | 26, `ti=3`, `0xf76081ecc010904d` | masque au-delà de l'archétype | `ti=6` | lecture fausse | mêmes 31 records base et lot ; le dernier, un NEW `ti=3` après des DELTA, DÉSYNCHRONISAIT sur `low-frequency` non porté (non compté) ; il se traverse désormais et se compte refusé |
+| `60ae07c4` | 14:514 | 122, `ti=3`, `0xf3e0836fc690907d` | idem | `ti=45` | lecture fausse | idem (9 records identiques) |
+| `60ae07c4` | 14:2120 | 90, `ti=3`, `0x4180098001` | idem | `ti=17` | lecture fausse | idem (12 records identiques) |
+| `d9781168` | 25:506 | 2048, `ti=10`, `0x0` | aucune | `ti=42` | indécis (slot absent de l'image-clé) | base : non localisée ; lot : chaîne [NEW 2048 `ti=10`, NEW 7308 `ti=3` au masque `0x4008000020020001`, au-delà de l'archétype] fermée par `low-frequency` (D-L8-1). Le même NEW 2048 `ti=10` est déjà refusé trois fois dans la base (25:788, 25:1728, 25:2122) |
+| `d9781168` | 25:788 | 7308, `ti=5`, `0x748a08ae04c80000` | masque au-delà de l'archétype | `ti=3` | indécis | cascade de 25:506 : le NEW 7308 `ti=3` (faux) y a lié le slot, le NEW 7308 `ti=5` (faux aussi, lié dans la base) est donc refusé ; l'image-clé du chunk 26 ne porte pas 7308 et l'oublie dans les deux arbres |
+| `4f77afc1` | 27:1128 | 3892, `ti=38`, `0x200018011000000` | masque au-delà de l'archétype | `ti=47` | indécis | mêmes 18 records base et lot ; le vivant `ti=47` vient de 27:1120 : base non localisée, lot localisée par une chaîne [NEW 3892 `ti=47`, NEW 262 `ti=35`, NEW 7536 `ti=3` au masque au-delà de l'archétype] fermée par `low-frequency` + `high-frequency` (D-L8-1) |
+
+Tous les refus neufs portent sur des en-têtes que l'écrivain ne peut pas écrire (masque au-delà de
+l'archétype, `FUN_142e2da44`) ou sur le NEW `ti=10` déjà refusé trois fois sur ce même slot dans la
+base ; quatre sont confirmés lecture fausse par l'image-clé suivante, trois indécis (slot absent de
+l'image-clé). Le portage de `ti=3` ne crée aucune lecture fausse : il (i) convertit en refus compté
+une désynchronisation qui ne l'était pas (3 paquets, même lecture fausse dans les deux arbres) ;
+(ii) fait fermer au bit des chaînes de tête dont un NEW contredit l'écrivain, que `pasDEssai` accepte
+(D-L8-1 : 3 paquets, plus la cascade de `d9781168`). Le correctif général D-L8-1 (déjà dans L2,
+`pasDEssai` NEW et delta) retire (ii) ; (i) relève de D-L8-8 (la traversée ne s'arrête pas sur un
+masque impossible).
+
+Mesuré au passage, les autres compteurs de ces témoins : `stances.records` de `084a804d` +1 (DELTA 637
+de 11:872, sous une tête contredite) ; `4f77afc1` −1 = −2 (25:748 : la base localisait sur une chaîne
+NEW `ti=38` au masque épars non croissant, DELTA 755 puis 633 hors ordre, DEL, NEW `ti=3` 5252 au
+masque impossible lu avec `high-frequency` sur 8 bits ; le lot, qui le lit sur 26 bits, ne la ferme
+plus) +1 (NEW bipède 262 de 27:1120, sous la tête D-L8-1). `111fa685` `eventPacketsUnlocated` +1 =
+20:306 : la base localisait sur une chaîne [NEW `ti=9`, DEL, NEW `ti=4` au masque impossible, NEW
+`ti=3` 5754 au masque impossible lu sur 8 bits], le lot ne la ferme plus. `60ae07c4` : deux paquets
+changent d'un record (2:1820 14 → 13, 14:760 9 → 10), sans bipède. Les lectures perdues sont des
+lectures que l'écrivain contredit ; les deux lectures de bipède gagnées (637, 262) sont sous une tête
+D-L8-1, que L2 retire.
+
+**(b) Les 5 intervalles `jumpDerived` de `fb1a1a72` sans voisin.** `jumpDerived` est CALCULÉ
+(`movement_states_jump.go` : intégrale de la vitesse verticale tenue, lecture bornée à 250 ms,
+fenêtre 0,85 m ± 10 % = [0,765 ; 0,935]). Instrument : échantillons et épisodes des cinq slots, base
+et lot (`refus/lot|base_out/fb1a1a72.sauts`, origine des trames recalée sur les intervalles de la
+base). Chaque épisode existe encore dans le lot (même montée) ; c'est sa HAUTEUR qui sort de la
+fenêtre :
+
+| Slot | Trames | Base : h, échantillons, silences > 250 ms | Lot : h, échantillons | vz max | Lecture |
+|---|---|---|---|---|---|
+| 515 | 156-167 | 0,8115 m, 19, un silence de 316 ms compté nul | 1,1788 m, 40, aucun | 1,89 m/s | la base n'était dans la fenêtre que par le silence ; profil plat à ~1,2 m/s pendant 1 s, pas celui d'un saut (vz max 3,4 m/s, montée 0,47 s, oracle `dad793c7`) : faux positif de la base (estimé) |
+| 531 | 926-938 | 0,9159 m, 13, un silence de 885 ms | 1,5565 m, 40, aucun | 4,40 m/s | idem : la base n'y était que par le silence ; 1,56 m n'est pas un saut au sol (estimé) |
+| 533 | 1532-1537 | 0,9036 m, 15, aucun | 1,0328 m, 32 | 3,06 m/s | échantillonnage deux fois plus dense : l'intégrale passe au-dessus de la fenêtre ; profil de saut (montée 0,55 s) ; vrai saut ou non : indéterminé |
+| 582 | 3374-3381 | 0,7664 m, 12, aucun | 0,7522 m, 15 | 1,41 m/s | à 0,0014 m du bord dans la base ; vz max 1,4 m/s, pas un profil de saut : faux positif de la base (estimé) |
+| 620 | 5530-5534 | 0,7788 m, 21, aucun | 0,7635 m, 25 | 3,20 m/s | profil de saut ; sort de la fenêtre de 0,0015 m : vraisemblablement un vrai saut perdu au bord de la fenêtre (estimé) |
+
+Mécanisme établi (mesuré) : les lectures neuves remplissent des silences que l'intégrale comptait
+nuls (515, 531) ou affinent l'échantillonnage (533, 582, 620). Trois des cinq étaient des faux
+positifs de la base (estimé par le profil) ; deux (533, 620) ont un profil de saut et sortent d'une
+fenêtre que la dérivation fixe (0,85 m ± 10 %). Sur le film, `jumpDerived` passe de 252 à 387
+(§5.3) : le genre dérivé gagne en net. La sensibilité au bord de fenêtre est celle de la dérivation
+(une heuristique physique, D-L8-10), pas du lecteur de `ti=3`.
+
+**(c) L'étape `vehicles` de `replay-equiv`.** Elle change sur SIX films (`53ce4390`, `e5adf7b2`,
+`111fa685`, `1c4c63c2`, `60ae07c4`, et `084a804d`, déjà cuit) : cinq non cuits, et non six comme
+écrit au §5.3. Instrument : `replay-equiv` construit base et lot avec une surcouche de `observe.go`
+qui hache, à l'étape `vehicles`, chaque champ de `VehicleScan` séparément (`veh/`, racine factice
+`scratchpad/L8/repo`, un film par processus, un processus à la fois ; décodage forcé par l'outil).
+Les digests `vehicles` des deux binaires sont identiques à l'octet à ceux de l'exécutant
+(`re_avant_tsv`, `re_apres_tsv`) sur les six films. Sur les six, UN SEUL champ change : `DeathStats`
+(dénominateurs de la marche des morts, par archétype) ; `Keyframes`, `Creations`, `Stats`,
+`Positions`, `Events`, `Aims`, `Deaths`, `Occupancy` identiques. Feuilles changées (mesuré) :
+
+| Film | `DeathStats` |
+|---|---|
+| `084a804d` | `Records[6]` 118 → 119 ; `CleanRecords[0]` 712 → 711, `[3]` 2 → 3, `[6]` 118 → 119 |
+| `53ce4390` | `CleanRecords[3]` 4 → 5 |
+| `e5adf7b2` | `Records[0]` 16 096 → 16 097 ; `CleanRecords[0]` 987 → 988 |
+| `111fa685` | `Records[0]` 16 164 → 16 165 ; `CleanRecords[3]` absent → 3 |
+| `60ae07c4` | `Records[0]` 45 965 → 45 968, `[11]` 35 → 34, `[31]` 4 → 5, `[52]` 44 → 43 ; `CleanRecords[0]` 1 627 → 1 628, `[11]` 9 → 8, `[3]` 16 → 22 |
+| `1c4c63c2` | `Records[0]` 57 459 → 57 458, `[32]` 12 → 13 ; `CleanRecords[0]` 560 → 559, `[3]` 3 → 8, `[32]` 12 → 13 |
+
+Aucun véhicule, aucune mort ni occupation ne change : la supposition du §5.3 est vérifiée.
+
+### 8.3 C3 et C4 — règle 17
+
+- `ecs_widths_guard_test.go` : le paragraphe daté du lot est retiré du code ; la phrase de contrat
+  existante (« les comptes GELES des deux catégories ») reste. Histoire du lot, déplacée ici :
+  123 → 125 largeurs FIXES, 66 gardées inchangées ; deux lignes entrent par le haut, les deux tables
+  de `high-frequency` : `ti=3 i1` (`FUN_142ed4880`, 26) et `ti=4 i0` (`FUN_14076d034`, 8, dont la
+  colonne portait « 8 (frame) ») ; `ti=3 i0 low-frequency` a une largeur gardée par son compte
+  d'entrées (« variable ») et reste hors des deux comptes.
+- `components_frequences.go` et `ecs_dispatch_table_guard_test.go` : « sur les 326 noms des
+  registres du corpus » remplacé par le contrat (un seul nom de composant a deux tables de grammaire ;
+  G6 exige que les homonymes de la table soient exactement la liste). Compte du jour, tel que
+  l'exécutant du lot l'a mesuré : 326 noms dans les registres du corpus
+  (`r_comp_tsv/r_comp_registres.tsv`, 21 registres, 9 builds).
+- `components_probe.go` : `ProbeHighFrequency` « R(8) en variante FRAME » (contredit par D-L8-3)
+  devient « R(8), delta et image-clé (FUN_14076d034) ».
+
+Ces changements ne touchent que des commentaires du code de production : l'empreinte de grammaire
+est inchangée (`TestGrammarRevSuitLaGrammaire` vert), la révision reste `grammar-2026-10-02.2`.
+
+### 8.4 Gates rejoués (tête corrigée)
+
+| Gate | Sortie |
+|---|---|
+| `gofmt -l ./internal/games/halo_infinite/film/ ./cmd/` | vide |
+| `go vet ./internal/games/halo_infinite/film/...` / `-tags=research` | rc 0 / rc 0 |
+| `go test ./internal/archlint/` | `ok` (58,5 s) |
+| G-film (`film/...`, `replaybuild/...`, `sync/killcollector/...`, `-count=1 -timeout 30m`) | rc 0, 19 paquets `ok` |
+| `golangci-lint run --new-from-rev=af6e93e23` (grammar) | `0 issues.` |
+| Carte v2 (`-mode v2 -denominateur-fixe … -paquets`) sur `fb1a1a72`, `51ebbc0f`, `c75f33b8`, `084a804d`, `4f77afc1`, `d9781168` | `fermeture_paquets.tsv` identique, film par film, à la carte « après » du lot (sains 42 035, 19 782, 23 669, 4 773, 22 260, 26 210) |
+| killsource | non rejoué : aucun code de marche ne change (commentaires seulement) |
+
+Verdict après corrections : **[x] retenu**, gate 2 tenu (la carte ne change pas), rc 1 du gate de
+corpus instruit en entier ; la décision de l'admettre appartient au pilote ou à l'utilisateur (§6).

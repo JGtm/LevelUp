@@ -7,10 +7,10 @@ package grammar
 // composant d un archetype par `FUN_14064dd28(archetype + 8, index, &objet)` ; l objet porte la
 // table (vtable) dont `+0x28` (thunk `FUN_14076ce9c` vers `+0x30`) est le lecteur que les deux
 // boucles de composants appellent, delta (`FUN_14076cb60`, CALL 14076cd19) comme image-cle
-// (`FUN_142e2c690`, CALL 142e2c7c9). Sur les 326 noms des registres du corpus, un seul est
-// enregistre sous deux tables de grammaires differentes : `high-frequency`. Pour lui, et pour
-// lui seul, le lecteur se choisit par l archetype que le record porte dans son en-tete
-// (`TypeIndex`, la valeur que la fonction d enregistrement ecrit en `archetype + 0x4754`).
+// (`FUN_142e2c690`, CALL 142e2c7c9). Un seul nom de composant est enregistre sous deux tables de
+// grammaires differentes : `high-frequency`. Pour lui, et pour lui seul, le lecteur se choisit par
+// l archetype que le record porte dans son en-tete (`TypeIndex`, la valeur que la fonction
+// d enregistrement ecrit en `archetype + 0x4754`).
 //
 //	archetype 3  FUN_140e460fc  i0 low-frequency   objet 0x144746e68, table 0x143d07b40,
 //	                                               lecteur FUN_142ed4aec, ecrivain FUN_142eda938

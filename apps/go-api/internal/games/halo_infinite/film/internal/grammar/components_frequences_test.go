@@ -39,17 +39,20 @@ func ecrireAvantHaut(w *bitWriter, direction uint64, avecDirection bool, roulis 
 }
 
 // entreeBasseFrequence est une entree de la liste de FUN_142eda938 : drapeaux `+0x27` (3 bits),
-// mot `+0x24` (16 bits), code `+0x26` (5 bits).
+// mot `+0x24` (16 bits), code `+0x26` (5 bits) ; `direction` choisit la branche de la porte de
+// l orientation (ecrite si le bit 2 des drapeaux est pose).
 type entreeBasseFrequence struct {
-	drapeaux uint64
-	mot      uint64
-	code     uint64
+	drapeaux  uint64
+	mot       uint64
+	code      uint64
+	direction bool
 }
 
-// ecrireBasseFrequence suit FUN_142eda938 champ par champ.
-func ecrireBasseFrequence(w *bitWriter, entrees []entreeBasseFrequence) {
+// ecrireBasseFrequence suit FUN_142eda938 champ par champ ; `teteAvecDirection` choisit la branche
+// de la porte de l orientation de tete.
+func ecrireBasseFrequence(w *bitWriter, teteAvecDirection bool, entrees []entreeBasseFrequence) {
 	ecrirePositionSansIndex(w, [3]uint64{5, 9, 3})
-	ecrireAvantHaut(w, 0x4a1b2, true, 0x7f)
+	ecrireAvantHaut(w, 0x4a1b2, teteAvecDirection, 0x7f)
 	w.bits(0xbeef, 16) // +0x52c
 	w.bits(0xa5, 8)    // +0x52e
 	w.bits(2, 2)       // +0x52f
@@ -60,7 +63,7 @@ func ecrireBasseFrequence(w *bitWriter, entrees []entreeBasseFrequence) {
 			ecrirePositionSansIndex(w, [3]uint64{1, 2, 3})
 		}
 		if e.drapeaux&2 != 0 {
-			ecrireAvantHaut(w, 0, false, 0x11)
+			ecrireAvantHaut(w, 0x2c3d4, e.direction, 0x11)
 		}
 		w.bits(e.mot, 16)
 		w.bits(e.code, 5) // FUN_142af2af0
@@ -84,28 +87,45 @@ func verifierTemoin(t *testing.T, br *Lecteur, fin int, quoi string) {
 	}
 }
 
+// casBasseFrequence : un composant `low-frequency` a ecrire, la branche de la porte d orientation
+// de tete et la liste d entrees.
+type casBasseFrequence struct {
+	teteAvecDirection bool
+	entrees           []entreeBasseFrequence
+}
+
 // TestBasseFrequenceSuitSonEcrivain : `ti=3 i0` lit exactement ce que FUN_142eda938 ecrit, liste
 // vide, liste de drapeaux varies (dont le bit 4, que ni l ecrivain ni le lecteur ne consultent)
-// et liste de 63 entrees (le maximum du compte de 6 bits).
+// et liste de 63 entrees (le maximum du compte de 6 bits). Les deux branches de la porte de
+// FUN_140c5fa84 (direction de 19 bits ecrite si la porte est nulle) sont jouees en tete comme en
+// entree.
 func TestBasseFrequenceSuitSonEcrivain(t *testing.T) {
 	longue := make([]entreeBasseFrequence, 63)
 	for k := range longue {
-		longue[k] = entreeBasseFrequence{drapeaux: uint64(k % 8), mot: uint64(k * 977), code: uint64(k % 32)}
+		longue[k] = entreeBasseFrequence{
+			drapeaux: uint64(k % 8), mot: uint64(k * 977), code: uint64(k % 32), direction: (k/8)%2 == 1,
+		}
 	}
-	cas := map[string][]entreeBasseFrequence{
-		"liste vide": nil,
-		"drapeaux 0, 1, 2, 3, 4": {
-			{drapeaux: 0, mot: 0x1234, code: 7},
-			{drapeaux: 1, mot: 0xffff, code: 31},
-			{drapeaux: 2, mot: 0, code: 0},
-			{drapeaux: 3, mot: 0x8001, code: 16},
-			{drapeaux: 4, mot: 0x0f0f, code: 9},
-		},
-		"63 entrees": longue,
+	varies := []entreeBasseFrequence{
+		{drapeaux: 0, mot: 0x1234, code: 7},
+		{drapeaux: 1, mot: 0xffff, code: 31},
+		{drapeaux: 2, mot: 0, code: 0},
+		{drapeaux: 2, mot: 0x0420, code: 3, direction: true},
+		{drapeaux: 3, mot: 0x8001, code: 16, direction: true},
+		{drapeaux: 3, mot: 0x7ffe, code: 15},
+		{drapeaux: 4, mot: 0x0f0f, code: 9},
 	}
-	for nom, entrees := range cas {
+	cas := map[string]casBasseFrequence{
+		"liste vide, tete avec direction":        {teteAvecDirection: true},
+		"liste vide, tete sans direction":        {teteAvecDirection: false},
+		"drapeaux 0 a 4, tete avec direction":    {teteAvecDirection: true, entrees: varies},
+		"drapeaux 0 a 4, tete sans direction":    {teteAvecDirection: false, entrees: varies},
+		"entree seule avec direction":            {teteAvecDirection: true, entrees: varies[3:4]},
+		"63 entrees, directions alternees par 8": {teteAvecDirection: true, entrees: longue},
+	}
+	for nom, c := range cas {
 		w := &bitWriter{}
-		ecrireBasseFrequence(w, entrees)
+		ecrireBasseFrequence(w, c.teteAvecDirection, c.entrees)
 		br, fin := lireAuTemoin(w)
 		_, _, porte := consumeByName(br, compLowFrequency, archetypeFrequences, 0)
 		if !porte {
