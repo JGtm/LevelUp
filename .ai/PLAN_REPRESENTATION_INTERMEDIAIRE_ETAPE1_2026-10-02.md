@@ -391,3 +391,27 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
   les faits frais, et leur fraîcheur ne regarde que les révisions déclarées ; vérifier
   `depuis_les_faits=false` dans le journal et comparer les faits neufs à l'octet. Même précaution
   avant chaque cuisson mesurée (critère 4).
+- 2026-10-02 (nuit) : ouverture du lot 1.3. Coordination avec la campagne (`levelup-83`, 23 h 20) :
+  L9 (marche d'image-clé) est dans sa vague 1 mais pas commencé ; la fusion de la vague dans
+  `feat/v75` viendra après assemblage, revue et accord de l'utilisateur, pas avant le 2026-10-03.
+  Décidé avec elle (option 2) : 1.3.1 s'écrit dans des fichiers NEUFS (`marche_images_cles*.go`),
+  sans toucher `keyframe_world*.go` ni `keyframe_closure.go` ; 1.3.2 (`KeyframeClosure`
+  consommateur) se branche après la fusion de la vague. L9 change l'ACCEPTATION des ancres
+  (génération 0 acceptée, voisin et recalage au-delà de la génération 1), pas la forme de
+  `MarcheDImageCle.Records` ni des records d'image-clé — prévision, la campagne préviendra si
+  l'assemblage change ces types. `feat/v75` (falcon-behemoth, schéma 77) refusionné dans la
+  branche (`9488f34ff`), passe de référence relancée pour re-figer les références.
+  Points techniques relevés pour 1.3.1 (à trancher à l'écriture, avec la campagne pour les deux
+  premiers) : (a) la marque d'élection par record (`LiaisonImageCleElue`) — `KeyframeRec` ne dit
+  pas comment son ancre a été atteinte (voisin, saut, recalage, élection), seuls les comptes par
+  payload le disent (`KeyframeWalkStats`) ; la poser demande un champ écrit sur le chemin
+  d'élection de `keyframe_world*.go` (fichiers de la campagne) : après la fusion de la vague ;
+  (b) les deux bits de tête d'un identifiant d'image-clé : le monde les lie comme RANG DE VUE
+  (`BindImageCle(ns, …)`, `vueDeLEspaceDeNoms`), la marche les nomme `Gen` et L9 parle de
+  « génération 0 » — la structure les prend comme rang de vue (`Record.Vue`, décision du lot
+  1.1), génération inconnue ; (c) `KeyframeClosure` pose le découpage MPP du format du film sur
+  le contexte pour la durée de la mesure (`InstallFilmFormatMPP`) : `ImagesCles` fera de même
+  pour la durée de l'itération, restauré à la sortie, arrêt anticipé compris ; (d) la mémoire
+  partagée entre les contextes de la cuisson et de killsource touche la construction des
+  contextes dans `replay` et `killsource` : à analyser, retenue seulement si aucune sortie ne
+  change.
