@@ -497,3 +497,112 @@ la tête intégrée de la vague (`a552c43f5`, L8 + L3a + L4a). Les mesures de ce
 branche du lot ; celles de `vague1_tsv/` portent sur `a552c43f5`. La tête corrigée prend
 `grammar-2026-10-03.2`, valeur qu'aucune branche de lot n'a portée (journal du plan, §4, 2026-10-03,
 « corrections de la revue »).
+
+## 14. Corrections des mineurs de la revue (2026-10-03)
+
+Cinq constats mineurs de la revue adverse de la vague 1, plus celui de la lentille « jeu » ; tous
+vérifiés sur pièces avant correction, tous VRAIS. Aucun bit lu ne change (preuve au §14.3). Les
+constats 3 et 5 portent sur L3a : `LOT_L3a.md` §11.
+
+| Constat | Verdict | Action |
+|---|---|---|
+| 1. Copie en ligne de `FUN_1406d01fc` dans `consumeWeaponStateTail` alors que `lireJeuDArmes` existe (3e appelant, règle 6) | vrai : `R(3)` + deux `consumeOpt2`, et `consumeOpt2` était un doublon exact de `consumeID2` (`FUN_1406d00ec`) | `consumeWeaponStateTail` appelle `lireJeuDArmes` ; `consumeOpt2` retiré (règle 7, plus aucun appelant) ; garde-rail `grammar/lecteur_jeu_darmes_guard_test.go` (deux formes, lues dans l'arbre syntaxique) |
+| 2. Moitié « records DELTA » de la règle `etatComplet` gardée par aucun test (M11/M12 verts) | vrai : M11 (`decodeDelta`) et M12 (`decodeDeltaWithArch`) verts contre l'ancien fichier de test, rejoués ici | `TestDeltaTi40LitSesComposants` : trame NEW + DELTA par `DecodeFrameRecords`, puis `decodeDeltaWithArch` ; seize composants `i30`..`i42`, `i45`..`i47` lus, arrêt au bit près |
+| 3. Garde-rail du minuteur aveugle à une copie sur une ligne | vrai | `LOT_L3a.md` §11 |
+| 4. Doc inversée de G4 (constante 140, commentaire arrêté à « 120 -> 123 ») | vrai ; le même bloc citait encore 179 / 114 / 65 lignes et le message d'échec « mesure du 2026-09-06 » | contrat : ce que comptent les deux constantes et la liste des lignes fixes par archétype ; l'historique daté est recopié au §14.2 |
+| 5. Champ `Minuteur.C` lu par aucun code de production | vrai | `LOT_L3a.md` §11 |
+| Lentille « jeu » : `composants_vehicule_ti40.go` dit « aucun composant ne s'y lit » puis « seul `i37` se lit » ; l'arrêt dès `i30` présenté comme une règle | vrai : seule la porte de `i33` / `i34` est une loi du jeu ; `i30`..`i32` ont une largeur du seul flux (§2 : « Lire `i30`-`i32` ne ferait que déplacer l'arrêt ») | en-tête réécrit : la loi du jeu (porte du châssis) d'un côté, le CHOIX CONSERVATEUR du port (tout sauf `i37` refusé en état complet, image-clé inchangée) de l'autre |
+
+### 14.1 Mutations (preuves)
+
+Les garde-rails lisent les sources sur le disque : leurs mutations sont posées EN PLACE puis
+restaurées octet pour octet (`cmp`) ; les mutations de comportement passent par `-overlay`.
+Scripts et sorties : scratchpad de la session, `integ3/mut/` (`jouer.sh`, `en_place.sh`, `out_*`).
+
+| Mutation | Test | Résultat |
+|---|---|---|
+| M11 de la revue : `br.etatComplet = !false` dans `decodeDelta` | ancien `composants_vehicule_ti40_chemins_test.go` | VERT (le trou) |
+| M11 | nouveau fichier | **ROUGE** `trame NEW + DELTA ti=40 : 2 records, erreur desync record slot=77 typeIdx=40 at component i30 (bit 238)` |
+| M12 de la revue : la même ligne dans `decodeDeltaWithArch` | ancien fichier | VERT (le trou) |
+| M12 | nouveau fichier | **ROUGE** `decodeDeltaWithArch : ti=40 arret a i30 fin 70 (1 composants), attendu ti=40, aucun arret, fin 530, 16 composants` |
+| `components_object.go` de la tête `8390543a8` (copie en ligne avec `consumeOpt2`) | `TestLecteurDeJeuDArmesUnique` | **ROUGE** `components_object.go : 1 lecture(s) en ligne de FUN_1406d01fc` |
+| copie sur une ligne `br.ReadBits(3); consumeID2(br); consumeID2(br)` dans `consumeWeaponStateTail` | idem | **ROUGE** (même message) |
+| `vitality.go` : `Minuteur{A: br.ReadBits(roundTimerBits), B: ..., Queue: br.ReadBits(largeurQueueMinuteur)}` sur une ligne | ancien `lecteur_minuteur_guard_test.go` | VERT (le trou) |
+| idem | nouveau garde-rail | **ROUGE** `vitality.go : 1 lecture(s) en ligne et 0 saut(s) de la forme de FUN_140d580d0` |
+| arbre non muté | les quatre tests | vert |
+
+Les vecteurs `TestGardeRailJeuDArmesVoitLesDeuxFormes` et `TestGardeRailMinuteurInsensibleALaMiseEnPage`
+fixent les formes vues et les faux positifs écartés : `R(3)` suivi de deux `R(32)`
+(`lecteur_position_exceptions.go`) n'est pas un jeu d'armes (les lectures directes du `Lecteur` ne
+comptent pas comme lecteur de `FUN_1406d00ec`) ; des lectures sous porte suivies d'une lecture
+inconditionnelle ne sont pas un minuteur (`LOT_L3a.md` §11).
+
+### 14.2 Historique daté de G4, retiré du code
+
+Recopié depuis `ecs_widths_guard_test.go` à `8390543a8`. Les mouvements de la vague 1 sont déjà
+consignés : `LOT_L8.md` §8.3 (123 -> 125), `LOT_L3a.md` §2 (123 -> 130), §2 de ce document
+(123 -> 131) ; total intégré 140 fixes / 66 gardées.
+
+```
+ecsLargeursFixes / ecsLargeursGardees : les comptes GELES des deux categories, mesures le
+2026-09-06 sur les 179 lignes a largeur entiere.
+2026-09-17 (lot 3.6.a) : 114 -> 115 largeurs FIXES et 65 -> 66 gardees, DEUX lignes neuves,
+toutes deux `ti=9` et toutes deux entrant dans le controle par le haut :
+  i4 managed-player-forge-weather-effect-overrides-component  `non_porte` -> `porte`, 64 bits
+     INCONDITIONNELS : les trois motifs s accordent, donc categorie FIXE.
+  i9 managed-player-custom-input-prompt-widget  `partiel` -> `porte`. Sa colonne `bits_typ`
+     passe de « variable » (hors controle) a `1`, le cas commun `present = 0` ; la largeur
+     reelle est GARDEE par le flux (1, 4, ou 39 + la somme des corps), donc les trois motifs
+     divergent et la ligne tombe en categorie GARDEE.
+Aucune ligne ne CHANGE de categorie : les deux etaient hors du controle, elles y entrent.
+2026-09-18 (lot 5.1.1) : 115 -> 121 largeurs FIXES, 66 gardees INCHANGEES. SIX lignes neuves,
+toutes `ti=12` (l archetype `managed-navpoint`), toutes entrant dans le controle PAR LE HAUT
+depuis `non_porte` : i1 R(8) 8, i7 R(8) 8, i8 R(32) 32, i10 2 x R(7) 14, i11 R(17) 17,
+i12 R(17) 17. Les SIX AUTRES composants portes par le meme lot (`i2`..`i6` et `i9`) ont une
+largeur GARDEE par le flux et une colonne `bits_typ` « variable », hors du controle.
+2026-09-21 (lot 5.7) : 121/66 -> 120/67. `ti=35 i55 biped-posture-physics-component` a CHANGE DE
+CATEGORIE : son repartiteur `FUN_141fd997c` etait glose « resolution d etat, 0 bit lu » ;
+l ecrivain en fait une union discriminee dont les quatre charges lisent de 15 a plus de cent
+bits, chacune derriere une porte du flux. Une fois portees (`components_biped_posture.go`), sa
+colonne `bits_typ` porte « variable » : `i55` quitte le controle au lieu d y changer de colonne.
+2026-09-25 (lot M4b des retours du rejeu) : 120 -> 123 largeurs FIXES, 66 gardees INCHANGEES.
+TROIS lignes neuves entrant PAR LE HAUT depuis `non_porte` (`composants_vue_b_m4b.go`) :
+  ti=10 i24 et i25 managed-object-looping-sound-component   R(32)   32
+  ti=40 i37 vehicle-emp-timer-component                    R(8)     8
+Les quatre autres ports du lot (`ti=47 i2`, `ti=5 i22` et `i24`, `ti=40 i34`) ont une largeur
+GARDEE par le flux : leur colonne `bits_typ` n est pas un entier et reste hors des deux comptes.
+```
+
+La liste par archétype du nouveau contrat est relevée sur le code (classement des trois motifs par
+une sonde jetable passée en `-overlay`, non versionnée) : 140 fixes, 66 gardées, conformes aux
+constantes.
+
+### 14.3 Preuve de sortie nulle (mesurée)
+
+Binaires de la tête construits depuis `git archive 8390543a8` (aucun worktree), binaires neufs depuis
+l'arbre corrigé ; recettes de l'intégration (carte v2 avec `denominateurs.tsv`, `killsource json`,
+`replay-equiv` en racine factice), sorties sous `integ3/` du scratchpad.
+
+- **Carte de fermeture v2, 20 films** : `fermeture_paquets.tsv` **identique à l'octet** (629 143
+  lignes, sha256 `24e0defe…10a42a7f` des deux côtés, et identique à la carte de l'intégration
+  `integ2/carte_rev2t`) ; les 12 autres TSV identiques à l'octet ; `fermeture_films.tsv` identique hors
+  `pic_octets` et `duree_ms` ; `fermeture_resume.md` identique hors chemin de la table et pic mémoire.
+- **killsource json, 19 témoins** (dont `111fa685`, `e5adf7b2`, `4f77afc1`) : 19 / 19 JSON
+  **identiques à l'octet**, rc 0 des deux côtés ; les `.err` ne diffèrent que par l'horodatage.
+- **`replay-equiv`, 20 films** : les 20 TSV de digests (61 étapes) **identiques à l'octet** entre
+  tête et arbre corrigé, zéro divergence. Contre les références figées de `67c379fc1`, 20 / 20
+  différents des deux côtés, comme à la tête (références à re-figer avant la vague 2, plan §6.0).
+- **Révisions** : aucune ne monte. L'empreinte de `grammar` change (code de la couche :
+  `consumeWeaponStateTail`, `consumeOpt2`, `lireMinuteur142ba78dc`) et est régénérée à révision
+  constante `grammar-2026-10-03.2` (`1bfd06f0…4401e02032`, 225 fichiers).
+
+### 14.4 Gates (sorties exactes, depuis `apps/go-api`)
+
+| Gate | Sortie |
+|---|---|
+| `gofmt -l ./internal ./cmd` | vide, rc 0 |
+| `go vet ./...` | rc 0 |
+| `go vet -tags=research ./internal/games/halo_infinite/film/...` | rc 0 |
+| `go test ./internal/archlint/ -count=1` | `ok levelup/go-api/internal/archlint 37.062s` |
+| G-film (`film/...`, `replaybuild/...`, `sync/killcollector/...`, `-count=1 -timeout 30m`) | rc 0, 20 paquets `ok` (dont `grammar` 47.935s, `replay` 29.078s) |
+| `golangci-lint run --new-from-rev 8390543a8 ./internal/games/halo_infinite/film/internal/grammar/...` | `0 issues.` |

@@ -372,7 +372,9 @@ func consumeBipedDesiredWeaponSet(br *Lecteur) {
 
 // lireJeuDArmes porte `FUN_1406d01fc`, le jeu d armes d une unite : `FUN_1406d0f20` R(3)
 // (l emplacement desire, rendu), puis deux `FUN_1406d00ec` (R(1) ; si 0, R(2)). Lu par le bipede
-// (`i42`, thunk) et par le vehicule (`ti=40 i38`, `14116d3cc` : `ADD RCX,0x84c ; JMP 1406d01fc`).
+// (`i42`, thunk), par le vehicule (`ti=40 i38`, `14116d3cc` : `ADD RCX,0x84c ; JMP 1406d01fc`) et
+// par la queue de l arme tenue ([consumeWeaponStateTail], `FUN_1407f06bc`). Seule copie de la
+// sequence : `lecteur_jeu_darmes_guard_test.go` interdit qu elle revienne en ligne.
 func lireJeuDArmes(br *Lecteur) uint32 {
 	sel := uint32(br.ReadBits(3)) // FUN_1406d0f20
 	consumeID2(br)                // FUN_1406d00ec

@@ -84,18 +84,20 @@ func TestCompteDeVolumesNonBorne(t *testing.T) {
 	}
 }
 
-// TestLecteurDeMinuteurRendLesQuanta : FUN_140d580d0 et FUN_142ba78dc rendent les quanta dans
-// l ordre ou FUN_142b6f76c et FUN_142ba7c74 les ecrivent.
+// TestLecteurDeMinuteurRendLesQuanta : FUN_140d580d0 rend les quanta dans l ordre ou
+// FUN_142b6f76c les ecrit ; FUN_142ba78dc consomme les 3n + 5 bits de FUN_142ba7c74, ni plus ni
+// moins (le marqueur qui suit se relit intact).
 func TestLecteurDeMinuteurRendLesQuanta(t *testing.T) {
 	br := lecteurDInstrument(bitsDe("100110101000111", 8))
 	m := lireMinuteur140d580d0(br, 5)
 	if m != (Minuteur{A: 0b10011, B: 0b01010, Queue: 0b00111}) || br.BitPos() != 15 {
 		t.Fatalf("n = 5 : %+v apres %d bits", m, br.BitPos())
 	}
-	flux := strings.ReplaceAll("0000000000000001 0000000000000010 10101 0000000000000011", " ", "")
+	flux := strings.ReplaceAll("0000000000000001 0000000000000010 10101 0000000000000011 101", " ", "")
 	br = lecteurDInstrument(bitsDe(flux, 16))
-	m = lireMinuteur142ba78dc(br, 16)
-	if m != (Minuteur{A: 1, B: 2, Queue: 0b10101, C: 3}) || br.BitPos() != 53 {
-		t.Fatalf("n = 16, forme a trois reels : %+v apres %d bits", m, br.BitPos())
+	lireMinuteur142ba78dc(br, 16)
+	if fin, marqueur := br.BitPos(), br.ReadBits(3); fin != 53 || marqueur != 0b101 {
+		t.Fatalf("n = 16, forme a trois reels : arret a %d (53 attendu), marqueur %03b (101 attendu)",
+			fin, marqueur)
 	}
 }

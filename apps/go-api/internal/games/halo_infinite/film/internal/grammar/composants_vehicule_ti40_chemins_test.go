@@ -11,17 +11,50 @@ import (
 )
 
 // composants_vehicule_ti40_chemins_test.go — les composants `ti=40` lus par les CHEMINS DE
-// PRODUCTION : la traversee d un record NEW ([TraverseEntity]), la marche des etats de mouvement
-// ([marcheurDesTrames.marcherLePaquet] puis [movementStateScanner.trame]) et son compteur publie, et la regle « seule la marche d etat
-// complet pose [Lecteur.etatComplet] ».
+// PRODUCTION : la traversee d un record NEW ([TraverseEntity]), les deux chemins DELTA
+// ([decodeDelta] par [DecodeFrameRecords], [decodeDeltaWithArch]), la marche des etats de
+// mouvement ([marcheurDesTrames.marcherLePaquet] puis [movementStateScanner.trame]) et son
+// compteur publie, et la regle « seule la marche d etat complet pose [Lecteur.etatComplet] ».
 
-// archetypeTi40 rend un registre dont l archetype 40 porte, a leur index, les composants
-// propres au vehicule utilises ici (les autres index sont absents de tout masque ecrit ici).
+// composantTi40 : un composant propre au vehicule, son index dans l archetype 40 et un corps
+// ecrit d apres son deserialiseur (memes vecteurs que `composants_vehicule_ti40_test.go`).
+type composantTi40 struct {
+	idx       int
+	nom, bits string
+}
+
+// composantsTi40 rend les seize composants propres au vehicule (i30..i42, i45..i47), dans l ordre
+// du registre. `i34` est ecrit en mode 2 (R(1) = 1, puis les vecteurs bruts).
+func composantsTi40() []composantTi40 {
+	treize := strings.Repeat("1", 13)
+	return []composantTi40{
+		{30, compVehicleAutoTurretTriggers, "101"},
+		{31, compVehicleAutoTurretAimingVector, strings.Repeat("10", 9) + "1"},
+		{32, compVehicleTransformedOpenState, "1 10000000"},
+		{33, compVehicleTypeState, "01 000101"},
+		{34, compVehicleTypePhysics, "1" + strings.Repeat("0", fwdUpDynPrecMode2Bits+rawVec3Bits)},
+		{35, compVehicleAutoTurretTarget, "1 1 101010101 01"},
+		{36, compVehicleSentryState, "110 1"},
+		{37, compVehicleEmpTimer, "10101010"},
+		{38, compVehicleWeaponSet, "011 001 011"},
+		{39, compVehicleAutoTurret, "10"},
+		{40, compVehicleEquipmentTurretParent, "1 " + treize + " 10"},
+		{41, compVehicleSeatsOverridePitch, strings.Repeat("0", 16)},
+		{42, compVehicleSeatsOverrideYaw, strings.Repeat("1", 16)},
+		{45, compAirDropFlight, "10 " + strings.Repeat("0", 14) + " " + strings.Repeat("1", 8)},
+		{46, compWarp, "11 " + strings.Repeat("0", 16)},
+		{47, compVehicleLowFrequency, "0 10101"},
+	}
+}
+
+// archetypeTi40 rend un registre dont l archetype 40 porte, a leur index, les seize composants
+// propres au vehicule ([composantsTi40]) ; les autres index sont absents de tout masque ecrit ici.
 func archetypeTi40() *Registry {
 	reg := &Registry{Archetypes: make([]Archetype, 41)}
 	comps := make([]string, 48)
-	comps[30], comps[31] = compVehicleAutoTurretTriggers, compVehicleAutoTurretAimingVector
-	comps[34], comps[37] = compVehicleTypePhysics, compVehicleEmpTimer
+	for _, c := range composantsTi40() {
+		comps[c.idx] = c.nom
+	}
 	reg.Archetypes[40] = Archetype{Index: 40, Components: comps}
 	return reg
 }
@@ -63,6 +96,87 @@ func TestRecordNeufTi40TraverseJusquAuBout(t *testing.T) {
 		t.Fatalf("NEW ti=40 {i30,i31} : ti=%d arret %d fin %d (%d composants), attendu ti=40, "+
 			"aucun arret, fin %d, 2 composants", tr.TypeIndex, tr.DesyncAt, tr.EndBit, len(tr.Comps), fin)
 	}
+}
+
+// ecrireBits ecrit une chaine de `0` et `1` (espaces ignores), MSB d abord.
+func ecrireBits(w *bitWriter, s string) {
+	for _, c := range strings.ReplaceAll(s, " ", "") {
+		w.bit(uint64(c - '0'))
+	}
+}
+
+// ecrireCorpsDeltaTi40 ecrit le corps d un DELTA `ti=40` apres son en-tete d id : selecteur de
+// base R(1) = 0, masque DENSE R(1) = 1 + R(64) des seize composants, puis leurs corps dans l ordre
+// du registre. Rend la position de fin attendue.
+func ecrireCorpsDeltaTi40(w *bitWriter) int {
+	w.bit(0) // selecteur de base (FUN_1406cdc04)
+	var masque uint64
+	for _, c := range composantsTi40() {
+		masque |= uint64(1) << uint(c.idx)
+	}
+	w.bit(1) // masque dense
+	w.bits(masque, 64)
+	for _, c := range composantsTi40() {
+		ecrireBits(w, c.bits)
+	}
+	return w.n
+}
+
+// verifierDeltaTi40 exige une traversee allee au bout, a `fin`, qui a lu les seize composants
+// dans l ordre du registre.
+func verifierDeltaTi40(t *testing.T, chemin string, tr EntityTrace, fin int) {
+	t.Helper()
+	attendus := composantsTi40()
+	if tr.TypeIndex != 40 || tr.DesyncAt != -1 || tr.EndBit != fin || len(tr.Comps) != len(attendus) {
+		t.Fatalf("%s : ti=%d arret a i%d fin %d (%d composants), attendu ti=40, aucun arret, fin %d, %d "+
+			"composants", chemin, tr.TypeIndex, tr.DesyncAt, tr.EndBit, len(tr.Comps), fin, len(attendus))
+	}
+	for k, c := range attendus {
+		if tr.Comps[k].Name != c.nom {
+			t.Errorf("%s : composant %d = %s, attendu %s (i%d)", chemin, k, tr.Comps[k].Name, c.nom, c.idx)
+		}
+	}
+}
+
+// TestDeltaTi40LitSesComposants : un record DELTA `ti=40` lit ses seize composants propres
+// (i30..i42, i45..i47, `i33` et `i34` porte posee par la loi du masque) et s arrete au bit pres,
+// par les deux chemins DELTA de production : la boucle de records [DecodeFrameRecords] (chemin
+// [decodeDelta], slot lie par le NEW qui le precede dans la trame) et le decodage a archetype
+// explicite de l inference de slot non lie ([decodeDeltaWithArch]). C est la moitie « records a
+// masque » de la regle de [Lecteur.etatComplet] ; [TestEtatCompletPoseParLaSeuleMarcheDEtatComplet]
+// n en garde que l ecriture litterale. MUTATIONS : `br.etatComplet = !false` dans [decodeDelta]
+// — ROUGE (chemin trame) ; dans [decodeDeltaWithArch] — ROUGE (chemin inference).
+func TestDeltaTi40LitSesComposants(t *testing.T) {
+	cfg := DefaultFrameConfig()
+	var w bitWriter
+	w.bits(0, cfg.PacketPreambleBits)
+	w.bit(0) // NEW : R(1) = 0 puis R(2) = 1
+	w.bits(recNew, 2)
+	w.bits(77, cfg.IDLowBits)
+	w.bits(1, 2) // generation
+	ecrireCorpsNeufTi40(t, &w, 37)
+	w.bits(0xa5, largeurMinuteurEMPVehicule)
+	w.bit(1) // DELTA
+	w.bits(77, cfg.IDLowBits)
+	w.bits(1, 2)
+	debutCorps := w.n
+	fin := ecrireCorpsDeltaTi40(&w)
+	w.bit(0) // fin des records : R(1) = 0 puis R(2) = 0
+	w.bits(recEnd, 2)
+	w.bits(^uint64(0), 32) // une lecture trop longue se voit
+	recs, err := DecodeFrameRecords(LecteurSur(w.buf), NewWorld(archetypeTi40()), cfg)
+	if err != nil || len(recs) != 2 || recs[1].Type != recDelta {
+		t.Fatalf("trame NEW + DELTA ti=40 : %d records, erreur %v", len(recs), err)
+	}
+	verifierDeltaTi40(t, "DecodeFrameRecords", recs[1].Trace, fin)
+
+	var v bitWriter
+	ecrireBits(&v, strings.Repeat("0", debutCorps%8)) // meme alignement que dans la trame
+	finInf := ecrireCorpsDeltaTi40(&v)
+	v.bits(^uint64(0), 32)
+	br := LecteurSur(v.buf)
+	br.Skip(debutCorps%8 + 1) // l inference part du masque ([inferUnboundArchetype])
+	verifierDeltaTi40(t, "decodeDeltaWithArch", decodeDeltaWithArch(br, archetypeTi40().Archetypes[40], 40), finInf)
 }
 
 // paquetDeltaNeufTi40 rend un paquet delta dont la vue B porte UN record NEW `ti=40` (slot 77)

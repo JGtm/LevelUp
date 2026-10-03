@@ -16,20 +16,22 @@ import (
 //
 // # CE QUE CE CONTROLE MESURE, ET COMMENT
 //
-// 179 lignes de la table portent une largeur ENTIERE en `bits_typ` — et toutes sont declarees
-// « porte ». Le controle execute le deser de production (`consumeByName`) sur des tampons
-// SYNTHETIQUES et lit le nombre de bits qu'il consomme. Zero fixture, zero variable
-// d'environnement, zero octet de film : il tourne en CI comme le reste.
+// Les lignes de la table qui portent une largeur ENTIERE en `bits_typ` (leur nombre :
+// `ecsLargeursFixes` + `ecsLargeursGardees`) sont toutes declarees « porte ». Le controle execute
+// le deser de production (`consumeByName`) sur des tampons SYNTHETIQUES et lit le nombre de bits
+// qu il consomme. Zero fixture, zero variable d environnement, zero octet de film : il tourne en
+// CI comme le reste.
 //
 // TROIS MOTIFS, ET C'EST LA CLE. Beaucoup de composants sont GARDES : leur largeur depend des
 // bits lus. Le controle mesure donc sur `0x00`, `0xFF` et `0xAA`, puis classe :
 //
 //   - LES TROIS MOTIFS S'ACCORDENT -> la largeur est FIXE, et elle DOIT egaler `bits_typ`.
-//     C est la seule categorie ou un ecart est une faute. 114 lignes aujourd hui, dont 111
-//     s accordent avec la table et 3 sont des ecarts connus, listes plus bas.
+//     C est la seule categorie ou un ecart est une faute. `ecsLargeursFixes` lignes, qui
+//     s accordent toutes avec la table hors des ecarts connus (`ecsEcartsAdmis`).
 //   - LES MOTIFS DIVERGENT -> la largeur est gardee par le flux ; l'entier de la table est alors
-//     une valeur NOMINALE, que ce controle ne peut pas confronter. 65 lignes aujourd'hui. Leur
-//     compte est GELE : une ligne qui change de categorie est un signal, pas un silence.
+//     une valeur NOMINALE, que ce controle ne peut pas confronter. `ecsLargeursGardees`
+//     lignes. Leur compte est GELE : une ligne qui change de categorie est un signal, pas un
+//     silence.
 //
 // # POURQUOI DES TAMPONS SYNTHETIQUES ET PAS UN FILM
 //
@@ -48,57 +50,36 @@ var ecsBitsPatterns = []byte{0x00, 0xFF, 0xAA}
 // court ferait lire des zeros de bourrage — donc une largeur fausse, et un vert faux.
 const ecsProbeBytes = 512
 
-// ecsLargeursFixes / ecsLargeursGardees : les comptes GELES des deux categories, mesures le
-// 2026-09-06 sur les 179 lignes a largeur entiere.
+// ecsLargeursFixes / ecsLargeursGardees : les comptes GELES des deux categories. Leur somme est le
+// nombre de lignes de la table qui portent un ENTIER en `bits_typ` ; chacune y entre quand son
+// composant est porte avec une largeur entiere, et tombe dans la categorie que les trois motifs
+// lui donnent.
 //
-// COMMENT LES FAIRE BOUGER. Vers le haut de `ecsLargeursFixes` (une largeur gardee devient fixe) :
-// bienvenu, et c'est un progres de portage. Vers le bas : c'est qu'un deser a gagne une porte —
-// a expliquer avant de reecrire le chiffre. La somme des deux, elle, vaut le nombre de lignes a
-// largeur entiere de la table.
-// 2026-09-17 (lot 3.6.a) : 114 -> 115 largeurs FIXES et 65 -> 66 gardees, DEUX lignes neuves,
-// toutes deux `ti=9` et toutes deux entrant dans le controle par le haut :
+// D OU VIENNENT LES DEUX VALEURS : les lecteurs portes, par archetype (index des lignes).
 //
-//	i4 managed-player-forge-weather-effect-overrides-component  `non_porte` -> `porte`, 64 bits
-//	   INCONDITIONNELS : les trois motifs s accordent, donc categorie FIXE.
-//	i9 managed-player-custom-input-prompt-widget  `partiel` -> `porte`. Sa colonne `bits_typ`
-//	   passe de « variable » (hors controle) a `1`, le cas commun `present = 0` ; la largeur
-//	   reelle est GARDEE par le flux (1, 4, ou 39 + la somme des corps), donc les trois motifs
-//	   divergent et la ligne tombe en categorie GARDEE — l entier y est nominal, ce que la
-//	   colonne `notes` de la table dit aussi.
+//	FIXES (140)
+//	ti=0  (9)  i2 i5 i6 i7 i8 i9 i11 i16 i17     ti=12 (8)  i0 i1 i7 i8 i10 i11 i12 i14
+//	ti=1  (1)  i11                                ti=13 (2)  i0 i1 (ecart admis)
+//	ti=2  (4)  i3 i11 i16 i17                     ti=14 (1)  i2
+//	ti=3  (1)  i1                                 ti=16 (1)  i1
+//	ti=4  (1)  i0                                 ti=20 (1)  i1
+//	ti=5  (21) i0..i6 i8 i9 i11 i13..i19 i21      ti=30 (1)  i2
+//	           i23 i25 i26                        ti=34 (8)  i0 i1 i3 i4 i5 i6 i8 i16
+//	ti=6  (2)  i56 i57                            ti=35 (10) i4 i31 i34 i35 i37 i38 i40 i41 i50 i51
+//	ti=9  (9)  i0..i8                             ti=37 (10) i4 i11 i14 (ecart admis) i18 i20 i24..i27 i30
+//	ti=10 (4)  i0 i1 i24 i25                      ti=38 (1)  i19
+//	ti=11 (31) i0 i1 i3 i5..i8 i10..i33           ti=40 (9)  i30 i31 i32 i36 i37 i39 i41 i42 i45
+//	                                              ti=41 (2)  i19 i21
+//	                                              ti=42 (2)  i18 i20
+//	                                              ti=47 (1)  i1
 //
-// Aucune ligne ne CHANGE de categorie : les deux etaient hors du controle, elles y entrent.
-// 2026-09-18 (lot 5.1.1) : 115 -> 121 largeurs FIXES, 66 gardees INCHANGEES. SIX lignes neuves,
-// toutes `ti=12` (l'archetype `managed-navpoint`), toutes entrant dans le controle PAR LE HAUT
-// depuis `non_porte` — aucune ligne existante ne change de categorie :
+//	GARDEES (66) : ti=13 32, ti=35 21, ti=37 6, et une ligne chacun pour ti=2, 9, 38, 40, 41, 42, 43.
 //
-//	i1  managed-navpoint-flags-component                          R(8)        8
-//	i7  managed-navpoint-docking-order-component                  R(8)        8
-//	i8  managed-navpoint-docking-group-name-component             R(32)      32
-//	i10 managed-navpoint-timers-component                         2 x R(7)   14
-//	i11 managed-navpoint-manual-timer-initial-duration-component  R(17)      17
-//	i12 managed-navpoint-manual-timer-current-duration-component  R(17)      17
-//
-// Les SIX AUTRES composants portes par le meme lot (`i2`..`i6` et `i9`) ont une largeur GARDEE
-// par le flux — le masque de filtres pour les cinq premiers, le compte d'entrees pour `i9` — et
-// leur colonne `bits_typ` porte donc « variable », qui reste HORS du controle. Le compte des
-// gardees ne bouge pas pour cette raison, et pas parce qu'elles auraient ete oubliees.
-// MOUVEMENT DU 2026-09-21 (lot 5.7) : 121/66 -> 120/67. `ti=35 i55
-// biped-posture-physics-component` a CHANGE DE CATEGORIE : il ne lisait que son tag de 2 bits —
-// une largeur fixe — parce que son repartiteur `FUN_141fd997c` etait glose « resolution d etat,
-// 0 bit lu ». L ecrivain dit l inverse : c est le repartiteur d une union discriminee dont les
-// quatre charges lisent de 15 a plus de cent bits, chacune derriere une porte du flux. Une fois
-// portees (`components_biped_posture.go`), sa largeur n est plus un entier : sa colonne
-// `bits_typ` porte « variable », qui reste HORS des deux comptes. Le compte des GARDEES ne monte
-// donc pas — `i55` quitte le controle au lieu d y changer de colonne.
-// 2026-09-25 (lot M4b des retours du rejeu) : 120 -> 123 largeurs FIXES, 66 gardees INCHANGEES. TROIS
-// lignes neuves entrant PAR LE HAUT depuis `non_porte` (`composants_vue_b_m4b.go`), aucune ligne
-// existante ne change de categorie :
-//
-//	ti=10 i24 et i25 managed-object-looping-sound-component   R(32)   32
-//	ti=40 i37 vehicle-emp-timer-component                    R(8)     8
-//
-// Les quatre autres ports du lot (`ti=47 i2`, `ti=5 i22` et `i24`, `ti=40 i34`) ont une largeur
-// GARDEE par le flux : leur colonne `bits_typ` n est pas un entier et reste hors des deux comptes.
+// COMMENT LES FAIRE BOUGER. Vers le haut de `ecsLargeursFixes` (une ligne neuve a largeur fixe, ou
+// une largeur gardee devenue fixe) : bienvenu, c est un progres de portage. Vers le bas : un deser
+// a gagne une porte — a expliquer avant de reecrire le chiffre. La liste ci-dessus se reecrit avec
+// les deux constantes. L historique date des deux comptes vit dans les comptes rendus des lots qui
+// les ont fait bouger (le dernier releve : `LOT_L4a.md` §14 de la campagne de grammaire).
 const (
 	ecsLargeursFixes   = 140
 	ecsLargeursGardees = 66
@@ -208,9 +189,11 @@ func TestG4LargeursEntieresSuiventLeCode(t *testing.T) {
 		}
 	}
 	if fixes != ecsLargeursFixes || gardees != ecsLargeursGardees {
-		t.Errorf("G4 : %d largeurs fixes et %d gardees, gelees a %d et %d (mesure du 2026-09-06).\n"+
-			"Une ligne a change de categorie : un deser a gagne ou perdu une porte. L'expliquer, "+
-			"puis reecrire les deux constantes avec la date.",
+		t.Errorf("G4 : %d largeurs fixes et %d gardees, gelees a %d et %d "+
+			"(ecsLargeursFixes, ecsLargeursGardees).\n"+
+			"Une ligne a change de categorie ou est entree dans le controle. L'expliquer, puis "+
+			"reecrire les deux constantes et leur liste par archetype ; l'historique date va au "+
+			"compte rendu du lot.",
 			fixes, gardees, ecsLargeursFixes, ecsLargeursGardees)
 	}
 }

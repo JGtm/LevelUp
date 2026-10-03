@@ -16,22 +16,22 @@ package grammar
 // Les appelants du jeu passent n et max : `ti=5 i2` (FUN_140d580a8, n = 5), `ti=0 i5`
 // (FUN_1407ee790), `i6` (FUN_14116d3a4), `i7` (FUN_141165d24), `i12` (FUN_1407ee764) et les fentes
 // du bassin `i15` (FUN_1407ee87c), tous a n = 16. Le max ne change aucun bit lu : la valeur reelle
-// reste a l appelant (`DequantEndpoint`), ces lecteurs rendent les quanta bruts.
+// reste a l appelant (`DequantEndpoint`) : [lireMinuteur140d580d0] rend les quanta bruts.
 //
 // GARDE-RAIL (regle des deux copies) : `lecteur_minuteur_guard_test.go` interdit, hors de ce
 // fichier et dans la production du paquet, la sequence de lectures de FUN_140d580d0 ecrite en
-// ligne, les sauts litteraux `Skip(37)` / `Skip(53)` et tout `Skip` qui nomme une largeur de
-// minuteur (`largeurQueueMinuteur`, `roundTimerBits`, `largeurMinuteurSoftKill`). Il ne verifie
-// pas qui cite FUN_140d580d0 dans un commentaire.
+// ligne (cherchee dans l arbre syntaxique, quelle que soit la mise en page), les sauts litteraux
+// `Skip(37)` / `Skip(53)` et tout `Skip` dont l argument nomme une largeur de minuteur
+// (`largeurQueueMinuteur`, `roundTimerBits`, `largeurMinuteurSoftKill`). Il ne verifie pas qui
+// cite FUN_140d580d0 dans un commentaire.
 
 // largeurQueueMinuteur : la queue de FUN_1407f0354 (`+0x2c += 5`).
 const largeurQueueMinuteur uint = 5
 
-// Minuteur porte les quanta bruts lus par FUN_140d580d0 (et le troisieme de FUN_142ba78dc).
+// Minuteur porte les quanta bruts lus par FUN_140d580d0.
 type Minuteur struct {
 	A, B  uint64 // les deux reels quantifies sur n bits, dans l ordre du flux
 	Queue uint64 // l octet de FUN_1407f0354, R(5)
-	C     uint64 // le troisieme reel de FUN_142ba78dc ; 0 pour FUN_140d580d0
 }
 
 // lireMinuteur140d580d0 lit FUN_140d580d0 sur n bits : R(n) + R(n) + R(5).
@@ -41,9 +41,9 @@ func lireMinuteur140d580d0(br *Lecteur, n uint) Minuteur {
 	return Minuteur{A: a, B: b, Queue: br.ReadBits(largeurQueueMinuteur)}
 }
 
-// lireMinuteur142ba78dc lit FUN_142ba78dc sur n bits : FUN_140d580d0 puis R(n).
-func lireMinuteur142ba78dc(br *Lecteur, n uint) Minuteur {
-	m := lireMinuteur140d580d0(br, n)
-	m.C = br.ReadBits(n)
-	return m
+// lireMinuteur142ba78dc lit FUN_142ba78dc sur n bits : FUN_140d580d0 puis R(n). Aucun appelant
+// n en lit les quanta (la fente `i15` ne publie rien) : il consomme ses 3n + 5 bits sans rien rendre.
+func lireMinuteur142ba78dc(br *Lecteur, n uint) {
+	lireMinuteur140d580d0(br, n)
+	br.ReadBits(n) // le troisieme reel, dest+0xc
 }

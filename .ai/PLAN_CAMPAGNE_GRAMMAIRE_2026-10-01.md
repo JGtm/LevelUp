@@ -414,6 +414,31 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
     tête intégrée hors chaînes de révision).
   - **État de la vague** : L8, L3a, L4a restent fusionnés (aucun lot ne tombe au gate 2) ; L2 et L9
     non retenus. Ouvert : D23, rc 1 du gate de corpus (pilote), LK (D-REV-2).
+- 2026-10-03 : **mineurs de la revue adverse de la vague 1** (tête de départ `8390543a8` ; cinq
+  constats mineurs et celui de la lentille « jeu », tous vérifiés sur pièces et VRAIS ; aucun bit lu
+  ne change) :
+  - **Règle 6** : `consumeWeaponStateTail` appelle `lireJeuDArmes` (`FUN_1406d01fc`, 3e appelant) ;
+    `consumeOpt2`, doublon exact de `consumeID2`, retiré ; garde-rail
+    `grammar/lecteur_jeu_darmes_guard_test.go`.
+  - **Test DELTA `ti=40`** : `TestDeltaTi40LitSesComposants` (`DecodeFrameRecords` -> `decodeDelta`,
+    puis `decodeDeltaWithArch`) ; M11 et M12 de la revue ROUGES (verts contre l'ancien test).
+  - **Garde-rail du minuteur** : lu dans l'arbre syntaxique (`grammar/sequence_appels_test.go`,
+    instrument partagé), trois appels d'un même bloc ; la copie sur une ligne le fait rougir (verte
+    contre l'ancien). La condition « même bloc » écarte `consumeDeadStateAnimBlock` (lectures sous
+    porte puis lecture inconditionnelle), que la lecture syntaxique sans elle prenait pour un minuteur.
+  - **G4** : contrat (ce que comptent les constantes, lignes fixes par archétype, 140 / 66) ;
+    historique daté recopié dans `LOT_L4a.md` §14.2.
+  - **Champ mort** : `Minuteur.C` retiré, `lireMinuteur142ba78dc` consomme ses `3n + 5` bits sans
+    rien rendre.
+  - **Lentille « jeu »** : en-tête de `composants_vehicule_ti40.go` réécrit (la porte du châssis est
+    la seule loi du jeu ; l'arrêt dès `i30` en état complet est un choix conservateur du port).
+  - **Sortie nulle, mesurée contre `8390543a8`** (binaires de `git archive`) : carte v2 20 films,
+    `fermeture_paquets.tsv` identique à l'octet ; killsource 19 témoins, JSON identiques à l'octet ;
+    `replay-equiv` 20 films, 20 TSV de digests identiques à l'octet. Empreinte de `grammar`
+    régénérée à révision constante `grammar-2026-10-03.2`.
+  - **Gates** : `gofmt` vide ; `go vet ./...` rc 0 ; `go vet -tags=research` film rc 0 ; `archlint`
+    ok ; G-film 20 paquets ok ; `golangci-lint --new-from-rev 8390543a8` (grammar) 0 issue. Détail :
+    `LOT_L4a.md` §14, `LOT_L3a.md` §11.
 
 ## 5. Découvertes (consignées, non traitées)
 

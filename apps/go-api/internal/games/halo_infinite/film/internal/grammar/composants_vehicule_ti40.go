@@ -28,9 +28,14 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 //
 // UN ETAT COMPLET D IMAGE-CLE N A PAS DE MASQUE (`FUN_142e2c690` deserialise toutes les entrees
 // nommees) : `i33` et `i34` y sont appeles pour TOUT vehicule, et la porte y depend du chassis,
-// que ce paquet ne lit pas. Aucun composant de ce fichier ne s y lit ([Lecteur.etatComplet]) :
-// la boucle s arrete au premier d entre eux, `i30`, qui precede `i33` dans le registre.
-// `i37` (minuteur EMP) garde sa lecture partout : sa largeur ne depend de rien.
+// que ce paquet ne lit pas. C est la seule loi du jeu qui empeche une lecture ici.
+//
+// LE RESTE EST UN CHOIX CONSERVATEUR DE CE PORT, PAS UNE REGLE DU JEU : sous [Lecteur.etatComplet],
+// tous les composants de ce fichier rendent « non porte », sauf `i37` (minuteur EMP, lu en tout
+// contexte : sa largeur ne depend de rien). La boucle d etat complet s arrete donc au premier
+// d entre eux dans le registre, `i30`, alors que `i30`..`i32`, a largeur du seul flux, y seraient
+// lisibles : les lire ne ferait que deplacer l arret jusqu a `i33`, et la marche d image-cle reste
+// ainsi celle d avant ce maillon. Lire l etat complet du vehicule demande la porte du chassis.
 
 // Etiquettes de registre des composants `ti=40` (nom ASCII lu dans le binaire, T6 §1).
 const (

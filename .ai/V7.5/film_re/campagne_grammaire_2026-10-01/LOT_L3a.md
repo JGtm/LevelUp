@@ -518,3 +518,35 @@ du dépôt) ; `shapes.golden` et les 8 fixtures de contrat suivent (identiques h
 révision). Si l'utilisateur choisit la montée, elle se reprend avec une valeur qu'aucune branche n'a
 portée (pas `killsource-2026-10-02`, valeur de la branche du lot seul) et une entrée qui écrit que le
 déploiement redécode le parc par le hook post-sync.
+
+## 11. Corrections des mineurs de la revue (2026-10-03)
+
+Deux constats mineurs de la revue adverse de la vague 1 portent sur ce lot ; tous deux vérifiés sur
+pièces et VRAIS. Aucun bit lu ne change (preuve de sortie nulle commune à la vague : `LOT_L4a.md`
+§14).
+
+- **Garde-rail du lecteur de minuteur sensible à la mise en page** (constat 3). L'ancien
+  `lecteur_minuteur_guard_test.go` cherchait la séquence de `FUN_140d580d0` par une expression sur
+  trois lignes consécutives : `Minuteur{A: br.ReadBits(n), B: br.ReadBits(n), Queue: br.ReadBits(5)}`
+  sur une ligne passait. Preuve (mutation en place de `vitality.go`, cette ligne à la place de
+  l'appel du lecteur) : ancien garde-rail **VERT**, nouveau **ROUGE** (`vitality.go : 1 lecture(s)
+  en ligne`). Correction : la suite des appels est lue dans l'arbre syntaxique
+  (`grammar/sequence_appels_test.go`, instrument partagé avec le garde-rail du jeu d'armes de L4a) ;
+  trois appels consécutifs `ReadBits(x)`, `ReadBits(x)`, `ReadBits(5 | largeurQueueMinuteur)` d'un
+  MÊME bloc. La condition « même bloc » n'est pas un assouplissement : sans elle, la lecture
+  syntaxique trouvait une séquence que les lignes cachaient — `consumeDeadStateAnimBlock`
+  (`components_object.go`), étape 14 `R(14) R(14)` sous la porte `etatMortVitessePresente` puis
+  étape 15 `R(5)` inconditionnelle, qui n'est pas un minuteur. Les sauts (`Skip(37|53)`, `Skip` dont
+  l'ARGUMENT nomme une largeur de minuteur) passent aussi par l'arbre : un commentaire en fin de
+  ligne n'est plus pris pour un argument. Vecteurs : `TestGardeRailMinuteurInsensibleALaMiseEnPage`
+  (une ligne, trois lignes avec commentaires, largeurs différentes, lectures sous porte puis lecture
+  inconditionnelle, sauts).
+- **Champ mort `Minuteur.C`** (constat 5). Le troisième réel de `FUN_142ba78dc` n'était lu que par
+  `TestLecteurDeMinuteurRendLesQuanta` ; son seul appelant de production (`consumeManagedEngineTimers`,
+  fente `i15` à quatre champs) jette la valeur rendue. Règle 7 : `lireMinuteur142ba78dc` ne rend plus
+  rien et consomme ses `3n + 5` bits (`lireMinuteur140d580d0` puis `R(n)`, mêmes lectures, même
+  ordre) ; le champ `C` est retiré. Le test vérifie désormais l'arrêt à 53 bits et relit intact un
+  marqueur de 3 bits qui suit.
+
+Pièces : `campagne_grammaire_2026-10-01/vague1_tsv/` n'est pas touché ; mutations et sorties au
+scratchpad de la session (`integ3/mut/`), recopiées en synthèse dans `LOT_L4a.md` §14.

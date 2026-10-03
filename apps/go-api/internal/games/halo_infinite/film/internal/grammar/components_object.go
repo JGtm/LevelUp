@@ -322,22 +322,14 @@ func consumeWeaponStateTypeInfoVariant(br *Lecteur) (variant uint32) {
 	return variant
 }
 
-// consumeWeaponStateTail mirrors the unconditional tail of FUN_1407f06bc.
+// consumeWeaponStateTail mirrors the unconditional tail of FUN_1407f06bc : FUN_1407f08bc
+// (R(1) ; si 1, R(8)) puis le jeu d armes FUN_1406d01fc ([lireJeuDArmes]), dont l emplacement
+// rendu n est pas publie ici.
 func consumeWeaponStateTail(br *Lecteur) {
 	if br.ReadBit() { // FUN_1407f08bc gate
 		br.ReadBits(8)
 	}
-	// FUN_1406d01fc: R(3) [FUN_1406d0f20] + 2x optional-2bit [FUN_1406d00ec]
-	br.ReadBits(3)
-	consumeOpt2(br)
-	consumeOpt2(br)
-}
-
-// consumeOpt2 mirrors FUN_1406d00ec: R(1); if 0 -> R(2), else absent.
-func consumeOpt2(br *Lecteur) {
-	if !br.ReadBit() {
-		br.ReadBits(2)
-	}
+	lireJeuDArmes(br) // FUN_1406d01fc
 }
 
 // consumeOpt5 mirrors FUN_1407f2058: R(1); if 0 -> R(5), else absent.
