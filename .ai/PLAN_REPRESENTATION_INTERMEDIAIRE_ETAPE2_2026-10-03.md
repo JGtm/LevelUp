@@ -198,6 +198,39 @@ devant ; les lots 2.2 et 2.3, qui consomment le distributeur, passent devant la 
       l'observation de la marche des trames (un crochet posé deux fois est refusé) ; la phase des
       images-clés reste sous l'observation du contexte, comme aujourd'hui. Pas de consommateur de
       production avant le second temps (2.1.2) ; tests : phases égales à leurs itérateurs, crochets.
+*Décisions d'exécution du second temps (2026-10-03, après la fusion de la vague 1 dans `feat/v75`,
+`2393d7db7`, refusionnée en `cc395eb7f`)* — relu sur pièces : le balayage des états de mouvement
+pilote lui-même la marche (`nouveauMarcheurDesTrames`, `parcourir`) et lit, outre la structure, trois
+choses internes à la marche : le verdict de la vue C (`trameLue.lecture.verdict`, pris seulement
+pour une trame marchée par classes de vue), la trace des records (`lecturesDeComposant` sur
+`FrameRecord.Trace`, compte `VehicleTypePhysicsByWriterLaw` de la vague 1) et l'arène de la marche
+pour ses crochets :
+1. *Deux canaux des trames, une distribution.* Le balayage des états de mouvement et le collecteur
+   du tir continu deviennent deux `CanalDesTrames` ; `ScanMarcheDesTrames` les distribue
+   (`Distribuer`) et assemble `MarcheDesTrames` depuis les deux canaux et le bilan de la marche
+   (liaisons, NEW refusés, replis d'anticipation et de début de liste). `movement_states.go` ne
+   pilote plus la marche.
+2. *Le tir continu prend son verdict au crochet* (`VueControleHook`), que la marche par classes de
+   vue publie une fois par trame marchée et jamais ailleurs — exactement les trames dont le verdict
+   est pris aujourd'hui. Le crochet joue pendant la marche, la trame arrive après : le collecteur
+   garde le verdict reçu jusqu'à la clôture de la trame, qui l'efface.
+3. *Les comptes du balayage se lisent dans la structure* : paquets et listes d'événements (`Debut`),
+   records et désynchronisations du bipède (`Records`) ; `VehicleTypePhysicsByWriterLaw` par paire
+   (archétype du record, `compVehicleTypePhysics`) : un record compte quand une de ses occurrences,
+   traversée ou infranchissable, porte ce nom dans l'archétype du registre — la règle de
+   `lecturesDeComposant`, qui perd son seul appelant de production et est retirée, avec la ligne
+   MUTATION de son test désignant le nouveau site (accord de la campagne du 2026-10-03, à trois
+   conditions : par paire et par la constante, mêmes occurrences prouvées par la passe, mutation
+   rejouée rouge sur le nouveau site).
+4. *Intérêts* : le canal des états interprète, sur ti=35 dans les trames, l'accroupi, la glissade,
+   l'action de mobilité, la capacité active et la vitesse de translation (deux orthographes
+   chacun) — ce que son crochet garde ; la posture et le contrôle d'unité, publiés par le même
+   désérialiseur, ne sont pas interprétés. Un film dont l'archétype bipède ne déclare aucun des
+   quatre états : ni crochet, ni intérêt (comme aujourd'hui, aucune lecture). Le tir continu
+   n'interprète aucun composant (la vue C n'en est pas un).
+5. *T3 resserré* (2.1.3) : le test de provenance distribue le canal de production, dont il double le
+   crochet ; chaque lecture que le canal interprète cite une occurrence `EtatInterprete`, la posture
+   et le contrôle d'unité une occurrence délimitée.
 - [ ] 2.1.2 États de mouvement (`movement_states*.go`) et tir continu (`tir_continu.go`) deviennent
       deux canaux ; `ScanMarcheDesTrames` les distribue ; `replay/film_scan_mouvement.go` inchangé
       dans ce qu'il publie.
@@ -603,3 +636,13 @@ plan y sont reprises comme items (3.1.2).
   prévenue de la fin de la mesure ; elle annonce la fusion de la vague 1 dans l'heure (après la
   relance d'un job de CI). Reprise à son signal : `feat/v75` dans cette branche, passe de référence
   re-figée, puis le second temps de 2.1.
+- 2026-10-03 : vague 1 de la campagne fusionnée dans `feat/v75` (`2393d7db7`, grammar-2026-10-03.2),
+  refusionnée ici (`cc395eb7f`) : conflits sur les deux empreintes seulement, prises de `feat/v75`
+  puis régénérées à révision constante ; G-film et archlint verts. PREUVE DE LA FUSION : passe du
+  binaire de la campagne (`2393d7db7`) contre celle du binaire fusionné, machine laissée par la
+  campagne — digests `replay-equiv` 20/20, faits 20/20 et killsource 19/19 identiques à l'octet,
+  tous décodés depuis le film : les lots 2.6, 2.1 (premier temps), 2.2 et 2.3 restent à différence
+  nulle par-dessus la vague 1. Références d'équivalence re-figées sur la tête fusionnée (passe
+  `ri30`, références de la vague 1). Ouverture du second temps de 2.1 (décisions 1 à 5 au lot,
+  écrites avant le code ; le retrait de `lecturesDeComposant`, fichier de la campagne, convenu avec
+  elle à trois conditions).
