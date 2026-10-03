@@ -309,8 +309,9 @@ func buildPositionRows(ctx context.Context,
 
 // lireLePontDuCollecteur appelle l etage unique du pont d identite et y applique les POLITIQUES
 // du collecteur : le roster de la feuille pour la table d index, et la fatalite des erreurs dans
-// l ordre d avant le lot J4.3 (positions, horloge — comptee —, fil des morts, index). Les
-// creations de bipede restent NON fatales : le registre degrade sur le pont par morts et le dit.
+// l ordre d avant le lot J4.3 (positions, horloge — comptee —, fil des morts, index, creations de
+// bipede). Des creations illisibles sont fatales comme les autres lectures : les vies ne se nomment
+// pas par le seul fil des morts quand le lien direct manque en entier.
 func lireLePontDuCollecteur(ctx context.Context,
 	film *decfilm.Film, entry decfilm.MapQuantEntry, ids MatchIdentities, matchID string,
 ) (lecturesDuFilm, uint64, error) {
@@ -333,20 +334,15 @@ func lireLePontDuCollecteur(ctx context.Context,
 		return lecturesDuFilm{}, 0, fmt.Errorf("fil des morts (rejeu): %w", pont.ErrMorts)
 	case pont.ErrIndex != nil:
 		return lecturesDuFilm{}, 0, fmt.Errorf("index de joueur: %w", pont.ErrIndex)
+	case pont.ErrCreations != nil:
+		return lecturesDuFilm{}, 0, fmt.Errorf("creations de bipede: %w", pont.ErrCreations)
 	}
 	if pont.Index.Disagreements > 0 {
 		observability.AddInt(metricPositionsAmbiguous, int64(pont.Index.Disagreements))
 	}
 	// LE LIEN DIRECT CORPS -> JOUEUR (lot E2, 2026-09-08) : le record de creation du bipede porte
-	// l index de participant de son proprietaire. Sans lui, `match_lives` retomberait sur le pont
-	// par morts alors que la cuisson, elle, lit le film. Absence NON fatale.
+	// l index de participant de son proprietaire.
 	creations, cStats := pont.Creations, pont.StatsCreations
-	if pont.ErrCreations != nil {
-		slog.WarnContext(ctx, "killsource: creations de bipede illisibles — degradation sur le pont par morts",
-			"err", pont.ErrCreations, "match_id", matchID)
-		ids.replis.Declenche(decfilm.NomIdentitePontParMorts) // repli compte depuis le lot J8.7
-		creations = nil
-	}
 	if cStats.Anchors > 0 && cStats.Accepted == 0 {
 		slog.WarnContext(ctx, "killsource: aucune signature de creation reconnue sur des ancres presentes",
 			"match_id", matchID, "ancres", cStats.Anchors, "motAlternatifModal", cStats.OtherWord)

@@ -117,21 +117,6 @@ var registreKillsource = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_roster_indice_hors_bijection",
-		Fait:      "le nom porte par un indice que la bijection ne resout pas",
-		Mecanisme: "la chaine « ? » est rendue ; pour la victime et le tueur elle part en base telle quelle",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "r.NomsHorsBijection += unSi(estNomDeRemplissage(kills[i].Victim))"}, siteDeVersement("NomRosterIndiceHorsBijection"), {
-			Fichier: pkgKillsource + "roster.go",
-			Ancre:   "return \"?\"",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "la table du film portee jusqu a l ecriture en base ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 ligne de mort ecrite avec un nom « ? » sur le parc",
-		CompteurBranche: true,
-	},
-	{
 		Nom:       "repli_bijection_hongroise_du_feed",
 		Fait:      "le lien indice de replication -> joueur, pour les indices que la table du film ne donne pas",
 		Mecanisme: "affectation hongroise sur les votes du kill feed, puis raffinement local",
@@ -173,21 +158,6 @@ var registreKillsource = []Repli{
 		// viennent des trois films sans table de joueurs exploitable (`a349fea8`, `a521164d`,
 		// `50247b26`), les autres d'une chaine d'evenements qui s'arrete avant le kill-event.
 		CritereRetrait:  "CoupleStats.Recolles a 0 sur les 8 builds et sur le corpus gate",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_gamertag_par_xuid_brut",
-		Fait:      "le nom affiche d'un joueur du kill feed dont le gamertag manque",
-		Mecanisme: "la forme xuid:<N> remplace le nom",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillsource + "feed.go", Ancre: "kf.nomsParXUID += unSi(parXUID)"}, siteDeVersement("NomGamertagParXuidBrut"), {
-			Fichier: pkgKillsource + "feed.go",
-			Ancre:   "name := gt[e.XUID]",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "la table du film nomme les joueurs a zero mort ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 nom sous la forme xuid:<N> sur les 8 builds",
 		CompteurBranche: true,
 	},
 	{

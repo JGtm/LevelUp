@@ -62,10 +62,10 @@ func TestLesFaitsDIsolementComptentLaConstanteNulle(t *testing.T) {
 
 // TestLaPassePublieUnCompteurParNom : la publication ecrit `killsource_<nom>` par repli declenche.
 func TestLaPassePublieUnCompteurParNom(t *testing.T) {
-	nom := prefixeReplisDeLaPasse + string(decfilm.NomHomonymesSansXuid)
+	nom := prefixeReplisDeLaPasse + string(decfilm.NomIndiceEnCollisionJete)
 	avant := observability.LoadCounter(nom)
 	fb := decfilm.NouveauCompteur()
-	fb.DeclencheN(decfilm.NomHomonymesSansXuid, 2)
+	fb.DeclencheN(decfilm.NomIndiceEnCollisionJete, 2)
 	publierReplisDeLaPasse(context.Background(), "m", fb)
 	if got := observability.LoadCounter(nom) - avant; got != 2 {
 		t.Errorf("%s : +%d, attendu +2", nom, got)

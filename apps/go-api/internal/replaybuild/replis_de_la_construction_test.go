@@ -21,17 +21,18 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// TestLaResolutionDesFragsCompteSesReplis : un gamertag vu avec deux xuids, un assistant sans
-// identite — chacun compte une fois, sans rien changer a ce qui est publie.
+// TestLaResolutionDesFragsCompteSesReplis : un gamertag vu avec deux xuids ne resout rien (il est
+// compte comme ambigu, jamais tranche) ; un assistant sans identite compte son repli, sans rien
+// changer a ce qui est publie.
 func TestLaResolutionDesFragsCompteSesReplis(t *testing.T) {
-	idx, divergences := gamertagXUIDIndex([]types.Death{
-		{Gamertag: "Tueur", XUID: 1}, {Gamertag: "Tueur", XUID: 2}, {Gamertag: "Tueur", XUID: 1},
+	ambigu, nAmbigus := gamertagXUIDIndex([]types.Death{
+		{Gamertag: "Double", XUID: 1}, {Gamertag: "Double", XUID: 2}, {Gamertag: "Double", XUID: 1},
 		{Gamertag: "Victime", XUID: 3},
 	})
-	if idx["Tueur"] != 1 || divergences != 1 {
-		t.Fatalf("premier xuid %d, divergences %d — attendu 1 et 1 (le premier gagne, l ecart se compte)",
-			idx["Tueur"], divergences)
+	if _, ok := ambigu["Double"]; ok || nAmbigus != 1 || ambigu["Victime"] != 3 {
+		t.Fatalf("table %v, ambigus %d — attendu Double absent, 1 ambigu, Victime -> 3", ambigu, nAmbigus)
 	}
+	idx, _ := gamertagXUIDIndex([]types.Death{{Gamertag: "Tueur", XUID: 1}, {Gamertag: "Victime", XUID: 3}})
 	k := killDe("Tueur", "Victime", 10)
 	k.Assist.Known, k.Assist.Name = true, "Inconnu"
 	r := resolveKills([]decfilm.Kill{k}, idx)
@@ -40,21 +41,17 @@ func TestLaResolutionDesFragsCompteSesReplis(t *testing.T) {
 	}
 }
 
-// TestLaFeuilleDeMatchCompteSesRetraits : une ligne sans xuid quitte le tableau, un camp inconnu
-// quitte la table — et chacun se compte.
-func TestLaFeuilleDeMatchCompteSesRetraits(t *testing.T) {
+// TestLaFeuilleDeMatchEcarteLesLignesSansIdentite : une ligne sans xuid quitte le tableau, un camp
+// inconnu quitte la table — rien ne remplace ni l un ni l autre.
+func TestLaFeuilleDeMatchEcarteLesLignesSansIdentite(t *testing.T) {
 	facts := port.MatchFacts{Players: []port.MatchPlayerFact{
 		{XUID: "", TeamID: 0}, {XUID: "2", TeamID: -1}, {XUID: "3", TeamID: 1},
 	}}
-	fb := decfilm.NouveauCompteur()
-	if got := participantsDuTableau(facts, fb); len(got) != 2 {
+	if got := participantsDuTableau(facts); len(got) != 2 {
 		t.Fatalf("participants : %d, attendu 2", len(got))
 	}
-	if got := fb.Compte(decfilm.NomParticipantSansXuidRetire); got != 1 {
-		t.Errorf("participant sans xuid : %d, attendu 1", got)
-	}
-	if camps, retires := tableDesCamps(facts); retires != 1 || len(camps) != 2 {
-		t.Errorf("camps %v, retires %d — attendu 2 camps et 1 retrait", camps, retires)
+	if camps := teamByXUID(facts); len(camps) != 2 {
+		t.Errorf("camps %v — attendu 2 camps", camps)
 	}
 }
 
@@ -86,12 +83,9 @@ func TestLeRapportDeLaConstructionVoyageDansLesOptions(t *testing.T) {
 	for _, d := range opt.ReplisHorsBalayage.Construction {
 		got[d.Nom] = d.Declenchements
 	}
-	for _, nom := range []decfilm.Nom{decfilm.NomRelaisDeBotAbandonne, decfilm.NomParticipantSansXuidRetire,
-		decfilm.NomCampInconnuRetireDeLaTable} {
-		if got[nom] != 1 {
-			t.Errorf("%s : %d dans le rapport de construction, attendu 1 (rapport %v)", nom, got[nom],
-				opt.ReplisHorsBalayage.Construction)
-		}
+	if got[decfilm.NomRelaisDeBotAbandonne] != 1 || len(got) != 1 {
+		t.Errorf("rapport de construction %v, attendu le seul repli declenche (relais de bot, 1)",
+			opt.ReplisHorsBalayage.Construction)
 	}
 	if opt.Fallbacks != nil {
 		t.Error("la construction pre-remplit le compteur des options : les faits persistes le captureraient")

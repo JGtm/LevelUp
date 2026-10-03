@@ -120,18 +120,19 @@ func TestRoundAtSuitLaMancheDeAt(t *testing.T) {
 	recs, deaths := twoRoundReassignedFixture()
 	ri := ResolveRoundIdentity(recs, deaths, nil)
 	for _, cas := range []struct{ t, veut int }{{2000, 0}, {9000, 0}, {12000, 1}, {40000, 1}} {
-		if got := ri.RoundAt(cas.t); got != cas.veut {
-			t.Errorf("RoundAt(%d) = %d, attendu %d", cas.t, got, cas.veut)
+		got, ok := ri.RoundAt(cas.t)
+		if !ok || got != cas.veut {
+			t.Errorf("RoundAt(%d) = %d, %v, attendu %d", cas.t, got, ok, cas.veut)
 		}
-		if ri.At(22, cas.t) != ri.AtRound(ri.RoundAt(cas.t), 22) {
+		if ri.At(22, cas.t) != ri.AtRound(got, 22) {
 			t.Errorf("a %d ms, At et AtRound(RoundAt) ne nomment pas le meme joueur", cas.t)
 		}
 	}
-	if got := FlatRoundIdentity(map[int]string{12: "a"}).RoundAt(123_456); got != 0 {
-		t.Errorf("mono-manche : RoundAt = %d, attendu 0", got)
+	if got, ok := FlatRoundIdentity(map[int]string{12: "a"}).RoundAt(123_456); !ok || got != 0 {
+		t.Errorf("mono-manche : RoundAt = %d, %v, attendu 0, vrai", got, ok)
 	}
-	if got := (RoundIdentity{}).RoundAt(5); got != 0 {
-		t.Errorf("resolveur vide : RoundAt = %d, attendu 0", got)
+	if got, ok := (RoundIdentity{}).RoundAt(5); !ok || got != 0 {
+		t.Errorf("resolveur vide : RoundAt = %d, %v, attendu 0, vrai", got, ok)
 	}
 }
 

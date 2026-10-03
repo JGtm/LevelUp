@@ -10,9 +10,9 @@ package fallback
 // ici et leur compteur n'est pas câblé depuis ce paquet. DEPUIS LE LOT J8.7 (2026-09-27, décision 1
 // du superviseur), ils se comptent EN DONNÉES dans ce que le paquet rend déjà — le balayage du
 // statborg et le résolveur d'identité par manche (`objectives.ComptesDesReplis`) — et la table de
-// `replay` les verse ([siteDeVersement]). Les deux qui se déclenchent à la CONSULTATION
-// (`repli_emission_hors_domaine_jetee`, `repli_instant_sur_la_premiere_manche`) se comptent depuis le
-// lot J8.7-bis (2026-09-28) par ÉVÉNEMENT DISTINCT, dans l enregistreur partagé du document
+// `replay` les verse ([siteDeVersement]). Celui qui se déclenche à la CONSULTATION
+// (`repli_emission_hors_domaine_jetee`) se compte depuis le lot J8.7-bis (2026-09-28) par ÉVÉNEMENT
+// DISTINCT, dans l enregistreur partagé du document
 // (`objectives.ReplisALaConsultation`), versé par la même table.
 
 const (
@@ -102,7 +102,7 @@ var registreObjectifsEtConstruction = []Repli{
 			Ancre:   "cons.noterEmissionJetee(key, r)",
 		}, {
 			Fichier: pkgObjectiveEvents + "replis_a_la_consultation.go",
-			Ancre:   "EmissionsHorsDomaineJetees:  len(r.emissions),",
+			Ancre:   "EmissionsHorsDomaineJetees: len(r.emissions),",
 		}, siteDeVersement("NomEmissionHorsDomaineJetee")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "la conversion des series nommees ; a defaut, " + retraitRegle4,
@@ -129,24 +129,6 @@ var registreObjectifsEtConstruction = []Repli{
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "la table du film donne le lien direct a ce calque ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 pont vide faute de morts sur les 8 builds",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_mort_sans_xuid_ignoree",
-		Fait:      "quelles morts alimentent le fil par joueur",
-		Mecanisme: "une mort sans xuid est ignoree par un `continue`",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgObjectiveEvents + "slotidentity_deaths.go", Ancre: "c.MortsSansXUID++"}, siteDeVersement("NomMortSansXuidIgnoree"), {
-			Fichier: pkgObjectiveEvents + "slotidentity_deaths.go",
-			Ancre:   "if d.XUID == \"\" {",
-		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "la table du film portee jusqu a ce calque ; a defaut, " + retraitRegle4,
-		// Contredit la décision utilisateur du 2026-09-06 (« les vies anonymes n'existent
-		// pas ; une vie est un humain ou un bot ») : une mort sans xuid est un défaut de
-		// nommage, à réparer à la source.
-		CritereRetrait:  "0 mort sans xuid sur les 8 builds",
 		CompteurBranche: true,
 	},
 	// `repli_emission_du_compteur_de_morts_jetee` (pose le 2026-09-13) A QUITTE LE REGISTRE AU LOT
@@ -194,32 +176,6 @@ var registreObjectifsEtConstruction = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_instant_sur_la_premiere_manche",
-		Fait:      "a quelle manche appartient un instant anterieur a toute manche connue",
-		Mecanisme: "il retombe sur la PREMIERE manche",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgObjectiveEvents + "slotidentity_rounds.go",
-			Ancre:   "round := ri.starts[0].round",
-		}, {
-			Fichier: pkgObjectiveEvents + "slotidentity_rounds.go",
-			Ancre:   "ri.consultations.noterInstantAvantLesManches(timeMS)",
-		}, {
-			Fichier: pkgObjectiveEvents + "replis_a_la_consultation.go",
-			Ancre:   "InstantsSurLaPremiereManche: len(r.instants),",
-		}, siteDeVersement("NomInstantSurLaPremiereManche")},
-		DatePose: dateAudit0E,
-		// RECIBLE PAR LE LOT 1.9.11 (2026-09-16) : ce plancher est dans une LECTURE ponctuelle
-		// (`RoundIdentity.roundOfTime`), pas dans la resolution des manches. Il suit la chaine des
-		// bornes. COMPTE DEPUIS LE LOT J8.7-bis (2026-09-28) : par instant DISTINCT, dans l enregistreur
-		// du document que le resolveur et ses copies partagent — pas par appel (le compte ne depend ni
-		// du nombre de calques qui lisent l instant, ni de leur ordre).
-		CibleRetrait:    "la chaine des bornes de manche lue au consensus ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 instant anterieur a la premiere manche une fois les bornes lues au consensus",
-		CompteurBranche: true,
-	},
-	{
 		Nom:       "repli_famille_objectif_vide",
 		Fait:      "la famille d'objectif d'un match, donc les actions nommees qu'il publiera",
 		Mecanisme: "aucun mot-cle reconnu dans le nom de variante : famille vide, et le match ne publie AUCUNE action nommee",
@@ -261,36 +217,6 @@ var registreObjectifsEtConstruction = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_gamertag_premier_xuid_gagne",
-		Fait:      "le xuid porte par un gamertag, pour la resolution des frags",
-		Mecanisme: "en cas de divergence, le PREMIER vu gagne",
-		Condition: CondContradiction,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgReplaybuild + "kills.go", Ancre: "divergences++"}, {Fichier: pkgReplaybuild + "kills.go", Ancre: "fb.DeclencheN(decfilm.NomGamertagPremierXuidGagne, divergences)"}, {
-			Fichier: pkgReplaybuild + "kills.go",
-			Ancre:   "if premier, seen := out[d.Gamertag]; !seen {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "un gamertag a deux xuids devient une contradiction comptee, plus tranchee ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 divergence gamertag -> xuid sur les 8 builds",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_mort_neutre_sans_xuid_abandonnee",
-		Fait:      "quelles morts neutres entrent dans le fil publie",
-		Mecanisme: "victime sans xuid : la mort est abandonnee (elle ne rencontrerait aucune piste)",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgReplaybuild + "replaybuild.go", Ancre: "fb.Declenche(decfilm.NomMortNeutreSansXuidAbandonnee)"}, {
-			Fichier: pkgReplaybuild + "replaybuild.go",
-			Ancre:   "if d.VictimXUID == 0 {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "la table du film portee jusqu au constructeur ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 mort neutre sans xuid sur les 8 builds",
-		CompteurBranche: true,
-	},
-	{
 		Nom:       "repli_repere_neutre_generique_conserve",
 		Fait:      "l'icone d'une mort neutre",
 		Mecanisme: "nature non etablie par l'adaptateur d'assets : le fil garde son repere generique",
@@ -324,41 +250,6 @@ var registreObjectifsEtConstruction = []Repli{
 		// par celle qui correspond au mecanisme.
 		CibleRetrait:    "le lot qui fera nommer les vies d'un relais par le registre d'identite plutot que par la participation de la base",
 		CritereRetrait:  "0 vie anonyme restante sur un siege de bot relaye, sur les 8 builds, sans passer par `Succession`",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_participant_sans_xuid_retire",
-		Fait:      "quels joueurs de la feuille de match entrent dans le tableau des participants",
-		Mecanisme: "un joueur sans xuid est retire du tableau par un `continue`",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgReplaybuild + "matchfacts_feuille.go", Ancre: "fb.Declenche(decfilm.NomParticipantSansXuidRetire)"}, {
-			Fichier: pkgReplaybuild + "matchfacts_feuille.go",
-			Ancre:   "func participantsDuTableau(facts port.MatchFacts, fb *decfilm.Compteur) []replay.Participant {",
-		}},
-		DatePose: dateAudit0E,
-		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.6.3, fusionne.
-		// Ce lot a bien rendu le roster HORS LIGNE complet (8 builds, 0 siege de la table absent
-		// du roster), mais il n'a PAS porte cette completude au TABLEAU DES PARTICIPANTS, qui
-		// vient encore de la feuille de match : le `continue` de `participantsDuTableau` est
-		// intact. La cible est donc le lot qui bascule le tableau sur le roster du film.
-		CibleRetrait:    "le tableau des participants derive du roster HORS LIGNE, deja complet, au lieu de la feuille de match ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 joueur retire du tableau sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_camp_inconnu_retire_de_la_table",
-		Fait:      "le camp de chaque joueur, pour le controle et les calques qui lisent encore la base",
-		Mecanisme: "un camp inconnu (-1) n'entre PAS dans la table, ce qui le rend indistinct d'un joueur absent",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgReplaybuild + "matchfacts_feuille.go", Ancre: "retires++"}, {Fichier: pkgReplaybuild + "options.go", Ancre: "cat.replis.DeclencheN(decfilm.NomCampInconnuRetireDeLaTable, campsRetires)"}, {
-			Fichier: pkgReplaybuild + "matchfacts_feuille.go",
-			Ancre:   "if p.TeamID < 0 {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "l equipe lue dans le film sert aux zones, la table de la base n est plus qu un controle ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "les calques prennent l'equipe du film ; la table de base ne sert plus que de controle",
 		CompteurBranche: true,
 	},
 	{

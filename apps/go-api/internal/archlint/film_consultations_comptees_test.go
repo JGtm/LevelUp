@@ -3,9 +3,8 @@ package archlint
 // film_consultations_comptees_test.go — AUCUNE LECTURE DE PRODUCTION NE CONSULTE SANS ENREGISTREUR
 // (lot J8.7-bis du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, 2026-09-28).
 //
-// Les deux replis qui se declenchent a la LECTURE des series nommees et du resolveur d identite par
-// manche (`repli_emission_hors_domaine_jetee`, `repli_instant_sur_la_premiere_manche`) se notent dans
-// l enregistreur du document (`objectives.ReplisALaConsultation`), passe en DERNIER argument des
+// Le repli qui se declenche a la LECTURE des series nommees (`repli_emission_hors_domaine_jetee`) se
+// note dans l enregistreur du document (`objectives.ReplisALaConsultation`), passe en DERNIER argument des
 // entrees publiques ci-dessous. Nil ne note rien : c est la valeur des outils hors production. Dans la
 // cuisson (`film/replay`, `replaybuild`), un nil litteral serait une lecture qui decide des faits SANS
 // les compter — ce que la regle utilisateur interdit (un repli n est jamais silencieux).

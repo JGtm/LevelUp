@@ -143,11 +143,8 @@ func TestOuvriers_MemesLignesQuUnSeulOuvrier(t *testing.T) {
 // Les cinq vues doivent servir les memes lignes — noms compris, puisque c est precisement la
 // quantite que l annuaire change de source.
 //
-// CE QUE CE TEST PEUT LAISSER PASSER, ET C EST ECRIT DANS `AvecAnnuaireDePasse` : l ecart
-// theorique connu (un `xuid:NNN` ecrit par la passe et relu par un match suivant) ne se produit
-// que si un film ne nomme pas un joueur absent du roster du match. Les films du cache ne le
-// declenchent pas ; le jour ou un corpus le declencherait, c est CE test qui le dirait, avec la
-// ligne exacte.
+// CE QUE CE TEST VERIFIE EST ECRIT DANS `AvecAnnuaireDePasse` : les noms que la passe ecrit et
+// qu un match suivant relit sont ceux de l annuaire ; un ecart s y lirait avec la ligne exacte.
 func TestAnnuaireDePasse_MemesLignesQueLaJointure(t *testing.T) {
 	films := chargerLesFilmsDuTest(t, filmsDuTestDEgalite)
 	if len(films) == 0 {

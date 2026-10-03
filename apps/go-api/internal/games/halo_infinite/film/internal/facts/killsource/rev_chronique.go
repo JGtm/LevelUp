@@ -442,3 +442,14 @@ package killsource
 // le compte `repli_carte_absente_largeurs_par_defaut` disparait avec le repli, et celui de
 // `repli_roster_indice_hors_bijection` juge le nom publie par le predicat unique
 // `estNomDeRemplissage`.
+//
+// COMPLEMENT DU 2026-10-02 (retrait des replis nuls, decision DU-7, REVISION CONSTANTE) : deux replis
+// a compte NUL sur le parc sortent de la couche (`.ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md`, passe
+// killsource de la vague J11.4, 1 222 films). `repli_gamertag_par_xuid_brut` : un event du kill-feed
+// dont le xuid n a aucun gamertag dans le bloc n entre plus dans le fil (il y entrait sous un nom
+// `xuid:<N>` fabrique) ; `repli_roster_indice_hors_bijection` : son compte (noms « ? » publies, deja
+// refuses par `pass.nomPubliable` depuis J7) et ses champs de `ReplisDuDecodage` disparaissent. LA
+// SORTIE NE CHANGE SUR AUCUN FILM DU PARC : les deux conditions y comptent zero, donc chaque ligne de
+// `match_kill_events` deja ecrite sous `killsource-2026-09-27` est celle que ce code ecrirait. La
+// revision reste, AUCUN backlog n est ouvert ; golden regenere a revision constante. Seule la FORME du
+// resultat observe change (`Stats.Replis` perd deux champs nuls).

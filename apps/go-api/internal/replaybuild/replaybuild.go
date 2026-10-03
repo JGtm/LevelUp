@@ -445,7 +445,6 @@ func (b *Builder) neutralDeaths(ctx context.Context, matchID string, res *decfil
 			// Le xuid est la SEULE clé de jointure avec les pistes. Sans lui, l'entrée ne
 			// rencontrerait aucune ligne — et un « 0 » sérialisé pourrait en rencontrer une
 			// qui ne lui appartient pas.
-			fb.Declenche(decfilm.NomMortNeutreSansXuidAbandonnee)
 			continue
 		}
 		kind, img, ok := adapter.NeutralDeathIcon(d.Source.Tag)

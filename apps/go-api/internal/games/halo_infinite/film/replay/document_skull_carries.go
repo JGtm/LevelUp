@@ -87,7 +87,7 @@ type SkullCarriesCoverage struct {
 	// CarrierAbsent : trains dont le porteur ponte n'est PAS present sur la carte (aucune vie
 	// bipede ne couvre l'intervalle) — le canal de score a attribue le portage a un joueur absent
 	// (mort ou pas encore apparu). Un tel portage n'a AUCUNE position ou poser le crane : on
-	// l'ecarte plutot que de faire disparaitre l'icone. Un porteur jamais nomme dans les tracks
+	// l'ecarte plutot que de faire disparaitre l'icone. Un portage qu'une vie ANONYME couvre
 	// (presence inconnue) n'entre PAS ici — on ne verifie pas ce qu'on ne connait pas.
 	CarrierAbsent int `json:"carrierAbsent"`
 }

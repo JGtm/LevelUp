@@ -64,7 +64,6 @@ const filmsEssayesAuMax = 20
 // données réelles, pas la mesure d'isolement elle-même (couverte par les tests purs de
 // `isolation_facts_test.go` et `death_context_test.go`, où les équipes sont posées à la main).
 type filmRoster struct {
-	parXUID map[string]string
 	parNom  map[string]string
 	equipes map[string]int
 	xuids   []string
@@ -77,7 +76,7 @@ func filmRosterDepuisFilm(film *decfilm.Film) (filmRoster, error) {
 	if err != nil {
 		return filmRoster{}, err
 	}
-	r := filmRoster{parXUID: map[string]string{}, parNom: map[string]string{}, equipes: map[string]int{}}
+	r := filmRoster{parNom: map[string]string{}, equipes: map[string]int{}}
 	vus := map[uint64]bool{}
 	for _, d := range deaths {
 		if d.XUID == 0 || vus[d.XUID] {
@@ -87,10 +86,8 @@ func filmRosterDepuisFilm(film *decfilm.Film) (filmRoster, error) {
 		s := strconv.FormatUint(d.XUID, 10)
 		r.xuids = append(r.xuids, s)
 		if d.Gamertag != "" {
-			// Les deux tables du CONTRAT (`Resoudre`) : un nom de kill-feed qui EST un
-			// gamertag se résout par ParNom ; un nom déjà `xuid:...` n'a besoin d'aucune des
-			// deux (il porte le xuid dans la chaîne elle-même).
-			r.parXUID[s] = d.Gamertag
+			// La table du CONTRAT (`Resoudre`) : un nom de kill-feed est un gamertag, il se résout
+			// par ParNom.
 			r.parNom[d.Gamertag] = s
 		}
 	}
@@ -103,7 +100,6 @@ func filmRosterDepuisFilm(film *decfilm.Film) (filmRoster, error) {
 
 func (r filmRoster) IdentitiesForMatch(context.Context, string) (MatchIdentities, error) {
 	return MatchIdentities{
-		ParXUID:    r.parXUID,
 		ParNom:     r.parNom,
 		XUIDs:      r.xuids,
 		ShotsFired: map[string]int{},

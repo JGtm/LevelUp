@@ -72,7 +72,6 @@ func (r *SharedRoster) IdentitiesForMatch(ctx context.Context, matchID string) (
 		return MatchIdentities{}, err
 	}
 	out := MatchIdentities{
-		ParXUID:    parXUID,
 		ParNom:     make(map[string]string, len(parXUID)),
 		ShotsFired: map[string]int{},
 		Equipes:    map[string]int{},
@@ -92,8 +91,6 @@ func (r *SharedRoster) IdentitiesForMatch(ctx context.Context, matchID string) (
 		}
 		out.ParNom[gt] = xuid
 	}
-	// Repli `repli_homonymes_sans_xuid` : un nom porte par deux participants ne recoit aucun xuid (lot J8.7).
-	out.replis.DeclencheN(decfilm.NomHomonymesSansXuid, len(ambigus))
 	if err := r.participantsForMatch(ctx, matchID, &out); err != nil {
 		return MatchIdentities{}, err
 	}
@@ -347,18 +344,14 @@ func (c *KillSourceCollector) CollectMatches(ctx context.Context, matchIDs []str
 // jointure retenait l une des deux au hasard de l ordre de sortie de DuckDB, la ou l annuaire
 // retient la premiere d un `ORDER BY` (cf. [requeteAnnuaireDesNoms]).
 //
-// # LE SEUL ECART POSSIBLE EST NOMME, ET IL VA DANS LE BON SENS
+// # L INSTANTANE ET CE QUE LA PASSE ECRIT
 //
 // L instantane est pris au premier match ; la passe ecrit ensuite dans `match_kill_events`, que
 // la vue relit (son leg 4). Un nom ajoute par la passe pourrait donc, sans annuaire, etre relu
-// par un match suivant. Les noms que la passe ecrit viennent de [MatchIdentities.Resoudre], donc
-// de l annuaire lui-meme — SAUF UN : quand le film ne porte aucun gamertag pour un joueur, le
-// decodeur ecrit `xuid:NNN` et `Resoudre` garde cette forme brute si le xuid n est pas au roster
-// du match. La jointure par match pourrait alors, sur un match suivant, servir `xuid:NNN` comme
-// nom d affichage (le leg 4 prend le `MAX` des noms du kill-feed, et `x` est haut) — c est-a-dire
-// exactement le « xuid brut a l affichage » que `v_gamertag_lookup` existe pour empecher.
-// L annuaire ne peut pas le faire. L ecart est donc REEL, RARE, et il retire un faux nom ; il est
-// verifie sur les films du cache par `TestAnnuaireDePasse_MemesIdentitesQueLaJointure`.
+// par un match suivant. Les noms que la passe ecrit viennent de [MatchIdentities.Resoudre] : ce
+// sont les gamertags du kill-feed du film (un event sans gamertag n entre pas dans le fil). La
+// correspondance est verifiee sur les films du cache par
+// `TestAnnuaireDePasse_MemesIdentitesQueLaJointure`.
 //
 // ⚠ UN COLLECTEUR = UNE PASSE, comme pour le credit : l instantane vit aussi longtemps que le
 // `SharedRoster`. Le brancher sur un roster garde vivant des heures (le post-sync du serveur, le

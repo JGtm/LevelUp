@@ -78,6 +78,16 @@ package objectives
 // siege recycle a un second slot. Mesure : 7 temoins objectifs + 11de8353 + 4f77afc1, seuls les films
 // a siege recycle bougent, et seulement sur ces deux sorties. `bcb6d393` : le frag de 70 706 ms revient a son auteur (2535460750735339) au lieu du
 // remplacant arrive 2 min 30 plus tard.
+//
+// COMPLEMENT DU 2026-10-02 (retrait des replis nuls, decision DU-7, REVISION CONSTANTE) : deux replis
+// a compte NUL sur le parc sortent de la couche (`.ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md`, 1 227
+// artefacts de la vague J11.4). `repli_instant_sur_la_premiere_manche` : un instant anterieur a toute
+// manche connue n est plus range dans la premiere — [RoundIdentity.RoundAt] rend faux et
+// [RoundIdentity.At] ne nomme personne ; `repli_mort_sans_xuid_ignoree` : la mort sans xuid reste hors
+// du fil, son compte disparait. Les deux champs de [ComptesDesReplis] et la note d instant de
+// [ReplisALaConsultation] partent avec eux. LA SORTIE NE CHANGE SUR AUCUN FILM DU PARC (les deux
+// conditions y comptent zero) : les faits persistes et les calques dates `objectives-2026-09-27`
+// restent frais, aucune recuisson. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

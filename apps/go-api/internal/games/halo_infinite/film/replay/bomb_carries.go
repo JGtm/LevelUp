@@ -71,7 +71,7 @@ func bombHeldEventsOf(changes []types.HeldWeaponChange, deathOffsetMS int64) []H
 // `presence` a la même sémantique que pour le crâne, et passe par le MÊME gate
 // ([carrierPresence.gate]) : écart d'un portage que les pistes publiées démentent
 // (`CarrierAbsent`), rognage à la vie nommée qui le recouvre, et ABSTENTION dès que la présence
-// est inconnue (porteur jamais nommé, ou vie anonyme couvrant l'intervalle).
+// est inconnue (vie anonyme couvrant l'intervalle).
 func buildBombCarries(carry HeldObjectCarry, ctx matchClock,
 	presence carrierPresence) ([]BombCarry, *BombCarriesCoverage) {
 	cov := &BombCarriesCoverage{BombFilm: true, Events: len(carry.Events)}
@@ -141,14 +141,10 @@ func attachBombCarries(ctx context.Context, doc *ReplayDocument, opt Options, re
 		// LES DEUX REPLIS DE LA RECONSTRUCTION DES PERIODES, comptes pour la cuisson (lot J8.7).
 		clock.fb.DeclencheN(fallback.NomPortageFermeALaPriseSuivante, carry.replis.priseSuivante)
 		clock.fb.DeclencheN(fallback.NomPorteurAnonymeSansFinParMort, carry.replis.porteurAnonyme)
-		presence := carrierPresenceOf(doc.Tracks, deduced)
 		carries, cov = buildBombCarries(carry, matchClock{
 			origin: clock.origin, step: clock.step, frames: clock.frames,
 			deathOffsetMS: reg.DeathOffsetMS(),
-		}, presence)
-		// LA MEME PORTE QUE LE CRANE ([carrierPresence.gate]), SOUS LE NOM DE LA BOMBE (lot J8.7-bis) : sans ce
-		// versement, un portage de bombe sans vie nommee passait sans etre compte.
-		clock.fb.DeclencheN(fallback.NomBombePorteurSansVieNommee, presence.porteursSansVieNommee())
+		}, carrierPresenceOf(doc.Tracks, deduced))
 	}
 	doc.BombCarries = carries
 	if doc.Coverage != nil {

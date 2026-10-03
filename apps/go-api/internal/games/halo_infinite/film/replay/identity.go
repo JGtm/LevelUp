@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -33,43 +32,50 @@ import (
 // donnait tout l'intervalle d'un slot RECYCLÉ à son premier porteur nommé : le remplaçant
 // (arrivant, bot) n'existait pas et l'ancien « vivait » à sa place. Les tracks étant
 // désormais découpées à la MÊME règle que les vies (`lifeGapUS`, cf. decimateTracks), la
-// correspondance track <-> vie est un recouvrement franc — le meilleur recouvrement suffit,
-// et un recouvrement nul (mesure a bornes incluses) ne nomme rien.
+// correspondance track <-> vie est un recouvrement franc, et un recouvrement nul (mesure a
+// bornes incluses) ne nomme rien.
+//
+// DEUX JOUEURS QUI RECOUVRENT LA MEME TRACE NE SE DEPARTAGENT PAS : quand des vies nommees de
+// joueurs DIFFERENTS du meme slot recouvrent la trace, elle reste sans xuid. Aucun recouvrement,
+// aussi grand soit-il, ne prouve qui la porte ; plusieurs vies du MEME joueur la nomment.
 //
 // UNE TRACE SANS VIE NOMMÉE RESTE SANS XUID : le champ est vide, pas rempli d'un « inconnu »
 // ni du porteur d'un slot voisin. C'est la même règle que celle qui a fait supprimer le vote
 // — mieux vaut ne rien afficher que quelque chose de faux.
-func nameTracksByLives(tracks []Track, lives []lifeSpan, origin, step uint64, fb *fallback.Compteur) {
+func nameTracksByLives(tracks []Track, lives []lifeSpan, origin, step uint64) {
 	if len(lives) == 0 {
 		return
 	}
 	for i := range tracks {
 		from := int64(origin) + int64(tracks[i].StartFrame)*int64(step)
 		to := int64(origin) + int64(tracks[i].EndFrame)*int64(step) + int64(step) - 1
-		var bestXUID uint64
-		var bestOverlap int64
-		for _, l := range lives {
-			if l.slot != tracks[i].Slot || l.xuid == 0 {
-				continue
-			}
-			// BORNES INCLUSES (RA2-6, lot J5.4, 2026-09-27) : une vie d'un seul echantillon a
-			// `from == to`, et la piste qui la porte la recouvre sur un instant. Mesure a bornes
-			// exclusives, ce recouvrement valait 0 et la vie restait anonyme — contraire a la
-			// regle produit « aucune vie anonyme » (`084a804d` : `unnamedLives` 0 -> 1).
-			if ov := minI64(to, l.to) - maxI64(from, l.from) + 1; ov > bestOverlap {
-				// REPLI NOMME ET COMPTE (D14) : quand une SECONDE vie du meme slot recouvre la
-				// piste, ce `>` arbitre sans aucun seuil minimal — un recouvrement d'une frame
-				// l'emporte. Compte a partir du deuxieme candidat, pas du premier.
-				if bestXUID != 0 {
-					fb.Declenche(fallback.NomIdentitePisteMeilleurRecouvrement)
-				}
-				bestOverlap, bestXUID = ov, l.xuid
-			}
-		}
-		if bestXUID != 0 {
-			tracks[i].XUID = strconv.FormatUint(bestXUID, 10)
+		if xuid := seulPorteurQuiRecouvre(lives, tracks[i].Slot, from, to); xuid != 0 {
+			tracks[i].XUID = strconv.FormatUint(xuid, 10)
 		}
 	}
+}
+
+// seulPorteurQuiRecouvre rend le xuid des vies nommees du slot qui recouvrent [from,to], ou 0
+// quand aucune ne le recouvre ou que deux joueurs differents le recouvrent.
+//
+// BORNES INCLUSES (RA2-6, lot J5.4) : une vie d'un seul echantillon a `from == to`, et la piste
+// qui la porte la recouvre sur un instant ; mesure a bornes exclusives, ce recouvrement valait 0
+// et la vie restait anonyme — contraire a la regle produit « aucune vie anonyme ».
+func seulPorteurQuiRecouvre(lives []lifeSpan, slot uint32, from, to int64) uint64 {
+	var porteur uint64
+	for _, l := range lives {
+		if l.slot != slot || l.xuid == 0 {
+			continue
+		}
+		if minI64(to, l.to)-maxI64(from, l.from)+1 <= 0 {
+			continue
+		}
+		if porteur != 0 && porteur != l.xuid {
+			return 0
+		}
+		porteur = l.xuid
+	}
+	return porteur
 }
 
 // gamertagsOf relève les noms que LE FILM porte, un par identité.

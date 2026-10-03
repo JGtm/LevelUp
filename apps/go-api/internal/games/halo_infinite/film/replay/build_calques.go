@@ -11,8 +11,6 @@ package replay
 
 import (
 	"log/slog"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // poserGrappinEtPoses publie les tractions de grappin (qui exigent les bornes de la carte) et
@@ -25,9 +23,6 @@ func (a *assemblage) poserGrappinEtPoses() {
 	case a.opt.MapQuant != nil:
 		var grapCov *GrappleCoverage
 		a.doc.GrappleLines, grapCov = buildGrappleLines(a.opt.GrappleReads, *a.opt.MapQuant, a.origin, a.step, a.doc.Tracks)
-		// LES DEUX REPLIS DE LA VIE D UNE TRACTION, comptes pour la cuisson (lot J8.7).
-		a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieDuTir, grapCov.viesParLeTir)
-		a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieLaPlusProche, grapCov.viesLesPlusProches)
 		a.doc.Coverage.Grapple = grapCov
 		slog.InfoContext(a.ctx, "rejeu : tractions de grappin",
 			"tirs", grapCov.LightReads, "accroches", grapCov.HeavyReads,

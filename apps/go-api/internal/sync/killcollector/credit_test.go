@@ -80,21 +80,15 @@ func compterVue(t *testing.T, db *sql.DB, matchID string) int {
 	return n
 }
 
-// ─── LE ROSTER : DEUX FORMES DE NOM, ET AUCUNE NE SE DEVINE ────────────────────────────────
+// ─── LE ROSTER : LE NOM CANONIQUE, ET RIEN NE SE DEVINE ───────────────────────────────────
 
-// TestRosterResoutLesDeuxFormesDeNom — LE test du defaut le plus couteux de la session 2.
+// TestRosterResoutParLaVueCanonique — LE test du defaut le plus couteux de la session 2 :
+// `match_participants.gamertag` EST VIDE en production (4 xuids nommes sur 16 996). Un roster qui
+// lit cette colonne rend une table vide, donc des morts SANS xuid — 16 908 ecrites, 10 avec un xuid
+// de victime. Le nom canonique vit dans `v_gamertag_lookup`.
 //
-// Il porte sur deux choses que rien ne signalait :
-//
-//  1. `match_participants.gamertag` EST VIDE en production (4 xuids nommes sur 16 996). Un
-//     roster qui lit cette colonne rend une table vide, donc des morts SANS xuid — 16 908
-//     ecrites, 10 avec un xuid de victime. Le nom canonique vit dans `v_gamertag_lookup`.
-//  2. Le film ne donne pas toujours un gamertag : quand il n en a pas, le decodeur ecrit
-//     `xuid:<decimal>`. Cette forme EST l identite ; la chercher dans une table de gamertags
-//     ne rend evidemment rien.
-//
-// Le test fabrique les deux cas et exige un xuid dans les deux.
-func TestRosterResoutLesDeuxFormesDeNom(t *testing.T) {
+// Le test fabrique ce cas, exige un xuid pour le nom canonique, et aucun pour un nom inconnu.
+func TestRosterResoutParLaVueCanonique(t *testing.T) {
 	const match = "match-identites"
 	db := openSharedTestDB(t)
 
@@ -122,18 +116,9 @@ func TestRosterResoutLesDeuxFormesDeNom(t *testing.T) {
 		t.Errorf("Resoudre(\"Alpha\") = (%q, %q), attendu (\"1001\", \"Alpha\") — le roster doit "+
 			"lire v_gamertag_lookup, pas match_participants.gamertag (vide en production)", xuid, nom)
 	}
-	// (2) la forme `xuid:` EST l identite, et elle ne depend d aucune table.
-	if xuid, _ := ids.Resoudre("xuid:1002"); xuid != "1002" {
-		t.Errorf("Resoudre(\"xuid:1002\") = %q, attendu \"1002\" — cette forme est le xuid "+
-			"lui-meme, pas un pseudo a chercher dans le roster", xuid)
-	}
-	// (3) un nom inconnu reste sans xuid : on n invente pas.
+	// (2) un nom inconnu reste sans xuid : on n invente pas.
 	if xuid, nom := ids.Resoudre("Inconnu"); xuid != "" || nom != "Inconnu" {
 		t.Errorf("Resoudre(\"Inconnu\") = (%q, %q), attendu (\"\", \"Inconnu\")", xuid, nom)
-	}
-	// (4) une forme `xuid:` non decimale n est pas un xuid.
-	if xuid, _ := ids.Resoudre("xuid:pas-un-nombre"); xuid != "" {
-		t.Errorf("Resoudre(\"xuid:pas-un-nombre\") = %q, attendu vide", xuid)
 	}
 }
 

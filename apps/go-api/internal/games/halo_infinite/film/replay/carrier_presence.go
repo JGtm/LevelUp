@@ -28,12 +28,6 @@ type carrierPresence struct {
 	// Quelqu'un est la, on ne sait pas qui — donc on ne peut RIEN affirmer sur l'absence d'un
 	// joueur a cet instant.
 	unnamed []presenceSpan
-	// sansVieNommee compte les portages que la porte laisse passer faute de TOUTE vie nommee du
-	// porteur — le repli du calque qui l a construite (`repli_crane_porteur_sans_vie_nommee`,
-	// `repli_bombe_porteur_sans_vie_nommee`) : c est l APPELANT qui le nomme en le versant
-	// ([carrierPresence.porteursSansVieNommee]), la porte n en a qu une copie. Partage par pointeur
-	// entre les copies de l index ; nil (index fabrique a la main en test) ne compte rien.
-	sansVieNommee *int
 }
 
 // carrierPresenceOf indexe les vies bipedes PUBLIEES (`doc.Tracks`) : les nommees par xuid, les
@@ -58,7 +52,7 @@ type carrierPresence struct {
 // Une vie dont l'identite est deduite entre donc DANS LES DEUX : sous son xuid (c'est sa
 // presence a lui) ET parmi les vies qui ne prouvent l'absence de personne.
 func carrierPresenceOf(tracks []Track, deduced map[int]bool) carrierPresence {
-	p := carrierPresence{named: map[string][]presenceSpan{}, sansVieNommee: new(int)}
+	p := carrierPresence{named: map[string][]presenceSpan{}}
 	for i, t := range tracks {
 		span := presenceSpan{t.StartFrame, t.EndFrame}
 		switch {
@@ -77,24 +71,19 @@ func carrierPresenceOf(tracks []Track, deduced map[int]bool) carrierPresence {
 // gate applique la regle de PRESENCE a un portage [f0,f1] attribue a `xuid`. Il rend les bornes
 // a publier et `false` quand le portage est un FANTOME (a ecarter, `CarrierAbsent`).
 //
-// TROIS CAS D'ABSTENTION, tous ramenes au meme principe : ON NE REJETTE PAS L'INCONNU.
-//  1. `xuid` n'a AUCUNE vie nommee (jamais ponte, ou `named` vide en test) : rien a opposer.
-//  2. Une vie ANONYME recouvre l'intervalle : la presence y est INCONNUE, pas nulle. Ni rejet ni
+// DEUX CAS DE PUBLICATION, tous deux ramenes au meme principe : ON NE REJETTE PAS L'INCONNU.
+//  1. Une vie ANONYME recouvre l'intervalle : la presence y est INCONNUE, pas nulle. Ni rejet ni
 //     rognage — rogner reviendrait a affirmer que le porteur n'etait pas la ou une vie sans nom
 //     dit que quelqu'un l'etait.
-//  3. Une vie nommee de `xuid` recouvre l'intervalle : le portage est publie, ROGNE a la vie qui
+//  2. Une vie nommee de `xuid` recouvre l'intervalle : le portage est publie, ROGNE a la vie qui
 //     le recouvre le plus (le crane n'est porte que tant que son porteur est present).
 //
 // Le rejet ne subsiste donc que quand les pistes publiees rendent COMPTE de tout l'intervalle et
-// que le porteur n'y est pas — le seul cas ou « absent » est une mesure et non une ignorance.
+// que le porteur n'y est pas — le seul cas ou « absent » est une mesure et non une ignorance. Un
+// porteur sans AUCUNE vie nommee y entre : aucune piste ne le place sur la carte, et le portage
+// n'est publie que si une vie anonyme laisse sa presence ouverte (cas 1).
 func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {
 	spans := p.named[xuid]
-	if len(spans) == 0 {
-		if p.sansVieNommee != nil {
-			*p.sansVieNommee++
-		}
-		return f0, f1, true
-	}
 	// L'IGNORANCE PASSE AVANT LE ROGNAGE, et c'est la moitie la plus couteuse du correctif : sur
 	// `d9781168`, le rejet coutait 32,6 s de portage et le rognage 91,2 s. Rogner un portage a une
 	// vie nommee alors qu'une vie SANS NOM couvre le reste, c'est affirmer une absence que rien
@@ -156,14 +145,4 @@ func unionOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
 		}
 	}
 	return out, found
-}
-
-// porteursSansVieNommee rend le nombre de portages que [carrierPresence.gate] a laisses passer faute
-// de toute vie nommee du porteur (abstention n° 1) — le compte que l appelant verse sous le nom du
-// repli de SON calque (lot J8.7-bis, 2026-09-28).
-func (p carrierPresence) porteursSansVieNommee() int {
-	if p.sansVieNommee == nil {
-		return 0
-	}
-	return *p.sansVieNommee
 }

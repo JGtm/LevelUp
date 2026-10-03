@@ -78,11 +78,11 @@ func TestOrigineDUnNomDeRemplissageEstLeSilence(t *testing.T) {
 }
 
 // TestEstNomDeRemplissage : la liste FERMEE de ce que le predicat reconnait. Un gamertag Xbox ne
-// porte jamais `?` ; le nom de repli `xuid:` et le suffixe de bot ne sont PAS du remplissage.
+// porte jamais `?` ; le suffixe de bot n est PAS du remplissage.
 func TestEstNomDeRemplissage(t *testing.T) {
 	for nom, attendu := range map[string]bool{
 		"?": true, "?3": true, "?10": true,
-		"Zeus Herd": false, XUIDNamePrefix + "2533274": false, "343 Relais" + BotSuffix: false, "": false,
+		"Zeus Herd": false, "343 Relais" + BotSuffix: false, "": false,
 	} {
 		if got := estNomDeRemplissage(nom); got != attendu {
 			t.Errorf("estNomDeRemplissage(%q) = %v, attendu %v", nom, got, attendu)

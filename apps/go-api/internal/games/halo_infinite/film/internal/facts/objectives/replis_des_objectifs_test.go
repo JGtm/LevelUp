@@ -60,16 +60,12 @@ func TestLeBalayageDuStatborgCompteSesAbandons(t *testing.T) {
 	}
 }
 
-// TestLeResolveurPorteLesComptesDeSaConstruction : pont sans mort (table vide), mort sans xuid,
-// debut de manche au minimum — chacun au resolveur qui en est ne.
+// TestLeResolveurPorteLesComptesDeSaConstruction : pont sans mort (table vide), debut de manche au
+// minimum — chacun au resolveur qui en est ne.
 func TestLeResolveurPorteLesComptesDeSaConstruction(t *testing.T) {
-	recs, deaths, _ := filmUneMancheDeuxMortsFixture()
+	recs, _, _ := filmUneMancheDeuxMortsFixture()
 	if got := ResolveRoundIdentity(recs, nil, nil).ComptesDesReplis().TablesIdentiteVides; got != 1 {
 		t.Errorf("pont sans mort : %d table(s) vide(s) comptee(s), attendu 1", got)
-	}
-	avecAnonyme := append(append([]types.DeathInstant(nil), deaths...), types.DeathInstant{TimeMS: 1})
-	if got := ResolveRoundIdentity(recs, avecAnonyme, nil).ComptesDesReplis().MortsSansXUID; got != 1 {
-		t.Errorf("mort sans xuid : %d comptee(s), attendu 1", got)
 	}
 	var c ComptesDesReplis
 	roundStartsOfCompte(recsExAequo(), byRoundExAequo(), &c)

@@ -60,7 +60,7 @@ func slotIdentityByRoundCompte(recs []types.StatRecord, deaths []types.DeathInst
 		}
 		return map[int]map[int]string{r: slotIdentityFromDeathsCompte(recs, deaths, c, cons)}
 	}
-	thread := deathThreadByXUIDCompte(deaths, c)
+	thread := deathThreadByXUID(deaths)
 	parManche := deathProgressionsByRound(recs, cons)
 	out := make(map[int]map[int]string, len(rounds))
 	for _, round := range rounds {
@@ -114,8 +114,7 @@ type RoundIdentity struct {
 	replis ComptesDesReplis
 	// consultations : l enregistreur du DOCUMENT (lot J8.7-bis), partage par pointeur entre toutes
 	// les copies du resolveur — completions comprises — et avec les series que les calques lisent.
-	// [RoundIdentity.roundOfTime] y note l instant qu il range dans la premiere manche faute de
-	// manche connue ; les completions y notent les emissions jetees des series qu elles lisent. Nil
+	// Les completions y notent les emissions jetees des series qu elles lisent. Nil
 	// ([FlatRoundIdentity], outils) : rien n est note.
 	consultations *ReplisALaConsultation
 	// occupations : manche -> slot -> occupations d un siege RECYCLE (lot R1, cf.
@@ -125,8 +124,9 @@ type RoundIdentity struct {
 	occupations map[int]map[int][]Occupation
 }
 
-// roundOfInstant rend la manche qui repond pour un instant : l unique manche sans regarder le temps
-// (et sans rien noter), sinon celle que [RoundIdentity.roundOfTime] place. Faux : resolveur vide.
+// roundOfInstant rend la manche qui repond pour un instant : l unique manche sans regarder le temps,
+// sinon celle que [RoundIdentity.roundOfTime] place. Faux : resolveur vide, ou instant anterieur a
+// toute manche connue.
 func (ri RoundIdentity) roundOfInstant(timeMS int) (int, bool) {
 	if len(ri.byRound) == 0 {
 		return 0, false
@@ -136,7 +136,7 @@ func (ri RoundIdentity) roundOfInstant(timeMS int) (int, bool) {
 			return r, true
 		}
 	}
-	return ri.roundOfTime(timeMS), true
+	return ri.roundOfTime(timeMS)
 }
 
 // roundStart associe une manche a son premier instant sur l'horloge des enregistrements.
@@ -167,7 +167,7 @@ func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant, 
 	starts := roundStartsOfCompte(recs, byRound, &replis)
 	// LES SIEGES RECYCLES (lot R1) : un lien par occupation prouvee, sur le meme fil des morts (sans
 	// recompter ses replis : la resolution ci-dessus l a deja fait).
-	occupations := seatOccupations(recs, deathThreadByXUIDCompte(deaths, nil), byRound)
+	occupations := seatOccupations(recs, deathThreadByXUID(deaths), byRound)
 	return RoundIdentity{byRound: byRound, origins: origins, starts: starts, replis: replis, consultations: cons,
 		occupations: occupations}
 }
@@ -393,27 +393,23 @@ func (ri RoundIdentity) NamedCount() int {
 // instant ne se decide qu ICI — une seconde lecture des bornes de manche chez le consommateur
 // divergerait de celle qui nomme ses slots.
 //
-// Mono-manche : l unique manche, sans regarder le temps. Resolveur vide : 0.
-func (ri RoundIdentity) RoundAt(timeMS int) int {
+// Mono-manche : l unique manche, sans regarder le temps. Resolveur vide : 0. Faux : l instant
+// precede toute manche connue — il n appartient a aucune, et le calque ne le range nulle part.
+func (ri RoundIdentity) RoundAt(timeMS int) (int, bool) {
 	if len(ri.byRound) == 0 {
-		return 0
+		return 0, true
 	}
 	if len(ri.byRound) == 1 || len(ri.starts) == 0 {
-		return ri.Rounds()[0]
+		return ri.Rounds()[0], true
 	}
 	return ri.roundOfTime(timeMS)
 }
 
-// roundOfTime rend la manche dont le debut est le plus grand qui ne depasse pas `timeMS`. Un
-// instant anterieur a toute manche connue retombe sur la premiere (les manches se jouent dans
-// l'ordre : rien avant la premiere).
-//
-// CE PLANCHER EST `repli_instant_sur_la_premiere_manche` (lot J8.7-bis, 2026-09-28) : l instant est
-// note dans l enregistreur du document, qui le compte UNE fois quel que soit le nombre de calques qui
-// le consultent.
-func (ri RoundIdentity) roundOfTime(timeMS int) int {
+// roundOfTime rend la manche dont le debut est le plus grand qui ne depasse pas `timeMS`. Faux pour
+// un instant anterieur a toute manche connue : il n est range dans aucune.
+func (ri RoundIdentity) roundOfTime(timeMS int) (int, bool) {
 	if timeMS < ri.starts[0].startMS {
-		ri.consultations.noterInstantAvantLesManches(timeMS)
+		return 0, false
 	}
 	round := ri.starts[0].round
 	for _, s := range ri.starts {
@@ -422,5 +418,5 @@ func (ri RoundIdentity) roundOfTime(timeMS int) int {
 		}
 		round = s.round
 	}
-	return round
+	return round, true
 }

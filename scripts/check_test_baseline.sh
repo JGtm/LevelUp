@@ -118,6 +118,16 @@
 # 113 de `film/replay`, 8 de `film/replay/mapvar`), tous définis dans un fichier tagué `research` ;
 # ratchet `archlint/research_tag_test.go` (TestGardeNeCachePasDerriereResearch).
 #
+# RETRAIT DU 2026-10-02 (retrait des replis nuls, décision DU-7, règle 4 de D-10 de l'ADR 0034 :
+# un repli supprimé l'est avec ses tests) : 5 tests retirés — `film/replay` ::
+# TestZoneStatesSansRosterAccepteLesDeuxCampsMesures (remplacé par
+# TestZoneStatesSansRosterNeDevineAucunCamp) ; `replaybuild` :: TestResolveKillIdentity_ReplixuidPrefixe,
+# TestResolveKillIdentity_ReplixuidNonDecimalRefuse (la forme `xuid:<N>` n'existe plus),
+# TestGamertagXUIDIndex_PremierGagneEnCasDeDoublon (remplacé par TestGamertagXUIDIndex_DoublonNeResoutRien) ;
+# `sync/killcollector` :: TestRosterResoutLesDeuxFormesDeNom (remplacé par
+# TestRosterResoutParLaVueCanonique). Les remplaçants sont dans le run courant. 5 lignes JSONL,
+# 5 paires (Package, Test), vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

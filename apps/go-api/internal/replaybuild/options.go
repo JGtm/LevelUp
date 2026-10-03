@@ -13,11 +13,6 @@ import (
 func (b *Builder) buildReplayOptions(ctx context.Context,
 	entry decfilm.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
 ) replay.Options {
-	// LES DEUX PROJECTIONS DE LA FEUILLE QUI SE REPLIENT SE CALCULENT AVANT LE RAPPORT de la construction
-	// (lot J8.7) : leurs comptes doivent y etre quand `ReplisHorsBalayage` le prend.
-	participants := participantsDuTableau(facts, cat.replis)
-	camps, campsRetires := tableDesCamps(facts)
-	cat.replis.DeclencheN(decfilm.NomCampInconnuRetireDeLaTable, campsRetires)
 	return replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometryFor(ctx, entry.Module),
@@ -27,12 +22,12 @@ func (b *Builder) buildReplayOptions(ctx context.Context,
 		Kills:           cat.kills,
 		MatchKills:      cat.matchKills,
 		RosterXUIDs:     rosterXUIDs(facts),
-		Participants:    participants,
+		Participants:    participantsDuTableau(facts),
 		// LA FEUILLE DE MATCH N'EST QU'UN CONTROLE DES EQUIPES (lot 1.7, decision utilisateur
 		// V4) : l'equipe publiee vient du FILM. Cette table n'alimente que
 		// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle
 		// ne se corrige pas en silence.
-		ScoreboardTeams: camps,
+		ScoreboardTeams: teamByXUID(facts),
 		Bots:            cat.bots,
 		Successions:     cat.successions,
 		Objectives:      stats.objectives,

@@ -59,28 +59,23 @@ func TestLaMarcheParTableEstUnSiteDuRepli(t *testing.T) {
 	}
 }
 
-// TestUnInstantAvantLesManchesSeCompteUneFoisDepuisDeuxCopies : deux COPIES du resolveur (une copie de
-// valeur, une completion) lisent le meme instant anterieur a toute manche par deux entrees (`At`,
-// `RoundAt`) : UN instant. Un second instant distinct en fait deux ; un instant DANS une manche, zero.
-func TestUnInstantAvantLesManchesSeCompteUneFoisDepuisDeuxCopies(t *testing.T) {
+// TestUnInstantAvantLesManchesNAppartientAAucune : un instant anterieur a toute manche connue n est
+// range dans aucune — `RoundAt` le dit, `At` ne nomme personne, sur le resolveur comme sur une
+// completion. Un instant DANS une manche y reste range.
+func TestUnInstantAvantLesManchesNAppartientAAucune(t *testing.T) {
 	recs, deaths := twoRoundReassignedFixture()
-	cons := &ReplisALaConsultation{}
-	ri := ResolveRoundIdentity(recs, deaths, cons)
-	copie := ri
+	ri := ResolveRoundIdentity(recs, deaths, nil)
 	completee := ri.CompletedByElimination(recs, nil)
-
-	ri.At(22, 12000) // dans la manche 1 : aucun repli
-	if got := cons.ComptesDesReplis().InstantsSurLaPremiereManche; got != 0 {
-		t.Fatalf("instant dans une manche compte comme repli : %d, attendu 0", got)
+	if round, ok := ri.RoundAt(12000); !ok || round != 1 {
+		t.Fatalf("RoundAt(12000) = %d, %v — attendu 1, vrai", round, ok)
 	}
-	copie.At(22, 100)
-	completee.RoundAt(100)
-	if got := cons.ComptesDesReplis().InstantsSurLaPremiereManche; got != 1 {
-		t.Fatalf("le meme instant lu par deux copies : %d, attendu 1", got)
-	}
-	completee.At(20, 200)
-	if got := cons.ComptesDesReplis().InstantsSurLaPremiereManche; got != 2 {
-		t.Fatalf("deux instants distincts : %d, attendu 2", got)
+	for _, r := range []RoundIdentity{ri, completee} {
+		if _, ok := r.RoundAt(100); ok {
+			t.Errorf("RoundAt(100) range un instant anterieur a toute manche")
+		}
+		if got := r.At(22, 100); got != "" {
+			t.Errorf("At(22, 100) = %q, attendu vide : l instant n appartient a aucune manche", got)
+		}
 	}
 }
 

@@ -13,13 +13,12 @@ package objectives
 // ([RoundIdentity.ComptesDesReplis]). La cuisson les verse par sa table
 // (`replay/versement_des_replis.go`).
 //
-// # DEUX REPLIS SE COMPTENT A LA CONSULTATION (lot J8.7-bis, 2026-09-28)
+// # UN REPLI SE COMPTE A LA CONSULTATION (lot J8.7-bis, 2026-09-28)
 //
-// `repli_emission_hors_domaine_jetee` (series nommees, `named_series.go`) et
-// `repli_instant_sur_la_premiere_manche` (`RoundIdentity.roundOfTime`) se DECLENCHENT A LA
-// CONSULTATION, dans des lectures que plusieurs calques refont : ils se comptent par EVENEMENT
+// `repli_emission_hors_domaine_jetee` (series nommees, `named_series.go`) se DECLENCHE A LA
+// CONSULTATION, dans des lectures que plusieurs calques refont : il se compte par EVENEMENT
 // DISTINCT dans un enregistreur partage par le document ([ReplisALaConsultation]), dont
-// [ReplisALaConsultation.ComptesDesReplis] rend les deux derniers champs ci-dessous.
+// [ReplisALaConsultation.ComptesDesReplis] rend le dernier champ ci-dessous.
 
 // ComptesDesReplis compte les declenchements des replis d `objectives` portes par un resultat.
 type ComptesDesReplis struct {
@@ -33,9 +32,6 @@ type ComptesDesReplis struct {
 	// TablesIdentiteVides : `repli_table_identite_vide` — ponts par instants de mort sans aucune
 	// mort, rendus vides (`slotidentity_deaths.go`).
 	TablesIdentiteVides int
-	// MortsSansXUID : `repli_mort_sans_xuid_ignoree` — morts du fil ignorees faute de xuid
-	// (`slotidentity_deaths.go`).
-	MortsSansXUID int
 	// DebutsDeMancheAuMinimum : `repli_debut_de_manche_au_minimum` — manches dont le debut vient du
 	// minimum des instants declares, faute de consensus (`slotidentity_rounds.go`).
 	DebutsDeMancheAuMinimum int
@@ -46,25 +42,18 @@ type ComptesDesReplis struct {
 	// (serie, instant) jetees par le filtre de domaine des series nommees (`named_series.go`),
 	// relevees par un [ReplisALaConsultation].
 	EmissionsHorsDomaineJetees int
-	// InstantsSurLaPremiereManche : `repli_instant_sur_la_premiere_manche` — instants DISTINCTS
-	// anterieurs a toute manche connue, ranges dans la premiere (`slotidentity_rounds.go`),
-	// releves par un [ReplisALaConsultation].
-	InstantsSurLaPremiereManche int
 }
 
 // Plus rend la somme champ a champ des deux rapports. Elle nomme chaque champ :
 // `TestPlusSommeChaqueChampDesComptes` le tient par reflexion.
 func (c ComptesDesReplis) Plus(d ComptesDesReplis) ComptesDesReplis {
 	return ComptesDesReplis{
-		EnregistrementsAbandonnes: c.EnregistrementsAbandonnes + d.EnregistrementsAbandonnes,
-		ComposantsArretes:         c.ComposantsArretes + d.ComposantsArretes,
-		TablesIdentiteVides:       c.TablesIdentiteVides + d.TablesIdentiteVides,
-		MortsSansXUID:             c.MortsSansXUID + d.MortsSansXUID,
-		DebutsDeMancheAuMinimum:   c.DebutsDeMancheAuMinimum + d.DebutsDeMancheAuMinimum,
-		SlotsAbandonnes:           c.SlotsAbandonnes + d.SlotsAbandonnes,
-
-		EmissionsHorsDomaineJetees:  c.EmissionsHorsDomaineJetees + d.EmissionsHorsDomaineJetees,
-		InstantsSurLaPremiereManche: c.InstantsSurLaPremiereManche + d.InstantsSurLaPremiereManche,
+		EnregistrementsAbandonnes:  c.EnregistrementsAbandonnes + d.EnregistrementsAbandonnes,
+		ComposantsArretes:          c.ComposantsArretes + d.ComposantsArretes,
+		TablesIdentiteVides:        c.TablesIdentiteVides + d.TablesIdentiteVides,
+		DebutsDeMancheAuMinimum:    c.DebutsDeMancheAuMinimum + d.DebutsDeMancheAuMinimum,
+		SlotsAbandonnes:            c.SlotsAbandonnes + d.SlotsAbandonnes,
+		EmissionsHorsDomaineJetees: c.EmissionsHorsDomaineJetees + d.EmissionsHorsDomaineJetees,
 	}
 }
 

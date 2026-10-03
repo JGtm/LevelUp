@@ -306,7 +306,11 @@ func flagOpenings(evs []objectives.NamedEvent, identity objectives.RoundIdentity
 		if e.Stat != objectives.StatFlagGrabs && !steal {
 			continue
 		}
-		k := flagRoundSlot{round: identity.RoundAt(e.TimeMS), slot: e.Slot}
+		round, ok := identity.RoundAt(e.TimeMS)
+		if !ok {
+			continue // instant anterieur a toute manche : la prise n a ni manche ni porteur
+		}
+		k := flagRoundSlot{round: round, slot: e.Slot}
 		bySlot[k] = append(bySlot[k], flagOpening{slot: e.Slot, round: k.round,
 			xuid: identity.At(e.Slot, e.TimeMS), t0: int64(e.TimeMS), steal: steal})
 	}
@@ -425,8 +429,11 @@ func timesByRoundSlot(evs []objectives.NamedEvent, stat string,
 	identity objectives.RoundIdentity) map[flagRoundSlot][]int64 {
 	out := map[flagRoundSlot][]int64{}
 	for _, e := range evs {
-		if e.Stat == stat {
-			k := flagRoundSlot{round: identity.RoundAt(e.TimeMS), slot: e.Slot}
+		if e.Stat != stat {
+			continue
+		}
+		if round, ok := identity.RoundAt(e.TimeMS); ok {
+			k := flagRoundSlot{round: round, slot: e.Slot}
 			out[k] = append(out[k], int64(e.TimeMS))
 		}
 	}
