@@ -10,17 +10,18 @@ import (
 //
 // # LE DEFAUT, MESURE
 //
-// Dans un paquet delta a liste d evenements, le localisateur de production ([LocaliserBoucleDeRecords],
-// signature du premier delta) demarre la marche sur le premier record qu il sait ancrer. Or les
-// CREATIONS d objets de l instant sont les premiers records de la liste — la naissance d un
-// bipede (lot M3.2 : 40/41, 91/99 et 123/125 cas, `birth_loadouts.go`), les armes et
-// l equipement laches a sa mort, les projectiles : le localisateur les SAUTE. Le monde ne lie
-// donc jamais l objet ne en milieu de chunk qui disparait avant l image-cle suivante (la table
-// anticipee du lot 5.23 ne le voit pas), et CHAQUE delta suivant de cet objet clot la vue B sur
-// le rejet de son en-tete : la vue C — le tir continu — n est plus lue. Mesure sur `81c02726` :
-// le bipede 521 (index 4, ne a la trame 495) rejette 438 paquets entre 495 et 575, puis les armes
-// et l equipement qu il lache (1748, 1750) ceux de 575 a 658 — le trou de lecture 500-658 du gate
-// G1, deux frags au Ghost sans rafale.
+// Dans un paquet delta a liste d evenements, le localisateur de production
+// ([LocaliserBoucleDeRecords] : la signature du slot 123 ou, sans elle, celle du premier delta
+// HAUTE FREQUENCE, que des deltas de slots inferieurs peuvent preceder) demarre la marche sur le
+// premier record qu il sait ancrer. Or les CREATIONS d objets de l instant sont les premiers
+// records de la liste — la naissance d un bipede (lot M3.2 : 40/41, 91/99 et 123/125 cas,
+// `birth_loadouts.go`), les armes et l equipement laches a sa mort, les projectiles : le
+// localisateur les SAUTE. Le monde ne lie donc jamais l objet ne en milieu de chunk qui disparait
+// avant l image-cle suivante (la table anticipee du lot 5.23 ne le voit pas), et CHAQUE delta
+// suivant de cet objet clot la vue B sur le rejet de son en-tete : la vue C — le tir continu —
+// n est plus lue. Mesure sur `81c02726` : le bipede 521 (index 4, ne a la trame 495) rejette 438
+// paquets entre 495 et 575, puis les armes et l equipement qu il lache (1748, 1750) ceux de 575 a
+// 658 — le trou de lecture 500-658 du gate G1, deux frags au Ghost sans rafale.
 //
 // # LA LECTURE, ET SA PREUVE
 //

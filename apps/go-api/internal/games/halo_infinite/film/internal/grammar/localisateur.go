@@ -14,11 +14,12 @@ package grammar
 //	marche de killsource (`killsource.runWalk`)    [SignaturePuisLargeurLibre]
 //
 // LES SITES N ONT PAS LE MEME ORDRE, ET LE PARAMETRE LE DIT. La cuisson prend la premiere
-// signature telle quelle, sans controle de generation ni repli, et place entre la signature du
-// slot 123 et la signature haute frequence la fermeture par NEW de tete ([localiserLaListe]). Les
-// deux marches qui lisent les morts exigent que la generation de la signature du slot 123 soit
-// celle du monde, essaient la signature haute frequence quand le slot 123 n en porte aucune, et
-// le repli a largeur libre en dernier. Ces ordres ne sont pas ecrits par le jeu, qui ne dit pas
+// signature du slot 123 telle quelle, sans controle de generation ni repli, et place entre elle et
+// la signature haute frequence la fermeture par NEW de tete ([localiserLaListe]). Les deux marches
+// qui lisent les morts exigent que la generation de la signature du slot 123 soit celle du monde,
+// essaient la signature haute frequence quand le slot 123 n en porte aucune, et le repli a largeur
+// libre en dernier. A tous les sites, la signature haute frequence exige la generation du monde
+// ([signeLaHauteFrequence]). Ces ordres ne sont pas ecrits par le jeu, qui ne dit pas
 // quelle preuve essayer d abord : ce sont les ordres mesures du lot LS
 // (`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_LS.md`).
 //
@@ -28,12 +29,14 @@ package grammar
 // (`FUN_14076a1c4`) s arrete sur ce 0. La longueur de la liste n est ecrite nulle part : il faut la
 // chercher.
 //
-// LA VUE B EST ECRITE PAR GENRE PUIS PAR SLOT CROISSANT, ET C EST CE QUE LA SIGNATURE CHERCHE. La
-// liste des entites de la vue (`FUN_142f2e174`) parcourt la table de vue par index croissant ;
-// l ecrivain (`FUN_142f2cc78`) range chaque entree dans le sous-ecrivain de son genre, et
-// `FUN_14076b9c8` les concatene : tous les NEW, puis tous les DELTA, puis tous les DEL. Le premier
-// DELTA de la vue B est donc celui du plus petit slot qui en ecrit un ; les NEW de tete le
-// precedent, et la cuisson les retrouve par la chaine ([debutParChaine]).
+// LA VUE B EST ECRITE PAR GENRE PUIS PAR SLOT CROISSANT. La liste des entites de la vue
+// (`FUN_142f2e174`) parcourt la table de vue par index croissant ; l ecrivain (`FUN_142f2cc78`)
+// range chaque entree dans le sous-ecrivain de son genre, et `FUN_14076b9c8` les concatene : tous
+// les NEW, puis tous les DELTA, puis tous les DEL. Le premier DELTA de la vue B est donc celui du
+// plus petit slot qui en ecrit un ; les NEW de tete le precedent, et la cuisson les retrouve par la
+// chaine ([debutParChaine]). La signature haute frequence localise le premier delta HAUTE
+// FREQUENCE, pas le premier delta de la vue B : les deltas des slots inferieurs (statborg `ti=6`,
+// joueur `ti=5`) le precedent, et la chaine, qui ne remonte que des NEW, ne les lit pas.
 //
 // LA SIGNATURE DU SLOT 123. Le premier delta est celui du slot 123, long de 35 bits EXACTEMENT, a
 // composant unique. Candidat UNIQUE et VRAI sur 690 paquets sur 690 confrontes a une verite de
@@ -104,8 +107,7 @@ func LocaliserBoucleDeRecords(pay []byte, w *World, cfg FrameConfig, ordre Ordre
 		return hauteFrequence, false
 	}
 	if s >= 0 {
-		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok &&
-			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
+		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok && aLaGenerationDuMonde(rec, w, cfg) {
 			return s, false
 		}
 	} else if hauteFrequence >= 0 {
@@ -124,8 +126,14 @@ func formeDeSignature(rec FrameRecord, s, fin int) bool {
 // signeLaHauteFrequence : un delta de la forme de la signature porte-t-il un objet que le monde
 // lie a l archetype `high-frequency`, a sa generation ?
 func signeLaHauteFrequence(rec FrameRecord, w *World, cfg FrameConfig) bool {
-	return rec.TypeIndex == archetypeHauteFrequence &&
-		w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte)
+	return rec.TypeIndex == archetypeHauteFrequence && aLaGenerationDuMonde(rec, w, cfg)
+}
+
+// aLaGenerationDuMonde : le record porte-t-il la generation que le monde lie a son slot (sous la
+// generation stricte du profil) ? Le controle de generation du localisateur, que [TryDeltaAt]
+// n applique pas.
+func aLaGenerationDuMonde(rec FrameRecord, w *World, cfg FrameConfig) bool {
+	return w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte)
 }
 
 // marchLocateSignatures rend, en un balayage, la premiere position `s >= 2`, precedee d un bit
@@ -165,8 +173,7 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 			continue
 		}
 		rec, _, ok := TryDeltaAt(pay, s, w, cfg)
-		if !ok || rec.Slot != marchSignatureSlot ||
-			!w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
+		if !ok || rec.Slot != marchSignatureSlot || !aLaGenerationDuMonde(rec, w, cfg) {
 			continue
 		}
 		return s

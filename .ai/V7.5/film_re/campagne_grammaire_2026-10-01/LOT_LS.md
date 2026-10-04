@@ -25,6 +25,7 @@
 | D22 (gate 3 sur `1c4c63c2`) | [x] | la carte du film est dans le dépôt (D-LS-1) : gate 3 joué |
 | D-111 (alerte « hors roster » de `6b0e6f0f`) | [x] | instruite : un participant réel lu à l'indice 16, refusé avant comme après (§5.3) |
 | Backfill killsource du parc | DÛ, non lancé | `killsource.Rev` monte (voie publiée, D-74) |
+| Corrections du contrôle (C1 test de la chaîne derrière la haute fréquence, C2 règle 6, C3 règle 17) | [x] | §11 ; sortie de production inchangée, révisions inchangées |
 
 Verdict : **[x] retenu**.
 
@@ -226,6 +227,8 @@ disque ; fichier restauré, `cmp` à l'octet vérifié).
 | M4 | la signature haute fréquence sans contrôle de génération | `TestLaSignatureHauteFrequenceLocaliseUnAutreObjetDeLArchetype` (« la signature d une autre generation est gardee ») |
 | M5 | la cuisson sans l'étage haute fréquence | `TestLaSignatureHauteFrequenceLocaliseUnAutreObjetDeLArchetype` (« cuisson (-1, 6) ») |
 | M6 | la signature haute fréquence prime sur celle du slot 123 | `TestLaSignatureHauteFrequenceLocaliseUnAutreObjetDeLArchetype` (« la signature du slot 123 est encore vue ») |
+| X2 | la cuisson sans chaîne de tête derrière la signature haute fréquence (verte au contrôle, corrigé) | `TestLaChaineDeTeteSuitLaSignatureHauteFrequence` (§11.1) |
+| R6 | le littéral du contrôle de génération recopié hors du helper | `archlint` `TestLocalisateurDeBoucleUnique` (§11.2) |
 
 
 
@@ -360,3 +363,95 @@ Après l'écriture de cette note, la montée des révisions et la régénératio
   essayé (§7).
 - **D-LS-9 — Double balayage dans la cuisson** : un paquet qui atteint le troisième étage est balayé
   deux fois (`SignatureStricte`, puis `SignatureHauteFrequence`) ; coût non mesuré.
+
+## 11. Corrections du contrôle (2026-10-04)
+
+Contrôle du lot sur `939895542` (rapport relayé par le pilote) : gates 2 et 3 retrouvés à l'unité ;
+trois non-conformités, corrigées ici sans toucher la sortie de production.
+
+| # | Correction | Statut | Ce qui est fait |
+|---|---|---|---|
+| C1 | Point 7 : la mutation X2 (`return debut, lecture.DebutParSignature` juste après l'étage haute fréquence de `localiserLaListe`) restait verte | [x] | Test neuf `TestLaChaineDeTeteSuitLaSignatureHauteFrequence` (`grammar/debut_de_liste_haute_frequence_test.go`), 66 vecteurs ; X2 rouge (66 / 66) |
+| C2 | Règle 6 : 3e copie de `w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte)` dans `localisateur.go` | [x] | Helper `aLaGenerationDuMonde` appelé par les trois sites (et par l'aide de test `generationDuMonde`) ; garde-rail dans `archlint/film_localisateur_unique_test.go` |
+| C3 | Règle 17 : « signature du premier delta », « c'est ce que la signature cherche », « sans contrôle de génération » | [x] | `debut_de_liste.go` (en-tête), `lecture/paquet.go` (doc de `DebutParSignature`, deux lignes), `localisateur.go` (en-tête : ordre des sites, loi de la vue B) |
+
+### 11.1 C1 — pourquoi X2 restait verte, et le vecteur
+
+Mesuré : l'aide `parcourirPaquetsAEvenements` des tests du localisateur monte le monde de la marche
+des morts d'objet SANS table anticipée. Or `candidatsDeTete` lit la bande d'un archétype dans
+cette table (`TableAnticipee.SlotDeLArchetype`) : sans elle, aucun candidat, aucune chaîne. Sur
+`minibobine_000d5950`, `localiserLaListe` rend 446 `DebutParSignature` et 27 `DebutNonLocalise`
+sans table ; avec la table du film (celle que pose la marche des trames de la cuisson,
+`marche_trames.go`), **377 signature, 69 chaîne, 27 non localisés** (sonde jetable, supprimée).
+Les 445 vecteurs de `TestLaSignatureHauteFrequenceLocaliseUnAutreObjetDeLArchetype` n'avaient donc
+aucune chaîne parce que leur monde n'en permettait pas, pas parce que la bobine n'en porte pas.
+
+Le vecteur : `parcourirLaBobine(…, avecTable=true, …)` (l'aide existante, paramétrée) ; sur chaque
+paquet réel dont la cuisson rend `DebutParChaine` derrière la signature du slot 123 (à la génération
+du monde), le premier delta du slot 123 est recopié sur un autre slot de l'archétype 4
+(`recopieSurUnAutreSlot`, inchangée). Gardés : les paquets où la signature haute fréquence tombe sur
+la position recopiée (sinon D-LS-2) ET où aucun candidat de tête ne ferme le paquet (sinon la
+fermeture, qui précède l'étage haute fréquence, répond). Attendu : la cuisson rend le MÊME premier
+NEW de tête, par la chaîne. **66 vecteurs** ; aucun record n'est inventé, les NEW de tête et les
+deltas intermédiaires sont ceux du film.
+
+- Arbre corrigé : vert.
+- X2 par `-overlay` (chemin long, `scratchpad/v2-LS/mut2/X2.json`) sur le paquet `grammar` : **rouge**,
+  `TestLaChaineDeTeteSuitLaSignatureHauteFrequence`, 66 erreurs « cuisson (s, 2), attendu (tête,
+  chaîne) » (ex. slot 132 : `(557, 2)` attendu `(229, chaine)`). Seul autre rouge sous la surcouche :
+  `TestGrammarRevSuitLaGrammaire`, qui lit les sources sur disque (empreinte, voir C2), pas la surcouche.
+
+### 11.2 C2 — règle 6
+
+`aLaGenerationDuMonde(rec, w, cfg)` (`localisateur.go`) porte seul le littéral ; `LocaliserBoucleDeRecords`
+(signature du slot 123 des marches), `signeLaHauteFrequence` et `marchLocateFallback` l'appellent.
+Garde-rail : `TestLocalisateurDeBoucleUnique` compte le littéral sur le même périmètre que ses deux
+formes (production de `film/**`, hors research et tests) : exactement 1 dans l'hôte, 0 ailleurs.
+Vérifié rouge deux fois : le littéral remis dans `marchLocateFallback` (« porte 2 fois … 1 attendue »,
+fichier restauré, `cmp` à l'octet) ; une copie dans un fichier temporaire de `facts/killsource`
+(« 1 copie(s) … appeler le helper », fichier supprimé). Hors périmètre, non traités : les copies des
+aides de test préexistantes (`deto_preuve_robuste_helpers_test.go`, `vehicules_v13_marche_helpers_test.go`)
+et des sondes research (`r_loc_ls_research_test.go`, `r_loc_vuea_research_test.go`) ; le contrôle
+dur du lecteur de records (`frame_records.go`, sur `id`) est un autre site (rejet de l'en-tête), il
+n'est pas le littéral.
+
+### 11.3 C3 — règle 17
+
+- `debut_de_liste.go` : le localisateur de production = la signature du slot 123 ou, sans elle, celle
+  du premier delta HAUTE FRÉQUENCE, que des deltas de slots inférieurs peuvent précéder (paragraphe
+  re-coupé, rien d'autre).
+- `lecture/paquet.go` (fichier de la RI) : doc de `DebutParSignature`, toujours deux lignes (« la
+  signature du slot 123 ou, sans elle, celle du premier delta haute fréquence »).
+- `localisateur.go` : « la cuisson prend la première signature DU SLOT 123 telle quelle » ; « à tous
+  les sites, la signature haute fréquence exige la génération du monde (`signeLaHauteFrequence`) » ;
+  « …, ET C'EST CE QUE LA SIGNATURE CHERCHE » retiré, remplacé par : la signature haute fréquence
+  localise le premier delta haute fréquence, pas le premier delta de la vue B (D-LS-3).
+- Non touchés, relevés : la chronique `grammar-2026-10-03.3` dit que ce delta « ouvre la boucle de
+  records » (vrai de ce que fait le décodeur, l'écart est D-LS-3) ; `localisateur.go` garde « Le
+  premier delta est celui du slot 123 » (mesure 690 / 690, non contredite par le contrôle).
+
+### 11.4 Gates rejoués sur l'arbre corrigé
+
+Révisions inchangées : `grammar-2026-10-03.3`, `killsource-2026-10-04`. Le hachage de la grammaire
+porte sur les jetons : le helper change l'empreinte, régénérée à révision constante par la commande
+du dépôt (`acd64fde…` → `d10a7332…`, ligne `grammar-2026-10-03.3` de `grammar_rev.golden`).
+L'empreinte de `killsource` hache la valeur de `grammar.Rev` (inchangée) et `facts/` (intact).
+
+- `gofmt -l ./internal ./cmd` : vide. `go vet ./...` : rc 0. `go vet -tags=research
+  ./internal/games/halo_infinite/film/...` : rc 0.
+- `go test ./internal/archlint/` : `ok levelup/go-api/internal/archlint 36.258s`.
+- G-film (`go test ./internal/games/halo_infinite/film/... ./internal/replaybuild/...
+  ./internal/sync/killcollector/... -count=1 -timeout 30m`) : 20 paquets `ok`, rc 0
+  (`scratchpad/v2-LS/gfilm_corrections.txt`).
+- `golangci-lint run --new-from-rev 939895542` (grammar, archlint) : `0 issues.`
+- Carte v2, 20 films, binaire de l'arbre corrigé (`bin/corr`, table ECS identique) contre celle du
+  lot (`carte_neuf`) : les 13 TSV par paquet et par famille **identiques à l'octet**,
+  `fermeture_films.tsv` identique hors pic et durée ; corpus 332 624 sains, 3 099 449 utiles sains,
+  26 043 non localisés, comme §3.
+- Killsource (`killsource json`, 19 témoins + 3 films de l'enquête + `1c4c63c2` sous Refuge) :
+  **23 JSON identiques à l'octet** à ceux du lot (`ks_neuf`).
+- Tailles : `localisateur.go` 182 lignes, `debut_de_liste.go` 213, `localisateur_test.go` 345,
+  `debut_de_liste_haute_frequence_test.go` 57, `archlint/film_localisateur_unique_test.go` 261 ;
+  `TestLocalisateurDeBoucleUnique` 64 lignes.
+- Fichiers de la RI touchés par les corrections : `grammar/lecture/paquet.go` seul, deux lignes de
+  commentaire (les mêmes que le lot).

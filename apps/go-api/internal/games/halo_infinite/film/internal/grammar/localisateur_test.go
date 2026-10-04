@@ -37,8 +37,16 @@ type paquetDeLocalisation struct {
 
 // parcourirPaquetsAEvenements appelle `f` sur chaque paquet a evenements de la bobine `dir`, dans
 // le monde de la marche des morts d objet, sous le cadre qu elle calibre et la generation stricte
-// des marches qui lisent les morts.
+// des marches qui lisent les morts. Le monde n a pas de table anticipee : aucun candidat de tete,
+// la cuisson n y trouve aucune chaine ([candidatsDeTete]).
 func parcourirPaquetsAEvenements(t *testing.T, dir string, f func(p paquetDeLocalisation, cfg FrameConfig)) {
+	t.Helper()
+	parcourirLaBobine(t, dir, false, f)
+}
+
+// parcourirLaBobine est [parcourirPaquetsAEvenements] ; `avecTable` pose sur le monde la table
+// anticipee du film, comme la marche des trames de la cuisson : les candidats de tete existent.
+func parcourirLaBobine(t *testing.T, dir string, avecTable bool, f func(p paquetDeLocalisation, cfg FrameConfig)) {
 	t.Helper()
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -53,6 +61,9 @@ func parcourirPaquetsAEvenements(t *testing.T, dir string, f func(p paquetDeLoca
 	cfg, _, _, _ := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
 	cfg.Profil.Grammaire.GenerationStricte = true
 	tl := newMarchTimeline(reg, kfs)
+	if avecTable {
+		tl.w.PoserTableAnticipee(ConstruireTableAnticipee(fc))
+	}
 	for _, d := range deltas {
 		w := tl.advanceTo(d.timestampUS)
 		if marchHasEvents(d.payload) {
@@ -226,7 +237,7 @@ func premiereSignatureAnterieure(pay []byte, s int, w *World, cfg FrameConfig) b
 // generationDuMonde : le delta essaye a `s` porte-t-il la generation que le monde lie au slot ?
 func generationDuMonde(p paquetDeLocalisation, cfg FrameConfig, s int) bool {
 	rec, _, ok := TryDeltaAt(p.pay, s, p.w, cfg)
-	return ok && p.w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte)
+	return ok && aLaGenerationDuMonde(rec, p.w, cfg)
 }
 
 // TestLocaliserBoucleDeRecordsControleLaGenerationDesMarches : quand le monde lie le slot de

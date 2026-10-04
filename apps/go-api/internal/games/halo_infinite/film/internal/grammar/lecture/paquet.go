@@ -23,8 +23,8 @@ const (
 	// DebutEnTete : lu depuis la tête du paquet (bit de configuration, puis la vue A jusqu'à son
 	// terminateur).
 	DebutEnTete
-	// DebutParSignature : paquet à liste d'événements, liste localisée par la signature du premier
-	// delta, celle du slot 123 ou, sans elle, la signature haute fréquence (`localisateur.go`).
+	// DebutParSignature : paquet à liste d'événements, liste localisée par la signature du slot 123
+	// ou, sans elle, par celle du premier delta haute fréquence (`localisateur.go`).
 	DebutParSignature
 	// DebutParChaine : paquet à liste d'événements, liste ouverte par ses records NEW de tête, dont
 	// la chaîne finit au bit près sur le début que la signature a localisé (`localiserLaListe`).
