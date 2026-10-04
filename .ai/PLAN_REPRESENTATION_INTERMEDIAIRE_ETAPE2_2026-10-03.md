@@ -418,7 +418,7 @@ décider de localiser la liste d'événements, sans le ranger dans la structure)
       au point d'étape du 2026-10-03 ; une objection la rouvre. 2.4 et 2.5 attendent la fusion de
       la vague 1 (§1.3).
 
-### Lot 2.4 — Récupération ancrée mutualisée (taille L) — fait, clôture à la CI verte (la marque et le registre en attente d'une décision de l'utilisateur)
+### Lot 2.4 — Récupération ancrée mutualisée (taille L) — CLOS le 2026-10-04 (la marque et le registre en attente d'une décision de l'utilisateur)
 *Décisions d'exécution du 2026-10-03* — relu sur pièces et mesuré avant le code (instrument
 `grammar/ancrage_partage_research_test.go`) : la cuisson ancre les records bipèdes NEUF fois avec
 les mêmes paramètres (positions, puis changements d'arme, deltas d'inventaire, rangs de capacité,
@@ -492,7 +492,7 @@ la marche de TOUS les corps ancrés jusqu'au bout de leur masque coûte 31 à 15
   sans `research`), `golangci-lint` (0 problème) verts ; empreinte de la grammaire régénérée à
   révision CONSTANTE : aucune donnée décodée ne change, seul le compte déclaré. Parcours de la
   cuisson : huit balayages bit à bit des trames delta de moins (neuf ancrages bipèdes → un), et un
-  relevé de la bande bipède de moins.
+  relevé de la bande bipède de moins. CI verte au niveau job sur `057c0cffd` (run `37150564223`).
 
 ### Lot 2.5 — Récupération des objets du monde (taille L)
 - [ ] 2.5.1 Créations multi-archétypes en une passe ; pistes sur l'union des bandes
@@ -755,3 +755,8 @@ plan y sont reprises comme items (3.1.2).
   `repli_bande_bipede_comblee`. Partie de 2.4.1 en attente : la marque « récupéré » et le registre
   (découverte 10, même question que 2.2.2). ADR 0037 amendé (IR-6). Campagne prévenue avant la
   passe et la mesure, et à leur fin.
+- 2026-10-04 : lot 2.4 CLOS (CI verte au niveau job sur `057c0cffd`, run `37150564223`) ; la
+  question de la marque « récupéré » est posée à l'utilisateur (options : rester hors du registre
+  jusqu'aux lots de comportement de 2.7, qui ordonneront ces lectures après la grammaire — recommandé
+  —, ou les inscrire « devant la lecture » en relevant le cliquet). Ouverture du lot 2.5 sur la même
+  base (`feat/v75` n'a pas bougé, référence : passe `ri24a`), par la mesure.
