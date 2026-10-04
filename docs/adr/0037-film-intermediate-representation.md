@@ -1,11 +1,14 @@
 # ADR 0037 — Film intermediate representation: the production walk becomes the grammar's single reading
 
-**Status**: Accepted (2026-10-02). Step 1 is being executed on the branch below; steps 2 and 3 are
-planned, not started. Amends [ADR 0034](0034-film-decoder-profile-and-layers.md) D-1, D-2, D-6,
-D-7 and D-10 (section "Amendments to ADR 0034").
+**Status**: Accepted (2026-10-02). Step 1 is merged into `feat/v75` (`67c379fc1`, 2026-10-03), and
+its calm-machine measurement shows no regression (cook durations within 1 % of the base, memory
+peaks within the base's own spread); step 2 is being executed on the branch below, step 3 is
+planned. Amends
+[ADR 0034](0034-film-decoder-profile-and-layers.md) D-1, D-2, D-6, D-7 and D-10 (section
+"Amendments to ADR 0034").
 
-**Branch**: `feat/representation-intermediaire` (worktree `LevelUp-wt-ri`, base `feat/v75`
-`93cea7cdc`).
+**Branch**: `feat/ri-etape2` (worktree `LevelUp-wt-ri`, base `feat/v75` `67c379fc1`); step 1 was
+`feat/representation-intermediaire`.
 
 **Relates to**: [ADR 0034](0034-film-decoder-profile-and-layers.md) (five layers, one gate to the
 bytes, one revision per layer, facts persisted apart from publication, named fallbacks),
@@ -95,6 +98,12 @@ and the closure map — consume it from step 1 on. The copy of that loop in `fra
 disappears. A walker that nobody consumes would be a second parser, which is what this ADR exists
 to remove.
 
+Since step 2 (lot 2.1), movement states and continuous fire are two frame channels of
+`grammar.Distribuer`: `ScanMarcheDesTrames` distributes them and no longer drives the walk. They
+read the structure and what their hooks receive: continuous fire takes the view-C verdict from the
+walk's hook, and the movement-state counts (event-list frames, biped records, the readings of the
+vehicle type-physics component) are read from the ranged frame, not from the walk's trace.
+
 ### IR-3 — Two phases and bounded preliminaries, not one pass (correction C2)
 
 A single forward pass is impossible as the walk stands: the anticipated table reads later keyframes
@@ -110,14 +119,42 @@ walker therefore has two phases, each an `iter.Seq2[*lecture.Paquet, error]` in 
 The bounded preliminaries (anticipated table, biped slot band, living generations) run before the
 delta phase, as they do today.
 
+Since step 2 (lot 2.2), every keyframe consumer is a channel of the keyframe phase
+(`grammar.Distribuer`), and so are the delta walk's own preliminaries: the anticipated table and
+the binding of keyframes to the world (chain, discarded candidates, datum table) are read in the
+keyframe phase that precedes the delta walk, and the binding is applied chunk by chunk during it.
+A distribution walks a keyframe record's full state only when one of its channels reads that
+archetype in the keyframe phase; the other records keep their identity, anchor and binding,
+without components, marked `lecture.CorpsNonParcouru`. The iterator `FilmContext.ImagesCles` keeps
+walking every body (the keyframe closure map measures them all). The anchor walk does not read the
+registry: a distribution whose channels read no body runs on a film without `chunk_00`, as the
+keyframe scans did; the delta phase and any body need the registry. A channel that reads only the
+keyframe phase does not make the delta phase run.
+
+A distribution runs the phases its channels read (lot 2.3): the keyframe phase for keyframe
+channels and for the delta walk's preliminaries, the delta walk for frame channels, and — with
+only head channels — a head pass that ranges each delta frame's head into view A (the
+continuation, then the genre of the first message, where the walk stops since message payloads
+are not ported) without walking any record. The delta walk ranges the same head on every frame,
+including the frames whose event list it locates, which it used to leave with an unread view A
+although it read their head to decide. The six view-A head readers (shots, translocator, scope,
+pickups, type-103 spawns, vehicle events) decode their event body from the ranged head; a head
+that does not fit the payload keeps the tolerant reading they had.
+
 ### IR-4 — Three states per component, three closure states per packet, never conflated (correction C3)
 
-A component occurrence is **interpreted** (the walk captured a typed value of it), **delimited**
-(its extent is known, the structure does not carry its value) or **untraversable** (its width is
-unknown: the rest of the view becomes an opaque tail). A value published to an `Observation` hook
-stays outside the structure (IR-8): its occurrence is delimited until its channel reads from the
-structure (step 2). The `status` column of `internal/grammar/testdata/ecs_table.tsv` (`porte`,
-`partiel`, `non_porte`) is a static capability; the state belongs to the occurrence.
+A component occurrence is **interpreted** (a channel of the walk interprets it: its archetype and
+index are in the union of the channels' interests, and it was traversed), **delimited** (its extent
+is known and no channel interprets it) or **untraversable** (its width is unknown: the rest of the
+view becomes an opaque tail). Interests are (archetype, component) pairs resolved in the film's
+registry, never a component name alone (two component tables share a name), and each belongs to
+one phase: a delta channel's hooks receive no keyframe value, so its interests mark no keyframe
+occurrence. A value is published to the channel's `Observation` hook — or, in the keyframe phase,
+read by the channel at the occurrence's extent — and stays outside the structure (IR-8); a walk
+without channels interprets nothing. Since step 2 the state no longer depends on the trace's
+capture. The `status`
+column of `internal/grammar/testdata/ecs_table.tsv` (`porte`, `partiel`, `non_porte`) is a static
+capability; the state belongs to the occurrence.
 
 A delta packet carries one of three closure states:
 
@@ -156,6 +193,34 @@ anticipation (`repli_liaison_par_anticipation`) and keyframe anchor election
 start of its view B was found (read from the packet head, or located), a binding says where it came
 from, a keyframe record says whether its anchor was chained or elected — and its behaviour does not
 change. Without the mark, a closure measured on the structure would mix grammar and recovery.
+
+Since step 2 (lot 2.4), the anchored biped recovery runs once per film. The positions and the eight
+channel scans that anchor biped records in delta frames used the same parameters (the context's
+chunks, biped slot band, i0 layout and dated living generations) and each anchored on its own;
+the bit-by-bit cursor was most of their cost (0.6 to 1.8 s per pass on four films, against 31 to
+159 ms to walk every anchored body). The anchored records are now kept in the film context, in a
+compact form (per carrying packet; per record its i0 bit, slot, generation and mask), and the nine
+readers walk them in stream order. The positions use them when the cook forces no chunks,
+generations or layout other than the context's; the parameters and the anchored sequences were
+proven equal, packet by packet, on the twenty-film corpus. The biped band is then derived once per
+film, which halves the published `repli_bande_bipede_comblee` count, a declared change. Two
+anchored recoveries keep their own pass, because they use other predicates and find other records:
+the aim-only records, whose mask does not start at i0, and the gated equipment recovery. Marking the
+anchored records as recovered and counting them in the registry waits for a decision. The anchoring
+decides in front of the walk's reading for the records the walk reads, and the registry would
+declare that `devant_la_lecture`. The order is fixed by lot 2.7.b.
+
+Since lot 2.5, the world-object recovery also runs once per film. The cook scanned the delta
+frames bit by bit four times for world-object tracks (the equipment band twice, the ground-weapon
+band, the projectile band) and four times for creation records (equipment twice, ground weapons,
+vehicles). The tracks of the cook's track archetypes are now found in one pass over the union of
+their bands, each band keeping its own cursor, so a record accepted in one band never moves
+another band's cursor. The creation records of the three creation archetypes are found in one
+pass, each archetype keeping its own cursor; a creation header carries its archetype, so a given
+position concerns at most one of them. Both results are kept in the film context and handed out as
+copies. A creation walk is reused only under the same archetype, band, bounds and scan profile,
+MPP widths included. The user's decision on lot 2.7.d applies to these scans as well: they stay
+out of the registry until the walk reads first.
 
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 
@@ -237,10 +302,21 @@ nothing" is unchanged.
 ### D-2 — One gate to the bytes. **Amended: the facts read the structure.**
 
 "Nobody outside `source` reads a bit" stays. The target adds: nobody outside the grammar walks the
-packets of a film; the facts read the structure. Two facts consumers still walk packets themselves,
-named here so they are not rediscovered: the statborg scan of `internal/facts/objectives` (it moves
-into the grammar at step 2) and the killsource walk `internal/facts/killsource/walk.go` (it folds
-into the single walker at the end of step 2, then disappears at step 3).
+packets of a film; the facts read the structure. Two facts consumers walked packets themselves:
+
+- the statborg scan of `internal/facts/objectives`, with the footer events and the capture bursts
+  it read alongside, **moved into the grammar at step 2**: `internal/grammar/signaux` reads them
+  and `objectives` consumes what it returns. `signaux` is a leaf of the grammar's tree — it does
+  not import `internal/grammar` — because test instruments of `internal/grammar` import
+  `internal/facts/objectives` for their oracles, and an `objectives` that imported `grammar` would
+  close an import cycle in their test binaries;
+- the killsource walk `internal/facts/killsource/walk.go` folds into the single walker at the end
+  of step 2, then disappears at step 3.
+
+`internal/archlint/film_faits_sans_octets_test.go` holds the rule for the facts layer: a
+production file there names nothing of `source` but the loaded film's type, and neither reads a
+chunk, nor the packets of a chunk, nor a packet's payload. `killsource` is its one dated
+exception, retired with the step-2 lot that folds its walk.
 
 ### D-6 — One revision per thing that can change. **Amended: the shape of the structure is the grammar's.**
 
@@ -250,6 +326,12 @@ difference (`cmd/replay-equiv`, the closure goldens) regenerates the grammar's f
 perimeter at constant revision, as the structural lots of the audit follow-up did. `grammar.Rev` rises only for
 a behaviour lot; each rise raises `killsource.Rev` and reopens the killsource backlog, on user
 signal.
+
+Since the statborg moved (D-2), `internal/facts/objectives` enters the grammar by its value too
+(`amont grammar` in its perimeter): each rise of `grammar.Rev` also asks the objectives gate to
+decide. When the reading of `internal/grammar/signaux` does not change, the objectives golden is
+regenerated at constant revision; otherwise `objectives.Rev` rises. This adds no re-cook: the
+persisted facts carry every layer revision and are stale as soon as `grammar.Rev` rises.
 
 ### D-7 — Facts and publication are separate. **Amended: the structure is not persisted.**
 

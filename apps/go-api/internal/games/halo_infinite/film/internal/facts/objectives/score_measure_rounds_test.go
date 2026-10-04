@@ -13,7 +13,7 @@ import (
 //
 // # La cause, mesuree et non supposee
 //
-// `matchRecordHeader` (statborg.go) n'accepte qu'UNE forme de liste de composants : le bit qui
+// `matchRecordHeader` (`grammar/signaux/statborg.go`) n'accepte qu'UNE forme de liste de composants : le bit qui
 // suit les 2 bits de generation doit valoir 0, puis vient un compte sur 3 bits et autant
 // d'index de 6 bits. Or le moteur en a DEUX (`grammar.consumeMask`, FUN_1406d7610) :
 //
@@ -39,7 +39,7 @@ import (
 // valeur est indexee PAR MANCHE.
 //
 // Ceci est un INSTRUMENT (fichier de test) : aucune ligne de production n'est modifiee. Si la
-// mesure tient, le portage de cette grammaire dans `statborg.go` est une decision de phase 1.
+// mesure tient, le portage de cette grammaire dans `grammar/signaux/statborg.go` est une decision de phase 1.
 
 // Familles de composants de l'archetype statborg, bornes lues dans `ecs_table.tsv`.
 const (
@@ -64,7 +64,7 @@ type finalizedValue struct {
 //
 // # L'hypothese « en-tete = numero de manche »
 //
-// La production les EXIGE nuls (`decodeComponents`, statborg.go) et les jette. Or le getter natif
+// La production les EXIGE nuls (`decodeComponents`, `grammar/signaux/statborg.go`) et les jette. Or le getter natif
 // du composant est indexe par MANCHE :
 //
 //	value = *(int32*)(world + slot*0x88 + equipe*0x1DF0 + 0x38 + manche*4)
@@ -103,8 +103,8 @@ type statRecordExt struct {
 // [StatRecords] : seules la forme de liste et les familles de composants changent.
 func statRecordsExt(film *source.Film) []statRecordExt {
 	var out []statRecordExt
-	for _, c := range manifestChunks(film) {
-		frames := framesOf(film, c.pos)
+	for _, c := range chunksDuManifeste(film) {
+		frames := tramesDe(film, c.pos)
 		if len(frames) == 0 {
 			continue
 		}

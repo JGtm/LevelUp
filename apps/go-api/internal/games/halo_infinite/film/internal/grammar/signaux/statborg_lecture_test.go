@@ -1,4 +1,4 @@
-package objectives
+package signaux
 
 import (
 	"encoding/binary"
@@ -8,7 +8,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// statborg_rounds_test.go — les corrections de production du 2026-08-18 (lot A, item A.1.0),
+// statborg_lecture_test.go — les corrections de production du 2026-08-18 (lot A, item A.1.0),
 // figees sur des VECTEURS REELS extraits du film `24dbb67d` (Ranked:Oddball, deux manches).
 //
 // Ce que chaque vecteur prouve :
@@ -137,14 +137,36 @@ func TestStatborgListeDenseLue(t *testing.T) {
 }
 
 // TestStatRecordsPlafond verifie la garde memoire : au-dela du plafond, la lecture s'arrete et le
-// resultat est marque tronque. La source rend le meme paquet en boucle — un film pathologique.
+// resultat est marque tronque, au chunk ou le plafond tombe. La source rend le meme paquet en
+// boucle — un film pathologique.
 func TestStatRecordsPlafond(t *testing.T) {
-	recs, truncated, _ := StatRecordsBornes(filmRepete(t, vecRound0.data), "test")
-	if !truncated {
+	l := LireLeStatborg(filmRepete(t, vecRound0.data))
+	if !l.Tronque {
 		t.Fatal("le plafond n'a pas ete atteint : la garde ne protege rien")
 	}
-	if len(recs) < statMaxRecordsPerFilm {
-		t.Errorf("%d enregistrements rendus, attendu au moins %d", len(recs), statMaxRecordsPerFilm)
+	if len(l.Records) < StatborgEnregistrementsMax {
+		t.Errorf("%d enregistrements rendus, attendu au moins %d", len(l.Records), StatborgEnregistrementsMax)
+	}
+	if l.ChunkTronque < 1 || l.ChunkTronque > repeatChunks || l.ChunksDatables != repeatChunks {
+		t.Errorf("troncature au chunk %d, %d chunk(s) datable(s) : attendu un numero du manifeste "+
+			"et les %d chunks", l.ChunkTronque, l.ChunksDatables, repeatChunks)
+	}
+}
+
+// TestUnFilmSansManifesteNEstPasDatable : un film charge sans metadonnees porte des paquets mais
+// aucun `start_ms` — la lecture ne rend rien ET le dit (zero chunk datable), au lieu de se lire
+// comme un film qui ne porte rien.
+func TestUnFilmSansManifesteNEstPasDatable(t *testing.T) {
+	film, err := source.Load(source.MemoryChunks{chunkRepete(vecRound0.data)}, nil)
+	if err != nil {
+		t.Fatalf("chargement du film sans manifeste : %v", err)
+	}
+	if l := LireLeStatborg(film); l.ChunksDatables != 0 || len(l.Records) != 0 || l.Tronque {
+		t.Errorf("film sans manifeste : %d chunk(s) datable(s), %d enregistrement(s), tronque %v",
+			l.ChunksDatables, len(l.Records), l.Tronque)
+	}
+	if l := LireLeStatborg(nil); l.ChunksDatables != 0 || l.Records != nil {
+		t.Errorf("film absent : %+v, attendu une lecture vide", l)
 	}
 }
 
@@ -152,9 +174,9 @@ func TestStatRecordsPlafond(t *testing.T) {
 // fois : il simule un film dont le balayage ne converge pas, sans avoir besoin du film de 3,3 Go
 // qui a motive le plafond.
 //
-// LE MANIFESTE EST SYNTHETISE AVEC UN TYPE DE JEU (2) : `objectives` ne balaie que les
-// chunks que le manifeste decrit, et un type ZERO signifierait « chunk hors manifeste »
-// (cf. `manifestChunks`).
+// LE MANIFESTE EST SYNTHETISE AVEC UN TYPE DE JEU (2) : la lecture ne balaie que les chunks que
+// le manifeste decrit, et un type ZERO signifierait « chunk hors manifeste » (cf.
+// [manifestChunks]).
 func filmRepete(t *testing.T, data []byte) *source.Film {
 	t.Helper()
 	chunks := make(source.MemoryChunks, repeatChunks)
@@ -186,11 +208,77 @@ func chunkRepete(data []byte) []byte {
 	out := make([]byte, 0, repeatPackets*(repeatHdrSize+len(data)))
 	for i := range repeatPackets {
 		hdr := make([]byte, repeatHdrSize)
-		binary.LittleEndian.PutUint16(hdr[0:], packetFrame)
+		binary.LittleEndian.PutUint16(hdr[0:], typeDeTrame)
 		binary.LittleEndian.PutUint32(hdr[4:], uint32(len(data)))
 		binary.LittleEndian.PutUint64(hdr[8:], uint64(i)*1000)
 		out = append(out, hdr...)
 		out = append(out, data...)
 	}
 	return out
+}
+
+// LES CONTROLES NEGATIFS DES GARDES D'ANCRAGE (revue R1, 2026-08-18). Les tests ci-dessus
+// prouvent que la grammaire relachee LIT ce qu'elle doit lire (manche 2, forme dense, plafond
+// memoire). Ceux-ci prouvent qu'elle REFUSE ce qu'elle doit refuser : la contrainte « les deux
+// en-tetes de 5 bits sont nuls » a saute, et ce sont deux autres contraintes qui la remplacent.
+// Chaque test ci-dessous ECHOUE si la garde qu'il vise est retiree.
+
+// setBitsBE ecrit n bits big-endian a bitPos dans une COPIE de data. C'est l'inverse exact de
+// la lecture `source.BitsTronques`, et il ne sert qu'a fabriquer des vecteurs NEGATIFS a partir
+// de vecteurs reels : on part d'un enregistrement qui se decode, et on casse UNE contrainte a la
+// fois.
+func setBitsBE(data []byte, bitPos, n int, v uint64) []byte {
+	out := append([]byte(nil), data...)
+	for i := range n {
+		bit := (v >> uint(n-1-i)) & 1
+		p := bitPos + i
+		mask := byte(1) << uint(7-p%8)
+		if bit == 1 {
+			out[p/8] |= mask
+		} else {
+			out[p/8] &^= mask
+		}
+	}
+	return out
+}
+
+// TestDecodeComponentsRefuseUnCoupleDepareille — LA PREMIERE GARDE.
+//
+// Les deux en-tetes de 5 bits portent le MEME numero de manche : ils sont redondants dans le
+// format, et c'est cette redondance qui remplace la contrainte « nuls » comme filtre
+// anti-faux-positifs. Un couple depareille est un ancrage fortuit.
+func TestDecodeComponentsRefuseUnCoupleDepareille(t *testing.T) {
+	_, idx, at, ok := matchRecordHeader(vecRound0.data, vecRound0.bits)
+	if !ok {
+		t.Fatal("le vecteur de reference ne s'ancre plus — revoir les vecteurs avant ce test")
+	}
+	if comps, _ := decodeComponents(vecRound0.data, at, idx); len(comps) == 0 {
+		t.Fatal("le vecteur de reference ne se decode plus")
+	}
+	// Le SECOND en-tete passe de 0 a 1 : les deux ne disent plus la meme manche.
+	casse := setBitsBE(vecRound0.data, at+statHdrBits, statHdrBits, 1)
+	if comps, _ := decodeComponents(casse, at, idx); len(comps) != 0 {
+		t.Errorf("un couple d'en-tetes DEPAREILLE (0 puis 1) a ete accepte : %d composant(s) — "+
+			"la garde qui remplace « en-tetes nuls » ne filtre plus rien", len(comps))
+	}
+}
+
+// TestDecodeComponentsRefuseUneMancheHorsBorne — LA SECONDE GARDE.
+//
+// Le numero de manche est borne (StatborgMancheMax) : huit manches sont au-dela de tout format
+// observe, et la borne conserve deux bits de contrainte sur chacun des deux en-tetes. Sans elle,
+// l'ancrage laisserait passer 151 faux positifs par film (mesure d'A.1.0).
+func TestDecodeComponentsRefuseUneMancheHorsBorne(t *testing.T) {
+	_, idx, at, ok := matchRecordHeader(vecRound0.data, vecRound0.bits)
+	if !ok {
+		t.Fatal("le vecteur de reference ne s'ancre plus")
+	}
+	horsBorne := uint64(StatborgMancheMax + 1)
+	casse := setBitsBE(vecRound0.data, at, statHdrBits, horsBorne)
+	casse = setBitsBE(casse, at+statHdrBits, statHdrBits, horsBorne)
+	// Les deux en-tetes CONCORDENT : seule la borne peut refuser ce vecteur.
+	if comps, round := decodeComponents(casse, at, idx); len(comps) != 0 {
+		t.Errorf("une manche %d (borne %d) a ete acceptee : %d composant(s), round=%d",
+			horsBorne, StatborgMancheMax, len(comps), round)
+	}
 }

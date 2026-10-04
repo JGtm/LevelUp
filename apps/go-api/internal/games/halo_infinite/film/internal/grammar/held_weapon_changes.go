@@ -101,7 +101,7 @@ func ScanHeldWeaponChanges(
 
 	chaine := newHeldWeaponChain(spawn)
 	var out []types.HeldWeaponChange
-	walkDeltaBipedRecords(fc, cfg.chunks, cfg.slots, cfg.gram.lay, func(r deltaBipedRecord) {
+	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
 		st.Records++
 		if !heldWeaponMaskHas(r.Mask, cfg.emplacements) {
 			return

@@ -62,7 +62,7 @@ func (s *filmScan) balayerPositions() error {
 	s.balayerCreations()
 	// Les tirs sont décodés du MÊME film et sur la MÊME horloge que les positions ; leur
 	// absence n'est pas fatale (un film sans event de tir reste un rejeu valide).
-	shots, err := grammar.ScanFireEvents(s.film)
+	shots, err := grammar.ScanFireEvents(s.fc)
 	if err != nil {
 		slog.WarnContext(s.ctx, "events de tir illisibles — rejeu sans tirs", "err", err, "match_id", s.matchID)
 		shots = nil
@@ -339,7 +339,7 @@ func (s *filmScan) balayerMonde() {
 	// elle est PURE, et la porter la permet au fixture de figer une LISTE d'evenements plutot
 	// qu'une fermeture. Son cout — un O(n) sur les evenements qu'on vient de balayer — quitte
 	// donc la mesure de l'etape `zoomEvents` ; il ne lit aucun octet de film.
-	s.in.ZoomEvents = grammar.ScanZoomEvents(s.film)
+	s.in.ZoomEvents = grammar.ScanZoomEvents(s.fc)
 	s.opt.observe(s.ctx, "zoomEvents", s.in.ZoomEvents)
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).

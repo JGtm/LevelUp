@@ -22,7 +22,7 @@ func rangerUn(w *World, pay []byte) *lecture.Paquet {
 	var l lectureDeTrame
 	lireTrameParRangs(br, pay, w, cfg, DefaultPacketPreambleBits, &l)
 	p := &lecture.Paquet{Payload: pay, Debut: lecture.DebutEnTete}
-	rangerLaTrame(p, &l, true)
+	rangerLaTrame(p, &l, true, nil)
 	return p
 }
 

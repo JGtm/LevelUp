@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -79,6 +80,15 @@ func ScanFilmBipedPositionsForBand(dir string, band SlotBand, opt ScanFilmOption
 // donc le minimum de deux est franchi sans réglage.
 func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptions) (
 	[]BipedPosition, error) {
+	return balayerLesPositions(fc, band, opt, false)
+}
+
+// balayerLesPositions est le corps des deux entrées : les refus d'entrée, le découpage, la lecture
+// des records, puis les filtres de post-traitement. `parContexte` : les records sont ceux de
+// l'ancrage du contexte ([FilmContext.parcourirLesAncresBipedes]), dont la bande est `band` ;
+// sinon chaque payload est ancré sous `band`.
+func balayerLesPositions(fc *FilmContext, band SlotBand, opt ScanFilmOptions, parContexte bool) (
+	[]BipedPosition, error) {
 	film := fc.Film()
 	chunks, err := bipedScanChunks(film, opt)
 	if err != nil {
@@ -102,7 +112,13 @@ func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptio
 		// fois par le contexte, sur les creations de bipede et les images-cles.
 		opt.Generations = fc.GenerationsVivantes()
 	}
-	out, read := scanBipedChunks(film, chunks, band, lay, opt, fc.ContexteDeLecture())
+	var out []BipedPosition
+	var read int
+	if parContexte {
+		out, read = positionsDesAncres(fc, chunks, lay, opt)
+	} else {
+		out, read = scanBipedChunks(film, chunks, band, lay, opt, fc.ContexteDeLecture())
+	}
 	if read == 0 {
 		return nil, ErrNoReadableFilmChunk
 	}
@@ -171,37 +187,71 @@ func scanBipedChunks(film *source.Film, chunks []int, band SlotBand, lay profile
 	return out, read
 }
 
-// bipedSlotBand construit l'ensemble des slots biped plausibles : union des ti=35 des
-// keyframes de tous les chunks balayés (+ le suivant, car un biped créé en cours de chunk
-// n'apparaît que dans le keyframe d'après), trous comblés entre min et max — les slots
-// biped sont alloués dans une bande contiguë, et un biped créé PUIS détruit à l'intérieur
-// d'un chunk n'apparaît dans aucun keyframe.
-func bipedSlotBand(fc *FilmContext, chunks []int) SlotBand {
-	seen := map[uint32]bool{}
-	marche := fc.MarcheDImageCle()
-	scan := append(append([]int{}, chunks...), chunks[len(chunks)-1]+1)
-	for _, c := range scan {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range marche.Records(pk.Payload(data)) {
-				if r.TI == BipedTypeIndex && r.Slot >= 0 {
-					seen[uint32(r.Slot)] = true
-				}
-			}
-			break
+// positionsDesAncres lit les positions des records de l'ancrage du contexte et rend, comme
+// [scanBipedChunks], le nombre de chunks LUS parmi `chunks`. Les records d'un payload arrivent à la
+// suite : ils partagent un lecteur, comme dans [ScanBipedRecords].
+func positionsDesAncres(fc *FilmContext, chunks []int, lay profile.I0Layout, opt ScanFilmOptions) (
+	[]BipedPosition, int) {
+	read := 0
+	for _, c := range chunks {
+		if _, _, ok := fc.ChunkAt(c); ok {
+			read++
 		}
 	}
-	band := fillSlotBand(seen)
+	var out []BipedPosition
+	ctx, g := fc.ContexteDeLecture(), grammaireDOrientation(opt)
+	var br *Lecteur
+	paquet := [2]int{-1, -1}
+	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
+		if cle := [2]int{r.Chunk, r.Packet.Index}; cle != paquet {
+			paquet, br = cle, LecteurSur(r.Payload)
+			br.PoserContexte(ctx)
+		}
+		if rec, ok := lireLaPosition(br, r, lay, opt, g); ok {
+			rec.Chunk, rec.PacketIndex, rec.TimestampUS = r.Chunk, r.Packet.Index, r.Packet.TimestampUS
+			out = append(out, rec)
+		}
+	})
+	return out, read
+}
+
+// bipedSlotBand construit l'ensemble des slots biped plausibles : union des ti=35 de la PREMIÈRE
+// image-clé de chacun des chunks balayés (+ le suivant, car un biped créé en cours de chunk
+// n'apparaît que dans le keyframe d'après), trous comblés entre min et max — les slots
+// biped sont alloués dans une bande contiguë, et un biped créé PUIS détruit à l'intérieur
+// d'un chunk n'apparaît dans aucun keyframe. Les slots se relèvent dans la phase des images-clés
+// de ces chunks ([releveDeLaBandeBipede]).
+func bipedSlotBand(fc *FilmContext, chunks []int) SlotBand {
+	r := &releveDeLaBandeBipede{vus: map[uint32]bool{}, chunk: -1}
+	distribuerLesImagesClesDesChunks(fc, append(append([]int{}, chunks...), chunks[len(chunks)-1]+1), []Canal{r})
+	band := fillSlotBand(r.vus)
 	// Repli `repli_bande_bipede_comblee` : les slots que le comblement AJOUTE a ceux vus (lot J8.7).
-	fc.NoterReplis(ComptesDesReplis{SlotsBipedesComblees: band.Count() - len(seen)})
+	fc.NoterReplis(ComptesDesReplis{SlotsBipedesComblees: band.Count() - len(r.vus)})
 	return band
 }
+
+// releveDeLaBandeBipede releve les slots ti=35 de la PREMIERE image-cle de chaque chunk de la phase.
+type releveDeLaBandeBipede struct {
+	vus map[uint32]bool
+	// chunk : le chunk de la derniere image-cle relevee, -1 avant la premiere.
+	chunk int
+}
+
+func (*releveDeLaBandeBipede) Interets() []Interet { return nil }
+
+func (r *releveDeLaBandeBipede) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
+	if p.Chunk == r.chunk {
+		return
+	}
+	r.chunk = p.Chunk
+	for _, rec := range p.Records {
+		if int(rec.TI) == BipedTypeIndex {
+			r.vus[rec.Vie.Slot] = true
+		}
+	}
+}
+
+func (*releveDeLaBandeBipede) Clore(BilanDeMarche) {}
 
 // fillSlotBand comble les trous entre le min et le max de l'ensemble (bande contiguë) et
 // rend la bande DENSE consultable par bit candidat.

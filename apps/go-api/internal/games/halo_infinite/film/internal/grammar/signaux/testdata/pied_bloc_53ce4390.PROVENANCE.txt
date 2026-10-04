@@ -5,7 +5,7 @@ CE FICHIER DIT D OU VIENT CHAQUE OCTET. Une fixture binaire sans provenance ecri
 sans source ; celle-ci se REGENERE, elle ne s edite pas :
 
     PIED_FILM_DIR=<cache>/film_chunks/53ce4390 PIED_BLOC_UPDATE=1 \
-      go test ./internal/analysis/objectiveevents/ -run PiedBlocProvenance
+      go test ./internal/games/halo_infinite/film/internal/grammar/ -run PiedBlocProvenance
 
 Sans `PIED_BLOC_UPDATE`, la meme commande RECOUPE la tranche sur le film et la compare octet
 pour octet. Sans `PIED_FILM_DIR`, elle est sautee : le cache de films ne vit pas dans le depot.
@@ -40,7 +40,7 @@ CE QU ELLE PORTE — UN SEUL evenement th=10, et il SEPARE LES CHAMPS
 
 EQUIPE PROUVEE : 1, etablie AILLEURS QUE DANS CE BLOC — par la trame d etat du film (rang de la
 table des slots de chunk_00 -> xuid, i-eme entite ti=9 -> designateur d equipe). Publie par
-l oracle corpus `filmdec.TestResidusPiedOctetEquipe`, rejoue le 2026-09-14 sur trois films
+l oracle corpus `grammar.TestResidusPiedOctetEquipe`, rejoue le 2026-09-14 sur trois films
 (53ce4390, 64e8adfa, 7344d24f) : 173 evenements sur 173 pour l octet 37, 84 sur 173 pour l
 octet 55, quatre lectures en accord parfait sur cent quatre-vingts essayees. Mesure d origine
 du 2026-09-13 : 665/665 sur quatorze films

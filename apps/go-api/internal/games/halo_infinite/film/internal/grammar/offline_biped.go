@@ -202,19 +202,46 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 // ScanBipedPositions décode les positions absolues de bipeds d'un film DEJA CHARGE. Cf.
 // [ScanFilmBipedPositions] pour la doctrine du balayage.
 //
-// C'est l'entrée BIPÈDE de [ScanBipedPositionsForBand] : elle ne fait qu'y ajouter le relevé
-// de la bande de slots `ti=35` (bipedSlotBand). Aucun décodage ne lui est propre.
+// C'est l'entrée BIPÈDE de [ScanBipedPositionsForBand] : elle ne fait qu'y ajouter la bande de
+// slots `ti=35`. Aucun décodage ne lui est propre.
+//
+// L'ANCRAGE EST CELUI DU CONTEXTE quand les options ne forcent ni chunks, ni générations, ni un
+// découpage autre que le sien ([ancrageDuContexte]) — c'est le cas de la cuisson : la bande, le
+// découpage et les générations sont alors ceux des huit balayages de canal, et les records ancrés
+// les mêmes, paquet par paquet (prouvé sur les vingt films du corpus d'équivalence, lot 2.4,
+// `ancrage_partage_research_test.go`). Sinon, la bande se relève sur les chunks demandés
+// (bipedSlotBand) et chaque payload est ancré.
 func ScanBipedPositions(fc *FilmContext, opt ScanFilmOptions) ([]BipedPosition, error) {
 	film := fc.Film()
 	chunks, err := bipedScanChunks(film, opt)
 	if err != nil {
 		return nil, err
 	}
-	band := bipedSlotBand(fc, chunks)
+	parContexte := ancrageDuContexte(fc, opt)
+	var band SlotBand
+	if parContexte {
+		band = fc.BipedSlots()
+	} else {
+		band = bipedSlotBand(fc, chunks)
+	}
 	if band.Count() == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	return ScanBipedPositionsForBand(fc, band, opt)
+	return balayerLesPositions(fc, band, opt, parContexte)
+}
+
+// ancrageDuContexte dit si les positions bipèdes ancrent sous les paramètres du contexte : aucun
+// chunk ni aucune génération forcés, et le découpage du contexte — imposé par le catalogue des deux
+// côtés, ou auto-détecté des deux côtés.
+func ancrageDuContexte(fc *FilmContext, opt ScanFilmOptions) bool {
+	if len(opt.Chunks) > 0 || opt.Generations != nil {
+		return false
+	}
+	impose := fc.ImposedLayout()
+	if opt.Layout == nil || impose == nil {
+		return opt.Layout == nil && impose == nil
+	}
+	return *opt.Layout == *impose
 }
 
 // ScanBipedRecords balaie un payload de paquet delta bit à bit et renvoie les positions
@@ -223,46 +250,61 @@ func ScanBipedPositions(fc *FilmContext, opt ScanFilmOptions) ([]BipedPosition, 
 // l'appelant).
 func ScanBipedRecords(payload []byte, slots SlotBand, lay profile.I0Layout, opt ScanFilmOptions,
 	ctx ContexteDeLecture) []BipedPosition {
-	i0Bits := lay.TotalBits()
 	var out []BipedPosition
 	// UN SEUL lecteur de bits pour tout le payload : `scanRecordDirs` le repositionne par
 	// `SetBitPos` a chaque composant de vitalite, la ou il en allouait deux PAR RECORD.
 	br := LecteurSur(payload)
 	br.PoserContexte(ctx)
-	// LA GRAMMAIRE D'ORIENTATION EST RESOLUE UNE FOIS PAR PAYLOAD, hors de la boucle : elle ne
-	// depend que des options (l'archetype decide d'i2 ET d'i3 a la fois), jamais du record.
-	g := dirsGrammar{}
-	if opt.DynPrecOrientation {
-		g = dynPrecOrientationGrammar()
-	}
+	g := grammaireDOrientation(opt)
 	// L'ANCRAGE EST CELUI DU MARCHEUR UNIQUE (delta_biped_walk.go) : ce balayage etait la
 	// neuvieme copie de la meme triple boucle. L'avance de curseur, la borne et le pas d'echec
 	// sont les siens ; ne reste ici que la LECTURE du record.
 	walkDeltaBipedPayload(payload, slots, lay, opt.Generations, func(r deltaBipedRecord) {
-		var q [3]uint32
-		for ax := range 3 {
-			q[ax] = uint32(source.BitsStricts(payload, r.I0+lay.AxisOffset(ax), int(lay.AxisW[ax])))
+		if rec, ok := lireLaPosition(br, r, lay, opt, g); ok {
+			out = append(out, rec)
 		}
-		if opt.DropSaturated && saturatedQuantum(q, lay) {
-			return
-		}
-		rec := BipedPosition{Slot: r.Slot, Q: q}
-		if opt.WorldRange != nil {
-			rec.HasWorld = true
-			rec.X = DequantBipedAxis(q[0], 0, lay, *opt.WorldRange)
-			rec.Y = DequantBipedAxis(q[1], 1, lay, *opt.WorldRange)
-			rec.Z = DequantBipedAxis(q[2], 2, lay, *opt.WorldRange)
-		}
-		if opt.CaptureDirs {
-			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, r.I0+i0Bits, r.Total, r.Mask, g)
-			rec.MaskBits, rec.MaskOver = maskBitsOf(r.Mask)
-			if br.obs != nil && br.obs.RecordMaskHook != nil {
-				br.obs.RecordMaskHook(r.Mask, payload, r.I0+i0Bits)
-			}
-		}
-		out = append(out, rec)
 	})
 	return out
+}
+
+// grammaireDOrientation rend la grammaire d'orientation des options. RESOLUE UNE FOIS PAR
+// BALAYAGE, hors de la boucle des records : elle ne depend que des options (l'archetype decide d'i2
+// ET d'i3 a la fois), jamais du record.
+func grammaireDOrientation(opt ScanFilmOptions) dirsGrammar {
+	if opt.DynPrecOrientation {
+		return dynPrecOrientationGrammar()
+	}
+	return dirsGrammar{}
+}
+
+// lireLaPosition lit la position d'UN record ancre, et ce que la cuisson capture dans le meme
+// record (directions, vitalite) ; faux pour un quantum sature que les options ecartent. `br` est le
+// lecteur du payload du record, pose sur le contexte de lecture.
+func lireLaPosition(br *Lecteur, r deltaBipedRecord, lay profile.I0Layout, opt ScanFilmOptions, g dirsGrammar) (
+	BipedPosition, bool) {
+	var q [3]uint32
+	for ax := range 3 {
+		q[ax] = uint32(source.BitsStricts(r.Payload, r.I0+lay.AxisOffset(ax), int(lay.AxisW[ax])))
+	}
+	if opt.DropSaturated && saturatedQuantum(q, lay) {
+		return BipedPosition{}, false
+	}
+	rec := BipedPosition{Slot: r.Slot, Q: q}
+	if opt.WorldRange != nil {
+		rec.HasWorld = true
+		rec.X = DequantBipedAxis(q[0], 0, lay, *opt.WorldRange)
+		rec.Y = DequantBipedAxis(q[1], 1, lay, *opt.WorldRange)
+		rec.Z = DequantBipedAxis(q[2], 2, lay, *opt.WorldRange)
+	}
+	if opt.CaptureDirs {
+		i0Bits := lay.TotalBits()
+		rec.componentDirs, rec.componentVitals = scanRecordDirs(br, r.I0+i0Bits, r.Total, r.Mask, g)
+		rec.MaskBits, rec.MaskOver = maskBitsOf(r.Mask)
+		if br.obs != nil && br.obs.RecordMaskHook != nil {
+			br.obs.RecordMaskHook(r.Mask, r.Payload, r.I0+i0Bits)
+		}
+	}
+	return rec, true
 }
 
 // matchBipedHeader teste la grammaire d'en-tête biped à la position bit p, exige un i0

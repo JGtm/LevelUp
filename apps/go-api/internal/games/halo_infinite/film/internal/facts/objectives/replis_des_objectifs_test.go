@@ -2,8 +2,9 @@ package objectives
 
 // replis_des_objectifs_test.go — LES COMPTES DE REPLIS DU LECTEUR D OBJECTIFS (lot J8.7, 2026-09-27).
 //
-// Maillons tenus ici : chaque site compte, et le resultat que le paquet rend deja (balayage du
-// statborg, resolveur d identite par manche) porte le compte. Le dernier maillon — du resultat au
+// Maillons tenus ici : chaque site compte, et le resultat que le paquet rend deja (lecture du
+// statborg, resolveur d identite par manche) porte le compte. Le balayage du statborg compte dans la
+// grammaire (`grammar/signaux/statborg_domaine_branche_test.go`) ; le dernier maillon — du resultat au
 // compteur de la cuisson — est tenu par `replay/versement_des_replis_test.go`.
 //
 // MUTATION JOUEE (2026-09-27) : retirer `replis:  ri.replis,` de [RoundIdentity.copieProfonde] fait
@@ -12,8 +13,10 @@ package objectives
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -33,30 +36,30 @@ func TestPlusSommeChaqueChampDesComptes(t *testing.T) {
 	}
 }
 
-// TestLeBalayageDuStatborgCompteSesAbandons : un enregistrement dont un compteur sort du domaine est
-// abandonne ET compte ; un composant non decodable arrete la boucle et le dit.
-func TestLeBalayageDuStatborgCompteSesAbandons(t *testing.T) {
-	var c ComptesDesReplis
-	if recs := scanFrameAvecReplis(statVecteurUnCompo(statMaxCounter+1), 764967, &c); len(recs) != 0 {
-		t.Fatalf("enregistrement hors domaine publie : %v", recs)
+// TestLaLectureDuStatborgPorteSesComptesEtSesConstats : les deux replis de la lecture de la
+// grammaire arrivent chacun sous SON champ (le balayage les compte, `grammar` le prouve ; ici, le
+// portage), et les deux constats sortent quand la lecture les rencontre, et seulement alors.
+//
+// MUTATION — croiser les deux champs dans [comptesDuStatborg] : ROUGE.
+func TestLaLectureDuStatborgPorteSesComptesEtSesConstats(t *testing.T) {
+	l := signaux.LectureDuStatborg{ChunksDatables: 2, EnregistrementsAbandonnes: 3, ComposantsArretes: 5}
+	if got, want := comptesDuStatborg(l), (ComptesDesReplis{EnregistrementsAbandonnes: 3, ComposantsArretes: 5}); got != want {
+		t.Errorf("comptes portes %+v, attendu %+v", got, want)
 	}
-	if c.EnregistrementsAbandonnes == 0 {
-		t.Error("l enregistrement hors domaine est abandonne sans etre compte")
+	if diags := diagnosticsDuStatborg(l, nil, "m"); len(diags) != 0 {
+		t.Errorf("lecture complete et datee : %d constat(s), attendu aucun", len(diags))
 	}
-	var sain ComptesDesReplis
-	if recs := scanFrameAvecReplis(statVecteurUnCompo(10), 764967, &sain); len(recs) == 0 {
-		t.Fatal("l enregistrement sain n est plus lu")
+	sansManifeste := diagnosticsDuStatborg(signaux.LectureDuStatborg{}, nil, "m")
+	if len(sansManifeste) != 1 || sansManifeste[0].Code != DiagFilmSansManifeste {
+		t.Errorf("film sans manifeste : %+v, attendu le seul constat %s", sansManifeste, DiagFilmSansManifeste)
 	}
-	pay := statVecteurUnCompo(10)
-	_, idx, at, ok := matchRecordHeader(pay, 1)
-	if !ok {
-		t.Fatal("le vecteur sain ne porte plus d en-tete a son bit d ancrage")
-	}
-	if comps, _, arrete := decodeComponentsAvecArret(pay, at, idx); len(comps) == 0 || arrete {
-		t.Errorf("vecteur sain : %d composant(s), arret %v — attendu une lecture complete", len(comps), arrete)
-	}
-	if _, _, arrete := decodeComponentsAvecArret(make([]byte, 2), 0, []int{0, 1}); !arrete { // tampon trop court : le premier composant deborde
-		t.Error("un composant non decodable doit arreter la boucle ET le dire")
+	tronque := signaux.LectureDuStatborg{ChunksDatables: 2, Tronque: true, ChunkTronque: 7,
+		Records: make([]types.StatRecord, 4)}
+	d := diagnosticsDuStatborg(tronque, nil, "m")
+	if len(d) != 1 || d[0].Code != DiagStatborgTronque || !slices.Contains(d[0].Attrs, any(7)) ||
+		!slices.Contains(d[0].Attrs, any(4)) {
+		t.Errorf("lecture tronquee : %+v, attendu le seul constat %s avec le chunk 7 et 4 enregistrements",
+			d, DiagStatborgTronque)
 	}
 }
 

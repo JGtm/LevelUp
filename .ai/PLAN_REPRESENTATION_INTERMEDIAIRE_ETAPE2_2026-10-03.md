@@ -1,12 +1,12 @@
 # PLAN — Représentation intermédiaire du film, étape 2 (2026-10-03)
 
-> **Statut : VALIDÉ PAR L'UTILISATEUR le 2026-10-03 (« Oui tu as mon accord ») ; GO D'EXÉCUTION À
-> CONFIRMER après la fusion de l'étape 1** — dernier item de clôture de l'étape 1
-> (`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`), rédigé le 2026-10-03 par la session
-> qui a exécuté l'étape 1, sur accord de l'utilisateur (« tu peux y aller pour les choses qui
-> n'attendent pas la fin de la campagne »). Aucun lot ne démarre avant : la fusion de l'étape 1 dans
-> `feat/v75` (accord de l'utilisateur) et un « GO étape 2 » daté. Contrat : skill `plan-execution`
-> (ce plan fait foi en cas de divergence).
+> **Statut : EN COURS — validé et lancé par l'utilisateur le 2026-10-03** (« Oui tu as mon
+> accord », puis « je t'ai dit que je te le donnais » : l'accord est le GO) — dernier item de clôture
+> de l'étape 1 (`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`), rédigé le 2026-10-03
+> par la session qui a exécuté l'étape 1. L'étape 1 est fusionnée dans `feat/v75` (`67c379fc1`).
+> Contrat : skill `plan-execution` (ce plan fait foi en cas de divergence). On ne revient vers
+> l'utilisateur que pour une fusion dans `feat/v75` ou une décision produit nouvelle ; les pushes de
+> la branche de travail pour la CI se font sans redemander.
 >
 > **Pour qui** : l'agent qui exécutera l'étape 2, et la session de la campagne de grammaire, qui
 > travaille sur des fichiers voisins (§1.3).
@@ -67,10 +67,10 @@ le contexte d'une cuisson et mesure.
 
 ### 1.1 Branche et worktree
 - Branche **`feat/ri-etape2`**, créée depuis `origin/feat/v75` APRÈS la fusion de l'étape 1.
-- Worktree dédié à côté du checkout principal (`LevelUp-wt-ri2`), jonctions `apps/web/node_modules`,
+- Worktree de l'étape 1 réutilisé (`LevelUp-wt-ri`, un seul exécutant), jonctions `apps/web/node_modules`,
   `data/cache/film_chunks` et `data/cache/film_manifests` vers le checkout principal ; toutes retirées
   par `(Get-Item <jonction>).Delete()` AVANT tout `git worktree remove` (jamais `--force`).
-- Cache de compilation Go DÉDIÉ (`GOCACHE=%LOCALAPPDATA%\go-build-ri2`) : la campagne compile en
+- Cache de compilation Go DÉDIÉ (`GOCACHE=%LOCALAPPDATA%\go-build-ri`) : la campagne compile en
   parallèle sur la même machine.
 
 ### 1.2 Fusions
@@ -91,9 +91,10 @@ naissances lues par la grammaire des messages de la vue A.
 
 | Lot de ce plan | Fichiers de la campagne qu'il touche ou qu'il lit | Règle |
 |---|---|---|
-| 2.0, 2.1, 2.6 | aucun | libres dès la fusion de l'étape 1 |
-| 2.2 (canaux d'image-clé) | `keyframe_anticipe.go`, `keyframe_liaison.go`, `keyframe_datums.go`, `keyframe_world*.go` (LP, variante de la marche d'image-clé) | avant que LP ne démarre, ou après sa fusion — à convenir avec la campagne au début du lot |
-| 2.3 (tête de vue A) | `frame_vue_messages.go` et les naissances par la vue A | après la fusion du lot des naissances, ou avec lui |
+| 2.0, 2.6 | aucun | libres dès la fusion de l'étape 1 |
+| 2.1 | `movement_states.go`, `tir_continu.go` et `lecteur.go` (L4a de la vague 1 : renommage de `VehicleTypePhysicsAssumed`, champ `etatComplet`) | ces trois fichiers après la fusion de la vague 1 ; les fichiers neufs et ceux de la marche avant (convenu le 2026-10-03 ; la ligne d'origine disait « aucun ») |
+| 2.2 (canaux d'image-clé) | `keyframe_anticipe.go`, `keyframe_liaison.go`, `keyframe_datums.go`, `keyframe_world*.go` (LP, variante de la marche d'image-clé) | avant que LP ne démarre, ou après sa fusion — CONVENU le 2026-10-03 : LP n'a pas démarré, 2.2 part ; LP se construira sur la structure |
+| 2.3 (tête de vue A) | `frame_vue_messages.go` et les naissances par la vue A | après la fusion du lot des naissances, ou avec lui — CONVENU le 2026-10-03 : les naissances par la vue A sont un chantier de recherche sans lot écrit, 2.3 n'a pas à l'attendre |
 | 2.4, 2.5 (récupération) | lecteurs de composants des vagues 1 et 2 (`dispatch_*.go`, `components_*.go`) en LECTURE seulement ; créations (`equipment_creation*.go`, `vehicle_creation.go`) | après la fusion de la vague 1 ; les lecteurs sont des briques, inchangées |
 | 2.7 (a) morts d'objet, 3.1 localisateurs | `object_deaths_march.go`, `facts/killsource/walk.go` (LU, LS) | APRÈS la fusion de LU ; le retrait des localisateurs jumeaux est LU, pas ce plan |
 | 2.7 (b) canaux delta par la marche | fermeture des trames (toute la campagne) | seulement là où la marche couvre AU MOINS autant que la recherche d'ancres, canal par canal, mesuré sur le corpus |
@@ -110,8 +111,14 @@ fichier de l'autre se signale, ne se corrige pas.
 - 2026-10-03 : la mémoire de la marche des images-clés n'est pas partagée entre la cuisson et
   killsource à l'étape 1 ; elle se reprend à l'étape 2 (lot 2.7 (c) puis 3.1 : killsource devient un
   canal de la même marche, contexte unique par cuisson).
-- À DEMANDER au début de l'étape : le « GO étape 2 » daté, rien d'autre — l'ordre des lots qui attendent la
+- GO de l'étape 2 : DONNÉ le 2026-10-03 (statut ci-dessus) ; l'ordre des lots qui attendent la
   campagne est réglé au §3 (report par le plan), la mutualisation par DT2-5.
+- 2026-10-04 : « option A ». Les lectures heuristiques qui décident aujourd'hui DEVANT une lecture de
+  la grammaire — les fenêtres de bits des images-clés (armes portées, marque de portage,
+  inventaire) et l'ancrage d'en-tête bipède (positions et huit balayages) — restent HORS du registre
+  des replis jusqu'aux lots de comportement de 2.7, qui les ordonneront derrière la grammaire ; elles
+  s'y inscriront alors « après la lecture », comptées, leurs records marqués récupérés (item
+  2.7.d). Pas de montée du cliquet `NbDevantLaLecture`.
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -153,80 +160,438 @@ Tous les lots hors 2.7 : différence nulle, ou comptes de replis déclarés d'av
 changent la forme du paquet `grammar` régénèrent l'empreinte à RÉVISION CONSTANTE après la preuve
 (`LEVELUP_UPDATE_GRAMMAR_REV=1 go test ./internal/games/halo_infinite/film/internal/grammar/ -run TestGrammarRevSuitLaGrammaire -update-grammar-rev`).
 
-**Ordre.** 2.0, 2.1, 2.6, puis 2.2 et 2.3 selon la coordination du §1.3, la mesure M, 2.4, 2.5,
+**Ordre.** 2.1 (en-tête compris), 2.6, puis 2.2 et 2.3 selon la coordination du §1.3, la mesure M, 2.4, 2.5,
 2.7, 3.1, 3.2. Un lot qui attend la campagne (§1.3) est DIFFÉRÉ PAR CE PLAN (exception de la règle 1
 du contrat) : le lot indépendant suivant passe devant, et le report s'écrit au journal avec sa
 dépendance. Aucun autre réordonnancement.
 
-### Lot 2.0 — En-tête de la marche : paramètres hors flux et leur provenance (taille S-M)
-- [ ] 2.0.1 Types `lecture.EnTete` et `lecture.Provenance` (lu / calibré / supposé), sans logique.
-- [ ] 2.0.2 Résolution dans la grammaire (`FilmContext.EnTete()`), portée par `Trames` et
-      `ImagesCles` ; aujourd'hui `IDLowBits` vaut 13 en dur (`DefaultFrameConfig`) dans la marche des
-      trames et dans `runWalk`, et se calibre de 10 à 15 dans `ScanMarchFacts`
-      (`object_deaths_calibrate.go`) : l'en-tête porte les DEUX, avec leur provenance, sans les
-      unifier (l'unification change une sortie : 2.7).
-- [ ] 2.0.3 `gate15` (`facts/killsource/assist.go`, `pickGate15`) et l'octet `+0x818` (repli du
-      registre `registre_filmdec_marche.go`) : inscrits avec leur provenance.
-- Gate : G-unit, G-arch, G-vet ; T4 (aucune sortie ne change) ; empreinte à révision constante.
+### Lot 2.0 — En-tête de la marche — FUSIONNÉ DANS 2.1
+*Décision d'exécution du 2026-10-03* : seul, l'en-tête n'a pas de consommateur de production à
+différence nulle (règle 7 : un accesseur lu par les seuls tests est du code mort) ; son
+consommateur est le distributeur, qui prend l'en-tête comme ENTRÉE de la marche (2.1.0), et son
+unification est 2.7.c. Relu sur pièces le 2026-10-03 : `IDLowBits` = 13 n'est pas « en dur » mais la
+valeur de l'image statique (`DAT_144706100` = 0x1FFF, catégorie 7 de `FUN_1406d3140`,
+`varwidth.go`), que deux écrivains du jeu réécrivent au runtime — provenance PRÉSUMÉE ; la marche
+des morts d'objet la CALIBRE de 10 à 15 (`object_deaths_calibrate.go`). `gate15` est un choix de
+killsource (`pickGate15`) : il entre à 2.7.c ; l'octet `+0x818` reste un repli nommé du registre.
 
-### Lot 2.1 — Le distributeur ; canaux des états de mouvement et du tir continu (taille S-M)
-- [ ] 2.1.1 `Canal`, `Distribuer` (DT2-1), dans des fichiers neufs `grammar/distribuer*.go`.
-- [ ] 2.1.2 États de mouvement (`movement_states*.go`) et tir continu (`tir_continu.go`) deviennent
+### Lot 2.1 — L'en-tête et le distributeur ; canaux des états de mouvement et du tir continu (taille M) — CLOS le 2026-10-03
+*EN DEUX TEMPS, convenu avec la campagne le 2026-10-03 (même formule que le lot 1.3 de l'étape 1)* :
+2.1.0, 2.1.1 et la marque « interprété » de 2.1.3 d'abord, en fichiers neufs (`grammar/lecture`,
+`grammar/entete.go`, `grammar/distribuer*.go`) et dans les fichiers de la marche
+(`marche_trames*.go`) ; 2.1.2 et le resserrage de T3 (2.1.3) après la fusion de la vague 1 dans
+`feat/v75`, que la campagne signale (L4a touche `movement_states.go`, `tir_continu.go` et
+`lecteur.go`). Les canaux déclarent leurs intérêts par PAIRES (archétype, composant), résolues dans le
+registre du film : jamais une liste figée (la vague 1 ajoute des lecteurs), jamais un nom de composant
+seul (« high-frequency » désigne deux tables de composant aux grammaires différentes, ti=3 et ti=4 :
+règle D-89 de la campagne, « routage par archétype ou par table de composant, jamais par nom », gardée
+par `ecs_dispatch_table_guard_test.go` qui arrive avec L8). Le lot 2.6, indépendant, est passé
+devant ; les lots 2.2 et 2.3, qui consomment le distributeur, passent devant la fin de 2.1 dès que
+2.1.1 est fait (règle d'ordre du §3 : le reste de 2.1 attend une dépendance du plan).
+- [x] 2.1.0 L'en-tête (ex-2.0) : `lecture.Provenance` (relue, mesurée, présumée — la table du profil
+      —, calibrée sur le film, imposée à la construction) et `lecture.Parametre[T]`, sans logique ;
+      `grammar.EnTete` (`IDLowBits`, découpage MPP du format, découpage d'i0) résolu par le contexte ;
+      la marche est construite DEPUIS l'en-tête, et le distributeur le rend aux canaux.
+      *Fait* (`lecture/entete.go`, `grammar/entete.go`) : largeur de l'identifiant bas présumée (13,
+      image statique), MPP du format présumé (la table, dérivation unique `mppDuFormat` que
+      `InstallFilmFormatMPP` et `PreuveDImageCle` partagent), i0 imposé par l'appelant ou présumé par
+      le catalogue — non résolu sinon : l'auto-détection reste à la demande, sans compter son repli
+      avant qu'un balayage la demande. La marche des trames lit l'identifiant bas sous l'en-tête, la
+      phase des images-clés pose son MPP ; découverte 6.
+- [x] 2.1.1 `Canal`, `Distribuer` (DT2-1), dans des fichiers neufs `grammar/distribuer*.go`.
+      *Fait* : une marche des deux phases (images-clés puis trames), chaque paquet à chaque canal ;
+      intérêts par paires (archétype, composant) ; crochets posés par canal puis fondus dans
+      l'observation de la marche des trames (un crochet posé deux fois est refusé) ; la phase des
+      images-clés reste sous l'observation du contexte, comme aujourd'hui. Pas de consommateur de
+      production avant le second temps (2.1.2) ; tests : phases égales à leurs itérateurs, crochets.
+*Décisions d'exécution du second temps (2026-10-03, après la fusion de la vague 1 dans `feat/v75`,
+`2393d7db7`, refusionnée en `cc395eb7f`)* — relu sur pièces : le balayage des états de mouvement
+pilote lui-même la marche (`nouveauMarcheurDesTrames`, `parcourir`) et lit, outre la structure, trois
+choses internes à la marche : le verdict de la vue C (`trameLue.lecture.verdict`, pris seulement
+pour une trame marchée par classes de vue), la trace des records (`lecturesDeComposant` sur
+`FrameRecord.Trace`, compte `VehicleTypePhysicsByWriterLaw` de la vague 1) et l'arène de la marche
+pour ses crochets :
+1. *Deux canaux des trames, une distribution.* Le balayage des états de mouvement et le collecteur
+   du tir continu deviennent deux `CanalDesTrames` ; `ScanMarcheDesTrames` les distribue
+   (`Distribuer`) et assemble `MarcheDesTrames` depuis les deux canaux et le bilan de la marche
+   (liaisons, NEW refusés, replis d'anticipation et de début de liste). `movement_states.go` ne
+   pilote plus la marche.
+2. *Le tir continu prend son verdict au crochet* (`VueControleHook`), que la marche par classes de
+   vue publie une fois par trame marchée et jamais ailleurs — exactement les trames dont le verdict
+   est pris aujourd'hui. Le crochet joue pendant la marche, la trame arrive après : le collecteur
+   garde le verdict reçu jusqu'à la clôture de la trame, qui l'efface.
+3. *Les comptes du balayage se lisent dans la structure* : paquets et listes d'événements (`Debut`),
+   records et désynchronisations du bipède (`Records`) ; `VehicleTypePhysicsByWriterLaw` par paire
+   (archétype du record, `compVehicleTypePhysics`) : un record compte quand une de ses occurrences,
+   traversée ou infranchissable, porte ce nom dans l'archétype du registre — la règle de
+   `lecturesDeComposant`, qui perd son seul appelant de production et est retirée, avec la ligne
+   MUTATION de son test désignant le nouveau site (accord de la campagne du 2026-10-03, à trois
+   conditions : par paire et par la constante, mêmes occurrences prouvées par la passe, mutation
+   rejouée rouge sur le nouveau site).
+4. *Intérêts* : le canal des états interprète, sur ti=35 dans les trames, l'accroupi, la glissade,
+   l'action de mobilité, la capacité active et la vitesse de translation (deux orthographes
+   chacun) — ce que son crochet garde ; la posture et le contrôle d'unité, publiés par le même
+   désérialiseur, ne sont pas interprétés. Un film dont l'archétype bipède ne déclare aucun des
+   quatre états : ni crochet, ni intérêt (comme aujourd'hui, aucune lecture). Le tir continu
+   n'interprète aucun composant (la vue C n'en est pas un).
+5. *T3 resserré* (2.1.3) : le test de provenance distribue le canal de production, dont il double le
+   crochet ; chaque lecture que le canal interprète cite une occurrence `EtatInterprete`, la posture
+   et le contrôle d'unité une occurrence délimitée.
+- [x] 2.1.2 États de mouvement (`movement_states*.go`) et tir continu (`tir_continu.go`) deviennent
       deux canaux ; `ScanMarcheDesTrames` les distribue ; `replay/film_scan_mouvement.go` inchangé
       dans ce qu'il publie.
-- [ ] 2.1.3 « Interprété » exact (DT2-2) ; T3 de l'étape 1 resserré : chaque lecture d'état cite
+      *Fait* : `movementStateScanner` et `collecteurTirContinu` sont deux `CanalDesTrames` ;
+      `ScanMarcheDesTrames` les distribue (`Distribuer`) et ne pilote plus la marche (`marcher`
+      retiré) ; les comptes de la marche (liaisons, NEW refusés, replis) arrivent par le bilan. Le
+      tir continu prend le verdict au crochet et le clôt à la trame (`ouvrir` retiré, la clôture du
+      canal finit et trie les rafales). `VehicleTypePhysicsByWriterLaw` se compte dans la structure,
+      par paire (archétype du record, `compVehicleTypePhysics`, masque résolu au registre :
+      `occurrencesDuComposant`) ; `lecturesDeComposant` retirée avec l'accord de la campagne, la
+      ligne MUTATION de son test désigne le nouveau site, mutation rejouée rouge.
+      `replay/film_scan_mouvement.go` inchangé. Le commentaire de garde d'absence disait « trois »
+      états pour quatre testés : corrigé (règle 17).
+- [x] 2.1.3 « Interprété » exact (DT2-2) ; T3 de l'étape 1 resserré : chaque lecture d'état cite
       l'occurrence marquée interprétée.
+      *Premier temps fait* : la marque — interprétée quand un canal l'interprète et qu'elle est
+      traversée ; la règle « valeur capturée par la trace » est retirée (aucun lecteur de cet état ;
+      sans canal, rien n'est interprété) ; mutation jouée rouge. *Second temps fait* : T3 distribue
+      les deux canaux de production doublés de témoins ; chaque lecture que le crochet garde (un
+      état autre que la posture et le contrôle d'unité, sur un bipède) cite une occurrence
+      `EtatInterprete`, les autres une occurrence délimitée — 23 456 lectures dont 23 427
+      interprétées, 11 751 entrées de contrôle citées. Deux mutations jouées rouges (la vitesse
+      retirée des intérêts du canal ; la posture ajoutée) ; l'accroupi n'est pas une cible de
+      mutation, il n'est jamais traversé dans les trames de ces bobines (lot 2.2, décision 2).
 - Gate : T4 (étapes `movementStates` et `continuousFire` de `replay-equiv`), killsource identique,
   T1/T3/T6 verts.
+  *Passé* (passe `ri31` contre la référence fusionnée `ri30`) : `replay-equiv` 20/20 identiques
+  et digests identiques, tous décodés depuis le film ; faits 20/20 (dont
+  `VehicleTypePhysicsByWriterLaw`, condition de la campagne) et killsource 19/19 identiques à
+  l'octet. G-film et archlint (T1, T3, T6 compris), `go vet` (avec et sans `research`),
+  `golangci-lint` (0 problème) verts ; empreinte de la grammaire régénérée à révision constante.
+  Parcours de la cuisson : inchangés (une phase des images-clés pour les préliminaires, une marche
+  des trames). CI verte au niveau job sur la fusion (`2f8346d42`, run `37145047635`) et sur le
+  commit du lot (`04208d803`, run `37146393269`).
 
-### Lot 2.2 — Canaux d'image-clé (taille M) — coordination §1.3
-- [ ] 2.2.1 Armes portées (`keyframe_loadout.go`), inventaire (`inventory_decode.go`), marques de
+### Lot 2.2 — Canaux d'image-clé (taille M) — coordination §1.3 — CLOS le 2026-10-03 (2.2.2 couvert par 2.7.d, décision de l'utilisateur du 2026-10-04)
+*Décisions d'exécution du 2026-10-03* (relu sur pièces : chaque consommateur pilote aujourd'hui sa
+propre boucle chunks -> paquets d'image-clé -> mémoire d'ancres ; seul `ScanPlayerTeams` parcourt
+des corps, ceux de ti=9 ; coût mesuré de la phase complète des images-clés, mémoire chaude : 18 à
+65 ms par film, contre 14 à 99 s de décodage, cinq films) :
+1. *Un canal d'image-clé ne fait pas marcher les trames.* `Canal` = intérêts, image-clé, clôture ;
+   `CanalDesTrames` y ajoute les crochets et la trame. Une distribution dont aucun canal ne lit les
+   trames ne les marche pas.
+2. *Les intérêts ont une phase.* `Interet.Phase` (trames par défaut, ou images-clés) : la phase des
+   images-clés ne marque interprétées que les occurrences qu'un canal y lit. Correction du premier
+   temps de 2.1, qui y marquait les intérêts d'un canal des trames alors qu'aucun crochet n'y reçoit
+   de valeur (IR-4 : interprétée = un canal l'interprète).
+3. *Un corps n'est parcouru que s'il est lu.* Dans une distribution, la phase des images-clés
+   parcourt l'état complet des records des archétypes qu'un canal y interprète ; les autres records
+   gardent leur identité, leur ancre et leur liaison (chaînée ou élue), sans composant, marqués
+   `lecture.CorpsNonParcouru`. L'itérateur `ImagesCles` garde la marche complète (son consommateur,
+   `KeyframeClosure`, mesure tous les corps). Le coût de chaque consommateur ne change pas : ceux qui
+   lisent des identités ne parcourent aucun corps (comme aujourd'hui), les équipes parcourent ti=9.
+4. *Sans registre, les ancres.* La marche d'ancres n'a pas besoin du registre : une phase des
+   images-clés sans corps à parcourir rend ses ancres sur un film sans `chunk_00`, comme les
+   consommateurs le font aujourd'hui (bobine historique `minifilm_000d5950`, goldens du rejeu). Le
+   registre est exigé par un corps à parcourir et par la phase des trames.
+5. *La marche d'ancres du paquet est exposée* (`MarcheDistribuee.Ancres` : ancres dans l'ordre de la
+   marche, écartés, décisions) : la couverture des armes portées et la liaison la lisent sans remarcher.
+6. *Pas de mutualisation entre consommateurs dans ce lot* : chaque point d'entrée public garde sa
+   signature et devient une distribution à un canal ; le nombre de parcours d'images-clés de la
+   cuisson ne change pas (critère 5), sauf dans la marche des trames, dont les deux préliminaires
+   (table anticipée, liaison) partagent désormais une phase des images-clés au lieu de deux
+   parcours. Mettre les canaux d'une cuisson dans une seule distribution est le lot 3.1 (un contexte
+   par cuisson).
+7. *2.2.2* : prévu — la fenêtre de 32 bits (armes portées, marque de portage) et les motifs des
+   emprises d'inventaire deviennent des méthodes de récupération nommées au registre et comptées
+   par film. RELU SUR PIÈCES AVANT D'ÉCRIRE (découverte 8) : la grammaire atteint ces composants
+   dans l'état complet du bipède, et ces fenêtres décident donc devant une lecture disponible ;
+   2.2.2 est statué `[!]`, décision de l'utilisateur demandée. La recherche exhaustive de l'en-tête
+   exact de ti=9 (`player_entities_entetes.go`) n'est pas une fenêtre de valeur : elle prouve une
+   absence, et ses doutes sont déjà comptés et publiés (`coverage.seats`).
+- [x] 2.2.1 Armes portées (`keyframe_loadout.go`), inventaire (`inventory_decode.go`), marques de
       portage (`keyframe_carrier_mark.go`), équipes (`player_teams.go`), recensements et bandes
       (`world_object_census.go`, `slot_band_*.go`, `offline_biped_band.go`), générations vivantes
       (partie image-clé, `generations_vivantes.go`), table anticipée (`keyframe_anticipe.go`) et
       liaison (`keyframe_liaison.go`) consomment la phase `ImagesCles`.
-- [ ] 2.2.2 Les fenêtres lues bit à bit À L'INTÉRIEUR des images-clés (armes : fenêtre de 32 bits,
+      *Fait* : chaque lecteur est un canal de la phase des images-clés et son point d'entrée public
+      une distribution à un canal (signature inchangée) : armes portées (`canalDesArmesPortees`, la
+      couverture de la marche lue dans `MarcheDistribuee.Ancres`), inventaire (`canalDInventaire`),
+      marques de portage (`canalDesMarquesDePortage`), équipes (`canalDesEquipes` : il interprète i0
+      de ti=9, la phase parcourt les corps de ti=9 et eux seuls ; l'index se relit à l'étendue d'i0,
+      sans seconde traversée), recensement (`canalDuRecensement`), bandes (`releveDesSlots`, partagé
+      par la règle comblée, la règle observée et le recensement ; `releveDeLaBandeBipede` sur la phase
+      restreinte aux chunks demandés), générations vivantes (`releveDesViesBipedes`), table anticipée
+      (`canalDeLaTableAnticipee`). La marche des trames lit ses deux préliminaires (table anticipée,
+      liaison avec la table de datums de chaque image-clé) dans UNE phase des images-clés
+      (`marche_trames_preliminaires.go`) et pose la liaison chunk par chunk
+      (`lierLesImagesClesDuChunk`). Formes instrument (`lierLeChunkAuMonde`,
+      `TableAnticipee.AjouterChunk`) passées dans les tests ; garde-rail neuf
+      `marche_images_cles_unique_test.go` (un seul pilotage des images-clés, sites restants nommés :
+      découverte 7 ; mutation jouée rouge). Distributeur : décisions 1 à 5, tests neufs (corps lu
+      seulement s'il est lu, phase des intérêts, film sans registre ; trois mutations jouées rouges).
+- [~] 2.2.2 Les fenêtres lues bit à bit À L'INTÉRIEUR des images-clés (armes : fenêtre de 32 bits,
       inventaire : emprises) deviennent des méthodes de la couche de récupération (DT2-4), marquées.
+      *Couvert par 2.7.d* (décision de l'utilisateur du 2026-10-04, option A ; découverte 8) : la
+      grammaire atteint ces composants dans l'état complet du bipède ; les inscrire maintenant comme
+      replis les déclarerait `devant_la_lecture`, que le cliquet `NbDevantLaLecture` interdit
+      d'augmenter. 2.7.d les fait lire par la grammaire d'abord, et inscrit ce qui reste de
+      l'heuristique « après la lecture ».
 - Gate : T4 ; comptes de replis déclarés si la bande n'est plus relevée deux fois (rapport §1.6).
+  *Passé* (passe `ri22a` contre la référence `ri21a`) : `replay-equiv` 20/20 identiques, tous
+  décodés depuis le film (`depuis_les_faits=false` ×20) ; faits 20/20 et killsource 19/19 identiques
+  à l'octet. La bande reste relevée deux fois (cache du contexte et positions) : aucun compte de
+  repli ne change. G-film, archlint, G-race, `go vet` (avec et sans `research`), `golangci-lint`
+  (0 problème) verts ; empreinte de la grammaire régénérée à révision constante. Parcours
+  d'images-clés de la cuisson : un de moins (les deux préliminaires de la marche des trames
+  partagent une phase), aucun corps parcouru de plus.
 
-### Lot 2.3 — Canaux de tête de vue A (taille M) — coordination §1.3
-- [ ] 2.3.1 Tirs (36), translocations (117), lunette, ramassages, apparitions (103), événements de
+### Lot 2.3 — Canaux de tête de vue A (taille M) — coordination §1.3 — CLOS le 2026-10-03
+*Décisions d'exécution du 2026-10-03* (relu sur pièces : six balayages de tête parcourent chacun
+tous les paquets delta et relisent le préambule de 9 bits, `readPacketHead`, avant de décoder le
+corps de leur événement ; la marche des trames lit déjà ce préambule, `PacketHeadEventType`, pour
+décider de localiser la liste d'événements, sans le ranger dans la structure) :
+1. *Les phases d'une distribution sont celles que ses canaux lisent.* `Canal` = intérêts et
+   clôture ; `CanalDImageCle` (images-clés), `CanalDesTrames` (crochets et trames), `CanalDesTetes`
+   (tête de chaque trame). La phase des images-clés tourne quand un canal la lit ou quand la marche
+   des trames en a besoin (ses préliminaires) ; la marche des trames quand un canal des trames est
+   là ; sinon, une PASSE DES TÊTES (aucun record marché, aucun registre) pour les canaux de tête.
+2. *La tête se range dans la vue A* : la continuation puis, quand elle annonce un message, son genre
+   (`consumeVueA`), vue arrêtée au premier corps — la forme que la marche par rangs donne déjà à une
+   vue A lue depuis la tête. La marche complète la range aussi pour les paquets à liste localisée
+   ou non localisée (vue A « non lue » aujourd'hui, alors qu'elle a lu la tête pour en décider).
+3. *Les décodeurs partent de la tête rangée* : chaque canal de tête prend la continuation et le
+   genre dans la structure ; une tête qui ne tient pas dans le payload (paquet d'un octet) garde la
+   lecture tolérante d'aujourd'hui (`readPacketHead`, zéros au-delà du payload) : c'est 2.3.2.
+4. *Pas de mutualisation entre canaux dans ce lot* (même règle que 2.2) : chaque point d'entrée
+   public devient une distribution à un canal de tête. `ScanFireEvents`, `ScanZoomEvents` et
+   `ScanTranslocatorTeleports` prennent le contexte du film au lieu du film, pour distribuer dans
+   le contexte de la cuisson au lieu d'en ouvrir un second (cible de l'étape 3 : un contexte par
+   cuisson).
+- [x] 2.3.1 Tirs (36), translocations (117), lunette, ramassages, apparitions (103), événements de
       véhicule : la marche lit la tête de chaque paquet UNE fois (`event_list.go`) et la donne aux
       canaux (`fire_events.go`, `transloc_events.go`, `zoom_events.go`, `biped_pickups.go`,
       `equipment_spawn_events.go` ; les événements de véhicule vivent dans `event_list.go`).
-- [ ] 2.3.2 Les paquets dont la tête n'est pas lisible gardent la règle d'aujourd'hui.
+      *Fait* : `CanalDesTetes` et la passe des têtes (`distribuer_tetes.go` : `rangerLaTete` range
+      la continuation et le genre dans la vue A, `teteDe` la rend aux canaux) ; six canaux
+      (`canalDesTirs`, `canalDesTeleportations`, `canalDeLaLunette`, `canalDesRamassages`,
+      `canalDesApparitions`, `canalDesEvenementsDeVehicule`), chaque point d'entrée une distribution
+      à un canal ; les décodeurs de corps partent du bit qui suit la tête (`eventPayloadStartBit`).
+      La marche complète range la tête de chaque trame avant de la marcher et décide de localiser la
+      liste sur elle (plus de seconde lecture du préambule). `PacketHeadEventType` reste la forme
+      des instruments (fabrique de mini-films du rejeu, comptes par type). Tests : formes de la
+      tête, passe des têtes égale à la tête de la marche complète, aucune image-clé ni record marché
+      par la passe ; deux mutations jouées rouges.
+- [x] 2.3.2 Les paquets dont la tête n'est pas lisible gardent la règle d'aujourd'hui.
+      *Fait* : une tête qui ne tient pas dans le payload (paquet d'un octet : la vue A s'arrête sans
+      genre) garde la lecture tolérante d'avant (`teteDuPayload`, zéros au-delà du payload) — c'est
+      ce que comptaient les apparitions et les événements de véhicule sur ces paquets.
 - Gate : T4.
+  *Passé* (passe `ri23a` contre `ri22a`) : `replay-equiv` 20/20 identiques, tous décodés depuis le
+  film ; faits 20/20 et killsource 19/19 identiques à l'octet. G-film, archlint, vet (avec et sans
+  `research`), `golangci-lint` (0 problème) verts ; empreinte de la grammaire régénérée à révision
+  constante. Parcours de la cuisson : inchangés (chaque lecteur de tête garde son parcours des
+  trames, désormais sans relire la tête ni la marche) ; leur mise en commun est le lot 3.1. CI
+  verte au niveau job sur `2aae5c7e1` (run `37137855861`).
 
-### Mesure avant 2.4 et 2.5 (DT2-5) — taille S
-- [ ] M.1 Durées par étape et pic mémoire de la cuisson, trois témoins et un BTB, machine calme,
+### Mesure avant 2.4 et 2.5 (DT2-5) — taille S — CLOSE le 2026-10-03
+- [x] M.1 Durées par étape et pic mémoire de la cuisson, trois témoins et un BTB, machine calme,
       binaires alternés ; part des balayages ancrés et des balayages d'objets du monde.
-- [ ] M.2 Proposition chiffrée à l'utilisateur : mutualiser (2.4, 2.5 complets) ou marquer seulement.
+      *Fait* (machine calme, signal de la campagne) : binaire de la base de l'étape (`67c379fc1`)
+      contre celui du lot 2.3 (`2aae5c7e1`), deux tours alternés sur les quatre films
+      (`replay-equiv`, journal des étapes), trois tours de plus sur le BTB, puis une cuisson de
+      chaque binaire sous profil de tas et une sous trace du ramasse-miettes (`replay-build`).
+      **Durées** (moyennes) : `084a804d` 108,98 → 107,99 s (−0,9 %), `e5adf7b2` 43,70 → 43,84 s
+      (+0,3 %), `60ae07c4` 31,54 → 31,31 s (−0,7 %), `11de8353` 37,91 → 37,76 s (−0,4 %).
+      **Pic** : témoins 0,49 → 0,52, 0,49 → 0,50 et 0,48 → 0,44 Gio (les deux sens) ; BTB 1,01 →
+      1,10 Gio sur les cinq paires alternées (+9 %), 1,05 → 1,09 sous profil de tas, 1,03 → 0,90
+      sous trace (−13 %). La trace explique l'écart (découverte 9) : le pic se forme dans la
+      dernière seconde de la cuisson et dépend du calage du cycle du ramasse-miettes ; pendant le
+      décodage, le tas vivant des deux binaires est le même à ±5 Mo par fenêtre de cinq secondes,
+      et le profil n'attribue aux lots que +267 Mo d'allocations sur 41,9 Go (+0,6 %). Aucune
+      structure retenue : critère 4 tenu. **Étapes** (BTB, `replay-build`, sans le hachage du
+      harnais) : cuisson 98,6 s, dont killsource 23,3 s et décodage 73,2 s ; balayages ancrés
+      24,2 s (pont d'identité, positions par l'ancrage des bipèdes, porté par l'étape
+      `translocations` : 8,9 s ; les huit passes du marcheur ancré : 15,3 s, ≈ 1,75 s chacune) ;
+      balayages d'objets du monde 38,1 s (placements 6,0, pads 12,0, véhicules 16,8, projectiles
+      3,3) ; ensemble 62,3 s, **63 % de la cuisson**. Témoins (`replay-equiv`) : objets du monde
+      seuls 35 à 42 % de la cuisson ; avec les balayages ancrés, 68 à 76 % (borne haute : le
+      harnais hache les positions dans l'étape qui les suit).
+- [x] M.2 Proposition chiffrée à l'utilisateur : mutualiser (2.4, 2.5 complets) ou marquer seulement.
+      *Fait* : les deux familles pèsent bien plus que le seuil de 10 % → **2.4 et 2.5 mutualisent**
+      (règle de DT2-5 ; aucune objection de l'utilisateur au GO). À gagner sur le BTB : les huit
+      passes du marcheur ancré refont chacune le même parcours (15,3 s), les quatre balayages
+      d'objets du monde parcourent chacun le film (38,1 s). Proposition présentée à l'utilisateur
+      au point d'étape du 2026-10-03 ; une objection la rouvre. 2.4 et 2.5 attendent la fusion de
+      la vague 1 (§1.3).
 
-### Lot 2.4 — Récupération ancrée mutualisée (taille L)
-- [ ] 2.4.1 UN ancrage bipède par film (positions et les huit passes du marcheur ancré, véhicules
+### Lot 2.4 — Récupération ancrée mutualisée (taille L) — CLOS le 2026-10-04 (la marque et le registre couverts par 2.7.d, décision de l'utilisateur du 2026-10-04)
+*Décisions d'exécution du 2026-10-03* — relu sur pièces et mesuré avant le code (instrument
+`grammar/ancrage_partage_research_test.go`) : la cuisson ancre les records bipèdes NEUF fois avec
+les mêmes paramètres (positions, puis changements d'arme, deltas d'inventaire, rangs de capacité,
+changements d'équipement, camouflage, grappin, impulsions et charges de capacité). L'ancrage
+(curseur bit à bit) coûte 0,6 à 1,8 s par passe sur quatre films ; au-delà de l'ancrage, chaque
+balayage coûte 0 à 140 ms (les changements d'équipement 0,17 à 0,95 s, leur récupération gatée) ;
+la marche de TOUS les corps ancrés jusqu'au bout de leur masque coûte 31 à 159 ms (240 000 à
+488 000 records par film). Le gain est donc dans l'ancrage, pas dans les corps.
+1. *Un ancrage par film, mémorisé dans le contexte.* Les records bipèdes ancrés sous les paramètres
+   du contexte (`ChunkNumbers`, `BipedSlots`, `I0Layout`, générations vivantes datées par paquet) sont
+   relevés une fois, rangés compacts (par paquet : chunk et rang ; par record : bit d'i0, slot,
+   génération, masque d'au plus sept index), et les neuf lecteurs les parcourent dans l'ordre du flux.
+   `walkDeltaBipedRecords` reste la primitive d'ancrage et n'a plus que la mémoire pour appelant ;
+   le garde-rail « pas de dixième site » reste vert. La visée sans position (`offline_aim_only.go`,
+   masque qui ne commence pas à i0) et la récupération gatée des équipements
+   (`equipment_recovery.go`, fenêtres de saut) ancrent sous d'AUTRES prédicats : autres méthodes,
+   autres records, une passe chacune — elles ne partagent pas cet ancrage. La bande `ti=40` des
+   véhicules n'a qu'un lecteur : rien à mettre en commun.
+2. *Les positions bipèdes lisent cet ancrage* quand la cuisson ne force ni chunks, ni découpage, ni
+   générations (c'est le cas de la cuisson) : paramètres et suites ancrées prouvés égaux paquet par
+   paquet sur les vingt films du corpus (2.4.2). Les positions des véhicules (bande `ti=40`, toutes
+   générations) et les instruments qui forcent leurs options gardent l'ancrage du payload
+   (`ScanBipedRecords`). La bande bipède n'est plus relevée deux fois : `repli_bande_bipede_comblee`
+   compte une fois par film — changement DÉCLARÉ (DT2-4, ADR 0037 D-10), la seule différence
+   attendue à la preuve (coverage et rapport de replis des faits).
+3. *La marque « récupéré » et le compte au registre attendaient une décision de l'utilisateur —
+   donnée le 2026-10-04 (option A) : ils passent à 2.7.d*
+   (2.4.1, partie statuée `[!]`, découverte 10) : l'ancrage décide aujourd'hui DEVANT la lecture de la
+   marche pour les records qu'elle lit — même question que 2.2.2.
+4. *Les étendues de composants des records ancrés ne sont pas rangées* : aucun lecteur ne les lit —
+   chaque balayage marche son record jusqu'à son composant, mesuré bon marché ci-dessus (règle 7 :
+   une donnée sans lecteur est du code mort). Elles se rangeront avec leur premier lecteur.
+- [~] 2.4.1 UN ancrage bipède par film (positions et les huit passes du marcheur ancré, véhicules
       compris), mémorisé ; records `PreuveRecupere`, méthode nommée, étendues de composants jusqu'au
       premier infranchissable (`delta_biped_walk.go`, `offline_biped*.go`, `ability_*.go`,
       `camo_state.go`, `grapple_state.go`, `held_weapon_changes.go`, `inventory_delta.go`,
       `equipment_changes.go`, `equipment_recovery.go`, `offline_aim_only.go`, `replay/film_scan.go`).
       Le garde-rail `delta_biped_walk_guard_test.go` (pas de dixième site d'ancrage) reste vert.
-- [ ] 2.4.2 Égalité de bande (`fc.BipedSlots()` contre `bipedSlotBand` recalculée) et de découpage
+      *Fait* : l'ancrage unique mémorisé (`ancres_bipedes.go` : `FilmContext.ancresBipedes`,
+      `parcourirLesAncresBipedes`), lu par les huit balayages et par les positions de la cuisson
+      (`ancrageDuContexte`, `balayerLesPositions`, `positionsDesAncres`, `lireLaPosition` sortie de
+      `ScanBipedRecords`) ; véhicules, visée sans position et récupération gatée : décision 1 ;
+      `replay/film_scan.go` inchangé (mêmes points d'entrée). Garde-rail vert. *Couvert par 2.7.d* :
+      la marque `PreuveRecupere`, la méthode nommée et le compte au registre (décision de
+      l'utilisateur du 2026-10-04, option A ; découverte 10). Les étendues de composants ne sont pas
+      rangées, faute de lecteur (décision 4).
+- [x] 2.4.2 Égalité de bande (`fc.BipedSlots()` contre `bipedSlotBand` recalculée) et de découpage
       prouvée film par film AVANT la bascule.
-- [ ] 2.4.3 Le harnais `FuzzFilmRecordReaders` couvre la couche de récupération (aucune panique,
+      *Fait* (`ancrage_partage_research_test.go`, avant la bascule) : sur les vingt films du corpus
+      d'équivalence, chunks, bande (36 à 256 slots), découpage et générations des positions égaux à
+      ceux du contexte, et suites ancrées identiques paquet par paquet (11 130 à 79 550 paquets
+      delta par film, aucun différent).
+- [x] 2.4.3 Le harnais `FuzzFilmRecordReaders` couvre la couche de récupération (aucune panique,
       records récupérés bornés par les bits du payload), comme il couvre la marche depuis l'étape 1.
+      *Fait* (`ancres_bipedes_fuzz_test.go`) : l'ancrage d'un payload quelconque sous la bande de
+      tous les slots, le rangement compact de chaque record et sa relecture (égalité exigée), la
+      lecture de sa position avec directions et vitalité ; bornes : i0 dans le payload, masque de
+      deux à sept index, records sans chevauchement. Campagne de 45 s : 2,5 millions d'exécutions,
+      aucune panique.
 - Gate : T4 sur les données ; `coverage.fallbacks` déclaré ; banc `b.Loop` ; critère 4.
+  *Passé* (passe `ri24a` contre `ri31`) : digests `replay-equiv` identiques sur toutes les étapes
+  de données des vingt films, tous décodés depuis le film ; seule l'étape `artifact` diffère, sur
+  seize films, et la seule différence de l'artefact est le compte déclaré de
+  `repli_bande_bipede_comblee` (vérifié en entier sur deux films : 2 → 1, 4 → 2) ; les faits
+  diffèrent sur les mêmes seize films par leur rapport de replis ; killsource 19/19 identique à
+  l'octet. Banc `BenchmarkRecuperationAncree` (`b.Loop`, mini-bobine, dix paires alternées) :
+  médiane 904 → 316 ms (−65 %). Critère 4 (machine calme, binaires alternés, deux tours) : durées
+  de cuisson −13 à −16 % (BTB 112,9 → 98,2 s ; `e5adf7b2` 45,4 → 39,0 ; `60ae07c4` 32,2 → 27,0 ;
+  `11de8353` 39,1 → 34,1), pics dans la dispersion (BTB 0,92 à 1,09 Gio des deux côtés) ; trace
+  du ramasse-miettes : le tas vivant du décodage monte de 15 à 30 Mo (l'ancrage mémorisé, ≈ 11 Mo
+  rangés sur le BTB), sans effet sur le pic de fin de cuisson. G-film, archlint, `go vet` (avec et
+  sans `research`), `golangci-lint` (0 problème) verts ; empreinte de la grammaire régénérée à
+  révision CONSTANTE : aucune donnée décodée ne change, seul le compte déclaré. Parcours de la
+  cuisson : huit balayages bit à bit des trames delta de moins (neuf ancrages bipèdes → un), et un
+  relevé de la bande bipède de moins. CI verte au niveau job sur `057c0cffd` (run `37150564223`).
 
-### Lot 2.5 — Récupération des objets du monde (taille L)
-- [ ] 2.5.1 Créations multi-archétypes en une passe ; pistes sur l'union des bandes
+### Lot 2.5 — Récupération des objets du monde (taille L) — fait, CI verte, fusionné dans `feat/v75` ; clôture à la mesure de durée à machine calme
+*Décisions d'exécution du 2026-10-04* — relu sur pièces et mesuré avant le code (profil CPU d'une
+cuisson du BTB et sonde temporaire des appels, retirée) : sur le BTB, les poses, les socles et les
+projectiles font QUATRE balayages bit à bit de pistes d'objets du monde (`ScanWorldObjectsForBand`) :
+équipement `ti=37` aux poses (3,9 s) PUIS aux socles (3,4 s, même bande, mêmes bornes, mêmes
+largeurs), armes au sol `ti=42` (3,6 s), projectiles (3,8 s) ; et QUATRE marches de création
+(`runCreationWalk`, environ 2 s chacune) : équipement aux poses PUIS aux socles, armes au sol,
+véhicules `ti=40`. Chaque balayage teste chaque bit de chaque payload delta ; le préfixe, l'en-tête
+et l'appartenance du slot à la bande font l'essentiel du coût.
+1. *Les pistes des objets du monde se relèvent en UNE passe sur l'union des bandes, mémorisée dans
+   le contexte.* Au premier balayage de pistes, le contexte relève celles des bandes à pistes de la
+   cuisson (équipement, armes au sol, projectiles) et de la bande demandée : chaque payload n'est
+   parcouru qu'une fois, chaque bande gardant SON curseur (un record accepté n'avance que le curseur
+   de sa bande, comme le balayage d'une bande seule), d'où des pistes identiques par construction.
+   Une demande suivante sur la même bande, aux mêmes bornes et aux mêmes largeurs, rend une copie
+   de ce qui est relevé.
+2. *Les créations multi-archétypes en UNE passe, mémorisées par leurs entrées.* À la première marche
+   de création, le contexte marche ensemble les archétypes de création de la cuisson (équipement,
+   armes au sol, véhicules), chacun avec SON curseur et sous le profil de balayage du moment
+   (largeurs MPP comprises) ; une demande suivante ne réutilise une marche que si l'archétype, la
+   bande, les bornes et le profil sont les mêmes — c'est le cas des socles et des véhicules, qui
+   installent les largeurs que les poses ont lues ou calibrées. La calibration MPP reste un
+   préliminaire des poses, jouée avant.
+3. Aucun fichier de `replay` ne change : les points d'entrée restent ceux d'aujourd'hui.
+4. *Marque « récupéré » et registre* : comme pour l'ancrage bipède, couverts par 2.7.d (décision de
+   l'utilisateur du 2026-10-04) — ces balayages lisent des records que la marche des trames lit
+   aussi quand elle les atteint.
+- [x] 2.5.1 Créations multi-archétypes en une passe ; pistes sur l'union des bandes
       (`equipment_creation*.go`, `vehicle_creation.go`, `ground_weapon_creation.go`, `projectiles.go`,
       `equipment_placements.go`, `replay/build_ground_weapons.go`, `replay/build_vehicles.go`) ;
       calibration MPP gardée en préliminaire.
+      *Fait* : `pistes_du_monde.go` (une passe sur l'union des bandes à pistes, un curseur par
+      bande, la reconnaissance d'un record jugée une fois pour toutes les bandes qui portent son
+      slot : `enteteDObjetDuMonde`, `masqueDObjetDuMonde`, `echantillonDuRecord`, que le balayage
+      d'une bande seule partage) ; `creations_du_monde.go` (une passe des créations, un curseur par
+      archétype, le début de l'en-tête NEW lu une fois : `archetypeDeLEnTeteNEW`, première étape de
+      `matchWorldObjectNewHeaderIn`, qui reste la seule reconnaissance) ; mémoire dans le contexte
+      (`recuperations.go` : ancrage bipède, pistes, créations), rendue en copie, les créations
+      réutilisées sous la même clé seulement (archétype, bande, bornes, profil). La marche d'un
+      archétype seul (`runCreationWalk`, `scanPayload`) est retirée : la passe la remplace pour
+      tous ; la calibration MPP des poses reste jouée avant. `equipment_placements.go` et les
+      fichiers de `replay` n'ont pas eu à changer (mêmes points d'entrée). Tests : pistes d'une
+      passe égales au balayage de chaque bande seule (12 381 échantillons, trois bandes),
+      créations d'une passe égales à l'oracle d'un archétype seul (66 créations), copies et clé de
+      réutilisation ; harnais de fuzz étendu aux deux passes ; trois mutations jouées rouges.
+      Garde-rail neuf `grammar/recuperations_ratchet_test.go` (relevé par la liste de livraison
+      avant la fusion, règle 6 de CLAUDE.md) : les primitives de relevé de la couche de
+      récupération (ancrage bipède, pistes, créations) n'ont que des appelants de production
+      nommés, avec leur raison ; un balayage neuf qui referait le parcours au lieu de lire la
+      mémoire du contexte rougit, sans quoi le nombre de parcours remonterait sans qu'aucun test
+      de données ne le voie (critère 5). Il tient aussi l'ancrage de 2.4, dont le garde-rail
+      existant ne tient que les copies de la boucle d'ancrage ; deux mutations jouées rouges.
 - Gate : T4 ; critère 4.
+  *T4 passé* (passe `ri25b`, code final, contre la référence du lot 2.4 `ri24a` ; une première passe
+  `ri25a` avant le refactor des signatures demandé par le lint rendait déjà la même chose) :
+  digests `replay-equiv` identiques sur les vingt films, tous décodés depuis le film ; faits 20/20
+  et killsource 19/19 identiques à l'octet. Références d'équivalence re-figées sur ces sorties (le
+  compte déclaré de 2.4 y entre, seize films, ligne `artifact` seule). Banc `BenchmarkObjetsDuMonde`
+  (`b.Loop`, mini-bobine, dix paires alternées, machine chargée) : médiane 1 113 → 325 ms
+  (−71 %). G-film, archlint, `go vet` (avec et sans `research`), `golangci-lint` (0 problème)
+  verts ; empreinte de la grammaire régénérée à révision constante. Parcours de la cuisson : quatre
+  balayages bit à bit de pistes → un, quatre marches de création → une.
+  *Critère 4 : EN ATTENTE d'une machine calme* — la vague 2 de la campagne compile et décode par
+  intermittence pendant plusieurs heures ; elle signalera la fin. Sous charge, non conclusif : une
+  cuisson du BTB par binaire (sans alternance) donne 76,0 → 60,2 s ; trace du ramasse-miettes : tas
+  vivant du décodage en médiane 226 → 236 Mo (la mémoire des pistes et des créations), pic de fin de
+  cuisson dans la dispersion connue (découverte 9).
+  CI verte au niveau job sur `1b94fad1b` (run `37193642578`, garde-rail compris) ; fusionné dans
+  `feat/v75` avec les lots 2.1 à 2.6 le 2026-10-04 (journal).
 
-### Lot 2.6 — Le statborg descend dans la grammaire (taille M)
-- [ ] 2.6.1 La lecture du statborg (`facts/objectives/statborg.go`, `film.go`, `extract.go`) devient
+### Lot 2.6 — Le statborg descend dans la grammaire (taille M) — CLOS le 2026-10-03
+- [x] 2.6.1 La lecture du statborg (`facts/objectives/statborg.go`, `film.go`, `extract.go`) devient
       une méthode de récupération de la grammaire ; `objectives` consomme ; les faits ne lisent plus
       d'octet (ADR 0034 D-2 amendé).
+      *Fait* : le statborg, le pied de film et les rafales de capture sont lus par
+      `grammar/signaux` (`LireLeStatborg`, `FooterEvents`, `CaptureBurstTimes`), une FEUILLE de
+      l'arbre de la grammaire (découverte 1) ; `objectives` garde ses points d'entrée, porte les deux
+      replis du statborg dans `ComptesDesReplis` et rend ses constats sous les mêmes codes ; `film.go`
+      supprimé (sa doc de paquet passe dans `doc.go`). Ce que la méthode rend est un type à part
+      (`types.StatRecord`), jamais mêlé à la structure : la marque `PreuveRecupere` n'a pas d'objet
+      tant que ces records n'y entrent pas, et les deux replis restent nommés et comptés au registre
+      (sites déplacés). Garde-rail neuf `archlint/film_faits_sans_octets_test.go` (exception datée :
+      `killsource`, retrait en 2.7.c ; trois mutations jouées rouges). Conséquence de révision écrite
+      (ADR 0037 D-6, SYNC_GUIDE EN et FR) : `objectives` entre `grammar` par sa valeur.
 - Gate : T4 ; killsource inchangé ; `archlint` (extraction de bits hors `source`).
+  *Passé* : `replay-equiv` 20/20 identiques, tous décodés depuis le film
+  (`depuis_les_faits=false` ×20) ; faits 20/20 et killsource 19/19 identiques à l'octet à la
+  passe de référence (même code que la base) ; archlint, G-film, `go vet` (avec et sans
+  `research`), `golangci-lint` (0 problème) verts ; empreintes de `grammar` et d'`objectives`
+  régénérées à révision constante.
 
 ### Lot 2.7 — Changements de comportement déclarés (taille L) — coordination §1.3
 - [ ] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
@@ -235,6 +600,15 @@ dépendance. Aucun autre réordonnancement.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
       du 2026-10-03) ; `IDLowBits` unifié (IR-7).
+- [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
+      elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
+      bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
+      lecture de l'état complet du bipède par la grammaire (intérêts de la phase des images-clés) ;
+      l'ancrage d'en-tête bipède ne lit plus que les records que la marche ne lit pas (avec 2.7.b) ;
+      même principe pour les pistes et les créations d'objets du monde (2.5, décision 4). Ce qui
+      reste de chaque heuristique s'inscrit au registre « après la lecture », compté, ses records
+      marqués `PreuveRecupere` avec leur méthode (DT2-4) ; le cliquet `NbDevantLaLecture` ne monte
+      pas.
 - Gate : `replay-corpus-gate` et banc de vérité ; `KILLSOURCE_FIXTURES` en local ; montée de
   `grammar.Rev` (et `killsource.Rev` pour 2.7.c) ; recuisson et backlog sur signal de l'utilisateur.
 
@@ -299,8 +673,77 @@ fusionné un lot depuis la dernière reprise (et refusionner, re-figer).
 
 ## 6. Découvertes (consignées, non traitées)
 
-(vide — les découvertes encore ouvertes de l'étape 1 restent dans son plan, §6 ; celles qui relèvent
-de ce plan y sont reprises comme items : 3.1.2.)
+Les découvertes encore ouvertes de l'étape 1 restent dans son plan, §6 ; celles qui relèvent de ce
+plan y sont reprises comme items (3.1.2).
+
+1. *(lot 2.6)* **Deux instruments de `grammar` importent `facts/objectives`** pour leurs oracles
+   (`sonde_registre_verdicts_test.go`, `zone_census_report_test.go`, non étiquetés, gardés par
+   l'environnement) : tout paquet des faits qui consomme la grammaire fermerait un cycle d'imports
+   dans le binaire de test de `grammar`. Le lot 2.6 l'a contourné par une FEUILLE de l'arbre de la
+   grammaire (`grammar/signaux`, qui n'importe pas `grammar`). Le contournement tient tant que
+   `objectives` ne consomme que des feuilles ; à rouvrir le jour où il devrait consommer `grammar`
+   lui-même (déplacer ces deux instruments, ou leurs oracles).
+2. *(lot 2.6)* **Deux lecteurs du même pied de film** vivent dans l'arbre de la grammaire :
+   `signaux.FooterEvents` (blocs th=10, équipe à l'octet 37) et `grammar.ParseHighlightEvents`
+   (tous les types, gamertag par version). Même balayage (xuid au bit, marqueur de fin, bloc de 60
+   octets), bornes de xuid recopiées. Les unifier demanderait une preuve d'équivalence ; non traité.
+3. *(lot 2.6)* **L'horloge du statborg est recopiée** : base = premier paquet delta du chunk,
+   `start_ms` du manifeste ; `navpoint_radial_scan.go` et plusieurs instruments de `grammar` disent
+   « la MÊME base que `objectives.StatRecords` » et la recalculent. `signaux` pourrait la porter pour
+   tous ; non traité.
+4. *(lot 2.6)* **Le statut de l'ADR 0037 était périmé** depuis la fusion de l'étape 1 (« Step 1 is
+   being executed ») : corrigé dans le lot (affirmation fausse rencontrée, CLAUDE.md règle 17).
+5. *(lot 2.6)* **Deux enveloppes de production lues par les seuls tests**, déplacées telles quelles
+   pour garder le déplacement vérifiable : `signaux.scanFrameForRecords` et
+   `signaux.decodeComponents` (l'une rend `scanFrameAvecReplis` sans compte, l'autre
+   `decodeComponentsAvecArret` sans le drapeau d'arrêt). Dette antérieure (CLAUDE.md règle 7) ; non
+   traitée.
+6. *(lot 2.1)* **Les deux phases ne lisent pas sous le même découpage MPP** : la phase des
+   images-clés pose celui du FORMAT du film (`EnTete.MPP`, comme `InstallFilmFormatMPP` avant), la
+   marche des trames lit sous celui du CONTEXTE — l'invariant (9/5), sauf installation en cours.
+   Les records NEW d'objets du monde que la marche des trames traverse le lisent donc aux largeurs
+   par défaut sur les formats qui en ont d'autres. Gardé tel quel (différence nulle) ; à mesurer
+   avant de l'unifier (une montée de `grammar.Rev`).
+7. *(lot 2.2)* **Des parcours d'images-clés restent hors de la phase**, hors de la liste fermée de
+   2.2.1 : la marche des naissances (`birth_loadouts.go` : sa marche d'ancres et `LierTableDeDatums`
+   chunk par chunk), l'anneau de la bombe (`navpoint_radial_scan.go`, état complet de ti=12), les
+   objectifs (`objective_scan.go`, état complet de ti=11), les morts d'objet (`object_deaths.go`,
+   `marchPacketsOf`, lot LU de la campagne), killsource (`facts/killsource/world.go`, 2.7.c),
+   `roster_type8.go`. À porter par 3.1 (une distribution par cuisson) ; non traité.
+8. *(lot 2.2)* **Les fenêtres de bits des images-clés décident DEVANT une lecture que la grammaire
+   atteint.** Mesure du 2026-10-03 sur trois bobines par build (phase complète des images-clés) : la
+   traversée de l'état complet du bipède (ti=35) atteint les compteurs de grenades (i22), le bloc
+   des munitions (i30 à i42), les quatre `weapon-state-type-info` (i43 à i46, l'identifiant d'arme
+   en clair), les ensembles de grenades et de capacité (i47, i48) dans 188 records sur 237
+   (`e5adf7b2`), 80 sur 80 (`fb1a1a72`) et 188 sur 209 (`a521164d`) ; elle s'arrête ensuite à i59 ou
+   i60 (`simulation-state-component`, non porté), donc aucun record n'est prouvé fermé. Les inscrire
+   au registre comme méthodes de récupération (2.2.2 tel qu'écrit) les déclarerait
+   `devant_la_lecture` — la violation de D14 (b) que le cliquet `NbDevantLaLecture` interdit de
+   faire monter. La forme juste est de LIRE ces valeurs par la grammaire (intérêts de la phase des
+   images-clés sur ti=35, lecture à l'étendue de l'occurrence) et de retirer les fenêtres :
+   changement de comportement (une fenêtre retient toute famille connue où qu'elle tombe dans
+   l'emprise du record, alias compris ; la grammaire lirait les emplacements que l'écrivain écrit),
+   donc un lot de 2.7, prouvé au corpus et au banc de vérité. Décision de l'utilisateur du
+   2026-10-04 : option A — item 2.7.d (2.2.2 statué `[~]`).
+9. *(mesure M)* **Le pic d'une cuisson n'est pas dans le décodage.** Trace du ramasse-miettes sur
+   le BTB (`084a804d`, les deux binaires) : le tas vivant reste sous 260 Mo pendant tout le
+   décodage, puis monte à 450-525 Mo dans la dernière seconde (fin du décodage, assemblage,
+   écriture des faits et de l'artefact) ; l'empreinte que la sentinelle mesure y approche le double
+   (la cible de croissance du ramasse-miettes) et varie de 0,90 à 1,14 Gio d'une cuisson à l'autre,
+   selon le calage du cycle sur ce pic d'allocations. Deux conséquences : un gain de la
+   représentation intermédiaire sur le décodage ne se verra pas dans ce pic, et le seuil de 10 % du
+   critère 4 ne se décide pas sur lui avec quelques paires. Les mesures du critère 4 (après 2.4,
+   2.5, 2.7, 3.1) et 3.2 gagneraient à lire aussi le tas vivant par phase (trace du ramasse-miettes,
+   comme à M.1). Non traité.
+10. *(lot 2.4)* **L'ancrage d'en-tête bipède décide devant la lecture de la marche.** Les neuf
+   lecteurs ancrés (positions et huit canaux) lisent tous les records qu'ils ancrent, y compris ceux
+   que la marche des trames lit (97 447 records `ti=35` marchés contre 162 444 ancrés sur
+   `bfecd02b`, en-tête de `movement_states.go`). Inscrire l'ancrage au registre comme méthode de
+   récupération (DT2-4 ; ADR 0037 D-10 : nommée, ordonnée après la lecture, comptée, retirée) le
+   déclarerait `devant_la_lecture`, ce que le cliquet `NbDevantLaLecture` interdit de faire monter.
+   Même question que 2.2.2 (découverte 8) ; la forme juste est 2.7.b (les canaux lus par la marche
+   là où elle couvre au moins autant, l'ancrage seulement après). Décision de l'utilisateur du
+   2026-10-04 : option A — item 2.7.d.
 
 ## 7. Journal
 
@@ -310,3 +753,118 @@ de ce plan y sont reprises comme items : 3.1.2.)
 - 2026-10-03 : plan validé par l'utilisateur (« Oui tu as mon accord », en réponse à la présentation
   du plan et à la demande d'accord de fusion de l'étape 1) ; le GO d'exécution daté se confirme après
   la fusion de l'étape 1.
+- 2026-10-03 : GO de l'utilisateur (« je t'ai dit que je te le donnais ») ; branche `feat/ri-etape2`
+  créée depuis `origin/feat/v75` = `67c379fc1` (amont désactivé), dans le worktree de l'étape 1.
+  Ouverture du lot 2.0.
+- 2026-10-03 : lot 2.0 fusionné dans 2.1 (décision d'exécution, consignée au lot : sans le
+  distributeur, l'en-tête n'aurait pas de consommateur de production) ; `IDLowBits` relu sur pièces
+  (`varwidth.go`) : 13 est la valeur présumée de l'image statique, la marche des morts d'objet la
+  calibre. Ouverture du lot 2.1.
+- 2026-10-03 : lot 2.1 DIFFÉRÉ PAR LE PLAN : le lot L4a de la vague 1 de la campagne touche
+  `movement_states.go` (renommage d'une constante dans `trame()`) et `lecteur.go` (champ
+  `etatComplet`) ; la ligne du §1.3 qui disait « aucun » est corrigée. Reprise à la fusion de la vague
+  1, que la campagne signale. Ouverture du lot 2.6, indépendant.
+- 2026-10-03 : lot 2.6 CLOS (cf. le lot). Premier essai dans `grammar` même : refusé à la compilation
+  des tests (cycle d'imports, découverte 1) ; sous-paquet feuille `grammar/signaux`. Preuve à
+  différence nulle passée sur le binaire du lot contre la passe de référence (`replay-equiv` 20/20,
+  faits 20/20 et killsource 19/19 à l'octet). Baseline des tests de la CI : 9 lignes relocalisées
+  de `objectives` vers `grammar/signaux` (mêmes noms), datées dans `scripts/check_test_baseline.sh`
+  — oubliées au premier commit du lot, la CI les aurait refusées. La campagne confirme que LP et les naissances par la
+  vue A n'ont pas démarré (la vague 2 attend la fusion de la vague 1, une recuisson et le GO de
+  l'utilisateur) : les lots 2.2 et 2.3 peuvent partir ; LU et LS prendront `marchLocateStrict`,
+  `facts/killsource/walk.go`, `object_deaths_march.go` et la signature du slot 123, LP la lecture du
+  bloc de type 1 et `keyframe_world*.go` — à signaler si un lot de ce plan doit y toucher.
+- 2026-10-03 : lot 2.1, PREMIER TEMPS fait (2.1.0, 2.1.1, marque de 2.1.3), convenu avec la campagne :
+  fichiers neufs et fichiers de la marche seulement. Différence nulle sur le binaire du lot contre la
+  référence du lot 2.6 (`replay-equiv` 20/20 décodés depuis le film, faits 20/20 et killsource 19/19
+  à l'octet) ; G-film, archlint, G-race, vet (avec et sans `research`), lint verts ; empreinte de la
+  grammaire régénérée à révision constante. Les lots 2.2 et 2.3 passent devant le second temps
+  (règle d'ordre du §3 : le reste de 2.1 attend la fusion de la vague 1).
+- 2026-10-03 : CI verte au niveau job sur `3be61faf3` (premier temps de 2.1, run `37127379956`).
+- 2026-10-03 : signal « machine calme » de la campagne (vague 1 décodée) : la passe de preuve de 2.2
+  est arrêtée pour jouer la mesure de performance de l'étape 1 (critère 4), qui l'attendait : aucune
+  régression (détail au plan de l'étape 1, qui est CLOS) ; campagne prévenue de la fin de la mesure.
+- 2026-10-03 : lot 2.2 CLOS — 2.2.1 fait et prouvé (cf. le lot), CI verte au niveau job sur `6063f13b5`
+  (run `37133432247`) ;
+  2.2.2 statué `[!]` (découverte 8),
+  décision de l'utilisateur demandée. Décisions d'exécution 1 à 7 écrites au lot avant le code ;
+  la décision 2 corrige le premier temps de 2.1 (un test de 2.1 ne passait que par des marques de la
+  phase des images-clés : l'accroupissement n'est jamais traversé dans les trames de la bobine
+  `000d5950` ; le test prend désormais le bouclier). Différence nulle prouvée. ADR 0037 amendé
+  (IR-3 : distribution de la phase des images-clés, corps lus seulement par un canal, film sans
+  registre ; IR-4 : intérêts par phase). Suite : lot 2.3 (canaux de tête de vue A).
+- 2026-10-03 : lot 2.3 fait et prouvé (cf. le lot), clôture à la CI verte du commit du lot. Décisions
+  d'exécution 1 à 4 écrites au lot avant le code : les phases d'une distribution sont celles que ses
+  canaux lisent (`CanalDImageCle`, `CanalDesTrames`, `CanalDesTetes`), la tête se range dans la vue
+  A (la marche complète la range aussi pour les listes localisées), les décodeurs partent de la tête
+  rangée, chaque point d'entrée est une distribution à un canal. Deux instruments de recherche anciens
+  (retours rejeu : `m4b_compteur_research_test.go`, `p4_entites_ti9_research_test.go`) ajustés
+  mécaniquement au contexte de `ScanFireEvents` ; campagne prévenue. Suite : la mesure M (machine
+  calme, signal de la campagne) ; le second temps de 2.1 à la fusion de la vague 1.
+- 2026-10-03 : lot 2.3 CLOS (CI verte au niveau job sur `2aae5c7e1`, run `37137855861`). Mesure M
+  CLOSE (cf. M.1 et M.2) : aucune régression (durées de −0,9 % à +0,3 % ; l'écart de pic du BTB est
+  le calage du ramasse-miettes, découverte 9) ; balayages ancrés et d'objets du monde = 63 % d'une
+  cuisson du BTB, donc 2.4 et 2.5 mutualisent (DT2-5). TOUS LES LOTS RESTANTS ATTENDENT LA CAMPAGNE
+  (report par le plan, §3) : le second temps de 2.1, 2.4 et 2.5 attendent la fusion de la vague 1 ;
+  2.7 ne peut pas se finir avant LU (2.7.a) et LS (2.7.c), et un lot commencé se finit (règle 2 du
+  contrat) ; 3.1 suit 2.7.c, 3.2 clôt. 2.2.2 attend la décision de l'utilisateur. Campagne
+  prévenue de la fin de la mesure ; elle annonce la fusion de la vague 1 dans l'heure (après la
+  relance d'un job de CI). Reprise à son signal : `feat/v75` dans cette branche, passe de référence
+  re-figée, puis le second temps de 2.1.
+- 2026-10-03 : vague 1 de la campagne fusionnée dans `feat/v75` (`2393d7db7`, grammar-2026-10-03.2),
+  refusionnée ici (`cc395eb7f`) : conflits sur les deux empreintes seulement, prises de `feat/v75`
+  puis régénérées à révision constante ; G-film et archlint verts. PREUVE DE LA FUSION : passe du
+  binaire de la campagne (`2393d7db7`) contre celle du binaire fusionné, machine laissée par la
+  campagne — digests `replay-equiv` 20/20, faits 20/20 et killsource 19/19 identiques à l'octet,
+  tous décodés depuis le film : les lots 2.6, 2.1 (premier temps), 2.2 et 2.3 restent à différence
+  nulle par-dessus la vague 1. Références d'équivalence re-figées sur la tête fusionnée (passe
+  `ri30`, références de la vague 1). Ouverture du second temps de 2.1 (décisions 1 à 5 au lot,
+  écrites avant le code ; le retrait de `lecturesDeComposant`, fichier de la campagne, convenu avec
+  elle à trois conditions).
+- 2026-10-03 : lot 2.1 fait et prouvé (cf. le lot), clôture à la CI verte du commit du lot ; les
+  trois conditions de la campagne sont tenues (paire et constante, faits identiques par film,
+  mutation rejouée rouge sur le nouveau site) et elle en est prévenue. ADR 0037 amendé (IR-2 : les
+  états de mouvement et le tir continu sont deux canaux du distributeur). Suite : lot 2.4
+  (récupération ancrée mutualisée), que la fusion de la vague 1 débloque.
+- 2026-10-03 : lot 2.1 CLOS (CI verte au niveau job sur la fusion et sur le commit du lot). Lot 2.4
+  ouvert sur la même base (`feat/v75` n'a pas bougé, référence : passe `ri31`) ; décisions 1 à 4
+  écrites au lot avant le code, après la mesure (l'ancrage domine les neuf lecteurs ancrés, la
+  marche des corps est bon marché) et la preuve d'égalité des paramètres sur les vingt films
+  (2.4.2). Lot fait et prouvé (cf. le lot) : un ancrage par film au lieu de neuf, cuisson plus
+  courte de 13 à 16 %, la seule différence publiée étant le compte déclaré de
+  `repli_bande_bipede_comblee`. Partie de 2.4.1 en attente : la marque « récupéré » et le registre
+  (découverte 10, même question que 2.2.2). ADR 0037 amendé (IR-6). Campagne prévenue avant la
+  passe et la mesure, et à leur fin.
+- 2026-10-04 : lot 2.4 CLOS (CI verte au niveau job sur `057c0cffd`, run `37150564223`) ; la
+  question de la marque « récupéré » est posée à l'utilisateur (options : rester hors du registre
+  jusqu'aux lots de comportement de 2.7, qui ordonneront ces lectures après la grammaire — recommandé
+  —, ou les inscrire « devant la lecture » en relevant le cliquet). Ouverture du lot 2.5 sur la même
+  base (`feat/v75` n'a pas bougé, référence : passe `ri24a`), par la mesure.
+- 2026-10-04 : DÉCISION DE L'UTILISATEUR (« option A », réponse à la question du point d'étape) : les
+  lectures heuristiques qui décident devant une lecture de la grammaire restent hors du registre
+  jusqu'à 2.7 ; item 2.7.d ajouté, 2.2.2 et la partie « marque et registre » de 2.4.1 statués `[~]`
+  vers lui (découvertes 8 et 10 closes par la décision). La campagne lance la recuisson du parc
+  local (binaire de `feat/v75`), puis la vague 2 (LU, LS, LP, naissances par la vue A) sur GO de
+  l'utilisateur : elle préviendra avant de toucher un fichier ; les fichiers de 2.5 (créations,
+  pistes, poses) ne sont pas dans sa liste.
+- 2026-10-04 : lot 2.5 fait et prouvé (cf. le lot) : décisions 1 à 4 écrites au lot après la
+  mesure (profil CPU d'une cuisson du BTB et sonde temporaire, retirée) ; pistes en une passe sur
+  l'union des bandes et créations en une passe, mémorisées ; différence nulle contre la passe du
+  lot 2.4 ; références d'équivalence re-figées (le compte déclaré de 2.4 y entre). La mesure de
+  durée du critère 4 attend une machine calme : la vague 2 de la campagne décode par intermittence
+  pendant plusieurs heures et signalera sa fin. Après 2.5, tous les lots restants attendent la
+  campagne (2.7.a et 3.1 : LU ; 2.7.c : LU et LS ; 2.7.b et 2.7.d avec eux ; 3.2 clôt).
+- 2026-10-04 : avant la fusion des lots 2.1 à 2.6 dans `feat/v75`, la liste de livraison relève que
+  la mise en commun de 2.4 et 2.5 n'a pas de garde-rail qui l'empêche de se défaire (règle 6) :
+  ratchet des appelants des primitives de relevé ajouté à 2.5.1 (cf. le lot). Porte locale
+  (`make gate-push`) verte sur `b55533d24` ; le run de CI de `e722585ae` n'avait échoué que sur le
+  test d'empreinte, régénérée par `b55533d24`.
+- 2026-10-04 : FUSION des lots 2.1 à 2.6 dans `feat/v75`, en avance rapide jusqu'au commit qui porte
+  cette entrée, sur accord de l'utilisateur (« Tu as mon accord »). CI verte au niveau job sur
+  `b55533d24` (run `37191934414`) et sur `1b94fad1b` (run `37193642578`) ; `make gate-push` vert sur
+  `b55533d24`, le commit suivant n'ajoute qu'un test, passé avec `go vet` et `golangci-lint` du
+  paquet. La campagne a été prévenue avant (son intégrateur ne démarre pas avant plusieurs heures) et
+  le sera après ; sa branche `feat/rejeu-vies-bots` (schéma 78) se reprendra sur cette tête : si elle
+  change les digests, les références d'équivalence se régénèrent sur la tête fusionnée (les deux
+  changements s'additionnent, aucun côté n'est juste seul). Restent ouverts : le
+  critère 4 de 2.5 (machine calme), puis 2.7, 3.1 et 3.2 (attente de LU et LS).

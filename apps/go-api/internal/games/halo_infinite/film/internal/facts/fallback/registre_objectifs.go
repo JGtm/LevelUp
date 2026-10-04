@@ -9,8 +9,9 @@ package fallback
 // l'allowlist doit se VIDER au pas 5 de M2). Les replis d'`objectives` sont donc DÉCLARÉS
 // ici et leur compteur n'est pas câblé depuis ce paquet. DEPUIS LE LOT J8.7 (2026-09-27, décision 1
 // du superviseur), ils se comptent EN DONNÉES dans ce que le paquet rend déjà — le balayage du
-// statborg et le résolveur d'identité par manche (`objectives.ComptesDesReplis`) — et la table de
-// `replay` les verse ([siteDeVersement]). Celui qui se déclenche à la CONSULTATION
+// statborg (lu par `grammar/signaux` depuis le lot 2.6 de la représentation intermédiaire, ses
+// comptes portés par `objectives`) et le résolveur d'identité par manche
+// (`objectives.ComptesDesReplis`) — et la table de `replay` les verse ([siteDeVersement]). Celui qui se déclenche à la CONSULTATION
 // (`repli_emission_hors_domaine_jetee`) se compte depuis le lot J8.7-bis (2026-09-28) par ÉVÉNEMENT
 // DISTINCT, dans l enregistreur partagé du document
 // (`objectives.ReplisALaConsultation`), versé par la même table.
@@ -18,6 +19,9 @@ package fallback
 const (
 	pkgObjectiveEvents = "internal/games/halo_infinite/film/internal/facts/objectives/"
 	pkgReplaybuild     = "internal/replaybuild/"
+	// pkgSignaux : la lecture du statborg, descendue de `objectives` dans la grammaire au lot 2.6 de
+	// la representation intermediaire ; ses deux replis s y decident, `objectives` les porte.
+	pkgSignaux = "internal/games/halo_infinite/film/internal/grammar/signaux/"
 )
 
 var registreObjectifsEtConstruction = []Repli{
@@ -27,8 +31,8 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "en-tete non reconnu, aucun composant decode, ou compteur hors domaine : l'enregistrement est abandonne par un `continue` muet",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "c.EnregistrementsAbandonnes += abandonnes"}, {Fichier: pkgReplaybuild + "matchfacts.go", Ancre: "sb.Replis.Plus(pont.Identite().ComptesDesReplis())"}, siteDeVersement("NomEnregistrementStatborgAbandonne"), {
-			Fichier: pkgObjectiveEvents + "statborg.go",
+		Sites: []Site{{Fichier: pkgSignaux + "statborg.go", Ancre: "c.EnregistrementsAbandonnes += abandonnes"}, {Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "EnregistrementsAbandonnes: l.EnregistrementsAbandonnes,"}, {Fichier: pkgReplaybuild + "matchfacts.go", Ancre: "sb.Replis.Plus(pont.Identite().ComptesDesReplis())"}, siteDeVersement("NomEnregistrementStatborgAbandonne"), {
+			Fichier: pkgSignaux + "statborg.go",
 			Ancre:   "if len(comps) == 0 || !statCountersInDomain(comps) {",
 		}},
 		DatePose:        dateAudit0E,
@@ -42,8 +46,8 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "un composant non decodable arrete la boucle : les suivants du MEME enregistrement sont perdus sans trace",
 		Condition: CondLectureNonPortee,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "return out, h1, true"}, {Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "c.ComposantsArretes += arretes"}, siteDeVersement("NomComposantsStatborgArretes"), {
-			Fichier: pkgObjectiveEvents + "statborg.go",
+		Sites: []Site{{Fichier: pkgSignaux + "statborg.go", Ancre: "return out, h1, true"}, {Fichier: pkgSignaux + "statborg.go", Ancre: "c.ComposantsArretes += arretes"}, {Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "ComposantsArretes:         l.ComposantsArretes,"}, siteDeVersement("NomComposantsStatborgArretes"), {
+			Fichier: pkgSignaux + "statborg.go",
 			Ancre:   "v, w, ok := decodeStatComponent(pay, q)",
 		}},
 		DatePose:        dateAudit0E,

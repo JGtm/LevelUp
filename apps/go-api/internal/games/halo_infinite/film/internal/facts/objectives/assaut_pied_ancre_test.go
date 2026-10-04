@@ -331,7 +331,7 @@ type paBloc struct {
 }
 
 // paBlocs balaie le pied par MARQUEURS DE FIN, pas par candidats XUID, AU BIT : le pied est un
-// flux bit-packe (la production balaie au bit, `decodeTh10Block`), et une premiere version
+// flux bit-packe (la production balaie au bit, `signaux.decodeTh10Block`), et une premiere version
 // alignee sur l'octet sous-comptait d'un facteur ~8. Dedoublonnage par la position de bit du
 // marqueur : un bloc = un compte.
 //

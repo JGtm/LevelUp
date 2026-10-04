@@ -61,8 +61,7 @@ package grammar
 // manquante ne peut que faire échouer une fermeture (moins de preuves), jamais en fabriquer une.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -85,10 +84,8 @@ func (c *FilmContext) PreuveDImageCle() *PreuveDImageCle {
 	}
 	bal := ProfilDeBalayageParDefaut()
 	bal.Grammaire.ControleDeCorruption = c.controleDeCorruptionDuFilm()
-	if format, ok := FilmFormatVersion(c.Film()); ok {
-		if w, ok := profile.MPPPourFormat(format); ok && w.Valid() {
-			bal.MPP = w
-		}
+	if mpp := c.EnTete().MPP; mpp.Provenance != lecture.ProvenanceNonRenseignee {
+		bal.MPP = mpp.Valeur
 	}
 	return &PreuveDImageCle{reg: reg, ctx: ContexteDeLecture{Profil: bal}}
 }

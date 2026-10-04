@@ -66,8 +66,8 @@ func TestLecteursDeReferences_PayloadTronqueRefuseLEvenement(t *testing.T) {
 	for nom, pay := range payloadsDEvenementTronques() {
 		var vehiculeOK, spawnOK bool
 		if p := sansPanique(func() {
-			_, vehiculeOK = decodeVehicleEvent(pay, 0, NewSlotBand(nil))
-			_, _, spawnOK = decodeEquipmentSpawnEvent(pay)
+			_, vehiculeOK = decodeVehicleEventDuPayload(pay, 0, NewSlotBand(nil))
+			_, _, spawnOK = decodeEquipmentSpawnEvent(pay, teteDuPayload(pay))
 		}); p != nil {
 			t.Fatalf("%s : panique %v", nom, p)
 		}

@@ -109,7 +109,7 @@ func TestDecodeTranslocHead(t *testing.T) {
 		t.Fatalf("premier octet fabriqué %#x, attendu %#x — la trame d'essai contredit la forme"+
 			" mesurée du record", pay[0], translocFamilyByte)
 	}
-	ev, ok := decodeTranslocHead(pay, 42_000, nil)
+	ev, ok := decodeTranslocHead(pay, 42_000, nil, teteDuPayload(pay))
 	if !ok || ev.Slot != 535 || ev.TimestampUS != 42_000 {
 		t.Fatalf("décodage = %+v (ok=%v), attendu slot 535 (index 23 + base 512) @42000us", ev, ok)
 	}
@@ -122,21 +122,21 @@ func TestDecodeTranslocHeadRefuse(t *testing.T) {
 	t.Run("type voisin", func(t *testing.T) {
 		pay := translocPacket(23)
 		pay[1] &^= 0x80 // le bit de poids faible du type : 117 -> 116
-		if _, ok := decodeTranslocHead(pay, 0, nil); ok {
+		if _, ok := decodeTranslocHead(pay, 0, nil, teteDuPayload(pay)); ok {
 			t.Fatal("un type 116 a été lu comme une téléportation")
 		}
 	})
 	t.Run("liste vide", func(t *testing.T) {
 		pay := translocPacket(23)
 		pay[0] &^= 0x40 // bit de présence à 0
-		if _, ok := decodeTranslocHead(pay, 0, nil); ok {
+		if _, ok := decodeTranslocHead(pay, 0, nil, teteDuPayload(pay)); ok {
 			t.Fatal("une liste vide a rendu un événement")
 		}
 	})
 	t.Run("unite non designee", func(t *testing.T) {
 		pay := translocPacket(23)
 		pay[1] &^= 0x40 // porte de ref0 à 0
-		if _, ok := decodeTranslocHead(pay, 0, nil); ok {
+		if _, ok := decodeTranslocHead(pay, 0, nil, teteDuPayload(pay)); ok {
 			t.Fatal("un événement sans référence d'unité a rendu un slot — un slot ne se devine pas")
 		}
 	})
@@ -147,7 +147,7 @@ func TestDecodeTranslocHeadRefuse(t *testing.T) {
 func TestDecodeTranslocJump(t *testing.T) {
 	e := translocTestEntry()
 	pay := translocJumpPacket(23, e, 0, [3]uint32{100, 200, 300}, [3]uint32{400, 500, 600})
-	ev, ok := decodeTranslocHead(pay, 7_000, &e)
+	ev, ok := decodeTranslocHead(pay, 7_000, &e, teteDuPayload(pay))
 	if !ok || !ev.HasPositions {
 		t.Fatalf("décodage = %+v (ok=%v) : la charge complète devait être lue", ev, ok)
 	}
@@ -179,7 +179,7 @@ func TestDecodeTranslocJumpPorteInversee(t *testing.T) {
 		}
 	}
 	w.put(1, 1)
-	ev, ok := decodeTranslocHead(w.pay, 0, &e)
+	ev, ok := decodeTranslocHead(w.pay, 0, &e, teteDuPayload(w.pay))
 	if !ok || !ev.HasPositions {
 		t.Fatalf("décodage = %+v (ok=%v) : la branche des bornes par défaut devait être lue", ev, ok)
 	}
@@ -199,7 +199,7 @@ func TestDecodeTranslocJumpDegradation(t *testing.T) {
 	e := translocTestEntry()
 	pay := translocJumpPacket(23, e, 0, [3]uint32{100, 200, 300}, [3]uint32{400, 500, 600})
 	t.Run("carte hors catalogue", func(t *testing.T) {
-		ev, ok := decodeTranslocHead(pay, 0, nil)
+		ev, ok := decodeTranslocHead(pay, 0, nil, teteDuPayload(pay))
 		if !ok || ev.Slot != 535 {
 			t.Fatalf("l'événement doit rester lu sans bornes : %+v (ok=%v)", ev, ok)
 		}
@@ -209,14 +209,14 @@ func TestDecodeTranslocJumpDegradation(t *testing.T) {
 	})
 	t.Run("entree sans largeurs", func(t *testing.T) {
 		vide := profile.MapQuantEntry{Min: e.Min, Max: e.Max}
-		if ev, _ := decodeTranslocHead(pay, 0, &vide); ev.HasPositions {
+		if ev, _ := decodeTranslocHead(pay, 0, &vide, teteDuPayload(pay)); ev.HasPositions {
 			t.Fatalf("une entrée sans largeurs d'axe a rendu des positions : %+v", ev)
 		}
 	})
 	t.Run("autre region", func(t *testing.T) {
 		// Le paquet porte l'index de région 1 ; le catalogue décrit la région 0.
 		autre := translocJumpPacket(23, e, 1, [3]uint32{100, 200, 300}, [3]uint32{400, 500, 600})
-		if ev, _ := decodeTranslocHead(autre, 0, &e); ev.HasPositions {
+		if ev, _ := decodeTranslocHead(autre, 0, &e, teteDuPayload(autre)); ev.HasPositions {
 			t.Fatalf("une région étrangère au catalogue a été déquantifiée quand même : %+v", ev)
 		}
 	})
@@ -231,7 +231,7 @@ func TestDecodeTranslocJumpDegradation(t *testing.T) {
 		if len(court) >= len(pay) {
 			t.Fatalf("la coupe calculée (%d octets) ne tronque rien sur %d", len(court), len(pay))
 		}
-		ev, ok := decodeTranslocHead(court, 0, &e)
+		ev, ok := decodeTranslocHead(court, 0, &e, teteDuPayload(court))
 		if !ok || ev.Slot != 535 {
 			t.Fatalf("l'événement doit rester lu sur une charge tronquée : %+v (ok=%v)", ev, ok)
 		}
@@ -255,7 +255,7 @@ func TestDecodeTranslocJumpDegradation(t *testing.T) {
 				w.put(int(e.AxisWidths[ax]), 100)
 			}
 		}
-		ev, ok := decodeTranslocHead(w.pay, 0, &e)
+		ev, ok := decodeTranslocHead(w.pay, 0, &e, teteDuPayload(w.pay))
 		if !ok || ev.Slot != 535 {
 			t.Fatalf("l'événement doit rester lu malgré la ref1 : %+v (ok=%v)", ev, ok)
 		}
@@ -265,7 +265,7 @@ func TestDecodeTranslocJumpDegradation(t *testing.T) {
 	})
 	t.Run("troncature au milieu du depart", func(t *testing.T) {
 		court := pay[:(translocPayloadStartBits+8)/8]
-		if ev, _ := decodeTranslocHead(court, 0, &e); ev.HasPositions {
+		if ev, _ := decodeTranslocHead(court, 0, &e, teteDuPayload(court)); ev.HasPositions {
 			t.Fatalf("un DÉPART tronqué a rendu des positions : %+v", ev)
 		}
 	})

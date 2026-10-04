@@ -1,15 +1,18 @@
 package objectives
 
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
+
 // rosterfit.go — L'EFFECTIF DU MATCH TIENT-IL DANS LE STATBORG ? La garde d'effectif du calque
 // des ACTIONS d'objectif.
 //
 // # Pourquoi cette question se pose
 //
-// Le statborg ne connait que HUIT slots d'entite de joueur — `statSlotMin` a `statSlotMax`,
-// pairs, soit 10, 12, ... 24 (cf. l'en-tete des constantes de `statborg.go`). C'est une
-// contrainte de FORMAT, pas un reglage : au-dela, le film n'a plus de place pour dire de qui il
-// parle. Sur un match a plus de huit joueurs, les compteurs lus sur ces huit slots ne sont pas
-// « les huit premiers joueurs » — ils ne correspondent a personne de facon reproductible.
+// Le statborg ne connait que HUIT slots d'entite de joueur — les slots pairs au-dela de
+// `signaux.StatborgSlotEquipeMax` jusqu'a `signaux.StatborgSlotMax`, soit 10, 12, ... 24 (cf. les
+// constantes de `grammar/signaux/statborg.go`). C'est une contrainte de FORMAT, pas un reglage : au-dela,
+// le film n'a plus de place pour dire de qui il parle. Sur un match a plus de huit joueurs, les
+// compteurs lus sur ces huit slots ne sont pas « les huit premiers joueurs » — ils ne
+// correspondent a personne de facon reproductible.
 //
 // # Ce que ca coutait, mesure
 //
@@ -38,11 +41,11 @@ package objectives
 // peut pas porter l'effectif, et refuse de publier sur cette base.
 
 // StatPlayerSlots est le nombre de slots d'entite de JOUEUR que le statborg peut porter : les
-// slots pairs de `statTeamSlotMax` exclu a `statSlotMax` inclus.
+// slots pairs de [signaux.StatborgSlotEquipeMax] exclu a [signaux.StatborgSlotMax] inclus.
 //
 // DERIVE DES CONSTANTES DE FORMAT, jamais ecrit en dur : si la bande de slots change, ce compte
 // change avec elle.
-const StatPlayerSlots = (statSlotMax - statTeamSlotMax) / 2
+const StatPlayerSlots = (signaux.StatborgSlotMax - signaux.StatborgSlotEquipeMax) / 2
 
 // RosterFitsStatborg dit si `n` SIEGES tiennent dans les slots du statborg.
 //

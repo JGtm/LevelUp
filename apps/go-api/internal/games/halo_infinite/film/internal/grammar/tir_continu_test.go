@@ -3,6 +3,7 @@ package grammar
 import (
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -26,18 +27,19 @@ func tire(index int, tenue bool) EntreeDeControle {
 	return e
 }
 
-// plier joue un scenario dans le collecteur et rend les rafales et les compteurs.
+// plier joue un scenario dans le collecteur, comme la marche le joue — le verdict au crochet pendant
+// la marche de la trame, puis la trame — et rend les rafales et les compteurs.
 func plier(ps []paquetTC) ([]types.ContinuousFireBurst, types.ContinuousFireStats) {
 	var st types.ContinuousFireStats
 	c := nouveauCollecteurTirContinu(&st)
 	for _, p := range ps {
-		c.ouvrir(p.ts)
 		if !p.trou {
 			c.recevoir(LectureVueC{Atteinte: true, Fermee: true, Entrees: p.entrees})
 		}
-		c.fermer(false)
+		c.Trame(&lecture.Paquet{TS: p.ts, Debut: lecture.DebutEnTete})
 	}
-	return c.terminer(), st
+	c.Clore(BilanDeMarche{})
+	return c.out, st
 }
 
 // TestRafaleDePresseALacher : l entree lue qui pose le bit ouvre la rafale, celle qui ne le pose
@@ -159,12 +161,10 @@ func TestLesCausesDesTrousSontVentilees(t *testing.T) {
 		{Atteinte: true, Arret: ArretVueCBlocBC},
 		{Atteinte: true, Arret: ArretVueCDebordement},
 	} {
-		c.ouvrir(uint64(i + 1))
 		c.recevoir(l)
-		c.fermer(false)
+		c.Trame(&lecture.Paquet{TS: uint64(i + 1), Debut: lecture.DebutEnTete})
 	}
-	c.ouvrir(9)
-	c.fermer(true)
+	c.Trame(&lecture.Paquet{TS: 9, Debut: lecture.DebutNonLocalise})
 	if st.Holes != 6 || st.OpenViewB != 1 || st.NotClosing != 1 || st.StopKind != 1 ||
 		st.StopBlockBC != 1 || st.StopOverflow != 1 || st.Unlocated != 1 || st.Reached != 4 {
 		t.Errorf("ventilation %+v", st)

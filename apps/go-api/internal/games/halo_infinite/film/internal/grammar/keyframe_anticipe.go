@@ -59,8 +59,10 @@ package grammar
 
 import (
 	"cmp"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
 	"slices"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
 // cleAnticipee est la cle que `FUN_1406caad8` compare : le slot (30 bits bas de l eid) et sa
@@ -103,9 +105,6 @@ type TableAnticipee struct {
 	// bandes : la BANDE de chaque archetype deja demandee, par la regle de production
 	// ([slotBandExcluding] : la plage comblee, moins les slots vus porter un autre archetype).
 	bandes map[uint32]map[uint32]bool
-	// marche : la marche d image-cle qui LIT les declarations — celle du film (preuve comprise, lot
-	// D-fix) quand la table est construite depuis son contexte, sans preuve sinon.
-	marche MarcheDImageCle
 }
 
 // NouvelleTableAnticipee rend une table vide.
@@ -115,52 +114,64 @@ func NouvelleTableAnticipee() *TableAnticipee {
 		bandes: map[uint32]map[uint32]bool{}}
 }
 
-// ConstruireTableAnticipee lit les images-cles de TOUS les chunks du film et rend la table du
-// film. UNE passe, aucun decodage de trame.
-func ConstruireTableAnticipee(fc *FilmContext) *TableAnticipee {
+// nouvelleTableAnticipeeDe rend une table vide qui signale son premier usage aux diagnostics du
+// contexte `fc`.
+func nouvelleTableAnticipeeDe(fc *FilmContext) *TableAnticipee {
 	t := NouvelleTableAnticipee()
-	if fc == nil {
-		return t
+	if fc != nil {
+		t.diag = fc.Diagnostics()
 	}
-	t.diag = fc.Diagnostics()
-	t.marche = fc.MarcheDImageCle()
-	for _, c := range fc.ChunkNumbers() {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		t.AjouterChunk(c, data, pks)
-	}
-	t.Clore()
 	return t
 }
 
-// AjouterChunk verse dans la table ce que les images-cles d un chunk declarent.
-//
-// La lecture est celle que le monde emprunte deja pour ses liaisons d image-cle
-// ([MarcheDImageCle]) : elle rend `(Slot, TI, Gen)`, c est-a-dire exactement le mot de 32 bits
-// que `FUN_1406caad8` compare, decompose. Aucune seconde lecture d image-cle n est ecrite ici.
-func (t *TableAnticipee) AjouterChunk(num int, data []byte, pks []FilmPacket) {
-	for _, pk := range pks {
-		if pk.Type != PacketTypeKeyframe {
-			continue
-		}
-		for _, r := range t.marche.Records(pk.Payload(data)) {
-			if r.Slot < 0 || r.TI < 0 {
-				continue
-			}
-			//nolint:gosec // Slot, TI et Gen sont bornes par les gardes de kfAnchorFromID
-			cle := cleAnticipee{slot: uint32(r.Slot), tete: uint8(r.Gen & 3)}
-			t.tetes[cle.tete]++
-			t.declarations++
-			//nolint:gosec // TI < kfArchMax par la garde
-			t.entrees[cle] = append(t.entrees[cle], declarationAnticipee{chunk: num, ti: uint32(r.TI)})
-			if t.archetypesDuSlot[cle.slot] == nil {
-				t.archetypesDuSlot[cle.slot] = map[uint32]bool{}
-			}
-			t.archetypesDuSlot[cle.slot][uint32(r.TI)] = true //nolint:gosec // TI borne
-		}
+// ConstruireTableAnticipee lit les images-cles de TOUS les chunks du film et rend la table du
+// film : UNE phase des images-cles, aucun corps parcouru, aucun decodage de trame. La marche des
+// trames, elle, construit la sienne dans la phase des images-cles qu elle joue deja
+// (`marche_trames_preliminaires.go`).
+func ConstruireTableAnticipee(fc *FilmContext) *TableAnticipee {
+	t := nouvelleTableAnticipeeDe(fc)
+	if fc == nil {
+		return t
 	}
+	distribuerLesImagesClesSeules(fc, []Canal{canalDeLaTableAnticipee{t: t}})
+	return t
+}
+
+// canalDeLaTableAnticipee verse chaque image-cle de la phase dans la table, et la clot avec la
+// marche.
+type canalDeLaTableAnticipee struct{ t *TableAnticipee }
+
+func (canalDeLaTableAnticipee) Interets() []Interet { return nil }
+
+func (c canalDeLaTableAnticipee) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
+	c.t.ajouterImageCle(p)
+}
+
+func (c canalDeLaTableAnticipee) Clore(BilanDeMarche) { c.t.Clore() }
+
+// ajouterImageCle verse dans la table ce que l image-cle `p` declare.
+//
+// La lecture est celle que le monde emprunte deja pour ses liaisons d image-cle : la marche
+// d ancres du film ([MarcheDImageCle]), dont chaque record porte `(slot, tete, archetype)`,
+// c est-a-dire exactement le mot de 32 bits que `FUN_1406caad8` compare, decompose. Aucune seconde
+// lecture d image-cle n est ecrite ici.
+func (t *TableAnticipee) ajouterImageCle(p *lecture.Paquet) {
+	for _, r := range p.Records {
+		t.declarer(p.Chunk, r.Vie.Slot, uint8(r.Vie.Gen&3), uint32(r.TI)) //nolint:gosec // tete sur deux bits, archetype d une ancre
+	}
+}
+
+// declarer verse UNE declaration : l archetype `ti` que l image-cle du chunk `chunk` donne a la cle
+// `(slot, tete)`.
+func (t *TableAnticipee) declarer(chunk int, slot uint32, tete uint8, ti uint32) {
+	cle := cleAnticipee{slot: slot, tete: tete}
+	t.tetes[cle.tete]++
+	t.declarations++
+	t.entrees[cle] = append(t.entrees[cle], declarationAnticipee{chunk: chunk, ti: ti})
+	if t.archetypesDuSlot[cle.slot] == nil {
+		t.archetypesDuSlot[cle.slot] = map[uint32]bool{}
+	}
+	t.archetypesDuSlot[cle.slot][ti] = true
 }
 
 // Clore ordonne les declarations de chaque cle par chunk et compte les conflits. A appeler une

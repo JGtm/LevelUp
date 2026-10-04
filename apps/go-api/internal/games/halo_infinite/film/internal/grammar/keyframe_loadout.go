@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -84,50 +85,53 @@ type KeyframeWalkCoverage struct {
 }
 
 // ScanKeyframeLoadoutsMarche est [ScanKeyframeLoadouts] qui rend AUSSI la couverture de la
-// marche d'image-clé du film. C'est la forme de la cuisson : ce balayage marche chaque payload
-// d'image-clé du film exactement une fois, il est donc le bon endroit pour compter. Il marche par
-// la marche DU FILM ([FilmContext.MarcheDImageCle], lot D-fix) : ses réfutations s'y comptent.
+// marche d'image-clé du film. C'est la forme de la cuisson : ce balayage voit chaque paquet
+// d'image-clé du film exactement une fois, il est donc le bon endroit pour compter. Il lit la phase
+// des images-clés ([canalDesArmesPortees]), marchée par la marche DU FILM
+// ([FilmContext.MarcheDImageCle], lot D-fix) : ses réfutations s'y comptent.
 func ScanKeyframeLoadoutsMarche(fc *FilmContext, known map[uint32]bool) (
 	[]types.KeyframeLoadout, KeyframeWalkCoverage, error,
 ) {
-	var cov KeyframeWalkCoverage
-	var out []types.KeyframeLoadout
-	var bipedes []map[uint32]bool // bipèdes ancrés, par image-clé, dans l'ordre du film
-	read := 0
-	marche := fc.MarcheDImageCle()
-	for _, c := range fc.ChunkNumbers() {
-		chunk, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		read++
-		for _, p := range pks {
-			if p.Type != PacketTypeKeyframe {
-				continue
-			}
-			pay := p.Payload(chunk)
-			recs, st := marche.RecordsStats(pay)
-			cov.Ajouter(st)
-			bipedes = append(bipedes, bipedesAncres(recs))
-			for _, l := range keyframeLoadoutsDe(pay, recs, known) {
-				l.TimestampUS, l.Chunk, l.PacketIndex = p.TimestampUS, c, p.Index
-				out = append(out, l)
-			}
-		}
+	c := &canalDesArmesPortees{known: known}
+	distribuerLesImagesClesSeules(fc, []Canal{c})
+	if c.lus == 0 {
+		return nil, c.cov, ErrNoReadableFilmChunk
 	}
-	if read == 0 {
-		return nil, cov, ErrNoReadableFilmChunk
-	}
-	cov.BipedesAbsentsEncadres = bipedesAbsentsEncadres(bipedes)
-	return out, cov, nil
+	c.cov.BipedesAbsentsEncadres = bipedesAbsentsEncadres(c.bipedes)
+	return c.out, c.cov, nil
 }
 
+// canalDesArmesPortees lit, dans la phase des images-clés, les armes portées par chaque bipède et
+// la couverture de la marche d'ancres.
+type canalDesArmesPortees struct {
+	known map[uint32]bool
+	out   []types.KeyframeLoadout
+	cov   KeyframeWalkCoverage
+	// bipedes : les bipèdes ancrés, par image-clé, dans l'ordre du film.
+	bipedes []map[uint32]bool
+	// lus : les chunks que la phase a pu lire.
+	lus int
+}
+
+func (*canalDesArmesPortees) Interets() []Interet { return nil }
+
+func (c *canalDesArmesPortees) ImageCle(p *lecture.Paquet, m *MarcheDistribuee) {
+	c.cov.Ajouter(m.Ancres.Stats)
+	c.bipedes = append(c.bipedes, bipedesAncres(p.Records))
+	for _, l := range keyframeLoadoutsDe(p.Payload, p.Records, c.known) {
+		l.TimestampUS, l.Chunk, l.PacketIndex = p.TS, p.Chunk, p.Index
+		c.out = append(c.out, l)
+	}
+}
+
+func (c *canalDesArmesPortees) Clore(b BilanDeMarche) { c.lus = b.ChunksLus }
+
 // bipedesAncres rend l'ensemble des identifiants (`génération<<30|slot`) des bipèdes ancrés.
-func bipedesAncres(recs []KeyframeRec) map[uint32]bool {
+func bipedesAncres(recs []lecture.Record) map[uint32]bool {
 	out := map[uint32]bool{}
 	for _, r := range recs {
-		if r.TI == keyframeBipedTI {
-			out[uint32(r.Gen<<30|r.Slot)] = true //nolint:gosec // gen<4, slot<8192 : borné par le walker
+		if int(r.TI) == keyframeBipedTI {
+			out[r.Vie.Gen<<30|r.Vie.Slot] = true
 		}
 	}
 	return out
@@ -149,22 +153,22 @@ func bipedesAbsentsEncadres(parImageCle []map[uint32]bool) int {
 
 // keyframeLoadoutsDe balaye un payload de keyframe, sur ses records DÉJÀ marchés, et rend un
 // loadout par record biped porteur d'au moins une famille connue. PUR (aucune I/O).
-func keyframeLoadoutsDe(pay []byte, recs []KeyframeRec, known map[uint32]bool) []types.KeyframeLoadout {
+func keyframeLoadoutsDe(pay []byte, recs []lecture.Record, known map[uint32]bool) []types.KeyframeLoadout {
 	rf := familiesByRecordRecs(pay, recs, known, keyframeBipedTI)
 	if len(rf) == 0 {
 		return nil
 	}
 	out := make([]types.KeyframeLoadout, 0, len(rf))
 	for _, r := range rf {
-		out = append(out, types.KeyframeLoadout{Slot: uint32(r.Rec.Slot), Families: r.Families})
+		out = append(out, types.KeyframeLoadout{Slot: r.Rec.Vie.Slot, Families: r.Families})
 	}
 	return out
 }
 
 // recordFamilies porte les familles d'arme trouvées DANS un record de keyframe, avec le record
-// qui les contient (son archétype, son slot, sa position en bits).
+// qui les contient (son archétype, son identité, sa position en bits).
 type recordFamilies struct {
-	Rec      KeyframeRec
+	Rec      lecture.Record
 	Families []uint32
 }
 
@@ -173,28 +177,39 @@ type recordFamilies struct {
 // PREMIÈRE occurrence de famille dans chaque record ; les alias ne sont PAS repliés (cf.
 // types.KeyframeLoadout.Families). PUR (aucune I/O).
 //
-// C'est le cœur partagé des deux lectures d'armes du keyframe : les armes PORTÉES
-// (wantTI = keyframeBipedTI, cf. keyframeLoadouts) et les armes AU SOL
+// C'est la forme INSTRUMENT (marche sans preuve) du cœur partagé des lectures d'armes du keyframe :
+// les armes PORTÉES (wantTI = keyframeBipedTI, cf. keyframeLoadouts) et les armes AU SOL
 // (wantTI = keyframeGroundWeaponTI, cf. keyframe_ground_weapons.go). Le balayage bit à bit
 // est identique — seul l'archétype retenu change.
 func familiesByRecord(pay []byte, known map[uint32]bool, wantTI int) []recordFamilies {
-	return familiesByRecordRecs(pay, WalkKeyframeWorld(pay), known, wantTI)
+	return familiesByRecordRecs(pay, recordsDIdentite(WalkKeyframeWorld(pay)), known, wantTI)
+}
+
+// recordsDIdentite rend l'identité de records d'image-clé marchés hors de la phase des images-clés
+// (instruments) : ancre, archétype, slot et tête, sans corps.
+func recordsDIdentite(recs []KeyframeRec) []lecture.Record {
+	out := make([]lecture.Record, len(recs))
+	for i, r := range recs {
+		out[i] = lecture.Record{Genre: lecture.GenreEtatComplet, TI: int16(r.TI), Desync: lecture.CorpsNonParcouru, //nolint:gosec // archetype sur six bits
+			Vie: types.LifeKey{Slot: uint32(r.Slot), Gen: uint32(r.Gen)}, Debut: uint32(r.Bit)} //nolint:gosec // bornes par le walker
+	}
+	return out
 }
 
 // familiesByRecordRecs est [familiesByRecord] sur des records DÉJÀ marchés (ils sont triés ici,
-// sur une copie : l'appelant garde l'ordre du walker).
-func familiesByRecordRecs(pay []byte, marches []KeyframeRec, known map[uint32]bool, wantTI int) []recordFamilies {
-	recs := append([]KeyframeRec(nil), marches...)
+// sur une copie : l'appelant garde son ordre).
+func familiesByRecordRecs(pay []byte, marches []lecture.Record, known map[uint32]bool, wantTI int) []recordFamilies {
+	recs := append([]lecture.Record(nil), marches...)
 	if len(recs) == 0 {
 		return nil
 	}
 	// L'index de recherche binaire ci-dessous exige des débuts de record CROISSANTS. Le
 	// walker les émet déjà dans cet ordre ; on le garantit ici plutôt que de le supposer.
-	// Tri total (J12.1, DT-9) : Bit unique, la marche avance strictement (ancre suivante >= Bit+64).
-	slices.SortFunc(recs, func(a, b KeyframeRec) int { return cmp.Compare(a.Bit, b.Bit) })
+	// Tri total (J12.1, DT-9) : début unique, la marche avance strictement (ancre suivante >= début+64).
+	slices.SortFunc(recs, func(a, b lecture.Record) int { return cmp.Compare(a.Debut, b.Debut) })
 	starts := make([]int, len(recs))
 	for i, r := range recs {
-		starts[i] = r.Bit
+		starts[i] = int(r.Debut)
 	}
 	byRec := map[int][]uint32{}
 	var order []int
@@ -206,7 +221,7 @@ func familiesByRecordRecs(pay []byte, marches []KeyframeRec, known map[uint32]bo
 			continue
 		}
 		ri := recordContaining(starts, b-31)
-		if ri < 0 || recs[ri].TI != wantTI {
+		if ri < 0 || int(recs[ri].TI) != wantTI {
 			continue
 		}
 		if byRec[ri] == nil {

@@ -1,6 +1,6 @@
 //go:build research
 
-package objectives
+package signaux
 
 // e1911_champ_manche_research_test.go — INSTRUMENT 1.9.11 / D1 : LE `2` EST-IL LU AU MEME
 // DEPLACEMENT QUE LE `1` DES VRAIES MANCHES, OU EST-CE UNE LECTURE QUI DERAPE ?
@@ -43,7 +43,7 @@ package objectives
 //
 //	FILM_CACHE_ROOT=C:/.../data/cache E1911_CHAMP_FILMS=fb1a1a72,72b0a25e,64e8adfa \
 //	E1911_CHAMP_DESIG=2,2,1 \
-//	  go test -tags research ./internal/games/halo_infinite/film/internal/facts/objectives/ -run E1911Champ -v
+//	  go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ -run E1911Champ -v
 
 import (
 	"fmt"
@@ -53,6 +53,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -65,6 +66,9 @@ const (
 	// e1911ChampMaxLignes borne le detail imprime par population (le releve reste lisible ; les
 	// comptes, eux, portent sur la population entiere).
 	e1911ChampMaxLignes = 12
+	// e1911CacheEnv porte la racine du cache film (`film_manifests/<id>.json` +
+	// `film_chunks/<id>/chunk_NN.bin`), la convention des instruments de la couche des faits.
+	e1911CacheEnv = "FILM_CACHE_ROOT"
 )
 
 // e1911Site est un enregistrement retenu, avec tout ce qui permet de le situer a l'octet.
@@ -95,12 +99,12 @@ func (s e1911Site) Forme() string {
 
 // TestE1911ChampDeManche imprime le releve, film par film.
 func TestE1911ChampDeManche(t *testing.T) {
-	if cacheRoot() == "" {
-		t.Skipf("%s absent : instrument saute", filmCacheEnv)
+	if os.Getenv(e1911CacheEnv) == "" {
+		t.Skipf("%s absent : instrument saute", e1911CacheEnv)
 	}
 	films, desig := e1911ChampEntree(t)
 	for i, id := range films {
-		film, ok := newDiskFilm(t, id)
+		film, ok := e1911FilmDuCache(t, id)
 		if !ok {
 			t.Logf("%s : ECARTE (absent du cache)", id)
 			continue
@@ -396,4 +400,16 @@ func e1911ImprimeLignes(t *testing.T, pop []e1911Site) {
 			s.Chunk, s.Pidx, s.Bit, s.Deplacement(), s.Forme(), s.H1, s.H2,
 			s.Avant, s.Champ, s.Apres, s.Chevauche)
 	}
+}
+
+// e1911FilmDuCache charge UN film du cache disque par `filmcache`, la seule porte du cache, dans la
+// forme de la production : un `*source.Film` deja decompresse et decoupe, manifeste compris (la
+// lecture ne balaie que les chunks qu il decrit). (nil, false) : film absent.
+func e1911FilmDuCache(t *testing.T, id string) (*source.Film, bool) {
+	t.Helper()
+	film, ok, err := filmcache.LoadFilm(os.Getenv(e1911CacheEnv), id)
+	if err != nil {
+		t.Fatalf("film %s : chargement : %v", id, err)
+	}
+	return film, ok
 }

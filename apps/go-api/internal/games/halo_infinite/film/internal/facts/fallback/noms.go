@@ -218,12 +218,13 @@ const (
 	NomLargeurMotDePoigneeInferee Nom = "repli_largeur_mot_de_poignee_inferee"
 
 	// LES REPLIS D `objectives` (sous-lot objectives du lot J8.7, 2026-09-27) : comptes en DONNEES
-	// par le balayage du statborg et par le resolveur d identite par manche
-	// (`objectives.ComptesDesReplis`), verses par la table de `replay` a l assemblage.
+	// par le balayage du statborg (lu par `grammar/signaux`, porte par `objectives`) et par le
+	// resolveur d identite par manche (`objectives.ComptesDesReplis`), verses par la table de
+	// `replay` a l assemblage.
 
-	// NomEnregistrementStatborgAbandonne : `objectives/statborg.go`.
+	// NomEnregistrementStatborgAbandonne : `grammar/signaux/statborg.go`, porte par `objectives/statborg.go`.
 	NomEnregistrementStatborgAbandonne Nom = "repli_enregistrement_statborg_abandonne"
-	// NomComposantsStatborgArretes : `objectives/statborg.go`.
+	// NomComposantsStatborgArretes : `grammar/signaux/statborg.go`, porte par `objectives/statborg.go`.
 	NomComposantsStatborgArretes Nom = "repli_composants_statborg_arretes"
 	// NomTableIdentiteVide : `objectives/slotidentity_deaths.go`.
 	NomTableIdentiteVide Nom = "repli_table_identite_vide"

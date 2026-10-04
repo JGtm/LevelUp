@@ -137,8 +137,8 @@ func writeMeta(m *measureRows, short string, or oracleMatch, film *source.Film, 
 // « chaine » du controle D1, qui balaie les memes paquets.
 func framePacketCount(film *source.Film) int {
 	n := 0
-	for _, c := range manifestChunks(film) {
-		n += len(framesOf(film, c.pos))
+	for _, c := range chunksDuManifeste(film) {
+		n += len(tramesDe(film, c.pos))
 	}
 	return n
 }
@@ -148,7 +148,7 @@ func framePacketCount(film *source.Film) int {
 //
 // # Un slot d'equipe qui n'emet RIEN vaut zero, et ce n'est pas une devinette
 //
-// Le protocole ne reemet un composant que lorsqu'il CHANGE (statborg.go, en-tete). Une equipe
+// Le protocole ne reemet un composant que lorsqu'il CHANGE (`grammar/signaux/statborg.go`, en-tete). Une equipe
 // qui ne marque pas de toute la partie n'emet donc jamais le score de mode : son absence EST
 // son score. Mesure du 2026-08-17 : en CTF `530820e5` (oracle 3-0), le slot 6 n'a aucune
 // emission et le slot 8 en a trois, une par capture. Le compte de slots emetteurs est publie

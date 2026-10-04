@@ -56,6 +56,7 @@ import (
 	"cmp"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -111,34 +112,36 @@ func ScanFilmTranslocatorTeleports(dir string, entry *profile.MapQuantEntry) []t
 	if err != nil {
 		return nil // meme degradation silencieuse qu'un chunk illisible : couverture moindre
 	}
-	return ScanTranslocatorTeleports(film, entry)
+	return ScanTranslocatorTeleports(NewFilmContext(film), entry)
 }
 
-// ScanTranslocatorTeleports lit les téléportations du translocateur d'un film DEJA CHARGE,
-// triées par instant. Cf. [ScanFilmTranslocatorTeleports] pour la doctrine du balayage.
-func ScanTranslocatorTeleports(film *source.Film, entry *profile.MapQuantEntry) []types.TranslocatorTeleport {
-	var out []types.TranslocatorTeleport
-	for _, c := range FilmChunkNumbers(film) {
-		chunk, pks, ok := FilmChunkAt(film, c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta || pk.Size < 2 {
-				continue
-			}
-			pay := pk.Payload(chunk)
-			if pay[0] != translocFamilyByte {
-				continue
-			}
-			if ev, ok := decodeTranslocHead(pay, pk.TimestampUS, entry); ok {
-				out = append(out, ev)
-			}
-		}
-	}
-	trierTeleportations(out)
-	return out
+// ScanTranslocatorTeleports lit les téléportations du translocateur d'un film DEJA CHARGE, dans la
+// passe des têtes ([canalDesTeleportations]), triées par instant. Cf.
+// [ScanFilmTranslocatorTeleports] pour la doctrine du balayage.
+func ScanTranslocatorTeleports(fc *FilmContext, entry *profile.MapQuantEntry) []types.TranslocatorTeleport {
+	c := &canalDesTeleportations{entry: entry}
+	distribuerLesTetesSeules(fc, []Canal{c})
+	return c.out
 }
+
+// canalDesTeleportations lit l'événement de translocation de tête des trames de la famille.
+type canalDesTeleportations struct {
+	entry *profile.MapQuantEntry
+	out   []types.TranslocatorTeleport
+}
+
+func (*canalDesTeleportations) Interets() []Interet { return nil }
+
+func (c *canalDesTeleportations) Tete(p *lecture.Paquet) {
+	if len(p.Payload) < 2 || p.Payload[0] != translocFamilyByte {
+		return
+	}
+	if ev, ok := decodeTranslocHead(p.Payload, p.TS, c.entry, teteDe(p)); ok {
+		c.out = append(c.out, ev)
+	}
+}
+
+func (c *canalDesTeleportations) Clore(BilanDeMarche) { trierTeleportations(c.out) }
 
 // trierTeleportations range les teleportations dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9) :
 // instant, puis slot — deux paquets de la famille peuvent porter le meme horodatage —, les ex
@@ -149,20 +152,22 @@ func trierTeleportations(out []types.TranslocatorTeleport) {
 	})
 }
 
-// decodeTranslocHead lit l'événement de tête d'un paquet de la famille et rend la
+// decodeTranslocHead lit l'événement de tête d'un paquet de la famille, de tête `t`, et rend la
 // téléportation. ok=false si la tête n'est pas un type 117 ou si l'unité n'est pas désignée
 // (porte de ref0 à 0 — jamais observé, mais un slot non transmis ne se devine pas). La
 // CHARGE, elle, ne conditionne rien : elle échoue en positions absentes, pas en événement
 // perdu (l'instant et le slot sont déjà lus).
-func decodeTranslocHead(pay []byte, tsUS uint64, entry *profile.MapQuantEntry) (types.TranslocatorTeleport, bool) {
-	br := LecteurSur(pay)
-	h := readPacketHead(br) // [config][continuation][R(7) type] — event_list.go
-	if !h.More {
+func decodeTranslocHead(pay []byte, tsUS uint64, entry *profile.MapQuantEntry, t teteDeTrame) (
+	types.TranslocatorTeleport, bool,
+) {
+	if !t.liste {
 		return types.TranslocatorTeleport{}, false // liste vide : pas d'événement en tête
 	}
-	if h.Type != translocEventType {
+	if t.genre != translocEventType {
 		return types.TranslocatorTeleport{}, false
 	}
+	br := LecteurSur(pay)
+	br.SetBitPos(eventPayloadStartBit) // le corps suit la tête (event_list.go)
 	if !br.ReadBit() {
 		return types.TranslocatorTeleport{}, false // ref0 absente : pas d'unité désignée
 	}

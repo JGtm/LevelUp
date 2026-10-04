@@ -80,6 +80,7 @@ func FuzzFilmRecordReaders(f *testing.F) {
 	for s := uint32(1400); s < 1500; s++ {
 		band[s] = true
 	}
+	tousLesSlots := bandeDeTousLesSlots()
 	f.Fuzz(func(t *testing.T, payload []byte) {
 		if len(payload) > fuzzMaxSeed*8 {
 			t.Skip("entree hors du domaine borne du harnais")
@@ -104,11 +105,17 @@ func FuzzFilmRecordReaders(f *testing.F) {
 		_, _ = decodeFireEvent(payload)
 		// Les lecteurs de REFERENCES D EVENEMENT (lot J2.9, constats GA1-1/GB-2) : appeles comme le
 		// font `ScanVehicleEvents` et `ScanEquipmentSpawnEvents`, sans autre garde que la leur.
-		_, _ = decodeVehicleEvent(payload, 0, NewSlotBand(nil))
-		_, _, _ = decodeEquipmentSpawnEvent(payload)
+		_, _ = decodeVehicleEventDuPayload(payload, 0, NewSlotBand(nil))
+		_, _, _ = decodeEquipmentSpawnEvent(payload, teteDuPayload(payload))
 		// La marche des deux phases de la representation intermediaire, et les bornes de ce
 		// qu elle range (`marche_fuzz_test.go`).
 		marcherUnPayloadQuelconque(t, payload)
+		// La recuperation ancree : ancrage, rangement compact et relecture, lecture des positions
+		// (`ancres_bipedes_fuzz_test.go`).
+		recupererUnPayloadQuelconque(t, payload, tousLesSlots)
+		// Les objets du monde en une passe : pistes sur l union des bandes, creations de plusieurs
+		// archetypes (`objets_du_monde_une_passe_test.go`).
+		releverLesObjetsDUnPayloadQuelconque(payload, band, &wr)
 	})
 }
 

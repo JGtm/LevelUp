@@ -98,24 +98,17 @@ type comparaisonAuTypeTempsFortsToleree struct {
 	retrait string
 }
 
-// comparaisonsAuTypeTempsFortsTolerees — LES TROIS SITES MESURES LE 2026-09-23, hors du
-// perimetre ferme du lot L3 (qui a migre les siens : `haloclient`, `replay.ScanDeaths`). Tous
-// trois SELECTIONNENT le morceau des temps forts ; aucun ne juge la finalisation. Critere de
-// retrait commun : le site passe par `finalise.EstTempsForts`, et son entree part dans le meme
-// commit.
+// comparaisonsAuTypeTempsFortsTolerees — LES SITES MESURES LE 2026-09-23, hors du perimetre ferme
+// du lot L3 (qui a migre les siens : `haloclient`, `replay.ScanDeaths`). Tous SELECTIONNENT le
+// morceau des temps forts ; aucun ne juge la finalisation. Critere de retrait commun : le site
+// passe par `finalise.EstTempsForts`, et son entree part dans le meme commit — celle de
+// `objectives/extract.go` est partie au lot 2.6 de la representation intermediaire, avec la
+// selection du pied descendue dans `grammar/signaux`.
 var comparaisonsAuTypeTempsFortsTolerees = []comparaisonAuTypeTempsFortsToleree{
 	{
 		fichier: "cmd/levelup/cmd_backfill_medailles_feed.go", sites: 1, pose: "2026-09-23",
 		retrait: "remplacer `chunk.ChunkType != haloclient.FilmChunkTypeHighlightEvents` par " +
 			"`!finalise.EstTempsForts(chunk.ChunkType)`",
-	},
-	{
-		fichier: "internal/games/halo_infinite/film/internal/facts/objectives/extract.go",
-		sites:   1,
-		pose:    "2026-09-23",
-		retrait: "remplacer `chunkTypePied` par `finalise.EstTempsForts` — geste de la couche " +
-			"`facts` : l empreinte de `objectives.Rev` bouge, a recopier a revision constante avec une " +
-			"note ecrite (sortie identique)",
 	},
 	{
 		fichier: "internal/testfixtures/jgtm_full_match.go", sites: 1, pose: "2026-09-23",

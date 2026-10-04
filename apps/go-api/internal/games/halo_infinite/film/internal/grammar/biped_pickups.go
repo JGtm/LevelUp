@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -127,54 +128,54 @@ func ScanBipedPickups(fc *FilmContext) ([]types.BipedPickup, types.BipedPickupSt
 	// La bande de bipèdes sert de SENTINELLE : un slot reconstruit hors bande dénonce une
 	// largeur d'index inadaptée à ce film. Son absence n'empêche pas de décoder, elle
 	// désactive seulement le rejet — et on le dit dans les stats.
-	band := fc.BipedSlots()
-
-	var out []types.BipedPickup
-	for _, c := range chunks {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta || pk.Size < 2 {
-				continue
-			}
-			pay := pk.Payload(data)
-			if pay[0] != bipedPickupPacketByte {
-				continue
-			}
-			st.Packets++
-			p, ok := decodeBipedPickup(pay, &st)
-			if !ok {
-				continue
-			}
-			if band.Count() > 0 && !band.Has(p.Slot) {
-				st.RefusedOffBand++
-				continue
-			}
-			p.TimestampUS, p.Chunk = pk.TimestampUS, c
-			out = append(out, p)
-			st.Published++
-		}
-	}
-	return out, st, nil
+	c := &canalDesRamassages{band: fc.BipedSlots()}
+	distribuerLesTetesSeules(fc, []Canal{c})
+	return c.out, c.st, nil
 }
 
-// decodeBipedPickup consomme l'événement de tête d'un payload 0xC4. Rend (ramassage, ok) ;
-// `ok` est faux dès que la lecture n'est pas celle qu'on attend — on ne publie jamais un
+// canalDesRamassages lit le ramassage natif de tête des trames de la famille 0xC4, dans la passe
+// des têtes.
+type canalDesRamassages struct {
+	band SlotBand
+	out  []types.BipedPickup
+	st   types.BipedPickupStats
+}
+
+func (*canalDesRamassages) Interets() []Interet { return nil }
+
+func (c *canalDesRamassages) Tete(p *lecture.Paquet) {
+	if len(p.Payload) < 2 || p.Payload[0] != bipedPickupPacketByte {
+		return
+	}
+	c.st.Packets++
+	r, ok := decodeBipedPickup(p.Payload, &c.st, teteDe(p))
+	if !ok {
+		return
+	}
+	if c.band.Count() > 0 && !c.band.Has(r.Slot) {
+		c.st.RefusedOffBand++
+		return
+	}
+	r.TimestampUS, r.Chunk = p.TS, p.Chunk
+	c.out = append(c.out, r)
+	c.st.Published++
+}
+
+func (*canalDesRamassages) Clore(BilanDeMarche) {}
+
+// decodeBipedPickup consomme l'événement de tête d'un payload 0xC4, de tête `t`. Rend (ramassage,
+// ok) ; `ok` est faux dès que la lecture n'est pas celle qu'on attend — on ne publie jamais un
 // ramassage deviné.
-func decodeBipedPickup(pay []byte, st *types.BipedPickupStats) (types.BipedPickup, bool) {
-	// LE PRÉAMBULE FAIT 9 BITS : configuration(1) + continuation(1) + type R(7). Il se lit par
-	// `readPacketHead` (event_list.go), le SEUL lecteur du préambule depuis le 2026-09-05
-	// (lot E, item E.3). La justification qui vivait ici — « il se lit en ligne plutôt que par
-	// une constante, celle-ci n'avait aucun lecteur et la CI l'a relevée » — était PÉRIMÉE :
-	// `eventPayloadStartBit` a deux lecteurs depuis le portage des événements véhicule.
-	br := LecteurSur(pay)
-	h := readPacketHead(br)
-	if !h.More { // continuation : un événement suit
+func decodeBipedPickup(pay []byte, st *types.BipedPickupStats, t teteDeTrame) (types.BipedPickup, bool) {
+	// LE PRÉAMBULE FAIT 9 BITS : configuration(1) + continuation(1) + type R(7). La marche le
+	// range dans la vue A de la trame ([rangerLaTete], event_list.go) ; le corps commence au bit
+	// qui le suit, `eventPayloadStartBit`.
+	if !t.liste { // continuation : un événement suit
 		return types.BipedPickup{}, false // liste vide : impossible pour 0xC4, mais on ne le suppose pas
 	}
-	switch typ := h.Type; typ {
+	br := LecteurSur(pay)
+	br.SetBitPos(eventPayloadStartBit)
+	switch typ := t.genre; typ {
 	case bipedPickupType:
 		st.Type9++
 	case bipedBoardVehicleType:

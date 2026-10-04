@@ -39,7 +39,11 @@ package grammar
 // (lecture fausse confirmee), celui du NEW (creation perdue), ou aucun des deux (indecis). Chaque
 // refus recoit son verdict a la PREMIERE image-cle du chunk suivant, avant l oubli et les liaisons.
 
-import "maps"
+import (
+	"maps"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+)
 
 // neufRefuse : un NEW refuse, en attente du verdict de l image-cle suivante.
 type neufRefuse struct {
@@ -83,41 +87,68 @@ type LiaisonDUnChunk struct {
 	Oubliees int
 }
 
-// lierLeChunkAuMonde pose sur le monde ce que les images-cles d un chunk declarent — en
+// declarationDImageCle est ce qu UNE image-cle declare au monde : la chaine de ses records et les
+// candidats que la marche d ancres a ecartes ([MarcheDePayload]), et sa table de datums, lue a
+// position libre ([TableDeDatums] : la recuperation que la liaison [lecture.LiaisonDatum] marque).
+type declarationDImageCle struct {
+	ancres  MarcheDePayload
+	table   map[uint32]uint32
+	ambigus int
+}
+
+// declarerLImageCle lit ce que l image-cle de payload `pay`, de marche d ancres `mp`, declare.
+func declarerLImageCle(pay []byte, mp MarcheDePayload) declarationDImageCle {
+	table, ambigus := TableDeDatums(pay)
+	return declarationDImageCle{ancres: mp, table: table, ambigus: ambigus}
+}
+
+// liaisonDesImagesCles est la liaison des images-cles au monde, LUE dans la phase des images-cles
+// (un preliminaire de la marche des trames, `marche_trames_preliminaires.go`) et POSEE chunk par
+// chunk pendant la marche des trames ([lierLesImagesClesDuChunk]).
+type liaisonDesImagesCles struct {
+	// parChunk : les declarations des images-cles de chaque chunk, dans l ordre du chunk.
+	parChunk map[int][]declarationDImageCle
+}
+
+// recevoir garde ce que l image-cle `p`, de marche d ancres `mp`, declare.
+func (l *liaisonDesImagesCles) recevoir(p *lecture.Paquet, mp MarcheDePayload) {
+	l.parChunk[p.Chunk] = append(l.parChunk[p.Chunk], declarerLImageCle(p.Payload, mp))
+}
+
+// rendre rend les declarations du chunk `c` et les oublie : un chunk se lie une fois.
+func (l *liaisonDesImagesCles) rendre(c int) []declarationDImageCle {
+	d := l.parChunk[c]
+	delete(l.parChunk, c)
+	return d
+}
+
+// lierLesImagesClesDuChunk pose sur le monde ce que les images-cles d un chunk declarent — en
 // commencant par oublier ce qu elles ne portent plus (cf. l en-tete). Les images-cles du chunk
 // se jouent dans l ordre du chunk : la suivante est l etat d un instant plus tardif.
-func lierLeChunkAuMonde(w *World, marche MarcheDImageCle, data []byte, pks []FilmPacket,
-	obs *Observation) LiaisonDUnChunk {
+func lierLesImagesClesDuChunk(w *World, decls []declarationDImageCle, obs *Observation) LiaisonDUnChunk {
 	var out LiaisonDUnChunk
-	premiere := true
-	for _, pk := range pks {
-		if pk.Type != PacketTypeKeyframe {
-			continue
-		}
-		pay := pk.Payload(data)
-		mp := marche.Marcher(pay)
-		table, ambigus := TableDeDatums(pay)
-		out.Ambigus += ambigus
-		portes := make(map[uint32]bool, len(mp.Records)+len(table)+len(mp.Ecartes))
+	for i, d := range decls {
+		mp := d.ancres
+		out.Ambigus += d.ambigus
+		portes := make(map[uint32]bool, len(mp.Records)+len(d.table)+len(mp.Ecartes))
 		for _, r := range mp.Records {
 			portes[uint32(r.Slot)] = true //nolint:gosec // slot borne par le walker d image-cle
 		}
 		for _, r := range mp.Ecartes {
 			portes[uint32(r.Slot)] = true //nolint:gosec // idem
 		}
-		for s := range table {
+		for s := range d.table {
 			portes[s] = true
 		}
-		if premiere {
-			obs.jugerLesNeufsRefuses(archetypesDeclares(mp.Records, table))
-			premiere = false
+		if i == 0 {
+			obs.jugerLesNeufsRefuses(archetypesDeclares(mp.Records, d.table))
 		}
 		out.Oubliees += w.OublierLesSlotsNonPortes(portes)
 		for _, r := range mp.Records {
 			//nolint:gosec // slot, TI et Gen viennent du walker d image-cle, bornes par construction
 			w.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
 		}
-		out.Datums += lierLesDatums(w, table)
+		out.Datums += lierLesDatums(w, d.table)
 	}
 	return out
 }

@@ -46,7 +46,7 @@ package objectives
 // FlagFilmSignals porte les comptes qui fondent le verdict. Ils se publient AVEC lui : un
 // « ce film n'est pas du CTF » sans ses comptes ne se verifie pas.
 type FlagFilmSignals struct {
-	// Bursts : nombre de bursts de capture (cf. [CaptureBurstTimes]).
+	// Bursts : nombre de bursts de capture (cf. `signaux.CaptureBurstTimes`).
 	Bursts int
 	// Captures / Steals / Grabs : les comptes de la table DRAPEAU appliquee au film, quel que
 	// soit son vrai mode. Hors CTF ils n'ont aucun sens — c'est tout l'objet du verdict.
@@ -54,7 +54,7 @@ type FlagFilmSignals struct {
 }
 
 // FlagFilmSignalsFrom compte les signaux a partir de deux lectures deja faites : les instants
-// de burst ([CaptureBurstTimes]) et les evenements nommes de la table DRAPEAU
+// de burst (`signaux.CaptureBurstTimes`) et les evenements nommes de la table DRAPEAU
 // ([NamedEvents] avec [ObjectiveTypeFlag]).
 //
 // Prendre les lectures en ENTREE plutot que la source evite de rebalayer le film : l'appelant

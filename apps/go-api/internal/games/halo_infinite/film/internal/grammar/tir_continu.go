@@ -39,11 +39,18 @@ package grammar
 // pas ne transmet aucune gachette : elle ne pose ni ne lache rien, et ne leve pas l inconnu d un
 // trou. Un bloc PRESENT dont la garde d action est fermee, lui, dit « aucune gachette » : c est un
 // lacher.
+//
+// # UN CANAL DE LA MARCHE DES TRAMES
+//
+// Le collecteur est un [CanalDesTrames] ([Distribuer]) : il prend le verdict de la vue C au crochet
+// de la marche, pendant la marche de la trame, et la trame, rendue apres sa marche, le clot. Il
+// n interprete aucun composant : la vue C n en est pas un.
 
 import (
 	"cmp"
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -71,10 +78,12 @@ type etatBitDeTir struct {
 }
 
 // collecteurTirContinu recoit le verdict de vue C de chaque paquet et plie les entrees en rafales.
+// Sa sortie ([collecteurTirContinu.out]) est triee a la cloture de la marche.
 type collecteurTirContinu struct {
 	st  *types.ContinuousFireStats
 	out []types.ContinuousFireBurst
-	// ts : l instant du paquet en cours ; recu / lecture : son verdict, quand la marche l a publie.
+	// ts : l instant de la trame en cours ; recu / lecture : son verdict, quand la marche l a publie
+	// pendant sa marche — effaces a sa cloture.
 	ts      uint64
 	recu    bool
 	lecture LectureVueC
@@ -90,12 +99,17 @@ func nouveauCollecteurTirContinu(st *types.ContinuousFireStats) *collecteurTirCo
 	return &collecteurTirContinu{st: st, tenus: map[cleBitDeTir]*etatBitDeTir{}}
 }
 
-// ouvrir annonce un paquet delta a l instant `ts`.
-func (c *collecteurTirContinu) ouvrir(ts uint64) {
-	c.ts, c.recu, c.lecture = ts, false, LectureVueC{}
+// Interets : le tir continu n interprete aucun composant.
+func (*collecteurTirContinu) Interets() []Interet { return nil }
+
+// Brancher pose le crochet du verdict de la vue C.
+func (c *collecteurTirContinu) Brancher(obs *Observation, _ *MarcheDistribuee) {
+	obs.VueControleHook = c.recevoir
 }
 
-// recevoir est le crochet de la marche ([Observation.VueControleHook]) : UN verdict par paquet.
+// recevoir est le crochet de la marche ([Observation.VueControleHook]) : UN verdict par trame, que
+// la marche par classes de vue publie pendant la marche de la trame ; une trame qu elle ne marche
+// pas par classes de vue (liste non localisee, profil de recherche qui les retire) n en a pas.
 func (c *collecteurTirContinu) recevoir(l LectureVueC) {
 	if c.recu {
 		return // un seul verdict par paquet : la marche n en publie qu un
@@ -103,12 +117,21 @@ func (c *collecteurTirContinu) recevoir(l LectureVueC) {
 	c.recu, c.lecture = true, l
 }
 
-// fermer applique le verdict du paquet ouvert. `nonLocalise` : le paquet porte une liste
-// d evenements que le localisateur n a pas su sauter — la marche n a rien lu.
+// Trame clot la trame delta `p`, rendue apres sa marche, a son instant : son verdict s applique, et
+// une liste d evenements non localisee, que la marche n a pas lue, est un trou.
+func (c *collecteurTirContinu) Trame(p *lecture.Paquet) {
+	c.ts = p.TS
+	c.fermer(p.Debut == lecture.DebutNonLocalise)
+}
+
+// fermer applique le verdict de la trame en cours, puis l efface pour la suivante. `nonLocalise` :
+// le paquet porte une liste d evenements que le localisateur n a pas su sauter — la marche n a
+// rien lu.
 func (c *collecteurTirContinu) fermer(nonLocalise bool) {
+	l := c.lecture
+	c.recu, c.lecture = false, LectureVueC{}
 	c.st.Packets++
 	c.dernier = c.ts
-	l := c.lecture
 	if l.Atteinte {
 		c.st.Reached++
 	}
@@ -239,9 +262,10 @@ func (c *collecteurTirContinu) clore(k cleBitDeTir, s *etatBitDeTir, fin uint64,
 	delete(c.tenus, k)
 }
 
-// terminer clot les rafales encore tenues au dernier paquet et rend la liste TRIEE. Une rafale
-// dont un trou est ouvert finit au debut du trou : rien ne dit qu elle a dure au-dela.
-func (c *collecteurTirContinu) terminer() []types.ContinuousFireBurst {
+// Clore recoit le bilan de la marche : les rafales encore tenues finissent au dernier paquet, et la
+// sortie est TRIEE. Une rafale dont un trou est ouvert finit au debut du trou : rien ne dit qu elle
+// a dure au-dela.
+func (c *collecteurTirContinu) Clore(BilanDeMarche) {
 	for k, s := range c.tenus {
 		if s.troue {
 			c.st.HeldHoleMS += msEntre(s.trou, c.dernier)
@@ -251,7 +275,6 @@ func (c *collecteurTirContinu) terminer() []types.ContinuousFireBurst {
 		c.clore(k, s, c.dernier, types.ContinuousFireBoundFilmEnd)
 	}
 	sortContinuousFire(c.out)
-	return c.out
 }
 
 // sortContinuousFire ordonne les rafales sur un ordre TOTAL (debut, joueur, main, nature, rang) :

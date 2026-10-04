@@ -167,7 +167,7 @@ func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (types.A
 // (balayage strict, puis récupération gatée des fenêtres de saut).
 func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) types.AbilityRankStats {
 	var st types.AbilityRankStats
-	chunks, slots, gram := s.chunks, s.slots, s.gram
+	gram := s.gram
 
 	var last struct {
 		counter uint32
@@ -180,7 +180,7 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) t
 	}
 	gram.obs = obs
 
-	walkDeltaBipedRecords(s.fc, chunks, slots, gram.lay, func(r deltaBipedRecord) {
+	s.fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
 		st.Records++
 		if !maskHas(r.Mask, i48Index) {
 			return

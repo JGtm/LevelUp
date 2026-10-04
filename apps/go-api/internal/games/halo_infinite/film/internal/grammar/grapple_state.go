@@ -107,7 +107,7 @@ func ScanGrappleReads(fc *FilmContext) ([]types.GrappleRead, GrappleStats, error
 	obs.AbilityNonPredictedHook = func(s AbilityNonPredictedState) { sc.last, sc.got = s, true }
 	sc.gram.obs = obs
 
-	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
+	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
 		st.Records++
 		if maskHas(r.Mask, i59idx) {
 			sc.account(r.Payload, r.I0, r.Total, r.Mask, r.Slot, r.Chunk, r.Packet)

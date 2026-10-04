@@ -30,9 +30,9 @@ import (
 // CE QUE CES BORNES SONT. Un rempart MEMOIRE d'abord, et — depuis le lot 6.7-B1 — un filtre
 // d'ANOMALIE calibre sur l'oracle API. Elles ne travaillent PAS seules, et c'est le lot 6.11 qui
 // leur a donne leur second etage : le filtre au niveau de l'ENREGISTREMENT existe depuis lors
-// (`statMaxCounter` + `statCountersInDomain`, `statborg.go`), et il rejette le record ENTIER des
-// qu'un de ses canaux A ou B sort du domaine — exactement ce que [modeScoreInDomain] fait pour le
-// score de mode.
+// (`statMaxCounter` + `statCountersInDomain`, `grammar/signaux/statborg.go`), et il rejette le record
+// ENTIER des qu'un de ses canaux A ou B sort du domaine — exactement ce que [modeScoreInDomain]
+// fait pour le score de mode.
 //
 // LES DEUX BORNES SONT CALIBREES L'UNE PAR RAPPORT A L'AUTRE, et aucune ne couvre seule le
 // phenomene :
@@ -43,8 +43,8 @@ import (
 //	                         il passe SOUS [maxUnrollPerStep] = 16, et cette borne-ci ne peut
 //	                         rien en dire — dix prises de drapeau publiees pour ZERO a l'oracle ;
 //	l'ENREGISTREMENT         ne regarde pas le pas mais l'ORDRE DE GRANDEUR des canaux : la pire
-//	  (`statborg.go`)        valeur SAINE mesuree vaut 102 934, la plus petite ABERRANTE
-//	                         2 415 919 104, et [statMaxCounter] = 2^20 se pose dans le vide qui
+//	  (`grammar/signaux/statborg.go`) valeur SAINE mesuree vaut 102 934, la plus petite ABERRANTE
+//	                         2 415 919 104, et `statMaxCounter` = 2^20 se pose dans le vide qui
 //	                         les separe. C'est lui, et lui seul, qui attrape le cas ci-dessus.
 const (
 	// maxUnrollPerStep borne le deroulage d'UN point, PREMIER TERME COMPRIS (`prev` part de
@@ -88,9 +88,9 @@ const (
 	// au-dessus. Une passe qui l'atteint s'arrete : le rejeu vaut mieux tronque qu'absent.
 	maxNamedEventsPerFilm = 1_000_000
 	// maxRejectLogs borne le DETAIL journalise. Un film pathologique peut porter un deroulage
-	// aberrant par point (jusqu'a `statMaxRecordsPerFilm` = 33 076) : sans cette borne, le
-	// dernier rempart memoire deviendrait un rempart a inonder le journal. Le COMPTE, lui,
-	// n'est jamais tronque — il est publie par [eventBudget.resume].
+	// aberrant par point (jusqu'a `signaux.StatborgEnregistrementsMax` = 33 076) : sans cette
+	// borne, le dernier rempart memoire deviendrait un rempart a inonder le journal. Le COMPTE,
+	// lui, n'est jamais tronque — il est publie par [eventBudget.resume].
 	maxRejectLogs = 8
 )
 
@@ -98,8 +98,8 @@ const (
 // bornes ont refuse.
 //
 // LE SOLDE DESCEND JUSQU'A [incrementTimes], ET CE N'EST PAS UN DETAIL D'IMPLEMENTATION.
-// `statMaxRecordsPerFilm` (33 076) borne les POINTS, pas les evenements : sous la seule borne
-// par pas, UNE SEULE serie peut encore emettre 33 076 x 100 000 entrees, soit 26 Gio DANS UN
+// `signaux.StatborgEnregistrementsMax` (33 076) borne les POINTS, pas les evenements : sous la
+// seule borne par pas, UNE SEULE serie peut encore emettre 33 076 x 100 000 entrees, soit 26 Gio DANS UN
 // SEUL APPEL — avant que l'appelant ait la main pour verifier un total. Un plafond verifie
 // seulement ENTRE les series ne protegerait donc de rien. Ce qui voyage ici est le SOLDE ; la
 // VALEUR du plafond, elle, reste detenue par les trois passes qui ouvrent un budget

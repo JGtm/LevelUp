@@ -77,6 +77,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/positions"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponscan"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -302,7 +303,7 @@ type Result = killsource.Result
 type Stats = killsource.Stats
 
 // ---- objectives ----
-func CaptureBurstTimes(film *source.Film) []int { return objectives.CaptureBurstTimes(film) }
+func CaptureBurstTimes(film *source.Film) []int { return signaux.CaptureBurstTimes(film) }
 func CountObjectiveFamily[E interface{ StatName() string }](evs []E) int {
 	return objectives.CountObjectiveFamily(evs)
 }

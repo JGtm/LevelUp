@@ -137,10 +137,9 @@ func (pr vehProbe) scan(band map[uint32]bool, deser func(*Lecteur)) (
 		},
 		posBits: pr.lay.TotalBits(),
 	}
-	var st types.EquipmentCreationStats
-	st.Slots = len(band)
 	w.obs = installCreationHooks(&cur)
-	return runCreationWalk(pr.fc, w, &st), st, nil
+	cre, sts := releverLesCreations(pr.fc, []equipCreationWalk{w})
+	return cre[0], sts[0], nil
 }
 
 // vehicleBuildCloud decode toutes les positions reelles de la bande `ti=40` (grammaire biped, flux

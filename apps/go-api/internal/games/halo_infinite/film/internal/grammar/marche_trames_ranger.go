@@ -28,11 +28,12 @@ func rangerUneListeNonLocalisee(p *lecture.Paquet) {
 }
 
 // rangerLaTrame range ce que la marche a lu d une trame : ses records, et — marchee par classes
-// de vue — ses vues et son verdict de fermeture.
-func rangerLaTrame(p *lecture.Paquet, l *lectureDeTrame, parRangs bool) {
+// de vue — ses vues et son verdict de fermeture. `interets` dit quelles occurrences les canaux de
+// la marche interpretent.
+func rangerLaTrame(p *lecture.Paquet, l *lectureDeTrame, parRangs bool, interets interetsResolus) {
 	p.Fermeture.Longueur = uint32(len(p.Payload) * 8) //nolint:gosec // un payload tient sur 32 bits
 	p.Fermeture.Consommes = uint32(max(l.curseur, 0)) //nolint:gosec // borne ci-contre
-	rangerLesRecords(p, l.recs)
+	rangerLesRecords(p, l.recs, interets)
 	if !parRangs {
 		for i := range p.Records {
 			p.Records[i].Preuve = lecture.PreuveNonProuve // aucune vue C lue, aucun verdict
@@ -44,16 +45,17 @@ func rangerLaTrame(p *lecture.Paquet, l *lectureDeTrame, parRangs bool) {
 }
 
 // rangerLesRecords range les records de la vue B et leurs composants dans l arene.
-func rangerLesRecords(p *lecture.Paquet, recs []FrameRecord) {
+func rangerLesRecords(p *lecture.Paquet, recs []FrameRecord, interets interetsResolus) {
 	for i := range recs {
 		r := &recs[i]
+		ti := archetypeDuRecord(r)
 		premier := uint32(len(p.Comps)) //nolint:gosec // l arene d un paquet tient sur 32 bits
 		for k := range r.Trace.Comps {
-			p.Comps = append(p.Comps, composantLu(&r.Trace, k))
+			p.Comps = append(p.Comps, composantLu(&r.Trace, k, interets.contient(int(ti), r.Trace.Comps[k].Index)))
 		}
 		p.Records = append(p.Records, lecture.Record{
 			Genre: genreDuRecord(r.Type), Vue: lecture.RangVueB, Liaison: r.Liaison,
-			TI: archetypeDuRecord(r), Desync: int16(r.DesyncAt), //nolint:gosec // index de composant < 64
+			TI: ti, Desync: int16(r.DesyncAt), //nolint:gosec // index de composant < 64
 			Vie:   types.LifeKey{Slot: r.Slot, Gen: r.ID >> decalageDeGeneration},
 			Debut: uint32(r.HeaderBit), Bits: uint32(r.FinBit - r.HeaderBit), //nolint:gosec // positions d un payload
 			Masque: r.Trace.Mask,
@@ -85,9 +87,9 @@ func archetypeDuRecord(r *FrameRecord) int16 {
 }
 
 // composantLu rend l occurrence `k` d une trace : un composant non porte est infranchissable et
-// n a pas de largeur ; un composant porte est delimite, ou interprete quand sa valeur a ete
-// capturee dans la trace.
-func composantLu(t *EntityTrace, k int) lecture.Composant {
+// n a pas de largeur ; un composant porte est traverse — interprete quand un canal de la marche
+// l interprete (`interesse`, ADR 0037 IR-4), delimite sinon.
+func composantLu(t *EntityTrace, k int, interesse bool) lecture.Composant {
 	cr := &t.Comps[k]
 	c := lecture.Composant{Index: uint8(cr.Index), Debut: uint32(cr.StartBit)} //nolint:gosec // index < 64, position d un payload
 	if !cr.Ported {
@@ -99,17 +101,20 @@ func composantLu(t *EntityTrace, k int) lecture.Composant {
 		fin = t.Comps[k+1].StartBit
 	}
 	c.Etat, c.Prov, c.Bits = lecture.EtatDelimite, cr.Prov, uint32(fin-cr.StartBit) //nolint:gosec // fin >= debut
-	if cr.Payload != nil {
+	if interesse {
 		c.Etat = lecture.EtatInterprete
 	}
 	return c
 }
 
-// rangerLesVues range l etendue et l etat des trois vues.
+// rangerLesVues range l etendue et l etat des trois vues. Une marche partie de la tete re-range la
+// vue A qu elle a lue (la tete rangee avant la marche n en est que le debut) ; depuis un debut
+// localise, la vue A reste la tete ([rangerLaTete]).
 func rangerLesVues(p *lecture.Paquet, l *lectureDeTrame) {
 	if l.enTete {
 		p.VueA.Debut, p.VueA.Bits = uint32(l.debutVueA), uint32(l.finVueA-l.debutVueA) //nolint:gosec // positions
 		p.VueA.Etat = etatDeVue(l.vueA.Porte)
+		p.VueA.Genres = p.VueA.Genres[:0]
 		for _, g := range l.vueA.Genres {
 			p.VueA.Genres = append(p.VueA.Genres, uint8(g)) //nolint:gosec // genre R(7)
 		}
