@@ -55,19 +55,28 @@ func nameTracksByLives(tracks []Track, lives []lifeSpan, origin, step uint64) {
 	}
 }
 
-// seulPorteurQuiRecouvre rend le xuid des vies nommees du slot qui recouvrent [from,to], ou 0
-// quand aucune ne le recouvre ou que deux joueurs differents le recouvrent.
+// recouvrementInclus mesure, en microsecondes, ce que l'intervalle [de, a] partage avec la vie
+// `l`, BORNES INCLUSES : une vie d'un seul echantillon (`from == to`) que l'intervalle contient
+// recouvre 1, jamais 0. Nul ou negatif = aucun instant commun.
 //
-// BORNES INCLUSES (RA2-6, lot J5.4) : une vie d'un seul echantillon a `from == to`, et la piste
-// qui la porte la recouvre sur un instant ; mesure a bornes exclusives, ce recouvrement valait 0
-// et la vie restait anonyme — contraire a la regle produit « aucune vie anonyme ».
+// C'EST L'UNIQUE MESURE DU RECOUVREMENT PISTE <-> VIE DU NOMMAGE. Mesuree a bornes exclusives, une
+// vie d'un seul echantillon ne nommait jamais sa propre piste — contraire a la regle produit
+// « aucune vie anonyme ». Le garde-rail `recouvrement_unique_test.go` interdit d'en ecrire une
+// autre copie dans le paquet.
+func recouvrementInclus(de, a int64, l lifeSpan) int64 {
+	return minI64(a, l.to) - maxI64(de, l.from) + 1
+}
+
+// seulPorteurQuiRecouvre rend le xuid des vies nommees du slot qui recouvrent [from,to]
+// ([recouvrementInclus]), ou 0 quand aucune ne le recouvre ou que deux joueurs differents le
+// recouvrent.
 func seulPorteurQuiRecouvre(lives []lifeSpan, slot uint32, from, to int64) uint64 {
 	var porteur uint64
 	for _, l := range lives {
 		if l.slot != slot || l.xuid == 0 {
 			continue
 		}
-		if minI64(to, l.to)-maxI64(from, l.from)+1 <= 0 {
+		if recouvrementInclus(from, to, l) <= 0 {
 			continue
 		}
 		if porteur != 0 && porteur != l.xuid {

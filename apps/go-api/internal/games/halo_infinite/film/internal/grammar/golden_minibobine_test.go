@@ -356,14 +356,14 @@ func famillesObjetsDuMonde(r *recueil, fc *FilmContext, film *source.Film) {
 
 // famillesEvenementsEtImagesCles : la liste d'evenements en tete de paquet, et les images-cles.
 func famillesEvenementsEtImagesCles(r *recueil, fc *FilmContext, film *source.Film) {
-	fire, err := ScanFireEvents(film)
+	fire, err := ScanFireEvents(NewFilmContext(film))
 	ajouterSlice(r, "fireEvents", fire, err)
 	gren, err := ScanGrenadeThrows(NewFilmContext(film))
 	ajouterSlice(r, "grenadeThrows", gren, err)
 	pickups, _, err := ScanBipedPickups(fc)
 	ajouterSlice(r, "bipedPickups", pickups, err)
-	ajouterSlice(r, "zoomEvents", ScanZoomEvents(film), nil)
-	ajouterSlice(r, "translocatorTeleports", ScanTranslocatorTeleports(film, nil), nil)
+	ajouterSlice(r, "zoomEvents", ScanZoomEvents(NewFilmContext(film)), nil)
+	ajouterSlice(r, "translocatorTeleports", ScanTranslocatorTeleports(NewFilmContext(film), nil), nil)
 	veh, err := ScanVehicleEvents(fc)
 	ajouterSlice(r, "vehicleEvents", veh, err)
 
@@ -399,7 +399,7 @@ func famillesEvenementsEtImagesCles(r *recueil, fc *FilmContext, film *source.Fi
 // est trie par cle depuis Go 1.12).
 func catalogueDuFilm(fc *FilmContext, film *source.Film) map[uint32]bool {
 	known := map[uint32]bool{}
-	if fire, err := ScanFireEvents(film); err == nil {
+	if fire, err := ScanFireEvents(NewFilmContext(film)); err == nil {
 		for _, e := range fire {
 			known[uint32(e.WeaponID>>32)] = true
 			known[uint32(e.WeaponID)] = true

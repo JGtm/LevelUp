@@ -165,7 +165,7 @@ var registreFilmdec = []Repli{
 		}, {
 			// COMPTE = slots AJOUTES par le comblement a ceux vus, sommes sur les releves du contexte.
 			Fichier: pkgFilmdec + "offline_biped_band.go",
-			Ancre:   "fc.NoterReplis(ComptesDesReplis{SlotsBipedesComblees: band.Count() - len(seen)})",
+			Ancre:   "fc.NoterReplis(ComptesDesReplis{SlotsBipedesComblees: band.Count() - len(r.vus)})",
 		}, siteDeVersement("NomBandeBipedeComblee")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "la bande de slots bipede lue au profil du build ; a defaut, " + retraitRegle4,

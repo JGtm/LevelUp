@@ -1,10 +1,12 @@
 # PLAN — Représentation intermédiaire du film, étape 1 (2026-10-02)
 
-> **Statut : PRÊT À EXÉCUTER — confié à une autre conversation** par décision de l'utilisateur du
-> 2026-10-02 (« si le plan pour la représentation intermédiaire est prêt, je préfère te laisser
-> terminer ton chantier et mettre une autre conversation dessus »). Contrat : skill `plan-execution`
-> (ce plan fait foi en cas de divergence). Chaque lot démarre quand ses prérequis sont tenus ; aucune
-> décision produit n'est laissée ouverte.
+> **Statut : CLOS le 2026-10-03** — fusionné dans `feat/v75` (`67c379fc1`) sur accord de
+> l'utilisateur, mesure de performance sur machine calme publiée le même jour (§ Clôture : aucune
+> régression). La suite est l'étape 2 (`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`).
+> Confié à une autre conversation par décision de l'utilisateur du 2026-10-02 (« si le plan pour la
+> représentation intermédiaire est prêt, je préfère te laisser terminer ton chantier et mettre une
+> autre conversation dessus »). Contrat : skill `plan-execution` (ce plan fait foi en cas de
+> divergence).
 >
 > **Pour qui** : l'agent qui exécute ce plan dans une autre conversation, et la session de la campagne
 > de grammaire, qui travaille en parallèle sur les mêmes paquets.
@@ -333,10 +335,18 @@ coordonné (§1.3).
   2026-10-03.
 
 ### Clôture de l'étape 1
-- [ ] Mesure de performance avant/après (critère 4) publiée.
+- [x] Mesure de performance avant/après (critère 4) publiée.
       *Sous charge le 2026-10-02* (gate du lot 1.2 : non conclusif en deçà de 10 %, durée ET pic) ;
-      *à rejouer machine calme*, au signal de la campagne, sur la tête fusionnée — report valide
-      (ressource indisponible : trois agents de la campagne décodent).
+      *rejouée machine calme le 2026-10-03* (signal « machine calme » de la campagne, 16 h 48 à
+      17 h 04) : base `922704424` (dernier `feat/v75` sans l'étape 1) contre la tête fusionnée
+      `67c379fc1`, binaires ALTERNÉS film par film dans un ordre inversé d'un tour à l'autre, deux
+      tours, faits effacés avant chaque cuisson (`perf_ab2.ps1`). Durées (base / étape 1, s) :
+      `084a804d` 111,9 / 112,2 puis 112,2 / 112,3 ; `e5adf7b2` 45,1 / 45,3 puis 45,3 / 44,9 ;
+      `60ae07c4` 32,3 / 32,5 puis 32,5 / 32,5 ; `11de8353` 39,0 / 39,4 puis 39,2 / 39,2 — écart par
+      paire de −0,9 % à +1,0 %. Pics (Gio) : `084a804d` 0,94 / 1,06 puis 1,07 / 1,06 (la base
+      varie elle-même de 0,94 à 1,07 entre ses deux cuissons), `e5adf7b2` 0,49 / 0,48 puis
+      0,51 / 0,49, `60ae07c4` 0,50 / 0,49 puis 0,49 / 0,51, `11de8353` 0,46 / 0,46 puis 0,44 / 0,46.
+      Aucune régression : durées à ±1 %, pics dans la dispersion de la base.
 - [x] G-CI vert au niveau job ; G-push ; accord de l'utilisateur ; fusion dans `feat/v75`.
       *Fait le 2026-10-03* : CI verte au niveau job sur `6c0a6541d` (run `37107700880`),
       `2ce901b97` (`37109627470`) et `202a86331` (`37113310763`), E2E sauté comme prévu hors PR
@@ -531,3 +541,7 @@ si la campagne a fusionné un lot depuis la dernière reprise (et refusionner).
   (critère 4) n'est pas faisable avant le signal de la campagne (trois agents décodent) : report
   VALIDE (ressource indisponible) ; elle se joue au signal, sur la tête fusionnée, et une régression
   de plus de 10 % rouvrirait l'étape (ADR 0037, conséquences).
+- 2026-10-03 : MESURE DE PERFORMANCE SUR MACHINE CALME (critère 4), au signal de la campagne (« machine
+  calme : la vague 1 a fini de décoder ») : base `922704424` contre `67c379fc1`, deux tours alternés,
+  quatre films. Durées à ±1 % par paire, pics dans la dispersion de la base (détail à la clôture).
+  Aucune régression : l'étape 1 est CLOSE. Campagne prévenue de la fin de la mesure.

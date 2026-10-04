@@ -3,6 +3,7 @@ package grammar
 import (
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -76,53 +77,53 @@ func ScanFilmWorldObjectKeyframes(dir string, ti int) WorldObjectKeyframes {
 	return ScanWorldObjectKeyframes(NewFilmContext(film), ti)
 }
 
-// ScanWorldObjectKeyframes marche les images-clés d'un film DEJA CHARGE, par la marche
-// d'image-clé du film ([FilmContext.MarcheDImageCle], lot D-fix).
+// ScanWorldObjectKeyframes recense l'archétype `ti` dans la phase des images-clés d'un film DEJA
+// CHARGE ([canalDuRecensement]) : la marche d'ancres du film ([FilmContext.MarcheDImageCle], lot
+// D-fix), aucun corps parcouru.
 func ScanWorldObjectKeyframes(fc *FilmContext, ti int) WorldObjectKeyframes {
-	out := WorldObjectKeyframes{SeenUS: map[types.LifeKey][]uint64{}}
-	seen, others := map[uint32]bool{}, map[uint32]bool{}
-	marche := fc.MarcheDImageCle()
-	for _, c := range fc.ChunkNumbers() {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			out.TimesUS = append(out.TimesUS, pk.TimestampUS)
-			out.censusPacket(marche.Records(pk.Payload(data)), ti, pk.TimestampUS, seen, others)
-		}
-	}
-	out.Band = slotBandExcluding(seen, others)
-	slices.Sort(out.TimesUS)
-	for k := range out.SeenUS {
-		v := out.SeenUS[k]
-		slices.Sort(v)
-	}
-	return out
+	c := &canalDuRecensement{releve: nouveauReleveDesSlots(ti),
+		out: WorldObjectKeyframes{SeenUS: map[types.LifeKey][]uint64{}}}
+	distribuerLesImagesClesSeules(fc, []Canal{c})
+	return c.out
 }
 
-// censusPacket range les records d'UNE image-clé : ceux de l'archétype `ti` alimentent le
-// recensement et la bande, les autres archétypes la liste d'exclusion (règle de
-// `worldObjectSlotBand` — un slot vu porter autre chose ne peut pas être comblé dans la bande).
-func (k *WorldObjectKeyframes) censusPacket(
-	recs []KeyframeRec, ti int, atUS uint64, seen, others map[uint32]bool,
-) {
+// canalDuRecensement recense un archétype dans la phase des images-clés : la bande de ses slots
+// ([releveDesSlots]) et les instants où chacune de ses vies figure.
+type canalDuRecensement struct {
+	releve *releveDesSlots
+	out    WorldObjectKeyframes
+}
+
+func (*canalDuRecensement) Interets() []Interet { return nil }
+
+func (c *canalDuRecensement) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
+	c.out.TimesUS = append(c.out.TimesUS, p.TS)
+	c.releve.releverLesRecords(p.Records)
+	c.out.censusPacket(p.Records, c.releve.ti, p.TS)
+}
+
+func (c *canalDuRecensement) Clore(BilanDeMarche) {
+	c.out.Band = slotBandExcluding(c.releve.vus, c.releve.autres)
+	slices.Sort(c.out.TimesUS)
+	for k := range c.out.SeenUS {
+		v := c.out.SeenUS[k]
+		slices.Sort(v)
+	}
+}
+
+// censusPacket range les records de l'archétype `ti` d'UNE image-clé dans le recensement ; la
+// bande, elle, se relève sur tous les records ([releveDesSlots] — un slot vu porter autre chose
+// ne peut pas être comblé dans la bande).
+func (k *WorldObjectKeyframes) censusPacket(recs []lecture.Record, ti int, atUS uint64) {
 	for _, r := range recs {
-		slot := uint32(r.Slot)
-		if r.TI != ti {
-			others[slot] = true
+		if int(r.TI) != ti {
 			continue
 		}
-		seen[slot] = true
-		key := types.LifeKey{Slot: slot, Gen: uint32(r.Gen)}
 		// UN RECORD PAR VIE ET PAR IMAGE-CLÉ : le même objet peut être répliqué deux fois
 		// dans un même paquet, et compter deux fois le même instant fausserait le bornage.
-		if v := k.SeenUS[key]; len(v) > 0 && v[len(v)-1] == atUS {
+		if v := k.SeenUS[r.Vie]; len(v) > 0 && v[len(v)-1] == atUS {
 			continue
 		}
-		k.SeenUS[key] = append(k.SeenUS[key], atUS)
+		k.SeenUS[r.Vie] = append(k.SeenUS[r.Vie], atUS)
 	}
 }

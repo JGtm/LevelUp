@@ -36,32 +36,14 @@ package grammar
 // que la ou il invente des slots. Instrument : `TestObjectifTi11DeltaControleTi13`.
 
 // observedSlotBand rend les slots d'un archetype REELLEMENT OBSERVES aux images-cles, SANS
-// combler les trous — cf. l'en-tete pour le depart entre les deux regles.
+// combler les trous — cf. l'en-tete pour le depart entre les deux regles. Les slots se relevent dans
+// la phase des images-cles ([releverLesSlots]).
 func observedSlotBand(fc *FilmContext, typeIndex int) map[uint32]bool {
-	seen, others := map[uint32]bool{}, map[uint32]bool{}
-	marche := fc.MarcheDImageCle()
-	for _, c := range fc.ChunkNumbers() {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range marche.Records(pk.Payload(data)) {
-				if r.TI == typeIndex {
-					seen[uint32(r.Slot)] = true
-					continue
-				}
-				others[uint32(r.Slot)] = true
-			}
-		}
-	}
+	r := releverLesSlots(fc, typeIndex)
 	// UN SLOT VU PORTER AUTRE CHOSE NE PEUT PAS PORTER CET ARCHETYPE : meme exclusion que
 	// `slotBandExcluding`, c'est le comblement qui saute, pas la prudence.
-	for s := range others {
-		delete(seen, s)
+	for s := range r.autres {
+		delete(r.vus, s)
 	}
-	return seen
+	return r.vus
 }

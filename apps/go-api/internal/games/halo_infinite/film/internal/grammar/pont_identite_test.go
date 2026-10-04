@@ -17,7 +17,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -31,7 +30,7 @@ func TestPontDIdentite_ExemptionsDeTranslocationAppliquees(t *testing.T) {
 	base.CaptureDirs = true
 	var recu *ScanFilmOptions
 	e := etageDuPont{
-		teleportations: func(*source.Film, *profile.MapQuantEntry) []types.TranslocatorTeleport {
+		teleportations: func(*FilmContext, *profile.MapQuantEntry) []types.TranslocatorTeleport {
 			return sauts
 		},
 		positions: func(_ *FilmContext, o ScanFilmOptions) ([]BipedPosition, error) {
@@ -97,7 +96,7 @@ func TestPontDIdentite_CreationsLuesAvantLesPositions(t *testing.T) {
 	fc := NewFilmContext(film)
 	creationsDejaLues := false
 	e := etageDuPont{
-		teleportations: func(*source.Film, *profile.MapQuantEntry) []types.TranslocatorTeleport { return nil },
+		teleportations: func(*FilmContext, *profile.MapQuantEntry) []types.TranslocatorTeleport { return nil },
 		positions: func(c *FilmContext, _ ScanFilmOptions) ([]BipedPosition, error) {
 			creationsDejaLues = c.vies.creationsLues
 			return nil, nil

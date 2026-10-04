@@ -37,7 +37,7 @@ func TestExitEventVehicleRef(t *testing.T) {
 		{0, 8},                  // rembourrage
 	}
 	band := map[uint32]bool{base + idxOcc: true}
-	ev, ok := decodeVehicleEvent(evbEcritBits(champs), base, NewSlotBand(band))
+	ev, ok := decodeVehicleEventDuPayload(evbEcritBits(champs), base, NewSlotBand(band))
 	if !ok || ev.Kind != EventUnitExitVehicle {
 		t.Fatalf("sortie non décodée : ok=%v kind=%d", ok, ev.Kind)
 	}
@@ -61,7 +61,7 @@ func TestExitEventVehicleRef(t *testing.T) {
 	// 2/3/7, sans sonde), ne doivent publier AUCUN véhicule.
 	board := evbEcritBits(champs)
 	evbForceType(board, EventBipedBoardVehicle)
-	evb, ok := decodeVehicleEvent(board, base, NewSlotBand(band))
+	evb, ok := decodeVehicleEventDuPayload(board, base, NewSlotBand(band))
 	if !ok || evb.Kind != EventBipedBoardVehicle {
 		t.Fatalf("témoin embarquement non décodé : ok=%v kind=%d", ok, evb.Kind)
 	}
@@ -74,7 +74,7 @@ func TestExitEventVehicleRef(t *testing.T) {
 	sans := append([][2]uint32(nil), champs[:7]...)
 	sans = append(sans, [2]uint32{0, 1}, [2]uint32{0, 1}, [2]uint32{seat + 1, vehicleSeatBits},
 		[2]uint32{0, 8})
-	evs, ok := decodeVehicleEvent(evbEcritBits(sans), base, NewSlotBand(band))
+	evs, ok := decodeVehicleEventDuPayload(evbEcritBits(sans), base, NewSlotBand(band))
 	if !ok {
 		t.Fatal("témoin réf 1 absente : sortie non décodée")
 	}

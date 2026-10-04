@@ -1,4 +1,4 @@
-package objectives
+package signaux
 
 // statborg_domaine_test.go — LE DOMAINE DES COMPTEURS, AU NIVEAU DE L'ENREGISTREMENT
 // (lot 6.11, item 3).

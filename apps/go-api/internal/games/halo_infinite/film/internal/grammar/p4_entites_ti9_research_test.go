@@ -65,7 +65,7 @@ func TestP4EntitesTi9(t *testing.T) {
 	ics, ents := p4Balayer(t, fc, fr)
 	p4RapportImagesCles(t, ics)
 	tri := p4RapportEntites(t, ics, ents)
-	tirs, err := ScanFireEvents(film)
+	tirs, err := ScanFireEvents(fc)
 	if err != nil {
 		t.Fatalf("tirs : %v", err)
 	}

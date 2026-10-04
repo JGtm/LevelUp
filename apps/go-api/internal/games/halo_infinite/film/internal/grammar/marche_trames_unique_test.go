@@ -3,10 +3,11 @@ package grammar
 // marche_trames_unique_test.go — UN SEUL PILOTAGE DE LA MARCHE DES TRAMES (ADR 0037 IR-2).
 //
 // Le pilotage de la phase delta — chunk par chunk la liaison des images-cles au monde
-// ([lierLeChunkAuMonde]), paquet par paquet la localisation des listes d evenements
-// ([localiserLaListe]) — vit dans `marche_trames.go`. Les etats de mouvement, le tir continu et la
-// carte de fermeture le CONSOMMENT ([FilmContext.Trames], [marcheurDesTrames.parcourir]) ; aucun
-// fichier de production du paquet ne le recopie.
+// ([lierLesImagesClesDuChunk]), paquet par paquet la localisation des listes d evenements
+// ([localiserLaListe]) — vit dans `marche_trames.go`. Les etats de mouvement et le tir continu,
+// canaux du distributeur ([Distribuer]), et la carte de fermeture le CONSOMMENT
+// ([FilmContext.Trames], [marcheurDesTrames.parcourir]) ; aucun fichier de production du paquet ne
+// le recopie. La forme instrument de la liaison (`lierLeChunkAuMonde`) vit dans les tests.
 
 import (
 	"fmt"
@@ -22,7 +23,7 @@ import (
 const fichierDuPilotage = "marche_trames.go"
 
 // primitivesDuPilotage sont les appels qui font une marche des trames.
-var primitivesDuPilotage = []string{"lierLeChunkAuMonde", "localiserLaListe"}
+var primitivesDuPilotage = []string{"lierLesImagesClesDuChunk", "localiserLaListe"}
 
 // TestLaMarcheDesTramesEstPiloteeEnUnSeulEndroit : dans le code de production du paquet, les
 // primitives du pilotage ne sont appelees que depuis `marche_trames.go`, et elles y sont appelees.

@@ -24,10 +24,10 @@ package objectives
 type ComptesDesReplis struct {
 	// EnregistrementsAbandonnes : `repli_enregistrement_statborg_abandonne` — en-tetes
 	// d enregistrement reconnus dont aucun composant ne se decode ou dont un compteur sort du
-	// domaine, abandonnes (`statborg.go`).
+	// domaine, abandonnes (`grammar/signaux/statborg.go`, porte par [StatRecordsAvecReplis]).
 	EnregistrementsAbandonnes int
 	// ComposantsArretes : `repli_composants_statborg_arretes` — enregistrements GARDES dont la
-	// lecture des composants s est arretee avant le dernier annonce (`statborg.go`).
+	// lecture des composants s est arretee avant le dernier annonce (`grammar/signaux/statborg.go`).
 	ComposantsArretes int
 	// TablesIdentiteVides : `repli_table_identite_vide` — ponts par instants de mort sans aucune
 	// mort, rendus vides (`slotidentity_deaths.go`).

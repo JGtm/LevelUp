@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/types"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // equipment_spawn_events.go — LE FAIT ÉCRIT « une PIÈCE a été engendrée » : l'événement de
 // liste de type 103 `EquipmentSpawnedObject`, et la vie d'objet que sa deuxième référence
@@ -68,58 +71,59 @@ const equipmentSpawnRefBase = 512
 // HORS LIGNE, LECTURE PURE : aucune décision, aucun seuil, aucune fenêtre. Ce que ce balayage
 // rend est ce que le film écrit ; le rapprochement avec une pose est le travail de l'appelant.
 func ScanEquipmentSpawnEvents(fc *FilmContext) ([]types.EquipmentSpawnEvent, types.EquipmentSpawnStats, error) {
-	var st types.EquipmentSpawnStats
-	nums := fc.ChunkNumbers()
-	if len(nums) == 0 {
-		return nil, st, ErrNoFilmChunk
+	if len(fc.ChunkNumbers()) == 0 {
+		return nil, types.EquipmentSpawnStats{}, ErrNoFilmChunk
 	}
-	var out []types.EquipmentSpawnEvent
-	for _, c := range nums {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		st.Chunks++
-		for _, p := range pks {
-			if p.Type != PacketTypeDelta || p.Size < 1 {
-				continue
-			}
-			st.Packets++
-			ev, present, ok := decodeEquipmentSpawnEvent(p.Payload(data))
-			if present {
-				st.Lists++
-			}
-			if !ok {
-				continue
-			}
-			ev.Chunk, ev.PacketIndex, ev.TimestampUS = c, p.Index, p.TimestampUS
-			st.Events++
-			if ev.SpawnedValid {
-				st.WithSpawned++
-			}
-			if ev.SourceValid {
-				st.WithSource++
-			}
-			if ev.Ref2Present {
-				st.Ref2++
-			}
-			out = append(out, ev)
-		}
+	c := &canalDesApparitions{}
+	distribuerLesTetesSeules(fc, []Canal{c})
+	if c.st.Chunks == 0 {
+		return nil, c.st, ErrNoReadableFilmChunk
 	}
-	if st.Chunks == 0 {
-		return nil, st, ErrNoReadableFilmChunk
-	}
-	return out, st, nil
+	return c.out, c.st, nil
 }
 
-// decodeEquipmentSpawnEvent décode l'événement de tête d'un payload s'il est du type 103.
+// canalDesApparitions lit l'événement 103 de tête de chaque trame delta, dans la passe des têtes.
+type canalDesApparitions struct {
+	out []types.EquipmentSpawnEvent
+	st  types.EquipmentSpawnStats
+}
+
+func (*canalDesApparitions) Interets() []Interet { return nil }
+
+func (c *canalDesApparitions) Tete(p *lecture.Paquet) {
+	c.st.Packets++
+	ev, present, ok := decodeEquipmentSpawnEvent(p.Payload, teteDe(p))
+	if present {
+		c.st.Lists++
+	}
+	if !ok {
+		return
+	}
+	ev.Chunk, ev.PacketIndex, ev.TimestampUS = p.Chunk, p.Index, p.TS
+	c.st.Events++
+	if ev.SpawnedValid {
+		c.st.WithSpawned++
+	}
+	if ev.SourceValid {
+		c.st.WithSource++
+	}
+	if ev.Ref2Present {
+		c.st.Ref2++
+	}
+	c.out = append(c.out, ev)
+}
+
+func (c *canalDesApparitions) Clore(b BilanDeMarche) { c.st.Chunks = b.ChunksLus }
+
+// decodeEquipmentSpawnEvent décode l'événement de tête d'un payload, de tête `t`, s'il est du
+// type 103.
 //
 // Rend `present` (la liste d'événements n'est pas vide : le dénominateur de la lecture) et `ok`
 // (la tête EST un 103). Les deux sont distincts parce qu'un zéro d'événements sur un film sans
 // liste ne dit pas la même chose qu'un zéro sur un film qui en porte des milliers.
-func decodeEquipmentSpawnEvent(pay []byte) (ev types.EquipmentSpawnEvent, present, ok bool) {
-	typ, present := PacketHeadEventType(pay)
-	if !present || typ != EventEquipmentSpawnedObject {
+func decodeEquipmentSpawnEvent(pay []byte, t teteDeTrame) (ev types.EquipmentSpawnEvent, present, ok bool) {
+	present = t.liste
+	if !present || t.genre != EventEquipmentSpawnedObject {
 		return types.EquipmentSpawnEvent{}, present, false
 	}
 	// Domaines {0, 0, 7} : trois références SANS sonde, index de dom7RefWidth bits.

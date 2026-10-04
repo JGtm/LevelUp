@@ -100,8 +100,9 @@ func (sc *movementStateScanner) vitesse(slot uint32, v []uint64) {
 	if sc.vit == nil {
 		sc.vit = map[uint32][]jumpVelSample{}
 	}
-	sc.vit[slot] = append(sc.vit[slot], jumpVelSample{ts: sc.paquet.TS, vz: float64(vec[2]),
-		chunk: sc.paquet.Chunk, paquet: sc.paquet.Index})
+	p := sc.m.Paquet
+	sc.vit[slot] = append(sc.vit[slot], jumpVelSample{ts: p.TS, vz: float64(vec[2]), chunk: p.Chunk,
+		paquet: p.Index})
 	sc.st.VelocityReads++
 }
 

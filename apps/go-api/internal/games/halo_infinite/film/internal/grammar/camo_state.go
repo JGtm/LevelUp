@@ -120,7 +120,7 @@ func ScanCamoStates(fc *FilmContext) ([]types.CamoRead, CamoStateStats, error) {
 
 	var out []types.CamoRead
 	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
-	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
+	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
 		st.Records++
 		if !maskHas(r.Mask, i28idx) {
 			return

@@ -103,15 +103,11 @@ func BuildProfileFromFilm(f *source.Film) (profile.BuildProfile, error) {
 // profil garde son invariant et l erreur est rendue a l appelant, qui decide (mettre le film de
 // cote, ou compter un repli nomme).
 func InstallFilmFormatMPP(fc *FilmContext) (func(), error) {
-	format, ok := FilmFormatVersion(fc.Film())
-	if !ok {
-		return func() {}, profile.ErreurFormatInconnu(FilmFormatVersionUnknown)
+	w, ok, err := mppDuFormat(fc.Film())
+	if err != nil {
+		return func() {}, err
 	}
-	w, ok := profile.MPPPourFormat(format)
 	if !ok {
-		return func() {}, profile.ErreurFormatInconnu(format)
-	}
-	if !w.Valid() {
 		// Format CONNU dont la largeur MPP est INDETERMINEE (les formats <= 25) : on n installe
 		// rien plutot qu un decoupage nul, qui ne lirait aucune identite du tout.
 		return func() {}, nil

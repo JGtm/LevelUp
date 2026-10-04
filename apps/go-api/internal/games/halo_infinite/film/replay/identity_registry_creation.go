@@ -53,7 +53,10 @@ package replay
 // Quand l'index lu est declare par PLUSIEURS occupants (bots de BOT_METADATA, humains de la table),
 // le corps se lit a l'ENTITE `ti=9` de cet index qui vit a sa CREATION, et l'entite a son occupant
 // (cf. identity_registry_entites.go). C'est une lecture du film, comptee `ParEntite` : les neuf
-// corps de bots d'index 8 de `b1ad85eb` y passent de `index_hors_table` a `direct`.
+// corps de bots d'index 8 de `b1ad85eb` y passent de `index_hors_table` a `direct`. Quand l'entite
+// se tait sur un index que seuls des bots se relaient, le corps se lit aux declarations
+// BOT_METADATA : le seul bot declare a sa creation, quand une de ses declarations couvre aussi sa
+// vie (cf. identity_registry_declarations.go), compte `ParDeclaration`.
 
 import (
 	"cmp"
@@ -93,6 +96,10 @@ type creationReport struct {
 	// ParEntite : vies d'un index PARTAGE que l'entite `ti=9` vivante a la creation de leur corps
 	// a nommees (lot M2.3). SOUS-COMPTE de `Direct` + `Propagated`.
 	ParEntite int
+	// ParDeclaration : vies d'un index que plusieurs bots se relaient, que l'entite n'a pas nommees
+	// et que les declarations BOT_METADATA ont nommees (cf. identity_registry_declarations.go).
+	// SOUS-COMPTE de `Direct` + `Propagated`.
+	ParDeclaration int
 	// Recycled : slots qui portent PLUSIEURS records de creation, donc plusieurs corps
 	// successifs. Le temoin du rebouclage du pool de handles — celui que le lot E2 avait
 	// mesure a zero sur cinq films et que `084a804d` porte a 123 sur 256 slots. Il n'alarme
@@ -152,7 +159,8 @@ func nommerViesParCreations(lives []lifeSpan, creations []grammar.BipedCreation,
 		return rep
 	}
 	res := resolutionDIndex{versXUID: indexToXUIDOf(idx.ByXUID), versBot: indexDesBotsDeclares(bots),
-		parEntite: lireEntitesDesIndexPartages(scan, bots, idx)}
+		parEntite:      lireEntitesDesIndexPartages(scan, bots, idx),
+		parDeclaration: lireBotsDesIndexPartages(bots, idx)}
 	for slot, vies := range indicesDeViesParSlot(lives) {
 		c, ok := corps[slot]
 		if !ok {
@@ -173,6 +181,8 @@ type resolutionDIndex struct {
 	versBot  map[int]bool
 	// parEntite : les index que plusieurs occupants se relaient, lus par entite (lot M2.3).
 	parEntite entitesDesIndexPartages
+	// parDeclaration : les index que seuls des bots se relaient, lus par leurs declarations.
+	parDeclaration botsDesIndexPartages
 }
 
 // indicesDeViesParSlot groupe les INDICES des vies par slot, dans l'ordre chronologique.
@@ -233,6 +243,13 @@ func (r *creationReport) poser(lives []lifeSpan, i int, d dateDeCreation, t reso
 		// L'INDEX EST PARTAGE, ET L'ENTITE VIVANTE A LA CREATION DU CORPS DIT QUI (lot M2.3).
 		lives[i].xuid, lives[i].bid = o.xuid, o.bid
 		r.ParEntite++
+		return true
+	}
+	if bid, lu := t.parDeclaration.botDeclareSurLaVie(pi, d.tUS, lives[i]); lu {
+		// L'ENTITE SE TAIT, LES DECLARATIONS BOT_METADATA DESIGNENT UN SEUL BOT sur la creation du
+		// corps et toute sa vie : c'est le sien.
+		lives[i].bid = bid
+		r.ParDeclaration++
 		return true
 	}
 	if t.versBot[pi] {
@@ -427,7 +444,7 @@ func (r creationReport) alarmerSurLesRefus(ctx context.Context, matchID string, 
 	slog.InfoContext(ctx, "rejeu : lien direct corps -> joueur",
 		"match_id", matchID, "records", r.Records, "corps", r.Slots,
 		"direct", r.Direct, "propage", r.Propagated, "indexBot", r.IndexBot,
-		"parEntite", r.ParEntite, "slotsRecycles", r.Recycled)
+		"parEntite", r.ParEntite, "parDeclaration", r.ParDeclaration, "slotsRecycles", r.Recycled)
 	if causes.IndexOutOfTable > 0 {
 		slog.WarnContext(ctx, "rejeu : index de participant LU mais absent de la table publiee — vies NON "+
 			"rattachees (verdict I0 : participant que PlayerIndexTable ne nomme pas)",

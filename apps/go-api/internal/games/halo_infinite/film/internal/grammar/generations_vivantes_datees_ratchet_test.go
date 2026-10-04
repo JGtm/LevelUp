@@ -45,9 +45,9 @@ import (
 // appelantsDuFiltreAtemporel : LA LISTE NOMMEE, DATEE (2026-09-29, lot R2-bis). Cle : chemin relatif
 // a `film/` (separateurs `/`) + « : » + fonction englobante.
 var appelantsDuFiltreAtemporel = map[string]string{
-	"internal/grammar/offline_biped_band.go:ScanBipedPositionsForBand": "defaut des options, date par paquet dans scanBipedChunks (lot R2)",
-	"internal/grammar/pont_identite.go:lire":                           "etage du pont : positions (datees) et compte du repli SlotsEnRepli (aucun record juge)",
-	"internal/grammar/generations_vivantes.go:GenerationsVivantesA":    "definisseur de l acces date",
+	"internal/grammar/offline_biped_band.go:balayerLesPositions":    "defaut des options, date par paquet dans scanBipedChunks (lot R2) ; l ancrage du contexte date le sien par GenerationsVivantesA (corps de ScanBipedPositionsForBand depuis le lot 2.4 de la representation intermediaire)",
+	"internal/grammar/pont_identite.go:lire":                        "etage du pont : positions (datees) et compte du repli SlotsEnRepli (aucun record juge)",
+	"internal/grammar/generations_vivantes.go:GenerationsVivantesA": "definisseur de l acces date",
 }
 
 // racineDuFilm : l arbre `film/`, depuis ce paquet (`film/internal/grammar`).

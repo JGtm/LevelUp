@@ -20,7 +20,7 @@ package objectives
 //
 // # DEUX FILTRES A LEVER, ET LE SECOND EST LE PLUS INTERESSANT
 //
-// `decodeTh10Block` REFUSE tout bloc dont l'octet 47 ne vaut pas 10 (`th != 10`). C'est le bon
+// `signaux.decodeTh10Block` REFUSE tout bloc dont l'octet 47 ne vaut pas 10 (`th != 10`). C'est le bon
 // filtre pour les zones ; c'est aussi un mur si l'Assaut porte son armement sous un AUTRE
 // indice de type. Cette sonde ne filtre rien : elle releve la valeur de l'octet 47 telle
 // qu'elle est, et compte.
@@ -88,7 +88,7 @@ type afBloc struct {
 	th, t, slot int
 }
 
-// afScanTousLesIndices reprend `scanTh10Events` en RELEVANT l'octet 47 au lieu de l'exiger
+// afScanTousLesIndices reprend `signaux.scanTh10Events` en RELEVANT l'octet 47 au lieu de l'exiger
 // egal a 10. C'est la seule difference, et c'est tout l'objet de la sonde.
 func afScanTousLesIndices(data []byte) []afBloc {
 	total := len(data) * 8
@@ -122,7 +122,7 @@ func afScanTousLesIndices(data []byte) []afBloc {
 	return out
 }
 
-// afDecodeBloc : `decodeTh10Block` sans son filtre sur l'indice de type.
+// afDecodeBloc : `signaux.decodeTh10Block` sans son filtre sur l'indice de type.
 func afDecodeBloc(data []byte, xstart, total int) (afBloc, bool) {
 	win := min(xstart+20000, total)
 	for b := xstart; b <= win-32; b++ {

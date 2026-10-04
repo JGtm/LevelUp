@@ -208,13 +208,3 @@ func consumeComposantsVehiculeTi40(br *Lecteur, name string) (variant uint32, de
 		return variant, nil, false
 	}
 }
-
-// lecturesDeComposant rend le nombre de lectures du composant `nom` dans un record (0 ou 1).
-func lecturesDeComposant(r FrameRecord, nom string) int {
-	for _, cr := range r.Trace.Comps {
-		if cr.Name == nom {
-			return 1
-		}
-	}
-	return 0
-}

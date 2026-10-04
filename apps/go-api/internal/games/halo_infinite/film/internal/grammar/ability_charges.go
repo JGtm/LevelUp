@@ -101,7 +101,7 @@ func ScanAbilityCharges(fc *FilmContext) ([]types.AbilityCharge, types.AbilityCh
 	}
 	sc.gram.obs = obs
 
-	walkDeltaBipedRecords(s.fc, s.chunks, s.slots, s.gram.lay, func(r deltaBipedRecord) {
+	s.fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
 		st.Records++
 		sc.account(r.Payload, r.I0, r.Total, r.Mask, r.Slot, r.Chunk, r.Packet)
 	})

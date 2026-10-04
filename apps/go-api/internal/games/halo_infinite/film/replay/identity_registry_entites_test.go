@@ -6,8 +6,9 @@ package replay
 //	R-ENTITE     trois bots se relaient sur l'index 8 (gabarit de `b1ad85eb`, sonde P4) : chaque
 //	             corps prend le `bid` du bot dont l'entite vit a sa creation — y compris le corps de
 //	             `343 PardonMy`, cree AVANT son premier paquet BOT_METADATA ;
-//	R-SILENCE    sans entite lue, rien ne change : les corps restent refuses (`index_hors_table`),
-//	             comptes `IndexBot`, comme avant le lot ;
+//	R-SILENCE    sans entite lue, les corps crees AVANT la declaration de leur bot restent refuses
+//	             (`index_hors_table`, comptes `IndexBot`) ; seul celui dont une declaration couvre
+//	             la creation et la vie est lu par les declarations (identity_registry_declarations.go) ;
 //	R-PISTES     une piste anonyme prend le NOM du bot dont une vie du meme slot porte le `bid`.
 
 import (
@@ -102,16 +103,20 @@ func TestCorpsDIndexPartageNommeParLEntiteASaCreation(t *testing.T) {
 	}
 }
 
-func TestCorpsDIndexPartageSansEntiteRestentRefuses(t *testing.T) {
+func TestCorpsDIndexPartageSansEntiteNommeParDeclarationSinonRefuse(t *testing.T) {
 	reg := BuildIdentityRegistry(context.Background(), entreeTroisBots(false))
-	for slot, bid := range bidsParSlot(reg) {
-		if slot != 100 && bid != "" {
-			t.Errorf("corps %d : bid %q sans entite lue — la lecture devait se taire", slot, bid)
+	// 512 et 526 sont crees avant la premiere declaration de leur bot : seule l'entite les nommait.
+	// 564 est cree pendant la declaration de Brew Dog, qui court jusqu'au bout : elle le nomme.
+	want := map[uint32]string{512: "", 526: "", 564: "bid(19.0)"}
+	got := bidsParSlot(reg)
+	for slot, bid := range want {
+		if got[slot] != bid {
+			t.Errorf("corps %d : bid %q sans entite lue, attendu %q", slot, got[slot], bid)
 		}
 	}
-	if reg.creation.ParEntite != 0 || reg.creation.IndexBot == 0 {
-		t.Errorf("par entite %d, indexBot %d : sans entite, le refus d'avant", reg.creation.ParEntite,
-			reg.creation.IndexBot)
+	if reg.creation.ParEntite != 0 || reg.creation.ParDeclaration == 0 || reg.creation.IndexBot == 0 {
+		t.Errorf("par entite %d, par declaration %d, indexBot %d : sans entite, les declarations seules",
+			reg.creation.ParEntite, reg.creation.ParDeclaration, reg.creation.IndexBot)
 	}
 }
 
@@ -130,5 +135,21 @@ func TestPistesDeBotNommeesParLeBidDeLeurVie(t *testing.T) {
 	if tracks[0].Bot != "343 Hundy [bot]" || tracks[1].Bot != "343 PardonMy [bot]" || tracks[2].Bot != "" {
 		t.Fatalf("pistes %+v : chaque piste prend le nom du bot de SA vie, une piste nommee ne bouge pas",
 			tracks)
+	}
+}
+
+// R-UN-ECHANTILLON (gabarit de `5676a9ba` slot 536, frame 162) : une vie de bot d'un seul
+// echantillon (`from == to`) nomme la piste d'une seule frame qui la porte. Mesure a bornes
+// exclusives, son recouvrement valait 0 et la piste restait anonyme.
+func TestPisteDUneFrameNommeeParLaVieDeBotDUnSeulEchantillon(t *testing.T) {
+	h := replayClock{origin: 500_000, step: 100_000, frames: 4000}
+	instant := int64(instantDeFrame(h, 162)) + 26_733 // dans la frame 162
+	vies := []lifeSpan{{slot: 536, from: instant, to: instant, bid: "bid(10.0)"}}
+	tracks := []Track{{Slot: 536, StartFrame: 162, EndFrame: 162}}
+	bots := []BotIdentity{{FilmIndex: 24, Name: "343 Beard [bot]", BotID: 10}}
+	nommerLesPistesDeBotParLeurVie(tracks, vies, bots, h)
+	if tracks[0].Bot != "343 Beard [bot]" {
+		t.Fatalf("piste [162,162] : bot %q, attendu %q — la vie d'un seul echantillon qui la porte la nomme",
+			tracks[0].Bot, "343 Beard [bot]")
 	}
 }

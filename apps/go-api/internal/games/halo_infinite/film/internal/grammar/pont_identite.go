@@ -34,7 +34,6 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -87,7 +86,7 @@ func ScanPontDIdentite(fc *FilmContext, opt OptionsDuPont) LecturesDuPont {
 // la couture par laquelle un test verifie QUELLES options le balayage des positions recoit quand
 // le film porte des teleportations — aucune mini-bobine du depot n en porte.
 type etageDuPont struct {
-	teleportations func(*source.Film, *profile.MapQuantEntry) []types.TranslocatorTeleport
+	teleportations func(*FilmContext, *profile.MapQuantEntry) []types.TranslocatorTeleport
 	positions      func(*FilmContext, ScanFilmOptions) ([]BipedPosition, error)
 }
 
@@ -95,7 +94,7 @@ type etageDuPont struct {
 func (e etageDuPont) lire(fc *FilmContext, opt OptionsDuPont) LecturesDuPont {
 	film := fc.Film()
 	var l LecturesDuPont
-	l.Translocations = e.teleportations(film, opt.Carte)
+	l.Translocations = e.teleportations(fc, opt.Carte)
 	// LES CREATIONS AVANT LES POSITIONS (lot J5.2, DT-8) : elles designent les generations VIVANTES
 	// du handle, que le balayage des positions lit ensuite par le contexte (memorisees : un seul
 	// balayage des creations par film).

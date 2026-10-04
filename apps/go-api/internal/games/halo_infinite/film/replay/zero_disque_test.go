@@ -167,7 +167,7 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 
 	entrerDansUnRepertoireVide(t)
 
-	fire, err := grammar.ScanFireEvents(film)
+	fire, err := grammar.ScanFireEvents(grammar.NewFilmContext(film))
 	if err != nil {
 		t.Fatalf("tirs : %v", err)
 	}

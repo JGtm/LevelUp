@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
 
 // keyframe_carrier_mark.go — LE MARQUEUR DE PORTAGE, lu dans le record de bipede des
 // images-cles.
@@ -75,48 +78,46 @@ func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
 	return ScanCarrierMarks(NewFilmContext(film))
 }
 
-// ScanCarrierMarks balaye les images-cles d'un film DEJA CHARGE, par la marche d'image-cle DU
-// FILM ([FilmContext.MarcheDImageCle], lot D-fix).
+// ScanCarrierMarks balaye les images-cles d'un film DEJA CHARGE dans la phase des images-cles
+// ([canalDesMarquesDePortage]), marchee par la marche d'image-cle DU FILM
+// ([FilmContext.MarcheDImageCle], lot D-fix).
 func ScanCarrierMarks(fc *FilmContext) (CarrierMarkScan, error) {
-	var out CarrierMarkScan
-	read := 0
-	marche := fc.MarcheDImageCle()
-	for _, c := range fc.ChunkNumbers() {
-		chunk, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		read++
-		for _, p := range pks {
-			if p.Type != PacketTypeKeyframe {
-				continue
-			}
-			out.KeyframeUS = append(out.KeyframeUS, p.TimestampUS)
-			out.appendMarksOf(p.Payload(chunk), p.TimestampUS, marche)
-		}
-	}
-	if read == 0 {
+	c := &canalDesMarquesDePortage{}
+	distribuerLesImagesClesSeules(fc, []Canal{c})
+	if c.lus == 0 {
 		return CarrierMarkScan{}, ErrNoReadableFilmChunk
 	}
-	return out, nil
+	return c.out, nil
 }
 
-// appendMarksOf balaye UN payload d'image-cle. Le balayage est celui des armes portees
-// (`familiesByRecord`) : meme fenetre glissante de 32 bits, meme attribution au record qui
+// canalDesMarquesDePortage releve les marques de portage de chaque image-cle de la phase.
+type canalDesMarquesDePortage struct {
+	out CarrierMarkScan
+	// lus : les chunks que la phase a pu lire.
+	lus int
+}
+
+func (*canalDesMarquesDePortage) Interets() []Interet { return nil }
+
+func (c *canalDesMarquesDePortage) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
+	c.out.KeyframeUS = append(c.out.KeyframeUS, p.TS)
+	c.out.appendMarksOf(p)
+}
+
+func (c *canalDesMarquesDePortage) Clore(b BilanDeMarche) { c.lus = b.ChunksLus }
+
+// appendMarksOf balaye UN paquet d'image-cle. Le balayage est celui des armes portees
+// (`familiesByRecordRecs`) : meme fenetre glissante de 32 bits, meme attribution au record qui
 // contient le PREMIER bit de la fenetre. Seul le jeu de valeurs cherchees change — c'est
 // pourquoi ce fichier n'a pas son propre lecteur de bits.
-func (s *CarrierMarkScan) appendMarksOf(pay []byte, ts uint64, marche MarcheDImageCle) {
-	recs := marche.Records(pay)
-	s.Records += len(recs)
-	for _, r := range recs {
-		if r.TI == keyframeBipedTI {
+func (s *CarrierMarkScan) appendMarksOf(p *lecture.Paquet) {
+	s.Records += len(p.Records)
+	for _, r := range p.Records {
+		if int(r.TI) == keyframeBipedTI {
 			s.BipedRecords++
 		}
 	}
-	for _, r := range familiesByRecordRecs(pay, recs, carrierMarkViews, keyframeBipedTI) {
-		if r.Rec.Slot < 0 {
-			continue
-		}
-		s.Marks = append(s.Marks, CarrierMark{TimestampUS: ts, Slot: uint32(r.Rec.Slot)})
+	for _, r := range familiesByRecordRecs(p.Payload, p.Records, carrierMarkViews, keyframeBipedTI) {
+		s.Marks = append(s.Marks, CarrierMark{TimestampUS: p.TS, Slot: r.Rec.Vie.Slot})
 	}
 }
