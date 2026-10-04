@@ -113,6 +113,12 @@ fichier de l'autre se signale, ne se corrige pas.
   canal de la même marche, contexte unique par cuisson).
 - GO de l'étape 2 : DONNÉ le 2026-10-03 (statut ci-dessus) ; l'ordre des lots qui attendent la
   campagne est réglé au §3 (report par le plan), la mutualisation par DT2-5.
+- 2026-10-04 : « option A ». Les lectures heuristiques qui décident aujourd'hui DEVANT une lecture de
+  la grammaire — les fenêtres de bits des images-clés (armes portées, marque de portage,
+  inventaire) et l'ancrage d'en-tête bipède (positions et huit balayages) — restent HORS du registre
+  des replis jusqu'aux lots de comportement de 2.7, qui les ordonneront derrière la grammaire ; elles
+  s'y inscriront alors « après la lecture », comptées, leurs records marqués récupérés (item
+  2.7.d). Pas de montée du cliquet `NbDevantLaLecture`.
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -266,7 +272,7 @@ pour ses crochets :
   des trames). CI verte au niveau job sur la fusion (`2f8346d42`, run `37145047635`) et sur le
   commit du lot (`04208d803`, run `37146393269`).
 
-### Lot 2.2 — Canaux d'image-clé (taille M) — coordination §1.3 — CLOS le 2026-10-03 (2.2.2 en attente d'une décision de l'utilisateur)
+### Lot 2.2 — Canaux d'image-clé (taille M) — coordination §1.3 — CLOS le 2026-10-03 (2.2.2 couvert par 2.7.d, décision de l'utilisateur du 2026-10-04)
 *Décisions d'exécution du 2026-10-03* (relu sur pièces : chaque consommateur pilote aujourd'hui sa
 propre boucle chunks -> paquets d'image-clé -> mémoire d'ancres ; seul `ScanPlayerTeams` parcourt
 des corps, ceux de ti=9 ; coût mesuré de la phase complète des images-clés, mémoire chaude : 18 à
@@ -324,12 +330,13 @@ des corps, ceux de ti=9 ; coût mesuré de la phase complète des images-clés, 
       `marche_images_cles_unique_test.go` (un seul pilotage des images-clés, sites restants nommés :
       découverte 7 ; mutation jouée rouge). Distributeur : décisions 1 à 5, tests neufs (corps lu
       seulement s'il est lu, phase des intérêts, film sans registre ; trois mutations jouées rouges).
-- [!] 2.2.2 Les fenêtres lues bit à bit À L'INTÉRIEUR des images-clés (armes : fenêtre de 32 bits,
+- [~] 2.2.2 Les fenêtres lues bit à bit À L'INTÉRIEUR des images-clés (armes : fenêtre de 32 bits,
       inventaire : emprises) deviennent des méthodes de la couche de récupération (DT2-4), marquées.
-      *Non traité, décision de l'utilisateur demandée* (découverte 8) : la grammaire atteint ces
-      composants dans l'état complet du bipède ; les inscrire comme replis les déclarerait
-      `devant_la_lecture`, que le cliquet `NbDevantLaLecture` interdit d'augmenter. Proposition : les
-      lire par la grammaire et retirer les fenêtres, en changement de comportement déclaré avec 2.7.
+      *Couvert par 2.7.d* (décision de l'utilisateur du 2026-10-04, option A ; découverte 8) : la
+      grammaire atteint ces composants dans l'état complet du bipède ; les inscrire maintenant comme
+      replis les déclarerait `devant_la_lecture`, que le cliquet `NbDevantLaLecture` interdit
+      d'augmenter. 2.7.d les fait lire par la grammaire d'abord, et inscrit ce qui reste de
+      l'heuristique « après la lecture ».
 - Gate : T4 ; comptes de replis déclarés si la bande n'est plus relevée deux fois (rapport §1.6).
   *Passé* (passe `ri22a` contre la référence `ri21a`) : `replay-equiv` 20/20 identiques, tous
   décodés depuis le film (`depuis_les_faits=false` ×20) ; faits 20/20 et killsource 19/19 identiques
@@ -418,7 +425,7 @@ décider de localiser la liste d'événements, sans le ranger dans la structure)
       au point d'étape du 2026-10-03 ; une objection la rouvre. 2.4 et 2.5 attendent la fusion de
       la vague 1 (§1.3).
 
-### Lot 2.4 — Récupération ancrée mutualisée (taille L) — CLOS le 2026-10-04 (la marque et le registre en attente d'une décision de l'utilisateur)
+### Lot 2.4 — Récupération ancrée mutualisée (taille L) — CLOS le 2026-10-04 (la marque et le registre couverts par 2.7.d, décision de l'utilisateur du 2026-10-04)
 *Décisions d'exécution du 2026-10-03* — relu sur pièces et mesuré avant le code (instrument
 `grammar/ancrage_partage_research_test.go`) : la cuisson ancre les records bipèdes NEUF fois avec
 les mêmes paramètres (positions, puis changements d'arme, deltas d'inventaire, rangs de capacité,
@@ -444,13 +451,14 @@ la marche de TOUS les corps ancrés jusqu'au bout de leur masque coûte 31 à 15
    (`ScanBipedRecords`). La bande bipède n'est plus relevée deux fois : `repli_bande_bipede_comblee`
    compte une fois par film — changement DÉCLARÉ (DT2-4, ADR 0037 D-10), la seule différence
    attendue à la preuve (coverage et rapport de replis des faits).
-3. *La marque « récupéré » et le compte au registre attendent une décision de l'utilisateur*
+3. *La marque « récupéré » et le compte au registre attendaient une décision de l'utilisateur —
+   donnée le 2026-10-04 (option A) : ils passent à 2.7.d*
    (2.4.1, partie statuée `[!]`, découverte 10) : l'ancrage décide aujourd'hui DEVANT la lecture de la
    marche pour les records qu'elle lit — même question que 2.2.2.
 4. *Les étendues de composants des records ancrés ne sont pas rangées* : aucun lecteur ne les lit —
    chaque balayage marche son record jusqu'à son composant, mesuré bon marché ci-dessus (règle 7 :
    une donnée sans lecteur est du code mort). Elles se rangeront avec leur premier lecteur.
-- [!] 2.4.1 UN ancrage bipède par film (positions et les huit passes du marcheur ancré, véhicules
+- [~] 2.4.1 UN ancrage bipède par film (positions et les huit passes du marcheur ancré, véhicules
       compris), mémorisé ; records `PreuveRecupere`, méthode nommée, étendues de composants jusqu'au
       premier infranchissable (`delta_biped_walk.go`, `offline_biped*.go`, `ability_*.go`,
       `camo_state.go`, `grapple_state.go`, `held_weapon_changes.go`, `inventory_delta.go`,
@@ -460,10 +468,10 @@ la marche de TOUS les corps ancrés jusqu'au bout de leur masque coûte 31 à 15
       `parcourirLesAncresBipedes`), lu par les huit balayages et par les positions de la cuisson
       (`ancrageDuContexte`, `balayerLesPositions`, `positionsDesAncres`, `lireLaPosition` sortie de
       `ScanBipedRecords`) ; véhicules, visée sans position et récupération gatée : décision 1 ;
-      `replay/film_scan.go` inchangé (mêmes points d'entrée). Garde-rail vert. *Non fait* : la
-      marque `PreuveRecupere`, la méthode nommée et le compte au registre attendent la décision de
-      l'utilisateur (décision 3, découverte 10) ; les étendues de composants ne sont pas rangées,
-      faute de lecteur (décision 4).
+      `replay/film_scan.go` inchangé (mêmes points d'entrée). Garde-rail vert. *Couvert par 2.7.d* :
+      la marque `PreuveRecupere`, la méthode nommée et le compte au registre (décision de
+      l'utilisateur du 2026-10-04, option A ; découverte 10). Les étendues de composants ne sont pas
+      rangées, faute de lecteur (décision 4).
 - [x] 2.4.2 Égalité de bande (`fc.BipedSlots()` contre `bipedSlotBand` recalculée) et de découpage
       prouvée film par film AVANT la bascule.
       *Fait* (`ancrage_partage_research_test.go`, avant la bascule) : sur les vingt films du corpus
@@ -529,6 +537,14 @@ la marche de TOUS les corps ancrés jusqu'au bout de leur masque coûte 31 à 15
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
       du 2026-10-03) ; `IDLowBits` unifié (IR-7).
+- [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
+      elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
+      bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
+      lecture de l'état complet du bipède par la grammaire (intérêts de la phase des images-clés) ;
+      l'ancrage d'en-tête bipède ne lit plus que les records que la marche ne lit pas (avec 2.7.b).
+      Ce qui reste de chaque heuristique s'inscrit au registre « après la lecture », compté, ses
+      records marqués `PreuveRecupere` avec leur méthode (DT2-4) ; le cliquet `NbDevantLaLecture` ne
+      monte pas.
 - Gate : `replay-corpus-gate` et banc de vérité ; `KILLSOURCE_FIXTURES` en local ; montée de
   `grammar.Rev` (et `killsource.Rev` pour 2.7.c) ; recuisson et backlog sur signal de l'utilisateur.
 
@@ -643,8 +659,8 @@ plan y sont reprises comme items (3.1.2).
    images-clés sur ti=35, lecture à l'étendue de l'occurrence) et de retirer les fenêtres :
    changement de comportement (une fenêtre retient toute famille connue où qu'elle tombe dans
    l'emprise du record, alias compris ; la grammaire lirait les emplacements que l'écrivain écrit),
-   donc un lot de 2.7, prouvé au corpus et au banc de vérité. Décision de l'utilisateur demandée
-   (2.2.2 statué `[!]`).
+   donc un lot de 2.7, prouvé au corpus et au banc de vérité. Décision de l'utilisateur du
+   2026-10-04 : option A — item 2.7.d (2.2.2 statué `[~]`).
 9. *(mesure M)* **Le pic d'une cuisson n'est pas dans le décodage.** Trace du ramasse-miettes sur
    le BTB (`084a804d`, les deux binaires) : le tas vivant reste sous 260 Mo pendant tout le
    décodage, puis monte à 450-525 Mo dans la dernière seconde (fin du décodage, assemblage,
@@ -662,8 +678,8 @@ plan y sont reprises comme items (3.1.2).
    récupération (DT2-4 ; ADR 0037 D-10 : nommée, ordonnée après la lecture, comptée, retirée) le
    déclarerait `devant_la_lecture`, ce que le cliquet `NbDevantLaLecture` interdit de faire monter.
    Même question que 2.2.2 (découverte 8) ; la forme juste est 2.7.b (les canaux lus par la marche
-   là où elle couvre au moins autant, l'ancrage seulement après). Décision de l'utilisateur
-   demandée.
+   là où elle couvre au moins autant, l'ancrage seulement après). Décision de l'utilisateur du
+   2026-10-04 : option A — item 2.7.d.
 
 ## 7. Journal
 
@@ -760,3 +776,10 @@ plan y sont reprises comme items (3.1.2).
   jusqu'aux lots de comportement de 2.7, qui ordonneront ces lectures après la grammaire — recommandé
   —, ou les inscrire « devant la lecture » en relevant le cliquet). Ouverture du lot 2.5 sur la même
   base (`feat/v75` n'a pas bougé, référence : passe `ri24a`), par la mesure.
+- 2026-10-04 : DÉCISION DE L'UTILISATEUR (« option A », réponse à la question du point d'étape) : les
+  lectures heuristiques qui décident devant une lecture de la grammaire restent hors du registre
+  jusqu'à 2.7 ; item 2.7.d ajouté, 2.2.2 et la partie « marque et registre » de 2.4.1 statués `[~]`
+  vers lui (découvertes 8 et 10 closes par la décision). La campagne lance la recuisson du parc
+  local (binaire de `feat/v75`), puis la vague 2 (LU, LS, LP, naissances par la vue A) sur GO de
+  l'utilisateur : elle préviendra avant de toucher un fichier ; les fichiers de 2.5 (créations,
+  pistes, poses) ne sont pas dans sa liste.
