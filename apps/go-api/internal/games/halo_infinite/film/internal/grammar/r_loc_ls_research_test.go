@@ -70,12 +70,12 @@ func rlocSignatures(pay []byte, w *World, cfg FrameConfig, hf map[uint32]bool) (
 	defer cfg.Obs.neutraliserEtatsDeMouvement()()
 	s123, sHF = -1, -1
 	nb := len(pay) * 8
-	for s := 2; s+marchSignatureBits < nb; s++ {
+	for s, largeur := 2, largeurDeSignature(cfg); s+largeur < nb; s++ {
 		if bitAvant(pay, s) != 0 {
 			continue
 		}
 		rec, end, ok := TryDeltaAt(pay, s, w, cfg)
-		if !ok || end != s+marchSignatureBits || len(rec.Trace.Comps) != 1 {
+		if !ok || end != s+largeurDeSignature(cfg) || len(rec.Trace.Comps) != 1 {
 			continue
 		}
 		if rec.Slot == marchSignatureSlot {

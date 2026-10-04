@@ -10,7 +10,7 @@ import (
 //
 // # LE DEFAUT, MESURE
 //
-// Dans un paquet delta a liste d evenements, le localisateur de production (`marchLocateStrict`,
+// Dans un paquet delta a liste d evenements, le localisateur de production ([LocaliserBoucleDeRecords],
 // signature du slot 123) demarre la marche sur le premier record qu il sait ancrer. Or les
 // CREATIONS d objets de l instant sont les premiers records de la liste — la naissance d un
 // bipede (lot M3.2 : 40/41, 91/99 et 123/125 cas, `birth_loadouts.go`), les armes et
@@ -29,13 +29,14 @@ import (
 // objets du monde ([TableAnticipee.SlotDeLArchetype]). Un candidat n est qu un candidat. Il n est
 // retenu que si la CHAINE des records qui en partent — chacun lu par son en-tete comme la boucle
 // de records le lit : NEW traverse sans desynchronisation, DEL, delta qui se decode sur un slot que
-// le monde connait — finit EXACTEMENT sur le debut que le localisateur a trouve : deux lectures
-// independantes, l en-tete en tete et la signature du slot 123 en queue, qui s accordent au bit
-// pres. Quand le localisateur ne trouve rien, la preuve est la FERMETURE du paquet par la marche
-// complete qui part du candidat ([debutParFermetureRangee]) ; a defaut, le candidat d ou le paquet
-// ferme au bit pres seulement est garde, et ce second rang N EST PAS une preuve : c est le repli
-// nomme `repli_debut_de_liste_ferme_au_bit`, compte a part. Sinon le debut du localisateur est
-// garde, et rien ne change d un bit. Par la chaine et au premier rang, aucun bit n est devine, les
+// le monde connait, aucun masque que l ecrivain n ecrit pas ([pasDEssai]) — finit EXACTEMENT sur
+// le debut que le localisateur a trouve : deux lectures independantes, l en-tete en tete et la
+// signature du slot 123 en queue, qui s accordent au bit pres. Quand le localisateur ne trouve
+// rien, la preuve est la FERMETURE du paquet par la marche complete qui part du candidat
+// ([debutParFermetureRangee]) ; a defaut, le candidat d ou le paquet ferme au bit pres seulement
+// est garde, et ce second rang N EST PAS une preuve : c est le repli nomme
+// `repli_debut_de_liste_ferme_au_bit`, compte a part. Sinon le debut du localisateur est garde, et
+// rien ne change d un bit. Par la chaine et au premier rang, aucun bit n est devine, les
 // records sont LUS ; les listes ainsi etendues sont comptees
 // ([types.MovementStateStats.EventPacketsNewRecordStart]).
 
@@ -46,7 +47,7 @@ import (
 // Tout debut autre que celui du localisateur est un record NEW que le localisateur sautait. Chaque
 // comment est une recuperation que la structure de lecture marque (ADR 0037 IR-6).
 func localiserLaListe(pay []byte, w *World, cfg FrameConfig) (int, lecture.DebutDeVueB) {
-	debut := marchLocateStrict(pay, w, cfg)
+	debut, _ := LocaliserBoucleDeRecords(pay, w, cfg, SignatureStricte)
 	if debut < 0 {
 		return debutParFermetureRangee(pay, candidatsDeTete(pay, len(pay)*8, w), w, cfg)
 	}
@@ -112,23 +113,51 @@ func debutParChaine(pay []byte, debut int, candidats []int, w *World, cfg FrameC
 const plafondChaineDeTete = 64
 
 // chaineJusqua marche les records qui partent de `pos`, chacun lu par son en-tete comme la boucle
-// de records le lit ([pasDEssai]). Vrai si la chaine tombe EXACTEMENT sur `debut`.
+// de records le lit ([pasDEssai]). Vrai si la chaine tombe EXACTEMENT sur `debut` ET si ses
+// records, puis celui de `debut`, suivent la loi d ecriture de la vue B ([ordreDeLaVueB] : NEW*,
+// DELTA*, DEL*, slots strictement croissants dans chaque groupe) : une chaine que l ecrivain ne
+// peut pas ecrire ne prouve rien, meme si elle tombe au bit pres.
 func chaineJusqua(pay []byte, pos, debut, extra int, w *World, cfg FrameConfig) bool {
 	essai := cfg
 	essai.Obs = nil // traversees d ESSAI : rien n est publie, la marche relira les records
+	ordre := nouvelOrdreDeLaVueB()
 	for n := 0; n < plafondChaineDeTete && pos < debut; n++ {
+		if !suitLOrdreEn(&ordre, pay, pos, extra, essai) {
+			return false
+		}
 		fin, ok := pasDEssai(pay, pos, extra, w, essai)
 		if !ok || fin <= pos {
 			return false
 		}
 		pos = fin
 	}
-	return pos == debut
+	return pos == debut && suitLOrdreEn(&ordre, pay, debut, extra, essai)
+}
+
+// suitLOrdreEn lit, sans le traverser, l en-tete du record a `pos` (type, puis identifiant comme
+// [pasDEssai] le lit) et le fait suivre par `ordre` ; faux pour un en-tete hors de l ordre, ou
+// pour un terminateur (aucun genre).
+func suitLOrdreEn(ordre *ordreDeLaVueB, pay []byte, pos, extra int, essai FrameConfig) bool {
+	br := LecteurSur(pay)
+	br.poserCadre(essai)
+	br.SetBitPos(pos + extra)
+	ph, ok := phaseDeRecord(readRecordType(br))
+	if !ok {
+		return false
+	}
+	return ordre.suivre(ph, readRecordID(br, essai.IDLowBits, essai.IDBase)&0x3fffffff)
 }
 
 // pasDEssai lit UN record a `pos` et rend la position qui le suit : un NEW traverse sans
 // desynchronisation, un DEL (en-tete et mot de 32 bits), un delta qui se decode sur un slot que le
 // monde connait. Un terminateur ou un record illisible refusent le pas.
+//
+// UN RECORD DONT LE MASQUE CONTREDIT L ECRIVAIN REFUSE AUSSI LE PAS. `FUN_142e2da44`, le seul
+// ecrivain du masque d un record NEW ou delta, ne pose aucun bit au-dela des composants de
+// l archetype (`i < *(desc+0x4320)`), n ecrit dense qu un masque de plus de sept composants et
+// ecrit croissants les index d un masque epars ([lireMasque], [EntityTrace.MasqueNonEcrit]). Un
+// record lu dont le masque viole l une de ces regles n a pas ete ecrit la par le jeu : la chaine
+// qui le traverse ne prouve rien, meme si elle tombe au bit pres sur le debut localise.
 func pasDEssai(pay []byte, pos, extra int, w *World, essai FrameConfig) (int, bool) {
 	br := LecteurSur(pay)
 	br.poserCadre(essai)
@@ -140,14 +169,14 @@ func pasDEssai(pay []byte, pos, extra int, w *World, essai FrameConfig) (int, bo
 	case recNew:
 		readRecordID(br, essai.IDLowBits, essai.IDBase)
 		tr := TraverseEntity(br, w.Reg, essai.NewDefaultStateBits)
-		return tr.EndBit, tr.DesyncAt == -1
+		return tr.EndBit, tr.DesyncAt == -1 && tr.MasqueNonEcrit == InvariantAucun
 	case recDel:
 		readRecordID(br, essai.IDLowBits, essai.IDBase)
 		br.Skip(32)
 		return br.BitPos(), true
 	case recDelta:
-		_, fin, ok := TryDeltaAt(pay, pos, w, essai)
-		return fin, ok
+		rec, fin, ok := TryDeltaAt(pay, pos, w, essai)
+		return fin, ok && rec.Trace.MasqueNonEcrit == InvariantAucun
 	}
 	return pos, false // terminateur : la liste finirait avant le debut localise
 }

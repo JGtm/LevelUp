@@ -98,6 +98,14 @@ package objectives
 // golden regenere a revision constante quand la lecture des signaux ne change pas, montee sinon.
 // AUCUNE SORTIE NE CHANGE (`replay-equiv` sur les 20 films de reference, faits et killsource
 // identiques a l octet) ; golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-04 (vague 2 de la campagne de grammaire apres sa revue adverse : lots LU et
+// LT, REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-03.5` (la chaine de tete d une
+// liste d evenements refuse un masque ou un ordre que l ecrivain n ecrit pas ; largeur de la
+// signature du localisateur derivee du cadre). `grammar/signaux` ne change pas, et l etape
+// `objectives` de `replay-equiv` est IDENTIQUE sur les 20 films de reference (binaire de `6fa631df0`
+// contre binaire de la tete) : la lecture des signaux ne change pas. Golden regenere a revision
+// constante. Mesures : `campagne_grammaire_2026-10-01/vague2_tsv/revue/`.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

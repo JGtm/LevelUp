@@ -468,3 +468,12 @@ package killsource
 // installe par defaut (`sync/engine_options.go`), le redecoderait de lui-meme, huit films par cycle,
 // pour reecrire des lignes identiques. Golden regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/vague1_tsv/`.
+//
+// COMPLEMENT DU 2026-10-04 (vague 2 de la campagne de grammaire apres sa revue adverse : lots LU et
+// LT ; REVISION CONSTANTE) : une source de la couche change (`walk.go` appelle le localisateur
+// unique de `grammar`, lot LU) et la VALEUR de `grammar.Rev` monte a `grammar-2026-10-03.5`, donc
+// l empreinte. Sortie `cmd/killsource json` sur les 19 temoins de `config/replay_corpus.toml` et
+// `1c4c63c2` (carte Refuge), binaire de `6fa631df0` contre binaire de la tete : IDENTIQUE A L OCTET
+// sur les 20 films. Le lot LS, qui faisait monter la revision (voie de 229 morts du balayage a la
+// marche), est retire de la vague : la revision reste et aucun backlog n est ouvert. Golden regenere
+// a revision constante. Mesures : `campagne_grammaire_2026-10-01/vague2_tsv/revue/`.

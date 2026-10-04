@@ -1,0 +1,4 @@
+160c160
+< 		return tr.EndBit, tr.DesyncAt == -1 && tr.MasqueNonEcrit == InvariantAucun
+---
+> 		return tr.EndBit, tr.DesyncAt == -1

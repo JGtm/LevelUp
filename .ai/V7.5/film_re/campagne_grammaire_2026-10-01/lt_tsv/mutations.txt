@@ -1,0 +1,19 @@
+m1 ROUGE
+  m1     debut_de_liste_masque_test.go:174: NEW, bit au-dela de l archetype : debut 5 (true), attendu 61 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+  m1     debut_de_liste_masque_test.go:174: NEW, dense de sept composants : debut 5 (true), attendu 123 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+  m1     debut_de_liste_masque_test.go:174: NEW, epars non croissant : debut 5 (true), attendu 69 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+m2 ROUGE
+  m2     debut_de_liste_masque_test.go:174: delta, bit au-dela de l archetype : debut 5 (true), attendu 61 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+  m2     debut_de_liste_masque_test.go:174: delta, dense de sept composants : debut 5 (true), attendu 123 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+  m2     debut_de_liste_masque_test.go:174: delta, epars non croissant : debut 5 (true), attendu 68 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+m3 ROUGE
+  m3     debut_de_liste_masque_test.go:174: NEW, dense de sept composants : debut 5 (true), attendu 123 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+  m3     debut_de_liste_masque_test.go:174: NEW, epars non croissant : debut 5 (true), attendu 69 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+  m3     debut_de_liste_masque_test.go:174: delta, dense de sept composants : debut 5 (true), attendu 123 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+  m3     debut_de_liste_masque_test.go:174: delta, epars non croissant : debut 5 (true), attendu 68 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+m4 ROUGE
+  m4     debut_de_liste_masque_test.go:174: delta, dense de sept composants : debut 5 (true), attendu 123 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+  m4     debut_de_liste_masque_test.go:174: delta, epars non croissant : debut 5 (true), attendu 68 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+m5 ROUGE
+  m5     debut_de_liste_masque_test.go:172: NEW, dense de huit composants (temoin) : debut 124 (false), attendu 5 — l ecrivain ecrit ce masque
+  m5     debut_de_liste_masque_test.go:172: NEW, epars croissant (temoin) : debut 69 (false), attendu 5 — l ecrivain ecrit ce masque

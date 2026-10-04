@@ -1,0 +1,1589 @@
+SAIN_PERDU	bcb6d393	15:706	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	d9781168	4:110	devenu_non_ferme	aucun	ti=10 i2 managed-object-navpoint-component
+SAIN_PERDU	d9781168	15:1318	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	d9781168	22:212	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	d9781168	22:2040	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	d9781168	27:1758	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	d9781168	28:1722	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	d9781168	33:1266	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	51ebbc0f	22:850	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	51ebbc0f	23:928	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	4:456	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	084a804d	6:1070	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	7:982	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	8:1006	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	10:666	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	10:1046	devenu_non_ferme	aucun	ti=50 archetype hors registre
+SAIN_PERDU	084a804d	12:190	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	13:846	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	14:470	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	15:482	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	17:256	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	22:832	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	24:52	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	084a804d	24:166	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	24:744	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	25:720	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	25:886	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	26:784	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	084a804d	28:1088	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	084a804d	30:360	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	30:932	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	31:872	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	31:900	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	084a804d	31:958	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	36:1018	devenu_non_ferme	aucun	vue C : bloc 0xbc (desalignement)
+SAIN_PERDU	084a804d	37:62	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	38:28	devenu_non_ferme	aucun	ti=12 i22 managed-navpoint-visual-state-groups-component-2
+SAIN_PERDU	084a804d	38:1192	devenu_non_ferme	aucun	ti=58 archetype hors registre
+SAIN_PERDU	084a804d	39:420	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	39:488	devenu_non_ferme	aucun	ti=58 archetype hors registre
+SAIN_PERDU	084a804d	39:490	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	084a804d	41:1026	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	084a804d	42:1044	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	084a804d	46:6	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	48:68	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	084a804d	49:124	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	53:956	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	084a804d	54:970	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	7:178	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	8:908	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	8:1112	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	9:422	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	9:752	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	111fa685	10:490	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	11:180	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	12:166	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	13:458	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	13:1064	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	13:1160	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	16:252	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	17:494	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	17:722	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	17:822	devenu_non_ferme	aucun	ti=58 archetype hors registre
+SAIN_PERDU	111fa685	18:392	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	18:938	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	18:988	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	18:1136	devenu_non_ferme	aucun	ti=5 i10 player-primary-respawn-object-component
+SAIN_PERDU	111fa685	20:1162	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	21:690	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	23:554	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	24:14	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	26:68	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	111fa685	27:8	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	111fa685	27:458	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	5:906	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	e5adf7b2	6:1088	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	e5adf7b2	6:1204	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	8:280	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	e5adf7b2	9:636	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	10:958	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	e5adf7b2	10:1010	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	10:1014	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	10:1016	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	10:1018	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	10:1020	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	10:1022	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	10:1024	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	12:402	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	13:806	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	17:432	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	17:742	devenu_non_ferme	aucun	vue B : fin de payload
+SAIN_PERDU	e5adf7b2	17:1182	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	e5adf7b2	18:1102	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	e5adf7b2	22:962	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	e5adf7b2	24:192	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	e5adf7b2	26:936	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	11de8353	8:1064	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	11de8353	9:762	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	11de8353	10:1004	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	11de8353	13:120	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	11de8353	13:1178	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	11de8353	16:1154	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	11de8353	18:736	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	11de8353	24:464	devenu_non_ferme	aucun	ti=18 i8 effect-state-data-component
+SAIN_PERDU	11de8353	25:834	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	11de8353	26:1158	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	11de8353	28:640	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	bfecd02b	21:1996	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	6:1144	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	8:890	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	8:896	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	8:904	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	11:132	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	12:1068	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	14:1190	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	16:404	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	17:582	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	20:1094	devenu_non_ferme	aucun	ti=43 i21 device-position-group-component
+SAIN_PERDU	4f77afc1	22:794	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	22:992	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	26:788	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	27:110	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	27:490	devenu_non_ferme	aucun	ti=35 i59 biped-spartan-ability-non-predicted-state
+SAIN_PERDU	4f77afc1	28:744	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	28:794	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	34:342	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	35:954	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	40:196	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	40:1164	devenu_non_ferme	aucun	ti=12 i22 managed-navpoint-visual-state-groups-component-2
+SAIN_PERDU	4f77afc1	42:1168	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	45:606	devenu_non_ferme	aucun	ti=35 i59 biped-spartan-ability-non-predicted-state
+SAIN_PERDU	4f77afc1	45:782	devenu_non_ferme	aucun	ti=43 i39 device-machine-flags-component
+SAIN_PERDU	4f77afc1	46:30	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	46:76	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	47:10	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	47:38	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	48:82	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	48:160	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	50:152	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	50:242	devenu_non_ferme	aucun	ti=10 i2 managed-object-navpoint-component
+SAIN_PERDU	4f77afc1	50:548	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	50:658	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	50:678	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	51:542	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	52:44	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	52:308	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	52:618	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	52:898	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	52:934	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	53:612	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	53:714	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	53:1040	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	53:1062	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	54:166	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	54:362	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	54:448	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	54:454	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	54:850	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	54:926	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	55:492	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	55:656	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	4f77afc1	57:698	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	58:266	devenu_non_ferme	aucun	ti=12 i18 managed-navpoint-position-offset
+SAIN_PERDU	4f77afc1	58:1184	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	4f77afc1	60:644	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	396cfc92	3:1606	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	f75e7053	24:768	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	4:1848	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	4:2046	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	5:542	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	5:780	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	5:1312	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	5:1890	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	5:1912	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	5:1936	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	5:1940	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	5:2068	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	6:466	devenu_non_ferme	aucun	vue B : fin de payload
+SAIN_PERDU	1c4c63c2	6:694	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	6:2248	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	6:2280	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	7:134	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	7:1464	devenu_non_ferme	aucun	ti=0 i25 forge-engine-baking-data-component
+SAIN_PERDU	1c4c63c2	9:770	devenu_non_ferme	aucun	ti=56 archetype hors registre
+SAIN_PERDU	1c4c63c2	9:1000	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	9:2378	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	10:340	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	10:370	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	10:728	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	10:1404	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	10:2060	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	10:2182	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	11:384	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	11:1314	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	11:1420	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	11:2126	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	12:1780	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	13:64	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	13:164	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	13:632	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	14:54	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	14:194	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	14:2308	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	15:1782	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	16:1074	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	16:1998	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	16:2122	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	16:2220	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:556	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:558	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:564	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:586	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:714	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:734	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:742	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:748	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:756	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:762	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:766	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:782	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:956	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:1056	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:1276	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	17:1344	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:1354	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:1504	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:1506	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:1684	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:1692	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:1696	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:1770	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:1804	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:2166	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	17:2202	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:2246	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:2264	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:2276	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:2288	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:2294	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	17:2300	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	17:2302	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	18:304	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:694	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:790	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:792	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:810	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:864	devenu_non_ferme	aucun	ti=0 i18 forge-engine-player-roles-component
+SAIN_PERDU	1c4c63c2	18:902	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:904	devenu_non_ferme	aucun	ti=0 i18 forge-engine-player-roles-component
+SAIN_PERDU	1c4c63c2	18:1046	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:1220	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:1228	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:1292	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:1366	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:1400	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:1650	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:1652	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:1656	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:2012	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	18:2086	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	19:206	devenu_non_ferme	aucun	ti=0 i18 forge-engine-player-roles-component
+SAIN_PERDU	1c4c63c2	19:302	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	19:310	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	19:1300	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	19:1348	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	19:1356	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	20:386	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	20:614	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:664	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:830	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:960	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:962	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:994	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:998	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	20:1482	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	20:1590	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:1602	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:1690	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:1706	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:2034	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	20:2094	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:162	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	21:262	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:392	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	21:394	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	21:400	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	21:470	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:472	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:532	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:542	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:606	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:636	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:876	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:882	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	21:1148	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:1210	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:1246	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:1578	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:1640	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	21:2038	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:62	devenu_non_ferme	aucun	ti=12 i22 managed-navpoint-visual-state-groups-component-2
+SAIN_PERDU	1c4c63c2	22:336	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:346	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:446	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:514	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:624	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:628	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:642	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:1026	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:1072	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:1350	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:1886	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:1890	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	22:2074	devenu_non_ferme	aucun	ti=12 i21 managed-navpoint-visual-state-groups-component-1
+SAIN_PERDU	1c4c63c2	22:2076	devenu_non_ferme	aucun	ti=12 i22 managed-navpoint-visual-state-groups-component-2
+SAIN_PERDU	1c4c63c2	22:2078	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	22:2082	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	22:2090	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	23:22	devenu_non_ferme	aucun	ti=58 archetype hors registre
+SAIN_PERDU	1c4c63c2	23:52	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	23:428	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	23:650	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	23:710	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	23:740	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	23:892	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	23:1050	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	23:1090	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	23:1096	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	23:1122	devenu_non_ferme	aucun	ti=58 archetype hors registre
+SAIN_PERDU	1c4c63c2	23:1982	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:60	devenu_non_ferme	aucun	ti=58 archetype hors registre
+SAIN_PERDU	1c4c63c2	24:156	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	24:158	devenu_non_ferme	aucun	ti=12 i25 managed-navpoint-visual-state-groups-component-5
+SAIN_PERDU	1c4c63c2	24:170	devenu_non_ferme	aucun	ti=26 i0 supply-lines-blocked-status-component
+SAIN_PERDU	1c4c63c2	24:260	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:262	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:350	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:510	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	24:520	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:526	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:548	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:752	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:766	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:816	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	24:818	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	24:820	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:910	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:1026	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:1066	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:1074	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:1200	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:1248	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:1258	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:1272	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:1292	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:1300	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:2038	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:2062	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:2184	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:2190	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:2212	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:2214	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:2216	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	24:2218	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	24:2394	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:210	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:270	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:332	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:358	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:426	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:436	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:448	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:636	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	25:638	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:658	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:680	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:682	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:730	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:768	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	25:856	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:914	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:916	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:928	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	25:936	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:942	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:944	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1002	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1004	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1130	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1292	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:1492	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1502	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1614	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:1676	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1682	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1684	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1686	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1692	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1694	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1696	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1732	devenu_non_ferme	aucun	ti=54 archetype hors registre
+SAIN_PERDU	1c4c63c2	25:1752	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1806	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:1822	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1836	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1838	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1876	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1900	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1910	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1914	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1920	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1926	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:1940	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:1946	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	25:1960	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:1966	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:1972	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:1976	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:1990	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	25:2026	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	25:2256	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:144	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:358	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	26:526	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:536	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:544	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:548	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:564	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:574	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:576	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:580	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:584	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:588	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	26:594	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:620	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:622	devenu_non_ferme	aucun	ti=35 i59 biped-spartan-ability-non-predicted-state
+SAIN_PERDU	1c4c63c2	26:714	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:718	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:722	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:872	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	26:924	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:926	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:932	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:934	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:952	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:990	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:1052	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:1326	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:1408	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:1442	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:1448	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:1512	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:1514	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:1516	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	26:1812	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	26:2030	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	27:190	devenu_non_ferme	aucun	vue C : bloc 0xbc (desalignement)
+SAIN_PERDU	1c4c63c2	27:230	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	27:548	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	27:592	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:622	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:664	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:702	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	27:728	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	27:742	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:746	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1012	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1014	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1142	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1168	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1232	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1240	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1242	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1250	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1254	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1292	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1722	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:1880	devenu_non_ferme	aucun	ti=59 archetype hors registre
+SAIN_PERDU	1c4c63c2	27:2106	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	27:2326	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	28:512	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	28:936	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	28:1128	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	28:1582	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	29:414	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	29:552	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:554	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:556	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:558	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:564	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:566	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:590	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	29:618	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:620	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:622	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:626	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:2176	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:2290	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:88	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:304	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:308	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:310	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:416	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:440	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	30:656	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:896	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:898	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:902	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:912	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:922	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:924	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:928	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:932	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	30:942	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:958	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:1184	devenu_non_ferme	aucun	ti=43 i21 device-position-group-component
+SAIN_PERDU	1c4c63c2	30:1318	devenu_non_ferme	aucun	ti=60 archetype hors registre
+SAIN_PERDU	1c4c63c2	30:1322	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:1326	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:1370	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:1372	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:1412	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:1552	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:1780	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	30:2208	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	31:874	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	31:970	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	31:1028	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	31:1102	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	31:1110	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	31:1146	devenu_non_ferme	aucun	ti=28 i0 narrative-moment-beat-activation-component
+SAIN_PERDU	1c4c63c2	31:1378	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	31:1408	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	31:1642	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	31:1656	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:220	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:784	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:854	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1134	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1138	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1150	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1152	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1156	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1158	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1160	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1162	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1164	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1168	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1172	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1176	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1178	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1186	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1258	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	32:1262	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1264	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1302	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1328	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1330	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1336	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	32:1338	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1354	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1460	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1462	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1464	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1466	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1468	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1722	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1788	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	32:1838	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1842	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1900	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1904	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1906	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1912	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1914	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1918	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1924	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1928	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1932	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1946	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1948	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:1962	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:2174	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:2232	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:2240	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	32:2320	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:878	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	33:940	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1058	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	33:1096	devenu_non_ferme	aucun	ti=0 i24 forge-engine-baking-data-component
+SAIN_PERDU	1c4c63c2	33:1152	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1158	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1160	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1164	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1172	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	33:1188	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1268	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1324	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1432	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1436	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1442	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1444	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1658	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1784	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1808	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1814	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1832	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1872	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1876	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1878	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1906	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:1952	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2006	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2008	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2026	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2056	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2122	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2126	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2142	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2148	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2164	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	33:2168	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2174	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2178	devenu_non_ferme	aucun	ti=43 i36 device-dispenser-state-component
+SAIN_PERDU	1c4c63c2	33:2180	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2184	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2188	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2190	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2192	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2194	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2200	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2204	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2208	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	33:2210	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2214	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2220	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2222	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2228	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2230	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2232	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	33:2234	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2242	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2244	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	33:2248	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	33:2338	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	34:6	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:20	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:26	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:82	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:84	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:86	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:92	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:102	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:122	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:154	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:248	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:256	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:278	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:322	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:332	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:362	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:504	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	34:602	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:694	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	34:696	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	34:804	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	34:808	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1026	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	34:1102	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1104	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	34:1240	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1474	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1548	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1564	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1612	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1638	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1690	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1692	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1696	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1782	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1798	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1818	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1838	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1840	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1848	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1924	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1964	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1968	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:1970	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	34:2202	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:2204	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:2206	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:2236	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	34:2328	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:94	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:170	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:204	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	35:206	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:212	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:274	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:306	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:324	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:664	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:670	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:682	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:684	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:700	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:702	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:716	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:764	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	35:768	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:972	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:1048	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:1220	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	35:1630	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:1802	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:1870	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:1872	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:1892	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:1896	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:1924	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:2044	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:2050	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	35:2080	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:2284	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:2292	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	35:2312	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:276	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:278	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	36:422	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	36:1038	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1100	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1200	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1274	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1312	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1396	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1414	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1426	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1478	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1484	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	36:1506	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1528	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1754	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	36:1802	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1808	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	36:1816	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1818	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1830	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1852	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	36:1900	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1930	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:1940	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	36:2104	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	36:2132	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	36:2304	devenu_non_ferme	aucun	ti=60 archetype hors registre
+SAIN_PERDU	1c4c63c2	36:2308	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:216	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	37:268	devenu_non_ferme	aucun	vue C : bloc 0xbc (desalignement)
+SAIN_PERDU	1c4c63c2	37:272	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:276	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	37:296	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:528	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:766	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	37:872	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:914	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:916	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:924	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:950	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:952	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:988	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	37:1068	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:1172	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:1174	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:1324	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:1350	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	37:1458	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:1822	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:1824	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	37:1958	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:1960	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	37:2074	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:266	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:426	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:436	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:442	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:444	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:448	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:556	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:568	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:622	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:624	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:664	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:718	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:798	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	38:1128	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:1444	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:1534	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:1658	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:1716	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:2286	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:2348	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	38:2364	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	38:2382	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:60	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:268	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:472	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:486	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	39:488	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:492	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:548	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:680	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1050	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1430	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1432	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	39:1468	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1596	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1632	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	39:1636	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1640	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1792	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	39:1796	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1802	devenu_non_ferme	aucun	ti=0 i25 forge-engine-baking-data-component
+SAIN_PERDU	1c4c63c2	39:1812	devenu_non_ferme	aucun	ti=0 i25 forge-engine-baking-data-component
+SAIN_PERDU	1c4c63c2	39:1816	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1834	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	39:1848	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1852	devenu_non_ferme	aucun	ti=0 i25 forge-engine-baking-data-component
+SAIN_PERDU	1c4c63c2	39:1862	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1864	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	39:1866	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	39:1880	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1886	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1892	devenu_non_ferme	aucun	ti=0 i25 forge-engine-baking-data-component
+SAIN_PERDU	1c4c63c2	39:1910	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1940	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:1988	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:2140	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:2170	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:2260	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	39:2304	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	39:2384	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:32	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:40	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	40:420	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:668	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:904	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:910	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:932	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:952	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1206	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1298	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1306	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1312	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1314	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1324	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1332	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1404	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1604	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1654	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	40:1950	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	41:870	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	41:1480	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:384	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	42:592	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:614	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:684	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:744	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:776	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:782	devenu_non_ferme	aucun	ti=18 i3 effect-state-data-component
+SAIN_PERDU	1c4c63c2	42:1016	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:1024	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:1036	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:1048	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:1194	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:1468	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:1578	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	42:1934	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:1936	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:1938	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:2076	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:2132	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:2138	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:2190	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:2270	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:2274	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:2320	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	42:2338	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:282	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:330	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:440	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:512	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:742	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	43:748	devenu_non_ferme	aucun	ti=56 archetype hors registre
+SAIN_PERDU	1c4c63c2	43:766	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	43:826	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:938	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:940	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	43:946	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:948	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:986	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:988	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:990	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	43:992	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:994	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:996	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:1030	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:1038	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:1040	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:1058	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:1060	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:1082	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:1168	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:1542	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:2032	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:2038	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:2042	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	43:2222	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	44:20	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:40	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:326	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	44:652	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:696	devenu_non_ferme	aucun	ti=58 archetype hors registre
+SAIN_PERDU	1c4c63c2	44:700	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:702	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:808	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:864	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:878	devenu_non_ferme	aucun	ti=12 i21 managed-navpoint-visual-state-groups-component-1
+SAIN_PERDU	1c4c63c2	44:888	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:890	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:912	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1194	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1198	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1226	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1322	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1332	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1664	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1684	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1842	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1844	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1846	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:1848	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2048	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2088	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	44:2114	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2128	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2134	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2136	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2142	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2144	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2154	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2156	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2286	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2314	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	44:2362	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:204	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:362	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:364	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:480	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	45:676	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:866	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1026	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1050	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1054	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1136	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1148	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1576	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1606	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1636	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1656	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1728	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1736	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1754	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	45:1890	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1908	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1924	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	45:1956	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:1974	devenu_non_ferme	aucun	vue C : bloc 0xbc (desalignement)
+SAIN_PERDU	1c4c63c2	45:1984	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	45:2030	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:2034	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	45:2064	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	45:2094	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:2138	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:2140	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:2224	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	45:2388	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	45:2390	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	45:2400	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:8	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:100	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:166	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:192	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:240	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:340	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:372	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:376	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:468	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	46:472	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:480	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:504	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:510	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:540	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:930	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:938	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:940	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:962	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:964	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:1060	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	46:1132	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:1232	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:1250	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	46:1332	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:1364	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:1424	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:1792	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:1842	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:1914	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	46:1960	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	46:2370	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:206	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:280	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:402	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:1268	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	47:1274	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:1364	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:1810	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:2056	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:2196	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:2198	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:2210	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:2252	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:2272	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	47:2322	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:44	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:204	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:326	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:532	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:536	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	48:842	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:890	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1022	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	48:1058	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1080	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1082	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1084	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1098	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1102	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1124	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1128	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1130	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1456	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1602	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	48:1860	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:1974	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:2124	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:2138	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	48:2302	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:14	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:46	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:84	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:104	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:112	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:136	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:138	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	49:140	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:154	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:158	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	49:164	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:166	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:178	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:186	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:196	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:200	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	49:204	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	49:212	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:214	devenu_non_ferme	aucun	ti=35 i59 biped-spartan-ability-non-predicted-state
+SAIN_PERDU	1c4c63c2	49:568	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:590	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:658	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:678	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:698	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:974	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1044	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1292	devenu_non_ferme	aucun	ti=19 i0 sound-placement-state-data-component
+SAIN_PERDU	1c4c63c2	49:1332	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1350	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1396	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1458	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1476	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1490	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	49:1500	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1512	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1636	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1660	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1666	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1678	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1900	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:1972	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:2146	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	49:2242	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:2374	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	49:2376	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:32	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:76	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:244	devenu_non_ferme	aucun	ti=35 i59 biped-spartan-ability-non-predicted-state
+SAIN_PERDU	1c4c63c2	50:364	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:396	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:428	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:1072	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:1130	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	50:1140	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:1186	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:1206	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:1368	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:2062	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:2100	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	50:2116	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:148	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:180	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:182	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:236	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:246	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:248	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	51:372	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:392	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	51:394	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:426	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:428	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:456	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:468	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:482	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:488	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:490	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:524	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:636	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:646	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:650	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:786	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:850	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:994	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1000	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1002	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1008	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1066	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1244	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1670	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1676	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1918	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1926	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1932	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1970	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:1982	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:2006	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:2012	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:2078	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:2090	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:2110	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:2160	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:2172	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	51:2176	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:2180	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:2254	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	51:2256	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:20	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:126	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:128	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:200	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:206	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:500	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:520	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:534	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:536	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:552	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:558	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:564	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:656	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	52:732	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:734	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:782	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:796	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:810	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:850	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:954	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:1054	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:1082	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:1142	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:1178	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:1180	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:1192	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:1200	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	52:1560	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:1666	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:1988	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:2102	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	52:2266	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	53:44	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:58	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:158	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:162	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:186	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:236	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:264	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:572	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:574	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	53:1006	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1018	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1142	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1274	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1348	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1370	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1418	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1476	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	53:1488	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1534	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1564	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	53:1568	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1590	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	53:1636	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1646	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1662	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:1726	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:2106	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:2108	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	53:2204	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:2390	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:90	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:332	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:474	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:590	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:608	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:610	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	54:870	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:874	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:876	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:894	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:900	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:920	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:938	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:952	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:1000	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:1136	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:1252	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:1430	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:1442	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:1678	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	54:1682	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	54:1978	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1238	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1400	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1416	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1418	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1430	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1458	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1730	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1780	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1800	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1912	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:1920	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	55:1962	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:2160	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	55:2280	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:88	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:424	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:524	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:540	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:542	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:1034	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:1270	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:1282	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	56:1464	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	56:1550	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:1760	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:1762	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:1812	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:1850	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	56:2024	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:66	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	57:240	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:242	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:246	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	57:256	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	57:266	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:432	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	57:610	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	57:624	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:660	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:662	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	57:696	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:704	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	57:906	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:940	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:944	devenu_non_ferme	aucun	ti=62 archetype hors registre
+SAIN_PERDU	1c4c63c2	57:1012	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1084	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	57:1086	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1120	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1124	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1154	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1172	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1396	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	57:1466	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1490	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1526	devenu_non_ferme	aucun	ti=62 archetype hors registre
+SAIN_PERDU	1c4c63c2	57:1534	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1536	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1566	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:1820	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	57:1920	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	57:2012	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:2342	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	57:2348	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	58:6	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	58:302	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:612	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:692	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:738	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:740	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:742	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:744	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:750	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:1134	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:1464	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:1470	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:1478	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:1490	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:1512	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:1772	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:1886	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	58:2302	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	58:2348	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	58:2374	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:108	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	59:118	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:122	devenu_non_ferme	aucun	ti=35 i59 biped-spartan-ability-non-predicted-state
+SAIN_PERDU	1c4c63c2	59:148	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	59:156	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	59:166	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:396	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:466	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:474	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:476	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:484	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:486	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:496	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:502	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:504	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:510	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:512	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:528	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:542	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:556	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	59:564	devenu_non_ferme	aucun	ti=58 archetype hors registre
+SAIN_PERDU	1c4c63c2	59:566	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:568	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:666	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:736	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:758	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:762	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:768	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:770	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:782	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:824	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	59:830	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:1160	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:1986	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:2270	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	59:2376	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	59:2392	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	60:200	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:286	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:316	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:358	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:360	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:468	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:754	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:1046	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:1056	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:1150	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	60:1172	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:1210	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:1282	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:1284	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:1526	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:1566	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:1852	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	60:1894	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	60:2008	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:2076	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	60:2128	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	60:2144	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:52	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:70	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:140	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:586	devenu_non_ferme	aucun	ti=10 i2 managed-object-navpoint-component
+SAIN_PERDU	1c4c63c2	61:678	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:750	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1308	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1324	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	61:1326	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1332	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1354	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1418	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1554	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1556	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1558	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1604	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1718	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1786	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1808	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1812	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1824	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1874	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1884	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1894	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1902	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1904	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1910	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1914	devenu_non_ferme	aucun	vue B : fin de payload
+SAIN_PERDU	1c4c63c2	61:1948	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1954	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1960	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:1962	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	61:1978	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:2274	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:2328	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	61:2330	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:40	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	62:156	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:186	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:320	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:784	devenu_non_ferme	aucun	ti=48 i0 forge-player-data-edited-objects-ids-component
+SAIN_PERDU	1c4c63c2	62:994	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:1074	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:1114	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:1238	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:1368	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:1384	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:1694	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:1798	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:1916	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:2026	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:2084	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:2202	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	62:2234	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:2304	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	62:2328	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	63:92	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	63:98	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:102	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	63:158	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:464	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:490	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:542	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:876	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:992	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1190	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1444	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	63:1486	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1702	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1712	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1732	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	63:1748	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1752	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1784	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1970	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1972	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1984	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:1996	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:2078	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	63:2390	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	63:2400	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:6	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:58	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:94	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:150	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:172	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:174	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:176	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:178	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:194	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:296	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:462	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:550	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	64:554	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:606	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:668	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:684	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:694	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:726	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:730	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:740	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:744	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:746	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:810	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:820	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:844	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	64:874	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	64:958	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:976	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:990	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:1010	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	64:1060	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:1068	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:1154	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:1196	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:1338	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:1342	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	64:1692	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:2032	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:2074	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	64:2114	devenu_non_ferme	aucun	vue C : kind non porte
+SAIN_PERDU	1c4c63c2	64:2126	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:30	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:32	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:414	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:422	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:424	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	65:440	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:542	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:592	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	65:612	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:796	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:806	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:902	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:956	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:958	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:962	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:1566	devenu_non_ferme	aucun	ti=0 i25 forge-engine-baking-data-component
+SAIN_PERDU	1c4c63c2	65:1580	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:1778	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:1814	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2134	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2232	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	65:2246	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	65:2252	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2254	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2256	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2266	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2272	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2282	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2284	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2288	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2290	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2298	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	65:2354	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	66:104	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:168	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:374	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:384	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	66:506	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:518	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:526	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:574	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	66:916	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:936	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1022	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1078	devenu_non_ferme	aucun	ti=0 i25 forge-engine-baking-data-component
+SAIN_PERDU	1c4c63c2	66:1116	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	66:1134	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1136	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1138	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1254	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1270	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1462	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1464	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	66:1614	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1900	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:1910	devenu_non_ferme	aucun	vue C : terminateur hors cadre
+SAIN_PERDU	1c4c63c2	66:2118	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:2198	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:2200	devenu_non_ferme	aucun	ti=56 archetype hors registre
+SAIN_PERDU	1c4c63c2	66:2202	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:2220	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:2224	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:2254	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	66:2260	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	66:2338	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:364	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:366	devenu_non_ferme	aucun	ti=12 i16 managed-navpoint-override-flags
+SAIN_PERDU	1c4c63c2	67:368	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:386	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:544	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:602	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:668	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:704	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:732	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:744	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:766	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	67:786	devenu_non_ferme	vue B : sortie par rejet	vue B : sortie par rejet

@@ -176,7 +176,8 @@ const (
 	// NomControleCorruptionSectionAbsente : `grammar/controle_corruption_du_film.go` (et la calibration
 	// de `killsource`).
 	NomControleCorruptionSectionAbsente Nom = "repli_controle_corruption_section_absente"
-	// NomLocalisationLargeurLibre : `grammar/object_deaths_march.go` (et la marche de `killsource`).
+	// NomLocalisationLargeurLibre : `grammar/localisateur.go`, compte par les deux marches qui
+	// l appellent (morts d objet, `killsource`).
 	NomLocalisationLargeurLibre Nom = "repli_localisation_largeur_libre"
 
 	// LES REPLIS DE `killsource` (sous-lot killsource du lot J8.7, 2026-09-27) : comptes en DONNEES

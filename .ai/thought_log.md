@@ -115006,6 +115006,35 @@ second rang de `debutParFermeture` lie au monde (D-L2-12), puis rejouer C11.
 
 **Conclusion / prochaine étape** : rien de neuf à décider ; restent ouverts D23 (révision killsource), rc 1 du gate de corpus (pilote), LK (D-REV-2). Détail : plan §4 (2026-10-03, « mineurs de la revue »), `LOT_L4a.md` §14, `LOT_L3a.md` §11.
 
+## [2026-10-03] Campagne de grammaire — vague 1 fusionnée dans feat/v75, 4 témoins recuits
+
+**Statut** : Complété (vague 1) ; recuisson du parc en attente du feu vert de l'utilisateur.
+
+**Décision technique principale** : vague 1 (L8 `ti=3`, L3a moteur HI_1_13_0, L4a `ti=40` en delta) fusionnée dans `feat/v75` par avance rapide (`2393d7db7`) après CI verte (un test de performance de `sync/killcollector`, `TestRosterDesFilms_AnnuaireContreJointure`, sous son seuil de facteur 10 à 8,9 sur le runner, repassé à la relance du job ; fichier non touché par la vague) et `make gate-push` vert. D23 tranchée par le pilote : `killsource.Rev` constante. rc 1 du gate de corpus admis (repli existant nommé pour la première fois, pertes `[FILET]` instruites). L2 et L9 écartés (gate 2). Décision utilisateur : intégrer puis recuire 4 témoins seulement.
+
+**Résultats observés** : corpus 20 films, paquets sains 276 327 -> 313 495, records utiles sains 2 585 919 -> 2 922 510 ; indicateur D1 fixe 33,3 % -> 37,7 % (HI_1_13_0 65,8 % -> 76,6 %) ; 2 747 morts identiques sur 19 témoins. Recuisson locale `backfill-replay --one` (binaire de `2393d7db7`) : `fb1a1a72` 27 s, `51ebbc0f` 17 s, `bfecd02b` 19 s, `4f77afc1` 124 s ; les anciens artefacts (schéma 71, gardés au scratchpad) ne mesurent pas la vague seule. Sur `fb1a1a72`, le tir continu ferme 43 450 paquets contre 22 318 et les intervalles d'état passent de 534 à 1 109.
+
+**Conclusion / prochaine étape** : coup d'œil de l'utilisateur sur les 4 témoins, puis recuisson du parc (115 rejeux, environ 40 min, serveur arrêté) sur son feu vert ; vague 2 (LU, LS, LP, naissances par la vue A) sur GO daté. Découverte : le test de coût `TestRosterDesFilms_AnnuaireContreJointure` est sensible au bruit du runner (facteur 8,9 contre 10 exigé), à instruire hors campagne.
+
+## [2026-10-04] Campagne de grammaire — vague 2, lot LN : corrections du contrôle indépendant — En cours (lot statué [!], commit local sur `feat/cg2-ln`, non poussé)
+
+**Statut** : En cours. Six corrections du contrôle appliquées (C1 à C6), aucune jugée fausse sur pièces. Le lot reste **[!]** : le gate 6 (`replay-corpus-gate`, rc 1, pertes FILET non instruites) n'est pas tenu, et aucune décision datée du pilote ou de l'utilisateur n'admet ce rc 1.
+
+**Décision technique principale** : le bit de configuration qui précède la vue A (`FUN_142987460`, `DAT_144706104`) est LU ; à 0, la lecture refuse (le lecteur ne porte que la table par catégorie de `FUN_1406d3140`). Les pertes brutes (1 589) sont déclarées non expliquées et compensées au net : l'argument « fermeture factice » supposait E juste, ce que le témoin ne permet pas d'affirmer sur HI_1_10_0. Révision du lot `grammar-2026-10-04` gardée (jamais intégrée), empreinte régénérée.
+
+**Résultats observés** : 0 paquet à bit de configuration nul sur les 20 films ; carte v2 identique au lot à l'octet (`fermeture_paquets.tsv`), gate 2 inchangé (313 495 -> 341 105, aucun film en baisse) ; killsource identique au lot et à la base sur les 19 témoins. Mutations du contrôle 10 / 10 ROUGES (9 survivaient), mutations de l'exécutant 12 / 12 ROUGES. 1 580 des 1 589 pertes sont des paquets localisés par fermeture où E < D (écart > 512 bits dans 1 572 cas), 1 486 sur HI_1_10_0. Le chiffre « 13 655 E < S sur la signature » des notes était faux (toutes méthodes) : 4 911 sur la signature.
+
+**Conclusion / prochaine étape** : au pilote — voie (a) instruire les pertes FILET paquet par paquet, ou (b) décision datée sur le rc 1 ; option de conception soumise : ne prendre E que si la marche partie de E ferme. Lire la vue A de HI_1_10_0 suppose d'instruire l'écrivain de ce build. Détail : `LOT_LN.md` §0, §5, §9, §11.
+
+## [2026-10-04] Campagne de grammaire — vague 2 — En cours (intégration commitée sur `feat/campagne-grammaire`, non poussée ; rc 1 du gate de corpus soumis au pilote)
+
+**Statut** : En cours. LU, LS et LT (LT.1) fusionnés par leur chaîne (`feat/cg2-lt`) ; LP et LN non retenus (`[!]`), seules leurs notes entrent (et la sonde de LP). Gate 2 tenu ; gate de corpus en rc 1, non admis par l'intégrateur.
+
+**Décision technique principale** : tête `grammar-2026-10-03.5` (valeur qu'aucune branche de lot ne porte ; même empreinte que le `.4` de LT) ; `killsource-2026-10-04` gardée (montée de LS justifiée par la voie `read_path` persistée, D23 ; la sortie de la tête est identique à l'octet à celle de la branche de LS) ; `objectives`, `source`, `profile` et `SchemaVersion` 77 inchangés. Corrections documentaires exigées par les contrôles de LU et LT appliquées (dont la règle 17 dans `archlint/no_unregistered_fallback_test.go`) ; celles de LP recopiées en `LOT_LP.md` §10, non appliquées.
+
+**Résultats observés** : carte v2 20 films contre `2393d7db7` : aucun film en baisse, 0 sain perdu en brut ; sains 313 495 -> 332 668 (+19 173), utiles sains 2 922 510 -> 3 100 472 (+177 962), 36 gains contredits sur 19 162 (0,2 %). D1 : corpus 37,7 % -> 40,0 % (fixe 7 758 290), HI_1_13_0 76,6 % -> 81,9 %. Killsource : 2 747 morts, 229 du balayage à la marche sur 19 témoins et 312 sur `1c4c63c2`, aucune valeur changée : backfill killsource du parc DÛ. `replay-equiv` : 8 étapes sur 61 (familles de LS et LT), seule `artifact` diffère de la branche de LT. `repli_debut_de_liste_ferme_au_bit` 8 047 -> 8 068. `replay-corpus-gate` rc 1 : banc 18 / 19 ok, `60ae07c4` FAUX par un repli existant vu pour la première fois (`repli_deadstate_indice_hors_roster` 0 -> 2), pertes toutes `[FILET]` (durée des postures, morts passées du balayage à la marche, trous de vue B). gofmt, vet (module et research), archlint, G-film 20 paquets, golangci 0 issue.
+
+**Conclusion / prochaine étape** : au pilote — rc 1 du gate de corpus (admettre ou instruire), revue adversariale de LU et de la vague, puis fusion dans `feat/v75`, recuisson et backfill killsource (gestes de l'utilisateur, D7), références `replay-equiv` à re-figer. LP : corrections du §10 avant D-LP-1 ; LN : voie (a) ou (b). Détail : plan §4 (2026-10-04), §5 « Découvertes de la vague 2 », §6.2.
 ## [2026-10-04] Rejeu — vies de bots sans identite — Complété (commit local sur `feat/rejeu-vies-bots`, non poussé)
 
 **Statut** : Complété. Les deux vies anonymes du rapport `vies_anonymes/RAPPORT.md` (scratchpad) sont nommées, par deux règles générales du rejeu, sans changement de grammaire.
@@ -115184,3 +115213,32 @@ faite à la campagne).
 **Conclusion / prochaine étape** : à la fusion de LU, fusion de `feat/v75` dans `feat/ri-etape2`,
 passe de référence (références d'équivalence re-figées : schéma 78, `grammar-2026-10-03.5`), puis
 2.7.a ; mesure de durée des objets du monde au signal de machine calme.
+## [2026-10-04] Campagne de grammaire — vague 2 : corrections de la revue adverse — Complété (commit local sur `feat/campagne-grammaire`, non poussé ; rc 1 du gate de corpus et sort de LS soumis au pilote)
+
+**Statut** : Complété. Les 17 constats vérifiés sur pièces : tous vrais, le 16 en partie seulement (ses citations de `movement_states.go` et `frame_harvest.go` redeviennent justes au retrait de LS) ; aucun rejeté. Correction de l'intégration précédente : la phrase « `origin/feat/v75` inchangée, `feat/ri-etape2` non fusionnée » était FAUSSE au commit `da6ecda38` (constat 9) ; `feat/v75` (`6fa631df0`) est fusionnée (`f1895d9bc`) et toutes les mesures sont refaites contre elle.
+
+**Décision technique principale** : LS est RETIRÉ (revert) : ses ordres de localisation sont mesurés et non lus dans le jeu (D13 suspendue), et sa condition de bit nul devant la signature haute fréquence n'est pas écrite par le jeu (`FUN_142f2c3b0`, `FUN_14299d2c8`, `FUN_14076b9c8`). Restent LU et LT, plus trois corrections lues dans le jeu : largeur de la signature dérivée du cadre, chaîne de tête sous l'ordre de la vue B (type unique `ordreDeLaVueB`, juge et chaîne), en-tête du localisateur borné à ce que le jeu écrit. `grammar-2026-10-03.5` régénéré sur le contenu final ; `killsource` et `objectives` constantes (sorties identiques).
+
+**Résultats observés** : carte v2 20 films contre `6fa631df0` : 313 495 -> 313 542 sains, +1 087 utiles sains, aucun film en baisse, 0 sain perdu. Killsource identique à l'octet sur 20 films (aucun backfill). `replay-equiv` : `objectives`, `killRefs`, `vehicles`, `movementStates` identiques. Replis « hors roster » et « hors bande » revenus à la base. Gate de corpus : banc 19 / 19 ok, rc 1 sur deux pertes `[FILET]` minimes (`084a804d` −2 records de posture, `a349fea8` +4 trous). LS sans le bit nul, mesuré pour la décision : +20 158 sains, aucun film en baisse. Gates de code verts, mutations rouges.
+
+**Conclusion / prochaine étape** : au pilote — admettre ou instruire le rc 1 ; décider de LS (ordre fondé par D-LS-2 ou décision datée de l'utilisateur, `LOT_LS.md` §12.3) ; fusion dans `feat/v75`, puis références `replay-equiv` et goldens à re-figer. Détail : plan §4 (entrée du 2026-10-04 « corrections de la revue adverse »), §5 (D-REV2-1 à 5), §6.2.
+
+## [2026-10-04] Campagne de grammaire — vague 2, lint CI (goconst)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le test de LT `debut_de_liste_masque_test.go` répétait huit fois le littéral `projectile-tether-state`, ce qui porte le paquet `grammar` à 10 occurrences et fait échouer `goconst` en CI (le lint local `--new-from-rev` ne le voyait pas, l'issue étant comptée sur des lignes anciennes). La liste est construite depuis une constante locale.
+
+**Résultats observés** : `golangci-lint run` sur le paquet : 0 issue ; tests du paquet verts ; aucune sortie changée (test seulement).
+
+**Conclusion / prochaine étape** : CI de la vague 2 à rejouer, puis fusion dans `feat/v75` et recuisson sur accord de l'utilisateur du 2026-10-04.
+
+## [2026-10-04] Campagne de grammaire — vague 2 : rc 1 du gate de corpus admis, fusion dans feat/v75
+
+**Statut** : Complété.
+
+**Décision technique principale** : les deux pertes `[FILET]` du gate de corpus de la vague 2 sont instruites paquet par paquet (`vague2_tsv/INSTRUCTION_PERTES_CORPUS.md`) : `084a804d` 2:164 est une fermeture factice retirée par LT (D2) ; `084a804d` 47:674 (règle d'ordre) et les 4 trous de `a349fea8` (LT) sont des lectures que l'écrivain ne peut pas produire (DEL avant DELTA, NEW et DELTA sur la même entité, masque hors archétype). rc 1 admis par le pilote ; le gate 2 tient sans exception. Fusion dans `feat/v75` sur accord de l'utilisateur, puis recuisson du parc.
+
+**Résultats observés** : CI verte au niveau job (`0988d7291`), `make gate-push` vert. Gains de la vague : +47 paquets sains, aucun film en baisse, killsource identique.
+
+**Conclusion / prochaine étape** : recuisson du parc ; la recherche sur la localisation haute fréquence fondée sur la loi d'écriture de la vue B est en cours (reprise de LS).

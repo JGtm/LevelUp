@@ -323,3 +323,69 @@ package grammar
 // sans compte qui bouge, `ti=3` retrouve son bloquant `i0 low-frequency` ; fixtures de contrat
 // identiques hors chaines de revision. `killsource.Rev` reste `killsource-2026-09-27` (empreinte
 // recopiee, cf. sa chronique) ; `replay.SchemaVersion` reste 77.
+//
+// ENTREE `grammar-2026-10-03.3` (2026-10-04, lot LS de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA SIGNATURE DU LOCALISATEUR SE LIT SUR TOUT OBJET DE
+// L ARCHETYPE `high-frequency`, PAS SUR LE SEUL SLOT 123.
+//
+// Ce qui change (`localisateur.go`) : dans un paquet a evenements dont le slot 123 ne porte aucune
+// signature, le premier delta de 35 bits a composant unique d un AUTRE slot que le monde lie a
+// l archetype `high-frequency` ([archetypeHauteFrequence], la cle de table du dispatch, `FUN_140e462d8`)
+// ouvre la boucle de records. Tous les objets de l archetype ont le meme ecrivain (`FUN_142eda680`),
+// et la vue B ecrit ses DELTA par slot croissant (`FUN_142f2e174`, `FUN_14076b9c8`) : dans les modes a
+// objectif porte, le premier delta haute frequence est celui d un autre slot (124 a 135, 304). Ordre
+// propre a chaque site : la cuisson ([localiserLaListe]) essaie la signature du slot 123, puis la
+// fermeture par NEW de tete, puis cette signature, sans repli a largeur libre ; les deux marches qui
+// lisent les morts essaient la signature du slot 123 a la generation du monde, puis celle-ci, puis
+// le repli a largeur libre.
+//
+// Mesure sur 20 films (`campagne_grammaire_2026-10-01/LOT_LS.md`) : 313 495 -> 332 624 paquets
+// sains (+19 129), records utiles sains +176 939, AUCUN sain perdu sur aucun film ; listes non
+// localisees 47 854 -> 26 043. `killsource.Rev` monte (`killsource-2026-10-04`) : la voie publiee
+// de 229 morts passe du balayage a la marche sur les 19 temoins, sans autre valeur changee.
+// RETIRE au rang `.5` (revue adverse de la vague 2) : ce rang n a vecu que sur la branche de la
+// campagne.
+//
+// ENTREE `grammar-2026-10-03.4` (2026-10-04, lot LT de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA PREUVE PAR CHAINE REFUSE UN RECORD DONT LE
+// MASQUE CONTREDIT L ECRIVAIN.
+//
+// Ce qui change (`debut_de_liste.go`, [pasDEssai]) : la chaine de tete d une liste d evenements
+// ([debutParChaine]) ne traverse plus un record NEW ou DELTA dont le masque contredit
+// `FUN_142e2da44` (bit au-dela du dernier composant de l archetype, `i < *(desc+0x4320)` ; dense
+// d au plus sept composants ; epars a index non croissants). Le debut de la signature est garde.
+// Le second rang de [debutParFermetureRangee] (repli `repli_debut_de_liste_ferme_au_bit`) est
+// inchange.
+//
+// Mesure sur 20 films (`campagne_grammaire_2026-10-01/LOT_LT.md`) : 332 624 -> 332 668 paquets
+// sains (+44), records utiles sains +1 023, AUCUN sain perdu sur aucun film ; les cinq sains perdus
+// de la vague 1 (`fb1a1a72` 7:92, `1c4c63c2` 11:1620, `4f77afc1` 25:874, 37:1188, 59:682) sont
+// retrouves. `killsource.Rev`, `source.Rev` et `objectives.Rev` NE MONTENT PAS : sortie
+// `cmd/killsource json` identique a l octet sur les 19 temoins (killsource ne passe pas par la
+// chaine de tete).
+//
+// ENTREE `grammar-2026-10-03.5` (2026-10-04, vague 2 de la campagne de grammaire apres sa revue
+// adverse, `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LU ET LT SUR `feat/v75`, LS RETIRE ; LA
+// CHAINE DE TETE SUIT L ORDRE DE LA VUE B ; LA LARGEUR DE LA SIGNATURE SE DERIVE DU CADRE.
+//
+// Ce qui change, contre `grammar-2026-10-03.2` tel que `feat/v75` le porte (`6fa631df0`) :
+//   - le rang `.3` (LS) est RETIRE : ses ordres de localisation par site sont mesures, pas lus dans
+//     le jeu, et le bit nul qu il exigeait devant la signature haute frequence n est pas ecrit par
+//     le jeu (revue adverse de la vague 2) ; le localisateur est celui de LU ;
+//   - le rang `.4` (LT) reste : la chaine de tete refuse un masque que l ecrivain n ecrit pas ;
+//   - [chaineJusqua] suit aussi la loi d ecriture de la vue B ([ordreDeLaVueB] : NEW*, DELTA*,
+//     DEL*, slots strictement croissants dans chaque groupe ; `FUN_142f2e174`, `FUN_14076b9c8`),
+//     jusqu au record du debut localise inclus ;
+//   - [largeurDeSignature] : la largeur de la signature stricte vient des ecrivains (`FUN_1406d3140`,
+//     `FUN_1406cdc04`, `FUN_142e2da44`, `FUN_142eda680`) sous le cadre du film ; 35 bits au cadre par
+//     defaut.
+//
+// Mesure sur 20 films contre `6fa631df0` (`campagne_grammaire_2026-10-01/vague2_tsv/revue/`) : carte
+// v2 313 495 -> 313 542 paquets sains (+47 : LT +44, ordre de la chaine +3), records utiles sains
+// +1 087, AUCUN sain perdu sur aucun film ; la largeur derivee ne change pas un octet de la carte.
+// `cmd/killsource json` identique a l octet sur 20 films : `killsource.Rev` reste
+// `killsource-2026-09-27`. `replay-equiv` : divergent `artifact`, `movementStates.stats`,
+// `continuousFire.stats` et `continuousFire` (2 films) ; `objectives`, `killRefs`, `vehicles`,
+// `movementStates` identiques : `objectives.Rev` ne monte pas. `replay.SchemaVersion` reste 78. Ce
+// rang remplace la valeur du meme nom de la tete d integration d avant la revue (`da6ecda38`, jamais
+// fusionnee, empreinte egale a celle du `.4`).

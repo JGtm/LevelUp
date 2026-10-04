@@ -79,14 +79,9 @@ var registreKillsource = []Repli{
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "res.largeurLibre += unSi(aLargeurLibre)"}, {
-			Fichier: pkgKillsource + "walk.go",
-			Ancre:   "func locateFallback(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {",
-		}, {
-			// SECOND SITE, POSE LE 2026-09-16 (lot 1.9.10) : la marche des morts d'objet porte
-			// le MEME localisateur, donc le MEME repli — une seule entrée pour un seul fait.
-			// Les deux marches se rejoignent au pas 4 de M2 (« une seule porte aux octets ») ;
-			// ce jour-là ce site redeviendra unique.
-			Fichier: pkgFilmdec + "object_deaths_march.go",
+			// Le repli lui-meme : le localisateur unique de `grammar`, appele par les deux marches
+			// qui lisent les morts (killsource ci-dessus, marche des morts d'objet ci-dessous).
+			Fichier: pkgFilmdec + "localisateur.go",
 			Ancre:   "func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {",
 		}, {
 			// COMPTE du site de `grammar` au rapport du contexte de film (lot J8.7).
@@ -95,7 +90,7 @@ var registreKillsource = []Repli{
 		}, siteDeVersement("NomLocalisationLargeurLibre")},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "les largeurs calibrees par la carte et le build ; a defaut, " + retraitRegle4,
-		// Ce repli-ci porte DÉJÀ son nom dans le code (`locateFallback`, `marchLocateFallback`) :
+		// Ce repli-ci porte DÉJÀ son nom dans le code (`marchLocateFallback`) :
 		// c'est ce que la convention du garde-rail exige, et il entre au registre pour cette
 		// raison.
 		CritereRetrait:  "0 recours a la largeur libre sur les 8 builds une fois les largeurs prises au profil",

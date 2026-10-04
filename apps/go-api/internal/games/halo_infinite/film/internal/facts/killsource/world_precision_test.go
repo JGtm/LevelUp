@@ -243,7 +243,7 @@ func ksPrecWalkHistogram(f *film, tl *timeline, views int,
 		w := tl.advanceTo(p.ts)
 		start := 2
 		if hasEvents(p) {
-			s := locateRecords(p.payload, w, cfg)
+			s, _ := grammar.LocaliserBoucleDeRecords(p.payload, w, cfg, grammar.SignaturePuisLargeurLibre)
 			if s < 0 {
 				continue
 			}

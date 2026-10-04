@@ -72,7 +72,7 @@ type ComptesDesReplis struct {
 	ControleDeCorruptionNonDeclare int
 	// LocalisationsALargeurLibre : `repli_localisation_largeur_libre`, site de la marche des morts
 	// d objet — paquets a evenements localises par la seconde passe a largeur libre
-	// (`object_deaths_march.go`). Le site de `killsource` se compte chez lui.
+	// ([LocaliserBoucleDeRecords], `localisateur.go`). Le site de `killsource` se compte chez lui.
 	LocalisationsALargeurLibre int
 }
 

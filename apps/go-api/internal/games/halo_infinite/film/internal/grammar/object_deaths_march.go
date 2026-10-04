@@ -17,9 +17,8 @@ package grammar
 //     images-clés s'appliquent DANS L'ORDRE DU TEMPS — sans quoi un slot recyclé en cours de
 //     match serait décodé au mauvais archétype sur toute la première moitié du film.
 //  2. LOCALISATEUR D'ÉVÉNEMENTS. Dans un paquet porteur d'une liste d'événements, la boucle de
-//     records ne commence pas à l'amorce. Signature structurelle : le premier record est un
-//     delta du slot 123 de 35 bits EXACTEMENT, précédé d'un bit nul. Repli à largeur libre
-//     quand la signature stricte échoue (elle est sur-contrainte : 35 est le cas MODAL).
+//     records ne commence pas à l'amorce : le localisateur unique ([LocaliserBoucleDeRecords],
+//     `localisateur.go`, ordre [SignaturePuisLargeurLibre]) en rend le début.
 //  3. HUIT VUES DE RÉPLICATION par paquet : une mort peut vivre dans une vue > 0.
 //  4. SNAPSHOT / RESTORE : une marche qui a désynchronisé ne laisse aucune liaison derrière
 //     elle (les deux politiques qui les conservaient ont été mesurées perdantes).
@@ -27,10 +26,8 @@ package grammar
 // CE FICHIER NE DÉCIDE RIEN DU SENS DES RECORDS : il rend des `FrameRecord`. La lecture d'un
 // fait (une mort d'objet) vit dans `object_deaths.go`.
 //
-// UNE SECONDE COPIE DE CETTE MARCHE EXISTE DANS LE DÉPÔT, `film/facts/killsource/walk.go` — elle y
-// porte son filtre de crédibilité de roster, ses golden et ses ancres Theater, et son
-// changement casserait des empreintes gelées. Les deux se rejoignent au pas 4 de M2 (« une
-// seule porte aux octets ») ; la découverte est consignée au plan § 4 (D1 (1.9.10)).
+// LA BOUCLE DE RECORDS A UNE JUMELLE, `film/facts/killsource/walk.go` (`walkFrom`, qui ne pose
+// pas le cadre du lecteur) ; le localisateur, lui, est commun aux deux marches.
 
 import (
 	"cmp"
@@ -43,14 +40,6 @@ import (
 // `killsource` : une mort peut vivre dans une vue > 0, et la mesure V13 a été conduite sous
 // cette valeur.
 const marchViews = 8
-
-// marchSignatureSlot / marchSignatureBits sont la SIGNATURE du premier record d'un paquet à
-// événements : un delta du slot 123, long de 35 bits exactement, à composant unique. Candidat
-// UNIQUE et VRAI sur 690 paquets sur 690 confrontés à une vérité de position indépendante.
-const (
-	marchSignatureSlot = uint32(123)
-	marchSignatureBits = 35
-)
 
 // marchKeyframe est une image-clé décodée, avec son horodatage.
 type marchKeyframe struct {
@@ -105,74 +94,6 @@ func (tl *marchTimeline) advanceTo(at uint64) *World {
 // marchHasEvents dit si le paquet porte une liste d'événements (bit 1 du payload).
 func marchHasEvents(pay []byte) bool { return source.BitAt(pay, 1) != 0 }
 
-// marchSignature123 : un delta du slot de signature décode-t-il en `s`, finit-il exactement
-// `marchSignatureBits` plus loin, avec un composant unique ?
-//
-// C EST UN ESSAI, ET IL EST DECLARE COMME TEL PAR SES TROIS APPELANTS (cf.
-// [Observation.neutraliserEtatsDeMouvement]) : `TryDeltaAt` traverse l entite pour de vrai, donc
-// les deserialiseurs publient — a une position de bit que le localisateur va probablement jeter.
-func marchSignature123(pay []byte, s int, w *World, cfg FrameConfig) bool {
-	rec, end, ok := TryDeltaAt(pay, s, w, cfg)
-	return ok && rec.Slot == marchSignatureSlot && end == s+marchSignatureBits &&
-		len(rec.Trace.Comps) == 1
-}
-
-// marchLocateStrict rend la première position `s >= 2`, précédée d'un bit nul, qui porte la
-// signature stricte ; -1 si aucune.
-func marchLocateStrict(pay []byte, w *World, cfg FrameConfig) int {
-	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
-	nb := len(pay) * 8
-	for s := 2; s+marchSignatureBits < nb; s++ {
-		if source.BitAt(pay, s-1) != 0 {
-			continue
-		}
-		if marchSignature123(pay, s, w, cfg) {
-			return s
-		}
-	}
-	return -1
-}
-
-// marchLocateFallback reprend la même condition à LARGEUR LIBRE. Il n'est essayé qu'après
-// l'échec de la signature stricte : les paquets déjà localisés ne bougent pas d'un bit.
-func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
-	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
-	nb := len(pay) * 8
-	for s := 2; s+16 < nb; s++ {
-		if source.BitAt(pay, s-1) != 0 {
-			continue
-		}
-		rec, _, ok := TryDeltaAt(pay, s, w, cfg)
-		if !ok || rec.Slot != marchSignatureSlot ||
-			!w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
-			continue
-		}
-		return s
-	}
-	return -1
-}
-
-// marchLocalise rend le bit de départ de la boucle de records d'un paquet à événements, ou -1, et
-// `aLargeurLibre` : la position vient de [marchLocateFallback] (repli
-// `repli_localisation_largeur_libre`, compte par [ScanMarchFacts] — lot J8.7). C est l ex-`marchLocate`,
-// dont l enveloppe a un rendu n a plus d appelant de production et vit dans les instruments de
-// recherche (`march_locate_research_test.go`).
-//
-// LE CONTRÔLE DE GÉNÉRATION EST INDISPENSABLE DES DEUX CÔTÉS : sans lui, le localisateur
-// désigne des positions où le slot de signature porte une AUTRE génération, et la marche y
-// meurt aussitôt (mesure : 3 morts perdues sur un film, dont un double kill).
-func marchLocalise(pay []byte, w *World, cfg FrameConfig) (int, bool) {
-	defer cfg.Obs.neutraliserEtatsDeMouvement()() // son propre TryDeltaAt de controle est un essai
-	if s := marchLocateStrict(pay, w, cfg); s >= 0 {
-		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok &&
-			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
-			return s, false
-		}
-	}
-	s := marchLocateFallback(pay, w, cfg)
-	return s, s >= 0
-}
-
 // marchRecordsOf déroule la boucle de records d'UN paquet depuis le bit `start`, jusqu'à
 // `marchViews` vues, et RESTAURE le monde : une marche désynchronisée ne laisse pas de liaison
 // derrière elle. Les records déjà lus quand la chaîne casse sont rendus — c'est au lecteur de
@@ -209,7 +130,7 @@ func marchDebut(pay []byte, w *World, cfg FrameConfig) (start int, withEvents, o
 	if !marchHasEvents(pay) {
 		return cfg.PacketPreambleBits, false, true, false
 	}
-	s, aLargeurLibre := marchLocalise(pay, w, cfg)
+	s, aLargeurLibre := LocaliserBoucleDeRecords(pay, w, cfg, SignaturePuisLargeurLibre)
 	if s < 0 {
 		return 0, true, false, false
 	}
