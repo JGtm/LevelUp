@@ -11,7 +11,7 @@ import (
 // # LE DEFAUT, MESURE
 //
 // Dans un paquet delta a liste d evenements, le localisateur de production ([LocaliserBoucleDeRecords],
-// signature du slot 123) demarre la marche sur le premier record qu il sait ancrer. Or les
+// signature du premier delta) demarre la marche sur le premier record qu il sait ancrer. Or les
 // CREATIONS d objets de l instant sont les premiers records de la liste — la naissance d un
 // bipede (lot M3.2 : 40/41, 91/99 et 123/125 cas, `birth_loadouts.go`), les armes et
 // l equipement laches a sa mort, les projectiles : le localisateur les SAUTE. Le monde ne lie
@@ -30,25 +30,33 @@ import (
 // retenu que si la CHAINE des records qui en partent — chacun lu par son en-tete comme la boucle
 // de records le lit : NEW traverse sans desynchronisation, DEL, delta qui se decode sur un slot que
 // le monde connait — finit EXACTEMENT sur le debut que le localisateur a trouve : deux lectures
-// independantes, l en-tete en tete et la signature du slot 123 en queue, qui s accordent au bit
-// pres. Quand le localisateur ne trouve rien, la preuve est la FERMETURE du paquet par la marche
-// complete qui part du candidat ([debutParFermetureRangee]) ; a defaut, le candidat d ou le paquet
-// ferme au bit pres seulement est garde, et ce second rang N EST PAS une preuve : c est le repli
-// nomme `repli_debut_de_liste_ferme_au_bit`, compte a part. Sinon le debut du localisateur est
-// garde, et rien ne change d un bit. Par la chaine et au premier rang, aucun bit n est devine, les
+// independantes, l en-tete en tete et la signature en queue, qui s accordent au bit pres. Quand le
+// slot 123 ne porte aucune signature, la preuve est la FERMETURE du paquet par la marche complete
+// qui part du candidat ([debutParFermetureRangee]) ; a defaut, le candidat d ou le paquet ferme au
+// bit pres seulement est garde, et ce second rang N EST PAS une preuve : c est le repli nomme
+// `repli_debut_de_liste_ferme_au_bit`, compte a part ; a defaut encore, la signature haute
+// frequence, sous la meme chaine. Sans chaine, le debut de la signature est garde, et rien ne
+// change d un bit. Par la chaine et au premier rang, aucun bit n est devine, les
 // records sont LUS ; les listes ainsi etendues sont comptees
 // ([types.MovementStateStats.EventPacketsNewRecordStart]).
 
-// localiserLaListe rend le debut de la marche d un paquet a evenements et COMMENT il a ete trouve :
-// le premier record NEW de tete prouve par la chaine ([debutParChaine]) ou par la fermeture
-// ([debutParFermetureRangee], aux deux rangs), sinon le debut du localisateur strict
-// ([lecture.DebutParSignature]) ; -1 et [lecture.DebutNonLocalise] pour une liste non localisee.
-// Tout debut autre que celui du localisateur est un record NEW que le localisateur sautait. Chaque
-// comment est une recuperation que la structure de lecture marque (ADR 0037 IR-6).
+// localiserLaListe rend le debut de la marche d un paquet a evenements et COMMENT il a ete trouve,
+// dans l ordre de la cuisson ([LocaliserBoucleDeRecords]) : la signature du slot 123, sinon la
+// fermeture par un record NEW de tete ([debutParFermetureRangee], aux deux rangs), sinon la
+// signature haute frequence. Derriere une signature, le premier record NEW de tete prouve par la
+// chaine ([debutParChaine]), sinon le debut de la signature ([lecture.DebutParSignature]) ; -1 et
+// [lecture.DebutNonLocalise] pour une liste non localisee. Tout debut autre que celui d une
+// signature est un record NEW que la signature sautait. Chaque comment est une recuperation que la
+// structure de lecture marque (ADR 0037 IR-6).
 func localiserLaListe(pay []byte, w *World, cfg FrameConfig) (int, lecture.DebutDeVueB) {
 	debut, _ := LocaliserBoucleDeRecords(pay, w, cfg, SignatureStricte)
 	if debut < 0 {
-		return debutParFermetureRangee(pay, candidatsDeTete(pay, len(pay)*8, w), w, cfg)
+		if d, rang := debutParFermetureRangee(pay, candidatsDeTete(pay, len(pay)*8, w), w, cfg); rang != lecture.DebutNonLocalise {
+			return d, rang
+		}
+		if debut, _ = LocaliserBoucleDeRecords(pay, w, cfg, SignatureHauteFrequence); debut < 0 {
+			return -1, lecture.DebutNonLocalise
+		}
 	}
 	if d, parNeuf := debutParChaine(pay, debut, candidatsDeTete(pay, debut, w), w, cfg); parNeuf {
 		return d, lecture.DebutParChaine

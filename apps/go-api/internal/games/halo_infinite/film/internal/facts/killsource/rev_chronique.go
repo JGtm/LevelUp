@@ -468,3 +468,17 @@ package killsource
 // installe par defaut (`sync/engine_options.go`), le redecoderait de lui-meme, huit films par cycle,
 // pour reecrire des lignes identiques. Golden regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/vague1_tsv/`.
+//
+// ENTREE `killsource-2026-10-04` (2026-10-04, lot LS de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA MARCHE LOCALISE LES PAQUETS DONT LE PREMIER DELTA
+// HAUTE FREQUENCE N EST PAS CELUI DU SLOT 123.
+//
+// Le localisateur unique (`grammar/localisateur.go`, ordre [grammar.SignaturePuisLargeurLibre])
+// essaie, entre la signature du slot 123 et le repli a largeur libre, la meme signature sur un autre
+// objet de l archetype `high-frequency`. LA SORTIE PERSISTEE CHANGE : la voie (`read_path` de
+// `match_kill_events`) de 229 morts des 19 temoins de `config/replay_corpus.toml` passe du
+// balayage a la marche (`d9781168` 103, `60ae07c4` 78, `c75f33b8` 48) ; aucune mort n apparait ni
+// ne disparait, aucun tag, statut ni credit ne change. Sur les trois films de l enquete du scan de
+// septembre, 364 morts passent a la marche. La montee rend tout le parc candidat au backlog
+// (`conditionBacklog`) ; le hook post-sync installe par defaut (`sync/engine_options.go`) le
+// redecode au deploiement, huit films par cycle.

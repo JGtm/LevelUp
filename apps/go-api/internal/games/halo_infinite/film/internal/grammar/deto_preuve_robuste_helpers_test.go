@@ -249,7 +249,7 @@ func rbHarvestPacket(pay []byte, w *World, cfg FrameConfig, start, bipLo, bipHi,
 }
 
 // rbSignature123 : un delta sur le slot 123 decode-t-il en `s`, finit 35 bits plus loin, avec un
-// unique composant ? (copie de [marchSignature123], `localisateur.go`)
+// unique composant ? (copie de la signature du slot 123 de `marchLocateSignatures`, `localisateur.go`)
 func rbSignature123(pay []byte, s int, w *World, cfg FrameConfig) bool {
 	rec, end, ok := TryDeltaAt(pay, s, w, cfg)
 	return ok && rec.Slot == 123 && end == s+35 && len(rec.Trace.Comps) == 1

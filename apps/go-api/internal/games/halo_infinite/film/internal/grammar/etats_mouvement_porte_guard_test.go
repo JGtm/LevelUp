@@ -26,10 +26,10 @@ import (
 // les seuls chemins speculatifs du depot qui ne passent pas par une inference, donc les seuls qui
 // doivent appeler la neutralisation eux-memes.
 //
-// [LocaliserBoucleDeRecords] essaie la signature stricte puis, selon l ordre, la largeur libre, et
-// rend en plus le verdict du repli `repli_localisation_largeur_libre` : le motif accepte donc un
-// rendu multiple.
-var porteLocalisateurs = []string{"marchLocateStrict", "marchLocateFallback", "LocaliserBoucleDeRecords"}
+// [LocaliserBoucleDeRecords] essaie les signatures puis, selon l ordre, la largeur libre, et rend
+// en plus le verdict du repli `repli_localisation_largeur_libre` ; `marchLocateSignatures` rend
+// les deux signatures : le motif accepte donc un rendu multiple.
+var porteLocalisateurs = []string{"marchLocateSignatures", "marchLocateFallback", "LocaliserBoucleDeRecords"}
 
 // TestPorteEtatsMouvementNeutraliseeParLesTroisNeutralisations : les trois portes de
 // neutralisation eteignent la publication des etats de mouvement, et la restaurent.
@@ -82,7 +82,7 @@ func TestLocalisateursDeclarentLaPorte(t *testing.T) {
 	}
 	src := string(data)
 	for _, nom := range porteLocalisateurs {
-		re := regexp.MustCompile(`(?s)\nfunc ` + regexp.QuoteMeta(nom) + `\([^)]*\) (?:int|\(int, bool\)) \{(.*?)\n\}`)
+		re := regexp.MustCompile(`(?s)\nfunc ` + regexp.QuoteMeta(nom) + `\([^)]*\) (?:int|\(int, (?:bool|int)\)) \{(.*?)\n\}`)
 		m := re.FindStringSubmatch(src)
 		if m == nil {
 			t.Fatalf("%s : fonction %s introuvable — le ratchet ne garde plus rien (elle a "+

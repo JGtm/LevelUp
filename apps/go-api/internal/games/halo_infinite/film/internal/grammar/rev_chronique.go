@@ -323,3 +323,23 @@ package grammar
 // sans compte qui bouge, `ti=3` retrouve son bloquant `i0 low-frequency` ; fixtures de contrat
 // identiques hors chaines de revision. `killsource.Rev` reste `killsource-2026-09-27` (empreinte
 // recopiee, cf. sa chronique) ; `replay.SchemaVersion` reste 77.
+//
+// ENTREE `grammar-2026-10-03.3` (2026-10-04, lot LS de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA SIGNATURE DU LOCALISATEUR SE LIT SUR TOUT OBJET DE
+// L ARCHETYPE `high-frequency`, PAS SUR LE SEUL SLOT 123.
+//
+// Ce qui change (`localisateur.go`) : dans un paquet a evenements dont le slot 123 ne porte aucune
+// signature, le premier delta de 35 bits a composant unique d un AUTRE slot que le monde lie a
+// l archetype `high-frequency` ([archetypeHauteFrequence], la cle de table du dispatch, `FUN_140e462d8`)
+// ouvre la boucle de records. Tous les objets de l archetype ont le meme ecrivain (`FUN_142eda680`),
+// et la vue B ecrit ses DELTA par slot croissant (`FUN_142f2e174`, `FUN_14076b9c8`) : dans les modes a
+// objectif porte, le premier delta haute frequence est celui d un autre slot (124 a 135, 304). Ordre
+// propre a chaque site : la cuisson ([localiserLaListe]) essaie la signature du slot 123, puis la
+// fermeture par NEW de tete, puis cette signature, sans repli a largeur libre ; les deux marches qui
+// lisent les morts essaient la signature du slot 123 a la generation du monde, puis celle-ci, puis
+// le repli a largeur libre.
+//
+// Mesure sur 20 films (`campagne_grammaire_2026-10-01/LOT_LS.md`) : 313 495 -> 332 624 paquets
+// sains (+19 129), records utiles sains +176 939, AUCUN sain perdu sur aucun film ; listes non
+// localisees 47 854 -> 26 043. `killsource.Rev` monte (`killsource-2026-10-04`) : la voie publiee
+// de 229 morts passe du balayage a la marche sur les 19 temoins, sans autre valeur changee.
