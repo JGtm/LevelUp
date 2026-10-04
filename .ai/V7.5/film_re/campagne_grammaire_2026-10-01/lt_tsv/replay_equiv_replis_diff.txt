@@ -1,0 +1,36 @@
+68c68
+< 084a804d	repli_liaison_par_anticipation	928
+---
+> 084a804d	repli_liaison_par_anticipation	929
+99c99
+< 111fa685	repli_liaison_par_anticipation	591
+---
+> 111fa685	repli_liaison_par_anticipation	592
+130c130
+< 11de8353	repli_liaison_par_anticipation	512
+---
+> 11de8353	repli_liaison_par_anticipation	513
+152c152
+< 1c4c63c2	repli_debut_de_liste_ferme_au_bit	6427
+---
+> 1c4c63c2	repli_debut_de_liste_ferme_au_bit	6426
+162c162
+< 1c4c63c2	repli_liaison_par_anticipation	1445
+---
+> 1c4c63c2	repli_liaison_par_anticipation	1444
+379c379
+< a349fea8	repli_liaison_par_anticipation	1020
+---
+> a349fea8	repli_liaison_par_anticipation	1018
+462c462
+< d9781168	repli_liaison_par_anticipation	108
+---
+> d9781168	repli_liaison_par_anticipation	107
+490c490
+< e5adf7b2	repli_liaison_par_anticipation	784
+---
+> e5adf7b2	repli_liaison_par_anticipation	782
+516c516
+< fb1a1a72	repli_liaison_par_anticipation	35
+---
+> fb1a1a72	repli_liaison_par_anticipation	33

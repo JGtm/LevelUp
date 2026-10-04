@@ -343,3 +343,21 @@ package grammar
 // sains (+19 129), records utiles sains +176 939, AUCUN sain perdu sur aucun film ; listes non
 // localisees 47 854 -> 26 043. `killsource.Rev` monte (`killsource-2026-10-04`) : la voie publiee
 // de 229 morts passe du balayage a la marche sur les 19 temoins, sans autre valeur changee.
+//
+// ENTREE `grammar-2026-10-03.4` (2026-10-04, lot LT de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA PREUVE PAR CHAINE REFUSE UN RECORD DONT LE
+// MASQUE CONTREDIT L ECRIVAIN.
+//
+// Ce qui change (`debut_de_liste.go`, [pasDEssai]) : la chaine de tete d une liste d evenements
+// ([debutParChaine]) ne traverse plus un record NEW ou DELTA dont le masque contredit
+// `FUN_142e2da44` (bit au-dela du dernier composant de l archetype, `i < *(desc+0x4320)` ; dense
+// d au plus sept composants ; epars a index non croissants). Le debut de la signature est garde.
+// Le second rang de [debutParFermetureRangee] (repli `repli_debut_de_liste_ferme_au_bit`) est
+// inchange.
+//
+// Mesure sur 20 films (`campagne_grammaire_2026-10-01/LOT_LT.md`) : 332 624 -> 332 668 paquets
+// sains (+44), records utiles sains +1 023, AUCUN sain perdu sur aucun film ; les cinq sains perdus
+// de la vague 1 (`fb1a1a72` 7:92, `1c4c63c2` 11:1620, `4f77afc1` 25:874, 37:1188, 59:682) sont
+// retrouves. `killsource.Rev`, `source.Rev` et `objectives.Rev` NE MONTENT PAS : sortie
+// `cmd/killsource json` identique a l octet sur les 19 temoins (killsource ne passe pas par la
+// chaine de tete).

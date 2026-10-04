@@ -1,0 +1,8 @@
+160c160
+< 		return tr.EndBit, tr.DesyncAt == -1 && tr.MasqueNonEcrit == InvariantAucun
+---
+> 		return tr.EndBit, tr.DesyncAt == -1 && tr.MasqueNonEcrit != InvariantMasqueHorsArchetype
+167c167
+< 		return fin, ok && rec.Trace.MasqueNonEcrit == InvariantAucun
+---
+> 		return fin, ok && rec.Trace.MasqueNonEcrit != InvariantMasqueHorsArchetype

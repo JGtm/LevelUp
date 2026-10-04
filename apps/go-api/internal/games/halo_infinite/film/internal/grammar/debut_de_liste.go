@@ -30,8 +30,9 @@ import (
 // objets du monde ([TableAnticipee.SlotDeLArchetype]). Un candidat n est qu un candidat. Il n est
 // retenu que si la CHAINE des records qui en partent — chacun lu par son en-tete comme la boucle
 // de records le lit : NEW traverse sans desynchronisation, DEL, delta qui se decode sur un slot que
-// le monde connait — finit EXACTEMENT sur le debut que le localisateur a trouve : deux lectures
-// independantes, l en-tete en tete et la signature en queue, qui s accordent au bit pres. Quand le
+// le monde connait, aucun masque que l ecrivain n ecrit pas ([pasDEssai]) — finit EXACTEMENT sur
+// le debut que le localisateur a trouve : deux lectures independantes, l en-tete en tete et la
+// signature en queue, qui s accordent au bit pres. Quand le
 // slot 123 ne porte aucune signature, la preuve est la FERMETURE du paquet par la marche complete
 // qui part du candidat ([debutParFermetureRangee]) ; a defaut, le candidat d ou le paquet ferme au
 // bit pres seulement est garde, et ce second rang N EST PAS une preuve : c est le repli nomme
@@ -138,6 +139,13 @@ func chaineJusqua(pay []byte, pos, debut, extra int, w *World, cfg FrameConfig) 
 // pasDEssai lit UN record a `pos` et rend la position qui le suit : un NEW traverse sans
 // desynchronisation, un DEL (en-tete et mot de 32 bits), un delta qui se decode sur un slot que le
 // monde connait. Un terminateur ou un record illisible refusent le pas.
+//
+// UN RECORD DONT LE MASQUE CONTREDIT L ECRIVAIN REFUSE AUSSI LE PAS. `FUN_142e2da44`, le seul
+// ecrivain du masque d un record NEW ou delta, ne pose aucun bit au-dela des composants de
+// l archetype (`i < *(desc+0x4320)`), n ecrit dense qu un masque de plus de sept composants et
+// ecrit croissants les index d un masque epars ([lireMasque], [EntityTrace.MasqueNonEcrit]). Un
+// record lu dont le masque viole l une de ces regles n a pas ete ecrit la par le jeu : la chaine
+// qui le traverse ne prouve rien, meme si elle tombe au bit pres sur le debut localise.
 func pasDEssai(pay []byte, pos, extra int, w *World, essai FrameConfig) (int, bool) {
 	br := LecteurSur(pay)
 	br.poserCadre(essai)
@@ -149,14 +157,14 @@ func pasDEssai(pay []byte, pos, extra int, w *World, essai FrameConfig) (int, bo
 	case recNew:
 		readRecordID(br, essai.IDLowBits, essai.IDBase)
 		tr := TraverseEntity(br, w.Reg, essai.NewDefaultStateBits)
-		return tr.EndBit, tr.DesyncAt == -1
+		return tr.EndBit, tr.DesyncAt == -1 && tr.MasqueNonEcrit == InvariantAucun
 	case recDel:
 		readRecordID(br, essai.IDLowBits, essai.IDBase)
 		br.Skip(32)
 		return br.BitPos(), true
 	case recDelta:
-		_, fin, ok := TryDeltaAt(pay, pos, w, essai)
-		return fin, ok
+		rec, fin, ok := TryDeltaAt(pay, pos, w, essai)
+		return fin, ok && rec.Trace.MasqueNonEcrit == InvariantAucun
 	}
 	return pos, false // terminateur : la liste finirait avant le debut localise
 }
