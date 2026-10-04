@@ -115167,3 +115167,20 @@ pas maintenant : la passe serait à refaire, et la republication du parc occupe 
 
 **Conclusion / prochaine étape** : mesure de durée des objets du monde au signal de machine calme de
 la campagne ; ensuite, ouverture des lots après LU (passe de référence d'abord).
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — LS retiré par la campagne : les lots restants n'attendent plus que LU — Complété (plan mis à jour)
+
+**Statut** : Complété ; aucun travail de code.
+
+**Décision technique principale** : la vague 2 de la campagne retient LU (localisateur unique) et LT
+(règle de tête de liste), retire LS, n'adopte ni LP ni LN. Dans ce plan, seul 2.7.c (killsource
+devient un canal de la marche) était placé après LS, et seulement pour ne pas écrire
+`facts/killsource/*` en même temps que lui : aucune dépendance de contenu. LS retiré, 2.7 et 3.1
+n'attendent plus que la fusion de LU dans `feat/v75` (§1.3 et journal du plan mis à jour, réponse
+faite à la campagne).
+
+**Résultats observés** : sans objet (coordination).
+
+**Conclusion / prochaine étape** : à la fusion de LU, fusion de `feat/v75` dans `feat/ri-etape2`,
+passe de référence (références d'équivalence re-figées : schéma 78, `grammar-2026-10-03.5`), puis
+2.7.a ; mesure de durée des objets du monde au signal de machine calme.

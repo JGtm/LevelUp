@@ -98,7 +98,7 @@ naissances lues par la grammaire des messages de la vue A.
 | 2.4, 2.5 (récupération) | lecteurs de composants des vagues 1 et 2 (`dispatch_*.go`, `components_*.go`) en LECTURE seulement ; créations (`equipment_creation*.go`, `vehicle_creation.go`) | après la fusion de la vague 1 ; les lecteurs sont des briques, inchangées |
 | 2.7 (a) morts d'objet, 3.1 localisateurs | `object_deaths_march.go`, `facts/killsource/walk.go` (LU, LS) | APRÈS la fusion de LU ; le retrait des localisateurs jumeaux est LU, pas ce plan |
 | 2.7 (b) canaux delta par la marche | fermeture des trames (toute la campagne) | seulement là où la marche couvre AU MOINS autant que la recherche d'ancres, canal par canal, mesuré sur le corpus |
-| 2.7 (c) killsource | `facts/killsource/*` (LU, LS) | en DERNIER, après LU et LS |
+| 2.7 (c) killsource | `facts/killsource/*` (LU, LS) | en DERNIER, après LU ; LS, retiré par la campagne le 2026-10-04, n'imposait qu'un ordre d'écriture des mêmes fichiers (journal) |
 
 Chaque session prévient l'autre quand elle fusionne dans `feat/v75` ; une découverte qui touche un
 fichier de l'autre se signale, ne se corrige pas.
@@ -875,3 +875,13 @@ plan y sont reprises comme items (3.1.2).
   leur ligne `artifact` diffère par le schéma ; elles se re-figent à l'ouverture du prochain lot,
   par la passe de référence du §1.2 sur la tête fusionnée du moment (une passe maintenant serait à
   refaire, et la republication du parc par la campagne occupe la machine).
+- 2026-10-04 : la vague 2 de la campagne est assemblée sur `6fa631df0` (`feat/campagne-grammaire`
+  `bd9193d16`, fusion dans `feat/v75` sur accord de l'utilisateur) : LU retenu (localisateur unique,
+  différence nulle, `grammar/localisateur.go`), LT retenu (règle de tête de liste, `grammar.Rev` =
+  `grammar-2026-10-03.5`), LS RETIRÉ (ses ordres par site sont mesurés, pas lus dans le jeu), LP et LN
+  non retenus ; `killsource.Rev` et le schéma du document inchangés. Conséquence pour ce plan : 2.7.c
+  n'attendait LS que pour ne pas écrire `facts/killsource/*` en même temps que lui (aucune dépendance
+  de contenu) ; LS retiré, tous les lots restants n'attendent plus que la fusion de LU (§1.3 mis à
+  jour). Si la recherche de la campagne sur la localisation haute fréquence devient un lot qui touche
+  `grammar/localisateur.go` ou `facts/killsource/*`, elle préviendra avant. Suite, LU fusionné : fusion
+  de `feat/v75`, passe de référence (références d'équivalence re-figées : schéma 78, LT), puis 2.7.a.
