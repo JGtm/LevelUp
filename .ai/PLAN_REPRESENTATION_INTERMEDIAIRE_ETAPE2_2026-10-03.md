@@ -547,6 +547,13 @@ et l'appartenance du slot à la bande font l'essentiel du coût.
       passe égales au balayage de chaque bande seule (12 381 échantillons, trois bandes),
       créations d'une passe égales à l'oracle d'un archétype seul (66 créations), copies et clé de
       réutilisation ; harnais de fuzz étendu aux deux passes ; trois mutations jouées rouges.
+      Garde-rail neuf `grammar/recuperations_ratchet_test.go` (relevé par la liste de livraison
+      avant la fusion, règle 6 de CLAUDE.md) : les primitives de relevé de la couche de
+      récupération (ancrage bipède, pistes, créations) n'ont que des appelants de production
+      nommés, avec leur raison ; un balayage neuf qui referait le parcours au lieu de lire la
+      mémoire du contexte rougit, sans quoi le nombre de parcours remonterait sans qu'aucun test
+      de données ne le voie (critère 5). Il tient aussi l'ancrage de 2.4, dont le garde-rail
+      existant ne tient que les copies de la boucle d'ancrage ; deux mutations jouées rouges.
 - Gate : T4 ; critère 4.
   *T4 passé* (passe `ri25b`, code final, contre la référence du lot 2.4 `ri24a` ; une première passe
   `ri25a` avant le refactor des signatures demandé par le lint rendait déjà la même chose) :
@@ -845,3 +852,8 @@ plan y sont reprises comme items (3.1.2).
   durée du critère 4 attend une machine calme : la vague 2 de la campagne décode par intermittence
   pendant plusieurs heures et signalera sa fin. Après 2.5, tous les lots restants attendent la
   campagne (2.7.a et 3.1 : LU ; 2.7.c : LU et LS ; 2.7.b et 2.7.d avec eux ; 3.2 clôt).
+- 2026-10-04 : avant la fusion des lots 2.1 à 2.6 dans `feat/v75`, la liste de livraison relève que
+  la mise en commun de 2.4 et 2.5 n'a pas de garde-rail qui l'empêche de se défaire (règle 6) :
+  ratchet des appelants des primitives de relevé ajouté à 2.5.1 (cf. le lot). Porte locale
+  (`make gate-push`) verte sur `b55533d24` ; le run de CI de `e722585ae` n'avait échoué que sur le
+  test d'empreinte, régénérée par `b55533d24`.

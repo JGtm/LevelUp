@@ -115084,3 +115084,28 @@ paramètres refusé, la passe devient une petite structure (`passeDesCreations`)
 
 **Conclusion / prochaine étape** : CI du commit ; mesure de durée à machine calme au signal de la
 campagne ; puis plus rien d'exécutable avant les fusions de LU et LS (lots 2.7 et 3.1).
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — liste de livraison avant la fusion : garde-rail des relevés de récupération — Complété (`feat/ri-etape2`)
+
+**Statut** : ajout au lot 2.5 (toujours ouvert sur sa mesure de durée à machine calme), relevé par
+la liste de livraison avant de demander la fusion des lots 2.1 à 2.6 dans `feat/v75`.
+
+**Décision technique principale** : la mise en commun de 2.4 (un ancrage bipède par film) et de 2.5
+(pistes et créations des objets du monde en une passe) n'avait pas de garde-rail : un balayage neuf
+qui rappellerait la primitive au lieu de lire la mémoire du contexte referait un parcours des trames
+delta avec un résultat identique, donc invisible aux tests de données. Ratchet
+`grammar/recuperations_ratchet_test.go` sur le modèle de celui des générations datées : par l'AST des
+sources de production du paquet, chaque référence à une primitive de relevé (`walkDeltaBipedRecords`,
+`walkDeltaBipedPayload`, `releverLesPistes`, `echantillonsDesBandes`, `scanProjectileRecords`,
+`releverLesCreations`, `nouvellePasseDesCreations`, `creationA`, `matchWorldObjectNewHeader`) et sa
+fonction englobante doivent être exactement la liste nommée, chaque appelant avec sa raison.
+
+**Résultats observés** : vert sur la tête ; deux mutations jouées rouges (une référence à
+`walkDeltaBipedRecords` ajoutée à `camo_state.go`, une à `creationA` ajoutée à
+`ground_weapon_creation.go`). Empreinte de la grammaire inchangée (les tests n'y entrent pas),
+`go vet` avec et sans `research` et `golangci-lint` (0 problème) verts sur le paquet. Porte locale
+`make gate-push` verte sur `b55533d24` ; le run de CI de `e722585ae` n'avait échoué que sur le test
+d'empreinte, régénérée par `b55533d24`.
+
+**Conclusion / prochaine étape** : CI de ce commit, puis demande de l'accord de fusion à
+l'utilisateur ; la campagne est prévenue avant la fusion.
