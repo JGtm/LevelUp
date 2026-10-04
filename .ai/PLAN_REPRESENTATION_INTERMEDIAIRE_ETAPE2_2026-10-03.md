@@ -868,3 +868,10 @@ plan y sont reprises comme items (3.1.2).
   change les digests, les références d'équivalence se régénèrent sur la tête fusionnée (les deux
   changements s'additionnent, aucun côté n'est juste seul). Restent ouverts : le
   critère 4 de 2.5 (machine calme), puis 2.7, 3.1 et 3.2 (attente de LU et LS).
+- 2026-10-04 : CI de `feat/v75` verte au niveau job sur la fusion (`083e1a4bc`, runs `37203461920`
+  en push et `37203466501` en PR). La campagne a fusionné par-dessus la correction des vies de bots
+  (`feat/v75` = `6fa631df0`, schéma du document 77 → 78, aucune révision de couche ne monte) ;
+  `feat/ri-etape2` est avancée sur cette tête. Les références d'équivalence ne sont PAS re-figées :
+  leur ligne `artifact` diffère par le schéma ; elles se re-figent à l'ouverture du prochain lot,
+  par la passe de référence du §1.2 sur la tête fusionnée du moment (une passe maintenant serait à
+  refaire, et la republication du parc par la campagne occupe la machine).

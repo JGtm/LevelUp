@@ -115152,3 +115152,18 @@ schéma du document.
 **Conclusion / prochaine étape** : mesure de durée à machine calme au signal de la campagne, puis
 lots de comportement et retrait des marcheurs redondants après la fusion de LU et LS ; revue
 adversariale en fin d'étape, sur le diff cumulé.
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — après la fusion : CI de `feat/v75` verte, schéma 78 de la campagne par-dessus — Complété (références d'équivalence à re-figer à l'ouverture du prochain lot)
+
+**Statut** : Complété ; aucun travail de code.
+
+**Décision technique principale** : `feat/ri-etape2` avancée sur `feat/v75` = `6fa631df0` (la
+campagne y a fusionné la correction des vies de bots, schéma du document 77 → 78, aucune révision de
+couche). Les références d'équivalence (ligne `artifact`, qui porte le schéma) se re-figent à
+l'ouverture du prochain lot par la passe de référence du plan (§1.2) sur la tête fusionnée du moment,
+pas maintenant : la passe serait à refaire, et la republication du parc occupe la machine.
+
+**Résultats observés** : CI de `feat/v75` verte au niveau job sur la fusion `083e1a4bc` (push et PR).
+
+**Conclusion / prochaine étape** : mesure de durée des objets du monde au signal de machine calme de
+la campagne ; ensuite, ouverture des lots après LU (passe de référence d'abord).
