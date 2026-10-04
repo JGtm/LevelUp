@@ -22,15 +22,14 @@ import (
 	"testing"
 )
 
-// porteLocalisateurs : les trois fonctions du LOCALISATEUR de paquet. Ce sont les seuls chemins
-// speculatifs du depot qui ne passent pas par une inference, donc les seuls qui doivent appeler
-// la neutralisation eux-memes.
+// porteLocalisateurs : les trois fonctions du LOCALISATEUR de paquet (`localisateur.go`). Ce sont
+// les seuls chemins speculatifs du depot qui ne passent pas par une inference, donc les seuls qui
+// doivent appeler la neutralisation eux-memes.
 //
-// `marchLocalise` Y REMPLACE `marchLocate` AU LOT J8.7 (2026-09-27) : c est elle qui essaie la
-// signature stricte puis la largeur libre, et qui rend en plus le verdict du repli
-// `repli_localisation_largeur_libre` ; `marchLocate` n en est plus que l enveloppe a un rendu, sans
-// essai propre. Le motif accepte donc un rendu multiple.
-var porteLocalisateurs = []string{"marchLocateStrict", "marchLocateFallback", "marchLocalise"}
+// [LocaliserBoucleDeRecords] essaie les signatures puis, selon l ordre, la largeur libre, et rend
+// en plus le verdict du repli `repli_localisation_largeur_libre` ; `marchLocateSignatures` rend
+// les deux signatures : le motif accepte donc un rendu multiple.
+var porteLocalisateurs = []string{"marchLocateSignatures", "marchLocateFallback", "LocaliserBoucleDeRecords"}
 
 // TestPorteEtatsMouvementNeutraliseeParLesTroisNeutralisations : les trois portes de
 // neutralisation eteignent la publication des etats de mouvement, et la restaurent.
@@ -76,14 +75,14 @@ func TestPorteEtatsMouvementNeutraliseeParLesTroisNeutralisations(t *testing.T) 
 // neutralisation. C est un ratchet sur la SOURCE parce que le defaut qu il garde est une
 // OMISSION — et une omission ne se voit pas a l execution : elle publie juste davantage.
 func TestLocalisateursDeclarentLaPorte(t *testing.T) {
-	const fichier = "object_deaths_march.go"
+	const fichier = "localisateur.go"
 	data, err := os.ReadFile(fichier) //nolint:gosec // un fichier du paquet lui-meme
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", fichier, err)
 	}
 	src := string(data)
 	for _, nom := range porteLocalisateurs {
-		re := regexp.MustCompile(`(?s)\nfunc ` + regexp.QuoteMeta(nom) + `\([^)]*\) (?:int|\(int, bool\)) \{(.*?)\n\}`)
+		re := regexp.MustCompile(`(?s)\nfunc ` + regexp.QuoteMeta(nom) + `\([^)]*\) (?:int|\(int, (?:bool|int)\)) \{(.*?)\n\}`)
 		m := re.FindStringSubmatch(src)
 		if m == nil {
 			t.Fatalf("%s : fonction %s introuvable — le ratchet ne garde plus rien (elle a "+

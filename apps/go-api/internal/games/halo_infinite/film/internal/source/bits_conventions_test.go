@@ -265,7 +265,7 @@ func TestBitAtEgaleInvBitAtDAvant(t *testing.T) {
 //
 // LA DIFFERENCE EST HORS D ATTEINTE, ET VOICI POURQUOI (mesure du 2026-09-26 sur `a15bfc126`) :
 // ses six appelants de production lisent a une position >= 0 PAR CONSTRUCTION —
-// `marchHasEvents` au bit 1, `marchLocateStrict` / `marchLocateFallback` au bit `s-1` avec
+// `marchHasEvents` au bit 1, `marchLocateSignatures` / `marchLocateFallback` au bit `s-1` avec
 // `s >= 2`, `ScanKeyframeLoadoutsMarche` au bit `b >= 0` de sa boucle, `lireBitmapsDeDatum`
 // (bloc de type 1) a `pos + k` avec `pos` parti de 0. Le test fige les deux faits : l egalite
 // sur le domaine, et la difference hors de lui, pour qu elle ne soit pas redecouverte.

@@ -173,7 +173,7 @@ func v10Harvest(f *film, tl *timeline) ([]v10Dead, v10Couverture) {
 		w := tl.advanceTo(p.ts)
 		start := 2
 		if hasEvents(p) {
-			s := locateRecords(p.payload, w, cfg)
+			s, _ := grammar.LocaliserBoucleDeRecords(p.payload, w, cfg, grammar.SignaturePuisLargeurLibre)
 			if s < 0 {
 				continue
 			}

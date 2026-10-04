@@ -1,0 +1,12 @@
+== gofmt -l
+rc=0
+== go vet ./...
+rc=0
+== go vet -tags=research film
+rc=0
+== archlint
+ok  	levelup/go-api/internal/archlint	30.094s
+rc=0
+== G-film
+rc=0
+FINI

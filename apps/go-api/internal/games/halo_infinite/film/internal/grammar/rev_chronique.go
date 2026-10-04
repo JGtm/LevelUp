@@ -323,3 +323,41 @@ package grammar
 // sans compte qui bouge, `ti=3` retrouve son bloquant `i0 low-frequency` ; fixtures de contrat
 // identiques hors chaines de revision. `killsource.Rev` reste `killsource-2026-09-27` (empreinte
 // recopiee, cf. sa chronique) ; `replay.SchemaVersion` reste 77.
+//
+// ENTREE `grammar-2026-10-03.3` (2026-10-04, lot LS de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA SIGNATURE DU LOCALISATEUR SE LIT SUR TOUT OBJET DE
+// L ARCHETYPE `high-frequency`, PAS SUR LE SEUL SLOT 123.
+//
+// Ce qui change (`localisateur.go`) : dans un paquet a evenements dont le slot 123 ne porte aucune
+// signature, le premier delta de 35 bits a composant unique d un AUTRE slot que le monde lie a
+// l archetype `high-frequency` ([archetypeHauteFrequence], la cle de table du dispatch, `FUN_140e462d8`)
+// ouvre la boucle de records. Tous les objets de l archetype ont le meme ecrivain (`FUN_142eda680`),
+// et la vue B ecrit ses DELTA par slot croissant (`FUN_142f2e174`, `FUN_14076b9c8`) : dans les modes a
+// objectif porte, le premier delta haute frequence est celui d un autre slot (124 a 135, 304). Ordre
+// propre a chaque site : la cuisson ([localiserLaListe]) essaie la signature du slot 123, puis la
+// fermeture par NEW de tete, puis cette signature, sans repli a largeur libre ; les deux marches qui
+// lisent les morts essaient la signature du slot 123 a la generation du monde, puis celle-ci, puis
+// le repli a largeur libre.
+//
+// Mesure sur 20 films (`campagne_grammaire_2026-10-01/LOT_LS.md`) : 313 495 -> 332 624 paquets
+// sains (+19 129), records utiles sains +176 939, AUCUN sain perdu sur aucun film ; listes non
+// localisees 47 854 -> 26 043. `killsource.Rev` monte (`killsource-2026-10-04`) : la voie publiee
+// de 229 morts passe du balayage a la marche sur les 19 temoins, sans autre valeur changee.
+//
+// ENTREE `grammar-2026-10-03.4` (2026-10-04, lot LT de la campagne de grammaire,
+// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA PREUVE PAR CHAINE REFUSE UN RECORD DONT LE
+// MASQUE CONTREDIT L ECRIVAIN.
+//
+// Ce qui change (`debut_de_liste.go`, [pasDEssai]) : la chaine de tete d une liste d evenements
+// ([debutParChaine]) ne traverse plus un record NEW ou DELTA dont le masque contredit
+// `FUN_142e2da44` (bit au-dela du dernier composant de l archetype, `i < *(desc+0x4320)` ; dense
+// d au plus sept composants ; epars a index non croissants). Le debut de la signature est garde.
+// Le second rang de [debutParFermetureRangee] (repli `repli_debut_de_liste_ferme_au_bit`) est
+// inchange.
+//
+// Mesure sur 20 films (`campagne_grammaire_2026-10-01/LOT_LT.md`) : 332 624 -> 332 668 paquets
+// sains (+44), records utiles sains +1 023, AUCUN sain perdu sur aucun film ; les cinq sains perdus
+// de la vague 1 (`fb1a1a72` 7:92, `1c4c63c2` 11:1620, `4f77afc1` 25:874, 37:1188, 59:682) sont
+// retrouves. `killsource.Rev`, `source.Rev` et `objectives.Rev` NE MONTENT PAS : sortie
+// `cmd/killsource json` identique a l octet sur les 19 temoins (killsource ne passe pas par la
+// chaine de tete).

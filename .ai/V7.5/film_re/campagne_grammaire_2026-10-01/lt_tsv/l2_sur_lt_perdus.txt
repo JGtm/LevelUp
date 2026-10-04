@@ -1,0 +1,24 @@
+SAIN_PERDU	d9781168	22:1610	devenu_contredit	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	d9781168	28:1240	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	d9781168	33:944	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	d9781168	34:492	devenu_contredit	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	d9781168	35:1168	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	16:130	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	16:648	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	16:2276	devenu_contredit	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	20:368	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	25:1996	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	25:2092	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	27:1480	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	28:1666	devenu_contredit	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	29:302	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	29:330	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	29:1180	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	31:14	devenu_contredit	ecrivain : masque epars non croissant	ecrivain : masque epars non croissant
+SAIN_PERDU	1c4c63c2	42:884	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	50:12	devenu_contredit	vue B : sortie par rejet	vue B : sortie par rejet
+SAIN_PERDU	1c4c63c2	53:8	devenu_contredit	ecrivain : masque epars non croissant	ecrivain : masque epars non croissant
+SAIN_PERDU	1c4c63c2	55:698	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	55:702	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	55:836	devenu_contredit	ecrivain : masque au-dela de l archetype	ecrivain : masque au-dela de l archetype
+SAIN_PERDU	1c4c63c2	59:178	devenu_contredit	ecrivain : masque epars non croissant	ecrivain : masque epars non croissant

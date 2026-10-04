@@ -11,26 +11,15 @@ package killsource
 // T4 du scan cache — un catalogue perime — et l ablation d un tag reel le mesure : une
 // architecture scan-d abord perd 224 lignes sur 20 essais, l hybride en perd 20. Facteur 11.2.
 //
-// LE LOCALISATEUR. Dans un paquet A EVENTS la boucle de records ne commence pas au bit 2 : il
-// faut trouver ou la liste d evenements se termine. Signature structurelle : tout paquet type-0
-// commence sa boucle par un delta sur le slot 123 de 35 bits EXACTEMENT — candidat UNIQUE et VRAI
-// sur 690/690 paquets confrontes a une verite de position independante. Ce n est pas une
-// heuristique.
-//
-// LE REPLI EXISTE PARCE QUE LA SIGNATURE STRICTE EST SUR-CONTRAINTE : la largeur 35 n est que le
-// cas MODAL du premier record. Sur les paquets qu elle rate, un delta du slot 123 decode bien —
-// mais en 37, 89/90 ou 28 bits. Le repli accepte donc n importe quelle largeur, et il n est
-// essaye QUE lorsque la signature stricte echoue : les 92 % deja localises ne bougent pas d un
-// bit. Il est falsifiable comme le reste — s il designait du bruit, le gate (b) baisserait.
-//
-// LE TEST DE GENERATION EST INDISPENSABLE des deux cotes : la primitive d essai ne l applique
-// pas, alors que la marche le fait. Sans lui, le localisateur designe des positions ou le slot
-// 123 porte une AUTRE generation, et la marche y meurt aussitot (mesure : 3 morts perdues sur un
-// film, dont un double kill).
+// LE LOCALISATEUR. Dans un paquet A EVENTS la boucle de records ne commence pas au bit 2 : son
+// debut est celui du localisateur unique de `grammar` ([grammar.LocaliserBoucleDeRecords], ordre
+// [grammar.SignaturePuisLargeurLibre] : signature du slot 123 a la generation du monde ; sans
+// elle, la signature d un autre objet de l archetype `high-frequency` ; sinon repli a largeur
+// libre), le meme que celui de la marche des morts d objet. Le paquet qu il ne localise pas se
+// saute.
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -75,64 +64,6 @@ func walkFrom(pl []byte, w *grammar.World, cfg grammar.FrameConfig,
 	return recs
 }
 
-// signature123 : un delta sur le slot 123 decode-t-il proprement en `s` et finit-il 35 bits plus
-// loin, avec un unique composant ?
-func signature123(pl []byte, s int, w *grammar.World, cfg grammar.FrameConfig) bool {
-	rec, end, ok := grammar.TryDeltaAt(pl, s, w, cfg)
-	return ok && rec.Slot == 123 && end == s+35 && len(rec.Trace.Comps) == 1
-}
-
-// locateStrict : premiere position S >= 2 telle que le bit S-1 vaille 0 (fin de la liste
-// d evenements) et que la signature stricte y decode. -1 si aucune.
-func locateStrict(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
-	nb := len(pl) * 8
-	for s := 2; s+35 < nb; s++ {
-		if source.BitAt(pl, s-1) != 0 {
-			continue
-		}
-		if signature123(pl, s, w, cfg) {
-			return s
-		}
-	}
-	return -1
-}
-
-// locateFallback : meme condition, LARGEUR LIBRE. N est essaye qu apres l echec de la signature
-// stricte.
-func locateFallback(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
-	nb := len(pl) * 8
-	for s := 2; s+16 < nb; s++ {
-		if source.BitAt(pl, s-1) != 0 {
-			continue
-		}
-		rec, _, ok := grammar.TryDeltaAt(pl, s, w, cfg)
-		if !ok || rec.Slot != 123 || !w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
-			continue
-		}
-		return s
-	}
-	return -1
-}
-
-// locateRecords : le localisateur complet — signature stricte, puis repli. -1 si aucune position.
-func locateRecords(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
-	s, _ := locateRecordsAvecVerdict(pl, w, cfg)
-	return s
-}
-
-// locateRecordsAvecVerdict est [locateRecords], plus `aLargeurLibre` : la position vient de
-// [locateFallback] — le verdict de `repli_localisation_largeur_libre` que [runWalk] compte (lot J8.7).
-func locateRecordsAvecVerdict(pl []byte, w *grammar.World, cfg grammar.FrameConfig) (int, bool) {
-	if s := locateStrict(pl, w, cfg); s >= 0 {
-		if rec, _, ok := grammar.TryDeltaAt(pl, s, w, cfg); ok &&
-			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
-			return s, false
-		}
-	}
-	s := locateFallback(pl, w, cfg)
-	return s, s >= 0
-}
-
 // runWalk : la passe de marche complete sur tous les paquets type-0, dans l ordre du temps.
 //
 // `mv` est le PROFIL DE MOUVEMENT que la calibration a retenu (lot 2.2.a). Il arrive en
@@ -150,7 +81,7 @@ func runWalk(f *film, tl *timeline, r *roster, views int, prof grammar.ProfilDeB
 		start := 2
 		if hasEvents(p) {
 			res.withEv++
-			s, aLargeurLibre := locateRecordsAvecVerdict(p.payload, w, cfg)
+			s, aLargeurLibre := grammar.LocaliserBoucleDeRecords(p.payload, w, cfg, grammar.SignaturePuisLargeurLibre)
 			if s < 0 {
 				continue
 			}
