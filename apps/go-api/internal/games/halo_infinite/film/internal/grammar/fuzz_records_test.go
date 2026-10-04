@@ -113,6 +113,9 @@ func FuzzFilmRecordReaders(f *testing.F) {
 		// La recuperation ancree : ancrage, rangement compact et relecture, lecture des positions
 		// (`ancres_bipedes_fuzz_test.go`).
 		recupererUnPayloadQuelconque(t, payload, tousLesSlots)
+		// Les objets du monde en une passe : pistes sur l union des bandes, creations de plusieurs
+		// archetypes (`objets_du_monde_une_passe_test.go`).
+		releverLesObjetsDUnPayloadQuelconque(payload, band, &wr)
 	})
 }
 

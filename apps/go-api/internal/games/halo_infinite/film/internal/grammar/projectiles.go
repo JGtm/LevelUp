@@ -158,37 +158,28 @@ func ScanFilmWorldObjectsForBand(
 }
 
 // ScanWorldObjectsForBand décode les trajectoires d'une bande de slots dans un film DEJA CHARGE.
+//
+// LES PISTES SE RELÈVENT UNE FOIS PAR CONTEXTE, POUR TOUTES LES BANDES À PISTES DE LA CUISSON
+// (`pistes_du_monde.go`) : un appel rend une copie de ce qui est relevé pour sa bande, à ses bornes
+// et aux largeurs du moment.
 func ScanWorldObjectsForBand(
 	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
 ) ([]types.ProjectileTrack, error) {
 	if wr == nil {
 		return nil, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
-	film := fc.Film()
-	lg := fc.ProfilDeBalayage().LargeursObjetDuMonde()
-	nums := FilmChunkNumbers(film)
-	if len(nums) == 0 {
+	if len(FilmChunkNumbers(fc.Film())) == 0 {
 		return nil, ErrNoFilmChunk
 	}
-	type key struct{ slot, gen uint32 }
-	lives := map[key][]types.ProjectileSample{}
-	for _, c := range nums {
-		chunk, pks, ok := FilmChunkAt(film, c)
-		if !ok {
-			continue
-		}
-		for _, p := range pks {
-			if p.Type != PacketTypeDelta {
-				continue
-			}
-			pay := p.Payload(chunk)
-			for _, s := range scanProjectileRecords(pay, band, wr, lg) {
-				s.TimestampUS, s.Chunk = p.TimestampUS, c
-				k := key{s.slot, s.gen}
-				lives[k] = append(lives[k], s.ProjectileSample)
-			}
-		}
-	}
+	return fc.pistesDeLaBande(*wr, fc.ProfilDeBalayage().LargeursObjetDuMonde(), band), nil
+}
+
+// vieDePiste est la vie d'un objet du monde (slot, génération) : la clé qui regroupe ses
+// échantillons en pistes.
+type vieDePiste struct{ slot, gen uint32 }
+
+// pistesDesVies range les échantillons de chaque vie en pistes, dans un ordre total.
+func pistesDesVies(lives map[vieDePiste][]types.ProjectileSample) []types.ProjectileTrack {
 	out := make([]types.ProjectileTrack, 0, len(lives))
 	for k, pts := range lives {
 		// Tri TOTAL des échantillons d'une vie : l'instant seul laisse des ex æquo (plusieurs
@@ -209,7 +200,7 @@ func ScanWorldObjectsForBand(
 	// pour un lancer de grenade. Le couple (slot, gen) est unique par construction (c'est la clé
 	// de `lives`), l'instant de naissance sépare les segments d'une même clé : l'ordre est total.
 	slices.SortFunc(out, comparateurDeLess(lessTrack))
-	return out, nil
+	return out
 }
 
 // lessTrack : ordre total sur les vies (naissance, slot, génération, PUIS la piste elle-même).
@@ -357,24 +348,15 @@ func scanProjectileRecords(pay []byte, band map[uint32]bool, wr *profile.Vec3Ran
 	posBits := projPosBits(lg)
 	limit := len(pay)*8 - (worldObjectHeaderBits + worldObjectIndexBits + posBits)
 	for p := 0; p <= limit; p++ {
-		rec, ok := matchWorldObjectRecord(pay, p, band)
-		if !ok || rec.Idx[0] != 0 { // i0 doit être présent : c'est la position
+		h, ok := enteteDObjetDuMonde(pay, p)
+		if !ok || !band[h.Slot] {
 			continue
 		}
-		v, ok := decodeWorldObjectPos(pay, rec.After, wr, lg)
+		s, ok := echantillonDuRecord(pay, p, h, wr, lg)
 		if !ok {
 			continue
 		}
-		rest := false
-		for _, i := range rec.Idx {
-			if i == projectileRestComponent {
-				rest = true
-			}
-		}
-		out = append(out, projSample{
-			ProjectileSample: types.ProjectileSample{X: v[0], Y: v[1], Z: v[2], AtRest: rest},
-			slot:             rec.Slot, gen: rec.Gen,
-		})
+		out = append(out, s)
 		p += posBits // un record accepté n'est pas re-balayé
 	}
 	return out
@@ -410,14 +392,26 @@ type WorldObjectRecord struct {
 //     INTÉGRALEMENT en tag=0. Filtrer les perdrait toutes.
 //   - maskCount minimal à 1 (et non 2) : les records d'objet du monde sont courts.
 func matchWorldObjectRecord(pay []byte, p int, band map[uint32]bool) (WorldObjectRecord, bool) {
-	var rec WorldObjectRecord
+	h, ok := enteteDObjetDuMonde(pay, p)
+	if !ok || !band[h.Slot] {
+		return WorldObjectRecord{}, false
+	}
+	return masqueDObjetDuMonde(pay, p, h)
+}
+
+// enteteDObjetDuMonde lit, à la position p, le préfixe d'un record DELTA et son handle — la
+// partie de la reconnaissance qui ne dépend d'aucune bande.
+func enteteDObjetDuMonde(pay []byte, p int) (types.LifeKey, bool) {
 	if source.BitsTolerants(pay, p, 1) != 1 { // préfixe de record DELTA
-		return rec, false
+		return types.LifeKey{}, false
 	}
-	h := LireHandleDelta(pay, p)
-	if !band[h.Slot] {
-		return rec, false
-	}
+	return LireHandleDelta(pay, p), true
+}
+
+// masqueDObjetDuMonde finit la reconnaissance du record de handle `h` à la position p : la porte
+// de masque éparse et des index strictement croissants.
+func masqueDObjetDuMonde(pay []byte, p int, h types.LifeKey) (WorldObjectRecord, bool) {
+	var rec WorldObjectRecord
 	if source.BitsTolerants(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche éparse
 		return rec, false
 	}

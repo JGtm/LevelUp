@@ -502,12 +502,66 @@ la marche de TOUS les corps ancrés jusqu'au bout de leur masque coûte 31 à 15
   cuisson : huit balayages bit à bit des trames delta de moins (neuf ancrages bipèdes → un), et un
   relevé de la bande bipède de moins. CI verte au niveau job sur `057c0cffd` (run `37150564223`).
 
-### Lot 2.5 — Récupération des objets du monde (taille L)
-- [ ] 2.5.1 Créations multi-archétypes en une passe ; pistes sur l'union des bandes
+### Lot 2.5 — Récupération des objets du monde (taille L) — fait, clôture à la CI verte et à la mesure de durée à machine calme
+*Décisions d'exécution du 2026-10-04* — relu sur pièces et mesuré avant le code (profil CPU d'une
+cuisson du BTB et sonde temporaire des appels, retirée) : sur le BTB, les poses, les socles et les
+projectiles font QUATRE balayages bit à bit de pistes d'objets du monde (`ScanWorldObjectsForBand`) :
+équipement `ti=37` aux poses (3,9 s) PUIS aux socles (3,4 s, même bande, mêmes bornes, mêmes
+largeurs), armes au sol `ti=42` (3,6 s), projectiles (3,8 s) ; et QUATRE marches de création
+(`runCreationWalk`, environ 2 s chacune) : équipement aux poses PUIS aux socles, armes au sol,
+véhicules `ti=40`. Chaque balayage teste chaque bit de chaque payload delta ; le préfixe, l'en-tête
+et l'appartenance du slot à la bande font l'essentiel du coût.
+1. *Les pistes des objets du monde se relèvent en UNE passe sur l'union des bandes, mémorisée dans
+   le contexte.* Au premier balayage de pistes, le contexte relève celles des bandes à pistes de la
+   cuisson (équipement, armes au sol, projectiles) et de la bande demandée : chaque payload n'est
+   parcouru qu'une fois, chaque bande gardant SON curseur (un record accepté n'avance que le curseur
+   de sa bande, comme le balayage d'une bande seule), d'où des pistes identiques par construction.
+   Une demande suivante sur la même bande, aux mêmes bornes et aux mêmes largeurs, rend une copie
+   de ce qui est relevé.
+2. *Les créations multi-archétypes en UNE passe, mémorisées par leurs entrées.* À la première marche
+   de création, le contexte marche ensemble les archétypes de création de la cuisson (équipement,
+   armes au sol, véhicules), chacun avec SON curseur et sous le profil de balayage du moment
+   (largeurs MPP comprises) ; une demande suivante ne réutilise une marche que si l'archétype, la
+   bande, les bornes et le profil sont les mêmes — c'est le cas des socles et des véhicules, qui
+   installent les largeurs que les poses ont lues ou calibrées. La calibration MPP reste un
+   préliminaire des poses, jouée avant.
+3. Aucun fichier de `replay` ne change : les points d'entrée restent ceux d'aujourd'hui.
+4. *Marque « récupéré » et registre* : comme pour l'ancrage bipède, couverts par 2.7.d (décision de
+   l'utilisateur du 2026-10-04) — ces balayages lisent des records que la marche des trames lit
+   aussi quand elle les atteint.
+- [x] 2.5.1 Créations multi-archétypes en une passe ; pistes sur l'union des bandes
       (`equipment_creation*.go`, `vehicle_creation.go`, `ground_weapon_creation.go`, `projectiles.go`,
       `equipment_placements.go`, `replay/build_ground_weapons.go`, `replay/build_vehicles.go`) ;
       calibration MPP gardée en préliminaire.
+      *Fait* : `pistes_du_monde.go` (une passe sur l'union des bandes à pistes, un curseur par
+      bande, la reconnaissance d'un record jugée une fois pour toutes les bandes qui portent son
+      slot : `enteteDObjetDuMonde`, `masqueDObjetDuMonde`, `echantillonDuRecord`, que le balayage
+      d'une bande seule partage) ; `creations_du_monde.go` (une passe des créations, un curseur par
+      archétype, le début de l'en-tête NEW lu une fois : `archetypeDeLEnTeteNEW`, première étape de
+      `matchWorldObjectNewHeaderIn`, qui reste la seule reconnaissance) ; mémoire dans le contexte
+      (`recuperations.go` : ancrage bipède, pistes, créations), rendue en copie, les créations
+      réutilisées sous la même clé seulement (archétype, bande, bornes, profil). La marche d'un
+      archétype seul (`runCreationWalk`, `scanPayload`) est retirée : la passe la remplace pour
+      tous ; la calibration MPP des poses reste jouée avant. `equipment_placements.go` et les
+      fichiers de `replay` n'ont pas eu à changer (mêmes points d'entrée). Tests : pistes d'une
+      passe égales au balayage de chaque bande seule (12 381 échantillons, trois bandes),
+      créations d'une passe égales à l'oracle d'un archétype seul (66 créations), copies et clé de
+      réutilisation ; harnais de fuzz étendu aux deux passes ; trois mutations jouées rouges.
 - Gate : T4 ; critère 4.
+  *T4 passé* (passe `ri25b`, code final, contre la référence du lot 2.4 `ri24a` ; une première passe
+  `ri25a` avant le refactor des signatures demandé par le lint rendait déjà la même chose) :
+  digests `replay-equiv` identiques sur les vingt films, tous décodés depuis le film ; faits 20/20
+  et killsource 19/19 identiques à l'octet. Références d'équivalence re-figées sur ces sorties (le
+  compte déclaré de 2.4 y entre, seize films, ligne `artifact` seule). Banc `BenchmarkObjetsDuMonde`
+  (`b.Loop`, mini-bobine, dix paires alternées, machine chargée) : médiane 1 113 → 325 ms
+  (−71 %). G-film, archlint, `go vet` (avec et sans `research`), `golangci-lint` (0 problème)
+  verts ; empreinte de la grammaire régénérée à révision constante. Parcours de la cuisson : quatre
+  balayages bit à bit de pistes → un, quatre marches de création → une.
+  *Critère 4 : EN ATTENTE d'une machine calme* — la vague 2 de la campagne compile et décode par
+  intermittence pendant plusieurs heures ; elle signalera la fin. Sous charge, non conclusif : une
+  cuisson du BTB par binaire (sans alternance) donne 76,0 → 60,2 s ; trace du ramasse-miettes : tas
+  vivant du décodage en médiane 226 → 236 Mo (la mémoire des pistes et des créations), pic de fin de
+  cuisson dans la dispersion connue (découverte 9).
 
 ### Lot 2.6 — Le statborg descend dans la grammaire (taille M) — CLOS le 2026-10-03
 - [x] 2.6.1 La lecture du statborg (`facts/objectives/statborg.go`, `film.go`, `extract.go`) devient
@@ -541,10 +595,11 @@ la marche de TOUS les corps ancrés jusqu'au bout de leur masque coûte 31 à 15
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
       lecture de l'état complet du bipède par la grammaire (intérêts de la phase des images-clés) ;
-      l'ancrage d'en-tête bipède ne lit plus que les records que la marche ne lit pas (avec 2.7.b).
-      Ce qui reste de chaque heuristique s'inscrit au registre « après la lecture », compté, ses
-      records marqués `PreuveRecupere` avec leur méthode (DT2-4) ; le cliquet `NbDevantLaLecture` ne
-      monte pas.
+      l'ancrage d'en-tête bipède ne lit plus que les records que la marche ne lit pas (avec 2.7.b) ;
+      même principe pour les pistes et les créations d'objets du monde (2.5, décision 4). Ce qui
+      reste de chaque heuristique s'inscrit au registre « après la lecture », compté, ses records
+      marqués `PreuveRecupere` avec leur méthode (DT2-4) ; le cliquet `NbDevantLaLecture` ne monte
+      pas.
 - Gate : `replay-corpus-gate` et banc de vérité ; `KILLSOURCE_FIXTURES` en local ; montée de
   `grammar.Rev` (et `killsource.Rev` pour 2.7.c) ; recuisson et backlog sur signal de l'utilisateur.
 
@@ -783,3 +838,10 @@ plan y sont reprises comme items (3.1.2).
   local (binaire de `feat/v75`), puis la vague 2 (LU, LS, LP, naissances par la vue A) sur GO de
   l'utilisateur : elle préviendra avant de toucher un fichier ; les fichiers de 2.5 (créations,
   pistes, poses) ne sont pas dans sa liste.
+- 2026-10-04 : lot 2.5 fait et prouvé (cf. le lot) : décisions 1 à 4 écrites au lot après la
+  mesure (profil CPU d'une cuisson du BTB et sonde temporaire, retirée) ; pistes en une passe sur
+  l'union des bandes et créations en une passe, mémorisées ; différence nulle contre la passe du
+  lot 2.4 ; références d'équivalence re-figées (le compte déclaré de 2.4 y entre). La mesure de
+  durée du critère 4 attend une machine calme : la vague 2 de la campagne décode par intermittence
+  pendant plusieurs heures et signalera sa fin. Après 2.5, tous les lots restants attendent la
+  campagne (2.7.a et 3.1 : LU ; 2.7.c : LU et LS ; 2.7.b et 2.7.d avec eux ; 3.2 clôt).

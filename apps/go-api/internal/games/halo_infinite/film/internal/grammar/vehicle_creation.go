@@ -68,32 +68,6 @@ func decodeBipedI0Pos(pay []byte, at int, lay profile.I0Layout, wr *profile.Vec3
 	return v, true
 }
 
-// runCreationWalk deroule les paquets DELTA du film et decode les records de creation avec le
-// walk donne (deja construit : archetype, deser, gate de position, tampon de sondes).
-//
-// LE POINT DE PASSAGE UNIQUE des trois archetypes de creation — equipement `ti=37`, arme au sol
-// `ti=42`, vehicule `ti=40`. Chacun garde ses REFUS en propre (bornes, chunks, bande, archetype) ;
-// aucun ne recopie la marche. Le vehicule etant le troisieme, la boucle a ete factorisee ici
-// plutot que recopiee (regle des 2 copies du depot, 2026-09-05).
-func runCreationWalk(
-	fc *FilmContext, w equipCreationWalk, st *types.EquipmentCreationStats,
-) []types.EquipmentCreation {
-	var out []types.EquipmentCreation
-	for _, c := range fc.ChunkNumbers() {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			out = append(out, w.scanPayload(pk.Payload(data), st, pk, c)...)
-		}
-	}
-	return out
-}
-
 // ScanFilmVehicleCreations est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanVehicleCreations].
 func ScanFilmVehicleCreations(
@@ -143,27 +117,12 @@ func ScanVehicleCreationsForBand(
 		return nil, st, ErrNoFilmChunk
 	}
 	st.Slots = len(band)
-	lay, err := fc.I0Layout()
-	if err != nil {
-		return nil, st, fmt.Errorf("decoupage i0 illisible : %w", err)
-	}
-	arch, err := fc.vehicleArchetype()
+	w, err := fc.marcheDeCreation(VehicleTypeIndex, wr, band)
 	if err != nil {
 		return nil, st, err
 	}
-	var cur equipCreationRead
-	obs := installCreationHooks(&cur)
-	w := equipCreationWalk{
-		obs:   obs,
-		prof:  fc.ProfilDeBalayage(),
-		comps: len(arch.Components), wr: wr, band: band, cur: &cur,
-		ti: VehicleTypeIndex, deser: consumeDefaultStateTI40,
-		posDecode: func(pay []byte, at int) ([3]float32, bool) {
-			return decodeBipedI0Pos(pay, at, lay, wr)
-		},
-		posBits: lay.TotalBits(),
-	}
-	return runCreationWalk(fc, w, &st), st, nil
+	cre, st := fc.creationsRelevees(w)
+	return cre, st, nil
 }
 
 // vehicleArchetype rend l'archetype `ti=40` du registre du film (chunk_00), ANALYSE UNE FOIS par

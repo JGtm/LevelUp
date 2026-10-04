@@ -350,7 +350,7 @@ func failleCreationsPourTI(t *testing.T, dir string, w equipCreationWalk, ancres
 				continue
 			}
 			paquets++
-			for _, cre := range w.scanPayload(pk.Payload(data), &st, pk, c) {
+			for _, cre := range creationsDuPayload(w, pk.Payload(data), &st, pk, c) {
 				creations++
 				for _, ai := range failleFenetres(cre.TimestampUS, ancres) {
 					a := ancres[ai]
@@ -444,4 +444,15 @@ func failleDeltas(t *testing.T, dir string, wr *profile.Vec3Range, kf failleKF, 
 		t.Logf("  [%s] VIE slot=%d gen=%d : %d pts · dmin=%.2f m · [%d,%d] ms · bandes ti %v",
 			a.label, k.slot, k.gen, v.nb, v.dmin, failleMS(v.tmin, origine), failleMS(v.tmax, origine), tis)
 	}
+}
+
+// creationsDuPayload marche UN payload pour la seule marche `w` : la forme instrument de la marche
+// des créations (`creations_du_monde.go`), ses comptes cumulés dans `st`.
+func creationsDuPayload(w equipCreationWalk, pay []byte, st *types.EquipmentCreationStats, pk FilmPacket,
+	chunk int) []types.EquipmentCreation {
+	ps := nouvellePasseDesCreations([]equipCreationWalk{w})
+	ps.sts[0] = *st
+	ps.payload(pay, lieuDuPaquet{chunk: chunk, pk: pk})
+	*st = ps.sts[0]
+	return ps.outs[0]
 }

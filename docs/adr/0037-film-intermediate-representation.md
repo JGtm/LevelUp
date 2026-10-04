@@ -210,6 +210,18 @@ anchored records as recovered and counting them in the registry waits for a deci
 decides in front of the walk's reading for the records the walk reads, and the registry would
 declare that `devant_la_lecture`. The order is fixed by lot 2.7.b.
 
+Since lot 2.5, the world-object recovery also runs once per film. The cook scanned the delta
+frames bit by bit four times for world-object tracks (the equipment band twice, the ground-weapon
+band, the projectile band) and four times for creation records (equipment twice, ground weapons,
+vehicles). The tracks of the cook's track archetypes are now found in one pass over the union of
+their bands, each band keeping its own cursor, so a record accepted in one band never moves
+another band's cursor. The creation records of the three creation archetypes are found in one
+pass, each archetype keeping its own cursor; a creation header carries its archetype, so a given
+position concerns at most one of them. Both results are kept in the film context and handed out as
+copies. A creation walk is reused only under the same archetype, band, bounds and scan profile,
+MPP widths included. The user's decision on lot 2.7.d applies to these scans as well: they stay
+out of the registry until the walk reads first.
+
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 
 A value that the payload does not carry (`IDLowBits`, the MPP widths, the i0 layout, `gate15`, the

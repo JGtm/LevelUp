@@ -115058,3 +115058,29 @@ G-film, archlint, vet, lint verts ; empreinte régénérée à révision constan
 **Conclusion / prochaine étape** : CI du commit, puis le lot 2.5 (récupération des objets du monde,
 créations multi-archétypes, pistes sur l'union des bandes). Décision de l'utilisateur attendue sur
 la marque « récupéré » des lectures heuristiques (fenêtres de bits des images-clés, ancrage bipède).
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — décision de l'utilisateur (option A) et lot 2.5 : objets du monde en une passe — Complété (`feat/ri-etape2`, mesure de durée à machine calme en attente)
+
+**Statut** : lot 2.4 clos (CI verte sur `057c0cffd`) ; décision de l'utilisateur consignée ; lot 2.5
+fait et prouvé, clôture à la CI verte et à la mesure de durée à machine calme (la vague 2 de la
+campagne décode pendant plusieurs heures).
+
+**Décision technique principale** : option A de l'utilisateur (2026-10-04) — les lectures
+heuristiques qui décident devant la grammaire restent hors du registre jusqu'à 2.7, nouvel item
+2.7.d. Lot 2.5 : mesurer d'abord (profil CPU d'une cuisson, sonde temporaire des appels, retirée) ;
+la cuisson balayait bit à bit les payloads delta quatre fois pour les pistes d'objets du monde
+(l'équipement deux fois) et quatre fois pour leurs créations. Une passe sur l'union des bandes, un
+curseur par bande, pour les pistes ; une passe pour les créations, un curseur par archétype (un
+en-tête NEW porte son archétype) ; les deux mémorisées dans le contexte (`recuperations.go`) et
+rendues en copie, les créations réutilisées sous la même clé seulement (archétype, bande, bornes,
+profil MPP compris). La marche d'un archétype seul est retirée.
+
+**Résultats observés** : différence nulle contre la passe du lot 2.4 (digests 20/20, faits 20/20,
+killsource 19/19, tous décodés depuis le film). Tests : pistes égales au balayage de chaque bande
+seule (12 381 échantillons), créations égales à l'oracle d'un archétype seul ; trois mutations
+jouées rouges ; harnais de fuzz étendu. Banc : 1 113 → 325 ms. Sous charge (non conclusif) :
+cuisson du BTB 76 → 60 s, tas vivant du décodage +10 Mo en médiane. Lint : un `creationA` à huit
+paramètres refusé, la passe devient une petite structure (`passeDesCreations`).
+
+**Conclusion / prochaine étape** : CI du commit ; mesure de durée à machine calme au signal de la
+campagne ; puis plus rien d'exécutable avant les fusions de LU et LS (lots 2.7 et 3.1).

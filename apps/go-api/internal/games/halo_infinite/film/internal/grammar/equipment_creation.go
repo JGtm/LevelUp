@@ -150,17 +150,12 @@ func ScanEquipmentCreationsForBand(
 		return nil, st, ErrNoFilmChunk
 	}
 	st.Slots = len(band)
-	arch, err := fc.EquipmentArchetype()
+	w, err := fc.marcheDeCreation(EquipmentTypeIndex, wr, band)
 	if err != nil {
 		return nil, st, err
 	}
-
-	var cur equipCreationRead
-	obs := installCreationHooks(&cur)
-
-	w := equipCreationWalk{obs: obs, prof: fc.ProfilDeBalayage(),
-		comps: len(arch.Components), wr: wr, band: band, cur: &cur}
-	return runCreationWalk(fc, w, &st), st, nil
+	cre, st := fc.creationsRelevees(w)
+	return cre, st, nil
 }
 
 // installCreationHooks branche les DEUX sondes du record de création — le default-state de
@@ -262,41 +257,32 @@ func (w equipCreationWalk) posAdvance() int {
 	return projPosBits(w.prof.LargeursObjetDuMonde())
 }
 
-// scanPayload balaye UN payload delta et rend les records de création reconnus.
-func (w equipCreationWalk) scanPayload(
-	pay []byte, st *types.EquipmentCreationStats, pk FilmPacket, chunk int,
-) []types.EquipmentCreation {
-	var out []types.EquipmentCreation
-	total := len(pay) * 8
-	limit := total - woNewHeaderBits
-	for p := 0; p <= limit; p++ {
-		slot, gen, ok := matchWorldObjectNewHeader(pay, p, w.band, w.archetype())
-		if !ok {
-			continue
-		}
-		st.Anchors++
-		cre, ok := w.readCreation(pay, p, total, st)
-		if !ok {
-			continue
-		}
-		cre.Slot, cre.Gen, cre.BitPos = slot, gen, p
-		cre.Chunk, cre.PacketIndex, cre.TimestampUS = chunk, pk.Index, pk.TimestampUS
-		st.Accepted++
-		st.MaskSparse, st.MaskFull = st.MaskSparse+b2i(!cre.MaskFull), st.MaskFull+b2i(cre.MaskFull)
-		st.NoI0 += b2i(!cre.MaskHasI0)
-		if cre.HasRef {
-			st.WithRef++
-		}
-		if cre.HasID {
-			st.WithID++
-		}
-		if cre.HasAmmo {
-			st.WithAmmo++
-		}
-		out = append(out, cre)
-		p = cre.AfterBit - 1 // un record accepté n'est pas re-balayé
+// creationA lit le record de création dont l'en-tête est reconnu à la position p (la vie `h`),
+// dans le paquet `lieu`, et compte : une ancre, puis, quand son corps se déroule, un record
+// accepté. La marche des créations (`creations_du_monde.go`) avance son curseur après un record
+// accepté.
+func (w equipCreationWalk) creationA(pay []byte, p int, h types.LifeKey, lieu lieuDuPaquet,
+	st *types.EquipmentCreationStats) (types.EquipmentCreation, bool) {
+	st.Anchors++
+	cre, ok := w.readCreation(pay, p, len(pay)*8, st)
+	if !ok {
+		return cre, false
 	}
-	return out
+	cre.Slot, cre.Gen, cre.BitPos = h.Slot, h.Gen, p
+	cre.Chunk, cre.PacketIndex, cre.TimestampUS = lieu.chunk, lieu.pk.Index, lieu.pk.TimestampUS
+	st.Accepted++
+	st.MaskSparse, st.MaskFull = st.MaskSparse+b2i(!cre.MaskFull), st.MaskFull+b2i(cre.MaskFull)
+	st.NoI0 += b2i(!cre.MaskHasI0)
+	if cre.HasRef {
+		st.WithRef++
+	}
+	if cre.HasID {
+		st.WithID++
+	}
+	if cre.HasAmmo {
+		st.WithAmmo++
+	}
+	return cre, true
 }
 
 // matchEquipmentNewHeader reconnaît un en-tête de record de CRÉATION d'objet d'ÉQUIPEMENT.
@@ -329,13 +315,7 @@ func matchWorldObjectNewHeader(
 func matchWorldObjectNewHeaderIn(
 	pay []byte, p int, dansLaBande func(uint32) bool, ti uint32,
 ) (slot, gen uint32, ok bool) {
-	if source.BitsTolerants(pay, p, 1) != 0 { // un record DELTA ouvre sur 1
-		return 0, 0, false
-	}
-	if source.BitsTolerants(pay, p+1, 2) != 1 { // type de record : 1 = NEW
-		return 0, 0, false
-	}
-	if uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits)) != ti {
+	if lu, ok := archetypeDeLEnTeteNEW(pay, p); !ok || lu != ti {
 		return 0, 0, false
 	}
 	h := LireHandle(pay, p+woNewTypeBits)
@@ -343,6 +323,19 @@ func matchWorldObjectNewHeaderIn(
 		return 0, 0, false
 	}
 	return h.Slot, h.Gen, true
+}
+
+// archetypeDeLEnTeteNEW lit le DÉBUT d'un en-tête de création à la position p — le préfixe de type
+// (`0` puis `01`) — et rend le typeIndex R(6) qu'il annonce : la première étape de
+// [matchWorldObjectNewHeaderIn], qui ne dépend d'aucun archétype ni d'aucune bande.
+func archetypeDeLEnTeteNEW(pay []byte, p int) (uint32, bool) {
+	if source.BitsTolerants(pay, p, 1) != 0 { // un record DELTA ouvre sur 1
+		return 0, false
+	}
+	if source.BitsTolerants(pay, p+1, 2) != 1 { // type de record : 1 = NEW
+		return 0, false
+	}
+	return uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits)), true
 }
 
 // readCreation déroule le corps d'un record de création : le default-state (qui publie les deux

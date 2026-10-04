@@ -48,16 +48,16 @@ type recordAncre struct {
 // Un film sans chunk, sans bande bipede ou au decoupage illisible n ancre rien : ses lecteurs le
 // refusent avant de le parcourir, chacun avec son erreur.
 func (c *FilmContext) ancresBipedes() *ancresBipedes {
-	if c.ancres != nil {
-		return c.ancres
+	if c.recup.ancres != nil {
+		return c.recup.ancres
 	}
-	c.ancres = &ancresBipedes{}
+	c.recup.ancres = &ancresBipedes{}
 	chunks, slots := c.ChunkNumbers(), c.BipedSlots()
 	lay, err := c.I0Layout()
 	if len(chunks) == 0 || slots.Count() == 0 || err != nil {
-		return c.ancres
+		return c.recup.ancres
 	}
-	a := c.ancres
+	a := c.recup.ancres
 	walkDeltaBipedRecords(c, chunks, slots, lay, func(r deltaBipedRecord) {
 		if n := len(a.paquets); n == 0 || a.paquets[n-1].chunk != r.Chunk ||
 			a.paquets[n-1].paquet.Index != r.Packet.Index {
@@ -65,7 +65,7 @@ func (c *FilmContext) ancresBipedes() *ancresBipedes {
 		}
 		a.records = append(a.records, recordAncreDe(r))
 	})
-	return c.ancres
+	return c.recup.ancres
 }
 
 // recordAncreDe range un record du marcheur.

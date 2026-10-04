@@ -94,21 +94,12 @@ func ScanGroundWeaponCreationsForBand(
 		return nil, st, ErrNoFilmChunk
 	}
 	st.Slots = len(band)
-	arch, err := fc.groundWeaponArchetype()
+	w, err := fc.marcheDeCreation(GroundWeaponTypeIndex, wr, band)
 	if err != nil {
 		return nil, st, err
 	}
-
-	var cur equipCreationRead
-	obs := installCreationHooks(&cur)
-
-	w := equipCreationWalk{
-		obs:   obs,
-		prof:  fc.ProfilDeBalayage(),
-		comps: len(arch.Components), wr: wr, band: band, cur: &cur,
-		ti: GroundWeaponTypeIndex, deser: consumeDefaultStateTI42, ammoArch: &arch,
-	}
-	return runCreationWalk(fc, w, &st), st, nil
+	cre, st := fc.creationsRelevees(w)
+	return cre, st, nil
 }
 
 // groundWeaponArchetype rend l'archétype `ti=42` du registre du film (chunk_00), ANALYSE UNE
