@@ -407,7 +407,7 @@ func (o *Observation) neutraliserCapturePosition() func() {
 // C EST LA PORTE UNIQUE, ET ELLE SE POSE DANS LA MARCHE, JAMAIS PAR CALQUE.
 //
 // Tous les chemins speculatifs de la marche passent par elle : les deux neutralisations
-// ci-dessus l appellent, et le LOCALISATEUR de paquet (`localisateur.go` : `marchLocateSignatures`,
+// ci-dessus l appellent, et le LOCALISATEUR de paquet (`localisateur.go` : `marchLocateStrict`,
 // `marchLocateFallback`, [LocaliserBoucleDeRecords]) l appelle directement — c est le seul chemin
 // speculatif du depot qui ne declarait RIEN, et il pesait a lui seul 2 359 a 6 358 lectures
 // fantomes par film.

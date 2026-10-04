@@ -469,25 +469,11 @@ package killsource
 // pour reecrire des lignes identiques. Golden regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/vague1_tsv/`.
 //
-// ENTREE `killsource-2026-10-04` (2026-10-04, lot LS de la campagne de grammaire,
-// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA MARCHE LOCALISE LES PAQUETS DONT LE PREMIER DELTA
-// HAUTE FREQUENCE N EST PAS CELUI DU SLOT 123.
-//
-// Le localisateur unique (`grammar/localisateur.go`, ordre [grammar.SignaturePuisLargeurLibre])
-// essaie, entre la signature du slot 123 et le repli a largeur libre, la meme signature sur un autre
-// objet de l archetype `high-frequency`. LA SORTIE PERSISTEE CHANGE : la voie (`read_path` de
-// `match_kill_events`) de 229 morts des 19 temoins de `config/replay_corpus.toml` passe du
-// balayage a la marche (`d9781168` 103, `60ae07c4` 78, `c75f33b8` 48) ; aucune mort n apparait ni
-// ne disparait, aucun tag, statut ni credit ne change. Sur les trois films de l enquete du scan de
-// septembre, 364 morts passent a la marche. La montee rend tout le parc candidat au backlog
-// (`conditionBacklog`) ; le hook post-sync installe par defaut (`sync/engine_options.go`) le
-// redecode au deploiement, huit films par cycle.
-//
-// COMPLEMENT DU 2026-10-04 (integration de la vague 2 : LU, LS, LT ; REVISION CONSTANTE) : la VALEUR
-// de `grammar.Rev` monte a `grammar-2026-10-03.5` (LT puis tete de vague), donc l empreinte ; aucune
-// source de la couche ne change depuis l entree ci-dessus. Sortie `cmd/killsource json` sur les 19
-// temoins et `1c4c63c2` (carte Refuge) : IDENTIQUE A L OCTET a celle de la branche du lot LS
-// (`80d2acd20`) ;
-// contre `2393d7db7`, les memes 229 morts (et 312 sur `1c4c63c2`) passent du balayage a la marche, rien
-// d autre. La revision `killsource-2026-10-04` designe donc une sortie persistee unique ; golden
-// regenere a revision constante. Mesures : `campagne_grammaire_2026-10-01/vague2_tsv/`.
+// COMPLEMENT DU 2026-10-04 (vague 2 de la campagne de grammaire apres sa revue adverse : lots LU et
+// LT ; REVISION CONSTANTE) : une source de la couche change (`walk.go` appelle le localisateur
+// unique de `grammar`, lot LU) et la VALEUR de `grammar.Rev` monte a `grammar-2026-10-03.5`, donc
+// l empreinte. Sortie `cmd/killsource json` sur les 19 temoins de `config/replay_corpus.toml` et
+// `1c4c63c2` (carte Refuge), binaire de `6fa631df0` contre binaire de la tete : IDENTIQUE A L OCTET
+// sur les 20 films. Le lot LS, qui faisait monter la revision (voie de 229 morts du balayage a la
+// marche), est retire de la vague : la revision reste et aucun backlog n est ouvert. Golden regenere
+// a revision constante. Mesures : `campagne_grammaire_2026-10-01/vague2_tsv/revue/`.

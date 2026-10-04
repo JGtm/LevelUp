@@ -183,19 +183,40 @@ func phaseDeRecord(typ int) (int, bool) {
 	return 0, false
 }
 
+// ordreDeLaVueB suit la loi d ecriture de la vue B, record par record : `FUN_142f2e174` parcourt
+// la table de vue par index croissant et range chaque entree dans le sous-ecrivain de son genre,
+// que `FUN_14076b9c8` concatene dans l ordre NEW (+0x1b090), DELTA (+0x1b240), DEL (+0x1b168).
+// D ou NEW*, DELTA*, DEL*, slots strictement croissants dans chaque groupe. Le juge de l ecrivain
+// ([jugerLaVueB]) et la chaine de tete ([chaineJusqua]) la tiennent par ce seul type.
+type ordreDeLaVueB struct {
+	phase   int
+	dernier [3]int64
+}
+
+// nouvelOrdreDeLaVueB rend l ordre d une vue B dont aucun record n est encore lu.
+func nouvelOrdreDeLaVueB() ordreDeLaVueB {
+	return ordreDeLaVueB{dernier: [3]int64{-1, -1, -1}}
+}
+
+// suivre enregistre un record de rang `ph` ([phaseDeRecord]) sur `slot`, et dit s il respecte la
+// loi d ecriture apres les records deja suivis.
+func (o *ordreDeLaVueB) suivre(ph int, slot uint32) bool {
+	respecte := ph >= o.phase && int64(slot) > o.dernier[ph]
+	o.phase, o.dernier[ph] = max(o.phase, ph), int64(slot)
+	return respecte
+}
+
 // jugerLaVueB juge les records de la vue B dans l ordre du flux ; faux : le juge s arrete.
 func (j *jugeEcrivain) jugerLaVueB(recs []FrameRecord) bool {
-	phase := 0
-	dernier := [3]int64{-1, -1, -1}
+	ordre := nouvelOrdreDeLaVueB()
 	for _, r := range recs {
 		ph, ok := phaseDeRecord(r.Type)
 		if !ok {
 			continue
 		}
-		if (ph < phase || int64(r.Slot) <= dernier[ph]) && !j.noter(InvariantOrdreVueB) {
+		if !ordre.suivre(ph, r.Slot) && !j.noter(InvariantOrdreVueB) {
 			return false
 		}
-		phase, dernier[ph] = max(phase, ph), int64(r.Slot)
 		if !j.noter(r.Trace.MasqueNonEcrit) {
 			return false
 		}

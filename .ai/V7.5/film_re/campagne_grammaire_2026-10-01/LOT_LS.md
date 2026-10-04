@@ -14,20 +14,20 @@
 
 | Item | Statut | En une ligne |
 |---|---|---|
-| LS.1 signature sur tout slot de l'archétype `high-frequency` | [x] | `localisateur.go` : un balayage rend la signature du slot 123 et, sans elle, la première signature haute fréquence (`marchLocateSignatures`) |
-| LS.2 archétype reconnu par la TABLE, pas par le nom (LU.3, D-LU-4) | [x] | `rec.TypeIndex == archetypeHauteFrequence`, la clé de routage de L8 (`FUN_140e462d8`, `+0x4754 = 4`, table `0x143d06a60`) |
-| LS.3 ordre de la cuisson : 123 strict → fermeture par NEW de tête → signature haute fréquence, sans repli libre | [x] | `localiserLaListe` (`debut_de_liste.go`), ordre `SignatureHauteFrequence` neuf |
-| LS.4 ordre des marches (morts d'objet, killsource) : 123 strict → haute fréquence → repli libre | [x] | `SignaturePuisLargeurLibre` reçoit l'étage haute fréquence |
-| LS.5 révisions | [x] | `grammar-2026-10-03.3` (LN porte `grammar-2026-10-04`), `killsource-2026-10-04` ; `objectives` constante |
+| LS.1 signature sur tout slot de l'archétype `high-frequency` | [!] (sans LS.3 et LS.4, aucun appelant : retiré avec eux, §12) | `localisateur.go` : un balayage rend la signature du slot 123 et, sans elle, la première signature haute fréquence (`marchLocateSignatures`) |
+| LS.2 archétype reconnu par la TABLE, pas par le nom (LU.3, D-LU-4) | [!] (retiré avec LS.1, §12) | `rec.TypeIndex == archetypeHauteFrequence`, la clé de routage de L8 (`FUN_140e462d8`, `+0x4754 = 4`, table `0x143d06a60`) |
+| LS.3 ordre de la cuisson : 123 strict → fermeture par NEW de tête → signature haute fréquence, sans repli libre | [!] (revue adverse de la vague 2, §12) | ordre MESURÉ, pas lu dans le jeu ; `localiserLaListe` (`debut_de_liste.go`), ordre `SignatureHauteFrequence` neuf |
+| LS.4 ordre des marches (morts d'objet, killsource) : 123 strict → haute fréquence → repli libre | [!] (revue adverse de la vague 2, §12) | ordre MESURÉ, pas lu dans le jeu ; `SignaturePuisLargeurLibre` recevait l'étage haute fréquence |
+| LS.5 révisions | [~] (§12 : le rang `.3` reste dans la chronique comme historique de la branche ; `killsource-2026-10-04` retiré) | `grammar-2026-10-03.3` (LN porte `grammar-2026-10-04`), `killsource-2026-10-04` ; `objectives` constante |
 | Gate 1 (tests, vet, archlint, révision) | [x] | §4 |
 | Gate 2 (carte v2, 20 films) | [x] | aucun film en baisse, 0 sain perdu (§3) |
 | Gate 3 (killsource) | [x] | 229 morts du balayage à la marche sur les 19 témoins, 312 sur `1c4c63c2`, 364 sur les trois films de l'enquête ; aucune valeur changée (§5) |
 | D22 (gate 3 sur `1c4c63c2`) | [x] | la carte du film est dans le dépôt (D-LS-1) : gate 3 joué |
 | D-111 (alerte « hors roster » de `6b0e6f0f`) | [x] | instruite : un participant réel lu à l'indice 16, refusé avant comme après (§5.3) |
-| Backfill killsource du parc | DÛ, non lancé | `killsource.Rev` monte (voie publiée, D-74) |
+| Backfill killsource du parc | [~] sans objet après le retrait (§12) | `killsource.Rev` montait (voie publiée, D-74) |
 | Corrections du contrôle (C1 test de la chaîne derrière la haute fréquence, C2 règle 6, C3 règle 17) | [x] | §11 ; sortie de production inchangée, révisions inchangées |
 
-Verdict : **[x] retenu**.
+Verdict : **[!] RETIRÉ de la vague** à la revue adverse du 2026-10-04 (§12) ; retenu jusque-là (`[x]`, intégration `da6ecda38`).
 
 ## 1. Ce qui est lu dans le jeu (établi)
 
@@ -455,3 +455,70 @@ L'empreinte de `killsource` hache la valeur de `grammar.Rev` (inchangée) et `fa
   `TestLocalisateurDeBoucleUnique` 64 lignes.
 - Fichiers de la RI touchés par les corrections : `grammar/lecture/paquet.go` seul, deux lignes de
   commentaire (les mêmes que le lot).
+
+## 12. Revue adverse de la vague 2 (2026-10-04) : le lot est RETIRÉ
+
+Revue adverse de la vague 2 (17 constats), traitée sur `feat/campagne-grammaire` après la fusion de
+`feat/v75` = `6fa631df0` (RI étape 2, vies de bots ; `f1895d9bc`). LS est retiré par revert de
+`939895542` et `80d2acd20` (production, tests, révisions) ; cette note, le rang `.3` de la chronique de
+`grammar` (historique de la branche) et les mesures restent. Mesures : `vague2_tsv/revue/` (pièces
+brutes `scratchpad/v2-integ/rev/`). Convention inchangée : **mesuré**, **établi**, **estimé**.
+
+### 12.1 Constats qui portent sur LS
+
+| Constat | Verdict, sur pièces | Suite |
+|---|---|---|
+| 1 [bloquant] bit nul exigé devant la signature haute fréquence | VRAI. Établi (Ghidra relu) : `FUN_142f2c3b0` écrit la vue A puis le 0 (`FUN_1406d49c4`) dans le tampon du flux 0 et la vue B (`FUN_142f2cc78`) dans celui du flux 1 ; `FUN_14299d2c8` les met bout à bout au bit près (`FUN_1406d5d14`) ; `FUN_14076b9c8` concatène NEW, DELTA, DEL sans séparateur. Le 0 n'est écrit que devant le premier record de la vue B ; le delta haute fréquence suit les deltas des slots inférieurs (D-LS-3). Mesuré (ci-dessous) : la condition rejetait des positions vraies | étage retiré avec le lot |
+| 2 [bloquant] ordres propres à chaque site, choisis à la mesure | VRAI : en-tête de `localisateur.go` (l. 22-24 à `da6ecda38`), §3.2 et §7 de cette note ; l'ordre de la cuisson a été retenu sur le gate de `1c4c63c2` | LS.3, LS.4 `[!]` |
+| 12 [majeur] aucune décision datée ne couvre l'ordre mesuré | VRAI : D13 est dans le bloc du questionnaire du 2026-10-02 que l'utilisateur a SUSPENDU (plan §3) ; « corrections d'abord » retient LS sans parler d'ordre | décision laissée au pilote (§12.3) |
+| 3 [majeur] largeur 35 étendue à un archétype | VRAI ; la largeur est désormais dérivée du cadre pour la signature du slot 123 (`LOT_LU.md` §9) | sans objet pour LS |
+| 4 [majeur] replis « hors roster » et « hors bande » nés de LS | VRAI comme constat (`replis_changes.tsv` de l'intégration) ; lien causal ESTIMÉ par la revue | après retrait : §12.2 |
+| 5 [mineur] contrôle de génération décrit comme actif à tous les sites | VRAI (`GenerationStricte` levé par killsource seul) | contrat corrigé dans le localisateur de LU (`LOT_LU.md` §9) |
+| 7 [mineur] vecteurs à la même position que le slot 123 | VRAI (`recopieSurUnAutreSlot` ne réécrit que l'identifiant) | sans objet après retrait ; exigence d'une reprise (§12.3) |
+| 11 [majeur] la signature haute fréquence n'avait ni marque ni compte propres (ADR 0037 IR-6) | VRAI (`DebutParSignature` pour les deux signatures ; aucun compteur) | sans objet après retrait (IR-6 cite `marchLocateStrict`, de nouveau en production) ; exigence d'une reprise |
+| 13 [majeur] pertes du gate de corpus non instruites | VRAI : aucune n'était instruite | gate rejoué après retrait : §12.2 |
+| 14 [majeur] backfill qui réécrirait des positions non mesurées | VRAI comme risque | sans objet : `killsource.Rev` reste `killsource-2026-09-27`, aucun backfill (§12.2) |
+
+### 12.2 Après le retrait, mesuré
+
+- **Condition du bit nul (constat 1)** — surcouche `rev/mut/localisateur_v1.go` sur l'arbre fusionné
+  avec LS (la condition gardée pour le slot 123, retirée à l'étage haute fréquence), carte v2 des 20
+  films contre `6fa631df0` : 313 495 -> **333 653** sains (+20 158 ; LS tel quel : 332 668, +19 173),
+  utiles sains +187 651 (LS : +177 962), **aucun film en baisse, 0 sain perdu**. La condition
+  rejetait donc des positions vraies (+985 sains sans elle) ; les comptes par paquet de la revue
+  (`8f7f5806` 1 325 candidats précédés d'un 1, dont 1 100 derrière un delta ti5 / ti2) sont les siens,
+  non rejoués ici.
+- **LS sur la nouvelle base** (arbre fusionné, avant retrait) : carte identique en comptes à celle de
+  l'intégration (332 668 sains, 3 100 472 utiles sains) — la RI et les vies de bots ne changent pas la
+  carte (base `6fa631df0` = 313 495 sains, comme `2393d7db7`).
+- **Tête après retrait** (LU + LT + corrections de la revue) contre `6fa631df0`, sur les mêmes
+  pièces que l'intégration : killsource **identique à l'octet sur 20 films** (constat 14 sans objet) ;
+  `replay-equiv`, base et tête : divergent `artifact` (20), `movementStates.stats` (17),
+  `continuousFire.stats` (13), `continuousFire` (2 : `084a804d`, `1c4c63c2`) ; `killRefs`, `vehicles`,
+  `killsource`, `movementStates` et `objectives` **identiques** (les positions persistées par le
+  collecteur ne changent pas, constat 14) ; replis : seul `repli_liaison_par_anticipation` bouge (±1 à
+  2 sur 5 films) ; **`repli_deadstate_indice_hors_roster` et `repli_deadstate_hors_bande_bipede` ne
+  bougent plus** (constat 4 et D-INT2-1 : nés de LS, mesuré par leur disparition au retrait) ;
+- **`replay-corpus-gate`** (`--base=6fa631df0`) : banc de vérité **19 / 19 ok** (le FAUX de
+  `60ae07c4` a disparu) ; rc 1 sur DEUX pertes `[FILET]` seulement : `084a804d`
+  `coverage.stances.records` 448 661 -> 448 659, `a349fea8` `coverage.continuousFire.holesNotClosing`
+  22 852 -> 22 856. Les pertes du constat 13 (durée des postures −9 à −32 %, `holesOpenViewB` jusqu'à
+  ×2,7, `holesNotClosing` de `60ae07c4`) ont disparu avec LS. Attribution des deux restantes :
+  `a349fea8` vient de LT (digests de `replay-equiv` de LU + LT sans les corrections identiques à ceux
+  de la tête, mesuré) ; `084a804d` est touché par LT et par la règle d'ordre de la chaîne, la part de
+  chacune dans les 2 records n'est pas mesurée. Non instruites paquet par paquet : l'admission du rc 1
+  revient au pilote.
+
+### 12.3 Ce qui reste à décider (pilote, puis utilisateur)
+
+LS ne revient qu'avec (a) un ordre fondé sur une règle de l'écrivain, le même à tous les sites et
+sous le même contrôle de génération — la piste est D-LS-2 : prouver que la position haute fréquence
+est dans la vue B par la loi `FUN_142f2e174` + `FUN_14076b9c8` —, ou (b) une décision DATÉE de
+l'utilisateur qui accepte un ordre mesuré, la question posée en langage clair (« quand deux preuves
+de début de liste se contredisent, le jeu ne dit pas laquelle croire ; on prend celle qui fait le
+moins de dégâts mesurés : d'accord ? »). Dans les deux cas : sans la condition du bit nul à l'étage
+haute fréquence (§12.2 : +985 sains), avec une marque et un compte propres à la signature haute
+fréquence (ADR 0037 IR-6, constat 11), un vecteur réel où le delta haute fréquence suit un delta
+`ti=5` (constat 7), les replis « hors roster » et « hors bande » instruits paquet par paquet
+(constat 4), les pertes du gate de corpus instruites (constat 13) et les positions persistées
+mesurées avant tout backfill (constat 14).

@@ -91,6 +91,7 @@ func ltEcrire(t *testing.T, dir, nom string, lignes []string) {
 
 // ltVariante : un localisateur de tete de recherche. `prod` est la marche d avant le lot LT,
 // `chaine` celle du lot ([pasDEssai] refuse un masque que l ecrivain n ecrit pas).
+// Toutes tiennent, comme la production, l ordre de la vue B dans la chaine ([chaineJusqua]).
 //
 //	chaine   : la preuve par chaine refuse un pas NEW ou delta dont le masque contredit l ecrivain ;
 //	rang2    : "garder" (second rang de [debutParFermetureRangee]), "aucun" (pas de second rang),
@@ -126,14 +127,9 @@ func ltLocaliser(pay []byte, w *World, cfg FrameConfig, v ltVariante, der *ltDer
 	*der = ltDernier{}
 	debut, _ := LocaliserBoucleDeRecords(pay, w, cfg, SignatureStricte)
 	if debut < 0 {
-		if d, rang := ltFermeture(pay, candidatsDeTete(pay, len(pay)*8, w), w, cfg, v, der); rang != lecture.DebutNonLocalise {
-			der.rang = rang
-			return d, rang
-		}
-		if debut, _ = LocaliserBoucleDeRecords(pay, w, cfg, SignatureHauteFrequence); debut < 0 {
-			der.rang = lecture.DebutNonLocalise
-			return -1, lecture.DebutNonLocalise
-		}
+		d, rang := ltFermeture(pay, candidatsDeTete(pay, len(pay)*8, w), w, cfg, v, der)
+		der.rang = rang
+		return d, rang
 	}
 	if d, ok := ltChaine(pay, debut, candidatsDeTete(pay, debut, w), w, cfg, v); ok {
 		der.rang = lecture.DebutParChaine
@@ -151,8 +147,12 @@ func ltChaine(pay []byte, debut int, candidats []int, w *World, cfg FrameConfig,
 		if p-extra < 0 || p >= debut {
 			continue
 		}
-		pos, ok := p-extra, true
+		pos, ok, ordre := p-extra, true, nouvelOrdreDeLaVueB()
 		for n := 0; n < plafondChaineDeTete && pos < debut && ok; n++ {
+			if !suitLOrdreEn(&ordre, pay, pos, extra, essai) {
+				ok = false
+				break
+			}
 			fin, bon, masque := ltPas(pay, pos, extra, w, essai)
 			if !bon || fin <= pos || (v.chaine && masque != InvariantAucun) {
 				ok = false
@@ -160,7 +160,7 @@ func ltChaine(pay []byte, debut int, candidats []int, w *World, cfg FrameConfig,
 			}
 			pos = fin
 		}
-		if ok && pos == debut {
+		if ok && pos == debut && suitLOrdreEn(&ordre, pay, debut, extra, essai) {
 			return p - extra, true
 		}
 	}

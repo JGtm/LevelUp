@@ -458,6 +458,12 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   aucun push ; mesures et outils : `campagne_grammaire_2026-10-01/vague2_tsv/`, pièces brutes
   `scratchpad/v2-integ/`). Référence de mesure : `2393d7db7` (= `origin/feat/v75`, inchangée au
   `git fetch` ; `feat/ri-etape2` non fusionnée).
+  **[Corrigé à la revue adverse de la vague 2, constat 9 : cette phrase est FAUSSE.]** Au commit
+  d'intégration `da6ecda38` (15:40:08), `feat/v75` portait déjà la RI étape 2 (`083e1a4bc`, avance
+  rapide à 14:48:41, poussée sur `origin` à 14:49:50, références `replay-equiv` re-figées par
+  `e722585ae`), puis les vies de bots (`6fa631df0`, 15:56:55, poussée à 15:57:53, schéma 78). Les
+  mesures ci-dessous sont prises contre une base qui n'était plus celle de la fusion visée ; elles
+  sont refaites contre `6fa631df0` à l'entrée « corrections de la revue adverse » (ci-après).
   - **Fusionnés** (`git merge --no-ff feat/cg2-lt`, commit `bdd784b6a`, sans conflit) : la chaîne LU
     (`f73811aa8`) -> LS (`939895542`, corrections `80d2acd20`) -> LT (`8da500ab5`, LT.1 seul).
   - **Non retenus** : LP (`[!]` gate 2) et LN (`[!]` gate 6 en rc 1, pertes brutes non expliquées) ;
@@ -544,6 +550,52 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
     vague) ; fusion dans `feat/v75` (geste du pilote ou de l'utilisateur) puis recuisson et backfill
     killsource (D7) ; références `replay-equiv` et goldens de fermeture à re-figer après la fusion
     (§6.0 point 6) ; LP (D-LP-1, après les corrections du §10 de sa note) et LN (voies (a) / (b)).
+
+- 2026-10-04 : **corrections de la revue adverse de la vague 2** (17 constats, chacun vérifié sur
+  pièces ; worktree de la campagne, aucun push ; mesures `campagne_grammaire_2026-10-01/vague2_tsv/revue/`,
+  pièces brutes `scratchpad/v2-integ/rev/`). Référence de mesure : **`6fa631df0`** (= `feat/v75` et
+  `origin/feat/v75` relus au moment de la fusion : RI étape 2 puis vies de bots, schéma 78).
+  - **Fusion de `feat/v75`** (`f1895d9bc`, constat 9) : conflits sur `grammar_rev.golden`, le manifeste
+    et les fixtures de contrat (schéma 77 -> 78), résolus côté `feat/v75` puis régénérés ; compilation
+    et `go vet` verts.
+  - **LS RETIRÉ** (revert de `939895542` et `80d2acd20` ; `LOT_LS.md` §12) : constats 1 (bit nul non
+    écrit par le jeu devant la signature haute fréquence), 2 et 12 (ordres mesurés, D13 suspendue)
+    VRAIS ; LS.3, LS.4 `[!]`. Mesuré pour la décision : LS sans la condition du bit nul = +20 158
+    sains, aucun film en baisse.
+  - **Corrections retenues** : largeur de la signature dérivée du cadre (constat 3, `LOT_LU.md` §9 ;
+    sortie identique à l'octet) ; chaîne de tête sous l'ordre de la vue B (constat 6, `LOT_LT.md` §10 ;
+    +3 sains, 0 perdu ; les vecteurs de LT, non écrivables par le jeu, corrigés) ; en-tête du
+    localisateur (constats 1, 5, 8) ; test de l'ordre de `marchDebut` (constat 10) ; mesure datée
+    sortie de l'archlint (constat 16) ; statut de LT.4 aligné (constat 17) ; rang `.5` régénéré sur
+    son contenu (constat 15, doublon d'empreinte supprimé) ; phrase fausse de l'intégration corrigée
+    (constat 9, entrée ci-dessus).
+  - **Sans objet après le retrait** (constats 4, 7, 11, 13, 14) : replis « hors roster » et « hors
+    bande » revenus à la base ; plus d'étage haute fréquence à marquer ; pertes de postures et de vue B
+    disparues ; killsource identique, aucun backfill. Faux en partie : constat 16 sur
+    `movement_states.go:25` et `frame_harvest.go:313` (`marchLocateStrict` est de nouveau la
+    production).
+  - **Révisions** : `grammar-2026-10-03.5` (contenu final : LU + LT + corrections ; empreinte
+    `2be5267e…`, propre) ; `killsource-2026-09-27`, `objectives-2026-09-27` (étape `objectives` de
+    `replay-equiv` identique sur 20 films), `source`, `profile` constantes, goldens régénérés à révision
+    constante ; `SchemaVersion` 78 ; fixtures de contrat : chaînes de révision seules.
+  - **Gate 2** (carte v2, 20 films, contre `6fa631df0`) : 313 495 -> **313 542 sains** (+47), utiles
+    sains 2 922 510 -> 2 923 597 (+1 087), **aucun film en baisse, 0 sain perdu**. LT seul +44 ; règle
+    d'ordre +3 (8 paquets changent, tous portaient « ordre de la vue B ») ; largeur dérivée 0.
+  - **Gate 3** : `killsource json` identique à l'octet sur 20 films. **`replay-equiv`** : divergent
+    `artifact`, `movementStates.stats` (17), `continuousFire.stats` (13), `continuousFire` (2) ;
+    contre les références re-figées par la RI, la base `6fa631df0` diffère déjà sur `artifact` (20).
+  - **`replay-corpus-gate`** (`--base=6fa631df0`) : banc **19 / 19 ok** ; **rc 1** sur deux pertes
+    `[FILET]` (`084a804d` stances.records −2, `a349fea8` holesNotClosing +4 ; `a349fea8` attribué à LT,
+    mesuré ; `084a804d` non réparti) ; non instruites paquet par paquet : **admission au pilote**.
+  - **Gates de code** : `gofmt` vide ; `go vet ./...` et `-tags=research` (film) rc 0 ; archlint ok ;
+    G-film 21 paquets ok ; `golangci-lint --new-from-rev=da6ecda38` (grammar, facts, archlint, types ;
+    et `research` sur grammar) 0 issue ; mutations M10, M6, M3 ROUGES.
+  - **Fichiers de la RI touchés** : `grammar/lecture/paquet.go` (2 lignes de commentaire, revert de LS :
+    texte de LU rétabli). Hors de sa liste : `localisateur.go`, `debut_de_liste.go`,
+    `ecrivain_invariants.go`.
+  - Suite : décision du pilote sur le rc 1 (deux `[FILET]`) ; décision sur LS (§6.2 LS, `LOT_LS.md`
+    §12.3) ; fusion dans `feat/v75` (geste du pilote ou de l'utilisateur), puis références
+    `replay-equiv` et goldens de fermeture à re-figer.
 
 ## 5. Découvertes (consignées, non traitées)
 
@@ -1212,6 +1264,20 @@ des `LOT_<lot>.md` (texte complet et pièces dans chacun), non traitées :
   D-INT2-2 — la tête prend `grammar-2026-10-03.5`, empreinte égale à celle du `.4` (le code de la
   couche ne change pas entre la branche de LT et la tête ; seule la valeur change, pour désigner un
   contenu propre à la tête, comme le `.2` de la vague 1).
+  **D-INT2-1 et D-INT2-2 sont levées par la revue adverse** (LS retiré ; le rang `.5` porte une
+  empreinte propre au contenu final, voir l'entrée du journal « corrections de la revue adverse »).
+- Revue adverse de la vague 2 (2026-10-04) : **D-REV2-1** — le bit nul exigé devant la signature du
+  slot 123 n'est le terminateur de la vue A que si aucun record ne la précède dans la vue B ; quand
+  des NEW de tête la précèdent (la chaîne de tête les retrouve), c'est le dernier bit d'un record :
+  même objection que le constat 1, sur le localisateur d'avant la campagne ; non mesurée, non
+  traitée (règle 5). **D-REV2-2** — l'ADR 0037 IR-6 (EN, chantier de la RI) cite `debutDeLaListe`,
+  aide d'une sonde `research` ; la production est `localiserLaListe` (même nom dans `LOT_LU.md`
+  D-LU-6). **D-REV2-3** — LS sans la condition du bit nul à l'étage haute fréquence : +20 158 sains,
+  aucun film en baisse (mesuré, `LOT_LS.md` §12.2) ; seul l'ordre mesuré l'écarte du critère.
+  **D-REV2-4** — l'aide de test `rbSignature123` (`deto_preuve_robuste_helpers_test.go`) garde la
+  largeur 35 en dur (copie de test, D-LU-5). **D-REV2-5** — `feat/v75` a bougé deux fois pendant la
+  vague (RI étape 2, puis vies de bots, schéma 78) : la base d'une intégration se relit au moment du
+  commit, pas au début.
 
 ## 6. Phase 2 — lots correctifs (écrits à l'étape 5, révisés le 2026-10-02)
 
@@ -1872,6 +1938,12 @@ se réduisent alors au localisateur unifié.
   l'intégration (`LOT_LU.md` §7, D-LU-7, D-LU-8 ; règle 17 dans
   `archlint/no_unregistered_fallback_test.go`). Revue adversariale prévue pour LU (lot à risque) :
   NON JOUÉE, revient au pilote.
+- **Statut (revue adverse de la vague 2, 2026-10-04) : [x] reste FUSIONNÉ**, localisateur de LU
+  rétabli par le retrait de LS, plus quatre corrections (`LOT_LU.md` §9) : largeur de la signature
+  dérivée du cadre (constat 3 ; sortie identique à l'octet sur 20 films, carte et killsource),
+  en-tête corrigé (constats 1, 5, 8), test de l'ordre de `marchDebut` (constat 10), mesure datée
+  sortie du garde-rail (constat 16). LU.3 revient à `[!]` avec LS (aucun prédicat d'archétype en
+  production).
 
 **LS — Signature du localisateur figée sur le slot 123 (marche, vague 2, juste après LU)** (confié à
 la campagne le 2026-10-02 par accord avec la session du chantier de suite d audit, l utilisateur
@@ -1925,6 +1997,15 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
   312 sur `1c4c63c2` (carte Refuge du dépôt, D22 statuée par D-LS-1), aucune valeur ; D-111 instruite
   (défaut de roster préexistant, D-LS-4). `killsource.Rev` -> `killsource-2026-10-04` : backfill
   killsource du parc DÛ (geste de l'utilisateur, D7).
+- **Statut (revue adverse de la vague 2, 2026-10-04) : [!] RETIRÉ de la vague** (`LOT_LS.md` §12) —
+  ses deux ordres de localisation sont MESURÉS, pas lus dans le jeu (l'ordre de la cuisson a été
+  retenu sur le gate de `1c4c63c2`), et D13, qui les acceptait, est dans le bloc du questionnaire
+  SUSPENDU (§3) ; sa condition de bit nul devant la signature haute fréquence n'est pas écrite par
+  le jeu (constats 1, 2 et 12). LS.3 et LS.4 `[!]`, LS.1 et LS.2 retirés avec eux (sans appelant).
+  `killsource.Rev` reste `killsource-2026-09-27` : AUCUN backfill. Mesuré pour la décision (surcouche,
+  base `6fa631df0`) : LS sans la condition du bit nul à l'étage haute fréquence = +20 158 sains (+985
+  de plus qu'avec elle), aucun film en baisse, 0 sain perdu. Reprise : ordre fondé sur une règle
+  d'écrivain (D-LS-2) OU décision datée de l'utilisateur, plus les exigences du §12 de la note.
 
 **L8 — `ti=3` low-frequency et routage des homonymes (composant)**
 - Gain mesuré (BIS_3 §6, surcouche) : +30 618 / −10 paquets, +234 454 utiles, hors cadre de 264 757 à
@@ -2289,7 +2370,7 @@ l'outil et un fichier lu par la publication) ». Conséquences, établies par le
   retrouvés ; killsource identique. **LT.2 et LT.3 [!]** (second rang de `debutParFermeture`, retrait
   du repli `repli_debut_de_liste_ferme_au_bit`) : aucune règle lue dans le jeu ne le permet sans faire
   baisser `e5adf7b2` (−21 / −707) ; le retrait dépend de LM (largeur MPP des formats anciens, mise de
-  côté le 2026-10-02 ; D-LT-1). **LT.4 (L2 rejoué sur LT) [!]** : `1c4c63c2` −9 / −422 et `d9781168`
+  côté le 2026-10-02 ; D-LT-1). **LT.4 (L2 rejoué sur LT) [x]** (mesure faite ; L2 NON intégré ; statut aligné sur `LOT_LT.md` à la revue adverse, constat 17) : `1c4c63c2` −9 / −422 et `d9781168`
   −2 / −33 ; L2 reste hors de la vague. Corrections documentaires du contrôle appliquées à
   l'intégration (`LOT_LT.md` §1, §7 gate 5, D-LT-8).
 - **LP — désaveu par le bloc de type 1** : **[!] NON RETENU au gate 2** (`f89c2b5cd`, rien en

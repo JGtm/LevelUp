@@ -13,10 +13,9 @@ package killsource
 //
 // LE LOCALISATEUR. Dans un paquet A EVENTS la boucle de records ne commence pas au bit 2 : son
 // debut est celui du localisateur unique de `grammar` ([grammar.LocaliserBoucleDeRecords], ordre
-// [grammar.SignaturePuisLargeurLibre] : signature du slot 123 a la generation du monde ; sans
-// elle, la signature d un autre objet de l archetype `high-frequency` ; sinon repli a largeur
-// libre), le meme que celui de la marche des morts d objet. Le paquet qu il ne localise pas se
-// saute.
+// [grammar.SignaturePuisLargeurLibre] : signature stricte du slot 123 a la generation du monde,
+// sinon repli a largeur libre), le meme que celui de la marche des morts d objet. Le paquet qu il
+// ne localise pas se saute.
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"

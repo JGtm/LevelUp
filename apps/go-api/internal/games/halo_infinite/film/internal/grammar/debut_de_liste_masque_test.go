@@ -77,7 +77,7 @@ func mondeDeTeteAComposants() *World {
 	w := NewWorld(&Registry{Archetypes: []Archetype{{Index: 0}, {Index: 1},
 		{Index: 2, Components: composantsDUnBit}, {Index: 3}, {Index: 4, Components: composantsDUnBit}}})
 	w.BindImageCle(1, 123, 4)
-	w.BindImageCle(1, 124, 4)
+	w.BindImageCle(1, 122, 4)
 	t := NouvelleTableAnticipee()
 	t.archetypesDuSlot[300] = map[uint32]bool{2: true}
 	w.PoserTableAnticipee(t)
@@ -105,60 +105,60 @@ type casDeMasque struct {
 var casDeMasques = []casDeMasque{
 	{"NEW, bit au-dela de l archetype", mondeDeTete, func(w *bitWriter) {
 		w.neuf13Avec(300, 2, epars(5))
-		w.delta13(124)
+		w.delta13(122)
 	}, false},
 	{"NEW, aucun bit (temoin du bit au-dela)", mondeDeTete, func(w *bitWriter) {
 		w.neuf13Avec(300, 2, epars())
-		w.delta13(124)
+		w.delta13(122)
 	}, true},
 	{"delta, bit au-dela de l archetype", mondeDeTete, func(w *bitWriter) {
 		w.neuf13(300, 2)
-		w.delta13Avec(124, epars(3))
+		w.delta13Avec(122, epars(3))
 	}, false},
 	{"NEW, dense de sept composants", mondeDeTeteAComposants, func(w *bitWriter) {
 		w.neuf13Avec(300, 2, dense(0x7f))
 		valeursDeComposants(w, 7)
-		w.delta13(124)
+		w.delta13(122)
 	}, false},
 	{"NEW, dense de huit composants (temoin)", mondeDeTeteAComposants, func(w *bitWriter) {
 		w.neuf13Avec(300, 2, dense(0xff))
 		valeursDeComposants(w, 8)
-		w.delta13(124)
+		w.delta13(122)
 	}, true},
 	{"NEW, epars non croissant", mondeDeTeteAComposants, func(w *bitWriter) {
 		w.neuf13Avec(300, 2, epars(3, 1))
 		valeursDeComposants(w, 2)
-		w.delta13(124)
+		w.delta13(122)
 	}, false},
 	{"NEW, epars croissant (temoin)", mondeDeTeteAComposants, func(w *bitWriter) {
 		w.neuf13Avec(300, 2, epars(1, 3))
 		valeursDeComposants(w, 2)
-		w.delta13(124)
+		w.delta13(122)
 	}, true},
 	{"delta, dense de sept composants", mondeDeTeteAComposants, func(w *bitWriter) {
 		w.neuf13(300, 2)
-		w.delta13Avec(124, dense(0xfe))
+		w.delta13Avec(122, dense(0xfe))
 		valeursDeComposants(w, 7)
 	}, false},
 	{"delta, dense de huit composants (temoin)", mondeDeTeteAComposants, func(w *bitWriter) {
 		w.neuf13(300, 2)
-		w.delta13Avec(124, dense(0xff))
+		w.delta13Avec(122, dense(0xff))
 		valeursDeComposants(w, 8)
 	}, true},
 	{"delta, epars non croissant", mondeDeTeteAComposants, func(w *bitWriter) {
 		w.neuf13(300, 2)
-		w.delta13Avec(124, epars(6, 6))
+		w.delta13Avec(122, epars(6, 6))
 		valeursDeComposants(w, 1)
 	}, false},
 	{"delta, epars croissant (temoin)", mondeDeTeteAComposants, func(w *bitWriter) {
 		w.neuf13(300, 2)
-		w.delta13Avec(124, epars(6))
+		w.delta13Avec(122, epars(6))
 		valeursDeComposants(w, 1)
 	}, true},
 }
 
 // TestUneChaineQuiTraverseUnMasqueNonEcritNeProuveRien : la chaine NEW (slot 300) -> delta (slot
-// 124) tombe au bit pres sur le debut localise ; quand un de ses masques ne peut pas avoir ete
+// 122) tombe au bit pres sur le debut localise ; quand un de ses masques ne peut pas avoir ete
 // ecrit par le jeu, le debut du localisateur est garde, sinon la liste commence au NEW.
 // MUTATIONS : retirer le test du masque dans [pasDEssai] (pas NEW ou pas delta), ou ne refuser que
 // le bit hors archetype — ROUGE.

@@ -17,7 +17,7 @@
 |---|---|---|
 | LU.1 un localisateur, appelé par tous les sites | [x] | `grammar/localisateur.go` : `LocaliserBoucleDeRecords(pay, w, cfg, ordre)` ; la copie de `killsource/walk.go` (`signature123`, `locateStrict`, `locateFallback`, `locateRecords`, `locateRecordsAvecVerdict`) est supprimée |
 | LU.2 paramètre d'ordre (D-73) | [x] | `SignatureStricte` (cuisson) et `SignaturePuisLargeurLibre` (marche des morts d'objet, killsource) ; les deux ordres diffèrent sur DEUX points, pas un (D-LU-1) |
-| LU.3 prédicat d'archétype `high-frequency` par table | [~] | aucun prédicat d'archétype n'existe à sortie constante : le localisateur ne reconnaît que le slot 123 (§2.3) ; il revient à LS, sur la clé de L8 (`archetypeHauteFrequence`, D-LU-4) |
+| LU.3 prédicat d'archétype `high-frequency` par table | [!] (revue adverse de la vague 2 : LS, qui le portait, est retiré, `LOT_LS.md` §12 ; aucun prédicat d'archétype en production) — [~] → LS jusque-là | aucun prédicat d'archétype n'existe à sortie constante : le localisateur ne reconnaît que le slot 123 (§2.3) ; il revient à LS, sur la clé de L8 (`archetypeHauteFrequence`, D-LU-4) |
 | LU.4 garde-rail règle 6 | [x] | `archlint/film_localisateur_unique_test.go`, lu dans l'arbre syntaxique, rouge sur la base (deux copies vues) |
 | LU.5 révisions à révision constante | [x] | `grammar-2026-10-03.2` et `killsource-2026-09-27` inchangées ; empreintes régénérées |
 | Gates 1, 2, 3 et ceux du lot | [x] | sortie identique partout (§4) |
@@ -283,3 +283,32 @@ avec `git diff --name-only 2393d7db7 f73811aa8` rend ces deux fichiers.
   copie directe du localisateur le fait rougir ; une copie DÉGUISÉE (`prev := s - 1` ;
   `source.BitAt(pl, prev)` ; `rec.Slot == uint32(123)`) passe verte (essayé par le contrôle sur une
   copie `git archive`). Le garde-rail lit les formes syntaxiques littérales, pas le sens.
+
+## 9. Revue adverse de la vague 2 : corrections portées sur le localisateur (2026-10-04)
+
+Revue adverse de la vague 2 (17 constats), traitée sur `feat/campagne-grammaire` après la fusion de
+`feat/v75` = `6fa631df0` (RI étape 2 et vies de bots) et le retrait de LS (`LOT_LS.md` §12) : le
+localisateur de production est de nouveau celui de LU, plus les corrections ci-dessous. Mesures :
+`vague2_tsv/revue/` (pièces brutes `scratchpad/v2-integ/rev/`).
+
+| Constat | Verdict | Action |
+|---|---|---|
+| 3 (largeur 35 codée en dur, dérivable du cadre) | VRAI (Ghidra relu : `FUN_142e2da44` épars = R(1)+R(3)+R(6) ; `FUN_14076d034` lit 8 bits ; `readRecordID` = `IDLowBits` + 2) | `largeurDeSignature(cfg)` : mot facultatif + 1 + `IDLowBits` + 2 + 1 + 10 + 8 ; 35 au cadre par défaut. Test `TestLaLargeurDeSignatureSuitLeCadre` (mutation « largeur fixe » ROUGE). Sonde `r_loc_ls_research_test.go` alignée |
+| 5 (contrôle de génération décrit comme actif à des sites où il est vide) | VRAI (`GenerationStricte` levé par `killsource/decode.go:131` seul ; `world.go:198-200`) | en-tête : le contrôle n'agit que sous la génération stricte ; vide dans la marche des morts d'objet de production |
+| 8 (contiguïté au bit près attribuée à `FUN_142f2c3b0`) | VRAI (`FUN_142f2c3b0` : trois tampons de 0xd8 octets, `FUN_1406d6d94` sur chacun ; `FUN_14299d2c8` : `FUN_1406d5d14` par tampon) | en-tête cite `FUN_14299d2c8` et `FUN_1406d5d14` |
+| 1, part du localisateur restant (« bit nul lu dans le jeu ») | VRAI pour l'affirmation : le jeu n'écrit ce 0 que devant le PREMIER record de la vue B | en-tête borné : condition de RECHERCHE, lue dans le jeu pour la tête de la vue B seulement ; devant la signature du slot 123 précédée de NEW de tête, le bit nul n'est pas le terminateur (découverte D-REV2-1, non traitée) |
+| 10 (ordre de `marchDebut` tenu par aucun test) | VRAI (trou antérieur à LS, constat de la revue) | test `TestLaMarcheDesMortsDObjetSuitLOrdreDesMarches` (bobine `000d5950`, paquets où les deux ordres diffèrent) ; mutation `SignatureStricte` dans `marchDebut` ROUGE |
+| 16 (mesure datée dans un commentaire de code) | VRAI | `archlint/film_localisateur_unique_test.go` : contrat seul (« plancher contre un balayage muet ») ; la mesure est ici : **590 fichiers de production le 2026-10-04** (balayage du garde-rail, mesure de LU) |
+| 16 (`marchLocateStrict` cité par `movement_states.go:25`, `frame_harvest.go:313`) | FAUX après le retrait de LS : `marchLocateStrict` est de nouveau la fonction de production | rien à changer (fichiers de la RI non touchés) |
+
+**Effet de sortie, mesuré** (binaires de `git archive 6fa631df0` et de la tête ; surcouches qui
+retirent une correction à la fois) :
+
+- largeur dérivée (constat 3) : carte v2 des 20 films **identique à l'octet** avec et sans elle (13 TSV
+  par paquet et par famille ; `fermeture_films.tsv` hors pic et durée) ; `cmd/killsource json`
+  **identique à l'octet** sur les 20 films (19 témoins + `1c4c63c2` sous Refuge) contre `6fa631df0`.
+  Effet hors corpus (films dont le cadre calibré n'est pas `IDLowBits` 13 sans mot facultatif) : non
+  mesuré ; estimé possible sur la calibration du cadre de la marche des morts d'objet, qui essaie
+  désormais chaque largeur avec sa signature ;
+- en-têtes et test : sans effet de sortie (commentaires ; l'empreinte de `grammar` est insensible aux
+  commentaires).

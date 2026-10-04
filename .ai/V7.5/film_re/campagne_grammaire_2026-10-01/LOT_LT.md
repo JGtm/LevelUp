@@ -339,3 +339,38 @@ Depuis `apps/go-api` du worktree, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-b
   `80d2acd20` (rejoué par le contrôle) : le trou est antérieur à LT. Un témoin « NEW qui se
   désynchronise, masque écrivable » et un témoin « DELTA qui se désynchronise, masque écrivable » dans
   `casDeMasques` (`debut_de_liste_masque_test.go`) le fermeraient.
+
+## 10. Revue adverse de la vague 2 : la chaîne de tête suit l'ordre de la vue B (2026-10-04)
+
+Traitée sur `feat/campagne-grammaire` après la fusion de `feat/v75` = `6fa631df0` et le retrait de LS
+(`LOT_LS.md` §12). Mesures : `vague2_tsv/revue/` (pièces brutes `scratchpad/v2-integ/rev/`).
+
+| Constat | Verdict | Action |
+|---|---|---|
+| 6 (la chaîne de tête n'applique pas la règle d'ordre de l'écrivain, pourtant au juge) | VRAI (`chaineJusqua` ne suivait ni genre ni slot ; Ghidra relu : `FUN_14076b9c8` concatène +0x1b090, +0x1b240, +0x1b168 ; `FUN_142f2e174` parcourt la table de vue par index croissant) | type unique `ordreDeLaVueB` (`ecrivain_invariants.go`), tenu par le juge (`jugerLaVueB`, comportement inchangé) et par la chaîne (`chaineJusqua`, jusqu'au record du début localisé inclus, `suitLOrdreEn`) |
+| 17 (statut de LT.4 contradictoire entre la note et le rapport d'intégration) | VRAI | aligné sur `[x]` (mesure faite ; L2 NON intégré, il ne tient pas le gate 2) ici et au plan §6.2 |
+
+**Les vecteurs de LT n'étaient pas écrivables par le jeu.** `casDeMasques` et
+`TestLaListeCommenceASonRecordNeufDeTete` faisaient précéder le delta du slot 123 d'un delta du slot
+124 : DELTA à slot décroissant, que `FUN_142f2e174` n'écrit pas. Sous la règle d'ordre ils rougissaient
+(5 témoins). Ils portent désormais le slot 122 (`mondeDeTete` le lie). Test neuf
+`TestUneChaineHorsDeLOrdreDeLaVueBNeProuveRien` : delta 124 avant 123, DEL avant le delta, NEW 290
+après NEW 300 refusés ; delta 122 et NEW 310 (témoins) acceptés. Mutation « ordre retiré de
+`chaineJusqua` » : ROUGE.
+
+**Mesure** (carte v2, 20 films, `-denominateur-fixe`) :
+
+- LT seul sur la nouvelle base (`6fa631df0` + LU + LT, surcouche) : 313 495 -> 313 539 sains (+44),
+  utiles sains +1 023, **0 sain perdu, aucun film en baisse** — mêmes comptes que LT sur LS (§3) ;
+- la règle d'ordre (tête contre la surcouche sans elle) : **8 paquets changent sur 20 films**, et tous
+  les 8 portaient avec l'ancienne chaîne la règle « écrivain : ordre de la vue B » au juge. 3 deviennent
+  SAINS (`bcb6d393` 11:148, `4f77afc1` 27:1144 et 38:872 : fermés au bit avant comme après, la règle
+  d'ordre ne les contredit plus) ; 5 restent non fermés par rejet (`084a804d` 36:372 et 47:674,
+  `111fa685` 16:210, `50247b26` 27:778, `1c4c63c2` 5:1716), sans la règle d'ordre dans leur liste.
+  +3 sains, +64 utiles sains, **0 sain perdu, aucun film en baisse** ;
+- tête contre `6fa631df0` : 313 495 -> 313 542 sains (+47), utiles sains 2 922 510 -> 2 923 597
+  (+1 087), 0 sain perdu ; `cmd/killsource json` identique à l'octet sur 20 films (killsource ne passe
+  pas par la chaîne de tête).
+
+La sonde `lt_tete_research_test.go` recopie le localisateur de tête : alignée sur la production
+(plus d'étage haute fréquence ; la chaîne tient l'ordre de la vue B).

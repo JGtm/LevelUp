@@ -17,10 +17,6 @@ package archlint
 // Le fichier hote doit porter l essai de position exactement deux fois (signature stricte et repli
 // a largeur libre), sans quoi le garde-rail garde un fantome.
 //
-// LE CONTROLE DE GENERATION DU LOCALISATEUR a un helper unique, `aLaGenerationDuMonde` (hote) : le
-// litteral [litteralControleDeGeneration] n apparait qu une fois dans l hote, dans ce helper, et
-// nulle part ailleurs dans le perimetre (regle 6).
-//
 // PERIMETRE : la production de `film/**`, hors `film/research/` et hors fichiers `//go:build
 // research` (instruments de mesure, qui recopient le localisateur pour en essayer des variantes),
 // tests exclus.
@@ -44,13 +40,10 @@ const (
 	hoteLocalisateur = "internal/games/halo_infinite/film/internal/grammar/localisateur.go"
 	// essaisDeLHote : les deux etages du localisateur (signature stricte, largeur libre).
 	essaisDeLHote = 2
-	// plancherFichiersLocalisateur : contre un balayage muet (590 fichiers de production le
-	// 2026-10-04).
+	// plancherFichiersLocalisateur : plancher contre un balayage muet.
 	plancherFichiersLocalisateur = 500
 	// slotDeSignature : le slot de la signature du premier record.
 	slotDeSignature = "123"
-	// litteralControleDeGeneration : le corps du helper `aLaGenerationDuMonde` de l hote.
-	litteralControleDeGeneration = "GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte)"
 )
 
 // formesDuSource compte, dans un source Go, les essais de position (chaque `BitAt(_, s-1)` dont
@@ -144,7 +137,7 @@ func TestLocalisateurDeBoucleUnique(t *testing.T) {
 	}
 	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici)))
 	base := filepath.Join(goAPIRoot, filepath.FromSlash(racineLocalisateur))
-	fichiers, hote, generationsDeLHote := 0, -1, 0
+	fichiers, hote := 0, -1
 	err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -169,14 +162,9 @@ func TestLocalisateurDeBoucleUnique(t *testing.T) {
 		}
 		fichiers++
 		essais, slots := formesDuSource(t, rel, blob)
-		generations := strings.Count(string(blob), litteralControleDeGeneration)
 		if rel == hoteLocalisateur {
-			hote, generationsDeLHote = essais, generations
+			hote = essais
 			return nil
-		}
-		if generations > 0 {
-			t.Errorf("%s : %d copie(s) de %q — appeler le helper aLaGenerationDuMonde (%s)", rel,
-				generations, litteralControleDeGeneration, hoteLocalisateur)
 		}
 		if essais > 0 || slots > 0 {
 			t.Errorf("%s : %d essai(s) de position et %d comparaison(s) de Slot au litteral %s — "+
@@ -191,10 +179,6 @@ func TestLocalisateurDeBoucleUnique(t *testing.T) {
 	if fichiers < plancherFichiersLocalisateur {
 		t.Fatalf("balayage muet : %d fichiers de production vus, plancher %d", fichiers,
 			plancherFichiersLocalisateur)
-	}
-	if generationsDeLHote != 1 {
-		t.Errorf("%s porte %d fois %q, 1 attendue (le helper aLaGenerationDuMonde)", hoteLocalisateur,
-			generationsDeLHote, litteralControleDeGeneration)
 	}
 	if hote != essaisDeLHote {
 		t.Errorf("%s porte %d essai(s) de position, %d attendus — deplacer le garde-rail avec le "+

@@ -115181,3 +115181,13 @@ schéma du document.
 **Conclusion / prochaine étape** : mesure de durée à machine calme au signal de la campagne, puis
 lots de comportement et retrait des marcheurs redondants après la fusion de LU et LS ; revue
 adversariale en fin d'étape, sur le diff cumulé.
+
+## [2026-10-04] Campagne de grammaire — vague 2 : corrections de la revue adverse — Complété (commit local sur `feat/campagne-grammaire`, non poussé ; rc 1 du gate de corpus et sort de LS soumis au pilote)
+
+**Statut** : Complété. Les 17 constats vérifiés sur pièces : tous vrais, le 16 en partie seulement (ses citations de `movement_states.go` et `frame_harvest.go` redeviennent justes au retrait de LS) ; aucun rejeté. Correction de l'intégration précédente : la phrase « `origin/feat/v75` inchangée, `feat/ri-etape2` non fusionnée » était FAUSSE au commit `da6ecda38` (constat 9) ; `feat/v75` (`6fa631df0`) est fusionnée (`f1895d9bc`) et toutes les mesures sont refaites contre elle.
+
+**Décision technique principale** : LS est RETIRÉ (revert) : ses ordres de localisation sont mesurés et non lus dans le jeu (D13 suspendue), et sa condition de bit nul devant la signature haute fréquence n'est pas écrite par le jeu (`FUN_142f2c3b0`, `FUN_14299d2c8`, `FUN_14076b9c8`). Restent LU et LT, plus trois corrections lues dans le jeu : largeur de la signature dérivée du cadre, chaîne de tête sous l'ordre de la vue B (type unique `ordreDeLaVueB`, juge et chaîne), en-tête du localisateur borné à ce que le jeu écrit. `grammar-2026-10-03.5` régénéré sur le contenu final ; `killsource` et `objectives` constantes (sorties identiques).
+
+**Résultats observés** : carte v2 20 films contre `6fa631df0` : 313 495 -> 313 542 sains, +1 087 utiles sains, aucun film en baisse, 0 sain perdu. Killsource identique à l'octet sur 20 films (aucun backfill). `replay-equiv` : `objectives`, `killRefs`, `vehicles`, `movementStates` identiques. Replis « hors roster » et « hors bande » revenus à la base. Gate de corpus : banc 19 / 19 ok, rc 1 sur deux pertes `[FILET]` minimes (`084a804d` −2 records de posture, `a349fea8` +4 trous). LS sans le bit nul, mesuré pour la décision : +20 158 sains, aucun film en baisse. Gates de code verts, mutations rouges.
+
+**Conclusion / prochaine étape** : au pilote — admettre ou instruire le rc 1 ; décider de LS (ordre fondé par D-LS-2 ou décision datée de l'utilisateur, `LOT_LS.md` §12.3) ; fusion dans `feat/v75`, puis références `replay-equiv` et goldens à re-figer. Détail : plan §4 (entrée du 2026-10-04 « corrections de la revue adverse »), §5 (D-REV2-1 à 5), §6.2.

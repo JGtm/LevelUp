@@ -343,6 +343,8 @@ package grammar
 // sains (+19 129), records utiles sains +176 939, AUCUN sain perdu sur aucun film ; listes non
 // localisees 47 854 -> 26 043. `killsource.Rev` monte (`killsource-2026-10-04`) : la voie publiee
 // de 229 morts passe du balayage a la marche sur les 19 temoins, sans autre valeur changee.
+// RETIRE au rang `.5` (revue adverse de la vague 2) : ce rang n a vecu que sur la branche de la
+// campagne.
 //
 // ENTREE `grammar-2026-10-03.4` (2026-10-04, lot LT de la campagne de grammaire,
 // `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA PREUVE PAR CHAINE REFUSE UN RECORD DONT LE
@@ -362,17 +364,28 @@ package grammar
 // `cmd/killsource json` identique a l octet sur les 19 temoins (killsource ne passe pas par la
 // chaine de tete).
 //
-// ENTREE `grammar-2026-10-03.5` (2026-10-04, integration de la vague 2 de la campagne de grammaire,
-// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA TETE DE LA VAGUE PORTE UNE VALEUR A ELLE.
+// ENTREE `grammar-2026-10-03.5` (2026-10-04, vague 2 de la campagne de grammaire apres sa revue
+// adverse, `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LU ET LT SUR `feat/v75`, LS RETIRE ; LA
+// CHAINE DE TETE SUIT L ORDRE DE LA VUE B ; LA LARGEUR DE LA SIGNATURE SE DERIVE DU CADRE.
 //
-// Aucune grammaire neuve : le contenu est celui des rangs `.3` (LS, sur LU) et `.4` (LT) reunis, tels
-// que la branche du lot LT les porte. Mais `grammar-2026-10-03.4` est aussi la valeur de cette
-// branche de lot, et une revision designe un contenu : la tete prend un rang qu aucune branche de lot
-// n a porte, pour qu aucun fait ecrit par un lot seul ne se relise a jour.
+// Ce qui change, contre `grammar-2026-10-03.2` tel que `feat/v75` le porte (`6fa631df0`) :
+//   - le rang `.3` (LS) est RETIRE : ses ordres de localisation par site sont mesures, pas lus dans
+//     le jeu, et le bit nul qu il exigeait devant la signature haute frequence n est pas ecrit par
+//     le jeu (revue adverse de la vague 2) ; le localisateur est celui de LU ;
+//   - le rang `.4` (LT) reste : la chaine de tete refuse un masque que l ecrivain n ecrit pas ;
+//   - [chaineJusqua] suit aussi la loi d ecriture de la vue B ([ordreDeLaVueB] : NEW*, DELTA*,
+//     DEL*, slots strictement croissants dans chaque groupe ; `FUN_142f2e174`, `FUN_14076b9c8`),
+//     jusqu au record du debut localise inclus ;
+//   - [largeurDeSignature] : la largeur de la signature stricte vient des ecrivains (`FUN_1406d3140`,
+//     `FUN_1406cdc04`, `FUN_142e2da44`, `FUN_142eda680`) sous le cadre du film ; 35 bits au cadre par
+//     defaut.
 //
-// Ce qui change en sortie contre `grammar-2026-10-03.2` (`campagne_grammaire_2026-10-01/vague2_tsv/`) :
-// carte de fermeture v2 des 20 films identique a l octet a celle de la branche de LT ; 313 495 -> 332 668
-// paquets sains, records utiles sains 2 922 510 -> 3 100 472, AUCUN sain perdu sur aucun film.
-// `cmd/killsource json` identique a celle de la branche de LS (`killsource-2026-10-04`). `replay-equiv` :
-// seule l etape `artifact` (chaines de revision) differe de la branche de LT. `replay.SchemaVersion`
-// reste 77 ; `objectives.Rev` et `source.Rev` ne montent pas.
+// Mesure sur 20 films contre `6fa631df0` (`campagne_grammaire_2026-10-01/vague2_tsv/revue/`) : carte
+// v2 313 495 -> 313 542 paquets sains (+47 : LT +44, ordre de la chaine +3), records utiles sains
+// +1 087, AUCUN sain perdu sur aucun film ; la largeur derivee ne change pas un octet de la carte.
+// `cmd/killsource json` identique a l octet sur 20 films : `killsource.Rev` reste
+// `killsource-2026-09-27`. `replay-equiv` : divergent `artifact`, `movementStates.stats`,
+// `continuousFire.stats` et `continuousFire` (2 films) ; `objectives`, `killRefs`, `vehicles`,
+// `movementStates` identiques : `objectives.Rev` ne monte pas. `replay.SchemaVersion` reste 78. Ce
+// rang remplace la valeur du meme nom de la tete d integration d avant la revue (`da6ecda38`, jamais
+// fusionnee, empreinte egale a celle du `.4`).
