@@ -26,7 +26,7 @@
 | Gate 1 (tests, vet, archlint, révision) | [x] | §7 |
 | Gate 2 (carte v2, 20 films) | [x] | aucun film en baisse, 0 sain perdu (§3) |
 | Gate 3 (killsource, 19 témoins) | [x] | JSON identique à l'octet 19 / 19 (§7) |
-| Gate 5 (recopie du pilotage) | [x] | `TestFrameClosureDetailleeRendLaCarteDeFrameClosure` : `ks_000d5950` 446 / 27, `ks_e5adf7b2` 52 / 2 ; les sondes appellent `localiserLaListe` et `pasDEssai` (aucune recopie à suivre) |
+| Gate 5 (recopie du pilotage) | [x] | `TestFrameClosureDetailleeRendLaCarteDeFrameClosure` : `ks_000d5950` 446 / 27, `ks_e5adf7b2` 52 / 2 ; la sonde `lt_tete_research_test.go` RECOPIE le localisateur (`ltLocaliser`), la chaîne (`ltChaine`, reprise de `debutParChaine` et `chaineJusqua`), le pas (`ltPas`, copie de `pasDEssai`) et le second rang (`ltFermeture`) ; ces recopies sont contrôlées par la variante `prod`, qui redonne la carte de la base sur `e5adf7b2` (4 147 / 80 067), la variante `chaine` celle du lot (4 149 / 80 107) — rejoué par le contrôle indépendant (phrase « aucune recopie » du lot corrigée) |
 | `replay-equiv` (recette L0) | [x] | 4 étapes sur 61 divergent, toutes expliquées (§7) |
 | Mutations | [x] | 5 / 5 ROUGES (§7) |
 | D-L8-8 (arrêter la traversée de la marche sur un masque non écrit) | [!] | non traité : règle de la marche principale, hors de la règle de tête ; consigné (D-LT-6) |
@@ -45,8 +45,10 @@ instruction, et le repli reste nommé et compté tel quel.
   règles que `lireMasque` et `traverseComponentLoopFrom` marquent déjà dans `EntityTrace.MasqueNonEcrit`
   (lot L0).
 - `FUN_1408efb58` (état par défaut du projectile `ti=41`, relu, `lt_tsv/` → `scratchpad/v2-LT/ghidra/`)
-  appelle `FUN_14080cfe8`, le bloc MPP, avant tout autre champ : la largeur de ce bloc décale tout le
-  corps du record NEW.
+  lit d'abord `FUN_1406cf008`, soit R(1), puis R(8) si ce bit vaut 1 (la version), et ensuite
+  seulement le bloc MPP `FUN_14080cfe8` (corrigé au contrôle indépendant, relu dans Ghidra ; c'est
+  aussi ce que porte `consumeDefaultStateTI41`) : la largeur de ce bloc décale tout le corps qui suit
+  dans le record NEW.
 - L'ordre des NEW (`FUN_142f2e174` : slots croissants, un genre par entité ; `FUN_14076b9c8` : NEW,
   puis DELTA, puis DEL ; `FUN_142f2f8f0` : état 3 à l'écriture du NEW) : relu sur les décompilations
   de LS (`scratchpad/v2-LS/g_142f2e174.c`, `g_14076b9c8.c`) ; il est déjà au juge de L0
@@ -173,7 +175,7 @@ portent 23 paquets sains (pertes brutes des trois variantes : les 23 de `e5adf7b
   fermés, 170 contredits ; `1c4c63c2` 14 / 221 ; `111fa685` 4 / 265 ; `084a804d` 1 / 155).
 
 **Cause, établie pour la grammaire et mesurée pour la largeur** : le corps du NEW `ti=41`
-(`FUN_1408efb58`) commence par le bloc MPP (`FUN_14080cfe8`), dont la largeur des formats 20 à 25
+(`FUN_1408efb58`) porte, après R(1)[+R(8)], le bloc MPP (`FUN_14080cfe8`), dont la largeur des formats 20 à 25
 n'est pas lue dans le jeu (`MPPPourFormat` : indéterminée, le décodeur garde 9/5). Sous le découpage
 8/3 mesuré par R-VEH (imposé par la sonde, `LT_MPP=8/3`, MESURE de recherche seulement), les NEW
 `ti=41` de `e5adf7b2` se lisent : **4 → 1 368 dans des paquets fermés**, contredits 170 → 15
@@ -331,3 +333,9 @@ Depuis `apps/go-api` du worktree, `GOCACHE=C:/Users/Guillaume/AppData/Local/go-b
   des paquets non fermés).
 - **D-LT-7** Les références `replay-equiv` du dépôt ne sont pas re-figées depuis LS (base et lot 20 / 20
   différents) ; §6.0 point 6 demande de les re-figer après chaque vague fusionnée.
+- **D-LT-8 — Deux conditions de `pasDEssai` ne sont tenues par aucun test (consignée à l'intégration
+  de la vague 2, d'après le contrôle indépendant).** MD (retirer `ok &&` du pas DELTA) et ME (retirer
+  `tr.DesyncAt == -1 &&` du pas NEW) restent VERTES ; les mutations équivalentes le sont aussi à la base
+  `80d2acd20` (rejoué par le contrôle) : le trou est antérieur à LT. Un témoin « NEW qui se
+  désynchronise, masque écrivable » et un témoin « DELTA qui se désynchronise, masque écrivable » dans
+  `casDeMasques` (`debut_de_liste_masque_test.go`) le fermeraient.

@@ -35,8 +35,8 @@ package archlint
 // Constat L6-c4 de la revue de jalon M1 (2026-09-15) : la couverture était un ensemble GLOBAL
 // d'identifiants, tirés de TOUTES les ancres du registre, testé sans regarder le fichier. Témoin
 // joué par le relecteur — `func locateFallback() int { return 0 }` ajouté dans
-// `filmdec/varwidth.go` passait VERT, parce que `locateFallback` est cité par l'ancre d'une
-// entrée qui pointe `killsource/`. Un repli neuf qui reprend un nom déjà employé ailleurs entrait
+// `filmdec/varwidth.go` passait VERT, parce que `locateFallback` était alors cité par l'ancre d'une
+// entrée qui pointait `killsource/`. Un repli neuf qui reprend un nom déjà employé ailleurs entrait
 // donc en production sans entrée. Un identifiant n'est désormais couvert que DANS le fichier que
 // l'ancre cite.
 //
@@ -225,7 +225,7 @@ func TestRegistreDesReplisEstValide(t *testing.T) {
 //
 // L'INDEX PAR FICHIER EST CE QUI REND (A) EXACTE (constat L6-c4, 2026-09-15). Un ensemble global
 // laissait passer tout identifiant qu'une ancre citait QUELQUE PART : `locateFallback` déclaré
-// dans `filmdec/varwidth.go` passait pour couvert par une entrée qui pointe `killsource/`. Le
+// dans `filmdec/varwidth.go` passait alors pour couvert par une entrée qui pointait `killsource/`. Le
 // registre ne dit pas « ce nom existe », il dit « ce nom décide ICI » ; la couverture le dit donc
 // aussi.
 func couvertureParFichier() map[string]map[string]bool {

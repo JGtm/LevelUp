@@ -233,11 +233,16 @@ Aucun. Fichiers touchés : `grammar/localisateur.go` (neuf), `grammar/localisate
 `facts/killsource/vehicules_v10_deadstate_test.go`, `facts/killsource/world_precision_test.go`,
 `facts/killsource/testdata/killsource_rev.golden`, `facts/fallback/noms.go`,
 `facts/fallback/registre_killsource.go`, `archlint/film_localisateur_unique_test.go` (neuf).
-`git diff 2393d7db7...feat/ri-etape2` (lecture seule, tête `0280e41bc`) : parmi ces fichiers, la
-représentation intermédiaire ne touche que `facts/fallback/noms.go`, dans un autre bloc (l. 218,
-replis d'`objectives` ; LU l. 179) ; elle n'ajoute aucun appelant de `marchLocalise`,
-`marchLocateStrict`, `locateRecords` ni `locateRecordsAvecVerdict`. Conflit textuel non attendu
-(supposé, aucun essai de fusion joué).
+`git diff 2393d7db7...feat/ri-etape2` (lecture seule ; tête `0280e41bc` au lot, `e722585ae` au contrôle) :
+parmi ces fichiers, la représentation intermédiaire touche **deux** fichiers (corrigé au contrôle
+indépendant ; le rendu du lot ne citait que le premier) :
+- `facts/fallback/noms.go`, dans un autre bloc (l. 218, replis d'`objectives` ; LU l. 179) ;
+- `grammar/testdata/grammar_rev.golden`, À LA MÊME LIGNE (`grammar-2026-10-03.2` : RI `1770a868…`,
+  LU `2ed2fd57…`) : conflit textuel CERTAIN, qui se résout par régénération de l'empreinte.
+
+Elle n'ajoute aucun appelant de `marchLocalise`, `marchLocateStrict`, `locateRecords` ni
+`locateRecordsAvecVerdict`. Vérification : `git diff --name-only 2393d7db7...feat/ri-etape2` croisé
+avec `git diff --name-only 2393d7db7 f73811aa8` rend ces deux fichiers.
 
 ## 8. Découvertes (consignées, non traitées)
 
@@ -265,3 +270,16 @@ replis d'`objectives` ; LU l. 179) ; elle n'ajoute aucun appelant de `marchLocal
 - **D-LU-6 — Le localisateur a trois sites, pas deux.** Le plan parle des « deux marches » ; la
   cuisson (`debutDeLaListe`, appelée par `movement_states.go`, `frame_closure.go`,
   `frame_closure_detail.go`) en est un troisième, et c'est elle qui porte l'ordre différent.
+- **D-LU-7 — La forme de la signature n'est figée par aucun test (consignée à l'intégration de la
+  vague 2, correction 2 du contrôle indépendant).** Retirer `len(rec.Trace.Comps) == 1` de la
+  signature (surcouche x7 du contrôle) laisse `grammar`, `facts/killsource` (dont
+  `TestGoldenMiniBobine`) et `replay` verts, alors que la carte v2 de `e5adf7b2` baisse (4 147 -> 4 144
+  paquets sains, 80 067 -> 80 060 utiles sains ; mesuré par le contrôle). Les tests neufs de
+  `localisateur_test.go` comparent les ordres à `marchLocateStrict` lui-même et ne figent pas le
+  contenu de la signature. Lacune supposée antérieure au lot (non mesurée sur la base) ; toujours
+  ouverte après LS (mutation X3 du contrôle de LS, verte). À fermer par un vecteur dont le delta du
+  slot 123 en 35 bits porte plus d'un composant.
+- **D-LU-8 — Limite connue du garde-rail `film_localisateur_unique_test.go` (note du contrôle).** Une
+  copie directe du localisateur le fait rougir ; une copie DÉGUISÉE (`prev := s - 1` ;
+  `source.BitAt(pl, prev)` ; `rec.Slot == uint32(123)`) passe verte (essayé par le contrôle sur une
+  copie `git archive`). Le garde-rail lit les formes syntaxiques littérales, pas le sens.

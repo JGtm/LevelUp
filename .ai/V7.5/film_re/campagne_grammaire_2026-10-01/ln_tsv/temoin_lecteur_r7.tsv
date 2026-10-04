@@ -1,0 +1,2928 @@
+film	build	table	cle	n
+0797ce72	HI_1_13_0	arret	localise · genre hors table	1
+0797ce72	HI_1_13_0	arret	localise · opaque 10	3
+0797ce72	HI_1_13_0	arret	localise · opaque 106	1
+0797ce72	HI_1_13_0	arret	localise · opaque 109	3
+0797ce72	HI_1_13_0	arret	localise · opaque 12	2
+0797ce72	HI_1_13_0	arret	localise · opaque 16	10
+0797ce72	HI_1_13_0	arret	localise · opaque 17	1
+0797ce72	HI_1_13_0	arret	localise · opaque 19	3
+0797ce72	HI_1_13_0	arret	localise · opaque 20	8
+0797ce72	HI_1_13_0	arret	localise · opaque 32	2
+0797ce72	HI_1_13_0	arret	localise · opaque 36	688
+0797ce72	HI_1_13_0	arret	localise · opaque 5	804
+0797ce72	HI_1_13_0	arret	localise · opaque 6	102
+0797ce72	HI_1_13_0	arret	localise · opaque 82	2
+0797ce72	HI_1_13_0	arret	non localise · opaque 101	1
+0797ce72	HI_1_13_0	arret	non localise · opaque 30	1
+0797ce72	HI_1_13_0	arret	non localise · opaque 32	1
+0797ce72	HI_1_13_0	arret	non localise · opaque 36	59
+0797ce72	HI_1_13_0	arret	non localise · opaque 5	73
+0797ce72	HI_1_13_0	arret	non localise · opaque 6	12
+0797ce72	HI_1_13_0	arret	non localise · opaque 82	5
+0797ce72	HI_1_13_0	gain	ferme	75
+0797ce72	HI_1_13_0	gain	non ferme	79
+0797ce72	HI_1_13_0	genre_accord	0	186
+0797ce72	HI_1_13_0	genre_accord	1	107
+0797ce72	HI_1_13_0	genre_accord	103	41
+0797ce72	HI_1_13_0	genre_accord	11	11
+0797ce72	HI_1_13_0	genre_accord	15	109
+0797ce72	HI_1_13_0	genre_accord	21	128
+0797ce72	HI_1_13_0	genre_accord	36	27
+0797ce72	HI_1_13_0	genre_accord	38	411
+0797ce72	HI_1_13_0	genre_accord	39	87
+0797ce72	HI_1_13_0	genre_accord	40	45
+0797ce72	HI_1_13_0	genre_accord	7	87
+0797ce72	HI_1_13_0	genre_accord	75	140
+0797ce72	HI_1_13_0	genre_accord	76	151
+0797ce72	HI_1_13_0	genre_accord	82	902
+0797ce72	HI_1_13_0	genre_accord	85	23
+0797ce72	HI_1_13_0	genre_accord	9	103
+0797ce72	HI_1_13_0	genre_accord par chaine	0	14
+0797ce72	HI_1_13_0	genre_accord par chaine	1	4
+0797ce72	HI_1_13_0	genre_accord par chaine	103	1
+0797ce72	HI_1_13_0	genre_accord par chaine	11	4
+0797ce72	HI_1_13_0	genre_accord par chaine	21	11
+0797ce72	HI_1_13_0	genre_accord par chaine	36	2
+0797ce72	HI_1_13_0	genre_accord par chaine	38	39
+0797ce72	HI_1_13_0	genre_accord par chaine	39	2
+0797ce72	HI_1_13_0	genre_accord par chaine	40	5
+0797ce72	HI_1_13_0	genre_accord par chaine	7	5
+0797ce72	HI_1_13_0	genre_accord par chaine	75	9
+0797ce72	HI_1_13_0	genre_accord par chaine	76	9
+0797ce72	HI_1_13_0	genre_accord par chaine	82	366
+0797ce72	HI_1_13_0	genre_accord par chaine	85	1
+0797ce72	HI_1_13_0	genre_accord par chaine	9	11
+0797ce72	HI_1_13_0	genre_desaccord	0	233
+0797ce72	HI_1_13_0	genre_desaccord	1	80
+0797ce72	HI_1_13_0	genre_desaccord	103	2
+0797ce72	HI_1_13_0	genre_desaccord	118	15
+0797ce72	HI_1_13_0	genre_desaccord	15	2
+0797ce72	HI_1_13_0	genre_desaccord	21	3
+0797ce72	HI_1_13_0	genre_desaccord	24	1
+0797ce72	HI_1_13_0	genre_desaccord	33	1
+0797ce72	HI_1_13_0	genre_desaccord	36	5
+0797ce72	HI_1_13_0	genre_desaccord	38	7
+0797ce72	HI_1_13_0	genre_desaccord	4	9
+0797ce72	HI_1_13_0	genre_desaccord	44	2
+0797ce72	HI_1_13_0	genre_desaccord	49	1
+0797ce72	HI_1_13_0	genre_desaccord	7	39
+0797ce72	HI_1_13_0	genre_desaccord	75	25
+0797ce72	HI_1_13_0	genre_desaccord	76	1
+0797ce72	HI_1_13_0	genre_desaccord	8	8
+0797ce72	HI_1_13_0	genre_desaccord	82	590
+0797ce72	HI_1_13_0	genre_desaccord	85	24
+0797ce72	HI_1_13_0	genre_desaccord	86	1
+0797ce72	HI_1_13_0	genre_desaccord	9	6
+0797ce72	HI_1_13_0	genre_desaccord	98	1
+0797ce72	HI_1_13_0	temoin	accord	1391
+0797ce72	HI_1_13_0	temoin	accord par chaine	392
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	2
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	5
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	66
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	6
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	23
+0797ce72	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	2
+0797ce72	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	97
+0797ce72	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	29
+084a804d	HI_1_10_0	arret	localise · genre hors table	71
+084a804d	HI_1_10_0	arret	localise · opaque 10	8
+084a804d	HI_1_10_0	arret	localise · opaque 101	4
+084a804d	HI_1_10_0	arret	localise · opaque 106	4
+084a804d	HI_1_10_0	arret	localise · opaque 107	2
+084a804d	HI_1_10_0	arret	localise · opaque 109	12
+084a804d	HI_1_10_0	arret	localise · opaque 110	3
+084a804d	HI_1_10_0	arret	localise · opaque 111	5
+084a804d	HI_1_10_0	arret	localise · opaque 112	7
+084a804d	HI_1_10_0	arret	localise · opaque 113	9
+084a804d	HI_1_10_0	arret	localise · opaque 114	13
+084a804d	HI_1_10_0	arret	localise · opaque 115	7
+084a804d	HI_1_10_0	arret	localise · opaque 116	2
+084a804d	HI_1_10_0	arret	localise · opaque 117	11
+084a804d	HI_1_10_0	arret	localise · opaque 12	15
+084a804d	HI_1_10_0	arret	localise · opaque 120	8
+084a804d	HI_1_10_0	arret	localise · opaque 121	9
+084a804d	HI_1_10_0	arret	localise · opaque 122	9
+084a804d	HI_1_10_0	arret	localise · opaque 13	9
+084a804d	HI_1_10_0	arret	localise · opaque 14	14
+084a804d	HI_1_10_0	arret	localise · opaque 16	58
+084a804d	HI_1_10_0	arret	localise · opaque 17	27
+084a804d	HI_1_10_0	arret	localise · opaque 18	6
+084a804d	HI_1_10_0	arret	localise · opaque 19	2
+084a804d	HI_1_10_0	arret	localise · opaque 20	12
+084a804d	HI_1_10_0	arret	localise · opaque 27	5
+084a804d	HI_1_10_0	arret	localise · opaque 28	4
+084a804d	HI_1_10_0	arret	localise · opaque 29	5
+084a804d	HI_1_10_0	arret	localise · opaque 30	6
+084a804d	HI_1_10_0	arret	localise · opaque 32	10
+084a804d	HI_1_10_0	arret	localise · opaque 34	4
+084a804d	HI_1_10_0	arret	localise · opaque 35	2
+084a804d	HI_1_10_0	arret	localise · opaque 36	4180
+084a804d	HI_1_10_0	arret	localise · opaque 43	3
+084a804d	HI_1_10_0	arret	localise · opaque 5	788
+084a804d	HI_1_10_0	arret	localise · opaque 50	8
+084a804d	HI_1_10_0	arret	localise · opaque 51	4
+084a804d	HI_1_10_0	arret	localise · opaque 52	4
+084a804d	HI_1_10_0	arret	localise · opaque 55	9
+084a804d	HI_1_10_0	arret	localise · opaque 56	5
+084a804d	HI_1_10_0	arret	localise · opaque 6	322
+084a804d	HI_1_10_0	arret	localise · opaque 60	2
+084a804d	HI_1_10_0	arret	localise · opaque 61	1
+084a804d	HI_1_10_0	arret	localise · opaque 62	2
+084a804d	HI_1_10_0	arret	localise · opaque 64	2
+084a804d	HI_1_10_0	arret	localise · opaque 65	3
+084a804d	HI_1_10_0	arret	localise · opaque 66	3
+084a804d	HI_1_10_0	arret	localise · opaque 67	3
+084a804d	HI_1_10_0	arret	localise · opaque 68	9
+084a804d	HI_1_10_0	arret	localise · opaque 69	3
+084a804d	HI_1_10_0	arret	localise · opaque 70	7
+084a804d	HI_1_10_0	arret	localise · opaque 71	3
+084a804d	HI_1_10_0	arret	localise · opaque 72	6
+084a804d	HI_1_10_0	arret	localise · opaque 73	9
+084a804d	HI_1_10_0	arret	localise · opaque 74	19
+084a804d	HI_1_10_0	arret	localise · opaque 77	5
+084a804d	HI_1_10_0	arret	localise · opaque 78	9
+084a804d	HI_1_10_0	arret	localise · opaque 79	5
+084a804d	HI_1_10_0	arret	localise · opaque 80	4
+084a804d	HI_1_10_0	arret	localise · opaque 81	3
+084a804d	HI_1_10_0	arret	localise · opaque 82	90
+084a804d	HI_1_10_0	arret	localise · opaque 83	5
+084a804d	HI_1_10_0	arret	localise · opaque 84	8
+084a804d	HI_1_10_0	arret	localise · opaque 87	1
+084a804d	HI_1_10_0	arret	localise · opaque 88	2
+084a804d	HI_1_10_0	arret	localise · opaque 89	1
+084a804d	HI_1_10_0	arret	localise · opaque 90	7
+084a804d	HI_1_10_0	arret	localise · opaque 91	6
+084a804d	HI_1_10_0	arret	localise · opaque 94	2
+084a804d	HI_1_10_0	arret	localise · opaque 95	2
+084a804d	HI_1_10_0	arret	localise · opaque 96	10
+084a804d	HI_1_10_0	arret	localise · opaque 97	6
+084a804d	HI_1_10_0	arret	localise · opaque 99	4
+084a804d	HI_1_10_0	arret	non localise · genre hors table	17
+084a804d	HI_1_10_0	arret	non localise · opaque 10	2
+084a804d	HI_1_10_0	arret	non localise · opaque 101	1
+084a804d	HI_1_10_0	arret	non localise · opaque 109	3
+084a804d	HI_1_10_0	arret	non localise · opaque 110	4
+084a804d	HI_1_10_0	arret	non localise · opaque 111	4
+084a804d	HI_1_10_0	arret	non localise · opaque 112	4
+084a804d	HI_1_10_0	arret	non localise · opaque 113	5
+084a804d	HI_1_10_0	arret	non localise · opaque 114	2
+084a804d	HI_1_10_0	arret	non localise · opaque 115	3
+084a804d	HI_1_10_0	arret	non localise · opaque 117	5
+084a804d	HI_1_10_0	arret	non localise · opaque 12	3
+084a804d	HI_1_10_0	arret	non localise · opaque 120	2
+084a804d	HI_1_10_0	arret	non localise · opaque 121	3
+084a804d	HI_1_10_0	arret	non localise · opaque 122	2
+084a804d	HI_1_10_0	arret	non localise · opaque 13	4
+084a804d	HI_1_10_0	arret	non localise · opaque 14	5
+084a804d	HI_1_10_0	arret	non localise · opaque 16	15
+084a804d	HI_1_10_0	arret	non localise · opaque 17	8
+084a804d	HI_1_10_0	arret	non localise · opaque 18	4
+084a804d	HI_1_10_0	arret	non localise · opaque 19	2
+084a804d	HI_1_10_0	arret	non localise · opaque 20	5
+084a804d	HI_1_10_0	arret	non localise · opaque 27	3
+084a804d	HI_1_10_0	arret	non localise · opaque 28	1
+084a804d	HI_1_10_0	arret	non localise · opaque 29	4
+084a804d	HI_1_10_0	arret	non localise · opaque 32	3
+084a804d	HI_1_10_0	arret	non localise · opaque 34	1
+084a804d	HI_1_10_0	arret	non localise · opaque 36	897
+084a804d	HI_1_10_0	arret	non localise · opaque 5	221
+084a804d	HI_1_10_0	arret	non localise · opaque 50	2
+084a804d	HI_1_10_0	arret	non localise · opaque 51	2
+084a804d	HI_1_10_0	arret	non localise · opaque 55	1
+084a804d	HI_1_10_0	arret	non localise · opaque 56	1
+084a804d	HI_1_10_0	arret	non localise · opaque 6	76
+084a804d	HI_1_10_0	arret	non localise · opaque 60	1
+084a804d	HI_1_10_0	arret	non localise · opaque 61	3
+084a804d	HI_1_10_0	arret	non localise · opaque 62	1
+084a804d	HI_1_10_0	arret	non localise · opaque 64	1
+084a804d	HI_1_10_0	arret	non localise · opaque 65	2
+084a804d	HI_1_10_0	arret	non localise · opaque 66	2
+084a804d	HI_1_10_0	arret	non localise · opaque 67	2
+084a804d	HI_1_10_0	arret	non localise · opaque 72	3
+084a804d	HI_1_10_0	arret	non localise · opaque 73	2
+084a804d	HI_1_10_0	arret	non localise · opaque 74	6
+084a804d	HI_1_10_0	arret	non localise · opaque 77	1
+084a804d	HI_1_10_0	arret	non localise · opaque 78	5
+084a804d	HI_1_10_0	arret	non localise · opaque 79	1
+084a804d	HI_1_10_0	arret	non localise · opaque 80	2
+084a804d	HI_1_10_0	arret	non localise · opaque 81	1
+084a804d	HI_1_10_0	arret	non localise · opaque 82	104
+084a804d	HI_1_10_0	arret	non localise · opaque 83	2
+084a804d	HI_1_10_0	arret	non localise · opaque 84	6
+084a804d	HI_1_10_0	arret	non localise · opaque 87	2
+084a804d	HI_1_10_0	arret	non localise · opaque 89	1
+084a804d	HI_1_10_0	arret	non localise · opaque 91	3
+084a804d	HI_1_10_0	arret	non localise · opaque 94	3
+084a804d	HI_1_10_0	arret	non localise · opaque 96	1
+084a804d	HI_1_10_0	arret	non localise · opaque 97	1
+084a804d	HI_1_10_0	gain	ferme	68
+084a804d	HI_1_10_0	gain	non ferme	1858
+084a804d	HI_1_10_0	genre_accord	0	1025
+084a804d	HI_1_10_0	genre_accord	1	79
+084a804d	HI_1_10_0	genre_accord	100	8
+084a804d	HI_1_10_0	genre_accord	103	13
+084a804d	HI_1_10_0	genre_accord	11	10
+084a804d	HI_1_10_0	genre_accord	118	3
+084a804d	HI_1_10_0	genre_accord	15	1304
+084a804d	HI_1_10_0	genre_accord	2	18
+084a804d	HI_1_10_0	genre_accord	21	541
+084a804d	HI_1_10_0	genre_accord	22	35
+084a804d	HI_1_10_0	genre_accord	23	22
+084a804d	HI_1_10_0	genre_accord	36	214
+084a804d	HI_1_10_0	genre_accord	38	617
+084a804d	HI_1_10_0	genre_accord	39	118
+084a804d	HI_1_10_0	genre_accord	4	2
+084a804d	HI_1_10_0	genre_accord	40	23
+084a804d	HI_1_10_0	genre_accord	47	13
+084a804d	HI_1_10_0	genre_accord	7	51
+084a804d	HI_1_10_0	genre_accord	75	248
+084a804d	HI_1_10_0	genre_accord	76	641
+084a804d	HI_1_10_0	genre_accord	82	2171
+084a804d	HI_1_10_0	genre_accord	9	291
+084a804d	HI_1_10_0	genre_accord par chaine	0	329
+084a804d	HI_1_10_0	genre_accord par chaine	1	41
+084a804d	HI_1_10_0	genre_accord par chaine	100	2
+084a804d	HI_1_10_0	genre_accord par chaine	103	5
+084a804d	HI_1_10_0	genre_accord par chaine	11	4
+084a804d	HI_1_10_0	genre_accord par chaine	118	1
+084a804d	HI_1_10_0	genre_accord par chaine	15	447
+084a804d	HI_1_10_0	genre_accord par chaine	2	9
+084a804d	HI_1_10_0	genre_accord par chaine	21	158
+084a804d	HI_1_10_0	genre_accord par chaine	22	12
+084a804d	HI_1_10_0	genre_accord par chaine	23	6
+084a804d	HI_1_10_0	genre_accord par chaine	36	64
+084a804d	HI_1_10_0	genre_accord par chaine	38	171
+084a804d	HI_1_10_0	genre_accord par chaine	39	37
+084a804d	HI_1_10_0	genre_accord par chaine	40	9
+084a804d	HI_1_10_0	genre_accord par chaine	41	2
+084a804d	HI_1_10_0	genre_accord par chaine	46	1
+084a804d	HI_1_10_0	genre_accord par chaine	47	3
+084a804d	HI_1_10_0	genre_accord par chaine	5	1
+084a804d	HI_1_10_0	genre_accord par chaine	59	1
+084a804d	HI_1_10_0	genre_accord par chaine	7	17
+084a804d	HI_1_10_0	genre_accord par chaine	75	60
+084a804d	HI_1_10_0	genre_accord par chaine	76	140
+084a804d	HI_1_10_0	genre_accord par chaine	8	5
+084a804d	HI_1_10_0	genre_accord par chaine	82	1273
+084a804d	HI_1_10_0	genre_accord par chaine	9	91
+084a804d	HI_1_10_0	genre_desaccord	0	1202
+084a804d	HI_1_10_0	genre_desaccord	1	563
+084a804d	HI_1_10_0	genre_desaccord	100	5
+084a804d	HI_1_10_0	genre_desaccord	103	3
+084a804d	HI_1_10_0	genre_desaccord	104	1
+084a804d	HI_1_10_0	genre_desaccord	105	12
+084a804d	HI_1_10_0	genre_desaccord	106	2
+084a804d	HI_1_10_0	genre_desaccord	108	1
+084a804d	HI_1_10_0	genre_desaccord	11	10
+084a804d	HI_1_10_0	genre_desaccord	116	5
+084a804d	HI_1_10_0	genre_desaccord	118	8
+084a804d	HI_1_10_0	genre_desaccord	119	12
+084a804d	HI_1_10_0	genre_desaccord	15	1965
+084a804d	HI_1_10_0	genre_desaccord	2	7
+084a804d	HI_1_10_0	genre_desaccord	21	157
+084a804d	HI_1_10_0	genre_desaccord	22	8
+084a804d	HI_1_10_0	genre_desaccord	23	13
+084a804d	HI_1_10_0	genre_desaccord	24	8
+084a804d	HI_1_10_0	genre_desaccord	25	3
+084a804d	HI_1_10_0	genre_desaccord	26	5
+084a804d	HI_1_10_0	genre_desaccord	28	2
+084a804d	HI_1_10_0	genre_desaccord	3	2
+084a804d	HI_1_10_0	genre_desaccord	32	1
+084a804d	HI_1_10_0	genre_desaccord	33	5
+084a804d	HI_1_10_0	genre_desaccord	35	6
+084a804d	HI_1_10_0	genre_desaccord	36	1270
+084a804d	HI_1_10_0	genre_desaccord	37	13
+084a804d	HI_1_10_0	genre_desaccord	38	182
+084a804d	HI_1_10_0	genre_desaccord	39	38
+084a804d	HI_1_10_0	genre_desaccord	4	35
+084a804d	HI_1_10_0	genre_desaccord	40	15
+084a804d	HI_1_10_0	genre_desaccord	41	1
+084a804d	HI_1_10_0	genre_desaccord	42	12
+084a804d	HI_1_10_0	genre_desaccord	43	2
+084a804d	HI_1_10_0	genre_desaccord	44	3
+084a804d	HI_1_10_0	genre_desaccord	45	8
+084a804d	HI_1_10_0	genre_desaccord	46	4
+084a804d	HI_1_10_0	genre_desaccord	47	2
+084a804d	HI_1_10_0	genre_desaccord	48	8
+084a804d	HI_1_10_0	genre_desaccord	49	5
+084a804d	HI_1_10_0	genre_desaccord	5	1
+084a804d	HI_1_10_0	genre_desaccord	52	1
+084a804d	HI_1_10_0	genre_desaccord	53	3
+084a804d	HI_1_10_0	genre_desaccord	57	3
+084a804d	HI_1_10_0	genre_desaccord	58	6
+084a804d	HI_1_10_0	genre_desaccord	59	7
+084a804d	HI_1_10_0	genre_desaccord	6	1
+084a804d	HI_1_10_0	genre_desaccord	63	2
+084a804d	HI_1_10_0	genre_desaccord	7	71
+084a804d	HI_1_10_0	genre_desaccord	75	108
+084a804d	HI_1_10_0	genre_desaccord	76	339
+084a804d	HI_1_10_0	genre_desaccord	8	4
+084a804d	HI_1_10_0	genre_desaccord	82	4494
+084a804d	HI_1_10_0	genre_desaccord	85	81
+084a804d	HI_1_10_0	genre_desaccord	86	4
+084a804d	HI_1_10_0	genre_desaccord	9	150
+084a804d	HI_1_10_0	genre_desaccord	92	2
+084a804d	HI_1_10_0	genre_desaccord	93	5
+084a804d	HI_1_10_0	genre_desaccord	98	6
+084a804d	HI_1_10_0	temoin	accord	3346
+084a804d	HI_1_10_0	temoin	accord par chaine	1502
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme au bit · depuis S non ferme	1
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	1
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	21
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	343
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	246
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	2211
+084a804d	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	4
+084a804d	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	7
+084a804d	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	1
+084a804d	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	141
+111fa685	HI_1_10_0	arret	localise · genre hors table	6
+111fa685	HI_1_10_0	arret	localise · opaque 10	3
+111fa685	HI_1_10_0	arret	localise · opaque 101	1
+111fa685	HI_1_10_0	arret	localise · opaque 106	2
+111fa685	HI_1_10_0	arret	localise · opaque 107	3
+111fa685	HI_1_10_0	arret	localise · opaque 109	1
+111fa685	HI_1_10_0	arret	localise · opaque 110	1
+111fa685	HI_1_10_0	arret	localise · opaque 111	2
+111fa685	HI_1_10_0	arret	localise · opaque 112	1
+111fa685	HI_1_10_0	arret	localise · opaque 113	3
+111fa685	HI_1_10_0	arret	localise · opaque 116	2
+111fa685	HI_1_10_0	arret	localise · opaque 117	1
+111fa685	HI_1_10_0	arret	localise · opaque 12	1
+111fa685	HI_1_10_0	arret	localise · opaque 120	2
+111fa685	HI_1_10_0	arret	localise · opaque 121	2
+111fa685	HI_1_10_0	arret	localise · opaque 13	3
+111fa685	HI_1_10_0	arret	localise · opaque 14	1
+111fa685	HI_1_10_0	arret	localise · opaque 16	2
+111fa685	HI_1_10_0	arret	localise · opaque 17	4
+111fa685	HI_1_10_0	arret	localise · opaque 18	7
+111fa685	HI_1_10_0	arret	localise · opaque 19	7
+111fa685	HI_1_10_0	arret	localise · opaque 20	8
+111fa685	HI_1_10_0	arret	localise · opaque 27	1
+111fa685	HI_1_10_0	arret	localise · opaque 28	1
+111fa685	HI_1_10_0	arret	localise · opaque 29	1
+111fa685	HI_1_10_0	arret	localise · opaque 32	4
+111fa685	HI_1_10_0	arret	localise · opaque 34	6
+111fa685	HI_1_10_0	arret	localise · opaque 36	1541
+111fa685	HI_1_10_0	arret	localise · opaque 43	1
+111fa685	HI_1_10_0	arret	localise · opaque 5	839
+111fa685	HI_1_10_0	arret	localise · opaque 51	2
+111fa685	HI_1_10_0	arret	localise · opaque 52	3
+111fa685	HI_1_10_0	arret	localise · opaque 56	7
+111fa685	HI_1_10_0	arret	localise · opaque 6	264
+111fa685	HI_1_10_0	arret	localise · opaque 64	5
+111fa685	HI_1_10_0	arret	localise · opaque 65	4
+111fa685	HI_1_10_0	arret	localise · opaque 67	1
+111fa685	HI_1_10_0	arret	localise · opaque 68	1
+111fa685	HI_1_10_0	arret	localise · opaque 69	2
+111fa685	HI_1_10_0	arret	localise · opaque 70	3
+111fa685	HI_1_10_0	arret	localise · opaque 71	3
+111fa685	HI_1_10_0	arret	localise · opaque 72	2
+111fa685	HI_1_10_0	arret	localise · opaque 73	4
+111fa685	HI_1_10_0	arret	localise · opaque 74	3
+111fa685	HI_1_10_0	arret	localise · opaque 78	3
+111fa685	HI_1_10_0	arret	localise · opaque 79	1
+111fa685	HI_1_10_0	arret	localise · opaque 80	1
+111fa685	HI_1_10_0	arret	localise · opaque 81	3
+111fa685	HI_1_10_0	arret	localise · opaque 82	9
+111fa685	HI_1_10_0	arret	localise · opaque 83	1
+111fa685	HI_1_10_0	arret	localise · opaque 84	1
+111fa685	HI_1_10_0	arret	localise · opaque 87	1
+111fa685	HI_1_10_0	arret	localise · opaque 88	2
+111fa685	HI_1_10_0	arret	localise · opaque 89	1
+111fa685	HI_1_10_0	arret	localise · opaque 91	4
+111fa685	HI_1_10_0	arret	localise · opaque 94	1
+111fa685	HI_1_10_0	arret	localise · opaque 95	1
+111fa685	HI_1_10_0	arret	localise · opaque 96	3
+111fa685	HI_1_10_0	arret	localise · opaque 99	2
+111fa685	HI_1_10_0	arret	non localise · genre hors table	6
+111fa685	HI_1_10_0	arret	non localise · opaque 10	2
+111fa685	HI_1_10_0	arret	non localise · opaque 101	1
+111fa685	HI_1_10_0	arret	non localise · opaque 113	1
+111fa685	HI_1_10_0	arret	non localise · opaque 115	2
+111fa685	HI_1_10_0	arret	non localise · opaque 117	1
+111fa685	HI_1_10_0	arret	non localise · opaque 120	1
+111fa685	HI_1_10_0	arret	non localise · opaque 13	2
+111fa685	HI_1_10_0	arret	non localise · opaque 14	1
+111fa685	HI_1_10_0	arret	non localise · opaque 16	1
+111fa685	HI_1_10_0	arret	non localise · opaque 17	2
+111fa685	HI_1_10_0	arret	non localise · opaque 18	2
+111fa685	HI_1_10_0	arret	non localise · opaque 19	4
+111fa685	HI_1_10_0	arret	non localise · opaque 20	1
+111fa685	HI_1_10_0	arret	non localise · opaque 27	1
+111fa685	HI_1_10_0	arret	non localise · opaque 28	1
+111fa685	HI_1_10_0	arret	non localise · opaque 32	1
+111fa685	HI_1_10_0	arret	non localise · opaque 34	3
+111fa685	HI_1_10_0	arret	non localise · opaque 36	625
+111fa685	HI_1_10_0	arret	non localise · opaque 43	1
+111fa685	HI_1_10_0	arret	non localise · opaque 5	341
+111fa685	HI_1_10_0	arret	non localise · opaque 50	1
+111fa685	HI_1_10_0	arret	non localise · opaque 56	1
+111fa685	HI_1_10_0	arret	non localise · opaque 6	87
+111fa685	HI_1_10_0	arret	non localise · opaque 60	2
+111fa685	HI_1_10_0	arret	non localise · opaque 64	1
+111fa685	HI_1_10_0	arret	non localise · opaque 66	2
+111fa685	HI_1_10_0	arret	non localise · opaque 67	1
+111fa685	HI_1_10_0	arret	non localise · opaque 68	1
+111fa685	HI_1_10_0	arret	non localise · opaque 70	1
+111fa685	HI_1_10_0	arret	non localise · opaque 71	1
+111fa685	HI_1_10_0	arret	non localise · opaque 72	1
+111fa685	HI_1_10_0	arret	non localise · opaque 82	23
+111fa685	HI_1_10_0	arret	non localise · opaque 83	2
+111fa685	HI_1_10_0	arret	non localise · opaque 84	1
+111fa685	HI_1_10_0	arret	non localise · opaque 88	1
+111fa685	HI_1_10_0	arret	non localise · opaque 91	1
+111fa685	HI_1_10_0	arret	non localise · opaque 94	2
+111fa685	HI_1_10_0	arret	non localise · opaque 95	1
+111fa685	HI_1_10_0	arret	non localise · opaque 99	1
+111fa685	HI_1_10_0	gain	ferme	36
+111fa685	HI_1_10_0	gain	non ferme	721
+111fa685	HI_1_10_0	genre_accord	0	367
+111fa685	HI_1_10_0	genre_accord	1	29
+111fa685	HI_1_10_0	genre_accord	103	43
+111fa685	HI_1_10_0	genre_accord	11	10
+111fa685	HI_1_10_0	genre_accord	118	2
+111fa685	HI_1_10_0	genre_accord	15	85
+111fa685	HI_1_10_0	genre_accord	21	390
+111fa685	HI_1_10_0	genre_accord	36	59
+111fa685	HI_1_10_0	genre_accord	38	584
+111fa685	HI_1_10_0	genre_accord	39	53
+111fa685	HI_1_10_0	genre_accord	40	50
+111fa685	HI_1_10_0	genre_accord	7	46
+111fa685	HI_1_10_0	genre_accord	75	112
+111fa685	HI_1_10_0	genre_accord	76	116
+111fa685	HI_1_10_0	genre_accord	82	1039
+111fa685	HI_1_10_0	genre_accord	85	14
+111fa685	HI_1_10_0	genre_accord	9	68
+111fa685	HI_1_10_0	genre_accord par chaine	0	109
+111fa685	HI_1_10_0	genre_accord par chaine	1	11
+111fa685	HI_1_10_0	genre_accord par chaine	103	7
+111fa685	HI_1_10_0	genre_accord par chaine	11	5
+111fa685	HI_1_10_0	genre_accord par chaine	15	12
+111fa685	HI_1_10_0	genre_accord par chaine	21	121
+111fa685	HI_1_10_0	genre_accord par chaine	36	23
+111fa685	HI_1_10_0	genre_accord par chaine	38	165
+111fa685	HI_1_10_0	genre_accord par chaine	39	23
+111fa685	HI_1_10_0	genre_accord par chaine	40	10
+111fa685	HI_1_10_0	genre_accord par chaine	7	28
+111fa685	HI_1_10_0	genre_accord par chaine	75	42
+111fa685	HI_1_10_0	genre_accord par chaine	76	45
+111fa685	HI_1_10_0	genre_accord par chaine	82	521
+111fa685	HI_1_10_0	genre_accord par chaine	9	24
+111fa685	HI_1_10_0	genre_desaccord	0	656
+111fa685	HI_1_10_0	genre_desaccord	1	105
+111fa685	HI_1_10_0	genre_desaccord	102	2
+111fa685	HI_1_10_0	genre_desaccord	103	8
+111fa685	HI_1_10_0	genre_desaccord	104	1
+111fa685	HI_1_10_0	genre_desaccord	108	1
+111fa685	HI_1_10_0	genre_desaccord	11	9
+111fa685	HI_1_10_0	genre_desaccord	117	1
+111fa685	HI_1_10_0	genre_desaccord	118	1
+111fa685	HI_1_10_0	genre_desaccord	15	121
+111fa685	HI_1_10_0	genre_desaccord	2	4
+111fa685	HI_1_10_0	genre_desaccord	21	65
+111fa685	HI_1_10_0	genre_desaccord	22	4
+111fa685	HI_1_10_0	genre_desaccord	23	215
+111fa685	HI_1_10_0	genre_desaccord	24	2
+111fa685	HI_1_10_0	genre_desaccord	25	1
+111fa685	HI_1_10_0	genre_desaccord	26	2
+111fa685	HI_1_10_0	genre_desaccord	28	1
+111fa685	HI_1_10_0	genre_desaccord	3	1
+111fa685	HI_1_10_0	genre_desaccord	33	7
+111fa685	HI_1_10_0	genre_desaccord	36	216
+111fa685	HI_1_10_0	genre_desaccord	37	15
+111fa685	HI_1_10_0	genre_desaccord	38	115
+111fa685	HI_1_10_0	genre_desaccord	39	8
+111fa685	HI_1_10_0	genre_desaccord	4	20
+111fa685	HI_1_10_0	genre_desaccord	40	8
+111fa685	HI_1_10_0	genre_desaccord	41	3
+111fa685	HI_1_10_0	genre_desaccord	42	5
+111fa685	HI_1_10_0	genre_desaccord	43	3
+111fa685	HI_1_10_0	genre_desaccord	44	4
+111fa685	HI_1_10_0	genre_desaccord	45	2
+111fa685	HI_1_10_0	genre_desaccord	46	3
+111fa685	HI_1_10_0	genre_desaccord	47	2
+111fa685	HI_1_10_0	genre_desaccord	48	1
+111fa685	HI_1_10_0	genre_desaccord	49	8
+111fa685	HI_1_10_0	genre_desaccord	52	1
+111fa685	HI_1_10_0	genre_desaccord	54	1
+111fa685	HI_1_10_0	genre_desaccord	58	3
+111fa685	HI_1_10_0	genre_desaccord	59	3
+111fa685	HI_1_10_0	genre_desaccord	7	68
+111fa685	HI_1_10_0	genre_desaccord	75	53
+111fa685	HI_1_10_0	genre_desaccord	76	19
+111fa685	HI_1_10_0	genre_desaccord	8	8
+111fa685	HI_1_10_0	genre_desaccord	82	2166
+111fa685	HI_1_10_0	genre_desaccord	85	50
+111fa685	HI_1_10_0	genre_desaccord	9	91
+111fa685	HI_1_10_0	genre_desaccord	92	1
+111fa685	HI_1_10_0	genre_desaccord	98	2
+111fa685	HI_1_10_0	temoin	accord	1440
+111fa685	HI_1_10_0	temoin	accord par chaine	711
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	2
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	2
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	109
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	59
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	883
+111fa685	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+111fa685	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	9
+111fa685	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	52
+11de8353	HI_1_9_0	arret	localise · genre hors table	4
+11de8353	HI_1_9_0	arret	localise · opaque 10	4
+11de8353	HI_1_9_0	arret	localise · opaque 101	2
+11de8353	HI_1_9_0	arret	localise · opaque 106	1
+11de8353	HI_1_9_0	arret	localise · opaque 109	1
+11de8353	HI_1_9_0	arret	localise · opaque 110	1
+11de8353	HI_1_9_0	arret	localise · opaque 112	2
+11de8353	HI_1_9_0	arret	localise · opaque 113	2
+11de8353	HI_1_9_0	arret	localise · opaque 114	1
+11de8353	HI_1_9_0	arret	localise · opaque 116	39
+11de8353	HI_1_9_0	arret	localise · opaque 117	1
+11de8353	HI_1_9_0	arret	localise · opaque 12	6
+11de8353	HI_1_9_0	arret	localise · opaque 122	2
+11de8353	HI_1_9_0	arret	localise · opaque 13	10
+11de8353	HI_1_9_0	arret	localise · opaque 14	2
+11de8353	HI_1_9_0	arret	localise · opaque 16	17
+11de8353	HI_1_9_0	arret	localise · opaque 17	1
+11de8353	HI_1_9_0	arret	localise · opaque 18	2
+11de8353	HI_1_9_0	arret	localise · opaque 19	1
+11de8353	HI_1_9_0	arret	localise · opaque 20	6
+11de8353	HI_1_9_0	arret	localise · opaque 28	3
+11de8353	HI_1_9_0	arret	localise · opaque 29	3
+11de8353	HI_1_9_0	arret	localise · opaque 30	2
+11de8353	HI_1_9_0	arret	localise · opaque 32	8
+11de8353	HI_1_9_0	arret	localise · opaque 34	5
+11de8353	HI_1_9_0	arret	localise · opaque 36	1436
+11de8353	HI_1_9_0	arret	localise · opaque 5	723
+11de8353	HI_1_9_0	arret	localise · opaque 50	4
+11de8353	HI_1_9_0	arret	localise · opaque 51	2
+11de8353	HI_1_9_0	arret	localise · opaque 52	1
+11de8353	HI_1_9_0	arret	localise · opaque 55	1
+11de8353	HI_1_9_0	arret	localise · opaque 56	6
+11de8353	HI_1_9_0	arret	localise · opaque 6	171
+11de8353	HI_1_9_0	arret	localise · opaque 60	1
+11de8353	HI_1_9_0	arret	localise · opaque 61	4
+11de8353	HI_1_9_0	arret	localise · opaque 64	4
+11de8353	HI_1_9_0	arret	localise · opaque 65	1
+11de8353	HI_1_9_0	arret	localise · opaque 66	4
+11de8353	HI_1_9_0	arret	localise · opaque 67	6
+11de8353	HI_1_9_0	arret	localise · opaque 68	5
+11de8353	HI_1_9_0	arret	localise · opaque 69	2
+11de8353	HI_1_9_0	arret	localise · opaque 70	4
+11de8353	HI_1_9_0	arret	localise · opaque 71	2
+11de8353	HI_1_9_0	arret	localise · opaque 72	3
+11de8353	HI_1_9_0	arret	localise · opaque 73	5
+11de8353	HI_1_9_0	arret	localise · opaque 74	8
+11de8353	HI_1_9_0	arret	localise · opaque 77	6
+11de8353	HI_1_9_0	arret	localise · opaque 78	2
+11de8353	HI_1_9_0	arret	localise · opaque 79	3
+11de8353	HI_1_9_0	arret	localise · opaque 80	2
+11de8353	HI_1_9_0	arret	localise · opaque 81	1
+11de8353	HI_1_9_0	arret	localise · opaque 82	12
+11de8353	HI_1_9_0	arret	localise · opaque 83	4
+11de8353	HI_1_9_0	arret	localise · opaque 84	10
+11de8353	HI_1_9_0	arret	localise · opaque 87	2
+11de8353	HI_1_9_0	arret	localise · opaque 88	4
+11de8353	HI_1_9_0	arret	localise · opaque 89	1
+11de8353	HI_1_9_0	arret	localise · opaque 90	2
+11de8353	HI_1_9_0	arret	localise · opaque 91	5
+11de8353	HI_1_9_0	arret	localise · opaque 94	1
+11de8353	HI_1_9_0	arret	localise · opaque 96	1
+11de8353	HI_1_9_0	arret	localise · opaque 97	2
+11de8353	HI_1_9_0	arret	localise · opaque 99	1
+11de8353	HI_1_9_0	arret	non localise · genre hors table	6
+11de8353	HI_1_9_0	arret	non localise · opaque 101	2
+11de8353	HI_1_9_0	arret	non localise · opaque 109	2
+11de8353	HI_1_9_0	arret	non localise · opaque 110	1
+11de8353	HI_1_9_0	arret	non localise · opaque 111	1
+11de8353	HI_1_9_0	arret	non localise · opaque 112	2
+11de8353	HI_1_9_0	arret	non localise · opaque 113	4
+11de8353	HI_1_9_0	arret	non localise · opaque 116	4
+11de8353	HI_1_9_0	arret	non localise · opaque 117	2
+11de8353	HI_1_9_0	arret	non localise · opaque 12	6
+11de8353	HI_1_9_0	arret	non localise · opaque 121	1
+11de8353	HI_1_9_0	arret	non localise · opaque 122	1
+11de8353	HI_1_9_0	arret	non localise · opaque 13	2
+11de8353	HI_1_9_0	arret	non localise · opaque 16	4
+11de8353	HI_1_9_0	arret	non localise · opaque 17	3
+11de8353	HI_1_9_0	arret	non localise · opaque 18	6
+11de8353	HI_1_9_0	arret	non localise · opaque 20	2
+11de8353	HI_1_9_0	arret	non localise · opaque 28	1
+11de8353	HI_1_9_0	arret	non localise · opaque 29	1
+11de8353	HI_1_9_0	arret	non localise · opaque 30	1
+11de8353	HI_1_9_0	arret	non localise · opaque 32	2
+11de8353	HI_1_9_0	arret	non localise · opaque 34	3
+11de8353	HI_1_9_0	arret	non localise · opaque 36	444
+11de8353	HI_1_9_0	arret	non localise · opaque 5	277
+11de8353	HI_1_9_0	arret	non localise · opaque 50	1
+11de8353	HI_1_9_0	arret	non localise · opaque 55	1
+11de8353	HI_1_9_0	arret	non localise · opaque 56	1
+11de8353	HI_1_9_0	arret	non localise · opaque 6	41
+11de8353	HI_1_9_0	arret	non localise · opaque 61	1
+11de8353	HI_1_9_0	arret	non localise · opaque 64	4
+11de8353	HI_1_9_0	arret	non localise · opaque 66	1
+11de8353	HI_1_9_0	arret	non localise · opaque 67	5
+11de8353	HI_1_9_0	arret	non localise · opaque 68	3
+11de8353	HI_1_9_0	arret	non localise · opaque 69	1
+11de8353	HI_1_9_0	arret	non localise · opaque 70	1
+11de8353	HI_1_9_0	arret	non localise · opaque 73	1
+11de8353	HI_1_9_0	arret	non localise · opaque 74	2
+11de8353	HI_1_9_0	arret	non localise · opaque 77	1
+11de8353	HI_1_9_0	arret	non localise · opaque 78	3
+11de8353	HI_1_9_0	arret	non localise · opaque 81	4
+11de8353	HI_1_9_0	arret	non localise · opaque 82	14
+11de8353	HI_1_9_0	arret	non localise · opaque 83	1
+11de8353	HI_1_9_0	arret	non localise · opaque 84	1
+11de8353	HI_1_9_0	arret	non localise · opaque 87	2
+11de8353	HI_1_9_0	arret	non localise · opaque 88	2
+11de8353	HI_1_9_0	arret	non localise · opaque 89	1
+11de8353	HI_1_9_0	arret	non localise · opaque 90	3
+11de8353	HI_1_9_0	arret	non localise · opaque 94	2
+11de8353	HI_1_9_0	arret	non localise · opaque 95	1
+11de8353	HI_1_9_0	gain	ferme	68
+11de8353	HI_1_9_0	gain	non ferme	694
+11de8353	HI_1_9_0	genre_accord	0	449
+11de8353	HI_1_9_0	genre_accord	1	73
+11de8353	HI_1_9_0	genre_accord	103	32
+11de8353	HI_1_9_0	genre_accord	11	44
+11de8353	HI_1_9_0	genre_accord	118	3
+11de8353	HI_1_9_0	genre_accord	15	235
+11de8353	HI_1_9_0	genre_accord	2	6
+11de8353	HI_1_9_0	genre_accord	21	372
+11de8353	HI_1_9_0	genre_accord	22	11
+11de8353	HI_1_9_0	genre_accord	23	24
+11de8353	HI_1_9_0	genre_accord	36	78
+11de8353	HI_1_9_0	genre_accord	38	517
+11de8353	HI_1_9_0	genre_accord	39	70
+11de8353	HI_1_9_0	genre_accord	40	42
+11de8353	HI_1_9_0	genre_accord	41	2
+11de8353	HI_1_9_0	genre_accord	7	23
+11de8353	HI_1_9_0	genre_accord	75	146
+11de8353	HI_1_9_0	genre_accord	76	118
+11de8353	HI_1_9_0	genre_accord	82	1093
+11de8353	HI_1_9_0	genre_accord	9	42
+11de8353	HI_1_9_0	genre_accord par chaine	0	144
+11de8353	HI_1_9_0	genre_accord par chaine	1	12
+11de8353	HI_1_9_0	genre_accord par chaine	103	6
+11de8353	HI_1_9_0	genre_accord par chaine	11	17
+11de8353	HI_1_9_0	genre_accord par chaine	118	2
+11de8353	HI_1_9_0	genre_accord par chaine	15	34
+11de8353	HI_1_9_0	genre_accord par chaine	21	96
+11de8353	HI_1_9_0	genre_accord par chaine	22	2
+11de8353	HI_1_9_0	genre_accord par chaine	23	4
+11de8353	HI_1_9_0	genre_accord par chaine	36	22
+11de8353	HI_1_9_0	genre_accord par chaine	38	134
+11de8353	HI_1_9_0	genre_accord par chaine	39	15
+11de8353	HI_1_9_0	genre_accord par chaine	4	1
+11de8353	HI_1_9_0	genre_accord par chaine	40	13
+11de8353	HI_1_9_0	genre_accord par chaine	7	3
+11de8353	HI_1_9_0	genre_accord par chaine	75	46
+11de8353	HI_1_9_0	genre_accord par chaine	76	15
+11de8353	HI_1_9_0	genre_accord par chaine	82	477
+11de8353	HI_1_9_0	genre_accord par chaine	9	19
+11de8353	HI_1_9_0	genre_desaccord	0	556
+11de8353	HI_1_9_0	genre_desaccord	1	144
+11de8353	HI_1_9_0	genre_desaccord	102	1
+11de8353	HI_1_9_0	genre_desaccord	103	6
+11de8353	HI_1_9_0	genre_desaccord	104	2
+11de8353	HI_1_9_0	genre_desaccord	11	6
+11de8353	HI_1_9_0	genre_desaccord	118	4
+11de8353	HI_1_9_0	genre_desaccord	15	221
+11de8353	HI_1_9_0	genre_desaccord	2	2
+11de8353	HI_1_9_0	genre_desaccord	21	61
+11de8353	HI_1_9_0	genre_desaccord	22	11
+11de8353	HI_1_9_0	genre_desaccord	23	103
+11de8353	HI_1_9_0	genre_desaccord	24	2
+11de8353	HI_1_9_0	genre_desaccord	26	1
+11de8353	HI_1_9_0	genre_desaccord	28	2
+11de8353	HI_1_9_0	genre_desaccord	3	1
+11de8353	HI_1_9_0	genre_desaccord	31	1
+11de8353	HI_1_9_0	genre_desaccord	33	1
+11de8353	HI_1_9_0	genre_desaccord	35	3
+11de8353	HI_1_9_0	genre_desaccord	36	204
+11de8353	HI_1_9_0	genre_desaccord	38	80
+11de8353	HI_1_9_0	genre_desaccord	39	13
+11de8353	HI_1_9_0	genre_desaccord	4	7
+11de8353	HI_1_9_0	genre_desaccord	40	7
+11de8353	HI_1_9_0	genre_desaccord	41	3
+11de8353	HI_1_9_0	genre_desaccord	42	7
+11de8353	HI_1_9_0	genre_desaccord	44	1
+11de8353	HI_1_9_0	genre_desaccord	46	5
+11de8353	HI_1_9_0	genre_desaccord	47	1
+11de8353	HI_1_9_0	genre_desaccord	48	1
+11de8353	HI_1_9_0	genre_desaccord	49	10
+11de8353	HI_1_9_0	genre_desaccord	53	2
+11de8353	HI_1_9_0	genre_desaccord	54	13
+11de8353	HI_1_9_0	genre_desaccord	57	1
+11de8353	HI_1_9_0	genre_desaccord	59	1
+11de8353	HI_1_9_0	genre_desaccord	63	5
+11de8353	HI_1_9_0	genre_desaccord	7	36
+11de8353	HI_1_9_0	genre_desaccord	75	45
+11de8353	HI_1_9_0	genre_desaccord	76	42
+11de8353	HI_1_9_0	genre_desaccord	8	8
+11de8353	HI_1_9_0	genre_desaccord	82	1814
+11de8353	HI_1_9_0	genre_desaccord	85	36
+11de8353	HI_1_9_0	genre_desaccord	86	1
+11de8353	HI_1_9_0	genre_desaccord	9	57
+11de8353	HI_1_9_0	genre_desaccord	92	1
+11de8353	HI_1_9_0	genre_desaccord	98	4
+11de8353	HI_1_9_0	temoin	accord	1512
+11de8353	HI_1_9_0	temoin	accord par chaine	660
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	2
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	10
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	199
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	42
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	612
+11de8353	HI_1_9_0	temoin	desaccord · E > S · depuis E ferme au bit · depuis S ferme	1
+11de8353	HI_1_9_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	25
+11de8353	HI_1_9_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	46
+1c4c63c2	HI_1_10_0	arret	localise · genre hors table	47
+1c4c63c2	HI_1_10_0	arret	localise · opaque 10	9
+1c4c63c2	HI_1_10_0	arret	localise · opaque 101	2
+1c4c63c2	HI_1_10_0	arret	localise · opaque 106	4
+1c4c63c2	HI_1_10_0	arret	localise · opaque 107	9
+1c4c63c2	HI_1_10_0	arret	localise · opaque 109	11
+1c4c63c2	HI_1_10_0	arret	localise · opaque 110	6
+1c4c63c2	HI_1_10_0	arret	localise · opaque 111	8
+1c4c63c2	HI_1_10_0	arret	localise · opaque 112	10
+1c4c63c2	HI_1_10_0	arret	localise · opaque 113	5
+1c4c63c2	HI_1_10_0	arret	localise · opaque 114	6
+1c4c63c2	HI_1_10_0	arret	localise · opaque 115	3
+1c4c63c2	HI_1_10_0	arret	localise · opaque 116	1
+1c4c63c2	HI_1_10_0	arret	localise · opaque 117	3
+1c4c63c2	HI_1_10_0	arret	localise · opaque 12	4
+1c4c63c2	HI_1_10_0	arret	localise · opaque 120	12
+1c4c63c2	HI_1_10_0	arret	localise · opaque 121	15
+1c4c63c2	HI_1_10_0	arret	localise · opaque 122	3
+1c4c63c2	HI_1_10_0	arret	localise · opaque 13	6
+1c4c63c2	HI_1_10_0	arret	localise · opaque 14	5
+1c4c63c2	HI_1_10_0	arret	localise · opaque 16	26
+1c4c63c2	HI_1_10_0	arret	localise · opaque 17	15
+1c4c63c2	HI_1_10_0	arret	localise · opaque 18	4
+1c4c63c2	HI_1_10_0	arret	localise · opaque 19	6
+1c4c63c2	HI_1_10_0	arret	localise · opaque 20	8
+1c4c63c2	HI_1_10_0	arret	localise · opaque 27	2
+1c4c63c2	HI_1_10_0	arret	localise · opaque 29	6
+1c4c63c2	HI_1_10_0	arret	localise · opaque 30	3
+1c4c63c2	HI_1_10_0	arret	localise · opaque 32	7
+1c4c63c2	HI_1_10_0	arret	localise · opaque 34	12
+1c4c63c2	HI_1_10_0	arret	localise · opaque 35	2
+1c4c63c2	HI_1_10_0	arret	localise · opaque 36	3463
+1c4c63c2	HI_1_10_0	arret	localise · opaque 43	1
+1c4c63c2	HI_1_10_0	arret	localise · opaque 5	515
+1c4c63c2	HI_1_10_0	arret	localise · opaque 50	5
+1c4c63c2	HI_1_10_0	arret	localise · opaque 51	6
+1c4c63c2	HI_1_10_0	arret	localise · opaque 52	6
+1c4c63c2	HI_1_10_0	arret	localise · opaque 55	14
+1c4c63c2	HI_1_10_0	arret	localise · opaque 56	10
+1c4c63c2	HI_1_10_0	arret	localise · opaque 6	86
+1c4c63c2	HI_1_10_0	arret	localise · opaque 60	2
+1c4c63c2	HI_1_10_0	arret	localise · opaque 61	16
+1c4c63c2	HI_1_10_0	arret	localise · opaque 62	7
+1c4c63c2	HI_1_10_0	arret	localise · opaque 64	17
+1c4c63c2	HI_1_10_0	arret	localise · opaque 65	12
+1c4c63c2	HI_1_10_0	arret	localise · opaque 66	13
+1c4c63c2	HI_1_10_0	arret	localise · opaque 67	7
+1c4c63c2	HI_1_10_0	arret	localise · opaque 68	11
+1c4c63c2	HI_1_10_0	arret	localise · opaque 69	8
+1c4c63c2	HI_1_10_0	arret	localise · opaque 70	4
+1c4c63c2	HI_1_10_0	arret	localise · opaque 71	9
+1c4c63c2	HI_1_10_0	arret	localise · opaque 72	14
+1c4c63c2	HI_1_10_0	arret	localise · opaque 73	10
+1c4c63c2	HI_1_10_0	arret	localise · opaque 74	9
+1c4c63c2	HI_1_10_0	arret	localise · opaque 77	13
+1c4c63c2	HI_1_10_0	arret	localise · opaque 78	9
+1c4c63c2	HI_1_10_0	arret	localise · opaque 79	5
+1c4c63c2	HI_1_10_0	arret	localise · opaque 80	11
+1c4c63c2	HI_1_10_0	arret	localise · opaque 81	11
+1c4c63c2	HI_1_10_0	arret	localise · opaque 82	183
+1c4c63c2	HI_1_10_0	arret	localise · opaque 83	3
+1c4c63c2	HI_1_10_0	arret	localise · opaque 84	3
+1c4c63c2	HI_1_10_0	arret	localise · opaque 87	10
+1c4c63c2	HI_1_10_0	arret	localise · opaque 88	5
+1c4c63c2	HI_1_10_0	arret	localise · opaque 89	10
+1c4c63c2	HI_1_10_0	arret	localise · opaque 90	8
+1c4c63c2	HI_1_10_0	arret	localise · opaque 91	9
+1c4c63c2	HI_1_10_0	arret	localise · opaque 94	11
+1c4c63c2	HI_1_10_0	arret	localise · opaque 95	5
+1c4c63c2	HI_1_10_0	arret	localise · opaque 96	11
+1c4c63c2	HI_1_10_0	arret	localise · opaque 97	4
+1c4c63c2	HI_1_10_0	arret	localise · opaque 99	5
+1c4c63c2	HI_1_10_0	arret	non localise · genre hors table	52
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 10	10
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 101	11
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 106	1
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 107	8
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 109	5
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 110	4
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 111	4
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 112	8
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 113	2
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 114	6
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 115	2
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 116	1
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 117	6
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 12	3
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 120	7
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 121	12
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 122	2
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 13	13
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 14	13
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 16	13
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 17	9
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 18	8
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 19	2
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 20	5
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 27	2
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 29	3
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 30	1
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 32	8
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 34	11
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 35	2
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 36	3448
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 5	516
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 50	14
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 51	6
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 52	9
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 55	22
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 56	9
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 6	101
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 60	6
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 61	8
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 62	6
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 64	10
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 65	12
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 66	12
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 67	6
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 68	4
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 69	5
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 70	7
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 71	16
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 72	24
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 73	9
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 74	6
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 77	16
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 78	8
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 79	6
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 80	12
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 81	11
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 82	223
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 83	5
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 84	10
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 87	13
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 88	2
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 89	13
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 90	12
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 91	10
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 94	11
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 95	9
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 96	14
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 97	3
+1c4c63c2	HI_1_10_0	arret	non localise · opaque 99	7
+1c4c63c2	HI_1_10_0	gain	ferme	278
+1c4c63c2	HI_1_10_0	gain	non ferme	7258
+1c4c63c2	HI_1_10_0	genre_accord	0	229
+1c4c63c2	HI_1_10_0	genre_accord	1	57
+1c4c63c2	HI_1_10_0	genre_accord	103	8
+1c4c63c2	HI_1_10_0	genre_accord	15	373
+1c4c63c2	HI_1_10_0	genre_accord	21	222
+1c4c63c2	HI_1_10_0	genre_accord	22	7
+1c4c63c2	HI_1_10_0	genre_accord	36	74
+1c4c63c2	HI_1_10_0	genre_accord	38	230
+1c4c63c2	HI_1_10_0	genre_accord	39	64
+1c4c63c2	HI_1_10_0	genre_accord	40	19
+1c4c63c2	HI_1_10_0	genre_accord	47	3
+1c4c63c2	HI_1_10_0	genre_accord	7	19
+1c4c63c2	HI_1_10_0	genre_accord	75	114
+1c4c63c2	HI_1_10_0	genre_accord	76	158
+1c4c63c2	HI_1_10_0	genre_accord	82	866
+1c4c63c2	HI_1_10_0	genre_accord	9	120
+1c4c63c2	HI_1_10_0	genre_accord par chaine	0	29
+1c4c63c2	HI_1_10_0	genre_accord par chaine	1	6
+1c4c63c2	HI_1_10_0	genre_accord par chaine	11	2
+1c4c63c2	HI_1_10_0	genre_accord par chaine	15	48
+1c4c63c2	HI_1_10_0	genre_accord par chaine	21	33
+1c4c63c2	HI_1_10_0	genre_accord par chaine	36	16
+1c4c63c2	HI_1_10_0	genre_accord par chaine	38	34
+1c4c63c2	HI_1_10_0	genre_accord par chaine	39	6
+1c4c63c2	HI_1_10_0	genre_accord par chaine	40	2
+1c4c63c2	HI_1_10_0	genre_accord par chaine	75	23
+1c4c63c2	HI_1_10_0	genre_accord par chaine	76	9
+1c4c63c2	HI_1_10_0	genre_accord par chaine	8	1
+1c4c63c2	HI_1_10_0	genre_accord par chaine	82	375
+1c4c63c2	HI_1_10_0	genre_accord par chaine	9	18
+1c4c63c2	HI_1_10_0	genre_desaccord	0	1627
+1c4c63c2	HI_1_10_0	genre_desaccord	1	362
+1c4c63c2	HI_1_10_0	genre_desaccord	100	6
+1c4c63c2	HI_1_10_0	genre_desaccord	102	11
+1c4c63c2	HI_1_10_0	genre_desaccord	103	16
+1c4c63c2	HI_1_10_0	genre_desaccord	104	4
+1c4c63c2	HI_1_10_0	genre_desaccord	105	2
+1c4c63c2	HI_1_10_0	genre_desaccord	106	2
+1c4c63c2	HI_1_10_0	genre_desaccord	108	2
+1c4c63c2	HI_1_10_0	genre_desaccord	11	19
+1c4c63c2	HI_1_10_0	genre_desaccord	116	2
+1c4c63c2	HI_1_10_0	genre_desaccord	118	5
+1c4c63c2	HI_1_10_0	genre_desaccord	119	11
+1c4c63c2	HI_1_10_0	genre_desaccord	15	2021
+1c4c63c2	HI_1_10_0	genre_desaccord	2	17
+1c4c63c2	HI_1_10_0	genre_desaccord	21	470
+1c4c63c2	HI_1_10_0	genre_desaccord	22	61
+1c4c63c2	HI_1_10_0	genre_desaccord	23	28
+1c4c63c2	HI_1_10_0	genre_desaccord	24	17
+1c4c63c2	HI_1_10_0	genre_desaccord	25	9
+1c4c63c2	HI_1_10_0	genre_desaccord	26	8
+1c4c63c2	HI_1_10_0	genre_desaccord	3	2
+1c4c63c2	HI_1_10_0	genre_desaccord	32	1
+1c4c63c2	HI_1_10_0	genre_desaccord	33	8
+1c4c63c2	HI_1_10_0	genre_desaccord	36	1310
+1c4c63c2	HI_1_10_0	genre_desaccord	37	13
+1c4c63c2	HI_1_10_0	genre_desaccord	38	655
+1c4c63c2	HI_1_10_0	genre_desaccord	39	170
+1c4c63c2	HI_1_10_0	genre_desaccord	4	13
+1c4c63c2	HI_1_10_0	genre_desaccord	40	64
+1c4c63c2	HI_1_10_0	genre_desaccord	41	7
+1c4c63c2	HI_1_10_0	genre_desaccord	42	20
+1c4c63c2	HI_1_10_0	genre_desaccord	43	4
+1c4c63c2	HI_1_10_0	genre_desaccord	44	2
+1c4c63c2	HI_1_10_0	genre_desaccord	45	5
+1c4c63c2	HI_1_10_0	genre_desaccord	46	7
+1c4c63c2	HI_1_10_0	genre_desaccord	47	8
+1c4c63c2	HI_1_10_0	genre_desaccord	48	3
+1c4c63c2	HI_1_10_0	genre_desaccord	49	5
+1c4c63c2	HI_1_10_0	genre_desaccord	5	3
+1c4c63c2	HI_1_10_0	genre_desaccord	52	3
+1c4c63c2	HI_1_10_0	genre_desaccord	53	7
+1c4c63c2	HI_1_10_0	genre_desaccord	54	13
+1c4c63c2	HI_1_10_0	genre_desaccord	57	7
+1c4c63c2	HI_1_10_0	genre_desaccord	58	8
+1c4c63c2	HI_1_10_0	genre_desaccord	59	4
+1c4c63c2	HI_1_10_0	genre_desaccord	63	8
+1c4c63c2	HI_1_10_0	genre_desaccord	7	51
+1c4c63c2	HI_1_10_0	genre_desaccord	75	365
+1c4c63c2	HI_1_10_0	genre_desaccord	76	414
+1c4c63c2	HI_1_10_0	genre_desaccord	8	14
+1c4c63c2	HI_1_10_0	genre_desaccord	82	4943
+1c4c63c2	HI_1_10_0	genre_desaccord	85	63
+1c4c63c2	HI_1_10_0	genre_desaccord	86	4
+1c4c63c2	HI_1_10_0	genre_desaccord	9	414
+1c4c63c2	HI_1_10_0	genre_desaccord	92	5
+1c4c63c2	HI_1_10_0	genre_desaccord	93	5
+1c4c63c2	HI_1_10_0	genre_desaccord	98	5
+1c4c63c2	HI_1_10_0	temoin	accord	1305
+1c4c63c2	HI_1_10_0	temoin	accord par chaine	391
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	65
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	197
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	1388
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	3599
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	613
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	5
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	9
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	45
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	7
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	141
+396cfc92	HI_1_13_0	arret	localise · genre hors table	1
+396cfc92	HI_1_13_0	arret	localise · opaque 109	302
+396cfc92	HI_1_13_0	arret	localise · opaque 12	1
+396cfc92	HI_1_13_0	arret	localise · opaque 121	1
+396cfc92	HI_1_13_0	arret	localise · opaque 16	7
+396cfc92	HI_1_13_0	arret	localise · opaque 17	1
+396cfc92	HI_1_13_0	arret	localise · opaque 18	2
+396cfc92	HI_1_13_0	arret	localise · opaque 20	1
+396cfc92	HI_1_13_0	arret	localise · opaque 32	1
+396cfc92	HI_1_13_0	arret	localise · opaque 36	1663
+396cfc92	HI_1_13_0	arret	localise · opaque 5	316
+396cfc92	HI_1_13_0	arret	localise · opaque 50	3
+396cfc92	HI_1_13_0	arret	localise · opaque 52	1
+396cfc92	HI_1_13_0	arret	localise · opaque 6	23
+396cfc92	HI_1_13_0	arret	localise · opaque 77	1
+396cfc92	HI_1_13_0	arret	localise · opaque 78	1
+396cfc92	HI_1_13_0	arret	localise · opaque 82	1
+396cfc92	HI_1_13_0	arret	localise · opaque 83	2
+396cfc92	HI_1_13_0	arret	localise · opaque 84	1
+396cfc92	HI_1_13_0	arret	localise · opaque 89	1
+396cfc92	HI_1_13_0	arret	localise · opaque 94	2
+396cfc92	HI_1_13_0	arret	non localise · opaque 109	21
+396cfc92	HI_1_13_0	arret	non localise · opaque 17	1
+396cfc92	HI_1_13_0	arret	non localise · opaque 32	2
+396cfc92	HI_1_13_0	arret	non localise · opaque 36	211
+396cfc92	HI_1_13_0	arret	non localise · opaque 5	43
+396cfc92	HI_1_13_0	arret	non localise · opaque 6	1
+396cfc92	HI_1_13_0	arret	non localise · opaque 72	1
+396cfc92	HI_1_13_0	arret	non localise · opaque 82	14
+396cfc92	HI_1_13_0	arret	non localise · opaque 95	1
+396cfc92	HI_1_13_0	arret	non localise · opaque 96	2
+396cfc92	HI_1_13_0	gain	ferme	98
+396cfc92	HI_1_13_0	gain	non ferme	84
+396cfc92	HI_1_13_0	genre_accord	0	87
+396cfc92	HI_1_13_0	genre_accord	1	14
+396cfc92	HI_1_13_0	genre_accord	103	8
+396cfc92	HI_1_13_0	genre_accord	11	7
+396cfc92	HI_1_13_0	genre_accord	15	710
+396cfc92	HI_1_13_0	genre_accord	21	270
+396cfc92	HI_1_13_0	genre_accord	36	50
+396cfc92	HI_1_13_0	genre_accord	38	265
+396cfc92	HI_1_13_0	genre_accord	39	74
+396cfc92	HI_1_13_0	genre_accord	40	24
+396cfc92	HI_1_13_0	genre_accord	7	38
+396cfc92	HI_1_13_0	genre_accord	75	113
+396cfc92	HI_1_13_0	genre_accord	76	355
+396cfc92	HI_1_13_0	genre_accord	82	857
+396cfc92	HI_1_13_0	genre_accord	85	5
+396cfc92	HI_1_13_0	genre_accord	9	155
+396cfc92	HI_1_13_0	genre_accord par chaine	0	12
+396cfc92	HI_1_13_0	genre_accord par chaine	1	3
+396cfc92	HI_1_13_0	genre_accord par chaine	15	59
+396cfc92	HI_1_13_0	genre_accord par chaine	21	16
+396cfc92	HI_1_13_0	genre_accord par chaine	36	1
+396cfc92	HI_1_13_0	genre_accord par chaine	38	26
+396cfc92	HI_1_13_0	genre_accord par chaine	39	4
+396cfc92	HI_1_13_0	genre_accord par chaine	40	1
+396cfc92	HI_1_13_0	genre_accord par chaine	7	2
+396cfc92	HI_1_13_0	genre_accord par chaine	75	2
+396cfc92	HI_1_13_0	genre_accord par chaine	76	15
+396cfc92	HI_1_13_0	genre_accord par chaine	82	4040
+396cfc92	HI_1_13_0	genre_accord par chaine	85	1
+396cfc92	HI_1_13_0	genre_accord par chaine	9	7
+396cfc92	HI_1_13_0	genre_desaccord	0	94
+396cfc92	HI_1_13_0	genre_desaccord	1	25
+396cfc92	HI_1_13_0	genre_desaccord	118	3
+396cfc92	HI_1_13_0	genre_desaccord	15	52
+396cfc92	HI_1_13_0	genre_desaccord	2	2
+396cfc92	HI_1_13_0	genre_desaccord	36	6
+396cfc92	HI_1_13_0	genre_desaccord	38	2
+396cfc92	HI_1_13_0	genre_desaccord	44	1
+396cfc92	HI_1_13_0	genre_desaccord	7	12
+396cfc92	HI_1_13_0	genre_desaccord	75	13
+396cfc92	HI_1_13_0	genre_desaccord	76	1
+396cfc92	HI_1_13_0	genre_desaccord	8	2
+396cfc92	HI_1_13_0	genre_desaccord	82	249
+396cfc92	HI_1_13_0	genre_desaccord	85	4
+396cfc92	HI_1_13_0	temoin	accord	1550
+396cfc92	HI_1_13_0	temoin	accord par chaine	654
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	1
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	1
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	31
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	1
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	15
+396cfc92	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	1
+396cfc92	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+396cfc92	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	31
+396cfc92	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	12
+4f77afc1	HI_1_13_0	arret	localise · genre hors table	9
+4f77afc1	HI_1_13_0	arret	localise · opaque 10	2
+4f77afc1	HI_1_13_0	arret	localise · opaque 101	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 107	2
+4f77afc1	HI_1_13_0	arret	localise · opaque 112	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 113	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 114	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 120	2
+4f77afc1	HI_1_13_0	arret	localise · opaque 121	3
+4f77afc1	HI_1_13_0	arret	localise · opaque 122	3
+4f77afc1	HI_1_13_0	arret	localise · opaque 16	6
+4f77afc1	HI_1_13_0	arret	localise · opaque 20	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 29	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 30	3
+4f77afc1	HI_1_13_0	arret	localise · opaque 32	2
+4f77afc1	HI_1_13_0	arret	localise · opaque 34	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 36	4311
+4f77afc1	HI_1_13_0	arret	localise · opaque 5	692
+4f77afc1	HI_1_13_0	arret	localise · opaque 50	4
+4f77afc1	HI_1_13_0	arret	localise · opaque 51	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 55	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 6	536
+4f77afc1	HI_1_13_0	arret	localise · opaque 60	2
+4f77afc1	HI_1_13_0	arret	localise · opaque 61	6
+4f77afc1	HI_1_13_0	arret	localise · opaque 62	2
+4f77afc1	HI_1_13_0	arret	localise · opaque 64	5
+4f77afc1	HI_1_13_0	arret	localise · opaque 66	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 67	2
+4f77afc1	HI_1_13_0	arret	localise · opaque 69	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 71	3
+4f77afc1	HI_1_13_0	arret	localise · opaque 72	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 73	12
+4f77afc1	HI_1_13_0	arret	localise · opaque 74	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 80	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 82	126
+4f77afc1	HI_1_13_0	arret	localise · opaque 83	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 88	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 90	10
+4f77afc1	HI_1_13_0	arret	localise · opaque 94	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 95	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 96	1
+4f77afc1	HI_1_13_0	arret	localise · opaque 99	1
+4f77afc1	HI_1_13_0	arret	non localise · genre hors table	2
+4f77afc1	HI_1_13_0	arret	non localise · opaque 10	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 109	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 111	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 114	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 116	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 122	2
+4f77afc1	HI_1_13_0	arret	non localise · opaque 16	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 17	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 18	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 29	2
+4f77afc1	HI_1_13_0	arret	non localise · opaque 30	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 32	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 36	629
+4f77afc1	HI_1_13_0	arret	non localise · opaque 5	134
+4f77afc1	HI_1_13_0	arret	non localise · opaque 51	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 6	75
+4f77afc1	HI_1_13_0	arret	non localise · opaque 64	2
+4f77afc1	HI_1_13_0	arret	non localise · opaque 65	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 81	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 82	81
+4f77afc1	HI_1_13_0	arret	non localise · opaque 96	1
+4f77afc1	HI_1_13_0	arret	non localise · opaque 97	2
+4f77afc1	HI_1_13_0	gain	ferme	448
+4f77afc1	HI_1_13_0	gain	ferme au bit	1
+4f77afc1	HI_1_13_0	gain	non ferme	721
+4f77afc1	HI_1_13_0	genre_accord	0	1686
+4f77afc1	HI_1_13_0	genre_accord	1	338
+4f77afc1	HI_1_13_0	genre_accord	100	5
+4f77afc1	HI_1_13_0	genre_accord	103	13
+4f77afc1	HI_1_13_0	genre_accord	105	1
+4f77afc1	HI_1_13_0	genre_accord	11	22
+4f77afc1	HI_1_13_0	genre_accord	15	3666
+4f77afc1	HI_1_13_0	genre_accord	2	2
+4f77afc1	HI_1_13_0	genre_accord	21	800
+4f77afc1	HI_1_13_0	genre_accord	22	56
+4f77afc1	HI_1_13_0	genre_accord	36	890
+4f77afc1	HI_1_13_0	genre_accord	38	634
+4f77afc1	HI_1_13_0	genre_accord	39	96
+4f77afc1	HI_1_13_0	genre_accord	4	4
+4f77afc1	HI_1_13_0	genre_accord	40	33
+4f77afc1	HI_1_13_0	genre_accord	47	13
+4f77afc1	HI_1_13_0	genre_accord	7	17
+4f77afc1	HI_1_13_0	genre_accord	75	329
+4f77afc1	HI_1_13_0	genre_accord	76	617
+4f77afc1	HI_1_13_0	genre_accord	8	1
+4f77afc1	HI_1_13_0	genre_accord	82	3868
+4f77afc1	HI_1_13_0	genre_accord	85	40
+4f77afc1	HI_1_13_0	genre_accord	9	399
+4f77afc1	HI_1_13_0	genre_accord par chaine	0	396
+4f77afc1	HI_1_13_0	genre_accord par chaine	1	80
+4f77afc1	HI_1_13_0	genre_accord par chaine	100	1
+4f77afc1	HI_1_13_0	genre_accord par chaine	103	2
+4f77afc1	HI_1_13_0	genre_accord par chaine	11	5
+4f77afc1	HI_1_13_0	genre_accord par chaine	15	317
+4f77afc1	HI_1_13_0	genre_accord par chaine	21	190
+4f77afc1	HI_1_13_0	genre_accord par chaine	22	9
+4f77afc1	HI_1_13_0	genre_accord par chaine	36	106
+4f77afc1	HI_1_13_0	genre_accord par chaine	38	154
+4f77afc1	HI_1_13_0	genre_accord par chaine	39	24
+4f77afc1	HI_1_13_0	genre_accord par chaine	40	11
+4f77afc1	HI_1_13_0	genre_accord par chaine	47	1
+4f77afc1	HI_1_13_0	genre_accord par chaine	7	8
+4f77afc1	HI_1_13_0	genre_accord par chaine	75	60
+4f77afc1	HI_1_13_0	genre_accord par chaine	76	79
+4f77afc1	HI_1_13_0	genre_accord par chaine	8	2
+4f77afc1	HI_1_13_0	genre_accord par chaine	82	1281
+4f77afc1	HI_1_13_0	genre_accord par chaine	85	1
+4f77afc1	HI_1_13_0	genre_accord par chaine	9	43
+4f77afc1	HI_1_13_0	genre_desaccord	0	2809
+4f77afc1	HI_1_13_0	genre_desaccord	1	329
+4f77afc1	HI_1_13_0	genre_desaccord	100	1
+4f77afc1	HI_1_13_0	genre_desaccord	103	6
+4f77afc1	HI_1_13_0	genre_desaccord	104	47
+4f77afc1	HI_1_13_0	genre_desaccord	108	2
+4f77afc1	HI_1_13_0	genre_desaccord	11	4
+4f77afc1	HI_1_13_0	genre_desaccord	118	4
+4f77afc1	HI_1_13_0	genre_desaccord	119	2
+4f77afc1	HI_1_13_0	genre_desaccord	15	518
+4f77afc1	HI_1_13_0	genre_desaccord	2	1
+4f77afc1	HI_1_13_0	genre_desaccord	21	177
+4f77afc1	HI_1_13_0	genre_desaccord	22	22
+4f77afc1	HI_1_13_0	genre_desaccord	23	23
+4f77afc1	HI_1_13_0	genre_desaccord	25	3
+4f77afc1	HI_1_13_0	genre_desaccord	26	1
+4f77afc1	HI_1_13_0	genre_desaccord	33	3
+4f77afc1	HI_1_13_0	genre_desaccord	36	197
+4f77afc1	HI_1_13_0	genre_desaccord	38	97
+4f77afc1	HI_1_13_0	genre_desaccord	39	12
+4f77afc1	HI_1_13_0	genre_desaccord	4	9
+4f77afc1	HI_1_13_0	genre_desaccord	40	4
+4f77afc1	HI_1_13_0	genre_desaccord	42	3
+4f77afc1	HI_1_13_0	genre_desaccord	44	2
+4f77afc1	HI_1_13_0	genre_desaccord	47	1
+4f77afc1	HI_1_13_0	genre_desaccord	49	1
+4f77afc1	HI_1_13_0	genre_desaccord	57	1
+4f77afc1	HI_1_13_0	genre_desaccord	6	2
+4f77afc1	HI_1_13_0	genre_desaccord	63	5
+4f77afc1	HI_1_13_0	genre_desaccord	7	36
+4f77afc1	HI_1_13_0	genre_desaccord	75	89
+4f77afc1	HI_1_13_0	genre_desaccord	76	203
+4f77afc1	HI_1_13_0	genre_desaccord	8	3
+4f77afc1	HI_1_13_0	genre_desaccord	82	2095
+4f77afc1	HI_1_13_0	genre_desaccord	85	22
+4f77afc1	HI_1_13_0	genre_desaccord	86	1
+4f77afc1	HI_1_13_0	genre_desaccord	9	44
+4f77afc1	HI_1_13_0	genre_desaccord	98	1
+4f77afc1	HI_1_13_0	temoin	accord	5186
+4f77afc1	HI_1_13_0	temoin	accord par chaine	1370
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	88
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	216
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	1610
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	319
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	656
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	13
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	6
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	68
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	3
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	30
+50247b26	version-31	arret	localise · genre hors table	13
+50247b26	version-31	arret	localise · opaque 10	7
+50247b26	version-31	arret	localise · opaque 101	25
+50247b26	version-31	arret	localise · opaque 106	10
+50247b26	version-31	arret	localise · opaque 107	1
+50247b26	version-31	arret	localise · opaque 109	4
+50247b26	version-31	arret	localise · opaque 111	1
+50247b26	version-31	arret	localise · opaque 112	8
+50247b26	version-31	arret	localise · opaque 113	4
+50247b26	version-31	arret	localise · opaque 114	4
+50247b26	version-31	arret	localise · opaque 115	5
+50247b26	version-31	arret	localise · opaque 116	1
+50247b26	version-31	arret	localise · opaque 117	3
+50247b26	version-31	arret	localise · opaque 12	3
+50247b26	version-31	arret	localise · opaque 120	2
+50247b26	version-31	arret	localise · opaque 121	7
+50247b26	version-31	arret	localise · opaque 122	4
+50247b26	version-31	arret	localise · opaque 13	5
+50247b26	version-31	arret	localise · opaque 14	3
+50247b26	version-31	arret	localise · opaque 16	15
+50247b26	version-31	arret	localise · opaque 17	10
+50247b26	version-31	arret	localise · opaque 18	7
+50247b26	version-31	arret	localise · opaque 19	13
+50247b26	version-31	arret	localise · opaque 20	7
+50247b26	version-31	arret	localise · opaque 27	1
+50247b26	version-31	arret	localise · opaque 29	9
+50247b26	version-31	arret	localise · opaque 30	22
+50247b26	version-31	arret	localise · opaque 32	6
+50247b26	version-31	arret	localise · opaque 34	13
+50247b26	version-31	arret	localise · opaque 36	281
+50247b26	version-31	arret	localise · opaque 43	2
+50247b26	version-31	arret	localise · opaque 5	153
+50247b26	version-31	arret	localise · opaque 50	6
+50247b26	version-31	arret	localise · opaque 51	8
+50247b26	version-31	arret	localise · opaque 52	5
+50247b26	version-31	arret	localise · opaque 55	1
+50247b26	version-31	arret	localise · opaque 56	5
+50247b26	version-31	arret	localise · opaque 6	87
+50247b26	version-31	arret	localise · opaque 60	2
+50247b26	version-31	arret	localise · opaque 61	27
+50247b26	version-31	arret	localise · opaque 62	4
+50247b26	version-31	arret	localise · opaque 64	3
+50247b26	version-31	arret	localise · opaque 65	6
+50247b26	version-31	arret	localise · opaque 66	6
+50247b26	version-31	arret	localise · opaque 67	3
+50247b26	version-31	arret	localise · opaque 68	5
+50247b26	version-31	arret	localise · opaque 69	10
+50247b26	version-31	arret	localise · opaque 70	4
+50247b26	version-31	arret	localise · opaque 71	5
+50247b26	version-31	arret	localise · opaque 72	22
+50247b26	version-31	arret	localise · opaque 73	147
+50247b26	version-31	arret	localise · opaque 74	136
+50247b26	version-31	arret	localise · opaque 77	4
+50247b26	version-31	arret	localise · opaque 78	7
+50247b26	version-31	arret	localise · opaque 79	3
+50247b26	version-31	arret	localise · opaque 80	736
+50247b26	version-31	arret	localise · opaque 81	7
+50247b26	version-31	arret	localise · opaque 83	5
+50247b26	version-31	arret	localise · opaque 84	1
+50247b26	version-31	arret	localise · opaque 88	5
+50247b26	version-31	arret	localise · opaque 89	4
+50247b26	version-31	arret	localise · opaque 90	7
+50247b26	version-31	arret	localise · opaque 91	1
+50247b26	version-31	arret	localise · opaque 94	3
+50247b26	version-31	arret	localise · opaque 95	4
+50247b26	version-31	arret	localise · opaque 96	11
+50247b26	version-31	arret	localise · opaque 97	3
+50247b26	version-31	arret	localise · opaque 99	4
+50247b26	version-31	arret	non localise · genre hors table	7
+50247b26	version-31	arret	non localise · opaque 10	4
+50247b26	version-31	arret	non localise · opaque 101	2
+50247b26	version-31	arret	non localise · opaque 106	2
+50247b26	version-31	arret	non localise · opaque 110	2
+50247b26	version-31	arret	non localise · opaque 112	3
+50247b26	version-31	arret	non localise · opaque 113	2
+50247b26	version-31	arret	non localise · opaque 114	1
+50247b26	version-31	arret	non localise · opaque 115	1
+50247b26	version-31	arret	non localise · opaque 116	4
+50247b26	version-31	arret	non localise · opaque 117	1
+50247b26	version-31	arret	non localise · opaque 12	3
+50247b26	version-31	arret	non localise · opaque 121	1
+50247b26	version-31	arret	non localise · opaque 122	1
+50247b26	version-31	arret	non localise · opaque 13	3
+50247b26	version-31	arret	non localise · opaque 16	3
+50247b26	version-31	arret	non localise · opaque 17	4
+50247b26	version-31	arret	non localise · opaque 18	1
+50247b26	version-31	arret	non localise · opaque 19	19
+50247b26	version-31	arret	non localise · opaque 20	2
+50247b26	version-31	arret	non localise · opaque 28	1
+50247b26	version-31	arret	non localise · opaque 29	2
+50247b26	version-31	arret	non localise · opaque 30	3
+50247b26	version-31	arret	non localise · opaque 32	4
+50247b26	version-31	arret	non localise · opaque 34	2
+50247b26	version-31	arret	non localise · opaque 35	1
+50247b26	version-31	arret	non localise · opaque 36	119
+50247b26	version-31	arret	non localise · opaque 5	96
+50247b26	version-31	arret	non localise · opaque 50	2
+50247b26	version-31	arret	non localise · opaque 52	1
+50247b26	version-31	arret	non localise · opaque 55	1
+50247b26	version-31	arret	non localise · opaque 56	7
+50247b26	version-31	arret	non localise · opaque 6	40
+50247b26	version-31	arret	non localise · opaque 60	2
+50247b26	version-31	arret	non localise · opaque 61	6
+50247b26	version-31	arret	non localise · opaque 62	5
+50247b26	version-31	arret	non localise · opaque 64	3
+50247b26	version-31	arret	non localise · opaque 65	2
+50247b26	version-31	arret	non localise · opaque 66	2
+50247b26	version-31	arret	non localise · opaque 68	5
+50247b26	version-31	arret	non localise · opaque 69	2
+50247b26	version-31	arret	non localise · opaque 70	1
+50247b26	version-31	arret	non localise · opaque 71	1
+50247b26	version-31	arret	non localise · opaque 72	4
+50247b26	version-31	arret	non localise · opaque 73	48
+50247b26	version-31	arret	non localise · opaque 74	56
+50247b26	version-31	arret	non localise · opaque 78	2
+50247b26	version-31	arret	non localise · opaque 80	274
+50247b26	version-31	arret	non localise · opaque 83	1
+50247b26	version-31	arret	non localise · opaque 84	4
+50247b26	version-31	arret	non localise · opaque 87	2
+50247b26	version-31	arret	non localise · opaque 88	3
+50247b26	version-31	arret	non localise · opaque 89	2
+50247b26	version-31	arret	non localise · opaque 90	1
+50247b26	version-31	arret	non localise · opaque 94	2
+50247b26	version-31	arret	non localise · opaque 96	13
+50247b26	version-31	arret	non localise · opaque 99	3
+50247b26	version-31	gain	ferme	2
+50247b26	version-31	gain	non ferme	1466
+50247b26	version-31	genre_accord	0	427
+50247b26	version-31	genre_accord	11	7
+50247b26	version-31	genre_accord	15	900
+50247b26	version-31	genre_accord	21	129
+50247b26	version-31	genre_accord	22	13
+50247b26	version-31	genre_accord	38	88
+50247b26	version-31	genre_accord	39	33
+50247b26	version-31	genre_accord	47	7
+50247b26	version-31	genre_accord	9	99
+50247b26	version-31	genre_accord par chaine	0	158
+50247b26	version-31	genre_accord par chaine	11	4
+50247b26	version-31	genre_accord par chaine	15	193
+50247b26	version-31	genre_accord par chaine	21	36
+50247b26	version-31	genre_accord par chaine	22	3
+50247b26	version-31	genre_accord par chaine	36	2
+50247b26	version-31	genre_accord par chaine	38	37
+50247b26	version-31	genre_accord par chaine	39	7
+50247b26	version-31	genre_accord par chaine	47	1
+50247b26	version-31	genre_accord par chaine	7	3
+50247b26	version-31	genre_accord par chaine	9	26
+50247b26	version-31	genre_desaccord	0	1085
+50247b26	version-31	genre_desaccord	1	208
+50247b26	version-31	genre_desaccord	100	2
+50247b26	version-31	genre_desaccord	102	2
+50247b26	version-31	genre_desaccord	103	1
+50247b26	version-31	genre_desaccord	104	15
+50247b26	version-31	genre_desaccord	105	2
+50247b26	version-31	genre_desaccord	106	1
+50247b26	version-31	genre_desaccord	108	161
+50247b26	version-31	genre_desaccord	11	4
+50247b26	version-31	genre_desaccord	110	1
+50247b26	version-31	genre_desaccord	116	1
+50247b26	version-31	genre_desaccord	118	10
+50247b26	version-31	genre_desaccord	119	6
+50247b26	version-31	genre_desaccord	15	816
+50247b26	version-31	genre_desaccord	2	14
+50247b26	version-31	genre_desaccord	21	45
+50247b26	version-31	genre_desaccord	22	10
+50247b26	version-31	genre_desaccord	23	78
+50247b26	version-31	genre_desaccord	24	4
+50247b26	version-31	genre_desaccord	25	2
+50247b26	version-31	genre_desaccord	26	6
+50247b26	version-31	genre_desaccord	3	6
+50247b26	version-31	genre_desaccord	31	2
+50247b26	version-31	genre_desaccord	33	11
+50247b26	version-31	genre_desaccord	35	2
+50247b26	version-31	genre_desaccord	36	910
+50247b26	version-31	genre_desaccord	37	55
+50247b26	version-31	genre_desaccord	38	89
+50247b26	version-31	genre_desaccord	39	15
+50247b26	version-31	genre_desaccord	4	61
+50247b26	version-31	genre_desaccord	40	40
+50247b26	version-31	genre_desaccord	41	3
+50247b26	version-31	genre_desaccord	42	5
+50247b26	version-31	genre_desaccord	43	5
+50247b26	version-31	genre_desaccord	44	8
+50247b26	version-31	genre_desaccord	45	1
+50247b26	version-31	genre_desaccord	46	1
+50247b26	version-31	genre_desaccord	47	2
+50247b26	version-31	genre_desaccord	48	4
+50247b26	version-31	genre_desaccord	49	2
+50247b26	version-31	genre_desaccord	5	1
+50247b26	version-31	genre_desaccord	52	1
+50247b26	version-31	genre_desaccord	54	11
+50247b26	version-31	genre_desaccord	57	5
+50247b26	version-31	genre_desaccord	59	1
+50247b26	version-31	genre_desaccord	63	24
+50247b26	version-31	genre_desaccord	7	3
+50247b26	version-31	genre_desaccord	75	2
+50247b26	version-31	genre_desaccord	76	3
+50247b26	version-31	genre_desaccord	8	23
+50247b26	version-31	genre_desaccord	82	5
+50247b26	version-31	genre_desaccord	85	1
+50247b26	version-31	genre_desaccord	86	1
+50247b26	version-31	genre_desaccord	9	45
+50247b26	version-31	genre_desaccord	92	1
+50247b26	version-31	genre_desaccord	93	2
+50247b26	version-31	genre_desaccord	98	2
+50247b26	version-31	temoin	accord	960
+50247b26	version-31	temoin	accord par chaine	313
+50247b26	version-31	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	1
+50247b26	version-31	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	2
+50247b26	version-31	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	11
+50247b26	version-31	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	1976
+50247b26	version-31	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	313
+51ebbc0f	HI_1_13_0	arret	localise · genre hors table	1
+51ebbc0f	HI_1_13_0	arret	localise · opaque 114	1
+51ebbc0f	HI_1_13_0	arret	localise · opaque 117	1
+51ebbc0f	HI_1_13_0	arret	localise · opaque 12	1
+51ebbc0f	HI_1_13_0	arret	localise · opaque 16	2
+51ebbc0f	HI_1_13_0	arret	localise · opaque 20	2
+51ebbc0f	HI_1_13_0	arret	localise · opaque 34	2
+51ebbc0f	HI_1_13_0	arret	localise · opaque 36	702
+51ebbc0f	HI_1_13_0	arret	localise · opaque 5	87
+51ebbc0f	HI_1_13_0	arret	localise · opaque 50	2
+51ebbc0f	HI_1_13_0	arret	localise · opaque 6	12
+51ebbc0f	HI_1_13_0	arret	localise · opaque 64	2
+51ebbc0f	HI_1_13_0	arret	localise · opaque 66	5
+51ebbc0f	HI_1_13_0	arret	localise · opaque 67	1
+51ebbc0f	HI_1_13_0	arret	localise · opaque 72	3
+51ebbc0f	HI_1_13_0	arret	localise · opaque 73	1
+51ebbc0f	HI_1_13_0	arret	localise · opaque 79	2
+51ebbc0f	HI_1_13_0	arret	localise · opaque 82	4
+51ebbc0f	HI_1_13_0	arret	localise · opaque 84	1
+51ebbc0f	HI_1_13_0	arret	localise · opaque 89	1
+51ebbc0f	HI_1_13_0	arret	localise · opaque 97	1
+51ebbc0f	HI_1_13_0	arret	non localise · genre hors table	1
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 16	1
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 20	2
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 34	1
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 36	1145
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 5	122
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 55	1
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 56	1
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 6	14
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 64	2
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 67	2
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 69	1
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 71	1
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 77	1
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 82	15
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 83	1
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 96	3
+51ebbc0f	HI_1_13_0	arret	non localise · opaque 97	3
+51ebbc0f	HI_1_13_0	gain	ferme	756
+51ebbc0f	HI_1_13_0	gain	ferme au bit	2
+51ebbc0f	HI_1_13_0	gain	non ferme	648
+51ebbc0f	HI_1_13_0	genre_accord	0	68
+51ebbc0f	HI_1_13_0	genre_accord	1	15
+51ebbc0f	HI_1_13_0	genre_accord	100	3
+51ebbc0f	HI_1_13_0	genre_accord	104	2
+51ebbc0f	HI_1_13_0	genre_accord	105	5
+51ebbc0f	HI_1_13_0	genre_accord	11	2
+51ebbc0f	HI_1_13_0	genre_accord	15	679
+51ebbc0f	HI_1_13_0	genre_accord	21	89
+51ebbc0f	HI_1_13_0	genre_accord	36	15
+51ebbc0f	HI_1_13_0	genre_accord	38	76
+51ebbc0f	HI_1_13_0	genre_accord	39	49
+51ebbc0f	HI_1_13_0	genre_accord	40	9
+51ebbc0f	HI_1_13_0	genre_accord	47	4
+51ebbc0f	HI_1_13_0	genre_accord	7	1
+51ebbc0f	HI_1_13_0	genre_accord	75	41
+51ebbc0f	HI_1_13_0	genre_accord	76	125
+51ebbc0f	HI_1_13_0	genre_accord	82	495
+51ebbc0f	HI_1_13_0	genre_accord	85	5
+51ebbc0f	HI_1_13_0	genre_accord	9	99
+51ebbc0f	HI_1_13_0	genre_accord par chaine	0	23
+51ebbc0f	HI_1_13_0	genre_accord par chaine	11	1
+51ebbc0f	HI_1_13_0	genre_accord par chaine	15	129
+51ebbc0f	HI_1_13_0	genre_accord par chaine	21	16
+51ebbc0f	HI_1_13_0	genre_accord par chaine	38	24
+51ebbc0f	HI_1_13_0	genre_accord par chaine	39	12
+51ebbc0f	HI_1_13_0	genre_accord par chaine	40	1
+51ebbc0f	HI_1_13_0	genre_accord par chaine	75	10
+51ebbc0f	HI_1_13_0	genre_accord par chaine	76	30
+51ebbc0f	HI_1_13_0	genre_accord par chaine	82	1955
+51ebbc0f	HI_1_13_0	genre_accord par chaine	9	13
+51ebbc0f	HI_1_13_0	genre_desaccord	0	186
+51ebbc0f	HI_1_13_0	genre_desaccord	1	84
+51ebbc0f	HI_1_13_0	genre_desaccord	100	4
+51ebbc0f	HI_1_13_0	genre_desaccord	108	1
+51ebbc0f	HI_1_13_0	genre_desaccord	11	1
+51ebbc0f	HI_1_13_0	genre_desaccord	15	70
+51ebbc0f	HI_1_13_0	genre_desaccord	2	2
+51ebbc0f	HI_1_13_0	genre_desaccord	21	6
+51ebbc0f	HI_1_13_0	genre_desaccord	23	2
+51ebbc0f	HI_1_13_0	genre_desaccord	3	2
+51ebbc0f	HI_1_13_0	genre_desaccord	33	1
+51ebbc0f	HI_1_13_0	genre_desaccord	36	2
+51ebbc0f	HI_1_13_0	genre_desaccord	38	4
+51ebbc0f	HI_1_13_0	genre_desaccord	39	1
+51ebbc0f	HI_1_13_0	genre_desaccord	4	4
+51ebbc0f	HI_1_13_0	genre_desaccord	40	1
+51ebbc0f	HI_1_13_0	genre_desaccord	42	1
+51ebbc0f	HI_1_13_0	genre_desaccord	45	1
+51ebbc0f	HI_1_13_0	genre_desaccord	75	8
+51ebbc0f	HI_1_13_0	genre_desaccord	76	18
+51ebbc0f	HI_1_13_0	genre_desaccord	82	518
+51ebbc0f	HI_1_13_0	genre_desaccord	85	6
+51ebbc0f	HI_1_13_0	genre_desaccord	9	12
+51ebbc0f	HI_1_13_0	genre_desaccord	92	1
+51ebbc0f	HI_1_13_0	genre_desaccord	98	1
+51ebbc0f	HI_1_13_0	temoin	accord	778
+51ebbc0f	HI_1_13_0	temoin	accord par chaine	331
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	12
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	20
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	44
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	10
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	17
+51ebbc0f	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	1
+51ebbc0f	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+51ebbc0f	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	69
+51ebbc0f	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	27
+60ae07c4	HI_1_8_0	arret	localise · genre hors table	2
+60ae07c4	HI_1_8_0	arret	localise · opaque 10	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 111	2
+60ae07c4	HI_1_8_0	arret	localise · opaque 13	7
+60ae07c4	HI_1_8_0	arret	localise · opaque 16	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 20	3
+60ae07c4	HI_1_8_0	arret	localise · opaque 32	4
+60ae07c4	HI_1_8_0	arret	localise · opaque 34	16
+60ae07c4	HI_1_8_0	arret	localise · opaque 36	45
+60ae07c4	HI_1_8_0	arret	localise · opaque 43	2
+60ae07c4	HI_1_8_0	arret	localise · opaque 5	151
+60ae07c4	HI_1_8_0	arret	localise · opaque 52	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 56	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 6	7
+60ae07c4	HI_1_8_0	arret	localise · opaque 64	5
+60ae07c4	HI_1_8_0	arret	localise · opaque 66	4
+60ae07c4	HI_1_8_0	arret	localise · opaque 67	3
+60ae07c4	HI_1_8_0	arret	localise · opaque 68	4
+60ae07c4	HI_1_8_0	arret	localise · opaque 69	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 70	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 71	4
+60ae07c4	HI_1_8_0	arret	localise · opaque 72	4
+60ae07c4	HI_1_8_0	arret	localise · opaque 73	3
+60ae07c4	HI_1_8_0	arret	localise · opaque 74	2
+60ae07c4	HI_1_8_0	arret	localise · opaque 79	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 82	30
+60ae07c4	HI_1_8_0	arret	localise · opaque 83	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 84	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 87	2
+60ae07c4	HI_1_8_0	arret	localise · opaque 88	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 94	8
+60ae07c4	HI_1_8_0	arret	localise · opaque 96	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 97	1
+60ae07c4	HI_1_8_0	arret	localise · opaque 99	1
+60ae07c4	HI_1_8_0	arret	non localise · genre hors table	4
+60ae07c4	HI_1_8_0	arret	non localise · opaque 10	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 106	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 107	3
+60ae07c4	HI_1_8_0	arret	non localise · opaque 111	18
+60ae07c4	HI_1_8_0	arret	non localise · opaque 113	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 114	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 115	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 117	3
+60ae07c4	HI_1_8_0	arret	non localise · opaque 12	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 13	4
+60ae07c4	HI_1_8_0	arret	non localise · opaque 14	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 16	4
+60ae07c4	HI_1_8_0	arret	non localise · opaque 20	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 27	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 29	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 32	3
+60ae07c4	HI_1_8_0	arret	non localise · opaque 34	17
+60ae07c4	HI_1_8_0	arret	non localise · opaque 36	114
+60ae07c4	HI_1_8_0	arret	non localise · opaque 43	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 5	234
+60ae07c4	HI_1_8_0	arret	non localise · opaque 50	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 52	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 56	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 6	15
+60ae07c4	HI_1_8_0	arret	non localise · opaque 64	6
+60ae07c4	HI_1_8_0	arret	non localise · opaque 65	4
+60ae07c4	HI_1_8_0	arret	non localise · opaque 66	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 67	3
+60ae07c4	HI_1_8_0	arret	non localise · opaque 68	5
+60ae07c4	HI_1_8_0	arret	non localise · opaque 69	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 70	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 71	8
+60ae07c4	HI_1_8_0	arret	non localise · opaque 72	8
+60ae07c4	HI_1_8_0	arret	non localise · opaque 73	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 74	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 77	8
+60ae07c4	HI_1_8_0	arret	non localise · opaque 78	7
+60ae07c4	HI_1_8_0	arret	non localise · opaque 79	8
+60ae07c4	HI_1_8_0	arret	non localise · opaque 80	9
+60ae07c4	HI_1_8_0	arret	non localise · opaque 81	8
+60ae07c4	HI_1_8_0	arret	non localise · opaque 82	62
+60ae07c4	HI_1_8_0	arret	non localise · opaque 83	6
+60ae07c4	HI_1_8_0	arret	non localise · opaque 84	7
+60ae07c4	HI_1_8_0	arret	non localise · opaque 87	2
+60ae07c4	HI_1_8_0	arret	non localise · opaque 90	1
+60ae07c4	HI_1_8_0	arret	non localise · opaque 94	8
+60ae07c4	HI_1_8_0	arret	non localise · opaque 96	1
+60ae07c4	HI_1_8_0	gain	ferme	379
+60ae07c4	HI_1_8_0	gain	non ferme	2272
+60ae07c4	HI_1_8_0	genre_accord	0	14
+60ae07c4	HI_1_8_0	genre_accord	1	3
+60ae07c4	HI_1_8_0	genre_accord	100	2
+60ae07c4	HI_1_8_0	genre_accord	15	227
+60ae07c4	HI_1_8_0	genre_accord	21	94
+60ae07c4	HI_1_8_0	genre_accord	36	5
+60ae07c4	HI_1_8_0	genre_accord	38	159
+60ae07c4	HI_1_8_0	genre_accord	39	122
+60ae07c4	HI_1_8_0	genre_accord	40	31
+60ae07c4	HI_1_8_0	genre_accord	75	83
+60ae07c4	HI_1_8_0	genre_accord	76	499
+60ae07c4	HI_1_8_0	genre_accord	82	165
+60ae07c4	HI_1_8_0	genre_accord	9	104
+60ae07c4	HI_1_8_0	genre_accord par chaine	0	3
+60ae07c4	HI_1_8_0	genre_accord par chaine	100	1
+60ae07c4	HI_1_8_0	genre_accord par chaine	11	1
+60ae07c4	HI_1_8_0	genre_accord par chaine	15	262
+60ae07c4	HI_1_8_0	genre_accord par chaine	21	19
+60ae07c4	HI_1_8_0	genre_accord par chaine	36	1
+60ae07c4	HI_1_8_0	genre_accord par chaine	38	33
+60ae07c4	HI_1_8_0	genre_accord par chaine	39	21
+60ae07c4	HI_1_8_0	genre_accord par chaine	40	11
+60ae07c4	HI_1_8_0	genre_accord par chaine	7	1
+60ae07c4	HI_1_8_0	genre_accord par chaine	75	15
+60ae07c4	HI_1_8_0	genre_accord par chaine	76	57
+60ae07c4	HI_1_8_0	genre_accord par chaine	82	3454
+60ae07c4	HI_1_8_0	genre_accord par chaine	9	13
+60ae07c4	HI_1_8_0	genre_desaccord	0	95
+60ae07c4	HI_1_8_0	genre_desaccord	1	312
+60ae07c4	HI_1_8_0	genre_desaccord	105	1
+60ae07c4	HI_1_8_0	genre_desaccord	11	2
+60ae07c4	HI_1_8_0	genre_desaccord	118	1
+60ae07c4	HI_1_8_0	genre_desaccord	119	1
+60ae07c4	HI_1_8_0	genre_desaccord	15	417
+60ae07c4	HI_1_8_0	genre_desaccord	21	15
+60ae07c4	HI_1_8_0	genre_desaccord	23	1
+60ae07c4	HI_1_8_0	genre_desaccord	24	2
+60ae07c4	HI_1_8_0	genre_desaccord	3	1
+60ae07c4	HI_1_8_0	genre_desaccord	35	1
+60ae07c4	HI_1_8_0	genre_desaccord	36	563
+60ae07c4	HI_1_8_0	genre_desaccord	38	27
+60ae07c4	HI_1_8_0	genre_desaccord	39	6
+60ae07c4	HI_1_8_0	genre_desaccord	40	5
+60ae07c4	HI_1_8_0	genre_desaccord	44	1
+60ae07c4	HI_1_8_0	genre_desaccord	54	1
+60ae07c4	HI_1_8_0	genre_desaccord	75	18
+60ae07c4	HI_1_8_0	genre_desaccord	76	119
+60ae07c4	HI_1_8_0	genre_desaccord	82	1524
+60ae07c4	HI_1_8_0	genre_desaccord	85	14
+60ae07c4	HI_1_8_0	genre_desaccord	9	39
+60ae07c4	HI_1_8_0	genre_desaccord	98	8
+60ae07c4	HI_1_8_0	temoin	accord	842
+60ae07c4	HI_1_8_0	temoin	accord par chaine	592
+60ae07c4	HI_1_8_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	3
+60ae07c4	HI_1_8_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	10
+60ae07c4	HI_1_8_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	180
+60ae07c4	HI_1_8_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	74
+60ae07c4	HI_1_8_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	454
+60ae07c4	HI_1_8_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+60ae07c4	HI_1_8_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	84
+60ae07c4	HI_1_8_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	8
+60ae07c4	HI_1_8_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	228
+a349fea8	version-33	arret	localise · genre hors table	13
+a349fea8	version-33	arret	localise · opaque 10	13
+a349fea8	version-33	arret	localise · opaque 101	26
+a349fea8	version-33	arret	localise · opaque 106	15
+a349fea8	version-33	arret	localise · opaque 107	17
+a349fea8	version-33	arret	localise · opaque 109	17
+a349fea8	version-33	arret	localise · opaque 110	3
+a349fea8	version-33	arret	localise · opaque 111	93
+a349fea8	version-33	arret	localise · opaque 112	8
+a349fea8	version-33	arret	localise · opaque 113	4
+a349fea8	version-33	arret	localise · opaque 114	4
+a349fea8	version-33	arret	localise · opaque 115	14
+a349fea8	version-33	arret	localise · opaque 116	7
+a349fea8	version-33	arret	localise · opaque 117	4
+a349fea8	version-33	arret	localise · opaque 12	11
+a349fea8	version-33	arret	localise · opaque 120	4
+a349fea8	version-33	arret	localise · opaque 121	5
+a349fea8	version-33	arret	localise · opaque 122	5
+a349fea8	version-33	arret	localise · opaque 13	2
+a349fea8	version-33	arret	localise · opaque 14	7
+a349fea8	version-33	arret	localise · opaque 16	24
+a349fea8	version-33	arret	localise · opaque 17	8
+a349fea8	version-33	arret	localise · opaque 18	4
+a349fea8	version-33	arret	localise · opaque 19	32
+a349fea8	version-33	arret	localise · opaque 20	6
+a349fea8	version-33	arret	localise · opaque 27	10
+a349fea8	version-33	arret	localise · opaque 28	1
+a349fea8	version-33	arret	localise · opaque 29	3
+a349fea8	version-33	arret	localise · opaque 30	29
+a349fea8	version-33	arret	localise · opaque 32	19
+a349fea8	version-33	arret	localise · opaque 34	17
+a349fea8	version-33	arret	localise · opaque 35	1
+a349fea8	version-33	arret	localise · opaque 36	674
+a349fea8	version-33	arret	localise · opaque 43	2
+a349fea8	version-33	arret	localise · opaque 5	434
+a349fea8	version-33	arret	localise · opaque 50	14
+a349fea8	version-33	arret	localise · opaque 51	11
+a349fea8	version-33	arret	localise · opaque 52	5
+a349fea8	version-33	arret	localise · opaque 55	2
+a349fea8	version-33	arret	localise · opaque 56	8
+a349fea8	version-33	arret	localise · opaque 6	159
+a349fea8	version-33	arret	localise · opaque 60	2
+a349fea8	version-33	arret	localise · opaque 61	7
+a349fea8	version-33	arret	localise · opaque 62	3
+a349fea8	version-33	arret	localise · opaque 64	21
+a349fea8	version-33	arret	localise · opaque 65	18
+a349fea8	version-33	arret	localise · opaque 66	7
+a349fea8	version-33	arret	localise · opaque 67	2
+a349fea8	version-33	arret	localise · opaque 68	7
+a349fea8	version-33	arret	localise · opaque 69	7
+a349fea8	version-33	arret	localise · opaque 70	3
+a349fea8	version-33	arret	localise · opaque 71	3
+a349fea8	version-33	arret	localise · opaque 72	15
+a349fea8	version-33	arret	localise · opaque 73	307
+a349fea8	version-33	arret	localise · opaque 74	474
+a349fea8	version-33	arret	localise · opaque 77	4
+a349fea8	version-33	arret	localise · opaque 78	9
+a349fea8	version-33	arret	localise · opaque 79	4
+a349fea8	version-33	arret	localise · opaque 80	1650
+a349fea8	version-33	arret	localise · opaque 81	7
+a349fea8	version-33	arret	localise · opaque 82	2
+a349fea8	version-33	arret	localise · opaque 83	3
+a349fea8	version-33	arret	localise · opaque 84	7
+a349fea8	version-33	arret	localise · opaque 87	2
+a349fea8	version-33	arret	localise · opaque 88	5
+a349fea8	version-33	arret	localise · opaque 89	6
+a349fea8	version-33	arret	localise · opaque 90	6
+a349fea8	version-33	arret	localise · opaque 91	2
+a349fea8	version-33	arret	localise · opaque 94	3
+a349fea8	version-33	arret	localise · opaque 95	6
+a349fea8	version-33	arret	localise · opaque 96	12
+a349fea8	version-33	arret	localise · opaque 97	3
+a349fea8	version-33	arret	localise · opaque 99	93
+a349fea8	version-33	arret	non localise · genre hors table	10
+a349fea8	version-33	arret	non localise · opaque 10	3
+a349fea8	version-33	arret	non localise · opaque 101	16
+a349fea8	version-33	arret	non localise · opaque 106	5
+a349fea8	version-33	arret	non localise · opaque 107	5
+a349fea8	version-33	arret	non localise · opaque 109	2
+a349fea8	version-33	arret	non localise · opaque 110	1
+a349fea8	version-33	arret	non localise · opaque 111	41
+a349fea8	version-33	arret	non localise · opaque 112	5
+a349fea8	version-33	arret	non localise · opaque 113	3
+a349fea8	version-33	arret	non localise · opaque 114	2
+a349fea8	version-33	arret	non localise · opaque 115	10
+a349fea8	version-33	arret	non localise · opaque 116	6
+a349fea8	version-33	arret	non localise · opaque 117	1
+a349fea8	version-33	arret	non localise · opaque 12	4
+a349fea8	version-33	arret	non localise · opaque 120	1
+a349fea8	version-33	arret	non localise · opaque 13	3
+a349fea8	version-33	arret	non localise · opaque 14	5
+a349fea8	version-33	arret	non localise · opaque 16	10
+a349fea8	version-33	arret	non localise · opaque 17	2
+a349fea8	version-33	arret	non localise · opaque 18	4
+a349fea8	version-33	arret	non localise · opaque 19	13
+a349fea8	version-33	arret	non localise · opaque 20	3
+a349fea8	version-33	arret	non localise · opaque 27	1
+a349fea8	version-33	arret	non localise · opaque 28	1
+a349fea8	version-33	arret	non localise · opaque 30	7
+a349fea8	version-33	arret	non localise · opaque 32	6
+a349fea8	version-33	arret	non localise · opaque 34	6
+a349fea8	version-33	arret	non localise · opaque 36	266
+a349fea8	version-33	arret	non localise · opaque 43	2
+a349fea8	version-33	arret	non localise · opaque 5	224
+a349fea8	version-33	arret	non localise · opaque 50	6
+a349fea8	version-33	arret	non localise · opaque 51	5
+a349fea8	version-33	arret	non localise · opaque 52	2
+a349fea8	version-33	arret	non localise · opaque 56	3
+a349fea8	version-33	arret	non localise · opaque 6	93
+a349fea8	version-33	arret	non localise · opaque 60	1
+a349fea8	version-33	arret	non localise · opaque 62	2
+a349fea8	version-33	arret	non localise · opaque 64	12
+a349fea8	version-33	arret	non localise · opaque 65	7
+a349fea8	version-33	arret	non localise · opaque 66	3
+a349fea8	version-33	arret	non localise · opaque 67	1
+a349fea8	version-33	arret	non localise · opaque 68	4
+a349fea8	version-33	arret	non localise · opaque 69	7
+a349fea8	version-33	arret	non localise · opaque 70	2
+a349fea8	version-33	arret	non localise · opaque 71	4
+a349fea8	version-33	arret	non localise · opaque 72	8
+a349fea8	version-33	arret	non localise · opaque 73	112
+a349fea8	version-33	arret	non localise · opaque 74	138
+a349fea8	version-33	arret	non localise · opaque 77	1
+a349fea8	version-33	arret	non localise · opaque 78	4
+a349fea8	version-33	arret	non localise · opaque 79	3
+a349fea8	version-33	arret	non localise · opaque 80	569
+a349fea8	version-33	arret	non localise · opaque 81	4
+a349fea8	version-33	arret	non localise · opaque 83	2
+a349fea8	version-33	arret	non localise · opaque 84	2
+a349fea8	version-33	arret	non localise · opaque 87	2
+a349fea8	version-33	arret	non localise · opaque 88	5
+a349fea8	version-33	arret	non localise · opaque 89	1
+a349fea8	version-33	arret	non localise · opaque 90	4
+a349fea8	version-33	arret	non localise · opaque 91	2
+a349fea8	version-33	arret	non localise · opaque 94	1
+a349fea8	version-33	arret	non localise · opaque 95	1
+a349fea8	version-33	arret	non localise · opaque 96	9
+a349fea8	version-33	arret	non localise · opaque 97	5
+a349fea8	version-33	arret	non localise · opaque 99	19
+a349fea8	version-33	gain	ferme	9
+a349fea8	version-33	gain	non ferme	2318
+a349fea8	version-33	genre_accord	0	803
+a349fea8	version-33	genre_accord	11	3
+a349fea8	version-33	genre_accord	15	1263
+a349fea8	version-33	genre_accord	2	11
+a349fea8	version-33	genre_accord	21	342
+a349fea8	version-33	genre_accord	22	33
+a349fea8	version-33	genre_accord	36	4
+a349fea8	version-33	genre_accord	38	230
+a349fea8	version-33	genre_accord	39	108
+a349fea8	version-33	genre_accord	47	14
+a349fea8	version-33	genre_accord	7	1
+a349fea8	version-33	genre_accord	9	183
+a349fea8	version-33	genre_accord par chaine	0	291
+a349fea8	version-33	genre_accord par chaine	11	2
+a349fea8	version-33	genre_accord par chaine	15	382
+a349fea8	version-33	genre_accord par chaine	2	1
+a349fea8	version-33	genre_accord par chaine	21	135
+a349fea8	version-33	genre_accord par chaine	22	8
+a349fea8	version-33	genre_accord par chaine	36	4
+a349fea8	version-33	genre_accord par chaine	38	80
+a349fea8	version-33	genre_accord par chaine	39	50
+a349fea8	version-33	genre_accord par chaine	41	4
+a349fea8	version-33	genre_accord par chaine	47	2
+a349fea8	version-33	genre_accord par chaine	7	1
+a349fea8	version-33	genre_accord par chaine	9	72
+a349fea8	version-33	genre_desaccord	0	856
+a349fea8	version-33	genre_desaccord	1	250
+a349fea8	version-33	genre_desaccord	100	4
+a349fea8	version-33	genre_desaccord	102	6
+a349fea8	version-33	genre_desaccord	103	3
+a349fea8	version-33	genre_desaccord	104	20
+a349fea8	version-33	genre_desaccord	105	4
+a349fea8	version-33	genre_desaccord	108	109
+a349fea8	version-33	genre_desaccord	11	2
+a349fea8	version-33	genre_desaccord	110	1
+a349fea8	version-33	genre_desaccord	116	4
+a349fea8	version-33	genre_desaccord	118	6
+a349fea8	version-33	genre_desaccord	119	6
+a349fea8	version-33	genre_desaccord	15	1303
+a349fea8	version-33	genre_desaccord	2	23
+a349fea8	version-33	genre_desaccord	21	130
+a349fea8	version-33	genre_desaccord	22	4
+a349fea8	version-33	genre_desaccord	23	67
+a349fea8	version-33	genre_desaccord	24	9
+a349fea8	version-33	genre_desaccord	25	3
+a349fea8	version-33	genre_desaccord	26	3
+a349fea8	version-33	genre_desaccord	3	4
+a349fea8	version-33	genre_desaccord	31	6
+a349fea8	version-33	genre_desaccord	32	8
+a349fea8	version-33	genre_desaccord	33	11
+a349fea8	version-33	genre_desaccord	35	4
+a349fea8	version-33	genre_desaccord	36	2153
+a349fea8	version-33	genre_desaccord	37	7
+a349fea8	version-33	genre_desaccord	38	142
+a349fea8	version-33	genre_desaccord	39	45
+a349fea8	version-33	genre_desaccord	4	13
+a349fea8	version-33	genre_desaccord	40	74
+a349fea8	version-33	genre_desaccord	41	5
+a349fea8	version-33	genre_desaccord	42	8
+a349fea8	version-33	genre_desaccord	43	6
+a349fea8	version-33	genre_desaccord	44	8
+a349fea8	version-33	genre_desaccord	45	1
+a349fea8	version-33	genre_desaccord	46	7
+a349fea8	version-33	genre_desaccord	47	5
+a349fea8	version-33	genre_desaccord	48	8
+a349fea8	version-33	genre_desaccord	49	9
+a349fea8	version-33	genre_desaccord	5	4
+a349fea8	version-33	genre_desaccord	53	1
+a349fea8	version-33	genre_desaccord	54	19
+a349fea8	version-33	genre_desaccord	57	6
+a349fea8	version-33	genre_desaccord	58	4
+a349fea8	version-33	genre_desaccord	59	3
+a349fea8	version-33	genre_desaccord	63	4
+a349fea8	version-33	genre_desaccord	7	13
+a349fea8	version-33	genre_desaccord	76	5
+a349fea8	version-33	genre_desaccord	8	16
+a349fea8	version-33	genre_desaccord	82	5
+a349fea8	version-33	genre_desaccord	85	2
+a349fea8	version-33	genre_desaccord	86	1
+a349fea8	version-33	genre_desaccord	9	97
+a349fea8	version-33	genre_desaccord	92	1
+a349fea8	version-33	genre_desaccord	93	3
+a349fea8	version-33	genre_desaccord	98	11
+a349fea8	version-33	temoin	accord	1863
+a349fea8	version-33	temoin	accord par chaine	715
+a349fea8	version-33	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	1
+a349fea8	version-33	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	31
+a349fea8	version-33	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	2900
+a349fea8	version-33	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	1
+a349fea8	version-33	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	507
+a521164d	HI_1_4_1	arret	localise · genre hors table	2
+a521164d	HI_1_4_1	arret	localise · opaque 10	4
+a521164d	HI_1_4_1	arret	localise · opaque 101	12
+a521164d	HI_1_4_1	arret	localise · opaque 106	3
+a521164d	HI_1_4_1	arret	localise · opaque 107	5
+a521164d	HI_1_4_1	arret	localise · opaque 109	2
+a521164d	HI_1_4_1	arret	localise · opaque 111	1
+a521164d	HI_1_4_1	arret	localise · opaque 112	5
+a521164d	HI_1_4_1	arret	localise · opaque 113	3
+a521164d	HI_1_4_1	arret	localise · opaque 114	1
+a521164d	HI_1_4_1	arret	localise · opaque 115	2
+a521164d	HI_1_4_1	arret	localise · opaque 116	1
+a521164d	HI_1_4_1	arret	localise · opaque 117	1
+a521164d	HI_1_4_1	arret	localise · opaque 12	8
+a521164d	HI_1_4_1	arret	localise · opaque 120	1
+a521164d	HI_1_4_1	arret	localise · opaque 13	1
+a521164d	HI_1_4_1	arret	localise · opaque 14	2
+a521164d	HI_1_4_1	arret	localise · opaque 16	12
+a521164d	HI_1_4_1	arret	localise · opaque 17	7
+a521164d	HI_1_4_1	arret	localise · opaque 18	5
+a521164d	HI_1_4_1	arret	localise · opaque 19	17
+a521164d	HI_1_4_1	arret	localise · opaque 20	4
+a521164d	HI_1_4_1	arret	localise · opaque 27	6
+a521164d	HI_1_4_1	arret	localise · opaque 29	2
+a521164d	HI_1_4_1	arret	localise · opaque 30	8
+a521164d	HI_1_4_1	arret	localise · opaque 32	10
+a521164d	HI_1_4_1	arret	localise · opaque 34	3
+a521164d	HI_1_4_1	arret	localise · opaque 36	246
+a521164d	HI_1_4_1	arret	localise · opaque 5	149
+a521164d	HI_1_4_1	arret	localise · opaque 50	1
+a521164d	HI_1_4_1	arret	localise · opaque 51	2
+a521164d	HI_1_4_1	arret	localise · opaque 52	3
+a521164d	HI_1_4_1	arret	localise · opaque 55	2
+a521164d	HI_1_4_1	arret	localise · opaque 56	7
+a521164d	HI_1_4_1	arret	localise · opaque 6	40
+a521164d	HI_1_4_1	arret	localise · opaque 60	2
+a521164d	HI_1_4_1	arret	localise · opaque 61	4
+a521164d	HI_1_4_1	arret	localise · opaque 62	1
+a521164d	HI_1_4_1	arret	localise · opaque 64	8
+a521164d	HI_1_4_1	arret	localise · opaque 65	5
+a521164d	HI_1_4_1	arret	localise · opaque 66	2
+a521164d	HI_1_4_1	arret	localise · opaque 67	1
+a521164d	HI_1_4_1	arret	localise · opaque 68	3
+a521164d	HI_1_4_1	arret	localise · opaque 69	3
+a521164d	HI_1_4_1	arret	localise · opaque 70	2
+a521164d	HI_1_4_1	arret	localise · opaque 71	1
+a521164d	HI_1_4_1	arret	localise · opaque 72	6
+a521164d	HI_1_4_1	arret	localise · opaque 73	91
+a521164d	HI_1_4_1	arret	localise · opaque 74	212
+a521164d	HI_1_4_1	arret	localise · opaque 78	4
+a521164d	HI_1_4_1	arret	localise · opaque 79	2
+a521164d	HI_1_4_1	arret	localise · opaque 80	601
+a521164d	HI_1_4_1	arret	localise · opaque 81	1
+a521164d	HI_1_4_1	arret	localise · opaque 83	2
+a521164d	HI_1_4_1	arret	localise · opaque 84	4
+a521164d	HI_1_4_1	arret	localise · opaque 87	2
+a521164d	HI_1_4_1	arret	localise · opaque 88	3
+a521164d	HI_1_4_1	arret	localise · opaque 89	2
+a521164d	HI_1_4_1	arret	localise · opaque 90	3
+a521164d	HI_1_4_1	arret	localise · opaque 91	2
+a521164d	HI_1_4_1	arret	localise · opaque 94	1
+a521164d	HI_1_4_1	arret	localise · opaque 96	9
+a521164d	HI_1_4_1	arret	localise · opaque 97	2
+a521164d	HI_1_4_1	arret	localise · opaque 99	2
+a521164d	HI_1_4_1	arret	non localise · genre hors table	6
+a521164d	HI_1_4_1	arret	non localise · opaque 10	2
+a521164d	HI_1_4_1	arret	non localise · opaque 101	1
+a521164d	HI_1_4_1	arret	non localise · opaque 106	1
+a521164d	HI_1_4_1	arret	non localise · opaque 107	1
+a521164d	HI_1_4_1	arret	non localise · opaque 112	1
+a521164d	HI_1_4_1	arret	non localise · opaque 116	1
+a521164d	HI_1_4_1	arret	non localise · opaque 12	1
+a521164d	HI_1_4_1	arret	non localise · opaque 16	3
+a521164d	HI_1_4_1	arret	non localise · opaque 17	1
+a521164d	HI_1_4_1	arret	non localise · opaque 18	1
+a521164d	HI_1_4_1	arret	non localise · opaque 19	4
+a521164d	HI_1_4_1	arret	non localise · opaque 27	1
+a521164d	HI_1_4_1	arret	non localise · opaque 30	2
+a521164d	HI_1_4_1	arret	non localise · opaque 32	5
+a521164d	HI_1_4_1	arret	non localise · opaque 34	5
+a521164d	HI_1_4_1	arret	non localise · opaque 35	1
+a521164d	HI_1_4_1	arret	non localise · opaque 36	71
+a521164d	HI_1_4_1	arret	non localise · opaque 5	74
+a521164d	HI_1_4_1	arret	non localise · opaque 51	3
+a521164d	HI_1_4_1	arret	non localise · opaque 52	1
+a521164d	HI_1_4_1	arret	non localise · opaque 56	2
+a521164d	HI_1_4_1	arret	non localise · opaque 6	22
+a521164d	HI_1_4_1	arret	non localise · opaque 60	1
+a521164d	HI_1_4_1	arret	non localise · opaque 61	1
+a521164d	HI_1_4_1	arret	non localise · opaque 62	1
+a521164d	HI_1_4_1	arret	non localise · opaque 64	5
+a521164d	HI_1_4_1	arret	non localise · opaque 65	3
+a521164d	HI_1_4_1	arret	non localise · opaque 66	3
+a521164d	HI_1_4_1	arret	non localise · opaque 68	1
+a521164d	HI_1_4_1	arret	non localise · opaque 69	3
+a521164d	HI_1_4_1	arret	non localise · opaque 72	5
+a521164d	HI_1_4_1	arret	non localise · opaque 73	29
+a521164d	HI_1_4_1	arret	non localise · opaque 74	40
+a521164d	HI_1_4_1	arret	non localise · opaque 78	5
+a521164d	HI_1_4_1	arret	non localise · opaque 80	200
+a521164d	HI_1_4_1	arret	non localise · opaque 83	1
+a521164d	HI_1_4_1	arret	non localise · opaque 88	4
+a521164d	HI_1_4_1	arret	non localise · opaque 90	1
+a521164d	HI_1_4_1	arret	non localise · opaque 96	4
+a521164d	HI_1_4_1	arret	non localise · opaque 99	1
+a521164d	HI_1_4_1	gain	ferme	7
+a521164d	HI_1_4_1	gain	non ferme	765
+a521164d	HI_1_4_1	genre_accord	0	206
+a521164d	HI_1_4_1	genre_accord	11	2
+a521164d	HI_1_4_1	genre_accord	15	736
+a521164d	HI_1_4_1	genre_accord	21	97
+a521164d	HI_1_4_1	genre_accord	22	13
+a521164d	HI_1_4_1	genre_accord	36	1
+a521164d	HI_1_4_1	genre_accord	38	61
+a521164d	HI_1_4_1	genre_accord	39	48
+a521164d	HI_1_4_1	genre_accord	47	4
+a521164d	HI_1_4_1	genre_accord	9	55
+a521164d	HI_1_4_1	genre_accord par chaine	0	79
+a521164d	HI_1_4_1	genre_accord par chaine	11	1
+a521164d	HI_1_4_1	genre_accord par chaine	15	121
+a521164d	HI_1_4_1	genre_accord par chaine	21	31
+a521164d	HI_1_4_1	genre_accord par chaine	22	3
+a521164d	HI_1_4_1	genre_accord par chaine	36	3
+a521164d	HI_1_4_1	genre_accord par chaine	38	30
+a521164d	HI_1_4_1	genre_accord par chaine	39	10
+a521164d	HI_1_4_1	genre_accord par chaine	7	1
+a521164d	HI_1_4_1	genre_accord par chaine	9	22
+a521164d	HI_1_4_1	genre_desaccord	0	401
+a521164d	HI_1_4_1	genre_desaccord	1	95
+a521164d	HI_1_4_1	genre_desaccord	100	2
+a521164d	HI_1_4_1	genre_desaccord	103	1
+a521164d	HI_1_4_1	genre_desaccord	104	1
+a521164d	HI_1_4_1	genre_desaccord	105	1
+a521164d	HI_1_4_1	genre_desaccord	108	26
+a521164d	HI_1_4_1	genre_desaccord	11	1
+a521164d	HI_1_4_1	genre_desaccord	116	2
+a521164d	HI_1_4_1	genre_desaccord	118	6
+a521164d	HI_1_4_1	genre_desaccord	15	944
+a521164d	HI_1_4_1	genre_desaccord	2	4
+a521164d	HI_1_4_1	genre_desaccord	21	33
+a521164d	HI_1_4_1	genre_desaccord	22	2
+a521164d	HI_1_4_1	genre_desaccord	23	92
+a521164d	HI_1_4_1	genre_desaccord	24	3
+a521164d	HI_1_4_1	genre_desaccord	25	1
+a521164d	HI_1_4_1	genre_desaccord	26	1
+a521164d	HI_1_4_1	genre_desaccord	3	1
+a521164d	HI_1_4_1	genre_desaccord	33	3
+a521164d	HI_1_4_1	genre_desaccord	36	767
+a521164d	HI_1_4_1	genre_desaccord	38	48
+a521164d	HI_1_4_1	genre_desaccord	39	8
+a521164d	HI_1_4_1	genre_desaccord	4	10
+a521164d	HI_1_4_1	genre_desaccord	40	14
+a521164d	HI_1_4_1	genre_desaccord	41	1
+a521164d	HI_1_4_1	genre_desaccord	42	1
+a521164d	HI_1_4_1	genre_desaccord	43	2
+a521164d	HI_1_4_1	genre_desaccord	44	3
+a521164d	HI_1_4_1	genre_desaccord	47	1
+a521164d	HI_1_4_1	genre_desaccord	48	1
+a521164d	HI_1_4_1	genre_desaccord	49	3
+a521164d	HI_1_4_1	genre_desaccord	5	2
+a521164d	HI_1_4_1	genre_desaccord	53	1
+a521164d	HI_1_4_1	genre_desaccord	54	3
+a521164d	HI_1_4_1	genre_desaccord	57	1
+a521164d	HI_1_4_1	genre_desaccord	59	1
+a521164d	HI_1_4_1	genre_desaccord	7	3
+a521164d	HI_1_4_1	genre_desaccord	76	1
+a521164d	HI_1_4_1	genre_desaccord	8	7
+a521164d	HI_1_4_1	genre_desaccord	82	2
+a521164d	HI_1_4_1	genre_desaccord	9	20
+a521164d	HI_1_4_1	genre_desaccord	92	4
+a521164d	HI_1_4_1	genre_desaccord	93	2
+a521164d	HI_1_4_1	temoin	accord	604
+a521164d	HI_1_4_1	temoin	accord par chaine	201
+a521164d	HI_1_4_1	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	2
+a521164d	HI_1_4_1	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	1090
+a521164d	HI_1_4_1	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	1
+a521164d	HI_1_4_1	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	1
+a521164d	HI_1_4_1	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	208
+bcb6d393	HI_1_12_0	arret	localise · opaque 109	1
+bcb6d393	HI_1_12_0	arret	localise · opaque 110	1
+bcb6d393	HI_1_12_0	arret	localise · opaque 12	1
+bcb6d393	HI_1_12_0	arret	localise · opaque 16	5
+bcb6d393	HI_1_12_0	arret	localise · opaque 34	4
+bcb6d393	HI_1_12_0	arret	localise · opaque 36	903
+bcb6d393	HI_1_12_0	arret	localise · opaque 5	163
+bcb6d393	HI_1_12_0	arret	localise · opaque 6	8
+bcb6d393	HI_1_12_0	arret	localise · opaque 64	1
+bcb6d393	HI_1_12_0	arret	localise · opaque 81	1
+bcb6d393	HI_1_12_0	arret	localise · opaque 82	20
+bcb6d393	HI_1_12_0	arret	localise · opaque 89	1
+bcb6d393	HI_1_12_0	arret	localise · opaque 90	1
+bcb6d393	HI_1_12_0	arret	non localise · opaque 17	1
+bcb6d393	HI_1_12_0	arret	non localise · opaque 36	128
+bcb6d393	HI_1_12_0	arret	non localise · opaque 5	14
+bcb6d393	HI_1_12_0	arret	non localise · opaque 74	1
+bcb6d393	HI_1_12_0	arret	non localise · opaque 82	22
+bcb6d393	HI_1_12_0	arret	non localise · opaque 96	1
+bcb6d393	HI_1_12_0	gain	ferme	14
+bcb6d393	HI_1_12_0	gain	non ferme	100
+bcb6d393	HI_1_12_0	genre_accord	0	76
+bcb6d393	HI_1_12_0	genre_accord	1	21
+bcb6d393	HI_1_12_0	genre_accord	100	3
+bcb6d393	HI_1_12_0	genre_accord	11	4
+bcb6d393	HI_1_12_0	genre_accord	15	597
+bcb6d393	HI_1_12_0	genre_accord	21	82
+bcb6d393	HI_1_12_0	genre_accord	36	78
+bcb6d393	HI_1_12_0	genre_accord	38	170
+bcb6d393	HI_1_12_0	genre_accord	39	50
+bcb6d393	HI_1_12_0	genre_accord	40	19
+bcb6d393	HI_1_12_0	genre_accord	47	1
+bcb6d393	HI_1_12_0	genre_accord	7	17
+bcb6d393	HI_1_12_0	genre_accord	75	77
+bcb6d393	HI_1_12_0	genre_accord	76	181
+bcb6d393	HI_1_12_0	genre_accord	82	561
+bcb6d393	HI_1_12_0	genre_accord	85	10
+bcb6d393	HI_1_12_0	genre_accord	9	103
+bcb6d393	HI_1_12_0	genre_accord par chaine	0	12
+bcb6d393	HI_1_12_0	genre_accord par chaine	1	6
+bcb6d393	HI_1_12_0	genre_accord par chaine	104	1
+bcb6d393	HI_1_12_0	genre_accord par chaine	105	3
+bcb6d393	HI_1_12_0	genre_accord par chaine	15	56
+bcb6d393	HI_1_12_0	genre_accord par chaine	21	9
+bcb6d393	HI_1_12_0	genre_accord par chaine	36	6
+bcb6d393	HI_1_12_0	genre_accord par chaine	38	14
+bcb6d393	HI_1_12_0	genre_accord par chaine	39	1
+bcb6d393	HI_1_12_0	genre_accord par chaine	4	1
+bcb6d393	HI_1_12_0	genre_accord par chaine	40	1
+bcb6d393	HI_1_12_0	genre_accord par chaine	7	5
+bcb6d393	HI_1_12_0	genre_accord par chaine	75	8
+bcb6d393	HI_1_12_0	genre_accord par chaine	76	7
+bcb6d393	HI_1_12_0	genre_accord par chaine	82	443
+bcb6d393	HI_1_12_0	genre_accord par chaine	9	3
+bcb6d393	HI_1_12_0	genre_desaccord	0	95
+bcb6d393	HI_1_12_0	genre_desaccord	1	24
+bcb6d393	HI_1_12_0	genre_desaccord	116	1
+bcb6d393	HI_1_12_0	genre_desaccord	118	3
+bcb6d393	HI_1_12_0	genre_desaccord	15	121
+bcb6d393	HI_1_12_0	genre_desaccord	2	1
+bcb6d393	HI_1_12_0	genre_desaccord	36	8
+bcb6d393	HI_1_12_0	genre_desaccord	38	2
+bcb6d393	HI_1_12_0	genre_desaccord	4	4
+bcb6d393	HI_1_12_0	genre_desaccord	46	1
+bcb6d393	HI_1_12_0	genre_desaccord	47	1
+bcb6d393	HI_1_12_0	genre_desaccord	7	6
+bcb6d393	HI_1_12_0	genre_desaccord	75	7
+bcb6d393	HI_1_12_0	genre_desaccord	76	5
+bcb6d393	HI_1_12_0	genre_desaccord	8	2
+bcb6d393	HI_1_12_0	genre_desaccord	82	641
+bcb6d393	HI_1_12_0	genre_desaccord	85	8
+bcb6d393	HI_1_12_0	genre_desaccord	9	8
+bcb6d393	HI_1_12_0	genre_desaccord	98	1
+bcb6d393	HI_1_12_0	temoin	accord	958
+bcb6d393	HI_1_12_0	temoin	accord par chaine	271
+bcb6d393	HI_1_12_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	12
+bcb6d393	HI_1_12_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	2
+bcb6d393	HI_1_12_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	40
+bcb6d393	HI_1_12_0	temoin	desaccord · E > S · depuis E ferme au bit · depuis S ferme	4
+bcb6d393	HI_1_12_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+bcb6d393	HI_1_12_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	29
+bcb6d393	HI_1_12_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	22
+bf15f7ab	HI_1_13_0	arret	localise · genre hors table	3
+bf15f7ab	HI_1_13_0	arret	localise · opaque 10	7
+bf15f7ab	HI_1_13_0	arret	localise · opaque 109	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 113	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 116	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 12	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 120	2
+bf15f7ab	HI_1_13_0	arret	localise · opaque 121	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 122	2
+bf15f7ab	HI_1_13_0	arret	localise · opaque 14	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 16	3
+bf15f7ab	HI_1_13_0	arret	localise · opaque 18	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 19	2
+bf15f7ab	HI_1_13_0	arret	localise · opaque 20	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 30	2
+bf15f7ab	HI_1_13_0	arret	localise · opaque 32	5
+bf15f7ab	HI_1_13_0	arret	localise · opaque 34	2
+bf15f7ab	HI_1_13_0	arret	localise · opaque 36	1461
+bf15f7ab	HI_1_13_0	arret	localise · opaque 43	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 5	288
+bf15f7ab	HI_1_13_0	arret	localise · opaque 50	2
+bf15f7ab	HI_1_13_0	arret	localise · opaque 6	20
+bf15f7ab	HI_1_13_0	arret	localise · opaque 62	2
+bf15f7ab	HI_1_13_0	arret	localise · opaque 64	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 65	3
+bf15f7ab	HI_1_13_0	arret	localise · opaque 68	3
+bf15f7ab	HI_1_13_0	arret	localise · opaque 70	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 71	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 79	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 81	2
+bf15f7ab	HI_1_13_0	arret	localise · opaque 87	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 88	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 89	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 90	2
+bf15f7ab	HI_1_13_0	arret	localise · opaque 91	1
+bf15f7ab	HI_1_13_0	arret	localise · opaque 97	1
+bf15f7ab	HI_1_13_0	arret	non localise · genre hors table	1
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 106	1
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 112	1
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 36	163
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 5	39
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 6	4
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 65	1
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 66	1
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 82	5
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 88	1
+bf15f7ab	HI_1_13_0	arret	non localise · opaque 96	1
+bf15f7ab	HI_1_13_0	gain	ferme	91
+bf15f7ab	HI_1_13_0	gain	non ferme	53
+bf15f7ab	HI_1_13_0	genre_accord	0	85
+bf15f7ab	HI_1_13_0	genre_accord	1	26
+bf15f7ab	HI_1_13_0	genre_accord	104	4
+bf15f7ab	HI_1_13_0	genre_accord	105	12
+bf15f7ab	HI_1_13_0	genre_accord	11	7
+bf15f7ab	HI_1_13_0	genre_accord	15	801
+bf15f7ab	HI_1_13_0	genre_accord	21	135
+bf15f7ab	HI_1_13_0	genre_accord	36	32
+bf15f7ab	HI_1_13_0	genre_accord	38	272
+bf15f7ab	HI_1_13_0	genre_accord	39	109
+bf15f7ab	HI_1_13_0	genre_accord	40	51
+bf15f7ab	HI_1_13_0	genre_accord	7	48
+bf15f7ab	HI_1_13_0	genre_accord	75	119
+bf15f7ab	HI_1_13_0	genre_accord	76	108
+bf15f7ab	HI_1_13_0	genre_accord	82	722
+bf15f7ab	HI_1_13_0	genre_accord	85	14
+bf15f7ab	HI_1_13_0	genre_accord	9	249
+bf15f7ab	HI_1_13_0	genre_accord par chaine	0	6
+bf15f7ab	HI_1_13_0	genre_accord par chaine	15	66
+bf15f7ab	HI_1_13_0	genre_accord par chaine	21	4
+bf15f7ab	HI_1_13_0	genre_accord par chaine	36	1
+bf15f7ab	HI_1_13_0	genre_accord par chaine	38	16
+bf15f7ab	HI_1_13_0	genre_accord par chaine	39	9
+bf15f7ab	HI_1_13_0	genre_accord par chaine	40	2
+bf15f7ab	HI_1_13_0	genre_accord par chaine	7	8
+bf15f7ab	HI_1_13_0	genre_accord par chaine	75	2
+bf15f7ab	HI_1_13_0	genre_accord par chaine	76	1
+bf15f7ab	HI_1_13_0	genre_accord par chaine	82	329
+bf15f7ab	HI_1_13_0	genre_accord par chaine	9	7
+bf15f7ab	HI_1_13_0	genre_desaccord	0	500
+bf15f7ab	HI_1_13_0	genre_desaccord	1	165
+bf15f7ab	HI_1_13_0	genre_desaccord	100	1
+bf15f7ab	HI_1_13_0	genre_desaccord	11	3
+bf15f7ab	HI_1_13_0	genre_desaccord	110	1
+bf15f7ab	HI_1_13_0	genre_desaccord	118	1
+bf15f7ab	HI_1_13_0	genre_desaccord	15	44
+bf15f7ab	HI_1_13_0	genre_desaccord	2	9
+bf15f7ab	HI_1_13_0	genre_desaccord	21	4
+bf15f7ab	HI_1_13_0	genre_desaccord	3	1
+bf15f7ab	HI_1_13_0	genre_desaccord	31	3
+bf15f7ab	HI_1_13_0	genre_desaccord	33	8
+bf15f7ab	HI_1_13_0	genre_desaccord	35	1
+bf15f7ab	HI_1_13_0	genre_desaccord	36	5
+bf15f7ab	HI_1_13_0	genre_desaccord	37	1
+bf15f7ab	HI_1_13_0	genre_desaccord	38	3
+bf15f7ab	HI_1_13_0	genre_desaccord	39	1
+bf15f7ab	HI_1_13_0	genre_desaccord	4	5
+bf15f7ab	HI_1_13_0	genre_desaccord	40	1
+bf15f7ab	HI_1_13_0	genre_desaccord	41	3
+bf15f7ab	HI_1_13_0	genre_desaccord	43	1
+bf15f7ab	HI_1_13_0	genre_desaccord	46	2
+bf15f7ab	HI_1_13_0	genre_desaccord	47	2
+bf15f7ab	HI_1_13_0	genre_desaccord	5	2
+bf15f7ab	HI_1_13_0	genre_desaccord	57	1
+bf15f7ab	HI_1_13_0	genre_desaccord	58	3
+bf15f7ab	HI_1_13_0	genre_desaccord	6	1
+bf15f7ab	HI_1_13_0	genre_desaccord	7	38
+bf15f7ab	HI_1_13_0	genre_desaccord	75	12
+bf15f7ab	HI_1_13_0	genre_desaccord	76	9
+bf15f7ab	HI_1_13_0	genre_desaccord	8	9
+bf15f7ab	HI_1_13_0	genre_desaccord	82	379
+bf15f7ab	HI_1_13_0	genre_desaccord	85	16
+bf15f7ab	HI_1_13_0	genre_desaccord	86	1
+bf15f7ab	HI_1_13_0	genre_desaccord	9	1
+bf15f7ab	HI_1_13_0	genre_desaccord	92	1
+bf15f7ab	HI_1_13_0	temoin	accord	1437
+bf15f7ab	HI_1_13_0	temoin	accord par chaine	335
+bf15f7ab	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme au bit · depuis S ferme	1
+bf15f7ab	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	3
+bf15f7ab	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	85
+bf15f7ab	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	4
+bf15f7ab	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme au bit · depuis S ferme	1
+bf15f7ab	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	1
+bf15f7ab	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S non ferme	1
+bf15f7ab	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	280
+bf15f7ab	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 109	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 12	3
+bfecd02b	HI_1_13_0	arret	localise · opaque 120	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 16	3
+bfecd02b	HI_1_13_0	arret	localise · opaque 17	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 18	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 20	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 34	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 36	2334
+bfecd02b	HI_1_13_0	arret	localise · opaque 5	168
+bfecd02b	HI_1_13_0	arret	localise · opaque 50	2
+bfecd02b	HI_1_13_0	arret	localise · opaque 55	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 6	35
+bfecd02b	HI_1_13_0	arret	localise · opaque 62	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 64	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 65	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 70	2
+bfecd02b	HI_1_13_0	arret	localise · opaque 71	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 82	11
+bfecd02b	HI_1_13_0	arret	localise · opaque 95	1
+bfecd02b	HI_1_13_0	arret	localise · opaque 96	1
+bfecd02b	HI_1_13_0	arret	non localise · opaque 10	1
+bfecd02b	HI_1_13_0	arret	non localise · opaque 36	274
+bfecd02b	HI_1_13_0	arret	non localise · opaque 5	25
+bfecd02b	HI_1_13_0	arret	non localise · opaque 6	5
+bfecd02b	HI_1_13_0	arret	non localise · opaque 82	19
+bfecd02b	HI_1_13_0	gain	ferme	107
+bfecd02b	HI_1_13_0	gain	non ferme	90
+bfecd02b	HI_1_13_0	genre_accord	0	145
+bfecd02b	HI_1_13_0	genre_accord	1	61
+bfecd02b	HI_1_13_0	genre_accord	100	4
+bfecd02b	HI_1_13_0	genre_accord	103	4
+bfecd02b	HI_1_13_0	genre_accord	11	6
+bfecd02b	HI_1_13_0	genre_accord	15	779
+bfecd02b	HI_1_13_0	genre_accord	21	232
+bfecd02b	HI_1_13_0	genre_accord	22	2
+bfecd02b	HI_1_13_0	genre_accord	36	115
+bfecd02b	HI_1_13_0	genre_accord	38	267
+bfecd02b	HI_1_13_0	genre_accord	39	69
+bfecd02b	HI_1_13_0	genre_accord	4	2
+bfecd02b	HI_1_13_0	genre_accord	40	9
+bfecd02b	HI_1_13_0	genre_accord	47	14
+bfecd02b	HI_1_13_0	genre_accord	7	17
+bfecd02b	HI_1_13_0	genre_accord	75	129
+bfecd02b	HI_1_13_0	genre_accord	76	271
+bfecd02b	HI_1_13_0	genre_accord	82	813
+bfecd02b	HI_1_13_0	genre_accord	85	17
+bfecd02b	HI_1_13_0	genre_accord	9	137
+bfecd02b	HI_1_13_0	genre_accord par chaine	0	15
+bfecd02b	HI_1_13_0	genre_accord par chaine	1	2
+bfecd02b	HI_1_13_0	genre_accord par chaine	11	1
+bfecd02b	HI_1_13_0	genre_accord par chaine	15	20
+bfecd02b	HI_1_13_0	genre_accord par chaine	21	22
+bfecd02b	HI_1_13_0	genre_accord par chaine	36	12
+bfecd02b	HI_1_13_0	genre_accord par chaine	38	23
+bfecd02b	HI_1_13_0	genre_accord par chaine	39	6
+bfecd02b	HI_1_13_0	genre_accord par chaine	7	3
+bfecd02b	HI_1_13_0	genre_accord par chaine	75	11
+bfecd02b	HI_1_13_0	genre_accord par chaine	76	37
+bfecd02b	HI_1_13_0	genre_accord par chaine	82	402
+bfecd02b	HI_1_13_0	genre_accord par chaine	9	5
+bfecd02b	HI_1_13_0	genre_desaccord	0	185
+bfecd02b	HI_1_13_0	genre_desaccord	1	86
+bfecd02b	HI_1_13_0	genre_desaccord	100	1
+bfecd02b	HI_1_13_0	genre_desaccord	118	4
+bfecd02b	HI_1_13_0	genre_desaccord	15	48
+bfecd02b	HI_1_13_0	genre_desaccord	2	1
+bfecd02b	HI_1_13_0	genre_desaccord	21	5
+bfecd02b	HI_1_13_0	genre_desaccord	36	37
+bfecd02b	HI_1_13_0	genre_desaccord	38	2
+bfecd02b	HI_1_13_0	genre_desaccord	4	14
+bfecd02b	HI_1_13_0	genre_desaccord	42	1
+bfecd02b	HI_1_13_0	genre_desaccord	45	1
+bfecd02b	HI_1_13_0	genre_desaccord	58	2
+bfecd02b	HI_1_13_0	genre_desaccord	63	1
+bfecd02b	HI_1_13_0	genre_desaccord	7	9
+bfecd02b	HI_1_13_0	genre_desaccord	75	19
+bfecd02b	HI_1_13_0	genre_desaccord	76	6
+bfecd02b	HI_1_13_0	genre_desaccord	8	3
+bfecd02b	HI_1_13_0	genre_desaccord	82	402
+bfecd02b	HI_1_13_0	genre_desaccord	85	17
+bfecd02b	HI_1_13_0	genre_desaccord	86	1
+bfecd02b	HI_1_13_0	genre_desaccord	9	3
+bfecd02b	HI_1_13_0	temoin	accord	1579
+bfecd02b	HI_1_13_0	temoin	accord par chaine	429
+bfecd02b	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	4
+bfecd02b	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	93
+bfecd02b	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	1
+bfecd02b	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	11
+bfecd02b	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	2
+bfecd02b	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+bfecd02b	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	49
+bfecd02b	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	13
+c75f33b8	HI_1_13_0	arret	localise · opaque 109	1
+c75f33b8	HI_1_13_0	arret	localise · opaque 36	280
+c75f33b8	HI_1_13_0	arret	localise · opaque 5	13
+c75f33b8	HI_1_13_0	arret	localise · opaque 6	10
+c75f33b8	HI_1_13_0	arret	localise · opaque 62	1
+c75f33b8	HI_1_13_0	arret	localise · opaque 82	24
+c75f33b8	HI_1_13_0	arret	non localise · opaque 106	1
+c75f33b8	HI_1_13_0	arret	non localise · opaque 12	1
+c75f33b8	HI_1_13_0	arret	non localise · opaque 36	1193
+c75f33b8	HI_1_13_0	arret	non localise · opaque 5	64
+c75f33b8	HI_1_13_0	arret	non localise · opaque 50	1
+c75f33b8	HI_1_13_0	arret	non localise · opaque 6	14
+c75f33b8	HI_1_13_0	arret	non localise · opaque 64	1
+c75f33b8	HI_1_13_0	arret	non localise · opaque 68	1
+c75f33b8	HI_1_13_0	arret	non localise · opaque 82	87
+c75f33b8	HI_1_13_0	gain	ferme	779
+c75f33b8	HI_1_13_0	gain	non ferme	168
+c75f33b8	HI_1_13_0	genre_accord	0	21
+c75f33b8	HI_1_13_0	genre_accord	1	26
+c75f33b8	HI_1_13_0	genre_accord	100	1
+c75f33b8	HI_1_13_0	genre_accord	104	1
+c75f33b8	HI_1_13_0	genre_accord	105	3
+c75f33b8	HI_1_13_0	genre_accord	11	1
+c75f33b8	HI_1_13_0	genre_accord	15	368
+c75f33b8	HI_1_13_0	genre_accord	21	10
+c75f33b8	HI_1_13_0	genre_accord	36	4
+c75f33b8	HI_1_13_0	genre_accord	38	24
+c75f33b8	HI_1_13_0	genre_accord	39	5
+c75f33b8	HI_1_13_0	genre_accord	4	2
+c75f33b8	HI_1_13_0	genre_accord	40	4
+c75f33b8	HI_1_13_0	genre_accord	47	2
+c75f33b8	HI_1_13_0	genre_accord	75	11
+c75f33b8	HI_1_13_0	genre_accord	76	30
+c75f33b8	HI_1_13_0	genre_accord	82	427
+c75f33b8	HI_1_13_0	genre_accord	85	10
+c75f33b8	HI_1_13_0	genre_accord	9	51
+c75f33b8	HI_1_13_0	genre_accord par chaine	0	1
+c75f33b8	HI_1_13_0	genre_accord par chaine	1	1
+c75f33b8	HI_1_13_0	genre_accord par chaine	15	50
+c75f33b8	HI_1_13_0	genre_accord par chaine	75	1
+c75f33b8	HI_1_13_0	genre_accord par chaine	76	1
+c75f33b8	HI_1_13_0	genre_accord par chaine	82	34
+c75f33b8	HI_1_13_0	genre_desaccord	0	20
+c75f33b8	HI_1_13_0	genre_desaccord	1	28
+c75f33b8	HI_1_13_0	genre_desaccord	15	23
+c75f33b8	HI_1_13_0	genre_desaccord	21	2
+c75f33b8	HI_1_13_0	genre_desaccord	36	3
+c75f33b8	HI_1_13_0	genre_desaccord	38	13
+c75f33b8	HI_1_13_0	genre_desaccord	4	2
+c75f33b8	HI_1_13_0	genre_desaccord	40	2
+c75f33b8	HI_1_13_0	genre_desaccord	75	1
+c75f33b8	HI_1_13_0	genre_desaccord	76	3
+c75f33b8	HI_1_13_0	genre_desaccord	82	146
+c75f33b8	HI_1_13_0	genre_desaccord	85	7
+c75f33b8	HI_1_13_0	genre_desaccord	9	8
+c75f33b8	HI_1_13_0	temoin	accord	355
+c75f33b8	HI_1_13_0	temoin	accord par chaine	19
+c75f33b8	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	8
+c75f33b8	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	26
+c75f33b8	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	15
+c75f33b8	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	4
+d9781168	HI_1_13_0	arret	localise · genre hors table	1
+d9781168	HI_1_13_0	arret	localise · opaque 106	1
+d9781168	HI_1_13_0	arret	localise · opaque 116	24
+d9781168	HI_1_13_0	arret	localise · opaque 17	1
+d9781168	HI_1_13_0	arret	localise · opaque 18	1
+d9781168	HI_1_13_0	arret	localise · opaque 20	2
+d9781168	HI_1_13_0	arret	localise · opaque 32	1
+d9781168	HI_1_13_0	arret	localise · opaque 34	2
+d9781168	HI_1_13_0	arret	localise · opaque 36	1112
+d9781168	HI_1_13_0	arret	localise · opaque 5	78
+d9781168	HI_1_13_0	arret	localise · opaque 50	1
+d9781168	HI_1_13_0	arret	localise · opaque 52	3
+d9781168	HI_1_13_0	arret	localise · opaque 6	8
+d9781168	HI_1_13_0	arret	localise · opaque 64	3
+d9781168	HI_1_13_0	arret	localise · opaque 67	1
+d9781168	HI_1_13_0	arret	localise · opaque 71	1
+d9781168	HI_1_13_0	arret	localise · opaque 78	1
+d9781168	HI_1_13_0	arret	localise · opaque 80	1
+d9781168	HI_1_13_0	arret	localise · opaque 82	5
+d9781168	HI_1_13_0	arret	localise · opaque 83	1
+d9781168	HI_1_13_0	arret	localise · opaque 90	2
+d9781168	HI_1_13_0	arret	localise · opaque 99	1
+d9781168	HI_1_13_0	arret	non localise · genre hors table	4
+d9781168	HI_1_13_0	arret	non localise · opaque 10	1
+d9781168	HI_1_13_0	arret	non localise · opaque 112	3
+d9781168	HI_1_13_0	arret	non localise · opaque 113	1
+d9781168	HI_1_13_0	arret	non localise · opaque 116	51
+d9781168	HI_1_13_0	arret	non localise · opaque 12	5
+d9781168	HI_1_13_0	arret	non localise · opaque 120	1
+d9781168	HI_1_13_0	arret	non localise · opaque 122	1
+d9781168	HI_1_13_0	arret	non localise · opaque 16	1
+d9781168	HI_1_13_0	arret	non localise · opaque 17	1
+d9781168	HI_1_13_0	arret	non localise · opaque 20	10
+d9781168	HI_1_13_0	arret	non localise · opaque 29	1
+d9781168	HI_1_13_0	arret	non localise · opaque 32	1
+d9781168	HI_1_13_0	arret	non localise · opaque 34	1
+d9781168	HI_1_13_0	arret	non localise · opaque 36	2304
+d9781168	HI_1_13_0	arret	non localise · opaque 5	224
+d9781168	HI_1_13_0	arret	non localise · opaque 52	53
+d9781168	HI_1_13_0	arret	non localise · opaque 55	1
+d9781168	HI_1_13_0	arret	non localise · opaque 6	65
+d9781168	HI_1_13_0	arret	non localise · opaque 60	5
+d9781168	HI_1_13_0	arret	non localise · opaque 62	1
+d9781168	HI_1_13_0	arret	non localise · opaque 64	1
+d9781168	HI_1_13_0	arret	non localise · opaque 65	1
+d9781168	HI_1_13_0	arret	non localise · opaque 67	6
+d9781168	HI_1_13_0	arret	non localise · opaque 68	12
+d9781168	HI_1_13_0	arret	non localise · opaque 69	1
+d9781168	HI_1_13_0	arret	non localise · opaque 70	1
+d9781168	HI_1_13_0	arret	non localise · opaque 71	9
+d9781168	HI_1_13_0	arret	non localise · opaque 72	5
+d9781168	HI_1_13_0	arret	non localise · opaque 73	1
+d9781168	HI_1_13_0	arret	non localise · opaque 80	1
+d9781168	HI_1_13_0	arret	non localise · opaque 81	1
+d9781168	HI_1_13_0	arret	non localise · opaque 82	13
+d9781168	HI_1_13_0	arret	non localise · opaque 84	4
+d9781168	HI_1_13_0	arret	non localise · opaque 87	1
+d9781168	HI_1_13_0	arret	non localise · opaque 88	1
+d9781168	HI_1_13_0	arret	non localise · opaque 96	4
+d9781168	HI_1_13_0	arret	non localise · opaque 97	1
+d9781168	HI_1_13_0	gain	ferme	1190
+d9781168	HI_1_13_0	gain	ferme au bit	1
+d9781168	HI_1_13_0	gain	non ferme	1743
+d9781168	HI_1_13_0	genre_accord	0	43
+d9781168	HI_1_13_0	genre_accord	1	17
+d9781168	HI_1_13_0	genre_accord	104	1
+d9781168	HI_1_13_0	genre_accord	105	1
+d9781168	HI_1_13_0	genre_accord	11	3
+d9781168	HI_1_13_0	genre_accord	15	616
+d9781168	HI_1_13_0	genre_accord	21	55
+d9781168	HI_1_13_0	genre_accord	36	73
+d9781168	HI_1_13_0	genre_accord	38	122
+d9781168	HI_1_13_0	genre_accord	39	36
+d9781168	HI_1_13_0	genre_accord	40	25
+d9781168	HI_1_13_0	genre_accord	7	1
+d9781168	HI_1_13_0	genre_accord	75	44
+d9781168	HI_1_13_0	genre_accord	76	144
+d9781168	HI_1_13_0	genre_accord	82	556
+d9781168	HI_1_13_0	genre_accord	85	9
+d9781168	HI_1_13_0	genre_accord	9	127
+d9781168	HI_1_13_0	genre_accord par chaine	0	11
+d9781168	HI_1_13_0	genre_accord par chaine	11	1
+d9781168	HI_1_13_0	genre_accord par chaine	15	128
+d9781168	HI_1_13_0	genre_accord par chaine	21	10
+d9781168	HI_1_13_0	genre_accord par chaine	36	9
+d9781168	HI_1_13_0	genre_accord par chaine	38	6
+d9781168	HI_1_13_0	genre_accord par chaine	39	1
+d9781168	HI_1_13_0	genre_accord par chaine	40	1
+d9781168	HI_1_13_0	genre_accord par chaine	7	1
+d9781168	HI_1_13_0	genre_accord par chaine	75	10
+d9781168	HI_1_13_0	genre_accord par chaine	76	10
+d9781168	HI_1_13_0	genre_accord par chaine	82	1597
+d9781168	HI_1_13_0	genre_accord par chaine	9	11
+d9781168	HI_1_13_0	genre_desaccord	0	422
+d9781168	HI_1_13_0	genre_desaccord	1	25
+d9781168	HI_1_13_0	genre_desaccord	100	1
+d9781168	HI_1_13_0	genre_desaccord	11	3
+d9781168	HI_1_13_0	genre_desaccord	116	1
+d9781168	HI_1_13_0	genre_desaccord	15	92
+d9781168	HI_1_13_0	genre_desaccord	2	2
+d9781168	HI_1_13_0	genre_desaccord	21	6
+d9781168	HI_1_13_0	genre_desaccord	23	110
+d9781168	HI_1_13_0	genre_desaccord	26	1
+d9781168	HI_1_13_0	genre_desaccord	36	21
+d9781168	HI_1_13_0	genre_desaccord	38	30
+d9781168	HI_1_13_0	genre_desaccord	39	5
+d9781168	HI_1_13_0	genre_desaccord	4	4
+d9781168	HI_1_13_0	genre_desaccord	40	8
+d9781168	HI_1_13_0	genre_desaccord	44	1
+d9781168	HI_1_13_0	genre_desaccord	52	1
+d9781168	HI_1_13_0	genre_desaccord	7	7
+d9781168	HI_1_13_0	genre_desaccord	75	7
+d9781168	HI_1_13_0	genre_desaccord	76	35
+d9781168	HI_1_13_0	genre_desaccord	8	2
+d9781168	HI_1_13_0	genre_desaccord	82	1380
+d9781168	HI_1_13_0	genre_desaccord	85	15
+d9781168	HI_1_13_0	genre_desaccord	9	27
+d9781168	HI_1_13_0	genre_desaccord	98	1
+d9781168	HI_1_13_0	temoin	accord	891
+d9781168	HI_1_13_0	temoin	accord par chaine	278
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	14
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	51
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	288
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	60
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	41
+d9781168	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme au bit · depuis S ferme	1
+d9781168	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	4
+d9781168	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	116
+d9781168	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	1
+d9781168	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	9
+e5adf7b2	HI_1_11_0	arret	localise · genre hors table	2
+e5adf7b2	HI_1_11_0	arret	localise · opaque 10	2
+e5adf7b2	HI_1_11_0	arret	localise · opaque 109	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 112	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 113	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 12	3
+e5adf7b2	HI_1_11_0	arret	localise · opaque 14	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 16	4
+e5adf7b2	HI_1_11_0	arret	localise · opaque 18	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 20	3
+e5adf7b2	HI_1_11_0	arret	localise · opaque 32	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 36	1567
+e5adf7b2	HI_1_11_0	arret	localise · opaque 5	682
+e5adf7b2	HI_1_11_0	arret	localise · opaque 50	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 51	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 56	3
+e5adf7b2	HI_1_11_0	arret	localise · opaque 6	246
+e5adf7b2	HI_1_11_0	arret	localise · opaque 61	2
+e5adf7b2	HI_1_11_0	arret	localise · opaque 65	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 66	3
+e5adf7b2	HI_1_11_0	arret	localise · opaque 67	6
+e5adf7b2	HI_1_11_0	arret	localise · opaque 68	3
+e5adf7b2	HI_1_11_0	arret	localise · opaque 69	4
+e5adf7b2	HI_1_11_0	arret	localise · opaque 70	6
+e5adf7b2	HI_1_11_0	arret	localise · opaque 72	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 73	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 77	3
+e5adf7b2	HI_1_11_0	arret	localise · opaque 78	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 80	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 81	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 82	13
+e5adf7b2	HI_1_11_0	arret	localise · opaque 84	3
+e5adf7b2	HI_1_11_0	arret	localise · opaque 87	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 89	2
+e5adf7b2	HI_1_11_0	arret	localise · opaque 94	1
+e5adf7b2	HI_1_11_0	arret	localise · opaque 96	2
+e5adf7b2	HI_1_11_0	arret	localise · opaque 99	1
+e5adf7b2	HI_1_11_0	arret	non localise · genre hors table	2
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 106	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 114	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 16	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 17	2
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 18	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 28	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 34	2
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 36	587
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 5	225
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 6	74
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 61	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 67	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 68	2
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 70	2
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 73	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 77	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 78	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 81	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 82	28
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 94	1
+e5adf7b2	HI_1_11_0	arret	non localise · opaque 96	1
+e5adf7b2	HI_1_11_0	gain	ferme	71
+e5adf7b2	HI_1_11_0	gain	non ferme	718
+e5adf7b2	HI_1_11_0	genre_accord	0	856
+e5adf7b2	HI_1_11_0	genre_accord	1	62
+e5adf7b2	HI_1_11_0	genre_accord	103	27
+e5adf7b2	HI_1_11_0	genre_accord	11	3
+e5adf7b2	HI_1_11_0	genre_accord	118	4
+e5adf7b2	HI_1_11_0	genre_accord	15	221
+e5adf7b2	HI_1_11_0	genre_accord	21	410
+e5adf7b2	HI_1_11_0	genre_accord	22	13
+e5adf7b2	HI_1_11_0	genre_accord	36	51
+e5adf7b2	HI_1_11_0	genre_accord	38	448
+e5adf7b2	HI_1_11_0	genre_accord	39	54
+e5adf7b2	HI_1_11_0	genre_accord	40	35
+e5adf7b2	HI_1_11_0	genre_accord	47	10
+e5adf7b2	HI_1_11_0	genre_accord	7	34
+e5adf7b2	HI_1_11_0	genre_accord	75	153
+e5adf7b2	HI_1_11_0	genre_accord	76	157
+e5adf7b2	HI_1_11_0	genre_accord	82	1260
+e5adf7b2	HI_1_11_0	genre_accord	85	12
+e5adf7b2	HI_1_11_0	genre_accord	9	79
+e5adf7b2	HI_1_11_0	genre_accord par chaine	0	215
+e5adf7b2	HI_1_11_0	genre_accord par chaine	1	24
+e5adf7b2	HI_1_11_0	genre_accord par chaine	103	5
+e5adf7b2	HI_1_11_0	genre_accord par chaine	11	2
+e5adf7b2	HI_1_11_0	genre_accord par chaine	118	1
+e5adf7b2	HI_1_11_0	genre_accord par chaine	15	50
+e5adf7b2	HI_1_11_0	genre_accord par chaine	21	119
+e5adf7b2	HI_1_11_0	genre_accord par chaine	22	3
+e5adf7b2	HI_1_11_0	genre_accord par chaine	36	33
+e5adf7b2	HI_1_11_0	genre_accord par chaine	38	149
+e5adf7b2	HI_1_11_0	genre_accord par chaine	39	17
+e5adf7b2	HI_1_11_0	genre_accord par chaine	40	22
+e5adf7b2	HI_1_11_0	genre_accord par chaine	47	2
+e5adf7b2	HI_1_11_0	genre_accord par chaine	7	19
+e5adf7b2	HI_1_11_0	genre_accord par chaine	75	42
+e5adf7b2	HI_1_11_0	genre_accord par chaine	76	44
+e5adf7b2	HI_1_11_0	genre_accord par chaine	8	1
+e5adf7b2	HI_1_11_0	genre_accord par chaine	82	633
+e5adf7b2	HI_1_11_0	genre_accord par chaine	9	27
+e5adf7b2	HI_1_11_0	genre_desaccord	0	689
+e5adf7b2	HI_1_11_0	genre_desaccord	1	236
+e5adf7b2	HI_1_11_0	genre_desaccord	100	1
+e5adf7b2	HI_1_11_0	genre_desaccord	103	5
+e5adf7b2	HI_1_11_0	genre_desaccord	104	1
+e5adf7b2	HI_1_11_0	genre_desaccord	108	1
+e5adf7b2	HI_1_11_0	genre_desaccord	11	4
+e5adf7b2	HI_1_11_0	genre_desaccord	110	1
+e5adf7b2	HI_1_11_0	genre_desaccord	118	4
+e5adf7b2	HI_1_11_0	genre_desaccord	15	165
+e5adf7b2	HI_1_11_0	genre_desaccord	2	2
+e5adf7b2	HI_1_11_0	genre_desaccord	21	78
+e5adf7b2	HI_1_11_0	genre_desaccord	22	1
+e5adf7b2	HI_1_11_0	genre_desaccord	23	99
+e5adf7b2	HI_1_11_0	genre_desaccord	24	1
+e5adf7b2	HI_1_11_0	genre_desaccord	25	1
+e5adf7b2	HI_1_11_0	genre_desaccord	3	3
+e5adf7b2	HI_1_11_0	genre_desaccord	33	1
+e5adf7b2	HI_1_11_0	genre_desaccord	36	79
+e5adf7b2	HI_1_11_0	genre_desaccord	37	4
+e5adf7b2	HI_1_11_0	genre_desaccord	38	79
+e5adf7b2	HI_1_11_0	genre_desaccord	39	14
+e5adf7b2	HI_1_11_0	genre_desaccord	4	14
+e5adf7b2	HI_1_11_0	genre_desaccord	40	4
+e5adf7b2	HI_1_11_0	genre_desaccord	41	2
+e5adf7b2	HI_1_11_0	genre_desaccord	42	1
+e5adf7b2	HI_1_11_0	genre_desaccord	46	1
+e5adf7b2	HI_1_11_0	genre_desaccord	48	1
+e5adf7b2	HI_1_11_0	genre_desaccord	49	6
+e5adf7b2	HI_1_11_0	genre_desaccord	5	1
+e5adf7b2	HI_1_11_0	genre_desaccord	53	1
+e5adf7b2	HI_1_11_0	genre_desaccord	54	8
+e5adf7b2	HI_1_11_0	genre_desaccord	58	1
+e5adf7b2	HI_1_11_0	genre_desaccord	6	1
+e5adf7b2	HI_1_11_0	genre_desaccord	7	59
+e5adf7b2	HI_1_11_0	genre_desaccord	75	36
+e5adf7b2	HI_1_11_0	genre_desaccord	76	55
+e5adf7b2	HI_1_11_0	genre_desaccord	8	2
+e5adf7b2	HI_1_11_0	genre_desaccord	82	2711
+e5adf7b2	HI_1_11_0	genre_desaccord	85	57
+e5adf7b2	HI_1_11_0	genre_desaccord	9	79
+e5adf7b2	HI_1_11_0	genre_desaccord	98	1
+e5adf7b2	HI_1_11_0	temoin	accord	1686
+e5adf7b2	HI_1_11_0	temoin	accord par chaine	806
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	3
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	8
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	196
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	68
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	625
+e5adf7b2	HI_1_11_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+e5adf7b2	HI_1_11_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	12
+e5adf7b2	HI_1_11_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	1
+e5adf7b2	HI_1_11_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	43
+f75e7053	HI_1_13_0	arret	localise · opaque 10	2
+f75e7053	HI_1_13_0	arret	localise · opaque 107	1
+f75e7053	HI_1_13_0	arret	localise · opaque 109	107
+f75e7053	HI_1_13_0	arret	localise · opaque 112	1
+f75e7053	HI_1_13_0	arret	localise · opaque 113	1
+f75e7053	HI_1_13_0	arret	localise · opaque 116	1
+f75e7053	HI_1_13_0	arret	localise · opaque 16	2
+f75e7053	HI_1_13_0	arret	localise · opaque 20	2
+f75e7053	HI_1_13_0	arret	localise · opaque 36	972
+f75e7053	HI_1_13_0	arret	localise · opaque 5	135
+f75e7053	HI_1_13_0	arret	localise · opaque 55	1
+f75e7053	HI_1_13_0	arret	localise · opaque 64	2
+f75e7053	HI_1_13_0	arret	localise · opaque 65	1
+f75e7053	HI_1_13_0	arret	localise · opaque 71	1
+f75e7053	HI_1_13_0	arret	localise · opaque 72	1
+f75e7053	HI_1_13_0	arret	localise · opaque 80	2
+f75e7053	HI_1_13_0	arret	localise · opaque 82	25
+f75e7053	HI_1_13_0	arret	localise · opaque 87	1
+f75e7053	HI_1_13_0	arret	non localise · opaque 109	1
+f75e7053	HI_1_13_0	arret	non localise · opaque 36	276
+f75e7053	HI_1_13_0	arret	non localise · opaque 5	28
+f75e7053	HI_1_13_0	arret	non localise · opaque 55	1
+f75e7053	HI_1_13_0	arret	non localise · opaque 82	53
+f75e7053	HI_1_13_0	arret	non localise · opaque 90	1
+f75e7053	HI_1_13_0	arret	non localise · opaque 96	2
+f75e7053	HI_1_13_0	gain	ferme	44
+f75e7053	HI_1_13_0	gain	non ferme	69
+f75e7053	HI_1_13_0	genre_accord	0	29
+f75e7053	HI_1_13_0	genre_accord	1	12
+f75e7053	HI_1_13_0	genre_accord	100	3
+f75e7053	HI_1_13_0	genre_accord	105	1
+f75e7053	HI_1_13_0	genre_accord	11	1
+f75e7053	HI_1_13_0	genre_accord	15	468
+f75e7053	HI_1_13_0	genre_accord	21	566
+f75e7053	HI_1_13_0	genre_accord	36	49
+f75e7053	HI_1_13_0	genre_accord	38	293
+f75e7053	HI_1_13_0	genre_accord	39	115
+f75e7053	HI_1_13_0	genre_accord	40	31
+f75e7053	HI_1_13_0	genre_accord	75	146
+f75e7053	HI_1_13_0	genre_accord	76	285
+f75e7053	HI_1_13_0	genre_accord	82	646
+f75e7053	HI_1_13_0	genre_accord	85	5
+f75e7053	HI_1_13_0	genre_accord	9	93
+f75e7053	HI_1_13_0	genre_accord par chaine	0	5
+f75e7053	HI_1_13_0	genre_accord par chaine	15	34
+f75e7053	HI_1_13_0	genre_accord par chaine	21	29
+f75e7053	HI_1_13_0	genre_accord par chaine	36	3
+f75e7053	HI_1_13_0	genre_accord par chaine	38	16
+f75e7053	HI_1_13_0	genre_accord par chaine	39	9
+f75e7053	HI_1_13_0	genre_accord par chaine	40	2
+f75e7053	HI_1_13_0	genre_accord par chaine	75	13
+f75e7053	HI_1_13_0	genre_accord par chaine	76	12
+f75e7053	HI_1_13_0	genre_accord par chaine	82	577
+f75e7053	HI_1_13_0	genre_accord par chaine	9	5
+f75e7053	HI_1_13_0	genre_desaccord	0	454
+f75e7053	HI_1_13_0	genre_desaccord	1	10
+f75e7053	HI_1_13_0	genre_desaccord	104	1
+f75e7053	HI_1_13_0	genre_desaccord	118	1
+f75e7053	HI_1_13_0	genre_desaccord	15	15
+f75e7053	HI_1_13_0	genre_desaccord	21	12
+f75e7053	HI_1_13_0	genre_desaccord	22	1
+f75e7053	HI_1_13_0	genre_desaccord	23	2
+f75e7053	HI_1_13_0	genre_desaccord	36	7
+f75e7053	HI_1_13_0	genre_desaccord	38	5
+f75e7053	HI_1_13_0	genre_desaccord	39	2
+f75e7053	HI_1_13_0	genre_desaccord	40	1
+f75e7053	HI_1_13_0	genre_desaccord	43	1
+f75e7053	HI_1_13_0	genre_desaccord	57	1
+f75e7053	HI_1_13_0	genre_desaccord	7	5
+f75e7053	HI_1_13_0	genre_desaccord	75	7
+f75e7053	HI_1_13_0	genre_desaccord	76	5
+f75e7053	HI_1_13_0	genre_desaccord	8	2
+f75e7053	HI_1_13_0	genre_desaccord	82	170
+f75e7053	HI_1_13_0	genre_desaccord	85	2
+f75e7053	HI_1_13_0	genre_desaccord	9	2
+f75e7053	HI_1_13_0	temoin	accord	1660
+f75e7053	HI_1_13_0	temoin	accord par chaine	421
+f75e7053	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	33
+f75e7053	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	18
+f75e7053	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme au bit · depuis S ferme	1
+f75e7053	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	240
+f75e7053	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	157
+fb1a1a72	HI_1_13_0	arret	localise · opaque 10	1
+fb1a1a72	HI_1_13_0	arret	localise · opaque 12	1
+fb1a1a72	HI_1_13_0	arret	localise · opaque 16	1
+fb1a1a72	HI_1_13_0	arret	localise · opaque 20	1
+fb1a1a72	HI_1_13_0	arret	localise · opaque 34	1
+fb1a1a72	HI_1_13_0	arret	localise · opaque 36	3100
+fb1a1a72	HI_1_13_0	arret	localise · opaque 5	215
+fb1a1a72	HI_1_13_0	arret	localise · opaque 6	61
+fb1a1a72	HI_1_13_0	arret	localise · opaque 62	1
+fb1a1a72	HI_1_13_0	arret	localise · opaque 72	2
+fb1a1a72	HI_1_13_0	arret	localise · opaque 77	1
+fb1a1a72	HI_1_13_0	arret	localise · opaque 81	1
+fb1a1a72	HI_1_13_0	arret	localise · opaque 82	34
+fb1a1a72	HI_1_13_0	arret	localise · opaque 87	2
+fb1a1a72	HI_1_13_0	arret	localise · opaque 88	3
+fb1a1a72	HI_1_13_0	arret	non localise · opaque 10	1
+fb1a1a72	HI_1_13_0	arret	non localise · opaque 106	2
+fb1a1a72	HI_1_13_0	arret	non localise · opaque 121	1
+fb1a1a72	HI_1_13_0	arret	non localise · opaque 16	1
+fb1a1a72	HI_1_13_0	arret	non localise · opaque 36	358
+fb1a1a72	HI_1_13_0	arret	non localise · opaque 5	29
+fb1a1a72	HI_1_13_0	arret	non localise · opaque 6	9
+fb1a1a72	HI_1_13_0	arret	non localise · opaque 82	13
+fb1a1a72	HI_1_13_0	gain	ferme	156
+fb1a1a72	HI_1_13_0	gain	non ferme	77
+fb1a1a72	HI_1_13_0	genre_accord	0	594
+fb1a1a72	HI_1_13_0	genre_accord	1	45
+fb1a1a72	HI_1_13_0	genre_accord	100	11
+fb1a1a72	HI_1_13_0	genre_accord	104	1
+fb1a1a72	HI_1_13_0	genre_accord	105	7
+fb1a1a72	HI_1_13_0	genre_accord	11	7
+fb1a1a72	HI_1_13_0	genre_accord	15	1511
+fb1a1a72	HI_1_13_0	genre_accord	21	198
+fb1a1a72	HI_1_13_0	genre_accord	23	44
+fb1a1a72	HI_1_13_0	genre_accord	3	1
+fb1a1a72	HI_1_13_0	genre_accord	36	39
+fb1a1a72	HI_1_13_0	genre_accord	38	419
+fb1a1a72	HI_1_13_0	genre_accord	39	135
+fb1a1a72	HI_1_13_0	genre_accord	4	2
+fb1a1a72	HI_1_13_0	genre_accord	40	56
+fb1a1a72	HI_1_13_0	genre_accord	47	14
+fb1a1a72	HI_1_13_0	genre_accord	75	209
+fb1a1a72	HI_1_13_0	genre_accord	76	468
+fb1a1a72	HI_1_13_0	genre_accord	82	1119
+fb1a1a72	HI_1_13_0	genre_accord	85	11
+fb1a1a72	HI_1_13_0	genre_accord	9	385
+fb1a1a72	HI_1_13_0	genre_accord par chaine	0	44
+fb1a1a72	HI_1_13_0	genre_accord par chaine	1	1
+fb1a1a72	HI_1_13_0	genre_accord par chaine	105	2
+fb1a1a72	HI_1_13_0	genre_accord par chaine	11	3
+fb1a1a72	HI_1_13_0	genre_accord par chaine	15	43
+fb1a1a72	HI_1_13_0	genre_accord par chaine	21	20
+fb1a1a72	HI_1_13_0	genre_accord par chaine	23	6
+fb1a1a72	HI_1_13_0	genre_accord par chaine	36	4
+fb1a1a72	HI_1_13_0	genre_accord par chaine	38	35
+fb1a1a72	HI_1_13_0	genre_accord par chaine	39	5
+fb1a1a72	HI_1_13_0	genre_accord par chaine	40	7
+fb1a1a72	HI_1_13_0	genre_accord par chaine	47	1
+fb1a1a72	HI_1_13_0	genre_accord par chaine	75	12
+fb1a1a72	HI_1_13_0	genre_accord par chaine	76	30
+fb1a1a72	HI_1_13_0	genre_accord par chaine	82	589
+fb1a1a72	HI_1_13_0	genre_accord par chaine	9	27
+fb1a1a72	HI_1_13_0	genre_desaccord	0	143
+fb1a1a72	HI_1_13_0	genre_desaccord	1	106
+fb1a1a72	HI_1_13_0	genre_desaccord	118	2
+fb1a1a72	HI_1_13_0	genre_desaccord	119	2
+fb1a1a72	HI_1_13_0	genre_desaccord	15	205
+fb1a1a72	HI_1_13_0	genre_desaccord	2	1
+fb1a1a72	HI_1_13_0	genre_desaccord	3	2
+fb1a1a72	HI_1_13_0	genre_desaccord	33	1
+fb1a1a72	HI_1_13_0	genre_desaccord	36	4
+fb1a1a72	HI_1_13_0	genre_desaccord	38	6
+fb1a1a72	HI_1_13_0	genre_desaccord	4	8
+fb1a1a72	HI_1_13_0	genre_desaccord	40	1
+fb1a1a72	HI_1_13_0	genre_desaccord	5	1
+fb1a1a72	HI_1_13_0	genre_desaccord	58	1
+fb1a1a72	HI_1_13_0	genre_desaccord	7	1
+fb1a1a72	HI_1_13_0	genre_desaccord	75	20
+fb1a1a72	HI_1_13_0	genre_desaccord	76	5
+fb1a1a72	HI_1_13_0	genre_desaccord	82	1160
+fb1a1a72	HI_1_13_0	genre_desaccord	85	15
+fb1a1a72	HI_1_13_0	genre_desaccord	9	21
+fb1a1a72	HI_1_13_0	temoin	accord	2986
+fb1a1a72	HI_1_13_0	temoin	accord par chaine	631
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	3
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	12
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S non ferme	1
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	45
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	4
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	34
+fb1a1a72	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	2
+fb1a1a72	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+fb1a1a72	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S non ferme	2
+fb1a1a72	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	53
+fb1a1a72	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	3

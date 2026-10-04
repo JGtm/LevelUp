@@ -216,6 +216,11 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   vague 1 est fusionnée dans `feat/v75` dès la CI verte (fait : `2393d7db7`, avance rapide), puis 4
   films témoins seulement sont recuits localement (`fb1a1a72`, `51ebbc0f`, `bfecd02b`, `4f77afc1`) ;
   la recuisson du parc (115 rejeux) attend le feu vert de l'utilisateur après son coup d'œil.
+- 2026-10-04 (utilisateur, message relayé par le harnais du workflow d'intégration de la vague 2, cité
+  tel quel) : « J4ai regardé les films c'est nickel !!! ». Lecture de l'intégrateur, À CONFIRMER par le
+  pilote : verdict du coup d'œil sur les 4 témoins recuits de la vague 1 (entrée ci-dessus). Ce message
+  ne tranche ni le rc 1 du gate de corpus de LN, ni celui de la vague 2, ni la recuisson du parc (D7 :
+  geste de l'utilisateur) ; il n'est compté comme décision sur aucun de ces points.
 
 ## 4. Journal
 
@@ -449,6 +454,96 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   - **Gates** : `gofmt` vide ; `go vet ./...` rc 0 ; `go vet -tags=research` film rc 0 ; `archlint`
     ok ; G-film 20 paquets ok ; `golangci-lint --new-from-rev 8390543a8` (grammar) 0 issue. Détail :
     `LOT_L4a.md` §14, `LOT_L3a.md` §11.
+- 2026-10-04 : **intégration de la vague 2** dans `feat/campagne-grammaire` (worktree de la campagne,
+  aucun push ; mesures et outils : `campagne_grammaire_2026-10-01/vague2_tsv/`, pièces brutes
+  `scratchpad/v2-integ/`). Référence de mesure : `2393d7db7` (= `origin/feat/v75`, inchangée au
+  `git fetch` ; `feat/ri-etape2` non fusionnée).
+  - **Fusionnés** (`git merge --no-ff feat/cg2-lt`, commit `bdd784b6a`, sans conflit) : la chaîne LU
+    (`f73811aa8`) -> LS (`939895542`, corrections `80d2acd20`) -> LT (`8da500ab5`, LT.1 seul).
+  - **Non retenus** : LP (`[!]` gate 2) et LN (`[!]` gate 6 en rc 1, pertes brutes non expliquées) ;
+    n'entrent que `LOT_LP.md` (+ §10, corrections exigées par son contrôle, non appliquées),
+    `lp_temoin_research_test.go`, `LOT_LN.md`, `ln_tsv/`, `ln_ghidra/` et l'entrée de LN du journal
+    des pensées (checkout de chemins). La sonde de LN reste sur sa branche (elle appelle la
+    production non fusionnée).
+  - **Corrections documentaires des contrôles, appliquées à l'intégration** : `LOT_LU.md` §7
+    (recouvrement avec la RI : `noms.go` ET `grammar_rev.golden`), D-LU-7, D-LU-8 ; règle 17 dans
+    `archlint/no_unregistered_fallback_test.go` (prémisse `locateFallback` mise au passé) ;
+    `LOT_LT.md` §1 (`FUN_1408efb58` lit R(1)[+R(8)] avant le bloc MPP), §7 (la sonde de LT recopie
+    le localisateur), D-LT-8 ; §6.0 point 3 (LP n'est pas nul pour killsource). Tests demandés en
+    option par les contrôles (D-LU-7, D-LT-8) : non écrits, consignés.
+  - **Révisions** : `grammar-2026-10-03.2` -> `.3` (LS) -> `.4` (LT) -> **`grammar-2026-10-03.5`**
+    (tête, valeur qu'aucune branche ne porte ; empreinte égale à celle du `.4`, D-INT2-2) ;
+    `killsource-2026-09-27` -> **`killsource-2026-10-04`** (LS, voie persistée changée, D23 : montée
+    justifiée ; complément de chronique et golden à révision constante pour la tête) ;
+    `objectives-2026-09-27`, `source-2026-09-16.2`, `profile-2026-09-17.3`, `SchemaVersion` 77
+    inchangés (gate objectives vert sans régénération). `shapes.golden` et les 8 fixtures de contrat
+    régénérés : identiques à `2393d7db7` hors chaînes de révision (décompressés).
+  - **Gate 2** (carte v2, 20 films, `-denominateur-fixe`, binaires de `git archive 2393d7db7` et de
+    la tête, `vague2_tsv/gate2_vague2.tsv`) : **aucun film en baisse**, ni en sains ni en utiles
+    sains ; **0 sain perdu en brut**. Corpus 313 495 -> 332 668 sains (+19 173), utiles sains
+    2 922 510 -> 3 100 472 (+177 962). Gains au bit 19 162, dont 36 contredits (0,2 %). Pertes au bit :
+    2 (`1c4c63c2` 16:2116, 17:1572), toutes deux contredites avant (fermetures factices retirées).
+    Carte de la tête identique à l'octet à celle de la branche de LT (contrôle de LT), carte de la
+    base identique à `integ2/carte_rev2`. Films qui gagnent : `d9781168` +10 678, `51ebbc0f` +5 029,
+    `c75f33b8` +2 276, `60ae07c4` +650, `1c4c63c2` +500, `4f77afc1` +22, `fb1a1a72` +7, `084a804d` +5,
+    `e5adf7b2`, `bfecd02b`, `11de8353` +2 ; 9 films inchangés.
+  - **Indicateur D1** (records utiles sains ; fixe recalculé avec les marches de la base, de LS et de
+    la tête : aucune ne dépasse le fixe consolidé, qui reste 7 758 290) : corpus **37,7 % -> 40,0 %**
+    fixe, 46,4 % -> 47,4 % variable ; HI_1_13_0 **76,6 % -> 81,9 %** fixe, 83,8 % -> 86,1 % variable ;
+    HI_1_10_0 12,3 -> 12,8 % ; HI_1_8_0 23,3 -> 24,5 % ; HI_1_9_0, HI_1_11_0, HI_1_12_0, HI_1_4_1,
+    v31, v33 inchangés. Forme large (marches de LP et LN comprises : fixe 7 825 000) : corpus 37,3 ->
+    39,6 %, HI_1_13_0 76,3 -> 81,5 % (`vague2_tsv/d1_vague2.tsv`).
+  - **Killsource** (19 témoins + `1c4c63c2` sur sa carte Refuge) : 2 747 morts avant et après ;
+    **229 morts du balayage à la marche** (`d9781168` 103, `60ae07c4` 78, `c75f33b8` 48), 312 sur
+    `1c4c63c2` ; aucune mort apparue ni disparue, aucun tag, statut ni crédit changé ; 16 témoins
+    identiques à l'octet. Sortie identique à l'octet à celle de la branche de LS sur les 20 films.
+    **Backfill killsource du parc DÛ** (voie `read_path` publiée) ; le hook post-sync installé par
+    défaut le déclenche au déploiement, huit films par cycle (D-REV-3).
+  - **`replay-equiv`** (recette de L0, racine factice au scratchpad, références et `config/`
+    identiques à l'octet au worktree) : base et tête 20 / 20 « différents » des références de
+    `67c379fc1` (non re-figées depuis la vague 1 ; base identique à l'octet à la base de LU). Base
+    contre tête : 8 étapes sur 61 divergent — `artifact` 20, `movementStates.stats` 17,
+    `continuousFire.stats` 11, `movementStates`, `killsource`, `killRefs` 5 (`1c4c63c2`, `60ae07c4`,
+    `64e8adfa`, `9f57c612`, `d9781168`), `continuousFire` 4, `vehicles` 2 : la réunion des familles de
+    LS et de LT. Tête contre branche de LT : seule `artifact` diffère (chaîne de révision).
+  - **Compteur `repli_debut_de_liste_ferme_au_bit`** (cuisson, 20 films d'équivalence,
+    `vague2_tsv/repli_ferme_au_bit.tsv`) : 8 047 -> 8 068 ; `d9781168` 261 -> 283, `9f57c612` 112 ->
+    113, `1c4c63c2` 6 428 -> 6 426, 17 films identiques. `repli_localisation_largeur_libre` baisse
+    (`1c4c63c2` 3 080 -> 1 369, `d9781168` 838 -> 196) ; `repli_deadstate_indice_hors_roster` 0 -> 8 /
+    2 / 5 (D-INT2-1).
+  - **`replay-corpus-gate`** (`--base=2393d7db7`, parc copié au scratchpad,
+    `vague2_tsv/corpus_gate_resume.txt`) : **rc 1**. Banc de vérité **18 / 19 ok** ; `60ae07c4` FAUX
+    sur une seule ligne, `R-1 repli_deadstate_indice_hors_roster : 0 -> 2` (« repli nouveau » : repli
+    existant vu pour la première fois, mécanisme D-L0-5, comme `111fa685` en vague 1) ; aucun oracle
+    ne bouge ; P-1 en gain sur 10 témoins. Statut PERTE sur 5 témoins (`d9781168`, `c75f33b8`,
+    `51ebbc0f`, `084a804d`, `a349fea8`), toutes `[FILET]` (198 lignes) : durée totale des postures
+    (`c75f33b8` 11 986 -> 8 092, `d9781168` 19 523 -> 16 366, `51ebbc0f` 12 213 -> 9 522, `60ae07c4`
+    22 637 -> 20 613) alors que sauts et sprints lus montent (famille D-L8-9) ;
+    `deathsPaths.directScan.matched/published` (`d9781168` 101 -> 2, `60ae07c4` 80 -> 2, `c75f33b8`
+    56 -> 8 : les morts passées à la marche, effet voulu de LS) ; `holesOpenViewB` (`d9781168` 36 ->
+    97, `c75f33b8` 92 -> 126, `51ebbc0f` 83 -> 132, `60ae07c4` 742 -> 773) ; `holesNotClosing`
+    (`60ae07c4` 30 829 -> 32 672, `a349fea8` +4) ; `refusedNews` +1 / +2 ; `stances.records` −1 sur
+    `084a804d`. Non instruit paquet par paquet. **L'intégrateur ne l'admet pas : décision du pilote
+    demandée** (précédent : rc 1 de la vague 1 admis le 2026-10-03, §3).
+  - **Gates de code** (depuis `apps/go-api`) : `gofmt -l` vide ; `go vet ./...` rc 0 ; `go vet
+    -tags=research` film rc 0 ; `go test ./internal/archlint/` ok ; G-film (film, `replaybuild`,
+    `killcollector`) 20 paquets ok, rc 0 ; `golangci-lint --new-from-rev=2393d7db7` (grammar, facts,
+    archlint, types) 0 issue, et `--build-tags=research` (grammar) 0 issue. `frame_closure.golden`,
+    `keyframe_closure.golden`, `structure_fermeture.golden` verts sans régénération.
+  - **Gate 4** (durée et pic d'une cuisson) : sans objet — aucun lot retenu ne lit le bloc de type 1
+    (LP non retenu) ; la machine n'était pas calme (`sed.exe` d'une autre session).
+  - **Fichiers de la représentation intermédiaire** touchés par la vague : `grammar/lecture/paquet.go`
+    (LS, 2 lignes de commentaire). Communs avec `git diff 2393d7db7...feat/ri-etape2` : ce fichier,
+    `facts/fallback/noms.go` (autre bloc), `grammar/testdata/grammar_rev.golden` (même ligne,
+    conflit certain, régénération) et `.ai/thought_log.md`. `debut_de_liste.go` (LS, LT) n'est pas sur
+    la liste de la RI.
+  - **Écarts** : une redirection écrite par erreur dans `/tmp` (effacée aussitôt) ; huit binaires
+    construits par erreur sous `C:\c\Users\...` (chemin non converti par `MSYS_NO_PATHCONV`),
+    déplacés au scratchpad et le dossier retiré ; revue adversariale de LU (lot à risque) non jouée.
+  - Suite : décision du pilote sur le rc 1 du gate de corpus ; revue adversariale de LU (et de la
+    vague) ; fusion dans `feat/v75` (geste du pilote ou de l'utilisateur) puis recuisson et backfill
+    killsource (D7) ; références `replay-equiv` et goldens de fermeture à re-figer après la fusion
+    (§6.0 point 6) ; LP (D-LP-1, après les corrections du §10 de sa note) et LN (voies (a) / (b)).
 
 ## 5. Découvertes (consignées, non traitées)
 
@@ -1078,6 +1173,46 @@ des `LOT_<lot>.md` (texte complet et pièces dans chacun), non traitées :
   une montée de `killsource.Rev` fait redécoder le parc au déploiement, sans geste. Non traité (hors
   vague), lié à D23.
 
+**Découvertes de la vague 2 (lots LU, LS, LT, LP, LN et intégration du 2026-10-04)** — reportées des
+`LOT_<lot>.md` (texte complet et pièces dans chacun), non traitées :
+- LU : D-LU-1 (la cuisson n'a ni le repli ni le contrôle de génération de la signature stricte ;
+  justesse non instruite), D-LU-2 (la boucle de records reste jumelle : `walkFrom` ne pose pas le cadre
+  du lecteur), D-LU-5 (copies de test du localisateur hors garde-rail), D-LU-6 (trois sites, pas deux),
+  **D-LU-7** (la forme de la signature n'est figée par aucun test : retirer « composant unique » change
+  la carte de `e5adf7b2` et laisse tout vert ; ouverte après LS, mutation X3), D-LU-8 (une copie
+  déguisée du localisateur passe le garde-rail).
+- LS : D-LS-2 (une forme de signature haute fréquence peut tomber dans la vue A, `000d5950`), D-LS-3
+  (la signature trouve le premier delta HAUTE FRÉQUENCE, pas le premier delta : les deltas de slots
+  inférieurs ne sont pas lus), D-LS-4 (indice 16 contre index 9 sur `6b0e6f0f`, défaut de roster),
+  D-LS-5 (`repli_debut_de_liste_ferme_au_bit` +22 sur `d9781168`, non instruit), D-LS-6 (l'ordre de
+  l'enquête rend plus au corpus mais fait baisser `1c4c63c2` ; R-LOC-6 / D-78 ouverts), D-LS-7
+  (`frame_harvest.go:313`, fichier de la RI, cite encore `marchLocateStrict`), D-LS-8, D-LS-9.
+- LT : D-LT-1 (le retrait du repli du second rang dépend de LM : décision demandée au pilote et à
+  l'utilisateur), D-LT-2 (le second rang n'est une perte nette que hors `e5adf7b2` ; le restreindre au
+  format 27 serait une condition par version, non appliqué), D-LT-3, D-LT-4 (compteur du repli
+  différent entre la marche de la carte et la cuisson), D-LT-5, D-LT-6 (D-L8-8 reste ouverte), D-LT-7
+  (références `replay-equiv` non re-figées), **D-LT-8** (`ok` du pas DELTA et `DesyncAt` du pas NEW
+  tenus par aucun test, trou antérieur à LT).
+- LP : D-LP-1 (décision demandée : retenir la règle 1 malgré 4 paquets instruits, ou D-LP-2 d'abord),
+  D-LP-2 (règle de l'écrivain « un NEW crée sous la génération suivant celle du slot » absente du juge
+  de L0), D-LP-3 (la bande des NEW de tête était nourrie de déclarations fausses), D-LP-4 (règle 17 :
+  l'en-tête de `type1_datums.go` omet la classe `0x7`), D-LP-5, D-LP-6 (`BindImageCle` lit deux bits
+  de génération comme un rang de vue), D-LP-7 (pic mémoire de `d9781168` +14 à +21 %, non expliqué),
+  D-LP-8, D-LP-9 (LP n'est pas nul pour killsource ; §6.0 point 3 corrigé).
+- LN : D-LN-1 (R_LOC §4.1 réfuté : la table des genres est statique et lue dans l'exécutable),
+  **D-LN-2 (lourde)** (`lot1DecodeDamageAftermath` lit `FUN_1407f2058` à polarité inversée : 36,4 %
+  d'accord contre 95,8 % sur HI_1_13_0), D-LN-3 (`event_list.go` lit le domaine 3 sur 7 bits, le jeu
+  sur 8), D-LN-4 à D-LN-7, D-LN-9 à D-LN-11, D-LN-12 (conflit avec LS sur `debut_de_liste.go`),
+  D-LN-14, D-LN-15 (pertes FILET du gate de corpus), et l'écart de la règle des versions sur
+  HI_1_10_0 (nécessaire, non suffisante).
+- Intégration : D-INT2-1 — à la cuisson, `repli_deadstate_indice_hors_roster` passe de 0 à 8
+  (`1c4c63c2`), 2 (`60ae07c4`) et 5 (`9f57c612`), et `repli_deadstate_hors_bande_bipede` monte
+  (`1c4c63c2` 27 -> 35, `9f57c612` 4 -> 8) : des états de mort de plus sont lus dans les paquets que
+  LS localise ; même famille que D-111 / D-LS-4 (défaut de roster), non instruit paquet par paquet.
+  D-INT2-2 — la tête prend `grammar-2026-10-03.5`, empreinte égale à celle du `.4` (le code de la
+  couche ne change pas entre la branche de LT et la tête ; seule la valeur change, pour désigner un
+  contenu propre à la tête, comme le `.2` de la vague 1).
+
 ## 6. Phase 2 — lots correctifs (écrits à l'étape 5, révisés le 2026-10-02)
 
 Synthèse : `.ai/V7.5/film_re/RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md`, révisé d'après
@@ -1190,6 +1325,10 @@ Abréviations :
      ne publie AUCUNE position (le gate ne mesure pas les positions) ; `1c4c63c2` et `81c02726` n'ont
      pas de carte lisible et ne sont pas joués (D-67, §6.3 D22) ; « `killsource.Rev` n'a pas à monter
      pour un diagnostic » est supposé (règle non instruite).
+   - **Corrigé le 2026-10-04 (contrôle de LP, `LOT_LP.md` §10 point 9)** : « LP nul par construction »
+     est CONTREDIT par la mesure — LP change la marche d'image-clé que killsource lit, et 4 morts des
+     19 témoins changent de voie (`111fa685` 2, `11de8353` 1, `fb1a1a72` 1 ; aucune valeur). « Le
+     diagnostic ne fait pas monter la révision » est désormais la décision D23 (§3, 2026-10-03).
 4. **Performance et mémoire de cuisson**, pour tout lot qui lit le bloc de type 1 en production (L1,
    L10).
    - Ce bloc pèse 343 019 octets par chunk (en-tête de `type1_datums.go`) ; s'y ajoute le suivi de
@@ -1724,6 +1863,15 @@ se réduisent alors au localisateur unifié.
   l'archétype `high-frequency` s'écrit par la TABLE de son composant (archétype à composant unique lu
   par le lecteur de `ti=4 i0`, `R(8)`, table `0x143d06a60`, `FUN_14076d034`), jamais par le nom ; c'est
   la même clé de routage que L8 (R-HOM), une seule source de vérité.
+- **Statut (intégration de la vague 2, 2026-10-04) : [x] FUSIONNÉ** (par la chaîne LU -> LS -> LT,
+  `feat/cg2-lt` ; commit de LU `f73811aa8`) — `LOT_LU.md`. Un localisateur (`grammar/localisateur.go`),
+  trois appelants, un ordre par site ; garde-rail `archlint/film_localisateur_unique_test.go`. Sortie
+  identique à l'octet (carte, killsource 19 témoins, `replay-equiv` 20 films ; contrôle indépendant
+  conforme). **LU.3 (prédicat d'archétype par table) : [~] → LS**, écrit par LS sur la constante de
+  L8 `archetypeHauteFrequence` (D-LU-4). Corrections documentaires du contrôle appliquées à
+  l'intégration (`LOT_LU.md` §7, D-LU-7, D-LU-8 ; règle 17 dans
+  `archlint/no_unregistered_fallback_test.go`). Revue adversariale prévue pour LU (lot à risque) :
+  NON JOUÉE, revient au pilote.
 
 **LS — Signature du localisateur figée sur le slot 123 (marche, vague 2, juste après LU)** (confié à
 la campagne le 2026-10-02 par accord avec la session du chantier de suite d audit, l utilisateur
@@ -1771,6 +1919,12 @@ ayant laissé les deux sessions trancher ; GO daté de l utilisateur requis comm
     `9c0ec856` 72 / 28 → 97 / 3, marche / scan) ; 25 films non rejoués ;
   - **à verser au gate 3** : sur `6b0e6f0f`, l'alerte de santé « dead-states hors roster » passe de 10
     à 42 sous LS (D-111, non instruite).
+- **Statut (intégration de la vague 2, 2026-10-04) : [x] FUSIONNÉ** (commits `939895542` et corrections
+  du contrôle `80d2acd20`, par `feat/cg2-lt`) — `LOT_LS.md`. Gate 2 : +19 129 sains / +176 939 utiles
+  sains seul, aucun film en baisse ; gate 3 : 229 morts du balayage à la marche sur les 19 témoins,
+  312 sur `1c4c63c2` (carte Refuge du dépôt, D22 statuée par D-LS-1), aucune valeur ; D-111 instruite
+  (défaut de roster préexistant, D-LS-4). `killsource.Rev` -> `killsource-2026-10-04` : backfill
+  killsource du parc DÛ (geste de l'utilisateur, D7).
 
 **L8 — `ti=3` low-frequency et routage des homonymes (composant)**
 - Gain mesuré (BIS_3 §6, surcouche) : +30 618 / −10 paquets, +234 454 utiles, hors cadre de 264 757 à
@@ -2126,6 +2280,40 @@ l'outil et un fichier lu par la publication) ». Conséquences, établies par le
 - Mesuré : 8 191 partout. `1c4c63c2` alloue le slot 8 190, à un slot de la limite.
 - Fichier : `grammar/type1_datums.go` (et `frame_records.go:144`).
 - Taille S. Sur décision.
+
+**Lots de la vague 2 hors des fiches ci-dessus (statuts de l'intégration du 2026-10-04)**
+- **LT — règle de tête de liste** (la règle de tête de liste des découvertes de la vague 1, §5) :
+  **LT.1 [x] FUSIONNÉ** (`8da500ab5`, `feat/cg2-lt`, contrôle indépendant conforme) — `LOT_LT.md`.
+  `pasDEssai` refuse un pas NEW ou DELTA dont le masque contredit `FUN_142e2da44` (règle déjà au juge
+  de L0) : +44 sains / +1 023 utiles sains, aucun film en baisse, les 5 sains perdus de la vague 1
+  retrouvés ; killsource identique. **LT.2 et LT.3 [!]** (second rang de `debutParFermeture`, retrait
+  du repli `repli_debut_de_liste_ferme_au_bit`) : aucune règle lue dans le jeu ne le permet sans faire
+  baisser `e5adf7b2` (−21 / −707) ; le retrait dépend de LM (largeur MPP des formats anciens, mise de
+  côté le 2026-10-02 ; D-LT-1). **LT.4 (L2 rejoué sur LT) [!]** : `1c4c63c2` −9 / −422 et `d9781168`
+  −2 / −33 ; L2 reste hors de la vague. Corrections documentaires du contrôle appliquées à
+  l'intégration (`LOT_LT.md` §1, §7 gate 5, D-LT-8).
+- **LP — désaveu par le bloc de type 1** : **[!] NON RETENU au gate 2** (`f89c2b5cd`, rien en
+  production) — `LOT_LP.md`. Règle 1 (en-tête d'image-clé admis seulement si le bloc précédent porte
+  le slot alloué sous la même génération) lue dans le jeu, +22 635 sains / +475 733 utiles sains, mais
+  `a349fea8` −1 / 0 et `c75f33b8` −3 / −18, non factices au juge de L0 (D2 non invocable). Règle 2
+  (désaveu des déclarations « non vivantes ») RÉFUTÉE par le jeu et la mesure. Le contrôle exige neuf
+  corrections de la note (dont deux tests existants rougis par le patch hors dépôt, une alerte de
+  lint, une 4e copie, un repli non compté, aucune mutation de la règle rouge), recopiées en
+  `LOT_LP.md` §10, NON appliquées : à faire avant de soumettre D-LP-1 à l'utilisateur. Entrent la
+  note et la sonde `lp_temoin_research_test.go`.
+- **LN — naissances lues par la grammaire de la vue A** : **[!] NON RETENU** (`4b4ed264b`,
+  `3031a2b25`, corrections `d9c268c9f` sur `feat/cg2-ln`) — `LOT_LN.md`. Table des 123 genres lue dans
+  l'exécutable, 54 lecteurs de charge portés, bit de configuration lu ; gate 2 tenu au net
+  (+27 610 sains / +524 174 utiles sains, aucun film en baisse) mais 1 589 sains perdus en brut NON
+  expliqués (compensés au net ; D2 non invocable) et **gate 6 en rc 1** (pertes FILET : durée des
+  postures −6,5 %, `holesOpenViewB` 15 300 -> 16 831, une rafale perdue sur `111fa685`), sans
+  décision datée qui l'admette. Levée : (a) instruire les pertes FILET paquet par paquet, ou (b)
+  décision datée du pilote ou de l'utilisateur ; option soumise : ne prendre le début E de la vue A
+  que si la marche partie de E ferme. Entrent `LOT_LN.md`, `ln_tsv/`, `ln_ghidra/` et l'entrée de LN
+  du journal des pensées ; la sonde `ln_r7_research_test.go` reste sur `feat/cg2-ln` (elle appelle
+  `parcourirLaVueA`, production non fusionnée).
+- **L1a, L7** : non lancés en vague 2 (L1a mis de côté le 2026-10-02 : condition choisie par film ;
+  L7 rejeté).
 
 ### 6.3 Décisions demandées à l'utilisateur
 

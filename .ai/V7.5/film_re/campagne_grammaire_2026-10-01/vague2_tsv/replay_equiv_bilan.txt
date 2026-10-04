@@ -1,0 +1,6 @@
+base: BILAN : 0 identique(s), 20 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s) (harnais)
+base: rc=1
+tete: BILAN : 0 identique(s), 20 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s) (harnais)
+tete: rc=1
+tete contre branche du lot LT (8da500ab5) : seule l etape artifact differe, 20/20 (chaine de revision, meme taille)
+base 2393d7db7 contre base de LU (v2-LU/re_base_tsv) : 20/20 identiques a l octet
