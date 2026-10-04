@@ -221,6 +221,13 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   pilote : verdict du coup d'œil sur les 4 témoins recuits de la vague 1 (entrée ci-dessus). Ce message
   ne tranche ni le rc 1 du gate de corpus de LN, ni celui de la vague 2, ni la recuisson du parc (D7 :
   geste de l'utilisateur) ; il n'est compté comme décision sur aucun de ces points.
+- 2026-10-04 (pilote) : **rc 1 du gate de corpus de la vague 2 ADMIS** sur instruction paquet par paquet
+  (`vague2_tsv/INSTRUCTION_PERTES_CORPUS.md`) : `084a804d` 2:164 (LT) = fermeture factice retirée (D2) ;
+  `084a804d` 47:674 (règle d'ordre) et les 4 trous de `a349fea8` (LT, changement de cause à total
+  constant) = lectures que l'écrivain ne peut pas produire, retirées. Le gate 2 (aucun film en baisse)
+  tient sans exception ; D2 n'est PAS étendue au gate 2.
+- **2026-10-04 (utilisateur, question en langage clair) : « Intégrer + recuire »** — la vague 2 (LU, LT)
+  entre dans `feat/v75` dès sa CI verte et l'instruction des deux pertes, puis le parc est recuit.
 
 ## 4. Journal
 

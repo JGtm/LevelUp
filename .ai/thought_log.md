@@ -115201,3 +115201,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : `golangci-lint run` sur le paquet : 0 issue ; tests du paquet verts ; aucune sortie changée (test seulement).
 
 **Conclusion / prochaine étape** : CI de la vague 2 à rejouer, puis fusion dans `feat/v75` et recuisson sur accord de l'utilisateur du 2026-10-04.
+
+## [2026-10-04] Campagne de grammaire — vague 2 : rc 1 du gate de corpus admis, fusion dans feat/v75
+
+**Statut** : Complété.
+
+**Décision technique principale** : les deux pertes `[FILET]` du gate de corpus de la vague 2 sont instruites paquet par paquet (`vague2_tsv/INSTRUCTION_PERTES_CORPUS.md`) : `084a804d` 2:164 est une fermeture factice retirée par LT (D2) ; `084a804d` 47:674 (règle d'ordre) et les 4 trous de `a349fea8` (LT) sont des lectures que l'écrivain ne peut pas produire (DEL avant DELTA, NEW et DELTA sur la même entité, masque hors archétype). rc 1 admis par le pilote ; le gate 2 tient sans exception. Fusion dans `feat/v75` sur accord de l'utilisateur, puis recuisson du parc.
+
+**Résultats observés** : CI verte au niveau job (`0988d7291`), `make gate-push` vert. Gains de la vague : +47 paquets sains, aucun film en baisse, killsource identique.
+
+**Conclusion / prochaine étape** : recuisson du parc ; la recherche sur la localisation haute fréquence fondée sur la loi d'écriture de la vue B est en cours (reprise de LS).
