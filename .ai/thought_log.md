@@ -115242,3 +115242,48 @@ passe de référence (références d'équivalence re-figées : schéma 78, `gram
 **Résultats observés** : CI verte au niveau job (`0988d7291`), `make gate-push` vert. Gains de la vague : +47 paquets sains, aucun film en baisse, killsource identique.
 
 **Conclusion / prochaine étape** : recuisson du parc ; la recherche sur la localisation haute fréquence fondée sur la loi d'écriture de la vue B est en cours (reprise de LS).
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — ouverture du lot 2.7 : fusion de LU et LT, passe de référence, mesure des morts d'objet — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours (2.7.a, mesure).
+
+**Décision technique principale** : la vague 2 de la campagne (LU, LT ; LS retiré) fusionnée dans
+`feat/v75` (`87cdfa761`) ouvre le lot 2.7. Fusion de `feat/v75` dans `feat/ri-etape2` sans conflit ;
+passe de référence `v75w2` sur la tête fusionnée ; références d'équivalence re-figées (`0355c46ab`).
+2.7.a (les morts d'objet et l'occupation lues par la marche des trames) commence par une mesure : la
+marche à huit vues et la marche des trames diffèrent par le nombre de vues (huit contre trois), le
+monde (chronologie propre contre phase des images-clés), le localisateur (signature puis largeur
+libre contre début de liste de la cuisson), `IDLowBits` (calibré de 10 à 15 contre présumé 13) et les
+largeurs MPP (celles des véhicules contre celles du format).
+
+**Résultats observés** : passe `v75w2` : vingt films décodés depuis le film, aucun échec ; écarts tous
+venus de `feat/v75` (`artifact` ×20, `movementStates.stats` ×17, `continuousFire.stats` ×13). La
+campagne annonce un lot « lire la vue A jusqu'au bout » (décision de l'utilisateur) ; 2.7 et 3.1 ne
+touchent pas la lecture de la vue A.
+
+**Conclusion / prochaine étape** : résultats de l'instrument sur les huit films à véhicules, puis
+décisions d'exécution de 2.7.a écrites au plan avant le code.
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — lot 2.7.a : mesure des morts d'objet sur la marche des trames, décisions — En cours (`feat/ri-etape2`)
+
+**Statut** : mesure faite, décisions écrites au plan ; implémentation à suivre.
+
+**Décision technique principale** : les morts d'objet et l'occupation deviennent un canal de la marche
+des trames ; les listes d'événements qu'elle ne localise pas sont récupérées pour ce seul canal
+(localisateur unique, ordre « signature puis largeur libre », repli `repli_localisation_largeur_libre`
+après la lecture) ; la cuisson marche les trames sous les largeurs MPP des véhicules ; `IDLowBits`
+reste l'en-tête présumé (13) et la calibration disparaît avec la marche à huit vues, retirée dans le
+lot (règle 7).
+
+**Résultats observés** : une première mesure, faite sans le profil de balayage que killsource calibre
+pour la cuisson (génération stricte), était fausse — elle accusait la marche des trames de perdre 75 à
+85 % des morts. Sous le profil de la cuisson, sur les huit films à véhicules du corpus : 138 records
+de mort de véhicule à huit vues, 131 par la marche des trames, 150 sous les largeurs MPP des
+véhicules, 165 avec la récupération (2 manquent, 29 de plus ; toutes les morts propres à une marche
+sont confirmées par le recensement des images-clés, à moins d'une minute de la fin de leur vie, sauf
+quatre des 29). Occupation 543 → 688. Calibration d'`IDLowBits` : 13 sur les 48 films à véhicules du
+parc local, jamais le cadre par défaut.
+
+**Conclusion / prochaine étape** : prévenir la campagne (trois de ses fichiers citent la marche à huit
+vues : le localisateur unique, son test, un instrument), puis écrire le canal, la récupération et le
+câblage de la cuisson ; preuve au `replay-corpus-gate` et au banc de vérité.

@@ -594,6 +594,41 @@ et l'appartenance du slot à la bande font l'essentiel du coût.
   régénérées à révision constante.
 
 ### Lot 2.7 — Changements de comportement déclarés (taille L) — coordination §1.3
+*Mesure avant 2.7.a, 2026-10-04* (instrument `grammar/morts_marche_unique_research_test.go`, huit
+films du corpus à véhicules, contexte posé comme la cuisson : profil calibré de killsource —
+génération stricte — et largeurs MPP des véhicules). Une première mesure sans le profil de la
+cuisson était FAUSSE (générations lues contre celles du recensement : 1 mort sur 56 dans une vie) ;
+refaite sous le bon profil, toutes les morts confirmées le sont à moins d'une minute de la fin de
+leur vie au recensement des images-clés. Morts de véhicule (`ti=40`), records : marche à huit vues
+138 ; marche des trames de la cuisson 131 (communes 118 ; les 20 propres à la marche à huit vues
+sont dans des listes d'événements que la marche des trames ne localise pas, 19 confirmées) ; la
+même sous les largeurs MPP des véhicules 150 ; et avec la récupération des listes non localisées
+(localisateur unique, ordre « signature puis largeur libre ») 165 — deux seulement manquent (toutes
+deux confirmées), vingt-neuf de plus (vingt-cinq confirmées). Occupation : 543 → 688 lectures.
+`IDLowBits` : la calibration de la marche des morts rend 13 sur les huit films, et 13 sur les 48
+films à véhicules du parc local (faits de cuisson), jamais le cadre par défaut.
+*Décisions d'exécution du 2026-10-04* :
+1. *Les morts d'objet et l'occupation deviennent un canal de la marche des trames* ([Distribuer],
+   `ScanMarcheDesTrames`) : même récolte que la marche des morts (règle d'acceptation, dénominateurs,
+   dédoublonnage), sur les records de la vue B de chaque trame. `ScanObjectDeaths` devient une
+   projection de cette marche (instruments), comme `ScanMovementStates`.
+2. *Les listes d'événements que la marche des trames ne localise pas sont récupérées pour ce seul
+   canal* : début par le localisateur unique dans l'ordre des marches qui lisent les morts
+   (signature, puis largeur libre), vue B lue sous le monde de la marche, rendu intact ; les autres
+   canaux ne voient pas ces records. Compté au repli `repli_localisation_largeur_libre`, déjà inscrit
+   « après la lecture ».
+3. *La cuisson marche les trames sous les largeurs MPP que les véhicules lisent aujourd'hui*
+   (`replay.gwWidthsForFilm` : relues au format 27, sinon calibrées sur les poses) : les morts gardent
+   leurs largeurs ; les états de mouvement et le tir continu changent sur les films où la
+   calibration décide (formats sans largeur relue) — changement DÉCLARÉ, mesuré au gate.
+4. *`IDLowBits`* : la marche des trames garde l'en-tête (13, présumé, valeur statique de
+   l'exécutable) ; la calibration de la marche des morts disparaît avec elle (13 partout où elle a
+   tourné) et le repli `repli_cadre_de_marche_par_defaut_conserve` est retiré (aucun déclenchement) :
+   un seul `IDLowBits` (IR-7).
+5. *La marche à huit vues est retirée dans ce lot* (chronologie, calibration, déroulage à huit vues,
+   site du localisateur) : sans appelant de production, elle serait du code mort (règle 7) ; 3.1.1
+   garde la timeline de killsource. Les fichiers de la campagne qui la citent (le localisateur
+   unique, son test, des instruments de recherche) sont mis à jour après l'avoir prévenue.
 - [ ] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
 - [ ] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
       d'ancres, canal par canal, mesuré sur le corpus.
@@ -885,3 +920,15 @@ plan y sont reprises comme items (3.1.2).
   jour). Si la recherche de la campagne sur la localisation haute fréquence devient un lot qui touche
   `grammar/localisateur.go` ou `facts/killsource/*`, elle préviendra avant. Suite, LU fusionné : fusion
   de `feat/v75`, passe de référence (références d'équivalence re-figées : schéma 78, LT), puis 2.7.a.
+- 2026-10-04 : OUVERTURE DU LOT 2.7 — LU et LT fusionnés dans `feat/v75` (`87cdfa761`). Fusion de
+  `feat/v75` dans `feat/ri-etape2` (`45184faf4`, sans conflit) ; passe de référence `v75w2` sur la
+  tête fusionnée : vingt films décodés depuis le film, aucun échec ; écarts tous venus de `feat/v75`
+  (`artifact` sur les vingt : schéma 78 et LT ; `movementStates.stats` sur dix-sept et
+  `continuousFire.stats` sur treize, `continuousFire` lui-même sur deux : localisation des listes par
+  LT) ; références re-figées (`0355c46ab`), killsource de référence `ks_v75w2` (dix-neuf témoins, code
+  0). Campagne prévenue avant et après. Elle annonce un lot « lire la vue A jusqu'au bout »
+  (décision de l'utilisateur du 2026-10-04) qui se posera sur la structure : 2.7 et 3.1 ne touchent
+  ni la lecture de la vue A ni `distribuer_tetes.go`, et l'ordre de 2.7.c se calera avec ce lot pour
+  que killsource ne change qu'une fois. 2.7.a commence par la mesure (instrument
+  `grammar/morts_marche_unique_research_test.go`, les deux marches sur les huit films du corpus qui
+  portent des véhicules).
