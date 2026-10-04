@@ -10,7 +10,7 @@ import (
 //
 // # LE DEFAUT, MESURE
 //
-// Dans un paquet delta a liste d evenements, le localisateur de production (`marchLocateStrict`,
+// Dans un paquet delta a liste d evenements, le localisateur de production ([LocaliserBoucleDeRecords],
 // signature du slot 123) demarre la marche sur le premier record qu il sait ancrer. Or les
 // CREATIONS d objets de l instant sont les premiers records de la liste — la naissance d un
 // bipede (lot M3.2 : 40/41, 91/99 et 123/125 cas, `birth_loadouts.go`), les armes et
@@ -46,7 +46,7 @@ import (
 // Tout debut autre que celui du localisateur est un record NEW que le localisateur sautait. Chaque
 // comment est une recuperation que la structure de lecture marque (ADR 0037 IR-6).
 func localiserLaListe(pay []byte, w *World, cfg FrameConfig) (int, lecture.DebutDeVueB) {
-	debut := marchLocateStrict(pay, w, cfg)
+	debut, _ := LocaliserBoucleDeRecords(pay, w, cfg, SignatureStricte)
 	if debut < 0 {
 		return debutParFermetureRangee(pay, candidatsDeTete(pay, len(pay)*8, w), w, cfg)
 	}
