@@ -88,6 +88,9 @@ type scoreboardReport struct {
 	// SansCandidat : vies dont l'index n'est declare par PERSONNE, ou dont le bot declare ne
 	// figure pas au tableau. Le cas 3 de l'en-tete.
 	SansCandidat int
+	// IndexPartage : vies d'un index que PLUSIEURS bots declarent, que la lecture du corps n'a pas
+	// departagees. BOT_METADATA nomme l'index, mais pas un seul bot : ce n'est pas `SansCandidat`.
+	IndexPartage int
 }
 
 // Nommees rend le nombre de vies que le tableau a nommees, toutes formes d'identifiant.
@@ -101,7 +104,8 @@ func (r *IdentityRegistry) resolveByScoreboard(ctx context.Context, in IdentityI
 		return
 	}
 	tab := lireTableau(in.Participants)
-	bots, humains := bidsParIndex(in.Bots), indexToXUIDOf(in.PlayerIndices.ByXUID)
+	bots, partages := bidsParIndex(in.Bots)
+	humains := indexToXUIDOf(in.PlayerIndices.ByXUID)
 	// LES VIES SE LISENT PAR L'ACCESSEUR, jamais par les tables brutes du pont : ce fichier
 	// DECIDE, il ne mute pas (garde-rail `no_identity_bridge_outside_registry_test.go`, meme
 	// regle que `_elimination.go` et `_exclusion.go`). Les mutations passent par les poseurs.
@@ -116,7 +120,7 @@ func (r *IdentityRegistry) resolveByScoreboard(ctx context.Context, in IdentityI
 		if !lu {
 			continue
 		}
-		r.nommerParLeTableau(i, l, int(pi), tab, candidatsDIndex{bots: bots, humains: humains})
+		r.nommerParLeTableau(i, l, int(pi), tab, candidatsDIndex{bots: bots, partages: partages, humains: humains})
 	}
 	r.tableau.alarmer(ctx, in.MatchID)
 }
@@ -125,8 +129,10 @@ func (r *IdentityRegistry) resolveByScoreboard(ctx context.Context, in IdentityI
 // `bid` du bot que le film declare, et le xuid que la table d'index y place. Une structure
 // plutot que deux parametres de plus : le depot borne a cinq, et les deux vont toujours ensemble.
 type candidatsDIndex struct {
-	bots    map[int]string
-	humains map[int]uint64
+	bots map[int]string
+	// partages : les index que PLUSIEURS bots declarent — aucun `bid` n'y est servi.
+	partages map[int]bool
+	humains  map[int]uint64
 }
 
 // nommerParLeTableau tranche le sort d'UNE vie. Les trois issues sont celles de l'en-tete : le
@@ -134,6 +140,12 @@ type candidatsDIndex struct {
 func (r *IdentityRegistry) nommerParLeTableau(i int, l lifeSpan, pi int, tab tableauLu,
 	c candidatsDIndex) {
 	bid, declare := c.bots[pi]
+	if !declare && c.partages[pi] {
+		// PLUSIEURS BOTS DECLARENT CET INDEX, et ni leur entite ni leurs declarations n'ont dit
+		// lequel tenait ce corps : le tableau n'indexe pas, il ne le dit pas non plus.
+		r.tableau.IndexPartage++
+		return
+	}
 	if !declare || !tab.porte[bid] {
 		// L'index n'est declare par personne, ou le bot du film ne figure pas au tableau : le
 		// tableau n'indexe pas, il ne peut donc pas dire QUI occupe ce corps.
@@ -210,21 +222,25 @@ func (t tableauLu) arriveeFilmUS(xuid uint64, offsetMS int64, apparies int) (int
 
 // bidsParIndex rend l'identifiant stable de chaque siege de bot du film. Un siege que PLUSIEURS
 // bots declarent n'entre pas : le nom les differencie, l'index dit le siege, et servir l'un des
-// deux publierait un identifiant arbitraire — la meme abstention que `botNamesBySeat`.
-func bidsParIndex(bots []BotIdentity) map[int]string {
+// deux publierait un identifiant arbitraire — la meme abstention que `botNamesBySeat`. Ces sieges
+// partages sont rendus a part : le refus qu'ils causent n'a pas la meme cause qu'un index que
+// personne ne declare.
+func bidsParIndex(bots []BotIdentity) (uniques map[int]string, partages map[int]bool) {
 	vus := map[int][]string{}
 	for _, b := range bots {
 		if bid := b.Bid(); bid != "" && !contientBid(vus[b.FilmIndex], bid) {
 			vus[b.FilmIndex] = append(vus[b.FilmIndex], bid)
 		}
 	}
-	out := make(map[int]string, len(vus))
+	uniques, partages = make(map[int]string, len(vus)), map[int]bool{}
 	for idx, bids := range vus {
 		if len(bids) == 1 {
-			out[idx] = bids[0]
+			uniques[idx] = bids[0]
+		} else {
+			partages[idx] = true
 		}
 	}
-	return out
+	return uniques, partages
 }
 
 func contientBid(l []string, bid string) bool {
@@ -236,7 +252,7 @@ func contientBid(l []string, bid string) bool {
 func (s scoreboardReport) alarmer(ctx context.Context, matchID string) {
 	slog.InfoContext(ctx, "rejeu : nommage par le tableau de l'API",
 		"match_id", matchID, "lignes", s.Lignes, "bots", s.Bots, "humains", s.Humains,
-		"conflits", s.Conflits, "sansCandidat", s.SansCandidat)
+		"conflits", s.Conflits, "sansCandidat", s.SansCandidat, "indexPartage", s.IndexPartage)
 	if s.Conflits > 0 {
 		slog.WarnContext(ctx, "rejeu : siege d'index partage que la fenetre de participation ne departage "+
 			"pas — vies laissees non resolues",
@@ -244,7 +260,12 @@ func (s scoreboardReport) alarmer(ctx context.Context, matchID string) {
 	}
 	if s.SansCandidat > 0 {
 		slog.WarnContext(ctx, "rejeu : index de participant que NI la table d'index NI BOT_METADATA ne "+
-			"nomme — le tableau n'indexe pas, il ne peut pas le rattacher",
+			"nomme, ou bot declare absent du tableau — le tableau n'indexe pas, il ne peut pas le rattacher",
 			"match_id", matchID, "vies", s.SansCandidat)
+	}
+	if s.IndexPartage > 0 {
+		slog.WarnContext(ctx, "rejeu : index que PLUSIEURS bots declarent dans BOT_METADATA, sans entite "+
+			"ni declaration qui designe un seul d'entre eux — le tableau n'indexe pas, il ne departage pas",
+			"match_id", matchID, "vies", s.IndexPartage)
 	}
 }

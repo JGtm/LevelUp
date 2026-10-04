@@ -225,7 +225,11 @@ var plafondsParFichier = map[string]int{
 	// `turretRidesNotRideable`, la raison `aloft_unoccupied` du decor servi a la requete, les
 	// revisions qui ne montent pas, l effet au parc). Exception ecrite, dans le commit qui monte
 	// `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2783,
+	// SCHEMA 77 -> 78 (2026-10-04, rejeu « vies de bots sans identite »), +22 : l entree v78 (la piste
+	// d une vie d un seul echantillon, le corps lu aux declarations BOT_METADATA, le compte du refus
+	// sur index partage, les revisions qui ne montent pas, l effet au parc). Exception ecrite, dans le
+	// commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2805,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -314,7 +318,9 @@ var plafondsParFichier = map[string]int{
 	// 1369 -> 1374, la justification de la montee (le determinisme des tris).
 	// SCHEMA 76 -> 77 (2026-10-02, chantier Falcon de Behemoth) : 1374 -> 1377, la justification
 	// de la montee (un champ mort retire).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1377,
+	// SCHEMA 77 -> 78 (2026-10-04, rejeu « vies de bots sans identite ») : 1377 -> 1381, la
+	// justification de la montee (deux vies de bots nommees, un contenu qui change sans champ neuf).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1381,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

@@ -23,7 +23,8 @@ package replay
 // larges de l'index 8 sont disjointes : 512 -> Hundy, 526 -> PardonMy, 564..594 -> Brew Dog.
 //
 // Deux entites candidates d'occupants differents, ou aucune : la lecture se TAIT et les voies
-// d'avant reprennent (tableau de l'API, relais), comme sans entite.
+// d'avant reprennent (declarations BOT_METADATA, cf. identity_registry_declarations.go ; tableau de
+// l'API ; relais), comme sans entite.
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -121,7 +122,9 @@ func (m entitesDesIndexPartages) occupantA(i int, t uint64) (proprietaireDEntite
 }
 
 // nommerLesPistesDeBotParLeurVie pose le NOM du bot sur chaque piste anonyme que recouvre une vie
-// du meme slot nommee par un `bid` (lecture du corps par son entite, ou tableau de l'API).
+// du meme slot nommee par un `bid` (lecture du corps par son entite ou par les declarations
+// BOT_METADATA, ou tableau de l'API) : celle qui la recouvre le plus, bornes incluses
+// ([recouvrementInclus]) — une vie d'un seul echantillon nomme sa piste.
 //
 // POURQUOI UNE PASSE DE PLUS : `nameTracksByLives` ne pose que des xuids, et `nameBotTracks`
 // nomme par le SIEGE — il s'abstient sur un index que plusieurs bots declarent. Une vie qui porte
@@ -149,7 +152,7 @@ func nommerLesPistesDeBotParLeurVie(tracks []Track, vies []lifeSpan, bots []BotI
 			if l.slot != tracks[i].Slot || l.bid == "" || nomDuBid[l.bid] == "" {
 				continue
 			}
-			if ov := minI64(a, l.to) - maxI64(de, l.from); ov > meilleur {
+			if ov := recouvrementInclus(de, a, l); ov > meilleur {
 				meilleur, nom = ov, nomDuBid[l.bid]
 			}
 		}

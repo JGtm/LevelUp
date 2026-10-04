@@ -1370,8 +1370,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	// - 77 (2026-10-02, chantier Falcon de Behemoth) : UN CHAMP MORT RETIRE.
 	//   `coverage.vehicles.turretRidesNotRideable`, nul depuis le 69, sort de la forme ; aucune
 	//   lecture ne change. Un v76 se lit « a republier ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 77 {
-		t.Fatalf("SchemaVersion = %d, attendu 77 : incrémenter exige une raison écrite ci-dessus "+
+	// - 78 (2026-10-04, rejeu « vies de bots sans identite ») : Aucun champ neuf ; le CONTENU
+	//   change : une vie de bot d un seul echantillon nomme sa piste, et le corps d un index que
+	//   plusieurs bots se relaient se lit aux declarations BOT_METADATA quand l entite se tait. Un
+	//   v77 se lit « a republier ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 78 {
+		t.Fatalf("SchemaVersion = %d, attendu 78 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

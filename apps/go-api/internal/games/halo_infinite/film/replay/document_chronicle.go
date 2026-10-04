@@ -2781,3 +2781,25 @@ package replay
 //	AVEC ELLE       `objectives` et `killcollector.IsolationDecoderRev` gardent leur valeur.
 //
 //	LE PARC         un artefact 76 dont les faits sont sur disque : verdict `republier`.
+
+// v78 (2026-10-04, rejeu « vies de bots sans identite ») : DEUX VIES DE BOTS ANONYMES NOMMEES. La
+// FORME du document ne change pas (aucun champ) ; son CONTENU change, et un artefact 77 doit se
+// lire « a republier ».
+//
+//	`tracks[].bot` une vie de bot d un seul echantillon nomme sa piste : le recouvrement piste <->
+//	               vie se mesure bornes incluses partout (`recouvrementInclus`, garde-rail
+//	               `recouvrement_unique_test.go`) ; le nommage des pistes de bot le mesurait a
+//	               bornes exclusives (`5676a9ba`, slot 536, frame 162 : « 343 Beard »).
+//	`tracks[].bot`, le corps d un index que PLUSIEURS bots se relaient, sans humain sur l index,
+//	`identity`     se lit aux declarations BOT_METADATA quand l entite `ti=9` se tait : l unique
+//	               bot dont une declaration couvre la creation du corps et toute sa vie
+//	               (`c7f94693`, slot 532, frames 947..981 : « 343 Donos », `bid(6.0)`, lien
+//	               `direct` / `creation_bipede` au lieu de `non_resolu` / `index_hors_table`).
+//	journal        le refus du tableau de l API sur un tel index se compte a part
+//	               (`indexPartage`), et non plus comme un index que personne ne declare.
+//
+//	CE QUI MONTE    `SchemaVersion` 77 -> 78, seule. `source`, `profile`, `grammar`, `killsource`,
+//	AVEC ELLE       `objectives` et `killcollector.IsolationDecoderRev` gardent leur valeur : les
+//	                faits persistes sont identiques a l octet.
+//
+//	LE PARC         un artefact 77 dont les faits sont sur disque : verdict `republier`.

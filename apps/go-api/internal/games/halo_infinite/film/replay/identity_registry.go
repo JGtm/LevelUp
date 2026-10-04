@@ -383,7 +383,7 @@ func (r IdentityRegistry) tracesDontLaVie(tracks []Track, origin, step uint64,
 			if l.slot != tracks[i].Slot || !garde(li, l) {
 				continue
 			}
-			if minI64(to, l.to) >= maxI64(from, l.from) {
+			if recouvrementInclus(from, to, l) > 0 {
 				out[i] = true
 				break
 			}
