@@ -617,10 +617,15 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
    (signature, puis largeur libre), vue B lue sous le monde de la marche, rendu intact ; les autres
    canaux ne voient pas ces records. Compté au repli `repli_localisation_largeur_libre`, déjà inscrit
    « après la lecture ».
-3. *La cuisson marche les trames sous les largeurs MPP que les véhicules lisent aujourd'hui*
-   (`replay.gwWidthsForFilm` : relues au format 27, sinon calibrées sur les poses) : les morts gardent
-   leurs largeurs ; les états de mouvement et le tir continu changent sur les films où la
-   calibration décide (formats sans largeur relue) — changement DÉCLARÉ, mesuré au gate.
+3. *RETIRÉE le 2026-10-04 (avant fusion), sur signalement de la campagne.* Elle faisait marcher les
+   trames de la cuisson sous les largeurs MPP que les véhicules calibrent sur les poses des formats
+   sans largeur relue (8/3) : c'est le lot LM de la campagne, MIS DE CÔTÉ par l'utilisateur le
+   2026-10-02 (« corrections d'abord, uniquement générales lues dans le jeu » ; l'exception D6 est
+   suspendue, plan de la campagne §3). La passe `ri27b` montrait pourtant la vue C fermée trois à
+   cinq fois plus souvent sur ces films (`084a804d` 4 837 → 23 642 paquets) : le fait est consigné
+   (découverte 11), la décision reste celle de l'utilisateur. La marche des trames garde les
+   largeurs du contexte, et les morts de véhicule s'y lisent, alors que la marche à huit vues les
+   lisait sous les largeurs calibrées.
 4. *`IDLowBits`* : la marche des trames garde l'en-tête (13, présumé, valeur statique de
    l'exécutable) ; la calibration de la marche des morts disparaît avec elle (13 partout où elle a
    tourné) et le repli `repli_cadre_de_marche_par_defaut_conserve` est retiré (aucun déclenchement) :
@@ -630,6 +635,22 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
    garde la timeline de killsource. Les fichiers de la campagne qui la citent (le localisateur
    unique, son test, des instruments de recherche) sont mis à jour après l'avoir prévenue.
 - [ ] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
+      *Écrit* (décisions 1 à 5) : `grammar/canal_des_morts.go` (canal des trames et d'image-clé :
+      récolte des records de la vue B, récupération des listes non localisées par [debutRecupere],
+      monde rendu intact, sans observation) ; `ScanMarcheDesTramesAvec` le distribue avec les deux
+      autres quand on lui demande les morts (la cuisson : calque des véhicules balayé, un film sans
+      véhicule ne paie pas cette lecture), `ScanObjectDeaths` en est une projection ;
+      `MarcheDistribuee` expose la marche aux
+      canaux de la grammaire ; `object_deaths_march.go` et `object_deaths_calibrate.go` retirés,
+      `ObjectDeathStats` sans les champs de la calibration ; cuisson : marche des trames sous
+      `gwWidthsForFilm`, morts et occupation posées sur le calque des véhicules depuis elle
+      (`mortsDeVehicule`), étapes observées `vehicleDeaths` et `vehicleDeaths.stats` ; repli
+      `repli_cadre_de_marche_par_defaut_conserve` retiré, sites de `repli_localisation_largeur_libre`
+      déplacés ; localisateur unique (en-tête, site, affirmation fausse sur la génération stricte
+      corrigée) et son test portés ; sondes portées (`c2_decor_ti40`, `ti40_marche_desync`,
+      `m4b_monture`, `ti40_morts_alignement`) ou retirées (`campagne_bis3`, accord de la campagne ;
+      l'instrument de la mesure) ; `grammar.Rev` = `grammar-2026-10-04` (goldens de `killsource` et
+      d'`objectives` régénérés à révision constante) ; ADR 0037 amendé (IR-2, IR-6, IR-7).
 - [ ] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
       d'ancres, canal par canal, mesuré sur le corpus.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
@@ -779,6 +800,15 @@ plan y sont reprises comme items (3.1.2).
    Même question que 2.2.2 (découverte 8) ; la forme juste est 2.7.b (les canaux lus par la marche
    là où elle couvre au moins autant, l'ancrage seulement après). Décision de l'utilisateur du
    2026-10-04 : option A — item 2.7.d.
+11. *(lot 2.7.a)* **Sous les largeurs MPP calibrées sur les poses (8/3), la marche des trames ferme
+   la vue C trois à cinq fois plus souvent sur les formats sans largeur relue** (suite de la
+   découverte 6). Passe `ri27b` (marche des trames de la cuisson sous `gwWidthsForFilm`) contre
+   `v75w2`, paquets à vue C fermée : `084a804d` 4 837 → 23 642, `1c4c63c2` 13 389 → 33 999,
+   `60ae07c4` 13 948 → 34 578, `11de8353` 5 631 → 13 839, `111fa685` 4 026 → 11 932, `e5adf7b2`
+   4 149 → 12 267 ; `a349fea8` 424 → 428, `a521164d` 692 → 693, `50247b26` 139 → 138. Non retenu :
+   c'est le lot LM, mis de côté par l'utilisateur le 2026-10-02 (largeur mesurée sur des builds
+   sans exécutable, non lue dans le jeu ; exception D6 suspendue). Signalé à la campagne ; la
+   décision reste celle de l'utilisateur.
 
 ## 7. Journal
 

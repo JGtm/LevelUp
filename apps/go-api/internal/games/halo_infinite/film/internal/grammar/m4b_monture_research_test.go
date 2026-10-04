@@ -4,7 +4,7 @@ package grammar
 
 // m4b_monture_research_test.go — LOT M4b : CE QUE LE FILM ECRIT D UNE MONTURE, dans une fenetre.
 // Mesure seule. Pour les slots de bipede M4B_SLOTS et les vehicules M4B_VEHICULES, sur les trames
-// M4B_FENETRES : les lectures d `object-parent-state` (i10) de la marche des morts, les evenements
+// M4B_FENETRES : les lectures d `object-parent-state` (i10) de la marche des trames, les evenements
 // d embarquement / de sortie en tete de liste, et les rafales de l index S3_INDEX.
 //
 // Rejouable : memes variables que `m4b_tir_continu_research_test.go`, plus M4B_SLOTS,
@@ -41,9 +41,9 @@ func TestM4bMonture(t *testing.T) {
 		}
 	}
 	tc := t516Cadre(t)
-	mf, err := ScanMarchFacts(tc.fc)
+	mf, err := ScanMarcheDesTrames(tc.fc)
 	if err != nil {
-		t.Fatalf("ScanMarchFacts : %v", err)
+		t.Fatalf("ScanMarcheDesTrames : %v", err)
 	}
 	for _, o := range mf.Occupancy {
 		tr := cad.trame(o.TimestampUS)
@@ -65,11 +65,7 @@ func TestM4bMonture(t *testing.T) {
 		t.Logf("evenement t%d type %d occupant %d (present %v) vehicule %d (valide %v) siege %d",
 			tr, e.Kind, e.OccupantSlot, e.OccupantPresent, e.VehicleSlot, e.VehicleSlotValid, e.Seat)
 	}
-	m, err := ScanMarcheDesTrames(tc.fc)
-	if err != nil {
-		t.Fatalf("ScanMarcheDesTrames : %v", err)
-	}
-	for _, r := range m.ContinuousFire {
+	for _, r := range mf.ContinuousFire {
 		if r.FilmIndex != cad.index || !m4bDans(cad.trame(r.StartUS), fen) {
 			continue
 		}

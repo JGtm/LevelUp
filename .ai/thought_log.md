@@ -115287,3 +115287,29 @@ parc local, jamais le cadre par défaut.
 **Conclusion / prochaine étape** : prévenir la campagne (trois de ses fichiers citent la marche à huit
 vues : le localisateur unique, son test, un instrument), puis écrire le canal, la récupération et le
 câblage de la cuisson ; preuve au `replay-corpus-gate` et au banc de vérité.
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — lot 2.7.a écrit, preuve d'équivalence faite, gate de corpus MIXTE — En cours (`feat/ri-etape2`, non fusionnable en l'état)
+
+**Statut** : En cours — code écrit et commité en local, décision de l'utilisateur à instruire.
+
+**Décision technique principale** : canal des morts et de l'occupation sur la marche des trames
+(récupération des listes non localisées par le localisateur unique, ordre des sites qui lisent les
+morts), marche à huit vues retirée avec sa calibration d'`IDLowBits`, `grammar-2026-10-04`. La
+décision 3 (marche des trames sous les largeurs MPP calibrées sur les poses, 8/3 sur les formats
+sans largeur relue) est RETIRÉE sur signalement de la campagne : c'est son lot LM, mis de côté par
+l'utilisateur le 2026-10-02 (« corrections d'abord, uniquement générales lues dans le jeu »).
+
+**Résultats observés** : équivalence (`ri27c`, vingt films) : états de mouvement et tir continu
+identiques, killsource identique à l'octet, records de mort de véhicule 142 → 148 (`e5adf7b2`
+17 → 15 et `60ae07c4` 1 → 0, lus jusqu'ici sous la largeur mesurée). Gate de corpus (19 témoins,
+contre `87cdfa761`) : sortie 1 — FAUX sur `084a804d` et `e5adf7b2` (une « action hors vie » de
+plus chacun), PERTE sur `60ae07c4`, `a349fea8`, `a521164d`, `11de8353`, `4f77afc1` (épisodes à
+bord, tirs posés sur un véhicule, deux rafales sur `11de8353`, morts lues), gains ailleurs (banc :
+`4f77afc1` 112 → 95 et `11de8353` 8 → 3 actions hors vie). `bfecd02b` (véhicules, build récent)
+inchangé. `4f77afc1` gagne 11 morts que le recensement n'apparie pas : à instruire. Sous la largeur
+mesurée (passe `ri27b`), la vue C de la cuisson se fermait trois à cinq fois plus souvent sur les
+films de formats anciens (découverte 11).
+
+**Conclusion / prochaine étape** : instruire les morts non appariées de `4f77afc1`, puis poser la
+décision à l'utilisateur en langage clair (garder la lecture actuelle des morts sur les formats
+anciens, accepter leurs pertes, ou autoriser la largeur mesurée pour la marche).

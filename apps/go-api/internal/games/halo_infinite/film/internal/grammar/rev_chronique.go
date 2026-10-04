@@ -389,3 +389,30 @@ package grammar
 // `movementStates` identiques : `objectives.Rev` ne monte pas. `replay.SchemaVersion` reste 78. Ce
 // rang remplace la valeur du meme nom de la tete d integration d avant la revue (`da6ecda38`, jamais
 // fusionnee, empreinte egale a celle du `.4`).
+//
+// ENTREE `grammar-2026-10-04` (2026-10-04, lot 2.7.a de la representation intermediaire,
+// `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES MORTS D OBJET ET L OCCUPATION
+// SONT UN CANAL DE LA MARCHE DES TRAMES ; LA MARCHE A HUIT VUES EST RETIREE.
+//
+// Ce qui change, contre `grammar-2026-10-03.5` :
+//   - [ScanMarcheDesTramesAvec] rend les morts d objet et l occupation ([canalDesMorts]) quand on les
+//     lui demande — la cuisson, pour un calque de vehicules balaye : les records de la vue B de
+//     chaque trame, sous la regle d acceptation de [objectDeathHarvest] ; la marche a huit
+//     vues (chronologie des images-cles, calibration d `IDLowBits`, deroulage) est retiree, et la
+//     largeur d identifiant bas est celle de l en-tete de la marche ;
+//   - une liste d evenements que le debut de liste de la cuisson ne localise pas est recuperee pour
+//     ce canal seul ([debutRecupere] : signature puis largeur libre, `repli_localisation_largeur_libre`),
+//     sous le monde de la marche, rendu intact ;
+//   - [ObjectDeathStats] perd les quatre champs de la calibration ; le repli
+//     `repli_cadre_de_marche_par_defaut_conserve` est retire ;
+//   - les morts de vehicule se lisent sous les largeurs MPP de la marche des trames, celles du
+//     contexte, et plus sous celles que les vehicules calibrent sur les poses des formats sans
+//     largeur relue : une largeur mesuree n entre pas dans la marche de toutes les entites.
+//
+// Preuve sur les vingt films du corpus d equivalence contre `87cdfa761` (passe `ri27c`) : etats de
+// mouvement et tir continu IDENTIQUES sur les vingt ; `cmd/killsource json` identique a l octet sur
+// les 19 temoins (`killsource.Rev` et `objectives.Rev` ne montent pas) ; divergent `vehicles` et
+// `artifact`, plus les deux etapes neuves `vehicleDeaths` ; records de mort de vehicule de la
+// cuisson 142 -> 148 sur les dix films qui en portent (`e5adf7b2` 17 -> 15 et `60ae07c4` 1 -> 0,
+// lus jusqu ici sous les largeurs calibrees ; `1c4c63c2` 4 -> 7, `084a804d` 35 -> 37).
+// `replay.SchemaVersion` reste 78.
