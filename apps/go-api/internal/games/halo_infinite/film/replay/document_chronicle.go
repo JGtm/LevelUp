@@ -2791,8 +2791,8 @@ package replay
 //	               `recouvrement_unique_test.go`) ; le nommage des pistes de bot le mesurait a
 //	               bornes exclusives (`5676a9ba`, slot 536, frame 162 : « 343 Beard »).
 //	`tracks[].bot`, le corps d un index que PLUSIEURS bots se relaient, sans humain sur l index,
-//	`identity`     se lit aux declarations BOT_METADATA quand l entite `ti=9` se tait : l unique
-//	               bot dont une declaration couvre la creation du corps et toute sa vie
+//	`identity`     se lit aux declarations BOT_METADATA quand l entite `ti=9` se tait : le SEUL
+//	               bot declare a sa creation, si une de ses declarations couvre aussi toute la vie
 //	               (`c7f94693`, slot 532, frames 947..981 : « 343 Donos », `bid(6.0)`, lien
 //	               `direct` / `creation_bipede` au lieu de `non_resolu` / `index_hors_table`).
 //	journal        le refus du tableau de l API sur un tel index se compte a part

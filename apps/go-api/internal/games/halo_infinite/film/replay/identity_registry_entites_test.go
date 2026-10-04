@@ -103,7 +103,7 @@ func TestCorpsDIndexPartageNommeParLEntiteASaCreation(t *testing.T) {
 	}
 }
 
-func TestCorpsDIndexPartageSansEntiteRestentRefuses(t *testing.T) {
+func TestCorpsDIndexPartageSansEntiteNommeParDeclarationSinonRefuse(t *testing.T) {
 	reg := BuildIdentityRegistry(context.Background(), entreeTroisBots(false))
 	// 512 et 526 sont crees avant la premiere declaration de leur bot : seule l'entite les nommait.
 	// 564 est cree pendant la declaration de Brew Dog, qui court jusqu'au bout : elle le nomme.

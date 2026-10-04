@@ -15,10 +15,17 @@ package replay
 //
 // BOT_METADATA est reecrit en tete de chaque chunk et a chaque changement : ses declarations sont
 // datees a la frame pres (`BotIdentity.Declarations`). Le corps d'index `pi` cree a `t`, dont la vie
-// court sur [from, to], appartient au bot de `pi` dont UNE declaration couvre a la fois `t` et
-// toute la vie, quand ce bot est UNIQUE et qu'aucun humain de la table ne tient `pi`. Sinon la
-// lecture se tait et les voies d'avant reprennent. C'est une lecture du film, pas un repli : aucun
-// seuil, aucune fenetre choisie.
+// court sur [from, to], appartient au bot de `pi` quand, aucun humain de la table ne tenant `pi`,
+// les deux conditions tiennent ENSEMBLE :
+//   - a `t`, UN SEUL bot distinct de `pi` est declare ;
+//   - une declaration de ce bot couvre a la fois `t` et toute la vie.
+//
+// Sinon la lecture se tait et les voies d'avant reprennent. C'est une lecture du film, pas un
+// repli : aucun seuil, aucune fenetre choisie.
+//
+// L'UNICITE SE LIT A LA CREATION, PAS PARMI LES SEULS BOTS QUI COUVRENT LA VIE : deux bots declares
+// a l'instant ou le corps nait ne designent pas son occupant, meme quand un seul des deux couvre
+// toute la vie : rien ne dit lequel des deux est ne dans ce corps. La lecture se tait.
 //
 // L'ENTITE GARDE LA PRIORITE : le corps d'un bot peut preceder sa premiere declaration (le film
 // ecrit la creation avant le paquet BOT_METADATA) ; la declaration se tait alors, l'entite non.
@@ -39,46 +46,53 @@ import (
 // table ne tient, ses bots dont le `bid` est publie.
 type botsDesIndexPartages map[int][]BotIdentity
 
-// lireBotsDesIndexPartages construit la table. Un index d'un seul bot n'y entre pas : l'index le
-// nomme deja (tableau de l'API, siege).
+// lireBotsDesIndexPartages construit la table sur les index partages que rend [bidsParIndex] (la
+// seule mesure de « index declare par au moins deux bots distincts »), privee de ceux qu'un humain
+// de la table tient. Un index d'un seul bot n'y entre pas : l'index le nomme deja (tableau de
+// l'API, siege).
 func lireBotsDesIndexPartages(bots []BotIdentity, idx types.PlayerIndexTable) botsDesIndexPartages {
-	tenus := map[int]bool{}
-	for _, i := range idx.ByXUID {
-		tenus[i] = true
-	}
-	parIndex := map[int][]BotIdentity{}
-	bids := map[int]map[string]bool{}
+	_, partages := bidsParIndex(bots)
+	humains := indexToXUIDOf(idx.ByXUID)
+	out := botsDesIndexPartages{}
 	for _, b := range bots {
-		bid := b.Bid()
-		if bid == "" || tenus[b.FilmIndex] {
+		if _, tenu := humains[b.FilmIndex]; tenu || !partages[b.FilmIndex] || b.Bid() == "" {
 			continue
 		}
-		parIndex[b.FilmIndex] = append(parIndex[b.FilmIndex], b)
-		if bids[b.FilmIndex] == nil {
-			bids[b.FilmIndex] = map[string]bool{}
-		}
-		bids[b.FilmIndex][bid] = true
-	}
-	out := botsDesIndexPartages{}
-	for i, bs := range parIndex {
-		if len(bids[i]) >= 2 {
-			out[i] = bs
-		}
+		out[b.FilmIndex] = append(out[b.FilmIndex], b)
 	}
 	return out
 }
 
-// botDeclareSurLaVie rend le `bid` de l'unique bot de l'index `pi` dont une declaration couvre la
-// creation `tUS` du corps et toute la vie `l`. Faux quand aucun bot ou plusieurs bots distincts
-// la couvrent.
+// botDeclareSurLaVie rend le `bid` du bot de l'index `pi` que les declarations designent pour le
+// corps cree a `tUS` dont la vie est `l`. Les deux conditions sont exigees ensemble :
+//   - a l'instant de la creation, UN SEUL bot distinct de l'index est declare ([seulBotDeclareA]) :
+//     deux bots declares a cet instant, rien ne les departage ;
+//   - une declaration de CE bot couvre a la fois la creation et toute la vie.
+//
+// Faux sinon, et pour un instant anterieur a l'origine du film (negatif).
 func (m botsDesIndexPartages) botDeclareSurLaVie(pi int, tUS int64, l lifeSpan) (string, bool) {
 	de, a := min(tUS, l.from), max(tUS, l.to)
 	if de < 0 {
 		return "", false
 	}
+	elu, seul := m.seulBotDeclareA(pi, uint64(tUS))
+	if !seul {
+		return "", false
+	}
+	for _, b := range m[pi] {
+		if b.Bid() == elu && declarationCouvre(b.Declarations, uint64(de), uint64(a)) {
+			return elu, true
+		}
+	}
+	return "", false
+}
+
+// seulBotDeclareA rend le `bid` du bot de l'index `pi` declare a l'instant `t`, quand il est le
+// SEUL bot distinct a l'etre. Faux quand aucun bot ou plusieurs bots distincts y sont declares.
+func (m botsDesIndexPartages) seulBotDeclareA(pi int, t uint64) (string, bool) {
 	elu := ""
 	for _, b := range m[pi] {
-		if !declarationCouvre(b.Declarations, uint64(de), uint64(a)) {
+		if !declarationCouvre(b.Declarations, t, t) {
 			continue
 		}
 		if elu != "" && elu != b.Bid() {

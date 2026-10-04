@@ -55,8 +55,8 @@ package replay
 // (cf. identity_registry_entites.go). C'est une lecture du film, comptee `ParEntite` : les neuf
 // corps de bots d'index 8 de `b1ad85eb` y passent de `index_hors_table` a `direct`. Quand l'entite
 // se tait sur un index que seuls des bots se relaient, le corps se lit aux declarations
-// BOT_METADATA qui couvrent sa creation et sa vie (cf. identity_registry_declarations.go), compte
-// `ParDeclaration`.
+// BOT_METADATA : le seul bot declare a sa creation, quand une de ses declarations couvre aussi sa
+// vie (cf. identity_registry_declarations.go), compte `ParDeclaration`.
 
 import (
 	"cmp"

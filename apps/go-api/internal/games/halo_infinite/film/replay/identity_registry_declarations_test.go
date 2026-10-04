@@ -8,10 +8,17 @@ package replay
 //	                couvre la creation de son corps et sa vie le nomme ;
 //	R-HUMAIN        un humain de la table tient l'index : la lecture se tait ;
 //	R-DEBORDE       la vie deborde la declaration : la lecture se tait ;
-//	R-DEUX-BOTS     deux bots distincts couvrent la creation et la vie : la lecture se tait.
+//	R-DEUX-BOTS     deux bots distincts couvrent la creation et la vie : la lecture se tait ;
+//	R-DEUX-A-LA-CREATION  deux bots declares a la creation, un seul couvre la vie : elle se tait ;
+//	R-CREATION      la declaration couvre la vie mais nait apres la creation : elle se tait ;
+//	R-UNE-DECLARATION  aucune declaration du bot ne couvre a la fois creation et vie : elle se tait ;
+//	R-UN-SEUL-BOT   un index d'un seul bot n'entre pas dans la lecture ;
+//	R-BORNES        une declaration est [debut, fin), `fin == 0` court jusqu'au bout ;
+//	R-NEGATIF       un instant negatif ne se lit pas.
 
 import (
 	"context"
+	"math"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -107,5 +114,90 @@ func TestTableauCompteLIndexPartageAPart(t *testing.T) {
 	if reg.tableau.IndexPartage == 0 || reg.tableau.SansCandidat != 0 {
 		t.Fatalf("index partage %d, sans candidat %d : le refus vient de l'index partage",
 			reg.tableau.IndexPartage, reg.tableau.SansCandidat)
+	}
+}
+
+// R-DEUX-A-LA-CREATION : deux bots distincts sont declares a l'instant ou le corps nait ; un seul
+// (Donos) couvre toute la vie. Rien ne dit lequel des deux est ne dans ce corps : la lecture se tait.
+func TestDeclarationSeTaitQuandDeuxBotsSontDeclaresALaCreation(t *testing.T) {
+	in := entreeDonos(54_088_267)
+	in.Bots[1].Declarations = [][2]uint64{{40_000_000, 52_000_000}} // The Thumb, finit avant la mort
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
+		t.Fatalf("corps 532 : bid %q, par declaration %d — deux bots declares a la creation",
+			got, reg.creation.ParDeclaration)
+	}
+}
+
+// R-CREATION : la declaration de Donos commence entre la creation du corps (50,586 s) et son
+// premier echantillon (50,616 s) : elle couvre la vie, pas la creation. La lecture se tait.
+func TestDeclarationSeTaitQuandElleNaitApresLaCreation(t *testing.T) {
+	in := entreeDonos(54_088_267)
+	in.Bots[0].Declarations = [][2]uint64{{50_600_000, 54_386_913}}
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
+		t.Fatalf("corps 532 : bid %q, par declaration %d — aucun bot declare a la creation",
+			got, reg.creation.ParDeclaration)
+	}
+}
+
+// R-UNE-DECLARATION : Donos est declare a la creation par une declaration, puis pendant la vie par
+// une autre ; aucune des deux ne couvre la creation ET la vie. La lecture se tait.
+func TestDeclarationQuiCouvreLaVieDoitAussiCouvrirLaCreation(t *testing.T) {
+	in := entreeDonos(54_088_267)
+	in.Bots[0].Declarations = [][2]uint64{{42_431_556, 50_600_000}, {50_610_000, 54_386_913}}
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
+		t.Fatalf("corps 532 : bid %q, par declaration %d — aucune declaration ne couvre creation et vie",
+			got, reg.creation.ParDeclaration)
+	}
+}
+
+// R-UN-SEUL-BOT : un index qu'un seul bot declare n'entre pas dans la lecture (l'index le nomme
+// deja) ; le corps reste compte `IndexBot`, jamais `ParDeclaration`.
+func TestDeclarationNeLitPasLIndexDUnSeulBot(t *testing.T) {
+	in := entreeDonos(54_088_267)
+	in.Bots = in.Bots[:1]
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if reg.creation.ParDeclaration != 0 || reg.creation.IndexBot != 1 {
+		t.Fatalf("par declaration %d, indexBot %d : attendu 0 et 1 — un seul bot sur l'index",
+			reg.creation.ParDeclaration, reg.creation.IndexBot)
+	}
+}
+
+// R-BORNES : une declaration est l'intervalle [debut, fin) ; `fin == 0` court jusqu'au bout.
+func TestDeclarationCouvreBornes(t *testing.T) {
+	decl := [][2]uint64{{10, 20}}
+	cas := []struct {
+		de, a uint64
+		want  bool
+	}{
+		{10, 19, true},  // debut inclus
+		{10, 20, false}, // fin exclue
+		{9, 19, false},  // commence avant
+		{12, 12, true},  // un instant
+	}
+	for _, c := range cas {
+		if got := declarationCouvre(decl, c.de, c.a); got != c.want {
+			t.Errorf("[%d,%d] dans [10,20) : %v, attendu %v", c.de, c.a, got, c.want)
+		}
+	}
+	if !declarationCouvre([][2]uint64{{10, 0}}, 10, math.MaxUint64-1) {
+		t.Error("declaration ouverte [10, fin) : doit couvrir jusqu'au bout")
+	}
+}
+
+// R-NEGATIF : un instant anterieur a l'origine du film (negatif) ne se lit pas, meme face a une
+// declaration ouverte qui couvrirait tout.
+func TestDeclarationSeTaitSurUnInstantNegatif(t *testing.T) {
+	m := botsDesIndexPartages{8: {
+		{FilmIndex: 8, Name: "343 Donos [bot]", BotID: 6, Declarations: [][2]uint64{{0, 0}}},
+		{FilmIndex: 8, Name: "343 The Thumb [bot]", BotID: 57, Declarations: [][2]uint64{{900, 950}}},
+	}}
+	if bid, lu := m.botDeclareSurLaVie(8, 5, lifeSpan{from: -1, to: 100}); lu {
+		t.Fatalf("vie qui commence a -1 : nommee %q, attendu le silence", bid)
+	}
+	if bid, lu := m.botDeclareSurLaVie(8, 5, lifeSpan{from: 5, to: 100}); !lu || bid != "bid(6.0)" {
+		t.Fatalf("meme vie a partir de 5 : %q, %v, attendu %q", bid, lu, "bid(6.0)")
 	}
 }
