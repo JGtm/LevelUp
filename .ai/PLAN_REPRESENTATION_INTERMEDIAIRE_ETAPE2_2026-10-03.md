@@ -502,7 +502,7 @@ la marche de TOUS les corps ancrés jusqu'au bout de leur masque coûte 31 à 15
   cuisson : huit balayages bit à bit des trames delta de moins (neuf ancrages bipèdes → un), et un
   relevé de la bande bipède de moins. CI verte au niveau job sur `057c0cffd` (run `37150564223`).
 
-### Lot 2.5 — Récupération des objets du monde (taille L) — fait, clôture à la CI verte et à la mesure de durée à machine calme
+### Lot 2.5 — Récupération des objets du monde (taille L) — fait, CI verte, fusionné dans `feat/v75` ; clôture à la mesure de durée à machine calme
 *Décisions d'exécution du 2026-10-04* — relu sur pièces et mesuré avant le code (profil CPU d'une
 cuisson du BTB et sonde temporaire des appels, retirée) : sur le BTB, les poses, les socles et les
 projectiles font QUATRE balayages bit à bit de pistes d'objets du monde (`ScanWorldObjectsForBand`) :
@@ -569,6 +569,8 @@ et l'appartenance du slot à la bande font l'essentiel du coût.
   cuisson du BTB par binaire (sans alternance) donne 76,0 → 60,2 s ; trace du ramasse-miettes : tas
   vivant du décodage en médiane 226 → 236 Mo (la mémoire des pistes et des créations), pic de fin de
   cuisson dans la dispersion connue (découverte 9).
+  CI verte au niveau job sur `1b94fad1b` (run `37193642578`, garde-rail compris) ; fusionné dans
+  `feat/v75` avec les lots 2.1 à 2.6 le 2026-10-04 (journal).
 
 ### Lot 2.6 — Le statborg descend dans la grammaire (taille M) — CLOS le 2026-10-03
 - [x] 2.6.1 La lecture du statborg (`facts/objectives/statborg.go`, `film.go`, `extract.go`) devient
@@ -857,3 +859,12 @@ plan y sont reprises comme items (3.1.2).
   ratchet des appelants des primitives de relevé ajouté à 2.5.1 (cf. le lot). Porte locale
   (`make gate-push`) verte sur `b55533d24` ; le run de CI de `e722585ae` n'avait échoué que sur le
   test d'empreinte, régénérée par `b55533d24`.
+- 2026-10-04 : FUSION des lots 2.1 à 2.6 dans `feat/v75`, en avance rapide jusqu'au commit qui porte
+  cette entrée, sur accord de l'utilisateur (« Tu as mon accord »). CI verte au niveau job sur
+  `b55533d24` (run `37191934414`) et sur `1b94fad1b` (run `37193642578`) ; `make gate-push` vert sur
+  `b55533d24`, le commit suivant n'ajoute qu'un test, passé avec `go vet` et `golangci-lint` du
+  paquet. La campagne a été prévenue avant (son intégrateur ne démarre pas avant plusieurs heures) et
+  le sera après ; sa branche `feat/rejeu-vies-bots` (schéma 78) se reprendra sur cette tête : si elle
+  change les digests, les références d'équivalence se régénèrent sur la tête fusionnée (les deux
+  changements s'additionnent, aucun côté n'est juste seul). Restent ouverts : le
+  critère 4 de 2.5 (machine calme), puis 2.7, 3.1 et 3.2 (attente de LU et LS).

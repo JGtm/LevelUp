@@ -115109,3 +115109,27 @@ d'empreinte, régénérée par `b55533d24`.
 
 **Conclusion / prochaine étape** : CI de ce commit, puis demande de l'accord de fusion à
 l'utilisateur ; la campagne est prévenue avant la fusion.
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — fusion des lots 2.1 à 2.6 dans `feat/v75` — Complété (mesure de durée des objets du monde à machine calme en attente)
+
+**Statut** : Complété pour la fusion ; reste la mesure de durée du relevé des objets du monde à
+machine calme (report valide : la campagne occupe la machine et signalera sa fin), puis les lots qui
+attendent les localisateurs unifiés et signés de la campagne.
+
+**Décision technique principale** : avance rapide de `feat/v75` jusqu'à la tête de `feat/ri-etape2`
+(la branche contient `feat/v75` 2393d7db7), sur accord de l'utilisateur, après CI verte au niveau job
+(`b55533d24`, puis `1b94fad1b` avec le garde-rail) et `make gate-push` vert ; campagne prévenue avant
+(son intégrateur ne démarre pas avant plusieurs heures) et après. Fusion faite dans le checkout
+principal (`merge --ff-only` puis push), pour que la branche locale `feat/v75` soit à jour par
+construction.
+
+**Résultats observés** : l'étape 2 livre à ce point les canaux du distributeur (états de mouvement,
+tir continu, images-clés, têtes de la vue A), le statborg dans la grammaire, l'ancrage bipède une fois
+par film (cuisson −13 à −16 % à machine calme), les objets du monde en une passe (banc −71 %) et le
+garde-rail des relevés ; différence nulle prouvée à chaque lot, seul changement publié le compte
+déclaré de `repli_bande_bipede_comblee`. Aucune montée de `grammar.Rev`, de `killsource.Rev` ni du
+schéma du document.
+
+**Conclusion / prochaine étape** : mesure de durée à machine calme au signal de la campagne, puis
+lots de comportement et retrait des marcheurs redondants après la fusion de LU et LS ; revue
+adversariale en fin d'étape, sur le diff cumulé.
