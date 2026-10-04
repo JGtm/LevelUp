@@ -115191,3 +115191,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : carte v2 20 films contre `6fa631df0` : 313 495 -> 313 542 sains, +1 087 utiles sains, aucun film en baisse, 0 sain perdu. Killsource identique à l'octet sur 20 films (aucun backfill). `replay-equiv` : `objectives`, `killRefs`, `vehicles`, `movementStates` identiques. Replis « hors roster » et « hors bande » revenus à la base. Gate de corpus : banc 19 / 19 ok, rc 1 sur deux pertes `[FILET]` minimes (`084a804d` −2 records de posture, `a349fea8` +4 trous). LS sans le bit nul, mesuré pour la décision : +20 158 sains, aucun film en baisse. Gates de code verts, mutations rouges.
 
 **Conclusion / prochaine étape** : au pilote — admettre ou instruire le rc 1 ; décider de LS (ordre fondé par D-LS-2 ou décision datée de l'utilisateur, `LOT_LS.md` §12.3) ; fusion dans `feat/v75`, puis références `replay-equiv` et goldens à re-figer. Détail : plan §4 (entrée du 2026-10-04 « corrections de la revue adverse »), §5 (D-REV2-1 à 5), §6.2.
+
+## [2026-10-04] Campagne de grammaire — vague 2, lint CI (goconst)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le test de LT `debut_de_liste_masque_test.go` répétait huit fois le littéral `projectile-tether-state`, ce qui porte le paquet `grammar` à 10 occurrences et fait échouer `goconst` en CI (le lint local `--new-from-rev` ne le voyait pas, l'issue étant comptée sur des lignes anciennes). La liste est construite depuis une constante locale.
+
+**Résultats observés** : `golangci-lint run` sur le paquet : 0 issue ; tests du paquet verts ; aucune sortie changée (test seulement).
+
+**Conclusion / prochaine étape** : CI de la vague 2 à rejouer, puis fusion dans `feat/v75` et recuisson sur accord de l'utilisateur du 2026-10-04.

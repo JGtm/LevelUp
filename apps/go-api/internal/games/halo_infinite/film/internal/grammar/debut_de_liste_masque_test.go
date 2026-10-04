@@ -65,11 +65,14 @@ func chaineDeTete(tete func(w *bitWriter)) ([]byte, int, int) {
 
 // composantsDUnBit : huit composants lus sur un bit chacun (`FUN_142f04850`, un drapeau), de quoi
 // poser un masque dense que l ecrivain ecrit (huit composants) sans sortir de l archetype.
-var composantsDUnBit = []string{
-	"projectile-tether-state", "projectile-tether-state", "projectile-tether-state",
-	"projectile-tether-state", "projectile-tether-state", "projectile-tether-state",
-	"projectile-tether-state", "projectile-tether-state",
-}
+var composantsDUnBit = func() []string {
+	const drapeau = "projectile-tether-state"
+	out := make([]string, 8)
+	for i := range out {
+		out[i] = drapeau
+	}
+	return out
+}()
 
 // mondeDeTeteAComposants : [mondeDeTete], dont les archetypes 2 (le NEW de tete) et 4 (les deltas)
 // portent [composantsDUnBit].
