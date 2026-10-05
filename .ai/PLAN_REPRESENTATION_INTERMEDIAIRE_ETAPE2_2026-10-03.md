@@ -769,7 +769,11 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       gagne killsource et le ratchet de fermeture d'image-clé : golden régénéré, chaque baisse
       de `ti=42` justifiée record par record par la preuve 2 de la campagne (identité inconnue
       du catalogue installé sous 9/5, connue sous le découpage déclaré) ; une baisse qui ne se
-      justifie pas ainsi s'instruit (condition de la campagne du 2026-10-05).
+      justifie pas ainsi s'instruit (condition de la campagne du 2026-10-05). La lecture en chaîne
+      des événements de killsource (`facts/killsource/eventchain.go`, son propre portage de
+      `FUN_14076a1c4`, qui lit la vue A message par message depuis chaque kill-event candidat)
+      devient une lecture de la vue A unique de la grammaire (lot « vue A » de la campagne,
+      relecture du 2026-10-05).
 - [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
@@ -1304,3 +1308,10 @@ plan y sont reprises comme items (3.1.2).
   fusion de V1 dans cette branche : `canal_des_morts.go` doit prendre `listeAnnoncee(&p.VueA)` au
   lieu de `p.VueA.Etat == lecture.VueArretee` (une vue A lue jusqu'au bout est terminée même avec
   des messages).
+- 2026-10-05 : RONDE 2 de la relecture de V1, sur les seules corrections (`3bacfadeb..020d0e9cc`),
+  un relecteur à contexte frais : huit corrections sur dix tiennent (23 conditions vérifiées). Reste
+  un P1 de commentaire (la phrase « seule lecture complète de la vue A » ignore la lecture en
+  chaîne de killsource, `eventchain.go`) et un P2 (helper de balayage d'archlint sans garde-rail).
+  Bornes de la relecture : pas de ronde 3, le P1 restant est porté à l'utilisateur et relu par moi
+  à son correctif (commentaire seul). Item 2.7.c complété : la chaîne de killsource rejoindra la
+  vue A unique.
