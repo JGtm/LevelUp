@@ -1133,3 +1133,30 @@ plan y sont reprises comme items (3.1.2).
   - *Suite* : instruction par un agent d'enquête (placement des deux bits de fin, pertes du
     gate 2 par famille, écarts du rejeu), condition de clôture de la campagne. Non
     fusionnable en l'état.
+- 2026-10-05 : INSTRUCTION DES PERTES (agent d'enquête ; pièces sous `scratchpad/agentA/` de la
+  session).
+  - *8/3 tient.* Dix-huit placements des deux bits ont été testés, et aucun record authentique ne
+    les départage : sur 93 096 records d'image-clé et 7 512 NEW à identifiant connu, R(2), le
+    compte, d4d0 et G3 valent 0, l'index 0 ou 1. Les 3 125 NEW à champs non nuls ont tous un
+    identifiant inconnu. Retirer une porte est réfuté par `n2`.
+  - Le champ de tête est un champ de drapeaux ; la taille de structure (0x60 octets) désigne
+    « R(2) absent, index R(5) », équivalent à 8/3 en lecture (provenance ajoutée à
+    `profile/mpp_declare.go`).
+  - *Les 428 pertes du gate 2* :
+    - 418 étaient de faux sains de 9/5 : liste ouverte par la recherche « fermeture » sur un
+      faux NEW d'archétype MPP ;
+    - les 10 autres viennent d'un monde empoisonné : une lecture contredite qui lie un faux NEW
+      ou délie un faux DEL ;
+    - aucune ne vient d'un composant non porté ni du placement des bits.
+    La campagne prend en lot « LR » les deux corrections qui en découlent : la règle de lecture
+    du jeu « compte ≥ 5 → échec », et un repli de début de liste qui ne modifie plus le monde.
+  - *Côté rejeu, ce qui vient de 2.7.a0 est une correction* : birthLoadouts de `60ae07c4`,
+    weaponChanges `taken` → `swapped` de `084a804d`, postures de `11de8353`.
+  - Les V-3 du banc sont des FAUX POSITIFS : tirs d'arme de véhicule par un occupant dont la
+    piste s'arrête à la montée.
+  - Perte probable de 2.7.a, non établie : le trajet du slot 608 de `084a804d` est retiré au lieu
+    d'être tronqué à la mort, et ses 3 tirs perdent leur slot.
+- 2026-10-05 : BANC DE VÉRITÉ, V-3 CORRIGÉ (accord de la campagne, qui l'utilise aussi comme
+  juge) : un trajet du slot à bord d'un véhicule fait partie de sa vie, rattaché par slot quel que
+  soit le siège (règle de l'utilisateur du 2026-09-21). Test
+  `TestHorsVie_UnTrajetDuSlotFaitPartieDeSaVie`, rouge sans la correction.

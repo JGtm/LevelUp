@@ -32,6 +32,14 @@ package profile
 // bit plus tot (le champ de tete fait 8 bits) ; les deux autres bits tombent dans une plage de
 // zeros (R(2), index, compte), sans effet sur les valeurs lues. Liste gelee :
 // `TestDecoupagesPresumesParMesureGeles`.
+//
+// Ce que la lecture du bloc ajoute (`FUN_14080cfe8`, `FUN_142f1bc2c`) : le champ de tete est un
+// champ de DRAPEAUX (valeurs {0, 2, 4, 64, 66}, jamais au-dela de 255 sur le format courant), dont
+// les anciens builds n ont que huit. La structure du bloc fait 0x60 octets, et un seul retrait la
+// raccourcit d exactement 4 octets : celui de R(2), un octet en +0x08 suivi du bourrage jusqu a
+// l entier en +0x0c. Le decoupage le plus fidele est donc « R(2) absent, index R(5) » ; il lit les
+// memes bits et les memes valeurs que 8/3 sur tous les records authentiques observes, ou R(2),
+// l index et le compte valent 0 (ou 1 pour l index).
 
 // ProvenanceMPP dit d ou vient un decoupage du bloc MPP.
 type ProvenanceMPP uint8
