@@ -10,6 +10,32 @@
 
 ---
 
+### [film/décodeur] Observer le jeu ouvrant un ancien film, avec Cheat Engine (optimisation potentielle)
+
+Noté le 2026-10-05 à la demande de l'utilisateur (plan RI étape 2, lot 2.7.a, découvertes 12 et
+13). Deux blocs des anciens films portent 3 bits de moins que ce que l'exécutable courant lit en
+dur :
+- le bloc `object-multiplayer-properties` de l'état de création des objets (formats 21, 24 et 25) ;
+- la composante du record de tir (format 24).
+
+La lecture statique (Ghidra) n'a trouvé aucune condition qui les commande. Le décodeur lit le bloc
+d'après la taille d'état de création que chaque film déclare (`n1`) : c'est la décision de
+l'utilisateur du 2026-10-05.
+
+**Optimisation potentielle** : observer le jeu pendant qu'il ouvre un film ancien (version majeure
+différente de 41), avec le MCP Cheat Engine, sur autorisation de l'utilisateur. Points d'arrêt :
+- la comparaison de version de `FUN_1428e219c` (`1428e21a6`) ;
+- le mot `n2` relu après `vtable+0x60` dans `FUN_142e2bfd0` ;
+- `FUN_141fd72c0` (R(9) du bloc) ;
+- la boucle des composantes de `FUN_14080c1f8` (R(16) à `14080c74c`).
+
+Gain attendu : savoir comment le jeu traite ces films et, s'il les lit, la règle exacte des deux
+écarts, lue au lieu d'être mesurée.
+
+**Effort : M.** Il faut un film ancien que le jeu accepte d'ouvrir.
+
+---
+
 ### [data/h5] Les player DB Halo 5 sont hors de la boucle de migration du boot
 
 Noté le 2026-09-27 (plan backlog du 2026-09-26, lot B3.9, DB-20). Une copie de

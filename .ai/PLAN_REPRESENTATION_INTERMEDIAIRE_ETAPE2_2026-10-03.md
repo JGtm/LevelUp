@@ -119,6 +119,11 @@ fichier de l'autre se signale, ne se corrige pas.
   des replis jusqu'aux lots de comportement de 2.7, qui les ordonneront derrière la grammaire ; elles
   s'y inscriront alors « après la lecture », comptées, leurs records marqués récupérés (item
   2.7.d). Pas de montée du cliquet `NbDevantLaLecture`.
+- 2026-10-05 : « Oui je valide cette piste. Mais à noter comme potentielle optimisation avec Cheat
+  Engine dans le BACKLOG.md ». Réponse à la proposition suivante : lire le bloc MPP des anciens
+  films d'après la taille d'état de création que chaque film déclare (`n1`, découverte 13), au lieu
+  de la largeur calibrée film par film. Item 2.7.a0 ; l'observation dynamique avec Cheat Engine est
+  inscrite au backlog (`.ai/BACKLOG.md`).
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -634,6 +639,44 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
    site du localisateur) : sans appelant de production, elle serait du code mort (règle 7) ; 3.1.1
    garde la timeline de killsource. Les fichiers de la campagne qui la citent (le localisateur
    unique, son test, des instruments de recherche) sont mis à jour après l'avoir prévenue.
+- [ ] 2.7.a0 **Découpage MPP déclaré par le film** — prérequis de 2.7.a. Décision de
+      l'utilisateur du 2026-10-05 (découverte 13). La campagne l'a confié à ce plan le même jour,
+      sous trois conditions : son gate 2, la provenance présumée par mesure, sa double preuve comme
+      oracle. Périmètre fermé :
+      1. *profile* : la table des tailles d'état de création que l'exécutable courant déclare
+         (`vtable+0x20`, getters relus le 2026-10-05) pour les archétypes dont l'état de création
+         lit le bloc MPP : 35 → 0x98, 36 → 0x60, 37, 38 et 39 → 0x68, 40 → 0xb0, 41 → 0xd4,
+         42 → 0xa8, 43 → 0x60. Règle sur la taille `n1` déclarée :
+         - égale à la taille courante → découpage relu 9/5 ;
+         - taille courante − 4 → 8/3, PRÉSUMÉ PAR MESURE (provenance écrite, la clé `n1` lue dans
+           le film citée, liste gelée par un test) ;
+         - autre valeur → inconnu.
+      2. *grammar* : `n1` est lu dans la première image-clé du film, au premier record d'un
+         archétype à bloc MPP, avant son état de création, et le résultat est mémorisé sur le
+         contexte. `EnTete().MPP` et `MPPWidthsForFilm` rendent le découpage déclaré pour un format
+         sans largeur relue. Un film dont le `n1` est inconnu garde le chemin actuel (calibration
+         sur les poses) ; ce cas est compté.
+      3. *Cuisson* :
+         - le découpage du film est posé sur le contexte pour TOUTE la cuisson, après le profil
+           calibré et la carte ;
+         - les socles, les véhicules et les poses d'équipement le prennent, et la calibration
+           redevient un contrôle ;
+         - `repli_largeurs_mpp_calibrees_sur_le_film` ne se déclenche plus que pour un `n1`
+           inconnu (le registre suit).
+      4. *Contrôle par record* : dans les marches d'image-clé, un record à bloc MPP dont `n1`
+         contredit le découpage posé est compté ; la lecture d'un record ne change pas.
+      5. *killsource inchangé* : son profil garde `MPPParDefaut`. L'écart est déclaré et
+         l'alignement se fait en 2.7.c.
+      Gates :
+      - tests de la règle et sur les sept bobines (8/3 sur les cinq anciennes, 9/5 sur les deux
+        récentes, aucun record contredit) ;
+      - `go test` des paquets touchés ;
+      - preuve d'équivalence : format 27 identique, formats anciens classés ;
+      - gate de corpus contre `feat/v75` : aucun film en baisse ;
+      - gate 2 de la carte v2 de la campagne (`cmd_fermeture -mode v2 -denominateur-fixe`) : aucun
+        film en baisse, gagnés et perdus, part de factices ;
+      - killsource à l'octet (`KILLSOURCE_FIXTURES`) ;
+      - `grammar.Rev`, ADR 0037 IR-7 amendé.
 - [ ] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
       *Écrit* (décisions 1 à 5) : `grammar/canal_des_morts.go` (canal des trames et d'image-clé :
       récolte des records de la vue B, récupération des listes non localisées par [debutRecupere],
@@ -1041,3 +1084,9 @@ plan y sont reprises comme items (3.1.2).
   lecture seule, sans passe de corpus, sans commit) a lu les deux blocs : découverte 13. Worktree
   et branche de l'agent retirés (aucune jonction, `git status` vide). Résultat transmis à la
   campagne. 2.7.a reste hors de `feat/v75` ; la suite dépend de l'utilisateur.
+- 2026-10-05 : DÉCISION DE L'UTILISATEUR (« Oui je valide cette piste ») : le bloc MPP des
+  anciens films se lit d'après la taille d'état de création que le film déclare. L'observation
+  dynamique avec Cheat Engine est inscrite au backlog. Item 2.7.a0 ajouté ; la campagne le confie
+  à ce plan sous trois conditions (son gate 2, la provenance présumée par mesure, sa double preuve
+  comme oracle). Tailles courantes relues dans Ghidra (`vtable+0x20` des neuf descripteurs).
+  Ouverture de 2.7.a0.

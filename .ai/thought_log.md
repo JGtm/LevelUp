@@ -115376,3 +115376,22 @@ vaut 41. Détail : découverte 13 du plan.
 **Conclusion / prochaine étape** : présenter à l'utilisateur la clé que le film porte lui-même
 (`n1`) comme base d'une lecture générale des anciens films, et le fait du chargement. Lecture
 actuelle des morts gardée en attendant.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — décision : le bloc MPP des anciens films se lit d'après la taille que le film déclare — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — item 2.7.a0 ouvert.
+
+**Décision technique principale** : validation par l'utilisateur. La règle porte sur la taille
+d'état de création `n1` déclarée par le film :
+- `n1` égal à la taille courante (lue en `vtable+0x20`) → découpage relu 9/5 ;
+- `n1` égal à la taille courante − 4 → 8/3, présumé par mesure ;
+- autre valeur → chemin actuel, compté.
+Le découpage est posé pour toute la cuisson. killsource est aligné en 2.7.c. L'observation
+dynamique avec Cheat Engine est inscrite au backlog (`.ai/BACKLOG.md`).
+
+**Résultats observés** : tailles courantes relues — 35 : 0x98, 36 : 0x60, 37/38/39 : 0x68,
+40 : 0xb0, 41 : 0xd4, 42 : 0xa8, 43 : 0x60. La campagne confie l'implémentation à ce plan, sous
+trois conditions : son gate 2, la provenance présumée par mesure, sa double preuve comme oracle.
+
+**Conclusion / prochaine étape** : implémenter 2.7.a0 (profile, grammar, cuisson, contrôle par
+record), puis les gates de l'item, puis remesurer 2.7.a dessus.
