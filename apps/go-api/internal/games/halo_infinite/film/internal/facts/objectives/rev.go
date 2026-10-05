@@ -106,6 +106,13 @@ package objectives
 // `objectives` de `replay-equiv` est IDENTIQUE sur les 20 films de reference (binaire de `6fa631df0`
 // contre binaire de la tete) : la lecture des signaux ne change pas. Golden regenere a revision
 // constante. Mesures : `campagne_grammaire_2026-10-01/vague2_tsv/revue/`.
+//
+// COMPLEMENT DU 2026-10-05 (lot VA de la campagne de grammaire, etape V1 : la vue A lue message par
+// message par une seule lecture ; REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-06`.
+// `grammar/signaux` ne change pas, et l etape `objectives` de `replay-equiv` est IDENTIQUE sur les 20
+// films de reference (binaire de `87cdfa761` contre binaire du lot ; seule l etape `artifact`
+// diverge, par sa chaine de revision). Golden regenere a revision constante. Mesures :
+// `campagne_grammaire_2026-10-01/LOT_VA_V1.md`.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

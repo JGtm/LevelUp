@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildFlagReturnDrops, flagReturnAt, harmonic, type FlagReturnRule } from './flagReturnZone'
+import {
+  buildFlagReturnDrops,
+  drawFlagReturnZones,
+  flagReturnAt,
+  gaugeRadiusPx,
+  harmonic,
+  type FlagReturnDrop,
+  type FlagReturnRule,
+} from './flagReturnZone'
 
 import type { ReplayFlagCarryReady } from '../../../lib/replay/replayNormalize'
 
@@ -180,5 +188,104 @@ describe('flagReturnAt', () => {
     const now = flagReturnAt(drops, 15)
     expect(now).toHaveLength(1)
     expect(now[0].radiusM).toBe(RULE.radiusM)
+  })
+})
+
+/** Un contexte qui enregistre chaque tracé (arc, remplissage, trait) avec l'état courant. */
+interface Trace {
+  op: 'fill' | 'stroke'
+  radius: number
+  alpha: number
+  width: number
+  ink: string
+}
+
+function recordingCtx(): { ctx: CanvasRenderingContext2D; traces: Trace[] } {
+  const traces: Trace[] = []
+  let radius = 0
+  const st = { globalAlpha: 1, lineWidth: 1, fillStyle: '', strokeStyle: '' }
+  const ctx = {
+    get globalAlpha() { return st.globalAlpha },
+    set globalAlpha(v: number) { st.globalAlpha = v },
+    get lineWidth() { return st.lineWidth },
+    set lineWidth(v: number) { st.lineWidth = v },
+    get fillStyle() { return st.fillStyle },
+    set fillStyle(v: string) { st.fillStyle = v },
+    get strokeStyle() { return st.strokeStyle },
+    set strokeStyle(v: string) { st.strokeStyle = v },
+    save: () => undefined,
+    restore: () => undefined,
+    beginPath: () => undefined,
+    arc: (_x: number, _y: number, r: number) => { radius = r },
+    fill: () => traces.push({ op: 'fill', radius, alpha: st.globalAlpha, width: st.lineWidth, ink: st.fillStyle }),
+    stroke: () => traces.push({ op: 'stroke', radius, alpha: st.globalAlpha, width: st.lineWidth, ink: st.strokeStyle }),
+  } as unknown as CanvasRenderingContext2D
+  return { ctx, traces }
+}
+
+/** Un lâcher de 100 images, jauge à mi-course, `occupants` défenseurs, pour l'équipe `team`. */
+function dropOf(team: number, occupants: number): FlagReturnDrop {
+  return {
+    radiusM: RULE.radiusM,
+    team,
+    t0: 0,
+    t1: 0,
+    x: new Float32Array([5]),
+    y: new Float32Array([7]),
+    progress: new Float32Array([0.5]),
+    occupants: new Uint8Array([occupants]),
+    returnFrame: null,
+  }
+}
+
+const paintAt = (drop: FlagReturnDrop, pxPerM: number): Trace[] => {
+  const { ctx, traces } = recordingCtx()
+  drawFlagReturnZones(ctx, [drop], (p) => p, pxPerM, 0, { colorOfTeam: (t) => `ENCRE-${t}` })
+  return traces
+}
+
+describe('drawFlagReturnZones', () => {
+  it('l’arc de jauge et l’anneau n’ont JAMAIS le même rayon, quelle que soit l’échelle', () => {
+    for (const pxPerM of [0.5, 3, 8, 15, 40, 120]) {
+      const [fill, ring, gauge] = paintAt(dropOf(0, 0), pxPerM)
+      expect(fill.radius).toBe(ring.radius)
+      expect(gauge.radius).toBeGreaterThan(ring.radius)
+      expect(gauge.radius).toBe(gaugeRadiusPx(ring.radius))
+    }
+  })
+
+  it('le rayon de la jauge est max(zone + 5 px, 20 px)', () => {
+    expect(gaugeRadiusPx(8)).toBe(20)
+    expect(gaugeRadiusPx(30)).toBe(35)
+  })
+
+  it('plancher de zone à 8 px, rayon réel au-delà, centre inchangé', () => {
+    expect(paintAt(dropOf(0, 0), 1)[1].radius).toBe(8)
+    expect(paintAt(dropOf(0, 0), 20)[1].radius).toBeCloseTo(20 * RULE.radiusM, 6)
+  })
+
+  it('zone vide : disque 0,2, anneau net 0,9 de 2 px, à l’encre du camp propriétaire', () => {
+    const [fill, ring, gauge] = paintAt(dropOf(1, 0), 20)
+    expect(fill).toMatchObject({ op: 'fill', alpha: 0.2, ink: 'ENCRE-1' })
+    expect(ring).toMatchObject({ op: 'stroke', alpha: 0.9, width: 2, ink: 'ENCRE-1' })
+    expect(gauge.op).toBe('stroke')
+  })
+
+  it('un défenseur dedans : disque 0,3 et anneau de 3 px', () => {
+    const [fill, ring] = paintAt(dropOf(1, 2), 20)
+    expect(fill.alpha).toBe(0.3)
+    expect(ring).toMatchObject({ alpha: 0.9, width: 3 })
+  })
+
+  it('drapeau NEUTRE : pas de zone, la jauge seule', () => {
+    const traces = paintAt(dropOf(-1, 0), 20)
+    expect(traces).toHaveLength(1)
+    expect(traces[0].op).toBe('stroke')
+  })
+
+  it('jauge vidée : plus d’arc, la zone reste', () => {
+    const d = dropOf(0, 0)
+    d.progress[0] = 1
+    expect(paintAt(d, 20)).toHaveLength(2)
   })
 })

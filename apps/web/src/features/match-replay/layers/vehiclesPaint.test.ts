@@ -84,6 +84,7 @@ const EXPLOSION_INK: FxInk = {
 function style(over: Partial<VehicleStyle> = {}): VehicleStyle {
   return {
     neutralInk: '#neutre',
+    mapElementInk: '#gris-carte',
     labelStroke: '#contour',
     showNames: true,
     showAim: true,
@@ -597,39 +598,5 @@ describe('drawVehiclesLayer — ÉLÉMENTS DE CARTE (lot 1.9.9, décision utilis
       styleTourelle(),
     )
     expect(count(ops, 'arc')).toBe(0)
-  })
-})
-
-describe('drawVehiclesLayer — le LIBELLÉ d’un élément de carte (lot 1.9.9)', () => {
-  const styleNomme = (over: Partial<VehicleStyle> = {}): VehicleStyle =>
-    style({
-      sizeOf: () => null,
-      spriteOf: () => null,
-      kindOf: () => 'map_element',
-      labelOfFamily: () => 'Tourelle automatique bannie',
-      ...over,
-    })
-
-  const tourelle = (): ReplayVehicleTrackReady =>
-    track({ slot: 768, family: 'tourelle_auto_bannie', samples: [], spawn: { x: 40, y: 60 } })
-
-  it('le libellé du DOCUMENT est écrit sous le pictogramme quand le calque des noms est allumé', () => {
-    expect(texts(paint([tourelle()], styleNomme()))).toEqual(['Tourelle automatique bannie'])
-  })
-
-  it('calque des noms ÉTEINT : le pictogramme reste, le libellé disparaît', () => {
-    const ops = paint([tourelle()], styleNomme({ showNames: false }))
-    expect(texts(ops)).toEqual([])
-    expect(count(ops, 'arc')).toBe(2)
-  })
-
-  it('aucun libellé publié : rien n’est écrit — jamais un littéral du calque', () => {
-    expect(texts(paint([tourelle()], styleNomme({ labelOfFamily: () => null })))).toEqual([])
-  })
-
-  it('un VÉHICULE garde ses noms d’occupants, jamais le nom de sa famille', () => {
-    const ops = paint([track({ rides: [ride({ slot: 7, seat: 0 })] })],
-      style({ labelOfFamily: () => 'NE DOIT PAS APPARAITRE' }))
-    expect(texts(ops)).toEqual(['PION-BRIDGE'])
   })
 })

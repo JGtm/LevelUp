@@ -229,7 +229,12 @@ var plafondsParFichier = map[string]int{
 	// d une vie d un seul echantillon, le corps lu aux declarations BOT_METADATA, le compte du refus
 	// sur index partage, les revisions qui ne montent pas, l effet au parc). Exception ecrite, dans le
 	// commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2805,
+	// SCHEMA 78 -> 79 (2026-10-05, rejeu « cercle de retour du drapeau » et « tirs depuis l avant
+	// du vehicule »), +29 : l entree v79 (les bases du drapeau lues dans le film, les quatre
+	// compteurs neufs, les replis resserres, le champ `reach` du montage des armes de vehicule, la
+	// revision du placement qui monte et celles qui ne montent pas, l effet au parc). Exception
+	// ecrite, dans le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2834,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -319,7 +324,9 @@ var plafondsParFichier = map[string]int{
 	// de la montee (un champ mort retire).
 	// SCHEMA 77 -> 78 (2026-10-04, rejeu « vies de bots sans identite ») : 1377 -> 1381, la
 	// justification de la montee (deux vies de bots nommees, un contenu qui change sans champ neuf).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1381,
+	// SCHEMA 78 -> 79 (2026-10-05, rejeu « cercle de retour du drapeau ») : 1381 -> 1384, la
+	// justification de la montee (les bases du drapeau lues dans le film).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1384,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

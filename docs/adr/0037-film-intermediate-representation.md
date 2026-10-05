@@ -144,13 +144,22 @@ keyframe phase does not make the delta phase run.
 
 A distribution runs the phases its channels read (lot 2.3): the keyframe phase for keyframe
 channels and for the delta walk's preliminaries, the delta walk for frame channels, and — with
-only head channels — a head pass that ranges each delta frame's head into view A (the
-continuation, then the genre of the first message, where the walk stops since message payloads
-are not ported) without walking any record. The delta walk ranges the same head on every frame,
-including the frames whose event list it locates, which it used to leave with an unread view A
-although it read their head to decide. The six view-A head readers (shots, translocator, scope,
-pickups, type-103 spawns, vehicle events) decode their event body from the ranged head; a head
-that does not fit the payload keeps the tolerant reading they had.
+only head channels — a head pass that ranges each delta frame's view A without walking any
+record. The delta walk ranges the same view A on every frame, including the frames whose event
+list it locates, which it used to leave with an unread view A although it read their head to
+decide. The six view-A head readers (shots, translocator, scope, pickups, type-103 spawns, vehicle
+events) decode their event body from the ranged head (the continuation, then the genre of the
+first message); a head that does not fit the payload keeps the tolerant reading they had.
+
+Since the grammar campaign's lot VA (step V1, 2026-10-05), view A is read by ONE reader
+(`grammar/vue_a_lecture.go`, `lireLaVueA`), message by message, with the game's 123-genre table
+and the ported payload readers, when the film declares a genre-version table equal to, or a strict
+prefix of, the executable's own and its configuration bit is set; otherwise it stops after the
+head, as before. It stops after the genre of any message it cannot read (payload not ported,
+refused, beyond the film's genre count) and guesses nothing. The head is read identically in every
+case, so the head readers and the routing to list location see the same values. The walk reads view A once per frame while ranging the head, and
+hands it to the rank walk; the rank walk crosses an empty view A only. The end of a fully read view
+A (the bit after its terminator) is ranged with the view; it decides no location at this step.
 
 ### IR-4 — Three states per component, three closure states per packet, never conflated (correction C3)
 

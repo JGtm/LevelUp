@@ -64,7 +64,7 @@ func (m *mesureDesTrames) marcherPaquet(pay []byte, w *World, debut int) {
 	br := LecteurSur(pay)
 	br.poserCadre(m.cfg)
 	var l lectureDeTrame
-	lireTrameParRangs(br, pay, w, m.cfg, debut, &l)
+	lireTrameParRangs(br, pay, w, m.cfg, departDeTrame{bit: debut}, &l)
 	m.classer(paquetMarche{enTete: partDeLaTete(debut, m.cfg), recs: l.recs, rangs: l.rangs, vueC: l.verdict})
 }
 

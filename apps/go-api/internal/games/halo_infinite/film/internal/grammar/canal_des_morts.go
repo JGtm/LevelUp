@@ -70,7 +70,7 @@ func (c *canalDesMorts) Trame(p *lecture.Paquet) {
 		c.st.Config, c.cadrePose = c.m.cadreDeLaMarche(), true
 	}
 	c.st.Deltas++
-	avecEvenements := p.VueA.Etat == lecture.VueArretee
+	avecEvenements := listeAnnoncee(&p.VueA)
 	if avecEvenements {
 		c.st.EventPackets++
 	}

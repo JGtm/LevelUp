@@ -7,9 +7,11 @@ package grammar
 // depot : `marche_trames_bobines_test.go`.
 
 import (
+	"slices"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -20,8 +22,23 @@ func rangerUn(w *World, pay []byte) *lecture.Paquet {
 	br := LecteurSur(pay)
 	br.poserCadre(cfg)
 	var l lectureDeTrame
-	lireTrameParRangs(br, pay, w, cfg, DefaultPacketPreambleBits, &l)
+	lireTrameParRangs(br, pay, w, cfg, departDeTrame{bit: DefaultPacketPreambleBits}, &l)
 	p := &lecture.Paquet{Payload: pay, Debut: lecture.DebutEnTete}
+	rangerLaTrame(p, &l, true, nil)
+	return p
+}
+
+// rangerUnAvec marche un payload depuis la tete comme [marcheurDesTrames.marcherLePaquet] : la vue A
+// lue et rangee d abord, sous la grammaire `g` que le film declare ([rangerLaTete]), puis passee a la
+// marche par rangs.
+func rangerUnAvec(w *World, pay []byte, g grammaireDeLaVueA) *lecture.Paquet {
+	cfg := cadreDeCarte()
+	p := &lecture.Paquet{Payload: pay, Debut: lecture.DebutEnTete}
+	a := rangerLaTete(p, cfg.Profil, g)
+	br := LecteurSur(pay)
+	br.poserCadre(cfg)
+	var l lectureDeTrame
+	lireTrameParRangs(br, pay, w, cfg, departDeTrame{bit: DefaultPacketPreambleBits, vueA: &a}, &l)
 	rangerLaTrame(p, &l, true, nil)
 	return p
 }
@@ -128,26 +145,105 @@ func TestLaMarcheRangeLaQueueDUnComposantNonPorte(t *testing.T) {
 	}
 }
 
-// TestLaMarcheRangeUneVueANonPortee : une vue A qui porte un message s arrete apres son genre ; la
-// marche n atteint pas la vue B et le paquet est une queue opaque depuis la fin de ce genre.
-func TestLaMarcheRangeUneVueANonPortee(t *testing.T) {
+// TestLaMarcheDepuisLaTeteNeTraversePasUneVueANonVide : une vue A qui porte un message arrete la
+// marche partie de la tete apres sa tete (le genre du premier message) ; la vue B n est pas
+// atteinte et le paquet est une queue opaque depuis la fin de ce genre.
+//
+// LE GENRE 5 EST PORTE DEPUIS LE LOT VA (`projectile_detonate`, `FUN_1408096f8`, position de niveau
+// 0xf) : sous un film dont la table des genres est la table native, la vue A se lit jusqu a son
+// terminateur et se range terminee, avec son etendue entiere ; sous un film sans table, elle
+// s arrete apres son genre. Dans les deux cas la marche s arrete au meme bit : la vue B d un paquet a
+// evenements part d un debut localise ([marcheurDesTrames.marcherLePaquet]), et la fin de la vue A
+// n en decide pas a l etape V1 du lot.
+func TestLaMarcheDepuisLaTeteNeTraversePasUneVueANonVide(t *testing.T) {
+	var bw bitWriter
+	bw.bit(1)     // le bit de configuration
+	bw.bit(1)     // la vue A porte un message
+	bw.bits(5, 7) // son genre : projectile_detonate
+	bw.bits(0, 3) // trois gardes de reference fermees
+	bw.bits(0, 6) // FUN_140809454
+	bw.bit(1)     // variante presente : rien ne suit
+	bw.bit(0)     // FUN_14080d69c absent
+	bw.bit(1)     // position : porte posee, table DEFAUT au niveau 0xf
+	w := profile.LargeursAxeParDefautDuBuild(0xf)
+	bw.bits(0, int(w[0]+w[1]+w[2]))
+	bw.bits(0, 0x13+5+1+9) // direction, FUN_1406d84b4 (5), R(1), R(9)
+	bw.bit(0)              // R(1) : FUN_140809530 absent
+	bw.bit(0)              // seconde direction a 8 bits
+	bw.bits(0, 8+2)        // FUN_14076dc04, FUN_1424cd2fc
+	bw.bit(0)              // le terminateur de la vue A
+	finVueA := bw.n
+	bw.bits(0, 16)
+	for _, c := range []struct {
+		nom  string
+		g    grammaireDeLaVueA
+		vueA lecture.VueA
+	}{
+		{"film sans table", grammaireDeLaVueA{}, lecture.VueA{Debut: 1, Bits: 8, Etat: lecture.VueArretee, Genres: []uint8{5}}},
+		{"film recent", grammaireRecente(), lecture.VueA{Debut: 1, Bits: uint32(finVueA - 1), Etat: lecture.VueTerminee,
+			Genres: []uint8{5}}},
+	} {
+		p := rangerUnAvec(mondeDeCarte(), bw.buf, c.g)
+		if a := p.VueA; a.Debut != c.vueA.Debut || a.Bits != c.vueA.Bits || a.Etat != c.vueA.Etat ||
+			!slices.Equal(a.Genres, c.vueA.Genres) {
+			t.Errorf("%s : vue A %+v, attendu %+v", c.nom, a, c.vueA)
+		}
+		if p.VueB != (lecture.VueB{}) || len(p.Records) != 0 {
+			t.Errorf("%s : vue B %+v, records %+v : attendu non atteinte", c.nom, p.VueB, p.Records)
+		}
+		want := lecture.QueueOpaque{Debut: 9, Cause: lecture.CauseMessageVueANonPorte,
+			Record: lecture.SansRecord, Composant: lecture.SansComposant}
+		if f := p.Fermeture; f.Verdict != lecture.VerdictQueueOpaque || f.Queue != want || f.Consommes != 9 {
+			t.Errorf("%s : fermeture %+v, attendu la queue opaque %+v", c.nom, f, want)
+		}
+	}
+}
+
+// TestLaMarcheSansVueARecueNeTraversePasUneVueANonVide : la porte des essais de debut
+// ([decodeFrameParRangs], par [DecodeFrameViewsCurseur]) part de la tete SANS vue A recue ; la
+// marche la lit elle-meme, et une vue A qui porte un message l arrete apres sa tete : aucun rang lu,
+// aucun record, le curseur au bit qui suit le genre. MUTATION — la vue A non recue prise pour le
+// bit d amorce aveugle (vide, finie au bit 2) : la marche entre dans la vue B, ROUGE.
+func TestLaMarcheSansVueARecueNeTraversePasUneVueANonVide(t *testing.T) {
 	var bw bitWriter
 	bw.bit(1)     // le bit de configuration
 	bw.bit(1)     // la vue A porte un message
 	bw.bits(5, 7) // son genre
-	bw.bits(0, 7) // un corps que la marche ne lit pas
-	p := rangerUn(mondeDeCarte(), bw.buf)
+	finDeTete := bw.n
+	bw.bits(0, 16)
+	cfg := cadreDeCarte()
+	recs, rangs, curseur := DecodeFrameViewsCurseur(bw.buf, mondeDeCarte(), cfg, MovementStateViews,
+		cfg.PacketPreambleBits)
+	if len(recs) != 0 || rangs != 0 || curseur != finDeTete {
+		t.Errorf("records %+v, %d rang(s), curseur %d : attendu la marche arretee au bit %d, sans rang",
+			recs, rangs, curseur, finDeTete)
+	}
+}
 
-	if a := p.VueA; a.Debut != 1 || a.Bits != 8 || a.Etat != lecture.VueArretee || len(a.Genres) != 1 || a.Genres[0] != 5 {
-		t.Errorf("vue A %+v, attendu [1, 9) arretee apres le genre 5", a)
+// TestLaMarcheNeRelitPasLaVueAQuElleRecoit : la marche des trames lit la vue A UNE fois
+// ([rangerLaTete]) et la passe a la marche par rangs par son depart ; la marche ne la relit pas.
+// Une vue A recue VIDE fait entrer la marche dans la vue B a sa fin, meme sur un payload dont le
+// premier message n est pas le terminateur, et la marche ne la re-range pas. MUTATION — la marche
+// qui relit la vue A malgre son depart : ROUGE.
+func TestLaMarcheNeRelitPasLaVueAQuElleRecoit(t *testing.T) {
+	var bw bitWriter
+	bw.bit(1)     // le bit de configuration
+	bw.bit(1)     // une continuation a 1 : la vue A du payload n est pas vide
+	bw.bits(0, 7) // genre 0
+	bw.bits(0, 16)
+	cfg := cadreDeCarte()
+	recue := FluxVueA{Debut: 1, Vide: true, Porte: true, Fin: 2}
+	br := LecteurSur(bw.buf)
+	br.poserCadre(cfg)
+	var l lectureDeTrame
+	lireTrameParRangs(br, bw.buf, mondeDeCarte(), cfg, departDeTrame{bit: DefaultPacketPreambleBits, vueA: &recue}, &l)
+	if !l.vueARecue || l.debutVueB != 2 || l.rangs == 0 {
+		t.Fatalf("lecture %+v : attendu la vue A recue, la vue B a partir du bit 2", l)
 	}
-	if p.VueB != (lecture.VueB{}) || len(p.Records) != 0 {
-		t.Errorf("vue B %+v, records %+v : attendu non atteinte", p.VueB, p.Records)
-	}
-	want := lecture.QueueOpaque{Debut: 9, Cause: lecture.CauseMessageVueANonPorte,
-		Record: lecture.SansRecord, Composant: lecture.SansComposant}
-	if f := p.Fermeture; f.Verdict != lecture.VerdictQueueOpaque || f.Queue != want {
-		t.Errorf("fermeture %+v, attendu la queue opaque %+v", f, want)
+	p := &lecture.Paquet{Payload: bw.buf}
+	rangerLaTrame(p, &l, true, nil)
+	if p.VueA.Bits != 0 || p.VueA.Etat != lecture.VueNonLue {
+		t.Errorf("vue A %+v re-rangee par la marche : elle l est par rangerLaTete seule", p.VueA)
 	}
 }
 

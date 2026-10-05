@@ -125,7 +125,21 @@ package profile
 //	                    ne decide pas, la cle `n1` decide ; deux lignes de cette cle entrent.
 //	`build_profile.go`  le bloc qui placait les trois bits ailleurs que dans le bloc MPP est
 //	                    remplace par ce que la lecture a etabli : ils y sont, le film le declare.
-const Rev = "profile-2026-10-05"
+//
+// ENTREE `profile-2026-10-06` (2026-10-05, lot VA de la campagne de grammaire, etape V1) : LA
+// SIMULATION DE L ENREGISTREUR ENTRE DANS L IDENTITE DU FILM. AUCUNE LIGNE DE LA TABLE NE CHANGE.
+//
+// `identite.go` : [FilmIdentity.SimulationDeLEnregistreur] et [FilmIdentity.OptionsDePartieLues],
+// lus par `grammar` au premier bit du corps de `chunk_00` (`FUN_1407ec560` : game_mode W(3),
+// game_simulation W(3)). La grammaire de la vue A en tire le prefixe du message Script (ecrivain
+// `FUN_142eec4d8`). Aucune largeur, borne ni provenance ne change. Le rang : `profile-2026-10-05`
+// est pris par l etape 2.7.a de la representation intermediaire.
+//
+// ENTREE `profile-2026-10-06.2` (2026-10-05, fusion de `feat/v75` dans l etape 2 de la
+// representation intermediaire) : LES DEUX RANGS PRECEDENTS SONT REUNIS. Le decoupage MPP declare
+// par le film (`profile-2026-10-05`) et la simulation de l enregistreur dans l identite du film
+// (`profile-2026-10-06`) cohabitent sans autre changement.
+const Rev = "profile-2026-10-06.2"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/profile_rev.golden` porte le couple (revision, empreinte) avec son historique, et

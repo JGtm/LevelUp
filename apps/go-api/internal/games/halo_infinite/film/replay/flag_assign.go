@@ -17,8 +17,9 @@ import (
 // qui le possede. L'EQUIPE DU PORTEUR, elle, EST DANS LE FILM depuis le lot 1.7 (cf.
 // `Track.Team` et `grammar.ScanPlayerTeams`) — ce fichier a longtemps dit le contraire, et
 // c'etait l'etat du savoir. Le rattachement reste GEOMETRIQUE faute d'objet identifie, et
-// l'etiquette d'equipe vient du catalogue de carte (`flag_spawn.team_index`,
-// `replaybuild/flagspawns.go`), par le socle retenu.
+// l'etiquette d'equipe vient du socle retenu : catalogue de carte (`flag_spawn.team_index`,
+// `replaybuild/flagspawns.go`), ou base lue dans le film quand le catalogue se tait
+// (`flag_film_bases.go`).
 //
 // # L'INVARIANT DUR, AVANT TOUTE GEOMETRIE : JAMAIS SON PROPRE DRAPEAU
 //

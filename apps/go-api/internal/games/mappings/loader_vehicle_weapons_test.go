@@ -171,6 +171,9 @@ proof = "p"
 		"montage hors cadre": base + "sound = \"s\"\nmount = { aim = \"fixed\", ax = 0.7, ay = 0.0 }\n",
 		"visee inconnue":     base + "sound = \"s\"\nmount = { aim = \"free\", ax = 0.0, ay = 0.0 }\n",
 		"boucle d un coup":   base + "sound = \"s\"\nloop = \"l\"\n",
+		"canon d arme fixe":  base + "sound = \"s\"\nmount = { aim = \"fixed\", ax = 0.0, ay = 0.0, reach = 0.1 }\n",
+		"canon negatif":      base + "sound = \"s\"\nmount = { aim = \"turret\", ax = 0.0, ay = 0.0, reach = -0.1 }\n",
+		"canon hors sprite":  base + "sound = \"s\"\nmount = { aim = \"turret\", ax = 0.0, ay = 0.0, reach = 1.2 }\n",
 	}
 	for nom, entree := range cas {
 		if _, err := LoadVehicleWeaponsFromBytes("t.toml", []byte("[[weapons]]\n"+entree)); err == nil {
@@ -183,6 +186,31 @@ proof = "p"
 	}
 	if _, err := LoadVehicleWeaponsFromBytes("t.toml", []byte("[[weapons]]\n"+base+"sound = \"s\"\n")); err != nil {
 		t.Errorf("entree valide refusee : %v", err)
+	}
+	tourelle := "[[weapons]]\n" + base + "sound = \"s\"\nmount = { aim = \"turret\", ax = 0.0, ay = 0.1, reach = 0.4 }\n"
+	set, err := LoadVehicleWeaponsFromBytes("t.toml", []byte(tourelle))
+	if err != nil {
+		t.Fatalf("tourelle avec canon refusee : %v", err)
+	}
+	if w, _ := set.Weapon("121B4009"); w.Mount == nil || w.Mount.Reach != 0.4 {
+		t.Errorf("reach non lu : %+v", w.Mount)
+	}
+}
+
+// TestRegistreArmesVehicule_ToutesLesArmesOntUnMontage — une arme sans montage tire du CENTRE du
+// sprite, la ou se trouve le pion du conducteur. Chaque arme du registre est donc ancree : une arme
+// fixe a sa bouche, une tourelle a son pivot avec la longueur de son canon (mesures sur le sprite
+// du vehicule porteur, citees dans `proof`).
+func TestRegistreArmesVehicule_ToutesLesArmesOntUnMontage(t *testing.T) {
+	set := vwRegistre(t)
+	for _, tag := range set.Tags() {
+		w, _ := set.Weapon(tag)
+		switch {
+		case w.Mount == nil:
+			t.Errorf("%s (%s) : aucun montage, l eclair partirait du centre du vehicule", tag, w.Vehicle)
+		case w.Mount.Aim == VehicleWeaponAimTurret && w.Mount.Reach == 0:
+			t.Errorf("%s (%s) : tourelle sans longueur de canon", tag, w.Vehicle)
+		}
 	}
 }
 

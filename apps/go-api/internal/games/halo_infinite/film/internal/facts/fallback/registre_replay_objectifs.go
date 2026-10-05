@@ -46,11 +46,15 @@ var registreReplayObjectifs = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_index_drapeau_zero_pour_tous",
-		Fait:      "l'index de drapeau de CHAQUE portage d'un film sans socle catalogue",
-		Mecanisme: "aucun socle : tous les portages recoivent flagIndex = 0",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreSansLecture,
+		Nom: "repli_index_drapeau_zero_pour_tous",
+		// LA CONDITION EST RESSERREE (2026-10-05, plan PLAN_REJEU_TOURELLES_TIRS_ZONE_RETOUR, lot
+		// L1) : la base et le camp de chaque drapeau se lisent dans le film quand le catalogue se
+		// tait (`flag_film_bases.go`). Le repli ne reste que sur un film sans socle catalogue ET
+		// sans base lue — aucun vol localise des deux camps, ou des vols disperses.
+		Fait:      "l'index de drapeau de CHAQUE portage d'un film sans socle catalogue ni base lue dans le film",
+		Mecanisme: "aucun socle, ni du catalogue ni lu dans le film : tous les portages recoivent flagIndex = 0",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgReplay + "flag_assign.go",
 			Ancre:   "raws[i].flagIndex = 0",
@@ -59,28 +63,50 @@ var registreReplayObjectifs = []Repli{
 			Ancre:   "ctx.fb.DeclencheN(fallback.NomIndexDrapeauZeroPourTous, len(raws))",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "la completion du catalogue de socles ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 film CTF sans socle catalogue sur le parc",
+		CibleRetrait:    "une lecture des bases qui ne demande pas de vol localise des deux camps (renaissances de l'objet seules), ou la completion du catalogue de socles ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 film CTF sans socle catalogue ni base lue dans le film sur le parc (coverage.flagCarries.spawns a 0 avec flagFilm vrai)",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_socle_du_film_au_centre_des_vols",
+		Fait: "la POSITION d'une base de drapeau lue dans le film, sans socle du catalogue a portee",
+		// La renaissance de l'objet drapeau donne le point du socle au centimetre ; le centre des
+		// vols en est a une fraction de metre, assez pour poser la base, pas pour y apparier une
+		// rentree de l'objet (`flagHomeExactDist`).
+		Mecanisme: "aucune renaissance de l'objet (deux naissances au meme point) a moins de 3 m du centre des vols : la base est posee au centre des vols",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "flag_film_bases.go",
+			Ancre:   "return flagFilmBase{owner: owner, x: c.x, y: c.y}",
+		}, {
+			Fichier: pkgReplay + "flag_film_bases.go",
+			Ancre:   "fb.Declenche(fallback.NomSocleDuFilmAuCentreDesVols)",
+		}},
+		DatePose:        "2026-10-05",
+		CibleRetrait:    "aucune lecture plus fine connue ; " + retraitRegle4,
+		CritereRetrait:  "0 base lue dans le film sans renaissance de l'objet sur les films CTF du parc",
 		CompteurBranche: true,
 	},
 	{
 		Nom:  "repli_nombre_drapeaux_hors_catalogue_sans_passage",
-		Fait: "combien de drapeaux sont en jeu sur une carte hors du catalogue d'objectifs — ce qui nomme, par l'equipe, le drapeau d'une prise (passage de main en main) et celui d'un retour credite",
+		Fait: "combien de drapeaux sont en jeu quand ni le catalogue d'objectifs ni le film ne donnent de base — ce qui nomme, par l'equipe, le drapeau d'une prise (passage de main en main) et celui d'un retour credite",
 		// POSE AU LOT J9.2 (2026-09-26, constat RB1-5 de l'audit du 2026-09-24). Le nombre etait
 		// SUPPOSE a un (`flagSingleInPlay` rendait vrai sans socle) : toute prise d'un adversaire
 		// fermait le portage en cours, tout retour credite aussi. C'est la regle sans son filtre
 		// d'equipe, que la mesure du lot 6.11 chiffre a 57 portages et 775,1 s retires a tort.
 		Mecanisme: "le nombre n'est pas suppose : aucun drapeau n'est nomme par l'equipe, aucun passage de main en main ni retour credite ne ferme un portage ; compte = portages non juges",
-		// LA CARTE MANQUE AU CATALOGUE, LE FILM N'EST PAS MUET : les socles viennent du catalogue
-		// versionne d'objectifs, et le verdict de variante lui-meme se fonde sur eux.
-		Condition: CondCarteAbsenteDuCatalogue,
-		Ordre:     OrdreSansLecture,
+		// LA LECTURE DU FILM EST TENTEE D'ABORD (`flag_film_bases.go`, 2026-10-05) : les bases se
+		// lisent aux points ou chaque camp vole. Le repli ne reste que si elle n'a pas tranche (un
+		// seul camp vole, vols disperses ou sans position) sur une carte hors catalogue.
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgReplay + "flag_carries_handoff.go",
 			Ancre:   "fb.DeclencheN(fallback.NomNombreDrapeauxHorsCatalogueSansPassage, carries)",
 		}},
 		DatePose:        "2026-09-26",
-		CibleRetrait:    "une lecture du nombre de drapeaux dans le film (vies libres de l'objet drapeau, non mesuree a ce jour), ou l'ajout de la carte au catalogue d'objectifs",
+		CibleRetrait:    "une lecture des bases qui ne demande pas de vol localise des deux camps (renaissances de l'objet seules), ou l'ajout de la carte au catalogue d'objectifs",
 		CritereRetrait:  "0 portage non juge faute de socle sur les films CTF du parc (meme population que repli_index_drapeau_zero_pour_tous)",
 		CompteurBranche: true,
 	},

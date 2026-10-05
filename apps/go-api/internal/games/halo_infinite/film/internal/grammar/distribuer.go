@@ -87,8 +87,9 @@ type CanalDesTrames interface {
 }
 
 // CanalDesTetes est un canal qui lit la TETE de chaque trame delta : la continuation de sa vue A
-// et, quand elle annonce un message, son genre ([lecture.Paquet.VueA], [rangerLaTete]). Une
-// distribution sans canal des trames n en marche pas les records : elle n en lit que les tetes.
+// et, quand elle annonce un message, son genre ([lecture.Paquet.VueA], [rangerLaTete], [teteDe]) ;
+// la vue A rangee porte aussi les messages qui suivent quand le film la rend lisible. Une
+// distribution sans canal des trames n en marche pas les records : elle n en lit que les vues A.
 type CanalDesTetes interface {
 	Canal
 	// Tete recoit chaque trame delta (payload non vide), dans l ordre du flux, sa tete rangee.

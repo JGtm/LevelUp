@@ -14,9 +14,12 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lectur
 type lectureDeTrame struct {
 	// enTete : la marche est partie de la tete du paquet — bit de configuration, puis vue A.
 	enTete bool
-	// vueA et ses bornes `[debutVueA, finVueA)` : la vue A lue, quand enTete.
-	vueA               FluxVueA
-	debutVueA, finVueA int
+	// vueA : la vue A, quand enTete ; vueARecue : elle a ete lue avant la marche et passee par son
+	// depart ([departDeTrame]) — la marche ne l a ni relue ni ne la re-range. debutVueA : le bit ou
+	// la marche prend la vue A, celui qui suit le bit de configuration.
+	vueA      FluxVueA
+	vueARecue bool
+	debutVueA int
 	// debutVueB / finVueB : les bornes de la vue B, -1 quand elle n est pas atteinte ; sortieVueB
 	// et eidRejete : comment elle s est arretee ([Lecteur.sortirDeLaVueB]).
 	debutVueB, finVueB int
@@ -39,31 +42,48 @@ type lectureDeTrame struct {
 	deborde bool
 }
 
+// departDeTrame est le point de depart de la marche d une trame : le bit (`skipLeadBits`) et, quand
+// l appelant l a deja lue, la vue A du paquet ([rangerLaTete]) — nil : la marche la lit elle-meme
+// si elle part de la tete.
+type departDeTrame struct {
+	bit  int
+	vueA *FluxVueA
+}
+
 // lireTrameParRangs marche UNE trame delta sous la grammaire de chaque classe de vue
 // (`GrammaireBalayage.ClassesDeVue`) — rang 0 la vue A, rang 1 la vue B, rang 2 la vue C — et
 // range ce qu elle a lu dans `l`. Le verdict de la vue C est publie au crochet, une fois par
 // paquet, atteinte ou non.
 //
-// LA TETE DU PAQUET : quand la marche part de la tete (`skipLeadBits == cfg.PacketPreambleBits`),
-// elle saute le seul bit de configuration et LIT la vue A ; depuis un debut LOCALISE, la vue A est
+// LA TETE DU PAQUET : quand la marche part de la tete (`d.bit == cfg.PacketPreambleBits`), elle
+// saute le seul bit de configuration et prend la vue A — celle de son depart, sinon la lecture
+// unique ([lireLaVueA]) sans grammaire de film : sa tete seule decide de la marche. Elle ne
+// traverse qu une vue A VIDE : une vue A qui porte un message arrete la marche apres sa tete, la ou
+// elle s arretait avant que la vue A soit lue jusqu au bout ; la vue B d un paquet a evenements part
+// d un debut LOCALISE. Depuis un debut localise, la vue A est
 // derriere le point de depart et la marche commence au rang 1 (cf. [decodeFrameParRangs]).
-func lireTrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig, skipLeadBits int,
+func lireTrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig, d departDeTrame,
 	l *lectureDeTrame) {
 	frameLen := len(buf) * 8
 	*l = lectureDeTrame{debutVueB: -1, finVueB: -1}
-	if skipLeadBits == cfg.PacketPreambleBits && cfg.PacketPreambleBits >= 1 {
+	if d.bit == cfg.PacketPreambleBits && cfg.PacketPreambleBits >= 1 {
 		l.enTete = true
 		br.Skip(cfg.PacketPreambleBits - 1) // le bit de configuration du frame-processeur
 		l.debutVueA = br.BitPos()
-		l.vueA = consumeVueA(br, frameLen)
-		l.finVueA = br.BitPos()
-		if !l.vueA.Porte {
+		if d.vueA != nil && d.vueA.Debut == l.debutVueA {
+			l.vueA, l.vueARecue = *d.vueA, true
+		} else {
+			l.vueA = lireLaVueA(buf, l.debutVueA, cfg.Profil, grammaireDeLaVueA{}) // la tete seule decide
+		}
+		if !l.vueA.Vide {
+			br.SetBitPos(l.vueA.finDeTete())
 			l.publier(br) // vue C non atteinte : un TROU, que l appelant compte
 			return
 		}
+		br.SetBitPos(l.vueA.Fin)
 		l.rangs++
 	} else {
-		br.Skip(skipLeadBits)
+		br.Skip(d.bit)
 	}
 	// RANG 1 — le gestionnaire d entites. L index de vue du MONDE HORS LIGNE pour cette classe
 	// est `vueDeLImageCle` : le film la nomme rang 1, le monde la range en 0 (cf.

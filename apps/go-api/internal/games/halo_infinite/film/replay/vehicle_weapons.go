@@ -38,18 +38,23 @@ type VehicleWeapon struct {
 	// de l arme, comme le conteneur du jeu en mode « cadence de declenchement ».
 	Loop string `json:"loop,omitempty"`
 	// Mount est l ANCRE de l arme sur le sprite de son vehicule. Absent = arme sans montage
-	// documente : l eclair part du centre du vehicule.
+	// documente : l eclair part du centre du vehicule (le registre du titre en donne un a chaque
+	// arme, garde-rail du chargeur).
 	Mount *VehicleWeaponMount `json:"mount,omitempty"`
 }
 
 // VehicleWeaponMount est l ancre d une arme en FRACTIONS DU SPRITE (repere nez en haut : `ax` de
 // -0,5 a +0,5 de gauche a droite, `ay` de -0,5 au nez a +0,5 a l arriere) et sa classe de visee.
 type VehicleWeaponMount struct {
-	// Aim : `fixed` (solidaire du nez, vise ou pointe le vehicule) ou `turret` (visee
-	// independante, celle du tireur).
+	// Aim : `fixed` (solidaire du nez, vise ou pointe le vehicule ; l ancre EST la bouche) ou
+	// `turret` (visee independante, celle du tireur ; l ancre est le PIVOT).
 	Aim string  `json:"aim"`
 	AX  float64 `json:"ax"`
 	AY  float64 `json:"ay"`
+	// Reach : la longueur du canon d une TOURELLE, en fraction de la LONGUEUR du sprite (0 a 1).
+	// La bouche est a cette distance du pivot, dans la direction de la visee du tireur ; sans
+	// visee lue, le tir part du pivot. Absent (0) pour une arme fixe.
+	Reach float64 `json:"reach,omitempty"`
 }
 
 // VehicleWeaponKey rend la cle de `Shot.Weapon` d une arme de vehicule : le tag `weap` de 32 bits

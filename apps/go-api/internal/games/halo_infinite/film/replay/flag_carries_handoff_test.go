@@ -141,15 +141,19 @@ func TestHorsCatalogueLeNombreDeDrapeauxNeSeSupposePas(t *testing.T) {
 }
 
 // TestHorsCatalogueLeRepliSeCompteParPortage — le silence de la regle n'est pas muet : le repli
-// NOMME se declenche une fois par portage publie, et zero fois des qu'un socle est connu.
+// NOMME se declenche une fois par portage publie quand ni le catalogue ni le film ne donnent de
+// base, et zero fois des qu'un socle est connu — du catalogue, ou lu dans le film (chaque camp
+// vole a un point, cf. flag_film_bases.go).
 func TestHorsCatalogueLeRepliSeCompteParPortage(t *testing.T) {
 	for _, cas := range []struct {
 		nom    string
 		spawns []FlagSpawn
+		teams  map[string]int
 		veut   int
 	}{
-		{"hors catalogue", nil, 2},
-		{"deux socles", flagInvariantSpawns(), 0},
+		{"hors catalogue, un seul camp vole", nil, map[string]int{"1": 0, "2": 0}, 2},
+		{"hors catalogue, bases lues dans le film", nil, map[string]int{"1": 0, "2": 1}, 0},
+		{"deux socles", flagInvariantSpawns(), map[string]int{"1": 0, "2": 1}, 0},
 	} {
 		t.Run(cas.nom, func(t *testing.T) {
 			scan := FlagCarryScan{
@@ -159,7 +163,7 @@ func TestHorsCatalogueLeRepliSeCompteParPortage(t *testing.T) {
 					{TimeMS: 3000, Slot: 14, Stat: objectives.StatFlagSteals},
 				},
 				Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
-				Spawns:   cas.spawns, TeamOf: map[string]int{"1": 0, "2": 1},
+				Spawns:   cas.spawns, TeamOf: cas.teams,
 			}
 			ctx := flagTestCtx([]Track{flagTestTrack(10, "1", 0, 99, 2, 2),
 				flagTestTrack(11, "2", 0, 99, 98, 98)}, nil, 100)

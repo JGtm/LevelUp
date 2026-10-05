@@ -108,12 +108,12 @@ var tablePolarites = []blocPolarites{
 	{Blocs: []string{"coverage.flagCarries."},
 		Echecs: "ambiguousCarrierKills ambiguousHomecomings ambiguousReturns ambiguousSlot " +
 			"carrierTeamUnknown closedOverlaps noBridge noTrack open outOfWindow overlaps " +
-			"ownFlagRefused unjudgedCarrierKills unresolved",
-		Succes: "carries closed dropsRepositioned gaugePaired gaugePoints gaugeReads gaugeSlots " +
+			"filmBaseContradict ownFlagRefused unjudgedCarrierKills unresolved",
+		Succes: "carries closed dropsRepositioned filmBaseAgree gaugePaired gaugePoints gaugeReads gaugeSlots " +
 			"gaugeSpans markerConfirmed objectLives openConfirmed",
 		Neutres: "assignedByPlay bursts captures closedByHandoff closedByHome closedByObject " +
 			"closedByReturn dropsWithheld homeByObject markerObserved neutralBirths openObserved " +
-			"openings spawns steals teamBirths"},
+			"filmBases openings spawns spawnsFromFilm steals teamBirths"},
 	{Blocs: []string{"coverage.grapple."},
 		Echecs:  "brokenBodies",
 		Succes:  "heavyReads lightReads pullLives pulls",

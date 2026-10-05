@@ -102,6 +102,8 @@ export interface VehiclesInput {
   offscreenGroupLabelOf: (count: number, meters: number) => string
   /** Encre du « aucun occupant connu » (token sémantique, résolu par l'appelant). */
   neutralInk: string
+  /** Encre d'un élément de carte non jouable (gris `zone-neutral`, cf. `VehicleStyle.mapElementInk`). */
+  mapElementInk: string
   /** Encre du contour des noms (cf. `useReplayInks`). */
   labelStroke: string
   /**
@@ -192,6 +194,7 @@ export function useReplayVehicles({
   offscreenLabelOf,
   offscreenGroupLabelOf,
   neutralInk,
+  mapElementInk,
   labelStroke,
   markInk,
   explosionInk,
@@ -401,8 +404,8 @@ export function useReplayVehicles({
         view,
         { frame, k, frameMs },
         {
-          neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf, labelOfFamily,
-          colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
+          neutralInk, mapElementInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
+          labelOfFamily, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
           explosionInk, reducedMotion,
         },
       )
@@ -425,7 +428,7 @@ export function useReplayVehicles({
       )
     },
     [
-      enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
+      enabled, tracks, view, neutralInk, mapElementInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
       labelOfFamily, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
       frameMs, explosionInk, reducedMotion,
       cycles, livesOf, markInk.fill, markInk.outline, t.padCountdownFmt,

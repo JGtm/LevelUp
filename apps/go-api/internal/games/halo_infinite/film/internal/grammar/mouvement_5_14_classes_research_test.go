@@ -368,10 +368,10 @@ func TestClasses514Contenu(t *testing.T) {
 				br.Skip(d)
 			} else {
 				br.Skip(DefaultPacketPreambleBits - 1)
-				a := consumeVueA(br, frameLen)
+				a := lireLaTeteDeMarche(br, pay, cfg)
 				if !a.Vide {
 					aNonVide++
-					for _, g := range a.Genres {
+					for _, g := range a.Genres[:min(1, len(a.Genres))] { // le genre de tete
 						genresA[g]++
 					}
 					continue

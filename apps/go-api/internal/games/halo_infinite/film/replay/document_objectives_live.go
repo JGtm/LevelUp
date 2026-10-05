@@ -91,12 +91,13 @@ package replay
 // lui-meme la continuite entre « lache ici » et « repris la ».
 type FlagCarry struct {
 	// Team est l'equipe PROPRIETAIRE du drapeau, telle que le fichier de carte la donne sur le
-	// socle `flag_spawn` ([TeamNeutral] = inconnue : carte absente du catalogue d'objectifs —
-	// 72 cartes couvertes sur la centaine jouee).
+	// socle `flag_spawn`, ou telle que le film la lit quand la carte ne la donne pas (les vols d'un
+	// camp tombent a la base de l'autre, cf. flag_film_bases.go). [TeamNeutral] : drapeau de la
+	// variante neutre, ou camp inconnu faute de catalogue ET de base lue dans le film.
 	Team int `json:"team"`
-	// Spans est la vie du drapeau, en intervalles tries par T0, CONTIGUS des lors que le socle de
-	// la carte est connu. Carte hors du catalogue d objectifs : les etats `home` sont omis (leur
-	// position serait inventee) et la suite peut donc porter des trous.
+	// Spans est la vie du drapeau, en intervalles tries par T0, CONTIGUS des lors que le socle est
+	// connu (catalogue ou film). Sans socle — ni catalogue ni base lue dans le film — les etats
+	// `home` sont omis (leur position serait inventee) et la suite peut donc porter des trous.
 	Spans []FlagSpan `json:"spans"`
 }
 
@@ -308,9 +309,22 @@ type FlagCarriesCoverage struct {
 	// verifie au lieu de se croire.
 	NeutralBirths int `json:"neutralBirths"`
 	TeamBirths    int `json:"teamBirths"`
-	// Spawns est le nombre de socles `flag_spawn` connus de la carte. Zero : la carte est hors
-	// du catalogue d'objectifs, tous les portages tombent dans UN drapeau d'equipe -1.
+	// Spawns est le nombre de socles RETENUS : ceux du catalogue que la variante garde, completes
+	// et choisis par les bases lues dans le film (cf. flag_film_bases.go). Zero : ni le catalogue
+	// ni le film ne donnent de base, tous les portages tombent dans UN drapeau d'equipe -1.
 	Spawns int `json:"spawns"`
+	// FilmBases est le nombre de bases LUES DANS LE FILM : deux (une par camp, aux points ou
+	// l'autre camp vole), une (variante neutre : les deux camps volent au meme point) ou zero.
+	// SpawnsFromFilm compte les socles retenus dont le camp, ou le role de socle neutre, — et,
+	// sans socle du catalogue a portee, la position — vient du film. FilmBaseAgree /
+	// FilmBaseContradict sont le CONTROLE du catalogue par le film, sur les socles dont le
+	// catalogue nomme le camp ou le role neutre : une contradiction
+	// ne change rien au catalogue, elle se compte. `omitempty` : zero hors CTF, et sur un film de
+	// CTF dont le film ne lit aucune base.
+	FilmBases          int `json:"filmBases,omitempty"`
+	SpawnsFromFilm     int `json:"spawnsFromFilm,omitempty"`
+	FilmBaseAgree      int `json:"filmBaseAgree,omitempty"`
+	FilmBaseContradict int `json:"filmBaseContradict,omitempty"`
 	// ObjectLives est le nombre de VIES LIBRES de l'objet drapeau LUES sur ce film (schema 15).
 	// C'est le DENOMINATEUR des deux compteurs suivants : sans lui, « 2 portages fermes » ne se
 	// juge pas. La PISTE elle-meme n'est pas publiee — son controle de provenance l'a refusee

@@ -309,7 +309,8 @@ func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
 // bits que le depot saute ([DefaultPacketPreambleBits]) est donc `[configuration][vue A vide]` :
 // son second bit est le terminateur de la vue A. Quand l appelant part de la TETE du paquet
 // (`skipLeadBits == cfg.PacketPreambleBits`), cette marche saute le bit de configuration et LIT
-// la vue A — une vue A non vide est alors DETECTEE au lieu d etre prise pour un bit d amorce.
+// la vue A par la lecture unique ([lireLaVueA]) — une vue A non vide est alors DETECTEE au lieu
+// d etre prise pour un bit d amorce, et la marche s arrete apres sa tete.
 // Quand l appelant part d un debut LOCALISE (paquet a liste d evenements, `marchLocateStrict`),
 // la vue A est derriere le point de depart et la marche commence au rang 1.
 //
@@ -318,6 +319,6 @@ func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
 func decodeFrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 	skipLeadBits int) ([]FrameRecord, int, int) {
 	var l lectureDeTrame
-	lireTrameParRangs(br, buf, w, cfg, skipLeadBits, &l)
+	lireTrameParRangs(br, buf, w, cfg, departDeTrame{bit: skipLeadBits}, &l)
 	return l.recs, l.rangs, l.curseur
 }

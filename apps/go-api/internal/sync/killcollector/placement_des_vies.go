@@ -63,7 +63,15 @@ const (
 // d'une vie change, et l'inverse. Le rattrapage (`matchsAJour`, cmd_backfill_killsource_selection.go)
 // exige une passe a CETTE revision pour tout match qui a des vies ; le backlog automatique du
 // post-sync ne la lit pas (decision V12 : un deploiement ne relance aucun redecodage de lui-meme).
-const PlacementRev = "placement-2026-09-29-v1"
+//
+// ELLE MONTE QUAND LES PORTAGES LUS CHANGENT, et non seulement la mesure : `carrier_ms` vient du
+// calque du drapeau (`replay.buildFlagCarries`). A cette revision, les socles du calque se lisent
+// aussi dans le film (`replay/flag_film_bases.go`) : une carte hors catalogue a deux drapeaux
+// d'equipe au lieu d'un drapeau d'equipe -1, les socles du catalogue que le film n'apparie pas
+// (socles surnumeraires, socle central d'une autre variante) sortent du calque, un socle sans
+// camp prend celui du film ou devient le socle neutre — les portages, donc les durees portees,
+// en dependent.
+const PlacementRev = "placement-2026-10-05-v1"
 
 // PorteeDuRadar rend la portee du radar d'une variante (`game_variant_name` tel que la base le
 // porte), en metres. `connue` faux = variante absente de la table : la ligne s'ecrit sans portee
@@ -151,7 +159,7 @@ func (d depsDuPlacement) entreeDesPorteurs(
 }
 
 // soclesDe rend les socles de drapeau de la carte (catalogue d'objectifs, par `map_id` — la
-// MEME cle et la MEME projection que la cuisson). Absence = drapeaux sans equipe proprietaire,
+// MEME cle et la MEME projection que la cuisson). Absence = socles lus dans le film par le calque,
 // comme a la cuisson : journalisee en Debug, le calque reste lu.
 func (d depsDuPlacement) soclesDe(ctx context.Context, matchID, carteID string) []replay.FlagSpawn {
 	if d.objectifs == nil || carteID == "" {
@@ -159,8 +167,8 @@ func (d depsDuPlacement) soclesDe(ctx context.Context, matchID, carteID string) 
 	}
 	entree, err := d.objectifs.Lookup(carteID)
 	if err != nil {
-		slog.DebugContext(ctx, "killsource: placement — carte hors catalogue d'objectifs, drapeaux "+
-			"sans equipe proprietaire", "match_id", matchID, "map_id", carteID)
+		slog.DebugContext(ctx, "killsource: placement — carte hors catalogue d'objectifs, socles "+
+			"de drapeau a lire dans le film", "match_id", matchID, "map_id", carteID)
 		return nil
 	}
 	return entree.SoclesDeDrapeau()

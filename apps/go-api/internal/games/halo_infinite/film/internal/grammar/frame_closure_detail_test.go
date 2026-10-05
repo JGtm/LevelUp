@@ -105,7 +105,7 @@ func (md *marcheDetaillee) marcherPaquetDetaille(pay []byte, w *World, debut int
 	br := LecteurSur(pay)
 	br.poserCadre(md.cfg)
 	var l lectureDeTrame
-	lireTrameParRangs(br, pay, w, md.cfg, debut, &l)
+	lireTrameParRangs(br, pay, w, md.cfg, departDeTrame{bit: debut}, &l)
 	md.detaillerLaMarche(&l, debut, pay, d)
 	d.Anticipations = compteDesAnticipations(md.cfg.Obs) - avant
 }
