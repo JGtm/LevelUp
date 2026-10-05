@@ -642,8 +642,9 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       véhicule ne paie pas cette lecture), `ScanObjectDeaths` en est une projection ;
       `MarcheDistribuee` expose la marche aux
       canaux de la grammaire ; `object_deaths_march.go` et `object_deaths_calibrate.go` retirés,
-      `ObjectDeathStats` sans les champs de la calibration ; cuisson : marche des trames sous
-      `gwWidthsForFilm`, morts et occupation posées sur le calque des véhicules depuis elle
+      `ObjectDeathStats` sans les champs de la calibration ; cuisson : marche des trames sous les
+      largeurs MPP du contexte (décision 3 retirée), morts et occupation posées sur le calque des
+      véhicules depuis elle
       (`mortsDeVehicule`), étapes observées `vehicleDeaths` et `vehicleDeaths.stats` ; repli
       `repli_cadre_de_marche_par_defaut_conserve` retiré, sites de `repli_localisation_largeur_libre`
       déplacés ; localisateur unique (en-tête, site, affirmation fausse sur la génération stricte
@@ -962,3 +963,24 @@ plan y sont reprises comme items (3.1.2).
   que killsource ne change qu'une fois. 2.7.a commence par la mesure (instrument
   `grammar/morts_marche_unique_research_test.go`, les deux marches sur les huit films du corpus qui
   portent des véhicules).
+- 2026-10-05 : 2.7.a ÉCRIT (`b093ef10b`, local), GATE DE CORPUS MIXTE, DÉCISION POSÉE À
+  L'UTILISATEUR. Équivalence (`ri27c`) propre : mouvement et tir identiques, killsource identique à
+  l'octet, morts de véhicule 142 → 148. Gate (19 témoins contre `87cdfa761`) : sortie 1 — FAUX sur
+  `084a804d` et `e5adf7b2` (une action hors vie de plus chacun), PERTE sur `60ae07c4`, `a349fea8`,
+  `a521164d`, `11de8353`, `4f77afc1` (épisodes à bord, tirs posés sur un véhicule, deux rafales,
+  morts lues), gains au banc (`4f77afc1` 112 → 95 et `11de8353` 8 → 3 actions hors vie). La
+  variante sans la récupération des listes perd davantage : la récupération reste. Les onze morts
+  de `4f77afc1` que le recensement n'apparie pas ne viennent pas de la récupération : véhicules nés
+  entre deux images-clés, liés par NEW dans le monde de la marche, absents du recensement par
+  images-clés. Cause des pertes sur les formats anciens : la marche à huit vues de production lit
+  sous la largeur MPP mesurée sur le film (`build_vehicles.go`, `gwWidthsForFilm`), la marche des
+  trames sous celle du contexte (règle de l'utilisateur du 2026-10-02). Deux parts : les listes que
+  la marche ne localise pas (le lot de la campagne « lire la vue A jusqu'au bout » devrait les
+  rendre) et les records de la vue B qui déraillent derrière un véhicule mal découpé (aucune lecture
+  générale connue ne les rend sur ces versions ; découverte 11). Options posées : garder la lecture
+  actuelle et reprendre après ce lot de la campagne (recommandée), basculer avec les pertes, ou
+  admettre la largeur mesurée pour la marche sur ces versions (exception à la règle du 2026-10-02).
+  La campagne lance ce lot depuis `87cdfa761` (`feat/cg3-vue-a`) et y garde verte la marche à huit
+  vues de production ; 2.7.a n'entre pas dans `feat/v75` avant lui. Elle mesure en parallèle, sans
+  code de production, le découpage 8/3 des formats anciens par double preuve (fermeture au bit,
+  châssis du jeu installé).

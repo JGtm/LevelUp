@@ -115313,3 +115313,27 @@ films de formats anciens (découverte 11).
 **Conclusion / prochaine étape** : instruire les morts non appariées de `4f77afc1`, puis poser la
 décision à l'utilisateur en langage clair (garder la lecture actuelle des morts sur les formats
 anciens, accepter leurs pertes, ou autoriser la largeur mesurée pour la marche).
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — lot 2.7.a : décision posée à l'utilisateur, la campagne lance « lire la vue A jusqu'au bout » — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — attente de la décision de l'utilisateur (trois options posées ; il penche
+pour garder la lecture actuelle, explication en langage clair demandée et donnée).
+
+**Décision technique principale** : 2.7.a n'entre pas dans `feat/v75` avant le lot de la campagne
+« lire la vue A jusqu'au bout », lancé depuis `87cdfa761` (`feat/cg3-vue-a`) : ce lot n'a pas de
+canal des morts à vérifier et garde verte la marche à huit vues de production (morts et occupation
+des véhicules, killsource inchangé).
+
+**Résultats observés** : les pertes des formats anciens ont deux parts — les listes que la marche
+des trames ne localise pas (le lot de la campagne devrait les rendre) et les records de la vue B
+qui déraillent derrière un véhicule mal découpé (largeur MPP de ces versions non lisible dans le
+jeu, aucune lecture générale connue ; découverte 11 du plan). La campagne mesure en parallèle,
+sans code de production, le découpage 8/3 de ces versions par double preuve (fermeture au bit,
+châssis du jeu installé). Texte « écrit » de 2.7.a corrigé au plan : la marche des trames de la
+cuisson tourne sous les largeurs du contexte, pas sous `gwWidthsForFilm` (décision 3 retirée).
+
+**Conclusion / prochaine étape** : consigner la décision de l'utilisateur au plan. Si la lecture
+actuelle est gardée : à la fusion du lot de la campagne, fusionner `feat/v75`, brancher le canal
+des morts sur le début de vue B lu depuis la vue A, remesurer en séparant les deux parts, et
+revenir vers l'utilisateur avec le reste. Aucune passe de décodage tant que la campagne occupe la
+machine.
