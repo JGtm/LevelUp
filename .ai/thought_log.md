@@ -115395,3 +115395,23 @@ trois conditions : son gate 2, la provenance présumée par mesure, sa double pr
 
 **Conclusion / prochaine étape** : implémenter 2.7.a0 (profile, grammar, cuisson, contrôle par
 record), puis les gates de l'item, puis remesurer 2.7.a dessus.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — 2.7.a0 écrit : découpage MPP déclaré par le film, gates joués — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — non fusionnable en l'état ; instruction des pertes lancée.
+
+**Décision technique principale** : la règle `n1` (profile) et sa résolution par film (grammar)
+sont posées par la cuisson pour toutes ses lectures. killsource ne change pas (identique à
+l'octet). La campagne obtient son drapeau `-mpp-declare` dans `cmd_fermeture` pour son gate 2.
+
+**Résultats observés** :
+- sept bobines : déclaration unanime ;
+- gate 2 : +84 282 paquets sains, aucun film en baisse nette, 428 perdus en brut (347 sur
+  `1c4c63c2`) ;
+- gate de corpus : FAUX (V-3) sur `084a804d` (+4) et `e5adf7b2` (+1), pertes de métriques sur
+  les films anciens, gains P-1 ×2,5 à ×5 ;
+- `50247b26` reste sur le chemin calibré (ti=38 déclare une taille inconnue).
+
+**Conclusion / prochaine étape** : un agent cherche où sont les deux bits de fin (le premier bit
+est certain), instruit les pertes du gate 2 par famille et explique les écarts du rejeu. Ensuite,
+correction ou admission, puis retour à l'utilisateur.

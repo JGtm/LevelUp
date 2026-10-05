@@ -1110,3 +1110,26 @@ plan y sont reprises comme items (3.1.2).
   à ce plan sous trois conditions (son gate 2, la provenance présumée par mesure, sa double preuve
   comme oracle). Tailles courantes relues dans Ghidra (`vtable+0x20` des neuf descripteurs).
   Ouverture de 2.7.a0.
+- 2026-10-05 : 2.7.a0 ÉCRIT (`3ee8e7bf2`, `a06ecfd06`, local) ; GATES JOUÉS.
+  - *Preuve `ri27d` contre `ri27c`* :
+    - killsource identique à l'octet sur les 19 témoins ;
+    - format 27 et `50247b26` (non déclaré) : seule l'étape `artifact` change, par la télémétrie
+      des révisions ;
+    - films déclarés 8/3 : `birthLoadouts` ×4 à ×20 (`084a804d` 16 → 365, `1c4c63c2`
+      27 → 571), `movementStates` +0,3 à +14 %, `continuousFire` ×1,5 à ×4 ;
+    - `60ae07c4` : `birthLoadouts` 6 → 5.
+  - *`50247b26`* (format 20, majeure 31) : DISCORDANT (173 records de la clé, dont 53 ti=38 à
+    n1=92, soit taille courante − 12). Chemin calibré gardé et averti.
+  - *Gate 2 de la campagne* (carte v2, sans puis avec `-mpp-declare`, 20 films) :
+    - aucun film en baisse nette ;
+    - sains 313 542 → 397 824 (+84 282), utiles sains +1 855 974 ;
+    - 428 sains perdus en brut, dont 347 sur `1c4c63c2` ;
+    - factices des gains au bit : 3,1 %, dont 8,5 % sur `1c4c63c2`.
+  - *Gate de corpus contre `87cdfa761`* (cumul 2.7.a et 2.7.a0) : sortie 1.
+    - FAUX sur `084a804d` (V-3 92 → 96) et `e5adf7b2` (V-3 10 → 11) ;
+    - PERTE sur les autres films anciens et sur `4f77afc1` (ce dernier vient de 2.7.a) ;
+    - gains P-1 (paquets fermés ×2,5 à ×5), V-6 de `084a804d` 6 → 1, V-3 de `4f77afc1`
+      112 → 95.
+  - *Suite* : instruction par un agent d'enquête (placement des deux bits de fin, pertes du
+    gate 2 par famille, écarts du rejeu), condition de clôture de la campagne. Non
+    fusionnable en l'état.
