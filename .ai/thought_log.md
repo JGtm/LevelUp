@@ -115211,3 +115211,123 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : CI verte au niveau job (`0988d7291`), `make gate-push` vert. Gains de la vague : +47 paquets sains, aucun film en baisse, killsource identique.
 
 **Conclusion / prochaine étape** : recuisson du parc ; la recherche sur la localisation haute fréquence fondée sur la loi d'écriture de la vue B est en cours (reprise de LS).
+
+## [2026-10-04] Étude « Tendances » : maquette v4 (horizons 7 / 30 / 90 / 365 j, familles d'indicateurs selon le matchmaking)
+
+**Statut** : Complété (maquette seule, aucune implémentation ; `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commitée).
+
+**Décision technique principale** : relecture du dossier d'étude (`Tendances_LevelUp_2026-10-04.zip` : étude du 30/09, maquette v3, `extraction_matchs.sql`) sur demande de l'utilisateur. (1) Le bloc « Taux de victoire selon la statistique, par horizon » est retiré : l'écart entre matchs au-dessus et en dessous de la médiane est structurel (durée de vie JGtm 67 / 33 % à 365 j, 66 / 32 % à 90 j), la médiane suit l'horizon donc une progression n'y apparaît pas, et le lien statistique ↔ victoire est déjà porté par « Moyenne par match en défaite et en victoire ». (2) Horizons : la « dernière soirée » disparaît (l'utilisateur ne l'avait pas demandée) ; retour à 7 / 30 / 90 / 365 j, chacun contre la période d'avant, seuil 10. (3) Le matchmaking règle les lobbys sur le niveau du joueur : la matrice est rangée en Niveau (MMR adverse, MMR équipe, LUSR), Par rapport au niveau du moment (taux de victoire, écart au FDA attendu, score de performance : grandeurs qui convergent), puis stats brutes (Combat, Façon de jouer, Objectifs, Activité, Soirées). Le score de performance est un rang parmi les 50 matchs précédents de la même chaîne (`sync/performance.go`, `windowSize = 50`) : il converge vers 50 par construction. (4) Lignes ajoutées : précision, assistances, meilleure série, objectifs (drapeaux capturés / ramenés, zones capturées, temps en zone, temps porteur du crâne, depuis `match_objective_stats_latest`), matchs / heures / jours joués, taux d'abandon. Groupes repliables, lignes vides masquées, lignes « ni mieux ni moins bien » en couleur neutre au lieu du gris « pas de comparaison ».
+
+**Résultats observés** : JGtm, octobre 2025 → juillet 2026 : 63 → 49 % de victoires, écart aux frags attendus +2,27 → −0,36, MMR adverse 1 091 → 1 253 : la lecture « recul à difficulté égale » de l'étude (§6.6) est un rattrapage du matchmaking, pas une régression. Maquette exécutée sous jsdom (ECharts 6.1 local) : 0 erreur hors canvas, aucun id en double, aucun conteneur vide ; matrice solo 38 lignes (dont 7 intertitres), escouade 13 ; contrôle visuel dans le volet navigateur (repli des groupes fonctionnel).
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v4. Non maquetté faute de données dans la copie : coordination (riposte, appui, isolement), score escouade, XP de carrière par horizon. L'étude (§6.7 du document du zip) n'est pas mise à jour : la maquette porte les décisions du 04/10 dans ses notes.
+
+## [2026-10-04] Étude « Tendances » : maquette v5 (petits graphiques affichés d'office)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : retour utilisateur « tout cantonner aux listes déroulantes n'est pas top », puis « je préfère qu'on affiche de base ». Le « Détail » à liste déroulante (solo et escouade) est remplacé par une section « Mois par mois » : un petit graphique par indicateur (barres autour de la moyenne des mois, valeur sur la barre, couleurs de la matrice), rangé par famille comme la matrice, grille de 3 par rangée. La matrice reste le résumé des horizons ; un clic sur une de ses lignes fait défiler jusqu'au graphique. « Niveau des lobbys et écart à l'attendu » perd son menu (écart au FDA attendu face au MMR adverse) ; les écarts aux frags et aux morts attendus deviennent des lignes de la famille « Par rapport au niveau du moment ». Le passage par clic pour déplier (proposé d'abord) est écarté par l'utilisateur.
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, aucun conteneur vide ; 33 petits graphiques en solo (7 familles), 11 en escouade ; matrice solo 40 lignes. Contrôle visuel à 1 000 px : grille en 3 colonnes, étiquettes de valeur qui se chevauchent masquées.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v5.
+
+## [2026-10-04] Étude « Tendances » : maquette v6 (graphiques regroupés par question)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : retour utilisateur « beaucoup de graphes, un compromis ? on peut en combiner certains ». Les 33 petits graphiques de la v5 deviennent 11 en solo, plus « Niveau des lobbys et écart à l'attendu » placé en tête de « Mois par mois » (le MMR d'équipe y est ajouté en pointillé sur l'axe de droite). Règle de regroupement : même unité ET même récit, aucun nouveau double axe ; une courbe par indicateur, un point par mois. Groupes : les trois LUSR ; taux de victoire et score de performance (0-100, repère 50) ; écarts aux frags et morts attendus (repère 0) ; frags, morts, assistances, meilleure série par match ; rendement et résistance (repère 1) ; précision et part à la tête ; dégâts infligés et subis ; durée de vie ; arme lourde et équipement ; objectifs ; victoire après une victoire / une défaite. Escouade : 6 graphiques (avec et sans l'escouade, écart au FDA attendu par membre aux couleurs des joueurs, part des frags de l'escouade par membre en barres empilées, part des frags de l'équipe, écart de MMR, soirées jouées). Les indicateurs sans graphique restent dans la matrice (FDA, perf fin − début de soirée, matchs par soirée, volume, abandons, temps en zone / porteur du crâne). Un clic dans la matrice amène au graphique qui trace l'indicateur (`data-keys`).
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, aucun conteneur vide ; toutes les séries ont au moins 2 mois (équipement : 4 mois, couverture `us6`). Contrôle visuel à 1 000 px : grille en 2 colonnes, légendes en bas.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v6.
+
+## [2026-10-04] Étude « Tendances » : maquette v7 (la section « Évolution » suit l'horizon, pas de temps au choix)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : retour utilisateur « pourquoi juste l'année, mois par mois ? plus fin, ou laisser le choix ». « Mois par mois » devient « Évolution » : boutons d'horizon 7 / 30 / 90 / 365 j (défaut 90 j) et de pas, proposés selon l'horizon (7 j : match, jour ; 30 j : match, jour, semaine ; 90 j : jour, semaine, mois ; 365 j : semaine, mois ; défauts match / jour / semaine / mois), minimum de matchs par point 1 / 2 / 3 / 5. Axe des temps borné à l'horizon, taille du point = nombre de matchs, moyenne de la période d'avant de même durée en pointillé de la couleur de chaque courbe (si 10 matchs de part et d'autre). Taux de victoire masqués au pas « par match » (0 ou 100 %), enchaînements de soirée et soirées jouées masqués au pas « par match » ; seuils des objectifs, de l'équipement et des enchaînements assouplis sous le pas mensuel. « Niveau des lobbys et écart à l'attendu » suit le même horizon et le même pas. La matrice garde ses 12 mois (résumé). Côté Go : `temporal.BucketByGranularity` + `ResolveAdaptive`, bornes en jours glissants.
+
+**Résultats observés** : jsdom, les 10 combinaisons horizon × pas en solo et en escouade : 0 erreur hors canvas, aucun id en double. JGtm : 7 j = une seule journée jouée (pas « par jour » vide, message affiché), 30 j = 3 jours joués, 90 j par semaine = 9 points pour le graphique de niveau, 365 j par semaine = 45. Contrôle visuel à 1 000 px.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v7.
+
+## [2026-10-05] Étude « Tendances » : maquette v8 (sans soirées ni attendus, MMR, « À difficulté égale »)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : sept questions de l'utilisateur. (1) La famille « Par rapport au niveau du moment » devient « Résultats » (taux de victoire, score de performance). (2-3) Plus rien sur les soirées : groupe de la matrice, graphique des enchaînements et « Soirées jouées » de l'escouade (remplacées par « Matchs joués ») retirés, avec leur code. (4) Valeurs attendues retirées de la page (écarts au FDA, aux frags, aux morts attendus ; écart par membre remplacé par le FDA par membre) : calculées par le jeu sur le niveau estimé, elles reviennent vers 0 quand le MMR rattrape le joueur ; elles restent dans la vue match et Sessions. Le graphique à double axe tombe avec elles. (5) Nouvelle section « À difficulté égale » : quatre tranches de MMR adverse (quartiles des matchs de l'année, bornes fixes), horizon 30 / 90 / 365 j contre la période d'avant, FDA, taux de victoire, précision, durée de vie, en barres groupées. (6) « MMR des adversaires et de l'équipe » entre dans la grille à côté du LUSR (le LUSR ne couvre pas le classé). (7) « Dégâts nets » renommé « Balance des dégâts (infligés − subis) ».
+
+**Résultats observés** : JGtm, 90 j contre 90 j d'avant, par tranche de MMR adverse (< 1 100 / 1 100-1 210 / 1 210-1 290 / > 1 290) : FDA 1,56 → 2,39, 0,63 → 1,24, −0,48 → −0,08, −1,25 → −0,79 ; morts par match plus basses dans les quatre tranches ; précision en baisse seulement dans la tranche la plus facile (42,6 → 36,6 %). Sur 365 j, le FDA passe de +0,82 à −1,78 de la tranche la plus facile à la plus dure. jsdom : 0 erreur hors canvas, aucun id en double, 20 combinaisons horizon × pas vertes ; contrôle visuel de la nouvelle section à 1 000 px.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v8.
+
+## [2026-10-05] Étude « Tendances » : maquette v9 (retour de la forme à deux axes face au MMR adverse)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : l'utilisateur redemande la forme validée le 02/10 (statistique à gauche, MMR adverse à droite, axe des temps) à la place des barres par tranche de MMR de « À difficulté égale ». Section remplacée par « Face au MMR adverse » dans « Évolution » : FDA, taux de victoire (masqué au pas « par match »), précision, durée de vie, chacun à deux axes, horizon et pas de la section. Doublons de la grille fondus : « Score de performance » seul, une courbe par part (tête, arme lourde, équipement). Code des tranches retiré. Leçon : une forme validée par l'utilisateur se réutilise ; ne pas en substituer une autre sans la lui montrer d'abord (même leçon que le 02/10 sur le double axe).
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, 20 combinaisons horizon × pas vertes (4 graphiques face au MMR, 3 au pas « par match ») ; contrôle visuel à 1 000 px.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v9.
+
+## [2026-10-05] Étude « Tendances » : maquette v10 (neuf graphiques face au MMR adverse)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, « Face au MMR adverse » ajoute frags, morts, score de performance, rendement offensif et résistance défensive (même forme à deux axes ; repères 50 pour la perf, 1 pour rendement et résistance). La grille perd les doublons (score de performance, rendement et résistance ; « par match » réduit aux assistances et à la meilleure série) : 6 graphiques restent (MMR, LUSR, assistances / série, parts, dégâts, objectifs).
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double ; 9 graphiques face au MMR adverse sur chaque combinaison horizon × pas (8 au pas « par match », taux de victoire masqué ; aucun sur « 7 j par jour », une seule journée jouée).
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v10.
+
+## [2026-10-05] Étude « Tendances » : maquette v11 (rendement et résistance en victoire / défaite)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, « Moyenne par match en défaite et en victoire » ajoute le rendement offensif et la résistance défensive au groupe « Indicateurs composés », calculés par match (formules de `analysis/combat_yield.go`, 225 PV par frag), non définis sans dégâts infligés ou sans mort.
+
+**Résultats observés** : JGtm, 365 j : résistance 1,25 en défaite contre 1,41 en victoire (r = +0,30), rendement 0,83 contre 0,93 (r = +0,19) ; 90 j : r = +0,34 et +0,25. jsdom : 0 erreur hors canvas, aucun id en double.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v11.
+
+## [2026-10-05] Étude « Tendances » : maquette v12 (rendement et résistance face au MMR adverse en un graphique)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, les deux graphiques face au MMR adverse du rendement offensif et de la résistance défensive sont réunis : deux courbes sur l'axe de gauche (ratios sans unité, repère 1 ; bleu et violet), MMR adverse à droite. `renderDuo` accepte une liste de courbes par graphique (`series`). Contrepartie notée : sur l'axe commun (≈ 0,8 à 1,5), chaque courbe paraît plus plate que seule.
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, combinaisons horizon × pas vertes (8 graphiques face au MMR, 7 au pas « par match ») ; contrôle visuel à 1 000 px.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v12.
+
+## [2026-10-05] Étude « Tendances » : maquette v13 (objectifs en Prendre / Défendre / Tenir)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, « Objectifs par match » (drapeaux, zones) remplacé par les trois rôles de la page Escouade et de Sessions, avec la même classification (`narrative/objective_roles.go` : Prendre = captures, assists de capture, vols, retourneurs abattus, zones prises, frags offensifs de zone, crâne ramassé, graines, extractions, VIP abattu ; Défendre = retours, sécurisations, porteurs abattus, frags défensifs de zone, conversions refusées, frags en VIP ; Tenir = durées ; prises de drapeau nettes de `match_flag_grabs_net_latest`). Valeur = part du joueur dans le total de son équipe (Tenir se mesure en secondes, les parts mettent les trois rôles sur la même échelle), parité = 100 % divisé par l'effectif présent à la fin, en pointillé. Même chose dans la matrice (trois lignes). Couleurs : jetons `objective-role-take / defend / hold` de l'app. Texte d'aide : la trinité en trois phrases. Extraction : `roles.sql` sur une copie de `shared_matches_v2`.
+
+**Résultats observés** : JGtm, 273 matchs à objectif : Prendre 23,8 %, Défendre 24,7 %, Tenir 23,9 % de son équipe sur l'année, parité moyenne 24,5 % ; Prendre 18,2 % sur 90 j, 28,0 % sur 30 j. jsdom : 0 erreur hors canvas, aucun id en double, combinaisons horizon × pas vertes.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v13.
+
+## [2026-10-05] Étude « Tendances » : maquette v14 (deux graphiques retirés)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, retrait des graphiques « Par match : assistances et meilleure série » et « Parts : frags à la tête, à l'arme lourde, équipement utilisé ». Leurs indicateurs restent des lignes de la matrice. Grille « Niveau, combat et style » : 4 graphiques (MMR, LUSR, dégâts infligés et subis, objectifs) ; « Face au MMR adverse » : 8.
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, combinaisons horizon × pas vertes.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v14.
+
+## [2026-10-05] Étude « Tendances » : handoff
+
+**Statut** : Complété (non commité).
+
+**Décision technique principale** : `.ai/HANDOFF_TENDANCES_2026-10-05.md` résume l'état de la maquette v14, les décisions de l'utilisateur, les briques Go / web à réutiliser et les points ouverts ; l'extraction des rôles d'objectif est rangée dans `.ai/TENDANCES_extraction_roles_2026-10-05.sql`.
+
+**Résultats observés** : sans objet (document).
+
+**Conclusion / prochaine étape** : plan d'implémentation via `plan-review`, sur accord de l'utilisateur.
