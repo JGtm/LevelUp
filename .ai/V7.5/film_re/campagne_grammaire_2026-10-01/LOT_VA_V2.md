@@ -36,7 +36,7 @@ est retirée : hors plan, non couverte par une décision (§14, correction 2).
 - Marche des morts d'objet : étape `vehicles` publiée mesurée aussi sur les deux films ÉGALE à
   véhicules (§6.1) — `4f77afc1` : 0 mort retirée, 5 lectures d'occupation retirées, instruites comme
   pertes de classe E ; `bfecd02b` : aucune retirée.
-- Gate de corpus : **rc = 1** — 16 / 19 « ok », 0 `MANQUE`, 3 `FAUX` de V-3 (instruits : tous les tirs
+- Gate de corpus : **rc = 1** (avant et après la fusion de `feat/v75` `28c542b33`, §7.1) — 16 / 19 « ok », 0 `MANQUE`, 3 `FAUX` de V-3 (instruits : tous les tirs
   « hors vie » sont des tirs de véhicule couverts par un trajet du même slot dans ce véhicule ; le banc
   ne compte pas les trajets comme des vies), `[FILET]` des postures (fausse continuité retirée, oracle
   physique). Son admission (rc 1) est un geste du pilote ; la revue adversariale de fin de lot reste à
@@ -407,9 +407,10 @@ films illisibles. Registre des replis, sommes sur les 20 films :
 
 Environnement : `GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-cg3-vuea`, CGO msys64 ucrt64, une
 commande go à la fois ; films lus en place (`data/cache/film_chunks`, lecture seule) ; racine factice
-et copie du parc au scratchpad (`scratchpad/cg3-V1/repo`, `scratchpad/cg3-V1/parc`). `git fetch` avant
-les gates : `origin/feat/v75` = `87cdfa761`, pas d'avance, aucune fusion. Pièces :
-`scratchpad/cg3-V2c/`.
+et copie du parc au scratchpad (`scratchpad/cg3-V1/repo`, `scratchpad/cg3-V1/parc`). Pièces :
+`scratchpad/cg3-V2c/`. Les gates 1 à 11 ci-dessous ont tourné sur la tête corrigée AVANT fusion (base
+`87cdfa761`) ; le `git fetch` qui les suivait a trouvé `origin/feat/v75` avancé à `28c542b33` : fusion
+et gates rejoués au §7.1.
 
 1. `gofmt -l ./internal/ ./cmd/` : vide.
 2. `go vet ./...` : rc=0. `go vet -tags=research ./internal/games/halo_infinite/film/... ./internal/replaybuild/` : rc=0.
@@ -487,6 +488,63 @@ f75e7053     koth_collines        78     78       35       14        2      5.65
     version ; `TestVAV2Pertes` (354 perdus, §5) ; `TestVAV2Etapes` et `TestVAV2CorrMorts` (§6.1).
 11. Mutations : §8.
 
+### 7.1 Après la fusion de `feat/v75` (`28c542b33`)
+
+`origin/feat/v75` a avancé pendant l'étape : `28c542b33` (« fix(rejeu) : tourelles grises, tirs depuis
+la bouche des armes, cercle de retour du drapeau », `replay.SchemaVersion` 78 → 79). Fusionné
+(`feat/v75` a raison) après le commit des corrections. Conflits : les fixtures de contrat web
+(`replay_schema_78_*` supprimées par `feat/v75`, `replay_schema_79_*` créées) — prises de `feat/v75`
+puis régénérées par la commande du dépôt : les 8 identiques à celles de `28c542b33` une fois les chaînes
+`grammar-…` et `profile-…` neutralisées. `.ai/thought_log.md` : fusion automatique, les deux entrées
+gardées. Aucun fichier du décodeur (`film/internal/grammar`, `facts/killsource`, `profile`, `source`,
+`film/research`) n'est touché par `28c542b33`.
+
+Gates rejoués sur la tête fusionnée (`scratchpad/cg3-V2c/fusion/`) :
+
+1. `gofmt` vide ; `go vet ./...` rc=0 ; `go vet -tags=research` rc=0 ; archlint `ok`.
+2. G-film : rc=0, 21 paquets `ok`.
+3. `golangci-lint` : recette CI, paquets touchés, et `--build-tags=research --new-from-rev=8354c0d43` :
+   `0 issues.` aux trois.
+4. Carte v2 : `fermeture_paquets.tsv` identique à l'octet à celle d'avant la fusion (gate 2 : §4,
+   inchangé).
+5. `cmd/killsource json`, 20 films : rc=0, 20 JSON identiques à l'octet à ceux d'avant la fusion.
+6. `replay-equiv` contre la NOUVELLE base (`28c542b33`, binaire construit depuis `git archive`) : mêmes
+   étapes divergentes qu'avant la fusion contre `87cdfa761` (`artifact` 20, `movementStates` 16,
+   `movementStates.stats` 16, `killsource` 16, `continuousFire.stats` 16, `continuousFire` 13,
+   `vehicles` 6 — les 6 mêmes films) ; `objectives`, `killRefs`, `deaths` identiques. Contre la tête
+   d'avant la fusion : seule l'étape `artifact` diverge.
+7. `replay-corpus-gate --reference=base --base=28c542b33` (base cuite par le gate) : **rc=1**, même
+   verdict qu'avant la fusion — 16 / 19 « ok », 0 `MANQUE`, 3 `FAUX` de V-3 (92 → 119, 5 → 15,
+   112 → 263 ; tirs « hors vie » 105, 10 et 252, tous des tirs de véhicule couverts par un trajet), 485
+   lignes `[FILET]`. Tableau :
+
+```
+temoin       famille          base(28c542b33)   HEAD    gains   pertes   chang.      duree base   cache  statut
+bcb6d393     ctf_mono_manche      79     79       23       18        3      5.26s cuite  A+F    PERTE
+fb1a1a72     ctf_multi_manche     79     79       48       25        3     13.75s cuite  A+F    PERTE
+d9781168     oddball              79     79       66       75        4      9.51s cuite  A+F    PERTE
+c75f33b8     assaut_bombe         79     79       44       44        4      6.29s cuite  A+F    PERTE
+bf15f7ab     slayer               79     79       27       21        3      5.87s cuite  A+F    PERTE
+51ebbc0f     deux_manches         79     79       49       35        3      6.74s cuite  A+F    PERTE
+084a804d     vehicules            79     79      118       28       10   1m11.99s cuite  A+F    FAUX
+0797ce72     region_index_2_bits     79     79       30       13        3      8.38s cuite  A+F    PERTE
+111fa685     version_39           79     79       96       17        5     24.14s cuite  A+F    FAUX
+e5adf7b2     version_40_build_1_11     79     79       79       34        6     26.72s cuite  A+F    PERTE
+60ae07c4     version_37           79     79        0        0        0     19.23s cuite  A+F    ok
+a349fea8     version_33_sans_identification     79     79        0        0        0   1m43.06s cuite  A+F    ok
+a521164d     version_33_build_1_4_1     79     79        0        0        0     21.64s cuite  A+F    ok
+11de8353     version_38_build_1_9_0     79     79       76        7       29     21.31s cuite  A+F    PERTE
+50247b26     version_31_sans_identification     79     79        0        0        0     45.66s cuite  A+F    ok
+bfecd02b     vehicules_v41_utilisateur     79     79       67       25        6      8.79s cuite  A+F    PERTE
+4f77afc1     equipement_origine_utilisateur     79     79      276      112       17     48.21s cuite  A+F    FAUX
+396cfc92     strongholds_zones     79     79       33       17        3     11.55s cuite  A+F    PERTE
+f75e7053     koth_collines        79     79       35       14        2      5.41s cuite  A+F    PERTE
+
+```
+
+8. Mutations rejouées : **13 / 13 ROUGES**, chacune sur le test attendu
+   (`scratchpad/cg3-V2c/fusion/mutations.txt`).
+
 
 ## 8. Mutations (`-overlay`, suite entière du paquet ; ROUGE attendu)
 
@@ -555,13 +613,13 @@ de `distribuer.go`, `distribuer_tetes.go`, `film_context.go`.
   jour (`.3`), golden régénéré à révision constante.
 - `objectives.Rev` : **constante** `objectives-2026-09-27` (étape `objectives` de `replay-equiv`
   identique sur les 20 films) ; complément dans `objectives/rev.go` mis à jour, golden régénéré.
-- `profile.Rev` (`profile-2026-10-06`), `source.Rev`, `replay.SchemaVersion` (78) : inchangés. Le
+- `profile.Rev` (`profile-2026-10-06`), `source.Rev`, `replay.SchemaVersion` : inchangés par le lot (`SchemaVersion` 78 à `87cdfa761`, 79 depuis la fusion de `28c542b33`, qui le monte pour son compte). Le
   contenu cuit change (états de mouvement, tir continu, véhicules) ; précédent de la campagne (vague 2,
   L3a, L4a) : `SchemaVersion` reste, la recuisson suit la montée de `grammar.Rev` (geste de
   l'utilisateur, D7).
 - Régénérés par les commandes du dépôt (portes à deux verrous, `LEVELUP_UPDATE_*`) :
   `grammar_rev.golden`, `killsource_rev.golden`, `objectives_rev.golden`, `types/testdata/shapes.golden`
-  (ligne des révisions), fixtures web `replay_schema_78_*` et `manifest.json`.
+  (ligne des révisions), fixtures web `replay_schema_78_*` puis, après la fusion, `replay_schema_79_*`, et `manifest.json`.
 
 ## 11. Écarts
 
