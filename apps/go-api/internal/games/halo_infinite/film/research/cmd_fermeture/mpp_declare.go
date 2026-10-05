@@ -1,3 +1,5 @@
+//go:build research
+
 package main
 
 // mpp_declare.go — LE DRAPEAU `-mpp-declare`.
