@@ -25,7 +25,7 @@ const ARME_DE_JOUEUR = '0x84BD29ED42C9679F'
 const roquettes: ReplayVehicleWeapon = {
   vehicle: 'rockethog', en: 'Rocket Launcher', fr: 'Lance-roquettes', fire: 'single',
   fx: 'explosive', tint: 'blast', sound: 'vehicle_shot_warthog_rocket_1',
-  mount: { aim: 'turret', ax: 0, ay: 0.26 },
+  mount: { aim: 'turret', ax: 0, ay: 0.26, reach: 0.12 },
 }
 const grenades: ReplayVehicleWeapon = {
   vehicle: 'falcon', en: 'Grenade Launcher', fr: 'Lance-grenades', fire: 'single',
@@ -51,7 +51,7 @@ describe('vehicleWeaponRegistry — le registre du document fait foi', () => {
     const doc = docAvecRegistre()
     expect(vehicleShotStyleOf(doc, ROQUETTES)).toEqual({ fx: 'explosive', tint: 'blast' })
     expect(vehicleShotSoundStem(doc, ROQUETTES)).toBe('vehicle_shot_warthog_rocket_1')
-    expect(vehicleWeaponMountOf(doc, ROQUETTES)).toEqual({ classe: 'tourelle', ax: 0, ay: 0.26 })
+    expect(vehicleWeaponMountOf(doc, ROQUETTES)).toEqual({ classe: 'tourelle', ax: 0, ay: 0.26, reach: 0.12 })
   })
 
   it('un silence DÉCIDÉ garde le style et le montage, et ne sonne pas', () => {
@@ -59,6 +59,12 @@ describe('vehicleWeaponRegistry — le registre du document fait foi', () => {
     expect(vehicleShotSoundStem(doc, GRENADES)).toBeUndefined()
     expect(vehicleShotStyleOf(doc, GRENADES)?.fx).toBe('explosive')
     expect(vehicleWeaponMountOf(doc, GRENADES)?.classe).toBe('tourelle')
+  })
+
+  it('un montage publié sans longueur de canon se lit à 0 (le tir part du pivot)', () => {
+    expect(vehicleWeaponMountOf(docAvecRegistre(), GRENADES)).toEqual({
+      classe: 'tourelle', ax: 0.06, ay: 0.13, reach: 0,
+    })
   })
 
   it('une arme absente du registre n emprunte rien : rendu neutre, silence, centre du véhicule', () => {
@@ -88,7 +94,7 @@ describe('vehicleWeaponRegistry — le registre du document fait foi', () => {
     const doc = docAvecRegistre()
     const fx = buildShotFx(doc, 10)
     expect(fx[0]).toMatchObject({ fam: 'explosive', tint: 'blast' })
-    expect(fx[0].vehicleShot?.mount).toEqual({ classe: 'tourelle', ax: 0, ay: 0.26 })
+    expect(fx[0].vehicleShot?.mount).toEqual({ classe: 'tourelle', ax: 0, ay: 0.26, reach: 0.12 })
     expect(fx[2].vehicleShot?.mount ?? null).toBeNull()
     expect(shotSoundStem(doc, { w: ROQUETTES })).toBe('vehicle_shot_warthog_rocket_1')
     expect(shotSoundStem(doc, { w: GRENADES })).toBeUndefined()

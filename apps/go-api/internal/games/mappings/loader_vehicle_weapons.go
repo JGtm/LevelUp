@@ -42,11 +42,18 @@ var (
 // vehicleWeaponMountBound : une ancre est une fraction du sprite, centre a 0.
 const vehicleWeaponMountBound = 0.5
 
-// VehicleWeaponMount — l ancre d une arme sur le sprite de son vehicule.
+// vehicleWeaponReachMax : la longueur d un canon est une fraction de la LONGUEUR du sprite.
+const vehicleWeaponReachMax = 1.0
+
+// VehicleWeaponMount — l ancre d une arme sur le sprite de son vehicule. Arme fixe : l ancre EST
+// la bouche. Tourelle : l ancre est le PIVOT, et `Reach` la longueur du canon en fraction de la
+// longueur du sprite (0 a 1, absent = 0) — la bouche est a cette distance du pivot, dans la
+// direction de la visee du tireur. Une arme fixe ne porte pas de `reach` (refuse au chargement).
 type VehicleWeaponMount struct {
-	Aim string  `toml:"aim"`
-	AX  float64 `toml:"ax"`
-	AY  float64 `toml:"ay"`
+	Aim   string  `toml:"aim"`
+	AX    float64 `toml:"ax"`
+	AY    float64 `toml:"ay"`
+	Reach float64 `toml:"reach"`
 }
 
 // VehicleWeapon — une entree du registre.
@@ -161,6 +168,12 @@ func validateVehicleWeaponMount(m *VehicleWeaponMount) error {
 	if m.AX < -vehicleWeaponMountBound || m.AX > vehicleWeaponMountBound ||
 		m.AY < -vehicleWeaponMountBound || m.AY > vehicleWeaponMountBound {
 		return fmt.Errorf("mount (%v, %v) hors du sprite [-0,5 ; 0,5]", m.AX, m.AY)
+	}
+	if m.Reach < 0 || m.Reach > vehicleWeaponReachMax {
+		return fmt.Errorf("mount.reach %v hors de [0 ; 1] (fraction de la longueur du sprite)", m.Reach)
+	}
+	if m.Reach != 0 && m.Aim != VehicleWeaponAimTurret {
+		return fmt.Errorf("mount.reach : une arme fixe est ancree a sa bouche, seule une tourelle a un canon")
 	}
 	return nil
 }

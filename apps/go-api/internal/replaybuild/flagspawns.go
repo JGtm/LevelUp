@@ -2,13 +2,14 @@ package replaybuild
 
 // flagspawns.go — LES SOCLES DE DRAPEAU DE LA CARTE, pour le calque du drapeau vivant.
 //
-// # Ce que ce fichier apporte, et pourquoi le calque ne peut pas s'en passer
+// # Ce que ce fichier apporte au calque
 //
 // Le rejeu sait QUI porte le drapeau et QUAND (evenements nommes du film + fil des morts) ; il
 // ne sait pas DE QUEL drapeau il s'agit. L'equipe du PORTEUR est dans le film depuis le lot 1.7,
-// mais celle de l'OBJET ne l'est pas : elle se deduit du SOCLE le plus proche du point de prise,
-// et les socles vivent dans le catalogue versionne d'objectifs de carte
-// (`data/titles/{slug}/reference/map_objectives.json`).
+// mais celle de l'OBJET ne l'est pas : elle se deduit du SOCLE le plus proche du point de prise.
+// Les socles vivent dans le catalogue versionne d'objectifs de carte
+// (`data/titles/{slug}/reference/map_objectives.json`) ; quand il se tait, le calque les lit dans
+// le film (`replay/flag_film_bases.go` : les vols d'un camp tombent a la base de l'autre).
 //
 // # La jointure se fait par map_id, JAMAIS par le module ni par le nom public
 //
@@ -33,9 +34,10 @@ package replaybuild
 //
 // # Toute absence est une DEGRADATION JOURNALISEE, jamais une erreur
 //
-// Catalogue illisible, carte hors catalogue (72 couvertes sur la centaine jouee), match sans
-// map_id : le calque du drapeau reste publie, mais tous les portages tombent dans UN drapeau
-// d'equipe -1 et sans etat `home`. `coverage.flagCarries.spawns` publie le compte, donc le fait.
+// Catalogue illisible, carte hors catalogue, match sans map_id : aucun socle n'est fourni, et le
+// calque lit la base et le camp de chaque drapeau dans le film. Il ne publie tous les portages
+// dans UN drapeau d'equipe -1, sans etat `home`, que s'il n'y en lit aucune.
+// `coverage.flagCarries.spawns` et `filmBases` publient les comptes, donc le fait.
 
 import (
 	"context"
@@ -50,7 +52,7 @@ import (
 // la variante qu'il reconnait.
 func (b *Builder) flagSpawns(ctx context.Context, matchID, mapID string) []replay.FlagSpawn {
 	if mapID == "" {
-		slog.DebugContext(ctx, "replaybuild: match sans map_id — drapeaux sans equipe proprietaire",
+		slog.DebugContext(ctx, "replaybuild: match sans map_id — socles de drapeau a lire dans le film",
 			"match_id", matchID, "titleSlug", b.titleSlug)
 		return nil
 	}
@@ -60,7 +62,7 @@ func (b *Builder) flagSpawns(ctx context.Context, matchID, mapID string) []repla
 	}
 	entry, err := cat.Lookup(mapID)
 	if err != nil {
-		slog.DebugContext(ctx, "replaybuild: carte hors catalogue d'objectifs — drapeaux sans equipe proprietaire",
+		slog.DebugContext(ctx, "replaybuild: carte hors catalogue d'objectifs — socles de drapeau a lire dans le film",
 			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
 		return nil
 	}
@@ -85,7 +87,7 @@ func (b *Builder) objectivesCatalog(ctx context.Context) *replay.MapObjectivesCa
 	if err != nil {
 		// Le catalogue est VERSIONNE : son absence n'est pas le cas nominal d'une carte sans
 		// objectifs, c'est une installation incomplete. On le dit, puis on degrade.
-		slog.WarnContext(ctx, "replaybuild: catalogue d'objectifs illisible — drapeaux sans equipe proprietaire",
+		slog.WarnContext(ctx, "replaybuild: catalogue d'objectifs illisible — socles de drapeau a lire dans le film",
 			"err", err, "path", path, "titleSlug", b.titleSlug)
 		return nil
 	}

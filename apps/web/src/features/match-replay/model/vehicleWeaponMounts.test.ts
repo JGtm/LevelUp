@@ -92,10 +92,10 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
   })
 
   /**
-   * LE MONTAGE, LUI, SUIT LE CHÂSSIS : l'ancre est un point du SPRITE, donc elle tourne avec
-   * l'image. Un décalage calculé sur la visée du tireur sortirait l'éclair du châssis.
+   * LE PIVOT, LUI, SUIT LE CHÂSSIS : l'ancre est un point du SPRITE, donc elle tourne avec
+   * l'image. Seul le CANON (`reach`, nul ici) suit la visée du tireur — cf. les tests de bouche.
    */
-  it('classe tourelle : le DÉCALAGE suit le châssis, jamais la visée du tireur', () => {
+  it('classe tourelle SANS canon : le PIVOT suit le châssis, jamais la visée du tireur', () => {
     const turret: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: -0.5 }
     const sansVisee = vehicleShotPlacement(turret, CAPS(90), size, 1, ECHELLE)
     const avecVisee = vehicleShotPlacement(turret, { chassisDeg: 90, tireurDeg: 200, arme: 'vehicule' as const }, size, 1, ECHELLE)
@@ -170,5 +170,51 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
     const p = vehicleShotPlacement(nose, CAPS(33), size, 1, ECHELLE)
     expect(p.angle).not.toBeNull()
     expect(p.angle).toBeCloseTo((-33 * Math.PI) / 180, 10)
+  })
+
+  it('classe fixe : un reach publié par erreur ne déplace pas la bouche (l’ancre EST la bouche)', () => {
+    const avec = vehicleShotPlacement({ ...nose, reach: 0.3 }, CAPS(90), size, 1, ECHELLE)
+    expect(avec.offset).toEqual(vehicleShotPlacement(nose, CAPS(90), size, 1, ECHELLE).offset)
+  })
+})
+
+/**
+ * LE CANON D'UNE TOURELLE (D4) : la bouche est au pivot (tourné par le CHÂSSIS) plus `reach` fois
+ * la longueur du sprite à l'écran, le long de la visée du TIREUR. Sans visée lue, le pivot.
+ */
+describe('vehicleShotPlacement — bouche d’une tourelle', () => {
+  const size = { naturalWidthPx: 100, naturalHeightPx: 200, mmPerPx: 10 }
+  const ECHELLE = 20
+  const SCALE = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, ECHELLE)
+  // Pivot à l'arrière (ay = +0,25 -> 50 px locaux), canon de 0,4 longueur (80 px locaux).
+  const tourelle: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: 0.25, reach: 0.4 }
+  // Châssis au cap 90° (nez en haut de l'écran) : le pivot tombe à (0, +50) * SCALE.
+  const pivotY = 50 * SCALE
+  const canon = 0.4 * 200 * SCALE
+
+  it('visée DEVANT (tireur au cap du châssis) : la bouche avance le long du nez', () => {
+    const p = vehicleShotPlacement(tourelle, { chassisDeg: 90, tireurDeg: 90, arme: 'vehicule' }, size, 1, ECHELLE)
+    expect(p.offset.x).toBeCloseTo(0, 6)
+    expect(p.offset.y).toBeCloseTo(pivotY - canon, 6)
+  })
+
+  it('visée DE CÔTÉ (tireur au cap 0°, monde +X) : la bouche sort à droite du pivot', () => {
+    const p = vehicleShotPlacement(tourelle, { chassisDeg: 90, tireurDeg: 0, arme: 'vehicule' }, size, 1, ECHELLE)
+    expect(p.offset.x).toBeCloseTo(canon, 6)
+    expect(p.offset.y).toBeCloseTo(pivotY, 6)
+  })
+
+  it('SANS visée lue : le tir part du pivot, en bouffée ronde', () => {
+    const p = vehicleShotPlacement(tourelle, { chassisDeg: 90, tireurDeg: null, arme: 'vehicule' }, size, 1, ECHELLE)
+    expect(p.angle).toBeNull()
+    expect(p.offset.x).toBeCloseTo(0, 6)
+    expect(p.offset.y).toBeCloseTo(pivotY, 6)
+  })
+
+  it('la densité k met aussi le canon à l’échelle', () => {
+    const caps = { chassisDeg: 90, tireurDeg: 90, arme: 'vehicule' as const }
+    const p1 = vehicleShotPlacement(tourelle, caps, size, 1, ECHELLE)
+    const p2 = vehicleShotPlacement(tourelle, caps, size, 2, ECHELLE)
+    expect(p2.offset.y).toBeCloseTo(p1.offset.y * 2, 6)
   })
 })

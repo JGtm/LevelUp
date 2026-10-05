@@ -14,16 +14,18 @@
  * `Shot.w` -> ancre de ce fichier était clée par des tags `weap` du module du jeu recopiés sous le
  * gabarit `0x<tag>00000000` — dont la majorité n'apparaissait dans aucun film. Elle est remplacée
  * par le REGISTRE DU TITRE (`config/titles/{slug}/mappings/vehicle_weapons.toml`, clé = tag
- * OBSERVÉ, preuve à l'appui), publié dans le document et lu par `vehicleWeaponRegistry.ts`. Les
- * ancres y ont gardé leurs valeurs et leur provenance : MESURÉE pour le plateau arrière du
- * Warthog (`WARTHOG_FINAL_V2_2026-09-02.md`), MESURÉES SUR LE SPRITE pour le Wraith, le Gungoose
- * et le poste latéral du Falcon (lot 5.8.3), ESTIMÉES pour le reste.
+ * OBSERVÉ, preuve à l'appui), publié dans le document et lu par `vehicleWeaponRegistry.ts`. Chaque
+ * arme du registre y porte son ancre, mesurée sur le sprite de son véhicule (provenance dans le
+ * `proof` de l'entrée) : une arme sans ancre tirerait du centre du sprite, là où se trouve le pion
+ * du conducteur.
  *
  * CE QUE CE FICHIER GARDE : le type d'une ancre et la GÉOMÉTRIE qui la tourne par le cap du
  * véhicule. CLASSE : `fixe` = solidaire du nez, ne vise qu'où le véhicule pointe (le pilote EST
- * le viseur) ; `tourelle` = visée manœuvrée INDÉPENDAMMENT du cap (canon arrière du Warthog,
- * canon du Scorpion, poste latéral du Falcon) — elle prend la visée MESURÉE de son tireur, et la
- * bouffée ronde à défaut, jamais une direction inventée.
+ * le viseur) — l'ancre EST la bouche ; `tourelle` = visée manœuvrée INDÉPENDAMMENT du cap (canon
+ * arrière du Warthog, canon du Scorpion, poste latéral du Falcon) — l'ancre est le PIVOT, et la
+ * bouche est à `reach` (longueur du canon, fraction de la longueur du sprite) du pivot dans la
+ * direction de la visée MESURÉE de son tireur ; sans visée lue, le tir part du pivot en bouffée
+ * ronde, jamais d'une direction inventée.
  */
 import { vehicleAimAngle, vehicleScreenAngle, vehicleSpriteScale } from './vehiclesLayer'
 import type { XY } from '../../../lib/replay/replayLogic'
@@ -38,6 +40,12 @@ export interface VehicleWeaponMount {
   ax: number
   /** Longitudinal : -0,5 (nez) .. +0,5 (arrière). */
   ay: number
+  /**
+   * Longueur du canon d'une TOURELLE, en fraction de la LONGUEUR du sprite (sa hauteur, nez en
+   * haut) : la bouche est à cette distance du pivot, le long de la visée du tireur. Absent = 0
+   * (arme fixe, dont l'ancre est déjà la bouche).
+   */
+  reach?: number
 }
 
 // --- GÉOMÉTRIE : ancre -> point d'écran ---------------------------------------------------------
@@ -94,6 +102,10 @@ export interface VehicleShotCaps {
  * Repère LOCAL du décalage AVANT rotation : `(ax * naturalWidthPx, ay * naturalHeightPx)` — le
  * même repère que `drawRotatedSprite` dessine son image (`drawImage(img, -w/2, -h/2, w, h)`),
  * donc une ancre au nez (`ay = -0,5`) tombe bien sur le bord haut du sprite, PAS le bas.
+ *
+ * LE CANON D'UNE TOURELLE : le pivot tourné par le cap du CHÂSSIS (il appartient au sprite), puis
+ * `reach × longueur du sprite à l'écran` le long de la DIRECTION DE LA DÉCHARGE (la visée du
+ * tireur). Sans visée lue, pas de direction : le tir reste au pivot.
  */
 export function vehicleShotPlacement(
   mount: VehicleWeaponMount | null,
@@ -111,11 +123,25 @@ export function vehicleShotPlacement(
   const screenAngle = vehicleScreenAngle(caps.chassisDeg)
   const cosA = Math.cos(screenAngle)
   const sinA = Math.sin(screenAngle)
+  const angle = vehicleMountAngle(mount, caps)
+  // LA BOUCHE D'UNE TOURELLE VISÉE : le canon, de la longueur mesurée, dans la direction du tir.
+  const barrel = tourelleBarrelOffset(mount, angle, size.naturalHeightPx * scale)
   const offset: XY = {
-    x: (localX * cosA - localY * sinA) * scale,
-    y: (localX * sinA + localY * cosA) * scale,
+    x: (localX * cosA - localY * sinA) * scale + barrel.x,
+    y: (localX * sinA + localY * cosA) * scale + barrel.y,
   }
-  return { offset, angle: vehicleMountAngle(mount, caps) }
+  return { offset, angle }
+}
+
+/**
+ * tourelleBarrelOffset — le canon d'une TOURELLE à l'écran : `reach × longueur du sprite` le long
+ * de la direction de la décharge. Nul pour une arme fixe (son ancre est la bouche) et pour une
+ * tourelle sans visée lue (aucune direction, le tir reste au pivot).
+ */
+function tourelleBarrelOffset(mount: VehicleWeaponMount, angle: number | null, spriteLengthPx: number): XY {
+  if (mount.classe !== 'tourelle' || angle === null) return { x: 0, y: 0 }
+  const length = (mount.reach ?? 0) * spriteLengthPx
+  return { x: length * Math.cos(angle), y: length * Math.sin(angle) }
 }
 
 /**

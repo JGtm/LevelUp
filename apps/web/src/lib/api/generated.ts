@@ -7263,6 +7263,12 @@ export interface components {
             dropsRepositioned: number;
             /** Format: int64 */
             dropsWithheld: number;
+            /** Format: int64 */
+            filmBaseAgree?: number;
+            /** Format: int64 */
+            filmBaseContradict?: number;
+            /** Format: int64 */
+            filmBases?: number;
             flagFilm: boolean;
             /** Format: int64 */
             gaugePaired: number;
@@ -7306,6 +7312,8 @@ export interface components {
             ownFlagRefused: number;
             /** Format: int64 */
             spawns: number;
+            /** Format: int64 */
+            spawnsFromFilm?: number;
             /** Format: int64 */
             steals: number;
             /** Format: int64 */
@@ -14176,6 +14184,8 @@ export interface components {
             ax: number;
             /** Format: double */
             ay: number;
+            /** Format: double */
+            reach?: number;
         };
         VipCrownCoverage: {
             /** Format: int64 */

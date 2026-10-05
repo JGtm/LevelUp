@@ -287,9 +287,8 @@ const flagHomeExactDist = 0.10
 // n'est pas un lacher : c'est un drapeau qui rentre. Une vie nee A COTE du support en est un, et
 // la distinction tient a [flagHomeExactDist], pas au rayon du lacher.
 //
-// LES SOCLES SONT CEUX QUE LA PRODUCTION CONNAIT (socles d'EQUIPE, cf. replaybuild/flagspawns.go).
-// Carte hors catalogue : aucun socle, donc aucun refus — et la regle retombe sur la seule
-// condition de distance au porteur, qui reste la bonne.
+// LES SOCLES SONT CEUX QUE LE CALQUE RETIENT (catalogue, ou bases lues dans le film). Aucun socle
+// : aucun refus — et la regle retombe sur la seule condition de distance au porteur.
 func flagFreeAtSpawn(spawns []FlagSpawn, x, y float32) bool {
 	_, ok := flagSpawnAt(spawns, x, y)
 	return ok
@@ -455,8 +454,8 @@ type flagHomecoming struct {
 	x, y float32
 }
 
-// flagObjectHomecomings rend, triees, les rentrees que l'objet DATE. Vides quand la carte est
-// hors du catalogue d'objectifs (aucun socle : aucune rentree ne se nomme).
+// flagObjectHomecomings rend, triees, les rentrees que l'objet DATE. Vides quand aucun socle n'est
+// retenu (ni catalogue ni base lue dans le film : aucune rentree ne se nomme).
 func flagObjectHomecomings(scan FlagCarryScan, ctx flagCarryCtx) []flagHomecoming {
 	if len(scan.Free) == 0 || len(scan.Spawns) == 0 {
 		return nil

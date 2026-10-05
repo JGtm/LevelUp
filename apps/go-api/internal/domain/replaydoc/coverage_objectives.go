@@ -39,8 +39,15 @@ type FlagCarriesCoverage struct {
 	NeutralBirths         int  `json:"neutralBirths"`
 	TeamBirths            int  `json:"teamBirths"`
 	Spawns                int  `json:"spawns"`
-	ObjectLives           int  `json:"objectLives"`
-	ClosedByObject        int  `json:"closedByObject"`
+	// FilmBases / SpawnsFromFilm / FilmBaseAgree / FilmBaseContradict : les bases du drapeau LUES
+	// DANS LE FILM et le controle du catalogue de socles par elles. `omitempty` des DEUX cotes : zero
+	// hors CTF et sur un film de CTF dont le film ne lit aucune base.
+	FilmBases          int `json:"filmBases,omitempty"`
+	SpawnsFromFilm     int `json:"spawnsFromFilm,omitempty"`
+	FilmBaseAgree      int `json:"filmBaseAgree,omitempty"`
+	FilmBaseContradict int `json:"filmBaseContradict,omitempty"`
+	ObjectLives        int `json:"objectLives"`
+	ClosedByObject     int `json:"closedByObject"`
 	// ClosedByHandoff : portages fermes par la prise d'un AUTRE joueur du MEME drapeau (le
 	// passage de main en main). CarrierTeamUnknown : portages dont l'equipe du porteur ne nomme
 	// aucun drapeau, sur lesquels les regles par equipe se taisent. Les deux sont `omitempty`
