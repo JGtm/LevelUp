@@ -8,7 +8,8 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
 // La tete (jusqu aux deux R(1) qui suivent l arme) est celle que [lireEnteteTir36] lit dans un
 // paquet ; ici elle est lue sur le lecteur de la vue A, a la position du message. Les sous-lecteurs
 // deja portes sont appeles, jamais recopies : [consume142f26740] (`FUN_140c9e4d8`, troisieme
-// argument 0), [consume1408eff64], [lireVecteur1431a0cbc], [consumeOpt1431a0abc], [lireE494].
+// argument 0), [consume1408eff64], [consume140c1e9d4], [lireVecteur1431a0cbc], [consumeOpt1431a0abc],
+// [lireE494].
 
 // largeurTirCourt est l immediat `R9D = 0xa` de `FUN_14076dc04` sur la branche courte du tir
 // (14080c465).
@@ -95,7 +96,7 @@ func lireCiblesEtComposantes(br *Lecteur) bool {
 		if genreUn[idx] {
 			w = min(w, largeurComposanteGenreUn) // FUN_14102bd24
 		}
-		br.Skip(3 * w) // FUN_140c1e924 -> FUN_140c1e9d4 : trois R(w)
+		consume140c1e9d4(br, uint(w)) // FUN_140c1e924 -> FUN_140c1e9d4
 	}
 	return suite
 }

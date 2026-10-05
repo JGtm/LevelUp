@@ -115231,6 +115231,25 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : carte v2 contre `87cdfa761`, 20 films : 313 542 → 355 198 sains (+41 656), utiles sains +550 416, identique à l'octet à la décomposition « fin de la vue A seule » ; 354 pertes, toutes de classe E, instruites ; aucun film en baisse, aucune exception D2. `killsource json` : aucune mort, valeur ni voie ne change (`killsource.Rev` constant). Correction 1 : l'étape `vehicles` publiée des films ÉGALE à véhicules (`4f77afc1`, `bfecd02b`, absents du corpus de `replay-equiv`) perd 5 lectures d'occupation sur `4f77afc1` (aucune mort), instruites comme pertes de classe E (la marche depuis E s'arrête sur `ti=0 i0 game-engine-team-mapping-component` ou contredit S). Les nombres de la sonde du contrôle (22 morts retirées) viennent d'un contexte sans le profil calibré par `killsource` que la cuisson pose ; reconstruit, ce contexte rend exactement l'étape publiée. Gates de code verts, 13 / 13 mutations ROUGES.
 
 **Conclusion / prochaine étape** : `origin/feat/v75`, avancé à `28c542b33` pendant l'étape, est fusionné (`59d450150`) et les gates sont rejoués contre cette nouvelle base : même verdict (carte et killsource identiques à l'octet, `replay-equiv` mêmes étapes, gate de corpus rc 1 sans `MANQUE`, mutations ROUGES ; `LOT_VA_V2.md` §7.1). Reste : admission du rc 1 par le pilote, revue adversariale de fin de lot, soumission des fichiers de la RI à levelup-57. La loi du bit nul des candidats attend une décision de l'utilisateur.
+## [2026-10-05] Campagne de grammaire — lot VA, étape V1 : corrections de la relecture RI — Complété (commit local sur `feat/campagne-grammaire`, non poussé)
+
+**Statut** : Complété. Les deux relecteurs de la session levelup-57 ont relu `3bacfadeb` : trois constats, puis sept (a à g). Chacun a été vérifié sur pièces, aucun n'est infondé (`LOT_VA_V1.md` §12).
+
+**Décision technique principale** : le champ mort `finVueA` est retiré. Un test couvre la branche « vue A non reçue » sur une vue A non vide. Les tests du Script et de la région jouée passent par la production (`profile.Resoudre`, `scriptDuFilm`, `grammaireDeLaVueASousFilm`), avant que V2 ne consomme E. `consume140c1e9d4` remplace ses deux recopies. Quatre commentaires faux sont corrigés : classe et marche, lecture COMPLÈTE unique, contrat de `lireE524Sur`, et 47 genres portés (non 46). Deux valeurs magiques sont nommées d'après Ghidra. Les deux aiguillages de genres portent la justification de complexité. La 3e copie de `FUN_1407f15a4` reçoit une exemption datée (non centralisée : D-LN-2 changerait `weapon_hits`). La garde de tampon passe par `tientDansLeTampon`, avec un garde-rail archlint. Le balayage commun des garde-rails archlint vit dans `film_balayage_test.go`. `grammar-2026-10-06` est gardée et l'empreinte régénérée à révision constante.
+
+**Résultats observés** : quatre mutations ROUGES, m26 à m29. m26 n'était rougie par aucun test avant le vecteur neuf. Par rapport à `3bacfadeb`, la carte v2 sur 3 films (`fermeture_paquets.tsv`) et killsource sur 2 témoins sont identiques à l'octet. Gates : gofmt, vet (avec et sans research), paquet `grammar`, archlint, golangci-lint (0 issue) tous verts. Les décomptes de l'entrée précédente (« charges de 44 genres ») sont corrigés au §1 de `LOT_VA_V1.md` : 45 de LN, 47 au total.
+
+**Conclusion / prochaine étape** : V2 peut consommer E sur des tests qui gardent la règle du Script et les tables de la région jouée. Restent ouverts : D-VAV1-6 (lot dédié `FUN_1407f15a4` et D-LN-2), D-VAV1-7 et D-VAV1-8 (deux copies, à surveiller).
+
+## [2026-10-05] Campagne de grammaire — vue A V1 : ronde 2 de la relecture RI (points b et g)
+
+**Statut** : Complété.
+
+**Décision technique principale** : (b) le contrat de la lecture unique de la vue A (`vue_a_lecture.go`, `archlint/film_vue_a_lecteur_unique_test.go`) dit désormais exactement ce qui est unique — la lecture par la GRAMMAIRE jusqu'au terminateur, dans la couche grammar — et nomme les autres lectures hors contrat : la tête seule (`readPacketHead` et ses appelants ; `killsource` : `hasEvents`, `estAncreDeKillEvent`) et la lecture en chaîne des événements de `killsource` (`eventchain.go`). (g) garde-rail `archlint/film_balayage_unique_test.go` : le parcours de la production qui écarte les sous-arbres de recherche ne s'écrit que dans `film_balayage_test.go` (règle 6 : helper ET garde-rail).
+
+**Résultats observés** : archlint vert ; une copie du parcours dans un autre test d'archlint fait rougir le garde-rail (mutation vérifiée puis retirée) ; empreinte grammar inchangée (commentaires seulement).
+
+**Conclusion / prochaine étape** : relecture de ces lignes par la session RI, CI, puis fusion de V1 dans `feat/v75`.
 ## [2026-10-05] Rejeu 2D — tourelles grises, tirs depuis la bouche des armes, cercle de retour du drapeau (points 18, 19, 20 de l'utilisateur)
 
 **Statut** : Complété (gate visuel de l'utilisateur après fusion). Plan : `.ai/PLAN_REJEU_TOURELLES_TIRS_ZONE_RETOUR_2026-10-05.md`.
@@ -115240,3 +115259,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : 8 films hors catalogue passent de 1 drapeau -1 à 2 drapeaux d'équipe avec états `home`, `carrierTeamUnknown` 0 ; 107 films à catalogue : bases lues à 0,02-0,87 m du socle du bon camp, aucune contradiction ; neutres lus neutres ; cartes à 7 socles réduites à leurs 2 socles réels. Revue adversariale ronde 1 (lot serveur seul) : 0 P0/P1, 4 P2 corrigés ; revue adversariale complète demandée par l'utilisateur (3 relecteurs aveugles : serveur, web + armes, tests) : 0 P0/P1, 10 P2 (3 commentaires faux, instrument resté à 10 m, 4e copie d'un helper, 5 trous de tests dont le câblage du canevas) tous corrigés. Gates : `go test ./...` (1 test `internal/watcher` instable sous charge, vert isolé), `go vet`, typecheck, lint, vitest complet.
 
 **Conclusion / prochaine étape** : fusion dans `feat/v75`, CI au niveau job ; gate visuel de l'utilisateur (cercle sur une partie classée CTF 3 Captures, tourelles de Snowbound, tirs du Ghost / Banshee / Scorpion / Warthog). À confirmer à l'écran : bouche de la mitrailleuse du Scorpion, de la tourelle du Wraith, longueur de canon du Falcon. Les artefacts en cache seront re-cuits (grammaire de la vague 2 déjà périmée pour eux).
+
+## [2026-10-05] Campagne de grammaire — goldens killsource sur films réels régénérés (diagnostic de calibration)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le banc local `TestGoldenFilms` (killsource, `KILLSOURCE_FIXTURES` = film_chunks du parc ; sauté en CI faute de films) était rouge sur `9b191a7f`, `78919882`, `fccc61cd` depuis les vagues de la campagne (signalé par la session RI) : seule la ligne de DIAGNOSTIC de calibration change (ORACLE axisW et scores du profil plat), la décision (indexW_poignée, LU axisW) et toutes les morts sont identiques. Même famille que D23 (diagnostic `Result.Calibration` non persisté, révision killsource constante). Goldens régénérés par `-run Golden -update`.
+
+**Résultats observés** : diff = une ligne par film (ORACLE axisW 14 -> 11 sur 78919882, 21 -> 20 sur 9b191a7f, scores 388 -> 390 sur fccc61cd) ; test vert ensuite.
+
+**Conclusion / prochaine étape** : à l'intégration d'un lot qui touche la marche, jouer aussi `TestGoldenFilms` avec `KILLSOURCE_FIXTURES` (la CI ne le voit pas).

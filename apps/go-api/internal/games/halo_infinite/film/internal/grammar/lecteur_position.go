@@ -136,7 +136,9 @@ func largeursDeLaLigne(t tablesDePosition, idx, niveau int) [3]uint {
 }
 
 // lireE524Sur porte `FUN_14076e524` sur des tables donnees. ok est faux quand la porte ouvre un
-// index que `t` ne sait pas lire : le curseur s arrete alors apres la porte.
+// index que `t` ne sait pas lire : le curseur s arrete apres la porte quand la table par index est
+// inconnue ([tablesDePosition.indexLisible]), apres l index quand il designe une autre region que
+// la region jouee ([tablesDePosition.regionSeule]).
 func lireE524Sur(br *Lecteur, niveau int, t tablesDePosition) (positionQuantifiee, bool) {
 	pos := positionQuantifiee{idx: -1}
 	if !br.ReadBit() { // FUN_1406cf008 : porte a 0 -> l index est present

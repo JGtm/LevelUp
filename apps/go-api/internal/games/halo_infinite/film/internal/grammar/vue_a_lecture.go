@@ -1,6 +1,7 @@
 package grammar
 
-// vue_a_lecture.go — LA LECTURE DE LA VUE A, LA SEULE (lots LN et VA de la campagne de grammaire).
+// vue_a_lecture.go — LA LECTURE COMPLETE DE LA VUE A PAR SA GRAMMAIRE, LA SEULE DE LA COUCHE GRAMMAR
+// (lots LN et VA de la campagne de grammaire).
 //
 // # CE QUE LE JEU ECRIT, ET POURQUOI LA FIN DE LA VUE A EST LE DEBUT DE LA VUE B
 //
@@ -20,10 +21,18 @@ package grammar
 // lisant la charge de CHAQUE message. Quand elle l est, le bit qui suit son terminateur EST le
 // premier bit de la vue B — une lecture, pas une recherche.
 //
-// # UNE SEULE LECTURE
+// # UNE SEULE LECTURE COMPLETE
 //
-// [lireLaVueA] est la seule implantation de `FUN_14076a1c4` (garde-rail :
-// `archlint/film_vue_a_lecteur_unique_test.go`). La marche des trames la joue une fois par trame,
+// [lireLaVueA] est, dans la couche grammar, la seule lecture de la vue A par sa GRAMMAIRE jusqu a
+// son terminateur, message par message, charge comprise (garde-rail :
+// `archlint/film_vue_a_lecteur_unique_test.go`). Deux autres lectures existent hors de ce contrat :
+// la tete seule — le bit de configuration, la continuation et le genre du premier message — est
+// relue par [readPacketHead], et par lui [teteDuPayload], [lireEnteteTir36] et [scanChunkDamages]
+// (ces deux derniers lisent encore le corps du premier message pour leur canal), et, dans la couche
+// facts, par `killsource` (`hasEvents`, `estAncreDeKillEvent`) ; et `killsource` garde sa propre
+// lecture en CHAINE des evenements (`facts/killsource/eventchain.go`, portage de `FUN_14076a1c4` et
+// `FUN_14080a9d4`), qui suit la vue A message par message depuis chaque evenement de mort candidat
+// jusqu au terminateur ou a une longueur bornee — sa lecture pour son canal, pas celle-ci. La marche des trames joue [lireLaVueA] une fois par trame,
 // en rangeant la tete ([rangerLaTete]), et passe ce qu elle a lu a la marche par rangs
 // ([lireTrameParRangs]) ; les autres marches par rangs (essais de localisation, cartes) l appellent
 // depuis la tete du paquet ; les deux marches qui lisent les morts sans ranger de structure la
