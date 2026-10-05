@@ -830,6 +830,33 @@ plan y sont reprises comme items (3.1.2).
    12 ou 4. Un élément commun aux deux chemins est donc peu probable. Reste ouvert : l'écart est
    soit dans notre propre lecture ailleurs (le 8/3 le masquerait), soit piloté par du code non
    encore lu.
+13. *(lot 2.7.a, agent d'enquête du 2026-10-05, demandé par l'utilisateur)* **Les deux écarts : condition
+   « non trouvée » dans l'exécutable courant, et notre lecture en amont n'est pas fautive ; la
+   différence est chez l'écrivain des anciens films.**
+   - *Bloc MPP (LU)* : chaîne entièrement littérale (R(9) `141fd72de`, R(2) `14080d18b`, R(5)
+     `14080d1cf`, R(3) `14080d20f`) ; le 3e argument de `FUN_14080cfe8` est écrasé en `14080d077` ;
+     un seul lecteur du bloc ; l'écrivain `FUN_142f1bc2c` écrit 9 et 5.
+   - *Bloc MPP (MESURÉ)* : oracle `n2` modal à 0,974-1,000 en 8/3 sur les cinq bobines anciennes
+     pour ti=35, 37, 38, 42 et 43 (0,02-0,54 en 9/5), l'inverse sur le format 27 ; mêmes
+     identifiants de 32 bits un bit plus tôt (ti=38, préfixe V = porte 1 + octet 3 sur 100 % des
+     records) ; les deux autres bits tombent dans une plage de zéros (R(2), index, compte),
+     inséparables et sans effet sur les valeurs lues.
+   - *LE FILM DIT LA TAILLE* : `n1` (mot de tête des records d'image-clé) est la taille de la
+     structure d'état de création que l'écrivain a rangée (`FUN_142e2d08c` y met `vtable+0x20`).
+     Sur les formats 21, 24 et 25 elle vaut 4 octets de moins pour chaque archétype à bloc MPP
+     (ti=37 : 100 contre 104 ; ti=35 : 148 contre 152 ; ti=42 : 164 contre 168 ; ti=43 : 92 contre
+     96 ; ti=40 : 172, taille courante 176), inchangée pour les autres. Le jeu ne lit `n1` que comme
+     garde (> 0). Clé « taille déclarée − 4 ⇔ 8/3 » : vraie sur 7 bobines × 7 archétypes, mesurée.
+   - *Tir à composantes* : boucle littérale (R(16) `14080c74c`), écrivain `FUN_142f193e4`
+     identique, répartiteur `FUN_14080a9d4` sans version. Frontière = format 24, HI_1_8_0 compris
+     (`60ae07c4` 914/918 à 13 bits) ; `e5adf7b2` (format 25) 397/422 à 16. Seule clé disponible :
+     format 24 / cardinal 121, mesurée.
+   - *Fait lu, sans conclusion de l'agent* : `FUN_1428e219c` (appelée par `FUN_140ba23e4`)
+     n'installe la lecture d'un film que si le premier mot de chunk_00 (version majeure) vaut 41 ;
+     sinon, comme sur ses autres échecs, elle poste l'événement 0x1e (`FUN_142988e98`).
+     Relu le 2026-10-05.
+   - Piste restante classée première par l'agent : observation dynamique d'un film ancien dans le
+     jeu (points d'arrêt, MCP Cheat Engine), sur autorisation de l'utilisateur.
 
 ## 7. Journal
 
@@ -1010,3 +1037,7 @@ plan y sont reprises comme items (3.1.2).
   Ghidra de la donnée du film qui piloterait le bloc MPP ; la campagne a arrêté la sienne pour ne
   pas doubler. Résultat (découverte 12) : rien trouvé entre les formats 25 et 27. 2.7.a reste hors
   de `feat/v75`, avec la lecture actuelle des morts gardée.
+- 2026-10-05 : à la demande de l'utilisateur, un agent d'enquête (worktree dédié, Ghidra en
+  lecture seule, sans passe de corpus, sans commit) a lu les deux blocs : découverte 13. Worktree
+  et branche de l'agent retirés (aucune jonction, `git status` vide). Résultat transmis à la
+  campagne. 2.7.a reste hors de `feat/v75` ; la suite dépend de l'utilisateur.

@@ -115357,3 +115357,22 @@ Détail : découverte 12 du plan.
 entre les formats 25 et 27. Deux pistes : un écart dans notre propre lecture ailleurs, ou du code
 du jeu non encore lu. Lecture actuelle des morts gardée ; la suite de la recherche est à décider
 avec l'utilisateur.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — lot 2.7.a : agent d'enquête sur les deux écarts de 3 bits — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — enquête rendue, décision de l'utilisateur attendue.
+
+**Décision technique principale** : un agent Opus (worktree dédié, Ghidra en lecture seule) lit le
+bloc MPP de l'état de création et la boucle des composantes du tir, à la demande de l'utilisateur.
+
+**Résultats observés** : condition « non trouvée » dans l'exécutable courant pour les deux écarts,
+et notre lecture en amont n'est pas fautive : l'écrivain des anciens films a écrit 3 bits de
+moins. Le film déclare toutefois, record par record, la taille de la structure d'état de création
+(`n1`) : 4 octets de moins sur les formats 21, 24 et 25 pour chaque archétype à bloc MPP. Le jeu ne
+lit `n1` que comme garde. Pour le tir, la frontière est le format 24 (HI_1_8_0 compris). Fait lu,
+présenté sans conclusion : `FUN_1428e219c` n'installe la lecture que si la version majeure du film
+vaut 41. Détail : découverte 13 du plan.
+
+**Conclusion / prochaine étape** : présenter à l'utilisateur la clé que le film porte lui-même
+(`n1`) comme base d'une lecture générale des anciens films, et le fait du chargement. Lecture
+actuelle des morts gardée en attendant.
