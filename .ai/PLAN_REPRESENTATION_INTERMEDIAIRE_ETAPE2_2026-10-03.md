@@ -663,10 +663,30 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
            redevient un contrôle ;
          - `repli_largeurs_mpp_calibrees_sur_le_film` ne se déclenche plus que pour un `n1`
            inconnu (le registre suit).
-      4. *Contrôle par record* : dans les marches d'image-clé, un record à bloc MPP dont `n1`
-         contredit le découpage posé est compté ; la lecture d'un record ne change pas.
+      4. *Contrôle par record* : tous les records de la clé de l'image-clé qui décide doivent
+         déclarer le même découpage. Un seul discordant, et le film ne déclare rien : chemin
+         actuel, avertissement par film. *Précisé à l'écriture* : le contrôle porte sur cette
+         image-clé, pas sur chaque marche d'image-clé. Les records d'un film viennent d'un seul
+         écrivain, et un contrôle dans les marches toucherait l'en-tête que la preuve des ancres
+         et killsource lisent.
       5. *killsource inchangé* : son profil garde `MPPParDefaut`. L'écart est déclaré et
-         l'alignement se fait en 2.7.c.
+         l'alignement se fait en 2.7.c. La déclaration n'entre ni dans l'en-tête de la marche
+         ni dans la preuve des ancres d'image-clé.
+      6. *Outil du gate 2* : drapeau `-mpp-declare` dans `cmd_fermeture` (outil de recherche),
+         ajouté à la demande de la campagne. Il pose `ResolutionMPP` sur chaque film et
+         journalise le découpage et sa provenance (`mpp_declare.tsv`).
+      *Écrit* (`3ee8e7bf2`, local) :
+      - `profile/mpp_declare.go` et son test ; la table du profil et son catalogue commis (deux
+        lignes sous la clé `format=20,21,24,25`) ; `profile-2026-10-05` ;
+      - `grammar/mpp_declare.go` (`DeclarationMPP`, `ResolutionMPP`) et son test sur les sept
+        bobines : 8/3 déclaré sans discordance sur les cinq anciennes (84 à 247 records de la clé),
+        9/5 sur les deux du format 27 ;
+      - `Relue` → `Decide` ; `grammar-2026-10-05` ;
+      - cuisson : `replay.poserLeDecoupageMPPDuFilm`, et `gwWidthsForFilm` et les poses par
+        `ResolutionMPP` ;
+      - registre du repli calibré, ADR 0037 IR-7 ;
+      - killsource et objectives : empreintes recopiées à révision constante ;
+      - fixtures de contrat : seule la télémétrie des révisions change.
       Gates :
       - tests de la règle et sur les sept bobines (8/3 sur les cinq anciennes, 9/5 sur les deux
         récentes, aucun record contredit) ;

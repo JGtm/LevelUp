@@ -25,7 +25,10 @@
 //	cd apps/go-api
 //	go run -tags=research ./internal/games/halo_infinite/film/research/cmd_fermeture \
 //	  -racine <parc>/data/cache/film_chunks -films 0797ce72,bfecd02b -sortie <dossier hors data> \
-//	  [-mode fermeture,gb1,v2]
+//	  [-mode fermeture,gb1,v2] [-mpp-declare]
+//
+// `-mpp-declare` pose sur chaque film le decoupage MPP que la grammaire resout — celui de la cuisson
+// (cf. mpp_declare.go) — au lieu du profil par defaut, et l ecrit par film dans `mpp_declare.tsv`.
 //
 // La mesure de fermeture est `grammar.FrameClosure` (la marche de production, aucune lecture de
 // bits de plus) — `grammar.FrameClosureDetaillee` en mode `v2`, qui rend la meme carte — sous le contexte des instruments (`grammar.ContexteDeFilm` : largeurs d axe lues
@@ -84,6 +87,8 @@ func main() {
 	mode := flag.String("mode", modeFermeture, "mesures par film, separees par des virgules : fermeture, gb1, v2 (v2 implique fermeture)")
 	fixe := flag.String("denominateur-fixe", "", "v2 : TSV du denominateur fixe consolide (colonnes film et fixe)")
 	paquets := flag.Bool("paquets", false, "v2 : ecrire fermeture_paquets.tsv, une ligne par paquet delta")
+	mppDeclare := flag.Bool("mpp-declare", false, "poser sur chaque film le decoupage MPP que la grammaire resout "+
+		"(format, ou taille declaree n1) ; journal mpp_declare.tsv")
 	flag.Parse()
 
 	ids := borner(decouper(*films), *limite)
@@ -106,12 +111,21 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+	jm, err := ouvrirJournalMPP(*sortie, *mppDeclare)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
 	for _, id := range ids {
-		if err := mesurerUnFilm(*racine, id, *plafond, rap); err != nil {
+		if err := mesurerUnFilm(*racine, id, *plafond, rap, jm); err != nil {
 			fmt.Fprintf(os.Stderr, "%s : %v\n", id, err)
 			rap.echecs++
 		}
 		runtime.GC()
+	}
+	if err := jm.fermer(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	if err := rap.terminer(*top); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -162,7 +176,7 @@ func lireModes(v string) (modes, error) {
 
 // mesurerUnFilm ouvre UN film, le mesure sous sa propre sentinelle dans chacun des modes
 // demandes, ecrit ses lignes, et le laisse partir avant le suivant.
-func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport) error {
+func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport, jm *journalMPP) error {
 	garde := filmproc.Arm(nomOutil, plafondGiB, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets) — arret\n", id, pic)
 		os.Exit(3)
@@ -172,6 +186,9 @@ func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport) error {
 	fc, _, errLargeurs := grammar.ContexteDeFilm(filepath.Join(racine, id))
 	if fc == nil {
 		return fmt.Errorf("film illisible : %w", errLargeurs)
+	}
+	if err := jm.poser(fc, id); err != nil {
+		return fmt.Errorf("journal MPP : %w", err)
 	}
 	build := buildDuFilm(fc)
 	if rap.modes.fermeture {

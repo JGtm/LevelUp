@@ -255,6 +255,24 @@ game, does not enter the reading of every entity (user decision of 2026-10-02: g
 are general and read in the game). Object deaths, read under the calibrated widths by the removed
 walk, are now read under the frame walk's.
 
+The MPP split of formats 20, 21, 24 and 25 is a parameter that the film declares (user decision of
+2026-10-05). Every keyframe record writes, before its object's creation state, the size of that
+state's structure (`n1`, the descriptor's `vtable+0x20`). The current executable reads the
+`object-multiplayer-properties` block with literal widths (9/5), and nothing in its code reads it
+differently. Old films were written with three bits fewer, and their records declare a structure
+four bytes smaller.
+
+The rule lives in `profile` (`MPPPourTailleDeclaree`): the current size gives the read split 9/5,
+and the current size minus 4 gives 8/3, assumed by measurement. `FilmContext.ResolutionMPP` takes
+the format's split when it has one, otherwise the split that every key record of the film's first
+keyframe declares; a single discordant record means nothing is declared. The cook sets that
+resolution on its context for every reading. The calibration on placements decides only for a film
+that declares nothing.
+
+The resolution stays out of the walk header: the keyframe anchor proof reads the header, and
+killsource walks anchors under that proof. Killsource keeps the default split until its alignment
+with the cook (step 2, item 2.7.c).
+
 ### IR-8 — Streamed, lazy, without copy; interpretation stays in the hooks; nothing persisted
 
 A packet's payload is a sub-slice of its chunk. Records and components live in an arena reused from
