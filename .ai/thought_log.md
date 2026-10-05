@@ -115337,3 +115337,23 @@ actuelle est gardée : à la fusion du lot de la campagne, fusionner `feat/v75`,
 des morts sur le début de vue B lu depuis la vue A, remesurer en séparant les deux parts, et
 revenir vers l'utilisateur avec le reste. Aucune passe de décodage tant que la campagne occupe la
 machine.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — lot 2.7.a : recherche Ghidra de la donnée du film qui piloterait le bloc MPP — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — recherche faite, condition non trouvée, retour à l'utilisateur.
+
+**Décision technique principale** : l'argument « le jeu actuel ne relit plus les films d'avant
+août 2025 » (tiré des notes de mise à jour de Halo Support) est retiré : l'utilisateur réaffirme
+que la version actuelle lit tous les films et que le film porte son index de décodage. Recherche
+dans l'exécutable courant (Ghidra, lecture seule), reprise de la campagne qui a arrêté la sienne.
+
+**Résultats observés** : lecteur d'état par défaut des véhicules `FUN_1410a5a74` ; descripteurs par
+type enregistrés statiquement (`FUN_140e453b4`) ; `FUN_14080cfe8` à largeurs littérales, sans
+autre lecteur du bloc ; versions par type et registre des archétypes 36 à 43 identiques entre
+`e5adf7b2` (format 25, 8/3) et le format 27 ; seuils de la version de format 3, 7, 11, 13/14, 15.
+Détail : découverte 12 du plan.
+
+**Conclusion / prochaine étape** : aucune donnée du film trouvée qui fasse lire ce bloc autrement
+entre les formats 25 et 27. Deux pistes : un écart dans notre propre lecture ailleurs, ou du code
+du jeu non encore lu. Lecture actuelle des morts gardée ; la suite de la recherche est à décider
+avec l'utilisateur.

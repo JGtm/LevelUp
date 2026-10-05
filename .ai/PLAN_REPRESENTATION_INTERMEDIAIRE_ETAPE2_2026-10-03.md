@@ -811,6 +811,21 @@ plan y sont reprises comme items (3.1.2).
    c'est le lot LM, mis de côté par l'utilisateur le 2026-10-02 (largeur mesurée sur des builds
    sans exécutable, non lue dans le jeu ; exception D6 suspendue). Signalé à la campagne ; la
    décision reste celle de l'utilisateur.
+12. *(lot 2.7.a, recherche Ghidra du 2026-10-05, demandée par l'utilisateur : « le jeu dans sa
+   version actuelle sait lire tous les films ; les films contiennent eux-mêmes leur index de
+   décodage »)* **Aucune donnée du film trouvée qui fasse lire le bloc MPP autrement entre les
+   formats 25 et 27.** Lecture seule, HTTP 127.0.0.1:8089. Le lecteur d'état par défaut des
+   véhicules est `FUN_1410a5a74` (vtable `0x143736fd8` +0x60). Les descripteurs par type sont
+   enregistrés statiquement (`FUN_140e453b4`), la table `DAT_144e61d88` n'a qu'un écrivain
+   (`FUN_14054d014`). `FUN_14080cfe8` lit des largeurs littérales ; `FUN_141fd72c0` (R(9)) et
+   `FUN_14080d4d0` n'ont que lui pour appelant. Le préfixe R(1)+R(8) des lecteurs d'état par défaut
+   est lu puis jeté, sauf dans `FUN_140f44c38`. Versions par type sur les sept bobines :
+   `11de8353`, `111fa685` et `e5adf7b2` (8/3) identiques au format 27 (9/5) sur les 25 index qui
+   varient, y compris l'index 0x28 que `FUN_140ff8d70` consulte (absent de la liste de 1.9.1
+   ter). Registre des archétypes 36 à 43 : `111fa685` et `e5adf7b2` identiques au format 27.
+   Lecteurs de la version de format : seuils 3, 7, 11, 13/14 et 15, aucun entre 25 et 27. Reste
+   ouvert : l'écart de trois bits est soit dans notre propre lecture ailleurs (le 8/3 le
+   masquerait), soit piloté par du code non encore lu.
 
 ## 7. Journal
 
@@ -985,3 +1000,9 @@ plan y sont reprises comme items (3.1.2).
   vues de production ; 2.7.a n'entre pas dans `feat/v75` avant lui. Elle mesure en parallèle, sans
   code de production, le découpage 8/3 des formats anciens par double preuve (fermeture au bit,
   châssis du jeu installé).
+- 2026-10-05 : l'utilisateur réaffirme que « le jeu dans sa version actuelle sait lire tous les
+  films » et que « les films contiennent eux-mêmes leur index de décodage ». L'argument tiré des
+  notes de mise à jour de Halo Support (films « invalidés ») est retiré. À sa demande, recherche
+  Ghidra de la donnée du film qui piloterait le bloc MPP ; la campagne a arrêté la sienne pour ne
+  pas doubler. Résultat (découverte 12) : rien trouvé entre les formats 25 et 27. 2.7.a reste hors
+  de `feat/v75`, avec la lecture actuelle des morts gardée.
