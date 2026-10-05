@@ -26,7 +26,7 @@ fire = "single"
 fx = "explosive"
 tint = "blast"
 sound = "vehicle_shot_warthog_rocket_1"
-mount = { aim = "turret", ax = 0.0, ay = 0.26 }
+mount = { aim = "turret", ax = 0.0, ay = 0.26, reach = 0.12 }
 proof = "p"
 
 [[weapons]]
@@ -77,7 +77,7 @@ func TestVehicleWeapons_PoseLesArmesEmployees(t *testing.T) {
 	r := doc.VehicleWeapons["0xC7D5091200000000"]
 	if r.Vehicle != "rockethog" || r.Fx != "explosive" || r.Tint != "blast" ||
 		r.Sound != "vehicle_shot_warthog_rocket_1" || r.Mount == nil || r.Mount.Aim != "turret" ||
-		r.Mount.AY != 0.26 || r.En != "Rocket Launcher" || r.Fr != "Lance-roquettes" {
+		r.Mount.AY != 0.26 || r.Mount.Reach != 0.12 || r.En != "Rocket Launcher" || r.Fr != "Lance-roquettes" {
 		t.Errorf("roquettes = %+v", r)
 	}
 	if g := doc.VehicleWeapons["0x0BB6976B00000000"]; g.Sound != "" || g.Fx != "explosive" {

@@ -60,6 +60,12 @@ type flagSpawnChoice struct {
 	NeutralBirths, TeamBirths int
 }
 
+// poserVariante publie le verdict de variante et les socles retenus dans la couverture.
+func (c *FlagCarriesCoverage) poserVariante(choix flagSpawnChoice) {
+	c.Spawns, c.NeutralFlag = len(choix.Spawns), choix.Neutral
+	c.NeutralBirths, c.TeamBirths = choix.NeutralBirths, choix.TeamBirths
+}
+
 // flagChooseSpawns rend les socles a retenir pour ce film, et le verdict qui l'explique.
 //
 // APPELANT SANS SOCLE NEUTRE : rien ne change — le compte neutre reste a zero, le verdict est

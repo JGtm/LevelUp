@@ -271,6 +271,40 @@ export function vehicleMapElementGlyph(
   return VEHICLE_MAP_ELEMENT_RENDER[family] ?? null
 }
 
+/**
+ * VehiclePaintInks — les deux encres « sans occupant » que la règle de teinte départage.
+ * `neutral` est celle d'un véhicule sans occupant résolu ; `mapElement` celle d'un objet de la
+ * carte (gris « aucun camp »). Toutes deux sont résolues par l'appelant (règle color-tokens).
+ */
+export interface VehiclePaintInks {
+  neutral: string
+  mapElement: string
+}
+
+/** vehicleIsMapElement — la nature publiée dit-elle « objet de la carte, non jouable » ? */
+export function vehicleIsMapElement(kind: string | undefined): boolean {
+  return kind === VEHICLE_KIND_MAP_ELEMENT
+}
+
+/**
+ * vehiclePaintColor — L'ENCRE D'UN VÉHICULE À `frame`, règle unique de ce calque.
+ *
+ * UN ÉLÉMENT DE CARTE (nature `map_element`, non jouable) se peint à l'encre grise
+ * `inks.mapElement`, sans condition : il n'a pas de camp, et le bleu neutre de l'allié le ferait
+ * passer pour un poste de tir allié. TOUT AUTRE véhicule prend la couleur de son occupant
+ * (`vehicleColorAt`) et, à défaut, `inks.neutral` — la tourelle fixe, jouable, y compris.
+ */
+export function vehiclePaintColor(
+  track: ReplayVehicleTrackReady,
+  frame: number,
+  kind: string | undefined,
+  ink: VehicleInk,
+  inks: VehiclePaintInks,
+): string {
+  if (vehicleIsMapElement(kind)) return inks.mapElement
+  return vehicleColorAt(track, frame, ink) ?? inks.neutral
+}
+
 // --- DESTRUCTION (schéma 39 — EN AVANCE DE PHASE, cf. ReplayVehicleTrack dans types.ts) --------
 
 /**

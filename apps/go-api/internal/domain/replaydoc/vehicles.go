@@ -50,6 +50,9 @@ type VehicleWeaponMount struct {
 	Aim string  `json:"aim"`
 	AX  float64 `json:"ax"`
 	AY  float64 `json:"ay"`
+	// Reach : longueur du canon d une tourelle, en fraction de la longueur du sprite (cf.
+	// `replay.VehicleWeaponMount.Reach`).
+	Reach float64 `json:"reach,omitempty"`
 }
 
 // VehicleSpawn est la naissance d un vehicule : ou, et sous quel cap.

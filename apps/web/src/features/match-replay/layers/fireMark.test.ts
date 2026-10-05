@@ -136,6 +136,20 @@ describe('drawFireMarks', () => {
     expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(0)
   })
 
+  it('ne dessine rien pour un tireur EMBARQUÉ : pas de pion, pas de « ! »', () => {
+    const { ops, ctx } = recordingContext()
+    const embarque = (slot: number, frame: number) => slot === 5 && frame === 15
+    drawFireMarks(ctx, marks(), VIEW, { ...STYLE, frame: 15, embarkedAtSlot: embarque })
+    expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(0)
+  })
+
+  it('un tireur À PIED garde son « ! » quand la porte d’embarquement est fournie', () => {
+    const { ops, ctx } = recordingContext()
+    drawFireMarks(ctx, marks(), VIEW, { ...STYLE, frame: 15, embarkedAtSlot: () => false })
+    expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(1)
+    expect(ops.filter((o) => o.op === 'fill')).toHaveLength(1)
+  })
+
   it('ne dessine rien pour une vie SANS couleur : pas de marqueur, pas de « ! »', () => {
     const { ops, ctx } = recordingContext()
     drawFireMarks(ctx, marks(), VIEW, { ...STYLE, frame: 15, colorOfSlot: () => null })

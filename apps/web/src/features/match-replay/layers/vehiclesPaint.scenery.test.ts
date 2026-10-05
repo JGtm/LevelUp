@@ -123,6 +123,7 @@ const SPRITE = { width: 128, height: 128 } as unknown as CanvasImageSource
 function style(): VehicleStyle {
   return {
     neutralInk: '#neutre',
+    mapElementInk: '#gris-carte',
     labelStroke: '#contour',
     showNames: true,
     showAim: true,

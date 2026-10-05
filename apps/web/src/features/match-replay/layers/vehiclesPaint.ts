@@ -28,11 +28,12 @@ import { edgeMarkFor, OFFSCREEN_MARGIN_PX, type EdgeMark } from '../model/edgeCl
 import { vehicleChassisHeadingAt, vehicleOccupantAimAt } from '../model/vehiclesAim'
 import {
   vehicleActiveRides,
-  vehicleColorAt,
   vehicleDestructionFrame,
   vehicleExplosionKindOf,
   vehicleIsHidden,
+  vehicleIsMapElement,
   vehicleMapElementGlyph,
+  vehiclePaintColor,
   vehiclePositionAt,
   vehicleRideColor,
   vehicleScreenAngle,
@@ -82,6 +83,12 @@ export interface VehicleSpriteSize {
 export interface VehicleStyle {
   /** Encre du « aucun occupant connu » (token sémantique, résolu par l'appelant). */
   neutralInk: string
+  /**
+   * Encre d'un ÉLÉMENT DE CARTE non jouable (nature `map_element`) : le gris « aucun camp »
+   * (token `zone-neutral`, résolu par l'appelant). La règle qui l'attribue est
+   * `vehiclePaintColor` (model/vehiclesLayer.ts).
+   */
+  mapElementInk: string
   /** Encre du CONTOUR des noms — même contrat que `replayMarkers`/`replayLabels`. */
   labelStroke: string
   /** Calque des NOMS (bouton « Noms » partagé avec les pions, décision de cadrage). */
@@ -114,10 +121,11 @@ export interface VehicleStyle {
    * DOCUMENT publie (`vehicleLabels[famille].en`/`.fr`) — ce calque ne connaît aucune langue,
    * même règle que `offscreenLabelOf`.
    *
-   * IL NE SERT QU'AUX ÉLÉMENTS DE CARTE, et seulement quand le calque des NOMS est allumé : un
-   * objet de la carte n'a pas d'occupant à nommer, donc sa ligne de nom est libre, et l'écrire
-   * est ce qui répond à « c'est quoi, ce pictogramme ». Un véhicule, lui, garde ses noms
-   * d'occupants — on ne lui écrit jamais « Warthog » à la place de qui le conduit.
+   * IL NE SERT QU'AUX POSTES DE TIR JOUABLES VIDES (tourelle fixe), et seulement quand le calque
+   * des NOMS est allumé : sa ligne de nom est libre, et l'écrire répond à « c'est quoi, ce
+   * pictogramme ». Un élément de carte NON JOUABLE (`map_element`) ne porte jamais de libellé, et
+   * un véhicule garde ses noms d'occupants — on ne lui écrit jamais « Warthog » à la place de
+   * qui le conduit.
    */
   labelOfFamily: (family: string) => string | null
   colorOfSlot: (slot: number, frame: number) => string | null
@@ -514,7 +522,9 @@ export function drawVehiclesLayer(
         // jamais recalculée deux fois.
         const mark = edgeMarkFor(world, view, OFFSCREEN_MARGIN_PX, time.k)
         const c = mark ? mark.at : project(world, view)
-        const color = vehicleColorAt(track, time.frame, style) ?? style.neutralInk
+        const nature = track.family ? style.kindOf(track.family) : undefined
+        const color = vehiclePaintColor(track, time.frame, nature, style,
+          { neutral: style.neutralInk, mapElement: style.mapElementInk })
         // LES OCCUPANTS SONT LUS UNE FOIS pour les deux calques qui les consomment (cônes puis
         // noms) : `vehicleActiveRides` trie, filtre et alloue — l'appeler deux fois par véhicule
         // et par image serait un doublon de travail autant qu'un doublon de source.
@@ -566,11 +576,11 @@ export function drawVehiclesLayer(
           drawVehicleOffscreenSignal(ctx, rides, time, style, mark, color)
         } else if (style.showNames && rides.length > 0) {
           drawVehicleOccupantNames(ctx, rides, time.frame, c, edgePx, style, time.k)
-        } else if (style.showNames && glyph !== null && track.family) {
-          // UN ÉLÉMENT DE CARTE SE NOMME (lot 1.9.9), sur la ligne qu'aucun occupant n'occupe :
-          // le pictogramme dit qu'il y a quelque chose, le libellé dit QUOI. Le texte vient du
-          // DOCUMENT (`vehicleLabels[famille].en`/`.fr`, posés depuis le manifeste du titre),
-          // jamais d'un littéral de ce calque. Sans libellé publié, rien n'est écrit.
+        } else if (style.showNames && glyph !== null && track.family && !vehicleIsMapElement(nature)) {
+          // UN POSTE DE TIR JOUABLE VIDE SE NOMME, sur la ligne qu'aucun occupant n'occupe : le
+          // pictogramme dit qu'il y a quelque chose, le libellé dit QUOI. UN ÉLÉMENT DE CARTE NON
+          // JOUABLE, lui, ne porte jamais de libellé. Le texte vient du DOCUMENT
+          // (`vehicleLabels[famille].en`/`.fr`), jamais d'un littéral de ce calque.
           const nom = style.labelOfFamily(track.family)
           if (nom) {
             drawNameLabel(ctx, c, nom, { k: time.k, labelStroke: style.labelStroke },
