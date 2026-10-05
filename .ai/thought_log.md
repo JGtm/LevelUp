@@ -115456,3 +115456,21 @@ passe de 44 à 25 lignes en baisse, toutes dans les familles admises ; tirs de v
 **Conclusion / prochaine étape** : attendre le signal de la campagne (lot « vue A ») ; alors
 fusion de `feat/v75` dans la branche (`feat/v75` a raison en conflit), remesure des deux parts de
 2.7.a, gate de corpus, `make gate-push`, accord de l'utilisateur pour fusionner.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — découpage MPP déclaré : double preuve reçue, item clos — Complété (2.7.a0, `feat/ri-etape2`)
+
+**Statut** : Complété pour 2.7.a0 ; 2.7.a reste ouvert jusqu'à la fusion du lot « vue A » de la
+campagne et la remesure.
+
+**Décision technique principale** : le découpage déclaré par `n1` est confirmé par la double
+preuve de la campagne (identités contre les tags installés, fermeture des formats 24 et 25) ; le
+ratchet de fermeture d'image-clé, qui mesure encore sous le découpage du format, s'aligne en 2.7.c
+avec killsource.
+
+**Résultats observés** : identités 1 480 366 / 1 480 374 sous 8/3, aucune sous 9/5 ; `b429a7d3`
+déclare 8/3, perd quatre faux sains de 9/5 (un NEW d'identité inconnue chacun) ; fermeture
+d'image-clé sous le découpage déclaré +107 sur les cinq archétypes objet, baisses par ligne sur
+`ti=42` à justifier record par record en 2.7.c.
+
+**Conclusion / prochaine étape** : ordre de fusion convenu — V1 de la campagne, puis 2.7.a et
+2.7.a0, puis LR, puis V2 ; chaque fusion sur accord de l'utilisateur.

@@ -103,6 +103,16 @@ naissances lues par la grammaire des messages de la vue A.
 Chaque session prévient l'autre quand elle fusionne dans `feat/v75` ; une découverte qui touche un
 fichier de l'autre se signale, ne se corrige pas.
 
+Ordre de fusion convenu avec la campagne le 2026-10-05 (chaque fusion reste soumise à l'accord de
+l'utilisateur, §1.2) :
+1. le lot « vue A » V1 de la campagne ;
+2. 2.7.a et 2.7.a0 (ce plan), après fusion de `feat/v75` dans la branche et remesure ;
+3. le lot LR de la campagne, rebasé sur cette tête : sa règle de lecture du jeu (compte ≥ 5 →
+   échec) ne tient que sous le découpage déclaré ; son gate 2 officiel se joue sous `-mpp-declare` ;
+4. le lot « vue A » V2 (il touche aussi `debut_de_liste.go`).
+Le DELTA à génération contredite (découverte 15) va dans le lot de la campagne qui suit LR ; la
+fermeture d'un épisode par le même objet occupant est déjà dans 2.7.a.
+
 ## 2. Décisions
 
 **Utilisateur.**
@@ -643,7 +653,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
    site du localisateur) : sans appelant de production, elle serait du code mort (règle 7) ; 3.1.1
    garde la timeline de killsource. Les fichiers de la campagne qui la citent (le localisateur
    unique, son test, des instruments de recherche) sont mis à jour après l'avoir prévenue.
-- [ ] 2.7.a0 **Découpage MPP déclaré par le film** — prérequis de 2.7.a. Décision de
+- [x] 2.7.a0 **Découpage MPP déclaré par le film** — prérequis de 2.7.a. Décision de
       l'utilisateur du 2026-10-05 (découverte 13). La campagne l'a confié à ce plan le même jour,
       sous trois conditions : son gate 2, la provenance présumée par mesure, sa double preuve comme
       oracle. Périmètre fermé :
@@ -701,6 +711,29 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
         film en baisse, gagnés et perdus, part de factices ;
       - killsource à l'octet (`KILLSOURCE_FIXTURES`) ;
       - `grammar.Rev`, ADR 0037 IR-7 amendé.
+      *Clos le 2026-10-05.* Gates joués (journal du même jour) ; baisses du gate de corpus admises
+      par l'utilisateur. Double preuve de la campagne (oracle, 114 films anciens du parc) :
+      identités lues contre le catalogue des tags installés, 1 480 366 records d'image-clé sur
+      1 480 374 connus sous 8/3, aucun sous 9/5, miroir exact sur le format 27 ; fermeture des
+      formats 24 et 25, 8/3 meilleure largeur sur 106 films sur 107, paquets sains 19-26 % →
+      67-68 % ; formats 20 et 21 muets (aucune largeur ne ferme) : leur champ d'index repose sur
+      `n1` seul. Réserves du vérificateur :
+      1. `b429a7d3` (format 24, parc) : `n1` déclare 8/3 (232 records, aucun discordant) ; paquets
+         sains 5 560 → 5 558, records utiles sains 50 → 50. Les quatre perdus (18:606, 19:1046,
+         23:606, 33:1058) étaient de faux sains de 9/5 : chacun un seul NEW d'archétype MPP qui
+         ouvre la liste par la recherche « fermeture », identité inconnue du catalogue installé
+         (`10830ea5`, `82ebff11`, `3182036d`, `be63fce4`), champ de tête à 0x1c0 ou 0x19b (bits 7
+         et 8, jamais écrits) ; sous 8/3 la liste n'est plus localisée. Instruit.
+      2. Part contredite des fermés au bit, 2,4 % contre 0,6 % au témoin (« masque au-delà de
+         l'archétype ») : famille du lot LR de la campagne, qui ne tient que sous le découpage
+         déclaré. Hors de ce plan.
+      3. Ratchet de fermeture d'image-clé : il mesure les bobines sous le découpage du format (9/5
+         pour les anciennes), donc ne bouge pas. Rejoué sous le découpage déclaré : cinq archétypes
+         objet 932 → 1 039 sur 22 319 ; baisses par ligne sur `ti=42` (`a521164d` 24 → 12,
+         `60ae07c4` 5 → 3, `e5adf7b2` 13 → 1), `ti=38` de `a521164d` (122 → 121), `ti=37` de
+         `e5adf7b2` (1 → 0). Aligné en 2.7.c (accord de la campagne).
+      4. killsource lit `MPPParDefaut` (D-108 de la campagne), deux découpages sur les formats
+         anciens : 2.7.c, déjà prévu.
 - [ ] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
       *Écrit* (décisions 1 à 5) : `grammar/canal_des_morts.go` (canal des trames et d'image-clé :
       récolte des records de la vue B, récupération des listes non localisées par [debutRecupere],
@@ -732,7 +765,11 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       d'ancres, canal par canal, mesuré sur le corpus.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
-      du 2026-10-03) ; `IDLowBits` unifié (IR-7).
+      du 2026-10-03) ; `IDLowBits` unifié (IR-7). Le découpage MPP déclaré par le film (2.7.a0)
+      gagne killsource et le ratchet de fermeture d'image-clé : golden régénéré, chaque baisse
+      de `ti=42` justifiée record par record par la preuve 2 de la campagne (identité inconnue
+      du catalogue installé sous 9/5, connue sous le découpage déclaré) ; une baisse qui ne se
+      justifie pas ainsi s'instruit (condition de la campagne du 2026-10-05).
 - [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
@@ -1239,3 +1276,11 @@ plan y sont reprises comme items (3.1.2).
   sept autres films inchangés depuis `27g`. Campagne prévenue avant et après chaque passe. Reste
   pour clore 2.7.a : fusion de `feat/v75` après le lot « vue A » de la campagne, remesure, gate
   de corpus, `make gate-push`, accord de fusion.
+- 2026-10-05 : DOUBLE PREUVE DE LA CAMPAGNE reçue (oracle de 2.7.a0, pièces dans son scratchpad
+  `mpp-dp/`), ses quatre réserves instruites ou rangées (item 2.7.a0) : `b429a7d3` déclare 8/3 et
+  ne perd que quatre faux sains de 9/5 sans record utile ; le ratchet de fermeture d'image-clé,
+  rejoué sous le découpage déclaré (+107 sur les cinq archétypes objet, baisses par ligne sur
+  `ti=42`), s'aligne en 2.7.c avec killsource. Deux mesures d'un film et deux instruments jetables
+  (non versionnés, retirés). ADR 0037 IR-7 complété. 2.7.a0 CLOS. Ordre de fusion convenu avec la
+  campagne (§1.3) : V1, puis 2.7.a et 2.7.a0, puis LR (qui ne tient que sous le découpage
+  déclaré), puis V2.

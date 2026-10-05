@@ -271,7 +271,14 @@ that declares nothing.
 
 The resolution stays out of the walk header: the keyframe anchor proof reads the header, and
 killsource walks anchors under that proof. Killsource keeps the default split until its alignment
-with the cook (step 2, item 2.7.c).
+with the cook (step 2, item 2.7.c). So does the keyframe closure ratchet, which measures the
+versioned reels under the format's split; it moves to the declared split with killsource.
+
+Two independent measures back the assumed split. Read against the tag catalogue of the installed
+game, the 32-bit word of the block names a tag of the group its archetype expects on nearly every
+keyframe record of the old formats under 8/3, and on none under 9/5; format 27 gives the mirror
+image. On formats 24 and 25, 8/3 is also the split that closes the most frame packets. On formats
+20 and 21 no split closes, so the 3-bit index field rests on `n1` alone.
 
 ### IR-8 — Streamed, lazy, without copy; interpretation stays in the hooks; nothing persisted
 
