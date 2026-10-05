@@ -47,3 +47,34 @@ func TestUneLectureDUneAutreGenerationNeFermePasLEpisode(t *testing.T) {
 		}
 	}
 }
+
+// TestLaPrimauteNommeLeJoueurPasLeCorps : le film lit le joueur 111 (slot 574) dans la vie de
+// vehicule [800, 900]. Son episode de repli d une vie precedente (slot 745, [600, 700]) n est pas
+// contredit ; celui d un autre joueur l est, comme celui du meme joueur qui chevauche la lecture,
+// et comme un corps sans identite qui n est pas celui que le film a lu.
+func TestLaPrimauteNommeLeJoueurPasLeCorps(t *testing.T) {
+	key := types.LifeKey{Slot: 900, Gen: 1}
+	f := vehicleFilmRides{
+		rides:     map[types.LifeKey][]VehicleRide{},
+		occupants: map[types.LifeKey]map[identiteOccupant]bool{},
+		fenetres:  map[types.LifeKey][][2]int{},
+	}
+	f.ajouter(key, VehicleRide{T0: 800, T1: 900, Slot: 574, XUID: "111", Src: VehicleRideSrcFilm})
+	f.ajouter(key, VehicleRide{T0: 950, T1: 990, Slot: 590, Src: VehicleRideSrcFilm})
+	cas := []struct {
+		nom       string
+		r         VehicleRide
+		contredit bool
+	}{
+		{"meme joueur, autre vie", VehicleRide{T0: 600, T1: 700, Slot: 745, XUID: "111"}, false},
+		{"autre joueur", VehicleRide{T0: 600, T1: 700, Slot: 746, XUID: "222"}, true},
+		{"meme joueur, chevauchement", VehicleRide{T0: 850, T1: 870, Slot: 745, XUID: "111"}, true},
+		{"corps sans identite, autre slot", VehicleRide{T0: 600, T1: 700, Slot: 591}, true},
+		{"corps sans identite, slot lu", VehicleRide{T0: 600, T1: 700, Slot: 590}, false},
+	}
+	for _, c := range cas {
+		if got := f.contredit(key, c.r); got != c.contredit {
+			t.Errorf("%s : contredit = %v, veut %v", c.nom, got, c.contredit)
+		}
+	}
+}
