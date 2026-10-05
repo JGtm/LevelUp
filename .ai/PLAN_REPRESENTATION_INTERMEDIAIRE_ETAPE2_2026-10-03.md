@@ -715,6 +715,11 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       `m4b_monture`, `ti40_morts_alignement`) ou retirées (`campagne_bis3`, accord de la campagne ;
       l'instrument de la mesure) ; `grammar.Rev` = `grammar-2026-10-04` (goldens de `killsource` et
       d'`objectives` régénérés à révision constante) ; ADR 0037 amendé (IR-2, IR-6, IR-7).
+      *Correctif de l'instruction* (`953401feb`) : un épisode lu se ferme sur la lecture suivante
+      du MÊME OBJET occupant (slot ET génération), plus du slot seul — sur `4f77afc1`, une lecture
+      fausse de la marche des trames (slot 737 en génération 3, attachée au bipède 618) fermait à
+      8410 le trajet du conducteur 737, dont l'arme tire jusqu'à 9101. Test
+      `TestUneLectureDUneAutreGenerationNeFermePasLEpisode`, rouge sans le correctif.
 - [ ] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
       d'ancres, canal par canal, mesuré sur le corpus.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
@@ -920,6 +925,30 @@ plan y sont reprises comme items (3.1.2).
      Relu le 2026-10-05.
    - Piste restante classée première par l'agent : observation dynamique d'un film ancien dans le
      jeu (points d'arrêt, MCP Cheat Engine), sur autorisation de l'utilisateur.
+14. *(lot 2.7.a, instruction du gate de corpus, 2026-10-05)* **Une posture dont le début est
+   désormais lu mais pas la fin court jusqu'à la fin de la vie.** Postures invraisemblables
+   (escalade > 2 s, saut > 3 s, glissade > 3 s) sur les huit films en baisse : 118 épisodes
+   (3 473 s) → 94 (2 690 s) ; 27 retirés, 3 nouveaux : glissade de 29 s du slot 619 de `e5adf7b2`
+   (3177-3464, aucune fin de `i62` lue), saut de 13 s du slot 742 de `084a804d` (6197-6328, il
+   traverse la montée à bord lue à 6206 : la piste s'arrête, rien ne ferme le saut), escalade de
+   52 s du slot 629 de `11de8353` (3289-3812). Le bâtisseur des postures ne ferme un épisode que
+   sur une lecture levée ou la fin de la vie ; l'état complet de l'image-clé le fermerait.
+   Couvert par 2.7.d (lecture de l'état complet du bipède aux images-clés). Non traité.
+15. *(lot 2.7.a, même instruction)* **Un DELTA dont la génération contredit l'entité du monde au
+   même slot est lié quand même.** Sur `4f77afc1`, le record du slot 737 en génération 3 (le monde
+   y tient la génération 1, vivante jusqu'à 8943 au moins aux images-clés) est lu propre
+   (`DesyncAt = -1`, liaison d'image-clé, liste localisée par la marche, pas une liste récupérée)
+   et publie une lecture d'occupation attachée au bipède 618. La conséquence côté rejeu est
+   corrigée en 2.7.a (fermeture par le même objet) ; la lecture elle-même relève de la famille
+   « lecture contredite » de la campagne (lot LR), à qui elle est signalée. Non traité ici.
+16. *(lot 2.7.a, même instruction)* **La primauté de la lecture nomme les occupants par CORPS, pas
+   par JOUEUR.** Un épisode de repli est écarté si le film a lu, pour la même vie de véhicule, des
+   montées à bord dont son slot ne fait pas partie (`vehicleFilmRides.contredit`). Sur `084a804d`,
+   le film lit le joueur `…447` (slot 574) au volant du 879 à 8960 ; son trajet de repli de la vie
+   précédente (slot 745, 6697-8656, trou de position) est écarté, et dix tirs de l'arme du 879
+   perdent leur tireur. Les trois tirs du 916 perdus (slot 608) relèvent de l'autre forme
+   (chevauchement de cinq images avec le trajet lu du 599). Règle arbitrée le 2026-09-21 :
+   décision de l'utilisateur demandée.
 
 ## 7. Journal
 
@@ -1160,3 +1189,36 @@ plan y sont reprises comme items (3.1.2).
   juge) : un trajet du slot à bord d'un véhicule fait partie de sa vie, rattaché par slot quel que
   soit le siège (règle de l'utilisateur du 2026-09-21). Test
   `TestHorsVie_UnTrajetDuSlotFaitPartieDeSaVie`, rouge sans la correction.
+- 2026-10-05 : PUSH de `feat/ri-etape2` (`ced770753`, la campagne y prend `-mpp-declare` pour LR) ;
+  CI rouge au lint (`cmd_fermeture/mpp_declare.go` sans l'étiquette `research`), corrigé
+  (`46b51efe7`), lint vert. GATE DE CORPUS, BANC CORRIGÉ (19 témoins contre `87cdfa761`) : les
+  FAUX V-3 de `084a804d` et `e5adf7b2` disparaissent ; `4f77afc1` passe FAUX (V-3 4 → 5 :
+  capacités d'image-clé du slot 737 hors de son trajet raccourci). Seconde passe restreinte aux
+  huit films en baisse, artefacts gardés, et lectures d'occupation relevées par un instrument
+  jetable (non versionné) : cause trouvée (découverte 15), corrigée côté rejeu (`953401feb`,
+  item 2.7.a). Gate complet après le correctif : sortie 1, AUCUN FAUX ; onze témoins sans écart,
+  huit en baisse, banc `ok` partout (`4f77afc1` V-3 4 → 2).
+- 2026-10-05 : INSTRUCTION DES 334 LIGNES EN BAISSE des huit films (gate `27g`), par famille :
+  - *Postures* (169 lignes, six films) : CORRECTIONS. Les durées baissent parce que des
+    transitions sont désormais lues (fin de sprint, fin d'escalade) ; ex. le sprint du slot 513 de
+    `084a804d` 7606-7714 devient 7606-7609 puis 7698-7714, l'accroupi de 59 s du slot 685 (en
+    sprintant) disparaît. Invraisemblables 118 → 94 ; trois nouvelles (découverte 14).
+  - *Changements d'arme* (12 lignes) : CORRECTIONS. 43 « prises » deviennent des « échanges »
+    (l'arme de départ est lue) ; deux « lâchers » disparaissent, dont celui de `084a804d` (slot
+    521 à 9319), relu : l'emplacement passe de rien à rien, reclassé en ré-annonce.
+  - *Tir continu et rafales* (39 lignes) : AMÉLIORATIONS que le gate compte à rebours. Moins de
+    trous (`084a804d` : 27 620 → 8 815 paquets non lus, temps tenu en trou 899 → 400 s), trois fois
+    plus de rafales lues ; un compteur de trous qui baisse est une baisse de manque.
+  - *Dotations de naissance* (5 lignes) : AMÉLIORATIONS. Lues 0 → 5 à 210 par film, publiées 0 →
+    5 à 204 ; les compteurs « non affichable » montent avec ce qui est lu.
+  - *Compteurs des postures* (19 lignes) : les refus croissent avec les records lus (`111fa685` :
+    230 131 → 251 150 records, refus 25 → 50).
+  - *Véhicules* (78 lignes) : trajets lus 269 → 326 sur les sept films à véhicules (58 nouveaux,
+    dont un trajet de 163 s sur `111fa685` borné par la montée et la destruction lues ; 4 lectures
+    de la base non relues) ; trajets de repli 196 → 156, la plupart remplacés par la lecture aux
+    mêmes bornes ; faux passagers retirés (`084a804d` V-6 6 → 1) ; fins de véhicule mieux connues
+    (`084a804d` détruits 35 → 48) ; morts lues sans vie recensée (`4f77afc1` 0 → 11, véhicules nés
+    entre deux images-clés). PERTE RÉELLE RESTANTE : 13 tirs d'arme de véhicule de `084a804d`
+    perdent leur tireur par la primauté de la lecture (découverte 16), 7 en gagnent.
+  Décision demandée à l'utilisateur : admettre ces pertes (gate en base), et la forme de la
+  primauté (découverte 16). La fusion de 2.7.a attend toujours le lot « vue A » de la campagne.

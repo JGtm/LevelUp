@@ -115415,3 +115415,27 @@ l'octet). La campagne obtient son drapeau `-mpp-declare` dans `cmd_fermeture` po
 **Conclusion / prochaine étape** : un agent cherche où sont les deux bits de fin (le premier bit
 est certain), instruit les pertes du gate 2 par famille et explique les écarts du rejeu. Ensuite,
 correction ou admission, puis retour à l'utilisateur.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — instruction du gate de corpus (2.7.a et 2.7.a0) : un correctif, une décision à prendre — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — gate de corpus sans FAUX, huit films en baisse instruits ; admission et
+une décision de règle attendues de l'utilisateur ; fusion après le lot « vue A » de la campagne.
+
+**Décision technique principale** : un épisode d'occupation lu se ferme sur la lecture suivante
+du MÊME OBJET occupant (slot et génération), plus du slot seul (`953401feb`). Banc V-3 : un trajet
+du slot fait partie de sa vie (`ced770753`). Lint CI : étiquette `research` manquante (`46b51efe7`).
+
+**Résultats observés** :
+- gate complet (19 témoins contre `87cdfa761`) : onze sans écart, huit en baisse, banc `ok`
+  partout ; le FAUX de `4f77afc1` venait d'une lecture d'occupation fausse (slot 737 en
+  génération 3) qui fermait à 8410 le trajet de son conducteur ;
+- postures (169 lignes) : corrections, invraisemblables 118 → 94, trois nouvelles (début lu, fin
+  non lue) ;
+- changements d'arme : 43 prises → échanges, deux lâchers de rien supprimés ;
+- tir continu et dotations de naissance : améliorations comptées à rebours par le gate ;
+- véhicules : trajets lus 269 → 326, repli 196 → 156, faux passagers retirés ; reste 13 tirs de
+  véhicule de `084a804d` sans tireur, par la primauté de la lecture qui nomme par corps.
+
+**Conclusion / prochaine étape** : présenter à l'utilisateur ; selon sa décision, admettre ou
+affiner la primauté (nommer par joueur). Puis, après le lot « vue A » de la campagne, fusion de
+`feat/v75` dans la branche, remesure, `make gate-push`, accord de fusion.
