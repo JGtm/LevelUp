@@ -28,7 +28,7 @@ func marcherUnPayloadQuelconque(t *testing.T, pay []byte) {
 	br := LecteurSur(pay)
 	br.poserCadre(cfg)
 	var l lectureDeTrame
-	lireTrameParRangs(br, pay, w, cfg, DefaultPacketPreambleBits, &l)
+	lireTrameParRangs(br, pay, w, cfg, departDeTrame{bit: DefaultPacketPreambleBits}, &l)
 	p := &lecture.Paquet{Payload: pay, Debut: lecture.DebutEnTete}
 	rangerLaTrame(p, &l, true, nil)
 	if len(p.Records) > bits || len(p.Comps) > 64*len(p.Records) || len(p.VueC.Entrees) > bits+1 {

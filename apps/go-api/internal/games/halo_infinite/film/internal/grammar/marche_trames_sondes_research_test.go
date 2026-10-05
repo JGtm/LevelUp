@@ -26,7 +26,7 @@ func (md *marcheDetaillee) marcherParRangs(pay []byte, w *World, debut int,
 	br := LecteurSur(pay)
 	br.poserCadre(md.cfg)
 	var l lectureDeTrame
-	lireTrameParRangs(br, pay, w, md.cfg, debut, &l)
+	lireTrameParRangs(br, pay, w, md.cfg, departDeTrame{bit: debut}, &l)
 	detaillerLaLecture(&l, pay, md.cfg, d)
 	d.Anticipations = compteDesAnticipations(md.cfg.Obs) - avant
 	return l.recs, l.rangs, l.verdict

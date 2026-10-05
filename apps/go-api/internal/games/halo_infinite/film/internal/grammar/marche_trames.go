@@ -146,9 +146,10 @@ func (m *marcheurDesTrames) parcourir(rendre func(*trameLue) bool) {
 	}
 }
 
-// marcherLePaquet marche UNE trame delta et la range dans l arene. Sa tete est rangee d abord
-// ([rangerLaTete]) ; les paquets dont la tete annonce une liste d evenements partent du debut que
-// [localiserLaListe] leur trouve, et une liste non localisee n est pas lue.
+// marcherLePaquet marche UNE trame delta et la range dans l arene. Sa vue A est lue et rangee
+// d abord, une fois ([rangerLaTete]), puis passee a la marche par rangs ; les paquets dont la tete
+// annonce une liste d evenements partent du debut que [localiserLaListe] leur trouve, et une liste
+// non localisee n est pas lue. La fin de la vue A lue n en decide pas (lot VA, etape V1).
 func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 	t, p := &m.trame, &m.paquet
 	pay := pk.Payload(data)
@@ -157,8 +158,8 @@ func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 	t.debut, p.Debut = movementStateSkipLeadBits, lecture.DebutEnTete
 	t.parRangs = m.cfg.Profil.Grammaire.ClassesDeVue
 	t.lecture = lectureDeTrame{debutVueB: -1, finVueB: -1}
-	rangerLaTete(p)
-	if p.VueA.Etat == lecture.VueArretee { // la continuation annonce une liste d evenements
+	vueA := rangerLaTete(p, m.cfg.Profil, m.fc.grammaireDeLaVueA())
+	if listeAnnoncee(&p.VueA) { // la continuation annonce une liste d evenements
 		t.debut, p.Debut = localiserLaListe(pay, m.monde, m.cfg)
 		if t.debut < 0 {
 			rangerUneListeNonLocalisee(p)
@@ -168,7 +169,7 @@ func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 	if t.parRangs {
 		br := LecteurSur(pay)
 		br.poserCadre(m.cfg)
-		lireTrameParRangs(br, pay, m.monde, m.cfg, t.debut, &t.lecture)
+		lireTrameParRangs(br, pay, m.monde, m.cfg, departDeTrame{bit: t.debut, vueA: &vueA}, &t.lecture)
 	} else {
 		t.lecture.recs, t.lecture.rangs, t.lecture.curseur = DecodeFrameViewsCurseur(pay, m.monde, m.cfg,
 			MovementStateViews, t.debut)

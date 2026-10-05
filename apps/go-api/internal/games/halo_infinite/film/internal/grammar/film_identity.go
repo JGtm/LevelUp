@@ -179,6 +179,7 @@ func ReadFilmIdentity(chunk0 []byte) (profile.FilmIdentity, error) {
 		ControleDeCorruption: lireControleDeCorruption(chunk0, buildOff),
 	}
 	id.MatchStartUnix = lireHorodatage(chunk0, buildOff)
+	id.SimulationDeLEnregistreur, id.OptionsDePartieLues = lireSimulationDeLEnregistreur(chunk0, id.BodyBit)
 	return id, nil
 }
 
@@ -212,6 +213,22 @@ func lireControleDeCorruption(d []byte, buildOff int) bool {
 		return false
 	}
 	return source.BitsBourres(d, bit, 1) == 1
+}
+
+// largeurOptionDePartie est la largeur des deux premiers champs des options de partie que
+// `FUN_1407ec560` ecrit en tete du corps : `param_2[0]` game_mode `W(3)`, `param_2[1]`
+// game_simulation `W(3)` (`FUN_140ad4144` les borne a 4 et 3).
+const largeurOptionDePartie = 3
+
+// lireSimulationDeLEnregistreur lit `param_2[1]` (R(3)) apres `param_2[0]` (R(3)) au premier bit du
+// corps de `chunk_00`. Faux quand le corps ne tient pas dans le tampon.
+func lireSimulationDeLEnregistreur(chunk0 []byte, bodyBit int) (uint32, bool) {
+	if bodyBit < 0 || (bodyBit+2*largeurOptionDePartie+7)/8 > len(chunk0) {
+		return 0, false
+	}
+	br := LecteurSur(chunk0)
+	br.SetBitPos(bodyBit + largeurOptionDePartie)
+	return uint32(br.ReadBits(largeurOptionDePartie)), true
 }
 
 // lireHorodatage lit les 32 bits de `_time64()` : ils suivent le booleen d'un bit et les deux

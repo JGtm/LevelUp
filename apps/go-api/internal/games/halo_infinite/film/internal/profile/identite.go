@@ -88,4 +88,12 @@ type FilmIdentity struct {
 	// par composant present. Le depot le lisait a `false` par defaut (`GrammaireBalayage`) ;
 	// depuis le lot 5.18.2 il vient d ICI, donc du film (ADR 0034 : le film est autoportant).
 	ControleDeCorruption bool
+	// SimulationDeLEnregistreur : `game_simulation` des OPTIONS DE PARTIE de l enregistreur, le
+	// deuxieme champ du corps (`FUN_1407ec560` : `param_2[0]` R(3) game_mode, `param_2[1]` R(3)
+	// game_simulation ; noms `FUN_140be946c` / `PTR_DAT_143cef4b0` : 0 none, 1 local, 2
+	// dist-client, 3 dist-server). Elle commande l ecrivain du message Script de la vue A
+	// (`FUN_142eec4d8` : un prefixe R(15) si elle ne vaut pas 2). OptionsDePartieLues dit si le corps
+	// tenait dans le tampon.
+	SimulationDeLEnregistreur uint32
+	OptionsDePartieLues       bool
 }

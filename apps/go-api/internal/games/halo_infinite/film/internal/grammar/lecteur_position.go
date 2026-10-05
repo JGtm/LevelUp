@@ -99,6 +99,11 @@ type tablesDePosition struct {
 	// indexLisible est faux quand la table par index est inconnue (entree de catalogue absente) :
 	// un index lu ne peut alors pas l etre, et la lecture s arrete sur la porte.
 	indexLisible bool
+	// regionSeule : seule la ligne de l index `region` est connue — les bornes de la region jouee,
+	// celles de l entree de catalogue ([tablesDeLaRegionJouee]). Un autre index designe une autre
+	// structure du scenario, dont les bornes ne sont pas lues : la lecture s arrete apres l index.
+	regionSeule bool
+	region      uint32
 }
 
 // tablesDuProfil rend les tables que porte le profil du lecteur — celles de la carte du match
@@ -139,6 +144,9 @@ func lireE524Sur(br *Lecteur, niveau int, t tablesDePosition) (positionQuantifie
 			return pos, false
 		}
 		pos.idx = int(br.ReadBits(t.indexW)) // DAT_144632be0
+		if t.regionSeule && uint64(pos.idx) != uint64(t.region) {
+			return pos, false
+		}
 	}
 	br.obs.compterIndexAbsolu(pos.idx)
 	pos.w = largeursDeLaLigne(t, pos.idx, niveau)

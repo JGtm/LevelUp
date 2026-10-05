@@ -112,7 +112,16 @@ package profile
 // LE DECODAGE CHANGE, ET LE COMPTE SE FERME OU IL NE SE FERMAIT PAS : sur Cliffhanger le chemin
 // absolu du bipede lisait 49 bits (5 de porte + 3x14 + 2), il en lit 47 — exactement la mesure
 // Cheat Engine du dispatch (une seule valeur distincte, 100 % de 154 158 releves).
-const Rev = "profile-2026-09-17.3"
+//
+// ENTREE `profile-2026-10-06` (2026-10-05, lot VA de la campagne de grammaire, etape V1) : LA
+// SIMULATION DE L ENREGISTREUR ENTRE DANS L IDENTITE DU FILM. AUCUNE LIGNE DE LA TABLE NE CHANGE.
+//
+// `identite.go` : [FilmIdentity.SimulationDeLEnregistreur] et [FilmIdentity.OptionsDePartieLues],
+// lus par `grammar` au premier bit du corps de `chunk_00` (`FUN_1407ec560` : game_mode W(3),
+// game_simulation W(3)). La grammaire de la vue A en tire le prefixe du message Script (ecrivain
+// `FUN_142eec4d8`). Aucune largeur, borne ni provenance ne change. Le rang : `profile-2026-10-05`
+// est pris par l etape 2.7.a de la representation intermediaire.
+const Rev = "profile-2026-10-06"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/profile_rev.golden` porte le couple (revision, empreinte) avec son historique, et

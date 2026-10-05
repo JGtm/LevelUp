@@ -140,8 +140,8 @@ type FilmContext struct {
 	// [FilmContext.PoserProfilDeBalayage]. C est ce qui a remplace l heritage par l etat du
 	// processus : rien ici n est partage entre deux films.
 	bal ProfilDeBalayage
-	// corr / corrLue / corrLu : le CONTROLE DE CORRUPTION PAR COMPOSANT (controle_corruption_du_film.go).
-	corr, corrLue, corrLu bool
+	// duFilm : la grammaire que le film DECLARE (controle_corruption_du_film.go).
+	duFilm grammaireDuFilm
 	// vies : les CREATIONS de bipede et les GENERATIONS VIVANTES du handle (generations_vivantes.go).
 	vies memoDesVies
 	// obs est l OBSERVATEUR de ce contexte (lot 2.3) : jamais nil, tous ses champs nuls en

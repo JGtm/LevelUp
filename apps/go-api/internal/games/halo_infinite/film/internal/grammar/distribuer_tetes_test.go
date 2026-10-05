@@ -10,27 +10,47 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
-// TestRangerLaTete : les trois formes de la tete — liste vide (vue terminee sur la continuation),
-// un message (vue arretee apres son genre), une tete qui ne tient pas dans le payload (vue arretee
-// sans genre, et la lecture tolerante d aujourd hui pour les canaux).
-// MUTATION — ranger la vue A sans son genre (`consumeVueA` sans `Genres`) : ROUGE.
+// TestRangerLaTete : les formes de la vue A rangee — liste vide (vue terminee sur la continuation),
+// un message d un film dont la vue A ne se lit pas au-dela de sa tete (vue arretee apres son genre),
+// une tete qui ne tient pas dans le payload (vue arretee sans genre, et la lecture tolerante
+// d aujourd hui pour les canaux), et la MEME tete d un film recent, dont la vue A se lit jusqu a son
+// terminateur (lot VA) : vue terminee, tous ses genres, et la tete donnee aux canaux INCHANGEE.
+// MUTATIONS — ranger la vue A sans ses genres ; la tete prise au dernier genre au lieu du premier :
+// ROUGE.
 func TestRangerLaTete(t *testing.T) {
+	// config 1 ; zoom (genre 21) : continuation, R(7), trois gardes fermees, R(2) ; ramassage
+	// (genre 9) : R(3), porte de FUN_14080d69c fermee ; terminateur.
+	var deux bitWriter
+	deux.bit(1)
+	deux.ecrireEnTeteDeMessage(21)
+	deux.bits(1, 2)
+	deux.ecrireEnTeteDeMessage(9)
+	deux.bits(5, 3)
+	deux.bit(0)
+	deux.bit(0)
 	cas := []struct {
 		nom     string
 		payload []byte
+		g       grammaireDeLaVueA
 		vueA    lecture.VueA
 		tete    teteDeTrame
 	}{
-		{"liste vide", []byte{0x80, 0x00}, lecture.VueA{Debut: 1, Bits: 1, Etat: lecture.VueTerminee}, teteDeTrame{}},
+		{"liste vide", []byte{0x80, 0x00}, grammaireRecente(), lecture.VueA{Debut: 1, Bits: 1, Etat: lecture.VueTerminee},
+			teteDeTrame{}},
 		// config 1, continuation 1, genre 36 = 0b0100100 : 0xD2 puis le bit de poids faible du genre
-		{"un message", []byte{0xD2, 0x00}, lecture.VueA{Debut: 1, Bits: 8, Etat: lecture.VueArretee, Genres: []uint8{36}},
-			teteDeTrame{liste: true, genre: 36}},
-		{"tete tronquee", []byte{0xD2}, lecture.VueA{Debut: 1, Bits: 1, Etat: lecture.VueArretee},
+		{"un message", []byte{0xD2, 0x00}, grammaireDeLaVueA{},
+			lecture.VueA{Debut: 1, Bits: 8, Etat: lecture.VueArretee, Genres: []uint8{36}}, teteDeTrame{liste: true, genre: 36}},
+		{"tete tronquee", []byte{0xD2}, grammaireRecente(), lecture.VueA{Debut: 1, Bits: 1, Etat: lecture.VueArretee},
 			teteDuPayload([]byte{0xD2})},
+		{"zoom puis ramassage, film sans table", deux.buf, grammaireDeLaVueA{},
+			lecture.VueA{Debut: 1, Bits: 8, Etat: lecture.VueArretee, Genres: []uint8{21}}, teteDeTrame{liste: true, genre: 21}},
+		{"zoom puis ramassage, film recent", deux.buf, grammaireRecente(),
+			lecture.VueA{Debut: 1, Bits: uint32(deux.n - 1), Etat: lecture.VueTerminee, Genres: []uint8{21, 9}},
+			teteDeTrame{liste: true, genre: 21}},
 	}
 	for _, c := range cas {
 		p := lecture.Paquet{Payload: c.payload}
-		rangerLaTete(&p)
+		rangerLaTete(&p, ProfilDeBalayageParDefaut(), c.g)
 		if p.VueA.Debut != c.vueA.Debut || p.VueA.Bits != c.vueA.Bits || p.VueA.Etat != c.vueA.Etat ||
 			!reflect.DeepEqual(append([]uint8(nil), p.VueA.Genres...), append([]uint8(nil), c.vueA.Genres...)) {
 			t.Errorf("%s : vue A %+v, attendu %+v", c.nom, p.VueA, c.vueA)

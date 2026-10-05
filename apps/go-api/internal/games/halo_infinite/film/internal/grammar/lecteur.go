@@ -59,6 +59,10 @@ type Lecteur struct {
 	// (`lecteur_position_exceptions.go`) ; la boucle de composants le remet a faux avant chaque
 	// composant ([traverseComponentLoopFrom]).
 	exceptionDatee bool
+	// vueA : la grammaire de la vue A que le film declare ([grammaireDeLaVueA]), posee par la lecture
+	// de la vue A sur SON lecteur ([lireLaVueA]) ; zero sur tout autre lecteur. Les charges de message
+	// qui en dependent (Script, positions a index) la lisent ici.
+	vueA grammaireDeLaVueA
 	// etatComplet : le record en cours est un ETAT COMPLET d image-cle (`FUN_142e2c690`), lu sans
 	// masque de presence. Pose par [walkKeyframeFullState] seul ; faux pour tout record dont un
 	// masque est lu (record NEW, DELTA). Les composants dont la lecture depend d une loi du masque

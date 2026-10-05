@@ -107,17 +107,12 @@ func composantLu(t *EntityTrace, k int, interesse bool) lecture.Composant {
 	return c
 }
 
-// rangerLesVues range l etendue et l etat des trois vues. Une marche partie de la tete re-range la
-// vue A qu elle a lue (la tete rangee avant la marche n en est que le debut) ; depuis un debut
-// localise, la vue A reste la tete ([rangerLaTete]).
+// rangerLesVues range l etendue et l etat des trois vues. La vue A est rangee une fois : par
+// [rangerLaTete] avant la marche, qui la passe a la marche par son depart ; une marche partie de
+// la tete sans elle range celle qu elle a lue, par la meme fonction ([rangerLaVueA]).
 func rangerLesVues(p *lecture.Paquet, l *lectureDeTrame) {
-	if l.enTete {
-		p.VueA.Debut, p.VueA.Bits = uint32(l.debutVueA), uint32(l.finVueA-l.debutVueA) //nolint:gosec // positions
-		p.VueA.Etat = etatDeVue(l.vueA.Porte)
-		p.VueA.Genres = p.VueA.Genres[:0]
-		for _, g := range l.vueA.Genres {
-			p.VueA.Genres = append(p.VueA.Genres, uint8(g)) //nolint:gosec // genre R(7)
-		}
+	if l.enTete && !l.vueARecue {
+		rangerLaVueA(p, &l.vueA)
 	}
 	if l.debutVueB >= 0 {
 		p.VueB = lecture.VueB{Debut: uint32(l.debutVueB), Bits: uint32(l.finVueB - l.debutVueB), //nolint:gosec // positions
@@ -168,7 +163,7 @@ func rangerLaFermeture(p *lecture.Paquet, l *lectureDeTrame) {
 	f := &p.Fermeture
 	f.AuBit, f.Regle = l.verdict.FermeeAuBit, uint8(l.verdict.Invariant)
 	switch {
-	case l.enTete && !l.vueA.Porte:
+	case l.enTete && !l.vueA.Vide:
 		f.Verdict, f.Queue = lecture.VerdictQueueOpaque, queueOpaque(l.curseur, causeDeLaVueA(&l.vueA))
 	case !l.vueCAtteinte:
 		f.Verdict, f.Queue = lecture.VerdictQueueOpaque, queueDeLaVueB(p, l)
@@ -193,8 +188,8 @@ func queueOpaque(debut int, cause lecture.CauseDeQueue) lecture.QueueOpaque {
 		Record: lecture.SansRecord, Composant: lecture.SansComposant}
 }
 
-// causeDeLaVueA rend ce qui a arrete la vue A : un corps de message non porte, ou la fin du
-// payload avant son terminateur.
+// causeDeLaVueA rend ce qui a arrete la marche partie de la tete dans la vue A : un message, que la
+// marche ne traverse pas ([lireTrameParRangs]), ou la fin du payload avant la tete.
 func causeDeLaVueA(a *FluxVueA) lecture.CauseDeQueue {
 	if len(a.Genres) > 0 {
 		return lecture.CauseMessageVueANonPorte

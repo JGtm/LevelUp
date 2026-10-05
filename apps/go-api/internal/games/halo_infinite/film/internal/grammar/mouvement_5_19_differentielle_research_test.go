@@ -64,10 +64,10 @@ func t519Marcher(pay []byte, w *World, cfg FrameConfig, debut int) d519Marche {
 	br.poserCadre(cfg)
 	if debut == DefaultPacketPreambleBits && cfg.PacketPreambleBits >= 1 {
 		br.Skip(cfg.PacketPreambleBits - 1)
-		a := consumeVueA(br, frameLen)
-		out.m.PorteA = a.Porte
+		a := lireLaTeteDeMarche(br, pay, cfg)
+		out.m.PorteA = a.Vide
 		out.m.FinVueA = br.BitPos()
-		if !a.Porte {
+		if !a.Vide {
 			out.m.FinVueB, out.m.FinVueC = br.BitPos(), br.BitPos()
 			return out
 		}

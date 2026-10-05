@@ -51,10 +51,9 @@ const (
 	VueNonLue EtatDeVue = iota
 	// VueTerminee : la vue a été lue jusqu'à son terminateur.
 	VueTerminee
-	// VueArretee : la marche s'est arrêtée dans la vue. Une vue A s'arrête au premier corps de
-	// message, dont la charge n'est pas portée : la marche repart d'un début de vue B localisé
-	// ([Paquet.Debut]) ou s'arrête là ([Fermeture.Queue]) ; une vue C arrêtée porte sa cause dans
-	// [Fermeture.Queue].
+	// VueArretee : la lecture s'est arrêtée dans la vue. Une vue A s'arrête après le genre du
+	// message qu'elle ne sait pas lire (charge non portée, film dont la table des genres ne se lit
+	// pas, fin du payload) ; une vue C arrêtée porte sa cause dans [Fermeture.Queue].
 	VueArretee
 )
 
@@ -111,7 +110,8 @@ const (
 	CauseAucune CauseDeQueue = iota
 	// CauseListeNonLocalisee : le début de la liste d'événements n'a pas été trouvé.
 	CauseListeNonLocalisee
-	// CauseMessageVueANonPorte : un corps de message de la vue A dont la grammaire n'est pas portée.
+	// CauseMessageVueANonPorte : la marche partie de la tête du paquet s'est arrêtée sur le premier
+	// message de la vue A — elle ne traverse qu'une vue A vide.
 	CauseMessageVueANonPorte
 	// CauseFinDePayloadVueA : la vue A a atteint la fin du payload avant son terminateur.
 	CauseFinDePayloadVueA
@@ -182,16 +182,17 @@ type Fermeture struct {
 	Queue QueueOpaque
 }
 
-// VueA est la vue des messages (rang 0) d'une trame delta, telle que la marche l'a lue — au moins
-// sa tête : la continuation et, quand elle annonce un message, son genre, que la marche lit sur
-// chaque trame avant d'en décider la suite.
+// VueA est la vue des messages (rang 0) d'une trame delta, telle que la lecture unique de la vue A
+// l'a lue, une fois par trame, avant que la marche en décide la suite : message par message jusqu'à
+// son terminateur quand le film la rend lisible, sa tête seule sinon (la continuation et, quand elle
+// annonce un message, son genre). Terminée, son étendue finit sur le bit qui suit le terminateur.
 type VueA struct {
 	// Debut et Bits sont son étendue ; zéro bit pour une vue non lue.
 	Debut, Bits uint32
 	// Etat dit jusqu'où la marche l'a lue.
 	Etat EtatDeVue
-	// Genres sont les sélecteurs `R(7)` des corps de message rencontrés, dans l'ordre. La marche
-	// s'arrête au premier corps tant que la charge des messages n'est pas portée.
+	// Genres sont les sélecteurs `R(7)` des messages lus, dans l'ordre, puis celui du message qui a
+	// arrêté la lecture ; le premier est le genre de la tête.
 	Genres []uint8
 }
 

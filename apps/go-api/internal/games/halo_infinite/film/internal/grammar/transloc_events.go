@@ -255,6 +255,14 @@ func tablesDeLEntree(e *profile.MapQuantEntry) tablesDePosition {
 		bornesCarte: bornesDeLaPlage(e.Range()), indexLisible: true}
 }
 
+// tablesDeLaRegionJouee rend les tables de `FUN_14076e524` que l entree de catalogue de la carte du
+// match fait connaitre : celles de [tablesDeLEntree], restreintes a l index de sa region jouee.
+func tablesDeLaRegionJouee(e profile.MapQuantEntry) tablesDePosition {
+	t := tablesDeLEntree(&e)
+	t.regionSeule, t.region = true, e.Region
+	return t
+}
+
 // translocEntryUsable dit si l'entrée de catalogue permet une déquantification : bornes
 // ordonnées et largeurs dans l'enveloppe de la loi du moteur. Une entrée hors enveloppe est
 // REFUSÉE plutôt que lue — la largeur commande le nombre de bits consommés, une valeur

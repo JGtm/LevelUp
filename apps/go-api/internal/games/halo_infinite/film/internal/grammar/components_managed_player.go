@@ -104,6 +104,8 @@ type sacTexte struct {
 // `r7_charges_lot2_research_test.go`. Ils appellent desormais CETTE fonction. L un des deux
 // marquait le sous-type 2 « quantifie a largeur runtime » et ne lisait AUCUN bit : sur pieces
 // c est faux, `0x18` et `0x20` sont des litteraux (`142c70d02`, `142c70d27`).
+//
+//nolint:unparam // le sac lu est rendu aux instruments (`playergameevent_0xe9_helpers_test.go`, `r7_charges_lot2_research_test.go`) ; les deux lecteurs de production (ti=9 i9, charges des evenements de jeu de la vue A) ne font que le traverser (2026-10-05, lot VA).
 func consumeSacTexte(br *Lecteur) sacTexte {
 	var sac sacTexte
 	if !br.ReadBit() { // FUN_1406cf008 : la porte « texte »
