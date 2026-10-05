@@ -395,7 +395,7 @@ package grammar
 //
 // Ce qui change, contre `grammar-2026-10-03.5` (`87cdfa761`) :
 //   - la table des 123 genres de message et leurs versions natives sont portees, avec les charges de
-//     46 genres (44 du lot LN, plus Script (15) et biped_throw_initiate (39) de la recherche R2, qui
+//     47 genres (45 du lot LN, plus Script (15) et biped_throw_initiate (39) de la recherche R2, qui
 //     lit aussi les positions a index des genres 5 et 6 sur la region jouee) ; 13 genres sont vides
 //     (`vue_a_genres.go`, `vue_a_versions.go`, `vue_a_charges*.go`) ; la simulation de
 //     l enregistreur entre dans l identite du film (`profile-2026-10-06`) ;

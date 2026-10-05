@@ -42,12 +42,12 @@ localisation. Contrôle d'identité tenu :
 | Bit de configuration `DAT_144706104` : à 0, les références ne prennent pas la plage par catégorie | `FUN_142987460`, `FUN_1406d3140` | `lireLaVueA` (arrêt après la tête) |
 | Table des 123 descripteurs, 13 genres vides | `FUN_140e453b4`, `FUN_1408d8220` | `vue_a_genres.go` (report LN) |
 | Version de chaque genre : en rejeu celle du film (`film + 0xCB208 + genre*4`), native `DAT_14474cd90` | `FUN_141102ed0`, `FUN_1428e1c64` | `vue_a_versions.go` |
-| 44 genres à charge du lot LN | table LN §1.4 | `vue_a_charges*.go` (report LN) |
+| 45 genres à charge du lot LN (44 avant la relecture RI, §12) | table LN §1.4 | `vue_a_charges*.go` (report LN) |
 | 15 Script : `[W(15)]` si `game_simulation != 2` (écrivain), `W(13)`, `W(10) n`, `n` bits ; la simulation de l'enregistreur est le 2e champ `W(3)` des options de partie en tête du corps de `chunk_00` | `FUN_14080bb4c`, `FUN_142eec4d8`, `FUN_1407ec560`, `FUN_140ad4144`, `FUN_142e33478` | `vue_a_charges_execution.go`, `film_identity.go`, `profile.FilmIdentity.SimulationDeLEnregistreur` |
 | 39 biped_throw_initiate : `k = R(1)` ; 0 → `R(3)` ; 1 → porte `R(32)`, `R(4)` ; puis `FUN_1407f2058`. La garde d'état (`DAT_144c1cfa8 + 4 == 2`) se ferme par le lecteur lui-même (un refus arrête la vue A) | `FUN_140c6a58c`, `FUN_14104fc8c`, `FUN_140544ec8` | `chargeLancerInitie` |
 | 5 et 6 : position à index aux niveaux 0xf et 0xc ; largeurs par la loi `FUN_140be9b88` sur les bornes de la région jouée ; un autre index arrête la lecture | `FUN_140be9a14`, `FUN_140be9b88`, `FUN_14076e524` | `chargeDetonation`, `chargeImpact` sur `tablesDeLaRegionJouee` |
 
-Bilan : 46 genres à charge portée (44 de LN, plus 15 et 39), 13 vides, soit 59 genres lisibles sur
+Bilan : 47 genres à charge portée (45 de LN, plus 15 et 39 ; 46, 44 et 59 avant la relecture RI, §12), 13 vides, soit 60 genres lisibles sur
 123. Non portés : 85 et 116 (valeur d'exécution non fixée par le film, R2 §4), 12, 106 et les genres
 rares (R2 §2.3 : désynchronisations).
 
@@ -405,3 +405,63 @@ table dans le test. La clé est devenue `"marche complete"`, puis le gate est pa
 --new-from-rev=e6ec7abd4` : `0 issues.` Aucune sortie de production ne change. La carte v2, killsource,
 `replay-equiv` et `replay-corpus-gate` ne sont pas rejoués, faute d'objet : le gate 2 reste celui du §3.
 Pièces : `scratchpad/cg3-V1-corr/` (`s01.go`, `s01.json`, `s01_grammar2.log`, `grammar_tete.log`).
+
+## 12. Corrections de la relecture RI (2026-10-05)
+
+Deux relecteurs de la session levelup-57 ont relu l'étape sur `3bacfadeb`. Chaque constat a été
+vérifié sur pièces avant d'être corrigé ; aucun n'a été jugé infondé. Aucune sortie de production ne
+change (contrôle ci-dessous). La révision `grammar-2026-10-06` est gardée ; son empreinte est
+régénérée à révision constante (`7aa119ae…`, `testdata/grammar_rev.golden`).
+
+| # | Constat | Verdict sur pièces | Action (fichier:ligne) |
+|---|---|---|---|
+| 1 | `lectureDeTrame.finVueA` écrit, jamais lu | Fondé : `grep finVueA` ne trouve que la déclaration et les deux écritures | Champ et commentaire retirés, `debutVueA` gardé et commenté (`marche_trames_rangs.go:17-22`) |
+| 2 | Branche « vue A non reçue » (`marche_trames_rangs.go:76`) sans test sur une vue A non vide | Fondé : sous la mutation m26, seul le test neuf rougit | `TestLaMarcheSansVueARecueNeTraversePasUneVueANonVide` (`marche_trames_test.go:207`), par `DecodeFrameViewsCurseur` puis `decodeFrameParRangs` |
+| 3 | Règle du Script inversée et tables de la région jouée vidées : aucun test hors research ne rougit | Fondé : `TestUnVraiPaquetDeQuaranteScripts` recopiait la règle, `TestLesPositions…` posait les tables à la main, `TestLeScriptSuit…` posait l'état du Script | Les trois tests passent par la production : `profilDIdentite` (`profile.Resoudre`, `vue_a_execution_test.go:104`), `scriptDuFilm` (`:113`), `grammaireDeLaVueASousFilm(...).positions` (`:259`), `grammaireSousFilm` et `grammaireDeLaVueASousFilm` (`:304`) |
+| a | `br.Skip(3 * 12)` et `br.Skip(3 * w)` recopient `FUN_140c1e9d4` | Fondé ; `consume140c1e9d4` existe (`components_biped_ability.go:318`). Même avance du curseur : `Skip(n)` et `ReadBits(n)` avancent tous deux `pos` de `n` (`source/bits.go`) | Appels (`vue_a_charges.go:153`, `vue_a_charges_tir.go:99`), liste de l'en-tête complétée (`vue_a_charges_tir.go:9-12`) ; `//nolint:unparam` de `consume140c1e9d4` retiré, sa largeur varie désormais |
+| b1 | `vue_a_versions.go:33-34` : « ce que la marche fait de sa fin dépend de la classe » | Fondé : la classe n'est lue que par `lireLaVueA` (`vue_a_lecture.go:86`), la marche ne lit pas la fin d'une vue A qui porte un message | Phrase réécrite (`vue_a_versions.go:33-36`) |
+| b2 | « seule implantation de `FUN_14076a1c4` » (`vue_a_lecture.go:3`, `:25-26`, archlint `:6-7`) | Fondé : `readPacketHead` (`event_list.go:87`) relit la tête, et par lui `teteDuPayload`, `lireEnteteTir36`, `scanChunkDamages` | Les trois textes disent ce qui est unique : la lecture COMPLÈTE, jusqu'au terminateur (`vue_a_lecture.go:3`, `:24-31`, `archlint/film_vue_a_lecteur_unique_test.go:6-14`) |
+| b3 | Contrat de `lireE524Sur` : « après la porte » | Fondé : avec `regionSeule`, `ok=false` tombe après l'index (`lecteur_position.go:148-150`) | Contrat réécrit pour les deux cas (`lecteur_position.go:137-140`) |
+| b4 | `rev_chronique.go:397-399` : « 46 genres (44 du lot LN) » | Fondé : un test d'overlay (non versionné) qui parcourt les 123 genres compte 47 genres non vides à charge portée et 13 vides ; à `d9c268c9f` (fin de LN), les `case` des trois aiguillages couvrent 45 genres | « 47 genres (45 du lot LN…) » (`rev_chronique.go:398`) ; §1 corrigé (45, 47, 60 lisibles) |
+| c | `f58 == 1`, `br.ReadBits(3) == 1` | Fondé ; lus dans `ln_ghidra/g0_1407f15a4.c:354` (`*(int *)(param_3 + 0x58) == 1`) et `g40_140ff8d70.c:118-119` (`*param_3 = bVar10 ; if (bVar10 == 1)`) | `degatsF58AvecOctet` (`vue_a_charges.go:75-77`), `teteCorpsACorpsAvecSuite` (`vue_a_charges_armes.go:73-75`) |
+| d | Complexité de `chargeDuGenre` et `chargeDArme` > 12 | Fondé (19 et 23 genres) ; `gocyclo` est exempté sur `film/internal/grammar/` (`.golangci.yml`), la règle 5 demande la justification | `//nolint:gocyclo // un case par genre de message porte (aiguillage)`, forme de `dispatch_player.go:336` (`vue_a_charges.go:30`, `vue_a_charges_armes.go:231`) |
+| e | Troisième copie de `FUN_1407f15a4` (`killsource.evBody0`, `lot1DecodeDamageAftermath`, `chargeDegatsApres`) | Fondé ; `lot1DecodeDamageAftermath` lit « (2) +0x10 : R(1) ; si 1 : R(5) » contre « si 0 » pour les deux autres (D-LN-2). Non centralisé : la sortie de `weapon_hits` changerait et `killsource` serait touché | Exemption datée, avec son critère de retrait (`vue_a_charges.go:81-86`) ; découverte D-VAV1-6 |
+| f | Troisième copie de la garde `bit < 0 OU (bit+N+7)/8 > len(d)` (`film_identity.go:212`, `:226`, `:247`) | Fondé | Helper `tientDansLeTampon` (`film_identity.go:258-262`) ; garde-rail `archlint/film_garde_de_tampon_test.go` (une seule écriture, dans l'hôte ; vecteurs) |
+| g | Troisième copie du balayage de la production (`film_vue_a_lecteur_unique_test.go:91-136`, `film_localisateur_unique_test.go:133-180`, `film_tri_total_test.go:126-167`) | Fondé | `archlint/film_balayage_test.go` : `balayerLaProduction` et `balayerLaProductionHorsResearch`, appelés par les trois tests et par le garde-rail de f |
+
+**Mutations** (`-overlay`, suite entière du paquet `grammar` hors `TestGrammarRevSuitLaGrammaire` ;
+`scratchpad/mut/`) :
+
+| Mutation | Règle | Rougit |
+|---|---|---|
+| m26 vue A non reçue prise pour le bit d'amorce aveugle (`FluxVueA{Debut, Vide, Porte, Fin: Debut+1}` à `marche_trames_rangs.go:76`) | branche sans vue A reçue | `TestLaMarcheSansVueARecueNeTraversePasUneVueANonVide` (seul) |
+| m27 règle de l'écrivain inversée dans `scriptDuFilm` (`==` devient `!=`) | Script | `TestLeScriptSuitLaSimulationDeLEnregistreur`, `TestUnVraiPaquetDeQuaranteScripts` |
+| m28 tables de la région jouée vidées à la dérivation (`grammaireDeLaVueASousFilm` sans `positions`) | 5 et 6 | `TestLesPositionsAIndexSeLisentSurLaRegionJouee` |
+| m29 garde de tampon réécrite à la main dans `u32DuFlux` (SUR DISQUE, restaurée) | garde unique | `TestGardeDeTamponUnique` (archlint) |
+
+**Sortie inchangée** (points a et f, code de production). Binaires construits depuis
+`git archive 3bacfadeb` et depuis l'arbre corrigé (`scratchpad/vav1corr/`, `controle.sh`) :
+
+- carte v2 (`cmd_fermeture -mode v2 -denominateur-fixe -paquets`) sur `bcb6d393` (HI_1_12_0, ÉGALE),
+  `fb1a1a72` (HI_1_13_0, ÉGALE), `e5adf7b2` (HI_1_11_0, PRÉFIXE) : rc=0 des deux côtés,
+  `fermeture_paquets.tsv` identique à l'octet (sha256 `17908ebe…6a2eb5e`, 87 460 lignes), tous les
+  autres TSV identiques, `fermeture_films.tsv` identique hors `pic_octets` et `duree_ms` ;
+- `cmd/killsource json` sur `bcb6d393` et `fb1a1a72` : rc=0, JSON identiques à l'octet
+  (`6c98d114…`, `5c20132b…`), stderr identiques hors horodatage.
+
+**Gates.** `gofmt -l ./internal/ ./cmd/` : vide. `go vet` du paquet `grammar` et d'`archlint` : rc=0 ;
+`go vet -tags=research` du paquet `grammar` : rc=0. `go test ./internal/games/halo_infinite/film/internal/grammar/ -count=1` :
+`ok … 61.745s`. `go test ./internal/archlint/ -count=1` : `ok … 43.820s`. `golangci-lint run` sur
+`grammar/...` et `archlint/...` : `0 issues.` ; sous `--build-tags=research --new-from-rev=3bacfadeb`
+(`grammar/...`) : `0 issues.`
+
+**Découvertes** (notées, non traitées) :
+
+- **D-VAV1-6** — `FUN_1407f15a4` a trois lectures de production, dont une (`lot1DecodeDamageAftermath`,
+  `weapon_hits`) lit la porte de `FUN_1407f2058` à polarité inversée (D-LN-2). Un lot dédié doit les
+  centraliser et corriger D-LN-2, la sortie de `weapon_hits` changeant alors.
+- **D-VAV1-7** — `FUN_14080bb4c` (Script) a deux lectures : `chargeScript` et `killsource.evBody15`
+  (`gate15` tranché par film côté killsource, lu dans `chunk_00` côté vue A). Deux copies : dans la
+  règle 6, à surveiller.
+- **D-VAV1-8** — La tête du tir (`FUN_14080c1f8` jusqu'aux deux R(1) qui suivent l'arme) se lit deux
+  fois : `chargeTirArme` et `lireEnteteTir36Sous`. Deux copies : dans la règle 6, à surveiller.

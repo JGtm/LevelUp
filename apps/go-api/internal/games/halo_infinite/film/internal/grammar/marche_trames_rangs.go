@@ -15,11 +15,11 @@ type lectureDeTrame struct {
 	// enTete : la marche est partie de la tete du paquet — bit de configuration, puis vue A.
 	enTete bool
 	// vueA : la vue A, quand enTete ; vueARecue : elle a ete lue avant la marche et passee par son
-	// depart ([departDeTrame]) — la marche ne l a ni relue ni ne la re-range. `[debutVueA, finVueA)`
-	// est ce que la marche en a traverse.
-	vueA               FluxVueA
-	vueARecue          bool
-	debutVueA, finVueA int
+	// depart ([departDeTrame]) — la marche ne l a ni relue ni ne la re-range. debutVueA : le bit ou
+	// la marche prend la vue A, celui qui suit le bit de configuration.
+	vueA      FluxVueA
+	vueARecue bool
+	debutVueA int
 	// debutVueB / finVueB : les bornes de la vue B, -1 quand elle n est pas atteinte ; sortieVueB
 	// et eidRejete : comment elle s est arretee ([Lecteur.sortirDeLaVueB]).
 	debutVueB, finVueB int
@@ -77,12 +77,10 @@ func lireTrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig, d dep
 		}
 		if !l.vueA.Vide {
 			br.SetBitPos(l.vueA.finDeTete())
-			l.finVueA = br.BitPos()
 			l.publier(br) // vue C non atteinte : un TROU, que l appelant compte
 			return
 		}
 		br.SetBitPos(l.vueA.Fin)
-		l.finVueA = br.BitPos()
 		l.rangs++
 	} else {
 		br.Skip(d.bit)

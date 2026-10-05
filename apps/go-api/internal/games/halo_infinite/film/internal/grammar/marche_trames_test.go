@@ -199,6 +199,27 @@ func TestLaMarcheDepuisLaTeteNeTraversePasUneVueANonVide(t *testing.T) {
 	}
 }
 
+// TestLaMarcheSansVueARecueNeTraversePasUneVueANonVide : la porte des essais de debut
+// ([decodeFrameParRangs], par [DecodeFrameViewsCurseur]) part de la tete SANS vue A recue ; la
+// marche la lit elle-meme, et une vue A qui porte un message l arrete apres sa tete : aucun rang lu,
+// aucun record, le curseur au bit qui suit le genre. MUTATION — la vue A non recue prise pour le
+// bit d amorce aveugle (vide, finie au bit 2) : la marche entre dans la vue B, ROUGE.
+func TestLaMarcheSansVueARecueNeTraversePasUneVueANonVide(t *testing.T) {
+	var bw bitWriter
+	bw.bit(1)     // le bit de configuration
+	bw.bit(1)     // la vue A porte un message
+	bw.bits(5, 7) // son genre
+	finDeTete := bw.n
+	bw.bits(0, 16)
+	cfg := cadreDeCarte()
+	recs, rangs, curseur := DecodeFrameViewsCurseur(bw.buf, mondeDeCarte(), cfg, MovementStateViews,
+		cfg.PacketPreambleBits)
+	if len(recs) != 0 || rangs != 0 || curseur != finDeTete {
+		t.Errorf("records %+v, %d rang(s), curseur %d : attendu la marche arretee au bit %d, sans rang",
+			recs, rangs, curseur, finDeTete)
+	}
+}
+
 // TestLaMarcheNeRelitPasLaVueAQuElleRecoit : la marche des trames lit la vue A UNE fois
 // ([rangerLaTete]) et la passe a la marche par rangs par son depart ; la marche ne la relit pas.
 // Une vue A recue VIDE fait entrer la marche dans la vue B a sa fin, meme sur un payload dont le

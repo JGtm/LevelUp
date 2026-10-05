@@ -99,19 +99,25 @@ func (w *bitWriter) ecrireEvenementJoueurCourt() {
 	w.bits(0xffffffff, 32)
 }
 
+// profilDIdentite resout le profil d un film dont la section d identification est `id`, sous
+// l entree de catalogue `carte` (nil : un film lu sans carte).
+func profilDIdentite(id profile.FilmIdentity, carte *profile.MapQuantEntry) profile.Profile {
+	return profile.Resoudre(profile.ClesDuFilm{RegistrePresent: true, Identite: id, IdentiteLue: true}, carte)
+}
+
 // TestLeScriptSuitLaSimulationDeLEnregistreur : l ecrivain du Script ecrit le prefixe R(15) quand la
 // simulation de l enregistreur n est pas dist-client ; le lecteur porte le lit selon ce que le film
-// declare, et la fin de la vue A tombe au bit pres apres un message 82 et le terminateur. Sans
-// options de partie lues, le Script ne se lit pas. MUTATION — le prefixe lu sur la regle inversee :
-// ROUGE.
+// declare ([scriptDuFilm]), et la fin de la vue A tombe au bit pres apres un message 82 et le
+// terminateur. Sans options de partie lues, le Script ne se lit pas. MUTATION — la regle de
+// l ecrivain inversee dans [scriptDuFilm] : ROUGE.
 func TestLeScriptSuitLaSimulationDeLEnregistreur(t *testing.T) {
 	for _, c := range []struct {
-		nom     string
-		prefixe bool
-		etat    etatDuScript
+		nom        string
+		prefixe    bool
+		simulation uint32
 	}{
-		{"enregistreur dist-server (3)", true, scriptAvecPrefixe},
-		{"enregistreur dist-client (2)", false, scriptSansPrefixe},
+		{"enregistreur dist-server (3)", true, 3},
+		{"enregistreur dist-client (2)", false, simulationDistClient},
 	} {
 		var w bitWriter
 		w.bit(1)
@@ -120,12 +126,14 @@ func TestLeScriptSuitLaSimulationDeLEnregistreur(t *testing.T) {
 		w.bit(0)
 		fin := w.n
 		w.bits(0x5555, 16)
+		id := profile.FilmIdentity{SimulationDeLEnregistreur: c.simulation, OptionsDePartieLues: true}
 		g := grammaireRecente()
-		g.script = c.etat
+		g.script = scriptDuFilm(profilDIdentite(id, nil))
 		if a := lireSous(w.buf, g); !a.Porte || a.Fin != fin || !slices.Equal(a.Genres, []int{15, 82}) {
 			t.Errorf("%s : %+v, attendu portee jusqu au bit %d, genres [15 82]", c.nom, a, fin)
 		}
-		g.script = scriptInconnu
+		id.OptionsDePartieLues = false
+		g.script = scriptDuFilm(profilDIdentite(id, nil))
 		if a := lireSous(w.buf, g); a.Porte || a.Fin != 9 {
 			t.Errorf("%s, simulation non declaree : %+v, attendu arretee apres le genre 15", c.nom, a)
 		}
@@ -219,9 +227,11 @@ func (w *bitWriter) ecrirePositionDeNiveau(porte bool, index uint64, larg [3]uin
 
 // TestLesPositionsAIndexSeLisentSurLaRegionJouee : la detonation (genre 5, niveau 0xf) et l impact
 // (genre 6, niveau 0xc) lisent leur position par `FUN_14076e524` : porte posee, la table DEFAUT du
-// build ; index de la region jouee, la loi `FUN_140be9b88` sur les bornes de l entree de catalogue ;
-// un autre index, ou un film lu sans carte, arrete la lecture — rien n est devine. MUTATIONS —
-// niveaux 0xf / 0xc lus a 0x10 ; un index d une autre region lu : ROUGE.
+// build ; index de la region jouee, la loi `FUN_140be9b88` sur les bornes de l entree de catalogue du
+// profil, telles que la grammaire du film les derive ([grammaireDeLaVueASousFilm]) ; un autre index,
+// ou un film lu sans carte, arrete la lecture — rien n est devine. MUTATIONS — niveaux 0xf / 0xc lus
+// a 0x10 ; un index d une autre region lu ; les tables de la region jouee videes a la derivation :
+// ROUGE.
 func TestLesPositionsAIndexSeLisentSurLaRegionJouee(t *testing.T) {
 	e := carteDeTest()
 	bornes := [3][2]float32{{-100, 100}, {-50, 50}, {-10, 10}}
@@ -246,11 +256,13 @@ func TestLesPositionsAIndexSeLisentSurLaRegionJouee(t *testing.T) {
 			func(w *bitWriter) { w.bit(1); w.bits(0, 7+7+0x13) }, // variante, deux scalaires, direction
 			func(w *bitWriter) { w.bits(0, 0x13+9+1) }},
 	} {
+		jouee := grammaireDeLaVueASousFilm(profilDIdentite(profile.FilmIdentity{}, &e)).positions
+		sansCarte := grammaireDeLaVueASousFilm(profilDIdentite(profile.FilmIdentity{}, nil)).positions
 		for _, c := range []cas{
-			{"porte posee", true, 0, tablesDeLaRegionJouee(e), true},
-			{"index de la region jouee", false, 1, tablesDeLaRegionJouee(e), true},
-			{"index d une autre region", false, 2, tablesDeLaRegionJouee(e), false},
-			{"film lu sans carte", false, 1, tablesDeLaRegionJouee(profile.MapQuantEntry{}), false},
+			{"porte posee", true, 0, jouee, true},
+			{"index de la region jouee", false, 1, jouee, true},
+			{"index d une autre region", false, 2, jouee, false},
+			{"film lu sans carte", false, 1, sansCarte, false},
 		} {
 			larg := profile.LargeursAxeParDefautDuBuild(genre.niveau)
 			if !c.porte {
@@ -273,8 +285,10 @@ func TestLesPositionsAIndexSeLisentSurLaRegionJouee(t *testing.T) {
 }
 
 // TestUnVraiPaquetDeQuaranteScripts : `bcb6d393` (HI_1_12_0), chunk 1, paquet 204, sous ce que son
-// `chunk_00` declare : la vue A est quarante messages Script dont le prefixe compte de 0 a 39, puis le
-// terminateur ; sa fin est le bit 5 605 (`testdata/vue_a_bcb6d393_1_204.PROVENANCE.txt`).
+// `chunk_00` declare, derive par le code de production ([grammaireSousFilm],
+// [grammaireDeLaVueASousFilm]) : la vue A est quarante messages Script dont le prefixe compte de 0 a
+// 39, puis le terminateur ; sa fin est le bit 5 605 (`testdata/vue_a_bcb6d393_1_204.PROVENANCE.txt`).
+// MUTATION — la regle de l ecrivain inversee dans [scriptDuFilm] : ROUGE.
 func TestUnVraiPaquetDeQuaranteScripts(t *testing.T) {
 	pay, err := os.ReadFile("testdata/vue_a_bcb6d393_1_204.bin")
 	if err != nil {
@@ -284,15 +298,10 @@ func TestUnVraiPaquetDeQuaranteScripts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	p := profilDIdentite(id, nil)
 	bal := ProfilDeBalayageParDefaut()
-	bal.Grammaire.ControleDeCorruption = id.ControleDeCorruption
-	var g grammaireDeLaVueA
-	g.classe, g.genres = classeDesGenres(id.TypeVersions)
-	g.script = scriptSansPrefixe
-	if id.SimulationDeLEnregistreur != simulationDistClient {
-		g.script = scriptAvecPrefixe
-	}
-	a := lireLaVueA(pay, 1, bal, g)
+	bal.Grammaire, _ = grammaireSousFilm(bal.Grammaire, p)
+	a := lireLaVueA(pay, 1, bal, grammaireDeLaVueASousFilm(p))
 	if !a.Porte || a.Fin != 5605 || len(a.Genres) != 40 || slices.ContainsFunc(a.Genres, func(g int) bool { return g != 15 }) {
 		t.Fatalf("vue A : portee %v, fin %d, %d genres %v ; attendu quarante Script jusqu au bit 5605", a.Porte,
 			a.Fin, len(a.Genres), a.Genres)

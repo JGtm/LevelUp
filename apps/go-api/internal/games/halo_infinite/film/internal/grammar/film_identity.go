@@ -209,7 +209,7 @@ func ReadFilmIdentity(chunk0 []byte) (profile.FilmIdentity, error) {
 // d identification n a pas ce bit.
 func lireControleDeCorruption(d []byte, buildOff int) bool {
 	bit := (buildOff + identBoolOff) * 8
-	if bit < 0 || (bit+1+7)/8 > len(d) {
+	if !tientDansLeTampon(d, bit, 1) {
 		return false
 	}
 	return source.BitsBourres(d, bit, 1) == 1
@@ -223,7 +223,7 @@ const largeurOptionDePartie = 3
 // lireSimulationDeLEnregistreur lit `param_2[1]` (R(3)) apres `param_2[0]` (R(3)) au premier bit du
 // corps de `chunk_00`. Faux quand le corps ne tient pas dans le tampon.
 func lireSimulationDeLEnregistreur(chunk0 []byte, bodyBit int) (uint32, bool) {
-	if bodyBit < 0 || (bodyBit+2*largeurOptionDePartie+7)/8 > len(chunk0) {
+	if !tientDansLeTampon(chunk0, bodyBit, 2*largeurOptionDePartie) {
 		return 0, false
 	}
 	br := LecteurSur(chunk0)
@@ -244,7 +244,7 @@ func lireHorodatage(d []byte, buildOff int) uint32 {
 // `FUN_1406d60f4` pousse les octets de la SOURCE dans l'ordre des adresses, MSB d'abord. Les
 // quatre octets sortis du flux sont donc l'image memoire du u32, et se relisent en LE.
 func u32DuFlux(d []byte, bit int) uint32 {
-	if bit < 0 || (bit+32+7)/8 > len(d) {
+	if !tientDansLeTampon(d, bit, 32) {
 		return 0
 	}
 	br := LecteurSur(d)
@@ -253,6 +253,13 @@ func u32DuFlux(d []byte, bit int) uint32 {
 	// ECHANGE D OCTETS, pas une lecture de film (`math/bits`, pas `encoding/binary` — ce
 	// fichier ne touche plus les octets autrement que par la couche source).
 	return bits.ReverseBytes32(uint32(br.ReadBits(32)))
+}
+
+// tientDansLeTampon dit si les `n` bits qui commencent au bit `bit` tiennent dans les octets de `d` :
+// la garde des lecteurs de la section d identification, qui rendent leur valeur de repli hors du
+// tampon (garde-rail : `archlint/film_garde_de_tampon_test.go`).
+func tientDansLeTampon(d []byte, bit, n int) bool {
+	return bit >= 0 && (bit+n+7)/8 <= len(d)
 }
 
 // chercherChaineBuild ancre la section d'identification sur la chaine de build.

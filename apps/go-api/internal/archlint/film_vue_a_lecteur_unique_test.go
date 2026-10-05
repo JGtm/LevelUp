@@ -3,11 +3,15 @@ package archlint
 // film_vue_a_lecteur_unique_test.go — LE GARDE-RAIL DE LA LECTURE UNIQUE DE LA VUE A (lot VA de la
 // campagne de grammaire ; regle des deux copies, CLAUDE.md n. 6).
 //
-// La vue A d une trame delta (`FUN_14076a1c4`) se lit en UN seul endroit :
-// `grammar/vue_a_lecture.go` ([grammar.lireLaVueA]), que deux fonctions appellent — `rangerLaTete`,
-// qui la lit une fois par trame dans la marche des trames et la range, et `lireTrameParRangs`, qui
-// la lit depuis la tete du paquet quand on ne la lui passe pas. Ce test interdit, dans l arbre
-// syntaxique de la production du decodeur :
+// La vue A d une trame delta (`FUN_14076a1c4`) ne se lit JUSQU A SON TERMINATEUR, message par
+// message, qu en UN seul endroit : `grammar/vue_a_lecture.go` ([grammar.lireLaVueA]), que deux
+// fonctions appellent — `rangerLaTete`, qui la lit une fois par trame dans la marche des trames et
+// la range, et `lireTrameParRangs`, qui la lit depuis la tete du paquet quand on ne la lui passe
+// pas. La tete seule (bit de configuration, continuation, genre du premier message) est relue
+// ailleurs — `readPacketHead`, et par lui `teteDuPayload`, `lireEnteteTir36` et `scanChunkDamages`,
+// ces deux derniers lisant encore le corps du premier message pour leur canal — ; aucun ne lit au-dela
+// du premier message, et ce test ne les garde pas. Il interdit, dans l arbre syntaxique de la
+// production du decodeur :
 //
 //	un appel a `lireLaVueA` hors de ces deux fonctions ;
 //	un appel a `chargeDuGenre` (le lecteur de la charge d un message) hors de `lireUnMessage`, le
@@ -16,16 +20,12 @@ package archlint
 //	(ratchet anti-resurrection).
 //
 // PERIMETRE : la production de `film/**`, hors `film/research/` et hors fichiers `//go:build
-// research`, tests exclus.
+// research`, tests exclus ([balayerLaProductionHorsResearch]).
 
 import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -89,37 +89,8 @@ func contientNom(noms []string, nom string) bool {
 
 // TestLectureDeLaVueAUnique interdit les lectures de la vue A hors de la lecture unique.
 func TestLectureDeLaVueAUnique(t *testing.T) {
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici)))
-	base := filepath.Join(goAPIRoot, filepath.FromSlash(racineLocalisateur))
-	fichiers := 0
 	appels := map[string]int{}
-	err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, err := filepath.Rel(goAPIRoot, chemin)
-		if err != nil {
-			return err
-		}
-		rel = filepath.ToSlash(rel)
-		if d.IsDir() {
-			if chemin != base && repertoireExcluDuTriTotal(d.Name(), rel) {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(chemin, ".go") || strings.HasSuffix(chemin, "_test.go") {
-			return nil
-		}
-		blob, err := os.ReadFile(chemin) //nolint:gosec // chemin derive du perimetre
-		if err != nil || estSousTagResearch(blob) {
-			return err
-		}
-		fichiers++
+	fichiers := balayerLaProductionHorsResearch(t, []string{racineLocalisateur}, func(rel string, blob []byte) {
 		for _, e := range ecartsDeLaVueA(t, rel, blob) {
 			t.Errorf("%s : %s — la vue A se lit par grammar.lireLaVueA (vue_a_lecture.go), depuis "+
 				"rangerLaTete ou lireTrameParRangs seulement", rel, e)
@@ -127,11 +98,7 @@ func TestLectureDeLaVueAUnique(t *testing.T) {
 		for appele := range appelantsPermis() {
 			appels[appele] += strings.Count(string(blob), appele+"(")
 		}
-		return nil
 	})
-	if err != nil {
-		t.Fatalf("balayage de %s : %v", base, err)
-	}
 	if fichiers < plancherFichiersVueA {
 		t.Fatalf("balayage muet : %d fichiers de production vus, plancher %d", fichiers, plancherFichiersVueA)
 	}

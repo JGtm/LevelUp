@@ -70,10 +70,14 @@ func chargeImpact(br *Lecteur) bool {
 	return true
 }
 
+// teteCorpsACorpsAvecSuite est la valeur de la tete R(3) de `FUN_140ff8d70` a laquelle un R(2) suit
+// (`*param_3 = bVar10 ; if (bVar10 == 1)`).
+const teteCorpsACorpsAvecSuite = 1
+
 // chargeCorpsACorps porte `FUN_140ff8d70` (`biped_melee_initiate`) : `FUN_141102ed0(0x28)` vaut la
-// version native 2, donc la tete est R(3) ; si elle vaut 1, R(2).
+// version native 2, donc la tete est R(3) ; si elle vaut [teteCorpsACorpsAvecSuite], R(2).
 func chargeCorpsACorps(br *Lecteur) bool {
-	if br.ReadBits(3) == 1 {
+	if br.ReadBits(3) == teteCorpsACorpsAvecSuite {
 		br.Skip(2)
 	}
 	br.Skip(2)
@@ -224,7 +228,7 @@ func chargeMot32(br *Lecteur) bool {
 
 // chargeDArme rend le lecteur de charge d un genre d arme, de projectile ou d equipement porte ici ;
 // nil sinon.
-func chargeDArme(genre int) func(*Lecteur) bool {
+func chargeDArme(genre int) func(*Lecteur) bool { //nolint:gocyclo // un case par genre de message porte (aiguillage)
 	switch genre {
 	case 5:
 		return chargeDetonation

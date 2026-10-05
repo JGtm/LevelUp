@@ -19,17 +19,12 @@ package archlint
 //
 // PERIMETRE : la production de `film/**`, hors `film/research/` et hors fichiers `//go:build
 // research` (instruments de mesure, qui recopient le localisateur pour en essayer des variantes),
-// tests exclus.
+// tests exclus ([balayerLaProductionHorsResearch]).
 
 import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 )
 
@@ -131,51 +126,19 @@ func estLitteral(e ast.Expr, valeur string) bool {
 
 // TestLocalisateurDeBoucleUnique interdit les copies du localisateur hors du fichier hote.
 func TestLocalisateurDeBoucleUnique(t *testing.T) {
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici)))
-	base := filepath.Join(goAPIRoot, filepath.FromSlash(racineLocalisateur))
-	fichiers, hote := 0, -1
-	err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, err := filepath.Rel(goAPIRoot, chemin)
-		if err != nil {
-			return err
-		}
-		rel = filepath.ToSlash(rel)
-		if d.IsDir() {
-			if chemin != base && repertoireExcluDuTriTotal(d.Name(), rel) {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(chemin, ".go") || strings.HasSuffix(chemin, "_test.go") {
-			return nil
-		}
-		blob, err := os.ReadFile(chemin) //nolint:gosec // chemin derive du perimetre
-		if err != nil || estSousTagResearch(blob) {
-			return err
-		}
-		fichiers++
+	hote := -1
+	fichiers := balayerLaProductionHorsResearch(t, []string{racineLocalisateur}, func(rel string, blob []byte) {
 		essais, slots := formesDuSource(t, rel, blob)
 		if rel == hoteLocalisateur {
 			hote = essais
-			return nil
+			return
 		}
 		if essais > 0 || slots > 0 {
 			t.Errorf("%s : %d essai(s) de position et %d comparaison(s) de Slot au litteral %s — "+
 				"copie du localisateur : appeler grammar.LocaliserBoucleDeRecords avec l ordre du "+
 				"site (%s)", rel, essais, slots, slotDeSignature, hoteLocalisateur)
 		}
-		return nil
 	})
-	if err != nil {
-		t.Fatalf("balayage de %s : %v", base, err)
-	}
 	if fichiers < plancherFichiersLocalisateur {
 		t.Fatalf("balayage muet : %d fichiers de production vus, plancher %d", fichiers,
 			plancherFichiersLocalisateur)

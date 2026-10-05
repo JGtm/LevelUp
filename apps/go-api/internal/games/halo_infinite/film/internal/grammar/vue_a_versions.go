@@ -30,9 +30,10 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 //	ILLISIBLE section d identification absente, table vide ou plus longue, une version differente :
 //	          la vue A n est pas lue au-dela de sa tete.
 //
-// Les deux classes lisent la vue A jusqu a son terminateur ; ce que la marche fait de sa fin depend
-// de la classe ([grammaireDeLaVueA]). Un genre au-dela du cardinal du film n existe pas
-// chez son ecrivain : le lire arrete la vue A.
+// Les deux classes lisent la vue A jusqu a son terminateur ([lireLaVueA]), et sa fin est rangee avec
+// elle (`lecture.Paquet.VueA`). La classe ne decide de rien d autre : la marche par rangs
+// ([lireTrameParRangs]) ne lit ni la fin d une vue A qui porte un message ni la classe du film. Un
+// genre au-dela du cardinal du film n existe pas chez son ecrivain : le lire arrete la vue A.
 
 // classeDeLaVueA est la classe de la table des genres que le film declare.
 type classeDeLaVueA uint8

@@ -27,7 +27,7 @@ const largeurDirection = 19
 // chargeDuGenre rend le lecteur de la charge d un genre ; nil : charge non portee. La version d un
 // genre (`FUN_141102ed0`) y est la version native : la vue A ne se lit que sur un film qui la
 // declare ([classeDesGenres]).
-func chargeDuGenre(genre int) func(*Lecteur) bool {
+func chargeDuGenre(genre int) func(*Lecteur) bool { //nolint:gocyclo // un case par genre de message porte (aiguillage)
 	switch genre {
 	case 0:
 		return chargeDegatsApres
@@ -72,7 +72,18 @@ func chargeDuGenre(genre int) func(*Lecteur) bool {
 	return chargeDEvenementDeJeu(genre)
 }
 
+// degatsF58AvecOctet est la valeur du R(4) range en [+0x58] a laquelle `FUN_1407f15a4` lit un R(8)
+// apres la porte de `FUN_141015740` (`*(int *)(param_3 + 0x58) == 1`).
+const degatsF58AvecOctet = 1
+
 // chargeDegatsApres porte `FUN_1407f15a4` (`damage_aftermath`).
+//
+// EXEMPTION A LA REGLE DES DEUX COPIES (CLAUDE.md n. 6), 2026-10-05 : c est la troisieme lecture de
+// production de `FUN_1407f15a4`, apres `killsource.evBody0` (`facts/killsource/eventbody.go`) et
+// [lot1DecodeDamageAftermath] (`weapon_hits_decode.go`). Les trois ne sont pas centralisees ici :
+// [lot1DecodeDamageAftermath] lit la porte de `FUN_1407f2058` a polarite inversee (« si 1 : R(5) »,
+// D-LN-2 de `LOT_LN.md`), et les reunir changerait la sortie de `weapon_hits` et toucherait
+// `killsource`. Retrait : le lot dedie qui centralise `FUN_1407f15a4` et corrige D-LN-2.
 func chargeDegatsApres(br *Lecteur) bool {
 	consumeGateR(br, 32)      // FUN_14080d69c
 	consumeGate0R(br, 5)      // FUN_1407f2058
@@ -96,7 +107,7 @@ func chargeDegatsApres(br *Lecteur) bool {
 	consumeGate0R(br, 10) // FUN_1407f1e4c
 	f58 := br.ReadBits(4) // [+0x58]
 	consumeGateR(br, 32)  // R(1) puis FUN_141015740 R(32)
-	if f58 == 1 {
+	if f58 == degatsF58AvecOctet {
 		br.Skip(8)
 	}
 	br.Skip(bitLen(10)) // FUN_1406d310c(10)
@@ -139,7 +150,7 @@ func chargeImpactSurObjet(br *Lecteur) bool {
 	br.Skip(7 + 7)            // FUN_1406d84b4 x 2, cinquieme argument EBX = 7 (142f1c746)
 	br.Skip(largeurDirection) // FUN_14076dc04, R9D = EBX + 0xc (142f1c77f)
 	br.Skip(2)                // R(2)
-	br.Skip(3 * 12)           // FUN_140c1e924 -> FUN_140c1e9d4 : trois R(R9D = 0xc)
+	consume140c1e9d4(br, 12)  // FUN_140c1e924 -> FUN_140c1e9d4, R9D = 0xc
 	br.Skip(largeurDirection) // FUN_14076dc04, R9D = R14D (142f1c871)
 	br.Skip(9 + 16 + 1 + 1)   // R(9), R(16), R(1), R(1)
 	return true

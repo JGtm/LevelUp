@@ -1,6 +1,7 @@
 package grammar
 
-// vue_a_lecture.go — LA LECTURE DE LA VUE A, LA SEULE (lots LN et VA de la campagne de grammaire).
+// vue_a_lecture.go — LA LECTURE COMPLETE DE LA VUE A, LA SEULE (lots LN et VA de la campagne de
+// grammaire).
 //
 // # CE QUE LE JEU ECRIT, ET POURQUOI LA FIN DE LA VUE A EST LE DEBUT DE LA VUE B
 //
@@ -20,10 +21,14 @@ package grammar
 // lisant la charge de CHAQUE message. Quand elle l est, le bit qui suit son terminateur EST le
 // premier bit de la vue B — une lecture, pas une recherche.
 //
-// # UNE SEULE LECTURE
+// # UNE SEULE LECTURE COMPLETE
 //
-// [lireLaVueA] est la seule implantation de `FUN_14076a1c4` (garde-rail :
-// `archlint/film_vue_a_lecteur_unique_test.go`). La marche des trames la joue une fois par trame,
+// [lireLaVueA] est la seule implantation de `FUN_14076a1c4` qui lise la vue A jusqu a son
+// terminateur, message par message (garde-rail : `archlint/film_vue_a_lecteur_unique_test.go`). La
+// tete seule — le bit de configuration, la continuation et le genre du premier message — est relue
+// ailleurs : [readPacketHead], et par lui [teteDuPayload], [lireEnteteTir36] et [scanChunkDamages],
+// ces deux derniers lisant encore le corps du premier message pour leur canal ; aucun ne lit au-dela
+// du premier message. La marche des trames joue [lireLaVueA] une fois par trame,
 // en rangeant la tete ([rangerLaTete]), et passe ce qu elle a lu a la marche par rangs
 // ([lireTrameParRangs]) ; les autres marches (essais de localisation, cartes) l appellent depuis la
 // tete du paquet. Elle LIT LA TETE A L IDENTIQUE dans tous les cas — la continuation, puis le genre
