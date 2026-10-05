@@ -621,8 +621,8 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
    trames de la cuisson sous les largeurs MPP que les véhicules calibrent sur les poses des formats
    sans largeur relue (8/3) : c'est le lot LM de la campagne, MIS DE CÔTÉ par l'utilisateur le
    2026-10-02 (« corrections d'abord, uniquement générales lues dans le jeu » ; l'exception D6 est
-   suspendue, plan de la campagne §3). La passe `ri27b` montrait pourtant la vue C fermée trois à
-   cinq fois plus souvent sur ces films (`084a804d` 4 837 → 23 642 paquets) : le fait est consigné
+   suspendue, plan de la campagne §3). La passe `ri27b` montrait pourtant la vue C fermée deux fois
+   et demie à cinq fois plus souvent sur six de ces films (`084a804d` 4 837 → 23 642 paquets) : le fait est consigné
    (découverte 11), la décision reste celle de l'utilisateur. La marche des trames garde les
    largeurs du contexte, et les morts de véhicule s'y lisent, alors que la marche à huit vues les
    lisait sous les largeurs calibrées.
@@ -802,7 +802,8 @@ plan y sont reprises comme items (3.1.2).
    là où elle couvre au moins autant, l'ancrage seulement après). Décision de l'utilisateur du
    2026-10-04 : option A — item 2.7.d.
 11. *(lot 2.7.a)* **Sous les largeurs MPP calibrées sur les poses (8/3), la marche des trames ferme
-   la vue C trois à cinq fois plus souvent sur les formats sans largeur relue** (suite de la
+   la vue C deux fois et demie à cinq fois plus souvent sur six des neuf films des formats sans
+   largeur relue, à l'identique sur les trois autres** (suite de la
    découverte 6). Passe `ri27b` (marche des trames de la cuisson sous `gwWidthsForFilm`) contre
    `v75w2`, paquets à vue C fermée : `084a804d` 4 837 → 23 642, `1c4c63c2` 13 389 → 33 999,
    `60ae07c4` 13 948 → 34 578, `11de8353` 5 631 → 13 839, `111fa685` 4 026 → 11 932, `e5adf7b2`
