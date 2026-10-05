@@ -115439,3 +115439,20 @@ du slot fait partie de sa vie (`ced770753`). Lint CI : étiquette `research` man
 **Conclusion / prochaine étape** : présenter à l'utilisateur ; selon sa décision, admettre ou
 affiner la primauté (nommer par joueur). Puis, après le lot « vue A » de la campagne, fusion de
 `feat/v75` dans la branche, remesure, `make gate-push`, accord de fusion.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — décisions de l'utilisateur appliquées : baisses admises, primauté de la lecture par joueur — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — 2.7.a se clôt après le lot « vue A » de la campagne (fusion de
+`feat/v75`, remesure, gates, accord de fusion).
+
+**Décision technique principale** : la primauté de la lecture nomme les occupants d'une vie de
+véhicule par joueur (xuid), plus par corps (slot) ; sans identité, le slot reste la clé ; le
+chevauchement d'un épisode lu contredit toujours (`e127e90fb`, test rouge sans la règle).
+
+**Résultats observés** : gate complet sans FAUX, banc `ok` sur les 19 témoins ; `084a804d`
+passe de 44 à 25 lignes en baisse, toutes dans les familles admises ; tirs de véhicule rattachés
+194 → 198 (3 restent sans tireur, chevauchement de cinq images avec un trajet lu).
+
+**Conclusion / prochaine étape** : attendre le signal de la campagne (lot « vue A ») ; alors
+fusion de `feat/v75` dans la branche (`feat/v75` a raison en conflit), remesure des deux parts de
+2.7.a, gate de corpus, `make gate-push`, accord de l'utilisateur pour fusionner.

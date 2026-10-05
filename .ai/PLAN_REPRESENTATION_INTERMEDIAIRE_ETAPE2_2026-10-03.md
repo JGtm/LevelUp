@@ -124,6 +124,10 @@ fichier de l'autre se signale, ne se corrige pas.
   films d'après la taille d'état de création que chaque film déclare (`n1`, découverte 13), au lieu
   de la largeur calibrée film par film. Item 2.7.a0 ; l'observation dynamique avec Cheat Engine est
   inscrite au backlog (`.ai/BACKLOG.md`).
+- 2026-10-05, en réponse à l'instruction du gate de corpus (journal du même jour) : « Oui,
+  admises » — les baisses instruites des huit films (postures, changements d'arme, tir continu,
+  dotations de naissance, trajets) sont admises ; « Par joueur » — la primauté de la lecture
+  nomme les occupants par joueur, plus par corps (découverte 16).
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -720,6 +724,10 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       fausse de la marche des trames (slot 737 en génération 3, attachée au bipède 618) fermait à
       8410 le trajet du conducteur 737, dont l'arme tire jusqu'à 9101. Test
       `TestUneLectureDUneAutreGenerationNeFermePasLEpisode`, rouge sans le correctif.
+      *Primauté par joueur* (`e127e90fb`, décision de l'utilisateur du 2026-10-05,
+      découverte 16) : un épisode de repli n'est plus écarté parce que le film lit le même
+      joueur dans le même véhicule pendant une autre de ses vies. Test
+      `TestLaPrimauteNommeLeJoueurPasLeCorps`, rouge sans la règle.
 - [ ] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
       d'ancres, canal par canal, mesuré sur le corpus.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
@@ -947,8 +955,9 @@ plan y sont reprises comme items (3.1.2).
    le film lit le joueur `…447` (slot 574) au volant du 879 à 8960 ; son trajet de repli de la vie
    précédente (slot 745, 6697-8656, trou de position) est écarté, et dix tirs de l'arme du 879
    perdent leur tireur. Les trois tirs du 916 perdus (slot 608) relèvent de l'autre forme
-   (chevauchement de cinq images avec le trajet lu du 599). Règle arbitrée le 2026-09-21 :
-   décision de l'utilisateur demandée.
+   (chevauchement de cinq images avec le trajet lu du 599). Règle arbitrée le 2026-09-21.
+   Décision de l'utilisateur du 2026-10-05 : par joueur (`e127e90fb`, item 2.7.a) ; le
+   chevauchement contredit toujours, un occupant sans identité reste désigné par son slot.
 
 ## 7. Journal
 
@@ -1222,3 +1231,11 @@ plan y sont reprises comme items (3.1.2).
     perdent leur tireur par la primauté de la lecture (découverte 16), 7 en gagnent.
   Décision demandée à l'utilisateur : admettre ces pertes (gate en base), et la forme de la
   primauté (découverte 16). La fusion de 2.7.a attend toujours le lot « vue A » de la campagne.
+- 2026-10-05 : DÉCISIONS DE L'UTILISATEUR (§2) : baisses ADMISES ; primauté PAR JOUEUR, écrite
+  (`e127e90fb`). Gate complet `27h` (19 témoins contre `87cdfa761`) : sortie 1, aucun FAUX, banc
+  `ok` partout ; onze témoins sans écart ; `084a804d` 44 → 25 lignes en baisse, toutes dans les
+  familles admises (le trajet de repli du slot 745 revient, V-6 reste à 1) ; tirs de véhicule
+  rattachés 194 → 198, seuls les 3 du 916 (slot 608, chevauchement) restent sans tireur ; les
+  sept autres films inchangés depuis `27g`. Campagne prévenue avant et après chaque passe. Reste
+  pour clore 2.7.a : fusion de `feat/v75` après le lot « vue A » de la campagne, remesure, gate
+  de corpus, `make gate-push`, accord de fusion.
