@@ -115529,3 +115529,13 @@ fusion de 2.7.a et 2.7.a0. Découverte 17 (exemption de lint par chemin) à port
 **Résultats observés** : 8 films hors catalogue passent de 1 drapeau -1 à 2 drapeaux d'équipe avec états `home`, `carrierTeamUnknown` 0 ; 107 films à catalogue : bases lues à 0,02-0,87 m du socle du bon camp, aucune contradiction ; neutres lus neutres ; cartes à 7 socles réduites à leurs 2 socles réels. Revue adversariale ronde 1 (lot serveur seul) : 0 P0/P1, 4 P2 corrigés ; revue adversariale complète demandée par l'utilisateur (3 relecteurs aveugles : serveur, web + armes, tests) : 0 P0/P1, 10 P2 (3 commentaires faux, instrument resté à 10 m, 4e copie d'un helper, 5 trous de tests dont le câblage du canevas) tous corrigés. Gates : `go test ./...` (1 test `internal/watcher` instable sous charge, vert isolé), `go vet`, typecheck, lint, vitest complet.
 
 **Conclusion / prochaine étape** : fusion dans `feat/v75`, CI au niveau job ; gate visuel de l'utilisateur (cercle sur une partie classée CTF 3 Captures, tourelles de Snowbound, tirs du Ghost / Banshee / Scorpion / Warthog). À confirmer à l'écran : bouche de la mitrailleuse du Scorpion, de la tourelle du Wraith, longueur de canon du Falcon. Les artefacts en cache seront re-cuits (grammaire de la vague 2 déjà périmée pour eux).
+
+## [2026-10-05] Campagne de grammaire — goldens killsource sur films réels régénérés (diagnostic de calibration)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le banc local `TestGoldenFilms` (killsource, `KILLSOURCE_FIXTURES` = film_chunks du parc ; sauté en CI faute de films) était rouge sur `9b191a7f`, `78919882`, `fccc61cd` depuis les vagues de la campagne (signalé par la session RI) : seule la ligne de DIAGNOSTIC de calibration change (ORACLE axisW et scores du profil plat), la décision (indexW_poignée, LU axisW) et toutes les morts sont identiques. Même famille que D23 (diagnostic `Result.Calibration` non persisté, révision killsource constante). Goldens régénérés par `-run Golden -update`.
+
+**Résultats observés** : diff = une ligne par film (ORACLE axisW 14 -> 11 sur 78919882, 21 -> 20 sur 9b191a7f, scores 388 -> 390 sur fccc61cd) ; test vert ensuite.
+
+**Conclusion / prochaine étape** : à l'intégration d'un lot qui touche la marche, jouer aussi `TestGoldenFilms` avec `KILLSOURCE_FIXTURES` (la CI ne le voit pas).
