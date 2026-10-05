@@ -115474,3 +115474,20 @@ d'image-clé sous le découpage déclaré +107 sur les cinq archétypes objet, b
 
 **Conclusion / prochaine étape** : ordre de fusion convenu — V1 de la campagne, puis 2.7.a et
 2.7.a0, puis LR, puis V2 ; chaque fusion sur accord de l'utilisateur.
+
+## [2026-10-05] Représentation intermédiaire du film — relecture du lot « vue A » V1 de la campagne avant fusion — Complété (relecture)
+
+**Statut** : Complété — relecture rendue ; la fusion est celle de la campagne.
+
+**Décision technique principale** : deux relecteurs à contexte frais (règles du projet ;
+équivalence et couverture des tests), en lecture seule, sur `87cdfa761..3bacfadeb`.
+
+**Résultats observés** : aucun P0, sortie identique confirmée ; 15 constats recevables (14
+distincts), triés : à corriger avant fusion (recopie d'un sous-lecteur existant, commentaires faux,
+nombres magiques, complexité non justifiée, champ mort, chemin sans test, tests de E qui recopient
+le code), à trancher (troisième portage de `damage_aftermath` dont une copie diverge, deux gardes
+recopiées), pour V2 (une branche atteinte par les seuls tests). La campagne corrige avant de fusionner.
+
+**Conclusion / prochaine étape** : à la fusion de V1, reprendre `feat/v75` dans `feat/ri-etape2`
+(adapter le canal des morts à `listeAnnoncee`), remesurer, gate de corpus, puis demander l'accord de
+fusion de 2.7.a et 2.7.a0. Découverte 17 (exemption de lint par chemin) à porter à l'utilisateur.

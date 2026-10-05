@@ -995,6 +995,13 @@ plan y sont reprises comme items (3.1.2).
    (chevauchement de cinq images avec le trajet lu du 599). Règle arbitrée le 2026-09-21.
    Décision de l'utilisateur du 2026-10-05 : par joueur (`e127e90fb`, item 2.7.a) ; le
    chevauchement contredit toujours, un occupant sans identité reste désigné par son slot.
+17. *(relecture du lot « vue A » V1 de la campagne, 2026-10-05)* **Les seuils de la règle 5 ne sont
+   plus vérifiés par le lint sur le code NEUF du décodeur.** `.golangci.yml:223` exempte de
+   `gocyclo`, `funlen` et `lll` tout `film/(replay|internal/(facts|source|grammar|profile))/`,
+   exemption écrite pour du code DÉPLACÉ (lots E.2 et 2.5). Le code neuf de ces couches (celui de
+   ce plan compris) n'est donc tenu aux seuils que par la relecture : la relecture de V1 y a trouvé
+   deux aiguillages à complexité 20 et 22 sans justification. Non traité ici ; à porter à
+   l'utilisateur (resserrer l'exemption au code d'avant une date, comme `only-new-issues`).
 
 ## 7. Journal
 
@@ -1284,3 +1291,16 @@ plan y sont reprises comme items (3.1.2).
   (non versionnés, retirés). ADR 0037 IR-7 complété. 2.7.a0 CLOS. Ordre de fusion convenu avec la
   campagne (§1.3) : V1, puis 2.7.a et 2.7.a0, puis LR (qui ne tient que sous le découpage
   déclaré), puis V2.
+- 2026-10-05 : RELECTURE DU LOT « VUE A » V1 DE LA CAMPAGNE avant sa fusion, à sa demande (diff
+  `87cdfa761..3bacfadeb`, 90 fichiers) : deux relecteurs à contexte frais en parallèle (règles du
+  projet ; équivalence de la lecture unique et couverture des tests), lecture seule, plus mes
+  vérifications de la structure (`lecture.Paquet.VueA` sans logique, façade et `replay` intacts,
+  garde-fou de lecture unique, ADR 0037). Aucun P0, sortie identique confirmée par les deux.
+  Constats recevables : 3 du premier, 12 du second (dont le champ mort `finVueA`, trouvé par les
+  deux) ; transmis triés à la campagne : quatre familles à corriger avant fusion (recopie de
+  `FUN_140c1e9d4`, commentaires faux, nombres magiques, aiguillages sans justification), trois à
+  trancher (troisième portage de `damage_aftermath` dont une copie diverge, D-LN-2 de la campagne ;
+  deux gardes recopiées), une pour V2. La campagne corrige avant de fusionner. Découverte 17. À la
+  fusion de V1 dans cette branche : `canal_des_morts.go` doit prendre `listeAnnoncee(&p.VueA)` au
+  lieu de `p.VueA.Etat == lecture.VueArretee` (une vue A lue jusqu'au bout est terminée même avec
+  des messages).
