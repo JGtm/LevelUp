@@ -115539,3 +115539,20 @@ fusion de 2.7.a et 2.7.a0. Découverte 17 (exemption de lint par chemin) à port
 **Résultats observés** : diff = une ligne par film (ORACLE axisW 14 -> 11 sur 78919882, 21 -> 20 sur 9b191a7f, scores 388 -> 390 sur fccc61cd) ; test vert ensuite.
 
 **Conclusion / prochaine étape** : à l'intégration d'un lot qui touche la marche, jouer aussi `TestGoldenFilms` avec `KILLSOURCE_FIXTURES` (la CI ne le voit pas).
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — fusion de feat/v75 après le lot « vue A » V1 ; 2.7.a clos — Complété (2.7.a, `feat/ri-etape2`)
+
+**Statut** : Complété pour 2.7.a et 2.7.a0 ; fusion dans `feat/v75` en attente de la CI, de
+`make gate-push` et de l'accord de l'utilisateur.
+
+**Décision technique principale** : `feat/v75` (`5bc1fd938`, `65c99b669`) fusionné dans la
+branche ; rangs de fusion `grammar-2026-10-06.2` et `profile-2026-10-06.2` ; le canal des morts
+prend le prédicat de la marche (`listeAnnoncee`) depuis la lecture complète de la vue A.
+
+**Résultats observés** : gate de corpus contre la nouvelle base identique ligne pour ligne au gate
+admis (315 lignes, aucun FAUX, banc `ok` sur 19) ; fixtures de contrat identiques hors révisions ;
+banc killsource sur films réels trouvé rouge sur `feat/v75` (diagnostic de calibration, antérieur à
+V1), régénéré par la campagne, vert sur la branche.
+
+**Conclusion / prochaine étape** : CI, `make gate-push`, puis accord de fusion demandé à
+l'utilisateur ; ensuite LR de la campagne, puis 2.7.b.

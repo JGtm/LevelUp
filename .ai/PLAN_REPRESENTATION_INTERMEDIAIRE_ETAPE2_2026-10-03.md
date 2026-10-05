@@ -734,7 +734,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
          `e5adf7b2` (1 → 0). Aligné en 2.7.c (accord de la campagne).
       4. killsource lit `MPPParDefaut` (D-108 de la campagne), deux découpages sur les formats
          anciens : 2.7.c, déjà prévu.
-- [ ] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
+- [x] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
       *Écrit* (décisions 1 à 5) : `grammar/canal_des_morts.go` (canal des trames et d'image-clé :
       récolte des records de la vue B, récupération des listes non localisées par [debutRecupere],
       monde rendu intact, sans observation) ; `ScanMarcheDesTramesAvec` le distribue avec les deux
@@ -761,6 +761,13 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       découverte 16) : un épisode de repli n'est plus écarté parce que le film lit le même
       joueur dans le même véhicule pendant une autre de ses vies. Test
       `TestLaPrimauteNommeLeJoueurPasLeCorps`, rouge sans la règle.
+      *Clos le 2026-10-05, après le lot « vue A » V1 de la campagne* (option A de l'utilisateur) :
+      fusion de `feat/v75` (`5bc1fd938`, puis `65c99b669`) dans la branche, canal des morts sur
+      `listeAnnoncee`. Gate de corpus contre `5bc1fd938` (schéma 79) : les mêmes 315 lignes en
+      baisse que le gate admis, valeurs comprises ; banc `ok` sur les 19 témoins ; aucun FAUX.
+      killsource sur films réels identique à `feat/v75`. La part (a) de la décision du 2026-10-05
+      (listes que la marche ne localise pas) attend le lot « vue A » V2, qui localisera la vue B
+      par la fin de la vue A.
 - [ ] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
       d'ancres, canal par canal, mesuré sur le corpus.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
@@ -1006,6 +1013,13 @@ plan y sont reprises comme items (3.1.2).
    ce plan compris) n'est donc tenu aux seuils que par la relecture : la relecture de V1 y a trouvé
    deux aiguillages à complexité 20 et 22 sans justification. Non traité ici ; à porter à
    l'utilisateur (resserrer l'exemption au code d'avant une date, comme `only-new-issues`).
+18. *(fusion de `feat/v75` dans la branche, 2026-10-05)* **Le banc killsource sur films réels
+   (`TestGoldenFilms`, sauté sans `KILLSOURCE_FIXTURES`, donc absent de la CI) était rouge sur
+   `feat/v75` depuis au moins `87cdfa761`** : trois films, la seule ligne de diagnostic de
+   calibration (scores de l'oracle de profilage ; décision et morts identiques). Sortie de la
+   branche fusionnée identique à `feat/v75` seule. Signalé à la campagne, qui a régénéré les
+   goldens (`65c99b669`, même famille que sa découverte D23). Un banc qui ne tourne qu'en local
+   peut rougir sans que personne le voie : à rejouer à chaque fusion qui touche le décodeur.
 
 ## 7. Journal
 
@@ -1315,3 +1329,14 @@ plan y sont reprises comme items (3.1.2).
   Bornes de la relecture : pas de ronde 3, le P1 restant est porté à l'utilisateur et relu par moi
   à son correctif (commentaire seul). Item 2.7.c complété : la chaîne de killsource rejoindra la
   vue A unique.
+- 2026-10-05 : FUSION DE `feat/v75` DANS LA BRANCHE, après le lot « vue A » V1 de la campagne
+  (`5bc1fd938`, avec le correctif de rejeu du schéma 79, puis `65c99b669`, goldens killsource) :
+  `de99f7fbf` et `a87c90904`. Conflits : révisions (rangs de fusion `grammar-2026-10-06.2` et
+  `profile-2026-10-06.2`, chroniques réunies), empreintes régénérées (killsource et objectives à
+  révision constante), fixtures de contrat du schéma 79 régénérées, identiques à `feat/v75` hors
+  chaînes de révision. Le canal des morts reconnaît un paquet à événements par `listeAnnoncee`.
+  `go vet`, tests du décodeur, d'archlint et des gates, lint : verts. Gate de corpus contre
+  `5bc1fd938` : les mêmes 315 lignes en baisse que le gate admis, aucun FAUX, banc `ok` partout.
+  Banc killsource sur films réels : rouge sur `feat/v75` avant la fusion (découverte 18), vert après
+  la régénération de la campagne. 2.7.a CLOS. Reste avant la fusion dans `feat/v75` : CI de la
+  branche, `make gate-push`, accord de l'utilisateur.
