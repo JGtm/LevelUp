@@ -118,9 +118,8 @@
 ### L4 — Clôture (superviseur)
 
 - [x] 4.1 `delivery-checklist` ; `go test ./...` (194 paquets ok ; `internal/watcher` `TestRESTPoller_BackoffOnRateLimit` instable sous charge, hors diff, vert 4 fois isolé) ; `go test -tags=integration -p 1` sur `sync`, `persist`, `replaybuild` : 0 (13 paquets) ; `go vet` 0 ; `golangci-lint --new-from-merge-base=origin/main` : 0 issue ; typecheck 0 ; lint 0 ; vitest complet 8 846 ok (2 délais de garde-rails sous charge, verts isolés) puis `match-replay` 3 236 ok après les corrections.
-- [ ] 4.2 `.ai/thought_log.md`, ce plan à jour ; commits (accord utilisateur) ; fusion dans
-      `feat/v75` et CI verte au niveau job.
-- [ ] 4.3 Liste des vérifications à l'écran remise à l'utilisateur (gate visuel après fusion).
+- [x] 4.2 Thought log et plan à jour ; commit `28c542b33` (accord de l utilisateur, après la revue adversariale qu il a demandée) ; `feat/v75` avancé en avance rapide (`87cdfa761..28c542b33`, contrôles d envoi verts) ; checkout principal mis à jour ; CI `37351843479` verte au niveau job (10 jobs, E2E sauté) et Deploy Pre-Check vert.
+- [x] 4.3 Vérifications à l écran remises à l utilisateur (après recuisson des matchs témoins : schéma 79, et grammaire de la vague 2 déjà périmée pour le cache) : cercle de retour sur une partie classée CTF 3 Captures hors catalogue (`f1db4a07`, `92c950ee`, `fd247c3f`) et sur Origin (`d6918972`) ; tourelles grises sans libellé sur Snowbound (`bfecd02b`) ; tirs du Ghost (`81c02726`), Chopper / Scorpion / Wasp (`8a485699`), Warthog / Falcon / Wraith (`4f77afc1`).
 
 ## 4. Journal
 
