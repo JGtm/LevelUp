@@ -3,14 +3,15 @@ package archlint
 // film_vue_a_lecteur_unique_test.go — LE GARDE-RAIL DE LA LECTURE UNIQUE DE LA VUE A (lot VA de la
 // campagne de grammaire ; regle des deux copies, CLAUDE.md n. 6).
 //
-// La vue A d une trame delta (`FUN_14076a1c4`) ne se lit JUSQU A SON TERMINATEUR, message par
-// message, qu en UN seul endroit : `grammar/vue_a_lecture.go` ([grammar.lireLaVueA]), que deux
-// fonctions appellent — `rangerLaTete`, qui la lit une fois par trame dans la marche des trames et
-// la range, et `lireTrameParRangs`, qui la lit depuis la tete du paquet quand on ne la lui passe
-// pas. La tete seule (bit de configuration, continuation, genre du premier message) est relue
-// ailleurs — `readPacketHead`, et par lui `teteDuPayload`, `lireEnteteTir36` et `scanChunkDamages`,
-// ces deux derniers lisant encore le corps du premier message pour leur canal — ; aucun ne lit au-dela
-// du premier message, et ce test ne les garde pas. Il interdit, dans l arbre syntaxique de la
+// Dans la couche grammar, la vue A d une trame delta (`FUN_14076a1c4`) ne se lit par sa GRAMMAIRE
+// JUSQU A SON TERMINATEUR, message par message et charge comprise, qu en UN seul endroit :
+// `grammar/vue_a_lecture.go` ([grammar.lireLaVueA]), que deux fonctions appellent — `rangerLaTete`,
+// qui la lit une fois par trame dans la marche des trames et la range, et `lireTrameParRangs`, qui
+// la lit depuis la tete du paquet quand on ne la lui passe pas. Ce test ne garde pas les autres
+// lectures, qui ne sont pas ce contrat : la tete seule relue par `readPacketHead` (et par lui
+// `teteDuPayload`, `lireEnteteTir36`, `scanChunkDamages`) et par `killsource` (`hasEvents`,
+// `estAncreDeKillEvent`) ; et la lecture en chaine des evenements de `killsource`
+// (`facts/killsource/eventchain.go`), propre a son canal. Il interdit, dans l arbre syntaxique de la
 // production du decodeur :
 //
 //	un appel a `lireLaVueA` hors de ces deux fonctions ;

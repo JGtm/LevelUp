@@ -115231,3 +115231,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : quatre mutations ROUGES, m26 à m29. m26 n'était rougie par aucun test avant le vecteur neuf. Par rapport à `3bacfadeb`, la carte v2 sur 3 films (`fermeture_paquets.tsv`) et killsource sur 2 témoins sont identiques à l'octet. Gates : gofmt, vet (avec et sans research), paquet `grammar`, archlint, golangci-lint (0 issue) tous verts. Les décomptes de l'entrée précédente (« charges de 44 genres ») sont corrigés au §1 de `LOT_VA_V1.md` : 45 de LN, 47 au total.
 
 **Conclusion / prochaine étape** : V2 peut consommer E sur des tests qui gardent la règle du Script et les tables de la région jouée. Restent ouverts : D-VAV1-6 (lot dédié `FUN_1407f15a4` et D-LN-2), D-VAV1-7 et D-VAV1-8 (deux copies, à surveiller).
+
+## [2026-10-05] Campagne de grammaire — vue A V1 : ronde 2 de la relecture RI (points b et g)
+
+**Statut** : Complété.
+
+**Décision technique principale** : (b) le contrat de la lecture unique de la vue A (`vue_a_lecture.go`, `archlint/film_vue_a_lecteur_unique_test.go`) dit désormais exactement ce qui est unique — la lecture par la GRAMMAIRE jusqu'au terminateur, dans la couche grammar — et nomme les autres lectures hors contrat : la tête seule (`readPacketHead` et ses appelants ; `killsource` : `hasEvents`, `estAncreDeKillEvent`) et la lecture en chaîne des événements de `killsource` (`eventchain.go`). (g) garde-rail `archlint/film_balayage_unique_test.go` : le parcours de la production qui écarte les sous-arbres de recherche ne s'écrit que dans `film_balayage_test.go` (règle 6 : helper ET garde-rail).
+
+**Résultats observés** : archlint vert ; une copie du parcours dans un autre test d'archlint fait rougir le garde-rail (mutation vérifiée puis retirée) ; empreinte grammar inchangée (commentaires seulement).
+
+**Conclusion / prochaine étape** : relecture de ces lignes par la session RI, CI, puis fusion de V1 dans `feat/v75`.
