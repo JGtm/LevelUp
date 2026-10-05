@@ -823,9 +823,13 @@ plan y sont reprises comme items (3.1.2).
    `11de8353`, `111fa685` et `e5adf7b2` (8/3) identiques au format 27 (9/5) sur les 25 index qui
    varient, y compris l'index 0x28 que `FUN_140ff8d70` consulte (absent de la liste de 1.9.1
    ter). Registre des archétypes 36 à 43 : `111fa685` et `e5adf7b2` identiques au format 27.
-   Lecteurs de la version de format : seuils 3, 7, 11, 13/14 et 15, aucun entre 25 et 27. Reste
-   ouvert : l'écart de trois bits est soit dans notre propre lecture ailleurs (le 8/3 le
-   masquerait), soit piloté par du code non encore lu.
+   Lecteurs de la version de format : seuils 3, 7, 11, 13/14 et 15, aucun entre 25 et 27. L'autre
+   écart de trois bits connu, celui du tir à composantes (campagne, R1 §3), n'a PAS la même
+   frontière : formats 24 seulement (`e5adf7b2`, format 25, lit 16 comme le 27). Ses largeurs sont
+   elles aussi fixées par l'exécutable : R(3) par `FUN_1406d310c(6)`, R(16) littéral, base des axes
+   12 ou 4. Un élément commun aux deux chemins est donc peu probable. Reste ouvert : l'écart est
+   soit dans notre propre lecture ailleurs (le 8/3 le masquerait), soit piloté par du code non
+   encore lu.
 
 ## 7. Journal
 
