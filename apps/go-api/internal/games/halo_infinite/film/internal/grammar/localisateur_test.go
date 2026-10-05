@@ -138,7 +138,7 @@ func TestLaMarcheDesMortsDObjetSuitLOrdreDesMarches(t *testing.T) {
 		if strict, _ := LocaliserBoucleDeRecords(p.pay, p.w, cfg, SignatureStricte); strict != attendu {
 			ecarts++
 		}
-		s, avecEvenements, ok, libre := marchDebut(p.pay, p.w, cfg)
+		s, avecEvenements, ok, libre := marchDebut(p.pay, p.w, cfg, VueADuFilm{})
 		if !avecEvenements || ok != (attendu >= 0) || libre != attenduLibre || (ok && s != attendu) {
 			t.Errorf("marche des morts d objet : (%d, %v, %v), attendu l ordre des marches (%d, %v)",
 				s, ok, libre, attendu, attenduLibre)

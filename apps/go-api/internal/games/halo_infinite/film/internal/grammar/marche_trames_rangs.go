@@ -60,8 +60,9 @@ type departDeTrame struct {
 // unique ([lireLaVueA]) sans grammaire de film : sa tete seule decide de la marche. Elle ne
 // traverse qu une vue A VIDE : une vue A qui porte un message arrete la marche apres sa tete, la ou
 // elle s arretait avant que la vue A soit lue jusqu au bout ; la vue B d un paquet a evenements part
-// d un debut LOCALISE. Depuis un debut localise, la vue A est
-// derriere le point de depart et la marche commence au rang 1 (cf. [decodeFrameParRangs]).
+// de la fin de sa vue A lue ou d un debut LOCALISE ([debutDeLaVueBDeCuisson]). Depuis l un ou l autre,
+// la vue A est derriere le point de depart et la marche commence au rang 1 (cf.
+// [decodeFrameParRangs]).
 func lireTrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig, d departDeTrame,
 	l *lectureDeTrame) {
 	frameLen := len(buf) * 8

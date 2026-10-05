@@ -26,13 +26,14 @@ import (
 //
 // Un CANDIDAT est une position qui porte un en-tete de record NEW (prefixe `0` puis `01`) dont le
 // slot est dans la BANDE de l archetype annonce, lue dans les images-cles du film par la regle des
-// objets du monde ([TableAnticipee.SlotDeLArchetype]). Un candidat n est qu un candidat. Il n est
-// retenu que si la CHAINE des records qui en partent — chacun lu par son en-tete comme la boucle
-// de records le lit : NEW traverse sans desynchronisation, DEL, delta qui se decode sur un slot que
-// le monde connait, aucun masque que l ecrivain n ecrit pas ([pasDEssai]) — finit EXACTEMENT sur
-// le debut que le localisateur a trouve : deux lectures independantes, l en-tete en tete et la
-// signature du slot 123 en queue, qui s accordent au bit pres. Quand le localisateur ne trouve
-// rien, la preuve est la FERMETURE du paquet par la marche complete qui part du candidat
+// objets du monde ([TableAnticipee.SlotDeLArchetype]), et que precede le terminateur de la vue A
+// ([precedeDuTerminateur] : le jeu n ecrit un bit nul que devant la tete de la vue B ; lot VA,
+// etape V2). Un candidat n est qu un candidat. Il n est retenu que si la CHAINE des records qui en
+// partent — chacun lu par son en-tete comme la boucle de records le lit : NEW traverse sans
+// desynchronisation, DEL, delta qui se decode sur un slot que le monde connait, aucun masque que
+// l ecrivain n ecrit pas ([pasDEssai]) — finit EXACTEMENT sur le debut que le localisateur a trouve :
+// deux lectures independantes, l en-tete en tete et la signature du slot 123 en queue, qui
+// s accordent au bit pres. Quand le localisateur ne trouve rien, la preuve est la FERMETURE du paquet par la marche complete qui part du candidat
 // ([debutParFermetureRangee]) ; a defaut, le candidat d ou le paquet ferme au bit pres seulement
 // est garde, et ce second rang N EST PAS une preuve : c est le repli nomme
 // `repli_debut_de_liste_ferme_au_bit`, compte a part. Sinon le debut du localisateur est garde, et
@@ -40,8 +41,8 @@ import (
 // records sont LUS ; les listes ainsi etendues sont comptees
 // ([types.MovementStateStats.EventPacketsNewRecordStart]).
 
-// localiserLaListe rend le debut de la marche d un paquet a evenements et COMMENT il a ete trouve :
-// le premier record NEW de tete prouve par la chaine ([debutParChaine]) ou par la fermeture
+// localiserLaListe rend le debut de la marche d un paquet a evenements dont la vue A n a pas decide
+// ([debutDeLaVueBDeCuisson]) et COMMENT il a ete trouve : le premier record NEW de tete prouve par la chaine ([debutParChaine]) ou par la fermeture
 // ([debutParFermetureRangee], aux deux rangs), sinon le debut du localisateur strict
 // ([lecture.DebutParSignature]) ; -1 et [lecture.DebutNonLocalise] pour une liste non localisee.
 // Tout debut autre que celui du localisateur est un record NEW que le localisateur sautait. Chaque
@@ -97,8 +98,8 @@ func motFacultatifDEnTete(cfg FrameConfig) int {
 func debutParChaine(pay []byte, debut int, candidats []int, w *World, cfg FrameConfig) (int, bool) {
 	extra := motFacultatifDEnTete(cfg)
 	for _, p := range candidats {
-		if p-extra < 0 || p >= debut {
-			continue
+		if p-extra < 0 || p >= debut || !precedeDuTerminateur(pay, p-extra) {
+			continue // une tete de vue B suit le terminateur de la vue A
 		}
 		if chaineJusqua(pay, p-extra, debut, extra, w, cfg) {
 			return p - extra, true
@@ -200,8 +201,8 @@ func debutParFermetureRangee(pay []byte, candidats []int, w *World, cfg FrameCon
 	extra := motFacultatifDEnTete(cfg)
 	auBit := -1
 	for _, p := range candidats {
-		if p-extra < 0 {
-			continue
+		if p-extra < 0 || !precedeDuTerminateur(pay, p-extra) {
+			continue // une tete de vue B suit le terminateur de la vue A
 		}
 		l := lectureDEssai(pay, w, cfg, p-extra)
 		if l.Fermee {

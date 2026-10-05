@@ -11,32 +11,6 @@ package killsource
 
 // # LA CHRONIQUE — UNE ENTREE PAR RANG, ET RIEN QU UNE
 //
-// ENTREE `killsource-2026-09-18` (2026-09-18, lot 5.1.1) : LA REVISION MONTE MECANIQUEMENT,
-// `.2` -> le premier rang du 18. AUCUNE SOURCE DE `film/facts/` N EST TOUCHEE PAR CE LOT.
-//
-// CE QUI LA FAIT MONTER : l empreinte de cette couche hache les VALEURS de `source.Rev` et de
-// `grammar.Rev`, et `grammar.Rev` monte au lot 5.1.1 (`grammar-2026-09-18` : l archetype
-// `managed-navpoint` ti=12 est lu de `i1` au minuteur manuel, douze lecteurs neufs). La chaine
-// est voulue : une grammaire qui change date les lignes deja decodees, meme quand le fait
-// publie ne bouge pas encore.
-//
-// CE QUE LA SORTIE FAIT AUJOURD HUI : rien de plus. Aucun composant porte par 5.1.1 n alimente
-// `killsource` — les douze lecteurs servent `ti=12`, que la chaine des morts ne marche pas.
-// LE BACKLOG QU ELLE OUVRE EST DONC UN BACKLOG DE DATATION, pas de correction.
-//
-// C EST L UNIQUE MONTEE DE CETTE CONSTANTE POUR TOUT LE LOT 5.1, ET C EST DELIBERE : le volet
-// 5.1.4 (l attribution de la fin de vie des vehicules) CHANGERA vraiment la sortie des faits, et
-// il partagera ce rang — deux changements d un meme lot partagent la revision. Ouvrir deux
-// backlogs pour un seul lot ferait redecoder le parc deux fois.
-//
-// BACKLOG KILLSOURCE SUR SIGNAL UTILISATEUR (D6), JAMAIS AUTOMATIQUE : chaque ligne de
-// `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
-// (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
-// le redecodage du parc reste un geste de PRODUCTION pris par le pilote. UN BACKFILL
-// `killsource-2026-09-17.2` TOURNAIT AU MOMENT DE CE LOT : la montee le rend candidat a son
-// tour, ce que l utilisateur a accepte en ouvrant le lot (V26).
-//
-// `SchemaVersion` reste 62 ; `profile.Rev` ne monte pas (aucun octet de `profile/` touche).
 // ENTREE `killsource-2026-09-20` (2026-09-20, lot 5.2b.1) : LE ROSTER DU DECODEUR VOIT LES
 // REMPLACANTS, ET UN PARTICIPANT NON COMPTE N ETEINT PLUS LE MATCH.
 //
@@ -487,3 +461,17 @@ package killsource
 // (`DecodeFrameRecords` saute l amorce ; debut par `LocaliserBoucleDeRecords`, inchange). Golden
 // regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/LOT_VA_V1.md`.
+//
+// COMPLEMENT DU 2026-10-05 (lot VA de la campagne de grammaire, etape V2 : la fin de la vue A fixe le
+// debut de la vue B ; REVISION CONSTANTE) : une source de la couche change (`walk.go` part de
+// [grammar.DebutDeLaVueB], la calibration porte la grammaire de la vue A du film) et la VALEUR de
+// `grammar.Rev` monte a `grammar-2026-10-06.2`, donc l empreinte. La marche part desormais de la fin
+// de la vue A quand elle decide (film a table EGALE ; film a table PREFIXE si la marche depuis elle
+// ferme le paquet), sinon du localisateur, inchange. Sortie `cmd/killsource json` sur les 19 temoins
+// de `config/replay_corpus.toml` et `1c4c63c2` (carte Refuge), binaire de `87cdfa761` contre binaire
+// du lot : AUCUNE mort, aucune valeur, aucune voie ne change ; 19 films identiques a l octet, et sur
+// `c75f33b8` le seul compteur de diagnostic `concordance.enregistrements_lus_par_les_deux_voies`
+// (`Stats.Redundant`, non persiste) passe de 5 a 6. Chaque ligne de `match_kill_events` deja ecrite
+// sous `killsource-2026-09-27` est celle que ce code ecrirait : la revision reste (D23) et aucun
+// backlog n est ouvert. Golden regenere a revision constante. Mesures :
+// `campagne_grammaire_2026-10-01/LOT_VA_V2.md`.

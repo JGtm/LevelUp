@@ -4,12 +4,14 @@ package archlint
 // campagne de grammaire ; regle des deux copies, CLAUDE.md n. 6).
 //
 // La vue A d une trame delta (`FUN_14076a1c4`) se lit en UN seul endroit :
-// `grammar/vue_a_lecture.go` ([grammar.lireLaVueA]), que deux fonctions appellent — `rangerLaTete`,
-// qui la lit une fois par trame dans la marche des trames et la range, et `lireTrameParRangs`, qui
-// la lit depuis la tete du paquet quand on ne la lui passe pas. Ce test interdit, dans l arbre
-// syntaxique de la production du decodeur :
+// `grammar/vue_a_lecture.go` ([grammar.lireLaVueA]), que trois fonctions appellent — `rangerLaTete`,
+// qui la lit une fois par trame dans la marche des trames et la range, `lireTrameParRangs`, qui la
+// lit depuis la tete du paquet quand on ne la lui passe pas, et `DebutDeLaVueB`
+// (`grammar/localisateur.go`), qui la lit pour les deux marches qui lisent les morts et ne rangent
+// pas de structure (lot VA, etape V2). Ce test interdit, dans l arbre syntaxique de la production
+// du decodeur :
 //
-//	un appel a `lireLaVueA` hors de ces deux fonctions ;
+//	un appel a `lireLaVueA` hors de ces trois fonctions ;
 //	un appel a `chargeDuGenre` (le lecteur de la charge d un message) hors de `lireUnMessage`, le
 //	corps de message de la lecture unique ;
 //	toute fonction nommee `consumeVueA`, la lecture de la tete seule que le lot a remplacee
@@ -40,7 +42,7 @@ const (
 // appelantsPermis : pour chaque fonction de la lecture unique, les seules fonctions qui l appellent.
 func appelantsPermis() map[string][]string {
 	return map[string][]string{
-		"lireLaVueA":    {"rangerLaTete", "lireTrameParRangs"},
+		"lireLaVueA":    {"rangerLaTete", "lireTrameParRangs", "DebutDeLaVueB"},
 		"chargeDuGenre": {"lireUnMessage"},
 	}
 }

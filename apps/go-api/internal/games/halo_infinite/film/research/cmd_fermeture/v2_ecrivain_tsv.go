@@ -114,8 +114,9 @@ func (r *rapportV2) ecrireEcrivain(id, build string, m *mesureV2) error {
 			return err
 		}
 	}
-	_, err := fmt.Fprintf(w, "%s\t%s\tlistes d evenements\tlocalisees\t%d\t-\n%s\t%s\tlistes d evenements\tnon localisees\t%d\t-\n",
-		id, build, e.listesLocalisees, id, build, e.listesNonLocalisees)
+	_, err := fmt.Fprintf(w, "%s\t%s\tlistes d evenements\tlocalisees\t%d\t-\n%s\t%s\tlistes d evenements\tnon localisees\t%d\t-\n"+
+		"%s\t%s\tlistes d evenements\tlues (fin de la vue A)\t%d\t-\n",
+		id, build, e.listesLocalisees, id, build, e.listesNonLocalisees, id, build, e.listesLues)
 	return err
 }
 
@@ -156,6 +157,8 @@ func ecrirePaquet(w io.Writer, id string, p grammar.PaquetDeCarte) error {
 		liste = "non localisee"
 	case p.ListeLocalisee:
 		liste = "localisee"
+	case p.ListeLue:
+		liste = "lue"
 	}
 	reste := -1
 	if p.Sortie.EstUnRejet() {

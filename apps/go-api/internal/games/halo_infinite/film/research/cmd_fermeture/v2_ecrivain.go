@@ -28,6 +28,8 @@ type ecrivainV2 struct {
 	paquetsFermesAuBit, paquetsFermes          int
 	utilesLus, utilesFermesAuBit, utilesFermes int
 	listesLocalisees, listesNonLocalisees      int
+	// listesLues : les listes dont la vue B commence a la fin de la vue A lue (lot VA).
+	listesLues int
 	// retires : les fermetures au bit que les regles retirent, par PREMIERE regle.
 	retires map[string]*compte
 	// portees : par regle, les paquets fermes au bit qui la portent ; nonFermes : les paquets non
@@ -48,6 +50,8 @@ func (e *ecrivainV2) compterEcrivain(p grammar.PaquetDeCarte) {
 		e.listesNonLocalisees++
 	case p.ListeLocalisee:
 		e.listesLocalisees++
+	case p.ListeLue:
+		e.listesLues++
 	}
 	e.utilesLus += p.UtilesLus
 	e.utilesFermes += p.UtilesLus - p.UtilesEnJeu
@@ -89,6 +93,7 @@ func (e *ecrivainV2) cumuler(f ecrivainV2) {
 	e.utilesFermes += f.utilesFermes
 	e.listesLocalisees += f.listesLocalisees
 	e.listesNonLocalisees += f.listesNonLocalisees
+	e.listesLues += f.listesLues
 	sommer(e.retires, f.retires)
 	for v := range e.portees {
 		e.portees[v] += f.portees[v]

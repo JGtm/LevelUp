@@ -13,7 +13,8 @@ const (
 
 // DebutDeVueB dit comment la marche a trouvé le début de la vue B d'une trame delta. Un début
 // LOCALISÉ est de la récupération qui vit dans la marche (ADR 0037 IR-6) : la marche ne l'a pas
-// atteint en lisant le paquet depuis sa tête.
+// atteint en lisant le paquet depuis sa tête. Un début LU ([DebutEnTete], [DebutParVueA]) n'en est
+// pas : la marche l'a atteint en lisant la vue A jusqu'à son terminateur.
 type DebutDeVueB uint8
 
 // Les débuts de vue B.
@@ -39,6 +40,12 @@ const (
 	// DebutNonLocalise : paquet à liste d'événements dont le début n'a pas été trouvé ; aucune vue
 	// n'est lue.
 	DebutNonLocalise
+	// DebutParVueA : paquet à liste d'événements dont la vue A a été LUE jusqu'à son terminateur ;
+	// la vue B commence au bit qui le suit, chez l'écrivain (`FUN_142f2c3b0`) comme chez le lecteur
+	// (`FUN_142987460`). C'est une LECTURE, pas une localisation : aucune position n'est cherchée.
+	// Posé quand la table des genres du film est ÉGALE à celle du jeu, ou quand elle en est un
+	// préfixe et que la marche depuis cette fin ferme le paquet.
+	DebutParVueA
 )
 
 // EtatDeVue dit jusqu'où la marche a lu la vue A ou la vue C d'une trame delta.

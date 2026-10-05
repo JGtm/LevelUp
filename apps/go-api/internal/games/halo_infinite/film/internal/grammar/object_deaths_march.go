@@ -16,9 +16,10 @@ package grammar
 //     (une entité née entre deux images-clés n'est déclarée que par la suivante), puis les
 //     images-clés s'appliquent DANS L'ORDRE DU TEMPS — sans quoi un slot recyclé en cours de
 //     match serait décodé au mauvais archétype sur toute la première moitié du film.
-//  2. LOCALISATEUR D'ÉVÉNEMENTS. Dans un paquet porteur d'une liste d'événements, la boucle de
-//     records ne commence pas à l'amorce : le localisateur unique ([LocaliserBoucleDeRecords],
-//     `localisateur.go`, ordre [SignaturePuisLargeurLibre]) en rend le début.
+//  2. DÉBUT DE LA VUE B. Dans un paquet porteur d'une liste d'événements, la boucle de records ne
+//     commence pas à l'amorce : elle commence à la fin de la vue A quand la lecture de la vue A en
+//     décide, sinon au début que rend le localisateur unique ([DebutDeLaVueB], `localisateur.go`,
+//     ordre [SignaturePuisLargeurLibre]).
 //  3. HUIT VUES DE RÉPLICATION par paquet : une mort peut vivre dans une vue > 0.
 //  4. SNAPSHOT / RESTORE : une marche qui a désynchronisé ne laisse aucune liaison derrière
 //     elle (les deux politiques qui les conservaient ont été mesurées perdantes).
@@ -115,22 +116,30 @@ func marchRecordsOf(pay []byte, w *World, cfg FrameConfig, start int) []FrameRec
 	return recs
 }
 
-// marchStartOf rend le bit de départ de la boucle de records d'un paquet, et dit si le paquet
-// portait une liste d'événements et s'il a été localisé. `ok` faux = paquet à événements non
-// localisé : aucun point de départ sûr, il se saute (jamais une marche au hasard).
+// marchStartOf rend le bit de départ de la boucle de records d'un paquet PAR LE SEUL LOCALISATEUR,
+// et dit si le paquet portait une liste d'événements et s'il a été localisé. `ok` faux = paquet à
+// événements non localisé : aucun point de départ sûr, il se saute (jamais une marche au hasard).
+//
+// C'est la forme de la CALIBRATION DU CADRE ([trialFrameConfig]), qui juge chaque largeur
+// d'identifiant par le taux de paquets que la signature localise : la signature dépend de cette
+// largeur, la fin de la vue A n'en dépend pas — elle localiserait les mêmes paquets sous toutes les
+// largeurs et ne départagerait rien. La marche des morts, elle, part de la fin de la vue A quand
+// elle décide ([marchDebut]).
 func marchStartOf(pay []byte, w *World, cfg FrameConfig) (start int, withEvents, ok bool) {
-	start, withEvents, ok, _ = marchDebut(pay, w, cfg)
+	start, withEvents, ok, _ = marchDebut(pay, w, cfg, VueADuFilm{})
 	return start, withEvents, ok
 }
 
-// marchDebut est [marchStartOf], plus le verdict du repli `repli_localisation_largeur_libre` : le
-// paquet a ete localise par la seconde passe a LARGEUR LIBRE. [ScanMarchFacts] le compte au rapport
-// du contexte (lot J8.7) ; la calibration du cadre, qui ESSAIE des largeurs, ne compte rien.
-func marchDebut(pay []byte, w *World, cfg FrameConfig) (start int, withEvents, ok, aLargeurLibre bool) {
+// marchDebut rend le bit de depart de la boucle de records d un paquet sous la grammaire de vue A
+// du film `v` : la fin de la vue A quand elle decide, sinon le localisateur ([DebutDeLaVueB]) ; plus
+// le verdict du repli `repli_localisation_largeur_libre` : le paquet a ete localise par la seconde
+// passe a LARGEUR LIBRE. [ScanMarchFacts] le compte au rapport du contexte (lot J8.7) ; la
+// calibration du cadre, qui ESSAIE des largeurs, ne compte rien.
+func marchDebut(pay []byte, w *World, cfg FrameConfig, v VueADuFilm) (start int, withEvents, ok, aLargeurLibre bool) {
 	if !marchHasEvents(pay) {
 		return cfg.PacketPreambleBits, false, true, false
 	}
-	s, aLargeurLibre := LocaliserBoucleDeRecords(pay, w, cfg, SignaturePuisLargeurLibre)
+	s, aLargeurLibre := DebutDeLaVueB(pay, w, cfg, v)
 	if s < 0 {
 		return 0, true, false, false
 	}

@@ -141,10 +141,11 @@ func ScanMarchFacts(fc *FilmContext) (MarchFacts, error) {
 	st.CadreLocalises, st.CadreDauphin, st.CadreEvenements = meilleur.located, dauphin.located, meilleur.events
 	h := &objectDeathHarvest{reg: reg, idx: map[uint32]int{}, st: &st}
 	tl := newMarchTimeline(reg, kfs)
+	vueA := VueADuFilm{g: fc.grammaireDeLaVueA()}
 	largeurLibre := 0
 	for _, d := range deltas {
 		w := tl.advanceTo(d.timestampUS)
-		start, withEvents, ok, aLargeurLibre := marchDebut(d.payload, w, cfg)
+		start, withEvents, ok, aLargeurLibre := marchDebut(d.payload, w, cfg, vueA)
 		if withEvents {
 			st.EventPackets++
 		}

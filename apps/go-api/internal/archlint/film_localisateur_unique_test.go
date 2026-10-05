@@ -9,13 +9,18 @@ package archlint
 // qu une copie revienne ailleurs dans la production du decodeur, sous deux formes lues dans l arbre
 // syntaxique :
 //
-//	essai de position   le bit qui precede une position `s` est teste (`BitAt(_, s-1)`) et un delta
-//	                    est essaye a `s` (`TryDeltaAt(_, s, …)`) dans le meme fichier : le pas du
-//	                    localisateur ;
+//	essai de position   le bit qui precede une position `s` est teste (`BitAt(_, s-1)`, ou
+//	                    `precedeDuTerminateur(_, s)`) et un delta est essaye a `s`
+//	                    (`TryDeltaAt(_, s, …)`) dans le meme fichier : le pas du localisateur ;
 //	slot de signature   un champ `Slot` compare au litteral 123 : la signature ecrite en dur.
 //
 // Le fichier hote doit porter l essai de position exactement deux fois (signature stricte et repli
 // a largeur libre), sans quoi le garde-rail garde un fantome.
+//
+// LE BIT NUL DE TETE A UNE SEULE IMPLANTATION (lot VA, etape V2 ; regle des deux copies) : dans le
+// paquet `grammar`, le test du bit qui precede une position (`BitAt(_, x-1)`) ne s ecrit que dans
+// `precedeDuTerminateur` (`localisateur.go`), que le localisateur et les candidats de tete de la
+// fermeture par NEW appellent.
 //
 // PERIMETRE : la production de `film/**`, hors `film/research/` et hors fichiers `//go:build
 // research` (instruments de mesure, qui recopient le localisateur pour en essayer des variantes),
@@ -44,6 +49,10 @@ const (
 	plancherFichiersLocalisateur = 500
 	// slotDeSignature : le slot de la signature du premier record.
 	slotDeSignature = "123"
+	// testDuTerminateur : la seule fonction de `grammar` qui teste le bit qui precede une position.
+	testDuTerminateur = "precedeDuTerminateur"
+	// paquetGrammar : le repertoire du paquet `grammar`, relatif a apps/go-api.
+	paquetGrammar = "internal/games/halo_infinite/film/internal/grammar/"
 )
 
 // formesDuSource compte, dans un source Go, les essais de position (chaque `BitAt(_, s-1)` dont
@@ -94,8 +103,15 @@ func positionEssayee(call *ast.CallExpr) (string, bool) {
 	return id.Name, true
 }
 
-// positionPrecedee : `BitAt(_, s-1)`, le bit qui precede la position `s`.
+// positionPrecedee : `BitAt(_, s-1)` ou `precedeDuTerminateur(_, s)`, le bit qui precede la
+// position `s`.
 func positionPrecedee(call *ast.CallExpr) (string, bool) {
+	if nomAppele(call.Fun) == testDuTerminateur && len(call.Args) >= 2 {
+		if id, ok := call.Args[1].(*ast.Ident); ok {
+			return id.Name, true
+		}
+		return "", false
+	}
 	if nomAppele(call.Fun) != "BitAt" || len(call.Args) < 2 {
 		return "", false
 	}
@@ -108,6 +124,38 @@ func positionPrecedee(call *ast.CallExpr) (string, bool) {
 		return "", false
 	}
 	return id.Name, true
+}
+
+// testsBrutsDuBitPrecedent compte, dans un source Go, les tests du bit qui precede une position
+// (`BitAt(_, x-1)`, quelle que soit l expression `x`) ecrits hors de [testDuTerminateur].
+func testsBrutsDuBitPrecedent(t *testing.T, nom string, src []byte) int {
+	t.Helper()
+	f, err := parser.ParseFile(token.NewFileSet(), nom, src, 0)
+	if err != nil {
+		t.Fatalf("analyse de %s : %v", nom, err)
+	}
+	bruts := 0
+	for _, decl := range f.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name == testDuTerminateur {
+			continue
+		}
+		ast.Inspect(decl, func(n ast.Node) bool {
+			if call, ok := n.(*ast.CallExpr); ok && testeLeBitPrecedent(call) {
+				bruts++
+			}
+			return true
+		})
+	}
+	return bruts
+}
+
+// testeLeBitPrecedent : `BitAt(_, x-1)`.
+func testeLeBitPrecedent(call *ast.CallExpr) bool {
+	if nomAppele(call.Fun) != "BitAt" || len(call.Args) < 2 {
+		return false
+	}
+	b, ok := call.Args[1].(*ast.BinaryExpr)
+	return ok && b.Op == token.SUB && estLitteral(b.Y, "1")
 }
 
 // comparaisonAuSlotDeSignature : `x.Slot == 123`, `x.Slot != 123`, ou l inverse.
@@ -161,6 +209,13 @@ func TestLocalisateurDeBoucleUnique(t *testing.T) {
 			return err
 		}
 		fichiers++
+		if strings.HasPrefix(rel, paquetGrammar) {
+			if n := testsBrutsDuBitPrecedent(t, rel, blob); n > 0 {
+				t.Errorf("%s : %d test(s) du bit qui precede une position (`BitAt(_, x-1)`) hors de "+
+					"%s — le bit nul de tete de la vue B se teste par grammar.%s (%s)", rel, n,
+					testDuTerminateur, testDuTerminateur, hoteLocalisateur)
+			}
+		}
 		essais, slots := formesDuSource(t, rel, blob)
 		if rel == hoteLocalisateur {
 			hote = essais
@@ -240,6 +295,29 @@ func TestGardeRailLocalisateurVecteurs(t *testing.T) {
 		if essais != c.essais || slots != c.slots {
 			t.Errorf("%s : %d essai(s), %d slot(s), attendu %d et %d", c.nom, essais, slots,
 				c.essais, c.slots)
+		}
+	}
+}
+
+// TestGardeRailBitDeTeteVecteurs : le test du bit qui precede une position ne s ecrit que dans
+// [testDuTerminateur] ; un appel a celui-ci, suivi d un essai de delta a la meme position, est un
+// essai de position.
+func TestGardeRailBitDeTeteVecteurs(t *testing.T) {
+	for _, c := range []struct {
+		nom, src      string
+		bruts, essais int
+	}{
+		{"test brut dans une autre fonction", "package p\n\nfunc f() bool { return source.BitAt(pay, p-extra-1) == 0 }\n", 1, 0},
+		{"implantation unique", "package p\n\nfunc " + testDuTerminateur +
+			"(pay []byte, tete int) bool { return source.BitAt(pay, tete-1) == 0 }\n", 0, 0},
+		{"essai par l implantation unique", "package p\n\nfunc f() {\n\tif " + testDuTerminateur +
+			"(pay, s) {\n\t\t_, _, _ = TryDeltaAt(pay, s, w, cfg)\n\t}\n}\n", 0, 1},
+	} {
+		bruts := testsBrutsDuBitPrecedent(t, "vecteur.go", []byte(c.src))
+		essais, _ := formesDuSource(t, "vecteur.go", []byte(c.src))
+		if bruts != c.bruts || essais != c.essais {
+			t.Errorf("%s : %d test(s) brut(s), %d essai(s), attendu %d et %d", c.nom, bruts, essais,
+				c.bruts, c.essais)
 		}
 	}
 }

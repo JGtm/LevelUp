@@ -415,3 +415,28 @@ package grammar
 // par paquet, sur les 20 films (sonde `va_v1_research_test.go`). Le rang : `grammar-2026-10-04` et
 // `grammar-2026-10-05` sont pris par l etape 2.7.a de la representation intermediaire, `.6` du
 // 2026-10-03 par le lot LR ; le premier rang libre et sans trou est celui du 2026-10-06.
+//
+// ENTREE `grammar-2026-10-06.2` (2026-10-05, lot VA de la campagne de grammaire, etape V2) : LA FIN DE
+// LA VUE A FIXE LE DEBUT DE LA VUE B.
+//
+// Ce qui change, contre `grammar-2026-10-06` (lot VA, etape V1 ; sortie identique a `87cdfa761`) :
+//   - la fin E de la vue A lue jusqu a son terminateur est le debut de la vue B ([debutParLaVueA],
+//     [lecture.DebutParVueA]) : `FUN_142f2c3b0` ecrit vue A, un bit 0, vue B, bout a bout, et
+//     `FUN_142987460` commence la vue B au bit qui suit ; decisions de l utilisateur du 2026-10-04 :
+//     film a table des genres EGALE a celle du jeu, E toujours, sans reprise a la signature quand la
+//     marche depuis E bute ; film a table PREFIXE, E seulement si la marche depuis E ferme le paquet
+//     sans regle de l ecrivain contredite ; vue A lue en partie : jamais ;
+//   - la regle sert les trois sites : cuisson ([debutDeLaVueBDeCuisson]), marche des morts d objet et
+//     marche de `killsource` ([DebutDeLaVueB], [VueADuFilmSousCarte]) ; la calibration du cadre de la
+//     marche des morts juge toujours les largeurs par la signature ([marchStartOf]) ;
+//   - les candidats NEW de tete (chaine et fermeture) doivent suivre un bit nul, le terminateur de la
+//     vue A ([precedeDuTerminateur], seule implantation du test, garde-rail
+//     `archlint/film_localisateur_unique_test.go`).
+//
+// Mesure sur 20 films contre `87cdfa761` (`campagne_grammaire_2026-10-01/LOT_VA_V2.md`) : carte v2
+// 313 542 -> 354 796 paquets sains (+41 254), records utiles sains 2 923 597 -> 3 473 088 ; 752 sains
+// perdus en brut, tous instruits (354 par la fin de la vue A, la marche depuis E butant sur un composant
+// non porte ou en vue C ; 392 par le bit nul, debut d avant precede d un bit a 1 ; 6 en cascade) ;
+// trois films en baisse nette (`60ae07c4` -11, `a349fea8` -2, `a521164d` -1), toutes leurs pertes
+// par le bit nul : fermetures factices retirees (exception D2). `cmd/killsource json` : aucune mort,
+// valeur ni voie ne change sur 20 films : `killsource.Rev` reste `killsource-2026-09-27`.
