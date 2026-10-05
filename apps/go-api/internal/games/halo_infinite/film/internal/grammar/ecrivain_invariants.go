@@ -7,8 +7,9 @@ package grammar
 // payload fait 0 a 7 bits nuls ([vueCFermee], la propriete de `FUN_14299d2c8`). Cette condition est
 // necessaire, pas suffisante : la vue C se resynchronise d elle-meme depuis une position fausse. Un
 // paquet n est donc ferme que si, EN PLUS, aucune regle de l ecrivain n est contredite par ce que
-// la marche a lu. Chaque regle ci-dessous cite la fonction de l ecrivain qui la fonde ; une regle
-// sans ecrivain n entre pas ici.
+// la marche a lu. Chaque regle ci-dessous cite la fonction du jeu qui la fonde — l ecrivain, ou le
+// lecteur qui rejoue le film quand il ne sait pas lire ce qui a ete lu (l etat de creation) ; une
+// regle sans fonction du jeu n entre pas ici.
 //
 //	sortie de vue B par rejet   `FUN_142f2e174` n ecrit un DELTA que pour une entite a l etat 3, que
 //	                            seul un NEW ecrit et acquitte pose (`FUN_142f2cee0`, `FUN_142f2f8f0`) ;
@@ -18,6 +19,10 @@ package grammar
 //	ordre de la vue B           `FUN_14076b9c8` concatene les NEW, puis les DELTA, puis les DEL ;
 //	                            `FUN_142f2e174` parcourt les slots par index croissant, un genre par
 //	                            entite.
+//	etat de creation            `FUN_1408f1aa4` ne lit le corps d un record NEW que si le lecteur
+//	                            d etat de l archetype (`vtable+0x60`) reussit ; `FUN_14080cfe8`, le
+//	                            bloc MPP qu il lit, echoue sur un compte superieur a quatre
+//	                            (`etat_de_creation.go`). Un tel record n est pas lisible par le jeu.
 //	masque                      `FUN_142e2da44` : aucun bit au-dela du nombre de composants du
 //	                            descripteur ; au plus sept composants en epars, index croissants ;
 //	                            plus de sept en dense.
@@ -44,6 +49,9 @@ const (
 	// InvariantOrdreVueB : un record de la vue B hors de l ordre NEW*, DELTA*, DEL*, ou un slot
 	// non strictement croissant dans son groupe.
 	InvariantOrdreVueB
+	// InvariantEtatDeCreationIllisible : un record NEW dont le lecteur d etat de creation du jeu
+	// echoue ([EntityTrace.EtatIllisible]).
+	InvariantEtatDeCreationIllisible
 	// InvariantMasqueHorsArchetype : un bit de masque au-dela du dernier composant de l archetype.
 	InvariantMasqueHorsArchetype
 	// InvariantMasqueDenseCourt : un masque dense qui annonce au plus sept composants.
@@ -61,7 +69,7 @@ const (
 	// InvariantVueCCodeAnalogique : un scalaire analogique au code 63.
 	InvariantVueCCodeAnalogique
 	// NombreDInvariants est le nombre de valeurs.
-	NombreDInvariants = 11
+	NombreDInvariants = 12
 )
 
 // String rend le nom de la regle, tel que la carte de fermeture l ecrit.
@@ -73,6 +81,8 @@ func (v InvariantEcrivain) String() string {
 		return "vue B : sortie par rejet"
 	case InvariantOrdreVueB:
 		return "ecrivain : ordre de la vue B"
+	case InvariantEtatDeCreationIllisible:
+		return "lecteur : etat de creation illisible"
 	case InvariantMasqueHorsArchetype:
 		return "ecrivain : masque au-dela de l archetype"
 	case InvariantMasqueDenseCourt:
@@ -215,6 +225,9 @@ func (j *jugeEcrivain) jugerLaVueB(recs []FrameRecord) bool {
 			continue
 		}
 		if !ordre.suivre(ph, r.Slot) && !j.noter(InvariantOrdreVueB) {
+			return false
+		}
+		if r.Trace.EtatIllisible && !j.noter(InvariantEtatDeCreationIllisible) {
 			return false
 		}
 		if !j.noter(r.Trace.MasqueNonEcrit) {

@@ -69,7 +69,18 @@ type Lecteur struct {
 	// ([consumeComposantsVehiculeTi40]) ou de la portee `DAT_144e61ea0` que `FUN_142e2c690` pose
 	// sur toute sa boucle (`low-frequency`, cf. `components_frequences.go`) le consultent.
 	etatComplet bool
+	// etatIllisible : le lecteur d etat de creation du jeu (`vtable+0x60` de l archetype, appele
+	// par `FUN_1408f1aa4`) ECHOUE sur le record en cours ([Lecteur.echouerLEtatDeCreation]).
+	// [TraverseEntity] le remet a faux avant l etat par defaut et arrete le record s il est pose.
+	etatIllisible bool
+	// marcheNonProuvee : la marche de ce paquet part d un debut que rien ne prouve (second rang
+	// de [debutParFermetureRangee]) ; ses records NEW ne lient pas et ses DEL ne delient pas
+	// ([World.prendreDebutNonProuve]).
+	marcheNonProuvee bool
 }
+
+// echouerLEtatDeCreation note que le lecteur d etat de creation du record en cours echoue.
+func (b *Lecteur) echouerLEtatDeCreation() { b.etatIllisible = true }
 
 // noterExceptionDatee marque le composant en cours : sa largeur vient d un lecteur en exception
 // datee, pas du portage de l ecrivain.

@@ -115556,3 +115556,12 @@ V1), régénéré par la campagne, vert sur la branche.
 
 **Conclusion / prochaine étape** : CI, `make gate-push`, puis accord de fusion demandé à
 l'utilisateur ; ensuite LR de la campagne, puis 2.7.b.
+## [2026-10-05] Campagne de grammaire — lot LR (lecteur d'état de création, second rang sans mutation du monde) : non retenu à la base
+
+**Statut** : Complété (compte rendu) ; non commité, code laissé dans le worktree `LevelUp-wt-cg3-lr` (branche `feat/cg3-lr`).
+
+**Décision technique principale** : deux règles lues dans le jeu. (1) `FUN_14080cfe8` échoue sur un compte MPP supérieur à quatre (`CMP ECX,0x4 ; JA` @14080d238), les lecteurs d'état qui le lisent rendent 0 (sauf `ti=41`, drapeau 2 et index absent), et `FUN_1408f1aa4` ne lit pas le corps d'un record NEW dont l'état échoue : `TraverseEntity` arrête le record, le juge le contredit. (2) La marche partie du second rang de `debutParFermetureRangee` ne lie aucun NEW et ne délie aucun DEL (annonce posée sur le monde, prise par la boucle de la vue B).
+
+**Résultats observés** : carte v2 au découpage par défaut +259 sains au corpus mais 14 films en baisse ; `e5adf7b2` perd 23 sains vrais par (2) (têtes `ti=41` mal lues à 9/5, cas LT §4.2) : gate 2 rouge. Mesure de recherche sous 8/3 (`LT_MPP`, sonde contrôlée à l'unité contre la carte) : +1 311 sains, toutes les pertes des films en baisse passent par un NEW illisible pour le jeu. Cas réels `1c4c63c2` 17:52 / 17:172 et 61:42 corrigés sous 8/3. killsource identique hors diagnostic `calibration` ; `objectives` identique (replay-equiv) ; gate de corpus rc 1 = la même baisse de `P-1`.
+
+**Conclusion / prochaine étape** : rejouer le gate 2 officiel sous `-mpp-declare` quand 2.7.a0 est poussé, puis intégrer LR avec ou après 2.7.a0. Détail : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_LR.md`.

@@ -43,16 +43,30 @@ package grammar
 //	R(1) ; si 1 : FUN_141fcf730(lecteur)                                          @1408eff03
 
 // consumeDefaultStateTI41 lit `FUN_1408efb58` ; `param5` est le cinquieme argument du jeu.
+//
+// L ECHEC DU BLOC MPP NE FAIT PAS TOUJOURS ECHOUER CET ETAT. `FUN_1408efb58` rend 0 quand `bVar3`
+// est faux : sans le drapeau 2, `bVar3` vaut le verdict du bloc MPP (`bVar2`, le R(5) qui suit ne
+// depasse jamais 0x1f) ; avec lui, `FUN_1406d00ec` rend 0xffffffff quand sa porte vaut 1, et
+// `bVar3` vaut alors `!bVar1` — un predicat sur `dst+0x14` (`FUN_1404785a0`, `FUN_1408ee96c`) que
+// le film ne porte pas —, sinon le verdict du bloc (l index R(2) ne depasse jamais 3). Le bloc
+// qui echoue fait donc echouer l etat, sauf drapeau 2 pose et index absent.
 func consumeDefaultStateTI41(br *Lecteur, param5 bool) {
 	version := uint64(1)
 	if br.ReadBit() {
 		version = br.ReadBits(8)
 	}
-	consumeMultiplayerPropertiesBlock(br)
+	mppLisible := consumeMultiplayerPropertiesBlock(br)
 	consumeGateR(br, 5) // -> dst+0x70
-	if br.ReadBit() {   // drapeau 2
+	indexAbsent := false
+	if br.ReadBit() { // drapeau 2
 		consume1408f0ac4(br, 1)
-		consumeID2(br) // FUN_1406d00ec
+		indexAbsent = br.ReadBit() // FUN_1406d00ec : R(1) ; 1 -> 0xffffffff, 0 -> R(2)
+		if !indexAbsent {
+			br.ReadBits(2)
+		}
+	}
+	if !mppLisible && !indexAbsent {
+		br.echouerLEtatDeCreation()
 	}
 	consume1408eff64(br, param5)
 	br.ReadBit()      // drapeau 4
