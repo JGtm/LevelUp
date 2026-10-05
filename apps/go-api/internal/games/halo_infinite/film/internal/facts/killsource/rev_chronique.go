@@ -465,7 +465,8 @@ package killsource
 // COMPLEMENT DU 2026-10-05 (lot VA de la campagne de grammaire, etape V2 : la fin de la vue A fixe le
 // debut de la vue B ; REVISION CONSTANTE) : une source de la couche change (`walk.go` part de
 // [grammar.DebutDeLaVueB], la calibration porte la grammaire de la vue A du film) et la VALEUR de
-// `grammar.Rev` monte a `grammar-2026-10-06.2`, donc l empreinte. La marche part desormais de la fin
+// `grammar.Rev` monte a `grammar-2026-10-06.2` puis `.3` (corrections du controle, candidats de tete
+// de la cuisson que cette marche n utilise pas), donc l empreinte. La marche part desormais de la fin
 // de la vue A quand elle decide (film a table EGALE ; film a table PREFIXE si la marche depuis elle
 // ferme le paquet), sinon du localisateur, inchange. Sortie `cmd/killsource json` sur les 19 temoins
 // de `config/replay_corpus.toml` et `1c4c63c2` (carte Refuge), binaire de `87cdfa761` contre binaire

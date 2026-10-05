@@ -218,9 +218,10 @@ packet with no writer rule contradicted. A view A read only in part (unported or
 configuration bit at zero, unreadable table) is never used: the packet takes the recovery mechanisms
 above, unchanged. The two walks that read deaths (object deaths, `killsource`) take the same rule
 through the locator host (`grammar/localisateur.go`, `DebutDeLaVueB`); the frame-width calibration of
-the object-death walk still scores widths by the signature, which depends on them. The leading
-NEW-record recovery keeps only head candidates that follow a zero bit, the view A terminator: the
-writer writes that bit before the first record of view B and nowhere else.
+the object-death walk still scores widths by the signature, which depends on them. The writer puts
+a zero bit (the view A terminator) before the first record of view B and nowhere else; the locator
+requires it at every position it tries, but the leading NEW-record recovery does not apply it to
+its head candidates: that rule is not decided, and the recovery keeps its candidates unchanged.
 
 Since step 2 (lot 2.4), the anchored biped recovery runs once per film. The positions and the eight
 channel scans that anchor biped records in delta frames used the same parameters (the context's

@@ -51,7 +51,7 @@ var cadreDeTete = FrameConfig{IDLowBits: 13, Profil: ProfilDeBalayageParDefaut()
 // [chaineJusqua] : le cas decale passe, ROUGE.
 func TestLaListeCommenceASonRecordNeufDeTete(t *testing.T) {
 	var bw bitWriter
-	bw.bits(0x1e, 5) // la fin d un message de la vue A, puis son terminateur 0 (pas un en-tete)
+	bw.bits(0x1f, 5) // la fin d un message de la vue A : cinq bits qui ne sont pas un en-tete
 	neuf := bw.n
 	bw.neuf13(300, 2)
 	bw.delta13(122)
@@ -80,7 +80,7 @@ func TestLaListeCommenceASonRecordNeufDeTete(t *testing.T) {
 // d un slot que le monde ne connait pas. La chaine s arrete : le debut du localisateur est garde.
 func TestUneChaineQuiRencontreUnSlotInconnuNeProuveRien(t *testing.T) {
 	var bw bitWriter
-	bw.bits(0x1e, 5)
+	bw.bits(0x1f, 5)
 	bw.neuf13(300, 2)
 	bw.delta13(555) // slot inconnu du monde
 	debut := bw.n

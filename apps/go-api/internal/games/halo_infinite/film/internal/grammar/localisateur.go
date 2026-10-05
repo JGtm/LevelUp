@@ -46,12 +46,13 @@ package grammar
 // (`FUN_1406d5d14`, sans prefixe), donc la vue B commence au bit qui suit ce 0, sur lequel le
 // lecteur de la liste (`FUN_14076a1c4`) s arrete. Les records de la vue B se suivent sans
 // separateur : devant un record qui n est pas le premier, le bit precedent est le dernier bit de
-// donnees du record d avant. Le localisateur exige ce bit nul devant toute position qu il essaie,
-// et les candidats de TETE de la fermeture par NEW aussi ([candidatsDeTete]) : c est une condition
-// de RECHERCHE, lue dans le jeu pour la tete de la vue B seulement — quand des records NEW
-// precedent la signature (la chaine de tete les retrouve, [debutParChaine]), le bit nul devant
-// elle n est pas le terminateur. Sans la vue A lue, la longueur de la liste n est ecrite nulle
-// part : il faut la chercher.
+// donnees du record d avant. Le localisateur exige ce bit nul devant toute position qu il essaie :
+// c est une condition de RECHERCHE, lue dans le jeu pour la tete de la vue B seulement — quand des
+// records NEW precedent la signature (la chaine de tete les retrouve, [debutParChaine]), le bit nul
+// devant elle n est pas le terminateur. Les candidats NEW de tete ([candidatsDeTete]) n y sont PAS
+// soumis : la meme loi les viserait, mais l appliquer aux candidats est une regle que ce decodeur
+// ne porte pas (elle n est pas decidee). Sans la vue A lue, la longueur de la liste n est ecrite
+// nulle part : il faut la chercher.
 //
 // LA SIGNATURE STRICTE. Le premier record est un delta du slot 123 a composant unique, de la
 // largeur EXACTE que ses ecrivains lui donnent sous le cadre du film ([largeurDeSignature] : 35
@@ -190,11 +191,17 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 
 // debutParLaVueA rend la fin E de la vue A lue `a` quand elle DECIDE du debut de la vue B d un
 // paquet a evenements, -1 sinon (cf. l en-tete) : la vue doit avoir ete lue jusqu a son
-// terminateur et porter au moins un message ; un film a table EGALE la prend telle quelle, un film
-// a table PREFIXE seulement si la marche depuis E ferme le paquet ([lectureDEssai], monde restaure).
+// terminateur ; un film a table EGALE la prend telle quelle, un film a table PREFIXE seulement si
+// la marche depuis E ferme le paquet sans regle de l ecrivain contredite ([LectureVueC.Fermee] :
+// fermee au bit pres ne suffit pas ; [lectureDEssai], monde restaure).
+//
+// Les trois appelants n arrivent qu avec une liste annoncee (le bit 1 du payload a 1, ou
+// [listeAnnoncee]) : une vue A portee y compte donc au moins un message, et la condition n a pas a
+// le redire. Une vue A vide portee finirait d ailleurs au bit 2, le debut de la vue B d un paquet
+// sans evenement.
 func debutParLaVueA(pay []byte, a *FluxVueA, classe classeDeLaVueA, w *World, cfg FrameConfig) int {
-	if !a.Porte || len(a.Genres) == 0 {
-		return -1 // vue lue en partie, ou sans liste : rien n est utilise
+	if !a.Porte {
+		return -1 // vue lue en partie : rien n est utilise
 	}
 	switch classe {
 	case vueAEgale:
@@ -237,9 +244,8 @@ func DebutDeLaVueB(pay []byte, w *World, cfg FrameConfig, v VueADuFilm) (int, bo
 
 // precedeDuTerminateur dit que le bit qui precede `tete` est nul : le terminateur de la vue A, que
 // le jeu n ecrit que devant le PREMIER record de la vue B (cf. l en-tete). C est la condition de
-// toute position essayee comme tete de la vue B — signature, repli a largeur libre, candidats NEW
-// de tete ([candidatsDeTete]) — et la seule implantation de ce test (garde-rail
-// `archlint/film_localisateur_unique_test.go`).
+// toute position que le localisateur essaie — signature stricte et repli a largeur libre — et la
+// seule implantation de ce test (garde-rail `archlint/film_localisateur_unique_test.go`).
 func precedeDuTerminateur(pay []byte, tete int) bool {
 	return tete >= 1 && source.BitAt(pay, tete-1) == 0
 }

@@ -11,21 +11,17 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
-// deuxDebuts ecrit un paquet ou la lecture depuis le bit 1 lit le DELTA 124 puis le DELTA 123
-// (ferme au bit pres, l ordre de l ecrivain contredit), et depuis le bit 22 le DELTA 123 seul
-// (ferme, ecrivable). Les deux lectures finissent sur le meme terminateur. Les deux debuts suivent
-// un bit nul (le terminateur de la vue A pour l un, le dernier bit du masque du DELTA 124 pour
-// l autre) : la condition de tete ([precedeDuTerminateur]) les laisse candidats tous les deux.
+// deuxDebuts ecrit un paquet ou la lecture depuis le bit 0 lit le DELTA 124 puis le DELTA 123
+// (ferme au bit pres, l ordre de l ecrivain contredit), et depuis le bit 21 le DELTA 123 seul
+// (ferme, ecrivable). Les deux lectures finissent sur le meme terminateur.
 func deuxDebuts() (pay []byte, faux, juste int) {
 	var bw bitWriter
-	bw.bit(0) // le terminateur de la vue A
-	faux = bw.n
 	bw.deltaMasque13(124)
 	juste = bw.n
 	bw.deltaMasque13(123)
 	bw.finDeVueB()
 	bw.bit(0) // vue C vide
-	return bw.buf, faux, juste
+	return bw.buf, 0, juste
 }
 
 // TestDebutParFermeturePrefereLaLectureEcrivable : MUTATION — revenir au premier candidat ferme

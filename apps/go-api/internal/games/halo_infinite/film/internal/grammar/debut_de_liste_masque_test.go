@@ -53,7 +53,7 @@ func dense(m uint64) func(w *bitWriter) {
 // terminateur. Rend le tampon, la position du premier record de tete et celle du debut localise.
 func chaineDeTete(tete func(w *bitWriter)) ([]byte, int, int) {
 	var bw bitWriter
-	bw.bits(0x1e, 5) // la fin d un message de la vue A, puis son terminateur 0
+	bw.bits(0x1f, 5)
 	neuf := bw.n
 	tete(&bw)
 	debut := bw.n

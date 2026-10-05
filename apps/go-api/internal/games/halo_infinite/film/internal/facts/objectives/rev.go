@@ -115,7 +115,8 @@ package objectives
 // `campagne_grammaire_2026-10-01/LOT_VA_V1.md`.
 //
 // COMPLEMENT DU 2026-10-05 (lot VA de la campagne de grammaire, etape V2 : la fin de la vue A fixe le
-// debut de la vue B ; REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-06.2`.
+// debut de la vue B ; REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-06.2`, puis a
+// `.3` (corrections du controle : candidats de tete de la cuisson ; mesure identique).
 // `grammar/signaux` ne change pas, et l etape `objectives` de `replay-equiv` est IDENTIQUE sur les 20
 // films de reference (binaire de `87cdfa761` contre binaire du lot). Golden regenere a revision
 // constante. Mesures : `campagne_grammaire_2026-10-01/LOT_VA_V2.md`.

@@ -440,3 +440,21 @@ package grammar
 // trois films en baisse nette (`60ae07c4` -11, `a349fea8` -2, `a521164d` -1), toutes leurs pertes
 // par le bit nul : fermetures factices retirees (exception D2). `cmd/killsource json` : aucune mort,
 // valeur ni voie ne change sur 20 films : `killsource.Rev` reste `killsource-2026-09-27`.
+//
+// ENTREE `grammar-2026-10-06.3` (2026-10-05, lot VA de la campagne de grammaire, etape V2,
+// corrections du controle independant) : LA LOI DU BIT NUL N EST PLUS APPLIQUEE AUX CANDIDATS DE
+// TETE.
+//
+// Ce qui change, contre `grammar-2026-10-06.2` :
+//   - les candidats NEW de tete ([debutParChaine], [debutParFermetureRangee]) ne sont plus tenus de
+//     suivre un bit nul : cette regle sortait du plan du lot VA, et aucune decision de l utilisateur
+//     ne la couvre ; le localisateur garde la condition ([precedeDuTerminateur]) ;
+//   - [debutParLaVueA] n exige plus qu une vue A portee : ses trois appelants n arrivent qu avec une
+//     liste annoncee, la condition sur le nombre de messages etait inatteignable.
+//
+// Mesure sur 20 films contre `87cdfa761` (`campagne_grammaire_2026-10-01/LOT_VA_V2.md`) : carte v2
+// identique a l octet a la decomposition « fin de la vue A seule » de l etape V2 ; 313 542 -> 355 198
+// paquets sains (+41 656), records utiles sains 2 923 597 -> 3 474 013 ; 354 sains perdus en brut,
+// tous par la fin de la vue A (decision (1)) ; aucun film en baisse. La marche des morts d objet et
+// celle de `killsource` n utilisent pas les candidats de tete : leur sortie est celle de
+// `grammar-2026-10-06.2`.

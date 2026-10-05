@@ -5,7 +5,8 @@ package replaybuild
 // va_v2_etapes_research_test.go — LOT VA, ETAPE V2 (2026-10-05) : LES VALEURS DES ETAPES QUE
 // `replay-equiv` HACHE, ECRITES EN JSON pour les instruire etape par etape. Un instrument de
 // recherche : la cuisson est celle du harnais (`cmd/replay-equiv`, branche du decodage), un film a la
-// fois, sous une racine factice.
+// fois, sous une racine factice. VA_FAITS (facultatif) : le repertoire des `<film>.facts.json` quand
+// ce n est pas celui des references de `replay-equiv` (films du gate de corpus hors de ce corpus).
 //
 //	VA_RACINE=<racine factice> VA_FILMS=<id,id> VA_ETAPES=<etape,etape> VA_SORTIE=<dir hors data> \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestVAV2Etapes$' ./internal/replaybuild/
@@ -34,9 +35,13 @@ func TestVAV2Etapes(t *testing.T) {
 	}
 	ctx := context.Background()
 	cacheRoot := title.NewPathResolver(racine).CacheRootDir()
+	repFaits := os.Getenv("VA_FAITS")
+	if repFaits == "" {
+		repFaits = filepath.Join(racine, "apps", "go-api", "internal", "games", "halo_infinite", "film", "replay",
+			"testdata", "equivalence")
+	}
 	for _, film := range films {
-		faits, err := ReadFactsFile(filepath.Join(racine, "apps", "go-api", "internal", "games", "halo_infinite",
-			"film", "replay", "testdata", "equivalence", film+".facts.json"))
+		faits, err := ReadFactsFile(filepath.Join(repFaits, film+".facts.json"))
 		if err != nil {
 			t.Fatalf("%s : %v", film, err)
 		}

@@ -1,7 +1,7 @@
 package grammar
 
 // debut_par_vue_a_test.go — LA FIN DE LA VUE A FIXE LE DEBUT DE LA VUE B (lot VA, etape V2 ;
-// decisions de l utilisateur du 2026-10-04), et la tete de la vue B suit un bit nul.
+// decisions de l utilisateur du 2026-10-04).
 //
 // Vecteurs ecrits d apres l ecrivain du tick (`FUN_142f2c3b0` : vue A, un bit 0, vue B, bout a
 // bout) et d apres les lecteurs des messages de la vue A (`vue_a_lecture.go`).
@@ -213,32 +213,35 @@ func TestUnVraiPaquetPartDeLaFinDeSaVueA(t *testing.T) {
 	}
 }
 
-// TestLaTeteDeLaVueBSuitUnBitNul : le jeu n ecrit un bit nul que devant le PREMIER record de la vue
-// B (le terminateur de la vue A). Un candidat NEW de tete precede d un bit a 1 n est la tete ni
-// par la chaine ni par la fermeture. MUTATION — le bit nul retire des candidats : ROUGE.
-func TestLaTeteDeLaVueBSuitUnBitNul(t *testing.T) {
-	var bw bitWriter
-	bw.bits(0x1f, 5) // la fin d un message de la vue A, SANS terminateur
-	neuf := bw.n
-	bw.neuf13(300, 2)
-	bw.delta13(122)
-	debut := bw.n
-	bw.delta13(123)
-	bw.bit(0)
-	bw.bits(0, 2)
-	w := mondeDeTete()
-	cands := candidatsDeTete(bw.buf, debut, w)
-	if len(cands) != 1 || cands[0] != neuf {
-		t.Fatalf("candidats %v, attendu [%d]", cands, neuf)
+// TestUnFilmAncienNePrendPasUneFinDeVueAFermeeAuBitSeulement : le juge de la preuve PREFIXE est
+// « fermee sans regle de l ecrivain contredite » (decision (2) de l utilisateur du 2026-10-04), pas
+// « fermee au bit pres ». La vue B qui part de E lit un DELTA du slot 124 puis un DELTA du slot 123
+// et ferme le paquet au bit pres, mais dans un ordre que l ecrivain n ecrit pas
+// ([InvariantOrdreVueB]). Film a table EGALE : E (decision (1)). Film a table PREFIXE : E n est pas
+// prouve, le paquet suit le localisateur a l identique. MUTATION — le juge affaibli en
+// `FermeeAuBit` dans [debutParLaVueA] : ROUGE.
+func TestUnFilmAncienNePrendPasUneFinDeVueAFermeeAuBitSeulement(t *testing.T) {
+	pay, e := paquetVueA(1, zoomCourt, func(w *bitWriter) {
+		w.deltaMasque13(124)
+		w.deltaMasque13(uint32(marchSignatureSlot))
+		w.finDeVueB()
+		w.bit(0) // vue C vide
+	})
+	w := mondeDeCarte()
+	cfg := cadreDeCarte()
+	if l := lectureDEssai(pay, w, cfg, e); !l.FermeeAuBit || l.Fermee || l.Invariant != InvariantOrdreVueB {
+		t.Fatalf("lecture depuis E = %d : %+v, attendu fermee au bit, ordre de l ecrivain contredit", e, l)
 	}
-	if got, ok := debutParChaine(bw.buf, debut, cands, w, cadreDeTete); ok || got != debut {
-		t.Errorf("chaine : debut %d (%v), attendu %d garde — un bit a 1 precede le NEW", got, ok, debut)
+	if d, comment, m := debutDuPaquet(pay, w, grammaireDeScript(vueAEgale, GenresVueA)); d != e ||
+		comment != lecture.DebutParVueA || m != e {
+		t.Errorf("film recent : cuisson (%d, %d), marches %d ; attendu %d par la vue A", d, comment, m, e)
 	}
-	pay, faux, _ := deuxDebuts()
-	pay[0] |= 0x80 // le bit qui precede `faux` passe a 1
-	if got, rang := debutParFermetureRangee(pay, []int{faux}, mondeDeCarte(), cadreDeTete); rang != lecture.DebutNonLocalise ||
-		got != -1 {
-		t.Errorf("fermeture : debut %d (rang %d), attendu -1 non localise — un bit a 1 precede le candidat", got, rang)
+	s, commentS := localiserLaListe(pay, w, cfg)
+	mS, _ := LocaliserBoucleDeRecords(pay, w, cfg, SignaturePuisLargeurLibre)
+	d, comment, m := debutDuPaquet(pay, w, grammaireDeScript(vueAPrefixe, 121))
+	if d == e || m == e || d != s || comment != commentS || m != mS {
+		t.Errorf("film ancien : cuisson (%d, %d), marches %d ; attendu le localisateur (%d, %d), %d, et pas E = %d",
+			d, comment, m, s, commentS, mS, e)
 	}
 }
 

@@ -19,8 +19,8 @@ package archlint
 //
 // LE BIT NUL DE TETE A UNE SEULE IMPLANTATION (lot VA, etape V2 ; regle des deux copies) : dans le
 // paquet `grammar`, le test du bit qui precede une position (`BitAt(_, x-1)`) ne s ecrit que dans
-// `precedeDuTerminateur` (`localisateur.go`), que le localisateur et les candidats de tete de la
-// fermeture par NEW appellent.
+// `precedeDuTerminateur` (`localisateur.go`), que les deux etages du localisateur appellent ; une
+// troisieme copie du test ne peut pas revenir ailleurs.
 //
 // PERIMETRE : la production de `film/**`, hors `film/research/` et hors fichiers `//go:build
 // research` (instruments de mesure, qui recopient le localisateur pour en essayer des variantes),
