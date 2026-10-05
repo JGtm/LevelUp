@@ -30,7 +30,8 @@ localisation. Contrôle d'identité tenu :
 - tête donnée aux canaux, route vers la localisation et étendue rangée : identiques paquet par paquet
   sur les 20 films (629 142 trames delta), par la marche de cuisson ET par la passe des têtes ;
 - `replay-corpus-gate` (base explicite `87cdfa761`) : rc=0, 19 témoins à 0 gain, 0 perte, 0 changement ; banc de vérité 19 / 19 « ok ».
-- mutations : 24 / 24 ROUGES.
+- mutations : 24 / 24 ROUGES ; plus m25 (s01 du contrôle indépendant, la passe des têtes sans le
+  contrôle de corruption du film), VERTE à `e6ec7abd4`, ROUGE après l'ajout de son vecteur (§11).
 
 ## 1. Ce qui est lu dans le jeu
 
@@ -273,6 +274,32 @@ et copie du parc au scratchpad (`scratchpad/cg3-V1/`).
 - `objectives.Rev` : **constante** `objectives-2026-09-27` (étape `objectives` de `replay-equiv`
   identique) ; empreinte recopiée, complément dans `objectives/rev.go`.
 - `source.Rev` (`source-2026-09-16.2`), `replay.SchemaVersion` (78) : inchangés.
+- **`SchemaDesFaits` (4) : inchangé, ÉCART À SA DOCTRINE, instruit (correction 3 du contrôle).** La
+  section 2 des faits persistés (identité du film, JSON de `profile.FilmIdentity`,
+  `replay/filmfacts_fichier.go`, `sectionIdentite`) gagne deux champs, `SimulationDeLEnregistreur` et
+  `OptionsDePartieLues`. La doctrine de `SchemaDesFaits` (`filmfacts_fichier.go:130`) dit qu'il
+  « monte quand une section naît, meurt ou change de contenu » : à la lettre, il devrait monter. Il ne
+  monte pas, pour les raisons suivantes (lues dans le code) :
+  - la fraîcheur des faits se juge tout ou rien sur l'en-tête : `FilmFactsEntete.Frais`
+    (`filmfacts_entete.go:127-137`) compare codec, schéma, PUIS les cinq révisions de couche
+    (`memesRevisionsDeCouche`, `GrammarRev` et `ProfileRev` compris). V1 fait monter `grammar.Rev`
+    ET `profile.Rev`. Un fichier écrit avant V1 est donc refusé SUR SON EN-TÊTE
+    (`ErrFilmFactsRevisions`), avant toute lecture de la section 2, et redécodé. C'est ce que la
+    doctrine du schéma protège (« un fichier PÉRIMÉ doit se dire périmé sur son en-tête ») ;
+  - la section 2 est relue par `json.Unmarshal` (`lireSectionJSON`), qui laisse à zéro un champ
+    absent. Si un fichier antérieur passait l'en-tête, il serait relu avec une simulation nulle et
+    `OptionsDePartieLues` faux, sans erreur. Ce cas n'est pas atteignable, puisque les révisions
+    diffèrent ;
+  - aucun lecteur des faits n'emploie ces deux champs. Ils ne servent qu'à la dérivation de la
+    grammaire de la vue A, depuis le `chunk_00` du film (`grammaireDeLaVueASousFilm`,
+    `vue_a_charges_execution.go`), au décodage, jamais depuis un fichier de faits ;
+  - précédent : le lot 5.18.1 (`b867e835b`, 2026-09-22) a ajouté `ControleDeCorruption` à
+    `FilmIdentity`, donc à la même section 2 (persistée depuis le lot 4.1.1, `25eb30596`,
+    2026-09-17), sans monter `SchemaDesFaits` (le commit ne touche aucun `filmfacts*`).
+
+  Ce qui reste un écart : la phrase de doctrine n'est pas tenue à la lettre. La corriger, ou monter le
+  schéma à la fusion de la campagne, est une décision du pilote. Elle n'est pas prise ici (règle 5 du
+  plan : pas de correction hors périmètre).
 - Régénérés par les commandes du dépôt : `grammar_rev.golden`, `profile_rev.golden`,
   `killsource_rev.golden`, `objectives_rev.golden`, `types/testdata/shapes.golden` (ligne des
   révisions seule), fixtures web `replay_schema_78_*` et `manifest.json` (chaînes de révision seules).
@@ -331,3 +358,50 @@ Scratchpad `scratchpad/cg3-V1/` (non versionné) : `carte_base/`, `carte_tete/`,
 `construire.sh`, `carte.sh`, `ks.sh`, `re.sh`, `replis.sh`, `sonde.sh`, `taux.awk`,
 `mutations2.sh`, `gate.sh`, `perf2.sh`. Versionnés : `va_ghidra/` (décompilés de R2 pour 15, 39 et
 les options de partie), `testdata/vue_a_bcb6d393_1_204.bin` et sa PROVENANCE.
+
+## 11. Corrections du contrôle indépendant (2026-10-05)
+
+Le contrôle de l'étape V1 (`scratchpad/cg3-V1-ctl/`) a tenu l'étape sur l'essentiel : sortie identique
+à la base, vérifications (a) et (b) tenues paquet par paquet, règles relues dans Ghidra. Il a demandé
+trois corrections mineures. Les trois sont appliquées ; aucune n'a été jugée fausse sur pièces.
+`origin/feat/v75` vaut toujours `87cdfa761` (`git fetch` avant les gates).
+
+| # | Correction | Verdict sur pièces | Action |
+|---|---|---|---|
+| 1 | Entrée de `.ai/thought_log.md` absente du commit `e6ec7abd4` | Fondée : le commit ne touche pas `.ai/thought_log.md` (`git show --stat`), alors que les commits de lot précédents en portent une (`87cdfa761`, `d9c268c9f`) | Entrée `[2026-10-05]` ajoutée |
+| 2 | Mutation s01 VERTE : `profilDeLaVueA` sans `bal.Grammaire.ControleDeCorruption = c.grammaireDuFilmDerivee().controle` | Fondée : aucune bobine du dépôt ne déclare ce contrôle (`controle_corruption=false [FILM]` dans les cinq goldens de `killsource`), et le seul test qui oppose la passe des têtes à la marche roule sur deux d'entre elles | Vecteur ajouté : `TestLaPasseDesTetesLitLeControleDuFilm` (`distribuer_tetes_test.go`) |
+| 3 | Section 2 des faits élargie de deux champs sans montée de `SchemaDesFaits`, écart non dit | Fondée, et sans risque de faits périmés servis : les révisions de couche, jugées sur l'en-tête, refusent tout fichier antérieur | Instruit au §7 ; le schéma n'est pas monté |
+
+**Le vecteur (correction 2).** Un film dont le registre est celui de la bobine `000d5950` (`chunk_00`
+réel) et dont le seul chunk de données porte une trame delta écrite bit à bit : configuration 1, un
+zoom (genre 21, trois gardes fermées, `R(2)`), puis le contrôle `R(1) = 1, R(32)` de `FUN_14076cea8`,
+puis le terminateur. Son profil est celui que la bobine rend, sauf deux champs de la section
+d'identification : la table native des genres (classe ÉGALE) et le contrôle de corruption VRAI. Le
+profil est posé avant la première dérivation, qui le lit comme celui du film. La passe des têtes et
+la marche complète doivent ranger la même vue A, `[1, 48)`, terminée, de genre 21 seul.
+
+- Sur le code : VERT (suite entière du paquet `grammar`, `ok … 49.898s`).
+- Mutation m25 = s01 (`-overlay`, suite entière du paquet `grammar`) : ROUGE, sur ce seul test :
+  `passe des tetes : vue A {Debut:1 Bits:21 Etat:2 Genres:[21 127]}, attendu {Debut:1 Bits:47 Etat:1
+  Genres:[21]}`. Sans le contrôle, la passe prend le bit du contrôle pour la continuation d'un second
+  message, de genre 127 (au-delà du cardinal : la vue s'arrête).
+
+| Mutation | Règle | Rougit |
+|---|---|---|
+| m25 `profilDeLaVueA` sans le contrôle de corruption du film (s01 du contrôle) | profil de la passe | `TestLaPasseDesTetesLitLeControleDuFilm` |
+
+Le contrôle a aussi trouvé VERTES s05 (garde `d.vueA.Debut == l.debutVueA`) et s06 (`<=` remplacé par
+`<` dans la borne du bit de configuration). Il les juge équivalentes en pratique et ne demande aucune
+correction : aucune n'est faite.
+
+**Gates rejoués (portée de la correction : un fichier de test du paquet `grammar` et des documents).**
+`gofmt -l ./internal/ ./cmd/` : vide. `go vet` du paquet `grammar`, avec et sans `-tags=research` : rc=0.
+`go test ./internal/games/halo_infinite/film/internal/grammar/ -count=1` : `ok` (le test de révision du
+paquet compris : empreinte `grammar` inchangée, aucun fichier de production touché).
+`go test ./internal/archlint/` : `ok`. Un premier passage était ROUGE : `TestNoRawKillScopeLiteral`
+refuse le littéral `"marche"` (une valeur de portée de `match_kill_events`), qui servait de clé de
+table dans le test. La clé est devenue `"marche complete"`, puis le gate est passé VERT.
+`golangci-lint run` sur `film/internal/grammar/...` : `0 issues.` ; sous `--build-tags=research
+--new-from-rev=e6ec7abd4` : `0 issues.` Aucune sortie de production ne change. La carte v2, killsource,
+`replay-equiv` et `replay-corpus-gate` ne sont pas rejoués, faute d'objet : le gate 2 reste celui du §3.
+Pièces : `scratchpad/cg3-V1-corr/` (`s01.go`, `s01.json`, `s01_grammar2.log`, `grammar_tete.log`).

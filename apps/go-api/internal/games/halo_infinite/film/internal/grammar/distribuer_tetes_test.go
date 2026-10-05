@@ -4,10 +4,15 @@ package grammar
 // la vue A rangee, la passe des tetes, et l egalite avec la tete lue hors de la structure.
 
 import (
+	"encoding/binary"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // TestRangerLaTete : les formes de la vue A rangee — liste vide (vue terminee sur la continuation),
@@ -129,6 +134,93 @@ func TestLaPasseDesTetesEstLaTeteDeLaMarche(t *testing.T) {
 		}
 		if listes == 0 {
 			t.Errorf("%s : aucune trame a liste d evenements : la tete n est pas exercee", court)
+		}
+	}
+}
+
+// sourceEnMemoire : les chunks d un film, en memoire et deja decompresses.
+type sourceEnMemoire [][]byte
+
+func (s sourceEnMemoire) NumChunks() int { return len(s) }
+
+func (s sourceEnMemoire) Chunk(i int) ([]byte, error) { return s[i], nil }
+
+// chunkDUneTrame : un chunk de donnees qui porte la seule trame delta `pay`, puis son terminateur
+// (type 7, taille 0) ; en-tetes de 16 octets [u16 type][2 octets][u32 taille][u64 horodatage].
+func chunkDUneTrame(pay []byte) []byte {
+	out := make([]byte, 2*packetHeaderSize+len(pay))
+	binary.LittleEndian.PutUint16(out, PacketTypeDelta)
+	binary.LittleEndian.PutUint32(out[4:], uint32(len(pay))) //nolint:gosec // payload de test
+	copy(out[packetHeaderSize:], pay)
+	binary.LittleEndian.PutUint16(out[packetHeaderSize+len(pay):], 7) // CHUNK_END
+	return out
+}
+
+// contexteQuiDeclareLeControle ouvre le contexte d un film dont le registre est celui de la bobine
+// 000d5950 et dont le seul chunk de donnees porte la trame `pay`. Son profil est celui que la bobine
+// rend, sauf deux champs de sa section d identification : la table des genres native (classe EGALE)
+// et le controle de corruption VRAI. Aucune bobine du depot ne declare ce controle : le profil est
+// pose avant la premiere derivation, qui le lit comme elle lirait celui du film.
+func contexteQuiDeclareLeControle(t *testing.T, pay []byte) *FilmContext {
+	t.Helper()
+	reg, err := os.ReadFile(filepath.Join("..", "facts", "killsource", "testdata", "minibobine_000d5950",
+		"chunk_00.bin"))
+	if err != nil {
+		t.Fatalf("registre de la bobine : %v", err)
+	}
+	film, err := source.Load(sourceEnMemoire{reg, chunkDUneTrame(pay)}, nil)
+	if err != nil {
+		t.Fatalf("film : %v", err)
+	}
+	raw, _ := FilmRegistryChunk(film)
+	id, err := ReadFilmIdentity(raw)
+	if err != nil {
+		t.Fatalf("identite de la bobine : %v", err)
+	}
+	id.ControleDeCorruption = true
+	id.TypeVersions = make([]uint32, GenresVueA)
+	for g := range GenresVueA {
+		id.TypeVersions[g] = versionNative(g)
+	}
+	fc := NewFilmContext(film)
+	fc.prof, fc.profLu = profile.Resoudre(profile.ClesDuFilm{RegistrePresent: true, Identite: id,
+		IdentiteLue: true}, nil), true
+	return fc
+}
+
+// TestLaPasseDesTetesLitLeControleDuFilm : un film qui declare le controle de corruption par
+// composant ; sa trame porte un zoom (genre 21 : trois gardes fermees, R(2)) suivi du controle
+// `R(1) = 1, R(32)` (`FUN_14076cea8`), puis le terminateur. La passe des tetes et la marche lisent
+// le controle : la meme vue A, terminee apres le terminateur, de genre 21 seul.
+// MUTATION — [FilmContext.profilDeLaVueA] sans le controle du film : la passe lit le bit du controle
+// comme la continuation d un second message, de genre 127 (au-dela du cardinal, la vue s arrete) :
+// ROUGE.
+func TestLaPasseDesTetesLitLeControleDuFilm(t *testing.T) {
+	var w bitWriter
+	w.bit(1) // configuration
+	w.ecrireEnTeteDeMessage(21)
+	w.bits(1, 2)           // FUN_14080cb98 : R(2)
+	w.bit(1)               // FUN_14076cea8 : R(1)
+	w.bits(0xffffffff, 32) // R(32)
+	w.bit(0)               // le terminateur
+	fin := w.n
+	want := lecture.VueA{Debut: 1, Bits: uint32(fin - 1), Etat: lecture.VueTerminee, Genres: []uint8{21}} //nolint:gosec // bits du vecteur
+
+	seule := &canalDeTeteTemoin{}
+	if err := Distribuer(contexteQuiDeclareLeControle(t, w.buf), seule); err != nil {
+		t.Fatalf("passe des tetes : %v", err)
+	}
+	avecMarche := &canalDeTeteTemoin{}
+	if err := Distribuer(contexteQuiDeclareLeControle(t, w.buf), &canalDesTramesTemoin{}, avecMarche); err != nil {
+		t.Fatalf("marche complete : %v", err)
+	}
+	for nom, c := range map[string]*canalDeTeteTemoin{"passe des tetes": seule, "marche complete": avecMarche} {
+		if len(c.vues) != 1 {
+			t.Fatalf("%s : %d trame(s), attendu une", nom, len(c.vues))
+		}
+		if a := c.vues[0].vueA; a.Debut != want.Debut || a.Bits != want.Bits || a.Etat != want.Etat ||
+			!reflect.DeepEqual(a.Genres, want.Genres) {
+			t.Errorf("%s : vue A %+v, attendu %+v", nom, a, want)
 		}
 	}
 }
