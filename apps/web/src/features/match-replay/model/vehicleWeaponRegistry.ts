@@ -78,7 +78,8 @@ export function vehicleShotSoundStem(
 /**
  * vehicleWeaponMountOf — l'ancre de l'arme sur le sprite de son véhicule, ou `null` (tir à pied,
  * arme de joueur tirée d'un siège, arme sans montage documenté) : l'éclair part alors du centre
- * du véhicule — jamais d'une position inventée.
+ * du véhicule — jamais d'une position inventée. La longueur du canon d'une tourelle (`reach`)
+ * vaut 0 quand le registre ne la publie pas.
  */
 export function vehicleWeaponMountOf(
   doc: Pick<ReplayDocumentReady, 'vehicleWeapons'>,
@@ -88,5 +89,5 @@ export function vehicleWeaponMountOf(
   if (!m) return null
   const classe = VEHICLE_WEAPON_AIM_CLASS[m.aim]
   if (!classe) return null
-  return { classe, ax: m.ax, ay: m.ay }
+  return { classe, ax: m.ax, ay: m.ay, reach: m.reach ?? 0 }
 }

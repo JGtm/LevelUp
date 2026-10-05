@@ -16,7 +16,7 @@
  * # CE QU'IL LIT, ET CE QU'IL NE LIT PAS
  *
  * Le SOUS-ENSEMBLE du format que ce fichier emploie : des blocs `[[weapons]]` / `[[unknown]]`, des
- * paires `clé = "chaîne"` et la table en ligne `mount = { aim = "…", ax = n, ay = n }`. La
+ * paires `clé = "chaîne"` et la table en ligne `mount = { aim = "…", ax = n, ay = n[, reach = n] }`. La
  * VALIDATION du format (listes fermées, preuve, silence décidé) reste au chargeur Go
  * (`mappings/loader_vehicle_weapons.go`) et à ses tests : ce lecteur ne décide rien, il rend ce qui
  * est écrit. Un fichier qu'il ne sait pas lire le fait échouer (jamais une table vide en silence).
@@ -41,7 +41,8 @@ export interface RegistreTitre {
 
 const PAIRE = /^([a-z_]+)\s*=\s*(.+)$/
 const CHAINE = /^"(.*)"$/
-const MONTAGE = /^\{\s*aim\s*=\s*"(fixed|turret)"\s*,\s*ax\s*=\s*(-?[\d.]+)\s*,\s*ay\s*=\s*(-?[\d.]+)\s*\}$/
+const MONTAGE =
+  /^\{\s*aim\s*=\s*"(fixed|turret)"\s*,\s*ax\s*=\s*(-?[\d.]+)\s*,\s*ay\s*=\s*(-?[\d.]+)\s*(?:,\s*reach\s*=\s*([\d.]+)\s*)?\}$/
 
 /** registreDuTitre lit le registre versionné d'un titre (`halo_infinite` par défaut). */
 export function registreDuTitre(slug = 'halo_infinite'): RegistreTitre {
@@ -89,6 +90,7 @@ function entreeDe(p: Map<string, string>): EntreeDuDocument {
     const m = MONTAGE.exec(montage)
     if (!m) throw new Error(`registre : montage illisible (${montage})`)
     e.mount = { aim: m[1], ax: Number(m[2]), ay: Number(m[3]) }
+    if (m[4] !== undefined) e.mount.reach = Number(m[4])
   }
   return e
 }

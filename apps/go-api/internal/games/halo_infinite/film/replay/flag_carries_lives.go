@@ -37,9 +37,10 @@ import (
 // la meme naissance. Quand un autre drapeau est au sol A CE POINT, on ne renvoie rien et on se
 // compte — meme regle que le retour credite ambigu.
 //
-// SANS SOCLE, PAS DE `home`. Une carte hors du catalogue d'objectifs ne donne aucune position de
-// base : les etats `home` sont alors OMIS (leur position serait inventee), et la vie du drapeau
-// se reduit a ses portages et a ses laches. La couverture publie `Spawns: 0`.
+// SANS SOCLE, PAS DE `home`. Ni le catalogue d'objectifs ni le film (`flag_film_bases.go`) ne
+// donnent alors de position de base : les etats `home` sont OMIS (leur position serait
+// inventee), et la vie du drapeau se reduit a ses portages et a ses laches. La couverture publie
+// `Spawns: 0`.
 
 // flagStateUnknown est l ETAT ABSENT : une transition qui BORNE le span precedent sans rien
 // affirmer. Seul emploi : une capture sur une carte dont le socle est inconnu — le drapeau rentre
@@ -297,7 +298,7 @@ func applyFlagReturn(ev flagLifeEvent, scan FlagCarryScan, st flagLifeState) {
 //	                              est alors le RE-SPAWN normal, et l'etat est deja le bon ;
 //	un AUTRE drapeau git la       le drapeau adverse tombe au pied de ce socle produit la meme
 //	                              naissance ; on s'abstient et on se compte ;
-//	le socle est hors catalogue   sans position de base, `home` s'inventerait.
+//	le socle est inconnu          sans position de base, `home` s'inventerait.
 func applyFlagHomecoming(ev flagLifeEvent, scan FlagCarryScan, st flagLifeState) {
 	f := ev.flag
 	if f < 0 || f >= len(st.state) || f >= len(scan.Spawns) {
