@@ -13,7 +13,10 @@ package replay
 // TROIS FERMETURES, DANS CET ORDRE, ET AUCUNE N EST UNE SUPPOSITION :
 //
 //	1. la lecture d `i10` SUIVANTE du meme occupant — le film dit lui-meme que l attachement a
-//	   cesse ;
+//	   cesse. Le MEME OCCUPANT est le meme OBJET : meme slot ET meme generation, les deux moities
+//	   du handle du record. Une lecture d une autre generation designe un autre objet (le slot a
+//	   ete reemploye) ou une lecture fausse ; elle ne dit rien de cet occupant et ne ferme pas
+//	   son episode ;
 //	2. la REAPPARITION de l occupant dans le flux de position — un bipede embarque ne replique
 //	   plus sa trajectoire (acquis V1/V4 : 1 347 instants, aucun couple sous 3 m plus de 1,6 s),
 //	   donc son premier point posterieur BORNE l episode ;
@@ -71,7 +74,7 @@ func buildVehicleFilmRides(in vehicleRideInputs) (vehicleFilmRides, vehicleFilmT
 	if len(in.occupancy) == 0 || len(in.lives) == 0 || in.clock.step == 0 {
 		return out, t
 	}
-	lectures := vehicleOccupancyBySlot(in.occupancy)
+	lectures := vehicleOccupancyByOccupant(in.occupancy)
 	pts := vehiclePositionsBySlot(in.bipeds)
 	for _, o := range in.occupancy {
 		if !o.Attached {
@@ -88,7 +91,7 @@ func buildVehicleFilmRides(in vehicleRideInputs) (vehicleFilmRides, vehicleFilmT
 			t.nonDessinable++
 			continue
 		}
-		endUS, par := vehicleFilmRideEnd(o, lectures[o.Slot], pts[o.Slot], in.lives, key)
+		endUS, par := vehicleFilmRideEnd(o, lectures[occupantOf(o)], pts[o.Slot], in.lives, key)
 		vehicleFilmTallyEnd(&t, par)
 		out.ajouter(key, vehicleFilmRideOf(o, endUS, in))
 		t.publies++
@@ -192,13 +195,22 @@ func vehicleFilmTallyEnd(t *vehicleFilmTally, par int) {
 	}
 }
 
-// vehicleOccupancyBySlot indexe les lectures par slot d OCCUPANT, triees par instant.
-func vehicleOccupancyBySlot(
+// objetOccupant est l OBJET occupant d une lecture : son slot et sa generation, le handle entier du
+// record bipede (cf. l en-tete, fermeture 1).
+type objetOccupant struct{ slot, gen uint32 }
+
+// occupantOf rend l objet occupant d une lecture.
+func occupantOf(o types.VehicleOccupancy) objetOccupant {
+	return objetOccupant{slot: o.Slot, gen: o.Gen}
+}
+
+// vehicleOccupancyByOccupant indexe les lectures par objet OCCUPANT, triees par instant.
+func vehicleOccupancyByOccupant(
 	occ []types.VehicleOccupancy,
-) map[uint32][]types.VehicleOccupancy {
-	out := map[uint32][]types.VehicleOccupancy{}
+) map[objetOccupant][]types.VehicleOccupancy {
+	out := map[objetOccupant][]types.VehicleOccupancy{}
 	for _, o := range occ {
-		out[o.Slot] = append(out[o.Slot], o)
+		out[occupantOf(o)] = append(out[occupantOf(o)], o)
 	}
 	for s := range out {
 		v := out[s]
