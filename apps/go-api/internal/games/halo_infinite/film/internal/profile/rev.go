@@ -112,7 +112,20 @@ package profile
 // LE DECODAGE CHANGE, ET LE COMPTE SE FERME OU IL NE SE FERMAIT PAS : sur Cliffhanger le chemin
 // absolu du bipede lisait 49 bits (5 de porte + 3x14 + 2), il en lit 47 — exactement la mesure
 // Cheat Engine du dispatch (une seule valeur distincte, 100 % de 154 158 releves).
-const Rev = "profile-2026-09-17.3"
+//
+// ENTREE `profile-2026-10-05` (2026-10-05, plan RI etape 2, item 2.7.a0 ; decision de
+// l utilisateur du meme jour) : LE DECOUPAGE MPP DES FORMATS ANCIENS EST CELUI QUE LE FILM
+// DECLARE. LE DECODAGE CHANGE pour les films des formats 20, 21, 24 et 25.
+//
+//	`mpp_declare.go`    NEUF : les tailles d etat de creation de l executable courant (RELUES,
+//	                    `vtable+0x20` des neuf descripteurs dont l etat de creation lit le bloc
+//	                    MPP) et la regle [MPPPourTailleDeclaree] : taille courante -> 9/5,
+//	                    taille courante - 4 -> 8/3 PRESUME PAR MESURE, autre -> rien.
+//	`profile_table.go`  la ligne `format=20,21,24,25` cesse d etre « indeterminee » : le format
+//	                    ne decide pas, la cle `n1` decide ; deux lignes de cette cle entrent.
+//	`build_profile.go`  le bloc qui placait les trois bits ailleurs que dans le bloc MPP est
+//	                    remplace par ce que la lecture a etabli : ils y sont, le film le declare.
+const Rev = "profile-2026-10-05"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/profile_rev.golden` porte le couple (revision, empreinte) avec son historique, et

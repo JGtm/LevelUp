@@ -29,7 +29,7 @@ var registreFilmdec = []Repli{
 	{
 		Nom:       "repli_largeurs_mpp_calibrees_sur_le_film",
 		Fait:      "les deux largeurs du bloc object-multiplayer-properties (FUN_14080cfe8), qui precede TOUS les composants dans l etat par defaut de ti=36, 37, 38, 39, 42 et 43",
-		Mecanisme: "CalibrateMPPWidthsOf MESURE le decoupage sur le film et l INSTALLE, au lieu de le lire au profil de la version de format",
+		Mecanisme: "CalibrateMPPWidthsOf MESURE le decoupage sur le film et l INSTALLE, au lieu de le lire au profil de la version de format ou a la taille d etat de creation que le film declare",
 		Condition: CondFormatSansProfilRelu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
@@ -46,23 +46,19 @@ var registreFilmdec = []Repli{
 			Ancre:   "fc.NoterReplis(grammar.ComptesDesReplis{LargeursMPPCalibrees: 1})",
 		}, siteDeVersement("NomLargeursMppCalibreesSurLeFilm")},
 		DatePose:     dateVague2,
-		CibleRetrait: "l executable d un build <= HI_1_11_0, relu comme FUN_141fd72c0 l a ete pour HI_1_13_0 — ou un profil mesure par un oracle valide au-dessus du seuil de coincidence",
-		// POURQUOI CE REPLI EXISTE, ET POURQUOI CE N'EST PAS UNE DETTE ORDINAIRE.
-		// La grammaire du bloc MPP est VERSIONNEE PAR LA VERSION DE FORMAT de `chunk_00`
-		// (`+4`, mesure du 2026-09-15, lot 1.9.1 ter — la cle etait dite « par build » au
-		// 1.9.1 bis, et le chargeur du jeu a tranche : c'est le format). La coupure est dans
-		// `]25, 27]`, et la version MAJEURE du film ne la donne pas (`e5adf7b2` et `bcb6d393`
-		// sont tous deux `v=40` et tombent de part et d'autre). Le format 27 porte sa largeur AU
-		// PROFIL, RELUE (9/5, `FUN_141fd72c0` litteral `141fd72de`) : sur lui la calibration ne
-		// s'applique plus. Les formats 20, 21, 24 et 25 n'ont pas de valeur relue, et les deux
-		// oracles internes au film SE CONTREDISENT : `n2` designe 8/3 (part modale 0,988 a
-		// 0,996) mais la FERMETURE descend de 246 a 182 records si on le pose. Poser l'un ou
-		// l'autre serait une decision deguisee en mesure ; la calibration reste donc, NOMMEE,
-		// comptee et datee.
+		CibleRetrait: "aucun film du parc sans decoupage relu au format ni declare par sa taille d etat de creation (n1)",
+		// POURQUOI CE REPLI EXISTE ENCORE, ET OU IL S EST RETIRE.
+		// L executable courant lit le bloc MPP par des largeurs litterales (9/5) et rien ne le lui
+		// fait lire autrement : la version de format le decide pour le format 27, et pour les
+		// formats 20, 21, 24 et 25 c est la taille d etat de creation que chaque record d image-cle
+		// declare (`n1`, `profile.MPPPourTailleDeclaree`, resolue par
+		// `grammar.FilmContext.ResolutionMPP`) qui le decide : 9/5 a la taille courante, 8/3
+		// presume par mesure a la taille courante moins 4. La calibration n entre plus que pour
+		// un film dont le format n a pas de largeur relue ET dont la premiere image-cle ne declare
+		// aucun decoupage sans discordance.
 		//
-		// ORDRE `apres_lecture` : le profil se resout D'ABORD (`chunk_00+4`), et la calibration
-		// n'entre que si ce format n'a pas de largeur relue. Un film sans section
-		// d'identification tombe dans le meme cas — il porte le format 20.
+		// ORDRE `apres_lecture` : le format se lit D ABORD (`chunk_00+4`), la taille declaree
+		// ensuite, et la calibration n entre qu apres les deux.
 		//
 		// UN FORMAT INCONNU (28 au prochain patch du jeu) TOMBE ICI AUSSI, ET C'EST VOULU : le
 		// repli tient le parc neuf au lieu de l'eteindre. Son declenchement est compte A PART,
@@ -71,7 +67,7 @@ var registreFilmdec = []Repli{
 		// changement de format du jeu est un EVENEMENT, pas un repli ordinaire, et qu'il ne peut
 		// pas attendre le comptage differe ci-dessous. Branche de production gardee par
 		// `replay/mpp_format_inconnu_test.go`, mutation verifiee dans les deux sens.
-		CritereRetrait:  "les formats du parc portent leur largeur MPP au profil ; 0 recours a la calibration sur le parc",
+		CritereRetrait:  "les films du parc portent leur decoupage MPP au profil ou le declarent ; 0 recours a la calibration sur le parc",
 		CompteurBranche: true,
 	},
 	{

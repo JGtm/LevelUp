@@ -416,3 +416,21 @@ package grammar
 // cuisson 142 -> 148 sur les dix films qui en portent (`e5adf7b2` 17 -> 15 et `60ae07c4` 1 -> 0,
 // lus jusqu ici sous les largeurs calibrees ; `1c4c63c2` 4 -> 7, `084a804d` 35 -> 37).
 // `replay.SchemaVersion` reste 78.
+//
+// ENTREE `grammar-2026-10-05` (2026-10-05, item 2.7.a0 de la representation intermediaire ;
+// decision de l utilisateur du meme jour) : LE DECOUPAGE MPP D UN FILM DES FORMATS 20, 21, 24 ET 25
+// EST CELUI QU IL DECLARE PAR LA TAILLE D ETAT DE CREATION DE SES OBJETS.
+//
+// Ce qui change, contre `grammar-2026-10-04` :
+//   - [FilmContext.DeclarationMPP] lit, dans la premiere image-cle qui en porte, le mot `n1` de
+//     chaque record d un archetype de la cle ([profile.CleDuDecoupageMPP]) et rend le decoupage
+//     qu ils designent tous ([profile.MPPPourTailleDeclaree], `profile-2026-10-05`) ;
+//   - [FilmContext.ResolutionMPP] rend celui de la version de format quand elle le porte (27), la
+//     declaration sinon ; c est la porte unique des poses d equipement et des socles et vehicules
+//     de la cuisson, et la cuisson la pose sur son contexte pour toutes ses lectures
+//     (`replay.poserLeDecoupageMPPDuFilm`) ; la calibration sur les poses ne decide plus que pour un
+//     film qui ne declare rien sans discordance ;
+//   - [ResolutionMPP.Relue] devient [ResolutionMPP.Decide], avec la provenance du decoupage.
+//
+// killsource ne change pas : la declaration n entre ni dans l en-tete de la marche ni dans la
+// preuve des ancres d image-cle, et son contexte garde l invariant.
