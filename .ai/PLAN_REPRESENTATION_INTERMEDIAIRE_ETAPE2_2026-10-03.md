@@ -1013,6 +1013,10 @@ plan y sont reprises comme items (3.1.2).
    ce plan compris) n'est donc tenu aux seuils que par la relecture : la relecture de V1 y a trouvé
    deux aiguillages à complexité 20 et 22 sans justification. Non traité ici ; à porter à
    l'utilisateur (resserrer l'exemption au code d'avant une date, comme `only-new-issues`).
+   Décision de l'utilisateur du 2026-10-06 : « Option 1 » — `gocyclo` et `funlen` sortent de
+   l'exemption (`lll` y reste), les fonctions qui dépassent (16 mesurées, toutes de complexité)
+   sont simplifiées quand c'est simple et couvert, sinon exemptées avec une raison écrite ; lot
+   séparé `feat/lint-decodeur`, mené par un agent en parallèle de ce plan.
 18. *(fusion de `feat/v75` dans la branche, 2026-10-05)* **Le banc killsource sur films réels
    (`TestGoldenFilms`, sauté sans `KILLSOURCE_FIXTURES`, donc absent de la CI) était rouge sur
    `feat/v75` depuis au moins `87cdfa761`** : trois films, la seule ligne de diagnostic de
