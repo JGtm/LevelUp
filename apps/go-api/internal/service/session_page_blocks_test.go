@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // serviceDeBlocs — la page Sessions avec la feuille de match et, si fourni, le résumé d'usage.
@@ -284,5 +285,25 @@ func TestAttachSessionBlocks_Embleme(t *testing.T) {
 	serviceDeBlocs(nil).attachSessionBlocks(context.Background(), &sans, sc, canon)
 	if sans.PlayerEmblemURL != "" {
 		t.Errorf("sans chargeur : %q, attendu vide", sans.PlayerEmblemURL)
+	}
+}
+
+// ADR 0036 I6 — chaque lecture des blocs du film déclare sa section de durée : résumé d'usage,
+// Emprise (feuille de match et film), vies, objectif, emblème.
+func TestAttachSessionBlocks_SectionsDeDuree(t *testing.T) {
+	sc, canon := sessionsDeTest(false)
+	ctx, chrono := timing.WithTimings(context.Background())
+	var resp domain.SessionPageResponse
+	serviceDeBlocs(usageTestRepoMock()).WithSessionLives(&viesEnregistreur{lues: viesDeTest()}).
+		WithSessionEmblemLoader(emblemesFixes{"Papa": "/emblem/papa.png"}).
+		attachSessionBlocks(ctx, &resp, sc, canon)
+	vues := map[string]bool{}
+	for _, s := range chrono.Snapshot() {
+		vues[s.Name] = true
+	}
+	for _, section := range []string{"usage_summary", "emprise", "lives", "squad_formes", "emblem"} {
+		if !vues[section] {
+			t.Errorf("section %q absente des durées de la page (sections vues : %v)", section, vues)
+		}
 	}
 }

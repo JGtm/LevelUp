@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/service/squadagg"
 )
 
@@ -31,6 +32,7 @@ func (s *SessionPageService) attachSessionEmprise(
 func (s *SessionPageService) sessionEmprise(
 	ctx context.Context, rows []canonical.PlayerMatchRow, locale string, lu *squadagg.LecturesUsage,
 ) *domain.SoloEmpriseBlock {
+	defer timing.FromContext(ctx).Section("emprise")()
 	if len(rows) == 0 || s.sessionXUID == "" {
 		return nil
 	}

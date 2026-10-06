@@ -51,5 +51,6 @@ func (s *SessionPageService) attachSessionEmblem(ctx context.Context, resp *doma
 		slog.DebugContext(ctx, "sessions_emblem_sans_chargeur", "player", s.gamertag)
 		return
 	}
+	defer timing.FromContext(ctx).Section("emblem")()
 	resp.PlayerEmblemURL = s.emblemLoader.LoadEmblemURLs(ctx, s.titleSlug, []string{s.gamertag})[s.gamertag]
 }

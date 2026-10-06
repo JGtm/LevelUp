@@ -33,6 +33,8 @@
 > `ecartees_journal_non_publiable` reporté dans `solo_lives_block.go` ; généré régénéré sans écart.
 > Branche : `feat/sessions-emprise`, créée sur `cd3145ec2`, rebasée sur `554457c31` ; worktree
 > `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-sessions`.
+> **Clôture (2026-10-06) : S1 à S5 et S7 faits, S6 fondu dans S5 ; revue adversariale (S7.5)
+> demandée au superviseur ; intégration dans `feat/v75` sur son accord.**
 
 ## 0. Objectif, critère de succès, hors périmètre
 
@@ -770,21 +772,59 @@ Journal S5 (2026-10-06, exécuteur, `feat/sessions-emprise` sur `548a0b30d` ; se
 
 ### S7 — Clôture · rapide
 
-- [ ] S7.1 Docs : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]` : phrases propres à
+- [x] S7.1 Docs : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]` : phrases propres à
   Sessions — numéros relevés AVANT L8, qui a retouché ces fichiers : à relire — EN l. 37 (prises nettes « on Squad and Sessions »), 39 (usage sur trois pages),
   44 (riposte « on the Sessions »), 54 (Sessions en quatre sections) — corrigées, entrée ajoutée) ;
   `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md` (bloc 7.5 : EN l. 32, 39, 58) ; lignes
   re-vérifiées au moment d'écrire, FR aux lignes homologues ; aucune phrase propre aux Séries
   temporelles touchée (L8.1 du plan TS). Plus une ligne CHANGELOG FR / EN « Halo 5 : Appui reçu
   disponible sur Sessions » (décision du superviseur après S2, §8).
-- [ ] S7.2 `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4, lecteurs de Sessions (l. 293-296)
+- [x] S7.2 `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4, lecteurs de Sessions (l. 293-296)
   et tableau l. 482.
-- [ ] S7.3 ADR 0036 : vérifier qu'aucun invariant n'est touché (lectures bornées existantes, une
+- [x] S7.3 ADR 0036 : vérifier qu'aucun invariant n'est touché (lectures bornées existantes, une
   lecture du résumé d'usage par scope) ; aucune ADR neuve.
-- [ ] S7.4 Statut de chaque item du plan ; §8 Découvertes relues ; entrée finale du journal.
-- [ ] S7.5 Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
+- [x] S7.4 Statut de chaque item du plan ; §8 Découvertes relues ; entrée finale du journal.
+- [~] S7.5 Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
   sous-agent) — lots à risque : S2 (lectures partagées, recâblage de la coordination), S5 (contrat).
+  DEMANDÉE dans le compte rendu de clôture ; le superviseur la lance (consigne du 2026-10-06).
 - Gate : gate Go complet + gate web complet + contrat, rejoués après les docs.
+
+Journal S7 (2026-10-06) :
+- **S7.1** CHANGELOG EN / FR (bloc `[7.5.0]`), lignes relues au moment d'écrire (L8 les avait
+  déplacées) : ligne d'équipement (lue dans la carte « Équipement ramassé » de l'onglet « Usage » des
+  Séries temporelles ET de la page Sessions, plus les trois pages d'usage) ; ligne de coordination
+  (Sessions = Appui reçu seul, des deux côtés du tiroir, la Riposte et sa part du contrat ont quitté
+  la page) ; deux entrées neuves après celle de l'onglet « Usage » : « The Sessions page reads the Map
+  control of its own matches » (cartes, tiroir compact, champs Go ajoutés, retraits) et « Halo 5:
+  Support received available on Sessions ». RELEASE_NOTES EN / FR : l. 32 (appui sur les Sessions et
+  sur la durée aux Séries temporelles), l. 39 (« On the Sessions and the Timeseries »), entrée neuve
+  « The Sessions page becomes the Map control of your evening » après « Sessions in four sections ».
+  La ligne des prises nettes « published on Squad and Sessions » (EN / FR l. 37) reste VRAIE et n'est
+  pas touchée : Sessions les publie toujours, par la feuille d'objectif partagée (`formes_retenues`,
+  colonne du rôle « prendre », `squad/objectif/objectif.logic.ts`). Aucune phrase propre aux Séries temporelles touchée. Les chaînes partagées de
+  l'Emprise (`squad/emprise/`, `_shared/`) ne sont pas touchées (lot sémantique en cours, §8).
+- **S7.2** Référence équipement : colonnes du film lues (`duration_ms`, `powerup_pickups_json`),
+  puce « Page Sessions » réécrite (blocs `emprise` / `compare_emprise`, lecteurs Go et web, ancien bloc
+  `usage` retiré en S5), compteur des départs aléatoires parti avec le bloc d'usage, tableau : ligne
+  « lue par l'Emprise » (`pad_tiers.go`, `squademprise/`), ligne `usagePadTiersModel.ts` retirée.
+- **S7.3** ADR 0036 : I1 / I2 (aucune lecture `v_gamertag_lookup` ni `_latest` non bornée : toutes
+  les lectures neuves sont bornées aux matchs de la session et au joueur), I3 (cache invalidé au sync :
+  inchangé, aucun cache neuf), I4 (un chargement par requête : résumé d'usage lu UNE fois par session,
+  partagé par l'Emprise, l'objectif et l'appui via `LecturesUsage`), I5, I7 non touchés. **I6
+  ÉCART TROUVÉ ET CORRIGÉ** : l'Emprise et l'emblème de Sessions (code de S2) ne déclaraient pas de
+  section de durée. Test `TestAttachSessionBlocks_SectionsDeDuree` (vu ROUGE : `emprise`, `emblem`
+  absentes), puis `Section("emprise")` dans `sessionEmprise` et `Section("emblem")` dans
+  `attachSessionEmblem` ; mutations (retrait de chacune) ROUGES. Aucune ADR neuve.
+- **S7.4** Cases : S1 à S5 `[x]`, S6 `[~]` (fondu dans S5, S5.1 / S5.3), S5 « `usagePadTiersModel.ts` »
+  `[~]` (S4.14), S7.5 `[~]` (demandée au superviseur) ; aucun `[!]`. §8 relu : entrées complétées
+  (leçon de S5 retenue par le superviseur, item d'intégration des textes, écart I6 des Séries
+  temporelles).
+- **Gate** (rejoué APRÈS les docs) : `go build ./...` 0 ; `gofmt -l` muet ; `go vet ./internal/...`
+  0 ; `go test -count=1` des 348 paquets en lots (195 ok, 153 sans test, 0 FAIL) ;
+  `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 4 ok (353 s) ; `make go-api-lint`
+  0 issue ; contrat : `openapi-gen -check` à jour, `check-generated-types-fresh` OK ; web : purge
+  `.tmp`, `tsc -b --force` 0, lint 0 erreur (26 avertissements), vitest 840 fichiers / 8 871 tests
+  verts, knip 0 / 0 / 0, couleurs 0, imports croisés 7 ≤ 7, `lefthook run pre-push` sortie 0.
 
 ## 7. Reprise de session
 
@@ -876,8 +916,9 @@ modèles neufs ont leur lecteur dans le lot.
   plutôt que d'allonger l'allowlist.
 - (S5) S4 avait rendu ROUGE un test Go : `domain/pad_tiers_web_parity_test.go` lisait
   `_shared/usage/usagePadTiersModel.ts`, supprimé en S4 (le gate de S4 est web seul). Corrigé en S5 :
-  le test et `PadTierOrder`, sans lecteur après la coupe, sont supprimés. Leçon : une suppression
-  web se double d'un grep des tests Go qui lisent `apps/web/src`.
+  le test et `PadTierOrder`, sans lecteur après la coupe, sont supprimés. **LEÇON (retenue par le
+  superviseur, 2026-10-06) : toute suppression web se double d'un grep des tests Go qui lisent
+  `apps/web/src`** — un gate web seul ne voit pas ces tests.
 - (S5) `service/squadagg/squad_formes.go:13` cite encore `service/session_page_usage_labels.go`
   (supprimé) comme précédent d'arbitrage : fichier interdit par §5.1, commentaire non corrigé.
 - (S5) Aides de test sans lecteur, PRÉ-EXISTANTES et hors périmètre, relevées par `unused` :
@@ -886,6 +927,15 @@ modèles neufs ont leur lecteur dans le lot.
 - (S5) Incident d'exécution : une commande de collage de journal s'est terminée par un `python -`
   tapé par erreur (interdit) ; aucun code Python n'a été exécuté (le processus attendait l'entrée
   standard), il a été arrêté par `TaskStop`. Aucun effet sur l'arbre (vérifié par `git status`).
+- (S7, ITEM D'INTÉGRATION) Un lot sémantique est en cours sur `feat/ts-usages-fix-equipement` : titres
+  factuels sans personne, FR / EN, sur les chaînes PARTAGÉES de l'Emprise. Le lot Sessions n'y touche
+  pas et l'héritera à l'intégration. À ce moment-là, les textes PROPRES à Sessions
+  (`features/session-detail/sessionEmpriseText.ts`) s'alignent sur la même règle : aucun possessif ni
+  pronom de personne (ma / mes / mon camp / moi / notre / nous / ta), joueur = gamertag, « Camp »,
+  « Adversaire », « Reste du camp ». Non fait dans ce lot (consigne du superviseur, 2026-10-06).
+- (S7) Écart à l'invariant I6 de l'ADR 0036 sur les Séries temporelles : le chargement de l'emblème
+  (`service/timeseries_service_emprise.go:83`, `LoadEmblemURLs`) ne déclare pas de section de durée
+  (celui de Sessions, même patron, est corrigé dans ce lot). Fichier du lot TS : non traité.
 
 ## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
 
