@@ -18,13 +18,13 @@
  * sait nommer et colorer une équipe.
  *
  * Les cascades employées sont celles du dépôt, sans troisième copie : `allyOfTeamId` pour le
- * camp (grammaire de xuidMeta) et `resolveTeamLabel` pour le nom (celle du scoreboard, des
- * objectifs et des colonnes du rejeu).
+ * camp (grammaire de xuidMeta) et `campLabel` pour le nom (celle des colonnes de fiches, du
+ * menu de point de vue et du scoreboard, au plancher « Équipe N » — jamais « sans équipe »).
  */
 import { useCallback, useMemo } from 'react'
 
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
-import { resolveTeamLabel } from '@/lib/halo/teamLabel'
+import { campLabel } from '@/lib/replay/replayCamps'
 import { allyOfTeamId } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
@@ -32,8 +32,8 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /**
  * Ce que la piste DOMINANCE reçoit sur les équipes : de quel côté est un camp, et son nom.
- * Les deux se lisent du scoreboard — seul endroit où le camp du film (`team_side` au format
- * `t{N}`) et les joueurs de la page coexistent.
+ * Le camp y est l'identifiant `N` d'un côté de feuille `t{N}` (le tueur d'une ligne du fil, une
+ * série du calque de score) ; la feuille le nomme.
  */
 export interface ReplayTeamCascades {
   /** Camp du meneur, du point de vue du joueur de la page (`null` = inconnu). */
@@ -54,12 +54,7 @@ export function useTeamCascades(
     [board, xuidMeta],
   )
   const labelOf = useCallback(
-    (teamId: number) =>
-      resolveTeamLabel(
-        board.filter((r) => r.team_side === `t${teamId}`),
-        `t${teamId}`,
-        t,
-      ),
+    (teamId: number) => campLabel({ team: teamId, side: `t${teamId}` }, board, t),
     [board, t],
   )
   return { allyOf, labelOf }

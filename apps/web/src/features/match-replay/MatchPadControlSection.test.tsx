@@ -107,9 +107,9 @@ const TEMOIN: Partial<ReplayDocument> = {
   frameCount: 200,
   frameIntervalMs: 100,
   roster: [
-    { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
-    { filmIndex: 1, xuid: 'a2', name: 'Bravo' },
-    { filmIndex: 2, xuid: 'b1', name: 'Charlie' },
+    { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+    { filmIndex: 1, xuid: 'a2', name: 'Bravo', team: 0 },
+    { filmIndex: 2, xuid: 'b1', name: 'Charlie', team: 1 },
   ],
   tracks: [vie(1, 'a1'), vie(2, 'a2'), vie(3, 'b1')],
   weaponLabels: { [SNIPER]: { fr: 'S7 Sniper', en: 'S7 Sniper', key: 'hinf_s7_sniper' } },

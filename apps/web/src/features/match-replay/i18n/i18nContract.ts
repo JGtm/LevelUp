@@ -716,8 +716,11 @@ export interface ReplayText {
   seatNotSpawned: string
   seatNotSpawnedHint: string
   bridgeDiag: (named: number, total: number, collisions: number) => string
-  teamUnknown: string
-  /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */
+  /**
+   * Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). AUCUN
+   * « équipe inconnue » ici : sur la page Rejeu, un camp est toujours un désignateur du film, et
+   * son plancher est `teamNumberedFmt` (`resolveKnownTeamLabel`, décision du 2026-10-06).
+   */
   teamLabelFmt: (name: string) => string
   teamNumberedFmt: (n: number) => string
   /**
@@ -849,16 +852,14 @@ export interface ReplayText {
    * texte visible du menu est un gamertag, qui ne dit pas de quoi il est la réponse — sans ce
    * nom, un lecteur d'écran annoncerait une liste déroulante anonyme au milieu d'une frise.
    *
-   * `viewpointNoTeam` nomme la section des joueurs SANS ligne de tableau de score. Ils n'ont pas
-   * de camp, et `groupByTeam` refuse d'en inventer un : la section dit l'absence plutôt que de
-   * les ranger au hasard.
+   * Les sections du menu sont les CAMPS DU FILM, nommés comme les colonnes de fiches : aucune
+   * section « sans équipe » (décision du 2026-10-06).
    *
-   * `viewpointNoData` est l'infobulle des options INERTES de cette section (décision 7 bis) :
-   * sans ligne de tableau de score, la piste de ce joueur serait vide quoi qu'il arrive. Le
-   * menu le dit au lieu de laisser cliquer sur un choix sans effet.
+   * `viewpointNoData` est l'infobulle des options INERTES (décision 7 bis) : un joueur sans ligne
+   * de tableau de score reste dans le camp que le film lui donne, mais sa piste serait vide quoi
+   * qu'il arrive. Le menu le dit au lieu de laisser cliquer sur un choix sans effet.
    */
   viewpointLabel: string
-  viewpointNoTeam: string
   viewpointNoData: string
   dominanceOfFmt: (team: string) => string
   dominanceTied: string

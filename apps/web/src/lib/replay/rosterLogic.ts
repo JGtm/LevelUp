@@ -150,7 +150,8 @@ export function buildPlayers(
   // LA JOINTURE D'UN BOT SE FAIT PAR GAMERTAG, faute de xuid commun : la base identifie ses
   // bots par `is_bot` (xuid `bid(N.0)`, gamertag résolu SANS suffixe), le film par le nom
   // suffixé « [bot] » — la clé de jointure est le nom NU des deux côtés. Un nom absent du
-  // scoreboard laisse `board` vide — le bot reste sans équipe, jamais un camp deviné.
+  // scoreboard laisse `board` vide — le bot reste sans ligne de feuille, jamais une ligne
+  // devinée ; son équipe, elle, est celle que le film écrit (`team`, posée plus haut).
   const boardByName = new Map(
     scoreboard.filter((r) => r.is_bot).map((r) => [stripBotSuffix(r.gamertag), r]),
   )

@@ -2,7 +2,8 @@
  * Tests — padControlLogic (le contrôle des armes spéciales, par joueur et par équipe).
  *
  * CE QU'ILS PROTÈGENT, dans l'ordre des pièges du domaine :
- *   - le PONT xuid -> joueur -> équipe : le camp vient du SCOREBOARD, le film n'en porte aucun ;
+ *   - le PONT xuid -> joueur -> équipe : le camp est le désignateur que le FILM écrit pour l'entrée
+ *     du joueur (décision du 2026-10-06), la feuille ne fait que le nommer ;
  *   - une occupation SANS ramasseur nommé n'est comptée POUR PERSONNE — jamais rattrapée ;
  *   - la SOMME BOUCLE : prises affichées + occupations hors tableau = occupations mesurées ;
  *   - le TRI est par total décroissant, camps compris — c'est le sujet du tableau ;
@@ -57,9 +58,9 @@ const SB: MatchScoreboardRow[] = [
 ] as MatchScoreboardRow[]
 
 /**
- * LE TÉMOIN. Trois joueurs au scoreboard (deux camps), un QUATRIÈME que le film voit vivre et que
- * le scoreboard ignore, et un CINQUIÈME au roster du film SANS AUCUNE PISTE — deux socles d'arme
- * et un socle de bonus.
+ * LE TÉMOIN. Trois joueurs au scoreboard, un QUATRIÈME que le film voit vivre et que le scoreboard
+ * ignore, et un CINQUIÈME au roster du film SANS AUCUNE PISTE, dans deux camps DU FILM (Alpha et
+ * Bravo au camp 0, Charlie, Delta et Echo au camp 1) — deux socles d'arme et un socle de bonus.
  *
  * L'ENTRÉE SANS PISTE EST DANS LE TÉMOIN PARTAGÉ À DESSEIN : le filtre « au moins une vie » doit
  * tenir sur tous les scénarios, pas seulement sur celui qui l'éprouve.
@@ -69,11 +70,11 @@ function temoin(over: Partial<ReplayDocument> = {}) {
     frameCount: 200,
     frameIntervalMs: 100,
     roster: [
-      { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
-      { filmIndex: 1, xuid: 'a2', name: 'Bravo' },
-      { filmIndex: 2, xuid: 'b1', name: 'Charlie' },
-      { filmIndex: 3, xuid: 'orphelin', name: 'Delta' },
-      { filmIndex: 4, xuid: 'sansPiste', name: 'Echo' },
+      { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+      { filmIndex: 1, xuid: 'a2', name: 'Bravo', team: 0 },
+      { filmIndex: 2, xuid: 'b1', name: 'Charlie', team: 1 },
+      { filmIndex: 3, xuid: 'orphelin', name: 'Delta', team: 1 },
+      { filmIndex: 4, xuid: 'sansPiste', name: 'Echo', team: 1 },
     ],
     tracks: [vie(1, 'a1'), vie(2, 'a2'), vie(3, 'b1'), vie(4, 'orphelin')],
     weaponPads: [socle(SNIPER), socle(EPEE), socle('powerup_overshield')],
@@ -110,40 +111,62 @@ describe('buildPadControl — le pont xuid -> joueur -> équipe', () => {
     expect(control.attributed).toBe(4)
   })
 
-  it('range les joueurs par camp du SCOREBOARD et somme chaque camp', () => {
+  it('range les joueurs par camp du FILM et somme chaque camp', () => {
     const control = buildPadControl(
       temoin({
         padPickups: [prise(0, 'a1'), prise(1, 'a2'), prise(0, 'b1')],
       } as Partial<ReplayDocument>),
       SB,
     )
-    const t0 = control.byTeam.find((g) => g.side === 't0')
-    const t1 = control.byTeam.find((g) => g.side === 't1')
+    const t0 = control.byTeam.find((g) => g.team === 0)
+    const t1 = control.byTeam.find((g) => g.team === 1)
+    expect([t0?.side, t1?.side]).toEqual(['t0', 't1'])
     expect(t0?.total.total).toBe(2)
     expect(t0?.total.byWeapon[SNIPER]).toBe(1)
     expect(t0?.total.byWeapon[EPEE]).toBe(1)
     expect(t1?.total.total).toBe(1)
   })
 
-  it('garde le joueur HORS SCOREBOARD, sans équipe — le trou se montre', () => {
+  it('le joueur HORS SCOREBOARD garde sa ligne, dans le camp que le FILM lui donne', () => {
     const control = buildPadControl(
       temoin({ padPickups: [prise(0, 'orphelin')] } as Partial<ReplayDocument>),
       SB,
     )
-    const sansEquipe = control.byTeam.find((g) => g.side === null)
-    expect(sansEquipe?.players.map((p) => p.name)).toEqual(['Delta'])
-    expect(sansEquipe?.total.total).toBe(1)
-    // Et il n'a été versé dans AUCUN camp nommé.
-    expect(control.byTeam.filter((g) => g.side !== null).reduce((n, g) => n + g.total.total, 0))
-      .toBe(0)
+    // Delta n'a pas de ligne de feuille : sa prise compte pour le camp 1, que la feuille de
+    // Charlie nomme. Aucun groupe « sans équipe ».
+    expect(control.byTeam.map((g) => g.team)).toEqual([1, 0])
+    expect(control.byTeam[0].players.find((p) => p.name === 'Delta')).toMatchObject({ team: 1, side: 't1', total: 1 })
   })
 
-  it('sans scoreboard du tout, personne n’a d’équipe et rien n’est deviné', () => {
+  it('sans scoreboard du tout, les camps restent ceux du FILM — seuls leurs côtés de feuille manquent', () => {
     const control = buildPadControl(
       temoin({ padPickups: [prise(0, 'a1')] } as Partial<ReplayDocument>),
       undefined,
     )
-    expect(control.byTeam.map((g) => g.side)).toEqual([null])
+    expect(control.byTeam.map((g) => [g.team, g.side])).toEqual([
+      [0, null],
+      [1, null],
+    ])
+    expect(control.attributed).toBe(1)
+  })
+
+  it('un joueur dont le film TAIT l’équipe n’a AUCUNE ligne : sa prise part en non rattachée', () => {
+    // Le bot bouche-trou du témoin 43716616 : vivant, une prise nommée — et aucune équipe écrite
+    // par le film. Ni ligne, ni groupe à part : la prise compte dans `unjoined`.
+    const control = buildPadControl(
+      temoin({
+        roster: [
+          { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+          { filmIndex: 8, xuid: 'muet', name: 'Sandwolf' },
+        ],
+        tracks: [vie(1, 'a1'), vie(8, 'muet')],
+        padPickups: [prise(0, 'a1'), prise(0, 'muet', 30)],
+      } as Partial<ReplayDocument>),
+      SB,
+    )
+    expect([...parNom(control).keys()]).toEqual(['Alpha'])
+    expect(control.byTeam.map((g) => g.team)).toEqual([0])
+    expect(control.unjoined).toBe(1)
     expect(control.attributed).toBe(1)
   })
 })
@@ -214,9 +237,10 @@ describe('buildPadControl — ce qui n’est PAS attribué', () => {
 describe('buildPadControl — le tri et les colonnes', () => {
   it('trie les joueurs par total décroissant, et les camps aussi', () => {
     // TOTAUX TOUS DISTINCTS, ET L'ORDRE ATTENDU N'EST NI CELUI DU ROSTER NI L'ALPHABÉTIQUE :
-    // c'est ce qui rend le test sensible. Charlie (t1) 5 · Bravo (t0) 3 · Alpha (t0) 1 · Delta 0.
-    // Roster et alphabet donneraient tous deux « Alpha, Bravo » dans t0, et « t0, t1 » pour les
-    // camps — retirer l'un ou l'autre des deux tris fait donc tomber cette assertion.
+    // c'est ce qui rend le test sensible. Charlie (camp 1) 5 · Bravo (camp 0) 3 · Alpha (camp 0)
+    // 1 · Delta (camp 1) 0. Roster et alphabet donneraient tous deux « Alpha, Bravo » dans le
+    // camp 0, et « 0, 1 » pour les camps — retirer l'un ou l'autre des deux tris fait donc tomber
+    // cette assertion.
     const control = buildPadControl(
       temoin({
         padPickups: [
@@ -233,9 +257,9 @@ describe('buildPadControl — le tri et les colonnes', () => {
       } as Partial<ReplayDocument>),
       SB,
     )
-    // Les camps : t1 (5) devant t0 (4), le camp sans nom (0) en dernier.
-    expect(control.byTeam.map((g) => g.side)).toEqual(['t1', 't0', null])
-    expect(control.byTeam.map((g) => g.total.total)).toEqual([5, 4, 0])
+    // Les camps : le 1 (5) devant le 0 (4) — et aucun troisième.
+    expect(control.byTeam.map((g) => g.team)).toEqual([1, 0])
+    expect(control.byTeam.map((g) => g.total.total)).toEqual([5, 4])
     // Dans t0, Bravo (3) passe DEVANT Alpha (1) — l'inverse du roster et de l'alphabet.
     const t0 = control.byTeam[1]
     expect(t0.players.map((p) => p.name)).toEqual(['Bravo', 'Alpha'])

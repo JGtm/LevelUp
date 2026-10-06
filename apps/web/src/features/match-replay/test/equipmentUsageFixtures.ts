@@ -39,8 +39,9 @@ export const SB: MatchScoreboardRow[] = [
 ] as MatchScoreboardRow[]
 
 /**
- * LE TÉMOIN. Trois joueurs au scoreboard (deux camps) plus un QUATRIÈME que le film voit vivre
- * et que le scoreboard ignore ; un slot de caméra (vie sans xuid) qui porte pourtant des gestes.
+ * LE TÉMOIN. Trois joueurs au scoreboard plus un QUATRIÈME que le film voit vivre et que le
+ * scoreboard ignore, dans deux camps DU FILM (Alpha et Bravo au camp 0, Charlie et Delta au
+ * camp 1) ; un slot de caméra (vie sans xuid) qui porte pourtant des gestes.
  *
  * Frames à 100 ms : un épisode de 50 frames dure 5 000 ms — les durées sont donc lisibles à
  * l'œil dans les attentes des tests qui l'emploient.
@@ -50,10 +51,10 @@ export function temoin(over: Partial<ReplayDocument> = {}) {
     frameCount: 200,
     frameIntervalMs: 100,
     roster: [
-      { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
-      { filmIndex: 1, xuid: 'a2', name: 'Bravo' },
-      { filmIndex: 2, xuid: 'b1', name: 'Charlie' },
-      { filmIndex: 3, xuid: 'orphelin', name: 'Delta' },
+      { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+      { filmIndex: 1, xuid: 'a2', name: 'Bravo', team: 0 },
+      { filmIndex: 2, xuid: 'b1', name: 'Charlie', team: 1 },
+      { filmIndex: 3, xuid: 'orphelin', name: 'Delta', team: 1 },
     ],
     tracks: [
       vie(1, 'a1'),

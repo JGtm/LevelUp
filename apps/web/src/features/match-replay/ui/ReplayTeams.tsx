@@ -42,7 +42,15 @@ import type { CardFxScene } from '../model/playerCardReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
 import type { PresenceHeader } from '../model/presenceFeed'
-import { buildSeats, groupSeatsByTeam, seatOccupantAt, seatTileAt, type ReplaySeat } from '../model/seatLogic'
+import {
+  buildSeats,
+  groupSeatsByTeam,
+  seatOccupantAt,
+  seatTileAt,
+  type ReplaySeat,
+  type ReplaySeatGroup,
+} from '../model/seatLogic'
+import { campLabel } from '../../../lib/replay/replayCamps'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   buildPlayers,
@@ -109,7 +117,12 @@ export function ReplayTeams({
   // quel que soit le nombre de relais. LA PLACE ET LA PRÉSENCE VIENNENT DU DOCUMENT
   // (`roster[].seat`, `roster[].presence`, schéma 69) : le web ne les déduit pas.
   const seats = useMemo(() => buildSeats(players, doc), [players, doc])
+  // LES COLONNES SONT LES CAMPS DU FILM (décision du 2026-10-06) : un camp par désignateur, et
+  // jamais une colonne « sans équipe » — une entrée dont le film tait l'équipe n'a pas de place.
   const groups = useMemo(() => groupSeatsByTeam(seats), [seats])
+  // LE NOM D'UNE COLONNE, une fois par document : la feuille de TOUS ses occupants le donne
+  // (`campLabel`), et un camp qu'elle ne nomme pas garde « Équipe N » de son désignateur.
+  const labels = useMemo(() => groups.map((g) => campLabel(g, sheetRowsOf(g), t)), [groups, t])
   // LE GABARIT DU MATCH, un seul pour toute la colonne (D1) : il ne dépend que de l'en-tête.
   const gabarit = cardDensity(header)
   const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
@@ -178,8 +191,8 @@ export function ReplayTeams({
     // enfermait ne disait rien de plus. Gaps de la maquette : 10 px entre colonnes, 6 px
     // sous le bandeau, 4 px entre tuiles. LES COLONNES D'ÉQUIPE NE CHANGENT PAS avec le
     // gabarit (`repeat(groups.length, minmax(0, 1fr))`) : c'est À L'INTÉRIEUR d'un camp que les
-    // sièges passent en grille (D2 : pas de groupe « sans équipe » à traiter ; D3 : le FFA garde
-    // ses N colonnes d'un siège).
+    // sièges passent en grille. Une colonne par camp du film, et AUCUNE « sans équipe » (D2,
+    // tenue par construction : `groupSeatsByTeam`).
     //
     // `minmax(0, 1fr)` ET PAS `1fr`, ET CE N'EST PAS COSMÉTIQUE (retour utilisateur du
     // 2026-09-08 : « les fiches toujours rognées à cause des longs gamertags »). `1fr` vaut
@@ -195,22 +208,22 @@ export function ReplayTeams({
     >
       {groups.map((group, gi) => (
         <div
-          key={group.side ?? `sans-equipe-${gi}`}
+          key={`camp:${group.team}`}
           className="flex h-full min-h-0 flex-col gap-1.5"
         >
           <ReplayTeamHeader
+            label={labels[gi]}
             players={occupantsPresents(group.seats, frame)}
             side={group.side}
             xuidMeta={xuidMeta}
-            locale={locale}
           />
           <div className={gabarit.seatGrid ? SEATS_GRID_CLASS : SEATS_COLUMN_CLASS}>
             {/* UNE TUILE PAR PLACE, À CHAQUE IMAGE (règle des places, 2026-09-23) : son
                 occupant à l'instant lu, « pas encore apparu » s'il n'a pas encore de corps
                 (Q21), ou la place VIDE (Q20) — jamais un joueur parti, et jamais plus de
                 tuiles que de places. Une place qui ne rend RIEN à cette image (`seatTileAt` :
-                joueur sans entrée de roster hors de ses vies, voie des vies avant le premier
-                occupant) ne produit aucune tuile. */}
+                document sans présence publiée, avant le premier occupant) ne produit aucune
+                tuile. */}
             {group.seats.map((seat) => {
               const lu = seatTileAt(seat, frame)
               if (lu === null) return null
@@ -244,12 +257,17 @@ export function ReplayTeams({
   )
 }
 
+/** Les lignes de feuille de TOUS les occupants d'un camp, sur tout le match : ce qui le nomme. */
+function sheetRowsOf(group: ReplaySeatGroup) {
+  return group.seats.flatMap((s) => s.occupants.map((o) => o.player.board))
+}
+
 /**
  * occupantsPresents — les joueurs qui TIENNENT une place de ce camp à cette image, apparus ou
  * pas encore.
  *
- * L'en-tête de colonne s'en sert pour son libellé et pour la couleur allié / adverse : lui
- * passer un joueur parti ferait nommer un camp par quelqu'un qui n'y joue plus.
+ * L'en-tête de colonne s'en sert pour la couleur allié / adverse : la lui donner par un joueur
+ * parti ferait colorer un camp par quelqu'un qui n'y joue plus.
  */
 function occupantsPresents(seats: readonly ReplaySeat[], frame: number): ReplayPlayer[] {
   const out: ReplayPlayer[] = []

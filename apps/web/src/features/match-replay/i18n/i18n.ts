@@ -267,7 +267,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     seatNotSpawnedHint: "Ce joueur tient sa place, mais il n'est pas encore apparu sur la carte.",
     bridgeDiag: (named: number, total: number, collisions: number) =>
       `Pont du film : ${named}/${total} vies nommées, ${collisions} collision(s) de slot.`,
-    teamUnknown: 'Sans équipe',
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamNumberedFmt: (n) => `Équipe ${n}`,
     playerScoreLive: "Score personnel à l'instant lu",
@@ -295,7 +294,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     trackTeammates: 'Coéquipiers',
     trackDominance: 'Dominance',
     viewpointLabel: 'Joueur suivi',
-    viewpointNoTeam: 'Sans équipe',
     viewpointNoData: 'Aucune donnée de match pour ce joueur',
     dominanceOfFmt: (team) => `${team} mène aux frags`,
     dominanceTied: 'Égalité aux frags',
@@ -719,7 +717,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     seatNotSpawnedHint: 'This player holds the slot but has not spawned on the map yet.',
     bridgeDiag: (named: number, total: number, collisions: number) =>
       `Film bridge: ${named}/${total} lives named, ${collisions} slot collision(s).`,
-    teamUnknown: 'No team',
     teamLabelFmt: (name) => `Team ${name}`,
     teamNumberedFmt: (n) => `Team ${n}`,
     playerScoreLive: 'Personal score at the moment being played',
@@ -747,7 +744,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     trackTeammates: 'Teammates',
     trackDominance: 'Dominance',
     viewpointLabel: 'Followed player',
-    viewpointNoTeam: 'No team',
     viewpointNoData: 'No match data for this player',
     dominanceOfFmt: (team) => `${team} leads on kills`,
     dominanceTied: 'Tied on kills',

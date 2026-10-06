@@ -30,24 +30,39 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
 
 ## Étape E2 — Tous les regroupements consomment l'équipe du film
 
-- [ ] E2.1 Colonnes : `seatLogic` (`ReplaySeat.team`, retrait de `campsParCote`, `cleDeCamp`,
-  clés `s:<team_side>` et `''`, rang « sans camp en dernier », place `joueur:<xuid>` devenue
-  morte) ; `groupSeatsByTeam` par `groupByCamp` ; `ReplayTeams` / `ReplayTeamHeader` (libellé par
-  `campLabel`, calculé une fois par document, clé de rendu `camp:<désignateur>`).
-- [ ] E2.2 Menu de point de vue (frise) : `viewpointOptions` sur les camps du film, libellé par
-  `campLabel` ; retrait du groupe `side == null` et de `viewpointNoTeam`.
-- [ ] E2.3 Tables de l'onglet Arsenal : `equipmentUsageLogic` / `equipmentUsageChart` /
-  `MatchEquipmentUsageSection`, `padControlLogic` / `padControlChart` / `MatchPadControlSection`
-  sur les camps du film ; les gestes d'un joueur sans équipe rejoignent la réserve
-  (`unattributed`), ses prises de socle les non rattachées (`unjoined`) — la somme ne ment pas ;
-  retrait des clés `'sans-equipe'` et du rang 2 « camp inconnu ».
-- [ ] E2.4 i18n : retrait de `teamUnknown` et `viewpointNoTeam` (FR, EN, contrat) ; les autres
+- [x] E2.1 Colonnes : `seatLogic` (`ReplaySeat.team`, retrait de `campsParCote`, `cleDeCamp`,
+  `ordreDesCamps`, `rangDePlace`, clés `s:<team_side>` et `''`, rang « sans camp en dernier »,
+  place `joueur:<xuid>` devenue morte) ; clé de place `siege:<équipe>:<place>` (places finies PAR
+  ÉQUIPE : deux équipes ne partagent jamais une tuile) ; `groupSeatsByTeam` par `groupByCamp` ;
+  `ReplayTeams` / `ReplayTeamHeader` (libellé par `campLabel` sur la feuille de TOUS les occupants,
+  calculé une fois par document ; clé de rendu `camp:<désignateur>` ; l'en-tête ne garde que
+  l'encre).
+- [x] E2.2 Menu de point de vue (frise) : `viewpointOptions` sur les camps du film
+  (`groupByTeam`), libellé `campLabelOf` = `campLabel` (même cascade que les colonnes) ; retrait
+  du groupe `side == null`, de `labelDuGroupe` et de `viewpointNoTeam`.
+- [x] E2.3 Tables de l'onglet Arsenal : `equipmentUsageLogic` / `equipmentUsageChart` /
+  `MatchEquipmentUsageSection`, `padControlLogic` / `padControlChart` / `padControlColumns` /
+  `MatchPadControlSection` sur les camps du film (lignes et camps `extends ReplayCamp`) ; les
+  gestes d'un joueur sans équipe rejoignent `unattributed` (réserve du titre), ses prises de socle
+  `unjoined` — la somme ne ment pas ; retrait des clés `'sans-equipe'` (React et `data-testid` :
+  `camp:<désignateur>`) et du rang 2 « camp inconnu » ; tri des camps du contrôle des socles :
+  total puis désignateur.
+- [x] E2.4 i18n : retrait de `teamUnknown` et `viewpointNoTeam` (FR, EN, contrat) ; les autres
   appels de la cascade dans le rejeu (`useTeamCascades`, `ReplayVictoryOverlay`,
-  `exportOverlayPanels`) passent à `resolveKnownTeamLabel`.
-- [ ] E2.5 Tests : réécriture des tests qui figeaient le repli de feuille ou la section sans
-  équipe (code mort supprimé avec ses tests) ; nouveaux tests : entrée sans équipe = aucune tuile,
-  aucune troisième colonne ; libellé plancher ; somme des tables.
-- Gate E2 : vitest des dossiers touchés, tsc, eslint.
+  `exportOverlayPanels`) passent à `campLabel` (donc `resolveKnownTeamLabel`) : plus aucun appel
+  de `resolveTeamLabel` dans `features/match-replay`.
+- [x] E2.5 Tests : réécriture des tests qui figeaient le repli de feuille ou la section sans
+  équipe (traduction mesurée, côté contradictoire, repli `s:`, voie `joueur:<xuid>`, « Sans
+  équipe » du menu, de la frise et de l'en-tête de colonne) ; équipes du film posées dans les
+  rosters des tests de rendu (fixations 4v4 / 6v6 inchangées à l'octet) ; nouveaux tests :
+  témoin 43716616 (logique et DOM, FR + EN : deux colonnes à chaque image, jamais « Sans équipe »
+  ni « No team »), places d'équipes différentes, plancher « Équipe N », gestes et prises d'un
+  joueur sans équipe hors camp, contrat Go/web « toute entrée porte son équipe ». Tests de
+  l'équipe de `rosterLogic` déplacés dans `rosterLogic.equipes.test.ts` (seuil de 500 lignes).
+- Gate E2 : vitest des dossiers touchés, tsc, eslint. PASSÉ le 2026-10-06 : `tsc -b` 0 erreur,
+  eslint des 45 fichiers touchés 0 problème, vitest `features/match-replay` + `lib/replay` +
+  `lib/halo` + `features/match-view` : 296 fichiers, 4 061 tests verts (2 garde-rails à balayage
+  de `src/` ont dépassé leur délai de 5 s sous charge machine ; rejoués seuls deux fois : 9/9).
 
 ## Étape E3 — Tuiles d'attente au gabarit
 
@@ -78,7 +93,28 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
 
 ## Découvertes (notées, non traitées — règle 7 du contrat)
 
-(à remplir pendant l'exécution)
+- D1 — ENCRE DES BOTS SUR LA CARTE : `useSlotIdentity.isAlly(p.xuid)` interroge `xuidMeta` (clés
+  de la feuille, `bid(N.0)` pour un bot) avec la clé du film `bot:<nom>` : un bot n'y est jamais
+  trouvé, donc `isAlly` rend `false` et son pion prend l'encre ADVERSE quel que soit son camp —
+  y compris un bot allié. Famille « encre allié / adverse » (point 6 du brief, hors périmètre).
+- D2 — PISTE COÉQUIPIERS ET CAPTEUR DE MENACES : la population de la piste « Coéquipiers » (frise)
+  vient de `identity` (`xuidMeta`, feuille) et l'opposition du capteur de menaces de
+  `sideResolver` (`team_side` de la feuille) : un coéquipier que la feuille ignore n'y figure pas.
+  Même famille que D1, laissée sur la feuille (allowlist du garde-rail E4).
+- D3 — FFA : le désignateur `-1` (« aucune équipe », mode sans camps) regroupe tous les joueurs en
+  UNE colonne (comportement inchangé depuis le lot 1.9.14), alors que la décision D3 du plan des
+  fiches compactes (2026-09-06) disait « chaque joueur est sa propre équipe, N colonnes d'un
+  siège » ; et si aucun membre n'a de ligne de feuille, son nom plancher serait « Équipe -1 ».
+  Aucun FFA au parc (126 artefacts à deux camps) : question produit à porter à l'utilisateur.
+- D4 — FILM SANS ROSTER (sans identification, artefact antérieur au schéma 57) : il n'écrit
+  aucune équipe, la colonne affiche donc le constat `rosterEmpty` (« Aucune vie du film n'a pu
+  être rattachée à un joueur »), dont le libellé ne dit pas la vraie cause. 0 artefact du parc
+  concerné.
+- D5 — ADR 0034 D-9 écrit encore « the web colours players by `team_side` from the match sheet »
+  (faux depuis le lot 1.9.14, et pour le regroupement depuis ce lot) : document hors périmètre.
+- D6 — Deux garde-rails à balayage complet de `src/` (`xuidMeta.guard`, `teamLabel.guard`)
+  frôlent le délai de 5 s de vitest sous charge machine (7,4 s et 8,1 s observés en parallèle,
+  5,4 s seul, puis verts).
 
 ## Journal
 
@@ -89,3 +125,6 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
   1: 588}. Les 8 fixtures Go du worktree (schéma 79) : 0 entrée sans équipe.
 - 2026-10-06 — E1 close (gate vert). Choix : le côté de feuille d'un camp est celui de la
   MAJORITÉ de ses membres (un joueur que la feuille contredit ne renomme pas son camp).
+- 2026-10-06 — E2 close (gate vert). Choix : la clé d'une place porte son équipe (places finies
+  par équipe) ; les gestes / prises d'un joueur sans équipe vont aux compteurs « hors camp »
+  existants (`unattributed`, `unjoined`) plutôt que de disparaître. Découvertes D1 à D6 notées.

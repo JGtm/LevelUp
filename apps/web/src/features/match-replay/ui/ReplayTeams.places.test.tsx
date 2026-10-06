@@ -12,6 +12,7 @@ import { render, screen } from '@testing-library/react'
 
 import { ReplayTeams } from './ReplayTeams'
 import { REPLAY_TEXT } from '../i18n/i18n'
+import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
 
 /** Une vie du joueur `xuid` sur [debut, fin]. */
@@ -97,6 +98,54 @@ describe('ReplayTeams — la règle des places', () => {
 function tuilesRendues(container: HTMLElement): number {
   return [...container.querySelectorAll('.overflow-y-auto')].reduce((n, c) => n + c.children.length, 0)
 }
+
+/**
+ * UNE SECTION SANS ÉQUIPE N'EXISTE PAS (décision du 2026-10-06). Le témoin `43716616` réduit à
+ * sa place 5 : Slowpoke6743 part (certain jusqu'à 118, peut-être là jusqu'à 317), le bot
+ * « 343 Sandwolf » est déclaré de 248 à 281 SANS équipe écrite par le film, KernelPanic10 arrive à
+ * 318 ; un titulaire tient le camp d'en face. La feuille connaît le bot : elle ne le range pas.
+ */
+describe('ReplayTeams — aucune section sans équipe (témoin 43716616)', () => {
+  function document43716616() {
+    return testReplayDoc({
+      frameCount: 600,
+      frameIntervalMs: 100,
+      originMs: 0,
+      roster: [
+        { xuid: 'S', filmIndex: 5, seat: 5, seatSource: 'lu', name: 'Slowpoke6743', team: 0, presence: [{ from: 0, to: 118, toMax: 317 }] },
+        { xuid: '', bot: true, filmIndex: 8, seat: 8, seatSource: 'index', name: '343 Sandwolf [bot]', presence: [{ from: 248, to: 281 }] },
+        { xuid: 'K', filmIndex: 9, seat: 5, seatSource: 'tirs', name: 'KernelPanic10', team: 0, presence: [{ from: 318, to: 599 }] },
+        { xuid: 'T', filmIndex: 1, seat: 1, seatSource: 'lu', name: 'Titulaire', team: 1, presence: [{ from: 0, to: 599 }] },
+      ],
+      tracks: [vie('S', 512, 0, 118), { ...vie('', 540, 250, 270), bot: '343 Sandwolf [bot]' }, vie('K', 530, 330, 599), vie('T', 513, 0, 599)],
+    })
+  }
+  const feuille = [
+    scoreboardRow('S', 'Slowpoke6743', 't0'),
+    scoreboardRow('bid(44.0)', '343 Sandwolf', 't0', { is_bot: true }),
+    scoreboardRow('K', 'KernelPanic10', 't0'),
+    scoreboardRow('T', 'Titulaire', 't1'),
+  ]
+
+  for (const locale of ['fr', 'en'] as const) {
+    it(`deux colonnes à chaque image, jamais une troisième, et jamais « sans équipe » (${locale})`, () => {
+      for (const frame of [0, 200, 250, 260, 281, 300, 318, 400]) {
+        const vue = render(<ReplayTeams doc={document43716616()} scoreboard={feuille} frame={frame} locale={locale} />)
+        expect(vue.container.querySelectorAll('.overflow-y-auto').length, `image ${frame}`).toBe(2)
+        expect(tuilesRendues(vue.container), `image ${frame}`).toBe(2)
+        expect(vue.container.textContent, `image ${frame}`).not.toMatch(/Sans équipe|No team|Sandwolf/)
+        vue.unmount()
+      }
+    })
+  }
+
+  it('les colonnes portent les noms de la feuille : Eagle, puis Cobra', () => {
+    const vue = render(<ReplayTeams doc={document43716616()} scoreboard={feuille} frame={260} locale="fr" />)
+    expect([...vue.container.querySelectorAll('h3')].map((h) => h.textContent)).toEqual(['Équipe Eagle', 'Équipe Cobra'])
+    // Pendant la déclaration du bot, la place 5 reste à Slowpoke6743 (jusqu'à son `toMax`).
+    expect(vue.getByText('Slowpoke6743')).toBeTruthy()
+  })
+})
 
 describe('ReplayTeams — ce qu’une place ne rend PAS (revue M2, 2026-09-24)', () => {
   /**

@@ -64,17 +64,18 @@ function vie(slot: number, xuid: string) {
 }
 
 /**
- * LE TÉMOIN DE RENDU : quatre joueurs (dont un que le scoreboard ignore), un geste de chaque
- * canal, et deux vidages de socle de bonus. Frames à 100 ms.
+ * LE TÉMOIN DE RENDU : quatre joueurs dans deux camps DU FILM (dont un que le scoreboard ignore,
+ * Delta, que le film range avec Charlie), un geste de chaque canal, et deux vidages de socle de
+ * bonus. Frames à 100 ms.
  */
 const TEMOIN: Partial<ReplayDocument> = {
   frameCount: 200,
   frameIntervalMs: 100,
   roster: [
-    { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
-    { filmIndex: 1, xuid: 'a2', name: 'Bravo' },
-    { filmIndex: 2, xuid: 'b1', name: 'Charlie' },
-    { filmIndex: 3, xuid: 'orphelin', name: 'Delta' },
+    { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+    { filmIndex: 1, xuid: 'a2', name: 'Bravo', team: 0 },
+    { filmIndex: 2, xuid: 'b1', name: 'Charlie', team: 1 },
+    { filmIndex: 3, xuid: 'orphelin', name: 'Delta', team: 1 },
   ],
   tracks: [vie(1, 'a1'), vie(2, 'a2'), vie(3, 'b1'), vie(4, 'orphelin')],
   grappleLines: [
@@ -225,13 +226,31 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
     ).toBeTruthy()
   })
 
-  it('range le joueur HORS SCOREBOARD sous « équipe inconnue », jamais dans un camp nommé', () => {
+  it('range le joueur HORS SCOREBOARD dans le camp que le FILM lui donne, nommé par la feuille', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    // Son nom porte son camp en infobulle de ligne — et ce camp est l'inconnu.
-    expect(vue.getByText('Delta').closest('[title]')?.getAttribute('title')).toContain(
-      t.teamUnknown,
-    )
+    // Son nom porte son camp en infobulle de ligne : celui du film (1), que la feuille de Charlie
+    // nomme — jamais une équipe « inconnue » ou « sans équipe ».
+    expect(vue.getByText('Delta').closest('[title]')?.getAttribute('title')).toBe('Delta — Équipe Cobra')
+  })
+
+  it('un joueur dont le film TAIT l’équipe n’a AUCUNE ligne ; ses gestes rejoignent la réserve', () => {
+    // Le bot bouche-trou du témoin 43716616 : déclaré, vivant, un geste — et aucune équipe écrite
+    // par le film. Ni ligne, ni camp « sans équipe » : son geste compte dans la réserve du titre.
+    poserArtefact({
+      ...TEMOIN,
+      roster: [...(TEMOIN.roster ?? []), { filmIndex: 8, xuid: '', bot: true, name: 'Sandwolf [bot]' }],
+      tracks: [...(TEMOIN.tracks ?? []), { ...vie(8, ''), bot: 'Sandwolf [bot]' }],
+      grappleLines: [...(TEMOIN.grappleLines ?? []), { slot: 8, t0: 4, t1: 8, ax: 0, ay: 0 }],
+    } as unknown as Partial<ReplayDocument>)
+    const vue = afficher()
+    expect(vue.queryByText('Sandwolf')).toBeNull()
+    expect(vue.queryByText(/Sans équipe|inconnue/)).toBeNull()
+    // Deux camps, toujours : la légende des parts n'en nomme pas un troisième.
+    const piste = vue.container.querySelector('[data-testid="usage-famille-grapple.pulls"]')!
+    expect(piste.querySelectorAll('[data-testid^="usage-famille-grapple.pulls-camp:"]')).toHaveLength(2)
+    survolerTitre(vue)
+    expect(screen.getByRole('tooltip').textContent).toBe(t.equipmentUsage.coverageReserveFmt(1))
   })
 })
 
@@ -271,8 +290,8 @@ describe('MatchEquipmentUsageSection — la part de chaque équipe (5.A, 2026-09
     const piste = vue.container.querySelector('[data-testid="usage-famille-grapple.pulls"]')!
     // `is_me` est sur Alpha (t0) : son camp ouvre la barre.
     expect([...piste.children].map((c) => c.querySelector('[data-testid]')?.getAttribute('data-testid'))).toEqual([
-      'usage-famille-grapple.pulls-t0',
-      'usage-famille-grapple.pulls-t1',
+      'usage-famille-grapple.pulls-camp:0',
+      'usage-famille-grapple.pulls-camp:1',
     ])
   })
 
@@ -284,10 +303,10 @@ describe('MatchEquipmentUsageSection — la part de chaque équipe (5.A, 2026-09
     const largeur = (testid: string) =>
       vue.container.querySelector(`[data-testid="${testid}"]`)!.parentElement!.parentElement!
         .getAttribute('style')
-    expect(largeur('usage-famille-grapple.pulls-t0')).toContain('66.6')
+    expect(largeur('usage-famille-grapple.pulls-camp:0')).toContain('66.6')
     // ...et le champ de réparation, lâché UNE fois, n'en occupe qu'un tiers — sur une barre
     // 100 % par famille, il aurait fait la même longueur que le grappin.
-    expect(largeur('usage-famille-equipment.equipment.repair_field-t1')).toContain('33.3')
+    expect(largeur('usage-famille-equipment.equipment.repair_field-camp:1')).toContain('33.3')
   })
 
   it('écrit le TOTAL de la famille en bout de ligne', () => {

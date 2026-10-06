@@ -50,6 +50,7 @@ import {
 import { presenceShades, teammatesAbsence } from '../model/presenceTrackLogic'
 import { roundTransitions } from '../model/roundsLogic'
 import { buildViewpointOptions } from '../model/viewpointOptions'
+import { campLabel } from '../../../lib/replay/replayCamps'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
@@ -192,12 +193,17 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     () => teammatesAbsence(feedEntries, teammateXuids, frameIntervalMs ?? 0, scale),
     [feedEntries, teammateXuids, frameIntervalMs, scale],
   )
-  // LE MENU DE POINT DE VUE : les sections viennent du roster joint, les trois libellés de
-  // l'i18n de la feature. La règle de valeur (le piège des bots) et la règle d'inertie (un
-  // joueur sans ligne de tableau de score) vivent dans `viewpointOptions`, pures et testées là.
+  // LE MENU DE POINT DE VUE : les sections sont les CAMPS DU FILM du roster joint, nommés par la
+  // cascade des colonnes de fiches (`campLabel` sur la feuille de leurs membres). La règle de
+  // valeur (le piège des bots) et la règle d'inertie (un joueur sans ligne de tableau de score)
+  // vivent dans `viewpointOptions`, pures et testées là.
   const viewpointGroups = useMemo(
-    () => buildViewpointOptions(players, { teamLabelOf: lead.labelOf, noTeam: t.viewpointNoTeam, noData: t.viewpointNoData }),
-    [players, lead.labelOf, t.viewpointNoTeam, t.viewpointNoData],
+    () =>
+      buildViewpointOptions(players, {
+        campLabelOf: (camp) => campLabel(camp, camp.players.map((p) => p.board), t),
+        noData: t.viewpointNoData,
+      }),
+    [players, t],
   )
   // LA DOMINANCE SE LIT SUR LES FRAGS (2026-08-28), plus sur le compteur du mode : elle vient
   // donc du MÊME fil que les deux pistes du dessus, jamais d'un second calque.
