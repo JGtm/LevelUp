@@ -138,6 +138,12 @@ fermeture d'un épisode par le même objet occupant est déjà dans 2.7.a.
   admises » — les baisses instruites des huit films (postures, changements d'arme, tir continu,
   dotations de naissance, trajets) sont admises ; « Par joueur » — la primauté de la lecture
   nomme les occupants par joueur, plus par corps (découverte 16).
+- 2026-10-06, en réponse à l'instruction du gate de 2.7.b (item 2.7.b) : « Oui, admis » — le
+  repli neuf signalé par construction, les 24 lectures de capacité faites à la création d'un corps
+  avant son premier mouvement et la remise à zéro d'équipement de fin de manche lue « utilisée »
+  sont admis ; les deux derniers restent notés (découvertes 22 et 24). Même jour : « Oui, fusionne
+  au vert » — le lot lint du décodeur (`feat/lint-decodeur`) se fusionne dans `feat/v75` juste après
+  la vue A de la campagne, au vert.
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -863,7 +869,10 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       de vie) ; (c) V-3 sur trois témoins : 24 lectures du rang de capacité 13 à 15 ms après la
       création du corps, avant son premier mouvement — la piste d'une vie ne part que du premier
       mouvement (découverte 22) ; (d) V-3 sur `51ebbc0f` : l'équipement retiré par le jeu en fin de
-      manche, lu comme dépensé (découverte 24). En attente : admission de l'utilisateur.
+      manche, lu comme dépensé (découverte 24). Admis par l'utilisateur le 2026-10-06 (§2).
+      Reste : reprise de `feat/v75` après la vue A V2 et V3 de la campagne (rang de `grammar.Rev` à
+      reprendre : la campagne prend `.4`), gate et passe d'équivalence rejoués sur cette base,
+      `KILLSOURCE_FIXTURES`, CI, `make gate-push`, accord de fusion.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
       du 2026-10-03) ; `IDLowBits` unifié (IR-7). Le découpage MPP déclaré par le film (2.7.a0)
