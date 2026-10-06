@@ -19,9 +19,9 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **PHASE 1 (plan seulement) — rédigé et relu à la grille `plan-review` le
-> 2026-10-06 ; aucun lot exécuté.** La phase 2 (exécution, un lot à la fois avec compte rendu et
-> attente du « continue ») ne démarre que sur « go » du superviseur. Branche `feat/tactique-v2`
+> Statut du plan : **PHASE 2 EXÉCUTÉE — lots L1 à L11 clos (2026-10-06 / 2026-10-07), commits locaux
+> sur `feat/tactique-v2` ; L10.2 et L11.4 statués `[!]` (journaux L10 et L11).** Revue adversariale
+> du diff cumulé et fusion dans `feat/v75` : à la charge du superviseur. Branche `feat/tactique-v2`
 > (créée sur `origin/feat/v75` = `b033d30f0`), worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-tactique`.
 
 ## 0. Objectif, critère de succès, hors périmètre
@@ -1277,18 +1277,48 @@ Journal L10 (2026-10-07, exécuteur, `feat/tactique-v2`) :
 
 ### L11 — Clôture · rapide
 
-- [ ] L11.1 `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]`, entrée « Tactics tab »
+- [x] L11.1 `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]`, entrée « Tactics tab »
   l. 34 : quatre tuiles KPI et carte de coordination retirées, vue cockpit, lecture « Solde »,
   noms de zone, mini-tuiles) ; `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md` (« A Tactics
   tab » / « Un onglet Tactique », l. 42-46, dont « La coordination d'équipe ») ; `README.md` + `docs/FR/README.md` (« Tactics » /
   « Tactique », l. 34 et 114) ; lignes re-vérifiées au moment d'écrire.
-- [ ] L11.2 ADR 0036 relue (test I2 de L2.2 présent dans la liste et le tableau) ; aucune autre ADR
+- [x] L11.2 ADR 0036 relue (test I2 de L2.2 présent dans la liste et le tableau) ; aucune autre ADR
   concernée.
-- [ ] L11.3 Statut de chaque item ; §8 relue ; entrée finale du journal.
-- [ ] L11.4 Revue adversariale du diff cumulé (lots à risque : L2 lectures bornées, L3 enrichissement
+- [x] L11.3 Statut de chaque item ; §8 relue ; entrée finale du journal.
+- [!] L11.4 Revue adversariale du diff cumulé (lots à risque : L2 lectures bornées, L3 enrichissement
   et câblage, L9 contrat) : à demander au SUPERVISEUR (l'exécuteur n'a pas de sous-agent) ; `[!]`
-  tant qu'il ne l'a pas lancée.
+  tant qu'il ne l'a pas lancée. → `[!]` : revue adversariale à la charge du superviseur.
 - Gate : gate Go complet + gate web complet + contrat, rejoués après les docs.
+
+Journal L11 (2026-10-07, exécuteur, `feat/tactique-v2`) :
+- **L11.1** Lignes re-vérifiées au moment d'écrire : `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md`
+  l. 34 (bloc `[7.5.0]`, entrée « Tactics tab » / « L'onglet Tactique ») ; `docs/RELEASE_NOTES.md` et
+  `docs/FR/RELEASE_NOTES.md` l. 42-46 (« A Tactics tab » / « Un onglet Tactique », dont « La
+  coordination d'équipe ») ; `README.md` et `docs/FR/README.md` l. 35 (bloc v7.5 : la puce est
+  l. 35 sous le titre l. 34) et l. 114. Ce que disent les six textes : un écran en cockpit (cartes
+  jouées, plan, zone sélectionnée), sept lectures dont « solde frags − morts » et « morts seul »,
+  noms de zone du jeu, zone la plus chaude présélectionnée, mini-tuiles qui ouvrent le rejeu à
+  l'instant, lien depuis l'« Occupation du terrain » de la Vue match ; le CHANGELOG dit le retrait
+  des quatre tuiles de KPI et de la carte de coordination avec leurs champs. Aucun autre guide
+  (`ARCHITECTURE_V6`, `FOUNDATIONS_GUIDE`, `COMMANDS`) ne décrit le contenu de l'onglet.
+- **L11.2** ADR 0036 relue : `TestTacticalRepo_ContextesDeMort_BorneEtNull` est dans la liste I2
+  (l. 164) et dans le tableau (l. 423) ; ses mentions de `KillEvents` sont des mesures datées et le
+  lecteur existe toujours (Escouade, bloc Coordination) — rien à amender. Aucune autre ADR ne nomme
+  la section de coordination, l'échange ou la couverture de l'onglet.
+- **L11.3** Tous les items statués (`[x]` sauf L10.2 et L11.4 `[!]`, justifiés) ; §8 relue,
+  complétée des découvertes de L9 et L10 ; entrées de journal de L1 à L11 présentes.
+- **L11.4** `[!]` : revue adversariale à la charge du superviseur.
+- **Gate Go** (après les docs) : `go build ./...` 0 ; `gofmt -l internal cmd` muet ; `go vet` des
+  paquets du lot 0 ; module en quatre lots couvrant les 349 paquets de `go list` : 196 ok, 153 sans
+  test, 0 échec ; `golangci-lint run --new-from-merge-base=origin/main` 0 issue. **Contrat** :
+  `openapi-gen -check` à jour, `generate-types` sans écart, `check-generated-types-fresh` OK,
+  garde de surface 7 / 7, `lint-contract-ratchet` propre. **Gate web** : `tsc -b --force` 0 ; lint
+  0 erreur (26 avertissements de base) ; `vitest run --pool=forks` 853 fichiers / 9 185 tests verts ;
+  manifestes identiques ; knip 0 / 0 / 0 ; couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ;
+  `lefthook run pre-push` vert.
+- Commits de la phase 2 : L1 `02322455e`, L2 `d88348c55`, L3 `5006b0a59`, L4 `5c5be71d1`, L5
+  `504d219e4`, L6 `5519f0125`, L7 `beb9c46e2`, L8 `a9fac9c9c`, L9 `629eb588c`, L10 `96eb9ef05`,
+  L11 (ce commit).
 
 ## 7. Reprise de session
 
@@ -1388,6 +1418,12 @@ L2.3.
   Tendances (`feat/v75`, absents du snapshot de ce worktree) : si `feat/v75` a régénéré le sien
   entre-temps, la fusion de `contract-surface.snapshot.json` peut entrer en conflit (trivial :
   régénérer après fusion). Non traité.
+- (L10) Deux gardes de balayage de fichiers étrangères au lot (`features/admin/lab-removal.guard.test.ts`,
+  `lib/clipboard/useCopyToClipboard.guard.test.ts`) ont rougi dans un passage complet de vitest, vertes
+  seules et au passage complet suivant : sensibles à la charge ; non traité.
+- (L10) La fonction de `MatchPositionsHeatmap` (lot voisin) dépassait déjà 80 L (183) avant le lien
+  « Tactique » ; non découpée (consigne d'insertion minimale), le lien sorti dans un composant local
+  pour la limiter à 193 L ; non traité.
 
 ## 9. Points où le code contredit le brief (phase 1)
 

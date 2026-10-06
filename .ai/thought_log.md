@@ -116010,3 +116010,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : tests du lien vus rouges contre le composant de HEAD ; 2 mutations rouges ; gate web vert (853 fichiers / 9 185 tests au second passage complet, deux gardes de balayage étrangères au lot rouges au premier passage puis vertes seules et en complet).
 
 **Conclusion / prochaine étape** : L11 (clôture) enchaîné.
+
+## [2026-10-07] Tactique v2, lot L11 : clôture du plan — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété — plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md` exécuté de L1 à L11 ; L10.2 et L11.4 statués `[!]`.
+
+**Décision technique principale** : la documentation de la v7.5 décrit l'onglet tel qu'il sort — un écran en cockpit (cartes jouées, plan à sept lectures, zone sélectionnée nommée comme dans le jeu, mini-tuiles qui ouvrent le rejeu à l'instant, lien depuis l'« Occupation du terrain » de la Vue match) — dans le CHANGELOG, les notes de version et le README, en EN et en FR ; le CHANGELOG dit le retrait des quatre tuiles de KPI et de la carte de coordination avec leurs champs. ADR 0036 relue, rien à amender. La revue adversariale du diff cumulé (L2, L3, L9) reste à la charge du superviseur, qui fusionne ensuite dans `feat/v75`.
+
+**Résultats observés** : gates rejoués après les docs — Go 349 paquets, 196 ok, 0 échec, golangci 0 issue ; contrat à jour, garde de surface 7 / 7 ; web 853 fichiers / 9 185 tests verts, ratchets et pre-push verts. Aucune case vide dans le plan ; §8 complétée (L9, L10).
+
+**Conclusion / prochaine étape** : arrêt de l'exécuteur ; reprise uniquement sur les constats de revue du superviseur.

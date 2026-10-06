@@ -40,10 +40,10 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les charges sont visibles** — un déployable montre ce qu'il lui reste avant la première utilisation
 
 **Un onglet Tactique**
-- **Les cartes que tu joues** — une vignette par carte, son bilan, et un plancher en dessous duquel une carte n'est pas montrée plutôt que montrée de travers
-- **Une vue d'analyse sur le plan de la carte** — où tu passes ton temps, où tu meurs, où tu tues, où tu meurs isolé, où les victoires et les défaites se séparent, et les routes que tu empruntes
-- **Une cellule ouvre le rejeu à l'instant exact** — un clic sur une case et tu tombes sur la seconde où ça s'est joué
-- **La coordination d'équipe** — l'écartement réel de ton escouade, lu par match dans le référentiel des variantes et non fixé à un seuil arbitraire
+- **Un seul écran** — les cartes que tu joues à gauche, le plan de la carte au centre, la zone que tu choisis à droite ; la carte que tu joues le plus s'ouvre d'elle-même
+- **Sept lectures sur le plan** — où tu meurs, où tu tues, ton solde frags − morts, où les victoires et les défaites se séparent, où tu passes ton temps, les trajets après ta réapparition, et où tu meurs seul
+- **Des zones avec leur nom du jeu** — la plus chaude est choisie pour toi, et ses mini-tuiles disent ce qui s'est passé, avec quelle arme, seul ou près d'un coéquipier, et comment le match a fini
+- **Droit au rejeu** — chaque mini-tuile ouvre le rejeu à la seconde près, et l'« Occupation du terrain » de la fiche du match ouvre l'onglet sur la carte de ce match
 
 **Escouade, sessions et progression**
 - **Les formes retenues** — les cartes d'objectif : le rapport de force par famille de mode, et la part de chaque joueur dans l'objectif de son camp
