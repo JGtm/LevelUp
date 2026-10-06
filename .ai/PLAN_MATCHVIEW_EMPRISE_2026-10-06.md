@@ -23,7 +23,7 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **PHASE 1 — à relire par le superviseur**. Phase 2 suspendue jusqu'au message
+> Statut du plan : **ACCEPTÉ par le superviseur le 2026-10-06 (D1-D22 fermes, réponses §9)**. Phase 2 suspendue jusqu'au message
 > « rebase sur <sha> » (tête finale de `feat/sessions-emprise`, elle-même rebasée sur la tête finale
 > de `feat/ts-usages-emprise` après L8), puis « go ».
 > Branche : `feat/matchview-emprise`, créée sur `651bbe972` (tête L6 de `feat/ts-usages-emprise`),
@@ -75,7 +75,7 @@ jamais un zéro inventé) ; (3) tous les gates des lots verts, dernière exécut
 - **V8** Pas de nouvelle carte d'objectif.
 - **V9** Ordre et contenu de l'onglet « Armes et terrain » : §3 (A-J).
 
-### 1.2 Tranchées par le planificateur — à confirmer par le superviseur
+### 1.2 Tranchées par le planificateur — FERMES (plan accepté par le superviseur le 2026-10-06 : D1-D22 confirmées ; Q1 ordre du brief — joueur de la page, puis profils suivis, puis le reste de mon camp dans l'ordre du tableau des scores, bots et partis exclus des fiches et comptés dans les infobulles, même ordre pour la carte I ; Q2 oui — D sans lignes « en attente », une ressource sans prise n'a pas de ligne, les véhicules suivent leur couverture, G et H gardent leurs lignes « non mesuré » de la liste fermée, les trois textes absents de la maquette écrits par l'exécuteur en FR et EN ; Q3 oui — helpers S1.1 / S1.2 et `solo_lives_repo.go` étendus à signature existante inchangée, tests existants verts sans modification, une mutation prouve que chaque nouveau paramètre est lu ; attribution : ligne de la session de l'exécuteur)
 
 - **D1 — Dépendance au lot Sessions, nommée.** La phase 2 part de la tête finale de
   `feat/sessions-emprise`. Symboles attendus (plan Sessions §6, lot S1 ; noms définitifs relus en
@@ -500,7 +500,8 @@ solo_lives_repo.go}` (+ tests), `domain/assist_pairs.go`, `port/timeseries_lives
   `lireViesPresOuSeul` l'appelle avec un xuid et rend son bloc comme aujourd'hui. Tests des Séries
   temporelles (`timeseries_service_lives_test.go`) et de Sessions (tests de S2.4) verts SANS
   modification ; test neuf (mock enregistreur) : une lecture pour deux joueurs, un bilan par joueur.
-  Mutation : un appel au repo par joueur → rouge (compteur).
+  Mutations : un appel au repo par joueur → rouge (compteur) ; liste des joueurs ignorée (seul le
+  joueur de la page lu) → rouge.
 - [ ] M1.5 D2 : `soloEmpriseQuery.Players` ; nil → `squadagg.SquadPlayers` comme aujourd'hui. Tests
   `timeseries_service_emprise_test.go` et ceux de Sessions S2.3 verts SANS modification ;
   test neuf : `Players` fourni → `block.Players` identique, dans l'ordre, et parts `squad` par joueur.
@@ -715,7 +716,11 @@ lecteur.
   même colonne `power_weapon_kills` dans une requête de la Vue match ; deux lectures distinctes,
   bornées au match, conservées (fusion hors périmètre).
 
-## 9. Questions au superviseur
+## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
+
+Réponses : Q1 ordre du brief (moi, profils suivis, reste de mon camp dans l'ordre du tableau des
+scores ; même ordre pour I) ; Q2 oui ; Q3 oui (signatures existantes inchangées, tests existants
+verts sans modification, une mutation par nouveau paramètre). Questions d'origine :
 
 - **Q1** D3 : ordre des fiches E et des lignes I — le brief (« joueur de la page, profils suivis
   ensuite ») ou la maquette (ordre du tableau des scores, Madina97294 en 5e fiche sur le BTB) ? Le plan
