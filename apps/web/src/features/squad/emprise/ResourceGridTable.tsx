@@ -34,18 +34,29 @@ interface Props {
   /** « Moi 3, reste du camp 2 » : qui chez nous a pris l'objet. */
   whoText: (who: GridWho[]) => string
   t: EmpriseText
+  /**
+   * Vue compacte du tiroir de comparaison de Sessions (maquette `renderGridCompact`) : les seules
+   * lignes de ressource (synthèse, frags aux armes spéciales ; aucune ligne d'objet, râteliers en une
+   * ligne), la part de notre camp dans la case (« 71 % »), « — » hachuré sans film, « ? » sans
+   * niveaux ; colonnes sans largeur minimale, la table tient dans sa demi-largeur.
+   */
+  compact?: boolean
 }
 
 type RowRole = 'summary' | 'item' | 'kills'
 
-export function ResourceGridTable({ columns, sections, itemName, whoText, t }: Props) {
+export function ResourceGridTable({ columns, sections, itemName, whoText, t, compact = false }: Props) {
   const [racksOpen, setRacksOpen] = useState(false)
-  const ctx: RowContext = { tipHeads: columns.map((c) => c.tipHead), whoText, t }
+  const ctx: RowContext = { tipHeads: columns.map((c) => c.tipHead), whoText, t, compact }
   return (
-    <div className="overflow-x-auto">
+    <div className={compact ? '' : 'overflow-x-auto'}>
       <div
-        className="grid min-w-[640px] items-stretch gap-1"
-        style={{ gridTemplateColumns: `170px repeat(${columns.length}, minmax(72px, 1fr))` }}
+        className={`grid items-stretch gap-1 ${compact ? '' : 'min-w-[640px]'}`}
+        style={{
+          gridTemplateColumns: compact
+            ? `86px repeat(${columns.length}, minmax(0, 1fr))`
+            : `170px repeat(${columns.length}, minmax(72px, 1fr))`,
+        }}
         data-testid="emprise-grid-table"
       >
         <div />
@@ -74,6 +85,7 @@ interface RowContext {
   tipHeads: string[]
   whoText: (who: GridWho[]) => string
   t: EmpriseText
+  compact: boolean
 }
 
 /** Une ressource de la grille : synthèse, objets (repliés pour les râteliers), frags obtenus avec. */
@@ -90,10 +102,10 @@ function SectionRows({
   onToggleRacks: () => void
   ctx: RowContext
 }) {
-  const { t } = ctx
+  const { t, compact } = ctx
   const res = t.resources[s.resource]
   const racks = s.resource === RESOURCE_RACK
-  const summaryLabel = racks ? (
+  const summaryLabel = racks && !compact ? (
     <div className="flex flex-col justify-center text-[12.5px] leading-tight">
       <button
         type="button"
@@ -112,7 +124,8 @@ function SectionRows({
   return (
     <>
       {s.summary && <GridLine label={summaryLabel} row={s.summary} role="summary" name={res.label} absent={res.absent} ctx={ctx} />}
-      {(!racks || racksOpen) &&
+      {!compact &&
+        (!racks || racksOpen) &&
         s.items.map((row) => {
           const name = itemName(row)
           return (
@@ -167,6 +180,7 @@ function GridLine({
           role={role}
           tip={cellTip(cell, ctx.tipHeads[ci], name, absent, ctx.whoText, ctx.t)}
           t={ctx.t}
+          compact={ctx.compact}
         />
       ))}
     </>
@@ -223,45 +237,49 @@ function cellTip(
   }
 }
 
-function Cell({ cell, role, tip, t }: { cell: GridCell; role: RowRole; tip: string; t: EmpriseText }) {
+/** Le texte court d'une case de la vue compacte (maquette `renderGridCompact`). */
+const COMPACT_ABSENT = '—'
+const COMPACT_UNKNOWN = '?'
+
+function Cell({ cell, role, tip, t, compact }: { cell: GridCell; role: RowRole; tip: string; t: EmpriseText; compact: boolean }) {
   const item = role === 'item'
   const base = `grid h-full w-full cursor-default place-items-center rounded-[3px] tabular-nums ${
-    item ? 'min-h-6 text-[11.5px]' : 'min-h-[34px] text-[12.5px]'
+    item ? 'min-h-6 text-[11.5px]' : compact ? 'min-h-7 text-[11.5px]' : 'min-h-[34px] text-[12.5px]'
   }`
   let body: ReactNode
   switch (cell.kind) {
     case 'value':
       body = (
         <div className={base} style={{ backgroundColor: bandCellInk((cell.share - 0.5) * 100) }} data-cell="value">
-          {cell.us}–{cell.them}
+          {compact ? t.pctIntFmt(cell.share * 100) : `${cell.us}–${cell.them}`}
         </div>
       )
       break
     case 'nofilm':
       body = (
         <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} style={UNMEASURED_HATCH} data-cell="nofilm">
-          {t.grid.noFilmCell}
+          {compact ? COMPACT_ABSENT : t.grid.noFilmCell}
         </div>
       )
       break
     case 'unmeasured':
       body = (
         <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} style={UNMEASURED_HATCH} data-cell="unmeasured">
-          {t.vehicles.unmeasuredCell}
+          {compact ? COMPACT_ABSENT : t.vehicles.unmeasuredCell}
         </div>
       )
       break
     case 'noteam':
       body = (
         <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} data-cell="noteam">
-          {t.grid.noTeamCell}
+          {compact ? COMPACT_UNKNOWN : t.grid.noTeamCell}
         </div>
       )
       break
     case 'untiered':
       body = (
         <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} data-cell="untiered">
-          {t.grid.untieredCell}
+          {compact ? COMPACT_UNKNOWN : t.grid.untieredCell}
         </div>
       )
       break

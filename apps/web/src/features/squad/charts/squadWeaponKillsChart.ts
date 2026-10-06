@@ -60,6 +60,13 @@ export interface SquadWeaponKillsOpts {
   valueLabel?: 'count' | 'share'
   /** Texte d'infobulle d'une barre (compte + part arrondie en %) ; défaut « <b>n</b> (p %) ». */
   valueText?: (kills: number, sharePct: number) => string
+  /**
+   * Dénominateur de la part, par joueur (vue compacte de Sessions : TOUS ses frags, quand le graphe
+   * n'en montre que les premiers outils) ; défaut : la somme de ses frags sur les lignes affichées.
+   */
+  shareTotals?: Record<string, number>
+  /** Part sous laquelle la part écrite est masquée (mode `share`) ; défaut 5 %. */
+  minLabelShare?: number
 }
 
 /** Clé de style riche ECharts d'une classe (alphanumérique + souligné seulement). */
@@ -102,10 +109,12 @@ export function buildSquadWeaponKillsOption(
   const mode = opts.valueLabel ?? 'count'
   const valueText = opts.valueText ?? ((v: number, pct: number) => `<b>${v}</b> (${pct} %)`)
 
-  // Total du joueur = somme de ses frags sur TOUTES les lignes (dénominateur de la part).
+  // Total du joueur = somme de ses frags sur TOUTES les lignes (dénominateur de la part), sauf
+  // dénominateur fourni par l'appelant.
   const playerTotals = new Map<string, number>(
-    players.map((p) => [p, rows.reduce((s, r) => s + (r.killsByPlayer[p] ?? 0), 0)]),
+    players.map((p) => [p, opts.shareTotals?.[p] ?? rows.reduce((s, r) => s + (r.killsByPlayer[p] ?? 0), 0)]),
   )
+  const minShare = opts.minLabelShare ?? MIN_LABEL_SHARE
   const shareOf = (player: string, value: number): number => {
     const total = playerTotals.get(player) ?? 0
     return total > 0 ? value / total : 0
@@ -130,7 +139,7 @@ export function buildSquadWeaponKillsOption(
           if (v <= 0) return ''
           if (mode === 'count') return String(v)
           const share = shareOf(player, v)
-          return share < MIN_LABEL_SHARE ? '' : `${Math.round(share * 100)} %`
+          return share < minShare ? '' : `${Math.round(share * 100)} %`
         },
       },
       barCategoryGap: '20%',

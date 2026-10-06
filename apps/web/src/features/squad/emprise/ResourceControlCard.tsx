@@ -18,7 +18,11 @@ import type { EmpriseText } from './empriseStrings'
 import { PisteCampsForm, type PisteCampsRow } from './PisteCampsForm'
 import { resourceInk } from './resourceColors'
 
-export function ResourceControlCard({ rows, t }: { rows: ControlRow[]; t: EmpriseText }) {
+/**
+ * `compact` (vue compacte du tiroir de comparaison de Sessions) : la part entière seule dans chaque
+ * segment, le compte au survol ; les textes de la vue viennent de l'appelant (`t`).
+ */
+export function ResourceControlCard({ rows, t, compact = false }: { rows: ControlRow[]; t: EmpriseText; compact?: boolean }) {
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -53,7 +57,7 @@ export function ResourceControlCard({ rows, t }: { rows: ControlRow[]; t: Empris
   return (
     <ObjectifFrame title={t.control.title} info={t.control.info} legend={legend} testId="emprise-control">
       <div className="mt-2" aria-label={t.control.ariaLabel} role="group">
-        <PisteCampsForm rows={pistes} pctFmt={t.pctFmt} axisMaxLabel={t.pctIntFmt(100)} />
+        <PisteCampsForm rows={pistes} pctFmt={compact ? t.pctIntFmt : t.pctFmt} axisMaxLabel={t.pctIntFmt(100)} pctOnly={compact} />
       </div>
     </ObjectifFrame>
   )

@@ -6,17 +6,18 @@
  */
 import { useCallback, useMemo } from 'react'
 
-import { equipmentFamilyLabel, USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
+import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import type { SquadEmpriseObject, TeammatesPageResponse } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { TEAM_REST_INK, squadPlayerInk } from '../formes/colors'
-import { RESOURCE_POWERUP, RESOURCE_VEHICLE, buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil, empriseMatchIndex } from './emprise.logic'
+import { buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil, empriseMatchIndex } from './emprise.logic'
 import { buildHabitView } from './habit.logic'
+import { empriseObjectName } from './objectName'
 import type { PickupIdentity } from './PickupSheetsCard'
 import { buildProductionRows, buildYieldRows } from './production.logic'
 import { EMPRISE_TEXT } from './empriseStrings'
-import { buildVehicleCoverage, vehicleFamilyName } from './vehicles.logic'
+import { buildVehicleCoverage } from './vehicles.logic'
 
 export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPlayerLabel: string, restLabel: string, locale: Locale) {
   const block = pageData?.squad_emprise
@@ -28,11 +29,7 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
   // par son libellé de titre (famille qualifiée) ou le nom propre tiré de sa clé.
   const unknownVehicle = EMPRISE_TEXT[locale].vehicles.unknown
   const objectName = useCallback(
-    (o: SquadEmpriseObject) => {
-      if (o.resource === RESOURCE_POWERUP) return equipmentFamilyLabel(o.key, usageText)
-      if (o.resource === RESOURCE_VEHICLE) return vehicleFamilyName(o.key, o.label, unknownVehicle)
-      return o.label || o.key
-    },
+    (o: SquadEmpriseObject) => empriseObjectName(o, usageText, unknownVehicle),
     [usageText, unknownVehicle],
   )
 

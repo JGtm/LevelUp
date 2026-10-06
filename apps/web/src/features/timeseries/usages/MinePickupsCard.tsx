@@ -22,12 +22,21 @@ import { resourceInk } from '@/features/squad/emprise/resourceColors'
 import { TipText } from '@/features/squad/emprise/TipText'
 import { ObjectifFrame, ObjectifLegend } from '@/features/squad/objectif/ObjectifFrame'
 
-import type { MineGroup, MinePickups, MineRow } from './usages.logic'
+import { mineByResource, type MineGroup, type MinePickups, type MineResource, type MineRow } from './usages.logic'
 import type { UsagesCardsText } from './usagesCardsText'
 
 const ME_INK = squadPlayerInk(0)
 /** La barre d'un objet très peu pris garde une largeur lisible (maquette : 2 %). */
 const MIN_TRACK_PCT = 2
+
+/**
+ * Vue compacte du tiroir de comparaison de Sessions (maquette `renderMineCompact`) : une barre par
+ * RESSOURCE, ma part et celle du reste de mon camp en pourcentage (comptes au survol), bonus perdus
+ * en pourcentage ; `resourceSub` est le sous-libellé de chaque ressource.
+ */
+interface MineCompact {
+  resourceSub: string
+}
 
 interface Props {
   mine: MinePickups
@@ -36,12 +45,13 @@ interface Props {
   player: string
   t: EmpriseText
   ut: UsagesCardsText
+  compact?: MineCompact
 }
 
-export function MinePickupsCard({ mine, itemName, player, t, ut }: Props) {
+export function MinePickupsCard({ mine, itemName, player, t, ut, compact }: Props) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [racksOpen, setRacksOpen] = useState(false)
-  const hidden = useSegmentLabelFit(ref, [mine, racksOpen])
+  const hidden = useSegmentLabelFit(ref, [mine, racksOpen, compact])
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -56,20 +66,24 @@ export function MinePickupsCard({ mine, itemName, player, t, ut }: Props) {
   )
   return (
     <ObjectifFrame title={ut.mine.title} info={ut.mine.info} legend={legend} testId="usages-mine">
-      <div ref={ref} className="flex flex-col gap-[7px]">
-        {mine.groups.map((g) => (
-          <Fragment key={g.resource}>
-            <GroupHead group={g} label={t.resources[g.resource]?.label ?? g.resource} open={racksOpen} onToggle={() => setRacksOpen((o) => !o)} ut={ut} />
-            {(!g.folded || racksOpen) &&
-              g.rows.map((r) => <MineLine key={r.object.key} row={r} name={itemName(r.object)} max={mine.max} hidden={hidden} player={player} ut={ut} />)}
-          </Fragment>
-        ))}
+      <div ref={ref} className={`flex flex-col ${compact ? 'gap-2.5' : 'gap-[7px]'}`}>
+        {compact
+          ? mineByResource(mine).map((r) => (
+              <MineResourceLine key={r.resource} row={r} label={t.resources[r.resource]?.label ?? r.resource} sub={compact.resourceSub} hidden={hidden} player={player} ut={ut} />
+            ))
+          : mine.groups.map((g) => (
+              <Fragment key={g.resource}>
+                <GroupHead group={g} label={t.resources[g.resource]?.label ?? g.resource} open={racksOpen} onToggle={() => setRacksOpen((o) => !o)} ut={ut} />
+                {(!g.folded || racksOpen) &&
+                  g.rows.map((r) => <MineLine key={r.object.key} row={r} name={itemName(r.object)} max={mine.max} hidden={hidden} player={player} ut={ut} />)}
+              </Fragment>
+            ))}
       </div>
       {mine.losses && mine.losses.us.taken + mine.losses.them.taken > 0 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground" data-testid="usages-mine-losses">
           <span className="font-semibold text-foreground">{ut.mine.lossesTitle}</span>
-          <Loss color={tokenCssVar('team-ally')} lost={mine.losses.us.lost} taken={mine.losses.us.taken} ut={ut} />
-          <Loss color={tokenCssVar('team-enemy')} lost={mine.losses.them.lost} taken={mine.losses.them.taken} ut={ut} />
+          <Loss color={tokenCssVar('team-ally')} lost={mine.losses.us.lost} taken={mine.losses.us.taken} ut={ut} pctOnly={!!compact} />
+          <Loss color={tokenCssVar('team-enemy')} lost={mine.losses.them.lost} taken={mine.losses.them.taken} ut={ut} pctOnly={!!compact} />
         </div>
       )}
     </ObjectifFrame>
@@ -145,6 +159,33 @@ function MineLine({
   )
 }
 
+/** Vue compacte : une ressource, ma part et celle du reste de mon camp en pourcentage, pleine largeur. */
+function MineResourceLine({ row, label, sub, hidden, player, ut }: { row: MineResource; label: string; sub: string; hidden: ReadonlySet<string>; player: string; ut: UsagesCardsText }) {
+  const key = row.resource
+  const rest = row.camp - row.me
+  const mePct = row.camp > 0 ? (row.me / row.camp) * 100 : 0
+  const meLabel = ut.pctIntFmt(mePct)
+  // Les deux parts somment à 100 : la seconde se déduit de la première ARRONDIE (maquette).
+  const restLabel = ut.pctIntFmt(100 - Math.round(mePct))
+  return (
+    <div className="grid items-center gap-3 text-xs" style={{ gridTemplateColumns: '118px minmax(0,1fr)' }} data-testid={`usages-mine-resource-${key}`}>
+      <div className="min-w-0 text-[12.5px] leading-tight">
+        <span className="mr-1.5 inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: resourceInk(key) }} aria-hidden />
+        {label}
+        <small className="block text-[11px] text-muted-foreground">{sub}</small>
+      </div>
+      <div className="relative h-4 min-w-0 rounded-[3px] bg-muted">
+        {row.me > 0 && (
+          <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, label, row.me, row.camp)} value={meLabel} light />
+        )}
+        {rest > 0 && (
+          <Segment id={`usages-mine-rest-${key}`} left={mePct} width={100 - mePct} color={TEAM_REST_INK} rounded={row.me > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.restTip(label, rest, row.camp)} value={restLabel} />
+        )}
+      </div>
+    </div>
+  )
+}
+
 function Segment({
   id,
   left,
@@ -163,7 +204,8 @@ function Segment({
   rounded: string
   hidden: ReadonlySet<string>
   tip: string
-  value: number
+  /** Le compte (pleine page) ou la part écrite (vue compacte). */
+  value: number | string
   /** Écriture claire sur l'aplat du joueur ; foncée sur celui, pâle, du reste du camp. */
   light?: boolean
 }) {
@@ -185,10 +227,22 @@ function Segment({
   )
 }
 
-function Loss({ color, lost, taken, ut }: { color: string; lost: number; taken: number; ut: UsagesCardsText }) {
+/** Les bonus perdus d'un camp : « n sur m (p %) », ou la part seule en vue compacte (compte au survol). */
+function Loss({ color, lost, taken, ut, pctOnly }: { color: string; lost: number; taken: number; ut: UsagesCardsText; pctOnly: boolean }) {
+  const dot = <span className="inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: color }} aria-hidden />
+  if (pctOnly) {
+    return (
+      <Tooltip content={<TipText text={ut.mine.lossesFmt(lost, taken)} />}>
+        <span className="inline-flex cursor-help items-center gap-1.5 tabular-nums">
+          {dot}
+          <b className="font-semibold text-foreground">{taken > 0 ? ut.pctIntFmt((lost / taken) * 100) : '—'}</b>
+        </span>
+      </Tooltip>
+    )
+  }
   return (
     <span className="inline-flex items-center gap-1.5 tabular-nums">
-      <span className="inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: color }} aria-hidden />
+      {dot}
       <span>
         <b className="font-semibold text-foreground">{ut.mine.lossesFmt(lost, taken)}</b>
         {taken > 0 && ` (${ut.pctIntFmt((lost / taken) * 100)})`}

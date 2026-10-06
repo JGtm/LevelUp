@@ -23,7 +23,15 @@ import { PisteCampsForm, ThinCampTrack, type PisteCampsRow } from './PisteCampsF
 import type { ProductionRow } from './production.logic'
 import { resourceInk } from './resourceColors'
 
-export function ProductionCard({ rows, t }: { rows: ProductionRow[]; t: EmpriseText }) {
+/**
+ * Vue compacte du tiroir de comparaison de Sessions : les parts entières seules dans les segments, et
+ * la ligne d'exposition écrite en parts par `exposureLine` (« prises sur les socles : 38 % »).
+ */
+interface ProductionCompact {
+  exposureLine: (name: string, pct: string) => string
+}
+
+export function ProductionCard({ rows, t, compact }: { rows: ProductionRow[]; t: EmpriseText; compact?: ProductionCompact }) {
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -40,17 +48,17 @@ export function ProductionCard({ rows, t }: { rows: ProductionRow[]; t: EmpriseT
     ),
     [rows, t],
   )
-  const pistes = useMemo<PisteCampsRow[]>(() => rows.map((r) => pisteOf(r, t)), [rows, t])
+  const pistes = useMemo<PisteCampsRow[]>(() => rows.map((r) => pisteOf(r, t, compact)), [rows, t, compact])
   return (
     <ObjectifFrame title={t.production.title} info={t.production.info} legend={legend} testId="emprise-production">
       <div className="mt-2" aria-label={t.production.ariaLabel} role="group">
-        <PisteCampsForm rows={pistes} pctFmt={t.pctFmt} axisMaxLabel={t.pctIntFmt(100)} />
+        <PisteCampsForm rows={pistes} pctFmt={compact ? t.pctIntFmt : t.pctFmt} axisMaxLabel={t.pctIntFmt(100)} pctOnly={!!compact} />
       </div>
     </ObjectifFrame>
   )
 }
 
-function pisteOf(r: ProductionRow, t: EmpriseText): PisteCampsRow {
+function pisteOf(r: ProductionRow, t: EmpriseText, compact: ProductionCompact | undefined): PisteCampsRow {
   const res = t.resources[r.resource]
   const sub = res.productionSub
   const n = r.kills.us + r.kills.them
@@ -64,7 +72,7 @@ function pisteOf(r: ProductionRow, t: EmpriseText): PisteCampsRow {
     them: r.kills.them,
     usTip: t.production.segmentTip(t.ourSide, sub, r.kills.us, n, t.pctFmt(share)),
     themTip: t.production.segmentTip(t.opponent, sub, r.kills.them, n, t.pctFmt(100 - share)),
-    below: r.exposure ? <ExposureLines exposure={r.exposure} resource={r.resource} t={t} /> : undefined,
+    below: r.exposure ? <ExposureLines exposure={r.exposure} resource={r.resource} t={t} compact={compact} /> : undefined,
   }
 }
 
@@ -73,22 +81,27 @@ function ExposureLines({
   exposure,
   resource,
   t,
+  compact,
 }: {
   exposure: NonNullable<ProductionRow['exposure']>
   resource: string
   t: EmpriseText
+  compact: ProductionCompact | undefined
 }) {
   const ex = t.production.exposure[exposure.kind]
   if (!ex) return null
   const { us, them } = exposure.value
   const share = (us / (us + them)) * 100
-  const line = t.production.exposureLine(ex.name, ex.fmt(us), t.pctFmt(share))
+  const line = compact
+    ? compact.exposureLine(ex.name, t.pctIntFmt(share))
+    : t.production.exposureLine(ex.name, ex.fmt(us), t.pctFmt(share))
+  const right = compact ? t.pctIntFmt(100 - share) : ex.fmt(them)
   return (
     <>
       <ThinCampTrack
         us={us}
         them={them}
-        label={`${t.resources[resource].label} · ${line} / ${ex.fmt(them)}`}
+        label={`${t.resources[resource].label} · ${line} / ${right}`}
         usTip={t.production.thinTip(t.ourSide, ex.name, ex.fmt(us), t.pctFmt(share))}
         themTip={t.production.thinTip(t.opponent, ex.name, ex.fmt(them), t.pctFmt(100 - share))}
       />
@@ -97,7 +110,7 @@ function ExposureLines({
         data-testid={`emprise-production-exposure-${resource}`}
       >
         <span>{line}</span>
-        <span>{ex.fmt(them)}</span>
+        <span>{right}</span>
       </div>
     </>
   )

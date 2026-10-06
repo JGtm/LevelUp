@@ -578,53 +578,70 @@ seul) ; leurs tests L9 restent verts sans modification. KNIP EST AVEUGLE SUR CE 
 lot TS) : la preuve « chaque export neuf a un lecteur » se fait par grep, le ratchet local ne fait
 pas foi (le step CI, oui).
 
-- [ ] S3.1 D17 : `empriseObjectName` dans `emprise.logic.ts` ; `useEmpriseModels.ts:29-36` et
+- [x] S3.1 D17 : `empriseObjectName` dans `emprise.logic.ts` ; `useEmpriseModels.ts:29-36` et
   `useUsagesModels.ts:29-36` migrés ; garde-rail `squad/emprise/emprise.objectName.guard.test.ts`
   (balayage `import.meta.glob` : aucun fichier hors `emprise.logic.ts` ne combine
   `RESOURCE_VEHICLE` et `vehicleFamilyName` dans une fonction de nommage) ; auto-test sur l'ancien
   littéral ; mutation : copie réintroduite → rouge.
-- [ ] S3.2 `ResourceControlCard` + `PisteCampsForm` : `compact` → parts seules dans les segments,
+- [x] S3.2 `ResourceControlCard` + `PisteCampsForm` : `compact` → parts seules dans les segments,
   comptes au survol, râteliers en une ligne de ressource (sans dépliage). Tests (rouges d'abord) :
   libellé « 60 % » au lieu de « 12 », infobulle avec les comptes, aucun bouton de dépliage.
-- [ ] S3.3 `ProductionCard` : `compact` → parts seules (épaisse et fine), ligne d'exposition en % ;
+- [x] S3.3 `ProductionCard` : `compact` → parts seules (épaisse et fine), ligne d'exposition en % ;
   `YieldCard` inchangée (vérifier qu'aucun compte n'y est écrit hors rendements bruts, comme la
   maquette `makeYield`).
-- [ ] S3.4 `empriseCharts.ts` / `ResourceFilCard` : option `compact` du mode `match` — hauteur 170,
+- [x] S3.4 `empriseCharts.ts` / `ResourceFilCard` : option `compact` du mode `match` — hauteur 170,
   graduations 0 / 50 / 100, pas d'étiquette sous la bande, étiquettes de fin seules (maquette
   `renderFil` l. 1312-1316, 1344). Tests sur l'option ECharts ; mutation : dates sous l'axe en compact
   → rouge.
-- [ ] S3.5 Grille compacte : `compactGridRows(grid)` dans `emprise.logic.ts` (lignes de ressource
+- [x] S3.5 Grille compacte : `compactGridRows(grid)` dans `emprise.logic.ts` (lignes de ressource
   seulement : bonus, armes spéciales prises, frags aux armes spéciales, râteliers, véhicules ; case =
   part de mon camp ou état « sans film » / « non classé » / « rien à prendre ») ; `ResourceGridTable`
   et `ResourceMatchGridCard` : `compact` → ces lignes, case « 71 % » colorée par l'écart (même
   encre), en-tête heure + carte + V / D, gabarit `minmax(0, 1fr)` (S11). Tests : lignes et ordre,
   « ? » sans niveaux, « — » hachuré sans film, aucune largeur minimale de colonne ; mutation : ligne
   d'objet en compact → rouge.
-- [ ] S3.6 `MinePickupsCard` : `compact` → une barre par ressource (ma part des prises de mon camp en
+- [x] S3.6 `MinePickupsCard` : `compact` → une barre par ressource (ma part des prises de mon camp en
   %, reste en %), bonus perdus des deux camps en % (comptes au survol) ; modèle `buildMineCompact` dans
   `usages.logic.ts` (depuis `resources[].taken.us`, `objects[].squad[0].taken`, `outcomes`). Tests
   rouges d'abord (témoin MESURES §3 s2209 : bonus 3 / 12 = 25 %, armes spéciales 7 / 13 = 53,8 %,
   râteliers 3 / 24 = 12,5 %, bonus perdus 16,7 % / 25 %) ; mutation : part sur le total des deux
   camps → rouge.
-- [ ] S3.7 `EquipmentOutcomesCard` : `compact` → segments en %, barre fine gardée, sous-libellé
+- [x] S3.7 `EquipmentOutcomesCard` : `compact` → segments en %, barre fine gardée, sous-libellé
   « n objets », ligne du reste « p % servis ». Tests ; mutation : sous-libellé avec les prises en
   compact → rouge.
-- [ ] S3.8 `LivesNearTeammateCard` : `compact` → parts seules dans la barre épaisse et sur la ligne
+- [x] S3.8 `LivesNearTeammateCard` : `compact` → parts seules dans la barre épaisse et sur la ligne
   des frags (D16). Tests ; mutation : comptes en compact → rouge.
-- [ ] S3.9 `ObjectiveBalanceCard` : `compact` → une barre par RÔLE et par famille (somme des actions
+- [x] S3.9 `ObjectiveBalanceCard` : `compact` → une barre par RÔLE et par famille (somme des actions
   du rôle, Tenir en durée) plus la ligne des prises nettes, % seuls ; modèle `buildBalanceByRole` dans
   `objectif.logic.ts`. Tests (témoin MESURES §3 s0709 : Bases prendre 93-109 = 46 %, défendre 30-60 =
   33,3 %, tenir 53,6 % ; Drapeau prises nettes 29-41 = 41,4 %) ; mutation : Tenir sommé avec les
   comptes → rouge.
-- [ ] S3.10 `ObjectiveSoloSheetCard` : `compact` → la valeur affichée devient la part du camp (« 32 % »,
+- [x] S3.10 `ObjectiveSoloSheetCard` : `compact` → la valeur affichée devient la part du camp (« 32 % »,
   « — » si le camp n'a rien), pied en parts (témoin s2209 : Prendre 31,8 %, Défendre 30,3 %, Tenir
   47,2 %). Tests ; mutation : compte affiché en compact → rouge.
-- [ ] S3.11 `SquadFragBreakdownCard` : `compact` → parts dans les segments, total en sous-libellé du
+- [x] S3.11 `SquadFragBreakdownCard` : `compact` → parts dans les segments, total en sous-libellé du
   nom, pas de total au bout ; `SquadWeaponKillsChart` / `buildSquadToolRows` : option `top` (6) et
   valeur en part des frags du joueur, « Non attribué » exclu en compact (maquette `makeTools`
   l. 942). Tests ; mutation : « Non attribué » gardé en compact → rouge.
 - Gate : gate web (aucun Go) ; tests de page Escouade / Séries temporelles nommés ci-dessus rejoués,
   `git diff` vide sur ces fichiers de test.
+
+Journal S3 (2026-10-06, exécuteur, `feat/sessions-emprise` sur `554457c31`) — briques étendues d'une vue compacte, Escouade et Séries temporelles inchangées. Chaque test écrit et vu ROUGE avant son code (symbole absent ou assertion), puis vert, puis mutation :
+- **Patron retenu** pour les textes propres à la vue compacte : chaque carte qui en a besoin reçoit un objet `compact` qui PORTE ses formateurs (`ProductionCard` : `exposureLine` ; `MinePickupsCard` : `resourceSub` ; `EquipmentOutcomesCard` : `sub`, `unmeasured`, `restUsed` ; `LivesNearTeammateCard` : `killsLine`, `killsLineAlone` ; `SquadFragBreakdownCard` : `totalSub`, `pctFmt`) ; les autres prennent `compact?: boolean`. Aucun type de texte existant ne change (`empriseStrings.ts` à 500 L, textes des Séries temporelles intacts) ; la page Sessions fournira ces formateurs (S4.3). Types d'options non exportés tant qu'ils n'ont pas de lecteur hors de leur fichier.
+- **S3.1** `squad/emprise/objectName.ts` (NEUF : `empriseObjectName`) — écart au plan : un fichier à part plutôt que `emprise.logic.ts`, qui se déclare sans chaîne de langue alors que le nommage lit l'i18n d'usage ; les deux copies (`useEmpriseModels.ts`, `useUsagesModels.ts`) migrées ; garde-rail `objectName.guard.test.ts` (empreinte : un fichier de production qui appelle `equipmentFamilyLabel(` ET `vehicleFamilyName(`, auto-test sur l'ancien littéral) vu rouge sur les deux copies avant la migration.
+- **S3.2** `PisteCampsForm` : `pctOnly` (segment et repli en part seule, compte en infobulle) ; `ResourceControlCard` : `compact` (part entière). La carte de l'Escouade ne dépliait déjà aucun râtelier (une ligne par ressource) : rien d'autre à faire pour « râteliers en une ligne ».
+- **S3.3** `ProductionCard` : `compact` (parts entières, ligne d'exposition en parts). `YieldCard` : identique dans les deux vues (maquette `makeYield`) — vérifié, aucun changement.
+- **S3.4** `empriseCharts.ts` : `FilAxe` match `compact` (rien sous l'axe, graduations tous les 50 %, pied réduit à la bande, points 1,6 + √n ; bande et encoche gardées) via `isCompact` / `radiusFor` ; `ResourceFilCard` : `compact` (170 px). `ResourceFilCard.test.tsx` (NEUF) double `ChartCard`.
+- **S3.5** `ResourceGridTable` : `compact` (lignes de ressource seules, râteliers sans bouton, « 71 % », « — » hachuré sans film / véhicules non mesurés, « ? » sans niveaux et camp inconnu, `86px repeat(n, minmax(0, 1fr))` sans largeur minimale ni défilement) ; `ResourceMatchGridCard` : `compact` (en-tête heure, carte tronquée, initiale du résultat dans sa couleur d'issue — l'initiale du libellé du titre). Écart au plan : pas de `compactGridRows` exporté — retirer les lignes d'objet est un choix de rendu de la table, aucune règle métier.
+- **S3.6** `usages.logic.ts` : `mineByResource` (le `buildMineCompact` du plan, renommé ; sommes moi / camp des objets de chaque ressource, dans l'ordre du bilan) ; `MinePickupsCard` : `compact` (une barre par ressource, parts entières — la seconde = 100 − la première arrondie, maquette —, bonus perdus en part, compte au survol). Témoin fixture : bonus 31 / 111 → 28 % / 72 %, armes spéciales 30 / 229 → 13 % / 87 %, pertes 11 % / 8 %.
+- **S3.7** `EquipmentOutcomesCard` (version L9.2, repli aligné conservé) : `compact` (parts entières dans la barre et au repli, sous-libellé « n objets », « Non mesuré » court, ligne du reste « p % servis »). Mur : 52 · 0 · 32 → 62 % / 38 %, reste 48 % servis. Prop interne renommée `textOf` (`valueOf` heurtait `Object.prototype` au typage).
+- **S3.8** `LivesNearTeammateCard` (version L9) : `compact` (parts entières, ligne des frags en parts) — 84 % / 16 %, « frags : 83 % · 0,8 par vie … 0,9 par vie ».
+- **S3.9** `objectif.logic.ts` : `BalanceLine.optional` (posé par `buildObjectiveBalance`) et `buildBalanceByRole` ; `ObjectiveBalanceCard` : `compact`. Témoin MESURES §3 retrouvé sur la fixture du 07/09 : Bases prendre 93-109 (46 %), défendre 30-60 (33,3 %), tenir 53,6 % ; Drapeau prises nettes 29-41 (41,4 %).
+- **S3.10** `SoloObjectiveSheet.campRoleTotals` ; `ObjectiveSoloSheetCard` : `compact` (part du camp au bout de chaque action et au pied, « — » quand le camp n'a rien fait) ; le pied porte `data-testid="objective-solo-foot"` (enveloppe `contents`). Témoin MESURES §3 retrouvé sur la fixture du 22/09 : Prendre 7 / 22, Défendre 10 / 33.
+- **S3.11** `buildSquadToolRows` : option `top` (les premiers outils, « Non attribué » exclu) ; `buildSquadWeaponKillsOption` : `shareTotals` (dénominateur fourni) et `minLabelShare` ; `SquadFragBreakdownCard` : `compact` (parts entières, total en sous-libellé, pas de total au bout).
+- **Mutations** (script `mut_s3.ps1`, restauration garantie puis vérifiée) : 17, toutes ROUGES au final — nommage recopié ; parts seules ignorées ; ligne d'exposition compacte ignorée ; étiquettes sous l'axe en compact ; rayon de la maquette en compact ; lignes d'objet en compact (VERTE au premier passage : l'objet du test était dans la section des râteliers, déjà repliée — test renforcé d'un objet de bonus, ROUGE ensuite) ; comptes dans la case ; libellé entier dans l'en-tête ; camp = moi (mes prises) ; pertes en comptes ; sous-libellé complet ; comptes des vies ; colonnes facultatives sommées ; camp = moi (fiche) ; reliquat gardé ; dénominateur ignoré ; comptes dans la répartition.
+- **Gate** : purge `node_modules\.tmp` ; `npx tsc -b --force` 0 ; `npm run lint` 0 erreur (26 avertissements, le compte d'avant le lot) ; `npx vitest run --pool=forks` complet : 844 fichiers / 8 904 tests verts, 23 ignorés (160 s) — au premier passage, `useCopyToClipboard.guard.test.ts` a dépassé son délai de 5 s sous la charge de la suite (vert seul en 2,6 s, vert au second passage complet ; fichier non touché, §8) ; `node tools/knip-ratchet.mjs` 0 / 0 / 0 (aveugle sur ce poste : exports neufs vérifiés par grep — `mineByResource`, `MineResource`, `buildBalanceByRole`, `empriseObjectName` ont leur lecteur de production) ; couleurs 0 ; imports croisés 7 ≤ 7 ; `npx lefthook run pre-push` (PATH complet) sortie 0. Tests de page `SquadEmprisePage`, `SquadContributionsPage`, `SquadObjectiveSection`, `SquadFragSection`, `TimeseriesPage.sections`, `TimeseriesPage.usages` : verts, NON modifiés (absents du diff).
+- Seuils : plus gros fichiers touchés `empriseCharts.ts` 451 L, `objectif.logic.ts` 422 L, `PisteCampsForm.tsx` 360 L (tous < 500) ; aucune fonction au-delà des seuils (lint 0 erreur).
 
 ### S4 — Web : la page Sessions reconstruite, suppressions web · lourd
 
@@ -804,6 +821,12 @@ modèles neufs ont leur lecteur dans le lot.
   écrivait « comme aujourd'hui » : c'était inexact. DÉCIDÉ par le superviseur (2026-10-06, option
   a) : comportement gardé — la carte dépend du journal des morts, l'ancienne porte était un accident
   de câblage ; ligne de changelog FR / EN en S7.1.
+- (S3) `lib/clipboard/useCopyToClipboard.guard.test.ts` (« l'allowlist ne garde aucune entrée morte »)
+  a dépassé son délai par défaut de 5 s sous la charge de la suite complète (5 078 ms) ; vert seul
+  (2,6 s) et au second passage complet. Fichier non touché par le lot ; délai du test non traité.
+- (S3) Les comptes « 0 prise » / « Non mesuré » de la maquette pour les ressources absentes (pistes en
+  attente) restent non portés (D13) dans les vues compactes aussi : une ressource sans prise n'a pas de
+  ligne, comme en pleine page.
 
 ## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
 
