@@ -115597,3 +115597,21 @@ vet research, archlint, golangci (0 issue ; 28 issues research toutes présentes
 **Conclusion / prochaine étape** : LR proposé RETENU sous D2 (baisses = fermetures factices retirées,
 instruites), décision de fusion au pilote. Pièces : `LOT_LR.md` §12, `scratchpad/cg3-lr2/`. Écarts
 D-LR-7 (`vehicleDeaths` diverge, non compté) à D-LR-9.
+
+## [2026-10-06] Campagne de grammaire — lot LR : corrections du second contrôle (C1, C2)
+
+**Statut** : Complété (commit sur `feat/cg3-lr`, non poussé).
+
+**Décision technique principale** : deux tests, aucun code de production. C1 :
+`TestLaMarcheDuPremierRangModifieLeMonde` (`debut_non_prouve_test.go`), un paquet dont le premier
+candidat FERME (rang `DebutParFermeture`) ; la marche qui suit lie ses NEW et délie ses DEL. C2 :
+`TestChaqueArchetypeAEtatMPPSuitLeVerdictDuBloc` (`etat_de_creation_test.go`), test de table sur
+35, 36, 37, 38, 39, 40, 42, 43 : bits uniformes à un (compte MPP 7, record arrêté) et à zéro (témoin).
+
+**Résultats observés** : Y20 (annonce au premier rang) ROUGE ; les huit exemptions d'archétype dans
+`TraverseEntity` ROUGES. Suite `grammar/` complète rc 0, vet (avec et sans `research`) rc 0,
+golangci-lint `grammar/...` 0 issue. Révision inchangée (`grammar-2026-10-06.3`).
+
+**Conclusion / prochaine étape** : LR proposé au pilote, RETENU sous D2 (`LOT_LR.md` §12.9, avec la
+réserve 8/3 du contrôle). À la fusion avec `origin/feat/v75` (`1518e6f10`), seul `.ai/thought_log.md`
+est un conflit probable.

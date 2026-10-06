@@ -132,3 +132,39 @@ func TestUneMarcheNonProuveeCompteLeNeufQuiContreditUnVivant(t *testing.T) {
 		t.Error("slot 300 lie par une marche non prouvee")
 	}
 }
+
+// TestLaMarcheDuPremierRangModifieLeMonde : le temoin du premier rang. Le paquet suit l ordre de
+// la vue B (NEW 300 puis NEW 310, puis DEL du slot vivant 124) et la marche qui part de son
+// premier candidat le FERME : [debutParFermetureRangee] rend [lecture.DebutParFermeture], une
+// preuve. La marche qui suit LIE ses deux NEW (liaison lue) et DELIE 124. MUTATION : annoncer
+// aussi la marche non prouvee au premier rang (`w.marquerDebutNonProuve(pay, p-extra)` avant
+// `return p - extra, lecture.DebutParFermeture`), ROUGE.
+func TestLaMarcheDuPremierRangModifieLeMonde(t *testing.T) {
+	var bw bitWriter
+	bw.neuf13(300, 2)
+	bw.neuf13(310, 2)
+	bw.del13(124)
+	bw.finDeVueB()
+	bw.bit(0) // vue C vide
+	pay := bw.buf
+	w := mondeDeCarte()
+	debut, rang := debutParFermetureRangee(pay, []int{0}, w, cadreDeTete)
+	if rang != lecture.DebutParFermeture || debut != 0 {
+		t.Fatalf("debut %d (rang %d), attendu 0 au premier rang", debut, rang)
+	}
+	recs := marcher(pay, w, debut)
+	if len(recs) != 3 {
+		t.Fatalf("%d records lus, attendu 3", len(recs))
+	}
+	for i, s := range []uint32{300, 310} {
+		if ti, lie := w.ArchetypeForSlot(s); !lie || ti != 2 {
+			t.Errorf("slot %d : %d (%v), attendu 2 lie — une marche du premier rang lie ses NEW", s, ti, lie)
+		}
+		if recs[i].Liaison != lecture.LiaisonLueNeuf {
+			t.Errorf("liaison du NEW %d : %v, attendu %v", s, recs[i].Liaison, lecture.LiaisonLueNeuf)
+		}
+	}
+	if _, lie := w.ArchetypeForSlot(124); lie {
+		t.Error("slot 124 vivant : une marche du premier rang delie ses DEL")
+	}
+}

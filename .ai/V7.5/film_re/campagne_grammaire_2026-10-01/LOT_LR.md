@@ -20,15 +20,15 @@
 |---|---|---|
 | LR.1 règle du lecteur MPP (compte > 4 → l'état de création échoue → le record NEW n'est pas lu), au lecteur et au juge | [x] écrit | `etat_de_creation.go`, `consumeMultiplayerPropertiesBlock` rend son verdict, `TraverseEntity` arrête le record, `InvariantEtatDeCreationIllisible` au juge ; exception de `ti=41` portée |
 | LR.2 le second rang de `debutParFermeture` ne lie plus de NEW et ne délie plus de DEL | [x] écrit | `debut_non_prouve.go` ; annonce posée par `debutParFermetureRangee`, prise par la boucle de la vue B |
-| Vecteurs du lecteur du jeu + cas réels cités | [x] | 5 tests unitaires + garde-rail règle 6 ; cas réels `1c4c63c2` 61:42, 17:52 / 17:172 en test de recherche (sous 8/3) |
-| Mutations (`-overlay`) | [x] | 10 / 10 ROUGES ; reprise : 13 / 14 avec les mutations du contrôle, M8 équivalente (§12.2), plus le test des cas réels rouge sous la mutation « monde réintroduit » |
+| Vecteurs du lecteur du jeu + cas réels cités | [x] | 5 tests unitaires + garde-rail règle 6 (puis les tests des contrôles, §12.2 et §12.9) ; cas réels `1c4c63c2` 61:42, 17:52 / 17:172 en test de recherche (sous 8/3) |
+| Mutations (`-overlay`) | [x] | 10 / 10 ROUGES ; reprise : 13 / 14 avec les mutations du contrôle, M8 équivalente (§12.2), plus le test des cas réels rouge sous la mutation « monde réintroduit » ; second contrôle : Y20 et les huit exemptions d'archétype (Y15, Y15b, Y15c, Y15d et 36, 37, 39, 43) ROUGES (§12.9) |
 | **Gate 2 (carte v2, 20 films, découpage par défaut, base `87cdfa761`)** | **[!] ROUGE** | +259 sains au corpus mais **14 films en baisse** ; `e5adf7b2` perd 23 sains VRAIS par LR.2 (têtes `ti=41` mal lues à 9/5) : non admissible sous D2 (§3, §4) |
 | Gate 2 sous `-mpp-declare` | [x] joué à la reprise (§12) | base `8dfadd07e` : +1 311 sains, 12 films en baisse, toutes leurs pertes de la famille A (tête illisible pour le jeu) |
 | Révision | [x] | reprise : `grammar-2026-10-06.3` (§12.1) ; `killsource`, `objectives`, `source`, `profile` constantes ; `grammar-2026-10-03.6` jamais fusionné |
 | Gates de code (gofmt, vet, vet research, archlint, golangci, G-film) | [x] | tous verts (§8) ; reprise : §12.5 ; G-film après régénération des goldens et fixtures à révision constante (hors `grammar`) |
 | killsource 19 témoins | [x] | identique à l'octet hors du diagnostic `calibration` (7 films) (à la base `87cdfa761` comme à la reprise, §12.5) : D23, révision constante |
 | replay-equiv, replay-corpus-gate | [x] joués | reprise (§12.5) : gate de corpus rc 1 = `P-1` en `MANQUE` sur les 12 films en baisse ; à la base `87cdfa761` : replay-equiv : `objectives` identique sur 20 films ; gate de corpus rc 1 = `P-1` en `MANQUE` sur 13 témoins, la baisse du gate 2 (§8) |
-| **Verdict (reprise du 2026-10-06, §12)** | **RETENU sous D2, proposé au pilote** | à la base `87cdfa761` : non retenu (sections 3 à 9) ; sur `8dfadd07e` sous le découpage déclaré : gate 2 sans baisse hors fermetures factices instruites ; commit sur `feat/cg3-lr`, non poussé |
+| **Verdict (reprise du 2026-10-06, §12 ; second contrôle, §12.9)** | **RETENU sous D2, proposé au pilote** | à la base `87cdfa761` : non retenu (sections 3 à 9) ; sur `8dfadd07e` sous le découpage déclaré : gate 2 sans baisse hors fermetures factices instruites ; commit sur `feat/cg3-lr`, non poussé |
 
 ## 1. Ce qui est lu dans le jeu
 
@@ -556,3 +556,29 @@ déclaré **+1 311 sains, +42 607 utiles sains** ; les 12 films en baisse ne per
 factices retirées (famille A, instruites paquet par paquet) ; 8 pertes non factices (famille C), toutes
 sur des films en hausse. Proposé au pilote : **RETENU sous D2**, rc 1 du gate de corpus instruit au même
 titre. Commit sur `feat/cg3-lr`, non poussé.
+
+### 12.9 Corrections du second contrôle (2026-10-06)
+
+Le second contrôle (tête `d16f7a6ec`) a confirmé sur pièces le gate 2 officiel, l'instruction des
+pertes, killsource, `TestGoldenFilms`, G-film et le lint, et mesuré D-LR-3 : 8 379 annonces posées,
+8 379 prises, 0 manquée sur les 20 films (`TestLRSecondRang` instrumenté, égal au compteur
+`repli_debut_de_liste_ferme_au_bit` de la tête, §12.6). Il a relevé deux mutations vertes. Seuls des
+tests changent : aucune sortie de production ne bouge, la révision reste `grammar-2026-10-06.3`.
+
+| # | Correction | Statut | Pièce |
+|---|---|---|---|
+| C1 | Mutation Y20 VERTE et non équivalente : annoncer la marche non prouvée aussi au PREMIER rang de `debutParFermetureRangee` (mesuré par le contrôle sous `-mpp-declare` : `e5adf7b2` 12 264 → 7 791 sains, `fb1a1a72` 43 456 → 41 538) | [x] | `TestLaMarcheDuPremierRangModifieLeMonde` (`debut_non_prouve_test.go`) : NEW 300, NEW 310, DEL du slot vivant 124, dans l'ordre de la vue B ; le premier candidat FERME le paquet (rang `DebutParFermeture`), la marche qui suit lie les deux NEW (`ti=2`, liaison `LiaisonLueNeuf`) et délie 124. Y20 ROUGE (suite grammar complète : ce test seul, hors `TestGrammarRevSuitLaGrammaire` que toute retouche de code rougit) |
+| C2 | Exemptions d'un archétype de la règle (`if br.etatIllisible && t.TypeIndex != X` dans `TraverseEntity`) VERTES pour `ti=40` (Y15b), `ti=42` (Y15c), `ti=38` (Y15d) ; le bipède (Y15) rougi par le seul `TestGoldenFilms/000d5950` | [x] test de table (option 1) | `TestChaqueArchetypeAEtatMPPSuitLeVerdictDuBloc` (`etat_de_creation_test.go`) sur les archétypes de la table de `etat_de_creation.go` hors `ti=41` : 35, 36, 37, 38, 39, 40, 42, 43. Vecteur : en-tête d'archétype puis 4 096 bits uniformes ; tous à un, le R(3) du compte MPP vaut 7 où que le lecteur d'état le lise, et le record doit être arrêté (`EtatIllisible`, `DesyncAt` 0) ; tous à zéro (témoin), il vaut 0 et le record n'est pas jugé illisible. Seul le bloc MPP pose `etatIllisible` hors `ti=41` (`lireLeBlocMPPDeLEtat`) : le vecteur ne peut être arrêté que par lui. Les huit mutations `!= X` ROUGES, chacune sur son archétype |
+| C3 | `origin/feat/v75` avancé à `1518e6f10` (lot Tendances, aucun fichier sous `film/`) | information | à la fusion, seul `.ai/thought_log.md` (surface partagée) est un conflit probable ; non fusionné ici |
+
+Gates rejoués (code final, GOCACHE `go-build-cg3-lr`) : `gofmt -l` sur `grammar/` vide ; `go test`
+de `grammar/` complet `-count=1` rc 0 ; `go vet` avec et sans `-tags=research` rc 0 ; `golangci-lint
+run ./internal/games/halo_infinite/film/internal/grammar/...` `0 issues.`. G-film, carte, killsource
+et gate de corpus ne sont pas rejoués : seuls deux fichiers `_test.go` changent, la sortie de
+production est identique par construction.
+
+Réserve portée par le contrôle (estimé), à la connaissance du pilote : 16 des 34 pertes de la famille A
+tombent sur des films 8/3 `presume_par_mesure` (`e5adf7b2`, `11de8353`, `60ae07c4`, `a349fea8`) ;
+leur verdict d'illisibilité repose sur ce découpage présumé, celui de 2.7.a0, désigné officiel par le
+pilote. Dette notée par le contrôle, hors LR : la branche `p == false` de `consume1408eff64` n'est plus
+atteinte qu'en test (déjà vrai à la base).

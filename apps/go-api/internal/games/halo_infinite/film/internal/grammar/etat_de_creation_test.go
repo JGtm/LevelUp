@@ -221,3 +221,38 @@ func TestLeVerdictDEtatEstCeluiDuRecord(t *testing.T) {
 			tr.EtatIllisible, tr.DesyncAt)
 	}
 }
+
+// archetypesALEtatMPP : les archetypes dont le lecteur d etat de creation lit le bloc MPP et rend 0
+// quand il echoue (table de `etat_de_creation.go`), hors `ti=41` (verdict a exception, teste par
+// [TestLEtatDuProjectileSuitSonPropreVerdict]).
+var archetypesALEtatMPP = []uint64{35, 36, 37, 38, 39, 40, 42, 43}
+
+// neufAEtatUniforme ecrit l en-tete d archetype `ti` d un record NEW, puis 4096 bits valant tous
+// `b` : tous a un, chaque porte est posee et le compte R(3) du bloc MPP vaut 7 ; tous a zero, il
+// vaut 0.
+func neufAEtatUniforme(ti, b uint64) []byte {
+	var bw bitWriter
+	bw.bits(ti, 6)
+	for range 4096 {
+		bw.bit(b)
+	}
+	return bw.buf
+}
+
+// TestChaqueArchetypeAEtatMPPSuitLeVerdictDuBloc : pour chaque archetype dont le lecteur d etat
+// lit le bloc MPP, [TraverseEntity] arrete le record dont le bloc echoue (compte 7) et lit celui
+// dont le bloc est accepte (compte 0, temoin) ; le verdict passe par CHAQUE archetype, pas
+// seulement par l appel du bloc ([TestLeBlocMPPDUnEtatPasseParSonVerdict]). MUTATION : exempter un
+// archetype de la regle (`if br.etatIllisible && t.TypeIndex != X` dans [TraverseEntity]), ROUGE
+// pour chaque X de la table.
+func TestChaqueArchetypeAEtatMPPSuitLeVerdictDuBloc(t *testing.T) {
+	reg := mondeAEtats().Reg
+	for _, ti := range archetypesALEtatMPP {
+		if tr := TraverseEntity(LecteurSur(neufAEtatUniforme(ti, 1)), reg, 0); !tr.EtatIllisible || tr.DesyncAt != 0 {
+			t.Errorf("ti=%d, bloc MPP au compte 7 : etat illisible %v (desync %d), attendu vrai (0)", ti, tr.EtatIllisible, tr.DesyncAt)
+		}
+		if tr := TraverseEntity(LecteurSur(neufAEtatUniforme(ti, 0)), reg, 0); tr.EtatIllisible {
+			t.Errorf("ti=%d, bloc MPP au compte 0 (temoin) : etat juge illisible", ti)
+		}
+	}
+}
