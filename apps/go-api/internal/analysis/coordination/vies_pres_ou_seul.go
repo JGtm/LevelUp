@@ -14,6 +14,10 @@ package coordination
 //	rangement à portée du radar du match (borne incluse, la même comparaison que l'Isolement)
 //	          ou au-delà ; sans distance (aucun coéquipier visible) ou sans contexte : écartée ;
 //	          match sans portée : écartée ; les deux comptées ;
+//	journal   un match dont la dernière passe du journal des morts n'est pas publiable n'a aucun
+//	          frag lu : ses vies sont écartées et comptées AVANT toute autre cause (portée
+//	          comprise), jamais rangées avec zéro frag — la règle de la lecture Tactique et du
+//	          placement des vies du décodeur ;
 //	frags     publiables, du joueur, sur un AUTRE camp ; trahison ou camp inconnu : écartés et
 //	          comptés au bilan (l'appelant les journalise).
 //
@@ -57,6 +61,10 @@ func ViesPresOuSeul(l domain.ViesLues, rayonParMatch map[string]float64) (domain
 			if i+1 < len(vs) {
 				fin = vs[i+1].StartMS
 			}
+			if l.JournalNonPubliable[matchID] {
+				out.ExcludedUnpublishable++
+				continue
+			}
 			rangerVie(&out, aUnRayon, rayon, mortDansFenetre(morts[matchID], v.StartMS, fin),
 				compterDansFenetre(frags[matchID], v.StartMS, fin))
 		}
@@ -64,7 +72,8 @@ func ViesPresOuSeul(l domain.ViesLues, rayonParMatch map[string]float64) (domain
 	return out, fragsEcartes
 }
 
-// rangerVie verse une vie terminée par une mort dans son côté, ou dans le compte de son écart.
+// rangerVie verse une vie terminée par une mort (d'un match au journal publiable) dans son côté,
+// ou dans le compte de son écart.
 func rangerVie(out *domain.TimeseriesLivesNearTeammate, aUnRayon bool, rayon float64, mort *domain.MortSituee, kills int) {
 	switch {
 	case !aUnRayon:

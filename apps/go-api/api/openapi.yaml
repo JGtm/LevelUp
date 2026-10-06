@@ -30227,6 +30227,9 @@ components:
         excluded_unlocated:
           format: int64
           type: integer
+        excluded_unpublishable:
+          format: int64
+          type: integer
         matches_read:
           format: int64
           type: integer
@@ -30240,6 +30243,7 @@ components:
         - alone
         - excluded_unlocated
         - excluded_no_radar
+        - excluded_unpublishable
         - matches_read
         - matches_without_radar
       type: object

@@ -95,6 +95,37 @@ func TestViesPresOuSeul_SansContexteEcartee(t *testing.T) {
 	}
 }
 
+// Un match dont le journal des morts n'est pas publiable : ses frags ne sont pas lus (la lecture
+// les retire), ses vies ne se rangent donc pas — écartées et comptées, même situées et à portée,
+// même sur une carte sans portée. Les vies d'un match publiable voisin se rangent comme avant.
+func TestViesPresOuSeul_JournalNonPubliableEcarte(t *testing.T) {
+	l := domain.ViesLues{
+		Vies: []domain.VieLue{
+			{MatchID: "nonpub", StartMS: 0, EndCause: CauseVieMort},
+			{MatchID: "nonpub", StartMS: 30_000, EndCause: CauseVieMort},
+			{MatchID: "nonpub", StartMS: 60_000, EndCause: "film_end"},
+			{MatchID: "nonpub-sans-portee", StartMS: 0, EndCause: CauseVieMort},
+			{MatchID: "pub", StartMS: 0, EndCause: CauseVieMort},
+		},
+		Morts: []domain.MortSituee{
+			{MatchID: "nonpub", TimeMS: 20_000, PlusProcheM: metres(4)},
+			{MatchID: "nonpub", TimeMS: 50_000, PlusProcheM: metres(40)},
+			{MatchID: "nonpub-sans-portee", TimeMS: 10_000, PlusProcheM: metres(4)},
+			{MatchID: "pub", TimeMS: 20_000, PlusProcheM: metres(4)},
+		},
+		Frags:               []domain.FragLu{fragAdverse("pub", 5_000)},
+		JournalNonPubliable: map[string]bool{"nonpub": true, "nonpub-sans-portee": true},
+	}
+	got, _ := ViesPresOuSeul(l, map[string]float64{"nonpub": 18, "pub": 18})
+	want := domain.TimeseriesLivesNearTeammate{
+		Near:                  domain.LivesSideCount{Lives: 1, Kills: 1},
+		ExcludedUnpublishable: 3, MatchesRead: 3, MatchesWithoutRadar: 1,
+	}
+	if got != want {
+		t.Errorf("vies = %+v\nattendu %+v", got, want)
+	}
+}
+
 // Aucune lecture : tout à zéro, rien d'inventé.
 func TestViesPresOuSeul_Vide(t *testing.T) {
 	got, ecartes := ViesPresOuSeul(domain.ViesLues{}, nil)

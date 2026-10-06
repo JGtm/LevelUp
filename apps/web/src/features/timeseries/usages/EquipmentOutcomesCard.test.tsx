@@ -4,12 +4,33 @@
  * fine et ligne de parts pour le reste de mon camp ; non mesurées : « Non mesuré » et mes lâchers.
  */
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import type * as SegmentLabelFit from '@/components/charts/segmentLabelFit'
 
 import { soloEmprise } from './usages.fixtures'
 import { buildEquipmentRows } from './usages.logic'
 import { EquipmentOutcomesCard } from './EquipmentOutcomesCard'
 import { USAGES_TEXT } from './usagesText'
+
+/**
+ * La mesure au pixel (jsdom : aucune largeur, tout part au repli) est remplaçable par test : `fit.hidden`
+ * fixe les segments dont l'étiquette ne tient pas.
+ */
+const fit = vi.hoisted(() => ({ hidden: null as ReadonlySet<string> | null }))
+vi.mock('@/components/charts/segmentLabelFit', async (importOriginal) => {
+  const mod = await importOriginal<typeof SegmentLabelFit>()
+  return {
+    ...mod,
+    useSegmentLabelFit: (...args: Parameters<typeof mod.useSegmentLabelFit>) => {
+      const measured = mod.useSegmentLabelFit(...args)
+      return fit.hidden ?? measured
+    },
+  }
+})
+afterEach(() => {
+  fit.hidden = null
+})
 
 const NAMES: Record<string, string> = { wall: 'Mur de protection', sensor: 'Capteur de menaces', shroud_screen: 'Écran occultant', grapple: 'Grappin', thruster: 'Propulseur' }
 
@@ -33,6 +54,22 @@ describe('EquipmentOutcomesCard', () => {
     expect(screen.getByTestId('usages-equip-me-wall-used').textContent).toBe('52')
     expect(screen.queryByTestId('usages-equip-me-wall-kept')).toBeNull()
     expect(width('usages-equip-me-wall-dropped')).toBeCloseTo((32 / 84) * 100)
+  })
+
+  it('repli : un compte qui ne tient pas dans son segment monte au-dessus, seul (S2)', () => {
+    fit.hidden = new Set(['usages-equip-me-wall-dropped'])
+    renderCard()
+    expect(screen.getByTestId('usages-equip-repli-wall').textContent).toBe('32')
+    const label = (id: string) => screen.getByTestId(id).querySelector<HTMLElement>('[data-fit-label]')!.style.visibility
+    expect(label('usages-equip-me-wall-dropped')).toBe('hidden')
+    expect(label('usages-equip-me-wall-used')).toBe('visible')
+    expect(screen.queryByTestId('usages-equip-repli-sensor')).toBeNull()
+  })
+
+  it('repli : rien au-dessus quand tous les comptes tiennent', () => {
+    fit.hidden = new Set()
+    renderCard()
+    expect(screen.queryAllByTestId(/^usages-equip-repli-/)).toEqual([])
   })
 
   it('reste de mon camp : barre fine et ligne de parts', () => {

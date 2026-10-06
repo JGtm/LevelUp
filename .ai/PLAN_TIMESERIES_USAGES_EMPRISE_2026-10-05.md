@@ -17,8 +17,9 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **L1-L8 exécutés le 2026-10-06 (GO du superviseur, lot par lot) ; reste L8.5,
-> revue adversariale du diff cumulé, lancée par le superviseur, puis fusion sur son accord**. Branche : `feat/ts-usages-emprise` (créée sur `origin/feat/v75` = `65c99b669`),
+> Statut du plan : **L1-L9 exécutés le 2026-10-06 (GO du superviseur, lot par lot) ; L9 = ronde 1
+> de la revue adversariale (R1-R8) ; reste la ronde 2 de relecture, sur les seules corrections de L9,
+> puis fusion sur accord du superviseur**. Branche : `feat/ts-usages-emprise` (créée sur `origin/feat/v75` = `65c99b669`),
 > worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ts-usages`.
 
 ## 0. Objectif, critère de succès, hors périmètre
@@ -701,6 +702,45 @@ Journal L8 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — clôture :
 - **Gate (après les docs)** : `go build ./...` 0, `go vet ./...` 0, `gofmt -l internal` muet ; `go test -count=1` en cinq lots couvrant les 348 paquets (cœur 58 ok, hors internal 40, games 38, sync / persist / migration 13, reste 46 ; 0 FAIL) ; `golangci-lint run --new-from-merge-base=origin/main` (cache isolé, `--allow-parallel-runners`) 0 issues ; `openapi-gen -check` à jour. Web : purge `node_modules\.tmp`, `tsc -b --force` 0 ; `npm run lint` 0 erreur (26 avertissements préexistants, aucun sous `features/timeseries`) ; vitest complet 831 fichiers / 8 857 tests verts (189 s) ; `generate-types` sans diff ; `npx lefthook run pre-push` (PATH complet) 9 / 9 au premier passage (knip-ratchet, couleurs, imports croisés, contrat, vet CGO, govulncheck, shared-social).
 - Documents touchés en L8 : `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md`, `docs/RELEASE_NOTES.md`, `docs/FR/RELEASE_NOTES.md`, `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`, ce plan, `.ai/thought_log.md`.
 
+### L9 — Corrections de la revue adversariale, ronde 1 · moyen
+
+Revue adversariale de `65c99b669..262e36b2e` (trois relecteurs à contexte frais, superviseur, 2026-10-06) :
+constats R1-R8 retenus par le superviseur. TDD (test rouge vu avant la correction), une mutation par
+règle, zéro autre changement.
+
+- [x] R1 Vies d'un match dont le journal des morts n'est pas publiable : écartées et comptées dans une
+  troisième cause `ExcludedUnpublishable` (contrat + ⓘ web), publiabilité lue par match (lecture
+  bornée, ADR 0036 I2) ; corpus `:memory:` corrigé (match entier non publiable) ; test du calcul ;
+  mutation.
+- [x] R2 `squad/emprise/empriseCharts.ts` : rayon réduit des points conditionné à l'axe période seul,
+  pas au nombre de matchs ; test rouge d'abord (axe `match` à 150 matchs : rayon inchangé).
+- [x] R3 `EquipmentOutcomesCard.tsx` : mesure au pixel des parts, ligne de repli au-dessus pour les
+  seuls segments qui ne tiennent pas (patron `PisteCampsForm.tsx`).
+- [x] R4 `LivesNearTeammateCard.tsx` : la ligne de repli ne porte que la valeur qui ne tient pas.
+- [x] R5 `squad/formes/format.ts` : exports sans lecteur supprimés (`formatPct`, `formatCount`,
+  `formatSigned`, `niceBound`, `formatNumber`), seul `formatMatchTime` reste, en-tête réécrit ;
+  cause de l'aveuglement de knip instruite (Découvertes si trou du ratchet).
+- [x] R6 `usagesText.ts` : `emprise(locale)` (123 L) découpée sans changer aucune chaîne.
+- [x] R7 Surcharge morte `sections` de `EMPRISE_TEXT_SOLO` supprimée ; en-tête de
+  `timeseriesCoordination.logic.ts` réécrit au présent ; commentaire de `usage_outcomes.go` qui cite
+  un fichier supprimé corrigé.
+- [x] R8 Après R5 : `node tools/knip-ratchet.mjs` rejoué, mouvement du plancher `exports` rapporté.
+- Gate : gate Go complet + contrat + gate web complet.
+
+Journal L9 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — corrections de la revue adversariale, ronde 1 :
+- **R1** Règle : un match dont la dernière passe du journal des morts n'est pas publiable n'a aucun frag lu ; ses vies terminées par une mort sont écartées et comptées dans `ExcludedUnpublishable` (`excluded_unpublishable` au contrat), AVANT toute autre cause (portée comprise) — même règle que la lecture Tactique et le placement des vies du décodeur. Lecture : cinquième requête bornée du repo (`SELECT DISTINCT e.match_id FROM match_kill_events_latest e WHERE <liste liée> AND NOT e.publishable`, ADR 0036 I2), rendue dans `ViesLues.JournalNonPubliable`. Corpus `:memory:` corrigé : plus de frag non publiable dans une passe publiable ; `m9` a une passe ENTIÈRE non publiable, vies et morts au contexte présentes. Tests écrits d'abord et vus rouges : `TestViesPresOuSeul_JournalNonPubliableEcarte` (assertion : vies rangées près / seul au lieu d'écartées), `TestSoloLivesRepo_JournalNonPubliable` et la borne relevée à quatre lectures fenêtrées dans `TestSoloLivesRepo_BorneEtDernierePasse` (« 3 requêtes avec fenêtre, want ≥ 4 »). Web : `buildLivesModel` porte `excludedUnpublishable`, l'aide ⓘ ajoute une phrase quand la cause est non nulle (FR « Les vies d’un match dont le journal des morts ne se lit pas mort par mort sont écartées aussi (n). », EN par typage), texte de la maquette inchangé sinon ; tests vus rouges (modèle : `undefined`, aide : phrase absente). Journal du service : `ecartees_journal_non_publiable`. Contrat régénéré : +4 lignes `openapi.yaml`, +2 `generated.ts`.
+- **R2** Le rayon réduit des points ne vaut que sur l'axe PÉRIODE au-delà de 120 matchs (`axe.kind === 'period' && matches.length > MANY_MATCHES`) — la maquette des Séries temporelles (`big = n > 120` dans `renderFil`) ; l'axe par match de l'Escouade garde son rayon. `resourceSeries` reçoit le rayon par un objet d'options (≤ 5 paramètres). Test vu rouge : axe `match` à 150 matchs (rayon 3,98 au lieu de 9,42).
+- **R3** Carte Équipement : mesure au pixel (`useSegmentLabelFit`, `data-fit-key` / `data-fit-label`) sur la barre épaisse ; une ligne de repli au-dessus porte, à sa place (servi à gauche, gardé au centre, lâché à droite), le seul compte qui ne tient pas ; l'étiquette masquée reste dans le DOM (`visibility: hidden`). Test vu rouge (ligne de repli absente).
+- **R4** Carte Mes vies : la ligne de repli ne porte que la valeur qui ne tient pas. Test vu rouge (« 1 558 · 83,8 %16,2 % · 301 » au lieu de « 16,2 % · 301 »).
+- Tests R3 / R4 : la mesure au pixel est remplacée par un `vi.mock` du hook qui appelle toujours le vrai hook et rend l'ensemble fixé par le test (jsdom n'a pas de largeur : tout part au repli).
+- **R5** `squad/formes/format.ts` réduit à `formatMatchTime` (seul export lu : trois cartes de l'Emprise / de l'Objectif et un test), en-tête réécrit ; `formatPct`, `formatNumber`, `formatCount`, `formatSigned`, `niceBound` supprimés (grep : zéro lecteur) ; les aides de `_shared/usage/usageFormat.ts` gardent d'autres lecteurs. Pourquoi knip ne les a pas vus : knip est AVEUGLE sur ce poste — `npx knip --reporter json` rend `{"issues":[]}` même avec un fichier orphelin posé exprès (sonde temporaire, retirée), et `--trace-file` répond « No exports found » sur n'importe quel fichier ; voir §8.
+- **R6** `emprise(locale)` (123 L) découpée en `empriseFr(base)` / `empriseEn(base)` (≈ 60 L chacune) et un aiguillage de 4 L ; preuve : instantané sérialisé de `EMPRISE_TEXT_SOLO`, `OBJECTIF_TEXT_SOLO`, `USAGES_TEXT` (chaînes et corps de fonctions, blancs normalisés) IDENTIQUE avant / après (sonde de test temporaire, retirée).
+- **R7** Surcharge `sections` de `EMPRISE_TEXT_SOLO` supprimée (lecteurs de `sections` sur un texte d'Emprise : la seule page Escouade, sur `EMPRISE_TEXT`) ; instantané : seules les quatre clés mortes `sections.bilan` / `sections.roles` (FR, EN) reviennent aux valeurs de l'Escouade. Test `une seule source des intertitres` ; en-tête de `usagesText.ts` complété. En-tête de `timeseriesCoordination.logic.ts` réécrit au présent (une carte, « Appui reçu », ses deux grandeurs) ; commentaire de `computeOutcomes` (`usage_outcomes.go`) : seul lecteur, la page Sessions.
+- **R8** `node tools/knip-ratchet.mjs` après R5 : 0 / 0 / 0, plancher `exports` inchangé — mesure sans valeur sur ce poste (knip aveugle, §8).
+- **Mutations** (toutes ROUGES) : calcul, vies d'un journal non publiable rangées quand même ; repo, publiabilité jamais lue (`AND e.publishable AND FALSE`) ; repo, lecture de publiabilité non bornée (`(liste OR TRUE)`) ; web, cause non publiée par le modèle ; web, phrase de l'aide jamais dite ; R2, rayon réduit sur le nombre seul ; R2, rayon réduit jamais ; R3, toutes les parts au repli ; R3, étiquette jamais masquée ; R4, les deux valeurs au repli ; R7, surcharge des intertitres réintroduite. R5 et R6 : suppression et découpage sans règle de comportement — preuves par grep, `tsc` et instantané identique.
+- **Gate** : `go build ./...` 0, `go vet ./...` 0, `gofmt -l internal cmd` muet ; `go test -count=1` en cinq lots couvrant les 348 paquets (cœur 58 ok, hors internal 40, games 38, sync / persist / migration 13, reste 46 ; 0 FAIL) ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 4 ok (408 s) ; golangci-lint (cache isolé, `--allow-parallel-runners`) 0 issues ; `openapi-gen -check` à jour. Web : purge, `tsc -b --force` 0 ; `npm run lint` 0 erreur (26 avertissements préexistants) ; vitest complet 831 fichiers / 8 865 tests verts (173 s) ; `generate-types` sans diff ; couleurs 0 ; imports croisés 7 ≤ 7 ; ratchet de contrat propre ; champs en dur 0 ; `npx lefthook run pre-push` rejoué après le commit (voir compte rendu).
+- Seuils : tous les fichiers touchés sous 500 L (`empriseCharts.ts` 394 → 407, `EquipmentOutcomesCard.tsx` 135 → 176, `solo_lives_repo.go` 149 → 176) ; `format.ts` 58 → 15.
+
 ## 7. Reprise de session
 
 Relire le skill `plan-execution`, puis ce fichier (cases, journaux de lot), puis les dernières
@@ -753,4 +793,5 @@ suppressions web sont dans L5 (L5.11-L5.15) ; L6 ne garde que le Go.
 - (L5) `isCollapsedTierRowKey` (`usagePadTiersModel.ts`) accepte encore la clé nue `base` (forme « comptes » supprimée) ; la page Sessions n'utilise que `tier-base`. Comportement laissé tel quel (hors périmètre).
 - (L5) Le jeton `team-rest` cité par la spécification S5 et la maquette n'existe pas dans la palette ; le reste du camp utilise `TEAM_REST_INK` (`team-ally` à 55 %), comme l'Escouade.
 - (L5) L'aide ⓘ de la carte Équipement de la maquette a quatre phrases (S1 en demande trois au plus) ; portée mot pour mot, la maquette faisant foi.
+- (L9) **Trou du ratchet knip, sur ce poste** : knip 6.33 (Windows, worktree `LevelUp-wt-ts-usages`) rend `{"issues":[]}` quoi qu'il arrive — un fichier orphelin posé exprès sous `src/` n'est pas signalé, `--trace-file` / `--trace-export` répondent « No exports found » sur des fichiers qui en ont, et l'indice « Remove from ignore » apparaît pour `generated.ts` et `types.ts` (fichiers bien présents). Les fichiers sont pourtant listés dans la passe de projet de `--debug`. Conséquence : `knip-ratchet` (pre-push local et chaque « knip 0/0/0 » des journaux L5-L9) ne mesure rien ici ; le step CI « Ratchet knip » (Linux) n'a jamais tourné sur cette branche (jamais poussée) — impossible de dire d'ici s'il voit. Les cinq exports morts de `format.ts` (R5) ont ainsi traversé L5-L7. Cause non instruite (outillage hors périmètre), non traité.
 - (L7) `make go-api-lint` échoue sur « parallel golangci-lint is running » quand un autre worktree lance le lint en même temps (verrou global de golangci-lint) ; contournement de mesure sans changer les règles : `GOLANGCI_LINT_CACHE` isolé et `--allow-parallel-runners`. Non traité (outillage hors périmètre).

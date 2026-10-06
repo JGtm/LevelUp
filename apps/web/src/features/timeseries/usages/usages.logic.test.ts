@@ -154,7 +154,11 @@ describe('buildLivesModel — Mes vies : près d’un coéquipier ou seul', () =
     expect(m.killsNearShare).toBeCloseTo(1250 / 1512)
     expect(m.perLifeNear).toBeCloseTo(1250 / 1558)
     expect(m.perLifeAlone).toBeCloseTo(262 / 301)
-    expect([m.excludedUnlocated, m.excludedNoRadar]).toEqual([59, 0])
+    expect([m.excludedUnlocated, m.excludedNoRadar, m.excludedUnpublishable]).toEqual([59, 0, 0])
+  })
+
+  it('vies d’un match au journal des morts non publiable : comptées dans leur propre cause', () => {
+    expect(buildLivesModel({ ...lives(), excluded_unpublishable: 12 })!.excludedUnpublishable).toBe(12)
   })
 
   it('aucun côté seul : frags par vie absents pour lui (pas de division par zéro)', () => {

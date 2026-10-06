@@ -6,7 +6,8 @@
  * L'onglet monte les cartes de l'Emprise et de l'Objectif de l'Escouade : leurs textes sont ceux de
  * l'Escouade SURCHARGÉS pour une page solo (`EMPRISE_TEXT_SOLO`, `OBJECTIF_TEXT_SOLO`) — « Mon camp »,
  * jamais « Notre camp » (V6), « matchs du périmètre » au lieu de « la soirée ». Les cartes propres à
- * l'onglet (grille par carte, Mes prises, Mes vies, Équipement, Ma part) prennent `USAGES_TEXT`.
+ * l'onglet (grille par carte, Mes prises, Mes vies, Équipement, Ma part) et les intertitres de
+ * l'onglet (seule source : `USAGES_TEXT[locale].sections`) prennent `USAGES_TEXT`.
  * Titres, aides ⓘ et légendes FR : ceux de la maquette, mot pour mot. Parité FR / EN par le typage
  * `Record<Locale, …>`.
  */
@@ -43,73 +44,73 @@ const sur = (n: number, one: string, many: string) => (n > 1 ? many : one)
 /** Une décimale, séparateur de la langue (« 3,0 », « 3.0 »). */
 const dec1 = (v: number, tag: string) => v.toLocaleString(tag, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
-function emprise(locale: Locale): EmpriseText {
-  const base = EMPRISE_TEXT[locale]
-  if (locale === 'fr') {
-    return {
-      ...base,
-      ourSide: 'Mon camp',
-      sections: { ...base.sections, bilan: 'Bilan du périmètre', roles: 'Mes prises' },
-      control: {
-        ...base.control,
-        info:
-          'La part de chaque ressource prise par mon camp face à l’adversaire, sur les matchs du périmètre. ' +
-          'Les nombres sont des comptes ; le trait orange marque 50 %, autant que l’adversaire. Les bonus ' +
-          'sans ramasseur connu ne comptent dans aucun camp.',
-        ariaLabel: 'La part de mon camp des prises de chaque ressource, face à l’adversaire',
-      },
-      fil: {
-        ...base.fil,
-        title: 'Contrôle des ressources au fil des matchs',
-        info:
-          'Ma part des prises de chaque ressource, cumulée depuis le premier match du périmètre. Les petits ' +
-          'points sont la part de chaque match, leur taille son volume. Un match sans la ressource, ou sans ' +
-          'film, laisse la courbe filer jusqu’au suivant.',
-        pointTip: (v) =>
-          `${v.match}${v.outcome ? ` (${v.outcome})` : ''}\n${v.resource} : ${v.us} pour mon camp, ${v.them} pour l’adversaire (${v.pct})\n` +
-          `Cumul : ${v.cumUs} sur ${v.cumTotal} (${v.cumPct})`,
-        endTip: (resource, cumUs, cumTotal, pct) => `${resource}\nCumul du périmètre : ${cumUs} sur ${cumTotal} (${pct})`,
-      },
-      production: {
-        ...base.production,
-        info:
-          'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine ce qui les a permis ' +
-          '(temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un véhicule), toutes deux sur ' +
-          'les matchs où ce qui les a permis est mesuré. Si la coupure de la barre épaisse est à gauche de ' +
-          'celle de la fine, on a moins produit qu’on n’a eu. Les frags de toute la période se lisent carte par carte.',
-        ariaLabel: 'La part de mon camp des frags obtenus avec chaque ressource, et de ce qui les a permis',
-      },
-      yield: {
-        ...base.yield,
-        info:
-          'Combien mon camp produit de plus ou de moins que l’adversaire pour la même exposition : par minute ' +
-          'd’effet d’un bonus, par prise d’arme spéciale, par minute à bord d’un véhicule. Zéro veut dire autant ' +
-          'que lui. Les deux rendements bruts sont écrits de l’autre côté du zéro.',
-        ariaLabel: 'Le rendement de mon camp face à celui de l’adversaire, par ressource',
-        tip: (resource, sub, us, them, gap) =>
-          `${resource} · ${sub}\nMon camp ${dec1(us, 'fr-FR')}, adversaire ${dec1(them, 'fr-FR')} : ${gap}`,
-      },
-      grid: {
-        ...base.grid,
-        title: 'Contrôle des ressources, carte par carte',
-        info:
-          'Une colonne par carte jouée, la plus jouée à gauche, avec son nombre de matchs et ses résultats. La ' +
-          'couleur dit si mon camp a pris plus ou moins que l’adversaire, et sature à trente points d’écart. Le ' +
-          'survol d’une case détaille qui l’a prise chez moi.',
-        noTeamTip:
-          'Mon camp est inconnu sur ces matchs (chacun pour soi, ou camp absent de la feuille de match) : rien ' +
-          'ne se partage entre les deux camps.',
-        untieredTip: 'Niveaux de socle non mesurés sur ces matchs : armes spéciales et armes de râtelier ne se séparent pas.',
-        cellTip: (name, us, them, pct) => `${name} : ${us} pour mon camp, ${them} pour l’adversaire (${pct})`,
-        whoFmt: (list) => `Chez moi : ${list}`,
-      },
-      vehicles: { ...base.vehicles, unmeasuredTip: 'Véhicules non mesurés : l’occupation n’a pas été lue.' },
-    }
+/** Les textes de l'Emprise de l'Escouade, surchargés pour la page solo (FR). */
+function empriseFr(base: EmpriseText): EmpriseText {
+  return {
+    ...base,
+    ourSide: 'Mon camp',
+    control: {
+      ...base.control,
+      info:
+        'La part de chaque ressource prise par mon camp face à l’adversaire, sur les matchs du périmètre. ' +
+        'Les nombres sont des comptes ; le trait orange marque 50 %, autant que l’adversaire. Les bonus ' +
+        'sans ramasseur connu ne comptent dans aucun camp.',
+      ariaLabel: 'La part de mon camp des prises de chaque ressource, face à l’adversaire',
+    },
+    fil: {
+      ...base.fil,
+      title: 'Contrôle des ressources au fil des matchs',
+      info:
+        'Ma part des prises de chaque ressource, cumulée depuis le premier match du périmètre. Les petits ' +
+        'points sont la part de chaque match, leur taille son volume. Un match sans la ressource, ou sans ' +
+        'film, laisse la courbe filer jusqu’au suivant.',
+      pointTip: (v) =>
+        `${v.match}${v.outcome ? ` (${v.outcome})` : ''}\n${v.resource} : ${v.us} pour mon camp, ${v.them} pour l’adversaire (${v.pct})\n` +
+        `Cumul : ${v.cumUs} sur ${v.cumTotal} (${v.cumPct})`,
+      endTip: (resource, cumUs, cumTotal, pct) => `${resource}\nCumul du périmètre : ${cumUs} sur ${cumTotal} (${pct})`,
+    },
+    production: {
+      ...base.production,
+      info:
+        'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine ce qui les a permis ' +
+        '(temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un véhicule), toutes deux sur ' +
+        'les matchs où ce qui les a permis est mesuré. Si la coupure de la barre épaisse est à gauche de ' +
+        'celle de la fine, on a moins produit qu’on n’a eu. Les frags de toute la période se lisent carte par carte.',
+      ariaLabel: 'La part de mon camp des frags obtenus avec chaque ressource, et de ce qui les a permis',
+    },
+    yield: {
+      ...base.yield,
+      info:
+        'Combien mon camp produit de plus ou de moins que l’adversaire pour la même exposition : par minute ' +
+        'd’effet d’un bonus, par prise d’arme spéciale, par minute à bord d’un véhicule. Zéro veut dire autant ' +
+        'que lui. Les deux rendements bruts sont écrits de l’autre côté du zéro.',
+      ariaLabel: 'Le rendement de mon camp face à celui de l’adversaire, par ressource',
+      tip: (resource, sub, us, them, gap) =>
+        `${resource} · ${sub}\nMon camp ${dec1(us, 'fr-FR')}, adversaire ${dec1(them, 'fr-FR')} : ${gap}`,
+    },
+    grid: {
+      ...base.grid,
+      title: 'Contrôle des ressources, carte par carte',
+      info:
+        'Une colonne par carte jouée, la plus jouée à gauche, avec son nombre de matchs et ses résultats. La ' +
+        'couleur dit si mon camp a pris plus ou moins que l’adversaire, et sature à trente points d’écart. Le ' +
+        'survol d’une case détaille qui l’a prise chez moi.',
+      noTeamTip:
+        'Mon camp est inconnu sur ces matchs (chacun pour soi, ou camp absent de la feuille de match) : rien ' +
+        'ne se partage entre les deux camps.',
+      untieredTip: 'Niveaux de socle non mesurés sur ces matchs : armes spéciales et armes de râtelier ne se séparent pas.',
+      cellTip: (name, us, them, pct) => `${name} : ${us} pour mon camp, ${them} pour l’adversaire (${pct})`,
+      whoFmt: (list) => `Chez moi : ${list}`,
+    },
+    vehicles: { ...base.vehicles, unmeasuredTip: 'Véhicules non mesurés : l’occupation n’a pas été lue.' },
   }
+}
+
+/** Les textes de l'Emprise de l'Escouade, surchargés pour la page solo (EN). */
+function empriseEn(base: EmpriseText): EmpriseText {
   return {
     ...base,
     ourSide: 'My side',
-    sections: { ...base.sections, bilan: 'Scope summary', roles: 'My pickups' },
     control: {
       ...base.control,
       info:
@@ -165,6 +166,11 @@ function emprise(locale: Locale): EmpriseText {
     },
     vehicles: { ...base.vehicles, unmeasuredTip: 'Vehicles not measured: occupancy was not read.' },
   }
+}
+
+function emprise(locale: Locale): EmpriseText {
+  const base = EMPRISE_TEXT[locale]
+  return locale === 'fr' ? empriseFr(base) : empriseEn(base)
 }
 
 function objectif(locale: Locale): ObjectifText {

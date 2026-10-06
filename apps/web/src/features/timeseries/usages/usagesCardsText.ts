@@ -53,8 +53,11 @@ export interface UsagesCardsText {
   }
   lives: {
     title: string
-    /** ⓘ : les vies écartées sont comptées (`unlocated` : sans coéquipier situé ; `noRadar` : carte sans portée connue). */
-    info: (unlocated: number, noRadar: number) => string
+    /**
+     * ⓘ : les vies écartées sont comptées (`unlocated` : sans coéquipier situé ; `noRadar` : carte sans
+     * portée connue ; `unpublishable` : match dont le journal des morts n'est pas publiable).
+     */
+    info: (unlocated: number, noRadar: number, unpublishable: number) => string
     near: string
     alone: string
     thinLegend: string
@@ -126,13 +129,16 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
   },
   lives: {
     title: 'Mes vies : près d’un coéquipier ou seul',
-    info: (unlocated, noRadar) =>
+    info: (unlocated, noRadar, unpublishable) =>
       'Chaque vie est rangée selon la distance au coéquipier le plus proche au moment de la mort : à moins ' +
       'd’une portée de radar, ou au-delà. La barre épaisse partage mes vies, la barre fine les frags obtenus ' +
       'pendant ces vies. ' +
       (noRadar > 0
         ? `Les vies terminées sans aucun coéquipier situé sont écartées (${frInt(unlocated)} ici), comme celles d’une carte sans portée de radar connue (${frInt(noRadar)}).`
-        : `Les vies terminées sans aucun coéquipier situé sont écartées (${frInt(unlocated)} ici).`),
+        : `Les vies terminées sans aucun coéquipier situé sont écartées (${frInt(unlocated)} ici).`) +
+      (unpublishable > 0
+        ? ` Les vies d’un match dont le journal des morts ne se lit pas mort par mort sont écartées aussi (${frInt(unpublishable)}).`
+        : ''),
     near: 'Près d’un coéquipier',
     alone: 'Seul',
     thinLegend: 'Barre fine : mes frags pendant ces vies',
@@ -204,12 +210,15 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
   },
   lives: {
     title: 'My lives: near a teammate or alone',
-    info: (unlocated, noRadar) =>
+    info: (unlocated, noRadar, unpublishable) =>
       'Each life is sorted by the distance to the nearest teammate at the moment of death: within one radar ' +
       'range, or beyond. The thick bar splits my lives, the thin bar the kills made during those lives. ' +
       (noRadar > 0
         ? `Lives that ended with no teammate located are left out (${enInt(unlocated)} here), as are those on a map with no known radar range (${enInt(noRadar)}).`
-        : `Lives that ended with no teammate located are left out (${enInt(unlocated)} here).`),
+        : `Lives that ended with no teammate located are left out (${enInt(unlocated)} here).`) +
+      (unpublishable > 0
+        ? ` Lives from a match whose kill log can’t be read death by death are left out too (${enInt(unpublishable)}).`
+        : ''),
     near: 'Near a teammate',
     alone: 'Alone',
     thinLegend: 'Thin bar: my kills during those lives',

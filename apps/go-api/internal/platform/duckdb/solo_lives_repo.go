@@ -2,7 +2,7 @@
 // coéquipier ou seul » des Séries temporelles (plan
 // `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L3.3 ; port.SoloLivesRepository).
 //
-// UN CHARGEMENT, QUATRE REQUÊTES BORNÉES (ADR 0036 I2) : chaque vue `_latest` lue reçoit la liste
+// UN CHARGEMENT, CINQ REQUÊTES BORNÉES (ADR 0036 I2) : chaque vue `_latest` lue reçoit la liste
 // des matchs liée en UNE constante `VARCHAR[]` sur son propre `match_id` (clauseListeMatchs) — un
 // filtre posé sur une vue ne traverse ni la fenêtre d'une autre vue, ni une jointure. Le joueur est
 // filtré ensuite (une égalité sur un joueur ne descend pas sous la fenêtre). Vues `_latest`
@@ -58,14 +58,23 @@ LEFT JOIN match_participants pv ON pv.match_id = e.match_id AND pv.xuid = e.vict
 WHERE %s AND e.publishable AND e.feed_killer_xuid = ?
 ORDER BY e.match_id, e.time_ms`
 
+	// Les matchs dont la dernière passe du journal n'est pas publiable : le drapeau est posé pour
+	// la passe entière, une ligne suffit. Tous joueurs confondus — la publiabilité est celle du
+	// journal, pas d'un tueur.
+	qSoloJournalNonPubliable = `
+SELECT DISTINCT e.match_id
+FROM match_kill_events_latest e
+WHERE %s AND NOT e.publishable`
+
 	qSoloVariantes = `
 SELECT mr.match_id, COALESCE(mr.game_variant_name, '')
 FROM match_registry mr
 WHERE %s`
 )
 
-// LoadLivesNearTeammate rend les vies, morts situées et frags de `xuid` sur `matchIDs`, et la
-// variante de chaque match. Liste ou joueur vide : rien à lire. Table absente :
+// LoadLivesNearTeammate rend les vies, morts situées et frags de `xuid` sur `matchIDs`, les matchs
+// au journal non publiable et la variante de chaque match. Liste ou joueur vide : rien à lire.
+// Table absente :
 // games.ErrCapabilityNotSupported.
 func (r *SoloLivesRepo) LoadLivesNearTeammate(ctx context.Context, matchIDs []string, xuid string) (domain.ViesLues, error) {
 	out := domain.ViesLues{Variantes: map[string]string{}}
@@ -99,12 +108,32 @@ func (r *SoloLivesRepo) LoadLivesNearTeammate(ctx context.Context, matchIDs []st
 	if err := lire(qSoloFrags, "e.match_id", exclusion, func(rows *sql.Rows) error { return scanFragLu(rows, &out) }); err != nil {
 		return out, err
 	}
+	if err := r.lireJournalNonPubliable(ctx, db, matchIDs, &out); err != nil {
+		return out, err
+	}
 	clause, liste := clauseListeParJointure("mr.match_id", matchIDs)
 	return out, r.lire(ctx, db, fmt.Sprintf(qSoloVariantes, clause), []any{liste}, func(rows *sql.Rows) error {
 		var id, variante string
 		err := rows.Scan(&id, &variante)
 		out.Variantes[id] = variante
 		return err
+	})
+}
+
+// lireJournalNonPubliable nomme les matchs de la liste dont la dernière passe du journal des morts
+// n'est pas publiable (liste liée sur la vue, ADR 0036 I2).
+func (r *SoloLivesRepo) lireJournalNonPubliable(ctx context.Context, db *sql.DB, matchIDs []string, out *domain.ViesLues) error {
+	clause, liste := clauseListeMatchs("e.match_id", matchIDs)
+	return r.lire(ctx, db, fmt.Sprintf(qSoloJournalNonPubliable, clause), []any{liste}, func(rows *sql.Rows) error {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		if out.JournalNonPubliable == nil {
+			out.JournalNonPubliable = map[string]bool{}
+		}
+		out.JournalNonPubliable[id] = true
+		return nil
 	})
 }
 

@@ -5,6 +5,8 @@
  */
 import { describe, expect, it } from 'vitest'
 
+import { EMPRISE_TEXT } from '@/features/squad/emprise/empriseStrings'
+
 import { EMPRISE_TEXT_SOLO, OBJECTIF_TEXT_SOLO, USAGES_TEXT } from './usagesText'
 
 const E = EMPRISE_TEXT_SOLO.fr
@@ -23,6 +25,10 @@ describe('textes FR = maquette v4', () => {
       'Équipement',
     ])
     expect(U.sections.bilanCoverage(62, 90)).toBe('62 matchs filmés sur 90 · frags de la feuille de match sur les 90')
+  })
+
+  it('une seule source des intertitres : les textes de l’Emprise solo ne surchargent pas ceux de l’Escouade', () => {
+    for (const locale of ['fr', 'en'] as const) expect(EMPRISE_TEXT_SOLO[locale].sections).toBe(EMPRISE_TEXT[locale].sections)
   })
 
   it('Contrôle des ressources et au fil des matchs', () => {
@@ -70,10 +76,10 @@ describe('textes FR = maquette v4', () => {
 
   it('Mes vies : près d’un coéquipier ou seul', () => {
     expect(U.cards.lives.title).toBe('Mes vies : près d’un coéquipier ou seul')
-    expect(U.cards.lives.info(22, 0)).toBe(
+    expect(U.cards.lives.info(22, 0, 0)).toBe(
       'Chaque vie est rangée selon la distance au coéquipier le plus proche au moment de la mort : à moins d’une portée de radar, ou au-delà. La barre épaisse partage mes vies, la barre fine les frags obtenus pendant ces vies. Les vies terminées sans aucun coéquipier situé sont écartées (22 ici).',
     )
-    expect(U.cards.lives.info(22, 5)).toContain('sans portée de radar connue (5)')
+    expect(U.cards.lives.info(22, 5, 0)).toContain('sans portée de radar connue (5)')
     expect([U.cards.lives.near, U.cards.lives.alone, U.cards.lives.thinLegend]).toEqual([
       'Près d’un coéquipier',
       'Seul',

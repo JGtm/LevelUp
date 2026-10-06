@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildHabitOption, buildResourceFilOption, pickupRadius, type EmpriseFilColors } from './empriseCharts'
+import { buildHabitOption, buildResourceFilOption, pickupRadius, type EmpriseFilColors, type EmpriseFilText } from './empriseCharts'
 import { buildResourceFil, empriseMatchIndex } from './emprise.logic'
 import { EMPRISE_2209, HABIT_2209, HISTORY_2209 } from './emprise.fixtures'
 import { EMPRISE_TEXT } from './empriseStrings'
@@ -49,7 +49,7 @@ type Series = {
 type Axis = { axisLabel?: { formatter: (v: string, i: number) => string } }
 
 const fil = buildResourceFil(EMPRISE_2209, empriseMatchIndex(HISTORY_2209))
-const opt = buildResourceFilOption(fil, COLORS, {
+const T_FIL: EmpriseFilText = {
   resourceLabel: (r) => T.resources[r].label,
   pctFmt: T.pctFmt,
   pctIntFmt: T.pctIntFmt,
@@ -60,7 +60,8 @@ const opt = buildResourceFilOption(fil, COLORS, {
   pointTip: T.fil.pointTip,
   endTip: T.fil.endTip,
   bandTip: T.fil.bandTip,
-}) as { series: Series[]; xAxis: Axis[] }
+}
+const opt = buildResourceFilOption(fil, COLORS, T_FIL) as { series: Series[]; xAxis: Axis[] }
 
 const lines = opt.series.filter((s) => s.type === 'line')
 const dots = opt.series.filter((s) => s.type === 'scatter')
@@ -97,6 +98,13 @@ describe('buildResourceFilOption — 22/09', () => {
     expect(pickupRadius(16)).toBeCloseTo(1.8 + 4 * 1.1)
     expect(first.tip).toContain('Bonus : 5 pour nous, 2 pour eux (71,4 %)')
     expect(dots[0].data[4]).toBeNull()
+  })
+
+  it('axe par match : rayon de la maquette quel que soit le nombre de matchs (150 : inchangé)', () => {
+    const beaucoup = { ...fil, matches: Array.from({ length: 150 }, (_, i) => fil.matches[i % fil.matches.length]) }
+    const b = buildResourceFilOption(beaucoup, COLORS, T_FIL) as { series: Series[] }
+    const first = b.series.filter((s) => s.type === 'scatter')[0].data[0] as Item
+    expect(first.symbolSize).toBeCloseTo(2 * pickupRadius(7))
   })
 
   it('sous l’axe : l’heure puis la carte ; bande de résultats et encoche de dominance', () => {

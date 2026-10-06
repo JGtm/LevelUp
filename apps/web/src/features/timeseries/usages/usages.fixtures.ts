@@ -102,6 +102,7 @@ export function lives(): TimeseriesLivesNearTeammate {
     alone: { lives: 301, kills: 262 },
     excluded_unlocated: 59,
     excluded_no_radar: 0,
+    excluded_unpublishable: 0,
     matches_read: 4,
     matches_without_radar: 0,
   }

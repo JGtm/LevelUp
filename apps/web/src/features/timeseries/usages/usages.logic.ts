@@ -229,6 +229,8 @@ export interface LivesModel {
   perLifeAlone: number | null
   excludedUnlocated: number
   excludedNoRadar: number
+  /** Vies d'un match dont le journal des morts n'est pas publiable (aucun frag lu). */
+  excludedUnpublishable: number
 }
 
 /** buildLivesModel — la carte « Mes vies » ; null sans vie rangée (bloc absent, ou toutes écartées). */
@@ -248,6 +250,7 @@ export function buildLivesModel(b: TimeseriesLivesNearTeammate | null | undefine
     perLifeAlone: b.alone.lives > 0 ? b.alone.kills / b.alone.lives : null,
     excludedUnlocated: b.excluded_unlocated,
     excludedNoRadar: b.excluded_no_radar,
+    excludedUnpublishable: b.excluded_unpublishable,
   }
 }
 

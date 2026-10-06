@@ -81,7 +81,10 @@ export function pickupRadius(pickups: number): number {
   return 1.8 + Math.sqrt(Math.max(0, pickups)) * 1.1
 }
 
-/** Au-delà de ce nombre de matchs, des points plus petits (maquette des Séries temporelles). */
+/**
+ * Sur l'axe PÉRIODE seulement, au-delà de ce nombre de matchs, des points plus petits (maquette
+ * des Séries temporelles) ; l'axe par match de l'Escouade garde le rayon de sa maquette.
+ */
 const MANY_MATCHES = 120
 
 /** Rayon d'un point quand le graphe porte beaucoup de matchs : 0,8 + 0,45 × √n. */
@@ -124,11 +127,20 @@ function tipHtml(text: string): string {
 
 const matchName = (m: ResourceFilMatch, t: EmpriseFilText) => [t.timeOf(m.startTime), m.map].filter(Boolean).join(' · ')
 
-/** Les deux séries d'une ressource : la courbe cumulée (point final grossi) et les points par match. */
-function resourceSeries(matches: ResourceFilMatch[], resource: string, first: boolean, c: EmpriseFilColors, t: EmpriseFilText): unknown[] {
+/**
+ * Les deux séries d'une ressource : la courbe cumulée (point final grossi) et les points par match
+ * au rayon `o.radius`.
+ */
+function resourceSeries(
+  matches: ResourceFilMatch[],
+  resource: string,
+  c: EmpriseFilColors,
+  t: EmpriseFilText,
+  o: { first: boolean; radius: (pickups: number) => number },
+): unknown[] {
   const color = c.resource(resource)
   const label = t.resourceLabel(resource)
-  const radius = matches.length > MANY_MATCHES ? smallPickupRadius : pickupRadius
+  const { first, radius } = o
   const cum = matches.map((m) => (m.points[resource] ? m.points[resource]!.cumulative * 100 : null))
   const data = withEndPoint(cum, c.theme.card, {
     color,
@@ -210,8 +222,9 @@ export function buildResourceFilOption(
   // Sur une période, le nom d'un match dans les infobulles porte sa date devant l'heure.
   const tipText: EmpriseFilText =
     axe.kind === 'period' ? { ...t, timeOf: (iso) => [axe.dateOf(iso), t.timeOf(iso)].filter(Boolean).join(' ') } : t
+  const radius = axe.kind === 'period' && matches.length > MANY_MATCHES ? smallPickupRadius : pickupRadius
   const series = [
-    ...fil.resources.flatMap((resource, ri) => resourceSeries(matches, resource, ri === 0, c, tipText)),
+    ...fil.resources.flatMap((resource, ri) => resourceSeries(matches, resource, c, tipText, { first: ri === 0, radius })),
     bandSeries(matches, c, tipText, axe.kind === 'match'),
   ]
   const months = axe.kind === 'period' ? periodLabels(matches, axe.dateOf) : []

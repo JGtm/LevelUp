@@ -18,9 +18,12 @@ type TimeseriesLivesNearTeammate struct {
 	Alone LivesSideCount `json:"alone"`
 	// ExcludedUnlocated : vies terminées par une mort sans coéquipier situé à cet instant (aucun
 	// visible, équipe à terre, ou mort sans contexte). ExcludedNoRadar : vies d'un match dont la
-	// variante n'a pas de portée de radar connue.
-	ExcludedUnlocated int `json:"excluded_unlocated"`
-	ExcludedNoRadar   int `json:"excluded_no_radar"`
+	// variante n'a pas de portée de radar connue. ExcludedUnpublishable : vies d'un match dont la
+	// dernière passe du journal des morts n'est pas publiable (juste en agrégat, fausse frag par
+	// frag) — ses frags ne sont pas lus, ses vies ne se rangent donc pas.
+	ExcludedUnlocated     int `json:"excluded_unlocated"`
+	ExcludedNoRadar       int `json:"excluded_no_radar"`
+	ExcludedUnpublishable int `json:"excluded_unpublishable"`
 	// MatchesRead : matchs où le joueur a au moins une vie lue ; MatchesWithoutRadar : parmi eux,
 	// ceux sans portée de radar.
 	MatchesRead         int `json:"matches_read"`
@@ -63,4 +66,7 @@ type ViesLues struct {
 	Frags []FragLu
 	// Variantes : match -> game_variant_name, la clé de la portée du radar.
 	Variantes map[string]string
+	// JournalNonPubliable : les matchs dont la dernière passe de `match_kill_events_latest` n'est
+	// pas publiable (le drapeau vaut pour la passe entière).
+	JournalNonPubliable map[string]bool
 }

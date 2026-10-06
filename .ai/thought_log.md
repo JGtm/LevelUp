@@ -115355,3 +115355,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : gate rejoué après les docs, tout vert au premier passage : Go 348 paquets (cinq lots, 0 FAIL), build, vet, gofmt, golangci-lint 0 issues, `openapi-gen -check` à jour ; web : tsc 0, ESLint 0 erreur, vitest 831 fichiers / 8 857 tests, types générés sans diff, lefthook pre-push 9/9. Plan : aucune case vide (L8.5 `[!]` justifié) ; §8 relue, aucune découverte nouvelle.
 
 **Conclusion / prochaine étape** : chantier exécuté (L1-L8). Reste la revue adversariale du diff `65c99b669..HEAD`, que lance le superviseur (lots à risque : L2 agrégats, L3 lecture bornée, L7 contrat), puis la fusion vers `feat/v75` sur son accord.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L9 : corrections de la revue adversariale, ronde 1
+
+**Statut** : Complété (lot L9 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`) ; ronde 2 de relecture à venir, sur les seules corrections.
+
+**Décision technique principale** : R1 — les vies d'un match dont la dernière passe du journal des morts n'est pas publiable ne se rangent plus « près / seul » avec zéro frag : elles sont écartées et comptées dans une troisième cause `excluded_unpublishable` (contrat, aide ⓘ), lue par une cinquième requête bornée du repo ; priorité sur les autres causes, même règle que la lecture Tactique et le placement des vies. R2 — rayon réduit des points sur l'axe période seul (Escouade inchangée). R3 / R4 — replis de la règle S2 : seules les valeurs qui ne tiennent pas montent au-dessus de leur barre. R5 — exports morts de `squad/formes/format.ts` supprimés. R6 — `emprise(locale)` découpée sans changer une chaîne. R7 — surcharge morte des intertitres et deux commentaires périmés corrigés.
+
+**Résultats observés** : chaque règle a son test vu rouge avant la correction et sa mutation rouge (11 mutations) ; R6 prouvé par instantané identique. Gate : Go 348 paquets, intégration DuckDB 4 ok, golangci-lint 0, contrat à jour (+1 champ) ; web tsc 0, ESLint 0 erreur, vitest 8 865 tests, couleurs / imports croisés / contrat / champs propres. Découverte : knip est aveugle sur ce poste (rien signalé, même un fichier orphelin posé exprès) — le ratchet local 0/0/0 ne mesure rien ; consigné en §8, non traité.
+
+**Conclusion / prochaine étape** : L9 clos ; ronde 2 de relecture par le superviseur sur le commit de L9, puis fusion vers `feat/v75` sur son accord.

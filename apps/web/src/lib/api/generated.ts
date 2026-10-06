@@ -13513,6 +13513,8 @@ export interface components {
             /** Format: int64 */
             excluded_unlocated: number;
             /** Format: int64 */
+            excluded_unpublishable: number;
+            /** Format: int64 */
             matches_read: number;
             /** Format: int64 */
             matches_without_radar: number;

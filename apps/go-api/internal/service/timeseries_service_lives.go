@@ -71,6 +71,7 @@ func (s *TimeseriesService) attachLives(
 		"player", s.gamertag, "matchs", len(ids), "matchs_lus", bloc.MatchesRead,
 		"matchs_sans_portee", bloc.MatchesWithoutRadar, "variantes_sans_portee", sansRayon,
 		"pres", bloc.Near.Lives, "seul", bloc.Alone.Lives, "ecartees_sans_coequipier", bloc.ExcludedUnlocated,
-		"ecartees_sans_portee", bloc.ExcludedNoRadar, "frags_ecartes", fragsEcartes)
+		"ecartees_sans_portee", bloc.ExcludedNoRadar, "ecartees_journal_non_publiable", bloc.ExcludedUnpublishable,
+		"frags_ecartes", fragsEcartes)
 	resp.LivesNearTeammate = &bloc
 }

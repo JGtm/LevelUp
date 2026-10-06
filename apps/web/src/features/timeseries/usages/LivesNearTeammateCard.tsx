@@ -7,7 +7,7 @@
  * l'instant de la mort) et « seul » (`extreme`), compte et part dans chaque segment quand ils
  * tiennent, repli au-dessus sinon ; la barre FINE partage mes frags tombés pendant ces vies ; dessous,
  * « frags : n · p % · x par vie … y par vie · m ». Les vies écartées (aucun coéquipier situé, carte
- * sans portée connue) sont comptées dans l'aide ⓘ. Axe 0-100 %.
+ * sans portée connue, journal des morts non publiable) sont comptées dans l'aide ⓘ. Axe 0-100 %.
  */
 import { useMemo, useRef } from 'react'
 
@@ -49,9 +49,11 @@ export function LivesNearTeammateCard({ model, ut }: { model: LivesModel; ut: Us
   const nearPct = model.livesNearShare * 100
   const nearText = `${ut.intFmt(model.near.lives)} · ${ut.pctFmt(nearPct)}`
   const aloneText = `${ut.pctFmt(100 - nearPct)} · ${ut.intFmt(model.alone.lives)}`
-  const repli = hidden.has('near') || hidden.has('alone')
+  // Seule la valeur qui ne tient pas dans son segment monte au repli (jamais affichée deux fois).
+  const nearHidden = hidden.has('near')
+  const aloneHidden = hidden.has('alone')
   return (
-    <ObjectifFrame title={l.title} info={l.info(model.excludedUnlocated, model.excludedNoRadar)} legend={legend} testId="usages-lives">
+    <ObjectifFrame title={l.title} info={l.info(model.excludedUnlocated, model.excludedNoRadar, model.excludedUnpublishable)} legend={legend} testId="usages-lives">
       <div ref={ref} className="flex flex-col gap-3.5">
         <div className="grid items-center gap-3" style={{ gridTemplateColumns: COLUMNS }}>
           <div className="min-w-0 text-[12.5px] leading-tight">
@@ -61,10 +63,10 @@ export function LivesNearTeammateCard({ model, ut }: { model: LivesModel; ut: Us
             </small>
           </div>
           <div className="flex min-w-0 flex-col gap-1">
-            {repli && (
+            {(nearHidden || aloneHidden) && (
               <div className="flex justify-between gap-2 text-xs tabular-nums text-muted-foreground" data-testid="usages-lives-repli">
-                <span>{nearText}</span>
-                <span>{aloneText}</span>
+                <span>{nearHidden && nearText}</span>
+                <span>{aloneHidden && aloneText}</span>
               </div>
             )}
             <div className="relative h-[22px] rounded-[3px] bg-muted">

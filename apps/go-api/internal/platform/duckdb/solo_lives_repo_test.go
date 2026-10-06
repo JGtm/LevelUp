@@ -9,8 +9,9 @@ package duckdb
 //     longue, ne laisse survivre aucune vie) ;
 //   - seuls les matchs ET le joueur demandés ; la fenêtre de CHAQUE vue ne voit que les lignes des
 //     matchs demandés (EXPLAIN ANALYZE, exigerFenetresBornees) ;
-//   - une distance NULL reste nil ; les frags non publiables et ceux d'un autre tueur sortent ; les
-//     camps viennent de `match_participants` (NULL pour une victime sans ligne) ;
+//   - une distance NULL reste nil ; les frags d'une passe non publiable et ceux d'un autre tueur
+//     sortent, et le match au journal non publiable est nommé ; les camps viennent de
+//     `match_participants` (NULL pour une victime sans ligne) ;
 //   - table absente : games.ErrCapabilityNotSupported.
 
 import (
@@ -35,7 +36,9 @@ func poserVieDuFilm(t *testing.T, pdb *PlayerDB, match, pass, written, xuid stri
 }
 
 // corpusVies : dix matchs ; dans chacun, P (camp 0) et O (camp 1) ont deux vies, chacun une mort
-// au contexte, et P trois frags (sur O, sur son coéquipier A, et un non publiable) ; O tue P.
+// au contexte, et P deux frags (sur O, sur son coéquipier A) ; O tue P. Le drapeau `publishable`
+// vaut pour une PASSE ENTIÈRE (jamais mêlé dans une passe) : la passe de `m9` n'est pas publiable,
+// ses vies et ses morts au contexte existent quand même (portes indépendantes).
 // `m1` porte en plus une passe ANCIENNE à trois vies pour P.
 func corpusVies(t *testing.T, pdb *PlayerDB) {
 	t.Helper()
@@ -51,10 +54,10 @@ func corpusVies(t *testing.T, pdb *PlayerDB) {
 		}
 		tacContexte(t, pdb, m, "P", 40000, 12.5)
 		tacContexte(t, pdb, m, "O", 30000, nil)
-		tacKill(t, pdb, m, "P", "O", 30000, true)
-		tacKill(t, pdb, m, "P", "A", 35000, true)
-		tacKill(t, pdb, m, "P", "O", 36000, false)
-		tacKill(t, pdb, m, "O", "P", 40000, true)
+		publiable := m != "m9"
+		tacKill(t, pdb, m, "P", "O", 30000, publiable)
+		tacKill(t, pdb, m, "P", "A", 35000, publiable)
+		tacKill(t, pdb, m, "O", "P", 40000, publiable)
 	}
 	for _, start := range []int64{1000, 20000, 60000} {
 		poserVieDuFilm(t, pdb, "m1", "p1", "2026-09-28 10:00:00", "P", start, "cut")
@@ -71,8 +74,9 @@ func TestSoloLivesRepo_BorneEtDernierePasse(t *testing.T) {
 		t.Fatalf("LoadLivesNearTeammate : %v", err)
 	}
 	// Fenêtres : au plus les lignes des deux matchs demandés, toutes passes et tous joueurs
-	// confondus (vies : m1 4 + 3 anciennes, m2 4 = 11) ; trois vues `_latest` lues.
-	exigerFenetresBornees(t, b, "LoadLivesNearTeammate", 11, 3)
+	// confondus (vies : m1 4 + 3 anciennes, m2 4 = 11) ; quatre lectures de vues `_latest`
+	// (vies, morts, frags, publiabilité du journal).
+	exigerFenetresBornees(t, b, "LoadLivesNearTeammate", 11, 4)
 
 	var vies []string
 	for _, v := range got.Vies {
@@ -86,7 +90,10 @@ func TestSoloLivesRepo_BorneEtDernierePasse(t *testing.T) {
 		t.Errorf("morts = %+v, attendu les deux morts de P (40 s, 12,5 m)", got.Morts)
 	}
 	if len(got.Frags) != 4 {
-		t.Fatalf("frags = %+v, attendu 4 (deux publiables de P par match, ni le non publiable ni celui de O)", got.Frags)
+		t.Fatalf("frags = %+v, attendu 4 (deux de P par match, pas celui de O)", got.Frags)
+	}
+	if len(got.JournalNonPubliable) != 0 {
+		t.Errorf("journaux non publiables = %v, attendu aucun (m1 et m2 publiables)", got.JournalNonPubliable)
 	}
 	for _, f := range got.Frags {
 		if f.CampTueur == nil || *f.CampTueur != 0 || f.CampVictime == nil {
@@ -95,6 +102,44 @@ func TestSoloLivesRepo_BorneEtDernierePasse(t *testing.T) {
 	}
 	if got.Variantes["m1"] != "Variante 1" || got.Variantes["m2"] != "Variante 2" || len(got.Variantes) != 2 {
 		t.Errorf("variantes = %v, attendu m1 et m2 seulement", got.Variantes)
+	}
+}
+
+// Un match dont la dernière passe du journal n'est pas publiable (m9) : aucun de ses frags n'est
+// rendu, mais ses vies et ses morts le sont, et le match est NOMMÉ comme non publiable — c'est ce
+// qui permet au calcul d'écarter et de compter ses vies au lieu de les ranger avec zéro frag. La
+// lecture de la publiabilité est bornée comme les autres.
+func TestSoloLivesRepo_JournalNonPubliable(t *testing.T) {
+	b := newBaseNotee(t)
+	corpusVies(t, b.pdb)
+	b.carnet.vider()
+
+	got, err := NewSoloLivesRepo(b.pdb).LoadLivesNearTeammate(context.Background(), []string{"m1", "m9"}, "P")
+	if err != nil {
+		t.Fatalf("LoadLivesNearTeammate : %v", err)
+	}
+	exigerFenetresBornees(t, b, "LoadLivesNearTeammate", 11, 4)
+	if fmt.Sprint(got.JournalNonPubliable) != "map[m9:true]" {
+		t.Errorf("journaux non publiables = %v, attendu m9 seul", got.JournalNonPubliable)
+	}
+	for _, f := range got.Frags {
+		if f.MatchID == "m9" {
+			t.Errorf("frag %+v rendu alors que la passe de m9 n'est pas publiable", f)
+		}
+	}
+	viesM9, mortsM9 := 0, 0
+	for _, v := range got.Vies {
+		if v.MatchID == "m9" {
+			viesM9++
+		}
+	}
+	for _, m := range got.Morts {
+		if m.MatchID == "m9" {
+			mortsM9++
+		}
+	}
+	if viesM9 != 2 || mortsM9 != 1 {
+		t.Errorf("m9 : %d vie(s), %d mort(s), attendu 2 et 1 (portes indépendantes du journal)", viesM9, mortsM9)
 	}
 }
 

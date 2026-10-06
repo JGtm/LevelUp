@@ -126,9 +126,7 @@ func attachOutcomes(m *domain.SessionUsageMetric, playerXUID string, measured []
 
 // computeOutcomes — les trois issues du SUJET sur un ensemble de familles, et les
 // deux taux de référence qui l'EXCLUENT (décision P7). SOURCE UNIQUE du
-// remplissage de barre : la page Sessions la lit par famille (attachOutcomes), le
-// bloc de période par famille pour la Synthèse et toutes familles confondues pour
-// l'Escouade (usage_overview.go).
+// remplissage de barre : la page Sessions la lit par famille (attachOutcomes).
 //
 // LE SUJET N'EST PAS TOUJOURS LE JOUEUR DE LA ROUTE : sur une ligne de coéquipier,
 // « le reste de mon équipe » est mon camp moins CE coéquipier. Le camp de
