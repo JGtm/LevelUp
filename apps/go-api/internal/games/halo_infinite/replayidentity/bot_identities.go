@@ -84,6 +84,12 @@ func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 		for _, d := range b.Declarations {
 			id.Declarations = append(id.Declarations, [2]uint64{d.FromUS, d.ToUS})
 		}
+		// L'ÉQUIPE VOYAGE AUSSI (2026-10-06) : celle que l'entrée BOT_METADATA du bot écrit, ou
+		// rien quand le décodage ne l'a pas lue.
+		if b.Team != nil {
+			t := *b.Team
+			id.Team = &t
+		}
 		out = append(out, id)
 	}
 	if retires > 0 {

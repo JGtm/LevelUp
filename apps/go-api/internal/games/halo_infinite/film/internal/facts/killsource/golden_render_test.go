@@ -219,6 +219,7 @@ func sectionSante(b *strings.Builder, res *Result) {
 		determineeGolden(res.BijectionDetermined))
 	fmt.Fprintf(b, "roster : %d nom(s) dont %d humain(s)%s\n",
 		len(res.Roster.Names), res.Roster.Humans, botsGolden(res.Roster))
+	fmt.Fprint(b, equipesDesBotsGolden(res.Roster.BotEquipes))
 	sectionProvenance(b, res.Roster.FilmTable)
 }
 
@@ -256,10 +257,27 @@ func botsGolden(r Roster) string {
 	}
 	parts := make([]string, 0, len(r.Bots))
 	for _, b := range r.Bots {
-		parts = append(parts, fmt.Sprintf("%s (slot %d, bid %d)", b.Name, b.Slot, b.BotID))
+		parts = append(parts, fmt.Sprintf("%s (slot %d, bid %d, equipe %s)", b.Name, b.Slot, b.BotID, equipeGolden(b.Team)))
 	}
 	sort.Strings(parts)
 	return " · bots declares : " + strings.Join(parts, ", ")
+}
+
+// equipeGolden : l equipe que BOT_METADATA ecrit pour un bot, ou son absence NOMMEE.
+func equipeGolden(eq *int) string {
+	if eq == nil {
+		return "NON LUE"
+	}
+	return fmt.Sprint(*eq)
+}
+
+// equipesDesBotsGolden : le bilan de la lecture de l equipe des bots (botmeta_equipe.go).
+func equipesDesBotsGolden(e EquipesDesBots) string {
+	return fmt.Sprintf("equipes des bots (BOT_METADATA) : lues %d · illisibles %d · contradictoires %d · "+
+		"hors grammaire %d · entrees hors balayage %d · jumeaux discordants %d · hors domaine %d · "+
+		"paquets non fermes %d · personnalisation inconnue %s\n", e.Lues, e.Illisibles, e.Contradictoires,
+		e.HorsGrammaire, e.EntreesHorsBalayage, e.JumeauxDiscordants, e.HorsDomaine, e.PaquetsNonFermes,
+		ouiNonGolden(e.PersoInconnue))
 }
 
 func ouiNonGolden(b bool) string {

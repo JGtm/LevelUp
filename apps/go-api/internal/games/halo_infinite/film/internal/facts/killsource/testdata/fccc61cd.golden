@@ -70,7 +70,8 @@ hors roster : 0 — COMPTEUR SEPARE, il ne se compte pas sur les candidats et n 
 tags hors catalogue vus par la MARCHE : 0 — compteur principal de table perimee
    PORTEE : bruit MESURE nul sur 5 films, et AVEUGLE a un tag servi par le seul SCAN
 publication ligne par ligne : AUTORISEE (marge de bijection 0, bijection DETERMINEE (une seule affectation possible))
-roster : 9 nom(s) dont 8 humain(s) · bots declares : 343 PardonMy (slot 8, bid 7)
+roster : 9 nom(s) dont 8 humain(s) · bots declares : 343 PardonMy (slot 8, bid 7, equipe 1)
+equipes des bots (BOT_METADATA) : lues 1 · illisibles 0 · contradictoires 0 · hors grammaire 0 · entrees hors balayage 0 · jumeaux discordants 0 · hors domaine 0 · paquets non fermes 0 · personnalisation inconnue non
 
 ## PROVENANCE DES INDICES — la table du film est la SOURCE, l inference le REPLI
 table du film : build HI_1_13_0 · 8 siege(s) nomme(s) · 8 indice(s) LU(S) · 0 ajout(s) au roster

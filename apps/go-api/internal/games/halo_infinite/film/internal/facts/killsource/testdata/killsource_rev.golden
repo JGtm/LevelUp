@@ -311,6 +311,13 @@
 #               ne change ; seuls changent des sorties non persistees (`Result.Calibration`, deux
 #               compteurs de sante en expvar sur `111fa685`). Aucune ligne en base n est candidate au
 #               backlog (cf. `rev_chronique.go`, complement du 2026-10-03).
+#   2026-10-06  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot « Rejeu : toute entree du roster a
+#               l equipe que le film ecrit »). L empreinte bouge par `botmeta_equipe.go` (l equipe de
+#               chaque bot lue dans BOT_METADATA, `BotEntry.Team`, bilan `Roster.BotEquipes`). L agregat
+#               qui epingle le roster est le meme, aucune ligne de kill ne lit l equipe : goldens des
+#               quatre films et de la mini-bobine, seules changent la ligne des bots et celle du bilan,
+#               cumul inchange. Aucune ligne en base n est candidate au backlog (cf. `rev_chronique.go`,
+#               complement du 2026-10-06) ; les faits se re-extraient par `replay.SchemaDesFaits`.
 killsource-2026-09-16.2	d09f5d19636bbb5eff1c4d38b54489868bafa127c01ce91b6cb028e9dd7bc131
 killsource-2026-09-16.3	8c87a14f4d72f8f2b05350a39c9a93b80479a372d61f3a9416628689e2b8e67e
 killsource-2026-09-16.4	a3fcc9fed6be58eeab197aaa212dd2e0e386750671ff6a67858454d76935eac8
@@ -334,4 +341,4 @@ killsource-2026-09-22	eb0c32d7d98f49b8f90979270d6925327033adcf6cede45b6c945883f5
 killsource-2026-09-22.2	7043543f50cecfdb485f382e9738d5d67b45776a44a4cb763af472497852b875
 killsource-2026-09-24	09915f2ee616b1f40398caefbb4d1f30c1a76a7a5d5907fe9e56da3a9c33fa22
 killsource-2026-09-26	1a0c2d3b04f1a00cefced573870bbd49504d3b9b1062c1469bd7dbfef09dd801
-killsource-2026-09-27	8bdd8357ee8e192b006b88e9514d82162574fd279573da8626ecf07cf7ba98e6
+killsource-2026-09-27	933d3ba7e998e24397878e7e822688593818de0896929e5d4dbb946e0faa92b7

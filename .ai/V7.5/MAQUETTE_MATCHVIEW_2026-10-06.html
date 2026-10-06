@@ -1,0 +1,1271 @@
+<title>Vue match avant après</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Jetons de l'app (styles/globals.css + lib/accessibility/palettes/default.ts) et de la maquette
+     v18 de l'onglet Emprise. Aucune couleur hors de ces variables. */
+  :root {
+    --background: oklch(0.985 0.004 255); --foreground: oklch(0.255 0.02 255);
+    --card: oklch(0.995 0.002 255); --border: oklch(0.9 0.01 255); --muted: oklch(0.96 0.008 255);
+    --muted-foreground: oklch(0.52 0.015 255); --popover: oklch(0.995 0.002 255);
+    --warning: #F59E0B; --info: #3B82F6;
+    --team-ally: #3B82F6; --team-enemy: #EF4444;
+    --squad-player-1: #2563EB; --squad-player-2: #D97706; --squad-player-3: #DB2777; --squad-player-4: #0891B2; --zone-neutral: #9CA3AF;
+    --frag-shoulder: #06B6D4; --frag-sidearm: #10B981; --frag-heavy: #7C3AED; --frag-melee: #EC4899; --frag-grenade: #F59E0B; --frag-vehicle: #D55E00; --frag-equipment: #C026D3; --frag-environmental: #0072B2; --frag-unattributed: #60A5FA;
+    --outcome-win: #10B981; --outcome-loss: #EF4444; --outcome-dnf: #8B5CF6;
+    --divergent-pos: #22C55E; --divergent-neutral: #60A5FA; --divergent-neg: #EF4444;
+    --resource-powerup: #0D9488; --resource-power-weapon: #7C3AED; --resource-vehicle: #D55E00; --resource-rack: #0072B2;
+    --usage-grapple: #10B981; --usage-camo: #0D9488; --usage-wall: #06B6D4; --usage-dropped: #EC4899;
+    --stat-kills: #059669; --stat-deaths: #F43F5E; --chart-series-1: #93C5FD;
+    --perf-tier-1: #10B981; --perf-tier-2: #06B6D4; --perf-tier-4: #F97316; --perf-tier-5: #EF4444;
+    --extreme: #C026D3; --success: #10B981; --chart-series-6: #10B981; --chart-series-7: #F59E0B; --chart-series-8: #EC4899; --compare-a: #818CF8; --narrative-dominant: #00DC82; --narrative-humiliation: #7C3AED; --narrative-debacle: #D55E00; --narrative-contre-remontada: #33D6FF;
+    --on-ink: #FFFFFF;
+    --shadow: rgba(0, 0, 0, .25);
+    --radius: 0.5rem;
+    --hatch: repeating-linear-gradient(45deg, transparent 0 3px, color-mix(in oklab, var(--muted-foreground) 30%, transparent) 3px 4px);
+    --team-rest: color-mix(in oklab, var(--muted-foreground) 55%, var(--muted));
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0); color-scheme: dark;
+    --resource-powerup: #0FA697; --resource-power-weapon: #8B5CF6; --resource-vehicle: #DD5F14; --resource-rack: #3B8FD0;
+    --usage-camo: #0FA697;
+  } }
+  :root[data-theme="dark"] {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0); color-scheme: dark;
+    --resource-powerup: #0FA697; --resource-power-weapon: #8B5CF6; --resource-vehicle: #DD5F14; --resource-rack: #3B8FD0;
+    --usage-camo: #0FA697;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--background); color: var(--foreground); font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 20px 16px 72px; }
+  .topbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  .crumb { font-size: 12px; color: var(--muted-foreground); }
+  .toolbar { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .toolbar.right { margin-left: auto; }
+  button { font: inherit; font-size: 12px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); cursor: pointer; }
+  button[aria-pressed="true"] { border-color: var(--foreground); font-weight: 500; }
+  .switch button { font-size: 13px; padding: 5px 16px; }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+  h1 { font-size: 21px; margin: 14px 0 4px; text-wrap: balance; }
+  p.lede { margin: 0; font-size: 13px; color: var(--muted-foreground); max-width: 96ch; }
+  .appframe { border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); background: var(--background); padding: 0 16px 22px; margin-top: 16px; min-width: 0; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin: 0 -16px 4px; padding: 0 16px; overflow-x: auto; }
+  .tabs span { padding: 9px 14px; font-size: 13.5px; font-weight: 500; color: var(--muted-foreground); border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tabs span.on { color: var(--foreground); border-bottom-color: var(--foreground); }
+  h3.st { margin: 26px 0 10px; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  h3.st small { font-size: 11px; font-weight: 400; color: var(--muted-foreground); }
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+  .cardwrap { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); min-width: 0; display: flex; flex-direction: column; flex: 1; }
+  .card > h4 { margin: 0; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .card > .body { padding: 12px 14px 12px; display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0; }
+  .card .cmain { display: flex; flex-direction: column; gap: 10px; margin-block: auto; min-width: 0; }
+  .num { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; font-size: 10.5px; font-weight: 700; background: var(--muted); color: var(--muted-foreground); }
+  .info { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--muted-foreground); color: var(--muted-foreground); font-size: 10px; font-weight: 700; cursor: help; font-style: normal; flex: none; }
+  .repl { font-size: 9px; line-height: 1.3; color: var(--muted-foreground); padding: 0 2px; }
+  .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 11.5px; color: var(--muted-foreground); padding-top: 4px; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+  .legend i.hatch { background-color: var(--muted); background-image: var(--hatch); }
+  .legend i.parity { width: 2px; height: 12px; border-radius: 0; background: repeating-linear-gradient(to bottom, var(--warning) 0 3px, transparent 3px 5px); }
+  .legend i.solidline { width: 3px; border-radius: 0; }
+  .legend i.dash { width: 3px; border-radius: 0; background: repeating-linear-gradient(to bottom, var(--foreground) 0 3px, transparent 3px 5px); }
+  .legend i.thin { height: 4px; vertical-align: 2px; }
+  .legend i.round { border-radius: 50%; }
+  .legend i.ring { border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 2px var(--chart-series-1); }
+  .legend.left { justify-content: flex-start; }
+  .line1 { font-size: 12.5px; color: var(--muted-foreground); padding: 8px 10px; border: 1px dashed var(--border); border-radius: var(--radius); }
+  .line1 b { color: var(--foreground); font-weight: 500; }
+  .mnote { border: 1px dashed var(--info); border-radius: var(--radius); padding: 7px 11px; font-size: 11.5px; color: var(--muted-foreground); background: color-mix(in oklab, var(--info) 5%, transparent); }
+  .mnote b { color: var(--foreground); font-weight: 500; }
+  .empty { border: 1px dashed var(--border); border-radius: 12px; background: var(--muted); padding: 18px 14px; text-align: center; }
+  .empty b { display: block; font-size: 14px; font-weight: 600; color: var(--foreground); }
+  .empty span { font-size: 12.5px; color: var(--muted-foreground); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .tile { border: 1px solid var(--border); border-left: 3px solid var(--acc); border-radius: var(--radius); background: var(--card); padding: 10px 12px; min-width: 0; }
+  .tile .tl { font-size: 12px; color: var(--muted-foreground); }
+  .tile .tv { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0; }
+  .tile .ts { font-size: 11px; color: var(--muted-foreground); }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .ax { font-size: 10.5px; fill: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .axt { font-size: 10.5px; fill: var(--muted-foreground); }
+  .grd { stroke: var(--border); stroke-width: 1; }
+  .par { stroke: var(--warning); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  .lbl { font-size: 12px; fill: var(--foreground); }
+  .lbls { font-size: 11px; fill: var(--muted-foreground); }
+
+  /* Pistes de l'Emprise (PisteCampsForm) */
+  .prow { display: grid; grid-template-columns: var(--lw, 118px) minmax(0, 1fr); gap: 12px; align-items: center; }
+  @media (max-width: 640px) { .prow { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+  .plabel { font-size: 12.5px; line-height: 1.25; min-width: 0; }
+  .plabel small { display: block; color: var(--muted-foreground); font-size: 11px; }
+  .rdot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; background: var(--rc); }
+  .pbar { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .pcamps { display: none; justify-content: space-between; gap: 8px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+  .pcamps.show { display: flex; }
+  .pcamps b { color: var(--foreground); font-weight: 700; font-size: 13px; }
+  .csw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+  .track { position: relative; height: 22px; border-radius: 3px; background: var(--muted); }
+  .track.thin { height: 8px; }
+  .track.mid { height: 15px; }
+  .track.pending { background: transparent; border: 1px dashed var(--muted-foreground); display: grid; place-items: center; font-size: 11px; color: var(--muted-foreground); height: auto; min-height: 22px; padding: 2px 8px; text-align: center; }
+  .track.zero { background: transparent; border-top: 1px dashed var(--border); height: 0; margin: 10px 0; }
+  .seg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; overflow: hidden; }
+  .seg + .seg { box-shadow: -2px 0 0 var(--card); }
+  .seg.l { justify-content: flex-start; padding-left: 7px; }
+  .seg.r { justify-content: flex-end; padding-right: 7px; }
+  .seg.c { justify-content: center; }
+  .sl { font-size: 12px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--on-ink); pointer-events: none; }
+  .sl b { font-weight: 800; }
+  .sl.dark { color: var(--foreground); }
+  .parity { position: absolute; top: -3px; bottom: -3px; left: 50%; width: 0; border-left: 2px dashed var(--warning); pointer-events: none; }
+  .zeroline { position: absolute; top: -3px; bottom: -3px; left: 50%; width: 0; border-left: 2px solid var(--muted-foreground); transform: translateX(-1px); pointer-events: none; }
+  .pexpo { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .axis { position: relative; height: 14px; font-size: 10.5px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .tiplab { position: absolute; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 700; color: var(--foreground); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .rawlab { position: absolute; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--muted-foreground); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .btoggle { all: unset; cursor: pointer; font-size: 12.5px; color: var(--foreground); line-height: 1.2; }
+  .btoggle small { color: var(--muted-foreground); font-size: 11px; }
+  .btoggle:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; border-radius: 3px; }
+
+  /* Grille carte par carte (ResourceMatchGridCard) */
+  .bandwrap { overflow-x: auto; max-width: 100%; }
+  .band { display: grid; gap: 4px; align-items: stretch; min-width: 600px; }
+  .bh { font-size: 11px; line-height: 1.25; color: var(--muted-foreground); text-align: center; padding-bottom: 3px; }
+  .bh b { display: block; color: var(--foreground); font-weight: 500; font-size: 12px; }
+  .rec { display: inline-block; margin-top: 3px; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+  .rec .w { color: var(--outcome-win); } .rec .d { color: var(--outcome-loss); }
+  .bl { font-size: 12.5px; display: flex; flex-direction: column; justify-content: center; line-height: 1.2; }
+  .bl small { color: var(--muted-foreground); font-size: 11px; }
+  .cell { border-radius: 3px; display: grid; place-items: center; font-size: 12px; font-variant-numeric: tabular-nums; min-height: 34px; cursor: default; color: var(--foreground); }
+  .cell.none { background: var(--muted); color: var(--muted-foreground); }
+  .cell.nofilm { background-color: var(--muted); background-image: var(--hatch); color: var(--muted-foreground); font-size: 10.5px; }
+  .bsep { grid-column: 1 / -1; border-top: 1px solid var(--border); margin: 5px 0 2px; }
+
+  /* Formes d'avant */
+  .ugrid { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+  .urow { display: grid; grid-template-columns: 150px minmax(0, 1fr) 64px; gap: 10px; align-items: center; font-size: 12.5px; }
+  @media (max-width: 560px) { .urow { grid-template-columns: 110px minmax(0, 1fr) 52px; gap: 6px; } }
+  .urow .uv { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted-foreground); }
+  .utrack { position: relative; height: 15px; background: var(--muted); border-radius: 2px; }
+  .ufill { position: absolute; left: 0; top: 0; bottom: 0; display: flex; overflow: visible; }
+  .ufill span { display: block; height: 100%; }
+  .uref { position: absolute; top: -4px; bottom: -4px; width: 0; }
+  .uref.solid { border-left: 2px solid var(--team-ally); }
+  .uref.dashed { border-left: 2px dashed var(--foreground); }
+  .jgrid { display: grid; grid-template-columns: 140px 92px minmax(0, 1fr) 118px; gap: 4px 10px; align-items: center; min-width: 560px; }
+  .jgrid .jl { text-align: right; font-size: 12px; }
+  .jgrid .js { text-align: right; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
+  .jgrid .jt { position: relative; height: 15px; background: var(--muted); }
+  .jgrid .jv { font-size: 10.5px; color: var(--muted-foreground); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .jgrid .jv b { font-size: 12px; color: var(--foreground); }
+  .jgrid .gap { grid-column: 1 / -1; height: 6px; }
+  .scrollx { overflow-x: auto; max-width: 100%; }
+  .ggrid { display: grid; gap: 3px 8px; align-items: center; font-size: 12px; min-width: 760px; }
+  .ggrid .gh { font-size: 10.5px; color: var(--muted-foreground); line-height: 1.2; }
+  .ggrid .gh b { display: block; color: var(--foreground); font-weight: 500; font-size: 11px; }
+  .ggrid .gn { line-height: 1.15; border-left: 3px solid var(--squad-player-1); padding-left: 6px; }
+  .ggrid .gn small { display: block; color: var(--muted-foreground); font-size: 10.5px; }
+  .gcell { display: grid; grid-template-columns: minmax(0, 1fr) 22px; gap: 5px; align-items: center; }
+  .gcell .gb { height: 9px; background: var(--muted); position: relative; border-radius: 2px; }
+  .gcell .gb span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; }
+  .gcell .gvv { font-variant-numeric: tabular-nums; text-align: right; font-size: 11.5px; }
+  .gcell.zero .gvv { color: var(--muted-foreground); }
+  .bgrid { display: grid; grid-template-columns: 150px minmax(0, 1fr) 110px; gap: 8px 10px; align-items: center; font-size: 12px; }
+  @media (max-width: 560px) { .bgrid { grid-template-columns: 100px minmax(0, 1fr) 84px; } }
+  .bt { position: relative; height: 16px; }
+  .bt::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--border); }
+  .bt .bb { position: absolute; top: 4px; bottom: 4px; border-radius: 3px; }
+  .bt .bm { position: absolute; top: -2px; bottom: -2px; width: 0; border-left: 3px solid var(--warning); transform: translateX(-1.5px); }
+  .bgrid .bv { font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .bgrid .bv b { color: var(--foreground); font-size: 12px; }
+  .blocktitle { margin: 26px 0 8px; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .hidden-note { font-size: 11.5px; color: var(--muted-foreground); border-left: 2px solid var(--border); padding: 4px 10px; margin-top: 18px; }
+  .progband { margin-top: 26px; border: 1px dashed var(--border); border-radius: var(--radius); padding: 10px 12px; font-size: 12px; color: var(--muted-foreground); }
+  .progband b { color: var(--foreground); font-weight: 500; }
+  section.gaps { margin-top: 36px; }
+  section.gaps h2 { font-size: 17px; margin: 0 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  section.gaps ul { margin: 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 5px; max-width: 100ch; }
+  section.gaps b { font-weight: 500; }
+  #tip { position: fixed; z-index: 10; pointer-events: none; display: none; background: var(--popover); color: var(--foreground); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 14px var(--shadow); max-width: 320px; line-height: 1.4; }
+  /* Ajouts v2 : second interrupteur, formes d'avant remplies, fiches. */
+  .switches { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-top: 10px; }
+  .switches .lab { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); margin-right: 2px; }
+  .cover { margin-top: 8px; font-size: 12.5px; color: var(--muted-foreground); }
+  .cover b { color: var(--foreground); font-weight: 500; }
+  .egrid { display: grid; grid-template-columns: 150px 96px minmax(0, 1fr) 128px; gap: 6px 10px; align-items: center; font-size: 12px; min-width: 560px; }
+  .egrid .el { text-align: right; line-height: 1.15; }
+  .egrid .el small { display: block; color: var(--muted-foreground); font-size: 10.5px; }
+  .egrid .es { text-align: right; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
+  .egrid .et { position: relative; height: 15px; background: var(--muted); }
+  .egrid .ev { font-size: 10.5px; color: var(--muted-foreground); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .egrid .ev b { font-size: 12px; color: var(--foreground); }
+  .ecenter { position: absolute; top: -3px; bottom: -3px; left: 50%; width: 3px; transform: translateX(-1.5px); background: var(--warning); }
+  .sub3 { font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted-foreground); margin: 14px 0 6px; }
+  .sub3:first-child { margin-top: 0; }
+  .bandcells { display: grid; gap: 3px; min-width: 560px; }
+  .bandcells .bc { height: 22px; border-radius: 2px; }
+  .bandcells .bch { font-size: 9.5px; color: var(--muted-foreground); text-align: center; line-height: 1.1; }
+  .mrow { display: grid; grid-template-columns: 150px minmax(0, 1fr) 96px; gap: 10px; align-items: center; font-size: 12px; }
+  @media (max-width: 560px) { .mrow { grid-template-columns: 104px minmax(0, 1fr) 70px; gap: 6px; } }
+  .mrow .mv { text-align: right; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mrow .mv b { color: var(--foreground); }
+  .losses { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted-foreground); padding: 6px 10px; border-radius: var(--radius); background: var(--muted); }
+  .losses b { color: var(--foreground); font-weight: 600; }
+  .ofam { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .ofam > .ofh { display: flex; align-items: baseline; gap: 8px; background: var(--muted); border-bottom: 1px solid var(--border); padding: 7px 12px; font-size: 14px; font-weight: 600; }
+  .ofam > .ofh small { font-size: 11.5px; font-weight: 400; color: var(--muted-foreground); }
+  .ofam > .ofb { display: flex; flex-direction: column; gap: 5px; padding: 8px 12px 10px; }
+  .orole { margin-top: 3px; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
+  .obar { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 12px; }
+  @media (max-width: 560px) { .obar { grid-template-columns: 100px minmax(0, 1fr); } }
+  .mfiches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 700px) { .mfiches { grid-template-columns: minmax(0, 1fr); } }
+  .mcard { display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--border); border-left: 4px solid var(--ink); border-radius: var(--radius); background: var(--card); padding: 14px; min-width: 0; }
+  .mf-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .mf-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .mf-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--on-ink); background: var(--ink); }
+  .mf-name { font-weight: 600; font-size: 14px; }
+  .mf-dom { display: flex; flex-direction: column; align-items: flex-end; }
+  .mf-cap { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-foreground); line-height: 1.2; margin: 0; }
+  .mf-pill { font-size: 12px; font-weight: 600; margin-top: 2px; border-radius: 4px; padding: 2px 6px; color: var(--ink); background: color-mix(in oklab, var(--ink) 14%, transparent); }
+  .mf-line { display: grid; grid-template-columns: minmax(0, 1fr) 56px 54px; gap: 8px; align-items: center; font-size: 12.5px; min-height: 20px; }
+  .mf-line.zero { color: var(--muted-foreground); }
+  .mf-line .mb { position: relative; height: 8px; border-radius: 2px; background: var(--muted); overflow: hidden; }
+  .mf-line .mb span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--ink); }
+  .mf-line .mn { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .mf-foot { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted-foreground); border-top: 1px solid var(--border); padding-top: 8px; margin-top: auto; }
+  .mf-foot b { font-weight: 500; color: var(--foreground); }
+  .tgrid { display: grid; grid-template-columns: 150px minmax(0, 1fr) 64px 64px 64px; gap: 6px 10px; align-items: center; font-size: 12px; min-width: 520px; }
+  .tgrid .th { font-size: 10.5px; color: var(--muted-foreground); }
+  .tgrid .tn { line-height: 1.15; border-left: 3px solid var(--squad-player-1); padding-left: 6px; }
+  .tgrid .tn small { display: block; color: var(--muted-foreground); font-size: 10.5px; }
+
+  /* Ajouts maquette Sessions : jauges à trois colonnes, bandes, sunburst, barres empilées. */
+  .ggauge { display: grid; gap: 6px 10px; align-items: center; font-size: 12px; }
+  .ggauge .gh3 { font-size: 10.5px; color: var(--muted-foreground); line-height: 1.2; text-align: left; }
+  .ggauge .gl { line-height: 1.2; }
+  .ggauge .gl.tot { font-weight: 600; border-top: 1px solid var(--border); padding-top: 6px; }
+  .gcell3 { display: grid; grid-template-columns: minmax(0, 1fr) 46px; gap: 6px; align-items: center; }
+  .gcell3.tot { border-top: 1px solid var(--border); padding-top: 6px; }
+  .grail { position: relative; height: 12px; background: var(--muted); border-radius: 2px; }
+  .grail .gf { position: absolute; left: 0; top: 0; bottom: 0; display: flex; border-radius: 2px; overflow: hidden; }
+  .grail .gf span { display: block; height: 100%; }
+  .grail .gf.hatched { background-image: var(--hatch); }
+  .grail .gp { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--warning); transform: translateX(-1px); }
+  .grail .gm { position: absolute; top: -3px; bottom: -3px; width: 0; }
+  .grail .gm.solid { border-left: 2px solid var(--team-ally); }
+  .grail .gm.dashed { border-left: 2px dashed var(--foreground); }
+  .gcell3 .gv { text-align: right; font-variant-numeric: tabular-nums; font-size: 11.5px; }
+  .gcell3 .gv.na { color: var(--muted-foreground); }
+  .rband { display: grid; grid-template-columns: 150px minmax(0, 1fr) 40px; gap: 8px; align-items: center; font-size: 12px; }
+  @media (max-width: 560px) { .rband { grid-template-columns: 96px minmax(0, 1fr) 34px; gap: 6px; } }
+  .rband .rc { display: grid; gap: 3px; }
+  .rband .rc span { height: 18px; border-radius: 2px; }
+  .rband .rn { text-align: right; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .callout { font-size: 14px; font-variant-numeric: tabular-nums; }
+  .ltrack { display: flex; height: 26px; border-radius: 3px; overflow: hidden; }
+  .ltrack > div { display: flex; align-items: center; justify-content: center; overflow: hidden; font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--on-ink); }
+  .ltrack > div + div { box-shadow: -2px 0 0 var(--card); }
+  .ltrack > div.enemy { background-color: var(--muted); background-image: var(--hatch); color: var(--foreground); }
+  .sunwrap { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px; align-items: center; }
+  @media (max-width: 560px) { .sunwrap { grid-template-columns: minmax(0, 1fr); } }
+  .sunleg { display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+  .sunleg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .wbars { display: flex; flex-direction: column; gap: 5px; }
+  .wbar { display: grid; grid-template-columns: 150px minmax(0, 1fr) 36px; gap: 8px; align-items: center; font-size: 12px; }
+  @media (max-width: 560px) { .wbar { grid-template-columns: 112px minmax(0, 1fr) 30px; gap: 6px; } }
+  .wbar .wt { position: relative; height: 13px; display: flex; }
+  .wbar .wt span { display: block; height: 100%; }
+  .wbar .wt span:first-child { border-radius: 2px 0 0 2px; }
+  .wbar .wt span:last-child { border-radius: 0 2px 2px 0; }
+  .wbar .wn { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .cdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+  .fbrow { display: grid; grid-template-columns: 118px minmax(0, 1fr) 44px; gap: 10px; align-items: end; font-size: 12.5px; }
+  @media (max-width: 560px) { .fbrow { grid-template-columns: 86px minmax(0, 1fr) 34px; gap: 6px; } }
+  .fbrow .fbn { font-weight: 700; font-variant-numeric: tabular-nums; padding-bottom: 3px; }
+  .fbrow .fbname { padding-bottom: 4px; line-height: 1.2; }
+  .fbrep { position: relative; height: 15px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+  .fbrep span { position: absolute; bottom: 1px; white-space: nowrap; }
+  .gridm .bh { font-size: 10.5px; }
+  .sessbar { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .gtitle { margin: 34px 0 4px; font-size: 18px; font-weight: 600; }
+  .vbanner { font-size: 11.5px; color: var(--muted-foreground); border: 1px dashed var(--border); border-radius: var(--radius); padding: 6px 10px; margin-top: 4px; }
+  /* v2 : vue Comparaison (deux colonnes, rangées partagées) et grille compacte. */
+  .cmprow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 14px; align-items: stretch; }
+  @media (max-width: 860px) { .cmprow { grid-template-columns: minmax(0, 1fr); } }
+  .cmpcell { display: flex; flex-direction: column; min-width: 0; }
+  .cmphead .cmpcol { font-size: 12px; color: var(--muted-foreground); border-bottom: 2px solid var(--border); padding: 4px 2px 6px; }
+  .cmphead .cmpcol b { display: block; color: var(--foreground); font-size: 14px; font-weight: 600; }
+  .card.cmpvoid { display: grid; place-items: center; min-height: 90px; font-size: 20px; color: var(--muted-foreground); border-style: dashed; }
+  .gridcw { overflow-x: visible; }
+  .band.gridc { min-width: 0; gap: 3px; }
+  .gridc .bh { font-size: 10px; line-height: 1.15; overflow-wrap: anywhere; }
+  .gridc .bh b { font-size: 11px; }
+  .gridc .gmap { display: block; }
+  .gridc .bl { font-size: 11.5px; }
+  .gridc .bl small { font-size: 10px; }
+  .gridc .cell { font-size: 11.5px; min-height: 30px; }
+  @media (max-width: 560px) { .gridcw { overflow-x: auto; } .band.gridc { min-width: 420px; } }
+
+  /* Ajouts maquette Vue match : cadres d'onglets, badges, fiches de prises, grille des usages, colonnes de socles. */
+  .tabs span.on { color: var(--foreground); }
+  h2.sect { margin: 30px 0 6px; font-size: 16px; font-weight: 600; color: var(--muted-foreground); }
+  h2.sect b { color: var(--foreground); font-weight: 600; }
+  .appframe.small { margin-top: 8px; }
+  .badges { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+  .badge { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 8px 12px; display: flex; flex-direction: column; gap: 5px; box-shadow: inset 3px 0 0 0 color-mix(in oklab, var(--bink) 30%, transparent); }
+  .badge.me { border-color: color-mix(in oklab, var(--info) 60%, transparent); box-shadow: inset 4px 0 0 0 var(--bink); }
+  .badge .bt1 { font-size: 14px; font-weight: 500; line-height: 1; }
+  .badge.me .bt1 { color: var(--bink); }
+  .badge .bt2 { font-size: 12px; color: var(--muted-foreground); line-height: 1; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12.5px; font-weight: 500; color: var(--success); background: color-mix(in oklab, var(--success) 14%, transparent); border: 1px solid color-mix(in oklab, var(--success) 40%, transparent); width: fit-content; }
+  .sheets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 1000px) { .sheets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .sheets { grid-template-columns: minmax(0, 1fr); } }
+  .sheet { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border); border-left: 4px solid var(--ink); border-radius: var(--radius); background: var(--card); padding: 12px; min-width: 0; }
+  .sl-line { display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; gap: 8px; align-items: center; font-size: 12.5px; min-height: 20px; }
+  .sl-line.zero { color: var(--muted-foreground); }
+  .sl-line .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sl-line .dots { display: flex; flex-wrap: nowrap; gap: 3px; justify-content: flex-end; }
+  .sl-line .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .sl-line.zero .n { font-weight: 400; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: var(--ink); }
+  .dot.lost { background: transparent; box-shadow: inset 0 0 0 2px var(--ink); }
+  .dash0 { display: inline-block; width: 11px; border-top: 1px dashed var(--muted-foreground); }
+  .ssec { display: flex; flex-direction: column; gap: 2px; }
+  .ssec > .mf-cap { margin: 0 0 4px; display: flex; align-items: center; }
+  .legend i.ringk { border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 2px var(--foreground); }
+  .legend i.dotk { border-radius: 50%; }
+  .ugridw { overflow-x: auto; max-width: 100%; }
+  .ug { display: grid; gap: 4px 10px; align-items: center; font-size: 12px; }
+  .ug .ugh { font-size: 10.5px; color: var(--muted-foreground); line-height: 1.2; display: flex; align-items: center; gap: 4px; }
+  .ug .ugh b { color: var(--foreground); font-weight: 500; font-size: 11px; }
+  .ug .ugg { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); border-bottom: 1px solid var(--border); padding-bottom: 2px; display: flex; gap: 4px; align-items: center; }
+  .ug .ugn { line-height: 1.15; border-left: 3px solid var(--ink); padding-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ug .ugn.me { font-weight: 700; }
+  .ug .ugsep { grid-column: 1 / -1; border-top: 1px solid var(--border); margin: 3px 0; }
+  .ug .ugt { font-weight: 600; border-top: 1px solid var(--border); padding-top: 4px; }
+  .ucell { display: grid; grid-template-columns: minmax(0, 1fr) 22px; gap: 5px; align-items: center; }
+  .ucell .ub { height: 10px; background: var(--muted); position: relative; border-radius: 2px; display: flex; overflow: hidden; }
+  .ucell .ub span { display: block; height: 100%; }
+  .ucell .uv { text-align: right; font-variant-numeric: tabular-nums; font-size: 11.5px; }
+  .ucell.zero .uv { color: var(--muted-foreground); }
+  .ucell.na .uv { color: var(--muted-foreground); }
+  .ucell.tot { border-top: 1px solid var(--border); padding-top: 4px; }
+  .strack { display: grid; grid-template-columns: 130px minmax(0, 1fr) 34px; gap: 10px; align-items: center; font-size: 12px; }
+  @media (max-width: 560px) { .strack { grid-template-columns: 96px minmax(0, 1fr) 28px; gap: 6px; } }
+  .strack .stn { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .heat { border: 1px dashed var(--border); border-radius: var(--radius); background-color: var(--muted); background-image: var(--hatch); aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; padding: 12px; font-size: 12.5px; color: var(--muted-foreground); }
+  .heat b { display: block; color: var(--foreground); font-weight: 500; margin-bottom: 4px; }
+  .segbtn { display: inline-flex; gap: 4px; }
+  .segbtn button { font-size: 11.5px; padding: 3px 10px; }
+  .dvh { display: grid; grid-template-columns: 1fr minmax(0, 96px) 1fr; gap: 8px; align-items: center; font-size: 11px; }
+  .dvs { display: flex; align-items: center; gap: 6px; }
+  .dvs.end { justify-content: flex-end; }
+  .dvs .bar { height: 14px; border-radius: 2px; }
+  .dvs .cnt { font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; min-width: 12px; }
+  .dvname { text-align: center; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ripgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  @media (max-width: 900px) { .ripgrid { grid-template-columns: minmax(0, 1fr); } }
+  .riph { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 6px; }
+  .note9 { font-size: 11px; color: var(--muted-foreground); }
+  .lrow .plabel b { font-weight: 600; }
+  .submit { border: 1px dashed var(--warning); border-radius: var(--radius); padding: 6px 10px; font-size: 11.5px; color: var(--muted-foreground); background: color-mix(in oklab, var(--warning) 6%, transparent); margin-top: 4px; }
+  .submit b { color: var(--foreground); font-weight: 500; }
+  .cmpsub { padding-left: 14px; font-size: 12px; }
+  .grid2.grid21 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  @media (max-width: 860px) { .grid2.grid21 { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+<div class="page">
+  <div class="topbar">
+    <span class="crumb">Maquette du 06/10/2026 · lecture seule d’une copie de la base (05/10, 18 h 26)</span>
+    <span class="toolbar right" role="group" aria-label="Thème">
+      <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">Clair</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">Sombre</button>
+    </span>
+  </div>
+  <h1 id="title">Vue match — JGtm</h1>
+  <div class="switches">
+    <span class="toolbar switch" role="group" aria-label="Version de la page"><span class="lab">Version</span>
+      <button type="button" data-view="avant" aria-pressed="false">Avant</button>
+      <button type="button" data-view="apres" aria-pressed="true">Après</button>
+    </span>
+    <span class="toolbar switch" role="group" aria-label="Match témoin"><span class="lab">Match</span>
+      <button type="button" data-match="2209" aria-pressed="true">22/09 — Drapeau à Starboard</button>
+      <button type="button" data-match="2407" aria-pressed="false">24/07 — Drapeau à Flood Gulch (BTB)</button>
+    </span>
+  </div>
+  <p class="cover" id="cover"></p>
+  <div id="view-avant-2209" hidden></div>
+  <div id="view-apres-2209"></div>
+  <div id="view-avant-2407" hidden></div>
+  <div id="view-apres-2407" hidden></div>
+
+  <section class="gaps" id="gaps">
+    <h2>Ce que les données ne disent pas encore</h2>
+    <ul id="gaps-list"></ul>
+  </section>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  'use strict';
+  // Modèles de vue des deux matchs, calculés par compute_m.js depuis la copie de la base
+  // (05/10, 18 h 26, lecture seule). Requêtes et résultats bruts : MESURES_MATCHVIEW.md.
+  var VM = {"m2209":{"key":"m2209","tag":"2209","label":"22/09 — Drapeau à Starboard","radius":18,"lifeSrc":"kills","meta":{"id":"ab526724-3684-4335-b759-a18edcccc137","d":"22/09/2026","h":"21:23","map":"Starboard","mode":"Arena:CTF","playlist":"Quick Play","outcome":2,"ms":3,"es":0,"durS":670},"teamSizes":{"us":4,"them":4},"nPresent":8,"roster":[{"x":"2533274823110022","name":"JGtm","camp":"us","me":true,"tok":"squad-player-1","present":true,"kills":11,"deaths":15,"assists":6,"pwk":0,"bot":false,"followed":false},{"x":"2533274839464681","name":"XL JACOB","camp":"us","me":false,"tok":"team-ally","present":true,"kills":38,"deaths":11,"assists":11,"pwk":0,"bot":false,"followed":false},{"x":"2533274858283686","name":"Madina97294","camp":"us","me":false,"tok":"squad-player-2","present":true,"kills":24,"deaths":19,"assists":10,"pwk":0,"bot":false,"followed":true},{"x":"2535469190789936","name":"Chocoboflor","camp":"us","me":false,"tok":"squad-player-3","present":true,"kills":11,"deaths":16,"assists":12,"pwk":0,"bot":false,"followed":true},{"x":"2535428477569087","name":"NOaimAssist5833","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":21,"deaths":16,"assists":7,"pwk":4,"bot":false,"followed":false},{"x":"2535407513596355","name":"UNSCSparton11","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":16,"deaths":23,"assists":7,"pwk":0,"bot":false,"followed":false},{"x":"2535463928672517","name":"Taiko900BPM","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":13,"deaths":22,"assists":8,"pwk":0,"bot":false,"followed":false},{"x":"2535410516831088","name":"Rianbolis","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":11,"deaths":23,"assists":9,"pwk":0,"bot":false,"followed":false}],"journal":145,"pubCount":145,"film":true,"filmDurMs":645800,"badges":[{"key":"first_blood","x":"2535407513596355","t":40586,"name":"UNSCSparton11","me":false},{"key":"first_group_death","x":"2533274823110022","t":40586,"name":"JGtm","me":true},{"key":"clutch_finisher","x":"2533274839464681","t":665662,"name":"XL JACOB","me":false},{"key":"last_group_kill","x":"2533274823110022","t":116315,"name":"JGtm","me":true},{"key":"top_gun","x":"2533274839464681","t":215198,"name":"XL JACOB","me":false},{"key":"top_killer","x":"2533274839464681","t":0,"name":"XL JACOB","me":false},{"key":"kamikaze","x":"2533274839464681","t":665744,"name":"XL JACOB","me":false}],"eqBadges":{"camo":[],"overshield":[],"undetermined":[]},"effKillsMeasured":true,"myKills":11,"filmKills":11,"fragBy":{"shoulder":1,"sidearm":7,"melee":2,"grenade":1},"sunburst":{"shoulder":{"automatic":1},"sidearm":{"sidearm":7},"melee":{"melee":2},"grenade":{"grenade_frag":1}},"tools":[{"key":"w:MK50 Sidekick","label":"MK50 Sidekick","cls":"sidearm","n":7},{"key":"melee","label":"Mêlée","cls":"melee","n":2},{"key":"g:grenade_frag","label":"Grenade frag","cls":"grenade","n":1},{"key":"w:VK78 Commando","label":"VK78 Commando","cls":"shoulder","n":1}],"dist":[{"weapon":"MK50 Sidekick","cls":"sidearm","n":69,"players":[{"x":"2533274858283686","name":"Madina97294","camp":"us","n":16,"min":2.21,"max":14.86,"avg":8.193750000000001},{"x":"2535407513596355","name":"UNSCSparton11","camp":"them","n":14,"min":1.14,"max":17.19,"avg":7.737857142857142},{"x":"2535428477569087","name":"NOaimAssist5833","camp":"them","n":10,"min":2.49,"max":15.32,"avg":7.520999999999999},{"x":"2533274823110022","name":"JGtm","camp":"us","n":7,"min":2.77,"max":7.79,"avg":4.6000000000000005},{"x":"2535410516831088","name":"Rianbolis","camp":"them","n":7,"min":3.27,"max":14.47,"avg":8.532857142857145},{"x":"2535469190789936","name":"Chocoboflor","camp":"us","n":6,"min":2.51,"max":11.74,"avg":6.031666666666666},{"x":"2535463928672517","name":"Taiko900BPM","camp":"them","n":5,"min":4.52,"max":11.49,"avg":7.232000000000001},{"x":"2533274839464681","name":"XL JACOB","camp":"us","n":4,"min":4.68,"max":11.97,"avg":9.7275}]},{"weapon":"MA40 AR","cls":"shoulder","n":25,"players":[{"x":"2533274839464681","name":"XL JACOB","camp":"us","n":16,"min":0.93,"max":13.56,"avg":3.8174999999999994},{"x":"2535428477569087","name":"NOaimAssist5833","camp":"them","n":3,"min":4.5,"max":8.9,"avg":6.1499999999999995},{"x":"2535469190789936","name":"Chocoboflor","camp":"us","n":2,"min":1.51,"max":4,"avg":2.755},{"x":"2533274858283686","name":"Madina97294","camp":"us","n":2,"min":2.19,"max":4.17,"avg":3.1799999999999997},{"x":"2535410516831088","name":"Rianbolis","camp":"them","n":1,"min":4,"max":4,"avg":4},{"x":"2535463928672517","name":"Taiko900BPM","camp":"them","n":1,"min":3.1,"max":3.1,"avg":3.1}]},{"weapon":"Mêlée","cls":"melee","n":17,"players":[{"x":"2533274858283686","name":"Madina97294","camp":"us","n":4,"min":0.15,"max":0.45,"avg":0.295},{"x":"2535410516831088","name":"Rianbolis","camp":"them","n":3,"min":0.14,"max":0.39,"avg":0.26333333333333336},{"x":"2535469190789936","name":"Chocoboflor","camp":"us","n":2,"min":0.39,"max":0.39,"avg":0.39},{"x":"2533274823110022","name":"JGtm","camp":"us","n":2,"min":0.21,"max":0.26,"avg":0.235},{"x":"2535428477569087","name":"NOaimAssist5833","camp":"them","n":2,"min":0.21,"max":0.66,"avg":0.435},{"x":"2533274839464681","name":"XL JACOB","camp":"us","n":2,"min":0.39,"max":0.48,"avg":0.435},{"x":"2535463928672517","name":"Taiko900BPM","camp":"them","n":1,"min":0.21,"max":0.21,"avg":0.21},{"x":"2535407513596355","name":"UNSCSparton11","camp":"them","n":1,"min":0.28,"max":0.28,"avg":0.28}]},{"weapon":"Grenade frag","cls":"grenade","n":11,"players":[{"x":"2533274839464681","name":"XL JACOB","camp":"us","n":5,"min":3,"max":8.73,"avg":5.828},{"x":"2535463928672517","name":"Taiko900BPM","camp":"them","n":2,"min":7.41,"max":8.94,"avg":8.175},{"x":"2533274823110022","name":"JGtm","camp":"us","n":1,"min":15.16,"max":15.16,"avg":15.16},{"x":"2533274858283686","name":"Madina97294","camp":"us","n":1,"min":7.13,"max":7.13,"avg":7.13},{"x":"2535428477569087","name":"NOaimAssist5833","camp":"them","n":1,"min":12.43,"max":12.43,"avg":12.43},{"x":"2535407513596355","name":"UNSCSparton11","camp":"them","n":1,"min":3.89,"max":3.89,"avg":3.89}]},{"weapon":"Fusil électrique","cls":"heavy","n":8,"players":[{"x":"2533274839464681","name":"XL JACOB","camp":"us","n":6,"min":1.82,"max":17.82,"avg":9.436666666666666},{"x":"2535463928672517","name":"Taiko900BPM","camp":"them","n":2,"min":11.27,"max":30.87,"avg":21.07}]},{"weapon":"Épée à énergie","cls":"heavy","n":4,"players":[{"x":"2535428477569087","name":"NOaimAssist5833","camp":"them","n":4,"min":0.24,"max":0.51,"avg":0.375}]},{"weapon":"CQS48 Bulldog","cls":"shoulder","n":3,"players":[{"x":"2533274839464681","name":"XL JACOB","camp":"us","n":3,"min":1.54,"max":2.82,"avg":2.1599999999999997}]},{"weapon":"VK78 Commando","cls":"shoulder","n":2,"players":[{"x":"2533274823110022","name":"JGtm","camp":"us","n":1,"min":4.06,"max":4.06,"avg":4.06},{"x":"2535463928672517","name":"Taiko900BPM","camp":"them","n":1,"min":22.15,"max":22.15,"avg":22.15}]},{"weapon":"Chute, environnement","cls":"environmental","n":1,"players":[{"x":"2535469190789936","name":"Chocoboflor","camp":"us","n":1,"min":13.25,"max":13.25,"avg":13.25}]}],"distMeasured":140,"distPlayers":{"2535407513596355":16,"2533274839464681":36,"2535428477569087":20,"2533274858283686":23,"2535410516831088":11,"2535469190789936":11,"2535463928672517":12,"2533274823110022":11},"distTotal":145,"elev":{"kills":[{"d":4.06,"h":0.72,"w":"VK78 Commando","t":116315},{"d":3.99,"h":1.05,"w":"MK50 Sidekick","t":177877},{"d":2.77,"h":-0.03,"w":"MK50 Sidekick","t":217018},{"d":0.26,"h":-0.03,"w":"Mêlée","t":268486},{"d":7.79,"h":2.02,"w":"MK50 Sidekick","t":326612},{"d":3.08,"h":0.46,"w":"MK50 Sidekick","t":352187},{"d":15.16,"h":2.18,"w":"Grenade frag","t":485371},{"d":5.03,"h":2.71,"w":"MK50 Sidekick","t":488159},{"d":5.22,"h":0,"w":"MK50 Sidekick","t":527899},{"d":4.32,"h":-0.3,"w":"MK50 Sidekick","t":596135},{"d":0.21,"h":0.01,"w":"Mêlée","t":630236}],"deaths":[{"d":7.88,"h":0.44,"w":"MK50 Sidekick","t":40586},{"d":13.91,"h":0.66,"w":"MK50 Sidekick","t":94023},{"d":0.51,"h":-0.08,"w":"Épée à énergie","t":140956},{"d":9.58,"h":-1.38,"w":"MK50 Sidekick","t":198064},{"d":14.47,"h":-0.77,"w":"MK50 Sidekick","t":217049},{"d":9.22,"h":-2.72,"w":"MK50 Sidekick","t":270955},{"d":7.36,"h":-1.91,"w":"MK50 Sidekick","t":304389},{"d":5.05,"h":-1.45,"w":"MA40 AR","t":390692},{"d":7.84,"h":0.58,"w":"MK50 Sidekick","t":425328},{"d":0.26,"h":0,"w":"Mêlée","t":443529},{"d":5.22,"h":0,"w":"MK50 Sidekick","t":458312},{"d":3.1,"h":1.15,"w":"MA40 AR","t":494698},{"d":7.5,"h":-0.98,"w":"MK50 Sidekick","t":553759},{"d":12.43,"h":-0.24,"w":"Grenade frag","t":605710},{"d":0.21,"h":0.01,"w":"Mêlée","t":630239}],"lobby":[{"d":11.58,"h":0.11},{"d":11.97,"h":0},{"d":4.5,"h":1.05},{"d":8.9,"h":1.05},{"d":4.18,"h":0.86},{"d":3.96,"h":-0.83},{"d":0.45,"h":0.28},{"d":10.13,"h":-0.53},{"d":6.56,"h":-0.12},{"d":4.52,"h":-0.43},{"d":6.18,"h":-0.76},{"d":1.14,"h":-0.69},{"d":0.21,"h":-0.01},{"d":5.32,"h":1.22},{"d":0.66,"h":-0.65},{"d":6.12,"h":0},{"d":0.37,"h":-0.06},{"d":30.87,"h":2},{"d":2.32,"h":0},{"d":6.7,"h":0},{"d":6.34,"h":1.4},{"d":11.27,"h":1.22},{"d":2.19,"h":0},{"d":0.38,"h":-0.06},{"d":0.24,"h":0},{"d":2.15,"h":0.11},{"d":3,"h":1.71},{"d":7.38,"h":0.15},{"d":0.39,"h":-0.11},{"d":13.25,"h":11.04},{"d":4,"h":-0.32},{"d":8.72,"h":-0.05},{"d":7.11,"h":0.87},{"d":15.32,"h":0.91},{"d":7.43,"h":1.16},{"d":1.81,"h":0.1},{"d":8.94,"h":-2.02},{"d":14.3,"h":-0.84},{"d":0.15,"h":0.01},{"d":7.72,"h":0.1},{"d":8.73,"h":-0.31},{"d":4.73,"h":0.87},{"d":0.93,"h":0},{"d":4,"h":-0.23},{"d":4.52,"h":-1.76},{"d":11.25,"h":-1.13},{"d":4.17,"h":0.17},{"d":2.21,"h":-0.01},{"d":0.28,"h":0.07},{"d":0.28,"h":-0.07},{"d":14.16,"h":1.05},{"d":4.68,"h":3.38},{"d":0.39,"h":0},{"d":0.3,"h":-0.01},{"d":1.51,"h":-0.38},{"d":2.8,"h":-0.31},{"d":5.22,"h":-0.76},{"d":10.16,"h":-2.19},{"d":0.14,"h":-0.01},{"d":7.14,"h":3.37},{"d":0.48,"h":0},{"d":2.15,"h":1.04},{"d":13.03,"h":1.39},{"d":4.58,"h":1.54},{"d":6.73,"h":0.43},{"d":10.71,"h":0},{"d":4.68,"h":-0.48},{"d":2.51,"h":-0.3},{"d":3.89,"h":0},{"d":7.64,"h":-0.94},{"d":6.72,"h":0.59},{"d":0.39,"h":0},{"d":0.39,"h":0},{"d":17.19,"h":0},{"d":1.16,"h":0},{"d":10.68,"h":0},{"d":7.13,"h":0},{"d":11.49,"h":0.38},{"d":6.02,"h":-0.81},{"d":7.18,"h":0},{"d":2.82,"h":0},{"d":3.27,"h":-0.21},{"d":1.54,"h":0.44},{"d":14.86,"h":-0.58},{"d":3.66,"h":-0.9},{"d":7.07,"h":-0.15},{"d":3.69,"h":0.83},{"d":7.41,"h":1.38},{"d":2.12,"h":0},{"d":1.82,"h":0.77},{"d":7.88,"h":-0.12},{"d":6.38,"h":-1.88},{"d":6.76,"h":0.05},{"d":17.82,"h":0.73},{"d":22.15,"h":-1.67},{"d":3.17,"h":1.11},{"d":3.44,"h":1.21},{"d":2.49,"h":-0.66},{"d":13.56,"h":1.4},{"d":11.74,"h":-1.68},{"d":4.37,"h":0.82},{"d":6.93,"h":0.58},{"d":1.35,"h":-0.09},{"d":2.76,"h":0.31},{"d":15.02,"h":1.9},{"d":3.11,"h":0.9},{"d":5.86,"h":0},{"d":7.7,"h":-0.48},{"d":5.41,"h":0.8},{"d":8.21,"h":1.4},{"d":7.32,"h":2.26},{"d":7.15,"h":1.9},{"d":1.93,"h":0},{"d":13.8,"h":1.39}]},"myMeasured":11,"usageCols":[{"key":"shroud_screen","label":"Écran occultant","kind":"equip"},{"key":"powerup_overshield","label":"Surbouclier","kind":"equip"}],"usageRows":[{"x":"2533274823110022","name":"JGtm","camp":"us","me":true,"tok":"squad-player-1","left":false,"film":true,"grapple":0,"eq":[[0,1,1],[2,0,0]]},{"x":"2533274839464681","name":"XL JACOB","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":0,"eq":[[0,0,2],[0,0,0]]},{"x":"2533274858283686","name":"Madina97294","camp":"us","me":false,"tok":"squad-player-2","left":false,"film":true,"grapple":0,"eq":[[0,0,0],[1,0,0]]},{"x":"2535469190789936","name":"Chocoboflor","camp":"us","me":false,"tok":"squad-player-3","left":false,"film":true,"grapple":0,"eq":[[0,1,2],[2,0,0]]},{"x":"2535428477569087","name":"NOaimAssist5833","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[0,2,2],[0,0,1]]},{"x":"2535407513596355","name":"UNSCSparton11","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[0,0,2],[0,0,1]]},{"x":"2535463928672517","name":"Taiko900BPM","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[0,1,0],[0,0,0]]},{"x":"2535410516831088","name":"Rianbolis","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,0]]}],"usageTeam":{"grapple":{"us":0,"them":0},"eq":[{"us":7,"them":7},{"us":5,"them":2}]},"takenChannel":true,"control":{"powerup":{"us":5,"them":2,"lostUs":0,"lostThem":2},"power":{"us":0,"them":2,"lostUs":0,"lostThem":0},"rack":{"us":4,"them":3,"lostUs":0,"lostThem":0},"base":{"us":0,"them":0,"lostUs":0,"lostThem":0}},"objects":{"powerup":[{"key":"powerup_overshield","name":"Surbouclier","us":5,"them":2,"by":{"2533274823110022":2,"2533274858283686":1,"2535407513596355":1,"2535428477569087":1,"2535469190789936":2},"kept":{"2533274823110022":0,"2533274858283686":0,"2535407513596355":0,"2535428477569087":0,"2535469190789936":0},"dropped":{"2533274823110022":0,"2533274858283686":0,"2535407513596355":1,"2535428477569087":1,"2535469190789936":0},"lostUs":0,"lostThem":2}],"power":[{"key":"4ff3937e","name":"Épée à énergie","us":0,"them":2,"by":{"2535428477569087":2},"kept":{},"dropped":{},"lostUs":0,"lostThem":0}],"rack":[{"key":"9387a8b9","name":"Fusil électrique","us":2,"them":2,"by":{"2535463928672517":2,"2533274839464681":2},"kept":{},"dropped":{},"lostUs":0,"lostThem":0},{"key":"fd98554c","name":"VK78 Commando","us":2,"them":0,"by":{"2533274839464681":1,"2533274823110022":1},"kept":{},"dropped":{},"lostUs":0,"lostThem":0},{"key":"b619d84a","name":"CQS48 Bulldog","us":0,"them":1,"by":{"2535410516831088":1},"kept":{},"dropped":{},"lostUs":0,"lostThem":0}],"base":[]},"unclassified":{"us":0,"them":0},"tierState":"measured","padsEmptied":{"camo":0,"overshield":10},"pads":{"occ":27,"named":9,"unnamed":8,"list":[{"weapon":"b619d84a","occupations":3,"named":1},{"weapon":"4ff3937e","occupations":5,"named":2},{"weapon":"9387a8b9","occupations":4,"named":4},{"weapon":"fd98554c","occupations":3,"named":1},{"weapon":"fd98554c","occupations":2,"named":1}]},"tierRows":[{"x":"2535463928672517","camp":"them","tier":"terrain","fam":"9387a8b9","name":"Fusil électrique","n":2},{"x":"2535428477569087","camp":"them","tier":"puissance","fam":"4ff3937e","name":"Épée à énergie","n":2},{"x":"2535410516831088","camp":"them","tier":"terrain","fam":"b619d84a","name":"CQS48 Bulldog","n":1},{"x":"2533274839464681","camp":"us","tier":"terrain","fam":"fd98554c","name":"VK78 Commando","n":1},{"x":"2533274839464681","camp":"us","tier":"terrain","fam":"9387a8b9","name":"Fusil électrique","n":2},{"x":"2533274823110022","camp":"us","tier":"terrain","fam":"fd98554c","name":"VK78 Commando","n":1}],"sheets":{"owners":[{"x":"2533274823110022","name":"JGtm","tok":"squad-player-1","me":true},{"x":"2533274839464681","name":"XL JACOB","tok":"team-ally","me":false},{"x":"2533274858283686","name":"Madina97294","tok":"squad-player-2","me":false},{"x":"2535469190789936","name":"Chocoboflor","tok":"squad-player-3","me":false}],"sections":[{"res":"powerup","lines":[{"key":"powerup_overshield","name":"Surbouclier","camp":5,"taken":[2,0,1,2],"kept":[0,0,0,0],"dropped":[0,0,0,0]}]},{"res":"power","lines":[]},{"res":"rack","lines":[{"key":"9387a8b9","name":"Fusil électrique","camp":2,"taken":[0,2,0,0],"kept":[0,0,0,0],"dropped":[0,0,0,0]},{"key":"fd98554c","name":"VK78 Commando","camp":2,"taken":[1,1,0,0],"kept":[0,0,0,0],"dropped":[0,0,0,0]}]}],"totals":[[2,0,1,2],[0,0,0,0],[1,3,0,0]],"dominant":["powerup","rack","powerup","powerup"]},"effect":{"us":{"ms":71600,"kills":2,"eps":5},"them":{"ms":0,"kills":0,"eps":0}},"pwk":{"us":0,"them":4},"vehRows":0,"livesBy":[{"x":"2533274823110022","name":"JGtm","tok":"squad-player-1","me":true,"near":[11,8],"alone":[2,0],"noctx":0,"nomate":0,"lives":13,"allLives":16},{"x":"2533274839464681","name":"XL JACOB","tok":"team-ally","me":false,"near":[9,30],"alone":[1,1],"noctx":0,"nomate":0,"lives":10,"allLives":11},{"x":"2533274858283686","name":"Madina97294","tok":"squad-player-2","me":false,"near":[14,16],"alone":[3,6],"noctx":0,"nomate":0,"lives":17,"allLives":20},{"x":"2535469190789936","name":"Chocoboflor","tok":"squad-player-3","me":false,"near":[13,10],"alone":[2,1],"noctx":0,"nomate":0,"lives":15,"allLives":17}],"assist":{"measured":145,"pairs":[{"a":"2535410516831088","aName":"Rianbolis","aCamp":"them","k":"2535407513596355","kName":"UNSCSparton11","n":4,"stolen":3,"avg":65},{"a":"2535410516831088","aName":"Rianbolis","aCamp":"them","k":"2535428477569087","kName":"NOaimAssist5833","n":4,"stolen":1,"avg":48},{"a":"2533274858283686","aName":"Madina97294","aCamp":"us","k":"2533274839464681","kName":"XL JACOB","n":4,"stolen":0,"avg":35},{"a":"2535469190789936","aName":"Chocoboflor","aCamp":"us","k":"2533274839464681","kName":"XL JACOB","n":4,"stolen":1,"avg":35},{"a":"2535469190789936","aName":"Chocoboflor","aCamp":"us","k":"2533274858283686","kName":"Madina97294","n":6,"stolen":2,"avg":44},{"a":"2535463928672517","aName":"Taiko900BPM","aCamp":"them","k":"2535410516831088","kName":"Rianbolis","n":3,"stolen":3,"avg":53},{"a":"2535463928672517","aName":"Taiko900BPM","aCamp":"them","k":"2535407513596355","kName":"UNSCSparton11","n":3,"stolen":2,"avg":42},{"a":"2535428477569087","aName":"NOaimAssist5833","aCamp":"them","k":"2535407513596355","kName":"UNSCSparton11","n":3,"stolen":1,"avg":37},{"a":"2535407513596355","aName":"UNSCSparton11","aCamp":"them","k":"2535428477569087","kName":"NOaimAssist5833","n":3,"stolen":1,"avg":37},{"a":"2533274823110022","aName":"JGtm","aCamp":"us","k":"2535469190789936","kName":"Chocoboflor","n":2,"stolen":2,"avg":65},{"a":"2533274858283686","aName":"Madina97294","aCamp":"us","k":"2533274823110022","kName":"JGtm","n":4,"stolen":1,"avg":50},{"a":"2533274823110022","aName":"JGtm","aCamp":"us","k":"2533274839464681","kName":"XL JACOB","n":2,"stolen":2,"avg":50},{"a":"2535407513596355","aName":"UNSCSparton11","aCamp":"them","k":"2535410516831088","kName":"Rianbolis","n":1,"stolen":1,"avg":81},{"a":"2535463928672517","aName":"Taiko900BPM","aCamp":"them","k":"2535428477569087","kName":"NOaimAssist5833","n":2,"stolen":1,"avg":56},{"a":"2535428477569087","aName":"NOaimAssist5833","aCamp":"them","k":"2535463928672517","kName":"Taiko900BPM","n":1,"stolen":1,"avg":87},{"a":"2533274839464681","aName":"XL JACOB","aCamp":"us","k":"2533274858283686","kName":"Madina97294","n":6,"stolen":4,"avg":62},{"a":"2535469190789936","aName":"Chocoboflor","aCamp":"us","k":"2533274823110022","kName":"JGtm","n":2,"stolen":1,"avg":40},{"a":"2533274839464681","aName":"XL JACOB","aCamp":"us","k":"2535469190789936","kName":"Chocoboflor","n":4,"stolen":2,"avg":53},{"a":"2533274823110022","aName":"JGtm","aCamp":"us","k":"2533274858283686","kName":"Madina97294","n":1,"stolen":1,"avg":46},{"a":"2535407513596355","aName":"UNSCSparton11","aCamp":"them","k":"2535463928672517","kName":"Taiko900BPM","n":2,"stolen":2,"avg":51},{"a":"2535410516831088","aName":"Rianbolis","aCamp":"them","k":"2535463928672517","kName":"Taiko900BPM","n":1,"stolen":0,"avg":20}]},"riposte":{"measured":145,"publishable":145,"avengedTotal":38,"us":[{"x":"2533274839464681","name":"XL JACOB","avenged":1,"ripostes":10,"by":[["Madina97294",1921]],"fr":[["Chocoboflor",3970],["Madina97294",249],["Chocoboflor",1934],["Madina97294",3970],["Madina97294",1854],["JGtm",2620],["Chocoboflor",1787],["JGtm",1552],["Chocoboflor",1100],["Madina97294",2719]]},{"x":"2533274858283686","name":"Madina97294","avenged":7,"ripostes":4,"by":[["XL JACOB",249],["JGtm",1168],["XL JACOB",3970],["XL JACOB",1854],["JGtm",3335],["JGtm",3671],["XL JACOB",2719]],"fr":[["JGtm",1284],["JGtm",2569],["XL JACOB",1921],["Chocoboflor",2386]]},{"x":"2533274823110022","name":"JGtm","avenged":6,"ripostes":3,"by":[["Madina97294",1284],["Madina97294",2569],["Chocoboflor",3589],["XL JACOB",2620],["XL JACOB",1552],["Chocoboflor",2188]],"fr":[["Madina97294",1168],["Madina97294",3335],["Madina97294",3671]]},{"x":"2535469190789936","name":"Chocoboflor","avenged":5,"ripostes":2,"by":[["XL JACOB",3970],["XL JACOB",1934],["XL JACOB",1787],["Madina97294",2386],["XL JACOB",1100]],"fr":[["JGtm",3589],["JGtm",2188]]}],"them":[{"x":"2535428477569087","name":"NOaimAssist5833","avenged":2,"ripostes":8,"by":[["Rianbolis",31],["UNSCSparton11",82]],"fr":[["UNSCSparton11",4087],["Rianbolis",2487],["Rianbolis",3072],["Taiko900BPM",316],["Taiko900BPM",2469],["Taiko900BPM",2502],["UNSCSparton11",3754],["UNSCSparton11",3987]]},{"x":"2535407513596355","name":"UNSCSparton11","avenged":4,"ripostes":5,"by":[["NOaimAssist5833",4087],["Taiko900BPM",751],["NOaimAssist5833",3754],["NOaimAssist5833",3987]],"fr":[["Rianbolis",3821],["Rianbolis",4454],["Taiko900BPM",3420],["Taiko900BPM",4370],["NOaimAssist5833",82]]},{"x":"2535463928672517","name":"Taiko900BPM","avenged":7,"ripostes":3,"by":[["NOaimAssist5833",316],["NOaimAssist5833",2469],["UNSCSparton11",3420],["NOaimAssist5833",2502],["Rianbolis",3018],["UNSCSparton11",4370],["Rianbolis",1818]],"fr":[["UNSCSparton11",751],["Rianbolis",2438],["Rianbolis",2636]]},{"x":"2535410516831088","name":"Rianbolis","avenged":6,"ripostes":3,"by":[["NOaimAssist5833",2487],["NOaimAssist5833",3072],["UNSCSparton11",3821],["UNSCSparton11",4454],["Taiko900BPM",2438],["Taiko900BPM",2636]],"fr":[["NOaimAssist5833",31],["Taiko900BPM",3018],["Taiko900BPM",1818]]}],"scaleMax":10}},"m2407":{"key":"m2407","tag":"2407","label":"24/07 — Drapeau à Flood Gulch (BTB)","radius":30,"lifeSrc":"highlight","meta":{"id":"4f77afc1-d9f4-443b-b38f-3628341bf7e9","d":"24/07/2026","h":"22:20","map":"Flood Gulch","mode":"BTB:CTF","playlist":"Big Team Battle","outcome":1,"ms":1,"es":1,"durS":1194},"teamSizes":{"us":12,"them":12},"nPresent":24,"roster":[{"x":"2533274823110022","name":"JGtm","camp":"us","me":true,"tok":"squad-player-1","present":true,"kills":10,"deaths":15,"assists":1,"pwk":0,"bot":false,"followed":false},{"x":"2535457514480546","name":"DUGValidus","camp":"us","me":false,"tok":"team-ally","present":true,"kills":19,"deaths":11,"assists":10,"pwk":1,"bot":false,"followed":false},{"x":"2535462209962245","name":"Tupacamaru9556","camp":"us","me":false,"tok":"team-ally","present":true,"kills":24,"deaths":13,"assists":7,"pwk":2,"bot":false,"followed":false},{"x":"2535432037056604","name":"King Kai 198070","camp":"us","me":false,"tok":"team-ally","present":true,"kills":22,"deaths":11,"assists":7,"pwk":7,"bot":false,"followed":false},{"x":"2533274858283686","name":"Madina97294","camp":"us","me":false,"tok":"squad-player-2","present":true,"kills":16,"deaths":19,"assists":7,"pwk":1,"bot":false,"followed":true},{"x":"2535447170907787","name":"CU3RV0187","camp":"us","me":false,"tok":"team-ally","present":true,"kills":7,"deaths":11,"assists":14,"pwk":0,"bot":false,"followed":false},{"x":"2535420159292452","name":"SKR DRAAK","camp":"us","me":false,"tok":"team-ally","present":true,"kills":9,"deaths":11,"assists":6,"pwk":1,"bot":false,"followed":false},{"x":"2535449476496795","name":"nerdpuncher","camp":"us","me":false,"tok":"team-ally","present":true,"kills":9,"deaths":11,"assists":5,"pwk":1,"bot":false,"followed":false},{"x":"2535468111373012","name":"Rabbitzo3","camp":"us","me":false,"tok":"team-ally","present":true,"kills":10,"deaths":18,"assists":5,"pwk":4,"bot":false,"followed":false},{"x":"2535437483090324","name":"Yessireezy","camp":"us","me":false,"tok":"team-ally","present":true,"kills":10,"deaths":11,"assists":5,"pwk":4,"bot":false,"followed":false},{"x":"bid(59.0)","name":"Bot 59","camp":"us","me":false,"tok":"team-ally","present":true,"kills":5,"deaths":3,"assists":3,"pwk":2,"bot":true,"followed":false},{"x":"2533274827096894","name":"Prose94","camp":"us","me":false,"tok":"team-ally","present":true,"kills":5,"deaths":17,"assists":1,"pwk":0,"bot":false,"followed":false},{"x":"2535468801188298","name":"Narotlcs","camp":"us","me":false,"tok":"team-ally","present":false,"kills":2,"deaths":4,"assists":0,"pwk":0,"bot":false,"followed":false},{"x":"bid(22.0)","name":"Bot 22","camp":"us","me":false,"tok":"team-ally","present":false,"kills":0,"deaths":0,"assists":0,"pwk":0,"bot":true,"followed":false},{"x":"bid(42.0)","name":"Bot 42","camp":"us","me":false,"tok":"team-ally","present":false,"kills":0,"deaths":0,"assists":0,"pwk":0,"bot":true,"followed":false},{"x":"bid(6.0)","name":"Bot 6","camp":"us","me":false,"tok":"team-ally","present":false,"kills":0,"deaths":0,"assists":0,"pwk":0,"bot":true,"followed":false},{"x":"2535415664028186","name":"Joueur 2","camp":"us","me":false,"tok":"team-ally","present":false,"kills":0,"deaths":0,"assists":0,"pwk":0,"bot":false,"followed":false},{"x":"2535424439387161","name":"Joueur 3","camp":"us","me":false,"tok":"team-ally","present":false,"kills":0,"deaths":0,"assists":0,"pwk":0,"bot":false,"followed":false},{"x":"2533274893737372","name":"MiniScotsMin","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":54,"deaths":9,"assists":4,"pwk":20,"bot":false,"followed":false},{"x":"2535457217346540","name":"Shiloh0209","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":34,"deaths":13,"assists":8,"pwk":8,"bot":false,"followed":false},{"x":"2533274818676576","name":"Feelgood Joker","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":20,"deaths":8,"assists":5,"pwk":5,"bot":false,"followed":false},{"x":"2535469763661810","name":"macattackfin","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":16,"deaths":16,"assists":6,"pwk":3,"bot":false,"followed":false},{"x":"2535461788192443","name":"XN3RDXD3VILX","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":12,"deaths":10,"assists":10,"pwk":1,"bot":false,"followed":false},{"x":"2533274988198027","name":"GUCCIGUAP1103","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":7,"deaths":16,"assists":3,"pwk":0,"bot":false,"followed":false},{"x":"2535445318491907","name":"BLADERUNNER3141","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":4,"deaths":12,"assists":5,"pwk":0,"bot":false,"followed":false},{"x":"2535462972817970","name":"Dafar8423","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":3,"deaths":12,"assists":4,"pwk":0,"bot":false,"followed":false},{"x":"2535418140736812","name":"NoahChnce4u2","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":0,"deaths":18,"assists":0,"pwk":0,"bot":false,"followed":false},{"x":"2533274798159764","name":"Reapers Protege","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":1,"deaths":19,"assists":2,"pwk":0,"bot":false,"followed":false},{"x":"2535432826033393","name":"AJM002","camp":"them","me":false,"tok":"team-enemy","present":false,"kills":2,"deaths":4,"assists":0,"pwk":0,"bot":false,"followed":false},{"x":"2535461484006747","name":"Jermoe Jr","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":1,"deaths":3,"assists":1,"pwk":1,"bot":false,"followed":false},{"x":"bid(11.0)","name":"Bot 11","camp":"them","me":false,"tok":"team-enemy","present":false,"kills":0,"deaths":0,"assists":2,"pwk":0,"bot":true,"followed":false},{"x":"bid(23.0)","name":"Bot 23","camp":"them","me":false,"tok":"team-enemy","present":true,"kills":0,"deaths":1,"assists":1,"pwk":0,"bot":true,"followed":false},{"x":"bid(38.0)","name":"Bot 38","camp":"them","me":false,"tok":"team-enemy","present":false,"kills":0,"deaths":0,"assists":0,"pwk":0,"bot":true,"followed":false},{"x":"bid(57.0)","name":"Bot 57","camp":"them","me":false,"tok":"team-enemy","present":false,"kills":0,"deaths":0,"assists":0,"pwk":0,"bot":true,"followed":false},{"x":"2533274809500684","name":"E3D","camp":"them","me":false,"tok":"team-enemy","present":false,"kills":1,"deaths":8,"assists":0,"pwk":0,"bot":false,"followed":false},{"x":"2533274964038601","name":"Joueur 1","camp":"them","me":false,"tok":"team-enemy","present":false,"kills":0,"deaths":0,"assists":0,"pwk":0,"bot":false,"followed":false}],"journal":294,"pubCount":0,"film":true,"filmDurMs":1111100,"badges":[{"key":"first_blood","x":"2533274858283686","t":136435,"name":"Madina97294","me":false},{"key":"first_group_death","x":"2535468111373012","t":138868,"name":"Rabbitzo3","me":false},{"key":"last_group_kill","x":"2533274827096894","t":510822,"name":"Prose94","me":false},{"key":"top_gun","x":"2535432037056604","t":497980,"name":"King Kai 198070","me":false},{"key":"top_killer","x":"2535462209962245","t":0,"name":"Tupacamaru9556","me":false},{"key":"kamikaze","x":"2535420159292452","t":945318,"name":"SKR DRAAK","me":false}],"eqBadges":{"camo":[],"overshield":[],"undetermined":[]},"effKillsMeasured":false,"myKills":10,"filmKills":0,"fragBy":{"unattributed":10},"sunburst":{"unattributed":{"unattributed":10}},"tools":[{"key":"unattributed","label":"Non attribué","cls":"unattributed","n":10}],"dist":[],"distMeasured":0,"distPlayers":{},"distTotal":303,"elev":{"kills":[],"deaths":[],"lobby":[]},"myMeasured":0,"usageCols":[{"key":"grapple","label":"Grappin","kind":"grapple"},{"key":"wall","label":"Mur de protection","kind":"equip"},{"key":"shroud_screen","label":"Écran occultant","kind":"equip"},{"key":"powerup_camo","label":"Camouflage","kind":"equip"},{"key":"powerup_overshield","label":"Surbouclier","kind":"equip"}],"usageRows":[{"x":"2533274823110022","name":"JGtm","camp":"us","me":true,"tok":"squad-player-1","left":false,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,1],[0,0,0],[0,0,0]]},{"x":"2535457514480546","name":"DUGValidus","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":0,"eq":[[2,0,0],[0,0,1],[0,0,0],[0,0,0]]},{"x":"2535462209962245","name":"Tupacamaru9556","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,1],[0,0,0],[0,0,0]]},{"x":"2535432037056604","name":"King Kai 198070","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":1,"eq":[[1,0,0],[0,0,2],[1,0,0],[0,0,0]]},{"x":"2533274858283686","name":"Madina97294","camp":"us","me":false,"tok":"squad-player-2","left":false,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,0],[0,0,0],[4,0,0]]},{"x":"2535447170907787","name":"CU3RV0187","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":0,"eq":[[0,0,1],[0,0,1],[0,0,0],[0,0,0]]},{"x":"2535420159292452","name":"SKR DRAAK","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":8,"eq":[[0,0,1],[0,0,1],[0,0,0],[0,0,0]]},{"x":"2535449476496795","name":"nerdpuncher","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":0,"eq":[[1,0,3],[0,0,1],[0,0,0],[0,0,0]]},{"x":"2535468111373012","name":"Rabbitzo3","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,2],[0,0,0],[0,0,0]]},{"x":"2535437483090324","name":"Yessireezy","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":4,"eq":[[0,0,0],[0,0,1],[1,0,0],[1,0,0]]},{"x":"bid(59.0)","name":"Bot 59","camp":"us","me":false,"tok":"team-ally","left":false,"film":false,"grapple":null,"eq":[null,null,null,null]},{"x":"2533274827096894","name":"Prose94","camp":"us","me":false,"tok":"team-ally","left":false,"film":true,"grapple":2,"eq":[[1,0,0],[0,0,0],[0,0,0],[0,0,0]]},{"x":"2535468801188298","name":"Narotlcs","camp":"us","me":false,"tok":"team-ally","left":true,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,0],[0,0,0],[0,0,0]]},{"x":"2533274893737372","name":"MiniScotsMin","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":6,"eq":[[1,0,0],[0,0,0],[4,0,0],[0,0,0]]},{"x":"2535457217346540","name":"Shiloh0209","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[1,0,1],[0,0,2],[0,0,0],[0,0,0]]},{"x":"2533274818676576","name":"Feelgood Joker","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[0,0,1],[0,0,0],[0,0,0],[0,0,0]]},{"x":"2535469763661810","name":"macattackfin","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":7,"eq":[[0,0,0],[0,0,0],[0,0,0],[0,0,0]]},{"x":"2535461788192443","name":"XN3RDXD3VILX","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":1,"eq":[[0,0,1],[0,0,0],[3,0,0],[0,0,0]]},{"x":"2533274988198027","name":"GUCCIGUAP1103","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":2,"eq":[[0,0,0],[0,0,2],[0,0,0],[0,0,0]]},{"x":"2535445318491907","name":"BLADERUNNER3141","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,1],[0,0,0],[0,0,0]]},{"x":"2535462972817970","name":"Dafar8423","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[3,0,1],[0,0,0],[0,0,0],[0,0,0]]},{"x":"2535418140736812","name":"NoahChnce4u2","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,0],[0,0,0],[0,0,0]]},{"x":"2533274798159764","name":"Reapers Protege","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,1],[0,0,1],[0,0,0]]},{"x":"2535432826033393","name":"AJM002","camp":"them","me":false,"tok":"team-enemy","left":true,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,0],[0,0,0],[0,0,0]]},{"x":"2535461484006747","name":"Jermoe Jr","camp":"them","me":false,"tok":"team-enemy","left":false,"film":true,"grapple":0,"eq":[[1,0,0],[0,0,0],[0,0,0],[0,0,0]]},{"x":"bid(23.0)","name":"Bot 23","camp":"them","me":false,"tok":"team-enemy","left":false,"film":false,"grapple":null,"eq":[null,null,null,null]},{"x":"2533274809500684","name":"E3D","camp":"them","me":false,"tok":"team-enemy","left":true,"film":true,"grapple":0,"eq":[[0,0,0],[0,0,1],[0,0,0],[0,0,0]]}],"usageTeam":{"grapple":{"us":15,"them":16},"eq":[{"us":10,"them":10},{"us":11,"them":7},{"us":2,"them":8},{"us":5,"them":0}]},"takenChannel":false,"control":{"powerup":{"us":0,"them":0,"lostUs":0,"lostThem":0},"power":{"us":19,"them":11,"lostUs":0,"lostThem":0},"rack":{"us":29,"them":40,"lostUs":0,"lostThem":0},"base":{"us":0,"them":0,"lostUs":0,"lostThem":0}},"objects":{"powerup":[],"power":[{"key":"0a1992bc","name":"S7 Sniper","us":11,"them":8,"by":{"2535462209962245":4,"2535461484006747":5,"2535457217346540":1,"2535449476496795":4,"2535420159292452":3,"2533274893737372":2},"kept":{},"dropped":{},"lostUs":0,"lostThem":0},{"key":"9d6aaed2","name":"SPNKr à combustible","us":8,"them":3,"by":{"2535468111373012":1,"2535457217346540":3,"2535432037056604":3,"2533274827096894":1,"2533274823110022":3},"kept":{},"dropped":{},"lostUs":0,"lostThem":0}],"rack":[{"key":"2b1824d5","name":"BR75","us":8,"them":17,"by":{"2535468111373012":1,"2535462972817970":4,"2535461788192443":4,"2535457514480546":2,"2535449476496795":1,"2535445318491907":1,"2535432826033393":2,"2535432037056604":1,"2533274988198027":1,"2533274893737372":2,"2533274858283686":1,"2533274827096894":2,"2533274818676576":3},"kept":{},"dropped":{},"lostUs":0,"lostThem":0},{"key":"84bd29ed","name":"Disrupteur","us":14,"them":4,"by":{"2535469763661810":1,"2535468111373012":1,"2535462972817970":1,"2535449476496795":8,"2535445318491907":2,"2535437483090324":2,"2535432037056604":1,"2533274858283686":1,"2533274823110022":1},"kept":{},"dropped":{},"lostUs":0,"lostThem":0},{"key":"b619d84a","name":"CQS48 Bulldog","us":2,"them":12,"by":{"2535468111373012":1,"2535462972817970":3,"2535461484006747":3,"2535457217346540":4,"2535449476496795":1,"2533274988198027":1,"2533274809500684":1},"kept":{},"dropped":{},"lostUs":0,"lostThem":0},{"key":"f5c335df","name":"MA5K Avenger","us":5,"them":2,"by":{"2535468111373012":2,"2535461484006747":1,"2535457217346540":1,"2535447170907787":1,"2535420159292452":1,"2533274827096894":1},"kept":{},"dropped":{},"lostUs":0,"lostThem":0},{"key":"30484ea6","name":"Carabine à impulsion","us":0,"them":3,"by":{"2535469763661810":1,"2535461484006747":1,"2533274809500684":1},"kept":{},"dropped":{},"lostUs":0,"lostThem":0},{"key":"c3542946","name":"Pistolet à plasma","us":0,"them":2,"by":{"2535461788192443":1,"2533274818676576":1},"kept":{},"dropped":{},"lostUs":0,"lostThem":0}],"base":[]},"unclassified":{"us":19,"them":12},"tierState":"measured","padsEmptied":{"camo":18,"overshield":19},"pads":{"occ":317,"named":130,"unnamed":150,"list":[{"weapon":"2b1824d5","occupations":11,"named":4},{"weapon":"2b1824d5","occupations":8,"named":3},{"weapon":"2b1824d5","occupations":24,"named":3},{"weapon":"2b1824d5","occupations":15,"named":9},{"weapon":"2b1824d5","occupations":14,"named":6},{"weapon":"b619d84a","occupations":12,"named":7},{"weapon":"b619d84a","occupations":15,"named":7},{"weapon":"84bd29ed","occupations":20,"named":15},{"weapon":"84bd29ed","occupations":6,"named":3},{"weapon":"71ab0a2c","occupations":17,"named":8},{"weapon":"9d6aaed2","occupations":18,"named":5},{"weapon":"9d6aaed2","occupations":17,"named":6},{"weapon":"f5c335df","occupations":8,"named":6},{"weapon":"f5c335df","occupations":5,"named":1},{"weapon":"767db96d","occupations":22,"named":12},{"weapon":"c3542946","occupations":3,"named":2},{"weapon":"30484ea6","occupations":2,"named":0},{"weapon":"30484ea6","occupations":10,"named":3},{"weapon":"c30d87c7","occupations":15,"named":11},{"weapon":"0a1992bc","occupations":19,"named":9},{"weapon":"0a1992bc","occupations":19,"named":10}]},"tierRows":[{"x":"2535469763661810","camp":"them","tier":"terrain","fam":"84bd29ed","name":"Disrupteur","n":1},{"x":"2535469763661810","camp":"them","tier":"terrain","fam":"30484ea6","name":"Carabine à impulsion","n":1},{"x":"2535469763661810","camp":"them","tier":"non_classe","fam":"71ab0a2c","name":"M41 SPNKr","n":2},{"x":"2535468111373012","camp":"us","tier":"terrain","fam":"f5c335df","name":"MA5K Avenger","n":2},{"x":"2535468111373012","camp":"us","tier":"terrain","fam":"b619d84a","name":"CQS48 Bulldog","n":1},{"x":"2535468111373012","camp":"us","tier":"terrain","fam":"84bd29ed","name":"Disrupteur","n":1},{"x":"2535468111373012","camp":"us","tier":"terrain","fam":"2b1824d5","name":"BR75","n":1},{"x":"2535468111373012","camp":"us","tier":"puissance","fam":"9d6aaed2","name":"SPNKr à combustible","n":1},{"x":"2535468111373012","camp":"us","tier":"non_classe","fam":"c30d87c7","name":"Ravageur","n":1},{"x":"2535468111373012","camp":"us","tier":"non_classe","fam":"767db96d","name":"Hydra","n":1},{"x":"2535462972817970","camp":"them","tier":"terrain","fam":"b619d84a","name":"CQS48 Bulldog","n":3},{"x":"2535462972817970","camp":"them","tier":"terrain","fam":"84bd29ed","name":"Disrupteur","n":1},{"x":"2535462972817970","camp":"them","tier":"terrain","fam":"2b1824d5","name":"BR75","n":4},{"x":"2535462209962245","camp":"us","tier":"puissance","fam":"0a1992bc","name":"S7 Sniper","n":4},{"x":"2535462209962245","camp":"us","tier":"non_classe","fam":"c30d87c7","name":"Ravageur","n":1},{"x":"2535461788192443","camp":"them","tier":"terrain","fam":"c3542946","name":"Pistolet à plasma","n":1},{"x":"2535461788192443","camp":"them","tier":"terrain","fam":"2b1824d5","name":"BR75","n":4},{"x":"2535461484006747","camp":"them","tier":"terrain","fam":"f5c335df","name":"MA5K Avenger","n":1},{"x":"2535461484006747","camp":"them","tier":"terrain","fam":"b619d84a","name":"CQS48 Bulldog","n":3},{"x":"2535461484006747","camp":"them","tier":"terrain","fam":"30484ea6","name":"Carabine à impulsion","n":1},{"x":"2535461484006747","camp":"them","tier":"puissance","fam":"0a1992bc","name":"S7 Sniper","n":5},{"x":"2535461484006747","camp":"them","tier":"non_classe","fam":"c30d87c7","name":"Ravageur","n":1},{"x":"2535457514480546","camp":"us","tier":"terrain","fam":"2b1824d5","name":"BR75","n":2},{"x":"2535457514480546","camp":"us","tier":"non_classe","fam":"c30d87c7","name":"Ravageur","n":1},{"x":"2535457217346540","camp":"them","tier":"terrain","fam":"f5c335df","name":"MA5K Avenger","n":1},{"x":"2535457217346540","camp":"them","tier":"terrain","fam":"b619d84a","name":"CQS48 Bulldog","n":4},{"x":"2535457217346540","camp":"them","tier":"puissance","fam":"9d6aaed2","name":"SPNKr à combustible","n":3},{"x":"2535457217346540","camp":"them","tier":"puissance","fam":"0a1992bc","name":"S7 Sniper","n":1},{"x":"2535449476496795","camp":"us","tier":"terrain","fam":"b619d84a","name":"CQS48 Bulldog","n":1},{"x":"2535449476496795","camp":"us","tier":"terrain","fam":"84bd29ed","name":"Disrupteur","n":8},{"x":"2535449476496795","camp":"us","tier":"terrain","fam":"2b1824d5","name":"BR75","n":1},{"x":"2535449476496795","camp":"us","tier":"puissance","fam":"0a1992bc","name":"S7 Sniper","n":4},{"x":"2535447170907787","camp":"us","tier":"terrain","fam":"f5c335df","name":"MA5K Avenger","n":1},{"x":"2535445318491907","camp":"them","tier":"terrain","fam":"84bd29ed","name":"Disrupteur","n":2},{"x":"2535445318491907","camp":"them","tier":"terrain","fam":"2b1824d5","name":"BR75","n":1},{"x":"2535437483090324","camp":"us","tier":"terrain","fam":"84bd29ed","name":"Disrupteur","n":2},{"x":"2535437483090324","camp":"us","tier":"non_classe","fam":"767db96d","name":"Hydra","n":2},{"x":"2535432826033393","camp":"them","tier":"terrain","fam":"2b1824d5","name":"BR75","n":2},{"x":"2535432826033393","camp":"them","tier":"non_classe","fam":"767db96d","name":"Hydra","n":1},{"x":"2535432037056604","camp":"us","tier":"terrain","fam":"84bd29ed","name":"Disrupteur","n":1},{"x":"2535432037056604","camp":"us","tier":"terrain","fam":"2b1824d5","name":"BR75","n":1},{"x":"2535432037056604","camp":"us","tier":"puissance","fam":"9d6aaed2","name":"SPNKr à combustible","n":3},{"x":"2535420159292452","camp":"us","tier":"terrain","fam":"f5c335df","name":"MA5K Avenger","n":1},{"x":"2535420159292452","camp":"us","tier":"puissance","fam":"0a1992bc","name":"S7 Sniper","n":3},{"x":"2535420159292452","camp":"us","tier":"non_classe","fam":"c30d87c7","name":"Ravageur","n":4},{"x":"2535420159292452","camp":"us","tier":"non_classe","fam":"767db96d","name":"Hydra","n":1},{"x":"2535420159292452","camp":"us","tier":"non_classe","fam":"71ab0a2c","name":"M41 SPNKr","n":1},{"x":"2533274988198027","camp":"them","tier":"terrain","fam":"b619d84a","name":"CQS48 Bulldog","n":1},{"x":"2533274988198027","camp":"them","tier":"terrain","fam":"2b1824d5","name":"BR75","n":1},{"x":"2533274893737372","camp":"them","tier":"terrain","fam":"2b1824d5","name":"BR75","n":2},{"x":"2533274893737372","camp":"them","tier":"puissance","fam":"0a1992bc","name":"S7 Sniper","n":2},{"x":"2533274893737372","camp":"them","tier":"non_classe","fam":"767db96d","name":"Hydra","n":3},{"x":"2533274893737372","camp":"them","tier":"non_classe","fam":"71ab0a2c","name":"M41 SPNKr","n":3},{"x":"2533274858283686","camp":"us","tier":"terrain","fam":"84bd29ed","name":"Disrupteur","n":1},{"x":"2533274858283686","camp":"us","tier":"terrain","fam":"2b1824d5","name":"BR75","n":1},{"x":"2533274858283686","camp":"us","tier":"non_classe","fam":"71ab0a2c","name":"M41 SPNKr","n":2},{"x":"2533274827096894","camp":"us","tier":"terrain","fam":"f5c335df","name":"MA5K Avenger","n":1},{"x":"2533274827096894","camp":"us","tier":"terrain","fam":"2b1824d5","name":"BR75","n":2},{"x":"2533274827096894","camp":"us","tier":"puissance","fam":"9d6aaed2","name":"SPNKr à combustible","n":1},{"x":"2533274827096894","camp":"us","tier":"non_classe","fam":"c30d87c7","name":"Ravageur","n":3},{"x":"2533274827096894","camp":"us","tier":"non_classe","fam":"767db96d","name":"Hydra","n":2},{"x":"2533274823110022","camp":"us","tier":"terrain","fam":"84bd29ed","name":"Disrupteur","n":1},{"x":"2533274823110022","camp":"us","tier":"puissance","fam":"9d6aaed2","name":"SPNKr à combustible","n":3},{"x":"2533274818676576","camp":"them","tier":"terrain","fam":"c3542946","name":"Pistolet à plasma","n":1},{"x":"2533274818676576","camp":"them","tier":"terrain","fam":"2b1824d5","name":"BR75","n":3},{"x":"2533274818676576","camp":"them","tier":"non_classe","fam":"767db96d","name":"Hydra","n":2},{"x":"2533274809500684","camp":"them","tier":"terrain","fam":"b619d84a","name":"CQS48 Bulldog","n":1},{"x":"2533274809500684","camp":"them","tier":"terrain","fam":"30484ea6","name":"Carabine à impulsion","n":1}],"sheets":{"owners":[{"x":"2533274823110022","name":"JGtm","tok":"squad-player-1","me":true},{"x":"2535457514480546","name":"DUGValidus","tok":"team-ally","me":false},{"x":"2535462209962245","name":"Tupacamaru9556","tok":"team-ally","me":false},{"x":"2535432037056604","name":"King Kai 198070","tok":"team-ally","me":false},{"x":"2533274858283686","name":"Madina97294","tok":"squad-player-2","me":false},{"x":"2535447170907787","name":"CU3RV0187","tok":"team-ally","me":false},{"x":"2535420159292452","name":"SKR DRAAK","tok":"team-ally","me":false},{"x":"2535449476496795","name":"nerdpuncher","tok":"team-ally","me":false},{"x":"2535468111373012","name":"Rabbitzo3","tok":"team-ally","me":false},{"x":"2535437483090324","name":"Yessireezy","tok":"team-ally","me":false},{"x":"2533274827096894","name":"Prose94","tok":"team-ally","me":false}],"sections":[{"res":"powerup","lines":[]},{"res":"power","lines":[{"key":"0a1992bc","name":"S7 Sniper","camp":11,"taken":[0,0,4,0,0,0,3,4,0,0,0],"kept":[0,0,0,0,0,0,0,0,0,0,0],"dropped":[0,0,0,0,0,0,0,0,0,0,0]},{"key":"9d6aaed2","name":"SPNKr à combustible","camp":8,"taken":[3,0,0,3,0,0,0,0,1,0,1],"kept":[0,0,0,0,0,0,0,0,0,0,0],"dropped":[0,0,0,0,0,0,0,0,0,0,0]}]},{"res":"rack","lines":[{"key":"84bd29ed","name":"Disrupteur","camp":14,"taken":[1,0,0,1,1,0,0,8,1,2,0],"kept":[0,0,0,0,0,0,0,0,0,0,0],"dropped":[0,0,0,0,0,0,0,0,0,0,0]},{"key":"2b1824d5","name":"BR75","camp":8,"taken":[0,2,0,1,1,0,0,1,1,0,2],"kept":[0,0,0,0,0,0,0,0,0,0,0],"dropped":[0,0,0,0,0,0,0,0,0,0,0]},{"key":"f5c335df","name":"MA5K Avenger","camp":5,"taken":[0,0,0,0,0,1,1,0,2,0,1],"kept":[0,0,0,0,0,0,0,0,0,0,0],"dropped":[0,0,0,0,0,0,0,0,0,0,0]},{"key":"b619d84a","name":"CQS48 Bulldog","camp":2,"taken":[0,0,0,0,0,0,0,1,1,0,0],"kept":[0,0,0,0,0,0,0,0,0,0,0],"dropped":[0,0,0,0,0,0,0,0,0,0,0]}]}],"totals":[[0,0,0,0,0,0,0,0,0,0,0],[3,0,4,3,0,0,3,4,1,0,1],[1,2,0,2,2,1,1,10,5,2,3]],"dominant":["power","rack","power","power","rack","rack","power","rack","rack","rack","rack"]},"effect":{"us":{"ms":166700,"kills":0,"eps":7},"them":{"ms":216900,"kills":0,"eps":7}},"pwk":{"us":23,"them":38},"vehRows":0,"livesBy":[{"x":"2533274823110022","name":"JGtm","tok":"squad-player-1","me":true,"near":[10,8],"alone":[0,0],"noctx":0,"nomate":0,"lives":10,"allLives":12},{"x":"2535457514480546","name":"DUGValidus","tok":"team-ally","me":false,"near":[5,6],"alone":[2,4],"noctx":0,"nomate":0,"lives":7,"allLives":8},{"x":"2535462209962245","name":"Tupacamaru9556","tok":"team-ally","me":false,"near":[2,2],"alone":[2,12],"noctx":0,"nomate":0,"lives":4,"allLives":11},{"x":"2535432037056604","name":"King Kai 198070","tok":"team-ally","me":false,"near":[4,12],"alone":[3,7],"noctx":0,"nomate":0,"lives":7,"allLives":9},{"x":"2533274858283686","name":"Madina97294","tok":"squad-player-2","me":false,"near":[11,9],"alone":[3,2],"noctx":0,"nomate":0,"lives":14,"allLives":15},{"x":"2535447170907787","name":"CU3RV0187","tok":"team-ally","me":false,"near":[4,3],"alone":[0,0],"noctx":1,"nomate":1,"lives":6,"allLives":11},{"x":"2535420159292452","name":"SKR DRAAK","tok":"team-ally","me":false,"near":[6,7],"alone":[1,1],"noctx":0,"nomate":0,"lives":7,"allLives":8},{"x":"2535449476496795","name":"nerdpuncher","tok":"team-ally","me":false,"near":[4,3],"alone":[1,2],"noctx":0,"nomate":1,"lives":6,"allLives":9},{"x":"2535468111373012","name":"Rabbitzo3","tok":"team-ally","me":false,"near":[13,6],"alone":[0,0],"noctx":0,"nomate":0,"lives":13,"allLives":16},{"x":"2535437483090324","name":"Yessireezy","tok":"team-ally","me":false,"near":[7,7],"alone":[0,0],"noctx":0,"nomate":0,"lives":7,"allLives":8},{"x":"2533274827096894","name":"Prose94","tok":"team-ally","me":false,"near":[9,1],"alone":[3,3],"noctx":1,"nomate":0,"lives":13,"allLives":15}],"assist":{"measured":0,"pairs":[]},"riposte":{"measured":294,"publishable":0,"avengedTotal":32,"us":[{"x":"2535462209962245","name":"Tupacamaru9556","avenged":2,"ripostes":2,"by":[["SKR DRAAK",1900],["Yessireezy",1563]],"fr":[["Madina97294",1829],["Rabbitzo3",3974]]},{"x":"2535449476496795","name":"nerdpuncher","avenged":1,"ripostes":2,"by":[["Prose94",3066]],"fr":[["JGtm",2971],["CU3RV0187",2968]]},{"x":"2535420159292452","name":"SKR DRAAK","avenged":1,"ripostes":2,"by":[["DUGValidus",4]],"fr":[["Tupacamaru9556",1900],["JGtm",2967]]},{"x":"2535437483090324","name":"Yessireezy","avenged":1,"ripostes":2,"by":[["King Kai 198070",2538]],"fr":[["Rabbitzo3",1566],["Tupacamaru9556",1563]]},{"x":"2535457514480546","name":"DUGValidus","avenged":0,"ripostes":2,"by":[],"fr":[["SKR DRAAK",4],["Rabbitzo3",3040]]},{"x":"2535432037056604","name":"King Kai 198070","avenged":0,"ripostes":2,"by":[],"fr":[["JGtm",4904],["Yessireezy",2538]]},{"x":"2533274827096894","name":"Prose94","avenged":0,"ripostes":1,"by":[],"fr":[["nerdpuncher",3066]]},{"x":"2533274823110022","name":"JGtm","avenged":3,"ripostes":0,"by":[["King Kai 198070",4904],["nerdpuncher",2971],["SKR DRAAK",2967]],"fr":[]},{"x":"2535468111373012","name":"Rabbitzo3","avenged":3,"ripostes":0,"by":[["Yessireezy",1566],["DUGValidus",3040],["Tupacamaru9556",3974]],"fr":[]},{"x":"2535447170907787","name":"CU3RV0187","avenged":1,"ripostes":0,"by":[["nerdpuncher",2968]],"fr":[]},{"x":"2533274858283686","name":"Madina97294","avenged":1,"ripostes":0,"by":[["Tupacamaru9556",1829]],"fr":[]}],"them":[{"x":"2535457217346540","name":"Shiloh0209","avenged":5,"ripostes":6,"by":[["AJM002",4039],["macattackfin",3635],["AJM002",3105],["Dafar8423",2931],["MiniScotsMin",1065]],"fr":[["Reapers Protege",3238],["MiniScotsMin",1401],["NoahChnce4u2",1731],["NoahChnce4u2",2639],["Dafar8423",303],["Reapers Protege",3738]]},{"x":"2533274893737372","name":"MiniScotsMin","avenged":1,"ripostes":5,"by":[["Shiloh0209",1401]],"fr":[["XN3RDXD3VILX",3],["Reapers Protege",4041],["NoahChnce4u2",3805],["Feelgood Joker",3274],["Shiloh0209",1065]]},{"x":"2535469763661810","name":"macattackfin","avenged":2,"ripostes":2,"by":[["E3D",1036],["Feelgood Joker",570]],"fr":[["Shiloh0209",3635],["GUCCIGUAP1103",195]]},{"x":"2533274818676576","name":"Feelgood Joker","avenged":2,"ripostes":1,"by":[["XN3RDXD3VILX",636],["MiniScotsMin",3274]],"fr":[["macattackfin",570]]},{"x":"2535462972817970","name":"Dafar8423","avenged":1,"ripostes":1,"by":[["Shiloh0209",303]],"fr":[["Shiloh0209",2931]]},{"x":"2535461788192443","name":"XN3RDXD3VILX","avenged":1,"ripostes":1,"by":[["MiniScotsMin",3]],"fr":[["Feelgood Joker",636]]},{"x":"2535418140736812","name":"NoahChnce4u2","avenged":3,"ripostes":0,"by":[["Shiloh0209",1731],["Shiloh0209",2639],["MiniScotsMin",3805]],"fr":[]},{"x":"2533274798159764","name":"Reapers Protege","avenged":3,"ripostes":0,"by":[["Shiloh0209",3238],["MiniScotsMin",4041],["Shiloh0209",3738]],"fr":[]},{"x":"2533274988198027","name":"GUCCIGUAP1103","avenged":1,"ripostes":0,"by":[["macattackfin",195]],"fr":[]},{"x":"2535445318491907","name":"BLADERUNNER3141","avenged":0,"ripostes":0,"by":[],"fr":[]},{"x":"2535461484006747","name":"Jermoe Jr","avenged":0,"ripostes":0,"by":[],"fr":[]}],"scaleMax":6}}};
+  var ME = '2533274823110022';
+
+  // ======================================================================
+  // OUTILS (repris de la maquette Sessions v2)
+  // ======================================================================
+  function el(tag, attrs, html) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === 'class') e.className = attrs[k];
+      else if (k === 'style') e.style.cssText = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  function nf(x, d) { return x.toLocaleString('fr-FR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function pct1(x) { return (Math.round(x * 10) / 10).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'; }
+  function pctI(x) { return Math.round(x) + ' %'; }
+  function f1(z) { return z.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+  function dur(ms) { var s = Math.round(ms / 1000), m = Math.floor(s / 60); return m === 0 ? s + ' s' : m + ' min ' + String(s % 60).padStart(2, '0'); }
+  function clock(ms) { var s = Math.round(ms / 1000); return Math.floor(s / 60) + 'm' + String(s % 60).padStart(2, '0') + 's'; }
+  function v(name) { return 'var(--' + name + ')'; }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
+  function plural(n, one, many) { return n + ' ' + (n > 1 ? (many || one + 's') : one); }
+  var RES = {
+    powerup: { label: 'Bonus', ink: v('resource-powerup'), foot: 'bonus', foot1: 'bonus' },
+    power: { label: 'Armes spéciales', ink: v('resource-power-weapon'), foot: 'armes spéciales', foot1: 'arme spéciale' },
+    vehicle: { label: 'Véhicules', ink: v('resource-vehicle'), foot: 'véhicules' },
+    rack: { label: 'Armes de râtelier', ink: v('resource-rack'), foot: 'armes de râtelier', foot1: 'arme de râtelier' }
+  };
+  var FRAG_CLS = { shoulder: ['Arme d’épaule', 'frag-shoulder'], sidearm: ['Arme de poing', 'frag-sidearm'], heavy: ['Lourde', 'frag-heavy'], melee: ['Mêlée', 'frag-melee'], grenade: ['Grenade', 'frag-grenade'], vehicle: ['Véhicule', 'frag-vehicle'], equipment: ['Équipement', 'frag-equipment'], environmental: ['Environnement', 'frag-environmental'], unattributed: ['Non attribué', 'frag-unattributed'] };
+  var CLS_ORDER = ['shoulder', 'sidearm', 'heavy', 'melee', 'grenade', 'vehicle', 'equipment', 'environmental', 'unattributed'];
+  var FRAG_ROLE = { precision: 'Précision', automatic: 'Automatique', sniper: 'Sniper', shotgun: 'Fusil à pompe', sidearm: 'Arme de poing', power: 'Arme Puissante', special: 'Spéciale', melee: 'Mêlée', grenade_frag: 'Fragmentation', grenade_plasma: 'Plasma', grenade_dynamo: 'Dynamo', grenade_splinter: 'Splinter', grenade_other: 'Autre grenade', explosive_object: 'Objet explosif (bidon)', environment: 'Chute, environnement', unattributed: 'Non attribué', equipment: 'Répulseur', vehicle: 'Véhicule' };
+  var BADGE_FR = { first_blood: 'Premier sang', first_group_death: 'Première victime', clutch_finisher: 'Finisseur', last_casualty: 'Boulet', last_group_kill: 'Touriste', top_killer: 'Bourreau', silent_hero: 'Héros silencieux', false_brother: 'Faux-frère', top_gun: 'Top Gun', kamikaze: 'Kamikaze' };
+  var BADGE_VAL = { first_blood: 'success', first_group_death: 'outcome-loss', clutch_finisher: 'success', last_casualty: 'outcome-loss', last_group_kill: 'success', top_gun: 'success', top_killer: 'success', silent_hero: 'success', false_brother: 'outcome-loss', kamikaze: 'outcome-loss' };
+  var BADGE_NOTIME = { top_killer: 1, silent_hero: 1, false_brother: 1, kamikaze: 1 };
+  var ASSIST_TOKENS = ['outcome-loss', 'chart-series-7', 'chart-series-6', 'chart-series-8', 'perf-tier-2', 'compare-a', 'narrative-humiliation', 'narrative-debacle', 'narrative-dominant', 'narrative-contre-remontada', 'perf-tier-4'];
+  var TEAM_NAME = ['Eagle', 'Cobra'];
+  var MORE_INK = 'color-mix(in oklab, var(--divergent-pos) 80%, var(--muted))';
+  var LESS_INK = 'color-mix(in oklab, var(--divergent-neg) 80%, var(--muted))';
+  var AXIS_PCT = [[0, '0'], [25, '25'], [50, '50'], [75, '75'], [100, '100 %']];
+  var OUTC = ['divergent-pos', 'divergent-neutral', 'divergent-neg'];
+  var NEAR_INK = v('squad-player-1'), ALONE_INK = v('extreme');
+  function outcomeFr(o) { return o === 2 ? 'Victoire' : o === 3 ? 'Défaite' : o === 1 ? 'Égalité' : 'Abandon'; }
+  function resDot(key) { return '<i class="rdot" style="--rc:' + RES[key].ink + '"></i>'; }
+  function chip(tok) { return '<i class="csw" style="background:' + v(tok) + '"></i>'; }
+
+  function card(host, o) {
+    var wrap = el('div', { class: 'cardwrap', 'data-card': o.id });
+    var c = el('div', { class: 'card', id: o.id });
+    var h = el('h4');
+    if (o.num) h.appendChild(el('span', { class: 'num', title: 'Repère de la carte actuelle (relevé du 05/10)' }, String(o.num)));
+    h.appendChild(el('span', null, o.title));
+    if (o.info) h.appendChild(el('i', { class: 'info', tabindex: '0', 'data-tip': esc(o.info) }, 'i'));
+    if (o.head) o.head(h);
+    c.appendChild(h);
+    var body = el('div', { class: 'body' });
+    var main = el('div', { class: 'cmain' });
+    body.appendChild(main);
+    o.render(main);
+    if (o.legend && o.legend.length) body.appendChild(legend(o.legend));
+    c.appendChild(body);
+    wrap.appendChild(c);
+    if (o.submit) wrap.appendChild(el('div', { class: 'submit' }, o.submit));
+    if (o.banner) wrap.appendChild(el('div', { class: 'vbanner' }, o.banner));
+    if (o.replace) wrap.appendChild(el('div', { class: 'repl' }, 'remplace : ' + o.replace));
+    host.appendChild(wrap);
+    return wrap;
+  }
+  function legend(items) {
+    var l = el('div', { class: 'legend' });
+    items.forEach(function (it) {
+      var i;
+      switch (it.kind) {
+        case 'parity': i = '<i class="parity"></i>'; break;
+        case 'hatch': i = '<i class="hatch"></i>'; break;
+        case 'thin': i = '<i class="thin" style="background:' + it.color + '"></i>'; break;
+        case 'line': i = '<i class="solidline" style="background:' + it.color + '"></i>'; break;
+        case 'round': i = '<i class="round" style="background:' + it.color + '"></i>'; break;
+        case 'dotk': i = '<i class="dotk" style="background:' + it.color + '"></i>'; break;
+        case 'ringk': i = '<i class="ringk"></i>'; break;
+        case 'diamond': i = '<i style="background:' + it.color + ';transform:rotate(45deg) scale(.8)"></i>'; break;
+        default: i = '<i style="background:' + it.color + '"></i>';
+      }
+      l.appendChild(el('span', null, i + it.label));
+    });
+    return l;
+  }
+  function line1(host, html) { host.appendChild(el('div', { class: 'line1' }, html)); }
+  function mnote(host, html) { host.appendChild(el('div', { class: 'mnote' }, '<b>Maquette.</b> ' + html)); }
+  function emptyText(host, txt) { host.appendChild(el('p', { class: 'note9', style: 'margin:0;font-size:12px' }, txt)); }
+  function axisRow(host, ticks, lw) {
+    var row = el('div', { class: 'prow', 'aria-hidden': 'true', style: lw ? '--lw:' + lw + 'px' : '' });
+    row.appendChild(el('span'));
+    var ax = el('div', { class: 'axis' });
+    ticks.forEach(function (t) { ax.appendChild(el('span', { style: 'left:' + t[0] + '%' }, t[1])); });
+    row.appendChild(ax);
+    host.appendChild(row);
+  }
+  // Piste camp contre camp : compte · part entière dans les segments (un match : comptes exhaustifs).
+  function campTrack(us, them, cls, tipUs, tipThem, labels, fmt) {
+    fmt = fmt || nf;
+    var n = us + them, share = n > 0 ? us / n * 100 : 0;
+    var t = el('div', { class: 'track ' + (cls || '') });
+    if (us > 0) {
+      var s1 = el('div', { class: 'seg l', style: 'left:0;width:' + share + '%;background:' + v('team-ally') + ';border-radius:' + (them > 0 ? '3px 0 0 3px' : '3px'), 'data-tip': tipUs });
+      if (labels) s1.appendChild(el('span', { class: 'sl' }, '<b>' + fmt(us) + '</b> · ' + pctI(share)));
+      t.appendChild(s1);
+    }
+    if (them > 0) {
+      var s2 = el('div', { class: 'seg r', style: 'left:' + share + '%;width:' + (100 - share) + '%;background:' + v('team-enemy') + ';border-radius:' + (us > 0 ? '0 3px 3px 0' : '3px'), 'data-tip': tipThem });
+      if (labels) s2.appendChild(el('span', { class: 'sl' }, pctI(100 - share) + ' · <b>' + fmt(them) + '</b>'));
+      t.appendChild(s2);
+    }
+    t.appendChild(el('div', { class: 'parity' }));
+    return t;
+  }
+  function pisteRow(host, o) {
+    var row = el('div', { class: 'prow' + (o.sub2 ? ' cmprow2' : ''), style: o.lw ? '--lw:' + o.lw + 'px' : '' });
+    row.appendChild(el('div', { class: 'plabel' + (o.indent ? ' cmpsub' : '') }, o.labelHtml || ((o.res ? resDot(o.res) : '') + o.label + (o.sub ? '<small>' + o.sub + '</small>' : ''))));
+    if (o.pending) { row.appendChild(el('div', { class: 'track pending' }, o.pending)); host.appendChild(row); return row; }
+    var fmt = o.fmt || nf, n = o.us + o.them, share = n ? o.us / n * 100 : 0;
+    var bar = el('div', { class: 'pbar' });
+    bar.appendChild(el('div', { class: 'pcamps fallback' },
+      '<span><i class="csw" style="background:' + v('team-ally') + '"></i><b>' + fmt(o.us) + '</b> · ' + pctI(share) + '</span>' +
+      '<span><i class="csw" style="background:' + v('team-enemy') + '"></i><b>' + fmt(o.them) + '</b> · ' + pctI(100 - share) + '</span>'));
+    bar.appendChild(campTrack(o.us, o.them, o.cls || '', '<b>Mon camp</b> · ' + o.label + '<br>' + fmt(o.us) + ' sur ' + fmt(n) + ' (' + pctI(share) + ')', '<b>Adversaire</b> · ' + o.label + '<br>' + fmt(o.them) + ' sur ' + fmt(n) + ' (' + pctI(100 - share) + ')', true, fmt));
+    if (o.below) o.below(bar);
+    row.appendChild(bar);
+    host.appendChild(row);
+    return row;
+  }
+  function toggleBtn(label) { return '<button type="button" class="btoggle" aria-expanded="false">▸ ' + label + '</button>'; }
+  function bindToggle(btn, targets) {
+    btn.addEventListener('click', function () {
+      var open = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', String(open));
+      btn.innerHTML = btn.innerHTML.replace(open ? '▸' : '▾', open ? '▾' : '▸');
+      targets().forEach(function (t) { t.hidden = !open; });
+      fitLabels();
+    });
+  }
+  function tabsFrame(host, on, cls) {
+    var f = el('div', { class: 'appframe' + (cls ? ' ' + cls : '') });
+    var tb = el('div', { class: 'tabs', role: 'presentation' });
+    ['Général', 'Chronologie', 'Armes et terrain', 'Joueurs'].forEach(function (t) { tb.appendChild(el('span', { class: t === on ? 'on' : '' }, t)); });
+    f.appendChild(tb);
+    host.appendChild(f);
+    return f;
+  }
+  function section(host, title, small) { host.appendChild(el('h3', { class: 'st' }, title + (small ? ' <small>' + small + '</small>' : ''))); }
+  function grid2(host) { var g = el('div', { class: 'grid2', style: 'margin-top:14px' }); host.appendChild(g); return g; }
+  function stack(host) { var g = el('div', { class: 'stack', style: 'margin-top:14px' }); host.appendChild(g); return g; }
+  function rosterOf(s, x) { for (var i = 0; i < s.roster.length; i++) if (s.roster[i].x === x) return s.roster[i]; return null; }
+  function nameOf(s, x) { var r = rosterOf(s, x); return r ? r.name : x; }
+  function tokOf(s, x) { var r = rosterOf(s, x); return r ? r.tok : 'zone-neutral'; }
+  // Encre d'un joueur (palette de joueurs du match) : moi, profils suivis en jetons pleins ; le reste de
+  // chaque camp à la couleur du camp, éclairci joueur par joueur pour rester distinct dans une légende.
+  function inkOf(s, x) {
+    if (!s._ink) { s._ink = {}; var seen = {}; s.roster.forEach(function (r) { if (r.tok === 'team-ally' || r.tok === 'team-enemy') { var i = seen[r.tok] = (seen[r.tok] || 0) + 1; s._ink[r.x] = 'color-mix(in oklab, ' + v(r.tok) + ' ' + Math.max(40, 100 - (i - 1) * 12) + '%, var(--card))'; } else s._ink[r.x] = v(r.tok); }); }
+    return s._ink[x] || v('zone-neutral');
+  }
+
+  // ======================================================================
+  // C1 — Faits marquants (badges serveur + badges d'équipement du film)
+  // ======================================================================
+  function renderBadges(m, s) {
+    var box = el('div', { class: 'badges' });
+    s.eqBadges.camo.concat(s.eqBadges.overshield).forEach(function (b) { box.appendChild(el('span', { class: 'pill' }, b.kills + ' frags sous ' + (s.eqBadges.camo.indexOf(b) >= 0 ? 'camouflage' : 'surbouclier'))); });
+    s.badges.forEach(function (b) {
+      var t = BADGE_NOTIME[b.key] || !b.t ? '' : clock(b.t);
+      box.appendChild(el('div', { class: 'badge' + (b.me ? ' me' : ''), style: '--bink:' + v(BADGE_VAL[b.key]) }, '<span class="bt1">' + BADGE_FR[b.key] + '</span><span class="bt2">' + esc(b.name) + (t ? ' · ' + t : '') + '</span>'));
+    });
+    m.appendChild(box);
+    var eqTxt = s.eqBadges.camo.length + s.eqBadges.overshield.length ? 'établi depuis la base (un seul épisode).'
+      : s.eqBadges.undetermined.length ? 'non établi — la base ne porte que la somme par joueur.'
+      : s.effKillsMeasured ? 'aucun — personne n’atteint 3 frags sous camouflage ou surbouclier sur tout le match.'
+      : 'aucun affichable — frags sous effet non mesurés (journal des morts non publiable).';
+    mnote(m, 'Badges serveur recalculés depuis <code>highlight_events</code> selon les règles de <code>analysis/match_impact.go</code> (camp de JGtm) ; badge d’équipement : ' + eqTxt);
+  }
+  function makeBadges(host, s, pfx, avant) {
+    card(host, { id: pfx + '-c1', num: avant ? 'C1' : null, title: 'Faits marquants', render: function (m) { renderBadges(m, s); }, replace: avant ? null : 'rien (carte inchangée)' });
+  }
+
+  // ======================================================================
+  // A1 / A2 avant — sunburst et détail des frags
+  // ======================================================================
+  function sunburst(m, s) {
+    var S = s.sunburst, classes = CLS_ORDER.filter(function (c) { return S[c]; }), tot = sum(classes.map(function (c) { return sum(Object.values(S[c])); }));
+    var cx = 130, cy = 130, r0 = 46, r1 = 86, r2 = 124, a = -Math.PI / 2;
+    function arc(ra, rb, a0, a1) { if (a1 - a0 >= 2 * Math.PI - 1e-6) a1 = a0 + 2 * Math.PI - 1e-4; var lg = a1 - a0 > Math.PI ? 1 : 0; return 'M' + (cx + rb * Math.cos(a0)) + ' ' + (cy + rb * Math.sin(a0)) + ' A' + rb + ' ' + rb + ' 0 ' + lg + ' 1 ' + (cx + rb * Math.cos(a1)) + ' ' + (cy + rb * Math.sin(a1)) + ' L' + (cx + ra * Math.cos(a1)) + ' ' + (cy + ra * Math.sin(a1)) + ' A' + ra + ' ' + ra + ' 0 ' + lg + ' 0 ' + (cx + ra * Math.cos(a0)) + ' ' + (cy + ra * Math.sin(a0)) + ' Z'; }
+    var sv = '<svg viewBox="0 0 260 260" role="img" aria-label="Répartition des frags par classe et par rôle" style="max-width:300px;margin:auto">';
+    classes.forEach(function (c) {
+      var n = sum(Object.values(S[c])), a1 = a + n / tot * 2 * Math.PI, ink = v(FRAG_CLS[c][1]);
+      sv += '<path d="' + arc(r0, r1, a, a1) + '" style="fill:' + ink + ';stroke:var(--card);stroke-width:1.5" data-tip="<b>' + FRAG_CLS[c][0] + '</b> : ' + n + ' frags (' + pctI(n / tot * 100) + ' du total)"/>';
+      var b = a;
+      Object.keys(S[c]).sort(function (x, y) { return S[c][y] - S[c][x]; }).forEach(function (role) {
+        var k = S[c][role], b1 = b + k / tot * 2 * Math.PI;
+        sv += '<path d="' + arc(r1 + 2, r2, b, b1) + '" style="fill:color-mix(in oklab, ' + ink + ' 62%, var(--card));stroke:var(--card);stroke-width:1.5" data-tip="<b>' + (FRAG_ROLE[role] || role) + '</b> : ' + k + ' frags"/>';
+        if (b1 - b > 0.32) { var am = (b + b1) / 2, rr = (r1 + r2) / 2 + 1; sv += '<text x="' + (cx + rr * Math.cos(am)) + '" y="' + (cy + rr * Math.sin(am) + 3.5) + '" text-anchor="middle" style="font-size:9.5px;fill:var(--foreground);pointer-events:none">' + (FRAG_ROLE[role] || role) + '</text>'; }
+        b = b1;
+      });
+      a = a1;
+    });
+    sv += '</svg>';
+    var wrap = el('div', { class: 'sunwrap' });
+    var lg = el('div', { class: 'sunleg' });
+    classes.forEach(function (c) { var n = sum(Object.values(S[c])); lg.appendChild(el('div', null, '<i style="background:' + v(FRAG_CLS[c][1]) + '"></i>' + FRAG_CLS[c][0] + ' · ' + n)); });
+    wrap.appendChild(lg); wrap.appendChild(el('div', null, sv));
+    m.appendChild(wrap);
+    mnote(m, 'Classes lues dans la source de dégât du film (' + s.filmKills + ' frags sur ' + s.myKills + ' de la feuille de match' + (s.filmKills < s.myKills ? ', reliquat en « Non attribué »' : '') + ') ; l’app lit la base du joueur, non copiée.');
+  }
+  function toolsBreakdown(m, s) {
+    var rows = s.tools.slice().sort(function (a, b) { return b.n - a.n; });
+    var mx = Math.max.apply(null, rows.map(function (r) { return r.n; }));
+    var box = el('div', { class: 'wbars' });
+    rows.forEach(function (r) { var row = el('div', { class: 'wbar' }); row.appendChild(el('div', null, r.label)); row.appendChild(el('div', { class: 'wt', 'data-tip': r.label + ' : ' + r.n + ' frags' }, '<span style="width:' + (r.n / mx * 100) + '%;background:' + v(FRAG_CLS[r.cls][1]) + '"></span>')); row.appendChild(el('div', { class: 'wn' }, String(r.n))); box.appendChild(row); });
+    m.appendChild(box);
+  }
+
+  // ======================================================================
+  // A3 / C — Distance par arme (inchangée)
+  // ======================================================================
+  function renderDistance(m, s0) {
+    var s = Object.assign({}, s0, { dist: s0.dist.filter(function (w) { return w.cls !== 'melee'; }) });
+    if (!s.dist.length) { emptyText(m, 'Distances non mesurées sur ce match — le film a bien été décodé, mais la passe n’a pas pu attribuer chaque élimination avec assez de certitude pour publier une distance par frag.'); return; }
+    var rowsN = sum(s.dist.map(function (w) { return w.players.length + 1; }));
+    var W = 760, L = 150, R = 20, T = 6, rh = 15, H = T + rowsN * rh + 30;
+    var maxD = Math.ceil(Math.max.apply(null, [].concat.apply([], s.dist.map(function (w) { return w.players.map(function (p) { return p.max; }); }))) / 5) * 5;
+    var x = function (d) { return L + d / maxD * (W - L - R); };
+    var sv = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Distance des frags par arme et par joueur">';
+    for (var g = 0; g <= maxD; g += 5) sv += '<line x1="' + x(g) + '" x2="' + x(g) + '" y1="' + T + '" y2="' + (H - 24) + '" class="grd"/><text class="ax" x="' + x(g) + '" y="' + (H - 10) + '" text-anchor="middle">' + g + (g === maxD ? ' m' : '') + '</text>';
+    var yy = T;
+    s.dist.forEach(function (w) {
+      sv += '<text class="lbl" x="4" y="' + (yy + 11) + '" style="font-weight:600">' + esc(w.weapon) + ' <tspan class="lbls">· ' + w.n + '</tspan></text>';
+      yy += rh;
+      w.players.forEach(function (p) {
+        var ink = inkOf(s, p.x), cy = yy + rh / 2;
+        var tip = '<b>' + esc(p.name) + '</b> · ' + esc(w.weapon) + '<br>Frags mesurés : ' + p.n + '<br>Plus proche : ' + f1(p.min) + ' m<br>Distance moyenne : ' + f1(p.avg) + ' m<br>Plus loin : ' + f1(p.max) + ' m';
+        sv += '<text class="lbls" x="' + (L - 8) + '" y="' + (cy + 3.5) + '" text-anchor="end" style="font-size:9.5px">' + esc(p.name) + '</text>';
+        sv += '<line x1="' + x(p.min) + '" x2="' + Math.max(x(p.max), x(p.min) + 1) + '" y1="' + cy + '" y2="' + cy + '" style="stroke:' + ink + ';stroke-width:4;stroke-linecap:round" data-tip="' + tip + '"/>';
+        sv += '<path d="M' + x(p.avg) + ' ' + (cy - 5) + ' l5 5 l-5 5 l-5 -5 z" style="fill:var(--perf-tier-2);stroke:var(--card);stroke-width:1" data-tip="' + tip + '"/>';
+        yy += rh;
+      });
+    });
+    m.innerHTML = '<div class="scrollx"><div style="min-width:520px;max-width:780px">' + sv + '</svg></div></div>';
+    var seen = {}, items = [];
+    s.dist.forEach(function (w) { w.players.forEach(function (p) { if (seen[p.x]) return; seen[p.x] = 1; items.push({ color: inkOf(s, p.x), label: p.name }); }); });
+    m.appendChild(legend(items.concat([{ kind: 'diamond', color: v('perf-tier-2'), label: 'Distance moyenne' }])));
+  }
+  function makeDistance(host, s, pfx, avant) {
+    card(host, { id: pfx + '-dist', num: avant ? 'A3' : null, title: 'Distance par arme', info: s.dist.length ? 'Ne compte que les frags dont la position du tueur ET de la victime est mesurée ; tous les frags n’ont pas de position (couverture partielle).' : null,
+      replace: avant ? null : 'rien (carte inchangée, valeurs réelles)', render: function (m) { renderDistance(m, s); } });
+  }
+
+  // ======================================================================
+  // A4 avant — Hauteur d'engagement
+  // ======================================================================
+  function renderElevation(m, s) {
+    var E = s.elev;
+    if (!E.kills.length && !E.deaths.length) { emptyText(m, 'Hauteur d’engagement non mesurée sur ce match — le film a bien été décodé, mais aucun engagement n’y porte la position des deux joueurs.'); return; }
+    var bar = el('div', { class: 'segbtn' }); bar.appendChild(el('button', { type: 'button', 'aria-pressed': 'false', tabindex: '-1' }, 'Comparer au lobby')); m.appendChild(bar);
+    var pts = E.kills.concat(E.deaths), W = 560, H = 250, L = 40, R = 12, T = 8, B = 34;
+    var maxD = Math.ceil(Math.max.apply(null, pts.map(function (p) { return p.d; })) / 5) * 5, maxH = Math.max(3, Math.ceil(Math.max.apply(null, pts.map(function (p) { return Math.abs(p.h); }))));
+    var x = function (d) { return L + d / maxD * (W - L - R); }, y = function (h) { return T + (1 - (h + maxH) / (2 * maxH)) * (H - T - B); };
+    var sv = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Hauteur d’engagement">';
+    sv += '<rect x="' + L + '" y="' + y(1) + '" width="' + (W - L - R) + '" height="' + (y(-1) - y(1)) + '" style="fill:color-mix(in oklab, var(--muted-foreground) 14%, transparent)"/>';
+    sv += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '" class="grd"/>';
+    [-maxH, 0, maxH].forEach(function (h) { sv += '<text class="ax" x="' + (L - 6) + '" y="' + (y(h) + 3.5) + '" text-anchor="end">' + (h > 0 ? '+' + h : h < 0 ? '−' + Math.abs(h) : '0') + '</text>'; });
+    for (var g = 0; g <= maxD; g += 5) sv += '<text class="ax" x="' + x(g) + '" y="' + (H - B + 14) + '" text-anchor="middle">' + g + '</text>';
+    sv += '<text class="axt" x="' + ((L + W - R) / 2) + '" y="' + (H - 4) + '" text-anchor="middle">Distance de l’engagement (m)</text>';
+    sv += '<text class="axt" x="10" y="' + (T + (H - T - B) / 2) + '" transform="rotate(-90 10 ' + (T + (H - T - B) / 2) + ')" text-anchor="middle">Hauteur (m)</text>';
+    E.kills.forEach(function (p) { sv += '<circle cx="' + x(p.d).toFixed(1) + '" cy="' + y(p.h).toFixed(1) + '" r="4" style="fill:var(--stat-kills)" data-tip="Frag · ' + f1(p.d) + ' m · ' + (p.h >= 0 ? '+' : '−') + f1(Math.abs(p.h)) + ' m<br>' + esc(p.w) + ' · ' + clock(p.t) + '"/>'; });
+    E.deaths.forEach(function (p) { sv += '<circle cx="' + x(p.d).toFixed(1) + '" cy="' + y(p.h).toFixed(1) + '" r="4" style="fill:var(--stat-deaths)" data-tip="Mort · ' + f1(p.d) + ' m · ' + (p.h >= 0 ? '+' : '−') + f1(Math.abs(p.h)) + ' m<br>' + esc(p.w) + ' · ' + clock(p.t) + '"/>'; });
+    m.appendChild(el('div', null, sv + '</svg>'));
+    m.appendChild(legend([{ kind: 'round', color: v('stat-kills'), label: 'Mes frags — ' + E.kills.length }, { kind: 'round', color: v('stat-deaths'), label: 'Mes morts — ' + E.deaths.length }, { color: 'color-mix(in oklab, var(--muted-foreground) 30%, transparent)', label: 'Bande à niveau (± 1 m)' }]));
+    m.appendChild(el('div', { class: 'pexpo', style: 'justify-content:flex-start' }, '<span>' + s.myMeasured + '/' + s.myKills + ' frags mesurés</span>'));
+  }
+
+  // ======================================================================
+  // A5 / F — grille des usages par joueur ; A6 — part de chaque équipe
+  // ======================================================================
+  function usageGrid(m, s) {
+    var C = s.usageCols, R = s.usageRows;
+    if (!C.length) { emptyText(m, 'Aucun usage d’équipement mesuré sur ce match.'); return; }
+    var max = C.map(function (c, ci) { return Math.max.apply(null, R.map(function (r) { if (!r.film) return 0; return c.kind === 'grapple' ? r.grapple : sum(r.eq[ci - (C[0].kind === 'grapple' ? 1 : 0)]); }).concat([1])); });
+    var g = el('div', { class: 'ug', style: 'grid-template-columns:140px repeat(' + C.length + ', minmax(84px, 1fr));min-width:' + (140 + C.length * 94) + 'px' });
+    var hasG = C[0].kind === 'grapple';
+    g.appendChild(el('div'));
+    if (hasG) g.appendChild(el('div', { class: 'ugg' }, 'Grappin <i class="info" tabindex="0" data-tip="' + esc('Tractions de grappin lues dans le film — la seule activation de capacité que la mesure sait attribuer à un joueur. Un tir sans accroche n’est pas une traction : il est compté à part et n’entre pas dans cette colonne.') + '">i</i>'));
+    var neq = C.length - (hasG ? 1 : 0);
+    if (neq) g.appendChild(el('div', { class: 'ugg', style: 'grid-column:span ' + neq }, 'Équipement <i class="info" tabindex="0" data-tip="' + esc('Chaque objet ramassé finit d’une seule façon : utilisé, gardé sans l’utiliser, ou lâché en mourant. « Utilisé » veut dire ACTIVÉ pour le camouflage et le surbouclier, POSÉ pour le reste (mur, capteur, écran occultant, traqueur, champ de réparation, balise du translocateur). Un mur déployé publie deux poses (l’appareil et ses panneaux) et n’en compte qu’une. Le grappin, le propulseur et le répulseur agissent sur leur porteur et n’ont pas de colonne ici — le répulseur parce qu’aucun canal du film ne mesure son activation, jamais parce qu’il ne sert à rien.') + '">i</i>'));
+    g.appendChild(el('div'));
+    C.forEach(function (c) { g.appendChild(el('div', { class: 'ugh' }, '<b>' + c.label + '</b>')); });
+    var tot = C.map(function () { return [0, 0, 0, 0]; });
+    var prevCamp = null;
+    R.forEach(function (r) {
+      if (prevCamp && prevCamp !== r.camp) g.appendChild(el('div', { class: 'ugsep' }));
+      prevCamp = r.camp;
+      g.appendChild(el('div', { class: 'ugn' + (r.me ? ' me' : ''), style: '--ink:' + v(r.tok), title: r.name }, esc(r.name) + (r.left ? ' <small style="color:var(--muted-foreground)">(parti)</small>' : '')));
+      C.forEach(function (c, ci) {
+        if (!r.film) { g.appendChild(el('div', { class: 'ucell na', 'data-tip': esc(r.name) + ' — ' + c.label + ' : non mesuré (aucune ligne de résumé du film)' }, '<div class="ub"></div><div class="uv">—</div>')); return; }
+        if (c.kind === 'grapple') {
+          var n = r.grapple; tot[ci][0] += n;
+          g.appendChild(el('div', { class: 'ucell' + (n ? '' : ' zero'), 'data-tip': esc(r.name) + ' — Grappin : ' + n }, '<div class="ub">' + (n ? '<span style="width:' + (n / max[ci] * 100) + '%;background:' + v('usage-grapple') + '"></span>' : '') + '</div><div class="uv">' + n + '</div>'));
+          return;
+        }
+        var o = r.eq[ci - (hasG ? 1 : 0)], t = sum(o);
+        tot[ci][0] += o[0]; tot[ci][1] += o[1]; tot[ci][2] += o[2];
+        var segs = o.map(function (p, i) { return p ? '<span style="width:' + (p / max[ci] * 100) + '%;background:' + v(OUTC[i]) + '"></span>' : ''; }).join('');
+        g.appendChild(el('div', { class: 'ucell' + (t ? '' : ' zero'), 'data-tip': '<b>' + esc(r.name) + '</b> — ' + c.label + '<br>Utilisé : ' + o[0] + '<br>Gardé sans l’utiliser : ' + o[1] + '<br>Lâché en mourant : ' + o[2] + '<br>' + plural(t, 'objet') + ' pris' }, '<div class="ub">' + segs + '</div><div class="uv">' + t + '</div>'));
+      });
+    });
+    g.appendChild(el('div', { class: 'ugn ugt', style: '--ink:transparent' }, 'Total'));
+    C.forEach(function (c, ci) { var t = c.kind === 'grapple' ? tot[ci][0] : tot[ci][0] + tot[ci][1] + tot[ci][2]; g.appendChild(el('div', { class: 'ucell tot', 'data-tip': c.label + ' : ' + t + (c.kind === 'grapple' ? ' tractions' : ' (utilisé ' + tot[ci][0] + ' · gardé ' + tot[ci][1] + ' · lâché ' + tot[ci][2] + ')') }, '<div class="ub" style="background:transparent"></div><div class="uv" style="font-weight:600">' + t + '</div>')); });
+    var w = el('div', { class: 'ugridw' }); w.appendChild(g); m.appendChild(w);
+  }
+  var USAGE_INFO_RESERVE = 'Réserve de couverture (« N usages mesurés restent hors des deux vues : le film n’en nomme ni l’auteur ni l’origine ») : non relevée — elle vient du document de rejeu, que la maquette ne lit pas.';
+  function teamShare(m, s) {
+    var C = s.usageCols, T = s.usageTeam, hasG = C.length && C[0].kind === 'grapple';
+    var rows = C.map(function (c, ci) { var o = c.kind === 'grapple' ? T.grapple : T.eq[ci - (hasG ? 1 : 0)]; return { label: c.label, us: o.us, them: o.them }; });
+    var mx = Math.max.apply(null, rows.map(function (r) { return r.us + r.them; }).concat([1]));
+    var box = el('div', { style: 'display:flex;flex-direction:column;gap:9px' });
+    rows.forEach(function (r) {
+      var row = el('div', { class: 'strack' }), n = r.us + r.them;
+      row.appendChild(el('div', null, r.label));
+      var cell = el('div');
+      if (n) { var t = campTrack(r.us, r.them, 'mid', 'Mon camp — ' + r.label + ' : ' + r.us + ' sur ' + n + ' (' + pctI(r.us / n * 100) + ')', 'Adversaire — ' + r.label + ' : ' + r.them + ' sur ' + n + ' (' + pctI(r.them / n * 100) + ')', false); t.style.width = (n / mx * 100) + '%'; t.querySelector('.parity').remove();
+        [].forEach.call(t.querySelectorAll('.seg'), function (sg, i) { sg.classList.remove('l', 'r'); sg.classList.add('c'); sg.appendChild(el('span', { class: 'sl' }, '<b>' + (i === 0 && r.us ? r.us : r.them) + '</b>')); }); cell.appendChild(t); }
+      else cell.appendChild(el('div', { class: 'track zero' }));
+      row.appendChild(cell);
+      row.appendChild(el('div', { class: 'stn' }, String(n)));
+      box.appendChild(row);
+    });
+    m.appendChild(box);
+  }
+
+  // ======================================================================
+  // A7 avant — Contrôle des armes spéciales (une colonne par arme de socle, empilée par joueur)
+  // ======================================================================
+  function renderPads(m, s) {
+    var groups = [['puissance', 'Puissance'], ['terrain', 'Terrain']].map(function (gq) {
+      var fams = {};
+      s.tierRows.filter(function (t) { return t.tier === gq[0]; }).forEach(function (t) { var f = fams[t.fam] || (fams[t.fam] = { fam: t.fam, name: t.name, by: {} }); f.by[t.x] = (f.by[t.x] || 0) + t.n; });
+      var cols = Object.values(fams).map(function (f) { f.n = sum(Object.values(f.by)); return f; }).sort(function (a, b) { return b.n - a.n || a.name.localeCompare(b.name); });
+      return { key: gq[0], label: gq[1], cols: cols, n: sum(cols.map(function (c) { return c.n; })) };
+    }).filter(function (g) { return g.cols.length; });
+    if (!groups.length) { emptyText(m, 'Aucun socle d’arme de puissance ou de terrain n’a été pris dans ce match.'); return; }
+    // Rang du joueur dans son camp (prises totales) -> opacité 100 % -> 40 %.
+    var tot = {}; s.tierRows.forEach(function (t) { if (t.tier === 'puissance' || t.tier === 'terrain') tot[t.x] = (tot[t.x] || 0) + t.n; });
+    var rank = {};
+    ['us', 'them'].forEach(function (camp) { var xs = Object.keys(tot).filter(function (x) { var r = rosterOf(s, x); return r ? r.camp === camp : camp === 'them'; }).sort(function (a, b) { return tot[b] - tot[a] || nameOf(s, a).localeCompare(nameOf(s, b)); }); xs.forEach(function (x, i) { rank[x] = { camp: camp, op: xs.length > 1 ? 1 - 0.6 * i / (xs.length - 1) : 1, i: i }; }); });
+    var unnamed = {}; s.pads.list.forEach(function (p) { unnamed[p.weapon] = (unnamed[p.weapon] || 0) + (p.occupations - p.named); });
+    var ncol = sum(groups.map(function (g) { return g.cols.length; })), cw = 64, gap = 18, L = 30, T = 26, B = 52, H = 230;
+    var W = L + ncol * cw + (groups.length - 1) * gap + 10;
+    var mx = Math.max.apply(null, [].concat.apply([], groups.map(function (g) { return g.cols.map(function (c) { return c.n; }); })));
+    var y = function (n) { return T + (1 - n / mx) * (H - T - B); };
+    var sv = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Contrôle des armes spéciales" style="max-width:' + Math.max(W, 360) + 'px">';
+    for (var k = 0; k <= mx; k += Math.max(1, Math.ceil(mx / 4))) sv += '<line x1="' + L + '" x2="' + (W - 6) + '" y1="' + y(k) + '" y2="' + y(k) + '" class="grd"/><text class="ax" x="' + (L - 5) + '" y="' + (y(k) + 3.5) + '" text-anchor="end">' + k + '</text>';
+    var xx = L;
+    groups.forEach(function (g, gi) {
+      if (gi > 0) { sv += '<line x1="' + (xx - gap / 2) + '" x2="' + (xx - gap / 2) + '" y1="' + (T - 18) + '" y2="' + (H - B) + '" style="stroke:var(--border);stroke-width:1.5"/>'; }
+      var gx0 = xx;
+      g.cols.forEach(function (c) {
+        var ys = H - B, cx = xx + 8, w = cw - 16;
+        Object.keys(c.by).sort(function (a, b) { var ra = rank[a], rb = rank[b]; return (ra.camp === rb.camp ? 0 : ra.camp === 'us' ? -1 : 1) || ra.i - rb.i; }).forEach(function (x) {
+          var n = c.by[x], h = (H - T - B) * n / mx, r = rank[x], ink = r.camp === 'us' ? 'var(--team-ally)' : 'var(--team-enemy)';
+          sv += '<rect x="' + cx + '" y="' + (ys - h) + '" width="' + w + '" height="' + h + '" style="fill:' + ink + ';opacity:' + r.op.toFixed(2) + ';stroke:var(--card);stroke-width:1" data-tip="' + esc(nameOf(s, x)) + ' (' + TEAM_NAME[r.camp === 'us' ? 1 : 0] + ') — ' + esc(c.name) + ' : ' + plural(n, 'prise') + '"/>';
+          ys -= h;
+        });
+        sv += '<text class="lbls" x="' + (xx + cw / 2) + '" y="' + (H - B + 14) + '" text-anchor="middle" style="font-size:10px">' + esc(c.name.length > 12 ? c.name.slice(0, 11) + '…' : c.name) + '</text>';
+        if (unnamed[c.fam]) sv += '<text class="lbls" x="' + (xx + cw / 2) + '" y="' + (H - B + 27) + '" text-anchor="middle" style="font-size:9.5px">+ ' + unnamed[c.fam] + ' sans nom</text>';
+        xx += cw;
+      });
+      sv += '<text class="lbl" x="' + ((gx0 + xx) / 2) + '" y="' + (T - 10) + '" text-anchor="middle" style="font-size:11px;font-weight:600">' + g.label + ' · ' + plural(g.n, 'prise') + '</text>';
+      xx += gap;
+    });
+    m.appendChild(el('div', { class: 'scrollx' }, sv + '</svg>'));
+    var items = Object.keys(rank).sort(function (a, b) { var ra = rank[a], rb = rank[b]; return (ra.camp === rb.camp ? 0 : ra.camp === 'us' ? -1 : 1) || ra.i - rb.i; }).map(function (x) { var r = rank[x]; return { color: 'color-mix(in oklab, ' + (r.camp === 'us' ? 'var(--team-ally)' : 'var(--team-enemy)') + ' ' + Math.round(r.op * 100) + '%, transparent)', label: nameOf(s, x) }; });
+    m.appendChild(legend(items));
+  }
+
+  // ======================================================================
+  // A8 / J — Occupation du terrain (cadre)
+  // ======================================================================
+  function renderHeat(m, s) {
+    var b = el('div', { class: 'segbtn', role: 'group', 'aria-label': 'Camp affiché' });
+    ['Tous', 'Équipe Cobra', 'Équipe Eagle'].forEach(function (t, i) { b.appendChild(el('button', { type: 'button', 'aria-pressed': String(i === 0), tabindex: '-1' }, t)); });
+    m.appendChild(b);
+    m.appendChild(el('div', { class: 'heat', role: 'img', 'aria-label': 'Carte de chaleur non reproduite' }, '<div><b>Carte de chaleur sur le plan de ' + esc(s.meta.map) + '</b>canvas de l’app, non reproduit dans la maquette (positions des images-clés du film)</div>'));
+  }
+
+  // ======================================================================
+  // J3 — Assistances (inchangée) ; J4 avant — Riposte
+  // ======================================================================
+  function renderAssists(m, s) {
+    var A = s.assist;
+    if (!A.measured) { emptyText(m, 'Assistances non disponibles pour ce match (non mesurées ou non publiables).'); return; }
+    if (!A.pairs.length) { emptyText(m, 'Aucune assistance sur ce match.'); return; }
+    var killers = [], kIdx = {};
+    var by = {}; A.pairs.forEach(function (p) { (by[p.a] = by[p.a] || []).push(p); if (kIdx[p.k] == null) { kIdx[p.k] = killers.length; killers.push(p.k); } });
+    var rows = Object.keys(by).map(function (a) { return { a: a, name: nameOf(s, a), camp: (rosterOf(s, a) || { camp: 'them' }).camp, pairs: by[a], n: sum(by[a].map(function (p) { return p.n; })) }; })
+      .sort(function (x, y) { return (x.camp === y.camp ? 0 : x.camp === 'us' ? -1 : 1) || y.n - x.n || x.name.localeCompare(y.name); });
+    var mx = Math.max.apply(null, rows.map(function (r) { return r.n; }));
+    var box = el('div', { class: 'wbars' });
+    box.appendChild(el('div', { class: 'wbar', style: 'font-size:10.5px;color:var(--muted-foreground)' }, '<div>Larbin</div><div>a assisté…</div><div></div>'));
+    var prev = null;
+    rows.forEach(function (r) {
+      if (prev && prev !== r.camp) box.appendChild(el('div', { style: 'border-top:1px solid var(--border);margin:2px 0' }));
+      prev = r.camp;
+      var row = el('div', { class: 'wbar' });
+      row.appendChild(el('div', { title: r.name }, '<i class="cdot" style="background:' + v(r.camp === 'us' ? 'team-ally' : 'team-enemy') + '"></i>' + esc(r.name)));
+      var t = el('div', { class: 'wt', style: 'height:16px' });
+      r.pairs.slice().sort(function (p, q) { return q.n - p.n; }).forEach(function (p) {
+        var notes = []; if (p.stolen) notes.push('dont ' + p.stolen + ' volée' + (p.stolen > 1 ? 's' : '')); if (p.avg != null) notes.push('part moyenne ' + p.avg + ' %');
+        t.appendChild(el('span', { style: 'width:' + (p.n / mx * 100) + '%;background:' + v(ASSIST_TOKENS[kIdx[p.k] % ASSIST_TOKENS.length]) + ';display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--on-ink);font-weight:600;box-shadow:-1px 0 0 var(--card)', 'data-tip': '<b>Larbin</b> : ' + esc(r.name) + '<br><b>Patron</b> : ' + esc(p.kName) + '<br>' + plural(p.n, 'assistance') + (notes.length ? '<br>' + notes.join(' · ') : '') }, p.n > 1 ? String(p.n) : ''));
+      });
+      row.appendChild(t);
+      row.appendChild(el('div', { class: 'wn' }, String(r.n)));
+      box.appendChild(row);
+    });
+    m.appendChild(box);
+    m.appendChild(legend(killers.map(function (k) { return { color: v(ASSIST_TOKENS[kIdx[k] % ASSIST_TOKENS.length]), label: nameOf(s, k) }; })));
+  }
+  function makeAssists(host, s, pfx, avant) {
+    card(host, { id: pfx + '-j3', num: avant ? 'J3' : null, title: 'Assistances', replace: avant ? null : 'rien (carte inchangée)', render: function (m) { renderAssists(m, s); } });
+  }
+  function renderRiposte(m, s) {
+    var Rp = s.riposte;
+    if (!Rp.measured) { emptyText(m, 'Riposte non disponible pour ce match (aucune mort lisible ligne à ligne).'); return; }
+    if (!Rp.avengedTotal) { emptyText(m, 'Aucune riposte sur ce match.'); return; }
+    var g = el('div', { class: 'ripgrid' });
+    [['us', 1], ['them', 0]].forEach(function (cp) {
+      var ink = cp[0] === 'us' ? v('team-ally') : v('team-enemy'), pale = 'color-mix(in oklab, ' + ink + ' 40%, transparent)';
+      var sec = el('section', { 'aria-label': 'Équipe ' + TEAM_NAME[cp[1]] });
+      sec.appendChild(el('h4', { class: 'riph', style: 'color:' + ink }, 'Équipe ' + TEAM_NAME[cp[1]]));
+      sec.appendChild(el('div', { class: 'dvh', style: 'color:var(--muted-foreground);margin-bottom:4px' }, '<span>a été riposté</span><span></span><span style="text-align:right">a riposté</span>'));
+      Rp[cp[0]].forEach(function (r) {
+        var row = el('div', { class: 'dvh', style: 'margin-bottom:5px' });
+        var cpl = function (list, fmt) { var sh = list.slice(0, 5).map(function (c) { return fmt(esc(c[0]), f1(c[1] / 1000)); }); if (list.length > 5) sh.push('+' + (list.length - 5)); return sh.join('<br>') || ''; };
+        row.appendChild(el('div', { class: 'dvs end' }, '<span class="cnt">' + r.avenged + '</span><span class="bar" style="width:' + (r.avenged / Rp.scaleMax * 100) + '%;background:' + pale + '" data-tip="' + esc(cpl(r.by, function (n, sx) { return 'vengée par ' + n + ', ' + sx + ' s'; })) + '"></span>'));
+        row.appendChild(el('div', { class: 'dvname', title: r.name }, esc(r.name)));
+        row.appendChild(el('div', { class: 'dvs' }, '<span class="bar" style="width:' + (r.ripostes / Rp.scaleMax * 100) + '%;background:' + ink + '" data-tip="' + esc(cpl(r.fr, function (n, sx) { return 'a vengé ' + n + ', ' + sx + ' s'; })) + '"></span><span class="cnt">' + r.ripostes + '</span>'));
+        sec.appendChild(row);
+      });
+      sec.appendChild(legend([{ color: pale, label: 'ses morts vengées par son camp' }, { color: ink, label: 'les ripostes qu’il a portées' }]));
+      g.appendChild(sec);
+    });
+    m.appendChild(g);
+    m.appendChild(el('p', { class: 'note9', style: 'margin:0' }, Rp.avengedTotal + ' mort' + (Rp.avengedTotal > 1 ? 's' : '') + ' vengée' + (Rp.avengedTotal > 1 ? 's' : '') + ' sur ' + Rp.measured + ' mesurée' + (Rp.measured > 1 ? 's' : '')));
+    if (!Rp.publishable) mnote(m, 'Le journal lu par la Riposte (requête Q20) ne filtre pas <code>publishable</code> : ces comptes reposent sur ' + Rp.measured + ' lignes dont aucune n’est publiable ligne à ligne, alors que les Assistances du même match se déclarent non disponibles.');
+  }
+
+  // ======================================================================
+  // AVANT — l'onglet tel qu'il est
+  // ======================================================================
+  function renderAvant(host, s, pfx) {
+    var f = tabsFrame(host, 'Armes et terrain');
+    section(f, 'Frags et armes');
+    var g = el('div', { class: 'grid2 grid21', style: 'margin-top:14px' }); f.appendChild(g);
+    card(g, { id: pfx + '-a1', num: 'A1', title: 'Répartition des frags', render: function (m) { sunburst(m, s); } });
+    card(g, { id: pfx + '-a2', num: 'A2', title: 'Outils de destruction', render: function (m) { toolsBreakdown(m, s); } });
+    makeDistance(stack(f), s, pfx, true);
+    card(stack(f), { id: pfx + '-a4', num: 'A4', title: 'Hauteur d’engagement', info: s.elev.kills.length + s.elev.deaths.length ? 'La hauteur d’engagement est l’écart de hauteur entre les deux joueurs à l’instant du coup fatal, en mètres. Elle est signée de votre côté : au-dessus de la ligne vous étiez en surplomb, en dessous vous étiez en contrebas, pour un frag comme pour une mort. Ne comptent que les engagements dont la position des deux joueurs est mesurée.' : null, render: function (m) { renderElevation(m, s); } });
+    section(f, 'Équipement et terrain');
+    var g2 = grid2(f);
+    card(g2, { id: pfx + '-a5', num: 'A5', title: 'Usages par joueur', info: USAGE_INFO_RESERVE, render: function (m) { usageGrid(m, s); } });
+    card(g2, { id: pfx + '-a6', num: 'A6', title: 'Part de chaque équipe', info: USAGE_INFO_RESERVE, legend: [{ color: v('team-ally'), label: 'Équipe Cobra' }, { color: v('team-enemy'), label: 'Équipe Eagle' }], render: function (m) { teamShare(m, s); } });
+    var notes = ['Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l’événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu’aucun ramassage ne couvre — ou que plusieurs couvrent — n’est comptée pour personne : on ne devine pas un ramasseur, on s’abstient et on le dit sous le graphe.'];
+    var uc = s.unclassified.us + s.unclassified.them; if (uc) notes.push(uc + ' prise' + (uc > 1 ? 's' : '') + ' sur un emplacement non identifié.');
+    if (s.tierState === 'unestablished') notes.push('Les emplacements de cette carte ne sont pas dans la référence : le niveau de chaque arme n’a pas pu être établi. Les prises restent comptées.');
+    card(stack(f), { id: pfx + '-a7', num: 'A7', title: 'Contrôle des armes spéciales', info: notes.join(' — '), render: function (m) { renderPads(m, s); mnote(m, 'Une colonne par ARME de socle (somme de ses socles) : la base ne ventile pas les prises socle par socle. « + N sans nom » = occupations du film sans ramasseur nommé (<code>weapon_pads_json</code>).'); } });
+    card(stack(f), { id: pfx + '-a8', num: 'A8', title: 'Occupation du terrain', render: function (m) { renderHeat(m, s); } });
+
+    host.appendChild(el('h2', { class: 'sect' }, 'Chronologie › <b>Faits marquants</b>'));
+    var f2 = tabsFrame(host, 'Chronologie', 'small');
+    var c2 = stack(f2);
+    makeBadges(c2, s, pfx, true);
+    line1(c2, '<b>Courbe de score</b> (C3) : inchangée, hors sujet — non reproduite.');
+
+    host.appendChild(el('h2', { class: 'sect' }, 'Joueurs › <b>Duels &amp; confrontations</b>'));
+    var f3 = tabsFrame(host, 'Joueurs', 'small');
+    section(f3, 'Duels & confrontations');
+    makeAssists(stack(f3), s, pfx, true);
+    card(stack(f3), { id: pfx + '-j4', num: 'J4', title: 'Riposte', info: 'Une riposte, c’est la mort d’un joueur reprise par son camp sur son tueur dans les secondes qui suivent. Ce sont des comptes exhaustifs du match, jamais un taux. Ils demandent le journal des morts du film : sans film décodé, aucun ordre des morts.', render: function (m) { renderRiposte(m, s); } });
+  }
+
+  // ======================================================================
+  // APRÈS — les cartes A à J
+  // ======================================================================
+  // A. Répartition des frags : une barre empilée par classe pour le joueur de la page.
+  function makeFragbar(host, s, pfx) {
+    var F = s.fragBy;
+    card(host, {
+      id: pfx + '-fragbar', title: 'Répartition des frags',
+      info: 'Mes frags du match, par classe d’arme. Le nombre écrit dans un segment est son compte de frags ; le total est au bout de la barre.',
+      legend: CLS_ORDER.filter(function (c) { return F[c]; }).map(function (c) { return { color: v(FRAG_CLS[c][1]), label: FRAG_CLS[c][0] }; }),
+      replace: '« Répartition des frags » en anneaux (A1)',
+      render: function (m) {
+        var tot = sum(Object.values(F));
+        var row = el('div', { class: 'fbrow' });
+        row.appendChild(el('div', { class: 'fbname' }, chip('squad-player-1') + 'JGtm'));
+        var cell = el('div'), rep = el('div', { class: 'fbrep' }), t = el('div', { class: 'track', style: 'width:100%;background:transparent' }), x = 0;
+        CLS_ORDER.forEach(function (c) {
+          var n = F[c]; if (!n) return;
+          var w = n / tot * 100;
+          var sg = el('div', { class: 'seg c', style: 'left:' + x + '%;width:' + w + '%;background:' + v(FRAG_CLS[c][1]), 'data-tip': 'JGtm · ' + FRAG_CLS[c][0] + ' : ' + plural(n, 'frag') + ' sur ' + tot });
+          sg.appendChild(el('span', { class: 'sl' + (c === 'grenade' || c === 'shoulder' || c === 'unattributed' ? ' dark' : ''), 'data-repli': '<i class="csw" style="background:' + v(FRAG_CLS[c][1]) + '"></i>' + n, 'data-at': String(x) }, '<b>' + n + '</b>'));
+          t.appendChild(sg); x += w;
+        });
+        cell.appendChild(rep); cell.appendChild(t); row.appendChild(cell);
+        row.appendChild(el('div', { class: 'fbn' }, String(tot)));
+        var box = el('div', { style: 'display:flex;flex-direction:column;gap:12px;margin-block:auto' }); box.appendChild(row); m.appendChild(box);
+        if (s.filmKills < s.myKills) mnote(m, s.filmKills ? 'Classe de ' + s.filmKills + ' frags sur ' + s.myKills + ' lue dans la source de dégât du film ; le reliquat est « Non attribué ».' : 'Aucun des ' + s.myKills + ' frags de la feuille de match n’a de source publiable (journal des morts non publiable sur ce match) : tout est « Non attribué ».');
+      }
+    });
+  }
+  // B. Outils de destruction.
+  function makeTools(host, s, pfx) {
+    card(host, {
+      id: pfx + '-tools', title: 'Outils de destruction',
+      info: 'Mes frags, arme par arme, sur le match. La pastille devant l’arme est la couleur de sa classe dans la Répartition des frags.',
+      replace: '« Outils de destruction » (A2)',
+      render: function (m) {
+        var rows = s.tools.slice();
+        var mx = Math.max.apply(null, rows.map(function (r) { return r.n; }));
+        var box = el('div', { class: 'wbars' });
+        rows.forEach(function (r) {
+          var row = el('div', { class: 'wbar' });
+          row.appendChild(el('div', null, '<i class="cdot" style="background:' + v(FRAG_CLS[r.cls][1]) + '"></i>' + r.label));
+          row.appendChild(el('div', { class: 'wt', 'data-tip': 'JGtm · ' + r.label + ' : ' + plural(r.n, 'frag') }, '<span style="width:' + (r.n / mx * 100) + '%;background:' + v('squad-player-1') + '"></span>'));
+          row.appendChild(el('div', { class: 'wn' }, String(r.n)));
+          box.appendChild(row);
+        });
+        m.appendChild(box);
+      }
+    });
+  }
+  // D. Contrôle des ressources du match, objets dépliés.
+  function makeControl(host, s, pfx) {
+    var C = s.control, O = s.objects, PE = s.padsEmptied;
+    card(host, {
+      id: pfx + '-control', title: 'Contrôle des ressources du match',
+      info: 'Pour chaque ressource puis chacun de ses objets, ce que mon camp a pris face à l’adversaire sur le match : compte et part dans chaque segment. Le trait orange marque 50 %, autant que l’adversaire. Une prise sans ramasseur connu ne compte dans aucun camp.',
+      legend: [{ color: v('team-ally'), label: 'Équipe Cobra (mon camp)' }, { color: v('team-enemy'), label: 'Équipe Eagle' }, { kind: 'parity', label: '50 % : autant que l’adversaire' }],
+      replace: '« Part de chaque équipe » (A6) étendue aux ressources, « Contrôle des armes spéciales » (A7)',
+      render: function (m) {
+        var box = el('div', { style: 'display:flex;flex-direction:column;gap:10px;margin-top:4px' });
+        var sub = function (o, res) { pisteRow(box, { label: o.name, us: o.us, them: o.them, indent: true, cls: 'mid' }); };
+        // Bonus
+        var emptied = PE.camo + PE.overshield;
+        if (!s.takenChannel) {
+          pisteRow(box, { res: 'powerup', label: 'Bonus', sub: 'prises', pending: 'Non mesuré : aucune prise publiée sur ce match · ' + emptied + ' socles vidés, ramasseur inconnu' });
+          [['Camouflage', PE.camo], ['Surbouclier', PE.overshield]].forEach(function (b) { if (b[1]) pisteRow(box, { label: b[0], indent: true, pending: b[1] + ' socles vidés · prises non publiées' }); });
+        } else if (C.powerup.us + C.powerup.them) {
+          pisteRow(box, { res: 'powerup', label: 'Bonus', sub: 'prises · ' + emptied + ' socles vidés', us: C.powerup.us, them: C.powerup.them });
+          O.powerup.forEach(function (o) { sub(o); });
+        } else pisteRow(box, { res: 'powerup', label: 'Bonus', sub: 'prises', pending: '0 prise dans les deux camps · ' + emptied + ' socles vidés' });
+        // Armes spéciales
+        if (C.power.us + C.power.them) { pisteRow(box, { res: 'power', label: 'Armes spéciales', sub: 'prises sur les socles', us: C.power.us, them: C.power.them }); O.power.forEach(function (o) { sub(o); }); }
+        else pisteRow(box, { res: 'power', label: 'Armes spéciales', sub: 'prises sur les socles', pending: '0 prise : aucun socle d’arme de puissance pris' });
+        // Véhicules
+        pisteRow(box, { res: 'vehicle', label: 'Véhicules', sub: 'prises', pending: s.tag === '2407' ? 'Non mesuré : véhicules présents dans le film, aucune ligne de prise dans la base' : 'Non mesuré : aucune ligne de prise dans la base' });
+        // Râteliers, repliés
+        var nr = O.rack.length;
+        var rk = C.rack.us + C.rack.them
+          ? pisteRow(box, { labelHtml: toggleBtn(resDot('rack') + 'Armes de râtelier <small>(' + nr + ', repliées)</small>') + '<small>prises</small>', label: 'Armes de râtelier', us: C.rack.us, them: C.rack.them })
+          : pisteRow(box, { labelHtml: toggleBtn(resDot('rack') + 'Armes de râtelier <small>(0)</small>') + '<small>prises</small>', pending: '0 prise' });
+        var items = O.rack.map(function (o) { var r = pisteRow(box, { label: o.name, us: o.us, them: o.them, indent: true, cls: 'mid' }); r.hidden = true; return r; });
+        bindToggle(rk.querySelector('.btoggle'), function () { return items; });
+        m.appendChild(box);
+        axisRow(m, AXIS_PCT);
+        var uc = s.unclassified.us + s.unclassified.them;
+        if (uc) m.appendChild(el('div', { class: 'pexpo', style: 'justify-content:flex-start' }, '<span>' + uc + ' prises sur un emplacement non identifié, hors des pistes (mon camp ' + s.unclassified.us + ', adversaire ' + s.unclassified.them + ')</span>'));
+      }
+    });
+  }
+  // E. Qui a pris quoi chez nous — fiches par joueur de mon camp (À SOUMETTRE).
+  function makeSheets(host, s, pfx) {
+    var S = s.sheets, PU = s.control.powerup;
+    card(host, {
+      id: pfx + '-sheets', title: 'Qui a pris quoi chez nous',
+      info: 'Qui, dans mon camp, a pris chaque bonus, arme spéciale et arme de râtelier du match, une pastille par prise. Pour un bonus, une pastille vide est une prise perdue : gardée sans être activée, ou lâchée en mourant. L’usage d’une arme spéciale n’est pas mesuré par prise : ses pastilles sont toutes pleines.',
+      legend: [{ kind: 'dotk', color: v('foreground'), label: 'Prise' }, { kind: 'ringk', label: 'Bonus pris puis perdu' }],
+      submit: '<b>À soumettre</b> — carte proposée, non tranchée : le superviseur et l’utilisateur disent s’ils la veulent.',
+      replace: '« Contrôle des armes spéciales » (A7) : la répartition par joueur',
+      render: function (m) {
+        if (PU.us + PU.them > 0) m.appendChild(el('div', { class: 'losses' }, '<span><b>Bonus perdus</b></span>' +
+          '<span><i class="csw" style="background:' + v('team-ally') + '"></i><b>' + PU.lostUs + ' sur ' + PU.us + '</b>' + (PU.us ? ' (' + pctI(PU.lostUs / PU.us * 100) + ')' : '') + '</span>' +
+          '<span><i class="csw" style="background:' + v('team-enemy') + '"></i><b>' + PU.lostThem + ' sur ' + PU.them + '</b>' + (PU.them ? ' (' + pctI(PU.lostThem / PU.them * 100) + ')' : '') + '</span>'));
+        else m.appendChild(el('div', { class: 'losses' }, '<span><b>Bonus perdus</b></span><span>' + (s.takenChannel ? 'sans objet : aucun bonus pris' : 'non mesuré : aucune prise de bonus publiée sur ce match') + '</span>'));
+        var g = el('div', { class: 'sheets' });
+        S.owners.forEach(function (o, si) {
+          var sh = el('div', { class: 'sheet', style: '--ink:' + v(o.tok) });
+          var dom = S.dominant[si];
+          sh.appendChild(el('div', { class: 'mf-head' }, '<div class="mf-who"><span class="mf-av">' + esc(o.name.charAt(0).toUpperCase()) + '</span><span class="mf-name"' + (o.me ? '' : ' style="font-weight:500"') + '>' + esc(o.name) + '</span></div>' + (dom ? '<div class="mf-dom"><span class="mf-cap">Ressource dominante</span><span class="mf-pill">' + RES[dom].label + '</span></div>' : '')));
+          S.sections.forEach(function (sec, ri) {
+            var ss = el('div', { class: 'ssec' });
+            ss.appendChild(el('p', { class: 'mf-cap' }, resDot(sec.res) + RES[sec.res].label));
+            if (!sec.lines.length) ss.appendChild(el('div', { class: 'sl-line zero' }, '<span class="nm">' + (sec.res === 'powerup' && !s.takenChannel ? 'prises non publiées' : 'aucune prise de mon camp') + '</span><span class="dots"><span class="dash0"></span></span><span class="n"></span>'));
+            sec.lines.forEach(function (l) {
+              var n = l.taken[si], lost = Math.min(n, l.kept[si] + l.dropped[si]), dots = '';
+              for (var i = 0; i < n; i++) dots += '<span class="dot' + (i >= n - lost ? ' lost' : '') + '"></span>';
+              var lostTxt = lost ? '<br>' + lost + ' perdue' + (lost > 1 ? 's' : '') + ' : ' + [l.kept[si] ? 'gardé sans l’activer' : '', l.dropped[si] ? 'lâché en mourant' : ''].filter(Boolean).join(', ') : '';
+              ss.appendChild(el('div', { class: 'sl-line' + (n ? '' : ' zero'), 'data-tip': esc(o.name) + ' · ' + esc(l.name) + '<br>' + n + ' des ' + l.camp + ' prises de mon camp' + lostTxt }, '<span class="nm">' + esc(l.name) + '</span><span class="dots">' + (n ? dots : '<span class="dash0"></span>') + '</span><span class="n">' + n + '</span>'));
+            });
+            sh.appendChild(ss);
+          });
+          sh.appendChild(el('div', { class: 'mf-foot' }, S.sections.map(function (sec, ri) { var n = S.totals[ri][si]; if (sec.res === 'powerup' && !s.takenChannel) return '<span><b>—</b> bonus</span>'; return '<span><b>' + n + '</b> ' + (n > 1 ? RES[sec.res].foot : RES[sec.res].foot1) + '</span>'; }).join('')));
+          g.appendChild(sh);
+        });
+        m.appendChild(g);
+      }
+    });
+  }
+  // F. Usages d'équipement par joueur — A5 gardée, titre et légende changés.
+  function makeEquipGrid(host, s, pfx) {
+    card(host, {
+      id: pfx + '-equip', title: 'Équipement : servi, gardé, lâché, par joueur',
+      info: 'Une ligne par joueur, camp par camp. Chaque colonne a sa propre échelle et son total. Une pile par objet pris : servi (activé pour un bonus, posé pour le mur, charge consommée pour les autres), gardé sans servir, lâché en mourant. Le grappin compte ses tractions. Le répulseur n’a pas de colonne : aucun canal ne mesure son usage.',
+      legend: [{ color: v('divergent-pos'), label: 'Servi' }, { color: v('divergent-neutral'), label: 'Gardé sans servir' }, { color: v('divergent-neg'), label: 'Lâché' }].concat(s.usageCols.length && s.usageCols[0].kind === 'grapple' ? [{ color: v('usage-grapple'), label: 'Tractions de grappin' }] : []),
+      replace: '« Usages par joueur » (A5) — forme gardée ; « Part de chaque équipe » (A6) passe dans D',
+      render: function (m) { usageGrid(m, s); if (!s.takenChannel) mnote(m, 'Aucune prise publiée sur ce match (<code>taken_json</code> vide pour les ' + s.usageRows.filter(function (r) { return r.film; }).length + ' joueurs) : « gardé » ne peut pas se dériver, les piles ne portent que servi et lâché.'); }
+    });
+  }
+  // G. Frags obtenus avec les ressources.
+  function makeProd(host, s, pfx) {
+    var C = s.control, E = s.effect, pk = s.pwk;
+    card(host, {
+      id: pfx + '-prod', title: 'Frags obtenus avec les ressources',
+      info: 'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine ce qui les a permis (temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un véhicule). Si la coupure de la barre épaisse est à gauche de celle de la fine, on a moins produit qu’on n’a eu.',
+      legend: [{ color: v('team-ally'), label: 'Mon camp' }, { color: v('team-enemy'), label: 'Adversaire' }, { kind: 'parity', label: '50 % : autant que l’adversaire' }, { kind: 'thin', color: v('team-ally'), label: 'Barre fine : temps d’effet, prises ou temps à bord' }],
+      replace: 'rien (nouvelle)',
+      render: function (m) {
+        var box = el('div', { style: 'display:flex;flex-direction:column;gap:14px;margin-top:4px' });
+        var hasEff = E.us.ms + E.them.ms > 0, eS = hasEff ? E.us.ms / (E.us.ms + E.them.ms) * 100 : 0;
+        var thinEff = function (bar) {
+          bar.appendChild(campTrack(E.us.ms, E.them.ms, 'thin', '<b>Mon camp</b> · temps d’effet<br>' + dur(E.us.ms) + ' (' + pctI(eS) + ')', '<b>Adversaire</b> · temps d’effet<br>' + dur(E.them.ms) + ' (' + pctI(100 - eS) + ')', false));
+          bar.appendChild(el('div', { class: 'pexpo' }, '<span>temps d’effet : ' + dur(E.us.ms) + '</span><span>' + dur(E.them.ms) + '</span>'));
+        };
+        if (!hasEff) pisteRow(box, { res: 'powerup', label: 'Bonus', sub: 'frags pendant l’effet', pending: 'Aucun temps d’effet mesuré' });
+        else if (!s.effKillsMeasured) {
+          var row = el('div', { class: 'prow' }); row.appendChild(el('div', { class: 'plabel' }, resDot('powerup') + 'Bonus<small>frags pendant l’effet</small>'));
+          var bar = el('div', { class: 'pbar' }); bar.appendChild(el('div', { class: 'track pending' }, 'Frags pendant l’effet non mesurés : journal des morts non publiable')); thinEff(bar); row.appendChild(bar); box.appendChild(row);
+        } else pisteRow(box, { res: 'powerup', label: 'Bonus', sub: 'frags pendant l’effet', us: E.us.kills, them: E.them.kills, below: thinEff });
+        var pS = C.power.us + C.power.them ? C.power.us / (C.power.us + C.power.them) * 100 : 0;
+        if (pk.us + pk.them) pisteRow(box, { res: 'power', label: 'Armes spéciales', sub: 'frags obtenus avec (feuille de match)', us: pk.us, them: pk.them,
+          below: function (bar) {
+            if (C.power.us + C.power.them) { bar.appendChild(campTrack(C.power.us, C.power.them, 'thin', '<b>Mon camp</b> · prises sur les socles<br>' + plural(C.power.us, 'prise') + ' (' + pctI(pS) + ')', '<b>Adversaire</b> · prises sur les socles<br>' + plural(C.power.them, 'prise') + ' (' + pctI(100 - pS) + ')', false)); bar.appendChild(el('div', { class: 'pexpo' }, '<span>prises sur les socles : ' + C.power.us + '</span><span>' + C.power.them + '</span>')); }
+            else bar.appendChild(el('div', { class: 'pexpo' }, '<span>aucune prise d’arme spéciale mesurée</span>'));
+          } });
+        else pisteRow(box, { res: 'power', label: 'Armes spéciales', sub: 'frags obtenus avec', pending: '0 frag aux armes spéciales dans les deux camps' });
+        pisteRow(box, { res: 'vehicle', label: 'Véhicules', sub: 'frags depuis un véhicule', pending: 'Non mesuré' });
+        m.appendChild(box);
+        axisRow(m, AXIS_PCT);
+      }
+    });
+  }
+  // H. Rendement face à l'adversaire.
+  function makeYield(host, s, pfx) {
+    var C = s.control, E = s.effect, pk = s.pwk;
+    card(host, {
+      id: pfx + '-yield', title: 'Rendement face à l’adversaire',
+      info: 'Combien mon camp produit de plus ou de moins que l’adversaire pour la même exposition : par minute d’effet d’un bonus, par prise d’arme spéciale, par minute à bord d’un véhicule. Zéro veut dire autant que lui. Les deux rendements bruts sont écrits de l’autre côté du zéro.',
+      legend: [{ color: MORE_INK, label: 'Plus productifs que l’adversaire' }, { color: LESS_INK, label: 'Moins' }],
+      replace: 'rien (nouvelle)',
+      render: function (m) {
+        var box = el('div', { style: 'display:flex;flex-direction:column;gap:16px;margin-top:4px' });
+        var line = function (res, sub, us, them) {
+          var gap = us / them - 1, gp = Math.max(-50, Math.min(50, gap * 100)), x = 50 + gp, up = gap >= 0;
+          var nn = Math.round(Math.abs(gap) * 100), gs = nn === 0 ? '0 %' : (up ? '+' : '−') + nn + ' %';
+          var row = el('div', { class: 'prow' });
+          row.appendChild(el('div', { class: 'plabel' }, resDot(res) + RES[res].label + '<small>' + sub + '</small>'));
+          var t = el('div', { class: 'track' });
+          t.appendChild(el('div', { style: 'position:absolute;top:0;bottom:0;left:' + Math.min(50, x) + '%;width:' + Math.abs(x - 50) + '%;background:' + (up ? MORE_INK : LESS_INK), 'data-tip': '<b>' + RES[res].label + '</b> · ' + sub + '<br>Mon camp ' + f1(us) + ', adversaire ' + f1(them) + ' : ' + gs }));
+          t.appendChild(el('div', { class: 'zeroline' }));
+          var inside = Math.abs(gap * 100) > 40;
+          t.appendChild(el('span', { class: 'tiplab', style: up ? (inside ? 'right:calc(' + (100 - x) + '% + 6px)' : 'left:calc(' + x + '% + 6px)') : (inside ? 'left:calc(' + x + '% + 6px)' : 'right:calc(' + (100 - x) + '% + 6px)') }, gs));
+          t.appendChild(el('span', { class: 'rawlab', style: up ? 'right:calc(50% + 8px)' : 'left:calc(50% + 8px)' }, f1(us) + ' contre ' + f1(them)));
+          row.appendChild(t); box.appendChild(row);
+        };
+        // Bonus
+        if (!s.effKillsMeasured) pisteRow(box, { res: 'powerup', label: 'Bonus', sub: 'frags par minute d’effet', pending: 'Non mesuré : frags pendant l’effet non publiés' });
+        else if (!E.us.ms || !E.them.ms) pisteRow(box, { res: 'powerup', label: 'Bonus', sub: 'frags par minute d’effet', pending: 'Non mesurable : ' + (!E.them.ms ? 'l’adversaire' : 'mon camp') + ' n’a eu aucun temps d’effet (mon camp ' + dur(E.us.ms) + ', ' + plural(E.us.kills, 'frag') + ')' });
+        else line('powerup', 'frags par minute d’effet', E.us.kills / (E.us.ms / 60000), E.them.kills / (E.them.ms / 60000));
+        // Armes spéciales
+        if (!C.power.us || !C.power.them) pisteRow(box, { res: 'power', label: 'Armes spéciales', sub: 'frags par prise', pending: 'Non mesurable : ' + (!C.power.us ? 'mon camp' : 'l’adversaire') + ' n’a pris aucune arme spéciale (' + C.power.us + ' contre ' + C.power.them + ')' });
+        else line('power', 'frags par prise', pk.us / C.power.us, pk.them / C.power.them);
+        pisteRow(box, { res: 'vehicle', label: 'Véhicules', sub: 'frags par minute à bord', pending: 'Non mesuré' });
+        m.appendChild(box);
+        axisRow(m, [[0, '−50 %'], [25, '−25'], [50, 'autant'], [75, '+25'], [100, '+50 %']]);
+      }
+    });
+  }
+  // I. Vies : près d'un coéquipier ou seul, une ligne par joueur de mon camp.
+  function makeLives(host, s, pfx) {
+    var LB = s.livesBy, out = sum(LB.map(function (l) { return l.noctx + l.nomate; }));
+    card(host, {
+      id: pfx + '-lives', title: 'Vies : près d’un coéquipier ou seul',
+      info: 'Une ligne par joueur de mon camp, dans l’ordre des fiches. Chaque vie terminée par une mort est rangée selon la distance au coéquipier le plus proche au moment de la mort : à moins d’une portée de radar, ou au-delà. La barre épaisse partage ses vies, la barre fine les frags obtenus pendant ces vies.' + (out ? ' Les vies terminées sans aucun coéquipier situé sont écartées (' + out + ' ici).' : ''),
+      legend: [{ color: NEAR_INK, label: 'Près d’un coéquipier' }, { color: ALONE_INK, label: 'Seul' }, { kind: 'thin', color: v('muted-foreground'), label: 'Barre fine : ses frags pendant ces vies' }],
+      replace: '« Riposte » (J4)',
+      render: function (m) {
+        var two = function (a, b, cls, labels, what) {
+          var n = a + b, sh = n ? a / n * 100 : 0, t = el('div', { class: 'track ' + cls });
+          if (a) { var s1 = el('div', { class: 'seg l', style: 'left:0;width:' + sh + '%;background:' + NEAR_INK + ';border-radius:' + (b ? '3px 0 0 3px' : '3px'), 'data-tip': '<b>Près d’un coéquipier</b><br>' + nf(a) + ' ' + what + ' sur ' + nf(n) }); if (labels) s1.appendChild(el('span', { class: 'sl' }, '<b>' + nf(a) + '</b>')); t.appendChild(s1); }
+          if (b) { var s2 = el('div', { class: 'seg r', style: 'left:' + sh + '%;width:' + (100 - sh) + '%;background:' + ALONE_INK + ';border-radius:' + (a ? '0 3px 3px 0' : '3px'), 'data-tip': '<b>Seul</b><br>' + nf(b) + ' ' + what + ' sur ' + nf(n) }); if (labels) s2.appendChild(el('span', { class: 'sl' }, '<b>' + nf(b) + '</b>')); t.appendChild(s2); }
+          return t;
+        };
+        var box = el('div', { style: 'display:flex;flex-direction:column;gap:14px;margin-top:4px' });
+        var pv = function (f, n) { return n ? f1(f / n) + ' par vie' : '—'; };
+        LB.forEach(function (l) {
+          var row = el('div', { class: 'prow lrow', style: '--lw:150px' });
+          var nv = l.near[0] + l.alone[0];
+          row.appendChild(el('div', { class: 'plabel' }, chip(l.tok) + (l.me ? '<b>' + esc(l.name) + '</b>' : esc(l.name)) + '<small>' + plural(nv, 'vie') + ' terminée' + (nv > 1 ? 's' : '') + ' par une mort</small>'));
+          if (!nv) { row.appendChild(el('div', { class: 'track pending' }, 'Aucune vie terminée par une mort avec un coéquipier situé')); box.appendChild(row); return; }
+          var bar = el('div', { class: 'pbar' });
+          bar.appendChild(el('div', { class: 'pcamps fallback' }, '<span><i class="csw" style="background:' + NEAR_INK + '"></i><b>' + l.near[0] + '</b></span><span><i class="csw" style="background:' + ALONE_INK + '"></i><b>' + l.alone[0] + '</b></span>'));
+          bar.appendChild(two(l.near[0], l.alone[0], '', true, 'vies'));
+          if (l.near[1] + l.alone[1]) bar.appendChild(two(l.near[1], l.alone[1], 'thin', false, 'frags'));
+          else bar.appendChild(el('div', { class: 'track thin', 'data-tip': '0 frag pendant ces vies' }));
+          bar.appendChild(el('div', { class: 'pexpo' }, '<span>frags : ' + l.near[1] + ' · ' + pv(l.near[1], l.near[0]) + '</span><span>' + pv(l.alone[1], l.alone[0]) + ' · ' + l.alone[1] + '</span>'));
+          row.appendChild(bar); box.appendChild(row);
+        });
+        m.appendChild(box);
+        axisRow(m, AXIS_PCT, 150);
+        mnote(m, 'Seuil fixé à ' + s.radius + ' m pour ce relevé' + (s.radius === 30 ? ' (BTB : valeur de maquette)' : ' (portée du radar d’arène)') + ' ; l’app prendrait la portée du radar du match.' + (s.lifeSrc === 'highlight' ? ' Frags par vie lus dans les événements du match (<code>highlight_events</code>) : le journal des morts du film n’est pas publiable ici.' : ''));
+      }
+    });
+  }
+
+  function renderApres(host, s, pfx) {
+    var f = tabsFrame(host, 'Armes et terrain');
+    section(f, 'Frags et armes');
+    var g = grid2(f);
+    card(g, { id: pfx + '-sun', title: 'Répartition des frags', replace: 'rien (l’anneau est gardé — décision du 06/10)', render: function (m) { sunburst(m, s); } });
+    makeTools(g, s, pfx);
+    makeDistance(stack(f), s, pfx, false);
+    line1(stack(f), '<b>« Hauteur d’engagement » retirée</b> (A4) — la notion de hauteur sort de toutes les pages.');
+    section(f, 'Équipement et terrain', s.film ? 'film décodé · ' + s.nPresent + ' joueurs présents à la fin' : 'sans film');
+    makeControl(stack(f), s, pfx);
+    makeSheets(stack(f), s, pfx);
+    makeEquipGrid(stack(f), s, pfx);
+    var g2 = grid2(f); makeProd(g2, s, pfx); makeYield(g2, s, pfx);
+    makeLives(stack(f), s, pfx);
+    card(stack(f), { id: pfx + '-heat', title: 'Occupation du terrain', replace: '« Occupation du terrain » (A8) — inchangée', render: function (m) { renderHeat(m, s); } });
+
+    host.appendChild(el('h2', { class: 'sect' }, 'Chronologie › <b>Faits marquants</b>'));
+    var f2 = tabsFrame(host, 'Chronologie', 'small');
+    makeBadges(stack(f2), s, pfx, false);
+    host.appendChild(el('h2', { class: 'sect' }, 'Joueurs › <b>Duels &amp; confrontations</b>'));
+    var f3 = tabsFrame(host, 'Joueurs', 'small');
+    section(f3, 'Duels & confrontations');
+    makeAssists(stack(f3), s, pfx, false);
+    line1(stack(f3), '<b>« Riposte » retirée</b> (J4) — la notion de riposte sort de toutes les pages ; « Vies : près d’un coéquipier ou seul » (carte I, onglet Armes et terrain) reprend la question de l’entraide.');
+  }
+
+  // ======================================================================
+  // PAGE
+  // ======================================================================
+  var MS = { '2209': VM.m2209, '2407': VM.m2407 };
+  Object.keys(MS).forEach(function (k) {
+    renderAvant(document.getElementById('view-avant-' + k), MS[k], 'av-' + k);
+    renderApres(document.getElementById('view-apres-' + k), MS[k], 'ap-' + k);
+  });
+  var A = VM.m2209, B = VM.m2407;
+  [
+    '<b>Véhicules non mesurés</b> : <code>match_vehicle_takes</code> n’a aucune ligne pour les deux matchs dans la copie — Starboard (arène) n’en a pas, Flood Gulch (BTB) en a dans le film.',
+    '<b>24/07 — journal des morts non publiable</b> : ' + B.journal + ' lignes, 0 publiable. Classe et arme des frags, distances, assistances, frags pendant l’effet d’un bonus : non mesurés. Les frags par vie (carte I) viennent alors des événements du match.',
+    '<b>24/07 — aucune prise publiée</b> : <code>taken_json</code> vide pour tous les joueurs. Contrôle des bonus, bonus perdus et « gardé » non mesurés ; ' + (B.padsEmptied.camo + B.padsEmptied.overshield) + ' socles de bonus vidés sans ramasseur connu.',
+    '<b>22/09 — rendement</b> : aucun des deux rendements ne se calcule — l’adversaire n’a eu aucun temps d’effet (ses 2 surboucliers lâchés), mon camp n’a pris aucune arme spéciale (0 contre 2).',
+    '<b>Badges d’équipement</b> : la base porte la somme des frags sous effet par joueur, pas le meilleur épisode ; le badge n’est établi que sous 3 frags (aucun) ou sur un épisode unique.',
+    '<b>Occupation du terrain</b> et <b>réserve de couverture des usages</b> : viennent du document de rejeu, non lu par la maquette.',
+    '<b>Vies</b> : seuil de 18 m (arène) et 30 m (BTB) dans la maquette ; portée du radar du match dans l’app.'
+  ].forEach(function (t) { document.getElementById('gaps-list').appendChild(el('li', null, t)); });
+
+  // Deux interrupteurs, un état dans l'URL : #<apres|avant>-<2209|2407>.
+  function readState() {
+    var h = location.hash.replace('#', '').split('-');
+    return { view: h[0] === 'avant' ? 'avant' : 'apres', match: MS[h[1]] ? h[1] : '2209' };
+  }
+  function setState(st) { var target = '#' + st.view + '-' + st.match; if (location.hash !== target) location.hash = target; else applyState(); }
+  function modeFr(md) { return md.replace(/^Arena:/, 'Arène · ').replace(/^BTB:/, 'Grande bataille en équipe · ').replace('CTF', 'Drapeau'); }
+  function applyState() {
+    var st = readState(), s = MS[st.match];
+    ['avant', 'apres'].forEach(function (vw) { Object.keys(MS).forEach(function (k) { document.getElementById('view-' + vw + '-' + k).hidden = !(vw === st.view && k === st.match); }); });
+    document.querySelectorAll('[data-view]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-view') === st.view)); });
+    document.querySelectorAll('[data-match]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-match') === st.match)); });
+    var M = s.meta;
+    document.getElementById('title').textContent = 'Vue match — JGtm, ' + M.d + ' ' + M.h.replace(':', ' h ') + ' · Drapeau à ' + M.map;
+    document.getElementById('cover').innerHTML = '<b>' + outcomeFr(M.outcome) + ' ' + M.ms + '–' + M.es + '</b> · ' + modeFr(M.mode) + ', ' + M.playlist + ' · ' + dur(M.durS * 1000) + ' · ' + s.nPresent + ' joueurs présents à la fin (' + s.teamSizes.us + ' contre ' + s.teamSizes.them + ') · film décodé · journal des morts : ' + s.pubCount + ' lignes publiables sur ' + s.journal;
+    fitLabels();
+  }
+  document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { var st = readState(); st.view = b.getAttribute('data-view'); setState(st); }); });
+  document.querySelectorAll('[data-match]').forEach(function (b) { b.addEventListener('click', function () { var st = readState(); st.match = b.getAttribute('data-match'); setState(st); }); });
+  window.addEventListener('hashchange', applyState);
+
+  // Valeurs dans les segments quand elles tiennent ; sinon repli au-dessus (barre de frags) ou en ligne (pistes).
+  function fitLabels() {
+    document.querySelectorAll('.pcamps.fallback').forEach(function (p) { p.classList.remove('show'); });
+    document.querySelectorAll('.fbrep').forEach(function (r) { r.innerHTML = ''; });
+    document.querySelectorAll('.seg > .sl').forEach(function (sl) {
+      sl.style.visibility = 'visible';
+      var box = sl.parentElement.getBoundingClientRect();
+      if (box.width === 0) return;
+      var lab = sl.getBoundingClientRect();
+      if (lab.width > box.width - 12) {
+        sl.style.visibility = 'hidden';
+        var rep = sl.getAttribute('data-repli');
+        if (rep) { var host = sl.closest('.fbrow').querySelector('.fbrep'); host.appendChild(el('span', { style: 'left:' + sl.getAttribute('data-at') + '%' }, rep)); return; }
+        var pbar = sl.closest('.pbar');
+        var fb = pbar && pbar.querySelector('.pcamps.fallback');
+        if (fb) fb.classList.add('show');
+      }
+    });
+  }
+  var fitPending = false;
+  window.addEventListener('resize', function () { if (fitPending) return; fitPending = true; requestAnimationFrame(function () { fitPending = false; fitLabels(); }); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLabels);
+  applyState();
+
+  var tip = document.getElementById('tip');
+  function show(target, x, y) {
+    tip.innerHTML = target.getAttribute('data-tip');
+    tip.style.display = 'block';
+    var r = tip.getBoundingClientRect();
+    tip.style.left = Math.max(8, Math.min(x + 14, window.innerWidth - r.width - 8)) + 'px';
+    tip.style.top = Math.max(8, y + 14 + r.height > window.innerHeight ? y - r.height - 10 : y + 14) + 'px';
+  }
+  document.addEventListener('mousemove', function (e) { var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (t && t.getAttribute('data-tip')) show(t, e.clientX, e.clientY); else tip.style.display = 'none'; });
+  document.addEventListener('focusin', function (e) { var t = e.target.closest ? e.target.closest('[data-tip]') : null; if (!t) return; var r = t.getBoundingClientRect(); show(t, r.left, r.bottom); });
+  document.addEventListener('focusout', function () { tip.style.display = 'none'; });
+
+  document.querySelectorAll('[data-theme-set]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-theme-set');
+      if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', t);
+      document.querySelectorAll('[data-theme-set]').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    });
+  });
+})();
+</script>
