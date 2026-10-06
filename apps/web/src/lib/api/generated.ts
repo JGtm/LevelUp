@@ -3166,6 +3166,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/pages/trends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tendances (vue et type de partie en body) */
+        post: operations["postTrendsPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/patterns": {
         parameters: {
             query?: never;
@@ -13902,6 +13919,153 @@ export interface components {
             /** Format: int64 */
             unpublished: number;
         };
+        TrendsCalendarDay: {
+            date: string;
+            /** Format: int64 */
+            losses: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: double */
+            performance_score?: number;
+            /** Format: double */
+            win_rate?: number;
+            /** Format: int64 */
+            wins: number;
+        };
+        TrendsCapabilities: {
+            csr: boolean;
+            equipment: boolean;
+            lusr: boolean;
+            mmr: boolean;
+            objectives: boolean;
+        };
+        TrendsGameType: {
+            key: string;
+            /** Format: int64 */
+            matches: number;
+        };
+        TrendsHorizonCell: {
+            /** Format: int64 */
+            days: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            prev_matches: number;
+            /** Format: double */
+            prev_value?: number;
+            /** Format: double */
+            value?: number;
+            /** Format: double */
+            z?: number;
+        };
+        TrendsIndicator: {
+            /** Format: int64 */
+            better: number;
+            /** Format: int64 */
+            decimals: number;
+            group: string;
+            horizons: components["schemas"]["TrendsHorizonCell"][] | null;
+            in_matrix: boolean;
+            key: string;
+            months: components["schemas"]["TrendsMonthCell"][] | null;
+            series: components["schemas"]["TrendsSeries"];
+            unit: string;
+            variant?: string;
+        };
+        TrendsMedalRow: {
+            /** Format: int64 */
+            medal_id: number;
+            name: string;
+            /** Format: double */
+            prev_rate?: number;
+            /** Format: double */
+            rate: number;
+        };
+        TrendsMedalsBlock: {
+            compared: boolean;
+            /** Format: int64 */
+            days: number;
+            rows: components["schemas"]["TrendsMedalRow"][] | null;
+        };
+        TrendsMember: {
+            gamertag: string;
+            xuid: string;
+        };
+        TrendsMix: {
+            day: components["schemas"]["TrendsMixBucket"][] | null;
+            month: components["schemas"]["TrendsMixBucket"][] | null;
+            week: components["schemas"]["TrendsMixBucket"][] | null;
+        };
+        TrendsMixBucket: {
+            counts: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            t: string;
+        };
+        TrendsMonthCell: {
+            /** Format: int64 */
+            matches: number;
+            /** Format: double */
+            value?: number;
+            /** Format: double */
+            z?: number;
+        };
+        TrendsPageResponse: {
+            /** Format: date-time */
+            as_of: string;
+            calendar: components["schemas"]["TrendsCalendarDay"][] | null;
+            capabilities: components["schemas"]["TrendsCapabilities"];
+            game_type: string;
+            game_types: components["schemas"]["TrendsGameType"][] | null;
+            indicators: components["schemas"]["TrendsIndicator"][] | null;
+            medals: components["schemas"]["TrendsMedalsBlock"][] | null;
+            members: components["schemas"]["TrendsMember"][] | null;
+            mix: components["schemas"]["TrendsMix"];
+            months: string[] | null;
+            timezone: string;
+            view: string;
+            win_loss: components["schemas"]["TrendsWinLossBlock"][] | null;
+        };
+        TrendsPoint: {
+            /** Format: int64 */
+            matches: number;
+            /** Format: date-time */
+            t: string;
+            /** Format: double */
+            value: number;
+        };
+        TrendsSeries: {
+            day: components["schemas"]["TrendsPoint"][] | null;
+            match: components["schemas"]["TrendsPoint"][] | null;
+            month: components["schemas"]["TrendsPoint"][] | null;
+            week: components["schemas"]["TrendsPoint"][] | null;
+        };
+        TrendsWinLossBlock: {
+            /** Format: int64 */
+            days: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            required: number;
+            rows: components["schemas"]["TrendsWinLossRow"][] | null;
+        };
+        TrendsWinLossRow: {
+            group: string;
+            key: string;
+            /** Format: double */
+            loss_mean: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: double */
+            r: number;
+            /** Format: double */
+            win_mean: number;
+            /** Format: double */
+            z_loss: number;
+            /** Format: double */
+            z_win: number;
+        };
         UnreadCount: {
             /** Format: int64 */
             badge_count: number;
@@ -20939,6 +21103,37 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             499: components["responses"]["ClientClosed"];
             503: components["responses"]["DbBusy"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postTrendsPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendsPageResponse"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

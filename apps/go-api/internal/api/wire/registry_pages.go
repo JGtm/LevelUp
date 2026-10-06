@@ -370,8 +370,7 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 // éviter la résolution DB et le bruit de logs sur les titres sans stats attendues
 // (jamais slug== — ratchet no_slug_comparison_test.go).
 func (r *ServiceRegistry) titleHasExpectedStats(slug string) bool {
-	d := title.DefaultRegistry().Get(slug)
-	return d != nil && d.HasCapability(title.CapExpectedStats)
+	return r.titleHasCapability(slug, title.CapExpectedStats)
 }
 
 // Stats retourne un StatsService pour le joueur.

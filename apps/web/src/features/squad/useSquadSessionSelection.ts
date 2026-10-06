@@ -32,6 +32,7 @@ import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 
 import { MAX_SELECTION } from './colors'
+import { readStoredTeammates, writeStoredTeammates } from './squadSelectionStorage'
 
 /** Référence STABLE : un `?? []` neuf à chaque rendu casserait les mémos aval. */
 const NO_SESSIONS: string[] = []
@@ -67,23 +68,6 @@ function readDeepLink(search: { session?: string; teammates?: string }): SquadDe
       .split(',')
       .map((g) => g.trim())
       .filter(Boolean),
-  }
-}
-
-function readStoredTeammates(key: string): string[] {
-  try {
-    const stored = localStorage.getItem(key)
-    return stored ? (JSON.parse(stored) as string[]) : []
-  } catch {
-    return []
-  }
-}
-
-function writeStoredTeammates(key: string, value: string[]): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    /* ignore */
   }
 }
 
@@ -128,7 +112,6 @@ function takeLegacySessionLabels(playerSlug: string): string[] {
 function useSquadMountState(
   playerSlug: string,
   deepLink: SquadDeepLink | null,
-  teammatesKey: string,
 ): boolean {
   const [mountApplied, setMountApplied] = useState(false)
   useEffect(() => {
@@ -136,7 +119,7 @@ function useSquadMountState(
     const { filterContext, setSessions } = useSquadFilterStore.getState()
     const gapMinutes = filterContext.sessions?.gap_minutes ?? DEFAULT_GAP_MINUTES
     if (deepLink) {
-      writeStoredTeammates(teammatesKey, deepLink.teammates)
+      writeStoredTeammates(playerSlug, deepLink.teammates)
       setSessions({ picked_sessions: [deepLink.session], gap_minutes: gapMinutes })
     } else if (legacy.length > 0 && (filterContext.sessions?.picked_sessions?.length ?? 0) === 0) {
       setSessions({ picked_sessions: legacy, gap_minutes: gapMinutes })
@@ -150,19 +133,18 @@ function useSquadMountState(
 
 export function useSquadSessionSelection(playerSlug: string): SquadSessionSelection {
   const deepLink = useSquadDeepLink()
-  const teammatesKey = `squad-teammates-${playerSlug}`
 
   // ── Composition ────────────────────────────────────────────────────────
   // Le lien profond impose la composition DÈS le premier rendu (pas d'effet) :
   // aucune requête ne peut partir avec la composition restaurée qu'il remplace.
   const [selectedGts, setSelectedGtsRaw] = useState<string[]>(() =>
-    deepLink ? deepLink.teammates : readStoredTeammates(teammatesKey),
+    deepLink ? deepLink.teammates : readStoredTeammates(playerSlug),
   )
   const [userChoseTeammates, setUserChoseTeammates] = useState(false)
   const commitTeammates = (next: TeammatesUpdate) => {
     setSelectedGtsRaw((prev) => {
       const value = typeof next === 'function' ? next(prev) : next
-      writeStoredTeammates(teammatesKey, value)
+      writeStoredTeammates(playerSlug, value)
       return value
     })
   }
@@ -196,7 +178,7 @@ export function useSquadSessionSelection(playerSlug: string): SquadSessionSelect
     })
   }
 
-  const mountApplied = useSquadMountState(playerSlug, deepLink, teammatesKey)
+  const mountApplied = useSquadMountState(playerSlug, deepLink)
 
   const friendsSettledEmpty =
     (friends.isSuccess || friends.isError) && friends.gamertags.length === 0

@@ -129,6 +129,9 @@ export function scoreSquadContext(
   )
 }
 
+/** Ce que le hook lit d'une ligne de coéquipier : de quoi enregistrer l'escouade. */
+export type SquadPresetRow = Pick<TeammateRow, 'gamertag' | 'xuid'>
+
 export interface UseSquadPresetsOptions {
   playerSlug: string
   /** XUID absolu du joueur courant — exclut le viewer du roster (player-agnostic).
@@ -137,7 +140,7 @@ export interface UseSquadPresetsOptions {
   hasLinkedIdentity: boolean
   locale: string
   /** Coéquipiers actuellement sélectionnés (pour « enregistrer la compo »). */
-  selectedRows: TeammateRow[]
+  selectedRows: readonly SquadPresetRow[]
   /** Labels (playlists/modes) du filtre courant → trie en tête les escouades
    *  dont les contextes habituels matchent (indice souple, jamais un verrou). */
   activeContextLabels?: string[]

@@ -101,6 +101,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   medals: () => queryKeys.medals(P, T, 'fr'),
   commendationTotals: () => queryKeys.commendationTotals(P, T, 'fr'),
   timeseries: () => queryKeys.timeseries(P, T, 'h'),
+  trends: () => queryKeys.trends(P, T, 'solo', 'ranked_slayer', 'fr', '', false),
   // Classement.
   leaderboard: () => queryKeys.leaderboard(P, T),
   leaderboardCatalog: () => queryKeys.leaderboardCatalog(P, T, 'fr'),
