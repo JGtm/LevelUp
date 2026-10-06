@@ -86,13 +86,26 @@ function code(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1')
 }
 
-/** (a) Une LECTURE de `team_side` : un accès de propriété, pas une clé d'objet ni un type. */
-const LECTURE = /\.team_side\b/g
+/**
+ * (a) Une LECTURE de `team_side`, sous ses quatre formes : accès pointé (`r.team_side`,
+ * `p.board?.team_side`), accès entre crochets (`r['team_side']`), déstructuration d'une variable
+ * (`const { team_side } = r`) ou d'un paramètre (`({ team_side }) => …`). Une clé d'objet
+ * littéral ou un `Pick<…, 'team_side'>` n'en sont pas. Limite assumée : un appel détourné du
+ * helper lui-même (`campSideOf`) pour décider d'une appartenance échappe au grep — ce sont les
+ * tests des surfaces (entrées muettes que la feuille connaît) qui le rattrapent.
+ */
+const LECTURES = [
+  /\.team_side\b/g,
+  /\[\s*['"`]team_side['"`]\s*\]/g,
+  /\{[^{}]*\bteam_side\b[^{}]*\}\s*=(?!=)/g,
+  /\(\s*\{[^{}]*\bteam_side\b[^{}]*\}/g,
+]
 /** (b) Le retour de la section « sans équipe » dans le code : son libellé, ses clés. */
 const SANS_EQUIPE = [/sans équipe|no team/i, /\bteamUnknown\b/, /\bviewpointNoTeam\b/, /sans-equipe/]
 
 function lectures(source: string): number {
-  return (code(source).match(LECTURE) ?? []).length
+  const c = code(source)
+  return LECTURES.reduce((n, motif) => n + (c.match(motif) ?? []).length, 0)
 }
 
 const sourcesDuPerimetre = () =>
@@ -141,7 +154,12 @@ describe('garde-rail : contre-épreuves des détecteurs', () => {
   it('(a) une lecture de `team_side` est comptée, une clé, un type ou un commentaire ne l’est pas', () => {
     expect(lectures('const s = p.board?.team_side ?? null')).toBe(1)
     expect(lectures('rows.filter((r) => r.team_side === side)')).toBe(1)
+    expect(lectures("const s = row['team_side']")).toBe(1)
+    expect(lectures('const { team_side } = p.board ?? {}')).toBe(1)
+    expect(lectures('const { xuid, team_side: side } = row')).toBe(1)
+    expect(lectures('rows.map(({ team_side }) => team_side)')).toBe(1)
     expect(lectures("const r = { team_side: 't0' }")).toBe(0)
+    expect(lectures("const rows = [{ xuid: 'a', team_side: 't0' }]")).toBe(0)
     expect(lectures("type R = Pick<MatchScoreboardRow, 'team_side'>")).toBe(0)
     expect(lectures('// le côté (`board.team_side`) ne fait que nommer\nconst x = 1')).toBe(0)
     expect(lectures('/** le côté `r.team_side` */\nconst x = 1')).toBe(0)

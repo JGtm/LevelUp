@@ -162,7 +162,8 @@ describe('buildPadControl — le pont xuid -> joueur -> équipe', () => {
         tracks: [vie(1, 'a1'), vie(8, 'muet')],
         padPickups: [prise(0, 'a1'), prise(0, 'muet', 30)],
       } as Partial<ReplayDocument>),
-      SB,
+      // La feuille connaît le muet (côté t0) : elle ne lui donne pas de ligne pour autant.
+      [...SB, { xuid: 'muet', gamertag: 'Sandwolf', team_side: 't0' }] as MatchScoreboardRow[],
     )
     expect([...parNom(control).keys()]).toEqual(['Alpha'])
     expect(control.byTeam.map((g) => g.team)).toEqual([0])

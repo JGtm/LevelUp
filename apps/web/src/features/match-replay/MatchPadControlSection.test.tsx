@@ -220,6 +220,24 @@ describe('MatchPadControlSection — le graphe', () => {
     expect(dernierGraphe().showLegend).toBe(false)
   })
 
+  it('le camp du joueur de la page OUVRE la pile, même quand l’adversaire a pris plus de socles', () => {
+    // `padControlLogic` range le camp 1 (Charlie, 3 prises) devant le camp 0 (Alpha, 1) ; le
+    // rang de la section remet le camp du joueur de la page (`is_me` sur Alpha) en tête.
+    poserArtefact({
+      ...TEMOIN,
+      padPickups: [
+        { pad: 0, t: 10, tLow: 5, tHigh: 15, xuid: 'b1' },
+        { pad: 0, t: 40, tLow: 35, tHigh: 45, xuid: 'b1' },
+        { pad: 0, t: 60, tLow: 55, tHigh: 65, xuid: 'b1' },
+        { pad: 0, t: 80, tLow: 75, tHigh: 85, xuid: 'a1' },
+      ],
+    } as Partial<ReplayDocument>)
+    const vue = afficher()
+    const legende = vue.getByTestId('chart-legend')
+    expect([...legende.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['Alpha', 'Charlie'])
+    expect(dernierGraphe().componentOrder).toEqual(['Alpha', 'Charlie'])
+  })
+
   it('annote SOUS la colonne les occupations sans ramasseur nommé, hors de la pile', () => {
     poserArtefact(TEMOIN)
     afficher()

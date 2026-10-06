@@ -180,6 +180,31 @@ describe('buildSeats — la place vient du document', () => {
     ])
   })
 
+  /**
+   * LE TÉMOIN `859da825` : « 343 Forge Lord » (bot, index 8, SANS équipe) tient l'index 8, puis
+   * SplinterCell958 (humain, index 9, `seatSource: index`, équipe 0) joue jusqu'à la fin. Seule
+   * l'ABSENCE D'ÉQUIPE retire une tuile : la provenance `index` (aucune place lue) n'en retire
+   * aucune — masquer SplinterCell958 effacerait un joueur qui joue sur la carte.
+   */
+  it('une entrée `seatSource: index` AVEC équipe garde sa place ; seule l’absence d’équipe retire une tuile', () => {
+    const seats = buildSeats(
+      [
+        joueur('Titulaire', 't0', [vie(0, FIN)]),
+        joueur('bot:343 Forge Lord [bot]', 't0', [vie(500, 560)]),
+        joueur('SplinterCell958', 't0', [vie(610, FIN)]),
+      ],
+      doc([
+        { xuid: 'Titulaire', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0, presence: [pr(0, FIN)] },
+        { xuid: '', bot: true, name: '343 Forge Lord [bot]', filmIndex: 8, seat: 8, seatSource: 'index', presence: [pr(500, 600)] },
+        { xuid: 'SplinterCell958', filmIndex: 9, seat: 9, seatSource: 'index', team: 0, presence: [pr(601, FIN)] },
+      ]),
+    )
+    expect(seats.map((s) => s.key)).toEqual(['siege:0:0', 'siege:0:9'])
+    const place9 = seats.find((s) => s.seat === 9)!
+    expect(montre(place9, 700)).toBe('SplinterCell958:present')
+    expect(montre(place9, 605)).toBe('SplinterCell958:pasEncoreApparu')
+  })
+
   it('sans aucun camp du film, AUCUNE place : la feuille de match ne regroupe plus', () => {
     const seats = buildSeats(
       [joueur('P', 't0', [vie(0, FIN)]), joueur('Q', 't1', [vie(0, FIN)])],

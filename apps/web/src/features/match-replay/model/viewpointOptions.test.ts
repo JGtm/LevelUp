@@ -69,11 +69,18 @@ describe('buildViewpointOptions — les sections sont les camps du film', () => 
     expect(groups[0].options.map((o) => o.label)).toEqual(['JGtm', 'Fantome'])
   })
 
-  it('un joueur dont le film TAIT l’équipe n’est dans aucune section — et n’en ouvre aucune', () => {
+  it('un joueur dont le film TAIT l’équipe n’est dans aucune section — même quand la feuille le range', () => {
+    // La feuille joint le bot (bid(44.0), côté t0) : elle ne le range pas pour autant.
     const groups = buildViewpointOptions(
       [
         player({ xuid: '1', board: board({ xuid: '1', gamertag: 'JGtm' }) }),
-        player({ xuid: 'bot:Sandwolf', bot: true, filmName: 'Sandwolf [bot]', team: undefined }),
+        player({
+          xuid: 'bot:Sandwolf',
+          bot: true,
+          filmName: 'Sandwolf [bot]',
+          team: undefined,
+          board: board({ xuid: 'bid(44.0)', gamertag: 'Sandwolf', team_side: 't0' }),
+        }),
       ],
       LABELS,
     )

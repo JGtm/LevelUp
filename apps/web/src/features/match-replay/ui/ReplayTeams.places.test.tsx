@@ -139,6 +139,38 @@ describe('ReplayTeams — aucune section sans équipe (témoin 43716616)', () =>
     })
   }
 
+  /**
+   * LE TÉMOIN `859da825` : « 343 Forge Lord » (bot, index 8, sans équipe) puis SplinterCell958
+   * (humain, `seatSource: index`, équipe 0) jusqu'à la fin. La provenance `index` ne retire
+   * aucune tuile : seul le silence du film sur l'équipe en retire une.
+   */
+  it('témoin 859da825 : l’entrée `index` AVEC équipe reste rendue, la muette jamais', () => {
+    const doc = testReplayDoc({
+      frameCount: 600,
+      frameIntervalMs: 100,
+      originMs: 0,
+      roster: [
+        { xuid: 'T', filmIndex: 0, seat: 0, seatSource: 'lu', name: 'Titulaire', team: 0, presence: [{ from: 0, to: 599 }] },
+        { xuid: '', bot: true, filmIndex: 8, seat: 8, seatSource: 'index', name: '343 Forge Lord [bot]', presence: [{ from: 170, to: 182 }] },
+        { xuid: 'SC', filmIndex: 9, seat: 9, seatSource: 'index', name: 'SplinterCell958', team: 0, presence: [{ from: 183, to: 599 }] },
+      ],
+      tracks: [vie('T', 512, 0, 599), { ...vie('', 540, 171, 181), bot: '343 Forge Lord [bot]' }, vie('SC', 530, 190, 599)],
+    })
+    const feuille = [
+      scoreboardRow('T', 'Titulaire', 't0'),
+      scoreboardRow('bid(7.0)', '343 Forge Lord', 't0', { is_bot: true }),
+      scoreboardRow('SC', 'SplinterCell958', 't0'),
+    ]
+    const pendantLeBot = render(<ReplayTeams doc={doc} scoreboard={feuille} frame={175} locale="fr" />)
+    expect(pendantLeBot.queryByText('343 Forge Lord')).toBeNull()
+    expect(tuilesRendues(pendantLeBot.container)).toBe(2) // la place de SplinterCell958 attend, libre
+    pendantLeBot.unmount()
+    const apres = render(<ReplayTeams doc={doc} scoreboard={feuille} frame={300} locale="fr" />)
+    expect(apres.getByText('SplinterCell958')).toBeTruthy()
+    expect(apres.container.querySelectorAll('.overflow-y-auto')).toHaveLength(1)
+    apres.unmount()
+  })
+
   it('les colonnes portent les noms de la feuille : Eagle, puis Cobra', () => {
     const vue = render(<ReplayTeams doc={document43716616()} scoreboard={feuille} frame={260} locale="fr" />)
     expect([...vue.container.querySelectorAll('h3')].map((h) => h.textContent)).toEqual(['Équipe Eagle', 'Équipe Cobra'])

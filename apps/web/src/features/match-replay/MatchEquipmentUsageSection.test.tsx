@@ -110,13 +110,13 @@ function poserArtefact(over: Partial<ReplayDocument> | null) {
   artefact.current = over ? testReplayDoc(over) : undefined
 }
 
-function afficher(locale: 'fr' | 'en' = 'fr') {
+function afficher(locale: 'fr' | 'en' = 'fr', scoreboard: MatchScoreboardRow[] = SCOREBOARD) {
   return render(
     <MatchEquipmentUsageSection
       playerSlug="joueur"
       matchId="m1"
       replayAvailable
-      scoreboard={SCOREBOARD}
+      scoreboard={scoreboard}
       locale={locale}
     />,
   )
@@ -243,7 +243,9 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
       tracks: [...(TEMOIN.tracks ?? []), { ...vie(8, ''), bot: 'Sandwolf [bot]' }],
       grappleLines: [...(TEMOIN.grappleLines ?? []), { slot: 8, t0: 4, t1: 8, ax: 0, ay: 0 }],
     } as unknown as Partial<ReplayDocument>)
-    const vue = afficher()
+    // La feuille joint le bot (côté t0) : elle ne lui donne pas de ligne pour autant.
+    const feuille = [...SCOREBOARD, { xuid: 'bid(44.0)', gamertag: 'Sandwolf', team_side: 't0', is_bot: true }] as MatchScoreboardRow[]
+    const vue = afficher('fr', feuille)
     expect(vue.queryByText('Sandwolf')).toBeNull()
     expect(vue.queryByText(/Sans équipe|inconnue/)).toBeNull()
     // Deux camps, toujours : la légende des parts n'en nomme pas un troisième.

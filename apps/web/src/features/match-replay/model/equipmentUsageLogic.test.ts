@@ -92,7 +92,9 @@ describe('buildEquipmentUsage — le pont slot -> joueur -> équipe', () => {
         { slot: 8, t0: 2, t1: 6, ax: 0, ay: 0 },
       ],
     } as Partial<ReplayDocument>)
-    const u = buildEquipmentUsage(doc, SB)
+    // La feuille joint le bot (côté t0) : elle ne lui donne pas de ligne pour autant.
+    const feuille = [...SB, { xuid: 'bid(44.0)', gamertag: 'Sandwolf', team_side: 't0', is_bot: true }] as typeof SB
+    const u = buildEquipmentUsage(doc, feuille)
     expect(u.byPlayer.map((r) => r.name)).toEqual(['Alpha'])
     expect(u.byTeam.map((g) => g.team)).toEqual([0])
     expect(u.unattributed.grapplePulls).toBe(1)

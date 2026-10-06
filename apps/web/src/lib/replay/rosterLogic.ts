@@ -2,8 +2,10 @@
  * rosterLogic.ts — LA JOINTURE ENTRE LE FILM ET LA BASE, et l'état d'un joueur à une image.
  *
  * DEUX SOURCES, DEUX RÔLES, ET UNE SEULE CLÉ. Le film porte ce qui se passe — positions,
- * vies, morts, armes, bouclier — et l'identifie par XUID. La base porte qui sont les gens :
- * gamertag, équipe, K/D/A du match. Aucune des deux ne sait faire le travail de l'autre, et
+ * vies, morts, armes, bouclier, et l'ÉQUIPE de chaque joueur (`roster[].team`, la seule
+ * source d'appartenance de la page, cf. `ReplayPlayer.team`) — et l'identifie par XUID. La
+ * base porte qui sont les gens : gamertag, côté de feuille (qui NOMME un camp et donne l'encre
+ * allié / adverse), K/D/A du match. Aucune des deux ne sait faire le travail de l'autre, et
  * l'artefact de rejeu n'essaie pas : il publie le xuid, qui est la seule clé sur laquelle une
  * jointure ne suppose rien.
  *
