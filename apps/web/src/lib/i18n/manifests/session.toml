@@ -165,6 +165,27 @@ en = "Match by match"
 fr = "Frags et usages"
 en = "Kills and usage"
 
+# Intertitres des sous-groupes de « Frags et usages » (maquette Sessions du 2026-10-06, vue « Après »).
+[session.detail.subsection_resources]
+fr = "Ressources de la soirée"
+en = "The evening’s resources"
+
+[session.detail.subsection_prendre]
+fr = "Prendre, et s’en servir"
+en = "Taking, and using"
+
+[session.detail.subsection_lives]
+fr = "Près d’un coéquipier ou seul"
+en = "Near a teammate or alone"
+
+[session.detail.subsection_objectif]
+fr = "Objectif"
+en = "Objective"
+
+[session.detail.subsection_equipment]
+fr = "Équipement"
+en = "Equipment"
+
 [session.detail.matches_card]
 fr = "Détail des matchs"
 en = "Match details"

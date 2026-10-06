@@ -3,15 +3,21 @@
  * bande KPI, puis QUATRE SECTIONS TITRÉES — « Bilan », « Match par match »,
  * « Frags et usages », « Détail des matchs ».
  *
- * CE COMPOSANT POSE LES TITRES, MAIS NE DÉCIDE PAS DE LEUR PLACE : chaque section est une
- * CLÉ stable (`_sections.ts`), et c'est la table des groupes de ce module qui dit quelle
- * clé ouvre quel titre. Les deux rendus d'ici — pile pleine page, rangées partagées de la
- * comparaison (D16) — lisent LA MÊME table : un titre ne peut donc pas se poser d'un côté
- * et pas de l'autre, ce qui décalerait les deux colonnes d'une ligne.
+ * CE COMPOSANT POSE LES TITRES, MAIS NE DÉCIDE PAS DE LEUR PLACE : chaque carte est une
+ * CLÉ stable (`_sections.ts`), et ce sont les tables de ce module qui disent quelle clé ouvre
+ * quel titre de groupe et quel intertitre de sous-groupe (« Ressources de la soirée »,
+ * « Prendre, et s'en servir »…). Les deux rendus d'ici — pile pleine page, rangées partagées
+ * de la comparaison (D16) — lisent LES MÊMES tables : un titre ne peut donc pas se poser d'un
+ * côté et pas de l'autre, ce qui décalerait les deux colonnes d'une ligne.
  *
- * UN TITRE NE SE POSE JAMAIS AU-DESSUS DE RIEN : la section « Frags et usages » réunit deux
- * clés qui peuvent manquer toutes les deux (`sessionSectionVisibility`, le MÊME prédicat que
- * les cartes lisent) — le groupe disparaît alors entièrement, titre compris.
+ * UN TITRE NE SE POSE JAMAIS AU-DESSUS DE RIEN : une carte n'a de clé que si elle dessine
+ * quelque chose (`sessionCardsPresence`, le MÊME prédicat que la page lit pour ses rangées) —
+ * un groupe ou un sous-groupe sans carte disparaît, titre compris.
+ *
+ * PLEINE PAGE : les paires A|B, C|D, G|H partagent une rangée (`pairGridClass`) ; l'intertitre
+ * « Ressources de la soirée » porte sa couverture. COMPARAISON : une rangée par carte, chaque
+ * colonne en vue compacte, la carte absente d'un côté remplacée par le marqueur « Sans équivalent
+ * dans cette session ».
  *
  * LA BANDE KPI RESTE SANS TITRE, comme le Home : c'est l'en-tête de la colonne, pas une
  * section de plus. « Détail des matchs » porte le sien avec son tableau (`space-y-3`).
@@ -19,51 +25,39 @@
  * Monté À L'IDENTIQUE par la colonne principale ET par le drawer compare → garantit que
  * "ce qui est sous le L3" est strictement le même rendu des deux côtés ; seules diffèrent
  * les DONNÉES (session active vs comparée) et le header L3 (navigation vs sélecteur).
- *
- * En mode `compact` (colonne divisée, drawer ouvert) : KPI abrégés + tableau compact —
- * exactement la "vue compacte" de la colonne principale.
  */
 import { Fragment, type ReactNode } from 'react'
 
-import type {
-  CoordinationBlock,
-  FirstBloodPlayerSeriesDTO,
-  IntensityMatchRow,
-  MatchRangeBlock,
-  RangeReferenceBlock,
-  SessionCompareEntry,
-  SessionDetailMatchRow,
-  SessionUsageBlock,
-} from '@/lib/api/types'
+import type { FirstBloodPlayerSeriesDTO, IntensityMatchRow } from '@/lib/api/types'
 
 import { DetailSection, SectionTitle } from '@/components/ui/detail-section'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import type { CompareScale } from './_compareScale'
 import {
   SESSION_GROUP_TITLE_KEY,
   SESSION_SECTION_ORDER,
+  SESSION_SUBGROUP_TITLE_KEY,
   groupSessionSections,
-  type SessionSectionGroup,
+  pairSessionKeys,
+  sessionRowOpenings,
   type SessionSectionKey,
+  type SessionSubgroup,
 } from './_sections'
-import { useSessionChartSections } from './_chartSections'
+import { pairGridClass, useSessionChartSections } from './_chartSections'
 import { SessionCoordinationSection } from './SessionCoordinationSection'
-import { SessionFragCard } from './SessionFragCard'
+import type { SessionColumnBlocks } from './sessionEmprise.logic'
 import { SessionMatchesTable } from './SessionMatchesTable'
 import { SessionRangeCard } from './SessionRangeCard'
 import { SessionSummaryCard } from './SessionSummaryCard'
-import { SessionUsageSection } from './SessionUsageSection'
-import {
-  sessionFragCardHasContent,
-  sessionUsageShowsSomething,
-} from './sessionSectionVisibility'
+import { useSessionEmpriseCards } from './useSessionEmpriseCards'
 import { useSessionT } from './_shared'
 
 interface Props {
-  entry: SessionCompareEntry | null
-  matches: SessionDetailMatchRow[]
+  /** Les blocs de CETTE colonne (`sessionColumnBlocks`) : session, matchs, Emprise, vies, objectif… */
+  blocks: SessionColumnBlocks
   playerSlug: string
-  /** Colonne divisée (drawer ouvert) → KPI abrégés + tableau compact + donuts en % interne. */
+  /** Colonne divisée (drawer ouvert) → KPI abrégés, tableau compact, cartes en vue compacte. */
   compact: boolean
   /** Côté de l'axe du profil de participation : 'right' (colonne principale) / 'left' (drawer). */
   participationSide?: 'left' | 'right'
@@ -74,52 +68,23 @@ interface Props {
   /** Premiers frag/mort par match de la session — calculés côté Go (payload). */
   firstBlood?: FirstBloodPlayerSeriesDTO[]
   /**
-   * Bloc « usages d'équipement, armes spéciales et objectifs » — servi pour LES DEUX
-   * sessions depuis le 2026-09-09 (D8) : la colonne principale reçoit `usage`, le
-   * drawer `compare_usage`. Absent du payload (vieux serveur, session sans match) →
-   * la section n'existe pas de ce côté.
-   */
-  usage?: SessionUsageBlock
-  /**
-   * Bloc « Coordination » (riposte + appui reçu, lot N1) — `coordination` à gauche,
-   * `compare_coordination` à droite (lot S) : les deux colonnes ont leurs cartes, avec
-   * leurs propres données. Absent du payload → la section n'existe pas de ce côté.
-   */
-  coordination?: CoordinationBlock
-  /**
-   * Profils de PORTÉE par match (lot N2) — `range_profiles` à gauche,
-   * `compare_range_profiles` à droite : les deux colonnes ont leur carte.
-   */
-  rangeProfiles?: MatchRangeBlock
-  /**
-   * Période de RÉFÉRENCE de la portée (`range_reference`, lot U) — l'axe du nuage. UN SEUL
-   * bloc pour les deux colonnes : la référence dépend du filtre de la page, pas de la
-   * session affichée ; chaque colonne y surligne SA session (lot W, D23-4).
-   */
-  rangeReference?: RangeReferenceBlock | null
-  /**
    * Mode COMPARAISON (D16) : rangées partagées avec la colonne sœur. La page passe
    * l'union ordonnée des clés des deux colonnes ; chaque clé rend ici soit la section,
    * soit le placeholder « Sans équivalent dans cette session ». Absent → pile simple
-   * (vue pleine page), rendu strictement identique à avant.
+   * (vue pleine page).
    */
   rowKeys?: readonly SessionSectionKey[]
 }
 
-/** Sections de la colonne, indexees par cle stable (`_sections.ts`). */
-function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKey, ReactNode>> {
+/** Sections de la colonne, indexées par clé stable (`_sections.ts`), et la couverture des ressources. */
+function useSessionColumnSections(props: Props): {
+  sections: Partial<Record<SessionSectionKey, ReactNode>>
+  coverage: string | null
+} {
   const t = useSessionT()
-  const {
-    entry,
-    matches,
-    playerSlug,
-    compact,
-    participationSide = 'right',
-    usage,
-    coordination,
-    rangeProfiles,
-    rangeReference,
-  } = props
+  const locale = useAppShellStore((s) => s.locale)
+  const { blocks, playerSlug, compact, participationSide = 'right' } = props
+  const { entry, matches, coordination, rangeProfiles } = blocks
 
   const chartSections = useSessionChartSections({
     entry,
@@ -131,41 +96,25 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
     intensityRows: props.intensityRows,
     firstBlood: props.firstBlood,
   })
+  // SECTION « Frags et usages » — les cartes A à L, chacune sa clé, chacune en vue compacte quand
+  // la colonne l'est (drawer ouvert = vue compacte DES DEUX CÔTÉS).
+  const emprise = useSessionEmpriseCards(blocks, compact, playerSlug, locale)
 
-  return {
+  const sections: Partial<Record<SessionSectionKey, ReactNode>> = {
     summary: <SessionSummaryCard entry={entry} compact={compact} />,
     ...chartSections,
-    // SECTION « Frags et usages » — d'où viennent les frags, et ce qu'on a ramassé, posé,
-    // tenu pour les obtenir. DEUX CLÉS et non une : en comparaison, chaque bloc garde sa
-    // rangée partagée avec la colonne sœur. Chacune n'existe que si son bloc va dessiner
-    // quelque chose (`sessionSectionVisibility`, lu AUSSI par les cartes) : le titre du
-    // groupe se pose alors sur la première présente, et sur rien du tout si les deux
-    // manquent.
-    ...(sessionFragCardHasContent(entry)
-      ? { frags: <SessionFragCard entry={entry} stacked={compact} /> }
-      : {}),
-    // `compact` suit la colonne : drawer ouvert = version compacte DES DEUX CÔTÉS, sinon
-    // les deux colonnes ne se compareraient pas. Le composant gère lui-même ses états
-    // indisponible / sans film.
-    ...(usage && sessionUsageShowsSomething(usage)
-      ? { usage: <SessionUsageSection usage={usage} meLabel={playerSlug} compact={compact} /> }
-      : {}),
-    // Sections transverses de la vague 3 (D22) : la Coordination (deux cartes en rangée)
-    // puis la Portée (une carte). Deux clés distinctes : ce sont deux rangées partagées,
-    // et la comparaison sert désormais les deux (lot S).
+    ...emprise.cards,
+    // Sections transverses de la vague 3 (D22) : « Appui reçu » puis la Portée. Deux clés
+    // distinctes : ce sont deux rangées partagées, et la comparaison sert les deux (lot S).
     ...(coordination
-      ? {
-          coordination: (
-            <SessionCoordinationSection coordination={coordination} compact={compact} />
-          ),
-        }
+      ? { coordination: <SessionCoordinationSection coordination={coordination} compact={compact} /> }
       : {}),
     ...(rangeProfiles
       ? {
           range: (
             <SessionRangeCard
               block={rangeProfiles}
-              reference={rangeReference}
+              reference={blocks.rangeReference}
               meLabel={playerSlug}
               compact={compact}
               yDomain={props.scale?.rangeDelta}
@@ -186,6 +135,7 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
       </div>
     ),
   }
+  return { sections, coverage: emprise.coverage }
 }
 
 /**
@@ -207,15 +157,43 @@ function SessionSectionPlaceholder() {
   )
 }
 
+/** L'intertitre d'un sous-groupe (`h4`, sous le titre de groupe `h3`), sa couverture en petit à côté. */
+function SessionSubgroupTitle({ subgroup, sub, className }: { subgroup: SessionSubgroup; sub?: string | null; className?: string }) {
+  const t = useSessionT()
+  return (
+    <h4 className={`text-sm font-semibold text-foreground${className ? ` ${className}` : ''}`} data-session-subgroup={subgroup}>
+      {t(SESSION_SUBGROUP_TITLE_KEY[subgroup])}
+      {sub && <small className="ml-2 text-xs font-normal text-muted-foreground">{sub}</small>}
+    </h4>
+  )
+}
+
+/** Les cartes d'une suite de clés en pleine page : les paires A|B, C|D, G|H sur une rangée. */
+function PairedRows({ keys, sections, compact }: { keys: SessionSectionKey[]; sections: Partial<Record<SessionSectionKey, ReactNode>>; compact: boolean }) {
+  return (
+    <>
+      {pairSessionKeys(keys).map((pair) =>
+        pair.length > 1 ? (
+          <div key={pair.join('|')} className={pairGridClass(compact)} data-session-pair={pair.join('|')}>
+            {pair.map((key) => (
+              <Fragment key={key}>{sections[key]}</Fragment>
+            ))}
+          </div>
+        ) : (
+          <Fragment key={pair[0]}>{sections[pair[0]]}</Fragment>
+        ),
+      )}
+    </>
+  )
+}
+
 export function SessionColumnBody(props: Props) {
   const t = useSessionT()
-  const sections = useSessionColumnSections(props)
-  const { rowKeys } = props
+  const { sections, coverage } = useSessionColumnSections(props)
+  const { rowKeys, compact } = props
 
   // Vue pleine page : pile simple, dans l'ordre canonique, chaque GROUPE de clés coiffé
-  // de son titre (`_sections.ts`). L'espacement interne reste `space-y-6` — les blocs de
-  // la page le sont depuis toujours ; c'est le titre qui devait être unifié, pas la
-  // densité.
+  // de son titre, chaque sous-groupe de son intertitre (`_sections.ts`).
   if (!rowKeys) {
     const presentes = SESSION_SECTION_ORDER.filter((key) => key in sections)
     return (
@@ -226,9 +204,18 @@ export function SessionColumnBody(props: Props) {
           ) : (
             <DetailSection key={run.group} title={t(SESSION_GROUP_TITLE_KEY[run.group])}>
               <div className="space-y-6">
-                {run.keys.map((key) => (
-                  <Fragment key={key}>{sections[key]}</Fragment>
-                ))}
+                {run.subruns.map((sub) =>
+                  sub.subgroup == null ? (
+                    <PairedRows key={sub.keys[0]} keys={sub.keys} sections={sections} compact={compact} />
+                  ) : (
+                    <div key={sub.subgroup} className="space-y-3">
+                      <SessionSubgroupTitle subgroup={sub.subgroup} sub={sub.subgroup === 'resources' ? coverage : null} />
+                      <div className="space-y-6">
+                        <PairedRows keys={sub.keys} sections={sections} compact={compact} />
+                      </div>
+                    </div>
+                  ),
+                )}
               </div>
             </DetailSection>
           ),
@@ -239,30 +226,23 @@ export function SessionColumnBody(props: Props) {
 
   // Vue comparaison : une rangee de grille par cle — la colonne soeur emet les MEMES
   // cles dans le MEME ordre, donc la i-eme section de gauche et celle de droite
-  // partagent la rangee (donc la hauteur, donc la ligne de titre). LE TITRE DE GROUPE
-  // s'écrit dans la rangée de sa PREMIÈRE clé : `rowKeys` étant identique des deux côtés,
-  // les deux colonnes le posent à la même rangée — un titre d'un seul côté décalerait tout.
-  const ouvertures = new Map(
-    groupSessionSections(rowKeys)
-      .filter((run) => run.group != null)
-      .map((run) => [run.keys[0], run.group as SessionSectionGroup]),
-  )
+  // partagent la rangee (donc la hauteur, donc la ligne de titre). Le titre de groupe ET
+  // l'intertitre de sous-groupe s'écrivent dans la rangée de leur PREMIÈRE clé : `rowKeys`
+  // étant identique des deux côtés, les deux colonnes les posent à la même rangée. Aucune
+  // couverture en petit dans cette vue (maquette).
+  const ouvertures = sessionRowOpenings(rowKeys)
   return (
     <>
-      {rowKeys.map((key) => (
-        <div
-          key={key}
-          data-session-section={key}
-          className="min-w-0 [&>*:only-child]:h-full"
-        >
-          {ouvertures.has(key) && (
-            <SectionTitle className="mb-4">
-              {t(SESSION_GROUP_TITLE_KEY[ouvertures.get(key) as SessionSectionGroup])}
-            </SectionTitle>
-          )}
-          {key in sections ? sections[key] : <SessionSectionPlaceholder />}
-        </div>
-      ))}
+      {rowKeys.map((key) => {
+        const open = ouvertures.get(key)
+        return (
+          <div key={key} data-session-section={key} className="min-w-0 [&>*:only-child]:h-full">
+            {open?.group && <SectionTitle className="mb-4">{t(SESSION_GROUP_TITLE_KEY[open.group])}</SectionTitle>}
+            {open?.subgroup && <SessionSubgroupTitle subgroup={open.subgroup} className="mb-3" />}
+            {key in sections ? sections[key] : <SessionSectionPlaceholder />}
+          </div>
+        )
+      })}
     </>
   )
 }

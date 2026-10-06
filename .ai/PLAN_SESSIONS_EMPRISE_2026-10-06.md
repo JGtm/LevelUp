@@ -650,13 +650,13 @@ Périmètre : `features/session-detail/*`, `tools/lint-cross-feature-imports.mjs
 neuve, aucune clé de requête neuve (`lib/query/keys.ts` non touché) : tout arrive avec
 `useSessionDetailPage`.
 
-- [ ] S4.1 `_sections.ts` (D11) : clés par carte, sous-groupes et leur clé de manifeste, paires de la
+- [x] S4.1 `_sections.ts` (D11) : clés par carte, sous-groupes et leur clé de manifeste, paires de la
   pleine page, `groupSessionSections` à deux niveaux, `sessionSectionKeys` sur un objet de présence par
   carte ; `sessionRowKeys(data)` (calcul de `rowKeys` sorti de `SessionDetailPage.tsx:261-276`, fichier
   en baisse). Tests ROUGES d'abord (`_sections.test.ts`) : ordre, intertitre de sous-groupe sur la
   première clé présente, sous-groupe absent sans intertitre, union des deux colonnes, paires.
   Mutations : intertitre posé sur une clé absente, ordre de l'union pris sur la gauche seule → rouges.
-- [ ] S4.2 `sessionEmprise.logic.ts` (NEUF) : index des matchs depuis `SessionDetailMatchRow`
+- [x] S4.2 `sessionEmprise.logic.ts` (NEUF) : index des matchs depuis `SessionDetailMatchRow`
   (heure, `map_name`, `mode_ui`, résultat `outcomeCodeToValue`, `score_label`, `dominance_flag`),
   couverture, modèles par carte (composition des builders existants : `buildControlRows`,
   `buildResourceFil`, `buildMatchGrid`, `buildMinePickups`, `buildProductionRows`, `buildYieldRows`,
@@ -666,45 +666,63 @@ neuve, aucune clé de requête neuve (`lib/query/keys.ts` non touché) : tout ar
   ROUGES d'abord, une mutation par règle (index : dominance ignorée ; présence : carte objectif sans
   match à objectif, Halo 5 sans film → seules A, B, B' et la barre épaisse des armes spéciales de G si
   la feuille la porte).
-- [ ] S4.3 `sessionEmpriseText.ts` (D12) : surcharges FR / EN, deux jeux par carte (pleine page /
+- [x] S4.3 `sessionEmpriseText.ts` (D12) : surcharges FR / EN, deux jeux par carte (pleine page /
   comparaison) ; test : titres, ⓘ et légendes FR copiés de la maquette pour chaque `make*` et chaque
   valeur de `cp`, aucun « Notre camp » / « Our side » / « périmètre » / « scope ».
-- [ ] S4.4 `SessionColumnBody.tsx` : props `usage` → `blocks: SessionColumnBlocks` (emprise, vies,
+- [x] S4.4 `SessionColumnBody.tsx` : props `usage` → `blocks: SessionColumnBlocks` (emprise, vies,
   formes, emblème, lignes de match, coordination, portée) ; montage des clés A-L et B' ; paires de la
   pleine page ; intertitres de sous-groupe et couverture S14 ; `compact` transmis à chaque carte avec
   le jeu de textes de sa vue. `SessionDetailPage.tsx` : passe les blocs courants et comparés (taille
   non accrue).
-- [ ] S4.5 `SessionCoordinationSection.tsx` : carte Riposte retirée (§4.C), « Appui reçu » seule,
+- [x] S4.5 `SessionCoordinationSection.tsx` : carte Riposte retirée (§4.C), « Appui reçu » seule,
   demi-largeur en pleine page, empilée en compact ; tests adaptés.
-- [ ] S4.6 Cartes A et B : `SessionFragBarCard.tsx` et `SessionToolsCard.tsx` (NEUFS, minces : cadre,
+- [x] S4.6 Cartes A et B : `SessionFragBarCard.tsx` et `SessionToolsCard.tsx` (NEUFS, minces : cadre,
   titre, ⓘ, légende) sur `SquadFragBreakdownCard` / `SquadWeaponKillsChart` (S3.11), un joueur
   (couleur `squad-player-1`), libellés de nature par les manifestes `frags` (patron
   `SquadFragSection.tsx:61-74`). B' : `WeaponAccuracyChart` monté tel quel (D14).
-- [ ] S4.7 Cartes C-L : montage des briques (S3) avec les modèles S4.2 et les textes S4.3 ; D en
+- [x] S4.7 Cartes C-L : montage des briques (S3) avec les modèles S4.2 et les textes S4.3 ; D en
   axe `match` avec l'index des matchs de la session (encoche de dominance, bande de résultats) ; K avec
   `player_emblem_url` et le gamertag du joueur.
-- [ ] S4.8 Tests de page : `SessionColumnBody.test.tsx` réécrit (ordre des cartes, intertitres,
+- [x] S4.8 Tests de page : `SessionColumnBody.test.tsx` réécrit (ordre des cartes, intertitres,
   couverture, retrait par carte, Halo 5, anglais) ; `SessionCompareRows.test.tsx` étendu (une rangée
   partagée par carte, même liste des deux côtés, marqueur du côté sans la carte — session solo sans
   objectif face à une session à objectif, témoin MESURES §0 —, intertitres dans la même rangée des
   deux côtés, cartes en variante compacte des DEUX côtés, aucun intertitre ni rangée en pleine page) ;
   `sessionShrink.guard.test.ts` étendu aux paires de cartes (une colonne en `compact`) ; fixture
   `sessionEmprise.fixtures.ts` tirée des MESURES (s2209, s0709, solo).
-- [ ] S4.9 D2 : paire `session-detail=>timeseries` ajoutée à `ALLOWED_CROSS_IMPORTS` avec son
+- [x] S4.9 D2 : paire `session-detail=>timeseries` ajoutée à `ALLOWED_CROSS_IMPORTS` avec son
   commentaire ; ratchet ≤ 7 ; aucune dérogation morte.
-- [ ] S4.10 Rejouer CHAQUE preuve grep de §4.A, B, C, G avant de supprimer ; écart → §8, arrêt propre
+- [x] S4.10 Rejouer CHAQUE preuve grep de §4.A, B, C, G avant de supprimer ; écart → §8, arrêt propre
   si un lecteur inattendu existe.
-- [ ] S4.11 Web §4.A : fichiers et tests supprimés, `sessionSectionVisibility.ts` réduit ou supprimé.
-- [ ] S4.12 Web §4.B : `SessionFragCard.tsx` supprimé.
-- [ ] S4.13 Web §4.C : riposte de `coordinationModel.ts` et `coordinationI18n.ts`.
-- [ ] S4.14 Web §4.G et §4.H (web) : `_shared/usage/*` orphelins, exports et clés devenus privés ou
+- [x] S4.11 Web §4.A : fichiers et tests supprimés, `sessionSectionVisibility.ts` réduit ou supprimé.
+- [x] S4.12 Web §4.B : `SessionFragCard.tsx` supprimé.
+- [x] S4.13 Web §4.C : riposte de `coordinationModel.ts` et `coordinationI18n.ts`.
+- [x] S4.14 Web §4.G et §4.H (web) : `_shared/usage/*` orphelins, exports et clés devenus privés ou
   supprimés, manifestes régénérés, gardes d'usage adaptées.
-- [ ] S4.15 Garde-rail D7 : `features/session-detail/formesFields.guard.test.ts` — aucun fichier de
+- [x] S4.15 Garde-rail D7 : `features/session-detail/formesFields.guard.test.ts` — aucun fichier de
   `session-detail` ne lit un champ de `formes_retenues` hors de la liste de L7 (balayage des accès
   `.lobby`, `.weapons`, `.weapon_pads`, `.pad_named`, `.pad_unnamed`, `.duration_seconds`,
   `.team_size`, `.lobby_size`, `.measured` sur les objets de formes) ; auto-test ; mutation → rouge.
-- [ ] S4.16 Ratchets : knip 0 / 0 / 0, imports croisés ≤ 7 ; si un plafond baisse, l'abaisser.
+- [x] S4.16 Ratchets : knip 0 / 0 / 0, imports croisés ≤ 7 ; si un plafond baisse, l'abaisser.
 - Gate : gate web ; preuves §4.A, B, C, G rejouées → 0 (côté web).
+
+Journal S4 (2026-10-06, exécuteur, `feat/sessions-emprise` sur `f0a6c1b3c`) — la page Sessions reconstruite aux formes de l'Emprise, suppressions web :
+- **S4.1** `_sections.ts` : une clé par carte (`frag_bar`, `tools`, `weapon_accuracy`, `control`, `fil`, `grid`, `mine`, `production`, `yield`, `lives`, `objective_balance`, `objective_sheet`, `equipment`), sous-groupes (`resources`, `prendre`, `lives`, `objectif`, `equipment`, clés de manifeste `session.detail.subsection_*` FR / EN, manifeste régénéré), paires A|B, C|D, G|H (`pairSessionKeys`), `groupSessionSections` à deux niveaux (`subruns`), `sessionRowOpenings` (titre de groupe et intertitre de sous-groupe dans la rangée de leur première clé présente), `sessionSectionKeys` sur `SessionSectionPresence` (présence des cartes + coordination + portée, champs obligatoires : une carte neuve sans présence ne compile pas), `sessionRowKeys(data)`. `_sections.test.ts` (9 cas) vu ROUGE (symboles absents) avant le code. Écart d'ordre : `sessionRowKeys` lit la présence de S4.2 — posé avec S4.2. Le type de présence vit dans `sessionEmprise.logic.ts` (aucun cycle d'import : `_sections` l'importe, pas l'inverse).
+- **S4.2** `sessionEmprise.logic.ts` : `SessionColumnBlocks` (la session, ses matchs, son Emprise, ses vies, ses formes, l'emblème, la coordination, la portée — `entry` et `matches` y entrent aussi), `sessionColumnBlocks(data, side)`, `sessionMatchIndex` (score et dominance, D15), `buildSessionEmpriseModels`, `sessionCardsPresence` / `sessionColumnPresence` (le prédicat unique : page, colonne, cartes), `sessionPlayerName`. ÉCART TDD : le code de ce fichier a été écrit avant son test ; compensé par cinq mutations, toutes ROUGES (dominance ignorée, objectif sans match à objectif, contrôle sans film sur Halo 5, précision par arme ignorée, « Non attribué » seul compté comme une carte). Présence de B : au moins un outil NOMMÉ (le « Non attribué » seul ne se dessine pas en vue compacte : la carte ne s'ouvre nulle part, un seul prédicat pour les deux vues).
+- **S4.3** `sessionEmpriseText.ts` : `SESSION_CARD_TEXT[locale].{full, compact, compactCards}` — surcharges de `EMPRISE_TEXT_SOLO` (contrôle, fil « de la session » et cumul « de la soirée », production, grille « match par match » et sa légende compacte), `OBJECTIF_TEXT_SOLO` (rapport de force), `USAGES_TEXT` (Mes prises, Équipement, Ma part — part entière en compact), `getSquadText` (A, B) ; formateurs compacts typés par les props des cartes (`ComponentProps`), aucun type d'option exporté. `sessionEmpriseText.test.ts` (9 cas) : chaque ⓘ FR mot pour mot de la maquette, pleine page et `cp`, légendes, formateurs, vocabulaire (balayage des seules parties montées par Sessions : les dictionnaires de l'Escouade portent toute leur page).
+- **S4.4 / S4.7** `SessionColumnBody.tsx` réécrit (prop `blocks`) ; montage des cartes dans `useSessionEmpriseCards.tsx` (NEUF, hors plan : la colonne reste à 248 L ; une table de rendus par clé, appelée seulement pour une carte présente) ; pleine page : `DetailSection` par groupe, intertitre `h4` par sous-groupe (`data-session-subgroup`), couverture « n matchs filmés sur N · … » sous « Ressources de la soirée » seulement, paires par `pairGridClass` ; comparaison : une rangée par clé, titre de groupe puis intertitre dans la rangée d'ouverture, marqueur existant du côté sans la carte. `SessionDetailPage.tsx` : blocs mémoïsés par colonne, `rowKeys = sessionRowKeys(data)` ; 551 → 525 L.
+- **S4.5** `SessionCoordinationSection.tsx` : « Appui reçu » seule, rangée par `pairGridClass(compact)` (demi-largeur en pleine page, toute la colonne en compact ; écart : gouttière `gap-6` du gabarit au lieu de `gap-3`). `SessionCoordination.test.tsx` réécrit sur l'Appui (fixture typée par cast, sans riposte : S5 n'aura rien à y changer).
+- **S4.6** `SessionFragBarCard.tsx` (A, une barre, `getSquadPlayerColors`), `SessionToolsCard.tsx` (B : pleine page tous les outils au compte ; compact six premiers sans « Non attribué », part de TOUS mes frags — dénominateur = somme des lignes du serveur, reliquat compris —, `minLabelShare = 0`) ; B' : `WeaponAccuracyChart` (hauteur 320) monté tel quel. `SessionToolsCard.test.tsx` (NEUF, graphe doublé : 8 lignes au compte ; 6 lignes, part, dénominateur 65 — témoin s2209).
+- **S4.8** `SessionColumnBody.test.tsx` réécrit (11 cas : titres, intertitres et couverture, ordre des cartes, paires, retrait par carte, solo sans objectif, aucune carte, Halo 5, compact — sous-libellé « 65 frags » et légende compacte de la grille —, 07/09 compact par rôle 46 % / 54 % et pleine page par action, anglais) ; `SessionCompareRows.test.tsx` réécrit sur s2209 face au solo (6 cas : même liste des deux côtés et rangées A-L, marqueur à droite pour J, K, C, F, intertitres dans la même rangée des deux côtés et sans couverture, compact des deux côtés « 65 frags » / « 72 frags », Appui sans Riposte des deux côtés, aucune rangée en pleine page) ; `sessionShrink.guard.test.ts` + 1 cas (paires et Appui par `pairGridClass(compact)`) ; `sessionEmprise.fixtures.ts` (s2209 sur `EMPRISE_2209` / `block2209`, s0709 sur `block0709`, solo du relevé §1-§3 ; cartes du solo anonymisées : `lint-no-hardcoded-fields` refusait leurs noms).
+- **S4.9** `session-detail=>timeseries` déclarée avec son commentaire ; 7 ≤ 7 ; les trois paires `session-detail=>*` ont un lecteur.
+- **S4.10** Preuves rejouées avant suppression : §4.A (lecteurs de `SessionUsageSection` et compagnie : les seuls fichiers supprimés + commentaires), §4.B (`SessionFragCard` : commentaires seuls ; `FragWeaponBreakdown`, `buildFragDetailBreakdown`, `FragSunburst` gardent des lecteurs), §4.C (riposte : `coordinationModel.ts`, `coordinationI18n.ts` seuls ; `squadRiposte*` lit d'autres symboles), §4.G (graphe d'import de `_shared/usage` relevé). Aucun lecteur inattendu.
+- **S4.11 / S4.12** supprimés : `SessionUsageSection.tsx` (+ `.gate.test.tsx`), `SessionUsageEquipmentCards.tsx`, `SessionPadControlCards.tsx`, `SessionUsageShared.tsx`, `SessionUsageFlagGrabsNet.test.tsx`, `sessionSectionVisibility.ts` (entier : tous ses lecteurs sortent), `SessionFragCard.tsx`.
+- **S4.13** `coordinationModel.ts` : `buildRiposteGaugeRows`, `RIPOSTE_BAND`, `buildRiposteBand`, `formatDelaiMedian`, `fenetreSeconds` ; `coordinationI18n.ts` : `cardRiposte`, `gaugeCovered`, `gaugeIRiposte`, `bandRiposte`, `delaiMedian`, `delaiFmt`, `infoRiposte1-3` FR et EN ; en-têtes corrigés.
+- **S4.14** `_shared/usage` : supprimés `UsageLobbyTrack.tsx`, `usageLobbyTrackModel.ts` (+ test), `usageGrids.ts` (+ test), `usageObjectives.ts`, `usageParity.ts` (+ test), `usagePadTiersModel.ts` (+ test — §4.F le plaçait en S5 : mort dès S4, il part ici), `UsageHatchLegend.tsx`, `usageGaugeModel.test.ts`, `usageRegularityBandModel.test.ts`, `usageAvailability.test.ts`. Réduits à ce que lisent encore « Appui reçu », les cartes d'objectif de l'Escouade et le nommage des objets : `UsageForms.tsx` 399 → 160 L (colonnes nommées par l'appelant ; plus de repli de lignes, de pile d'issues, de repères de taux, de hachure « lobby », de ligne de total ni d'indice : leur seul producteur, `buildGaugeRow`, n'avait plus de lecteur), `usageGaugeModel.ts` (types seuls), `usageRegularityBandModel.ts` (type seul), `usageAvailability.ts` (causes, titres, phrases), `usageFormat.ts` (`formatUsagePct`), `usageInks.ts`, `usageMetricKinds.ts` (`roleToken`), `usageI18n.ts` 518 → 124 L (états vides, légende de bande, familles d'équipement ; `roleLabel`, `familyLabel`, `deployedFamilyLabel` sans lecteur). Tests réécrits : `UsageForms.test.tsx`, `UsageA2Ajustements.test.tsx` (états vides seuls), `usageFormat.test.ts`, `usageMetricKinds.test.ts` ; garde `noLocalUsageCopies.guard.test.ts` adaptée (motifs des définitions qui restent), `usageEmptyStateCanonical.guard.test.ts` inchangée. Manifestes : aucune clé `session.*` / `frags.*` n'a perdu son dernier lecteur (relevé sur les clés citées par les fichiers supprimés ou modifiés). Commentaires devenus faux corrigés (règle 17) : `_chartSections.tsx`, `sessionShrink.guard.test.ts`, `components/charts/{FragWeaponBreakdown.tsx, StackedTrack.tsx, README.md}`, `timeseries/TimeseriesPage.summary.tsx` (commentaire seul, fichier du lot TS hors liste §5.1 : rendu inchangé).
+- **S4.15** `formesFields.guard.test.ts` : balayage des sources de la page (hors tests et fixtures), auto-test sur cinq chaînes (trois lectures interdites, deux permises).
+- **Mutations** (script `mut_s4.ps1`, restauration garantie puis vérifiée par grep) : 22, toutes ROUGES — intertitre sur la dernière clé ; union ordonnée sur la gauche ; paire G|H perdue ; dominance ignorée ; objectif sans match à objectif ; contrôle sans film ; précision ignorée ; « Non attribué » seul ; ⓘ compacte du contrôle = pleine page ; jeu de textes pleine page en compact ; formateurs compacts non transmis ; `compact` non transmis au rapport de force ; intertitre de comparaison absent ; couverture perdue ; colonne comparée en pleine page ; Appui hors gabarit ; paire écrite à la main ; garde D7 (champ retiré lu) ; garde de source unique (copie de `roleToken`) ; trait de jauge sans repère ; dénominateur des outils compacts ; seuil des parts par défaut.
+- **Gate** : purge `node_modules\.tmp` ; `npx tsc -b --force` 0 ; `npm run lint` 0 erreur (26 avertissements, le compte d'avant) ; `npx vitest run --pool=forks` complet : 840 fichiers / 8 871 tests verts, 23 ignorés (151 s) ; `node tools/knip-ratchet.mjs` 0 / 0 / 0 (aveugle : exports neufs vérifiés par grep — les quatre types internes de `_sections.ts` et `SessionEmpriseCards` désexportés, `session0709` lu par un test ; restent sans lecteur deux types exportés PRÉ-EXISTANTS hors périmètre, §8) ; couleurs 0 ; imports croisés 7 ≤ 7 ; `lint-no-hardcoded-fields` 0 (après anonymisation des cartes de la fixture) ; `npx lefthook run pre-push` (PATH complet) sortie 0. Preuves §4.A, B, C, G rejouées après suppression : 0 occurrence dans `apps/web/src` ; lecteurs web de la riposte du bloc `coordination` : `timeseries/TimeseriesCoordinationSection.test.tsx` seul (S5).
+- Seuils : plus gros fichiers touchés `SessionDetailPage.tsx` 525 L (gelé, en baisse), `_sections.ts` 281 L, `sessionEmpriseText.ts` 281 L, `SessionColumnBody.tsx` 248 L ; fonctions ≤ 80 L (`useSessionEmpriseCards` découpé : rendus par clé dans `cardRenderers`), ≤ 5 paramètres (`useSessionEmpriseCards` : 4).
 
 ### S5 — Go : suppressions (bloc d'usage entier) et riposte, contrat · lourd
 
@@ -721,8 +739,10 @@ Le web ne lit plus `usage`, `compare_usage` ni la riposte depuis S4. Depuis le r
   `PadTiersInput`, `squadagg/pad_tier_labels.go`, types de `domain/session_usage.go` listés ; tests
   suivent (`usage_test.go`, cas `ComputeUsage` et `TestBilan_MetricKeysSurLeSeulSujet` de
   `usage_outcomes_test.go`, `pad_tiers_test.go` si son sujet sort) ; `PlayerOutcomeCounts` et sa
-  garde / son golden verts sans modification d'assertion ; web : `usagePadTiersModel.ts` (+ test) et
-  ce que knip désigne alors, alias de `lib/api/types.ts:2299-2312`.
+  garde / son golden verts sans modification d'assertion ; web : `usagePadTiersModel.ts` (+ test)
+  [~] supprimé en S4.14 (mort dès S4), et ce que knip désigne alors, alias de
+  `lib/api/types.ts:2299-2312` (plus aucun lecteur web de `SessionUsageOutcomes` /
+  `SessionUsageMetric` / `SessionUsageMatchPoint` depuis S4.14).
 - [ ] S5.4 §4.D / D10 : riposte et `FenetreMs` du contrat et du calcul ; `bloc_test.go` et les tests
   du service adaptés (Appui identique avant / après : test de non-régression écrit AVANT la coupe sur
   la fixture existante) ; fixtures de `TimeseriesCoordinationSection.test.tsx` et de Sessions suivent.
@@ -827,6 +847,21 @@ modèles neufs ont leur lecteur dans le lot.
 - (S3) Les comptes « 0 prise » / « Non mesuré » de la maquette pour les ressources absentes (pistes en
   attente) restent non portés (D13) dans les vues compactes aussi : une ressource sans prise n'a pas de
   ligne, comme en pleine page.
+- (S4) §4.G est allé plus loin que la liste des candidats : le seul producteur des piles d'issues, des
+  repères de taux, du repli de lignes, de la hachure « lobby » et des lignes de total de
+  `UsageGaugeGrid` était `buildGaugeRow`, lu par les seules cartes d'usage de Sessions ; avec elles,
+  ces branches de `UsageForms.tsx`, `UsageHatchLegend.tsx` et la majeure partie de `usageI18n.ts`
+  (518 → 124 L) sont sorties (règle 7, conséquence directe du lot). `usagePadTiersModel.ts`, prévu en
+  S5 par §4.F, est sorti en S4 (mort dès S4).
+- (S4) Deux types exportés sans importeur, PRÉ-EXISTANTS, dans des fichiers dont le lot n'a touché qu'un
+  commentaire : `FragWeaponBreakdownProps` (`components/charts/FragWeaponBreakdown.tsx`),
+  `TimeseriesSummaryTabProps` (`timeseries/TimeseriesPage.summary.tsx`). Non traités (hors périmètre ;
+  le step knip de la CI les juge).
+- (S4) `lib/capabilities/FeatureGate.tsx:25` cite encore `usageAvailability` dans un récit daté (une
+  prop retirée le 2026-09-06) : historique, non une affirmation sur le code actuel — laissé tel quel.
+- (S4) `lint-no-hardcoded-fields` balaie les fixtures (hors `squad/emprise/emprise.fixtures.ts`,
+  allowlisté) : les noms de cartes du relevé solo ont été anonymisés dans `sessionEmprise.fixtures.ts`
+  plutôt que d'allonger l'allowlist.
 
 ## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
 

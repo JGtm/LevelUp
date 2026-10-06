@@ -1,6 +1,6 @@
 /**
- * coordinationI18n — LE DICTIONNAIRE FR/EN des cartes « Riposte », « Appui reçu » et
- * « Portée des engagements » de la colonne de session (lot O, D22-1 / D22-4 / D22-6).
+ * coordinationI18n — LE DICTIONNAIRE FR/EN des cartes « Appui reçu » et « Portée des
+ * engagements » de la colonne de session (lot O, D22-4 / D22-6).
  *
  * Dictionnaire LOCAL typé `Record<Locale, T>`, comme `_shared/usage/usageI18n.ts` : ces
  * cartes montent les formes du bloc « usages » (jauges, bande, légende) et parlent donc la
@@ -8,25 +8,13 @@
  * page (titres de section, tableau des matchs, comparaison).
  *
  * D22-VERBOSITÉ (LOI) : AUCUNE phrase de lecteur. Les libellés sont factuels et tactiques
- * (« Je suis couvert », « Ma part des appuis ») ; toute l'explication tient dans l'infobulle
+ * (« On me prépare », « Ma part des appuis ») ; toute l'explication tient dans l'infobulle
  * (i) du titre de carte, en TROIS phrases au plus. Ne pas re-déverser de méthode sous les
  * graphes : c'est exactement ce que D22 retire du reste de l'app.
  */
 import type { Locale } from '@/lib/i18n/locale'
 
 export interface CoordinationText {
-  // ─── Carte Riposte ───────────────────────────────────────────────────────────
-  cardRiposte: string
-  gaugeCovered: string
-  gaugeIRiposte: string
-  bandRiposte: string
-  delaiMedian: string
-  /** Un délai déjà formaté en secondes, p. ex. « 4,2 s ». */
-  delaiFmt: (secondes: string) => string
-  infoRiposte1: (fenetreSecondes: string) => string
-  infoRiposte2: string
-  infoRiposte3: string
-
   // ─── Carte Appui reçu ────────────────────────────────────────────────────────
   cardAppui: string
   gaugePrepared: string
@@ -36,7 +24,7 @@ export interface CoordinationText {
   infoAppui2: string
   infoAppui3: string
 
-  // ─── Communs aux deux cartes ─────────────────────────────────────────────────
+  // ─── Pied et infobulles de la carte ──────────────────────────────────────────
   lowSample: string
   /** Réserve de couverture, en pied de carte : « 7 matchs mesurés sur 9 ». */
   coverageMatchesFmt: (mesures: number, total: number) => string
@@ -83,18 +71,6 @@ export interface CoordinationText {
 
 export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
   fr: {
-    cardRiposte: 'Riposte',
-    gaugeCovered: 'Je suis couvert',
-    gaugeIRiposte: 'Je riposte',
-    bandRiposte: 'Je riposte, match par match',
-    delaiMedian: 'Délai médian de riposte',
-    delaiFmt: (s) => `${s} s`,
-    infoRiposte1: (f) =>
-      `Une mort est ripostée quand un coéquipier abat le tueur dans les ${f} s qui suivent.`,
-    infoRiposte2:
-      'Le dénominateur de « je riposte » est le nombre de morts de mon camp, pas mes morts.',
-    infoRiposte3: 'La parité vaut 1/n, n étant l’effectif de mon camp sur le match.',
-
     cardAppui: 'Appui reçu',
     gaugePrepared: 'On me prépare',
     gaugeAssistShare: 'Ma part des appuis',
@@ -138,16 +114,6 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeEmpty: 'Aucun frag mesuré sur les matchs de cette session.',
   },
   en: {
-    cardRiposte: 'Payback',
-    gaugeCovered: 'I am covered',
-    gaugeIRiposte: 'I pay back',
-    bandRiposte: 'I pay back, match by match',
-    delaiMedian: 'Median payback delay',
-    delaiFmt: (s) => `${s}s`,
-    infoRiposte1: (f) => `A death is paid back when a teammate kills the killer within ${f}s.`,
-    infoRiposte2: 'The denominator of "I pay back" is my team’s deaths, not my own.',
-    infoRiposte3: 'Parity is 1/n, n being my team size on that match.',
-
     cardAppui: 'Support received',
     gaugePrepared: 'Set up for me',
     gaugeAssistShare: 'My share of assists',

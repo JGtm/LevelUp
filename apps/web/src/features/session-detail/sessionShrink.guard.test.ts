@@ -21,10 +21,9 @@
  *    (`.app-shell-width`, `styles/globals.css`) : dès 1280 px de fenêtre, `xl:` est vrai
  *    pour toujours et la largeur réelle ne bouge plus. Drawer ouvert, la colonne tombe à
  *    ~660 px pendant que `xl:grid-cols-2` reste vrai → deux pistes de ~294 px pour des
- *    cartes dessinées pleine page. Toutes les AUTRES sections de la colonne
- *    (`SessionPadControlCards`, `SessionUsageEquipmentCards`, `SessionCoordinationSection`,
- *    `SessionFragCard`) s'empilent déjà sur `compact` : les rangées de graphes étaient les
- *    seules à décider sur la fenêtre au lieu de décider sur l'état de la page.
+ *    cartes dessinées pleine page. Les autres sections de la colonne s'empilaient déjà sur
+ *    `compact` : les rangées de graphes étaient les seules à décider sur la fenêtre au lieu
+ *    de décider sur l'état de la page.
  *
  * CE QUE CE TEST SURVEILLE, ET SEULEMENT ÇA : le gabarit des rangées de graphes (une seule
  * colonne en `compact`, deux sinon) et la présence des classes qui rendent la chaîne
@@ -99,6 +98,19 @@ describe('garde-rail rétrécissement de la colonne de session (drawer de compar
     // `position: sticky` du header L3 (même raisonnement que la piste du drawer).
     expect(branch?.[0]).toContain('overflow-x-clip')
     expect(branch?.[0]).not.toContain('overflow-hidden')
+  })
+
+  it('les paires de cartes de « Frags et usages » passent par le gabarit (une colonne en compact)', () => {
+    // Les paires A|B, C|D, G|H et la rangée seule d'« Appui reçu » décident leur nombre de colonnes
+    // sur `compact`, par `pairGridClass` — jamais par un littéral de grille.
+    for (const path of [
+      '/src/features/session-detail/SessionColumnBody.tsx',
+      '/src/features/session-detail/SessionCoordinationSection.tsx',
+    ]) {
+      const code = source(path)
+      expect(code, path).toMatch(/className=\{pairGridClass\(compact\)\}|pairGridClass\(compact\)/)
+      expect(code.match(/className="[^"]*\bgrid-cols-2\b[^"]*"/g) ?? [], path).toEqual([])
+    }
   })
 
   it('chaque rangée partagée de la comparaison peut rétrécir', () => {

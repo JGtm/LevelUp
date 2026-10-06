@@ -1,20 +1,17 @@
 /**
- * coordinationModel — LES PROJECTIONS PURES des cartes « Riposte » et « Appui reçu » de la
- * colonne de session (lot O, D22-1 / D22-6).
+ * coordinationModel — LES PROJECTIONS PURES de la carte « Appui reçu » de la colonne de session
+ * (lot O, D22-6).
  *
- * Deux grandeurs par carte, une seule forme : la JAUGE À PARITÉ (`UsageGaugeGrid`) doublée
- * de la BANDE DE RÉGULARITÉ match par match (`UsageRegularityBand`) — les composants du
- * bloc « usages », réutilisés tels quels, aucun graphe neuf.
+ * Deux grandeurs, une seule forme : la JAUGE À PARITÉ (`UsageGaugeGrid`) doublée de la BANDE DE
+ * RÉGULARITÉ match par match (`UsageRegularityBand`) — composants partagés, aucun graphe neuf.
  *
- * NORMALISATION (le point de D22-1/6, à ne pas relâcher) :
- *  - « je riposte » se rapporte aux MORTS DE MON CAMP, jamais aux miennes ni à celles du
- *    lobby : un match où le camp meurt peu gonflerait sinon ma part ;
+ * NORMALISATION (le point de D22-6, à ne pas relâcher) :
  *  - « on me prépare » se rapporte à MES FRAGS, « ma part des appuis » aux APPUIS DU CAMP :
  *    deux dénominateurs différents, que mélanger donnerait un nombre sans sens ;
  *  - la PARITÉ est `parity_pct` = 1/n avec n l'effectif du camp DU MATCH (R1), jamais 1/4.
  *
  * UNE CASE SANS DÉNOMINATEUR RESTE GRISE (`unmeasured`) — non mesuré n'est pas zéro : un
- * match sans mort de camp, ou sans appui dans le camp, ne vaut pas 0 %.
+ * match sans appui dans le camp ne vaut pas 0 %.
  *
  * Pur : aucun React, aucune couleur en dur, aucune lecture de store.
  */
@@ -34,9 +31,9 @@ const BAND_EPSILON_PT = 1
  * Une jauge de couverture : sa valeur, son repère, ses textes.
  *
  * `repere` est LE TRAIT de la jauge (`parityPct`), et il dit DEUX choses selon la grandeur :
- * la PARITÉ 1/n pour « je riposte » et « ma part des appuis », l'HABITUEL (la même mesure
- * sur la période de référence, `habituel_pct`, lot S) pour « je suis couvert » et « on me
- * prépare », qui ne se comparent à aucune part équitable. Le trait est le même ; ce qui
+ * la PARITÉ 1/n pour « ma part des appuis », l'HABITUEL (la même mesure sur la période de
+ * référence, `habituel_pct`, lot S) pour « on me prépare », qui ne se compare à aucune part
+ * équitable. Le trait est le même ; ce qui
  * change est ce que l'infobulle en dit — `usuel` nomme le repère quand c'est un habituel.
  *
  * `null` reste possible des deux côtés (scope FFA, référence tautologique ou non mesurée) :
@@ -77,33 +74,8 @@ function gaugeFromCouverture(
     valueText: mesure
       ? withLowSampleNote(valueText, couverture.echantillon_faible, t.lowSample)
       : valueText,
-    honestyText: mesure ? String(couverture.brut) : '—',
     tooltip,
-    teammatesRatePct: null,
-    opponentsRatePct: null,
   }
-}
-
-/** Les deux lignes de la carte « Riposte » : « je suis couvert », puis « je riposte ». */
-export function buildRiposteGaugeRows(
-  block: CoordinationBlock,
-  t: CoordinationText,
-  locale: Locale,
-): UsageGaugeRowModel[] {
-  const parity = block.riposte.parity_pct ?? null
-  const usual = block.riposte.habituel_pct ?? null
-  return [
-    {
-      key: 'riposte',
-      label: t.cardRiposte,
-      gauges: [
-        // « Je suis couvert » ne se compare à aucune parité : son repère est l'HABITUEL
-        // de la période de référence, quand le contrat le sert (lot S).
-        gaugeFromCouverture('covered', block.riposte.je_suis_couvert, { pct: usual, usuel: true }, t, locale),
-        gaugeFromCouverture('mine', block.riposte.je_riposte, { pct: parity }, t, locale),
-      ],
-    },
-  ]
 }
 
 /** Les deux lignes de la carte « Appui reçu » : « on me prépare », « ma part des appuis ». */
@@ -119,7 +91,8 @@ export function buildAppuiGaugeRows(
       key: 'appui',
       label: t.cardAppui,
       gauges: [
-        // « On me prépare » : même règle que « je suis couvert » — le repère est l'habituel.
+        // « On me prépare » ne se compare à aucune parité : son repère est l'HABITUEL de la
+        // période de référence, quand le contrat le sert (lot S).
         gaugeFromCouverture('prepared', block.appui.on_me_prepare, { pct: usual, usuel: true }, t, locale),
         gaugeFromCouverture('share', block.appui.ma_part_des_appuis, { pct: parity }, t, locale),
       ],
@@ -132,11 +105,6 @@ interface BandReader {
   share: (p: CoordinationMatchPoint) => number | null | undefined
   /** Le dénominateur du match : nul → case grise, quelle que soit la part. */
   denominator: (p: CoordinationMatchPoint) => number
-}
-
-const RIPOSTE_BAND: BandReader = {
-  share: (p) => p.riposte_share_pct,
-  denominator: (p) => p.team_deaths,
 }
 
 const APPUI_BAND: BandReader = {
@@ -165,14 +133,6 @@ function buildBand(
   })
 }
 
-export function buildRiposteBand(
-  perMatch: readonly CoordinationMatchPoint[],
-  t: CoordinationText,
-  locale: Locale,
-): UsageBandCell[] {
-  return buildBand(perMatch, RIPOSTE_BAND, t, locale)
-}
-
 export function buildAppuiBand(
   perMatch: readonly CoordinationMatchPoint[],
   t: CoordinationText,
@@ -189,22 +149,4 @@ export function bandCaption(cells: readonly UsageBandCell[], t: CoordinationText
   const measured = cells.filter((c) => c.tone !== 'unmeasured')
   if (measured.length === 0) return null
   return t.bandCountFmt(measured.filter((c) => c.tone === 'above').length, measured.length)
-}
-
-/** Le délai médian de riposte, en secondes, déjà formaté. `null` quand non mesuré. */
-export function formatDelaiMedian(
-  block: CoordinationBlock,
-  t: CoordinationText,
-  locale: Locale,
-): string | null {
-  const ms = block.riposte.delai_median_ms
-  if (ms == null || ms <= 0) return null
-  const s = (ms / 1000).toFixed(1)
-  return t.delaiFmt(locale === 'fr' ? s.replace('.', ',') : s)
-}
-
-/** La fenêtre de riposte en secondes, pour l'infobulle (« 5 »). */
-export function fenetreSeconds(block: CoordinationBlock, locale: Locale): string {
-  const s = (block.fenetre_ms / 1000).toFixed(1).replace(/[.,]0$/, '')
-  return locale === 'fr' ? s.replace('.', ',') : s
 }

@@ -1,10 +1,16 @@
 /**
- * D16 — rangees partagees en vue comparaison.
+ * D16 — rangees partagees en vue comparaison (une rangee par CARTE depuis le plan
+ * PLAN_SESSIONS_EMPRISE_2026-10-06, D11).
  *
  * Verifie l'INVARIANT de structure, pas le pixel : les deux colonnes emettent la MEME
  * liste ordonnee de cles de section (meme index = meme rangee de la grille racine),
- * et un cote qui n'a pas la section rend le placeholder « Sans equivalent dans cette
- * session ». En pleine page (drawer ferme) : pile simple, aucun placeholder.
+ * un cote qui n'a pas la carte rend le placeholder « Sans equivalent dans cette
+ * session », les titres de groupe et les intertitres de sous-groupe se posent dans la meme
+ * rangee des deux cotes, et les cartes sont en vue compacte DES DEUX cotes. En pleine page
+ * (drawer ferme) : pile simple, aucune rangee, aucun placeholder.
+ *
+ * Temoin (MESURES §0) : la soiree d'escouade du 22/09 (deux CTF) face a la session solo du meme
+ * soir (Super Fiesta, aucun match a objectif).
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -14,6 +20,7 @@ import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
 
 import { SessionDetailPage } from './SessionDetailPage'
+import { session2209, sessionSolo } from './sessionEmprise.fixtures'
 
 vi.mock('echarts-for-react', () => ({ default: () => null }))
 
@@ -27,123 +34,63 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
-const CURRENT_SESSION = {
-  session_label: '2026-04-21 19h30',
-  start_time: '2026-04-21T19:30:00Z',
-  end_time: '2026-04-21T20:05:00Z',
-  total_matches: 2,
-  wins: 2,
-  losses: 0,
+const KPI = {
+  start_time: '2026-09-22T19:23:00Z',
+  end_time: '2026-09-22T20:40:00Z',
   kda: 2.4,
   performance_score: 68.5,
-  win_rate: 100,
+  win_rate: 43,
   kdr: 1.8,
-  kills_per_match: 13,
-  with_friends: false,
+  kills_per_match: 9,
   dominant_category: 'Ranked',
 }
 
-const COMPARE_SESSION = { ...CURRENT_SESSION, session_label: '2026-04-21 18h', wins: 1, losses: 2 }
-
-const MATCH = {
-  match_id: 'match-1',
-  start_time: '2026-04-21T19:45:00Z',
-  outcome: 2,
-  playlist_name: 'Ranked Arena',
-  pair_name: 'Oddball',
-  is_ranked: true,
-  kills: 13,
-  deaths: 5,
-  assists: 6,
-  kda: 2.6,
-  accuracy: 64.8,
-  personal_score: 2450,
-  performance_score: 70,
-  session_label: '2026-04-21 19h30',
-  dominant_category: 'Ranked',
-}
-
-/** Bloc « usages » minimal : seule sa PRESENCE decide de l'existence de la section. */
-const USAGE_BLOCK = {
-  available: false,
-  matches_measured: 0,
-  matches_total: 2,
-  unavailable_reason: 'no_film',
-}
+const CURRENT = session2209()
+const COMPARE = sessionSolo()
+const CURRENT_LABEL = '2026-09-22 21h23'
+const COMPARE_LABEL = '2026-09-22 19h27'
 
 function baseResponse() {
   return {
-    current_session: CURRENT_SESSION,
-    available_sessions: ['2026-04-21 19h30', '2026-04-21 18h'],
-    matches: [MATCH],
-    suggested_compare: { session_label: '2026-04-21 18h', strategy: 's', reason: 'r' },
+    current_session: { ...KPI, ...CURRENT.entry, session_label: CURRENT_LABEL },
+    available_sessions: [CURRENT_LABEL, COMPARE_LABEL],
+    matches: CURRENT.matches,
+    emprise: CURRENT.emprise,
+    lives_near_teammate: CURRENT.lives,
+    formes_retenues: CURRENT.formes,
+    suggested_compare: { session_label: COMPARE_LABEL, strategy: 's', reason: 'r' },
     compare_enabled: false,
     compare_session: null,
     compare_metrics: [],
   }
 }
 
-/** `usageSides` : quelles colonnes recoivent le bloc « usages ». */
-function mockDetail(usageSides: { left: boolean; right: boolean }) {
-  server.use(
-    http.post('/api/v1/players/:playerSlug/pages/sessions/detail', async ({ request }) => {
-      const body = (await request.json()) as { enable_compare?: boolean }
-      const payload: Record<string, unknown> = baseResponse()
-      if (usageSides.left) payload.usage = USAGE_BLOCK
-      if (body.enable_compare) {
-        payload.compare_enabled = true
-        payload.compare_session = COMPARE_SESSION
-        payload.compare_matches = [{ ...MATCH, match_id: 'match-2', session_label: '2026-04-21 18h' }]
-        if (usageSides.right) payload.compare_usage = USAGE_BLOCK
-      }
-      return HttpResponse.json(payload)
-    }),
-  )
-}
-
-/** Bloc « Coordination » minimal et MESURE : son delai median identifie la colonne. */
-function coordinationBlock(delaiMs: number) {
-  const couverture = (taux: number) => ({
-    taux,
-    brut: 10,
-    n: 20,
-    par_match: 5,
-    echantillon_faible: false,
-  })
+/** Bloc « Coordination » minimal et MESURE : sa couverture et son taux identifient la colonne. */
+function coordinationBlock(measured: number) {
+  const couverture = (taux: number) => ({ taux, brut: 10, n: 20, par_match: 5, echantillon_faible: false })
   return {
     available: true,
-    fenetre_ms: 5000,
-    matches_measured: 2,
-    matches_total: 2,
-    riposte: {
-      je_suis_couvert: couverture(0.6),
-      je_riposte: couverture(0.3),
-      team_deaths: 20,
-      team_deaths_avenged: 12,
-      parity_pct: 25,
-      delai_median_ms: delaiMs,
-    },
-    appui: {
-      on_me_prepare: couverture(0.4),
-      ma_part_des_appuis: couverture(0.3),
-      parity_pct: 25,
-    },
+    matches_measured: measured,
+    matches_total: 7,
+    appui: { on_me_prepare: couverture(measured / 10), ma_part_des_appuis: couverture(0.3), parity_pct: 25 },
     per_match: [],
   }
 }
 
-/** Les DEUX sessions portent un bloc de coordination, avec des valeurs distinctes. */
-function mockDetailAvecCoordination() {
+function mockDetail(withCoordination = false) {
   server.use(
     http.post('/api/v1/players/:playerSlug/pages/sessions/detail', async ({ request }) => {
       const body = (await request.json()) as { enable_compare?: boolean }
       const payload: Record<string, unknown> = baseResponse()
-      payload.coordination = coordinationBlock(4200)
+      if (withCoordination) payload.coordination = coordinationBlock(6)
       if (body.enable_compare) {
         payload.compare_enabled = true
-        payload.compare_session = COMPARE_SESSION
-        payload.compare_matches = [{ ...MATCH, match_id: 'match-2', session_label: '2026-04-21 18h' }]
-        payload.compare_coordination = coordinationBlock(1500)
+        payload.compare_session = { ...KPI, ...COMPARE.entry, session_label: COMPARE_LABEL }
+        payload.compare_matches = COMPARE.matches
+        payload.compare_emprise = COMPARE.emprise
+        payload.compare_lives_near_teammate = COMPARE.lives
+        payload.compare_formes_retenues = COMPARE.formes
+        if (withCoordination) payload.compare_coordination = coordinationBlock(5)
       }
       return HttpResponse.json(payload)
     }),
@@ -167,74 +114,91 @@ function sectionKeys(container: HTMLElement): string[] {
   )
 }
 
-describe('SessionDetailPage — rangees partagees (D16)', () => {
-  it('emet la meme liste ordonnee de sections dans les deux colonnes', async () => {
-    mockDetail({ left: true, right: true })
-    const { container } = renderWithProviders(<SessionDetailPage />)
-    await openCompare()
+/** Les deux cellules (gauche, droite) d'une rangee partagee. */
+function cells(container: HTMLElement, key: string): Element[] {
+  return Array.from(container.querySelectorAll(`[data-session-section="${key}"]`))
+}
 
-    await waitFor(() => {
-      expect(sectionKeys(container).length).toBeGreaterThan(0)
-    })
+const placeholder = (cell: Element) => cell.querySelector('[data-testid="session-section-placeholder"]')
+
+async function openedCompare(withCoordination = false) {
+  mockDetail(withCoordination)
+  const view = renderWithProviders(<SessionDetailPage />)
+  await openCompare()
+  await waitFor(() => {
+    expect(cells(view.container, 'objective_balance')).toHaveLength(2)
+  })
+  return view
+}
+
+describe('SessionDetailPage — rangees partagees (D16), une par carte', () => {
+  it('emet la meme liste ordonnee de sections dans les deux colonnes, une rangee par carte', async () => {
+    const { container } = await openedCompare()
     const keys = sectionKeys(container)
     expect(keys.length % 2).toBe(0)
     const half = keys.length / 2
     const left = keys.slice(0, half)
-    const right = keys.slice(half)
     // Meme index = meme rangee de la grille : l'egalite des deux listes EST l'alignement.
-    expect(left).toEqual(right)
-    // Chaque cle apparait une fois par colonne.
+    expect(left).toEqual(keys.slice(half))
     expect(new Set(left).size).toBe(left.length)
-    expect(left).toContain('usage')
-    expect(left).toContain('summary')
-    expect(left).toContain('matches')
-    expect(screen.queryByTestId('session-section-placeholder')).not.toBeInTheDocument()
+    const kills = left.slice(left.indexOf('frag_bar'), left.indexOf('matches'))
+    expect(kills).toEqual(['frag_bar', 'tools', 'control', 'fil', 'grid', 'mine', 'production', 'yield', 'lives', 'objective_balance', 'objective_sheet'])
+    expect(left).not.toContain('usage')
+    expect(left).not.toContain('frags')
   })
 
-  it('rend le placeholder du cote qui n’a pas la section', async () => {
-    mockDetail({ left: true, right: false })
-    const { container } = renderWithProviders(<SessionDetailPage />)
-    await openCompare()
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-section-placeholder')).toBeInTheDocument()
-    })
-    const keys = sectionKeys(container)
-    const half = keys.length / 2
-    expect(keys.slice(0, half)).toEqual(keys.slice(half))
-    // La rangee « usages » existe des DEUX cotes : a droite, c'est le placeholder.
-    const cells = Array.from(container.querySelectorAll('[data-session-section="usage"]'))
-    expect(cells).toHaveLength(2)
-    expect(cells[0].querySelector('[data-testid="session-section-placeholder"]')).toBeNull()
-    expect(cells[1].querySelector('[data-testid="session-section-placeholder"]')).not.toBeNull()
-    expect(screen.getByText('Sans équivalent dans cette session')).toBeInTheDocument()
-  })
-
-  it('rend la section Coordination des DEUX cotes, chacune avec SES donnees (lot S)', async () => {
-    mockDetailAvecCoordination()
-    const { container } = renderWithProviders(<SessionDetailPage />)
-    await openCompare()
-
-    await waitFor(() => {
-      expect(
-        container.querySelectorAll('[data-session-section="coordination"]'),
-      ).toHaveLength(2)
-    })
-    const cells = Array.from(container.querySelectorAll('[data-session-section="coordination"]'))
-    // Aucun placeholder D16 : les deux sessions ont un bloc, les deux colonnes le rendent.
-    for (const cell of cells) {
-      expect(cell.querySelector('[data-testid="session-section-placeholder"]')).toBeNull()
-      expect(cell.querySelector('[data-session-coordination]')).not.toBeNull()
+  it('le cote sans la carte porte le marqueur : la session solo n’a pas de carte d’objectif', async () => {
+    const { container } = await openedCompare()
+    for (const key of ['objective_balance', 'objective_sheet', 'control', 'mine']) {
+      const [left, right] = cells(container, key)
+      expect(placeholder(left), `${key} a gauche`).toBeNull()
+      expect(placeholder(right), `${key} a droite`).not.toBeNull()
     }
-    // Chaque colonne parle de SA session : le chiffre d'appel differe des deux cotes.
-    expect(screen.getByText('Délai médian de riposte : 4,2 s')).toBeInTheDocument()
-    expect(screen.getByText('Délai médian de riposte : 1,5 s')).toBeInTheDocument()
+    // Les cartes que les deux sessions ont : aucun marqueur.
+    for (const key of ['frag_bar', 'tools', 'production', 'lives']) {
+      for (const cell of cells(container, key)) expect(placeholder(cell), key).toBeNull()
+    }
+    expect(screen.getAllByText('Sans équivalent dans cette session').length).toBeGreaterThan(0)
+  })
+
+  it('les titres de groupe et de sous-groupe se posent dans la meme rangee des deux cotes', async () => {
+    const { container } = await openedCompare()
+    const [gauche, droite] = cells(container, 'frag_bar')
+    for (const cell of [gauche, droite]) expect(cell.querySelector('h3')?.textContent).toBe('Frags et usages')
+    for (const [key, sub] of [['control', 'resources'], ['production', 'prendre'], ['lives', 'lives'], ['objective_balance', 'objectif']]) {
+      const pair = cells(container, key)
+      for (const cell of pair) {
+        expect(cell.querySelector(`[data-session-subgroup="${sub}"]`), `${key} / ${sub}`).not.toBeNull()
+      }
+    }
+    // Aucune couverture en petit dans la vue de comparaison.
+    expect(container.querySelector('[data-session-subgroup="resources"] small')).toBeNull()
+  })
+
+  it('les cartes sont en vue compacte des DEUX cotes (A : total en sous-libellé)', async () => {
+    await openedCompare()
+    expect(screen.getByText('65 frags')).toBeInTheDocument()
+    expect(screen.getByText('72 frags')).toBeInTheDocument()
+    expect(screen.queryByTestId('frag-breakdown-total-JGtm')).not.toBeInTheDocument()
+  })
+
+  it('rend « Appui reçu » des DEUX cotes, chacune avec SES donnees, et plus de Riposte', async () => {
+    const { container } = await openedCompare(true)
+    const pair = cells(container, 'coordination')
+    expect(pair).toHaveLength(2)
+    for (const cell of pair) {
+      expect(placeholder(cell)).toBeNull()
+      expect(cell.querySelector('[data-session-coordination]')).not.toBeNull()
+      expect(cell.textContent).toContain('Appui reçu')
+      expect(cell.textContent).not.toContain('Riposte')
+    }
+    // Chaque colonne parle de SA session : la couverture differe des deux cotes.
+    expect(pair[0].innerHTML).not.toEqual(pair[1].innerHTML)
   })
 
   it('ne pose ni rangees ni placeholder en pleine page (drawer ferme)', async () => {
-    mockDetail({ left: true, right: false })
+    mockDetail()
     const { container } = renderWithProviders(<SessionDetailPage />)
-
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Comparer/i })).toBeInTheDocument()
     })
