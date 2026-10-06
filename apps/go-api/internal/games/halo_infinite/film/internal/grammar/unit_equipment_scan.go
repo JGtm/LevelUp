@@ -54,23 +54,20 @@ func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
 	if slots.Count() == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, err := fc.I0Layout()
-	if err != nil {
+	if _, err := fc.I0Layout(); err != nil {
 		return nil, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, err
 	}
-	idx26 := -1
-	for id := range archetypeBlockSlots {
-		if arch.component(id) == "unit-equipment-component" {
-			idx26 = id
-			break
-		}
-	}
+	idx26 := indexDeLEquipementDUnite(arch)
 	if idx26 < 0 {
-		return nil, fmt.Errorf("aucun unit-equipment-component dans l'archétype biped du film")
+		return nil, fmt.Errorf("aucun %s dans l'archétype biped du film", compUnitEquipment)
+	}
+	lu, err := fc.lecturesBipedes()
+	if err != nil {
+		return nil, err
 	}
 
 	var last struct {
@@ -81,18 +78,30 @@ func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
 	obs.UnitEquipmentHook = func(r UnitEquipmentRead) { last.read, last.got = r, true }
 
 	var out []UnitEquipmentEmission
-	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
-	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		if !maskHas(r.Mask, idx26) {
-			return
+	for i := range lu.records {
+		r := &lu.records[i]
+		if !r.annonce(idx26) {
+			continue
 		}
 		last.got = false
-		if walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, gram, idx26) && last.got {
+		if r.parcourirJusqua(obs, idx26) && last.got {
 			out = append(out, UnitEquipmentEmission{
 				Slot: r.Slot, TimestampUS: r.Packet.TimestampUS, Read: last.read,
 			})
 		}
-		last.got = false
-	})
+	}
 	return out, nil
+}
+
+// compUnitEquipment est l etiquette de registre d i26.
+const compUnitEquipment = "unit-equipment-component"
+
+// indexDeLEquipementDUnite rend l index d iteration d i26 dans l archetype bipede, ou -1.
+func indexDeLEquipementDUnite(arch Archetype) int {
+	for id := range archetypeBlockSlots {
+		if arch.component(id) == compUnitEquipment {
+			return id
+		}
+	}
+	return -1
 }

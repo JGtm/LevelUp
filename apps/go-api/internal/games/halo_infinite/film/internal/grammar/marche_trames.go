@@ -54,6 +54,9 @@ type marcheurDesTrames struct {
 	// interets : les occurrences que les canaux de la marche interpretent ([Distribuer]) ; vide hors
 	// du distributeur.
 	interets interetsResolus
+	// lecteur : le lecteur de la trame en cours pendant sa marche par classes de vue, nil hors d elle.
+	// Sa position date les publications des deserialiseurs ([MarcheDistribuee.positionDeLecture]).
+	lecteur *Lecteur
 }
 
 // trameLue est ce que la marche rend pour UNE trame delta : la structure, et ce que la marche par
@@ -169,7 +172,9 @@ func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 	if t.parRangs {
 		br := LecteurSur(pay)
 		br.poserCadre(m.cfg)
+		m.lecteur = br
 		lireTrameParRangs(br, pay, m.monde, m.cfg, departDeTrame{bit: t.debut, vueA: &vueA}, &t.lecture)
+		m.lecteur = nil
 	} else {
 		t.lecture.recs, t.lecture.rangs, t.lecture.curseur = DecodeFrameViewsCurseur(pay, m.monde, m.cfg,
 			MovementStateViews, t.debut)

@@ -1,13 +1,13 @@
 abilityCharges	12	008f517f4be53ecb2f8c03e5e0077622ebb532f3f707f3fbdf88c68856c33e11	{Slot:516 Chunk:2 PacketIndex:1326 TimestampUS:4548900597 Emplacement:2 Charges:4 Low:0}
 abilityImpulses	12	5f9b29f11df21b62d53da9ca5123ba5e46575d5c147fca837ad16ca55ab6b9bc	{Slot:519 Chunk:2 PacketIndex:1424 TimestampUS:4549718048 Predicted:true}
-abilityRanks	15	796460e87a25cf3bc95865467a9fb3ec0738b3e9cb7065ee9b6c0c9fd3e4614c	{Slot:513 Chunk:1 PacketIndex:366 TimestampUS:4521507487 Counter:5 Rank:20}
+abilityRanks	20	a851314de5a0b73c2d1ae0b4e1a545a393ad916a5317d2c51ff9a033096ec5de	{Slot:512 Chunk:1 PacketIndex:364 TimestampUS:4521490677 Counter:5 Rank:20}
 bipedAim	398	729727bd5d1b159024d537c4f03c9eda0faf503f662216e90ddcde473968a74b	{Slot:513 Chunk:2 PacketIndex:770 TimestampUS:4544262832 YawRaw:320 PitchRaw:1024}
-camoStates	126	4b513c57c1c67f9d8da8eb64992410d2b6387ecbfaaa3897f16abb639bb25ccd	{Slot:518 Chunk:2 PacketIndex:732 TimestampUS:4543944946 Q:0}
+camoStates	127	7a273da8db22015b628ae12c0ba134798ab29c751b8902a76795c4e97956ae1b	{Slot:518 Chunk:2 PacketIndex:732 TimestampUS:4543944946 Q:0}
 grappleReads	9	e585e9a849606d0ad17cea6cc13d0f34c84af14f16a2024a3f450ca6bb4519f7	{Slot:516 Chunk:2 PacketIndex:1306 TimestampUS:4548734213 Heavy:false PosQ:[3756 4793 9922]}
-heldWeaponChanges	4	56ef22012d428612f262d5ba4c4f71926195f320caa6cadf10654c77191ce967	{TimestampUS:4566702642 Chunk:3 Slot:520 SlotIndex:44 Emplacement:1 Family:2216347109 Low:3637542049 Previous:4294967295 Kind:"taken"}
-inventoryDeltas	187	d3d5d0dcc3b7c8363ddf6a35669ea03a95e649612dff63a5968cd0ef83b4c05d	{Slot:516 Chunk:2 PacketIndex:1666 TimestampUS:4551737292 Grenades:[] Mask:0 Sel:0 SelRead:false Ammo:[{WeaponSlot:1 Mag:&6 FracQ:nil Res:ni...
-unitEquipment	11	d5c1d891ea6ec9166a3be4c217fc17146fabf3e624188d08eb185d5de883b70a	{Slot:517 TimestampUS:4551720527 Read:{Head:7 Entries:[{Val:972 Tail:1 Present:true}]}}
-equipmentChanges	17	9600ce9c98047c3b2ff7b7dca09d84e056b0de4e30182905e92e399ba2eba6b6	{TimestampUS:4521507487 Chunk:1 PacketIndex:366 Slot:513 Counter:5 Rank:20 Previous:-1 Kind:"taken" Recovered:false Gap:0}
+heldWeaponChanges	32	8ae1db1d59e8528b31a1f8c9bd89094de7cceffe344d932d4d04c980a08f9f69	{TimestampUS:4543781798 Chunk:2 Slot:512 SlotIndex:45 Emplacement:2 Family:4294967295 Low:4294967295 Previous:4294967295 Kind:"dropped"}
+inventoryDeltas	198	85115e98742d57853b3ac138e11fc6d0f38ed26ce8aa693a4321d1f17002ac56	{Slot:516 Chunk:2 PacketIndex:1666 TimestampUS:4551737292 Grenades:[] Mask:0 Sel:0 SelRead:false Ammo:[{WeaponSlot:1 Mag:&6 FracQ:nil Res:ni...
+unitEquipment	23	1a781a1946e735b4c211a36906172af679dc6b09c9536a6b5976de948522a4f0	{Slot:512 TimestampUS:4521507487 Read:{Head:5 Entries:[{Val:950 Tail:1 Present:true}]}}
+equipmentChanges	31	db3c61164e2be000f698f0f748d326a1a418e9638c2040fd8db72d3c7980d175	{TimestampUS:4521490677 Chunk:1 PacketIndex:364 Slot:512 Counter:5 Rank:20 Previous:-1 Kind:"taken" Recovered:false Gap:0}
 equipmentState	66	6e1ca84cc4eea20ff720f91942f66ddeae1ee02ea86560ebcb16dd888be952c4	{Slot:1499 Gen:0 Chunk:1 PacketIndex:386 TimestampUS:4521673006 Seen:[false false false false true false] Present:[false false false false t...
 bipedPositions	28004	ff67716a1314939361bc7859d233a7e9f4df3d6f11037ea0be2cf2ba5dbfc027	{Slot:513 Chunk:1 PacketIndex:366 TimestampUS:4521507487 X:-4.3214555 Y:17.107574 Z:-1.2180053 HasWorld:true Q:[2661 5305 9904] componentDir...
 projectiles	53	8a1ca014948ec8b45dcb5ee24f127555e62fe3c3cd2638ea657e0875ffe4e5cb	{Slot:1024 Gen:1 Pts:[{TimestampUS:4547783005 Chunk:2 X:35.36936 Y:11.619446 Z:1.0403671 AtRest:false} {TimestampUS:4547799072 Chunk:2 X:34....

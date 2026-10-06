@@ -89,10 +89,11 @@ type abilityEmission struct {
 	Gen         uint32
 	Chunk       int
 	PacketIndex int
-	// Bit est la position, dans le payload du paquet, du composant i0 du record porteur (lot
-	// J10.1, 2026-09-27). Un record occupe une position : c'est la CLE UNIQUE qui departage deux
-	// emissions strictes d'un meme paquet (DT-9). Zero sur une emission recuperee, que son
-	// offset d'en-tete ([equipRecovered.off]) departage deja.
+	// Bit est la position, dans le payload du paquet, du composant i0 du record porteur, ou de son
+	// en-tete quand il n'annonce pas i0 ([recordBipedeLu.I0]). Un record occupe une position :
+	// c'est la CLE UNIQUE qui departage deux emissions strictes d'un meme paquet (DT-9). Zero sur
+	// une emission recuperee par la recuperation gatee, que son offset d'en-tete
+	// ([equipRecovered.off]) departage deja.
 	Bit         int
 	TimestampUS uint64
 	Counter     uint32
@@ -159,16 +160,19 @@ func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (types.A
 	if err != nil {
 		return types.AbilityRankStats{}, err
 	}
-	return walkAbilityEmissionsWith(s, visit), nil
+	return walkAbilityEmissionsWith(s, visit)
 }
 
 // walkAbilityEmissionsWith est le corps du balayage, sur un contexte déjà résolu — c'est ce
 // qui permet à `ScanEquipmentChanges` de résoudre le film UNE fois pour ses deux passes
-// (balayage strict, puis récupération gatée des fenêtres de saut).
-func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) types.AbilityRankStats {
+// (balayage strict, puis récupération gatée des fenêtres de saut). Les records sont les lectures
+// bipèdes du film ([lecturesBipedes]) : la publication d'i48 s'y rejoue.
+func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) (types.AbilityRankStats, error) {
 	var st types.AbilityRankStats
-	gram := s.gram
-
+	lu, err := s.fc.lecturesBipedes()
+	if err != nil {
+		return st, err
+	}
 	var last struct {
 		counter uint32
 		rank    int
@@ -178,18 +182,17 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) t
 	obs.AbilitySetHook = func(counter uint64, rank, _ int) {
 		last.counter, last.rank, last.got = uint32(counter), rank, true
 	}
-	gram.obs = obs
-
-	s.fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		st.Records++
-		if !maskHas(r.Mask, i48Index) {
-			return
+	st.Records = lu.examines
+	for i := range lu.records {
+		r := &lu.records[i]
+		if !r.annonce(i48Index) {
+			continue
 		}
 		st.WithI48++
 		last.got = false
-		if !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, gram, i48Index) || !last.got {
+		if !r.parcourirJusqua(obs, i48Index) || !last.got {
 			st.Unread++
-			return
+			continue
 		}
 		st.Read++
 		if last.rank == AbilitySetNoRank {
@@ -200,8 +203,8 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) t
 			TimestampUS: r.Packet.TimestampUS,
 			Counter:     last.counter, Rank: last.rank,
 		})
-	})
-	return st
+	}
+	return st, nil
 }
 
 // bipedArchetype rend l'archétype biped du registre du film (chunk_00), ANALYSE UNE FOIS par le
@@ -244,30 +247,10 @@ type grammaireRecord struct {
 	obs *Observation
 }
 
-// walkRecordTo marche les composants du masque avec les désers de PRODUCTION jusqu'à
-// consommer celui d'index target — c'est cette consommation qui déclenche le hook. Rend
-// false dès qu'un composant intermédiaire n'est pas porté ou que la marche déborde du
-// payload : au-delà, la position du curseur ne serait plus digne de confiance, et lire du
-// bruit vaut moins que ne rien lire.
-//
-// walkRecordTo s'exprime en UNE ligne de walkRecordComponents : la marche elle-même n'existe
-// qu'à un seul exemplaire (règle des <= 2 copies, CLAUDE.md n°6).
-func walkRecordTo(pay []byte, i0, total int, idx []int, g grammaireRecord, target int) bool {
-	found := false
-	walkRecordComponents(pay, i0, total, idx, g, func(id int) bool {
-		if id == target {
-			found = true
-			return false
-		}
-		return true
-	})
-	return found
-}
-
 // walkRecordComponents est LE SEUL EXEMPLAIRE de la marche biped de production (règle des
-// <= 2 copies) : i48 (ScanFilmAbilityRanks), i28 (ScanFilmCamoStates) et l'inventaire delta
-// (ScanFilmInventoryDeltas) la partagent. La marche ti=37 vit à part (equipmentWalk.walk) :
-// autre archétype, autre en-tête.
+// <= 2 copies) : l'ancrage qui passe derrière la marche des trames ([lecturesBipedes]) et la
+// récupération gatée d'i48 (`equipment_recovery.go`) la partagent. La marche ti=37 vit à part
+// (equipmentWalk.walk) : autre archétype, autre en-tête.
 //
 // Elle appelle visit(id) APRÈS la consommation de chaque composant du masque — c'est cette
 // consommation qui a déclenché les hooks du déser, donc à cet instant la publication du
@@ -279,9 +262,8 @@ func walkRecordTo(pay []byte, i0, total int, idx []int, g grammaireRecord, targe
 // déborde du payload : au-delà, la position du curseur ne serait plus digne de confiance, et
 // lire du bruit vaut moins que ne rien lire.
 //
-// UN SEUL PARCOURS POUR N CIBLES. Appeler walkRecordTo une fois par composant recherché
-// relirait le record autant de fois ; l'inventaire en veut six (i22, i30, i31, i33, i34,
-// i47) et paierait six fois le même travail.
+// UN SEUL PARCOURS POUR N CIBLES : l'ancrage marche chaque record une fois, jusqu'au bout, et
+// garde toutes ses publications ; les huit lecteurs les rejouent chacun pour ce qui le concerne.
 func walkRecordComponents(
 	pay []byte, i0, total int, idx []int, g grammaireRecord, visit func(id int) bool,
 ) {

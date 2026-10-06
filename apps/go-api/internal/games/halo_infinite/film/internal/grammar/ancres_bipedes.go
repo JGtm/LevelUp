@@ -3,16 +3,16 @@ package grammar
 // ancres_bipedes.go — L ANCRAGE BIPEDE DU FILM, FAIT UNE FOIS PAR CONTEXTE (ADR 0037 IR-6 ; lot 2.4
 // du plan de l etape 2).
 //
-// # NEUF LECTEURS, UN ANCRAGE
+// # DEUX LECTEURS, UN ANCRAGE
 //
-// Les positions bipedes et huit balayages de canal (changements d arme, deltas d inventaire, rangs,
-// impulsions et charges de capacite, changements d equipement, camouflage, grappin) ancrent les
+// Les positions bipedes, et la recuperation qui passe DERRIERE la marche des trames pour les huit
+// lecteurs de composants ([lecturesBipedes] : changements d arme, deltas d inventaire, rangs,
+// impulsions et charges de capacite, changements d equipement, camouflage, grappin), ancrent les
 // records bipedes des trames delta avec les MEMES parametres : ceux du contexte — ses chunks, sa
 // bande bipede, son decoupage d i0, ses generations vivantes datees a l instant du paquet. Le curseur
-// bit a bit de l ancrage ([walkDeltaBipedRecords]) est l essentiel de leur cout : 0,6 a 1,8 s par
-// passe, quand la marche de TOUS les corps ancres d un film en coute 31 a 159 ms (instrument
-// `ancrage_partage_research_test.go`, 2026-10-03). Il est donc fait une fois, au premier lecteur, et
-// range ici ; chaque lecteur parcourt ce qui est range, dans l ordre du flux.
+// bit a bit de l ancrage ([walkDeltaBipedRecords]) est l essentiel de leur cout : il est donc fait
+// une fois, au premier lecteur, et range ici ; chaque lecteur parcourt ce qui est range, dans
+// l ordre du flux.
 //
 // # CE QUI EST RANGE
 //

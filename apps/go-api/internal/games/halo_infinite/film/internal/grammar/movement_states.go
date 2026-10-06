@@ -163,7 +163,8 @@ func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
 // canaux, distribues sur UNE marche ([Distribuer]) : les etats de mouvement, le tir continu et, avec
 // [LecturesDeLaMarche.Morts], les morts d objet et l occupation. Les listes que le canal des morts
 // recupere par le repli a largeur libre se comptent au rapport du contexte
-// (`repli_localisation_largeur_libre`).
+// (`repli_localisation_largeur_libre`). Les lectures bipedes des huit lecteurs de composants
+// ([lecturesBipedes]) se recueillent sur la meme marche quand le contexte ne les tient pas deja.
 //
 // UN FILM SANS ETATS DE MOUVEMENT EST MARCHE QUAND MEME depuis le lot M4b : son archetype bipede
 // ne declare aucun des composants d etat (`Absent`), mais sa vue de controle porte le tir continu.
@@ -187,6 +188,9 @@ func ScanMarcheDesTramesAvec(fc *FilmContext, l LecturesDeLaMarche) (MarcheDesTr
 	sc := nouveauCanalDesEtats(st, reg, arch)
 	tir := nouveauCollecteurTirContinu(&m.ContinuousFireStats)
 	canaux := []Canal{sc, tir}
+	if fc.recup.lectures == nil {
+		canaux = append(canaux, nouveauCanalDesLecturesBipedes(fc))
+	}
 	var morts *canalDesMorts
 	if l.Morts {
 		morts = nouveauCanalDesMorts(reg)

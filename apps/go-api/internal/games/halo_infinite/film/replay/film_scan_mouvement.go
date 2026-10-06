@@ -17,15 +17,15 @@ import (
 // balayerEtatsDeMouvement lit les ETATS DE MOUVEMENT du Spartan a l'instant — accroupi (i29),
 // glissade (i62), action de mobilite (i54) — et le TIR CONTINU (vue C), dans la MEME marche.
 //
-// IL NE PARTAGE PAS LA MARCHE DES AUTRES CANAUX DE CAPACITE, et c'est mesure : celle-la est un
-// CHERCHEUR D'ANCRES, qui ne retient que les records ressemblant a un en-tete de bipede — la
-// population pauvre `{i0,i1,i21,i25}`. Sur `bfecd02b` elle annonce `i29` ZERO fois sur
-// 162 444 records. La marche du FRAME-PROCESSEUR (`grammar.ScanMarcheDesTrames`) en rend
-// 97 447 records `ti=35` dont 3 desynchronises, et 7 941 lectures d'etat. Detail et chiffres :
-// l'en-tete de `grammar/movement_states.go` et la note 5.3 (section 2septdecies). Le tir continu
-// y est lu parce que la vue C est le dernier rang de CHAQUE trame que cette marche deroule deja.
-// LES MORTS D OBJET ET L OCCUPATION aussi (canal des morts), quand le calque des vehicules a ete
-// balaye : il les prend ici ([mortsDeVehicule]). Un film sans vehicule ne paie pas leur lecture.
+// C EST LA MARCHE DU FRAME-PROCESSEUR (`grammar.ScanMarcheDesTramesAvec`), et non un chercheur
+// d ancres : un chercheur ne retient que les records ressemblant a un en-tete de bipede, et c est
+// la population pauvre `{i0,i1,i21,i25}` (detail : l en-tete de `grammar/movement_states.go`). Le
+// tir continu y est lu parce que la vue C est le dernier rang de CHAQUE trame que cette marche
+// deroule deja. LES MORTS D OBJET ET L OCCUPATION aussi (canal des morts), quand le calque des
+// vehicules a ete balaye : il les prend ici ([mortsDeVehicule]). Un film sans vehicule ne paie pas
+// leur lecture. Elle recueille enfin les lectures bipedes que les huit lecteurs de composants du
+// portage et des capacites rejouent ensuite, l ancrage d en-tete passant derriere elle : c est
+// pourquoi elle les precede (`build_from_film.go`).
 //
 // LA MARCHE TOURNE AUX LARGEURS MPP DU CONTEXTE, et non a celles que les socles et les vehicules
 // calibrent sur les poses des formats sans largeur relue : une largeur mesuree, et non lue dans le

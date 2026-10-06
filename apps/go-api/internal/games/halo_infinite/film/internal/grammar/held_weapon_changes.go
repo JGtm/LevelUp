@@ -29,7 +29,8 @@ import (
 // HeldWeaponChangeStats compte ce que le balayage a vu, pour que l'appelant puisse juger la
 // couverture sans relire le film.
 type HeldWeaponChangeStats struct {
-	// Records est le nombre de records bipède ancrés dans le flux delta.
+	// Records est le nombre de records delta bipède reconnus : lus par la marche des trames, ou
+	// rendus par l ancrage derrière elle ([lecturesBipedes]).
 	Records int
 	// WithComponent est le nombre de records dont le masque annonce un emplacement d'arme.
 	WithComponent int
@@ -91,23 +92,27 @@ func ScanHeldWeaponChanges(
 	if err != nil {
 		return nil, st, err
 	}
+	lu, err := fc.lecturesBipedes()
+	if err != nil {
+		return nil, st, err
+	}
 	var last struct {
 		high, low uint32
 		got       bool
 	}
 	obs := NouvelleObservation()
 	obs.HeldWeaponHook = func(h, l uint32) { last.high, last.low, last.got = h, l, true }
-	cfg.gram.obs = obs
 
 	chaine := newHeldWeaponChain(spawn)
 	var out []types.HeldWeaponChange
-	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		st.Records++
-		if !heldWeaponMaskHas(r.Mask, cfg.emplacements) {
-			return
+	st.Records = lu.examines
+	for i := range lu.records {
+		r := &lu.records[i]
+		if !heldWeaponMaskHas(r, cfg.emplacements) {
+			continue
 		}
 		st.WithComponent++
-		walkRecordComponents(r.Payload, r.I0, r.Total, r.Mask, cfg.gram, func(id int) bool {
+		r.parcourir(obs, func(id int) bool {
 			rang, arme := cfg.emplacements[id]
 			if !arme || !last.got {
 				last.got = false
@@ -125,7 +130,7 @@ func ScanHeldWeaponChanges(
 			out = append(out, ch)
 			return true
 		})
-	})
+	}
 	return out, st, nil
 }
 
@@ -222,9 +227,6 @@ func qualifyHeldWeaponChange(ch *types.HeldWeaponChange, hadPrevious bool, st Sp
 
 // heldWeaponScan porte la configuration résolue une fois pour un film.
 type heldWeaponScan struct {
-	chunks []int
-	slots  SlotBand
-	gram   grammaireRecord
 	// emplacements donne le RANG de chaque composant `weapon-state-type-info` (index de
 	// composant -> rang), cf. [weaponEmplacements].
 	emplacements map[int]int
@@ -234,23 +236,19 @@ type heldWeaponScan struct {
 // du registre du film, jamais de constantes : un index de composant est un numéro de build.
 func newHeldWeaponScan(fc *FilmContext) (heldWeaponScan, error) {
 	var s heldWeaponScan
-	s.chunks = fc.ChunkNumbers()
-	if len(s.chunks) == 0 {
+	if len(fc.ChunkNumbers()) == 0 {
 		return s, ErrNoFilmChunk
 	}
-	s.slots = fc.BipedSlots()
-	if s.slots.Count() == 0 {
+	if fc.BipedSlots().Count() == 0 {
 		return s, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, err := fc.I0Layout()
-	if err != nil {
+	if _, err := fc.I0Layout(); err != nil {
 		return s, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return s, err
 	}
-	s.gram = grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()}
 	s.emplacements = weaponEmplacements(arch)
 	if len(s.emplacements) == 0 {
 		return s, fmt.Errorf("aucun %s dans l'archétype biped du film", compWeaponStateTypeInfo)
@@ -258,10 +256,10 @@ func newHeldWeaponScan(fc *FilmContext) (heldWeaponScan, error) {
 	return s, nil
 }
 
-// heldWeaponMaskHas dit si le masque annonce au moins un emplacement d'arme.
-func heldWeaponMaskHas(idx []int, emplacements map[int]int) bool {
-	for _, id := range idx {
-		if _, ok := emplacements[id]; ok {
+// heldWeaponMaskHas dit si le masque du record annonce au moins un emplacement d'arme.
+func heldWeaponMaskHas(r *recordBipedeLu, emplacements map[int]int) bool {
+	for id := range emplacements {
+		if r.annonce(id) {
 			return true
 		}
 	}

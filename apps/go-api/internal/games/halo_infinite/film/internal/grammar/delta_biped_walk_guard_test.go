@@ -181,15 +181,19 @@ func decrireRecords(vus []deltaBipedRecord) string {
 	return b.String()
 }
 
-// comptesDeRecordsMiniBobine — LE COMPTE DE RECORDS QUE LE MARCHEUR PUBLIE, famille par famille,
-// sur la mini-bobine versionnee. Chiffres MESURES le 2026-09-06 sur la bobine du depot.
+// comptesDeRecordsMiniBobine — LES COMPTES DE RECORDS sur la mini-bobine versionnee : celui que le
+// marcheur ancre (mesure le 2026-09-06), et le denominateur des huit lecteurs de composants.
 //
-// CE QUE LE GOLDEN DES FAMILLES NE VOYAIT PAS. Les neuf balayages de canal delta rendent DEUX
-// choses : une liste de lectures et des DENOMINATEURS (`<X>Stats.Records` = le nombre de records
-// que le marcheur a ancres). Le golden des familles (`golden_minibobine_test.go`) fige la LISTE et
-// JETTE les denominateurs — `ajouterSlice(r, "camoStates", camo, err)` ignore le `st` du milieu.
-// Une liste de lectures peut ne pas bouger alors que le marcheur a ancre des records de plus :
-// ces comptes-ci ferment ce trou.
+// CE QUE LE GOLDEN DES FAMILLES NE VOYAIT PAS. Les balayages de canal delta rendent DEUX choses :
+// une liste de lectures et des DENOMINATEURS (`<X>Stats.Records`). Le golden des familles
+// (`golden_minibobine_test.go`) fige la LISTE et JETTE les denominateurs —
+// `ajouterSlice(r, "camoStates", camo, err)` ignore le `st` du milieu. Une liste de lectures peut ne
+// pas bouger alors que la population lue a change : ces comptes-ci ferment ce trou.
+//
+// LES HUIT LECTEURS LISENT UNE SEULE POPULATION depuis le lot 2.7.b de la representation
+// intermediaire ([lecturesBipedes]) : les records bipedes delta que la marche des trames a lus, plus
+// ceux que l ancrage a rendus derriere elle — 28 460 sur cette bobine. Un compte qui differe d un
+// lecteur a l autre veut dire qu un lecteur ne lit plus cette population.
 //
 // CE TEMOIN N'EST PAS L'ORACLE DE L'AVANCE, ET LA MESURE LE DIT. La mutation `p = i0 + i0Bits` ->
 // `p = i0 + 1` (constat C1 de la revue E-R1) a ete rejouee le 2026-09-06 avec ces comptes en
@@ -205,19 +209,19 @@ func decrireRecords(vus []deltaBipedRecord) string {
 // bande de slots elargie, une porte deplacee — tout ce qui change la population ancree.
 var comptesDeRecordsMiniBobine = map[string]int{
 	"marcheurDeltaBipede": 28005,
-	"abilityCharges":      28005,
-	"abilityImpulses":     28005,
-	"abilityRanks":        28005,
-	"camoStates":          28005,
-	"equipmentChanges":    28005,
-	"grappleReads":        28005,
-	"heldWeaponChanges":   28005,
-	"inventoryDeltas":     28005,
+	"abilityCharges":      28460,
+	"abilityImpulses":     28460,
+	"abilityRanks":        28460,
+	"camoStates":          28460,
+	"equipmentChanges":    28460,
+	"grappleReads":        28460,
+	"heldWeaponChanges":   28460,
+	"inventoryDeltas":     28460,
 }
 
 // TestMarcheurDeltaBipedeCompteSesRecordsSurLaMiniBobine — sur des OCTETS REELS, le marcheur
-// ancre exactement le nombre de records mesure. Un chevauchement, une avance trop courte ou une
-// porte deplacee change ce compte.
+// ancre exactement le nombre de records mesure, et les huit lecteurs lisent la meme population. Un
+// chevauchement, une avance trop courte ou une porte deplacee change le premier compte.
 func TestMarcheurDeltaBipedeCompteSesRecordsSurLaMiniBobine(t *testing.T) {
 	film, err := source.LoadDir(bobineFamilles, nil)
 	if err != nil {
@@ -255,9 +259,10 @@ func TestMarcheurDeltaBipedeCompteSesRecordsSurLaMiniBobine(t *testing.T) {
 			continue
 		}
 		if want := comptesDeRecordsMiniBobine[f.nom]; got != want {
-			t.Errorf("%s : le marcheur a ancre %d records, %d mesures le 2026-09-06.\n"+
-				"Un compte qui bouge sans changement de decodage DECLARE veut dire que l'ancrage "+
-				"ou l'avance du marcheur a change (delta_biped_walk.go).", f.nom, got, want)
+			t.Errorf("%s : %d records, %d attendus.\n"+
+				"Un compte qui bouge sans changement de decodage DECLARE veut dire que l'ancrage, "+
+				"l'avance du marcheur (delta_biped_walk.go) ou la population des lecteurs "+
+				"(lectures_bipedes.go) a change.", f.nom, got, want)
 		}
 	}
 }

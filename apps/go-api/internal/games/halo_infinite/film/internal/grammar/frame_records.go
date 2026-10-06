@@ -122,7 +122,7 @@ func (c FrameConfig) contexte() ContexteDeLecture {
 //
 // CE CHIFFRE NE VAUT QUE POUR CE CHEMIN, et il est ANTERIEUR aux correctifs de largeur d'i0
 // (47 bits), d'i25/i26/i27 et de la polarite de porte d'i30/i33. Le chemin ANCRE
-// (matchBipedHeader + walkRecordTo, cf. ability_rank.go et inventory_delta.go) mesure sur le
+// (matchBipedHeader puis la marche de record, `delta_biped_walk.go`) mesure sur le
 // meme film 000d5950 : compteur R(3) == 4 dans 120 lectures sur 120 (100,00 %) et valeurs
 // R(8) dans {0, 1, 2} exclusivement (etude du 2026-08-24,
 // .ai/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md §1.3). Ne pas lire les

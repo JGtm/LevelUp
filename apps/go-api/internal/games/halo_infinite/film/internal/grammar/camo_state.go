@@ -89,24 +89,25 @@ func ScanCamoStates(fc *FilmContext) ([]types.CamoRead, CamoStateStats, error) {
 	if slots.Count() == 0 {
 		return nil, st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, err := fc.I0Layout()
-	if err != nil {
+	if _, err := fc.I0Layout(); err != nil {
 		return nil, st, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, st, err
 	}
-	i28idx := -1
-	if ids := arch.indicesOf(camoComponentName); len(ids) > 0 {
-		i28idx = ids[0]
-	}
+	i28idx := componentIndexOfAny(arch, camoComponentName)
 	if i28idx < 0 {
 		return nil, st, fmt.Errorf("composant %q absent de l'archétype biped du film", camoComponentName)
 	}
+	lu, err := fc.lecturesBipedes()
+	if err != nil {
+		return nil, st, err
+	}
 
-	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit
-	// pas les bits à côté de lui (même règle que ScanFilmAbilityRanks).
+	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui a publié pendant la marche,
+	// et la lecture rejoue sa publication ; on ne relit pas les bits (même règle que
+	// ScanFilmAbilityRanks).
 	var last struct {
 		q       uint16
 		channel bool
@@ -119,16 +120,16 @@ func ScanCamoStates(fc *FilmContext) ([]types.CamoRead, CamoStateStats, error) {
 	}
 
 	var out []types.CamoRead
-	gram := grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage(), obs: obs}
-	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		st.Records++
-		if !maskHas(r.Mask, i28idx) {
-			return
+	st.Records = lu.examines
+	for i := range lu.records {
+		r := &lu.records[i]
+		if !r.annonce(i28idx) {
+			continue
 		}
 		st.WithI28++
 		last.got = false
 		switch {
-		case !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, gram, i28idx) || !last.got:
+		case !r.parcourirJusqua(obs, i28idx) || !last.got:
 			st.Unread++
 		case !last.channel:
 			st.Read++
@@ -140,6 +141,6 @@ func ScanCamoStates(fc *FilmContext) ([]types.CamoRead, CamoStateStats, error) {
 				TimestampUS: r.Packet.TimestampUS, Q: last.q,
 			})
 		}
-	})
+	}
 	return out, st, nil
 }
