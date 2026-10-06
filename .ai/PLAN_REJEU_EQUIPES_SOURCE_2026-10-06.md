@@ -134,8 +134,10 @@ l'image-clé près, 20 s).
         médiane 199 f, max 1594 f) : entièrement couverts 2, en partie 34 dont 31 compatibles avec une
         place jamais vide, pas du tout 1 (143 f : `0d265ab0`, place 1, NotThtGuyPal -> SpiffyDart86537).
         `debut` 7 : entièrement 2, en partie 5 dont 1 compatible, pas du tout 0.
-      - Films sans aucun bot déclaré (78 films) : 6 intervalles, aucun couvert (`relais` 4 : médiane
-        202 f, max 356 f ; `debut` 2 : 354 f chacun ; films `0301037e`, `a464e20b`, `c259789d`).
+      - Films sans aucun bot déclaré (78 films) : 6 intervalles, aucun couvert (`relais` 4 : 103, 199,
+        202 et 356 f ; `debut` 2 : 315 et 354 f ; films `0301037e`, `a464e20b`, `c259789d`).
+      - Les 7 intervalles non couverts, tous films confondus : médiane 202 f, le plus long 356 f
+        (`0301037e`, place 3, Kai Cyr -> BroseJose7).
       - Hors demande, compté à part : 59 places dont le dernier occupant part avant la fin sans
         successeur (`fin`) ; films avec bots 39 (entièrement 9, en partie 26 dont 18 compatibles, pas du
         tout 4), films sans bot 20 (aucun couvert). Durées médianes : 1 413 f dans les films avec bots
