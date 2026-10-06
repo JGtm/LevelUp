@@ -1227,12 +1227,53 @@ Journal L9 (2026-10-07, exécuteur, `feat/tactique-v2`) :
 
 ### L10 — Liens croisés · rapide
 
-- [ ] L10.1 D17 : vérification sur pièces de `MatchViewHeader.MapID` ; état de `feat/matchview-emprise`
+- [x] L10.1 D17 : vérification sur pièces de `MatchViewHeader.MapID` ; état de `feat/matchview-emprise`
   au moment du lot (fusionnée ou non, dit au journal) ; lien posé ; test (route, `search`, absent
   sans `map_id`).
-- [ ] L10.2 D16 : vérification sur pièces du libellé FR (tactique vs historique) ; lien posé depuis la
-  vignette et test, OU `[!]` avec la justification.
+- [!] L10.2 D16 : vérification sur pièces du libellé FR (tactique vs historique) ; lien posé depuis la
+  vignette et test, OU `[!]` avec la justification. → `[!]` : deux résolutions différentes du libellé
+  et filtre par libellé contre vignette par `map_id` (journal L10).
 - Gate : gate web (+ gate Go si un fichier Go change).
+
+Journal L10 (2026-10-07, exécuteur, `feat/tactique-v2`) :
+- **L10.1** D17. Vérifié sur pièces : `MatchViewHeader.MapID` = `*meta.MapAssetID`
+  (`match_view_builders_header.go:114-115`), scanné en 10e colonne de `Q13MatchMeta`, qui lit
+  `r.map_id` sur `match_registry r` (`queries_match.go:135, 154`) — la même colonne que les cartes de
+  l'onglet (`mr.map_id`, `tactical_repo.go:92`) ; servi au web en `header.map_id`.
+  `feat/matchview-emprise` NON fusionnée ni poussée au moment du lot (consigne du superviseur) :
+  insertion MINIMALE dans le seul `features/match-view/MatchPositionsHeatmap.tsx` — le lien
+  « Tactique » (« Ouvrir cette carte dans l’onglet Tactique », EN « Tactics » / « Open this map in the
+  Tactics tab ») dans le bandeau d'« Occupation du terrain », à côté des boutons de camp, vers
+  `/ascension/tactique` avec `search={{ carte }}`. Il vit dans un composant local du même fichier
+  (`LienTactique`) qui lit `header.map_id` par `useMatchView` (même clé de requête que la page,
+  donc le cache, aucune requête de plus) et ne rend rien sans carte. Tests dans
+  `MatchPositionsHeatmap.test.tsx` (doubles de `useMatchView` et de `Link`) : route, paramètres,
+  `search`, absence sans `map_id` ; le premier vu rouge contre le composant de HEAD.
+- **L10.2** `[!]` D16 non posé. Les deux libellés FR ne sortent pas de la même résolution :
+  l'onglet lit `asset_translations` en `fr-FR` puis `fr` seulement, sans rognage, et retombe sur
+  `match_registry.map_name` (`mapNameFRFromAssetTranslations`, `engagement_score_repo_queries.go:123-145`,
+  web `map_name_fr || map_name`) ; l'historique part de `COALESCE(r.map_name_fr, r.map_name)` puis,
+  si ce libellé est vide ou égal à l'EN, prend `ResolveAssetNamesBulk` en cascade
+  `fr-FR → fr → en-US → en → toute langue`, rogné (`match_history_fr_translations.go:110-121`,
+  `metadata_repo_assets.go:258-363`), et filtre sur `COALESCE(MapNameFR, MapName)`
+  (`match_history_service_filters.go:197-210`). Sans traduction FR, l'un donne le nom du registre,
+  l'autre la traduction EN de l'asset. Et la granularité diffère : l'Explorateur filtre par
+  LIBELLÉ, la vignette est UN `map_id`, alors que 23 cartes se répartissent sur plusieurs
+  `map_id` (§8, maquette) — même à libellé égal, l'Explorateur compterait les matchs d'autres
+  `map_id` que la vignette. Établir l'égalité carte par carte demanderait d'ouvrir les bases de
+  `data/` (exclu). Rien d'inventé.
+- **Mutations** (ROUGES, restauration vérifiée) : lien sans `search` ; lien posé sans carte connue.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements de base) ;
+  `vitest run --pool=forks` 853 fichiers / 9 185 tests verts (un premier passage avait rougi deux
+  gardes de balayage de fichiers étrangers au lot, `lab-removal.guard` et
+  `useCopyToClipboard.guard` ; rejouées seules : vertes ; second passage complet : vert) ;
+  manifestes identiques ; knip 0 / 0 / 0 ; couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ;
+  `lefthook run pre-push` vert. Aucun fichier Go touché.
+- Seuils : `MatchPositionsHeatmap.tsx` 305 → 351 L ; sa fonction principale dépassait déjà le seuil
+  (183 L) : le lien sorti dans `LienTactique` la limite à + 10 L (193), là où l'insertion en ligne
+  l'aurait portée à 204.
+- Écart : le fichier de test du lot voisin (`MatchPositionsHeatmap.test.tsx`) est touché aussi —
+  sans doubles de `useMatchView` et de `Link`, ses tests existants ne montaient plus le composant.
 
 ### L11 — Clôture · rapide
 

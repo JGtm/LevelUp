@@ -10,6 +10,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { MatchPlayerPosition } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
 
@@ -19,6 +20,29 @@ const image = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/replay/queries', () => ({
   useReplayMapBackground: () => background(),
   useReplayMapImage: () => image(),
+}))
+
+// La réponse de la page (son en-tête porte `map_id`) et un double de `Link` qui expose sa cible.
+const vue = vi.hoisted(() => vi.fn())
+vi.mock('./queries', () => ({ useMatchView: () => vue() }))
+vi.mock('@tanstack/react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-router')>()),
+  Link: ({
+    to,
+    params,
+    search,
+    children,
+    ...rest
+  }: {
+    to: string
+    params: Record<string, string>
+    search: Record<string, string>
+    children: React.ReactNode
+  }) => (
+    <a href={to} data-to={to} data-params={JSON.stringify(params)} data-search={JSON.stringify(search)} {...rest}>
+      {children}
+    </a>
+  ),
 }))
 
 const CAL = {
@@ -45,9 +69,31 @@ beforeEach(() => {
   background.mockReset()
   image.mockReset()
   withBackground()
+  vue.mockReset()
+  vue.mockReturnValue({ data: { header: { map_id: 'map-streets' } } })
+  useAppShellStore.setState({ currentTitleSlug: 'halo_infinite' })
 })
 
 describe('MatchPositionsHeatmap', () => {
+  it('ouvre la carte du match dans l’onglet Tactique : route, joueur, carte', () => {
+    render(
+      <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
+    )
+    const lien = screen.getByRole('link', { name: 'Ouvrir cette carte dans l’onglet Tactique' })
+    expect(lien.getAttribute('data-to')).toBe('/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique')
+    expect(JSON.parse(lien.getAttribute('data-params') ?? '{}')).toEqual({ titleSlug: 'halo_infinite', playerSlug: 'JGtm' })
+    expect(JSON.parse(lien.getAttribute('data-search') ?? '{}')).toEqual({ carte: 'map-streets' })
+    expect(lien.textContent).toBe('Tactique')
+  })
+
+  it('aucun lien vers l’onglet Tactique sans carte connue du match', () => {
+    vue.mockReturnValue({ data: { header: {} } })
+    render(
+      <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
+    )
+    expect(screen.queryByRole('link', { name: /onglet Tactique/ })).toBeNull()
+  })
+
   it('rend la carte quand le match a un fond et des positions', () => {
     render(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,

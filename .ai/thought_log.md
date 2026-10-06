@@ -116000,3 +116000,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : 16 tests retirés, tous absents de la baseline ; preuves grep Go et web à 0 ; 4 mutations rouges ; gate Go vert (349 paquets en quatre lots, trois échecs d'environnement — mémoire épuisée, durée de rafale — verts rejoués seuls ; archlint, gardes nommées, golangci 0 issue), contrat à jour, gate web vert (853 fichiers / 9 183 tests, pre-push vert).
 
 **Conclusion / prochaine étape** : L8 et L9 clos ; compte rendu groupé au superviseur, puis L10 (liens croisés) après son « continue ».
+
+## [2026-10-07] Tactique v2, lot L10 : liens croisés — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L10 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`), L10.2 statué `[!]`.
+
+**Décision technique principale** : D17 posé — la Vue match ouvre la carte du match dans l'onglet Tactique depuis le bandeau d'« Occupation du terrain » (`?carte=` = `match_registry.map_id`, vérifié sur pièces : c'est la colonne de `header.map_id` et des cartes de l'onglet), en insertion minimale dans `MatchPositionsHeatmap.tsx` (lot voisin non fusionné), le lien dans un composant local qui lit la réponse de la page déjà en cache. D16 non posé : l'onglet et l'historique résolvent le libellé FR par deux chemins différents (repli registre contre repli traduction EN, rognage), et l'Explorateur filtre par libellé quand la vignette est un seul `map_id` (23 cartes sur plusieurs `map_id`) — un lien y mentirait sur le compte.
+
+**Résultats observés** : tests du lien vus rouges contre le composant de HEAD ; 2 mutations rouges ; gate web vert (853 fichiers / 9 185 tests au second passage complet, deux gardes de balayage étrangères au lot rouges au premier passage puis vertes seules et en complet).
+
+**Conclusion / prochaine étape** : L11 (clôture) enchaîné.
