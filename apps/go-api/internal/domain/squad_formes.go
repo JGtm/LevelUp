@@ -35,7 +35,7 @@ package domain
 // un trou de mesure.
 
 // SquadFormesBlock — la matière des dix-neuf cartes, sur le scope filtré de la
-// page Escouade (même population que le bloc equipment_usage).
+// page qui le publie.
 type SquadFormesBlock struct {
 	// Available : le titre porte la capability de mesure et les lectures ont
 	// abouti. Faux ⇒ UnavailableReason dit laquelle des deux a manqué

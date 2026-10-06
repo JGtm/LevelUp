@@ -83,7 +83,7 @@ func serviceEmprise(usage *mockSessionUsageRepo, feuille feuilleFixe) *Timeserie
 		WithHighlightEventsRepo(nil, "P").
 		WithEmprise(feuille)
 	if usage != nil {
-		svc = svc.WithEquipmentUsage(usage, nil, "")
+		svc = svc.WithUsageSummary(usage, "")
 	}
 	return svc
 }
@@ -153,23 +153,23 @@ func TestAttachEmprise_FenetreVide(t *testing.T) {
 	}
 }
 
-// Les lectures du résumé d'usage se font UNE fois pour le bloc d'usage, les formes et l'Emprise.
+// Les lectures du résumé d'usage se font UNE fois pour les formes et l'Emprise.
 func TestAttachMigratedSections_UneLectureDuResumeDUsage(t *testing.T) {
 	usage := &usageCompte{mockSessionUsageRepo: usageTestRepoMock()}
 	svc := NewTimeseriesService(nil).
 		WithPlayerMatchesRepo(nil, "halo_infinite", "Papa").
 		WithHighlightEventsRepo(nil, "P").
 		WithEmprise(feuilleDeTest()).
-		WithEquipmentUsage(usage, nil, "").
+		WithUsageSummary(usage, "").
 		WithSquadFormes(usage, nil)
 	var resp domain.TimeseriesPageResponse
 	svc.attachMigratedSections(context.Background(), &resp, fenetreDeTest(), "fr", equipesDuScope{})
 	if usage.films != 1 {
 		t.Errorf("%d lecture(s) des films du résumé d'usage, attendu 1 partagée", usage.films)
 	}
-	if resp.Emprise == nil || resp.Emprise.MatchesMeasured != 1 || resp.SquadFormes == nil || resp.EquipmentUsage == nil {
-		t.Errorf("blocs = emprise %+v, formes %v, usage %v : la lecture partagée doit les nourrir tous",
-			resp.Emprise, resp.SquadFormes != nil, resp.EquipmentUsage != nil)
+	if resp.Emprise == nil || resp.Emprise.MatchesMeasured != 1 || resp.SquadFormes == nil {
+		t.Errorf("blocs = emprise %+v, formes %v : la lecture partagée doit les nourrir tous",
+			resp.Emprise, resp.SquadFormes != nil)
 	}
 }
 

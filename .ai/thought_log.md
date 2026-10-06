@@ -115325,3 +115325,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : vitest complet 8 857 verts ; tsc, lint 0 erreur, knip 0/0/0, couleurs 0, imports croisés 7 ≤ 7, lefthook 9/9 (le premier passage a rougi sur les noms de cartes de la fixture, renommés). Toutes les mutations rouges au final ; une seule était verte (câblage de l'axe période, carte graphe doublée dans le test de page) avant l'ajout d'un test de câblage dédié. Découvertes : dépendance de type sous-listée en §4.A (traitée), jeton `team-rest` absent (encre de l'Escouade), ⓘ Équipement à quatre phrases (maquette).
 
 **Conclusion / prochaine étape** : L5 clos ; L6 (suppressions Go `equipment_usage` et élévation, contrat) après le « continue » du superviseur.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L6 : suppressions Go et contrat
+
+**Statut** : Complété (lot L6 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`)
+
+**Décision technique principale** : la chaîne `equipment_usage` (domaine, agrégat de période, assemblage, résolveur d'amis des Séries temporelles) et la chaîne du nuage d'élévation sortent du code et du contrat ; le résumé d'usage ne garde que ses trois lectures partagées (`squadagg.LireUsage`) et s'injecte par `WithUsageSummary(repo, repoRoot)`.
+
+**Résultats observés** : 348 paquets Go verts, lint 0, contrat −262 / −117 lignes, exactement 9 schémas disparus (garde de surface, snapshot régénéré par la procédure), web vert (8 857 tests, knip 0/0/0), lefthook 9/9 au premier passage. Aucun lecteur côté Sessions rencontré.
+
+**Conclusion / prochaine étape** : L6 clos ; L7 (contrat `formes_retenues` réduit à l'objectif) après le « continue » du superviseur.

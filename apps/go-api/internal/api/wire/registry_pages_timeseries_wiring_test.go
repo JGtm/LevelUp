@@ -47,10 +47,10 @@ func TestTimeseries_CableLaFeuilleDeLEmpriseSansCondition(t *testing.T) {
 	}
 }
 
-// Le résumé d'usage (lu par l'Emprise, les formes et le bloc d'usage) reste sous la seule porte
+// Le résumé d'usage (lu par l'Emprise et les formes) reste sous la seule porte
 // film.usage_summary : un titre sans film ne le reçoit pas (l'Emprise y dit `film_unsupported`).
 func TestTimeseries_LeResumeDUsageResteSousFilmUsageSummary(t *testing.T) {
-	for _, methode := range []string{"WithEquipmentUsage", "WithSquadFormes"} {
+	for _, methode := range []string{"WithUsageSummary", "WithSquadFormes"} {
 		appels := appelsDansTimeseries(t, methode)
 		if len(appels) != 1 {
 			t.Fatalf("%d appel(s) à %s dans Timeseries, attendu 1", len(appels), methode)
@@ -83,5 +83,14 @@ func TestTimeseries_CableLesViesEtLaPorteeDuRadar(t *testing.T) {
 	radar := appelsDansUsages(t, "WithRadarRange")
 	if len(radar) != 1 || strings.Join(radar[0].args, "") != "r.radarRangeFor(pdb)" || len(radar[0].portes) != 0 {
 		t.Errorf("WithRadarRange = %+v : attendu un appel inconditionnel WithRadarRange(r.radarRangeFor(pdb))", radar)
+	}
+}
+
+// Le résumé d'usage n'a plus de résolveur d'amis (le bloc « servi ou gâché » qui le lisait a quitté
+// la page) : le repo et la racine du dépôt, rien d'autre.
+func TestTimeseries_LeResumeDUsageSansResolveurDAmis(t *testing.T) {
+	appels := appelsDansTimeseries(t, "WithUsageSummary")
+	if len(appels) != 1 || strings.Join(appels[0].args, ", ") != "duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot" {
+		t.Errorf("WithUsageSummary = %+v : attendu WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)", appels)
 	}
 }

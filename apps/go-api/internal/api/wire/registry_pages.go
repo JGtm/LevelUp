@@ -420,12 +420,12 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
 	}
-	// Usages d'équipement (onglet Progression) : MÊME repo que la Synthèse et la page
+	// Résumé d'usage (Emprise et formes retenues de l'onglet Usages) : MÊME repo que la page
 	// Sessions — les trois lectures prennent un scope FERMÉ de match_id, seul l'ensemble
-	// d'identifiants change d'une page à l'autre. Gated par film.usage_summary (absente
-	// pour Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
+	// d'identifiants change d'une page à l'autre. Gated par film.usage_summary (absente pour
+	// Halo 5 → l'Emprise dit film_unsupported). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver(pdb.XUID), r.cfg.RepoRoot)
+		svc = svc.WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)
 		// Bloc « Les formes retenues », contexte SOLO (migré de l'Escouade le
 		// 2026-09-19) : MÊME repo d'usage, plus les colonnes d'objectif quand le titre
 		// les publie — deux gates indépendantes, la seconde ne retirant que les cartes

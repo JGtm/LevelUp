@@ -221,8 +221,7 @@ func TestOutcomes_FFA_ReferencesNil(t *testing.T) {
 // coéquipier n'a pas un taux de référence de zéro : il n'en a pas.
 //
 // DEPUIS LE LOT 6.4 POINT 4, une ligne "equipment_<famille>" n'entre QUE si le
-// SUJET l'a lui-même touchée ([subjectBilanFamilies], source commune à
-// [metricKeys] et [overviewFamilies]) : le « 0/0 » du joueur lui-même ne se
+// SUJET l'a lui-même touchée ([subjectBilanFamilies], lue par [metricKeys]) : le « 0/0 » du joueur lui-même ne se
 // manifeste donc plus comme une ligne à taux nil, mais comme une ligne ABSENTE
 // (TestOutcomes_LeRepulseurNaJamaisDeLigne le couvre). Le joueur touche ici son
 // mur en le lâchant SANS l'utiliser, pour que la ligne entre et que le nil
@@ -329,15 +328,11 @@ func TestOutcomes_LesLignesDEscouadeSuivent(t *testing.T) {
 	var _ domain.SessionUsageMetric = m
 }
 
-// TestBilan_MetricKeysEtOverviewFamiliesPartagentLeCritere — lot 6.4 point 4.
-// AVANT ce lot, [metricKeys] (page Sessions) ouvrait une ligne "equipment_<famille>"
-// dès qu'UN JOUEUR DU LOBBY la touchait, pendant qu'[overviewFamilies] (Synthèse,
-// Escouade) l'ouvrait seulement sur LE SUJET — deux critères pour la MÊME barre
-// subjet-only. Ce test verrouille la source commune ([subjectBilanFamilies]) : sur
-// un scope où seul un COÉQUIPIER touche "shroud_screen", NI l'une NI l'autre ne
-// doit publier de ligne pour cette famille ; sur "wall"/"sensor", que LE SUJET
-// touche, LES DEUX doivent en publier une.
-func TestBilan_MetricKeysEtOverviewFamiliesPartagentLeCritere(t *testing.T) {
+// TestBilan_MetricKeysSurLeSeulSujet — lot 6.4 point 4 : [metricKeys] (page Sessions) n'ouvre une
+// ligne "equipment_<famille>" que pour une famille que LE SUJET a touchée ([subjectBilanFamilies]),
+// jamais sur la seule foi d'un coéquipier. Sur un scope où seul un COÉQUIPIER touche
+// "shroud_screen", aucune ligne pour cette famille ; sur "wall"/"sensor", que le sujet touche, une.
+func TestBilan_MetricKeysSurLeSeulSujet(t *testing.T) {
 	measured := sessionIssuesDeTest().Matches
 	// Un coéquipier (A, déjà du camp de P sur m1) touche une troisième famille que
 	// P ne touche jamais.
@@ -353,35 +348,18 @@ func TestBilan_MetricKeysEtOverviewFamiliesPartagentLeCritere(t *testing.T) {
 		}
 	}
 
-	sessionKeys := metricKeys("P", measured)
-	overview := overviewFamilies("P", measured)
-	overviewKeys := map[string]bool{}
-	for _, f := range overview {
-		overviewKeys[MetricEquipmentPrefix+f.FamilyKey] = true
-	}
 	sessionBilan := map[string]bool{}
-	for _, k := range sessionKeys {
+	for _, k := range metricKeys("P", measured) {
 		if strings.HasPrefix(k, MetricEquipmentPrefix) {
 			sessionBilan[k] = true
 		}
 	}
-
 	for _, touched := range []string{MetricEquipmentPrefix + "wall", MetricEquipmentPrefix + "sensor"} {
 		if !sessionBilan[touched] {
 			t.Errorf("metricKeys omet %q, que le sujet a pourtant touchée", touched)
 		}
-		if !overviewKeys[touched] {
-			t.Errorf("overviewFamilies omet %q, que le sujet a pourtant touchée", touched)
-		}
 	}
-	interdite := MetricEquipmentPrefix + "shroud_screen"
-	if sessionBilan[interdite] {
+	if interdite := MetricEquipmentPrefix + "shroud_screen"; sessionBilan[interdite] {
 		t.Errorf("metricKeys publie %q sur la seule foi d'un coéquipier — critère du lobby, pas du sujet", interdite)
-	}
-	if overviewKeys[interdite] {
-		t.Errorf("overviewFamilies publie %q sur la seule foi d'un coéquipier", interdite)
-	}
-	if len(sessionBilan) != len(overviewKeys) {
-		t.Errorf("ensembles divergents : metricKeys=%v, overviewFamilies=%v", sessionBilan, overviewKeys)
 	}
 }

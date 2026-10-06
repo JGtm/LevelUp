@@ -2,12 +2,7 @@
 // « formes retenues » (lot D2), l'historique d'objectif (lot L3 du plan
 // PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) et l'Emprise (lot L4).
 //
-// Le bloc « servi ou gâché » de l'équipement (`equipment_usage`, étape E6.1bis du
-// PLAN_EQUIPEMENT_GACHIS_2026-09-09) n'est PLUS publié ici depuis le lot L5.4 du même plan :
-// son seul lecteur était l'ancien onglet Usages de l'Escouade, remplacé par l'onglet Emprise.
-// Il reste servi au solo (Séries temporelles, Synthèse) par son producteur
-// (squadagg.BuildEquipmentUsageBlock).
-//
+
 // PÉRIMÈTRE (décision D2 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, qui remplace
 // celle d'E6.1bis) : les matchs de la COMPOSITION EXACTE intersectés avec les matchs filtrés
 // — allSquadRows (population escouade, option composition exacte comprise :

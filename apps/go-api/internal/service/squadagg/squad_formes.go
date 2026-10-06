@@ -1,9 +1,8 @@
 // Package squadagg — squad_formes.go : L'ORCHESTRATION DU BLOC « FORMES
 // RETENUES » de la page Escouade (artefact 2ec1b8eb, lot D2 du 2026-09-13).
 //
-// MÊME PATRON QUE equipment_usage.go, et pour les mêmes raisons : un helper de
-// package feuille, appelé par la page, jamais un service qui en appelle un
-// autre. Cinq lectures, toutes sur le scope FERMÉ de matchs que la page a déjà
+// UN HELPER DE PACKAGE FEUILLE, appelé par la page, jamais un service qui en appelle un
+// autre (couplage horizontal, skill arch-rules). Cinq lectures, toutes sur le scope FERMÉ de matchs que la page a déjà
 // filtré (période + cascade + sessions) — les trois du résumé d'usage, le grain
 // match des socles, et les colonnes d'objectif.
 //

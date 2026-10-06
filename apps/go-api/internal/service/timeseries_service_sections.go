@@ -1,13 +1,13 @@
-// Package service — timeseries_service_sections.go : LES SECTIONS MIGRÉES DEPUIS LES AUTRES
-// PAGES — « Portée des engagements » (onglet Résumé) et « Usages d'équipement » (onglet
-// Progression) depuis la Synthèse le 2026-09-13, puis « Les formes retenues » (contexte
-// SOLO, onglet Progression) depuis l'Escouade le 2026-09-19.
+// Package service — timeseries_service_sections.go : LES SECTIONS DE L'ONGLET « USAGES » ET DE LA
+// PROGRESSION QUI VIENNENT D'AUTRES PAGES — « Portée des engagements » (producteur de la
+// Synthèse), « Les formes retenues » (contexte SOLO, producteur de l'Escouade), la coordination
+// et les rôles de portée (producteurs de la page Sessions) — puis l'Emprise solo, les vies et
+// l'emblème (fichiers voisins).
 //
-// AUCUN CALCUL NEUF ICI, ET C'EST LE POINT. Les trois blocs gardent le producteur de leur
-// page d'origine (`buildWeaponRangeSection`, `squadagg.BuildEquipmentUsageBlock`,
-// `squadagg.BuildSquadFormesBlock`) et le MÊME scope que le reste de la page — les matchs
-// déjà filtrés. Recoder la lecture côté Timeseries
-// aurait créé une seconde doctrine de scope, qui aurait divergé au premier correctif.
+// AUCUN CALCUL NEUF ICI, ET C'EST LE POINT. Les blocs gardent le producteur de leur page
+// d'origine (`buildWeaponRangeSection`, `squadagg.BuildSquadFormesBlock`…) et le MÊME scope que le
+// reste de la page — les matchs déjà filtrés. Recoder la lecture côté Timeseries aurait créé une
+// seconde doctrine de scope, qui aurait divergé au premier correctif.
 //
 // Fichier séparé : timeseries_service.go tient le plafond des 500 lignes du dépôt.
 package service
@@ -27,7 +27,6 @@ import (
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
-	"levelup/go-api/internal/service/teammates"
 )
 
 // WithWeaponRangeRepo injecte le loader de la section « Portée des engagements » (frags et
@@ -38,17 +37,14 @@ func (s *TimeseriesService) WithWeaponRangeRepo(repo port.WeaponRangeRepository)
 	return s
 }
 
-// WithEquipmentUsage injecte la source du résumé d'usage (vues _latest) et le résolveur
-// d'amis configurés — la MÊME paire que la Synthèse et la page Sessions. Câblé gated par
-// film.usage_summary ; repo nil ⇒ bloc servi avec Available=false et raison machine.
+// WithUsageSummary injecte la source du résumé d'usage (vues _latest), lue UNE fois par requête et
+// partagée par l'Emprise et les formes retenues. Câblé gated par film.usage_summary ; repo nil ⇒
+// l'Emprise dit `film_unsupported` et les formes se retirent.
 //
-// `repoRoot` ne sert qu'au CATALOGUE D'ARMES du titre (nommage du detail par niveau) : vide,
-// les armes s'affichent sous leur cle — la degradation ecrite partout ailleurs.
-func (s *TimeseriesService) WithEquipmentUsage(
-	repo port.SessionUsageRepository, friends teammates.FriendGamertagsResolver, repoRoot string,
-) *TimeseriesService {
+// `repoRoot` sert aux CATALOGUES du titre (noms d'armes) : vide, les armes s'affichent sous leur
+// cle — la degradation ecrite partout ailleurs.
+func (s *TimeseriesService) WithUsageSummary(repo port.SessionUsageRepository, repoRoot string) *TimeseriesService {
 	s.sessionUsageRepo = repo
-	s.usageFriends = friends
 	s.repoRoot = repoRoot
 	return s
 }
@@ -88,7 +84,7 @@ func (s *TimeseriesService) WithMatchRange(repo port.MatchRangeRepository, xuid 
 	return s
 }
 
-// attachMigratedSections pose les trois blocs sur la réponse, depuis le scope canonique déjà
+// attachMigratedSections pose les blocs de l'onglet Usages sur la réponse, depuis le scope canonique déjà
 // filtré. Best-effort de bout en bout : chaque producteur rend nil plutôt que de casser la page.
 // `equipes` : les participants du scope, déjà lus par la page (cf. lireEquipesDuScope).
 func (s *TimeseriesService) attachMigratedSections(
@@ -96,28 +92,15 @@ func (s *TimeseriesService) attachMigratedSections(
 	filteredCanon []canonical.PlayerMatchRow, locale string, equipes equipesDuScope,
 ) {
 	stop := timing.FromContext(ctx).Section("weapon_range")
-	resp.WeaponRange, resp.Elevation = buildWeaponRangeSections(ctx, weaponRangeQuery{
+	resp.WeaponRange = buildWeaponRangeSection(ctx, weaponRangeQuery{
 		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
 	})
 	stop()
 	// LES TROIS LECTURES DU RÉSUMÉ D'USAGE, UNE FOIS pour les blocs qui les lisent (ADR 0036 I4).
 	lu := s.lireUsageDuScope(ctx, synthesisMatchIDs(filteredCanon))
-	stop = timing.FromContext(ctx).Section("equipment_usage")
-	resp.EquipmentUsage = buildEquipmentUsageBlock(ctx, equipmentUsageQuery{
-		Repo:            s.sessionUsageRepo,
-		PlayerXUID:      s.playerXUID,
-		MatchIDs:        synthesisMatchIDs(filteredCanon),
-		FriendGamertags: s.timeseriesFriendGamertags(ctx),
-		// De quoi NOMMER les armes du detail par niveau, DANS LA LANGUE DE LA REQUETE.
-		RepoRoot:  s.repoRoot,
-		TitleSlug: s.titleSlug,
-		Locale:    locale,
-		Lectures:  lu,
-	})
-	stop()
-	// « Les formes retenues », contexte SOLO : MÊMES match_id que le bloc d'usage
-	// ci-dessus. `SelectedGamertags` reste vide — cette page n'a pas d'escouade, et les
-	// cartes du contexte escouade ne s'y montent pas.
+	// « Les formes retenues », contexte SOLO : les match_id de la fenêtre. `SelectedGamertags`
+	// reste vide — cette page n'a pas d'escouade, et les cartes du contexte escouade ne s'y
+	// montent pas.
 	stop = timing.FromContext(ctx).Section("squad_formes")
 	resp.SquadFormes = squadagg.BuildSquadFormesBlock(ctx, squadagg.SquadFormesQuery{
 		Repo:         s.formesUsageRepo,
@@ -310,14 +293,6 @@ func timeseriesFormesMetas(rows []canonical.PlayerMatchRow, locale string) []squ
 		out = append(out, meta)
 	}
 	return out
-}
-
-// timeseriesFriendGamertags résout les amis du joueur (nil = aucun ami déclaré).
-func (s *TimeseriesService) timeseriesFriendGamertags(ctx context.Context) []string {
-	if s.usageFriends == nil {
-		return nil
-	}
-	return s.usageFriends(ctx)
 }
 
 // labelPourLocale rend le libellé d'un asset DANS LA LANGUE DE LA REQUÊTE, et retombe sur

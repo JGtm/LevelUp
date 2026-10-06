@@ -16,8 +16,8 @@
 // ou « powerup_camo » ont un sens dans tout titre, ce qui est faux (Halo 5 n'a aucun
 // équipement de ce genre). Ces clés sont le vocabulaire d'un DOCUMENT : elles
 // voyagent telles quelles jusqu'au contrat public — `domain.SessionUsageMetric.Key`
-// vaut `equipment_<famille>`, `domain.EquipmentUsageFamilyLine.Family` porte la
-// famille brute. C'est exactement le chemin qu'a pris `domain/replaydoc` pour le
+// vaut `equipment_<famille>`, `domain.EmpriseEquipmentFamily.Family` porte la famille
+// brute. C'est exactement le chemin qu'a pris `domain/replaydoc` pour le
 // document de rejeu : un voisin de `domain/`, feuille, sans aucun import du dépôt.
 //
 // CE PAQUET NE LIT PAS LE MANIFESTE, et c'est voulu. La source de ces tables est

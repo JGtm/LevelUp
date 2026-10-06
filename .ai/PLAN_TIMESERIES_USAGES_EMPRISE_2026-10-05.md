@@ -630,17 +630,25 @@ Journal L5 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — tests écrits 
 
 Le web ne lit plus `equipment_usage` ni `elevation` depuis L5.
 
-- [ ] L6.1 Rejouer les preuves §4.E et la partie Go de §4.C (producteurs et lecteurs Go).
-- [ ] L6.2 Go D8 : chaîne `equipment_usage` (+ `WithUsageSummary` sans résolveur d'amis, wire
+- [x] L6.1 Rejouer les preuves §4.E et la partie Go de §4.C (producteurs et lecteurs Go).
+- [x] L6.2 Go D8 : chaîne `equipment_usage` (+ `WithUsageSummary` sans résolveur d'amis, wire
   `registry_pages.go:428` sans `friendGamertagsResolver`), tests supprimés avec leur code
   (`service/equipment_usage_block_test.go`, `sessionusage/usage_overview_test.go`, cas
   `timeseries_service_test.go` qui les citent).
-- [ ] L6.3 Go D9 : chaîne d'élévation ; `weapon_range_section_test.go:494` et
+- [x] L6.3 Go D9 : chaîne d'élévation ; `weapon_range_section_test.go:494` et
   `elevation_cloud_section_test.go` suivent.
-- [ ] L6.4 Contrat régénéré ; snapshot `contract-surface` régénéré par la procédure, disparitions
+- [x] L6.4 Contrat régénéré ; snapshot `contract-surface` régénéré par la procédure, disparitions
   listées ; fixture `test/handlers.ts:242` retirée ; `types.ts:2327-2330` retiré.
 - Gate : gate Go + contrat + gate web ; preuves §4.A-E rejouées → 0.
 
+Journal L6 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — suppressions Go et contrat :
+- **L6.1** Preuves §4.E et §4.C (Go) rejouées avant suppression : `EquipmentUsageBlock` n'avait qu'un producteur (`timeseries_service_sections.go`) et plus aucun lecteur web depuis L5 ; `ElevationCloudBlock` qu'un producteur (`buildWeaponRangeSections`). Aucun lecteur côté Sessions rencontré : la page Sessions garde son propre résolveur d'amis (`session_page_usage.go`, `usageFriends`, non touché) et la riposte du bloc `coordination` (non touchée, plan §0).
+- **L6.2** D8 : `domain/equipment_usage.go`, `sessionusage/usage_overview.go` (+ test), `service/equipment_usage_block_test.go` supprimés ; `squadagg/equipment_usage.go` renommé `lectures_usage.go` et réduit à `LireUsage` / `LecturesUsage` (lus par l'Emprise et les formes) — `BuildEquipmentUsageBlock`, `EquipmentUsageQuery`, `attacherNiveauxDArmes`, `nommerArmes`, `parseFamilleArme` partis ; alias de `squadagg_reexport.go` retirés ; `WithEquipmentUsage` devient `WithUsageSummary(repo, repoRoot)` sans résolveur d'amis (champ `usageFriends` et `timeseriesFriendGamertags` du service supprimés) ; câblage `registry_pages.go` (taille 620 → 620). Test de câblage écrit d'abord (rouge : `WithUsageSummary` absent, puis arguments exacts). `usage_outcomes_test.go` : la comparaison `metricKeys` / `overviewFamilies` devient `TestBilan_MetricKeysSurLeSeulSujet` (le critère `subjectBilanFamilies` reste, lu par `metricKeys`). `pad_tiers_wiring_test.go` : les deux cas qui pointaient le fichier supprimé retirés (la page Sessions est le seul lecteur des niveaux d'armes). Commentaires devenus faux corrigés (`usage.go`, `usage_outcomes.go`, `families.go`, `squad_formes.go` ×2, `synthesis_service_usage.go`, `teammates_service_usage.go`, `usageAvailability.ts`).
+- **L6.3** D9 : `domain/elevation_cloud.go`, `analysis/elevation_cloud.go` (+ test), `service/elevation_cloud_section.go` (+ test) supprimés ; `buildWeaponRangeSections` devient `buildWeaponRangeSection` (un seul retour, `hydrateLabels` ne nomme plus que la portée, `unionWeaponKeys` supprimée) ; l'aide de test triviale `wrSection` remplacée par l'appel direct ; champ `TimeseriesPageResponse.Elevation` retiré.
+- **L6.4** Contrat régénéré : `openapi.yaml` −262 lignes, `generated.ts` −117, 0 ajout ; `check-generated-types-fresh` OK ; garde de surface : exactement les 9 schémas attendus disparus (`ElevationCloudBlock`, `ElevationPoint`, `ElevationSideSummary`, `ElevationWeaponLabel`, `EquipmentUsageBlock`, `EquipmentUsageFamilyLine`, `EquipmentUsageFriendCount`, `EquipmentUsageParties`, `EquipmentUsagePlayerLine`), snapshot régénéré par la procédure documentée (`UPDATE_CONTRACT_SURFACE=1`), qui enregistre aussi les 8 schémas ajoutés depuis L2 (`EmpriseEquipment`, `EmpriseEquipmentFamily`, `EmpriseEquipmentOutcomes`, `EmpriseMapColumn`, `LivesSideCount`, `SoloEmpriseBlock`, `SquadEmpriseVehicles`, `TimeseriesLivesNearTeammate`) ; garde rejouée sans la variable : verte. Fixture MSW `test/handlers.ts` et alias `lib/api/types.ts` (usage et élévation) retirés.
+- **Mutations** : `WithUsageSummary` sans racine du dépôt → ROUGE ; `WithUsageSummary` sortie de la porte `film.usage_summary` → ROUGE.
+- **Gate** : `go build ./...` 0 ; `go vet ./...` 0 ; `gofmt -l internal` muet ; `go test -count=1` du module en cinq lots couvrant les 348 paquets de `go list ./...` (cœur 58 ok, hors internal 40 ok, games 38 ok, sync / persist / migration 13 ok, reste 46 ok ; 153 sans test) — 0 FAIL ; `make go-api-lint` 0 issues ; `openapi-gen -check` à jour ; `-tags=integration` non requis (aucun paquet `platform/duckdb`, `sync`, `persist`, `migration` modifié). Web : `npm run generate-types`, `check-generated-types-fresh` OK ; purge `node_modules\.tmp`, `npx tsc -b --force` 0 ; `npm run lint` 0 erreur ; vitest complet 831 fichiers / 8 857 tests verts (157 s) ; knip 0 / 0 / 0 ; couleurs 0 ; imports croisés 7 ≤ 7 ; `npx lefthook run pre-push` (PATH complet) 9 / 9 au premier passage (83 s). Preuves §4.A-E rejouées → 0 hors commentaires historiques au passé et le résolveur d'amis propre à la page Sessions.
+- Seuils : fichiers > 400 L touchés, tous en baisse ou stables : `timeseries_service.go` 458 → 455, `registry_pages.go` 620 → 620, `sessionusage/usage.go` 421 → 416, `weapon_range_section_test.go` 496 → 486, `lib/api/types.ts` 3 467 → 3 449, `test/handlers.ts` 549 → 540 ; 10 fichiers supprimés.
 ### L7 — Contrat `formes_retenues` réduit à l'objectif (D7) · moyen, le plus risqué
 
 - [ ] L7.1 Rejouer §4.F (lecteurs web des champs après L6).

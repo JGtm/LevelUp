@@ -1638,13 +1638,6 @@ export type WeaponBelowThreshold = components['schemas']['WeaponBelowThreshold']
 export type SynthesisOpening = components['schemas']['SynthesisOpening']
 export type SynthesisOpeningDelta = components['schemas']['SynthesisOpeningDelta']
 
-// Nuage « distance x denivele » des engagements (decision D25, proposition T5) — un point
-// par frag mesure, des deux cotes, plus les quartiles par cote et la couverture. Le
-// denivele est DEJA SIGNE du point de vue du joueur cote Go : le web ne le retouche jamais.
-export type ElevationCloudBlock = components['schemas']['ElevationCloudBlock']
-export type ElevationPoint = components['schemas']['ElevationPoint']
-export type ElevationSideSummary = components['schemas']['ElevationSideSummary']
-
 // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic,
 // partagé par Synthesis/Match view/Timeseries/Sessions. Cf. domain/frag_distribution.go.
 export type FragDistribution = components['schemas']['FragDistribution']
@@ -2321,17 +2314,6 @@ export type SessionObjectivesBlock = components['schemas']['SessionObjectivesBlo
 export type SessionObjectiveRoleMetric = components['schemas']['SessionObjectiveRoleMetric']
 export type SessionFlagGrabsNetBlock = components['schemas']['SessionFlagGrabsNetBlock']
 export type SessionObjectiveFamilyBlock = components['schemas']['SessionObjectiveFamilyBlock']
-
-// ─── PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E5/E6) : bloc « servi ou gâché » au grain
-// PÉRIODE, publié avec la Synthèse et l'Escouade. Contrat Go :
-// internal/domain/equipment_usage.go. Variante COMPTES (décision P9) : l'axe des
-// barres est en objets pris, pas en pourcentage — voir usageCountsModel.ts.
-
-export type EquipmentUsageBlock = components['schemas']['EquipmentUsageBlock']
-export type EquipmentUsageFamilyLine = components['schemas']['EquipmentUsageFamilyLine']
-export type EquipmentUsagePlayerLine = components['schemas']['EquipmentUsagePlayerLine']
-export type EquipmentUsageParties = components['schemas']['EquipmentUsageParties']
-export type EquipmentUsageFriendCount = components['schemas']['EquipmentUsageFriendCount']
 
 // ─── Artefact « Les formes retenues » (2ec1b8eb, lot D2 du 2026-09-13) : la
 // matière des dix-neuf cartes de l'onglet Synergies. Contrat Go :
