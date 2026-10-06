@@ -213,9 +213,9 @@ interface TeamPanelProps {
 function TeamPanel({ team, scoreboard, titleSlug, title, t, score, finalScore }: TeamPanelProps) {
   const label = campLabel({ team: team.teamID, side: team.teamSide }, scoreboard, t)
   // LA COULEUR ALLIÉE TELLE QUE L'UTILISATEUR L'A RÉGLÉE (D1, cf. l'en-tête). L'écran est
-  // TOUJOURS celui du camp REGARDÉ — donc toujours `team-ally` : depuis le point de vue
-  // sélectionnable (2026-09-06), `reading.mine` est l'équipe du sujet, et `identity` peint déjà
-  // ce camp-là en allié partout ailleurs sur la page. Fond et trait par la recette du
+  // TOUJOURS celui du camp REGARDÉ — donc toujours `team-ally` : `reading.mine` est l'équipe du
+  // FILM du sujet (le point de vue), et l'allégeance du film, vue de ce même point de vue, peint
+  // déjà ce camp-là en allié partout ailleurs sur la page. Fond et trait par la recette du
   // scoreboard. PAS D'ACCENT LATÉRAL GAUCHE : l'utilisateur l'a fait retirer de ce style.
   const teamColor = tokenCssVar('team-ally')
   const tint = teamTintStyles(teamColor)

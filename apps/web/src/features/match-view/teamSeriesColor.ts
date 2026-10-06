@@ -24,9 +24,10 @@ import { resolveToken, tokenCssVar } from '@/lib/accessibility'
 /**
  * teamSeriesColor rend l'encre d'une série d'équipe.
  *
- * `ally === null` = camp INCONNU (aucun joueur du scoreboard ne le rattache au joueur de la
- * page) : encre neutre du thème, jamais l'une des deux couleurs par défaut — affirmer un
- * camp qu'on n'a pas mesuré serait pire que de ne rien dire.
+ * `ally === null` = camp INCONNU : l'appelant ne sait pas le situer face au joueur regardé
+ * (par la feuille sur les graphes de la page Match, par l'équipe du film sur le rejeu et
+ * l'onglet Arsenal). Encre neutre du thème, jamais l'une des deux couleurs par défaut —
+ * affirmer un camp qu'on n'a pas mesuré serait pire que de ne rien dire.
  */
 export function teamSeriesColor(ally: boolean | null, tc: EChartsThemeColors): string {
   if (ally === null) return tc.axisLabel
@@ -47,11 +48,9 @@ const NEUTRAL_TEAM_COLOR = 'var(--muted-foreground)'
  * face-à-face des objectifs) ne passent pas par `resolveToken` : ils écrivent la VARIABLE CSS
  * du jeton, qui suit la palette sans re-rendu. La règle de choix, elle, est la même — jetons
  * `team-ally` / `team-enemy`, donc la palette d'accessibilité réglée par l'utilisateur, jamais
- * la cascade d'IDENTITÉ de `teamColor.ts` (qui place la couleur officielle du jeu devant et
- * n'atteindrait jamais le réglage sur Halo Infinite, où `team_id` est toujours présent).
+ * la couleur officielle du jeu par `team_id` (cf. l'en-tête).
  *
- * `ally === null` = camp INCONNU (aucun `is_me` au tableau des scores, ou joueur du film sans
- * ligne de scoreboard) : encre neutre du thème.
+ * `ally === null` = camp INCONNU, comme pour `teamSeriesColor` : encre neutre du thème.
  */
 export function teamTokenCssVar(ally: boolean | null): string {
   if (ally === null) return NEUTRAL_TEAM_COLOR

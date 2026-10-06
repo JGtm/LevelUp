@@ -50,7 +50,7 @@ function kill(): ReplayKill {
     weaponKey: 'hinf_br75', weaponLabel: 'BR75', weaponImageUrl: '', weaponTinted: false,
     assistState: '', assistGamertag: '', assistTeamID: null,
     killerDamagePct: null, assistDamagePct: null,
-    victimXuid: 'V', victimGamertag: 'Victime', victimTeamID: 1,
+    victimXuid: 'V', victimGamertag: 'Victime',
   }
 }
 

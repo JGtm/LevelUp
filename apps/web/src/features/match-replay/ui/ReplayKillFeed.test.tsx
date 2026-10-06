@@ -49,7 +49,6 @@ function kill(over: Partial<KillEvent>): KillEvent {
     assistDamagePct: null,
     victimXuid: '',
     victimGamertag: '',
-    victimTeamID: null,
     ...over,
   }
 }
@@ -59,7 +58,6 @@ function medal(over: Partial<MedalEvent>): MedalEvent {
     tMs: 1_000,
     xuid: 'me',
     gamertag: 'JGtm',
-    teamID: 0,
     name: 'No Scope',
     label: 'Sans lunette',
     description: 'Tuer au sniper sans lunette.',
@@ -290,7 +288,7 @@ describe('ReplayKillFeed — le fil sur le référentiel des pistes (document fo
 describe('ReplayKillFeed — la victime, servie par le backend', () => {
   it('nomme la victime et la colore par SON équipe, pas celle du tueur', () => {
     renderFeed(
-      [kill({ tMs: 1_000, teamID: 0, victimXuid: 'foe', victimGamertag: 'Cobra01', victimTeamID: 1 })],
+      [kill({ tMs: 1_000, teamID: 0, victimXuid: 'foe', victimGamertag: 'Cobra01' })],
       20_000,
     )
     const tueur = screen.getByText('JGtm')

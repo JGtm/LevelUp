@@ -66,8 +66,8 @@ export const PAD_SPAWN_MAX_PAR_MATCH = 300
  * padSpawnSoundEvents — un son par apparition d'arme sur un socle, triés.
  *
  * Aucune notion de camp : un socle n'appartient à personne. Aucune dépendance au camp allié,
- * donc — contrairement aux sons d'état de zone, celui-ci sonne même quand la ligne « moi » du
- * tableau de score n'est pas résolue.
+ * donc — contrairement aux sons d'état de zone, celui-ci sonne même quand l'équipe alliée n'est
+ * pas résolue (`FilmAllegiance.allyTeam` nul : le film ne situe pas le joueur regardé).
  */
 export function padSpawnSoundEvents(doc: ReplayDocumentReady): ReplaySoundEvent[] {
   const pads = doc.weaponPads ?? []

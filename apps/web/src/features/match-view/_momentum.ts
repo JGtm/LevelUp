@@ -51,9 +51,9 @@ export interface KillEvent {
   xuid: string
   ally: boolean
   /**
-   * Équipe du TUEUR (`actor_team_id`), pour la couleur d'identité — la même que
-   * l'en-tête du scoreboard. Null si le backend ne l'a pas résolue (acteur hors
-   * scoreboard) : le feed retombe alors sur le couple allié/ennemi.
+   * Équipe du TUEUR (`actor_team_id`) : le camp auquel la piste Dominance du rejeu attribue le
+   * frag. Null si le backend ne l'a pas résolue (acteur hors scoreboard) : le frag ne compte
+   * pour aucun camp. Elle ne colore plus rien — l'encre du fil du rejeu vient de l'équipe du film.
    */
   teamID: number | null
   /**
@@ -101,7 +101,6 @@ export interface KillEvent {
    */
   victimXuid: string
   victimGamertag: string
-  victimTeamID: number | null
 }
 
 /** Métadonnée minimale par xuid nécessaire au calcul (appartenance équipe). */
@@ -141,7 +140,6 @@ export function collectKillEvents(
       assistDamagePct: e.assist_damage_pct ?? null,
       victimXuid: e.victim_xuid ?? '',
       victimGamertag: e.victim_gamertag ?? '',
-      victimTeamID: e.victim_team_id ?? null,
     })
   }
   return out

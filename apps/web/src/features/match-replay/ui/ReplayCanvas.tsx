@@ -146,9 +146,10 @@ interface ReplayCanvasProps {
    */
   callouts?: CalloutZoneReady[]
   /**
-   * Le scoreboard du match : il donne aux vies du film le NOM et l'ÉQUIPE de leur
-   * propriétaire (jointure par xuid, cf. rosterLogic). Absent = aucune identité connue,
-   * la carte reste lisible (points à l'encre neutre, sans étiquette) — jamais une erreur.
+   * Le scoreboard du match : il donne aux vies du film le NOM de leur propriétaire (jointure
+   * par xuid, et par nom pour un bot — cf. `buildPlayers`). Ni l'équipe ni l'encre n'en
+   * viennent : elles se lisent dans le film (`allegiance`). Absent = aucun nom de feuille, la
+   * carte reste lisible — jamais une erreur.
    */
   scoreboard?: MatchScoreboardRow[]
   /**

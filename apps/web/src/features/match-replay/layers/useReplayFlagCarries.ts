@@ -176,8 +176,9 @@ export function useReplayFlagCarries({
   // compte image par image, et la recompter à chaque peinture coûterait le match entier.
   //
   // C'EST ICI, ET NON SUR LE SERVEUR, QUE LES DÉFENSEURS SE COMPTENT : les membres du camp du
-  // drapeau, lus dans le FILM (`FilmAllegiance.membersOf`, clés des relectures de position). Le
-  // serveur publie la RÈGLE, pas l'occupation. Un drapeau neutre (-1) n'a pas de défenseur.
+  // drapeau, lus dans le FILM (`FilmAllegiance.membersOf`), localisés par les relectures de
+  // position — qui n'indexent que les humains : un bot n'y compte pas. Le serveur publie la
+  // RÈGLE, pas l'occupation. Un drapeau neutre (-1) n'a pas de défenseur.
   const defendersOf = allegiance.membersOf
 
   const returnDrops = useMemo(

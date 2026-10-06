@@ -110,7 +110,6 @@ function medalEvent(over: Partial<MedalEvent> = {}): MedalEvent {
     tMs: 22_000,
     xuid: 'me',
     gamertag: 'JGtm',
-    teamID: 0,
     name: 'Capture',
     label: 'Capture',
     description: 'A capturé le drapeau adverse.',

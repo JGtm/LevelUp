@@ -126,7 +126,9 @@ export interface FlagReturnInput {
   posOf: (xuid: string, frame: number) => XY | null
   /**
    * Les clés des joueurs de l'équipe donnée, telles que le FILM les nomme (`ReplayPlayer.xuid`,
-   * celles des relectures de position — `FilmAllegiance.membersOf`).
+   * `FilmAllegiance.membersOf`). `posOf` ne localise que les humains : la clé `bot:<nom>` d'un
+   * bot n'a pas de relecture de position (ses vies n'ont pas de xuid), un bot ne compte donc
+   * pas parmi les défenseurs.
    *
    * VIDE POUR UN DRAPEAU NEUTRE (équipe -1), et ce n'est pas un oubli : un drapeau que personne
    * ne possède n'a pas de défenseur. Il revient tout seul, à la minuterie, et le modèle le rend

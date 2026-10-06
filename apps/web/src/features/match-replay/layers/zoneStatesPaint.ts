@@ -121,8 +121,8 @@ export interface ZonePaint {
   /**
    * `false` = pas de camp À TEINTER : LISERÉ SEUL, aucun remplissage d'appartenance. Deux
    * situations distinctes le produisent — personne ne tient la zone, ou son camp n'est pas
-   * situable (aucune ligne « moi ») — et seule la PREMIÈRE grise le contour (cf.
-   * ZONE_FREE_STROKE_*, qui se décide sur `now.owner`, pas sur ce drapeau).
+   * situable (le film ne situe pas le joueur regardé) — et seule la PREMIÈRE grise le contour
+   * (cf. ZONE_FREE_STROKE_*, qui se décide sur `now.owner`, pas sur ce drapeau).
    */
   held: boolean
   /**

@@ -59,13 +59,13 @@ function kill(xuid: string, victimXuid: string, victimGamertag: string): ReplayK
     tMs: 1_000, xuid, ally: false, teamID: null, weaponKey: '', weaponLabel: 'BR75',
     weaponImageUrl: '/static/weapons/br75.png', weaponTinted: true, assistState: '',
     assistGamertag: '', assistTeamID: null, killerDamagePct: null, assistDamagePct: null,
-    victimXuid, victimGamertag, victimTeamID: null,
+    victimXuid, victimGamertag,
   }
   return { ...k, replayMs: 1_000, medals: [] }
 }
 
 const medal = (xuid: string, gamertag: string): MedalEvent => ({
-  tMs: 1_000, xuid, gamertag, teamID: null, name: 'Double Kill', label: 'Doublé',
+  tMs: 1_000, xuid, gamertag, name: 'Double Kill', label: 'Doublé',
   description: '', imageUrl: '',
 })
 

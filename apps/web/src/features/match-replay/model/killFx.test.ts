@@ -35,7 +35,6 @@ function kill(over: Partial<ReplayKill> = {}): ReplayKill {
     assistDamagePct: null,
     victimXuid: 'V',
     victimGamertag: 'Victime',
-    victimTeamID: 1,
     ...over,
   }
 }

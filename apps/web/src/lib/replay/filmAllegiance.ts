@@ -72,8 +72,10 @@ export interface FilmAllegiance {
   /** L'équipe du film d'un joueur désigné comme pour `ofXuid` (`-1` compris) ; `null` si le film la tait. */
   teamOfXuid: (xuid: string | null | undefined) => number | null
   /**
-   * Les clés du FILM (`ReplayPlayer.xuid`) des joueurs d'un camp — celles des relectures de
-   * position. Vide pour un désignateur négatif : « aucune équipe » n'a pas de membres.
+   * Les clés du FILM (`ReplayPlayer.xuid`) des joueurs d'un camp : le xuid d'un humain, qui est
+   * aussi la clé des relectures de position (`buildLivesByXuid`), et `bot:<nom>` pour un bot,
+   * que ces relectures n'indexent pas (ses vies n'ont pas de xuid). Vide pour un désignateur
+   * négatif : « aucune équipe » n'a pas de membres.
    */
   membersOf: (team: number) => readonly string[]
 }

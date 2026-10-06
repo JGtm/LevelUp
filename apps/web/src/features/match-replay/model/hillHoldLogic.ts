@@ -26,8 +26,8 @@
  *
  * LES CAMPS SE LISENT DANS LA MÊME CONVENTION QUE LE BANDEAU. `holdTicks[].teamId` et
  * `teams[].teamId` portent tous deux l'index d'équipe du REGISTRE ; ce module reçoit les
- * identifiants que le bandeau a déjà résolus par le tableau de bord, et se tait s'il ne les
- * trouve pas.
+ * identifiants que le bandeau a déjà résolus — les camps du film, le côté allié vu du point de
+ * vue (`readScoreBanner`) — et se tait s'il ne les trouve pas.
  *
  * Module PUR : ni React, ni DOM, ni couleur.
  */

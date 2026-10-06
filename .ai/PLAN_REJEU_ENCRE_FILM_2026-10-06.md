@@ -215,6 +215,28 @@ Chocoboflor 4 ; AUCUNE référence sans équipe du film.
   resserrées sous leur dette (`filmAllegianceOf` accepte un document absent ; `teammatesOf`
   extrait).
 - [ ] E6.7.3 `adversarial-review` (contexte frais, ≤ 2 tours).
+  Ronde 1 (2026-10-06, sur `f8a14b3b9..5c931a66b`) : deux relecteurs Opus aveugles l'un à
+  l'autre, contrat du lot, lentilles « sémantique de l'allégeance + L5 » et « L3 + L6 ». 0 P0 et
+  0 P1 annoncés ; 6 constats recevables, tous proposés P2, dont 1 trouvé par les deux (5
+  distincts) ; conditions vérifiées qui tiennent : 13 et 17. Tri (skill §7 : une règle écrite
+  violée ou une garantie perdue PAR LE DIFF n'est pas « hors périmètre ») :
+  - R1-1 P1 (CLAUDE.md n° 7) : `MedalEvent.teamID` (`killFeedLogic.ts`) et
+    `KillEvent.victimTeamID` (`match-view/_momentum.ts`) n'avaient pour seuls lecteurs que les
+    encres du fil (`ReplayKillFeed.tsx` l. 338 et 501 à la base) : supprimés avec leurs
+    écritures et leurs littéraux de test. `_momentum.ts` appartient à la Vue match : changement
+    minimal (un champ, son écriture, la doc de `teamID` qui décrivait l'ancienne encre du fil) ;
+    `_momentum.test.ts` inchangé et vert, `features/match-view` 46 fichiers / 458 tests verts.
+  - R1-2 P1 (garantie de la décision 3 du plan « frise, point de vue » perdue par le diff) : la
+    fin sonore n'était plus ancrée sur le joueur de la page que par son appelant.
+    `endMatchSoundSpec(film, scoreboard, code, locale)` relit lui-même la ligne `is_me`
+    (`meXUIDOf`), comme avant le lot ; test neuf « ANCRÉE SUR LA PAGE » (allégeance construite
+    depuis un adversaire, issue annoncée = celle de la page).
+  - R1-3 P1 (CLAUDE.md n° 17) : commentaires rendus faux par le lot, remis au vrai —
+    `filmAllegiance.ts` (`membersOf`), `flagReturnZone.ts` et `useReplayFlagCarries.ts` (un bot
+    n'est pas localisé, donc pas défenseur), `ReplayVictoryOverlay.tsx`, `zoneStatesPaint.ts`,
+    `ReplayCanvas.tsx`, `teamSeriesColor.ts`, `hillHoldLogic.ts`, `padSpawnSound.ts`.
+  - R1-4 P2, préexistant : bots jamais localisés parmi les défenseurs d'une zone de retour →
+    découverte E6-D4, non traitée.
 - [ ] E6.7.4 Commits `fix(rejeu):`, push de `feat/rejeu-equipes-web`, CI verte.
 - [ ] E6.7.5 Entrée `.ai/thought_log.md`.
 
@@ -243,3 +265,15 @@ Chocoboflor 4 ; AUCUNE référence sans équipe du film.
   coïncident tant que le contrôle d'accord Go tient (désignateur du film = identifiant d'équipe
   de l'API). À statuer par le superviseur : l'appartenance d'un frag à un camp relève-t-elle de
   la règle « équipe = film » ?
+- E6-D4 (2026-10-06, revue ronde 1, NON traitée — préexistante, P2) : un bot n'est jamais compté
+  parmi les défenseurs d'une zone de retour de drapeau. `membersOf` rend `bot:<nom>`, et les
+  relectures de position (`buildLivesByXuid`, `model/livesPosition.ts:84`, `if (!t.xuid)
+  continue`) n'indexent pas ses vies : `posOf` rend `null`, la zone se peint « inoccupée »
+  (`flagReturnZone.ts`, `busy` faux) et la jauge suit la minuterie seule. Avant le lot, la clé de
+  feuille `bid(N.0)` n'était pas localisable non plus. Selon le relecteur (non revérifié ici),
+  aucun film du cache ne le déclenche : les bots des 4 CTF à bots n'ont pas de trace. Les
+  commentaires du lot qui disaient le contraire sont corrigés (R1-3).
+- E6-D5 (2026-10-06, relevée en traitant R1-1, NON traitée — préexistante, P2) :
+  `KillEvent.assistTeamID` (`match-view/_momentum.ts`, rempli depuis `assist_team_id`) n'a aucun
+  lecteur hors tests, déjà à la base `f8a14b3b9` : code mort antérieur au lot, dans un fichier de
+  la Vue match qu'un autre lot (`feat/matchview-emprise`) retravaille.

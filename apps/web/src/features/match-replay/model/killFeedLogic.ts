@@ -87,7 +87,6 @@ export interface MedalEvent {
   tMs: number
   xuid: string
   gamertag: string
-  teamID: number | null
   /** Nom ANGLAIS mesuré (film). Toujours présent — c'est la clé du référentiel. */
   name: string
   /** Libellé locale-aware. Vide = non résolue : le nom brut s'affiche en toutes lettres. */
@@ -112,7 +111,6 @@ export function collectMedalEvents(
       tMs: e.event_time_ms,
       xuid: e.actor_xuid,
       gamertag: e.actor_gamertag ?? '',
-      teamID: e.actor_team_id ?? null,
       name: e.medal_name,
       label: e.medal_label ?? '',
       description: e.medal_description ?? '',

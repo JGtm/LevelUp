@@ -49,6 +49,8 @@
  * `replaySoundAssets.guard.test.ts` rejoue les trois tables ci-dessous contre le dossier
  * d'assets, comme les autres.
  */
+import { meXUIDOf } from '@/features/match-view/xuidMeta'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 import { outcomeCodeToValue } from '@/lib/outcome'
 
 import type { ReplayLocale } from '../i18n/i18n'
@@ -124,20 +126,22 @@ export interface EndMatchSoundSpec {
  *
  * IL N'A PAS DE SUJET, ET C'EST VOULU (décision 3 du plan « frise, point de vue », 2026-09-06).
  * `readVictory` accepte un sujet — par les yeux de qui la fin se lit — et l'écran de fin, lui, y
- * passe le POINT DE VUE ; ici le sujet est omis, il vaut `page`, le joueur de la page
- * (`meXUIDOf`), dont l'équipe se lit dans le film comme partout ailleurs. Le SON reste ancré sur le JOUEUR DE LA PAGE :
- * inspecter un adversaire ne doit pas faire retentir « Défaite » sur un match qu'on a gagné. Les
+ * passe le POINT DE VUE ; ici le sujet est omis : la fin se lit pour le JOUEUR DE LA PAGE, que
+ * cette fonction retrouve ELLE-MÊME dans la feuille (`meXUIDOf`) — l'appelant ne peut donc pas y
+ * glisser le point de vue — et dont l'équipe se lit dans le film comme partout ailleurs.
+ * Inspecter un adversaire ne doit pas faire retentir « Défaite » sur un match qu'on a gagné. Les
  * deux appels divergent donc exprès. Ne pas « harmoniser » : voir aussi le commentaire de la
- * route, à l'appel d'`endMatchSoundSpec`.
+ * route, à l'appel d'`endMatchSoundSpec`. `film` ne sert qu'à ses camps et à l'équipe d'un
+ * joueur : la référence que l'allégeance porte (le point de vue) n'est pas lue.
  */
 export function endMatchSoundSpec(
   film: VictoryFilm,
-  page: string | null,
+  scoreboard: readonly Pick<MatchScoreboardRow, 'xuid' | 'is_me'>[],
   outcomeCode: number | null | undefined,
   locale: ReplayLocale,
 ): EndMatchSoundSpec | null {
   // SANS SUJET : le sujet omis vaut « le joueur de la page » (décision 3).
-  const reading = readVictory(film, outcomeCode, page)
+  const reading = readVictory(film, outcomeCode, meXUIDOf(scoreboard))
   if (reading) return { outcome: reading.outcome, ffa: false, locale }
   // Sans deux camps lisibles, seule la VICTOIRE a une réplique : « Vainqueur » se passe
   // d'adversaire nommé, « Défaite » et « Égalité » supposent un affrontement à deux camps.
