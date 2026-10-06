@@ -115803,4 +115803,7 @@ E6.4 (onglet Arsenal) — grille, barres et contrôle des socles encrés par l'a
 
 E6.5 (garde-rails) — allowlist `team_side` réduite au helper de libellé ; règle (c) « aucune allégeance hors du film » ; `ReplayKill` sans `ally`, identité du modèle réduite aux noms ; régime à trois arguments de `resolveXuidMeta` retiré ; commentaires périmés (ligne « moi », côté de feuille qui encre) remis au vrai ; mutations rattrapées.
 
-**Conclusion / prochaine étape** : E6.6 (mesure au parc, témoins).
+E6.6 (parc, 126 documents, lecture seule, référence = profil suivi présent : JGtm 84, Nuzzles 38, Chocoboflor 4, aucune sans équipe) — vies de bots : 179, toutes adverses avant ; après 60 alliées (20 bots, 16 documents), 115 adverses, 4 neutres (bots sans équipe du film), 0 alliée → adverse ; en-têtes : 1 sur 252 cesse d'être neutre (248972b2, camp 1 vu de Nuzzles, 74 images sans humain), 0 devient neutre. Témoins : c7f94693 Donos n'en est pas un (le film tait son équipe → neutre) ; b1ad85eb Brew Dog, 5dfdc63b Kubly.
+E6.7 (livraison, en cours) — `tsc -b` à froid 0 erreur, eslint 0 erreur, knip-ratchet 0/0/0, lint couleurs et champs propres ; vitest complet `--pool=forks` 849 fichiers verts + 5 garde-rails à balayage de `src/` en délai dépassé sous charge (rejoués seuls : 9/9) ; aucune fonction allongée au-delà de sa dette (`MatchEquipmentUsageSection` et `useReplayTimeline` resserrées : `filmAllegianceOf` accepte un document absent, `teammatesOf` extrait).
+
+**Conclusion / prochaine étape** : revue adversariale, push, CI.

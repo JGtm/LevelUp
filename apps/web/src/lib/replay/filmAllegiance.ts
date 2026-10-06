@@ -132,12 +132,12 @@ export const NO_ALLEGIANCE: FilmAllegiance = buildFilmAllegiance([], null)
 /**
  * filmAllegianceOf — la même allégeance, construite depuis le document et la feuille : pour les
  * surfaces qui ne reçoivent pas la jointure toute faite (les tables de l'onglet Arsenal, montées
- * sur la page Match).
+ * sur la page Match). Sans document (pas encore chargé, ou absent), personne n'a d'encre de camp.
  */
 export function filmAllegianceOf(
-  doc: ReplayDocumentReady,
+  doc: ReplayDocumentReady | null | undefined,
   scoreboard: MatchScoreboardRow[],
   reference: string | null | undefined,
 ): FilmAllegiance {
-  return buildFilmAllegiance(buildPlayers(doc, scoreboard), reference)
+  return doc ? buildFilmAllegiance(buildPlayers(doc, scoreboard), reference) : NO_ALLEGIANCE
 }

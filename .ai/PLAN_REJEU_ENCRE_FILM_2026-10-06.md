@@ -168,15 +168,52 @@ l'ÉVÉNEMENT du joueur regardé, pas une allégeance) ; les cinq graphes de la 
 
 ## Étape E6.6 — Mesure au parc (126 artefacts, lecture seule)
 
-- [ ] E6.6.1 Vies de bots qui changent d'encre (adverse → alliée, alliée → adverse, → neutre).
-- [ ] E6.6.2 En-têtes qui ne sont plus neutres.
-- [ ] E6.6.3 Témoins pour l'utilisateur : bot ALLIÉ à équipe connue (c7f94693 Donos si sa vie a
+- [x] E6.6.1 Vies de bots qui changent d'encre (adverse → alliée, alliée → adverse, → neutre).
+- [x] E6.6.2 En-têtes qui ne sont plus neutres.
+- [x] E6.6.3 Témoins pour l'utilisateur : bot ALLIÉ à équipe connue (c7f94693 Donos si sa vie a
   une équipe, sinon un autre), avec les images.
+
+Mesure (2026-10-06) : test jetable non versionné (vitest `--pool=forks`, lecture seule de
+`data/cache/replays/halo_infinite`, 126 documents hors `.derived` ; script archivé dans le
+scratchpad, résultat `e6_mesure_parc.json`), par les VRAIS modules (`buildPlayers`,
+`buildFilmAllegiance`, `buildSeats`, `groupSeatsByTeam`, `seatOccupantAt`). Référence = le profil
+suivi présent au roster (`db_profiles.json`, sync actif) : JGtm 84 documents, Nuzzles 38,
+Chocoboflor 4 ; AUCUNE référence sans équipe du film.
+
+- Vies de bots : 179 au total. AVANT, toutes à l'encre ADVERSE (clé `bot:<nom>` absente de la
+  table de la feuille). APRÈS : 60 alliées (20 bots, 16 documents), 115 adverses (inchangées),
+  4 neutres (bots dont le film tait l'équipe : 18 au roster, 3 seulement ont des vies —
+  859da825 Forge Lord 1, c7f94693 Donos 1, f2966f08 Ritzy 2).
+  Alliée → adverse : 0 (impossible par construction). Humains sans équipe du film : 0.
+- En-têtes : 252 camps. AVANT, un en-tête était neutre quand aucun HUMAIN n'occupait une place du
+  camp (bots inconnus de la table) — reconstruit en supposant la feuille d'accord avec le film
+  pour les humains (la base n'est pas ouverte). 1 en-tête cesse d'être neutre : 248972b2, camp 1
+  vu de Nuzzles, 74 images (4968–5041) sans humain présent → encre adverse. 0 camp neutre tout le
+  match, 0 en-tête qui devient neutre.
+- Témoins (bot ALLIÉ, équipe du film connue ; images à 100 ms) : c7f94693 « 343 Donos » n'en est
+  PAS un — le film tait son équipe (vie 947–981) : encre NEUTRE, défaut de source du lot Go.
+  Retenus : b1ad85eb « 343 Brew Dog » (camp 1 de JGtm, vies 3236–4935, 323,6–493,5 s de film) et
+  5dfdc63b « 343 Kubly » (camp 0 de JGtm, vies 2477–4406, 247,7–440,6 s).
 
 ## Étape E6.7 — Livraison
 
-- [ ] E6.7.1 Suite vitest complète `--pool=forks` hors sandbox, `tsc -b` à froid, eslint, knip.
-- [ ] E6.7.2 `delivery-checklist`.
+- [x] E6.7.1 Suite vitest complète `--pool=forks` hors sandbox, `tsc -b` à froid, eslint, knip.
+  2026-10-06 : `tsc -b` après purge de `node_modules/.tmp` puis `--force` : code 0 ; eslint `.` :
+  0 erreur (26 avertissements préexistants) ; `tools/knip-ratchet.mjs` : 0 / 0 / 0 ;
+  `lint:colors` et `lint:fields` propres ; vitest complet : 849 fichiers verts, 5 rouges qui sont
+  tous des garde-rails à balayage de `src/` en délai dépassé (5 s) sous charge
+  (`themedIcon`, `xuidMeta`, `intensityTooltipText`, `colorDistance`, `useCopyToClipboard`),
+  rejoués seuls : 5 fichiers / 9 tests verts — même constat que D6 du plan précédent.
+- [x] E6.7.2 `delivery-checklist`. Complétude relue item par item ; aucun TODO introduit ;
+  débranchés supprimés avec tests et imports (`matchSides`, `teamColorResolver`,
+  `resolveTeamColorFromID` + `TEAM_COLORS_HALO_INFINITE`, `teamIdOfSide`, `NO_IDENTITY`,
+  `occupantsPresents`, `sideResolver`, `sideResolverFromScoreboard`, régime à trois arguments) ;
+  garde-rail livré avec le helper (règle (c) + allowlist) ; tokens `team-ally` / `team-enemy`
+  seulement (+ neutres existants) ; aucune chaîne d'interface neuve. Longueur des fonctions
+  comparée à la base `f8a14b3b9` (script `fn_lengths_e6.mjs`) : aucune n'a grandi ;
+  `MatchEquipmentUsageSection` (83 → 85 au premier relevé) et `useReplayTimeline` (86 → 87)
+  resserrées sous leur dette (`filmAllegianceOf` accepte un document absent ; `teammatesOf`
+  extrait).
 - [ ] E6.7.3 `adversarial-review` (contexte frais, ≤ 2 tours).
 - [ ] E6.7.4 Commits `fix(rejeu):`, push de `feat/rejeu-equipes-web`, CI verte.
 - [ ] E6.7.5 Entrée `.ai/thought_log.md`.

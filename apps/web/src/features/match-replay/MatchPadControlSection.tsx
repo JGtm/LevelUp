@@ -65,7 +65,7 @@ import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersi
 import { meXUIDOf } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
-import { filmAllegianceOf, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 import { campLabel, type ReplayCamp } from '@/lib/replay/replayCamps'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
@@ -102,10 +102,7 @@ export function MatchPadControlSection({
   )
   // L'ALLÉGEANCE DU FILM, VUE DU JOUEUR DE LA PAGE (2026-10-06) : son équipe du film dit quel
   // camp est le sien — les camps eux-mêmes sont ceux du film (`padControlLogic`).
-  const allegiance = useMemo(
-    () => (data ? filmAllegianceOf(data, board, meXUIDOf(board)) : NO_ALLEGIANCE),
-    [data, board],
-  )
+  const allegiance = useMemo(() => filmAllegianceOf(data, board, meXUIDOf(board)), [data, board])
 
   // LE NOM D'UN CAMP DU FILM : la cascade des colonnes de fiches (`campLabel`), « Équipe N » de
   // son désignateur quand la feuille se tait — jamais « sans équipe ».

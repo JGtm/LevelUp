@@ -75,7 +75,7 @@ import { SectionCard } from '@/components/ui/section-card'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import { meXUIDOf } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
-import { filmAllegianceOf, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 import { campLabel, type ReplayCamp } from '@/lib/replay/replayCamps'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
@@ -129,10 +129,7 @@ export function MatchEquipmentUsageSection({
   const meXUID = useMemo(() => meXUIDOf(board), [board])
   // L'ALLÉGEANCE DU FILM, VUE DU JOUEUR DE LA PAGE (2026-10-06) : son équipe du film dit quel
   // camp est le sien — les camps eux-mêmes sont ceux du film (`equipmentUsageLogic`).
-  const allegiance = useMemo(
-    () => (data ? filmAllegianceOf(data, board, meXUID) : NO_ALLEGIANCE),
-    [data, board, meXUID],
-  )
+  const allegiance = useMemo(() => filmAllegianceOf(data, board, meXUID), [data, board, meXUID])
 
   // LE NOM D'UN CAMP DU FILM : la cascade des colonnes de fiches (`campLabel`) sur la feuille,
   // « Équipe N » de son désignateur quand elle se tait — jamais « sans équipe ».
@@ -140,10 +137,7 @@ export function MatchEquipmentUsageSection({
   // « Allié » = du camp du FILM du joueur de la page. Quand le film ne le situe pas (absent,
   // équipe tue), l'allégeance est INCONNUE (null) : encre neutre, jamais l'une des deux couleurs
   // d'équipe (même règle que `ReplayTeamHeader`).
-  const teamAccent = useCallback(
-    (camp: ReplayCamp) => teamTokenCssVar(allegiance.ofTeam(camp.team)),
-    [allegiance],
-  )
+  const teamAccent = useCallback((camp: ReplayCamp) => teamTokenCssVar(allegiance.ofTeam(camp.team)), [allegiance])
 
   const grid = useMemo(
     () =>

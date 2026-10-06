@@ -181,16 +181,8 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     [feedEntries, viewpoint, frameIntervalMs, scale, clockOf],
   )
   // L'EFFECTIF DE RÉFÉRENCE DE LA PISTE COÉQUIPIERS : les alliés du point de vue dans le FILM,
-  // lui-même exclu, désignés comme le fil désigne ses lignes de présence (le xuid de base quand
-  // la jointure a abouti, la clé du film sinon — cf. `presenceFeed`). Un bot allié en est.
-  const teammateXuids = useMemo(
-    () =>
-      players
-        .filter((p) => allegiance.ofPlayer(p) === true)
-        .map((p) => p.board?.xuid ?? p.xuid)
-        .filter((xuid) => xuid !== viewpoint),
-    [players, allegiance, viewpoint],
-  )
+  // lui-même exclu (`teammatesOf`). Un bot allié en est.
+  const teammateXuids = useMemo(() => teammatesOf(players, allegiance, viewpoint), [players, allegiance, viewpoint])
   const absence = useMemo(
     () => teammatesAbsence(feedEntries, teammateXuids, frameIntervalMs ?? 0, scale),
     [feedEntries, teammateXuids, frameIntervalMs, scale],
@@ -257,6 +249,22 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     onRequestPause: playback.togglePlay,
     locale,
   }
+}
+
+/**
+ * teammatesOf — les coéquipiers du point de vue : les joueurs que l'allégeance du FILM dit alliés,
+ * lui-même exclu, désignés comme le fil désigne ses lignes de présence (le xuid de base quand la
+ * jointure a abouti, la clé du film sinon — cf. `presenceFeed`).
+ */
+function teammatesOf(
+  players: readonly ReplayPlayer[],
+  allegiance: FilmAllegiance,
+  viewpoint: string | null,
+): string[] {
+  return players
+    .filter((p) => allegiance.ofPlayer(p) === true)
+    .map((p) => p.board?.xuid ?? p.xuid)
+    .filter((xuid) => xuid !== viewpoint)
 }
 
 /**
