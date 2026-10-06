@@ -256,9 +256,15 @@ it. A frame channel collects every publication of their eleven hooks with the po
 walk's reader and, when the frame closes, gives it to the component of the retained biped delta
 record whose extent carries it; a publication that no retained record carries (the body of a NEW
 record that desynchronises, which the walk drops) goes to no record and is counted. The anchoring
-then returns only the records of a slot that the walk did not read in that packet, and only in a
-frame that the walk did not close: a closed frame proves its whole list, so an anchored record the
-walk did not read there is a false anchor. The returned records are marked recovered and counted
+then returns only the records of a slot that the walk did not read in that packet, and only
+outside what the frame's closure proves. A closed frame whose walk started at the packet head
+proves the whole packet, so an anchored record the walk did not read there is a false anchor. A
+closed frame whose start of view B was located (by the slot-123 signature, by the chain of leading
+NEW records, or by the closure itself) proves only the list read from that start: the first
+candidate from which the walk closes the packet may sit in the middle of the list, and the records
+before it are not read. A frame that does not close proves nothing. The dated live-generation
+guard of the anchored readers applies to the walk's records too: a body is not read before its
+creation record. The returned records are marked recovered and counted
 under `repli_ancrage_bipede_apres_la_marche`, ordered after the reading. Each reader replays the
 publications of a record on its own hooks, component by component, under the contract of the
 record walk, so its logic does not change. A trial read publishes no channel hook: the single

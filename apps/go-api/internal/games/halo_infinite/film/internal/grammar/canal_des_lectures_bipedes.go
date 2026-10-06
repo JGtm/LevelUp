@@ -4,6 +4,7 @@ package grammar
 // L ANCRAGE QUI PASSE DERRIERE ELLE ([lecturesBipedes]).
 
 import (
+	"math"
 	"math/bits"
 	"slices"
 
@@ -126,11 +127,42 @@ func (c *capteurDeLectures) brancherLInventaire(obs *Observation) {
 	}
 }
 
-// trameDuCanal est ce que le canal retient d une trame pour l ancrage qui passe derriere : la
-// fermeture prouvee, et les slots des records que la marche y a lus.
+// trameDuCanal est ce que le canal retient d une trame pour l ancrage qui passe derriere : d ou sa
+// fermeture prouve sa liste, et les slots des records que la marche y a lus.
 type trameDuCanal struct {
-	fermee bool
-	slots  []uint32
+	// prouveeDes est le premier bit que la fermeture de la trame prouve. Une trame fermee partie de
+	// la tete du paquet prouve tout le paquet (0) : la vue A lue jusqu a son terminateur precede la
+	// vue B. Une trame fermee dont le debut de vue B a ete LOCALISE ([debutLocalise]) ne prouve que
+	// la liste lue depuis ce debut : ce qui le precede, la marche ne l a pas lu. Une trame qui n est
+	// pas fermee ne prouve rien ([rienDeProuve]).
+	prouveeDes uint32
+	slots      []uint32
+}
+
+// rienDeProuve est le [trameDuCanal.prouveeDes] d une trame que sa fermeture ne prouve pas.
+const rienDeProuve = math.MaxUint32
+
+// preuveDeLaTrame rend le premier bit que la fermeture de `p` prouve ([trameDuCanal.prouveeDes]).
+func preuveDeLaTrame(p *lecture.Paquet) uint32 {
+	switch {
+	case p.Fermeture.Verdict != lecture.VerdictFerme:
+		return rienDeProuve
+	case debutLocalise(p.Debut):
+		return p.VueB.Debut
+	}
+	return 0
+}
+
+// debutLocalise dit si le debut de la vue B a ete trouve par une localisation, et non lu : la
+// signature du slot 123, la chaine des records NEW de tete, ou la fermeture elle-meme. La fermeture
+// prouve la liste lue depuis un tel debut, pas qu aucun record ne le precede : le premier candidat
+// d ou la marche ferme le paquet peut etre un record du milieu de la liste.
+func debutLocalise(d lecture.DebutDeVueB) bool {
+	switch d {
+	case lecture.DebutParSignature, lecture.DebutParChaine, lecture.DebutParFermeture, lecture.DebutParFermetureAuBit:
+		return true
+	}
+	return false
 }
 
 // paquetDuFlux designe un paquet delta : son chunk et son rang.
@@ -152,12 +184,16 @@ type canalDesLecturesBipedes struct {
 	mortA map[types.LifeKey]uint64
 }
 
-// nouveauCanalDesLecturesBipedes prepare le canal des lectures bipedes du film `fc`.
+// nouveauCanalDesLecturesBipedes prepare le canal des lectures bipedes du film `fc`. Les
+// generations vivantes du film se relevent ICI, avant la marche : leur releve marche les
+// images-cles du film, ce qui ne se fait pas au milieu de la marche des trames, ou chaque trame
+// date ensuite la sienne ([FilmContext.GenerationsVivantesA]).
 func nouveauCanalDesLecturesBipedes(fc *FilmContext) *canalDesLecturesBipedes {
 	c := &canalDesLecturesBipedes{fc: fc, trames: map[paquetDuFlux]trameDuCanal{}, mortA: map[types.LifeKey]uint64{}}
 	if arch, err := fc.bipedArchetype(); err == nil {
 		c.utiles = composantsDesLecteursBipedes(arch)
 	}
+	fc.GenerationsVivantesA(0)
 	return c
 }
 
@@ -189,15 +225,22 @@ func (c *canalDesLecturesBipedes) Trame(p *lecture.Paquet) {
 	appels := c.cap.appels
 	c.cap.appels = c.cap.appels[:0]
 	recs, lus := c.m.recordsDeLaTrame()
-	t := trameDuCanal{}
 	if !lus || !c.m.attribuable() {
 		// Une trame que la marche n a pas lue, ou qu elle n a pas marchee par classes de vue (sans
 		// position de lecture) : l ancrage la lira entiere.
 		c.lu.horsRecord += len(appels)
-		c.trames[paquetDuFlux{p.Chunk, p.Index}] = t
+		c.trames[paquetDuFlux{p.Chunk, p.Index}] = trameDuCanal{prouveeDes: rienDeProuve}
 		return
 	}
-	t.fermee = p.Fermeture.Verdict == lecture.VerdictFerme
+	c.recueillir(p, recs, appels, c.fc.GenerationsVivantesA(p.TS))
+}
+
+// recueillir retient, des records `recs` que la marche a lus dans la trame `p`, les records bipedes
+// delta d un corps vivant a l instant du filtre `gens`, chacun avec les publications d `appels`
+// qu il porte ; et retient la trame pour l ancrage qui passe derriere.
+func (c *canalDesLecturesBipedes) recueillir(p *lecture.Paquet, recs []FrameRecord, appels []appelEnAttente,
+	gens *GenerationsVivantes) {
+	t := trameDuCanal{prouveeDes: preuveDeLaTrame(p)}
 	k := 0
 	for i := range recs {
 		r := &recs[i]
@@ -216,6 +259,13 @@ func (c *canalDesLecturesBipedes) Trame(p *lecture.Paquet) {
 		c.lu.examines++
 		rb := recordDeLaMarche(p, r)
 		k = attribuerLesAppels(&rb, r, appels, k, &c.lu.horsRecord)
+		if !gens.Accepte(vie) {
+			// La garde des generations vivantes datees, celle de l ancrage (lot R2-bis) : un corps
+			// n est pas lu avant son record de creation, ni sous une generation que le film ne
+			// connait pas.
+			c.lu.generationsRefusees++
+			continue
+		}
 		if _, deja := c.mortA[vie]; !deja && r.Trace.Dead != nil {
 			c.mortA[vie] = p.TS
 		}
@@ -286,7 +336,8 @@ func attribuerLesAppels(rb *recordBipedeLu, r *FrameRecord, appels []appelEnAtte
 }
 
 // recuperer fait passer l ancrage d en-tete bipede derriere la marche : il ne rend que les records
-// qu elle n a pas lus, dans une trame qu elle n a pas fermee.
+// d un slot qu elle n a pas lu dans le paquet, hors de ce que la fermeture de la trame prouve
+// ([rendParLAncrage]).
 func (c *canalDesLecturesBipedes) recuperer() []recordBipedeLu {
 	lay, err := c.fc.I0Layout()
 	if err != nil {
@@ -302,7 +353,7 @@ func (c *canalDesLecturesBipedes) recuperer() []recordBipedeLu {
 	g := grammaireRecord{lay: lay, arch: arch, prof: c.fc.ProfilDeBalayage(), obs: obs}
 	var out []recordBipedeLu
 	c.fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		if t, vu := c.trames[paquetDuFlux{r.Chunk, r.Packet.Index}]; !rendParLAncrage(t, vu, r.Slot) {
+		if t, vu := c.trames[paquetDuFlux{r.Chunk, r.Packet.Index}]; !rendParLAncrage(t, vu, r.Slot, r.I0) {
 			return
 		}
 		if mort, connue := c.mortA[r.Vie()]; connue && r.Packet.TimestampUS >= mort {
@@ -352,9 +403,10 @@ func (m *MarcheDistribuee) attribuable() bool {
 	return m.marche != nil && m.marche.trame.parRangs
 }
 
-// rendParLAncrage dit si l ancrage rend un record du slot `slot` dans une trame que le canal a vue
-// (`vu`) telle que `t` : une trame que la marche n a pas rendue, ou une trame qu elle n a pas fermee
-// et ou elle n a lu aucun record de ce slot.
-func rendParLAncrage(t trameDuCanal, vu bool, slot uint32) bool {
-	return !vu || (!t.fermee && !slices.Contains(t.slots, slot))
+// rendParLAncrage dit si l ancrage rend un record du slot `slot`, dont le composant i0 commence au
+// bit `i0`, dans une trame que le canal a vue (`vu`) telle que `t` : une trame que la marche n a pas
+// rendue ; sinon un slot dont la marche n a lu aucun record dans la trame, hors de ce que sa
+// fermeture prouve.
+func rendParLAncrage(t trameDuCanal, vu bool, slot uint32, i0 int) bool {
+	return !vu || (!slices.Contains(t.slots, slot) && int64(i0) < int64(t.prouveeDes))
 }

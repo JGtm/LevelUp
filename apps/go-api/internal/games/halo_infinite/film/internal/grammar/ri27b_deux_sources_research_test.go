@@ -99,7 +99,9 @@ func TestRI27bDeuxSources(t *testing.T) {
 }
 
 // ri27bTemoinDesVies releve, pour des slots donnes, les records bipedes de la marche : instant,
-// genre, generation, dead-state, et si le masque annonce un emplacement d arme.
+// genre, generation, dead-state, si le masque annonce un emplacement d arme, la position (i0) et
+// le rang de capacite (i48). RI27B_TOUT=1 garde chaque record, pas seulement les armes, les morts
+// et les NEW.
 type ri27bTemoinDesVies struct {
 	m      *MarcheDistribuee
 	slots  map[uint32]bool
@@ -126,8 +128,9 @@ func (c *ri27bTemoinDesVies) Trame(p *lecture.Paquet) {
 				arme = true
 			}
 		}
-		c.lignes = append(c.lignes, fmt.Sprintf("ts=%d slot=%d type=%d gen=%d mort=%v arme=%v masque=%x",
-			p.TS, r.Slot, r.Type, r.ID>>30, r.Trace.Dead != nil, arme, r.Trace.Mask))
+		c.lignes = append(c.lignes, fmt.Sprintf("ts=%d slot=%d type=%d gen=%d mort=%v arme=%v i0=%v i48=%v masque=%x debut=%d verdict=%d paquet=%d:%d",
+			p.TS, r.Slot, r.Type, r.ID>>30, r.Trace.Dead != nil, arme, r.Trace.Mask&1 == 1,
+			r.Trace.Mask>>i48Index&1 == 1, r.Trace.Mask, p.Debut, p.Fermeture.Verdict, p.Chunk, p.Index))
 	}
 }
 
@@ -136,7 +139,12 @@ func TestRI27bTemoinDesVies(t *testing.T) {
 	if film == "" || racine == "" || slots == "" {
 		t.Skip("instrument : RI27B_FILM, RI27B_RACINE et RI27B_SLOTS requis")
 	}
-	fc := ri27bContexte(t, filepath.Join(racine, film), ri27bCarte(t, film))
+	// RI27B_CARTE nomme la carte d un film hors du corpus d equivalence (un temoin du gate).
+	carte := os.Getenv("RI27B_CARTE")
+	if carte == "" {
+		carte = ri27bCarte(t, film)
+	}
+	fc := ri27bContexte(t, filepath.Join(racine, film), carte)
 	arch, err := fc.bipedArchetype()
 	if err != nil {
 		t.Fatal(err)
@@ -156,8 +164,9 @@ func TestRI27bTemoinDesVies(t *testing.T) {
 	if err := Distribuer(fc, c); err != nil {
 		t.Fatal(err)
 	}
+	tout := os.Getenv("RI27B_TOUT") == "1"
 	for _, l := range c.lignes {
-		if strings.Contains(l, "arme=true") || strings.Contains(l, "mort=true") || strings.Contains(l, "type=1") {
+		if tout || strings.Contains(l, "arme=true") || strings.Contains(l, "mort=true") || strings.Contains(l, "type=1") {
 			t.Log(l)
 		}
 	}

@@ -781,8 +781,12 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       - records bipèdes delta : ancrage 5 436 632, marche 5 088 890 (et 101 148 de plus par la
         récupération des listes non localisées du canal des morts), communs 4 615 828 ;
       - l'ancrage seul (820 804 records) ne porte presque jamais un slot que la marche a lu dans le
-        même paquet (50) : ce sont d'autres records. Dans les trames fermées, 35 678, tous dans
-        l'étendue que la marche a lue sauf 68 : de fausses ancres, la fermeture prouve la liste.
+        même paquet (50) : ce sont d'autres records. Dans les trames fermées, 35 678, tous en deçà
+        de la fin de la lecture de la marche sauf 68. *Lecture corrigée à l'instruction du gate
+        (même jour)* : « en deçà de la fin » comptait aussi ce qui PRÉCÈDE un début de vue B
+        localisé ; 35 256 de ces records précèdent le début qu'a choisi la fermeture
+        (`DebutParFermeture`), 185 seulement sont dans l'étendue lue — ce ne sont pas de fausses
+        ancres (décision 9).
         Ailleurs : listes non localisées 313 606 (la récupération en relit 162 770 avec la marche,
         85 276 communs) ; trames refusées 376 550, dont 269 899 au-delà du dernier record de la
         marche ; queues opaques 17 458 ;
@@ -815,6 +819,51 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
          gardent leur sens, des deltas.
       5. Les lectures des deux sources se rangent dans l'ordre du flux (paquet, puis bit du record)
          avant le traitement de chaque lecteur, inchangé : la source change, pas la logique.
+      *Décisions d'exécution ajoutées à l'instruction du gate (2026-10-06)* :
+      6. Un corps mort n'agit plus : le record qui porte le dead-state d'une vie et ceux du même
+         corps qui le suivent, jusqu'au record NEW qui recrée la génération, ne vont à aucun lecteur,
+         d'une source ou de l'autre (ils décrivent le cadavre : emplacements vidés, équipement
+         retiré). Ils se comptent.
+      7. Une annonce n'est pas un changement : une émission d'arme portée qui répète la famille
+         précédente de l'emplacement, ou qui annonce un emplacement vide sans occupant connu, est
+         `Restated`, pas une prise ni un lâcher.
+      8. La garde des générations vivantes datées (lot R2-bis), que l'ancrage applique à chaque
+         en-tête, s'applique aussi aux records de la marche : aucun record de trame fermée ne la
+         rate sur les 20 films ; 15 records de trames refusées ou à queue opaque, aux masques
+         manifestement faux, sont écartés et comptés.
+      9. Une trame fermée ne prouve sa liste qu'à partir de son début de vue B quand ce début a été
+         LOCALISÉ (signature, chaîne de NEW de tête, fermeture) : le premier candidat d'où la marche
+         ferme le paquet peut être au milieu de la liste. L'ancrage rend ce qui précède ce début,
+         pour un slot que la marche n'a pas lu. Un début LU (la tête ; la fin de la vue A quand le
+         lot V2 de la campagne arrive) prouve tout le paquet.
+      *Écrit* (`a5232e3e5`, `4f4049ebd`, puis les décisions 8 et 9) : canal des lectures bipèdes
+      (`grammar/canal_des_lectures_bipedes.go`, `grammar/lectures_bipedes.go`) — il recueille les
+      publications des onze crochets des huit lecteurs, datées de la position du lecteur de la marche,
+      les attribue trame par trame au composant du record bipède delta retenu dont l'étendue les
+      porte, puis fait passer l'ancrage derrière (records marqués récupérés, repli
+      `repli_ancrage_bipede_apres_la_marche` au registre, ordre « après la lecture ») et range tout
+      dans l'ordre du flux ; les huit lecteurs (charges, impulsions, rangs, camouflage, grappin, arme
+      portée, deltas d'inventaire, équipement et équipement d'unité) rejouent ces publications sur
+      leurs crochets sans relire un bit ; porte unique des essais étendue aux douze crochets de canal
+      (`grammar/porte_des_essais.go`, garde-rail) ; la cuisson distribue le canal avec les états de
+      mouvement, et ses étapes depuis le film se réordonnent (monde, états de mouvement, portage,
+      capacités, pont) ; ADR 0037 IR-6 et IR-8 amendés.
+      *Gate de corpus contre `fed1efed2`, après les décisions 6 à 9* (19 témoins) : aucun oracle ne
+      bouge (kills, morts, assistances, score personnel, équipes, vies, V-1, V-2, V-4 à V-8) ; aucune
+      lecture d'un lecteur ne baisse contre la base, sauf les lâchers d'une arme inconnue (48 → 0,
+      décision 7) ; les lectures montent partout (prises et échanges d'arme, rangs `i48`, charges,
+      impulsions, grenades, équipement), les prises d'arme se lient à leur objet au sol (fins
+      « vues » devenues « ramassées »), les récupérations gatées d'équipement deviennent inutiles
+      (la marche lit ces records : mêmes valeurs), un portage de bombe se ferme à l'armement au lieu
+      de rester ouvert jusqu'à la fin du film (`c75f33b8`), les épisodes de camouflage finissent à
+      leur première lecture. FAUX du banc, instruits : (a) R-1 du repli neuf sur les 19 témoins, par
+      construction (mécanisme D-L0-5 de la campagne) ; (b) R-1 de deux replis existants vus pour la
+      première fois (`repli_lien_prise_arme_abandonne`, plus de prises dont certaines sans position
+      d'acteur à ±250 ms ; `repli_rang_capacite_vie_elargie`, plus d'impulsions et de charges en bord
+      de vie) ; (c) V-3 sur trois témoins : 24 lectures du rang de capacité 13 à 15 ms après la
+      création du corps, avant son premier mouvement — la piste d'une vie ne part que du premier
+      mouvement (découverte 22) ; (d) V-3 sur `51ebbc0f` : l'équipement retiré par le jeu en fin de
+      manche, lu comme dépensé (découverte 24). En attente : admission de l'utilisateur.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
       du 2026-10-03) ; `IDLowBits` unifié (IR-7). Le découpage MPP déclaré par le film (2.7.a0)
@@ -1085,6 +1134,32 @@ plan y sont reprises comme items (3.1.2).
    capture de position (`captureDePosition.accum`) n'a pas d'écrivain de production, le décodeur
    de positions accumule de son côté. Une position lue par la marche n'est qu'un delta quantifié
    tant que la marche ne tient pas un monde de positions.
+22. *(lot 2.7.b, instruction du gate du 2026-10-06)* **La piste d'une vie part de son premier
+   mouvement, pas de sa création.** Le record NEW d'un bipède porte sa position de naissance (i0),
+   que le décodeur de positions ne lit pas ; un corps immobile (gel d'avant-match, quelques
+   dixièmes de seconde après une réapparition) n'a pas de delta de position. La marche lit le rang
+   de capacité que le jeu transmet 13 à 15 ms après la création (`0797ce72` slot 524 : NEW à
+   3642,645 s, rang à 3642,658 s, première position à 3643,426 s) : le banc le juge « hors vie ».
+   À traiter avec les positions derrière la grammaire (2.7.d) : la position du NEW ouvrirait la
+   piste.
+23. *(même instruction)* **Un début de liste choisi par la fermeture ne prouve que la suite de la
+   liste.** `debutParFermetureRangee` prend le PREMIER candidat (un NEW) d'où la marche ferme le
+   paquet ; il peut être au milieu de la liste. Sur les 20 films, 2 449 paquets fermés à début
+   `DebutParFermeture` portent 35 256 records ancrés avant ce début (2 152 avec un composant des
+   huit lecteurs). La campagne avait mesuré ~600 paquets où deux débuts incompatibles ferment ;
+   son lot V2 (début lu à la fin de la vue A) en tranchera une part. Liste des paquets remise à la
+   campagne (`scratchpad/ri/ri27b/paquets_par_fermeture.tsv`). Traité dans 2.7.b pour les lecteurs
+   (décision 9) ; la grammaire elle-même garde son premier rang (campagne).
+24. *(même instruction)* **En fin de manche, le jeu retire l'équipement des corps.** La marche lit ce
+   retrait (records sans position, après le dernier mouvement) et le lecteur d'équipement le publie
+   « dépensé » : `51ebbc0f`, deux à la fin de la manche 1 (un hors de la piste, V-3). Ce n'est pas
+   un geste. Un signal de fin de manche manque à la grammaire ; le rejeu connaît les bornes de
+   manche. Hors de ce lot.
+25. *(même instruction)* **La garde des générations vivantes datées ne valait que pour l'ancrage.**
+   Le lot R2-bis l'a posée sur « tous les lecteurs de records delta bipèdes » ; le canal de 2.7.b
+   l'avait perdue pour les records de la marche (décision 8). Un record de trame non prouvée peut
+   être lu au-delà d'une largeur fausse : génération 0 sur un slot vivant en 1, masque à trente
+   composants.
 
 ## 7. Journal
 
@@ -1420,3 +1495,14 @@ plan y sont reprises comme items (3.1.2).
   20 films en trois exécutions (la dernière avec la récupération des listes, la répartition de
   l'ancrage seul et la fidélité selon le localisateur) : décisions d'exécution 1 à 5, découvertes
   19 à 21. Campagne prévenue avant et après la passe et la mesure.
+- 2026-10-06 : 2.7.b ÉCRIT, GATE INSTRUIT. Premier gate de corpus complet (19 témoins, contre
+  `fed1efed2`) : 220 actions hors vie (V-3) dues aux records de cadavres et aux annonces
+  d'emplacements vides → décisions 6 et 7 (`4f4049ebd`). Deuxième gate : V-3 résiduels instruits
+  témoin par témoin (lectures de naissance, une remise à zéro de fin de manche, un record déchet
+  de génération 0 dans une queue opaque), une lecture de grenade perdue sur `c75f33b8` (paquet
+  22:376 : la marche part d'un NEW du milieu de la liste) → mesures sur les 20 films (garde des
+  générations, ancres seules par verdict et par début de vue B) → décisions 8 et 9. Troisième
+  gate : plus aucune lecture perdue contre la base hors des lâchers d'arme inconnue ; FAUX
+  restants instruits (item 2.7.b), à faire admettre. Découvertes 22 à 25 ; liste des paquets à
+  début choisi par la fermeture remise à la campagne pour son lot V2. Campagne prévenue avant et
+  après chaque passe.

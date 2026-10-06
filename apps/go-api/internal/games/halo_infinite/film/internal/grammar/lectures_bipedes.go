@@ -20,10 +20,21 @@ package grammar
 // la marche ne garde pas) n est attribuee a personne, et se compte.
 //
 // L ANCRAGE, DERRIERE : il ne lit qu un record dont la marche n a lu aucun record du meme slot
-// dans le paquet, et seulement dans une trame qu elle n a pas fermee — une trame fermee prouve sa
-// liste entiere, et un record ancre que la marche n y a pas lu est une fausse ancre. Un tel record
-// est marque recupere ([recordBipedeLu.Recupere]) et compte au rapport des replis du contexte
+// dans le paquet, et seulement hors de ce que la fermeture de la trame prouve. Une trame fermee
+// partie de la tete du paquet prouve le paquet entier : un record ancre que la marche n y a pas lu
+// est une fausse ancre. Une trame fermee dont le debut de vue B a ete LOCALISE ne prouve que la
+// liste lue depuis ce debut : un record ancre qui le precede, la marche ne l a pas lu. Une trame
+// qui n est pas fermee ne prouve rien. Un record rendu par l ancrage est marque recupere
+// ([recordBipedeLu.Recupere]) et compte au rapport des replis du contexte
 // (`repli_ancrage_bipede_apres_la_marche`, ordre « apres la lecture »).
+//
+// # LA GARDE DES GENERATIONS VIVANTES DATEES VAUT POUR LES DEUX SOURCES
+//
+// Un record de la marche dont la generation n est pas vivante a l instant de son paquet
+// ([FilmContext.GenerationsVivantesA], lot R2-bis) ne va a aucun lecteur, comme l ancrage n ancre
+// pas un tel en-tete : un corps n est pas lu avant son record de creation. Une trame que sa
+// fermeture ne prouve pas peut en porter, lus au-dela d une largeur fausse. Ces records se comptent
+// ([lecturesBipedes.generationsRefusees]).
 //
 // # UN CORPS MORT N AGIT PLUS
 //
@@ -128,8 +139,10 @@ type lecturesBipedes struct {
 	records []recordBipedeLu
 	// examines : records bipedes delta lus, meme ceux qui n annoncent rien des huit lecteurs ;
 	// recuperes : ceux que l ancrage a rendus ; horsRecord : publications de la marche qu aucun
-	// record retenu ne porte ; corpsMorts : records d un corps mort, ecartes.
-	examines, recuperes, horsRecord, corpsMorts int
+	// record retenu ne porte ; corpsMorts : records d un corps mort, ecartes ;
+	// generationsRefusees : records de la marche que la garde des generations vivantes datees
+	// ecarte (l ancrage ne rend que ce qu elle accepte).
+	examines, recuperes, horsRecord, corpsMorts, generationsRefusees int
 }
 
 // lecturesBipedes rend les lectures bipedes du film, faites une fois par contexte : par la

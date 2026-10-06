@@ -109,9 +109,10 @@ func TestChaquePublicationVaAuComposantQuiLaPorte(t *testing.T) {
 }
 
 // TestLAncrageNePasseQueDerriereLaMarcheSurLaMiniBobine : sur des octets reels, un record recupere
-// par l ancrage n est jamais dans une trame que la marche a fermee, ni d un slot qu elle a lu dans
-// son paquet ; et quand l ancrage ancre un record que la marche a lu, ils publient les memes
-// valeurs, composant par composant.
+// par l ancrage n est jamais dans ce que la fermeture d une trame prouve, ni d un slot que la marche
+// a lu dans son paquet ; aucun record, d une source ou de l autre, n est d un corps que la garde des
+// generations vivantes datees refuse ; et quand l ancrage ancre un record que la marche a lu, ils
+// publient les memes valeurs, composant par composant.
 func TestLAncrageNePasseQueDerriereLaMarcheSurLaMiniBobine(t *testing.T) {
 	film, err := source.LoadDir(bobineFamilles, nil)
 	if err != nil {
@@ -133,13 +134,17 @@ func TestLAncrageNePasseQueDerriereLaMarcheSurLaMiniBobine(t *testing.T) {
 	for i := range lu.records {
 		r := &lu.records[i]
 		k := cleDeRecord{paquetDuFlux{r.Chunk, r.Packet.Index}, r.Slot, r.I0}
+		if !fc.GenerationsVivantesA(r.Packet.TimestampUS).Accepte(types.LifeKey{Slot: r.Slot, Gen: r.Gen}) {
+			t.Fatalf("record %+v (recupere %v) d un corps que la garde des generations vivantes refuse", k, r.Recupere)
+		}
 		if !r.Recupere {
 			parLaMarche[k] = r
 			continue
 		}
 		tr := canal.trames[k.paquet]
-		if tr.fermee || slices.Contains(tr.slots, r.Slot) {
-			t.Fatalf("record recupere %+v dans une trame fermee ou d un slot que la marche a lu", k)
+		if int64(r.I0) >= int64(tr.prouveeDes) || slices.Contains(tr.slots, r.Slot) {
+			t.Fatalf("record recupere %+v dans ce que la fermeture prouve (des le bit %d) ou d un slot que la marche a lu",
+				k, tr.prouveeDes)
 		}
 	}
 	// Un corps mort n agit plus : aucun record d une vie a l instant de son dead-state ou apres.
@@ -191,7 +196,8 @@ func comparerLesSources(t *testing.T, fc *FilmContext, parLaMarche map[cleDeReco
 	}
 }
 
-// TestLAncrageNeRendQueCeQueLaMarcheNaPasLu : la regle de l ancrage derriere la marche, cas par cas.
+// TestLAncrageNeRendQueCeQueLaMarcheNaPasLu : la regle de l ancrage derriere la marche, cas par cas,
+// pour un record du slot 520 dont l i0 commence au bit 300.
 func TestLAncrageNeRendQueCeQueLaMarcheNaPasLu(t *testing.T) {
 	cas := []struct {
 		nom   string
@@ -200,15 +206,86 @@ func TestLAncrageNeRendQueCeQueLaMarcheNaPasLu(t *testing.T) {
 		rend  bool
 	}{
 		{"trame que la marche n a pas rendue", trameDuCanal{}, false, true},
-		{"trame fermee", trameDuCanal{fermee: true}, true, false},
-		{"trame fermee sans le slot", trameDuCanal{fermee: true, slots: []uint32{600}}, true, false},
-		{"trame ouverte ou la marche a lu le slot", trameDuCanal{slots: []uint32{520}}, true, false},
-		{"trame ouverte sans le slot", trameDuCanal{slots: []uint32{600}}, true, true},
-		{"trame non lue (aucun slot)", trameDuCanal{}, true, true},
+		{"trame fermee depuis la tete", trameDuCanal{prouveeDes: 0}, true, false},
+		{"trame fermee depuis la tete, sans le slot", trameDuCanal{slots: []uint32{600}}, true, false},
+		{"debut localise apres le record", trameDuCanal{prouveeDes: 400, slots: []uint32{600}}, true, true},
+		{"debut localise avant le record", trameDuCanal{prouveeDes: 200, slots: []uint32{600}}, true, false},
+		{"debut localise apres le record, slot lu", trameDuCanal{prouveeDes: 400, slots: []uint32{520}}, true, false},
+		{"trame non fermee ou la marche a lu le slot", trameDuCanal{prouveeDes: rienDeProuve, slots: []uint32{520}}, true, false},
+		{"trame non fermee sans le slot", trameDuCanal{prouveeDes: rienDeProuve, slots: []uint32{600}}, true, true},
+		{"trame non fermee sans record lu", trameDuCanal{prouveeDes: rienDeProuve}, true, true},
 	}
 	for _, c := range cas {
-		if got := rendParLAncrage(c.trame, c.vu, 520); got != c.rend {
+		if got := rendParLAncrage(c.trame, c.vu, 520, 300); got != c.rend {
 			t.Errorf("%s : rend %v, attendu %v", c.nom, got, c.rend)
+		}
+	}
+}
+
+// TestLaMarcheNeDonneQueLesCorpsVivants : un record d une generation que la garde des generations
+// vivantes refuse ne va a aucun lecteur et se compte ; le record qui porte le dead-state d une vie
+// et ceux de ce corps qui le suivent sont ecartes et comptes, jusqu au record NEW qui recree la
+// generation ; un record qui n annonce aucun composant des lecteurs n est pas retenu.
+func TestLaMarcheNeDonneQueLesCorpsVivants(t *testing.T) {
+	c := &canalDesLecturesBipedes{trames: map[paquetDuFlux]trameDuCanal{}, mortA: map[types.LifeKey]uint64{},
+		utiles: masqueDesIndex([]int{21})}
+	gens := NouvellesGenerationsVivantes([]types.LifeKey{{Slot: 520, Gen: 1}, {Slot: 521, Gen: 1}})
+	record := func(typ int, slot, gen uint32, mort bool, idx ...int) FrameRecord {
+		r := FrameRecord{Slot: slot, ID: gen<<30 | slot, Type: typ, TypeIndex: BipedTypeIndex, HeaderBit: 10, FinBit: 90,
+			Trace: EntityTrace{Mask: masqueDesIndex(idx)}}
+		for j, id := range idx {
+			r.Trace.Comps = append(r.Trace.Comps, CompResult{Index: id, Ported: true, StartBit: 20 + 10*j})
+		}
+		if mort {
+			r.Trace.Dead = &types.DeadState{}
+		}
+		return r
+	}
+	paquet := func(ts uint64) *lecture.Paquet {
+		return &lecture.Paquet{Chunk: 1, Index: int(ts), TS: ts, Fermeture: lecture.Fermeture{Verdict: lecture.VerdictFerme}}
+	}
+	c.recueillir(paquet(1), []FrameRecord{
+		record(recDelta, 520, 1, false, 0, 21), // retenu
+		record(recDelta, 520, 0, false, 0, 21), // generation inconnue du slot : refuse
+		record(recDelta, 521, 1, false, 0, 5),  // n annonce rien des lecteurs
+	}, nil, gens)
+	c.recueillir(paquet(2), []FrameRecord{record(recDelta, 520, 1, true, 0, 21)}, nil, gens)  // dead-state
+	c.recueillir(paquet(3), []FrameRecord{record(recDelta, 520, 1, false, 0, 21)}, nil, gens) // corps mort
+	c.recueillir(paquet(4), []FrameRecord{record(recNew, 520, 1, false, 0, 21), record(recDelta, 520, 1, false, 0, 21)}, nil, gens)
+	var retenus []uint64
+	for _, r := range c.lu.records {
+		retenus = append(retenus, r.Packet.TimestampUS)
+	}
+	if !slices.Equal(retenus, []uint64{1, 4}) || c.lu.generationsRefusees != 1 || c.lu.corpsMorts != 2 || c.lu.examines != 6 {
+		t.Fatalf("retenus aux instants %v (attendu [1 4]), generations refusees %d (1), corps morts %d (2), examines %d (6)",
+			retenus, c.lu.generationsRefusees, c.lu.corpsMorts, c.lu.examines)
+	}
+	if got := c.trames[paquetDuFlux{1, 1}]; got.prouveeDes != 0 || !slices.Equal(got.slots, []uint32{520, 520, 521}) {
+		t.Fatalf("trame retenue %+v : prouvee des 0, slots lus 520, 520, 521 attendus", got)
+	}
+}
+
+// TestCeQueLaFermetureProuve : une trame fermee partie de la tete prouve le paquet entier ; une trame
+// fermee dont le debut de vue B a ete localise, sa liste depuis ce debut ; une trame non fermee, rien.
+func TestCeQueLaFermetureProuve(t *testing.T) {
+	cas := []struct {
+		verdict lecture.Verdict
+		debut   lecture.DebutDeVueB
+		prouve  uint32
+	}{
+		{lecture.VerdictFerme, lecture.DebutEnTete, 0},
+		{lecture.VerdictFerme, lecture.DebutParSignature, 250},
+		{lecture.VerdictFerme, lecture.DebutParChaine, 250},
+		{lecture.VerdictFerme, lecture.DebutParFermeture, 250},
+		{lecture.VerdictRefuse, lecture.DebutEnTete, rienDeProuve},
+		{lecture.VerdictRefuse, lecture.DebutParFermetureAuBit, rienDeProuve},
+		{lecture.VerdictQueueOpaque, lecture.DebutEnTete, rienDeProuve},
+		{lecture.VerdictQueueOpaque, lecture.DebutNonLocalise, rienDeProuve},
+	}
+	for _, c := range cas {
+		p := &lecture.Paquet{Debut: c.debut, VueB: lecture.VueB{Debut: 250}, Fermeture: lecture.Fermeture{Verdict: c.verdict}}
+		if got := preuveDeLaTrame(p); got != c.prouve {
+			t.Errorf("verdict %d, debut %d : prouve des %d, attendu %d", c.verdict, c.debut, got, c.prouve)
 		}
 	}
 }
