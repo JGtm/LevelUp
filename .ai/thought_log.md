@@ -115940,3 +115940,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : tests vus rouges avant le code (sauf le test handler et « Zone sans nom », verts d'emblée) ; 7 mutations rouges ; Go 349 paquets en six lots, 1 échec hors périmètre (test de durée `sync/skill` sous charge d'une autre session, vert rejoué seul) ; garde-rails nommés PASS ; lint 0 issue ; contrat inchangé. Décisions du superviseur consignées : stub de `teammates_squad_echange_test.go` accepté (§8), « Pont du marché ouest » écart assumé à la maquette (journal L2).
 
 **Conclusion / prochaine étape** : L3 clos ; L4 (web : largeur d'Ascension, cockpit à trois colonnes, « Cartes jouées ») après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L4 : largeur d'Ascension, cockpit à trois colonnes, « Cartes jouées » — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L4 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : Ascension passe pleine largeur (`p-6`) ; l'onglet Tactique devient un écran unique — colonne « Cartes jouées » (recherche sans casse ni accents sur nom affiché et canonique, vignettes compactes 100 px des seules cartes ouvrables, repli des cartes sous le plancher) et, à côté, la lecture de la carte affichée, transitoirement la vue d'analyse existante ; la carte affichée suit D11 (`carteEffective` : URL ouvrable, sinon la plus jouée des ouvrables choisie d'office SANS réécrire l'URL ; carte d'URL hors filtre ou sous le plancher nommée, sans lecture) ; les états bloquants sont dits une fois, dans la colonne, sans lecture montée ; bascule, grille, pied et `couvertureGrille` retirés.
+
+**Résultats observés** : gate à blanc rouge sur `tsc` (fixture cassée par le contrat de L1, réparée) ; tests vus rouges avant le code, la page prouvée rouge après coup contre HEAD (9 échecs) ; 9 mutations rouges ; gate web vert (852 fichiers / 9 133 tests, `tsc` 0, lint 0 erreur, manifestes à jour, ratchets verts, pre-push vert) ; §4.A → 0.
+
+**Conclusion / prochaine étape** : L4 clos ; L5 (la carte du plan, avec le rappel D18 au compte rendu) après le « continue » du superviseur.

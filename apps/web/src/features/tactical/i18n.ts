@@ -32,6 +32,14 @@ export function getTacticalText(locale: Locale) {
     // Résumé d'une vignette sur une seule ligne : « N matchs · V V / D D ».
     tileSummary: (n: number, wins: number, losses: number) =>
       m('tactical.maps.tile_summary', { n, wins, losses }),
+    // Colonne « Cartes jouées » de l'écran unique : recherche, liste vide, repli du plancher.
+    mapsSearchPlaceholder: m('tactical.maps.search_placeholder'),
+    mapsSearchLabel: m('tactical.maps.search_label'),
+    mapsNoMatch: m('tactical.maps.no_match'),
+    mapsNoneOpenable: m('tactical.maps.none_openable'),
+    floorFold: (n: number) => m('tactical.maps.floor_fold', { n }),
+    floorFoldFiltered: (shown: number, n: number) => m('tactical.maps.floor_fold_filtered', { shown, n }),
+    floorCount: (n: number, floor: number) => m('tactical.maps.floor_count', { n, floor }),
     // Bascule d'écran (grille / analyse).
     screenLabel: m('tactical.screen.label'),
     screenGrid: m('tactical.screen.grid'),

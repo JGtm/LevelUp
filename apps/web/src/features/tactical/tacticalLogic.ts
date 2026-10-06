@@ -1,8 +1,8 @@
 /**
- * tacticalLogic — la logique PURE de la grille des cartes de l'onglet Tactique.
+ * tacticalLogic — la logique PURE des cartes jouées et du périmètre de l'onglet Tactique.
  *
  * Aucun composant, aucun hook, aucune I/O : le tri, l'état sous plancher, la barre
- * victoires / défaites et la ligne de couverture se testent seuls. Les composants ne font
+ * victoires / défaites et le contexte de filtre se testent seuls. Les composants ne font
  * que rendre ce que ces fonctions décident (règle du dépôt : pas de logique métier dans un
  * composant React).
  *
@@ -38,7 +38,7 @@ export interface BarreResultats {
  * du même jeu de données ne se présentent jamais dans deux ordres différents.
  *
  * Ne filtre RIEN : une carte sous le plancher reste affichée (le joueur doit voir qu'il y
- * a joué), simplement désaturée et non ouvrable.
+ * a joué), dans le repli de la colonne des cartes, non ouvrable.
  */
 export function trierCartes(cartes: readonly TacticalMapCard[]): TacticalMapCard[] {
   return [...cartes].sort((a, b) => {
@@ -72,17 +72,6 @@ export function barreResultats(carte: TacticalMapCard): BarreResultats {
   const partV = victoires / denominateur
   const partD = defaites / denominateur
   return { victoires: partV, defaites: partD, autres: Math.max(0, 1 - partV - partD) }
-}
-
-/** Couverture de la grille : combien de cartes, et combien de matchs au total. */
-export function couvertureGrille(cartes: readonly TacticalMapCard[]): {
-  cartes: number
-  matchs: number
-} {
-  return {
-    cartes: cartes.length,
-    matchs: cartes.reduce((somme, c) => somme + Math.max(0, c.matchs), 0),
-  }
 }
 
 /**

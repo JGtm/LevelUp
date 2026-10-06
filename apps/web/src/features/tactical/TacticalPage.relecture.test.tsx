@@ -8,17 +8,16 @@
  * le titre retombait un instant sur l'identifiant brut de la carte, le fond du plan étant
  * démonté avec la lecture.
  *
- * Ce que ces tests cadenassent :
- *   - le NOUVEAU périmètre en cours de résolution : sur la grille, la vignette reste le même
- *     nœud, la grille est `aria-busy`, estompée et dit « Mise à jour… » ; sur l'écran
- *     d'analyse, le titre garde le nom de la carte, le fond reste le même `<img>`, la vue dit
- *     « Mise à jour… » ;
- *   - le nouveau périmètre RÉSOLU, la grille encore en relecture (revue L2-R3) : même
- *     vignette, même titre — c'est le placeholder de la GRILLE qui répond ;
- *   - le nouveau périmètre en ÉCHEC sur l'écran d'analyse (revue L2-R1) : le message
- *     d'échec, jamais une « Mise à jour… » qui ne viendra pas ;
- *   - un coéquipier INTROUVABLE sur l'écran d'analyse (contrôle de parc L2-PARC-1) :
- *     « Coéquipier introuvable » comme sur la grille, jamais une relecture sans fin ;
+ * Ce que ces tests cadenassent (écran unique, plan Tactique v2 L4.4) :
+ *   - le NOUVEAU périmètre en cours de résolution : dans la colonne, la vignette reste le même
+ *     nœud, la liste est `aria-busy`, estompée et dit « Mise à jour… » ; dans la lecture, le
+ *     titre garde le nom de la carte, le fond reste le même `<img>`, la vue dit « Mise à jour… » ;
+ *   - le nouveau périmètre RÉSOLU, la liste des cartes encore en relecture (revue L2-R3) : même
+ *     vignette, même titre — c'est le placeholder de la liste des cartes qui répond ;
+ *   - le nouveau périmètre en ÉCHEC (revue L2-R1) : le message d'échec, dit une fois dans la
+ *     colonne, aucune lecture montée — jamais une « Mise à jour… » qui ne viendra pas ;
+ *   - un coéquipier INTROUVABLE (contrôle de parc L2-PARC-1) : « Coéquipier introuvable »,
+ *     dit une fois dans la colonne, aucune lecture montée — jamais une relecture sans fin ;
  *   - changer de JOUEUR (revue L2-R2) : aucune réponse d'un joueur ne sert de placeholder à
  *     un autre, et aucune requête du nouveau joueur ne porte les `match_id` de l'ancien ;
  *   - changer de CARTE remet la vue à zéro.
@@ -79,6 +78,15 @@ const PAGE: TacticalMapsPage = {
       matchs: 24,
       victoires: 14,
       defaites: 9,
+      sous_plancher: false,
+    },
+    {
+      map_id: 'aquarius',
+      map_name: 'Aquarius',
+      map_name_fr: 'Aquarius',
+      matchs: 12,
+      victoires: 6,
+      defaites: 6,
       sous_plancher: false,
     },
   ],
@@ -284,52 +292,49 @@ describe('TacticalPage — un changement de filtre garde la page à l’écran',
     expect(img.isConnected).toBe(true)
     expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).toBe(img)
     expect(screen.getByTestId('tactical-analysis-updating')).toHaveTextContent(t.analysisUpdating)
-    expect(getBlob).toHaveBeenCalledTimes(1)
+    // Le fond de Ruelles n'est lu qu'une fois (vignette et plan partagent la même lecture) ; la
+    // vignette d'Aquarius lit le sien.
+    expect(getBlob.mock.calls.filter(([p]) => (p as string).includes('/tactical/streets/'))).toHaveLength(1)
   })
 
-  // Revue L2-R1 : la requête en échec n'a plus de données, le raster se suspend et garde son
-  // placeholder. Sans l'échec du périmètre transmis à la vue, elle restait sur « Mise à
-  // jour… » pour toujours, l'ancien calque estompé.
-  it('ANALYSE : le nouveau périmètre ÉCHOUE — le message d’échec, jamais « Mise à jour… »', async () => {
+  // Revue L2-R1, écran unique : le périmètre en échec est dit UNE fois, dans la colonne, et
+  // aucune lecture n'est montée — ni une « Mise à jour… » qui ne viendra pas, ni l'ancien calque.
+  it('le nouveau périmètre ÉCHOUE — le message d’échec, aucune lecture montée', async () => {
     perimetreSession = 'rejet'
     searchCourant = { carte: 'streets' }
     const page = monter()
     await analyseChargee()
 
     page.cocherSession()
-    expect(await screen.findByText(t.analysisErrorTitle)).toBeInTheDocument()
+    expect(await screen.findByTestId('tactical-erreur')).toHaveTextContent(t.error)
     expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
     expect(screen.queryByTestId('kpi-strip')).toBeNull()
-    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
+    expect(screen.queryByTestId('tactical-analysis-body')).toBeNull()
   })
 
-  // Contrôle de parc L2-PARC-1 : un coéquipier INTROUVABLE (URL, scope mémorisé, liste
-  // rechargée sans lui) suspend le raster (`match_ids` à `null`) sur son placeholder. Sans la
-  // composition impossible transmise à la vue, elle restait sur « Mise à jour… » pour
-  // toujours, les KPI de l'ancienne composition affichés, sans jamais dire pourquoi.
-  it('ANALYSE : un coéquipier introuvable — « Coéquipier introuvable », jamais « Mise à jour… »', async () => {
+  // Contrôle de parc L2-PARC-1, écran unique : un coéquipier INTROUVABLE (URL, scope mémorisé,
+  // liste rechargée sans lui) est dit UNE fois, dans la colonne ; aucune lecture n'est montée —
+  // jamais une « Mise à jour… » sans fin, ni les KPI de l'ancienne composition.
+  it('un coéquipier introuvable — « Coéquipier introuvable », aucune lecture montée', async () => {
     searchCourant = { carte: 'streets' }
     const page = monter()
-    const img = await analyseChargee()
+    await analyseChargee()
 
     page.choisirCoequipier('Inconnu')
     expect(await screen.findByText(t.unknownTeammateTitle)).toBeInTheDocument()
     expect(screen.getByText(t.unknownTeammateDescription('Inconnu'))).toBeInTheDocument()
-    // Ce n'est pas une panne : le message générique (« réessaie plus tard ») mentirait.
-    expect(screen.queryByText(t.analysisErrorTitle)).toBeNull()
+    // Ce n'est pas une panne : le message générique mentirait.
+    expect(screen.queryByTestId('tactical-erreur')).toBeNull()
     expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
     expect(screen.queryByTestId('kpi-strip')).toBeNull()
-    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
-    // Le fond reste le même nœud : la composition corrigée relira sans le démonter.
-    expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).toBe(img)
+    expect(screen.queryByTestId('tactical-analysis-body')).toBeNull()
   })
 
-  it('ANALYSE ouverte sur un coéquipier introuvable : le message, jamais une attente sans fin', async () => {
+  it('ouverte sur un coéquipier introuvable : le message, aucune attente ni lecture', async () => {
     searchCourant = { carte: 'streets', eq: 'Inconnu' }
     monter()
     expect(await screen.findByText(t.unknownTeammateTitle)).toBeInTheDocument()
     expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
-    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
     expect(lecturesTactiques('JGtm').filter(([path]) => (path as string).endsWith('/raster'))).toEqual([])
   })
 
@@ -387,6 +392,9 @@ describe('TacticalPage — changer de joueur ne garde rien de l’ancien', () =>
     expect(lecturesTactiques('Autre')).toEqual([])
     expect(screen.queryByTestId('kpi-strip')).toBeNull()
     expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
-    expect(screen.getByTestId('tactical-analysis-pending')).toBeInTheDocument()
+    // Aucune lecture n'est montée tant que les cartes du nouveau joueur ne sont pas là : la
+    // colonne dit l'attente.
+    expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
+    expect(screen.getByText(t.loading)).toBeInTheDocument()
   })
 })

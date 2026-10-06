@@ -389,8 +389,42 @@ en = "{maps, plural, one {# map played} other {# maps played}} over the period, 
 # Résumé d'une vignette, SUR UNE SEULE LIGNE (maquette) : le compte de matchs et
 # le bilan victoires / défaites.
 [tactical.maps.tile_summary]
-fr = "{n, plural, one {# match} other {# matchs}} · {wins} V / {losses} D"
-en = "{n, plural, one {# match} other {# matches}} · {wins} W / {losses} L"
+fr = "{n} · {wins} V / {losses} D"
+en = "{n} · {wins} W / {losses} L"
+
+# ── Colonne « Cartes jouées » de l'écran unique (plan Tactique v2, L4) ─────────
+# Champ de recherche : l'indication dans le champ, puis son nom accessible.
+[tactical.maps.search_placeholder]
+fr = "Carte"
+en = "Map"
+
+[tactical.maps.search_label]
+fr = "Rechercher une carte"
+en = "Search a map"
+
+# La recherche ne laisse aucune carte ouvrable dans la liste.
+[tactical.maps.no_match]
+fr = "Aucune carte ouvrable ne correspond"
+en = "No map to open matches"
+
+# Le filtre n'a que des cartes sous le plancher.
+[tactical.maps.none_openable]
+fr = "Aucune carte ouvrable"
+en = "No map to open"
+
+# Le repli des cartes sous le plancher : sans recherche, puis avec (« x sur N »).
+[tactical.maps.floor_fold]
+fr = "{n, plural, one {# carte sous le plancher} other {# cartes sous le plancher}}"
+en = "{n, plural, one {# map below the floor} other {# maps below the floor}}"
+
+[tactical.maps.floor_fold_filtered]
+fr = "{shown} sur {n, plural, one {# carte sous le plancher} other {# cartes sous le plancher}}"
+en = "{shown} of {n, plural, one {# map below the floor} other {# maps below the floor}}"
+
+# Une ligne du repli : les matchs de la carte sur le plancher.
+[tactical.maps.floor_count]
+fr = "{n} sur {floor}"
+en = "{n} of {floor}"
 
 # ── Bascule d'écran (deux boutons aria-pressed) ───────────────────────────────
 [tactical.screen.label]

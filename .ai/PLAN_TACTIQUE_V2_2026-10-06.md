@@ -787,26 +787,84 @@ Périmètre : `features/ascension/AscensionLayout.tsx` (+ test), `features/tacti
 TacticalMapsColumn.tsx (NEUF), TacticalMapTile.tsx, cockpit.logic.ts (NEUF), tacticalLogic.ts,
 i18n.ts}` (+ tests), `lib/i18n/manifests/tactical.toml` (+ généré).
 
-- [ ] L4.0 `npm ci` (node_modules réel) ; premier gate web à blanc consigné (état de départ).
-- [ ] L4.1 `AscensionLayout.tsx:78` : `<main className="space-y-6 p-6">` (V2) ; test d'abord
+- [x] L4.0 `npm ci` (node_modules réel) ; premier gate web à blanc consigné (état de départ).
+- [x] L4.1 `AscensionLayout.tsx:78` : `<main className="space-y-6 p-6">` (V2) ; test d'abord
   (`AscensionLayout.test.tsx` : ni `container` ni `max-w-6xl`, `p-6`) ; tests des autres onglets
   rejoués nommément (`AscensionProfilTab`, `AscensionObjectivesTab`, `AscensionCoachingTab`,
   `features/tendances/*`). *Six onglets en héritent (Tendances compris), pas cinq.*
-- [ ] L4.2 `cockpit.logic.ts` : constantes D13, `carteEffective` (D11), `normaliserRecherche`
+- [x] L4.2 `cockpit.logic.ts` : constantes D13, `carteEffective` (D11), `normaliserRecherche`
   (minuscules, sans diacritiques), `filtrerCartes` (nom affiché + canonique), partition ouvrables /
   sous plancher (verdict du serveur `sous_plancher`, jamais recalculé), libellés de repli. Tests
   ROUGES d'abord ; mutations : accents gardés, carte sous plancher prise par défaut, URL ignorée.
-- [ ] L4.3 `TacticalMapsColumn.tsx` + `TacticalMapTile` compacte (100 px, 16:9, ligne
+- [x] L4.3 `TacticalMapsColumn.tsx` + `TacticalMapTile` compacte (100 px, 16:9, ligne
   « 54 · 30 V / 24 D », barre fine) : S2-S4 ; tests (recherche, active, repli, ouverture du repli
   quand seules les cartes sous plancher correspondent, aucune carte ouvrable).
-- [ ] L4.4 `TacticalPage.tsx` recomposé : grille cockpit (D13) ; colonne gauche ; le groupe centre +
+- [x] L4.4 `TacticalPage.tsx` recomposé : grille cockpit (D13) ; colonne gauche ; le groupe centre +
   droite monte, TRANSITOIREMENT, la `TacticalAnalysisView` existante (remplacée en L5 et L6) ;
   bascule, grille et pied retirés (§4.A) ; états dans l'ordre existant (composition impossible,
   échec, attente, vide) ; `TacticalPage.test.tsx` et `TacticalPage.relecture.test.tsx` adaptés
   (sélection d'office, URL non réécrite, le fond et les vignettes restent montés en relecture).
-- [ ] L4.5 Chaînes neuves de la colonne (FR + EN, mots de la maquette) ; manifeste régénéré.
-- [ ] L4.6 §4.A rejoué → 0.
+- [x] L4.5 Chaînes neuves de la colonne (FR + EN, mots de la maquette) ; manifeste régénéré.
+- [x] L4.6 §4.A rejoué → 0.
 - Gate : gate web.
+
+Journal L4 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L4.0** `npm ci` fait en L1.6. Gate web À BLANC : `tsc -b --force` ROUGE (1 erreur :
+  `TacticalCellCard.test.tsx:94`, fixture sans `replay_available`, champ obligatoire du contrat depuis
+  L1.5 — régression de L1, que son gate Go ne pouvait pas voir) ; réparée par une ligne
+  (`replay_available: false`), puis à blanc : `tsc` 0, lint 0 erreur / 26 avertissements, vitest
+  850 fichiers / 9 113 tests verts, manifestes OK (23, 3 582 clés), knip 0 / 0 / 0, couleurs 0, champs
+  0, imports croisés 7 ≤ 7, `lefthook run pre-push` vert.
+- **L4.1** `AscensionLayout.tsx:78` → `<main className="space-y-6 p-6">`. Test « pleine largeur » vu
+  rouge ; onglets voisins rejoués (`AscensionLayout`, `AscensionProfilTab`, `AscensionObjectivesTab`,
+  `AscensionCoachingTab`, `features/tendances/*` : 20 fichiers, 247 tests verts).
+- **L4.2** `cockpit.logic.ts` (143 L) : mesures D13 (locales, exposées en variables CSS
+  `VARIABLES_COCKPIT`, seule `VIGNETTE_LARGEUR_PX` exportée — aucune constante sans lecteur),
+  `carteEffective` (url / defaut / hors_filtre / aucune) et `carteLue`, `normaliserRecherche`,
+  `filtrerCartes` (nom affiché ET canonique), `colonneDesCartes` (partition sur le verdict
+  `sous_plancher`, repli ouvert quand seules des cartes sous le plancher correspondent, liste vide
+  « aucune correspondance » / « aucune ouvrable »). 14 tests vus rouges (module absent) ; deux données de
+  test corrigées (en anglais le nom affiché EST le canonique ; aucune ouvrable ne contenait « a »).
+- **L4.3** `TacticalMapsColumn.tsx` (152 L, `RepliSousPlancher` extrait) : recherche (placeholder
+  « Carte », nom « Rechercher une carte »), liste des ouvrables (rangée défilante, colonne de
+  551 px à défilement interne dès 1 400 px), repli `<details>` « N cartes sous le plancher » /
+  « x sur N … », lignes « nom » + « n sur plancher ». `TacticalMapTile` réécrite en vignette compacte
+  (100 px 16:9, « 24 · 14 V / 9 D », barre fine `outcome-win` / `outcome-loss`, bordure 2 px `primary`,
+  `aria-pressed`) ; son état « sous le plancher » (bouton désactivé) disparaît avec la grille ;
+  `MiniPlan` extrait. 7 tests vus rouges (module absent).
+- **L4.4** `TacticalPage.tsx` (288 L) recomposé : grille cockpit (`min-[1400px]:` deux pistes,
+  carte | groupe), colonne à gauche, `LectureDeLaCarte` (vue d'analyse TRANSITOIRE, `key` = carte ;
+  carte d'URL hors filtre ou sous le plancher : son nom et « Aucun match sur cette carte dans ce
+  filtre », sans requête ; aucune ouvrable : rien) ; `useScopeTactique` et `useCartesDuPerimetre`
+  extraits (fonction de page 74 L). Bascule, `ContenuGrille`, pied et `couvertureGrille` (+ ses tests)
+  retirés. Les états bloquants (composition impossible, échec, attente, aucune carte) sont dits UNE
+  fois, dans la colonne, sans lecture montée ; en relecture, colonne et lecture restent montées.
+  Tests adaptés : `TacticalPage.test.tsx` (sélection d'office sans réécriture d'URL, carte d'URL
+  lue / sous le plancher / hors filtre, plus de bascule ni de pied, repli), `TacticalPage.relecture.test.tsx`
+  (échec et coéquipier introuvable : message dans la colonne, aucune lecture montée ; changement de
+  joueur : attente dans la colonne ; Aquarius ouvrable ajouté au jeu pour le changement de carte ;
+  fond de Ruelles lu une fois). Rouge prouvé APRÈS coup : les tests adaptés contre les trois fichiers
+  de HEAD remis temporairement (empreintes vérifiées à la restauration) → 9 échecs / 34.
+- **L4.5** Sept clés neuves FR + EN (`search_placeholder`, `search_label`, `no_match`, `none_openable`,
+  `floor_fold`, `floor_fold_filtered`, `floor_count`) et `tile_summary` au format de S3, posées avec
+  L4.3 (ses tests les lisent) ; manifeste régénéré (118 clés).
+- **L4.6** §4.A rejoué : `TacticalScreenSwitch|ContenuGrille|tactical-couverture|couvertureGrille`
+  → 0 (deux assertions d'absence devenues vides remplacées par l'absence des TEXTES, encore au
+  manifeste jusqu'à L7).
+- **Mutations** (toutes ROUGES, restauration vérifiée par empreinte) : borne 6xl remise ; accents
+  gardés ; carte sous le plancher prise par défaut ; URL ignorée (logique) ; repli jamais ouvert ;
+  carte active jamais pressée ; URL ignorée (page) ; lecture montée malgré un état bloquant ; URL
+  réécrite par la sélection d'office.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements, aucun sur un
+  fichier du lot) ; `vitest run --pool=forks` 852 fichiers / 9 133 tests verts ; manifestes reconstruits
+  identiques (tactical seul changé) ; knip 0 / 0 / 0 (aveugle sur ce poste : exports jugés à la main) ;
+  couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ; `lefthook run pre-push` vert (9 hooks).
+- Seuils : fichiers ≤ 418 L sauf `tactical.toml` 575 L (manifeste, 541 avant le lot, purgé en L7) ;
+  fonctions : `TacticalPage` 74, `TacticalMapsColumn` 66, `TacticalMapTile` 55, `LectureDeLaCarte` 49.
+- Écarts : `TacticalCellCard.test.tsx` touché (réparation de L1, hors périmètre de L4) ; L4.5 fait avec
+  L4.3 ; la page ne passe plus `perimetreEnEchec` ni `coequipiersInconnus` à `TacticalAnalysisView`
+  (lecture non montée dans ces états) — props transitoires, la vue part en L5 / L6 ; les états
+  bloquants vivent dans la colonne (le plan disait « états dans l'ordre existant » sans dire où).
 
 ### L5 — Web : la carte du plan · lourd
 
@@ -1000,6 +1058,13 @@ L2.3.
   imposera le helper exporté et son garde-rail (CLAUDE.md n° 6) ; non traité.
 - (L3) `TestLUSRV2Shadow_RafalesBornees_300Candidats` a de nouveau rougi dans la suite complète (38,9 s,
   un `api.test` d'une autre session actif), vert rejoué seul : même constat qu'en L1.
+- (L4) Normalisation « minuscules sans diacritiques » : `normaliserRecherche` (`features/tactical/cockpit.logic.ts`,
+  prévue par le plan) en fait la QUATRIÈME copie (`features/help/GlossaryTab.tsx` `slugify` et
+  `normalizeForSearch`, `lib/halo/teamNames.ts` `labelHasTeamWord`). CLAUDE.md n° 6 : helper
+  `lib/` + garde-rail à poser, migrations hors périmètre ; non traité.
+- (L4) Le gate de L1 (Go + `vitest src/lib/api`) ne lançait pas `tsc` : le champ obligatoire
+  `replay_available` a cassé le typage d'une fixture web (`TacticalCellCard.test.tsx`), découvert au
+  gate à blanc de L4 et réparé là. Un lot qui change le contrat devrait passer `tsc -b`.
 - (phase 1) Le catalogue de callouts couvre AUSSI des cartes Forge (`maps_by_id`, 2 536 zones selon
   `callouts_catalog.go`) : « carte sans catalogue » = carte absente du catalogue, pas « carte Forge ».
 

@@ -97,6 +97,7 @@ function contribution(overrides: Partial<TacticalContribution> = {}): TacticalCo
     clock: 'match',
     xuid: '2533274000000001',
     match_started_at: '2026-09-01T12:00:00Z',
+    replay_available: false,
     ...overrides,
   }
 }
