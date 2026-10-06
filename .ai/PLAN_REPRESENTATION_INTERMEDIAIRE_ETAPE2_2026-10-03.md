@@ -144,6 +144,8 @@ fermeture d'un épisode par le même objet occupant est déjà dans 2.7.a.
   sont admis ; les deux derniers restent notés (découvertes 22 et 24). Même jour : « Oui, fusionne
   au vert » — le lot lint du décodeur (`feat/lint-decodeur`) se fusionne dans `feat/v75` juste après
   la vue A de la campagne, au vert.
+- 2026-10-07 : « tu pourras fusionner si la CI est verte » — accord de fusion de 2.7.b dans
+  `feat/v75`, sous condition d'une CI verte sur la tête fusionnée.
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -774,7 +776,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       killsource sur films réels identique à `feat/v75`. La part (a) de la décision du 2026-10-05
       (listes que la marche ne localise pas) attend le lot « vue A » V2, qui localisera la vue B
       par la fin de la vue A.
-- [ ] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
+- [x] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
       d'ancres, canal par canal, mesuré sur le corpus.
       *Mesure du 2026-10-06* (instrument `grammar/ri27b_canaux_marche_research_test.go`, les 20
       films du corpus d'équivalence, contexte de la cuisson : génération stricte, carte, découpage
@@ -883,9 +885,18 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       campagne `.ai/HANDOFF_COMPOSANTS_BLOQUANTS_VUE_B_2026-10-06.md`, §2.2). Gate de corpus contre
       `2707fdb31` (19 témoins) : les familles admises, à l'identique (mêmes V-3, mêmes replis vus pour
       la première fois, toutes les lectures en hausse hors des lâchers d'une arme inconnue) ; une
-      lecture de capacité de plus non publiée faute de piste (`111fa685`, télémétrie). Reste : passe
-      d'équivalence `-update` et killsource sur les témoins, `KILLSOURCE_FIXTURES`, CI, `make
-      gate-push`, accord de fusion.
+      lecture de capacité de plus non publiée faute de piste (`111fa685`, télémétrie).
+      *Clos le 2026-10-07, sur `feat/v75` `b5c9489ef`* (lot lint, clôture de la campagne, lot
+      « équipes source » de levelup-dc : SchemaDesFaits 6, schéma 80) : gate de corpus contre
+      `b5c9489ef` (19 témoins) : les mêmes FAUX et les mêmes familles en baisse que le gate admis, à
+      l'identique ; `KILLSOURCE_FIXTURES` vert ; passe de référence b6 (20 films décodés depuis le
+      film, `depuis_les_faits=false`, faits mis de côté `film_facts_b6`) : références d'équivalence
+      re-figées, elles prennent la vue A V2 et V3, le lot des équipes et 2.7.b ; killsource json sur
+      les 19 témoins identique à la passe b1 sauf un compteur de diagnostic de calibration
+      (`c75f33b8`, lectures par les deux voies 5 → 6) ; erreurs de passe d'avant ce lot seulement
+      (vies sans identité de `a349fea8` et `50247b26`, mêmes comptes qu'en b1 ; équipe de bot non
+      lue de `bcb6d393`, lot des équipes). `replay.SchemaVersion` reste 80. Accord de fusion de
+      l'utilisateur du 2026-10-07 (CI verte).
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
       du 2026-10-03) ; `IDLowBits` unifié (IR-7). Le découpage MPP déclaré par le film (2.7.a0)
@@ -1559,3 +1570,11 @@ plan y sont reprises comme items (3.1.2).
   au plafond de 300 s, test de rapport de coût de `killcollector`), verts rejoués seuls. Campagne et
   levelup-dc prévenus avant et après. Ordre convenu ensuite : clôture de la campagne (doc), lot
   « équipes source » de levelup-dc (SchemaDesFaits 6), puis 2.7.b.
+- 2026-10-07 (nuit) : 2.7.b CLOS. Reprise de `feat/v75` `b5c9489ef` (`95f28c138` : fixtures du web
+  passées au schéma 80 puis régénérées, golden d'empreinte de killsource re-figé ; un épisode de
+  disque plein pendant un `go build ./...`, refait proprement), CI verte au niveau job sur
+  `95f28c138`, gate de corpus contre `b5c9489ef` identique au gate admis, `KILLSOURCE_FIXTURES`
+  vert, passe de référence b6 et références re-figées. Accord de fusion de l'utilisateur (« tu
+  pourras fusionner si la CI est verte »). Reste : CI verte sur la tête finale, `make gate-push`,
+  avance rapide de `feat/v75`, signal à levelup-dc pour la recuisson unique du parc (avec le
+  rattrapage du placement des vies : `killcollector.PlacementRev` monte). Suite du plan : 2.7.c.
