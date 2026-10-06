@@ -57,7 +57,7 @@
   code { font-size: 12px; background: var(--muted); border-radius: 4px; padding: 0 4px; }
 
   /* Faux shell : L1 + onglets d'Ascension */
-  .shell { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--card); margin-top: 16px; }
+  .shell { border: 1px solid var(--border); border-radius: var(--radius); overflow: clip; background: var(--card); margin-top: 16px; }
   .l1 { display: flex; gap: 2px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
   .l1 .brand { font-weight: 700; margin-right: 12px; }
   .l1 span.item { padding: 4px 10px; border-radius: 6px; color: var(--muted-foreground); font-size: 13px; }
@@ -74,6 +74,11 @@
   .view[hidden] { display: none; }
   .section { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
   .section .right { margin-left: auto; }
+  /* Barre d'horizon : un seul choix pour tous les blocs sous la matrice, visible pendant le défilement. */
+  .hz-bar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; background: var(--background); border-bottom: 1px solid var(--border); }
+  .hz-bar .lab { font-size: 13px; font-weight: 500; }
+  /* Emplacement d'un graphique que les données de la maquette ne permettent pas de tracer. */
+  .card.slot { border-style: dashed; }
 
   .grid { display: grid; gap: 12px; }
   .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -91,7 +96,7 @@
   .card { scroll-margin-top: 12px; }
   .card.flash { outline: 2px solid var(--info); outline-offset: 1px; }
   .scroll { overflow-x: auto; }
-  .scroll .chart.cal { min-width: 760px; height: 200px; }
+  .scroll .chart.cal { min-width: 760px; height: 144px; }
   .legend { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted-foreground); }
   .detail-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
   .detail-grid .sub { font-size: 12px; color: var(--muted-foreground); text-align: center; }
@@ -143,11 +148,11 @@
 <body>
 <div class="page">
   <div class="crumb">
-    <span>LevelUp</span><span>/</span><span>Étude « Tendances »</span><span>/</span><span>maquette v14</span>
+    <span>LevelUp</span><span>/</span><span>Étude « Tendances »</span><span>/</span><span>maquette v15</span>
     <div class="toolbar"><button type="button" id="theme-btn" aria-pressed="false">Thème sombre</button></div>
   </div>
   <h1>Tendances</h1>
-  <p class="lede">Maquette sur données réelles (copie locale, 1 158 matchs de JGtm, « aujourd'hui » = 27/09/2026). Rien n'est implémenté. Version du 04/10/2026.</p>
+  <p class="lede">Maquette sur données réelles (copie locale, 1 158 matchs de JGtm, « aujourd'hui » = 27/09/2026). Rien n'est implémenté. Version du 05/10/2026.</p>
 
   <div class="shell">
     <div class="l1"><span class="brand">LevelUp</span><span class="item">Accueil</span><span class="item">Solo</span><span class="item">Escouade</span><span class="item">Carrière</span><span class="item on">Ascension</span><span class="item">…</span></div>
@@ -176,7 +181,8 @@
         <div class="scroll"><div class="chart" id="ch-ov" style="min-width:760px"></div></div>
         <div class="legend ov-legend"></div>
       </div>
-      <div class="section"><h2>Évolution</h2><i class="info" data-tip="Un graphique par question : les indicateurs de même unité sont tracés ensemble. Horizon = les 7, 30, 90 ou 365 derniers jours ; pas = un point par match, par jour, par semaine ou par mois (pas proposés selon l&#39;horizon). Taille du point = nombre de matchs. Pointillé de la couleur d&#39;une courbe = sa moyenne sur la période d&#39;avant de même durée (si au moins 10 matchs). Taux de victoire masqués au pas « par match » (0 ou 100 %). Cliquer une ligne de la matrice amène à son graphique.">i</i><div class="right row evo-ctl" role="group" aria-label="Horizon et pas de temps"></div></div>
+      <div class="hz-bar"><span class="lab">Horizon</span><div class="row hz-ctl" role="group" aria-label="Horizon"></div><i class="info" data-tip="Un seul horizon pour tous les blocs sous la matrice : les 7, 30, 90 ou 365 derniers jours, comparés à la période d&#39;avant de même durée.">i</i></div>
+      <div class="section"><h2>Évolution</h2><i class="info" data-tip="Pas = un point par match, par jour, par semaine ou par mois, proposé selon l&#39;horizon ; taille du point = nombre de matchs. Pointillé de la couleur d&#39;une courbe = sa moyenne sur la période d&#39;avant (si au moins 10 matchs). Taux de victoire masqués au pas « par match » (0 ou 100 %).">i</i><div class="right row evo-ctl" role="group" aria-label="Pas de temps"></div></div>
       <div class="db-group">Face au MMR adverse</div>
       <div id="grid-duo" class="grid g2"></div>
       <div class="db-group">Niveau, combat et style</div>
@@ -184,12 +190,12 @@
 
 
       <div class="card">
-        <div class="card-head"><h3>Calendrier des résultats</h3><i class="info" data-tip="Un carré par jour joué, couleur = taux de victoire du jour ; pâle = moins de 3 matchs. Jours découpés en UTC dans la maquette (heure locale dans l'app).">i</i></div>
+        <div class="card-head"><h3>Calendrier des résultats</h3><i class="info" data-tip="Un carré par jour joué sur l'horizon, du rouge (aucune victoire ce jour-là) au vert (que des victoires) ; pâle = moins de 3 matchs. Jours découpés en UTC dans la maquette (heure locale dans l'app).">i</i></div>
         <div class="scroll"><div class="chart cal" id="ch-cal"></div></div>
       </div>
 
       <div class="section"><h2>Victoires et défaites</h2>
-        <div class="right row" role="group" aria-label="Horizon"><button type="button" data-wl="365" aria-pressed="true">365 j</button><button type="button" data-wl="90" aria-pressed="false">90 j</button></div></div>
+        </div>
       <div class="card">
         <div class="card-head"><h3>Moyenne par match en défaite et en victoire</h3><i class="info" data-tip="Axe commun : écart à la moyenne du joueur, en écarts-types (les unités diffèrent d'une statistique à l'autre). Valeurs réelles au-dessus des points. r = corrélation de Pearson avec le résultat (−1 à +1). Une corrélation n'est pas une cause ; en jeu d'équipe elle reflète aussi les coéquipiers.">i</i></div>
         <div id="wl"></div>
@@ -197,13 +203,13 @@
       </div>
       <div class="grid g2">
         <div class="card">
-          <div class="card-head"><h3>Médailles par match</h3><i class="info" data-tip="Horizon choisi contre la période d&#39;avant de même durée. Les dix médailles dont le taux varie le plus (365 jours : les plus fréquentes, faute d&#39;année d&#39;avant). Médailles comptées sur les matchs dont les médailles sont chargées.">i</i>
-            <div class="right row" role="group" aria-label="Horizon des médailles" id="med-h"><button type="button" data-m="30" aria-pressed="false">30 j</button><button type="button" data-m="90" aria-pressed="true">90 j</button><button type="button" data-m="365" aria-pressed="false">365 j</button></div></div>
+          <div class="card-head"><h3>Médailles par match</h3><i class="info" data-tip="Les dix médailles dont le taux par match varie le plus entre l&#39;horizon et la période d&#39;avant. Sans période d&#39;avant comparable (7 et 365 jours dans la maquette), les dix plus fréquentes.">i</i>
+            </div>
           <div id="medals"></div>
           <div class="legend" id="med-legend"></div>
         </div>
         <div class="card">
-          <div class="card-head"><h3>Matchs par type de partie</h3><i class="info" data-tip="Par mois. Un changement de mélange déplace les moyennes : le sélecteur « type de partie » isole chacun.">i</i></div>
+          <div class="card-head"><h3>Matchs par type de partie</h3><i class="info" data-tip="Un bâton par pas de temps sur l'horizon (par jour au pas « par match »). Un changement de mélange déplace les moyennes : le sélecteur « type de partie » isole chacun.">i</i></div>
           <div class="chart lg" id="ch-mix"></div>
         </div>
       </div>
@@ -219,7 +225,8 @@
         <div class="scroll"><div class="chart" id="ch-sq-ov" style="min-width:760px"></div></div>
         <div class="legend ov-legend"></div>
       </div>
-      <div class="section"><h2>Évolution</h2><i class="info" data-tip="Un graphique par question : les indicateurs de même unité sont tracés ensemble. Horizon = les 7, 30, 90 ou 365 derniers jours ; pas = un point par match, par jour, par semaine ou par mois (pas proposés selon l&#39;horizon). Taille du point = nombre de matchs. Pointillé de la couleur d&#39;une courbe = sa moyenne sur la période d&#39;avant de même durée (si au moins 10 matchs). Taux de victoire masqués au pas « par match » (0 ou 100 %). Cliquer une ligne de la matrice amène à son graphique.">i</i><div class="right row evo-ctl" role="group" aria-label="Horizon et pas de temps"></div></div>
+      <div class="hz-bar"><span class="lab">Horizon</span><div class="row hz-ctl" role="group" aria-label="Horizon"></div><i class="info" data-tip="Un seul horizon pour tous les blocs sous la matrice : les 7, 30, 90 ou 365 derniers jours, comparés à la période d&#39;avant de même durée.">i</i></div>
+      <div class="section"><h2>Évolution</h2><i class="info" data-tip="Pas = un point par match, par jour, par semaine ou par mois, proposé selon l&#39;horizon ; taille du point = nombre de matchs. Pointillé de la couleur d&#39;une courbe = sa moyenne sur la période d&#39;avant (si au moins 10 matchs). Taux de victoire masqués au pas « par match » (0 ou 100 %).">i</i><div class="right row evo-ctl" role="group" aria-label="Pas de temps"></div></div>
       <div id="grid-squad" class="grid g2"></div>
     </div>
   </div>
@@ -231,6 +238,7 @@
       <li>Horizons : 7, 30, 90, 365 jours, chacun comparé à la période d'avant de même durée, seuil 10 matchs par fenêtre. Plus de « dernière soirée » (décision du 04/10). Marge à 90 % sur le taux de victoire de JGtm : ± 23 / ± 15 / ± 6 / ± 2 points sur 7 / 30 / 90 / 365 j : sur 7 j, la semaine d'avant est souvent sous le seuil et la case reste grise.</li>
       <li>Matchmaking : le niveau des lobbys suit celui du joueur, d'où trois familles. <b>Niveau</b> (MMR des adversaires et de l'équipe, LUSR) : la progression. <b>Résultats</b> (taux de victoire, score de performance) : reviennent vers 50 à mesure que le matchmaking ajuste le MMR ; un écart dit « au-dessus ou en dessous de son niveau en ce moment », pas « meilleur qu'avant ». Le score de performance est un rang parmi les 50 matchs précédents du même type de partie (<code>sync/performance.go</code>). <b>Combat, façon de jouer, objectifs, activité</b> : les stats brutes dépendent aussi de la difficulté des lobbys, à lire à côté du MMR adverse. JGtm, octobre → juillet : 63 → 49 % de victoires, écart aux frags attendus +2,27 → −0,36, MMR adverse 1 091 → 1 253.</li>
       <li>Objectifs : rôles Prendre / Défendre / Tenir de <code>narrative/objective_roles.go</code> (même classification que Sessions et Escouade ; prises de drapeau nettes de <code>match_flag_grabs_net_latest</code>), sur <code>match_objective_stats_latest</code>, 273 matchs de JGtm ; valeur = part du joueur dans le total de son équipe, parité = 100 % divisé par l'effectif présent à la fin. Sur l'année : 23,8 / 24,7 / 23,9 % pour une parité moyenne de 24,5 %. Abandons : résultat « non terminé » (39 matchs sur 1 158).</li>
+      <li>v15 (05/10) : revue de la maquette. Un seul sélecteur d'horizon (barre « Horizon », visible pendant le défilement) pilote tous les blocs sous la matrice : « Évolution », calendrier, « Victoires et défaites », médailles, matchs par type de partie ; leurs sélecteurs propres sont retirés et le pas de temps reste dans « Évolution ». CSR ajouté pour le classé, le LUSR couvrant le non classé (correction de l'utilisateur : la consigne « un graphique LUSR va avec un graphique MMR » visait le CSR) : ligne « CSR (classé) » dans « Niveau » et emplacement de graphique à côté du LUSR. JGtm n'a qu'un CSR connu (667, Or 1, le 06/11/2025 ; 7 de ses 8 matchs classés sont des placements) : la courbe n'est pas traçable, la carte en pointillé marque sa place. Le contenu s'adapte aux types de partie du joueur : lignes, graphiques et options du filtre n'apparaissent que pour ce qu'il joue. Calendrier et matrice sans barre de dégradé en légende. Médailles à 7 j extraites (13 matchs, pas de semaine d'avant). Lignes de la matrice sans graphique : plus de curseur de clic. Infobulles de la matrice et de « Évolution » ramenées à trois phrases, références à « À difficulté égale » et au « détail » retirées.</li>
       <li>v14 (05/10) : graphiques « Par match : assistances et meilleure série » et « Parts : frags à la tête, à l'arme lourde, équipement utilisé » retirés à la demande de l'utilisateur ; leurs indicateurs restent des lignes de la matrice.</li>
       <li>v13 (05/10) : « Objectifs par match » (drapeaux, zones) remplacé par Prendre / Défendre / Tenir, comme la page Escouade : part de l'équipe en %, parité en pointillé ; mêmes lignes dans la matrice.</li>
       <li>v12 (05/10) : rendement offensif et résistance défensive face au MMR adverse réunis dans un seul graphique (deux courbes sur l'axe de gauche, repère 1 ; MMR adverse à droite), comme la Synthèse et Sessions les montrent ensemble.</li>
@@ -1701,8 +1709,14 @@ const OBJ_COLS = ['pt', 'pd', 'ph', 'tt', 'td', 'th', 'osz'];
 { const ol = document.getElementById('data-obj').textContent.trim().split('\n'), oc = ol[0].split('\t');
   const byT = new Map(ol.slice(1).map(l => { const v = l.split('\t'), o = {}; oc.forEach((c, i) => { o[c] = v[i] === 'NULL' || v[i] === '' ? null : +v[i]; }); return [o.t, o]; }));
   for (const m of ALL) { const o = byT.get(m.t); for (const c of OBJ_COLS) m[c] = o ? o[c] : null; } }
+// CSR des matchs classés (match_csrs_latest), joint par horodatage. JGtm : 8 matchs classés sur l'année, dont 7 de
+// placement (sans valeur) : un seul CSR connu.
+const CSR_BY_T = new Map([[1762464328, 667]]);
+for (const m of ALL) m.csr = CSR_BY_T.get(m.t) ?? null;
+// Dernière valeur connue d'un champ sur un ensemble de matchs (le niveau en fin de fenêtre).
+const lastOf = f => a => { const x = a.filter(m => m[f] != null); return x.length ? x.reduce((p, q) => q.t > p.t ? q : p)[f] : null; };
 // Médailles par match : [horizon, médaille, maintenant, période d'avant] (null = pas de période d'avant chargée).
-const MEDALS = [[30,"Double frag",0.656,0.727],[30,"Revirement",0.219,0.318],[30,"Déstockage",0.219,0.273],[30,"Abats, joie",0.156,0.318],[30,"Folie meurtrière",0.156,0.318],[30,"Flingueur",0.188,0.227],[30,"Tireur d’élite",0.156,0.273],[30,"Par derrière",0.188,0.182],[30,"Parfait",0.094,0.227],[30,"Kong",0.156,0.136],[30,"Frag d’outre-tombe",0.219,0.045],[30,"À table",0.094,0.136],[30,"Corbeau d’Odin",0,0.227],[90,"Double frag",0.667,0.652],[90,"Déstockage",0.376,0.38],[90,"Revirement",0.28,0.32],[90,"Abats, joie",0.286,0.284],[90,"Tir au jugé",0.265,0.228],[90,"Flingueur",0.159,0.236],[90,"Frag d’outre-tombe",0.212,0.184],[90,"Folie meurtrière",0.196,0.164],[90,"Par derrière",0.111,0.132],[90,"Parfait",0.095,0.128],[90,"Tireur d’élite",0.106,0.116],[90,"Élan brisé",0.138,0.084],[90,"Corbeau d’Odin",0.143,0.064],[90,"Chargeur vide",0.048,0.128],[90,"À table",0.095,0.076],[90,"Bombardier",0.085,0.064],[90,"Collage",0.063,0.068],[90,"Déblayage",0.101,0.04],[90,"Sniper",0.063,0.064],[90,"Kong",0.058,0.052],[90,"Décisionnaire",0.042,0.056],[90,"Sur le fil",0.042,0.052],[90,"Boxeur",0.042,0.048],[90,"Triple frag",0.032,0.052],[365,"Vengeur",2.734,null],[365,"Double frag",0.644,null],[365,"Déstockage",0.327,null],[365,"Revirement",0.285,null],[365,"Abats, joie",0.229,null],[365,"Flingueur",0.229,null],[365,"Frag d’outre-tombe",0.2,null],[365,"Tir au jugé",0.185,null],[365,"Folie meurtrière",0.158,null],[365,"Tireur d’élite",0.145,null],[365,"Parfait",0.144,null],[365,"Par derrière",0.135,null],[365,"Chargeur vide",0.109,null],[365,"Élan brisé",0.095,null],[365,"Sniper",0.078,null],[365,"Corbeau d’Odin",0.072,null],[365,"À table",0.067,null],[365,"Bombardier",0.062,null],[365,"Décisionnaire",0.059,null],[365,"Collage",0.053,null],[365,"Déblayage",0.051,null],[365,"Triple frag",0.047,null],[365,"Boxeur",0.041,null],[365,"Sur le fil",0.033,null],[365,"Kong",0.033,null],[365,"Rodage",0.032,null],[365,"Ange gardien",0.025,null],[365,"Ailier",0.02,null],[365,"Harponneur",0.019,null],[365,"Tireur d’élite",0.018,null],[365,"Tirailleur",0.017,null],[365,"Interception",0.013,null]];
+const MEDALS = [[7,"Double frag",1.077,null],[7,"Déstockage",0.538,null],[7,"Abats, joie",0.231,null],[7,"Déblayage",0.231,null],[7,"Folie meurtrière",0.231,null],[7,"Frag d'outre-tombe",0.231,null],[7,"Par derrière",0.231,null],[7,"Flingueur",0.154,null],[7,"Kong",0.154,null],[7,"Revirement",0.154,null],[7,"Tireur d'élite",0.154,null],[7,"À table",0.154,null],[30,"Double frag",0.656,0.727],[30,"Revirement",0.219,0.318],[30,"Déstockage",0.219,0.273],[30,"Abats, joie",0.156,0.318],[30,"Folie meurtrière",0.156,0.318],[30,"Flingueur",0.188,0.227],[30,"Tireur d’élite",0.156,0.273],[30,"Par derrière",0.188,0.182],[30,"Parfait",0.094,0.227],[30,"Kong",0.156,0.136],[30,"Frag d’outre-tombe",0.219,0.045],[30,"À table",0.094,0.136],[30,"Corbeau d’Odin",0,0.227],[90,"Double frag",0.667,0.652],[90,"Déstockage",0.376,0.38],[90,"Revirement",0.28,0.32],[90,"Abats, joie",0.286,0.284],[90,"Tir au jugé",0.265,0.228],[90,"Flingueur",0.159,0.236],[90,"Frag d’outre-tombe",0.212,0.184],[90,"Folie meurtrière",0.196,0.164],[90,"Par derrière",0.111,0.132],[90,"Parfait",0.095,0.128],[90,"Tireur d’élite",0.106,0.116],[90,"Élan brisé",0.138,0.084],[90,"Corbeau d’Odin",0.143,0.064],[90,"Chargeur vide",0.048,0.128],[90,"À table",0.095,0.076],[90,"Bombardier",0.085,0.064],[90,"Collage",0.063,0.068],[90,"Déblayage",0.101,0.04],[90,"Sniper",0.063,0.064],[90,"Kong",0.058,0.052],[90,"Décisionnaire",0.042,0.056],[90,"Sur le fil",0.042,0.052],[90,"Boxeur",0.042,0.048],[90,"Triple frag",0.032,0.052],[365,"Vengeur",2.734,null],[365,"Double frag",0.644,null],[365,"Déstockage",0.327,null],[365,"Revirement",0.285,null],[365,"Abats, joie",0.229,null],[365,"Flingueur",0.229,null],[365,"Frag d’outre-tombe",0.2,null],[365,"Tir au jugé",0.185,null],[365,"Folie meurtrière",0.158,null],[365,"Tireur d’élite",0.145,null],[365,"Parfait",0.144,null],[365,"Par derrière",0.135,null],[365,"Chargeur vide",0.109,null],[365,"Élan brisé",0.095,null],[365,"Sniper",0.078,null],[365,"Corbeau d’Odin",0.072,null],[365,"À table",0.067,null],[365,"Bombardier",0.062,null],[365,"Décisionnaire",0.059,null],[365,"Collage",0.053,null],[365,"Déblayage",0.051,null],[365,"Triple frag",0.047,null],[365,"Boxeur",0.041,null],[365,"Sur le fil",0.033,null],[365,"Kong",0.033,null],[365,"Rodage",0.032,null],[365,"Ange gardien",0.025,null],[365,"Ailier",0.02,null],[365,"Harponneur",0.019,null],[365,"Tireur d’élite",0.018,null],[365,"Tirailleur",0.017,null],[365,"Interception",0.013,null]];
 const CHAINS = [['arena_slayer', 'Arène assassin', '--c1'], ['chaos', 'Chaos', '--c2'], ['arena_objectif', 'Arène objectif', '--c3'], ['btb', 'BTB', '--c4']];
 const MEMBERS = { JGtm: { bit: 0, col: '--p1', p: '' }, Madina97294: { bit: 1, col: '--p2', p: 'm_' }, Chocoboflor: { bit: 2, col: '--p3', p: 'c_' }, XxDaemonGamerxX: { bit: 4, col: '--p4', p: 'x_' } };
 const SQUADS = [['Big bosses', ['JGtm', 'Madina97294', 'Chocoboflor']], ['Les deux BGs', ['JGtm', 'Chocoboflor']], ['Equipe Prout Prout', ['JGtm', 'Madina97294']], ['OKLM', ['JGtm', 'Madina97294', 'Chocoboflor', 'XxDaemonGamerxX']]];
@@ -1758,11 +1772,12 @@ const equipmentUsedShare = (a, small) => { const c = a.filter(m => m.e_t != null
 // Familles (le matchmaking règle le niveau des lobbys sur celui du joueur) : le NIVEAU dit la progression ;
 // les RÉSULTATS (taux de victoire, score de performance) reviennent vers 50 quand le matchmaking a rattrapé le
 // joueur ; les stats BRUTES (combat, façon de jouer, objectifs, activité) se lisent à côté du MMR adverse
-// (section « À difficulté égale »). better : 1 = plus haut est mieux, −1 = plus bas est mieux, 0 = ni l'un ni l'autre.
+// (section « Face au MMR adverse »). better : 1 = plus haut est mieux, −1 = plus bas est mieux, 0 = ni l'un ni l'autre.
 const G_LEVEL = 'Niveau', G_REL = 'Résultats', G_CMB = 'Combat', G_STY = 'Façon de jouer', G_OBJ = 'Objectifs', G_ACT = 'Activité';
 const KPIS = [
   { group: G_LEVEL, k: 'mmr', label: 'MMR des adversaires', unit: '', dec: 0, better: 1 },
   { group: G_LEVEL, k: 'tmmr', label: 'MMR de l\'équipe', unit: '', dec: 0, better: 1 },
+  { group: G_LEVEL, k: 'csr', label: 'CSR (classé)', unit: '', dec: 0, better: 1, fn: lastOf('csr') },
   { group: G_LEVEL, k: 'lu_s', label: 'LUSR arène assassin', unit: '', dec: 0, better: 1, fn: lusrOf('arena_slayer') },
   { group: G_LEVEL, k: 'lu_c', label: 'LUSR chaos', unit: '', dec: 0, better: 1, fn: lusrOf('chaos') },
   { group: G_LEVEL, k: 'lu_o', label: 'LUSR arène objectif', unit: '', dec: 0, better: 1, fn: lusrOf('arena_objectif') },
@@ -1841,11 +1856,11 @@ const GRAIN_DEFAULT = { 7: 'match', 30: 'jour', 90: 'semaine', 365: 'mois' };
 const GRAIN_MIN = { match: 1, jour: 2, semaine: 3, mois: 5 }; // matchs minimum par point
 let evoH = 90, evoG = GRAIN_DEFAULT[90];
 const small = () => evoG !== 'mois';
-function bucketKey(t) {
+function bucketKey(t, g = evoG) {
   const d = new Date(t * 1000), y = d.getUTCFullYear(), mo = d.getUTCMonth(), da = d.getUTCDate();
-  if (evoG === 'match') return t;
-  if (evoG === 'jour') return Date.UTC(y, mo, da) / 1000;
-  if (evoG === 'semaine') return Date.UTC(y, mo, da - (d.getUTCDay() + 6) % 7) / 1000;
+  if (g === 'match') return t;
+  if (g === 'jour') return Date.UTC(y, mo, da) / 1000;
+  if (g === 'semaine') return Date.UTC(y, mo, da - (d.getUTCDay() + 6) % 7) / 1000;
   return Date.UTC(y, mo, 1) / 1000;
 }
 const bucketMid = k => (evoG === 'match' ? k : evoG === 'jour' ? k + DAY / 2 : evoG === 'semaine' ? k + 3.5 * DAY : k + 15 * DAY) * 1000;
@@ -1861,11 +1876,15 @@ function bucketLabel(b) {
 const evoAxis = () => ({ type: 'time', min: (NOW - evoH * DAY) * 1000, max: NOW * 1000, splitLine: { show: false },
   axisLabel: { hideOverlap: true, formatter: v => { const d = new Date(v); return evoH >= 365 ? MONTHS[d.getUTCMonth()] : d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()]; } } });
 const pointSize = n => 3 + Math.min(7, Math.sqrt(n));
+// L'horizon se choisit une fois (barre « Horizon ») pour tous les blocs sous la matrice ; le pas ne concerne que
+// les graphiques sur l'axe des temps.
 function renderEvoControls() {
-  document.querySelectorAll('.evo-ctl').forEach(host => {
-    host.innerHTML = HZ.map(h => `<button type="button" data-evo-h="${h}" aria-pressed="${h === evoH}">${h} j</button>`).join('')
-      + '<span style="width:10px"></span>' + GRAINS_OF[evoH].map(g => `<button type="button" data-evo-g="${g}" aria-pressed="${g === evoG}">${GRAINS[g]}</button>`).join('');
+  document.querySelectorAll('.hz-ctl').forEach(host => {
+    host.innerHTML = HZ.map(h => `<button type="button" data-evo-h="${h}" aria-pressed="${h === evoH}">${h} j</button>`).join('');
     host.querySelectorAll('[data-evo-h]').forEach(b => { b.onclick = () => { evoH = +b.dataset.evoH; evoG = GRAIN_DEFAULT[evoH]; renderAll(); }; });
+  });
+  document.querySelectorAll('.evo-ctl').forEach(host => {
+    host.innerHTML = GRAINS_OF[evoH].map(g => `<button type="button" data-evo-g="${g}" aria-pressed="${g === evoG}">${GRAINS[g]}</button>`).join('');
     host.querySelectorAll('[data-evo-g]').forEach(b => { b.onclick = () => { evoG = b.dataset.evoG; renderAll(); }; });
   });
 }
@@ -1887,17 +1906,19 @@ const WL_STATS = [
   { g: 2, k: 'gap', lab: 'Écart de MMR équipe − adversaires', dec: 0, f: m => m.tm - m.em },
 ];
 const WL_GROUPS = ['Statistiques de jeu', 'Indicateurs composés', 'Contexte'];
-let wlH = 365;
 // Moyenne par match en défaite et en victoire, sur un axe COMMUN : écart à la moyenne du joueur, en
 // écarts-types (les unités diffèrent d'une stat à l'autre) ; r = corrélation de Pearson avec le résultat.
 function renderWL() {
-  const a = solo().filter(m => m.t > NOW - wlH * DAY && (m.o === 2 || m.o === 3));
+  const a = solo().filter(m => m.t > NOW - evoH * DAY && (m.o === 2 || m.o === 3));
   const rows = WL_STATS.map(s => {
     const pts = a.map(m => [s.f(m), m.o === 2 ? 1 : 0]).filter(p => p[0] != null && isFinite(p[0])), all = pts.map(p => p[0]);
     const mean = all.reduce((x, y) => x + y, 0) / all.length, sd = Math.sqrt(all.reduce((x, y) => x + (y - mean) ** 2, 0) / all.length) || 1;
     const wv = pts.filter(p => p[1]).map(p => p[0]), lv = pts.filter(p => !p[1]).map(p => p[0]), win = wv.reduce((x, y) => x + y, 0) / wv.length, loss = lv.reduce((x, y) => x + y, 0) / lv.length;
     return Object.assign({}, s, { n: pts.length, win, loss, zw: (win - mean) / sd, zl: (loss - mean) / sd, r: pearson(all, pts.map(p => p[1])) });
   }).filter(r => r.n >= 30 && r.r != null);
+  const host = document.getElementById('wl');
+  host.nextElementSibling.style.display = rows.length ? '' : 'none'; // légende défaites / victoires
+  if (!rows.length) { host.innerHTML = `<p class="lede">Pas assez de matchs sur cet horizon : ${a.length} victoires et défaites, il en faut 30.</p>`; return; }
   const zmax = Math.max(...rows.map(r => Math.max(Math.abs(r.zw), Math.abs(r.zl)))) * 1.25, x = v => ((v + zmax) / (2 * zmax) * 100).toFixed(1) + '%';
   let html = '<div class="db-axis"><span></span><span class="m"><span>sous la moyenne</span><span>moyenne</span><span>au-dessus</span></span><span style="text-align:right">r</span></div>';
   WL_GROUPS.forEach((gl, gi) => {
@@ -1911,13 +1932,12 @@ function renderWL() {
         <span class="dot" style="left:${x(r.zl)};background:var(--loss)"></span><span class="dot" style="left:${x(r.zw)};background:var(--win)"></span>${vals}</span><span class="r">${signed(r.r, 2)}</span></div>`;
     }
   });
-  const host = document.getElementById('wl'); host.innerHTML = html; bindTips(host);
+  host.innerHTML = html; bindTips(host);
 }
-// Médailles par match sur l'horizon choisi contre la période d'avant de même durée. 365 j : pas
-// d'année d'avant chargée, on montre les médailles les plus fréquentes, sans comparaison.
-let medH = 90;
+// Médailles par match sur l'horizon contre la période d'avant de même durée. Sans période d'avant comparable
+// (7 j et 365 j dans la maquette), on montre les médailles les plus fréquentes, sans comparaison.
 function renderMedals() {
-  const all = MEDALS.filter(r => r[0] === medH).map(([, n, c, p]) => ({ n, c, p, ch: p ? (c - p) / p : null }));
+  const medH = evoH, all = MEDALS.filter(r => r[0] === medH).map(([, n, c, p]) => ({ n, c, p, ch: p ? (c - p) / p : null }));
   const hasPrev = all.some(r => r.p != null);
   const rows = (hasPrev ? all.sort((a, b) => Math.abs(b.c - b.p) - Math.abs(a.c - a.p)) : all.sort((a, b) => b.c - a.c)).slice(0, 10);
   const max = Math.max(...rows.flatMap(r => [r.c, r.p ?? 0])) * 1.1, x = v => (v / max * 100).toFixed(1) + '%';
@@ -1927,18 +1947,23 @@ function renderMedals() {
   bindTips(document.getElementById('medals'));
   document.getElementById('med-legend').innerHTML = (hasPrev ? `<span><i class="hollow"></i>${medH} jours d'avant</span>` : '') + `<span><i style="background:var(--p1)"></i>${medH} derniers jours</span>`;
 }
+// Matchs par type de partie sur l'horizon : un bâton par pas de temps (par jour au pas « par match »).
 function renderMix() {
-  const ms = monthly(ALL, a => a, 1);
-  const series = CHAINS.map(([key, lab, col]) => ({ name: lab, type: 'bar', stack: 'mix', barWidth: '60%', data: ms.map(r => r.a.filter(m => m.lg === key).length), itemStyle: { color: css(col) } }));
-  series.push({ name: 'Autres', type: 'bar', stack: 'mix', data: ms.map(r => r.a.filter(m => !CHAINS.some(c => c[0] === m.lg)).length), itemStyle: { color: css('--neutral') } });
-  chart('ch-mix', { legend: {}, grid: { bottom: 46 }, xAxis: { type: 'category', data: ms.map(r => monthLabel(r.k)) }, yAxis: { type: 'value' }, series });
+  const g = evoG === 'match' ? 'jour' : evoG, by = new Map();
+  for (const m of ALL) { if (m.t <= NOW - evoH * DAY) continue; const k = bucketKey(m.t, g); if (!by.has(k)) by.set(k, []); by.get(k).push(m); }
+  const bs = [...by.entries()].sort((a, b) => a[0] - b[0]).map(([k, a]) => ({ k, a }));
+  const lab = k => { const d = new Date(k * 1000); return g === 'mois' ? MONTHS[d.getUTCMonth()] : d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()]; };
+  const bar = { type: 'bar', stack: 'mix', barWidth: '60%', barMaxWidth: 40 };
+  const series = CHAINS.map(([key, name, col]) => ({ ...bar, name, data: bs.map(b => b.a.filter(m => m.lg === key).length), itemStyle: { color: css(col) } }));
+  series.push({ ...bar, name: 'Autres', data: bs.map(b => b.a.filter(m => !CHAINS.some(c => c[0] === m.lg)).length), itemStyle: { color: css('--neutral') } });
+  chart('ch-mix', { legend: {}, grid: { bottom: 46 }, xAxis: { type: 'category', data: bs.map(b => lab(b.k)), axisLabel: { hideOverlap: true } }, yAxis: { type: 'value' }, series });
 }
 function renderCalendar() {
-  const g = new Map(); for (const m of solo()) { if (m.t <= NOW - 365 * DAY) continue; const d = new Date(m.t * 1000).toISOString().slice(0, 10); if (!g.has(d)) g.set(d, []); g.get(d).push(m); }
+  const iso = s => new Date(s * 1000).toISOString().slice(0, 10), g = new Map(); for (const m of solo()) { if (m.t <= NOW - evoH * DAY) continue; const d = iso(m.t); if (!g.has(d)) g.set(d, []); g.get(d).push(m); }
   const data = [...g.entries()].map(([d, a]) => { const w = a.filter(m => m.o === 2).length, l = a.filter(m => m.o === 3).length; return { value: [d, 100 * w / a.length, a.length, w, l, avg(a, m => m.perf)], itemStyle: { opacity: a.length < 3 ? .4 : 1 } }; });
   chart('ch-cal', { tooltip: { trigger: 'item', formatter: p => `<b>${fmtDate(Date.parse(p.value[0]))}</b><br>${p.value[2]} matchs · ${p.value[3]} V / ${p.value[4]} D<br>Taux de victoire : ${nf(p.value[1])} %<br>Score de performance : ${nf(p.value[5], 1)}` },
-    visualMap: { show: true, dimension: 1, min: 0, max: 100, orient: 'horizontal', left: 'center', bottom: 0, itemHeight: 140, itemWidth: 10, text: ['100 %', '0 %'], textStyle: { color: css('--muted-foreground'), fontSize: 10 }, inRange: { color: [css('--loss'), css('--neutral'), css('--win')] } },
-    calendar: { range: ['2025-09-28', '2026-09-27'], top: 22, left: 34, right: 10, cellSize: ['auto', 14], yearLabel: { show: false }, dayLabel: { firstDay: 1, nameMap: ['D', 'L', 'M', 'M', 'J', 'V', 'S'], color: css('--muted-foreground'), fontSize: 9 }, monthLabel: { nameMap: MONTHS, color: css('--muted-foreground'), fontSize: 10 }, splitLine: { show: false }, itemStyle: { color: css('--muted'), borderColor: css('--card'), borderWidth: 2 } },
+    visualMap: { show: false, dimension: 1, min: 0, max: 100, inRange: { color: [css('--loss'), css('--neutral'), css('--win')] } },
+    calendar: { range: [iso(NOW - evoH * DAY), iso(NOW)], top: 22, left: 34, ...(evoH >= 365 ? { right: 10, cellSize: ['auto', 14] } : { cellSize: [20, 14] }), yearLabel: { show: false }, dayLabel: { firstDay: 1, nameMap: ['D', 'L', 'M', 'M', 'J', 'V', 'S'], color: css('--muted-foreground'), fontSize: 9 }, monthLabel: { nameMap: MONTHS, color: css('--muted-foreground'), fontSize: 10 }, splitLine: { show: false }, itemStyle: { color: css('--muted'), borderColor: css('--card'), borderWidth: 2 } },
     series: [{ type: 'heatmap', coordinateSystem: 'calendar', data }] });
 }
 // ═══════════════ ESCOUADE ═══════════════
@@ -1999,8 +2024,8 @@ function overviewRows(set, kpis) {
     return { kpi, keys, months, hz, sd, mean, empty: months.every(m => m.v == null) && hz.every(x => x.v == null) };
   });
 }
-const OV = { title: 'Indicateurs par mois et par horizon', tip: 'Une ligne par indicateur. À gauche, les 12 derniers mois : couleur = écart du mois à la moyenne des mois. À droite, les horizons : couleur = variation par rapport à la période d\'avant de même durée. Écarts en écarts-types des valeurs mensuelles ; vert = mieux, rouge = moins bien, gris = pas de comparaison. Le matchmaking ajuste les lobbys à ton niveau : « Niveau » dit si tu progresses ; « Résultats » revient vers 50 quand le matchmaking t\'a rattrapé ; les autres stats dépendent aussi de la difficulté des lobbys (voir « À difficulté égale »). Cliquer un intertitre replie son groupe, cliquer une ligne affiche son détail.',
-  legend: '<span style="display:inline-flex;align-items:center;gap:6px">moins bien<span style="display:inline-block;width:120px;height:10px;border-radius:2px;background:linear-gradient(90deg,var(--hm-neg),var(--hm-mid),var(--hm-pos))"></span>mieux</span><span><i class="box" style="background:var(--neutral);opacity:.35"></i>pas de comparaison</span>' };
+const OV = { title: 'Indicateurs par mois et par horizon', tip: 'Une ligne par indicateur : à gauche les 12 derniers mois (couleur = écart à la moyenne des mois), à droite les horizons (couleur = variation contre la période d\'avant) ; vert = mieux, rouge = moins bien, gris = pas de comparaison. Le matchmaking ajuste les lobbys à ton niveau : « Niveau » dit si tu progresses, « Résultats » revient vers 50, et les autres stats se lisent à côté du MMR adverse. Cliquer un intertitre replie son groupe ; cliquer une ligne amène à son graphique quand elle en a un.',
+  legend: '<span><i class="box" style="background:var(--neutral);opacity:.35"></i>pas de comparaison</span>' };
 const fmtv = (kpi, v) => v == null ? '' : nf(v, kpi.dec) + (kpi.unit || '');
 // Groupes repliés de la matrice, par graphique (clé « id du graphique|groupe »).
 const COLLAPSED = new Set();
@@ -2032,26 +2057,32 @@ function renderOverview(chartId, gridId, set, kpis) {
     yAxis: { type: 'category', data: labs, inverse: true, axisLine: { show: false }, triggerEvent: true,
       axisLabel: { fontSize: 12, color: css('--foreground'), formatter: v => v.startsWith('§') ? `{g|${COLLAPSED.has(chartId + '|' + v.slice(1)) ? '▸' : '▾'} ${v.slice(1).toUpperCase()}}` : v, rich: { g: { fontSize: 10.5, color: css('--muted-foreground'), fontWeight: 600, padding: [8, 0, 0, 0] } } } },
     visualMap: { show: false, seriesIndex: 0, dimension: 2, min: -2.5, max: 2.5, inRange: { color: [css('--hm-neg'), css('--hm-mid'), css('--hm-pos')] } },
-    series: [{ type: 'heatmap', data: cells, label, cursor: 'pointer', itemStyle: { borderColor: css('--card'), borderWidth: 2, borderRadius: 3 } },
-      { type: 'heatmap', data: grey, label, cursor: 'pointer', itemStyle: { color: css('--neutral'), opacity: .35, borderColor: css('--card'), borderWidth: 2, borderRadius: 3 } }] });
-  // Une ligne de la matrice (case ou libellé) choisit l'indicateur du détail.
+    series: [{ type: 'heatmap', data: cells, label, itemStyle: { borderColor: css('--card'), borderWidth: 2, borderRadius: 3 } },
+      { type: 'heatmap', data: grey, label, itemStyle: { color: css('--neutral'), opacity: .35, borderColor: css('--card'), borderWidth: 2, borderRadius: 3 } }] });
+  // Une ligne de la matrice (case ou libellé) amène au graphique qui la trace, quand il existe.
+  const targetOf = k => k ? document.getElementById(gridId).parentElement.querySelector(`[data-keys~="${k}"]`) : null;
   c.on('click', p => {
     if (p.componentType === 'yAxis' && String(p.value).startsWith('§')) { const key = chartId + '|' + p.value.slice(1); COLLAPSED.has(key) ? COLLAPSED.delete(key) : COLLAPSED.add(key); renderOverview(chartId, gridId, set, kpis); return; }
     const k = p.data && p.data.row ? p.data.row.kpi.k : p.componentType === 'yAxis' ? (kpis.find(x => x.label === p.value) || {}).k : null;
-    const target = k && document.getElementById(gridId).parentElement.querySelector(`[data-keys~="${k}"]`); if (!target) return;
+    const target = targetOf(k); if (!target) return;
     target.scrollIntoView({ behavior: 'smooth', block: 'center' }); target.classList.add('flash'); setTimeout(() => target.classList.remove('flash'), 1400);
   });
+  // zrender met le curseur « pointer » sur toute case et tout libellé : une ligne sans graphique le perd.
+  c.getZr().on('mousemove', e => { const p = c.convertFromPixel({ gridIndex: 0 }, [e.offsetX, e.offsetY]), r = p && rows[p[1]]; if (r && !r.header && !targetOf(r.kpi.k)) c.getZr().setCursorStyle('default'); });
   bindTips(card);
 }
 
 // Mois par mois : un graphique par QUESTION. Les indicateurs de même unité qui racontent la même chose
 // sont tracés ensemble (une courbe chacun, un point par pas de temps) ; aucun double axe.
-// Définition : { title, keys, names?, colors?, dashed?, ref?, range?, stack? } ; keys = clés des indicateurs ;
-// dashed[i] = courbe de repère (pointillé, sans points ni moyenne de la période d'avant).
+// Définition : { title, keys, names?, colors?, dashed?, ref?, range?, stack?, slot? } ; keys = clés des indicateurs ;
+// dashed[i] = courbe de repère (pointillé, sans points ni moyenne de la période d'avant) ; slot = texte montré à la
+// place du graphique quand les données de la maquette ne permettent pas de le tracer.
 const SERIES_COLORS = ['--p1', '--c3', '--c2', '--c4'];
 const SOLO_CHARTS = [
-  { title: 'MMR des adversaires et de l\'équipe', keys: ['mmr', 'tmmr'], names: ['Adversaires', 'Équipe'], colors: ['--c3', '--p1'], tip: 'Le matchmaking ajuste le niveau des lobbys au tien : un MMR adverse qui monte, c\'est la progression. Couvre aussi le classé, que le LUSR ne couvre pas.' },
-  { title: 'LUSR par type de partie', keys: ['lu_s', 'lu_c', 'lu_o'], names: ['Arène assassin', 'Chaos', 'Arène objectif'], colors: ['--c1', '--c2', '--c3'] },
+  { title: 'CSR par file classée', keys: ['csr'], names: ['CSR'], colors: ['--c4'], tip: 'Le CSR est ton rang en classé, une courbe par file classée ; hors classé, c\'est le LUSR qui joue ce rôle. Carte et ligne affichées seulement si tu joues en classé.',
+    slot: 'JGtm : 8 matchs classés sur 365 jours, dont 7 de placement. Un seul CSR connu (667, Or 1, le 6 novembre 2025) : pas de courbe à tracer.' },
+  { title: 'LUSR par type de partie (non classé)', keys: ['lu_s', 'lu_c', 'lu_o'], names: ['Arène assassin', 'Chaos', 'Arène objectif'], colors: ['--c1', '--c2', '--c3'] },
+  { title: 'MMR des adversaires et de l\'équipe', keys: ['mmr', 'tmmr'], names: ['Adversaires', 'Équipe'], colors: ['--c3', '--p1'], tip: 'Le matchmaking ajuste le niveau des lobbys au tien : un MMR adverse qui monte, c\'est la progression.' },
   { title: 'Dégâts infligés et subis par match', keys: ['ddl', 'dtk'], names: ['Infligés', 'Subis'] },
   { title: 'Objectifs : prendre, défendre, tenir', keys: ['o_take', 'o_def', 'o_hold', 'o_par'], names: ['Prendre', 'Défendre', 'Tenir', 'Parité'],
     colors: ['--role-take', '--role-defend', '--role-hold', '--muted-foreground'], dashed: [false, false, false, true], tip: 'Prendre = s\'emparer de l\'objectif ou faire marquer son camp (captures, vols, zones prises, crâne ramassé) ; Défendre = protéger l\'objectif de son camp (retours, porteurs adverses abattus, zones sécurisées) ; Tenir = le temps passé avec l\'objectif (porteur, temps en zone). Chaque courbe est ta part du total de ton équipe, sur les matchs à objectif. Pointillé gris = parité, la part d\'un joueur moyen (100 % divisé par l\'effectif).' },
@@ -2095,11 +2126,11 @@ function lineOption(def, kpiOf, set) {
 }
 function renderCharts(gridId, set, kpis, defs) {
   const kpiOf = k => kpis.find(x => x.k === k) || KPI_EXTRA.find(x => x.k === k);
-  const built = defs.filter(def => !(def.skip || []).includes(evoG)).map(def => ({ def, opt: lineOption(def, kpiOf, set) })).filter(b => b.opt);
+  const built = defs.filter(def => !(def.skip || []).includes(evoG)).map(def => ({ def, opt: lineOption(def, kpiOf, set) })).filter(b => b.opt || (b.def.slot && !chain));
   const host = document.getElementById(gridId);
-  host.innerHTML = built.map(({ def }, i) => `<div class="card" data-keys="${def.keys.join(' ')}"><div class="card-head"><h3>${def.title}</h3>${def.tip ? `<i class="info" data-tip="${def.tip}">i</i>` : ''}</div><div class="chart" id="${gridId}-c${i}"></div></div>`).join('')
+  host.innerHTML = built.map(({ def, opt }, i) => `<div class="card${opt ? '' : ' slot'}" data-keys="${def.keys.join(' ')}"><div class="card-head"><h3>${def.title}</h3>${def.tip ? `<i class="info" data-tip="${def.tip}">i</i>` : ''}</div>${opt ? `<div class="chart" id="${gridId}-c${i}"></div>` : `<p class="lede">${def.slot}</p>`}</div>`).join('')
     || '<p class="lede">Pas assez de matchs sur cet horizon pour ce pas de temps.</p>';
-  built.forEach(({ opt }, i) => chart(gridId + '-c' + i, opt));
+  built.forEach(({ opt }, i) => opt && chart(gridId + '-c' + i, opt));
   bindTips(host);
 }
 
@@ -2148,9 +2179,7 @@ function renderDuo() {
 function renderSolo() { renderOverview('ch-ov', 'grid-solo', solo(), KPIS); renderCharts('grid-solo', solo(), KPIS, SOLO_CHARTS); renderCalendar(); renderDuo(); renderWL(); renderMedals(); renderMix(); }
 function renderAll() { charts.length = 0; renderEvoControls(); if (!document.getElementById('view-solo').hidden) renderSolo(); else renderSquad(); }
 document.getElementById('chain-sel').addEventListener('change', e => { chain = e.target.value; renderAll(); });
-document.querySelectorAll('[data-wl]').forEach(b => b.addEventListener('click', () => { wlH = +b.dataset.wl; document.querySelectorAll('[data-wl]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderWL(); }));
 document.getElementById('strict').addEventListener('change', renderSquad);
-document.querySelectorAll('#med-h [data-m]').forEach(b => b.addEventListener('click', () => { medH = +b.dataset.m; document.querySelectorAll('#med-h [data-m]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderMedals(); }));
 [['tab-solo', 'view-solo'], ['tab-squad', 'view-squad']].forEach(([t], _, all) => document.getElementById(t).addEventListener('click', () => {
   all.forEach(([t2, v2]) => { document.getElementById(t2).setAttribute('aria-selected', String(t2 === t)); document.getElementById(v2).hidden = t2 !== t; }); renderAll();
 }));
