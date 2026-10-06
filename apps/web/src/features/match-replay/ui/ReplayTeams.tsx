@@ -5,9 +5,10 @@
  * montre des traces ; les fiches montrent des gens, avec leur état à l'instant lu — vivant
  * ou mort, bouclier, armes portées, temps avant le retour. Ce fichier ne garde que ce qui est
  * PROPRE À LA COLONNE : les camps et leurs sièges, la scène des effets construite une fois
- * par document, et la grille dans laquelle les tuiles se rangent. La tuile elle-même vit dans
- * `ReplayPlayerCard.tsx`, ses lectures dans `model/playerCardReadings.ts` (extraction du
- * 2026-09-06, plan fiches compactes).
+ * par document, et la grille dans laquelle les tuiles se rangent. Les tuiles elles-mêmes — la
+ * fiche, la place libre, l'occupant pas encore apparu, dans un même squelette — vivent dans
+ * `ReplayPlayerCard.tsx`, leurs lectures dans `model/playerCardReadings.ts` (extraction du
+ * 2026-09-06, plan fiches compactes ; squelette partagé le 2026-10-06).
  *
  * DEUX GABARITS, UN SEUL JEU DE COMPOSANTS (2026-09-06, décision D1 de l'utilisateur : « les
  * matchs de type 4v4 on touche pas »). La densité se lit sur le TYPE DE MATCH — la catégorie
@@ -34,7 +35,7 @@ import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { ReplayPlayerCard } from './ReplayPlayerCard'
+import { ReplayPlayerCard, ReplaySeatNotSpawned, ReplaySeatVacant } from './ReplayPlayerCard'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { cardDensity } from '../model/cardDensity'
 import { teleportMoments } from '../model/placementTeleport'
@@ -55,7 +56,6 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   buildPlayers,
   buildSlotOwnership,
-  playerName,
   type ReplayPlayer,
   sideResolver,
   vitalityPresence,
@@ -228,10 +228,12 @@ export function ReplayTeams({
               const lu = seatTileAt(seat, frame)
               if (lu === null) return null
               if (lu.kind === 'vide' || lu.player === null) {
-                return <ReplaySeatVacant key={seat.key} locale={locale} />
+                return <ReplaySeatVacant key={seat.key} gabarit={gabarit} locale={locale} />
               }
               if (lu.kind === 'pasEncoreApparu') {
-                return <ReplaySeatNotSpawned key={seat.key} player={lu.player} locale={locale} />
+                return (
+                  <ReplaySeatNotSpawned key={seat.key} player={lu.player} gabarit={gabarit} locale={locale} />
+                )
               }
               return (
                 <ReplayPlayerCard
@@ -276,48 +278,4 @@ function occupantsPresents(seats: readonly ReplaySeat[], frame: number): ReplayP
     if (lu.kind !== 'vide' && lu.player !== null) out.push(lu.player)
   }
   return out
-}
-
-/**
- * La tuile d'une place SANS FICHE DE JOUEUR — vide, ou tenue par un occupant sans corps. Même
- * chrome discret pour les deux : bordure tiretée, fond de carte, encre atténuée — les tokens
- * sémantiques `border` / `card` / `muted-foreground`, aucun littéral de couleur.
- */
-const SEAT_PLACEHOLDER_CLASS =
-  'flex min-w-0 flex-col justify-center rounded border border-dashed border-border bg-card px-2 py-1'
-
-/**
- * ReplaySeatVacant — (Q20) LA PLACE LIBRE : personne ne la tient à l'instant lu — son occupant
- * est parti et son remplaçant n'est pas encore arrivé, ou elle attend son premier occupant.
- *
- * ELLE RESTE À L'ÉCRAN parce que le nombre de places est FINI (règle des places) : la retirer
- * ferait croire à une équipe plus petite, et la grille sauterait d'un cran puis reviendrait.
- * Elle ne montre AUCUN nom : un joueur parti n'est jamais affiché.
- */
-function ReplaySeatVacant({ locale }: { locale: ReplayLocale }) {
-  const t = REPLAY_TEXT[locale]
-  return (
-    <div className={SEAT_PLACEHOLDER_CLASS} title={t.seatVacantHint}>
-      <span className="truncate text-3xs uppercase tracking-wider text-muted-foreground">
-        {t.seatVacant}
-      </span>
-    </div>
-  )
-}
-
-/**
- * ReplaySeatNotSpawned — (Q21) L'OCCUPANT TIENT LA PLACE, SANS CORPS ENCORE : au coup d'envoi,
- * ou à son arrivée, avant sa première apparition. Son nom, et rien d'autre — ni vitalité, ni
- * armes, ni compteurs : il n'a encore rien à en dire, et lui prêter un état serait inventer.
- */
-function ReplaySeatNotSpawned({ player, locale }: { player: ReplayPlayer; locale: ReplayLocale }) {
-  const t = REPLAY_TEXT[locale]
-  return (
-    <div className={SEAT_PLACEHOLDER_CLASS} title={t.seatNotSpawnedHint}>
-      <span className="truncate text-2xs text-muted-foreground">{playerName(player) ?? ''}</span>
-      <span className="truncate text-3xs uppercase tracking-wider text-muted-foreground">
-        {t.seatNotSpawned}
-      </span>
-    </div>
-  )
 }

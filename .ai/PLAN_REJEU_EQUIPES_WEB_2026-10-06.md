@@ -66,14 +66,23 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
 
 ## Étape E3 — Tuiles d'attente au gabarit
 
-- [ ] E3.1 Squelette de tuile partagé (boîte `TILE_LAYOUT[...].tile`, ligne de nom, corps fixe
-  `BODY_CLASS[...]`) consommé par `ReplayPlayerCard` ET par `ReplaySeatVacant` /
-  `ReplaySeatNotSpawned` ; chrome des tuiles d'attente en jetons (aucun littéral de couleur).
-- [ ] E3.2 Test DOM : pour chaque gabarit (normal, compact BTB), les trois sortes de tuile ont la
-  même classe de boîte et la même classe de corps fixe.
-- [ ] E3.3 Fixations `replayTeams.4v4.html` / `6v6.html` inchangées (elles ne contiennent pas de
-  tuile d'attente).
-- Gate E3 : vitest `ui/`, garde `cardGabarit.guard.test.ts`.
+- [x] E3.1 Squelette de tuile partagé `TileFrame` (boîte `TILE_LAYOUT[...].tile`, ligne du nom,
+  corps fixe `BODY_CLASS[...]`, nom par `nameClass`) dans `ReplayPlayerCard.tsx`, consommé par la
+  fiche ET par `ReplaySeatVacant` / `ReplaySeatNotSpawned` (déplacées de `ReplayTeams.tsx`, avec
+  la classe de boîte dupliquée `SEAT_PLACEHOLDER_CLASS` supprimée) ; habit des tuiles d'attente
+  `SEAT_WAITING_CHROME` (`playerCardFx.ts` : bordure tiretée `var(--border)`, fond `var(--card)`,
+  comme `cardChrome`) ; état écrit au centre du corps fixe ; le nom de l'occupant pas encore
+  apparu écrit par `cardName` (la dérivation de la fiche, suffixe « [bot] » retiré — elle
+  l'affichait brut).
+- [x] E3.2 Test DOM (`ReplayTeams.places.test.tsx`) : pour chaque gabarit (normal, compact BTB),
+  les trois sortes de tuile ont la même classe de boîte (littérale), le même corps fixe
+  (littéral), la même ligne du nom ; seul l'habit tireté les distingue.
+- [x] E3.3 Fixations `replayTeams.4v4.html` / `6v6.html` inchangées à l'octet (aucune tuile
+  d'attente dedans ; la fiche passe par le squelette sans changer un nœud).
+- Gate E3 : vitest `ui/`, garde `cardGabarit.guard.test.ts`. PASSÉ le 2026-10-06 : `ui/` 28
+  fichiers / 404 tests verts (dont `cardGabarit.guard`, fixations 4v4 / 6v6, sources de la tuile
+  compacte), `tsc -b` 0 erreur, eslint des 5 fichiers 0 problème, `lint-no-hardcoded-colors`
+  0 violation.
 
 ## Étape E4 — Garde-rail
 
@@ -128,3 +137,9 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
 - 2026-10-06 — E2 close (gate vert). Choix : la clé d'une place porte son équipe (places finies
   par équipe) ; les gestes / prises d'un joueur sans équipe vont aux compteurs « hors camp »
   existants (`unattributed`, `unjoined`) plutôt que de disparaître. Découvertes D1 à D6 notées.
+- 2026-10-06 — E3 close (gate vert). Choix : le squelette vit dans `ReplayPlayerCard.tsx` (les
+  tables `TILE_LAYOUT` / `BODY_CLASS` restent privées à un seul module, et les tests de source de
+  la tuile compacte qui les y lisent restent valides) ; l'habit des tuiles d'attente passe en
+  `style` pour que la classe de boîte soit EXACTEMENT celle de la fiche. La hauteur de la ligne
+  du nom est tenue par la même classe de nom (jsdom ne mesure pas la mise en page : contrôle
+  visuel à l'utilisateur).
