@@ -47,7 +47,7 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   buildPlayers,
   buildSlotOwnership,
-  sideResolver,
+  campResolver,
   vitalityPresence,
 } from '../../../lib/replay/rosterLogic'
 
@@ -170,9 +170,9 @@ function mesurerModele(doc: ReplayDocumentReady, base: number): Stats {
   const groups = groupSeatsByTeam(seats)
   const presence = vitalityPresence(doc)
   const flashFrames = Math.max(1, msToFrames(1_400, doc))
-  const sideOfSlot = sideResolver(buildSlotOwnership(players))
+  const campOfSlot = campResolver(buildSlotOwnership(players))
   const fxScene: CardFxScene = {
-    zones: { placements: doc.equipmentPlacements, sideOfSlot },
+    zones: { placements: doc.equipmentPlacements, campOfSlot },
     time: { frameMs: frameToMs(1, doc), frames: doc.frameCount },
     teleports: teleportMoments(doc),
   }

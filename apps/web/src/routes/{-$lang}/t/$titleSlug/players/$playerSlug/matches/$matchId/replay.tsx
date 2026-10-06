@@ -314,6 +314,7 @@ function ReplayPage() {
               callouts={callouts}
               scoreboard={scoreboard}
               xuidMeta={xuidMeta}
+              allegiance={model.allegiance}
               marks={marks}
               endMatch={endMatchSound}
               viewpoint={viewpoint.xuid}

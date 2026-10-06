@@ -20,7 +20,8 @@
  *   1. le SCOREBOARD, d'où sortent l'identité (`identity`) et les marques (`marks`) ;
  *   2. l'HORLOGE (`clock`), qui ne dépend que de l'artefact et du countdown ;
  *   3. la FENÊTRE de gameplay (`window`), qui exige l'horloge ET la durée jouable ;
- *   4. le ROSTER (`players`), jointure du film et du scoreboard ;
+ *   4. le ROSTER (`players`), jointure du film et du scoreboard, et l'ALLÉGEANCE (`allegiance`)
+ *      qu'il donne avec le point de vue : l'équipe du film de chacun, comparée à la sienne ;
  *   5. le FIL (`feed`), qui exige les quatre précédents — c'est lui qui porte le recalage,
  *      ASSEMBLÉ ICI ET NULLE PART AILLEURS (cf. `killFeedLogic`, et le garde-rail de J2).
  *
@@ -41,6 +42,7 @@ import {
   type MedalEvent,
   type ReplayFeedEntry,
 } from './killFeedLogic'
+import { buildFilmAllegiance, type FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import { buildPlayerMarks, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { mergeFeedWithPresence, presenceEntries } from './presenceFeed'
 import { buildReplayMedia } from './replayMediaLogic'
@@ -71,8 +73,19 @@ export interface ReplayModel {
    * pour qu'aucune d'elles ne la redécouvre de son côté.
    */
   viewpoint: string | null
-  /** Camp et gamertag de chaque xuid — la cascade « allié = même camp que le point de vue ». */
+  /**
+   * Gamertag de chaque xuid de la feuille : les NOMS du fil, et le filtre des kills de la base
+   * (`collectKillEvents` écarte un acteur absent de la feuille). JAMAIS L'ALLÉGEANCE : son
+   * drapeau `ally` vient de la feuille, et la page Rejeu ne le lit pas — la sienne vient du film
+   * (`allegiance`).
+   */
   identity: XuidMeta
+  /**
+   * ALLIÉ OU ADVERSE, LU DANS LE FILM (2026-10-06) : l'équipe du film de chaque joueur comparée à
+   * celle du point de vue (`filmAllegiance.ts`). Construite UNE fois ici ; toutes les surfaces
+   * d'encre de la page la reçoivent — aucune ne la recalcule.
+   */
+  allegiance: FilmAllegiance
   /** Marques d'identité (moi, ami) par xuid : forme du point sur la carte, glyphe au fil. */
   marks: ReadonlyMap<string, PlayerMarkKind>
   /**
@@ -101,6 +114,7 @@ const VIDE: ReplayModel = {
   scoreboard: [],
   viewpoint: null,
   identity: new Map(),
+  allegiance: buildFilmAllegiance([], null),
   marks: new Map(),
   players: [],
   clock: null,
@@ -156,6 +170,7 @@ export function buildReplayModel(
     scoreboard,
     viewpoint: subject,
     identity,
+    allegiance: buildFilmAllegiance(players, subject),
     marks,
     players,
     clock,

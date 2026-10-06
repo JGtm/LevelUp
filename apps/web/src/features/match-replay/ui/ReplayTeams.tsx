@@ -57,7 +57,7 @@ import {
   buildPlayers,
   buildSlotOwnership,
   type ReplayPlayer,
-  sideResolver,
+  campResolver,
   vitalityPresence,
 } from '../../../lib/replay/rosterLogic'
 
@@ -137,7 +137,7 @@ export function ReplayTeams({
   // LE CAMP D'UNE VIE PAR SLOT ET PAR IMAGE (résolveur frame-aware) : un slot de biped est
   // réattribué entre manches, le camp doit suivre l'occupant. Le capteur adverse le lit à
   // l'image du joueur interrogé / à la pose du capteur (cf. equipmentZones).
-  const sideOfSlot = useMemo(() => sideResolver(buildSlotOwnership(players)), [players])
+  const campOfSlot = useMemo(() => campResolver(buildSlotOwnership(players)), [players])
   // L'ÉCLAT DE TRANSLOCATION EST DATÉ PAR L'ÉVÉNEMENT DU FILM (schéma 38, 2026-09-03) :
   // `translocations[]` porte l'instant EXACT de chaque usage — plus jamais le `spent`, qui date
   // la FIN de l'équipement avec jusqu'à 16,5 s de retard mesuré, ni l'heuristique spatiale
@@ -149,12 +149,12 @@ export function ReplayTeams({
     () => ({
       zones: {
         placements: doc.equipmentPlacements,
-        sideOfSlot,
+        campOfSlot,
       },
       time: { frameMs: frameToMs(1, doc), frames: doc.frameCount },
       teleports,
     }),
-    [doc, sideOfSlot, teleports],
+    [doc, campOfSlot, teleports],
   )
   // LE CALQUE DE SCORE PASSE PAR SA GARDE D'HORLOGE, une seule fois pour toute la colonne :
   // absent = artefact antérieur au schéma 12, mode sans compteur, ou origine non recalée

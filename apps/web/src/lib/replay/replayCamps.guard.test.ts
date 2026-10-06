@@ -71,10 +71,6 @@ const ALLOWLIST: Readonly<Record<string, { lectures: number; raison: string }>> 
     lectures: 1,
     raison: '2026-10-06 — camp du tueur dans le fil, qui vient de la base comme le fil lui-même (encre, dominance aux frags).',
   },
-  '/src/lib/replay/rosterLogic.ts': {
-    lectures: 1,
-    raison: '2026-10-06 — `sideResolver` : opposition du capteur de menaces (découverte D2 du plan, laissée sur la feuille).',
-  },
   '/src/lib/replay/scoreTimeline.ts': {
     lectures: 1,
     raison: '2026-10-06 — `allyOfTeamId` : allégeance d’un camp du calque de score.',

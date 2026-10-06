@@ -26,6 +26,7 @@ import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersi
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import type { CalloutZoneReady } from '../layers/calloutsLayer'
 
@@ -153,6 +154,11 @@ interface ReplayCanvasProps {
   scoreboard?: MatchScoreboardRow[]
   /** Camp de chaque xuid, RELATIF au point de vue (allié / adversaire) — cf. `viewpoint`. */
   xuidMeta?: XuidMeta
+  /**
+   * ALLIÉ OU ADVERSE, LU DANS LE FILM et vu du point de vue (`model.allegiance`) : la seule
+   * source de l'encre de camp de la carte. REQUISE, comme le point de vue qu'elle porte.
+   */
+  allegiance: FilmAllegiance
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /**
@@ -201,7 +207,7 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, callouts, scoreboard, xuidMeta, marks,
-  viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  allegiance, viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
@@ -255,10 +261,10 @@ export function ReplayCanvas({
     return markerColors === 'player' ? getSeriesColors(doc.roster.length, SERIES_TOKENS) : null
   }, [markerColors, doc.roster.length, paletteVersion])
   // Identité PAR SLOT ET PAR IMAGE : strict pour marqueurs/vies, `OrLast` pour la frontière — cf. useSlotIdentity.
-  const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, sideOfSlot } = useSlotIdentity({
+  const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot } = useSlotIdentity({
     doc,
     scoreboard,
-    xuidMeta,
+    allegiance,
     marks,
     teamColorOf,
     neutral: floorStyle.edge,
@@ -495,8 +501,8 @@ export function ReplayCanvas({
               ctx,
               // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur revele les
               // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le
-              // camp est celui de la base (`team_side`), jamais le drapeau « allie » de la page.
-              { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot, rift: placements.rift },
+              // camp est l'equipe du FILM de chacune, jamais le drapeau « allie » de la page.
+              { placements: doc.equipmentPlacements, lives: doc.tracks, campOfSlot, rift: placements.rift },
               view,
               { frame: fr, ...placements.windowTime, k, reducedMotion, ...placements.toggles },
               // FRONTIERE : objet lache a la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.
@@ -583,7 +589,7 @@ export function ReplayCanvas({
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,
-    sideOfSlot,
+    campOfSlot,
     markOfSlot,
     nameOfSlot,
     showTrail,

@@ -94,7 +94,7 @@ export function scene(
   placements: ReplayEquipmentPlacement[],
   over: Partial<PlacementScene> = {},
 ): PlacementScene {
-  return { placements, lives: [], sideOfSlot: () => null, ...over }
+  return { placements, lives: [], campOfSlot: () => null, ...over }
 }
 
 /** Une vie IMMOBILE, pour la révélation : deux échantillons à la même position. */
