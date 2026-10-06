@@ -36,12 +36,12 @@ est retirée : hors plan, non couverte par une décision (§14, correction 2).
 - Marche des morts d'objet : étape `vehicles` publiée mesurée aussi sur les deux films ÉGALE à
   véhicules (§6.1) — `4f77afc1` : 0 mort retirée, 5 lectures d'occupation retirées, instruites comme
   pertes de classe E ; `bfecd02b` : aucune retirée.
-- Gate de corpus : **rc = 1** (avant et après la fusion de `feat/v75` `28c542b33`, §7.1) — 16 / 19 « ok », 0 `MANQUE`, 3 `FAUX` de V-3 (instruits : tous les tirs
+- Gate de corpus : **rc = 1** (avant et après les fusions de `feat/v75` `28c542b33` et `65c99b669`, §7.1 et §7.2) — 16 / 19 sans `FAUX` (4 « ok », 12 `PERTE`), 0 `MANQUE`, 3 `FAUX` de V-3 (instruits : tous les tirs
   « hors vie » sont des tirs de véhicule couverts par un trajet du même slot dans ce véhicule ; le banc
   ne compte pas les trajets comme des vies), `[FILET]` des postures (fausse continuité retirée, oracle
   physique). Son admission (rc 1) est un geste du pilote ; la revue adversariale de fin de lot reste à
   faire.
-- Gates de code : gofmt vide, vet (et `-tags=research`) rc=0, archlint ok, G-film rc=0 (21 paquets),
+- Gates de code (rejoués après chaque fusion, dernière : `30d94a60b`, §7.2) : gofmt vide, vet (et `-tags=research`) rc=0, archlint ok, G-film rc=0 (21 paquets),
   golangci-lint 0 issue ; **13 / 13 mutations ROUGES** (dont la neuve, m14, juge PRÉFIXE) ;
   vérifications (a) à (g) de la représentation intermédiaire tenues.
 - Révisions : `grammar-2026-10-06.3` (`.2` pour la première version) ; `killsource`, `objectives`,
@@ -545,6 +545,45 @@ f75e7053     koth_collines        79     79       35       14        2      5.41
 8. Mutations rejouées : **13 / 13 ROUGES**, chacune sur le test attendu
    (`scratchpad/cg3-V2c/fusion/mutations.txt`).
 
+### 7.2 Après la seconde fusion de `feat/v75` (`65c99b669`)
+
+`origin/feat/v75` a de nouveau avancé : `65c99b669` (relecture de V1, goldens `killsource` régénérés).
+Fusionné (`30d94a60b`, `feat/v75` a raison) ; conflits résolus et décrits au message de fusion
+(archlint, doc de `vue_a_versions.go`, `grammar_rev.golden`, fixtures de contrat). `git fetch` refait
+avant ce rapport (2026-10-06) : `origin/feat/v75` = `65c99b669`, pas d'avance.
+
+Gates rejoués sur la tête fusionnée `30d94a60b` (`scratchpad/cg3-V2c/fusion2/`, `fusion2.sh`) :
+
+1. `gofmt` vide ; `go vet ./...` rc=0 ; `go vet -tags=research` rc=0 ; archlint `ok`.
+2. G-film : rc=0, 21 paquets `ok`.
+3. `golangci-lint` : recette CI (`--new-from-merge-base=origin/main`), paquets touchés, et
+   `--build-tags=research --new-from-rev=8354c0d43` : `0 issues.` aux trois.
+4. Carte v2 : `fermeture_paquets.tsv` et les 13 autres tables identiques à l'octet à celles d'avant
+   la fusion ; `fermeture_films.tsv` identique hors les colonnes `pic_octets` et `duree_ms` (mesures
+   d'exécution). Gate 2 : §4, inchangé.
+5. `cmd/killsource json`, 20 films : rc=0, 20 JSON identiques à l'octet à ceux d'avant la fusion.
+6. `replay-equiv`, tête : les 20 TSV d'étapes identiques à l'octet à ceux de la tête d'avant la
+   fusion (aucune étape ne change, `artifact` compris). Contre la NOUVELLE base (`65c99b669`, binaire
+   construit depuis `git archive`, arbre vérifié identique à `git archive 65c99b669`) : exactement les
+   mêmes couples (film, étape) divergents qu'au §7.1 (`artifact` 20, `movementStates` 16,
+   `movementStates.stats` 16, `killsource` 16, `continuousFire.stats` 16, `continuousFire` 13,
+   `vehicles` 6 — `084a804d`, `111fa685`, `11de8353`, `1c4c63c2`, `53ce4390`, `e5adf7b2`) ;
+   `objectives`, `killRefs`, `deaths` identiques.
+7. `replay-corpus-gate --reference=base --base=65c99b669` (base cuite par le gate) : **rc=1**, même
+   verdict, même tableau (gains, pertes, changements et statuts identiques témoin par témoin) qu'au
+   §7.1 — 4 « ok », 12 `PERTE`, 3 `FAUX` de V-3 (`084a804d`, `111fa685`, `4f77afc1`), 0 `MANQUE`,
+   485 lignes `[FILET]`. Seule la télémétrie diffère : la base porte désormais
+   `grammar-2026-10-06` et `profile-2026-10-06` (V1 est dans `feat/v75`).
+8. Mutations rejouées : **13 / 13 ROUGES**, chacune sur le test attendu
+   (`scratchpad/cg3-V2c/fusion2/mutations.txt`) ; les copies mutées ne diffèrent de la tête que par
+   la mutation (vérifié, 2 à 4 lignes de `diff` chacune).
+
+Incident d'exécution, sans effet sur les résultats retenus : le script des gates, laissé orphelin par
+la fin de la session précédente, a été suspendu une nuit pendant le `replay-equiv` de la base (un film
+« 12h33m », puis 16 enfants morts au lancement, code `0xC0000142`). Ce passage
+(`re_base_echec.log`, `re_base_tsv_echec/`) est écarté ; `replay-equiv` de la base a été relancé seul
+après la fin du script, une commande à la fois : 20 films, 0 échec (`re_base.log`).
+
 
 ## 8. Mutations (`-overlay`, suite entière du paquet ; ROUGE attendu)
 
@@ -712,7 +751,7 @@ Corrections du contrôle, scratchpad `scratchpad/cg3-V2c/` (non versionné) : `c
 `carte.sh`, `ks.sh`, `re.sh`, `gate.sh`, `etapes.sh`, `apres.sh`, `mutations.sh`. Première version :
 `scratchpad/cg3-V2/` (dont `carte_E/`, `v3.jq`, `oracle_corpus.js`, `replis.sh`). Base :
 `scratchpad/cg3-V1/` (`carte_base/`, `ks_base/`, `re_base_tsv/`, `replis_base2.tsv`, binaires
-`bin/base/`, `src_base/`). Contrôle : `scratchpad/cg3-V2-ctl/`. Versionnés :
+`bin/base/`, `src_base/`). Contrôle : `scratchpad/cg3-V2-ctl/`. Seconde fusion (§7.2) : `scratchpad/cg3-V2c/fusion2/` (`fusion.log`, `carte_tete/`, `ks_tete/`, `re_tete_tsv/`, `re_base_tsv/`, `re_div_base.tsv`, `re_div_pre.tsv`, `gate.log`, `gate_table.txt`, `mutations.txt`), script `fusion2.sh`. Versionnés :
 `va_ghidra/ASM_142f2c3b0.txt`, `ASM_14299d2c8.txt`, `FUN_1406d49c4.c`.
 
 
@@ -727,3 +766,10 @@ toutes appliquées, aucune autre.
 | 2 | Loi du bit nul des candidats de tête : écart au plan non déclaré ; la retirer ou obtenir une décision datée ; la déclarer au §11 | **Fondée.** `PLAN_LOT_VUE_A.md` la classe hors lot ; aucune décision du 2026-10-04 ne la couvre ; aucune décision datée de l'utilisateur n'est disponible à cette étape | **Retirée** (`debut_de_liste.go` revient à V1 hors une doc ; test de la loi et vecteurs réécrits retirés). Carte v2 identique à l'octet à `carte_E` : +41 656 sains, aucun film en baisse, aucune exception D2 ; gate de corpus sans `MANQUE`. Déclarée au §11. `grammar-2026-10-06.3` |
 | 3 | Test qui fige le juge de la preuve PRÉFIXE (« sans règle de l'écrivain contredite ») ; la mutation MC restait VERTE | **Fondée** (rapport du contrôle : MC VERTE sur grammar et killsource ; aucun test de la première version ne pose une marche fermée au bit près qui contredit l'écrivain sous un film PRÉFIXE) | `TestUnFilmAncienNePrendPasUneFinDeVueAFermeeAuBitSeulement` : la marche depuis E ferme au bit près en contredisant l'ordre de l'écrivain ; ÉGALE → E, PRÉFIXE → le localisateur, pas E. Mutation m14 (= MC) : ROUGE sur ce test seul |
 | 4 | Garde `len(a.Genres) == 0` inatteignable dans `debutParLaVueA` (MF VERTE, mutant équivalent) : la retirer ou écrire pourquoi | **Fondée.** Relu : `marchDebut` et `runWalk` n'appellent qu'avec `BitAt(pay, 1) != 0`, la cuisson qu'avec `listeAnnoncee` ; une vue A lue depuis le bit 1 et portée compte alors au moins un genre (`lireLaVueA` lit le genre après chaque bit de continuation à 1 ; `rangerLaVueA` rend `VueTerminee` pour une vue portée) | Garde retirée ; la raison est écrite à la fonction (une vue A vide portée finirait d'ailleurs au bit 2, le début de la vue B d'un paquet sans événement) |
+
+Vérification sur pièces le 2026-10-06, tête `30d94a60b` (après les deux fusions de `feat/v75`) : les
+quatre corrections sont présentes — `debutParLaVueA` (`localisateur.go`) sans la garde des genres,
+raison écrite ; `candidatsDeTete` et `localiserLaListe` (`debut_de_liste.go`) identiques à
+`87cdfa761` hors une doc (la loi du bit nul ne reste qu'au localisateur, où elle était déjà en base) ;
+`TestUnFilmAncienNePrendPasUneFinDeVueAFermeeAuBitSeulement` présent, m14 ROUGE sur lui seul ; §6.1,
+§9(d) et §11 corrigés. Gates rejoués : §7.2.
