@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/sessionusage"
-	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
@@ -38,14 +37,7 @@ func (m *mockTeammatesUsageRepo) LoadParticipants(_ context.Context, _ []string)
 	return m.participants, nil
 }
 
-func (m *mockTeammatesUsageRepo) LoadUsageFilmPads(context.Context, []string) (map[string]squadformes.FilmPads, error) {
-	return nil, nil
-}
-
-var (
-	_ port.SessionUsageRepository     = (*mockTeammatesUsageRepo)(nil)
-	_ port.SquadFormesUsageRepository = (*mockTeammatesUsageRepo)(nil)
-)
+var _ port.SessionUsageRepository = (*mockTeammatesUsageRepo)(nil)
 
 func teammatesUsageTeam(v int) *int { return &v }
 
@@ -178,7 +170,7 @@ func (m *mockTeammatesUsageRepo) LoadPadTiers(_ context.Context, _ []string) ([]
 }
 
 // compteurUsageRepo compte les lectures du résumé d'usage ; il sert AUSSI de source au bloc
-// « formes retenues » (LoadUsageFilmPads), comme le câblage de production.
+// « formes retenues », comme le câblage de production.
 type compteurUsageRepo struct {
 	*mockTeammatesUsageRepo
 	lectures map[string]int
@@ -195,10 +187,6 @@ func (c *compteurUsageRepo) LoadUsagePlayers(ctx context.Context, ids []string) 
 func (c *compteurUsageRepo) LoadParticipants(ctx context.Context, ids []string) ([]sessionusage.ParticipantRow, error) {
 	c.lectures["participants"]++
 	return c.mockTeammatesUsageRepo.LoadParticipants(ctx, ids)
-}
-func (c *compteurUsageRepo) LoadUsageFilmPads(context.Context, []string) (map[string]squadformes.FilmPads, error) {
-	c.lectures["pads"]++
-	return nil, nil
 }
 
 // TestTeammatesService_GetPage_UsageEtFormesPartagentLeursLectures (D2.6, lot perf L2) : les
@@ -228,7 +216,7 @@ func TestTeammatesService_GetPage_UsageEtFormesPartagentLeursLectures(t *testing
 	if resp.SquadFormes == nil || !resp.SquadFormes.Available || resp.SquadEmprise == nil {
 		t.Fatalf("les deux blocs doivent être publiés : formes %+v, Emprise %v", resp.SquadFormes, resp.SquadEmprise != nil)
 	}
-	for _, lecture := range []string{"films", "players", "participants", "pads"} {
+	for _, lecture := range []string{"films", "players", "participants"} {
 		if usage.lectures[lecture] != 1 {
 			t.Errorf("lecture %s faite %d fois, attendu 1 (lectures %v)", lecture, usage.lectures[lecture], usage.lectures)
 		}

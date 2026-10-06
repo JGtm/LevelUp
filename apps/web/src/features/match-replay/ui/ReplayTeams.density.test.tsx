@@ -59,7 +59,14 @@ function documentDe(liste: readonly string[], vitalite = true, extra: Track[] = 
     frameCount: 300,
     frameIntervalMs: 100,
     originMs: 0,
-    roster: [...liste, ...extra.map((t) => t.xuid ?? '')].map((nom, i) => ({ xuid: nom, filmIndex: i, name: nom })),
+    // L'ÉQUIPE DU FILM : les Sud au camp 1, tous les autres (Nord, et le remplaçant Zulu) au
+    // camp 0 — le même découpage que la feuille du test (`tableau`).
+    roster: [...liste, ...extra.map((t) => t.xuid ?? '')].map((nom, i) => ({
+      xuid: nom,
+      filmIndex: i,
+      name: nom,
+      team: nom.startsWith('Sud') ? 1 : 0,
+    })),
     tracks: [...liste.map((nom, i) => vie(nom, i, vitalite)), ...extra],
   })
 }

@@ -8,7 +8,7 @@
  *
  * LES RÔLES (D7) : la partition prendre / défendre / tenir que le serveur publie sur chaque
  * colonne. Les colonnes FACULTATIVES (prises nettes, lues du film) restent hors des rôles —
- * mêmes règles que `aggregateRole` et que le calcul Go de l'historique. Elles restent, en
+ * même règle que le calcul Go de l'historique. Elles restent, en
  * revanche, des lignes du rapport de force et des fiches : c'est une action que l'on montre.
  *
  * UNE PART PAR MATCH, ET CHAQUE MATCH PÈSE PAREIL (D7) : quatre Bases à 200 actions n'écrasent
@@ -68,7 +68,6 @@ export interface BalanceFamily {
  * les matchs qui la mesurent n'a pas de ligne.
  */
 export function buildObjectiveBalance(block: SquadFormesBlock): BalanceFamily[] {
-  const main = block.main_xuid ?? ''
   return objectiveFamilies(block).map((family) => {
     const matches = matchesOfFamily(block, family)
     const roles = OBJECTIVE_ROLES.map((role) => ({
@@ -76,7 +75,7 @@ export function buildObjectiveBalance(block: SquadFormesBlock): BalanceFamily[] 
       lines: columnsOfFamily(block, family)
         .filter((c) => c.role === role)
         .flatMap((c): BalanceLine[] => {
-          const agg = aggregateColumns(matches, main, [c])
+          const agg = aggregateColumns(matches, [c])
           if (agg.lobby <= 0) return []
           return [{ key: c.key, duration: !!c.duration, us: agg.team, them: agg.lobby - agg.team, share: agg.team / agg.lobby }]
         }),
@@ -248,6 +247,45 @@ export function buildObjectiveSheets(block: SquadFormesBlock): ObjectiveSheets {
   const campTotals = OBJECTIVE_ROLES.map((_, ri) => roleTotals.reduce((a, t) => a + t[ri], 0))
   const dominant = roleTotals.map((totals) => dominantRole(totals, campTotals))
   return { owners, families, roleTotals, dominant }
+}
+
+/** Une action de la fiche solo : ma valeur, le total de mon camp, ma part (null : mon camp n'a rien fait). */
+export interface SoloSheetLine {
+  key: string
+  duration: boolean
+  value: number
+  camp: number
+  share: number | null
+}
+
+export interface SoloObjectiveSheet {
+  xuid: string
+  families: { family: string; lines: SoloSheetLine[] }[]
+  /** Mes totaux de rôle (colonnes facultatives exclues), dans l'ordre OBJECTIVE_ROLES. */
+  roleTotals: number[]
+  dominant: ObjectiveRole | null
+}
+
+/**
+ * buildSoloObjectiveSheet — « Ma part à l'objectif » (Séries temporelles) : la SEULE fiche du joueur
+ * affiché. Mêmes lignes, totaux et rôle dominant que sa fiche de `buildObjectiveSheets` ; la barre
+ * d'une action est sa part du total de SON CAMP (somme de la ligne sur toutes les fiches), pas
+ * l'échelle de la ligne de l'Escouade. Joueur affiché hors de l'escouade du bloc : null.
+ */
+export function buildSoloObjectiveSheet(block: SquadFormesBlock): SoloObjectiveSheet | null {
+  const sheets = buildObjectiveSheets(block)
+  const main = block.main_xuid ?? ''
+  const me = sheets.owners.findIndex((o) => o.xuid != null && o.xuid === main)
+  if (me < 0) return null
+  const families = sheets.families.map((f) => ({
+    family: f.family,
+    lines: f.lines.map((l): SoloSheetLine => {
+      const camp = l.values.reduce((a, v) => a + v, 0)
+      const value = l.values[me]
+      return { key: l.key, duration: l.duration, value, camp, share: camp > 0 ? value / camp : null }
+    }),
+  }))
+  return { xuid: main, families, roleTotals: sheets.roleTotals[me], dominant: sheets.dominant[me] }
 }
 
 /** Le rôle où la fiche pèse le plus dans notre camp (part du camp), null si aucune part. */

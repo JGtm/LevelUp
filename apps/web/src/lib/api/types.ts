@@ -1481,12 +1481,9 @@ export interface TeammatesPageResponse {
    */
   range_profiles?: MatchRangeBlock
   /**
-   * Bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) — la
-   * MATIÈRE des dix-neuf cartes des trois blocs (usages d'équipement, contrôle
-   * des armes spéciales, objectifs) : une ligne par joueur et par match, les
-   * deux camps. Publié par `TeammatesService.WithSquadFormes` sur le périmètre D2 de la
-   * page ; lu par les cartes d'objectif de Contributions (`equipment_usage` a quitté cette
-   * réponse au lot L5.4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : plus de lecteur).
+   * Bloc « formes retenues » — la MATIÈRE des cartes d'objectif : une feuille d'objectif par
+   * match à objectif, les deux camps. Publié par `TeammatesService.WithSquadFormes` sur le
+   * périmètre D2 de la page ; lu par les cartes d'objectif de Contributions.
    * Absent = périmètre sans match ; `available:false` avec raison machine pour un titre sans
    * `film.usage_summary`.
    */
@@ -1637,13 +1634,6 @@ export type WeaponBelowThreshold = components['schemas']['WeaponBelowThreshold']
 // absences disent deux choses différentes et l'UI les distingue (cf. plan, D5).
 export type SynthesisOpening = components['schemas']['SynthesisOpening']
 export type SynthesisOpeningDelta = components['schemas']['SynthesisOpeningDelta']
-
-// Nuage « distance x denivele » des engagements (decision D25, proposition T5) — un point
-// par frag mesure, des deux cotes, plus les quartiles par cote et la couverture. Le
-// denivele est DEJA SIGNE du point de vue du joueur cote Go : le web ne le retouche jamais.
-export type ElevationCloudBlock = components['schemas']['ElevationCloudBlock']
-export type ElevationPoint = components['schemas']['ElevationPoint']
-export type ElevationSideSummary = components['schemas']['ElevationSideSummary']
 
 // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic,
 // partagé par Synthesis/Match view/Timeseries/Sessions. Cf. domain/frag_distribution.go.
@@ -2322,31 +2312,17 @@ export type SessionObjectiveRoleMetric = components['schemas']['SessionObjective
 export type SessionFlagGrabsNetBlock = components['schemas']['SessionFlagGrabsNetBlock']
 export type SessionObjectiveFamilyBlock = components['schemas']['SessionObjectiveFamilyBlock']
 
-// ─── PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E5/E6) : bloc « servi ou gâché » au grain
-// PÉRIODE, publié avec la Synthèse et l'Escouade. Contrat Go :
-// internal/domain/equipment_usage.go. Variante COMPTES (décision P9) : l'axe des
-// barres est en objets pris, pas en pourcentage — voir usageCountsModel.ts.
-
-export type EquipmentUsageBlock = components['schemas']['EquipmentUsageBlock']
-export type EquipmentUsageFamilyLine = components['schemas']['EquipmentUsageFamilyLine']
-export type EquipmentUsagePlayerLine = components['schemas']['EquipmentUsagePlayerLine']
-export type EquipmentUsageParties = components['schemas']['EquipmentUsageParties']
-export type EquipmentUsageFriendCount = components['schemas']['EquipmentUsageFriendCount']
-
-// ─── Artefact « Les formes retenues » (2ec1b8eb, lot D2 du 2026-09-13) : la
-// matière des dix-neuf cartes de l'onglet Synergies. Contrat Go :
-// internal/domain/squad_formes.go. Le bloc ne porte AUCUN agrégat — les parts,
-// les parités et les étendues se calculent dans `features/squad/formes/model/`,
-// à l'endroit où elles s'affichent (quatre dénominateurs, six formes).
+// ─── Bloc « formes retenues » : la matière des cartes d'objectif (Escouade › Contributions,
+// Séries temporelles › Usages). Contrat Go : internal/domain/squad_formes.go. Le bloc ne porte
+// AUCUN agrégat — les parts se calculent dans `features/squad/objectif/` et
+// `features/squad/formes/model/objectives.ts`, à l'endroit où elles s'affichent.
 
 export type SquadFormesBlock = components['schemas']['SquadFormesBlock']
 /** Le rapport de force à l’objectif, soirée après soirée (lot L3, D6/D7). */
 export type SquadObjectiveHistory = components['schemas']['SquadObjectiveHistory']
 export type SquadObjectiveEvening = components['schemas']['SquadObjectiveEvening']
 export type SquadFormesMatch = components['schemas']['SquadFormesMatch']
-export type SquadFormesLobbyPlayer = components['schemas']['SquadFormesLobbyPlayer']
-export type SquadFormesWeapon = components['schemas']['SquadFormesWeapon']
-export type SquadFormesWeaponPad = components['schemas']['SquadFormesWeaponPad']
+
 export type SquadFormesObjective = components['schemas']['SquadFormesObjective']
 export type SquadFormesObjectiveColumn = components['schemas']['SquadFormesObjectiveColumn']
 export type SquadFormesObjectivePlayer = components['schemas']['SquadFormesObjectivePlayer']
@@ -2366,6 +2342,13 @@ export type SquadEmprisePlacement = components['schemas']['SquadEmprisePlacement
 export type SquadEmprisePlacementPlayer = components['schemas']['SquadEmprisePlacementPlayer']
 export type SquadEmprisePlacementLife = components['schemas']['SquadEmprisePlacementLife']
 export type SquadEmprisePlacementQuadrant = components['schemas']['SquadEmprisePlacementQuadrant']['quadrant']
+// L'Emprise du périmètre solo des Séries temporelles (plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05,
+// D2) : le bloc de l'Escouade, plus la grille par carte et l'équipement. Contrat Go :
+// internal/domain/solo_emprise.go ; « Mes vies » : internal/domain/timeseries_lives.go.
+export type SoloEmpriseBlock = components['schemas']['SoloEmpriseBlock']
+export type EmpriseMapColumn = components['schemas']['EmpriseMapColumn']
+export type EmpriseEquipmentFamily = components['schemas']['EmpriseEquipmentFamily']
+export type TimeseriesLivesNearTeammate = components['schemas']['TimeseriesLivesNearTeammate']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 

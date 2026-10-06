@@ -139,7 +139,18 @@ package profile
 // representation intermediaire) : LES DEUX RANGS PRECEDENTS SONT REUNIS. Le decoupage MPP declare
 // par le film (`profile-2026-10-05`) et la simulation de l enregistreur dans l identite du film
 // (`profile-2026-10-06`) cohabitent sans autre changement.
-const Rev = "profile-2026-10-06.2"
+//
+// ENTREE `profile-2026-10-06.3` (2026-10-06, lot VA de la campagne de grammaire, etape V3, rang
+// repris a la fusion de `feat/v75` a `fed1efed2`) : LA VARIANTE DE PARTIE ENTRE DANS L IDENTITE DU
+// FILM. AUCUNE LIGNE DE LA TABLE NE CHANGE.
+//
+// `identite.go` : [FilmIdentity.Variante] ([VarianteDePartie] : m_gameEngineType, killcamEnabled,
+// playOfTheGameEnabled), lue par `grammar` dans le corps de `chunk_00` (lecteur `FUN_1407ee138`). La
+// grammaire de la vue A en tire les charges des genres 85 et 116. Aucune largeur, borne ni provenance
+// ne change. Sur sa branche seule, le lot avait pris `profile-2026-10-07` (date a venir, choisie
+// parce que `profile-2026-10-06.2` etait pris par `feat/v75`) ; ce rang n a jamais ete fusionne, et
+// la fusion le reprend au premier rang libre et sans trou apres celui de `feat/v75`.
+const Rev = "profile-2026-10-06.3"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/profile_rev.golden` porte le couple (revision, empreinte) avec son historique, et

@@ -43,10 +43,12 @@
  * fiche. Le chantier qui cherchait ces canaux est CLOS pour ces deux capacités.
  *
  * LE PONT SLOT -> JOUEUR -> ÉQUIPE EST CELUI DU REJEU, réutilisé tel quel (`buildPlayers`,
- * `indexBySlot`, `groupByTeam` de rosterLogic) : un slot est une VIE, son propriétaire est le
- * xuid, et l'ÉQUIPE vient du scoreboard — `Track.Team` vaut -1 partout, le film n'en porte
- * aucune. Un joueur du film SANS ligne de scoreboard garde donc sa ligne, sans équipe : le trou
- * se montre, il ne se comble pas.
+ * `buildSlotOwnership`, `groupByTeam` de rosterLogic) : un slot est une VIE, son propriétaire est
+ * le xuid, et l'ÉQUIPE est le désignateur que le FILM écrit pour son entrée (`ReplayPlayer.team`,
+ * décision du 2026-10-06) — la feuille ne fait que nommer le camp. Un joueur du film SANS ligne
+ * de scoreboard garde sa ligne dans le camp que le film lui donne. Un joueur dont le film TAIT
+ * l'équipe n'entre dans aucun camp : ses gestes rejoignent ce que les vues ne comptent pas
+ * (`unattributed`), pour que la somme ne mente pas — jamais une section « sans équipe ».
  *
  * Tout est PUR : aucun React, aucun canvas, aucune couleur, AUCUNE LANGUE — ce fichier compte,
  * il ne nomme rien. La mise en colonnes et les libellés vivent dans `equipmentUsageColumns.ts`
@@ -62,6 +64,7 @@ import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
 import { deriveKeptFromTaken, familyHasAnyTrace, KEPT_FAMILIES } from './equipmentKeptLogic'
 import { PLACEMENT_RENDER, placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
 import { placementIsDroppedPower, PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
+import type { ReplayCamp } from '../../../lib/replay/replayCamps'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
 import { buildPlayers, buildSlotOwnership, groupByTeam, playerName, rosterEntryKey, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
@@ -120,18 +123,18 @@ export interface EquipmentUsageTally {
   kept: Record<string, number>
 }
 
-/** La ligne d'un joueur : son identité, son camp, ses grandeurs. */
-export interface EquipmentUsageRow extends EquipmentUsageTally {
+/**
+ * La ligne d'un joueur : son identité, ses grandeurs, et son CAMP DU FILM (`team`, plus le côté
+ * de feuille `side` qui ne fait que le nommer et l'encrer — cf. `replayCamps.ts`).
+ */
+export interface EquipmentUsageRow extends EquipmentUsageTally, ReplayCamp {
   xuid: string
   /** Nom d'affichage (`displayPlayerName`), jamais un xuid brut. */
   name: string
-  /** `team_side` du scoreboard ; `null` = joueur du film absent du scoreboard. */
-  side: string | null
 }
 
-/** Un camp et ses joueurs, avec son total. `side` null = les joueurs sans ligne de scoreboard. */
-export interface EquipmentUsageTeam {
-  side: string | null
+/** Un camp du film et ses joueurs, avec son total. */
+export interface EquipmentUsageTeam extends ReplayCamp {
   players: EquipmentUsageRow[]
   total: EquipmentUsageTally
 }
@@ -200,9 +203,10 @@ export interface EquipmentUsage {
   powerupPickups: Record<string, number>
   powerupPickupsTotal: number
   /**
-   * CE QUI EST MESURÉ MAIS SANS PROPRIÉTAIRE : gestes dont le slot n'appartient à aucun joueur
-   * (caméras, spectateurs de fin de partie), ou pose sans poseur mesuré (`owner` -1). Compté
-   * pour que la somme des lignes ne mente pas sur le total du film.
+   * CE QUI EST MESURÉ MAIS N'ENTRE DANS AUCUN CAMP : gestes dont le slot n'appartient à aucun
+   * joueur (caméras, spectateurs de fin de partie) ou à un joueur dont le film tait l'équipe,
+   * ou pose sans poseur mesuré (`owner` -1). Compté pour que la somme des lignes ne mente pas
+   * sur le total du film.
    */
   unattributed: EquipmentUsageTally
   /**
@@ -285,17 +289,20 @@ function isDeployableFamily(family: string): boolean {
 /**
  * buildEquipmentUsage — l'agrégation complète, en une passe par calque.
  *
- * `scoreboard` peut manquer (chargement, titre sans tableau des scores) : les joueurs existent
- * alors tous sans camp, et le tableau les range sous « sans équipe ». Aucun camp n'est deviné.
+ * `scoreboard` peut manquer (chargement, titre sans tableau des scores) : les camps restent ceux
+ * du film, seuls leurs noms et leur encre attendent la feuille. Aucun camp n'est deviné.
  */
 export function buildEquipmentUsage(
   doc: ReplayDocumentReady,
   scoreboard: MatchScoreboardRow[] | undefined,
 ): EquipmentUsage {
-  // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ont une ligne (cf. `teamsOf`) : la table des
-  // compteurs se borne aux mêmes, sinon un geste attribué à une entrée de roster sans piste
-  // disparaîtrait de l'écran SANS entrer dans les orphelins — et la somme mentirait.
-  const players = buildPlayers(doc, scoreboard ?? []).filter((p) => p.lives.length > 0)
+  // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ET RANGÉS DANS UN CAMP ont une ligne (cf.
+  // `teamsOf`) : la table des compteurs se borne aux mêmes, sinon un geste attribué à une entrée
+  // sans piste — ou dont le film tait l'équipe — disparaîtrait de l'écran SANS entrer dans les
+  // gestes hors camp (`unattributed`), et la somme mentirait.
+  const players = buildPlayers(doc, scoreboard ?? []).filter(
+    (p) => p.lives.length > 0 && p.team !== undefined,
+  )
   // PROPRIÉTAIRE À L'IMAGE, PAS UN AGRÉGAT MATCH : un slot de bipède est réattribué entre
   // réapparitions ET entre manches (cf. `buildSlotOwnership`, rosterLogic.ts) ; un agrégat
   // « dernier gagnant » créditait au DERNIER occupant du slot les gestes de tous les
@@ -376,11 +383,12 @@ export function buildEquipmentUsage(
 }
 
 /**
- * teamsOf range les joueurs par camp et somme chaque camp.
+ * teamsOf range les joueurs par camp du FILM et somme chaque camp.
  *
- * Le filtre « au moins une vie » a déjà été appliqué par l'appelant (cf. `buildEquipmentUsage`) :
- * une entrée de roster sans aucune vie n'a été mesurée sur aucun canal, et une ligne de zéros la
- * ferait passer pour quelqu'un qui n'a rien fait. L'ordre est celui du roster du film (stable).
+ * Le filtre « au moins une vie, une équipe » a déjà été appliqué par l'appelant (cf.
+ * `buildEquipmentUsage`) : une entrée de roster sans aucune vie n'a été mesurée sur aucun canal,
+ * et une ligne de zéros la ferait passer pour quelqu'un qui n'a rien fait. Camps dans l'ordre des
+ * désignateurs, joueurs dans l'ordre du roster du film (stable).
  */
 function teamsOf(
   players: ReplayPlayer[],
@@ -395,10 +403,11 @@ function teamsOf(
         ...tally,
         xuid: p.xuid,
         name: displayPlayerName(playerName(p), p.xuid),
+        team: group.team,
         side: group.side,
       }
     })
-    return { side: group.side, players: rows, total }
+    return { team: group.team, side: group.side, players: rows, total }
   })
 }
 

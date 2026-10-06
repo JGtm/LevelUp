@@ -75,6 +75,18 @@ export interface PlayerCardReadings {
   fx: CardFx
 }
 
+/**
+ * cardName — LE NOM D'UNE TUILE DE PLACE, écrit une seule fois pour la fiche et pour la tuile
+ * « pas encore apparu » : le nom du joueur (`playerName` : la base d'abord, le film ensuite), le
+ * suffixe de donnée « [bot] » retiré, et le repli « joueur inconnu ».
+ */
+export function cardName(player: ReplayPlayer, t: ReplayText): string {
+  // Suffixe « [bot] » = marqueur de donnée killsource (schéma 36), pas d'affichage —
+  // retiré ici sans toucher au repli `t.unknownPlayer` (playerName() reste `null`-able).
+  const rawName = playerName(player)
+  return (rawName ? stripBotSuffix(rawName) : null) ?? t.unknownPlayer
+}
+
 export function playerCardReadings({
   player, doc, frame, presence, flashFrames, scoreTimeline, fxScene, text: t,
 }: PlayerCardInput): PlayerCardReadings {
@@ -84,10 +96,7 @@ export function playerCardReadings({
   // valent pour tout le match — c'est ce qu'elle affichait avant ce lot.
   const live = playerCountersAt(scoreTimeline, player.xuid, frame)
   const state = playerStateAt(player, frame, presence)
-  // Suffixe « [bot] » = marqueur de donnée killsource (schéma 36), pas d'affichage —
-  // retiré ici sans toucher au repli `t.unknownPlayer` (playerName() reste `null`-able).
-  const rawName = playerName(player)
-  const name = (rawName ? stripBotSuffix(rawName) : null) ?? t.unknownPlayer
+  const name = cardName(player, t)
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
   // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
   //

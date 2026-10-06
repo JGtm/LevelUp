@@ -6,23 +6,18 @@
  * fichiers n'avaient pas suivi. Un composant rangé sous le nom d'une page qui ne l'affiche
  * plus égare ses lecteurs — c'est arrivé. Le dossier dit maintenant qui la rend.
  *
- * ELLE A CHANGÉ D'ONGLET LE 2026-09-22 : le Résumé pour « Usages », où elle rejoint les
- * usages d'équipement et les formes retenues — un onglet, un axe de lecture, et le sien est
- * TOUT CE QUI VIENT DU FILM DÉCODÉ (cf. `TimeseriesPage.usages.tsx`). Son titre de section
- * a pris le gabarit commun (`SectionTitle`) au même moment.
+ * Elle ouvre l'onglet « Usages » (cf. `TimeseriesPage.usages.tsx`), sous le titre de section
+ * commun (`SectionTitle`).
  *
  * Transposition de la maquette validée par l'utilisateur le 2026-09-06
- * (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, lot 5 du plan
- * `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`) : quatre tuiles de tête, puis UNE carte qui porte
- * les deux graphes jumeaux sur les MÊMES lignes — la portée (deux bâtons p10→p90 par arme,
- * frags au-dessus, morts en dessous). La carte voisine, « Dénivelé », a changé de forme le
- * 2026-09-22 (décision D25) : ses barres empilées par arme ont cédé la place au NUAGE
- * « distance × dénivelé » de la proposition T5 — un point par frag mesuré, deux halos de
- * quartiles, deux médianes. La question n'est plus « avec quelle arme » mais « d'où ».
+ * (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`) : quatre tuiles de tête, puis la carte
+ * « Portée par arme » — deux bâtons p10→p90 par arme, frags au-dessus, morts en dessous. Elle reste
+ * en DEMI-LARGEUR, seule dans sa grille à deux colonnes (maquette v4 des Usages, décision D11 du plan
+ * PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05 : « Hauteur d'engagement » a quitté la page).
  *
- * CE COMPOSANT NE CALCULE RIEN. La projection et les deux options ECharts vivent dans
- * `@/components/charts/weaponRangeChart` (partagé) et `_elevationCloudChart.ts`, les décisions dans
- * `weaponRange_logic.ts` — tous purs, tous testés hors rendu.
+ * CE COMPOSANT NE CALCULE RIEN. La projection et l'option ECharts vivent dans
+ * `@/components/charts/weaponRangeChart` (partagé), les décisions dans `weaponRange_logic.ts` — purs,
+ * testés hors rendu.
  *
  * LES DÉNOMINATEURS SONT AFFICHÉS PARTOUT, et c'est le point : la mesure est partielle par
  * construction (seuls les frags dont les DEUX positions sont décodées comptent). Chaque
@@ -37,11 +32,8 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import type {
-  ElevationCloudBlock,
-  SynthesisWeaponRange,
-  TimeseriesMatchRow,
-} from '@/lib/api/types'
+import type { SynthesisWeaponRange } from '@/lib/api/types'
+
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
@@ -49,7 +41,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { AccentCard } from '@/components/ui/section-primitives'
 import { SectionTitle } from '@/components/ui/detail-section'
-import { ElevationCard } from './ElevationCard'
 import { titleWithHelp } from './titleWithHelp'
 import {
   buildWeaponRangeOption,
@@ -170,11 +161,6 @@ function rangeLegendItems(t: Translate): ChartLegendItem[] {
   ]
 }
 
-/**
- * Encres du NUAGE DE DÉNIVELÉ : elles vivent avec leur carte (`ElevationCard.tsx`), qui est
- * partie d'ici le 2026-09-22 — ce fichier passait les 500 lignes du dépôt en la portant.
- */
-
 // ─── Pied de carte : le tableau dépliable ─────────────────────────────────────
 
 /**
@@ -289,20 +275,9 @@ function RangeChartBody({
 
 export interface WeaponRangeSectionProps {
   range: SynthesisWeaponRange | null | undefined
-  /**
-   * Le nuage « distance × dénivelé » de la MÊME fenêtre (D25). Servi par le même producteur
-   * et sous la même capability que `range` ; absent quand rien n'est décodé.
-   */
-  elevation?: ElevationCloudBlock | null
-  /**
-   * Les lignes de match de la page, pour nommer « #N · Carte » dans l'infobulle des points.
-   * LA NUMÉROTATION DE LA PAGE, pas un compteur local : le nuage cite les mêmes matchs que
-   * les frises voisines, sous le même numéro.
-   */
-  matchRows?: readonly TimeseriesMatchRow[]
 }
 
-export function WeaponRangeSection({ range, elevation, matchRows }: WeaponRangeSectionProps) {
+export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = useCallback<Translate>(
     (key, vars) => formatMessage(synthesisManifest, key, locale, vars),
@@ -333,12 +308,9 @@ export function WeaponRangeSection({ range, elevation, matchRows }: WeaponRangeS
 
       <RangeTiles range={range} t={t} f={f} />
 
-      {/* DEUX CARTES SUR UNE RANGÉE (2026-09-13). Portée et dénivelé répondaient à deux
-          questions distinctes sous un seul titre, l'une sous l'autre : la carte faisait deux
-          écrans de haut et le dénivelé se lisait comme une annexe de la portée. En demi-
-          largeur les étiquettes d'armes restent sur l'axe vertical (elles ne rétrécissent
-          pas) et seul l'axe des mètres se resserre — le tableau dépliable garde la valeur
-          exacte. Empilement automatique sous `lg` : à 1024 px la moitié ne suffirait plus. */}
+      {/* DEMI-LARGEUR, SEULE DANS SA GRILLE (D11) : les étiquettes d'armes restent sur l'axe
+          vertical et seul l'axe des mètres se resserre — le tableau dépliable garde la valeur
+          exacte. Pleine largeur sous `lg`. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard
           title={t('synthesis.weapon_range.card_title')}
@@ -358,15 +330,6 @@ export function WeaponRangeSection({ range, elevation, matchRows }: WeaponRangeS
             })}
           />
         </SectionCard>
-
-        <ElevationCard
-          elevation={elevation}
-          matchRows={matchRows}
-          height={height}
-          locale={locale}
-          t={t}
-          f={f}
-        />
       </div>
     </section>
   )

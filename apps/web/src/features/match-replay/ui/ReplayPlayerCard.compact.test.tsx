@@ -102,7 +102,8 @@ function documentBTB(parCamp: 12 | 7) {
   const kilo = present('Kilo') ? [vie(523, 'Kilo', [{ t: 0, x: 0, y: 9 }])] : []
   const equipeKilo = present('Kilo') ? [523] : []
   return testReplayDoc({
-    roster: noms.map((nom, i) => ({ xuid: nom, filmIndex: i, name: nom })),
+    // L'ÉQUIPE DU FILM : le camp A au 0, le camp B au 1 — le découpage de la feuille (`tableauBTB`).
+    roster: noms.map((nom, i) => ({ xuid: nom, filmIndex: i, name: nom, team: (CAMP_A as readonly string[]).includes(nom) ? 0 : 1 })),
     tracks: [
       // Alpha : bouclier entamé lu à l'image 80.
       vie(512, 'Alpha', [{ t: 0, x: 1, y: 1, sh: 1, hp: 1 }, { t: 80, x: 2, y: 2, sh: 0.6, hp: 1 }]),
@@ -315,7 +316,7 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
   it('(g) aucune barre sans `sh`/`hp` dans le document ; 100 % sans mesure sur la vie ; jauges 4 / 2 px en `flex-1`', () => {
     // Un titre sans décodage film : le document ne porte ni bouclier ni santé — aucune jauge.
     const sansVitalite = testReplayDoc({
-      roster: [{ xuid: 'Alpha', filmIndex: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'Alpha', filmIndex: 0, name: 'Alpha', team: 0 }],
       tracks: [vie(512, 'Alpha', [{ t: 0, x: 0, y: 0 }])],
     })
     const nue = render(

@@ -40,8 +40,9 @@ import (
 // records sont LUS ; les listes ainsi etendues sont comptees
 // ([types.MovementStateStats.EventPacketsNewRecordStart]).
 
-// localiserLaListe rend le debut de la marche d un paquet a evenements et COMMENT il a ete trouve :
-// le premier record NEW de tete prouve par la chaine ([debutParChaine]) ou par la fermeture
+// localiserLaListe rend le debut de la marche d un paquet a evenements dont la vue A n a pas decide
+// ([debutDeLaVueBDeCuisson]) et COMMENT il a ete trouve : le premier record NEW de tete prouve par
+// la chaine ([debutParChaine]) ou par la fermeture
 // ([debutParFermetureRangee], aux deux rangs), sinon le debut du localisateur strict
 // ([lecture.DebutParSignature]) ; -1 et [lecture.DebutNonLocalise] pour une liste non localisee.
 // Tout debut autre que celui du localisateur est un record NEW que le localisateur sautait. Chaque

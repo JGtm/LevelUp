@@ -167,7 +167,17 @@ const VersionCodecFaits = 2
 // `MovementStateStats` que le blob ne portait pas, dont les deux publies du saut) SOUS LA MEME
 // MONTEE DU CODEC 2, toujours non publiee. Un fichier ecrit par un binaire de la branche avant
 // J11.0 porte le blob v27 : il est refuse a la magie du blob, et redecode.
-const SchemaDesFaits = 4
+// SCHEMA 5 (2026-10-06, lot VA de la campagne de grammaire, decision du pilote du 2026-10-06) : la
+// section 2, l identite du film (JSON de `profile.FilmIdentity`), change de contenu. L etape V1 y a
+// ajoute la simulation de l enregistreur (`SimulationDeLEnregistreur`, `OptionsDePartieLues`), l etape
+// V3 la variante de partie (`Variante`). Relue par `json.Unmarshal`, une section 2 du schema 4 rendrait
+// ces champs a zero sans erreur : c est le refus SUR L EN-TETE qui doit le dire, comme aux schemas 2 a
+// 4. La montee de `grammar.Rev` et de `profile.Rev` du meme lot refusait deja tout fichier anterieur
+// sur ses revisions de couche, donc aucun fait perime n etait servi ; le schema tient sa propre
+// doctrine (« il monte quand une section change de contenu ») au lieu de s en remettre a elles. Le
+// lot 5.18.1 (`ControleDeCorruption`, 2026-09-22) avait elargi la meme section sans le monter : tout
+// fichier du schema 4 est desormais refuse sur son en-tete, celui-la compris.
+const SchemaDesFaits = 5
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

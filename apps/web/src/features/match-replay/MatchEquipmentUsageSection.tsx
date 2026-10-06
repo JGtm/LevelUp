@@ -74,7 +74,7 @@ import { SectionCard } from '@/components/ui/section-card'
 
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import type { MatchScoreboardRow } from '@/lib/api/types'
-import { resolveTeamLabel } from '@/lib/halo/teamLabel'
+import { campLabel, type ReplayCamp } from '@/lib/replay/replayCamps'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
 import { StackedTrack, type StackedTrackSegment } from '@/components/charts/StackedTrack'
@@ -125,23 +125,19 @@ export function MatchEquipmentUsageSection({
   const { groups, familles } = useUsageGroups(usage, t)
   const reserve = useMemo(() => usageReserve(usage), [usage])
   const meRow = useMemo(() => board.find((r) => r.is_me), [board])
+  // L'ENCRE, PAS L'APPARTENANCE : le côté de feuille du joueur de la page dit quel camp est le
+  // sien. Les camps eux-mêmes sont ceux du FILM (`equipmentUsageLogic`, `replayCamps.ts`).
   const meSide = meRow?.team_side ?? null
 
-  const teamLabel = useCallback(
-    (side: string | null) =>
-      resolveTeamLabel(
-        side ? board.filter((r) => (r.team_side ?? '') === side) : [],
-        side,
-        t,
-      ),
-    [board, t],
-  )
+  // LE NOM D'UN CAMP DU FILM : la cascade des colonnes de fiches (`campLabel`) sur la feuille,
+  // « Équipe N » de son désignateur quand elle se tait — jamais « sans équipe ».
+  const teamLabel = useCallback((camp: ReplayCamp) => campLabel(camp, board, t), [board, t])
   // « Allié » = du côté du joueur de la page. Sans `is_me` au tableau des scores, ou pour un
-  // joueur que le film a vu vivre sans ligne de scoreboard, le camp est INCONNU (null) : encre
+  // camp dont aucun membre n'a de côté de feuille, l'allégeance est INCONNUE (null) : encre
   // neutre, jamais l'une des deux couleurs d'équipe (même règle que `ReplayTeamHeader`).
   const teamAccent = useCallback(
-    (side: string | null) =>
-      teamTokenCssVar(side == null || meSide == null ? null : side === meSide),
+    (camp: ReplayCamp) =>
+      teamTokenCssVar(camp.side == null || meSide == null ? null : camp.side === meSide),
     [meSide],
   )
 
@@ -271,7 +267,7 @@ function UsageFamilyTracks({ model, t }: { model: UsageFamilyBars; t: ReplayText
               // son compte quand il est large, l'exacte mesure se dit ici.
               const tip = u.shareTipFmt(seg.label, row.label, seg.count, row.total, seg.percent)
               return {
-                key: seg.side ?? 'sans-equipe',
+                key: `camp:${seg.team}`,
                 widthPct: seg.widthPct,
                 color: seg.accent,
                 label: String(seg.count),
@@ -288,7 +284,7 @@ function UsageFamilyTracks({ model, t }: { model: UsageFamilyBars; t: ReplayText
       <ChartLegend
         className="pt-1"
         items={model.legend.map((team) => ({
-          key: team.side ?? 'sans-equipe',
+          key: `camp:${team.team}`,
           label: team.label,
           color: team.accent,
         }))}

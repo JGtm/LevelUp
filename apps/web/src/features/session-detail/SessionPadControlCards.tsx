@@ -4,9 +4,7 @@
  * UNE SEULE CARTE À QUATRE VUES EMPILÉES JUSQU'AU 2026-09-21 (D6). « Contrôle des armes
  * spéciales » portait, sous un unique bandeau, les parts par famille, les niveaux d'arme,
  * la piste du lobby et la bande de régularité : quatre questions différentes, une seule
- * aide pour les quatre, et une colonne qui s'allongeait sans fin. Elles deviennent quatre
- * cartes — exactement le découpage que Synthèse et Escouade portent déjà
- * (`EquipmentUsageSection`), avec les mêmes titres :
+ * aide pour les quatre, et une colonne qui s'allongeait sans fin. Elles sont quatre cartes :
  *   1. « Contrôle des armes spéciales » — parts par famille, puis leur TOTAL ;
  *   2. « Contrôle des armes par niveau » — les mêmes prises rangées par niveau ;
  *   3. « Qui ramasse les armes spéciales » — la piste du lobby, découpée par joueur ;

@@ -203,6 +203,18 @@ export function cardChrome(alive: boolean): CSSProperties {
   }
 }
 
+/**
+ * SEAT_WAITING_CHROME — le chrome d'une tuile SANS FICHE (place libre, joueur pas encore apparu) :
+ * bordure TIRETÉE au token `border`, fond `card`. La BOÎTE est celle d'une fiche, à la classe
+ * près (`ReplayPlayerCard`, squelette partagé) ; seul cet habit dit qu'aucun joueur n'y joue à
+ * l'instant lu. Rendu sur le conteneur, comme `cardChrome` : un état permanent de la tuile.
+ */
+export const SEAT_WAITING_CHROME: CSSProperties = Object.freeze({
+  borderStyle: 'dashed',
+  borderColor: 'var(--border)',
+  background: 'var(--card)',
+})
+
 /** Le délai négatif d'un éclat : l'animation reprend à son avancement réel. */
 function negativeDelay(age: number, flashFrames: number, totalS: number): string {
   return `${(-(age / flashFrames) * totalS).toFixed(3)}s`

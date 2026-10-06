@@ -13,7 +13,8 @@ const (
 
 // DebutDeVueB dit comment la marche a trouvé le début de la vue B d'une trame delta. Un début
 // LOCALISÉ est de la récupération qui vit dans la marche (ADR 0037 IR-6) : la marche ne l'a pas
-// atteint en lisant le paquet depuis sa tête.
+// atteint en lisant le paquet depuis sa tête. Un début LU ([DebutEnTete], [DebutParVueA]) n'en est
+// pas : la marche l'a atteint en lisant la vue A jusqu'à son terminateur.
 type DebutDeVueB uint8
 
 // Les débuts de vue B.
@@ -39,6 +40,12 @@ const (
 	// DebutNonLocalise : paquet à liste d'événements dont le début n'a pas été trouvé ; aucune vue
 	// n'est lue.
 	DebutNonLocalise
+	// DebutParVueA : paquet à liste d'événements dont la vue A a été LUE jusqu'à son terminateur ;
+	// la vue B commence au bit qui le suit, chez l'écrivain (`FUN_142f2c3b0`) comme chez le lecteur
+	// (`FUN_142987460`). C'est une LECTURE, pas une localisation : aucune position n'est cherchée.
+	// Posé quand la table des genres du film est ÉGALE à celle du jeu, ou quand elle en est un
+	// préfixe et que la marche depuis cette fin ferme le paquet.
+	DebutParVueA
 )
 
 // EtatDeVue dit jusqu'où la marche a lu la vue A ou la vue C d'une trame delta.
@@ -191,6 +198,12 @@ type VueA struct {
 	Debut, Bits uint32
 	// Etat dit jusqu'où la marche l'a lue.
 	Etat EtatDeVue
+	// PremierPresume est le rang, dans Genres, du premier genre dont la numérotation est PRÉSUMÉE
+	// et non lue : sur un film dont la fin de vue A ne vaut que prouvée (classe PRÉFIXE), le premier
+	// genre au-delà du dernier dont la version native diffère de 1 (`grammar/vue_a_versions.go`).
+	// Ce genre et ceux qui le suivent sont lus sous cette présomption. len(Genres) quand aucun ne
+	// l'est — la valeur zéro d'une vue vide.
+	PremierPresume uint16
 	// Genres sont les sélecteurs `R(7)` des messages lus, dans l'ordre, puis celui du message qui a
 	// arrêté la lecture ; le premier est le genre de la tête.
 	Genres []uint8

@@ -99,7 +99,9 @@ type PaquetDeCarte struct {
 	Bits         int
 	// ListeNonLocalisee : aucune vue n a ete lue (cf. [CauseListeNonLocalisee]). ListeLocalisee :
 	// le paquet porte une liste d evenements dont le debut a ete trouve ([localiserLaListe]).
-	ListeNonLocalisee, ListeLocalisee bool
+	// ListeLue : le paquet porte une liste d evenements dont la vue B commence a la fin de la vue
+	// A lue ([lecture.DebutParVueA]) — une LECTURE, pas une localisation.
+	ListeNonLocalisee, ListeLocalisee, ListeLue bool
 	// Fermee : le paquet se ferme ([LectureVueC.Fermee]). Cause : la premiere cause d arret, vide
 	// s il ferme.
 	Fermee bool
@@ -194,7 +196,8 @@ func (md *marcheDetaillee) detaillerLaTrame(t *trameLue) {
 		md.publier(d)
 		return
 	}
-	d.ListeLocalisee = p.Debut != lecture.DebutEnTete
+	d.ListeLue = p.Debut == lecture.DebutParVueA
+	d.ListeLocalisee = p.Debut != lecture.DebutEnTete && !d.ListeLue
 	md.detaillerLaMarche(&t.lecture, t.debut, p.Payload, &d)
 	md.publier(d)
 }

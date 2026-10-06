@@ -387,7 +387,8 @@ describe('ReplayTimelineTracks — le repli des pistes', () => {
  *     première changerait bien le point de vue, vers un joueur que rien ne reconnaît, et
  *     laisserait une piste VIDE sans le moindre message.
  *  2. UNE OPTION SANS DONNÉE LE DIT (décision 7 bis). Un joueur sans ligne de tableau de score
- *     n'a ni camp ni kill collecté : son option est inerte, avec sa raison en infobulle.
+ *     n'a aucun kill collecté (il garde le camp que le film lui donne) : son option est inerte,
+ *     avec sa raison en infobulle.
  *  3. LE CHOIX NE TOUCHE QU'AU POINT DE VUE (décision 1). Ni le curseur, ni la lecture.
  *  4. LE FOCUS PART AVEC LE CHOIX. Sans cela, la barre d'espace qui suit — le geste réflexe pour
  *     mettre en pause — rouvrirait la liste : `useReplayShortcuts` coupe tous les raccourcis
@@ -404,10 +405,10 @@ describe('ReplayTimelineTracks — le menu de point de vue', () => {
     expect(menu().tagName).toBe('SELECT')
   })
 
-  it('range les joueurs par camp, et nomme la section de ceux qui n’en ont pas', () => {
+  it('range les joueurs par camp du film — aucune section « sans équipe »', () => {
     const { container } = renderTracks()
     const sections = [...container.querySelectorAll('optgroup')].map((g) => g.getAttribute('label'))
-    expect(sections).toEqual(['Cobalt', 'Ambre', 'Sans équipe'])
+    expect(sections).toEqual(['Cobalt', 'Ambre'])
   })
 
   it('un joueur SANS ligne de tableau de score est listé, INERTE, et dit pourquoi', () => {

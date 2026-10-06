@@ -11,7 +11,7 @@ import type { SquadEmpriseObject, TeammatesPageResponse } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { TEAM_REST_INK, squadPlayerInk } from '../formes/colors'
-import { RESOURCE_POWERUP, RESOURCE_VEHICLE, buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil } from './emprise.logic'
+import { RESOURCE_POWERUP, RESOURCE_VEHICLE, buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil, empriseMatchIndex } from './emprise.logic'
 import { buildHabitView } from './habit.logic'
 import type { PickupIdentity } from './PickupSheetsCard'
 import { buildProductionRows, buildYieldRows } from './production.logic'
@@ -20,7 +20,7 @@ import { buildVehicleCoverage, vehicleFamilyName } from './vehicles.logic'
 
 export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPlayerLabel: string, restLabel: string, locale: Locale) {
   const block = pageData?.squad_emprise
-  const history = useMemo(() => pageData?.match_history ?? [], [pageData?.match_history])
+  const index = useMemo(() => empriseMatchIndex(pageData?.match_history ?? []), [pageData?.match_history])
   const medalDigest = useMemo(() => pageData?.medal_digest ?? [], [pageData?.medal_digest])
   const usageText = USAGE_TEXT[locale]
 
@@ -37,9 +37,9 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
   )
 
   const controlRows = useMemo(() => (block ? buildControlRows(block) : []), [block])
-  const fil = useMemo(() => (block ? buildResourceFil(block, history) : null), [block, history])
+  const fil = useMemo(() => (block ? buildResourceFil(block, index) : null), [block, index])
   const sheets = useMemo(() => (block ? buildPickupSheets(block, objectName) : null), [block, objectName])
-  const grid = useMemo(() => (block ? buildMatchGrid(block, history) : null), [block, history])
+  const grid = useMemo(() => (block ? buildMatchGrid(block, index) : null), [block, index])
   const production = useMemo(() => (block ? buildProductionRows(block) : []), [block])
   const yieldRows = useMemo(() => (block ? buildYieldRows(block) : []), [block])
   const vehicleCoverage = useMemo(() => (block ? buildVehicleCoverage(block) : null), [block])

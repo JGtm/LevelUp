@@ -11,32 +11,6 @@ package killsource
 
 // # LA CHRONIQUE — UNE ENTREE PAR RANG, ET RIEN QU UNE
 //
-// ENTREE `killsource-2026-09-18` (2026-09-18, lot 5.1.1) : LA REVISION MONTE MECANIQUEMENT,
-// `.2` -> le premier rang du 18. AUCUNE SOURCE DE `film/facts/` N EST TOUCHEE PAR CE LOT.
-//
-// CE QUI LA FAIT MONTER : l empreinte de cette couche hache les VALEURS de `source.Rev` et de
-// `grammar.Rev`, et `grammar.Rev` monte au lot 5.1.1 (`grammar-2026-09-18` : l archetype
-// `managed-navpoint` ti=12 est lu de `i1` au minuteur manuel, douze lecteurs neufs). La chaine
-// est voulue : une grammaire qui change date les lignes deja decodees, meme quand le fait
-// publie ne bouge pas encore.
-//
-// CE QUE LA SORTIE FAIT AUJOURD HUI : rien de plus. Aucun composant porte par 5.1.1 n alimente
-// `killsource` — les douze lecteurs servent `ti=12`, que la chaine des morts ne marche pas.
-// LE BACKLOG QU ELLE OUVRE EST DONC UN BACKLOG DE DATATION, pas de correction.
-//
-// C EST L UNIQUE MONTEE DE CETTE CONSTANTE POUR TOUT LE LOT 5.1, ET C EST DELIBERE : le volet
-// 5.1.4 (l attribution de la fin de vie des vehicules) CHANGERA vraiment la sortie des faits, et
-// il partagera ce rang — deux changements d un meme lot partagent la revision. Ouvrir deux
-// backlogs pour un seul lot ferait redecoder le parc deux fois.
-//
-// BACKLOG KILLSOURCE SUR SIGNAL UTILISATEUR (D6), JAMAIS AUTOMATIQUE : chaque ligne de
-// `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
-// (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
-// le redecodage du parc reste un geste de PRODUCTION pris par le pilote. UN BACKFILL
-// `killsource-2026-09-17.2` TOURNAIT AU MOMENT DE CE LOT : la montee le rend candidat a son
-// tour, ce que l utilisateur a accepte en ouvrant le lot (V26).
-//
-// `SchemaVersion` reste 62 ; `profile.Rev` ne monte pas (aucun octet de `profile/` touche).
 // ENTREE `killsource-2026-09-20` (2026-09-20, lot 5.2b.1) : LE ROSTER DU DECODEUR VOIT LES
 // REMPLACANTS, ET UN PARTICIPANT NON COMPTE N ETEINT PLUS LE MATCH.
 //
@@ -487,3 +461,32 @@ package killsource
 // (`DecodeFrameRecords` saute l amorce ; debut par `LocaliserBoucleDeRecords`, inchange). Golden
 // regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/LOT_VA_V1.md`.
+//
+// COMPLEMENT DU 2026-10-06 (lot VA de la campagne de grammaire, etapes V2 et V3 : la fin de la vue A
+// fixe le debut de la vue B, la variante de partie du film decide les genres 85 et 116 ; fusion de
+// `feat/v75` a `fed1efed2` puis `b033d30f0`, corrections de la revue et decisions du pilote du
+// 2026-10-06 ; REVISION CONSTANTE, DECISION D23 DU PILOTE DU 2026-10-06, MESUREE SUR 20 FILMS ET
+// ESTIMEE SUR LE PARC) : une source de la couche change (`walk.go` part de [grammar.DebutDeLaVueB] ;
+// la calibration porte la grammaire de vue A du film sous la carte du match,
+// [grammar.VueADuFilmSousCarte]) et les VALEURS de `grammar.Rev` (`grammar-2026-10-06.4`) et de
+// `profile.Rev` (`profile-2026-10-06.3`) montent, donc l empreinte. Sur la branche du lot seule, les
+// etapes V2 et V3 avaient porte `grammar-2026-10-06.2` a `.4` et `profile-2026-10-07` : rangs jamais
+// fusionnes, reunis a la fusion. La marche part de la fin de la vue A quand elle decide (film de
+// classe EGALE : table native sous la version majeure 0x29 que le jeu joue ; film de classe PREFIXE,
+// table prefixe ou table egale sous une autre majeure : si la marche depuis elle ferme le paquet),
+// sinon du localisateur, inchange.
+//
+// MESURE : `cmd/killsource json` sur les 19 temoins de `config/replay_corpus.toml` et `1c4c63c2`
+// (carte Refuge), binaire de `fed1efed2` contre binaire du lot, puis binaire de `b033d30f0` contre
+// binaire du lot apres les decisions du pilote : aucune mort, aucune valeur, aucune voie ne change ;
+// 19 films identiques a l octet, et sur `c75f33b8` le seul compteur de diagnostic
+// `concordance.enregistrements_lus_par_les_deux_voies` (`Stats.Redundant`, non persiste) passe de 5 a
+// 6. CE QUI N EST PAS MESURE : l entree de la marche change bel et bien (debuts de vue B, compteur
+// ci-dessus), et le parc local compte, sur 1 657 films a section d identification, 1 401 films
+// HI_1_13_0 de classe EGALE et 147 HI_1_12_0 de classe PREFIXE (table egale, majeure 0x28) ; que
+// chaque ligne de `match_kill_events` deja ecrite sous `killsource-2026-09-27` soit celle que ce code
+// ecrirait est MESURE sur 20 films et ESTIME sur le parc. Les lignes en base ne portent que
+// `decoder_rev = killsource.Rev` : une ligne que ce lot changerait ne serait jamais recalculee. La
+// revision reste et aucun backlog n est ouvert : c est la decision D23 du pilote du 2026-10-06, prise
+// en connaissance de ce risque. Golden regenere a revision constante. Mesures :
+// `campagne_grammaire_2026-10-01/LOT_VA_V2.md`, `LOT_VA_V3.md` (§15, §16).

@@ -17,7 +17,7 @@
  *    seulement à défaut.
  *
  * 2. UN JOUEUR SANS LIGNE DE TABLEAU DE SCORE EST LISTÉ MAIS INERTE (décision 7 bis du plan,
- *    2026-09-07). Sans cette ligne il n'a ni camp, ni xuid de base — et `collectKillEvents`
+ *    2026-09-07). Sans cette ligne il n'a pas de xuid de base — et `collectKillEvents`
  *    (`match-view/_momentum.ts`) JETTE les kills d'un acteur absent du tableau de score. Sa
  *    piste serait donc vide quoi qu'il arrive, et `resolveViewpoint` retomberait en silence sur
  *    le joueur de la page : le menu afficherait un nom, la frise en montrerait un autre. Une
@@ -25,15 +25,21 @@
  *    plutôt que faire semblant. On ne la retire pas non plus : son absence de la liste se
  *    lirait « ce joueur n'était pas là », ce qui est faux — le film le nomme.
  *
+ * # LES SECTIONS SONT LES CAMPS DU FILM (décision du 2026-10-06)
+ *
+ * Comme les colonnes de fiches : un camp par désignateur du film (`groupByTeam`), nommé par la
+ * MÊME cascade (`campLabel`, que l'appelant passe), et jamais une section « sans équipe ». Un
+ * joueur sans ligne de tableau de score reste dans le camp que le film lui donne ; un joueur
+ * dont le film tait l'équipe n'est dans aucun — c'est un défaut de source, pas une section.
+ *
  * # CE QU'IL NE FAIT PAS
  *
- * Il ne traduit rien (les trois libellés lui arrivent en paramètre) et ne connaît ni React, ni
- * le point de vue courant : choisir est l'affaire de `hooks/useReplayViewpoint`, afficher celle
- * de `ui/ReplayViewpointSelect`.
+ * Il ne traduit rien (les libellés lui arrivent en paramètre) et ne connaît ni React, ni le
+ * point de vue courant : choisir est l'affaire de `hooks/useReplayViewpoint`, afficher celle de
+ * `ui/ReplayViewpointSelect`.
  */
-import { parseTeamSideID } from '@/lib/halo/teamNames'
 import { stripBotSuffix } from '@/lib/players/displayName'
-import { groupByTeam, playerName, type ReplayPlayer } from '@/lib/replay/rosterLogic'
+import { groupByTeam, playerName, type ReplayPlayer, type ReplayTeamGroup } from '@/lib/replay/rosterLogic'
 
 /** Une entrée du menu : un joueur qu'on peut (ou non) regarder. */
 export interface ViewpointOption {
@@ -47,21 +53,19 @@ export interface ViewpointOption {
   title: string
 }
 
-/** Une section du menu : un camp, ou le groupe de ceux qui n'en ont pas. */
+/** Une section du menu : un camp du film. */
 export interface ViewpointOptionGroup {
-  /** Clé de rendu stable : le `team_side` d'origine, `''` pour le groupe sans camp. */
+  /** Clé de rendu stable : `camp:<désignateur>`. */
   key: string
-  /** Nom du camp tel que le tableau de score l'écrit, ou le libellé « Sans équipe ». */
+  /** Nom du camp, tel que la colonne de fiches l'écrit (`campLabel`). */
   label: string
   options: ViewpointOption[]
 }
 
-/** Les trois libellés que ce module ne sait pas produire : ils viennent de l'i18n de la feature. */
+/** Les deux libellés que ce module ne sait pas produire : ils viennent de l'i18n de la feature. */
 export interface ViewpointOptionLabels {
-  /** Le nom d'un camp (`useTeamCascades.labelOf`) — la cascade du tableau de score. */
-  teamLabelOf: (teamId: number) => string
-  /** Le groupe des joueurs sans ligne de tableau de score. */
-  noTeam: string
+  /** Le nom d'un camp du film — `campLabel`, la cascade des colonnes de fiches. */
+  campLabelOf: (camp: ReplayTeamGroup) => string
   /** Ce que dit l'infobulle d'une option inerte. */
   noData: string
 }
@@ -69,8 +73,8 @@ export interface ViewpointOptionLabels {
 /**
  * buildViewpointOptions range les joueurs du rejeu en sections de menu.
  *
- * L'ORDRE EST CELUI DE `groupByTeam` — camps triés par `team_side`, joueurs dans l'ordre du
- * roster du film. Un ordre stable et reproductible, jamais l'itération d'une table.
+ * L'ORDRE EST CELUI DE `groupByTeam` — camps dans l'ordre des désignateurs du film, joueurs dans
+ * l'ordre du roster. Un ordre stable et reproductible, jamais l'itération d'une table.
  *
  * UN JOUEUR SANS AUCUN NOM N'EST PAS LISTÉ : ni la base ni le film ne le nomment, une option
  * vide ne serait pas cliquable de toute façon. C'est le cas des traces anonymes (caméras,
@@ -81,7 +85,7 @@ export function buildViewpointOptions(
   labels: ViewpointOptionLabels,
 ): ViewpointOptionGroup[] {
   const groups: ViewpointOptionGroup[] = []
-  for (const groupe of groupByTeam([...players])) {
+  for (const groupe of groupByTeam(players)) {
     const options: ViewpointOption[] = []
     for (const p of groupe.players) {
       const nom = playerName(p)
@@ -97,17 +101,7 @@ export function buildViewpointOptions(
       })
     }
     if (options.length === 0) continue
-    groups.push({ key: groupe.side ?? '', label: labelDuGroupe(groupe.side, labels), options })
+    groups.push({ key: `camp:${groupe.team}`, label: labels.campLabelOf(groupe), options })
   }
   return groups
-}
-
-/**
- * Le nom d'une section. Un `team_side` qui ne se parse pas (`t{N}` attendu) ne se traduit pas :
- * on rend la valeur brute plutôt qu'un camp inventé — même doctrine que partout dans le rejeu.
- */
-function labelDuGroupe(side: string | null, labels: ViewpointOptionLabels): string {
-  if (side == null) return labels.noTeam
-  const id = parseTeamSideID(side)
-  return id == null ? side : labels.teamLabelOf(id)
 }

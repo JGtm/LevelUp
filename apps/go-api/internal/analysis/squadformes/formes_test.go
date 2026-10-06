@@ -13,8 +13,8 @@ import (
 func team(v int) *int { return &v }
 
 // matchOf — le match publié sous cet identifiant. Les tests ne raisonnent JAMAIS
-// par rang : la liste publiée ne porte que les matchs qui ont quelque chose à
-// dire (film ou feuille d'objectif), sa longueur n'est pas celle de la portée.
+// par rang : la liste publiée ne porte que les matchs à objectif, sa longueur n'est pas celle de
+// la portée.
 func matchOf(b domain.SquadFormesBlock, id string) *domain.SquadFormesMatch {
 	for i := range b.Matches {
 		if b.Matches[i].MatchID == id {
@@ -22,12 +22,6 @@ func matchOf(b domain.SquadFormesBlock, id string) *domain.SquadFormesMatch {
 		}
 	}
 	return nil
-}
-
-// registryWeapon — une arme telle que le service la résout (nom du catalogue du
-// titre, dimensions du registre canonique).
-func registryWeapon(label, key, class, role string) WeaponInfo {
-	return WeaponInfo{Label: label, WeaponKey: key, Class: class, Role: role}
 }
 
 // fixture — une soirée miniature : deux matchs, le premier sans film décodé.
@@ -57,16 +51,8 @@ func fixture() Input {
 						PadPickupsByFamily: map[string]int{"0a1992bc": 5}},
 				}},
 		},
-		Films: map[string]sessionusage.FilmRow{"m2": {MatchID: "m2", DurationMS: 564000}},
-		Pads: map[string]FilmPads{"m2": {MatchID: "m2", PadNamed: 7, PadUnnamed: 3,
-			WeaponPads: []WeaponPad{{Weapon: "71ab0a2c", Occupations: 4, Named: 2}}}},
-		WallFamilyKey: "wall",
-		Gamertags:     map[string]string{"moi": "JGtm", "cop": "Madina97294", "adv": "Bob5499"},
-		Weapons: map[string]WeaponInfo{
-			"71ab0a2c": registryWeapon("SPNKr", "hinf_m41", "heavy", "power"),
-			"0a1992bc": registryWeapon("S7", "hinf_s7", "heavy", "sniper"),
-		},
 	}
+
 }
 
 func TestBuild_ScopeEtCouverture(t *testing.T) {
@@ -77,19 +63,19 @@ func TestBuild_ScopeEtCouverture(t *testing.T) {
 	if got.MainXUID != "moi" || len(got.Squad) != 2 {
 		t.Fatalf("escouade attendue moi + 1, obtenu %+v", got.Squad)
 	}
-	// La PORTÉE fait deux matchs, la liste PUBLIÉE n'en porte qu'un : le match
-	// sans film ni objectif n'alimente aucune carte.
-	if len(got.Matches) != 1 || got.Matches[0].MatchID != "m2" {
-		t.Fatalf("seul le match mesuré est publié, obtenu %+v", got.Matches)
+	// La PORTÉE fait deux matchs, la liste PUBLIÉE aucun : sans feuille d'objectif, un match
+	// n'alimente aucune carte d'objectif, même filmé.
+	if len(got.Matches) != 0 {
+		t.Fatalf("aucun match à objectif dans la fixture, obtenu %+v", got.Matches)
 	}
 }
 
-// Un match sans film n'a AUCUNE ligne de lobby : les formes doivent pouvoir le
-// rendre en « non mesuré », jamais en zéros.
-func TestBuild_MatchNonMesureSansLobby(t *testing.T) {
+// Un match sans objectif n'est pas publié, mais reste COMPTÉ ; un match sans film AVEC objectif
+// est publié, avec son identité d'affichage et son camp.
+func TestBuild_MatchSansFilmAvecObjectif(t *testing.T) {
 	got := Build(fixture())
 	if matchOf(got, "m1") != nil {
-		t.Fatal("un match sans film NI objectif n'a rien à publier")
+		t.Fatal("un match sans objectif n'a rien à publier")
 	}
 	// Il reste COMPTÉ : c'est de ces deux nombres que l'écran tire « N matchs
 	// sans film décodé sont hors de cette forme ».
@@ -107,90 +93,14 @@ func TestBuild_MatchNonMesureSansLobby(t *testing.T) {
 	if m1 == nil {
 		t.Fatal("un match à objectif se publie même sans film")
 	}
-	if m1.Measured || len(m1.Lobby) != 0 {
-		t.Fatalf("m1 devait rester non mesuré et sans lobby, obtenu %+v", m1)
-	}
 	if m1.ModeLabel != "Bastion" || m1.MapLabel != "Perilous" {
 		t.Fatalf("l'identité d'affichage doit survivre à l'absence de film, obtenu %+v", m1)
 	}
-	if m1.TeamSize != 4 || m1.LobbySize != 8 {
-		t.Fatalf("les effectifs du match restent publiés, obtenu %+v", m1)
+	if m1.PlayerTeam == nil || *m1.PlayerTeam != 0 {
+		t.Fatalf("le camp du joueur reste publié sans film, obtenu %+v", m1.PlayerTeam)
 	}
-}
-
-func TestBuild_LobbyDesDeuxCamps(t *testing.T) {
-	got := Build(fixture())
-	m2 := *matchOf(got, "m2")
-	if len(m2.Lobby) != 3 {
-		t.Fatalf("les deux camps attendus (3 joueurs), obtenu %d", len(m2.Lobby))
-	}
-	var me *domain.SquadFormesLobbyPlayer
-	for i := range m2.Lobby {
-		if m2.Lobby[i].XUID == "moi" {
-			me = &m2.Lobby[i]
-		}
-	}
-	if me == nil {
-		t.Fatal("le joueur de la page doit avoir sa ligne")
-	}
-	if me.Camo != 2 || me.Grapple != 1 || me.Wall != 3 || me.PadPickups != 2 {
-		t.Fatalf("gestes attendus camo=2 grappin=1 mur=3 socles=2, obtenu %+v", me)
-	}
-	if me.Gamertag != "JGtm" || me.TeamID == nil || *me.TeamID != 0 {
-		t.Fatalf("identité attendue JGtm camp 0, obtenu %+v", me)
-	}
-	if m2.DurationSeconds != 564 {
-		t.Fatalf("durée mesurée attendue 564 s, obtenu %v", m2.DurationSeconds)
-	}
-	if m2.PadNamed != 7 || m2.PadUnnamed != 3 || len(m2.WeaponPads) != 1 {
-		t.Fatalf("grain match des socles attendu 7/3 et 1 socle, obtenu %+v", m2)
-	}
-}
-
-// Seul le MUR est un geste d'équipement ici : les autres familles déployées
-// (capteur...) ne sont pas des axes de l'artefact et ne doivent pas fuir dans
-// le compte des murs.
-func TestBuild_MurSeulementLaFamilleMur(t *testing.T) {
-	got := Build(fixture())
-	for _, p := range matchOf(got, "m2").Lobby {
-		if p.XUID == "moi" && p.Wall != 3 {
-			t.Fatalf("mur attendu 3 (jamais 12 avec le capteur), obtenu %d", p.Wall)
-		}
-	}
-}
-
-func TestBuild_ArmesNommeesEtRangees(t *testing.T) {
-	got := Build(fixture())
-	if len(got.Weapons) != 2 {
-		t.Fatalf("2 armes rencontrées attendues, obtenu %+v", got.Weapons)
-	}
-	// Tri par clé : contrat stable, jamais l'ordre d'une map.
-	if got.Weapons[0].Key != "0a1992bc" || got.Weapons[1].Key != "71ab0a2c" {
-		t.Fatalf("tri par clé attendu, obtenu %+v", got.Weapons)
-	}
-	for _, w := range got.Weapons {
-		if w.Class != domain.SquadFormesWeaponHeavy {
-			t.Fatalf("les deux armes du registre sont lourdes, obtenu %+v", w)
-		}
-	}
-}
-
-func TestWeaponClassOf(t *testing.T) {
-	cases := []struct {
-		name string
-		in   WeaponInfo
-		want string
-	}{
-		{"lourde par la classe", WeaponInfo{Class: "heavy", Role: "power"}, domain.SquadFormesWeaponHeavy},
-		{"fusil de précision: lourde", WeaponInfo{Class: "heavy", Role: "sniper"}, domain.SquadFormesWeaponHeavy},
-		{"précision hors classe lourde", WeaponInfo{Class: "shoulder", Role: "precision"}, domain.SquadFormesWeaponPrecision},
-		{"automatique: autre", WeaponInfo{Class: "shoulder", Role: "automatic"}, domain.SquadFormesWeaponOther},
-		{"hors registre: autre", WeaponInfo{}, domain.SquadFormesWeaponOther},
-	}
-	for _, c := range cases {
-		if got := WeaponClassOf(c.in); got != c.want {
-			t.Errorf("%s: attendu %s, obtenu %s", c.name, c.want, got)
-		}
+	if withObj.MatchesMeasured != 1 {
+		t.Fatalf("le compte des matchs filmés ne dépend pas de l'objectif, obtenu %d", withObj.MatchesMeasured)
 	}
 }
 
@@ -248,13 +158,13 @@ func TestBuild_ColonnesObjectifPiloteesParLaDonnee(t *testing.T) {
 	}
 }
 
-// Un match sans objectif n'a pas de bloc : les six matchs Assassin d'une soirée
-// ne sont pas un trou de mesure.
-func TestBuild_ModeSansObjectifSansBloc(t *testing.T) {
-	got := Build(fixture())
+// Un match sans objectif n'est pas publié : les six matchs Assassin d'une soirée ne sont pas un
+// trou de mesure, et aucun match publié n'a de feuille vide.
+func TestBuild_ModeSansObjectifNonPublie(t *testing.T) {
+	got := Build(fixtureObjectif())
 	for _, m := range got.Matches {
-		if m.Objective != nil {
-			t.Fatalf("aucun objectif dans la fixture, obtenu %+v sur %s", m.Objective, m.MatchID)
+		if m.Objective == nil {
+			t.Fatalf("match publié sans objectif : %s", m.MatchID)
 		}
 	}
 }
@@ -289,16 +199,13 @@ func TestBuild_ObjectifCampInconnuResteSansCamp(t *testing.T) {
 	}
 }
 
-// LA NON-RÉGRESSION DE L'ALLÈGEMENT (2026-09-13). Mille matchs de plus qui ne
-// portent NI film NI objectif ne doivent RIEN changer au bloc publié — ni une
-// ligne de lobby, ni une arme, ni un socle, ni une colonne d'objectif — et tout
-// changer aux seuls compteurs de portée. C'est exactement la propriété qui rend
-// l'allègement invisible à l'écran : les cartes lisent le contenu, les pieds de
-// forme lisent les compteurs.
+// Mille matchs de plus qui ne portent NI film NI objectif ne doivent RIEN changer au bloc
+// publié et tout changer aux seuls compteurs de portée : les cartes lisent le contenu, les pieds
+// lisent les compteurs.
 func TestBuild_MatchsVidesNeChangentQueLesCompteurs(t *testing.T) {
-	base := Build(fixture())
+	base := Build(fixtureObjectif())
 
-	in := fixture()
+	in := fixtureObjectif()
 	for i := 0; i < 1000; i++ {
 		in.Metas = append(in.Metas, MatchMeta{
 			MatchID:   fmt.Sprintf("vide-%03d", i),
@@ -316,9 +223,7 @@ func TestBuild_MatchsVidesNeChangentQueLesCompteurs(t *testing.T) {
 	if !reflect.DeepEqual(got.Matches, base.Matches) {
 		t.Fatalf("le contenu publié a changé :\n avant %+v\n après %+v", base.Matches, got.Matches)
 	}
-	if !reflect.DeepEqual(got.Weapons, base.Weapons) {
-		t.Fatalf("les armes ont changé : %+v vs %+v", base.Weapons, got.Weapons)
-	}
+
 	if !reflect.DeepEqual(got.Squad, base.Squad) {
 		t.Fatalf("l'escouade a changé : %+v vs %+v", base.Squad, got.Squad)
 	}
@@ -337,48 +242,8 @@ func TestBuild_MatchsAObjectifSeulSontPublies(t *testing.T) {
 	if m == nil || m.Objective == nil {
 		t.Fatalf("un match à objectif seul se publie, obtenu %+v", got.Matches)
 	}
-	if m.Measured || len(m.Lobby) != 0 {
-		t.Fatalf("il n'a ni film ni lobby, obtenu %+v", m)
-	}
+
 	if got.MatchesMeasured != 1 || got.MatchesTotal != 3 {
 		t.Fatalf("compteurs attendus 1/3, obtenu %d/%d", got.MatchesMeasured, got.MatchesTotal)
-	}
-}
-
-// La VENTILATION DES LÂCHERS descend telle quelle jusqu'au bloc (D9, lot G du
-// 2026-09-21). Elle existait depuis le décodeur et s'arrêtait ici, sur le seul
-// scalaire `Dropped` : une colonne d'écran qui mélange un mur, un capteur et un
-// grappin lâchés à la mort ne se compare à rien.
-func TestBuild_LachersVentilesParFamille(t *testing.T) {
-	m := matchOf(Build(fixture()), "m2")
-	if m == nil {
-		t.Fatal("le match mesuré doit être publié")
-	}
-	var cop *domain.SquadFormesLobbyPlayer
-	for i := range m.Lobby {
-		if m.Lobby[i].XUID == "cop" {
-			cop = &m.Lobby[i]
-		}
-	}
-	if cop == nil {
-		t.Fatal("la ligne de lobby de cop doit exister")
-	}
-	// Le TOTAL reste publié : aucun lecteur de `dropped` n'est cassé.
-	if cop.Dropped != 4 {
-		t.Fatalf("total des lâchers attendu 4, obtenu %d", cop.Dropped)
-	}
-	if got := cop.DroppedByFamily["wall"]; got != 3 {
-		t.Fatalf("lâchers de mur attendus 3, obtenu %d", got)
-	}
-	if got := cop.DroppedByFamily["sensor"]; got != 1 {
-		t.Fatalf("lâchers de capteur attendus 1, obtenu %d", got)
-	}
-	// ABSENTE PLUTÔT QUE NULLE : un joueur sans ventilation (ligne écrite avant
-	// la colonne) ne porte pas une carte de zéros.
-	for i := range m.Lobby {
-		if m.Lobby[i].XUID == "moi" && m.Lobby[i].DroppedByFamily != nil {
-			t.Fatalf("sans lâcher mesuré, la ventilation doit être absente, obtenu %+v",
-				m.Lobby[i].DroppedByFamily)
-		}
 	}
 }

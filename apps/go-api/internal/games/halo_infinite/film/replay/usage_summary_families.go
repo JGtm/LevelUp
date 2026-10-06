@@ -37,11 +37,12 @@ import "levelup/go-api/internal/domain/equipmentusage"
 // capteur et les deux bonus portent une ligne d'issue, et ce périmètre a quitté le
 // paquet pour `internal/domain/equipmentusage` — l'agrégat de session le lit sans
 // importer un titre (D9). Elles sont RELUES ici plutôt que réécrites : deux
-// orthographes de la même famille finiraient par diverger.
+// orthographes de la même famille finiraient par diverger. Grappin et propulseur aussi :
+// la carte « Équipement » des Séries temporelles les nomme (lignes « non mesuré »).
 const (
 	usageFamilyGrenadeFrag       = "grenade_frag"
-	usageFamilyGrapple           = "grapple"
-	usageFamilyThruster          = "thruster"
+	usageFamilyGrapple           = equipmentusage.EquipmentFamilyGrapple
+	usageFamilyThruster          = equipmentusage.EquipmentFamilyThruster
 	usageFamilyPowerupCamo       = equipmentusage.EquipmentFamilyPowerupCamo
 	usageFamilyPowerupOvershield = equipmentusage.EquipmentFamilyPowerupOvershield
 	usageFamilyWall              = equipmentusage.EquipmentFamilyWall

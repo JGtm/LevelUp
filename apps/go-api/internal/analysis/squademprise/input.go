@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // Match — un match tel que la page le connaît.
@@ -41,6 +42,12 @@ type Match struct {
 	// Family : la famille de mode (libellé de mode normalisé de l'historique de l'escouade).
 	// Vide = inconnue : le match n'est comparable à aucune soirée.
 	Family string
+	// MapKey / MapLabel : la carte (identifiant, nom dans la langue de la requête) — lus par
+	// BuildMaps seulement ; vides = carte inconnue (le match compte alors sous une carte sans nom).
+	MapKey   string
+	MapLabel string
+	// Outcome : le résultat du joueur (BuildMaps : victoires / défaites par carte). Vide = inconnu.
+	Outcome canonical.Outcome
 }
 
 // FilmData — les lectures du résumé d'usage et des niveaux de socle. Un match absent de Films
