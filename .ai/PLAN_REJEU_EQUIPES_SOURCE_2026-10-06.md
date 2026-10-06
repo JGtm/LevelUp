@@ -18,7 +18,7 @@ Une entrée du roster a TOUJOURS une équipe ; aucune section « sans équipe »
 de match. L'équipe se lit dans le film (ADR 0034 D-9, D-10 ; la grammaire prime). Résidu impossible =
 compteur + `slog.ErrorContext`, jamais un affichage « inconnu ».
 
-## État : CHECKPOINT (i) levé par le superviseur — G3 implémenté, G5 préparé (aucune republication)
+## État : lot fusionné dans `feat/v75` (`b5c9489ef`) ; Phase D (D2, D3, D6) au CHECKPOINT
 
 Le champ d'équipe de BOT_METADATA est établi chez l'écrivain (Ghidra, F.2) et lu dans
 `film/internal/facts/killsource` (G3.0) ; la publication du rejeu en fait l'équipe des bots qu'aucune
@@ -340,6 +340,89 @@ l'image-clé près, 20 s).
 - [x] C.3 Entrée `.ai/thought_log.md` (2026-10-06, statut En cours, arrêt au CHECKPOINT) ; CR au
       superviseur.
 
+### Phase D — aucune fiche en trop : D2, D3, D6 (consigne de l'utilisateur du 2026-10-06, « Y a pas de places en trop »)
+
+Relance du superviseur après la fusion du lot dans `feat/v75` (`b5c9489ef`) : même worktree, même branche.
+Cible 0 / 0 / 0 / 0 (`sansEquipe`, `sansPlace`, `placesEnTrop`, `depassements`) sur les 19 témoins, et au
+parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le film ne dit pas qui part.
+
+**État : CHECKPOINT** — prémisse de D2 contredite par le film, départ de D6 non écrit. Aucune ligne de
+production écrite.
+
+- [x] D.0 Départ : `git pull --ff-only` (avance rapide sur `b5c9489ef`). Compteurs de départ, 19 témoins
+      en processus (faits au schéma des faits 6) : 0 / 3 / 3 / 60 ; `859da825` 0/1/1/4,
+      `bf2a9f05` 0/1/1/16, `d1dfbc02` 0/1/1/40.
+- [x] D.1 Instruments. Dans le dépôt : `film/replay/rejeu_fiches_en_trop_research_test.go` (faits et
+      artefacts seuls) ; `rjeBots` de `rejeu_equipes_research_test.go` copie désormais l'équipe (sinon
+      la liaison rejouée diffère de la publiée). Hors dépôt (scratchpad du superviseur,
+      `instruments_rejeu_equipes/rejeu_departs_research_test.go`) : la marche des trames rejouée sous
+      le contexte de la cuisson (profil calibré des faits, carte), qui importe `grammar/lecture`
+      (ADR 0037 IR-9 : la publication ne voit pas la structure de lecture). Sorties : `departs2.txt`,
+      `departs3.txt`, `morts_corps.txt`, `vies_apres_depart.txt`, `fiches_en_trop.txt`.
+- [x] D.2 Diagnostic D2 (`859da825`). La « vie » [3167..3170] du slot 548 n'est la vie de PERSONNE :
+      - le corps 548 est créé à 1519 avec l'index 2 (opresko, présent) ; la marche des trames lit ses
+        records de 1519 à 1534, puis plus rien jusqu'à la fin ; ni suppression, ni dead-state ;
+      - l'entité d'opresko (slot 1329) est lue jusqu'à l'image-clé 9 (1627), son absence est prouvée à
+        l'image-clé 10 (1827) ;
+      - les 5 échantillons [3167..3170] (quantum X constant 528) viennent du balayage de positions par
+        ancrage (`grammar.ScanBipedPositions`) ; la marche lit TOUS les paquets des frames 3164 à 3172
+        jusqu'à leur terminateur, verdict de fermeture « fermé », et aucun ne porte de record du slot
+        548. C'est une lecture fausse du balayage par ancrage : il n'y a pas d'autre joueur à nommer.
+      - Empreinte sur les 19 témoins : 1 vie commence après le départ prouvé de son entrée (celle-ci),
+        corps créé avant ce départ.
+      - Propositions : P2 (recommandée, publication) : une vie qui commence après le départ prouvé du
+        joueur que la création de son corps nomme, sur un corps créé avant ce départ, n'est pas
+        publiée (comptée et journalisée ; « la grammaire prime » : la preuve d'absence aux images-clés
+        contre des échantillons d'ancrage). P1 : la vie reste publiée mais n'ouvre aucune présence
+        (pion fantôme de 4 frames). Source : faire recouper l'ancrage par la marche dans `grammar`
+        (faits, re-cuisson complète, hors périmètre). Attendu avec P2 : 0/0/0/0, SplinterCell958 sur
+        la place 2 après `343 Forge Lord`.
+- [x] D.3 Diagnostic D3 (`bf2a9f05`), confirmé par la marche :
+      - le corps 529 est créé à 1004 avec l'index 8, lu jusqu'à 1019, supprimé à 1021 ;
+      - BOT_METADATA : `343 Mickey` [1008..1023] et `343 BF Scrub` [772..783] sur l'index 8 ;
+      - l'entité d'AllGodsLove (slot 1758, index 8) est créée à 1640 (marche), lue de l'image-clé 11
+        (1824), absence prouvée à l'image-clé 10 (1624) ;
+      - cause : le registre retombe sur l'index -> xuid (AllGodsLove) parce que la lecture par
+        déclaration (`identity_registry_declarations.go`) se limite aux index sans humain ET exige que
+        la déclaration couvre la création (1004 < 1008 : le paquet BOT_METADATA suit la création,
+        cas déjà décrit en tête du fichier) ; Mickey, sans entité, n'a pas d'entrée de roster.
+      - Correction (publication) : lecture par déclaration étendue à l'index d'un humain quand ses
+        entités prouvent son absence sur toute la vie, et à une création qu'aucune déclaration ne
+        couvre et qui précède la seule déclaration croisant la vie ; le bot ainsi nommé entre au roster
+        (présence = sa déclaration, équipe lue 0). Attendu : 0/0/0/0, Mickey sur la place 0
+        (Aeroflame -> Mickey -> Luigi107763), AllGodsLove sur la place 3 (après yolojoe13, parti à
+        1631). BF Scrub (aucune vie) reste hors roster.
+- [x] D.4 Diagnostic D6 (`d1dfbc02`). Le film n'écrit pas qui part :
+      - dernière image-clé porteuse 30 (5870), les 8 humains y sont lus ; `343 Ham Sammich` déclaré de
+        5947 à la fin (index 8, équipe 0), son entité de participant créée à 5947 (marche, slot 2530) ;
+      - aucune suppression d'entité de participant des 8 humains avant la fin du film (la marche en lit
+        ailleurs : `bf2a9f05` Aeroflame 846, yolojoe13 1631, AllGodsLove 3177, Shiva1663 3592 ;
+        `859da825` Witty Hole 4248, après la dernière image-clé 4227 ; elle en manque : opresko,
+        HiEmilio9212) ;
+      - dead-states de bipède (marche ; les faits ne gardent que ceux des véhicules) : le corps de
+        NerdGaiden est tué à 5932 par l'index 3 (Da5BearJud3n), lui-même tué à 5928 par l'index 5 —
+        deux morts absentes du fil des morts (dernière : 5910). NerdGaiden joue donc jusqu'à 5932 ;
+      - délais de réapparition du film (faits) : 97 écarts entre deux vies d'un joueur, tous de 80 à
+        90 frames ;
+      - équipe 0 à 5947 : JGtm en vie (records jusqu'à 5988) ; NerdGaiden mort à 5932 (réapparition au
+        plus tôt 6012, après la fin 5986) ; BlU3KN1GHT5479 mort à 5910 (au plus tôt 5990) ;
+        `stitch vs all` mort à 5845, attendu entre 5925 et 5935, non réapparu jusqu'à la fin (141
+        frames). Seule lecture qui désigne quelqu'un : le délai de réapparition — une DÉDUCTION.
+      - Options : (a) laisser D6 compté (0/1/1/40) ; (b) déduction par le délai de réapparition
+        (publication) : un membre de l'équipe du bot arrivant, mort et non réapparu au-delà du plus long
+        écart mesuré dans le film, est réputé parti à son réapparition manquée ; le bot lui succède
+        (attendu 0/0/0/0) ; (c) source : départs à la frame près par les suppressions d'entités de
+        participant (faits, re-cuisson) — ne règle pas `d1dfbc02`.
+- [x] D.5 `SchemaDesFaits` : aucune des corrections proposées (D2 P1/P2, D3, D6 b) ne touche les faits :
+      republication depuis les faits au schéma des faits 6 (`SchemaVersion` 80 -> 81). Seules les voies
+      « source » (D2 dans `grammar`, D6 c) montent `SchemaDesFaits` (re-cuisson complète). Mesure au
+      parc : les faits du parc local sont au schéma des faits 5, refusés au schéma 6 ; une mesure en
+      processus redécode les 126 films un par un (environ 30 min, pic proche de 1 Gio par film) : pas
+      faite sans go.
+- [ ] D.6 Implémentation selon la décision du superviseur (D2, D3, D6), tests sur chaque cas, compteurs
+      sur les 19 témoins.
+- [ ] D.7 Relecture adversariale au premier plan, push, CI au premier plan, CR.
+
 ## Découvertes (notées, non traitées)
 
 - D1 (`c7f94693`) : la vie [947..981] de `343 Donos` est publiée d'équipe 0 par le pont slot -> index
@@ -377,6 +460,13 @@ l'image-clé près, 20 s).
   refusés sur leur en-tête et la cuisson redécode. Le récapitulatif de `backfill-replay` range donc ces
   films parmi les « republiés » alors que chacun redécode : la durée d'une telle passe est celle d'un
   décodage. Non traité (le comportement est juste, seul le compte trompe).
+- D11 (`d1dfbc02`) : le fil des morts n'a pas les deux dernières morts que les dead-states de bipède lisent
+  (5928 : Da5BearJud3n tué par l'index 5 ; 5932 : NerdGaiden tué par l'index 3) ; sa dernière mort est à
+  5910. La vie de NerdGaiden finit donc à 5931 sans mort. Non traité.
+- D12 : la marche des trames lit à la frame près la création et la suppression des entités de
+  participant (`ti=9`), que les faits ne portent pas (images-clés seulement). `859da825` : Witty Hole
+  supprimé à 4248, après la dernière image-clé (4227), publié présent jusqu'à la fin (4338). La marche
+  manque des suppressions (opresko, HiEmilio9212). Non traité (faits, re-cuisson).
 - Revue adversariale (ronde 1, relecteur frais) : 0 P0 ; 1 P1 (G2.a généralisé au-delà des 2 films
   mesurés : corrigé en restreignant l'affirmation) ; 5 P2 d'imprécision (formulation de G1.2 et durée
   maximale, place 1 de `4f77afc1`, décompte des films et build HI_1_12_0 à N = 1, équipe de Ham Sammich
@@ -396,3 +486,9 @@ l'image-clé près, 20 s).
   `g4_bouche_trou.txt` et `g4_intervalles.tsv` (scratchpad du superviseur). Dans les films où des bots
   existent, 43 des 44 intervalles demandés sont recoupés par un bot ; troisième contrôle du champ :
   0 désaccord sur 76 bots.
+- 2026-10-06 : Phase D (D2, D3, D6) après la fusion du lot (`b5c9489ef`). Instruments sur les faits et la
+  marche des trames ; D2 : la vie fautive est une lecture fausse du balayage par ancrage (la marche
+  ferme tous les paquets des frames 3164 à 3172 sans record du slot 548) ; D3 : cause confirmée,
+  correction de publication ; D6 : le film n'écrit pas le départ, seule une déduction par le délai
+  de réapparition désigne `stitch vs all`. CHECKPOINT, retour au superviseur ; aucune ligne de
+  production écrite.
