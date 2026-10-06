@@ -38,7 +38,7 @@ function match() {
 describe('buildFilmAllegiance — allié = même équipe du film que la référence', () => {
   it('humains : même camp allié, l’autre adverse ; la référence est alliée d’elle-même', () => {
     const a = buildFilmAllegiance(match().players, 'A')
-    expect(a.referenceTeam).toBe(0)
+    expect(a.allyTeam).toBe(0)
     expect(a.ofXuid('A')).toBe(true)
     expect(a.ofXuid('B')).toBe(false)
     expect(a.ofTeam(0)).toBe(true)
@@ -65,7 +65,7 @@ describe('buildFilmAllegiance — allié = même équipe du film que la référe
 
   it('la référence se retrouve par sa ligne de feuille : un bot regardé situe son camp', () => {
     const a = buildFilmAllegiance(match().players, 'bid(0.0)')
-    expect(a.referenceTeam).toBe(1)
+    expect(a.allyTeam).toBe(1)
     expect(a.ofXuid('B')).toBe(true)
     expect(a.ofXuid('A')).toBe(false)
     expect(a.ofXuid('bot:Ritzy [bot]')).toBe(true)
@@ -84,7 +84,7 @@ describe('buildFilmAllegiance — allié = même équipe du film que la référe
 describe('buildFilmAllegiance — référence sans équipe du film : personne n’a d’encre de camp', () => {
   it('référence dont le film tait l’équipe : null pour tous, elle comprise', () => {
     const a = buildFilmAllegiance(match().players, 'Muet')
-    expect(a.referenceTeam).toBeNull()
+    expect(a.allyTeam).toBeNull()
     for (const x of ['Muet', 'A', 'B', 'bid(44.0)']) expect(a.ofXuid(x)).toBeNull()
     expect(a.ofTeam(0)).toBeNull()
     expect(a.ofTeam(1)).toBeNull()
@@ -93,7 +93,7 @@ describe('buildFilmAllegiance — référence sans équipe du film : personne n�
   it('référence absente du film (ou nulle) : idem — aucun camp n’est deviné', () => {
     for (const ref of ['hors-film', null, undefined]) {
       const a = buildFilmAllegiance(match().players, ref)
-      expect(a.referenceTeam).toBeNull()
+      expect(a.allyTeam).toBeNull()
       expect(a.ofXuid('A')).toBeNull()
       expect(a.ofTeam(0)).toBeNull()
     }
@@ -111,7 +111,7 @@ describe('buildFilmAllegiance — mode sans camps (désignateur -1)', () => {
 
   it('la référence est alliée d’elle-même, tout autre joueur est adverse ; un sans-équipe reste neutre', () => {
     const a = buildFilmAllegiance(buildPlayers(ffa, []), 'A')
-    expect(a.referenceTeam).toBe(-1)
+    expect(a.allyTeam).toBeNull() // « aucune équipe » n'est pas un camp allié
     expect(a.ofXuid('A')).toBe(true)
     expect(a.ofXuid('B')).toBe(false)
     expect(a.ofXuid('C')).toBeNull()

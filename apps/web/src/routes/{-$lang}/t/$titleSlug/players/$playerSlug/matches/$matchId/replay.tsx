@@ -54,6 +54,7 @@ import { ReplayVictoryOverlay } from '@/features/match-replay/ui/ReplayVictoryOv
 import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
 import { buildMatchHeadingStr } from '@/features/match-view/format'
 import { useMatchView } from '@/features/match-view/queries'
+import { meXUIDOf } from '@/features/match-view/xuidMeta'
 import { useFriendGamertags } from '@/features/friends/queries'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
@@ -166,8 +167,8 @@ function ReplayPage() {
   // qu'on regarde — l'incohérence apparente entre les deux appels est voulue, ne pas la
   // « corriger ».
   const endMatchSound = useMemo(
-    () => endMatchSoundSpec(scoreboard, matchView?.header.outcome_code, locale),
-    [scoreboard, matchView?.header.outcome_code, locale],
+    () => endMatchSoundSpec(model.allegiance, meXUIDOf(scoreboard), matchView?.header.outcome_code, locale),
+    [model.allegiance, scoreboard, matchView?.header.outcome_code, locale],
   )
 
   const hasReplay = !!data && data.tracks.length > 0
@@ -290,8 +291,7 @@ function ReplayPage() {
                 montage déclaratif suffit, aucun pilotage par ref n'est nécessaire. */}
             <ReplayScoreBanner
               doc={data}
-              scoreboard={scoreboard}
-              xuidMeta={xuidMeta}
+              allegiance={model.allegiance}
               frame={frame}
               nowMs={nowMs}
               playWindow={playWindow}
@@ -306,7 +306,6 @@ function ReplayPage() {
               background={mapBackground}
               callouts={callouts}
               scoreboard={scoreboard}
-              xuidMeta={xuidMeta}
               allegiance={model.allegiance}
               marks={marks}
               endMatch={endMatchSound}
@@ -346,7 +345,7 @@ function ReplayPage() {
                   <ReplayVictoryOverlay
                     doc={data}
                     scoreboard={scoreboard}
-                    xuidMeta={xuidMeta}
+                    allegiance={model.allegiance}
                     outcomeCode={matchView?.header.outcome_code}
                     viewpoint={viewpoint.xuid}
                     finalScore={model.score}

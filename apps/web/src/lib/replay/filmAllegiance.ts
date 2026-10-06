@@ -47,8 +47,13 @@ export type Allegiance = boolean | null
 
 /** L'allégeance de chacun, vue du joueur de référence. */
 export interface FilmAllegiance {
-  /** L'équipe du film de la référence ; `null` quand elle est absente du film ou que le film la tait. */
-  readonly referenceTeam: number | null
+  /**
+   * LE CAMP ALLIÉ EN NUMÉRO : l'équipe du film de la référence quand c'est un camp (>= 0) ;
+   * `null` quand la référence est absente du film, que le film tait son équipe, ou qu'il n'en
+   * donne aucune (`-1`, mode sans camps). Pour les lectures qui comparent un désignateur (tenant
+   * d'une zone, camp d'une marque) : `null` = se taire.
+   */
+  readonly allyTeam: number | null
   /**
    * Les camps du match (désignateurs >= 0, croissants), nommés par la feuille de leurs membres
    * (`ReplayCamp.side`). Le bandeau de score et l'écran de fin en exigent exactement deux.
@@ -92,10 +97,9 @@ export function buildFilmAllegiance(
   const ref = reference ? parCle.get(reference) : undefined
   const refKey = ref?.xuid ?? null
   const refTeam = ref?.team ?? null
-  const ofTeam = (team: number | null | undefined): Allegiance => {
-    if (refTeam === null || refTeam < 0 || team == null || team < 0) return null
-    return team === refTeam
-  }
+  const allyTeam = refTeam !== null && refTeam >= 0 ? refTeam : null
+  const ofTeam = (team: number | null | undefined): Allegiance =>
+    allyTeam === null || team == null || team < 0 ? null : team === allyTeam
   const ofPlayer = (p: ReplayPlayer | null | undefined): Allegiance => {
     if (!p || p.team === undefined || refTeam === null) return null
     // MODE SANS CAMPS : personne ne partage le camp de la référence, qui reste alliée d'elle-même.
@@ -110,7 +114,7 @@ export function buildFilmAllegiance(
     else membres.set(p.team, [p.xuid])
   }
   return {
-    referenceTeam: refTeam,
+    allyTeam,
     camps: groupByTeam(players)
       .filter((camp) => camp.team >= 0)
       .map(({ team, side }) => ({ team, side })),

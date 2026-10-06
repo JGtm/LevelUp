@@ -115797,4 +115797,6 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 
 E6.2 (colonnes, fil, frise) — en-tête par l'allégeance du camp (`ofTeam`), fil par `ofXuid` en jetons (`teamTokenCssVar`, neutre si inconnue ; replis devinés retirés), frise (coéquipiers, absences, glyphes) par l'allégeance ; cascade d'identité `teamColorResolver` + couleurs officielles supprimées (plus d'appelant) ; 296 fichiers verts, tsc et eslint 0 erreur ; mutations rattrapées.
 
-**Conclusion / prochaine étape** : E6.3 (bandeau, dominance, fin de match, objectifs, sons).
+E6.3 (camps vus de la référence) — bandeau (camps du roster, côté par `ofTeam`), dominance, fin de match (`readVictory(film, code, page, sujet)`, joueur de la page par `meXUIDOf`), zones, drapeaux (encre, onde, défenseurs = membres du camp du film), déflagration, sons d'objectif (`objectiveSideResolver`, `allyTeam`) ; `matchSides` supprimé, `allyOfTeamId` déplacé vers la page Match, `teamIdOfSide` supprimé ; 295 fichiers verts, tsc et eslint 0 erreur.
+
+**Conclusion / prochaine étape** : E6.4 (tables de l'onglet Arsenal).

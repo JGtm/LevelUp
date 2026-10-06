@@ -8,13 +8,25 @@
  */
 import { describe, expect, it } from 'vitest'
 
+import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
+
 import {
+  objectiveSideResolver,
   objectiveSoundEvents,
   objectiveSoundStem,
-  sideResolverFromScoreboard,
 } from './objectiveSound'
 import { buildSoundTimeline, SOUND_CATEGORIES_DEFAULT } from './replaySound'
 import { testReplayDoc } from '../test/testDoc'
+
+/**
+ * Le résolveur de camp d'un lobby : chaque joueur avec l'équipe que le FILM lui écrit
+ * (`undefined` = le film la tait), vu de `reference` (le joueur regardé).
+ */
+function cote(equipes: Array<[string, number | undefined]>, reference: string | null = 'MOI') {
+  const joueurs = equipes.map(([xuid, team]) => ({ xuid, team, lives: [] }) as ReplayPlayer)
+  return objectiveSideResolver(buildFilmAllegiance(joueurs, reference))
+}
 
 describe('objectiveSoundStem — la statistique désigne le geste, le camp désigne le fichier', () => {
   it('une capture joue DEUX fichiers différents selon le camp', () => {
@@ -52,35 +64,36 @@ describe('objectiveSoundStem — la statistique désigne le geste, le camp dési
 
   it('un camp INCONNU se tait sur une action à deux variantes, même paire complète', () => {
     // C est la règle qui survit à la complétion des paires, et c est elle qu il faut épingler :
-    // sans ligne « moi » au tableau de score, choisir un camp serait l affirmer. Le rejeu se
-    // tait — annoncer un gain quand on perd une base est la pire erreur possible ici.
+    // sans allégeance connue, choisir un camp serait l affirmer. Le rejeu se tait — annoncer
+    // un gain quand on perd une base est la pire erreur possible ici.
     expect(objectiveSoundStem('zone_captures', 'unknown')).toBeUndefined()
     expect(objectiveSoundStem('flag_captures', 'unknown')).toBeUndefined()
   })
 })
 
-describe('sideResolverFromScoreboard — le camp vient du tableau de score, comme les calques', () => {
-  const board = [
-    { xuid: 'MOI', team_side: 't0', is_me: true },
-    { xuid: 'MATE', team_side: 't0' },
-    { xuid: 'FOE', team_side: 't1' },
+describe('objectiveSideResolver — le camp vient de l’allégeance du film, comme les calques', () => {
+  const lobby: Array<[string, number | undefined]> = [
+    ['MOI', 0],
+    ['MATE', 0],
+    ['FOE', 1],
+    ['MUET', undefined],
   ]
 
-  it('la ligne « moi » donne l équipe alliée ; les autres se comparent à elle', () => {
-    const side = sideResolverFromScoreboard(board)
+  it('l’équipe du film du joueur regardé est l’alliée ; les autres se comparent à elle', () => {
+    const side = cote(lobby)
     expect(side('MOI')).toBe('ally')
     expect(side('MATE')).toBe('ally')
     expect(side('FOE')).toBe('enemy')
   })
 
-  it('sans ligne « moi », TOUT est inconnu — le rejeu ne choisit pas un camp par défaut', () => {
-    const side = sideResolverFromScoreboard([{ xuid: 'A', team_side: 't0' }])
-    expect(side('A')).toBe('unknown')
+  it('joueur regardé sans équipe du film (ou absent) : TOUT est inconnu — aucun camp par défaut', () => {
+    expect(cote(lobby, 'MUET')('MOI')).toBe('unknown')
+    expect(cote(lobby, null)('MOI')).toBe('unknown')
   })
 
-  it('un xuid absent du tableau est inconnu, et un tableau absent aussi', () => {
-    expect(sideResolverFromScoreboard(board)('AUTRE')).toBe('unknown')
-    expect(sideResolverFromScoreboard(undefined)('MOI')).toBe('unknown')
+  it('un auteur absent du film, ou dont le film tait l’équipe, est inconnu', () => {
+    expect(cote(lobby)('AUTRE')).toBe('unknown')
+    expect(cote(lobby)('MUET')).toBe('unknown')
   })
 })
 
@@ -94,9 +107,9 @@ describe('objectiveSoundEvents — les actions posées sur l horloge du rejeu', 
       { t: 40, xuid: 'MOI', stat: 'zone_captures', timeMs: 4000 },
     ],
   })
-  const side = sideResolverFromScoreboard([
-    { xuid: 'MOI', team_side: 't0', is_me: true },
-    { xuid: 'FOE', team_side: 't1' },
+  const side = cote([
+    ['MOI', 0],
+    ['FOE', 1],
   ])
 
   it('chaque action sonne à SA frame, dans le camp de son auteur', () => {
@@ -127,10 +140,10 @@ describe('objectiveSoundEvents — les actions posées sur l horloge du rejeu', 
         { t: 40, xuid: 'MATE2', stat: 'zone_captures', timeMs: 4000 },
       ],
     })
-    const s = sideResolverFromScoreboard([
-      { xuid: 'MOI', team_side: 't0', is_me: true },
-      { xuid: 'MATE', team_side: 't0' },
-      { xuid: 'MATE2', team_side: 't0' },
+    const s = cote([
+      ['MOI', 0],
+      ['MATE', 0],
+      ['MATE2', 0],
     ])
     expect(objectiveSoundEvents(d, s)).toEqual([
       { ms: 4000, stem: 'objective_zone_captured_team' },
@@ -145,9 +158,9 @@ describe('objectiveSoundEvents — les actions posées sur l horloge du rejeu', 
         { t: 40, xuid: 'FOE', stat: 'zone_captures', timeMs: 4000 },
       ],
     })
-    const s = sideResolverFromScoreboard([
-      { xuid: 'MOI', team_side: 't0', is_me: true },
-      { xuid: 'FOE', team_side: 't1' },
+    const s = cote([
+      ['MOI', 0],
+      ['FOE', 1],
     ])
     expect(objectiveSoundEvents(d, s)).toEqual([
       { ms: 4000, stem: 'objective_zone_captured_team' },
@@ -163,7 +176,7 @@ describe('objectiveSoundEvents — les actions posées sur l horloge du rejeu', 
         { t: 40, xuid: 'MOI', stat: 'flag_captures', timeMs: 4000 },
       ],
     })
-    const s = sideResolverFromScoreboard([{ xuid: 'MOI', team_side: 't0', is_me: true }])
+    const s = cote([['MOI', 0]])
     expect(objectiveSoundEvents(d, s)).toHaveLength(2)
   })
 
@@ -178,7 +191,7 @@ describe('objectiveSoundEvents — les actions posées sur l horloge du rejeu', 
       originMs: 28_006,
       objectives: [{ t: 145, xuid: 'MOI', stat: 'zone_captures', timeMs: 42_538 }],
     })
-    const s = sideResolverFromScoreboard([{ xuid: 'MOI', team_side: 't0', is_me: true }])
+    const s = cote([['MOI', 0]])
     // 42 538 − 28 006 = 14 532 ms, là où la grille donnait 14 500 (32 ms d avance).
     expect(objectiveSoundEvents(d, s)).toEqual([
       { ms: 14_532, stem: 'objective_zone_captured_team' },
@@ -190,7 +203,7 @@ describe('objectiveSoundEvents — les actions posées sur l horloge du rejeu', 
       frameIntervalMs: 100,
       objectives: [{ t: 145, xuid: 'MOI', stat: 'zone_captures', timeMs: 42_538 }],
     })
-    const s = sideResolverFromScoreboard([{ xuid: 'MOI', team_side: 't0', is_me: true }])
+    const s = cote([['MOI', 0]])
     expect(objectiveSoundEvents(d, s)).toEqual([
       { ms: 14_500, stem: 'objective_zone_captured_team' },
     ])

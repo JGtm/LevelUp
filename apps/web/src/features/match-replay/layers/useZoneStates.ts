@@ -29,7 +29,7 @@
  */
 import { useCallback, useMemo } from 'react'
 
-import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import type { ObjectiveElementReady } from './objectivesLayer'
 import { msToFrames } from '../../../lib/replay/replayLogic'
@@ -40,7 +40,6 @@ import {
   zoneElementsOf,
   type ZoneStatesLayerInput,
 } from './zoneStatesLayer'
-import { allyTeamFromScoreboard } from '../model/matchSides'
 
 /** Ce que le canvas recopie tel quel dans ses appels de dessin. */
 export interface ReplayZoneStates extends ZoneStatesLayerInput {
@@ -48,15 +47,20 @@ export interface ReplayZoneStates extends ZoneStatesLayerInput {
    * Couleur d'un index d'équipe pour le calque STATIQUE et les pulses : celle que
    * L'UTILISATEUR a réglée (`team-ally` / `team-enemy`), la MÊME que les fiches, le fil et les
    * points des joueurs — jamais le bleu et le rouge officiels du jeu (cf. `colorOfTeam` plus
-   * bas). Encre neutre pour -1, et pour tout camp quand aucune ligne « moi » ne permet de
-   * situer les camps. `team` est DÉJÀ arbitré côté serveur (Bastion = neutre).
+   * bas). Encre neutre pour -1, et pour tout camp quand le film ne situe pas le joueur regardé.
+   * `team` est DÉJÀ arbitré côté serveur (Bastion = neutre).
    */
   colorOfTeam: (team: number) => string
 }
 
 export function useZoneStates(
   objectives: readonly ObjectiveElementReady[],
-  scoreboard: MatchScoreboardRow[] | null | undefined,
+  /**
+   * L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : l'encre d'une zone
+   * dit « tenue par mon camp » ou « par l'autre » — vu par les yeux d'un adversaire, les deux
+   * s'échangent. REQUISE : elle porte le point de vue (revue F4 du 2026-09-07).
+   */
+  allegiance: FilmAllegiance,
   teamColorOf: (isAlly: boolean) => string,
   /**
    * L'encre du « AUCUN CAMP » : objectif neutre du catalogue, et zone que personne ne tient.
@@ -71,25 +75,10 @@ export function useZoneStates(
   neutral: string,
   /** Le document : `coverage.zones.catalog` (jointure) et sa cadence (tenue de la jauge). */
   doc: ReplayDocumentReady,
-  /**
-   * LE POINT DE VUE de la page (2026-09-06, plan « frise, point de vue ») : l'encre d'une zone
-   * dit « tenue par mon camp » ou « par l'autre » — vu par les yeux d'un adversaire, les deux
-   * s'échangent. `null` : la ligne « moi », comportement d'origine.
-   *
-   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris. Optionnel, son oubli chez
-   * l'appelant ne faisait rougir AUCUN test — les zones seraient simplement restées aux
-   * couleurs du joueur de la page pendant que la carte suivait le joueur choisi. Requis,
-   * l'oubli est une erreur de compilation.
-   */
-  viewpoint: string | null,
 ): ReplayZoneStates {
   const zoneElements = useMemo(() => zoneElementsOf(objectives), [objectives])
   const joinable = zoneCatalogMatches(doc.coverage?.zones?.catalog, zoneElements.length)
   const gaugeHoldFrames = useMemo(() => msToFrames(ZONE_GAUGE_HOLD_MS, doc), [doc])
-  const allyTeamID = useMemo(
-    () => allyTeamFromScoreboard(scoreboard, viewpoint),
-    [scoreboard, viewpoint],
-  )
   /**
    * L'ENCRE D'UN CAMP VIENT DES RÉGLAGES DE L'UTILISATEUR, plus du référentiel du jeu
    * (retour du 2026-08-26 : « le socle de l'équipe est en bleu alors que j'utilise une
@@ -105,28 +94,37 @@ export function useZoneStates(
    * de la page — allié ou adverse — dans les couleurs qu'il a choisies. `resolveTeamColorFromID`
    * n'est donc plus lu ici.
    *
-   * SANS LIGNE « MOI », AUCUN CAMP N'EST SITUABLE, et rien n'est deviné : l'encre neutre
-   * sert alors, comme pour une zone que personne ne tient (même règle que `colorOfOwner`).
+   * LE CAMP SE DIT PAR L'ALLÉGEANCE DU FILM (`FilmAllegiance.ofTeam`, 2026-10-06). Quand le film
+   * ne situe pas le joueur regardé, ou pour un camp qui n'en est pas un (`-1`), rien n'est
+   * deviné : l'encre neutre sert, comme pour une zone que personne ne tient (même règle que
+   * `colorOfOwner`).
    */
   const colorOfTeam = useCallback(
-    (team: number) => (team >= 0 && allyTeamID !== null ? teamColorOf(team === allyTeamID) : neutral),
-    [allyTeamID, teamColorOf, neutral],
+    (team: number) => {
+      const ally = allegiance.ofTeam(team)
+      return ally === null ? neutral : teamColorOf(ally)
+    },
+    [allegiance, teamColorOf, neutral],
   )
   const style = useMemo(
     () => ({
-      colorOfOwner: (team: number) =>
-        allyTeamID === null ? null : teamColorOf(team === allyTeamID),
+      colorOfOwner: (team: number) => {
+        const ally = allegiance.ofTeam(team)
+        return ally === null ? null : teamColorOf(ally)
+      },
       // Le camp QUI POUSSE LA JAUGE est désormais LU dans le document (schéma 64 pour la
       // forme, lot 5.6 pour la lecture dans le film — rampes avortées comprises) et non plus
       // déduit du propriétaire : cette encre n'est
       // que la traduction d'un identifiant d'équipe, la MÊME règle que `colorOfOwner`. Les deux
       // restent deux entrées du style parce qu'elles répondent à deux questions distinctes
       // (« qui tient » / « qui pousse ») et que le calque les pose à deux endroits.
-      colorOfCapturer: (team: number) =>
-        allyTeamID === null ? null : teamColorOf(team === allyTeamID),
+      colorOfCapturer: (team: number) => {
+        const ally = allegiance.ofTeam(team)
+        return ally === null ? null : teamColorOf(ally)
+      },
       neutral,
     }),
-    [allyTeamID, teamColorOf, neutral],
+    [allegiance, teamColorOf, neutral],
   )
   return useMemo(
     () => ({ zoneElements, joinable, style, colorOfTeam, gaugeHoldFrames }),

@@ -21,7 +21,6 @@ import {
   playerCountersAt,
   scoreAtFrame,
   scoreTimelineOf,
-  teamIdOfSide,
   teamRoundScoreAtFrame,
   teamScoreAtFrame,
   teamSeriesFor,
@@ -99,13 +98,6 @@ describe('teamSeriesFor / teamScoreAtFrame — le camp qui n’a jamais marqué'
     expect(teamSeriesFor(ctf, null)).toBeNull()
     expect(teamScoreAtFrame(ctf, null, 4678)).toBe(0)
     expect(teamSeriesFor(undefined, 0)).toBeNull()
-  })
-
-  it('traduit le camp du scoreboard en identifiant d’équipe du film', () => {
-    expect(teamIdOfSide('t0')).toBe(0)
-    expect(teamIdOfSide('t1')).toBe(1)
-    expect(teamIdOfSide(null)).toBeNull()
-    expect(teamIdOfSide('')).toBeNull()
   })
 })
 

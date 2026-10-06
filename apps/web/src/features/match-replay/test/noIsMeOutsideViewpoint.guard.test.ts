@@ -42,11 +42,13 @@ const LECTURE = /\.is_me\b|\bis_me\s*[,}]/
 /**
  * Exemptions NOMMÉES, DATÉES, avec leur raison et ce qui les fera disparaître.
  *
- *  - `playerMarks.ts`, `matchSides.ts`, `victoryLogic.ts` (2026-09-06) : le REPLI SANS SUJET.
- *    Les trois prennent désormais le point de vue en paramètre ; sans lui, ils retombent sur la
- *    ligne « moi » — c'est le comportement que la caractérisation L2a a photographié et que la
- *    décision 15 du plan interdit de changer hors de la page de rejeu. RETRAIT CIBLE : quand
- *    plus aucun appel n'omettra le sujet (aujourd'hui `endMatchSound` l'omet exprès, décision 3).
+ *  - `playerMarks.ts` (2026-09-06) : le REPLI SANS SUJET. Il prend le point de vue en
+ *    paramètre ; sans lui, il retombe sur la ligne « moi » — c'est le comportement que la
+ *    caractérisation L2a a photographié et que la décision 15 du plan interdit de changer hors
+ *    de la page de rejeu. RETRAIT CIBLE : quand plus aucun appel n'omettra le sujet.
+ *    `matchSides.ts` (supprimé) et `victoryLogic.ts` (qui reçoit le joueur de la page en
+ *    paramètre, `meXUIDOf` chez l'appelant) sont sortis de la liste le 2026-10-06, quand
+ *    l'allégeance du rejeu est passée au film (`lib/replay/filmAllegiance.ts`).
  *
  *  - `MatchPadControlSection.tsx`, `MatchEquipmentUsageSection.tsx` (2026-09-06) : ces deux
  *    composants vivent dans le dossier du rejeu mais sont montés par
@@ -61,8 +63,6 @@ const LECTURE = /\.is_me\b|\bis_me\s*[,}]/
  */
 const EXEMPTIONS = new Map<string, string>([
   ['playerMarks.ts', 'repli sans sujet (2026-09-06)'],
-  ['matchSides.ts', 'repli sans sujet (2026-09-06)'],
-  ['victoryLogic.ts', 'repli sans sujet (2026-09-06)'],
   ['MatchPadControlSection.tsx', 'monté sur la page match, hors point de vue (2026-09-06)'],
   ['MatchEquipmentUsageSection.tsx', 'monté sur la page match, hors point de vue (2026-09-06)'],
 ])

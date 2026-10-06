@@ -13,6 +13,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
+import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
+
 import {
   END_FFA_WIN_VOICE_STEMS,
   END_MUSIC_STEMS,
@@ -22,15 +25,18 @@ import {
   endMatchSounds,
 } from './endMatchSound'
 
-/** Une ligne de scoreboard réduite à ce que la lecture regarde (patron victoryLogic.test). */
-function row(side: string | null, isMe = false) {
-  return { team_side: side, is_me: isMe }
+/**
+ * Les équipes du FILM, par joueur (patron victoryLogic.test) : la lecture de fin ne regarde que
+ * les camps et l'équipe du joueur de la page (`moi`).
+ */
+function film(equipes: Array<[string, number | undefined]>) {
+  return buildFilmAllegiance(equipes.map(([xuid, team]) => ({ xuid, team, lives: [] }) as ReplayPlayer), null)
 }
 
-/** Deux camps, le joueur de la page dans `t0` — le cas de référence de l'écran de fin. */
-const DEUX_CAMPS = [row('t0', true), row('t0'), row('t1'), row('t1')]
-/** Un FFA : personne n'a de camp transmis. */
-const FFA = [row(null, true), row(null), row(null)]
+/** Deux camps, le joueur de la page (`moi`) au camp 0 — le cas de référence de l'écran de fin. */
+const DEUX_CAMPS = film([['moi', 0], ['pote', 0], ['eux-1', 1], ['eux-2', 1]])
+/** Un FFA : le film ne donne aucune équipe (`-1`). */
+const FFA = film([['moi', -1], ['a', -1], ['b', -1]])
 
 /** Le tirage figé sur la PREMIÈRE prise. */
 const premiere = () => 0
@@ -124,7 +130,7 @@ describe('endMatchSounds — le FFA n’a pas d’écran, mais il a une voix', (
 
 describe('endMatchSoundSpec — la même lecture que l’écran de fin', () => {
   it('deux camps : l’issue du joueur de la page, sans drapeau FFA', () => {
-    expect(endMatchSoundSpec(DEUX_CAMPS, 3, 'fr')).toEqual({
+    expect(endMatchSoundSpec(DEUX_CAMPS, 'moi', 3, 'fr')).toEqual({
       outcome: 'loss',
       ffa: false,
       locale: 'fr',
@@ -132,16 +138,16 @@ describe('endMatchSoundSpec — la même lecture que l’écran de fin', () => {
   })
 
   it('égalité à deux camps : elle sonne, contrairement à l’égalité sans camps', () => {
-    expect(endMatchSoundSpec(DEUX_CAMPS, 1, 'en')).toEqual({
+    expect(endMatchSoundSpec(DEUX_CAMPS, 'moi', 1, 'en')).toEqual({
       outcome: 'tie',
       ffa: false,
       locale: 'en',
     })
-    expect(endMatchSoundSpec(FFA, 1, 'en')).toBeNull()
+    expect(endMatchSoundSpec(FFA, 'moi', 1, 'en')).toBeNull()
   })
 
   it('FFA gagné : le drapeau passe à true, et c’est lui qui choisit « Vainqueur »', () => {
-    const spec = endMatchSoundSpec(FFA, 2, 'fr')
+    const spec = endMatchSoundSpec(FFA, 'moi', 2, 'fr')
     expect(spec).toEqual({ outcome: 'win', ffa: true, locale: 'fr' })
     expect(endMatchSounds(spec!.outcome, spec!.ffa, spec!.locale, premiere)[0]).toBe(
       'end_winner_voice_fr_01',
@@ -149,19 +155,19 @@ describe('endMatchSoundSpec — la même lecture que l’écran de fin', () => {
   })
 
   it('FFA perdu : rien à annoncer', () => {
-    expect(endMatchSoundSpec(FFA, 3, 'fr')).toBeNull()
+    expect(endMatchSoundSpec(FFA, 'moi', 3, 'fr')).toBeNull()
   })
 
   it('abandon (code 4), code absent, en-tête pas encore chargé : rien', () => {
-    expect(endMatchSoundSpec(DEUX_CAMPS, 4, 'fr')).toBeNull()
-    expect(endMatchSoundSpec(DEUX_CAMPS, undefined, 'fr')).toBeNull()
-    expect(endMatchSoundSpec([], undefined, 'fr')).toBeNull()
+    expect(endMatchSoundSpec(DEUX_CAMPS, 'moi', 4, 'fr')).toBeNull()
+    expect(endMatchSoundSpec(DEUX_CAMPS, 'moi', undefined, 'fr')).toBeNull()
+    expect(endMatchSoundSpec(film([]), null, undefined, 'fr')).toBeNull()
   })
 
-  it('scoreboard sans ligne « moi » : la victoire reste annonçable, sans équipe nommée', () => {
+  it('joueur de la page que le film ne situe pas : la victoire reste annonçable, sans équipe nommée', () => {
     // `readVictory` refuse (elle ne saurait pas quel camp habille l'écran) ; la VOIX, elle,
     // ne nomme personne — « Vainqueur » dit vrai sans rien supposer.
-    expect(endMatchSoundSpec([row('t0'), row('t1')], 2, 'fr')).toEqual({
+    expect(endMatchSoundSpec(film([['a', 0], ['b', 1]]), 'moi', 2, 'fr')).toEqual({
       outcome: 'win',
       ffa: true,
       locale: 'fr',

@@ -50,10 +50,11 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 
 import { teamTintStyles } from '@/features/match-view/teamColor'
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import { meXUIDOf } from '@/features/match-view/xuidMeta'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { teamLogoPath } from '@/lib/halo/teamNames'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import type { ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
 
@@ -102,7 +103,8 @@ export interface ReplayExportOptions {
   doc: ReplayDocumentReady & ReplayScoreDocument
   playWindow: ReplayWindowBounds | null
   scoreboard: readonly MatchScoreboardRow[]
-  xuidMeta?: XuidMeta
+  /** L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : le panneau de fin. */
+  allegiance: FilmAllegiance
   /**
    * Le verdict du match, DÉJÀ complété du mot que l'écran montre (`viewedLabel`, résolu par
    * `useReplayCapture` depuis les mappings du titre). `null` = pas d'écran de fin, comme le DOM.
@@ -259,7 +261,7 @@ async function buildSource(o: ReplayExportOptions, ink: OverlayInk): Promise<Ove
   // LA COULEUR EST CELLE QUE L'UTILISATEUR A RÉGLÉE (décision D1 du DOM) : l'écran de fin est
   // TOUJOURS celui de son camp, donc toujours `team-ally`, surchargeable par l'accessibilité.
   const teamColor = resolveToken('team-ally')
-  const victory = readVictory(o.scoreboard, o.outcome?.code, o.viewpoint)
+  const victory = readVictory(o.allegiance, o.outcome?.code, meXUIDOf(o.scoreboard), o.viewpoint)
   const logo = victory?.mine
     ? await loadTeamLogo(o.titleSlug, victory.mine.teamID, teamColor)
     : null
@@ -267,7 +269,7 @@ async function buildSource(o: ReplayExportOptions, ink: OverlayInk): Promise<Ove
   return buildOverlayPanelSource({
     doc: o.doc,
     scoreboard: o.scoreboard,
-    xuidMeta: o.xuidMeta,
+    allegiance: o.allegiance,
     playWindow: o.playWindow,
     outcome: o.outcome,
     viewpoint: o.viewpoint,

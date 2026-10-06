@@ -42,6 +42,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/features/settings/queries', () => ({ useSettings: () => ({ data: undefined }) }))
 
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 import { frameToMs } from '@/lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
 
@@ -164,7 +165,7 @@ async function jouerJusquALaBorne(speed: number): Promise<Borne> {
   const fenetre = replayWindow(doc, TEMOIN_HEADER)
   if (!fenetre) throw new Error('fenêtre de jeu illisible sur le témoin')
   const { result } = renderHook(() =>
-    useReplaySound(doc, [], speed, { scoreboard: undefined, endMatch: VICTOIRE_FR, locale: 'fr', viewpoint: null }),
+    useReplaySound(doc, [], speed, { allegiance: NO_ALLEGIANCE, endMatch: VICTOIRE_FR, locale: 'fr' }),
   )
   act(() => result.current.toggle())
   await act(async () => { await flushAudio() })

@@ -41,7 +41,7 @@ import { render, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument, ReplayPoint } from '@/lib/api/types'
-import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+import { filmAllegianceOf, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
 import * as Pos from '../../../lib/replay/replayLogic'
 import * as Score from '../../../lib/replay/scoreTimeline'
@@ -219,12 +219,11 @@ function mesurerScore(doc: ReplayDocumentReady) {
   const tl = Score.scoreTimelineOf(doc)
   const campCount = typeof Score.campCountOf === 'function' ? Score.campCountOf(doc.roster) : 0
   const camps = [...new Set(doc.roster.map((r) => r.team).filter((t): t is number => t != null && t >= 0))].sort((x, y) => x - y)
-  const scoreboard = doc.roster
-    .filter((r) => r.team != null && r.team >= 0)
-    .map((r) => ({ xuid: rosterEntryKey(r), team_side: `t${r.team}` }))
-  const allies = new Map(scoreboard.map((r) => [r.xuid, { ally: r.team_side === `t${camps[0]}` }]))
+  // Le joueur regardé : une entrée du premier camp — l'allégeance du film en découle.
+  const reference = doc.roster.find((r) => r.team === camps[0])
+  const allegeance = filmAllegianceOf(doc, [], reference ? rosterEntryKey(reference) : null)
   const frames = [0.1, 0.5, 0.9, 1].map((f) => Math.floor(f * Math.max(0, doc.frameCount - 1)))
-  const bandeau = frames.map((f) => readScoreBanner(tl, scoreboard, allies, f))
+  const bandeau = frames.map((f) => readScoreBanner(tl, allegeance, f))
   const etats = Score.leaderStates(tl, campCount)
   return {
     teamIdentity: doc.coverage?.score?.teamIdentity ?? null,
@@ -426,7 +425,7 @@ function filmsFuturs() {
     sansGTrainee: Pos.trailAt(doc.tracks[0].points, 50, 100).length,
     vehiculeSansSamplesCache: cache(doc.vehicles[0]),
     tagInconnu: { fam: fx.fam, tint: fx.tint, mount: fx.vehicleShot?.mount ?? null, son: shotSoundStem(doc, doc.shots[0]) ?? null },
-    serieVide: { etats: Score.leaderStates(tl, 2), bandeau: readScoreBanner(tl, [], undefined, 50) },
+    serieVide: { etats: Score.leaderStates(tl, 2), bandeau: readScoreBanner(tl, NO_ALLEGIANCE, 50) },
     seriesAbsentes: Score.leaderStates(testReplayDoc({ scoreTimeline: { teams: [] } }).scoreTimeline, 2),
   }
 }

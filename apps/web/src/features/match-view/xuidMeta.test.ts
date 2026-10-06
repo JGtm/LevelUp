@@ -25,7 +25,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { meXUIDOf, resolveXuidMeta, type XuidMeta } from './xuidMeta'
+import { allyOfTeamId, meXUIDOf, resolveXuidMeta, type XuidMeta } from './xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 /**
@@ -249,5 +249,32 @@ describe('resolveXuidMeta — mêlée générale : aucun camp, un sujet quand m�
 
   it('point de vue introuvable : personne, même en mêlée générale', () => {
     expect(carte(resolveXuidMeta(BOARD_FFA, 'me-1', 'xuid-jamais-vu'))).toEqual(attenduFFA())
+  })
+})
+
+/**
+ * allyOfTeamId — L'ALLÉGEANCE D'UN CAMP POUR LA PAGE MATCH (graphes de score), lue sur la feuille
+ * par la cascade ci-dessus. La page Rejeu ne l'emploie pas : la sienne vient du film.
+ */
+describe('allyOfTeamId — un côté de feuille vu du joueur de la page', () => {
+  const sb = [
+    { xuid: 'me', team_side: 't0' },
+    { xuid: 'foe', team_side: 't1' },
+    { xuid: 'muet', team_side: 't2' },
+  ]
+  const allies = new Map([
+    ['me', { ally: true }],
+    ['foe', { ally: false }],
+  ])
+
+  it('rend l’allégeance du premier joueur reconnu de ce côté', () => {
+    expect(allyOfTeamId(sb, allies, 0)).toBe(true)
+    expect(allyOfTeamId(sb, allies, 1)).toBe(false)
+  })
+
+  it('côté sans joueur reconnu, côté absent, ou table absente : null — jamais une couleur par défaut', () => {
+    expect(allyOfTeamId(sb, allies, 2)).toBeNull()
+    expect(allyOfTeamId(sb, allies, 7)).toBeNull()
+    expect(allyOfTeamId(sb, undefined, 0)).toBeNull()
   })
 })

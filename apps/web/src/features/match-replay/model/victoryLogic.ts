@@ -23,11 +23,12 @@
  * match gagné au CHRONO peut finir sur un score à égalité (témoin 64e8adfa, 2-2). Le code de
  * l'en-tête sait dire « gagné 2-2 » ; deux nombres non.
  *
- * DE « MON RÉSULTAT » À « L'ÉQUIPE QUI GAGNE » IL FAUT UN PONT, et c'est le scoreboard qui le
- * fait : la ligne `is_me` donne mon camp, et entre exactement deux camps « j'ai perdu » suffit
- * à nommer l'autre. Sans ligne `is_me`, ou si son camp n'est pas transmis, la question n'a pas
- * de réponse sûre — `null`, et l'écran ne se rend pas. Ce pont est aussi ce qui donne à l'écran
- * son habillage : pas de camp connu, pas d'identité à porter.
+ * DE « MON RÉSULTAT » À « L'ÉQUIPE QUI GAGNE » IL FAUT UN PONT, et c'est le FILM qui le fait
+ * (2026-10-06 : l'équipe d'un joueur est celle du film) : l'équipe du film du joueur de la page
+ * donne mon camp, et entre exactement deux camps « j'ai perdu » suffit à nommer l'autre. Quand
+ * le film ne situe pas le joueur de la page — absent, ou dont il tait l'équipe —, la question n'a
+ * pas de réponse sûre : `null`, et l'écran ne se rend pas. Ce pont est aussi ce qui donne à
+ * l'écran son habillage : pas de camp connu, pas d'identité à porter.
  *
  * DEUX CAMPS, PAS UN DE PLUS, PAS UN DE MOINS (décision D-B1), y compris pour l'égalité. La
  * même doctrine que le bandeau de score (`scoreBannerLogic.ts`) : un FFA n'a pas d'« équipe
@@ -49,26 +50,29 @@
  * Module PUR : ni React, ni DOM, ni couleur, ni libellé.
  */
 import { outcomeCodeToValue } from '@/lib/outcome'
-import { parseTeamSideID } from '@/lib/halo/teamNames'
-import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayCamp } from '@/lib/replay/replayCamps'
 
 /**
- * Ce que ce module lit d'une ligne de scoreboard : le camp, si c'est le joueur de la page, et
- * — seulement quand un point de vue est passé — le xuid qui permet de situer CE joueur-là.
- * `xuid` est optionnel exprès : les appelants qui n'emploient pas de point de vue (la fin de
- * partie sonore, les cas de la caractérisation) n'ont rien à fournir de plus qu'avant.
+ * Ce que ce module lit du FILM : les camps du match (désignateurs, nommés par la feuille) et
+ * l'équipe d'un joueur désigné par son xuid de base. `FilmAllegiance` s'y conforme — la
+ * référence qu'elle porte n'est PAS lue ici : le joueur de la page et le sujet sont passés.
  */
-type VictoryRows = ReadonlyArray<Pick<MatchScoreboardRow, 'team_side' | 'is_me'> & { xuid?: string }>
+export type VictoryFilm = Pick<FilmAllegiance, 'camps' | 'teamOfXuid'>
 
 /** L'issue du match POUR LE SUJET de la lecture — le joueur de la page à défaut de point de vue. */
 export type VictoryOutcome = 'win' | 'loss' | 'tie'
 
 /** Une équipe désignée par la lecture : de quoi la nommer, la teinter et la coiffer. */
 export interface VictoryTeam {
-  /** Identifiant d'équipe (`t{N}` décodé) — clé du logo et de la couleur d'identité. */
+  /** Le désignateur d'équipe du film — clé du logo. */
   teamID: number
-  /** Camp au format du backend (`t{N}`) — ce que la cascade de libellé attend. */
-  teamSide: string
+  /**
+   * Le côté de feuille qui NOMME le camp (`ReplayCamp.side`, format `t{N}`) — ce que la cascade de
+   * libellé attend ; `null` quand aucun de ses membres n'a de ligne (le libellé retombe alors
+   * sur « Équipe N » du désignateur).
+   */
+  teamSide: string | null
   /** `true` si c'est l'équipe du SUJET (le joueur de la page à défaut de point de vue). */
   ally: boolean
 }
@@ -89,16 +93,13 @@ export interface VictoryReading {
   winner: VictoryTeam | null
 }
 
-/** Un camp du match : son identifiant décodé et le `team_side` d'origine, qui nomme. */
-interface Camp {
-  id: number
-  side: string
-}
-
 /**
  * readVictory rend la lecture de fin de match, ou `null` quand aucun écran ne doit s'afficher :
- * match qui n'oppose pas exactement deux camps, résultat non publié ou hors contrat, abandon,
- * ou joueur de la page introuvable au scoreboard (cf. l'en-tête du module).
+ * match qui n'oppose pas exactement deux camps du film, résultat non publié ou hors contrat,
+ * abandon, ou joueur de la page que le film ne situe pas (cf. l'en-tête du module).
+ *
+ * `page` : le xuid de base du joueur de la page (`meXUIDOf`) — celui dont `outcomeCode` est le
+ * verdict. Le module ne le cherche pas lui-même : il le reçoit, comme le sujet.
  *
  * `subject` (2026-09-06, plan « frise, point de vue ») : PAR LES YEUX DE QUI cette fin se lit.
  *
@@ -107,33 +108,34 @@ interface Camp {
  * le résultat vu d'un adversaire. Quand `subject` désigne quelqu'un de l'AUTRE camp, la lecture
  * se retourne donc : ce que le joueur de la page a gagné, lui l'a perdu. On calcule la lecture
  * de la page, puis on la permute. Sujet du même camp : rigoureusement identique. Égalité : elle
- * l'est pour tout le monde, rien à permuter. Sujet non situable : `null` — aucun écran plutôt
- * qu'un écran faux.
+ * l'est pour tout le monde, rien à permuter. Sujet que le film ne situe pas : `null` — aucun
+ * écran plutôt qu'un écran faux.
  *
  * `subject` absent : le joueur de la page, comportement d'origine — c'est ce que passe la fin
  * de partie SONORE (décision 3), qui reste ancrée sur lui.
  */
 export function readVictory(
-  scoreboard: VictoryRows,
+  film: VictoryFilm,
   outcomeCode: number | null | undefined,
+  page: string | null,
   subject?: string | null,
 ): VictoryReading | null {
-  const camps = identifiedCamps(scoreboard)
+  const camps = film.camps
   if (camps.length !== 2) return null
   const outcome = outcomeCodeToValue(outcomeCode)
   if (outcome === 'tie') return { outcome: 'tie', mine: null, winner: null }
   if (outcome !== 'win' && outcome !== 'loss') return null
-  const mineIndex = myCampIndex(scoreboard, camps)
+  const mineIndex = campIndex(camps, film.teamOfXuid(page))
   if (mineIndex === null) return null
-  const vu = subjectCampIndex(scoreboard, camps, subject, mineIndex)
+  const vu = subjectCampIndex(film, subject, mineIndex)
   if (vu === null) return null
   const won = vu === mineIndex ? outcome === 'win' : outcome === 'loss'
   const mine = camps[vu]
   const winner = won ? mine : camps[1 - vu]
   return {
     outcome: won ? 'win' : 'loss',
-    mine: { teamID: mine.id, teamSide: mine.side, ally: true },
-    winner: { teamID: winner.id, teamSide: winner.side, ally: won },
+    mine: { teamID: mine.team, teamSide: mine.side, ally: true },
+    winner: { teamID: winner.team, teamSide: winner.side, ally: won },
   }
 }
 
@@ -159,66 +161,43 @@ export function readVictory(
  * rougir les quatorze cas de `victoryLogic.test.ts`, qui fixent la lecture ENTIÈRE par égalité
  * profonde — la caractérisation n'accepte que des ajouts, et un champ de plus n'en est pas un.
  */
-export function victoryIsFlipped(scoreboard: VictoryRows, subject?: string | null): boolean {
+export function victoryIsFlipped(
+  film: VictoryFilm,
+  page: string | null,
+  subject?: string | null,
+): boolean {
   if (subject == null) return false
-  const camps = identifiedCamps(scoreboard)
-  if (camps.length !== 2) return false
-  const mien = myCampIndex(scoreboard, camps)
+  if (film.camps.length !== 2) return false
+  const mien = campIndex(film.camps, film.teamOfXuid(page))
   if (mien === null) return false
-  const vu = subjectCampIndex(scoreboard, camps, subject, mien)
+  const vu = subjectCampIndex(film, subject, mien)
   return vu !== null && vu !== mien
 }
 
 /**
- * subjectCampIndex dit dans lequel des deux camps se trouve le point de vue, ou `null` quand il
- * n'est pas situable (xuid absent du tableau, camp non transmis, camp hors des deux retenus).
+ * subjectCampIndex dit dans lequel des deux camps se trouve le point de vue, ou `null` quand le
+ * film ne le situe pas (absent du film, équipe tue, camp hors des deux retenus).
  *
  * Sans sujet, la réponse est le camp du joueur de la page, déjà calculé : on ne le recherche
  * pas deux fois, et surtout on ne peut pas diverger de lui.
  */
 function subjectCampIndex(
-  scoreboard: VictoryRows,
-  camps: readonly Camp[],
+  film: VictoryFilm,
   subject: string | null | undefined,
   defaut: 0 | 1,
 ): 0 | 1 | null {
   if (subject == null) return defaut
-  const id = parseTeamSideID(scoreboard.find((r) => r.xuid === subject)?.team_side)
-  if (id == null) return null
-  if (camps[0].id === id) return 0
-  if (camps[1].id === id) return 1
-  return null
+  return campIndex(film.camps, film.teamOfXuid(subject))
 }
 
 /**
- * identifiedCamps rend les camps du match dans un ordre déterministe (identifiant croissant —
- * l'ordre à l'écran ne dépend pas de celui-ci).
- *
- * Une ligne sans camp transmis n'en fabrique pas un : elle est ignorée, comme au bandeau de
- * score. Un joueur non situé ne change pas le NOMBRE de camps, il ne fait que ne pas compter.
+ * campIndex dit LEQUEL des deux camps du film porte ce désignateur (0 ou 1), ou `null` : équipe
+ * inconnue (le film la tait), aucune (`-1`), ou hors des deux camps.
  */
-function identifiedCamps(scoreboard: VictoryRows): Camp[] {
-  const bySide = new Map<number, string>()
-  for (const row of scoreboard) {
-    const id = parseTeamSideID(row.team_side)
-    if (id != null && row.team_side && !bySide.has(id)) bySide.set(id, row.team_side)
-  }
-  return [...bySide.entries()]
-    .map(([id, side]) => ({ id, side }))
-    .sort((a, b) => a.id - b.id)
-}
-
-/**
- * myCampIndex dit LEQUEL des deux camps est celui du joueur de la page (0 ou 1), ou `null`
- * quand le scoreboard ne le dit pas : aucune ligne `is_me`, camp non transmis sur cette ligne,
- * ou camp qui ne figure pas parmi les deux retenus.
- */
-function myCampIndex(scoreboard: VictoryRows, camps: readonly Camp[]): 0 | 1 | null {
-  const mine = scoreboard.find((r) => r.is_me)
-  const id = parseTeamSideID(mine?.team_side)
-  if (id == null) return null
-  if (camps[0].id === id) return 0
-  if (camps[1].id === id) return 1
+function campIndex(camps: readonly ReplayCamp[], team: number | null): 0 | 1 | null {
+  if (team === null) return null
+  if (camps[0].team === team) return 0
+  if (camps[1].team === team) return 1
   return null
 }
 
@@ -274,8 +253,8 @@ export interface FinalScoreHeader {
  * La règle est celle de `readVictory` : sujet de l'AUTRE camp, on permute. Sujet du même camp,
  * rigoureusement identique.
  *
- * SUJET NON SITUABLE (absent du tableau, camp non transmis, match qui n'oppose pas exactement
- * deux camps) : on rend l'ordre du JOUEUR DE LA PAGE, pas `null`. Deux raisons. D'abord il n'y
+ * SUJET NON SITUABLE (que le film ne range dans aucun des deux camps, match qui n'oppose pas
+ * exactement deux camps) : on rend l'ordre du JOUEUR DE LA PAGE, pas `null`. Deux raisons. D'abord il n'y
  * a rien à permuter — sans camp, « l'autre camp » n'existe pas, et l'ordre de l'API est le seul
  * sens que ces deux nombres aient. Ensuite aucun score faux ne peut atteindre l'écran par ce
  * chemin : les deux seules surfaces qui l'affichent (l'écran de fin et le panneau de l'export)
@@ -287,14 +266,17 @@ export interface FinalScoreHeader {
  */
 export function finalScoreFromHeader(
   header: FinalScoreHeader | undefined,
-  scoreboard?: VictoryRows,
+  film?: VictoryFilm,
+  page?: string | null,
   subject?: string | null,
 ): FinalScoreReading | null {
   if (!header || header.score_mine == null || header.score_theirs == null) return null
-  const page = { ally: header.score_mine, enemy: header.score_theirs }
-  if (!scoreboard) return page
+  const parLaPage = { ally: header.score_mine, enemy: header.score_theirs }
+  if (!film) return parLaPage
   // MÊME DÉFINITION DE « L'AUTRE CAMP » QUE L'ISSUE (2026-09-07) : ce test était écrit ici en
   // quatre gardes, recopiées de `readVictory`. Elles vivent désormais dans `victoryIsFlipped`,
   // que l'écran de fin appelle aussi pour choisir son MOT — les trois ne peuvent plus diverger.
-  return victoryIsFlipped(scoreboard, subject) ? { ally: page.enemy, enemy: page.ally } : page
+  return victoryIsFlipped(film, page ?? null, subject)
+    ? { ally: parLaPage.enemy, enemy: parLaPage.ally }
+    : parLaPage
 }

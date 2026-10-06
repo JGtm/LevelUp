@@ -10,8 +10,9 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
+import { buildFilmAllegiance, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 import { normalizeScoreTimeline, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
-import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { ReplayScoreBanner } from './ReplayScoreBanner'
 
@@ -40,22 +41,20 @@ function docOf(teams: unknown[]): ReplayScoreDocument {
   return { originMs: 0, scoreTimeline: normalizeScoreTimeline({ teams, players: [] } as never) }
 }
 
-const SB: MatchScoreboardRow[] = [
-  { xuid: 'moi', team_side: 't0' },
-  { xuid: 'eux', team_side: 't1' },
-] as MatchScoreboardRow[]
-
-const META = new Map([
-  ['moi', { gamertag: 'Moi', ally: true }],
-  ['eux', { gamertag: 'Eux', ally: false }],
-])
+/**
+ * L'allégeance du film vue de `reference` : `moi` au camp 0, `eux` au camp 1 (par défaut), ou
+ * les équipes données.
+ */
+function vueDe(reference: string, equipes: Array<[string, number]> = [['moi', 0], ['eux', 1]]) {
+  const joueurs = equipes.map(([xuid, team]) => ({ xuid, team, lives: [] }) as ReplayPlayer)
+  return buildFilmAllegiance(joueurs, reference)
+}
 
 function renderBanner(over: Partial<Parameters<typeof ReplayScoreBanner>[0]> = {}) {
   return render(
     <ReplayScoreBanner
       doc={docOf(SLAYER_TEAMS)}
-      scoreboard={SB}
-      xuidMeta={META}
+      allegiance={vueDe('moi')}
       frame={500}
       nowMs={65_000}
       playWindow={null}
@@ -95,7 +94,7 @@ describe('ReplayScoreBanner — ce qui est écrit', () => {
 })
 
 describe('ReplayScoreBanner — les deux camps', () => {
-  it('met le camp du joueur de la page à GAUCHE', () => {
+  it('met le camp du joueur regardé à GAUCHE', () => {
     renderBanner()
     const bars = screen.getAllByRole('progressbar')
     expect(bars).toHaveLength(2)
@@ -103,13 +102,8 @@ describe('ReplayScoreBanner — les deux camps', () => {
     expect(bars[1]).toHaveAttribute('aria-label', 'Équipe adverse')
   })
 
-  it('inverse les côtés quand le joueur de la page est dans l\'autre camp', () => {
-    renderBanner({
-      xuidMeta: new Map([
-        ['moi', { gamertag: 'Moi', ally: false }],
-        ['eux', { gamertag: 'Eux', ally: true }],
-      ]),
-    })
+  it('inverse les côtés quand le joueur regardé est dans l\'autre camp', () => {
+    renderBanner({ allegiance: vueDe('eux') })
     const bars = screen.getAllByRole('progressbar')
     // La barre alliée reste à gauche : c'est son SCORE qui change de camp.
     expect(bars[0]).toHaveAttribute('aria-label', 'Équipe alliée')
@@ -250,13 +244,8 @@ describe('ReplayScoreBanner — les pastilles de manche', () => {
 })
 
 describe('ReplayScoreBanner — quand il se tait', () => {
-  it('FFA (aucun camp) : rien du tout, pas même un cadre vide', () => {
-    const { container } = renderBanner({
-      scoreboard: [
-        { xuid: 'moi', team_side: null },
-        { xuid: 'eux', team_side: null },
-      ] as MatchScoreboardRow[],
-    })
+  it('FFA (le film ne donne aucune équipe) : rien du tout, pas même un cadre vide', () => {
+    const { container } = renderBanner({ allegiance: vueDe('moi', [['moi', -1], ['eux', -1]]) })
     expect(container).toBeEmptyDOMElement()
   })
 
@@ -265,8 +254,8 @@ describe('ReplayScoreBanner — quand il se tait', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('côté allié inconnu : rien — aucune des deux couleurs n\'est un défaut', () => {
-    const { container } = renderBanner({ xuidMeta: undefined })
+  it('côté allié inconnu (le film ne situe pas le joueur regardé) : rien — aucune des deux couleurs n\'est un défaut', () => {
+    const { container } = renderBanner({ allegiance: NO_ALLEGIANCE })
     expect(container).toBeEmptyDOMElement()
   })
 

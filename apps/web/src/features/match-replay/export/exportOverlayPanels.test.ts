@@ -13,6 +13,8 @@ import { describe, expect, it } from 'vitest'
 import { buildOverlayPanelSource, exportFinalScore, type OverlayPanelDeps } from './exportOverlayPanels'
 import { normalizeScoreTimeline, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 
@@ -59,6 +61,16 @@ describe('buildOverlayPanelSource — le verdict peint dans la vidéo', () => {
     { xuid: 'eux', team_side: 't1', is_me: false },
   ] as MatchScoreboardRow[]
 
+  /** L'allégeance du FILM vue de `reference` : `moi` au camp 0, `eux` au camp 1. */
+  const vueDe = (reference: string) =>
+    buildFilmAllegiance(
+      [
+        { xuid: 'moi', team: 0, lives: [], board: SB[0] },
+        { xuid: 'eux', team: 1, lives: [], board: SB[1] },
+      ] as ReplayPlayer[],
+      reference,
+    )
+
   const WINDOW: ReplayWindowBounds = {
     startFrame: 0,
     leadInFrame: 0,
@@ -79,6 +91,7 @@ describe('buildOverlayPanelSource — le verdict peint dans la vidéo', () => {
     return buildOverlayPanelSource({
       doc: DOC,
       scoreboard: SB,
+      allegiance: vueDe(over.viewpoint ?? 'moi'),
       playWindow: WINDOW,
       outcome: { code: 2, viewedLabel: 'Victoire' },
       viewpoint: null,

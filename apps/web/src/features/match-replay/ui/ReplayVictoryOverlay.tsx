@@ -66,7 +66,8 @@ import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 import { teamTintStyles } from '@/features/match-view/teamColor'
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import { meXUIDOf } from '@/features/match-view/xuidMeta'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
 import { teamLogoPath } from '@/lib/halo/teamNames'
@@ -88,8 +89,13 @@ import {
 interface Props {
   /** Le document du rejeu — le score final s'y lit par le calque, à la borne de fin. */
   doc: ReplayScoreDocument
+  /** La feuille : elle NOMME le camp de l'écran et désigne le joueur de la page. */
   scoreboard: readonly MatchScoreboardRow[]
-  xuidMeta?: XuidMeta
+  /**
+   * L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : les deux camps,
+   * celui du joueur de la page et celui du sujet. REQUISE, comme le point de vue.
+   */
+  allegiance: FilmAllegiance
   /** Verdict du joueur de la page (`header.outcome_code`) — la source de l'issue (D-B2). */
   outcomeCode: number | null | undefined
   /**
@@ -124,7 +130,7 @@ interface Props {
 export function ReplayVictoryOverlay({
   doc,
   scoreboard,
-  xuidMeta,
+  allegiance,
   outcomeCode,
   viewpoint,
   playWindow,
@@ -135,17 +141,17 @@ export function ReplayVictoryOverlay({
 }: Props) {
   const t = REPLAY_TEXT[locale]
   const reading = useMemo(
-    () => readVictory(scoreboard, outcomeCode, viewpoint),
-    [scoreboard, outcomeCode, viewpoint],
+    () => readVictory(allegiance, outcomeCode, meXUIDOf(scoreboard), viewpoint),
+    [allegiance, scoreboard, outcomeCode, viewpoint],
   )
   // LE SCORE SE LIT À LA BORNE DE FIN, pas à l'image courante (D-B4) : la lecture peut être
   // allée au-delà (frise tirée au bout), et le calque n'a plus rien à dire après la fin.
   const score = useMemo(
     () =>
       playWindow
-        ? readScoreBanner(scoreTimelineOf(doc), scoreboard, xuidMeta, playWindow.endFrame)
+        ? readScoreBanner(scoreTimelineOf(doc), allegiance, playWindow.endFrame)
         : null,
-    [doc, scoreboard, xuidMeta, playWindow],
+    [doc, allegiance, playWindow],
   )
   // LE MOT DU VERDICT, UNE SEULE SOURCE (2026-09-07, cf. l'en-tête) : les mappings du titre,
   // sur l'issue LUE — donc déjà permutée quand on regarde depuis un adversaire. Le hook est

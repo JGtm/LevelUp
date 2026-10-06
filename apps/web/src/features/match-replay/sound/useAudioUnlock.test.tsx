@@ -17,12 +17,14 @@ import { act, fireEvent, renderHook } from '@testing-library/react'
 vi.mock('@/features/settings/queries', () => ({ useSettings: () => ({ data: undefined }) }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+
 import type { ReplayKill } from '../model/killFeedLogic'
 import { type FakeContext, flushAudio, installFakeAudio } from '../test/fakeAudio'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplaySound, type ReplaySoundContext } from './useReplaySound'
 
-const NO_CONTEXT: ReplaySoundContext = { scoreboard: undefined, endMatch: null, locale: undefined, viewpoint: null }
+const NO_CONTEXT: ReplaySoundContext = { allegiance: NO_ALLEGIANCE, endMatch: null, locale: undefined }
 
 let ctx: FakeContext
 let fetchMock: ReturnType<typeof vi.fn>

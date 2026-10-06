@@ -55,22 +55,6 @@ const ALLOWLIST: Readonly<Record<string, { lectures: number; raison: string }>> 
     lectures: 1,
     raison: '2026-10-06 — même encre allié / adverse, bloc du contrôle des socles.',
   },
-  '/src/features/match-replay/model/matchSides.ts': {
-    lectures: 3,
-    raison: '2026-10-06 — camp allié et camp par xuid des calques d’objectifs (drapeau, zones, crâne) : allégeance, pas appartenance à une section.',
-  },
-  '/src/features/match-replay/model/scoreBannerLogic.ts': {
-    lectures: 1,
-    raison: '2026-10-06 — les deux camps du bandeau de score et leur allégeance.',
-  },
-  '/src/features/match-replay/model/victoryLogic.ts': {
-    lectures: 5,
-    raison: '2026-10-06 — écran de fin : l’API ne publie l’issue que du côté de la feuille du joueur de la page.',
-  },
-  '/src/lib/replay/scoreTimeline.ts': {
-    lectures: 1,
-    raison: '2026-10-06 — `allyOfTeamId` : allégeance d’un camp du calque de score.',
-  },
 }
 
 /** Le code seul : blocs et lignes de commentaire ôtés (un `//` dans une URL citée reste). */

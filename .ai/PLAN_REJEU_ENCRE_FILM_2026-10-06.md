@@ -104,15 +104,28 @@ l'ÉVÉNEMENT du joueur regardé, pas une allégeance) ; les cinq graphes de la 
 
 ## Étape E6.3 — Les camps vus de la référence (bandeau, dominance, fin, objectifs, sons)
 
-- [ ] E6.3.1 Bandeau de score : camps du film, côté allié par `ofTeam`.
-- [ ] E6.3.2 Dominance : `allyOf` = `ofTeam`.
-- [ ] E6.3.3 Fin de match : `victoryLogic` sur les camps du film (équipe du joueur de la page,
+- [x] E6.3.1 Bandeau de score : camps du film, côté allié par `ofTeam`.
+- [x] E6.3.2 Dominance : `allyOf` = `ofTeam`.
+- [x] E6.3.3 Fin de match : `victoryLogic` sur les camps du film (équipe du joueur de la page,
   équipe du sujet) ; écran, export, score final, fin de partie sonore.
-- [ ] E6.3.4 Zones, drapeaux (encre et défenseurs), déflagration, sons d'objectif ; suppression
+- [x] E6.3.4 Zones, drapeaux (encre et défenseurs), déflagration, sons d'objectif ; suppression
   de `matchSides` (module, tests, garde-rail) ; `allyOfTeamId` (Vue match seulement) quitte
   `lib/replay` pour `features/match-view` ; `teamIdOfSide` sans appelant supprimé.
-- [ ] E6.3.5 Tests de chaque surface migrée.
-- Gate E6.3 : idem E6.1.
+- [x] E6.3.5 Tests de chaque surface migrée.
+- Gate E6.3 : idem E6.1. PASSÉ le 2026-10-06 : `tsc -b` 0 erreur ; vitest `src/lib/replay` +
+  `src/lib/halo` + `src/features/match-replay` + `src/features/match-view` 295 fichiers /
+  4 081 tests verts ; eslint `src` 0 erreur (26 avertissements préexistants). Tests réécrits sur
+  l'allégeance du film : `scoreBannerLogic` (32, dont « un camp de bots sans ligne de feuille est
+  un camp », « le film ne situe pas le joueur regardé »), `victoryLogic` (40, dont « le film
+  décide, pas la feuille »), `endMatchSound`, `objectiveSound`, `useZoneStates`,
+  `useReplayFlagCarries`, `ReplayScoreBanner`, `ReplayVictoryOverlay`, `exportOverlayPanels`,
+  `useReplayCapture`, `useReplayExport`, contextes sonores ; neufs : `useReplayBombBlast.test.tsx`
+  (2), `allyOfTeamId` dans `xuidMeta.test.ts` (2). `matchSides` (module, test, garde-rail)
+  supprimé ; `allyOfTeamId` déplacé dans `features/match-view/xuidMeta.ts` (seuls lecteurs : deux
+  graphes de la page Match) ; `teamIdOfSide` et son test supprimés (plus d'appelant). Allowlist :
+  `matchSides.ts`, `scoreBannerLogic.ts`, `victoryLogic.ts`, `scoreTimeline.ts` sortent ; garde
+  `is_me` : exemptions `matchSides.ts` et `victoryLogic.ts` retirées (elles étaient devenues
+  périmées, le garde l'a dit).
 
 ## Étape E6.4 — Tables de l'onglet Arsenal
 

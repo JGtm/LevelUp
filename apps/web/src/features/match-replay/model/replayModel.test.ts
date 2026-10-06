@@ -96,7 +96,7 @@ describe('buildReplayModel — sans donnée, rien n’est inventé', () => {
   it('rend un modèle VIDE sans artefact, même avec une vue match complète', () => {
     const { allegiance, ...m } = buildReplayModel(null, matchView())
     // L'allégeance porte des fonctions : on compare ce qu'elle DIT, pas ses fermetures.
-    expect(allegiance.referenceTeam).toBeNull()
+    expect(allegiance.allyTeam).toBeNull()
     expect(allegiance.camps).toEqual([])
     expect(allegiance.ofXuid('me')).toBeNull()
     expect(m).toEqual({
@@ -285,7 +285,7 @@ describe('buildReplayModel — le point de vue', () => {
     const { clock: horlogeB, allegiance: allegeanceB, ...resteB } = explicite
     expect(resteA).toEqual(resteB)
     expect(['me', 'adv'].map(allegeanceA.ofXuid)).toEqual(['me', 'adv'].map(allegeanceB.ofXuid))
-    expect(allegeanceA.referenceTeam).toBe(allegeanceB.referenceTeam)
+    expect(allegeanceA.allyTeam).toBe(allegeanceB.allyTeam)
     expect({ ...horlogeA, gameplayMsOfFilmMs: null, gameplayMsOfFrame: null, filmMsOfMatchMs: null, frameOfFilmMs: null })
       .toEqual({ ...horlogeB, gameplayMsOfFilmMs: null, gameplayMsOfFrame: null, filmMsOfMatchMs: null, frameOfFilmMs: null })
     expect(horlogeA?.gameplayMsOfFrame(150)).toBe(horlogeB?.gameplayMsOfFrame(150))
@@ -367,10 +367,10 @@ describe('buildReplayModel — le point de vue', () => {
 
   it('L’ALLÉGEANCE vient du FILM et suit le point de vue : chacun dans son équipe du film', () => {
     const vuDeMoi = buildReplayModel(doc(), matchView()).allegiance
-    expect(vuDeMoi.referenceTeam).toBe(0)
+    expect(vuDeMoi.allyTeam).toBe(0)
     expect([vuDeMoi.ofXuid('me'), vuDeMoi.ofXuid('adv')]).toEqual([true, false])
     const vuDeLui = buildReplayModel(doc(), matchView(), null, 'adv').allegiance
-    expect(vuDeLui.referenceTeam).toBe(1)
+    expect(vuDeLui.allyTeam).toBe(1)
     expect([vuDeLui.ofXuid('me'), vuDeLui.ofXuid('adv')]).toEqual([false, true])
   })
 

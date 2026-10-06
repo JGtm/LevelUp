@@ -33,6 +33,7 @@
 import { useCallback, useMemo, useState, type PointerEvent, type RefObject } from 'react'
 
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { useCarrierPosAt } from '../model/carrierPosition'
 import {
@@ -51,9 +52,8 @@ import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
 import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { allyTeamFromScoreboard, teamOfXuidFromScoreboard } from '../model/matchSides'
 
-/** Le camp d'un drapeau VU DE LA PAGE — `unknown` quand la ligne « moi » manque. */
+/** Le camp d'un drapeau VU DU JOUEUR REGARDÉ — `unknown` quand le film ne le situe pas. */
 export type FlagSide = 'ally' | 'enemy' | 'unknown'
 
 /** Ce qui est survolé : le drapeau, son état LU À CET INSTANT, et de quoi l'écrire. */
@@ -74,18 +74,14 @@ export interface FlagCarriesHookInput {
   frameRef: RefObject<number>
   /** Faux quand le calque est éteint : rien n'est dessiné, rien ne se survole. */
   enabled: boolean
+  /** La feuille : le NOM du porteur dans l'infobulle. */
   scoreboard: MatchScoreboardRow[] | null | undefined
   /**
-   * LE POINT DE VUE de la page (2026-09-06, plan « frise, point de vue ») : le camp de
-   * référence est celui de CE joueur, pas nécessairement celui de la ligne « moi ». `null` :
-   * la ligne « moi », comportement d'origine.
-   *
-   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris. Optionnel, son oubli chez
-   * l'appelant ne faisait rougir AUCUN test — les drapeaux seraient restés aux couleurs du
-   * joueur de la page pendant que la carte suivait le joueur choisi. Requis, l'oubli est une
-   * erreur de compilation.
+   * L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : le camp d'un
+   * drapeau, celui de l'auteur d'une capture, et les défenseurs d'un drapeau tombé. REQUISE :
+   * elle porte le point de vue (revue F4 du 2026-09-07).
    */
-  viewpoint: string | null
+  allegiance: FilmAllegiance
   /** Encre d'un camp vu de la page (tokens déjà résolus par l'appelant). */
   teamColorOf: (ally: boolean) => string
   /** Encre servie quand le camp est inconnu : ni équipe inventée, ni glyphe invisible. */
@@ -121,7 +117,7 @@ export function useReplayFlagCarries({
   frameRef,
   enabled,
   scoreboard,
-  viewpoint,
+  allegiance,
   teamColorOf,
   neutral,
   outline,
@@ -134,21 +130,18 @@ export function useReplayFlagCarries({
   // sinon celle du bipède.
   const posOf = useCarrierPosAt(doc)
 
-  const allyTeamID = useMemo(
-    () => allyTeamFromScoreboard(scoreboard, viewpoint),
-    [scoreboard, viewpoint],
-  )
   // UN DRAPEAU SANS ÉQUIPE N'EST PAS « ADVERSE ». Deux cas le produisent : la carte est hors du
   // catalogue d'objectifs (aucun socle, donc aucun camp), et — depuis le schéma 35 — la variante
-  // À DRAPEAU NEUTRE, où l'unique drapeau n'appartient à personne. Sans cette garde, le premier
-  // camp qui n'est pas le mien emporte la comparaison et le glyphe prend l'encre ennemie : une
-  // couleur affirmée là où il n'y a rien à affirmer.
+  // À DRAPEAU NEUTRE, où l'unique drapeau n'appartient à personne. `ofTeam` rend `null` pour un
+  // désignateur négatif comme pour un joueur regardé que le film ne situe pas : sans camp, pas
+  // d'encre affirmée.
   const sideOf = useCallback(
     (team: number): FlagSide => {
-      if (allyTeamID === null || team < 0) return 'unknown'
-      return team === allyTeamID ? 'ally' : 'enemy'
+      const ally = allegiance.ofTeam(team)
+      if (ally === null) return 'unknown'
+      return ally ? 'ally' : 'enemy'
     },
-    [allyTeamID],
+    [allegiance],
   )
   const nameOfXuid = useMemo(() => {
     const map = new Map<string, string>()
@@ -156,10 +149,9 @@ export function useReplayFlagCarries({
     return map
   }, [scoreboard])
 
-  // L'ENCRE SUIT LE CAMP VU DE LA PAGE, pas l'index d'équipe du film : c'est la couleur que
-  // l'utilisateur a choisie pour « allié » et « adverse » (règle d'accessibilité du rejeu). Sans
-  // ligne « moi », le neutre du thème — jamais une équipe supposée. DEUX calques la demandent
-  // désormais (le glyphe et l'onde de capture) : une seule règle, jamais deux copies.
+  // L'ENCRE SUIT LE CAMP VU DU JOUEUR REGARDÉ, pas l'index d'équipe du film : c'est la couleur
+  // que l'utilisateur a choisie pour « allié » et « adverse » (règle d'accessibilité du rejeu).
+  // Sans allégeance, le neutre du thème — jamais une équipe supposée.
   const inkOfTeam = useCallback(
     (team: number) => {
       const side = sideOf(team)
@@ -179,27 +171,14 @@ export function useReplayFlagCarries({
   // son auteur, là où le substitut posait toute la famille `flag_` sur le socle le plus proche.
   const captures = useMemo(() => buildFlagCaptureFx(doc, posOf), [doc, posOf])
 
-  // LE CAMP DE L'AUTEUR SE LIT AU TABLEAU DE BORD, jamais dans le film : l'action ne porte que le
-  // xuid. Un auteur absent du tableau (ou dont le `team_side` ne se parse pas) n'a PAS de camp —
-  // l'onde prend le neutre du thème plutôt qu'une équipe devinée, même règle que le glyphe.
-  const teamOfXuid = useMemo(() => teamOfXuidFromScoreboard(scoreboard), [scoreboard])
-
   // LA ZONE DE RETOUR (schéma 35) : le cercle autour d'un drapeau tombé, et la jauge qui s'y
   // vide. Elle se construit UNE fois par document, comme les ondes de capture — l'occupation se
   // compte image par image, et la recompter à chaque peinture coûterait le match entier.
   //
-  // C'EST ICI, ET NON SUR LE SERVEUR, QUE LES DÉFENSEURS SE COMPTENT : l'équipe d'un joueur n'est
-  // pas dans le film, elle vient du tableau de bord — que cette page a déjà joint pour colorer
-  // les camps (`teamOfXuid`, juste au-dessus). Le serveur publie la RÈGLE, pas l'occupation.
-  const defendersOf = useCallback(
-    (team: number) => {
-      const out: string[] = []
-      if (team < 0) return out
-      for (const [xuid, t] of teamOfXuid) if (t === team) out.push(xuid)
-      return out
-    },
-    [teamOfXuid],
-  )
+  // C'EST ICI, ET NON SUR LE SERVEUR, QUE LES DÉFENSEURS SE COMPTENT : les membres du camp du
+  // drapeau, lus dans le FILM (`FilmAllegiance.membersOf`, clés des relectures de position). Le
+  // serveur publie la RÈGLE, pas l'occupation. Un drapeau neutre (-1) n'a pas de défenseur.
+  const defendersOf = allegiance.membersOf
 
   const returnDrops = useMemo(
     () =>
@@ -212,15 +191,18 @@ export function useReplayFlagCarries({
     [carries, doc.flagReturnZone, doc.frameIntervalMs, posOf, defendersOf],
   )
 
+  // LE CAMP DE L'AUTEUR D'UNE CAPTURE : son allégeance du film (l'action ne porte que son xuid,
+  // un bot s'y relie par sa ligne de feuille). Sans allégeance, l'onde prend le neutre du thème
+  // plutôt qu'une équipe devinée, même règle que le glyphe.
   const captureStyle = useMemo<FlagCaptureStyle>(
     () => ({
       inkOf: (xuid: string) => {
-        const team = teamOfXuid.get(xuid)
-        return team === undefined ? neutral : inkOfTeam(team)
+        const ally = allegiance.ofXuid(xuid)
+        return ally === null ? neutral : teamColorOf(ally)
       },
       reducedMotion,
     }),
-    [teamOfXuid, neutral, inkOfTeam, reducedMotion],
+    [allegiance, neutral, teamColorOf, reducedMotion],
   )
 
   const paint = useCallback(

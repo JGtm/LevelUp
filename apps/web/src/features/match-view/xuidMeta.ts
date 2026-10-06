@@ -28,6 +28,7 @@
  */
 import { displayPlayerName } from '@/lib/players/displayName'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { parseTeamSideID } from '@/lib/halo/teamNames'
 
 /** Nom d'affichage (bots compris) et appartenance, par xuid. */
 export type XuidMeta = ReadonlyMap<string, { gamertag: string; ally: boolean }>
@@ -69,6 +70,34 @@ export function resolveXuidMeta(
     meta.set(r.xuid, { gamertag: displayPlayerName(r.gamertag, r.xuid), ally })
   }
   return meta
+}
+
+/**
+ * allyOfTeamId dit si une équipe (`teamId`, le numéro d'un côté de feuille `t{N}`, celui des
+ * séries du calque de score) est du côté du joueur de la page, POUR LA PAGE MATCH.
+ *
+ * La page raisonne en « allié / adverse », une notion RELATIVE au joueur consulté ; le pont
+ * passe par la feuille, seul endroit où le côté et le xuid coexistent, et par la cascade
+ * ci-dessus (`allies`). `null` = côté introuvable ou aucun joueur reconnu : la marque prend une
+ * encre neutre, jamais l'une des deux couleurs par défaut.
+ *
+ * LA PAGE REJEU NE L'EMPLOIE PAS : son allégeance vient de l'équipe du FILM
+ * (`lib/replay/filmAllegiance.ts`, 2026-10-06). Ce lecteur de feuille vivait dans
+ * `lib/replay/scoreTimeline.ts` ; il a rejoint la cascade dont il dépend quand le rejeu a cessé
+ * d'en être un lecteur.
+ */
+export function allyOfTeamId(
+  scoreboard: ReadonlyArray<Pick<MatchScoreboardRow, 'xuid' | 'team_side'>>,
+  allies: ReadonlyMap<string, { ally: boolean }> | undefined,
+  teamId: number,
+): boolean | null {
+  if (!allies) return null
+  for (const row of scoreboard) {
+    if (parseTeamSideID(row.team_side) !== teamId) continue
+    const meta = allies.get(row.xuid)
+    if (meta) return meta.ally
+  }
+  return null
 }
 
 /**

@@ -50,10 +50,9 @@
  * d'assets, comme les autres.
  */
 import { outcomeCodeToValue } from '@/lib/outcome'
-import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { ReplayLocale } from '../i18n/i18n'
-import { readVictory, type VictoryOutcome } from '../model/victoryLogic'
+import { readVictory, type VictoryFilm, type VictoryOutcome } from '../model/victoryLogic'
 
 /**
  * Les PRISES de la voix d'annonceur, par issue puis par langue. Une liste à plusieurs entrées
@@ -108,7 +107,7 @@ export interface EndMatchSoundSpec {
   outcome: VictoryOutcome
   /**
    * `true` = le match n'oppose PAS deux camps identifiés — FFA, plus de deux camps, ou joueur
-   * de la page introuvable au scoreboard. Le nom vient du cas qui le peuple en pratique ; ce
+   * de la page que le film ne situe pas. Le nom vient du cas qui le peuple en pratique ; ce
    * que le drapeau dit vraiment, c'est « aucune équipe à nommer », et la voix choisie
    * (« Vainqueur ») est justement celle qui n'en nomme aucune.
    */
@@ -124,19 +123,21 @@ export interface EndMatchSoundSpec {
  * abandon, ou fin sans équipes que la voix ne saurait annoncer (FFA perdu ou à égalité).
  *
  * IL N'A PAS DE SUJET, ET C'EST VOULU (décision 3 du plan « frise, point de vue », 2026-09-06).
- * `readVictory` accepte désormais un troisième argument — par les yeux de qui la fin se lit — et
- * l'écran de fin, lui, y passe le POINT DE VUE. Le SON reste ancré sur le JOUEUR DE LA PAGE :
+ * `readVictory` accepte un sujet — par les yeux de qui la fin se lit — et l'écran de fin, lui, y
+ * passe le POINT DE VUE ; ici le sujet est omis, il vaut `page`, le joueur de la page
+ * (`meXUIDOf`), dont l'équipe se lit dans le film comme partout ailleurs. Le SON reste ancré sur le JOUEUR DE LA PAGE :
  * inspecter un adversaire ne doit pas faire retentir « Défaite » sur un match qu'on a gagné. Les
  * deux appels divergent donc exprès. Ne pas « harmoniser » : voir aussi le commentaire de la
  * route, à l'appel d'`endMatchSoundSpec`.
  */
 export function endMatchSoundSpec(
-  scoreboard: ReadonlyArray<Pick<MatchScoreboardRow, 'team_side' | 'is_me'>>,
+  film: VictoryFilm,
+  page: string | null,
   outcomeCode: number | null | undefined,
   locale: ReplayLocale,
 ): EndMatchSoundSpec | null {
-  // DEUX ARGUMENTS, PAS TROIS : le sujet omis vaut « le joueur de la page » (décision 3).
-  const reading = readVictory(scoreboard, outcomeCode)
+  // SANS SUJET : le sujet omis vaut « le joueur de la page » (décision 3).
+  const reading = readVictory(film, outcomeCode, page)
   if (reading) return { outcome: reading.outcome, ffa: false, locale }
   // Sans deux camps lisibles, seule la VICTOIRE a une réplique : « Vainqueur » se passe
   // d'adversaire nommé, « Défaite » et « Égalité » supposent un affrontement à deux camps.

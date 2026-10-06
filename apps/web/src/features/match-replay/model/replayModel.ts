@@ -160,6 +160,7 @@ export function buildReplayModel(
   // 5-6 s, et les deux bornes demandent l'artefact ET l'en-tête.
   const window = replayWindow(doc, header)
   const players = buildPlayers(doc, scoreboard)
+  const allegiance = buildFilmAllegiance(players, subject)
 
   // LE KILL FEED VIENT DE LA BASE, PAS DU FILM : le rejeu ne porte pas les kills ; la vue
   // match, elle, les sert déjà résolus (auteur, équipe, ARME du kill avec son icône).
@@ -170,7 +171,7 @@ export function buildReplayModel(
     scoreboard,
     viewpoint: subject,
     identity,
-    allegiance: buildFilmAllegiance(players, subject),
+    allegiance,
     marks,
     players,
     clock,
@@ -188,7 +189,7 @@ export function buildReplayModel(
     // depuis le 2026-09-07 : l'API l'ancre sur le joueur de la page, et l'écran de fin le
     // préfère à la lecture du calque — vu depuis un adversaire, les deux nombres seraient dans
     // l'ordre de quelqu'un d'autre que l'issue affichée juste au-dessus.
-    score: finalScoreFromHeader(header, scoreboard, subject),
+    score: finalScoreFromHeader(header, allegiance, meXUIDOf(scoreboard), subject),
     t0Ms,
   }
 }
