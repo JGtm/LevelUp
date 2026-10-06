@@ -2868,3 +2868,29 @@ package replay
 //	                `backfill-replay` le range parmi les « republies » alors qu il redecode : sa duree
 //	                est celle d un decodage. Un artefact cuit sous d autres revisions se lit
 //	                `redecoder` d emblee.
+//
+// v81 (2026-10-07, rejeu « aucune fiche en trop », phase D du lot des equipes) : UNE EQUIPE A
+// EXACTEMENT SES PLACES.
+//
+//	`tracks[]`     une vie qui commence apres le depart PROUVE (image-cle) de l occupant vivant a la
+//	               creation de son corps, sur un corps cree avant ce depart, n est plus publiee : ses
+//	               positions viennent du balayage par ancrage, que la marche ne contient pas (porte des
+//	               positions, regle R-B3, `positions_porte_depart.go`).
+//	`tracks[].bot` le corps d un index qu un humain tient se lit aux declarations BOT_METADATA de ses
+//	`roster[]`     bots quand les entites de l humain prouvent son absence ; un corps cree juste avant
+//	               la declaration de son bot (aucune autre declaration, aucune image-cle entre les
+//	               deux) est le sien. Le bot sans entite ainsi nomme entre au roster
+//	               (`botsSuccesseurs`) et prend une place.
+//	`roster[]`     un bot declare qui n a aucune vie et ne trouve aucune place dans son equipe n entre
+//	               pas au roster publie (`sieges_bots_sans_place.go`) ; un bot sans place qui a une vie
+//	               reste, sans place, en ERREUR. Sur les 19 temoins du lot
+//	               (`.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, phase D) : `sansPlace` 3 -> 0,
+//	               `placesEnTrop` 3 -> 0, `depassements` 60 -> 0.
+//	forme          AUCUN CHAMP NEUF : les comptes de ces regles vont au journal et a l expvar
+//	               (`rejeu_vies_apres_depart_ecartees`, `rejeu_bots_sans_vie_ni_place_ecartes`).
+//
+//	CE QUI MONTE    `SchemaVersion` 80 -> 81 seul. `SchemaDesFaits` et les revisions de couche gardent
+//	AVEC ELLE       leur valeur : ces regles sont de publication, rejouables depuis les faits.
+//
+//	LE PARC         un artefact 80 dont les faits sont au schema des faits 6 se REPUBLIE depuis eux
+//	                (verdict `republier`, aucun decodage).

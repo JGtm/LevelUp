@@ -41,6 +41,8 @@ type poseDesPlaces struct {
 	// [poseDesPlaces.estimerLaCapacite]) ; [poseDesPlaces.capaciteDe] y ajoute ce que les entites
 	// lues disent de chaque equipe.
 	capacite int
+	// sansPlace : les bots d equipe lue sans place, ecartes ou comptes (sieges_bots_sans_place.go).
+	sansPlace botsSansPlace
 }
 
 func nouvellePoseDesPlaces(roster []RosterEntry, occ *occupants, in entreesDesPlaces) *poseDesPlaces {
@@ -262,6 +264,9 @@ func (pp *poseDesPlaces) chainerLesArrivants() (apparies, ouvertes, sansPlace in
 			continue
 		}
 		if pp.placesDeLEquipe(*t) >= pp.capaciteDe(*t) {
+			if pp.ecarterLeBotSansVie(i) {
+				continue
+			}
 			pp.roster[i].SeatSource = SeatSourceIndex
 			sansPlace++
 			continue

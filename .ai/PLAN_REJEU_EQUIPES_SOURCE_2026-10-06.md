@@ -346,7 +346,7 @@ Relance du superviseur après la fusion du lot dans `feat/v75` (`b5c9489ef`) : m
 Cible 0 / 0 / 0 / 0 (`sansEquipe`, `sansPlace`, `placesEnTrop`, `depassements`) sur les 19 témoins, et au
 parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le film ne dit pas qui part.
 
-**État : D2 (P2) et D3 décidés, en cours ; D6 au CHECKPOINT** (l'API ne désigne aucun partant, D.6c).
+**État : D2, D3, D6 implémentés, 0/0/0/0 sur les 19 témoins ; relecture, push et CI en cours (D.7d).**
 
 - [x] D.0 Départ : `git pull --ff-only` (avance rapide sur `b5c9489ef`). Compteurs de départ, 19 témoins
       en processus (faits au schéma des faits 6) : 0 / 3 / 3 / 60 ; `859da825` 0/1/1/4,
@@ -438,10 +438,56 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
       le retard de la base sur un départ (environ 37 s, constant par film) n'est pas celui des arrivées.
       Calée sans ce retard, la base place le départ de Witty Hole après la fin du film. Rien de
       généralisé.
-- [ ] D.6a D2 (P2) : implémentation, tests, témoin.
-- [ ] D.6b D3 : implémentation, tests, témoin.
-- [ ] D.7 Compteurs des 19 témoins (attendu 0/1/1/40 sans D6), `SchemaVersion` 81, relecture adversariale
-      au premier plan, push, CI au premier plan, CR.
+- [x] D.5d Décision du superviseur pour D6 (2026-10-07) : ni le film ni l'API ne montrent de départ, le bot
+      n'a pas de place à reprendre ; un bot déclaré sans AUCUNE vie qui ne trouve AUCUNE place n'entre pas
+      au roster publié (compté, AVERTISSEMENT), aucun partant déduit ; un bot sans place qui a une vie
+      reste un défaut en ERREUR. Cible 0/0/0/0.
+- [x] D.6a D2 (P2) : règle R-B3 de la porte des positions (`positions_porte_depart.go`) : les positions d'un
+      corps dont l'occupant vivant à la création (unique entité stable de l'index dont la fenêtre large
+      contient la création) a son départ prouvé par une image-clé, et dont aucune position ne précède ce
+      départ, sont écartées ; journal en AVERTISSEMENT, expvar `rejeu_vies_apres_depart_ecartees`, aucun
+      champ servi (`couverturePorte.ApresDepart`, `CorpsApresDepart`). 7 tests (écarte, vie commencée avant,
+      absence non prouvée, deux entités, sans balayage, corps suivant, par l'assemblage) ; 2 mutations
+      rejouées, rouges.
+- [x] D.6b D3 : lecture par déclaration (`identity_registry_declarations.go`) étendue aux index d'un humain
+      dont les entités prouvent l'absence sur [création, fin de vie] (au moins une entité à lui, aucune
+      instable, aucune fenêtre large qui touche) et à la création antérieure à la seule déclaration qui
+      croise la vie (aucun bot déclaré à la création, une seule déclaration croisée, née après la
+      création, qui couvre la vie jusqu'à son terme, aucune image-clé porteuse entre les deux, film
+      balayé). R-CREATION inversé (`TestDeclarationNeeApresLaCreationNommeLeCorps`) ; tests de garde
+      R-IMAGE-CLE, R-UNE-SEULE, R-HUMAIN-ABSENT, R-HUMAIN-PRESENT ; 5 mutations rouges. Admission au roster
+      du bot sans entité dont une piste publiée porte le nom et dont les déclarations ne touchent la
+      fenêtre large d'aucune entité de son index (`admettreLesBotsNommesParDeclaration`, compté dans
+      `botsSuccesseurs`) ; 4 tests, 2 mutations rouges.
+- [x] D.6e D6 : `sieges_bots_sans_place.go` — dans le chaînage, un bot d'équipe lue sans place (équipe à sa
+      capacité) et sans vie est écarté (présence vidée, retiré du roster publié par
+      `sansLesBotsEcartes`, expvar `rejeu_bots_sans_vie_ni_place_ecartes`, AVERTISSEMENT) ; un bot sans place
+      avec une vie reste `index`, compté `sansPlace`, ERREUR ; un humain n'est jamais écarté. 3 tests
+      (B-ECARTE, B-AVEC-VIE, B-HUMAIN) ; 3 mutations rouges. Un arrivant sans équipe lue garde son
+      traitement (le défaut d'équipe se lit dans `sansEquipe`).
+- [x] D.7a `SchemaVersion` 80 -> 81 (contenu, aucun champ neuf), chronique v81, `structure_test.go`, plafonds
+      de la chronique (+26) et du test de structure (+4), golden de forme et 8 goldens d'assemblage (ligne de
+      schéma seule), 8 fixtures Go du web régénérées (`replay_schema_81_*`).
+- [x] D.7b Témoins, republication depuis les faits (schéma des faits 6, binaire `replay-build-phased.exe`,
+      un film à la fois, aucun décodage : `depuis_les_faits=true` partout) :
+      | | sansEquipe | sansPlace | placesEnTrop | depassements |
+      |---|---|---|---|---|
+      | AVANT (`b5c9489ef`) | 0 | 3 | 3 | 60 |
+      | APRÈS | 0 | 0 | 0 | 0 |
+      Seuls les 3 documents de D2, D3, D6 changent (les 16 autres : identiques hors marque de schéma).
+      `859da825` : la piste fantôme du slot 548 disparaît (bornes de carte rendues : minX -17,65 -> -11,43,
+      minZ -28,86 -> -0,26), opresko présent 0-1627 (affichage 1708), SplinterCell958 sur la place 2 lue
+      dans ses tirs, 147 tirs de plus publiés par la place, 3 rafales par la place ; 4 lectures
+      d'image-clé du slot 548 à 1627 passent « non publiées ». `bf2a9f05` : vie [1004..1019] nommée
+      `343 Mickey` (lecture directe), Mickey sur la place 0 entre Aeroflame (affichage borné à 1003) et
+      Luigi107763, AllGodsLove sur la place 3 après yolojoe13, 28 tirs de plus par la place.
+      `d1dfbc02` : `343 Ham Sammich` hors du roster publié (8 entrées). Témoin `43716616` : place 5 =
+      Slowpoke6743 -> `343 Sandwolf` -> KernelPanic10, aucune place 8.
+- [x] D.7c Gates locaux : `go test` de `games/halo_infinite/...`, `replaybuild`, `service/replayview`,
+      `sync/killcollector` (verts), `archlint` (vert), `go vet` avec et sans `research`, golangci-lint
+      (paquets touchés, depuis `b5c9489ef`) : 0 constat ; vitest du rejeu (fixtures au schéma 81) : 245
+      fichiers, 3 591 tests verts.
+- [ ] D.7d Relecture adversariale au premier plan, push, CI au premier plan, CR.
 
 ## Découvertes (notées, non traitées)
 
@@ -487,6 +533,11 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
   participant (`ti=9`), que les faits ne portent pas (images-clés seulement). `859da825` : Witty Hole
   supprimé à 4248, après la dernière image-clé (4227), publié présent jusqu'à la fin (4338). La marche
   manque des suppressions (opresko, HiEmilio9212). Non traité (faits, re-cuisson).
+- D13 (`bf2a9f05`) : `xuidOfPublishedTrack` (published_tracks.go) donne a une piste de BOT (nom de bot, xuid
+  vide) le xuid que le pont de son slot donne : la piste de `343 Mickey` (slot 529) compte comme
+  trajectoire publiee d AllGodsLove dans `publishedXUIDs` et ajoute 1 au repli `repli_nom_piste_par_le_pont`.
+  Comportement anterieur au lot (toute piste de bot sur un slot ponte vers un humain) ; sans effet sur
+  les places ni les compteurs des temoins. Non traite.
 - Revue adversariale (ronde 1, relecteur frais) : 0 P0 ; 1 P1 (G2.a généralisé au-delà des 2 films
   mesurés : corrigé en restreignant l'affirmation) ; 5 P2 d'imprécision (formulation de G1.2 et durée
   maximale, place 1 de `4f77afc1`, décompte des films et build HI_1_12_0 à N = 1, équipe de Ham Sammich

@@ -164,8 +164,9 @@ type SeatCoverage struct {
 	// IdentitesHorsRoster : les identites qui nomment une vie publiee sans entree de roster (revue
 	// M2-R1). Sans place ni presence, le web ne leur rend aucune tuile. 0 attendu.
 	IdentitesHorsRoster int `json:"identitesHorsRoster"`
-	// BotsSuccesseurs : les bots entres au roster sur l'index d'un humain dont ils sont les
-	// successeurs LUS (entites disjointes, cf. roster_bots_successeurs.go).
+	// BotsSuccesseurs : les bots entres au roster sur l index d un humain, jamais simultanes avec lui :
+	// par leurs entites disjointes, ou, sans entite, par leurs declarations quand une piste publiee porte
+	// leur nom (cf. roster_bots_successeurs.go).
 	BotsSuccesseurs int `json:"botsSuccesseurs"`
 	// PresencesParLesVies : sur un film balaye, les entrees presentes qu'aucune entite ni
 	// declaration ne porte — leur presence vient de leurs seules vies (REPLI par entree,
@@ -210,6 +211,11 @@ type SeatCoverage struct {
 	// SansTableDuFilm : le film ne porte pas sa table de depart, donc aucune place n'est
 	// decidable. Ce n'est pas un repli : c'est une abstention, et elle se lit ici.
 	SansTableDuFilm bool `json:"sansTableDuFilm,omitempty"`
+	// botsEcartes / botsSansPlaceAvecVie : les indices, dans le roster de la pose, des bots ecartes du
+	// roster publie, et le nombre de bots sans place qui ont une vie (sieges_bots_sans_place.go).
+	// Jamais servis (types de base, non exportes) : journal et expvar.
+	botsEcartes          []int
+	botsSansPlaceAvecVie int
 }
 
 // entreesDesPlaces porte ce que la pose consomme hors du roster et des occupants.
@@ -269,6 +275,8 @@ func poserLesSieges(ctx context.Context, roster []RosterEntry, occ occupants, in
 	pp.publierLesPresences()
 	cov.IdentitesHorsRoster = occ.horsRoster
 	cov.compterLesEntrees(roster, pp)
+	cov.botsEcartes, cov.botsSansPlaceAvecVie = pp.sansPlace.ecartes, pp.sansPlace.avecVie
+	cov.Entrees -= len(pp.sansPlace.ecartes)
 	return cov
 }
 
@@ -276,6 +284,7 @@ func poserLesSieges(ctx context.Context, roster []RosterEntry, occ occupants, in
 // equipe (aucune lecture du film ne la nomme, et aucun repli ne la remplace), en AVERTISSEMENT une
 // entree sans place, une equipe qui affiche plus d'occupants ou de places que sa capacite.
 func journaliserLesPlaces(ctx context.Context, matchID string, cov SeatCoverage) {
+	journaliserLesBotsSansPlace(ctx, matchID, len(cov.botsEcartes), cov.botsSansPlaceAvecVie)
 	if cov.SansEquipe > 0 {
 		slog.ErrorContext(ctx, "rejeu : entree(s) du roster presente(s) SANS EQUIPE lue — aucune tuile ne les "+
 			"montre", "match_id", matchID, "sansEquipe", cov.SansEquipe, "entrees", cov.Entrees)
@@ -303,6 +312,9 @@ func (c *SeatCoverage) compterLesEntrees(roster []RosterEntry, pp *poseDesPlaces
 	partages, sieges := map[int]int{}, map[int]bool{}
 	derniere := pp.in.horloge.frames - 1
 	for i, e := range roster {
+		if pp.ecarte(i) {
+			continue // hors du roster publie (sieges_bots_sans_place.go)
+		}
 		if len(pp.occ.parEntree[i].presence) > 0 {
 			sieges[e.Seat] = true
 		}

@@ -174,7 +174,8 @@ func (a *assemblage) ouvrir(titleSlug string) bool {
 // sur tous les paquets de position (aucun calque ne se decale), et le registre d identite, les
 // traces, les bornes, les etats et les vehicules ne voient plus ces positions.
 func (a *assemblage) passerLaPorte() {
-	a.sorted, a.emprise, a.porte = passerLaPorteDesPositions(a.sorted, a.opt.BipedCreations, a.opt.Fallbacks)
+	a.sorted, a.emprise, a.porte = passerLaPorteDesPositions(a.sorted, a.opt.BipedCreations, a.opt.PlayerEntities,
+		a.opt.Fallbacks)
 }
 
 // fireRefs réduit les événements de tir à ce que les fermetures ont le droit de connaître : QUI
