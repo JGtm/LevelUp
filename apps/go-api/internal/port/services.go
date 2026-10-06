@@ -428,6 +428,17 @@ type TimeseriesService interface {
 	GetPage(ctx context.Context, req domain.TimeseriesQueryRequest) (domain.TimeseriesPageResponse, error)
 }
 
+// TrendsService construit la page Tendances.
+type TrendsService interface {
+	GetPage(ctx context.Context, req domain.TrendsQueryRequest) (domain.TrendsPageResponse, error)
+}
+
+// SquadTrendsService construit la vue Escouade de la page Tendances pour la composition
+// demandée (xuid du joueur principal fourni par la fabrique).
+type SquadTrendsService interface {
+	GetSquadTrends(ctx context.Context, playerXUID string, req domain.TrendsQueryRequest) (domain.TrendsPageResponse, error)
+}
+
 // ---------------------------------------------------------------------------
 // Services globaux (singletons, résolution non liée à un joueur)
 // ---------------------------------------------------------------------------

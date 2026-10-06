@@ -51,9 +51,9 @@ const VehicleTypeIndex = 40
 // 2026-09-18 (lot 5.1.7-b). La feuille 4 ne se modelise plus absente : elle se LIT (cf.
 // [consumeVehicleMediaFrame]).
 func consumeDefaultStateTI40(br *Lecteur) {
-	consumeVersionPrefix(br)              // 1. V : R(1) ; si 1 -> R(8)
-	consumeMultiplayerPropertiesBlock(br) // 2. FUN_14080cfe8 : bloc MPP (publie MPPWord32)
-	if br.ReadBit() {                     // 3. porte bVar14 -> DST+0x60 (R(1) inconditionnel)
+	consumeVersionPrefix(br) // 1. V : R(1) ; si 1 -> R(8)
+	lireLeBlocMPPDeLEtat(br) // 2. FUN_14080cfe8 : bloc MPP (publie MPPWord32) ; echec -> 0 (`cVar2 == 0`)
+	if br.ReadBit() {        // 3. porte bVar14 -> DST+0x60 (R(1) inconditionnel)
 		consumeVehicleMediaFrame(br) // 4. quaternion + FUN_140c1e79c, aux largeurs de la carte
 	}
 	br.ReadBits(19)    // 5. FUN_14076dc04 : R(19), largeur R9D=0x13

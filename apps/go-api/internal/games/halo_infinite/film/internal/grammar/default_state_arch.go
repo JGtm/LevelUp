@@ -231,11 +231,11 @@ func consumeDefaultStateTI24(br *Lecteur) {
 func consumeDefaultStateTI28(br *Lecteur) { br.ReadBits(32) }
 
 // consumeDefaultStateTI36 porte FUN_1407f2224 (archetype 36, « object-position ») :
-// V ; FUN_14080cfe8 (bloc object-multiplayer-properties, deja porte bit-exact).
-// FUN_140fe7630 (ti43) a exactement la meme forme.
+// V ; FUN_14080cfe8 (bloc object-multiplayer-properties, deja porte bit-exact), dont l echec fait
+// echouer l etat (`cVar4 == 0` -> 0). FUN_140fe7630 (ti43) a exactement la meme forme.
 func consumeDefaultStateTI36(br *Lecteur) {
 	consumeVersionPrefix(br)
-	consumeMultiplayerPropertiesBlock(br)
+	lireLeBlocMPPDeLEtat(br)
 }
 
 // consumeDefaultStateTI37 porte FUN_1407f105c (archetype 37, « equipment ») :
@@ -244,8 +244,10 @@ func consumeDefaultStateTI36(br *Lecteur) {
 //	ECS_ReadEntityRefIndex5 (FUN_1407f2058 = R(1) ; si 0 -> R(5)) ;
 //	g = R(1) ; si g -> R(32) "ability-enabled-id".
 //
-// La sortie anticipee de FUN_1407f105c depend de la valeur de retour de FUN_1407f2224,
-// qui ne vaut 0 qu'en depassement de buffer : le chemin nominal lit toujours la suite.
+// La sortie anticipee de FUN_1407f105c depend de la valeur de retour de FUN_1407f2224, qui vaut 0
+// en depassement de buffer OU quand le bloc MPP echoue ([mppCompteMax]) : le jeu ne lit alors pas
+// les deux dernieres feuilles. Ce port les lit quand meme ; sur un record NEW, [TraverseEntity]
+// arrete le record a la fin de l etat qui echoue, et ces bits ne servent a rien.
 //
 // LES DEUX DERNIERES FEUILLES PUBLIENT leur valeur (equipment_creation.go) au lieu de la
 // jeter — meme correction qu'i48 le 2026-08-14 et que les quatre champs d'equipment_state.go
@@ -267,10 +269,10 @@ func consumeDefaultStateTI37(br *Lecteur) {
 }
 
 // consumeDefaultStateTI38 porte FUN_1408f0b48 (archetypes 38 ET 39, « object-position ») :
-// V ; FUN_14080cfe8 (MPP) ; FUN_1408f0ac4(dst+0x60, br, 0).
+// V ; FUN_14080cfe8 (MPP, son echec fait echouer l etat) ; FUN_1408f0ac4(dst+0x60, br, 0).
 func consumeDefaultStateTI38(br *Lecteur) {
 	consumeVersionPrefix(br)
-	consumeMultiplayerPropertiesBlock(br)
+	lireLeBlocMPPDeLEtat(br)
 	consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0) @1408f0bae
 }
 

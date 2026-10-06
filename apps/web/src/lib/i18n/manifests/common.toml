@@ -2150,6 +2150,10 @@ en = "Achievements"
 fr = "Tactique"
 en = "Tactical"
 
+[common.nav.tab_tendances]
+fr = "Tendances"
+en = "Trends"
+
 [common.nav.tab_leaderboard]
 fr = "Classements"
 en = "Leaderboards"

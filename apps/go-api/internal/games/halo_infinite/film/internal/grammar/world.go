@@ -49,6 +49,8 @@ type World struct {
 	chunkCourant int
 	// anticipationDite : le journal du premier usage a-t-il ete ecrit pour ce monde ?
 	anticipationDite bool
+	// debutNonProuve : la marche annoncee par [World.marquerDebutNonProuve], nil sans annonce.
+	debutNonProuve *debutDeMarche
 }
 
 // nsImageCleInconnu : la valeur de [World.nsImageCle] avant toute liaison d image-cle.

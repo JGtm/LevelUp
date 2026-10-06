@@ -109,6 +109,7 @@ type TeammatesService struct {
 	// match (lot N2, D22-5). Sans lui, pas de referentiel : le bloc « roles de portee »
 	// est omis. Cf. teammates_squad_range.go.
 	matchRangeRepo port.MatchRangeRepository
+	trends         TrendsDeps // page Tendances, vue Escouade : teammates_service_trends.go
 }
 
 // NewTeammatesService crée un TeammatesService.

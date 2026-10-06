@@ -5666,6 +5666,31 @@ paths:
       summary: Séries temporelles (filtres en body)
       tags:
         - timeseries
+  /players/{player_slug}/pages/trends:
+    post:
+      operationId: postTrendsPage
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrendsPageResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Tendances (vue et type de partie en body)
+      tags:
+        - trends
   /players/{player_slug}/patterns:
     get:
       description: |
@@ -31142,6 +31167,421 @@ components:
         - beforeOrigin
         - unpublished
         - positioned
+      type: object
+    TrendsCalendarDay:
+      additionalProperties: false
+      properties:
+        date:
+          type: string
+        losses:
+          format: int64
+          type: integer
+        matches:
+          format: int64
+          type: integer
+        performance_score:
+          format: double
+          type: number
+        win_rate:
+          format: double
+          type: number
+        wins:
+          format: int64
+          type: integer
+      required:
+        - date
+        - matches
+        - wins
+        - losses
+      type: object
+    TrendsCapabilities:
+      additionalProperties: false
+      properties:
+        csr:
+          type: boolean
+        equipment:
+          type: boolean
+        lusr:
+          type: boolean
+        mmr:
+          type: boolean
+        objectives:
+          type: boolean
+      required:
+        - mmr
+        - csr
+        - lusr
+        - objectives
+        - equipment
+      type: object
+    TrendsGameType:
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+        matches:
+          format: int64
+          type: integer
+      required:
+        - key
+        - matches
+      type: object
+    TrendsHorizonCell:
+      additionalProperties: false
+      properties:
+        days:
+          format: int64
+          type: integer
+        matches:
+          format: int64
+          type: integer
+        prev_matches:
+          format: int64
+          type: integer
+        prev_value:
+          format: double
+          type: number
+        value:
+          format: double
+          type: number
+        z:
+          format: double
+          type: number
+      required:
+        - days
+        - matches
+        - prev_matches
+      type: object
+    TrendsIndicator:
+      additionalProperties: false
+      properties:
+        better:
+          format: int64
+          type: integer
+        decimals:
+          format: int64
+          type: integer
+        group:
+          type: string
+        horizons:
+          items:
+            $ref: '#/components/schemas/TrendsHorizonCell'
+          type:
+            - array
+            - "null"
+        in_matrix:
+          type: boolean
+        key:
+          type: string
+        months:
+          items:
+            $ref: '#/components/schemas/TrendsMonthCell'
+          type:
+            - array
+            - "null"
+        series:
+          $ref: '#/components/schemas/TrendsSeries'
+        unit:
+          type: string
+        variant:
+          type: string
+      required:
+        - key
+        - group
+        - unit
+        - decimals
+        - better
+        - in_matrix
+        - months
+        - horizons
+        - series
+      type: object
+    TrendsMedalRow:
+      additionalProperties: false
+      properties:
+        medal_id:
+          format: int64
+          type: integer
+        name:
+          type: string
+        prev_rate:
+          format: double
+          type: number
+        rate:
+          format: double
+          type: number
+      required:
+        - medal_id
+        - name
+        - rate
+      type: object
+    TrendsMedalsBlock:
+      additionalProperties: false
+      properties:
+        compared:
+          type: boolean
+        days:
+          format: int64
+          type: integer
+        rows:
+          items:
+            $ref: '#/components/schemas/TrendsMedalRow'
+          type:
+            - array
+            - "null"
+      required:
+        - days
+        - compared
+        - rows
+      type: object
+    TrendsMember:
+      additionalProperties: false
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertag
+      type: object
+    TrendsMix:
+      additionalProperties: false
+      properties:
+        day:
+          items:
+            $ref: '#/components/schemas/TrendsMixBucket'
+          type:
+            - array
+            - "null"
+        month:
+          items:
+            $ref: '#/components/schemas/TrendsMixBucket'
+          type:
+            - array
+            - "null"
+        week:
+          items:
+            $ref: '#/components/schemas/TrendsMixBucket'
+          type:
+            - array
+            - "null"
+      required:
+        - day
+        - week
+        - month
+      type: object
+    TrendsMixBucket:
+      additionalProperties: false
+      properties:
+        counts:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        t:
+          format: date-time
+          type: string
+      required:
+        - t
+        - counts
+      type: object
+    TrendsMonthCell:
+      additionalProperties: false
+      properties:
+        matches:
+          format: int64
+          type: integer
+        value:
+          format: double
+          type: number
+        z:
+          format: double
+          type: number
+      required:
+        - matches
+      type: object
+    TrendsPageResponse:
+      additionalProperties: false
+      properties:
+        as_of:
+          format: date-time
+          type: string
+        calendar:
+          items:
+            $ref: '#/components/schemas/TrendsCalendarDay'
+          type:
+            - array
+            - "null"
+        capabilities:
+          $ref: '#/components/schemas/TrendsCapabilities'
+        game_type:
+          type: string
+        game_types:
+          items:
+            $ref: '#/components/schemas/TrendsGameType'
+          type:
+            - array
+            - "null"
+        indicators:
+          items:
+            $ref: '#/components/schemas/TrendsIndicator'
+          type:
+            - array
+            - "null"
+        medals:
+          items:
+            $ref: '#/components/schemas/TrendsMedalsBlock'
+          type:
+            - array
+            - "null"
+        members:
+          items:
+            $ref: '#/components/schemas/TrendsMember'
+          type:
+            - array
+            - "null"
+        mix:
+          $ref: '#/components/schemas/TrendsMix'
+        months:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        timezone:
+          type: string
+        view:
+          type: string
+        win_loss:
+          items:
+            $ref: '#/components/schemas/TrendsWinLossBlock'
+          type:
+            - array
+            - "null"
+      required:
+        - as_of
+        - view
+        - game_type
+        - timezone
+        - game_types
+        - capabilities
+        - months
+        - indicators
+        - calendar
+        - win_loss
+        - medals
+        - mix
+        - members
+      type: object
+    TrendsPoint:
+      additionalProperties: false
+      properties:
+        matches:
+          format: int64
+          type: integer
+        t:
+          format: date-time
+          type: string
+        value:
+          format: double
+          type: number
+      required:
+        - t
+        - value
+        - matches
+      type: object
+    TrendsSeries:
+      additionalProperties: false
+      properties:
+        day:
+          items:
+            $ref: '#/components/schemas/TrendsPoint'
+          type:
+            - array
+            - "null"
+        match:
+          items:
+            $ref: '#/components/schemas/TrendsPoint'
+          type:
+            - array
+            - "null"
+        month:
+          items:
+            $ref: '#/components/schemas/TrendsPoint'
+          type:
+            - array
+            - "null"
+        week:
+          items:
+            $ref: '#/components/schemas/TrendsPoint'
+          type:
+            - array
+            - "null"
+      required:
+        - match
+        - day
+        - week
+        - month
+      type: object
+    TrendsWinLossBlock:
+      additionalProperties: false
+      properties:
+        days:
+          format: int64
+          type: integer
+        matches:
+          format: int64
+          type: integer
+        required:
+          format: int64
+          type: integer
+        rows:
+          items:
+            $ref: '#/components/schemas/TrendsWinLossRow'
+          type:
+            - array
+            - "null"
+      required:
+        - days
+        - matches
+        - required
+        - rows
+      type: object
+    TrendsWinLossRow:
+      additionalProperties: false
+      properties:
+        group:
+          type: string
+        key:
+          type: string
+        loss_mean:
+          format: double
+          type: number
+        matches:
+          format: int64
+          type: integer
+        r:
+          format: double
+          type: number
+        win_mean:
+          format: double
+          type: number
+        z_loss:
+          format: double
+          type: number
+        z_win:
+          format: double
+          type: number
+      required:
+        - key
+        - group
+        - matches
+        - win_mean
+        - loss_mean
+        - z_win
+        - z_loss
+        - r
       type: object
     UnreadCount:
       additionalProperties: false

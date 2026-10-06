@@ -47,6 +47,9 @@ type EntityTrace struct {
 	// MasqueNonEcrit : la regle de `FUN_142e2da44` que le masque lu contredit ([lireMasque],
 	// [traverseComponentLoopFrom]) ; [InvariantAucun] pour un masque que l ecrivain peut ecrire.
 	MasqueNonEcrit InvariantEcrivain
+	// EtatIllisible : le lecteur d etat de creation du jeu echoue sur ce record NEW
+	// (`etat_de_creation.go`) ; le record s arrete a la fin de son etat, DesyncAt a 0.
+	EtatIllisible bool
 }
 
 // bipedDefaultStateTypeIndex is the keyframe typeIndex of the biped archetype
@@ -92,8 +95,10 @@ const objectArchetypeCount = 50
 
 // TraverseEntity decodes one new-entity record header (R6 typeIndex + default-state
 // + R1 gate + presence mask) and walks the archetype's present components via
-// consumeByName. It stops at the first un-ported present component (DesyncAt). The
-// held-weapon variant is captured when a weapon-state-type-info slot is reached.
+// consumeByName. It stops at the first un-ported present component (DesyncAt). It
+// also stops at the end of the creation state when the game's state reader fails
+// ([EntityTrace.EtatIllisible], DesyncAt 0, neither gate nor mask read; see
+// etat_de_creation.go). The held-weapon variant is captured when a weapon-state-type-info slot is reached.
 //
 // For the biped archetype (typeIndex==35) the leading part of the default-state is
 // deserialised bit-exact via consumeBipedDefaultState (FUN_140F44C38) + the
@@ -109,6 +114,11 @@ func TraverseEntity(br *Lecteur, reg *Registry, defaultStateBits int) EntityTrac
 		t.EndBit = br.BitPos()
 		return t
 	}
+	// Remise a faux DEFENSIVE : le verdict est celui de CET etat. En production aucun record ne
+	// suit un etat illisible sur le meme lecteur (DesyncAt arrete la marche, `inferResyncTargets`
+	// est nil) ; elle protege un lecteur qui reprendrait apres lui, ou dont un lecteur d etat a ete
+	// appele hors de cette traversee (test `TestLeVerdictDEtatEstCeluiDuRecord`).
+	br.etatIllisible = false
 	if t.TypeIndex == bipedDefaultStateTypeIndex {
 		// VALIDÉ BIT-EXACT en live (CE breakpoint sur FUN_140f44c38 : rep biped = 166 ou 198
 		// bits selon la donnée ; consumeBipedDefaultState consomme EXACTEMENT 198 sur le record
@@ -123,13 +133,18 @@ func TraverseEntity(br *Lecteur, reg *Registry, defaultStateBits int) EntityTrac
 	} else if t.TypeIndex == ProjectileTypeIndex && br.p.Grammaire.DeserEtatParArchetype {
 		// Le projectile : `FUN_1408efb58` depend du cinquieme argument, que le lecteur de record NEW
 		// pose a 1 (default_state_ti41.go) ; la marche d image-cle garde son cadre.
-		consumeDefaultStateTI41(br, true)
+		consumeDefaultStateTI41(br)
 	} else if t.TypeIndex == archetypeProprieteGeree && br.p.Grammaire.DeserEtatParArchetype {
 		consumeDefaultStateTI13RecordNeuf(br) // EXCEPTION DATEE (lot J6-bis) : default_state_ti13_neuf.go
 	} else if fn, ok := defaultStateDeserByTI[t.TypeIndex]; ok && br.p.Grammaire.DeserEtatParArchetype {
 		fn(br) // deser vtable[0x60] porté bit-exact (cf. default_state_arch.go)
 	} else {
 		br.Skip(defaultStateBits) // fallback : stub 0-bit (défaut) ou largeur globale de calibration
+	}
+	if br.etatIllisible {
+		// `FUN_1408f1aa4` ne lit pas le corps d un record dont l etat echoue (etat_de_creation.go).
+		t.EtatIllisible, t.DesyncAt, t.EndBit = true, 0, br.BitPos()
+		return t
 	}
 	// t.Gate : R(1) réel AVANT le masque dans le record NEW (pré-boucle, cf FUN_1408f1aa4).
 	// N'existe PAS dans le path DELTA (decodeDelta appelle consumeMask seul). Le retirer casse

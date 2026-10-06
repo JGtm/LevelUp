@@ -127,7 +127,7 @@ var registreFilmdecMarche = []Repli{
 		Nom:  "repli_debut_de_liste_ferme_au_bit",
 		Fait: "le debut de la liste d evenements d un paquet delta que le localisateur strict ne localise pas, quand aucun candidat NEW de tete ne FERME le paquet",
 		Mecanisme: "le premier candidat d ou la marche complete ferme le paquet AU BIT PRES seulement (reste nul, une regle de l ecrivain contredite) est pris comme debut : " +
-			"les records sont lus et les NEW lies, le paquet reste non ferme (trou du tir continu) ; compte = listes dont le debut est pris a ce rang",
+			"les records sont lus sans modifier le monde (aucun NEW lie, aucun DEL applique), le paquet reste non ferme (trou du tir continu) ; compte = listes dont le debut est pris a ce rang",
 		// LECTURE NON PORTEE : le film ecrit la liste depuis un record NEW dont l en-tete est lu
 		// juste et le corps mal lu (masque au-dela de l archetype) ; la lecture de ce corps ferait
 		// fermer le paquet au premier rang.

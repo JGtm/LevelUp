@@ -206,6 +206,33 @@ describe('NavL1', () => {
     ).toBeTruthy()
   })
 
+  // ─── Onglet Tendances (2026-10-05) : 6e onglet, dernier, sans porte de capacité propre.
+  it('expose Tendances en DERNIER dans la dropdown Ascension, apres Tactique', () => {
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+
+    const tactique = screen.getByRole('menuitem', { name: 'Tactique' })
+    const tendances = screen.getByRole('menuitem', { name: 'Tendances' })
+    expect(tendances).toHaveAttribute(
+      'href',
+      '/t/halo_infinite/players/test-player/ascension/tendances',
+    )
+    expect(
+      tactique.compareDocumentPosition(tendances) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('garde Tendances pour un titre sans capability replay', () => {
+    setPartialTitle(['matchmaking', 'lusr'])
+
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+
+    expect(screen.getByRole('menuitem', { name: 'Tendances' })).toBeInTheDocument()
+  })
+
   it('masque Tactique pour un titre sans capability replay, sans masquer Ascension', () => {
     setPartialTitle(['matchmaking', 'lusr'])
 

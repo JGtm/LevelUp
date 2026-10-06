@@ -49,6 +49,8 @@ type compositionLue struct {
 	roster []domain.SquadMatchRow
 	// selectedXUIDs : les xuids des coéquipiers résolus (collectSelectedXUIDs de GetPage).
 	selectedXUIDs []string
+	// selectedGamertags : le gamertag demandé de chaque coéquipier de selectedXUIDs (même indice).
+	selectedGamertags []string
 }
 
 // filtreDeComposition : le roster après l'option composition exacte, et ce qu'il faut pour
@@ -140,6 +142,7 @@ func (s *TeammatesService) lireComposition(
 		sets = append(sets, rows)
 		if xuid != "" {
 			compo.selectedXUIDs = append(compo.selectedXUIDs, xuid)
+			compo.selectedGamertags = append(compo.selectedGamertags, gt)
 		}
 	}
 	if err := ctx.Err(); err != nil {
@@ -196,21 +199,33 @@ func (s *TeammatesService) appliquerCompositionExacte(
 	if !exact || len(compo.selectedXUIDs) == 0 {
 		return f, nil
 	}
+	_, teamByMatch, err := s.lireEquipeAlliee(ctx, playerXUID, collectMatchIDs(compo.roster))
+	if err != nil {
+		return filtreDeComposition{}, fmt.Errorf("TeammatesService: equipe alliee (composition exacte): %w", err)
+	}
+	return s.filtrerCompositionExacte(ctx, playerXUID, compo, teamByMatch), nil
+}
+
+// filtrerCompositionExacte applique le filtre de composition exacte aux camps alliés déjà
+// lus (teamByMatch, index de lireEquipeAlliee) : l'extraPool (top coéquipiers et amis, hors
+// composition et hors joueur principal) puis filterExactComposition. teamByMatch nil
+// (aucune équipe lue) : roster intact, aucun écart. Partagée par la lecture légère des
+// sessions et par la page Tendances, qui lit l'équipe une seule fois.
+func (s *TeammatesService) filtrerCompositionExacte(
+	ctx context.Context, playerXUID string, compo compositionLue, teamByMatch map[string]map[string]struct{},
+) filtreDeComposition {
+	f := filtreDeComposition{kept: compo.roster}
 	var friendGTs []string
 	if s.friendGamertags != nil {
 		friendGTs = s.friendGamertags(ctx)
 	}
 	f.extraPool = buildExtraPoolXUIDs(compo.topRows, resolveFriendXUIDs(friendGTs, compo.topRows), compo.selectedXUIDs, playerXUID)
-	_, teamByMatch, err := s.lireEquipeAlliee(ctx, playerXUID, collectMatchIDs(compo.roster))
-	if err != nil {
-		return filtreDeComposition{}, fmt.Errorf("TeammatesService: equipe alliee (composition exacte): %w", err)
-	}
 	if teamByMatch == nil {
-		return f, nil
+		return f
 	}
 	f.teamByMatch = teamByMatch
 	f.kept, f.excluded = filterExactComposition(compo.roster, f.teamByMatch, f.extraPool, compo.selectedXUIDs)
-	return f, nil
+	return f
 }
 
 // sessionsEscouadeDuPrincipal : sans coéquipier, les sessions escouade du joueur principal
