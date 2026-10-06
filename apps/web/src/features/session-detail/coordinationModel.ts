@@ -6,7 +6,7 @@
  * RÉGULARITÉ match par match (`UsageRegularityBand`) — composants partagés, aucun graphe neuf.
  *
  * NORMALISATION (le point de D22-6, à ne pas relâcher) :
- *  - « on me prépare » se rapporte à MES FRAGS, « ma part des appuis » aux APPUIS DU CAMP :
+ *  - « frags appuyés » se rapporte aux FRAGS DU JOUEUR, « part des appuis de l’équipe » aux APPUIS DE L’ÉQUIPE :
  *    deux dénominateurs différents, que mélanger donnerait un nombre sans sens ;
  *  - la PARITÉ est `parity_pct` = 1/n avec n l'effectif du camp DU MATCH (R1), jamais 1/4.
  *
@@ -31,7 +31,7 @@ const BAND_EPSILON_PT = 1
  * Une jauge de couverture : sa valeur, son repère, ses textes.
  *
  * `repere` est LE TRAIT de la jauge (`parityPct`), et il dit DEUX choses selon la grandeur :
- * la PARITÉ 1/n pour « ma part des appuis », l'HABITUEL (la même mesure sur la période de
+ * la PARITÉ 1/n pour « part des appuis de l’équipe », l'HABITUEL (la même mesure sur la période de
  * référence, `habituel_pct`, lot S) pour « on me prépare », qui ne se compare à aucune part
  * équitable. Le trait est le même ; ce qui
  * change est ce que l'infobulle en dit — `usuel` nomme le repère quand c'est un habituel.
@@ -78,7 +78,7 @@ function gaugeFromCouverture(
   }
 }
 
-/** Les deux lignes de la carte « Appui reçu » : « on me prépare », « ma part des appuis ». */
+/** Les deux lignes de la carte « Appui reçu » : « frags appuyés », « part des appuis de l’équipe ». */
 export function buildAppuiGaugeRows(
   block: CoordinationBlock,
   t: CoordinationText,
@@ -91,7 +91,7 @@ export function buildAppuiGaugeRows(
       key: 'appui',
       label: t.cardAppui,
       gauges: [
-        // « On me prépare » ne se compare à aucune parité : son repère est l'HABITUEL de la
+        // « Frags appuyés » ne se compare à aucune parité : son repère est l'HABITUEL de la
         // période de référence, quand le contrat le sert (lot S).
         gaugeFromCouverture('prepared', block.appui.on_me_prepare, { pct: usual, usuel: true }, t, locale),
         gaugeFromCouverture('share', block.appui.ma_part_des_appuis, { pct: parity }, t, locale),

@@ -202,7 +202,7 @@ export function sessionPlayerName(col: SessionColumnBlocks, fallback: string): s
  *   - A : des frags par classe ; B : au moins un outil NOMMÉ (« Non attribué » seul ne se dessine
  *     pas en vue compacte, la carte ne s'ouvre donc nulle part) ; B' : la précision par arme native ;
  *   - C, D : des prises de ressource ; E : au moins une ligne lue au film ; F : au moins une prise de
- *     mon camp ; G, H : leurs lignes ; I : au moins une vie rangée ; J, K : un match à objectif ;
+ *     l’équipe ; G, H : leurs lignes ; I : au moins une vie rangée ; J, K : un match à objectif ;
  *   - L : au moins une famille d'équipement tenue.
  */
 export function sessionCardsPresence(col: SessionColumnBlocks, m: SessionEmpriseModels): SessionCardsPresence {

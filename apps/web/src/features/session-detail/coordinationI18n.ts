@@ -8,7 +8,7 @@
  * page (titres de section, tableau des matchs, comparaison).
  *
  * D22-VERBOSITÉ (LOI) : AUCUNE phrase de lecteur. Les libellés sont factuels et tactiques
- * (« On me prépare », « Ma part des appuis ») ; toute l'explication tient dans l'infobulle
+ * (« Frags appuyés », « Part des appuis de l’équipe ») ; toute l'explication tient dans l'infobulle
  * (i) du titre de carte, en TROIS phrases au plus. Ne pas re-déverser de méthode sous les
  * graphes : c'est exactement ce que D22 retire du reste de l'app.
  */
@@ -72,14 +72,15 @@ export interface CoordinationText {
 export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
   fr: {
     cardAppui: 'Appui reçu',
-    gaugePrepared: 'On me prépare',
-    gaugeAssistShare: 'Ma part des appuis',
-    bandAppui: 'Ma part des appuis, match par match',
+    gaugePrepared: 'Frags appuyés',
+    gaugeAssistShare: 'Part des appuis de l’équipe',
+    bandAppui: 'Part des appuis de l’équipe, par match',
     infoAppui1:
-      '« On me prépare » se rapporte à mes frags ; « ma part des appuis » aux appuis distribués dans mon camp.',
+      'Frags appuyés : frags du joueur ayant reçu une assistance, sur ses frags ; part des appuis de l’équipe : ' +
+      'assistances reçues par le joueur, sur toutes celles de l’équipe.',
     infoAppui2:
       'Un appui dont l’auteur n’est pas résolu par le film n’entre dans aucun des deux dénominateurs.',
-    infoAppui3: 'La parité vaut 1/n, n étant l’effectif de mon camp sur le match.',
+    infoAppui3: 'Parité : 1/n, n étant l’effectif de l’équipe sur le match.',
 
     lowSample: 'échantillon faible',
     coverageMatchesFmt: (m, t) => `${m} matchs mesurés sur ${t}`,
@@ -107,21 +108,22 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeCoverageFmt: (m, t) => `${m} frags mesurés sur ${t}`,
     rangeLowSample: (s) => `point creux : moins de ${s} frags mesurés`,
     infoRange1:
-      'Chaque point est un match de ma période : l’écart entre ma médiane de frag et celle du lobby.',
+      'Chaque point est un match de la période : écart entre la médiane de frag du joueur et celle du lobby.',
     infoRange2:
-      'Les bandes sont mes rôles sur la période ; le fond marque les matchs de cette session.',
+      'Bandes : rôles du joueur sur la période ; fond : matchs de cette session.',
     infoRange3: (s) => `Sous ${s} frags mesurés le point reste creux : la médiane est du bruit.`,
     rangeEmpty: 'Aucun frag mesuré sur les matchs de cette session.',
   },
   en: {
     cardAppui: 'Support received',
-    gaugePrepared: 'Set up for me',
-    gaugeAssistShare: 'My share of assists',
-    bandAppui: 'My share of assists, match by match',
+    gaugePrepared: 'Assisted kills',
+    gaugeAssistShare: 'Share of the team’s assists',
+    bandAppui: 'Share of the team’s assists, by match',
     infoAppui1:
-      '"Set up for me" is measured against my kills; "my share of assists" against the assists dealt inside my team.',
+      'Assisted kills: the player’s kills that received an assist, over the player’s kills; share of the team’s ' +
+      'assists: assists received by the player, over all of the team’s.',
     infoAppui2: 'An assist whose author the film cannot resolve enters neither denominator.',
-    infoAppui3: 'Parity is 1/n, n being my team size on that match.',
+    infoAppui3: 'Fair share: 1/n, n being the team size on that match.',
 
     lowSample: 'low sample',
     coverageMatchesFmt: (m, t) => `${m} of ${t} matches measured`,
@@ -149,8 +151,8 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeCoverageFmt: (m, t) => `${m} of ${t} kills measured`,
     rangeLowSample: (s) => `hollow dot: fewer than ${s} measured kills`,
     infoRange1:
-      'Each dot is one match of my period: the gap between my kill median and the lobby median.',
-    infoRange2: 'The bands are my roles over the period; the shading marks this session’s matches.',
+      'Each dot is one match of the period: the gap between the player’s kill median and the lobby median.',
+    infoRange2: 'Bands: the player’s roles over the period; shading: this session’s matches.',
     infoRange3: (s) => `Below ${s} measured kills the dot stays hollow: the median is noise.`,
     rangeEmpty: 'No measured kill across the matches of this session.',
   },

@@ -32,7 +32,7 @@ const MIN_TRACK_PCT = 2
 
 /**
  * Vue compacte du tiroir de comparaison de Sessions (maquette `renderMineCompact`) : une barre par
- * RESSOURCE, ma part et celle du reste de mon camp en pourcentage (comptes au survol), une part qui
+ * RESSOURCE, la part du joueur et celle du reste de l’équipe en pourcentage (comptes au survol), une part qui
  * ne tient pas dans son segment sur la ligne de repli au-dessus, bonus perdus en pourcentage ;
  * `resourceSub` est le sous-libellé de chaque ressource.
  */
@@ -161,7 +161,7 @@ function MineLine({
   )
 }
 
-/** Vue compacte : une ressource, ma part et celle du reste de mon camp en pourcentage, pleine largeur. */
+/** Vue compacte : une ressource, la part du joueur et celle du reste de l’équipe en pourcentage, pleine largeur. */
 function MineResourceLine({ row, label, sub, hidden, player, ut }: { row: MineResource; label: string; sub: string; hidden: ReadonlySet<string>; player: string; ut: UsagesCardsText }) {
   const key = row.resource
   const rest = row.camp - row.me

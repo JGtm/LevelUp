@@ -15,7 +15,7 @@ import { USAGES_TEXT } from './usagesText'
 const COMPACT = {
   sub: (n: number) => `${n} objets`,
   unmeasured: 'Non mesuré',
-  restUsed: (pct: string) => `reste de mon camp : ${pct} servis`,
+  restUsed: (pct: string) => `reste de l’équipe : ${pct} servis`,
 }
 
 function renderCompact() {
@@ -32,7 +32,7 @@ describe('EquipmentOutcomesCard — compact', () => {
   it('barre fine du reste gardée, sa ligne réduite à la part de servis', () => {
     renderCompact()
     expect(screen.getByTestId('usages-equip-rest-wall-used')).toBeTruthy()
-    expect(screen.getByTestId('usages-equip-restline-wall').textContent).toBe('reste de mon camp : 48 % servis')
+    expect(screen.getByTestId('usages-equip-restline-wall').textContent).toBe('reste de l’équipe : 48 % servis')
   })
 
   it('sous-libellé « n objets » sans les prises ; non mesurée : « Non mesuré » court', () => {

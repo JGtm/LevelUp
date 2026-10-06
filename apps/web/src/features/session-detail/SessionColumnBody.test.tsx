@@ -6,7 +6,7 @@
  * CE QUE CE FICHIER FIXE :
  *   1. QUATRE titres de groupe, dans l'ORDRE — « Bilan », « Match par match », « Frags et usages »,
  *      « Détail des matchs » ; sous « Frags et usages », les intertitres des sous-groupes dans l'ordre
- *      de la maquette, « Ressources de la soirée » avec sa couverture (pleine page seulement).
+ *      de la maquette, « Ressources » avec sa couverture (pleine page seulement).
  *   2. Les cartes A à L dans l'ordre de la maquette, chacune se retirant seule sans donnée ; un
  *      sous-groupe sans carte n'a pas d'intertitre ; sans aucune carte, « Frags et usages » disparaît.
  *   3. Halo 5 (sans film) : A, B, B' et G seulement, aucun intertitre de ressources.
@@ -91,9 +91,9 @@ describe('SessionColumnBody — titres de groupe et intertitres', () => {
     const { container } = monter(session2209())
     expect(titresRendus()).toEqual([...SECTIONS])
     expect(intertitres(container)).toEqual([
-      'Ressources de la soirée6 matchs filmés sur 7 · frags de la feuille de match sur les 7',
-      'Prendre, et s’en servir',
-      'Près d’un coéquipier ou seul',
+      'Ressources6 matchs filmés sur 7 · frags de la feuille de match sur les 7',
+      'Rendement des ressources',
+      'Isolement',
       'Objectif',
     ])
   })
@@ -129,7 +129,7 @@ describe('SessionColumnBody — chaque carte se retire seule', () => {
     expect(cartes(container)).not.toContain('objective_balance')
     expect(cartes(container)).not.toContain('objective_sheet')
     expect(intertitres(container)).not.toContain('Objectif')
-    // Aucune prise de ressource : ni contrôle, ni fil, ni « Mes prises ».
+    // Aucune prise de ressource : ni contrôle, ni fil, ni « Contribution aux prises ».
     expect(cartes(container)).not.toContain('control')
     expect(cartes(container)).not.toContain('mine')
   })
@@ -148,7 +148,7 @@ describe('SessionColumnBody — chaque carte se retire seule', () => {
     })
     expect(cartes(container)).toEqual(['frag_bar', 'tools', 'production'])
     expect(screen.getByText('Précision par arme')).toBeInTheDocument()
-    expect(intertitres(container)).toEqual(['Prendre, et s’en servir'])
+    expect(intertitres(container)).toEqual(['Rendement des ressources'])
   })
 })
 
@@ -188,11 +188,12 @@ describe('SessionColumnBody — anglais', () => {
     useAppShellStore.setState({ locale: 'en' })
     const { container } = monter(session2209())
     expect(intertitres(container)).toEqual([
-      'The evening’s resources6 filmed matches of 7 · kills from the match sheet over all 7',
-      'Taking, and using',
-      'Near a teammate or alone',
+      'Resources6 filmed matches of 7 · kills from the match sheet over all 7',
+      'Resource efficiency',
+      'Isolation',
       'Objective',
     ])
-    expect(screen.getByText('My lives: near a teammate or alone')).toBeInTheDocument()
+    // L'intertitre et le titre de la carte portent le même nom (Séries temporelles).
+    expect(screen.getAllByText('Isolation')).toHaveLength(2)
   })
 })

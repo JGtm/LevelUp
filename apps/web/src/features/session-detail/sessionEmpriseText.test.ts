@@ -1,9 +1,15 @@
 /**
- * sessionEmpriseText.test.ts — les textes des cartes « Frags et usages » de Sessions : titres, ⓘ et
- * légendes FR de la maquette (`make*`, pleine page `cp = false` et comparaison `cp = true`), mot pour
- * mot ; aucun « Notre camp », aucun « périmètre » (D12, V6).
+ * sessionEmpriseText.test.ts — les textes des cartes « Frags et usages » de Sessions : les cartes de
+ * l'Escouade et des Séries temporelles gardent leurs titres et leurs aides ; seules les aides propres à
+ * la page (cartes de frags, « Contribution aux prises » portée sur la soirée, vue compacte en parts)
+ * sont écrites ici. Aucune portée « du périmètre » (V6). L'absence de personne est tenue par
+ * `timeseries/usages/textesSansPersonne.test.ts`.
  */
 import { describe, expect, it } from 'vitest'
+
+import { EMPRISE_TEXT } from '@/features/squad/emprise/empriseStrings'
+import { OBJECTIF_TEXT } from '@/features/squad/objectif/objectifStrings'
+import { USAGES_TEXT } from '@/features/timeseries/usages/usagesText'
 
 import { SESSION_CARD_TEXT } from './sessionEmpriseText'
 
@@ -24,93 +30,76 @@ function strings(o: unknown, out: string[] = [], depth = 0): string[] {
   return out
 }
 
-describe('SESSION_CARD_TEXT — pleine page (maquette, cp = false)', () => {
-  it('A et B : titres et ⓘ', () => {
+describe('SESSION_CARD_TEXT — pleine page', () => {
+  it('A et B : titres de l’Escouade, aides propres à la page', () => {
     expect(fr.full.squad.performanceCharts.fragBreakdownTitle).toBe('Répartition des frags')
     expect(fr.full.squad.performanceCharts.fragBreakdownInfo).toBe(
-      'Mes frags de la soirée, par classe d’arme. Le nombre écrit dans un segment est son compte de frags ; le total est au bout de la barre.',
+      'Frags du joueur sur la soirée, par classe d’arme ; dans chaque segment, son compte de frags, le total au bout de la barre.',
     )
     expect(fr.full.squad.weaponKills.title).toBe('Outils de destruction')
     expect(fr.full.squad.weaponKills.info).toBe(
-      'Mes frags, arme par arme, sur la soirée. La pastille devant l’arme est la couleur de sa classe dans la Répartition des frags.',
+      'Frags du joueur sur la soirée, arme par arme ; pastille : couleur de la classe de l’arme dans la Répartition des frags.',
     )
   })
 
-  it('C, D, E : titres, ⓘ et légendes', () => {
+  it('C à H : l’Emprise de l’Escouade, sans variante', () => {
+    for (const locale of ['fr', 'en'] as const) {
+      expect(SESSION_CARD_TEXT[locale].full.emprise).toBe(EMPRISE_TEXT[locale])
+    }
     const e = fr.full.emprise
-    expect(e.control.title).toBe('Contrôle des ressources')
-    expect(e.control.info).toBe(
-      'La part de chaque ressource prise par mon camp face à l’adversaire, sur les matchs de la soirée. Les nombres sont des comptes. Le trait orange marque 50 %, autant que l’adversaire. Les bonus sans ramasseur connu ne comptent dans aucun camp.',
-    )
-    expect([e.ourSide, e.opponent, e.parity]).toEqual(['Mon camp', 'Adversaire', '50 % : autant que l’adversaire'])
-    expect(e.fil.title).toBe('Contrôle des ressources au fil de la session')
-    expect(e.fil.info).toBe(
-      'Ma part des prises de chaque ressource, cumulée depuis le premier match de la soirée. Les petits points sont la part de chaque match, leur taille son volume. Un match sans la ressource, ou sans film, laisse la courbe filer jusqu’au suivant.',
-    )
-    expect(e.fil.winLoss).toBe('Victoire, défaite')
-    expect(e.grid.title).toBe('Contrôle des ressources, match par match')
-    expect(e.grid.info).toBe(
-      'Une colonne par match de la soirée, dans l’ordre, avec sa carte, son mode et son résultat. La couleur dit si mon camp a pris plus ou moins que l’adversaire, et sature à trente points d’écart. Le survol d’une case détaille qui l’a prise chez moi.',
-    )
-    expect([e.grid.more, e.grid.less, e.grid.nothing, e.grid.noFilm]).toEqual(['Plus que l’adversaire', 'Moins', 'Rien à prendre', 'Sans film'])
+    expect([e.control.title, e.fil.title, e.grid.title]).toEqual([
+      'Contrôle des ressources',
+      'Contrôle des ressources, cumul par match',
+      'Contrôle des ressources, par match',
+    ])
+    expect([e.production.title, e.yield.title]).toEqual(['Frags par ressource', 'Rendement par ressource'])
+    expect([e.ourSide, e.opponent]).toEqual(['Équipe', 'Adversaire'])
   })
 
-  it('F, G, H, I', () => {
-    expect(fr.full.cards.mine.title).toBe('Mes prises dans mon camp')
+  it('F, I, K, L : les cartes des Séries temporelles ; F porte sur la soirée', () => {
+    for (const locale of ['fr', 'en'] as const) {
+      const v = SESSION_CARD_TEXT[locale].full
+      const u = USAGES_TEXT[locale]
+      expect(v.cards.lives).toBe(u.cards.lives)
+      expect(v.cards.equipment).toBe(u.cards.equipment)
+      expect(v.sheet).toBe(u.sheet)
+      expect({ ...v.cards.mine, info: '' }).toEqual({ ...u.cards.mine, info: '' })
+    }
+    expect([fr.full.cards.mine.title, fr.full.cards.lives.title, fr.full.sheet.title, fr.full.cards.equipment.title]).toEqual([
+      'Contribution aux prises',
+      'Isolement',
+      'Part du joueur à l’objectif',
+      'Usage d’équipements',
+    ])
     expect(fr.full.cards.mine.info).toBe(
-      'Chaque objet pris par mon camp : ma part et celle du reste du camp, en comptes, triés par volume de mon camp. Une répartition, pas un classement. Les bonus perdus sont ceux gardés sans être activés ou lâchés.',
-    )
-    expect([fr.full.cards.mine.me, fr.full.cards.mine.rest]).toEqual(['Moi', 'Reste de mon camp'])
-    expect(fr.full.emprise.production.title).toBe('Frags obtenus avec les ressources')
-    expect(fr.full.emprise.production.info).toBe(
-      'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine ce qui les a permis (temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un véhicule), toutes deux sur les matchs où ce qui les a permis est mesuré. Si la coupure de la barre épaisse est à gauche de celle de la fine, on a moins produit qu’on n’a eu.',
-    )
-    expect(fr.full.emprise.production.thinLegend).toBe('Barre fine : temps d’effet, prises ou temps à bord')
-    expect(fr.full.emprise.yield.title).toBe('Rendement face à l’adversaire')
-    expect(fr.full.emprise.yield.info).toBe(
-      'Combien mon camp produit de plus ou de moins que l’adversaire pour la même exposition : par minute d’effet d’un bonus, par prise d’arme spéciale, par minute à bord d’un véhicule. Zéro veut dire autant que lui. Les deux rendements bruts sont écrits de l’autre côté du zéro.',
-    )
-    expect([fr.full.emprise.yield.more, fr.full.emprise.yield.less]).toEqual(['Plus productifs que l’adversaire', 'Moins'])
-    expect(fr.full.cards.lives.title).toBe('Mes vies : près d’un coéquipier ou seul')
-    expect(fr.full.cards.lives.info(3, 0, 0)).toBe(
-      'Chaque vie est rangée selon la distance au coéquipier le plus proche au moment de la mort : à moins d’une portée de radar, ou au-delà. La barre épaisse partage mes vies, la barre fine les frags obtenus pendant ces vies. Les vies terminées sans aucun coéquipier situé sont écartées (3 ici).',
+      'Objets pris par l’équipe sur les matchs filmés de la soirée : part du joueur et du reste de l’équipe, en comptes, par volume décroissant. Bonus perdus : gardés sans être activés, ou lâchés.',
     )
   })
 
-  it('J, K, L', () => {
-    expect(fr.full.objectif.balance.title).toBe('Rapport de force par famille de mode')
-    expect(fr.full.objectif.balance.info).toBe(
-      'Pour chaque action de l’objectif, ce que mon camp a fait face à l’adversaire, famille par famille. Le trait orange marque 50 % : autant que l’adversaire. Les prises nettes de drapeau (lues dans le film) ne comptent pas les jonglages.',
-    )
-    expect(fr.full.sheet.title).toBe('Ma part à l’objectif')
-    expect(fr.full.sheet.info).toBe(
-      'La fiche du joueur affiché : ce qu’il a fait à l’objectif, action par action. La barre est sa part du total de son camp ; un zéro reste affiché, atténué. Le rôle dominant est celui où il pèse le plus dans son camp.',
-    )
-    expect(fr.full.cards.equipment.title).toBe('Équipement pris, et ce que j’en ai fait')
-    expect(fr.full.cards.equipment.info).toBe(
-      'Pour chaque famille, ce que sont devenus mes objets : servis (posé pour le mur, charge consommée pour les autres), gardés sans servir, lâchés. Les comptes portent sur tout l’équipement tenu, celui de réapparition compris ; le sous-libellé dit combien en ont été pris sur la carte. La barre fine donne les mêmes trois parts pour le reste de mon camp. Le répulseur n’a pas de ligne : aucun canal ne mesure son usage.',
-    )
+  it('J : l’Objectif de l’Escouade, sans variante', () => {
+    expect(fr.full.objectif).toBe(OBJECTIF_TEXT.fr)
+    expect(fr.full.objectif.balance.title).toBe('Rapport de force')
   })
 
-  it('couverture de l’intertitre « Ressources de la soirée »', () => {
+  it('couverture de l’intertitre « Ressources »', () => {
     expect(fr.full.coverage(6, 7)).toBe('6 matchs filmés sur 7 · frags de la feuille de match sur les 7')
   })
 })
 
-describe('SESSION_CARD_TEXT — comparaison (maquette, cp = true)', () => {
-  it('ⓘ propres à la vue compacte : A, B, C, E, F, J, K, L', () => {
+describe('SESSION_CARD_TEXT — comparaison (vue compacte)', () => {
+  it('aides propres à la vue compacte : A, B, C, E, F, J, K, L', () => {
     const c = fr.compact
     expect(c.squad.performanceCharts.fragBreakdownInfo).toBe(
-      'Mes frags de la soirée, par classe d’arme. Chaque segment porte sa part de mes frags ; le compte est au survol.',
+      'Frags du joueur sur la soirée, par classe d’arme ; dans chaque segment, sa part des frags, compte au survol.',
     )
     expect(c.squad.weaponKills.info).toBe(
-      'Mes six outils les plus meurtriers de la soirée, en part de mes frags. La pastille devant l’arme est la couleur de sa classe ; le compte est au survol.',
+      'Les six armes les plus meurtrières du joueur sur la soirée, en part des frags du joueur ; pastille : couleur de la classe, compte au survol.',
     )
     expect(c.emprise.control.info).toBe(
-      'La part de chaque ressource prise par mon camp face à l’adversaire, sur les matchs de la soirée. Les segments portent les parts ; les comptes sont au survol. Le trait orange marque 50 %, autant que l’adversaire. Les bonus sans ramasseur connu ne comptent dans aucun camp.',
+      'Prises de chaque ressource par l’équipe et par l’adversaire, en parts (comptes au survol), sur les matchs filmés de la soirée ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucune équipe.',
     )
     expect(c.emprise.grid.info).toBe(
-      'Une colonne par match de la soirée. Chaque case est la part de mon camp dans la ressource (plus que l’adversaire en vert, moins en rouge, saturation à trente points d’écart) ; les comptes et qui l’a prise chez moi sont au survol.',
+      'Une colonne par match de la soirée ; case : part de l’équipe dans la ressource (vert au-dessus de l’adversaire, rouge en dessous, saturée à trente points d’écart), comptes et preneurs au survol.',
     )
     expect([c.emprise.grid.more, c.emprise.grid.less, c.emprise.grid.nothing, c.emprise.grid.noFilm]).toEqual([
       'Plus de 50 %',
@@ -119,54 +108,55 @@ describe('SESSION_CARD_TEXT — comparaison (maquette, cp = true)', () => {
       'Sans film, non mesuré',
     ])
     expect(c.cards.mine.info).toBe(
-      'Pour chaque ressource, ma part des prises de mon camp et celle du reste du camp, en pourcentage ; les comptes sont au survol. Les bonus perdus sont ceux gardés sans être activés ou lâchés, en part des bonus pris par chaque camp.',
+      'Prises de l’équipe par ressource sur les matchs filmés de la soirée : part du joueur et du reste de l’équipe, en pourcentage (comptes au survol). Bonus perdus : gardés sans être activés, ou lâchés, en part des bonus pris par chaque équipe.',
     )
     expect(c.objectif.balance.info).toBe(
-      'Pour chaque rôle de l’objectif (somme de ses actions ; Tenir en durée), la part de mon camp face à l’adversaire, famille par famille ; les comptes sont au survol. Le trait orange marque 50 % : autant que l’adversaire. Les prises nettes de drapeau (lues dans le film) ne comptent pas les jonglages.',
+      'Part de l’équipe face à l’adversaire pour chaque rôle de l’objectif (somme de ses actions ; Tenir en durée), par famille de mode, comptes au survol ; trait orange : 50 %.',
     )
     expect(c.sheet.info).toBe(
-      'La fiche du joueur affiché : ce qu’il a fait à l’objectif, action par action. La barre est sa part du total de son camp, et le nombre à droite aussi (compte au survol) ; un zéro reste affiché, atténué. Le rôle dominant est celui où il pèse le plus dans son camp.',
+      'Actions de l’objectif du joueur, rôle par rôle ; barre et nombre : part du total de l’équipe (compte au survol), un zéro reste affiché, atténué. Rôle dominant : celui où la part du joueur dans l’équipe est la plus forte.',
     )
     expect(c.sheet.pctFmt(31.8)).toBe('32 %')
     expect(c.cards.equipment.info).toBe(
-      'Pour chaque famille, ce que sont devenus mes objets : servis (posé pour le mur, charge consommée pour les autres), gardés sans servir, lâchés, en part de mes objets (comptes au survol). Les comptes portent sur tout l’équipement tenu, celui de réapparition compris ; le sous-libellé dit combien en ont été pris sur la carte. La barre fine donne les mêmes trois parts pour le reste de mon camp. Le répulseur n’a pas de ligne : aucun canal ne mesure son usage.',
+      'Équipement tenu par le joueur (réapparition comprise), par famille : servi (mur posé, charge consommée), gardé sans servir, lâché, en part des objets du joueur (comptes au survol) ; barre fine : reste de l’équipe. Seules les familles tenues dans le lobby sont listées ; le répulseur, sans mesure d’usage, n’a pas de ligne.',
     )
   })
 
-  it('D, G, H, I : mêmes ⓘ que la pleine page', () => {
-    expect(fr.compact.emprise.fil.info).toBe(fr.full.emprise.fil.info)
-    expect(fr.compact.emprise.production.info).toBe(fr.full.emprise.production.info)
-    expect(fr.compact.emprise.yield.info).toBe(fr.full.emprise.yield.info)
-    expect(fr.compact.cards.lives.info(3, 0, 0)).toBe(fr.full.cards.lives.info(3, 0, 0))
+  it('D, G, H, I : mêmes aides que la pleine page ; titres inchangés', () => {
+    expect(fr.compact.emprise.fil).toBe(fr.full.emprise.fil)
+    expect(fr.compact.emprise.production).toBe(fr.full.emprise.production)
+    expect(fr.compact.emprise.yield).toBe(fr.full.emprise.yield)
+    expect(fr.compact.cards.lives).toBe(fr.full.cards.lives)
+    expect(fr.compact.emprise.control.title).toBe(fr.full.emprise.control.title)
+    expect(fr.compact.sheet.title).toBe(fr.full.sheet.title)
   })
 
-  it('formateurs compacts : sous-libellés et lignes de la maquette', () => {
+  it('formateurs compacts : sous-libellés et lignes', () => {
     const k = SESSION_CARD_TEXT.fr.compactCards
     expect(k.frag.totalSub(65)).toBe('65 frags')
     expect(k.frag.pctFmt(33.8)).toBe('34 %')
     expect(k.production.exposureLine('temps d’effet', '58 %')).toBe('temps d’effet : 58 %')
-    expect(k.mine.resourceSub).toBe('prises de mon camp')
+    expect(k.mine.resourceSub).toBe('prises de l’équipe')
     expect(k.equipment.sub(84)).toBe('84 objets')
     expect(k.equipment.sub(0)).toBe('0 objet')
-    expect(k.equipment.restUsed('48 %')).toBe('reste de mon camp : 48 % servis')
+    expect(k.equipment.restUsed('48 %')).toBe('reste de l’équipe : 48 % servis')
     expect(k.lives.killsLine('90 %', '0,7')).toBe('frags : 90 % · 0,7 par vie')
     expect(k.lives.killsLineAlone('0,2')).toBe('0,2 par vie')
   })
 })
 
-describe('SESSION_CARD_TEXT — vocabulaire de la page (V6)', () => {
-  it('aucun « Notre camp », aucun « périmètre » ; ni « Our side » ni « scope » en anglais', () => {
+describe('SESSION_CARD_TEXT — portée de la page (V6)', () => {
+  it('aucune portée « du périmètre » ; ni « in scope » ni « over the scope » en anglais', () => {
     // Les dictionnaires de l'Escouade portent toute leur page (fiches de prises, habitude…) : on lit ce
-    // que les cartes de Sessions écrivent — les parties de l'Emprise montées par C à H, et les deux ⓘ
-    // surchargées de A et B.
+    // que les cartes de Sessions écrivent.
     const ours = (v: typeof fr.full) => {
       const e = v.emprise
-      return [e.control, e.fil, e.production, e.yield, e.grid, e.ourSide, v.objectif.balance, v.objectif.ourSide, v.cards, v.sheet, v.squad.performanceCharts.fragBreakdownInfo, v.squad.weaponKills.info]
+      return [e.control, e.fil, e.production, e.yield, e.grid, v.objectif.balance, v.cards, v.sheet, v.squad.performanceCharts.fragBreakdownInfo, v.squad.weaponKills.info]
     }
     const frStrings = [...strings(ours(fr.full)), ...strings(ours(fr.compact))].join('\n')
-    expect(frStrings).not.toMatch(/Notre camp|notre camp|périmètre/)
+    expect(frStrings).not.toMatch(/(du|sur le) périmètre/i)
     const en = SESSION_CARD_TEXT.en
     const enStrings = [...strings(ours(en.full)), ...strings(ours(en.compact))].join('\n')
-    expect(enStrings).not.toMatch(/Our side|our side|\bscope\b/)
+    expect(enStrings).not.toMatch(/(in|over the) scope|scope total/i)
   })
 })

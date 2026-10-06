@@ -153,10 +153,10 @@ function cardRenderers(x: CardsContext): Record<keyof SessionCardsPresence, () =
           compact={compact}
         />
       ),
-    mine: () => m.mine && <MinePickupsCard mine={m.mine} itemName={x.objectName} t={t.emprise} ut={t.cards} compact={cc?.mine} />,
+    mine: () => m.mine && <MinePickupsCard mine={m.mine} itemName={x.objectName} player={x.player} t={t.emprise} ut={t.cards} compact={cc?.mine} />,
     production: () => <ProductionCard rows={m.production} t={t.emprise} compact={cc?.production} />,
     yield: () => <YieldCard rows={m.yieldRows} coverage={m.vehicleCoverage} t={t.emprise} />,
-    lives: () => m.lives && <LivesNearTeammateCard model={m.lives} ut={t.cards} compact={cc?.lives} />,
+    lives: () => m.lives && <LivesNearTeammateCard model={m.lives} player={x.player} ut={t.cards} compact={cc?.lives} />,
     objective_balance: () => (
       <ObjectiveBalanceCard families={m.balance} familyLabel={x.familyLabel} columns={x.columns} t={t.objectif} compact={compact} />
     ),
@@ -172,6 +172,6 @@ function cardRenderers(x: CardsContext): Record<keyof SessionCardsPresence, () =
           compact={compact}
         />
       ),
-    equipment: () => <EquipmentOutcomesCard rows={m.equipment} familyLabel={x.equipmentLabel} ut={t.cards} compact={cc?.equipment} />,
+    equipment: () => <EquipmentOutcomesCard rows={m.equipment} familyLabel={x.equipmentLabel} player={x.player} ut={t.cards} compact={cc?.equipment} />,
   }
 }

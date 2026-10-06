@@ -902,8 +902,48 @@ Journal S8 (2026-10-06) :
   (le lecteur cité est `squadagg.joindrePrisesNettes`, fenêtre par match), `coordination/no_naked_rate_test.go`
   (le bloc porte DEUX taux, `OnMePrepare` et `MaPartDesAppuis` ; plus de délai médian) : au présent.
 
-Suite, SUR SIGNAL du superviseur seulement : rebase sur la tête de `feat/v75` et alignement de
-`sessionEmpriseText.ts` + `session.toml` sur la sémantique validée des Séries temporelles (§8).
+### S9 — Rebase sur `feat/v75` et textes de Sessions alignés · moyen
+
+Signal du superviseur (2026-10-06) : rebase sur la tête de `feat/v75` (`be078e29d`), puis alignement
+des textes de Sessions sur la sémantique validée par le user le 2026-10-06 (noms de domaine courts,
+aucun mot de personne, « équipe » jamais « camp », termes retenus), garde `textesSansPersonne` élargie
+à `features/session-detail/` et à `session.toml`, gate, commit(s), push de `feat/sessions-emprise`.
+
+- [x] S9.1 Rebase sur `origin/feat/v75` : conflits résolus (cartes `timeseries/usages/`), `go build` et
+  typecheck repassés ; reprises après rebase (Tendances, `player`) dans un commit séparé.
+- [x] S9.2 Textes de Sessions : `sessionEmpriseText.ts`, `coordinationI18n.ts`, `session.toml`.
+- [x] S9.3 Garde élargie, vue rouge avant les textes, verte après ; mutations rouges.
+- [x] S9.4 Gate (tsc purgé, lint, champs, vitest, knip, couleurs, imports croisés, Go complet,
+  contrat inchangé).
+
+Journal S9 (2026-10-06) :
+- **Rebase** sur `be078e29d` (11 commits rejoués). Conflits : S3 (`EquipmentOutcomesCard.tsx`,
+  `LivesNearTeammateCard.tsx`, `MinePickupsCard.tsx` : `feat/v75` y ajoute la prop `player` (gamertag),
+  le lot la prop `compact` ; les deux gardées, la ligne compacte de « Contribution aux prises » reçoit
+  `player` pour l'infobulle `meTip(player, …)` ; tests compacts : `player="JGtm"`), S8
+  (`MinePickupsCard.tsx` : ligne de repli du lot + infobulle à gamertag de `feat/v75`). `.ai/thought_log.md`
+  fusionné sans conflit (3 121 entrées de `feat/v75` + 8 du lot = 3 129, vérifié).
+- **Reprises après rebase** (conflits sémantiques, sans marqueur) : la page Tendances de `feat/v75`
+  (`3267bd96e`) lit les rôles d'objectif (`sessionusage.ObjectiveRow`, `ObjectiveStatsRepo.LoadObjectiveRoleRows`,
+  interfaces `objectiveRoleRowsLoader` / `flagGrabsNetLoader`) que S5 avait supprimés faute de lecteur :
+  RESTAURÉS (type dans `sessionusage/objective_row.go`, repo et son test depuis `554457c31`, interfaces
+  dans `trends_service_sources.go`, commentaires au présent : le lecteur est `trends.ObjectiveSamples`) ;
+  sa fixture de test écrivait `TeamContext.LobbySize` (retiré en R6) : retirée. Sessions passe le gamertag
+  (`player`) aux trois cartes des Séries temporelles.
+- **Textes** : l'Emprise de Sessions prend celle de l'Escouade sans variante (portée « la soirée »,
+  grille par match), l'Objectif celui de l'Escouade, les cartes « Contribution aux prises », « Isolement »,
+  « Usage d'équipements » et la fiche « Part du joueur à l'objectif » celles des Séries temporelles. Seules
+  aides propres : les deux cartes de frags, « Contribution aux prises » portée sur la soirée (V6 : jamais
+  « du périmètre », même règle que l'Escouade face aux Séries temporelles), et la vue compacte en parts.
+  « Appui reçu » reprend les termes des Séries temporelles (« Frags appuyés », « Part des appuis de
+  l'équipe »). Intertitres : « Ressources », « Rendement des ressources », « Isolement ». Bouton « Matchs ».
+- **Garde** `timeseries/usages/textesSansPersonne.test.ts` : couvre `SESSION_CARD_TEXT` (du jeu de
+  l'Escouade, seules les deux cartes que Sessions lit), `COORDINATION_TEXT` et `session.toml` ; liste FR
+  élargie à « me », « je », « j’ » et « camp(s) » (règle « jamais camp »), verte sur les textes de
+  `feat/v75`. Vue ROUGE avant les textes (5 groupes), verte après ; mutations « reste du camp » et
+  « On me prépare » ROUGES.
+
+## 7. Reprise de session
 
 ## 7. Reprise de session
 
@@ -1030,6 +1070,12 @@ modèles neufs ont leur lecteur dans le lot.
   les lignes joueur pour lui seul. Hors de la liste R6 : non traité, signalé au superviseur.
 - (S8) `mapcatalog::TestAddOverlayEntryConcurrentNePerdPasDEntree` a échoué une fois sous la charge du
   lot de tests (8 cartes au lieu de 9), vert trois fois seul ; paquet non touché par le lot. Non traité.
+- (S9) La vue match écrit encore « Mes matchs » / « My matches » en dur (`match-view/MatchViewPage.tsx:146`
+  et `:177`, hors de Sessions) : non traité.
+- (S9) `sessionusage.ObjectiveRow.Family`, restauré avec le repo des rôles pour la page Tendances, n'a pas
+  de lecteur (`trends.ObjectiveSamples` ne lit que les rôles) : non traité (surface de `feat/v75`).
+- (S9) Incident d'exécution : une commande d'édition a commencé par un `python3 --version` tapé par erreur
+  (sortie jetée) ; aucun code Python exécuté, aucun effet sur l'arbre. Consigné comme celui de S5.
 
 ## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
 

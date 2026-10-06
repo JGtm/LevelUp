@@ -5,7 +5,7 @@
  *
  * Le graphe de l'Escouade (`SquadWeaponKillsChart` + `buildSquadToolRows`) sur le bloc
  * `weapon_tools` de la session (D6). Pleine page : tous les outils, le compte au bout. Vue compacte
- * (maquette `makeTools`, `cp`) : les six premiers, « Non attribué » exclu, la part de TOUS mes frags
+ * (maquette `makeTools`, `cp`) : les six premiers, « Non attribué » exclu, la part de TOUS les frags du joueur
  * au bout (dénominateur : la somme des lignes du serveur, reliquat compris — la feuille de match).
  */
 import { useMemo } from 'react'
