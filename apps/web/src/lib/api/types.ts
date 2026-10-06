@@ -1481,12 +1481,9 @@ export interface TeammatesPageResponse {
    */
   range_profiles?: MatchRangeBlock
   /**
-   * Bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) — la
-   * MATIÈRE des dix-neuf cartes des trois blocs (usages d'équipement, contrôle
-   * des armes spéciales, objectifs) : une ligne par joueur et par match, les
-   * deux camps. Publié par `TeammatesService.WithSquadFormes` sur le périmètre D2 de la
-   * page ; lu par les cartes d'objectif de Contributions (`equipment_usage` a quitté cette
-   * réponse au lot L5.4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : plus de lecteur).
+   * Bloc « formes retenues » — la MATIÈRE des cartes d'objectif : une feuille d'objectif par
+   * match à objectif, les deux camps. Publié par `TeammatesService.WithSquadFormes` sur le
+   * périmètre D2 de la page ; lu par les cartes d'objectif de Contributions.
    * Absent = périmètre sans match ; `available:false` avec raison machine pour un titre sans
    * `film.usage_summary`.
    */
@@ -2315,20 +2312,17 @@ export type SessionObjectiveRoleMetric = components['schemas']['SessionObjective
 export type SessionFlagGrabsNetBlock = components['schemas']['SessionFlagGrabsNetBlock']
 export type SessionObjectiveFamilyBlock = components['schemas']['SessionObjectiveFamilyBlock']
 
-// ─── Artefact « Les formes retenues » (2ec1b8eb, lot D2 du 2026-09-13) : la
-// matière des dix-neuf cartes de l'onglet Synergies. Contrat Go :
-// internal/domain/squad_formes.go. Le bloc ne porte AUCUN agrégat — les parts,
-// les parités et les étendues se calculent dans `features/squad/formes/model/`,
-// à l'endroit où elles s'affichent (quatre dénominateurs, six formes).
+// ─── Bloc « formes retenues » : la matière des cartes d'objectif (Escouade › Contributions,
+// Séries temporelles › Usages). Contrat Go : internal/domain/squad_formes.go. Le bloc ne porte
+// AUCUN agrégat — les parts se calculent dans `features/squad/objectif/` et
+// `features/squad/formes/model/objectives.ts`, à l'endroit où elles s'affichent.
 
 export type SquadFormesBlock = components['schemas']['SquadFormesBlock']
 /** Le rapport de force à l’objectif, soirée après soirée (lot L3, D6/D7). */
 export type SquadObjectiveHistory = components['schemas']['SquadObjectiveHistory']
 export type SquadObjectiveEvening = components['schemas']['SquadObjectiveEvening']
 export type SquadFormesMatch = components['schemas']['SquadFormesMatch']
-export type SquadFormesLobbyPlayer = components['schemas']['SquadFormesLobbyPlayer']
-export type SquadFormesWeapon = components['schemas']['SquadFormesWeapon']
-export type SquadFormesWeaponPad = components['schemas']['SquadFormesWeaponPad']
+
 export type SquadFormesObjective = components['schemas']['SquadFormesObjective']
 export type SquadFormesObjectiveColumn = components['schemas']['SquadFormesObjectiveColumn']
 export type SquadFormesObjectivePlayer = components['schemas']['SquadFormesObjectivePlayer']

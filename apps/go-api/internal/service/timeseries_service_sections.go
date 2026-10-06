@@ -49,14 +49,13 @@ func (s *TimeseriesService) WithUsageSummary(repo port.SessionUsageRepository, r
 	return s
 }
 
-// WithSquadFormes injecte les deux sources du bloc « Les formes retenues » — le MÊME couple
-// que la page Escouade (`teammates.WithSquadFormes`), et pour la même raison : depuis le
-// 2026-09-19 les neuf cartes du CONTEXTE SOLO vivent ici, l'Escouade ne gardant que son
-// contexte escouade. Un second producteur aurait fait deux mesures du même geste.
+// WithSquadFormes injecte les deux sources du bloc « Les formes retenues » (cartes d'objectif de
+// l'onglet « Usages ») — le MÊME couple que la page Escouade (`teammates.WithSquadFormes`) : un
+// second producteur aurait fait deux mesures du même geste.
 //
 // `objectives` nil ⇒ bloc sans cartes d'objectif (dégradation propre, jamais le bloc entier).
 func (s *TimeseriesService) WithSquadFormes(
-	usage port.SquadFormesUsageRepository, objectives port.SquadFormesObjectiveRepository,
+	usage port.SessionUsageRepository, objectives port.SquadFormesObjectiveRepository,
 ) *TimeseriesService {
 	s.formesUsageRepo = usage
 	s.formesObjectiveRepo = objectives
@@ -98,9 +97,8 @@ func (s *TimeseriesService) attachMigratedSections(
 	stop()
 	// LES TROIS LECTURES DU RÉSUMÉ D'USAGE, UNE FOIS pour les blocs qui les lisent (ADR 0036 I4).
 	lu := s.lireUsageDuScope(ctx, synthesisMatchIDs(filteredCanon))
-	// « Les formes retenues », contexte SOLO : les match_id de la fenêtre. `SelectedGamertags`
-	// reste vide — cette page n'a pas d'escouade, et les cartes du contexte escouade ne s'y
-	// montent pas.
+	// « Les formes retenues » (cartes d'objectif) : les match_id de la fenêtre. `SelectedGamertags`
+	// reste vide — cette page n'a pas d'escouade.
 	stop = timing.FromContext(ctx).Section("squad_formes")
 	resp.SquadFormes = squadagg.BuildSquadFormesBlock(ctx, squadagg.SquadFormesQuery{
 		Repo:         s.formesUsageRepo,
@@ -108,9 +106,6 @@ func (s *TimeseriesService) attachMigratedSections(
 		PlayerXUID:   s.playerXUID,
 		MainGamertag: s.gamertag,
 		Metas:        timeseriesFormesMetas(filteredCanon, locale),
-		RepoRoot:     s.repoRoot,
-		TitleSlug:    s.titleSlug,
-		Locale:       locale,
 		Lectures:     lu,
 	})
 	stop()

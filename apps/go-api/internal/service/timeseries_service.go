@@ -104,7 +104,7 @@ type TimeseriesService struct {
 	// formesUsageRepo / formesObjectiveRepo : le bloc « Les formes retenues », contexte
 	// SOLO, migré depuis l'Escouade le 2026-09-19. Optionnels, gated au câblage — cf.
 	// timeseries_service_sections.go.
-	formesUsageRepo     port.SquadFormesUsageRepository
+	formesUsageRepo     port.SessionUsageRepository
 	formesObjectiveRepo port.SquadFormesObjectiveRepository
 	// coordTactical / coordAppuis / coordCaps : le bloc « Coordination » (riposte +
 	// appui reçu) par SOIRÉE, lot N1. Optionnels, gated au câblage — cf.

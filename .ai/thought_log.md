@@ -115335,3 +115335,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : 348 paquets Go verts, lint 0, contrat −262 / −117 lignes, exactement 9 schémas disparus (garde de surface, snapshot régénéré par la procédure), web vert (8 857 tests, knip 0/0/0), lefthook 9/9 au premier passage. Aucun lecteur côté Sessions rencontré.
 
 **Conclusion / prochaine étape** : L6 clos ; L7 (contrat `formes_retenues` réduit à l'objectif) après le « continue » du superviseur.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L7 : contrat `formes_retenues` réduit à l'objectif
+
+**Statut** : Complété (lot L7 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`)
+
+**Décision technique principale** : le bloc `formes_retenues` ne publie plus que ce que lisent les cartes d'objectif (disponibilité, comptes, joueur, escouade, matchs à objectif avec identité, camp et feuille) ; la lecture des socles au grain match, le lobby, les armes et leurs types sortent du domaine, de l'agrégat, du port, du repo DuckDB et du contrat. Un test golden de l'objectif publié, figé AVANT la coupe, prouve que l'objectif est identique octet pour octet.
+
+**Résultats observés** : golden vert sans régénération après la coupe, trois mutations rouges ; Go 348 paquets verts, intégration DuckDB 4 ok, lint 0 ; contrat −114 / −51 lignes, exactement 3 schémas disparus ; web 8 857 tests verts, knip 0/0/0, lefthook 9/9. Aucun lecteur côté Sessions.
+
+**Conclusion / prochaine étape** : L7 clos ; L8 (clôture : docs, référence équipement, statuts) après le « continue » du superviseur.

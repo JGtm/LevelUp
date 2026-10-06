@@ -14,7 +14,6 @@ import (
 
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squademprise"
-	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -39,10 +38,6 @@ type usageCompte struct {
 func (u *usageCompte) LoadUsageFilms(ctx context.Context, ids []string) (map[string]sessionusage.FilmRow, error) {
 	u.films++
 	return u.mockSessionUsageRepo.LoadUsageFilms(ctx, ids)
-}
-
-func (u *usageCompte) LoadUsageFilmPads(context.Context, []string) (map[string]squadformes.FilmPads, error) {
-	return nil, nil
 }
 
 // emblemesFixes — le chargeur d'emblèmes.

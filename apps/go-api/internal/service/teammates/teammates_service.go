@@ -99,7 +99,7 @@ type TeammatesService struct {
 	sessionUsageRepo port.SessionUsageRepository
 	// formesUsageRepo / formesObjectiveRepo / repoRoot (lot D2) : les deux sources du bloc
 	// « formes retenues » et la racine du dépôt (catalogue d'armes), cf. teammates_service_formes.go.
-	formesUsageRepo     port.SquadFormesUsageRepository
+	formesUsageRepo     port.SessionUsageRepository
 	formesObjectiveRepo port.SquadFormesObjectiveRepository
 	repoRoot            string
 	objectiveModeEcarte func(pairName string) bool  // D6, cf. teammates_service_objective_history.go

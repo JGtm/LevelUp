@@ -651,21 +651,30 @@ Journal L6 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — suppressions G
 - Seuils : fichiers > 400 L touchés, tous en baisse ou stables : `timeseries_service.go` 458 → 455, `registry_pages.go` 620 → 620, `sessionusage/usage.go` 421 → 416, `weapon_range_section_test.go` 496 → 486, `lib/api/types.ts` 3 467 → 3 449, `test/handlers.ts` 549 → 540 ; 10 fichiers supprimés.
 ### L7 — Contrat `formes_retenues` réduit à l'objectif (D7) · moyen, le plus risqué
 
-- [ ] L7.1 Rejouer §4.F (lecteurs web des champs après L6).
-- [ ] L7.2 Go : champs D7 retirés de `domain/squad_formes.go:59-159` ; `squadformes.Build` ne
+- [x] L7.1 Rejouer §4.F (lecteurs web des champs après L6).
+- [x] L7.2 Go : champs D7 retirés de `domain/squad_formes.go:59-159` ; `squadformes.Build` ne
   publie plus que les matchs à objectif et les champs gardés (le compte `MatchesMeasured` reste,
   calculé comme aujourd'hui) ; `FilmPads`, `WeaponPad`, `WeaponInfo.Class/Role` s'ils n'ont plus de
   lecteur (vérifier `squademprise/input.go:108-109` qui lit `squadformes.WeaponInfo` :
   `Label`/`WeaponKey` restent), `WeaponClassOf`, `buildWeapons`, `WallFamilyKey`
   (`squadagg/squad_formes.go:108-111`), `LoadUsageFilmPads` (port + DuckDB + tests).
-- [ ] L7.3 Tests Go adaptés : `squadformes/formes_test.go`, `squadagg/squad_formes_prises_nettes_test.go`,
+- [x] L7.3 Tests Go adaptés : `squadformes/formes_test.go`, `squadagg/squad_formes_prises_nettes_test.go`,
   `teammates_service_usage_test.go`, `timeseries_service_equipes_test.go` ; l'objectif publié est
   identique avant / après (test de non-régression sur la fixture existante, écrit AVANT la coupe).
-- [ ] L7.4 Contrat régénéré ; web : types TS suivent, fixtures `objectif.fixtures.ts` /
+- [x] L7.4 Contrat régénéré ; web : types TS suivent, fixtures `objectif.fixtures.ts` /
   `objectivesOptional.test.ts` réduites ; `SquadObjectiveSection` et les cartes d'objectif des deux
   pages inchangées à l'écran.
 - Gate : gate Go + contrat + gate web.
 
+Journal L7 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — contrat `formes_retenues` réduit à l'objectif :
+- **L7.1** §4.F rejoué sur la base L6 : lecteurs web du bloc = `squad/objectif/*` et `squad/formes/model/objectives.ts` seulement (champs `available`, `matches_*`, `main_xuid`, `squad`, `matches[].{match_id, start_time, mode_label, map_label, player_team, objective}`) ; seule fixture à porter un champ retiré : `objectif.fixtures.ts` (`measured`). Aucun lecteur côté Sessions (`features/session-detail/`, `service/session_page*`) : rien à consigner pour le lot Sessions.
+- **L7.3 (écrit AVANT la coupe)** `squadformes/formes_objectif_golden_test.go` : la projection lue par les cartes d'objectif (disponibilité, comptes, joueur, escouade, et pour chaque match À OBJECTIF son identité, son camp et sa feuille) sur la fixture existante du paquet, plus trois feuilles (match sans film, match filmé avec prises nettes et fenêtre de jonglage, match à objectif seul au mode écarté) ; rouge sans golden, golden figé AVANT la coupe (`testdata/objectif_publie.golden.json`, 163 lignes), vert après la coupe sans régénération — octet pour octet.
+- **L7.2** Go : `domain/squad_formes.go` réduit (`SquadFormesMatch` = identité, `PlayerTeam`, `Objective` ; `Lobby`, `PadNamed`, `PadUnnamed`, `WeaponPads`, `DurationSeconds`, `TeamSize`, `LobbySize`, `Measured`, `Weapons` et leurs types `SquadFormesLobbyPlayer`, `SquadFormesWeaponPad`, `SquadFormesWeapon` + constantes partis) ; `squadformes.Build` ne publie plus que les matchs à objectif (`MatchesMeasured` compté comme avant, sur tout le scope) ; `FilmPads`, `WeaponPad`, `WeaponClassOf`, `buildWeapons`, `fillFromMatchInput`, `Input.{Films, Pads, Gamertags, Weapons, WallFamilyKey}`, `WeaponInfo.{Class, Role}` supprimés (`WeaponInfo.Label` / `WeaponKey` restent, lus par `squademprise`) ; `port.SquadFormesUsageRepository` supprimé (il n'ajoutait que `LoadUsageFilmPads`) au profit de `port.SessionUsageRepository`, `LoadUsageFilmPads` + `weaponPadsFromJSON` (DuckDB) supprimés ; `squadagg.SquadFormesQuery.{RepoRoot, TitleSlug, Locale}` et `formesGamertags` supprimés ; `WeaponCatalog` ne résout plus que nom et clé (les index `weapons.RolesByKey` / `ClassesByKey` gardent leurs autres lecteurs). La signature `teammates.WithSquadFormes(usage, objectives, repoRoot)` reste : sa racine sert l'Emprise de l'Escouade.
+- **L7.3 (suite)** Tests adaptés : `formes_test.go` (lobby, armes, socles, lâchers ventilés et `WeaponClassOf` partis avec le code ; publication des seuls matchs à objectif, camp publié sans film, compte des matchs filmés indépendant de l'objectif) ; doubles de `LoadUsageFilmPads` retirés (`timeseries_service_equipes_test.go`, `timeseries_service_emprise_test.go`, `teammates_service_usage_test.go`, dont le compteur de la lecture « pads »).
+- **L7.4** Contrat régénéré : `openapi.yaml` −114 lignes, `generated.ts` −51, 0 ajout ; garde de surface : exactement les 3 schémas attendus disparus (`SquadFormesLobbyPlayer`, `SquadFormesWeapon`, `SquadFormesWeaponPad`), snapshot régénéré par la procédure (`UPDATE_CONTRACT_SURFACE=1`), garde rejouée sans la variable : verte ; alias TS et propriété de fixture retirés ; `SquadObjectiveSection` et les cartes d'objectif des deux pages inchangées (leurs tests verts sans modification).
+- **Mutations** (contre le golden, toutes ROUGES) : camp du joueur oublié ; mode écarté des parts oublié ; matchs filmés comptés sur les seuls matchs à objectif.
+- **Gate** : `go build ./...` 0, `go vet ./...` 0, `gofmt -l internal` muet ; `go test -count=1` en cinq lots couvrant les 348 paquets (cœur 58 ok, hors internal 40, games 38, sync / persist / migration 13, reste 46 ; 0 FAIL) ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` : 4 ok en 362 s ; `golangci-lint run --new-from-merge-base=origin/main` : 0 issues (`make go-api-lint` refusé par le verrou d'un autre `golangci-lint` en cours — autre worktree — : même commande lancée avec un cache isolé et `--allow-parallel-runners`, règles inchangées) ; `openapi-gen -check` à jour. Web : `generate-types`, `check-generated-types-fresh` OK ; purge, `tsc -b --force` 0 ; `npm run lint` 0 erreur ; vitest complet 831 fichiers / 8 857 tests verts (170 s) ; knip 0 / 0 / 0 ; couleurs 0 ; imports croisés 7 ≤ 7 ; `npx lefthook run pre-push` (PATH complet) 9 / 9 au premier passage (151 s).
+- Seuils : tous les fichiers touchés en baisse ou stables (`squadformes/formes.go` 436 → 255, `domain/squad_formes.go` 218 → 114, `teammates_service.go` 491 → 491, `timeseries_service.go` 455 → 455) ; deux fichiers neufs (test golden 108 L, golden 163 L).
 ### L8 — Clôture · rapide
 
 - [ ] L8.1 Docs : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]`, corriger les phrases
@@ -734,3 +743,4 @@ suppressions web sont dans L5 (L5.11-L5.15) ; L6 ne garde que le Go.
 - (L5) `isCollapsedTierRowKey` (`usagePadTiersModel.ts`) accepte encore la clé nue `base` (forme « comptes » supprimée) ; la page Sessions n'utilise que `tier-base`. Comportement laissé tel quel (hors périmètre).
 - (L5) Le jeton `team-rest` cité par la spécification S5 et la maquette n'existe pas dans la palette ; le reste du camp utilise `TEAM_REST_INK` (`team-ally` à 55 %), comme l'Escouade.
 - (L5) L'aide ⓘ de la carte Équipement de la maquette a quatre phrases (S1 en demande trois au plus) ; portée mot pour mot, la maquette faisant foi.
+- (L7) `make go-api-lint` échoue sur « parallel golangci-lint is running » quand un autre worktree lance le lint en même temps (verrou global de golangci-lint) ; contournement de mesure sans changer les règles : `GOLANGCI_LINT_CACHE` isolé et `--allow-parallel-runners`. Non traité (outillage hors périmètre).

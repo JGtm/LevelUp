@@ -365,11 +365,10 @@ type TimeseriesPageResponse struct {
 	// de dégradation : nil sans match, Available=false avec raison machine sinon.
 	Coordination *CoordinationBlock `json:"coordination,omitempty"`
 
-	// SquadFormes : bloc « Les formes retenues » — les MÊMES cartes que l'Escouade, sur le
-	// scope SOLO de cette page (PLAN_AJUSTEMENTS_PRE_V75, item 1.E du 2026-09-19 : les
-	// neuf cartes du contexte solo ont quitté l'Escouade, qui ne garde que son contexte
-	// escouade). MÊME producteur (`squadagg.BuildSquadFormesBlock`) et MÊME scope que le
-	// reste de la page — aucune seconde doctrine de périmètre. nil quand le scope est
+	// SquadFormes : bloc « Les formes retenues » — la matière des cartes d'objectif de l'onglet
+	// « Usages » (rapport de force par famille de mode, ma part à l'objectif). MÊME producteur que
+	// l'Escouade (`squadagg.BuildSquadFormesBlock`) et MÊME scope que le reste de la page —
+	// aucune seconde doctrine de périmètre. nil quand le scope est
 	// vide ; Available=false avec raison machine pour un titre sans film.usage_summary.
 	SquadFormes *SquadFormesBlock `json:"formes_retenues,omitempty"`
 }

@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/sessionusage"
-	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -39,10 +38,6 @@ type formesAvecCompteur struct {
 func (f *formesAvecCompteur) LoadParticipants(ctx context.Context, ids []string) ([]sessionusage.ParticipantRow, error) {
 	f.lectures++
 	return f.mockSessionUsageRepo.LoadParticipants(ctx, ids)
-}
-
-func (f *formesAvecCompteur) LoadUsageFilmPads(context.Context, []string) (map[string]squadformes.FilmPads, error) {
-	return nil, nil
 }
 
 // highlightEventsFixes rend toujours les mêmes événements.
