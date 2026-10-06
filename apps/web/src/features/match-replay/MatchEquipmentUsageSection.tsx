@@ -73,7 +73,9 @@ import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
+import { meXUIDOf } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { filmAllegianceOf, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 import { campLabel, type ReplayCamp } from '@/lib/replay/replayCamps'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
@@ -124,21 +126,23 @@ export function MatchEquipmentUsageSection({
   // 2026-09-13 : une carte qui cache sa mesure par défaut ne se lit pas.
   const { groups, familles } = useUsageGroups(usage, t)
   const reserve = useMemo(() => usageReserve(usage), [usage])
-  const meRow = useMemo(() => board.find((r) => r.is_me), [board])
-  // L'ENCRE, PAS L'APPARTENANCE : le côté de feuille du joueur de la page dit quel camp est le
-  // sien. Les camps eux-mêmes sont ceux du FILM (`equipmentUsageLogic`, `replayCamps.ts`).
-  const meSide = meRow?.team_side ?? null
+  const meXUID = useMemo(() => meXUIDOf(board), [board])
+  // L'ALLÉGEANCE DU FILM, VUE DU JOUEUR DE LA PAGE (2026-10-06) : son équipe du film dit quel
+  // camp est le sien — les camps eux-mêmes sont ceux du film (`equipmentUsageLogic`).
+  const allegiance = useMemo(
+    () => (data ? filmAllegianceOf(data, board, meXUID) : NO_ALLEGIANCE),
+    [data, board, meXUID],
+  )
 
   // LE NOM D'UN CAMP DU FILM : la cascade des colonnes de fiches (`campLabel`) sur la feuille,
   // « Équipe N » de son désignateur quand elle se tait — jamais « sans équipe ».
   const teamLabel = useCallback((camp: ReplayCamp) => campLabel(camp, board, t), [board, t])
-  // « Allié » = du côté du joueur de la page. Sans `is_me` au tableau des scores, ou pour un
-  // camp dont aucun membre n'a de côté de feuille, l'allégeance est INCONNUE (null) : encre
-  // neutre, jamais l'une des deux couleurs d'équipe (même règle que `ReplayTeamHeader`).
+  // « Allié » = du camp du FILM du joueur de la page. Quand le film ne le situe pas (absent,
+  // équipe tue), l'allégeance est INCONNUE (null) : encre neutre, jamais l'une des deux couleurs
+  // d'équipe (même règle que `ReplayTeamHeader`).
   const teamAccent = useCallback(
-    (camp: ReplayCamp) =>
-      teamTokenCssVar(camp.side == null || meSide == null ? null : camp.side === meSide),
-    [meSide],
+    (camp: ReplayCamp) => teamTokenCssVar(allegiance.ofTeam(camp.team)),
+    [allegiance],
   )
 
   const grid = useMemo(
@@ -146,23 +150,23 @@ export function MatchEquipmentUsageSection({
       buildUsageGrid({
         teams: usage?.byTeam ?? [],
         groups,
-        meXUID: meRow?.xuid ?? null,
+        meXUID,
         teamLabel,
         teamAccent,
         tipFmt: t.equipmentUsage.gridTipFmt,
       }),
-    [usage, groups, meRow, teamLabel, teamAccent, t],
+    [usage, groups, meXUID, teamLabel, teamAccent, t],
   )
   const barres = useMemo(
     () =>
       buildUsageFamilyBars({
         teams: usage?.byTeam ?? [],
         groups,
-        allySide: meSide,
+        allyTeam: allegiance.allyTeam,
         teamLabel,
         teamAccent,
       }),
-    [usage, groups, meSide, teamLabel, teamAccent],
+    [usage, groups, allegiance, teamLabel, teamAccent],
   )
 
   // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout. MÊME prédicat que

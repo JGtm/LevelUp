@@ -37,7 +37,7 @@ export interface PadColumnGroupInput {
 }
 
 /**
- * Un joueur du graphe : sa sous-clé empilée, son camp du film (dont le côté de feuille donne
+ * Un joueur du graphe : sa sous-clé empilée, son camp du film (dont l'allégeance du film donne
  * l'encre allié / adverse), et de quoi l'encrer côté appelant.
  */
 export interface PadColumnPlayer extends ReplayCamp {

@@ -140,13 +140,13 @@ function poserArtefact(over: Partial<ReplayDocument> | null) {
   graphes.appels.length = 0
 }
 
-function afficher(locale: 'fr' | 'en' = 'fr') {
+function afficher(locale: 'fr' | 'en' = 'fr', scoreboard: MatchScoreboardRow[] = SCOREBOARD) {
   return render(
     <MatchPadControlSection
       playerSlug="joueur"
       matchId="m1"
       replayAvailable
-      scoreboard={SCOREBOARD}
+      scoreboard={scoreboard}
       locale={locale}
     />,
   )
@@ -235,6 +235,22 @@ describe('MatchPadControlSection — le graphe', () => {
     const vue = afficher()
     const legende = vue.getByTestId('chart-legend')
     expect([...legende.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['Alpha', 'Charlie'])
+    expect(dernierGraphe().componentOrder).toEqual(['Alpha', 'Charlie'])
+  })
+
+  it('le camp du joueur de la page se lit dans le FILM : une feuille qui le range en face ne l’ôte pas de la tête', () => {
+    poserArtefact({
+      ...TEMOIN,
+      padPickups: [
+        { pad: 0, t: 10, tLow: 5, tHigh: 15, xuid: 'b1' },
+        { pad: 0, t: 40, tLow: 35, tHigh: 45, xuid: 'b1' },
+        { pad: 0, t: 80, tLow: 75, tHigh: 85, xuid: 'a1' },
+      ],
+    } as Partial<ReplayDocument>)
+    // La feuille range Alpha (`is_me`) du côté t1 ; le film l'écrit au camp 0, et c'est lui qui
+    // décide quel camp ouvre la pile.
+    const contradictoire = SCOREBOARD.map((r) => (r.xuid === 'a1' ? { ...r, team_side: 't1' } : r))
+    afficher('fr', contradictoire)
     expect(dernierGraphe().componentOrder).toEqual(['Alpha', 'Charlie'])
   })
 

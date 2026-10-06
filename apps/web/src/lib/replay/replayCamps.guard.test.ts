@@ -47,14 +47,6 @@ const ALLOWLIST: Readonly<Record<string, { lectures: number; raison: string }>> 
     lectures: 2,
     raison: '2026-10-06 — LE helper de libellé : nomme un camp du film (côté majoritaire de ses membres, lignes de son côté).',
   },
-  '/src/features/match-replay/MatchEquipmentUsageSection.tsx': {
-    lectures: 1,
-    raison: '2026-10-06 — encre allié / adverse des tables : le côté du joueur de la page (`is_me`) dit lequel des camps du film est le sien.',
-  },
-  '/src/features/match-replay/MatchPadControlSection.tsx': {
-    lectures: 1,
-    raison: '2026-10-06 — même encre allié / adverse, bloc du contrôle des socles.',
-  },
 }
 
 /** Le code seul : blocs et lignes de commentaire ôtés (un `//` dans une URL citée reste). */

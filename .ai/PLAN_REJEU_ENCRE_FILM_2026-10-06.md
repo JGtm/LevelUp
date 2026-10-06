@@ -129,10 +129,19 @@ l'ÉVÉNEMENT du joueur regardé, pas une allégeance) ; les cinq graphes de la 
 
 ## Étape E6.4 — Tables de l'onglet Arsenal
 
-- [ ] E6.4.1 `MatchEquipmentUsageSection`, `MatchPadControlSection`, `equipmentUsageChart` :
+- [x] E6.4.1 `MatchEquipmentUsageSection`, `MatchPadControlSection`, `equipmentUsageChart` :
   allégeance du film, référence = joueur de la page (`meXUIDOf`).
-- [ ] E6.4.2 Tests (camp d'un bot allié, référence sans équipe).
-- Gate E6.4 : idem E6.1.
+- [x] E6.4.2 Tests (la feuille qui contredit le film ne change ni l'ordre ni l'encre ; joueur
+  de la page sans équipe du film : encres neutres, ordre du film). Le « camp d'un bot allié » ne
+  se pose pas ici : l'encre des tables est celle d'un CAMP, déjà nommé par ses membres de feuille
+  — l'écart D1 était celui des joueurs (carte, fil).
+- Gate E6.4 : idem E6.1. PASSÉ le 2026-10-06 : `tsc -b` 0 erreur ; vitest des quatre dossiers
+  295 fichiers / 4 084 tests verts ; eslint `src` 0 erreur. Tests neufs : 2 dans
+  `MatchEquipmentUsageSection.test.tsx`, 1 dans `MatchPadControlSection.test.tsx` ; mutation
+  (allégeance des socles forcée nulle) → 2 rouges. Allowlist : les deux sections sortent ; garde
+  `is_me` : leurs exemptions sont retirées (`meXUIDOf`). Commentaires de
+  `equipmentUsageLogic`, `padControlLogic`, `padControlChart`, `padControlColumns` remis au vrai
+  (le côté de feuille ne fait plus que nommer).
 
 ## Étape E6.5 — Garde-rails et documentation
 
@@ -179,3 +188,9 @@ l'ÉVÉNEMENT du joueur regardé, pas une allégeance) ; les cinq graphes de la 
   `teamColor.ts` et `teamSeriesColor.ts` et doc de `team_color` (`lib/api/types.ts`) remis au
   vrai. `occupantsPresents` (`ReplayTeams`) et `NO_IDENTITY` (`replayCanvasConfig`) supprimés
   avec leur seul usage.
+- E6-D3 (2026-10-06, NON traitée — hors périmètre de l'encre) : la piste Dominance attribue
+  chaque frag au camp que l'API publie pour son auteur (`KillEvent.teamID`, `actor_team_id`),
+  pas à l'équipe du film du tueur ; son ENCRE, elle, vient du film (`ofTeam`). Les deux
+  coïncident tant que le contrôle d'accord Go tient (désignateur du film = identifiant d'équipe
+  de l'API). À statuer par le superviseur : l'appartenance d'un frag à un camp relève-t-elle de
+  la règle « équipe = film » ?

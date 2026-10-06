@@ -115799,4 +115799,6 @@ E6.2 (colonnes, fil, frise) — en-tête par l'allégeance du camp (`ofTeam`), f
 
 E6.3 (camps vus de la référence) — bandeau (camps du roster, côté par `ofTeam`), dominance, fin de match (`readVictory(film, code, page, sujet)`, joueur de la page par `meXUIDOf`), zones, drapeaux (encre, onde, défenseurs = membres du camp du film), déflagration, sons d'objectif (`objectiveSideResolver`, `allyTeam`) ; `matchSides` supprimé, `allyOfTeamId` déplacé vers la page Match, `teamIdOfSide` supprimé ; 295 fichiers verts, tsc et eslint 0 erreur.
 
-**Conclusion / prochaine étape** : E6.4 (tables de l'onglet Arsenal).
+E6.4 (onglet Arsenal) — grille, barres et contrôle des socles encrés par l'allégeance du film vue du joueur de la page (`meXUIDOf`) ; exemptions `is_me` et entrées d'allowlist des deux sections retirées ; 295 fichiers verts.
+
+**Conclusion / prochaine étape** : E6.5 (garde-rails, régime à trois arguments de `resolveXuidMeta`, docs).

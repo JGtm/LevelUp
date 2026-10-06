@@ -62,8 +62,10 @@ import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { teamSeriesColor, teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
+import { meXUIDOf } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
+import { filmAllegianceOf, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 import { campLabel, type ReplayCamp } from '@/lib/replay/replayCamps'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
@@ -98,19 +100,19 @@ export function MatchPadControlSection({
     () => (data ? buildPadControl(data, board) : null),
     [data, board],
   )
-  // L'ENCRE, PAS L'APPARTENANCE : le côté de feuille du joueur de la page dit quel camp est le
-  // sien. Les camps eux-mêmes sont ceux du FILM (`padControlLogic`, `replayCamps.ts`).
-  const meSide = useMemo(() => board.find((r) => r.is_me)?.team_side ?? null, [board])
+  // L'ALLÉGEANCE DU FILM, VUE DU JOUEUR DE LA PAGE (2026-10-06) : son équipe du film dit quel
+  // camp est le sien — les camps eux-mêmes sont ceux du film (`padControlLogic`).
+  const allegiance = useMemo(
+    () => (data ? filmAllegianceOf(data, board, meXUIDOf(board)) : NO_ALLEGIANCE),
+    [data, board],
+  )
 
   // LE NOM D'UN CAMP DU FILM : la cascade des colonnes de fiches (`campLabel`), « Équipe N » de
   // son désignateur quand la feuille se tait — jamais « sans équipe ».
   const teamLabel = useCallback((camp: ReplayCamp) => campLabel(camp, board, t), [board, t])
-  // « Allié » = du côté du joueur de la page ; allégeance inconnue -> encre neutre (cf.
+  // « Allié » = du camp du FILM du joueur de la page ; allégeance inconnue -> encre neutre (cf.
   // teamSeriesColor).
-  const allyOf = useCallback(
-    (camp: ReplayCamp) => (camp.side == null || meSide == null ? null : camp.side === meSide),
-    [meSide],
-  )
+  const allyOf = useCallback((camp: ReplayCamp) => allegiance.ofTeam(camp.team), [allegiance])
   const bars = useMemo(
     () =>
       control && data
