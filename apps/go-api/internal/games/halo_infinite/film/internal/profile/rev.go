@@ -121,7 +121,17 @@ package profile
 // game_simulation W(3)). La grammaire de la vue A en tire le prefixe du message Script (ecrivain
 // `FUN_142eec4d8`). Aucune largeur, borne ni provenance ne change. Le rang : `profile-2026-10-05`
 // est pris par l etape 2.7.a de la representation intermediaire.
-const Rev = "profile-2026-10-06"
+//
+// ENTREE `profile-2026-10-07` (2026-10-06, lot VA de la campagne de grammaire, etape V3) : LA
+// VARIANTE DE PARTIE ENTRE DANS L IDENTITE DU FILM. AUCUNE LIGNE DE LA TABLE NE CHANGE.
+//
+// `identite.go` : [FilmIdentity.Variante] ([VarianteDePartie] : m_gameEngineType, killcamEnabled,
+// playOfTheGameEnabled), lue par `grammar` dans le corps de `chunk_00` (lecteur `FUN_1407ee138`). La
+// grammaire de la vue A en tire les charges des genres 85 et 116. Aucune largeur, borne ni provenance
+// ne change. Le rang : `profile-2026-10-06.2`, le seul rang sans trou du 2026-10-06, est pris par
+// `feat/v75` et le lot LR ; le premier rang libre et sans trou est celui du 2026-10-07 (meme geste que
+// l etape V1, qui prenait `profile-2026-10-06` le 2026-10-05).
+const Rev = "profile-2026-10-07"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/profile_rev.golden` porte le couple (revision, empreinte) avec son historique, et

@@ -476,3 +476,11 @@ package killsource
 // sous `killsource-2026-09-27` est celle que ce code ecrirait : la revision reste (D23) et aucun
 // backlog n est ouvert. Golden regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/LOT_VA_V2.md`.
+//
+// COMPLEMENT DU 2026-10-06 (lot VA de la campagne de grammaire, etape V3 : la variante de partie du
+// film decide les genres 85 et 116 de la vue A ; REVISION CONSTANTE) : aucune source de la couche ne
+// change ; la VALEUR de `grammar.Rev` monte a `grammar-2026-10-06.4` et celle de `profile.Rev` a
+// `profile-2026-10-07`, donc l empreinte. Sortie `cmd/killsource json` sur les 19 temoins de
+// `config/replay_corpus.toml` et `1c4c63c2` (carte Refuge), binaire de `8c83e2d3a` contre binaire du
+// lot : IDENTIQUE A L OCTET sur les 20 films. Golden regenere a revision constante. Mesures :
+// `campagne_grammaire_2026-10-01/LOT_VA_V3.md`.

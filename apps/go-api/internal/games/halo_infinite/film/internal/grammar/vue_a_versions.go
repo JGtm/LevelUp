@@ -62,13 +62,17 @@ type grammaireDeLaVueA struct {
 	// positions : les tables de position de la region jouee de la carte du match, pour les
 	// positions a index des genres 5 et 6 ([tablesDeLaRegionJouee]) ; vides sans carte.
 	positions tablesDePosition
+	// variante : ce que la variante de partie du film decide des genres 85 et 116 ([varianteDuFilm]).
+	variante varianteDeLaVueA
 }
 
 // grammaireDeLaVueASousFilm derive d un profil la grammaire de la vue A que le film declare : sa table
 // des genres et la simulation de son enregistreur, lues dans la section d identification de
-// `chunk_00`, et les tables de la region jouee de l entree de catalogue du profil.
+// `chunk_00`, sa variante de partie, lue dans le corps de `chunk_00`, et les tables de la region
+// jouee de l entree de catalogue du profil.
 func grammaireDeLaVueASousFilm(p profile.Profile) grammaireDeLaVueA {
-	g := grammaireDeLaVueA{script: scriptDuFilm(p), positions: tablesDeLaRegionJouee(p.Map())}
+	g := grammaireDeLaVueA{script: scriptDuFilm(p), positions: tablesDeLaRegionJouee(p.Map()),
+		variante: varianteDuFilm(p)}
 	g.classe, g.genres = tableDesGenresDuFilm(p)
 	return g
 }

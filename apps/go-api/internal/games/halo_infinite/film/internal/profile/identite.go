@@ -96,4 +96,28 @@ type FilmIdentity struct {
 	// tenait dans le tampon.
 	SimulationDeLEnregistreur uint32
 	OptionsDePartieLues       bool
+	// Variante : la VARIANTE DE PARTIE que les memes options portent (`options + 0x28`), lue dans le
+	// corps de `chunk_00` ([VarianteDePartie]).
+	Variante VarianteDePartie
+}
+
+// VarianteDePartie : ce que le corps de `chunk_00` declare de la variante de partie de
+// l enregistreur, lu par `grammar` le long du lecteur du corps (`FUN_1407ee138`, ecrivain
+// `FUN_1407ec560`). La variante y est un message Bond CompactBinary v2 (`FUN_140b3a118` /
+// `FUN_140b85504`) ; seuls les champs qu une grammaire de la vue A consulte en sont rendus.
+type VarianteDePartie struct {
+	// Lue : le corps a ete lu jusqu apres la variante, chaque longueur de structure Bond tenue.
+	// Faux : aucun des champs ci-dessous ne vaut.
+	Lue bool
+	// Presente : le bit qui precede la variante ; faux quand l enregistreur ne l a pas ecrite
+	// (`FUN_14051a4b8(type) == 0`) — ses champs ne sont alors pas dans le film.
+	Presente bool
+	// TypeDeMoteur : `m_gameEngineType` (champ 0 de l en-tete de la variante, `options + 0x2c`,
+	// defaut 0). Le jeu en derive le type de son objet moteur `DAT_145121140 =
+	// FUN_14051a4b8(TypeDeMoteur)` (`FUN_140a938b4`).
+	TypeDeMoteur int32
+	// KillcamEnabled, PlayOfTheGameEnabled : les champs 0 et 2 de
+	// `i343.NetProtocol.GameOptions.PlaybackSettings` (`options + 0x260` et `+ 0x268`), defaut faux.
+	KillcamEnabled       bool
+	PlayOfTheGameEnabled bool
 }

@@ -458,3 +458,16 @@ package grammar
 // tous par la fin de la vue A (decision (1)) ; aucun film en baisse. La marche des morts d objet et
 // celle de `killsource` n utilisent pas les candidats de tete : leur sortie est celle de
 // `grammar-2026-10-06.2`.
+//
+// ENTREE `grammar-2026-10-06.4` (2026-10-06, lot VA de la campagne de grammaire, etape V3) : LA
+// VARIANTE DE PARTIE DU FILM DECIDE LES GENRES 85 ET 116 DE LA VUE A.
+//
+// Ce qui change, contre `grammar-2026-10-06.3` :
+//   - le corps de `chunk_00` est lu jusqu a la table des joueurs (`FUN_1407ee138`, ses deux messages
+//     Bond CompactBinary v2), et sa variante de partie rend m_gameEngineType, killcamEnabled et
+//     playOfTheGameEnabled ([profile.VarianteDePartie], `film_variante_de_partie.go`) ;
+//   - teleport_effects (116, `FUN_142ef93e0`) se lit quand le type de moteur du film n est pas 1 ;
+//   - PlayerKilledEvent (85, `FUN_14104bd08`) se lit, partie fixe seule, quand les drapeaux du film
+//     rendent fausse la garde de sa queue quels que soient les reglages d execution qu il ne porte pas.
+//
+// MESURES : `campagne_grammaire_2026-10-01/LOT_VA_V3.md`.
