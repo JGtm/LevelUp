@@ -23,14 +23,14 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **ACCEPTÉ par le superviseur le 2026-10-06 (D1-D18 fermes, réponses §9)** ;
-> phase 2 suspendue jusqu'au message « rebase sur <sha> » (tête finale de `feat/ts-usages-emprise`
-> après L8). Au rebase : conflits attendus seulement sur `openapi.yaml`, `generated.ts`,
-> `contract-surface.snapshot.json` et la fin de `thought_log.md` — régénération et ré-ajout, jamais
-> une résolution à la main du généré ; puis S6 fondu dans S5 (mise à jour du plan, preuves §4.F
-> rejouées sur la nouvelle base).
-> Branche : `feat/sessions-emprise`, créée sur `cd3145ec2` (tête L5 de `feat/ts-usages-emprise`),
-> worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-sessions`.
+> Statut du plan : **ACCEPTÉ par le superviseur le 2026-10-06 (D1-D18 fermes, réponses §9) ;
+> rebasé sur `262e36b2e` (tête finale de `feat/ts-usages-emprise`, L6 `651bbe972`, L7 `bbe42dbc8`,
+> L8 `262e36b2e`) le 2026-10-06, sans conflit ; GO phase 2, lot par lot, compte rendu et
+> « continue » du superviseur à chaque clôture.** S6 est fondu dans S5 (§4.F rejoué sur la nouvelle
+> base). Un second rebase peut suivre la revue adverse du lot TS : sur demande du superviseur
+> seulement.
+> Branche : `feat/sessions-emprise`, créée sur `cd3145ec2`, rebasée sur `262e36b2e` ; worktree
+> `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-sessions`.
 
 ## 0. Objectif, critère de succès, hors périmètre
 
@@ -49,9 +49,9 @@ rangée partagée, avec le marqueur « Sans équivalent dans cette session » du
 chaque preuve grep à 0 ; (6) docs du lot clôture à jour.
 
 **Hors périmètre** (consigné, non traité) :
-- Séries temporelles : ce lot ne modifie aucun fichier que les lots L6, L7, L8 de
-  `feat/ts-usages-emprise` modifient (liste §5.1). Il ne supprime rien de ce que L6 / L7 suppriment
-  (`equipment_usage`, nuage d'élévation, champs non-objectif de `formes_retenues`, `LoadUsageFilmPads`).
+- Séries temporelles : le lot TS est clos (L8) et intégré à la base ; ce lot ne change ni son rendu
+  ni ses tests de page (§5.1). `equipment_usage`, le nuage d'élévation, les champs non-objectif de
+  `formes_retenues` et `LoadUsageFilmPads` n'existent plus (L6, L7).
 - Escouade › Synergies (riposte, temps de riposte, morts ripostées, rôles de hauteur) : lot à part de
   l'utilisateur, non lancé. Son bloc `squad_echange` est distinct du bloc `coordination`.
 - Vue match : son bloc `combat_tab.riposte` (`domain.MatchRiposteBlock`) est distinct.
@@ -104,10 +104,10 @@ chaque preuve grep à 0 ; (6) docs du lot clôture à jour.
   l'appelle avec `WithMaps: true` (signature et tests de `attachEmprise` inchangés). Sessions l'appelle
   avec `WithMaps: false`. Les projections existantes `timeseriesEmpriseMatches`
   (`timeseries_service_emprise.go:110-126`) et `timeseriesFormesMetas`
-  (`timeseries_service_sections.go:297-313`) prennent des lignes canoniques : Sessions les appelle sur
+  (`timeseries_service_sections.go:275-291`) prennent des lignes canoniques : Sessions les appelle sur
   les lignes canoniques de la session (même paquet, aucune copie ; nom préfixé `timeseries`, voir §8).
 - **D5 — « Mes vies » factorisée (2e appelant).** Le corps de `TimeseriesService.attachLives`
-  (`service/timeseries_service_lives.go:42-79`) devient `lireViesPresOuSeul(ctx, viesQuery)
+  (`service/timeseries_service_lives.go:41-76`) devient `lireViesPresOuSeul(ctx, viesQuery)
   *domain.TimeseriesLivesNearTeammate` dans `service/solo_lives_block.go` (NEUF) ; journaux
   `vies_*` avec l'attribut `page` (`timeseries`, `sessions`) — aucun test n'asserte les noms
   `timeseries_vies_*` (grep des `_test.go` : 0). Champs `SessionPageResponse.LivesNearTeammate` /
@@ -125,17 +125,18 @@ chaque preuve grep à 0 ; (6) docs du lot clôture à jour.
   (`session_page_frag_distribution.go:83-91`), un seul joueur. Champ
   `SessionCompareEntry.WeaponTools` (`json:"weapon_tools,omitempty"`, type `domain.SquadWeaponTools`).
 - **D7 — Objectif : la partie objectif de `formes_retenues`, forme réduite de L7.**
-  `squadagg.BuildSquadFormesBlock` (`squadagg/squad_formes.go:68-122`) sur les matchs de la session,
+  `squadagg.BuildSquadFormesBlock` (`squadagg/squad_formes.go:55`, requête réduite par L7 :
+  `Repo port.SessionUsageRepository`, `Objectives`, `PlayerXUID`, `MainGamertag`, `Metas`,
+  `SelectedGamertags`, `Lectures`) sur les matchs de la session,
   champs `SessionPageResponse.FormesRetenues` / `CompareFormesRetenues`
   (`json:"formes_retenues,omitempty"`, `json:"compare_formes_retenues,omitempty"`). Le web ne lit QUE
   les champs que L7 garde (`available`, `unavailable_reason`, `matches_total`, `matches_measured`,
   `main_xuid`, `squad`, `matches[].{match_id, start_time, mode_label, map_label, player_team,
   objective}`) ; garde-rail web (S4.15) qui l'interdit de lire un autre champ. Vérifié : les prises
   nettes de drapeau sont DÉJÀ une colonne optionnelle `flag_grabs_net` de l'objectif des formes
-  (`squadagg/squad_formes.go:196-219`), sous le rôle « prendre » — `SessionObjectivesBlock` et son
-  `FlagGrabsNet` sont donc remplacés en entier, rien à déplacer. L'appel Go n'utilise que les champs
-  de requête que L7 ne vise pas (`Repo`, `Objectives`, `PlayerXUID`, `MainGamertag`, `Metas`,
-  `Lectures`) ; `SelectedGamertags` vide (V1).
+  (`squadagg/squad_formes.go:159-182`), sous le rôle « prendre » — `SessionObjectivesBlock` et son
+  `FlagGrabsNet` sont donc remplacés en entier, rien à déplacer. `SelectedGamertags` vide (V1).
+  Le golden `analysis/squadformes/testdata/objectif_publie.golden.json` (L7) fixe la projection lue.
 - **D8 — Une lecture du résumé d'usage par session (ADR 0036 I4).** `squadagg.LireUsage` une fois par
   scope (session affichée, session comparée), partagée par l'Emprise, les formes, l'effectif de camp
   de la coordination (`sessionusage.BuildTeamContext` sur ses participants) et — tant qu'il vit
@@ -276,7 +277,8 @@ WeaponTools *SquadWeaponTools `json:"weapon_tools,omitempty"`
 ScoreLabel    string `json:"score_label,omitempty"`
 DominanceFlag int    `json:"dominance_flag,omitempty"`
 ```
-Retiré (S5) : `usage`, `compare_usage` et tout type qu'ils sont seuls à atteindre (§4.E, §4.F) ;
+Retiré (S5) : `usage`, `compare_usage` et tout type qu'ils sont seuls à atteindre (§4.E, §4.F, tous
+deux en S5 depuis le rebase) ;
 riposte et `fenetre_ms` du bloc `coordination` (§4.D).
 
 ## 4. Inventaire des suppressions — preuves par grep (relevées le 2026-10-06, à REJOUER avant de supprimer)
@@ -312,12 +314,12 @@ faux, règle 17). Juge de paix web : `node tools/knip-ratchet.mjs` à 0 / 0 / 0.
   `match-view/*` et `squad/squadRiposte*` lisent d'AUTRES blocs (`MatchRiposteBlock`,
   `squad_echange`) et RESTENT ; `timeseries/timeseriesCoordination.logic.ts:81` ne cite la riposte
   qu'en commentaire (corrigé). Go : D10.
-- **E. Bloc `usage` / `compare_usage` (Go) — partie NON partagée avec le lot TS (S5).**
+- **E. Bloc `usage` / `compare_usage` (Go, S5).**
   `service/session_page_usage.go` (318 L) et son test, `service/session_page_usage_labels.go` (+ test),
   `service/session_page_flag_grabs_net_test.go`, `service/pad_tiers_wiring_test.go` (appelle
   `WithSessionUsage`, l. 43), champs `Usage` / `CompareUsage` (`domain/session_page.go:148-149`),
   `WithSessionUsage` et le résolveur d'amis de Sessions (`session_page_service.go:65-71`,
-  `registry_pages.go:343-345`), `analysis/sessionusage/objectives.go` (+ test : lecteurs code
+  `registry_pages.go:343-345`, factory `SessionPage` l. 318-366), `analysis/sessionusage/objectives.go` (+ test : lecteurs code
   `session_page_usage.go` seul, `objective_role_rows_repo.go:10` n'est qu'un commentaire),
   `ComputeFlagGrabsNet` et `FlagGrabsNetInput` (`sessionusage/flag_grabs_net.go:61-145`, + cas de test ;
   `FlagGrabsNetRow` RESTE, lu par `duckdb/squad_formes_repo.go` et `port/session_usage.go:65`),
@@ -327,22 +329,35 @@ faux, règle 17). Juge de paix web : `node tools/knip-ratchet.mjs` à 0 / 0 / 0.
   ces seuls fichiers atteignent : `SessionObjectivesBlock`, `SessionObjectiveFamilyBlock`,
   `SessionObjectiveRoleMetric`, `SessionFlagGrabsNetBlock`, `SessionUsageSquadShare` si `squad.go`
   n'en a plus besoin, le champ `Objectives` de `SessionUsageBlock`.
-- **F. Orphelins d'INTERSECTION avec le lot TS (S6, dépendance : L6 et L7 intégrés).** Ne perdent leur
-  dernier lecteur qu'après CE lot ET L6 : `sessionusage.ComputeUsage`, `Input`, `metricKeys` et le
-  reste de `usage.go` hors `PlayerRow` / `FilmRow` / `ParticipantRow` / `MatchInput` /
-  `BuildMatchInputs` (lus par `squademprise`, `squadformes`, `squadagg`) ; `usage_families.go` ;
-  `usage_test.go` ; les cas `ComputeUsage` de `usage_outcomes_test.go` (l. 71-322, fichier que L6
-  modifie l. 334-385) ; `computeOutcomes` / `attachOutcomes` / `subjectBilanFamilies` de
-  `usage_outcomes.go` (relus après L6 ; `equipmentOutcomeOf` / `equipmentUsedOf` / `outcomeCountsOf`
-  RESTENT, lus par `PlayerOutcomeCounts`) ; `ComputePadTiers` + `PadTiersInput` (`pad_tiers.go`, lu
-  par `squadagg/equipment_usage.go` jusqu'à L6 ; `PadTierRow` RESTE) ; `squadagg.NommerArmesDesNiveaux`
-  (`squadagg/pad_tier_labels.go`, lu par `session_page_usage_labels.go:127` et
-  `squadagg/equipment_usage.go`) ; types `SessionUsageBlock`, `SessionUsageMetric`,
-  `SessionUsageOutcomes`, `SessionUsageShares`, `SessionUsageMatchPoint`, `SessionUsagePadFamily`,
-  `SessionUsagePowerup`, `SessionUsagePadTier*` (`domain/session_usage.go`) — `SessionUsageSquadPlayer`,
-  `SessionUsageUnsupported`, `SessionUsageLoadFailed`, `PadTier*`, `PadTierOrder` RESTENT ; web
-  `_shared/usage/*` restants que knip désigne alors (aujourd'hui lus par `EquipmentUsageSection`
-  supprimé en L5 ou par les cartes de A), alias de `lib/api/types.ts:2304-2330` que L6.4 ne retire pas.
+- **F. Anciens orphelins d'intersection — supprimés en S5 (preuves REJOUÉES sur `262e36b2e`).** L6 a
+  supprimé `domain/equipment_usage.go`, `sessionusage/usage_overview.go` et réduit
+  `squadagg/equipment_usage.go` à `squadagg/lectures_usage.go` (`LireUsage`, `LecturesUsage`) ; L7 a
+  supprimé `port.SquadFormesUsageRepository`. Lecteurs hors tests relevés sur la nouvelle base :
+  `sessionusage.ComputeUsage` → `sessionusage/usage.go`, `session_page_usage.go` (+ commentaire
+  `port/session_usage.go`) ; `ComputePadTiers`, `PadTiersInput` → `pad_tiers.go`,
+  `session_page_usage.go` ; `squadagg.NommerArmesDesNiveaux` → `squadagg/pad_tier_labels.go`,
+  `session_page_usage_labels.go` ; `domain.SessionUsageBlock` → `usage.go`, `session_page_usage.go`,
+  `session_page_usage_labels.go` ; `SessionUsageMetric` → `sessionusage/{squad,usage,usage_outcomes}.go`
+  (+ commentaire `domain/equipmentusage/families.go:18`) ; `SessionUsageOutcomes` →
+  `usage.go`, `usage_outcomes.go` ; `SessionUsageShares`, `SessionUsagePadFamily`,
+  `SessionUsagePowerup` → `usage_families.go` ; `SessionUsageMatchPoint` → `team_context.go`
+  (`newMatchPoint`) ; `SessionUsagePadTiersBlock` / `PadTier` / `PadTierWeapon` → `pad_tiers.go`,
+  `squadagg/pad_tier_labels.go`. Tous ne sont donc lus que par la chaîne de Sessions et sortent en S5 :
+  `ComputeUsage`, `Input`, `metricKeys` et le reste de `usage.go` hors `PlayerRow` / `FilmRow` /
+  `ParticipantRow` / `MatchInput` / `BuildMatchInputs` (lus par `squademprise`, `squadformes`,
+  `squadagg`) ; `usage_families.go` ; `newMatchPoint` de `team_context.go` (`TeamContext`,
+  `BuildTeamContext` RESTENT) ; `usage_test.go` ; les cas `ComputeUsage` de `usage_outcomes_test.go`
+  (et `TestBilan_MetricKeysSurLeSeulSujet`, ajouté par L6 sur `metricKeys`) ; `computeOutcomes` /
+  `attachOutcomes` / `subjectBilanFamilies` de `usage_outcomes.go` (`equipmentOutcomeOf` /
+  `equipmentUsedOf` / `outcomeCountsOf` RESTENT, lus par `PlayerOutcomeCounts`, et le golden
+  `usage_outcomes_golden_test.go` est relu : il reste s'il ne teste que ce qui reste) ;
+  `ComputePadTiers` + `PadTiersInput` (`PadTierRow` RESTE) ; `squadagg/pad_tier_labels.go` (+ test) ;
+  types `SessionUsageBlock`, `SessionUsageMetric`, `SessionUsageOutcomes`, `SessionUsageShares`,
+  `SessionUsageMatchPoint`, `SessionUsagePadFamily`, `SessionUsagePowerup`, `SessionUsagePadTier*`
+  (`domain/session_usage.go`) — `SessionUsageSquadPlayer`, `SessionUsageUnsupported`,
+  `SessionUsageLoadFailed`, `PadTier*`, `PadTierOrder` RESTENT ; alias web de
+  `lib/api/types.ts:2299-2312` ; `_shared/usage/usagePadTiersModel.ts` (lu par la seule page Sessions,
+  note L8.2 du plan TS).
 - **G. `_shared/usage/*` (web, S4).** Restent, lus par la carte « Appui reçu »
   (`SessionCoordinationSection.tsx:33-40`, `coordinationModel.ts`) et ailleurs : `UsageForms`
   (`UsageGaugeGrid`), `UsageRegularityBand`, `UsageBandLegend`, `UsageEmptyNotice`, `usageCardTitle`,
@@ -361,22 +376,19 @@ faux, règle 17). Juge de paix web : `node tools/knip-ratchet.mjs` à 0 / 0 / 0.
 
 ## 5. Organisation et gates communs
 
-### 5.1 Fichiers du lot TS à ne PAS toucher, fichiers partagés inévitables
+### 5.1 Fichiers du lot TS : ce qui se touche, ce qui ne se touche pas
 
-- Interdits (périmètre déclaré de L6, L7, L8 du plan TS) : `domain/equipment_usage.go`,
-  `squadagg/equipment_usage.go`, `service/squadagg_reexport.go`, `sessionusage/usage_overview.go`
-  (+ test), `sessionusage/usage_outcomes_test.go`, `service/timeseries_service.go`,
-  `service/timeseries_service_sections.go`, `service/equipment_usage_block_test.go`,
-  `service/timeseries_service_test.go`, `domain/elevation_cloud.go`, `analysis/elevation_cloud.go`,
-  `service/elevation_cloud_section.go`, `service/weapon_range_section.go` (+ test),
-  `domain/timeseries.go`, `domain/squad_formes.go`, `analysis/squadformes/formes.go` (+ test),
-  `port/session_usage.go`, `platform/duckdb/squad_formes_repo.go`, `squadagg/squad_formes.go`
-  (+ `squad_formes_prises_nettes_test.go`), `teammates/teammates_service_usage_test.go`,
-  `service/timeseries_service_equipes_test.go`, `web test/handlers.ts`,
-  `squad/objectif/objectif.fixtures.ts`, `squad/formes/model/objectivesOptional.test.ts`,
-  `docs/{,FR/}CHANGELOG.md` et `RELEASE_NOTES.md` HORS des lignes propres à Sessions (S7.1),
-  `REFERENCE_CANAUX_EQUIPEMENT` §4 hors lecteurs de Sessions.
-- Touchés par D1 / D4 / D5 / D17 (fichiers livrés par L1-L5, hors périmètre L6-L8 — question Q1) :
+- Le lot TS est clos (L8, `262e36b2e`). Ses fichiers ne se touchent que pour les items de ce plan qui
+  les nomment : S5 supprime dans `sessionusage/usage_outcomes_test.go` (cas `ComputeUsage`,
+  `TestBilan_MetricKeysSurLeSeulSujet`) et dans `port/session_usage.go` (commentaire de
+  `ComputeUsage`) ; aucun autre fichier de L6-L8 (`timeseries_service.go`,
+  `timeseries_service_sections.go`, `squadagg/lectures_usage.go`, `squadagg/squad_formes.go`,
+  `domain/squad_formes.go`, `analysis/squadformes/*`, `domain/timeseries.go`, docs hors lignes
+  propres à Sessions — S7.1) n'est modifié. Un second rebase après la revue adverse du lot TS se fait
+  sur demande du superviseur seulement.
+- Touchés par D1 / D4 / D5 / D17 (fichiers livrés par L1-L5 — Q1 accordée le 2026-10-06 : ajouts
+  rétro-compatibles, rendu Escouade et Séries temporelles identique, tests de page rejoués sans
+  modification) :
   `service/timeseries_service_emprise.go`, `service/timeseries_service_lives.go` (corps remplacés par
   un appel, signatures inchangées) ; `squad/emprise/{ResourceControlCard, ResourceFilCard,
   empriseCharts, ResourceMatchGridCard, ResourceGridTable, ProductionCard, PisteCampsForm,
@@ -384,9 +396,9 @@ faux, règle 17). Juge de paix web : `node tools/knip-ratchet.mjs` à 0 / 0 / 0.
   objectif.logic}` ; `timeseries/usages/{MinePickupsCard, EquipmentOutcomesCard,
   LivesNearTeammateCard, usages.logic, useUsagesModels}` ; `timeseries/TimeseriesCoordinationSection.test.tsx`
   (fixtures riposte, S5).
-- Partagés, conflit attendu et résolu par RÉGÉNÉRATION à l'intégration : `apps/go-api/openapi.yaml`,
+- Partagés, conflit éventuel (second rebase) résolu par RÉGÉNÉRATION : `apps/go-api/openapi.yaml`,
   `apps/web/src/lib/api/generated.ts`, `lib/api/contract-surface.snapshot.json` ; partagés à hunks
-  disjoints : `api/wire/registry_pages.go` (factory `SessionPage` l. 317-366 seulement),
+  disjoints : `api/wire/registry_pages.go` (factory `SessionPage` l. 318-366 seulement),
   `lib/api/types.ts` (alias Sessions), `.ai/thought_log.md` (ajout en fin).
 
 ### 5.2 Règles d'exécution et gates
@@ -442,7 +454,7 @@ faux, règle 17). Juge de paix web : `node tools/knip-ratchet.mjs` à 0 / 0 / 0.
   `timeseries_service_emprise_test.go` verts SANS modification ; mutation : `WithMaps` ignoré →
   rouge (`TestTimeseries…` grille), journal `emprise` sans attribut `page` → aucune assertion (noter).
 - [ ] S1.2 `service/solo_lives_block.go` (NEUF) : `viesQuery{Page, Player, PlayerXUID, Repo, Radar,
-  MatchIDs}` et `lireViesPresOuSeul` = corps de `attachLives` (`timeseries_service_lives.go:50-78`),
+  MatchIDs}` et `lireViesPresOuSeul` = corps de `attachLives` (`timeseries_service_lives.go:47-75`),
   journaux `vies_*` + `page` ; `attachLives` l'appelle. Tests `timeseries_service_lives_test.go` verts
   sans modification ; mutation : portée résolue sans `PorteesDuRadarParMatch` → rouge.
 - [ ] S1.3 `service/squadagg/weapon_tools.go` (NEUF) : `WeaponToolInputs` (champs exportés de
@@ -514,7 +526,7 @@ Périmètre : `service/session_page_{emprise,lives,objectif,tools,match_scores,b
 - [ ] S2.8 `domain/session_page.go`, `domain/session_compare.go` : champs du §3 (commentaire de contrat
   court, au présent).
 - [ ] S2.9 Câblage `api/wire/registry_pages_sessions.go` (NEUF) : `cablerBlocsSessions(svc, pdb)`
-  appelé par UNE ligne de la factory `SessionPage` (`registry_pages.go:323-365`, taille non accrue) —
+  appelé par UNE ligne de la factory `SessionPage` (`registry_pages.go:318-366`, taille non accrue) —
   `WithSessionEmprise(duckdb.NewSquadEmpriseRepo(pdb), pdb.XUID)` et l'emblème inconditionnels,
   `WithSessionRadarRange(r.radarRangeFor(pdb))`, `WithRoundsDecide(r.roundsDecideFor(pdb))`, vies sous
   `CapFilmKillPositions`, véhicules sous `CapFilmVehicleUsage`, objectifs des formes sous
@@ -645,40 +657,40 @@ neuve, aucune clé de requête neuve (`lib/query/keys.ts` non touché) : tout ar
 - [ ] S4.16 Ratchets : knip 0 / 0 / 0, imports croisés ≤ 7 ; si un plafond baisse, l'abaisser.
 - Gate : gate web ; preuves §4.A, B, C, G rejouées → 0 (côté web).
 
-### S5 — Go : suppressions non partagées et riposte, contrat · moyen
+### S5 — Go : suppressions (bloc d'usage entier) et riposte, contrat · lourd
 
-Le web ne lit plus `usage`, `compare_usage` ni la riposte depuis S4.
+Le web ne lit plus `usage`, `compare_usage` ni la riposte depuis S4. Depuis le rebase sur
+`262e36b2e`, §4.F (anciens orphelins d'intersection) est dans ce lot.
 
-- [ ] S5.1 Rejouer les preuves §4.D et §4.E (producteurs et lecteurs Go et web).
+- [ ] S5.1 Rejouer les preuves §4.D, §4.E et §4.F (producteurs et lecteurs Go et web).
 - [ ] S5.2 §4.E : chaîne Go du bloc d'usage de Sessions (fichiers, champs, `WithSessionUsage`,
-  résolveur d'amis, câblage `registry_pages.go:340-345` remplacé par le résumé d'usage seul dans
+  résolveur d'amis, câblage `registry_pages.go:343-345` remplacé par le résumé d'usage seul dans
   `cablerBlocsSessions`), `objectives.go`, `ComputeFlagGrabsNet`, `ResolveTrackedSquad`,
   `objective_role_rows_repo.go`, types de domaine de §4.E ; tests supprimés avec leur code.
-- [ ] S5.3 §4.D / D10 : riposte et `FenetreMs` du contrat et du calcul ; `bloc_test.go` et les tests
+- [ ] S5.3 §4.F : `ComputeUsage` et le reste de `usage.go` hors types de lecture, `usage_families.go`,
+  `newMatchPoint`, `computeOutcomes` / `attachOutcomes` / `subjectBilanFamilies`, `ComputePadTiers` /
+  `PadTiersInput`, `squadagg/pad_tier_labels.go`, types de `domain/session_usage.go` listés ; tests
+  suivent (`usage_test.go`, cas `ComputeUsage` et `TestBilan_MetricKeysSurLeSeulSujet` de
+  `usage_outcomes_test.go`, `pad_tiers_test.go` si son sujet sort) ; `PlayerOutcomeCounts` et sa
+  garde / son golden verts sans modification d'assertion ; web : `usagePadTiersModel.ts` (+ test) et
+  ce que knip désigne alors, alias de `lib/api/types.ts:2299-2312`.
+- [ ] S5.4 §4.D / D10 : riposte et `FenetreMs` du contrat et du calcul ; `bloc_test.go` et les tests
   du service adaptés (Appui identique avant / après : test de non-régression écrit AVANT la coupe sur
   la fixture existante) ; fixtures de `TimeseriesCoordinationSection.test.tsx` et de Sessions suivent.
-- [ ] S5.4 Contrat régénéré ; snapshot `contract-surface` régénéré par la procédure, disparitions
-  listées ; alias de `lib/api/types.ts` propres à Sessions retirés (hors lignes que L6.4 retire).
+- [ ] S5.5 Contrat régénéré ; snapshot `contract-surface` régénéré par la procédure, disparitions
+  listées.
 - Gate : gate Go + `-tags=integration -p 1 ./internal/platform/duckdb/...` + contrat + gate web ;
-  preuves §4.A-E rejouées → 0.
+  preuves §4.A-F rejouées → 0.
 
-### S6 — Orphelins d'intersection avec le lot TS · moyen · DÉPENDANCE
+### S6 — fondu dans S5
 
-Exécutable seulement quand L6 et L7 de `feat/ts-usages-emprise` sont dans `feat/sessions-emprise`
-(intégration faite par le superviseur, question Q2) ; sinon chaque item passe `[!]` « dépendance de
-plan, L6 / L7 non intégrés » — report valide (règle 3 du skill).
-
-- [ ] S6.1 Rejouer §4.F après intégration (chaque symbole : lecteurs hors tests = 0).
-- [ ] S6.2 Go : suppressions §4.F (sessionusage, `ComputePadTiers`, `NommerArmesDesNiveaux`, types de
-  `domain/session_usage.go`), tests suivent.
-- [ ] S6.3 Web : `_shared/usage/*` et alias que knip désigne alors ; contrat et snapshot régénérés si
-  un type sort.
-- Gate : gate Go + contrat + gate web.
+- [~] S6 Orphelins d'intersection avec le lot TS : rebase sur `262e36b2e` (L6, L7 intégrés), items
+  portés par S5.1 et S5.3.
 
 ### S7 — Clôture · rapide
 
 - [ ] S7.1 Docs : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]` : phrases propres à
-  Sessions — relevées EN l. 37 (prises nettes « on Squad and Sessions »), 39 (usage sur trois pages),
+  Sessions — numéros relevés AVANT L8, qui a retouché ces fichiers : à relire — EN l. 37 (prises nettes « on Squad and Sessions »), 39 (usage sur trois pages),
   44 (riposte « on the Sessions »), 54 (Sessions en quatre sections) — corrigées, entrée ajoutée) ;
   `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md` (bloc 7.5 : EN l. 32, 39, 58) ; lignes
   re-vérifiées au moment d'écrire, FR aux lignes homologues ; aucune phrase propre aux Séries
@@ -724,6 +736,10 @@ Grille `.claude/skills/plan-review/SKILL.md`, passée sur ce fichier :
 - §9 exécutabilité : périmètres fermés (listes, preuves grep, knip comme juge des morts web), gates à
   commandes exactes, statuts et règle « aucune case vide », ordre strict, Découvertes, reprise,
   renvoi au skill — OK.
+Ajustement après rebase sur `262e36b2e` (2026-10-06) : §4.F rejoué (chaque symbole n'est plus lu que
+par la chaîne de Sessions), S6 fondu dans S5 (S5.3), §5.1 réécrit (lot TS clos), lignes citées
+déplacées par L6 / L7 recalées (D4, D5, D7, S1.2, S2.9, §4.E), requête réduite de
+`BuildSquadFormesBlock` (L7) reportée dans D7.
 Défauts trouvés et CORRIGÉS à la relecture : (1) la première version supprimait en S5 tout
 `domain/session_usage.go` et `sessionusage/usage.go` — impossible tant que L6 n'est pas intégré
 (`usage_outcomes_test.go`, `ComputePadTiers`, `NommerArmesDesNiveaux` y ont encore un lecteur, et L6
