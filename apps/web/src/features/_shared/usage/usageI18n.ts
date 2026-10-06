@@ -28,8 +28,7 @@
 import type { Locale } from '@/lib/i18n/locale'
 
 export interface UsageText {
-  /** Titres des trois cartes de section. */
-  blockEquipment: string
+  /** Titres des cartes de section. */
   blockPadControl: string
   /**
    * LES NIVEAUX D'ARME (2026-09-14) : le titre de la rangée, les cinq libellés de niveau et
@@ -70,12 +69,6 @@ export interface UsageText {
   cardHintCadences: string
   cardHintShares: string
   cardHintRegularity: string
-  /** La même couverture, en PIED de carte et en phrase (2026-09-13, demande
-   *  utilisateur) : le bandeau des quatre cartes d'équipement ne porte plus de compteur,
-   *  la couverture s'écrit UNE fois par rangée sous la carte de gauche.
-   *  PHRASE = ACCORD EN NOMBRE : « Mesuré sur 1 match sur 1 » au singulier (constaté
-   *  écrit « 1 matchs » sur une session d'un seul match, capture du 2026-09-13). */
-  measuredFooterFmt: (measured: number, total: number) => string
   /** « Matchs avec objectifs N/M » — le bloc 3 a son propre scope (hors films). */
   objectivesScopeFmt: (withObjectives: number, total: number) => string
   /** Raisons du bloc indisponible (contrat : unavailable_reason machine).
@@ -210,34 +203,10 @@ export interface UsageText {
   familyVip: string
   familyUnknownFmt: (key: string) => string
 
-  // ─── Variante COMPTES (P9, PLAN_EQUIPEMENT_GACHIS_2026-09-09, E5/E6) : Synthèse et
-  // Escouade — axe en objets pris, aucun pourcentage dans les barres, aucun trait de
-  // parité. Les libellés de grandeur (familles) et les trois issues réutilisent le
-  // dictionnaire ci-dessus (equipmentFamilyLabel, outcomeUsed/Kept/Dropped) — ce
-  // bloc n'ajoute que ce qui est propre à l'axe en comptes et aux deux donuts.
-  /** Aide d'en-tête des deux cartes en variante comptes (pas de trait de parité ici). */
-  cardHintEquipmentCounts: string
-  cardHintWeaponCounts: string
-  /** Titre de la carte donut, équipement puis armes spéciales, solo vs escouade. */
-  viewEquipmentPartsSolo: string
-  viewWeaponPartsSolo: string
-  /** Valeur de barre : le compte, jamais un pourcentage (P9). */
-  countTakenFmt: (n: string) => string
-  countPickupsFmt: (n: string) => string
-  /** Graduation de fin d'axe (comptes) : le nombre reste seul en 0 et au milieu. */
-  axisEquipmentTakenFmt: (n: string) => string
-  /** Infobulle de base d'une barre en comptes (avant l'ajout des issues/repères,
-   *  qui réutilise gaugeOutcomeTipFmt/gaugeReferenceTipFmt ci-dessus). */
-  countsTipFmt: (label: string, value: string) => string
-  /** La part « moi » du donut — même mot sur les deux pages (P10/P11, §3.3). */
-  donutMe: string
-  /** Sous-total « moi + mes amis » — absent quand aucun ami suivi n'est présent. */
-  donutSquadSubtotal: string
 }
 
 export const USAGE_TEXT: Record<Locale, UsageText> = {
   fr: {
-    blockEquipment: "Usages d'équipement",
     blockPadControl: 'Contrôle des armes spéciales',
     blockPadTiers: 'Contrôle des armes par niveau',
     cardHintPadTiers:
@@ -267,7 +236,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Chaque ramassage vient de l'événement daté du film et porte son ramasseur : un ramassage que la mesure ne sait pas attribuer n'est compté pour personne, jamais deviné.",
     cardHintObjectives:
       "Chaque barre est ta part du total de ton équipe sur la session ; le trait vertical marque la parité, la part d'un joueur moyen (100 divisé par l'effectif). Ce bloc se mesure hors film : il couvre plus de matchs que les deux autres. Le rôle « Tenir » se mesure en durée — ses totaux sont en minutes:secondes, ses parts restent des pourcentages.",
-    measuredFooterFmt: (m, t) => `Mesuré sur ${m} match${m > 1 ? 's' : ''} sur ${t}`,
     objectivesScopeFmt: (n, t) => `Matchs avec objectifs ${n}/${t}`,
     unavailableLoadFailed: "La lecture du résumé d'usage a échoué.",
     emptyNoFilm: "Aucun film décodé sur cette sélection.",
@@ -340,21 +308,8 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     familyExtraction: 'Extraction',
     familyVip: 'VIP',
     familyUnknownFmt: (key) => `Famille ${key}`,
-    cardHintEquipmentCounts:
-      "Chaque barre est le nombre d'objets pris sur la période ; son remplissage dit ce qui en a été fait. Les deux repères dans la barre sont des taux qui t'excluent : le trait plein est le taux du reste de ton équipe, le pointillé celui de eux.",
-    cardHintWeaponCounts:
-      "Chaque barre est le nombre de prises de socle d'arme sur la période. Le tir n'est pas mesuré à ce grain : la barre est un compte simple, pas ce qui a été fait de la prise.",
-    viewEquipmentPartsSolo: "Ma part de l'équipement du lobby",
-    viewWeaponPartsSolo: 'Ma part des armes spéciales du lobby',
-    countTakenFmt: (n) => `${n} pris`,
-    countPickupsFmt: (n) => `${n} prises`,
-    axisEquipmentTakenFmt: (n) => `${n} objets pris`,
-    countsTipFmt: (label, value) => `${label} — ${value}`,
-    donutMe: 'Moi',
-    donutSquadSubtotal: 'Mon escouade',
   },
   en: {
-    blockEquipment: 'Equipment usage',
     blockPadControl: 'Power weapon control',
     blockPadTiers: 'Weapon control by level',
     cardHintPadTiers:
@@ -384,7 +339,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
       'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). Every pickup comes from the timed film event and carries its picker: a pickup the measurement cannot attribute is counted for nobody, never guessed.',
     cardHintObjectives:
       'Each bar is your share of your team total over the session; the vertical mark is parity, the share of an average player (100 divided by headcount). This block is measured outside the film: it covers more matches than the other two. The "Hold" role is measured in duration — its totals are minutes:seconds, its shares remain percentages.',
-    measuredFooterFmt: (m, t) => `Measured on ${m} match${m === 1 ? '' : 'es'} out of ${t}`,
     objectivesScopeFmt: (n, t) => `Matches with objectives ${n}/${t}`,
     unavailableLoadFailed: 'Loading the usage summary failed.',
     emptyNoFilm: 'No decoded film in this selection.',
@@ -457,18 +411,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     familyExtraction: 'Extraction',
     familyVip: 'VIP',
     familyUnknownFmt: (key) => `Family ${key}`,
-    cardHintEquipmentCounts:
-      'Each bar is the number of items taken over the period; its fill says what became of them. The two marks in the bar are rates that exclude you: the solid mark is the rate of the rest of your team, the dotted one is theirs.',
-    cardHintWeaponCounts:
-      "Each bar is the number of power weapon pad pickups over the period. Firing isn't measured at this grain: the bar is a plain count, not what became of the pickup.",
-    viewEquipmentPartsSolo: "My share of the lobby's equipment",
-    viewWeaponPartsSolo: "My share of the lobby's power weapons",
-    countTakenFmt: (n) => `${n} taken`,
-    countPickupsFmt: (n) => `${n} pickups`,
-    axisEquipmentTakenFmt: (n) => `${n} items taken`,
-    countsTipFmt: (label, value) => `${label} — ${value}`,
-    donutMe: 'Me',
-    donutSquadSubtotal: 'My squad',
   },
 }
 

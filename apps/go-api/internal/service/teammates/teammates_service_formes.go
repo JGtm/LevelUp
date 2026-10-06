@@ -1,7 +1,7 @@
 // Package teammates — teammates_service_formes.go : LE BLOC « FORMES RETENUES »
 // de l'onglet Synergies (artefact 2ec1b8eb, lot D2 du 2026-09-13).
 //
-// MÊME PÉRIMÈTRE ET MÊMES AMIS QUE LE BLOC D'ÉQUIPEMENT (teammates_service_usage.go) :
+// MÊME PÉRIMÈTRE ET MÊMES AMIS QUE LES AUTRES BLOCS D'USAGE (teammates_service_usage.go) :
 // le périmètre D2 — la composition exacte ∩ les matchs filtrés (période, cascade,
 // sessions), les matchs filtrés seuls sans coéquipier — et les coéquipiers
 // SÉLECTIONNÉS comme escouade. Deux blocs de la même page qui
@@ -25,13 +25,13 @@ import (
 	"levelup/go-api/internal/service/squadagg"
 )
 
-// WithSquadFormes injecte les deux sources du bloc et la racine du dépôt (le
-// catalogue d'armes du titre s'y lit à la requête). Câblé gated par les mêmes
+// WithSquadFormes injecte les deux sources du bloc et la racine du dépôt (les catalogues du titre
+// que lit l'Emprise s'y lisent à la requête). Câblé gated par les mêmes
 // capabilities que les blocs qu'il prolonge (film.usage_summary pour l'usage,
 // les stats d'objectif pour les colonnes) ; nil ⇒ bloc servi avec Available=false
 // et raison machine, ou sans ses cartes d'objectif.
 func (s *TeammatesService) WithSquadFormes(
-	usage port.SquadFormesUsageRepository, objectives port.SquadFormesObjectiveRepository, repoRoot string,
+	usage port.SessionUsageRepository, objectives port.SquadFormesObjectiveRepository, repoRoot string,
 ) *TeammatesService {
 	s.formesUsageRepo = usage
 	s.formesObjectiveRepo = objectives
@@ -40,7 +40,7 @@ func (s *TeammatesService) WithSquadFormes(
 }
 
 // loadSquadFormes publie le bloc sur le périmètre D2 de la page. lectures : les lectures
-// communes au bloc « servi ou gâché », déjà faites (nil ⇒ le bloc les fait).
+// communes du résumé d'usage, déjà faites (nil ⇒ le bloc les fait).
 func (s *TeammatesService) loadSquadFormes(
 	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
 	p porteeUsage, req domain.TeammatesQueryRequest, lectures *squadagg.LecturesUsage,
@@ -54,9 +54,6 @@ func (s *TeammatesService) loadSquadFormes(
 		MainGamertag:      s.gamertag,
 		Metas:             formesMatchMetas(filteredMatches, p.history, s.modesEcartes(p.pairNames)),
 		SelectedGamertags: req.SelectedGamertags,
-		RepoRoot:          s.repoRoot,
-		TitleSlug:         s.titleSlug,
-		Locale:            req.Locale,
 	})
 }
 

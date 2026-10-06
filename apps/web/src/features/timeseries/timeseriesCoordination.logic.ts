@@ -1,11 +1,11 @@
 /**
- * timeseriesCoordination.logic — les décisions PURES des deux cartes de coordination des
- * Séries temporelles (lot Q, D22-3 et D22-6/7 du 2026-09-21).
+ * timeseriesCoordination.logic — les décisions PURES de la carte de coordination des Séries
+ * temporelles, « Appui reçu » (D22-3 et D22-6/7).
  *
- * UN SEUL GRAPHE PAR SUJET (D22-3) : les deux grandeurs d'un sujet partagent l'axe des %
- * et se lisent l'une contre l'autre. Ce module ne fait que PROJETER le bloc Coordination
- * servi par la page (`TimeseriesPageResponse.coordination`, lot N1) sur la frise partagée
- * — aucun quotient n'est recalculé ici : les taux, leurs bruts et leur drapeau
+ * UN SEUL GRAPHE (D22-3) : les deux grandeurs de l'appui (on me prépare, ma part des appuis)
+ * partagent l'axe des % et se lisent l'une contre l'autre. Ce module ne fait que PROJETER le
+ * bloc Coordination servi par la page (`TimeseriesPageResponse.coordination`) sur la frise
+ * partagée — aucun quotient n'est recalculé ici : les taux, leurs bruts et leur drapeau
  * d'échantillon sont mesurés côté Go.
  *
  * Deux règles tiennent dans ce module, et un test peut les mettre en défaut sans monter
@@ -110,9 +110,4 @@ export function moyenneGlissante(serie: SerieDeSoirees): (number | null)[] {
     if (fenetre.length < FENETRE_TENDANCE) return null
     return fenetre.reduce((a, b) => a + b, 0) / fenetre.length
   })
-}
-
-/** Le délai médian des ripostes, en SECONDES, ou `null` si aucune riposte mesurée. */
-export function delaiMedianS(ms: number | undefined): number | null {
-  return typeof ms === 'number' && ms > 0 ? ms / 1000 : null
 }

@@ -16,8 +16,8 @@
 // ou « powerup_camo » ont un sens dans tout titre, ce qui est faux (Halo 5 n'a aucun
 // équipement de ce genre). Ces clés sont le vocabulaire d'un DOCUMENT : elles
 // voyagent telles quelles jusqu'au contrat public — `domain.SessionUsageMetric.Key`
-// vaut `equipment_<famille>`, `domain.EquipmentUsageFamilyLine.Family` porte la
-// famille brute. C'est exactement le chemin qu'a pris `domain/replaydoc` pour le
+// vaut `equipment_<famille>`, `domain.EmpriseEquipmentFamily.Family` porte la famille
+// brute. C'est exactement le chemin qu'a pris `domain/replaydoc` pour le
 // document de rejeu : un voisin de `domain/`, feuille, sans aucun import du dépôt.
 //
 // CE PAQUET NE LIT PAS LE MANIFESTE, et c'est voulu. La source de ces tables est
@@ -81,6 +81,22 @@ const (
 	EquipmentFamilyWall   = usageFamilyWall
 	EquipmentFamilySensor = usageFamilySensor
 )
+
+// EquipmentFamilyGrapple / EquipmentFamilyThruster — deux CAPACITÉS PORTÉES (grappin,
+// propulseur) : le film publie l'appareil, lâché à la mort, mais ni prise ni usage au bilan. La
+// carte « Équipement » des Séries temporelles les montre « non mesurées » avec leurs lâchers ; le
+// décodeur relit ces deux clés (`replay/usage_summary_families.go`) au lieu de les réécrire.
+const (
+	EquipmentFamilyGrapple  = "grapple"
+	EquipmentFamilyThruster = "thruster"
+)
+
+// EquipmentUnmeasuredLineFamilies rend les familles HORS BILAN qui portent quand même une ligne
+// « non mesuré » (avec leurs lâchers), dans l'ordre d'affichage : grappin, propulseur. Le
+// répulseur n'y est pas (décision P4 : aucun canal ne mesure son usage, il n'a aucune ligne).
+func EquipmentUnmeasuredLineFamilies() []string {
+	return []string{EquipmentFamilyGrapple, EquipmentFamilyThruster}
+}
 
 // EquipmentOutcomeFamilies rend les familles qui portent une ligne d'issue, dans
 // l'ordre de la table ci-dessus. Exportée pour l'agrégat de session, qui doit

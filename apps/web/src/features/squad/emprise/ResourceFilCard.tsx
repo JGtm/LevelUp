@@ -20,10 +20,13 @@ import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 import { formatMatchTime } from '../formes/format'
 import { ObjectifLegend } from '../objectif/ObjectifFrame'
 import type { ResourceFil, ResourceFilMatch } from './emprise.logic'
-import { buildResourceFilOption, resolveEmpriseFilColors } from './empriseCharts'
+import { buildResourceFilOption, resolveEmpriseFilColors, type FilAxe } from './empriseCharts'
 import type { EmpriseText } from './empriseStrings'
 import { resourceInk } from './resourceColors'
 import { inSentence } from './useOutcomeLabels'
+
+/** L'axe par défaut : un match par colonne (une soirée de l'Escouade). */
+const MATCH_AXE: FilAxe = { kind: 'match' }
 
 /** Hauteur du graphe (maquette : 520 × 246). */
 const FIL_HEIGHT = 246
@@ -34,9 +37,11 @@ interface Props {
   outcomeLabels: Record<OutcomeValue, string>
   locale: Locale
   t: EmpriseText
+  /** L'axe : une soirée match par match (défaut, Escouade) ou une période (Séries temporelles). */
+  axe?: FilAxe
 }
 
-export function ResourceFilCard({ fil, dominanceLabels, outcomeLabels, locale, t }: Props) {
+export function ResourceFilCard({ fil, dominanceLabels, outcomeLabels, locale, t, axe = MATCH_AXE }: Props) {
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -44,12 +49,14 @@ export function ResourceFilCard({ fil, dominanceLabels, outcomeLabels, locale, t
         items={[
           ...fil.resources.map((r) => ({ kind: 'square' as const, label: t.resources[r].label, color: resourceInk(r) })),
           { kind: 'pair', label: t.fil.winLoss, colors: [tokenCssVar('outcome-win'), tokenCssVar('outcome-loss')] },
-          { kind: 'notch', label: t.fil.dominance, color: tokenCssVar(DOMINANCE_COLOR_TOKENS[1]) },
+          ...(axe.kind === 'match'
+            ? [{ kind: 'notch' as const, label: t.fil.dominance, color: tokenCssVar(DOMINANCE_COLOR_TOKENS[1]) }]
+            : []),
           { kind: 'parity', label: t.parity, color: tokenCssVar('warning') },
         ]}
       />
     ),
-    [fil.resources, t],
+    [fil.resources, t, axe.kind],
   )
 
   const series = useMemo<ChartSeries<ResourceFilMatch>[]>(
@@ -69,8 +76,8 @@ export function ResourceFilCard({ fil, dominanceLabels, outcomeLabels, locale, t
         pointTip: t.fil.pointTip,
         endTip: t.fil.endTip,
         bandTip: t.fil.bandTip,
-      }),
-    [fil, t, locale, dominanceLabels, outcomeLabels],
+      }, axe),
+    [fil, t, locale, dominanceLabels, outcomeLabels, axe],
   )
 
   return (

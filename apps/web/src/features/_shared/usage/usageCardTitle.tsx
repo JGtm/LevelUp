@@ -8,8 +8,7 @@
  * UNE infobulle (i) VISIBLE, posée à droite du titre, qui prend plusieurs paragraphes :
  * l'aide de lecture, les notes de mesure et la couverture de la carte.
  *
- * Source unique des DEUX appelants (`session-detail/SessionUsageShared.tsx` et
- * `EquipmentUsageSection.tsx`) — CLAUDE.md n°6. Le rendu lui-même est délégué au helper
+ * Source unique des cartes d'usage de la page Sessions — CLAUDE.md n°6. Le rendu lui-même est délégué au helper
  * transverse `titleWithInfo` (réconciliation des lots A2 et G, 2026-09-21) : ce module ne
  * fait que mettre en paragraphes.
  */

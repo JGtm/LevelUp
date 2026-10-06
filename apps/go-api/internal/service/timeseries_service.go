@@ -42,7 +42,6 @@ import (
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
-	"levelup/go-api/internal/service/teammates"
 )
 
 // Cles metriques canoniques utilisees dans MetricXKey/MetricYKey.
@@ -69,9 +68,8 @@ type TimeseriesService struct {
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
-	// repoRoot : racine du depot, pour le SEUL catalogue d'armes du titre (nommage du
-	// detail par niveau du bloc usage, cf. squadagg.NommerArmesDesNiveaux). Vide = les armes
-	// s'affichent sous leur cle, jamais un nom approchant.
+	// repoRoot : racine du depot, pour les catalogues du titre (noms d'armes des formes retenues
+	// et de l'Emprise). Vide = les armes s'affichent sous leur cle, jamais un nom approchant.
 	repoRoot string
 	// weaponKillsRepo (chart .04 Top weapons) : optionnel, degradation gracieuse.
 	// Si nil, TopWeapons reste vide.
@@ -98,16 +96,15 @@ type TimeseriesService struct {
 	// du joueur suivi sur le scope. Câblé gated (capability match.objective.stats,
 	// Infinite) ; nil → bloc ObjectiveStats omis. Best-effort.
 	objectiveStatsRepo port.ObjectiveStatsRepository
-	// weaponRangeRepo / sessionUsageRepo + usageFriends : les deux sections migrées depuis
-	// la Synthèse le 2026-09-13. Optionnels, gated au câblage — cf.
+	// weaponRangeRepo : la portée des engagements ; sessionUsageRepo : le résumé d'usage, lu par
+	// l'Emprise et les formes retenues. Optionnels, gated au câblage — cf.
 	// timeseries_service_sections.go.
 	weaponRangeRepo  port.WeaponRangeRepository
 	sessionUsageRepo port.SessionUsageRepository
-	usageFriends     teammates.FriendGamertagsResolver
 	// formesUsageRepo / formesObjectiveRepo : le bloc « Les formes retenues », contexte
 	// SOLO, migré depuis l'Escouade le 2026-09-19. Optionnels, gated au câblage — cf.
 	// timeseries_service_sections.go.
-	formesUsageRepo     port.SquadFormesUsageRepository
+	formesUsageRepo     port.SessionUsageRepository
 	formesObjectiveRepo port.SquadFormesObjectiveRepository
 	// coordTactical / coordAppuis / coordCaps : le bloc « Coordination » (riposte +
 	// appui reçu) par SOIRÉE, lot N1. Optionnels, gated au câblage — cf.
@@ -120,6 +117,8 @@ type TimeseriesService struct {
 	// sur la fenêtre de cette page. Optionnels, gated au câblage.
 	matchRangeRepo port.MatchRangeRepository
 	matchRangeXUID string
+	// usages : l'Emprise solo de l'onglet « Usages » (timeseries_service_emprise.go).
+	usages usagesDeps
 }
 
 // highlightEventsLoader expose la sous-API du HighlightEventsRepo per-player

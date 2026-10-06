@@ -20,6 +20,13 @@
 // Le test du motif (`TestNoLocalRadarRangeLookup_ReconnaitLesCopies`) prouve que les empreintes
 // attrapent les anciennes copies : un garde-rail qui ne voit rien ne garde rien. Tests compris
 // (la troisieme copie en etait un). Pas d'allowlist hors du helper et de ce fichier.
+//
+// EMPREINTE 3 (2026-10-06, plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L1) : la
+// resolution PAR MATCH (boucle sur les matchs d'une lecture, appel de `PorteeDuRadar`, compte des
+// sans-portee) existait en deux copies de production et une troisieme s'annoncait ; elle est
+// `mappings.PorteesDuRadarParMatch`. Tout APPEL de `PorteeDuRadar(` dans un fichier de production
+// hors du helper est refuse, sauf `sync/killcollector/capture.go`, qui resout UNE variante a
+// l'ecriture (la fonction de portee passee au collecteur) — pas une boucle sur des matchs.
 package archlint
 
 import (
@@ -45,6 +52,22 @@ const porteeHelper = "internal/games/mappings/portee_du_radar.go"
 
 // porteeGarde : ce fichier, qui porte les anciennes copies comme litteraux de son auto-test.
 const porteeGarde = "internal/archlint/no_local_radar_range_lookup_test.go"
+
+// appelDePorteeRE : empreinte 3, un appel a `PorteeDuRadar(` (le `\b` laisse passer
+// `AvecPorteeDuRadar(` et le type `PorteeDuRadar` du collecteur, qui ne sont pas des appels).
+var appelDePorteeRE = regexp.MustCompile(`\bPorteeDuRadar\(`)
+
+// porteeAppelAutorise : le seul fichier de production, hors du helper, qui appelle PorteeDuRadar —
+// la resolution d'UNE variante a l'ecriture du placement des vies.
+const porteeAppelAutorise = "internal/sync/killcollector/capture.go"
+
+// appelsDePortee rend l'empreinte 3 si le texte (un fichier de PRODUCTION) appelle PorteeDuRadar.
+func appelsDePortee(source string) []string {
+	if appelDePorteeRE.MatchString(source) {
+		return []string{"PorteeDuRadar appele hors du helper (resoudre par mappings.PorteesDuRadarParMatch)"}
+	}
+	return nil
+}
 
 // empreintesDePortee rend les empreintes de resolution locale presentes dans un texte source.
 func empreintesDePortee(source string) []string {
@@ -78,6 +101,26 @@ func TestNoLocalRadarRangeLookup_ReconnaitLesCopies(t *testing.T) {
 	if e := empreintesDePortee("v, ok := s.seconds[strings.TrimSpace(gameVariantName)]"); len(e) != 0 {
 		t.Errorf("faux positif sur le temps reglementaire : %v", e)
 	}
+	// Empreinte 3 : les deux boucles par match d'avant le lot L1 (2026-10-06).
+	boucles := []string{
+		// service/tactical_service_isolement.go, rayonsParMatch
+		"\t\tmetres, ok := mappings.PorteeDuRadar(s.radar, m.GameVariantName)\n\t\tif !ok {\n\t\t\tsans++",
+		// service/teammates/teammates_service_emprise_placement.go, rayonParMatchDuScope
+		"\t\tmetres, ok := mappings.PorteeDuRadar(radar, variante)\n\t\tif !ok {\n\t\t\tsans++",
+	}
+	for _, b := range boucles {
+		if len(appelsDePortee(b)) == 0 {
+			t.Errorf("l'empreinte 3 ne reconnait pas une ancienne boucle :\n%s", b)
+		}
+	}
+	for _, sain := range []string{
+		"func (c *KillSourceCollector) AvecPorteeDuRadar(p PorteeDuRadar) *KillSourceCollector {",
+		"rayon, sans := mappings.PorteesDuRadarParMatch(s.radar, variantes)",
+	} {
+		if e := appelsDePortee(sain); len(e) != 0 {
+			t.Errorf("faux positif de l'empreinte 3 sur %q : %v", sain, e)
+		}
+	}
 }
 
 func TestNoLocalRadarRangeLookup(t *testing.T) {
@@ -103,6 +146,11 @@ func TestNoLocalRadarRangeLookup(t *testing.T) {
 			}
 			for _, e := range empreintesDePortee(string(data)) {
 				violations = append(violations, rel+" : "+e)
+			}
+			if !strings.HasSuffix(rel, "_test.go") && rel != porteeAppelAutorise {
+				for _, e := range appelsDePortee(string(data)) {
+					violations = append(violations, rel+" : "+e)
+				}
 			}
 			return nil
 		})
