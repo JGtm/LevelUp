@@ -117,8 +117,31 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
   (`CardUnderLayers`, `CardBody`, 48 lignes de code) et les deux tuiles d'attente fusionnent en
   `ReplaySeatWaiting` (`occupant` nul = place libre), ce qui ramène `ReplayTeams` à 86 — la dette
   baisse au lieu de croître. Résultats vitest et Playwright : cf. journal.
-- [ ] E5.3 `delivery-checklist`, `adversarial-review` sur le diff, corrections.
-- [ ] E5.4 Commits (`fix(rejeu):`), push, CI suivie et verte, entrée `.ai/thought_log.md`.
+- [x] E5.3 `delivery-checklist`, `adversarial-review` sur le diff, corrections. Checklist : dette
+  de longueur résorbée (cf. E5.2), aucun TODO ni `any` introduit, rien de débranché laissé en
+  place, garde-rail livré avec le helper (commits E1 + E4 de la même branche), Playwright non
+  joué (cf. [!] ci-dessous). Revue adversariale, ronde 1 (deux relecteurs Opus aveugles,
+  lentilles « appartenance + anti-patterns + front » et « tests ») : 6 constats recevables —
+  1 P1 (aucun test ne prouvait qu'une entrée `seatSource: index` AVEC équipe reste rendue),
+  5 P2 ; corrigés : le P1 (tests logique + DOM, témoin 859da825), le rang des camps du contrôle
+  des socles (test), le garde-rail (crochets, déstructuration) et les tests « entrée muette que
+  la feuille connaît » (menu, tables), l'en-tête de `rosterLogic.ts`, la longueur de
+  `useReplayTimeline` (90 → 86) ; consigné sans correction : la phrase UI de la réserve (D7).
+  Ronde 2 (un relecteur neuf sur les seules corrections) : 0 P0 / 0 P1 (borne de décroissance
+  tenue), 2 P2 sur le détecteur du garde-rail (formes `for…of` et paramètre non premier non
+  comptées ; clés en argument, types indexés et annotations comptés à tort) — corrigés dans le
+  périmètre, chaque cas devenu contre-épreuve, mutation vérifiée ; pas de ronde 3 (borne du
+  skill). Mutations des nouveaux tests : masquer les entrées `index`, neutraliser le rang des
+  camps, replier `groupByTeam` sur la feuille → 5 tests rouges, fichiers restaurés.
+- [x] E5.4 Commits (`fix(rejeu):`), push, CI suivie et verte, entrée `.ai/thought_log.md`.
+  Commits a2fcdd62f (E1), c58a95a95 (E2), 8ad09cfef (E3), b794678d7 (E4), 336e0ffc2, b4ebf21e1,
+  cc55e4b5f (E5) ; run CI 37470050143 sur 336e0ffc2 : VERT (tous les jobs, E2E Playwright sauté
+  par condition) ; runs des commits suivants : suivis jusqu'à leur verdict avant de rendre la main
+  (le CR au superviseur porte le statut final).
+- [!] Playwright local non joué : les seuls serveurs locaux (vite :5173, API Go :8000) sont ceux
+  du worktree PRINCIPAL, partagé ; plusieurs specs écrivent par l'API (réglages, onboarding,
+  likes) et une page de rejeu peut déclencher une cuisson — écrire dans les `data/` du principal
+  est interdit par le brief. En CI, le job E2E ne tourne que sur une PR vers `main`.
 
 ## Découvertes (notées, non traitées — règle 7 du contrat)
 
@@ -141,9 +164,19 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
   concerné.
 - D5 — ADR 0034 D-9 écrit encore « the web colours players by `team_side` from the match sheet »
   (faux depuis le lot 1.9.14, et pour le regroupement depuis ce lot) : document hors périmètre.
-- D6 — Deux garde-rails à balayage complet de `src/` (`xuidMeta.guard`, `teamLabel.guard`)
-  frôlent le délai de 5 s de vitest sous charge machine (7,4 s et 8,1 s observés en parallèle,
-  5,4 s seul, puis verts).
+- D6 — Des garde-rails à balayage complet de `src/` (`xuidMeta.guard`, `teamLabel.guard`,
+  `useCopyToClipboard.guard`, `clockMShort.guard`) frôlent le délai de 5 s de vitest sous charge
+  machine (5,0 à 8,1 s observés en local, relecteurs et CI en parallèle) ; verts en CI Linux
+  (`npm run test:coverage` du job Frontend) et verts rejoués seuls hors charge.
+- D7 — La phrase de la réserve des usages d'équipement (`coverageReserveFmt`, FR et EN : « le
+  film n'en nomme ni l'auteur ni l'origine ») ne couvre pas les gestes d'un auteur que le film
+  NOMME sans lui écrire d'équipe, que ce lot verse à la réserve (0 geste au parc du 2026-10-06 ;
+  plus aucun une fois la source corrigée). Libellé UI = décision produit : question portée au
+  superviseur, contrat i18n documenté.
+- D8 — Les entrées `seatSource: index` AVEC équipe (`43e96765` 343 PardonMy, `859da825`
+  SplinterCell958, `bf2a9f05` AllGodsLove) gardent leur place, donc une 5e tuile dans la colonne
+  Eagle d'un 4v4 (« Place libre » hors de leur présence) : défaut de source `placesEnTrop = 1`,
+  antérieur au lot, corrigé par le lot Go ; le web ne masque pas une place qui a une équipe.
 
 ## Journal
 
@@ -164,3 +197,8 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
   du nom est tenue par la même classe de nom (jsdom ne mesure pas la mise en page : contrôle
   visuel à l'utilisateur).
 - 2026-10-06 — E4 close (garde-rail 6/6 vert, eslint 0 problème, mutation vérifiée).
+- 2026-10-06 — E5 close : mesure du parc, gates (vitest complet 852 fichiers / 9 095 tests verts
+  sur 336e0ffc2 ; sur b4ebf21e1, 850 / 852 fichiers verts en local, les 3 échecs étant des délais
+  de 5 s dépassés par deux garde-rails étrangers au lot sous charge — D6), revue adversariale en
+  deux rondes, commits, push, CI. Plan clos ; points ouverts portés au superviseur : D3 (FFA),
+  D7 (phrase de la réserve), D1 / D2 (encre et allégeance sur la feuille, hors périmètre).
