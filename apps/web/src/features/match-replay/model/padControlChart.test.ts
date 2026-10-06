@@ -23,18 +23,20 @@ const CONTROL = {
   weapons: [SNIPER, ROCKET],
   byTeam: [
     {
+      team: 1,
       side: 't1',
       players: [
-        { xuid: 'b1', name: 'Charlie', side: 't1', total: 3, byWeapon: { [SNIPER]: 3 } },
-        { xuid: 'b2', name: 'Delta', side: 't1', total: 1, byWeapon: { [ROCKET]: 1 } },
+        { xuid: 'b1', name: 'Charlie', team: 1, side: 't1', total: 3, byWeapon: { [SNIPER]: 3 } },
+        { xuid: 'b2', name: 'Delta', team: 1, side: 't1', total: 1, byWeapon: { [ROCKET]: 1 } },
       ],
       total: { total: 4, byWeapon: { [SNIPER]: 3, [ROCKET]: 1 } },
     },
     {
+      team: 0,
       side: 't0',
       players: [
-        { xuid: 'a1', name: 'Alpha', side: 't0', total: 2, byWeapon: { [SNIPER]: 1, [ROCKET]: 1 } },
-        { xuid: 'a2', name: 'Bravo', side: 't0', total: 0, byWeapon: {} },
+        { xuid: 'a1', name: 'Alpha', team: 0, side: 't0', total: 2, byWeapon: { [SNIPER]: 1, [ROCKET]: 1 } },
+        { xuid: 'a2', name: 'Bravo', team: 0, side: 't0', total: 0, byWeapon: {} },
       ],
       total: { total: 2, byWeapon: { [SNIPER]: 1, [ROCKET]: 1 } },
     },
@@ -50,10 +52,10 @@ function barres() {
   return buildPadControlBars({
     control: CONTROL,
     weaponLabel: (w) => (w === SNIPER ? 'S7 Sniper' : 'M41 SPNKr'),
-    teamLabel: (side) => `Équipe ${side ?? 'inconnue'}`,
-    teamColor: (side) => `var(--ac-team-${side === 't0' ? 'ally' : 'enemy'})`,
+    teamLabel: (camp) => `Équipe ${camp.side ?? camp.team}`,
+    teamColor: (camp) => `var(--ac-team-${camp.side === 't0' ? 'ally' : 'enemy'})`,
     // Le camp du joueur de la page (t0) en haut, l'adverse ensuite.
-    teamRank: (side) => (side === 't0' ? 0 : 1),
+    teamRank: (camp) => (camp.side === 't0' ? 0 : 1),
   })
 }
 

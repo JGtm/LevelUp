@@ -59,7 +59,7 @@ const TRACK = {
 
 function renderTeams(over: Partial<ReplayDocument>, frame = 10) {
   const doc = testReplayDoc({
-    roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
+    roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha', team: 0 }],
     tracks: [TRACK],
     ...over,
   })
@@ -371,7 +371,7 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
     // de rangées vivant (frame 10) et mort (frame 140, aucune vie suivante). Les zones
     // fantômes réservent la place ; l'égalité au pixel se vérifie au gate visuel user.
     const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha', team: 0 }],
       tracks: [{ ...TRACK, points: [{ t: 0, x: 0, y: 0, sh: 1, hp: 1 }] }],
       loadouts: [{ t: 0, slot: 512, w: ['0xAAAA'] }],
       inventory: [{ t: 0, slot: 512, g: [1, 0] }],
@@ -405,7 +405,7 @@ describe('ReplayTeams — mort et réapparition', () => {
 
   const docAvecRetour = () =>
     testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha', team: 0 }],
       tracks: [
         TRACK,
         { slot: 514, team: -1, xuid: 'A', startFrame: 180, endFrame: 260, points: [{ t: 180, x: 0, y: 0 }] },
@@ -542,7 +542,7 @@ describe('ReplayTeams — vitalité : plein d’apparition', () => {
     // retransmet que ce qui change : « rien d'arrivé » = « plein », pas « inconnu »
     // (décision utilisateur 2026-08-12, doctrine du POC).
     const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha', team: 0 }],
       tracks: [
         TRACK, // la vie affichée : aucun point ne porte sh/hp
         {
@@ -705,8 +705,8 @@ describe('ReplayTeams — zones d’équipement et translocation', () => {
     const deuxCamps = (side: string) => {
       const doc = testReplayDoc({
         roster: [
-          { xuid: 'A', filmIndex: 0, name: 'Alpha' },
-          { xuid: 'B', filmIndex: 1, name: 'Bravo' },
+          { xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 },
+          { xuid: 'B', filmIndex: 1, name: 'Bravo', team: side === 't1' ? 1 : 0 },
         ],
         tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B', points: [{ t: 0, x: 9, y: 9 }] }],
         equipmentPlacements: [
@@ -761,8 +761,8 @@ describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
   const twoTeams = () =>
     testReplayDoc({
       roster: [
-        { xuid: 'A', filmIndex: 0, name: 'Alpha' },
-        { xuid: 'B', filmIndex: 1, name: 'Bravo' },
+        { xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 },
+        { xuid: 'B', filmIndex: 1, name: 'Bravo', team: 1 },
       ],
       tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B' }],
     })
@@ -780,16 +780,19 @@ describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
 
   it('numérote une équipe hors référentiel plutôt que d’inventer un nom', () => {
     const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha', team: 0 }],
       tracks: [TRACK],
     })
     render(<ReplayTeams doc={doc} scoreboard={[sbRow('A', 'Alpha', 't12')]} frame={10} locale="fr" />)
     expect(screen.getByText('Équipe 12')).toBeTruthy()
   })
 
-  it('sans camp connu : « Sans équipe », encre et liseré neutres — aucune couleur d’équipe empruntée', () => {
+  it('camp que la feuille ne nomme pas : « Équipe N » de son désignateur, encre et liseré neutres', () => {
+    // Le film range Alpha au camp 0 ; aucune ligne de feuille ne le nomme ni ne dit son
+    // allégeance. Jamais « Sans équipe » : un camp du film a toujours un numéro.
     const view = renderTeams({})
-    const header = view.getByText('Sans équipe').parentElement as HTMLElement
+    expect(view.queryByText(/Sans équipe/)).toBeNull()
+    const header = view.getByText('Équipe 0').parentElement as HTMLElement
     // Le bandeau HUD garde son liseré, au token NEUTRE `border` — jamais un camp deviné.
     expect(header.style.borderLeft).toContain('var(--border)')
     expect(header.style.borderLeft).not.toContain('team')
@@ -813,8 +816,8 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
   const board = () => [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', 't0')]
   const twoLives = {
     roster: [
-      { xuid: 'A', filmIndex: 0, name: 'Alpha' },
-      { xuid: 'B', filmIndex: 1, name: 'Bravo' },
+      { xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 },
+      { xuid: 'B', filmIndex: 1, name: 'Bravo', team: 0 },
     ],
     tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B' }],
   }
@@ -955,9 +958,9 @@ describe('ReplayTeams — plus aucune marque d’identité sur les fiches', () =
   it('ni « Moi » ni « Ami », même avec les deux sur le tableau de bord', () => {
     const doc = testReplayDoc({
       roster: [
-        { xuid: 'A', filmIndex: 0, name: 'Alpha' },
-        { xuid: 'B', filmIndex: 1, name: 'Bravo' },
-        { xuid: 'C', filmIndex: 2, name: 'Charlie' },
+        { xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 },
+        { xuid: 'B', filmIndex: 1, name: 'Bravo', team: 0 },
+        { xuid: 'C', filmIndex: 2, name: 'Charlie', team: 1 },
       ],
       tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B' }, { ...TRACK, slot: 514, xuid: 'C' }],
     })
@@ -1000,7 +1003,7 @@ describe('ReplayTeams — la fiche unique', () => {
 
   function renderCard(over: Partial<ReplayDocument>, frame = 10) {
     const doc = testReplayDoc({
-      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha' }],
+      roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha', team: 0 }],
       tracks: [TRACK],
       ...over,
     })

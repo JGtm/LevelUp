@@ -30,13 +30,15 @@
  * encres arrivent par l'appelant.
  */
 import type { PadControl, PadControlTeam } from './padControlLogic'
+import type { ReplayCamp } from '../../../lib/replay/replayCamps'
 
-/** Un joueur dans la barre : son identité, son camp, ses prises, son encre et sa part. */
-export interface PadBarSegment {
+/**
+ * Un joueur dans la barre : son identité, son camp DU FILM (`team`, et le côté de feuille `side`
+ * qui ne fait que l'encrer), ses prises, son encre et sa part.
+ */
+export interface PadBarSegment extends ReplayCamp {
   xuid: string
   name: string
-  /** Camp du joueur — sert à l'infobulle et au filet qui sépare les deux camps. */
-  side: string | null
   /** Libellé du camp, déjà résolu par l'appelant. */
   sideLabel: string
   count: number
@@ -65,7 +67,7 @@ export interface PadBarRow {
 export interface PadBarModel {
   rows: PadBarRow[]
   /** Les camps présents, dans l'ordre d'affichage — la légende du bloc. */
-  teams: { side: string | null; label: string }[]
+  teams: (ReplayCamp & { label: string })[]
 }
 
 /** L'encre la plus claire d'un camp, en pourcentage de l'encre pure. */
@@ -82,14 +84,15 @@ export interface PadBarInput {
   control: PadControl
   /** Le nom d'affichage d'un socle (catalogue du document) — jamais son identifiant brut. */
   weaponLabel: (weapon: string) => string
-  teamLabel: (side: string | null) => string
+  /** Le nom d'un camp du film (`campLabel`). */
+  teamLabel: (camp: ReplayCamp) => string
   /** L'encre pleine d'un camp (jetons `team-ally` / `team-enemy`). */
-  teamColor: (side: string | null) => string
+  teamColor: (camp: ReplayCamp) => string
   /**
    * ORDRE D'AFFICHAGE DES CAMPS : plus petit d'abord (en haut du bâton). L'appelant y met le
    * camp du joueur de la page en premier — c'est sa page, c'est sa ligne du dessus.
    */
-  teamRank: (side: string | null) => number
+  teamRank: (camp: ReplayCamp) => number
 }
 
 /**
@@ -102,7 +105,7 @@ export interface PadBarInput {
  */
 export function buildPadControlBars(input: PadBarInput): PadBarModel {
   const teams = [...input.control.byTeam].sort(
-    (a, b) => input.teamRank(a.side) - input.teamRank(b.side),
+    (a, b) => input.teamRank(a) - input.teamRank(b),
   )
   const rows = input.control.weapons.map((weapon) => {
     const total = teams.reduce((sum, team) => sum + (team.total.byWeapon[weapon] ?? 0), 0)
@@ -124,7 +127,7 @@ export function buildPadControlBars(input: PadBarInput): PadBarModel {
   })
   return {
     rows,
-    teams: teams.map((team) => ({ side: team.side, label: input.teamLabel(team.side) })),
+    teams: teams.map((team) => ({ team: team.team, side: team.side, label: input.teamLabel(team) })),
   }
 }
 
@@ -135,7 +138,7 @@ function teamSegments(
   total: number,
   input: PadBarInput,
 ): PadBarSegment[] {
-  const color = input.teamColor(team.side)
+  const color = input.teamColor(team)
   const size = team.players.length
   return team.players
     .map((p, rank) => {
@@ -144,8 +147,9 @@ function teamSegments(
       return {
         xuid: p.xuid,
         name: p.name,
+        team: team.team,
         side: team.side,
-        sideLabel: input.teamLabel(team.side),
+        sideLabel: input.teamLabel(team),
         count,
         tint,
         // `color-mix` sur le FOND DE CARTE et non sur du blanc : l'éclaircissement doit tirer

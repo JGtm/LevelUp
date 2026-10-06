@@ -27,8 +27,8 @@
  * verdict final ferait passer la conclusion du match pour une transition.
  */
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
-import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { campLabel } from '@/lib/replay/replayCamps'
 import { scoreTimelineOf, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
 import { ROUND_BREAK_WINDOW_MS } from '../ui/ReplayRoundBreakOverlay'
@@ -147,12 +147,11 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
     const label = deps.outcome?.viewedLabel
     if (!label || !victory) return null
     const mine = victory.mine
-    const rows = mine ? deps.scoreboard.filter((r) => r.team_side === mine.teamSide) : []
     return {
       status: label,
       // L'ÉGALITÉ N'EMPRUNTE RIEN (décision D-B1) : ni camp, ni logo, ni nom.
       statusStyle: mine ? deps.teamStyle : neutral,
-      label: mine ? resolveTeamLabel(rows, mine.teamSide, t) : null,
+      label: mine ? campLabel({ team: mine.teamID, side: mine.teamSide }, deps.scoreboard, t) : null,
       score: exportFinalScore(deps.outcome?.finalScore, finalScore),
       logo: mine ? deps.logo : null,
       veil: true,

@@ -41,24 +41,25 @@ export function mark(over: Partial<TrackMark> = {}): TrackMark {
 }
 
 /**
- * LE MENU DE POINT DE VUE : deux camps nommés, plus le groupe des joueurs sans ligne de tableau
- * de score — dont l'option est INERTE (décision 7 bis). `bot-base` porte le xuid de la BASE, pas
- * la clé film : c'est le piège que le lot devait éviter (cf. `viewpointOptions`).
+ * LE MENU DE POINT DE VUE : deux camps du film, et AUCUNE section « sans équipe » (décision du
+ * 2026-10-06). Le bot que la feuille ignore est dans le camp que le film lui donne, son option
+ * INERTE (décision 7 bis). `bot-base` porte le xuid de la BASE, pas la clé film : c'est le piège
+ * que le lot devait éviter (cf. `viewpointOptions`).
  */
 export const GROUPES = [
   {
-    key: 't0',
+    key: 'camp:0',
     label: 'Cobalt',
     options: [
       { value: 'me-1', label: 'JGtm', disabled: false, title: 'JGtm' },
       { value: 'bot-base', label: 'Cortana', disabled: false, title: 'Cortana' },
     ],
   },
-  { key: 't1', label: 'Ambre', options: [{ value: 'foe-1', label: 'Rival', disabled: false, title: 'Rival' }] },
   {
-    key: '',
-    label: 'Sans équipe',
+    key: 'camp:1',
+    label: 'Ambre',
     options: [
+      { value: 'foe-1', label: 'Rival', disabled: false, title: 'Rival' },
       { value: 'bot:Fantome', label: 'Fantome', disabled: true, title: 'Aucune donnée de match pour ce joueur' },
     ],
   },

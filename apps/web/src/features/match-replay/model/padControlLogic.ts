@@ -29,9 +29,11 @@
  * cherché et on n'a pas trouvé » là où il n'y avait rien à chercher.
  *
  * LE PONT XUID -> JOUEUR -> ÉQUIPE EST CELUI DU REJEU, réutilisé tel quel (`buildPlayers`,
- * `groupByTeam` de rosterLogic) : le film ne porte AUCUNE équipe (`Track.Team` vaut -1 partout),
- * elle vient du scoreboard. Un joueur du film sans ligne de scoreboard garde sa ligne, sans
- * camp : le trou se montre, il ne se comble pas.
+ * `groupByTeam` de rosterLogic) : l'équipe est le désignateur que le FILM écrit pour l'entrée du
+ * joueur (`ReplayPlayer.team`, décision du 2026-10-06), la feuille ne fait que nommer le camp. Un
+ * joueur du film sans ligne de scoreboard garde sa ligne dans le camp que le film lui donne. Un
+ * joueur dont le film TAIT l'équipe n'entre dans aucun camp : ses prises rejoignent les non
+ * rattachées (`unjoined`) — jamais une section « sans équipe ».
  *
  * Tout est PUR : aucun React, aucune couleur, AUCUNE LANGUE — ce fichier compte, il ne nomme
  * rien. Les libellés d'arme (`padNameFor`) et le rendu vivent dans `MatchPadControlSection.tsx`.
@@ -40,6 +42,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
 import { isGameChangerFamily, isGameChangerWeaponKey } from './gameChangers'
+import type { ReplayCamp } from '../../../lib/replay/replayCamps'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { buildPlayers, groupByTeam, playerName, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { buildPadTierMatch, padTierOf, PAD_TIER_TIEBREAK, type PadTier } from './weaponTier'
@@ -53,18 +56,18 @@ export interface PadControlTally {
   byWeapon: Record<string, number>
 }
 
-/** La ligne d'un joueur : son identité, son camp, ses prises. */
-export interface PadControlRow extends PadControlTally {
+/**
+ * La ligne d'un joueur : son identité, ses prises, et son CAMP DU FILM (`team`, plus le côté de
+ * feuille `side` qui ne fait que le nommer et l'encrer — cf. `replayCamps.ts`).
+ */
+export interface PadControlRow extends PadControlTally, ReplayCamp {
   xuid: string
   /** Nom d'affichage (`displayPlayerName`), jamais un xuid brut. */
   name: string
-  /** `team_side` du scoreboard ; `null` = joueur du film absent du scoreboard. */
-  side: string | null
 }
 
-/** Un camp, ses joueurs (triés par total décroissant) et son total. */
-export interface PadControlTeam {
-  side: string | null
+/** Un camp du film, ses joueurs (triés par total décroissant) et son total. */
+export interface PadControlTeam extends ReplayCamp {
   players: PadControlRow[]
   total: PadControlTally
 }
@@ -102,8 +105,9 @@ export interface PadControl {
   /** Somme des lignes : les prises que le tableau montre réellement. */
   attributed: number
   /**
-   * Prises NOMMÉES par le service mais rattachables à aucun joueur du film (xuid inconnu du
-   * roster, ou index de socle hors bornes). Distinct des abstentions de la datation.
+   * Prises NOMMÉES par le service mais rattachables à aucun joueur d'un camp du film (xuid
+   * inconnu du roster, joueur dont le film tait l'équipe, ou index de socle hors bornes).
+   * Distinct des abstentions de la datation.
    */
   unjoined: number
   /**
@@ -158,8 +162,8 @@ function addPick(tally: PadControlTally, weapon: string): void {
 /**
  * buildPadControl — l'agrégation complète, en une passe sur `padPickups`.
  *
- * `scoreboard` peut manquer (chargement, titre sans tableau des scores) : les joueurs existent
- * alors tous sans camp, et le tableau les range sous « sans équipe ». Aucun camp n'est deviné.
+ * `scoreboard` peut manquer (chargement, titre sans tableau des scores) : les camps restent ceux
+ * du film, seuls leurs noms et leur encre attendent la feuille. Aucun camp n'est deviné.
  */
 export function buildPadControl(
   doc: ReplayDocumentReady,
@@ -171,10 +175,13 @@ export function buildPadControl(
   // base (revue du 2026-09-14).
   const tiers = buildPadTierMatch(doc)
   const tierPicks = new Map<string, Map<PadTier, number>>()
-  // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ont une ligne, même règle que le bilan
-  // d'équipement : une entrée de roster sans aucune vie n'a pu prendre aucun socle, et une
-  // ligne de zéros la ferait passer pour quelqu'un qui n'en a pris aucun.
-  const players = buildPlayers(doc, scoreboard ?? []).filter((p) => p.lives.length > 0)
+  // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ET RANGÉS DANS UN CAMP ont une ligne, même règle
+  // que le bilan d'équipement : une entrée de roster sans aucune vie n'a pu prendre aucun socle,
+  // et une ligne de zéros la ferait passer pour quelqu'un qui n'en a pris aucun ; les prises d'un
+  // joueur dont le film tait l'équipe rejoignent les non rattachées (`unjoined`).
+  const players = buildPlayers(doc, scoreboard ?? []).filter(
+    (p) => p.lives.length > 0 && p.team !== undefined,
+  )
   const known = new Set(players.map((p) => p.xuid))
   const tallies = new Map<string, PadControlTally>()
   const matchTotal: Record<string, number> = {}
@@ -248,12 +255,12 @@ function tierOfWeaponOf(picks: ReadonlyMap<string, Map<PadTier, number>>): Recor
 
 
 /**
- * teamsOf range les joueurs par camp, somme chaque camp, et TRIE PAR TOTAL DÉCROISSANT — à
- * l'intérieur d'un camp comme entre les camps.
+ * teamsOf range les joueurs par camp du FILM, somme chaque camp, et TRIE PAR TOTAL DÉCROISSANT
+ * — à l'intérieur d'un camp comme entre les camps.
  *
  * LE TRI EST LE SUJET DU TABLEAU : « qui a contrôlé les socles » se lit de haut en bas, et un
- * ordre de roster obligerait à comparer des nombres dispersés. À égalité, le nom (puis le camp)
- * départage : deux relectures du même match donnent le même tableau.
+ * ordre de roster obligerait à comparer des nombres dispersés. À égalité, le nom (puis le
+ * désignateur du camp) départage : deux relectures du même match donnent le même tableau.
  */
 function teamsOf(
   players: readonly ReplayPlayer[],
@@ -271,16 +278,14 @@ function teamsOf(
         ...tally,
         xuid: p.xuid,
         name: displayPlayerName(playerName(p), p.xuid),
+        team: group.team,
         side: group.side,
       }
     })
     rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
-    return { side: group.side, players: rows, total }
+    return { team: group.team, side: group.side, players: rows, total }
   })
-  // Le sentinelle de tri des camps sans nom est celui de `groupByTeam` : ils passent en dernier.
-  teams.sort(
-    (a, b) => b.total.total - a.total.total || (a.side ?? '￿').localeCompare(b.side ?? '￿'),
-  )
+  teams.sort((a, b) => b.total.total - a.total.total || a.team - b.team)
   return teams
 }
 

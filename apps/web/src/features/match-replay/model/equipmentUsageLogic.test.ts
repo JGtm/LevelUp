@@ -2,9 +2,10 @@
  * Tests — equipmentUsageLogic (les usages d'équipement agrégés par joueur et par équipe).
  *
  * CE QU'ILS PROTÈGENT, dans l'ordre des pièges du domaine :
- *   - le PONT slot -> joueur -> équipe : un joueur est ses VIES, et son camp vient du
- *     SCOREBOARD (le film n'en porte aucun, `Track.Team` vaut -1) ;
- *   - le joueur HORS SCOREBOARD garde sa ligne, SANS équipe — le trou se montre ;
+ *   - le PONT slot -> joueur -> équipe : un joueur est ses VIES, et son camp est le désignateur
+ *     que le FILM écrit pour son entrée (décision du 2026-10-06) — la feuille ne fait que nommer ;
+ *   - le joueur HORS SCOREBOARD garde sa ligne, dans le camp que le film lui donne ; le joueur
+ *     dont le film TAIT l'équipe n'en a aucune, et ses gestes sont comptés hors camp ;
  *   - l'ANONYME reste anonyme : les socles de bonus vidés ne descendent sur aucune ligne ;
  *   - ce qui est mesuré sans propriétaire est COMPTÉ à part, jamais versé au hasard ;
  *   - répulseur et propulseur n'ouvrent AUCUNE colonne de pose : aucune grandeur, aucun zéro
@@ -38,7 +39,7 @@ describe('buildEquipmentUsage — le pont slot -> joueur -> équipe', () => {
     expect(u.columns.grapple).toBe(true)
   })
 
-  it('range les joueurs par camp du SCOREBOARD et somme chaque camp', () => {
+  it('range les joueurs par camp du FILM et somme chaque camp', () => {
     const doc = temoin({
       grappleLines: [
         { slot: 1, t0: 1, t1: 5, ax: 0, ay: 0 },
@@ -47,35 +48,63 @@ describe('buildEquipmentUsage — le pont slot -> joueur -> équipe', () => {
       ],
     } as Partial<ReplayDocument>)
     const u = buildEquipmentUsage(doc, SB)
-    const t0 = u.byTeam.find((g) => g.side === 't0')
-    const t1 = u.byTeam.find((g) => g.side === 't1')
-    expect(t0?.players.map((p) => p.name)).toEqual(['Alpha', 'Bravo'])
-    expect(t0?.total.grapplePulls).toBe(2)
-    expect(t1?.total.grapplePulls).toBe(1)
+    const [c0, c1] = u.byTeam
+    expect(u.byTeam.map((g) => [g.team, g.side])).toEqual([
+      [0, 't0'],
+      [1, 't1'],
+    ])
+    expect(c0.players.map((p) => p.name)).toEqual(['Alpha', 'Bravo'])
+    expect(c0.total.grapplePulls).toBe(2)
+    expect(c1.total.grapplePulls).toBe(1)
   })
 
-  it('garde le joueur HORS SCOREBOARD, sans équipe — le trou se montre, il ne se comble pas', () => {
+  it('le joueur HORS SCOREBOARD garde sa ligne, dans le camp que le FILM lui donne', () => {
     const u = buildEquipmentUsage(temoin(), SB)
-    const sansEquipe = u.byTeam.find((g) => g.side === null)
-    expect(sansEquipe?.players.map((p) => p.name)).toEqual(['Delta'])
-    expect(sansEquipe?.players[0].side).toBeNull()
-    // Et il n'a été versé dans AUCUN camp nommé.
-    expect(u.byTeam.filter((g) => g.side !== null).flatMap((g) => g.players).map((p) => p.name))
-      .toEqual(['Alpha', 'Bravo', 'Charlie'])
+    // Delta n'a pas de ligne de feuille : le film le range avec Charlie, et la feuille de
+    // Charlie nomme leur camp. Aucun groupe « sans équipe ».
+    expect(u.byTeam.map((g) => g.players.map((p) => p.name))).toEqual([
+      ['Alpha', 'Bravo'],
+      ['Charlie', 'Delta'],
+    ])
+    expect(u.byPlayer.find((r) => r.name === 'Delta')).toMatchObject({ team: 1, side: 't1' })
   })
 
-  it('sans scoreboard du tout, personne n’a d’équipe et rien n’est deviné', () => {
+  it('sans scoreboard du tout, les camps restent ceux du FILM — seuls leurs côtés de feuille manquent', () => {
     const u = buildEquipmentUsage(temoin(), undefined)
-    expect(u.byTeam).toHaveLength(1)
-    expect(u.byTeam[0].side).toBeNull()
+    expect(u.byTeam.map((g) => [g.team, g.side])).toEqual([
+      [0, null],
+      [1, null],
+    ])
     expect(u.byPlayer).toHaveLength(4)
+  })
+
+  it('un joueur dont le film TAIT l’équipe n’a AUCUNE ligne : ses gestes sont comptés hors camp', () => {
+    // Le bot bouche-trou du témoin 43716616 : vivant, une traction — et aucune équipe écrite par
+    // le film. Ni ligne, ni groupe à part : la somme des lignes plus `unattributed` reste juste.
+    const doc = temoin({
+      roster: [
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+        { filmIndex: 8, xuid: '', bot: true, name: 'Sandwolf [bot]' },
+      ],
+      tracks: [vie(1, 'a1'), { ...vie(8, ''), bot: 'Sandwolf [bot]' }],
+      grappleLines: [
+        { slot: 1, t0: 1, t1: 5, ax: 0, ay: 0 },
+        { slot: 8, t0: 2, t1: 6, ax: 0, ay: 0 },
+      ],
+    } as Partial<ReplayDocument>)
+    // La feuille joint le bot (côté t0) : elle ne lui donne pas de ligne pour autant.
+    const feuille = [...SB, { xuid: 'bid(44.0)', gamertag: 'Sandwolf', team_side: 't0', is_bot: true }] as typeof SB
+    const u = buildEquipmentUsage(doc, feuille)
+    expect(u.byPlayer.map((r) => r.name)).toEqual(['Alpha'])
+    expect(u.byTeam.map((g) => g.team)).toEqual([0])
+    expect(u.unattributed.grapplePulls).toBe(1)
   })
 
   it('n’ouvre aucune ligne pour une entrée de roster que le film n’a jamais vue vivre', () => {
     const doc = temoin({
       roster: [
-        { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
-        { filmIndex: 9, xuid: 'jamais_vu', name: 'Echo' },
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+        { filmIndex: 9, xuid: 'jamais_vu', name: 'Echo', team: 0 },
       ],
       tracks: [vie(1, 'a1')],
     } as Partial<ReplayDocument>)
@@ -305,8 +334,8 @@ describe('buildEquipmentUsage — grenades lancées', () => {
   it('un lancer d’une entrée de roster SANS vie va aux orphelins, jamais dans le vide', () => {
     const doc = temoin({
       roster: [
-        { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
-        { filmIndex: 5, xuid: 'jamais_vu', name: 'Echo' },
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+        { filmIndex: 5, xuid: 'jamais_vu', name: 'Echo', team: 0 },
       ],
       tracks: [vie(1, 'a1')],
       grenades: [{ slot: 0, rank: 0, t: 5, i: 5, s: 'x', x: 0, y: 0 }],
@@ -328,8 +357,8 @@ describe('buildEquipmentUsage — grenades lancées', () => {
   it('attribue le lancer d’un BOT par index de film — la clé de jointure n’est pas son xuid nu (P2-5)', () => {
     const doc = temoin({
       roster: [
-        { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
-        { filmIndex: 5, xuid: '', bot: true, name: 'B1 [bot]' },
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+        { filmIndex: 5, xuid: '', bot: true, name: 'B1 [bot]', team: 0 },
       ],
       tracks: [
         vie(1, 'a1'),

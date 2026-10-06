@@ -65,8 +65,8 @@ function groupesDe(over: Partial<ReplayDocument>): UsageColumnGroup[] {
     frameCount: 200,
     frameIntervalMs: 100,
     roster: [
-      { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
-      { filmIndex: 1, xuid: 'b1', name: 'Bravo' },
+      { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+      { filmIndex: 1, xuid: 'b1', name: 'Bravo', team: 1 },
     ],
     tracks: [vie(1, 'a1'), vie(2, 'b1')],
     ...over,
@@ -163,7 +163,7 @@ describe('equipmentGroup — la pile empilée (E2, PLAN_EQUIPEMENT_GACHIS_2026-0
     const doc = testReplayDoc({
       frameCount: 200,
       frameIntervalMs: 100,
-      roster: [{ filmIndex: 0, xuid: 'a1', name: 'Alpha' }],
+      roster: [{ filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 }],
       tracks: [vie(1, 'a1')],
       ...over,
     } as Partial<ReplayDocument>)
