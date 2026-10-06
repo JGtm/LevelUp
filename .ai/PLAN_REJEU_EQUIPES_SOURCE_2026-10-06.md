@@ -117,8 +117,47 @@ encadrent la déclaration.
 
 ### G4 — Mesure de l'hypothèse « bouche-trou » (lecture seule)
 
-- [!] G4.1 à G4.3 : non commencés (arrêt au CHECKPOINT de G2, consigne du superviseur). Exécutables en
-      lecture seule dès son signal, sauf la part « après G3 » de G4.2.
+Reprise demandée par le superviseur après le CHECKPOINT (G4.1 et G4.3 seulement, lecture seule).
+Instrument `film/replay/rejeu_bouche_trou_research_test.go` (tag `research`) : 126 films, faits et
+artefacts ; l'équipe lue par le champ vient de la sortie de l'instrument de la couche des faits
+(`g2c_botmeta.txt`), sans nouvelle lecture des chunks. Méthode : les places sont les sièges publiés des
+entrées HUMAINES (2 humains sans place exclus) ; un intervalle vide va de la fin CERTAINE d'un occupant à
+la veille du début du suivant sur la même place (`relais`), ou de la frame 0 à la veille du premier
+occupant arrivé après elle (`debut`) ; il est couvert par l'union des déclarations BOT_METADATA (frames
+exactes) de n'importe quel bot. « Compatible avec une place jamais vide » : couverture d'un seul tenant
+dont le bot arrive au plus tard le lendemain de la fin AFFICHÉE du partant et reste déclaré jusqu'à la
+dernière image-clé porteuse où le suivant n'est pas lu (les bornes humaines ne sont connues qu'à
+l'image-clé près, 20 s).
+
+- [x] G4.1 Intervalles demandés (`relais` + `debut`) : 50.
+      - Films où au moins un bot est déclaré (48 films sur 126) : 44 intervalles. `relais` 37 (durée
+        médiane 199 f, max 1594 f) : entièrement couverts 2, en partie 34 dont 31 compatibles avec une
+        place jamais vide, pas du tout 1 (143 f : `0d265ab0`, place 1, NotThtGuyPal -> SpiffyDart86537).
+        `debut` 7 : entièrement 2, en partie 5 dont 1 compatible, pas du tout 0.
+      - Films sans aucun bot déclaré (78 films) : 6 intervalles, aucun couvert (`relais` 4 : médiane
+        202 f, max 356 f ; `debut` 2 : 354 f chacun ; films `0301037e`, `a464e20b`, `c259789d`).
+      - Hors demande, compté à part : 59 places dont le dernier occupant part avant la fin sans
+        successeur (`fin`) ; films avec bots 39 (entièrement 9, en partie 26 dont 18 compatibles, pas du
+        tout 4), films sans bot 20 (aucun couvert). Durées médianes : 1 413 f dans les films avec bots
+        (départs sans successeur humain, que des bots couvrent), 298 f dans les films sans bot (départs
+        de fin de match) ; plus quelques artefacts de placement (successeur resté sans place :
+        `859da825`, `bf2a9f05`).
+      - Troisième contrôle du champ : 76 bots recoupent au moins un intervalle. Un seul intervalle :
+        52 accords, 0 désaccord entre l'équipe lue (octet 0x783) et celle de la place. Plusieurs
+        intervalles : 13 bots dont tous les intervalles sont de l'équipe lue, 11 dont l'une des
+        équipes est l'équipe lue, 0 sans elle.
+- [!] G4.2 « Après G3, combien sont tenus par le bot à l'écran » : dépend de G3, bloqué par le
+      CHECKPOINT (i).
+- [x] G4.3 « Pas encore apparu » (présence publiée sans corps à son début ; frame 0 = premier
+      échantillon de position du film) :
+      - humains présents dès la frame 0 : 1 072 présences, 461 sans corps à la frame 0 (médiane 37 f,
+        max 1 303 f, 228 de 5 s ou plus), 4 sans aucun corps ;
+      - humains arrivés en cours de match : 53 présences, 51 sans corps au début (médiane 276 f, max
+        1 951 f, 50 de 5 s ou plus), 0 sans aucun corps. Exemples : KernelPanic10 lu à 318, premier
+        corps à 831 ; Wrneverchanges 1284 -> 1688 ; Aceshigh949851 1015 -> 1284 ; Cmillward21 1145 -> 1367 ;
+      - bots présents dès la frame 0 : 5 présences, 1 sans corps (1 f) ;
+      - bots arrivés en cours de match : 77 présences, 34 sans corps au début (médiane 82 f, max 211 f),
+        25 sans aucun corps de toute leur déclaration.
 
 ### G5 — Republication (préparée, NON exécutée sans go explicite)
 
@@ -133,7 +172,8 @@ encadrent la déclaration.
       restreignent des affirmations). `delivery-checklist` : `gofmt`, `go vet` (avec et sans `research`)
       sur `film/replay`, `go test ./internal/archlint/` ; aucun code de production touché, donc ni
       `go test ./...` ni tag `integration` locaux : la CI de la branche fait foi.
-- [ ] C.2 Commits `fix(rejeu):`, push, CI verte.
+- [x] C.2 Commit `b0d1db8e4` (G1, G2), poussé ; CI `37470511028` verte (tous les jobs, E2E sauté hors
+      PR vers `main`). Commit de G4 : CI suivie après le push.
 - [x] C.3 Entrée `.ai/thought_log.md` (2026-10-06, statut En cours, arrêt au CHECKPOINT) ; CR au
       superviseur.
 
@@ -175,3 +215,8 @@ encadrent la déclaration.
   champ d'équipe trouvé dans BOT_METADATA (56/56, contrôle par les places 20/20, 19/19 sur les places publiées) ; CHECKPOINT (i).
   Instruments de `killsource` et de `grammar` rangés hors du dépôt (scratchpad du superviseur,
   `instruments_rejeu_equipes/`), sorties dans le même scratchpad.
+- 2026-10-06 : reprise du superviseur, G4.1 et G4.3 seulement (lecture seule, ni G3, ni Ghidra, ni champ
+  implémenté). Instrument `film/replay/rejeu_bouche_trou_research_test.go` ; sorties
+  `g4_bouche_trou.txt` et `g4_intervalles.tsv` (scratchpad du superviseur). Dans les films où des bots
+  existent, 43 des 44 intervalles demandés sont recoupés par un bot ; troisième contrôle du champ :
+  0 désaccord sur 76 bots.
