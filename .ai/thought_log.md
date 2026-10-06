@@ -115345,3 +115345,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : golden vert sans régénération après la coupe, trois mutations rouges ; Go 348 paquets verts, intégration DuckDB 4 ok, lint 0 ; contrat −114 / −51 lignes, exactement 3 schémas disparus ; web 8 857 tests verts, knip 0/0/0, lefthook 9/9. Aucun lecteur côté Sessions.
 
 **Conclusion / prochaine étape** : L7 clos ; L8 (clôture : docs, référence équipement, statuts) après le « continue » du superviseur.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L8 : clôture du chantier
+
+**Statut** : Complété (lot L8 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`) ; L8.5 (revue adversariale du diff cumulé) en `[!]`, demandée au superviseur qui la lance.
+
+**Décision technique principale** : les documents ne changent que là où ce chantier les contredit. `CHANGELOG` et `RELEASE_NOTES` EN + FR (bloc 7.5) : l'onglet Usages devient l'Emprise des matchs solo du périmètre, le « servi ou gâché » de période ne vit plus que sur Sessions (plus la carte Équipement de l'onglet), `formes_retenues` n'est plus que la feuille d'objectif, une entrée « Changed » liste l'élagage (12 schémas retirés, objectif identique sous un test golden). La référence des canaux d'équipement décrit la carte Équipement de l'Emprise solo et déclare `equipment_usage` supprimé. ADR 0036 vérifiée, non modifiée.
+
+**Résultats observés** : gate rejoué après les docs, tout vert au premier passage : Go 348 paquets (cinq lots, 0 FAIL), build, vet, gofmt, golangci-lint 0 issues, `openapi-gen -check` à jour ; web : tsc 0, ESLint 0 erreur, vitest 831 fichiers / 8 857 tests, types générés sans diff, lefthook pre-push 9/9. Plan : aucune case vide (L8.5 `[!]` justifié) ; §8 relue, aucune découverte nouvelle.
+
+**Conclusion / prochaine étape** : chantier exécuté (L1-L8). Reste la revue adversariale du diff `65c99b669..HEAD`, que lance le superviseur (lots à risque : L2 agrégats, L3 lecture bornée, L7 contrat), puis la fusion vers `feat/v75` sur son accord.

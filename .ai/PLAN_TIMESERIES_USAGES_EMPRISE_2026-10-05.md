@@ -17,8 +17,8 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **GO du superviseur le 2026-10-06 (phase 2, lot par lot, compte rendu et
-> « continue » à chaque clôture)**. Branche : `feat/ts-usages-emprise` (créée sur `origin/feat/v75` = `65c99b669`),
+> Statut du plan : **L1-L8 exécutés le 2026-10-06 (GO du superviseur, lot par lot) ; reste L8.5,
+> revue adversariale du diff cumulé, lancée par le superviseur, puis fusion sur son accord**. Branche : `feat/ts-usages-emprise` (créée sur `origin/feat/v75` = `65c99b669`),
 > worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ts-usages`.
 
 ## 0. Objectif, critère de succès, hors périmètre
@@ -677,19 +677,29 @@ Journal L7 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — contrat `forme
 - Seuils : tous les fichiers touchés en baisse ou stables (`squadformes/formes.go` 436 → 255, `domain/squad_formes.go` 218 → 114, `teammates_service.go` 491 → 491, `timeseries_service.go` 455 → 455) ; deux fichiers neufs (test golden 108 L, golden 163 L).
 ### L8 — Clôture · rapide
 
-- [ ] L8.1 Docs : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]`, corriger les phrases
+- [x] L8.1 Docs : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]`, corriger les phrases
   contredites — EN l. 40, 54, 71 ; FR l. 40, 54, 71 — et ajouter l'entrée) ; `docs/RELEASE_NOTES.md`
   + `docs/FR/RELEASE_NOTES.md` (bloc 7.5 : corriger EN l. 32, 49, 55 / FR l. 32, 49, 55 — riposte sur
   les Séries temporelles, « formes retenues » solo, contenu de l'onglet Usages — et ajouter
   l'entrée) ; lignes re-vérifiées au moment d'écrire.
-- [ ] L8.2 `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 (l. 256-345, lecteurs des Séries
+- [x] L8.2 `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 (l. 256-345, lecteurs des Séries
   temporelles l. 299-307) : `equipment_usage` supprimé, Emprise solo et carte Équipement (D4) ;
   ligne du tableau l. 482.
-- [ ] L8.3 ADR 0036 (fait en L3.6, vérifié ici) ; `docs/adr/0034` non concerné.
-- [ ] L8.4 Statut de chaque item du plan ; §8 Découvertes relues ; entrée finale du journal.
-- [ ] L8.5 Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
-  sous-agent) — lots à risque : L2 (agrégats), L3 (lecture bornée), L7 (contrat).
+- [x] L8.3 ADR 0036 (fait en L3.6, vérifié ici) ; `docs/adr/0034` non concerné.
+- [x] L8.4 Statut de chaque item du plan ; §8 Découvertes relues ; entrée finale du journal.
+- [!] L8.5 Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
+  sous-agent) — lots à risque : L2 (agrégats), L3 (lecture bornée), L7 (contrat). Non faite par
+  l'exécuteur : sur consigne du superviseur (2026-10-06), elle est demandée dans le compte rendu de
+  clôture et lancée par lui sur `65c99b669..HEAD`.
 - Gate : gate Go complet + gate web complet + contrat, rejoués après les docs.
+
+Journal L8 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — clôture :
+- **L8.1** Lignes re-vérifiées au moment d'écrire (les numéros du plan avaient bougé) ; seules les phrases contredites par ce chantier ont été touchées. `CHANGELOG` EN + FR (bloc `[7.5.0]`) : « Equipment used / kept / wasted » (Sessions seules, plus la carte Équipement de l'onglet Usages), « The shapes you keep » (le bloc `formes_retenues` n'est plus que la feuille d'objectif), onglet « Usage » des Séries temporelles (portée, puis l'Emprise solo), « Timeseries and Synthesis » (la portée part sur les Séries temporelles) ; deux entrées ajoutées : « Added » (l'onglet Usages = l'Emprise des matchs solo du périmètre) et « Changed » (Séries temporelles élaguées : 12 schémas retirés, objectif identique octet pour octet sous un test golden). `RELEASE_NOTES` EN + FR (bloc 7.5) : riposte (Escouade, Sessions, fiche du match, et dans le temps sur les Séries temporelles), « On three pages » → Sessions et Séries temporelles (phrase déjà périmée avant ce chantier, corrigée parce que ce lot déplace les issues d'équipement), « formes retenues » → cartes d'objectif, entrée de l'onglet Usages → « devient votre Emprise ».
+- **L8.2** Référence équipement : note de mise à jour datée, entrée Séries temporelles réécrite (bloc `emprise`, `attachEmprise`, lecture unique `squadagg.LireUsage`, carte Équipement `squademprise.BuildEquipment` avec ses lignes et fichiers web), `equipment_usage` déclaré supprimé du code et du contrat ; entrées Synthèse et Escouade débarrassées des renvois vers des fichiers supprimés ; tableau : `usagePadTiersModel.ts` lu par la seule page Sessions.
+- **L8.3** ADR 0036 relue : la ligne qui cite `TestSoloLivesRepo_BorneEtDernierePasse` (ajoutée en L3.6) pointe un test présent ; aucune mention des lectures supprimées ; non modifiée. ADR 0034 non concernée.
+- **L8.4** Aucune case vide dans le plan (L1-L7 `[x]`, L8.1-L8.4 `[x]`, L8.5 `[!]`) ; §8 relue : aucune découverte n'a été traitée hors périmètre, aucune nouvelle en L8.
+- **Gate (après les docs)** : `go build ./...` 0, `go vet ./...` 0, `gofmt -l internal` muet ; `go test -count=1` en cinq lots couvrant les 348 paquets (cœur 58 ok, hors internal 40, games 38, sync / persist / migration 13, reste 46 ; 0 FAIL) ; `golangci-lint run --new-from-merge-base=origin/main` (cache isolé, `--allow-parallel-runners`) 0 issues ; `openapi-gen -check` à jour. Web : purge `node_modules\.tmp`, `tsc -b --force` 0 ; `npm run lint` 0 erreur (26 avertissements préexistants, aucun sous `features/timeseries`) ; vitest complet 831 fichiers / 8 857 tests verts (189 s) ; `generate-types` sans diff ; `npx lefthook run pre-push` (PATH complet) 9 / 9 au premier passage (knip-ratchet, couleurs, imports croisés, contrat, vet CGO, govulncheck, shared-social).
+- Documents touchés en L8 : `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md`, `docs/RELEASE_NOTES.md`, `docs/FR/RELEASE_NOTES.md`, `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`, ce plan, `.ai/thought_log.md`.
 
 ## 7. Reprise de session
 
