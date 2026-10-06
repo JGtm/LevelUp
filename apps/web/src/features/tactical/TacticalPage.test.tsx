@@ -97,7 +97,7 @@ const page: TacticalMapsPage = {
 }
 
 /** Réponse minimale du raster : suffit à faire sortir `TacticalAnalysisView` de son état
- *  d'attente. Le détail de cette lecture (KPI, plan, cellule) est cadenassé ailleurs
+ *  d'attente. Le détail de cette lecture (plan, zone) est cadenassé ailleurs
  *  (`TacticalAnalysisView.test.tsx`) — ici on vérifie seulement QUI s'affiche quand
  *  `?carte=` est posé, pas ce que la vue d'analyse en fait. */
 const RASTER_VIDE: TacticalRaster = {
@@ -224,8 +224,7 @@ describe('TacticalPage — l’écran unique', () => {
   it('plus de bascule « Grille / Analyse », plus de pied de grille', async () => {
     renderWithProviders(<TacticalPage />)
     await screen.findByTestId('tactical-map-streets')
-    // Les libellés de la bascule et la phrase du pied vivent encore au manifeste (purgés au lot
-    // L7) : aucun ne doit plus être rendu.
+    // Ni les libellés de l'ancienne bascule ni la phrase de l'ancien pied ne sont plus rendus.
     expect(screen.queryByText('Grille des cartes')).toBeNull()
     expect(screen.queryByText("Analyse d'une carte")).toBeNull()
     expect(screen.queryByText(/sur la période/)).toBeNull()

@@ -10,7 +10,7 @@
  *   - `attente`   : aucune donnée encore (premier chargement) — le cadre et le fond sont
  *                   posés, l'indicateur PAR-DESSUS ;
  *   - `relecture` : la réponse affichée est la PRÉCÉDENTE (placeholder, ou périmètre en
- *                   cours de relecture) — calque et KPI ESTOMPÉS sous « Mise à jour… »
+ *                   cours de relecture) — calque et légende ESTOMPÉS sous « Mise à jour… »
  *                   (décision Q26 du 2026-09-23) ;
  *   - `echec`     : la lecture OU la résolution de son périmètre a échoué — le message
  *                   d'échec, le fond reste, rien de périmé (revue L2-R1 : un périmètre en
@@ -19,9 +19,9 @@
  *                   (coéquipier introuvable, contrôle L2-PARC-1), que la vue nomme ;
  *   - `pret`      : la réponse affichée répond à la demande courante.
  *
- * ESTOMPER, C'EST TOUT CE QUI VIENT DE LA RÉPONSE PRÉCÉDENTE (revue L2-R6/R7) : KPI, calque,
- * légende, pied, messages d'état, cartes Cellule et Coordination — et, sur l'écran d'entrée,
- * la grille des cartes. Une seule classe (`ESTOMPE`), un seul helper (`classeRelecture`).
+ * ESTOMPER, C'EST TOUT CE QUI VIENT DE LA RÉPONSE PRÉCÉDENTE (revue L2-R6/R7) : calque, légende,
+ * étiquette de zone, bandeau d'état, état vide, colonne « Zone sélectionnée » — et, dans la colonne
+ * « Cartes jouées », la liste. Une seule classe (`ESTOMPE`), un seul helper (`classeRelecture`).
  */
 import type { MapFrame } from '@/lib/replay/heatPaint'
 

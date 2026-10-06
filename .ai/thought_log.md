@@ -115980,3 +115980,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : `tactical.toml` 740 → 397 lignes, 96 clés ; 67 clés et 8 préfixes à 0 dans le code, accesseurs à 0 hors 4 homonymes d'autres onglets ; 3 mutations rouges (« Spawn de départ », « maps » dans une branche plurielle, « Choisis ») ; gate web vert (853 fichiers / 9 183 tests, `tsc` 0, lint 0 erreur, manifestes identiques, ratchets et pre-push verts).
 
 **Conclusion / prochaine étape** : L7 clos ; L8 (suppressions résiduelles et preuves) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L8 : suppressions résiduelles et preuves (web) — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L8 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : les preuves §4.A-D sont rejouées côté web et tombent à 0 hors des symboles que le plan garde (`libelleRayons` et ses deux aides, relus par l'ⓘ ; `HistogramChart`, `withLowSampleNote`, lus ailleurs). Les commentaires devenus faux sont corrigés, dont le renvoi `TacticalCellCard` de `MatchElevationSection.tsx` laissé en L6 (lot voisin, conflit trivial possible à la fusion, noté au §8). L'instrument `TacticalFond.mesure.test.ts` est adapté au cockpit sans être exécuté : titre sur `tactical-plan-title`, relevé KPI remplacé par « une réponse est affichée » (calque ou titre de plan vide), relevés du pied retirés, scénario de grille relu comme la colonne « Cartes jouées ».
+
+**Résultats observés** : témoins `tactical-analysis-title` / `kpi-strip` à 0 dans `apps/web` ; ratchets inchangés (knip 0, imports croisés 7 ≤ 7 sans dérogation de l'onglet, couleurs 0, champs 0), aucun plafond à abaisser ; gate web vert (853 fichiers / 9 183 tests, `tsc` 0, lint 0 erreur, pre-push vert).
+
+**Conclusion / prochaine étape** : L8 clos ; L9 (suppressions Go et contrat) enchaîné sur consigne du superviseur.

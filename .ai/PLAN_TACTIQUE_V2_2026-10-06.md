@@ -1090,14 +1090,44 @@ Journal L7 (2026-10-06, exécuteur, `feat/tactique-v2`) :
 
 ### L8 — Web : suppressions résiduelles et preuves · rapide
 
-- [ ] L8.1 Rejouer §4.A-D côté web → 0 (hors commentaires historiques) ; tout export, type, fichier
+- [x] L8.1 Rejouer §4.A-D côté web → 0 (hors commentaires historiques) ; tout export, type, fichier
   ou commentaire devenu faux, retiré ou corrigé.
-- [ ] L8.2 `TacticalFond.mesure.test.ts` (instrument ignoré par défaut, porte `TACTIQUE_MESURE`) :
+- [x] L8.2 `TacticalFond.mesure.test.ts` (instrument ignoré par défaut, porte `TACTIQUE_MESURE`) :
   sélecteurs adaptés au cockpit, relevés KPI et pied retirés ; non exécuté (il lit des documents de
   rejeu cuits).
-- [ ] L8.3 Ratchets : knip, imports croisés (≤ 7, aucune dérogation morte), couleurs, champs en dur ;
+- [x] L8.3 Ratchets : knip, imports croisés (≤ 7, aucune dérogation morte), couleurs, champs en dur ;
   si un plafond baisse, l'abaisser.
 - Gate : gate web.
+
+Journal L8 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L8.1** §4.A-D rejoués sur `apps/web/src` (hors `lib/api/generated.ts`) : `TacticalScreenSwitch`,
+  `ContenuGrille`, `tactical-couverture`, `couvertureGrille`, `TacticalToolbar`, `buildKpiCards`,
+  `KPIStrip`, `TacticalCoordinationCard`, `positionCategorie`, `ratioSafe`, `PiedDuPlan`,
+  `LegendeDuPlan`, `rampeCss`, `PLAN_HAUTEUR_MAX_PX`, `TacticalCellCard`, `questionSansCellule` et
+  les familles de clés de §4.D → 0. Restent, par décision du plan : `libelleRayons`,
+  `formatDistanceM`, `DISTANCE_DECIMALES` (relus par l'ⓘ du plan, `plan.logic.ts`),
+  `HistogramChart` et `withLowSampleNote` (autres lecteurs) ; `pageTitle` : 13 fichiers, tous hors
+  de l'onglet. Témoins `tactical-analysis-title` et `kpi-strip` → 0 dans `apps/web`. Commentaires
+  devenus faux corrigés : `MatchElevationSection.tsx:144` (« cf. TacticalCellCard » →
+  `MatchReplayLink`, le renvoi laissé en L6 au §8), `tacticalLecture.logic.ts` (ce qui s'estompe :
+  plus de KPI ni de cartes Cellule / Coordination), `queries.ts` (titre de la carte du plan),
+  `TacticalPage.test.tsx` (deux commentaires), `TacticalPage.relecture.test.tsx`.
+- **L8.2** `TacticalFond.mesure.test.ts` adapté sans être exécuté : titre lu sur
+  `tactical-plan-title`, relevé `kpi` remplacé par `reponse` (calque ou titre de plan vide affiché),
+  « prêt » = réponse affichée ou échec, relevés du pied retirés (`echelle`, `retenus`, `pas`,
+  `horsCadre`), invariants « aucune réponse d'un autre joueur / d'une autre carte pendant la
+  transition » et « la reprise après échec rend une réponse » réécrits sur `reponse` ; scénario de
+  l'ancienne grille relu comme la colonne « Cartes jouées » (mêmes témoins `tactical-map-*`,
+  `tactical-grille-updating`, `tactical-erreur`). 755 → 754 L (dérogation `max-lines` datée
+  inchangée). Il reste ignoré sans `TACTIQUE_MESURE` (5 fichiers ignorés dans la suite).
+- **L8.3** Ratchets : knip 0 / 0 / 0 (plafond 0), imports croisés 7 ≤ 7 (aucun des 7 ni aucune
+  dérogation de `ALLOWED_CROSS_IMPORTS` ne concerne l'onglet), couleurs 0, champs en dur 0 : aucun
+  plafond ne baisse, rien à abaisser.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements de base) ;
+  `vitest run --pool=forks` 853 fichiers / 9 183 tests verts ; manifestes reconstruits identiques ;
+  ratchets verts ; `lefthook run pre-push` vert. Aucune mutation (aucun comportement neuf).
+- Écart : le renvoi de `MatchElevationSection.tsx` (lot voisin Vue match), laissé en L6, est corrigé
+  ici parce que L8.1 exige le rejeu de §4.C à 0 hors commentaires historiques.
 
 ### L9 — Go : suppressions et contrat · moyen
 
@@ -1208,7 +1238,8 @@ L2.3.
   découpage dans ce lot).
 - (L6) `features/match-view/MatchElevationSection.tsx:144` renvoie encore à `TacticalCellCard` (supprimé en L6)
   pour l'explication « `t` est une chaîne », désormais dans la doc de `MatchReplayLink` (prop
-  `search`). Fichier du lot voisin `feat/matchview-emprise`, non touché ; non traité.
+  `search`). Fichier du lot voisin `feat/matchview-emprise` ; CORRIGÉ en L8.1 (une ligne de commentaire, renvoi vers
+  `MatchReplayLink`) : conflit possible, trivial, à la fusion avec ce lot.
 - (L3) Deux copies de la lecture « mon camp / l'autre » sur `Summary.Teams` + `Self.TeamID` d'une ligne
   canonique : `analysis.buildScoreLabelCanonical` (`home_canonical_recent.go`, libellé seul) et
   `service.scoreDuMatch` (`tactical_service_cellule_enrichir.go`, libellé et nature). Une troisième

@@ -141,7 +141,7 @@ export function MatchElevationSection({ block, playerSlug, matchId, t }: Props) 
         void navigate({
           to: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay',
           params: { titleSlug, playerSlug, matchId },
-          // `t` est une CHAÎNE dans le schéma de la route (cf. TacticalCellCard) ; `clock:
+          // `t` est une CHAÎNE dans le schéma de la route (cf. `MatchReplayLink`) ; `clock:
           // match` parce que `time_ms` est l'horloge du match, recalée par la route du rejeu.
           search: { t: String(p.data.timeMs), clock: 'match' as const },
         })

@@ -197,7 +197,7 @@ async function attendrePerimetreSession() {
   )
 }
 
-/** L'écran d'analyse de Ruelles est chargé ; rend le `<img>` de son fond. */
+/** La lecture de Ruelles est chargée ; rend le `<img>` de son fond. */
 async function analyseChargee(): Promise<HTMLImageElement> {
   expect(await screen.findByRole('region', { name: TITRE_RUELLES })).toBeInTheDocument()
   await screen.findByTestId('tactical-plan-canvas')
