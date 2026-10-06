@@ -2,9 +2,10 @@
  * useReplayFlagCarries.test.tsx — LE CÂBLAGE DU CALQUE DES DRAPEAUX.
  *
  * CE QU'IL PROTÈGE, et que le calque pur ne peut pas voir :
- *  - L'ENCRE SUIT LE CAMP VU DE LA PAGE, jamais l'index d'équipe du film : le drapeau de MON
- *    camp prend l'encre « alliée », celui d'en face l'encre « adverse » — et sans ligne « moi »
- *    au tableau de bord, AUCUN camp n'est allié, le neutre du thème s'applique. C'est la même
+ *  - L'ENCRE SUIT LE CAMP VU DU JOUEUR REGARDÉ (l'allégeance du FILM), jamais l'index d'équipe
+ *    seul : le drapeau de MON camp prend l'encre « alliée », celui d'en face l'encre « adverse »
+ *    — et quand le film ne situe pas le joueur regardé, AUCUN camp n'est allié, le neutre du
+ *    thème s'applique. C'est la même
  *    règle que l'état des zones, et c'est là qu'une inversion passerait inaperçue : les deux
  *    drapeaux resteraient colorés, simplement échangés.
  *  - LE PORTEUR SE RELIT DANS SES TRAJECTOIRES : le drapeau porté suit son porteur image par
@@ -18,6 +19,8 @@ import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { testReplayDoc } from '../test/testDoc'
@@ -72,9 +75,14 @@ function scoreboard(myTeam: string | null): MatchScoreboardRow[] {
   ].map((r) => r as unknown as MatchScoreboardRow)
 }
 
+/**
+ * `vu` : le joueur regardé (`A`, au camp 0, par défaut ; `null` = aucun) ; `equipes` : les
+ * équipes que le FILM écrit (`A` au camp 0, `B` au camp 1, par défaut).
+ */
 function useLayer(
   over: {
-    sb?: MatchScoreboardRow[] | null
+    vu?: string | null
+    equipes?: Array<[string, number]>
     enabled?: boolean
     carries?: unknown
     objectives?: unknown
@@ -93,8 +101,11 @@ function useLayer(
     view: VIEW,
     frameRef,
     enabled: over.enabled ?? true,
-    scoreboard: over.sb === undefined ? scoreboard('t0') : over.sb,
-    viewpoint: null,
+    scoreboard: scoreboard('t0'),
+    allegiance: buildFilmAllegiance(
+      (over.equipes ?? [['A', 0], ['B', 1]]).map(([xuid, team]) => ({ xuid, team, lives: [] }) as ReplayPlayer),
+      over.vu === undefined ? 'A' : over.vu,
+    ),
     teamColorOf: (ally: boolean) => (ally ? ALLY : ENEMY),
     neutral: NEUTRAL,
     outline: OUTLINE,
@@ -132,8 +143,8 @@ describe('useReplayFlagCarries — les encres', () => {
     expect(inks).not.toContain(NEUTRAL)
   })
 
-  it("SANS ligne « moi », aucun camp n'est allié : le NEUTRE du thème, jamais une couleur devinée", () => {
-    const { result } = renderHook(() => useLayer({ sb: null }))
+  it("joueur regardé que le film ne situe pas : aucun camp n'est allié, le NEUTRE du thème, jamais une couleur devinée", () => {
+    const { result } = renderHook(() => useLayer({ vu: null }))
     const { ctx, inks } = inkCtx()
     result.current.paint(ctx, 20)
     // Le liseré porte l'encre du FOND ; hors de lui, tout est le neutre du thème.
@@ -148,8 +159,8 @@ describe('useReplayFlagCarries — les encres', () => {
     expect(inks).toContain(OUTLINE)
   })
 
-  it("le point de vue SUIT la ligne « moi » : de l'autre côté, les deux encres s'échangent", () => {
-    const vuDeT1 = renderHook(() => useLayer({ sb: scoreboard('t1') }))
+  it("le point de vue SUIT le joueur regardé : de l'autre côté, les deux encres s'échangent", () => {
+    const vuDeT1 = renderHook(() => useLayer({ vu: 'B' }))
     const { ctx, inks } = inkCtx()
     vuDeT1.result.current.paint(ctx, 20)
     // Le drapeau de l'équipe 0 est désormais l'ADVERSE : les deux encres restent servies, mais
@@ -199,29 +210,29 @@ describe("useReplayFlagCarries — l'onde de capture (2026-08-27)", () => {
     expect(apres.arcs).toHaveLength(0)
   })
 
-  it("L'ENCRE EST CELLE DU CAMP DE L'AUTEUR vu de la page, pas celle du drapeau capturé", () => {
-    // A est dans MON équipe (`t0`) : son onde est alliée, quel que soit le drapeau qu'il ramène.
+  it("L'ENCRE EST CELLE DU CAMP DE L'AUTEUR vu du joueur regardé, pas celle du drapeau capturé", () => {
+    // A est dans MON équipe (camp 0) : son onde est alliée, quel que soit le drapeau qu'il ramène.
     const vuDeT0 = renderHook(() => useLayer({ objectives: CAPTURE }))
     const allie = inkCtx()
     vuDeT0.result.current.paint(allie.ctx, 20)
     expect(new Set(allie.arcs)).toEqual(new Set([ALLY]))
     // Vu d'en face, le MÊME auteur devient l'adversaire — c'est là qu'une inversion se verrait.
-    const vuDeT1 = renderHook(() => useLayer({ objectives: CAPTURE, sb: scoreboard('t1') }))
+    const vuDeT1 = renderHook(() => useLayer({ objectives: CAPTURE, vu: 'B' }))
     const adverse = inkCtx()
     vuDeT1.result.current.paint(adverse.ctx, 20)
     expect(new Set(adverse.arcs)).toEqual(new Set([ENEMY]))
   })
 
-  it("SANS ligne « moi », l'onde prend le NEUTRE du thème — aucun camp deviné", () => {
-    const { result } = renderHook(() => useLayer({ objectives: CAPTURE, sb: null }))
+  it("joueur regardé que le film ne situe pas : l'onde prend le NEUTRE du thème — aucun camp deviné", () => {
+    const { result } = renderHook(() => useLayer({ objectives: CAPTURE, vu: null }))
     const { ctx, arcs } = inkCtx()
     result.current.paint(ctx, 20)
     expect(new Set(arcs)).toEqual(new Set([NEUTRAL]))
   })
 
-  it("un auteur ABSENT du tableau de bord prend le neutre, il n'est pas écarté", () => {
+  it("un auteur ABSENT du film (ou dont le film tait l'équipe) prend le neutre, il n'est pas écarté", () => {
     const { result } = renderHook(() =>
-      useLayer({ objectives: [{ t: 20, xuid: 'A', stat: 'flag_captures', timeMs: 2_000 }], sb: [] }),
+      useLayer({ objectives: [{ t: 20, xuid: 'A', stat: 'flag_captures', timeMs: 2_000 }], equipes: [['B', 1]], vu: 'B' }),
     )
     const { ctx, arcs } = inkCtx()
     result.current.paint(ctx, 20)

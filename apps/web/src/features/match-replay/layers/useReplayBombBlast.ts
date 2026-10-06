@@ -18,8 +18,6 @@
  */
 import { useCallback, useMemo } from 'react'
 
-import type { MatchScoreboardRow } from '@/lib/api/types'
-
 import {
   BOMB_BLAST_HOLD_FRAMES,
   buildBombBlastFx,
@@ -29,23 +27,16 @@ import {
 import { useCarrierPosAt } from '../model/carrierPosition'
 import { type CanvasView } from '../model/replayView'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { allyTeamFromScoreboard, teamOfXuidFromScoreboard } from '../model/matchSides'
+import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 
 export interface BombBlastHookInput {
   doc: ReplayDocumentReady
   view: CanvasView
-  scoreboard: MatchScoreboardRow[] | null | undefined
   /**
-   * LE POINT DE VUE de la page (2026-09-06, plan « frise, point de vue ») : le camp de
-   * référence est celui de CE joueur, pas nécessairement celui de la ligne « moi ». `null` :
-   * la ligne « moi », comportement d'origine.
-   *
-   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris. Optionnel, son oubli chez
-   * l'appelant ne faisait rougir AUCUN test — la déflagration serait restée aux couleurs du
-   * joueur de la page pendant que la carte suivait le joueur choisi. Requis, l'oubli est une
-   * erreur de compilation.
+   * L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : le camp de
+   * l'auteur d'une déflagration. REQUISE : elle porte le point de vue (revue F4 du 2026-09-07).
    */
-  viewpoint: string | null
+  allegiance: FilmAllegiance
   /** Encre d'un camp vu de la page (tokens déjà résolus par l'appelant). */
   teamColorOf: (ally: boolean) => string
   /** Encre servie quand le camp est inconnu : ni équipe inventée, ni explosion invisible. */
@@ -69,8 +60,7 @@ export interface ReplayBombBlast {
 export function useReplayBombBlast({
   doc,
   view,
-  scoreboard,
-  viewpoint,
+  allegiance,
   teamColorOf,
   neutral,
   reducedMotion,
@@ -82,26 +72,18 @@ export function useReplayBombBlast({
 
   const blasts = useMemo(() => buildBombBlastFx(doc, posOf), [doc, posOf])
 
-  // LE CAMP DE L'AUTEUR SE LIT AU TABLEAU DE BORD, jamais dans le film : l'action ne porte que
-  // le xuid. Un auteur absent du tableau prend le neutre du thème — jamais une équipe devinée,
-  // même règle que l'onde de capture.
-  const teamOfXuid = useMemo(() => teamOfXuidFromScoreboard(scoreboard), [scoreboard])
-
-  const allyTeamID = useMemo(
-    () => allyTeamFromScoreboard(scoreboard, viewpoint),
-    [scoreboard, viewpoint],
-  )
-
+  // LE CAMP DE L'AUTEUR EST SON ALLÉGEANCE DU FILM : l'action ne porte que son xuid, un bot s'y
+  // relie par sa ligne de feuille. Sans allégeance (le film tait son équipe, ou celle du joueur
+  // regardé), le neutre du thème — jamais une équipe devinée, même règle que l'onde de capture.
   const style = useMemo<BombBlastStyle>(
     () => ({
       inkOf: (xuid: string) => {
-        const team = teamOfXuid.get(xuid)
-        if (team === undefined || allyTeamID === null) return neutral
-        return teamColorOf(team === allyTeamID)
+        const ally = allegiance.ofXuid(xuid)
+        return ally === null ? neutral : teamColorOf(ally)
       },
       reducedMotion,
     }),
-    [teamOfXuid, allyTeamID, teamColorOf, neutral, reducedMotion],
+    [allegiance, teamColorOf, neutral, reducedMotion],
   )
 
   const paint = useCallback(

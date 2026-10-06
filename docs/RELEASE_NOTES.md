@@ -29,14 +29,14 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Net flag grabs** — juggling folded into a 1.5-second window, so picking your own flag back up twice in a second counts once
 - **Assault** — bomb plants, defuses, carriers killed and the rest of the mode's statistics
 - **Rounds are counted as rounds** — on modes decided by rounds, the score shown is the number of rounds won and lost; the API's point score is kept alongside because on those modes it can hand the advantage to the side that lost
-- **Payback and support** — when a teammate dies, does your side take down the killer within 5 seconds? One rule everywhere — Squad, Sessions and the match view — and support counts the assists between teammates, also over time on the Timeseries
+- **Payback and support** — when a teammate dies, does your side take down the killer within 5 seconds? One rule everywhere — Squad and the match view — and support counts the assists between teammates, on the Sessions and over time on the Timeseries
 - **Range and height against your lobby** — your kill range and the height you fight from, read against the whole lobby of each match rather than against the playlist: range roles, height roles, and the engagement height of every kill on the match view
 - **Distance records by weapon** — your longest measured kill with each weapon, on the Synthesis
 - **Starting weapons read right** — a weapon picked up in the first seconds of a life no longer counts as a starting weapon
 
 **Equipment: used, kept or wasted**
 - **The three outcomes of every piece of equipment** — used, kept without ever using it, or dropped when you died, family by family
-- **On the Sessions and the Timeseries** — on the Sessions with your share of your team, the parity line and a match-by-match regularity band; on the Timeseries, your items against the rest of your side
+- **On the Sessions and the Timeseries** — your items against the rest of your side, family by family
 - **Charges are visible** — a deployable shows how much of it is left before the first use
 
 **A Tactics tab**
@@ -56,6 +56,7 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **A "Map control" tab on the Squad** — who took what on the map, camp against camp: the camouflage and overshield bonuses, the special weapons of the power pads and the rack weapons. You see the balance of the evening and how it moved over the session, who in the squad took what, match by match, what your kills owe to those resources, how well you fare against the opponent with them, and how tonight compares with your usual evenings. It replaces the old Squad "Usage" tab (old links land on it), and the cards it used to hold moved to Contributions and Dynamics.
 - **"Grouped or isolated"** — in the Map control tab, one dot per life: how far you were from the nearest living teammate (in radar ranges) and how many kills that life brought, split into four quarters so that the isolated lives that cost you are easy to spot, plus the share of your lives by placement. Measured for each match as it is synced. The "Unanswered kills" cloud leaves the Synergies tab; the Payback card stays.
 - **Sessions in four sections**, and a side-by-side comparison in shared rows that stays readable when the drawer opens
+- **The Sessions page becomes the Map control of your evening** — your kills and tools, what your side took and how it moved over the session, match by match, what those resources were worth against the opponent, whether you die near a teammate or alone, your share of the objective and what you did with your equipment; in the comparison drawer every card sits on the same row on both sides, in a compact view in percentages. The Payback card leaves the page; on Halo 5, Support received is now shown
 - **Squad intensity against your real team and the lobby**, and a filter bar that no longer replays every chart's animation on each click
 - **Explorer and Head-to-head** — the briefing shows the favourite weapon of the selection and the kill range of the player you scout; the Head-to-head gets a weapon profile: kill share by weapon class, range by role, top 3 weapons
 - **The home match tile** shows how many of your kills a teammate assisted

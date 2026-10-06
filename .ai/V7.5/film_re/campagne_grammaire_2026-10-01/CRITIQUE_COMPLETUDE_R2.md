@@ -6,7 +6,7 @@ J'ai tout relu sur l'arbre de travail, où le traitement n'est pas commité : `g
 
 ## 1. Statut des 25 points
 
-PLAN = `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` ; RAPPORT = `.ai/V7.5/film_re/RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md`.
+PLAN = `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` ; RAPPORT = `.ai/V7.5/film_re/RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md`.
 
 | Pt | Statut | Preuve, et ce qui reste |
 |---|---|---|

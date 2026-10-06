@@ -49,6 +49,9 @@ type Roster struct {
 	// BotPaquetsIncomplets : paquets BOT_METADATA dont le scan n a pas retrouve `nbBots` entrees —
 	// ils n ont ferme aucune declaration (cf. botmeta.go, lot M2.1).
 	BotPaquetsIncomplets int
+	// BotEquipes : le bilan de la lecture de l equipe des bots dans BOT_METADATA
+	// (botmeta_equipe.go) ; ses comptes non nuls, l orchestrateur les journalise.
+	BotEquipes EquipesDesBots
 	// IndexSource : la PROVENANCE de chaque indice, meme longueur qu `IndexToName`. Un artefact
 	// doit pouvoir dire quelle part de lui vient d une LECTURE et quelle part d un REPLI
 	// (doctrine D14 c du chantier, D-10 d ADR 0034).
@@ -412,7 +415,7 @@ func (r *roster) isBotIndex(i int) bool {
 // public : la vue exportee.
 func (r *roster) public() Roster {
 	out := Roster{Names: append([]string(nil), r.names...), Humans: r.nHumans,
-		BotsSuccedes: r.botsSuccedes, BotPaquetsIncomplets: r.bots.Incomplets}
+		BotsSuccedes: r.botsSuccedes, BotPaquetsIncomplets: r.bots.Incomplets, BotEquipes: r.bots.Equipes}
 	for _, b := range r.bots.Bots {
 		out.Bots = append(out.Bots, b.entree())
 	}

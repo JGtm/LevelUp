@@ -29,14 +29,14 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les prises nettes de drapeau** — le jonglage replié sur une fenêtre de 1,5 seconde : reprendre son propre drapeau deux fois en une seconde compte pour une prise
 - **Assaut** — poses et désamorçages de la bombe, porteurs tués, et le reste des statistiques du mode
 - **Les manches comptent comme des manches** — sur les modes qui se jouent en manches, le score affiché est le nombre de manches gagnées et perdues ; le score en points de l'API est conservé à côté, parce que sur ces modes il peut donner l'avantage au camp qui a perdu
-- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Une seule règle partout — Escouade, Sessions et fiche du match — et l'appui compte les assistances entre coéquipiers, aussi dans le temps sur les Séries temporelles
+- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Une seule règle partout — Escouade et fiche du match — et l'appui compte les assistances entre coéquipiers, sur les Sessions et dans le temps sur les Séries temporelles
 - **La portée et la hauteur face à ton lobby** — ta portée de frag et la hauteur d'où tu te bats, lues face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée, rôles de hauteur, et la hauteur d'engagement de chaque frag sur la fiche du match
 - **Les records de distance par arme** — ton frag mesuré le plus lointain avec chaque arme, sur la Synthèse
 - **Les armes de départ lues juste** — une arme ramassée dans les premières secondes d'une vie ne compte plus comme une arme de départ
 
 **L'équipement : utilisé, gardé ou gâché**
 - **Les trois issues de chaque équipement** — utilisé, gardé sans l'utiliser, ou lâché en mourant, famille par famille
-- **Sur les Sessions et les Séries temporelles** — sur les Sessions avec ta part d'équipe, le trait de parité et une bande de régularité match par match ; sur les Séries temporelles, tes objets face au reste de ton camp
+- **Sur les Sessions et les Séries temporelles** — tes objets face au reste de ton camp, famille par famille
 - **Les charges sont visibles** — un déployable montre ce qu'il lui reste avant la première utilisation
 
 **Un onglet Tactique**
@@ -56,6 +56,7 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Un onglet « Emprise » sur l'Escouade** — qui a pris quoi sur la carte, camp contre camp : les bonus de camouflage et de surbouclier, les armes spéciales des socles de puissance et les armes de râtelier. On y lit le bilan de la soirée et son évolution au fil de la session, qui a pris quoi dans l'escouade, match par match, ce que vos frags doivent à ces ressources, votre rendement face à l'adversaire quand vous les tenez, et la comparaison de ce soir avec vos soirées habituelles. Il remplace l'ancien onglet « Usages » de l'Escouade (les anciens liens y mènent), et les cartes qu'il contenait sont passées dans Contributions et Dynamique.
 - **« Groupés ou isolés »** — dans l'onglet Emprise, un point par vie : à quelle distance vous étiez du coéquipier vivant le plus proche (en portées de radar) et combien de frags cette vie a rapportés, réparti en quatre quarts pour repérer d'un coup d'œil les vies isolées qui coûtent cher, et la part de vos vies par placement. Mesuré pour chaque match au moment de sa synchronisation. Le nuage « Frags non ripostés » quitte l'onglet Synergies ; la carte Riposte reste.
 - **Les Sessions en quatre sections**, et une comparaison côte à côte en rangées partagées qui reste lisible quand le tiroir s'ouvre
+- **La page Sessions devient l'Emprise de ta soirée** — tes frags et tes outils, ce que ton camp a pris et son cours sur la session, match par match, ce que ces ressources ont valu face à l'adversaire, si tu meurs près d'un coéquipier ou seul, ta part de l'objectif et ce que tu as fait de ton équipement ; dans le tiroir de comparaison, chaque carte est sur la même rangée des deux côtés, en vue compacte en pourcentages. La carte Riposte quitte la page ; sur Halo 5, l'Appui reçu s'affiche désormais
 - **L'intensité de l'Escouade face à ta vraie équipe et au lobby**, et une barre de filtres qui ne rejoue plus l'animation de chaque graphe à chaque clic
 - **Explorateur et Face-à-face** — le briefing montre l'arme favorite de la sélection et la portée de frag du joueur que tu repères ; le Face-à-face gagne un profil d'armes : part des frags par classe d'arme, portée par rôle, trois armes de tête
 - **La tuile de match de l'accueil** montre combien de tes frags un coéquipier a assistés

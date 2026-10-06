@@ -46,9 +46,7 @@
  *
  * Tout ce fichier est PUR : ni React, ni canvas, ni DOM.
  */
-import { parseTeamSideID } from '@/lib/halo/teamNames'
 import type {
-  MatchScoreboardRow,
   ReplayPlayerScore,
   ReplayScoreRound,
   ReplayScoreSeries,
@@ -118,14 +116,6 @@ export interface ReplayScoreDocument {
   coverage?: { originResolved?: boolean }
   scoreTimeline?: ReplayScoreTimelineReady
 }
-
-/**
- * AllyIndex — de quel côté est un joueur, par xuid.
- *
- * Décrit structurellement pour la même raison : `XuidMeta` (match-view) porte aussi le
- * gamertag, dont ce module n'a que faire. Un index plus riche reste acceptable.
- */
-type AllyIndex = ReadonlyMap<string, { ally: boolean }>
 
 // ---------------------------------------------------------------------------------------
 // La frontière : combler les cinq tableaux nullables du calque
@@ -290,11 +280,6 @@ export function teamRoundScoreAtFrame(
   return r ? scoreAtFrame(r.points, frame) : 0
 }
 
-/** teamIdOfSide traduit le camp du scoreboard (`t{N}`) en identifiant d'équipe du film. */
-export function teamIdOfSide(side: string | null | undefined): number | null {
-  return parseTeamSideID(side)
-}
-
 /** Les quatre compteurs vivants d'un joueur, au frame courant. */
 export interface PlayerCounters {
   score: number
@@ -436,29 +421,6 @@ export function campCountOf(roster: ReadonlyArray<{ team?: number | null }>): nu
   const camps = new Set<number>()
   for (const r of roster) if (r.team != null && r.team >= 0) camps.add(r.team)
   return camps.size
-}
-
-/**
- * allyOfTeamId dit si une équipe DU FILM est du côté du joueur de la page.
- *
- * Le film numérote ses équipes (`teamId`) ; la page raisonne en « allié / adverse », une
- * notion RELATIVE au joueur consulté. Le pont entre les deux passe par le scoreboard, seul
- * endroit où le camp (`team_side` au format `t{N}`) et le xuid coexistent. `null` = camp
- * introuvable ou aucun joueur reconnu : la marque prend une encre neutre, jamais l'une des
- * deux couleurs par défaut.
- */
-export function allyOfTeamId(
-  scoreboard: ReadonlyArray<Pick<MatchScoreboardRow, 'xuid' | 'team_side'>>,
-  allies: AllyIndex | undefined,
-  teamId: number,
-): boolean | null {
-  if (!allies) return null
-  for (const row of scoreboard) {
-    if (parseTeamSideID(row.team_side) !== teamId) continue
-    const meta = allies.get(row.xuid)
-    if (meta) return meta.ally
-  }
-  return null
 }
 
 /**

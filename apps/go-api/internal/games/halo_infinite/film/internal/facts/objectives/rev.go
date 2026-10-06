@@ -113,6 +113,15 @@ package objectives
 // films de reference (binaire de `87cdfa761` contre binaire du lot ; seule l etape `artifact`
 // diverge, par sa chaine de revision). Golden regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/LOT_VA_V1.md`.
+//
+// COMPLEMENT DU 2026-10-06 (lot VA de la campagne de grammaire, etapes V2 et V3 : la fin de la vue A
+// fixe le debut de la vue B, la variante de partie du film decide les genres 85 et 116 ; fusion de
+// `feat/v75` a `fed1efed2` et corrections de la revue ; REVISION CONSTANTE) : `grammar.Rev` monte a
+// `grammar-2026-10-06.4` (les rangs `.2` a `.4` que le lot portait sur sa seule branche, jamais
+// fusionnes, y sont reunis). `grammar/signaux` ne change pas, et l etape `objectives` de
+// `replay-equiv` est IDENTIQUE sur les 20 films de reference (binaire de `fed1efed2` contre binaire du
+// lot). Golden regenere a revision constante. Mesures : `campagne_grammaire_2026-10-01/LOT_VA_V2.md`,
+// `LOT_VA_V3.md` (§15).
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

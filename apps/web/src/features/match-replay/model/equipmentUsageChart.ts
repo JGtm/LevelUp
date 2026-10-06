@@ -197,20 +197,20 @@ export interface UsageFamilyBarsInput extends UsageTeamVisual {
   teams: EquipmentUsageTeam[]
   groups: UsageColumnGroup[]
   /**
-   * Le côté de feuille du joueur de la page : le camp qui le porte ouvre chaque barre (l'encre
-   * allié / adverse, pas l'appartenance). `null` = ordre des camps du film.
+   * L'équipe du FILM du joueur de la page (`FilmAllegiance.allyTeam`) : son camp ouvre chaque
+   * barre. `null` = ordre des camps du film.
    */
-  allySide: string | null
+  allyTeam: number | null
 }
 
 /**
  * orderedTeams — MON CAMP D'ABORD (D20, 2026-09-21). Le segment de gauche est toujours le
  * mien : une barre qui changerait de main d'une famille à l'autre ne se compare pas d'un
- * coup d'œil. Sans camp connu (aucun `is_me` au tableau des scores), l'ordre du film reste.
+ * coup d'œil. Sans camp connu (le film ne situe pas le joueur de la page), l'ordre du film reste.
  */
-function orderedTeams(teams: EquipmentUsageTeam[], allySide: string | null): EquipmentUsageTeam[] {
-  if (allySide == null) return teams
-  return [...teams].sort((a, b) => Number(b.side === allySide) - Number(a.side === allySide))
+function orderedTeams(teams: EquipmentUsageTeam[], allyTeam: number | null): EquipmentUsageTeam[] {
+  if (allyTeam == null) return teams
+  return [...teams].sort((a, b) => Number(b.team === allyTeam) - Number(a.team === allyTeam))
 }
 
 /**
@@ -232,7 +232,7 @@ function orderedTeams(teams: EquipmentUsageTeam[], allySide: string | null): Equ
  * segment quand il tient.
  */
 export function buildUsageFamilyBars(input: UsageFamilyBarsInput): UsageFamilyBars {
-  const teams = orderedTeams(input.teams, input.allySide)
+  const teams = orderedTeams(input.teams, input.allyTeam)
   const mesures = usageLeaves(input.groups)
     .map((leaf) => {
       const counts = teams.map((team) => leaf.column.value(team.total) ?? 0)

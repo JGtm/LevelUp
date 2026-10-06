@@ -32,8 +32,8 @@
 import { useMemo } from 'react'
 
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { ReplayPlayerCard, ReplaySeatWaiting } from './ReplayPlayerCard'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
@@ -46,9 +46,7 @@ import type { PresenceHeader } from '../model/presenceFeed'
 import {
   buildSeats,
   groupSeatsByTeam,
-  seatOccupantAt,
   seatTileAt,
-  type ReplaySeat,
   type ReplaySeatGroup,
 } from '../model/seatLogic'
 import { campLabel } from '../../../lib/replay/replayCamps'
@@ -56,8 +54,7 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   buildPlayers,
   buildSlotOwnership,
-  type ReplayPlayer,
-  sideResolver,
+  campResolver,
   vitalityPresence,
 } from '../../../lib/replay/rosterLogic'
 
@@ -98,8 +95,11 @@ interface ReplayTeamsProps {
   scoreboard: MatchScoreboardRow[]
   frame: number
   locale: ReplayLocale
-  /** Camp de chaque xuid : il donne sa couleur au titre de la colonne (allié / adverse). */
-  xuidMeta?: XuidMeta
+  /**
+   * L'allégeance lue dans le film, vue du joueur regardé (`model.allegiance`) : elle donne sa
+   * couleur au titre de chaque colonne (allié / adverse, neutre quand elle est inconnue).
+   */
+  allegiance: FilmAllegiance
   /**
    * En-tête du match : la catégorie de mode (le gabarit des fiches, cf. cardDensity). Absent =
    * gabarit normal. Les relais de place, eux, viennent du document (`roster[].presence`).
@@ -108,7 +108,7 @@ interface ReplayTeamsProps {
 }
 
 export function ReplayTeams({
-  doc, scoreboard, frame, locale, xuidMeta, header,
+  doc, scoreboard, frame, locale, allegiance, header,
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const players = useMemo(() => buildPlayers(doc, scoreboard), [doc, scoreboard])
@@ -137,7 +137,7 @@ export function ReplayTeams({
   // LE CAMP D'UNE VIE PAR SLOT ET PAR IMAGE (résolveur frame-aware) : un slot de biped est
   // réattribué entre manches, le camp doit suivre l'occupant. Le capteur adverse le lit à
   // l'image du joueur interrogé / à la pose du capteur (cf. equipmentZones).
-  const sideOfSlot = useMemo(() => sideResolver(buildSlotOwnership(players)), [players])
+  const campOfSlot = useMemo(() => campResolver(buildSlotOwnership(players)), [players])
   // L'ÉCLAT DE TRANSLOCATION EST DATÉ PAR L'ÉVÉNEMENT DU FILM (schéma 38, 2026-09-03) :
   // `translocations[]` porte l'instant EXACT de chaque usage — plus jamais le `spent`, qui date
   // la FIN de l'équipement avec jusqu'à 16,5 s de retard mesuré, ni l'heuristique spatiale
@@ -149,12 +149,12 @@ export function ReplayTeams({
     () => ({
       zones: {
         placements: doc.equipmentPlacements,
-        sideOfSlot,
+        campOfSlot,
       },
       time: { frameMs: frameToMs(1, doc), frames: doc.frameCount },
       teleports,
     }),
-    [doc, sideOfSlot, teleports],
+    [doc, campOfSlot, teleports],
   )
   // LE CALQUE DE SCORE PASSE PAR SA GARDE D'HORLOGE, une seule fois pour toute la colonne :
   // absent = artefact antérieur au schéma 12, mode sans compteur, ou origine non recalée
@@ -211,12 +211,7 @@ export function ReplayTeams({
           key={`camp:${group.team}`}
           className="flex h-full min-h-0 flex-col gap-1.5"
         >
-          <ReplayTeamHeader
-            label={labels[gi]}
-            players={occupantsPresents(group.seats, frame)}
-            side={group.side}
-            xuidMeta={xuidMeta}
-          />
+          <ReplayTeamHeader label={labels[gi]} ally={allegiance.ofTeam(group.team)} />
           <div className={gabarit.seatGrid ? SEATS_GRID_CLASS : SEATS_COLUMN_CLASS}>
             {/* UNE TUILE PAR PLACE, À CHAQUE IMAGE (règle des places, 2026-09-23) : son
                 occupant à l'instant lu, « pas encore apparu » s'il n'a pas encore de corps
@@ -257,20 +252,4 @@ export function ReplayTeams({
 /** Les lignes de feuille de TOUS les occupants d'un camp, sur tout le match : ce qui le nomme. */
 function sheetRowsOf(group: ReplaySeatGroup) {
   return group.seats.flatMap((s) => s.occupants.map((o) => o.player.board))
-}
-
-/**
- * occupantsPresents — les joueurs qui TIENNENT une place de ce camp à cette image, apparus ou
- * pas encore.
- *
- * L'en-tête de colonne s'en sert pour la couleur allié / adverse : la lui donner par un joueur
- * parti ferait colorer un camp par quelqu'un qui n'y joue plus.
- */
-function occupantsPresents(seats: readonly ReplaySeat[], frame: number): ReplayPlayer[] {
-  const out: ReplayPlayer[] = []
-  for (const s of seats) {
-    const lu = seatOccupantAt(s, frame)
-    if (lu.kind !== 'vide' && lu.player !== null) out.push(lu.player)
-  }
-  return out
 }

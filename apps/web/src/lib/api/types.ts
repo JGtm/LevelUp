@@ -1823,9 +1823,9 @@ export interface MatchHighlightEvent {
   weapon_id: number | null
   /**
    * Équipe de l'acteur (le TUEUR sur un event `kill`), résolue côté backend depuis le
-   * scoreboard. Absent si l'acteur n'y figure pas. Sert à colorer le nom et l'icône avec
-   * la couleur d'IDENTITÉ de l'équipe (Eagle bleu / Cobra rouge), la même que l'en-tête
-   * du scoreboard — pas un allié/ennemi binaire.
+   * scoreboard. Absent si l'acteur n'y figure pas. Le rejeu s'en sert pour attribuer un frag
+   * à un camp (piste Dominance, `KillEvent.teamID`) ; elle ne colore rien — l'encre du fil
+   * vient de l'équipe du film.
    */
   actor_team_id?: number | null
   /**
@@ -2035,8 +2035,9 @@ export interface MatchScoreboardRow {
    *  (Halo Infinite) → le front retombe sur resolveTeamName (Eagle/Cobra). */
   team_name?: string | null
   /** Couleur d'identité d'équipe (#RRGGBB) fournie par le backend (Halo 5 : depuis
-   *  team_colors). Absente pour Halo Infinite → le front retombe sur la map
-   *  TEAM_COLORS_HALO_INFINITE (par team_id), puis sur le token ally/enemy. */
+   *  team_colors), absente pour Halo Infinite. Le front ne la lit pas : la couleur d'un
+   *  camp est son jeton d'allégeance (`team-ally` / `team-enemy`), réglable en
+   *  accessibilité. */
   team_color?: string | null
   is_me: boolean
   /** True si participant détecté comme bot (xuid au format "bid(N.0)"). */
@@ -2290,27 +2291,6 @@ export type SessionPageResponse = components['schemas']['SessionPageResponse']
 // fichier (bloc du lot Q, partage par Sessions et Timeseries).
 // `MatchRangeBlock` / `MatchRangeProfile` / `MatchRangePlayer` (lot N2) sont déjà alias plus
 // haut, posés par le lot R pour l'Escouade : la page Sessions les lit tels quels.
-
-// ─── Chantier session-usage (S3) : bloc « usages d'équipement, socles et objectifs » ──
-// Contrat Go : internal/domain/session_usage.go — TOUT axe est NORMALISÉ (parts %,
-// cadences /10 min) ; les totaux bruts ne sont que des dénominateurs d'honnêteté.
-// Un champ ABSENT (undefined) est « non mesuré », JAMAIS un zéro.
-
-export type SessionUsageBlock = components['schemas']['SessionUsageBlock']
-/** Les prises de socle rangées par NIVEAU d'arme (base / terrain / puissance / bonus / non
- *  classé). Publié par les deux blocs d'usage — page Sessions et bloc d'équipement. */
-export type SessionUsagePadTiersBlock = components['schemas']['SessionUsagePadTiersBlock']
-export type SessionUsageMetric = components['schemas']['SessionUsageMetric']
-export type SessionUsageOutcomes = components['schemas']['SessionUsageOutcomes']
-export type SessionUsageMatchPoint = components['schemas']['SessionUsageMatchPoint']
-export type SessionUsageSquadPlayer = components['schemas']['SessionUsageSquadPlayer']
-export type SessionUsageSquadShare = components['schemas']['SessionUsageSquadShare']
-export type SessionUsagePadFamily = components['schemas']['SessionUsagePadFamily']
-export type SessionUsagePowerup = components['schemas']['SessionUsagePowerup']
-export type SessionObjectivesBlock = components['schemas']['SessionObjectivesBlock']
-export type SessionObjectiveRoleMetric = components['schemas']['SessionObjectiveRoleMetric']
-export type SessionFlagGrabsNetBlock = components['schemas']['SessionFlagGrabsNetBlock']
-export type SessionObjectiveFamilyBlock = components['schemas']['SessionObjectiveFamilyBlock']
 
 // ─── Bloc « formes retenues » : la matière des cartes d'objectif (Escouade › Contributions,
 // Séries temporelles › Usages). Contrat Go : internal/domain/squad_formes.go. Le bloc ne porte
@@ -3423,11 +3403,10 @@ export type TacticalCelluleBody = components['schemas']['TacticalCelluleBody']
 export type TacticalCelluleReponse = components['schemas']['TacticalCelluleReponse']
 export type TacticalContribution = components['schemas']['TacticalContribution']
 
-// Le bloc COORDINATION du lot N1 (riposte + appui reçu), servi tel quel par Sessions, la
-// match view et les Séries temporelles. Alias stricts du contrat généré : un renommage
+// Le bloc COORDINATION du lot N1 (appui reçu), servi tel quel par Sessions et
+// les Séries temporelles. Alias stricts du contrat généré : un renommage
 // côté Go casse `tsc` ici plutôt que de se découvrir à l'exécution.
 export type CoordinationBlock = components['schemas']['CoordinationBlock']
-export type CoordinationRiposte = components['schemas']['CoordinationRiposte']
 export type CoordinationAppui = components['schemas']['CoordinationAppui']
 export type CoordinationSessionPoint = components['schemas']['CoordinationSessionPoint']
 export type CoordinationMatchPoint = components['schemas']['CoordinationMatchPoint']

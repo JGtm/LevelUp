@@ -84,6 +84,14 @@ describe('PisteCampsForm', () => {
     expect(screen.getByTestId('piste-camps-repli-powerup').textContent).toBe('0 · 0 %')
   })
 
+  it('parts seules (vue compacte de Sessions) : la part dans le segment et au repli, le compte en infobulle seulement', () => {
+    mockWidths(300, 70)
+    render(<PisteCampsForm rows={[ROW]} pctFmt={T.pctIntFmt} axisMaxLabel={T.pctIntFmt(100)} pctOnly />)
+    const labels = document.querySelectorAll<HTMLElement>('[data-fit-label]')
+    expect(labels[0].textContent).toBe('44 %')
+    expect(screen.getByTestId('piste-camps-repli-power_weapon').textContent).toBe('56 %')
+  })
+
   it('nom précédé de la pastille de ressource (S8), sous-libellé, axe 0-100 %', () => {
     mockWidths(300, 300)
     mount()

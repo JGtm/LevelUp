@@ -5,11 +5,15 @@
  * (43/50, deux séries), CTF `530820e5` (3-0, UNE seule série publiée — le piège qui a fait
  * réécrire ce module) et Oddball `24dbb67d` (200/121 en deux manches). Les refus, eux, sont
  * la moitié utile : un bandeau qui se rend quand il ne sait pas est pire qu'un bandeau absent.
+ *
+ * LES CAMPS ET LE CÔTÉ ALLIÉ VIENNENT DU FILM (2026-10-06) : l'équipe que le roster écrit à chaque
+ * joueur, comparée à celle du joueur regardé (`FilmAllegiance`). Les cas les construisent ainsi.
  */
 import { describe, expect, it } from 'vitest'
 
+import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 import { normalizeScoreTimeline, type ReplayScoreTimelineReady } from '@/lib/replay/scoreTimeline'
-import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { readScoreBanner } from './scoreBannerLogic'
 
@@ -26,14 +30,13 @@ function equipe(teamId: number, points: Array<[number, number]>) {
   return { teamId, rounds: [{ round: 0, points: pts }], total: pts }
 }
 
-/** Deux lignes de scoreboard : le camp et l'identité suffisent à ce module. */
-function board(sides: Array<[string, string | null]>): Array<Pick<MatchScoreboardRow, 'xuid' | 'team_side'>> {
-  return sides.map(([xuid, team_side]) => ({ xuid, team_side }))
-}
-
-/** L'index de camps : `true` = du côté du joueur de la page. */
-function allies(entries: Array<[string, boolean]>): ReadonlyMap<string, { ally: boolean }> {
-  return new Map(entries.map(([xuid, ally]) => [xuid, { ally }]))
+/**
+ * L'allégeance du film vue de `reference` : chaque joueur avec l'équipe que le film lui écrit
+ * (`undefined` = le film la tait). Seules l'équipe et la clé sont lues.
+ */
+function vue(equipes: Array<[string, number | undefined]>, reference: string) {
+  const joueurs = equipes.map(([xuid, team]) => ({ xuid, team, lives: [] }) as ReplayPlayer)
+  return buildFilmAllegiance(joueurs, reference)
 }
 
 /** Le témoin Slayer : t0 mène 43, t1 suit à 30 au frame 500. */
@@ -54,14 +57,13 @@ const SLAYER = () =>
     players: [],
   })
 
-const SB_2V2 = board([
-  ['moi', 't0'],
-  ['eux', 't1'],
-])
-const ALLY_T0 = allies([
-  ['moi', true],
-  ['eux', false],
-])
+/** Deux camps du film : `moi` au camp 0, `eux` au camp 1. */
+const DEUX_CAMPS: Array<[string, number]> = [
+  ['moi', 0],
+  ['eux', 1],
+]
+/** Vu de `moi` : le camp 0 est allié. */
+const ALLY_T0 = vue(DEUX_CAMPS, 'moi')
 
 /**
  * Oddball à deux manches, les DEUX camps ventilés (t0 gagne 100/78 puis 100/43). Le camp
@@ -127,35 +129,27 @@ const D9 = (targetScore?: number) =>
   })
 
 describe('readScoreBanner — les deux camps au frame lu', () => {
-  it('met le camp du joueur de la page à gauche, avec son score au frame', () => {
-    const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)
+  it('met le camp du joueur regardé à gauche, avec son score au frame', () => {
+    const r = readScoreBanner(SLAYER(), ALLY_T0, 500)
     expect(r).not.toBeNull()
     expect(r?.ally).toMatchObject({ teamId: 0, score: 43 })
     expect(r?.enemy).toMatchObject({ teamId: 1, score: 30 })
   })
 
-  it('inverse les côtés quand le joueur de la page est dans t1', () => {
-    const r = readScoreBanner(
-      SLAYER(),
-      SB_2V2,
-      allies([
-        ['moi', false],
-        ['eux', true],
-      ]),
-      500,
-    )
+  it('inverse les côtés quand le joueur regardé est du camp 1', () => {
+    const r = readScoreBanner(SLAYER(), vue(DEUX_CAMPS, 'eux'), 500)
     expect(r?.ally.teamId).toBe(1)
     expect(r?.ally.score).toBe(30)
     expect(r?.enemy.teamId).toBe(0)
   })
 
   it('TIQUE : le score lu au frame 100 n\'est pas celui de la fin', () => {
-    expect(readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 100)?.ally.score).toBe(20)
-    expect(readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)?.ally.score).toBe(43)
+    expect(readScoreBanner(SLAYER(), ALLY_T0, 100)?.ally.score).toBe(20)
+    expect(readScoreBanner(SLAYER(), ALLY_T0, 500)?.ally.score).toBe(43)
   })
 
   it('rend 0 avant le premier palier, sans rien inventer', () => {
-    const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 0)
+    const r = readScoreBanner(SLAYER(), ALLY_T0, 0)
     expect(r?.ally.score).toBe(0)
     expect(r?.enemy.score).toBe(0)
   })
@@ -165,10 +159,10 @@ describe('readScoreBanner — le remplissage sur la cible de victoire (le score 
   it('rapporte chaque barre au score FINAL du vainqueur, pas au camp d\'en face au frame lu', () => {
     // À mi-match (20-15), la version relative remplissait la barre du meneur : ici les DEUX
     // disent leur chemin vers la cible (43), et aucune n'est pleine avant qu'elle soit atteinte.
-    const mid = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 100)
+    const mid = readScoreBanner(SLAYER(), ALLY_T0, 100)
     expect(mid?.ally.fill).toBeCloseTo(20 / 43, 6)
     expect(mid?.enemy.fill).toBeCloseTo(15 / 43, 6)
-    const end = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)
+    const end = readScoreBanner(SLAYER(), ALLY_T0, 500)
     expect(end?.ally.fill).toBe(1)
     expect(end?.enemy.fill).toBeCloseTo(30 / 43, 6)
   })
@@ -189,7 +183,7 @@ describe('readScoreBanner — le remplissage sur la cible de victoire (le score 
       ],
       players: [],
     })
-    const r = readScoreBanner(withTarget, SB_2V2, ALLY_T0, 500)
+    const r = readScoreBanner(withTarget, ALLY_T0, 500)
     expect(r?.ally.fill).toBeCloseTo(43 / 50, 6)
     expect(r?.enemy.fill).toBeCloseTo(30 / 50, 6)
   })
@@ -198,7 +192,7 @@ describe('readScoreBanner — le remplissage sur la cible de victoire (le score 
     let prevAlly = -1
     let prevEnemy = -1
     for (const frame of [0, 100, 300, 500]) {
-      const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, frame)
+      const r = readScoreBanner(SLAYER(), ALLY_T0, frame)
       expect(r?.ally.fill).toBeGreaterThanOrEqual(prevAlly)
       expect(r?.enemy.fill).toBeGreaterThanOrEqual(prevEnemy)
       prevAlly = r?.ally.fill ?? 0
@@ -207,13 +201,13 @@ describe('readScoreBanner — le remplissage sur la cible de victoire (le score 
   })
 
   it('laisse les DEUX barres vides à 0-0 (et ne divise pas par zéro)', () => {
-    const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 0)
+    const r = readScoreBanner(SLAYER(), ALLY_T0, 0)
     expect(r?.ally.fill).toBe(0)
     expect(r?.enemy.fill).toBe(0)
   })
 
   it('borne le remplissage à [0,1] quel que soit l\'écart', () => {
-    const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)
+    const r = readScoreBanner(SLAYER(), ALLY_T0, 500)
     for (const side of [r?.ally, r?.enemy]) {
       expect(side?.fill).toBeGreaterThanOrEqual(0)
       expect(side?.fill).toBeLessThanOrEqual(1)
@@ -226,14 +220,14 @@ describe('readScoreBanner — le témoin CTF 3-0 : un camp sans série vaut zér
   const CTF = () => timelineOf({ teams: [equipe(0, [[200, 1], [400, 3]])], players: [] })
 
   it('rend quand même le bandeau, avec 0 pour le camp muet', () => {
-    const r = readScoreBanner(CTF(), SB_2V2, ALLY_T0, 400)
+    const r = readScoreBanner(CTF(), ALLY_T0, 400)
     expect(r).not.toBeNull()
     expect(r?.ally.score).toBe(3)
     expect(r?.enemy.score).toBe(0)
   })
 
   it('vide la barre du camp muet et remplit celle du marqueur', () => {
-    const r = readScoreBanner(CTF(), SB_2V2, ALLY_T0, 400)
+    const r = readScoreBanner(CTF(), ALLY_T0, 400)
     expect(r?.ally.fill).toBe(1)
     expect(r?.enemy.fill).toBe(0)
   })
@@ -262,26 +256,26 @@ describe('readScoreBanner — les manches', () => {
     })
 
   it('annonce la manche en cours quand le mode en a plusieurs', () => {
-    expect(readScoreBanner(ODDBALL(), SB_2V2, ALLY_T0, 50)?.round).toEqual({ index: 1, count: 2 })
-    expect(readScoreBanner(ODDBALL(), SB_2V2, ALLY_T0, 150)?.round).toEqual({ index: 2, count: 2 })
+    expect(readScoreBanner(ODDBALL(), ALLY_T0, 50)?.round).toEqual({ index: 1, count: 2 })
+    expect(readScoreBanner(ODDBALL(), ALLY_T0, 150)?.round).toEqual({ index: 2, count: 2 })
   })
 
   it('affiche la MANCHE COURANTE, jamais le total du match', () => {
     // Manche 2 en est à 100 ; le total, lui, dirait 200 (l'écart du contresens : 100 points).
     // Témoin à DEUX camps ventilés : l'adverse aussi lit SA manche (43), pas son total (121).
-    const r = readScoreBanner(ODDBALL_SPLIT(), SB_2V2, ALLY_T0, 150)
+    const r = readScoreBanner(ODDBALL_SPLIT(), ALLY_T0, 150)
     expect(r?.ally.score).toBe(100)
     expect(r?.enemy.score).toBe(43)
   })
 
   it('se tait sur un mode à manche unique (l\'indicateur répéterait le total)', () => {
-    expect(readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)?.round).toBeNull()
+    expect(readScoreBanner(SLAYER(), ALLY_T0, 500)?.round).toBeNull()
   })
 })
 
 describe('readScoreBanner — le score REPART de zéro à chaque manche (témoin d9781168)', () => {
   it('CONTRE-ÉPREUVE manche 3 : lit la MANCHE (80/67), jamais le total (191/196)', () => {
-    const r = readScoreBanner(D9(), SB_2V2, ALLY_T0, 6975)
+    const r = readScoreBanner(D9(), ALLY_T0, 6975)
     expect(r?.ally.score).toBe(80) // et surtout PAS 191
     expect(r?.enemy.score).toBe(67) // et surtout PAS 196
     expect(r?.ally.fill).toBe(1) // 80/80, la manche est gagnée au plafond
@@ -292,60 +286,52 @@ describe('readScoreBanner — le score REPART de zéro à chaque manche (témoin
   it('RESET : au début de la manche 2, le compteur de manche est bien remis à zéro', () => {
     // f2403 = début partagé de la manche 2 (posé par l'adverse). L'allié n'a pas encore marqué
     // dans la manche : il lit 0, pas les 80 de sa manche 1. L'adverse vient de poser son 1.
-    const r = readScoreBanner(D9(), SB_2V2, ALLY_T0, 2403)
+    const r = readScoreBanner(D9(), ALLY_T0, 2403)
     expect(r?.ally.score).toBe(0)
     expect(r?.enemy.score).toBe(1)
     expect(r?.round).toEqual({ index: 2, count: 3 })
   })
 
   it('DÉNOMINATEUR (a) : la cible PUBLIÉE (100) prime — fill = score de manche / 100', () => {
-    const r = readScoreBanner(D9(100), SB_2V2, ALLY_T0, 6975)
+    const r = readScoreBanner(D9(100), ALLY_T0, 6975)
     expect(r?.ally.fill).toBeCloseTo(80 / 100, 6)
     expect(r?.enemy.fill).toBeCloseTo(67 / 100, 6)
   })
 
   it('DÉNOMINATEUR (b) : à défaut, le plus haut dernier-palier de manche (80)', () => {
-    const r = readScoreBanner(D9(), SB_2V2, ALLY_T0, 6975)
+    const r = readScoreBanner(D9(), ALLY_T0, 6975)
     expect(r?.enemy.fill).toBeCloseTo(67 / 80, 6)
   })
 
   it('DÉNOMINATEUR (c) : le plafond de manche est CONSTANT de la manche 1 à la 3', () => {
     // M2 : l'adverse atteint 80 (le plafond) -> barre pleine ; l'allié à 31 -> 31/80.
-    const m2 = readScoreBanner(D9(), SB_2V2, ALLY_T0, 4300)
+    const m2 = readScoreBanner(D9(), ALLY_T0, 4300)
     expect(m2?.enemy.fill).toBe(1)
     expect(m2?.ally.fill).toBeCloseTo(31 / 80, 6)
     // M3 : l'allié atteint 80 -> plein ; l'adverse à 67 -> 67/80. MÊME dénominateur.
-    const m3 = readScoreBanner(D9(), SB_2V2, ALLY_T0, 6975)
+    const m3 = readScoreBanner(D9(), ALLY_T0, 6975)
     expect(m3?.ally.fill).toBe(1)
     expect(m3?.enemy.fill).toBeCloseTo(67 / 80, 6)
   })
 
   it('GARDE mono-manche : sur SLAYER, le score de manche EST le total (43)', () => {
-    const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)
+    const r = readScoreBanner(SLAYER(), ALLY_T0, 500)
     expect(r?.ally.score).toBe(43)
     expect(r?.enemy.score).toBe(30)
     expect(r?.round).toBeNull()
   })
 })
 
-describe('readScoreBanner — les pastilles de manche, dans le camp du joueur de la page', () => {
+describe('readScoreBanner — les pastilles de manche, dans le camp du joueur regardé', () => {
   it('remplit les deux pastilles au camp allié en fin de match', () => {
-    expect(readScoreBanner(ODDBALL_SPLIT(), SB_2V2, ALLY_T0, 200)?.dots).toEqual([
+    expect(readScoreBanner(ODDBALL_SPLIT(), ALLY_T0, 200)?.dots).toEqual([
       { round: 0, winner: 'ally' },
       { round: 1, winner: 'ally' },
     ])
   })
 
-  it('inverse le vainqueur des pastilles quand le joueur de la page est dans t1', () => {
-    const r = readScoreBanner(
-      ODDBALL_SPLIT(),
-      SB_2V2,
-      allies([
-        ['moi', false],
-        ['eux', true],
-      ]),
-      200,
-    )
+  it('inverse le vainqueur des pastilles quand le joueur regardé est du camp 1', () => {
+    const r = readScoreBanner(ODDBALL_SPLIT(), vue(DEUX_CAMPS, 'eux'), 200)
     expect(r?.dots).toEqual([
       { round: 0, winner: 'enemy' },
       { round: 1, winner: 'enemy' },
@@ -353,44 +339,32 @@ describe('readScoreBanner — les pastilles de manche, dans le camp du joueur de
   })
 
   it('ne rend aucune pastille sur un mode à manche unique', () => {
-    expect(readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)?.dots).toEqual([])
+    expect(readScoreBanner(SLAYER(), ALLY_T0, 500)?.dots).toEqual([])
   })
 })
 
 describe('readScoreBanner — ce que le bandeau REFUSE d\'afficher', () => {
-  it('FFA (aucun camp au scoreboard) : pas de bandeau', () => {
-    const ffa = board([
-      ['a', null],
-      ['b', null],
-      ['c', null],
-    ])
-    expect(readScoreBanner(SLAYER(), ffa, allies([['a', true]]), 500)).toBeNull()
+  it('FFA (le film ne donne aucune équipe, `-1`) : pas de bandeau', () => {
+    const ffa = vue([['a', -1], ['b', -1], ['c', -1]], 'a')
+    expect(readScoreBanner(SLAYER(), ffa, 500)).toBeNull()
   })
 
   it('trois camps : pas de bandeau (deux barres ne peuvent en dire trois)', () => {
-    const sb = board([
-      ['moi', 't0'],
-      ['eux', 't1'],
-      ['autre', 't2'],
-    ])
-    expect(readScoreBanner(SLAYER(), sb, ALLY_T0, 500)).toBeNull()
+    const trois = vue([['moi', 0], ['eux', 1], ['autre', 2]], 'moi')
+    expect(readScoreBanner(SLAYER(), trois, 500)).toBeNull()
   })
 
   it('un seul camp : pas de bandeau', () => {
-    const sb = board([
-      ['moi', 't0'],
-      ['coequipier', 't0'],
-    ])
-    expect(readScoreBanner(SLAYER(), sb, ALLY_T0, 500)).toBeNull()
+    expect(readScoreBanner(SLAYER(), vue([['moi', 0], ['coequipier', 0]], 'moi'), 500)).toBeNull()
   })
 
   it('calque absent (artefact antérieur au schéma 12) : pas de bandeau', () => {
-    expect(readScoreBanner(undefined, SB_2V2, ALLY_T0, 500)).toBeNull()
+    expect(readScoreBanner(undefined, ALLY_T0, 500)).toBeNull()
   })
 
   it('calque SANS aucun camp : pas de bandeau — « 0 — 0 » serait une mesure inventée', () => {
     const vide = timelineOf({ teams: [], players: [] })
-    expect(readScoreBanner(vide, SB_2V2, ALLY_T0, 500)).toBeNull()
+    expect(readScoreBanner(vide, ALLY_T0, 500)).toBeNull()
   })
 
   it('une série publiée SANS camp : pas de bandeau — « 0 — 0 » tout le match serait inventé', () => {
@@ -398,42 +372,30 @@ describe('readScoreBanner — ce que le bandeau REFUSE d\'afficher', () => {
     // série dont le camp n'est pas résolu. Aucun camp ne la retrouve : le bandeau affichait
     // 0 — 0 d'un bout à l'autre du match.
     const sansCamp = timelineOf({ teams: [{ rounds: null, total: [{ t: 200, v: 1 }] }], players: [] })
-    expect(readScoreBanner(sansCamp, SB_2V2, ALLY_T0, 500)).toBeNull()
+    expect(readScoreBanner(sansCamp, ALLY_T0, 500)).toBeNull()
     const mixte = timelineOf({
       teams: [equipe(0, [[200, 1]]), { rounds: null, total: [{ t: 300, v: 2 }] }],
       players: [],
     })
-    expect(readScoreBanner(mixte, SB_2V2, ALLY_T0, 500)).toBeNull()
+    expect(readScoreBanner(mixte, ALLY_T0, 500)).toBeNull()
   })
 
-  it('aucun joueur reconnu : pas de côté, donc pas de bandeau', () => {
-    expect(readScoreBanner(SLAYER(), SB_2V2, undefined, 500)).toBeNull()
-    expect(readScoreBanner(SLAYER(), SB_2V2, allies([['inconnu', true]]), 500)).toBeNull()
-  })
-
-  it('scoreboard contradictoire (les deux camps alliés) : pas de bandeau', () => {
-    const r = readScoreBanner(
-      SLAYER(),
-      SB_2V2,
-      allies([
-        ['moi', true],
-        ['eux', true],
-      ]),
-      500,
-    )
-    expect(r).toBeNull()
+  it('joueur regardé que le film ne situe pas (absent, équipe tue, « aucune équipe ») : pas de bandeau', () => {
+    expect(readScoreBanner(SLAYER(), vue(DEUX_CAMPS, 'inconnu'), 500)).toBeNull()
+    expect(readScoreBanner(SLAYER(), vue([...DEUX_CAMPS, ['muet', undefined]], 'muet'), 500)).toBeNull()
+    expect(readScoreBanner(SLAYER(), vue([...DEUX_CAMPS, ['seul', -1]], 'seul'), 500)).toBeNull()
   })
 })
 
-describe('readScoreBanner — un seul camp reconnu suffit à nommer l\'autre', () => {
-  it('déduit le camp adverse quand seul l\'allié est reconnu', () => {
-    const r = readScoreBanner(SLAYER(), SB_2V2, allies([['moi', true]]), 500)
+describe('readScoreBanner — les camps sont ceux du ROSTER DU FILM, pas de la feuille', () => {
+  it('un camp de bots sans ligne de feuille est un camp : le bandeau se rend', () => {
+    const r = readScoreBanner(SLAYER(), vue([['moi', 0], ['bot:Ritzy', 1]], 'moi'), 500)
     expect(r?.ally.teamId).toBe(0)
     expect(r?.enemy.teamId).toBe(1)
   })
 
-  it('déduit le camp allié quand seul l\'adverse est reconnu', () => {
-    const r = readScoreBanner(SLAYER(), SB_2V2, allies([['eux', false]]), 500)
+  it('un joueur dont le film tait l’équipe n’ajoute aucun camp', () => {
+    const r = readScoreBanner(SLAYER(), vue([...DEUX_CAMPS, ['muet', undefined]], 'moi'), 500)
     expect(r?.ally.teamId).toBe(0)
     expect(r?.enemy.teamId).toBe(1)
   })

@@ -7,8 +7,7 @@
 import { useCallback, useMemo } from 'react'
 
 import { equipmentFamilyLabel, USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
-import { RESOURCE_POWERUP, RESOURCE_VEHICLE } from '@/features/squad/emprise/emprise.logic'
-import { vehicleFamilyName } from '@/features/squad/emprise/vehicles.logic'
+import { empriseObjectName } from '@/features/squad/emprise/objectName'
 import { FORMES_CARDS_TEXT } from '@/features/squad/formes/cardsI18n'
 import { FORMES_TEXT } from '@/features/squad/formes/i18n'
 import { buildObjectiveBalance, buildSoloObjectiveSheet } from '@/features/squad/objectif/objectif.logic'
@@ -24,14 +23,9 @@ export function useUsagesModels(data: TimeseriesPageResponse, locale: Locale, ha
   const ut = USAGES_TEXT[locale]
   const unknownVehicle = EMPRISE_TEXT_SOLO[locale].vehicles.unknown
 
-  // Un bonus est nommé par le web (famille du résumé d'usage), une arme par le titre, un véhicule par
-  // son libellé de titre ou le nom propre tiré de sa clé — la règle de l'Emprise de l'Escouade.
+  // Le nom d'un objet : la source unique de l'Emprise (squad/emprise/objectName.ts).
   const objectName = useCallback(
-    (o: SquadEmpriseObject) => {
-      if (o.resource === RESOURCE_POWERUP) return equipmentFamilyLabel(o.key, usageText)
-      if (o.resource === RESOURCE_VEHICLE) return vehicleFamilyName(o.key, o.label, unknownVehicle)
-      return o.label || o.key
-    },
+    (o: SquadEmpriseObject) => empriseObjectName(o, usageText, unknownVehicle),
     [usageText, unknownVehicle],
   )
 
@@ -42,6 +36,9 @@ export function useUsagesModels(data: TimeseriesPageResponse, locale: Locale, ha
     (xuid: string) => models.block?.players?.find((p) => p.xuid === xuid)?.gamertag ?? '',
     [models.block],
   )
+  // Le joueur de la page (premier de `players`), désigné par son gamertag dans les légendes et
+  // infobulles — jamais « moi ».
+  const player = models.block?.players?.[0]?.gamertag || ut.cards.playerFallback
   const equipmentLabel = useCallback(
     (family: string) => ut.cards.equipment.unmeasuredNames[family] ?? equipmentFamilyLabel(family, usageText),
     [ut, usageText],
@@ -66,6 +63,7 @@ export function useUsagesModels(data: TimeseriesPageResponse, locale: Locale, ha
     show,
     objectName,
     playerName,
+    player,
     equipmentLabel,
     familyLabel,
     columns: FORMES_TEXT[locale].columns,

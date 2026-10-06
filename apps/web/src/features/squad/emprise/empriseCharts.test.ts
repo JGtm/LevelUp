@@ -96,7 +96,7 @@ describe('buildResourceFilOption — 22/09', () => {
     expect(first.value).toEqual([0, (5 / 7) * 100])
     expect(first.symbolSize).toBeCloseTo(2 * pickupRadius(7))
     expect(pickupRadius(16)).toBeCloseTo(1.8 + 4 * 1.1)
-    expect(first.tip).toContain('Bonus : 5 pour nous, 2 pour eux (71,4 %)')
+    expect(first.tip).toContain('Bonus : équipe 5, adversaire 2 (71,4 %)')
     expect(dots[0].data[4]).toBeNull()
   })
 
@@ -175,6 +175,36 @@ describe('buildResourceFilOption — mode période', () => {
   it('le mode « match » (Escouade) reste le défaut : heure et carte, encoche', () => {
     expect(opt.xAxis[0].axisLabel!.formatter('m1', 0)).toBe('{t|19:23}\n{m|Starboard}')
     expect((opt as Opt).graphic).toBeUndefined()
+  })
+})
+
+/**
+ * Mode « match » COMPACT (tiroir de comparaison de Sessions, maquette `renderFil` avec `cp`) : rien
+ * sous l'axe (ni heure, ni carte), graduations 0 / 50 / 100, pied réduit, points plus petits
+ * (rayon 1,6 + √prises) ; la bande de résultats et l'encoche de dominance restent.
+ */
+describe('buildResourceFilOption — mode match compact', () => {
+  type Opt = { series: Series[]; xAxis: Axis[]; yAxis: { interval?: number }[]; grid: { bottom: number }[] }
+  const c = buildResourceFilOption(fil, COLORS, T_FIL, { kind: 'match', compact: true }) as Opt
+
+  it('rien sous l’axe', () => {
+    expect(c.xAxis[0].axisLabel!.formatter('m1', 0)).toBe('')
+  })
+
+  it('graduations tous les 50 %, pied réduit', () => {
+    expect(c.yAxis[0].interval).toBe(50)
+    expect(c.grid[0].bottom).toBeLessThan((opt as unknown as Opt).grid[0].bottom)
+  })
+
+  it('points plus petits (rayon 1,6 + √prises)', () => {
+    const first = c.series.filter((s) => s.type === 'scatter')[0].data[0] as Item
+    expect(first.symbolSize).toBeCloseTo(2 * (1.6 + Math.sqrt(7)))
+  })
+
+  it('bande de résultats et encoche de dominance gardées', () => {
+    const band = c.series.find((s) => s.type === 'custom')!
+    const api = { value: () => 0, coord: () => [100, 50], size: () => [60, 0] }
+    expect(band.renderItem!(null, api).children.map((ch) => ch.style.fill)).toEqual(['win', 'dom1'])
   })
 })
 

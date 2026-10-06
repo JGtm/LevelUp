@@ -63,8 +63,8 @@ import { SessionCareerXP } from './SessionCareerXP'
  * pairGridClass — LE GABARIT DE LA RANGEE DE DEUX GRAPHES, et il n'y en a qu'un.
  *
  * DEUX COLONNES EN PLEINE PAGE, UNE SEULE EN COLONNE DIVISEE (`compact`). C'est la
- * grammaire de TOUTES les autres sections de la colonne (`SessionPadControlCards`,
- * `SessionUsageEquipmentCards`, `SessionCoordinationSection`, `SessionFragCard`) : quand le
+ * grammaire de TOUTES les sections de la colonne (paires de cartes de « Frags et usages »
+ * dans `SessionColumnBody`, « Appui reçu » dans `SessionCoordinationSection`) : quand le
  * drawer de comparaison s'ouvre, la rangee a deux blocs s'empile.
  *
  * POURQUOI CE N'EST PAS UNE AFFAIRE DE PALIER `xl:`. Un palier Tailwind se lit sur la

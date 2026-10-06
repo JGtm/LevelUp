@@ -28,8 +28,11 @@ import { inSentence } from './useOutcomeLabels'
 /** L'axe par défaut : un match par colonne (une soirée de l'Escouade). */
 const MATCH_AXE: FilAxe = { kind: 'match' }
 
-/** Hauteur du graphe (maquette : 520 × 246). */
+const isCompactAxe = (axe: FilAxe) => axe.kind === 'match' && axe.compact === true
+
+/** Hauteur du graphe (maquette : 520 × 246 ; vue compacte de Sessions : 520 × 170). */
 const FIL_HEIGHT = 246
+const FIL_HEIGHT_COMPACT = 170
 
 interface Props {
   fil: ResourceFil
@@ -39,9 +42,18 @@ interface Props {
   t: EmpriseText
   /** L'axe : une soirée match par match (défaut, Escouade) ou une période (Séries temporelles). */
   axe?: FilAxe
+  /**
+   * Vue compacte du tiroir de comparaison de Sessions : graphe plus bas, rien sous l'axe, valeurs de
+   * fin seules (axe match compact). Ignoré sur un axe période.
+   */
+  compact?: boolean
 }
 
-export function ResourceFilCard({ fil, dominanceLabels, outcomeLabels, locale, t, axe = MATCH_AXE }: Props) {
+export function ResourceFilCard({ fil, dominanceLabels, outcomeLabels, locale, t, axe: axeDemande = MATCH_AXE, compact = false }: Props) {
+  const axe = useMemo<FilAxe>(
+    () => (compact && axeDemande.kind === 'match' ? { kind: 'match', compact: true } : axeDemande),
+    [compact, axeDemande],
+  )
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -90,7 +102,7 @@ export function ResourceFilCard({ fil, dominanceLabels, outcomeLabels, locale, t
           </span>
         }
         series={series}
-        height={FIL_HEIGHT}
+        height={isCompactAxe(axe) ? FIL_HEIGHT_COMPACT : FIL_HEIGHT}
         // fluid : la carte s'étire à la hauteur de sa voisine (« Contrôle des ressources ») et
         // le graphe la remplit, centré (S2).
         fluid

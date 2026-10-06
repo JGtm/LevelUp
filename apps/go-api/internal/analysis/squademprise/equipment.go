@@ -3,8 +3,10 @@ package squademprise
 // equipment.go — LA CARTE « ÉQUIPEMENT PRIS, ET CE QUE J'EN AI FAIT » (Séries temporelles › Usages,
 // décision D4 du plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05).
 //
-//	périmètre   les matchs MESURÉS (filmés à camp connu), les mêmes pour moi et pour le reste de mon
-//	            camp : deux comptes comparés sur deux périmètres différents ne se lisent pas ;
+//	périmètre   les matchs MESURÉS (filmés à camp connu), les mêmes pour moi, le reste de mon camp
+//	            et le lobby : deux comptes comparés sur deux périmètres différents ne se lisent pas ;
+//	lobby       tous les joueurs de ces matchs, adversaire et joueurs sans camp connu compris : dit
+//	            si une famille a été tenue par quelqu'un (le web ne liste que celles-là) ;
 //	issues      sessionusage.PlayerOutcomeCounts, donc la bascule unique « utilisé » (mur = posé,
 //	            autres déployables = charge consommée) ;
 //	familles    le périmètre du bilan privé des deux bonus (ressource à part), encadré par les
@@ -35,10 +37,10 @@ func equipmentLineFamilies() (ordre []string, mesuree map[string]bool) {
 	return append(ordre, nonMesurees[1:]...), mesuree
 }
 
-// equipementCumul — les comptes d'une famille.
+// equipementCumul — les comptes d'une famille : moi, le reste de mon camp, le lobby entier.
 type equipementCumul struct {
-	me, rest  sessionusage.OutcomeCounts
-	droppedMe int
+	me, rest, lobby         sessionusage.OutcomeCounts
+	droppedMe, droppedLobby int
 }
 
 // BuildEquipment rend la carte « Équipement ». Nil sans film.
@@ -64,10 +66,9 @@ func BuildEquipment(in Input) *domain.EmpriseEquipment {
 		for i := range ix.players[m.MatchID] {
 			p := &ix.players[m.MatchID][i]
 			moi := p.XUID == in.PlayerXUID
-			if team, ok := teamOf[p.XUID]; !moi && (!ok || team != ours) {
-				continue // l'adversaire, ou un joueur sans camp connu
-			}
-			cumulerJoueur(cumul, mesuree, p, moi)
+			team, ok := teamOf[p.XUID]
+			// Le lobby : tout joueur du match mesuré, l'adversaire et les joueurs sans camp compris.
+			cumulerJoueur(cumul, mesuree, p, cible{moi: moi, monCamp: moi || (ok && team == ours)})
 		}
 	}
 	for _, f := range ordre {
@@ -76,20 +77,26 @@ func BuildEquipment(in Input) *domain.EmpriseEquipment {
 	return out
 }
 
-// cumulerJoueur verse une ligne (match, joueur) de mon camp dans les cumuls.
-func cumulerJoueur(cumul map[string]*equipementCumul, mesuree map[string]bool, p *sessionusage.PlayerRow, moi bool) {
-	for f, c := range cumul {
+// cible — où verser la ligne d'un joueur : toujours au lobby ; à moi, ou au reste de mon camp.
+type cible struct{ moi, monCamp bool }
+
+// cumulerJoueur verse une ligne (match, joueur) d'un match mesuré dans les cumuls.
+func cumulerJoueur(cumul map[string]*equipementCumul, mesuree map[string]bool, p *sessionusage.PlayerRow, c cible) {
+	for f, cu := range cumul {
 		if !mesuree[f] {
-			if moi {
-				c.droppedMe += p.DroppedByFamily[f]
+			cu.droppedLobby += p.DroppedByFamily[f]
+			if c.moi {
+				cu.droppedMe += p.DroppedByFamily[f]
 			}
 			continue
 		}
 		oc := sessionusage.PlayerOutcomeCounts(p, []string{f})
-		if moi {
-			c.me.Add(oc)
-		} else {
-			c.rest.Add(oc)
+		cu.lobby.Add(oc)
+		switch {
+		case c.moi:
+			cu.me.Add(oc)
+		case c.monCamp:
+			cu.rest.Add(oc)
 		}
 	}
 }
@@ -97,10 +104,11 @@ func cumulerJoueur(cumul map[string]*equipementCumul, mesuree map[string]bool, p
 // publierFamille projette une famille au contrat.
 func publierFamille(family string, mesuree bool, c *equipementCumul) domain.EmpriseEquipmentFamily {
 	if !mesuree {
-		return domain.EmpriseEquipmentFamily{Family: family, DroppedMe: c.droppedMe}
+		return domain.EmpriseEquipmentFamily{Family: family, DroppedMe: c.droppedMe, DroppedLobby: c.droppedLobby}
 	}
 	return domain.EmpriseEquipmentFamily{
 		Family: family, Measured: true, Me: issuesPubliees(c.me), Rest: issuesPubliees(c.rest),
+		Lobby: issuesPubliees(c.lobby),
 	}
 }
 

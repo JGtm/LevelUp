@@ -1,0 +1,114 @@
+{
+  "sans_sujet": {
+    "available": false,
+    "unavailable_reason": "no_measured_match",
+    "matches_measured": 1,
+    "matches_total": 1,
+    "appui": {
+      "on_me_prepare": {
+        "taux": 0,
+        "brut": 0,
+        "par_match": 0,
+        "n": 0,
+        "echantillon_faible": false
+      },
+      "ma_part_des_appuis": {
+        "taux": 0,
+        "brut": 0,
+        "par_match": 0,
+        "n": 0,
+        "echantillon_faible": false
+      }
+    },
+    "per_match": []
+  },
+  "scenario": {
+    "available": true,
+    "matches_measured": 1,
+    "matches_total": 1,
+    "appui": {
+      "on_me_prepare": {
+        "taux": 0.3333333333333333,
+        "brut": 1,
+        "par_match": 1,
+        "n": 3,
+        "echantillon_faible": true
+      },
+      "ma_part_des_appuis": {
+        "taux": 0.5,
+        "brut": 1,
+        "par_match": 1,
+        "n": 2,
+        "echantillon_faible": true
+      },
+      "parity_pct": 25
+    },
+    "per_match": [
+      {
+        "match_id": "m1",
+        "team_size": 4,
+        "parity_pct": 25,
+        "my_measured_kills": 3,
+        "my_assisted_kills": 1,
+        "team_assists": 2,
+        "assists_to_me": 1,
+        "assist_share_of_team_pct": 50,
+        "assisted_share_pct": 33.333333333333336
+      }
+    ]
+  },
+  "scenario_large": {
+    "available": true,
+    "matches_measured": 3,
+    "matches_total": 4,
+    "appui": {
+      "on_me_prepare": {
+        "taux": 0.21428571428571427,
+        "brut": 3,
+        "par_match": 1,
+        "n": 14,
+        "echantillon_faible": true
+      },
+      "ma_part_des_appuis": {
+        "taux": 0.42857142857142855,
+        "brut": 3,
+        "par_match": 1,
+        "n": 7,
+        "echantillon_faible": true
+      },
+      "parity_pct": 16.071428571428573
+    },
+    "per_match": [
+      {
+        "match_id": "m1",
+        "team_size": 4,
+        "parity_pct": 25,
+        "my_measured_kills": 3,
+        "my_assisted_kills": 1,
+        "team_assists": 2,
+        "assists_to_me": 1,
+        "assist_share_of_team_pct": 50,
+        "assisted_share_pct": 33.333333333333336
+      },
+      {
+        "match_id": "m2",
+        "team_size": 8,
+        "parity_pct": 12.5,
+        "my_measured_kills": 6,
+        "my_assisted_kills": 2,
+        "team_assists": 5,
+        "assists_to_me": 2,
+        "assist_share_of_team_pct": 40,
+        "assisted_share_pct": 33.333333333333336
+      },
+      {
+        "match_id": "m3",
+        "my_measured_kills": 5,
+        "my_assisted_kills": 0,
+        "team_assists": 0,
+        "assists_to_me": 0,
+        "assisted_share_pct": 0
+      }
+    ]
+  }
+}

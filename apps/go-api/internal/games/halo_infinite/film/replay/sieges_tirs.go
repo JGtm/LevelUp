@@ -50,6 +50,34 @@ func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(ctx context.Context, fire []Fi
 	if len(candidats) == 0 || len(fire) == 0 {
 		return 0, 0, false
 	}
+	votes, contredits := pp.votesDesTirs(candidats, fire, tireurs)
+	for _, c := range candidats {
+		v := votes[c]
+		if len(v) == 0 {
+			continue
+		}
+		p := pp.places[placeUnique(v)]
+		if len(v) > 1 || !pp.libre(p, c) || !memeEquipe(p, pp.occ.parEntree[c].equipe) {
+			contestes++
+			continue
+		}
+		pp.asseoir(c, p, SeatSourceTirs)
+		lues++
+	}
+	if contredits > 0 {
+		slog.InfoContext(ctx, "rejeu : tirs de place dont la vie qui tire n est pas l arrivant deduit — sans vote",
+			"tirs", contredits)
+	}
+	return lues, contestes, false
+}
+
+// votesDesTirs rend les VOTES des tirs (cf. l'en-tete) — par arrivant candidat, le nombre de tirs
+// qui designent chaque place — et le nombre de tirs contredits. Un tir vote pour l'UNIQUE arrivant
+// present a son instant (cf. [poseDesPlaces.arrivantUnique]) quand son index est une place de la
+// pose et que l'occupant de la table a cet index ne le couvre pas. Il ne vote pas, et se compte
+// contredit, quand la vie qui l'a tire est lue (`tireurs`, aux indices de `fire`) et n'est pas cet
+// arrivant.
+func (pp *poseDesPlaces) votesDesTirs(candidats []int, fire []FireEventRef, tireurs []string) (map[int]map[int]int, int) {
 	votes := map[int]map[int]int{} // entree -> place -> tirs
 	contredits := 0
 	for k, f := range fire {
@@ -73,24 +101,7 @@ func (pp *poseDesPlaces) lireLesPlacesDansLesTirs(ctx context.Context, fire []Fi
 			votes[c][p.index]++
 		}
 	}
-	for _, c := range candidats {
-		v := votes[c]
-		if len(v) == 0 {
-			continue
-		}
-		p := pp.places[placeUnique(v)]
-		if len(v) > 1 || !pp.libre(p, c) || !memeEquipe(p, pp.occ.parEntree[c].equipe) {
-			contestes++
-			continue
-		}
-		pp.asseoir(c, p, SeatSourceTirs)
-		lues++
-	}
-	if contredits > 0 {
-		slog.InfoContext(ctx, "rejeu : tirs de place dont la vie qui tire n est pas l arrivant deduit — sans vote",
-			"tirs", contredits)
-	}
-	return lues, contestes, false
+	return votes, contredits
 }
 
 // placeUnique rend la place d'un vote unanime (la plus petite quand ils ne le sont pas — l'appelant

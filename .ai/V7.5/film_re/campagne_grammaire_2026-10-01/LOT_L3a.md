@@ -1,6 +1,6 @@
 # Lot L3a — la fin du moteur de partie, lue dans le jeu (2026-10-02)
 
-> Lot L3a du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L3, partie L3a seulement : le
+> Lot L3a du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L3, partie L3a seulement : le
 > portage lu dans l'exécutable HI_1_13_0 ; L3b, le bit de trop des vieux builds, est HORS lot), sous
 > le contrat `plan-execution` et le critère du 2026-10-02 : **corrections générales lues dans le
 > jeu**, aucun réglage par film, par carte ni par version.

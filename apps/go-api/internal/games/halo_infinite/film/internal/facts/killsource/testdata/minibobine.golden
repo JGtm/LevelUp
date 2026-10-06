@@ -60,7 +60,7 @@ morts infligees PAR un bot : 0 propose(s), 0 apparie(s), 0 publiee(s)
 9 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 8 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
-460 / 473 paquet(s) a evenements localise(s)
+473 / 473 paquet(s) a evenements localise(s)
 calibration resolue automatiquement : LU axisW=[13 13 14] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=23 [score 8, mediane 1] desaccords=1 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 68, mediane 68]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
@@ -74,6 +74,7 @@ tags hors catalogue vus par la MARCHE : 0 — compteur principal de table perime
    PORTEE : bruit MESURE nul sur 5 films, et AVEUGLE a un tag servi par le seul SCAN
 publication ligne par ligne : AUTORISEE (marge de bijection 0, bijection DETERMINEE (une seule affectation possible))
 roster : 8 nom(s) dont 8 humain(s), aucun bot declare par le film
+equipes des bots (BOT_METADATA) : lues 0 · illisibles 0 · contradictoires 0 · hors grammaire 0 · entrees hors balayage 0 · jumeaux discordants 0 · hors domaine 0 · paquets non fermes 0 · personnalisation inconnue non
 
 ## PROVENANCE DES INDICES — la table du film est la SOURCE, l inference le REPLI
 table du film : build HI_1_13_0 · 8 siege(s) nomme(s) · 8 indice(s) LU(S) · 0 ajout(s) au roster

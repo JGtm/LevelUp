@@ -8,8 +8,8 @@ package killsource
 // `killsource-2026-09-16.2` a `.6` viennent donc ici, TELS QUELS — aucun mot reecrit, aucun
 // octet de code touche : les deux fichiers ne portent que des commentaires.
 //
-// La suite VIVANTE de la chronique, a partir de `killsource-2026-09-18` depuis la rotation du
-// 2026-09-28 (plus bas), est dans
+// La suite VIVANTE de la chronique, a partir de `killsource-2026-09-21` depuis la rotation du
+// 2026-10-06 (plus bas), est dans
 // `rev_chronique.go`.
 
 // ENTREE `killsource-2026-09-16.2` (2026-09-16, lot 2.6.1) : LA CONSTANTE DESCEND DANS LA COUCHE,
@@ -387,3 +387,81 @@ package killsource
 //
 // `SchemaVersion` NE MONTE PAS : aucun champ n est ajoute au document. `grammar.Rev` et
 // `profile.Rev` NE MONTENT PAS : aucun octet de ces deux couches n est touche.
+//
+// ROTATION DU 2026-10-05 (lot VA de la campagne de grammaire, etape V2) : `rev_chronique.go`
+// atteignait 503 lignes ; le rang `killsource-2026-09-18` vient ici, TEL QUEL.
+//
+// ENTREE `killsource-2026-09-18` (2026-09-18, lot 5.1.1) : LA REVISION MONTE MECANIQUEMENT,
+// `.2` -> le premier rang du 18. AUCUNE SOURCE DE `film/facts/` N EST TOUCHEE PAR CE LOT.
+//
+// CE QUI LA FAIT MONTER : l empreinte de cette couche hache les VALEURS de `source.Rev` et de
+// `grammar.Rev`, et `grammar.Rev` monte au lot 5.1.1 (`grammar-2026-09-18` : l archetype
+// `managed-navpoint` ti=12 est lu de `i1` au minuteur manuel, douze lecteurs neufs). La chaine
+// est voulue : une grammaire qui change date les lignes deja decodees, meme quand le fait
+// publie ne bouge pas encore.
+//
+// CE QUE LA SORTIE FAIT AUJOURD HUI : rien de plus. Aucun composant porte par 5.1.1 n alimente
+// `killsource` — les douze lecteurs servent `ti=12`, que la chaine des morts ne marche pas.
+// LE BACKLOG QU ELLE OUVRE EST DONC UN BACKLOG DE DATATION, pas de correction.
+//
+// C EST L UNIQUE MONTEE DE CETTE CONSTANTE POUR TOUT LE LOT 5.1, ET C EST DELIBERE : le volet
+// 5.1.4 (l attribution de la fin de vie des vehicules) CHANGERA vraiment la sortie des faits, et
+// il partagera ce rang — deux changements d un meme lot partagent la revision. Ouvrir deux
+// backlogs pour un seul lot ferait redecoder le parc deux fois.
+//
+// BACKLOG KILLSOURCE SUR SIGNAL UTILISATEUR (D6), JAMAIS AUTOMATIQUE : chaque ligne de
+// `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
+// (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
+// le redecodage du parc reste un geste de PRODUCTION pris par le pilote. UN BACKFILL
+// `killsource-2026-09-17.2` TOURNAIT AU MOMENT DE CE LOT : la montee le rend candidat a son
+// tour, ce que l utilisateur a accepte en ouvrant le lot (V26).
+//
+// `SchemaVersion` reste 62 ; `profile.Rev` ne monte pas (aucun octet de `profile/` touche).
+//
+// ROTATION DU 2026-10-06 (fusion de `feat/v75` a `2707fdb31` dans le lot « Rejeu : toute entree du
+// roster a l equipe que le film ecrit ») : `rev_chronique.go` passait 500 lignes avec le complement du
+// lot ; le rang `killsource-2026-09-20` vient ici, TEL QUEL — aucun mot reecrit ; la suite VIVANTE part
+// de `killsource-2026-09-21`.
+//
+// ENTREE `killsource-2026-09-20` (2026-09-20, lot 5.2b.1) : LE ROSTER DU DECODEUR VOIT LES
+// REMPLACANTS, ET UN PARTICIPANT NON COMPTE N ETEINT PLUS LE MATCH.
+//
+// DEUX SOURCES POUR CETTE MONTEE, et elles vont dans le meme sens.
+//
+//	`facts/killsource/` CHANGE      une TROISIEME lecture d identite entre dans le roster
+//	                                (`index_motif.go`) : les cinq bits qui precedent le motif du
+//	                                xuid dans les chunks de replication, c est-a-dire ce que le
+//	                                rejeu publie sous le nom `PlayerIndexTable`, par le MEME
+//	                                resolveur (`weaponv3.ResolveXuidToPI`). Elle voit les joueurs
+//	                                qui REMPLACENT un partant en cours de match, que la table de
+//	                                `chunk_00` — ecrite a l ouverture du film — ignore.
+//	`grammar.Rev` MONTE             `grammar-2026-09-20`, et cette couche hache sa valeur.
+//
+// CE QUE LA MESURE DIT, SUR `b1ad85eb` (Domicile, HI_1_13_0, 2026-09-20) : la table de
+// `chunk_00` nomme HUIT sieges (0..7), BOT_METADATA tient le 8, et le kill-feed nomme un
+// NEUVIEME humain — `Claudors` — que rien ne pouvait placer. Le motif du xuid le lit a l indice
+// 10, UNANIME sur 22 chunks de replication sur 27, et il CONFIRME les huit sieges de la table
+// (`MotifAgree = 8`, zero contradiction). Les huit dead-states hors roster disparaissent, la
+// publication ligne par ligne s ouvre, 77 lignes sortent dont 63 a source NOMMEE.
+//
+// LA TABLE DE `chunk_00` GARDE LA MAIN quand les deux lectures se contredisent : elle est la
+// plus eprouvee (314 accords sur 322 sieges, 30 films). Une contradiction se COMPTE
+// (`FilmTablePinning.MotifContradict`), elle ne deplace rien — meme doctrine que le controle par
+// les votes du kill-feed (D14 b).
+//
+// TROISIEME CHANGEMENT DE SORTIE, MESURE AU MEME ENDROIT : plusieurs bots declares sur un MEME
+// slot ajoutaient chacun un nom au roster pour un seul indice, et les perdants restaient des
+// NOMS LIBRES — de la matiere a inference. Deux noms de bot fantomes suffisaient a rendre
+// `FilmTablePinning.AffectationUnique` faux des qu un indice se liberait, donc a refermer la
+// publication que l epinglage du remplacant venait d ouvrir. Le vainqueur du slot ne change pas
+// (le dernier declare) ; la succession REMPLACE le nom en place et se compte
+// (`Roster.BotsSuccedes`).
+//
+// BACKLOG KILLSOURCE SUR SIGNAL UTILISATEUR (D6), JAMAIS AUTOMATIQUE : chaque ligne de
+// `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
+// (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
+// le redecodage du parc reste un geste de PRODUCTION pris par le pilote. CELUI-CI EST UN
+// BACKLOG DE CORRECTION, pas de datation : les matchs a remplacement changent de verdict de
+// publication.
+//
+// `SchemaVersion` NE MONTE PAS : aucun champ n est ajoute au document.

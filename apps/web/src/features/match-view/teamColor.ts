@@ -1,65 +1,22 @@
 /**
- * teamColor.ts — LA COULEUR D'IDENTITÉ D'UNE ÉQUIPE, et il n'y en a qu'une.
+ * teamColor.ts — LA TEINTE D'UN HABILLAGE D'ÉQUIPE, écrite une fois pour la vue match et le rejeu.
  *
- * Centralisée ici quand le rejeu 2D a eu besoin de la même cascade que la vue match : deux
- * cascades divergentes, ce sont deux couleurs pour la même équipe sur deux pages du même
- * match. Scoreboard, objectifs et fil des frags du rejeu appellent tous cette fonction, et
- * rien d'autre.
- *
- * L'ORDRE DE LA CASCADE reproduit celui de l'en-tête du scoreboard (`MatchScoreboard.tsx`) :
- * couleur fournie par le backend (`team_color`, Halo 5) d'abord, sinon la couleur officielle
- * par `team_id` (Halo Infinite : Eagle bleu, Cobra rouge...), sinon le token sémantique
- * allié/ennemi — surchargeable par les réglages d'accessibilité.
- *
- * Aucun hex n'est écrit ici : ils vivent dans `lib/halo/`, référentiel de couleurs de jeu au
- * même titre que `rarity.ts`.
+ * La couleur qu'on y verse est déjà résolue par l'appelant — les jetons d'allégeance
+ * `team-ally` / `team-enemy` (`teamSeriesColor.teamTokenCssVar`), que les réglages
+ * d'accessibilité surchargent. La CASCADE D'IDENTITÉ qui vivait ici (`team_color` du backend,
+ * puis couleur officielle par `team_id`, puis le jeton) n'avait plus d'appelant depuis que le
+ * fil des éliminations du rejeu, son dernier lecteur, prend l'allégeance du film (2026-10-06) :
+ * elle est retirée, avec la table des couleurs officielles qui ne servait qu'à elle.
  */
-import { tokenCssVar } from '@/lib/accessibility'
-import { parseTeamSideID, resolveTeamColorFromID } from '@/lib/halo/teamNames'
-import type { MatchScoreboardRow } from '@/lib/api/types'
-
-/** Résout la couleur d'identité d'une équipe, à partir de son id et de son camp. */
-export type TeamColorResolver = (teamID: number | null, ally: boolean) => string
-
-/**
- * teamColorResolver construit le résolveur pour un scoreboard donné.
- *
- * Le scoreboard est indexé UNE fois : un feed de 80 kills ne doit pas le reparcourir à
- * chaque ligne.
- */
-export function teamColorResolver(
-  // `readonly` : le résolveur ne fait que LIRE le scoreboard, et ses appelants le tiennent
-  // souvent en lecture seule (props de composant). Élargir le paramètre ne coûte rien et
-  // évite une copie défensive au point d'appel.
-  scoreboard: readonly MatchScoreboardRow[] | null | undefined,
-): TeamColorResolver {
-  const backendByTeamID = new Map<number, string>()
-  for (const r of scoreboard ?? []) {
-    const id = parseTeamSideID(r.team_side)
-    if (id != null && r.team_color && !backendByTeamID.has(id)) {
-      backendByTeamID.set(id, r.team_color)
-    }
-  }
-  return (teamID, ally) => {
-    if (teamID != null) {
-      const backend = backendByTeamID.get(teamID)
-      if (backend) return backend
-      const official = resolveTeamColorFromID(teamID)
-      if (official) return official
-    }
-    return tokenCssVar(ally ? 'team-ally' : 'team-enemy')
-  }
-}
 
 /**
  * LA RECETTE DE TEINTE D'UN HABILLAGE D'ÉQUIPE : un fond, un trait, un accent plein.
  *
  * Elle vivait en toutes lettres dans l'en-tête d'équipe du scoreboard ; l'écran de victoire du
  * rejeu en aurait été la deuxième copie (2026-08-26). Deux surfaces qui écrivent la MÊME
- * identité d'équipe avec deux dosages différents, ce sont deux bleus Eagle sur deux pages du
- * même match — le motif exact qui a fait centraliser la CASCADE juste au-dessus. Règle
- * CLAUDE.md n°6 : centraliser ET poser un garde-rail (`teamTint.guard.test.ts`, qui interdit le
- * littéral de fond hors de ce fichier).
+ * identité d'équipe avec deux dosages différents, ce sont deux teintes pour la même équipe sur
+ * deux pages du même match. Règle CLAUDE.md n°6 : centraliser ET poser un garde-rail
+ * (`teamTint.guard.test.ts`, qui interdit le littéral de fond hors de ce fichier).
  *
  * LES DOSAGES SONT CEUX DU SCOREBOARD, INCHANGÉS : 22 % pour teinter un fond sans disputer la
  * lisibilité du texte, 55 % pour un trait qui se voit sans crier, la couleur PLEINE pour

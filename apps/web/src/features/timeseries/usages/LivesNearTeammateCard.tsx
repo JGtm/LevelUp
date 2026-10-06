@@ -1,11 +1,11 @@
 /**
- * LivesNearTeammateCard — « Mes vies : près d'un coéquipier ou seul » (Séries temporelles › Usages,
- * bloc « Près d'un coéquipier ou seul » ; maquette v4, décisions V3 et D5 du plan).
+ * LivesNearTeammateCard — « Vies à portée d'un coéquipier, vies isolées » (Séries temporelles ›
+ * Usages, bloc « Isolement » ; maquette v4, décisions V3 et D5 du plan).
  *
- * Une ligne « Mes vies » : la barre ÉPAISSE partage mes vies terminées par une mort entre « près
- * d'un coéquipier » (`squad-player-1`, distance au plus proche ≤ la portée du radar du match, à
- * l'instant de la mort) et « seul » (`extreme`), compte et part dans chaque segment quand ils
- * tiennent, repli au-dessus sinon ; la barre FINE partage mes frags tombés pendant ces vies ; dessous,
+ * Une ligne au gamertag du joueur : la barre ÉPAISSE partage ses vies terminées par une mort entre
+ * « à portée d'un coéquipier » (`squad-player-1`, distance au plus proche ≤ la portée du radar du
+ * match, à l'instant de la mort) et « isolée » (`extreme`), compte et part dans chaque segment quand
+ * ils tiennent, repli au-dessus sinon ; la barre FINE partage ses frags tombés pendant ces vies ; dessous,
  * « frags : n · p % · x par vie … y par vie · m ». Les vies écartées (aucun coéquipier situé, carte
  * sans portée connue, journal des morts non publiable) sont comptées dans l'aide ⓘ. Axe 0-100 %.
  */
@@ -29,7 +29,16 @@ const ALONE_INK = tokenCssVar('extreme')
 const COLUMNS = pisteColumns(150)
 const TICKS = [0, 25, 50, 75, 100] as const
 
-export function LivesNearTeammateCard({ model, ut }: { model: LivesModel; ut: UsagesCardsText }) {
+/**
+ * Vue compacte du tiroir de comparaison de Sessions (maquette `makeLife` avec `cp`) : les parts
+ * entières seules dans la barre épaisse et sur la ligne des frags (`killsLine`, `killsLineAlone`).
+ */
+interface LivesCompact {
+  killsLine: (pct: string, perLife: string) => string
+  killsLineAlone: (perLife: string) => string
+}
+
+export function LivesNearTeammateCard({ model, player, ut, compact }: { model: LivesModel; player: string; ut: UsagesCardsText; compact?: LivesCompact }) {
   const l = ut.lives
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, model)
@@ -47,8 +56,8 @@ export function LivesNearTeammateCard({ model, ut }: { model: LivesModel; ut: Us
     [l],
   )
   const nearPct = model.livesNearShare * 100
-  const nearText = `${ut.intFmt(model.near.lives)} · ${ut.pctFmt(nearPct)}`
-  const aloneText = `${ut.pctFmt(100 - nearPct)} · ${ut.intFmt(model.alone.lives)}`
+  const nearText = compact ? ut.pctIntFmt(nearPct) : `${ut.intFmt(model.near.lives)} · ${ut.pctFmt(nearPct)}`
+  const aloneText = compact ? ut.pctIntFmt(100 - nearPct) : `${ut.pctFmt(100 - nearPct)} · ${ut.intFmt(model.alone.lives)}`
   // Seule la valeur qui ne tient pas dans son segment monte au repli (jamais affichée deux fois).
   const nearHidden = hidden.has('near')
   const aloneHidden = hidden.has('alone')
@@ -57,7 +66,7 @@ export function LivesNearTeammateCard({ model, ut }: { model: LivesModel; ut: Us
       <div ref={ref} className="flex flex-col gap-3.5">
         <div className="grid items-center gap-3" style={{ gridTemplateColumns: COLUMNS }}>
           <div className="min-w-0 text-[12.5px] leading-tight">
-            {l.rowLabel}
+            {player}
             <small className="block text-[11px] text-muted-foreground" data-testid="usages-lives-sub">
               {l.rowSub(model.lives)}
             </small>
@@ -73,7 +82,7 @@ export function LivesNearTeammateCard({ model, ut }: { model: LivesModel; ut: Us
               <Part id="near" left={0} width={nearPct} color={NEAR_INK} text={nearText} hidden={hidden} tip={l.tip(l.near, model.near.lives, model.lives, ut.pctFmt(nearPct), 'lives')} align="start" />
               <Part id="alone" left={nearPct} width={100 - nearPct} color={ALONE_INK} text={aloneText} hidden={hidden} tip={l.tip(l.alone, model.alone.lives, model.lives, ut.pctFmt(100 - nearPct), 'lives')} align="end" />
             </div>
-            {model.killsNearShare != null && <KillsLines model={model} ut={ut} />}
+            {model.killsNearShare != null && <KillsLines model={model} ut={ut} compact={compact} />}
           </div>
         </div>
         <TrackAxis columns={COLUMNS} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? ut.pctIntFmt(100) : String(v) }))} />
@@ -82,10 +91,12 @@ export function LivesNearTeammateCard({ model, ut }: { model: LivesModel; ut: Us
   )
 }
 
-function KillsLines({ model, ut }: { model: LivesModel; ut: UsagesCardsText }) {
+function KillsLines({ model, ut, compact }: { model: LivesModel; ut: UsagesCardsText; compact: LivesCompact | undefined }) {
   const l = ut.lives
   const share = (model.killsNearShare ?? 0) * 100
   const perLife = (v: number | null) => (v == null ? '—' : l.perLifeFmt(v))
+  const left = compact ? compact.killsLine(ut.pctIntFmt(share), perLife(model.perLifeNear)) : l.killsLine(model.near.kills, ut.pctFmt(share), perLife(model.perLifeNear))
+  const right = compact ? compact.killsLineAlone(perLife(model.perLifeAlone)) : l.killsLineAlone(perLife(model.perLifeAlone), model.alone.kills)
   return (
     <>
       <div className="relative h-2 rounded-[3px] bg-muted">
@@ -97,8 +108,8 @@ function KillsLines({ model, ut }: { model: LivesModel; ut: UsagesCardsText }) {
         )}
       </div>
       <div className="flex justify-between gap-2 text-[11px] tabular-nums text-muted-foreground" data-testid="usages-lives-kills-line">
-        <span>{l.killsLine(model.near.kills, ut.pctFmt(share), perLife(model.perLifeNear))}</span>
-        <span>{l.killsLineAlone(perLife(model.perLifeAlone), model.alone.kills)}</span>
+        <span>{left}</span>
+        <span>{right}</span>
       </div>
     </>
   )

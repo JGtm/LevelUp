@@ -20,7 +20,7 @@ const (
 func teams(matchIDs ...string) sessionusage.TeamContext {
 	tc := sessionusage.TeamContext{
 		PlayerTeam: map[string]int{}, TeamOf: map[string]map[string]int{},
-		TeamSize: map[string]int{}, LobbySize: map[string]int{},
+		TeamSize: map[string]int{},
 	}
 	for _, id := range matchIDs {
 		tc.PlayerTeam[id] = 0

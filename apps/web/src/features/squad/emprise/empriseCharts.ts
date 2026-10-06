@@ -99,8 +99,23 @@ function smallPickupRadius(pickups: number): number {
  * dominance (plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05, D12).
  */
 export type FilAxe =
-  | { kind: 'match' }
+  | { kind: 'match'; compact?: boolean }
   | { kind: 'period'; dateOf: (iso: string) => string; caption: string }
+
+/**
+ * Le mode match COMPACT (tiroir de comparaison de Sessions, maquette Sessions `renderFil` avec `cp`) :
+ * pied réduit à la seule bande (rien sous l'axe), graduations 0 / 50 / 100, points 1,6 + √n.
+ */
+const COMPACT_FOOT = 30
+const COMPACT_BAND_BOTTOM = COMPACT_FOOT - 8 - BAND_H
+const compactPickupRadius = (pickups: number) => 1.6 + Math.sqrt(Math.max(0, pickups))
+const isCompact = (axe: FilAxe) => axe.kind === 'match' && axe.compact === true
+
+/** Le rayon des points selon l'axe : compact, période chargée, ou celui de la maquette. */
+function radiusFor(axe: FilAxe, matches: number): (pickups: number) => number {
+  if (isCompact(axe)) return compactPickupRadius
+  return axe.kind === 'period' && matches > MANY_MATCHES ? smallPickupRadius : pickupRadius
+}
 
 /** Le mois d'un match (heure locale), clé des étiquettes du mode période ; vide sans date. */
 function monthKey(iso: string): string {
@@ -222,22 +237,24 @@ export function buildResourceFilOption(
   // Sur une période, le nom d'un match dans les infobulles porte sa date devant l'heure.
   const tipText: EmpriseFilText =
     axe.kind === 'period' ? { ...t, timeOf: (iso) => [axe.dateOf(iso), t.timeOf(iso)].filter(Boolean).join(' ') } : t
-  const radius = axe.kind === 'period' && matches.length > MANY_MATCHES ? smallPickupRadius : pickupRadius
+  const radius = radiusFor(axe, matches.length)
+  const compact = isCompact(axe)
   const series = [
     ...fil.resources.flatMap((resource, ri) => resourceSeries(matches, resource, c, tipText, { first: ri === 0, radius })),
     bandSeries(matches, c, tipText, axe.kind === 'match'),
   ]
   const months = axe.kind === 'period' ? periodLabels(matches, axe.dateOf) : []
-  const label =
-    axe.kind === 'period'
+  const label = compact
+    ? () => ''
+    : axe.kind === 'period'
       ? (_v: string, i: number) => (months[i] ? `{d|${months[i]}}` : '')
       : (_v: string, i: number) => `{t|${t.timeOf(matches[i]?.startTime ?? '')}}\n{m|${shortMap(matches[i]?.map ?? '')}}`
   return {
     backgroundColor: CHART_BG,
     animation: false,
     grid: [
-      { left: GRID_LEFT, right: GRID_RIGHT, top: 10, bottom: FOOT },
-      { left: GRID_LEFT, right: GRID_RIGHT, bottom: BAND_BOTTOM, height: BAND_H },
+      { left: GRID_LEFT, right: GRID_RIGHT, top: 10, bottom: compact ? COMPACT_FOOT : FOOT },
+      { left: GRID_LEFT, right: GRID_RIGHT, bottom: compact ? COMPACT_BAND_BOTTOM : BAND_BOTTOM, height: BAND_H },
     ],
     tooltip: {
       ...getTooltipBase(tc),
@@ -265,7 +282,10 @@ export function buildResourceFilOption(
       },
       { gridIndex: 1, type: 'category', data: categories, show: false },
     ],
-    yAxis: [yAxisPct(t.pctIntFmt, tc), { gridIndex: 1, type: 'value', min: -1, max: 1, show: false }],
+    yAxis: [
+      { ...yAxisPct(t.pctIntFmt, tc), ...(compact ? { interval: 50 } : {}) },
+      { gridIndex: 1, type: 'value', min: -1, max: 1, show: false },
+    ],
     series,
     // La légende est rendue HORS canvas (pied de carte, S2).
     legend: { show: false },

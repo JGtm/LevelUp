@@ -11,8 +11,7 @@ package port
 // Celui-ci lit les frags de TOUS LES JOUEURS des matchs du scope, du SEUL côté tueur, pour
 // les agréger PAR (MATCH, JOUEUR) — l'arme n'y entre pas. Une méthode de plus sur le premier
 // contrat aurait forcé tous ses montages (Synthèse, Explorateur, Comparaison, Timeseries) à
-// implémenter une lecture dont ils n'ont pas l'usage. Même doctrine que
-// `flagGrabsNetLoader` / `objectiveRoleRowsLoader` côté session.
+// implémenter une lecture dont ils n'ont pas l'usage.
 //
 // L'implémenteur, lui, est le MÊME objet (`duckdb.WeaponRangeRepo`) : la jointure « mort
 // mesurée » est unique dans le dépôt (kill_measured.go, garde-rail

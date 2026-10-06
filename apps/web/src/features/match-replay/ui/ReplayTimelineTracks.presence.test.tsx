@@ -23,9 +23,16 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent } from '@testing-library/react'
 
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+
 import { trackLeft, trackWidth } from '../model/replayTimelineTracksLogic'
 import type { AbsenceStep, PresenceShade } from '../model/presenceTrackLogic'
 import { renderTracks } from '../test/timelineTracksHarness'
+
+/** L'allégeance du film réduite à un joueur : `ally` pour lui, aucune pour les autres. */
+const allegeance = (xuid: string, ally: boolean) => ({
+  ofXuid: (x: string | null | undefined) => (x === xuid ? ally : null),
+})
 
 /**
  * L'OMBRE DE PRÉSENCE ET SA PORTE (2026-09-07, lot L4).
@@ -196,27 +203,27 @@ describe('ReplayTimelineTracks — l’ombre de présence et sa porte', () => {
 
     const allie = renderTracks({
       shades: [shade({ xuid: 'me-1' })],
-      identity: new Map([['me-1', { ally: true }]]),
+      allegiance: allegeance('me-1', true),
     })
     expect(encre(allie.container)).toContain('--ac-team-ally')
     allie.unmount()
 
     const adverse = renderTracks({
       shades: [shade({ xuid: 'foe-1' })],
-      identity: new Map([['foe-1', { ally: false }]]),
+      allegiance: allegeance('foe-1', false),
     })
     expect(encre(adverse.container)).toContain('--ac-team-enemy')
     adverse.unmount()
 
-    // Bot sans ligne de tableau de score : aucun camp connu, aucun camp deviné.
-    const inconnu = renderTracks({ shades: [shade({ xuid: 'bot:Fantome' })], identity: new Map() })
+    // Joueur dont le film tait l'équipe : aucune allégeance, aucun camp deviné.
+    const inconnu = renderTracks({ shades: [shade({ xuid: 'bot:Fantome' })], allegiance: NO_ALLEGIANCE })
     expect(encre(inconnu.container)).toBe(css('color', 'currentColor'))
   })
 
   it('L’OMBRE NE DIT AUCUN CAMP : son encre est structurelle, pas une couleur d’équipe', () => {
     const { container } = renderTracks({
       shades: [shade()],
-      identity: new Map([['me-1', { ally: true }]]),
+      allegiance: allegeance('me-1', true),
     })
     const fond = ombres(pisteJoueur(container))[0].style.background
     expect(fond).toContain('--muted-foreground')

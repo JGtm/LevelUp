@@ -19,6 +19,7 @@ import { reduceFeed, useReplayTimeline } from './useReplayTimeline'
 import { renderHook } from '@testing-library/react'
 import { testReplayDoc } from '../test/testDoc'
 import type { ReplayWindowBounds } from '../model/replayWindow'
+import { buildFilmAllegiance, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 /**
@@ -255,15 +256,6 @@ describe('useReplayTimeline — ce à quoi le point de vue est branché', () => 
     { xuid: 'bot:Oscar', filmName: 'Oscar [bot]', bot: true, team: 1, lives: [] },
   ] as unknown as ReplayPlayer[]
 
-  /** L'identité RELATIVE au point de vue, telle que le modèle la rend (`resolveXuidMeta`). */
-  function identiteVueDe(sujet: string): ReadonlyMap<string, { ally: boolean }> {
-    const camp: Record<string, string> = { moi: 't0', pote: 't0', eux: 't1' }
-    const mien = camp[sujet]
-    return new Map(
-      Object.entries(camp).map(([xuid, side]) => [xuid, { ally: xuid === sujet || side === mien }]),
-    )
-  }
-
   const PLAYBACK = {
     sliderRef: { current: null },
     startFrame: 0,
@@ -285,7 +277,7 @@ describe('useReplayTimeline — ce à quoi le point de vue est branché', () => 
         feedEntries,
         marks: new Map(),
         viewpoint,
-        identity: identiteVueDe(viewpoint),
+        allegiance: buildFilmAllegiance(PLAYERS, viewpoint),
         players: PLAYERS,
         onSelectViewpoint: () => {},
         lead: { allyOf: () => null, labelOf: (id: number) => `Équipe ${id}` },
@@ -316,9 +308,16 @@ describe('useReplayTimeline — ce à quoi le point de vue est branché', () => 
     expect(result.current.absence[0].to).toBeCloseTo(0.2, 6)
   })
 
-  it('(ii bis) vu d’un camp d’un seul joueur, la piste Coéquipiers n’a aucun palier', () => {
+  it('(ii bis) un coéquipier sans ligne de présence n’ouvre aucun palier', () => {
+    // Vu de `eux`, le seul coéquipier est le bot Oscar, présent tout le match (aucune ligne).
     const { result } = monter('eux', [arrivee('eux', 4_000), arrivee('moi', 4_000)])
     expect(result.current.absence).toEqual([])
+  })
+
+  it('(ii ter) un BOT du camp du point de vue est son COÉQUIPIER (allégeance du film) — la feuille l’ignorait', () => {
+    // Le bot n'a pas de ligne de feuille : le fil le désigne par sa clé du film, comme ici.
+    const { result } = monter('eux', [arrivee('bot:Oscar', 4_000)])
+    expect(result.current.absence.map((a) => [a.absent, a.total])).toEqual([[1, 1]])
   })
 
   it('(iii) le menu porte les CAMPS DU FILM, nommés comme les colonnes de fiches — jamais « sans équipe »', () => {
@@ -390,7 +389,7 @@ describe('useReplayTimeline — la piste Score d’un match à sens unique', () 
         feedEntries: [],
         marks: new Map(),
         viewpoint: 'a',
-        identity: new Map(),
+        allegiance: NO_ALLEGIANCE,
         players: [] as ReplayPlayer[],
         onSelectViewpoint: () => {},
         lead: { allyOf: () => null, labelOf: (id: number) => `Équipe ${id}` },

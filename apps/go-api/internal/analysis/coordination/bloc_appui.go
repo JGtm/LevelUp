@@ -94,7 +94,7 @@ func (p *cumulParite) pct() *float64 {
 
 // casesParMatch rend UNE case par match mesuré, dans l'ordre du scope.
 //
-// Les parts sont NIL quand leur dénominateur est vide : aucune mort vengeable de camp,
+// Les parts sont NIL quand leur dénominateur est vide :
 // aucun frag mesuré, aucun appui dans le camp. La case reste grise — « non mesuré n'est pas
 // zéro », et un zéro peint se lirait comme une contre-performance.
 func casesParMatch(cumuls map[string]*cumulMatch, ordre []string) []domain.CoordinationMatchPoint {
@@ -105,13 +105,6 @@ func casesParMatch(cumuls map[string]*cumulMatch, ordre []string) []domain.Coord
 			MatchID:              id,
 			TeamSize:             c.teamSize,
 			ParityPct:            pariteDuMatch(c.teamSize),
-			TeamDeaths:           c.teamDeaths,
-			TeamDeathsAvenged:    c.teamAvenged,
-			MyDeaths:             c.myDeaths,
-			MyDeathsAvenged:      c.myAvenged,
-			MyRipostes:           c.myRipostes,
-			RiposteSharePct:      partPct(c.myRipostes, c.teamDeaths),
-			CoveredSharePct:      partPct(c.myAvenged, c.myDeaths),
 			MyMeasuredKills:      c.myKills,
 			MyAssistedKills:      c.myAssisted,
 			TeamAssists:          c.teamAssists,

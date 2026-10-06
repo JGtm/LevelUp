@@ -134,11 +134,11 @@ func TestLaVueANeDevineRien(t *testing.T) {
 	}
 	var k bitWriter
 	k.bit(1)
-	k.ecrireEnTeteDeMessage(85) // PlayerKilledEvent : genre non vide, charge non portee
+	k.ecrireEnTeteDeMessage(85) // PlayerKilledEvent : genre non vide, charge refusee sans variante lue
 	k.bit(0)                    // lu comme un terminateur si le message passait sans sa charge
 	k.bits(0, 16)
 	if a := lireSous(k.buf, grammaireRecente()); a.Porte || a.Fin != 9 || !slices.Equal(a.Genres, []int{85}) {
-		t.Errorf("genre 85 sans charge portee : %+v, attendu arretee au bit 9 apres le genre 85", a)
+		t.Errorf("genre 85 sans variante lue : %+v, attendu arretee au bit 9 apres le genre 85", a)
 	}
 }
 

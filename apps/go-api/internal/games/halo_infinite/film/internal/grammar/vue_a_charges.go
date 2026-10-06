@@ -63,6 +63,10 @@ func chargeDuGenre(genre int) func(*Lecteur) bool { //nolint:gocyclo // un case 
 		return chargeRetourDeCarte
 	case 109:
 		return chargeCycleDeVieIA
+	case 85:
+		return chargeJoueurTue
+	case 116:
+		return chargeEffetsDeTeleportation
 	case 120:
 		return chargeAppelDeJoueur
 	}

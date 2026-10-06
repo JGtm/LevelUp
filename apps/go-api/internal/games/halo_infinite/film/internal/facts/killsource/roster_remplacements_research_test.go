@@ -261,7 +261,7 @@ func journaliserHorsRoster(t *testing.T, f *film) {
 	}
 	tl.rewind()
 	cal := calibrate(f, tl, opts.Views, opts.Carte)
-	w := runWalk(f, tl, r, opts.Views, cal.Profil)
+	w := runWalk(f, tl, r, opts.Views, &cal)
 	t.Logf("DEAD-STATES HORS ROSTER (carte %q, %s)", os.Getenv(ksRosterCarteEnv), cal.String())
 	par := map[[2]int]int{}
 	for _, d := range w.deads {

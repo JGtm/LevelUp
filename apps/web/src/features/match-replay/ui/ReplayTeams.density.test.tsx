@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
 import { ReplayTeams } from './ReplayTeams'
 import { fichierNomme, lire } from '../test/featureFiles'
@@ -91,7 +92,7 @@ describe('ReplayTeams — la densité de la colonne : cas limites (étape 4)', (
   it('4.1 BTB à effectifs inégaux (12v9) : un seul gabarit sur toute la colonne, les deux camps en grille compacte', () => {
     const sud = SUD.slice(0, 9)
     const vue = render(
-      <ReplayTeams doc={documentDe([...NORD, ...sud])} scoreboard={tableau(NORD, sud)} frame={FRAME} locale="fr" header={EN_TETE_BTB} />,
+      <ReplayTeams allegiance={NO_ALLEGIANCE} doc={documentDe([...NORD, ...sud])} scoreboard={tableau(NORD, sud)} frame={FRAME} locale="fr" header={EN_TETE_BTB} />,
     )
     expect(corps(vue, 31)).toBe(21)
     expect(corps(vue, 35)).toBe(0)
@@ -125,7 +126,7 @@ describe('ReplayTeams — la densité de la colonne : cas limites (étape 4)', (
     } as typeof brut
     const board = tableau(NORD, SUD)
     const arbre = (frame: number) => (
-      <ReplayTeams doc={doc} scoreboard={board} frame={frame} locale="fr" header={EN_TETE_BTB} />
+      <ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board} frame={frame} locale="fr" header={EN_TETE_BTB} />
     )
     const vue = render(arbre(FRAME))
     // Avant le relais : le partant tient la fiche, le remplaçant n'est nulle part.
@@ -158,14 +159,14 @@ describe('ReplayTeams — la densité de la colonne : cas limites (étape 4)', (
     expect(src.match(/grid-cols-\[/g)).toHaveLength(1)
     // Au DOM : la grille en BTB, la colonne simple sinon — et rien entre les deux.
     const btb = render(
-      <ReplayTeams doc={documentDe([...NORD, ...SUD])} scoreboard={tableau(NORD, SUD)} frame={FRAME} locale="fr" header={EN_TETE_BTB} />,
+      <ReplayTeams allegiance={NO_ALLEGIANCE} doc={documentDe([...NORD, ...SUD])} scoreboard={tableau(NORD, SUD)} frame={FRAME} locale="fr" header={EN_TETE_BTB} />,
     )
     expect(conteneur(btb, 'Nord01').className).toBe(SEATS_GRID_CLASS)
     expect(conteneur(btb, 'Sud01').className).toBe(SEATS_GRID_CLASS)
     btb.unmount()
     const quatre = NORD.slice(0, 4)
     const arena = render(
-      <ReplayTeams doc={documentDe([...quatre, ...SUD.slice(0, 4)])} scoreboard={tableau(quatre, SUD.slice(0, 4))} frame={FRAME} locale="fr" header={{ start_time: START_TIME }} />,
+      <ReplayTeams allegiance={NO_ALLEGIANCE} doc={documentDe([...quatre, ...SUD.slice(0, 4)])} scoreboard={tableau(quatre, SUD.slice(0, 4))} frame={FRAME} locale="fr" header={{ start_time: START_TIME }} />,
     )
     expect(conteneur(arena, 'Nord01').className).toBe(SEATS_COLUMN_CLASS)
     expect(conteneur(arena, 'Sud01').className).toBe(SEATS_COLUMN_CLASS)
@@ -173,7 +174,7 @@ describe('ReplayTeams — la densité de la colonne : cas limites (étape 4)', (
 
   it('4.4 titre sans décodage film en compacte : cellules vides, aucune barre, aucun zéro, aucun `role=img`', () => {
     const vue = render(
-      <ReplayTeams doc={documentDe([...NORD, ...SUD], false)} scoreboard={tableau(NORD, SUD)} frame={FRAME} locale="fr" header={EN_TETE_BTB} />,
+      <ReplayTeams allegiance={NO_ALLEGIANCE} doc={documentDe([...NORD, ...SUD], false)} scoreboard={tableau(NORD, SUD)} frame={FRAME} locale="fr" header={EN_TETE_BTB} />,
     )
     expect(corps(vue, 31)).toBe(24)
     // Aucune barre : le document ne porte ni `sh` ni `hp`.
@@ -208,7 +209,7 @@ describe('ReplayTeams — la densité de la colonne : cas limites (étape 4)', (
     const doc = documentDe([...NORD, ...SUD])
     const board = tableau(NORD, SUD)
     const rendu = (header: { start_time?: string; mode_category?: string } | null | undefined) => {
-      const vue = render(<ReplayTeams doc={doc} scoreboard={board} frame={FRAME} locale="fr" header={header} />)
+      const vue = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board} frame={FRAME} locale="fr" header={header} />)
       const html = vue.container.innerHTML
       vue.unmount()
       return html
@@ -219,7 +220,7 @@ describe('ReplayTeams — la densité de la colonne : cas limites (étape 4)', (
       expect(rendu(header)).toBe(sansCategorie)
     }
     // Et c'est bien la colonne d'aujourd'hui : 24 corps de 35, colonne simple, tuile `rounded-lg`.
-    const vue = render(<ReplayTeams doc={doc} scoreboard={board} frame={FRAME} locale="fr" header={{ start_time: START_TIME }} />)
+    const vue = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board} frame={FRAME} locale="fr" header={{ start_time: START_TIME }} />)
     expect(corps(vue, 35)).toBe(24)
     expect(corps(vue, 31)).toBe(0)
     expect(conteneur(vue, 'Nord01').className).toBe(SEATS_COLUMN_CLASS)

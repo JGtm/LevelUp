@@ -74,8 +74,8 @@
  * Les cinq gestes du crane n'ont PAS de variante d'equipe dans le jeu : la banque ne porte ni
  * `_team` ni `_enemy` sur ces evenements, contrairement aux captures de drapeau. Ils sonnent
  * donc pareil pour tout le monde, camp connu ou non — et c'est une mesure sur la banque, pas
- * un raccourci. La MARQUE, elle, a ses deux cotes : sans camp allie resolu (pas de ligne
- * « moi » au tableau de score), elle se TAIT — meme regle que partout dans la chaine sonore.
+ * un raccourci. La MARQUE, elle, a ses deux cotes : sans camp allie resolu (le film ne situe
+ * pas le joueur regarde), elle se TAIT — meme regle que partout dans la chaine sonore.
  */
 import type {
   ReplayDocumentReady,

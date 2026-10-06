@@ -1,6 +1,6 @@
 # T5 — Vue C (contrôle) : kinds 1 et 2, bloc 0xbc, terminateur (campagne grammaire, phase 1, 2026-10-01)
 
-> Piste T5 du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (étape 2). Lecture seule : Ghidra
+> Piste T5 du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (étape 2). Lecture seule : Ghidra
 > (`HaloInfinite.exe`, serveur HTTP `127.0.0.1:8089`, aucune écriture), code Go à la tête du
 > worktree `feat/campagne-grammaire` (base `69564ef7d`). Aucune commande `go`, aucune base, aucun
 > film lu. Image base `0x140000000`. Bits lus poids fort d'abord (MSB), comme `Lecteur`.

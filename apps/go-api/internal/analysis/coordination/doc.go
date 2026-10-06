@@ -7,10 +7,10 @@
 // paquet ne connait ni DuckDB ni le document de rejeu.
 //
 // PARTAGE PAR PLUSIEURS SURFACES, et c'est la raison de son existence : la page Escouade sert
-// l'echange en graphes par session et par composition, le bloc Coordination le reprend sur
-// les Sessions, la vue match et les Series temporelles, et l'onglet Tactique y lit l'isolement
-// de ses morts. Une seule mecanique — deux implementations divergeraient au premier
-// ajustement de fenetre.
+// l'echange en graphes par session et par composition, la vue match le sert en bloc « Riposte »,
+// le bloc Coordination porte l'appui recu sur les Sessions et les Series temporelles, et l'onglet
+// Tactique y lit l'isolement de ses morts. Une seule mecanique — deux implementations
+// divergeraient au premier ajustement de fenetre.
 //
 // UNE REGLE DE FORME : aucune fonction exportee de ce paquet ne rend un taux en float64 nu.
 // Un taux voyage dans `domain.Couverture`, avec son compte brut, sa quantite par match et

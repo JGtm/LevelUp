@@ -126,6 +126,11 @@ type calibration struct {
 	// Il est desormais RENDU, et passe explicitement par `FrameConfig.Profil` puis par
 	// [Result.ProfilCalibre].
 	Profil grammar.ProfilDeBalayage
+	// VueA est la grammaire de la vue A que le film declare, sous la carte du match
+	// ([grammar.VueADuFilmSousCarte]) : la marche ([runWalk]) part de la fin de la vue A quand elle
+	// decide ([grammar.DebutDeLaVueB], lot VA). Elle vient du film, pas de la calibration ; elle
+	// voyage ici parce que la marche recoit la calibration.
+	VueA grammar.VueADuFilm
 }
 
 func (c calibration) String() string {
@@ -180,7 +185,7 @@ func calibrate(f *film, tl *timeline, views int, carte *profile.MapQuantEntry) c
 	profil, corrLu := grammar.GrammaireSousFilm(profil, f.src)
 	abs := profil.LargeursObjetDuMonde()
 	res := calibration{Profil: profil, CarteLue: carteLue, ControleDeCorruptionLu: corrLu,
-		LueAxisW: abs.AxisW, LueIndexW: abs.IndexW}
+		LueAxisW: abs.AxisW, LueIndexW: abs.IndexW, VueA: grammar.VueADuFilmSousCarte(f.src, carte)}
 	infererLargeurs(f, tl, views, &res)
 	return res
 }

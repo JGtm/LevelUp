@@ -54,6 +54,29 @@ describe('ResourceGridTable', () => {
     expect(tip).not.toContain('Aquarius')
   })
 
+  it('compact (tiroir de Sessions) : lignes de ressource seules, part entière dans la case, « — » sans film, « ? » sans niveaux, colonnes sans largeur minimale', () => {
+    const racks: GridSection = {
+      resource: 'rack',
+      summary: { cells: [{ kind: 'nofilm' }, { kind: 'untiered', tiers: 'unestablished' }] },
+      items: [{ object: { resource: 'rack', key: 'k1', taken: { us: 1, them: 0 }, squad: [] }, cells: [{ kind: 'none' }, { kind: 'none' }] }],
+      kills: null,
+    }
+    const bonusAvecObjet: GridSection = {
+      ...sections[0],
+      items: [{ object: { resource: 'powerup', key: 'powerup_camo', taken: { us: 5, them: 2 }, squad: [] }, cells: [{ kind: 'none' }, { kind: 'none' }] }],
+    }
+    render(
+      <ResourceGridTable columns={columns} sections={[bonusAvecObjet, racks]} itemName={() => 'Arme'} whoText={() => ''} t={T} compact />,
+    )
+    const table = screen.getByTestId('emprise-grid-table')
+    expect([...table.querySelectorAll('[data-cell="value"]')].map((c) => c.textContent)).toEqual(['71 %', '25 %'])
+    expect(table.querySelector('[data-cell="nofilm"]')!.textContent).toBe('—')
+    expect(table.querySelector('[data-cell="untiered"]')!.textContent).toBe('?')
+    expect(screen.queryByText('Arme')).toBeNull()
+    expect(screen.queryByTestId('emprise-grid-racks-toggle')).toBeNull()
+    expect(table.style.gridTemplateColumns).toContain('minmax(0, 1fr)')
+  })
+
   it('« qui chez nous » dans l’infobulle d’une case prise par l’escouade', () => {
     const cells = renderTable()
     fireEvent.mouseEnter(cells[0].parentElement!)

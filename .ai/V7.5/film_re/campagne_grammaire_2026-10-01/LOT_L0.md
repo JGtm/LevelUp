@@ -1,6 +1,6 @@
 # Lot L0 — la fermeture d'un paquet suit les règles de l'écrivain (2026-10-02)
 
-> Lot L0 du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L0), sous le contrat
+> Lot L0 du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L0), sous le contrat
 > `plan-execution`, dans le cadre de la décision du 2026-10-02 au soir : **corrections d'abord,
 > uniquement générales, lues dans le jeu** (aucun réglage par film, par carte ni par version).
 > Décision ferme D2 : un paquet est **fermé** si son reste est nul (`vueCFermee`) **et** si aucune

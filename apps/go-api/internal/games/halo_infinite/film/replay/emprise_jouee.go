@@ -97,18 +97,13 @@ func (e empriseJouee) rejetsIsoles(pos []grammar.BipedPosition) []bool {
 	for i, p := range pos {
 		garde[i] = !p.HasWorld || !e.rejette(p.X, p.Y, p.Z)
 	}
-	relie := func(i, j int) bool {
-		a, b := pos[i], pos[j]
-		return a.HasWorld && b.HasWorld && seRelient([3]float32{a.X, a.Y, a.Z}, [3]float32{b.X, b.Y, b.Z},
-			a.TimestampUS, b.TimestampUS)
-	}
 	for i := 1; i < n; i++ {
-		if !garde[i] && garde[i-1] && pos[i-1].HasWorld && relie(i-1, i) {
+		if !garde[i] && garde[i-1] && pos[i-1].HasWorld && positionsVoisines(pos[i-1], pos[i]) {
 			garde[i] = true
 		}
 	}
 	for i := n - 2; i >= 0; i-- {
-		if !garde[i] && garde[i+1] && pos[i+1].HasWorld && relie(i, i+1) {
+		if !garde[i] && garde[i+1] && pos[i+1].HasWorld && positionsVoisines(pos[i], pos[i+1]) {
 			garde[i] = true
 		}
 	}
@@ -117,4 +112,11 @@ func (e empriseJouee) rejetsIsoles(pos []grammar.BipedPosition) []bool {
 		rejets[i] = !garde[i]
 	}
 	return rejets
+}
+
+// positionsVoisines dit si deux positions d UN meme slot se relient par continuite (cf.
+// [seRelient]). Une position sans coordonnee monde ne relie rien.
+func positionsVoisines(a, b grammar.BipedPosition) bool {
+	return a.HasWorld && b.HasWorld && seRelient([3]float32{a.X, a.Y, a.Z}, [3]float32{b.X, b.Y, b.Z},
+		a.TimestampUS, b.TimestampUS)
 }

@@ -21,8 +21,9 @@
  * # CE QU'IL DÉTECTE
  *
  * La LECTURE du drapeau (`x.is_me`, ou `is_me` déstructuré), pas sa mention. Une signature de
- * type (`Pick<MatchScoreboardRow, 'team_side' | 'is_me'>`) et un commentaire ne lisent rien :
- * `endMatchSound.ts` en porte une, et c'est très bien — il reçoit son sujet en paramètre.
+ * type (`Pick<MatchScoreboardRow, 'xuid' | 'is_me'>`) et un commentaire ne lisent rien :
+ * `endMatchSound.ts` en porte une, et c'est très bien — il passe la feuille à `meXUIDOf`, le
+ * foyer de « qui est le joueur de la page », sans relire le drapeau lui-même.
  *
  * # CE QU'IL N'INTERDIT PAS
  *
@@ -42,18 +43,16 @@ const LECTURE = /\.is_me\b|\bis_me\s*[,}]/
 /**
  * Exemptions NOMMÉES, DATÉES, avec leur raison et ce qui les fera disparaître.
  *
- *  - `playerMarks.ts`, `matchSides.ts`, `victoryLogic.ts` (2026-09-06) : le REPLI SANS SUJET.
- *    Les trois prennent désormais le point de vue en paramètre ; sans lui, ils retombent sur la
- *    ligne « moi » — c'est le comportement que la caractérisation L2a a photographié et que la
- *    décision 15 du plan interdit de changer hors de la page de rejeu. RETRAIT CIBLE : quand
- *    plus aucun appel n'omettra le sujet (aujourd'hui `endMatchSound` l'omet exprès, décision 3).
+ *  - `playerMarks.ts` (2026-09-06) : le REPLI SANS SUJET. Il prend le point de vue en
+ *    paramètre ; sans lui, il retombe sur la ligne « moi » — c'est le comportement que la
+ *    caractérisation L2a a photographié et que la décision 15 du plan interdit de changer hors
+ *    de la page de rejeu. RETRAIT CIBLE : quand plus aucun appel n'omettra le sujet.
  *
- *  - `MatchPadControlSection.tsx`, `MatchEquipmentUsageSection.tsx` (2026-09-06) : ces deux
- *    composants vivent dans le dossier du rejeu mais sont montés par
- *    `match-view/MatchViewTabChronology.tsx` — l'onglet Chronologie de la page MATCH, où AUCUN
- *    menu de point de vue n'existe. Le point de vue du rejeu ne les concerne pas. RETRAIT
- *    CIBLE : le jour où ils déménageraient dans `match-view/`, ou si un point de vue arrivait
- *    sur la page match — ni l'un ni l'autre n'est prévu.
+ * SORTIS DE LA LISTE LE 2026-10-06, quand l'allégeance du rejeu est passée au film
+ * (`lib/replay/filmAllegiance.ts`) : `matchSides.ts` (supprimé), `victoryLogic.ts` (il reçoit
+ * le joueur de la page en paramètre), `MatchPadControlSection.tsx` et
+ * `MatchEquipmentUsageSection.tsx` (montés sur la page Match : leur joueur de référence, celui
+ * de la page, se lit désormais par `meXUIDOf`).
  *
  * `model/replayViewpoint.ts` N'Y FIGURE PAS, et c'est le résultat du lot : le foyer résout son
  * repli par `meXUIDOf` (`match-view/xuidMeta.ts`, le foyer que le dépôt a déjà pour « qui est le
@@ -61,10 +60,6 @@ const LECTURE = /\.is_me\b|\bis_me\s*[,}]/
  */
 const EXEMPTIONS = new Map<string, string>([
   ['playerMarks.ts', 'repli sans sujet (2026-09-06)'],
-  ['matchSides.ts', 'repli sans sujet (2026-09-06)'],
-  ['victoryLogic.ts', 'repli sans sujet (2026-09-06)'],
-  ['MatchPadControlSection.tsx', 'monté sur la page match, hors point de vue (2026-09-06)'],
-  ['MatchEquipmentUsageSection.tsx', 'monté sur la page match, hors point de vue (2026-09-06)'],
 ])
 
 /** `lib/replay/` : `playerMarks.ts` y vit, le balayage de la feature ne suffirait donc pas. */

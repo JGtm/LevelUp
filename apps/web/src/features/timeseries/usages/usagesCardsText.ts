@@ -1,8 +1,8 @@
 /**
  * usagesCardsText.ts — les textes des cartes PROPRES à l'onglet « Usages » des Séries temporelles :
- * en-têtes de la grille par carte, « Mes prises dans mon camp », « Mes vies : près d'un coéquipier
- * ou seul », « Équipement pris, et ce que j'en ai fait » (maquette v4, `renderGrid`, `renderMine`,
- * carte « Mes vies », `renderEquip`). FR mot pour mot de la maquette ; parité FR / EN par le typage.
+ * en-têtes de la grille par carte, « Contribution aux prises », « Isolement », « Usage
+ * d'équipements ». Textes factuels, sans personne : le joueur est désigné par son gamertag
+ * (argument `player`), l'équipe par « Équipe », le reste par « Reste de l'équipe » (garde : `textesSansPersonne.test.ts`). Parité FR / EN par le typage.
  * Fichier à part de `usagesText.ts` (surcharges des textes de l'Escouade) pour rester sous le seuil.
  */
 
@@ -36,17 +36,17 @@ export interface UsagesCardsText {
     /** En-tête d'infobulle d'une colonne : « Aquarius (12 matchs, 9 filmés) ». */
     tipHead: (name: string, matches: number, filmed: number) => string
   }
+  /** Le nom du joueur quand le bloc ne porte pas son gamertag. */
+  playerFallback: string
   mine: {
     title: string
     info: string
-    me: string
     rest: string
     /** « Armes de râtelier (4, repliées) ». */
     foldedFmt: (n: number) => string
-    /** Les mots de « moi 3 · camp 7 » au bout de chaque barre. */
-    meWord: string
+    /** Le mot de l’équipe dans « JGtm 3 · équipe 7 » au bout de chaque barre (le joueur : son gamertag). */
     campWord: string
-    meTip: (name: string, me: number, camp: number) => string
+    meTip: (player: string, name: string, me: number, camp: number) => string
     restTip: (name: string, rest: number, camp: number) => string
     lossesTitle: string
     lossesFmt: (lost: number, taken: number) => string
@@ -61,7 +61,6 @@ export interface UsagesCardsText {
     near: string
     alone: string
     thinLegend: string
-    rowLabel: string
     rowSub: (lives: number) => string
     tip: (side: string, value: number, total: number, pct: string, what: 'lives' | 'kills') => string
     killsLine: (kills: number, pct: string, perLife: string) => string
@@ -75,15 +74,14 @@ export interface UsagesCardsText {
     kept: string
     dropped: string
     thinLegend: string
-    me: string
     rest: string
     /** Libellés des familles hors bilan (grappin, propulseur) ; les autres viennent du bloc d'usage. */
     unmeasuredNames: Record<string, string>
     sub: (objects: number, taken: number) => string
     droppedSub: (n: number) => string
     unmeasured: string
-    zeroTip: (family: string) => string
-    /** « Moi · Mur de protection\n52 servis sur 84 (61,9 %) ». */
+    zeroTip: (player: string, family: string) => string
+    /** « JGtm · Mur de protection\n52 servis sur 84 (61,9 %) ». */
     segTip: (who: string, n: number, part: 'used' | 'kept' | 'dropped', total: number, pct: string) => string
     restLine: (used: number, kept: number, dropped: number) => string
     restUsedShare: (pct: string) => string
@@ -112,37 +110,32 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
     othersFmt: (n) => `${n} A`,
     tipHead: (name, matches, filmed) => `${name} (${matches} ${plural(matches, 'match', 'matchs')}, ${filmed} ${plural(filmed, 'filmé', 'filmés')})`,
   },
+  playerFallback: 'Joueur',
   mine: {
-    title: 'Mes prises dans mon camp',
+    title: 'Contribution aux prises',
     info:
-      'Chaque objet pris par mon camp : ma part et celle du reste du camp, en comptes, triés par volume de mon ' +
-      'camp. Une répartition, pas un classement. Les bonus perdus sont ceux gardés sans être activés ou lâchés.',
-    me: 'Moi',
-    rest: 'Reste de mon camp',
+      'Objets pris par l’équipe sur les matchs filmés du périmètre : part du joueur et du reste de l’équipe, en ' +
+      'comptes, par volume décroissant. Bonus perdus : gardés sans être activés, ou lâchés.',
+    rest: 'Reste de l’équipe',
     foldedFmt: (n) => `(${n}, repliées)`,
-    meWord: 'moi',
-    campWord: 'camp',
-    meTip: (name, me, camp) => `Moi · ${name}\n${me} des ${camp} prises de mon camp`,
-    restTip: (name, rest, camp) => `Reste de mon camp · ${name}\n${rest} des ${camp} prises de mon camp`,
+    campWord: 'équipe',
+    meTip: (player, name, me, camp) => `${player} · ${name}\n${me} des ${camp} prises de l’équipe`,
+    restTip: (name, rest, camp) => `Reste de l’équipe · ${name}\n${rest} des ${camp} prises de l’équipe`,
     lossesTitle: 'Bonus perdus',
     lossesFmt: (lost, taken) => `${lost} sur ${taken}`,
   },
   lives: {
-    title: 'Mes vies : près d’un coéquipier ou seul',
+    title: 'Isolement',
     info: (unlocated, noRadar, unpublishable) =>
-      'Chaque vie est rangée selon la distance au coéquipier le plus proche au moment de la mort : à moins ' +
-      'd’une portée de radar, ou au-delà. La barre épaisse partage mes vies, la barre fine les frags obtenus ' +
-      'pendant ces vies. ' +
+      'Vies terminées par une mort, rangées selon la distance au coéquipier le plus proche à l’instant de la ' +
+      'mort (à portée de radar ou au-delà) ; barre fine : frags obtenus pendant ces vies. ' +
       (noRadar > 0
-        ? `Les vies terminées sans aucun coéquipier situé sont écartées (${frInt(unlocated)} ici), comme celles d’une carte sans portée de radar connue (${frInt(noRadar)}).`
-        : `Les vies terminées sans aucun coéquipier situé sont écartées (${frInt(unlocated)} ici).`) +
-      (unpublishable > 0
-        ? ` Les vies d’un match dont le journal des morts ne se lit pas mort par mort sont écartées aussi (${frInt(unpublishable)}).`
-        : ''),
-    near: 'Près d’un coéquipier',
-    alone: 'Seul',
-    thinLegend: 'Barre fine : mes frags pendant ces vies',
-    rowLabel: 'Mes vies',
+        ? `Écartées : vies sans coéquipier situé (${frInt(unlocated)}), vies d’une carte sans portée de radar connue (${frInt(noRadar)})`
+        : `Écartées : vies sans coéquipier situé (${frInt(unlocated)})`) +
+      (unpublishable > 0 ? `, vies d’un match au journal des morts non publiable (${frInt(unpublishable)}).` : '.'),
+    near: 'À portée d’un coéquipier',
+    alone: 'Isolée',
+    thinLegend: 'Barre fine : frags du joueur pendant ces vies',
     rowSub: (lives) => `${frInt(lives)} ${plural(lives, 'vie terminée', 'vies terminées')} par une mort`,
     tip: (side, value, total, pct, what) => `${side}\n${frInt(value)} ${what === 'lives' ? 'vies' : 'frags'} sur ${frInt(total)} (${pct})`,
     killsLine: (kills, pct, perLife) => `frags : ${frInt(kills)} · ${pct} · ${perLife} par vie`,
@@ -150,28 +143,26 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
     perLifeFmt: frDec1,
   },
   equipment: {
-    title: 'Équipement pris, et ce que j’en ai fait',
+    title: 'Usage d’équipements',
     info:
-      'Pour chaque famille, ce que sont devenus mes objets : servis (posé pour le mur, charge consommée pour les ' +
-      'autres), gardés sans servir, lâchés. Les comptes portent sur tout l’équipement tenu, celui de réapparition ' +
-      'compris ; le sous-libellé dit combien en ont été pris sur la carte. La barre fine donne les mêmes trois ' +
-      'parts pour le reste de mon camp. Le répulseur n’a pas de ligne : aucun canal ne mesure son usage.',
+      'Équipement tenu par le joueur (réapparition comprise), par famille : servi (mur posé, charge ' +
+      'consommée), gardé sans servir, lâché ; barre fine : reste de l’équipe. Seules les familles tenues dans le ' +
+      'lobby sont listées ; le répulseur, sans mesure d’usage, n’a pas de ligne.',
     used: 'Servi',
     kept: 'Gardé sans servir',
     dropped: 'Lâché',
-    thinLegend: 'Barre fine : reste de mon camp',
-    me: 'Moi',
-    rest: 'Reste de mon camp',
+    thinLegend: 'Barre fine : reste de l’équipe',
+    rest: 'Reste de l’équipe',
     unmeasuredNames: { grapple: 'Grappin', thruster: 'Propulseur' },
     sub: (objects, taken) => (objects > 0 ? `${objects} ${plural(objects, 'objet', 'objets')}, dont ${taken} pris sur la carte` : '0 objet'),
     droppedSub: (n) => `${n} ${plural(n, 'lâché', 'lâchés')}`,
     unmeasured: 'Non mesuré : ni prise ni usage publiés pour cette famille',
-    zeroTip: (family) => `${family} : 0 objet pour moi`,
+    zeroTip: (player, family) => `${family} : 0 objet pour ${player}`,
     segTip: (who, n, part, total, pct) => `${who}\n${n} ${PART_FR[part][n > 1 ? 1 : 0]} sur ${total} (${pct})`,
     restLine: (used, kept, dropped) =>
-      `reste de mon camp : ${used} ${PART_FR.used[used > 1 ? 1 : 0]} · ${kept} ${PART_FR.kept[kept > 1 ? 1 : 0]} · ${dropped} ${PART_FR.dropped[dropped > 1 ? 1 : 0]}`,
+      `reste de l’équipe : ${used} ${PART_FR.used[used > 1 ? 1 : 0]} · ${kept} ${PART_FR.kept[kept > 1 ? 1 : 0]} · ${dropped} ${PART_FR.dropped[dropped > 1 ? 1 : 0]}`,
     restUsedShare: (pct) => `${pct} servis`,
-    restNone: 'reste de mon camp : 0 objet',
+    restNone: 'reste de l’équipe : 0 objet',
   },
 }
 
@@ -193,36 +184,32 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
     othersFmt: (n) => `${n} O`,
     tipHead: (name, matches, filmed) => `${name} (${matches} ${plural(matches, 'match', 'matches')}, ${filmed} filmed)`,
   },
+  playerFallback: 'Player',
   mine: {
-    title: 'My pickups within my side',
+    title: 'Pickup contribution',
     info:
-      'Each item my side picked up: my share and the rest of the side’s, in counts, sorted by my side’s volume. ' +
-      'A split, not a ranking. Lost power-ups are those held without being activated, or dropped.',
-    me: 'Me',
-    rest: 'Rest of my side',
+      'Items the team picked up over the filmed matches in scope: the player’s share and the rest of the ' +
+      'team’s, in counts, by decreasing volume. Lost power-ups: held without being activated, or dropped.',
+    rest: 'Rest of the team',
     foldedFmt: (n) => `(${n}, folded)`,
-    meWord: 'me',
-    campWord: 'side',
-    meTip: (name, me, camp) => `Me · ${name}\n${me} of my side’s ${camp} pickups`,
-    restTip: (name, rest, camp) => `Rest of my side · ${name}\n${rest} of my side’s ${camp} pickups`,
+    campWord: 'team',
+    meTip: (player, name, me, camp) => `${player} · ${name}\n${me} of the team’s ${camp} pickups`,
+    restTip: (name, rest, camp) => `Rest of the team · ${name}\n${rest} of the team’s ${camp} pickups`,
     lossesTitle: 'Lost power-ups',
     lossesFmt: (lost, taken) => `${lost} of ${taken}`,
   },
   lives: {
-    title: 'My lives: near a teammate or alone',
+    title: 'Isolation',
     info: (unlocated, noRadar, unpublishable) =>
-      'Each life is sorted by the distance to the nearest teammate at the moment of death: within one radar ' +
-      'range, or beyond. The thick bar splits my lives, the thin bar the kills made during those lives. ' +
+      'Lives ended by a death, sorted by the distance to the nearest teammate at the moment of death (within ' +
+      'radar range or beyond); thin bar: kills made during those lives. ' +
       (noRadar > 0
-        ? `Lives that ended with no teammate located are left out (${enInt(unlocated)} here), as are those on a map with no known radar range (${enInt(noRadar)}).`
-        : `Lives that ended with no teammate located are left out (${enInt(unlocated)} here).`) +
-      (unpublishable > 0
-        ? ` Lives from a match whose kill log can’t be read death by death are left out too (${enInt(unpublishable)}).`
-        : ''),
-    near: 'Near a teammate',
-    alone: 'Alone',
-    thinLegend: 'Thin bar: my kills during those lives',
-    rowLabel: 'My lives',
+        ? `Left out: lives with no teammate located (${enInt(unlocated)}), lives on a map with no known radar range (${enInt(noRadar)})`
+        : `Left out: lives with no teammate located (${enInt(unlocated)})`) +
+      (unpublishable > 0 ? `, lives from a match whose kill log is not publishable (${enInt(unpublishable)}).` : '.'),
+    near: 'Within range of a teammate',
+    alone: 'Isolated',
+    thinLegend: 'Thin bar: the player’s kills during those lives',
     rowSub: (lives) => `${enInt(lives)} ${plural(lives, 'life', 'lives')} ended by a death`,
     tip: (side, value, total, pct, what) => `${side}\n${enInt(value)} ${what === 'lives' ? 'lives' : 'kills'} of ${enInt(total)} (${pct})`,
     killsLine: (kills, pct, perLife) => `kills: ${enInt(kills)} · ${pct} · ${perLife} per life`,
@@ -230,26 +217,24 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
     perLifeFmt: enDec1,
   },
   equipment: {
-    title: 'Equipment picked up, and what I did with it',
+    title: 'Equipment use',
     info:
-      'For each family, what became of my items: used (placed for the wall, charge spent for the others), kept ' +
-      'without use, dropped. The counts cover all equipment held, spawn equipment included; the sub-label says ' +
-      'how many were picked up on the map. The thin bar gives the same three shares for the rest of my side. ' +
-      'The repulsor has no row: no channel measures its use.',
+      'Equipment held by the player (spawn equipment included), by family: used (wall placed, charge spent), ' +
+      'kept without use, dropped; thin bar: rest of the team. Only families held in the lobby are listed; ' +
+      'the repulsor, with no usage measure, has no row.',
     used: 'Used',
     kept: 'Kept without use',
     dropped: 'Dropped',
-    thinLegend: 'Thin bar: rest of my side',
-    me: 'Me',
-    rest: 'Rest of my side',
+    thinLegend: 'Thin bar: rest of the team',
+    rest: 'Rest of the team',
     unmeasuredNames: { grapple: 'Grappleshot', thruster: 'Thruster' },
     sub: (objects, taken) => (objects > 0 ? `${objects} ${plural(objects, 'item', 'items')}, ${taken} picked up on the map` : '0 items'),
     droppedSub: (n) => `${n} dropped`,
     unmeasured: 'Not measured: neither pickup nor use published for this family',
-    zeroTip: (family) => `${family}: 0 items for me`,
+    zeroTip: (player, family) => `${family}: 0 items for ${player}`,
     segTip: (who, n, part, total, pct) => `${who}\n${n} ${PART_EN[part][0]} of ${total} (${pct})`,
-    restLine: (used, kept, dropped) => `rest of my side: ${used} used · ${kept} kept · ${dropped} dropped`,
+    restLine: (used, kept, dropped) => `rest of the team: ${used} used · ${kept} kept · ${dropped} dropped`,
     restUsedShare: (pct) => `${pct} used`,
-    restNone: 'rest of my side: 0 items',
+    restNone: 'rest of the team: 0 items',
   },
 }

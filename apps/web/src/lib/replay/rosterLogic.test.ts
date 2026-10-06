@@ -8,6 +8,7 @@ import {
   abilityAt,
   buildPlayers,
   buildSlotOwnership,
+  campResolver,
   colorResolver,
   colorResolverOrLast,
   currentLifeOf,
@@ -17,7 +18,6 @@ import {
   playerName,
   playerStateAt,
   rosterEntryKey,
-  sideResolver,
   vitalityPresence,
 } from './rosterLogic'
 
@@ -191,7 +191,7 @@ describe('colorResolver — la couleur appartient au JOUEUR à l’image, pas à
   it('sépare les camps : allié et adversaire n’ont pas la même teinte', () => {
     const d = doc({ tracks: [track(512, 'A', 0, 50), track(513, 'B', 0, 60)] })
     const players = buildPlayers(d, [row('A', 'Alpha', 'Eagle'), row('B', 'Bravo', 'Cobra')])
-    const color = colorResolver(own(players), teamColor, (xuid) => xuid === 'A', 'neutre')
+    const color = colorResolver(own(players), teamColor, (p) => p.xuid === 'A', 'neutre')
     expect(color(512, 25)).toBe('allie')
     expect(color(513, 25)).toBe('adverse')
   })
@@ -255,8 +255,8 @@ describe('buildSlotOwnership — le propriétaire d’un slot À UNE IMAGE (mult
     // gagnant) attribuait 512 à DinoR00 pour TOUT le match → deux DinoR00, SHROOM jamais montré.
     const d = doc({
       roster: [
-        { xuid: 'S', filmIndex: 0, seat: 0 },
-        { xuid: 'D', filmIndex: 1, seat: 1 },
+        { xuid: 'S', filmIndex: 0, seat: 0, team: 0 },
+        { xuid: 'D', filmIndex: 1, seat: 1, team: 1 },
       ],
       tracks: [
         track(512, 'S', 0, 50), // manche 0 : SHROOM
@@ -278,9 +278,10 @@ describe('buildSlotOwnership — le propriétaire d’un slot À UNE IMAGE (mult
     // et le camp suivent la même règle par image.
     const color = colorResolver(own, teamColor, () => true, 'neutre')
     expect(color(512, 25)).toBe('allie')
-    const side = sideResolver(own)
-    expect(side(512, 25)).toBe('Eagle')
-    expect(side(512, 80)).toBeNull() // manche 1 : le slot est libre entre les deux vies
+    const camp = campResolver(own)
+    expect(camp(512, 25)).toBe(0) // l'équipe du FILM de SHROOM, pas le côté de feuille
+    expect(camp(512, 220)).toBe(1) // celle de DinoR00, propriétaire de la manche 2
+    expect(camp(512, 80)).toBeNull() // manche 1 : le slot est libre entre les deux vies
   })
 
   it('vies triées : l’ordre d’insertion ne change pas la résolution', () => {

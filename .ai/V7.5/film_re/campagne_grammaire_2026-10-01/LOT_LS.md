@@ -1,6 +1,6 @@
 # Lot LS — signature du localisateur sur tout objet de l'archétype `high-frequency` (2026-10-04)
 
-> Lot LS du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 LS, vague 2, juste après LU ; GO
+> Lot LS du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 LS, vague 2, juste après LU ; GO
 > de l'utilisateur du 2026-10-04), sous le contrat `plan-execution`, dans le cadre de la décision du
 > 2026-10-02 : **corrections d'abord, uniquement générales, lues dans le jeu**.
 >

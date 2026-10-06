@@ -42,8 +42,8 @@
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 
-import { resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import type { ReplayDocument } from '@/lib/api/types'
+import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
 import { ReplayTeams } from './ReplayTeams'
 import { scoreboardRow } from '../test/scoreboardRow'
@@ -218,13 +218,14 @@ function tableau(parCamp: 4 | 6) {
 describe('ReplayTeams — fixation du DOM 4v4 (aucune régression hors BTB)', () => {
   it('le HTML de la colonne est celui de la fixture prise avant le lot', async () => {
     const board = tableau(4)
+    const doc = documentRiche()
     const vue = render(
       <ReplayTeams
-        doc={documentRiche()}
+        doc={doc}
         scoreboard={board}
         frame={FRAME}
         locale="fr"
-        xuidMeta={resolveXuidMeta(board, 'A')}
+        allegiance={filmAllegianceOf(doc, board, 'A')}
         header={{ start_time: '2026-07-24T20:00:00Z' }}
       />,
     )
@@ -237,13 +238,14 @@ describe('ReplayTeams — fixation du DOM 4v4 (aucune régression hors BTB)', ()
 
   it('même fixation à 6 sièges par camp (limite haute du gabarit normal) : sans catégorie, la colonne d’aujourd’hui', async () => {
     const board = tableau(6)
+    const doc = documentSixParCamp()
     const vue = render(
       <ReplayTeams
-        doc={documentSixParCamp()}
+        doc={doc}
         scoreboard={board}
         frame={FRAME}
         locale="fr"
-        xuidMeta={resolveXuidMeta(board, 'A')}
+        allegiance={filmAllegianceOf(doc, board, 'A')}
         header={{ start_time: '2026-07-24T20:00:00Z' }}
       />,
     )

@@ -297,13 +297,8 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb), pdb.XUID)
 	}
-	// Bloc « usages d'équipement, socles et objectifs » de la session (chantier
-	// session-usage S2) : gated par film.usage_summary (Infinite ; absente pour
-	// Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
-	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithSessionUsage(duckdb.NewSessionUsageRepo(pdb), pdb.XUID, r.friendGamertagsResolver(pdb.XUID), r.cfg.RepoRoot)
-	}
-	// Bloc « Coordination » (riposte + appui reçu) de la session, lot N1 : gated par la
+	svc = r.cablerBlocsSessions(svc, pdb) // blocs du film : registry_pages_sessions.go
+	// Bloc « Coordination » (appui reçu) de la session, lot N1 : gated par la
 	// capability du JOURNAL DES MORTS — celle qui dit que le titre nomme le tueur de
 	// chaque mort — et non par film.usage_summary, qui gate l'usage d'équipement. Deux
 	// sujets, deux gates : un titre peut nommer ses tueurs sans publier de résumé

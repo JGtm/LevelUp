@@ -29,12 +29,15 @@ package replay
 //	LECTURE `tirs`     l'index de tireur d'un tir est la PLACE, et le remplacant en herite (rapport,
 //	                   3 remplacements sur 3 ; sonde P4 : les 84 tirs de la place 5 tombent tous dans
 //	                   les vies de Claudors, index 10) : un arrivant dont les tirs non couverts
-//	                   designent A L'UNANIMITE une place, libre pendant sa presence, la lit ;
-//	REPLI `apparie`    CHAINAGE PAR EQUIPE, a presences disjointes : la place de son equipe liberee
-//	                   le plus tot, puis une place de son equipe sans occupant anterieur, puis une
-//	                   place de la table jamais tenue — tant que l'equipe n'a pas sa capacite. Nomme
-//	                   et compte (`repli_place_du_remplacant_par_chainage_d_equipe`) : les bots
-//	                   n'ecrivent aucun tir long (sonde P4), leur place ne se lit pas encore ;
+//	                   designent A L'UNANIMITE une place, libre pendant sa presence, la lit — un
+//	                   bot date auquel il succede ne la tient pas (Q23, cf. plus bas) ;
+//	REPLI `apparie`    CHAINAGE PAR EQUIPE, a presences disjointes : la place du bot auquel
+//	                   l'arrivant succede, puis la place de son equipe liberee le plus tot, puis
+//	                   une place de son equipe sans occupant anterieur, puis une place de la table
+//	                   jamais tenue — tant que l'equipe n'a pas sa capacite. Nomme et compte
+//	                   (`repli_place_du_remplacant_par_chainage_d_equipe`) : les bots n'ecrivent
+//	                   aucun tir long (sonde P4), leur place ne se lit pas encore ; leur EQUIPE, elle,
+//	                   se lit dans BOT_METADATA quand aucune entite ne la porte (occupants.go) ;
 //	REPLI `ouverte`    aucune place libre, mais l'equipe n'a pas sa capacite : l'arrivant OUVRE la
 //	                   place que la table du debut ne portait pas (`e5adf7b2` : 23 sieges pour
 //	                   12 contre 12, le douzieme arrive a la 64e seconde). Nomme et compte
@@ -51,6 +54,11 @@ package replay
 // entite ne se voit qu'aux images-cles : sans cette borne, un partant et son remplacant
 // tiendraient la meme place vingt secondes). Entre les deux, la place est VIDE (Q20).
 //
+// DEUX SUCCESSIONS QUE LE FILM DATE NE SONT PAS DES CHEVAUCHEMENTS (2026-10-06, sieges_places.go) :
+// le RELAIS A LA FRAME — un bot que BOT_METADATA declare a la frame ou finit la derniere vie du
+// partant — et L'HUMAIN QUI SUCCEDE AU BOT (Q23) — lu a l'image-cle pendant la declaration du bot,
+// sans vie avant son retrait exact : sa presence commence au lendemain de ce retrait.
+//
 // SANS ENTITE LUE (cf. occupants.go), la presence est l'enveloppe des vies, et le DERNIER occupant
 // de chaque place reste affiche jusqu'a la fin — la regle d'avant, « mourir n'est pas partir »,
 // que sans entite rien ne permet de trancher. Repli nomme et compte
@@ -64,6 +72,7 @@ package replay
 import (
 	"cmp"
 	"context"
+	"log/slog"
 	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -147,8 +156,10 @@ type SeatCoverage struct {
 	// une tuile par place a chaque image (vide ou non) : c'est le nombre de tuiles de trop. 0
 	// attendu.
 	PlacesEnTrop int `json:"placesEnTrop"`
-	// SansEquipe : les entrees presentes sans equipe lue. Leur tuile se range par la feuille de
-	// match (cote web), hors de toute capacite : chacune est a lire.
+	// SansEquipe : les entrees presentes sans equipe lue — ni par leurs entites, ni par leur
+	// declaration BOT_METADATA (occupants.go). Le web ne leur rend aucune tuile (la page Rejeu
+	// regroupe par l'equipe du film seule) : chacune est un defaut de source, journalise en erreur
+	// ([journaliserLesPlaces]). 0 attendu.
 	SansEquipe int `json:"sansEquipe"`
 	// IdentitesHorsRoster : les identites qui nomment une vie publiee sans entree de roster (revue
 	// M2-R1). Sans place ni presence, le web ne leur rend aucune tuile. 0 attendu.
@@ -164,7 +175,8 @@ type SeatCoverage struct {
 	// la meme place.
 	RelaisBornes int `json:"relaisBornes"`
 	// Chevauchements : les couples d'occupants d'une meme place dont les presences CERTAINES se
-	// recouvrent — une contradiction des lectures, comptee.
+	// recouvrent — une contradiction des lectures, comptee. Un relais a la frame (un bot que
+	// BOT_METADATA date arrive a la frame ou le partant finit) n'en est pas un.
 	Chevauchements int `json:"chevauchements"`
 	// TirsContestes : les arrivants dont les tirs designent plusieurs places, ou une place prise.
 	TirsContestes int `json:"tirsContestes"`
@@ -241,7 +253,12 @@ func poserLesSieges(ctx context.Context, roster []RosterEntry, occ occupants, in
 		in.horloge.fb.DeclencheN(fallback.NomPlaceOuverteSousLaCapaciteEstimee, cov.PlacesOuvertes)
 		pp.marquerLesArrivantsSansPresence()
 	}
-	cov.RelaisBornes, cov.Chevauchements = pp.bornerAuSuccesseur()
+	var successions int
+	cov.RelaisBornes, cov.Chevauchements, successions = pp.bornerAuSuccesseur()
+	if successions > 0 {
+		slog.InfoContext(ctx, "rejeu : humain(s) qui succede(nt) a un bot sur sa place — presence ouverte au "+
+			"lendemain de son retrait", "successions", successions)
+	}
 	pp.retirerLesAffichagesVides()
 	if !occ.balaye {
 		in.horloge.fb.DeclencheN(fallback.NomPresenceParEnveloppeDesVies, pp.tenirLesDerniersJusquALaFin())
@@ -253,6 +270,21 @@ func poserLesSieges(ctx context.Context, roster []RosterEntry, occ occupants, in
 	cov.IdentitesHorsRoster = occ.horsRoster
 	cov.compterLesEntrees(roster, pp)
 	return cov
+}
+
+// journaliserLesPlaces dit ce que la pose laisse a lire : en ERREUR une entree presente sans
+// equipe (aucune lecture du film ne la nomme, et aucun repli ne la remplace), en AVERTISSEMENT une
+// entree sans place, une equipe qui affiche plus d'occupants ou de places que sa capacite.
+func journaliserLesPlaces(ctx context.Context, matchID string, cov SeatCoverage) {
+	if cov.SansEquipe > 0 {
+		slog.ErrorContext(ctx, "rejeu : entree(s) du roster presente(s) SANS EQUIPE lue — aucune tuile ne les "+
+			"montre", "match_id", matchID, "sansEquipe", cov.SansEquipe, "entrees", cov.Entrees)
+	}
+	if cov.SansPlace > 0 || cov.Depassements > 0 || cov.PlacesEnTrop > 0 {
+		slog.WarnContext(ctx, "rejeu : places a lire — entree sans place, ou equipe au-dela de sa capacite",
+			"match_id", matchID, "sansPlace", cov.SansPlace, "depassements", cov.Depassements,
+			"placesEnTrop", cov.PlacesEnTrop, "capacite", cov.Capacite)
+	}
 }
 
 // presencesParLesVies compte les entrees presentes dont la presence ne vient que de leurs vies.

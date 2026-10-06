@@ -46,6 +46,7 @@
 import { Fragment } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import type { Allegiance, FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { AbsenceStep, PresenceShade } from '../model/presenceTrackLogic'
@@ -81,13 +82,13 @@ const TRACK_GLYPH_H = 10
  */
 export function ReplayPresenceShade({
   shades,
-  identity,
+  allegiance,
   onSeekFrame,
   locale,
 }: {
   shades: readonly PresenceShade[]
-  /** Camp de chaque xuid, relatif au point de vue : il teinte le glyphe, jamais l'ombre. */
-  identity: ReadonlyMap<string, { ally: boolean }>
+  /** L'allégeance du film, vue du point de vue : elle teinte le glyphe, jamais l'ombre. */
+  allegiance: Pick<FilmAllegiance, 'ofXuid'>
   /** Poser le curseur à cette image. Ne met pas en pause (cf. l'en-tête). */
   onSeekFrame: (frame: number) => void
   locale: ReplayLocale
@@ -123,7 +124,7 @@ export function ReplayPresenceShade({
             >
               <PresenceGlyph
                 kind={s.kind}
-                color={glyphInk(identity.get(s.xuid)?.ally)}
+                color={glyphInk(allegiance.ofXuid(s.xuid))}
                 width={TRACK_GLYPH_W}
                 height={TRACK_GLYPH_H}
               />
@@ -175,12 +176,12 @@ function shadeBackground(source: PresenceShade['source'], entering: boolean): st
 }
 
 /**
- * L'ENCRE DU GLYPHE — les deux encres d'équipe du rejeu, et l'encre COURANTE quand le camp n'est
- * pas connu (bot sans ligne de tableau de score, joueur hors scoreboard). Jamais l'une des deux
- * par défaut : ce serait désigner un camp au hasard, sur le seul repère de la frise qui nomme
- * quelqu'un.
+ * L'ENCRE DU GLYPHE — les deux encres d'équipe du rejeu, et l'encre COURANTE quand l'allégeance
+ * n'est pas connue (le film tait l'équipe du joueur, ou celle du point de vue). Jamais l'une des
+ * deux par défaut : ce serait désigner un camp au hasard, sur le seul repère de la frise qui
+ * nomme quelqu'un.
  */
-function glyphInk(ally: boolean | undefined): string {
-  if (ally === undefined) return 'currentColor'
+function glyphInk(ally: Allegiance): string {
+  if (ally === null) return 'currentColor'
   return tokenCssVar(ally ? 'team-ally' : 'team-enemy')
 }

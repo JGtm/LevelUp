@@ -18,9 +18,9 @@ const TIME = { frameMs: 100, frames: 600 }
 /** Une scène : des poses, et une table de camps par slot (absent = camp inconnu). */
 function sceneOf(
   placements: ReplayEquipmentPlacement[],
-  sides: Record<number, string> = {},
+  sides: Record<number, number> = {},
 ): ZoneScene {
-  return { placements, sideOfSlot: (slot) => sides[slot] ?? null }
+  return { placements, campOfSlot: (slot) => sides[slot] ?? null }
 }
 
 /** Le joueur interrogé : slot 1, à (x, y), à l'image donnée. */
@@ -79,7 +79,7 @@ describe('zonePresenceAt — champ de réparation et écran occultant', () => {
 })
 
 describe('zonePresenceAt — capteur de menaces adverse', () => {
-  const CAMPS = { 1: 't0', 2: 't1' }
+  const CAMPS = { 1: 0, 2: 1 }
 
   it('capteur adverse couvrant le joueur : l’âge du dernier ping est publié', () => {
     // t0 = 10, image 50 : âge 40 frames = 4 000 ms, soit 400 ms après le 3e ping (période 1,8 s).
@@ -93,12 +93,12 @@ describe('zonePresenceAt — capteur de menaces adverse', () => {
   })
 
   it('même camp, poseur non mesuré, ou camp inconnu d’un côté : AUCUNE inimitié affirmée', () => {
-    const memeCamp = { 1: 't0', 2: 't0' }
+    const memeCamp = { 1: 0, 2: 0 }
     expect(zonePresenceAt(sceneOf([sensor()], memeCamp), at(5, 5), TIME)).toBe(NO_ZONES)
     expect(zonePresenceAt(sceneOf([sensor({ owner: -1 })], CAMPS), at(5, 5), TIME)).toBe(NO_ZONES)
-    const poseurSansCamp = { 1: 't0' }
+    const poseurSansCamp = { 1: 0 }
     expect(zonePresenceAt(sceneOf([sensor()], poseurSansCamp), at(5, 5), TIME)).toBe(NO_ZONES)
-    const joueurSansCamp = { 2: 't1' }
+    const joueurSansCamp = { 2: 1 }
     expect(zonePresenceAt(sceneOf([sensor()], joueurSansCamp), at(5, 5), TIME)).toBe(NO_ZONES)
   })
 

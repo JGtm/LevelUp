@@ -49,13 +49,13 @@ import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
 import { matchClock } from '@/lib/replay/matchClock'
-import { allyOfTeamId, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
+import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import { formatClock, teamIdsOf } from './_scoreCurve'
 import { buildScoreEvents, type ScoreEvents, type ScoreEventsTeam } from './_scoreEvents'
 import type { MatchViewText } from './i18n'
 import { teamSeriesColor } from './teamSeriesColor'
-import { resolveXuidMeta } from './xuidMeta'
+import { allyOfTeamId, resolveXuidMeta } from './xuidMeta'
 
 interface Props {
   playerSlug: string

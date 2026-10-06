@@ -61,6 +61,13 @@ describe('buildSquadToolRows', () => {
     expect(res.rows[0].label).toBe('Non attribué')
   })
 
+  it('`top` (vue compacte de Sessions) : les premiers outils du serveur, sans « Non attribué », plus gros en haut', () => {
+    const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS, top: 3 })!
+    expect(res.rows.map((r) => r.label)).toEqual(['Grenade frag', 'Mêlée', 'BR75'])
+    const tous = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS, top: 99 })!
+    expect(tous.rows.some((r) => r.key === 'unattributed')).toBe(false)
+  })
+
   it('comptes, total et classe (pastille) repris tels quels', () => {
     const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS })!
     const br = res.rows.find((r) => r.label === 'BR75')!

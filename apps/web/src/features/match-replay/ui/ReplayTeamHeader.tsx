@@ -17,12 +17,16 @@
  *
  * LA COULEUR EST CELLE DES DEUX AUTRES PANNEAUX (décision D1 amendée) : `team-ally` /
  * `team-enemy`, les tokens que les réglages d'accessibilité peuvent surcharger. Un point bleu
- * sur la carte et un titre rouge pour la même équipe seraient une page cassée.
+ * sur la carte et un titre rouge pour la même équipe seraient une page cassée. ELLE VIENT DU
+ * FILM (2026-10-06) : l'allégeance du CAMP — son désignateur comparé à l'équipe du film du
+ * joueur regardé (`FilmAllegiance.ofTeam`) —, la même que celle des pions de ses joueurs. Elle
+ * se lisait sur les occupants présents reconnus à la feuille : un camp de bots, que la feuille
+ * ne reconnaissait pas, restait neutre.
  *
  * UN CAMP DONT L'ENCRE N'EST PAS CONNUE N'EMPRUNTE AUCUNE DES DEUX COULEURS : liseré `border`,
- * fond à l'encre du thème, texte `muted-foreground` — quand aucun de ses occupants n'a de côté
- * de feuille, ou qu'aucun n'est reconnu au scoreboard. L'allégeance est une information, pas un
- * défaut d'affichage à combler.
+ * fond à l'encre du thème, texte `muted-foreground` — quand le joueur regardé n'a pas d'équipe
+ * du film, ou que le camp n'en est pas un (`-1`, mode sans camps). L'allégeance est une
+ * information, pas un défaut d'affichage à combler.
  *
  * LE TITRE NE PORTE PLUS AUCUN NOMBRE (demande utilisateur du 2026-08-24 : « pas besoin de
  * mettre le score et le deuxième chiffre à côté du nom de l'équipe ») : le score vivant, la
@@ -30,39 +34,18 @@
  * terrain (ReplayScoreBanner), le seul endroit où le regard le cherche pendant la lecture.
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import type { Allegiance } from '@/lib/replay/filmAllegiance'
 
 import { HUD_BAND_CLASS, hudBandStyle } from '../model/hudBand'
-import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
-
-/**
- * allyOfGroup dit de quel côté est un groupe : `true` allié, `false` adverse, `null` quand
- * on ne sait pas — camp sans côté de feuille, ou aucun joueur du groupe reconnu au scoreboard.
- * « Allié » veut dire « du côté du joueur dont on regarde la page » (cf. xuidMeta.ts).
- */
-function allyOfGroup(
-  players: readonly ReplayPlayer[],
-  side: string | null,
-  xuidMeta: XuidMeta | undefined,
-): boolean | null {
-  if (side === null || !xuidMeta) return null
-  const known = players.filter((p) => xuidMeta.has(p.xuid))
-  if (known.length === 0) return null
-  return known.some((p) => xuidMeta.get(p.xuid)?.ally === true)
-}
 
 interface Props {
   /** Le nom du camp, déjà résolu par la colonne (`campLabel`). */
   label: string
-  /** Les joueurs qui tiennent une place de CE camp à l'image lue : ils disent son allégeance. */
-  players: readonly ReplayPlayer[]
-  /** Le côté de feuille du camp (`ReplayCamp.side`) — l'encre seulement, jamais l'appartenance. */
-  side: string | null
-  xuidMeta?: XuidMeta
+  /** L'allégeance du camp vue du joueur regardé (`FilmAllegiance.ofTeam`) ; `null` = encre neutre. */
+  ally: Allegiance
 }
 
-export function ReplayTeamHeader({ label, players, side, xuidMeta }: Props) {
-  const ally = allyOfGroup(players, side, xuidMeta)
+export function ReplayTeamHeader({ label, ally }: Props) {
   const accent = ally === null ? null : tokenCssVar(ally ? 'team-ally' : 'team-enemy')
   return (
     <h3

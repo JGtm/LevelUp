@@ -78,7 +78,7 @@ export function pariteOuRien(pct: number | undefined): number | null {
 
 /**
  * habituelOuTaux — le repère d'une grandeur : l'habituel de la PÉRIODE DE RÉFÉRENCE quand
- * le serveur le mesure (lot S, `riposte.habituel_pct` / `appui.habituel_pct`), sinon le
+ * le serveur le mesure (lot S, `appui.habituel_pct`), sinon le
  * taux de la fenêtre consultée.
  *
  * L'ordre n'est pas indifférent : comparer une soirée à la moyenne de la fenêtre qui la
