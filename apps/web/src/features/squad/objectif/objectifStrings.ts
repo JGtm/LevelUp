@@ -97,7 +97,7 @@ function duration(seconds: number): string {
 const FR: ObjectifText = {
   sectionTitle: 'Objectif',
   roles: { take: 'Prendre', defend: 'Défendre', hold: 'Tenir' },
-  ourSide: 'Notre camp',
+  ourSide: 'Camp',
   opponent: 'Adversaire',
   parity: '50 % : autant que l’adversaire',
   matchesFmt: (n) => (n > 1 ? `${n} matchs` : `${n} match`),
@@ -107,18 +107,16 @@ const FR: ObjectifText = {
   balance: {
     title: 'Rapport de force par famille de mode',
     info:
-      'Pour chaque action de l’objectif, ce que notre camp a fait face à l’adversaire, famille ' +
-      'par famille. Le trait orange marque 50 % : autant que l’adversaire.',
+      'Actions de l’objectif du camp face à celles de l’adversaire, par famille de mode ; trait orange : 50 %.',
     segmentTip: (side, column, value, pct) => `${side} · ${column} : ${value} (${pct})`,
   },
   fil: {
     title: 'Rapport de force au fil de la session',
     info:
-      'Notre part de ce que le lobby a fait à l’objectif, en trois rôles, cumulée depuis le ' +
-      'premier match à objectif de la soirée, quel que soit le mode. Chaque match compte ' +
-      'pareil ; les petits points sont la part de chaque match, leur taille son volume.',
+      'Part du camp dans les actions de l’objectif du lobby, par rôle, cumulée depuis le premier match à ' +
+      'objectif de la soirée, chaque match pesant pareil. Points : part de chaque match, taille selon le volume.',
     winLoss: 'Victoire, défaite',
-    ariaLabel: 'Notre part de l’objectif, cumulée au fil de la soirée, par rôle',
+    ariaLabel: 'Part du camp dans l’objectif, cumulée au fil de la soirée, par rôle',
     belowMinimum: (n) => ({
       lead: `${n > 1 ? `${n} matchs` : `${n} match`} à objectif ce soir`,
       rest: ' : sous le minimum de trois, la carte se masque.',
@@ -133,9 +131,8 @@ const FR: ObjectifText = {
   sheets: {
     title: 'Répartition de l’objectif dans l’escouade',
     info:
-      'Une fiche par joueur, plus le reste du camp : ce que chacun a fait à l’objectif, rôle ' +
-      'par rôle. Mêmes actions dans le même ordre sur chaque fiche ; un zéro reste affiché, ' +
-      'atténué.',
+      'Actions de l’objectif de chaque joueur et du reste du camp, rôle par rôle, dans le même ordre sur ' +
+      'chaque fiche ; un zéro reste affiché, atténué.',
     dominantRole: 'Rôle dominant',
     rest: 'Reste du camp',
     lineTip: (player, family, column, value) => `${player} · ${family}\n${column} : ${value}`,
@@ -143,14 +140,12 @@ const FR: ObjectifText = {
   evenings: {
     title: 'Rapport de force, soirée après soirée',
     info:
-      'Notre part de ce que le lobby a fait à l’objectif, en trois rôles, pour chaque soirée ' +
-      'd’au moins trois matchs à objectif, quels que soient les modes. Ce soir à droite ; le ' +
-      'pointillé fin est la médiane des soirées précédentes. Sous chaque soirée : ses modes et ' +
-      'ses victoires.',
+      'Part du camp dans les actions de l’objectif du lobby, par rôle, pour chaque soirée d’au moins trois ' +
+      'matchs à objectif, ce soir à droite ; pointillé fin : médiane des soirées précédentes.',
     median: 'Médiane des soirées précédentes',
     winsLosses: 'Matchs gagnés, perdus',
     tonight: 'ce soir',
-    ariaLabel: 'Notre part de l’objectif par rôle, soirée après soirée',
+    ariaLabel: 'Part du camp dans l’objectif par rôle, soirée après soirée',
     outOfFmt: (wins, matches) => `${wins} sur ${matches}`,
     familyAbbr: {
       ctf: 'D',
@@ -163,7 +158,7 @@ const FR: ObjectifText = {
     },
     abbrItem: (abbr, name) => `${abbr} : ${name}`,
     pointTip: (role, evening, value, median) =>
-      `${role} · ${evening}\nNotre part : ${value}${median ? ` (médiane des précédentes ${median})` : ''}`,
+      `${role} · ${evening}\nPart du camp : ${value}${median ? ` (médiane des précédentes ${median})` : ''}`,
     bandTip: (evening, wins, matches, mix) =>
       `${evening}\n${wins} victoire${wins > 1 ? 's' : ''} sur ${matches} matchs à objectif (${mix})`,
     eveningOf: (date) => `soirée du ${date}`,
@@ -197,7 +192,7 @@ const FR: ObjectifText = {
 const EN: ObjectifText = {
   sectionTitle: 'Objective',
   roles: { take: 'Take', defend: 'Defend', hold: 'Hold' },
-  ourSide: 'Our side',
+  ourSide: 'Side',
   opponent: 'Opponent',
   parity: '50%: as much as the opponent',
   matchesFmt: (n) => (n > 1 ? `${n} matches` : `${n} match`),
@@ -206,19 +201,16 @@ const EN: ObjectifText = {
   outcome: { win: 'win', loss: 'loss', tie: 'draw', dnf: 'left' },
   balance: {
     title: 'Balance of power by mode family',
-    info:
-      'For each objective action, what our side did against the opponent, family by family. ' +
-      'The orange line marks 50%: as much as the opponent.',
+    info: 'The side’s objective actions against the opponent’s, by mode family; orange line: 50%.',
     segmentTip: (side, column, value, pct) => `${side} · ${column}: ${value} (${pct})`,
   },
   fil: {
     title: 'Balance of power over the session',
     info:
-      'Our share of what the lobby did on the objective, in three roles, accumulated since the ' +
-      'first objective match of the evening, whatever the mode. Each match counts the same; the ' +
-      'small dots are each match’s share, their size its volume.',
+      'The side’s share of the lobby’s objective actions, by role, accumulated since the evening’s first ' +
+      'objective match, each match weighing the same. Dots: each match’s share, sized by volume.',
     winLoss: 'Win, loss',
-    ariaLabel: 'Our share of the objective, accumulated over the evening, by role',
+    ariaLabel: 'The side’s share of the objective, accumulated over the evening, by role',
     belowMinimum: (n) => ({
       lead: `${n > 1 ? `${n} objective matches` : `${n} objective match`} tonight`,
       rest: ': below the minimum of three, the card is hidden.',
@@ -233,22 +225,21 @@ const EN: ObjectifText = {
   sheets: {
     title: 'Objective share within the squad',
     info:
-      'One sheet per player, plus the rest of our side: what each did on the objective, role ' +
-      'by role. Same actions in the same order on every sheet; a zero stays, dimmed.',
+      'Objective actions of each player and of the rest of the side, role by role, in the same order on ' +
+      'every sheet; a zero stays, dimmed.',
     dominantRole: 'Dominant role',
-    rest: 'Rest of our side',
+    rest: 'Rest of the side',
     lineTip: (player, family, column, value) => `${player} · ${family}\n${column}: ${value}`,
   },
   evenings: {
     title: 'Balance of power, session by session',
     info:
-      'Our share of what the lobby did on the objective, in three roles, for each evening with ' +
-      'at least three objective matches, whatever the modes. Tonight on the right; the thin ' +
-      'dotted line is the median of previous evenings. Under each evening: its modes and its wins.',
+      'The side’s share of the lobby’s objective actions, by role, for each evening with at least three ' +
+      'objective matches, tonight on the right; thin dotted line: median of previous evenings.',
     median: 'Median of previous evenings',
     winsLosses: 'Matches won, lost',
     tonight: 'tonight',
-    ariaLabel: 'Our share of the objective by role, evening after evening',
+    ariaLabel: 'The side’s share of the objective by role, evening after evening',
     outOfFmt: (wins, matches) => `${wins} of ${matches}`,
     familyAbbr: {
       ctf: 'CTF',
@@ -261,7 +252,7 @@ const EN: ObjectifText = {
     },
     abbrItem: (abbr, name) => `${abbr}: ${name}`,
     pointTip: (role, evening, value, median) =>
-      `${role} · ${evening}\nOur share: ${value}${median ? ` (median of previous ${median})` : ''}`,
+      `${role} · ${evening}\nSide share: ${value}${median ? ` (median of previous ${median})` : ''}`,
     bandTip: (evening, wins, matches, mix) =>
       `${evening}\n${wins} win${wins > 1 ? 's' : ''} out of ${matches} objective matches (${mix})`,
     eveningOf: (date) => `evening of ${date}`,

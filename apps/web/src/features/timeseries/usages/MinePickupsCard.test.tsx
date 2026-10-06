@@ -1,6 +1,6 @@
 /**
- * MinePickupsCard.test.tsx — « Mes prises dans mon camp » : groupes par ressource, objets triés par
- * volume de mon camp, segments moi / reste avec leurs comptes, « moi n · camp m » au bout, barre à
+ * MinePickupsCard.test.tsx — « Part du joueur dans les prises du camp » : groupes par ressource, objets triés par
+ * volume du camp, segments joueur / reste avec leurs comptes, « JGtm n · camp m » au bout, barre à
  * l'échelle du plus gros objet, râteliers repliés, bonus perdus des deux camps.
  */
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -14,23 +14,23 @@ import { EMPRISE_TEXT_SOLO, USAGES_TEXT } from './usagesText'
 const nameOf = (o: { key: string; label?: string }) => o.label ?? o.key
 
 function renderCard() {
-  render(<MinePickupsCard mine={buildMinePickups(soloEmprise(), nameOf)!} itemName={nameOf} t={EMPRISE_TEXT_SOLO.fr} ut={USAGES_TEXT.fr.cards} />)
+  render(<MinePickupsCard mine={buildMinePickups(soloEmprise(), nameOf)!} itemName={nameOf} player="JGtm" t={EMPRISE_TEXT_SOLO.fr} ut={USAGES_TEXT.fr.cards} />)
 }
 
 const width = (id: string) => parseFloat((screen.getByTestId(id) as HTMLElement).style.width)
 
 describe('MinePickupsCard', () => {
-  it('titre et légende de la maquette', () => {
+  it('titre et légende : le joueur par son gamertag, le reste du camp', () => {
     renderCard()
-    expect(screen.getByText('Mes prises dans mon camp')).toBeTruthy()
-    expect(screen.getByText('Moi')).toBeTruthy()
-    expect(screen.getByText('Reste de mon camp')).toBeTruthy()
+    expect(screen.getByText('Part du joueur dans les prises du camp')).toBeTruthy()
+    expect(screen.getAllByText('JGtm').length).toBeGreaterThan(0)
+    expect(screen.getByText('Reste du camp')).toBeTruthy()
   })
 
-  it('une ligne par objet pris par mon camp, « moi n · camp m » au bout', () => {
+  it('une ligne par objet pris par le camp, « JGtm n · camp m » au bout', () => {
     renderCard()
-    expect(screen.getByTestId('usages-mine-value-spnkr').textContent).toBe('moi 30 · camp 129')
-    expect(screen.getByTestId('usages-mine-value-sniper').textContent).toBe('moi 0 · camp 100')
+    expect(screen.getByTestId('usages-mine-value-spnkr').textContent).toBe('JGtm 30 · camp 129')
+    expect(screen.getByTestId('usages-mine-value-sniper').textContent).toBe('JGtm 0 · camp 100')
   })
 
   it('barre à l’échelle du plus gros objet ; segments moi / reste dans la barre', () => {
@@ -42,7 +42,7 @@ describe('MinePickupsCard', () => {
     expect(screen.getByTestId('usages-mine-me-spnkr').textContent).toBe('30')
   })
 
-  it('aucune prise à moi : pas de segment « moi »', () => {
+  it('aucune prise du joueur : pas de segment du joueur', () => {
     renderCard()
     expect(screen.queryByTestId('usages-mine-me-sniper')).toBeNull()
     expect(width('usages-mine-rest-sniper')).toBeCloseTo(100)

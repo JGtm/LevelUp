@@ -1,11 +1,11 @@
 /**
- * LivesNearTeammateCard — « Mes vies : près d'un coéquipier ou seul » (Séries temporelles › Usages,
- * bloc « Près d'un coéquipier ou seul » ; maquette v4, décisions V3 et D5 du plan).
+ * LivesNearTeammateCard — « Vies à portée d'un coéquipier, vies isolées » (Séries temporelles ›
+ * Usages, bloc « Isolement » ; maquette v4, décisions V3 et D5 du plan).
  *
- * Une ligne « Mes vies » : la barre ÉPAISSE partage mes vies terminées par une mort entre « près
- * d'un coéquipier » (`squad-player-1`, distance au plus proche ≤ la portée du radar du match, à
- * l'instant de la mort) et « seul » (`extreme`), compte et part dans chaque segment quand ils
- * tiennent, repli au-dessus sinon ; la barre FINE partage mes frags tombés pendant ces vies ; dessous,
+ * Une ligne au gamertag du joueur : la barre ÉPAISSE partage ses vies terminées par une mort entre
+ * « à portée d'un coéquipier » (`squad-player-1`, distance au plus proche ≤ la portée du radar du
+ * match, à l'instant de la mort) et « isolée » (`extreme`), compte et part dans chaque segment quand
+ * ils tiennent, repli au-dessus sinon ; la barre FINE partage ses frags tombés pendant ces vies ; dessous,
  * « frags : n · p % · x par vie … y par vie · m ». Les vies écartées (aucun coéquipier situé, carte
  * sans portée connue, journal des morts non publiable) sont comptées dans l'aide ⓘ. Axe 0-100 %.
  */
@@ -29,7 +29,7 @@ const ALONE_INK = tokenCssVar('extreme')
 const COLUMNS = pisteColumns(150)
 const TICKS = [0, 25, 50, 75, 100] as const
 
-export function LivesNearTeammateCard({ model, ut }: { model: LivesModel; ut: UsagesCardsText }) {
+export function LivesNearTeammateCard({ model, player, ut }: { model: LivesModel; player: string; ut: UsagesCardsText }) {
   const l = ut.lives
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, model)
@@ -57,7 +57,7 @@ export function LivesNearTeammateCard({ model, ut }: { model: LivesModel; ut: Us
       <div ref={ref} className="flex flex-col gap-3.5">
         <div className="grid items-center gap-3" style={{ gridTemplateColumns: COLUMNS }}>
           <div className="min-w-0 text-[12.5px] leading-tight">
-            {l.rowLabel}
+            {player}
             <small className="block text-[11px] text-muted-foreground" data-testid="usages-lives-sub">
               {l.rowSub(model.lives)}
             </small>

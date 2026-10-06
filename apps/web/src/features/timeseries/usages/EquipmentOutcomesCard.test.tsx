@@ -1,7 +1,7 @@
 /**
  * EquipmentOutcomesCard.test.tsx — « Équipement pris, et ce que j'en ai fait » : une ligne par famille
  * dans l'ordre du Go ; mesurées : servi / gardé / lâché pour moi (comptes dans les segments), barre
- * fine et ligne de parts pour le reste de mon camp ; non mesurées : « Non mesuré » et mes lâchers.
+ * fine et ligne de parts pour le reste du camp ; non mesurées : « Non mesuré » et les lâchers du joueur.
  */
 import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -35,7 +35,7 @@ afterEach(() => {
 const NAMES: Record<string, string> = { wall: 'Mur de protection', sensor: 'Capteur de menaces', shroud_screen: 'Écran occultant', grapple: 'Grappin', thruster: 'Propulseur' }
 
 function renderCard() {
-  render(<EquipmentOutcomesCard rows={buildEquipmentRows(soloEmprise())} familyLabel={(f) => NAMES[f] ?? f} ut={USAGES_TEXT.fr.cards} />)
+  render(<EquipmentOutcomesCard rows={buildEquipmentRows(soloEmprise())} familyLabel={(f) => NAMES[f] ?? f} player="JGtm" ut={USAGES_TEXT.fr.cards} />)
 }
 
 const width = (id: string) => parseFloat((screen.getByTestId(id) as HTMLElement).style.width)
@@ -69,7 +69,7 @@ describe('EquipmentOutcomesCard', () => {
   it('repli : aligné sur le début de SON segment (40 servis · 1 gardé · 2 lâchés : « gardé » à ~93 %)', () => {
     fit.hidden = new Set(['usages-equip-me-wall-kept'])
     const rows = buildEquipmentRows(soloEmprise()).map((r) => (r.family === 'wall' && r.measured ? { ...r, me: [40, 1, 2] as typeof r.me } : r))
-    render(<EquipmentOutcomesCard rows={rows} familyLabel={(f) => NAMES[f] ?? f} ut={USAGES_TEXT.fr.cards} />)
+    render(<EquipmentOutcomesCard rows={rows} familyLabel={(f) => NAMES[f] ?? f} player="JGtm" ut={USAGES_TEXT.fr.cards} />)
     const repli = screen.getByTestId('usages-equip-repli-wall')
     expect(repli.textContent).toBe('1')
     expect(parseFloat(repli.style.paddingLeft)).toBeCloseTo((40 / 43) * 100)
@@ -81,13 +81,13 @@ describe('EquipmentOutcomesCard', () => {
     expect(screen.queryAllByTestId(/^usages-equip-repli-/)).toEqual([])
   })
 
-  it('reste de mon camp : barre fine et ligne de parts', () => {
+  it('reste du camp : barre fine et ligne de parts', () => {
     renderCard()
     expect(width('usages-equip-rest-wall-used')).toBeCloseTo((146 / 304) * 100)
-    expect(screen.getByTestId('usages-equip-restline-wall').textContent).toBe('reste de mon camp : 146 servis · 7 gardés · 151 lâchés48 % servis')
+    expect(screen.getByTestId('usages-equip-restline-wall').textContent).toBe('reste du camp : 146 servis · 7 gardés · 151 lâchés48 % servis')
   })
 
-  it('non mesurées : le libellé, mes lâchers, « Non mesuré »', () => {
+  it('non mesurées : le libellé, les lâchers du joueur, « Non mesuré »', () => {
     renderCard()
     expect(screen.getByTestId('usages-equip-sub-grapple').textContent).toBe('84 lâchés')
     expect(screen.getByTestId('usages-equip-row-grapple').textContent).toContain('Non mesuré : ni prise ni usage publiés pour cette famille')
@@ -98,11 +98,11 @@ describe('EquipmentOutcomesCard', () => {
     renderCard()
     expect(screen.getByTestId('usages-equip-sub-shroud_screen').textContent).toBe('0 objet')
     expect(screen.queryByTestId('usages-equip-me-shroud_screen-used')).toBeNull()
-    expect(screen.getByTestId('usages-equip-restline-shroud_screen').textContent).toBe('reste de mon camp : 0 objet')
+    expect(screen.getByTestId('usages-equip-restline-shroud_screen').textContent).toBe('reste du camp : 0 objet')
   })
 
-  it('légende de la maquette', () => {
+  it('légende', () => {
     renderCard()
-    for (const l of ['Servi', 'Gardé sans servir', 'Lâché', 'Barre fine : reste de mon camp']) expect(screen.getByText(l)).toBeTruthy()
+    for (const l of ['Servi', 'Gardé sans servir', 'Lâché', 'Barre fine : reste du camp']) expect(screen.getByText(l)).toBeTruthy()
   })
 })

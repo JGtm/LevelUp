@@ -21,7 +21,7 @@ export interface ResourceText {
   /** Cases vides : synthèse (« Aucun bonus sur cette carte. »), objet (« : pas sur cette carte. », après son nom). */
   absent: string
   itemAbsent: string
-  /** Sous-libellés de « Frags obtenus avec… » (« frags pendant l’effet ») et du « Rendement… » (« frags par prise »). */
+  /** Sous-libellés de « Frags par ressource » (« frags pendant l’effet ») et du « Rendement… » (« frags par prise »). */
   productionSub: string
   yieldSub: string
 }
@@ -154,11 +154,13 @@ function signedPct(gap: number, sep: string): string {
 
 const FR: BaseEmpriseText = {
   sections: {
-    bilan: 'Bilan de la soirée',
-    roles: 'Rôles dans l’escouade',
-    carte: 'Carte par carte',
-    prendre: 'Prendre, et s’en servir',
-    habitude: 'Par rapport à d’habitude',
+    bilan: 'Ressources',
+    roles: 'Prises par joueur',
+    carte: 'Par match',
+    // Pas « Rendement » seul : c'est le libellé du champ `offensive_conversion` (fields.toml), une
+    // autre grandeur — lint-no-hardcoded-fields.
+    prendre: 'Rendement des ressources',
+    habitude: 'Soirées précédentes',
   },
   resources: {
     powerup: {
@@ -192,41 +194,37 @@ const FR: BaseEmpriseText = {
       yieldSub: 'frags par prise',
     },
   },
-  ourSide: 'Notre camp',
+  ourSide: 'Camp',
   opponent: 'Adversaire',
   parity: '50 % : autant que l’adversaire',
   pctFmt: frPct,
   pctIntFmt: (v) => `${Math.round(v)} %`,
   control: {
-    title: 'Contrôle des ressources',
+    title: 'Prises par camp',
     info:
-      'La part de chaque ressource prise par notre camp face à l’adversaire, sur les matchs de ' +
-      'la soirée. Les nombres sont des comptes ; le trait orange marque 50 %, autant que ' +
-      'l’adversaire. Les bonus sans ramasseur connu ne comptent dans aucun camp.',
-    ariaLabel: 'Notre part des prises de chaque ressource, face à l’adversaire',
+      'Prises de chaque ressource par le camp et par l’adversaire, en comptes, sur les matchs filmés de la ' +
+      'soirée ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucun camp.',
+    ariaLabel: 'Part du camp dans les prises de chaque ressource, face à l’adversaire',
     segmentTip: (side, resource, sub, value, tot, pct) => `${side} · ${resource} (${sub})\n${value} sur ${tot} (${pct})`,
   },
   fil: {
-    title: 'Contrôle des ressources au fil de la session',
+    title: 'Prises par camp, cumul par match',
     info:
-      'Notre part des prises de chaque ressource, cumulée depuis le premier match de la ' +
-      'soirée. Les petits points sont la part de chaque match, leur taille son volume. Un match ' +
-      'sans la ressource laisse la courbe filer jusqu’au suivant.',
+      'Part du camp dans les prises de chaque ressource, cumulée match après match sur la soirée. Points : ' +
+      'part de chaque match, taille selon le volume ; un match sans la ressource n’a pas de point.',
     winLoss: 'Victoire, défaite',
     dominance: 'Drapeau de dominance',
     pointTip: (v) =>
-      `${v.match}${v.outcome ? ` (${v.outcome})` : ''}\n${v.resource} : ${v.us} pour nous, ${v.them} pour eux (${v.pct})\n` +
+      `${v.match}${v.outcome ? ` (${v.outcome})` : ''}\n${v.resource} : camp ${v.us}, adversaire ${v.them} (${v.pct})\n` +
       `Cumul : ${v.cumUs} sur ${v.cumTotal} (${v.cumPct})`,
     endTip: (resource, cumUs, cumTotal, pct) => `${resource}\nCumul de la soirée : ${cumUs} sur ${cumTotal} (${pct})`,
     bandTip: (match, result, dominance) => `${match}${result ? `\n${result}` : ''}${dominance ? ` · ${dominance}` : ''}`,
   },
   sheets: {
-    title: 'Répartition des prises dans l’escouade',
+    title: 'Prises par joueur',
     info:
-      'Qui, dans notre camp, a pris chaque bonus, arme spéciale et véhicule de la soirée, une ' +
-      'pastille par prise. Pour un bonus, une pastille vide est une prise perdue : gardée sans ' +
-      'être activée, ou lâchée en mourant. L’usage d’une arme spéciale ou d’un véhicule n’est pas ' +
-      'mesuré par prise : leurs pastilles sont toutes pleines.',
+      'Prises de chaque bonus, arme spéciale et véhicule par joueur du camp sur la soirée, une pastille par ' +
+      'prise. Pastille vide : bonus perdu (gardé sans être activé, ou lâché à la mort).',
     dominant: 'Ressource dominante',
     rest: 'Reste du camp',
     legendTaken: 'Prise',
@@ -235,7 +233,7 @@ const FR: BaseEmpriseText = {
     lossesTitle: 'Bonus perdus',
     lossesFmt: (lost, taken) => `${lost} sur ${taken}`,
     lineTip: (player, item, n, camp, lost) =>
-      `${player} · ${item}\n${n} des ${camp} prises de notre camp${lost ? `\n${lost}` : ''}`,
+      `${player} · ${item}\n${n} des ${camp} prises du camp${lost ? `\n${lost}` : ''}`,
     lostFmt: (kept, dropped) => {
       const n = kept + dropped
       if (n <= 0) return null
@@ -246,13 +244,12 @@ const FR: BaseEmpriseText = {
     },
   },
   production: {
-    title: 'Frags obtenus avec les ressources',
+    title: 'Frags par ressource',
     info:
-      'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine ce qui les a ' +
-      'permis (temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un véhicule), toutes deux sur les matchs où ' +
-      'ce qui les a permis est mesuré. Si la coupure de la barre épaisse est à gauche de celle de la ' +
-      'fine, on a moins produit qu’on n’a eu. Les frags de toute la soirée se lisent match par match.',
-    ariaLabel: 'Notre part des frags obtenus avec chaque ressource, et de ce qui les a permis',
+      'Barre épaisse : part du camp dans les frags obtenus avec chaque ressource ; barre fine : part du ' +
+      'camp dans l’exposition (temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un ' +
+      'véhicule). Périmètre : les matchs de la soirée où l’exposition est mesurée.',
+    ariaLabel: 'Part du camp dans les frags obtenus avec chaque ressource, et dans l’exposition',
     thinLegend: 'Barre fine : temps d’effet, prises ou temps à bord',
     exposure: {
       effect_ms: { name: 'temps d’effet', fmt: duration },
@@ -263,39 +260,37 @@ const FR: BaseEmpriseText = {
     exposureLine: (name, value, pct) => `${name} : ${value} · ${pct}`,
   },
   yield: {
-    title: 'Rendement face à l’adversaire',
+    title: 'Rendement par ressource',
     info:
-      'Combien notre camp produit de plus ou de moins que l’adversaire pour la même exposition : ' +
-      'par minute d’effet d’un bonus, par prise d’arme spéciale, par minute à bord d’un véhicule. Zéro veut dire autant que lui. ' +
-      'Les deux rendements bruts sont écrits sous la valeur.',
-    ariaLabel: 'Notre rendement face à celui de l’adversaire, par ressource',
-    more: 'Plus productifs que l’adversaire',
+      'Écart relatif entre les frags du camp et ceux de l’adversaire pour la même exposition : par minute ' +
+      'd’effet d’un bonus, par prise d’arme spéciale, par minute à bord d’un véhicule. Zéro : autant ; ' +
+      'rendements bruts sous la valeur.',
+    ariaLabel: 'Rendement du camp face à celui de l’adversaire, par ressource',
+    more: 'Camp plus productif',
     less: 'Moins',
     axis: ['−50 %', '−25', 'autant', '+25', '+50 %'],
     gapFmt: (gap) => signedPct(gap, ' '),
     rawFmt: (us, them) => `${dec1(us, 'fr-FR')} contre ${dec1(them, 'fr-FR')}`,
-    tip: (resource, sub, us, them, gap) => `${resource} · ${sub}\nNous ${dec1(us, 'fr-FR')}, eux ${dec1(them, 'fr-FR')} : ${gap}`,
+    tip: (resource, sub, us, them, gap) => `${resource} · ${sub}\nCamp ${dec1(us, 'fr-FR')}, adversaire ${dec1(them, 'fr-FR')} : ${gap}`,
   },
   habit: {
-    title: 'Contrôle des ressources, soirée après soirée',
+    title: 'Prises par camp, par soirée',
     info:
-      'Notre part des prises sur chaque soirée comparable de la composition (mêmes familles de ' +
-      'mode que ce soir), la dernière à droite. Le trait fin pointillé de chaque couleur est la ' +
-      'médiane des soirées précédentes.',
+      'Part du camp dans les prises de chaque ressource, par soirée comparable de la composition (mêmes ' +
+      'familles de mode), la plus récente à droite ; pointillé fin : médiane des soirées précédentes.',
     tonight: 'ce soir',
     pointTip: (resource, evening, value, med) =>
       `${resource}\n${evening} : ${value}${med ? `\nMédiane des soirées précédentes : ${med}` : ''}`,
     eveningOf: (date) => `Soirée du ${date}`,
     medianTip: (resource, value) => `${resource}\nMédiane des soirées précédentes : ${value}`,
-    noHistory: (list) => ({ lead: 'Aucune soirée précédente comparable. ', rest: `Ce soir, notre part des prises : ${list}.` }),
+    noHistory: (list) => ({ lead: 'Aucune soirée précédente comparable. ', rest: `Ce soir, part du camp dans les prises : ${list}.` }),
     shareItem: (resource, pct) => `${resource.toLowerCase()} ${pct}`,
   },
   grid: {
-    title: 'Contrôle des ressources, match par match',
+    title: 'Prises par camp, par match',
     info:
-      'Une colonne par match, dans l’ordre de la soirée, avec son résultat. La couleur dit si ' +
-      'notre camp a pris plus ou moins que l’adversaire, et sature à trente points d’écart. Le ' +
-      'survol d’une case détaille les armes.',
+      'Une colonne par match de la soirée, avec son résultat ; couleur : écart entre les prises du camp et ' +
+      'celles de l’adversaire, saturée à trente points.',
     more: 'Plus que l’adversaire',
     less: 'Moins',
     nothing: 'Rien à prendre',
@@ -303,7 +298,7 @@ const FR: BaseEmpriseText = {
     noFilmCell: 'sans film',
     noFilmTip: 'Film non décodé : rien à lire pour cette ligne.',
     noTeamCell: 'camp inconnu',
-    noTeamTip: 'Notre camp est inconnu sur ce match (chacun pour soi, ou camp absent de la feuille de match) : rien ne se partage entre les deux camps.',
+    noTeamTip: 'Camp inconnu sur ce match (chacun pour soi, ou camp absent de la feuille de match) : rien ne se partage entre les deux camps.',
     untieredCell: 'non classé',
     untieredTip: 'Niveaux de socle non mesurés sur ce match : armes spéciales et armes de râtelier ne se séparent pas.',
     unestablishedTip: 'Carte absente de la référence des socles : armes spéciales et armes de râtelier ne se séparent pas.',
@@ -314,8 +309,8 @@ const FR: BaseEmpriseText = {
     racksCount: (n) => `(${n}, prises)`,
     matchHead: (time, map, mode, result) =>
       `${[time, map].filter(Boolean).join(' · ')}${mode || result ? ` (${[mode, result].filter(Boolean).join(', ')})` : ''}`,
-    cellTip: (name, us, them, pct) => `${name} : ${us} pour nous, ${them} pour eux (${pct})`,
-    whoFmt: (list) => `Chez nous : ${list}`,
+    cellTip: (name, us, them, pct) => `${name} : camp ${us}, adversaire ${them} (${pct})`,
+    whoFmt: (list) => `Camp : ${list}`,
     restLower: 'reste du camp',
     padsFmt: (emptied, attributed) => `${emptied} socles vidés, ${attributed} prises attribuées`,
     dominanceTip: (label) => `${label}\nDrapeau de dominance du match`,
@@ -324,11 +319,11 @@ const FR: BaseEmpriseText = {
 
 const EN: BaseEmpriseText = {
   sections: {
-    bilan: 'Session summary',
-    roles: 'Roles within the squad',
-    carte: 'Map by map',
-    prendre: 'Taking, and using',
-    habitude: 'Compared with usual',
+    bilan: 'Resources',
+    roles: 'Pickups by player',
+    carte: 'By match',
+    prendre: 'Resource efficiency',
+    habitude: 'Previous sessions',
   },
   resources: {
     powerup: {
@@ -362,41 +357,37 @@ const EN: BaseEmpriseText = {
       yieldSub: 'kills per pickup',
     },
   },
-  ourSide: 'Our side',
+  ourSide: 'Side',
   opponent: 'Opponent',
   parity: '50%: as much as the opponent',
   pctFmt: enPct,
   pctIntFmt: (v) => `${Math.round(v)}%`,
   control: {
-    title: 'Resource control',
+    title: 'Pickups by side',
     info:
-      'The share of each resource our side picked up against the opponent, over the session’s ' +
-      'matches. The numbers are counts; the orange line marks 50%, as much as the opponent. ' +
-      'Power-ups with no known picker count for neither side.',
-    ariaLabel: 'Our share of each resource’s pickups, against the opponent',
+      'Pickups of each resource by the side and by the opponent, in counts, over the session’s filmed ' +
+      'matches; orange line: 50%. Power-ups with no known picker count for neither side.',
+    ariaLabel: 'The side’s share of each resource’s pickups, against the opponent',
     segmentTip: (side, resource, sub, value, tot, pct) => `${side} · ${resource} (${sub})\n${value} of ${tot} (${pct})`,
   },
   fil: {
-    title: 'Resource control over the session',
+    title: 'Pickups by side, cumulated by match',
     info:
-      'Our share of each resource’s pickups, cumulated from the session’s first match. The ' +
-      'small dots are each match’s share, their size its volume. A match without the resource ' +
-      'lets the line run on to the next one.',
+      'The side’s share of each resource’s pickups, cumulated match after match over the session. Dots: ' +
+      'each match’s share, sized by volume; a match without the resource has no dot.',
     winLoss: 'Win, loss',
     dominance: 'Dominance flag',
     pointTip: (v) =>
-      `${v.match}${v.outcome ? ` (${v.outcome})` : ''}\n${v.resource}: ${v.us} for us, ${v.them} for them (${v.pct})\n` +
+      `${v.match}${v.outcome ? ` (${v.outcome})` : ''}\n${v.resource}: side ${v.us}, opponent ${v.them} (${v.pct})\n` +
       `Cumulated: ${v.cumUs} of ${v.cumTotal} (${v.cumPct})`,
     endTip: (resource, cumUs, cumTotal, pct) => `${resource}\nSession total: ${cumUs} of ${cumTotal} (${pct})`,
     bandTip: (match, result, dominance) => `${match}${result ? `\n${result}` : ''}${dominance ? ` · ${dominance}` : ''}`,
   },
   sheets: {
-    title: 'Pickups within the squad',
+    title: 'Pickups by player',
     info:
-      'Who on our side picked up each power-up, power weapon and vehicle of the session, one dot ' +
-      'per pickup. For a power-up, a hollow dot is a lost pickup: held without being ' +
-      'activated, or dropped on death. Power weapon and vehicle use isn’t measured per pickup: their dots are ' +
-      'all filled.',
+      'Pickups of each power-up, power weapon and vehicle by each player of the side over the session, one ' +
+      'dot per pickup. Hollow dot: a lost power-up (held without being activated, or dropped on death).',
     dominant: 'Main resource',
     rest: 'Rest of the side',
     legendTaken: 'Pickup',
@@ -405,7 +396,7 @@ const EN: BaseEmpriseText = {
     lossesTitle: 'Lost power-ups',
     lossesFmt: (lost, taken) => `${lost} of ${taken}`,
     lineTip: (player, item, n, camp, lost) =>
-      `${player} · ${item}\n${n} of our side’s ${camp} pickups${lost ? `\n${lost}` : ''}`,
+      `${player} · ${item}\n${n} of the side’s ${camp} pickups${lost ? `\n${lost}` : ''}`,
     lostFmt: (kept, dropped) => {
       const n = kept + dropped
       if (n <= 0) return null
@@ -415,13 +406,12 @@ const EN: BaseEmpriseText = {
     },
   },
   production: {
-    title: 'Kills with resources',
+    title: 'Kills by resource',
     info:
-      'The thick bar splits the kills the resource brought, the thin bar what made them possible ' +
-      '(effect time for a power-up, pickups for a power weapon, time aboard a vehicle), both over the matches where the ' +
-      'latter is measured. If the thick bar’s split sits left of the thin one’s, we produced less ' +
-      'than we had. Kills over the whole session read match by match.',
-    ariaLabel: 'Our share of the kills made with each resource, and of what made them possible',
+      'Thick bar: the side’s share of the kills made with each resource; thin bar: the side’s share of the ' +
+      'exposure (effect time for a power-up, pickups for a power weapon, time aboard a vehicle). Scope: the ' +
+      'session’s matches where the exposure is measured.',
+    ariaLabel: 'The side’s share of the kills made with each resource, and of the exposure',
     thinLegend: 'Thin bar: effect time, pickups or time aboard',
     exposure: {
       effect_ms: { name: 'effect time', fmt: duration },
@@ -432,39 +422,37 @@ const EN: BaseEmpriseText = {
     exposureLine: (name, value, pct) => `${name}: ${value} · ${pct}`,
   },
   yield: {
-    title: 'Efficiency against the opponent',
+    title: 'Efficiency by resource',
     info:
-      'How much more or less our side produces than the opponent for the same exposure: per ' +
-      'minute of power-up effect, per power weapon pickup, per minute aboard a vehicle. Zero means as much as them. Both raw ' +
-      'rates are written next to the value.',
-    ariaLabel: 'Our efficiency against the opponent’s, per resource',
-    more: 'More productive than the opponent',
+      'Relative gap between the side’s kills and the opponent’s for the same exposure: per minute of ' +
+      'power-up effect, per power weapon pickup, per minute aboard a vehicle. Zero: even; raw rates next ' +
+      'to the value.',
+    ariaLabel: 'The side’s efficiency against the opponent’s, per resource',
+    more: 'Side more productive',
     less: 'Less',
     axis: ['−50%', '−25', 'even', '+25', '+50%'],
     gapFmt: (gap) => signedPct(gap, ''),
     rawFmt: (us, them) => `${dec1(us, 'en-GB')} vs ${dec1(them, 'en-GB')}`,
-    tip: (resource, sub, us, them, gap) => `${resource} · ${sub}\nUs ${dec1(us, 'en-GB')}, them ${dec1(them, 'en-GB')}: ${gap}`,
+    tip: (resource, sub, us, them, gap) => `${resource} · ${sub}\nSide ${dec1(us, 'en-GB')}, opponent ${dec1(them, 'en-GB')}: ${gap}`,
   },
   habit: {
-    title: 'Resource control, session by session',
+    title: 'Pickups by side, by session',
     info:
-      'Our share of the pickups on each comparable session of the line-up (same mode families as ' +
-      'tonight), the latest on the right. Each colour’s thin dotted line is the median of the ' +
-      'previous sessions.',
+      'The side’s share of each resource’s pickups, per comparable session of the line-up (same mode ' +
+      'families), the latest on the right; thin dotted line: median of the previous sessions.',
     tonight: 'tonight',
     pointTip: (resource, evening, value, med) =>
       `${resource}\n${evening}: ${value}${med ? `\nMedian of the previous sessions: ${med}` : ''}`,
     eveningOf: (date) => `Session of ${date}`,
     medianTip: (resource, value) => `${resource}\nMedian of the previous sessions: ${value}`,
-    noHistory: (list) => ({ lead: 'No comparable previous session. ', rest: `Tonight, our share of the pickups: ${list}.` }),
+    noHistory: (list) => ({ lead: 'No comparable previous session. ', rest: `Tonight, the side’s share of the pickups: ${list}.` }),
     shareItem: (resource, pct) => `${resource.toLowerCase()} ${pct}`,
   },
   grid: {
-    title: 'Resource control, match by match',
+    title: 'Pickups by side, by match',
     info:
-      'One column per match, in session order, with its result. The colour says whether our ' +
-      'side picked up more or less than the opponent, and saturates at a thirty-point gap. ' +
-      'Hover a cell for the weapons.',
+      'One column per match of the session, with its result; colour: gap between the side’s pickups and ' +
+      'the opponent’s, saturated at thirty points.',
     more: 'More than the opponent',
     less: 'Less',
     nothing: 'Nothing to pick up',
@@ -472,7 +460,7 @@ const EN: BaseEmpriseText = {
     noFilmCell: 'no film',
     noFilmTip: 'Film not decoded: nothing to read for this row.',
     noTeamCell: 'side unknown',
-    noTeamTip: 'Our side is unknown in this match (free-for-all, or side missing from the match sheet): nothing splits between the two sides.',
+    noTeamTip: 'Side unknown in this match (free-for-all, or side missing from the match sheet): nothing splits between the two sides.',
     untieredCell: 'unsorted',
     untieredTip: 'Pad levels not measured for this match: power weapons and rack weapons can’t be told apart.',
     unestablishedTip: 'Map missing from the pad reference: power weapons and rack weapons can’t be told apart.',
@@ -483,8 +471,8 @@ const EN: BaseEmpriseText = {
     racksCount: (n) => `(${n}, pickups)`,
     matchHead: (time, map, mode, result) =>
       `${[time, map].filter(Boolean).join(' · ')}${mode || result ? ` (${[mode, result].filter(Boolean).join(', ')})` : ''}`,
-    cellTip: (name, us, them, pct) => `${name}: ${us} for us, ${them} for them (${pct})`,
-    whoFmt: (list) => `On our side: ${list}`,
+    cellTip: (name, us, them, pct) => `${name}: side ${us}, opponent ${them} (${pct})`,
+    whoFmt: (list) => `Side: ${list}`,
     restLower: 'rest of the side',
     padsFmt: (emptied, attributed) => `${emptied} pads emptied, ${attributed} attributed pickups`,
     dominanceTip: (label) => `${label}\nThe match’s dominance flag`,
