@@ -194,8 +194,10 @@ describe('chaque document produit par Go traverse la frontière du web', () => {
         const doc = pret()
         const players = buildPlayers(doc, [])
         expect(players.length).toBeGreaterThan(0)
-        // Aucune feuille de match n'est donnée ici : tous les joueurs tombent dans le groupe
-        // sans camp, et c'est ce que la logique DOIT faire plutôt que d'en inventer un.
+        // Aucune feuille de match n'est donnée ici : les camps sont ceux du FILM, et le web n'en a
+        // pas d'autre (décision du 2026-10-06) — chaque entrée du roster doit donc porter l'équipe
+        // que le film écrit. Une entrée muette n'aurait aucune fiche ni aucune section.
+        expect(doc.roster.filter((e) => e.team === undefined || e.team === null)).toEqual([])
         expect(groupByTeam(players).length).toBeGreaterThan(0)
         expect(buildSlotOwnership(players)).toBeDefined()
         expect(vitalityPresence(doc)).toBeDefined()

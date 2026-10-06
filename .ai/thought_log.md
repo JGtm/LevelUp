@@ -115556,6 +115556,86 @@ V1), régénéré par la campagne, vert sur la branche.
 
 **Conclusion / prochaine étape** : CI, `make gate-push`, puis accord de fusion demandé à
 l'utilisateur ; ensuite LR de la campagne, puis 2.7.b.
+## [2026-10-05] Campagne de grammaire — lot LR (lecteur d'état de création, second rang sans mutation du monde) : non retenu à la base
+
+**Statut** : Complété (compte rendu) ; non commité, code laissé dans le worktree `LevelUp-wt-cg3-lr` (branche `feat/cg3-lr`).
+
+**Décision technique principale** : deux règles lues dans le jeu. (1) `FUN_14080cfe8` échoue sur un compte MPP supérieur à quatre (`CMP ECX,0x4 ; JA` @14080d238), les lecteurs d'état qui le lisent rendent 0 (sauf `ti=41`, drapeau 2 et index absent), et `FUN_1408f1aa4` ne lit pas le corps d'un record NEW dont l'état échoue : `TraverseEntity` arrête le record, le juge le contredit. (2) La marche partie du second rang de `debutParFermetureRangee` ne lie aucun NEW et ne délie aucun DEL (annonce posée sur le monde, prise par la boucle de la vue B).
+
+**Résultats observés** : carte v2 au découpage par défaut +259 sains au corpus mais 14 films en baisse ; `e5adf7b2` perd 23 sains vrais par (2) (têtes `ti=41` mal lues à 9/5, cas LT §4.2) : gate 2 rouge. Mesure de recherche sous 8/3 (`LT_MPP`, sonde contrôlée à l'unité contre la carte) : +1 311 sains, toutes les pertes des films en baisse passent par un NEW illisible pour le jeu. Cas réels `1c4c63c2` 17:52 / 17:172 et 61:42 corrigés sous 8/3. killsource identique hors diagnostic `calibration` ; `objectives` identique (replay-equiv) ; gate de corpus rc 1 = la même baisse de `P-1`.
+
+**Conclusion / prochaine étape** : rejouer le gate 2 officiel sous `-mpp-declare` quand 2.7.a0 est poussé, puis intégrer LR avec ou après 2.7.a0. Détail : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_LR.md`.
+
+## [2026-10-06] Campagne de grammaire — lot LR repris sur `8dfadd07e` (découpage MPP déclaré) : gate 2 officiel tenu sous D2
+
+**Statut** : Complété (proposé au pilote ; commit sur `feat/cg3-lr`, non poussé).
+
+**Décision technique principale** : le commit WIP `e00beafdc` est rebasé sur `origin/feat/v75` =
+`8dfadd07e` (2.7.a0 : découpage MPP déclaré par le film, `-mpp-declare`). Conflits sur les seuls
+fichiers générés (la base a raison, régénération par les commandes du dépôt) ; révision
+`grammar-2026-10-03.6` (jamais fusionnée) → `grammar-2026-10-06.3` ; `killsource`, `objectives`
+constantes (D23 prouvée : killsource json identique hors `calibration` sur 19 témoins, `objectives`
+identique sur 20 films). Corrections du contrôle appliquées : table des lecteurs d'état complétée de
+`ti=42` (`FUN_1407f0c68`, décompilé : `cVar1 == 0 → 0`) ; tests qui font rougir M1
+(`TestUneMarcheNonProuveeCompteLeNeufQuiContreditUnVivant`), M2 (`TestLAnnonceDesigneUnBitDuPayload`)
+et M3 (`TestLeVerdictDEtatEstCeluiDuRecord`) ; M8 équivalente commentée (un lecteur par trame) ;
+précisions 7a (règle jamais décisive : 153 paquets, jamais première, jamais fermés au bit près) et 7b
+(l'anticipation mute encore le monde) dans `debut_non_prouve.go`. `param5` de
+`consumeDefaultStateTI41` retiré (unparam, argument toujours 1). Sondes de recherche : `LR_MPP_DECLARE=1`
+(`lrOuvrir`), contrôlées contre la carte officielle paquet par paquet.
+
+**Résultats observés** : gate 2 officiel sous `-mpp-declare`, base `8dfadd07e` contre tête : 397 824 →
+399 135 sains (+1 311), utiles sains +42 607 ; 12 films en baisse (de -1 à -8), dont TOUTES les pertes
+(34) sont de la famille A : la base ouvrait la liste sur un NEW que le jeu ne lit pas (compte MPP ≥ 5
+sous le découpage déclaré, relu). 203 pertes instruites : A 194, Ap 1 (`4f77afc1` 40:102), C 8 (liaison
+posée par un NEW du second rang, lisible : non factice), toutes Ap et C sur des films en hausse ;
+aucune perte inexpliquée. replay-corpus-gate rc 1 : `P-1` en `MANQUE` sur les 12 mêmes témoins, aucune
+mesure O-* ni V-* en défaut. Repli `repli_debut_de_liste_ferme_au_bit` 9 298 → 8 379. G-film, vet,
+vet research, archlint, golangci (0 issue ; 28 issues research toutes présentes à la base),
+`TestGoldenFilms` (une ligne de diagnostic régénérée) verts ; mutations 13 / 14 rouges (M8 équivalente).
+
+**Conclusion / prochaine étape** : LR proposé RETENU sous D2 (baisses = fermetures factices retirées,
+instruites), décision de fusion au pilote. Pièces : `LOT_LR.md` §12, `scratchpad/cg3-lr2/`. Écarts
+D-LR-7 (`vehicleDeaths` diverge, non compté) à D-LR-9.
+
+## [2026-10-06] Campagne de grammaire — lot LR : corrections du second contrôle (C1, C2)
+
+**Statut** : Complété (commit sur `feat/cg3-lr`, non poussé).
+
+**Décision technique principale** : deux tests, aucun code de production. C1 :
+`TestLaMarcheDuPremierRangModifieLeMonde` (`debut_non_prouve_test.go`), un paquet dont le premier
+candidat FERME (rang `DebutParFermeture`) ; la marche qui suit lie ses NEW et délie ses DEL. C2 :
+`TestChaqueArchetypeAEtatMPPSuitLeVerdictDuBloc` (`etat_de_creation_test.go`), test de table sur
+35, 36, 37, 38, 39, 40, 42, 43 : bits uniformes à un (compte MPP 7, record arrêté) et à zéro (témoin).
+
+**Résultats observés** : Y20 (annonce au premier rang) ROUGE ; les huit exemptions d'archétype dans
+`TraverseEntity` ROUGES. Suite `grammar/` complète rc 0, vet (avec et sans `research`) rc 0,
+golangci-lint `grammar/...` 0 issue. Révision inchangée (`grammar-2026-10-06.3`).
+
+**Conclusion / prochaine étape** : LR proposé au pilote, RETENU sous D2 (`LOT_LR.md` §12.9, avec la
+réserve 8/3 du contrôle). À la fusion avec `origin/feat/v75` (`1518e6f10`), seul `.ai/thought_log.md`
+est un conflit probable.
+
+## [2026-10-06] Campagne de grammaire — lot LR : corrections de la revue (R1 à R4)
+
+**Statut** : Complété (commit sur `feat/cg3-lr`, non poussé).
+
+**Décision technique principale** : quatre constats mineurs vérifiés sur pièces, tous vrais ;
+commentaires et compte rendu seulement. R1 : décomposition LR.1 / LR.2 au §12.8 de `LOT_LR.md`
+(LR.1 seul, lu dans le jeu, en perte sur les trois films rejoués ; les gains viennent de LR.2, règle de
+prudence du décodeur ; LR.2 seul non mesuré). R2 : `etat_de_creation.go` dit que `FUN_1408f1aa4` rend 0
+comme un succès et que l'appelant poursuit, sépare le lu du déduit, et note les quatre places de la
+liste MPP. R3 : contrat de `TraverseEntity` complété (arrêt sur `EtatIllisible`). R4 : contrat de
+`debut_non_prouve.go` au présent ; D-LR-3 renvoyé au compte rendu.
+
+**Résultats observés** : R1 reproduit par `rv.awk` (`e5adf7b2` -3 / -50, `c75f33b8` -5 / -24,
+`4f77afc1` -16 / -92, 0 gagné, contre +501 / +15 470 pour LR complet sur `4f77afc1`). R2 relu dans le
+désassemblage (1408f1bf0, 1408f1f78, 1408f1f9e, 1408f210e) et les décompilations de `FUN_1406cbaa0`
+et `FUN_14080cfe8`. Gates : gofmt vide, vet (avec et sans `research`) rc 0, `go test` de `grammar/`
+rc 0, golangci-lint `grammar/...` 0 issue ; révision inchangée (`grammar-2026-10-06.3`).
+
+**Conclusion / prochaine étape** : LR proposé au pilote (`LOT_LR.md` §12.8 et §12.10), qui tranche
+sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 
 ## [2026-10-04] Étude « Tendances » : maquette v4 (horizons 7 / 30 / 90 / 365 j, familles d'indicateurs selon le matchmaking)
 
@@ -115716,3 +115796,12 @@ l'utilisateur ; ensuite LR de la campagne, puis 2.7.b.
 **Résultats observés** : films avec bots (48) : 44 intervalles demandés, 4 entièrement couverts, 39 en partie (32 compatibles avec une place jamais vide), 1 non couvert (143 f). Films sans bot (78) : 6 intervalles, aucun couvert. Troisième contrôle du champ (octet 0x783) : 76 bots, 0 désaccord avec l'équipe de la place. « Pas encore apparu » : humains arrivés en cours de match, 51 sur 53 sans corps au début de leur présence (médiane 276 f, max 1 951 f) ; humains présents à la frame 0, 461 sur 1 072 (médiane 37 f) ; bots arrivés en cours de match, 34 sur 77 en retard (médiane 82 f) et 25 sans aucun corps.
 
 **Conclusion / prochaine étape** : l'hypothèse de l'utilisateur tient dans les matchs qui ont des bots ; les matchs sans bot ne comblent pas leurs places. En attente de la décision sur le champ (CHECKPOINT i) avant G3.
+## [2026-10-06] Rejeu : aucune section sans équipe (lot WEB, branche `feat/rejeu-equipes-web`)
+
+**Statut** : Complété (plan `.ai/PLAN_REJEU_EQUIPES_WEB_2026-10-06.md` clos, exécuté sous `plan-execution` pour le superviseur levelup-dc ; branche poussée, NON fusionnée — la fusion dans `feat/v75` revient à l'utilisateur ; lot Go parallèle `feat/rejeu-equipes-source` pour la source).
+
+**Décision technique principale** : sur la page Rejeu, l'équipe d'un joueur est le désignateur du film (`roster[].team`) et rien d'autre (ADR 0034 D-9 ; retour du chef de l'utilisateur : « une section sans équipe n'existe pas »). `buildPlayers` pose `ReplayPlayer.team` une seule fois (jointure `rosterEntryKey`) ; `lib/replay/replayCamps.ts` (`groupByCamp`, `campSideOf`, `campLabel`) en tire les camps de tous les regroupements ; la feuille de match ne fait que nommer (côté majoritaire des membres, cascade `resolveKnownTeamLabel` à plancher « Équipe N » du désignateur — `resolveTeamLabel` de la Vue match inchangé).
+
+**Résultats observés** : E1 close — 4 fichiers / 83 tests verts, `tsc -b` sans erreur. Parc (lecture seule, 126 artefacts) : 0 place à occupants d'équipes différentes, 18 entrées sans équipe (toutes avec présence publiée), désignateurs {0, 1}. E2 close — colonnes (`seatLogic` : replis de feuille `campsParCote` / `s:<team_side>` / clé vide / rang « sans camp » / place `joueur:<xuid>` supprimés, clé de place `siege:<équipe>:<place>`), menu de point de vue, tables Arsenal (gestes et prises d'un joueur sans équipe vers `unattributed` / `unjoined`) et autres libellés du rejeu sur `campLabel` ; `teamUnknown` / `viewpointNoTeam` retirés du dictionnaire du rejeu ; vitest des dossiers touchés 296 fichiers / 4 061 tests verts, fixations DOM 4v4 / 6v6 inchangées à l'octet. Découvertes D1-D6 au plan (encre des bots sur la carte, piste Coéquipiers et capteur sur la feuille, FFA, film sans roster, ADR 0034 D-9, garde-rails lents). E3 close — squelette de tuile partagé (`TileFrame`, `ReplayPlayerCard.tsx`) : « Place libre » et « Pas encore apparu » ont la boîte, la ligne du nom et le corps fixe d'une fiche dans les deux gabarits (test DOM), habit tireté `SEAT_WAITING_CHROME` ; fixations 4v4 / 6v6 inchangées ; `ui/` 28 fichiers / 404 tests verts. E4 close — garde-rail `lib/replay/replayCamps.guard.test.ts` : (a) lecture de `team_side` hors du helper de libellé interdite sauf allowlist comptée et datée (9 fichiers, famille encre / allégeance), (b) « sans équipe » / « no team » / `teamUnknown` / `viewpointNoTeam` / `sans-equipe` interdits dans le code du rejeu et sur sa route ; mutation vérifiée (les deux tests rougissent). E5 close — mesure du parc (126 artefacts, lecture seule, test jetable supprimé) : 126 / 126 documents à 2 camps, 18 entrées sans équipe (16 documents) et 0 tuile pour elles, 144 rendus DOM sans troisième colonne ni « Sans équipe », 19 tuiles d'attente toutes à la boîte de la fiche. Checklist : `ReplayPlayerCard` découpée (`CardUnderLayers`, `CardBody` : 98 → 48 lignes de code) et tuiles d'attente fusionnées en `ReplaySeatWaiting` pour ne pas accroître la dette de longueur. Gates : typecheck à froid, lint (0 problème sur les fichiers du lot), knip 0/0/0, cliquets du pre-push, build Vite, vitest complet 852 fichiers / 9 095 tests. Revue adversariale : ronde 1, deux relecteurs Opus aveugles, 6 constats recevables (1 P1 : aucun test ne prouvait qu'une entrée `seatSource: index` AVEC équipe reste rendue ; 5 P2), corrigés sauf la phrase UI de la réserve (décision de libellé portée au superviseur) ; ronde 2, un relecteur neuf : 0 P0/P1, 2 P2 sur le détecteur du garde-rail, corrigés et changés en contre-épreuves. CI : run 37470050143 (336e0ffc2) vert, job Frontend du run 37475407819 (b4ebf21e1) vert. Playwright local non joué : seuls les serveurs du worktree principal tournent, et les specs écriraient dans ses `data/`.
+
+**Conclusion / prochaine étape** : CR au superviseur ; fusion dans `feat/v75` à l'utilisateur, avec contrôle visuel des témoins (43716616, c7f94693, 4f77afc1, f2966f08, 859da825). Tant que le lot Go n'est pas fusionné et le parc republié, les bots bouche-trou ne s'affichent pas du tout. Questions ouvertes : FFA (désignateur -1 : une colonne, plancher « Équipe -1 »), libellé de la réserve d'équipement ; hors périmètre : encre adverse des bots sur la carte, piste Coéquipiers et capteur de menaces lus sur la feuille.

@@ -64,7 +64,7 @@ import { teamSeriesColor, teamTokenCssVar } from '@/features/match-view/teamSeri
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
-import { resolveTeamLabel } from '@/lib/halo/teamLabel'
+import { campLabel, type ReplayCamp } from '@/lib/replay/replayCamps'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
@@ -98,16 +98,17 @@ export function MatchPadControlSection({
     () => (data ? buildPadControl(data, board) : null),
     [data, board],
   )
+  // L'ENCRE, PAS L'APPARTENANCE : le côté de feuille du joueur de la page dit quel camp est le
+  // sien. Les camps eux-mêmes sont ceux du FILM (`padControlLogic`, `replayCamps.ts`).
   const meSide = useMemo(() => board.find((r) => r.is_me)?.team_side ?? null, [board])
 
-  const teamLabel = useCallback(
-    (side: string | null) =>
-      resolveTeamLabel(side ? board.filter((r) => (r.team_side ?? '') === side) : [], side, t),
-    [board, t],
-  )
-  // « Allié » = du côté du joueur de la page ; camp inconnu -> encre neutre (cf. teamSeriesColor).
+  // LE NOM D'UN CAMP DU FILM : la cascade des colonnes de fiches (`campLabel`), « Équipe N » de
+  // son désignateur quand la feuille se tait — jamais « sans équipe ».
+  const teamLabel = useCallback((camp: ReplayCamp) => campLabel(camp, board, t), [board, t])
+  // « Allié » = du côté du joueur de la page ; allégeance inconnue -> encre neutre (cf.
+  // teamSeriesColor).
   const allyOf = useCallback(
-    (side: string | null) => (side == null || meSide == null ? null : side === meSide),
+    (camp: ReplayCamp) => (camp.side == null || meSide == null ? null : camp.side === meSide),
     [meSide],
   )
   const bars = useMemo(
@@ -117,10 +118,10 @@ export function MatchPadControlSection({
             control,
             weaponLabel: (weapon) => padNameFor(weapon, data.weaponLabels, t, locale),
             teamLabel,
-            teamColor: (side) => teamTokenCssVar(allyOf(side)),
-            // Le camp du joueur de la page ouvre la barre : c'est sa page. Le camp inconnu
-            // ferme la marche — on ne le glisse pas entre les deux camps nommés.
-            teamRank: (side) => (allyOf(side) === true ? 0 : side == null ? 2 : 1),
+            teamColor: (camp) => teamTokenCssVar(allyOf(camp)),
+            // Le camp du joueur de la page ouvre la barre : c'est sa page. Les autres suivent
+            // dans l'ordre de `padControlLogic` (tri stable).
+            teamRank: (camp) => (allyOf(camp) === true ? 0 : 1),
           })
         : null,
     [control, data, t, locale, teamLabel, allyOf],
@@ -180,7 +181,7 @@ function PadControlBody({
 }: {
   bars: PadBarModel
   control: PadControl
-  allyOf: (side: string | null) => boolean | null
+  allyOf: (camp: ReplayCamp) => boolean | null
   t: ReplayText
 }) {
   const groupes = groupRowsByTier(bars.rows, control)
@@ -232,7 +233,7 @@ function PadColumnsChart({
   legendLabel,
 }: {
   groups: PadColumnGroupInput[]
-  allyOf: (side: string | null) => boolean | null
+  allyOf: (camp: ReplayCamp) => boolean | null
   t: ReplayText
   emptyMessage: string
   legendLabel: string
@@ -250,7 +251,7 @@ function PadColumnsChart({
     const couleurs: Record<string, string> = {}
     const opacites: Record<string, number> = {}
     for (const joueur of model.players) {
-      couleurs[joueur.key] = teamSeriesColor(allyOf(joueur.side), tc)
+      couleurs[joueur.key] = teamSeriesColor(allyOf(joueur), tc)
       opacites[joueur.key] = joueur.tint / 100
     }
     return { couleurs, opacites }
@@ -350,7 +351,7 @@ function PadTierFold({
   t,
 }: {
   groupe: { tier: PadTier; rows: PadBarRow[]; total: number }
-  allyOf: (side: string | null) => boolean | null
+  allyOf: (camp: ReplayCamp) => boolean | null
   t: ReplayText
 }) {
   const [open, setOpen] = useState(false)

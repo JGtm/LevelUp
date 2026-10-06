@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
-import { resolveTeamLabel, type TeamLabelText } from './teamLabel'
+import { resolveKnownTeamLabel, resolveTeamLabel, type TeamLabelText } from './teamLabel'
 
 const FR: TeamLabelText = {
   teamLabelFmt: (name) => `Équipe ${name}`,
@@ -40,6 +40,25 @@ describe('resolveTeamLabel — la cascade', () => {
     expect(resolveTeamLabel([], 't12', FR)).toBe('Équipe 12')
     expect(resolveTeamLabel([], null, FR)).toBe('Équipe inconnue')
     expect(resolveTeamLabel([], 'rouge', EN)).toBe('Unknown team')
+  })
+})
+
+/**
+ * LA VARIANTE DU REJEU (2026-10-06) : la même cascade, mais l'identifiant de l'équipe est CONNU
+ * de l'appelant (le désignateur du film) — le dernier recours est son « Équipe N », jamais
+ * « Équipe inconnue ». Les étapes 1 à 4 sont celles de `resolveTeamLabel`, à l'identique.
+ */
+describe('resolveKnownTeamLabel — la cascade, plancher numéroté', () => {
+  it('étapes 1 à 4 : le même libellé que la Vue match', () => {
+    expect(resolveKnownTeamLabel([], 't0', 0, FR)).toBe(resolveTeamLabel([], 't0', FR))
+    expect(resolveKnownTeamLabel([{ team_name: 'Équipe Cobra' }], 't1', 1, FR)).toBe('Équipe Cobra')
+    expect(resolveKnownTeamLabel([{ team_name: 'Rouge' }], 't0', 0, FR)).toBe('Équipe Rouge')
+    expect(resolveKnownTeamLabel([], 't12', 12, EN)).toBe('Team 12')
+  })
+  it('côté absent ou malformé : « Équipe N » de l’identifiant connu, jamais « inconnue »', () => {
+    expect(resolveKnownTeamLabel([], null, 1, FR)).toBe('Équipe 1')
+    expect(resolveKnownTeamLabel([], 'rouge', 0, EN)).toBe('Team 0')
+    expect(resolveKnownTeamLabel([], undefined, 3, FR)).not.toBe(FR.teamUnknown)
   })
 })
 

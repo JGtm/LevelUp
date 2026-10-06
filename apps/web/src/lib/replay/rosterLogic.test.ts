@@ -11,7 +11,6 @@ import {
   colorResolver,
   colorResolverOrLast,
   currentLifeOf,
-  groupByTeam,
   loadoutAt,
   markResolver,
   nameResolver,
@@ -174,15 +173,6 @@ describe('playerName', () => {
   it('rend null quand aucune source ne nomme le joueur', () => {
     const d = doc({ roster: [{ xuid: 'A', filmIndex: 0, seat: 0 }] })
     expect(playerName(buildPlayers(d, [])[0])).toBeNull()
-  })
-})
-
-describe('groupByTeam', () => {
-  it('range par camp et isole ceux qui n’en ont pas', () => {
-    const d = doc({ tracks: [track(512, 'A', 0, 50), track(513, 'B', 0, 60), track(514, 'C', 0, 60)] })
-    const groups = groupByTeam(buildPlayers(d, [row('A', 'Alpha', 'Eagle'), row('B', 'Bravo', 'Cobra')]))
-    expect(groups.map((g) => g.side)).toEqual(['Cobra', 'Eagle', null])
-    expect(groups[2].players[0].xuid).toBe('C')
   })
 })
 

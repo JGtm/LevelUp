@@ -36,7 +36,8 @@ export type AmmoHint =
  * d'équipement du power-up. `killBadgeHint` porte encore la réserve de l'épisode, pour le badge.
  *
  *  1. `coverageReserveFmt` — les gestes que le film mesure sans en nommer l'auteur ni l'origine
- *     n'entrent dans aucune des deux vues. La réserve NE SE CACHE PAS (décision utilisateur
+ *     — ou dont l'auteur n'a pas d'équipe écrite par le film (défaut de source, compté par
+ *     `coverage.seats.sansEquipe`) — n'entrent dans aucune des deux vues. La réserve NE SE CACHE PAS (décision utilisateur
  *     2026-09-09) : depuis le 2026-09-14 elle tient en UNE phrase, au survol du TITRE de la
  *     carte, le pied de carte ayant été supprimé (aucun texte de pied sous ce bloc).
  *  2. `notMeasured` — le RÉPULSEUR n'a aucun canal d'activation dans le film (neuf canaux
@@ -99,7 +100,10 @@ export interface EquipmentUsageText {
   outcomeTotalTakenFmt: (count: number) => string
   /**
    * LA RÉSERVE DE COUVERTURE, EN UNE PHRASE ET DANS L'INFOBULLE DU TITRE (2026-09-14) : les
-   * gestes mesurés sans propriétaire et les poses d'origine inconnue, additionnés. Ils ont eu
+   * gestes mesurés sans propriétaire ou d'un joueur rangé dans aucun camp (le film tait son
+   * équipe, 2026-10-06), et les poses d'origine inconnue, additionnés. La phrase affichée ne nomme
+   * que l'auteur et l'origine : le cas d'un auteur sans équipe (0 geste au parc du 2026-10-06)
+   * attend une décision de libellé. Ils ont eu
    * lieu, aucune des deux vues ne peut les compter — la réserve ne se cache pas (décision
    * utilisateur 2026-09-09), elle ne s'écrit simplement plus en pied de carte (décision
    * utilisateur 2026-09-14 : AUCUN texte de pied sous ce bloc).
@@ -716,8 +720,11 @@ export interface ReplayText {
   seatNotSpawned: string
   seatNotSpawnedHint: string
   bridgeDiag: (named: number, total: number, collisions: number) => string
-  teamUnknown: string
-  /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */
+  /**
+   * Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). AUCUN
+   * « équipe inconnue » ici : sur la page Rejeu, un camp est toujours un désignateur du film, et
+   * son plancher est `teamNumberedFmt` (`resolveKnownTeamLabel`, décision du 2026-10-06).
+   */
   teamLabelFmt: (name: string) => string
   teamNumberedFmt: (n: number) => string
   /**
@@ -849,16 +856,14 @@ export interface ReplayText {
    * texte visible du menu est un gamertag, qui ne dit pas de quoi il est la réponse — sans ce
    * nom, un lecteur d'écran annoncerait une liste déroulante anonyme au milieu d'une frise.
    *
-   * `viewpointNoTeam` nomme la section des joueurs SANS ligne de tableau de score. Ils n'ont pas
-   * de camp, et `groupByTeam` refuse d'en inventer un : la section dit l'absence plutôt que de
-   * les ranger au hasard.
+   * Les sections du menu sont les CAMPS DU FILM, nommés comme les colonnes de fiches : aucune
+   * section « sans équipe » (décision du 2026-10-06).
    *
-   * `viewpointNoData` est l'infobulle des options INERTES de cette section (décision 7 bis) :
-   * sans ligne de tableau de score, la piste de ce joueur serait vide quoi qu'il arrive. Le
-   * menu le dit au lieu de laisser cliquer sur un choix sans effet.
+   * `viewpointNoData` est l'infobulle des options INERTES (décision 7 bis) : un joueur sans ligne
+   * de tableau de score reste dans le camp que le film lui donne, mais sa piste serait vide quoi
+   * qu'il arrive. Le menu le dit au lieu de laisser cliquer sur un choix sans effet.
    */
   viewpointLabel: string
-  viewpointNoTeam: string
   viewpointNoData: string
   dominanceOfFmt: (team: string) => string
   dominanceTied: string

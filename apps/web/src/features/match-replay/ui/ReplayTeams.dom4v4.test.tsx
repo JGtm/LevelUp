@@ -74,7 +74,9 @@ const XUIDS_6V6 = ['I', 'J', 'K', 'L'] as const
 /** Le document de transport du 4v4 — la forme que `testReplayDoc` complète. */
 function richeOver(): Partial<ReplayDocument> {
   return {
-    roster: XUIDS.map((xuid, i) => ({ xuid, filmIndex: i, seat: i, name: NOMS[i] })),
+    // L'ÉQUIPE DU FILM (décision du 2026-10-06) : Alpha à Delta au camp 0, Echo à Hotel au camp 1
+    // — le même découpage que la feuille du test (`tableau`). Aucun nœud du HTML n'en dépend.
+    roster: XUIDS.map((xuid, i) => ({ xuid, filmIndex: i, seat: i, name: NOMS[i], team: i < 4 ? 0 : 1 })),
     tracks: [
       // Alpha : bouclier entamé lu à l'image 80 (âge 20 à l'image lue).
       vie(512, 'A', [{ t: 0, x: 1, y: 1, sh: 1, hp: 1 }, { t: 80, x: 2, y: 2, sh: 0.6, hp: 1 }]),
@@ -187,7 +189,7 @@ function documentSixParCamp() {
     ...base,
     roster: [
       ...(base.roster ?? []),
-      ...XUIDS_6V6.map((xuid, i) => ({ xuid, filmIndex: 8 + i, name: NOMS_6V6[i] })),
+      ...XUIDS_6V6.map((xuid, i) => ({ xuid, filmIndex: 8 + i, name: NOMS_6V6[i], team: i < 2 ? 0 : 1 })),
     ],
     tracks: [
       ...(base.tracks ?? []),

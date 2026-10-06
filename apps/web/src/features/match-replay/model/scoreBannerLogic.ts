@@ -16,9 +16,10 @@
  * module doit éviter. Une équipe qui n'a jamais marqué n'émet AUCUNE série : le témoin CTF
  * `530820e5` (3-0) ne publie qu'un seul camp sur les deux. Compter les camps dans
  * `timeline.teams` ferait donc disparaître le bandeau du match où l'écart est le plus net.
- * Les camps viennent de `team_side` (la même source que les colonnes de fiches,
- * `rosterLogic.groupByTeam`), et le score de chacun de `teamScoreAtFrame`, qui rend 0 pour
- * un camp sans série — la vérité du film, pas une lacune.
+ * Les camps viennent de `team_side` de la feuille — l'allégeance allié / adverse du bandeau,
+ * comme `xuidMeta` ; les colonnes de fiches, elles, se rangent par le désignateur du FILM
+ * (`replayCamps.ts`, décision du 2026-10-06) —, et le score de chacun de `teamScoreAtFrame`,
+ * qui rend 0 pour un camp sans série — la vérité du film, pas une lacune.
  *
  * MAIS UN FILM QUI NE PUBLIE AUCUNE SÉRIE NE DIT PAS « 0 — 0 » : il ne dit rien. Sans le
  * moindre camp dans le calque (artefact antérieur au schéma 12, mode sans compteur, horloge

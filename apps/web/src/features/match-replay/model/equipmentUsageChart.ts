@@ -41,6 +41,7 @@ import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
 import type { UsageColumn, UsageColumnGroup, UsageGroupKey } from './equipmentUsageColumns'
 import type { EquipmentUsageTeam } from './equipmentUsageLogic'
+import type { ReplayCamp } from '../../../lib/replay/replayCamps'
 
 /**
  * L'ENCRE DE CHAQUE FAMILLE DE GESTE. Indexée par famille, jamais par rang (cf. en-tête).
@@ -90,10 +91,13 @@ export function usageLeaves(groups: UsageColumnGroup[]): UsageLeaf[] {
   return groups.flatMap((g) => g.columns.map((column) => ({ column, group: g.key })))
 }
 
-/** Ce que l'appelant doit fournir pour habiller un camp : son nom et son encre. */
+/**
+ * Ce que l'appelant doit fournir pour habiller un camp DU FILM : son nom (`campLabel`) et son
+ * encre allié / adverse. Une ligne de joueur EST un camp au sens de ce type (elle porte le sien).
+ */
 export interface UsageTeamVisual {
-  teamLabel: (side: string | null) => string
-  teamAccent: (side: string | null) => string
+  teamLabel: (camp: ReplayCamp) => string
+  teamAccent: (camp: ReplayCamp) => string
 }
 
 /** Les entrées de la grille « Nombre de gestes par joueur ». */
@@ -116,10 +120,12 @@ export function buildUsageGrid(input: UsageGridInput): ValueGridModel {
   const rows: ValueGridRow[] = players.map((p) => ({
     key: `${p.xuid}||${p.name}`,
     label: p.name,
-    group: p.side ?? '',
-    accent: input.teamAccent(p.side),
+    // LE FILET ENTRE DEUX CAMPS SUIT LE CAMP DU FILM : deux camps sans côté de feuille restent
+    // deux groupes.
+    group: `camp:${p.team}`,
+    accent: input.teamAccent(p),
     emphasis: p.xuid === input.meXUID && input.meXUID != null,
-    hint: `${p.name} — ${input.teamLabel(p.side)}`,
+    hint: `${p.name} — ${input.teamLabel(p)}`,
   }))
   return buildValueGrid({
     rows,
@@ -146,7 +152,8 @@ export function buildUsageGrid(input: UsageGridInput): ValueGridModel {
 
 /** Un camp dans la barre d'une famille : son nom, son encre, son compte et ses deux parts. */
 export interface UsageFamilyBarSegment {
-  side: string | null
+  /** Le désignateur du camp du film : la clé du segment. */
+  team: number
   label: string
   accent: string
   count: number
@@ -168,7 +175,8 @@ export interface UsageFamilyBarRow {
 
 /** Un camp en légende de la vue 2 : dans l'ordre des segments, mon camp d'abord. */
 export interface UsageFamilyBarTeam {
-  side: string | null
+  /** Le désignateur du camp du film : la clé de l'entrée de légende. */
+  team: number
   label: string
   accent: string
 }
@@ -188,7 +196,10 @@ export interface UsageFamilyBars {
 export interface UsageFamilyBarsInput extends UsageTeamVisual {
   teams: EquipmentUsageTeam[]
   groups: UsageColumnGroup[]
-  /** Le camp du joueur de la page : son segment ouvre chaque barre. `null` = ordre du film. */
+  /**
+   * Le côté de feuille du joueur de la page : le camp qui le porte ouvre chaque barre (l'encre
+   * allié / adverse, pas l'appartenance). `null` = ordre des camps du film.
+   */
   allySide: string | null
 }
 
@@ -231,9 +242,9 @@ export function buildUsageFamilyBars(input: UsageFamilyBarsInput): UsageFamilyBa
   const bound = Math.max(1, ...mesures.map((m) => m.total))
   return {
     legend: teams.map((team) => ({
-      side: team.side,
-      label: input.teamLabel(team.side),
-      accent: input.teamAccent(team.side),
+      team: team.team,
+      label: input.teamLabel(team),
+      accent: input.teamAccent(team),
     })),
     rows: mesures.map(({ leaf, counts, total }) => ({
       // LA MÊME CLÉ QUE LA COLONNE DE LA GRILLE (`buildUsageGrid`) : les deux vues nomment la
@@ -244,9 +255,9 @@ export function buildUsageFamilyBars(input: UsageFamilyBarsInput): UsageFamilyBa
       total,
       segments: teams
         .map((team, i) => ({
-          side: team.side,
-          label: input.teamLabel(team.side),
-          accent: input.teamAccent(team.side),
+          team: team.team,
+          label: input.teamLabel(team),
+          accent: input.teamAccent(team),
           count: counts[i],
           percent: Math.round((counts[i] / total) * 100),
           widthPct: (counts[i] / bound) * 100,

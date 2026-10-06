@@ -1,0 +1,204 @@
+# Plan — Rejeu : aucune section sans équipe (WEB) — 2026-10-06
+
+Branche `feat/rejeu-equipes-web` (worktree `LevelUp-wt-rejeu-equipes-web`, partie de
+`origin/feat/v75` 1518e6f10). Brief du superviseur (session levelup-dc) :
+`BRIEF_REJEU_EQUIPES_WEB.md` (scratchpad de la session). Contrat d'exécution : skill
+`plan-execution`. Lot Go parallèle (source) : `feat/rejeu-equipes-source`, hors de ce plan.
+
+## Décision (ferme, venue du brief)
+
+Sur la page Rejeu, l'équipe d'un joueur est le DÉSIGNATEUR DU FILM (`roster[].team`, schéma 57+),
+et rien d'autre (ADR 0034 D-9). Une section « Sans équipe » n'existe pas ; un joueur dont le film
+tait l'équipe ne rend aucune tuile et n'entre dans aucune section (défaut de source, compté par
+`coverage.seats.sansEquipe`, corrigé par le lot Go). La feuille de match ne fait que NOMMER (et
+l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte d'une fiche.
+
+## Étape E1 — L'équipe d'un joueur : un seul foyer
+
+- [x] E1.1 `ReplayPlayer.team` posé par `buildPlayers` depuis l'entrée de roster, jointe par
+  `rosterEntryKey` (la copie inline de la dérivation de clé dans `buildPlayers` disparaît).
+- [x] E1.2 Module `lib/replay/replayCamps.ts` : type `ReplayCamp` (désignateur + côté de feuille
+  qui nomme), `groupByCamp` (regroupe par désignateur, écarte les sans-équipe, ordre du
+  désignateur), `campSideOf` (côté de feuille majoritaire des membres qui ont une ligne),
+  `campLabel` (cascade de nommage, plancher numéroté depuis le désignateur). `groupByTeam`
+  (rosterLogic) devient son adaptateur « joueurs ».
+- [x] E1.3 `lib/halo/teamLabel.ts` : `resolveKnownTeamLabel` (même cascade, plancher « Équipe N »
+  au lieu d'« Équipe inconnue ») ; `resolveTeamLabel` inchangé pour la Vue match (étapes 1 à 4
+  factorisées dans `nameFromSheet`, sortie identique — tests existants verts).
+- Gate E1 : tests unitaires de `replayCamps`, de `teamLabel`, de `buildPlayers` ; tsc.
+  PASSÉ le 2026-10-06 : 4 fichiers / 83 tests verts, `tsc -b` sans erreur.
+
+## Étape E2 — Tous les regroupements consomment l'équipe du film
+
+- [x] E2.1 Colonnes : `seatLogic` (`ReplaySeat.team`, retrait de `campsParCote`, `cleDeCamp`,
+  `ordreDesCamps`, `rangDePlace`, clés `s:<team_side>` et `''`, rang « sans camp en dernier »,
+  place `joueur:<xuid>` devenue morte) ; clé de place `siege:<équipe>:<place>` (places finies PAR
+  ÉQUIPE : deux équipes ne partagent jamais une tuile) ; `groupSeatsByTeam` par `groupByCamp` ;
+  `ReplayTeams` / `ReplayTeamHeader` (libellé par `campLabel` sur la feuille de TOUS les occupants,
+  calculé une fois par document ; clé de rendu `camp:<désignateur>` ; l'en-tête ne garde que
+  l'encre).
+- [x] E2.2 Menu de point de vue (frise) : `viewpointOptions` sur les camps du film
+  (`groupByTeam`), libellé `campLabelOf` = `campLabel` (même cascade que les colonnes) ; retrait
+  du groupe `side == null`, de `labelDuGroupe` et de `viewpointNoTeam`.
+- [x] E2.3 Tables de l'onglet Arsenal : `equipmentUsageLogic` / `equipmentUsageChart` /
+  `MatchEquipmentUsageSection`, `padControlLogic` / `padControlChart` / `padControlColumns` /
+  `MatchPadControlSection` sur les camps du film (lignes et camps `extends ReplayCamp`) ; les
+  gestes d'un joueur sans équipe rejoignent `unattributed` (réserve du titre), ses prises de socle
+  `unjoined` — la somme ne ment pas ; retrait des clés `'sans-equipe'` (React et `data-testid` :
+  `camp:<désignateur>`) et du rang 2 « camp inconnu » ; tri des camps du contrôle des socles :
+  total puis désignateur.
+- [x] E2.4 i18n : retrait de `teamUnknown` et `viewpointNoTeam` (FR, EN, contrat) ; les autres
+  appels de la cascade dans le rejeu (`useTeamCascades`, `ReplayVictoryOverlay`,
+  `exportOverlayPanels`) passent à `campLabel` (donc `resolveKnownTeamLabel`) : plus aucun appel
+  de `resolveTeamLabel` dans `features/match-replay`.
+- [x] E2.5 Tests : réécriture des tests qui figeaient le repli de feuille ou la section sans
+  équipe (traduction mesurée, côté contradictoire, repli `s:`, voie `joueur:<xuid>`, « Sans
+  équipe » du menu, de la frise et de l'en-tête de colonne) ; équipes du film posées dans les
+  rosters des tests de rendu (fixations 4v4 / 6v6 inchangées à l'octet) ; nouveaux tests :
+  témoin 43716616 (logique et DOM, FR + EN : deux colonnes à chaque image, jamais « Sans équipe »
+  ni « No team »), places d'équipes différentes, plancher « Équipe N », gestes et prises d'un
+  joueur sans équipe hors camp, contrat Go/web « toute entrée porte son équipe ». Tests de
+  l'équipe de `rosterLogic` déplacés dans `rosterLogic.equipes.test.ts` (seuil de 500 lignes).
+- Gate E2 : vitest des dossiers touchés, tsc, eslint. PASSÉ le 2026-10-06 : `tsc -b` 0 erreur,
+  eslint des 45 fichiers touchés 0 problème, vitest `features/match-replay` + `lib/replay` +
+  `lib/halo` + `features/match-view` : 296 fichiers, 4 061 tests verts (2 garde-rails à balayage
+  de `src/` ont dépassé leur délai de 5 s sous charge machine ; rejoués seuls deux fois : 9/9).
+
+## Étape E3 — Tuiles d'attente au gabarit
+
+- [x] E3.1 Squelette de tuile partagé `TileFrame` (boîte `TILE_LAYOUT[...].tile`, ligne du nom,
+  corps fixe `BODY_CLASS[...]`, nom par `nameClass`) dans `ReplayPlayerCard.tsx`, consommé par la
+  fiche ET par `ReplaySeatVacant` / `ReplaySeatNotSpawned` (déplacées de `ReplayTeams.tsx`, avec
+  la classe de boîte dupliquée `SEAT_PLACEHOLDER_CLASS` supprimée) ; habit des tuiles d'attente
+  `SEAT_WAITING_CHROME` (`playerCardFx.ts` : bordure tiretée `var(--border)`, fond `var(--card)`,
+  comme `cardChrome`) ; état écrit au centre du corps fixe ; le nom de l'occupant pas encore
+  apparu écrit par `cardName` (la dérivation de la fiche, suffixe « [bot] » retiré — elle
+  l'affichait brut). En E5.2, les deux tuiles fusionnent en `ReplaySeatWaiting` (`occupant`
+  nul = place libre) pour ne pas allonger `ReplayTeams`.
+- [x] E3.2 Test DOM (`ReplayTeams.places.test.tsx`) : pour chaque gabarit (normal, compact BTB),
+  les trois sortes de tuile ont la même classe de boîte (littérale), le même corps fixe
+  (littéral), la même ligne du nom ; seul l'habit tireté les distingue.
+- [x] E3.3 Fixations `replayTeams.4v4.html` / `6v6.html` inchangées à l'octet (aucune tuile
+  d'attente dedans ; la fiche passe par le squelette sans changer un nœud).
+- Gate E3 : vitest `ui/`, garde `cardGabarit.guard.test.ts`. PASSÉ le 2026-10-06 : `ui/` 28
+  fichiers / 404 tests verts (dont `cardGabarit.guard`, fixations 4v4 / 6v6, sources de la tuile
+  compacte), `tsc -b` 0 erreur, eslint des 5 fichiers 0 problème, `lint-no-hardcoded-colors`
+  0 violation.
+
+## Étape E4 — Garde-rail
+
+- [x] E4.1 `lib/replay/replayCamps.guard.test.ts` (sources hors tests de `features/match-replay`
+  + `lib/replay`, 271 fichiers ; commentaires ôtés) : (a) `.team_side` lu hors du helper de
+  libellé = échec, sauf allowlist explicite, justifiée, datée et COMPTÉE (cliquet dans les deux
+  sens) — 9 fichiers, tous de la famille encre / allégeance (point 6 du brief) ou le helper ;
+  (b) « sans équipe » / « no team » dans le code (casse ignorée, chaîne ou texte JSX),
+  `teamUnknown`, `viewpointNoTeam`, `sans-equipe` = échec, route de la page Rejeu comprise.
+  Contre-épreuves des deux détecteurs dans le fichier ; mutation sur pièces (une lecture injectée
+  dans `seatLogic.ts`, un libellé « Sans équipe » dans `i18n.ts`) : les deux tests rougissent,
+  fichiers restaurés.
+
+## Étape E5 — Vérification et livraison
+
+- [x] E5.1 Mesure sur pièces du parc (126 artefacts du worktree principal, lecture seule, test
+  jetable passant par les vrais modules, supprimé après usage ; bilan
+  `scratchpad/web/bilan_parc.json`) : 126 / 126 documents à exactement 2 camps ; 18 entrées sans
+  équipe dans 16 documents, 0 tuile rendue pour elles ; 144 rendus DOM contrôlés (milieu de
+  match + milieu de chaque présence d'entrée sans équipe) : 0 troisième colonne, 0 « Sans
+  équipe » / « No team » ; 19 tuiles d'attente rendues, 0 hors de la boîte de la fiche ; 0 geste
+  et 0 prise de socle basculés hors camp par ces entrées. Découverte D1 vérifiée par un second
+  test jetable (un bot allié joint à la feuille reçoit l'encre ADVERSE sur la carte).
+- [x] E5.2 Gates : `npm run typecheck`, `npm run lint`, knip, linters ratchet du pre-push, vitest
+  COMPLET (`--pool=forks`), Playwright si l'environnement le permet. Typecheck à froid
+  (`node_modules/.tmp` purgé) 0 erreur ; lint complet 0 erreur (26 avertissements, tous hors des
+  fichiers du lot : eslint des 50 fichiers du lot = 0 problème) ; knip-ratchet 0/0/0 ; champs en
+  dur 0, couleurs en dur 0, imports inter-features 7 / plafond 7. Revue de la checklist : les
+  composants `ReplayPlayerCard` (98 lignes de code avant le lot) et `ReplayTeams` (88) dépassaient
+  déjà 80 lignes et le lot les avait allongés (105 / 91) : `ReplayPlayerCard` est découpé
+  (`CardUnderLayers`, `CardBody`, 48 lignes de code) et les deux tuiles d'attente fusionnent en
+  `ReplaySeatWaiting` (`occupant` nul = place libre), ce qui ramène `ReplayTeams` à 86 — la dette
+  baisse au lieu de croître. Résultats vitest et Playwright : cf. journal.
+- [x] E5.3 `delivery-checklist`, `adversarial-review` sur le diff, corrections. Checklist : dette
+  de longueur résorbée (cf. E5.2), aucun TODO ni `any` introduit, rien de débranché laissé en
+  place, garde-rail livré avec le helper (commits E1 + E4 de la même branche), Playwright non
+  joué (cf. [!] ci-dessous). Revue adversariale, ronde 1 (deux relecteurs Opus aveugles,
+  lentilles « appartenance + anti-patterns + front » et « tests ») : 6 constats recevables —
+  1 P1 (aucun test ne prouvait qu'une entrée `seatSource: index` AVEC équipe reste rendue),
+  5 P2 ; corrigés : le P1 (tests logique + DOM, témoin 859da825), le rang des camps du contrôle
+  des socles (test), le garde-rail (crochets, déstructuration) et les tests « entrée muette que
+  la feuille connaît » (menu, tables), l'en-tête de `rosterLogic.ts`, la longueur de
+  `useReplayTimeline` (90 → 86) ; consigné sans correction : la phrase UI de la réserve (D7).
+  Ronde 2 (un relecteur neuf sur les seules corrections) : 0 P0 / 0 P1 (borne de décroissance
+  tenue), 2 P2 sur le détecteur du garde-rail (formes `for…of` et paramètre non premier non
+  comptées ; clés en argument, types indexés et annotations comptés à tort) — corrigés dans le
+  périmètre, chaque cas devenu contre-épreuve, mutation vérifiée ; pas de ronde 3 (borne du
+  skill). Mutations des nouveaux tests : masquer les entrées `index`, neutraliser le rang des
+  camps, replier `groupByTeam` sur la feuille → 5 tests rouges, fichiers restaurés.
+- [x] E5.4 Commits (`fix(rejeu):`), push, CI suivie et verte, entrée `.ai/thought_log.md`.
+  Commits a2fcdd62f (E1), c58a95a95 (E2), 8ad09cfef (E3), b794678d7 (E4), 336e0ffc2, b4ebf21e1,
+  cc55e4b5f (E5) ; run CI 37470050143 sur 336e0ffc2 : VERT (tous les jobs, E2E Playwright sauté
+  par condition) ; runs des commits suivants : suivis jusqu'à leur verdict avant de rendre la main
+  (le CR au superviseur porte le statut final).
+- [!] Playwright local non joué : les seuls serveurs locaux (vite :5173, API Go :8000) sont ceux
+  du worktree PRINCIPAL, partagé ; plusieurs specs écrivent par l'API (réglages, onboarding,
+  likes) et une page de rejeu peut déclencher une cuisson — écrire dans les `data/` du principal
+  est interdit par le brief. En CI, le job E2E ne tourne que sur une PR vers `main`.
+
+## Découvertes (notées, non traitées — règle 7 du contrat)
+
+- D1 — ENCRE DES BOTS SUR LA CARTE : `useSlotIdentity.isAlly(p.xuid)` interroge `xuidMeta` (clés
+  de la feuille, `bid(N.0)` pour un bot) avec la clé du film `bot:<nom>` : un bot n'y est jamais
+  trouvé, donc `isAlly` rend `false` et son pion prend l'encre ADVERSE quel que soit son camp —
+  y compris un bot allié. Famille « encre allié / adverse » (point 6 du brief, hors périmètre).
+- D2 — PISTE COÉQUIPIERS ET CAPTEUR DE MENACES : la population de la piste « Coéquipiers » (frise)
+  vient de `identity` (`xuidMeta`, feuille) et l'opposition du capteur de menaces de
+  `sideResolver` (`team_side` de la feuille) : un coéquipier que la feuille ignore n'y figure pas.
+  Même famille que D1, laissée sur la feuille (allowlist du garde-rail E4).
+- D3 — FFA : le désignateur `-1` (« aucune équipe », mode sans camps) regroupe tous les joueurs en
+  UNE colonne (comportement inchangé depuis le lot 1.9.14), alors que la décision D3 du plan des
+  fiches compactes (2026-09-06) disait « chaque joueur est sa propre équipe, N colonnes d'un
+  siège » ; et si aucun membre n'a de ligne de feuille, son nom plancher serait « Équipe -1 ».
+  Aucun FFA au parc (126 artefacts à deux camps) : question produit à porter à l'utilisateur.
+- D4 — FILM SANS ROSTER (sans identification, artefact antérieur au schéma 57) : il n'écrit
+  aucune équipe, la colonne affiche donc le constat `rosterEmpty` (« Aucune vie du film n'a pu
+  être rattachée à un joueur »), dont le libellé ne dit pas la vraie cause. 0 artefact du parc
+  concerné.
+- D5 — ADR 0034 D-9 écrit encore « the web colours players by `team_side` from the match sheet »
+  (faux depuis le lot 1.9.14, et pour le regroupement depuis ce lot) : document hors périmètre.
+- D6 — Des garde-rails à balayage complet de `src/` (`xuidMeta.guard`, `teamLabel.guard`,
+  `useCopyToClipboard.guard`, `clockMShort.guard`) frôlent le délai de 5 s de vitest sous charge
+  machine (5,0 à 8,1 s observés en local, relecteurs et CI en parallèle) ; verts en CI Linux
+  (`npm run test:coverage` du job Frontend) et verts rejoués seuls hors charge.
+- D7 — La phrase de la réserve des usages d'équipement (`coverageReserveFmt`, FR et EN : « le
+  film n'en nomme ni l'auteur ni l'origine ») ne couvre pas les gestes d'un auteur que le film
+  NOMME sans lui écrire d'équipe, que ce lot verse à la réserve (0 geste au parc du 2026-10-06 ;
+  plus aucun une fois la source corrigée). Libellé UI = décision produit : question portée au
+  superviseur, contrat i18n documenté.
+- D8 — Les entrées `seatSource: index` AVEC équipe (`43e96765` 343 PardonMy, `859da825`
+  SplinterCell958, `bf2a9f05` AllGodsLove) gardent leur place, donc une 5e tuile dans la colonne
+  Eagle d'un 4v4 (« Place libre » hors de leur présence) : défaut de source `placesEnTrop = 1`,
+  antérieur au lot, corrigé par le lot Go ; le web ne masque pas une place qui a une équipe.
+
+## Journal
+
+- 2026-10-06 — plan rédigé après lecture du brief, du code et des tests ; base vitest verte
+  (53 fichiers / 918 tests sur les dossiers touchés). Mesure préalable du parc (lecture seule,
+  126 artefacts) : 0 place dont les occupants ont des équipes différentes, 18 entrées sans
+  équipe (toutes avec une présence publiée, 2 sur une place partagée), désignateurs {0: 595,
+  1: 588}. Les 8 fixtures Go du worktree (schéma 79) : 0 entrée sans équipe.
+- 2026-10-06 — E1 close (gate vert). Choix : le côté de feuille d'un camp est celui de la
+  MAJORITÉ de ses membres (un joueur que la feuille contredit ne renomme pas son camp).
+- 2026-10-06 — E2 close (gate vert). Choix : la clé d'une place porte son équipe (places finies
+  par équipe) ; les gestes / prises d'un joueur sans équipe vont aux compteurs « hors camp »
+  existants (`unattributed`, `unjoined`) plutôt que de disparaître. Découvertes D1 à D6 notées.
+- 2026-10-06 — E3 close (gate vert). Choix : le squelette vit dans `ReplayPlayerCard.tsx` (les
+  tables `TILE_LAYOUT` / `BODY_CLASS` restent privées à un seul module, et les tests de source de
+  la tuile compacte qui les y lisent restent valides) ; l'habit des tuiles d'attente passe en
+  `style` pour que la classe de boîte soit EXACTEMENT celle de la fiche. La hauteur de la ligne
+  du nom est tenue par la même classe de nom (jsdom ne mesure pas la mise en page : contrôle
+  visuel à l'utilisateur).
+- 2026-10-06 — E4 close (garde-rail 6/6 vert, eslint 0 problème, mutation vérifiée).
+- 2026-10-06 — E5 close : mesure du parc, gates (vitest complet 852 fichiers / 9 095 tests verts
+  sur 336e0ffc2 ; sur b4ebf21e1, 850 / 852 fichiers verts en local, les 3 échecs étant des délais
+  de 5 s dépassés par deux garde-rails étrangers au lot sous charge — D6), revue adversariale en
+  deux rondes, commits, push, CI. Plan clos ; points ouverts portés au superviseur : D3 (FFA),
+  D7 (phrase de la réserve), D1 / D2 (encre et allégeance sur la feuille, hors périmètre).

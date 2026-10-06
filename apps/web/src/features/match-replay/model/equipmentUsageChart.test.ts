@@ -22,6 +22,7 @@ import {
 } from './equipmentUsageChart'
 import type { UsageColumnGroup } from './equipmentUsageColumns'
 import type { EquipmentUsageTally, EquipmentUsageTeam } from './equipmentUsageLogic'
+import type { ReplayCamp } from '../../../lib/replay/replayCamps'
 
 function tally(over: Partial<EquipmentUsageTally> = {}): EquipmentUsageTally {
   return {
@@ -44,12 +45,14 @@ const ALPHA = tally({
 const BRAVO = tally({ grapplePulls: 1, grenades: { 0: 6 } })
 const CHARLIE = tally({ grapplePulls: 1 })
 
+/** Deux camps du film : le 0 (nommé `t0` par la feuille) et le 1 (`t1`). */
 const TEAMS: EquipmentUsageTeam[] = [
   {
+    team: 0,
     side: 't0',
     players: [
-      { ...ALPHA, xuid: 'a1', name: 'Alpha', side: 't0' },
-      { ...BRAVO, xuid: 'a2', name: 'Bravo', side: 't0' },
+      { ...ALPHA, xuid: 'a1', name: 'Alpha', team: 0, side: 't0' },
+      { ...BRAVO, xuid: 'a2', name: 'Bravo', team: 0, side: 't0' },
     ],
     total: tally({
       grapplePulls: 3,
@@ -58,8 +61,9 @@ const TEAMS: EquipmentUsageTeam[] = [
     }),
   },
   {
+    team: 1,
     side: 't1',
-    players: [{ ...CHARLIE, xuid: 'b1', name: 'Charlie', side: 't1' }],
+    players: [{ ...CHARLIE, xuid: 'b1', name: 'Charlie', team: 1, side: 't1' }],
     total: tally({ grapplePulls: 1 }),
   },
 ]
@@ -107,8 +111,8 @@ const GROUPS: UsageColumnGroup[] = [
 ]
 
 const VISUAL = {
-  teamLabel: (side: string | null) => `Équipe ${side ?? 'inconnue'}`,
-  teamAccent: (side: string | null) => `var(--ac-team-${side === 't0' ? 'ally' : 'enemy'})`,
+  teamLabel: (camp: ReplayCamp) => `Équipe ${camp.side ?? camp.team}`,
+  teamAccent: (camp: ReplayCamp) => `var(--ac-team-${camp.side === 't0' ? 'ally' : 'enemy'})`,
 }
 
 describe('l’encre d’une famille de geste', () => {
@@ -144,6 +148,23 @@ describe('buildUsageGrid — la grille par joueur', () => {
     const m = grille()
     expect(m.rows.map((r) => r.label)).toEqual(['Alpha', 'Bravo', 'Charlie'])
     expect(m.separators).toEqual([2])
+  })
+
+  it('le filet suit le CAMP DU FILM : deux camps que la feuille ne nomme pas restent deux groupes', () => {
+    const sansFeuille = TEAMS.map((team) => ({
+      ...team,
+      side: null,
+      players: team.players.map((p) => ({ ...p, side: null })),
+    }))
+    const m = buildUsageGrid({
+      teams: sansFeuille,
+      groups: GROUPS,
+      meXUID: null,
+      ...VISUAL,
+      tipFmt: (player, column, value) => `${player} — ${column} : ${value}`,
+    })
+    expect(m.separators).toEqual([2])
+    expect(m.rows.map((r) => r.hint)).toEqual(['Alpha — Équipe 0', 'Bravo — Équipe 0', 'Charlie — Équipe 1'])
   })
 
   it('met en avant la ligne du joueur de la page, et elle seule', () => {
@@ -201,10 +222,10 @@ describe('buildUsageFamilyBars — la part de chaque équipe (5.A, 2026-09-21)',
   })
 
   it('ouvre chaque barre par MON camp, quel que soit l’ordre du film', () => {
-    expect(barres('t1').rows[0].segments.map((s) => s.side)).toEqual(['t1', 't0'])
-    expect(barres('t1').legend.map((l) => l.side)).toEqual(['t1', 't0'])
+    expect(barres('t1').rows[0].segments.map((s) => s.team)).toEqual([1, 0])
+    expect(barres('t1').legend.map((l) => l.team)).toEqual([1, 0])
     // Sans camp connu, l'ordre du film reste — aucune des deux encres n'est « la mienne ».
-    expect(barres(null).rows[0].segments.map((s) => s.side)).toEqual(['t0', 't1'])
+    expect(barres(null).rows[0].segments.map((s) => s.team)).toEqual([0, 1])
   })
 
   it('n’écrit aucun segment pour un camp qui n’a rien fait de cette famille', () => {

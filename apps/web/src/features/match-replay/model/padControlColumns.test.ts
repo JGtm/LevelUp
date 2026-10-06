@@ -20,6 +20,7 @@ function seg(over: Partial<PadBarSegment>): PadBarSegment {
   return {
     xuid: 'a1',
     name: 'Alpha',
+    team: 0,
     side: 't0',
     sideLabel: 'Eagle',
     count: 1,

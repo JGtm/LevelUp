@@ -69,8 +69,8 @@ import { teamTintStyles } from '@/features/match-view/teamColor'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
-import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { teamLogoPath } from '@/lib/halo/teamNames'
+import { campLabel } from '@/lib/replay/replayCamps'
 import { scoreTimelineOf, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
@@ -205,8 +205,7 @@ interface TeamPanelProps {
  * en dessous, un lecteur d'écran n'a pas à l'entendre deux fois.
  */
 function TeamPanel({ team, scoreboard, titleSlug, title, t, score, finalScore }: TeamPanelProps) {
-  const rows = scoreboard.filter((r) => r.team_side === team.teamSide)
-  const label = resolveTeamLabel(rows, team.teamSide, t)
+  const label = campLabel({ team: team.teamID, side: team.teamSide }, scoreboard, t)
   // LA COULEUR ALLIÉE TELLE QUE L'UTILISATEUR L'A RÉGLÉE (D1, cf. l'en-tête). L'écran est
   // TOUJOURS celui du camp REGARDÉ — donc toujours `team-ally` : depuis le point de vue
   // sélectionnable (2026-09-06), `reading.mine` est l'équipe du sujet, et `identity` peint déjà
