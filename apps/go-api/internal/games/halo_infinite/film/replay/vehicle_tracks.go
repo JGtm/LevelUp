@@ -27,7 +27,6 @@ import (
 	"slices"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -108,12 +107,6 @@ func buildVehicleTracks(ctx context.Context,
 	cov := VehicleCoverage{Scanned: scan.Scanned, UnknownChassis: map[string]int{}, AimReads: len(scan.Aims)}
 	if !scan.Scanned || clock.step == 0 {
 		return nil, cov, vehicleRideStats{}
-	}
-	// REPLI NOMME ET COMPTE (D14) : le cadre de la marche n a pas ete confirme par le balayage
-	// (profil plat), la lecture des morts a donc tourne sur la largeur par defaut. Le compte
-	// voyage avec l artefact — il dit que ce calque repose sur un cadre non confirme.
-	if scan.Scanned && scan.DeathStats.CadreParDefaut {
-		clock.fb.Declenche(fallback.NomCadreDeMarcheParDefautConserve)
 	}
 	lives, deathTally := vehicleLives(ctx, scan.Keyframes, scan.Deaths)
 	cov.Lives = len(lives)

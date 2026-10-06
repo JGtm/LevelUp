@@ -149,18 +149,25 @@ func MPPWidthsForFormat(format int) (profile.MPPWidths, error) {
 type ResolutionMPP struct {
 	// FormatVersion : le u32 de `chunk_00+4`, ou [FilmFormatVersionUnknown].
 	FormatVersion int
-	// Widths : le découpage que porte cette version de format. Non valide quand la version est
-	// connue mais sa largeur INDÉTERMINÉE (formats 20, 21, 24, 25), ou quand elle est inconnue.
+	// Widths : le découpage que la grammaire porte pour ce film — celui de sa version de format, ou
+	// celui qu'il déclare par la taille d'état de création de ses objets
+	// ([FilmContext.ResolutionMPP]). Non valide quand ni l'un ni l'autre ne le dit.
 	Widths profile.MPPWidths
+	// Provenance : d'où vient [ResolutionMPP.Widths] — relu (le format 27, ou la taille courante
+	// déclarée), présumé par mesure (la taille courante moins 4), ou non déclaré.
+	Provenance profile.ProvenanceMPP
+	// Declaration : ce que le film déclare ([FilmContext.DeclarationMPP]) ; nulle quand le format a
+	// décidé ou que la déclaration n'a pas été lue.
+	Declaration DeclarationMPP
 	// FormatInconnu : la version de format n'est PAS dans la table. C'est l'événement « patch du
 	// jeu », et lui seul se compte ([UnknownFormatExpvarPairs]) — un format connu sans largeur
 	// relue est l'état normal du parc ancien.
 	FormatInconnu bool
 }
 
-// Relue dit si la grammaire porte le découpage de ce film : c'est la condition qui fait DÉCIDER
+// Decide dit si la grammaire porte le découpage de ce film : c'est la condition qui fait DÉCIDER
 // la lecture plutôt que la calibration.
-func (r ResolutionMPP) Relue() bool { return r.Widths.Valid() }
+func (r ResolutionMPP) Decide() bool { return r.Widths.Valid() }
 
 // MPPWidthsForFilm résout le découpage du bloc `object-multiplayer-properties` d'un film DÉJÀ
 // CHARGÉ, par sa VERSION DE FORMAT et par elle seule.
@@ -180,7 +187,11 @@ func MPPWidthsForFilm(f *source.Film) ResolutionMPP {
 		return ResolutionMPP{FormatVersion: FilmFormatVersionUnknown, FormatInconnu: true}
 	}
 	w, err := MPPWidthsForFormat(format)
-	return ResolutionMPP{FormatVersion: format, Widths: w, FormatInconnu: err != nil}
+	res := ResolutionMPP{FormatVersion: format, Widths: w, FormatInconnu: err != nil}
+	if w.Valid() {
+		res.Provenance = profile.MPPRelu
+	}
+	return res
 }
 
 // unknownFormatCounterName rend le nom expvar du compteur de version de format inconnue.

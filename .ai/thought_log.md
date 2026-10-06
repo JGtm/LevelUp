@@ -115182,6 +115182,37 @@ schéma du document.
 lots de comportement et retrait des marcheurs redondants après la fusion de LU et LS ; revue
 adversariale en fin d'étape, sur le diff cumulé.
 
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — après la fusion : CI de `feat/v75` verte, schéma 78 de la campagne par-dessus — Complété (références d'équivalence à re-figer à l'ouverture du prochain lot)
+
+**Statut** : Complété ; aucun travail de code.
+
+**Décision technique principale** : `feat/ri-etape2` avancée sur `feat/v75` = `6fa631df0` (la
+campagne y a fusionné la correction des vies de bots, schéma du document 77 → 78, aucune révision de
+couche). Les références d'équivalence (ligne `artifact`, qui porte le schéma) se re-figent à
+l'ouverture du prochain lot par la passe de référence du plan (§1.2) sur la tête fusionnée du moment,
+pas maintenant : la passe serait à refaire, et la republication du parc occupe la machine.
+
+**Résultats observés** : CI de `feat/v75` verte au niveau job sur la fusion `083e1a4bc` (push et PR).
+
+**Conclusion / prochaine étape** : mesure de durée des objets du monde au signal de machine calme de
+la campagne ; ensuite, ouverture des lots après LU (passe de référence d'abord).
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — LS retiré par la campagne : les lots restants n'attendent plus que LU — Complété (plan mis à jour)
+
+**Statut** : Complété ; aucun travail de code.
+
+**Décision technique principale** : la vague 2 de la campagne retient LU (localisateur unique) et LT
+(règle de tête de liste), retire LS, n'adopte ni LP ni LN. Dans ce plan, seul 2.7.c (killsource
+devient un canal de la marche) était placé après LS, et seulement pour ne pas écrire
+`facts/killsource/*` en même temps que lui : aucune dépendance de contenu. LS retiré, 2.7 et 3.1
+n'attendent plus que la fusion de LU dans `feat/v75` (§1.3 et journal du plan mis à jour, réponse
+faite à la campagne).
+
+**Résultats observés** : sans objet (coordination).
+
+**Conclusion / prochaine étape** : à la fusion de LU, fusion de `feat/v75` dans `feat/ri-etape2`,
+passe de référence (références d'équivalence re-figées : schéma 78, `grammar-2026-10-03.5`), puis
+2.7.a ; mesure de durée des objets du monde au signal de machine calme.
 ## [2026-10-04] Campagne de grammaire — vague 2 : corrections de la revue adverse — Complété (commit local sur `feat/campagne-grammaire`, non poussé ; rc 1 du gate de corpus et sort de LS soumis au pilote)
 
 **Statut** : Complété. Les 17 constats vérifiés sur pièces : tous vrais, le 16 en partie seulement (ses citations de `movement_states.go` et `frame_harvest.go` redeviennent justes au retrait de LS) ; aucun rejeté. Correction de l'intégration précédente : la phrase « `origin/feat/v75` inchangée, `feat/ri-etape2` non fusionnée » était FAUSSE au commit `da6ecda38` (constat 9) ; `feat/v75` (`6fa631df0`) est fusionnée (`f1895d9bc`) et toutes les mesures sont refaites contre elle.
@@ -115211,6 +115242,320 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : CI verte au niveau job (`0988d7291`), `make gate-push` vert. Gains de la vague : +47 paquets sains, aucun film en baisse, killsource identique.
 
 **Conclusion / prochaine étape** : recuisson du parc ; la recherche sur la localisation haute fréquence fondée sur la loi d'écriture de la vue B est en cours (reprise de LS).
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — ouverture du lot 2.7 : fusion de LU et LT, passe de référence, mesure des morts d'objet — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours (2.7.a, mesure).
+
+**Décision technique principale** : la vague 2 de la campagne (LU, LT ; LS retiré) fusionnée dans
+`feat/v75` (`87cdfa761`) ouvre le lot 2.7. Fusion de `feat/v75` dans `feat/ri-etape2` sans conflit ;
+passe de référence `v75w2` sur la tête fusionnée ; références d'équivalence re-figées (`0355c46ab`).
+2.7.a (les morts d'objet et l'occupation lues par la marche des trames) commence par une mesure : la
+marche à huit vues et la marche des trames diffèrent par le nombre de vues (huit contre trois), le
+monde (chronologie propre contre phase des images-clés), le localisateur (signature puis largeur
+libre contre début de liste de la cuisson), `IDLowBits` (calibré de 10 à 15 contre présumé 13) et les
+largeurs MPP (celles des véhicules contre celles du format).
+
+**Résultats observés** : passe `v75w2` : vingt films décodés depuis le film, aucun échec ; écarts tous
+venus de `feat/v75` (`artifact` ×20, `movementStates.stats` ×17, `continuousFire.stats` ×13). La
+campagne annonce un lot « lire la vue A jusqu'au bout » (décision de l'utilisateur) ; 2.7 et 3.1 ne
+touchent pas la lecture de la vue A.
+
+**Conclusion / prochaine étape** : résultats de l'instrument sur les huit films à véhicules, puis
+décisions d'exécution de 2.7.a écrites au plan avant le code.
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — lot 2.7.a : mesure des morts d'objet sur la marche des trames, décisions — En cours (`feat/ri-etape2`)
+
+**Statut** : mesure faite, décisions écrites au plan ; implémentation à suivre.
+
+**Décision technique principale** : les morts d'objet et l'occupation deviennent un canal de la marche
+des trames ; les listes d'événements qu'elle ne localise pas sont récupérées pour ce seul canal
+(localisateur unique, ordre « signature puis largeur libre », repli `repli_localisation_largeur_libre`
+après la lecture) ; la cuisson marche les trames sous les largeurs MPP des véhicules ; `IDLowBits`
+reste l'en-tête présumé (13) et la calibration disparaît avec la marche à huit vues, retirée dans le
+lot (règle 7).
+
+**Résultats observés** : une première mesure, faite sans le profil de balayage que killsource calibre
+pour la cuisson (génération stricte), était fausse — elle accusait la marche des trames de perdre 75 à
+85 % des morts. Sous le profil de la cuisson, sur les huit films à véhicules du corpus : 138 records
+de mort de véhicule à huit vues, 131 par la marche des trames, 150 sous les largeurs MPP des
+véhicules, 165 avec la récupération (2 manquent, 29 de plus ; toutes les morts propres à une marche
+sont confirmées par le recensement des images-clés, à moins d'une minute de la fin de leur vie, sauf
+quatre des 29). Occupation 543 → 688. Calibration d'`IDLowBits` : 13 sur les 48 films à véhicules du
+parc local, jamais le cadre par défaut.
+
+**Conclusion / prochaine étape** : prévenir la campagne (trois de ses fichiers citent la marche à huit
+vues : le localisateur unique, son test, un instrument), puis écrire le canal, la récupération et le
+câblage de la cuisson ; preuve au `replay-corpus-gate` et au banc de vérité.
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — lot 2.7.a écrit, preuve d'équivalence faite, gate de corpus MIXTE — En cours (`feat/ri-etape2`, non fusionnable en l'état)
+
+**Statut** : En cours — code écrit et commité en local, décision de l'utilisateur à instruire.
+
+**Décision technique principale** : canal des morts et de l'occupation sur la marche des trames
+(récupération des listes non localisées par le localisateur unique, ordre des sites qui lisent les
+morts), marche à huit vues retirée avec sa calibration d'`IDLowBits`, `grammar-2026-10-04`. La
+décision 3 (marche des trames sous les largeurs MPP calibrées sur les poses, 8/3 sur les formats
+sans largeur relue) est RETIRÉE sur signalement de la campagne : c'est son lot LM, mis de côté par
+l'utilisateur le 2026-10-02 (« corrections d'abord, uniquement générales lues dans le jeu »).
+
+**Résultats observés** : équivalence (`ri27c`, vingt films) : états de mouvement et tir continu
+identiques, killsource identique à l'octet, records de mort de véhicule 142 → 148 (`e5adf7b2`
+17 → 15 et `60ae07c4` 1 → 0, lus jusqu'ici sous la largeur mesurée). Gate de corpus (19 témoins,
+contre `87cdfa761`) : sortie 1 — FAUX sur `084a804d` et `e5adf7b2` (une « action hors vie » de
+plus chacun), PERTE sur `60ae07c4`, `a349fea8`, `a521164d`, `11de8353`, `4f77afc1` (épisodes à
+bord, tirs posés sur un véhicule, deux rafales sur `11de8353`, morts lues), gains ailleurs (banc :
+`4f77afc1` 112 → 95 et `11de8353` 8 → 3 actions hors vie). `bfecd02b` (véhicules, build récent)
+inchangé. `4f77afc1` gagne 11 morts que le recensement n'apparie pas : à instruire. Sous la largeur
+mesurée (passe `ri27b`), la vue C de la cuisson se fermait trois à cinq fois plus souvent sur les
+films de formats anciens (découverte 11).
+
+**Conclusion / prochaine étape** : instruire les morts non appariées de `4f77afc1`, puis poser la
+décision à l'utilisateur en langage clair (garder la lecture actuelle des morts sur les formats
+anciens, accepter leurs pertes, ou autoriser la largeur mesurée pour la marche).
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — lot 2.7.a : décision posée à l'utilisateur, la campagne lance « lire la vue A jusqu'au bout » — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — attente de la décision de l'utilisateur (trois options posées ; il penche
+pour garder la lecture actuelle, explication en langage clair demandée et donnée).
+
+**Décision technique principale** : 2.7.a n'entre pas dans `feat/v75` avant le lot de la campagne
+« lire la vue A jusqu'au bout », lancé depuis `87cdfa761` (`feat/cg3-vue-a`) : ce lot n'a pas de
+canal des morts à vérifier et garde verte la marche à huit vues de production (morts et occupation
+des véhicules, killsource inchangé).
+
+**Résultats observés** : les pertes des formats anciens ont deux parts — les listes que la marche
+des trames ne localise pas (le lot de la campagne devrait les rendre) et les records de la vue B
+qui déraillent derrière un véhicule mal découpé (largeur MPP de ces versions non lisible dans le
+jeu, aucune lecture générale connue ; découverte 11 du plan). La campagne mesure en parallèle,
+sans code de production, le découpage 8/3 de ces versions par double preuve (fermeture au bit,
+châssis du jeu installé). Texte « écrit » de 2.7.a corrigé au plan : la marche des trames de la
+cuisson tourne sous les largeurs du contexte, pas sous `gwWidthsForFilm` (décision 3 retirée).
+
+**Conclusion / prochaine étape** : consigner la décision de l'utilisateur au plan. Si la lecture
+actuelle est gardée : à la fusion du lot de la campagne, fusionner `feat/v75`, brancher le canal
+des morts sur le début de vue B lu depuis la vue A, remesurer en séparant les deux parts, et
+revenir vers l'utilisateur avec le reste. Aucune passe de décodage tant que la campagne occupe la
+machine.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — lot 2.7.a : recherche Ghidra de la donnée du film qui piloterait le bloc MPP — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — recherche faite, condition non trouvée, retour à l'utilisateur.
+
+**Décision technique principale** : l'argument « le jeu actuel ne relit plus les films d'avant
+août 2025 » (tiré des notes de mise à jour de Halo Support) est retiré : l'utilisateur réaffirme
+que la version actuelle lit tous les films et que le film porte son index de décodage. Recherche
+dans l'exécutable courant (Ghidra, lecture seule), reprise de la campagne qui a arrêté la sienne.
+
+**Résultats observés** : lecteur d'état par défaut des véhicules `FUN_1410a5a74` ; descripteurs par
+type enregistrés statiquement (`FUN_140e453b4`) ; `FUN_14080cfe8` à largeurs littérales, sans
+autre lecteur du bloc ; versions par type et registre des archétypes 36 à 43 identiques entre
+`e5adf7b2` (format 25, 8/3) et le format 27 ; seuils de la version de format 3, 7, 11, 13/14, 15.
+Détail : découverte 12 du plan.
+
+**Conclusion / prochaine étape** : aucune donnée du film trouvée qui fasse lire ce bloc autrement
+entre les formats 25 et 27. Deux pistes : un écart dans notre propre lecture ailleurs, ou du code
+du jeu non encore lu. Lecture actuelle des morts gardée ; la suite de la recherche est à décider
+avec l'utilisateur.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — lot 2.7.a : agent d'enquête sur les deux écarts de 3 bits — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — enquête rendue, décision de l'utilisateur attendue.
+
+**Décision technique principale** : un agent Opus (worktree dédié, Ghidra en lecture seule) lit le
+bloc MPP de l'état de création et la boucle des composantes du tir, à la demande de l'utilisateur.
+
+**Résultats observés** : condition « non trouvée » dans l'exécutable courant pour les deux écarts,
+et notre lecture en amont n'est pas fautive : l'écrivain des anciens films a écrit 3 bits de
+moins. Le film déclare toutefois, record par record, la taille de la structure d'état de création
+(`n1`) : 4 octets de moins sur les formats 21, 24 et 25 pour chaque archétype à bloc MPP. Le jeu ne
+lit `n1` que comme garde. Pour le tir, la frontière est le format 24 (HI_1_8_0 compris). Fait lu,
+présenté sans conclusion : `FUN_1428e219c` n'installe la lecture que si la version majeure du film
+vaut 41. Détail : découverte 13 du plan.
+
+**Conclusion / prochaine étape** : présenter à l'utilisateur la clé que le film porte lui-même
+(`n1`) comme base d'une lecture générale des anciens films, et le fait du chargement. Lecture
+actuelle des morts gardée en attendant.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — décision : le bloc MPP des anciens films se lit d'après la taille que le film déclare — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — item 2.7.a0 ouvert.
+
+**Décision technique principale** : validation par l'utilisateur. La règle porte sur la taille
+d'état de création `n1` déclarée par le film :
+- `n1` égal à la taille courante (lue en `vtable+0x20`) → découpage relu 9/5 ;
+- `n1` égal à la taille courante − 4 → 8/3, présumé par mesure ;
+- autre valeur → chemin actuel, compté.
+Le découpage est posé pour toute la cuisson. killsource est aligné en 2.7.c. L'observation
+dynamique avec Cheat Engine est inscrite au backlog (`.ai/BACKLOG.md`).
+
+**Résultats observés** : tailles courantes relues — 35 : 0x98, 36 : 0x60, 37/38/39 : 0x68,
+40 : 0xb0, 41 : 0xd4, 42 : 0xa8, 43 : 0x60. La campagne confie l'implémentation à ce plan, sous
+trois conditions : son gate 2, la provenance présumée par mesure, sa double preuve comme oracle.
+
+**Conclusion / prochaine étape** : implémenter 2.7.a0 (profile, grammar, cuisson, contrôle par
+record), puis les gates de l'item, puis remesurer 2.7.a dessus.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — 2.7.a0 écrit : découpage MPP déclaré par le film, gates joués — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — non fusionnable en l'état ; instruction des pertes lancée.
+
+**Décision technique principale** : la règle `n1` (profile) et sa résolution par film (grammar)
+sont posées par la cuisson pour toutes ses lectures. killsource ne change pas (identique à
+l'octet). La campagne obtient son drapeau `-mpp-declare` dans `cmd_fermeture` pour son gate 2.
+
+**Résultats observés** :
+- sept bobines : déclaration unanime ;
+- gate 2 : +84 282 paquets sains, aucun film en baisse nette, 428 perdus en brut (347 sur
+  `1c4c63c2`) ;
+- gate de corpus : FAUX (V-3) sur `084a804d` (+4) et `e5adf7b2` (+1), pertes de métriques sur
+  les films anciens, gains P-1 ×2,5 à ×5 ;
+- `50247b26` reste sur le chemin calibré (ti=38 déclare une taille inconnue).
+
+**Conclusion / prochaine étape** : un agent cherche où sont les deux bits de fin (le premier bit
+est certain), instruit les pertes du gate 2 par famille et explique les écarts du rejeu. Ensuite,
+correction ou admission, puis retour à l'utilisateur.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — instruction du gate de corpus (2.7.a et 2.7.a0) : un correctif, une décision à prendre — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — gate de corpus sans FAUX, huit films en baisse instruits ; admission et
+une décision de règle attendues de l'utilisateur ; fusion après le lot « vue A » de la campagne.
+
+**Décision technique principale** : un épisode d'occupation lu se ferme sur la lecture suivante
+du MÊME OBJET occupant (slot et génération), plus du slot seul (`953401feb`). Banc V-3 : un trajet
+du slot fait partie de sa vie (`ced770753`). Lint CI : étiquette `research` manquante (`46b51efe7`).
+
+**Résultats observés** :
+- gate complet (19 témoins contre `87cdfa761`) : onze sans écart, huit en baisse, banc `ok`
+  partout ; le FAUX de `4f77afc1` venait d'une lecture d'occupation fausse (slot 737 en
+  génération 3) qui fermait à 8410 le trajet de son conducteur ;
+- postures (169 lignes) : corrections, invraisemblables 118 → 94, trois nouvelles (début lu, fin
+  non lue) ;
+- changements d'arme : 43 prises → échanges, deux lâchers de rien supprimés ;
+- tir continu et dotations de naissance : améliorations comptées à rebours par le gate ;
+- véhicules : trajets lus 269 → 326, repli 196 → 156, faux passagers retirés ; reste 13 tirs de
+  véhicule de `084a804d` sans tireur, par la primauté de la lecture qui nomme par corps.
+
+**Conclusion / prochaine étape** : présenter à l'utilisateur ; selon sa décision, admettre ou
+affiner la primauté (nommer par joueur). Puis, après le lot « vue A » de la campagne, fusion de
+`feat/v75` dans la branche, remesure, `make gate-push`, accord de fusion.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — décisions de l'utilisateur appliquées : baisses admises, primauté de la lecture par joueur — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — 2.7.a se clôt après le lot « vue A » de la campagne (fusion de
+`feat/v75`, remesure, gates, accord de fusion).
+
+**Décision technique principale** : la primauté de la lecture nomme les occupants d'une vie de
+véhicule par joueur (xuid), plus par corps (slot) ; sans identité, le slot reste la clé ; le
+chevauchement d'un épisode lu contredit toujours (`e127e90fb`, test rouge sans la règle).
+
+**Résultats observés** : gate complet sans FAUX, banc `ok` sur les 19 témoins ; `084a804d`
+passe de 44 à 25 lignes en baisse, toutes dans les familles admises ; tirs de véhicule rattachés
+194 → 198 (3 restent sans tireur, chevauchement de cinq images avec un trajet lu).
+
+**Conclusion / prochaine étape** : attendre le signal de la campagne (lot « vue A ») ; alors
+fusion de `feat/v75` dans la branche (`feat/v75` a raison en conflit), remesure des deux parts de
+2.7.a, gate de corpus, `make gate-push`, accord de l'utilisateur pour fusionner.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — découpage MPP déclaré : double preuve reçue, item clos — Complété (2.7.a0, `feat/ri-etape2`)
+
+**Statut** : Complété pour 2.7.a0 ; 2.7.a reste ouvert jusqu'à la fusion du lot « vue A » de la
+campagne et la remesure.
+
+**Décision technique principale** : le découpage déclaré par `n1` est confirmé par la double
+preuve de la campagne (identités contre les tags installés, fermeture des formats 24 et 25) ; le
+ratchet de fermeture d'image-clé, qui mesure encore sous le découpage du format, s'aligne en 2.7.c
+avec killsource.
+
+**Résultats observés** : identités 1 480 366 / 1 480 374 sous 8/3, aucune sous 9/5 ; `b429a7d3`
+déclare 8/3, perd quatre faux sains de 9/5 (un NEW d'identité inconnue chacun) ; fermeture
+d'image-clé sous le découpage déclaré +107 sur les cinq archétypes objet, baisses par ligne sur
+`ti=42` à justifier record par record en 2.7.c.
+
+**Conclusion / prochaine étape** : ordre de fusion convenu — V1 de la campagne, puis 2.7.a et
+2.7.a0, puis LR, puis V2 ; chaque fusion sur accord de l'utilisateur.
+
+## [2026-10-05] Représentation intermédiaire du film — relecture du lot « vue A » V1 de la campagne avant fusion — Complété (relecture)
+
+**Statut** : Complété — relecture rendue ; la fusion est celle de la campagne.
+
+**Décision technique principale** : deux relecteurs à contexte frais (règles du projet ;
+équivalence et couverture des tests), en lecture seule, sur `87cdfa761..3bacfadeb`.
+
+**Résultats observés** : aucun P0, sortie identique confirmée ; 15 constats recevables (14
+distincts), triés : à corriger avant fusion (recopie d'un sous-lecteur existant, commentaires faux,
+nombres magiques, complexité non justifiée, champ mort, chemin sans test, tests de E qui recopient
+le code), à trancher (troisième portage de `damage_aftermath` dont une copie diverge, deux gardes
+recopiées), pour V2 (une branche atteinte par les seuls tests). La campagne corrige avant de fusionner.
+
+**Conclusion / prochaine étape** : à la fusion de V1, reprendre `feat/v75` dans `feat/ri-etape2`
+(adapter le canal des morts à `listeAnnoncee`), remesurer, gate de corpus, puis demander l'accord de
+fusion de 2.7.a et 2.7.a0. Découverte 17 (exemption de lint par chemin) à porter à l'utilisateur.
+## [2026-10-05] Campagne de grammaire — lot VA, étape V1 : la vue A lue par une seule lecture, sortie inchangée, puis corrections du contrôle — Complété (commits locaux sur `feat/cg3-vue-a`, non poussés)
+
+**Statut** : Complété. Étape statuée **[x] retenue** (`LOT_VA_V1.md` §0). Le contrôle indépendant a tenu l'étape et demandé trois corrections mineures. Les trois sont appliquées ; aucune n'est jugée fausse sur pièces (§11).
+
+**Décision technique principale** : `e6ec7abd4` reporte le lecteur de la vue A du lot LN (table des 123 genres, versions natives, charges de 44 genres) et les ports de R2 (Script 15 selon la simulation de l'enregistreur lue dans `chunk_00`, 39, positions à index 5 et 6 sur la région jouée). La règle des versions a deux classes, lues et comparées sans seuil : ÉGALE et PRÉFIXE ; sinon, la tête seule. `lireLaVueA` est la seule lecture de la vue A (ratchet archlint, `consumeVueA` supprimé). La fin E est rangée dans `lecture.Paquet.VueA` et ne décide encore d'aucune localisation (V2). Révisions `grammar-2026-10-06` et `profile-2026-10-06`. Les corrections du contrôle ajoutent : un vecteur où le film déclare le contrôle de corruption (`TestLaPasseDesTetesLitLeControleDuFilm` : la passe des têtes et la marche rangent la même vue A), l'écart à la doctrine de `SchemaDesFaits` instruit (la section 2 des faits gagne deux champs ; schéma non monté, car les révisions de couche refusent tout fichier antérieur sur son en-tête), et la présente entrée.
+
+**Résultats observés** : contre `87cdfa761`, sur 20 films, la carte v2 et killsource sont identiques à l'octet. Dans `replay-equiv`, seule l'étape `artifact` diverge, par la chaîne de révision. `replay-corpus-gate` : rc=0, 0 perte. La tête, la route et l'étendue de la vue A sont identiques paquet par paquet. Mutations : 24 / 24 ROUGES, puis m25 (s01 du contrôle), qui était VERTE, ROUGE après le vecteur. Gates de la correction : gofmt, vet (avec et sans research), paquet `grammar`, archlint (un rouge sur le littéral `"marche"`, corrigé) et golangci-lint donnent 0 issue.
+
+**Conclusion / prochaine étape** : étape V2 (E décide du début de la vue B : toujours pour les films ÉGALE, paquet par paquet et prouvé pour les films PRÉFIXE), sous le gate 2. Restent à arbitrer par le pilote : D-VAV1-5 (rangs de révision partagés avec la RI 2.7.a) et la phrase de doctrine de `SchemaDesFaits` (§7).
+
+## [2026-10-05] Campagne de grammaire — lot VA, étape V1 : corrections de la relecture RI — Complété (commit local sur `feat/campagne-grammaire`, non poussé)
+
+**Statut** : Complété. Les deux relecteurs de la session levelup-57 ont relu `3bacfadeb` : trois constats, puis sept (a à g). Chacun a été vérifié sur pièces, aucun n'est infondé (`LOT_VA_V1.md` §12).
+
+**Décision technique principale** : le champ mort `finVueA` est retiré. Un test couvre la branche « vue A non reçue » sur une vue A non vide. Les tests du Script et de la région jouée passent par la production (`profile.Resoudre`, `scriptDuFilm`, `grammaireDeLaVueASousFilm`), avant que V2 ne consomme E. `consume140c1e9d4` remplace ses deux recopies. Quatre commentaires faux sont corrigés : classe et marche, lecture COMPLÈTE unique, contrat de `lireE524Sur`, et 47 genres portés (non 46). Deux valeurs magiques sont nommées d'après Ghidra. Les deux aiguillages de genres portent la justification de complexité. La 3e copie de `FUN_1407f15a4` reçoit une exemption datée (non centralisée : D-LN-2 changerait `weapon_hits`). La garde de tampon passe par `tientDansLeTampon`, avec un garde-rail archlint. Le balayage commun des garde-rails archlint vit dans `film_balayage_test.go`. `grammar-2026-10-06` est gardée et l'empreinte régénérée à révision constante.
+
+**Résultats observés** : quatre mutations ROUGES, m26 à m29. m26 n'était rougie par aucun test avant le vecteur neuf. Par rapport à `3bacfadeb`, la carte v2 sur 3 films (`fermeture_paquets.tsv`) et killsource sur 2 témoins sont identiques à l'octet. Gates : gofmt, vet (avec et sans research), paquet `grammar`, archlint, golangci-lint (0 issue) tous verts. Les décomptes de l'entrée précédente (« charges de 44 genres ») sont corrigés au §1 de `LOT_VA_V1.md` : 45 de LN, 47 au total.
+
+**Conclusion / prochaine étape** : V2 peut consommer E sur des tests qui gardent la règle du Script et les tables de la région jouée. Restent ouverts : D-VAV1-6 (lot dédié `FUN_1407f15a4` et D-LN-2), D-VAV1-7 et D-VAV1-8 (deux copies, à surveiller).
+
+## [2026-10-05] Campagne de grammaire — vue A V1 : ronde 2 de la relecture RI (points b et g)
+
+**Statut** : Complété.
+
+**Décision technique principale** : (b) le contrat de la lecture unique de la vue A (`vue_a_lecture.go`, `archlint/film_vue_a_lecteur_unique_test.go`) dit désormais exactement ce qui est unique — la lecture par la GRAMMAIRE jusqu'au terminateur, dans la couche grammar — et nomme les autres lectures hors contrat : la tête seule (`readPacketHead` et ses appelants ; `killsource` : `hasEvents`, `estAncreDeKillEvent`) et la lecture en chaîne des événements de `killsource` (`eventchain.go`). (g) garde-rail `archlint/film_balayage_unique_test.go` : le parcours de la production qui écarte les sous-arbres de recherche ne s'écrit que dans `film_balayage_test.go` (règle 6 : helper ET garde-rail).
+
+**Résultats observés** : archlint vert ; une copie du parcours dans un autre test d'archlint fait rougir le garde-rail (mutation vérifiée puis retirée) ; empreinte grammar inchangée (commentaires seulement).
+
+**Conclusion / prochaine étape** : relecture de ces lignes par la session RI, CI, puis fusion de V1 dans `feat/v75`.
+## [2026-10-05] Rejeu 2D — tourelles grises, tirs depuis la bouche des armes, cercle de retour du drapeau (points 18, 19, 20 de l'utilisateur)
+
+**Statut** : Complété (gate visuel de l'utilisateur après fusion). Plan : `.ai/PLAN_REJEU_TOURELLES_TIRS_ZONE_RETOUR_2026-10-05.md`.
+
+**Décision technique principale** : (20) le cercle de retour existait mais ne se dessine que pour un drapeau d'équipe ; or 760 matchs de CTF sur 1 512 sont sur des cartes sans socle d'équipe au catalogue (toutes les « Ranked:CTF 3 Captures » récentes), où le calque publiait UN drapeau d'équipe -1 : aucun cercle, deux drapeaux fusionnés. Le rejeu lit désormais base et camp dans le film (`film/replay/flag_film_bases.go`) : base d'un camp = point des vols du camp adverse (dispersion ≤ 1,4 m), affiné par la renaissance de l'objet ; neutre si les deux camps volent au même point ; le catalogue reste source quand il nomme le camp, le film le contrôle. Schéma 79 (verdict `republier`), `killcollector.PlacementRev` monté (rattrapage manuel, rien d'automatique). Le cercle est rendu comme une zone (disque, anneau net, jauge sur un arc distinct). (19) Chaque arme de véhicule a un montage mesuré sur son sprite (bouche à l'avant pour les armes fixes ; pivot + longueur de canon `reach` le long de la visée pour les tourelles) ; le « ! » d'un tireur embarqué ne flotte plus à la position fantôme de son bipède. (18) Les éléments de carte non jouables (`map_element`) se peignent au gris `zone-neutral`, sans libellé ; la tourelle fixe jouable est inchangée.
+
+**Résultats observés** : 8 films hors catalogue passent de 1 drapeau -1 à 2 drapeaux d'équipe avec états `home`, `carrierTeamUnknown` 0 ; 107 films à catalogue : bases lues à 0,02-0,87 m du socle du bon camp, aucune contradiction ; neutres lus neutres ; cartes à 7 socles réduites à leurs 2 socles réels. Revue adversariale ronde 1 (lot serveur seul) : 0 P0/P1, 4 P2 corrigés ; revue adversariale complète demandée par l'utilisateur (3 relecteurs aveugles : serveur, web + armes, tests) : 0 P0/P1, 10 P2 (3 commentaires faux, instrument resté à 10 m, 4e copie d'un helper, 5 trous de tests dont le câblage du canevas) tous corrigés. Gates : `go test ./...` (1 test `internal/watcher` instable sous charge, vert isolé), `go vet`, typecheck, lint, vitest complet.
+
+**Conclusion / prochaine étape** : fusion dans `feat/v75`, CI au niveau job ; gate visuel de l'utilisateur (cercle sur une partie classée CTF 3 Captures, tourelles de Snowbound, tirs du Ghost / Banshee / Scorpion / Warthog). À confirmer à l'écran : bouche de la mitrailleuse du Scorpion, de la tourelle du Wraith, longueur de canon du Falcon. Les artefacts en cache seront re-cuits (grammaire de la vague 2 déjà périmée pour eux).
+
+## [2026-10-05] Campagne de grammaire — goldens killsource sur films réels régénérés (diagnostic de calibration)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le banc local `TestGoldenFilms` (killsource, `KILLSOURCE_FIXTURES` = film_chunks du parc ; sauté en CI faute de films) était rouge sur `9b191a7f`, `78919882`, `fccc61cd` depuis les vagues de la campagne (signalé par la session RI) : seule la ligne de DIAGNOSTIC de calibration change (ORACLE axisW et scores du profil plat), la décision (indexW_poignée, LU axisW) et toutes les morts sont identiques. Même famille que D23 (diagnostic `Result.Calibration` non persisté, révision killsource constante). Goldens régénérés par `-run Golden -update`.
+
+**Résultats observés** : diff = une ligne par film (ORACLE axisW 14 -> 11 sur 78919882, 21 -> 20 sur 9b191a7f, scores 388 -> 390 sur fccc61cd) ; test vert ensuite.
+
+**Conclusion / prochaine étape** : à l'intégration d'un lot qui touche la marche, jouer aussi `TestGoldenFilms` avec `KILLSOURCE_FIXTURES` (la CI ne le voit pas).
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — fusion de feat/v75 après le lot « vue A » V1 ; 2.7.a clos — Complété (2.7.a, `feat/ri-etape2`)
+
+**Statut** : Complété pour 2.7.a et 2.7.a0 ; fusion dans `feat/v75` en attente de la CI, de
+`make gate-push` et de l'accord de l'utilisateur.
+
+**Décision technique principale** : `feat/v75` (`5bc1fd938`, `65c99b669`) fusionné dans la
+branche ; rangs de fusion `grammar-2026-10-06.2` et `profile-2026-10-06.2` ; le canal des morts
+prend le prédicat de la marche (`listeAnnoncee`) depuis la lecture complète de la vue A.
+
+**Résultats observés** : gate de corpus contre la nouvelle base identique ligne pour ligne au gate
+admis (315 lignes, aucun FAUX, banc `ok` sur 19) ; fixtures de contrat identiques hors révisions ;
+banc killsource sur films réels trouvé rouge sur `feat/v75` (diagnostic de calibration, antérieur à
+V1), régénéré par la campagne, vert sur la branche.
+
+**Conclusion / prochaine étape** : CI, `make gate-push`, puis accord de fusion demandé à
+l'utilisateur ; ensuite LR de la campagne, puis 2.7.b.
 
 ## [2026-10-04] Étude « Tendances » : maquette v4 (horizons 7 / 30 / 90 / 365 j, familles d'indicateurs selon le matchmaking)
 

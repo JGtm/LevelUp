@@ -29,6 +29,7 @@ package replay
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -156,11 +157,41 @@ func (s *filmScan) assembler(titleSlug string, opt Options) ReplayDocument {
 //
 // Garde-rail : `TestRouteDuProfilCalibreJusquAuContexte` epingle les deux — le profil calibre
 // ARRIVE, et les largeurs de carte SURVIVENT. Intervertir les deux appels le fait rougir.
+//
+// LE DECOUPAGE MPP DU FILM VIENT EN DERNIER, pour la meme raison : le profil calibre le
+// remplacerait (cf. [poserLeDecoupageMPPDuFilm]).
 func poserProfilPuisCarte(ctx context.Context, fc *grammar.FilmContext, matchID string, opt Options) {
 	if opt.ProfilDeBalayage != nil {
 		fc.PoserProfilDeBalayage(*opt.ProfilDeBalayage)
 	}
 	installWorldObjectPrecision(ctx, fc, matchID, opt.Fallbacks)
+	poserLeDecoupageMPPDuFilm(ctx, fc, matchID)
+}
+
+// poserLeDecoupageMPPDuFilm pose sur le contexte, pour TOUTE la cuisson, le decoupage du bloc MPP
+// que la grammaire resout pour ce film ([grammar.FilmContext.ResolutionMPP]) : celui de sa version
+// de format, ou celui que le film declare par la taille d etat de creation de ses objets. Toutes
+// les lectures de la cuisson le portent alors — images-cles, trames, creations, socles,
+// vehicules et poses.
+//
+// Rien de resolu : le contexte garde son decoupage, et les sites des socles et des poses gardent
+// leur repli calibre, compte. killsource ne passe pas par ici : son contexte garde le decoupage
+// par defaut jusqu a son alignement sur la cuisson.
+func poserLeDecoupageMPPDuFilm(ctx context.Context, fc *grammar.FilmContext, matchID string) {
+	res := fc.ResolutionMPP()
+	if !res.Decide() {
+		if d := res.Declaration; d.Records > 0 {
+			slog.WarnContext(ctx, "film : decoupage MPP declare discordant — chemin calibre garde",
+				"match_id", matchID, "format", res.FormatVersion, "records", d.Records,
+				"discordants", d.Discordants)
+		}
+		return
+	}
+	fc.PoserMPP(res.Widths)
+	if res.Provenance == profile.MPPPresumeParMesure {
+		slog.InfoContext(ctx, "film : decoupage MPP declare par le film, presume par mesure",
+			"match_id", matchID, "format", res.FormatVersion, "decoupage", res.Widths.String())
+	}
 }
 
 // filmScan porte ce que les cinq phases de balayage se partagent : le film et son contexte, les

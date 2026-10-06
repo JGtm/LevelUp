@@ -80,11 +80,13 @@ import (
 // ci-dessus devient sans objet, et tous les portages tombent dans ce drapeau unique parce qu'un
 // seul socle est retenu (`flag_neutral.go`).
 //
-// Carte hors du catalogue d'objectifs : aucun socle, tous les portages tombent dans un seul
-// drapeau d'equipe [TeamNeutral]. Le calque reste vrai (les portages sont ceux qu'ils sont), il
-// est seulement moins detaille — et la couverture publie `Spawns: 0`. Le NOMBRE de drapeaux n'y
-// est pas suppose pour autant (lot J9.2) : les regles qui nomment un drapeau par l'equipe — le
-// passage de main en main, le retour credite — se taisent, et le repli se compte
+// Carte hors du catalogue d'objectifs, ou socle sans camp : la base et le camp de chaque drapeau
+// se LISENT DANS LE FILM — les vols d'un camp tombent a la base de l'autre (`flag_film_bases.go`),
+// et tout le calque fonctionne alors comme sur une carte du catalogue. Ni catalogue ni base lue
+// (aucun vol localise des deux camps) : aucun socle, tous les portages tombent dans un seul
+// drapeau d'equipe [TeamNeutral] et la couverture publie `Spawns: 0`. Le NOMBRE de drapeaux n'y
+// est pas suppose pour autant : les regles qui nomment un drapeau par l'equipe — le passage de
+// main en main, le retour credite — se taisent, et le repli se compte
 // (`flag_carries_handoff.go`, [flagCountUnread]).
 
 const (
@@ -103,7 +105,8 @@ const (
 
 // FlagSpawn est un socle de drapeau de la carte, en coordonnees monde.
 type FlagSpawn struct {
-	// Team est l'equipe proprietaire, telle que le fichier de carte la donne.
+	// Team est l'equipe proprietaire, telle que le fichier de carte la donne — ou telle que le
+	// film la lit quand la carte ne la donne pas (`flag_film_bases.go`).
 	Team int
 	// Neutral dit que ce socle est celui de la variante « drapeau neutre ». IL N'EST PAS
 	// DEDUCTIBLE DE `Team`, et c'est la correction du 2026-09-13 (decouverte D-B2).
@@ -117,10 +120,10 @@ type FlagSpawn struct {
 	// ces huit socles du cote neutre et pouvait basculer un film en variante « drapeau
 	// neutre » a tort (`flag_neutral.go`).
 	//
-	// LA NEUTRALITE EST DONC UN FAIT A PART ENTIERE, pose depuis le LABEL et jamais
-	// devine : `Team` reste ce que le fichier de carte dit (y compris « inconnue » a -1),
-	// `Neutral` dit la variante. Les huit socles gardent leur equipe inconnue et sortent
-	// du panier neutre.
+	// LA NEUTRALITE EST DONC UN FAIT A PART ENTIERE, jamais devine de `Team` : le catalogue
+	// la pose depuis le LABEL, et les huit socles a -1 sortent du panier neutre. La ou le
+	// catalogue se tait, le film tranche (`flag_film_bases.go`) : un socle a -1 apparie prend
+	// le camp lu, ou devient le socle neutre quand le film lit une base neutre.
 	Neutral bool
 	X, Y    float32
 }
@@ -150,7 +153,8 @@ type FlagCarryScan struct {
 	// Marks est le controle independant : les records de bipede d'image-cle portant le marqueur
 	// de portage, plus les instants de TOUTES les images-cles.
 	Marks grammar.CarrierMarkScan
-	// Spawns sont les socles `flag_spawn` de la carte (catalogue versionne d'objectifs).
+	// Spawns sont les socles `flag_spawn` de la carte (catalogue versionne d'objectifs), tels que
+	// l'appelant les fournit ; le calque les complete par les bases lues dans le film.
 	Spawns []FlagSpawn
 	// Free sont les VIES LIBRES de l'objet drapeau (cf. flag_objects.go). Elles ne PUBLIENT rien
 	// ici : elles CORRIGENT ce calque — elles DATENT le lacher volontaire, que rien d'autre ne
@@ -244,16 +248,12 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	if !scan.Scanned {
 		return nil, nil
 	}
-	// LA VARIANTE SE TRANCHE AVANT TOUT LE RESTE : le jeu de socles retenu decide combien de
-	// drapeaux existent, et donc a quoi chaque portage s'attache (cf. flag_neutral.go).
-	choix := flagChooseSpawns(scan)
-	scan.Spawns = choix.Spawns
 	cov := &FlagCarriesCoverage{
 		FlagFilm: scan.Signals.IsFlagFilm(), Bursts: scan.Signals.Bursts,
-		Captures: scan.Signals.Captures, Steals: scan.Signals.Steals, Spawns: len(scan.Spawns),
-		NeutralFlag: choix.Neutral, NeutralBirths: choix.NeutralBirths, TeamBirths: choix.TeamBirths,
+		Captures: scan.Signals.Captures, Steals: scan.Signals.Steals,
 	}
 	if !cov.FlagFilm {
+		cov.poserVariante(flagChooseSpawns(scan))
 		return nil, cov
 	}
 	openings := flagOpenings(scan.Events, scan.Identity)
@@ -269,6 +269,13 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 		named = append(named, o)
 	}
 	logFlagOpeningsWithoutBridge(ctx.journal, sansPont, len(openings))
+	idx := flagCarrierTrackIndex(ctx, cov)
+	// LA VARIANTE ET LES SOCLES SE TRANCHENT AVANT TOUTE REGLE : le jeu de socles retenu decide
+	// combien de drapeaux existent, et donc a quoi chaque portage s'attache — catalogue d'abord
+	// (flag_neutral.go), complete et controle par les bases lues dans le film (flag_film_bases.go).
+	choix := flagResolveSpawns(scan, readFlagFilmBases(named, scan, ctx, idx), cov, ctx)
+	scan.Spawns = choix.Spawns
+	cov.poserVariante(choix)
 	raws := boundFlagCarries(named, scan, ctx)
 	// LES QUATRE CHAINES DE FERMETURE S'APPLIQUENT EN SUITE, ET LA PLUS PRECOCE GAGNE — chacune
 	// EFFACANT l'etat de fin de celle qu'elle remplace (cf. [flagCloseAt], flag_carries_close.go).
@@ -287,7 +294,7 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	// LE LACHER VOLONTAIRE SE FERME ICI, ET AVANT LES POSITIONS : c'est lui qui deplace `t1`,
 	// donc le point de lacher que la ligne suivante ira lire sur la piste du porteur.
 	raws = closeByFreeLives(raws, ctx, scan)
-	raws = attachFlagCarryPositions(raws, ctx, cov)
+	raws = attachFlagCarryPositions(raws, ctx, idx, cov)
 	// ... et le point de lacher se corrige APRES, sur la piste LIBRE : le porteur meurt rarement
 	// la ou l'objet se pose. L'attribution du drapeau qui suit s'en sert.
 	cov.DropsRepositioned = repositionFlagDrops(raws, ctx, scan)
@@ -382,15 +389,22 @@ func nextOpeningOfSlot(ops []flagOpening) map[int]int64 {
 	return out
 }
 
-// attachFlagCarryPositions pose la position de PRISE et celle de LACHER sur chaque portage, et
-// ecarte ce qui n'en a pas. C'est le seul endroit qui rejette apres le pont : les compteurs de
-// cause y sont.
-func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCarriesCoverage) []flagCarryRaw {
-	// LE REFUS DU REPLI EST COMPTE ET DIT : la matiere existe, le calque renonce a s'en servir
-	// parce que le slot est partage (cf. flag_carrier_tracks.go, garde du constat C1).
+// flagCarrierTrackIndex range UNE fois les pistes publiees par porteur : les bases lues dans le
+// film et les positions des portages lisent le meme index. LE REFUS DU REPLI EST COMPTE ET DIT :
+// la matiere existe, le calque renonce a s'en servir parce que le slot est partage (cf.
+// flag_carrier_tracks.go, garde du constat C1).
+func flagCarrierTrackIndex(ctx flagCarryCtx, cov *FlagCarriesCoverage) map[string][]Track {
 	idx, ambigus := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous, ctx.fb)
 	cov.AmbiguousSlot = len(ambigus)
 	logFlagAmbiguousSlots(ctx.journal, ambigus)
+	return idx
+}
+
+// attachFlagCarryPositions pose la position de PRISE et celle de LACHER sur chaque portage, et
+// ecarte ce qui n'en a pas. C'est le seul endroit qui rejette apres le pont : les compteurs de
+// cause y sont.
+func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, idx map[string][]Track,
+	cov *FlagCarriesCoverage) []flagCarryRaw {
 	out := raws[:0:0]
 	for _, r := range raws {
 		f0 := ctx.frameOfMatchMS(r.t0)

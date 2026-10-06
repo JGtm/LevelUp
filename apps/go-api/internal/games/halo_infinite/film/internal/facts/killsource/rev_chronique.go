@@ -477,3 +477,13 @@ package killsource
 // sur les 20 films. Le lot LS, qui faisait monter la revision (voie de 229 morts du balayage a la
 // marche), est retire de la vague : la revision reste et aucun backlog n est ouvert. Golden regenere
 // a revision constante. Mesures : `campagne_grammaire_2026-10-01/vague2_tsv/revue/`.
+//
+// COMPLEMENT DU 2026-10-05 (lot VA de la campagne de grammaire, etape V1 : la vue A lue message par
+// message par une seule lecture ; REVISION CONSTANTE) : aucune source de la couche ne change ; la
+// VALEUR de `grammar.Rev` monte a `grammar-2026-10-06` et celle de `profile.Rev` a
+// `profile-2026-10-06`, donc l empreinte. Sortie `cmd/killsource json` sur les 19 temoins de
+// `config/replay_corpus.toml` et `1c4c63c2` (carte Refuge), binaire de `87cdfa761` contre binaire du
+// lot : IDENTIQUE A L OCTET sur les 20 films. La marche de killsource ne lit pas la vue A
+// (`DecodeFrameRecords` saute l amorce ; debut par `LocaliserBoucleDeRecords`, inchange). Golden
+// regenere a revision constante. Mesures :
+// `campagne_grammaire_2026-10-01/LOT_VA_V1.md`.

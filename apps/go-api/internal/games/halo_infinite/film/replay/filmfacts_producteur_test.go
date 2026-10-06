@@ -302,7 +302,7 @@ func TestLObservateurNEstPasUnFaitPersiste(t *testing.T) {
 // TestStatsDeMortDObjetSontToutesPortees : LA PROJECTION NE PERD PAS UN CHAMP EN SILENCE.
 //
 // `statsSansCadre` recopie a la main les champs de donnees de [grammar.ObjectDeathStats], parce
-// que le quatorzieme — `Config` — porte l observateur, que `encoding/json` refuse. Une liste
+// que le dixieme — `Config` — porte l observateur, que `encoding/json` refuse. Une liste
 // ecrite a la main est exactement la dette que ce lot repare : ce ratchet la tient.
 //
 // LE COMPTE, ET PAS LES NOMS : un champ ajoute au type d origine sans entrer dans la projection
@@ -320,7 +320,6 @@ func TestStatsDeMortDObjetSontToutesPortees(t *testing.T) {
 	}
 	// ET L ALLER-RETOUR DE LA PROJECTION EST L IDENTITE, cadre compris.
 	st := grammar.ObjectDeathStats{
-		CadreParDefaut: true, CadreLocalises: 1, CadreDauphin: 2, CadreEvenements: 3,
 		Keyframes: 4, Deltas: 5, Packets: 6, EventPackets: 7, LocatedPackets: 8,
 		Records:      map[uint32]int{9: 10},
 		CleanRecords: map[uint32]int{11: 12},

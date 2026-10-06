@@ -113,7 +113,9 @@ func vehicleWeaponOf(w mappings.VehicleWeapon) replay.VehicleWeapon {
 		Loop: w.Loop,
 	}
 	if w.Mount != nil {
-		out.Mount = &replay.VehicleWeaponMount{Aim: w.Mount.Aim, AX: w.Mount.AX, AY: w.Mount.AY}
+		out.Mount = &replay.VehicleWeaponMount{
+			Aim: w.Mount.Aim, AX: w.Mount.AX, AY: w.Mount.AY, Reach: w.Mount.Reach,
+		}
 	}
 	return out
 }

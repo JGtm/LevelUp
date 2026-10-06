@@ -67,6 +67,9 @@ var buildFromFilmSteps = []string{
 	"movementStates", "movementStates.stats",
 	// LE TIR CONTINU (lot M4b) : la MEME marche, la vue C de chaque trame.
 	"continuousFire", "continuousFire.stats",
+	// LES MORTS DE VEHICULE ET L OCCUPATION : la MEME marche, le canal des morts ; vides quand le
+	// calque des vehicules n a pas ete balaye.
+	"vehicleDeaths", "vehicleDeaths.stats",
 	"grenades", "projectiles", "deaths", "filmTable", "playerTeams", "playerIndices", "clockOrigin",
 }
 

@@ -89,15 +89,16 @@ func declarationsDuBalayage(t *testing.T) map[string]*ast.FuncDecl {
 }
 
 // balayagesAPlusieursCanaux : les balayages dont UNE marche rend PLUSIEURS canaux observes, et
-// combien. La marche du frame-processeur (`grammar.ScanMarcheDesTrames`) deroule chaque trame une
-// fois et rend les ETATS DE MOUVEMENT (vue B) et le TIR CONTINU (vue C, lot M4b, 2026-09-24) :
-// deux etapes observees pour un seul balayage. Refaire la marche pour la seconde doublerait le
-// cout du plus cher des balayages ; l egalite `etapes = balayages` reste exacte, ponderee ici.
+// combien. La marche du frame-processeur (`grammar.ScanMarcheDesTramesAvec`) deroule chaque trame une
+// fois et rend les ETATS DE MOUVEMENT (vue B), le TIR CONTINU (vue C) et les MORTS DE VEHICULE avec
+// l occupation (vue B, canal des morts) : trois etapes observees pour un seul balayage. Refaire la
+// marche pour l une d elles doublerait le cout du plus cher des balayages ; l egalite
+// `etapes = balayages` reste exacte, ponderee ici.
 //
 // L ETAGE DU PONT D IDENTITE (`grammar.ScanPontDIdentite`, lot J4.3, 2026-09-26) rend SIX canaux
 // observes — `translocations`, `positions`, `bipedCreations`, `deaths`, `playerIndices`,
 // `clockOrigin` — d un seul appel, partage avec le collecteur killsource.
-var balayagesAPlusieursCanaux = map[string]int{"ScanMarcheDesTrames": 2, "ScanPontDIdentite": 6}
+var balayagesAPlusieursCanaux = map[string]int{"ScanMarcheDesTramesAvec": 3, "ScanPontDIdentite": 6}
 
 // canauxDuBalayage rend le nombre d etapes observees qu un balayage alimente (1 par defaut).
 func canauxDuBalayage(nom string) int {

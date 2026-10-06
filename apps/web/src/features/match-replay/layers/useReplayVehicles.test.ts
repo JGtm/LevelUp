@@ -111,7 +111,7 @@ async function monter(family: string, opts: { outline?: string | null } = {}) {
       colorOfSlot: () => '#123456', colorOfXuid: () => '#123456',
       nameOfSlot: () => null, nameOfXuid: () => null,
       offscreenLabelOf: () => '', offscreenGroupLabelOf: () => '',
-      neutralInk: 'n', labelStroke: 's', markInk: { fill: 'm', outline: 'o' }, explosionInk: ENCRE_FX, reducedMotion: true,
+      neutralInk: 'n', mapElementInk: 'g', labelStroke: 's', markInk: { fill: 'm', outline: 'o' }, explosionInk: ENCRE_FX, reducedMotion: true,
       redraw,
     }),
   )
@@ -237,7 +237,7 @@ function disponible(vehicles: ReplayVehicleTrack[], decorSlots: number[] = []): 
       colorOfSlot: () => '#123456', colorOfXuid: () => '#123456',
       nameOfSlot: () => null, nameOfXuid: () => null,
       offscreenLabelOf: () => '', offscreenGroupLabelOf: () => '',
-      neutralInk: 'n', labelStroke: 's', markInk: { fill: 'm', outline: 'o' }, explosionInk: ENCRE_FX, reducedMotion: true,
+      neutralInk: 'n', mapElementInk: 'g', labelStroke: 's', markInk: { fill: 'm', outline: 'o' }, explosionInk: ENCRE_FX, reducedMotion: true,
       redraw: vi.fn(),
     }),
   )

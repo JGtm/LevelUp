@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 78
-empreinte-stockee 32e724fe09216140
-empreinte-servie 32e724fe09216140
-empreinte-cuite abd4864c427ebbac
+schema 79
+empreinte-stockee f18eb09d461a3f6b
+empreinte-servie f18eb09d461a3f6b
+empreinte-cuite af39c82c52c98a94
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -390,6 +390,9 @@ FlagCarriesCoverage
   ClosedOverlaps json:"closedOverlaps" int
   DropsRepositioned json:"dropsRepositioned" int
   DropsWithheld json:"dropsWithheld" int
+  FilmBaseAgree json:"filmBaseAgree,omitempty" int
+  FilmBaseContradict json:"filmBaseContradict,omitempty" int
+  FilmBases json:"filmBases,omitempty" int
   FlagFilm json:"flagFilm" bool
   GaugePaired json:"gaugePaired" int
   GaugePoints json:"gaugePoints" int
@@ -413,6 +416,7 @@ FlagCarriesCoverage
   Overlaps json:"overlaps" int
   OwnFlagRefused json:"ownFlagRefused" int
   Spawns json:"spawns" int
+  SpawnsFromFilm json:"spawnsFromFilm,omitempty" int
   Steals json:"steals" int
   TeamBirths json:"teamBirths" int
   UnjudgedCarrierKills json:"unjudgedCarrierKills,omitempty" int
@@ -1155,6 +1159,7 @@ VehicleWeaponMount
   AX json:"ax" float64
   AY json:"ay" float64
   Aim json:"aim" string
+  Reach json:"reach,omitempty" float64
 VipCrownCoverage
   Closed json:"closed" int
   ClosedByDeath json:"closedByDeath" int

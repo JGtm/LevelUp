@@ -173,9 +173,9 @@ func c514Cause(pay []byte, w *World, cfg FrameConfig, debut int) (string, int) {
 	br.poserCadre(cfg)
 	if debut == DefaultPacketPreambleBits {
 		br.Skip(DefaultPacketPreambleBits - 1)
-		a := consumeVueA(br, frameLen)
-		if !a.Porte {
-			return fmt.Sprintf("rang 0 vue A : genre %v non porte", a.Genres),
+		a := lireLaTeteDeMarche(br, pay, cfg)
+		if !a.Vide {
+			return fmt.Sprintf("rang 0 vue A : genre %v non porte", a.Genres[:min(1, len(a.Genres))]),
 				frameLen - br.BitPos()
 		}
 	} else {

@@ -98,10 +98,20 @@ naissances lues par la grammaire des messages de la vue A.
 | 2.4, 2.5 (récupération) | lecteurs de composants des vagues 1 et 2 (`dispatch_*.go`, `components_*.go`) en LECTURE seulement ; créations (`equipment_creation*.go`, `vehicle_creation.go`) | après la fusion de la vague 1 ; les lecteurs sont des briques, inchangées |
 | 2.7 (a) morts d'objet, 3.1 localisateurs | `object_deaths_march.go`, `facts/killsource/walk.go` (LU, LS) | APRÈS la fusion de LU ; le retrait des localisateurs jumeaux est LU, pas ce plan |
 | 2.7 (b) canaux delta par la marche | fermeture des trames (toute la campagne) | seulement là où la marche couvre AU MOINS autant que la recherche d'ancres, canal par canal, mesuré sur le corpus |
-| 2.7 (c) killsource | `facts/killsource/*` (LU, LS) | en DERNIER, après LU et LS |
+| 2.7 (c) killsource | `facts/killsource/*` (LU, LS) | en DERNIER, après LU ; LS, retiré par la campagne le 2026-10-04, n'imposait qu'un ordre d'écriture des mêmes fichiers (journal) |
 
 Chaque session prévient l'autre quand elle fusionne dans `feat/v75` ; une découverte qui touche un
 fichier de l'autre se signale, ne se corrige pas.
+
+Ordre de fusion convenu avec la campagne le 2026-10-05 (chaque fusion reste soumise à l'accord de
+l'utilisateur, §1.2) :
+1. le lot « vue A » V1 de la campagne ;
+2. 2.7.a et 2.7.a0 (ce plan), après fusion de `feat/v75` dans la branche et remesure ;
+3. le lot LR de la campagne, rebasé sur cette tête : sa règle de lecture du jeu (compte ≥ 5 →
+   échec) ne tient que sous le découpage déclaré ; son gate 2 officiel se joue sous `-mpp-declare` ;
+4. le lot « vue A » V2 (il touche aussi `debut_de_liste.go`).
+Le DELTA à génération contredite (découverte 15) va dans le lot de la campagne qui suit LR ; la
+fermeture d'un épisode par le même objet occupant est déjà dans 2.7.a.
 
 ## 2. Décisions
 
@@ -119,6 +129,15 @@ fichier de l'autre se signale, ne se corrige pas.
   des replis jusqu'aux lots de comportement de 2.7, qui les ordonneront derrière la grammaire ; elles
   s'y inscriront alors « après la lecture », comptées, leurs records marqués récupérés (item
   2.7.d). Pas de montée du cliquet `NbDevantLaLecture`.
+- 2026-10-05 : « Oui je valide cette piste. Mais à noter comme potentielle optimisation avec Cheat
+  Engine dans le BACKLOG.md ». Réponse à la proposition suivante : lire le bloc MPP des anciens
+  films d'après la taille d'état de création que chaque film déclare (`n1`, découverte 13), au lieu
+  de la largeur calibrée film par film. Item 2.7.a0 ; l'observation dynamique avec Cheat Engine est
+  inscrite au backlog (`.ai/BACKLOG.md`).
+- 2026-10-05, en réponse à l'instruction du gate de corpus (journal du même jour) : « Oui,
+  admises » — les baisses instruites des huit films (postures, changements d'arme, tir continu,
+  dotations de naissance, trajets) sont admises ; « Par joueur » — la primauté de la lecture
+  nomme les occupants par joueur, plus par corps (découverte 16).
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -594,12 +613,174 @@ et l'appartenance du slot à la bande font l'essentiel du coût.
   régénérées à révision constante.
 
 ### Lot 2.7 — Changements de comportement déclarés (taille L) — coordination §1.3
-- [ ] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
+*Mesure avant 2.7.a, 2026-10-04* (instrument `grammar/morts_marche_unique_research_test.go`, huit
+films du corpus à véhicules, contexte posé comme la cuisson : profil calibré de killsource —
+génération stricte — et largeurs MPP des véhicules). Une première mesure sans le profil de la
+cuisson était FAUSSE (générations lues contre celles du recensement : 1 mort sur 56 dans une vie) ;
+refaite sous le bon profil, toutes les morts confirmées le sont à moins d'une minute de la fin de
+leur vie au recensement des images-clés. Morts de véhicule (`ti=40`), records : marche à huit vues
+138 ; marche des trames de la cuisson 131 (communes 118 ; les 20 propres à la marche à huit vues
+sont dans des listes d'événements que la marche des trames ne localise pas, 19 confirmées) ; la
+même sous les largeurs MPP des véhicules 150 ; et avec la récupération des listes non localisées
+(localisateur unique, ordre « signature puis largeur libre ») 165 — deux seulement manquent (toutes
+deux confirmées), vingt-neuf de plus (vingt-cinq confirmées). Occupation : 543 → 688 lectures.
+`IDLowBits` : la calibration de la marche des morts rend 13 sur les huit films, et 13 sur les 48
+films à véhicules du parc local (faits de cuisson), jamais le cadre par défaut.
+*Décisions d'exécution du 2026-10-04* :
+1. *Les morts d'objet et l'occupation deviennent un canal de la marche des trames* ([Distribuer],
+   `ScanMarcheDesTrames`) : même récolte que la marche des morts (règle d'acceptation, dénominateurs,
+   dédoublonnage), sur les records de la vue B de chaque trame. `ScanObjectDeaths` devient une
+   projection de cette marche (instruments), comme `ScanMovementStates`.
+2. *Les listes d'événements que la marche des trames ne localise pas sont récupérées pour ce seul
+   canal* : début par le localisateur unique dans l'ordre des marches qui lisent les morts
+   (signature, puis largeur libre), vue B lue sous le monde de la marche, rendu intact ; les autres
+   canaux ne voient pas ces records. Compté au repli `repli_localisation_largeur_libre`, déjà inscrit
+   « après la lecture ».
+3. *RETIRÉE le 2026-10-04 (avant fusion), sur signalement de la campagne.* Elle faisait marcher les
+   trames de la cuisson sous les largeurs MPP que les véhicules calibrent sur les poses des formats
+   sans largeur relue (8/3) : c'est le lot LM de la campagne, MIS DE CÔTÉ par l'utilisateur le
+   2026-10-02 (« corrections d'abord, uniquement générales lues dans le jeu » ; l'exception D6 est
+   suspendue, plan de la campagne §3). La passe `ri27b` montrait pourtant la vue C fermée deux fois
+   et demie à cinq fois plus souvent sur six de ces films (`084a804d` 4 837 → 23 642 paquets) : le fait est consigné
+   (découverte 11), la décision reste celle de l'utilisateur. La marche des trames garde les
+   largeurs du contexte, et les morts de véhicule s'y lisent, alors que la marche à huit vues les
+   lisait sous les largeurs calibrées.
+4. *`IDLowBits`* : la marche des trames garde l'en-tête (13, présumé, valeur statique de
+   l'exécutable) ; la calibration de la marche des morts disparaît avec elle (13 partout où elle a
+   tourné) et le repli `repli_cadre_de_marche_par_defaut_conserve` est retiré (aucun déclenchement) :
+   un seul `IDLowBits` (IR-7).
+5. *La marche à huit vues est retirée dans ce lot* (chronologie, calibration, déroulage à huit vues,
+   site du localisateur) : sans appelant de production, elle serait du code mort (règle 7) ; 3.1.1
+   garde la timeline de killsource. Les fichiers de la campagne qui la citent (le localisateur
+   unique, son test, des instruments de recherche) sont mis à jour après l'avoir prévenue.
+- [x] 2.7.a0 **Découpage MPP déclaré par le film** — prérequis de 2.7.a. Décision de
+      l'utilisateur du 2026-10-05 (découverte 13). La campagne l'a confié à ce plan le même jour,
+      sous trois conditions : son gate 2, la provenance présumée par mesure, sa double preuve comme
+      oracle. Périmètre fermé :
+      1. *profile* : la table des tailles d'état de création que l'exécutable courant déclare
+         (`vtable+0x20`, getters relus le 2026-10-05) pour les archétypes dont l'état de création
+         lit le bloc MPP : 35 → 0x98, 36 → 0x60, 37, 38 et 39 → 0x68, 40 → 0xb0, 41 → 0xd4,
+         42 → 0xa8, 43 → 0x60. Règle sur la taille `n1` déclarée :
+         - égale à la taille courante → découpage relu 9/5 ;
+         - taille courante − 4 → 8/3, PRÉSUMÉ PAR MESURE (provenance écrite, la clé `n1` lue dans
+           le film citée, liste gelée par un test) ;
+         - autre valeur → inconnu.
+      2. *grammar* : `n1` est lu dans la première image-clé du film, au premier record d'un
+         archétype à bloc MPP, avant son état de création, et le résultat est mémorisé sur le
+         contexte. `EnTete().MPP` et `MPPWidthsForFilm` rendent le découpage déclaré pour un format
+         sans largeur relue. Un film dont le `n1` est inconnu garde le chemin actuel (calibration
+         sur les poses) ; ce cas est compté.
+      3. *Cuisson* :
+         - le découpage du film est posé sur le contexte pour TOUTE la cuisson, après le profil
+           calibré et la carte ;
+         - les socles, les véhicules et les poses d'équipement le prennent, et la calibration
+           redevient un contrôle ;
+         - `repli_largeurs_mpp_calibrees_sur_le_film` ne se déclenche plus que pour un `n1`
+           inconnu (le registre suit).
+      4. *Contrôle par record* : tous les records de la clé de l'image-clé qui décide doivent
+         déclarer le même découpage. Un seul discordant, et le film ne déclare rien : chemin
+         actuel, avertissement par film. *Précisé à l'écriture* : le contrôle porte sur cette
+         image-clé, pas sur chaque marche d'image-clé. Les records d'un film viennent d'un seul
+         écrivain, et un contrôle dans les marches toucherait l'en-tête que la preuve des ancres
+         et killsource lisent.
+      5. *killsource inchangé* : son profil garde `MPPParDefaut`. L'écart est déclaré et
+         l'alignement se fait en 2.7.c. La déclaration n'entre ni dans l'en-tête de la marche
+         ni dans la preuve des ancres d'image-clé.
+      6. *Outil du gate 2* : drapeau `-mpp-declare` dans `cmd_fermeture` (outil de recherche),
+         ajouté à la demande de la campagne. Il pose `ResolutionMPP` sur chaque film et
+         journalise le découpage et sa provenance (`mpp_declare.tsv`).
+      *Écrit* (`3ee8e7bf2`, local) :
+      - `profile/mpp_declare.go` et son test ; la table du profil et son catalogue commis (deux
+        lignes sous la clé `format=20,21,24,25`) ; `profile-2026-10-05` ;
+      - `grammar/mpp_declare.go` (`DeclarationMPP`, `ResolutionMPP`) et son test sur les sept
+        bobines : 8/3 déclaré sans discordance sur les cinq anciennes (84 à 247 records de la clé),
+        9/5 sur les deux du format 27 ;
+      - `Relue` → `Decide` ; `grammar-2026-10-05` ;
+      - cuisson : `replay.poserLeDecoupageMPPDuFilm`, et `gwWidthsForFilm` et les poses par
+        `ResolutionMPP` ;
+      - registre du repli calibré, ADR 0037 IR-7 ;
+      - killsource et objectives : empreintes recopiées à révision constante ;
+      - fixtures de contrat : seule la télémétrie des révisions change.
+      Gates :
+      - tests de la règle et sur les sept bobines (8/3 sur les cinq anciennes, 9/5 sur les deux
+        récentes, aucun record contredit) ;
+      - `go test` des paquets touchés ;
+      - preuve d'équivalence : format 27 identique, formats anciens classés ;
+      - gate de corpus contre `feat/v75` : aucun film en baisse ;
+      - gate 2 de la carte v2 de la campagne (`cmd_fermeture -mode v2 -denominateur-fixe`) : aucun
+        film en baisse, gagnés et perdus, part de factices ;
+      - killsource à l'octet (`KILLSOURCE_FIXTURES`) ;
+      - `grammar.Rev`, ADR 0037 IR-7 amendé.
+      *Clos le 2026-10-05.* Gates joués (journal du même jour) ; baisses du gate de corpus admises
+      par l'utilisateur. Double preuve de la campagne (oracle, 114 films anciens du parc) :
+      identités lues contre le catalogue des tags installés, 1 480 366 records d'image-clé sur
+      1 480 374 connus sous 8/3, aucun sous 9/5, miroir exact sur le format 27 ; fermeture des
+      formats 24 et 25, 8/3 meilleure largeur sur 106 films sur 107, paquets sains 19-26 % →
+      67-68 % ; formats 20 et 21 muets (aucune largeur ne ferme) : leur champ d'index repose sur
+      `n1` seul. Réserves du vérificateur :
+      1. `b429a7d3` (format 24, parc) : `n1` déclare 8/3 (232 records, aucun discordant) ; paquets
+         sains 5 560 → 5 558, records utiles sains 50 → 50. Les quatre perdus (18:606, 19:1046,
+         23:606, 33:1058) étaient de faux sains de 9/5 : chacun un seul NEW d'archétype MPP qui
+         ouvre la liste par la recherche « fermeture », identité inconnue du catalogue installé
+         (`10830ea5`, `82ebff11`, `3182036d`, `be63fce4`), champ de tête à 0x1c0 ou 0x19b (bits 7
+         et 8, jamais écrits) ; sous 8/3 la liste n'est plus localisée. Instruit.
+      2. Part contredite des fermés au bit, 2,4 % contre 0,6 % au témoin (« masque au-delà de
+         l'archétype ») : famille du lot LR de la campagne, qui ne tient que sous le découpage
+         déclaré. Hors de ce plan.
+      3. Ratchet de fermeture d'image-clé : il mesure les bobines sous le découpage du format (9/5
+         pour les anciennes), donc ne bouge pas. Rejoué sous le découpage déclaré : cinq archétypes
+         objet 932 → 1 039 sur 22 319 ; baisses par ligne sur `ti=42` (`a521164d` 24 → 12,
+         `60ae07c4` 5 → 3, `e5adf7b2` 13 → 1), `ti=38` de `a521164d` (122 → 121), `ti=37` de
+         `e5adf7b2` (1 → 0). Aligné en 2.7.c (accord de la campagne).
+      4. killsource lit `MPPParDefaut` (D-108 de la campagne), deux découpages sur les formats
+         anciens : 2.7.c, déjà prévu.
+- [x] 2.7.a Morts d'objet sur le marcheur unique (huit vues → trois, monde unifié) — après LU.
+      *Écrit* (décisions 1 à 5) : `grammar/canal_des_morts.go` (canal des trames et d'image-clé :
+      récolte des records de la vue B, récupération des listes non localisées par [debutRecupere],
+      monde rendu intact, sans observation) ; `ScanMarcheDesTramesAvec` le distribue avec les deux
+      autres quand on lui demande les morts (la cuisson : calque des véhicules balayé, un film sans
+      véhicule ne paie pas cette lecture), `ScanObjectDeaths` en est une projection ;
+      `MarcheDistribuee` expose la marche aux
+      canaux de la grammaire ; `object_deaths_march.go` et `object_deaths_calibrate.go` retirés,
+      `ObjectDeathStats` sans les champs de la calibration ; cuisson : marche des trames sous les
+      largeurs MPP du contexte (décision 3 retirée), morts et occupation posées sur le calque des
+      véhicules depuis elle
+      (`mortsDeVehicule`), étapes observées `vehicleDeaths` et `vehicleDeaths.stats` ; repli
+      `repli_cadre_de_marche_par_defaut_conserve` retiré, sites de `repli_localisation_largeur_libre`
+      déplacés ; localisateur unique (en-tête, site, affirmation fausse sur la génération stricte
+      corrigée) et son test portés ; sondes portées (`c2_decor_ti40`, `ti40_marche_desync`,
+      `m4b_monture`, `ti40_morts_alignement`) ou retirées (`campagne_bis3`, accord de la campagne ;
+      l'instrument de la mesure) ; `grammar.Rev` = `grammar-2026-10-04` (goldens de `killsource` et
+      d'`objectives` régénérés à révision constante) ; ADR 0037 amendé (IR-2, IR-6, IR-7).
+      *Correctif de l'instruction* (`953401feb`) : un épisode lu se ferme sur la lecture suivante
+      du MÊME OBJET occupant (slot ET génération), plus du slot seul — sur `4f77afc1`, une lecture
+      fausse de la marche des trames (slot 737 en génération 3, attachée au bipède 618) fermait à
+      8410 le trajet du conducteur 737, dont l'arme tire jusqu'à 9101. Test
+      `TestUneLectureDUneAutreGenerationNeFermePasLEpisode`, rouge sans le correctif.
+      *Primauté par joueur* (`e127e90fb`, décision de l'utilisateur du 2026-10-05,
+      découverte 16) : un épisode de repli n'est plus écarté parce que le film lit le même
+      joueur dans le même véhicule pendant une autre de ses vies. Test
+      `TestLaPrimauteNommeLeJoueurPasLeCorps`, rouge sans la règle.
+      *Clos le 2026-10-05, après le lot « vue A » V1 de la campagne* (option A de l'utilisateur) :
+      fusion de `feat/v75` (`5bc1fd938`, puis `65c99b669`) dans la branche, canal des morts sur
+      `listeAnnoncee`. Gate de corpus contre `5bc1fd938` (schéma 79) : les mêmes 315 lignes en
+      baisse que le gate admis, valeurs comprises ; banc `ok` sur les 19 témoins ; aucun FAUX.
+      killsource sur films réels identique à `feat/v75`. La part (a) de la décision du 2026-10-05
+      (listes que la marche ne localise pas) attend le lot « vue A » V2, qui localisera la vue B
+      par la fin de la vue A.
 - [ ] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
       d'ancres, canal par canal, mesuré sur le corpus.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
-      du 2026-10-03) ; `IDLowBits` unifié (IR-7).
+      du 2026-10-03) ; `IDLowBits` unifié (IR-7). Le découpage MPP déclaré par le film (2.7.a0)
+      gagne killsource et le ratchet de fermeture d'image-clé : golden régénéré, chaque baisse
+      de `ti=42` justifiée record par record par la preuve 2 de la campagne (identité inconnue
+      du catalogue installé sous 9/5, connue sous le découpage déclaré) ; une baisse qui ne se
+      justifie pas ainsi s'instruit (condition de la campagne du 2026-10-05). La lecture en chaîne
+      des événements de killsource (`facts/killsource/eventchain.go`, son propre portage de
+      `FUN_14076a1c4`, qui lit la vue A message par message depuis chaque kill-event candidat)
+      devient une lecture de la vue A unique de la grammaire (lot « vue A » de la campagne,
+      relecture du 2026-10-05).
 - [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
@@ -744,6 +925,101 @@ plan y sont reprises comme items (3.1.2).
    Même question que 2.2.2 (découverte 8) ; la forme juste est 2.7.b (les canaux lus par la marche
    là où elle couvre au moins autant, l'ancrage seulement après). Décision de l'utilisateur du
    2026-10-04 : option A — item 2.7.d.
+11. *(lot 2.7.a)* **Sous les largeurs MPP calibrées sur les poses (8/3), la marche des trames ferme
+   la vue C deux fois et demie à cinq fois plus souvent sur six des neuf films des formats sans
+   largeur relue, à l'identique sur les trois autres** (suite de la
+   découverte 6). Passe `ri27b` (marche des trames de la cuisson sous `gwWidthsForFilm`) contre
+   `v75w2`, paquets à vue C fermée : `084a804d` 4 837 → 23 642, `1c4c63c2` 13 389 → 33 999,
+   `60ae07c4` 13 948 → 34 578, `11de8353` 5 631 → 13 839, `111fa685` 4 026 → 11 932, `e5adf7b2`
+   4 149 → 12 267 ; `a349fea8` 424 → 428, `a521164d` 692 → 693, `50247b26` 139 → 138. Non retenu :
+   c'est le lot LM, mis de côté par l'utilisateur le 2026-10-02 (largeur mesurée sur des builds
+   sans exécutable, non lue dans le jeu ; exception D6 suspendue). Signalé à la campagne ; la
+   décision reste celle de l'utilisateur.
+12. *(lot 2.7.a, recherche Ghidra du 2026-10-05, demandée par l'utilisateur : « le jeu dans sa
+   version actuelle sait lire tous les films ; les films contiennent eux-mêmes leur index de
+   décodage »)* **Aucune donnée du film trouvée qui fasse lire le bloc MPP autrement entre les
+   formats 25 et 27.** Lecture seule, HTTP 127.0.0.1:8089. Le lecteur d'état par défaut des
+   véhicules est `FUN_1410a5a74` (vtable `0x143736fd8` +0x60). Les descripteurs par type sont
+   enregistrés statiquement (`FUN_140e453b4`), la table `DAT_144e61d88` n'a qu'un écrivain
+   (`FUN_14054d014`). `FUN_14080cfe8` lit des largeurs littérales ; `FUN_141fd72c0` (R(9)) et
+   `FUN_14080d4d0` n'ont que lui pour appelant. Le préfixe R(1)+R(8) des lecteurs d'état par défaut
+   est lu puis jeté, sauf dans `FUN_140f44c38`. Versions par type sur les sept bobines :
+   `11de8353`, `111fa685` et `e5adf7b2` (8/3) identiques au format 27 (9/5) sur les 25 index qui
+   varient, y compris l'index 0x28 que `FUN_140ff8d70` consulte (absent de la liste de 1.9.1
+   ter). Registre des archétypes 36 à 43 : `111fa685` et `e5adf7b2` identiques au format 27.
+   Lecteurs de la version de format : seuils 3, 7, 11, 13/14 et 15, aucun entre 25 et 27. L'autre
+   écart de trois bits connu, celui du tir à composantes (campagne, R1 §3), n'a PAS la même
+   frontière : formats 24 seulement (`e5adf7b2`, format 25, lit 16 comme le 27). Ses largeurs sont
+   elles aussi fixées par l'exécutable : R(3) par `FUN_1406d310c(6)`, R(16) littéral, base des axes
+   12 ou 4. Un élément commun aux deux chemins est donc peu probable. Reste ouvert : l'écart est
+   soit dans notre propre lecture ailleurs (le 8/3 le masquerait), soit piloté par du code non
+   encore lu.
+13. *(lot 2.7.a, agent d'enquête du 2026-10-05, demandé par l'utilisateur)* **Les deux écarts : condition
+   « non trouvée » dans l'exécutable courant, et notre lecture en amont n'est pas fautive ; la
+   différence est chez l'écrivain des anciens films.**
+   - *Bloc MPP (LU)* : chaîne entièrement littérale (R(9) `141fd72de`, R(2) `14080d18b`, R(5)
+     `14080d1cf`, R(3) `14080d20f`) ; le 3e argument de `FUN_14080cfe8` est écrasé en `14080d077` ;
+     un seul lecteur du bloc ; l'écrivain `FUN_142f1bc2c` écrit 9 et 5.
+   - *Bloc MPP (MESURÉ)* : oracle `n2` modal à 0,974-1,000 en 8/3 sur les cinq bobines anciennes
+     pour ti=35, 37, 38, 42 et 43 (0,02-0,54 en 9/5), l'inverse sur le format 27 ; mêmes
+     identifiants de 32 bits un bit plus tôt (ti=38, préfixe V = porte 1 + octet 3 sur 100 % des
+     records) ; les deux autres bits tombent dans une plage de zéros (R(2), index, compte),
+     inséparables et sans effet sur les valeurs lues.
+   - *LE FILM DIT LA TAILLE* : `n1` (mot de tête des records d'image-clé) est la taille de la
+     structure d'état de création que l'écrivain a rangée (`FUN_142e2d08c` y met `vtable+0x20`).
+     Sur les formats 21, 24 et 25 elle vaut 4 octets de moins pour chaque archétype à bloc MPP
+     (ti=37 : 100 contre 104 ; ti=35 : 148 contre 152 ; ti=42 : 164 contre 168 ; ti=43 : 92 contre
+     96 ; ti=40 : 172, taille courante 176), inchangée pour les autres. Le jeu ne lit `n1` que comme
+     garde (> 0). Clé « taille déclarée − 4 ⇔ 8/3 » : vraie sur 7 bobines × 7 archétypes, mesurée.
+   - *Tir à composantes* : boucle littérale (R(16) `14080c74c`), écrivain `FUN_142f193e4`
+     identique, répartiteur `FUN_14080a9d4` sans version. Frontière = format 24, HI_1_8_0 compris
+     (`60ae07c4` 914/918 à 13 bits) ; `e5adf7b2` (format 25) 397/422 à 16. Seule clé disponible :
+     format 24 / cardinal 121, mesurée.
+   - *Fait lu, sans conclusion de l'agent* : `FUN_1428e219c` (appelée par `FUN_140ba23e4`)
+     n'installe la lecture d'un film que si le premier mot de chunk_00 (version majeure) vaut 41 ;
+     sinon, comme sur ses autres échecs, elle poste l'événement 0x1e (`FUN_142988e98`).
+     Relu le 2026-10-05.
+   - Piste restante classée première par l'agent : observation dynamique d'un film ancien dans le
+     jeu (points d'arrêt, MCP Cheat Engine), sur autorisation de l'utilisateur.
+14. *(lot 2.7.a, instruction du gate de corpus, 2026-10-05)* **Une posture dont le début est
+   désormais lu mais pas la fin court jusqu'à la fin de la vie.** Postures invraisemblables
+   (escalade > 2 s, saut > 3 s, glissade > 3 s) sur les huit films en baisse : 118 épisodes
+   (3 473 s) → 94 (2 690 s) ; 27 retirés, 3 nouveaux : glissade de 29 s du slot 619 de `e5adf7b2`
+   (3177-3464, aucune fin de `i62` lue), saut de 13 s du slot 742 de `084a804d` (6197-6328, il
+   traverse la montée à bord lue à 6206 : la piste s'arrête, rien ne ferme le saut), escalade de
+   52 s du slot 629 de `11de8353` (3289-3812). Le bâtisseur des postures ne ferme un épisode que
+   sur une lecture levée ou la fin de la vie ; l'état complet de l'image-clé le fermerait.
+   Couvert par 2.7.d (lecture de l'état complet du bipède aux images-clés). Non traité.
+15. *(lot 2.7.a, même instruction)* **Un DELTA dont la génération contredit l'entité du monde au
+   même slot est lié quand même.** Sur `4f77afc1`, le record du slot 737 en génération 3 (le monde
+   y tient la génération 1, vivante jusqu'à 8943 au moins aux images-clés) est lu propre
+   (`DesyncAt = -1`, liaison d'image-clé, liste localisée par la marche, pas une liste récupérée)
+   et publie une lecture d'occupation attachée au bipède 618. La conséquence côté rejeu est
+   corrigée en 2.7.a (fermeture par le même objet) ; la lecture elle-même relève de la famille
+   « lecture contredite » de la campagne (lot LR), à qui elle est signalée. Non traité ici.
+16. *(lot 2.7.a, même instruction)* **La primauté de la lecture nomme les occupants par CORPS, pas
+   par JOUEUR.** Un épisode de repli est écarté si le film a lu, pour la même vie de véhicule, des
+   montées à bord dont son slot ne fait pas partie (`vehicleFilmRides.contredit`). Sur `084a804d`,
+   le film lit le joueur `…447` (slot 574) au volant du 879 à 8960 ; son trajet de repli de la vie
+   précédente (slot 745, 6697-8656, trou de position) est écarté, et dix tirs de l'arme du 879
+   perdent leur tireur. Les trois tirs du 916 perdus (slot 608) relèvent de l'autre forme
+   (chevauchement de cinq images avec le trajet lu du 599). Règle arbitrée le 2026-09-21.
+   Décision de l'utilisateur du 2026-10-05 : par joueur (`e127e90fb`, item 2.7.a) ; le
+   chevauchement contredit toujours, un occupant sans identité reste désigné par son slot.
+17. *(relecture du lot « vue A » V1 de la campagne, 2026-10-05)* **Les seuils de la règle 5 ne sont
+   plus vérifiés par le lint sur le code NEUF du décodeur.** `.golangci.yml:223` exempte de
+   `gocyclo`, `funlen` et `lll` tout `film/(replay|internal/(facts|source|grammar|profile))/`,
+   exemption écrite pour du code DÉPLACÉ (lots E.2 et 2.5). Le code neuf de ces couches (celui de
+   ce plan compris) n'est donc tenu aux seuils que par la relecture : la relecture de V1 y a trouvé
+   deux aiguillages à complexité 20 et 22 sans justification. Non traité ici ; à porter à
+   l'utilisateur (resserrer l'exemption au code d'avant une date, comme `only-new-issues`).
+18. *(fusion de `feat/v75` dans la branche, 2026-10-05)* **Le banc killsource sur films réels
+   (`TestGoldenFilms`, sauté sans `KILLSOURCE_FIXTURES`, donc absent de la CI) était rouge sur
+   `feat/v75` depuis au moins `87cdfa761`** : trois films, la seule ligne de diagnostic de
+   calibration (scores de l'oracle de profilage ; décision et morts identiques). Sortie de la
+   branche fusionnée identique à `feat/v75` seule. Signalé à la campagne, qui a régénéré les
+   goldens (`65c99b669`, même famille que sa découverte D23). Un banc qui ne tourne qu'en local
+   peut rougir sans que personne le voie : à rejouer à chaque fusion qui touche le décodeur.
 
 ## 7. Journal
 
@@ -868,3 +1144,199 @@ plan y sont reprises comme items (3.1.2).
   change les digests, les références d'équivalence se régénèrent sur la tête fusionnée (les deux
   changements s'additionnent, aucun côté n'est juste seul). Restent ouverts : le
   critère 4 de 2.5 (machine calme), puis 2.7, 3.1 et 3.2 (attente de LU et LS).
+- 2026-10-04 : CI de `feat/v75` verte au niveau job sur la fusion (`083e1a4bc`, runs `37203461920`
+  en push et `37203466501` en PR). La campagne a fusionné par-dessus la correction des vies de bots
+  (`feat/v75` = `6fa631df0`, schéma du document 77 → 78, aucune révision de couche ne monte) ;
+  `feat/ri-etape2` est avancée sur cette tête. Les références d'équivalence ne sont PAS re-figées :
+  leur ligne `artifact` diffère par le schéma ; elles se re-figent à l'ouverture du prochain lot,
+  par la passe de référence du §1.2 sur la tête fusionnée du moment (une passe maintenant serait à
+  refaire, et la republication du parc par la campagne occupe la machine).
+- 2026-10-04 : la vague 2 de la campagne est assemblée sur `6fa631df0` (`feat/campagne-grammaire`
+  `bd9193d16`, fusion dans `feat/v75` sur accord de l'utilisateur) : LU retenu (localisateur unique,
+  différence nulle, `grammar/localisateur.go`), LT retenu (règle de tête de liste, `grammar.Rev` =
+  `grammar-2026-10-03.5`), LS RETIRÉ (ses ordres par site sont mesurés, pas lus dans le jeu), LP et LN
+  non retenus ; `killsource.Rev` et le schéma du document inchangés. Conséquence pour ce plan : 2.7.c
+  n'attendait LS que pour ne pas écrire `facts/killsource/*` en même temps que lui (aucune dépendance
+  de contenu) ; LS retiré, tous les lots restants n'attendent plus que la fusion de LU (§1.3 mis à
+  jour). Si la recherche de la campagne sur la localisation haute fréquence devient un lot qui touche
+  `grammar/localisateur.go` ou `facts/killsource/*`, elle préviendra avant. Suite, LU fusionné : fusion
+  de `feat/v75`, passe de référence (références d'équivalence re-figées : schéma 78, LT), puis 2.7.a.
+- 2026-10-04 : OUVERTURE DU LOT 2.7 — LU et LT fusionnés dans `feat/v75` (`87cdfa761`). Fusion de
+  `feat/v75` dans `feat/ri-etape2` (`45184faf4`, sans conflit) ; passe de référence `v75w2` sur la
+  tête fusionnée : vingt films décodés depuis le film, aucun échec ; écarts tous venus de `feat/v75`
+  (`artifact` sur les vingt : schéma 78 et LT ; `movementStates.stats` sur dix-sept et
+  `continuousFire.stats` sur treize, `continuousFire` lui-même sur deux : localisation des listes par
+  LT) ; références re-figées (`0355c46ab`), killsource de référence `ks_v75w2` (dix-neuf témoins, code
+  0). Campagne prévenue avant et après. Elle annonce un lot « lire la vue A jusqu'au bout »
+  (décision de l'utilisateur du 2026-10-04) qui se posera sur la structure : 2.7 et 3.1 ne touchent
+  ni la lecture de la vue A ni `distribuer_tetes.go`, et l'ordre de 2.7.c se calera avec ce lot pour
+  que killsource ne change qu'une fois. 2.7.a commence par la mesure (instrument
+  `grammar/morts_marche_unique_research_test.go`, les deux marches sur les huit films du corpus qui
+  portent des véhicules).
+- 2026-10-05 : 2.7.a ÉCRIT (`b093ef10b`, local), GATE DE CORPUS MIXTE, DÉCISION POSÉE À
+  L'UTILISATEUR. Équivalence (`ri27c`) propre : mouvement et tir identiques, killsource identique à
+  l'octet, morts de véhicule 142 → 148. Gate (19 témoins contre `87cdfa761`) : sortie 1 — FAUX sur
+  `084a804d` et `e5adf7b2` (une action hors vie de plus chacun), PERTE sur `60ae07c4`, `a349fea8`,
+  `a521164d`, `11de8353`, `4f77afc1` (épisodes à bord, tirs posés sur un véhicule, deux rafales,
+  morts lues), gains au banc (`4f77afc1` 112 → 95 et `11de8353` 8 → 3 actions hors vie). La
+  variante sans la récupération des listes perd davantage : la récupération reste. Les onze morts
+  de `4f77afc1` que le recensement n'apparie pas ne viennent pas de la récupération : véhicules nés
+  entre deux images-clés, liés par NEW dans le monde de la marche, absents du recensement par
+  images-clés. Cause des pertes sur les formats anciens : la marche à huit vues de production lit
+  sous la largeur MPP mesurée sur le film (`build_vehicles.go`, `gwWidthsForFilm`), la marche des
+  trames sous celle du contexte (règle de l'utilisateur du 2026-10-02). Deux parts : les listes que
+  la marche ne localise pas (le lot de la campagne « lire la vue A jusqu'au bout » devrait les
+  rendre) et les records de la vue B qui déraillent derrière un véhicule mal découpé (aucune lecture
+  générale connue ne les rend sur ces versions ; découverte 11). Options posées : garder la lecture
+  actuelle et reprendre après ce lot de la campagne (recommandée), basculer avec les pertes, ou
+  admettre la largeur mesurée pour la marche sur ces versions (exception à la règle du 2026-10-02).
+  La campagne lance ce lot depuis `87cdfa761` (`feat/cg3-vue-a`) et y garde verte la marche à huit
+  vues de production ; 2.7.a n'entre pas dans `feat/v75` avant lui. Elle mesure en parallèle, sans
+  code de production, le découpage 8/3 des formats anciens par double preuve (fermeture au bit,
+  châssis du jeu installé).
+- 2026-10-05 : l'utilisateur réaffirme que « le jeu dans sa version actuelle sait lire tous les
+  films » et que « les films contiennent eux-mêmes leur index de décodage ». L'argument tiré des
+  notes de mise à jour de Halo Support (films « invalidés ») est retiré. À sa demande, recherche
+  Ghidra de la donnée du film qui piloterait le bloc MPP ; la campagne a arrêté la sienne pour ne
+  pas doubler. Résultat (découverte 12) : rien trouvé entre les formats 25 et 27. 2.7.a reste hors
+  de `feat/v75`, avec la lecture actuelle des morts gardée.
+- 2026-10-05 : à la demande de l'utilisateur, un agent d'enquête (worktree dédié, Ghidra en
+  lecture seule, sans passe de corpus, sans commit) a lu les deux blocs : découverte 13. Worktree
+  et branche de l'agent retirés (aucune jonction, `git status` vide). Résultat transmis à la
+  campagne. 2.7.a reste hors de `feat/v75` ; la suite dépend de l'utilisateur.
+- 2026-10-05 : DÉCISION DE L'UTILISATEUR (« Oui je valide cette piste ») : le bloc MPP des
+  anciens films se lit d'après la taille d'état de création que le film déclare. L'observation
+  dynamique avec Cheat Engine est inscrite au backlog. Item 2.7.a0 ajouté ; la campagne le confie
+  à ce plan sous trois conditions (son gate 2, la provenance présumée par mesure, sa double preuve
+  comme oracle). Tailles courantes relues dans Ghidra (`vtable+0x20` des neuf descripteurs).
+  Ouverture de 2.7.a0.
+- 2026-10-05 : 2.7.a0 ÉCRIT (`3ee8e7bf2`, `a06ecfd06`, local) ; GATES JOUÉS.
+  - *Preuve `ri27d` contre `ri27c`* :
+    - killsource identique à l'octet sur les 19 témoins ;
+    - format 27 et `50247b26` (non déclaré) : seule l'étape `artifact` change, par la télémétrie
+      des révisions ;
+    - films déclarés 8/3 : `birthLoadouts` ×4 à ×20 (`084a804d` 16 → 365, `1c4c63c2`
+      27 → 571), `movementStates` +0,3 à +14 %, `continuousFire` ×1,5 à ×4 ;
+    - `60ae07c4` : `birthLoadouts` 6 → 5.
+  - *`50247b26`* (format 20, majeure 31) : DISCORDANT (173 records de la clé, dont 53 ti=38 à
+    n1=92, soit taille courante − 12). Chemin calibré gardé et averti.
+  - *Gate 2 de la campagne* (carte v2, sans puis avec `-mpp-declare`, 20 films) :
+    - aucun film en baisse nette ;
+    - sains 313 542 → 397 824 (+84 282), utiles sains +1 855 974 ;
+    - 428 sains perdus en brut, dont 347 sur `1c4c63c2` ;
+    - factices des gains au bit : 3,1 %, dont 8,5 % sur `1c4c63c2`.
+  - *Gate de corpus contre `87cdfa761`* (cumul 2.7.a et 2.7.a0) : sortie 1.
+    - FAUX sur `084a804d` (V-3 92 → 96) et `e5adf7b2` (V-3 10 → 11) ;
+    - PERTE sur les autres films anciens et sur `4f77afc1` (ce dernier vient de 2.7.a) ;
+    - gains P-1 (paquets fermés ×2,5 à ×5), V-6 de `084a804d` 6 → 1, V-3 de `4f77afc1`
+      112 → 95.
+  - *Suite* : instruction par un agent d'enquête (placement des deux bits de fin, pertes du
+    gate 2 par famille, écarts du rejeu), condition de clôture de la campagne. Non
+    fusionnable en l'état.
+- 2026-10-05 : INSTRUCTION DES PERTES (agent d'enquête ; pièces sous `scratchpad/agentA/` de la
+  session).
+  - *8/3 tient.* Dix-huit placements des deux bits ont été testés, et aucun record authentique ne
+    les départage : sur 93 096 records d'image-clé et 7 512 NEW à identifiant connu, R(2), le
+    compte, d4d0 et G3 valent 0, l'index 0 ou 1. Les 3 125 NEW à champs non nuls ont tous un
+    identifiant inconnu. Retirer une porte est réfuté par `n2`.
+  - Le champ de tête est un champ de drapeaux ; la taille de structure (0x60 octets) désigne
+    « R(2) absent, index R(5) », équivalent à 8/3 en lecture (provenance ajoutée à
+    `profile/mpp_declare.go`).
+  - *Les 428 pertes du gate 2* :
+    - 418 étaient de faux sains de 9/5 : liste ouverte par la recherche « fermeture » sur un
+      faux NEW d'archétype MPP ;
+    - les 10 autres viennent d'un monde empoisonné : une lecture contredite qui lie un faux NEW
+      ou délie un faux DEL ;
+    - aucune ne vient d'un composant non porté ni du placement des bits.
+    La campagne prend en lot « LR » les deux corrections qui en découlent : la règle de lecture
+    du jeu « compte ≥ 5 → échec », et un repli de début de liste qui ne modifie plus le monde.
+  - *Côté rejeu, ce qui vient de 2.7.a0 est une correction* : birthLoadouts de `60ae07c4`,
+    weaponChanges `taken` → `swapped` de `084a804d`, postures de `11de8353`.
+  - Les V-3 du banc sont des FAUX POSITIFS : tirs d'arme de véhicule par un occupant dont la
+    piste s'arrête à la montée.
+  - Perte probable de 2.7.a, non établie : le trajet du slot 608 de `084a804d` est retiré au lieu
+    d'être tronqué à la mort, et ses 3 tirs perdent leur slot.
+- 2026-10-05 : BANC DE VÉRITÉ, V-3 CORRIGÉ (accord de la campagne, qui l'utilise aussi comme
+  juge) : un trajet du slot à bord d'un véhicule fait partie de sa vie, rattaché par slot quel que
+  soit le siège (règle de l'utilisateur du 2026-09-21). Test
+  `TestHorsVie_UnTrajetDuSlotFaitPartieDeSaVie`, rouge sans la correction.
+- 2026-10-05 : PUSH de `feat/ri-etape2` (`ced770753`, la campagne y prend `-mpp-declare` pour LR) ;
+  CI rouge au lint (`cmd_fermeture/mpp_declare.go` sans l'étiquette `research`), corrigé
+  (`46b51efe7`), lint vert. GATE DE CORPUS, BANC CORRIGÉ (19 témoins contre `87cdfa761`) : les
+  FAUX V-3 de `084a804d` et `e5adf7b2` disparaissent ; `4f77afc1` passe FAUX (V-3 4 → 5 :
+  capacités d'image-clé du slot 737 hors de son trajet raccourci). Seconde passe restreinte aux
+  huit films en baisse, artefacts gardés, et lectures d'occupation relevées par un instrument
+  jetable (non versionné) : cause trouvée (découverte 15), corrigée côté rejeu (`953401feb`,
+  item 2.7.a). Gate complet après le correctif : sortie 1, AUCUN FAUX ; onze témoins sans écart,
+  huit en baisse, banc `ok` partout (`4f77afc1` V-3 4 → 2).
+- 2026-10-05 : INSTRUCTION DES 334 LIGNES EN BAISSE des huit films (gate `27g`), par famille :
+  - *Postures* (169 lignes, six films) : CORRECTIONS. Les durées baissent parce que des
+    transitions sont désormais lues (fin de sprint, fin d'escalade) ; ex. le sprint du slot 513 de
+    `084a804d` 7606-7714 devient 7606-7609 puis 7698-7714, l'accroupi de 59 s du slot 685 (en
+    sprintant) disparaît. Invraisemblables 118 → 94 ; trois nouvelles (découverte 14).
+  - *Changements d'arme* (12 lignes) : CORRECTIONS. 43 « prises » deviennent des « échanges »
+    (l'arme de départ est lue) ; deux « lâchers » disparaissent, dont celui de `084a804d` (slot
+    521 à 9319), relu : l'emplacement passe de rien à rien, reclassé en ré-annonce.
+  - *Tir continu et rafales* (39 lignes) : AMÉLIORATIONS que le gate compte à rebours. Moins de
+    trous (`084a804d` : 27 620 → 8 815 paquets non lus, temps tenu en trou 899 → 400 s), trois fois
+    plus de rafales lues ; un compteur de trous qui baisse est une baisse de manque.
+  - *Dotations de naissance* (5 lignes) : AMÉLIORATIONS. Lues 0 → 5 à 210 par film, publiées 0 →
+    5 à 204 ; les compteurs « non affichable » montent avec ce qui est lu.
+  - *Compteurs des postures* (19 lignes) : les refus croissent avec les records lus (`111fa685` :
+    230 131 → 251 150 records, refus 25 → 50).
+  - *Véhicules* (78 lignes) : trajets lus 269 → 326 sur les sept films à véhicules (58 nouveaux,
+    dont un trajet de 163 s sur `111fa685` borné par la montée et la destruction lues ; 4 lectures
+    de la base non relues) ; trajets de repli 196 → 156, la plupart remplacés par la lecture aux
+    mêmes bornes ; faux passagers retirés (`084a804d` V-6 6 → 1) ; fins de véhicule mieux connues
+    (`084a804d` détruits 35 → 48) ; morts lues sans vie recensée (`4f77afc1` 0 → 11, véhicules nés
+    entre deux images-clés). PERTE RÉELLE RESTANTE : 13 tirs d'arme de véhicule de `084a804d`
+    perdent leur tireur par la primauté de la lecture (découverte 16), 7 en gagnent.
+  Décision demandée à l'utilisateur : admettre ces pertes (gate en base), et la forme de la
+  primauté (découverte 16). La fusion de 2.7.a attend toujours le lot « vue A » de la campagne.
+- 2026-10-05 : DÉCISIONS DE L'UTILISATEUR (§2) : baisses ADMISES ; primauté PAR JOUEUR, écrite
+  (`e127e90fb`). Gate complet `27h` (19 témoins contre `87cdfa761`) : sortie 1, aucun FAUX, banc
+  `ok` partout ; onze témoins sans écart ; `084a804d` 44 → 25 lignes en baisse, toutes dans les
+  familles admises (le trajet de repli du slot 745 revient, V-6 reste à 1) ; tirs de véhicule
+  rattachés 194 → 198, seuls les 3 du 916 (slot 608, chevauchement) restent sans tireur ; les
+  sept autres films inchangés depuis `27g`. Campagne prévenue avant et après chaque passe. Reste
+  pour clore 2.7.a : fusion de `feat/v75` après le lot « vue A » de la campagne, remesure, gate
+  de corpus, `make gate-push`, accord de fusion.
+- 2026-10-05 : DOUBLE PREUVE DE LA CAMPAGNE reçue (oracle de 2.7.a0, pièces dans son scratchpad
+  `mpp-dp/`), ses quatre réserves instruites ou rangées (item 2.7.a0) : `b429a7d3` déclare 8/3 et
+  ne perd que quatre faux sains de 9/5 sans record utile ; le ratchet de fermeture d'image-clé,
+  rejoué sous le découpage déclaré (+107 sur les cinq archétypes objet, baisses par ligne sur
+  `ti=42`), s'aligne en 2.7.c avec killsource. Deux mesures d'un film et deux instruments jetables
+  (non versionnés, retirés). ADR 0037 IR-7 complété. 2.7.a0 CLOS. Ordre de fusion convenu avec la
+  campagne (§1.3) : V1, puis 2.7.a et 2.7.a0, puis LR (qui ne tient que sous le découpage
+  déclaré), puis V2.
+- 2026-10-05 : RELECTURE DU LOT « VUE A » V1 DE LA CAMPAGNE avant sa fusion, à sa demande (diff
+  `87cdfa761..3bacfadeb`, 90 fichiers) : deux relecteurs à contexte frais en parallèle (règles du
+  projet ; équivalence de la lecture unique et couverture des tests), lecture seule, plus mes
+  vérifications de la structure (`lecture.Paquet.VueA` sans logique, façade et `replay` intacts,
+  garde-fou de lecture unique, ADR 0037). Aucun P0, sortie identique confirmée par les deux.
+  Constats recevables : 3 du premier, 12 du second (dont le champ mort `finVueA`, trouvé par les
+  deux) ; transmis triés à la campagne : quatre familles à corriger avant fusion (recopie de
+  `FUN_140c1e9d4`, commentaires faux, nombres magiques, aiguillages sans justification), trois à
+  trancher (troisième portage de `damage_aftermath` dont une copie diverge, D-LN-2 de la campagne ;
+  deux gardes recopiées), une pour V2. La campagne corrige avant de fusionner. Découverte 17. À la
+  fusion de V1 dans cette branche : `canal_des_morts.go` doit prendre `listeAnnoncee(&p.VueA)` au
+  lieu de `p.VueA.Etat == lecture.VueArretee` (une vue A lue jusqu'au bout est terminée même avec
+  des messages).
+- 2026-10-05 : RONDE 2 de la relecture de V1, sur les seules corrections (`3bacfadeb..020d0e9cc`),
+  un relecteur à contexte frais : huit corrections sur dix tiennent (23 conditions vérifiées). Reste
+  un P1 de commentaire (la phrase « seule lecture complète de la vue A » ignore la lecture en
+  chaîne de killsource, `eventchain.go`) et un P2 (helper de balayage d'archlint sans garde-rail).
+  Bornes de la relecture : pas de ronde 3, le P1 restant est porté à l'utilisateur et relu par moi
+  à son correctif (commentaire seul). Item 2.7.c complété : la chaîne de killsource rejoindra la
+  vue A unique.
+- 2026-10-05 : FUSION DE `feat/v75` DANS LA BRANCHE, après le lot « vue A » V1 de la campagne
+  (`5bc1fd938`, avec le correctif de rejeu du schéma 79, puis `65c99b669`, goldens killsource) :
+  `de99f7fbf` et `a87c90904`. Conflits : révisions (rangs de fusion `grammar-2026-10-06.2` et
+  `profile-2026-10-06.2`, chroniques réunies), empreintes régénérées (killsource et objectives à
+  révision constante), fixtures de contrat du schéma 79 régénérées, identiques à `feat/v75` hors
+  chaînes de révision. Le canal des morts reconnaît un paquet à événements par `listeAnnoncee`.
+  `go vet`, tests du décodeur, d'archlint et des gates, lint : verts. Gate de corpus contre
+  `5bc1fd938` : les mêmes 315 lignes en baisse que le gate admis, aucun FAUX, banc `ok` partout.
+  Banc killsource sur films réels : rouge sur `feat/v75` avant la fusion (découverte 18), vert après
+  la régénération de la campagne. 2.7.a CLOS. Reste avant la fusion dans `feat/v75` : CI de la
+  branche, `make gate-push`, accord de l'utilisateur.

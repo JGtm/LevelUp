@@ -21,8 +21,6 @@ package fallback
 const (
 	// NomPieceEngendreeSansEvenement : `replay/equipment_origin.go`, `origineDeLaPose`.
 	NomPieceEngendreeSansEvenement Nom = "repli_piece_engendree_sans_evenement"
-	// NomCadreDeMarcheParDefautConserve : `filmdec/object_deaths_calibrate.go`, `calibrateFrameConfig`.
-	NomCadreDeMarcheParDefautConserve Nom = "repli_cadre_de_marche_par_defaut_conserve"
 	// NomPlafondGrenadeParDefaut : applique par `grammar/inventory_decode.go` (`ScanKeyframeInventory`),
 	// compte par `replay/film_scan.go` (`balayerInventaire`) depuis le lot J4.2.
 	NomPlafondGrenadeParDefaut Nom = "repli_plafond_grenade_par_defaut"
@@ -125,6 +123,8 @@ const (
 	NomCoequipierHorsDeVueParDefaut Nom = "repli_coequipier_hors_de_vue_par_defaut"
 	// NomIndexDrapeauZeroPourTous : compte par `flag_assign.go` (lot J8.7).
 	NomIndexDrapeauZeroPourTous Nom = "repli_index_drapeau_zero_pour_tous"
+	// NomSocleDuFilmAuCentreDesVols : compte par `replay/flag_film_bases.go`.
+	NomSocleDuFilmAuCentreDesVols Nom = "repli_socle_du_film_au_centre_des_vols"
 	// NomInvariantPropreDrapeauMuet : compte par `flag_assign.go` (lot J8.7).
 	NomInvariantPropreDrapeauMuet Nom = "repli_invariant_propre_drapeau_muet"
 	// NomDrapeauSeulEnJeu : compte par `flag_assign.go` (lot J8.7).

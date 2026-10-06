@@ -153,31 +153,26 @@ func ScanEquipmentPlacements(
 	st.Lives = len(spans)
 
 	defer fc.PoserMPP(fc.ProfilDeBalayage().MPP)
-	// LE PROFIL PASSE DEVANT LA CALIBRATION (lot 1.9.1 bis, pas 3, arbitrage du pilote).
-	// Quand la VERSION DE FORMAT du film porte sa largeur MPP RELUE chez l ecrivain (format 27),
-	// elle EST la grammaire et la calibration ne decide plus rien : elle reste jouee, mais comme
-	// CONTROLE — `st.Calibration` publie ce que le film mesure, et l accord ou le desaccord avec
-	// le profil se lit dans les stats. Sinon la calibration decide encore : c est le repli NOMME
-	// `repli_largeurs_mpp_calibrees_sur_le_film` du registre (condition
-	// `format_sans_profil_relu`, ordre `apres_lecture` — le profil se resout d abord).
+	// LA GRAMMAIRE PASSE DEVANT LA CALIBRATION. Quand la grammaire porte le decoupage du film —
+	// relu a sa version de format (27), ou declare par la taille d etat de creation de ses objets
+	// (formats 20, 21, 24, 25) —, la calibration ne decide plus rien : elle reste jouee, mais comme
+	// CONTROLE — `st.Calibration` publie ce que le film mesure, et l accord ou le desaccord se lit
+	// dans les stats. Sinon la calibration decide encore : c est le repli NOMME
+	// `repli_largeurs_mpp_calibrees_sur_le_film` du registre (ordre `apres_lecture`).
 	//
-	// DEUX FACONS DE N AVOIR PAS DE PROFIL, ET UNE SEULE EST UN EVENEMENT. Format CONNU sans
-	// largeur relue (20, 21, 24, 25) : etat normal du parc ancien, rien a signaler. Format
-	// INCONNU (28 au prochain patch du jeu) : le repli tient le parc neuf — il ne l eteint pas —
-	// mais il doit se VOIR, d ou `st.FormatSansProfil`, que `replay` publie en compteur.
+	// DEUX FACONS DE N AVOIR PAS DE DECOUPAGE, ET UNE SEULE EST UN EVENEMENT. Format CONNU dont
+	// le film ne declare rien : rien a signaler de plus que le repli. Format INCONNU (28 au
+	// prochain patch du jeu) : le repli tient le parc neuf — il ne l eteint pas — mais il doit se
+	// VOIR, d ou `st.FormatSansProfil`, que `replay` publie en compteur.
 	//
-	// UNE SEULE PORTE DEPUIS LA REVUE M1 (2026-09-15) : [MPPWidthsForFilm]. Ce site resolvait
-	// le profil COMPLET ([BuildProfileFromFilm]), qui refuse tout build hors de la table des
-	// sept — un film au format 27 dont le build n est pas de la table se repliait donc sur la
-	// calibration DEVANT une largeur relue, sans rien compter. La cle est la version de format,
-	// et elle l est ici comme dans `gwWidthsForFilm`.
-	res := MPPWidthsForFilm(fc.Film())
+	// UNE SEULE PORTE, [FilmContext.ResolutionMPP], ici comme dans `gwWidthsForFilm`.
+	res := fc.ResolutionMPP()
 	st.FormatVersion = res.FormatVersion
 	st.FormatSansProfil = res.FormatInconnu
 	cal, ok := CalibrateMPPWidthsOf(fc, wr, band, spans)
 	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s il a tranché
 	switch {
-	case res.Relue():
+	case res.Decide():
 		fc.PoserMPP(res.Widths)
 	case !ok:
 		return nil, st, nil // ni profil relu ni calibration : aucune pose, et les stats le disent

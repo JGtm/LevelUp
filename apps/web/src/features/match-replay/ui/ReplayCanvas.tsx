@@ -376,7 +376,7 @@ export function ReplayCanvas({
     colorOfXuid, nameOfSlot, nameOfXuid,
     offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
     offscreenGroupLabelOf: (n, meters) => REPLAY_TEXT[locale].offscreenGroupMarkerFmt(n, meters),
-    neutralInk, labelStroke, markInk, explosionInk: fxInk, reducedMotion, redraw, frameRef,
+    neutralInk, mapElementInk: zoneInk.fill, labelStroke, markInk, explosionInk: fxInk, reducedMotion, redraw, frameRef,
   }) // schéma 39 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
@@ -524,7 +524,7 @@ export function ReplayCanvas({
             }),
           'marques-de-tir': (_c, fr, k) =>
             drawFireMarks(ctx, fireMarks, view, {
-              frame: fr, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k,
+              frame: fr, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k, embarkedAtSlot: vehicles.isEmbarkedAt,
             }),
           // vehicleSizeOf : origine des tirs en vehicule sur LA MEME source de tailles que le
           // calque vehicules (`useReplayVehicles.sizeOf`), jamais un second chargement.

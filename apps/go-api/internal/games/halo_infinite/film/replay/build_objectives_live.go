@@ -69,8 +69,9 @@ type FlagInput struct {
 	// C'est le calque qui retient les uns ou l'autre, selon la variante qu'il reconnait
 	// (`flag_neutral.go`) — l'appelant ne decide pas du mode.
 	//
-	// Vides : les portages restent publies, mais tous dans UN drapeau d'equipe [TeamNeutral] et
-	// sans etat `home` (sa position serait inventee).
+	// Vides (carte hors catalogue) : le calque lit la base et le camp de chaque drapeau dans le
+	// film (`flag_film_bases.go`) ; s'il n'en lit aucune, les portages restent publies, mais tous
+	// dans UN drapeau d'equipe [TeamNeutral] et sans etat `home` (sa position serait inventee).
 	Spawns []FlagSpawn
 	// Marks est le CONTROLE independant, depose par `BuildFromFilm` : les records de bipede
 	// d'image-cle portant le marqueur de portage, et l'instant de toutes les images-cles.

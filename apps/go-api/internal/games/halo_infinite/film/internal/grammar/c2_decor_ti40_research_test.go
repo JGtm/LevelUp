@@ -15,8 +15,8 @@ package grammar
 //	    bVar14 + feuille 4, R(19), porte cVar3 + liste), puis les BITS BRUTS de chaque composant
 //	    porte (i0 a i29, arret au premier composant non porte), l index de desynchronisation et
 //	    l emprise du record.
-//	DL  pour chaque record `ti=40` des paquets DELTA, par la MARCHE de production
-//	    (`marchRecordsOf`, meme cadre que `ScanMarchFacts`) : type de record, masque, desync.
+//	DL  pour chaque record `ti=40` des paquets DELTA, par la marche des trames de production
+//	    (vue B, celle qui lit les morts) : type de record, masque, desync.
 //
 // Les segments de l etat par defaut sont relus avec les FONCTIONS DE PRODUCTION (aucune largeur
 // recopiee) ; le controle de coherence est que le curseur apres `n2` tombe EXACTEMENT sur le
@@ -218,32 +218,25 @@ func c2EtatParDefaut(br *Lecteur, seg func(string, func())) {
 	})
 }
 
-// c2Deltas deroule la MARCHE de production et releve chaque record `ti=40`.
+// c2Deltas deroule la marche des trames de production et releve chaque record `ti=40` de la vue B.
 func c2Deltas(t *testing.T, fc *FilmContext, w *bufio.Writer) int {
 	t.Helper()
-	reg, err := fc.Registry()
+	m, err := fc.nouveauMarcheurDesTrames(nil)
 	if err != nil {
-		t.Fatalf("registre : %v", err)
+		t.Fatalf("marche des trames : %v", err)
 	}
-	kfs, deltas := marchPacketsOf(fc)
-	cfg, _, _, _ := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
-	tl := newMarchTimeline(reg, kfs)
 	n := 0
-	for _, d := range deltas {
-		wd := tl.advanceTo(d.timestampUS)
-		start, _, ok := marchStartOf(d.payload, wd, cfg)
-		if !ok {
-			continue
-		}
-		for _, r := range marchRecordsOf(d.payload, wd, cfg, start) {
+	m.parcourir(func(tr *trameLue) bool {
+		for _, r := range tr.lecture.recs {
 			if r.TypeIndex != uint32(VehicleTypeIndex) {
 				continue
 			}
 			n++
 			fmt.Fprintf(w, "DL\t%d\t%d\t%d\ttype=%d\tmask=%s\tdesync=%d\n", r.Slot, r.ID>>30,
-				d.timestampUS, r.Type, c2Masque(r.Trace.Mask), r.DesyncAt)
+				tr.paquet.TS, r.Type, c2Masque(r.Trace.Mask), r.DesyncAt)
 		}
-	}
+		return true
+	})
 	return n
 }
 

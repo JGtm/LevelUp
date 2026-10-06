@@ -47,7 +47,7 @@ func toVehicleWeapon(v replay.VehicleWeapon) replaydoc.VehicleWeapon {
 }
 
 func toVehicleWeaponMount(v replay.VehicleWeaponMount) replaydoc.VehicleWeaponMount {
-	return replaydoc.VehicleWeaponMount{Aim: v.Aim, AX: v.AX, AY: v.AY}
+	return replaydoc.VehicleWeaponMount{Aim: v.Aim, AX: v.AX, AY: v.AY, Reach: v.Reach}
 }
 
 func toVehicleSpawn(v replay.VehicleSpawn) replaydoc.VehicleSpawn {

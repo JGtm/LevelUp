@@ -272,44 +272,64 @@ function rescale(progress: Float32Array, run: DropRun): void {
 }
 
 /**
- * LE RENDU — un anneau à la place du drapeau tombé, et une jauge qui se vide dessus.
+ * LE RENDU — une ZONE AU SOL à la place du drapeau tombé, et sa jauge à l'extérieur.
  *
- * TROIS DÉCISIONS DE LECTURE, et chacune répond à ce que l'œil doit comprendre en une image :
+ * CE QUI SE DESSINE, de dessous en dessus :
  *
- *  - LE CERCLE EST LA ZONE RÉELLE, à l'échelle de la carte. Elle est petite — on marche
- *    littéralement sur le drapeau pour le renvoyer — et la dessiner plus grande « pour qu'on la
- *    voie » mentirait sur la portée du geste. Un plancher de quelques pixels évite seulement
- *    qu'elle disparaisse aux petits zooms.
- *  - LA JAUGE EST UN ARC QUI SE VIDE, parti du haut et tournant dans le sens des aiguilles : ce
- *    qui reste à l'écran est le temps qui reste avant que le drapeau rentre.
- *  - L'OCCUPATION SE VOIT SANS CHIFFRE : dès qu'un défenseur est dedans, l'anneau s'épaissit et
- *    s'éclaircit. C'est le seul signal qui dise « ça va plus vite en ce moment » — la vitesse
- *    d'une jauge ne se lit pas sur une image fixe.
+ *  - LE DISQUE de la zone, à l'encre du camp PROPRIÉTAIRE (opacité 0,2 ; 0,3 quand un défenseur
+ *    est dedans) : c'est la surface où l'on se place pour renvoyer le drapeau ;
+ *  - L'ANNEAU net de son bord (opacité 0,9, 2 px ; 3 px quand un défenseur est dedans) : il
+ *    délimite la zone, rien d'autre ;
+ *  - LA JAUGE, un arc DISTINCT sur son propre rayon, toujours au-delà de l'anneau (cf.
+ *    `gaugeRadiusPx`) : elle ne se pose jamais sur lui, sinon l'œil lit une minuterie et non une
+ *    zone. C'est elle qui se vide, du haut dans le sens des aiguilles : ce qui reste est le temps
+ *    qui reste avant que le drapeau rentre.
+ *
+ * LE CERCLE EST LA ZONE RÉELLE, à l'échelle de la carte, centrée sur le pied du drapeau. Elle est
+ * petite — on marche littéralement sur le drapeau pour le renvoyer — et la dessiner plus grande
+ * « pour qu'on la voie » mentirait sur la portée du geste. Seul un plancher (`MIN_RADIUS_PX`)
+ * empêche qu'elle disparaisse sous le glyphe du drapeau aux petits zooms.
+ *
+ * L'OCCUPATION SE VOIT SANS CHIFFRE : dès qu'un défenseur est dedans, le disque et l'anneau
+ * s'épaississent. C'est le seul signal qui dise « ça va plus vite en ce moment » — la vitesse
+ * d'une jauge ne se lit pas sur une image fixe.
+ *
+ * UN DRAPEAU NEUTRE (équipe -1) N'A PAS DE ZONE : ni disque ni anneau, la jauge seule.
  */
 export interface FlagReturnStyle {
   /** L'encre du camp PROPRIÉTAIRE du drapeau, résolue par l'appelant (règle color-tokens). */
   colorOfTeam: (team: number) => string
 }
 
-/** Réglages du tracé : francs sans concurrencer le glyphe du drapeau qui se pose dessus. */
-const ZONE_FILL_ALPHA = 0.1
-const ZONE_RING_ALPHA = 0.45
-const ZONE_RING_ALPHA_BUSY = 0.9
+const ZONE_FILL_ALPHA = 0.2
+const ZONE_FILL_ALPHA_BUSY = 0.3
+const ZONE_RING_ALPHA = 0.9
+const ZONE_RING_WIDTH = 2
+const ZONE_RING_WIDTH_BUSY = 3
 const GAUGE_ALPHA = 0.95
-const GAUGE_WIDTH_K = 2.5
-const MIN_RADIUS_PX = 4
+const GAUGE_WIDTH = 3.75
 /**
- * GAUGE_MIN_PX — la JAUGE a son propre plancher, PLUS GRAND que celui de la zone, et les deux
- * disent deux choses différentes.
- *
- * La zone est une VÉRITÉ DE CARTE : 1,3 m à l'échelle du rejeu, c'est-à-dire quelques pixels —
- * la grossir mentirait sur la portée du geste. La jauge, elle, est une LECTURE : un arc de trois
- * pixels de rayon ne se lit pas. Elle se pose donc juste à l'extérieur du glyphe du drapeau
- * (rayon de touche 12 × 1,45), comme le fait le HUD du jeu — attachée à l'objet, pas au terrain.
+ * MIN_RADIUS_PX — plancher du rayon de la ZONE : sur les grandes cartes, la zone réelle ne tient
+ * que dans quelques pixels. Il ne couvre PAS le glyphe (hampe de 13 × 1,45 ≈ 18,9 px, demi-hauteur
+ * ≈ 9,4 px) : il garantit un disque de 16 px centré sur le pied, dont la moitié basse et le flanc
+ * gauche restent hors du glyphe, qui monte du pied vers le haut et la droite.
+ */
+const MIN_RADIUS_PX = 8
+/** GAUGE_GAP_PX — l'écart minimal entre le bord de la zone et l'arc de la jauge. */
+const GAUGE_GAP_PX = 5
+/**
+ * GAUGE_MIN_PX — plancher du rayon de la JAUGE : un arc de quelques pixels de rayon ne se lit
+ * pas. Elle se pose à l'extérieur du glyphe du drapeau, comme le HUD du jeu.
  */
 const GAUGE_MIN_PX = 20
-/** Épaisseur de base de l'anneau, en pixels. La jauge la multiplie pour passer devant. */
-const RING_WIDTH = 1.5
+
+/**
+ * gaugeRadiusPx — le rayon de l'arc de jauge pour une zone de rayon `zoneR` : toujours STRICTEMENT
+ * plus grand que celui de l'anneau, jamais confondu avec lui.
+ */
+export function gaugeRadiusPx(zoneR: number): number {
+  return Math.max(zoneR + GAUGE_GAP_PX, GAUGE_MIN_PX)
+}
 
 /** drawFlagReturnZones peint les zones de retour ACTIVES à une image. */
 export function drawFlagReturnZones(
@@ -334,7 +354,7 @@ interface ZonePaint {
   ink: string
 }
 
-/** drawOne peint UNE zone : le disque, l'anneau, puis l'arc restant. */
+/** drawOne peint UNE zone : le disque, l'anneau, puis l'arc restant sur son propre rayon. */
 function drawOne(ctx: CanvasRenderingContext2D, c: XY, now: FlagReturnNow, paint: ZonePaint): void {
   const busy = now.occupants > 0
   ctx.save()
@@ -344,23 +364,22 @@ function drawOne(ctx: CanvasRenderingContext2D, c: XY, now: FlagReturnNow, paint
   // donc personne ne le renvoie : dessiner un anneau autour de lui promettrait une action qui
   // n'existe pas. La JAUGE, elle, reste — c'est la minuterie, et elle est bien réelle.
   if (now.team >= 0) {
-    ctx.globalAlpha = ZONE_FILL_ALPHA
+    ctx.globalAlpha = busy ? ZONE_FILL_ALPHA_BUSY : ZONE_FILL_ALPHA
     ctx.beginPath()
     ctx.arc(c.x, c.y, paint.r, 0, Math.PI * 2)
     ctx.fill()
-    ctx.globalAlpha = busy ? ZONE_RING_ALPHA_BUSY : ZONE_RING_ALPHA
-    ctx.lineWidth = RING_WIDTH * (busy ? 2 : 1)
+    ctx.globalAlpha = ZONE_RING_ALPHA
+    ctx.lineWidth = busy ? ZONE_RING_WIDTH_BUSY : ZONE_RING_WIDTH
     ctx.beginPath()
     ctx.arc(c.x, c.y, paint.r, 0, Math.PI * 2)
     ctx.stroke()
   }
   const left = 1 - Math.min(Math.max(now.progress, 0), 1)
   if (left > 0) {
-    const rg = Math.max(paint.r, GAUGE_MIN_PX)
     ctx.globalAlpha = GAUGE_ALPHA
-    ctx.lineWidth = RING_WIDTH * GAUGE_WIDTH_K
+    ctx.lineWidth = GAUGE_WIDTH
     ctx.beginPath()
-    ctx.arc(c.x, c.y, rg, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2)
+    ctx.arc(c.x, c.y, gaugeRadiusPx(paint.r), -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2)
     ctx.stroke()
   }
   ctx.restore()

@@ -90,9 +90,9 @@ func TestTi40MortsAlignement(t *testing.T) {
 		abs := fc.Observation().prendreIndexAbsolus()
 		wo := p.LargeursObjetDuMonde()
 		t.Logf("%-28s axes=%v poigneeIW=%d | morts=%d ti40=%d queues=%d | paquets_a_events=%d "+
-			"localises=%d idLow=%d cadre_par_defaut=%v | index_absolus %s",
+			"localises=%d idLow=%d | index_absolus %s",
 			etiquette, wo.AxisW, p.Mouvement.Traversal.IndexW, len(morts), parType[40], queues,
-			st.EventPackets, st.LocatedPackets, st.Config.IDLowBits, st.CadreParDefaut,
+			st.EventPackets, st.LocatedPackets, st.Config.IDLowBits,
 			histoIndex(abs))
 	}
 

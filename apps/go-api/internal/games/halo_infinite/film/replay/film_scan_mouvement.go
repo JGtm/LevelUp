@@ -24,11 +24,18 @@ import (
 // 97 447 records `ti=35` dont 3 desynchronises, et 7 941 lectures d'etat. Detail et chiffres :
 // l'en-tete de `grammar/movement_states.go` et la note 5.3 (section 2septdecies). Le tir continu
 // y est lu parce que la vue C est le dernier rang de CHAQUE trame que cette marche deroule deja.
+// LES MORTS D OBJET ET L OCCUPATION aussi (canal des morts), quand le calque des vehicules a ete
+// balaye : il les prend ici ([mortsDeVehicule]). Un film sans vehicule ne paie pas leur lecture.
+//
+// LA MARCHE TOURNE AUX LARGEURS MPP DU CONTEXTE, et non a celles que les socles et les vehicules
+// calibrent sur les poses des formats sans largeur relue : une largeur mesuree, et non lue dans le
+// jeu, n entre pas dans la lecture de toutes les entites — les corrections de la grammaire sont
+// generales et lues dans le jeu.
 //
 // ABSENCE NON FATALE : le rejeu sort sans intervalles d'etat ni rafales, jamais avec des
-// intervalles devines.
+// intervalles devines, et les fins de vie de vehicule a la seule borne de recensement.
 func (s *filmScan) balayerEtatsDeMouvement() {
-	m, err := grammar.ScanMarcheDesTrames(s.fc)
+	m, err := grammar.ScanMarcheDesTramesAvec(s.fc, grammar.LecturesDeLaMarche{Morts: s.in.Vehicles.Scanned})
 	st, tc := m.MovementStateStats, m.ContinuousFireStats
 	if err != nil {
 		slog.WarnContext(s.ctx, "etats de mouvement et tir continu illisibles — rejeu sans intervalles d etat ni rafales",
@@ -51,8 +58,20 @@ func (s *filmScan) balayerEtatsDeMouvement() {
 	s.opt.Fallbacks.DeclencheN(fallback.NomDebutDeListeFermeAuBit, m.DebutsDeListeParRepliFermeAuBit)
 	s.in.MovementStates, s.in.MovementStateStats = m.MovementStates, st
 	s.in.ContinuousFire, s.in.ContinuousFireStats = m.ContinuousFire, tc
+	if s.in.Vehicles.Scanned {
+		s.in.Vehicles.Deaths, s.in.Vehicles.Occupancy, s.in.Vehicles.DeathStats = mortsDeVehicule(s.ctx, s.matchID, m)
+	}
 	s.opt.observe(s.ctx, "movementStates", s.in.MovementStates)
 	s.opt.observe(s.ctx, "movementStates.stats", st)
 	s.opt.observe(s.ctx, "continuousFire", s.in.ContinuousFire)
 	s.opt.observe(s.ctx, "continuousFire.stats", tc)
+	s.opt.observe(s.ctx, "vehicleDeaths", mortsEtOccupation{Deaths: s.in.Vehicles.Deaths, Occupancy: s.in.Vehicles.Occupancy})
+	s.opt.observe(s.ctx, "vehicleDeaths.stats", s.in.Vehicles.DeathStats)
+}
+
+// mortsEtOccupation est ce que l etape `vehicleDeaths` observe : les morts de vehicule et les
+// lectures d occupation que le calque des vehicules a pris de la marche des trames.
+type mortsEtOccupation struct {
+	Deaths    []types.ObjectDeath
+	Occupancy []types.VehicleOccupancy
 }

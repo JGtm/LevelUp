@@ -21,10 +21,26 @@
     {
       "key": "format=20,21,24,25",
       "field": "MPP",
-      "value": "INDETERMINEE (aucune largeur posee)",
+      "value": "declare par le film : taille d etat de creation n1 (lignes suivantes)",
+      "provenance": "relue",
+      "proof": "FUN_14080cfe8 lit des largeurs litterales et aucun lecteur de la version de format n a de seuil entre 25 et 27 (seuils 3, 7, 11, 13/14, 15) ; FUN_142e2d08c range la taille d etat de creation (vtable+0x20) dans le mot n1 de chaque record d image-cle",
+      "date": "2026-10-05"
+    },
+    {
+      "key": "format=20,21,24,25",
+      "field": "MPP si n1 = taille courante",
+      "value": "lead=9 index=5",
+      "provenance": "relue",
+      "proof": "tailles courantes en vtable+0x20 des descripteurs (35 0x98, 36 0x60, 37/38/39 0x68, 40 0xb0, 41 0xd4, 42 0xa8, 43 0x60 ; mpp_declare.go) ; largeurs litterales de FUN_14080cfe8",
+      "date": "2026-10-05"
+    },
+    {
+      "key": "format=20,21,24,25",
+      "field": "MPP si n1 = taille courante - 4",
+      "value": "lead=8 index=3",
       "provenance": "mesuree",
-      "proof": "les deux oracles internes se contredisent : `n2` designe 8/3 (part modale 0,988 a 0,996 contre 0,304 a 0,522) et la fermeture designe 10/5 la ou l ecrivain est certain — cf. build_profile.go. La case reste VIDE : c est l etat reel de la connaissance",
-      "date": "2026-09-15"
+      "proof": "oracle n2 modal a 0,974-1,000 sous 8/3 (0,02-0,54 sous 9/5) sur les cinq bobines des formats 21, 24 et 25, archetypes 35, 37, 38, 40, 41, 42, 43 ; identifiants de 32 bits un bit plus tot (champ de tete de 8 bits)",
+      "date": "2026-10-05"
     },
     {
       "key": "build=HI_1_13_0",

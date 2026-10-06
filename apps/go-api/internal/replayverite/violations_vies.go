@@ -50,8 +50,14 @@ func couvertPar(is []intervalle, t, tol int) bool {
 const slotMuet = 0
 
 // violationsHorsVie : V-3, une action dont le slot n'a aucune vie qui couvre son image.
+//
+// UN TRAJET DU SLOT A BORD D UN VEHICULE FAIT PARTIE DE SA VIE. Le corps d un occupant cesse de
+// repliquer sa position a la montee : sa piste s arrete, et il vit pourtant jusqu a la descente ou a
+// sa mort. Le trajet se rattache par SLOT, quel que soit le siege, comme le tir d un occupant
+// (regle de l utilisateur du 2026-09-21).
 func violationsHorsVie(d *Document) Violation {
 	v := indexerVies(d)
+	trajets := trajetsParSlot(d)
 	var out Violation
 	familles := []struct {
 		nom     string
@@ -63,13 +69,25 @@ func violationsHorsVie(d *Document) Violation {
 	}
 	for _, f := range familles {
 		for _, a := range f.actions {
-			if a.Slot == nil || *a.Slot == slotMuet || couvertPar(v.parSlot[*a.Slot], a.T, toleranceVieImages) {
+			if a.Slot == nil || *a.Slot == slotMuet || couvertPar(v.parSlot[*a.Slot], a.T, toleranceVieImages) ||
+				couvertPar(trajets[*a.Slot], a.T, toleranceVieImages) {
 				continue
 			}
 			out.Instances = append(out.Instances, fmt.Sprintf("%s slot %d @%d", f.nom, *a.Slot, a.T))
 		}
 	}
 	sort.Strings(out.Instances)
+	return out
+}
+
+// trajetsParSlot indexe les trajets publies a bord des vehicules par slot de corps.
+func trajetsParSlot(d *Document) map[int][]intervalle {
+	out := map[int][]intervalle{}
+	for _, veh := range d.Vehicles {
+		for _, r := range veh.Rides {
+			out[r.Slot] = append(out[r.Slot], intervalle{a: r.T0, b: r.T1})
+		}
+	}
 	return out
 }
 

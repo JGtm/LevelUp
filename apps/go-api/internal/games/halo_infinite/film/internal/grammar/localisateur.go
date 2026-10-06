@@ -7,16 +7,18 @@ package grammar
 // et tous appellent [LocaliserBoucleDeRecords] — il n en existe pas de copie (garde-rail
 // `archlint/film_localisateur_unique_test.go`) :
 //
-//	site                                         ordre
-//	cuisson, debut de liste ([localiserLaListe])  [SignatureStricte]
-//	marche des morts d objet ([marchDebut])       [SignaturePuisLargeurLibre]
-//	marche de killsource (`killsource.runWalk`)    [SignaturePuisLargeurLibre]
+//	site                                                         ordre
+//	cuisson, debut de liste ([localiserLaListe])                  [SignatureStricte]
+//	canal des morts, liste que la cuisson n a pas localisee        [SignaturePuisLargeurLibre]
+//	  ([debutRecupere])
+//	marche de killsource (`killsource.runWalk`)                    [SignaturePuisLargeurLibre]
 //
 // LES SITES N ONT PAS LE MEME ORDRE, ET LE PARAMETRE LE DIT. La cuisson prend la premiere
 // signature stricte telle quelle, sans controle de generation ni repli : quand elle echoue, c est
-// elle qui essaie ensuite la fermeture par NEW de tete. Les deux marches qui lisent les morts
-// exigent en plus que la generation de la signature soit celle du monde, et essaient le repli a
-// largeur libre quand la signature stricte echoue.
+// elle qui essaie ensuite la fermeture par NEW de tete. Les deux sites qui lisent les morts exigent
+// en plus que la generation de la signature soit celle du monde, et essaient le repli a largeur
+// libre quand la signature stricte echoue ; le canal des morts n y vient que pour une liste que le
+// debut de liste de la cuisson n a pas localisee.
 //
 // LE BIT NUL QUI PRECEDE LA POSITION. Le jeu ne l ecrit que devant le PREMIER record de la vue B :
 // l ecrivain du tick (`FUN_142f2c3b0`) ecrit la liste d evenements (vue A, `FUN_142f2c050`) puis un
@@ -43,12 +45,13 @@ package grammar
 // essaye qu apres l echec de la signature stricte : les paquets deja localises ne bougent pas d un
 // bit.
 //
-// LE CONTROLE DE GENERATION DES MARCHES ([TryDeltaAt] ne l applique pas) n agit que sous la
-// generation stricte du profil (`Profil.Grammaire.GenerationStricte`, que killsource leve) : sans
-// elle, [World.GenerationMatches] rend vrai et le controle est vide — c est le cas de la marche
-// des morts d objet de production. Sous la generation stricte, sans lui, le localisateur
-// designerait des positions ou le slot de signature porte une AUTRE generation, et la marche y
-// mourrait aussitot.
+// LE CONTROLE DE GENERATION DES SITES QUI LISENT LES MORTS ([TryDeltaAt] ne l applique pas) n agit
+// que sous la generation stricte du profil (`Profil.Grammaire.GenerationStricte`) : sans elle,
+// [World.GenerationMatches] rend vrai et le controle est vide. La production tourne sous elle :
+// killsource la leve dans son profil de depart, et la cuisson pose le profil que killsource calibre
+// (`replaybuild` -> `replay.Options.ProfilDeBalayage`). Sous la generation stricte, sans lui, le
+// localisateur designerait des positions ou le slot de signature porte une AUTRE generation, et la
+// lecture y mourrait aussitot.
 //
 // CHAQUE POSITION ESSAYEE EST UN ESSAI : [TryDeltaAt] traverse l entite pour de vrai, donc les
 // deserialiseurs publient. Les trois fonctions du localisateur eteignent la publication des etats
@@ -77,8 +80,8 @@ const (
 // ecrivains du jeu l ecrivent : le mot facultatif de `HasExtraFields` ([motFacultatifDEnTete]), le
 // prefixe DELTA ([readRecordType]), l identifiant (`FUN_1406d3140`, [readRecordID] : `IDLowBits`
 // bits puis la generation), la baseline, le masque et le composant. 35 bits au cadre par defaut
-// (`IDLowBits` 13, sans mot facultatif). La calibration du cadre, qui balaye `IDLowBits`
-// ([calibrateFrameConfig]), essaie donc chaque largeur avec la signature qui lui correspond.
+// (`IDLowBits` 13, sans mot facultatif) ; un cadre a une autre largeur d identifiant bas cherche la
+// signature qui lui correspond.
 func largeurDeSignature(cfg FrameConfig) int {
 	return motFacultatifDEnTete(cfg) + prefixeDeltaBits + cfg.IDLowBits + handleGenBits +
 		baselineSansReferenceBits + masqueEparsUniqueBits + composantHauteFrequenceBits
@@ -96,7 +99,7 @@ const (
 	// ni repli. Ordre de la cuisson.
 	SignatureStricte OrdreDeLocalisation = iota
 	// SignaturePuisLargeurLibre : la premiere signature stricte si sa generation est celle du
-	// monde, sinon le repli a largeur libre. Ordre des deux marches qui lisent les morts.
+	// monde, sinon le repli a largeur libre. Ordre des deux sites qui lisent les morts.
 	SignaturePuisLargeurLibre
 )
 

@@ -103,7 +103,7 @@ func m522ControlesDuPaquet(pay []byte, w *World, cfg FrameConfig,
 		br.Skip(d)
 	} else {
 		br.Skip(DefaultPacketPreambleBits - 1)
-		if a := consumeVueA(br, frameLen); !a.Vide {
+		if a := lireLaTeteDeMarche(br, pay, cfg); !a.Vide {
 			return nil, m522PaquetVueA
 		}
 	}
@@ -291,7 +291,7 @@ func m522FinDePaquet(pay []byte, w *World, cfg FrameConfig) (int, bool) {
 		br.Skip(d)
 	} else {
 		br.Skip(DefaultPacketPreambleBits - 1)
-		if a := consumeVueA(br, frameLen); !a.Vide {
+		if a := lireLaTeteDeMarche(br, pay, cfg); !a.Vide {
 			return 0, false
 		}
 	}

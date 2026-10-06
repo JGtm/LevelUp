@@ -2803,3 +2803,32 @@ package replay
 //	                faits persistes sont identiques a l octet.
 //
 //	LE PARC         un artefact 77 dont les faits sont sur disque : verdict `republier`.
+
+// v79 (2026-10-05, rejeu « cercle de retour du drapeau », lot L1) : LA BASE ET LE CAMP DE CHAQUE
+// DRAPEAU SE LISENT DANS LE FILM quand le catalogue de socles se tait (`flag_film_bases.go`).
+//
+//	`flagCarries`  carte hors catalogue : deux drapeaux d equipe, a la base ou l AUTRE camp vole,
+//	               posee au point de la renaissance de l objet, avec leurs etats `home`, au lieu
+//	               d un drapeau d equipe -1 sans `home` ; variante neutre reconnue quand les deux
+//	               camps volent au meme point. Carte du catalogue : les socles retenus sont ceux
+//	               que le film apparie (un socle central sans camp, des socles en double sortent
+//	               du calque ; a portee egale, le socle dont le camp concorde avec le film), un
+//	               socle sans camp prend celui du film ; une base neutre lue sur un socle qui ne
+//	               nomme aucun camp en fait le socle neutre quand l objet n a pas tranche.
+//	`coverage.     quatre compteurs neufs, `omitempty` : `filmBases`, `spawnsFromFilm`,
+//	flagCarries`   `filmBaseAgree`, `filmBaseContradict`.
+//	journal        `repli_index_drapeau_zero_pour_tous` et
+//	               `repli_nombre_drapeaux_hors_catalogue_sans_passage` ne restent que sans base
+//	               lue ; `repli_socle_du_film_au_centre_des_vols` nait.
+//	`vehicleWeapons champ neuf `omitempty` `reach` (lot L3, rejeu « tirs depuis l avant du
+//	.mount.reach`  vehicule ») : la longueur du canon d une TOURELLE en fraction de la longueur du
+//	               sprite, la bouche etant a cette distance du pivot dans la direction de la visee.
+//	               La table est posee A LA REQUETE (jamais cuite) : la forme change, aucun
+//	               artefact n en porte la valeur.
+//
+//	CE QUI MONTE    `SchemaVersion` 78 -> 79, et `killcollector.PlacementRev` (les portages que le
+//	AVEC ELLE       placement des vies lit au sync changent). `source`, `profile`, `grammar`,
+//	                `killsource`, `objectives` et `killcollector.IsolationDecoderRev` gardent leur
+//	                valeur : les faits persistes sont identiques a l octet.
+//
+//	LE PARC         un artefact 78 dont les faits sont sur disque : verdict `republier`.

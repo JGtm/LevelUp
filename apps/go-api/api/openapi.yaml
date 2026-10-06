@@ -15030,6 +15030,15 @@ components:
         dropsWithheld:
           format: int64
           type: integer
+        filmBaseAgree:
+          format: int64
+          type: integer
+        filmBaseContradict:
+          format: int64
+          type: integer
+        filmBases:
+          format: int64
+          type: integer
         flagFilm:
           type: boolean
         gaugePaired:
@@ -15094,6 +15103,9 @@ components:
           format: int64
           type: integer
         spawns:
+          format: int64
+          type: integer
+        spawnsFromFilm:
           format: int64
           type: integer
         steals:
@@ -32174,6 +32186,9 @@ components:
           format: double
           type: number
         ay:
+          format: double
+          type: number
+        reach:
           format: double
           type: number
       required:

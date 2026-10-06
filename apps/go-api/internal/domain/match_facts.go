@@ -75,8 +75,9 @@ type MatchFacts struct {
 	// Joindre sur l'un ou l'autre ne trouve rien, SILENCIEUSEMENT. C'est déjà par map_id que le
 	// service sert le calque statique des objectifs.
 	//
-	// Vide = artefact sans socles NI zones : la vie des drapeaux reste publiée, mais sans équipe
-	// propriétaire ni état `home` (leur position serait inventée).
+	// Vide = artefact sans socles du catalogue NI zones : le calque du drapeau lit alors la base et
+	// le camp de chaque drapeau dans le film (`replay/flag_film_bases.go`), et ne publie les
+	// portages sans équipe propriétaire ni état `home` que s'il n'en lit aucune.
 	MapID string `json:"mapId,omitempty"`
 }
 

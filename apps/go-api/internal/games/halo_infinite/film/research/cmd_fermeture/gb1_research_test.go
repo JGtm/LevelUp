@@ -33,7 +33,7 @@ func TestModeGB1EcritSesSortiesEtSesInvariants(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, id := range bobinesGB1 {
-		if err := mesurerUnFilm(racineKillsource, id, 4, rap); err != nil {
+		if err := mesurerUnFilm(racineKillsource, id, 4, rap, nil); err != nil {
 			t.Fatalf("%s : %v", id, err)
 		}
 	}
@@ -125,7 +125,7 @@ func TestDeuxModesSurUnFilm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mesurerUnFilm(racineKillsource, "minibobine_000d5950", 4, rap); err != nil {
+	if err := mesurerUnFilm(racineKillsource, "minibobine_000d5950", 4, rap, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := rap.terminer(5); err != nil {

@@ -46,10 +46,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
 	"os"
-	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -125,41 +122,13 @@ func TestTriTotalTableNeFaitQueBaisser(t *testing.T) {
 // balayerTrisNonTotaux rend, par « fichier:fonction », le nombre d'appels comptes.
 func balayerTrisNonTotaux(t *testing.T) map[string]int {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici))) // .../apps/go-api
 	out := map[string]int{}
 	fichiers := 0
-	for _, racine := range racinesTriTotal {
-		base := filepath.Join(goAPIRoot, filepath.FromSlash(racine))
-		err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			rel, err := filepath.Rel(goAPIRoot, chemin)
-			if err != nil {
-				return err
-			}
-			rel = filepath.ToSlash(rel)
-			if d.IsDir() {
-				if chemin != base && repertoireExcluDuTriTotal(d.Name(), rel) {
-					return fs.SkipDir
-				}
-				return nil
-			}
-			if !strings.HasSuffix(chemin, ".go") || strings.HasSuffix(chemin, "_test.go") {
-				return nil
-			}
-			compte, err := compterTrisDuFichier(chemin, rel, out)
-			fichiers += compte
-			return err
-		})
-		if err != nil {
-			t.Fatalf("balayage de %s : %v", base, err)
-		}
-	}
+	balayerLaProduction(t, racinesTriTotal, func(rel, chemin string) error {
+		compte, err := compterTrisDuFichier(chemin, rel, out)
+		fichiers += compte
+		return err
+	})
 	if fichiers < plancherFichiersTriTotal {
 		t.Fatalf("balayage muet : %d fichiers de production vus dans %v, plancher %d.",
 			fichiers, racinesTriTotal, plancherFichiersTriTotal)

@@ -389,3 +389,85 @@ package grammar
 // `movementStates` identiques : `objectives.Rev` ne monte pas. `replay.SchemaVersion` reste 78. Ce
 // rang remplace la valeur du meme nom de la tete d integration d avant la revue (`da6ecda38`, jamais
 // fusionnee, empreinte egale a celle du `.4`).
+//
+// ENTREE `grammar-2026-10-04` (2026-10-04, lot 2.7.a de la representation intermediaire,
+// `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES MORTS D OBJET ET L OCCUPATION
+// SONT UN CANAL DE LA MARCHE DES TRAMES ; LA MARCHE A HUIT VUES EST RETIREE.
+//
+// Ce qui change, contre `grammar-2026-10-03.5` :
+//   - [ScanMarcheDesTramesAvec] rend les morts d objet et l occupation ([canalDesMorts]) quand on les
+//     lui demande — la cuisson, pour un calque de vehicules balaye : les records de la vue B de
+//     chaque trame, sous la regle d acceptation de [objectDeathHarvest] ; la marche a huit
+//     vues (chronologie des images-cles, calibration d `IDLowBits`, deroulage) est retiree, et la
+//     largeur d identifiant bas est celle de l en-tete de la marche ;
+//   - une liste d evenements que le debut de liste de la cuisson ne localise pas est recuperee pour
+//     ce canal seul ([debutRecupere] : signature puis largeur libre, `repli_localisation_largeur_libre`),
+//     sous le monde de la marche, rendu intact ;
+//   - [ObjectDeathStats] perd les quatre champs de la calibration ; le repli
+//     `repli_cadre_de_marche_par_defaut_conserve` est retire ;
+//   - les morts de vehicule se lisent sous les largeurs MPP de la marche des trames, celles du
+//     contexte, et plus sous celles que les vehicules calibrent sur les poses des formats sans
+//     largeur relue : une largeur mesuree n entre pas dans la marche de toutes les entites.
+//
+// Preuve sur les vingt films du corpus d equivalence contre `87cdfa761` (passe `ri27c`) : etats de
+// mouvement et tir continu IDENTIQUES sur les vingt ; `cmd/killsource json` identique a l octet sur
+// les 19 temoins (`killsource.Rev` et `objectives.Rev` ne montent pas) ; divergent `vehicles` et
+// `artifact`, plus les deux etapes neuves `vehicleDeaths` ; records de mort de vehicule de la
+// cuisson 142 -> 148 sur les dix films qui en portent (`e5adf7b2` 17 -> 15 et `60ae07c4` 1 -> 0,
+// lus jusqu ici sous les largeurs calibrees ; `1c4c63c2` 4 -> 7, `084a804d` 35 -> 37).
+// `replay.SchemaVersion` reste 78.
+//
+// ENTREE `grammar-2026-10-05` (2026-10-05, item 2.7.a0 de la representation intermediaire ;
+// decision de l utilisateur du meme jour) : LE DECOUPAGE MPP D UN FILM DES FORMATS 20, 21, 24 ET 25
+// EST CELUI QU IL DECLARE PAR LA TAILLE D ETAT DE CREATION DE SES OBJETS.
+//
+// Ce qui change, contre `grammar-2026-10-04` :
+//   - [FilmContext.DeclarationMPP] lit, dans la premiere image-cle qui en porte, le mot `n1` de
+//     chaque record d un archetype de la cle ([profile.CleDuDecoupageMPP]) et rend le decoupage
+//     qu ils designent tous ([profile.MPPPourTailleDeclaree], `profile-2026-10-05`) ;
+//   - [FilmContext.ResolutionMPP] rend celui de la version de format quand elle le porte (27), la
+//     declaration sinon ; c est la porte unique des poses d equipement et des socles et vehicules
+//     de la cuisson, et la cuisson la pose sur son contexte pour toutes ses lectures
+//     (`replay.poserLeDecoupageMPPDuFilm`) ; la calibration sur les poses ne decide plus que pour un
+//     film qui ne declare rien sans discordance ;
+//   - [ResolutionMPP.Relue] devient [ResolutionMPP.Decide], avec la provenance du decoupage.
+//
+// killsource ne change pas : la declaration n entre ni dans l en-tete de la marche ni dans la
+// preuve des ancres d image-cle, et son contexte garde l invariant.
+//
+// ENTREE `grammar-2026-10-06` (2026-10-05, lot VA de la campagne de grammaire, etape V1) : LA VUE A
+// SE LIT MESSAGE PAR MESSAGE, PAR UNE SEULE LECTURE ; AUCUNE SORTIE NE CHANGE.
+//
+// Ce qui change, contre `grammar-2026-10-03.5` (`87cdfa761`) :
+//   - la table des 123 genres de message et leurs versions natives sont portees, avec les charges de
+//     47 genres (45 du lot LN, plus Script (15) et biped_throw_initiate (39) de la recherche R2, qui
+//     lit aussi les positions a index des genres 5 et 6 sur la region jouee) ; 13 genres sont vides
+//     (`vue_a_genres.go`, `vue_a_versions.go`, `vue_a_charges*.go`) ; la simulation de
+//     l enregistreur entre dans l identite du film (`profile-2026-10-06`) ;
+//   - la regle des versions en deux classes : table du film EGALE a la table native (film recent),
+//     PREFIXE STRICT (film ancien), sinon la vue A ne se lit pas au-dela de sa tete ;
+//   - [lireLaVueA] est la seule lecture de la vue A (`consumeVueA` supprime) : la marche des trames la
+//     joue une fois par trame en rangeant la tete ([rangerLaTete]) et la passe a [lireTrameParRangs] ;
+//     la tete donnee aux canaux et la route vers la localisation sont lues a l identique ;
+//   - la fin de la vue A lue est rangee dans `lecture.Paquet.VueA` ; elle ne decide d AUCUNE
+//     localisation (etape V2).
+//
+// Mesure sur 20 films contre `87cdfa761` (`campagne_grammaire_2026-10-01/LOT_VA_V1.md`) : carte v2
+// (`fermeture_paquets.tsv`) IDENTIQUE A L OCTET, 313 542 paquets sains ; `cmd/killsource json`
+// identique a l octet sur 20 films : `killsource.Rev` reste `killsource-2026-09-27` ; `replay-equiv` :
+// seule l etape `artifact` diverge (chaine de revision), `objectives` identique : `objectives.Rev` ne
+// monte pas. `replay.SchemaVersion` reste 78. La tete et la vue A rangees sont celles d avant, paquet
+// par paquet, sur les 20 films (sonde `va_v1_research_test.go`). Le rang : `grammar-2026-10-04` et
+// `grammar-2026-10-05` sont pris par l etape 2.7.a de la representation intermediaire, `.6` du
+// 2026-10-03 par le lot LR ; le premier rang libre et sans trou est celui du 2026-10-06.
+//
+// ENTREE `grammar-2026-10-06.2` (2026-10-05, fusion de `feat/v75` dans l etape 2 de la
+// representation intermediaire) : LES DEUX RANGS PRECEDENTS SONT REUNIS, ET LE CANAL DES MORTS LIT
+// LA TETE PAR [listeAnnoncee].
+//
+// Ce qui change, contre `grammar-2026-10-05` et `grammar-2026-10-06` :
+//   - les deux branches sont reunies sans autre changement de grammaire ;
+//   - [canalDesMorts] reconnait un paquet a evenements par [listeAnnoncee], le predicat de la
+//     marche : une vue A lue jusqu a son terminateur est TERMINEE meme quand elle porte des
+//     messages, et l ancien test (vue A arretee) les aurait comptes sans evenements et prives de la
+//     recuperation de leur liste.

@@ -238,12 +238,11 @@ func TestTrou515Population(t *testing.T) {
 // t515Records rejoue la vue B d un paquet et rend SES records (la marche de [t515Marcher] ne les
 // garde pas).
 func t515Records(pay []byte, w *World, cfg FrameConfig, debut int) ([]FrameRecord, int, bool) {
-	frameLen := len(pay) * 8
 	br := LecteurSur(pay)
 	br.poserCadre(cfg)
 	if debut == DefaultPacketPreambleBits && cfg.PacketPreambleBits >= 1 {
 		br.Skip(cfg.PacketPreambleBits - 1)
-		if a := consumeVueA(br, frameLen); !a.Porte {
+		if a := lireLaTeteDeMarche(br, pay, cfg); !a.Vide {
 			return nil, br.BitPos(), false
 		}
 	} else {

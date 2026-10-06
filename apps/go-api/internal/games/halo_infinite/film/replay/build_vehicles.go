@@ -73,10 +73,10 @@ type VehicleScan struct {
 	// episode est celle de l HOMME a bord, jamais du chassis. Absentes = episodes sans serie de
 	// visee, le client retombe sur le cap du chassis (cf. vehicle_rides_aim.go).
 	Aims []grammar.BipedAim
-	// Deaths sont les MORTS ECRITES des entites `ti=40` : le composant `object-dead-state` lu
-	// par la MARCHE (`grammar.ScanObjectDeaths`), seule voie qui l atteigne — les balayages
-	// ancres de ce paquet n acceptent qu un masque ouvrant sur `i0` et n arrivent jamais a
-	// `i11`. C est ce qui DATE la fin de vie d un vehicule (lot 1.9.10) ; sans elles, la fin
+	// Deaths sont les MORTS ECRITES des entites `ti=40` : le composant `object-dead-state` lu par
+	// la marche des trames (`grammar.ScanMarcheDesTrames`), seule voie qui l atteigne — les
+	// balayages ancres de ce paquet n acceptent qu un masque ouvrant sur `i0` et n arrivent jamais
+	// a `i11`. C est ce qui DATE la fin de vie d un vehicule (lot 1.9.10) ; sans elles, la fin
 	// n est plus qu une borne de recensement.
 	Deaths []types.ObjectDeath
 	// Occupancy sont les lectures d `object-parent-state` de la bande BIPEDE : les montees a bord
@@ -84,7 +84,7 @@ type VehicleScan struct {
 	// morts — aucune lecture de film supplementaire. Absentes : les episodes sortent sans siege,
 	// jamais avec un siege suppose.
 	Occupancy []types.VehicleOccupancy
-	// DeathStats porte les denominateurs de cette lecture (cadre retenu, paquets localises,
+	// DeathStats porte les denominateurs de cette lecture (cadre de la marche, paquets localises,
 	// records par archetype, controle de masque). ILS VOYAGENT AVEC LA LISTE : une liste vide
 	// sans eux serait indistinguable d un film ou aucun vehicule ne meurt.
 	DeathStats grammar.ObjectDeathStats
@@ -128,48 +128,38 @@ func decodeFilmVehicleScan(ctx context.Context,
 	out := VehicleScan{Scanned: true, Keyframes: kf, Creations: cre, Stats: st, Positions: pos}
 	out.Events = decodeFilmVehicleEvents(ctx, fc, matchID)
 	out.Aims = decodeFilmOccupantAims(ctx, fc, matchID)
-	out.Deaths, out.Occupancy, out.DeathStats = decodeFilmVehicleDeaths(ctx, fc, matchID)
 	slog.InfoContext(ctx, "vehicules : balayage ti=40",
 		"slots", st.Slots, "ancres", st.Anchors, "creationsAcceptees", st.Accepted,
 		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS),
-		"echantillons", len(pos), "evenements", len(out.Events), "viseesSansPosition", len(out.Aims),
-		"mortsEcrites", len(out.Deaths), "lecturesDOccupation", len(out.Occupancy))
+		"echantillons", len(pos), "evenements", len(out.Events), "viseesSansPosition", len(out.Aims))
 	return out
 }
 
-// decodeFilmVehicleDeaths lit les MORTS ECRITES des vehicules — la SIXIEME lecture du calque,
-// et la seule qui passe par la MARCHE plutot que par une ancre. ELLE REND AUSSI LES LECTURES
-// D OCCUPATION (lot 5.10) : le film les ecrit sur les MEMES records, la marche les traverse de
-// toute facon, et les lire ailleurs couterait une seconde marche du film entier.
+// mortsDeVehicule rend les MORTS ECRITES des vehicules et les lectures d occupation que la marche
+// des trames a lues ([grammar.ScanMarcheDesTrames], canal des morts) — la SIXIEME lecture du
+// calque, et la seule qui passe par la MARCHE plutot que par une ancre : le film ecrit les deux
+// sur les MEMES records, que la marche traverse de toute facon.
 //
-// ADDITIVE ET NON FATALE, meme doctrine que les evenements et les visees : son absence rend les
-// fins de vie a la seule borne de recensement (`end = "unknown"`), jamais une destruction
-// devinee. Elle n est appelee qu APRES la garde de bande : un film sans `ti=40` aux images-cles
-// ne paie pas la marche.
+// ADDITIVE ET NON FATALE, meme doctrine que les evenements et les visees : une marche illisible
+// rend les fins de vie a la seule borne de recensement (`end = "unknown"`), jamais une destruction
+// devinee.
 //
 // ELLE FILTRE SUR L ARCHETYPE, PAS SUR LA BANDE. La marche range par `TypeIndex` ; un slot lie a
 // `ti=40` par un record NEW en cours de flux est donc garde, alors que la bande des images-cles
 // l aurait perdu (2 a 5 morts par film chez le bipede, mesure V13 gate G1a).
-func decodeFilmVehicleDeaths(ctx context.Context,
-	fc *grammar.FilmContext, matchID string,
+func mortsDeVehicule(ctx context.Context, matchID string, m grammar.MarcheDesTrames,
 ) ([]types.ObjectDeath, []types.VehicleOccupancy, grammar.ObjectDeathStats) {
-	facts, err := grammar.ScanMarchFacts(fc)
-	if err != nil {
-		slog.WarnContext(ctx, "vehicules : morts ecrites illisibles — fins de vie bornees par le seul"+
-			" recensement", "err", err, "match_id", matchID)
-		return nil, nil, facts.Stats
-	}
-	out := make([]types.ObjectDeath, 0, len(facts.Deaths))
-	for _, d := range facts.Deaths {
+	out := make([]types.ObjectDeath, 0, len(m.ObjectDeaths))
+	for _, d := range m.ObjectDeaths {
 		if d.TypeIndex == uint32(grammar.VehicleTypeIndex) {
 			out = append(out, d)
 		}
 	}
-	logVehicleDeathReads(ctx, matchID, len(facts.Deaths), len(out), facts.Stats)
+	logVehicleDeathReads(ctx, matchID, len(m.ObjectDeaths), len(out), m.ObjectDeathStats)
 	if len(out) == 0 {
-		return nil, facts.Occupancy, facts.Stats
+		return nil, m.Occupancy, m.ObjectDeathStats
 	}
-	return out, facts.Occupancy, facts.Stats
+	return out, m.Occupancy, m.ObjectDeathStats
 }
 
 // logVehicleDeathReads dit CE QUE LA MARCHE A VU, et c est le denominateur sans lequel « 20 morts
@@ -191,8 +181,7 @@ func logVehicleDeathReads(ctx context.Context, matchID string, tous, vehicules i
 		"match_id", matchID, "mortsToutesEntites", tous, "mortsVehicules", vehicules,
 		"masqueDeclareLeDeadState", declares, "dontDesynchronises", perdus,
 		"recordsAtteints", st.Records[ti], "recordsEntierementPortes", st.CleanRecords[ti],
-		"paquetsAEvenements", st.EventPackets, "paquetsLocalises", st.LocatedPackets,
-		"cadreParDefaut", st.CadreParDefaut)
+		"paquetsAEvenements", st.EventPackets, "paquetsLocalises", st.LocatedPackets)
 }
 
 // decodeFilmOccupantAims lit la VISEE des bipedes dans les records qui ne portent AUCUNE

@@ -10,7 +10,8 @@ package grammar
 // aujourd hui — la phase des images-cles se lit sous l observation du contexte, comme
 // [FilmContext.ImagesCles]. Un canal ne lit jamais un octet ; il lit la structure
 // ([lecture.Paquet]), la marche d ancres du paquet ([MarcheDistribuee.Ancres]) et ce que ses crochets
-// recoivent.
+// recoivent — et, pour un canal de la grammaire, les records de la trame avec la trace que la couche
+// de capture leur donne ([canalDesMorts]).
 //
 // # LES INTERETS SONT DES PAIRES (ARCHETYPE, COMPOSANT), DANS UNE PHASE
 //
@@ -86,8 +87,9 @@ type CanalDesTrames interface {
 }
 
 // CanalDesTetes est un canal qui lit la TETE de chaque trame delta : la continuation de sa vue A
-// et, quand elle annonce un message, son genre ([lecture.Paquet.VueA], [rangerLaTete]). Une
-// distribution sans canal des trames n en marche pas les records : elle n en lit que les tetes.
+// et, quand elle annonce un message, son genre ([lecture.Paquet.VueA], [rangerLaTete], [teteDe]) ;
+// la vue A rangee porte aussi les messages qui suivent quand le film la rend lisible. Une
+// distribution sans canal des trames n en marche pas les records : elle n en lit que les vues A.
 type CanalDesTetes interface {
 	Canal
 	// Tete recoit chaque trame delta (payload non vide), dans l ordre du flux, sa tete rangee.
@@ -110,6 +112,9 @@ type MarcheDistribuee struct {
 	// Entites est la table d entites de la phase delta ; nil pendant les images-cles, qui ne tiennent
 	// pas de monde.
 	Entites lecture.Entites
+	// marche est la marche des trames, pendant la phase delta : un canal de la grammaire y lit les
+	// records de la trame avec leur trace de capture ([canalDesMorts]). Nil pendant les images-cles.
+	marche *marcheurDesTrames
 }
 
 // BilanDeMarche est ce que la marche rend d elle-meme a la cloture.
@@ -247,7 +252,7 @@ func distribuerLesDeuxPhases(fc *FilmContext, reg *Registry, canaux []Canal, l l
 		return err
 	}
 	mt.interets = interets[PhaseTrames]
-	m.Paquet, m.Entites = &mt.paquet, mt.entites
+	m.Paquet, m.Entites, m.marche = &mt.paquet, mt.entites, mt
 	mt.parcourir(func(t *trameLue) bool {
 		for _, c := range l.trames {
 			c.Trame(t.paquet)

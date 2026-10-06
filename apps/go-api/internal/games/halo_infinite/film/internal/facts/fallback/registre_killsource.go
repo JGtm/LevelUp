@@ -79,14 +79,18 @@ var registreKillsource = []Repli{
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "res.largeurLibre += unSi(aLargeurLibre)"}, {
-			// Le repli lui-meme : le localisateur unique de `grammar`, appele par les deux marches
-			// qui lisent les morts (killsource ci-dessus, marche des morts d'objet ci-dessous).
+			// Le repli lui-meme : le localisateur unique de `grammar`, appele par les deux sites
+			// qui lisent les morts (killsource ci-dessus ; le canal des morts de la marche des
+			// trames, sur les listes que la cuisson n a pas localisees, ci-dessous).
 			Fichier: pkgFilmdec + "localisateur.go",
 			Ancre:   "func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {",
 		}, {
-			// COMPTE du site de `grammar` au rapport du contexte de film (lot J8.7).
-			Fichier: pkgFilmdec + "object_deaths.go",
-			Ancre:   "fc.NoterReplis(ComptesDesReplis{LocalisationsALargeurLibre: largeurLibre})",
+			Fichier: pkgFilmdec + "canal_des_morts.go",
+			Ancre:   "c.largeurLibre += unSi(libre)",
+		}, {
+			// COMPTE du site de `grammar` au rapport du contexte de film.
+			Fichier: pkgFilmdec + "movement_states.go",
+			Ancre:   "fc.NoterReplis(ComptesDesReplis{LocalisationsALargeurLibre: morts.largeurLibre})",
 		}, siteDeVersement("NomLocalisationLargeurLibre")},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "les largeurs calibrees par la carte et le build ; a defaut, " + retraitRegle4,
