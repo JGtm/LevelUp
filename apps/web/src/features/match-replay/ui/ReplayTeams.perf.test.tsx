@@ -32,6 +32,7 @@ import { describe, expect, it } from 'vitest'
 import type { ReplayDocument } from '@/lib/api/types'
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import { stripBotSuffix } from '@/lib/players/displayName'
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
 import { ReplayTeams } from './ReplayTeams'
 import { REPLAY_TEXT } from '../i18n/i18n'
@@ -140,7 +141,7 @@ function mesurerColonne(doc: ReplayDocumentReady, base: number, header?: Presenc
   }
   const arbre = (frame: number) => (
     <Profiler id="ReplayTeams" onRender={onRender}>
-      <ReplayTeams doc={doc} scoreboard={scoreboard} frame={frame} locale="fr" header={header} />
+      <ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={scoreboard} frame={frame} locale="fr" header={header} />
     </Profiler>
   )
   const vue = render(arbre(base))

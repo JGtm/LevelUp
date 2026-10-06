@@ -8,7 +8,8 @@
  *  3. LE RECALAGE DES DEUX HORLOGES. Les events arrivent sur l'horloge du gameplay, le
  *     rejeu tourne sur celle du film : sans `t0_ms`, le feed a ~18 s de retard.
  *  4. TUEUR / ARME / VICTIME : la victime est nommée et colorée par SON équipe ; une
- *     arme non résolue rend un repère neutre, jamais l'icône d'un autre kill.
+ *     arme non résolue rend un repère neutre, jamais l'icône d'un autre kill. L'encre de
+ *     camp est l'allégeance du FILM (cas propres dans `ReplayKillFeed.encre.test.tsx`).
  *  5. LES MÉDAILLES : badge en image + libellé/description en infobulle, rattachées au
  *     kill ; une médaille sans visuel garde son texte.
  */
@@ -17,6 +18,7 @@ import { render, screen } from '@testing-library/react'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
 import { buildFeedEntries, type MedalEvent } from '../model/killFeedLogic'
 import { ReplayKillFeed } from './ReplayKillFeed'
@@ -73,6 +75,18 @@ const META = new Map([
 
 const SCOREBOARD: MatchScoreboardRow[] = []
 
+/** L'allégeance du film des cas ci-dessous : `me` au camp 0 (la référence), `foe` au camp 1. */
+const ALLEGEANCE = filmAllegianceOf(
+  testReplayDoc({
+    roster: [
+      { xuid: 'me', filmIndex: 0, name: 'JGtm', team: 0 },
+      { xuid: 'foe', filmIndex: 1, name: 'Cobra01', team: 1 },
+    ],
+  }),
+  [],
+  'me',
+)
+
 /**
  * LE FIL EST ASSEMBLÉ EN AMONT DEPUIS LE 2026-08-28 (planche 2a) : la page appelle
  * `buildFeedEntries` une fois et sert la même liste au fil et aux pistes de la frise. Les cas
@@ -94,6 +108,7 @@ function renderFeed(
       playWindow={null}
       scoreboard={scoreboard}
       xuidMeta={META}
+      allegiance={ALLEGEANCE}
       locale="fr"
     />,
   )
@@ -142,6 +157,7 @@ describe('ReplayKillFeed — synchronisation et permanence', () => {
         playWindow={{ startFrame: 184, leadInFrame: 174, endFrame: 4_000, startMs: T0, endMs: 400_000 }}
         scoreboard={SCOREBOARD}
         xuidMeta={META}
+        allegiance={ALLEGEANCE}
         locale="fr"
       />,
     )
@@ -187,12 +203,9 @@ describe('ReplayKillFeed — arme du kill', () => {
     expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{6}/)
   })
 
-  it("TEINTE l'icône à la couleur d'équipe du TUEUR (constat gate 2026-08-13)", () => {
-    // La couleur d'identité vient de la cascade du scoreboard (team_color prioritaire) :
-    // l'icône-masque doit la porter, comme dans le kill feed de la carte « Dominance ».
-    const sb = [
-      { xuid: 'me', gamertag: 'JGtm', team_side: 't0', team_color: 'var(--team-témoin)' },
-    ] as MatchScoreboardRow[]
+  it("TEINTE l'icône à l'encre de camp du TUEUR (constat gate 2026-08-13)", () => {
+    // L'encre est l'allégeance du FILM du tueur (`me`, la référence : alliée) : l'icône-masque
+    // la porte, comme le nom qui la précède.
     renderFeed(
       [
         kill({
@@ -204,13 +217,9 @@ describe('ReplayKillFeed — arme du kill', () => {
         }),
       ],
       20_000,
-      T0,
-      [],
-      null,
-      sb,
     )
     const icon = screen.getByRole('img', { name: 'BR75' })
-    expect(icon.getAttribute('style') ?? '').toContain('var(--team-témoin)')
+    expect(icon.getAttribute('style') ?? '').toContain('var(--ac-team-ally)')
   })
 })
 
@@ -464,6 +473,7 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
         playWindow={null}
         scoreboard={BOARD}
         xuidMeta={META}
+        allegiance={ALLEGEANCE}
         locale="fr"
         marks={marks}
       />,

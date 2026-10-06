@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 
-import { resolveXuidMeta } from '@/features/match-view/xuidMeta'
+import { filmAllegianceOf, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 import type {
   MatchScoreboardRow,
   ReplayDocument,
@@ -63,7 +63,7 @@ function renderTeams(over: Partial<ReplayDocument>, frame = 10) {
     tracks: [TRACK],
     ...over,
   })
-  return render(<ReplayTeams doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
+  return render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
 }
 
 describe('ReplayTeams — capacité équipée', () => {
@@ -382,10 +382,10 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
       // prennent aucune hauteur, seules les RANGÉES comptent.
       return [...card.children].filter((e) => !e.hasAttribute('aria-hidden')).length
     }
-    const alive = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
+    const alive = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={10} locale="fr" />)
     const aliveRows = cardRows(alive)
     alive.unmount()
-    const dead = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
+    const dead = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={140} locale="fr" />)
     expect(dead.getByText('ne revient plus')).toBeTruthy()
     expect(cardRows(dead)).toBe(aliveRows)
   })
@@ -413,7 +413,7 @@ describe('ReplayTeams — mort et réapparition', () => {
     })
 
   it('mort avec retour lu : « Éliminé », le compte à rebours, et AUCUNE jauge', () => {
-    render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
+    render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
     expect(screen.getByText('Éliminé')).toBeTruthy()
     // Le décompte porte la phrase en infobulle — le mot visible est parti avec l'encadré.
     expect(screen.getByTitle('Réapparition dans')).toBeTruthy()
@@ -421,7 +421,7 @@ describe('ReplayTeams — mort et réapparition', () => {
   })
 
   it('l’encadré écarte ses deux bouts : le mot à gauche, le décompte à droite', () => {
-    const view = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
     const box = view.getByText('Éliminé').parentElement as HTMLElement
     expect(box.className).toContain('justify-between')
     // Et il REMPLIT la zone fixe du corps : la hauteur ne dépend pas de l'état vital.
@@ -447,7 +447,7 @@ describe('ReplayTeams — mort et réapparition', () => {
   // 100, fenêtre de 84 images à 60 fps) : la couche existe, mais ne porte QUE l'éclat —
   // ni cadre, ni fond, donc aucun accent directionnel possible.
   it('aucun liseré gauche : bordure symétrique de la tuile, couche réduite à l’éclat', () => {
-    const view = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
     expect(carte(view).style.borderLeft).toBe('')
     expect(carte(view).style.borderColor).toContain('var(--ac-destructive)')
     const layer = carte(view).querySelector('.replay-card-fx') as HTMLElement
@@ -459,11 +459,11 @@ describe('ReplayTeams — mort et réapparition', () => {
   // CE QUI RESTE, et qui doit rester : la mort se lit encore — tuile teintée, nom éteint,
   // encadré. Une fiche vivante sans effet, elle, n'a AUCUNE couche et garde sa pleine encre.
   it('la mort reste DITE : la tuile teintée destructive et le nom à l’encre éteinte', () => {
-    const mort = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
+    const mort = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
     expect(carte(mort).style.background).toContain('var(--ac-destructive)')
     expect(mort.getByText('Alpha').className).toContain('text-muted-foreground')
     mort.unmount()
-    const vivant = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={10} locale="fr" />)
+    const vivant = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={docAvecRetour()} scoreboard={[]} frame={10} locale="fr" />)
     expect(carte(vivant).style.background).not.toContain('var(--ac-destructive)')
     expect(carte(vivant).querySelector('.replay-card-fx')).toBeNull()
     expect(vivant.getByText('Alpha').className).toContain('text-foreground')
@@ -556,7 +556,7 @@ describe('ReplayTeams — vitalité : plein d’apparition', () => {
         },
       ],
     })
-    render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
+    render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={10} locale="fr" />)
     const shield = screen.getAllByLabelText('Bouclier')
     const health = screen.getAllByLabelText('Santé')
     // La fiche d'Alpha (sans mesure) montre des barres PLEINES, pas une lacune.
@@ -714,7 +714,7 @@ describe('ReplayTeams — zones d’équipement et translocation', () => {
         ],
       })
       const board = [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', side)]
-      return render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" />)
+      return render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board} frame={10} locale="fr" />)
     }
     const adverse = deuxCamps('t1')
     const card = cardOf(adverse)
@@ -770,11 +770,11 @@ describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
   it('résout `t0` en « Équipe Eagle » (FR) et `t1` en « Team Cobra » (EN)', () => {
     const doc = twoTeams()
     const board = [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', 't1')]
-    const fr = render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" />)
+    const fr = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board} frame={10} locale="fr" />)
     expect(fr.getByText('Équipe Eagle')).toBeTruthy()
     expect(fr.queryByText('t0')).toBeNull()
     fr.unmount()
-    render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="en" />)
+    render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board} frame={10} locale="en" />)
     expect(screen.getByText('Team Cobra')).toBeTruthy()
   })
 
@@ -783,7 +783,7 @@ describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
       roster: [{ xuid: 'A', filmIndex: 0, seat: 0, name: 'Alpha', team: 0 }],
       tracks: [TRACK],
     })
-    render(<ReplayTeams doc={doc} scoreboard={[sbRow('A', 'Alpha', 't12')]} frame={10} locale="fr" />)
+    render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[sbRow('A', 'Alpha', 't12')]} frame={10} locale="fr" />)
     expect(screen.getByText('Équipe 12')).toBeTruthy()
   })
 
@@ -799,12 +799,11 @@ describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
     expect(header.className).toContain('text-muted-foreground')
   })
 
-  it('teinte la colonne du camp du joueur de la page (allié) et l’autre en adverse', () => {
+  it('teinte la colonne du camp du joueur regardé (allié) et l’autre en adverse — équipes du film', () => {
     const doc = twoTeams()
     const board = [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', 't1')]
-    const meta = resolveXuidMeta(board, 'A')
     const view = render(
-      <ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" xuidMeta={meta} />,
+      <ReplayTeams allegiance={filmAllegianceOf(doc, board, 'A')} doc={doc} scoreboard={board} frame={10} locale="fr" />,
     )
     const headerOf = (label: string) => view.getByText(label).parentElement as HTMLElement
     expect(headerOf('Équipe Eagle').style.borderLeft).toContain('var(--ac-team-ally)')
@@ -836,7 +835,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
 
   it('le joueur PUBLIÉ montre son score personnel et ses compteurs à l’instant lu', () => {
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     expect(view.getByTitle("Score personnel à l'instant lu").textContent).toBe('350')
     const live = view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
     expect(live.textContent).toBe('3/2/4')
@@ -844,7 +843,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
 
   it('et ils TIQUENT : à l’image 10, seuls les paliers déjà passés comptent', () => {
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={10} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board()} frame={10} locale="fr" />)
     expect(view.getByTitle("Score personnel à l'instant lu").textContent).toBe('120')
     // Aucune mort ni assistance transmise avant l'image 20 : zéro est la valeur, pas une lacune.
     expect(
@@ -856,7 +855,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     // Bravo n'a pas de série : sa fiche ne montre pas de score personnel, et ses trois
     // nombres restent ceux du match (sbRow : 1 frag, 1 mort, 0 assistance).
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     expect(view.getAllByTitle("Score personnel à l'instant lu")).toHaveLength(1)
     const base = view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)
     expect(base).toHaveLength(1)
@@ -865,7 +864,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
 
   it('sans calque publié, toutes les fiches gardent les totaux du match', () => {
     const doc = testReplayDoc(twoLives)
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     expect(view.queryAllByTitle("Score personnel à l'instant lu")).toHaveLength(0)
     expect(view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)).toHaveLength(2)
   })
@@ -878,7 +877,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
   it("le fond du triplet suit le FDA à l'instant lu, et CHANGE de palier avec la lecture", () => {
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
     // Image 20 : 1 frag, 2 morts, 0 assistance -> FDA = −1 -> palier déficitaire.
-    const tot = render(<ReplayTeams doc={doc} scoreboard={board()} frame={20} locale="fr" />)
+    const tot = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board()} frame={20} locale="fr" />)
     const deficit = tot.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
     // Le signe négatif vient de l'Intl de la plateforme (tiret ou moins typographique) :
     // ce qui est vérifié ici, c'est la VALEUR et son signe, pas le glyphe.
@@ -886,7 +885,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     expect(deficit.style.background).toContain('var(--ac-destructive)')
     tot.unmount()
     // Image 100 : 3 frags, 2 morts, 4 assistances -> FDA = 3 + 4/3 − 2 = 2,33 -> bénéficiaire.
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     const gain = view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
     expect(gain.getAttribute('title')).toContain('2,33')
     expect(gain.style.background).toContain('var(--ac-success)')
@@ -895,7 +894,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
   it("un FDA à l'équilibre (0 à 1 inclus) prend le palier médian", () => {
     // Bravo n'est pas publié : ses totaux de base valent 1 frag / 1 mort / 0 assistance -> FDA 0.
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     const base = view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)
     expect(base[0].getAttribute('title')).toContain('0,00')
     expect(base[0].style.background).toContain('var(--ac-info)')
@@ -904,7 +903,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
   it('un compteur NON LU ne donne aucun fond — une couleur est une affirmation', () => {
     const doc = testReplayDoc(twoLives)
     const trous = board().map((r) => ({ ...r, assists: null }))
-    const view = render(<ReplayTeams doc={doc} scoreboard={trous} frame={100} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={trous} frame={100} locale="fr" />)
     const base = view.getAllByTitle('Frags / morts / assistances du match')
     expect(base).toHaveLength(2)
     expect(base[0].textContent).toBe('1/1/?')
@@ -919,7 +918,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
    */
   it('le score personnel précède le triplet, et sa cellule reste réservée quand il manque', () => {
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     // Alpha est publié : score puis compteurs, dans cet ordre de lecture.
     const score = view.getByTitle("Score personnel à l'instant lu")
     const trio = view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
@@ -936,7 +935,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
 
   it('EN : les mêmes surfaces portent les libellés anglais', () => {
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
-    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="en" />)
+    const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board()} frame={100} locale="en" />)
     expect(view.getByTitle('Personal score at the moment being played').textContent).toBe('350')
     expect(
       view.getByTitle('Kills / deaths / assists at the moment being played — KDA 2.33'),
@@ -969,7 +968,7 @@ describe('ReplayTeams — plus aucune marque d’identité sur les fiches', () =
       sbRow('B', 'Bravo', 't0'),
       sbRow('C', 'Charlie', 't1'),
     ]
-    render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" />)
+    render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={board} frame={10} locale="fr" />)
     expect(screen.queryByRole('img', { name: 'Moi' })).toBeNull()
     expect(screen.queryByRole('img', { name: 'Ami' })).toBeNull()
     // Aucun glyphe du tout : ces fiches ne portent ni capacité ni arme, la colonne est muette.
@@ -1007,7 +1006,7 @@ describe('ReplayTeams — la fiche unique', () => {
       tracks: [TRACK],
       ...over,
     })
-    return render(<ReplayTeams doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
+    return render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
   }
 
   /**

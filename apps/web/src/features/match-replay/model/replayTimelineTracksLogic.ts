@@ -20,6 +20,7 @@
  * pas ce fichier de `ReplayTimelineTracks.tsx`, et TypeScript refuse alors les deux dans le
  * même programme (TS1149). C'est aussi le patron du dépôt (killFeedLogic, victoryLogic).
  */
+import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { MedalEvent } from './killFeedLogic'
 import type { ReplayWindowBounds } from './replayWindow'
@@ -146,8 +147,12 @@ export interface EventTracks {
 export interface TrackAudience {
   /** Le joueur regardé : sa piste porte ses kills ET ses morts. `null` = aucune piste propre. */
   viewpoint: string | null
-  /** Camp de chaque xuid, RELATIF au point de vue (`XuidMeta` de la vue match). */
-  identity: ReadonlyMap<string, { ally: boolean }>
+  /**
+   * L'allégeance de chaque acteur, lue dans le FILM et vue du point de vue (`model.allegiance`) :
+   * qui est coéquipier. Les acteurs du fil portent les xuid de la base ; un bot s'y relie par sa
+   * ligne de feuille.
+   */
+  allegiance: Pick<FilmAllegiance, 'ofXuid'>
   /** Marques d'identité du compte connecté : seul `friend` compte ici (cf. `TrackMark.friend`). */
   marks: ReadonlyMap<string, PlayerMarkKind>
 }
@@ -203,8 +208,8 @@ export interface TrackEvents {
  * s'en sortait-elle ». Les amis ne sont plus une PISTE, ils sont une FORME (cf. `TrackMark.friend`).
  *
  * Un acteur qui n'est ni le point de vue ni son coéquipier n'est sur aucune piste : la frise ne
- * parle pas de la salle entière. Un acteur sans camp connu (absent du tableau de score) non
- * plus — `identity` ne le porte pas, et deviner un camp le poserait sur une piste au hasard.
+ * parle pas de la salle entière. Un acteur sans allégeance connue (le film tait son équipe, ou
+ * celle du point de vue) non plus — deviner un camp le poserait sur une piste au hasard.
  *
  * Les morts ne vont QUE sur la piste du point de vue : « où je suis tombé » est une lecture de
  * soi. Une piste de coéquipiers mêlant leurs kills et leurs morts serait illisible à huit joueurs.
@@ -244,7 +249,7 @@ export function buildEventTracks(
   })
   for (const k of events.kills) {
     const sien = audience.viewpoint != null && k.xuid === audience.viewpoint
-    if (!sien && audience.identity.get(k.xuid)?.ally !== true) continue
+    if (!sien && audience.allegiance.ofXuid(k.xuid) !== true) continue
     const at = marque(k.key, k.replayMs, 'kill', k.xuid, sien ? k.medals : [])
     if (at.ratio < 0 || at.ratio > 1) continue
     ;(sien ? own : teammates).push(at)

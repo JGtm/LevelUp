@@ -42,7 +42,7 @@ import {
   type MedalEvent,
   type ReplayFeedEntry,
 } from './killFeedLogic'
-import { buildFilmAllegiance, type FilmAllegiance } from '../../../lib/replay/filmAllegiance'
+import { buildFilmAllegiance, NO_ALLEGIANCE, type FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import { buildPlayerMarks, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { mergeFeedWithPresence, presenceEntries } from './presenceFeed'
 import { buildReplayMedia } from './replayMediaLogic'
@@ -114,7 +114,7 @@ const VIDE: ReplayModel = {
   scoreboard: [],
   viewpoint: null,
   identity: new Map(),
-  allegiance: buildFilmAllegiance([], null),
+  allegiance: NO_ALLEGIANCE,
   marks: new Map(),
   players: [],
   clock: null,

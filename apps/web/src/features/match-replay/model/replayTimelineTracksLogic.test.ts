@@ -72,15 +72,21 @@ const clockOf = (ms: number) => `@${ms}`
  *  - `equipier` est un coéquipier ordinaire ;
  *  - `ennemi` est un adversaire, et `pote-adverse` un AMI DE L'AUTRE CAMP — celui qui disparaît
  *    de la frise depuis la décision 5, et dont l'absence est un cas à part entière ci-dessous ;
- *  - `inconnu` n'est dans aucune table : acteur hors tableau de score.
+ *  - `inconnu` n'a aucune allégeance : le film tait son équipe (ou il en est absent).
+ *
+ * L'allégeance est celle du FILM, vue de « me » (`FilmAllegiance.ofXuid`) : la frise n'en lit que
+ * cette réponse.
  */
-const IDENTITY: ReadonlyMap<string, { ally: boolean }> = new Map([
-  ['me', { ally: true }],
-  ['pote', { ally: true }],
-  ['equipier', { ally: true }],
-  ['ennemi', { ally: false }],
-  ['pote-adverse', { ally: false }],
+const ALLEGEANCES: ReadonlyMap<string, boolean> = new Map([
+  ['me', true],
+  ['pote', true],
+  ['equipier', true],
+  ['ennemi', false],
+  ['pote-adverse', false],
 ])
+const ALLEGIANCE: TrackAudience['allegiance'] = {
+  ofXuid: (xuid) => (xuid ? ALLEGEANCES.get(xuid) ?? null : null),
+}
 
 const MARKS: ReadonlyMap<string, PlayerMarkKind> = new Map([
   ['me', 'me'],
@@ -88,7 +94,7 @@ const MARKS: ReadonlyMap<string, PlayerMarkKind> = new Map([
   ['pote-adverse', 'friend'],
 ])
 
-const AUDIENCE: TrackAudience = { viewpoint: 'me', identity: IDENTITY, marks: MARKS }
+const AUDIENCE: TrackAudience = { viewpoint: 'me', allegiance: ALLEGIANCE, marks: MARKS }
 
 function kill(over: Partial<TrackKill> = {}): TrackKill {
   return { key: 'k1', replayMs: 20_000, xuid: 'me', medals: [], ...over }
@@ -168,7 +174,7 @@ describe('ratioOfMs — un instant sur l’échelle des pistes', () => {
 })
 
 describe('buildEventTracks — qui est sur quelle piste', () => {
-  it('un acteur SANS CAMP CONNU n’est sur AUCUNE piste', () => {
+  it('un acteur SANS ALLÉGEANCE CONNUE (le film tait son équipe) n’est sur AUCUNE piste', () => {
     const inconnu = ev([kill({ xuid: 'inconnu' })], [])
     const tracks = buildEventTracks(inconnu, AUDIENCE, FRAME_MS, SCALE, clockOf)
     expect(tracks.own).toEqual([])
@@ -238,7 +244,7 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
   it('SANS POINT DE VUE, la piste du haut reste vide — aucun joueur regardé, aucune mort à lui', () => {
     const tracks = buildEventTracks(
       ev([kill({ key: 'k-me' }), kill({ key: 'k-equipier', xuid: 'equipier' })], [death({ key: 'd-me' })]),
-      { viewpoint: null, identity: IDENTITY, marks: MARKS },
+      { viewpoint: null, allegiance: ALLEGIANCE, marks: MARKS },
       FRAME_MS,
       SCALE,
       clockOf,

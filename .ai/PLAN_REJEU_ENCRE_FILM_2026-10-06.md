@@ -82,15 +82,25 @@ l'ÉVÉNEMENT du joueur regardé, pas une allégeance) ; les cinq graphes de la 
 
 ## Étape E6.2 — Colonnes, fil, frise
 
-- [ ] E6.2.1 `ReplayTeamHeader` reçoit l'allégeance de son CAMP (`ofTeam`) ; `ReplayTeams` reçoit
+- [x] E6.2.1 `ReplayTeamHeader` reçoit l'allégeance de son CAMP (`ofTeam`) ; `ReplayTeams` reçoit
   `allegiance` au lieu de `xuidMeta`.
-- [ ] E6.2.2 `ReplayKillFeed` : encre de chaque nom par `ofXuid` + `teamTokenCssVar` (tokens
+- [x] E6.2.2 `ReplayKillFeed` : encre de chaque nom par `ofXuid` + `teamTokenCssVar` (tokens
   `team-ally` / `team-enemy`, neutre pour `null`) ; retrait des replis devinés, du résolveur
   `colorOf` de la route et de la cascade d'identité `teamColorResolver` devenue sans appelant.
-- [ ] E6.2.3 Frise : coéquipiers, absences et glyphes de présence par l'allégeance.
-- [ ] E6.2.4 Tests DOM : en-tête d'un camp de bots allié, fil (bot allié, joueur sans équipe
+- [x] E6.2.3 Frise : coéquipiers, absences et glyphes de présence par l'allégeance.
+- [x] E6.2.4 Tests DOM : en-tête d'un camp de bots allié, fil (bot allié, joueur sans équipe
   neutre), piste des coéquipiers avec un bot allié.
-- Gate E6.2 : idem E6.1.
+- Gate E6.2 : idem E6.1. PASSÉ le 2026-10-06 : `tsc -b` 0 erreur ; vitest `src/lib/replay` +
+  `src/lib/halo` + `src/features/match-replay` + `src/features/match-view` 296 fichiers /
+  4 103 tests verts ; eslint `src` 0 erreur (26 avertissements préexistants, compte inchangé).
+  Tests neufs : `ReplayTeams.encre.test.tsx` (3 : camp de bots adverse inké, vu d'un bot, référence
+  sans équipe), `ReplayKillFeed.encre.test.tsx` (5 : bot allié et son arme, sans-équipe neutre,
+  victime hors film neutre, médaille / mort / présence, référence sans équipe),
+  `useReplayTimeline.test.ts` (bot allié coéquipier). Fixations DOM 4v4 / 6v6 inchangées à
+  l'octet avec l'allégeance du film. Mutations : en-tête forcé neutre → 4 rouges (dont les deux
+  fixations) ; repli « adverse » sur allégeance inconnue au fil → 4 rouges. `ReplayTeams` exige
+  `allegiance` (requise, comme le point de vue) : 49 montages de test reçoivent `NO_ALLEGIANCE`
+  (en-têtes neutres, comme sans `xuidMeta` avant). Allowlist : `ReplayKillFeed.tsx` sort.
 
 ## Étape E6.3 — Les camps vus de la référence (bandeau, dominance, fin, objectifs, sons)
 
@@ -147,3 +157,12 @@ l'ÉVÉNEMENT du joueur regardé, pas une allégeance) ; les cinq graphes de la 
 
 - E6-D1 (2026-10-06) : `rosterLogic.test.ts` est à 500 lignes de code ; les tests neufs des
   résolveurs vont dans `rosterLogic.equipes.test.ts` (même règle qu'en E1).
+- E6-D2 (2026-10-06, conséquence, pas un fix opportuniste) : le résolveur `colorOf` du fil et son
+  repli `teamColorResolver(scoreboard)` (cascade d'IDENTITÉ : `team_color`, puis couleur
+  officielle par `team_id`) disparaissent avec la migration du fil ; la page passait toujours les
+  jetons, le repli ne vivait plus que par un test. `teamColorResolver` / `TeamColorResolver`
+  (`match-view/teamColor.ts`), `resolveTeamColorFromID` et `TEAM_COLORS_HALO_INFINITE`
+  (`lib/halo/teamNames.ts`) n'ont plus aucun appelant : supprimés (CLAUDE.md n° 7) ; en-têtes de
+  `teamColor.ts` et `teamSeriesColor.ts` et doc de `team_color` (`lib/api/types.ts`) remis au
+  vrai. `occupantsPresents` (`ReplayTeams`) et `NO_IDENTITY` (`replayCanvasConfig`) supprimés
+  avec leur seul usage.

@@ -41,6 +41,7 @@ import { render, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument, ReplayPoint } from '@/lib/api/types'
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
 import * as Pos from '../../../lib/replay/replayLogic'
 import * as Score from '../../../lib/replay/scoreTimeline'
@@ -201,7 +202,7 @@ function instantsFiches(doc: ReplayDocumentReady): number[] {
 
 function mesurerFiches(doc: ReplayDocumentReady): InstantFiche[] {
   return instantsFiches(doc).map((frame) => {
-    const { container, unmount } = render(createElement(ReplayTeams, { doc, scoreboard: [], frame, locale: 'fr' }))
+    const { container, unmount } = render(createElement(ReplayTeams, { doc, scoreboard: [], frame, locale: 'fr', allegiance: NO_ALLEGIANCE }))
     const html = container.innerHTML
     const texte = container.textContent ?? ''
     unmount()

@@ -1,21 +1,14 @@
 /**
  * teamSeriesColor.ts — L'ENCRE D'UNE SÉRIE D'ÉQUIPE DANS UN GRAPHE, et il n'y en a qu'une.
  *
- * DEUX FAMILLES DE COULEUR D'ÉQUIPE COEXISTENT DANS LE DÉPÔT, ET LEUR DIFFÉRENCE EST DU SENS.
- *
- *   IDENTITÉ (`teamColor.ts`, `teamColorResolver`) — le tableau des scores, l'en-tête d'un
- *   camp, le fil des éliminations. La cascade y place la couleur
- *   OFFICIELLE du jeu par `team_id` (Eagle bleu, Cobra rouge) AVANT le token sémantique :
- *   c'est le camp tel que le JEU le peint, et c'est ce qu'on veut là où l'écran nomme les
- *   équipes.
- *
- *   GRAPHE (ce fichier) — les courbes et les barres. Elles prennent les TOKENS
- *   `team-ally` / `team-enemy`, donc la palette d'accessibilité que l'utilisateur a réglée
- *   (décision D1 du plan d'habillage, suivie par `ReplayScoreBanner`, `ReplayTeamHeader`,
- *   `ReplayTimelineTracks`, `ReplayCanvas` et `ExplorerMatchesTable`). Sur Halo Infinite le
- *   `team_id` est TOUJOURS présent : la cascade d'identité n'atteindrait jamais le token, et
- *   un joueur qui a réglé ses camps en vert et orange verrait quand même du bleu et du rouge
- *   sur ses graphes.
+ * UNE SEULE FAMILLE DE COULEUR D'ÉQUIPE : les TOKENS `team-ally` / `team-enemy`, donc la
+ * palette d'accessibilité que l'utilisateur a réglée (décision D1 du plan d'habillage) — en
+ * graphe (`teamSeriesColor`, par `resolveToken`) comme en DOM (`teamTokenCssVar`) : tableau des
+ * scores, en-têtes de camp, fil des éliminations, bandeau, frise et carte du rejeu. La couleur
+ * OFFICIELLE du jeu par `team_id` (Eagle bleu, Cobra rouge) ne peint aucun camp : sur Halo
+ * Infinite le `team_id` est TOUJOURS présent, et une cascade qui la plaçait avant le token
+ * n'atteignait jamais le réglage de l'utilisateur — un joueur qui a réglé ses camps en vert et
+ * orange voyait du bleu et du rouge.
  *
  * POURQUOI CE FICHIER PLUTÔT QU'UNE FONCTION PRIVÉE. Elle l'était — dans
  * `MatchScoreCurveChart.tsx` — jusqu'à ce que le graphe des points marqués ait besoin de la

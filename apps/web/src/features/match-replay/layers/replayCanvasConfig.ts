@@ -8,8 +8,6 @@
  */
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
-
 import type { CalloutZoneReady } from './calloutsLayer'
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
@@ -80,10 +78,3 @@ export const EMPTY_PLAYERS: ReplayPlayer[] = []
  * Référence stable, pour ne pas remémoïser la frise à chaque rendu.
  */
 export const NO_VIEWPOINT_SELECT = (): void => {}
-
-/**
- * Référence STABLE pour « aucun camp connu » — le pendant de `NO_MARKS` pour la table
- * d'identité. Le canvas peut être monté sans vue match : la frise reçoit alors une table vide
- * (personne n'est coéquipier de personne) plutôt qu'une nouvelle Map à chaque rendu.
- */
-export const NO_IDENTITY: XuidMeta = new Map()

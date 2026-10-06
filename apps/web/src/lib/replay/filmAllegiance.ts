@@ -122,6 +122,9 @@ export function buildFilmAllegiance(
   }
 }
 
+/** L'allégeance d'une page sans film (ou sans référence) : personne n'a d'encre de camp. */
+export const NO_ALLEGIANCE: FilmAllegiance = buildFilmAllegiance([], null)
+
 /**
  * filmAllegianceOf — la même allégeance, construite depuis le document et la feuille : pour les
  * surfaces qui ne reçoivent pas la jointure toute faite (les tables de l'onglet Arsenal, montées

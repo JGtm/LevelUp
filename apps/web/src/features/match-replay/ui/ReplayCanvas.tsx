@@ -42,7 +42,7 @@ import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
 import { drawEquipmentPlacementsLayer } from '../layers/equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from '../layers/useReplayPlacements'
-import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_IDENTITY, NO_VIEWPOINT_SELECT, SERIES_TOKENS } from '../layers/replayCanvasConfig'
+import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_VIEWPOINT_SELECT, SERIES_TOKENS } from '../layers/replayCanvasConfig'
 import { useReplayObjectiveObjects } from '../layers/useReplayObjectiveObjects'
 import { useReplayVipCrown } from '../layers/useReplayVipCrown'
 import { useReplayBombCarrier } from '../layers/useReplayBombCarrier'
@@ -655,10 +655,10 @@ export function ReplayCanvas({
   const timeline = useReplayTimeline({
     doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
     lead: teamCascades, playback, toggleSound: sound.toggle, zoom,
-    // LE MENU DE POINT DE VUE (2026-09-07) : le canvas RELAIE, il ne résout rien. `identity`
-    // est la même table que celle des calques (`xuidMeta`), déjà relative au point de vue —
+    // LE MENU DE POINT DE VUE (2026-09-07) : le canvas RELAIE, il ne résout rien. L'allégeance
+    // est celle des calques (`model.allegiance`, lue dans le film et vue du point de vue) —
     // c'est elle qui dit qui est coéquipier du joueur regardé.
-    viewpoint: viewpoint ?? null, identity: xuidMeta ?? NO_IDENTITY, players, onSelectViewpoint,
+    viewpoint: viewpoint ?? null, allegiance, players, onSelectViewpoint,
   })
   // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
   // bascules de `useReplaySettings`, et l'état d'ouverture du hook lui-même (2026-08-30).

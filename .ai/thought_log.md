@@ -115795,4 +115795,6 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 
 **Résultats observés** : E6.1 (foyer + carte) — `filmAllegiance` (14 tests), résolveurs d'encre de `rosterLogic` tri-état, `campResolver` (équipe du film) à la place de `sideResolver` (feuille) pour l'opposition du capteur de menaces, `model.allegiance` relayée au canvas ; vitest `src/lib/replay` + `src/features/match-replay` : 244 fichiers verts, `tsc -b` et eslint 0 erreur.
 
-**Conclusion / prochaine étape** : E6.2 (colonnes, fil, frise).
+E6.2 (colonnes, fil, frise) — en-tête par l'allégeance du camp (`ofTeam`), fil par `ofXuid` en jetons (`teamTokenCssVar`, neutre si inconnue ; replis devinés retirés), frise (coéquipiers, absences, glyphes) par l'allégeance ; cascade d'identité `teamColorResolver` + couleurs officielles supprimées (plus d'appelant) ; 296 fichiers verts, tsc et eslint 0 erreur ; mutations rattrapées.
+
+**Conclusion / prochaine étape** : E6.3 (bandeau, dominance, fin de match, objectifs, sons).
