@@ -41,9 +41,9 @@ package grammar
 //
 // # LA POPULATION EST CELLE DE LA PORTE PROPRE (lot 5.7.4)
 //
-// Aucune lecture d essai : la porte des etats de mouvement est inscrite dans
-// `neutraliserEtatsDeMouvement` depuis le 5.7.4, et le controle du § 5.7.4.c dit que ce qu elle
-// publie egale EXACTEMENT ce que les records retenus declarent.
+// Aucune lecture d essai : la porte des etats de mouvement est inscrite dans la porte des essais
+// (`neutraliserLesCrochetsDeCanal`) depuis le 5.7.4, et le controle du § 5.7.4.c dit que ce
+// qu elle publie egale EXACTEMENT ce que les records retenus declarent.
 //
 // Rejouable :
 //

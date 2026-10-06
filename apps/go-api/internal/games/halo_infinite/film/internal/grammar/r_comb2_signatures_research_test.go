@@ -22,7 +22,7 @@ import (
 
 // rc2TiEn : l archetype du record DELTA lu a `s` (sans toucher l observation).
 func rc2TiEn(pay []byte, s int, w *World, cfg FrameConfig) string {
-	defer cfg.Obs.neutraliserEtatsDeMouvement()()
+	defer cfg.Obs.neutraliserLesCrochetsDeCanal()()
 	rec, end, ok := TryDeltaAt(pay, s, w, cfg)
 	if !ok {
 		return "illisible"

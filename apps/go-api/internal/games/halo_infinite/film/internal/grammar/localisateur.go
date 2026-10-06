@@ -54,8 +54,8 @@ package grammar
 // lecture y mourrait aussitot.
 //
 // CHAQUE POSITION ESSAYEE EST UN ESSAI : [TryDeltaAt] traverse l entite pour de vrai, donc les
-// deserialiseurs publient. Les trois fonctions du localisateur eteignent la publication des etats
-// de mouvement ([Observation.neutraliserEtatsDeMouvement]) ; sans observateur, c est sans effet.
+// deserialiseurs publient. Les trois fonctions du localisateur eteignent les crochets de canal
+// ([Observation.neutraliserLesCrochetsDeCanal]) ; sans observateur, c est sans effet.
 
 import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
 
@@ -107,7 +107,7 @@ const (
 // evenements, ou -1, et si la position vient du repli a largeur libre. L appelant compte ce
 // verdict au registre des replis ; l ordre [SignatureStricte] ne le rend jamais vrai.
 func LocaliserBoucleDeRecords(pay []byte, w *World, cfg FrameConfig, ordre OrdreDeLocalisation) (int, bool) {
-	defer cfg.Obs.neutraliserEtatsDeMouvement()() // son TryDeltaAt de controle est un essai
+	defer cfg.Obs.neutraliserLesCrochetsDeCanal()() // son TryDeltaAt de controle est un essai
 	s := marchLocateStrict(pay, w, cfg)
 	if ordre == SignatureStricte {
 		return s, false
@@ -133,7 +133,7 @@ func marchSignature123(pay []byte, s, largeur int, w *World, cfg FrameConfig) bo
 // marchLocateStrict rend la premiere position `s >= 2`, precedee d un bit nul, qui porte la
 // signature stricte ; -1 si aucune.
 func marchLocateStrict(pay []byte, w *World, cfg FrameConfig) int {
-	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
+	defer cfg.Obs.neutraliserLesCrochetsDeCanal()() // essais d offset : aucune lecture publiee
 	nb, largeur := len(pay)*8, largeurDeSignature(cfg)
 	for s := 2; s+largeur < nb; s++ {
 		if source.BitAt(pay, s-1) != 0 {
@@ -150,7 +150,7 @@ func marchLocateStrict(pay []byte, w *World, cfg FrameConfig) int {
 // la premiere position `s >= 2`, precedee d un bit nul, ou un delta du slot de signature decode a
 // la generation du monde ; -1 si aucune.
 func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
-	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
+	defer cfg.Obs.neutraliserLesCrochetsDeCanal()() // essais d offset : aucune lecture publiee
 	nb := len(pay) * 8
 	for s := 2; s+resteMinimalALargeurLibre < nb; s++ {
 		if source.BitAt(pay, s-1) != 0 {
