@@ -23,7 +23,7 @@ compteur + `slog.ErrorContext`, jamais un affichage « inconnu ».
 Le champ d'équipe de BOT_METADATA est établi chez l'écrivain (Ghidra, F.2) et lu dans
 `film/internal/facts/killsource` (G3.0) ; la publication du rejeu en fait l'équipe des bots qu'aucune
 entité ne porte, et la pose des places assoit le bouche-trou sur la place du partant (G3.1, G3.2).
-`killsource.Rev` ne monte pas (aucune ligne de kill ne change) ; `SchemaDesFaits` 4 -> 5 et
+`killsource.Rev` ne monte pas (aucune ligne de kill ne change) ; `SchemaDesFaits` 5 -> 6 (après la vue A) et
 `SchemaVersion` 79 -> 80 : les faits et les artefacts du parc sont à ré-extraire (G5, sur go).
 
 ## Étapes
@@ -142,6 +142,20 @@ G3, mesure de la durée de ré-extraction sur UN film.
         0x783 vaut `(équipe & 0x3F) << 2 | jumeau >> 6` : 0x00 / 0x04 pour 0 / 1, 0x784 de même pour le
         jumeau, et 0x785 = `(+0xCE7 & 0x3F) << 2` = 0x04 sur les 77 bots. La mesure (champs de 8 bits
         aux bits 15 382 et 15 390, 56/56) est exactement cette grammaire : AUCUNE contradiction.
+- [x] F.3 Fusions de `feat/v75` avant la livraison (consignes du superviseur, feat/v75 a raison) :
+      `f8293e52d` (2707fdb31 : vue A V2/V3 de la campagne, ts-usages), `976109dc7` (9321554d6 : lot
+      lint du décodeur), `43a1fc4ab` (e4dbc147e : clôture documentaire de la campagne). Conflits de
+      la première : chroniques killsource (version de feat/v75, complément de la vue A puis celui du
+      lot ; rang `killsource-2026-09-20` archivé pour tenir les 500 lignes), golden d'empreinte
+      (révision de feat/v75, empreinte régénérée à révision constante), `SchemaDesFaits` porté à 6
+      (le 5 est celui de la vue A, dont les faits ne portent pas l'équipe des bots ; deux entrées
+      de chronique), fixtures Go du web régénérées au schéma 80 (seule la version diffère du jeu 79
+      de feat/v75). `decode.go` et `sieges_places.go` fusionnés sans conflit (`siegeJamaisTenu` du
+      lot lint autour de la priorité de la place du bot). Goldens killsource régénérés : seules la
+      ligne des bots et celle du bilan diffèrent de feat/v75. Témoins en processus avec le binaire
+      de tête : 0 / 3 / 3 / 60, roster, places et équipes identiques au binaire d'avant les fusions
+      sur les 19 films.
+
 
 ### G3 — Implémentation
 
@@ -163,7 +177,7 @@ G3, mesure de la durée de ré-extraction sur UN film.
       bilan changent, cumul inchangé ; 19 témoins : clés `kills`/`killRefs` des artefacts
       identiques) — précédent du lot M2.1 ; complément du 2026-10-06 dans `rev_chronique.go`
       (rang `killsource-2026-09-18` archivé pour tenir les 500 lignes), golden d'empreinte
-      régénéré à révision constante. C'est `replay.SchemaDesFaits` (4 -> 5) qui périme les faits.
+      régénéré à révision constante. C'est `replay.SchemaDesFaits` (5 -> 6 après la vue A) qui périme les faits.
       Projection `replayidentity.BotIdentities` -> `replay.BotIdentity.Team`.
 - [x] G3.1 Équipe d'une entrée (`occupants.go`, `equipeDe`) : entités `ti=9` à l'unanimité, sinon
       `BotIdentity.Team`, sinon (humain, ou film non balayé) la table de contrôle ; un bot d'un film
@@ -298,10 +312,10 @@ l'image-clé près, 20 s).
       ARRÊTÉ, depuis `apps/go-api` du worktree principal :
       1. `go run ./cmd/levelup backfill-replay --only-existing --dry-run` (le plan, rien n'est écrit) ;
       2. `go run ./cmd/levelup backfill-replay --only-existing` : un processus enfant par film, en
-         série, verrou solo (`filmproc.AcquireSolo`) ; les faits au schéma des faits 4 sont refusés
+         série, verrou solo (`filmproc.AcquireSolo`) ; les faits au schéma des faits 5 au plus sont refusés
          sur leur en-tête, chaque film se REDÉCODE (le récapitulatif peut le compter « republié »,
          D10) ; écrit `data/cache/replays/halo_infinite/<id>.json` (schéma 80) et
-         `data/cache/film_facts/halo_infinite/<id>.filmfacts.bin` (schéma des faits 5) ;
+         `data/cache/film_facts/halo_infinite/<id>.filmfacts.bin` (schéma des faits 6) ;
       3. passes aval qui relisent les artefacts (ordre de `docs/COMMANDS.md`, base partagée en
          écriture) : `backfill-usage-summary`, `backfill-pad-tiers --force`,
          `backfill-vehicle-takes --force`, puis `tactical-rasters --backfill` (fichiers annexes,
