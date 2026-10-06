@@ -873,26 +873,88 @@ TacticalPlanFond.tsx, TacticalAnalysisView.tsx, plan.logic.ts (NEUF), tacticalVi
 tacticalLecture.logic.ts, i18n.ts}` (+ tests), `components/layout/KPIStrip.tsx` (+ test, supprimés),
 `components/ui/metric-trend.tsx` (commentaires), manifeste.
 
-- [ ] L5.1 V8 / D18 : constantes et assertions (`heatPaint.test.ts:282-283`) ; tests du noyau verts ;
+- [x] L5.1 V8 / D18 : constantes et assertions (`heatPaint.test.ts:282-283`) ; tests du noyau verts ;
   mutation : ancienne valeur → rouge.
-- [ ] L5.2 `plan.logic.ts` : texte de l'ⓘ par lecture (S6, D9, D20), bornes de légende (réutilise
+- [x] L5.2 `plan.logic.ts` : texte de l'ⓘ par lecture (S6, D9, D20), bornes de légende (réutilise
   `planLegend`), arrêts de la rampe depuis la rampe peinte (D14), dimensions de la boîte (D13), type
   `TacticalQuestion` étendu à `solde` (+ `QUESTIONS` de `tacticalLecture.logic.ts:287-294`, unité).
   Tests ROUGES d'abord ; mutations : ⓘ sans le pas, rampe horizontale, positif en bas.
-- [ ] L5.3 `TacticalPlanCard.tsx` réécrit (S5-S9) : `titleWithInfo(ⓘ, { trailing: pilules })`
+- [x] L5.3 `TacticalPlanCard.tsx` réécrit (S5-S9) : `titleWithInfo(ⓘ, { trailing: pilules })`
   (`components/ui/title-with-info.tsx:32`), pilules « Lecture » / « Joueurs » / « Réapparition »
   (état local comme aujourd'hui), bandeau d'état, corps fond + calque + cadre de la cellule, rampe
   verticale, états vides en titre seul (D24) ; `TacticalPlanFond` à 800 px.
-- [ ] L5.4 `TacticalAnalysisView.tsx` : plus de H2, de barre d'outils, de KPI ni de carte
+- [x] L5.4 `TacticalAnalysisView.tsx` : plus de H2, de barre d'outils, de KPI ni de carte
   Coordination ; la colonne de droite garde, TRANSITOIREMENT, `TacticalCellCard` (remplacée en L6).
-- [ ] L5.5 Suppressions §4.B (fichiers, tests, exports), commentaires devenus faux corrigés
+- [x] L5.5 Suppressions §4.B (fichiers, tests, exports), commentaires devenus faux corrigés
   (`metric-trend.tsx:10,19`) ; §4.B rejoué → 0.
-- [ ] L5.6 Tests : `TacticalAnalysisView.test.tsx` et `.fond.test.tsx` adaptés (le fond reste le même
+- [x] L5.6 Tests : `TacticalAnalysisView.test.tsx` et `.fond.test.tsx` adaptés (le fond reste le même
   `<img>` en relecture ; ⓘ ; pilules ; « Escouade » désactivé ; bandeau d'état ; états vides) ; un
   test par lecture (unité, rampe divergente pour `gagne` / `solde`).
-- [ ] L5.7 Chaînes neuves du plan (FR + EN) ; manifeste régénéré.
+- [x] L5.7 Chaînes neuves du plan (FR + EN) ; manifeste régénéré.
 - Gate : gate web ; `lib/replay/heatPaint.test.ts`, `features/match-view/MatchPositionsHeatmap*`
   et `features/match-replay/**/useReplayHeatmap*` rejoués nommément.
+
+Journal L5 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **Correction du superviseur appliquée** (2026-10-06, après L4) : la règle de L4.4 « états
+  bloquants dits dans la colonne, lecture non montée » ne valait que pour la transition. Depuis L5,
+  la carte du plan est TOUJOURS montée dès qu'une carte est connue (`?carte=`, ou la plus jouée dès
+  que la liste répond ; avant, sans carte : cadre au rapport par défaut sous l'indicateur, titre
+  vide, aucun texte d'attente) ; échec de la lecture ou de son périmètre et composition impossible
+  → le message SUR le fond, qui reste ; relecture → calque estompé sous « Mise à jour… ». La
+  colonne ne dit que ses états (liste en échec, attente, aucune carte) et se tait quand le
+  périmètre ne peut pas s'appliquer. `carteEffective` gagne `attente` (liste pas encore servie) et
+  `null` = liste en échec (origine `aucune`, la carte de l'URL garde son fond). Tests de L4.4
+  réadaptés : messages attendus sur le plan, fond monté (même `<img>`).
+- **L5.1** `HEAT_ALPHA_MIN` 0,12 → 0,45, `HEAT_ALPHA_MAX` 0,75 → 0,85 (`heatPaint.ts`, commentaire au
+  présent) ; les deux assertions de `heatPaint.test.ts:282-283` vues rouges d'abord. D18 : noyau
+  partagé — `MatchPositionsHeatmap*` (Vue match, « Occupation du terrain ») et `useReplayHeatmap*`
+  (rejeu 2D) rejoués nommément, verts (avec `heatPaint.test.ts` : 3 fichiers, 45 tests).
+- **L5.2** `plan.logic.ts` (114 L) : `infoDuPlan` (S6, D9, D20), `legendeDuPlan` (sur `planLegend`,
+  borne haute séparée de l'unité), `rampeVerticale` (9 arrêts prélevés dans la rampe peinte,
+  `0deg`), `boiteDuPlan` (rapport du fond, `maxWidth` = rapport × 800), `etatDuPlan`.
+  `TacticalQuestion` += `solde` (+ `QUESTIONS`, unité, libellé, ordre V5 de la pilule). 14 tests vus
+  rouges (module absent).
+- **L5.3** `TacticalPlanCard.tsx` réécrit (457 L) : `titleWithInfo(ⓘ, { trailing: pilules })`,
+  pilules « Lecture » / « Joueurs » (« Escouade » désactivé avec infobulle) / « Réapparition »,
+  bandeau d'état (S7), fond + calque + cadre de cellule, messages posés sur le fond (échec,
+  composition impossible, hors filtre, états vides en titre seul), indicateur sans texte, rampe
+  verticale de 220 px au bord droit indépendante du fond (sans lecture : rampe atténuée, unité, « — »).
+  `TacticalPlanFond` sur `boiteDuPlan` (800 px), marge de légende de 90 px réservée.
+- **L5.4** `TacticalAnalysisView.tsx` (231 L, fonction de 80 L, `useReglages` et `useZoneChoisie`
+  extraits) : plus de H2, de barre d'outils, de KPI ni de carte Coordination ; carte du plan
+  toujours rendue ; `TacticalCellCard` à droite, transitoire. La lecture ne part que pour une carte
+  lue (`carteLue`). `TacticalPage` monte toujours la vue (`key` = carte).
+- **L5.5** Supprimés : `TacticalToolbar.tsx`, `TacticalCoordinationCard.tsx` (+ test logique),
+  `components/layout/KPIStrip.tsx` (+ test) ; dans `tacticalView.logic.ts` (476 → 413 L) :
+  `pageTitle`, `ratioSafe`, `positionCategorie`, `PLAN_HAUTEUR_MAX_PX` (+ tests) ; `formatDistanceM`
+  et `DISTANCE_DECIMALES` deviennent locaux (`libelleRayons` garde un lecteur : l'ⓘ de « morts
+  seul »). Commentaires devenus faux corrigés : `metric-trend.tsx` (l. 10, 19),
+  `metric-trend.guard.test.ts` (l. 10), `styles/globals.css` (l. 62). §4.B rejoué : 0 hors
+  `libelleRayons` / `formatDistanceM` / `DISTANCE_DECIMALES` (lecteur conservé, prévu par §4.B) ;
+  l'instrument `TacticalFond.mesure.test.ts` cite encore `kpi-strip` et `tactical-analysis-title`
+  (ignoré par défaut, adapté en L8.2).
+- **L5.6** `TacticalAnalysisView.test.tsx` réécrit (27 tests : états du plan sur le fond, carte hors
+  filtre sans lecture, sans carte, aucune ouvrable, états vides en titre seul, cadre, bandeau, ⓘ,
+  pilules, « Escouade », bandeau d'état, une unité par lecture, rampe divergente pour `gagne` /
+  `solde`) ; `.fond.test.tsx` adapté (calque à la place des KPI, pilule « Lecture ») ; tests de page
+  et de relecture réadaptés. Écrits après le code : rouge prouvé contre HEAD (vue, carte du plan,
+  fond, page, logique et fichiers supprimés remis temporairement, empreintes vérifiées) → 35 échecs
+  sur 61.
+- **L5.7** Quinze clés neuves FR + EN (`analysis.questions.solde`, `unit.solde`, `plan.info*`,
+  `plan.pill_*`, `plan.squad_disabled`) ; manifeste régénéré (133 clés).
+- **Mutations** (toutes ROUGES, restauration vérifiée) : ancienne opacité basse ; ancienne opacité
+  haute ; ⓘ sans le pas ; rampe horizontale ; positif en bas ; carte hors filtre lue ; échec jamais
+  posé sur le fond ; « Escouade » toujours actif ; relecture sans estompage ; composition impossible
+  non transmise au plan.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements, aucun sur un
+  fichier du lot) ; `vitest run --pool=forks` 851 fichiers / 9 133 tests verts ; noyau rejoué
+  nommément (45 tests) ; manifestes reconstruits identiques ; knip 0 / 0 / 0 (exports vérifiés à la
+  main) ; couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ; `lefthook run pre-push` vert.
+- Seuils : `tactical.toml` 643 L (manifeste, purge en L7) ; autres ≤ 457 L ; fonctions ≤ 80 L.
+- Écarts : `styles/globals.css` et `metric-trend.guard.test.ts` hors de la liste du périmètre
+  (commentaires devenus faux) ; la correction du superviseur modifie `TacticalPage.tsx` et
+  `cockpit.logic.ts` (lot L4) dans ce lot ; `data-mode` posé sur la rampe pour éprouver la rampe
+  divergente.
 
 ### L6 — Web : la zone sélectionnée · lourd
 

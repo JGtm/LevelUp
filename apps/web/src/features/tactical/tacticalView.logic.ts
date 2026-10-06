@@ -1,7 +1,7 @@
 /**
  * tacticalView.logic — la logique PURE de la vue d'analyse tactique (Phase 5, items
- * 5.2-5.6). Rien ne dépend de React ni du DOM : titre de page, messages de statut,
- * unité par question, projection du raster serveur en grille de peinture (`heatPaint`)
+ * 5.2-5.6). Rien ne dépend de React ni du DOM : messages de statut, unité et source par question,
+ * états vides du plan, projection du raster serveur en grille de peinture (`heatPaint`)
  * et position (col, row) d'un clic sur le canvas. Les composants ne font que rendre ce
  * que ces fonctions décident (règle du dépôt : pas de logique métier dans un composant).
  */
@@ -12,9 +12,9 @@ import type { Locale } from '@/lib/i18n/locale'
 import { buildTacticalGrid, type MapFrame, type TacticalGrid } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
 
-/** Les six lectures offertes par la barre d'outils — même vocabulaire que le contrat
+/** Les sept lectures de la pilule « Lecture » — même vocabulaire que le contrat
  *  (`TacticalRasterBody.question`). */
-export type TacticalQuestion = 'morts' | 'kills' | 'gagne' | 'temps' | 'routes' | 'isole'
+export type TacticalQuestion = 'morts' | 'kills' | 'solde' | 'gagne' | 'temps' | 'routes' | 'isole'
 
 /** L'axe « qui » — même vocabulaire que le contrat (`TacticalRasterBody.qui`). */
 export type TacticalQui = 'moi' | 'escouade' | 'adv'
@@ -30,12 +30,6 @@ export const TACTICAL_CELL_FLOOR = 3
 /** Questions qui exigent l'artefact de rejeu (position datée), pas seulement le journal
  *  des morts — même liste que la doc du contrat (`TacticalRasterBody.question`). */
 const QUESTIONS_ARTEFACT_REJEU: ReadonlySet<TacticalQuestion> = new Set(['temps', 'routes'])
-
-/** pageTitle — « Plan de <carte> — <question> », le titre H2 de la vue. */
-export function pageTitle(t: TacticalText, mapName: string, question: TacticalQuestion): string {
-  const libelle = t.analysisQuestions.find((q) => q.id === question)?.label ?? question
-  return t.analysisPageTitle(mapName, libelle)
-}
 
 /** unitForQuestion — l'unité affichée en légende du plan et sur la cellule sélectionnée. */
 export function unitForQuestion(t: TacticalText, question: TacticalQuestion): string {
@@ -126,12 +120,6 @@ export function planEmptyText(
   }
 }
 
-/** ratioSafe — une proportion 0..1, jamais une division par zéro. */
-export function ratioSafe(numerateur: number, denominateur: number): number {
-  if (!(denominateur > 0)) return 0
-  return numerateur / denominateur
-}
-
 /**
  * LÉGENDE DU PLAN — les deux bornes affichées de part et d'autre de la rampe, et le mode
  * de rampe à employer (maquette 034b1915).
@@ -173,21 +161,6 @@ export function questionSansCellule(question: TacticalQuestion): boolean {
  */
 export const PLAN_ASPECT_DEFAUT = 16 / 9
 
-/**
- * PLAN_HAUTEUR_MAX_PX — plafond de hauteur du cadre, en pixels.
- *
- * LE DÉFAUT QU'IL FERME (constaté le 2026-09-09 sur le plan d'Illusion) : le cadre était
- * mis au seul `aspect-ratio` des bornes, sur une largeur de conteneur libre — un rapport
- * très allongé rendait alors un canvas de 1 070 x 13 375 px, une hauteur qui n'est plus
- * une page.
- *
- * LE RAPPORT N'EST JAMAIS DÉFORMÉ POUR TENIR : le peintre projette le monde avec UNE
- * SEULE échelle (px par mètre) et le clic s'inverse par la même règle de trois — un cadre
- * dont le rapport ne serait plus celui des bornes désalignerait les deux. Le plafond passe
- * donc par une LARGEUR maximale (`rapport x plafond`), qui laisse `aspect-ratio` intact.
- */
-export const PLAN_HAUTEUR_MAX_PX = 720
-
 /** trouveCellule — la cellule serveur à (col, row), ou `null` si jamais atteinte. */
 export function trouveCellule(
   cellules: readonly CelluleTactique[],
@@ -205,7 +178,7 @@ export function trouveCellule(
 // convertir une fois le document (et son calage) chargé
 // (`lib/replay/replayLogic.resolveTacticalReplayInstant` + `msToFrames`).
 
-// ─── Section « Coordination d'équipe » (maquette 034b1915) ────────────────────
+// ─── Portées du radar (aide de la lecture « morts seul ») ──────────────────────────
 
 /**
  * libelleRayons — « 18 m », ou « 18 m ou 24 m » quand le filtre mélange deux formats.
@@ -221,53 +194,17 @@ export function libelleRayons(
     .join(t.radiusJoin)
 }
 
-/**
- * DISTANCE_DECIMALES — une decimale pour toute distance en metres affichee par l'onglet.
- *
- * LE DEFAUT QU'ELLE FERME : la mediane sortait du serveur en flottant brut et ICU la rendait
- * telle quelle — « Distance mediane a l'equipier : 9,905 m » (constate le 2026-09-13). Un
- * millimetre n'a aucun sens sur une distance mesuree entre deux joueurs, et le reste de la
- * carte est deja au dixieme.
- */
-export const DISTANCE_DECIMALES = 1
+/** Au plus une décimale pour une distance en mètres : un millimètre n'a aucun sens entre deux joueurs. */
+const DISTANCE_DECIMALES = 1
 
 /**
- * formatDistanceM — une distance en metres, AU PLUS au dixieme, dans la langue courante.
- *
- * « AU PLUS », et pas « exactement » : les rayons de la table de regulation sont des entiers
- * (18 m, 24 m) et `formatNumber` les rembourrerait en « 18,0 m ». Une portee de radar ne se
- * mesure pas au decimetre ; la mediane, elle, en a besoin d'un.
+ * formatDistanceM — une distance en mètres, AU PLUS au dixième, dans la langue courante : une portée
+ * entière (18 m) n'est pas rembourrée en « 18,0 m ».
  */
-export function formatDistanceM(metres: number, locale: Locale): string {
+function formatDistanceM(metres: number, locale: Locale): string {
   return new Intl.NumberFormat(intlLocale(locale), {
     maximumFractionDigits: DISTANCE_DECIMALES,
   }).format(metres)
-}
-
-/**
- * positionCategorie — où tombe une distance sur l'axe des CATÉGORIES de l'histogramme des
- * distances, en indice fractionnaire (18 m sur des intervalles de 10 m = 1,3).
- *
- * L'indice `i` désigne le CENTRE de la barre `i`, pas son bord gauche : le bord gauche est
- * donc à `i − 0,5`, et on y ajoute la position dans l'intervalle. Arrondir à une frontière
- * de barre déplacerait la règle du jeu à l'écran.
- *
- * `null` quand la distance sort des intervalles servis : mieux vaut aucun seuil qu'un seuil
- * collé au bord du graphe, qui se lirait comme une valeur mesurée.
- */
-export function positionCategorie(
-  distance: number,
-  bins: readonly { min_m: number; max_m?: number | null }[],
-): number | null {
-  for (let i = 0; i < bins.length; i += 1) {
-    const min = bins[i].min_m
-    const max = bins[i].max_m
-    if (max == null) return distance >= min ? i : null
-    if (distance >= min && distance < max) {
-      return i - 0.5 + (distance - min) / (max - min)
-    }
-  }
-  return null
 }
 
 // ─── LA PROJECTION DU PLAN — refaite le 2026-09-13, sur constat utilisateur ───

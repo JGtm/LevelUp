@@ -25,16 +25,16 @@ const COLONNE_CARTES_HAUTEUR_PX = 551
 /** Largeur de la colonne « Zone sélectionnée », en px. */
 const COLONNE_ZONE_LARGEUR_PX = 360
 /** Hauteur maximale de la boîte du plan (fond + calque), en px. */
-const PLAN_BOITE_HAUTEUR_MAX_PX = 800
+export const PLAN_BOITE_HAUTEUR_MAX_PX = 800
 /** Hauteur de la rampe verticale de la légende, en px. */
-const RAMPE_HAUTEUR_PX = 220
+export const RAMPE_HAUTEUR_PX = 220
 /** Marge droite réservée à la légende à côté du fond, en px. */
-const LEGENDE_MARGE_PX = 90
+export const LEGENDE_MARGE_PX = 90
 /** Largeur de la vignette compacte d'une carte (16:9), en px. */
 export const VIGNETTE_LARGEUR_PX = 100
 
 /**
- * Les mesures ci-dessus en variables CSS, posées sur la racine du cockpit : les classes de mise
+ * Les mesures des colonnes en variables CSS, posées sur la racine du cockpit : les classes de mise
  * en page (`min-[1400px]:…`, trois colonnes dès 1 400 px de large) les lisent par `var(…)`, et
  * les constantes restent la seule source des valeurs.
  */
@@ -42,13 +42,10 @@ export const VARIABLES_COCKPIT = {
   '--tac-cartes-l': `${COLONNE_CARTES_LARGEUR_PX}px`,
   '--tac-cartes-h': `${COLONNE_CARTES_HAUTEUR_PX}px`,
   '--tac-zone-l': `${COLONNE_ZONE_LARGEUR_PX}px`,
-  '--tac-plan-hmax': `${PLAN_BOITE_HAUTEUR_MAX_PX}px`,
-  '--tac-rampe-h': `${RAMPE_HAUTEUR_PX}px`,
-  '--tac-legende-m': `${LEGENDE_MARGE_PX}px`,
 } as CSSProperties
 
 /** D'où vient la carte lue (D11). */
-type OrigineCarte = 'url' | 'defaut' | 'hors_filtre' | 'aucune'
+type OrigineCarte = 'url' | 'defaut' | 'hors_filtre' | 'aucune' | 'attente'
 
 export interface CarteEffective {
   /** La carte affichée ; '' = aucune. */
@@ -56,13 +53,24 @@ export interface CarteEffective {
   /**
    * `url` : la carte de l'URL, ouvrable, est lue ; `defaut` : sans carte dans l'URL, la plus jouée
    * des ouvrables est lue ; `hors_filtre` : la carte de l'URL est absente du filtre ou sous le
-   * plancher — nommée, jamais lue ; `aucune` : aucune carte ouvrable, rien à lire.
+   * plancher — nommée, jamais lue ; `aucune` : aucune carte ouvrable, rien à lire ; `attente` : la
+   * liste des cartes n'a pas encore répondu — la carte de l'URL est connue (ou aucune), pas encore
+   * son verdict, et rien n'est lu.
    */
   origine: OrigineCarte
 }
 
-/** carteEffective — la carte que le plan affiche (D11). */
-export function carteEffective(carteUrl: string, cartes: readonly TacticalMapCard[]): CarteEffective {
+/**
+ * carteEffective — la carte que le plan affiche (D11). `cartes` absent : la liste des cartes n'a
+ * pas encore répondu ; `null` : elle a échoué — la carte de l'URL garde son fond, rien n'est lu et
+ * la colonne des cartes dit l'échec.
+ */
+export function carteEffective(
+  carteUrl: string,
+  cartes: readonly TacticalMapCard[] | null | undefined,
+): CarteEffective {
+  if (cartes === undefined) return { mapId: carteUrl, origine: 'attente' }
+  if (cartes === null) return { mapId: carteUrl, origine: 'aucune' }
   if (carteUrl !== '') {
     const demandee = cartes.find((c) => c.map_id === carteUrl)
     return { mapId: carteUrl, origine: demandee && estOuvrable(demandee) ? 'url' : 'hors_filtre' }

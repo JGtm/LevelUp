@@ -59,7 +59,7 @@
 
   /* Tendance (▲ progression / ▼ régression / = stagnation) — réutilise les tokens
      sémantiques (auto-adapté dark/light via var(), résolu à l'usage). Référencé en RAW
-     var(--narrative-trend-*) par KPIStrip / LeaderboardBlock / PlayerScoreCard. */
+     var(--narrative-trend-*) par LeaderboardBlock / PlayerScoreCard. */
   --narrative-trend-positive: var(--success);
   --narrative-trend-negative: var(--destructive);
   --narrative-trend-neutral: var(--muted-foreground);

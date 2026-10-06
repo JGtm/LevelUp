@@ -19,27 +19,25 @@
  * lectures postent cette liste blanche. C'est ce chemin-là — et lui seul — qui sait lire les
  * SESSIONS, que les requêtes shared du lecteur tactique ne joignent pas.
  *
- * ─── LES ÉTATS, DANS L'ORDRE ────────────────────────────────────────────────────────────────
+ * ─── QUI DIT QUOI ───────────────────────────────────────────────────────────────────────────
  *
- * Composition impossible, échec, attente (aucune donnée encore), aucune carte : chacun est dit UNE
- * fois, dans la colonne des cartes, et aucune lecture n'est montée à côté — un plan sur un
- * périmètre qu'on ne sait pas appliquer serait faux, et une « Mise à jour… » sans fin aussi.
- * « Aucune carte jouée » est une RÉPONSE : elle exige une liste de matchs résolue et une liste de
- * cartes servie. En RELECTURE (nouveau filtre en cours, réponse précédente gardée par
- * `placeholderData`), rien ne se démonte : les vignettes restent, estompées, et la lecture dit
- * « Mise à jour… ».
+ * LA CARTE DU PLAN EST TOUJOURS MONTÉE (retours rejeu L2, 2026-09-23) : avec la carte de l'URL, ou la
+ * plus jouée dès que la liste des cartes répond — et, avant, sans carte, son cadre au rapport par
+ * défaut sous l'indicateur. L'échec de la lecture ou de son périmètre et la composition impossible
+ * se disent SUR le fond, qui reste. La colonne des cartes dit ses propres états : liste en échec,
+ * attente, aucune carte ; quand le périmètre ne peut pas être appliqué, elle se tait (le plan dit
+ * pourquoi). « Aucune carte jouée » est une RÉPONSE : elle exige une liste de matchs résolue et une
+ * liste de cartes servie. En RELECTURE (réponse précédente gardée par `placeholderData`), rien ne se
+ * démonte.
  */
 import { useMemo, type ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
 
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { SectionCard } from '@/components/ui/section-card'
-import type { TacticalMapCard } from '@/lib/api/types'
-import type { Locale } from '@/lib/i18n/locale'
 import { usePageScope } from '@/lib/page-scope/usePageScope'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { carteEffective, carteLue, VARIABLES_COCKPIT, type CarteEffective } from './cockpit.logic'
+import { carteEffective, VARIABLES_COCKPIT } from './cockpit.logic'
 import { getTacticalText, type TacticalText } from './i18n'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
 import { TacticalFilterBar } from './TacticalFilterBar'
@@ -63,27 +61,16 @@ export function TacticalPage() {
   const locale = useAppShellStore((s) => s.locale)
   const t = getTacticalText(locale)
   const { scope, setScope } = useScopeTactique(playerSlug, params.titleSlug ?? '', params.lang)
+  const p = useCartesDuPerimetre(playerSlug, scope)
 
-  const {
-    coequipierOptions,
-    composition,
-    compositionImpossible,
-    matchIDs,
-    cartes,
-    plancher,
-    enEchec,
-    enChargement,
-    enRelecture,
-    perimetreEnRelecture,
-  } = useCartesDuPerimetre(playerSlug, scope)
-
-  const etat = etatDeLaPage(t, {
-    inconnus: compositionImpossible ? composition.inconnus : null,
-    enEchec,
-    enChargement,
-    aucuneCarte: cartes.length === 0,
-  })
-  const effective = useMemo(() => carteEffective(scope.carte, cartes), [scope.carte, cartes])
+  const etatColonne = etatDeLaColonne(t, p)
+  // Les cartes servies ; `undefined` tant qu'aucune réponse n'existe ; `null` quand la liste a échoué.
+  let listeDesCartes: typeof p.cartes | null | undefined = undefined
+  if (p.cartesConnues) listeDesCartes = p.cartes
+  else if (p.grilleEnEchec) listeDesCartes = null
+  const effective = useMemo(() => carteEffective(scope.carte, listeDesCartes), [scope.carte, listeDesCartes])
+  const carte = p.cartes.find((c) => c.map_id === effective.mapId)
+  const nom = carte ? nomCarte(carte, locale) : effective.mapId
 
   return (
     <>
@@ -93,7 +80,7 @@ export function TacticalPage() {
         t={t}
         scope={scope}
         setScope={setScope}
-        coequipierOptions={coequipierOptions}
+        coequipierOptions={p.coequipierOptions}
       />
       <div
         className="grid grid-cols-1 items-start gap-3 min-[1400px]:grid-cols-[var(--tac-cartes-l)_minmax(0,1fr)]"
@@ -101,28 +88,32 @@ export function TacticalPage() {
         data-testid="tactical-cockpit"
       >
         <TacticalMapsColumn
-          cartes={cartes}
-          plancher={plancher}
-          carteActive={etat ? '' : effective.mapId}
+          cartes={p.cartes}
+          plancher={p.plancher}
+          carteActive={etatColonne ? '' : effective.mapId}
           playerSlug={playerSlug}
           locale={locale}
           t={t}
           onSelect={(mapId) => setScope({ carte: mapId })}
-          enRelecture={enRelecture}
-          etat={etat}
+          enRelecture={p.enRelecture}
+          etat={etatColonne}
         />
-        {!etat && (
-          <LectureDeLaCarte
-            effective={effective}
-            cartes={cartes}
-            playerSlug={playerSlug}
-            locale={locale}
-            t={t}
-            matchIds={matchIDs}
-            coequipiers={composition.xuids}
-            perimetreEnRelecture={perimetreEnRelecture}
-          />
-        )}
+        {/* `key` = LA CARTE : changer de carte remet à zéro la vue (lecture, joueurs, réapparition,
+            cellule) ET l'observateur du raster — aucune réponse d'une carte ne sert de
+            placeholder à une autre. */}
+        <TacticalAnalysisView
+          key={effective.mapId}
+          playerSlug={playerSlug}
+          carte={effective}
+          mapName={nom}
+          locale={locale}
+          t={t}
+          matchIds={p.matchIDs}
+          coequipiers={p.composition.xuids}
+          perimetreEnRelecture={p.perimetreEnRelecture}
+          perimetreEnEchec={p.perimetreEnEchec}
+          coequipiersInconnus={p.compositionImpossible ? p.composition.inconnus : null}
+        />
       </div>
     </>
   )
@@ -133,9 +124,9 @@ function useScopeTactique(playerSlug: string, titleSlug: string, lang: string | 
   // Params de navigation : `lang` est OPTIONNEL dans la route (`{-$lang}`), donc on ne le pose que
   // s'il est présent — le poser à vide fabriquerait une URL `//`.
   const routeParams = useMemo(() => {
-    const p: Record<string, string> = { playerSlug, titleSlug }
-    if (lang) p.lang = lang
-    return p
+    const r: Record<string, string> = { playerSlug, titleSlug }
+    if (lang) r.lang = lang
+    return r
   }, [playerSlug, titleSlug, lang])
 
   return usePageScope<TacticalScope, ReturnType<typeof encodeTacticalScope>>({
@@ -150,7 +141,7 @@ function useScopeTactique(playerSlug: string, titleSlug: string, lang: string | 
 
 /**
  * useCartesDuPerimetre — le périmètre de la barre résolu en `match_id`, la composition traduite en
- * xuids, et les cartes jouées que ce périmètre contient, avec les états de la page.
+ * xuids, et les cartes jouées que ce périmètre contient, avec leurs états.
  */
 function useCartesDuPerimetre(playerSlug: string, scope: TacticalScope) {
   const contexte = useMemo(() => contexteFiltre(scope), [scope])
@@ -175,53 +166,49 @@ function useCartesDuPerimetre(playerSlug: string, scope: TacticalScope) {
   const data = grille.data
   const cartes = useMemo(() => data?.cartes ?? [], [data])
 
-  // « EN CHARGEMENT » VEUT DIRE « AUCUNE DONNÉE ENCORE » : la liste des cartes est SUSPENDUE tant
-  // que le périmètre n'est pas résolu, et une requête suspendue n'est pas « chargée » (en TanStack
-  // v5, `isLoading` vaut `isPending && isFetching`, donc FAUX sur une requête désactivée). On lit
-  // donc la PRÉSENCE des données.
-  const enEchec = perimetreEnEchec || grille.isError
   return {
     coequipierOptions,
     composition,
     compositionImpossible,
     matchIDs,
     cartes,
+    // « CONNUES » VEUT DIRE « UNE RÉPONSE EXISTE » : la liste des cartes est SUSPENDUE tant que le
+    // périmètre n'est pas résolu, et une requête suspendue n'est pas « chargée » (en TanStack v5,
+    // `isLoading` vaut `isPending && isFetching`, donc FAUX sur une requête désactivée).
+    cartesConnues: data !== undefined,
     plancher: data?.plancher_matchs ?? 0,
-    enEchec,
-    enChargement: !compositionImpossible && !enEchec && (perimetre === undefined || data === undefined),
+    perimetreEnEchec,
+    grilleEnEchec: grille.isError,
     enRelecture: perimetreEnRelecture || grille.isPlaceholderData,
     perimetreEnRelecture,
   }
 }
 
 /**
- * etatDeLaPage — le corps de la colonne quand la page n'a pas de cartes à montrer, dans l'ORDRE :
- * composition impossible, échec, attente (premier chargement), aucune carte. `undefined` : la
- * colonne montre ses cartes et la lecture est montée.
+ * etatDeLaColonne — le corps de la colonne quand elle n'a pas de cartes à montrer : la liste en
+ * échec, un périmètre qu'on ne peut pas appliquer (rien : le plan dit pourquoi), l'attente du
+ * premier chargement, aucune carte. `undefined` : la colonne montre ses cartes.
  */
-function etatDeLaPage(
+function etatDeLaColonne(
   t: TacticalText,
-  e: { inconnus: string[] | null; enEchec: boolean; enChargement: boolean; aucuneCarte: boolean },
+  p: {
+    grilleEnEchec: boolean
+    perimetreEnEchec: boolean
+    compositionImpossible: boolean
+    cartesConnues: boolean
+    cartes: readonly unknown[]
+  },
 ): ReactNode | undefined {
-  if (e.inconnus) {
-    return (
-      <div className="p-3">
-        <EmptyStateNotice
-          title={t.unknownTeammateTitle}
-          description={t.unknownTeammateDescription(e.inconnus.join(', '))}
-        />
-      </div>
-    )
-  }
-  if (e.enEchec) {
+  if (p.grilleEnEchec) {
     return (
       <p className="p-3 text-sm text-muted-foreground" data-testid="tactical-erreur">
         {t.error}
       </p>
     )
   }
-  if (e.enChargement) return <p className="p-3 text-sm text-muted-foreground">{t.loading}</p>
-  if (e.aucuneCarte) {
+  if (p.perimetreEnEchec || p.compositionImpossible) return <></>
+  if (!p.cartesConnues) return <p className="p-3 text-sm text-muted-foreground">{t.loading}</p>
+  if (p.cartes.length === 0) {
     return (
       <div className="p-3">
         <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
@@ -229,60 +216,4 @@ function etatDeLaPage(
     )
   }
   return undefined
-}
-
-/**
- * LectureDeLaCarte — le centre et la droite du cockpit pour la carte affichée : la vue d'analyse
- * quand la carte est LUE ; pour une carte d'URL hors du filtre ou sous le plancher, son nom et
- * « Aucun match sur cette carte dans ce filtre », sans requête ; rien quand aucune carte n'est
- * ouvrable (la colonne le dit).
- */
-function LectureDeLaCarte({
-  effective,
-  cartes,
-  playerSlug,
-  locale,
-  t,
-  matchIds,
-  coequipiers,
-  perimetreEnRelecture,
-}: {
-  effective: CarteEffective
-  cartes: readonly TacticalMapCard[]
-  playerSlug: string
-  locale: Locale
-  t: TacticalText
-  matchIds: string[] | null
-  coequipiers: string[]
-  perimetreEnRelecture: boolean
-}) {
-  if (effective.origine === 'aucune') return null
-  const carte = cartes.find((c) => c.map_id === effective.mapId)
-  const nom = carte ? nomCarte(carte, locale) : effective.mapId
-  if (!carteLue(effective)) {
-    return (
-      <SectionCard title={nom} label={nom}>
-        <p className="p-6 text-center text-sm font-medium" data-testid="tactical-carte-hors-filtre">
-          {t.planEmptyNoMatchTitle}
-        </p>
-      </SectionCard>
-    )
-  }
-  // `key` = LA CARTE : changer de carte remet à zéro la vue (question, qui, spawn, cellule) ET
-  // l'observateur du raster, donc aucune réponse d'une carte ne sert de placeholder à une autre.
-  return (
-    <div className="min-w-0">
-      <TacticalAnalysisView
-        key={effective.mapId}
-        playerSlug={playerSlug}
-        mapId={effective.mapId}
-        mapName={nom}
-        locale={locale}
-        t={t}
-        matchIds={matchIds}
-        coequipiers={coequipiers}
-        perimetreEnRelecture={perimetreEnRelecture}
-      />
-    </div>
-  )
 }

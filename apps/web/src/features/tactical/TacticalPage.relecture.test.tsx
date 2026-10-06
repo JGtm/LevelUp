@@ -8,16 +8,16 @@
  * le titre retombait un instant sur l'identifiant brut de la carte, le fond du plan étant
  * démonté avec la lecture.
  *
- * Ce que ces tests cadenassent (écran unique, plan Tactique v2 L4.4) :
+ * Ce que ces tests cadenassent (écran unique) :
  *   - le NOUVEAU périmètre en cours de résolution : dans la colonne, la vignette reste le même
  *     nœud, la liste est `aria-busy`, estompée et dit « Mise à jour… » ; dans la lecture, le
  *     titre garde le nom de la carte, le fond reste le même `<img>`, la vue dit « Mise à jour… » ;
  *   - le nouveau périmètre RÉSOLU, la liste des cartes encore en relecture (revue L2-R3) : même
  *     vignette, même titre — c'est le placeholder de la liste des cartes qui répond ;
- *   - le nouveau périmètre en ÉCHEC (revue L2-R1) : le message d'échec, dit une fois dans la
- *     colonne, aucune lecture montée — jamais une « Mise à jour… » qui ne viendra pas ;
- *   - un coéquipier INTROUVABLE (contrôle de parc L2-PARC-1) : « Coéquipier introuvable »,
- *     dit une fois dans la colonne, aucune lecture montée — jamais une relecture sans fin ;
+ *   - le nouveau périmètre en ÉCHEC (revue L2-R1) : le message d'échec SUR le fond, qui reste le
+ *     même nœud — jamais une « Mise à jour… » qui ne viendra pas ;
+ *   - un coéquipier INTROUVABLE (contrôle de parc L2-PARC-1) : « Coéquipier introuvable » SUR le
+ *     fond, qui reste — jamais une relecture sans fin ;
  *   - changer de JOUEUR (revue L2-R2) : aucune réponse d'un joueur ne sert de placeholder à
  *     un autre, et aucune requête du nouveau joueur ne porte les `match_id` de l'ancien ;
  *   - changer de CARTE remet la vue à zéro.
@@ -66,7 +66,7 @@ vi.mock('@/lib/api/client', async (importOriginal) => {
 
 const t = getTacticalText('fr')
 const URL_FOND = 'blob:tactique/streets'
-const TITRE_RUELLES = 'Plan de Ruelles — Où je meurs'
+const TITRE_RUELLES = 'Ruelles'
 
 const PAGE: TacticalMapsPage = {
   plancher_matchs: 10,
@@ -199,8 +199,8 @@ async function attendrePerimetreSession() {
 
 /** L'écran d'analyse de Ruelles est chargé ; rend le `<img>` de son fond. */
 async function analyseChargee(): Promise<HTMLImageElement> {
-  expect(await screen.findByText(TITRE_RUELLES)).toBeInTheDocument()
-  await screen.findByTestId('kpi-strip')
+  expect(await screen.findByRole('region', { name: TITRE_RUELLES })).toBeInTheDocument()
+  await screen.findByTestId('tactical-plan-canvas')
   await waitFor(() =>
     expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).not.toBeNull(),
   )
@@ -275,7 +275,7 @@ describe('TacticalPage — un changement de filtre garde la page à l’écran',
       ),
     )
 
-    expect(screen.getByTestId('tactical-analysis-title')).toHaveTextContent(TITRE_RUELLES)
+    expect(screen.getByTestId('tactical-plan-title')).toHaveTextContent(TITRE_RUELLES)
   })
 
   it('ANALYSE : le titre garde le nom de la carte, le fond reste le même <img>', async () => {
@@ -287,7 +287,7 @@ describe('TacticalPage — un changement de filtre garde la page à l’écran',
     await attendrePerimetreSession()
 
     // Jamais l'identifiant brut (« Plan de streets — … ») pendant la relecture.
-    expect(screen.getByTestId('tactical-analysis-title')).toHaveTextContent(TITRE_RUELLES)
+    expect(screen.getByTestId('tactical-plan-title')).toHaveTextContent(TITRE_RUELLES)
     expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
     expect(img.isConnected).toBe(true)
     expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).toBe(img)
@@ -297,54 +297,55 @@ describe('TacticalPage — un changement de filtre garde la page à l’écran',
     expect(getBlob.mock.calls.filter(([p]) => (p as string).includes('/tactical/streets/'))).toHaveLength(1)
   })
 
-  // Revue L2-R1, écran unique : le périmètre en échec est dit UNE fois, dans la colonne, et
-  // aucune lecture n'est montée — ni une « Mise à jour… » qui ne viendra pas, ni l'ancien calque.
-  it('le nouveau périmètre ÉCHOUE — le message d’échec, aucune lecture montée', async () => {
+  // Revue L2-R1 : le périmètre en échec se dit SUR le fond, qui reste le même nœud — ni une
+  // « Mise à jour… » qui ne viendra pas, ni l'ancien calque.
+  it('le nouveau périmètre ÉCHOUE — le message sur le fond, qui reste', async () => {
     perimetreSession = 'rejet'
     searchCourant = { carte: 'streets' }
     const page = monter()
-    await analyseChargee()
+    const img = await analyseChargee()
 
     page.cocherSession()
-    expect(await screen.findByTestId('tactical-erreur')).toHaveTextContent(t.error)
+    expect(await screen.findByTestId('tactical-plan-avis')).toHaveTextContent(t.analysisErrorTitle)
     expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
-    expect(screen.queryByTestId('kpi-strip')).toBeNull()
-    expect(screen.queryByTestId('tactical-analysis-body')).toBeNull()
+    expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
+    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
+    expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).toBe(img)
   })
 
-  // Contrôle de parc L2-PARC-1, écran unique : un coéquipier INTROUVABLE (URL, scope mémorisé,
-  // liste rechargée sans lui) est dit UNE fois, dans la colonne ; aucune lecture n'est montée —
-  // jamais une « Mise à jour… » sans fin, ni les KPI de l'ancienne composition.
-  it('un coéquipier introuvable — « Coéquipier introuvable », aucune lecture montée', async () => {
+  // Contrôle de parc L2-PARC-1 : un coéquipier INTROUVABLE (URL, scope mémorisé, liste rechargée
+  // sans lui) se dit SUR le fond, qui reste — jamais une « Mise à jour… » sans fin, ni le calque de
+  // l'ancienne composition.
+  it('un coéquipier introuvable — « Coéquipier introuvable » sur le fond, qui reste', async () => {
     searchCourant = { carte: 'streets' }
     const page = monter()
-    await analyseChargee()
+    const img = await analyseChargee()
 
     page.choisirCoequipier('Inconnu')
-    expect(await screen.findByText(t.unknownTeammateTitle)).toBeInTheDocument()
-    expect(screen.getByText(t.unknownTeammateDescription('Inconnu'))).toBeInTheDocument()
+    const avis = await screen.findByTestId('tactical-plan-avis')
+    expect(avis).toHaveTextContent(t.unknownTeammateTitle)
+    expect(avis).toHaveTextContent(t.unknownTeammateDescription('Inconnu'))
     // Ce n'est pas une panne : le message générique mentirait.
-    expect(screen.queryByTestId('tactical-erreur')).toBeNull()
+    expect(screen.queryByText(t.analysisErrorTitle)).toBeNull()
     expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
-    expect(screen.queryByTestId('kpi-strip')).toBeNull()
-    expect(screen.queryByTestId('tactical-analysis-body')).toBeNull()
+    expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
+    expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).toBe(img)
   })
 
-  it('ouverte sur un coéquipier introuvable : le message, aucune attente ni lecture', async () => {
+  it('ouverte sur un coéquipier introuvable : le message sur le fond, aucune attente ni lecture', async () => {
     searchCourant = { carte: 'streets', eq: 'Inconnu' }
     monter()
-    expect(await screen.findByText(t.unknownTeammateTitle)).toBeInTheDocument()
+    expect(await screen.findByTestId('tactical-plan-avis')).toHaveTextContent(t.unknownTeammateTitle)
     expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
+    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
     expect(lecturesTactiques('JGtm').filter(([path]) => (path as string).endsWith('/raster'))).toEqual([])
   })
 
-  // `key={scope.carte}` : la réponse d'une carte ne sert JAMAIS de placeholder à une autre
-  // (les grappes de spawn sont propres à une carte), et l'état local repart à zéro.
   it('CHANGER DE CARTE : la vue repart à zéro, aucune réponse de l’autre carte affichée', async () => {
     searchCourant = { carte: 'streets' }
     const page = monter()
-    await screen.findByTestId('kpi-strip')
-    const question = screen.getByRole('combobox', { name: t.questionLabel }) as HTMLSelectElement
+    await screen.findByTestId('tactical-plan-canvas')
+    const question = screen.getByRole('combobox', { name: t.pillReading }) as HTMLSelectElement
     fireEvent.change(question, { target: { value: 'kills' } })
     expect(question.value).toBe('kills')
 
@@ -353,10 +354,10 @@ describe('TacticalPage — un changement de filtre garde la page à l’écran',
       expect(post).toHaveBeenCalledWith('/players/JGtm/tactical/aquarius/raster', expect.anything()),
     )
 
-    const questionApres = screen.getByRole('combobox', { name: t.questionLabel }) as HTMLSelectElement
+    const questionApres = screen.getByRole('combobox', { name: t.pillReading }) as HTMLSelectElement
     expect(questionApres.value).toBe('morts')
     expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
-    expect(screen.queryByTestId('kpi-strip')).toBeNull()
+    expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
     expect(screen.getByTestId('tactical-analysis-pending')).toBeInTheDocument()
   })
 })
@@ -390,11 +391,11 @@ describe('TacticalPage — changer de joueur ne garde rien de l’ancien', () =>
     )
 
     expect(lecturesTactiques('Autre')).toEqual([])
-    expect(screen.queryByTestId('kpi-strip')).toBeNull()
+    expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
     expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
-    // Aucune lecture n'est montée tant que les cartes du nouveau joueur ne sont pas là : la
-    // colonne dit l'attente.
-    expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
+    // La carte de l'URL reste affichée : sans les cartes du nouveau joueur, rien n'est lu, et le
+    // plan attend sous son indicateur.
+    expect(screen.getByTestId('tactical-analysis-pending')).toBeInTheDocument()
     expect(screen.getByText(t.loading)).toBeInTheDocument()
   })
 })

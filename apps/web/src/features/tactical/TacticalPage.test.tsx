@@ -9,6 +9,8 @@
  *   - la carte de l'URL est lue si elle est ouvrable ; sous le plancher ou hors du filtre, elle
  *     est nommée, sans requête de lecture ;
  *   - plus de bascule « Grille / Analyse », plus de pied de grille ;
+ *   - l'échec du périmètre et la composition impossible se disent SUR le plan, cadre posé ; la
+ *     colonne ne dit que ses propres états (liste en échec, attente, aucune carte) ;
  *   - aucune carte -> `EmptyState`, jamais une colonne vide muette ;
  *   - LE PERIMETRE : la barre produit un contexte de filtre, `/filters/match-ids` le
  *     resout, et la grille poste les `match_id` obtenus (phase 4 bis). Sans ces
@@ -167,7 +169,7 @@ describe('TacticalPage — l’écran unique', () => {
 
   it('sans ?carte= : la plus jouée des ouvrables est lue d’office, l’URL n’est pas réécrite', async () => {
     renderWithProviders(<TacticalPage />)
-    expect(await screen.findByText('Plan de Ruelles — Où je meurs')).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
     expect(screen.getByTestId('tactical-map-streets')).toHaveAttribute('aria-pressed', 'true')
     expect(lecturesRaster()).toEqual(['/players/JGtm/tactical/streets/raster'])
     expect(navigate).not.toHaveBeenCalled()
@@ -196,7 +198,7 @@ describe('TacticalPage — l’écran unique', () => {
   it('la carte de l’URL, ouvrable : lue, et la colonne reste à côté', async () => {
     searchCourant = { carte: 'streets' }
     renderWithProviders(<TacticalPage />)
-    expect(await screen.findByText('Plan de Ruelles — Où je meurs')).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
     expect(screen.getByTestId('tactical-map-streets')).toHaveAttribute('aria-pressed', 'true')
   })
 
@@ -318,7 +320,8 @@ describe('TacticalPage — l’écran unique', () => {
   it('un coequipier introuvable ARRETE la grille — jamais un perimetre elargi', async () => {
     searchCourant = { eq: 'Inconnu' }
     renderWithProviders(<TacticalPage />)
-    expect(await screen.findByText('Coéquipier introuvable')).toBeInTheDocument()
+    // Le plan le dit SUR son fond, une seule fois.
+    expect(await screen.findByTestId('tactical-plan-avis')).toHaveTextContent('Coéquipier introuvable')
     expect(corpsGrille()).toBeUndefined()
   })
 
@@ -337,6 +340,8 @@ describe('TacticalPage — l’écran unique', () => {
     )
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByText('Chargement des cartes…')).toBeInTheDocument()
+    // Le plan, sans carte encore : son cadre sous l'indicateur.
+    expect(screen.getByTestId('tactical-analysis-pending')).toBeInTheDocument()
     expect(screen.queryByText('Aucune carte jouée')).toBeNull()
     // Et la grille n'est PAS demandee tant que le perimetre n'existe pas.
     expect(corpsGrille()).toBeUndefined()
@@ -351,7 +356,9 @@ describe('TacticalPage — l’écran unique', () => {
     )
     try {
       renderWithProviders(<TacticalPage />)
-      expect(await screen.findByTestId('tactical-erreur')).toBeInTheDocument()
+      // Le plan le dit SUR son fond (cadre posé, sans carte encore) ; la colonne se tait.
+      expect(await screen.findByTestId('tactical-plan-avis')).toHaveTextContent("L'analyse n'a pas pu être chargée.")
+      expect(screen.getByTestId('tactical-plan-frame')).toBeInTheDocument()
       expect(screen.queryByText('Aucune carte jouée')).toBeNull()
       // L'echec est JOURNALISE, jamais avale.
       expect(erreurs).toHaveBeenCalled()

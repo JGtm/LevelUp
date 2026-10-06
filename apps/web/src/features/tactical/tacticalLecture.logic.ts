@@ -63,6 +63,7 @@ export function etatLecture(entree: {
 const QUESTIONS: ReadonlySet<string> = new Set<TacticalQuestion>([
   'morts',
   'kills',
+  'solde',
   'gagne',
   'temps',
   'routes',

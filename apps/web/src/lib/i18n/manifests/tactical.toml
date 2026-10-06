@@ -573,3 +573,71 @@ en = "▼ lower is better"
 [tactical.plan.footer_off_frame]
 fr = "{hors, plural, one {# cellule mesuree tombe} other {# cellules mesurees tombent}} hors du cadre du plan, sur {total} — elles ne sont pas peintes."
 en = "{hors, plural, one {# measured cell falls} other {# measured cells fall}} outside the plan frame, out of {total} — they are not painted."
+
+# ── Carte du plan de l'écran unique (plan Tactique v2, L5) ────────────────────
+# La lecture « solde » : son libellé et son unité.
+[tactical.analysis.questions.solde]
+fr = "Solde frags − morts"
+en = "Kills − deaths"
+
+[tactical.unit.solde]
+fr = "frags − morts par match"
+en = "kills − deaths per match"
+
+# L'aide ⓘ du titre : dénominateurs, source, pas de la grille, plancher par zone.
+[tactical.plan.info]
+fr = "{retenus, plural, one {# match mesuré} other {# matchs mesurés}} sur {filtres} · {source} · grille {pas, number} m · {plancher, plural, one {# match distinct} other {# matchs distincts}} par zone"
+en = "{retenus, plural, one {# measured match} other {# measured matches}} out of {filtres} · {source} · {pas, number} m grid · {plancher, plural, one {# distinct match} other {# distinct matches}} per zone"
+
+[tactical.plan.info_source_journal]
+fr = "journal des morts"
+en = "death log"
+
+[tactical.plan.info_source_replay]
+fr = "artefacts de rejeu"
+en = "replay artifacts"
+
+# Lecture « victoires − défaites » : les deux dénominateurs.
+[tactical.plan.info_gagne]
+fr = "{v, plural, one {# victoire} other {# victoires}} et {d, plural, one {# défaite} other {# défaites}} mesurées, {plancher, plural, one {# match distinct} other {# matchs distincts}} de chaque côté"
+en = "{v, plural, one {# win} other {# wins}} and {d, plural, one {# loss} other {# losses}} measured, {plancher, plural, one {# distinct match} other {# distinct matches}} on each side"
+
+# Lecture « morts seul » : la règle, puis ce qu'elle écarte.
+[tactical.plan.info_isole]
+fr = "seul : aucun coéquipier visible, ou le plus proche au-delà de {portee} (portée du radar)"
+en = "alone: no teammate in sight, or the nearest beyond {portee} (radar range)"
+
+[tactical.plan.info_no_range]
+fr = "{n, plural, one {# match sans portée de radar connue} other {# matchs sans portée de radar connue}}"
+en = "{n, plural, one {# match without a known radar range} other {# matches without a known radar range}}"
+
+[tactical.plan.info_team_down]
+fr = "{n, plural, one {# mort écartée, aucun coéquipier en mesure d'accompagner} other {# morts écartées, aucun coéquipier en mesure d'accompagner}}"
+en = "{n, plural, one {# death set aside, no teammate able to follow} other {# deaths set aside, no teammate able to follow}}"
+
+# Les zones servies hors du cadre du fond (non peintes).
+[tactical.plan.info_off_frame]
+fr = "{hors, plural, one {# zone hors du cadre du fond} other {# zones hors du cadre du fond}} sur {total}"
+en = "{hors, plural, one {# zone outside the background frame} other {# zones outside the background frame}} out of {total}"
+
+# Les trois réglages en pilules du bandeau.
+[tactical.plan.pill_reading]
+fr = "Lecture"
+en = "Reading"
+
+[tactical.plan.pill_players]
+fr = "Joueurs"
+en = "Players"
+
+[tactical.plan.pill_respawn]
+fr = "Réapparition"
+en = "Respawn"
+
+[tactical.plan.pill_respawn_all]
+fr = "Toutes"
+en = "All"
+
+# Infobulle du bouton « Escouade » désactivé.
+[tactical.plan.squad_disabled]
+fr = "Aucune composition choisie dans la barre"
+en = "No squad chosen in the filter bar"

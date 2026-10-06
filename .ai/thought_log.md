@@ -115950,3 +115950,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : gate à blanc rouge sur `tsc` (fixture cassée par le contrat de L1, réparée) ; tests vus rouges avant le code, la page prouvée rouge après coup contre HEAD (9 échecs) ; 9 mutations rouges ; gate web vert (852 fichiers / 9 133 tests, `tsc` 0, lint 0 erreur, manifestes à jour, ratchets verts, pre-push vert) ; §4.A → 0.
 
 **Conclusion / prochaine étape** : L4 clos ; L5 (la carte du plan, avec le rappel D18 au compte rendu) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L5 : la carte du plan — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L5 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : la carte du plan est réécrite (bandeau nom + ⓘ + pilules « Lecture » / « Joueurs » / « Réapparition », bandeau d'état, fond + calque, rampe verticale de 220 px au bord droit, états vides en titre seul) et TOUJOURS montée dès qu'une carte est connue — correction du superviseur sur la règle transitoire de L4.4 : échec, périmètre en échec et composition impossible se disent sur le fond, qui reste ; la colonne ne dit que ses propres états. Lecture `solde` ajoutée au web ; opacités du noyau partagé 0,45 → 0,85 (D18 : vaut aussi pour « Occupation du terrain » de la Vue match et le rejeu 2D). H2, barre d'outils, KPI, carte Coordination, `KPIStrip` et le code mort associé retirés.
+
+**Résultats observés** : tests logiques vus rouges avant le code ; tests de vue prouvés rouges contre HEAD (35 échecs) ; 10 mutations rouges ; gate web vert (851 fichiers / 9 133 tests, `tsc` 0, lint 0 erreur, noyau de peinture rejoué nommément, ratchets et pre-push verts) ; §4.B → 0 hors lecteurs conservés et instrument de L8.2.
+
+**Conclusion / prochaine étape** : L5 clos ; L6 (la zone sélectionnée) après le « continue » du superviseur.

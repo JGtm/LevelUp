@@ -84,6 +84,16 @@ describe('carteEffective (D11)', () => {
     expect(carteEffective('inconnue', cartes)).toEqual({ mapId: 'inconnue', origine: 'hors_filtre' })
   })
 
+  it('la liste des cartes n’a pas encore répondu : la carte de l’URL (ou aucune), en attente, sans lecture', () => {
+    expect(carteEffective('lock', undefined)).toEqual({ mapId: 'lock', origine: 'attente' })
+    expect(carteEffective('', undefined)).toEqual({ mapId: '', origine: 'attente' })
+  })
+
+  it('la liste des cartes a échoué : la carte de l’URL garde son fond, rien n’est lu', () => {
+    expect(carteEffective('lock', null)).toEqual({ mapId: 'lock', origine: 'aucune' })
+    expect(carteEffective('', null)).toEqual({ mapId: '', origine: 'aucune' })
+  })
+
   it('aucune carte ouvrable : aucune lecture', () => {
     expect(carteEffective('', [AQUARIUS, BEHEMOTH])).toEqual({ mapId: '', origine: 'aucune' })
   })

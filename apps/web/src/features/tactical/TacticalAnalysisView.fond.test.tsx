@@ -113,7 +113,7 @@ function monter(matchIds: string[] | null) {
   const vue = (ids: string[] | null) => (
     <TacticalAnalysisView
       playerSlug="JGtm"
-      mapId="streets"
+      carte={{ mapId: 'streets', origine: 'url' }}
       mapName="Ruelles"
       locale="fr"
       t={t}
@@ -147,7 +147,7 @@ function enRelecture(img: HTMLImageElement) {
   memeFond(img)
   expect(screen.getByTestId('tactical-analysis-updating')).toHaveTextContent(t.analysisUpdating)
   expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'true')
-  expect(screen.getByTestId('kpi-strip')).toBeInTheDocument()
+  expect(screen.getByTestId('tactical-plan-canvas')).toBeInTheDocument()
 }
 
 function relectureFinie(img: HTMLImageElement) {
@@ -160,12 +160,12 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
   it('changement de QUESTION : même <img> pendant l’attente, ancien calque dit « Mise à jour… »', async () => {
     const kills = differe<TacticalRaster>()
     monter(['m1', 'm2'])
-    await screen.findByTestId('kpi-strip')
+    await screen.findByTestId('tactical-plan-canvas')
     const img = await fondCharge()
 
     repondre = (corps) =>
       corps.question === 'kills' ? kills.promesse : Promise.resolve(raster('morts', 5))
-    fireEvent.change(screen.getByRole('combobox', { name: t.questionLabel }), {
+    fireEvent.change(screen.getByRole('combobox', { name: t.pillReading }), {
       target: { value: 'kills' },
     })
     await waitFor(() =>
@@ -189,7 +189,7 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
   it('changement de FILTRE (matchIds → null → autre liste) : même <img> tout du long', async () => {
     const autre = differe<TacticalRaster>()
     const vue = monter(['m1', 'm2'])
-    await screen.findByTestId('kpi-strip')
+    await screen.findByTestId('tactical-plan-canvas')
     const img = await fondCharge()
 
     // Le périmètre se résout : la liste passe par `null` (non résolu).
@@ -227,7 +227,7 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
     try {
       const autre = differe<TacticalRaster>()
       const vue = monter(['m1', 'm2'])
-      await screen.findByTestId('kpi-strip')
+      await screen.findByTestId('tactical-plan-canvas')
       fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 30, clientY: 20 })
       await waitFor(() => expect(detail()).toHaveLength(1))
 
@@ -262,11 +262,11 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
     const img = await fondCharge()
     const cadre = screen.getByTestId('tactical-plan-frame')
     expect(within(cadre).getByTestId('tactical-analysis-pending')).toBeInTheDocument()
-    expect(screen.queryByTestId('kpi-strip')).toBeNull()
+    expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
     expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'true')
 
     premiere.liberer(raster('morts', 5))
-    await screen.findByTestId('kpi-strip')
+    await screen.findByTestId('tactical-plan-canvas')
     expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
     memeFond(img)
   })

@@ -69,18 +69,18 @@ export function getTacticalText(locale: Locale) {
     unknownTeammateDescription: (names: string) =>
       m('tactical.filter.unknown_teammate_description', { names }),
 
-    // ── Vue d'analyse (Phase 5) ──────────────────────────────────────────────
-    // ORDRE DE LA MAQUETTE 034b1915, et il n'est pas arbitraire : on va du plus large au
-    // plus précis (où je passe mon temps, où je meurs, où je tue), puis des lectures
-    // dérivées (isolement, écart victoires/défaites), puis des routes, qui ne sont pas une
-    // grandeur par cellule.
+    // ── Lectures du plan, dans l'ordre de la pilule « Lecture » ─────────────────────
+    // Les grandeurs de base (morts, frags, leur solde), puis les lectures signées et dérivées
+    // (victoires − défaites), puis celles des artefacts de rejeu (temps, trajets), et la lecture
+    // de placement (morts seul).
     analysisQuestions: [
-      { id: 'temps' as const, label: m('tactical.analysis.questions.temps') as string },
       { id: 'morts' as const, label: m('tactical.analysis.questions.morts') as string },
       { id: 'kills' as const, label: m('tactical.analysis.questions.kills') as string },
-      { id: 'isole' as const, label: m('tactical.analysis.questions.isole') as string },
+      { id: 'solde' as const, label: m('tactical.analysis.questions.solde') as string },
       { id: 'gagne' as const, label: m('tactical.analysis.questions.gagne') as string },
+      { id: 'temps' as const, label: m('tactical.analysis.questions.temps') as string },
       { id: 'routes' as const, label: m('tactical.analysis.questions.routes') as string },
+      { id: 'isole' as const, label: m('tactical.analysis.questions.isole') as string },
     ],
     kpiMatchsRetained: m('tactical.kpi.matches_retained'),
     kpiCoverage: m('tactical.kpi.coverage'),
@@ -103,6 +103,23 @@ export function getTacticalText(locale: Locale) {
     kpiIsolationRadius: (rayon: string) => m('tactical.kpi.isolation_radius', { rayon }),
     kpiLowerIsBetter: m('tactical.kpi.lower_is_better'),
     planTitle: m('tactical.plan.title'),
+    // Aide ⓘ du titre de la carte du plan (dénominateurs, source, pas, plancher) et ses ajouts
+    // par lecture.
+    planInfo: (retenus: number, filtres: number, source: string, pas: number, plancher: number) =>
+      m('tactical.plan.info', { retenus, filtres, source, pas, plancher }),
+    planInfoSourceJournal: m('tactical.plan.info_source_journal'),
+    planInfoSourceReplay: m('tactical.plan.info_source_replay'),
+    planInfoGagne: (v: number, d: number, plancher: number) => m('tactical.plan.info_gagne', { v, d, plancher }),
+    planInfoIsole: (portee: string) => m('tactical.plan.info_isole', { portee }),
+    planInfoNoRange: (n: number) => m('tactical.plan.info_no_range', { n }),
+    planInfoTeamDown: (n: number) => m('tactical.plan.info_team_down', { n }),
+    planInfoOffFrame: (hors: number, total: number) => m('tactical.plan.info_off_frame', { hors, total }),
+    // Les trois réglages en pilules du bandeau.
+    pillReading: m('tactical.plan.pill_reading'),
+    pillPlayers: m('tactical.plan.pill_players'),
+    pillRespawn: m('tactical.plan.pill_respawn'),
+    pillRespawnAll: m('tactical.plan.pill_respawn_all'),
+    planSquadDisabled: m('tactical.plan.squad_disabled'),
     planLegendLabel: (lo: string, hi: string) => m('tactical.plan.legend_label', { lo, hi }),
     planScaleQuantile: m('tactical.plan.scale_quantile'),
     planScaleDivergent: (plancher: number) => m('tactical.plan.scale_divergent', { plancher }),
@@ -184,6 +201,7 @@ export function getTacticalText(locale: Locale) {
     units: {
       morts: m('tactical.unit.morts') as string,
       kills: m('tactical.unit.kills') as string,
+      solde: m('tactical.unit.solde') as string,
       gagne: m('tactical.unit.gagne') as string,
       temps: m('tactical.unit.temps') as string,
       routes: m('tactical.unit.routes') as string,

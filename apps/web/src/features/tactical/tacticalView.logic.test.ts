@@ -7,12 +7,10 @@ import { getTacticalText } from './i18n'
 import {
   celluleDuClic,
   grilleDuPlan,
-  pageTitle,
   planEmptyReason,
   planEmptyText,
   planLegend,
   questionSansCellule,
-  ratioSafe,
   rectSelection,
   repereAspect,
   repereDuPlan,
@@ -27,29 +25,13 @@ const tFr = getTacticalText('fr')
 const tEn = getTacticalText('en')
 
 
-// ─── Titre de la vue ───────────────────────────────────────────────────────────
-
-describe('pageTitle — « Plan de <carte> — <question> »', () => {
-  it('assemble le nom de carte et le libellé FR de la question', () => {
-    expect(pageTitle(tFr, 'Aquarius', 'morts')).toBe('Plan de Aquarius — Où je meurs')
-  })
-
-  it('assemble le nom de carte et le libellé EN de la question', () => {
-    expect(pageTitle(tEn, 'Aquarius', 'morts')).toBe('Plan of Aquarius — Where I die')
-  })
-
-  it('change de libellé avec la question, à carte fixe', () => {
-    expect(pageTitle(tFr, 'Aquarius', 'kills')).toBe('Plan de Aquarius — Où je tue')
-    expect(pageTitle(tFr, 'Aquarius', 'routes')).toBe('Plan de Aquarius — Mes routes de spawn')
-  })
-})
-
 // ─── Unité par question ────────────────────────────────────────────────────────
 
 describe('unitForQuestion — une unité distincte par question', () => {
   it.each([
     ['morts', 'morts par match'],
     ['kills', 'frags par match'],
+    ['solde', 'frags − morts par match'],
     ['gagne', 'engagements par match'],
     ['temps', 'secondes par match'],
     ['routes', 'passages par match'],
@@ -154,19 +136,6 @@ describe('planEmptyText — le titre et la description de chaque cause', () => {
       title: tFr.planEmptyNoMatchTitle,
       description: tFr.planEmptyNoMatchDescription,
     })
-  })
-})
-
-// ─── ratioSafe ──────────────────────────────────────────────────────────────────
-
-describe('ratioSafe — une proportion, jamais une division par zéro', () => {
-  it('divise normalement', () => {
-    expect(ratioSafe(3, 12)).toBe(0.25)
-  })
-
-  it('rend 0 sur un dénominateur nul ou négatif', () => {
-    expect(ratioSafe(3, 0)).toBe(0)
-    expect(ratioSafe(3, -1)).toBe(0)
   })
 })
 
