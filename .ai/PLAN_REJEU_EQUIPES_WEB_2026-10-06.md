@@ -73,7 +73,8 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
   `SEAT_WAITING_CHROME` (`playerCardFx.ts` : bordure tiretée `var(--border)`, fond `var(--card)`,
   comme `cardChrome`) ; état écrit au centre du corps fixe ; le nom de l'occupant pas encore
   apparu écrit par `cardName` (la dérivation de la fiche, suffixe « [bot] » retiré — elle
-  l'affichait brut).
+  l'affichait brut). En E5.2, les deux tuiles fusionnent en `ReplaySeatWaiting` (`occupant`
+  nul = place libre) pour ne pas allonger `ReplayTeams`.
 - [x] E3.2 Test DOM (`ReplayTeams.places.test.tsx`) : pour chaque gabarit (normal, compact BTB),
   les trois sortes de tuile ont la même classe de boîte (littérale), le même corps fixe
   (littéral), la même ligne du nom ; seul l'habit tireté les distingue.
@@ -98,10 +99,24 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
 
 ## Étape E5 — Vérification et livraison
 
-- [ ] E5.1 Mesure sur pièces du parc (126 artefacts, lecture seule, script jetable non commité) :
-  camps par artefact, entrées sans équipe rendues, tuiles d'attente.
-- [ ] E5.2 Gates : `npm run typecheck`, `npm run lint`, knip, linters ratchet du pre-push, vitest
-  COMPLET (`--pool=forks`), Playwright si l'environnement le permet.
+- [x] E5.1 Mesure sur pièces du parc (126 artefacts du worktree principal, lecture seule, test
+  jetable passant par les vrais modules, supprimé après usage ; bilan
+  `scratchpad/web/bilan_parc.json`) : 126 / 126 documents à exactement 2 camps ; 18 entrées sans
+  équipe dans 16 documents, 0 tuile rendue pour elles ; 144 rendus DOM contrôlés (milieu de
+  match + milieu de chaque présence d'entrée sans équipe) : 0 troisième colonne, 0 « Sans
+  équipe » / « No team » ; 19 tuiles d'attente rendues, 0 hors de la boîte de la fiche ; 0 geste
+  et 0 prise de socle basculés hors camp par ces entrées. Découverte D1 vérifiée par un second
+  test jetable (un bot allié joint à la feuille reçoit l'encre ADVERSE sur la carte).
+- [x] E5.2 Gates : `npm run typecheck`, `npm run lint`, knip, linters ratchet du pre-push, vitest
+  COMPLET (`--pool=forks`), Playwright si l'environnement le permet. Typecheck à froid
+  (`node_modules/.tmp` purgé) 0 erreur ; lint complet 0 erreur (26 avertissements, tous hors des
+  fichiers du lot : eslint des 50 fichiers du lot = 0 problème) ; knip-ratchet 0/0/0 ; champs en
+  dur 0, couleurs en dur 0, imports inter-features 7 / plafond 7. Revue de la checklist : les
+  composants `ReplayPlayerCard` (98 lignes de code avant le lot) et `ReplayTeams` (88) dépassaient
+  déjà 80 lignes et le lot les avait allongés (105 / 91) : `ReplayPlayerCard` est découpé
+  (`CardUnderLayers`, `CardBody`, 48 lignes de code) et les deux tuiles d'attente fusionnent en
+  `ReplaySeatWaiting` (`occupant` nul = place libre), ce qui ramène `ReplayTeams` à 86 — la dette
+  baisse au lieu de croître. Résultats vitest et Playwright : cf. journal.
 - [ ] E5.3 `delivery-checklist`, `adversarial-review` sur le diff, corrections.
 - [ ] E5.4 Commits (`fix(rejeu):`), push, CI suivie et verte, entrée `.ai/thought_log.md`.
 

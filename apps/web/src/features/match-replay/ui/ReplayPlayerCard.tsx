@@ -19,11 +19,11 @@
  *
  * TROIS SORTES DE TUILE, UNE SEULE BOÎTE (2026-10-06, retour utilisateur : la tuile « pas encore
  * apparu » n'avait ni la largeur ni la hauteur d'une fiche, et toute la colonne sautait). La fiche
- * d'un joueur présent, la place LIBRE (Q20) et l'occupant PAS ENCORE APPARU (Q21) se rendent dans
- * le MÊME squelette (`TileFrame`) : boîte `TILE_LAYOUT[...].tile`, ligne du nom, corps à hauteur
- * fixe `BODY_CLASS[...]` — classe pour classe, dans les deux gabarits. Seul l'HABIT change (le
- * chrome tireté des tuiles d'attente, `SEAT_WAITING_CHROME`) : une tuile d'attente ne décale plus
- * rien.
+ * d'un joueur présent et la tuile d'attente (`ReplaySeatWaiting` : place LIBRE, Q20, ou occupant
+ * PAS ENCORE APPARU, Q21) se rendent dans le MÊME squelette (`TileFrame`) : boîte
+ * `TILE_LAYOUT[...].tile`, ligne du nom, corps à hauteur fixe `BODY_CLASS[...]` — classe pour
+ * classe, dans les deux gabarits. Seul l'HABIT change (le chrome tireté des tuiles d'attente,
+ * `SEAT_WAITING_CHROME`) : une tuile d'attente ne décale plus rien.
  *
  * TROIS RÈGLES QUI NE SE NÉGOCIENT PAS ICI :
  *   1. Une valeur non lue s'affiche comme une lacune, jamais comme un zéro ni une moyenne.
@@ -43,12 +43,14 @@ import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import type { CardGabarit } from '../model/cardGabarit'
 import type { ZonePresence } from '../model/equipmentZones'
+import type { EquippedReading } from '../model/equippedLogic'
 import { handCellHint } from '../model/handCellHint'
-import { cardChrome, hasUnderLayer, SEAT_WAITING_CHROME } from '../model/playerCardFx'
+import type { ObjectiveMarkKind } from '../model/objectiveMark'
+import { cardChrome, hasUnderLayer, SEAT_WAITING_CHROME, type CardFx } from '../model/playerCardFx'
 import { cardName, playerCardReadings, type CardFxScene } from '../model/playerCardReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import type { ReplayPlayer, VitalityPresence } from '../../../lib/replay/rosterLogic'
+import type { PlayerState, ReplayPlayer, VitalityPresence } from '../../../lib/replay/rosterLogic'
 
 /**
  * LA MISE EN PAGE DE LA TUILE, PAR HAUTEUR DE CORPS — une table FERMÉE de littéraux Tailwind
@@ -196,26 +198,73 @@ export function ReplayPlayerCard({
   // nom, ou ligne des jauges — et l'encadré « Éliminé » sur une fiche morte compacte). Il reste
   // visible mort ou vif : la mort ne retire pas les compteurs.
   const counters = <ReplayCountersBadge board={player.board} live={live} locale={locale} gabarit={gabarit} />
-  // Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse, dit aussi par
-  // l'épaisseur (5 / 3 en normal, 4 / 2 en compact). Sans `sh`/`hp` dans le document, aucune
-  // barre n'existe (`VitalityBar` rend null sur une lecture nulle).
-  const gauges = (
-    <div className={L.gauges}>
-      <VitalityBar reading={state.shield} fade={vitalityFade} name={t.shieldLabel} token="info" heightPx={gabarit.gaugeShieldPx} />
-      <VitalityBar reading={state.health} fade={vitalityFade} name={t.healthLabel} token="success" heightPx={gabarit.gaugeHealthPx} />
-    </div>
+  return (
+    // LA TUILE (option 2a du handoff 2026-08-27) : chaque fiche porte sa bordure et son
+    // fond — dégradé court autour de `card` en vie, `card` teinté destructive en mort
+    // (cf. playerCardFx.cardChrome). `shrink-0` : une tuile ne se tasse jamais, la colonne
+    // défile.
+    //
+    // AUCUNE MARQUE D'IDENTITÉ SUR LA FICHE (demande utilisateur du 2026-08-25) : le glyphe
+    // « ami » a été retiré de la colonne. Il reste au FIL des éliminations, où il sert à
+    // reconnaître un nom au milieu d'événements qui défilent ; sur une fiche, la colonne
+    // d'équipe et le nom disent déjà tout ce qu'il y a à savoir. AUCUN ÉTAT DE MOUVEMENT non
+    // plus (décision utilisateur du 2026-09-23, Q16) : le document garde `stances[]`, la fiche
+    // ne le lit pas.
+    <TileFrame
+      gabarit={gabarit}
+      chrome={cardChrome(state.alive)}
+      title={fx.title}
+      under={<CardUnderLayers fx={fx} objective={objective} gabarit={gabarit} />}
+      nameLine={
+        <>
+          <span className={nameClass(gabarit, !state.alive)} title={name}>
+            {name}
+          </span>
+          {L.countersOnNameLine && counters}
+        </>
+      }
+      body={
+        <CardBody
+          doc={doc}
+          frame={frame}
+          state={state}
+          equipped={equipped}
+          filmIndex={filmIndex}
+          readingFull={readingFull}
+          vitalityFade={vitalityFade}
+          locale={locale}
+          gabarit={gabarit}
+          counters={counters}
+        />
+      }
+      over={
+        <ZoneFxOverlay
+          zones={zones}
+          translocationDelay={fx.translocationDelay}
+          boltCount={gabarit.boltCount}
+          radiusClass={L.layerRadius}
+        />
+      }
+    />
   )
-  // SANS CELLULE DE MUNITIONS (`showAmmo: false`), c'est l'ARME EN MAIN qui dit ses munitions
-  // et les marques de la lecture d'inventaire, en infobulle (décision D5) : la fiche compose le
-  // texte (`model/handCellHint.ts`, une lecture d'inventaire de plus par fiche compacte — le
-  // volet JS du 5.2 le mesure) et le confie à la rangée d'armes. Jamais sur la fiche normale.
-  const handHint =
-    gabarit.showAmmo || !state.life
-      ? undefined
-      : (handCellHint(t, doc, state.life.slot, frame, equipped) ?? undefined)
-  // LES COUCHES SOUS LE CONTENU, dans l'ordre de peinture du DOM : la couche d'effets puis le
-  // filigrane, déclarés AVANT les rangées (qui sont `relative`) pour peindre sous elles.
-  const under = (
+}
+
+/**
+ * CardUnderLayers — LES COUCHES SOUS LE CONTENU d'une fiche, dans l'ordre de peinture du DOM :
+ * la couche d'effets puis le filigrane, déclarés AVANT les rangées (qui sont `relative`) pour
+ * peindre sous elles.
+ */
+function CardUnderLayers({
+  fx,
+  objective,
+  gabarit,
+}: {
+  fx: CardFx
+  objective: ObjectiveMarkKind | null
+  gabarit: CardGabarit
+}) {
+  const L = TILE_LAYOUT[gabarit.bodyPx]
+  return (
     <>
       {/* LA COUCHE D'EFFETS ÉPOUSE LA TUILE (option 2a) : fonds, voiles, flou et cadres
           vivent sur cette couche `inset-0`, au rayon de la tuile (`L.layerRadius`), SOUS le
@@ -236,97 +285,101 @@ export function ReplayPlayerCard({
       )}
     </>
   )
+}
+
+interface CardBodyProps {
+  doc: ReplayDocumentReady
+  frame: number
+  state: PlayerState
+  equipped: EquippedReading | null
+  filmIndex: number | null
+  readingFull: number
+  vitalityFade: number
+  locale: ReplayLocale
+  gabarit: CardGabarit
+  /** Le triplet F/M/A, construit une fois par la fiche : il vit sur la ligne du nom OU ici. */
+  counters: ReactNode
+}
+
+/**
+ * CardBody — LE CORPS À HAUTEUR FIXE d'une fiche (`bodyPx` : 35 = barres 11 + marge 6 +
+ * inventaire 18 ; 31 = jauges 12 + 3 + rangée 16), la même vivante et morte. La mort remplace son
+ * CONTENU — l'encadré « Éliminé » remplit toute la zone — jamais la zone : une fiche qui change de
+ * hauteur fait sauter toute la colonne à chaque mort (retour utilisateur du 2026-08-24).
+ */
+function CardBody({
+  doc, frame, state, equipped, filmIndex, readingFull, vitalityFade, locale, gabarit, counters,
+}: CardBodyProps) {
+  const t = REPLAY_TEXT[locale]
+  const L = TILE_LAYOUT[gabarit.bodyPx]
+  if (!state.alive) {
+    return (
+      <EliminatedBox
+        state={state}
+        doc={doc}
+        frame={frame}
+        locale={locale}
+        bodyPx={gabarit.bodyPx}
+        counters={L.countersOnNameLine ? undefined : counters}
+      />
+    )
+  }
+  // Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse, dit aussi par
+  // l'épaisseur (5 / 3 en normal, 4 / 2 en compact). Sans `sh`/`hp` dans le document, aucune
+  // barre n'existe (`VitalityBar` rend null sur une lecture nulle).
+  const gauges = (
+    <div className={L.gauges}>
+      <VitalityBar reading={state.shield} fade={vitalityFade} name={t.shieldLabel} token="info" heightPx={gabarit.gaugeShieldPx} />
+      <VitalityBar reading={state.health} fade={vitalityFade} name={t.healthLabel} token="success" heightPx={gabarit.gaugeHealthPx} />
+    </div>
+  )
+  // SANS CELLULE DE MUNITIONS (`showAmmo: false`), c'est l'ARME EN MAIN qui dit ses munitions
+  // et les marques de la lecture d'inventaire, en infobulle (décision D5) : la fiche compose le
+  // texte (`model/handCellHint.ts`, une lecture d'inventaire de plus par fiche compacte — le
+  // volet JS du 5.2 le mesure) et le confie à la rangée d'armes. Jamais sur la fiche normale.
+  const handHint =
+    gabarit.showAmmo || !state.life
+      ? undefined
+      : (handCellHint(t, doc, state.life.slot, frame, equipped) ?? undefined)
   return (
-    // LA TUILE (option 2a du handoff 2026-08-27) : chaque fiche porte sa bordure et son
-    // fond — dégradé court autour de `card` en vie, `card` teinté destructive en mort
-    // (cf. playerCardFx.cardChrome). `shrink-0` : une tuile ne se tasse jamais, la colonne
-    // défile.
-    //
-    // AUCUNE MARQUE D'IDENTITÉ SUR LA FICHE (demande utilisateur du 2026-08-25) : le glyphe
-    // « ami » a été retiré de la colonne. Il reste au FIL des éliminations, où il sert à
-    // reconnaître un nom au milieu d'événements qui défilent ; sur une fiche, la colonne
-    // d'équipe et le nom disent déjà tout ce qu'il y a à savoir. AUCUN ÉTAT DE MOUVEMENT non
-    // plus (décision utilisateur du 2026-09-23, Q16) : le document garde `stances[]`, la fiche
-    // ne le lit pas.
-    //
-    // HAUTEUR CONSTANTE vivant/mort : le CORPS de la fiche est une zone à hauteur FIXE (`bodyPx` :
-    // 35 = barres 11 + marge 6 + inventaire 18 ; 31 = jauges 12 + 3 + rangée 16) dans les DEUX
-    // états. La mort remplace son CONTENU — l'encadré « Éliminé » remplit toute la zone — jamais
-    // la zone : une fiche qui change de hauteur fait sauter toute la colonne à chaque mort
-    // (retour utilisateur du 2026-08-24). `overflow-hidden` est la garantie, pas un ornement.
-    <TileFrame
-      gabarit={gabarit}
-      chrome={cardChrome(state.alive)}
-      title={fx.title}
-      under={under}
-      nameLine={
-        <>
-          <span className={nameClass(gabarit, !state.alive)} title={name}>
-            {name}
-          </span>
-          {L.countersOnNameLine && counters}
-        </>
-      }
-      body={
-        state.alive ? (
-          <>
-            {L.countersOnNameLine ? (
-              gauges
-            ) : (
-              <div className={L.vitalsLine}>
-                {gauges}
-                {counters}
-              </div>
-            )}
-            {/* ARMES ET INVENTAIRE SUR UNE GRILLE À CELLULES FIXES (demande utilisateur du
-                2026-08-24) : chaque rangée émet des cellules à largeur constante — pour que les
-                fiches s'alignent en colonnes. `flex-nowrap` + `overflow-hidden` : la rangée ne
-                se replie jamais. */}
-            <div className={L.row}>
-              <ReplayWeaponsRow
-                doc={doc}
-                state={state}
-                read={equipped}
-                frame={frame}
-                readingFull={readingFull}
-                filmIndex={filmIndex}
-                locale={locale}
-                gabarit={gabarit}
-                handHint={handHint}
-              />
-              {state.life && (
-                <ReplayInventoryRow
-                  doc={doc}
-                  slot={state.life.slot}
-                  equipped={equipped}
-                  frame={frame}
-                  readingFull={readingFull}
-                  locale={locale}
-                  gabarit={gabarit}
-                />
-              )}
-            </div>
-          </>
-        ) : (
-          <EliminatedBox
-            state={state}
-            doc={doc}
-            frame={frame}
-            locale={locale}
-            bodyPx={gabarit.bodyPx}
-            counters={L.countersOnNameLine ? undefined : counters}
-          />
-        )
-      }
-      over={
-        <ZoneFxOverlay
-          zones={zones}
-          translocationDelay={fx.translocationDelay}
-          boltCount={gabarit.boltCount}
-          radiusClass={L.layerRadius}
+    <>
+      {L.countersOnNameLine ? (
+        gauges
+      ) : (
+        <div className={L.vitalsLine}>
+          {gauges}
+          {counters}
+        </div>
+      )}
+      {/* ARMES ET INVENTAIRE SUR UNE GRILLE À CELLULES FIXES (demande utilisateur du
+          2026-08-24) : chaque rangée émet des cellules à largeur constante — pour que les
+          fiches s'alignent en colonnes. `flex-nowrap` + `overflow-hidden` : la rangée ne se
+          replie jamais. */}
+      <div className={L.row}>
+        <ReplayWeaponsRow
+          doc={doc}
+          state={state}
+          read={equipped}
+          frame={frame}
+          readingFull={readingFull}
+          filmIndex={filmIndex}
+          locale={locale}
+          gabarit={gabarit}
+          handHint={handHint}
         />
-      }
-    />
+        {state.life && (
+          <ReplayInventoryRow
+            doc={doc}
+            slot={state.life.slot}
+            equipped={equipped}
+            frame={frame}
+            readingFull={readingFull}
+            locale={locale}
+            gabarit={gabarit}
+          />
+        )}
+      </div>
+    </>
   )
 }
 
@@ -343,59 +396,40 @@ function WaitingState({ label }: { label: string }) {
 }
 
 /**
- * ReplaySeatVacant — (Q20) LA PLACE LIBRE : personne ne la tient à l'instant lu — son occupant
- * est parti et son remplaçant n'est pas encore arrivé, ou elle attend son premier occupant.
+ * ReplaySeatWaiting — LA TUILE D'UNE PLACE SANS FICHE, au gabarit d'une fiche (même squelette) :
  *
- * ELLE RESTE À L'ÉCRAN parce que le nombre de places est FINI (règle des places) : la retirer
- * ferait croire à une équipe plus petite, et la grille sauterait d'un cran puis reviendrait. Elle
- * ne montre AUCUN nom — un joueur parti n'est jamais affiché : sa ligne du nom ne porte qu'un
- * espace insécable, qui la tient à la hauteur de celle d'une fiche sans rien écrire.
+ *	`occupant` nul — (Q20) LA PLACE LIBRE : personne ne la tient à l'instant lu, son occupant est
+ *	  parti et son remplaçant n'est pas encore arrivé, ou elle attend son premier occupant. Elle
+ *	  reste à l'écran parce que le nombre de places est FINI (règle des places) : la retirer ferait
+ *	  croire à une équipe plus petite, et la grille sauterait d'un cran puis reviendrait. Elle ne
+ *	  montre AUCUN nom — un joueur parti n'est jamais affiché : sa ligne du nom ne porte qu'un espace
+ *	  insécable, qui la tient à la hauteur de celle d'une fiche sans rien écrire ;
+ *	un `occupant` — (Q21) IL TIENT LA PLACE, SANS CORPS ENCORE : au coup d'envoi, ou à son arrivée,
+ *	  avant sa première apparition. Son nom, écrit comme sur sa fiche (`cardName`), et rien
+ *	  d'autre : ni vitalité, ni armes, ni compteurs — lui prêter un état serait inventer.
  */
-export function ReplaySeatVacant({ gabarit, locale }: { gabarit: CardGabarit; locale: ReplayLocale }) {
-  const t = REPLAY_TEXT[locale]
-  return (
-    <TileFrame
-      gabarit={gabarit}
-      chrome={SEAT_WAITING_CHROME}
-      title={t.seatVacantHint}
-      nameLine={
-        <span aria-hidden className={nameClass(gabarit, true)}>
-          {' '}
-        </span>
-      }
-      body={<WaitingState label={t.seatVacant} />}
-    />
-  )
-}
-
-/**
- * ReplaySeatNotSpawned — (Q21) L'OCCUPANT TIENT LA PLACE, SANS CORPS ENCORE : au coup d'envoi,
- * ou à son arrivée, avant sa première apparition. Son nom — écrit comme sur sa fiche
- * (`cardName`) —, et rien d'autre : ni vitalité, ni armes, ni compteurs ; il n'a encore rien à en
- * dire, et lui prêter un état serait inventer.
- */
-export function ReplaySeatNotSpawned({
-  player,
+export function ReplaySeatWaiting({
+  occupant,
   gabarit,
   locale,
 }: {
-  player: ReplayPlayer
+  occupant: ReplayPlayer | null
   gabarit: CardGabarit
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
-  const name = cardName(player, t)
+  const name = occupant ? cardName(occupant, t) : null
   return (
     <TileFrame
       gabarit={gabarit}
       chrome={SEAT_WAITING_CHROME}
-      title={t.seatNotSpawnedHint}
+      title={name === null ? t.seatVacantHint : t.seatNotSpawnedHint}
       nameLine={
-        <span className={nameClass(gabarit, true)} title={name}>
-          {name}
+        <span aria-hidden={name === null || undefined} className={nameClass(gabarit, true)} title={name ?? undefined}>
+          {name ?? '\u00a0'}
         </span>
       }
-      body={<WaitingState label={t.seatNotSpawned} />}
+      body={<WaitingState label={name === null ? t.seatVacant : t.seatNotSpawned} />}
     />
   )
 }

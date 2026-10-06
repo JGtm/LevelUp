@@ -35,7 +35,7 @@ import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { ReplayPlayerCard, ReplaySeatNotSpawned, ReplaySeatVacant } from './ReplayPlayerCard'
+import { ReplayPlayerCard, ReplaySeatWaiting } from './ReplayPlayerCard'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { cardDensity } from '../model/cardDensity'
 import { teleportMoments } from '../model/placementTeleport'
@@ -227,13 +227,8 @@ export function ReplayTeams({
             {group.seats.map((seat) => {
               const lu = seatTileAt(seat, frame)
               if (lu === null) return null
-              if (lu.kind === 'vide' || lu.player === null) {
-                return <ReplaySeatVacant key={seat.key} gabarit={gabarit} locale={locale} />
-              }
-              if (lu.kind === 'pasEncoreApparu') {
-                return (
-                  <ReplaySeatNotSpawned key={seat.key} player={lu.player} gabarit={gabarit} locale={locale} />
-                )
+              if (lu.kind !== 'present' || lu.player === null) {
+                return <ReplaySeatWaiting key={seat.key} occupant={lu.player} gabarit={gabarit} locale={locale} />
               }
               return (
                 <ReplayPlayerCard
