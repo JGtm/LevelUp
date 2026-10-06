@@ -427,8 +427,8 @@ en = "By mode"
 # garde-rail `vocabulaireHauteur.guard.test.ts`.
 
 [synthesis.weapon_range.heading]
-fr = "Portée des engagements"
-en = "Engagement range"
+fr = "Portée"
+en = "Range"
 
 [synthesis.weapon_range.card_title]
 fr = "Portée par arme"
@@ -438,29 +438,17 @@ en = "Range by weapon"
 fr = "Le bâton court du 10e au 90e centile ; le losange marque la médiane. Frags au-dessus, morts en dessous — sur les morts, l'arme est celle du tueur."
 en = "The bar runs from the 10th to the 90th percentile; the diamond marks the median. Kills on top, deaths below — on deaths, the weapon is the killer's."
 
-[synthesis.weapon_range.elevation_subtitle]
-fr = "Hauteur d'engagement"
-en = "Engagement height"
-
-[synthesis.weapon_range.elevation_subtitle_detail]
-fr = "La hauteur d'engagement est votre hauteur moins celle de l'adversaire au moment du coup fatal. Le signe est toujours le vôtre : positif, vous étiez en surplomb, pour un frag comme pour une mort. Seuls les engagements dont les deux positions sont décodées y figurent, et le pied de carte en donne le compte."
-en = "Engagement height is your height minus your opponent's at the moment of the killing blow. The sign is always yours: positive means you were on high ground, for a kill as for a death. Only engagements whose two positions are decoded appear here, and the card footer gives the count."
-
 [synthesis.weapon_range.legend_label]
 fr = "Légende"
 en = "Legend"
 
-[synthesis.weapon_range.legend_elevation_label]
-fr = "Légende de la hauteur d'engagement"
-en = "Engagement height legend"
-
 [synthesis.weapon_range.side_kills]
-fr = "Mes frags"
-en = "My kills"
+fr = "Frags du joueur"
+en = "Player kills"
 
 [synthesis.weapon_range.side_deaths]
-fr = "Mes morts"
-en = "My deaths"
+fr = "Morts du joueur"
+en = "Player deaths"
 
 [synthesis.weapon_range.percentiles]
 fr = "p10 · médiane · p90"
@@ -469,49 +457,6 @@ en = "p10 · median · p90"
 [synthesis.weapon_range.no_measure]
 fr = "aucune mesure"
 en = "no measurement"
-
-# Nuage « distance × hauteur » (D25, proposition T5). Les trois classes « en surplomb / à
-# niveau / en contrebas » sont parties avec les barres empilées par arme : le nuage montre la
-# position, il ne la classe pas.
-[synthesis.weapon_range.elev_axis_x]
-fr = "Distance de l'engagement"
-en = "Engagement distance"
-
-[synthesis.weapon_range.elev_axis_y]
-fr = "Hauteur (m)"
-en = "Height (m)"
-
-[synthesis.weapon_range.elev_level_band]
-fr = "À niveau (± 1 m)"
-en = "Level (± 1 m)"
-
-[synthesis.weapon_range.elev_point_kill]
-fr = "Un frag"
-en = "A kill"
-
-[synthesis.weapon_range.elev_point_death]
-fr = "Une mort"
-en = "A death"
-
-[synthesis.weapon_range.elev_quartiles]
-fr = "Du 1er au 3e quartile"
-en = "1st to 3rd quartile"
-
-[synthesis.weapon_range.elev_medians]
-fr = "Médianes"
-en = "Medians"
-
-[synthesis.weapon_range.elev_median_kills]
-fr = "médiane frags {value}"
-en = "kills median {value}"
-
-[synthesis.weapon_range.elev_median_deaths]
-fr = "médiane morts {value}"
-en = "deaths median {value}"
-
-[synthesis.weapon_range.elev_coverage]
-fr = "{mk, number} frags mesurés sur {tk, number}, {md, number} morts sur {td, number}"
-en = "{mk, number} kills measured of {tk, number}, {md, number} deaths of {td, number}"
 
 [synthesis.weapon_range.table_summary]
 fr = "Voir en tableau"
@@ -550,16 +495,16 @@ fr = "En contrebas"
 en = "On low ground"
 
 [synthesis.weapon_range.tile_median_kills]
-fr = "Portée médiane de mes frags"
-en = "Median range of my kills"
+fr = "Portée médiane des frags du joueur"
+en = "Median range of the player's kills"
 
 [synthesis.weapon_range.tile_median_kills_sub]
 fr = "{measured, number} frags mesurés sur {total, number}"
 en = "{measured, number} measured kills out of {total, number}"
 
 [synthesis.weapon_range.tile_median_deaths]
-fr = "Portée médiane de mes morts"
-en = "Median range of my deaths"
+fr = "Portée médiane des morts du joueur"
+en = "Median range of the player's deaths"
 
 [synthesis.weapon_range.tile_median_deaths_sub]
 fr = "{measured, number} morts mesurées sur {total, number}"
@@ -578,8 +523,8 @@ fr = "Entame → frag"
 en = "Opening → kill"
 
 [synthesis.weapon_range.tile_delta_sub]
-fr = "Vous fermez la distance dans {pct} des frags"
-en = "You close the distance in {pct} of kills"
+fr = "Distance réduite avant le frag dans {pct} des frags"
+en = "Distance closed before the kill in {pct} of kills"
 
 # État vide de la carte : toutes les armes sous le seuil de publication. La section reste
 # affichée (tuiles, armes nommées, note de couverture) — c'est le GRAPHE qui n'a rien à
@@ -587,15 +532,6 @@ en = "You close the distance in {pct} of kills"
 [synthesis.weapon_range.empty_below_threshold]
 fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme."
 en = "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon."
-
-# État vide NOMMÉ de la carte « Hauteur d'engagement ». Le nuage (D25) ne dépend d'AUCUN seuil de
-# publication — la dimension arme ne compte pas (D23-b) — donc la seule cause d'une carte
-# vide est l'absence de frag mesuré sur la fenêtre : un film non décodé, jamais un seuil.
-# L'ancienne phrase (« aucune arme n'atteint le seuil de N mesures ») décrivait les barres
-# empilées par arme, qui n'existent plus.
-[synthesis.weapon_range.elevation_empty]
-fr = "Aucun engagement mesuré sur cette période : les positions des frags ne sont pas encore décodées pour ces matchs."
-en = "No measured engagement over this period: kill positions are not decoded yet for these matches."
 
 # ── Records de distance par arme (la règle) — plan PLAN_RECORDS_DISTANCE_2026-09-20.md.
 # Aucune clé ne dit « portée de l'arme » : c'est un usage mesuré du joueur. Ce qui est écarté

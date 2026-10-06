@@ -231,7 +231,7 @@ type kfIssue struct {
 // (a0c36016 : 14 659 -> 11 890 ; b1f01a33 : 6 719 -> 5 524, trois bipèdes perdus), parce qu'une
 // fausse ancre de génération 1 plus proche que le vrai record suivant se trouve presque partout
 // hors de la bande des bipèdes. Le recalage ne change l'élection QUE devant un en-tête exact.
-func (r *kfRecherche) suivante(from, prevSlot int) kfIssue {
+func (r *kfRecherche) suivante(from, prevSlot int) kfIssue { //nolint:gocyclo // les trois décisions ordonnées ci-dessus (voisin, recalage, élection) et la fin de table se jugent en UNE passe sur la fenêtre, sur un état partagé (traînée de sentinelles, en-tête exact, meilleur candidat)
 	iss := kfIssue{at: -1}
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	exact := -1

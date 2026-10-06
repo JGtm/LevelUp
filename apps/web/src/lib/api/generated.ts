@@ -6288,52 +6288,55 @@ export interface components {
             p95: number;
             symetrique: boolean;
         };
-        ElevationCloudBlock: {
-            deaths: components["schemas"]["ElevationPoint"][] | null;
-            deaths_summary: components["schemas"]["ElevationSideSummary"];
-            kills: components["schemas"]["ElevationPoint"][] | null;
-            kills_summary: components["schemas"]["ElevationSideSummary"];
+        EmpriseEquipment: {
+            families: components["schemas"]["EmpriseEquipmentFamily"][] | null;
             /** Format: int64 */
-            measured_deaths: number;
-            /** Format: int64 */
-            measured_kills: number;
-            /** Format: int64 */
-            total_deaths: number;
-            /** Format: int64 */
-            total_kills: number;
-            weapon_labels?: {
-                [key: string]: components["schemas"]["ElevationWeaponLabel"];
-            };
+            matches_measured: number;
         };
-        ElevationPoint: {
-            /** Format: double */
-            delta_z_m: number;
-            /** Format: double */
-            distance_m: number;
-            match_id: string;
+        EmpriseEquipmentFamily: {
             /** Format: int64 */
-            time_ms: number;
-            weapon: string;
-        };
-        ElevationSideSummary: {
-            /** Format: double */
-            delta_z_p25?: number;
-            /** Format: double */
-            delta_z_p50?: number;
-            /** Format: double */
-            delta_z_p75?: number;
-            /** Format: double */
-            distance_p25?: number;
-            /** Format: double */
-            distance_p50?: number;
-            /** Format: double */
-            distance_p75?: number;
+            dropped_lobby?: number;
             /** Format: int64 */
-            n: number;
+            dropped_me?: number;
+            family: string;
+            lobby?: components["schemas"]["EmpriseEquipmentOutcomes"];
+            me?: components["schemas"]["EmpriseEquipmentOutcomes"];
+            measured: boolean;
+            rest?: components["schemas"]["EmpriseEquipmentOutcomes"];
         };
-        ElevationWeaponLabel: {
-            label?: string;
-            label_en?: string;
+        EmpriseEquipmentOutcomes: {
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            kept: number;
+            /** Format: int64 */
+            taken: number;
+            /** Format: int64 */
+            used: number;
+        };
+        EmpriseMapColumn: {
+            /** Format: int64 */
+            losses: number;
+            map_key?: string;
+            map_label?: string;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            matches_filmed: number;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_tiers: number;
+            /** Format: int64 */
+            other_maps?: number;
+            /** Format: int64 */
+            others: number;
+            power_weapon_kills?: components["schemas"]["SquadEmpriseCount"];
+            resources: components["schemas"]["SquadEmpriseMatchResource"][] | null;
+            /** Format: int64 */
+            vehicles_measured: number;
+            /** Format: int64 */
+            wins: number;
         };
         EncounterDTO: {
             /** Format: int64 */
@@ -6604,74 +6607,6 @@ export interface components {
             withHeading: number;
             /** Format: int64 */
             withOwner: number;
-        };
-        EquipmentUsageBlock: {
-            available: boolean;
-            equipment_parties?: components["schemas"]["EquipmentUsageParties"];
-            families?: components["schemas"]["EquipmentUsageFamilyLine"][] | null;
-            /** Format: int64 */
-            matches_measured: number;
-            /** Format: int64 */
-            matches_total: number;
-            pad_tiers?: components["schemas"]["SessionUsagePadTiersBlock"];
-            players?: components["schemas"]["EquipmentUsagePlayerLine"][] | null;
-            tracked_players?: components["schemas"]["SessionUsageSquadPlayer"][] | null;
-            unavailable_reason?: string;
-            weapon_pad_parties?: components["schemas"]["EquipmentUsageParties"];
-        };
-        EquipmentUsageFamilyLine: {
-            /** Format: double */
-            dropped: number;
-            family_key: string;
-            /** Format: double */
-            kept: number;
-            /** Format: double */
-            opponents_used_rate_pct?: number;
-            /** Format: double */
-            taken: number;
-            /** Format: double */
-            teammates_used_rate_pct?: number;
-            /** Format: double */
-            used: number;
-            /** Format: double */
-            used_rate_pct?: number;
-        };
-        EquipmentUsageFriendCount: {
-            /** Format: double */
-            value: number;
-            xuid: string;
-        };
-        EquipmentUsageParties: {
-            by_friend?: components["schemas"]["EquipmentUsageFriendCount"][] | null;
-            /** Format: double */
-            friends: number;
-            /** Format: double */
-            lobby_total: number;
-            /** Format: double */
-            opponents: number;
-            /** Format: double */
-            player: number;
-            /** Format: double */
-            rest_of_team: number;
-        };
-        EquipmentUsagePlayerLine: {
-            /** Format: double */
-            dropped: number;
-            /** Format: double */
-            kept: number;
-            /** Format: double */
-            opponents_used_rate_pct?: number;
-            /** Format: double */
-            pad_pickups: number;
-            /** Format: double */
-            taken: number;
-            /** Format: double */
-            teammates_used_rate_pct?: number;
-            /** Format: double */
-            used: number;
-            /** Format: double */
-            used_rate_pct?: number;
-            xuid: string;
         };
         ExplorerBriefing: {
             baseline?: components["schemas"]["ExplorerBriefingBaseline"];
@@ -8263,6 +8198,12 @@ export interface components {
             items: components["schemas"]["Notification"][] | null;
             /** Format: int64 */
             next_cursor?: number;
+        };
+        LivesSideCount: {
+            /** Format: int64 */
+            kills: number;
+            /** Format: int64 */
+            lives: number;
         };
         Loadout: {
             k?: number[] | null;
@@ -11969,6 +11910,24 @@ export interface components {
             t1: number;
             xuid: string;
         };
+        SoloEmpriseBlock: {
+            equipment?: components["schemas"]["EmpriseEquipment"];
+            film_unavailable?: string;
+            habit?: components["schemas"]["SquadEmpriseHabit"];
+            maps: components["schemas"]["EmpriseMapColumn"][] | null;
+            matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            placement?: components["schemas"]["SquadEmprisePlacement"];
+            players: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            production: components["schemas"]["SquadEmpriseProduction"][] | null;
+            resources: components["schemas"]["SquadEmpriseResource"][] | null;
+            sheet_unavailable?: string;
+            vehicles?: components["schemas"]["SquadEmpriseVehicles"];
+        };
         SoloSessionPerfBlock: {
             granularity: string;
             points: components["schemas"]["SoloSessionPerfPoint"][] | null;
@@ -12349,53 +12308,15 @@ export interface components {
             matches_total: number;
             squad?: components["schemas"]["SessionUsageSquadPlayer"][] | null;
             unavailable_reason?: string;
-            weapons?: components["schemas"]["SquadFormesWeapon"][] | null;
-        };
-        SquadFormesLobbyPlayer: {
-            /** Format: int64 */
-            camo: number;
-            /** Format: int64 */
-            dropped: number;
-            dropped_by_family?: {
-                [key: string]: number;
-            };
-            gamertag?: string;
-            /** Format: int64 */
-            grapple: number;
-            /** Format: int64 */
-            overshield: number;
-            /** Format: int64 */
-            pad_pickups: number;
-            pads_by_weapon?: {
-                [key: string]: number;
-            };
-            /** Format: int64 */
-            team_id?: number;
-            /** Format: int64 */
-            wall: number;
-            xuid: string;
         };
         SquadFormesMatch: {
-            /** Format: double */
-            duration_seconds?: number;
-            lobby?: components["schemas"]["SquadFormesLobbyPlayer"][] | null;
-            /** Format: int64 */
-            lobby_size?: number;
             map_label?: string;
             match_id: string;
-            measured: boolean;
             mode_label?: string;
             objective?: components["schemas"]["SquadFormesObjective"];
             /** Format: int64 */
-            pad_named?: number;
-            /** Format: int64 */
-            pad_unnamed?: number;
-            /** Format: int64 */
             player_team?: number;
             start_time?: string;
-            /** Format: int64 */
-            team_size?: number;
-            weapon_pads?: components["schemas"]["SquadFormesWeaponPad"][] | null;
         };
         SquadFormesObjective: {
             columns?: components["schemas"]["SquadFormesObjectiveColumn"][] | null;
@@ -12418,19 +12339,6 @@ export interface components {
                 [key: string]: number;
             };
             xuid: string;
-        };
-        SquadFormesWeapon: {
-            class: string;
-            key: string;
-            label?: string;
-            weapon_key?: string;
-        };
-        SquadFormesWeaponPad: {
-            /** Format: int64 */
-            named: number;
-            /** Format: int64 */
-            occupations: number;
-            weapon: string;
         };
         SquadHeader: {
             all_time_kpis?: components["schemas"]["KPIStats"];
@@ -13618,6 +13526,20 @@ export interface components {
             /** Format: int64 */
             total_kills: number;
         };
+        TimeseriesLivesNearTeammate: {
+            alone: components["schemas"]["LivesSideCount"];
+            /** Format: int64 */
+            excluded_no_radar: number;
+            /** Format: int64 */
+            excluded_unlocated: number;
+            /** Format: int64 */
+            excluded_unpublishable: number;
+            /** Format: int64 */
+            matches_read: number;
+            /** Format: int64 */
+            matches_without_radar: number;
+            near: components["schemas"]["LivesSideCount"];
+        };
         TimeseriesMatchRow: {
             /** Format: double */
             accuracy: number | null;
@@ -13689,8 +13611,7 @@ export interface components {
             coordination?: components["schemas"]["CoordinationBlock"];
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
-            elevation?: components["schemas"]["ElevationCloudBlock"];
-            equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
+            emprise?: components["schemas"]["SoloEmpriseBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             formes_retenues?: components["schemas"]["SquadFormesBlock"];
             frag_distribution?: components["schemas"]["FragDistribution"];
@@ -13699,10 +13620,12 @@ export interface components {
             intensity_rows_team?: components["schemas"]["IntensityMatchRow"][] | null;
             intensity_tab: components["schemas"]["TimeseriesIntensityTab"];
             kill_types?: components["schemas"]["TimeseriesKillTypes"];
+            lives_near_teammate?: components["schemas"]["TimeseriesLivesNearTeammate"];
             map_breakdown: components["schemas"]["MapBreakdownRow"][] | null;
             match_rows: components["schemas"]["TimeseriesMatchRow"][] | null;
             objective_stats?: components["schemas"]["ObjectiveAggregate"];
             outcomes_over_time: components["schemas"]["OutcomesPeriodPoint"][] | null;
+            player_emblem_url?: string;
             range_profiles?: components["schemas"]["MatchRangeBlock"];
             solo_session_perf?: components["schemas"]["SoloSessionPerfBlock"];
             summary_tab: components["schemas"]["TimeseriesSummaryTab"];

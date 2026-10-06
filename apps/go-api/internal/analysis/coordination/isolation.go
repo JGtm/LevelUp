@@ -70,5 +70,5 @@ func Isolement(morts []domain.MortAExaminer, rayonParMatch map[string]float64,
 // distance nulle » ni « a distance infinie » : la mort n'est donc pas accompagnee, et elle est
 // bien examinee puisqu'un coequipier hors de vue POUVAIT accompagner.
 func accompagnee(m domain.MortAExaminer, rayon float64) bool {
-	return m.PlusProcheM != nil && *m.PlusProcheM <= rayon
+	return aPortee(m.PlusProcheM, rayon)
 }

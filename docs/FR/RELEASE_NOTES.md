@@ -29,14 +29,14 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les prises nettes de drapeau** — le jonglage replié sur une fenêtre de 1,5 seconde : reprendre son propre drapeau deux fois en une seconde compte pour une prise
 - **Assaut** — poses et désamorçages de la bombe, porteurs tués, et le reste des statistiques du mode
 - **Les manches comptent comme des manches** — sur les modes qui se jouent en manches, le score affiché est le nombre de manches gagnées et perdues ; le score en points de l'API est conservé à côté, parce que sur ces modes il peut donner l'avantage au camp qui a perdu
-- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Une seule règle partout — Escouade, Sessions, Séries temporelles et fiche du match — et l'appui compte les assistances entre coéquipiers
+- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Une seule règle partout — Escouade, Sessions et fiche du match — et l'appui compte les assistances entre coéquipiers, aussi dans le temps sur les Séries temporelles
 - **La portée et la hauteur face à ton lobby** — ta portée de frag et la hauteur d'où tu te bats, lues face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée, rôles de hauteur, et la hauteur d'engagement de chaque frag sur la fiche du match
 - **Les records de distance par arme** — ton frag mesuré le plus lointain avec chaque arme, sur la Synthèse
 - **Les armes de départ lues juste** — une arme ramassée dans les premières secondes d'une vie ne compte plus comme une arme de départ
 
 **L'équipement : utilisé, gardé ou gâché**
 - **Les trois issues de chaque équipement** — utilisé, gardé sans l'utiliser, ou lâché en mourant, famille par famille
-- **Sur trois pages** — la Synthèse, l'Escouade et les Sessions, avec ta part d'équipe, le trait de parité et une bande de régularité match par match
+- **Sur les Sessions et les Séries temporelles** — sur les Sessions avec ta part d'équipe, le trait de parité et une bande de régularité match par match ; sur les Séries temporelles, tes objets face au reste de ton camp
 - **Les charges sont visibles** — un déployable montre ce qu'il lui reste avant la première utilisation
 
 **Un onglet Tactique**
@@ -46,13 +46,13 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **La coordination d'équipe** — l'écartement réel de ton escouade, lu par match dans le référentiel des variantes et non fixé à un seuil arbitraire
 
 **Escouade, sessions et progression**
-- **Les formes retenues** — six lectures d'une escouade réparties sur dix-neuf cartes : équipement, armes spéciales et objectifs, en solo comme en escouade, ta part face à la parité de ton équipe
+- **Les formes retenues** — les cartes d'objectif : le rapport de force par famille de mode, et la part de chaque joueur dans l'objectif de son camp
 - **La cadence par match** — chaque valeur d'usage est désormais un nombre par match mesuré, plus un nombre par minute
 - **L'échange en six cartes** — assistances en barres empilées, joueur par carte avec une légende unique, médailles en dernier
 - **Premier frag / première mort, portées et usages** sur les Séries temporelles, et des objectifs ramenés à ce que le mode offrait vraiment
 - **De nouveaux badges** — « Voleur » (le plus de frags volés à un ami) dans la matrice d'impact de l'Escouade, « Sabordage » et « Abnégation » sur les modes à objectif quand le score et les frags racontent deux histoires opposées, et les rôles « Larbin / Patron » sur les graphes d'assistances
 - **Les assistances échangées avec chaque relation** — une colonne dans Relations, une carte « Binôme » et une carte « Noyau dur »
-- **Un onglet « Usages » sur les Séries temporelles** — portée, équipement et « les formes retenues » au même endroit, et la balance des dégâts cumulée dans le Résumé des Séries temporelles
+- **L'onglet « Usages » des Séries temporelles devient ton Emprise** — l'Emprise de l'Escouade lue sur tes matchs solo : ce que ton camp a pris (bonus, armes spéciales, armes de râtelier), son cours sur la période, carte par carte, ta part des prises, ce qu'elles ont rapporté face à l'adversaire, si tu meurs près d'un coéquipier ou seul, ta part de l'objectif, et ce que tu as fait de l'équipement ramassé ; la carte Riposte et la hauteur d'engagement quittent la page, et la balance des dégâts cumulée est dans le Résumé des Séries temporelles
 - **Un onglet « Emprise » sur l'Escouade** — qui a pris quoi sur la carte, camp contre camp : les bonus de camouflage et de surbouclier, les armes spéciales des socles de puissance et les armes de râtelier. On y lit le bilan de la soirée et son évolution au fil de la session, qui a pris quoi dans l'escouade, match par match, ce que vos frags doivent à ces ressources, votre rendement face à l'adversaire quand vous les tenez, et la comparaison de ce soir avec vos soirées habituelles. Il remplace l'ancien onglet « Usages » de l'Escouade (les anciens liens y mènent), et les cartes qu'il contenait sont passées dans Contributions et Dynamique.
 - **« Groupés ou isolés »** — dans l'onglet Emprise, un point par vie : à quelle distance vous étiez du coéquipier vivant le plus proche (en portées de radar) et combien de frags cette vie a rapportés, réparti en quatre quarts pour repérer d'un coup d'œil les vies isolées qui coûtent cher, et la part de vos vies par placement. Mesuré pour chaque match au moment de sa synchronisation. Le nuage « Frags non ripostés » quitte l'onglet Synergies ; la carte Riposte reste.
 - **Les Sessions en quatre sections**, et une comparaison côte à côte en rangées partagées qui reste lisible quand le tiroir s'ouvre

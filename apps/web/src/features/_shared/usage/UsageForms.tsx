@@ -40,10 +40,8 @@ import {
 } from './usageInks'
 
 /**
- * Largeur de la colonne des libellés de grandeur (alignée sur ValueGrid).
- * EXPORTÉE depuis le 2026-09-09 (E5.8) : `UsageCountsGrid.tsx` (variante comptes,
- * Synthèse/Escouade) aligne sa propre grille sur ces mêmes constantes plutôt que de
- * les redéfinir (CLAUDE.md n°6).
+ * Largeur de la colonne des libellés de grandeur (alignée sur ValueGrid), partagée avec les
+ * grilles voisines du bloc qui s'alignent sur elle (CLAUDE.md n°6).
  */
 export const LABEL_WIDTH = 152
 /**
@@ -145,10 +143,6 @@ function UsageOutcomeStack({
  * qui ne tombaient sur rien).
  *
  * LE COMPTE BRUT N'EST PLUS ÉCRIT DANS LA CELLULE (D2) — il est dans l'infobulle du rail.
- *
- * EXPORTÉE depuis le 2026-09-09 (E5.8) : `UsageCountsGrid.tsx` (variante comptes,
- * Synthèse/Escouade, P9) réutilise cette MÊME cellule — seul `gauge.valuePct` change de sens
- * et `gauge.parityPct` y reste toujours `null`. Aucune seconde copie (CLAUDE.md n°6).
  */
 export function UsageGauge({
   gauge,
@@ -157,8 +151,7 @@ export function UsageGauge({
   gauge: UsageGaugeModel
   /**
    * Ce que la jauge rapporte : mon équipe (aplat) ou LE LOBBY (aplat + hachure neutre, cf.
-   * `LOBBY_HATCH`). Défaut « team » — la variante comptes (`UsageCountsGrid`) n'a qu'un
-   * dénominateur et rend donc exactement comme avant.
+   * `LOBBY_HATCH`). Défaut « team ».
    */
   denominator?: 'team' | 'lobby'
 }) {
@@ -220,11 +213,8 @@ function GaugeAxis() {
 
 /**
  * LE BOUTON D'UN DÉPLIABLE DE LIGNES, posé EN PLEINE LARGEUR de la grille (`1 / -1`).
- *
- * EXPORTÉ : `UsageCountsGrid` replie exactement les mêmes lignes (les armes de base, D2)
- * dans sa propre grille — un second bouton recopié aurait divergé au premier ajustement.
  */
-export function UsageCollapseToggle({
+function UsageCollapseToggle({
   label,
   open,
   onToggle,

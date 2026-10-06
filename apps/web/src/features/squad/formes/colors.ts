@@ -1,43 +1,28 @@
 /**
- * colors.ts — LES ENCRES du bloc « formes retenues », toutes en jetons
- * sémantiques (aucun hex, aucune classe Tailwind de couleur).
+ * colors.ts — LES ENCRES partagées par l'Emprise et les cartes d'objectif (Escouade, Séries
+ * temporelles), toutes en jetons sémantiques (aucun hex, aucune classe Tailwind de couleur).
  *
- * LA CORRESPONDANCE AVEC L'ARTEFACT, une fois pour toutes :
- *
- *   `--moi`      -> `squad-player-1`  (le joueur de la page, la MÊME encre que
- *                                      sa pastille et ses autres graphes)
- *   `--j2/--j3`  -> SQUAD_TEAMMATE_COLOR_TOKENS (source unique de la feature)
- *   `--j4`       -> `team-ally`       (coéquipier hors escouade : mon camp, sans
- *                                      identité de joueur)
- *   `--plus`     -> `divergent-pos`   (au-dessus de la référence)
- *   `--moins`    -> `divergent-neg`   (en dessous)
- *   `--parite`   -> `warning`         (le REPÈRE, jamais une donnée)
- *   `--fam-*`    -> USAGE_METRIC_TOKENS (features/_shared/usage) : les gestes
- *                                      gardent l'encre qu'ils ont sur la vue
- *                                      match et la page Sessions
- *   hachure du non mesuré -> motif neutre (le match sans film, jamais une donnée)
+ *   - le joueur de la page -> `squad-player-1`, ses coéquipiers -> SQUAD_TEAMMATE_COLOR_TOKENS
+ *     (source unique de la feature) : la couleur d'un joueur ne change pas d'un écran à l'autre ;
+ *   - le reste de mon camp (sans identité de joueur) -> `team-ally` à demi-opacité ;
+ *   - au-dessus / en dessous de la référence -> `divergent-pos` / `divergent-neg` ;
+ *   - la hachure du non mesuré -> motif neutre (le match sans film, jamais une donnée).
  */
 import type { CSSProperties } from 'react'
 
-import { USAGE_METRIC_TOKENS } from '@/features/_shared/usage/usageMetricKinds'
-import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { tokenCssVar } from '@/lib/accessibility'
 
 import { SQUAD_MAIN_PLAYER_TOKEN, SQUAD_TEAMMATE_COLOR_TOKENS } from '../colors'
-import type { EquipmentAxis } from './model/access'
 
-/** Le trait de parité — un jeton DISTINCT, jamais une teinte de donnée. */
-export const PARITY_INK = tokenCssVar('warning')
 /** Au-dessus / en dessous de la référence : comparer, pas juger. */
 export const PLUS_INK = tokenCssVar('divergent-pos')
 export const MINUS_INK = tokenCssVar('divergent-neg')
-/** Le fond d'une piste vide, et l'encre d'une étendue (non mesurée ≠ donnée). */
+/** Le fond d'une piste vide (non mesurée ≠ donnée). */
 export const TRACK_INK = 'var(--muted)'
-export const SPREAD_INK = 'var(--muted-foreground)'
 /**
- * Mon camp SANS identité de joueur (coéquipier hors escouade) : l'encre de camp,
- * à demi-opacité — le même traitement que la piste du bloc d'usage. À pleine
- * opacité, elle se confondait avec celle du joueur de la page (mesuré sur la
- * capture du lot : deux bleus voisins dans la même barre).
+ * Mon camp SANS identité de joueur (coéquipier hors escouade) : l'encre de camp, à demi-opacité.
+ * À pleine opacité, elle se confondait avec celle du joueur de la page (deux bleus voisins dans
+ * la même barre).
  */
 export const TEAM_REST_INK = `color-mix(in oklab, ${tokenCssVar('team-ally')} 55%, var(--muted))`
 
@@ -52,25 +37,9 @@ export function squadPlayerInk(index: number): string {
   return tokenCssVar(token)
 }
 
-/** Le jeton d'un geste d'équipement — celui de la vue match et de Sessions. */
-const AXIS_TOKENS: Record<EquipmentAxis, SemanticToken> = {
-  camo: USAGE_METRIC_TOKENS.camo,
-  wall: USAGE_METRIC_TOKENS.wall,
-  overshield: USAGE_METRIC_TOKENS.overshield,
-  grapple: USAGE_METRIC_TOKENS.grapple,
-  dropped: USAGE_METRIC_TOKENS.dropped,
-}
-
-/** L'encre d'un geste d'équipement. */
-export function axisInk(axis: EquipmentAxis): string {
-  return tokenCssVar(AXIS_TOKENS[axis])
-}
-
 /**
  * LA HACHURE DU NON MESURÉ — le match sans film décodé (une hachure, jamais un aplat,
- * pâle : ce n'est pas une donnée, c'est une absence). La hachure de l'adversaire, sa
- * voisine, est partie avec les cartes du contexte escouade (lot L5.4 du plan
- * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
+ * pâle : ce n'est pas une donnée, c'est une absence).
  */
 export const UNMEASURED_HATCH: CSSProperties = {
   backgroundImage:
@@ -79,8 +48,8 @@ export const UNMEASURED_HATCH: CSSProperties = {
 
 /**
  * L'encre d'une case de la bande : au-dessus ou en dessous de la parité, avec
- * une intensité qui SATURE À TRENTE POINTS d'écart (règle de l'artefact — une
- * échelle sans plafond ferait disparaître les écarts ordinaires).
+ * une intensité qui SATURE À TRENTE POINTS d'écart (une échelle sans plafond ferait
+ * disparaître les écarts ordinaires).
  */
 export function bandCellInk(gapPoints: number): string {
   const intensity = Math.min(1, Math.abs(gapPoints) / 30)

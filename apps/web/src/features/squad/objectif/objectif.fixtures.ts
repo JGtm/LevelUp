@@ -61,7 +61,6 @@ function objectiveMatch(
     start_time: start,
     map_label: map,
     mode_label: family === 'ctf' ? 'Drapeau' : 'Bases',
-    measured: true,
     player_team: OUR_TEAM,
     objective: {
       family,

@@ -721,41 +721,24 @@ en = "Damage balance = (damage dealt − damage taken) ÷ {{HP}} HP, expressed i
 fr = "Aucun match ne porte les dégâts infligés et subis."
 en = "No match carries both damage dealt and damage taken."
 
-# Coordination dans le temps (lot Q, D22-3 et D22-6/7 du 2026-09-21) — deux cartes, un
-# seul graphe chacune : deux séries de bâtons par soirée sur un axe en %, un repère
-# d'habituel par série. D22-verbosité : AUCUNE phrase de lecteur, l'explication tient
+# Coordination dans le temps (lot Q, D22-6/7 du 2026-09-21) — la carte « Appui reçu » : deux
+# séries de bâtons par soirée sur un axe en %, un repère d'habituel par série. D22-verbosité : AUCUNE phrase de lecteur, l'explication tient
 # dans l'infobulle ⓘ du titre, trois phrases au plus.
-[timeseries.progression.coord_riposte_title]
-fr = "Riposte"
-en = "Riposte"
-
-[timeseries.progression.coord_riposte_tooltip]
-fr = "Chaque bâton est l'écart de la soirée à son propre repère : « je suis couvert » (tes morts ripostées sur tes morts, une riposte étant une mort de ton camp dont le tueur tombe dans les {seconds} s) face à ton habituel, « je riposte » (tes ripostes sur toutes les morts de ton camp) face à la part équitable 1/n."
-en = "Each bar is the session's gap to its own reference: \"I am covered\" (your avenged deaths over your deaths, a riposte being a team death whose killer falls within {seconds}s) against your usual, \"I riposte\" (your ripostes over every team death) against the 1/n fair share."
-
 [timeseries.progression.coord_appui_title]
 fr = "Appui reçu"
 en = "Support received"
 
 [timeseries.progression.coord_appui_tooltip]
-fr = "Chaque bâton est l'écart de la soirée à son propre repère : « on me prépare » (tes frags appuyés sur tes frags, un appui étant une assistance reçue sur l'un de tes frags) face à ton habituel, « ma part des appuis » (les assistances qui te reviennent sur toutes celles de ton camp) face à la part équitable 1/n."
-en = "Each bar is the session's gap to its own reference: \"Set up for me\" (your assisted kills over your kills, support being an assist received on one of your kills) against your usual, \"my share of support\" (the assists coming to you over every team assist) against the 1/n fair share."
-
-[timeseries.progression.coord_covered]
-fr = "Je suis couvert"
-en = "I am covered"
-
-[timeseries.progression.coord_i_riposte]
-fr = "Je riposte"
-en = "I riposte"
+fr = "Écart de chaque soirée à son repère : « frags appuyés » (frags du joueur ayant reçu une assistance, sur ses frags) face à l'habituel du joueur, « part des appuis de l'équipe » (assistances reçues par le joueur, sur toutes celles de l'équipe) face à la part équitable 1/n."
+en = "Each session's gap to its reference: \"assisted kills\" (the player's kills that received an assist, over the player's kills) against the player's usual, \"share of the team's assists\" (assists received by the player, over all of the team's) against the 1/n fair share."
 
 [timeseries.progression.coord_prepared]
-fr = "On me prépare"
-en = "Set up for me"
+fr = "Frags appuyés"
+en = "Assisted kills"
 
 [timeseries.progression.coord_my_share]
-fr = "Ma part des appuis"
-en = "My share of support"
+fr = "Part des appuis de l'équipe"
+en = "Share of the team's assists"
 
 [timeseries.progression.coord_usual]
 fr = "habituel {rate}"
@@ -765,25 +748,13 @@ en = "usual {rate}"
 fr = "parité {rate}"
 en = "fair share {rate}"
 
-[timeseries.progression.coord_vol_my_deaths]
-fr = "mes morts : {n}"
-en = "my deaths: {n}"
-
-[timeseries.progression.coord_vol_team_deaths]
-fr = "morts de mon camp : {n}"
-en = "team deaths: {n}"
-
 [timeseries.progression.coord_vol_my_kills]
-fr = "mes frags : {n}"
-en = "my kills: {n}"
+fr = "frags du joueur : {n}"
+en = "player kills: {n}"
 
 [timeseries.progression.coord_vol_team_assists]
-fr = "appuis de mon camp : {n}"
+fr = "appuis de l'équipe : {n}"
 en = "team assists: {n}"
-
-[timeseries.progression.coord_delay]
-fr = "Délai médian"
-en = "Median delay"
 
 [timeseries.progression.coord_coverage]
 fr = "{measured} matchs mesurés sur {total}"
@@ -840,12 +811,12 @@ fr = "Rôles de portée"
 en = "Range roles"
 
 [timeseries.portee.section_label]
-fr = "Portée des engagements"
-en = "Engagement range"
+fr = "Portée"
+en = "Range"
 
 [timeseries.portee.help]
-fr = "L'écart est la distance médiane de tes frags sur un match, moins celle de tous les joueurs du lobby : rapportée au lobby, elle ne dépend plus ni de la carte ni du mode. Les trois bandes sont les tiers de la fenêtre affichée, pas des mètres en dur — elles disent un rôle relatif, pas une distance absolue. Un match sous {floor, number} frags mesurés donne un point creux, exclu de la tendance."
-en = "The gap is your median kill distance on a match, minus that of every player in the lobby: measured against the lobby, it no longer depends on the map or the mode. The three bands are the thirds of the displayed window, not hard-coded metres — they state a relative role, not an absolute distance. A match under {floor, number} measured kills gives a hollow dot, excluded from the trend."
+fr = "Écart, par match, entre la distance médiane des frags du joueur et celle de tous les joueurs du lobby ; bandes : tiers de la fenêtre affichée. Un match sous {floor, number} frags mesurés donne un point creux, exclu de la tendance."
+en = "Per match, the gap between the player's median kill distance and that of every player in the lobby; bands: thirds of the displayed window. A match under {floor, number} measured kills gives a hollow dot, excluded from the trend."
 
 [timeseries.portee.x_axis]
 fr = "Matchs, du plus ancien au plus récent"
@@ -907,19 +878,9 @@ en = "No range measured"
 fr = "Aucun match de la sélection n'a de film décodé : sans positions de frag, la portée ne se mesure pas."
 en = "No match in the selection has a decoded film: without kill positions, range cannot be measured."
 # ─── Onglet Usages ─────────────────────────────────────────────────────────
-# Tout ce qui vient du film décodé : portée des engagements, usages d'équipement,
-# formes retenues. Sans film décodé sur le scope, l'onglet porte son état vide
-# plutôt que de rester muet.
-
-[timeseries.usages.equipment_title]
-# Le titre NOMME LES DEUX FAMILLES DE RAMASSAGES que la section couvre : l'équipement
-# (usages, part du lobby) et les armes posées sur les socles (contrôle des armes spéciales,
-# contrôle par niveau). Il ne se confond donc ni avec « Portée des engagements », qui la
-# précède, ni avec sa première carte « Usages d'équipement » (usageI18n.blockEquipment),
-# dont reprendre le libellé l'écrirait deux fois de suite. Arbitrage utilisateur du
-# 2026-09-22. Même choix que sur l'Escouade.
-fr = "Équipement et armes de socle"
-en = "Equipment and pad weapons"
+# L'Emprise des matchs solo du périmètre : portée, ressources, vies,
+# objectif, équipement. Sans rien à montrer, l'onglet porte son état vide plutôt que de
+# rester muet.
 
 [timeseries.usages.empty_title]
 fr = "Aucun film décodé"

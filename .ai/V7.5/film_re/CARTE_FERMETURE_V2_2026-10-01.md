@@ -20,7 +20,7 @@
 > - Voir aussi la section « Corrections » de `MESURES_CIBLEES.md` et le PLAN §5 (D-42 à D-44,
 >   D-63, D-65).
 
-> Plan : `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, étape 1 (items 1.1 à 1.7). Worktree
+> Plan : `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, étape 1 (items 1.1 à 1.7). Worktree
 > `LevelUp-wt-campagne-grammaire`, branche `feat/campagne-grammaire`, base `feat/v75` = `69564ef7d`,
 > modifications NON commitées (liste au §9). Films lus en place, en lecture seule, depuis
 > `LevelUp/data/cache/film_chunks` (manifestes : `LevelUp/data/cache/film_manifests`). Aucune base,

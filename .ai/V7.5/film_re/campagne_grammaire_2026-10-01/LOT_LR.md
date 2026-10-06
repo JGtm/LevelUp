@@ -1,6 +1,6 @@
 # Lot LR — lecteur d'état de création du jeu et second rang sans mutation du monde (2026-10-05)
 
-> Lot de la vague 3 de la campagne de grammaire (`.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`),
+> Lot de la vague 3 de la campagne de grammaire (`.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`),
 > accord du pilote du 2026-10-05, issu de l'enquête de la session levelup-57 sur le lot 2.7.a0 de la
 > représentation intermédiaire (`feat/ri-etape2`, locale, non poussée). Critère FERMÉ de
 > l'utilisateur : corrections générales lues dans le jeu ; aucun ordre, seuil ni condition choisi à la

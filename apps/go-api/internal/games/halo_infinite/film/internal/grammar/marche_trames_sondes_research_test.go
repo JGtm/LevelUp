@@ -39,6 +39,17 @@ func debutDeLaListe(pay []byte, w *World, cfg FrameConfig) (int, bool) {
 	return debut, comment != lecture.DebutParSignature && comment != lecture.DebutNonLocalise
 }
 
+// debutDeLaListeSous rend le debut de la marche de cuisson d un paquet a evenements sous la grammaire de
+// vue A `g` ([debutDeLaVueBDeCuisson] : la fin de la vue A quand elle decide, sinon [localiserLaListe]),
+// sous la forme de [debutDeLaListe].
+func debutDeLaListeSous(g grammaireDeLaVueA) func([]byte, *World, FrameConfig) (int, bool) {
+	return func(pay []byte, w *World, cfg FrameConfig) (int, bool) {
+		a := lireLaVueA(pay, 1, cfg.Profil, g)
+		debut, comment := debutDeLaVueBDeCuisson(pay, &a, g.classe, w, cfg)
+		return debut, comment != lecture.DebutParSignature && comment != lecture.DebutNonLocalise
+	}
+}
+
 // debutParFermeture rend le debut par fermeture d une liste ([debutParFermetureRangee]) et dit
 // s il a ete trouve, a l un ou l autre rang.
 func debutParFermeture(pay []byte, candidats []int, w *World, cfg FrameConfig) (int, bool) {

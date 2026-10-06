@@ -1,6 +1,6 @@
 # T4 — Grammaire de position « dépendante du build ou du contenu » : les 13 exceptions datées (2026-10-01)
 
-> Campagne grammaire, phase 1, étape 2, piste T4. Plan : `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`.
+> Campagne grammaire, phase 1, étape 2, piste T4. Plan : `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`.
 > Code lu à la tête du worktree `feat/campagne-grammaire` (`69564ef7d`). Jeu lu dans Ghidra
 > (`HaloInfinite.exe`, build `hi_1_13_0`, base `0x140000000`, serveur HTTP `127.0.0.1:8089`) en
 > LECTURE SEULE : `decompile_function`, `disassemble_function`, `get_xrefs_to`,

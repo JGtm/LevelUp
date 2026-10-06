@@ -5,8 +5,8 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildHabitOption, buildResourceFilOption, pickupRadius, type EmpriseFilColors } from './empriseCharts'
-import { buildResourceFil } from './emprise.logic'
+import { buildHabitOption, buildResourceFilOption, pickupRadius, type EmpriseFilColors, type EmpriseFilText } from './empriseCharts'
+import { buildResourceFil, empriseMatchIndex } from './emprise.logic'
 import { EMPRISE_2209, HABIT_2209, HISTORY_2209 } from './emprise.fixtures'
 import { EMPRISE_TEXT } from './empriseStrings'
 import { buildHabitView } from './habit.logic'
@@ -48,8 +48,8 @@ type Series = {
 }
 type Axis = { axisLabel?: { formatter: (v: string, i: number) => string } }
 
-const fil = buildResourceFil(EMPRISE_2209, HISTORY_2209)
-const opt = buildResourceFilOption(fil, COLORS, {
+const fil = buildResourceFil(EMPRISE_2209, empriseMatchIndex(HISTORY_2209))
+const T_FIL: EmpriseFilText = {
   resourceLabel: (r) => T.resources[r].label,
   pctFmt: T.pctFmt,
   pctIntFmt: T.pctIntFmt,
@@ -60,7 +60,8 @@ const opt = buildResourceFilOption(fil, COLORS, {
   pointTip: T.fil.pointTip,
   endTip: T.fil.endTip,
   bandTip: T.fil.bandTip,
-}) as { series: Series[]; xAxis: Axis[] }
+}
+const opt = buildResourceFilOption(fil, COLORS, T_FIL) as { series: Series[]; xAxis: Axis[] }
 
 const lines = opt.series.filter((s) => s.type === 'line')
 const dots = opt.series.filter((s) => s.type === 'scatter')
@@ -95,8 +96,15 @@ describe('buildResourceFilOption — 22/09', () => {
     expect(first.value).toEqual([0, (5 / 7) * 100])
     expect(first.symbolSize).toBeCloseTo(2 * pickupRadius(7))
     expect(pickupRadius(16)).toBeCloseTo(1.8 + 4 * 1.1)
-    expect(first.tip).toContain('Bonus : 5 pour nous, 2 pour eux (71,4 %)')
+    expect(first.tip).toContain('Bonus : équipe 5, adversaire 2 (71,4 %)')
     expect(dots[0].data[4]).toBeNull()
+  })
+
+  it('axe par match : rayon de la maquette quel que soit le nombre de matchs (150 : inchangé)', () => {
+    const beaucoup = { ...fil, matches: Array.from({ length: 150 }, (_, i) => fil.matches[i % fil.matches.length]) }
+    const b = buildResourceFilOption(beaucoup, COLORS, T_FIL) as { series: Series[] }
+    const first = b.series.filter((s) => s.type === 'scatter')[0].data[0] as Item
+    expect(first.symbolSize).toBeCloseTo(2 * pickupRadius(7))
   })
 
   it('sous l’axe : l’heure puis la carte ; bande de résultats et encoche de dominance', () => {
@@ -108,6 +116,65 @@ describe('buildResourceFilOption — 22/09', () => {
     const origin = band.renderItem!(null, api(2)).children
     expect(origin.map((c) => c.style.fill)).toEqual(['loss'])
     expect((band.data[0] as Item).tip).toBe('19:23 · Starboard\nVictoire 3–0 · Domination')
+  })
+})
+
+/**
+ * Mode « période » (Séries temporelles › Usages, plan PLAN_TIMESERIES_USAGES_EMPRISE, D12) : sur
+ * des dizaines de matchs, pas d'heure ni de carte sous chaque match mais la date du PREMIER match
+ * de chaque mois ; la légende « n matchs, dont m filmés » à droite sous la bande ; pas d'encoche de
+ * dominance (la maquette n'en dessine pas) ; points plus petits au-delà de 120 matchs.
+ */
+describe('buildResourceFilOption — mode période', () => {
+  const dates = ['2026-07-03', '2026-07-11', '2026-07-28', '2026-08-27', '2026-09-22', '2026-09-22', '2026-09-23']
+  const periode = { ...fil, matches: fil.matches.map((m, i) => ({ ...m, startTime: `${dates[i]}T12:00:00Z` })) }
+  const axe = { kind: 'period' as const, dateOf: (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`, caption: '7 matchs, dont 6 filmés' }
+  const texte = {
+    resourceLabel: (r: string) => T.resources[r].label,
+    pctFmt: T.pctFmt,
+    pctIntFmt: T.pctIntFmt,
+    timeOf: (iso: string) => iso.slice(11, 16),
+    outcomeOf: () => null,
+    resultOf: () => null,
+    dominanceLabel: (d: number) => String(d),
+    pointTip: T.fil.pointTip,
+    endTip: T.fil.endTip,
+    bandTip: T.fil.bandTip,
+  }
+  type Opt = { series: Series[]; xAxis: Axis[]; graphic?: { style: { text: string } }[] }
+  const p = buildResourceFilOption(periode, COLORS, texte, axe) as Opt
+
+  it('la date du premier match de chaque mois sous l’axe, rien sous les autres', () => {
+    const f = p.xAxis[0].axisLabel!.formatter
+    expect([0, 1, 2, 3, 4, 5, 6].map((i) => f('', i))).toEqual(['{d|03/07}', '', '', '{d|27/08}', '{d|22/09}', '', ''])
+  })
+
+  it('la légende de couverture à droite, sous la bande', () => {
+    expect(p.graphic?.map((g) => g.style.text)).toEqual(['7 matchs, dont 6 filmés'])
+  })
+
+  it('pas d’encoche de dominance sur la bande de résultats', () => {
+    const band = p.series.find((s) => s.type === 'custom')!
+    const api = { value: () => 0, coord: () => [100, 50], size: () => [60, 0] }
+    expect(band.renderItem!(null, api).children.map((c) => c.style.fill)).toEqual(['win'])
+  })
+
+  it('au-delà de 120 matchs, des points plus petits (rayon 0,8 + 0,45 × √prises)', () => {
+    const beaucoup = { ...periode, matches: Array.from({ length: 140 }, (_, i) => periode.matches[i % 7]) }
+    const b = buildResourceFilOption(beaucoup, COLORS, texte, axe) as Opt
+    const first = b.series.filter((s) => s.type === 'scatter')[0].data[0] as Item
+    expect(first.symbolSize).toBeCloseTo(2 * (0.8 + Math.sqrt(7) * 0.45))
+  })
+
+  it('infobulles d’un match : la date devant l’heure et la carte (une période couvre des mois)', () => {
+    const point = p.series.filter((s) => s.type === 'scatter')[0].data[0] as Item
+    expect(point.tip).toMatch(/^03\/07 12:00 · Starboard/)
+    const band = p.series.find((s) => s.type === 'custom')!
+    expect((band.data[0] as Item).tip).toMatch(/^03\/07 12:00 · Starboard/)
+  })
+  it('le mode « match » (Escouade) reste le défaut : heure et carte, encoche', () => {
+    expect(opt.xAxis[0].axisLabel!.formatter('m1', 0)).toBe('{t|19:23}\n{m|Starboard}')
+    expect((opt as Opt).graphic).toBeUndefined()
   })
 })
 

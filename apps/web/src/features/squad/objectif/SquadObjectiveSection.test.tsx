@@ -74,7 +74,7 @@ describe('SquadObjectiveSection', () => {
     expect(within(jg).getByText('Rôle dominant')).toBeInTheDocument()
     expect(within(jg).getByText('Rôle dominant').nextElementSibling?.textContent).toBe('Tenir')
     expect(jg.textContent).toContain('1 min 05')
-    expect(screen.getByTestId('objective-sheet-rest').textContent).toContain('Reste du camp')
+    expect(screen.getByTestId('objective-sheet-rest').textContent).toContain('Reste de l’équipe')
     // Deux matchs à objectif : ni courbe au fil de la session, ni point ce soir — les notes.
     expect(screen.getByTestId('objective-fil-note').textContent).toContain('2 matchs à objectif ce soir')
     expect(screen.getByTestId('objective-evenings-note').textContent).toContain('24 soirées de la composition sur 49')

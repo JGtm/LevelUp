@@ -8,8 +8,8 @@ package killsource
 // `killsource-2026-09-16.2` a `.6` viennent donc ici, TELS QUELS — aucun mot reecrit, aucun
 // octet de code touche : les deux fichiers ne portent que des commentaires.
 //
-// La suite VIVANTE de la chronique, a partir de `killsource-2026-09-18` depuis la rotation du
-// 2026-09-28 (plus bas), est dans
+// La suite VIVANTE de la chronique, a partir de `killsource-2026-09-20` depuis la rotation du
+// 2026-10-05 (plus bas), est dans
 // `rev_chronique.go`.
 
 // ENTREE `killsource-2026-09-16.2` (2026-09-16, lot 2.6.1) : LA CONSTANTE DESCEND DANS LA COUCHE,
@@ -387,3 +387,33 @@ package killsource
 //
 // `SchemaVersion` NE MONTE PAS : aucun champ n est ajoute au document. `grammar.Rev` et
 // `profile.Rev` NE MONTENT PAS : aucun octet de ces deux couches n est touche.
+//
+// ROTATION DU 2026-10-05 (lot VA de la campagne de grammaire, etape V2) : `rev_chronique.go`
+// atteignait 503 lignes ; le rang `killsource-2026-09-18` vient ici, TEL QUEL.
+//
+// ENTREE `killsource-2026-09-18` (2026-09-18, lot 5.1.1) : LA REVISION MONTE MECANIQUEMENT,
+// `.2` -> le premier rang du 18. AUCUNE SOURCE DE `film/facts/` N EST TOUCHEE PAR CE LOT.
+//
+// CE QUI LA FAIT MONTER : l empreinte de cette couche hache les VALEURS de `source.Rev` et de
+// `grammar.Rev`, et `grammar.Rev` monte au lot 5.1.1 (`grammar-2026-09-18` : l archetype
+// `managed-navpoint` ti=12 est lu de `i1` au minuteur manuel, douze lecteurs neufs). La chaine
+// est voulue : une grammaire qui change date les lignes deja decodees, meme quand le fait
+// publie ne bouge pas encore.
+//
+// CE QUE LA SORTIE FAIT AUJOURD HUI : rien de plus. Aucun composant porte par 5.1.1 n alimente
+// `killsource` — les douze lecteurs servent `ti=12`, que la chaine des morts ne marche pas.
+// LE BACKLOG QU ELLE OUVRE EST DONC UN BACKLOG DE DATATION, pas de correction.
+//
+// C EST L UNIQUE MONTEE DE CETTE CONSTANTE POUR TOUT LE LOT 5.1, ET C EST DELIBERE : le volet
+// 5.1.4 (l attribution de la fin de vie des vehicules) CHANGERA vraiment la sortie des faits, et
+// il partagera ce rang — deux changements d un meme lot partagent la revision. Ouvrir deux
+// backlogs pour un seul lot ferait redecoder le parc deux fois.
+//
+// BACKLOG KILLSOURCE SUR SIGNAL UTILISATEUR (D6), JAMAIS AUTOMATIQUE : chaque ligne de
+// `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
+// (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
+// le redecodage du parc reste un geste de PRODUCTION pris par le pilote. UN BACKFILL
+// `killsource-2026-09-17.2` TOURNAIT AU MOMENT DE CE LOT : la montee le rend candidat a son
+// tour, ce que l utilisateur a accepte en ouvrant le lot (V26).
+//
+// `SchemaVersion` reste 62 ; `profile.Rev` ne monte pas (aucun octet de `profile/` touche).

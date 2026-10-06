@@ -1,11 +1,11 @@
 /**
  * SquadEmprisePage.test.tsx — l'onglet « Emprise » (lot L5 du plan
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), sur la soirée témoin du 22/09 (chiffres de la
- * maquette de l'onglet) : blocs et ordre du débrief, puis chaque carte — « Contrôle des
- * ressources » (compte · part dans chaque segment, repli S3, trait 50 %), « … au fil de la
- * session » (graphe tracé, légende), « Répartition des prises dans l'escouade » (fiches, bonus
- * perdus en couleurs d'équipe, pastilles pleines et vides), « … match par match » (résultat,
- * dominance, sans film, râteliers repliés). États vides hérités de l'onglet remplacé.
+ * maquette de l'onglet) : blocs et ordre du débrief, puis chaque carte — « Contrôle des ressources »
+ * (compte · part dans chaque segment, repli S3, trait 50 %), « … cumul par match » (graphe tracé,
+ * légende), « Prises par joueur » (fiches, bonus perdus en couleurs d'équipe, pastilles pleines et
+ * vides), « … par match » (résultat, dominance, sans film, râteliers repliés). États vides hérités
+ * de l'onglet remplacé.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
@@ -102,9 +102,10 @@ describe('SquadEmprisePage — structure', () => {
     for (let i = 1; i < sections.length; i++) {
       expect(sections[i - 1].compareDocumentPosition(sections[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     }
-    expect(within(sections[0]).getByText('Bilan de la soirée')).toBeInTheDocument()
-    expect(within(sections[1]).getByText('Rôles dans l’escouade')).toBeInTheDocument()
-    expect(within(sections[2]).getByText('Carte par carte')).toBeInTheDocument()
+    expect(within(sections[0]).getByText('Ressources')).toBeInTheDocument()
+    // « Prises par joueur » : l'intertitre ET le titre de sa carte.
+    expect(within(sections[1]).getAllByText('Prises par joueur')).toHaveLength(2)
+    expect(within(sections[2]).getByText('Par match')).toBeInTheDocument()
     const control = screen.getByTestId('emprise-control')
     const fil = screen.getByTestId('emprise-fil')
     expect(control.parentElement).toBe(fil.parentElement)
@@ -114,14 +115,10 @@ describe('SquadEmprisePage — structure', () => {
 
   it('titres factuels (S1)', () => {
     mount()
-    for (const title of [
-      'Contrôle des ressources',
-      'Contrôle des ressources au fil de la session',
-      'Répartition des prises dans l’escouade',
-      'Contrôle des ressources, match par match',
-    ]) {
+    for (const title of ['Contrôle des ressources', 'Contrôle des ressources, cumul par match', 'Contrôle des ressources, par match']) {
       expect(screen.getByText(title)).toBeInTheDocument()
     }
+    expect(screen.getAllByText('Prises par joueur').length).toBeGreaterThan(0)
   })
 
   it('sans coéquipier : l’invitation à choisir ; sélection invalide : son message', () => {
@@ -160,10 +157,10 @@ describe('Contrôle des ressources', () => {
     expect(repli.textContent).toContain('8 · 40 %')
   })
 
-  it('légende en pied de carte : notre camp, adversaire, « 50 % : autant que l’adversaire »', () => {
+  it('légende en pied de carte : équipe, adversaire, « 50 % : autant que l’adversaire »', () => {
     mount()
     const legend = within(screen.getByTestId('emprise-control')).getByTestId('objectif-legend')
-    expect(legend.textContent).toContain('Notre camp')
+    expect(legend.textContent).toContain('Équipe')
     expect(legend.textContent).toContain('Adversaire')
     expect(legend.textContent).toContain('50 % : autant que l’adversaire')
     expect(legend.textContent).not.toContain('parité')
@@ -184,16 +181,16 @@ describe('Contrôle des ressources au fil de la session', () => {
 })
 
 describe('Répartition des prises dans l’escouade', () => {
-  it('bonus perdus : 2 sur 12 (17 %) et 2 sur 8 (25 %), pastilles d’équipe au lieu de « nous » / « eux »', () => {
+  it('bonus perdus : 2 sur 12 (17 %) et 2 sur 8 (25 %), pastilles d’équipe au lieu de « équipe » / « adversaire » écrits', () => {
     mount()
     expect(text('emprise-losses')).toContain('Bonus perdus')
     expect(text('emprise-losses-us')).toBe('2 sur 12 (17 %)')
     expect(text('emprise-losses-them')).toBe('2 sur 8 (25 %)')
     expect(text('emprise-losses')).not.toMatch(/nous|eux/)
-    expect(within(screen.getByTestId('emprise-losses-us')).getByRole('img', { name: 'Notre camp' })).toBeInTheDocument()
+    expect(within(screen.getByTestId('emprise-losses-us')).getByRole('img', { name: 'Équipe' })).toBeInTheDocument()
   })
 
-  it('fiches JGtm, Chocoboflor, Madina97294 puis le reste du camp ; JGtm : 3 bonus · 9 armes spéciales', () => {
+  it('fiches JGtm, Chocoboflor, Madina97294 puis le reste de l’équipe ; JGtm : 3 bonus · 9 armes spéciales', () => {
     mount()
     for (const id of [XUID.jgtm, XUID.choco, XUID.madina, 'rest']) {
       expect(screen.getByTestId(`emprise-sheet-${id}`)).toBeInTheDocument()
@@ -205,7 +202,7 @@ describe('Répartition des prises dans l’escouade', () => {
     expect(jgtm.textContent).toContain('Ressource dominante')
     expect(jgtm.textContent).toContain('Armes spéciales')
     expect(screen.getByTestId(`emprise-sheet-${XUID.madina}`).textContent).toContain('Bonus')
-    expect(screen.getByTestId('emprise-sheet-rest').textContent).toContain('Reste du camp')
+    expect(screen.getByTestId('emprise-sheet-rest').textContent).toContain('Reste de l’équipe')
   })
 
   it('une pastille par prise, pastille vide = bonus perdu ; un zéro reste une ligne atténuée', () => {
@@ -255,7 +252,7 @@ describe('Contrôle des ressources, match par match', () => {
     expect(within(table).getByText('frags obtenus avec')).toBeInTheDocument()
   })
 
-  it('constat R2 (revue L6.1) : un match filmé au camp inconnu dit « camp inconnu », pas « — »', () => {
+  it('constat R2 (revue L6.1) : un match filmé à équipe inconnue dit « équipe inconnue », pas « — »', () => {
     const block: SquadEmpriseBlock = {
       ...EMPRISE_2209,
       matches: EMPRISE_2209.matches!.map((m) => (m.match_id === 'm2' ? { ...m, team_known: false } : m)),
@@ -265,7 +262,7 @@ describe('Contrôle des ressources, match par match', () => {
     const cells = table.querySelectorAll('[data-cell="noteam"]')
     // Synthèse bonus, deux objets bonus, synthèse des armes spéciales et ses armes (râteliers repliés).
     expect(cells.length).toBeGreaterThanOrEqual(3)
-    expect(cells[0].textContent).toBe('camp inconnu')
+    expect(cells[0].textContent).toBe('équipe inconnue')
     expect(within(table).queryByText('4–0')).toBeNull()
   })
 
@@ -294,21 +291,22 @@ describe('SquadEmprisePage — anglais (S12)', () => {
   it('titres et libellés en anglais', () => {
     useAppShellStore.setState({ locale: 'en' })
     mount()
-    for (const title of ['Resource control', 'Resource control over the session', 'Pickups within the squad', 'Resource control, match by match']) {
+    for (const title of ['Resource control', 'Resource control, cumulative by match', 'Resource control, by match']) {
       expect(screen.getByText(title)).toBeInTheDocument()
     }
+    expect(screen.getAllByText('Pickups by player').length).toBeGreaterThan(0)
     expect(text('emprise-losses-us')).toBe('2 of 12 (17%)')
     expect(text('emprise-grid-result-m1')).toBe('Win 3–0')
   })
 })
 
-describe('Prendre, et s’en servir', () => {
-  it('après « Carte par carte » ; Frags obtenus | Rendement côte à côte, même rangée', () => {
+describe('Rendement des ressources', () => {
+  it('après « Par match » ; Frags par ressource | Rendement par ressource côte à côte, même rangée', () => {
     mount()
     const carte = screen.getByTestId('emprise-section-carte')
     const prendre = screen.getByTestId('emprise-section-prendre')
     expect(carte.compareDocumentPosition(prendre) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(prendre).getByText('Prendre, et s’en servir')).toBeInTheDocument()
+    expect(within(prendre).getByText('Rendement des ressources')).toBeInTheDocument()
     const production = screen.getByTestId('emprise-production')
     const rendement = screen.getByTestId('emprise-yield')
     expect(production.parentElement).toBe(rendement.parentElement)
@@ -316,7 +314,7 @@ describe('Prendre, et s’en servir', () => {
     expect(production.compareDocumentPosition(rendement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('Frags obtenus : 8 · 61,5 % / 38,5 % · 5 pendant l’effet, temps d’effet 2 min 39 · 58,5 % … 1 min 53 ; armes spéciales 38 / 41', () => {
+  it('Frags par ressource : 8 · 61,5 % / 38,5 % · 5 pendant l’effet, temps d’effet 2 min 39 · 58,5 % … 1 min 53 ; armes spéciales 38 / 41', () => {
     mount()
     const card = screen.getByTestId('emprise-production')
     const bonus = within(card).getByTestId('piste-camps-row-powerup')
@@ -335,12 +333,12 @@ describe('Prendre, et s’en servir', () => {
     // Une barre fine sous chaque barre épaisse (rôle img, nom = la ligne d'exposition).
     expect(within(bonus).getByRole('img', { name: /temps d’effet : 2 min 39/ })).toBeInTheDocument()
     const legend = within(card).getByTestId('objectif-legend')
-    for (const label of ['Notre camp', 'Adversaire', '50 % : autant que l’adversaire', 'Barre fine : temps d’effet, prises ou temps à bord']) {
+    for (const label of ['Équipe', 'Adversaire', '50 % : autant que l’adversaire', 'Barre fine : temps d’effet, prises ou temps à bord']) {
       expect(legend.textContent).toContain(label)
     }
   })
 
-  it('Rendement : bonus +14 % (3,0 contre 2,7), armes spéciales +17 % (1,7 contre 1,4), axe −50 / +50 %', () => {
+  it('Rendement par ressource : bonus +14 % (3,0 contre 2,7), armes spéciales +17 % (1,7 contre 1,4), axe −50 / +50 %', () => {
     mount()
     expect(text('emprise-yield-gap-powerup')).toBe('+14 %')
     expect(text('emprise-yield-raw-powerup')).toBe('3,0 contre 2,7')
@@ -354,13 +352,13 @@ describe('Prendre, et s’en servir', () => {
     const bar = screen.getByTestId('emprise-yield-bar-powerup').closest('[style*="left"]') as HTMLElement
     expect(bar.style.left).toBe('50%')
     const legend = within(card).getByTestId('objectif-legend')
-    expect(legend.textContent).toContain('Plus productifs que l’adversaire')
+    expect(legend.textContent).toContain('Équipe plus productive')
     expect(legend.textContent).toContain('Moins')
   })
 })
 
-describe('Par rapport à d’habitude', () => {
-  it('dernier bloc ; « Contrôle des ressources, soirée après soirée » en demi-largeur à gauche, rien à sa droite', () => {
+describe('Soirées précédentes', () => {
+  it('dernier bloc ; « Contrôle des ressources, par soirée » en demi-largeur à gauche, rien à sa droite', () => {
     mount()
     const prendre = screen.getByTestId('emprise-section-prendre')
     const habitude = screen.getByTestId('emprise-section-habitude')
@@ -376,7 +374,7 @@ describe('Par rapport à d’habitude', () => {
   it('sans soirée précédente : la carte le dit, avec les parts de ce soir', () => {
     mount({ pageData: page({ ...EMPRISE_2209, habit: { ...EMPRISE_2209.habit!, previous: [] } }) })
     expect(text('emprise-habit-note')).toBe(
-      'Aucune soirée précédente comparable. Ce soir, notre part des prises : bonus 60 %, armes spéciales 44 %.',
+      'Aucune soirée précédente comparable. Ce soir, part de l’équipe dans les prises : bonus 60 %, armes spéciales 44 %.',
     )
   })
 
@@ -438,7 +436,7 @@ describe('Prendre et habitude — anglais (S12)', () => {
   it('titres et valeurs en anglais', () => {
     useAppShellStore.setState({ locale: 'en' })
     mount()
-    for (const title of ['Kills with resources', 'Efficiency against the opponent', 'Resource control, session by session']) {
+    for (const title of ['Kills by resource', 'Efficiency by resource', 'Resource control, by session']) {
       expect(screen.getByText(title)).toBeInTheDocument()
     }
     expect(text('emprise-yield-raw-powerup')).toBe('3.0 vs 2.7')
@@ -447,18 +445,18 @@ describe('Prendre et habitude — anglais (S12)', () => {
   })
 })
 
-describe('Groupés ou isolés (lot V4 du plan Emprise vies)', () => {
+describe('Isolement (lot V4 du plan Emprise vies)', () => {
   const withPlacement = (placement = PLACEMENT_2209) => page({ ...EMPRISE_2209, placement })
   const sansMesure = () => ({ ...PLACEMENT_2209, players: (PLACEMENT_2209.players ?? []).map((p) => ({ ...p, lives_measured: 0, lives: [] })) })
 
-  it('le bloc se montre entre « Prendre, et s’en servir » et « Par rapport à d’habitude », le nuage au-dessus de la barre des quarts', () => {
+  it('le bloc se montre entre « Rendement des ressources » et « Soirées précédentes », le nuage au-dessus de la barre des quarts', () => {
     mount({ pageData: withPlacement() })
     const prendre = screen.getByTestId('emprise-section-prendre')
     const section = screen.getByTestId('emprise-section-placement')
     const habitude = screen.getByTestId('emprise-section-habitude')
     expect(prendre.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(section.compareDocumentPosition(habitude) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(section).getByText('Groupés ou isolés')).toBeInTheDocument()
+    expect(within(section).getByText('Isolement')).toBeInTheDocument()
     const vie = within(section).getByTestId('emprise-placement-vie')
     const quarts = within(section).getByTestId('emprise-placement-quarts')
     expect(vie.compareDocumentPosition(quarts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -474,7 +472,7 @@ describe('Groupés ou isolés (lot V4 du plan Emprise vies)', () => {
     useAppShellStore.setState({ locale: 'en' })
     mount({ pageData: withPlacement() })
     const section = screen.getByTestId('emprise-section-placement')
-    expect(within(section).getByText('Grouped or isolated')).toBeInTheDocument()
+    expect(within(section).getByText('Isolation')).toBeInTheDocument()
     expect(within(section).getByText('Placement and yield of each life')).toBeInTheDocument()
     expect(within(section).getByText('Share of lives by placement')).toBeInTheDocument()
   })

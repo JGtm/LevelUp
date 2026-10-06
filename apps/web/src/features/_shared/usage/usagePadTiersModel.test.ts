@@ -7,9 +7,7 @@
  *   - un niveau que le serveur ne publie pas n'a PAS de ligne à zéro : « ce niveau n'existe pas
  *     sur ce scope » n'est pas « aucune prise » ;
  *   - le détail par arme part AU SURVOL, et une arme hors catalogue garde sa CLÉ ;
- *   - les trois notes de mesure ne s'écrivent que quand il y a quelque chose à signaler ;
- *   - les deux formes (barres et jauges) rangent dans le MÊME ordre et nomment les armes de la
- *     MÊME façon.
+ *   - les trois notes de mesure ne s'écrivent que quand il y a quelque chose à signaler.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -19,7 +17,6 @@ import { USAGE_TEXT } from './usageI18n'
 import {
   USAGE_PAD_TIER_ORDER,
   buildPadTierGaugeRows,
-  buildPadTierRows,
   isCollapsedTierRowKey,
   padTierLabel,
   padTierUnclassifiedCount,
@@ -67,10 +64,10 @@ const paritesNulles = {
   locale: 'fr' as const,
 }
 
-describe('buildPadTierRows', () => {
+describe('buildPadTierGaugeRows', () => {
   it('range dans l’ordre ÉCRIT (puissance d’abord), pas par volume', () => {
-    const rows = buildPadTierRows(temoin(), t)
-    expect(rows.map((r) => r.key)).toEqual(['puissance', 'terrain', 'base'])
+    const rows = buildPadTierGaugeRows(temoin(), paritesNulles)
+    expect(rows.map((r) => r.key)).toEqual(['tier-puissance', 'tier-terrain', 'tier-base'])
     // L'ordre est celui de la LECTURE depuis le 2026-09-21 (D2) : le plus lourd en tête,
     // la base en dernier — et repliée derrière un dépliable chez l'appelant.
     expect(USAGE_PAD_TIER_ORDER.indexOf('puissance')).toBeLessThan(
@@ -82,16 +79,15 @@ describe('buildPadTierRows', () => {
   })
 
   it('ne fabrique AUCUNE ligne pour un niveau que le serveur ne publie pas', () => {
-    const rows = buildPadTierRows(temoin(), t)
-    expect(rows.find((r) => r.key === 'non_classe')).toBeUndefined()
-    expect(rows.find((r) => r.key === 'bonus')).toBeUndefined()
+    const rows = buildPadTierGaugeRows(temoin(), paritesNulles)
+    expect(rows.find((r) => r.key === 'tier-non_classe')).toBeUndefined()
+    expect(rows.find((r) => r.key === 'tier-bonus')).toBeUndefined()
   })
 
   /**
    * D2 amendée (décision utilisateur du 2026-09-21) : `bonus` et `non_classe` n'ont plus de
-   * ligne MÊME SERVIS. Les socles de bonus sont des équipements (déjà comptés par
-   * `equipment_powerup_*`) ; les prises sans emplacement identifié sont une réserve de
-   * mesure, dont le compte part dans l'infobulle du titre.
+   * ligne MÊME SERVIS. Les socles de bonus sont des équipements ; les prises sans emplacement
+   * identifié sont une réserve de mesure, dont le compte part dans l'infobulle du titre.
    */
   it('n’affiche NI les socles de bonus NI les prises non classées, même servis', () => {
     const bloc = temoin({
@@ -101,7 +97,6 @@ describe('buildPadTierRows', () => {
         { tier: 'non_classe', player_total: 3, lobby_total: 5, weapons: [] },
       ],
     } as Partial<SessionUsagePadTiersBlock>)
-    expect(buildPadTierRows(bloc, t).map((r) => r.key)).toEqual(['puissance', 'terrain', 'base'])
     expect(buildPadTierGaugeRows(bloc, paritesNulles).map((r) => r.key)).toEqual([
       'tier-puissance',
       'tier-terrain',
@@ -113,23 +108,21 @@ describe('buildPadTierRows', () => {
   })
 
   it('rend une liste vide sans bloc, et sans niveau', () => {
-    expect(buildPadTierRows(null, t)).toEqual([])
-    expect(buildPadTierRows(undefined, t)).toEqual([])
-    expect(buildPadTierRows(temoin({ tiers: [] }), t)).toEqual([])
+    expect(buildPadTierGaugeRows(null, paritesNulles)).toEqual([])
+    expect(buildPadTierGaugeRows(undefined, paritesNulles)).toEqual([])
+    expect(buildPadTierGaugeRows(temoin({ tiers: [] }), paritesNulles)).toEqual([])
   })
 
   it('compose le détail par arme au survol, et garde la CLÉ d’une arme hors catalogue', () => {
-    const rows = buildPadTierRows(temoin(), t)
-    const puissance = rows.find((r) => r.key === 'puissance')
-    expect(puissance?.hint).toBe('Armes de puissance — S7 Sniper 6, deadbeef 3')
+    const rows = buildPadTierGaugeRows(temoin(), paritesNulles)
+    expect(rows.find((r) => r.key === 'tier-puissance')?.hint).toBe('Armes de puissance — S7 Sniper 6, deadbeef 3')
   })
 
   it('n’écrit aucun survol quand le joueur n’a rien pris à ce niveau', () => {
-    const rows = buildPadTierRows(temoin(), t)
-    expect(rows.find((r) => r.key === 'base')?.hint).toBeUndefined()
+    const rows = buildPadTierGaugeRows(temoin(), paritesNulles)
+    expect(rows.find((r) => r.key === 'tier-base')?.hint).toBeUndefined()
   })
 })
-
 describe('padTiersNotes', () => {
   it('se tait quand il n’y a rien à signaler', () => {
     expect(padTiersNotes(temoin(), t)).toEqual([])
@@ -148,20 +141,6 @@ describe('padTiersNotes', () => {
 
   it('rend une liste vide sans bloc', () => {
     expect(padTiersNotes(null, t)).toEqual([])
-  })
-})
-
-describe('buildPadTierGaugeRows', () => {
-  it('range dans le MÊME ordre et nomme les armes de la MÊME façon que les barres', () => {
-    const barres = buildPadTierRows(temoin(), t)
-    const jauges = buildPadTierGaugeRows(temoin(), paritesNulles)
-    expect(jauges.map((r) => r.key)).toEqual(barres.map((r) => `tier-${r.key}`))
-    expect(jauges.map((r) => r.hint)).toEqual(barres.map((r) => r.hint))
-    expect(jauges.map((r) => r.label)).toEqual(barres.map((r) => r.label))
-  })
-
-  it('rend une liste vide sans bloc', () => {
-    expect(buildPadTierGaugeRows(null, paritesNulles)).toEqual([])
   })
 })
 

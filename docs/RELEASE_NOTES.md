@@ -29,14 +29,14 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Net flag grabs** — juggling folded into a 1.5-second window, so picking your own flag back up twice in a second counts once
 - **Assault** — bomb plants, defuses, carriers killed and the rest of the mode's statistics
 - **Rounds are counted as rounds** — on modes decided by rounds, the score shown is the number of rounds won and lost; the API's point score is kept alongside because on those modes it can hand the advantage to the side that lost
-- **Payback and support** — when a teammate dies, does your side take down the killer within 5 seconds? One rule everywhere — Squad, Sessions, Timeseries and the match view — and support counts the assists between teammates
+- **Payback and support** — when a teammate dies, does your side take down the killer within 5 seconds? One rule everywhere — Squad, Sessions and the match view — and support counts the assists between teammates, also over time on the Timeseries
 - **Range and height against your lobby** — your kill range and the height you fight from, read against the whole lobby of each match rather than against the playlist: range roles, height roles, and the engagement height of every kill on the match view
 - **Distance records by weapon** — your longest measured kill with each weapon, on the Synthesis
 - **Starting weapons read right** — a weapon picked up in the first seconds of a life no longer counts as a starting weapon
 
 **Equipment: used, kept or wasted**
 - **The three outcomes of every piece of equipment** — used, kept without ever using it, or dropped when you died, family by family
-- **On three pages** — the Synthesis, the Squad and the Sessions, with your share of your team, the parity line and a match-by-match regularity band
+- **On the Sessions and the Timeseries** — on the Sessions with your share of your team, the parity line and a match-by-match regularity band; on the Timeseries, your items against the rest of your side
 - **Charges are visible** — a deployable shows how much of it is left before the first use
 
 **A Tactics tab**
@@ -46,13 +46,13 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Team coordination** — how far apart your squad actually plays, read per match from the variant reference rather than from a threshold somebody picked
 
 **Squad, sessions and progression**
-- **The shapes you keep** — six ways of reading a squad across nineteen cards: equipment, special weapons and objectives, solo against squad, your share against the parity of your team
+- **The shapes you keep** — the objective cards: the balance of power by mode family, and each player's share of their side's objective
 - **Per-match cadence** — every usage number is now a number per measured match, not per minute
 - **The exchange in six cards** — assists as stacked bars, player-by-map with a single legend, medals last
 - **First kill / first death, ranges and usages** on the Timeseries page, objectives trimmed down to what the mode actually offered
 - **New badges** — "Thief" (the most kills stolen from a friend) in the Squad impact matrix, "Scuttled" and "Selfless" on objective modes when the score and the kills tell opposite stories, and "Lackey / Boss" roles on the assist charts
 - **Assists exchanged with each relation** — a column in Relations, a "Duo partner" card and an "Inner circle" card
-- **A "Usage" tab on the Timeseries** — range, equipment and "the shapes you keep" in one place, and the cumulative damage balance on the Timeseries Summary
+- **The Timeseries "Usage" tab becomes your Map control** — the Squad's Map control read over your solo matches: what your side took (power-ups, special weapons, rack weapons), how it moved over the period, map by map, your share of the pickups, what they were worth against the opponent, whether you die near a teammate or alone, your share of the objective, and what you did with the equipment you picked up; the Payback card and the engagement height leave the page, and the cumulative damage balance is on the Timeseries Summary
 - **A "Map control" tab on the Squad** — who took what on the map, camp against camp: the camouflage and overshield bonuses, the special weapons of the power pads and the rack weapons. You see the balance of the evening and how it moved over the session, who in the squad took what, match by match, what your kills owe to those resources, how well you fare against the opponent with them, and how tonight compares with your usual evenings. It replaces the old Squad "Usage" tab (old links land on it), and the cards it used to hold moved to Contributions and Dynamics.
 - **"Grouped or isolated"** — in the Map control tab, one dot per life: how far you were from the nearest living teammate (in radar ranges) and how many kills that life brought, split into four quarters so that the isolated lives that cost you are easy to spot, plus the share of your lives by placement. Measured for each match as it is synced. The "Unanswered kills" cloud leaves the Synergies tab; the Payback card stays.
 - **Sessions in four sections**, and a side-by-side comparison in shared rows that stays readable when the drawer opens
