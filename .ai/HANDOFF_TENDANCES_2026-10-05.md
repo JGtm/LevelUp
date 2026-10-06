@@ -35,9 +35,12 @@ Les sections qui suivent décrivent l'étude ; ce qui a été tranché à l'impl
   de JGtm comparées aux formules de la maquette à date égale (écarts tous expliqués, journal du plan 8.2) ; revue
   adversariale en deux rondes (ronde 1 : 10 constats recevables, tous corrigés ; ronde 2 : 2 constats, corrigés,
   relus par le superviseur) ; gates complets Go et web verts (journal du plan 8.1).
-- **Reste** : gate visuel de l'utilisateur dans l'app après fusion (témoins : matrice par groupe, barre
-  « Horizon » collante, filtre « Type de partie » après bascule de vue, vue Escouade avec « Enregistrer ») ; CI de
-  la branche ; commits à proposer (rien n'est commité à l'écriture de ces lignes).
+- **Livraison** : trois commits sur la branche (`3267bd96e` API Go, `829f8a0b0` onglet web, `78116af1e`
+  documents), puis fusion de `feat/v75` (`05cc77397`, seul conflit : le journal, résolu par union) et avance
+  rapide de `feat/v75` sur ce commit, poussée le 2026-10-06 (accord de l'utilisateur).
+- **Reste** : CI de `feat/v75` sur cette fusion (gate d'autorité) ; gate visuel de l'utilisateur dans l'app
+  (témoins : matrice par groupe, barre « Horizon » collante, filtre « Type de partie » après bascule de vue, vue
+  Escouade avec « Enregistrer »).
 
 ## Fichiers
 
