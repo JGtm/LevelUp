@@ -44,14 +44,18 @@ queue a changé de place n'y sont pas : c'est la mesure 2.2 qui les voit.
 **+806 records gagnés, −51 perdus.** Pertes :
 
 - (a) 32 annonces d'emplacement vide (composant `i45`, Restated) dans trois paquets de mise en place
-  des joueurs : `000d5950` 2:712, `696a9d7c` 2:1620, `9f57c612` 2:2130, huit slots chacun. La marche
-  depuis E y bute avant la signature. Sans conséquence.
+  des joueurs : `000d5950` 2:712, `696a9d7c` 2:1620, `9f57c612` 2:2130, huit slots chacun, plus des
+  annonces isolées (`51101d1d` 6:226, `53ce4390` 18:158, `64e8adfa` 22:1178, `fb1a1a72` 17:1630). La
+  marche depuis E y bute avant la signature. Sans conséquence.
 - (b) Quelques anciennes ancres démenties par une trame désormais FERMÉE depuis E (correct) :
-  `084a804d` 12:314 slot 727, `d9781168` 35:2112 slot 557.
+  `084a804d` 12:314 slot 727, `d9781168` 35:2112 slot 557, `1c4c63c2` 4:2142 slot 704.
 - (c) Environ 15 records isolés réellement perdus, dans des paquets que la marche depuis E ne mène pas
   au bout : `1c4c63c2` 9:2050 slot 696 (le plus chargé), `1c4c63c2` 57:2084 slot 735, `d9781168`
-  10:1384 à 10:1504 slot 548 (`i30`, trois fois), `111fa685` 8:844 slot 616, `64e8adfa` 41:1400 slot
+  10:1324 à 10:1504 slot 548 (`i30`, quatre fois), `111fa685` 8:844 slot 616, `64e8adfa` 41:1400 slot
   642, `fb1a1a72` 18:1662 slot 565, `7344d24f` 3:1446 slot 515.
+- (d) À instruire par l'agent frais : cinq records que l'ancrage rendait et que la marche, qui lit
+  désormais le slot, ne garde pas : `111fa685` 8:700, 8:878, 8:904 slot 559 ; `1c4c63c2` 52:298
+  slot 525 et 53:554 slot 670.
 - Mini-bobine versionnée (`bobineFamilles`), paquet 2:712 : avant V2, début par signature au bit 7418
   puis les bipèdes 512 à 519 ; après V2, début lu à E = 5224, la marche lit 1508 (NEW `ti=11`), 2-12,
   52-59, puis bute sur le slot 122 (`ti=45`) à son composant 0, au bit ~7286.
