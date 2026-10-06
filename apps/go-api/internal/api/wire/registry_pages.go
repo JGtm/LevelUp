@@ -387,8 +387,7 @@ func (r *ServiceRegistry) Stats(ctx context.Context, slug string) (port.StatsSer
 
 // Timeseries retourne un TimeseriesService pour le joueur.
 //
-// Phase C+ multi-titres : injecte le DataAdapter HI pour permettre une
-// future bascule LoadTimeseries.
+// Phase C+ multi-titres : le DataAdapter HI prepare une future bascule LoadTimeseries.
 func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.TimeseriesService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
@@ -407,6 +406,7 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
 		// Roles de portee (D23-a) : MEME repo, autre lecture (tout le lobby, par match).
 		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID)
+	svc = r.cablerUsagesTimeseries(svc, pdb) // onglet « Usages » : registry_pages_timeseries.go
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

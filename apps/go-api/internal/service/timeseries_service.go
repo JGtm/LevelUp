@@ -120,6 +120,8 @@ type TimeseriesService struct {
 	// sur la fenêtre de cette page. Optionnels, gated au câblage.
 	matchRangeRepo port.MatchRangeRepository
 	matchRangeXUID string
+	// usages : l'Emprise solo de l'onglet « Usages » (timeseries_service_emprise.go).
+	usages usagesDeps
 }
 
 // highlightEventsLoader expose la sous-API du HighlightEventsRepo per-player

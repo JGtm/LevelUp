@@ -100,6 +100,8 @@ func (s *TimeseriesService) attachMigratedSections(
 		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
 	})
 	stop()
+	// LES TROIS LECTURES DU RÉSUMÉ D'USAGE, UNE FOIS pour les blocs qui les lisent (ADR 0036 I4).
+	lu := s.lireUsageDuScope(ctx, synthesisMatchIDs(filteredCanon))
 	stop = timing.FromContext(ctx).Section("equipment_usage")
 	resp.EquipmentUsage = buildEquipmentUsageBlock(ctx, equipmentUsageQuery{
 		Repo:            s.sessionUsageRepo,
@@ -110,6 +112,7 @@ func (s *TimeseriesService) attachMigratedSections(
 		RepoRoot:  s.repoRoot,
 		TitleSlug: s.titleSlug,
 		Locale:    locale,
+		Lectures:  lu,
 	})
 	stop()
 	// « Les formes retenues », contexte SOLO : MÊMES match_id que le bloc d'usage
@@ -125,10 +128,24 @@ func (s *TimeseriesService) attachMigratedSections(
 		RepoRoot:     s.repoRoot,
 		TitleSlug:    s.titleSlug,
 		Locale:       locale,
+		Lectures:     lu,
 	})
 	stop()
+	s.attachEmprise(ctx, resp, filteredCanon, locale, lu)
+	s.attachEmblem(ctx, resp)
 	s.attachCoordination(ctx, resp, filteredCanon, equipes)
 	s.attachMatchRange(ctx, resp, filteredCanon, locale)
+}
+
+// lireUsageDuScope fait les trois lectures du résumé d'usage de la fenêtre, sous leur section de
+// durée ; nil sans repo (titre sans `film.usage_summary`) ou sans match — chaque bloc dégrade alors
+// comme il le fait seul.
+func (s *TimeseriesService) lireUsageDuScope(ctx context.Context, matchIDs []string) *squadagg.LecturesUsage {
+	if s.sessionUsageRepo == nil || len(matchIDs) == 0 {
+		return nil
+	}
+	defer timing.FromContext(ctx).Section("usage_summary")()
+	return squadagg.LireUsage(ctx, s.sessionUsageRepo, matchIDs)
 }
 
 // attachMatchRange pose le nuage des rôles de portée du joueur consulté sur la FENÊTRE DE

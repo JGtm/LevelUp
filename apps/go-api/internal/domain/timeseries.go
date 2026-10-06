@@ -350,6 +350,13 @@ type TimeseriesPageResponse struct {
 	// Nil (champ omis) pour un titre sans décodeur de film, un scope non décodé ou une
 	// lecture en échec — jamais un bloc vide.
 	RangeProfiles *MatchRangeBlock `json:"range_profiles,omitempty"`
+	// Emprise : l'onglet « Usages » — l'Emprise appliquée aux matchs solo de la fenêtre
+	// (solo_emprise.go). Nil quand la fenêtre n'a aucun match ; sans film, seule la feuille de
+	// match (frags aux armes spéciales) y est servie et FilmUnavailable dit pourquoi.
+	Emprise *SoloEmpriseBlock `json:"emprise,omitempty"`
+	// PlayerEmblemURL : l'emblème du joueur consulté (fiche « Ma part à l'objectif ») ; vide quand
+	// il n'est pas connu — le web pose alors l'initiale.
+	PlayerEmblemURL string `json:"player_emblem_url,omitempty"`
 	// Coordination : le bloc « Riposte » et « Appui reçu » DANS LE TEMPS (lot N1,
 	// décisions D22) — les mêmes grandeurs que la page Sessions, groupées PAR SOIRÉE
 	// (`sessions`), sur le MÊME scope filtré que le reste de la page.

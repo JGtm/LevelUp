@@ -82,6 +82,22 @@ const (
 	EquipmentFamilySensor = usageFamilySensor
 )
 
+// EquipmentFamilyGrapple / EquipmentFamilyThruster — deux CAPACITÉS PORTÉES (grappin,
+// propulseur) : le film publie l'appareil, lâché à la mort, mais ni prise ni usage au bilan. La
+// carte « Équipement » des Séries temporelles les montre « non mesurées » avec leurs lâchers ; le
+// décodeur relit ces deux clés (`replay/usage_summary_families.go`) au lieu de les réécrire.
+const (
+	EquipmentFamilyGrapple  = "grapple"
+	EquipmentFamilyThruster = "thruster"
+)
+
+// EquipmentUnmeasuredLineFamilies rend les familles HORS BILAN qui portent quand même une ligne
+// « non mesuré » (avec leurs lâchers), dans l'ordre d'affichage : grappin, propulseur. Le
+// répulseur n'y est pas (décision P4 : aucun canal ne mesure son usage, il n'a aucune ligne).
+func EquipmentUnmeasuredLineFamilies() []string {
+	return []string{EquipmentFamilyGrapple, EquipmentFamilyThruster}
+}
+
 // EquipmentOutcomeFamilies rend les familles qui portent une ligne d'issue, dans
 // l'ordre de la table ci-dessus. Exportée pour l'agrégat de session, qui doit
 // pouvoir citer une famille du bilan même quand AUCUNE prise ne l'a nommée sur le

@@ -6318,6 +6318,53 @@ export interface components {
             label?: string;
             label_en?: string;
         };
+        EmpriseEquipment: {
+            families: components["schemas"]["EmpriseEquipmentFamily"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+        };
+        EmpriseEquipmentFamily: {
+            /** Format: int64 */
+            dropped_me?: number;
+            family: string;
+            me?: components["schemas"]["EmpriseEquipmentOutcomes"];
+            measured: boolean;
+            rest?: components["schemas"]["EmpriseEquipmentOutcomes"];
+        };
+        EmpriseEquipmentOutcomes: {
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            kept: number;
+            /** Format: int64 */
+            taken: number;
+            /** Format: int64 */
+            used: number;
+        };
+        EmpriseMapColumn: {
+            /** Format: int64 */
+            losses: number;
+            map_key?: string;
+            map_label?: string;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            matches_filmed: number;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_tiers: number;
+            /** Format: int64 */
+            other_maps?: number;
+            /** Format: int64 */
+            others: number;
+            power_weapon_kills?: components["schemas"]["SquadEmpriseCount"];
+            resources: components["schemas"]["SquadEmpriseMatchResource"][] | null;
+            /** Format: int64 */
+            vehicles_measured: number;
+            /** Format: int64 */
+            wins: number;
+        };
         EncounterDTO: {
             /** Format: int64 */
             as_enemy: number;
@@ -11952,6 +11999,24 @@ export interface components {
             t1: number;
             xuid: string;
         };
+        SoloEmpriseBlock: {
+            equipment?: components["schemas"]["EmpriseEquipment"];
+            film_unavailable?: string;
+            habit?: components["schemas"]["SquadEmpriseHabit"];
+            maps: components["schemas"]["EmpriseMapColumn"][] | null;
+            matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            placement?: components["schemas"]["SquadEmprisePlacement"];
+            players: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            production: components["schemas"]["SquadEmpriseProduction"][] | null;
+            resources: components["schemas"]["SquadEmpriseResource"][] | null;
+            sheet_unavailable?: string;
+            vehicles?: components["schemas"]["SquadEmpriseVehicles"];
+        };
         SoloSessionPerfBlock: {
             granularity: string;
             points: components["schemas"]["SoloSessionPerfPoint"][] | null;
@@ -13673,6 +13738,7 @@ export interface components {
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
             elevation?: components["schemas"]["ElevationCloudBlock"];
+            emprise?: components["schemas"]["SoloEmpriseBlock"];
             equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             formes_retenues?: components["schemas"]["SquadFormesBlock"];
@@ -13686,6 +13752,7 @@ export interface components {
             match_rows: components["schemas"]["TimeseriesMatchRow"][] | null;
             objective_stats?: components["schemas"]["ObjectiveAggregate"];
             outcomes_over_time: components["schemas"]["OutcomesPeriodPoint"][] | null;
+            player_emblem_url?: string;
             range_profiles?: components["schemas"]["MatchRangeBlock"];
             solo_session_perf?: components["schemas"]["SoloSessionPerfBlock"];
             summary_tab: components["schemas"]["TimeseriesSummaryTab"];

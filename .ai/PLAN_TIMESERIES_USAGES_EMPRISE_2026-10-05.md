@@ -394,15 +394,15 @@ Périmètre : `analysis/squademprise/{input.go, maps.go (NEUF), equipment.go (NE
 `games/halo_infinite/film/replay/usage_summary_families.go` (2 constantes), `domain/timeseries.go`,
 `service/timeseries_service*.go`, `port/` (EmblemURLLoader), `api/wire/registry_pages.go`, contrat.
 
-- [ ] L2.1 `domain/equipmentusage` : `EquipmentFamilyGrapple`, `EquipmentFamilyThruster`,
+- [x] L2.1 `domain/equipmentusage` : `EquipmentFamilyGrapple`, `EquipmentFamilyThruster`,
   `EquipmentUnmeasuredLineFamilies()` (copie défensive comme `EquipmentOutcomeFamilies`, l. 89-93) ;
   `replay/usage_summary_families.go:43-44` relit ces constantes. Garde-rail :
   `replay/usage_summary_families_guard_test.go` vérifie que chaque famille de
   `EquipmentUnmeasuredLineFamilies()` est dans `usageCarriedCapacityFamilies` et que le répulseur n'y
   est pas ; mutation : ajouter `repulsor` à la liste → rouge.
-- [ ] L2.2 `squademprise.Match` : `MapKey`, `MapLabel`, `Outcome` (`canonical.Outcome` en chaîne) ;
+- [x] L2.2 `squademprise.Match` : `MapKey`, `MapLabel`, `Outcome` (`canonical.Outcome` en chaîne) ;
   l'Escouade ne les renseigne pas (aucun changement de son bloc : `build_test.go` vert inchangé).
-- [ ] L2.3 `squademprise.BuildMaps(in Input) []domain.EmpriseMapColumn` (`maps.go`) : une `soiree` par
+- [x] L2.3 `squademprise.BuildMaps(in Input) []domain.EmpriseMapColumn` (`maps.go`) : une `soiree` par
   carte (réutilise `tallyMatch` / `soiree.add` / `objets.publier`), tri matchs décroissants puis
   libellé ; au-delà de `EmpriseGridMaxMaps + 1` cartes, les 12 premières puis une colonne « Autres
   cartes » (`OtherMaps` = nombre sommé) ; V / D / autres depuis `Match.Outcome`. Tests ROUGES d'abord
@@ -410,16 +410,16 @@ Périmètre : `analysis/squademprise/{input.go, maps.go (NEUF), equipment.go (NE
   colonne de repli = somme des cartes repliées, carte sans film (`MatchesFilmed = 0`), carte filmée
   sans niveaux (`MatchesTiers = 0`), objets « qui chez moi » (moi / reste), frags aux armes spéciales
   hors film. Mutations : seuil de repli ±1, tri inversé → rouges.
-- [ ] L2.4 `squademprise.BuildEquipment(in Input) *domain.EmpriseEquipment` (`equipment.go`), D4.
+- [x] L2.4 `squademprise.BuildEquipment(in Input) *domain.EmpriseEquipment` (`equipment.go`), D4.
   Tests ROUGES d'abord (`equipment_test.go`) : servi = posé pour le mur et consommé pour le capteur
   (via `PlayerOutcomeCounts`), moi / reste de mon camp séparés, adversaire exclu, match à camp
   inconnu exclu des deux côtés, grappin / propulseur non mesurés avec MES lâchers, répulseur absent,
   ordre D4, nil sans film. Témoin chiffré : les comptes de la maquette (illustration, mesures §9 :
   mur moi 52 · 0 · 32, reste 146 · 7 · 151 ; capteur moi 6 · 1 · 54 ; grappin 84 lâchés) sur une
   fixture minimale qui les reproduit. Mutation : compter `deployed` pour le capteur → rouge.
-- [ ] L2.5 `domain/solo_emprise.go` (types §3) ; `TimeseriesPageResponse.Emprise` et
+- [x] L2.5 `domain/solo_emprise.go` (types §3) ; `TimeseriesPageResponse.Emprise` et
   `PlayerEmblemURL` (`domain/timeseries.go`, après `RangeProfiles`, commentaire de contrat court).
-- [ ] L2.6 Service : `service/timeseries_service_emprise.go` (NEUF) — `attachEmprise` depuis
+- [x] L2.6 Service : `service/timeseries_service_emprise.go` (NEUF) — `attachEmprise` depuis
   `filteredCanon` : `Match` par ligne canonique (`MapKey` = `Summary.Map.ID`, `MapLabel` =
   `labelPourLocale(Summary.Map, locale)`, `timeseries_service_sections.go:308-316`), `Players` = le
   joueur seul (`squadagg.SquadPlayers(xuid, gamertag, participants, nil)`), `Timeline` vide, lectures
@@ -430,9 +430,9 @@ Périmètre : `analysis/squademprise/{input.go, maps.go (NEUF), equipment.go (NE
   véhicules, emblèmes, vies, portées) vivent dans une struct `usagesDeps` déclarée dans ce fichier
   et embarquée par UNE ligne dans `TimeseriesService` (`timeseries_service.go:56-123`, fichier à
   424 L) ; leurs `With*` aussi.
-- [ ] L2.7 Emblème (D14) : `port.EmblemURLLoader` ; `WithEmblemLoader` ; lecture best-effort
+- [x] L2.7 Emblème (D14) : `port.EmblemURLLoader` ; `WithEmblemLoader` ; lecture best-effort
   journalisée (Debug si absent).
-- [ ] L2.8 Câblage `api/wire/registry_pages.go:392-446` : `WithEmprise(duckdb.NewSquadEmpriseRepo(pdb))`
+- [x] L2.8 Câblage `api/wire/registry_pages.go:392-446` : `WithEmprise(duckdb.NewSquadEmpriseRepo(pdb))`
   inconditionnel (feuille de match, tous titres) ; repo d'usage sous `CapFilmUsageSummary` (le même
   `NewSessionUsageRepo`, renommer `WithEquipmentUsage` en `WithUsageSummary(repo, repoRoot)` — la
   suppression du résolveur d'amis se fait en L6) ; véhicules sous `CapFilmVehicleUsage` ; chargeur
@@ -440,15 +440,31 @@ Périmètre : `analysis/squademprise/{input.go, maps.go (NEUF), equipment.go (NE
   `registry_pages_timeseries_wiring_test.go` (NEUF, patron `registry_pages_home_teammates_wiring_test.go:80-170`) :
   `WithEmprise` inconditionnel, véhicules sous leur seule porte ; mutation : mettre `WithEmprise` sous
   condition → rouge.
-- [ ] L2.9 Tests service (mocks de port, `timeseries_service_emprise_test.go`) : périmètre = les
+- [x] L2.9 Tests service (mocks de port, `timeseries_service_emprise_test.go`) : périmètre = les
   matchs filtrés ; Halo 5 (repo d'usage nil → `film_unavailable = film_unsupported`, seule la feuille) ;
   `ErrCapabilityNotSupported` d'une source → source absente avec raison ; lecture en échec →
   `*_load_failed`, jamais d'erreur de page ; scope vide → `emprise` nil ; une seule lecture du résumé
   d'usage pour l'Emprise et les formes (compteur de mock).
-- [ ] L2.10 Contrat régénéré (openapi + `generated.ts`), diff additif ; garde
+- [x] L2.10 Contrat régénéré (openapi + `generated.ts`), diff additif ; garde
   `contract-surface.guard.test.ts` verte (ajouts tolérés).
 - Gate : gate Go + contrat ; `no_title_package_in_analysis_test.go`,
   `no_analysis_type_in_http_body_test.go`, `no_slug_comparison_test.go` rejoués nommément.
+
+Journal L2 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) :
+- **L2.1** `domain/equipmentusage` : `EquipmentFamilyGrapple`, `EquipmentFamilyThruster`, `EquipmentUnmeasuredLineFamilies()` ; `replay/usage_summary_families.go` relit les deux constantes (valeur identique, aucune révision). Garde-rail `TestFamillesNonMesureesSontDesCapacitesPortees` (`usage_summary_families_guard_test.go`).
+- **L2.2** `squademprise.Match` : `MapKey`, `MapLabel`, `Outcome` (`canonical.Outcome`) ; l'Escouade ne les renseigne pas (`build_test.go` vert inchangé).
+- **L2.3** `squademprise.BuildMaps` (`maps.go`) : une `soiree` par carte, tri matchs décroissants / libellé / clé, repli au-delà de `domain.EmpriseGridMaxMaps + 1` ; tests `maps_test.go` (tri et sommes, repli à 13 / 14 / 20 cartes, carte sans film).
+- **L2.4** `squademprise.BuildEquipment` (`equipment.go`), D4 ; tests `equipment_test.go` avec le témoin chiffré de la maquette (mur moi 23 pris, 52 · 0 · 32, reste 146 · 7 · 151 ; capteur moi 12 pris, 6 · 1 · 54, reste 16 · 4 · 183 ; grappin 84 et propulseur 65 lâchés) et les exclusions (adversaire, camp inconnu, poses de capteur, répulseur).
+- **L2.5** `domain/solo_emprise.go` (`SoloEmpriseBlock` embarquant `SquadEmpriseBlock` — schéma OpenAPI vérifié aplati —, `EmpriseMapColumn`, `EmpriseEquipment*`, `EmpriseGridMaxMaps`) ; `TimeseriesPageResponse.Emprise`, `.PlayerEmblemURL`.
+- **L2.6** `service/timeseries_service_emprise.go` : `usagesDeps` embarqué par une ligne dans `TimeseriesService`, `attachEmprise` (section de durée `emprise`, journaux `emprise*` page `timeseries`), `timeseriesEmpriseMatches` (carte et résultat depuis le canonique). Les trois lectures du résumé d'usage se font UNE fois (`lireUsageDuScope`, section `usage_summary`) et nourrissent le bloc d'usage, les formes et l'Emprise (avant ce lot : le bloc d'usage et les formes lisaient chacun de leur côté).
+- **L2.7** `port.EmblemURLLoader`, `WithEmblemLoader`, `attachEmblem` (Debug sans chargeur).
+- **L2.8** Câblage : `registry_pages.go` (déjà à 620 lignes, au-delà du seuil) n'est PAS agrandi — taille avant / après : 620 / 620 — : la factory appelle `r.cablerUsagesTimeseries(svc, pdb)`, nouveau fichier `api/wire/registry_pages_timeseries.go` (feuille inconditionnelle, emblème inconditionnel, véhicules sous `CapFilmVehicleUsage`). Le lecteur d'appels du test de câblage de l'Escouade est généralisé (`appelsDansFactory`, une seule copie). Nouveau `registry_pages_timeseries_wiring_test.go`. Renommage `WithEquipmentUsage` → `WithUsageSummary` : fait en L6.2, quand le résolveur d'amis disparaît (la signature ne change qu'une fois) — dépendance de plan, pas un report.
+- **L2.9** `timeseries_service_emprise_test.go` : fenêtre, un seul joueur, ni habitude ni placement, grille et équipement ; sans film (film_unsupported, feuille seule) ; dégradations nommées (feuille non supportée / en échec, film en échec) ; fenêtre vide ; une lecture du résumé d'usage pour trois blocs ; emblème.
+- **L2.10** Contrat : `openapi.yaml` +179 lignes, 0 retrait ; `generated.ts` +67, 0 retrait ; `check-generated-types-fresh` OK ; `contract-surface.guard.test.ts` vert SANS régénérer le snapshot (snapshot non modifié).
+- **Rouge avant vert** : pour `BuildMaps`, `BuildEquipment` et `attachEmprise`, le code a été écrit avant les tests ; le rouge a été obtenu en rejouant les tests contre un bouchon (corps remplacé par `return nil` / bloc non posé) — 3, 2 et 3 tests rouges respectivement —, puis vert. Écart de méthode consigné.
+- **Mutations** (toutes ROUGES, restauration vérifiée) : répulseur ajouté aux familles non mesurées ; seuil de repli −1 et +1 ; tri des cartes inversé ; DNF compté en défaite ; capteur lu sur les poses (`equipmentUsedOf`) ; adversaire compté dans le reste du camp ; match à camp inconnu compté ; lecture du résumé d'usage non partagée (2 lectures au lieu d'1) ; résultat non transmis ; coéquipiers sélectionnés sur la page solo ; câblage : `WithEmprise` déplacée sous `CapFilmUsageSummary`, `WithEquipmentUsage` sortie de sa porte (`if true`), `cablerUsagesTimeseries` mise sous condition.
+- **Gate** : `go build ./...` 0 ; `go vet` des 8 paquets touchés 0 ; `gofmt -l` muet (un fichier reformaté, fin de ligne) ; `go test -count=1` du module en lots couvrant tout `go list ./...` : 67 + 39 + 28 + 13 + 48 ok, 0 FAIL ; après le déplacement du câblage : build, vet, `./internal/api/...` 5 ok ; `make go-api-lint` 0 issues (deux fois) ; `openapi-gen -check` à jour ; garde-rails rejoués nommément : `TestAucunTypeAnalysisEnCorpsHuma`, `TestNoNewSlugComparison`, `TestAnalysisImporteAucunPaquetDeTitre`, `TestOpenAPIYAMLIsUpToDate` PASS. Web (premier passage) : `npm ci` (node_modules réel, 508 paquets) ; `npm run generate-types` ; `npx tsc -b --force` 0 ; vitest `src/lib/api` 5 fichiers / 36 tests verts. `-tags=integration` non requis (aucun paquet `platform/duckdb`, `sync`, `persist`, `migration` modifié).
+- Seuils : fichiers neufs ≤ 188 L ; `timeseries_service.go` 458 L (+2) ; `domain/timeseries.go` 385 L ; plus longue fonction neuve `BuildEquipment` (~35 L) ; `attachEmprise` 5 paramètres (ctx compris).
 
 ### L3 — Go : « Mes vies : près d'un coéquipier ou seul » · moyen
 
@@ -664,3 +680,4 @@ suppressions web sont dans L5 (L5.11-L5.15) ; L6 ne garde que le Go.
   instruite.
 </content>
 </invoke>
+- (L2) Les Séries temporelles lisent les participants de la fenêtre deux fois : `lireEquipesDuScope` (`timeseries_service_sections.go`, section `participants`) et `squadagg.LireUsage` (résumé d'usage partagé depuis L2). Les deux portent sur la même fenêtre ; les fusionner toucherait la courbe d'équipe et la coordination (hors périmètre).
