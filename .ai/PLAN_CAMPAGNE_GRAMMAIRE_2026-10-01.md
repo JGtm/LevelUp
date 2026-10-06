@@ -228,6 +228,12 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   tient sans exception ; D2 n'est PAS étendue au gate 2.
 - **2026-10-04 (utilisateur, question en langage clair) : « Intégrer + recuire »** — la vague 2 (LU, LT)
   entre dans `feat/v75` dès sa CI verte et l'instruction des deux pertes, puis le parc est recuit.
+- 2026-10-06 (pilote) : **LR retenu sous D2** (`LOT_LR.md` §12) — sous le decoupage MPP declare (2.7.a0), +1 311 sains,
+  aucune perte hors fermetures factices retirees (194 tetes illisibles pour le jeu, compte MPP >= 5) sur les 12 films en
+  baisse ; les gains viennent de LR.2 (une lecture non prouvee ne modifie pas le monde), regle de prudence du decodeur
+  accordee par le pilote le 2026-10-05, non lue dans le jeu.
+- **2026-10-06 (utilisateur, question en langage clair) : « Oui, integre »** — LR entre dans `feat/v75` a la CI verte ;
+  une seule recuisson apres l etape V2 de la vue A.
 
 ## 4. Journal
 
