@@ -13156,7 +13156,7 @@ export interface components {
             coequipiers?: string[] | null;
             /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
             match_ids?: string[] | null;
-            /** @description Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. */
+            /** @description Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. */
             question?: string;
             /** @description Axe : moi | escouade | adv. Defaut : moi. */
             qui?: string;
@@ -13289,7 +13289,7 @@ export interface components {
             coequipiers?: string[] | null;
             /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
             match_ids?: string[] | null;
-            /** @description Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions. */
+            /** @description Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions. */
             question?: string;
             /** @description Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers. */
             qui?: string;

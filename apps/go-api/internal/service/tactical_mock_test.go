@@ -23,6 +23,8 @@ type mockTacticalRepo struct {
 	morts            domain.TacticalMortsContexte
 	mortsParCarte    map[string][]domain.PositionSample
 	ouvrables        map[string]time.Time
+	contextes        []domain.ContexteDeMort
+	errContextes     error
 	errMaps          error
 	errPos           error
 	errEv            error
@@ -39,6 +41,7 @@ type mockTacticalRepo struct {
 	vuMortsParCarte domain.TacticalQuery
 	vuOuvrXUID      string
 	vuOuvrMatch     []string
+	vuContextes     []domain.TacticalQuery
 }
 
 // Univers : la lecture d'OCCUPATION (phase 6) n'a besoin que de l'univers — ses valeurs
@@ -190,6 +193,23 @@ func (m *mockTacticalRepo) MortsParCarte(_ context.Context, q domain.TacticalQue
 			if garde[p.MatchID] {
 				out[mapID] = append(out[mapID], p)
 			}
+		}
+	}
+	return out, nil
+}
+
+// ContextesDeMort : le voisinage des morts des matchs de la liste blanche (placement d'une mort au
+// détail d'une zone). Le double honore la liste et COMPTE ses appels : une lecture par requête.
+func (m *mockTacticalRepo) ContextesDeMort(_ context.Context, q domain.TacticalQuery) ([]domain.ContexteDeMort, error) {
+	m.vuContextes = append(m.vuContextes, q)
+	if m.errContextes != nil {
+		return nil, m.errContextes
+	}
+	garde := gardeDuPerimetre(q)
+	out := make([]domain.ContexteDeMort, 0, len(m.contextes))
+	for _, c := range m.contextes {
+		if garde[c.MatchID] {
+			out = append(out, c)
 		}
 	}
 	return out, nil

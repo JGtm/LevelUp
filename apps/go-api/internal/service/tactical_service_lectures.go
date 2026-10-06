@@ -74,11 +74,16 @@ func grappesDeLUnivers(sidecars map[string]*domain.TacticalRasterSidecar,
 	return out
 }
 
-// zonesPures projette les zones du port vers le type du paquet d'algo, qui reste pur.
+// zonesPures projette les zones du port vers le type du paquet d'algo, qui reste pur : nom et
+// point de référence (grappes de spawn), forme et tranche (nom en jeu d'une cellule).
 func zonesPures(zones []domain.ZoneNommee) []tactical.ZoneNommee {
 	out := make([]tactical.ZoneNommee, 0, len(zones))
 	for _, z := range zones {
-		out = append(out, tactical.ZoneNommee{NomFR: z.NomFR, NomEN: z.NomEN, X: z.X, Y: z.Y})
+		out = append(out, tactical.ZoneNommee{
+			NomFR: z.NomFR, NomEN: z.NomEN, X: z.X, Y: z.Y,
+			Polygone: z.Polygone, Parties: z.Parties, Trous: z.Trous,
+			ZBas: z.ZBas, ZHaut: z.ZHaut, VolumeIndex: z.VolumeIndex,
+		})
 	}
 	return out
 }

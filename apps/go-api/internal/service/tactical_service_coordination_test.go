@@ -149,3 +149,23 @@ func TestCoordination_MortSansCoequipierVisible(t *testing.T) {
 		t.Errorf("isolement = %+v, attendu 1 mort isolee : l'absence de distance ne l'efface pas", out.Isolement)
 	}
 }
+
+// TestIsole_RayonsRadarDistinctsEtTries : la lecture « isole » publie les portées de radar de ses
+// matchs, DISTINCTES et triées (deux Arène + un BTB → [18 24]), jamais leur moyenne ; les autres
+// lectures n'en publient aucune.
+func TestIsole_RayonsRadarDistinctsEtTries(t *testing.T) {
+	svc := svcCoordination(universVariantes(map[string]string{
+		"arene1": "Slayer:Arena", "arene2": "Slayer:Arena", "btb": "BTB:Slayer",
+	}),
+		mortContexte("arene1", tsMoi, 2, 3, m(30), 1, 0),
+		mortContexte("arene2", tsMoi, 2, 3, m(30), 1, 0),
+		mortContexte("btb", tsMoi, 2, 3, m(30), 1, 0))
+
+	out := lireQuestion(t, svc, domain.TacticalQuestionIsole, "arene1", "arene2", "btb")
+	if got := out.RayonsRadarM; len(got) != 2 || got[0] != 18 || got[1] != 24 {
+		t.Fatalf("rayons_radar_m = %v, attendu [18 24] (distincts, triés)", got)
+	}
+	if autre := lireQuestion(t, svc, domain.TacticalQuestionMorts, "arene1", "arene2", "btb"); len(autre.RayonsRadarM) != 0 {
+		t.Errorf("rayons_radar_m publiés hors de « isole » : %v", autre.RayonsRadarM)
+	}
+}

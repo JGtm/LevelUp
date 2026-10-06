@@ -17,7 +17,7 @@
 // ses cellules ET pour convertir un clic en adresse de cellule. Il est aussi AFFICHE a
 // l'utilisateur — un plan a 2 m est plus grossier, et cela doit se voir.
 //
-// LES QUATRE LECTURES PASSENT PAR ICI, et c'est voulu : un pas adaptatif applique aux
+// TOUTES LES LECTURES PASSENT PAR ICI, et c'est voulu : un pas adaptatif applique aux
 // seules positions de kill aurait laisse « par ou je sors du spawn » — la lecture la plus
 // clairsemee de l'onglet, quinze secondes par vie — vide sur les memes cartes.
 package service
@@ -34,10 +34,60 @@ import (
 // defaites), donc elle a moins de cellules lisibles a densite egale. Compter ici les
 // cellules de la lecture NON signee aurait retenu un pas auquel le plan signe reste vide.
 func cellulesLisibles(raster *tactical.Raster, question string) []domain.CelluleTactique {
-	if question == domain.TacticalQuestionGagne {
+	switch question {
+	case domain.TacticalQuestionGagne:
 		return raster.CellulesSignees()
+	case domain.TacticalQuestionSolde:
+		return raster.CellulesSolde()
+	default:
+		return raster.Cellules()
 	}
-	return raster.Cellules()
+}
+
+// rasteriserLaCible projette les morts mesurées sur la cible de l'axe « qui » et choisit le pas.
+// Le SOLDE garde ses deux faces SÉPARÉES (frags, morts : analysis/tactical.RasteriseSolde) ; les
+// autres lectures n'ont qu'une liste de points (`projeter`). Rend aussi le nombre d'événements
+// localisés de la cible.
+func rasteriserLaCible(mesure domain.TacticalUnivers, lecture domain.TacticalPositions, question string,
+	dans predicatQui) (tactical.LectureAdaptative, int, error) {
+	if question == domain.TacticalQuestionSolde {
+		frags, morts := projeterFaces(lecture, dans)
+		lue, err := tactical.ChoisirPas(tactical.PasAdaptatifsM, tactical.CellulesLisiblesMin,
+			func(g tactical.Grille) (*tactical.Raster, int, error) {
+				raster, err := tactical.RasteriseSolde(g, idsDeLUnivers(mesure), frags, morts)
+				if err != nil {
+					return nil, 0, err
+				}
+				return raster, len(raster.CellulesSolde()), nil
+			})
+		return lue, len(frags) + len(morts), err
+	}
+	points := projeter(lecture, question, dans)
+	lue, err := rasteriser(mesure, question, points)
+	return lue, len(points), err
+}
+
+// projeterFaces sépare les deux faces d'un engagement pour la cible : la position du TUEUR quand
+// il est dans la cible (un frag), celle de la VICTIME quand elle y est (une mort).
+func projeterFaces(lecture domain.TacticalPositions, dans predicatQui) (frags, morts []domain.PositionSample) {
+	for _, p := range lecture.Points {
+		if dans(p.MatchID, p.KillerXUID) {
+			frags = append(frags, domain.PositionSample{MatchID: p.MatchID, X: p.KillerX, Y: p.KillerY})
+		}
+		if dans(p.MatchID, p.VictimXUID) {
+			morts = append(morts, domain.PositionSample{MatchID: p.MatchID, X: p.VictimX, Y: p.VictimY})
+		}
+	}
+	return frags, morts
+}
+
+// idsDeLUnivers rend les identifiants des matchs de l'univers, dans son ordre.
+func idsDeLUnivers(univers domain.TacticalUnivers) []string {
+	ids := make([]string, 0, len(univers.Matchs))
+	for _, m := range univers.Matchs {
+		ids = append(ids, m.MatchID)
+	}
+	return ids
 }
 
 // rasteriser choisit le pas de la grille pour une lecture qui part de POINTS (les trois
@@ -65,11 +115,7 @@ func rasteriserSurGrille(g tactical.Grille, univers domain.TacticalUnivers, ques
 		}
 		return tactical.RasteriseAvecResultats(g, resultats, points)
 	}
-	ids := make([]string, 0, len(univers.Matchs))
-	for _, m := range univers.Matchs {
-		ids = append(ids, m.MatchID)
-	}
-	return tactical.Rasterise(g, ids, points)
+	return tactical.Rasterise(g, idsDeLUnivers(univers), points)
 }
 
 // rasteriserComptes choisit le pas d'une lecture qui part de comptes DEJA agreges par
@@ -96,14 +142,18 @@ func rasteriserComptes(matchs []string,
 // remplirRaster habille la reponse : cellules, echelle, cadre, pas retenu.
 func remplirRaster(out *domain.TacticalRaster, raster *tactical.Raster, question string) {
 	out.Cellules = cellulesLisibles(raster, question)
-	if question == domain.TacticalQuestionGagne {
+	switch question {
+	case domain.TacticalQuestionGagne:
 		out.Echelle = tactical.EchelleSymetrique(out.Cellules)
 		// Les DEUX denominateurs de la lecture signee, sur l'univers entier : ils ne
 		// valent pas MatchsRetenus, et leur somme lui est en general inferieure (les
 		// nuls et les resultats inconnus ne participent a aucun cote).
 		out.MatchsVictoire = raster.NbMatchsResultat(domain.OutcomeWin)
 		out.MatchsDefaite = raster.NbMatchsResultat(domain.OutcomeLoss)
-	} else {
+	case domain.TacticalQuestionSolde:
+		// Signee, mais sur les FACES d'un engagement : un seul denominateur, MatchsRetenus.
+		out.Echelle = tactical.EchelleSymetrique(out.Cellules)
+	default:
 		out.Echelle = tactical.Echelle(out.Cellules)
 	}
 	out.PasM = raster.PasM()

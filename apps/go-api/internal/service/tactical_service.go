@@ -197,8 +197,8 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	return out, err
 }
 
-// rasterDeKills sert les trois lectures qui se lisent sur les POSITIONS MESUREES de
-// `kill_positions` : ou je meurs, ou je tue, ou je gagne.
+// rasterDeKills sert les quatre lectures qui se lisent sur les POSITIONS MESUREES de
+// `kill_positions` : ou je meurs, ou je tue, ou je gagne, le solde frags − morts.
 //
 // EXTRAITE DE `Raster` (constat C8 de la revue) : celle-ci depassait le seuil de 80 lignes
 // au sens de `funlen`, et le ratchet de la CI ne pouvait pas le voir — la position d'une
@@ -244,9 +244,9 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 	mesure := universMesure(lecture.Univers)
 	out.MatchsRetenus = len(mesure.Matchs)
 
-	points := projeter(lecture, question, cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers))
-	out.EvenementsLocalises = len(points)
-	lue, err := rasteriser(mesure, question, points)
+	lue, localises, err := rasteriserLaCible(mesure, lecture, question,
+		cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers))
+	out.EvenementsLocalises = localises
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: rasterisage en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)
@@ -330,6 +330,9 @@ func facesDeLaQuestion(question string) (prendVictime, prendTueur bool) {
 		// mes kills.
 		return true, false
 	}
+	// « Ou je gagne » et le SOLDE regardent LES DEUX faces : le solde les rasterise
+	// separement (rasteriserLaCible), mais sa couverture et son detail de cellule comptent
+	// les frags ET les morts de la cible.
 	return question != domain.TacticalQuestionKills, question != domain.TacticalQuestionMorts
 }
 

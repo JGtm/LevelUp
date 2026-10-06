@@ -379,6 +379,30 @@ func TestTacticalHandler_QuestionTemps(t *testing.T) {
 	}
 }
 
+// TestTacticalHandler_QuestionSolde : la lecture « solde » traverse le contrat avec les deux
+// faces de ses cellules (frags, morts), en snake_case.
+func TestTacticalHandler_QuestionSolde(t *testing.T) {
+	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
+		MapID: "streets", Question: domain.TacticalQuestionSolde, Qui: domain.TacticalQuiMoi,
+		MatchsFiltres: 5, MatchsRetenus: 5, PasM: 0.5,
+		Cellules: []domain.CelluleTactique{{Col: 4, Lig: 4, Valeur: 0.2, Brut: 1, Matchs: 3, Frags: 2, Morts: 1}},
+		Echelle:  domain.EchelleTactique{Symetrique: true, Borne: 0.2},
+	}}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appelPost(t, r, "/players/JGtm/tactical/streets/raster", `{"match_ids":["m1"],"question":"solde"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	if svc.vuQuestion != domain.TacticalQuestionSolde {
+		t.Fatalf("question transmise = %q, attendu solde", svc.vuQuestion)
+	}
+	for _, cle := range []string{`"frags":2`, `"morts":1`} {
+		if !strings.Contains(w.Body.String(), cle) {
+			t.Errorf("clef %s absente du JSON servi : %s", cle, w.Body.String())
+		}
+	}
+}
+
 // TestTacticalHandler_TempsSansCapability : un titre qui ne produit pas d'artefact de
 // rejeu rend 503, jamais 200 avec une carte vide.
 func TestTacticalHandler_TempsSansCapability(t *testing.T) {

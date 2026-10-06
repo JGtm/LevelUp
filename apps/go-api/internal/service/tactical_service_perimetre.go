@@ -36,6 +36,7 @@ func validerLecture(carte, question, qui string, coequipiers []string) error {
 	}
 	switch question {
 	case domain.TacticalQuestionMorts, domain.TacticalQuestionKills, domain.TacticalQuestionGagne,
+		domain.TacticalQuestionSolde,
 		domain.TacticalQuestionTemps, domain.TacticalQuestionRoutes,
 		domain.TacticalQuestionIsole:
 	default:

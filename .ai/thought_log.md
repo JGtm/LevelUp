@@ -115920,3 +115920,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : chaque test vu rouge avant le code, 15 mutations toutes rouges ; Go 349 paquets (un seul échec, un test de durée de `sync/skill` hors périmètre sous charge d'une autre session, vert rejoué seul), lint 0 issue, contrat +58 / +25 lignes sans retrait, garde de surface intacte.
 
 **Conclusion / prochaine étape** : L1 clos ; L2 (lectures enrichies, contextes de mort, zones polygonales, lecture « solde » servie) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L2 : lectures enrichies, contextes de mort, zones polygonales, lecture « solde » — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L2 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : les lectures de positions et d'isolement rapportent la hauteur (NULL conservé en pointeur nil), les gamertags et la source du kill ; `ContextesDeMort` lit `match_death_context_latest` sous liste blanche liée en constantes (ADR 0036 I2, fenêtres bornées, liste I2 complétée) ; les zones du catalogue voyagent avec leur forme et leur tranche jusqu'à `NommerZone` ; la lecture « solde » est servie en gardant ses deux faces séparées (`rasteriserLaCible` → `RasteriseSolde`, échelle symétrique, dénominateur = matchs mesurés) ; « isole » publie ses portées de radar distinctes et triées.
+
+**Résultats observés** : tests vus rouges avant le code (sauf trois verts d'emblée, consignés au journal du plan) ; 8 mutations toutes rouges ; témoins de zone : Illusion « Nid blindé » inchangé, Bazaar « Pont du marché ouest » par la règle (b), aucun nom changé par les parties ou les trous ; Go 349 paquets en six lots, 0 échec ; intégration `platform/duckdb` (`-p 1`) verte ; garde-rails nommés PASS ; lint 0 issue ; contrat : deux descriptions seulement.
+
+**Conclusion / prochaine étape** : L2 clos ; L3 (détail de zone enrichi et câblage) après le « continue » du superviseur.

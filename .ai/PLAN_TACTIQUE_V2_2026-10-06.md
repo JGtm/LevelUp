@@ -599,37 +599,85 @@ tactical_service.go, tactical_service_grille.go, tactical_service_perimetre.go,
 tactical_service_isolement.go}` (+ tests), `api/handlers/tactical.go` (docs), contrat,
 `docs/adr/0036-page-reads-are-scoped.md` (liste I2).
 
-- [ ] L2.1 `QTacticalPositions` + scan (D4, D6 : `killer_z`, `victim_z`, `feed_killer_gamertag`,
+- [x] L2.1 `QTacticalPositions` + scan (D4, D6 : `killer_z`, `victim_z`, `feed_killer_gamertag`,
   `victim_gamertag`, `source_tag`, `source_category`) ; `QTacticalIsolement` + `scanMortContexte`
   (`victim_z`, `feed_killer_gamertag`, `source_tag`, `source_category`). Tests `:memory:` écrits
   d'abord (patron `tactical_repo_test.go`) : colonnes lues, z NULL conservé (pointeur nil, jamais 0),
   tag / catégorie NULL → absents ; `TestTacticalRepo_PerimetreRestreint_FenetresBornees` vert sans
   modification. Mutation : z NULL lu comme 0 → rouge.
-- [ ] L2.2 `TacticalRepository.ContextesDeMort(ctx, q)` (`tactical_repo_contextes.go`, D7) : liste
+- [x] L2.2 `TacticalRepository.ContextesDeMort(ctx, q)` (`tactical_repo_contextes.go`, D7) : liste
   blanche liée en constante sur le `match_id` de `match_death_context_latest`, aucune
   sous-requête ; table absente → `games.ErrCapabilityNotSupported` (patron
   `squad_life_placement_repo.go:73-78`) ; liste vide → aucune requête. Test `:memory:` écrit
   d'abord : dernière passe entière par match, matchs demandés seulement, NULL conservés,
   `exigerFenetresBornees` ; ADR 0036 : test ajouté à la liste I2 et au tableau ; double de test
   du port étendu (`service/tactical_mock_test.go`). Mutation : liste liée par sous-requête → rouge.
-- [ ] L2.3 `zonesNommees` projette contour, parties, trous, tranche, index de volume (D3) ;
+- [x] L2.3 `zonesNommees` projette contour, parties, trous, tranche, index de volume (D3) ;
   `service/tactical_callouts_test.go` (NEUF ou étendu) : projection sur fixture, puis témoins D26 sur
   le catalogue réel par `tactical.NommerZone` (Illusion → « Nid blindé », règle (c), 0,81 m ;
   Bazaar → règle (b), trois polygones, nom consigné). Si un témoin change de nom à cause des
   parties / trous : arrêt et compte rendu (la forme D3 se discute avant de forcer). Mutation :
   projection sans le contour → rouge.
-- [ ] L2.4 Lecture `solde` (D2) : `validerLecture`, `facesDeLaQuestion`, `cellulesLisibles`,
+- [x] L2.4 Lecture `solde` (D2) : `validerLecture`, `facesDeLaQuestion`, `cellulesLisibles`,
   `rasteriser` / `rasteriserSurGrille`, `remplirRaster` ; doc des corps Huma (`handlers/tactical.go:115,
   212` : « … | solde | … ») ; tests service (mocks de port) écrits d'abord : dispatch, deux faces,
   échelle symétrique, plancher sur l'union, `MatchsRetenus` = mesurés, `Frags` / `Morts` des
   cellules, `kills` / `gagne` inchangés ; test handler : `solde` accepté, question inconnue toujours
   400. Mutations : une seule face, échelle non symétrique → rouges.
-- [ ] L2.5 `rasterIsole` pose `RayonsRadarM` (D9) ; test : deux formats → deux portées triées,
+- [x] L2.5 `rasterIsole` pose `RayonsRadarM` (D9) ; test : deux formats → deux portées triées,
   aucune moyenne. Mutation : portées non dédupliquées → rouge.
-- [ ] L2.6 Contrat régénéré (additif).
+- [x] L2.6 Contrat régénéré (additif).
 - Gate : gate Go + `go test -tags=integration -p 1 ./internal/platform/duckdb/...` + contrat ;
   `TestNoRawAppendOnlyReads`, `TestLecturesDeLaVueDesNoms_Ratchet`, `TestCampaignExclusionGuard`
   rejoués nommément.
+
+Journal L2 (2026-10-06, exécuteur, `feat/tactique-v2`) — tests `:memory:` seulement, aucune base de `data/` ouverte :
+- **L2.1** `QTacticalPositions` lit `killer_z`, `victim_z`, `feed_killer_gamertag`, `victim_gamertag`,
+  `source_tag`, `source_category` ; `QTacticalIsolement` / `scanMortContexte` lisent `victim_z`,
+  `feed_killer_gamertag`, `source_tag`, `source_category`. z NULL → pointeur nil par `nullFloatPtr`
+  (existant, réutilisé) ; tag NULL → nil par `tagOuNil` (neuf, `tactical_repo.go`).
+  `tactical_repo_zone_test.go` (2 tests) vu ROUGE avant le code ;
+  `TestTacticalRepo_PerimetreRestreint_FenetresBornees` vert sans modification.
+- **L2.2** `ContextesDeMort` (`tactical_repo_contextes.go`, 70 L) : liste blanche exigée (refus sinon),
+  liste vide → aucune requête, liée en constantes sur `match_death_context_latest.match_id`, table
+  absente → `ErrCapabilityNotSupported`. Tests `BorneEtNull` (fenêtres bornées), `ListeExigee`,
+  `TableAbsente` vus rouges (méthode absente) ; `DernierePasseEntiere` ajouté APRÈS le code à la
+  relecture de l'item (deux passes, morts différentes : seule la neuve sort), vert d'emblée, mutation
+  « table brute » ROUGE. ADR 0036 : test `BorneEtNull` dans la liste I2 et au tableau. Doubles du port
+  étendus : `service/tactical_mock_test.go` et `service/teammates/teammates_squad_echange_test.go`.
+- **L2.3** `zonesNommees` (et `zonesPures`) projettent contour, parties, trous, tranche, index de
+  volume. Témoins D26 sur le catalogue réel : Illusion → « Nid blindé » par (c) à 0,81 m (inchangé) ;
+  Bazaar → trois polygones contiennent le centre, règle (b), « Pont du marché ouest » / « West Market
+  Bridge » (la maquette disait « Grande cour ouest » sur une autre règle ; une sonde sans parties ni
+  trous rend les mêmes noms : AUCUN nom ne change à cause des parties / trous, pas d'arrêt).
+- **L2.4** `solde` servie : `validerLecture` l'accepte ; `rasteriserLaCible` (`tactical_service_grille.go`)
+  garde les deux faces séparées (`projeterFaces` → `RasteriseSolde`, pas choisi sur `CellulesSolde`) ;
+  `cellulesLisibles` et `remplirRaster` (échelle symétrique, aucun côté victoire / défaite) ;
+  `facesDeLaQuestion` rend déjà les deux faces par sa branche par défaut (contrat écrit au présent,
+  test `Solde_DeuxFacesAuJournal` vert d'emblée) ; `idsDeLUnivers` partagé. Docs Huma
+  (`handlers/tactical.go:115, 212`). `tactical_service_solde_test.go` (3 tests) vu rouge (« question
+  inconnue (solde) ») ; test handler `TestTacticalHandler_QuestionSolde` vert d'emblée (le handler
+  transmet, `frags` / `morts` posés en L1) ; `QuestionInconnue400` inchangé et vert.
+- **L2.5** `rasterIsole` pose `RayonsRadarM = rayonsDistincts(rayons)` ;
+  `TestIsole_RayonsRadarDistinctsEtTries` (deux Arène + un BTB → [18 24], vide hors « isole ») vu rouge.
+- **L2.6** Contrat : `openapi.yaml` 2 descriptions (« … | solde | … »), `generated.ts` idem ;
+  `-check` à jour, `check-generated-types-fresh` OK, `vitest src/lib/api` 5 fichiers / 36 tests verts.
+- **Mutations** (toutes ROUGES, restauration vérifiée par empreinte) : z NULL lu comme 0 (positions ;
+  isolement) ; liste liée par sous-requête ; table brute au lieu de `_latest` ; projection sans le
+  contour ; une seule face au solde ; échelle non symétrique au solde ; portées non dédupliquées.
+- **Gate** (avant-plan) : `go build ./...` 0 ; `go vet` des cinq paquets touchés 0 ; `gofmt -l internal
+  cmd` muet ; paquets touchés 0 ; module en six lots couvrant les 349 paquets de `go list ./...`
+  (196 ok, 153 sans test, 0 FAIL) ; `go test -count=1 -tags=integration -p 1
+  ./internal/platform/duckdb/...` 4 ok ; `go test ./internal/archlint/...` ok ; garde-rails nommés en
+  `-v` : `TestNoRawAppendOnlyReads`, `TestLecturesDeLaVueDesNoms_Ratchet`, `TestCampaignExclusionGuard`
+  PASS ; `golangci-lint run --new-from-merge-base=origin/main` (cache isolé) 0 issues ; contrat ci-dessus.
+  Après l'ajout de `DernierePasseEntiere` : vet, tests et lint du paquet `platform/duckdb` rejoués, verts.
+- Seuils : `service/teammates/teammates_squad_echange_test.go` 587 → 592 L (déjà au-delà de 500 avant
+  le lot ; +5 = le double du port, imposé par l'extension de l'interface ; non découpé, hors
+  périmètre) ; autres fichiers touchés ≤ 498 L ; fonctions neuves ≤ 20 L ; ≤ 4 paramètres.
+- Écarts : `teammates_squad_echange_test.go` et `tactical_service_lectures.go` (`zonesPures`) hors de
+  la liste du périmètre, touchés par nécessité (double du port ; même projection que `zonesNommees`) ;
+  `tactical_service_isolement.go` touché pour L2.5 (au périmètre).
 
 ### L3 — Go : le détail de zone enrichi et son câblage · lourd
 
@@ -879,6 +927,9 @@ L2.3.
 - (L1) `TestLUSRV2Shadow_RafalesBornees_300Candidats` (`internal/sync/skill`) mesure une durée
   murale (rafale < 2 s) : rouge à 2,018 s dans la suite complète pendant que d'autres sessions
   faisaient tourner leurs `go test`, vert rejoué seul. Test sensible à la charge ; non traité.
+- (L2) `golangci-lint` avertit « unknown linters in //nolint directives » : des directives `//nolint` mal
+  formées (texte libre lu comme noms de linters, ex. `match_view_builders_team.go:48`
+  `//nolint:PLR0913 — clé canonique…`) ; pré-existant, hors périmètre ; non traité.
 - (phase 1) Le catalogue de callouts couvre AUSSI des cartes Forge (`maps_by_id`, 2 536 zones selon
   `callouts_catalog.go`) : « carte sans catalogue » = carte absente du catalogue, pas « carte Forge ».
 

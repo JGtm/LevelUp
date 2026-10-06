@@ -36,6 +36,11 @@ func (m *mockTacticalRepo) MortsParCarte(context.Context, domain.TacticalQuery) 
 	return nil, errors.New("non appele")
 }
 
+// ContextesDeMort sert le placement d'une mort au détail d'une zone tactique : jamais appelée ici.
+func (m *mockTacticalRepo) ContextesDeMort(context.Context, domain.TacticalQuery) ([]domain.ContexteDeMort, error) {
+	return nil, errors.New("non appele")
+}
+
 func (m *mockTacticalRepo) Univers(context.Context, domain.TacticalQuery) (domain.TacticalUnivers, error) {
 	return domain.TacticalUnivers{}, errors.New("non appele")
 }

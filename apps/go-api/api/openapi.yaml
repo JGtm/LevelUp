@@ -29249,7 +29249,7 @@ components:
             - array
             - "null"
         question:
-          description: 'Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts.'
+          description: 'Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts.'
           type: string
         qui:
           description: 'Axe : moi | escouade | adv. Defaut : moi.'
@@ -29583,7 +29583,7 @@ components:
             - array
             - "null"
         question:
-          description: 'Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions.'
+          description: 'Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions.'
           type: string
         qui:
           description: 'Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers.'

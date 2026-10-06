@@ -72,6 +72,9 @@ func (s *TacticalService) rasterIsole(ctx context.Context, out *domain.TacticalR
 	// c'est le defaut deja corrige trois fois sous « correction G2 ».
 	out.MatchsRetenus = len(rayons)
 	out.MatchsSansRayon = bilan.MatchsSansRayon
+	// LES PORTEES DE RADAR DE LA LECTURE, DISTINCTES ET TRIEES : le web nomme le seuil de chaque
+	// format, jamais une moyenne qui ne serait la regle d'aucun match.
+	out.RayonsRadarM = rayonsDistincts(rayons)
 	out.MortsEquipeATerre = bilan.EquipeATerre
 	cov := bilan.Couverture
 	out.Isolement = &cov
