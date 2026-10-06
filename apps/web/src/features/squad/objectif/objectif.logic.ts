@@ -51,6 +51,8 @@ export const OBJECTIVE_MIN_MATCHES = 3
 export interface BalanceLine {
   key: string
   duration: boolean
+  /** Colonne facultative (prises nettes, lues du film) : une ligne, hors des sommes de rôle (D7). */
+  optional: boolean
   us: number
   them: number
   share: number
@@ -77,10 +79,48 @@ export function buildObjectiveBalance(block: SquadFormesBlock): BalanceFamily[] 
         .flatMap((c): BalanceLine[] => {
           const agg = aggregateColumns(matches, [c])
           if (agg.lobby <= 0) return []
-          return [{ key: c.key, duration: !!c.duration, us: agg.team, them: agg.lobby - agg.team, share: agg.team / agg.lobby }]
+          return [{ key: c.key, duration: !!c.duration, optional: !!c.optional, us: agg.team, them: agg.lobby - agg.team, share: agg.team / agg.lobby }]
         }),
     })).filter((r) => r.lines.length > 0)
     return { family, matches: matches.length, roles }
+  })
+}
+
+/** Une ligne du rapport de force par rôle : un rôle (somme de ses actions) ou une colonne facultative. */
+interface BalanceRoleLine {
+  /** Le rôle (`take`…) ou la clé de la colonne facultative (`flag_grabs_net`). */
+  key: string
+  /** Le rôle sommé ; null pour une colonne facultative. */
+  role: ObjectiveRole | null
+  duration: boolean
+  us: number
+  them: number
+  share: number
+}
+
+interface BalanceRoleFamily {
+  family: string
+  matches: number
+  lines: BalanceRoleLine[]
+}
+
+/**
+ * buildBalanceByRole — par famille, une ligne par rôle : la somme de ses actions non facultatives
+ * (Tenir en durée), camp contre camp ; puis chaque colonne facultative telle quelle (vue compacte du
+ * tiroir de comparaison de Sessions). Un rôle sans action mesurée n'a pas de ligne.
+ */
+export function buildBalanceByRole(families: BalanceFamily[]): BalanceRoleFamily[] {
+  return families.map((f) => {
+    const sums = f.roles.flatMap((r): BalanceRoleLine[] => {
+      const counted = r.lines.filter((l) => !l.optional)
+      const us = counted.reduce((a, l) => a + l.us, 0)
+      const them = counted.reduce((a, l) => a + l.them, 0)
+      if (us + them <= 0) return []
+      return [{ key: r.role, role: r.role, duration: counted.every((l) => l.duration), us, them, share: us / (us + them) }]
+    })
+    const optional = f.roles.flatMap((r) => r.lines.filter((l) => l.optional))
+      .map((l): BalanceRoleLine => ({ key: l.key, role: null, duration: l.duration, us: l.us, them: l.them, share: l.share }))
+    return { family: f.family, matches: f.matches, lines: [...sums, ...optional] }
   })
 }
 
@@ -263,6 +303,8 @@ export interface SoloObjectiveSheet {
   families: { family: string; lines: SoloSheetLine[] }[]
   /** Mes totaux de rôle (colonnes facultatives exclues), dans l'ordre OBJECTIVE_ROLES. */
   roleTotals: number[]
+  /** Les totaux de rôle de mon camp (toutes les fiches), même ordre — le dénominateur de ma part. */
+  campRoleTotals: number[]
   dominant: ObjectiveRole | null
 }
 
@@ -285,7 +327,8 @@ export function buildSoloObjectiveSheet(block: SquadFormesBlock): SoloObjectiveS
       return { key: l.key, duration: l.duration, value, camp, share: camp > 0 ? value / camp : null }
     }),
   }))
-  return { xuid: main, families, roleTotals: sheets.roleTotals[me], dominant: sheets.dominant[me] }
+  const campRoleTotals = OBJECTIVE_ROLES.map((_, ri) => sheets.roleTotals.reduce((a, totals) => a + totals[ri], 0))
+  return { xuid: main, families, roleTotals: sheets.roleTotals[me], campRoleTotals, dominant: sheets.dominant[me] }
 }
 
 /** Le rôle où la fiche pèse le plus dans notre camp (part du camp), null si aucune part. */

@@ -8,15 +8,16 @@ package sessionusage
 //
 // Les tests de comportement (usage_outcomes_test.go) épinglent le résultat sur les
 // DEUX familles que leurs fixtures nomment (mur et capteur). Le portage, lui, change
-// la MAISON de la table de reconnaissance ([equipmentBilanFamilies]) et de la bascule
-// « utilisé » ([equipmentUsedOf]) : ce qui doit être prouvé inchangé est le
+// la MAISON de la table de reconnaissance (`equipmentusage.EquipmentOutcomeFamilies`) et de la
+// bascule « utilisé » ([equipmentUsedOf]) : ce qui doit être prouvé inchangé est le
 // classement de CHAQUE famille du bilan, y compris celles qu'aucune fixture ne cite.
 //
 // # LA LECTURE DU GOLDEN
 //
 // Une ligne par famille, DANS L'ORDRE de la table de reconnaissance — cet ordre est
 // celui où la page cite les familles, il fait donc partie du contrat. Les quatre
-// colonnes sont les issues rendues par [equipmentOutcomeOf] sur une ligne de base
+// colonnes sont les issues rendues par le chemin de PRODUCTION ([PlayerOutcomeCounts],
+// lu par l'Emprise, sur la liste du bilan que l'Emprise parcourt) sur une ligne de base
 // dont CHAQUE canal porte une valeur sentinelle distincte : la colonne « utilisé »
 // nomme donc à elle seule le canal lu (11 = épisodes de camouflage, 22 = épisodes de
 // surbouclier, 33 = poses `deployed`, 44 = charges consommées `spent`). Un portage
@@ -29,6 +30,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/domain/equipmentusage"
 )
 
 // goldenIssuesParFamille — l'état mesuré le 2026-09-17 sur la base 88f1a1115, AVANT
@@ -70,7 +73,7 @@ func ligneDeBaseSentinelle(familles []string) *PlayerRow {
 }
 
 func TestGoldenIssuesParFamilleNeBougePas(t *testing.T) {
-	familles := equipmentBilanFamilies
+	familles := equipmentusage.EquipmentOutcomeFamilies()
 	if len(familles) == 0 {
 		t.Fatal("la table de reconnaissance du bilan est vide — le golden ne garderait rien")
 	}
@@ -79,8 +82,8 @@ func TestGoldenIssuesParFamilleNeBougePas(t *testing.T) {
 	var b strings.Builder
 	b.WriteString("\n")
 	for _, f := range familles {
-		c := equipmentOutcomeOf(p, f)
-		fmt.Fprintf(&b, "%-20s %d %d %d %d\n", f, c.used, c.kept, c.dropped, c.taken)
+		c := PlayerOutcomeCounts(p, []string{f})
+		fmt.Fprintf(&b, "%-20s %d %d %d %d\n", f, c.Used, c.Kept, c.Dropped, c.Taken)
 	}
 
 	if got, want := normaliseGolden(b.String()), normaliseGolden(goldenIssuesParFamille); got != want {

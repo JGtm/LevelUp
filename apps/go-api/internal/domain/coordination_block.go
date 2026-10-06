@@ -1,11 +1,7 @@
 package domain
 
-// coordination_block.go — LE BLOC « COORDINATION » D'UN SCOPE DE MATCHS.
+// coordination_block.go — LE BLOC « COORDINATION » D'UN SCOPE DE MATCHS : l'appui REÇU.
 //
-// Deux sujets, une seule mesure, trois surfaces (plan AJSUP, décisions D22 du 2026-09-21) :
-//
-//	RIPOSTE   « mes morts ont-elles été vengées » et « est-ce moi qui venge » — la fenêtre
-//	          d'échange de analysis/coordination (5 s), rapportée aux morts de MON CAMP.
 //	APPUI     « combien de mes frags m'ont été préparés » et « sur les appuis distribués
 //	          dans mon camp, combien me sont revenus ».
 //
@@ -16,9 +12,8 @@ package domain
 // ─── POURQUOI LE MÊME TYPE POUR SESSIONS ET TIMESERIES ────────────────────────────────
 //
 // Les deux pages posent la MÊME question à deux mailles. Deux types auraient donné deux
-// définitions de « morts de mon camp » libres de diverger au premier ajustement — c'est le
-// défaut que l'en-tête de analysis/coordination existe pour empêcher. La maille se lit
-// dans le champ rempli : `PerMatch` (session) ou `Sessions` (soirées), jamais les deux.
+// définitions de « appuis de mon camp » libres de diverger au premier ajustement. La maille se
+// lit dans le champ rempli : `PerMatch` (session) ou `Sessions` (soirées), jamais les deux.
 //
 // ─── TOUT TAUX VOYAGE EN Couverture ───────────────────────────────────────────────────
 //
@@ -31,7 +26,6 @@ package domain
 // « Mesuré » veut dire : au moins une ligne publiable dans `match_kill_events_latest`. Un
 // match non mesuré n'a pas un taux nul, il n'a pas de taux — il ne fournit ni numérateur
 // ni dénominateur, et son absence se lit dans `MatchesMeasured / MatchesTotal`.
-
 // CoordinationUnavailableReason — la raison MACHINE d'un bloc indisponible (même doctrine
 // que SessionUsageUnavailableReason : l'écran traduit, le contrat ne rédige pas).
 const (
@@ -79,38 +73,7 @@ type CoordinationEntree struct {
 	MoiXUID string
 	Matchs  []CoordinationMatch
 	Equipes EquipesParMatch
-	Kills   []KillEvent
 	Appuis  []CoordinationAppuiRow
-}
-
-// CoordinationRiposte — les deux grandeurs de riposte d'un scope.
-type CoordinationRiposte struct {
-	// JeSuisCouvert : part de MES morts vengeables qui ont été vengées dans la fenêtre.
-	JeSuisCouvert Couverture `json:"je_suis_couvert"`
-	// JeRiposte : part des morts vengeables DE MON CAMP que j'ai vengées moi-même. Le
-	// dénominateur est bien les morts du CAMP, pas les miennes : sans cela un match où le
-	// camp meurt peu gonflerait artificiellement ma part.
-	JeRiposte Couverture `json:"je_riposte"`
-	// TeamDeaths / TeamDeathsAvenged : les morts VENGEABLES de mon camp et celles qui ont
-	// été vengées. Comptes bruts — le face-à-face et les infobulles les affichent tels quels.
-	TeamDeaths        int `json:"team_deaths"`
-	TeamDeathsAvenged int `json:"team_deaths_avenged"`
-	// DelaiMedianMs : délai médian des ripostes portées à mon camp, DANS la fenêtre.
-	// Absent quand aucune riposte n'est survenue — jamais un zéro qui se lirait « instantané ».
-	DelaiMedianMs *int64 `json:"delai_median_ms,omitempty"`
-	// HabituelPct : « je suis couvert » MESURÉ SUR LA PÉRIODE DE RÉFÉRENCE (les matchs du
-	// filtre de la page, toutes sessions confondues), en pourcentage. C'est le repère de
-	// la jauge « je suis couvert », qui n'a PAS de parité : être couvert ne se compare à
-	// aucun 1/n — seulement à son propre habituel.
-	//
-	// Absent quand la référence est TAUTOLOGIQUE (elle se réduit au scope mesuré : le
-	// repère tomberait alors exactement sur la valeur) ou non mesurée. Jamais un 0.
-	HabituelPct *float64 `json:"habituel_pct,omitempty"`
-	// ParityPct : la part ÉQUITABLE de `JeRiposte`, en pourcentage — 100/n pondéré par les
-	// morts de camp de chaque match. Un scope qui mêle 4v4 et BTB n'a pas une parité unique,
-	// et la moyenne des effectifs n'en donnerait pas la bonne. Absent quand AUCUN match
-	// mesuré n'a d'effectif de camp connu (FFA).
-	ParityPct *float64 `json:"parity_pct,omitempty"`
 }
 
 // CoordinationAppui — les deux grandeurs d'appui REÇU d'un scope.
@@ -124,36 +87,30 @@ type CoordinationRiposte struct {
 type CoordinationAppui struct {
 	OnMePrepare     Couverture `json:"on_me_prepare"`
 	MaPartDesAppuis Couverture `json:"ma_part_des_appuis"`
-	// HabituelPct : « on me prépare » mesuré sur la MÊME période de référence que
-	// CoordinationRiposte.HabituelPct, et avec la même règle d'absence. C'est le repère de
-	// la jauge « on me prépare », que rien ne rapporte à une part équitable.
+	// HabituelPct : « on me prépare » MESURÉ SUR LA PÉRIODE DE RÉFÉRENCE (les matchs du filtre de
+	// la page, toutes sessions confondues), en pourcentage — le repère de la jauge « on me
+	// prépare », que rien ne rapporte à une part équitable. Absent quand la référence est
+	// TAUTOLOGIQUE (elle se réduit au scope mesuré : le repère tomberait sur la valeur) ou non
+	// mesurée. Jamais un 0.
 	HabituelPct *float64 `json:"habituel_pct,omitempty"`
-	// ParityPct : 100/n pondéré par les appuis de camp de chaque match. Même règle
-	// d'absence que CoordinationRiposte.ParityPct.
+	// ParityPct : la part ÉQUITABLE de `MaPartDesAppuis`, en pourcentage — 100/n pondéré par les
+	// appuis de camp de chaque match. Un scope qui mêle 4v4 et BTB n'a pas une parité unique, et
+	// la moyenne des effectifs n'en donnerait pas la bonne. Absent quand AUCUN match mesuré n'a
+	// d'effectif de camp connu (FFA).
 	ParityPct *float64 `json:"parity_pct,omitempty"`
 }
 
 // CoordinationMatchPoint — UNE case de la bande de régularité : les comptes bruts d'un
 // match mesuré et les deux parts qui s'en déduisent.
 //
-// Une part NIL est un « non mesuré » : aucune mort vengeable de camp, aucun appui mesuré
-// dans le camp. La case reste GRISE — un zéro s'y lirait comme une contre-performance.
+// Une part NIL est un « non mesuré » : aucun frag mesuré, aucun appui mesuré dans le camp. La
+// case reste GRISE — un zéro s'y lirait comme une contre-performance.
 type CoordinationMatchPoint struct {
 	MatchID string `json:"match_id"`
 	// TeamSize / ParityPct : l'effectif de mon camp et la parité 100/n de CE match
 	// (réserve R1). Absents en FFA.
 	TeamSize  *int     `json:"team_size,omitempty"`
 	ParityPct *float64 `json:"parity_pct,omitempty"`
-
-	TeamDeaths        int `json:"team_deaths"`
-	TeamDeathsAvenged int `json:"team_deaths_avenged"`
-	MyDeaths          int `json:"my_deaths"`
-	MyDeathsAvenged   int `json:"my_deaths_avenged"`
-	MyRipostes        int `json:"my_ripostes"`
-	// RiposteSharePct : mes ripostes sur les morts vengeables de mon camp, en pourcentage.
-	RiposteSharePct *float64 `json:"riposte_share_pct,omitempty"`
-	// CoveredSharePct : mes morts vengées sur mes morts vengeables, en pourcentage.
-	CoveredSharePct *float64 `json:"covered_share_pct,omitempty"`
 
 	MyMeasuredKills int `json:"my_measured_kills"`
 	MyAssistedKills int `json:"my_assisted_kills"`
@@ -168,16 +125,14 @@ type CoordinationMatchPoint struct {
 
 // CoordinationSessionPoint — UN bâton de la frise temporelle : une SOIRÉE.
 //
-// POURQUOI LA SOIRÉE ET PAS LE MATCH. Le dénominateur de « je suis couvert », ce sont mes
-// morts : 8 à 14 par match en arène. Une part sur 9 morts bouge de 11 points quand une
-// seule mort change de côté — la frise par match dessinerait le bruit. La soirée cumule
-// 20 à 35 morts, et c'est déjà la maille de la frise de l'Escouade.
+// POURQUOI LA SOIRÉE ET PAS LE MATCH. Une part sur une dizaine de frags bouge de dix points
+// quand un seul frag change de côté — la frise par match dessinerait le bruit. La soirée
+// cumule assez d'événements, et c'est déjà la maille de la frise de l'Escouade.
 type CoordinationSessionPoint struct {
-	SessionLabel    string              `json:"session_label"`
-	MatchesMeasured int                 `json:"matches_measured"`
-	MatchesTotal    int                 `json:"matches_total"`
-	Riposte         CoordinationRiposte `json:"riposte"`
-	Appui           CoordinationAppui   `json:"appui"`
+	SessionLabel    string            `json:"session_label"`
+	MatchesMeasured int               `json:"matches_measured"`
+	MatchesTotal    int               `json:"matches_total"`
+	Appui           CoordinationAppui `json:"appui"`
 }
 
 // CoordinationBlock — le bloc servi à Sessions (avec PerMatch) et à Timeseries (avec
@@ -185,18 +140,13 @@ type CoordinationSessionPoint struct {
 type CoordinationBlock struct {
 	Available         bool   `json:"available"`
 	UnavailableReason string `json:"unavailable_reason,omitempty"`
-	// FenetreMs : la fenêtre d'échange, publiée pour que l'écran écrive « 5 s » sans la
-	// recopier — une constante de règle du jeu recopiée côté web diverge au premier
-	// ajustement (coordination.FenetreEchangeMs).
-	FenetreMs int64 `json:"fenetre_ms"`
 	// MatchesMeasured / MatchesTotal : la COUVERTURE, affichée avec le bloc et jamais en
 	// note de bas de page. 0/M est un état légitime (Available=false, raison
 	// `no_measured_match`).
 	MatchesMeasured int `json:"matches_measured"`
 	MatchesTotal    int `json:"matches_total"`
 
-	Riposte CoordinationRiposte `json:"riposte"`
-	Appui   CoordinationAppui   `json:"appui"`
+	Appui CoordinationAppui `json:"appui"`
 
 	// PerMatch : une case par match MESURÉ, dans l'ordre du scope (page Sessions).
 	PerMatch []CoordinationMatchPoint `json:"per_match,omitempty"`

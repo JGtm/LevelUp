@@ -1,7 +1,7 @@
 //go:build integration
 
-// Package duckdb_test — session_usage_aggregate_integration_test.go : l'agrégat
-// de session S2 DE BOUT EN BOUT sur une DB migrée par les VRAIES migrations et
+// Package duckdb_test — session_usage_aggregate_integration_test.go : le résumé
+// d'usage DE BOUT EN BOUT sur une DB migrée par les VRAIES migrations et
 // peuplée par le VRAI persister (persist.UsageSummaryPersister) — jamais de DDL
 // recopiée, jamais d'INSERT direct dans les tables d'usage.
 //
@@ -9,9 +9,9 @@
 // package duckdb ne peut pas importer persist (cycle persist→duckdb).
 //
 // Le scénario est le témoin miniature du plan S2 : 3 matchs dont 2 mesurés
-// (couverture partielle), deux camps, effectifs INÉGAUX (2v2 puis 3v2 → parités
-// 40 % et 22,2 %), une re-passe sur m1 (la vue _latest doit servir la DERNIÈRE
-// passe), un coéquipier suivi présent partout (A) et un ami d'un seul match (B).
+// (couverture partielle), deux camps, effectifs INÉGAUX (2v2 puis 3v2), une
+// re-passe sur m1 (la vue _latest doit servir la DERNIÈRE
+// passe), lus par le repo puis assemblés comme le font l'Emprise et les formes.
 package duckdb_test
 
 import (
@@ -23,7 +23,6 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/analysis/sessionusage"
-	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/persist"
@@ -156,95 +155,32 @@ func TestSessionUsageAggregate_DePersisterAuBloc(t *testing.T) {
 		t.Fatalf("films = %v, attendu m1 et m2 seulement (m3 non mesuré)", films)
 	}
 
-	// Assemblage (même chemin que le service) + agrégat.
+	// ── La vue _latest sert la DERNIÈRE passe de m1 (la passe A portait 1 ms et 99 prises) ──
+	if films["m1"].DurationMS != 600000 || films["m2"].DurationMS != 300000 {
+		t.Errorf("durées = %d / %d ms, attendu 600000 / 300000", films["m1"].DurationMS, films["m2"].DurationMS)
+	}
+	if films["m1"].PowerupPickups["powerup_camo"] != 2 || films["m2"].PowerupPickups["powerup_overshield"] != 1 {
+		t.Errorf("prises de bonus = %v / %v", films["m1"].PowerupPickups, films["m2"].PowerupPickups)
+	}
+
+	// ── Assemblage (le chemin de l'Emprise et des formes) : mesure, camps, effectifs inégaux ──
 	tc := sessionusage.BuildTeamContext("P", participants)
-	playersByMatch := map[string][]sessionusage.PlayerRow{}
-	for _, p := range players {
-		playersByMatch[p.MatchID] = append(playersByMatch[p.MatchID], p)
+	matchs := sessionusage.BuildMatchInputs(ids, films, players, tc)
+	if len(matchs) != 3 || !matchs[0].Measured || !matchs[1].Measured || matchs[2].Measured {
+		t.Fatalf("matchs = %+v, attendu m1 et m2 mesurés, m3 non", matchs)
 	}
-	in := sessionusage.Input{PlayerXUID: "P"}
-	for _, id := range ids {
-		film, measured := films[id]
-		m := sessionusage.MatchInput{
-			MatchID: id, Measured: measured,
-			TeamOf: tc.TeamOf[id], TeamSize: tc.TeamSize[id], LobbySize: tc.LobbySize[id],
-			Players: playersByMatch[id],
-		}
-		if team, ok := tc.PlayerTeam[id]; ok {
-			tt := team
-			m.PlayerTeam = &tt
-		}
-		if measured {
-			m.DurationSeconds = float64(film.DurationMS) / 1000
-			m.PadUnnamed = film.PadUnnamed
-			m.PowerupPickups = film.PowerupPickups
-		}
-		in.Matches = append(in.Matches, m)
+	if tc.TeamSize["m1"] != 2 || tc.TeamSize["m2"] != 3 {
+		t.Errorf("effectifs de camp = (%d, %d) ; attendu (2, 3)", tc.TeamSize["m1"], tc.TeamSize["m2"])
 	}
-	squad := sessionusage.ResolveTrackedSquad("P", ids, participants, nil)
-	for _, member := range squad {
-		in.SquadXUIDs = append(in.SquadXUIDs, member.XUID)
-	}
-	out := sessionusage.ComputeUsage(in)
-	out.SquadPlayers = squad
-
-	// ── Couverture partielle 2/3 et durée mesurée seule ─────────────────────────
-	if out.MatchesMeasured != 2 || out.MatchesTotal != 3 {
-		t.Errorf("couverture = %d/%d, attendu 2/3", out.MatchesMeasured, out.MatchesTotal)
-	}
-	if out.MeasuredDurationSeconds != 900 {
-		t.Errorf("durée mesurée = %v, attendu 900 s", out.MeasuredDurationSeconds)
-	}
-	// La passe A de m1 (pad_unnamed 99) doit avoir été supplantée : 3 + 1 = 4.
-	if out.PadUnnamedTotal != 4 {
-		t.Errorf("pad_unnamed_total = %d, attendu 4 (la vue _latest sert la DERNIÈRE passe)", out.PadUnnamedTotal)
-	}
-
-	// ── Parités sur effectifs inégaux (2 puis 3 ; 4 puis 5) ─────────────────────
-	if !proche(out.TeamParityPct, 40) || !proche(out.LobbyParityPct, 100/4.5) {
-		t.Errorf("parités = (%v, %v), attendu (40, 22.22)", out.TeamParityPct, out.LobbyParityPct)
-	}
-
-	var pad *domain.SessionUsageMetric
-	for i := range out.Metrics {
-		if out.Metrics[i].Key == sessionusage.MetricPadPickups {
-			pad = &out.Metrics[i]
+	prisesDuJoueur := 0
+	for _, m := range matchs {
+		for _, p := range m.Players {
+			if p.XUID == "P" {
+				prisesDuJoueur += p.PadPickups
+			}
 		}
 	}
-	if pad == nil {
-		t.Fatalf("métrique pad_pickups absente : %+v", out.Metrics)
-	}
-	// ── Deux camps : sommes joueur/camp/lobby (passe A 99 exclue) ───────────────
-	if pad.PlayerTotal != 5 || !proche(pad.TeamTotal, 8) || pad.LobbyTotal != 12 {
-		t.Errorf("(joueur, camp, lobby) = (%v, %v, %v), attendu (5, 8, 12)",
-			pad.PlayerTotal, pad.TeamTotal, pad.LobbyTotal)
-	}
-	// ── Cadence PAR MATCH mesuré (2 matchs) ─────────────────────────────────────
-	if !proche(pad.PlayerPerMatch, 2.5) {
-		t.Errorf("cadence joueur = %v, attendu 2.5 par match", pad.PlayerPerMatch)
-	}
-	// ── Matchs au-dessus de la parité DU match ──────────────────────────────────
-	if pad.MatchesAboveTeamParity == nil || *pad.MatchesAboveTeamParity != 1 || pad.MatchesAboveLobbyParity != 1 {
-		t.Errorf("au-dessus parité = (%v, %d), attendu (1, 1)",
-			pad.MatchesAboveTeamParity, pad.MatchesAboveLobbyParity)
-	}
-
-	// ── Lignes d'escouade : A partout (2 prises), B exclu (un seul match) ───────
-	if len(out.SquadPlayers) != 1 || out.SquadPlayers[0].Gamertag != "Alpha" {
-		t.Fatalf("squad_players = %+v, attendu [Alpha]", out.SquadPlayers)
-	}
-	if len(pad.Squad) != 1 || pad.Squad[0].XUID != "A" || pad.Squad[0].Total != 2 {
-		t.Fatalf("ligne squad = %+v, attendu A total 2", pad.Squad)
-	}
-	if !proche(pad.Squad[0].ShareOfTeamPct, 25) || !proche(pad.Squad[0].PerMatch, 1) {
-		t.Errorf("ligne squad A = %+v, attendu part équipe 25 %%, cadence 1 par match", pad.Squad[0])
-	}
-
-	// ── Ventilations : familles normalisées + bonus anonymes ────────────────────
-	if len(out.PadFamilies) != 2 || out.PadFamilies[0].FamilyKey != "aabbccdd" || out.PadFamilies[0].LobbyTotal != 3 {
-		t.Errorf("pad_families = %+v, attendu aabbccdd (3) en tête", out.PadFamilies)
-	}
-	if len(out.PowerupPickups) != 2 || out.PowerupPickups[0].FamilyKey != "powerup_camo" || out.PowerupPickups[0].Occupations != 3 {
-		t.Errorf("powerup_pickups = %+v, attendu camo 3 puis overshield 1", out.PowerupPickups)
+	if prisesDuJoueur != 5 {
+		t.Errorf("prises de socle du joueur = %d, attendu 5 (1 + 4 : la passe A, 99, est supplantée)", prisesDuJoueur)
 	}
 }

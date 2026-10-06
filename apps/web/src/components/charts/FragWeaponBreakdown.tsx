@@ -121,8 +121,8 @@ export interface FragWeaponBreakdownProps {
   /**
    * Mode fluide : la card s'étire pour remplir sa cellule (CSS Grid `stretch`) —
    * le tracé prend `flex-1`, la légende de pied reste `flex-none`. À utiliser quand
-   * la card doit s'aligner sur la hauteur d'une card voisine fixe (ex. SessionFragCard
-   * côte à côte avec le sunburst) SANS que le pied de légende casse la parité de hauteur.
+   * la card doit s'aligner sur la hauteur d'une card voisine fixe (ex. Synthèse, à côté
+   * du sunburst) SANS que le pied de légende casse la parité de hauteur.
    * `height` devient alors le minimum garanti.
    */
   fluid?: boolean

@@ -135,6 +135,16 @@
 # TestStatborgManche2RejeteeParLAncienneGrammaire, TestStatborgVectorsReels et ses trois sous-tests.
 # Mêmes noms, même code, désormais dans `grammar/signaux` ; vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-06 (lot « Sessions aux formes de l'Emprise », S1 commit 65e82cbb4, constaté
+# par la revue adversariale, S8) : 8 tests RENOMMÉS de `internal/analysis` —
+# TestBuildScoreLabelCanonical_{NegativeScore, NilScore, NoTeams, OnlyOneTeam,
+# TeamIDNilDefaultsZero, TeamOneSwap, TeamZeroNotSwap, ZeroScores}. La fonction testée
+# `BuildScoreLabelCanonical` est devenue `ScoreLabelCanonical` (score canonique partagé par
+# l'accueil et la page Sessions) ; mêmes cas, remplacés par TestScoreLabelCanonical_<même
+# suffixe>, présents dans le run courant. 64 lignes JSONL, exactement 8 paires (Package, Test),
+# vérifié par différence avant/après ; diff complet baseline ↔ fonctions de test de l'arbre :
+# aucune autre absence introduite par le lot.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
