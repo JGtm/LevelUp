@@ -298,7 +298,7 @@ func walkEquipRecoveryAt(
 			return 0, 0, false
 		}
 		idx, ok := ascendingIndices(pay, p+bipedHeaderBits, mc)
-		if !ok || idx[0] == 0 || !maskHas(idx, i48Index) {
+		if !ok || idx[0] == 0 || !slices.Contains(idx, i48Index) {
 			return 0, 0, false
 		}
 		walkComponentsAt(pay, p+bipedHeaderBits+bipedIndexBits*mc, total, idx, s.gram, stop)
@@ -311,7 +311,7 @@ func walkEquipRecoveryAt(
 		}
 		idx := denseMaskIndices(pay, p+18)
 		if len(idx) < bipedMinMaskCnt || len(idx) > equipRecoveryMaxDense ||
-			idx[0] != 0 || !maskHas(idx, i48Index) {
+			idx[0] != 0 || !slices.Contains(idx, i48Index) {
 			return 0, 0, false
 		}
 		const preGate = profile.I0SpineBits + profile.I0UseDefaultBits

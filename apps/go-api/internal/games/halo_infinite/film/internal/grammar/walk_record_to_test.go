@@ -6,6 +6,8 @@ package grammar
 // les lecteurs rejouent desormais les lectures bipedes ([recordBipedeLu.parcourirJusqua]). Elle
 // reste ici pour les tests et les instruments qui marchent un record ancre jusqu a un composant.
 
+import "slices"
+
 // walkRecordTo marche les composants du masque avec les désers de PRODUCTION jusqu'à
 // consommer celui d'index target — c'est cette consommation qui déclenche le hook. Rend
 // false dès qu'un composant intermédiaire n'est pas porté ou que la marche déborde du
@@ -24,4 +26,9 @@ func walkRecordTo(pay []byte, i0, total int, idx []int, g grammaireRecord, targe
 		return true
 	})
 	return found
+}
+
+// maskHas dit si le masque du record annonce le composant d'index target.
+func maskHas(idx []int, target int) bool {
+	return slices.Contains(idx, target)
 }

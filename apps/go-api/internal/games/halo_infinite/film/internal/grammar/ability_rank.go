@@ -25,7 +25,6 @@ package grammar
 
 import (
 	"fmt"
-	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -218,11 +217,6 @@ func (c *FilmContext) bipedArchetype() (Archetype, error) {
 		return Archetype{}, fmt.Errorf("archétype biped %d absent du registre", BipedTypeIndex)
 	}
 	return arch, nil
-}
-
-// maskHas dit si le masque du record annonce le composant d'index target.
-func maskHas(idx []int, target int) bool {
-	return slices.Contains(idx, target)
 }
 
 // contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
