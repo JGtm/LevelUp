@@ -16,8 +16,8 @@ import { buildControlRows, buildMatchGrid, buildPickupSheets, type MatchGrid, ty
 import { buildHabitView, type HabitView } from './habit.logic'
 import { buildProductionRows, buildYieldRows, type ProductionRow, type YieldRow } from './production.logic'
 
-/** La grille a-t-elle au moins une ligne lue au film (synthèse ou objet) ? */
-export function gridHasFilmRows(grid: MatchGrid | null): boolean {
+/** La grille (match par match, ou carte par carte) a-t-elle au moins une ligne lue au film (synthèse ou objet) ? */
+export function gridHasFilmRows(grid: Pick<MatchGrid, 'sections'> & { columns: readonly unknown[] } | null): boolean {
   return grid != null && grid.columns.length > 0 && grid.sections.some((s) => s.summary != null || s.items.length > 0)
 }
 

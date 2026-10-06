@@ -207,9 +207,12 @@ export function buildResourceFilOption(
   const tc = c.theme
   const { matches } = fil
   const categories = matches.map((m) => m.matchId)
+  // Sur une période, le nom d'un match dans les infobulles porte sa date devant l'heure.
+  const tipText: EmpriseFilText =
+    axe.kind === 'period' ? { ...t, timeOf: (iso) => [axe.dateOf(iso), t.timeOf(iso)].filter(Boolean).join(' ') } : t
   const series = [
-    ...fil.resources.flatMap((resource, ri) => resourceSeries(matches, resource, ri === 0, c, t)),
-    bandSeries(matches, c, t, axe.kind === 'match'),
+    ...fil.resources.flatMap((resource, ri) => resourceSeries(matches, resource, ri === 0, c, tipText)),
+    bandSeries(matches, c, tipText, axe.kind === 'match'),
   ]
   const months = axe.kind === 'period' ? periodLabels(matches, axe.dateOf) : []
   const label =

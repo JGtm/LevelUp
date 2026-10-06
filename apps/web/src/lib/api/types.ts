@@ -2366,6 +2366,13 @@ export type SquadEmprisePlacement = components['schemas']['SquadEmprisePlacement
 export type SquadEmprisePlacementPlayer = components['schemas']['SquadEmprisePlacementPlayer']
 export type SquadEmprisePlacementLife = components['schemas']['SquadEmprisePlacementLife']
 export type SquadEmprisePlacementQuadrant = components['schemas']['SquadEmprisePlacementQuadrant']['quadrant']
+// L'Emprise du périmètre solo des Séries temporelles (plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05,
+// D2) : le bloc de l'Escouade, plus la grille par carte et l'équipement. Contrat Go :
+// internal/domain/solo_emprise.go ; « Mes vies » : internal/domain/timeseries_lives.go.
+export type SoloEmpriseBlock = components['schemas']['SoloEmpriseBlock']
+export type EmpriseMapColumn = components['schemas']['EmpriseMapColumn']
+export type EmpriseEquipmentFamily = components['schemas']['EmpriseEquipmentFamily']
+export type TimeseriesLivesNearTeammate = components['schemas']['TimeseriesLivesNearTeammate']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 

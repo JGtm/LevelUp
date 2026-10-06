@@ -1,11 +1,12 @@
 /**
  * Coordination des Séries temporelles (lot Q) — la projection PURE et les trois états de
- * la rangée.
+ * la carte « Appui reçu » (la carte « Riposte » a quitté la page : plan
+ * PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05, V5).
  *
  * Ce que ces tests cadenassent :
  *   - la projection d'une soirée (taux en %, bâton creux, dénominateur), et le refus
  *     d'inventer un taux sur une soirée sans dénominateur ;
- *   - la rangée CONSERVÉE avec deux cartes nommées quand le bloc est indisponible (D8),
+ *   - la carte CONSERVÉE, nommée, quand le bloc est indisponible (D8),
  *     et la section entièrement retirée quand le titre ne sert aucun bloc ;
  *   - D22-verbosité : les chiffres d'appel sont rendus, aucune phrase de lecteur.
  *
@@ -19,7 +20,6 @@ import type { CoordinationBlock, CoordinationSessionPoint, Couverture } from '@/
 import { TimeseriesCoordinationSection } from './TimeseriesCoordinationSection'
 import {
   coordinationDessinable,
-  delaiMedianS,
   habituelOuTaux,
   moyenneGlissante,
   pariteOuRien,
@@ -89,12 +89,10 @@ describe('timeseriesCoordination.logic', () => {
     expect(s.valuesPct).toEqual([null])
   })
 
-  it('ne dessine ni parité ni délai quand le serveur ne les mesure pas', () => {
+  it('ne dessine pas de parité quand le serveur ne la mesure pas', () => {
     expect(pariteOuRien(undefined)).toBeNull()
     expect(pariteOuRien(0)).toBeNull()
     expect(pariteOuRien(25)).toBe(25)
-    expect(delaiMedianS(undefined)).toBeNull()
-    expect(delaiMedianS(3200)).toBe(3.2)
   })
 
   it('prend l’habituel de la période de RÉFÉRENCE quand le serveur le mesure, le taux sinon', () => {
@@ -132,27 +130,26 @@ describe('timeseriesCoordination.logic', () => {
 })
 
 describe('TimeseriesCoordinationSection', () => {
-  it('rend les deux cartes, leurs chiffres d’appel et la couverture — sans phrase de lecteur', async () => {
+  it('rend « Appui reçu » seule, ses chiffres d’appel et la couverture — sans phrase de lecteur', async () => {
     render(<TimeseriesCoordinationSection block={bloc()} locale="fr" />)
-    expect(screen.getByRole('region', { name: 'Riposte' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Appui reçu' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Riposte' })).not.toBeInTheDocument()
     // Le canvas est chargé en `lazy` par ChartCard : il arrive après la suspense.
-    expect(await screen.findAllByTestId('echarts-mock')).toHaveLength(2)
-    expect(screen.getAllByText('54 %').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('3,2 s').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('24 matchs mesurés sur 30')).toHaveLength(2)
+    expect(await screen.findAllByTestId('echarts-mock')).toHaveLength(1)
+    expect(screen.getAllByText('41 %').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('24 matchs mesurés sur 30')).toHaveLength(1)
   })
 
-  it('CONSERVE la rangée quand le bloc est indisponible : deux états vides nommés', () => {
+  it('CONSERVE la carte quand le bloc est indisponible : un état vide nommé', () => {
     render(
       <TimeseriesCoordinationSection
         block={bloc({ available: false, unavailable_reason: 'Aucun film décodé' })}
         locale="fr"
       />,
     )
-    expect(screen.getAllByText('Aucun film décodé')).toHaveLength(2)
+    expect(screen.getAllByText('Aucun film décodé')).toHaveLength(1)
     expect(screen.queryAllByTestId('echarts-mock')).toHaveLength(0)
-    expect(screen.getByRole('region', { name: 'Riposte' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Appui reçu' })).toBeInTheDocument()
   })
 
   it('ne rend RIEN quand la page ne sert aucun bloc de coordination', () => {

@@ -538,6 +538,7 @@ Journal L4 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — refactorisatio
 - **Mutations** : étiquette de mois sur chaque match → ROUGE ; encoche en mode période → ROUGE ; petits points ignorés → ROUGE ; légende de couverture vidée → ROUGE ; index de l'historique ignoré dans `useEmpriseModels` → ROUGE (`SquadEmprisePage.test.tsx`, 2 tests) ; en-tête de colonne non rendu → ROUGE (idem) ; en-tête d'infobulle de la colonne 0 partout → VERTE avant le test neuf, ROUGE après ; « qui chez nous » retiré de l'infobulle → ROUGE.
 - **Gate** : purge `node_modules\.tmp` ; `npx tsc -b --force` 0 (14 s) ; `npm run lint` 0 erreur (26 avertissements préexistants, `npx eslint src/features/squad/emprise` muet) ; `npx vitest run --pool=forks` complet : 833 fichiers verts / 5 ignorés, 8 856 tests verts / 23 ignorés (131 s) ; `node tools/knip-ratchet.mjs` 0 / 0 / 0 ; `node tools/lint-no-hardcoded-colors.mjs` 0 violation ; `node tools/lint-cross-feature-imports.mjs` 7 ≤ 7 ; `SquadEmprisePage.test.tsx`, `SquadContributionsPage.test.tsx`, `objectif/SquadObjectiveSection.test.tsx` rejoués nommément : 3 fichiers / 46 tests verts, fichiers non modifiés (`git diff` vide) ; `npx lefthook run pre-push` : 9 / 9 verts (71 s) — voir §8 pour le premier passage.
 - Fichiers > 400 L touchés : `emprise.logic.ts` 391 → 402, `empriseCharts.ts` 366 → 415 (sous 500).
+
 ### L5 — Web : l'onglet Usages reconstruit · lourd
 
 Périmètre : `features/timeseries/TimeseriesPage.usages.tsx`, `features/timeseries/usages/*` (NEUF),
@@ -548,62 +549,83 @@ aucune clé de requête neuve (`lib/query/keys.ts` non touché) : tout arrive av
 `useTimeseriesPage`. Libellés de résultat et de dominance : `squad/emprise/useOutcomeLabels.ts` et
 `lib/narrative/dominance.ts` (existants).
 
-- [ ] L5.0a `ObjectiveSoloSheetCard.tsx` (NEUF, `squad/objectif/`) + `buildSoloObjectiveSheet` dans
+- [x] L5.0a `ObjectiveSoloSheetCard.tsx` (NEUF, `squad/objectif/`) + `buildSoloObjectiveSheet` dans
   `objectif.logic.ts` (une fiche : MA valeur, part = ma valeur / somme de la ligne sur les fiches du
   camp de `buildObjectiveSheets`, familles côte à côte, rôle dominant, pied Prendre / Défendre /
   Tenir, zéro atténué) ; tests ROUGES d'abord (part, zéro, rôle dominant, emblème / initiale) ;
   mutation : part sur le max de la ligne (règle de l'Escouade) → rouge.
-- [ ] L5.0b `features/timeseries/usages/usagesText.ts` (D10) : `EMPRISE_TEXT_SOLO`,
+- [x] L5.0b `features/timeseries/usages/usagesText.ts` (D10) : `EMPRISE_TEXT_SOLO`,
   `OBJECTIF_TEXT_SOLO`, textes des cartes neuves ; test : FR = maquette pour chaque titre et ⓘ
   (chaînes copiées), parité FR / EN par le typage, aucun « Notre camp » / « Our side ».
-- [ ] L5.1 `usages/usages.logic.ts` (+ test) : index des matchs depuis `match_rows`
+- [x] L5.1 `usages/usages.logic.ts` (+ test) : index des matchs depuis `match_rows`
   (date, carte `map_name_fr || map_name` comme `matchLabels.ts:18`, résultat
   `outcomeCodeToValue`), prédicat `usagesSections(data, caps)` (un seul prédicat pour la page et
   l'état vide : portée, bilan, carte, mes prises, prendre, vies, objectif, équipement ; réutilise
   `gridHasFilmRows` / `sheetsHaveLines` de `empriseContent.ts:20-27`), modèles de « Mes prises »
   (depuis `buildPickupSheets`), de la grille par carte (depuis `emprise.maps`), de l'équipement et des
   vies. Tests ROUGES d'abord, une mutation par règle.
-- [ ] L5.2 `TimeseriesPage.usages.tsx` : ordre §3, intertitres de la maquette (« Portée des
+- [x] L5.2 `TimeseriesPage.usages.tsx` : ordre §3, intertitres de la maquette (« Portée des
   engagements », « Bilan du périmètre », « Carte par carte », « Mes prises », « Prendre, et s'en
   servir », « Près d'un coéquipier ou seul », « Objectif », « Équipement »), un bloc sans donnée se
   retire intertitre compris, état vide inchangé ; aucune logique dans le composant.
-- [ ] L5.3 `ResourceMapGridCard.tsx` : en-tête nom, « n cartes · » pour la colonne de repli,
+- [x] L5.3 `ResourceMapGridCard.tsx` : en-tête nom, « n cartes · » pour la colonne de repli,
   « n matchs », « x V · y D (· z A) » en couleurs `outcome-*` ; cases « sans film » (hachure),
   « non classé », « — » ; infobulle « Chez moi : <gamertag> n, reste du camp m » ; râteliers repliés ;
   ligne des frags aux armes spéciales (feuille).
-- [ ] L5.4 `MinePickupsCard.tsx` (maquette `renderMine`) : groupes par ressource, objets pris par mon
+- [x] L5.4 `MinePickupsCard.tsx` (maquette `renderMine`) : groupes par ressource, objets pris par mon
   camp triés par volume, barre à l'échelle du plus gros, segments moi (`squad-player-1`) / reste
   (`team-rest`) avec comptes dedans (S2), « moi n · camp m » au bout, râteliers repliés, ligne
   « Bonus perdus » des deux camps en pastilles d'équipe ; sans prise : la carte se retire (D13).
-- [ ] L5.5 `EquipmentOutcomesCard.tsx` (maquette `renderEquip`) : une ligne par famille D4,
+- [x] L5.5 `EquipmentOutcomesCard.tsx` (maquette `renderEquip`) : une ligne par famille D4,
   segments servi / gardé / lâché (`divergent-pos` / `divergent-neutral` / `divergent-neg`) avec
   comptes, sous-libellé « n objets, dont m pris sur la carte », barre fine du reste de mon camp et
   sa ligne de parts, ligne « Non mesuré : ni prise ni usage publiés pour cette famille » + « n lâchés »
   pour grappin et propulseur, axe 0-100 %.
-- [ ] L5.6 `LivesNearTeammateCard.tsx` (maquette l. 994-1026, encart « Maquette. » non porté) :
+- [x] L5.6 `LivesNearTeammateCard.tsx` (maquette l. 994-1026, encart « Maquette. » non porté) :
   barre épaisse vies près (`squad-player-1`) / seul (`extreme`), barre fine frags, ligne « frags :
   n · p % · x par vie … y par vie · m » ; ⓘ avec le compte des vies écartées (les deux causes) ;
   carte retirée si Near + Alone = 0.
-- [ ] L5.7 Objectif : `ObjectiveBalanceCard` (texte solo) puis `ObjectiveSoloSheetCard` (L5.0a)
+- [x] L5.7 Objectif : `ObjectiveBalanceCard` (texte solo) puis `ObjectiveSoloSheetCard` (L5.0a)
   alimentés par `formes_retenues` et `player_emblem_url` ; section retirée sans match à objectif
   (`objectiveMatches`).
-- [ ] L5.8 `WeaponRangeSection.tsx` : `ElevationCard` retirée, props `elevation` / `matchRows`
+- [x] L5.8 `WeaponRangeSection.tsx` : `ElevationCard` retirée, props `elevation` / `matchRows`
   retirées, « Portée par arme » demi-largeur seule (D11) ; tests adaptés.
-- [ ] L5.9 `TimeseriesCoordinationSection.tsx` : `CarteRiposte` retirée, « Appui reçu » seule
+- [x] L5.9 `TimeseriesCoordinationSection.tsx` : `CarteRiposte` retirée, « Appui reçu » seule
   (D11) ; tests adaptés (la carte Riposte n'est plus montée).
-- [ ] L5.10 Tests de page : `TimeseriesPage.sections.test.tsx` réécrit (ordre des blocs, intertitres,
+- [x] L5.10 Tests de page : `TimeseriesPage.sections.test.tsx` réécrit (ordre des blocs, intertitres,
   retrait par bloc, état vide, anglais, Halo 5 sans film : seule la barre épaisse des armes
   spéciales si la feuille la porte) ; une fixture `usages/usages.fixtures.ts` tirée des chiffres
   d'illustration de la maquette (bilan 111 / 87 bonus, 229 / 231 armes spéciales ; vies 1 558 / 301).
-- [ ] L5.11 Rejouer CHAQUE preuve grep de §4.A-D avant de supprimer ; écart → Découvertes, arrêt
+- [x] L5.11 Rejouer CHAQUE preuve grep de §4.A-D avant de supprimer ; écart → Découvertes, arrêt
   propre si un lecteur inattendu existe.
-- [ ] L5.12 Web §4.A : `EquipmentUsageSection` et dépendances propres, tests, clés i18n orphelines.
-- [ ] L5.13 Web §4.B : cartes et formes, survivants réduits, `aggregateColumns` réduit.
-- [ ] L5.14 Web §4.C, §4.D, §4.G (manifests régénérés par `node apps/web/scripts/build_i18n_manifests.mjs`).
-- [ ] L5.15 Ratchets : knip 0 / 0 / 0 ; imports croisés ≤ 7 et aucune dérogation morte (la paire
+- [x] L5.12 Web §4.A : `EquipmentUsageSection` et dépendances propres, tests, clés i18n orphelines.
+- [x] L5.13 Web §4.B : cartes et formes, survivants réduits, `aggregateColumns` réduit.
+- [x] L5.14 Web §4.C, §4.D, §4.G (manifests régénérés par `node apps/web/scripts/build_i18n_manifests.mjs`).
+- [x] L5.15 Ratchets : knip 0 / 0 / 0 ; imports croisés ≤ 7 et aucune dérogation morte (la paire
   `timeseries=>squad` reste servie) ; si un plafond baisse, l'abaisser.
 - Gate : gate web ; preuves §4.A-D rejouées → 0 (côté web).
 
+Journal L5 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — tests écrits et vus rouges AVANT chaque module neuf (logique : symbole absent ; cartes : fichier mis de côté le temps du rouge), puis vert, puis mutations :
+- **L5.0a** `objectif.logic.ts` : `buildSoloObjectiveSheet` (ma valeur, total de mon camp = somme de la ligne sur les fiches de `buildObjectiveSheets`, part nulle si mon camp n'a rien fait, rôle dominant et pied repris de ma fiche ; joueur absent de l'escouade du bloc → null). `ObjectiveSoloSheetCard.tsx` (+ test, 7 cas) : une fiche, familles côte à côte, barre = part du camp, zéro atténué sans barre, emblème ou initiale. Les textes de la carte sont un type local (`SoloSheetText`) que l'onglet remplit : `squad` n'importe pas `timeseries`.
+- **L5.0b** `usages/usagesText.ts` (surcharges solo de `EMPRISE_TEXT` et `OBJECTIF_TEXT` : « Mon camp », ⓘ de la maquette, infobulles « pour mon camp / pour l'adversaire », « Chez moi ») et `usages/usagesCardsText.ts` (cartes propres à l'onglet ; fichier à part pour la taille). Test : titres, ⓘ et légendes FR copiés de la maquette, balayage de toutes les chaînes et sorties de fonction des blocs solo FR et EN sans « Notre camp », « pour nous », « Chez nous », « Our side », « for us ».
+- **L5.1** `usages/usages.logic.ts` : `timeseriesMatchIndex` (carte `map_name_fr || map_name`, liste de jeu, résultat ; ni score ni dominance : pas d'encoche sur une période), `empriseCoverage`, `buildMapGrid` (chaque colonne du Go lue comme un « match » de la grille de l'Emprise — filmée, camp connu, niveaux, véhicules si un de ses matchs l'est — puis `buildMatchGrid` : aucune copie des règles de case), `buildMinePickups` (depuis `buildPickupSheets`), `buildEquipmentRows`, `buildLivesModel`, `buildUsagesModels` et `usagesSections` (LE prédicat, page et état vide). `gridHasFilmRows` (`empriseContent.ts`) généralisé à toute grille à colonnes (signature seule). Fixture `usages/usages.fixtures.ts` tirée des chiffres d'illustration de la maquette (bilan 111 / 87 et 229 / 231, vies 1 558 / 301, mur, capteur, grappin, propulseur). Alias de types ajoutés à `lib/api/types.ts` (+7 lignes).
+- **L5.2** `TimeseriesPage.usages.tsx` réécrit : ordre §3, intertitres de la maquette (le bilan porte sa couverture « n matchs filmés sur N · frags de la feuille de match sur les N »), bloc sans donnée retiré intertitre compris, état vide inchangé, aucune logique (hook `usages/useUsagesModels.ts`). L'infobulle d'un match du fil sur une période porte sa date (`empriseCharts.ts`, test d'abord).
+- **L5.3** `ResourceMapGridCard.tsx` sur `ResourceGridTable` : nom, « n cartes · », « n matchs », « x V · y D (· z A) » en `outcome-*`, infobulle « Carte (n matchs, m filmés) » puis « Chez moi : <gamertag> n, reste du camp m » (moi d'abord, maquette).
+- **L5.4** `MinePickupsCard.tsx` : groupes, barre à l'échelle du plus gros objet, segments moi / reste avec comptes (mesure au pixel), « moi n · camp m », râteliers repliés, bonus perdus des deux camps. Écart : le jeton `team-rest` du plan n'existe pas ; le reste du camp prend `TEAM_REST_INK` (encre de l'Emprise de l'Escouade, `team-ally` à 55 %).
+- **L5.5** `EquipmentOutcomesCard.tsx` : servi / gardé / lâché (`divergent-*`), comptes dans la barre épaisse, barre fine et ligne de parts du reste de mon camp, « Non mesuré » et lâchers pour grappin et propulseur (libellés dans `usagesCardsText`), axe 0-100 %.
+- **L5.6** `LivesNearTeammateCard.tsx` : barre épaisse près (`squad-player-1`) / seul (`extreme`) avec comptes et parts (repli au-dessus s'ils ne tiennent pas), barre fine des frags, ligne « frags … par vie », vies écartées dans l'ⓘ (les deux causes) ; carte retirée sans vie rangée.
+- **L5.7** Objectif : `ObjectiveBalanceCard` (`OBJECTIF_TEXT_SOLO`) puis `ObjectiveSoloSheetCard` (emblème `player_emblem_url`) ; bloc retiré sans match à objectif.
+- **L5.8** `WeaponRangeSection.tsx` : `ElevationCard`, props `elevation` / `matchRows` retirées, « Portée par arme » seule en demi-largeur ; tests adaptés (une carte, une légende, test « demi-largeur »).
+- **L5.9** `TimeseriesCoordinationSection.tsx` : `CarteRiposte` et `secFmt` retirés, « Appui reçu » seule ; `delaiMedianS`, chaînes et clés de manifest de la riposte (7) retirées ; tests adaptés (la Riposte n'est plus montée).
+- **L5.10** `TimeseriesPage.sections.test.tsx` réécrit pour l'onglet (ordre des blocs, intertitres, cartes montées, retrait par bloc, équipement sans film, Halo 5 sans film, anglais, état vide) ; `TimeseriesPage.usages.test.tsx` (neuf) pince le câblage de l'axe période (la carte graphe n'y est pas doublée). Les noms de cartes de la fixture sont neutres (« Carte Alpha »…) : le contrôle `lint-no-hardcoded-fields` refusait « Aquarius », « Recharge », « Streets », « Classé » ; renommer plutôt qu'agrandir sa liste blanche.
+- **L5.11** Preuves §4.A-D rejouées AVANT toute suppression : aucun lecteur hors périmètre (seulement des commentaires). Lecteur interne relevé : `usagePadTiersModel.ts` importait un type de `usageCountsModel.ts` pour `buildPadTierRows`, dont le seul lecteur de production était `EquipmentUsageSection` (voir §8).
+- **L5.12** §4.A : 10 fichiers supprimés (`EquipmentUsageSection`, `UsageCountsGrid`, `usageCountsModel`, `UsageEquipmentDonutCard`, `usageEquipmentPartiesModel` et leurs tests) ; `buildPadTierRows` et `padTiersCoverage` supprimés (leurs règles d'ordre, de niveaux servis et de détail migrent sur `buildPadTierGaugeRows`, survivante) ; 12 clés de `usageI18n` sans lecteur retirées (scan des champs de `UsageText`, les 13 autres « sans lecteur externe » sont lues dans le fichier) ; exports `UsageCollapseToggle` et `buildOutcomeSegments` redevenus privés ; commentaires devenus faux corrigés (`UsageForms`, `usageGaugeModel`, `usageCardTitle`, `SessionPadControlCards`). Les deux garde-rails d'usage ne citaient aucun fichier supprimé (non modifiés).
+- **L5.13** §4.B : 26 fichiers supprimés sous `squad/formes/` ; survivants réduits à ce qu'on lit : `cardsI18n.ts` (familles), `i18n.ts` (colonnes), `colors.ts` (sans `PARITY_INK`, `SPREAD_INK`, `axisInk`), `format.ts`, `model/objectives.ts` (`aggregateColumns` réduit à `{team, lobby}` et sans paramètre joueur, `aggregateRole` supprimé) ; `objectivesOptional.test.ts` réécrit sur la surface survivante (cas objectif de `padsObjectives.test.ts` migrés).
+- **L5.14** §4.C web : `ElevationCard.tsx`, `_elevationCloudChart.ts` (+ test) supprimés, 14 clés `synthesis.weapon_range.*` orphelines et leurs commentaires retirées ; §4.D fait en L5.9 ; §4.G : clé `timeseries.usages.equipment_title` retirée, manifests régénérés (`build_i18n_manifests.mjs`) ; le snapshot de surface du contrat suit en L6.4 (le contrat ne change pas en L5).
+- **L5.15** Ratchets : knip 0 / 0 / 0 ; imports croisés 7 ≤ 7, paire `timeseries=>squad` servie, aucune dérogation morte (paires `timeseries=>engagement/explorer/career` toujours servies) ; aucun plafond ne baisse.
+- **Mutations** (toutes ROUGES au final) : part solo sur le maximum de la ligne ; emblème ignoré ; zéro avec barre ; « Chez nous » ; « Mon camp » non surchargé ; onze sur la logique (carte EN d'abord, colonne toujours filmée, camp toujours connu, niveaux toujours mesurés, repli sans clé dédiée, reste = camp, râteliers dépliés, équipement toujours présent, frags par vie sans garde, portée sans capability, objectif sans match à objectif) ; date absente des infobulles du fil (bande, points) ; grille par carte (« A » toujours écrit, nombre de cartes absent, reste avant moi, en-tête d'infobulle générique) ; Mes prises (échelle propre à chaque barre, segment moi à zéro, râteliers dépliés, pertes adverses = les nôtres) ; Équipement (segment vide dessiné, sous-libellé sans les prises, reste sans barre fine, non mesurée sans lâchers) ; Mes vies (vies écartées tues, barre fine sur les vies, barre fine sans garde) ; page (état vide jamais, objectif sans prédicat, couverture du bilan absente, axe du fil en mode match — VERTE dans le fichier où `ChartCard` est doublé, ROUGE après le test de câblage neuf) ; agrégat d'objectif (match non mesuré gardé).
+- **Gate** : purge `node_modules\.tmp` ; `npx tsc -b --force` 0 (19 s) ; `npm run lint` 0 erreur (26 avertissements préexistants ; une erreur `react-hooks/immutability` de `EquipmentOutcomesCard` corrigée en cours de gate) ; `npx vitest run --pool=forks` complet : 831 fichiers verts / 5 ignorés, 8 857 tests verts / 23 ignorés (135 s, dernier passage) ; `node tools/knip-ratchet.mjs` 0 / 0 / 0 ; `node tools/lint-no-hardcoded-colors.mjs` 0 ; `node tools/lint-cross-feature-imports.mjs` 7 ≤ 7 ; `npx lefthook run pre-push` (PATH complet dès le premier passage) : 9 / 9 verts au second passage (55 s) — le premier a rougi sur `lint-no-hardcoded-fields` (noms de cartes de la fixture, corrigés ci-dessus) ; preuves §4.A-D rejouées → 0 hors commentaires historiques et `lib/api/types.ts:2328` (alias `EquipmentUsageBlock`, retiré en L6.4) ; `delaiMedianS` de `squadRiposte.logic.ts` est un champ homonyme de l'Escouade (hors périmètre).
+- Seuils : fichiers neufs ≤ 326 L (`usages.logic.ts`) ; fichiers > 400 L touchés : `lib/api/types.ts` 3 460 → 3 467 (alias, dette existante ; L6.4 en retire), `_shared/usage/usageI18n.ts` 576 → 518, `squad/emprise/empriseCharts.ts` 415 → 418, `_shared/usage/UsageForms.tsx` 409 → 399. 39 fichiers supprimés.
 ### L6 — Suppressions Go (D8, D9) et contrat · moyen
 
 Le web ne lit plus `equipment_usage` ni `elevation` depuis L5.
@@ -700,3 +722,7 @@ suppressions web sont dans L5 (L5.11-L5.15) ; L6 ne garde que le Go.
 - (L4) Aucune infobulle de case de la grille « Contrôle des ressources » n'était testée côté Escouade (mutation de l'en-tête d'infobulle verte sur toute la suite) ; fermé dans le lot par `ResourceGridTable.test.tsx`, puisque la table extraite change la provenance de cet en-tête.
 - (L4) `npx lefthook run pre-push` lancé depuis PowerShell sans `C:\msys64\ucrt64\bin` ni `make` au PATH : `go-vet-cgo` et `shared-social-gate` échouent pour l'environnement (gcc introuvable par le vet CGO, `make: not found` — le script du gate ne teste que gcc). Avec `C:\msys64\ucrt64\bin` et `C:\Program Files (x86)\GnuWin32\bin` au PATH : 9 / 9 verts. Non traité (hors périmètre).
 - (L4) Le plan portait deux lignes parasites (`</content>`, `</invoke>`) avant la découverte L2, laissées par une écriture antérieure de l'exécuteur ; retirées.
+- (L5) §4.A sous-listait une dépendance : `usagePadTiersModel.ts` (survivant) importait le type `UsageCountsRowInput` de `usageCountsModel.ts` pour `buildPadTierRows`, dont le seul lecteur de production était `EquipmentUsageSection` ; `padTiersCoverage` idem. Traités dans le lot (dernier lecteur = les Séries temporelles).
+- (L5) `isCollapsedTierRowKey` (`usagePadTiersModel.ts`) accepte encore la clé nue `base` (forme « comptes » supprimée) ; la page Sessions n'utilise que `tier-base`. Comportement laissé tel quel (hors périmètre).
+- (L5) Le jeton `team-rest` cité par la spécification S5 et la maquette n'existe pas dans la palette ; le reste du camp utilise `TEAM_REST_INK` (`team-ally` à 55 %), comme l'Escouade.
+- (L5) L'aide ⓘ de la carte Équipement de la maquette a quatre phrases (S1 en demande trois au plus) ; portée mot pour mot, la maquette faisant foi.

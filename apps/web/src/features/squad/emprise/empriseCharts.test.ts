@@ -158,6 +158,12 @@ describe('buildResourceFilOption — mode période', () => {
     expect(first.symbolSize).toBeCloseTo(2 * (0.8 + Math.sqrt(7) * 0.45))
   })
 
+  it('infobulles d’un match : la date devant l’heure et la carte (une période couvre des mois)', () => {
+    const point = p.series.filter((s) => s.type === 'scatter')[0].data[0] as Item
+    expect(point.tip).toMatch(/^03\/07 12:00 · Starboard/)
+    const band = p.series.find((s) => s.type === 'custom')!
+    expect((band.data[0] as Item).tip).toMatch(/^03\/07 12:00 · Starboard/)
+  })
   it('le mode « match » (Escouade) reste le défaut : heure et carte, encoche', () => {
     expect(opt.xAxis[0].axisLabel!.formatter('m1', 0)).toBe('{t|19:23}\n{m|Starboard}')
     expect((opt as Opt).graphic).toBeUndefined()

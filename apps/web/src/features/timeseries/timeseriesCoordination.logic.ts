@@ -111,8 +111,3 @@ export function moyenneGlissante(serie: SerieDeSoirees): (number | null)[] {
     return fenetre.reduce((a, b) => a + b, 0) / fenetre.length
   })
 }
-
-/** Le délai médian des ripostes, en SECONDES, ou `null` si aucune riposte mesurée. */
-export function delaiMedianS(ms: number | undefined): number | null {
-  return typeof ms === 'number' && ms > 0 ? ms / 1000 : null
-}

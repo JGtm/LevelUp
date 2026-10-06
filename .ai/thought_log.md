@@ -115315,3 +115315,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : vitest complet 8 856 verts ; tsc, lint, knip 0/0/0, couleurs, imports croisés 7 ≤ 7, lefthook pre-push 9/9 (avec gcc et make au PATH). Huit mutations rouges ; celle de l'en-tête d'infobulle était verte avant le test neuf de la table (trou préexistant, fermé). Les trois tests de page de l'Escouade nommés par le superviseur rejoués sans modification.
 
 **Conclusion / prochaine étape** : L4 clos ; L5 (onglet reconstruit et suppressions web) après le « continue » du superviseur.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L5 : l'onglet reconstruit, suppressions web
+
+**Statut** : Complété (lot L5 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`)
+
+**Décision technique principale** : l'onglet monte les cartes de l'Emprise et de l'Objectif de l'Escouade avec des textes solo surchargés (« Mon camp ») et quatre cartes propres (grille par carte, Mes prises, Mes vies, Équipement) plus la fiche « Ma part à l'objectif » ; la grille par carte réutilise la grille de l'Emprise en lisant chaque colonne du Go comme un match (aucune copie des règles de case) ; un seul prédicat `usagesSections` décide des blocs et de l'état vide. Suppressions web du plan (§4.A-D, G) : 39 fichiers, clés de traduction et commentaires devenus faux, exports redevenus privés.
+
+**Résultats observés** : vitest complet 8 857 verts ; tsc, lint 0 erreur, knip 0/0/0, couleurs 0, imports croisés 7 ≤ 7, lefthook 9/9 (le premier passage a rougi sur les noms de cartes de la fixture, renommés). Toutes les mutations rouges au final ; une seule était verte (câblage de l'axe période, carte graphe doublée dans le test de page) avant l'ajout d'un test de câblage dédié. Découvertes : dépendance de type sous-listée en §4.A (traitée), jeton `team-rest` absent (encre de l'Escouade), ⓘ Équipement à quatre phrases (maquette).
+
+**Conclusion / prochaine étape** : L5 clos ; L6 (suppressions Go `equipment_usage` et élévation, contrat) après le « continue » du superviseur.
