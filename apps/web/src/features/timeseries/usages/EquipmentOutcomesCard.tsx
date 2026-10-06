@@ -5,7 +5,8 @@
  * Une ligne par famille, dans l'ordre publié par le Go (non mesurées encadrant les mesurées). Famille
  * mesurée : mes objets servis / gardés sans servir / lâchés (`divergent-pos` / `divergent-neutral` /
  * `divergent-neg`), comptes dans les segments quand ils y tiennent (mesure au pixel), sur une ligne
- * de repli au-dessus sinon — seuls ceux qui ne tiennent pas, à la place de leur part (S2) ;
+ * de repli au-dessus sinon — seuls ceux qui ne tiennent pas, alignés sur le début du premier de
+ * leurs segments (S2) ;
  * sous-libellé « n objets, dont m pris sur la carte » ; dessous, la barre fine du reste de mon camp
  * et sa ligne de parts. Famille non mesurée (grappin, propulseur) : « Non mesuré » et le compte de
  * mes lâchers. Axe 0-100 % sous les lignes.
@@ -16,6 +17,7 @@ import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
+import { repliOffsetPct, type FragBreakdownSegment } from '@/features/squad/charts/squadFragBreakdownChart'
 import { TrackAxis } from '@/features/squad/emprise/PisteCampsForm'
 import { pisteColumns } from '@/features/squad/emprise/pisteLayout'
 import { TipText } from '@/features/squad/emprise/TipText'
@@ -28,7 +30,8 @@ import type { UsagesCardsText } from './usagesCardsText'
 const COLUMNS = pisteColumns(156)
 const TICKS = [0, 25, 50, 75, 100] as const
 const PARTS = ['used', 'kept', 'dropped'] as const
-const PART_TOKENS: Record<(typeof PARTS)[number], SemanticToken> = {
+type Part = (typeof PARTS)[number]
+const PART_TOKENS: Record<Part, SemanticToken> = {
   used: 'divergent-pos',
   kept: 'divergent-neutral',
   dropped: 'divergent-neg',
@@ -115,26 +118,44 @@ function EquipmentLine({ row, label, hidden, ut }: { row: EquipmentRow; label: s
   )
 }
 
+/** Les segments non vides d'une barre à trois parts, bord gauche et largeur en % de la barre. */
+function partSegments(parts: EquipmentParts): FragBreakdownSegment[] {
+  const total = parts[0] + parts[1] + parts[2]
+  const out: FragBreakdownSegment[] = []
+  let left = 0
+  PARTS.forEach((part, i) => {
+    if (parts[i] <= 0) return
+    const widthPct = (parts[i] / total) * 100
+    out.push({ cls: part, kills: parts[i], leftPct: left, widthPct })
+    left += widthPct
+  })
+  return out
+}
+
 /**
- * La ligne de repli au-dessus de la barre épaisse : le compte de chaque part qui ne tient pas dans
- * son segment, à sa place (servi à gauche, gardé au centre, lâché à droite) ; absente quand tout
- * tient.
+ * La ligne de repli au-dessus de la barre épaisse : les comptes des parts qui ne tiennent pas dans
+ * leur segment, alignés sur le début du premier d'entre eux (`repliOffsetPct`, patron de la
+ * Répartition des frags) ; absente quand tout tient.
  */
 function RepliLine({ id, family, parts, hidden }: { id: string; family: string; parts: EquipmentParts; hidden: ReadonlySet<string> }) {
-  const repli = PARTS.map((part, i) => parts[i] > 0 && hidden.has(`${id}-${part}`))
-  if (!repli.some(Boolean)) return null
+  const segments = partSegments(parts)
+  const isHidden = (part: string) => hidden.has(`${id}-${part}`)
+  const offset = repliOffsetPct(segments, isHidden)
+  if (offset == null) return null
   return (
-    <div className="flex justify-between gap-2 text-xs tabular-nums text-muted-foreground" data-testid={`usages-equip-repli-${family}`}>
-      {PARTS.map((part, i) => (
-        <span key={part} className="inline-flex items-center">
-          {repli[i] && (
-            <>
-              <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: tokenCssVar(PART_TOKENS[part]) }} aria-hidden />
-              <b className="font-bold text-foreground">{parts[i]}</b>
-            </>
-          )}
-        </span>
-      ))}
+    <div
+      className="flex gap-2 whitespace-nowrap text-xs tabular-nums text-muted-foreground"
+      style={{ paddingLeft: `${offset}%` }}
+      data-testid={`usages-equip-repli-${family}`}
+    >
+      {segments
+        .filter((s) => isHidden(s.cls))
+        .map((s) => (
+          <span key={s.cls} className="inline-flex items-center">
+            <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: tokenCssVar(PART_TOKENS[s.cls as Part]) }} aria-hidden />
+            <b className="font-bold text-foreground">{s.kills}</b>
+          </span>
+        ))}
     </div>
   )
 }
@@ -146,15 +167,13 @@ function RepliLine({ id, family, parts, hidden }: { id: string; family: string; 
 function ThreeTrack({ id, parts, who, hidden, ut }: { id: string; parts: EquipmentParts; who: string; hidden?: ReadonlySet<string>; ut: UsagesCardsText }) {
   const labels = hidden != null
   const total = parts[0] + parts[1] + parts[2]
-  // Le bord gauche de chaque part : la somme des parts qui la précèdent.
-  const lefts = PARTS.map((_, i) => (parts.slice(0, i).reduce((a, b) => a + b, 0) / total) * 100)
   return (
     <div className={`relative rounded-[3px] bg-muted ${labels ? 'h-[22px]' : 'h-2'}`} role="img" aria-label={who}>
-      {PARTS.map((part, i) => {
-        const n = parts[i]
-        if (n <= 0) return null
-        const w = (n / total) * 100
-        const left = lefts[i]
+      {partSegments(parts).map((s) => {
+        const part = s.cls as Part
+        const n = s.kills
+        const w = s.widthPct
+        const left = s.leftPct
         return (
           <div
             key={part}

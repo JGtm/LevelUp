@@ -115365,3 +115365,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : chaque règle a son test vu rouge avant la correction et sa mutation rouge (11 mutations) ; R6 prouvé par instantané identique. Gate : Go 348 paquets, intégration DuckDB 4 ok, golangci-lint 0, contrat à jour (+1 champ) ; web tsc 0, ESLint 0 erreur, vitest 8 865 tests, couleurs / imports croisés / contrat / champs propres. Découverte : knip est aveugle sur ce poste (rien signalé, même un fichier orphelin posé exprès) — le ratchet local 0/0/0 ne mesure rien ; consigné en §8, non traité.
 
 **Conclusion / prochaine étape** : L9 clos ; ronde 2 de relecture par le superviseur sur le commit de L9, puis fusion vers `feat/v75` sur son accord.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L9.2 : retouche finale de la ronde 2
+
+**Statut** : Complété (plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, L9.2 ; branche `feat/ts-usages-emprise`, poussée pour la CI).
+
+**Décision technique principale** : ronde 2 de relecture sur L9 : zéro P0 / P1, deux P2 mécaniques. R9 — la ligne de repli de la carte Équipement s'aligne sur le début du segment du premier compte replié (`repliOffsetPct`, patron de la Répartition des frags) au lieu de trois emplacements fixes ; les segments viennent d'une seule fonction (`partSegments`) lue par la barre et par le repli. R10 — `formatUsageDecimal` privée à `usageFormat.ts` (plus aucun lecteur extérieur depuis R5) ; la phrase du journal L9 qui disait le contraire est corrigée.
+
+**Résultats observés** : test R9 vu rouge (`me = [40, 1, 2]` : repli sans décalage au lieu de 93 %), mutation « repli à 50 % » rouge ; tsc 0, ESLint 0 erreur, vitest 8 866 tests verts, couleurs 0, imports croisés 7 ≤ 7, lefthook pre-push vert.
+
+**Conclusion / prochaine étape** : lot clos côté exécuteur ; suivi de la CI et fusion vers `feat/v75` par le superviseur.

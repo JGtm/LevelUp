@@ -66,6 +66,15 @@ describe('EquipmentOutcomesCard', () => {
     expect(screen.queryByTestId('usages-equip-repli-sensor')).toBeNull()
   })
 
+  it('repli : aligné sur le début de SON segment (40 servis · 1 gardé · 2 lâchés : « gardé » à ~93 %)', () => {
+    fit.hidden = new Set(['usages-equip-me-wall-kept'])
+    const rows = buildEquipmentRows(soloEmprise()).map((r) => (r.family === 'wall' && r.measured ? { ...r, me: [40, 1, 2] as typeof r.me } : r))
+    render(<EquipmentOutcomesCard rows={rows} familyLabel={(f) => NAMES[f] ?? f} ut={USAGES_TEXT.fr.cards} />)
+    const repli = screen.getByTestId('usages-equip-repli-wall')
+    expect(repli.textContent).toBe('1')
+    expect(parseFloat(repli.style.paddingLeft)).toBeCloseTo((40 / 43) * 100)
+  })
+
   it('repli : rien au-dessus quand tous les comptes tiennent', () => {
     fit.hidden = new Set()
     renderCard()
