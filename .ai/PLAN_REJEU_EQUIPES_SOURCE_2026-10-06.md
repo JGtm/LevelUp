@@ -201,6 +201,19 @@ G3, mesure de la durée de ré-extraction sur UN film.
       18 bots conformes au tableau G1, sauf `4f77afc1` Darkstar (place 1 au lieu de 2 : la place 1
       paraît libre faute de liaison de ses entités d'équipe 1, D8).
 - [ ] G3.6 `adversarial-review`, `delivery-checklist`, commits, push, CI verte.
+      - Commit `d7e329695` (G3.0 à G3.5).
+      - Ronde 1, relecteur A (lecture BOT_METADATA, `killsource` et projection) : 0 P0, 0 P1,
+        16 conditions vérifiées qui tiennent (ordre des bits, largeurs champ à champ, bit 15 382,
+        fermeture, appariement slot + `bid` + nom, nil jamais 0, transport, `SchemaDesFaits` 5) ;
+        4 P2, corrigés dans le lot : (1) un test passe par `Decode` en CI (mini-bobine + un paquet
+        BOT_METADATA fabriqué, `botmeta_equipe_decode_test.go`) ; (2) une équipe -1 se publie -1
+        (extension de signe et borne basse tenues par un test) ; (3) la marche passe par le
+        curseur méfiant du paquet (`curseurEv`, eventchain.go) : plus de troisième copie du lecteur
+        borné ; (4) un paquet non fermé se dit en AVERTISSEMENT même quand chaque bot tient son
+        équipe d'un autre paquet. En-tête : 78 bots lus (79 du lecteur historique). Les quatre
+        mutations du relecteur rougissent (la borne basse : à la compilation puis au test).
+      - Relecteur B (places et rejeu, `film/replay`) : interrompu par la limite de session avant son
+        rapport ; relancé au premier plan.
 
 ### G4 — Mesure de l'hypothèse « bouche-trou » (lecture seule)
 

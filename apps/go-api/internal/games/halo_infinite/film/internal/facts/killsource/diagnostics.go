@@ -26,8 +26,10 @@ const (
 	DiagBotsNonEpingles constat.Code = "killsource.bots_non_epingles"
 	// DiagEquipesDeBots : des bots n ont pas d equipe lue dans BOT_METADATA (botmeta_equipe.go).
 	DiagEquipesDeBots constat.Code = "killsource.equipes_de_bots"
-	// DiagEntreesDeBots : la marche des paquets BOT_METADATA et le lecteur historique ne lisent pas
-	// les memes entrees, ou des entrees sont refusees (jumeau discordant, equipe hors domaine).
+	// DiagEntreesDeBots : des paquets BOT_METADATA ne ferment pas sous la grammaire de l ecrivain, la
+	// marche et le lecteur historique ne lisent pas les memes entrees, ou des entrees sont refusees
+	// (jumeau discordant, equipe hors domaine) — meme quand chaque bot a son equipe par un autre
+	// paquet.
 	DiagEntreesDeBots constat.Code = "killsource.entrees_de_bots"
 )
 
@@ -38,7 +40,8 @@ func (c *decodeCtx) signaler(code constat.Code, niveau constat.Niveau, msg strin
 
 // signalerLesEquipesDesBots dit, en ERREUR, chaque bot dont l equipe n est pas lue : aucun repli ne
 // la remplace, et son entree de rejeu n aura d equipe que si une entite `ti=9` la donne. Les
-// desaccords entre les deux lecteurs du paquet et les entrees refusees se disent en AVERTISSEMENT.
+// paquets qui ne ferment pas, les desaccords entre les deux lecteurs du paquet et les entrees refusees
+// se disent en AVERTISSEMENT, meme quand chaque bot tient son equipe d un autre paquet.
 func (c *decodeCtx) signalerLesEquipesDesBots(e EquipesDesBots, build string) {
 	if e.aLire() {
 		c.signaler(DiagEquipesDeBots, constat.NiveauError, "killsource: equipe de bot(s) NON LUE dans BOT_METADATA "+
@@ -46,9 +49,10 @@ func (c *decodeCtx) signalerLesEquipesDesBots(e EquipesDesBots, build string) {
 			"contradictoires", e.Contradictoires, "hors_grammaire", e.HorsGrammaire,
 			"paquets_non_fermes", e.PaquetsNonFermes, "perso_inconnue", e.PersoInconnue)
 	}
-	if e.EntreesHorsBalayage > 0 || e.JumeauxDiscordants > 0 || e.HorsDomaine > 0 {
-		c.signaler(DiagEntreesDeBots, constat.NiveauWarn, "killsource: entree(s) BOT_METADATA hors du lecteur "+
-			"historique ou refusees", "film", c.name, "hors_balayage", e.EntreesHorsBalayage,
+	if e.PaquetsNonFermes > 0 || e.EntreesHorsBalayage > 0 || e.JumeauxDiscordants > 0 || e.HorsDomaine > 0 {
+		c.signaler(DiagEntreesDeBots, constat.NiveauWarn, "killsource: paquet(s) BOT_METADATA non ferme(s), ou "+
+			"entree(s) hors du lecteur historique ou refusee(s)", "film", c.name,
+			"paquets_non_fermes", e.PaquetsNonFermes, "hors_balayage", e.EntreesHorsBalayage,
 			"jumeaux_discordants", e.JumeauxDiscordants, "hors_domaine", e.HorsDomaine)
 	}
 }

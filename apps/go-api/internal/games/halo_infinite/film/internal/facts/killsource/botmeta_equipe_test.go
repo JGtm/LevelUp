@@ -14,13 +14,15 @@ package killsource
 //	EQ-PERSO       un build sans largeur au profil : aucun paquet ne se lit.
 //	EQ-CONTRADICTION deux paquets fermes, deux equipes : aucune equipe, le bot se compte.
 //	EQ-JUMEAU      jumeau different de l equipe : l equipe fait foi, l entree se compte.
+//	EQ-AUCUNE      equipe -1 (« aucune », mode sans camps) : une LECTURE, publiee -1 — l octet est signe.
 //	EQ-DOMAINE     equipe hors de -1..8 : refusee, le bot se compte illisible.
 //	EQ-FANTOME     le dernier octet de personnalisation non nul fait lire au balayage historique un
 //	               fragment de la copie petit-boutiste du nom (`43 KaleDucky`, slot 0, bid 0 — le cas
 //	               de `8076f97f`) : le vrai bot est lu, le fragment se compte hors grammaire.
 //	EQ-HORS-BALAYAGE un nom de trois unites, que le balayage ne lit pas : l entree se compte.
 //	EQ-DIAGNOSTICS les comptes non nuls se disent : ERREUR pour un bot sans equipe, AVERTISSEMENT
-//	               pour une entree refusee ou hors balayage.
+//	               pour un paquet qui ne ferme pas (meme quand chaque bot tient son equipe d un autre
+//	               paquet), une entree refusee ou hors balayage.
 
 import (
 	"testing"
@@ -196,6 +198,14 @@ func TestJumeauDiscordant(t *testing.T) { // EQ-JUMEAU
 	exigerBilan(t, m, EquipesDesBots{Lues: 1, JumeauxDiscordants: 1})
 }
 
+func TestAucuneEquipeSePublieAMoinsUn(t *testing.T) { // EQ-AUCUNE
+	b := sandwolf
+	b.equipe, b.jumeau = -1, -1
+	m := lireLesEquipes(persoBitsHI113, true, payloadEcrit(persoBitsHI113, b))
+	exigerEquipe(t, m, "343 Sandwolf", -1)
+	exigerBilan(t, m, EquipesDesBots{Lues: 1})
+}
+
 func TestEquipeHorsDomaine(t *testing.T) { // EQ-DOMAINE
 	b := sandwolf
 	b.equipe, b.jumeau = 9, 9
@@ -233,7 +243,9 @@ func TestLesComptesSeDisent(t *testing.T) { // EQ-DIAGNOSTICS
 	}{
 		{"tout lu", EquipesDesBots{Lues: 3}, nil, nil},
 		{"illisible", EquipesDesBots{Illisibles: 1, PaquetsNonFermes: 2},
-			[]constat.Code{DiagEquipesDeBots}, []constat.Niveau{constat.NiveauError}},
+			[]constat.Code{DiagEquipesDeBots, DiagEntreesDeBots}, []constat.Niveau{constat.NiveauError, constat.NiveauWarn}},
+		{"paquet non ferme, equipes lues ailleurs", EquipesDesBots{Lues: 2, PaquetsNonFermes: 1},
+			[]constat.Code{DiagEntreesDeBots}, []constat.Niveau{constat.NiveauWarn}},
 		{"hors grammaire", EquipesDesBots{Lues: 1, HorsGrammaire: 1},
 			[]constat.Code{DiagEquipesDeBots}, []constat.Niveau{constat.NiveauError}},
 		{"contradiction et jumeau", EquipesDesBots{Contradictoires: 1, JumeauxDiscordants: 1},

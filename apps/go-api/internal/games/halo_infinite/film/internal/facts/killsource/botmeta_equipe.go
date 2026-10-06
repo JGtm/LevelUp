@@ -27,8 +27,9 @@ package killsource
 //
 // L ORACLE : l equipe que l entite `ti=9` du bot lui donne, liee par ses declarations, sur 56 bots
 // de 36 films du parc (55 HI_1_13_0, 1 HI_1_12_0) : 56/56 (`botmeta_equipe_research_test.go`) ; le
-// jumeau egal a l equipe sur les 79 bots lus (`.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G2.c,
-// F.2 et G3.0).
+// jumeau egal a l equipe sur les 78 bots dont l equipe se lit (79 bots du lecteur historique sur 48
+// films, dont un fantome, cf. [EquipesDesBots.HorsGrammaire] ;
+// `.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G2.c, F.2 et G3.0).
 //
 // # UNE SECONDE COPIE DE LA GRAMMAIRE DU CORPS, ET POURQUOI ELLE VIT ICI
 //
@@ -127,84 +128,67 @@ type equipeDEntree struct {
 	equipe, jumeau int
 }
 
-// lecteurBorne : un lecteur de bits qui refuse de lire au-dela du paquet.
-type lecteurBorne struct {
-	br *grammar.Lecteur
-	ok bool
-}
-
-func (l *lecteurBorne) lire(n uint) uint64 {
-	if !l.ok || l.br.Remaining() < int(n) {
-		l.ok = false
-		return 0
-	}
-	return l.br.ReadBits(n)
-}
-
-func (l *lecteurBorne) sauter(n int) {
-	if !l.ok || n < 0 || l.br.Remaining() < n {
-		l.ok = false
-		return
-	}
-	l.br.Skip(n)
-}
-
 // marcherLePaquet lit un payload de type 12 par la grammaire de l ecrivain, `persoBits` etant la
 // largeur du bloc de personnalisation du build. Faux quand la marche ne ferme pas (cf. l en-tete).
+//
+// LA MARCHE PASSE PAR LE CURSEUR MEFIANT DU PAQUET ([curseurEv], eventchain.go) : le lecteur de bits
+// canonique de la couche source, et le refus de lire au-dela du paquet — son drapeau `over`, une
+// fois leve, refuse l entree en cours et le paquet entier.
 func marcherLePaquet(pl []byte, persoBits int) ([]equipeDEntree, bool) {
-	l := &lecteurBorne{br: grammar.LecteurSur(pl), ok: true}
-	n := int(l.lire(32))
-	if !l.ok || n > botMaxSlot {
+	r := nouveauCurseurEv(pl, 0)
+	n := int(r.rd(32))
+	if r.over || n > botMaxSlot {
 		return nil, false
 	}
 	out := make([]equipeDEntree, 0, n)
 	for range n {
-		e, ok := l.entree(persoBits)
+		e, ok := lireUneEntreeDeBot(r, persoBits)
 		if !ok {
 			return nil, false
 		}
 		out = append(out, e)
 	}
-	return out, l.br.Remaining() < 8
+	return out, r.b.Remaining() < 8
 }
 
-// entree lit UNE entree, de son index absolu a la fin de son bloc de 44 octets.
-func (l *lecteurBorne) entree(persoBits int) (equipeDEntree, bool) {
+// lireUneEntreeDeBot lit UNE entree, de son index absolu a la fin de son bloc de 44 octets.
+func lireUneEntreeDeBot(r *curseurEv, persoBits int) (equipeDEntree, bool) {
 	var e equipeDEntree
-	l.sauter(32) // index absolu du bot
-	e.slot, e.botID = int(l.lire(32)), int(l.lire(32))
-	masque := int(l.lire(botMasquePrefixe)) + 1
-	if !l.ok || masque > botMasqueMax {
+	r.skip(32) // index absolu du bot
+	e.slot, e.botID = int(r.rd(32)), int(r.rd(32))
+	masque := int(r.rd(botMasquePrefixe)) + 1
+	if r.over || masque > botMasqueMax {
 		return e, false
 	}
-	l.sauter(masque)
-	if nOctets := int(l.lire(botListeNPrefixe)); l.ok && nOctets <= botListeNMax {
-		l.sauter(nOctets * 8)
+	r.skip(masque)
+	if nOctets := int(r.rd(botListeNPrefixe)); !r.over && nOctets <= botListeNMax {
+		r.skip(nOctets * 8)
 	} else {
 		return e, false
 	}
-	if mMots := int(l.lire(botListeMPrefixe)); l.ok && mMots <= botListeMMax {
-		l.sauter(mMots * 32)
+	if mMots := int(r.rd(botListeMPrefixe)); !r.over && mMots <= botListeMMax {
+		r.skip(mMots * 32)
 	} else {
 		return e, false
 	}
-	l.sauter(botBloc104)
-	e.nom = l.nom()
-	l.sauter(botApresLeNom + persoBits)
+	r.skip(botBloc104)
+	e.nom = lireLeNomDuBot(r)
+	r.skip(botApresLeNom + persoBits)
 	// LE BLOC DE 44 OCTETS : l equipe et son jumeau y sont des octets SIGNES (-1 = aucune).
-	l.sauter(botEquipeDansBloc44)
-	e.equipe = int(int8(l.lire(8))) //nolint:gosec // octet signe de l ecrivain, -1 = aucune
-	e.jumeau = int(int8(l.lire(8))) //nolint:gosec // idem
-	l.sauter(botBloc44 - botJumeauDansBloc44 - 8)
-	return e, l.ok
+	r.skip(botEquipeDansBloc44)
+	e.equipe = int(int8(r.rd(8))) //nolint:gosec // octet signe de l ecrivain, -1 = aucune
+	e.jumeau = int(int8(r.rd(8))) //nolint:gosec // idem
+	r.skip(botBloc44 - botJumeauDansBloc44 - 8)
+	return e, !r.over
 }
 
-// nom lit le nom : des unites de 16 bits, l ecriture s arretant APRES l unite nulle, ou a la 16e.
-func (l *lecteurBorne) nom() string {
+// lireLeNomDuBot lit le nom : des unites de 16 bits, l ecriture s arretant APRES l unite nulle, ou
+// a la 16e.
+func lireLeNomDuBot(r *curseurEv) string {
 	u := make([]uint16, 0, botNomUnitesMax)
 	for range botNomUnitesMax {
-		v := uint16(l.lire(16)) //nolint:gosec // lecture de 16 bits
-		if !l.ok || v == 0 {
+		v := uint16(r.rd(16)) //nolint:gosec // lecture de 16 bits
+		if r.over || v == 0 {
 			break
 		}
 		u = append(u, v)
