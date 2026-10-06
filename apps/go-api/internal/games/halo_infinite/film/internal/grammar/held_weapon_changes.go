@@ -196,31 +196,12 @@ func (c *heldWeaponChain) qualifier(ch *types.HeldWeaponChange, gen uint32) (rep
 //     l'occupait. La marche des trames, qui lit aussi les records sans position, en rend à chaque
 //     mise en place des joueurs (l'emplacement 2 de chacun, avant ses premières positions).
 func qualifyHeldWeaponChange(ch *types.HeldWeaponChange, hadPrevious bool, st SpawnState, ok bool) {
-	switch {
-	case hadPrevious && ch.Family == ch.Previous:
-		ch.Kind = types.HeldWeaponRestated // la meme famille, re-annoncee : rien ne change
-		return
-	case hadPrevious && ch.Family == noVariant:
-		ch.Kind = types.HeldWeaponDropped
-		return
-	case hadPrevious && ch.Previous == noVariant:
-		ch.Kind = types.HeldWeaponTaken
-		return
-	case hadPrevious:
-		ch.Kind = types.HeldWeaponSwapped
+	if hadPrevious {
+		qualifierContre(ch, ch.Previous)
 		return
 	}
 	if prev, connu := st.ParEmplacement[ch.Emplacement]; ok && connu {
-		switch {
-		case ch.Family == prev:
-			ch.Kind = types.HeldWeaponRestated
-		case ch.Family == noVariant:
-			ch.Previous, ch.Kind = prev, types.HeldWeaponDropped
-		case prev == noVariant:
-			ch.Kind = types.HeldWeaponTaken
-		default:
-			ch.Previous, ch.Kind = prev, types.HeldWeaponSwapped
-		}
+		qualifierContre(ch, prev)
 		return
 	}
 	switch {
@@ -230,6 +211,23 @@ func qualifyHeldWeaponChange(ch *types.HeldWeaponChange, hadPrevious bool, st Sp
 		ch.Kind = types.HeldWeaponRestated
 	default:
 		ch.Kind = types.HeldWeaponTaken
+	}
+}
+
+// qualifierContre qualifie `ch` contre la famille `prev` qui occupait son emplacement : la même
+// famille est une ré-annonce, rien ne change ; un emplacement vidé est un lâcher, un emplacement
+// vide rempli une prise, une autre famille un échange. Un lâcher et un échange nomment l'arme
+// précédente.
+func qualifierContre(ch *types.HeldWeaponChange, prev uint32) {
+	switch {
+	case ch.Family == prev:
+		ch.Kind = types.HeldWeaponRestated
+	case ch.Family == noVariant:
+		ch.Previous, ch.Kind = prev, types.HeldWeaponDropped
+	case prev == noVariant:
+		ch.Kind = types.HeldWeaponTaken
+	default:
+		ch.Previous, ch.Kind = prev, types.HeldWeaponSwapped
 	}
 }
 
