@@ -244,15 +244,10 @@ func averageAndParity(measured []MatchInput, size func(MatchInput) int) (float64
 // c'est une grandeur comparative — « combien de murs déployés dans ce lobby » — qui
 // a un sens même à zéro pour le joueur suivi.
 //
-// `equipment_<famille>` (le BILAN) entre au critère du SUJET SEUL, depuis le lot
-// 6.4 point 4 : [subjectBilanFamilies], LA MÊME fonction que lit [overviewFamilies]
-// (usage_overview.go) pour les pages Synthèse et Escouade. AVANT ce correctif, ce
-// critère était le LOBBY ici et le SUJET là-bas — deux pages qui affichent la MÊME
-// barre subjet-only (`attachOutcomes` / `computeOutcomes`, toutes deux réduites au
-// joueur suivi) pouvaient ouvrir une ligne différente pour le même scope : la page
-// Sessions montrait une barre entièrement VIDE (0 utilisé / 0 gardé / 0 lâché) dès
-// qu'un COÉQUIPIER avait touché la famille, exactement le « reproche sans objet »
-// que le commentaire d'[overviewFamilies] refuse déjà côté Synthèse/Escouade. Une
+// `equipment_<famille>` (le BILAN) entre au critère du SUJET SEUL ([subjectBilanFamilies],
+// lot 6.4 point 4) : la barre est réduite au joueur suivi (`attachOutcomes` /
+// `computeOutcomes`), et un critère du LOBBY montrerait une barre entièrement VIDE (0 utilisé /
+// 0 gardé / 0 lâché) dès qu'un COÉQUIPIER a touché la famille — un « reproche sans objet ». Une
 // famille du bilan entre dès qu'une de ses TROIS issues (utilisé/gardé/lâché) est
 // non nulle POUR LE SUJET, et pas seulement sur ses poses : le capteur du parc
 // compte 4 objets utilisés pour 36 pris (mesure E0.4) — le lire sur ses seules

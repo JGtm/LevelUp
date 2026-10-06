@@ -30,19 +30,26 @@ type appelOptionCable struct {
 // appelsDansTeammatesCtx rend les appels `.<methode>(...)` du corps de TeammatesCtx.
 func appelsDansTeammatesCtx(t *testing.T, methode string) []appelOptionCable {
 	t.Helper()
+	return appelsDansFactory(t, "registry_pages_home.go", "TeammatesCtx", methode)
+}
+
+// appelsDansFactory rend les appels `.<methode>(...)` du corps de la factory `factory` (méthode du
+// registre) déclarée dans `fichier`, avec leurs arguments et les portes `if` qui les entourent.
+func appelsDansFactory(t *testing.T, fichier, factory, methode string) []appelOptionCable {
+	t.Helper()
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "registry_pages_home.go", nil, 0)
+	f, err := parser.ParseFile(fset, fichier, nil, 0)
 	if err != nil {
-		t.Fatalf("lecture de registry_pages_home.go : %v", err)
+		t.Fatalf("lecture de %s : %v", fichier, err)
 	}
 	var corps *ast.BlockStmt
 	for _, d := range f.Decls {
-		if fn, ok := d.(*ast.FuncDecl); ok && fn.Recv != nil && fn.Name.Name == "TeammatesCtx" {
+		if fn, ok := d.(*ast.FuncDecl); ok && fn.Recv != nil && fn.Name.Name == factory {
 			corps = fn.Body
 		}
 	}
 	if corps == nil {
-		t.Fatal("factory TeammatesCtx introuvable dans registry_pages_home.go")
+		t.Fatalf("factory %s introuvable dans %s", factory, fichier)
 	}
 	var pile []ast.Node
 	var out []appelOptionCable

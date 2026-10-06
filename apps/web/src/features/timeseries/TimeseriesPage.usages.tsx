@@ -1,38 +1,48 @@
 /**
- * TimeseriesPage — onglet "Usages".
+ * TimeseriesPage — onglet « Usages » : L'EMPRISE DU PÉRIMÈTRE SOLO (plan
+ * PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05, maquette v4 `.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html`).
  *
- * UN AXE DE LECTURE : TOUT CE QUI VIENT DU FILM DÉCODÉ. Les trois sections réunies ici
- * étaient dispersées entre la Synthèse (« Portée des engagements ») et la fin de la
- * Progression (« Usages d'équipement », « Les formes retenues ») ; elles répondent pourtant
- * à la même question — ce que le film dit de la manière de jouer — et n'ont rien à voir avec
- * la courbe de progression d'un indicateur. Regroupées, elles se lisent ensemble et les deux
- * autres onglets retrouvent leur axe.
+ * Mêmes matchs que le reste de la page (fenêtre filtrée, contexte solo), dans l'ordre d'un débrief :
  *
- * AUCUNE REQUÊTE NEUVE : les blocs (`weapon_range`, `elevation`, `range_profiles`,
- * `equipment_usage`, `formes_retenues`) arrivent avec la MÊME réponse de page que les
- * autres onglets.
+ *   1. « Portée des engagements » (la section porte son titre) puis « Rôles de portée » ;
+ *   2. « Bilan du périmètre » : « Contrôle des ressources » | « … au fil des matchs » ;
+ *   3. « Carte par carte » : « Contrôle des ressources, carte par carte » ;
+ *   4. « Mes prises » : « Mes prises dans mon camp » ;
+ *   5. « Prendre, et s'en servir » : « Frags obtenus avec les ressources » | « Rendement face à l'adversaire » ;
+ *   6. « Près d'un coéquipier ou seul » : « Mes vies : près d'un coéquipier ou seul » ;
+ *   7. « Objectif » : « Rapport de force par famille de mode » puis « Ma part à l'objectif » ;
+ *   8. « Équipement » : « Équipement pris, et ce que j'en ai fait ».
  *
- * LES RÔLES DE PORTÉE SUIVENT LA PORTÉE (D23-a du 2026-09-22) : la carte dit à quelle
- * distance je me tiens PAR RAPPORT AU LOBBY, la section au-dessus dit avec quelle arme et à
- * quels mètres. Même capability produit, donc même gate, et elles se lisent l'une après
- * l'autre — les séparer d'un onglet romprait la paire.
- *
- * CHAQUE SECTION SE RETIRE D'ELLE-MÊME quand son bloc est absent (film non décodé, titre
- * sans la capability `weapon_range`). Les trois retirées, l'onglet DIT pourquoi il est vide
- * au lieu de rester muet : un onglet sans contenu ni message se lit « bug ».
+ * AUCUNE REQUÊTE NEUVE : tout arrive avec la réponse de page. Les cartes sont celles de l'Escouade
+ * (textes solo : « Mon camp ») et quatre cartes propres à l'onglet. Un bloc sans donnée se retire,
+ * intertitre compris (prédicat unique `usagesSections`) ; sans rien à montrer, l'onglet le DIT.
+ * Sans film (Halo 5), seuls les frags aux armes spéciales de la feuille de match restent.
  */
-import { DetailSection } from '@/components/ui/detail-section'
+import type { ReactNode } from 'react'
+import { useMemo } from 'react'
+
+import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
-import { usageAvailabilityKind } from '@/features/_shared/usage/usageAvailability'
-import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
-import { FormesRetenuesSection } from '@/features/squad/formes/FormesRetenuesSection'
+import { ProductionCard } from '@/features/squad/emprise/ProductionCard'
+import { ResourceControlCard } from '@/features/squad/emprise/ResourceControlCard'
+import { ResourceFilCard } from '@/features/squad/emprise/ResourceFilCard'
+import { useOutcomeLabels } from '@/features/squad/emprise/useOutcomeLabels'
+import { YieldCard } from '@/features/squad/emprise/YieldCard'
+import { ObjectiveBalanceCard } from '@/features/squad/objectif/ObjectiveBalanceCard'
+import { ObjectiveSoloSheetCard } from '@/features/squad/objectif/ObjectiveSoloSheetCard'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import type { TimeseriesPageResponse } from '@/lib/api/types'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
 import type { Locale } from '@/lib/i18n/locale'
+import { dominanceLabels } from '@/lib/narrative/dominance'
 
 import { TimeseriesRangeRolesCard } from './TimeseriesRangeRolesCard'
+import { EquipmentOutcomesCard } from './usages/EquipmentOutcomesCard'
+import { LivesNearTeammateCard } from './usages/LivesNearTeammateCard'
+import { MinePickupsCard } from './usages/MinePickupsCard'
+import { ResourceMapGridCard } from './usages/ResourceMapGridCard'
+import { useUsagesModels } from './usages/useUsagesModels'
+import { EMPRISE_TEXT_SOLO, OBJECTIF_TEXT_SOLO, USAGES_TEXT } from './usages/usagesText'
 import { WeaponRangeSection } from './WeaponRangeSection'
 
 export interface TimeseriesUsagesTabProps {
@@ -42,68 +52,84 @@ export interface TimeseriesUsagesTabProps {
 }
 
 export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProps) {
-  // Portée et dénivelé mesurés des engagements : capability PRODUIT `weapon_range`
-  // (title.CapWeaponRange). Halo 5 ne la déclare pas — ses événements de frag n'ont pas
-  // d'arme, la jointure mesurée rendrait zéro ligne et la section serait vide.
+  // Portée mesurée des engagements : capability PRODUIT `weapon_range` (Halo 5 ne la déclare pas).
   const hasWeaponRange = useCapability('weapon_range')
-  const usageText = USAGE_TEXT[locale]
+  const u = useUsagesModels(data, locale, hasWeaponRange)
+  const { models: m, show } = u
+  const et = EMPRISE_TEXT_SOLO[locale]
+  const ut = USAGES_TEXT[locale]
+  const outcomes = useOutcomeLabels()
+  const dominance = useMemo(() => dominanceLabels(locale), [locale])
 
-  // LES MÊMES PRÉDICATS QUE LES SECTIONS, relus ICI pour savoir EN AMONT si l'onglet a
-  // quelque chose à montrer. Chaque section décide seule de se retirer (elle rend `null`) :
-  // sans cette lecture en amont, l'onglet ne pourrait pas distinguer « trois sections
-  // masquées » de « trois sections montées » et n'afficherait jamais son état vide.
-  const showsRange = hasWeaponRange && data.weapon_range != null
-  const showsEquipment =
-    data.equipment_usage != null && usageAvailabilityKind(data.equipment_usage) !== 'hidden'
-  const showsFormes = data.formes_retenues != null && data.formes_retenues.available
-  const hasAnything = showsRange || showsEquipment || showsFormes
-
-  if (!hasAnything) {
-    return (
-      <EmptyStateNotice
-        title={t('timeseries.usages.empty_title')}
-        description={t('timeseries.usages.empty_description')}
-      />
-    )
+  if (!Object.values(show).some(Boolean)) {
+    return <EmptyStateNotice title={t('timeseries.usages.empty_title')} description={t('timeseries.usages.empty_description')} />
   }
 
   return (
-    <div className="space-y-8">
-      {/* Portée des engagements — la section porte son propre titre standard. Le nuage
-          « distance x hauteur d'engagement » vit DANS cette section, à côté de la portée. */}
-      {showsRange && (
-        <WeaponRangeSection
-          range={data.weapon_range}
-          elevation={data.elevation}
-          matchRows={data.match_rows ?? []}
-        />
-      )}
-
-      {/* Rôles de portée — juste après « Portée par arme » : la même famille de sujet, posée
-          en écart au lobby plutôt qu'en mètres absolus. */}
+    <div className="space-y-8" data-testid="timeseries-usages">
+      {show.range && <WeaponRangeSection range={data.weapon_range} />}
+      {/* Rôles de portée : la même famille de sujet, posée en écart au lobby (la carte se retire seule sans bloc). */}
       {hasWeaponRange && <TimeseriesRangeRolesCard bloc={data.range_profiles} />}
-
-      {/* « Équipement et armes de socle » — la section ne monte que des cartes, sans titre à
-          elle : le titre de section est posé ici, et il NOMME LES DEUX FAMILLES DE RAMASSAGES
-          qu'il coiffe — l'équipement (usages, part du lobby) et les armes posées sur les
-          socles (armes spéciales, niveaux). Il ne se confond donc ni avec « Portée des
-          engagements » ci-dessus, ni avec sa première carte (« Usages d'équipement »), dont
-          reprendre le libellé ferait lire deux fois la même ligne (arbitrage du
-          2026-09-22). */}
-      {showsEquipment && (
-        <DetailSection title={t('timeseries.usages.equipment_title')}>
-          <EquipmentUsageSection
-            usage={data.equipment_usage}
-            t={usageText}
-            locale={locale}
-          />
-        </DetailSection>
+      {show.bilan && m.fil && (
+        <Block id="bilan" title={ut.sections.bilan} sub={ut.sections.bilanCoverage(m.coverage.filmed, m.coverage.total)}>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ResourceControlCard rows={m.controlRows} t={et} />
+            <ResourceFilCard fil={m.fil} dominanceLabels={dominance} outcomeLabels={outcomes} locale={locale} t={et} axe={u.filAxe} />
+          </div>
+        </Block>
       )}
-
-      {/* « Les formes retenues », CONTEXTE SOLO — elle ne porte PLUS de titre de section
-          depuis la décision D5 du 2026-09-21 (trois intertitres se suivaient) : chacun de ses
-          blocs porte le sien. On ne lui en repose donc pas un ici. */}
-      <FormesRetenuesSection block={data.formes_retenues} locale={locale} />
+      {show.carte && m.mapGrid && (
+        <Block id="carte" title={ut.sections.carte}>
+          <ResourceMapGridCard grid={m.mapGrid} itemName={(row) => (row.object ? u.objectName(row.object) : '')} playerName={u.playerName} t={et} ut={ut.cards} />
+        </Block>
+      )}
+      {show.mine && m.mine && (
+        <Block id="mine" title={ut.sections.mine}>
+          <MinePickupsCard mine={m.mine} itemName={u.objectName} t={et} ut={ut.cards} />
+        </Block>
+      )}
+      {show.prendre && (
+        <Block id="prendre" title={ut.sections.prendre}>
+          {/* Une carte seule (sans rendement : Halo 5) prend la rangée. */}
+          <div className="grid gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+            {m.production.length > 0 && <ProductionCard rows={m.production} t={et} />}
+            {m.yieldRows.length > 0 && <YieldCard rows={m.yieldRows} coverage={m.vehicleCoverage} t={et} />}
+          </div>
+        </Block>
+      )}
+      {show.lives && m.lives && (
+        <Block id="lives" title={ut.sections.lives}>
+          <LivesNearTeammateCard model={m.lives} ut={ut.cards} />
+        </Block>
+      )}
+      {show.objectif && (
+        <Block id="objectif" title={ut.sections.objectif}>
+          <div className="space-y-4">
+            {u.balance.length > 0 && <ObjectiveBalanceCard families={u.balance} familyLabel={u.familyLabel} columns={u.columns} t={OBJECTIF_TEXT_SOLO[locale]} />}
+            {u.soloSheet && (
+              <ObjectiveSoloSheetCard sheet={u.soloSheet} name={u.sheetName} emblemUrl={u.emblemUrl} familyLabel={u.familyLabel} columns={u.columns} t={ut.sheet} />
+            )}
+          </div>
+        </Block>
+      )}
+      {show.equipment && (
+        <Block id="equipment" title={ut.sections.equipment}>
+          <EquipmentOutcomesCard rows={m.equipment} familyLabel={u.equipmentLabel} ut={ut.cards} />
+        </Block>
+      )}
     </div>
+  )
+}
+
+/** Un bloc de l'onglet : son intertitre (et sa couverture, à côté, en petit), puis ses cartes. */
+function Block({ id, title, sub, children }: { id: string; title: string; sub?: string; children: ReactNode }) {
+  return (
+    <section className="space-y-2" data-testid={`usages-section-${id}`}>
+      <SectionTitle>
+        {title}
+        {sub && <small className="ml-2 text-xs font-normal text-muted-foreground">{sub}</small>}
+      </SectionTitle>
+      {children}
+    </section>
   )
 }

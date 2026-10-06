@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { RESOURCE_ORDER, RESOURCE_VEHICLE, buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil } from './emprise.logic'
+import { RESOURCE_ORDER, RESOURCE_VEHICLE, buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil, empriseMatchIndex } from './emprise.logic'
 import { EMPRISE_2209, HISTORY_2209 } from './emprise.fixtures'
 import { buildHabitView } from './habit.logic'
 import { buildProductionRows, buildYieldRows } from './production.logic'
@@ -22,7 +22,7 @@ describe('RESOURCE_ORDER — une entrée de plus', () => {
 
   it('sans véhicules dans le bloc, rien n’est rendu pour eux', () => {
     expect(buildControlRows(EMPRISE_2209).map((r) => r.resource)).not.toContain(RESOURCE_VEHICLE)
-    expect(buildResourceFil(EMPRISE_2209, HISTORY_2209).resources).not.toContain(RESOURCE_VEHICLE)
+    expect(buildResourceFil(EMPRISE_2209, empriseMatchIndex(HISTORY_2209)).resources).not.toContain(RESOURCE_VEHICLE)
     expect(buildProductionRows(EMPRISE_2209).map((r) => r.resource)).not.toContain(RESOURCE_VEHICLE)
     expect(buildVehicleCoverage(EMPRISE_2209)).toBeNull()
   })
@@ -40,7 +40,7 @@ describe('bilan, fil et fiches', () => {
   })
 
   it('le fil lit les véhicules indépendamment du film : Detachment (sans film) a son point, Shogun (non mesuré) non', () => {
-    const fil = buildResourceFil(VEHICLES_2209, HISTORY_2209)
+    const fil = buildResourceFil(VEHICLES_2209, empriseMatchIndex(HISTORY_2209))
     expect(fil.resources).toEqual(['powerup', 'power_weapon', 'vehicle'])
     const byMap = Object.fromEntries(fil.matches.map((m) => [m.map, m.points.vehicle]))
     expect(byMap.Starboard).toMatchObject({ us: 3, them: 1 })
@@ -65,7 +65,7 @@ describe('bilan, fil et fiches', () => {
 })
 
 describe('grille match par match', () => {
-  const grid = buildMatchGrid(VEHICLES_2209, HISTORY_2209)
+  const grid = buildMatchGrid(VEHICLES_2209, empriseMatchIndex(HISTORY_2209))
   const section = grid.sections.find((s) => s.resource === RESOURCE_VEHICLE)!
   const col = (map: string) => grid.columns.findIndex((c) => c.map === map)
 

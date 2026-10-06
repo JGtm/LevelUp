@@ -3,10 +3,10 @@
  * du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 ; maquette
  * `.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`, bloc « Proposition »).
  *
- * Toutes les cartes lisent le bloc `squad_emprise` (périmètre D2 : composition exacte ∩
- * filtres), calculé côté Go (lot L4) ; le résultat, le score, la dominance, l'heure, la carte et
- * le mode de chaque match se joignent depuis l'historique de la page (`match_history`) par
- * `match_id`, comme au lot L3.2 — un match sans ligne d'historique garde sa place, sans résultat.
+ * Toutes les cartes lisent le bloc Emprise (Escouade : `squad_emprise`, périmètre D2 ; Séries
+ * temporelles : `emprise`, matchs solo de la fenêtre), calculé côté Go ; le résultat, le score, la
+ * dominance, l'heure, la carte et le mode de chaque match se joignent par `match_id` depuis l'index
+ * des matchs de la page (`EmpriseMatchIndex`) — un match absent garde sa place, sans résultat.
  *
  * LES RESSOURCES SONT UNE LISTE : chaque carte parcourt les ressources que le bloc publie, dans
  * l'ordre de `RESOURCE_ORDER` ; une ressource absente n'a ni ligne, ni courbe, ni section. Une
@@ -86,21 +86,34 @@ export interface EmpriseMatchInfo {
   dominance: DominanceValue | undefined
 }
 
-function matchInfo(m: SquadEmpriseMatch, byId: Map<string, SquadMatchHistoryRow>): EmpriseMatchInfo {
-  const h = byId.get(m.match_id)
-  return {
-    matchId: m.match_id,
-    startTime: h?.start_time ?? '',
-    map: h?.map_ui ?? '',
-    mode: h?.mode_ui ?? '',
-    outcome: h ? outcomeCodeToValue(h.outcome) : null,
-    score: h?.score_label || null,
-    dominance: asDominance(h?.dominance_flag),
-  }
+/**
+ * Ce que la page sait de chaque match (heure, carte, mode, résultat, score, dominance), par
+ * `match_id` : l'Escouade le tire de son historique (`empriseMatchIndex`), les Séries temporelles
+ * de leurs lignes de match. Un match absent garde sa place, sans résultat.
+ */
+export type EmpriseMatchIndex = ReadonlyMap<string, EmpriseMatchInfo>
+
+/** L'index des matchs de l'Escouade, depuis l'historique de la page. */
+export function empriseMatchIndex(history: SquadMatchHistoryRow[]): EmpriseMatchIndex {
+  return new Map(
+    history.map((h) => [
+      h.match_id,
+      {
+        matchId: h.match_id,
+        startTime: h.start_time ?? '',
+        map: h.map_ui ?? '',
+        mode: h.mode_ui ?? '',
+        outcome: outcomeCodeToValue(h.outcome),
+        score: h.score_label || null,
+        dominance: asDominance(h.dominance_flag),
+      },
+    ]),
+  )
 }
 
-function historyIndex(history: SquadMatchHistoryRow[]): Map<string, SquadMatchHistoryRow> {
-  return new Map(history.map((h) => [h.match_id, h]))
+function matchInfo(m: SquadEmpriseMatch, index: EmpriseMatchIndex): EmpriseMatchInfo {
+  const i = index.get(m.match_id)
+  return i ? { ...i, matchId: m.match_id } : { matchId: m.match_id, startTime: '', map: '', mode: '', outcome: null, score: null, dominance: undefined }
 }
 
 /**
@@ -146,9 +159,8 @@ export interface ResourceFil {
  * nos prises / somme des prises). Un match sans la ressource n'a pas de point : la courbe file
  * jusqu'au suivant. Un match sans donnée (sans film, ou filmé au camp inconnu) n'en a aucun.
  */
-export function buildResourceFil(block: SquadEmpriseBlock, history: SquadMatchHistoryRow[]): ResourceFil {
+export function buildResourceFil(block: SquadEmpriseBlock, index: EmpriseMatchIndex): ResourceFil {
   const resources = buildControlRows(block).map((r) => r.resource)
-  const byId = historyIndex(history)
   const cum = new Map(resources.map((r) => [r, { us: 0, total: 0 }]))
   const matches = (block.matches ?? []).map((m) => {
     const points: Record<string, FilPoint | null> = {}
@@ -171,7 +183,7 @@ export function buildResourceFil(block: SquadEmpriseBlock, history: SquadMatchHi
         cumulative: c.us / c.total,
       }
     }
-    return { ...matchInfo(m, byId), points }
+    return { ...matchInfo(m, index), points }
   })
   return { resources, matches }
 }
@@ -356,9 +368,8 @@ function filmGate(m: SquadEmpriseMatch, resource: string): GridCell | null {
  * synthèse puis une ligne par objet de la soirée (l'ordre du bloc : prises de notre camp
  * décroissantes) ; sous les armes spéciales, la ligne des frags obtenus avec.
  */
-export function buildMatchGrid(block: SquadEmpriseBlock, history: SquadMatchHistoryRow[]): MatchGrid {
+export function buildMatchGrid(block: SquadEmpriseBlock, index: EmpriseMatchIndex): MatchGrid {
   const matches = block.matches ?? []
-  const byId = historyIndex(history)
   const objects = block.objects ?? []
   const hasKills = matches.some((m) => m.power_weapon_kills != null)
   const present = orderedResources([
@@ -387,5 +398,5 @@ export function buildMatchGrid(block: SquadEmpriseBlock, history: SquadMatchHist
         : null
     return { resource, summary, items, kills }
   })
-  return { columns: matches.map((m) => matchInfo(m, byId)), sections }
+  return { columns: matches.map((m) => matchInfo(m, index)), sections }
 }

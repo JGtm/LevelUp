@@ -5,6 +5,7 @@ import {
   buildObjectiveBalance,
   buildObjectiveSheets,
   buildSessionFil,
+  buildSoloObjectiveSheet,
   familyMix,
   median,
 } from './objectif.logic'
@@ -145,6 +146,45 @@ describe('buildObjectiveSheets — répartition de l’objectif dans l’escouad
   })
 })
 
+describe('buildSoloObjectiveSheet — ma part à l’objectif (page solo, 22/09)', () => {
+  // La page solo publie une escouade d'un seul joueur : tout le reste de mon camp tombe dans « reste ».
+  const solo = () => ({ ...block2209(), squad: [{ xuid: 'xj', gamertag: 'JGtm' }] })
+  const sheet = buildSoloObjectiveSheet(solo())!
+  const line = (key: string) => sheet.families[0].lines.find((l) => l.key === key)!
+
+  it('la fiche du joueur affiché seulement, mêmes familles et mêmes lignes que l’Escouade', () => {
+    expect(sheet.xuid).toBe('xj')
+    expect(sheet.families.map((f) => f.family)).toEqual(['ctf'])
+    expect(sheet.families[0].lines).toHaveLength(9)
+  })
+
+  it('la part d’une action = ma valeur sur le total de mon camp (pas le maximum de la ligne)', () => {
+    expect(line('flag_steals')).toMatchObject({ value: 3, camp: 14 })
+    expect(line('flag_steals').share).toBeCloseTo(3 / 14)
+    expect(line('flag_captures').share).toBeCloseTo(1)
+  })
+
+  it('un zéro reste une ligne, part nulle ; une action que mon camp n’a pas faite n’a pas de part', () => {
+    expect(line('flag_capture_assists')).toMatchObject({ value: 0, camp: 2, share: 0 })
+    const vide = buildSoloObjectiveSheet({
+      ...solo(),
+      matches: solo().matches!.map((m) => ({
+        ...m,
+        objective: { ...m.objective!, players: m.objective!.players!.filter((p) => p.xuid === 'xadv') },
+      })),
+    })!
+    expect(vide.families[0].lines[0]).toMatchObject({ value: 0, camp: 0, share: null })
+  })
+
+  it('rôle dominant et pied de fiche : ceux de ma fiche dans l’Escouade (Tenir ; 7 · 10 · 64,9)', () => {
+    expect(sheet.dominant).toBe('hold')
+    expect(sheet.roleTotals.map((v) => Math.round(v * 10) / 10)).toEqual([7, 10, 64.9])
+  })
+
+  it('joueur affiché absent de l’escouade du bloc : pas de fiche', () => {
+    expect(buildSoloObjectiveSheet({ ...solo(), main_xuid: 'inconnu' })).toBeNull()
+  })
+})
 describe('buildEveningsView — rapport de force, soirée après soirée', () => {
   it('07/09 : dix soirées précédentes puis ce soir, médianes des précédentes', () => {
     const v = buildEveningsView(history0709Evenings())

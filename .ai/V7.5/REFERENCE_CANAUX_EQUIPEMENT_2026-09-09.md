@@ -255,9 +255,10 @@ matchs à re-résumer.
 
 ## 4. Qui lit quoi aujourd'hui
 
-> **Mis à jour le 2026-09-28 (chantier Emprise, lot L6.6 de
-> `.ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md`).** La version précédente finissait sur
-> « Solo / Synthèse et Escouade : aucun bloc d'usage » : c'était périmé. Chemins Go relatifs à
+> **Mis à jour le 2026-10-06 (lot L8.2 de `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`) :**
+> l'onglet « Usages » des Séries temporelles est devenu l'Emprise solo, le bloc
+> `equipment_usage` est supprimé (code et contrat). Mise à jour précédente : 2026-09-28 (lot L6.6
+> de `.ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md`). Chemins Go relatifs à
 > `apps/go-api/internal/`, chemins web à `apps/web/src/`.
 
 Deux sortes de lecteurs. Ceux du DOCUMENT DE REJEU (vue match, rejeu 2D) lisent le film et
@@ -296,16 +297,24 @@ Tous passent par `platform/duckdb/session_usage_repo.go`, sur les vues `_latest`
   Web : `features/session-detail/SessionColumnBody.tsx:151` monte `SessionUsageSection`
   (cartes d'équipement l. 97, cartes de socles l. 50). Les trois issues y sont publiées sur
   les grandeurs `equipment_<famille>` depuis l'étape E3, sous réserve de la recuisson.
-- **Séries temporelles, onglet Progression** : bloc `equipment_usage`
-  (`domain/timeseries.go:370`), produit par `squadagg.BuildEquipmentUsageBlock`
-  (`service/squadagg/equipment_usage.go:99` ; lectures l. 77-85, niveaux de socle l. 152),
-  appelé par `service/timeseries_service_sections.go:104`. Même page, bloc
-  `formes_retenues` en contexte SOLO (`domain/timeseries.go:377`,
-  `timeseries_service_sections.go:115-119`). Web : `features/timeseries/TimeseriesPage.usages.tsx`
-  monte `EquipmentUsageSection` (l. 95) et `FormesRetenuesSection` (l. 106).
-- **Synthèse** : **aucun bloc d'équipement**. Le bloc « servi ou gâché » l'a quittée le
-  2026-09-13 pour les Séries temporelles (`service/synthesis_service_usage.go:6-8`) ; rien
-  sous `features/synthesis/` ne lit l'équipement.
+- **Séries temporelles, onglet Usages (Emprise solo)** : bloc `emprise` de
+  `POST …/pages/timeseries` (`domain/timeseries.go:348`, `SoloEmpriseBlock` = le bloc de
+  l'Escouade plus `maps` et `equipment`), produit par `service/timeseries_service_emprise.go:61`
+  (`attachEmprise`, appelé `timeseries_service_sections.go:112`) sur le résumé d'usage lu UNE
+  fois par `squadagg.LireUsage` (`timeseries_service_sections.go:127`), partagé avec
+  `formes_retenues`. Les ressources (bonus, armes spéciales, râteliers) suivent les mêmes règles
+  que l'Emprise de l'Escouade (ci-dessous). La carte **« Équipement pris, et ce que j'en ai
+  fait »** lit `analysis/squademprise/equipment.go:45` (`BuildEquipment`) : servi / gardé /
+  lâché par `sessionusage.PlayerOutcomeCounts` (l. 88, donc `equipmentUsedOf` : mur = posé,
+  autres = charge consommée), pour MOI et pour le reste de MON camp, sur les matchs mesurés à
+  camp connu ; le grappin et le propulseur, hors bilan, y portent une ligne « non mesuré » avec
+  mes seuls lâchers (`equipmentusage.EquipmentUnmeasuredLineFamilies`, l. 26) ; le répulseur n'a
+  aucune ligne. `formes_retenues` n'y porte plus que l'objectif (`domain/timeseries.go:373`).
+  Web : `features/timeseries/TimeseriesPage.usages.tsx` monte `EquipmentOutcomesCard` (l. 117)
+  et les cartes d'objectif (l. 108). Le bloc `equipment_usage` (« servi ou gâché » de période)
+  est **supprimé** du code et du contrat depuis le 2026-10-06.
+- **Synthèse** : **aucun bloc d'équipement** ; rien sous `features/synthesis/` ne lit
+  l'équipement.
 - **Escouade, onglet Emprise** (lots L4-L5, remplace l'ancien onglet Usages) : bloc
   `squad_emprise` de `/pages/teammates` (`domain/teammates.go:608`). Service
   `service/teammates/teammates_service_emprise.go` : résumé d'usage par `squadagg.LireUsage`
@@ -328,8 +337,7 @@ Tous passent par `platform/duckdb/session_usage_repo.go`, sur les vues `_latest`
   cartes de frags lisent `frag_classes` (l. 61).
 - **Escouade, onglet Dynamique** : **aucun canal d'équipement** (`SquadDynamiquePage.tsx`).
 - **Escouade, bloc `equipment_usage`** : **retiré de `/pages/teammates` au lot L5.4**
-  (`domain/teammates.go:594-596`, `service/teammates/teammates_service_usage.go:5-9`) ; son
-  seul lecteur était l'ancien onglet Usages.
+  (`domain/teammates.go:594-596`) ; son seul lecteur était l'ancien onglet Usages.
 
 ### Une seule définition du « utilisé » côté Go
 
@@ -479,4 +487,4 @@ La liste des modes concernés vit dans `config/titles/{slug}/mappings/regulation
 | Rattrapage du parc | `levelup backfill-pad-tiers` (serveur ARRÊTÉ) |
 | Agrégats | `internal/analysis/sessionusage/pad_tiers.go` |
 | Vue match (résolution à la requête) | `features/match-replay/model/weaponTier.ts` |
-| Pages Sessions / Escouade / Timeseries | `features/_shared/usage/usagePadTiersModel.ts` |
+| Page Sessions | `features/_shared/usage/usagePadTiersModel.ts` |

@@ -258,12 +258,12 @@ export function TimeseriesProgressionTab({
           2026-09-22) : elle se monte désormais sur le Résumé, sous « Assistances »
           (cf. TimeseriesPage.summary.tsx). */}
 
-      {/* Coordination dans le temps — « Riposte » | « Appui reçu » sur une rangée (lot Q,
-          D22-3 et D22-6/7). Un seul graphe par carte : deux séries de bâtons par soirée
-          sur le même axe en %, un repère d'habituel par série. Aucune requête neuve — le
-          bloc arrive avec cette réponse de page. La rangée se retire entièrement quand le
-          titre ne sert pas de bloc de coordination ; elle est CONSERVÉE, cartes vides
-          nommées, quand le bloc est servi mais indisponible sur le périmètre (D8). */}
+      {/* Coordination dans le temps — « Appui reçu » seule, en demi-largeur (lot Q,
+          D22-6/7 ; « Riposte » a quitté la page). Deux séries de bâtons par soirée sur le
+          même axe en %, un repère d'habituel par série. Aucune requête neuve — le bloc
+          arrive avec cette réponse de page. La carte se retire quand le titre ne sert pas de
+          bloc de coordination ; elle est CONSERVÉE, vide et nommée, quand le bloc est servi
+          mais indisponible sur le périmètre (D8). */}
       <TimeseriesCoordinationSection block={data.coordination} locale={locale} />
 
       {/* Engagement. EngagementTimeseriesSection rend déjà sa propre ChartCard avec titre
