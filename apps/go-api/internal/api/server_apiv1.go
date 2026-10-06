@@ -918,6 +918,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		timeseries := handlers.NewTimeseriesHandler(reg.Timeseries)
 		timeseries.Mount(r, playerOpt)
 
+		// Tendances : évolution du joueur par horizon (vues Solo et Escouade)
+		trends := handlers.NewTrendsHandler(reg.Trends, reg.SquadTrendsCtx)
+		trends.Mount(r, playerOpt)
+
 		// Exclusion manuelle de matchs non pertinents
 		// NOTE : GET /match-exclusions supprimé en revue 2026-04-29 P0.2 Q6
 		// (orphelin côté front, vue admin jamais implémentée).
