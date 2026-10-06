@@ -43,7 +43,7 @@ import type { KPIStats, TeammateRow, TeammatesQueryRequest } from '@/lib/api/typ
 import type { KPIStats as V2KPIStats } from './v2/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import { formatDataIssues } from './squadDataIssues'
-import { exactCompositionDefault } from './exactComposition'
+import { readStoredExactComposition, writeStoredExactComposition } from './exactComposition'
 import { empriseHasContent } from './emprise/empriseContent'
 
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
@@ -126,15 +126,12 @@ export function SquadLayout() {
   // l'équipe. Choix persisté par joueur (cf. exactCompositionDefault),
   // appliqué en direct (pas de passage par Analyser, comme les
   // coéquipiers/sessions).
-  const exactCompositionStorageKey = `squad-exact-composition-${playerSlug}`
-  const [exactComposition, setExactCompositionRaw] = useState<boolean>(() => {
-    try {
-      return exactCompositionDefault(localStorage.getItem(exactCompositionStorageKey))
-    } catch { return exactCompositionDefault(null) }
-  })
+  const [exactComposition, setExactCompositionRaw] = useState<boolean>(() =>
+    readStoredExactComposition(playerSlug),
+  )
   const setExactComposition = (value: boolean) => {
     setExactCompositionRaw(value)
-    try { localStorage.setItem(exactCompositionStorageKey, String(value)) } catch { /* ignore */ }
+    writeStoredExactComposition(playerSlug, value)
   }
 
   const matchRoute = useMatchRoute()

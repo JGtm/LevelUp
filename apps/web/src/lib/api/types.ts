@@ -3458,3 +3458,40 @@ export type CoordinationAppui = components['schemas']['CoordinationAppui']
 export type CoordinationSessionPoint = components['schemas']['CoordinationSessionPoint']
 export type CoordinationMatchPoint = components['schemas']['CoordinationMatchPoint']
 export type Couverture = components['schemas']['Couverture']
+
+// ---------------------------------------------------------------------------
+// Tendances (Ascension, 2026-10-05)
+// ---------------------------------------------------------------------------
+
+/**
+ * Corps de `POST /players/{player_slug}/pages/trends`. Écrit à la main : le corps est
+ * déclaré OPTIONNEL côté Go (`MarkRequestBodyOptional`), donc absent des schémas générés.
+ * Miroir de `domain.TrendsQueryRequest` (tous les champs sont `omitempty`).
+ */
+export interface TrendsQueryRequest {
+  /** `solo` (défaut) ou `squad`. */
+  view?: 'solo' | 'squad'
+  /** Chaîne de performance à isoler ; vide = tous les types. */
+  game_type?: string
+  /** Membres de l'escouade (vue Escouade). */
+  selected_gamertags?: string[]
+  /** Composition stricte (vue Escouade). */
+  exact_composition?: boolean
+  /** Langue des noms de médailles. */
+  locale?: string
+}
+
+export type TrendsPageResponse = components['schemas']['TrendsPageResponse']
+export type TrendsMember = components['schemas']['TrendsMember']
+export type TrendsIndicator = components['schemas']['TrendsIndicator']
+export type TrendsHorizonCell = components['schemas']['TrendsHorizonCell']
+export type TrendsMonthCell = components['schemas']['TrendsMonthCell']
+export type TrendsPoint = components['schemas']['TrendsPoint']
+export type TrendsSeries = components['schemas']['TrendsSeries']
+export type TrendsGameType = components['schemas']['TrendsGameType']
+export type TrendsCalendarDay = components['schemas']['TrendsCalendarDay']
+export type TrendsWinLossBlock = components['schemas']['TrendsWinLossBlock']
+export type TrendsWinLossRow = components['schemas']['TrendsWinLossRow']
+export type TrendsMedalsBlock = components['schemas']['TrendsMedalsBlock']
+export type TrendsMedalRow = components['schemas']['TrendsMedalRow']
+export type TrendsMixBucket = components['schemas']['TrendsMixBucket']

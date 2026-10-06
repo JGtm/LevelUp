@@ -367,6 +367,7 @@ export const commonManifest = {
   "common.nav.tab_synergies": { fr: "Synergies", en: "Synergies" },
   "common.nav.tab_synthesis": { fr: "Synthèse", en: "Summary" },
   "common.nav.tab_tactique": { fr: "Tactique", en: "Tactical" },
+  "common.nav.tab_tendances": { fr: "Tendances", en: "Trends" },
   "common.nav.tab_timeseries": { fr: "Séries temporelles", en: "Time series" },
   "common.notifications.bulk_actions_aria": { fr: "Actions groupées", en: "Bulk actions" },
   "common.notifications.deselect_all_aria": { fr: "Désélectionner tout", en: "Deselect all" },

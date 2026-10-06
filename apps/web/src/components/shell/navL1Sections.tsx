@@ -156,6 +156,8 @@ export const L1_SECTIONS: L1Section[] = [
         path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique',
         capability: 'replay',
       },
+      // Tendances : 6e onglet, sans porte de capacité propre (la page dégrade selon les capacités).
+      { key: 'tendances', labelKey: 'common.nav.tab_tendances', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tendances' },
     ],
   },
   {

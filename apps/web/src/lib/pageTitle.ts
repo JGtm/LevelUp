@@ -81,6 +81,11 @@ const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
     pattern: '/ascension/tactique',
     title: { fr: 'Ascension — Tactique', en: 'Ascension — Tactical' },
   },
+  // 6e onglet « Tendances » (2026-10-05) : EN aligné sur `common.nav.tab_tendances`.
+  {
+    pattern: '/ascension/tendances',
+    title: { fr: 'Ascension — Tendances', en: 'Ascension — Trends' },
+  },
   { pattern: '/ascension', title: { fr: 'Ascension', en: 'Ascension' } },
   // Route historique /objectifs redirect → /ascension/objectifs (préservée pour bookmarks).
   { pattern: '/objectifs', title: { fr: 'Ascension', en: 'Ascension' } },
