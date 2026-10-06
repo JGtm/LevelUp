@@ -46,10 +46,9 @@ func cellulesLisibles(raster *tactical.Raster, question string) []domain.Cellule
 
 // rasteriserLaCible projette les morts mesurées sur la cible de l'axe « qui » et choisit le pas.
 // Le SOLDE garde ses deux faces SÉPARÉES (frags, morts : analysis/tactical.RasteriseSolde) ; les
-// autres lectures n'ont qu'une liste de points (`projeter`). Rend aussi le nombre d'événements
-// localisés de la cible.
+// autres lectures n'ont qu'une liste de points (`projeter`).
 func rasteriserLaCible(mesure domain.TacticalUnivers, lecture domain.TacticalPositions, question string,
-	dans predicatQui) (tactical.LectureAdaptative, int, error) {
+	dans predicatQui) (tactical.LectureAdaptative, error) {
 	if question == domain.TacticalQuestionSolde {
 		frags, morts := projeterFaces(lecture, dans)
 		lue, err := tactical.ChoisirPas(tactical.PasAdaptatifsM, tactical.CellulesLisiblesMin,
@@ -60,11 +59,9 @@ func rasteriserLaCible(mesure domain.TacticalUnivers, lecture domain.TacticalPos
 				}
 				return raster, len(raster.CellulesSolde()), nil
 			})
-		return lue, len(frags) + len(morts), err
+		return lue, err
 	}
-	points := projeter(lecture, question, dans)
-	lue, err := rasteriser(mesure, question, points)
-	return lue, len(points), err
+	return rasteriser(mesure, question, projeter(lecture, question, dans))
 }
 
 // projeterFaces sépare les deux faces d'un engagement pour la cible : la position du TUEUR quand

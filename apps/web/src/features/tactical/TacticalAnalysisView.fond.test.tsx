@@ -63,8 +63,6 @@ function raster(question: string, p95: number): TacticalRaster {
     matchs_retenus: 9,
     matchs_victoire: 5,
     matchs_defaite: 4,
-    evenements_journal: 50,
-    evenements_localises: 48,
     points_ignores: 0,
   }
 }

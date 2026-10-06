@@ -3414,27 +3414,18 @@ export type TacticalRaster = components['schemas']['TacticalRaster']
 export type CelluleTactique = components['schemas']['CelluleTactique']
 export type BornesMonde = components['schemas']['BornesMonde']
 export type EchelleTactique = components['schemas']['EchelleTactique']
-export type TacticalCouverture = components['schemas']['Couverture']
 export type TacticalGrappe = components['schemas']['TacticalGrappe']
 
-// Le DÉTAIL D'UNE CELLULE (lien « voir dans le rejeu », lot M1) : mêmes raisons de typage
+// Le DÉTAIL D'UNE ZONE (mini-tuiles « Rejeu », lot M1) : mêmes raisons de typage
 // sur le contrat généré que les deux lectures ci-dessus — un renommage côté Go casse `tsc`
 // ici plutôt que de se découvrir à l'exécution.
 export type TacticalCelluleBody = components['schemas']['TacticalCelluleBody']
 export type TacticalCelluleReponse = components['schemas']['TacticalCelluleReponse']
 export type TacticalContribution = components['schemas']['TacticalContribution']
 
-// La section « Coordination d'équipe » (lot F, maquette 034b1915) : la FORME de la
-// distance à l'équipier au moment de mes morts. Binning SERVEUR (ADR 0010) — le web
-// dessine ce qu'il reçoit, il ne re-bucket rien.
-export type TacticalCoordination = components['schemas']['TacticalCoordination']
-export type TacticalBinDistance = components['schemas']['TacticalBinDistance']
-
 // Le bloc COORDINATION du lot N1 (riposte + appui reçu), servi tel quel par Sessions, la
 // match view et les Séries temporelles. Alias stricts du contrat généré : un renommage
-// côté Go casse `tsc` ici plutôt que de se découvrir à l'exécution. `Couverture` porte
-// déjà l'alias `TacticalCouverture` plus haut — ce second nom est celui du bloc, et le
-// rapatrier ici évite de faire lire « tactique » à un appelant de Coordination.
+// côté Go casse `tsc` ici plutôt que de se découvrir à l'exécution.
 export type CoordinationBlock = components['schemas']['CoordinationBlock']
 export type CoordinationRiposte = components['schemas']['CoordinationRiposte']
 export type CoordinationAppui = components['schemas']['CoordinationAppui']

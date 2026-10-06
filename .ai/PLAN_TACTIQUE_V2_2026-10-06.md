@@ -1133,14 +1133,97 @@ Journal L8 (2026-10-06, exécuteur, `feat/tactique-v2`) :
 
 Le web ne lit plus `echange`, `coordination`, `isolement`, `evenements_*` depuis L5 (L9.1 le prouve).
 
-- [ ] L9.1 Rejouer §4.E-H (producteurs et lecteurs Go, lecteurs web → 0) et la baseline de tests.
-- [ ] L9.2 §4.E échange (déplacement des cas survivants, noms inchangés).
-- [ ] L9.3 §4.F coordination (liste blanche `no_naked_rate_test.go` réduite).
-- [ ] L9.4 §4.G `Isolement` du raster.
-- [ ] L9.5 §4.H contrat : `openapi.yaml` et `generated.ts` en baisse seulement, snapshot régénéré
+- [x] L9.1 Rejouer §4.E-H (producteurs et lecteurs Go, lecteurs web → 0) et la baseline de tests.
+- [x] L9.2 §4.E échange (déplacement des cas survivants, noms inchangés).
+- [x] L9.3 §4.F coordination (liste blanche `no_naked_rate_test.go` réduite).
+- [x] L9.4 §4.G `Isolement` du raster.
+- [x] L9.5 §4.H contrat : `openapi.yaml` et `generated.ts` en baisse seulement, snapshot régénéré
   par la procédure (disparitions listées au journal), alias de `lib/api/types.ts` retirés ; garde
   rejouée sans la variable.
 - Gate : gate Go + contrat + gate web ; preuves §4 rejouées → 0.
+
+Journal L9 (2026-10-07, exécuteur, `feat/tactique-v2`) :
+- **L9.1** Preuves rejouées avant retrait (producteurs Go : `mesurerEchange`, `compterJournal`,
+  `lireLeJournal` et ses TROIS appels — `tactical_service.go`, `tactical_service_isolement.go`,
+  `tactical_service_rasters.go`, le troisième absent du relevé du 2026-10-06 —, `EvenementsJournal` /
+  `EvenementsLocalises`, `construireCoordination`, `mesurerCoordination` et ses deux appels,
+  `coordination.Distances`, `TacticalRaster.Isolement` / `Coordination` / `Echange` ; lecteurs web :
+  aucun hors fixtures de test). Baseline `.ai/baselines/tests_pre_migration.jsonl` consultée pour
+  chacun des 16 tests retirés : 0 occurrence chacun, aucun autre renvoi dans le dépôt. Après
+  retrait, `git grep` sur `apps/go-api` et `apps/web/src` : 0 pour tous ces symboles, pour
+  `TacticalCoordination`, `TacticalBinDistance`, `TaCoordDistances`, `TacticalBornesDistanceM`,
+  `evenements_journal`, `evenements_localises`, `TacticalCouverture`, `distribution_distances`,
+  `fenetre_echange_secondes` (seul reste : `paquetsEvenementsLocalises`, clé de journal du
+  décodeur de film, sans rapport).
+- **L9.2** Échange : `TacticalRaster.Echange`, `mesurerEchange`, `lireLeJournal`, `compterJournal`,
+  `EvenementsJournal` / `EvenementsLocalises` retirés ; devenus morts par ce retrait et retirés
+  aussi : le relais `journalDesMortsFiable` (le prédicat partagé `games.JournalDesMortsFiable`
+  RESTE, lu par l'Escouade), `campDuMatch`, le compte rendu par `rasteriserLaCible`. Les cinq cas
+  survivants de `tactical_service_echange_test.go` (`AucunePositionLisible_Capability`,
+  `PositionsNatives_RasterServi`, `MapsPlayed_Plancher`, `MapsPlayed_PerimetreTransmis`,
+  `SansLecteur`) DÉPLACÉS tels quels, noms inchangés, vers `tactical_service_portes_test.go` ; le
+  fichier d'origine supprimé avec ses quatre cas d'échange. Retirés ailleurs :
+  `TacticalService_CouvertureDeLocalisation`, `TacticalService_Echange_PorteSurLeCampEntier`,
+  `Occupation_EchangeServiSousTemps`, `Isole_LaCouvertureNeCompteQueMesMorts` ; assertions de
+  couverture et d'échange ôtées de `PerimetreTransmis`, `FiltreSpawn_SappliqueAuxLecturesSQL`,
+  `Occupation_SommeEtDenominateur`, `Solde_DeuxFacesPlancherSurLUnion`, du test du handler
+  (`api/handlers/tactical_test.go`). Le double du port ne sert plus de journal : il COMPTE ses
+  lectures, et `TestTacticalService_Raster_SansJournalDesMorts` (neuf) prouve qu'aucune des cinq
+  lectures de base ne lit le journal. `coordination.Echanges` / `Mesurer` restent (Escouade, vue
+  match).
+- **L9.3** Coordination : `domain/tactical_coordination.go`, `analysis/coordination/distances.go` +
+  `distances_test.go`, `construireCoordination`, `mesurerCoordination` (et avec lui la seconde
+  lecture `MortsAvecContexte` de chaque raster ; `matchs_sans_rayon` et `morts_equipe_a_terre` ne
+  sont plus servis que par « isole », seule lecture dont l'ⓘ les lit), `tactical_service_coordination_test.go`
+  (quatre cas sur la section ; le cinquième, `Isole_RayonsRadarDistinctsEtTries`, déplacé avec ses
+  aides dans `tactical_service_isolement_test.go`). Liste blanche de `no_naked_rate_test.go` :
+  `domain.TaCoordDistances` retiré avec sa justification (8 → 7 types). `coordination.FenetreEchangeMs`
+  reste.
+- **L9.4** `TacticalRaster.Isolement` et ses deux écritures retirés ; `rasterIsole` garde le bilan
+  de `coordination.Isolement` (cellules isolées, `MatchsSansRayon`, `MortsEquipeATerre`). Les huit
+  tests d'isolement qui lisaient le taux publié sont réécrits sur ce que la lecture publie :
+  cellules (morts isolées en `Brut`, par match en `Valeur`, trois matchs par mort pour franchir le
+  plancher), `MatchsRetenus`, `MatchsFiltres`.
+- **L9.5** Contrat : `openapi.yaml` +0 / −69 (schémas `TacticalBinDistance`, `TacticalCoordination` ;
+  champs `coordination`, `echange`, `evenements_journal`, `evenements_localises`, `isolement` de
+  `TacticalRaster`), `generated.ts` +0 / −29 ; `openapi-gen -check` à jour ;
+  `check-generated-types-fresh` OK. Alias web `TacticalCouverture`, `TacticalCoordination`,
+  `TacticalBinDistance` retirés de `lib/api/types.ts` (et le renvoi à `TacticalCouverture` dans le
+  commentaire du bloc Coordination). Snapshot de surface régénéré par la procédure
+  (`UPDATE_CONTRACT_SURFACE=1`) — DISPARITIONS : schémas `TacticalBinDistance` et
+  `TacticalCoordination` (les champs ne font pas partie de la surface). La même régénération
+  enregistre des AJOUTS que le snapshot, tolérant aux ajouts, n'avait pas encore : `TacticalPlacement`,
+  `TacticalZoneNom` (L1), et la page Tendances de `feat/v75` (`/pages/trends`, `postTrendsPage`,
+  16 schémas `Trends*`). Garde rejouée sans la variable : 7 / 7. Fixtures web (`evenements_*`,
+  `isolement`, `echange` de l'instrument de mesure) retirées.
+- **Mutations** (toutes ROUGES, restauration vérifiée par empreinte) : lecture du journal remise
+  dans `rasterDeKills` ; variante ignorée (rayon unique) ; un match sans rayon dans l'univers de la
+  lecture ; équipes non jointes (toutes les morts gardées).
+- **Gate Go** : `go build ./...` 0 ; `go vet` des cinq paquets touchés 0 ; `gofmt -l internal cmd`
+  muet ; paquets touchés verts ; module en quatre lots couvrant les 349 paquets de `go list` : 193 ok,
+  153 sans test, 3 FAIL environnementaux (édition de liens de `sync/objective` « memory exhausted »,
+  « Out of Memory » DuckDB dans `platform/duckdb`, durée de rafale de `sync/skill` à 2,06 s pour 2 s,
+  déjà vue en L1) — rejoués seuls : ok tous trois ; `go test ./internal/archlint/...` ok ; gardes
+  nommées en `-v` : `TestAucunTauxNu`, `TestTacticalEtCoordinationSontPurs`,
+  `TestNoLocalPorteeComparison`, `TestNoLocalRadarRangeLookup` PASS ; `golangci-lint run
+  --new-from-merge-base=origin/main` (cache isolé, `--allow-parallel-runners`) 0 issues. `-tags=integration`
+  non requis (`platform/duckdb` non modifié).
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements de base) ;
+  `vitest run --pool=forks` 853 fichiers / 9 183 tests verts ; manifestes identiques ; knip 0 / 0 / 0 ;
+  couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ; `lint-contract-ratchet` propre ;
+  `lefthook run pre-push` vert.
+- Seuils : `tactical_service.go` 469 → 362 L, `tactical_service_isolement.go` 247 → 179,
+  `domain/tactical_page.go` 223 → 186, `tactical_service_test.go` 498 → 457,
+  `tactical_service_rasters_test.go` 481 → 419, `tactical_service_isolement_test.go` 246 → 289,
+  `tactical_service_portes_test.go` (neuf) 162 ; fonctions modifiées ≤ 65 L (`rasterIsole`) ;
+  `lib/api/types.ts` 3 480 → 3 471
+  (catalogue d'alias, au-delà du seuil avant ce lot).
+- Écarts : un troisième appel à `lireLeJournal` (lectures d'artefact) hors du relevé ; retraits
+  induits non listés au §4.E (`journalDesMortsFiable` local, `campDuMatch`, le compte de
+  `rasteriserLaCible`, les champs `ev` / `errEv` / `vuEv` du double) ; tests d'isolement réécrits
+  sur les cellules plutôt que retirés ; commentaires devenus faux corrigés
+  (`analysis/coordination/doc.go`, `api/wire/registry_pages_tactical.go`, `domain/tactical_page.go`,
+  en-tête de `tactical_service_perimetre_test.go`, doc de `positionsDe`).
 
 ### L10 — Liens croisés · rapide
 
@@ -1255,6 +1338,15 @@ L2.3.
   gate à blanc de L4 et réparé là. Un lot qui change le contrat devrait passer `tsc -b`.
 - (phase 1) Le catalogue de callouts couvre AUSSI des cartes Forge (`maps_by_id`, 2 536 zones selon
   `callouts_catalog.go`) : « carte sans catalogue » = carte absente du catalogue, pas « carte Forge ».
+- (L9) Des commentaires Go parlent encore du « pied de carte » retiré en L5 (son contenu vit dans
+  l'aide ⓘ du plan) : `domain/tactical_page.go` (doc de `MatchsFiltres`, `MatchsVictoire`),
+  `service/tactical_service.go` (`rasterDeKills`), `tactical_service_test.go`,
+  `tactical_service_ventilation_test.go`. Rien de faux sur le calcul ; non réécrits (pas de
+  réécriture de masse) ; non traité.
+- (L9) La régénération du snapshot de surface par la procédure y inscrit aussi les ajouts de la page
+  Tendances (`feat/v75`, absents du snapshot de ce worktree) : si `feat/v75` a régénéré le sien
+  entre-temps, la fusion de `contract-surface.snapshot.json` peut entrer en conflit (trivial :
+  régénérer après fusion). Non traité.
 
 ## 9. Points où le code contredit le brief (phase 1)
 

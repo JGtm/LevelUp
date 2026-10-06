@@ -29193,22 +29193,6 @@ components:
         - exists
         - rows
       type: object
-    TacticalBinDistance:
-      additionalProperties: false
-      properties:
-        max_m:
-          format: double
-          type: number
-        min_m:
-          format: double
-          type: number
-        "n":
-          format: int64
-          type: integer
-      required:
-        - min_m
-        - "n"
-      type: object
     TacticalCelluleAdresse:
       additionalProperties: false
       properties:
@@ -29322,45 +29306,6 @@ components:
         - xuid
         - match_started_at
         - replay_available
-      type: object
-    TacticalCoordination:
-      additionalProperties: false
-      properties:
-        distance_mediane_m:
-          format: double
-          type: number
-        distribution_distances:
-          items:
-            $ref: '#/components/schemas/TacticalBinDistance'
-          type:
-            - array
-            - "null"
-        fenetre_echange_secondes:
-          format: int64
-          type: integer
-        matchs_mesures:
-          format: int64
-          type: integer
-        morts_sans_distance:
-          format: int64
-          type: integer
-        n_distances:
-          format: int64
-          type: integer
-        rayons_m:
-          items:
-            format: double
-            type: number
-          type:
-            - array
-            - "null"
-      required:
-        - distribution_distances
-        - n_distances
-        - morts_sans_distance
-        - rayons_m
-        - matchs_mesures
-        - fenetre_echange_secondes
       type: object
     TacticalGrappe:
       additionalProperties: false
@@ -29486,26 +29431,14 @@ components:
           type:
             - array
             - "null"
-        coordination:
-          $ref: '#/components/schemas/TacticalCoordination'
-        echange:
-          $ref: '#/components/schemas/Couverture'
         echelle:
           $ref: '#/components/schemas/EchelleTactique'
-        evenements_journal:
-          format: int64
-          type: integer
-        evenements_localises:
-          format: int64
-          type: integer
         grappes:
           items:
             $ref: '#/components/schemas/TacticalGrappe'
           type:
             - array
             - "null"
-        isolement:
-          $ref: '#/components/schemas/Couverture'
         map_id:
           type: string
         matchs_defaite:
@@ -29562,8 +29495,6 @@ components:
         - cellules
         - echelle
         - points_ignores
-        - evenements_journal
-        - evenements_localises
       type: object
     TacticalRasterBody:
       additionalProperties: false

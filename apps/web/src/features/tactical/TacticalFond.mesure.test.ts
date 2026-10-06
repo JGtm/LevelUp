@@ -278,13 +278,6 @@ function raster(carte: Carte | null, film: Film, corps: Record<string, unknown>)
   const valeurs = cellules.map((c) => Math.abs(c.valeur)).sort((a, b) => a - b)
   const quantile = (f: number) => valeurs[Math.min(valeurs.length - 1, Math.floor(f * valeurs.length))] ?? 0
   const retenus = n > 3 ? n - 1 : n
-  const couverture = (num: number) => ({
-    brut: num,
-    n: Math.max(1, cellules.length),
-    taux: num / Math.max(1, cellules.length),
-    par_match: num / Math.max(1, retenus),
-    echantillon_faible: retenus < 5,
-  })
   return {
     map_id: carte?.id ?? 'sans-fond',
     question,
@@ -297,14 +290,10 @@ function raster(carte: Carte | null, film: Film, corps: Record<string, unknown>)
       { id: 'g1', nom_fr: 'Ouest', nom_en: 'West', matchs: n, x: x0 + w / 4, y: yHaut - h / 2 },
       { id: 'g2', nom_fr: 'Est', nom_en: 'East', matchs: n, x: x0 + (3 * w) / 4, y: yHaut - h / 2 },
     ],
-    isolement: couverture(Math.floor(cellules.length / 3)),
-    echange: couverture(Math.floor(cellules.length / 4)),
     matchs_filtres: n,
     matchs_retenus: retenus,
     matchs_victoire: Math.floor(retenus / 2),
     matchs_defaite: retenus - Math.floor(retenus / 2),
-    evenements_journal: film.pts.length,
-    evenements_localises: film.pts.length,
     points_ignores: 0,
   }
 }

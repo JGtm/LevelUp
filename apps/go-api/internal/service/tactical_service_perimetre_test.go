@@ -3,13 +3,11 @@
 //
 // Trois frontieres, chacune invisible a l'ecran si elle cede :
 //
-//  1. la liste blanche et la composition descendent AU LECTEUR, sur les DEUX lectures ;
+//  1. la liste blanche et la composition descendent AU LECTEUR ;
 //  2. une liste VIDE est POSEE (restreinte, sans identifiant) — jamais confondue avec
 //     « aucune restriction », qui servirait tout l'historique ;
 //  3. l'axe « escouade » EST la composition choisie : refuse sans elle, et strictement
-//     borne a ses xuids avec elle. Le KPI d'echange, lui, reste sur MON CAMP ENTIER
-//     (decision utilisateur du 2026-09-06) : deux perimetres voisins qu'un seul
-//     predicat partage ferait fusionner sans que rien ne le montre.
+//     borne a ses xuids avec elle.
 package service
 
 import (
@@ -21,9 +19,7 @@ import (
 )
 
 // TestTacticalService_PerimetreTransmis : la liste blanche et la composition
-// descendent TELLES QUELLES au lecteur, et LES DEUX lectures (positions, journal)
-// recoivent le MEME perimetre — sinon le KPI d'echange porterait sur une population
-// que la carte ne montre pas.
+// descendent TELLES QUELLES au lecteur des positions.
 func TestTacticalService_PerimetreTransmis(t *testing.T) {
 	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
 
@@ -33,17 +29,15 @@ func TestTacticalService_PerimetreTransmis(t *testing.T) {
 	if _, err := svc.Raster(context.Background(), req); err != nil {
 		t.Fatalf("Raster: %v", err)
 	}
-	for nom, vu := range map[string]domain.TacticalQuery{"positions": repo.vuPos, "journal": repo.vuEv} {
-		if vu.MapID != tsCarte || vu.PlayerXUID != tsMoi {
-			t.Errorf("%s : demande = %+v, want carte/joueur inchanges", nom, vu)
-		}
-		if !vu.Matchs.Restreint() || !egalesXUID(vu.Matchs.IDs(), []string{"m1", "m2"}) {
-			t.Errorf("%s : liste blanche = %v (restreinte=%v), want [m1 m2]",
-				nom, vu.Matchs.IDs(), vu.Matchs.Restreint())
-		}
-		if !egalesXUID(vu.Coequipiers, []string{tsAmi}) {
-			t.Errorf("%s : composition = %v, want [%s]", nom, vu.Coequipiers, tsAmi)
-		}
+	vu := repo.vuPos
+	if vu.MapID != tsCarte || vu.PlayerXUID != tsMoi {
+		t.Errorf("demande = %+v, want carte/joueur inchanges", vu)
+	}
+	if !vu.Matchs.Restreint() || !egalesXUID(vu.Matchs.IDs(), []string{"m1", "m2"}) {
+		t.Errorf("liste blanche = %v (restreinte=%v), want [m1 m2]", vu.Matchs.IDs(), vu.Matchs.Restreint())
+	}
+	if !egalesXUID(vu.Coequipiers, []string{tsAmi}) {
+		t.Errorf("composition = %v, want [%s]", vu.Coequipiers, tsAmi)
 	}
 }
 
@@ -160,48 +154,6 @@ func TestTacticalService_Escouade_CibleExactementLaComposition(t *testing.T) {
 	if len(got.Cellules) != 1 || celluleEn(got.Cellules, 4.0, 4.0) == nil {
 		t.Fatalf("cellules = %+v, want la seule (4,4) — les deux autres coequipiers du "+
 			"match ne sont PAS dans la composition choisie", got.Cellules)
-	}
-}
-
-// TestTacticalService_Echange_PorteSurLeCampEntier : le KPI d'echange ne retrecit
-// PAS avec la composition (decision utilisateur du 2026-09-06 : « le KPI reste sur
-// mon camp entier »). Un coequipier hors composition qui meurt sans etre venge doit
-// peser sur le taux — sinon nommer deux joueurs dans la barre de filtres changerait
-// un taux qui ne parle pas d'eux.
-func TestTacticalService_Echange_PorteSurLeCampEntier(t *testing.T) {
-	const ami2 = "2533274000000021"
-	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
-	repo.pos.Points = []domain.TacticalKillPosition{{
-		MatchID: "m1", KillerXUID: tsAdv, VictimXUID: tsMoi,
-		KillerX: 1.0, KillerY: 1.0, VictimX: 10.0, VictimY: 10.0,
-	}}
-	equipes := domain.EquipesParMatch{"m1": {}}
-	for x, t := range repo.pos.Univers.Equipes["m1"] {
-		equipes["m1"][x] = t
-	}
-	equipes["m1"][ami2] = equipes["m1"][tsAmi] // dans mon equipe, HORS composition
-	repo.pos.Univers.Equipes = equipes
-	repo.ev = domain.TacticalKillEvents{
-		Univers: domain.TacticalUnivers{Matchs: repo.pos.Univers.Matchs, Equipes: equipes},
-		Events: []domain.KillEvent{
-			// Deux morts de mon camp, aucune vengee : le taux vaut 0 sur DEUX morts.
-			{MatchID: "m1", VictimXUID: tsAmi, KillerXUID: tsAdv, TimeMs: 1000},
-			{MatchID: "m1", VictimXUID: ami2, KillerXUID: tsAdv, TimeMs: 2000},
-		},
-	}
-	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
-
-	got, err := svc.Raster(context.Background(),
-		tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, tsAmi))
-	if err != nil {
-		t.Fatalf("Raster: %v", err)
-	}
-	if got.Echange == nil {
-		t.Fatalf("Echange = nil, want une couverture servie")
-	}
-	if got.Echange.N != 2 {
-		t.Errorf("morts vengeables = %d, want 2 (mon camp ENTIER, pas la seule composition)",
-			got.Echange.N)
 	}
 }
 

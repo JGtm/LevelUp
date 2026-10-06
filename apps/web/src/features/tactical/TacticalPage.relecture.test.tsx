@@ -106,8 +106,6 @@ const RASTER: TacticalRaster = {
   matchs_retenus: 3,
   matchs_victoire: 2,
   matchs_defaite: 1,
-  evenements_journal: 10,
-  evenements_localises: 10,
   points_ignores: 0,
 }
 

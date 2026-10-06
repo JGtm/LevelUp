@@ -1,5 +1,5 @@
 // Package service — tactical_mock_test.go : LE DOUBLE DU PORT TACTIQUE, partage par les
-// trois fichiers de test de l'onglet (lecture de placement, echange, occupation).
+// fichiers de test de l'onglet.
 //
 // Extrait de tactical_service_test.go le 2026-09-06 (phase 6), quand l'ajout de la
 // quatrieme lecture l'a pousse au-dela du seuil de 500 lignes. La coupure suit la seule
@@ -18,7 +18,6 @@ import (
 type mockTacticalRepo struct {
 	maps             []domain.TacticalMapRow
 	pos              domain.TacticalPositions
-	ev               domain.TacticalKillEvents
 	univ             domain.TacticalUnivers
 	morts            domain.TacticalMortsContexte
 	mortsParCarte    map[string][]domain.PositionSample
@@ -27,7 +26,6 @@ type mockTacticalRepo struct {
 	errContextes     error
 	errMaps          error
 	errPos           error
-	errEv            error
 	errUniv          error
 	errMorts         error
 	errMortsParCarte error
@@ -35,13 +33,15 @@ type mockTacticalRepo struct {
 
 	vuMaps          domain.TacticalQuery
 	vuPos           domain.TacticalQuery
-	vuEv            domain.TacticalQuery
 	vuUniv          domain.TacticalQuery
 	vuMorts         domain.TacticalQuery
 	vuMortsParCarte domain.TacticalQuery
 	vuOuvrXUID      string
 	vuOuvrMatch     []string
 	vuContextes     []domain.TacticalQuery
+
+	// lecturesJournal compte les appels a KillEvents : le service tactique n'en fait aucun.
+	lecturesJournal int
 }
 
 // Univers : la lecture d'OCCUPATION (phase 6) n'a besoin que de l'univers — ses valeurs
@@ -79,19 +79,9 @@ func (m *mockTacticalRepo) KillPositions(_ context.Context, q domain.TacticalQue
 	return out, nil
 }
 
-func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery) (domain.TacticalKillEvents, error) {
-	m.vuEv = q
-	if m.errEv != nil || !perimetreAFiltrer(q) {
-		return m.ev, m.errEv
-	}
-	garde := gardeDuPerimetre(q)
-	out := domain.TacticalKillEvents{Univers: universFiltre(m.ev.Univers, garde)}
-	for _, e := range m.ev.Events {
-		if garde[e.MatchID] {
-			out.Events = append(out.Events, e)
-		}
-	}
-	return out, nil
+func (m *mockTacticalRepo) KillEvents(context.Context, domain.TacticalQuery) (domain.TacticalKillEvents, error) {
+	m.lecturesJournal++
+	return domain.TacticalKillEvents{}, nil
 }
 
 // MortsAvecContexte : la lecture d'isolement (lot 7C). Comme les trois autres, ELLE HONORE LA

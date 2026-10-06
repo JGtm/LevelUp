@@ -35,8 +35,6 @@ const LECTURE: TacticalRaster = {
   matchs_retenus: 45,
   matchs_victoire: 20,
   matchs_defaite: 25,
-  evenements_journal: 500,
-  evenements_localises: 480,
   points_ignores: 0,
 }
 

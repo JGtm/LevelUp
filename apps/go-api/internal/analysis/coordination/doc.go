@@ -6,10 +6,11 @@
 // que l'appelant projette depuis ce qu'il a lu — `match_kill_events_latest` cote base. Ce
 // paquet ne connait ni DuckDB ni le document de rejeu.
 //
-// PARTAGE PAR DEUX SURFACES, et c'est la raison de son existence : l'onglet Tactique sert
-// l'echange en KPI par carte, la page Escouade le sert en graphes par session et par
-// composition. Une seule mecanique, deux lectures — deux implementations divergeraient au
-// premier ajustement de fenetre.
+// PARTAGE PAR PLUSIEURS SURFACES, et c'est la raison de son existence : la page Escouade sert
+// l'echange en graphes par session et par composition, le bloc Coordination le reprend sur
+// les Sessions, la vue match et les Series temporelles, et l'onglet Tactique y lit l'isolement
+// de ses morts. Une seule mecanique — deux implementations divergeraient au premier
+// ajustement de fenetre.
 //
 // UNE REGLE DE FORME : aucune fonction exportee de ce paquet ne rend un taux en float64 nu.
 // Un taux voyage dans `domain.Couverture`, avec son compte brut, sa quantite par match et

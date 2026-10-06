@@ -3,8 +3,13 @@ package service
 // tactical_service_isolement_test.go — LA LECTURE « OU JE MEURS ISOLE », de bout en bout.
 //
 // Ce que ces tests couvrent et que les tests purs de `coordination` ne peuvent pas : la JOINTURE
-// DES EQUIPES (le film ne porte aucun camp), la RESOLUTION DU RAYON par la variante du match, et
-// le fait que les matchs sans rayon sortent de l'UNIVERS et pas seulement du numerateur.
+// DES EQUIPES (le film ne porte aucun camp), la RESOLUTION DU RAYON par la variante du match, le
+// fait que les matchs sans rayon sortent de l'UNIVERS et pas seulement du numerateur, et les
+// portees de radar publiees pour l'aide du plan.
+//
+// LA LECTURE SE LIT SUR SES CELLULES : une cellule porte les morts isolees qui y sont tombees
+// (`Brut`) et leur nombre par match de l'univers (`Valeur`). Le plancher de 3 matchs distincts par
+// cellule s'applique ; les corpus posent donc chaque mort a mesurer dans trois matchs.
 
 import (
 	"context"
@@ -38,14 +43,52 @@ func svcIsole(univ domain.TacticalUnivers, morts ...domain.MortContexte) (*Tacti
 
 func lireIsole(t *testing.T, svc *TacticalService, ids ...string) domain.TacticalRaster {
 	t.Helper()
+	return lireQuestion(t, svc, domain.TacticalQuestionIsole, ids...)
+}
+
+func lireQuestion(t *testing.T, svc *TacticalService, question string, ids ...string) domain.TacticalRaster {
+	t.Helper()
 	out, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
-		MapID: "streets", Question: domain.TacticalQuestionIsole, Qui: domain.TacticalQuiMoi,
+		MapID: "streets", Question: question, Qui: domain.TacticalQuiMoi,
 		Scope: domain.TacticalScope{MatchIDs: ids},
 	})
 	if err != nil {
-		t.Fatalf("lecture isole: %v", err)
+		t.Fatalf("lecture %s: %v", question, err)
 	}
 	return out
+}
+
+// svcDeuxSubstrats monte le service avec les memes morts servies aux DEUX substrats : le
+// journal des positions (lectures morts/kills/gagne) et le contexte des morts (isole).
+func svcDeuxSubstrats(univ domain.TacticalUnivers, morts ...domain.MortContexte) *TacticalService {
+	svc, repo := svcIsole(univ, morts...)
+	repo.pos.Univers = univ
+	for _, mc := range morts {
+		repo.pos.Points = append(repo.pos.Points, domain.TacticalKillPosition{
+			MatchID: mc.MatchID, KillerXUID: tsAdv, VictimXUID: mc.VictimXUID,
+			KillerX: 9, KillerY: 9, VictimX: mc.X, VictimY: mc.Y, TimeMs: 1000,
+		})
+	}
+	return svc
+}
+
+// mortsDansTroisMatchs pose la MEME mort (meme victime, meme lieu, meme voisinage) dans chacun
+// des matchs donnes : c'est ce qui fait franchir le plancher de 3 matchs distincts a sa cellule.
+func mortsDansTroisMatchs(ids []string, victime string, x, y float64, proche *float64,
+	visibles int) []domain.MortContexte {
+	out := make([]domain.MortContexte, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, mortContexte(id, victime, x, y, proche, visibles, 0))
+	}
+	return out
+}
+
+// variantes rend la table match -> variante pour une liste de matchs d'une meme variante.
+func variantes(table map[string]string, variante string, ids ...string) map[string]string {
+	for _, id := range ids {
+		table[id] = variante
+	}
+	return table
 }
 
 // TestIsole_RayonDeLaVarianteDuMatch — LA MEME MORT, a 19 m d'un coequipier, est ISOLEE en
@@ -55,22 +98,23 @@ func lireIsole(t *testing.T, svc *TacticalService, ids ...string) domain.Tactica
 // melangerait deux regles de jeu sous une seule mesure — et un filtre qui contient les deux
 // formats est le cas normal.
 func TestIsole_RayonDeLaVarianteDuMatch(t *testing.T) {
-	svc, _ := svcIsole(universVariantes(map[string]string{
-		"arene": "Slayer:Arena", "btb": "BTB:Slayer",
-	}),
-		mortContexte("arene", tsMoi, 2, 3, m(19), 1, 0),
-		mortContexte("btb", tsMoi, 2, 3, m(19), 1, 0))
+	arene, btb := []string{"a1", "a2", "a3"}, []string{"b1", "b2", "b3"}
+	table := variantes(variantes(map[string]string{}, "Slayer:Arena", arene...), "BTB:Slayer", btb...)
+	morts := append(mortsDansTroisMatchs(arene, tsMoi, 2, 3, m(19), 1),
+		mortsDansTroisMatchs(btb, tsMoi, 2, 3, m(19), 1)...)
+	svc, _ := svcIsole(universVariantes(table), morts...)
 
-	out := lireIsole(t, svc, "arene", "btb")
-	if out.Isolement == nil {
-		t.Fatal("la lecture isole ne publie aucune couverture")
+	out := lireIsole(t, svc, append(arene, btb...)...)
+	c := celluleEn(out.Cellules, 2, 3)
+	if c == nil {
+		t.Fatalf("cellules = %+v : les trois morts d'Arene a 19 m sont isolees", out.Cellules)
 	}
-	if out.Isolement.N != 2 {
-		t.Fatalf("denominateur = %d, attendu 2 morts examinees", out.Isolement.N)
+	if c.Brut != 3 || c.Matchs != 3 {
+		t.Fatalf("cellule = %+v, attendu 3 morts isolees sur 3 matchs : 19 m depasse les 18 m de "+
+			"l'Arene mais pas les 24 m du BTB", *c)
 	}
-	if out.Isolement.Brut != 1 {
-		t.Fatalf("morts isolees = %d, attendu 1 : 19 m depasse les 18 m de l'Arene mais pas "+
-			"les 24 m du BTB", out.Isolement.Brut)
+	if c.Valeur != 0.5 {
+		t.Fatalf("valeur = %v, attendu 0,5 (3 isolees / 6 matchs ayant un rayon)", c.Valeur)
 	}
 	if out.MatchsSansRayon != 0 {
 		t.Fatalf("matchs_sans_rayon = %d, attendu 0", out.MatchsSansRayon)
@@ -92,8 +136,9 @@ func TestIsole_VarianteAvecBlancs_ResoutQuandMeme(t *testing.T) {
 		t.Fatalf("matchs_sans_rayon = %d, attendu 0 : « %s » est l'Arene, blancs compris",
 			out.MatchsSansRayon, "  Slayer:Arena ")
 	}
-	if out.Isolement.N != 1 || out.Isolement.Brut != 1 {
-		t.Fatalf("couverture = %+v, attendu 1 isolee sur 1", out.Isolement)
+	if out.MatchsRetenus != 1 {
+		t.Fatalf("matchs_retenus = %d, attendu 1 : le match resolu entre dans l'univers de la lecture",
+			out.MatchsRetenus)
 	}
 }
 
@@ -101,60 +146,67 @@ func TestIsole_VarianteAvecBlancs_ResoutQuandMeme(t *testing.T) {
 //
 // Le collecteur mesure le contexte de CHAQUE mort du match, sans savoir laquelle interesse la
 // page. C'est la lecture qui joint les equipes et ne garde que la cible — sinon « ou JE meurs
-// isole » compterait aussi les morts des adversaires.
+// isole » peindrait aussi les morts des adversaires.
 func TestIsole_LesMortsDesAutresNEntrentPas(t *testing.T) {
-	svc, _ := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}),
-		mortContexte("m1", tsMoi, 2, 3, m(40), 1, 0),
-		mortContexte("m1", tsAdv, 9, 9, m(40), 1, 0),
-		mortContexte("m1", tsAdv2, 8, 8, m(40), 1, 0))
+	ids := []string{"m1", "m2", "m3"}
+	morts := append(mortsDansTroisMatchs(ids, tsMoi, 2, 3, m(40), 1),
+		mortsDansTroisMatchs(ids, tsAdv, 9, 9, m(40), 1)...)
+	svc, _ := svcIsole(universVariantes(variantes(map[string]string{}, "Slayer:Arena", ids...)), morts...)
 
-	out := lireIsole(t, svc, "m1")
-	if out.Isolement.N != 1 {
-		t.Fatalf("denominateur = %d, attendu 1 : seules MES morts entrent sous l'axe « moi »",
-			out.Isolement.N)
+	out := lireIsole(t, svc, ids...)
+	if c := celluleEn(out.Cellules, 2, 3); c == nil || c.Brut != 3 {
+		t.Fatalf("cellules = %+v, attendu mes 3 morts isolees en (2,3)", out.Cellules)
+	}
+	if c := celluleEn(out.Cellules, 9, 9); c != nil {
+		t.Fatalf("cellule (9,9) = %+v : seules MES morts entrent sous l'axe « moi »", *c)
 	}
 }
 
-// TestIsole_EquipeATerre_ExclueEtPubliee — personne ne pouvait accompagner.
+// TestIsole_EquipeATerre_ExclueEtPubliee — personne ne pouvait accompagner : la mort est
+// ECARTEE de la lecture (aucune cellule ne la porte) et comptee a part.
 func TestIsole_EquipeATerre_ExclueEtPubliee(t *testing.T) {
-	svc, _ := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}),
-		mortContexte("m1", tsMoi, 2, 3, nil, 0, 0),
-		mortContexte("m1", tsMoi, 4, 5, m(40), 1, 0))
+	ids := []string{"m1", "m2", "m3"}
+	morts := append(mortsDansTroisMatchs(ids, tsMoi, 2, 3, nil, 0),
+		mortsDansTroisMatchs(ids, tsMoi, 4, 5, m(40), 1)...)
+	svc, _ := svcIsole(universVariantes(variantes(map[string]string{}, "Slayer:Arena", ids...)), morts...)
 
-	out := lireIsole(t, svc, "m1")
-	if out.MortsEquipeATerre != 1 {
-		t.Fatalf("morts_equipe_a_terre = %d, attendu 1", out.MortsEquipeATerre)
+	out := lireIsole(t, svc, ids...)
+	if out.MortsEquipeATerre != 3 {
+		t.Fatalf("morts_equipe_a_terre = %d, attendu 3", out.MortsEquipeATerre)
 	}
-	if out.Isolement.N != 1 {
-		t.Fatalf("denominateur = %d, attendu 1 : la mort sans personne pour accompagner est "+
-			"ECARTEE", out.Isolement.N)
+	if c := celluleEn(out.Cellules, 2, 3); c != nil {
+		t.Fatalf("cellule (2,3) = %+v : une mort sans personne pour accompagner n'est pas isolee", *c)
+	}
+	if c := celluleEn(out.Cellules, 4, 5); c == nil || c.Brut != 3 {
+		t.Fatalf("cellules = %+v, attendu les 3 morts isolees en (4,5)", out.Cellules)
 	}
 }
 
 // TestIsole_VarianteSansRayon — LE MATCH SORT DE L'UNIVERS, PAS SEULEMENT DU NUMERATEUR.
 //
-// Le laisser au denominateur diviserait la mesure par des matchs qu'on a refuse de lire : deux
-// matchs dont un Husky Raid rendraient 0,5 mort isolee par match au lieu de 1.
+// Le laisser au denominateur diviserait la mesure par des matchs qu'on a refuse de lire : trois
+// matchs connus et un Husky Raid rendraient 0,75 mort isolee par match au lieu de 1.
 func TestIsole_VarianteSansRayon(t *testing.T) {
-	svc, _ := svcIsole(universVariantes(map[string]string{
-		"connu": "Slayer:Arena", "inconnu": "Husky Raid:CTF",
-	}), mortContexte("connu", tsMoi, 2, 3, m(40), 1, 0))
+	connus := []string{"c1", "c2", "c3"}
+	table := variantes(map[string]string{"inconnu": "Husky Raid:CTF"}, "Slayer:Arena", connus...)
+	svc, _ := svcIsole(universVariantes(table), mortsDansTroisMatchs(connus, tsMoi, 2, 3, m(40), 1)...)
 
-	out := lireIsole(t, svc, "connu", "inconnu")
+	out := lireIsole(t, svc, append(connus, "inconnu")...)
 	if out.MatchsSansRayon != 1 {
 		t.Fatalf("matchs_sans_rayon = %d, attendu 1", out.MatchsSansRayon)
 	}
-	if out.MatchsFiltres != 2 {
-		t.Fatalf("matchs_filtres = %d, attendu 2 : les deux matchs restent dans l'univers du filtre",
+	if out.MatchsFiltres != 4 {
+		t.Fatalf("matchs_filtres = %d, attendu 4 : les quatre matchs restent dans l'univers du filtre",
 			out.MatchsFiltres)
 	}
-	if out.MatchsRetenus != 1 {
-		t.Fatalf("matchs_retenus = %d, attendu 1 : l'univers de la lecture est « mesure ET ayant "+
+	if out.MatchsRetenus != 3 {
+		t.Fatalf("matchs_retenus = %d, attendu 3 : l'univers de la lecture est « mesure ET ayant "+
 			"un rayon »", out.MatchsRetenus)
 	}
-	if out.Isolement.ParMatch != 1 {
-		t.Fatalf("par match = %v, attendu 1 (1 isolee / 1 match ayant un rayon) — diviser par 2 "+
-			"ferait varier la mesure avec les matchs qu'on refuse de lire", out.Isolement.ParMatch)
+	c := celluleEn(out.Cellules, 2, 3)
+	if c == nil || c.Valeur != 1 {
+		t.Fatalf("cellules = %+v, attendu une valeur de 1 en (2,3) (3 isolees / 3 matchs ayant un "+
+			"rayon) — diviser par 4 ferait varier la mesure avec les matchs qu'on refuse de lire", out.Cellules)
 	}
 }
 
@@ -177,7 +229,7 @@ func TestIsole_SansTableDeRayon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lecture: %v", err)
 	}
-	if out.MatchsSansRayon != 1 || out.Isolement.N != 0 || len(out.Cellules) != 0 {
+	if out.MatchsSansRayon != 1 || out.MatchsRetenus != 0 || len(out.Cellules) != 0 {
 		t.Fatalf("sortie = %+v : sans table, aucune mort ne doit etre examinee", out)
 	}
 }
@@ -211,36 +263,27 @@ func TestIsole_HonoreLaListeBlanche(t *testing.T) {
 	if !repo.vuMorts.Matchs.Restreint() {
 		t.Fatal("liste blanche non posee : le lecteur servirait tout l'historique")
 	}
-	if out.Isolement.N != 1 {
-		t.Fatalf("denominateur = %d, attendu 1 : le perimetre ne retient que m1", out.Isolement.N)
+	if out.MatchsFiltres != 1 {
+		t.Fatalf("matchs_filtres = %d, attendu 1 : le perimetre ne retient que m1", out.MatchsFiltres)
 	}
 }
 
-// TestIsole_LaCouvertureNeCompteQueMesMorts — la face VICTIME, jamais les deux.
-//
-// « Isole » mesure la part de MES morts survenues sans coequipier a portee. Compter aussi mes
-// kills au denominateur de couverture ferait annoncer au pied de carte « N morts, M
-// localisees » sur un N deux fois trop grand — la couverture ne decrirait plus la mesure
-// affichee.
-func TestIsole_LaCouvertureNeCompteQueMesMorts(t *testing.T) {
-	univ := universVariantes(map[string]string{"m1": "Slayer:Arena"})
-	repo := &mockTacticalRepo{
-		univ: univ,
-		morts: domain.TacticalMortsContexte{Univers: univ, Morts: []domain.MortContexte{
-			mortContexte("m1", tsMoi, 2, 3, m(40), 1, 0),
-		}},
-		ev: domain.TacticalKillEvents{Univers: univ, Events: []domain.KillEvent{
-			{MatchID: "m1", VictimXUID: tsMoi, KillerXUID: tsAdv, TimeMs: 1000},
-			{MatchID: "m1", VictimXUID: tsAdv, KillerXUID: tsMoi, TimeMs: 2000},
-			{MatchID: "m1", VictimXUID: tsAdv2, KillerXUID: tsMoi, TimeMs: 3000},
-		}},
-	}
-	svc := NewTacticalService(repo, capsCompletes(), tsMoi).
-		WithRadarRange(map[string]int{"Slayer:Arena": 18})
+// TestIsole_RayonsRadarDistinctsEtTries : la lecture « isole » publie les portées de radar de ses
+// matchs, DISTINCTES et triées (deux Arène + un BTB → [18 24]), jamais leur moyenne ; les autres
+// lectures n'en publient aucune.
+func TestIsole_RayonsRadarDistinctsEtTries(t *testing.T) {
+	svc := svcDeuxSubstrats(universVariantes(map[string]string{
+		"arene1": "Slayer:Arena", "arene2": "Slayer:Arena", "btb": "BTB:Slayer",
+	}),
+		mortContexte("arene1", tsMoi, 2, 3, m(30), 1, 0),
+		mortContexte("arene2", tsMoi, 2, 3, m(30), 1, 0),
+		mortContexte("btb", tsMoi, 2, 3, m(30), 1, 0))
 
-	out := lireIsole(t, svc, "m1")
-	if out.EvenementsJournal != 1 {
-		t.Fatalf("evenements_journal = %d, attendu 1 : une seule de MES morts, mes DEUX kills "+
-			"n'entrent pas dans la couverture de cette lecture", out.EvenementsJournal)
+	out := lireQuestion(t, svc, domain.TacticalQuestionIsole, "arene1", "arene2", "btb")
+	if got := out.RayonsRadarM; len(got) != 2 || got[0] != 18 || got[1] != 24 {
+		t.Fatalf("rayons_radar_m = %v, attendu [18 24] (distincts, triés)", got)
+	}
+	if autre := lireQuestion(t, svc, domain.TacticalQuestionMorts, "arene1", "arene2", "btb"); len(autre.RayonsRadarM) != 0 {
+		t.Errorf("rayons_radar_m publiés hors de « isole » : %v", autre.RayonsRadarM)
 	}
 }

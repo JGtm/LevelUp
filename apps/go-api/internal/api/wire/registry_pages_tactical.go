@@ -13,18 +13,17 @@ import (
 )
 
 // Tactical retourne un TacticalService pour le joueur : l'onglet Tactique
-// (lectures de placement par carte + KPI d'echange). UN SEUL endroit de
+// (lectures de placement par carte + detail d'une zone). UN SEUL endroit de
 // construction, comme replayServiceFor.
 //
 // La portee du RADAR (regulation.toml [radar_range_m]) est injectee par titre : elle borne
 // la lecture « ou je meurs isole ». Titre ou variante absents -> pas de lecture pour ces
 // matchs, et le compte des ecartes le dit.
 //
-// Multi-titre : les trois portes data-level (`film.kill_positions` pour les
-// lectures de placement, `film.kill_source` pour l'echange, `film.replay_artifact`
-// pour l'occupation) sont lues sur la CapabilityMap de
-// l'adapter du titre du joueur (capabilitiesForPDB → dataAdapterForPDB, avec repli
-// sur les capabilities HI du boot). JAMAIS une comparaison de slug. Un titre qui
+// Multi-titre : les deux portes data-level (`film.kill_positions` pour les
+// lectures de placement, `film.replay_artifact` pour l'occupation) sont lues sur la
+// CapabilityMap de l'adapter du titre du joueur (capabilitiesForPDB → dataAdapterForPDB,
+// avec repli sur les capabilities HI du boot). JAMAIS une comparaison de slug. Un titre qui
 // n'expose pas les positions rend ErrCapabilityNotSupported → 503 propre.
 //
 // AUCUNE TAXONOMIE DE MODES (retrait phase 4 bis, 2026-09-06) : le lecteur tactique

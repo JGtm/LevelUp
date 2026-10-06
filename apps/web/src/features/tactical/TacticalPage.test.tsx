@@ -112,8 +112,6 @@ const RASTER_VIDE: TacticalRaster = {
   matchs_retenus: 0,
   matchs_victoire: 0,
   matchs_defaite: 0,
-  evenements_journal: 0,
-  evenements_localises: 0,
   points_ignores: 0,
 }
 

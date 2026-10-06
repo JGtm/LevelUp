@@ -115990,3 +115990,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : témoins `tactical-analysis-title` / `kpi-strip` à 0 dans `apps/web` ; ratchets inchangés (knip 0, imports croisés 7 ≤ 7 sans dérogation de l'onglet, couleurs 0, champs 0), aucun plafond à abaisser ; gate web vert (853 fichiers / 9 183 tests, `tsc` 0, lint 0 erreur, pre-push vert).
 
 **Conclusion / prochaine étape** : L8 clos ; L9 (suppressions Go et contrat) enchaîné sur consigne du superviseur.
+
+## [2026-10-07] Tactique v2, lot L9 : suppressions Go et contrat — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L9 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : le raster tactique ne sert plus ce que le cockpit n'affiche plus. Retirés : l'échange (`Echange`, `mesurerEchange`, la lecture du journal des morts à chaque raster et la couverture `evenements_journal` / `evenements_localises`), la section de coordination (`domain/tactical_coordination.go`, `coordination.Distances`, `construireCoordination`, `mesurerCoordination` et sa seconde lecture des morts), le taux `Isolement` du raster. « Isole » garde son bilan (cellules isolées, matchs sans rayon, morts équipe à terre). Les cas de test survivants sont déplacés avec leurs noms (`tactical_service_portes_test.go`), les tests d'isolement réécrits sur les cellules publiées, la liste blanche de `no_naked_rate_test.go` réduite d'un type ; un test neuf prouve qu'aucune lecture ne lit plus le journal. Contrat en baisse seulement (openapi −69, generated.ts −29), snapshot de surface régénéré par la procédure (disparitions : `TacticalBinDistance`, `TacticalCoordination`), alias web retirés.
+
+**Résultats observés** : 16 tests retirés, tous absents de la baseline ; preuves grep Go et web à 0 ; 4 mutations rouges ; gate Go vert (349 paquets en quatre lots, trois échecs d'environnement — mémoire épuisée, durée de rafale — verts rejoués seuls ; archlint, gardes nommées, golangci 0 issue), contrat à jour, gate web vert (853 fichiers / 9 183 tests, pre-push vert).
+
+**Conclusion / prochaine étape** : L8 et L9 clos ; compte rendu groupé au superviseur, puis L10 (liens croisés) après son « continue ».

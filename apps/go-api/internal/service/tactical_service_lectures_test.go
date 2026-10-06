@@ -54,13 +54,9 @@ func triees(m map[string]string) []string {
 	return out
 }
 
-// svcArtefact monte le service avec un lecteur de sidecars et le journal du repo.
-func svcArtefact(univ domain.TacticalUnivers, store *mockRasterStore,
-	morts ...domain.KillEvent) *TacticalService {
-	repo := &mockTacticalRepo{
-		univ: univ,
-		ev:   domain.TacticalKillEvents{Univers: univ, Events: morts},
-	}
+// svcArtefact monte le service avec un lecteur de sidecars.
+func svcArtefact(univ domain.TacticalUnivers, store *mockRasterStore) *TacticalService {
+	repo := &mockTacticalRepo{univ: univ}
 	return NewTacticalService(repo, capsOccupation(), tsMoi).WithRasterStore(store)
 }
 
@@ -298,22 +294,17 @@ func TestLecturesDArtefact_MemePorte(t *testing.T) {
 
 // ─── LE FILTRE DE SPAWN VAUT POUR TOUTES LES LECTURES (revue P1-1) ─────────────
 
-// posEtEvents pose des positions de kill et un journal des morts sur les mêmes matchs, pour
-// que les lectures SQL et le KPI d'échange aient de quoi mesurer.
-func posEtEvents(univ domain.TacticalUnivers) (domain.TacticalPositions, domain.TacticalKillEvents) {
+// positionsDe pose une mort mesuree de ma part dans chaque match de l'univers, pour que les
+// lectures SQL aient de quoi mesurer.
+func positionsDe(univ domain.TacticalUnivers) domain.TacticalPositions {
 	pos := domain.TacticalPositions{Univers: univ}
-	ev := domain.TacticalKillEvents{Univers: univ}
 	for _, m := range univ.Matchs {
 		pos.Points = append(pos.Points, domain.TacticalKillPosition{
 			MatchID: m.MatchID, KillerXUID: tsAdv, VictimXUID: tsMoi,
 			KillerX: 9, KillerY: 9, VictimX: 2.25, VictimY: 3.25,
 		})
-		ev.Events = append(ev.Events,
-			domain.KillEvent{MatchID: m.MatchID, VictimXUID: tsMoi, KillerXUID: tsAdv, TimeMs: 10_000},
-			domain.KillEvent{MatchID: m.MatchID, VictimXUID: tsAdv, KillerXUID: tsAmi, TimeMs: 12_000},
-		)
 	}
-	return pos, ev
+	return pos
 }
 
 // TestFiltreSpawn_SappliqueAuxLecturesSQL — LE DEFAUT P1-1.
@@ -323,13 +314,12 @@ func posEtEvents(univ domain.TacticalUnivers) (domain.TacticalPositions, domain.
 // desormais sur la LISTE BLANCHE, donc sur tout ce qui en descend.
 func TestFiltreSpawn_SappliqueAuxLecturesSQL(t *testing.T) {
 	store, univ, ids := grappesFixture()
-	pos, ev := posEtEvents(univ)
+	pos := positionsDe(univ)
 	caps := games.CapabilityMap{
 		games.CapFilmReplayArtifact: games.CapSupported,
 		games.CapFilmKillPositions:  games.CapSupported,
-		games.CapFilmKillSource:     games.CapSupported,
 	}
-	repo := &mockTacticalRepo{univ: univ, pos: pos, ev: ev}
+	repo := &mockTacticalRepo{univ: univ, pos: pos}
 	svc := NewTacticalService(repo, caps, tsMoi).WithRasterStore(store)
 
 	complet, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
@@ -365,21 +355,12 @@ func TestFiltreSpawn_SappliqueAuxLecturesSQL(t *testing.T) {
 	if len(restreint.Grappes) != 2 {
 		t.Fatalf("grappes = %+v, attendu 2 sous filtre", restreint.Grappes)
 	}
-	// LE KPI D'ECHANGE SUIT : son denominateur est l'univers RESTREINT.
-	if restreint.Echange == nil {
-		t.Fatal("l'echange n'est pas servi")
-	}
-	if complet.Echange.N != 6 || restreint.Echange.N != 3 {
-		t.Fatalf("morts vengeables : %d sans filtre, %d avec — attendu 6 puis 3 (le KPI "+
-			"recevait le scope NON restreint)", complet.Echange.N, restreint.Echange.N)
-	}
 }
 
 // TestFiltreSpawn_InconnuSurUneLectureSQL — 404 typé, pas une lecture non filtrée.
 func TestFiltreSpawn_InconnuSurUneLectureSQL(t *testing.T) {
 	store, univ, ids := grappesFixture()
-	pos, ev := posEtEvents(univ)
-	repo := &mockTacticalRepo{univ: univ, pos: pos, ev: ev}
+	repo := &mockTacticalRepo{univ: univ, pos: positionsDe(univ)}
 	svc := NewTacticalService(repo, capsOccupation(), tsMoi).WithRasterStore(store)
 	_, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
 		MapID: "streets", Question: domain.TacticalQuestionMorts, Qui: domain.TacticalQuiMoi,
@@ -394,8 +375,7 @@ func TestFiltreSpawn_InconnuSurUneLectureSQL(t *testing.T) {
 // honorer le filtre : 503, jamais un silence qui servirait l'univers entier.
 func TestFiltreSpawn_SansLecteurDArtefact(t *testing.T) {
 	_, univ, ids := grappesFixture()
-	pos, ev := posEtEvents(univ)
-	repo := &mockTacticalRepo{univ: univ, pos: pos, ev: ev}
+	repo := &mockTacticalRepo{univ: univ, pos: positionsDe(univ)}
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 	_, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
 		MapID: "streets", Question: domain.TacticalQuestionMorts, Qui: domain.TacticalQuiMoi,

@@ -55,8 +55,8 @@ func TestTacticalService_Solde_DeuxFacesPlancherSurLUnion(t *testing.T) {
 	if !got.Echelle.Symetrique {
 		t.Error("solde : l'échelle doit être symétrique (lecture signée)")
 	}
-	if got.MatchsRetenus != 5 || got.EvenementsLocalises != 3 {
-		t.Errorf("retenus / localisés = %d / %d, attendu 5 / 3", got.MatchsRetenus, got.EvenementsLocalises)
+	if got.MatchsRetenus != 5 {
+		t.Errorf("retenus = %d, attendu 5", got.MatchsRetenus)
 	}
 	if got.MatchsVictoire != 0 || got.MatchsDefaite != 0 {
 		t.Errorf("solde : les côtés victoire / défaite n'ont aucun sens ici : %d / %d", got.MatchsVictoire, got.MatchsDefaite)
@@ -84,8 +84,8 @@ func TestTacticalService_Solde_QuestionAcceptee(t *testing.T) {
 	}
 }
 
-// TestTacticalService_Solde_DeuxFacesAuJournal : la couverture (compterJournal) et le détail de
-// cellule lisent les faces par facesDeLaQuestion — le solde y compte les frags ET les morts.
+// TestTacticalService_Solde_DeuxFacesAuJournal : le détail de cellule lit les faces par
+// facesDeLaQuestion — le solde y compte les frags ET les morts.
 func TestTacticalService_Solde_DeuxFacesAuJournal(t *testing.T) {
 	if victime, tueur := facesDeLaQuestion(domain.TacticalQuestionSolde); !victime || !tueur {
 		t.Fatalf("faces du solde = (%v, %v), attendu les deux", victime, tueur)

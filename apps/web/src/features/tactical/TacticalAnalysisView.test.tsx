@@ -72,8 +72,6 @@ const RASTER_NOMINAL: TacticalRaster = {
   matchs_defaite: 25,
   matchs_en_attente: 0,
   matchs_non_cuisables: 0,
-  evenements_journal: 500,
-  evenements_localises: 480,
   points_ignores: 0,
 }
 
