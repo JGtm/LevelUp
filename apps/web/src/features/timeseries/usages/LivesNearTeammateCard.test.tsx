@@ -1,5 +1,5 @@
 /**
- * LivesNearTeammateCard.test.tsx — « Mes vies : près d'un coéquipier ou seul » : barre épaisse des vies
+ * LivesNearTeammateCard.test.tsx — « Vies à portée d'un coéquipier, vies isolées » : barre épaisse des vies
  * (près / seul, comptes et parts dans les segments), barre fine des frags, ligne « frags … par vie »,
  * vies écartées dites dans l'aide ⓘ (chiffres de la maquette : 1 558 / 301 vies, 1 250 / 262 frags).
  */
@@ -36,19 +36,20 @@ const U = USAGES_TEXT.fr.cards
 const n = U.intFmt
 
 function renderCard(b = lives()) {
-  render(<LivesNearTeammateCard model={buildLivesModel(b)!} ut={U} />)
+  render(<LivesNearTeammateCard model={buildLivesModel(b)!} player="JGtm" ut={U} />)
 }
 
 const width = (id: string) => parseFloat((screen.getByTestId(id) as HTMLElement).style.width)
 
 describe('LivesNearTeammateCard', () => {
-  it('titre, libellé de ligne et nombre de vies', () => {
+  it('titre, ligne au gamertag du joueur et nombre de vies', () => {
     renderCard()
-    expect(screen.getByText('Mes vies : près d’un coéquipier ou seul')).toBeTruthy()
+    expect(screen.getByText('Isolement')).toBeTruthy()
+    expect(screen.getByText('JGtm')).toBeTruthy()
     expect(screen.getByTestId('usages-lives-sub').textContent).toBe(`${n(1859)} vies terminées par une mort`)
   })
 
-  it('barre épaisse : mes vies près / seul, compte et part dans chaque segment', () => {
+  it('barre épaisse : vies à portée / isolées, compte et part dans chaque segment', () => {
     renderCard()
     expect(width('usages-lives-near')).toBeCloseTo((1558 / 1859) * 100)
     expect(screen.getByTestId('usages-lives-near').textContent).toBe(`${n(1558)} · 83,8 %`)
@@ -69,7 +70,7 @@ describe('LivesNearTeammateCard', () => {
     expect(screen.queryByTestId('usages-lives-repli')).toBeNull()
   })
 
-  it('barre fine : mes frags pendant ces vies ; ligne des frags par vie', () => {
+  it('barre fine : frags du joueur pendant ces vies ; ligne des frags par vie', () => {
     renderCard()
     expect(width('usages-lives-kills-near')).toBeCloseTo((1250 / 1512) * 100)
     expect(screen.getByTestId('usages-lives-kills-line').textContent).toBe(`frags : ${n(1250)} · 82,7 % · 0,8 par vie0,9 par vie · ${n(262)}`)
@@ -78,7 +79,7 @@ describe('LivesNearTeammateCard', () => {
   it('l’aide ⓘ compte les vies écartées', () => {
     renderCard()
     fireEvent.mouseEnter(screen.getByRole('button', { name: /info/i }))
-    expect(screen.getByRole('tooltip').textContent).toContain('écartées (59 ici)')
+    expect(screen.getByRole('tooltip').textContent).toContain('Écartées : vies sans coéquipier situé (59).')
     expect(screen.getByRole('tooltip').textContent).not.toContain('journal des morts')
   })
 
@@ -86,8 +87,8 @@ describe('LivesNearTeammateCard', () => {
     renderCard({ ...lives(), excluded_unpublishable: 12 })
     fireEvent.mouseEnter(screen.getByRole('button', { name: /info/i }))
     const tip = screen.getByRole('tooltip').textContent
-    expect(tip).toContain('écartées (59 ici)')
-    expect(tip).toContain('Les vies d’un match dont le journal des morts ne se lit pas mort par mort sont écartées aussi (12).')
+    expect(tip).toContain('Écartées : vies sans coéquipier situé (59)')
+    expect(tip).toContain(', vies d’un match au journal des morts non publiable (12).')
   })
 
   it('aucun frag : la barre fine et sa ligne se retirent', () => {
@@ -96,8 +97,8 @@ describe('LivesNearTeammateCard', () => {
     expect(screen.queryByTestId('usages-lives-kills-line')).toBeNull()
   })
 
-  it('légende de la maquette', () => {
+  it('légende', () => {
     renderCard()
-    for (const l of ['Près d’un coéquipier', 'Seul', 'Barre fine : mes frags pendant ces vies']) expect(screen.getByText(l)).toBeTruthy()
+    for (const l of ['À portée d’un coéquipier', 'Isolée', 'Barre fine : frags du joueur pendant ces vies']) expect(screen.getByText(l)).toBeTruthy()
   })
 })

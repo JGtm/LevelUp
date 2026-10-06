@@ -146,7 +146,7 @@ describe('SquadContributionsPage', () => {
     const { container } = renderWithProviders(<SquadContributionsPage />)
     const text = container.textContent ?? ''
     const frags = text.indexOf('Frags et armes')
-    const objectif = text.indexOf('Rapport de force par famille de mode')
+    const objectif = text.indexOf('Rapport de force')
     const perf = text.indexOf('Performance')
     expect(screen.getByTestId('squad-objective-section')).toBeInTheDocument()
     expect(frags).toBeLessThan(objectif)

@@ -197,7 +197,15 @@ export type EquipmentRow =
   | { family: string; measured: true; me: EquipmentParts; rest: EquipmentParts; takenMe: number }
   | { family: string; measured: false; droppedMe: number }
 
-const sum = (p: EquipmentParts) => p[0] + p[1] + p[2]
+/**
+ * La famille a-t-elle été tenue par au moins un joueur du lobby (mon camp, l'adversaire, les joueurs
+ * sans camp connu) ? Mesurée : servi + gardé + lâché du lobby ; non mesurée : lâchers du lobby.
+ */
+function heldInLobby(f: EmpriseEquipmentFamily): boolean {
+  if (!f.measured) return (f.dropped_lobby ?? 0) > 0
+  const l = f.lobby
+  return (l?.used ?? 0) + (l?.kept ?? 0) + (l?.dropped ?? 0) > 0
+}
 
 function equipmentRow(f: EmpriseEquipmentFamily): EquipmentRow {
   if (!f.measured) return { family: f.family, measured: false, droppedMe: f.dropped_me ?? 0 }
@@ -205,11 +213,13 @@ function equipmentRow(f: EmpriseEquipmentFamily): EquipmentRow {
   return { family: f.family, measured: true, me: parts(f.me), rest: parts(f.rest), takenMe: f.me?.taken ?? 0 }
 }
 
-/** buildEquipmentRows — une ligne par famille, dans l'ordre du Go (D4) ; aucune ligne sans rien de tenu. */
+/**
+ * buildEquipmentRows — une ligne par famille tenue dans le lobby, dans l'ordre du Go (D4) ; une
+ * famille que personne n'a tenue n'a pas de ligne, même quand d'autres en ont (aucune ligne : la
+ * carte se retire).
+ */
 export function buildEquipmentRows(block: SoloEmpriseBlock): EquipmentRow[] {
-  const rows = (block.equipment?.families ?? []).map(equipmentRow)
-  const anything = rows.some((r) => (r.measured ? sum(r.me) + sum(r.rest) > 0 : r.droppedMe > 0))
-  return anything ? rows : []
+  return (block.equipment?.families ?? []).filter(heldInLobby).map(equipmentRow)
 }
 
 // ---------------------------------------------------------------------------

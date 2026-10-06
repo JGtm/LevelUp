@@ -126,7 +126,7 @@ function fullPage(extra: Record<string, unknown> = {}): TimeseriesPageResponse {
 /** Les blocs montés, dans l'ordre de la page. */
 const blocks = () => Array.from(document.querySelectorAll('[data-testid^="usages-section-"]')).map((n) => n.getAttribute('data-testid')!.replace('usages-section-', ''))
 
-describe('Onglet Usages — montage de « Portée des engagements »', () => {
+describe('Onglet Usages — montage de « Portée »', () => {
   it('avec le bloc servi et la capability active, la section est montée', () => {
     setTitle(['weapon_range'])
     renderUsages(page({ weapon_range: weaponRangeBlock }))
@@ -147,7 +147,7 @@ describe('Onglet Usages — montage de « Portée des engagements »', () => {
 })
 
 describe('Onglet Usages — l’Emprise du périmètre solo', () => {
-  it('les huit blocs dans l’ordre de la maquette, après « Portée des engagements »', () => {
+  it('les huit blocs dans l’ordre de la maquette, après « Portée »', () => {
     setTitle(['weapon_range'])
     renderUsages(fullPage())
     expect(blocks()).toEqual(['bilan', 'carte', 'mine', 'prendre', 'lives', 'objectif', 'equipment'])
@@ -156,14 +156,14 @@ describe('Onglet Usages — l’Emprise du périmètre solo', () => {
     expect(range.compareDocumentPosition(bilan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('intertitres de la maquette ; le bilan porte sa couverture', () => {
+  it('intertitres concis ; « Ressources » porte sa couverture', () => {
     setTitle(['weapon_range'])
     renderUsages(fullPage())
     const titres = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')
-    for (const t of ['Carte par carte', 'Mes prises', 'Prendre, et s’en servir', 'Près d’un coéquipier ou seul', 'Objectif', 'Équipement']) {
+    for (const t of ['Portée', 'Par carte', 'Prises', 'Rendement des ressources', 'Isolement', 'Objectif', 'Équipement']) {
       expect(titres).toContain(t)
     }
-    expect(titres).toContain('Bilan du périmètre3 matchs filmés sur 4 · frags de la feuille de match sur les 4')
+    expect(titres).toContain('Ressources3 matchs filmés sur 4 · frags de la feuille de match sur les 4')
   })
 
   it('chaque bloc monte ses cartes', () => {
@@ -172,14 +172,14 @@ describe('Onglet Usages — l’Emprise du périmètre solo', () => {
     for (const id of ['emprise-control', 'usages-map-grid', 'usages-mine', 'emprise-production', 'emprise-yield', 'usages-lives', 'objective-balance', 'objective-solo-sheet', 'usages-equipment']) {
       expect(screen.getByTestId(id)).toBeInTheDocument()
     }
-    expect(screen.getByText('Contrôle des ressources au fil des matchs')).toBeInTheDocument()
+    expect(screen.getByText('Contrôle des ressources, cumul par match')).toBeInTheDocument()
   })
 
   it('un bloc sans donnée se retire, intertitre compris', () => {
     setTitle(['weapon_range'])
     renderUsages(fullPage({ lives_near_teammate: undefined, formes_retenues: undefined }))
     expect(blocks()).toEqual(['bilan', 'carte', 'mine', 'prendre', 'equipment'])
-    expect(screen.queryByText('Près d’un coéquipier ou seul')).not.toBeInTheDocument()
+    expect(screen.queryByText('Isolement')).not.toBeInTheDocument()
     expect(screen.queryByText('Objectif')).not.toBeInTheDocument()
   })
 
@@ -204,11 +204,12 @@ describe('Onglet Usages — l’Emprise du périmètre solo', () => {
     setTitle(['weapon_range'])
     renderUsages(fullPage(), 'en')
     const titres = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')
-    for (const t of ['Map by map', 'My pickups', 'Taking, and using', 'Near a teammate or alone', 'Objective', 'Equipment']) {
+    for (const t of ['By map', 'Pickups', 'Resource efficiency', 'Isolation', 'Objective', 'Equipment']) {
       expect(titres).toContain(t)
     }
-    expect(screen.getByText('My lives: near a teammate or alone')).toBeInTheDocument()
-    expect(screen.getByText('Resource control, map by map')).toBeInTheDocument()
+    // « Isolation » : l'intertitre ET le titre de sa carte (voulu, comme sur les autres pages).
+    expect(screen.getAllByText('Isolation')).toHaveLength(2)
+    expect(screen.getByText('Resource control, by map')).toBeInTheDocument()
   })
 })
 
@@ -245,7 +246,7 @@ describe('« Balance des dégâts cumulée » — déplacée vers le Résumé (2
 })
 
 describe('Onglets d’origine — les sections du film n’y sont plus', () => {
-  it('la Synthèse ne monte plus « Portée des engagements »', () => {
+  it('la Synthèse ne monte plus « Portée »', () => {
     setTitle(['weapon_range'])
     renderSummary(page({ weapon_range: weaponRangeBlock }))
     expect(screen.queryByRole('region', { name: RANGE_REGION })).not.toBeInTheDocument()

@@ -4,17 +4,18 @@
  *
  * Mêmes matchs que le reste de la page (fenêtre filtrée, contexte solo), dans l'ordre d'un débrief :
  *
- *   1. « Portée des engagements » (la section porte son titre) puis « Rôles de portée » ;
- *   2. « Bilan du périmètre » : « Contrôle des ressources » | « … au fil des matchs » ;
- *   3. « Carte par carte » : « Contrôle des ressources, carte par carte » ;
- *   4. « Mes prises » : « Mes prises dans mon camp » ;
- *   5. « Prendre, et s'en servir » : « Frags obtenus avec les ressources » | « Rendement face à l'adversaire » ;
- *   6. « Près d'un coéquipier ou seul » : « Mes vies : près d'un coéquipier ou seul » ;
- *   7. « Objectif » : « Rapport de force par famille de mode » puis « Ma part à l'objectif » ;
- *   8. « Équipement » : « Équipement pris, et ce que j'en ai fait ».
+ *   1. « Portée » (la section porte son titre) puis « Rôles de portée » ;
+ *   2. « Ressources » : « Contrôle des ressources » | « Contrôle des ressources, cumul par match » ;
+ *   3. « Par carte » : « Contrôle des ressources, par carte » ;
+ *   4. « Prises » : « Contribution aux prises » ;
+ *   5. « Rendement des ressources » : « Frags par ressource » | « Rendement par ressource » ;
+ *   6. « Isolement » : « Isolement » ;
+ *   7. « Objectif » : « Rapport de force » puis « Part du joueur à l'objectif » ;
+ *   8. « Équipement » : « Usage d'équipements ».
  *
  * AUCUNE REQUÊTE NEUVE : tout arrive avec la réponse de page. Les cartes sont celles de l'Escouade
- * (textes solo : « Mon camp ») et quatre cartes propres à l'onglet. Un bloc sans donnée se retire,
+ * (textes du périmètre solo) et quatre cartes propres à l'onglet ; le joueur y est désigné par son
+ * gamertag (`player`). Un bloc sans donnée se retire,
  * intertitre compris (prédicat unique `usagesSections`) ; sans rien à montrer, l'onglet le DIT.
  * Sans film (Halo 5), seuls les frags aux armes spéciales de la feuille de match restent.
  */
@@ -85,7 +86,7 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
       )}
       {show.mine && m.mine && (
         <Block id="mine" title={ut.sections.mine}>
-          <MinePickupsCard mine={m.mine} itemName={u.objectName} t={et} ut={ut.cards} />
+          <MinePickupsCard mine={m.mine} itemName={u.objectName} player={u.player} t={et} ut={ut.cards} />
         </Block>
       )}
       {show.prendre && (
@@ -99,7 +100,7 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
       )}
       {show.lives && m.lives && (
         <Block id="lives" title={ut.sections.lives}>
-          <LivesNearTeammateCard model={m.lives} ut={ut.cards} />
+          <LivesNearTeammateCard model={m.lives} player={u.player} ut={ut.cards} />
         </Block>
       )}
       {show.objectif && (
@@ -114,7 +115,7 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
       )}
       {show.equipment && (
         <Block id="equipment" title={ut.sections.equipment}>
-          <EquipmentOutcomesCard rows={m.equipment} familyLabel={u.equipmentLabel} ut={ut.cards} />
+          <EquipmentOutcomesCard rows={m.equipment} familyLabel={u.equipmentLabel} player={u.player} ut={ut.cards} />
         </Block>
       )}
     </div>

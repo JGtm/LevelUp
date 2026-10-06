@@ -6295,8 +6295,11 @@ export interface components {
         };
         EmpriseEquipmentFamily: {
             /** Format: int64 */
+            dropped_lobby?: number;
+            /** Format: int64 */
             dropped_me?: number;
             family: string;
+            lobby?: components["schemas"]["EmpriseEquipmentOutcomes"];
             me?: components["schemas"]["EmpriseEquipmentOutcomes"];
             measured: boolean;
             rest?: components["schemas"]["EmpriseEquipmentOutcomes"];
