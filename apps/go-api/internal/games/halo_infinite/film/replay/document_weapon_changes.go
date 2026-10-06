@@ -202,17 +202,13 @@ func spawnSetFrom(
 	if len(loadouts) == 0 && len(births) == 0 && len(creations) == 0 {
 		return nil
 	}
-	type releve struct {
-		ts uint64
-		st grammar.SpawnState
-	}
-	bySlot := map[uint32][]releve{}
+	bySlot := map[uint32][]releveDeSlot{}
 	for _, l := range loadouts {
 		set := make(map[uint32]bool, len(l.Families))
 		for _, f := range l.Families {
 			set[f] = true
 		}
-		bySlot[l.Slot] = append(bySlot[l.Slot], releve{l.TimestampUS, grammar.SpawnState{Families: set}})
+		bySlot[l.Slot] = append(bySlot[l.Slot], releveDeSlot{l.TimestampUS, grammar.SpawnState{Families: set}})
 	}
 	// Les naissances APRÈS les images-clés : à instant égal, la dotation (qui situe ses familles)
 	// l'emporte, le tri stable le garantit.
@@ -224,11 +220,11 @@ func spawnSetFrom(
 				st.Families[w.Family] = true
 			}
 		}
-		bySlot[b.Slot] = append(bySlot[b.Slot], releve{b.TimestampUS, st})
+		bySlot[b.Slot] = append(bySlot[b.Slot], releveDeSlot{b.TimestampUS, st})
 	}
 	for slot := range bySlot {
 		l := bySlot[slot]
-		slices.SortStableFunc(l, func(a, b releve) int { return cmp.Compare(a.ts, b.ts) })
+		slices.SortStableFunc(l, func(a, b releveDeSlot) int { return cmp.Compare(a.ts, b.ts) })
 	}
 	nes := map[uint32][]uint64{}
 	for _, c := range creations {
@@ -238,27 +234,43 @@ func spawnSetFrom(
 		slices.Sort(nes[slot])
 	}
 	return func(slot uint32, at uint64) (grammar.SpawnState, bool) {
-		var debut uint64
-		for _, ts := range nes[slot] {
-			if ts > at {
-				break
-			}
-			debut = ts
-		}
-		var pick *releve
-		for i, r := range bySlot[slot] {
-			if r.ts > at {
-				break
-			}
-			if r.ts >= debut {
-				pick = &bySlot[slot][i]
-			}
-		}
-		if pick == nil {
-			return grammar.SpawnState{DebutDeVie: debut}, false
-		}
-		st := pick.st
-		st.DebutDeVie = debut
-		return st, true
+		return releveDeLaVie(nes[slot], bySlot[slot], at)
 	}
+}
+
+// releveDeSlot : ce que portait un slot à l'instant `ts`, lu dans une dotation de naissance ou
+// dans un relevé d'image-clé (cf. [spawnSetFrom]).
+type releveDeSlot struct {
+	ts uint64
+	st grammar.SpawnState
+}
+
+// releveDeLaVie rend ce que portait, à l'instant `at`, la VIE qui occupe le slot : le dernier
+// relevé passé (`ts <= at`) qui ne précède pas le début de cette vie — la dernière création
+// passée du slot, 0 sans création. `naissances` (les instants de création) et `releves` sont ceux
+// du slot, triés par instant. Sans relevé candidat, rend faux et le seul début de vie, qui voyage
+// dans `DebutDeVie` pour que le flux coupe sa chaîne à chaque nouvelle vie.
+func releveDeLaVie(naissances []uint64, releves []releveDeSlot, at uint64) (grammar.SpawnState, bool) {
+	var debut uint64
+	for _, ts := range naissances {
+		if ts > at {
+			break
+		}
+		debut = ts
+	}
+	var pick *releveDeSlot
+	for i, r := range releves {
+		if r.ts > at {
+			break
+		}
+		if r.ts >= debut {
+			pick = &releves[i]
+		}
+	}
+	if pick == nil {
+		return grammar.SpawnState{DebutDeVie: debut}, false
+	}
+	st := pick.st
+	st.DebutDeVie = debut
+	return st, true
 }

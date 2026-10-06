@@ -238,31 +238,40 @@ func buildPickups(
 			e.Origin = judge.origineDe(p.Slot, p.TimestampUS, e.T)
 		}
 		out = append(out, e)
-		cov.Published++
-		if k == PickupWeapon {
-			cov.Weapons++
-		} else {
-			cov.Items++
-			switch e.Origin {
-			case PickupOriginSpawner:
-				cov.OriginSpawner++
-				if judge != nil {
-					if cov.SpawnerByPointKind == nil {
-						cov.SpawnerByPointKind = map[string]int{}
-					}
-					cov.SpawnerByPointKind[judge.kindAtteint]++
-				}
-			case PickupOriginGround:
-				cov.OriginGround++
-			default:
-				cov.OriginUnknown++
-			}
-		}
+		cov.compterLePublie(k, e.Origin, judge)
 	}
 	if len(out) == 0 {
 		return nil, cov
 	}
 	return out, cov
+}
+
+// compterLePublie ventile UN ramassage publié dans la couverture : par nature (`Weapons` ou
+// `Items`), puis, pour une non-arme, par origine — les trois compteurs d'origine se somment donc
+// exactement à `Items`. Une origine `spawner` se ventile aussi par nature du point atteint, que le
+// juge vient de poser pour CE ramassage ([pickupOriginJudge.origineDe]) : l'appel suit donc
+// `origineDe` dans la même itération, sans autre appel au juge entre les deux.
+func (cov *PickupCoverage) compterLePublie(k PickupKind, origine string, judge *pickupOriginJudge) {
+	cov.Published++
+	if k == PickupWeapon {
+		cov.Weapons++
+	} else {
+		cov.Items++
+		switch origine {
+		case PickupOriginSpawner:
+			cov.OriginSpawner++
+			if judge != nil {
+				if cov.SpawnerByPointKind == nil {
+					cov.SpawnerByPointKind = map[string]int{}
+				}
+				cov.SpawnerByPointKind[judge.kindAtteint]++
+			}
+		case PickupOriginGround:
+			cov.OriginGround++
+		default:
+			cov.OriginUnknown++
+		}
+	}
 }
 
 // pickupFamily résout le slug d'un objet ramassé dans le catalogue qui LE concerne.

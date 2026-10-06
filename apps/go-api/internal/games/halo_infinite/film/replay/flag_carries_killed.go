@@ -87,6 +87,15 @@ func carrierKillVictim(raws []flagCarryRaw, scan FlagCarryScan, at int64, killer
 			victim, candidates = i, candidates+1
 		}
 	}
+	return verdictDuPorteurTue(victim, candidates, doubtful)
+}
+
+// verdictDuPorteurTue statue selon la table de l en-tete, a partir des portages candidats comptes
+// (ceux des adversaires du tueur ouverts a l instant, `victim` etant l index du dernier vu) et du
+// doute (un porteur d equipe non lue etait ouvert) : un seul candidat sans doute se ferme ;
+// plusieurs, ou un et un doute, sont ambigus ; un doute sans candidat n est pas juge ; sinon, rien
+// a statuer.
+func verdictDuPorteurTue(victim, candidates int, doubtful bool) (int, carrierKillVerdict) {
 	switch {
 	case candidates > 1 || (candidates == 1 && doubtful):
 		return -1, carrierKillAmbiguous

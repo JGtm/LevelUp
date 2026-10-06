@@ -277,7 +277,7 @@ func (o *Observation) refuserUnNeuf(w *World, rec *FrameRecord) {
 // SIGNAL de controle a re-interpreter — un aiguillage de plus la ou il y en a deja trois, et
 // une reecriture de la logique, pas un deplacement. Le lot 2.7 est un lot de deplacement pur :
 // il ne touche pas a cette boucle. Reexamen au lot 3.6 (ports de composants), qui la rouvre.
-func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int, bool) {
+func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int, bool) { //nolint:gocyclo,funlen // boucle de decodage a sorties multiples : un case par type de record (NEW, DEL, DELTA lie ou non lie, inconnu), dont chaque branche continue apres un decrochage recupere ou rend et arrete la trame ; en sortir une branche demanderait un signal de controle a re-interpreter (cf. l exemption de longueur ci-dessus)
 	var out []FrameRecord
 	br.entrerDansLaVueB(w, buf)
 	inferred := 0

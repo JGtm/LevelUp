@@ -258,7 +258,7 @@ func TryDeltaAt(buf []byte, bitpos int, w *World, cfg FrameConfig) (FrameRecord,
 // the World (entity-id -> archetype, held-weapon cache). Returns the records decoded;
 // on a component desync it returns the records so far plus an error (the bit position
 // of the next record can no longer be trusted).
-func DecodeFrameRecords(br *Lecteur, w *World, cfg FrameConfig) ([]FrameRecord, error) {
+func DecodeFrameRecords(br *Lecteur, w *World, cfg FrameConfig) ([]FrameRecord, error) { //nolint:gocyclo // la boucle de records de la trame : un case par type (NEW, DEL, DELTA, invalide), chacun avec les champs conditionnels de l ecrivain (prefixe des champs supplementaires, rejet de generation stricte), puis l arret sur desynchronisation
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3) : le lecteur vient de l'appelant
 	var out []FrameRecord
 	if cfg.PacketPreambleBits > 0 && br.BitPos() == 0 {

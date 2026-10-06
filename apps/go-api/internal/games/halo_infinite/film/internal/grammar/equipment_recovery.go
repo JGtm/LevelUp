@@ -265,7 +265,7 @@ func scanEquipRecoveryPacket(
 // walkEquipRecoveryAt tente les deux formes récupérables à la position p (en-tête déjà
 // contrôlé) et marche le record jusqu'à i48 avec les désers de PRODUCTION. Rend (compteur,
 // rang, ok) — ok seulement si la marche a consommé i48.
-func walkEquipRecoveryAt(
+func walkEquipRecoveryAt( //nolint:gocyclo // deux formes de record (sans i0, masque dense R(64)) aiguillees par la porte du bit 17, chacune avec ses gardes anti-bruit d en-tete (compte, borne du tampon, croissance, i48, region), puis la marche jusqu a i48 : chaque test est un rejet du balayage ou l arret de la marche
 	s abilityScanSetup, pay []byte, p, total int,
 	last *struct {
 		counter uint32
