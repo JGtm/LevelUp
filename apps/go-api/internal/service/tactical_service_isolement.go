@@ -154,23 +154,16 @@ func matchsAyantUnRayon(rayons map[string]float64) []string {
 // `match_registry.game_variant_name`, donc de ce que l'API a envoye, et des variantes y arrivent
 // avec un blanc de tete ou de queue. Une cle non nettoyee manque la table, et le match sort
 // SILENCIEUSEMENT de la lecture — un defaut de donnee deguise en trou de referentiel, qui envoie
-// chercher la panne au mauvais endroit. La resolution (nettoyage compris) est celle de
-// `mappings.PorteeDuRadar`, la seule du depot (plan Emprise vies, lot V2b).
+// chercher la panne au mauvais endroit. La resolution par match (nettoyage compris) est
+// `mappings.PorteesDuRadarParMatch`, la seule du depot ; seuls les matchs MESURES y entrent.
 func (s *TacticalService) rayonsParMatch(matchs []domain.TacticalMatch) (map[string]float64, int) {
-	out := make(map[string]float64, len(matchs))
-	sans := 0
+	variantes := make(map[string]string, len(matchs))
 	for _, m := range matchs {
-		if !m.Mesure {
-			continue
+		if m.Mesure {
+			variantes[m.MatchID] = m.GameVariantName
 		}
-		metres, ok := mappings.PorteeDuRadar(s.radar, m.GameVariantName)
-		if !ok {
-			sans++
-			continue
-		}
-		out[m.MatchID] = metres
 	}
-	return out, sans
+	return mappings.PorteesDuRadarParMatch(s.radar, variantes)
 }
 
 // construireCoordination assemble la section « Coordination d'equipe » : la FORME de la

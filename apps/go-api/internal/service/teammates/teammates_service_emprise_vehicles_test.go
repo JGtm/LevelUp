@@ -121,7 +121,7 @@ func TestGetPage_Vehicules_CapabilityAbsente(t *testing.T) {
 	if b.Vehicles != nil || ressourceDuBloc(b, domain.EmpriseResourceVehicle) != nil || b.Matches[0].Vehicles != "" {
 		t.Errorf("ressource publiée sans capability : %+v", b.Vehicles)
 	}
-	l := ligneDeLog(logs, "teammates_emprise_vehicules_capability_absente")
+	l := ligneDeLog(logs, "emprise_vehicules_capability_absente")
 	if !strings.Contains(l, `"level":"DEBUG"`) || !strings.Contains(l, games.ErrCapabilityNotSupported.Error()) {
 		t.Errorf("journal attendu en Debug avec ErrCapabilityNotSupported, obtenu : %q", l)
 	}
@@ -135,7 +135,7 @@ func TestGetPage_Vehicules_DepotNonSupporte(t *testing.T) {
 	var b *domain.SquadEmpriseBlock
 	repo := &fakeVehicules{err: fmt.Errorf("lecture : %w", games.ErrCapabilityNotSupported)}
 	logs := withCapturedLogs(t, func() { b = pageVehicules(t, true, repo) })
-	l := ligneDeLog(logs, "teammates_emprise_vehicules_capability_absente")
+	l := ligneDeLog(logs, "emprise_vehicules_capability_absente")
 	if b.Vehicles != nil || !strings.Contains(l, `"level":"DEBUG"`) {
 		t.Errorf("couverture %+v, journal %q ; attendu absente et Debug", b.Vehicles, l)
 	}
@@ -145,8 +145,8 @@ func TestGetPage_Vehicules_DepotNonSupporte(t *testing.T) {
 func TestGetPage_Vehicules_LectureEnEchec(t *testing.T) {
 	var b *domain.SquadEmpriseBlock
 	logs := withCapturedLogs(t, func() { b = pageVehicules(t, true, &fakeVehicules{err: errors.New("base indisponible")}) })
-	l := ligneDeLog(logs, "teammates_emprise_vehicules_en_echec")
-	if !strings.Contains(l, `"level":"ERROR"`) || !strings.Contains(l, "base indisponible") {
+	l := ligneDeLog(logs, "emprise_vehicules_en_echec")
+	if !strings.Contains(l, `"level":"ERROR"`) || !strings.Contains(l, "base indisponible") || !strings.Contains(l, `"page":"teammates"`) {
 		t.Errorf("journal attendu en Error avec la cause, obtenu : %q", l)
 	}
 	if b.Vehicles == nil || b.Vehicles.Unavailable != domain.EmpriseVehiclesLoadFailed ||

@@ -47,3 +47,20 @@ func TestPorteeDuRadar(t *testing.T) {
 		t.Error("table nil : aucune portee ne peut etre connue")
 	}
 }
+
+// TestPorteesDuRadarParMatch — la portee de chaque match par sa variante (nom nettoye) ; un match
+// dont la variante n'a pas de portee sort de la table rendue et se compte ; sans table, aucun.
+func TestPorteesDuRadarParMatch(t *testing.T) {
+	variantes := map[string]string{"m1": "Slayer:Arena", "m2": " BTB:Slayer\t", "m3": "Inconnue", "m4": "Casse"}
+	table := map[string]int{"Slayer:Arena": 18, "BTB:Slayer": 24, "Casse": 0}
+	rayon, sans := PorteesDuRadarParMatch(table, variantes)
+	if len(rayon) != 2 || rayon["m1"] != 18 || rayon["m2"] != 24 || sans != 2 {
+		t.Errorf("portees = %v, sans = %d ; attendu m1 18, m2 24, 2 sans portee", rayon, sans)
+	}
+	if rayon, sans := PorteesDuRadarParMatch(nil, variantes); len(rayon) != 0 || sans != 4 {
+		t.Errorf("sans table : %v / %d, attendu aucune portee et 4 sans portee", rayon, sans)
+	}
+	if rayon, sans := PorteesDuRadarParMatch(table, nil); rayon == nil || len(rayon) != 0 || sans != 0 {
+		t.Errorf("sans match : %v / %d, attendu une table vide non nil et 0", rayon, sans)
+	}
+}

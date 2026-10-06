@@ -2,7 +2,7 @@
 
 > Sources, à lire avant tout lot, qui FONT FOI pour le rendu :
 > - maquette validée par l'utilisateur le 2026-10-05, position « Après » :
->   https://claude.ai/artifact/BR8veZfoaQrbhqNKuU8Uk2 (v3), copie
+>   https://claude.ai/artifact/BR8veZfoaQrbhqNKuU8Uk2 (v4), copie
 >   `.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html` (script lisible : `renderApres` l. 862,
 >   `renderEquip` l. 1124, `renderMine` l. 1149, `renderFil` l. 1187, `gridColumns`/`renderGrid`
 >   l. 1233-1292) ; les lignes « remplace : … » et les encarts « Maquette. » ne se portent pas ;
@@ -17,8 +17,8 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **PHASE 1 — écrit, relu (grille plan-review §9), en attente du « go » du
-> superviseur**. Branche : `feat/ts-usages-emprise` (créée sur `origin/feat/v75` = `65c99b669`),
+> Statut du plan : **GO du superviseur le 2026-10-06 (phase 2, lot par lot, compte rendu et
+> « continue » à chaque clôture)**. Branche : `feat/ts-usages-emprise` (créée sur `origin/feat/v75` = `65c99b669`),
 > worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ts-usages`.
 
 ## 0. Objectif, critère de succès, hors périmètre
@@ -47,7 +47,7 @@ chaque preuve grep à 0 ; (5) docs du lot clôture à jour.
 
 ## 1. Décisions
 
-### 1.1 Validées par l'utilisateur (2026-10-05, maquette v3) — fermes
+### 1.1 Validées par l'utilisateur (2026-10-05, maquette v4) — fermes
 
 - **V1** Ordre et contenu de l'onglet : §3 (8 blocs).
 - **V2** Grille « carte par carte » : une colonne par carte jouée, les 12 plus jouées puis
@@ -66,7 +66,7 @@ chaque preuve grep à 0 ; (5) docs du lot clôture à jour.
   « Appui reçu » reste tel quel.
 - **V6** Sur les pages solo on écrit « Mon camp », jamais « Notre camp ».
 
-### 1.2 Tranchées par le planificateur (à confirmer par le superviseur AVANT le « go » ; ensuite fermes)
+### 1.2 Tranchées par le planificateur — FERMES (confirmées par le superviseur le 2026-10-06 : D1-D14 confirmées, D7 / L7 maintenu en avant-dernier lot — gate qui résiste = arrêt et compte rendu, jamais forcé —, D15 : ligne d'attribution de la session de l'exécuteur)
 
 - **D1 — Pas de déplacement vers `_shared`, import direct de `features/squad/*`.** Vérifié sur
   pièces : `tools/lint-cross-feature-imports.mjs:157` déclare la paire `'timeseries=>squad'` dans
@@ -352,20 +352,20 @@ Chaque preuve se rejoue par `Grep` (outil) sur `apps/web/src` (hors `lib/api/gen
 
 Refactorisation sans changement de comportement, préalable à L2 et L3.
 
-- [ ] L1.1 `games/mappings/portee_du_radar.go` : `PorteesDuRadarParMatch(table, variantes)` (rend
+- [x] L1.1 `games/mappings/portee_du_radar.go` : `PorteesDuRadarParMatch(table, variantes)` (rend
   la table par match et le nombre de matchs sans portée) ; test pur (`portee_du_radar_test.go` :
   variante connue, inconnue, blanc de tête, portée nulle) écrit rouge d'abord.
-- [ ] L1.2 Migrer `teammates/teammates_service_emprise_placement.go:73,117-136`
+- [x] L1.2 Migrer `teammates/teammates_service_emprise_placement.go:73,117-136`
   (`rayonParMatchDuScope` supprimé, son test `teammates_service_emprise_placement_test.go:162-170`
   déplacé vers L1.1) et `service/tactical_service_isolement.go:61,159-174` (`rayonsParMatch` bâtit
   la carte des variantes des matchs `Mesure` puis appelle le helper).
-- [ ] L1.3 Garde-rail : `archlint/no_local_radar_range_lookup_test.go` — nouvelle empreinte « appel à
+- [x] L1.3 Garde-rail : `archlint/no_local_radar_range_lookup_test.go` — nouvelle empreinte « appel à
   `PorteeDuRadar(` hors du helper » sur les fichiers NON test, allowlist nommée
   `sync/killcollector/capture.go` (résolution d'UNE variante à l'écriture, `capture.go:102`) ;
   auto-test qui prouve que l'empreinte reconnaît les deux anciennes boucles (littéraux copiés de
   L1.2) ; mutation : réintroduire une boucle dans un fichier de test temporaire hors allowlist →
   rouge.
-- [ ] L1.4 `service/squadagg/emprise_lectures.go` (NEUF) : sortir de `TeammatesService` les trois
+- [x] L1.4 `service/squadagg/emprise_lectures.go` (NEUF) : sortir de `TeammatesService` les trois
   lectures de l'Emprise en fonctions libres paramétrées (repo, joueur, page pour les journaux) —
   `LireFeuilleEmprise` (`teammates_service_emprise.go:89-106`), `LireFilmEmprise` + `raisonFilm`
   (l. 108-172), `LireVehiculesEmprise` (`teammates_service_emprise_vehicles.go:37-63`). Noms
@@ -377,6 +377,15 @@ Refactorisation sans changement de comportement, préalable à L2 et L3.
 - Gate : gate Go (sans contrat : aucun type public ne change) ; preuve
   `Grep "PorteeDuRadar\(" apps/go-api/internal --glob !*_test.go` → helper + `capture.go` +
   `PorteesDuRadarParMatch` seulement.
+
+Journal L1 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) :
+- **L1.1** `mappings.PorteesDuRadarParMatch(table, variantes)` (`games/mappings/portee_du_radar.go`) ; test `TestPorteesDuRadarParMatch` écrit d'abord, vu ROUGE (symbole indéfini), puis vert. En-tête du fichier réécrit au présent (il racontait les deux copies, règle 17).
+- **L1.2** `rayonParMatchDuScope` supprimée (`teammates_service_emprise_placement.go`), son test supprimé (couvert par L1.1) ; `TacticalService.rayonsParMatch` bâtit la carte des variantes des matchs `Mesure` et appelle le helper.
+- **L1.3** Empreinte 3 du garde-rail `archlint/no_local_radar_range_lookup_test.go` : tout appel `PorteeDuRadar(` dans un fichier de production hors du helper est refusé, allowlist nommée `internal/sync/killcollector/capture.go` (une variante à l'écriture) ; auto-test sur les deux anciennes boucles et deux faux positifs (`AvecPorteeDuRadar(`, appel du helper).
+- **L1.4** `service/squadagg/emprise_lectures.go` : `EmpriseLecteur{Page, Player, RepoRoot, TitleSlug}` avec `Feuille`, `Film` (+ `ajouterHabitude`, `raisonFilm`), `Vehicules`, et `EmpriseMatchIDs` ; `TeammatesService` les appelle (`lireFeuilleEmprise`, `lireFilmEmprise`, `raisonFilm`, `lireVehiculesEmprise`, `matchIDsOf` supprimés). Événements renommés `emprise_*` avec l'attribut `page` ; seuls les trois `teammates_emprise_vehicules_*` étaient assertés (`teammates_service_emprise_vehicles_test.go`), mis à jour (+ assertion `"page":"teammates"`) ; les journaux du placement restent `teammates_emprise_placement_*` (non déplacés). Écart au plan, assumé : la lecture du film n'avait AUCUN test de l'habitude (mutation « habitude jamais lue » VERTE sur la suite teammates) — ajouté `squadagg/emprise_lectures_test.go` (habitude lue en plus du périmètre et niveaux sur les deux, échec de l'habitude qui la dégrade seule, sans repo → `film_unsupported`).
+- **Mutations** (script `mutation.ps1` du scratchpad, restauration garantie, diff vérifié après) : `sans++` retiré du helper → ROUGE (`TestPorteesDuRadarParMatch`) ; appel `PorteeDuRadar` réintroduit dans `tactical_service_isolement.go` → ROUGE (`TestNoLocalRadarRangeLookup`) ; capability non supportée de la feuille rendue en `sheet_load_failed` → ROUGE (`TestTeammatesService_GetPage_EmpriseCapabilityNonSupportee`) ; habitude jamais lue → ROUGE (`TestEmpriseLecteurFilm_LHabitudeEstLueEnPlusDuPerimetre`) ; échec de l'habitude ignoré → ROUGE (`TestEmpriseLecteurFilm_LHabitudeEnEchecDegradeSeule`, après avoir rendu le double mordant : l'échec porte sur la lecture des joueurs, les films se lisant).
+- **Gate** (CGO, une commande `go` à la fois, avant-plan) : `go build ./...` sortie 0 ; `go vet` mappings, squadagg, teammates, service, archlint sortie 0 ; `go test -count=1` des paquets touchés : 5 ok ; `go test -count=1` du module en six lots couvrant tout `go list ./...` (cmd + contracttest + analysis + api + domain + port + archlint : 67 ok en 79 s ; games : 39 ok en 62 s ; platform + service : 28 ok en 67 s ; sync + persist + migration : 13 ok en 91 s ; reste de internal : 45 ok en 36 s ; pkg + scripts + tests : 3 ok) — aucun FAIL ; `make go-api-lint` : 0 issues ; `go run ./cmd/openapi-gen -check` : à jour ; `gofmt -l` muet ; preuve grep `PorteeDuRadar\(` hors tests : déclaration et appel dans le helper, `capture.go` seulement. `-tags=integration` non requis (aucun paquet `platform/duckdb`, `sync`, `persist`, `migration` modifié).
+- Seuils : plus gros fichier touché `tactical_service_isolement.go` 244 L ; aucune fonction neuve au-delà de 45 L ; `Film` a 5 paramètres (ctx compris).
 
 ### L2 — Go : le bloc Emprise du périmètre solo · lourd
 
@@ -541,7 +550,7 @@ aucune clé de requête neuve (`lib/query/keys.ts` non touché) : tout arrive av
   barre épaisse vies près (`squad-player-1`) / seul (`extreme`), barre fine frags, ligne « frags :
   n · p % · x par vie … y par vie · m » ; ⓘ avec le compte des vies écartées (les deux causes) ;
   carte retirée si Near + Alone = 0.
-- [ ] L5.7 Objectif : `ObjectiveBalanceCard` (texte solo) puis `ObjectiveSoloSheetCard` (L4.4)
+- [ ] L5.7 Objectif : `ObjectiveBalanceCard` (texte solo) puis `ObjectiveSoloSheetCard` (L5.0a)
   alimentés par `formes_retenues` et `player_emblem_url` ; section retirée sans match à objectif
   (`objectiveMatches`).
 - [ ] L5.8 `WeaponRangeSection.tsx` : `ElevationCard` retirée, props `elevation` / `matchRows`
