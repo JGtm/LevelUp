@@ -2832,3 +2832,35 @@ package replay
 //	                valeur : les faits persistes sont identiques a l octet.
 //
 //	LE PARC         un artefact 78 dont les faits sont sur disque : verdict `republier`.
+
+// v80 (2026-10-06, zones a l etat initial) : UNE ZONE TENUE DES LE COUP D ENVOI SE PUBLIE TENUE DES
+// LA PREMIERE IMAGE-CLE. La FORME du document ne change pas (aucun champ) ; son CONTENU change.
+//
+//	`zoneStates[]  certaines variantes de Bastion donnent une base a chaque camp au coup d envoi.
+//	.spans`        Le canal de propriete (`ti=13`, tag 4) n est emis en trame delta qu a son
+//	               changement : la zone n apparaissait tenue qu a sa premiere reprise. L etat se
+//	               lit desormais aussi dans les images-cles (records fermes seuls,
+//	               `grammar.ManagedPropertyScan.KeyReads`), et le premier intervalle du canal elu
+//	               s ouvre a la premiere image-cle qui dit un camp (`zone_states_etat_initial.go`).
+//	               Une zone neutre au depart ne change pas ; l election des canaux, le pousseur, la
+//	               jauge, la colline et la jauge de retour du drapeau lisent les seules trames delta.
+//	journal        les etats d image-cle posterieurs a la premiere emission se comparent a l etat
+//	               reconstitue : `imagesClesDiscordantes` (et un avertissement s il y en a).
+//	faits          `SchemaDesFaits` 5 -> 6 : la section 1 porte `FilmInputs.ZoneKeyReads`.
+//
+//	CE QUI MONTE    `SchemaVersion` 79 -> 80 ; `grammar.Rev` `grammar-2026-10-06.4` ->
+//	AVEC ELLE       `grammar-2026-10-06.5`. `killsource.Rev` et `objectives.Rev` gardent leur
+//	                valeur (ni l une ni l autre n appelle le balayage de ti=13 : goldens
+//	                regeneres a revision constante) ; `source`, `profile`,
+//	                `killcollector.IsolationDecoderRev` et `PlacementRev` ne bougent pas.
+//
+//	LE PARC         un artefact 79 porte `grammar-2026-10-06.4` sur ses calques de grammaire :
+//	                verdict `redecoder`, tout le parc (la revision de grammaire est commune a tous
+//	                les calques). Seuls les Bastions voient leur calque de zones changer.
+//
+//	MESURE          `replay-corpus-gate --reference=parc` sur les 9 Bastions locaux, 2 KOTH et
+//	                2 CTF : 8 Bastions ouvrent A et C a la premiere image-cle (frames 0 a 167 au
+//	                lieu de 431 a 1774), B inchangee ; le 9e part neutre et ne change pas ; aucun
+//	                autre calque ne bouge, `ownerChecked` / `ownerAgreed` identiques. 3 etats
+//	                d image-cle discordants sur 2 films, tous contre une emission delta non
+//	                chainee hors des camps. KOTH et CTF : document identique hors revisions.

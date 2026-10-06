@@ -46,7 +46,7 @@ package replay
 //
 //	1  entrees       [FilmFacts] (le blob delta-code des entrees) PLUS les quatre canaux
 //	                 GARDES PAR L APPELANT que ce blob ne porte pas — `FlagMarks`, `ZoneReads`,
-//	                 `ZoneScanned`, `BombReads`. Cf. `encodeGardesDeMode`.
+//	                 `ZoneScanned`, `ZoneKeyReads`, `BombReads`. Cf. `encodeGardesDeMode`.
 //	2  identite      [profile.FilmIdentity], posee par `BuildFromFilm`. SANS ELLE
 //	                 `coverage.decoder.build` sort vide et le bloc `registry` est absent — c est
 //	                 exactement l ambiguite que D-7 interdit.
@@ -177,7 +177,10 @@ const VersionCodecFaits = 2
 // doctrine (« il monte quand une section change de contenu ») au lieu de s en remettre a elles. Le
 // lot 5.18.1 (`ControleDeCorruption`, 2026-09-22) avait elargi la meme section sans le monter : tout
 // fichier du schema 4 est desormais refuse sur son en-tete, celui-la compris.
-const SchemaDesFaits = 5
+// SCHEMA 6 (2026-10-06, branche `feat/zones-etat-initial`) : la section 1 porte, a la suite des
+// lectures delta de l etat des zones, ses lectures d IMAGE-CLE (`FilmInputs.ZoneKeyReads`,
+// `encodeGardesDeMode`). Le blob ne change pas ; ce que la section porte, si.
+const SchemaDesFaits = 6
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.
@@ -381,7 +384,7 @@ func lireSectionJSON(charge []byte, cible any, libelle string) error {
 // des entrees, dans l ORDRE du format — une seule ecriture, une seule lecture (les tests qui
 // fabriquent une section 1 passent par elles).
 //
-//	canaux gardes     `FlagMarks`, `ZoneReads`/`ZoneScanned`, la jauge, `BombReads`
+//	canaux gardes     `FlagMarks`, `ZoneReads`/`ZoneScanned`/`ZoneKeyReads`, la jauge, `BombReads`
 //	entites           les occupants du match (lot M2.2)
 //	temoin            l inventaire NUL (illisible) ou non (lot J3.6, RA1-2) : le blob relit toute
 //	d inventaire      liste en tranche VIDE, or `Inventory == nil` est une garde de calque

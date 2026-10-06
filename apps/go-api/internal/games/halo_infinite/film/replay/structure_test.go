@@ -1377,8 +1377,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	// - 79 (2026-10-05, rejeu « cercle de retour du drapeau ») : la base et le camp de chaque
 	//   drapeau se lisent dans le film quand le catalogue se tait ; quatre compteurs `omitempty`
 	//   dans `coverage.flagCarries`. Un v78 se lit « a republier ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 79 {
-		t.Fatalf("SchemaVersion = %d, attendu 79 : incrémenter exige une raison écrite ci-dessus "+
+	// - 80 (2026-10-06, zones a l etat initial) : Aucun champ neuf ; le CONTENU change : une zone de
+	//   Bastion que la variante donne a un camp au coup d envoi est publiee tenue des la premiere
+	//   image-cle qui le dit, et non plus a sa premiere reprise. `grammar.Rev` monte avec elle : un
+	//   v79 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 80 {
+		t.Fatalf("SchemaVersion = %d, attendu 80 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

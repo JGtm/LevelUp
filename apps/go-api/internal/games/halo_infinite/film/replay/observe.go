@@ -61,7 +61,7 @@ var buildFromFilmSteps = []string{
 	"abilityImpulses", "abilityCharges",
 	"zoomEvents",
 	"placements", "placements.stats", "spawnEvents",
-	"pads", "vehicles", "carrierMarks", "zoneReads", "flagGauge", "bombReads",
+	"pads", "vehicles", "carrierMarks", "zoneReads", "zoneKeyReads", "flagGauge", "bombReads",
 	// LES ETATS DE MOUVEMENT (schema 65, lot 5.3.6) : `balayerEtatsDeMouvement` tourne apres le
 	// monde et avant le pont, et cette liste suit l ORDRE des appels.
 	"movementStates", "movementStates.stats",

@@ -490,3 +490,9 @@ package killsource
 // revision reste et aucun backlog n est ouvert : c est la decision D23 du pilote du 2026-10-06, prise
 // en connaissance de ce risque. Golden regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/LOT_VA_V2.md`, `LOT_VA_V3.md` (§15, §16).
+//
+// COMPLEMENT DU 2026-10-06 (branche `feat/zones-etat-initial`, REVISION CONSTANTE) : aucune source
+// de la couche ne change ; la VALEUR de `grammar.Rev` monte a `grammar-2026-10-06.5` (voie image-cle
+// de `grammar.ScanManagedProperties`, ti=13), donc l empreinte. Ni la marche ni la calibration de
+// killsource n appellent ce balayage : sortie inchangee par construction. Golden regenere a revision
+// constante.

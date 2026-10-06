@@ -368,3 +368,22 @@ package grammar
 // MESURES : `campagne_grammaire_2026-10-01/LOT_VA_V2.md` (etape V2, contre `87cdfa761`),
 // `LOT_VA_V3.md` (etape V3, contre `8c83e2d3a` ; §15 : fusion et corrections de la revue, contre
 // `fed1efed2` ; §16 : decisions du pilote, contre `b033d30f0`).
+//
+// ENTREE `grammar-2026-10-06.5` (2026-10-06, branche `feat/zones-etat-initial`) : L ETAT DES
+// PROPRIETES RESEAU DE ti=13 SE LIT AUSSI DANS LES IMAGES-CLES.
+//
+// Ce qui change, contre `grammar-2026-10-06.4` :
+//   - [ScanManagedProperties] joue, apres les trames delta, la phase des images-cles pour un canal
+//     qui interprete la valeur scalaire de ti=13 (`i1`, [canalDesProprietesGerees],
+//     `zone_state_scan_images_cles.go`) : il relit chaque occurrence a son etendue avec le
+//     deserialiseur de production et rend [ManagedPropertyScan.KeyReads], records FERMES seuls,
+//     avec les comptes `KeyRecords`, `KeyClosed`, `KeyBroken`, `KeyUnproven`, `KeyRefused` ;
+//   - les lectures delta (`Reads`) et leurs comptes ne changent pas : aucun bit lu ne change sur la
+//     voie delta.
+//
+// Une propriete n est emise en trame delta qu a son changement ; une base que la variante de
+// Bastion donne a un camp au coup d envoi n apparaissait qu a sa premiere reprise. Le rejeu ouvre
+// desormais le premier intervalle de proprietaire a la premiere image-cle qui le dit
+// (`replay/zone_states_etat_initial.go`, `replay.SchemaVersion` 80). `killsource` et `objectives`
+// n appellent pas ce balayage : leurs revisions restent constantes, leurs empreintes sont
+// regenerees.
