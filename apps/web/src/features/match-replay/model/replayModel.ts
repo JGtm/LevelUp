@@ -33,7 +33,7 @@
  * Zéro dépendance React : testable en pur (`replayModel.test.ts`).
  */
 import { collectKillEvents, type KillEvent } from '@/features/match-view/_momentum'
-import { meXUIDOf, resolveXuidMeta, type XuidMeta } from '@/features/match-view/xuidMeta'
+import { meXUIDOf, resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow, MatchViewResponse } from '@/lib/api/types'
 
 import {
@@ -77,9 +77,9 @@ export interface ReplayModel {
    * Gamertag de chaque xuid de la feuille : les NOMS du fil, et le filtre des kills de la base
    * (`collectKillEvents` écarte un acteur absent de la feuille). JAMAIS L'ALLÉGEANCE : son
    * drapeau `ally` vient de la feuille, et la page Rejeu ne le lit pas — la sienne vient du film
-   * (`allegiance`).
+   * (`allegiance`). Le TYPE ne porte que le gamertag : relire le drapeau ne compile pas.
    */
-  identity: XuidMeta
+  identity: ReadonlyMap<string, { gamertag: string }>
   /**
    * ALLIÉ OU ADVERSE, LU DANS LE FILM (2026-10-06) : l'équipe du film de chaque joueur comparée à
    * celle du point de vue (`filmAllegiance.ts`). Construite UNE fois ici ; toutes les surfaces
@@ -146,11 +146,9 @@ export function buildReplayModel(
   // s'il y en a un, sinon celui de la page. Tout ce qui dépend d'un « moi » en dessous le
   // reçoit en paramètre — plus aucune surface ne relit `is_me` pour le redécouvrir.
   const subject = viewpoint ?? meXUIDOf(scoreboard)
-  // TROIS ARGUMENTS, ET LE TROISIÈME COMPTE : sans lui, vu depuis un adversaire, la ligne du
-  // joueur de la page resterait alliée EN PLUS du camp regardé (cf. `xuidMeta.test.ts`, cas c).
-  // Quand le sujet EST le joueur de la page, la table rendue est identique à celle d'avant le
-  // chantier — c'est ce que fixe `replayModel.test.ts`.
-  const identity = resolveXuidMeta(scoreboard, subject, subject)
+  // LA TABLE D'IDENTITÉ NE SERT QU'AUX NOMS (et au filtre des kills de la base) : celle de la page
+  // Match, à deux arguments. L'allégeance de la page Rejeu vient du film (`allegiance`, plus bas).
+  const identity = resolveXuidMeta(scoreboard, meXUIDOf(scoreboard))
   const marks = buildPlayerMarks(scoreboard, settings?.friendGamertags ?? [], subject)
 
   // LES DEUX HORLOGES NE COÏNCIDENT PAS : cf. `killFeedLogic` et `header.t0_ms`.

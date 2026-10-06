@@ -145,14 +145,26 @@ l'ÉVÉNEMENT du joueur regardé, pas une allégeance) ; les cinq graphes de la 
 
 ## Étape E6.5 — Garde-rails et documentation
 
-- [ ] E6.5.1 `replayCamps.guard.test.ts` : allowlist réduite aux lectures de `team_side` qui
+- [x] E6.5.1 `replayCamps.guard.test.ts` : allowlist réduite aux lectures de `team_side` qui
   NOMMENT, justifiée ; règle nouvelle : aucune lecture d'allégeance dans la table d'identité
   (`.get(…)?.ally`) sur le périmètre du rejeu.
-- [ ] E6.5.2 `noIsMeOutsideViewpoint.guard.test.ts` : exemptions périmées retirées.
-- [ ] E6.5.3 `xuidMeta` : régime à trois arguments (allié relatif au point de vue, rejeu seul)
+- [x] E6.5.2 `noIsMeOutsideViewpoint.guard.test.ts` : exemptions périmées retirées.
+- [x] E6.5.3 `xuidMeta` : régime à trois arguments (allié relatif au point de vue, rejeu seul)
   si plus aucune lecture ne le consomme — suppression avec ses tests (0 code mort).
-- [ ] E6.5.4 En-têtes et commentaires des modules touchés (la feuille ne fait que nommer).
+- [x] E6.5.4 En-têtes et commentaires des modules touchés (la feuille ne fait que nommer).
 - Gate E6.5 : garde-rails verts, mutation de contrôle (une lecture réintroduite fait rougir).
+  PASSÉ le 2026-10-06 : `tsc -b` 0 erreur ; vitest des quatre dossiers 295 fichiers / 4 075
+  tests verts (les cas du régime à trois arguments sont retirés avec lui) ; eslint `src` 0
+  erreur. ALLOWLIST : une seule entrée, le helper de libellé (`replayCamps.ts`, 2 lectures qui
+  NOMMENT) — les neuf entrées d'encre / d'allégeance sont sorties, chacune à zéro lecture. Règle
+  (c) neuve : aucune allégeance lue dans une table d'identité (`….get(xuid)?.ally`) ni par
+  `allyOfTeamId` sur le périmètre du rejeu et sa route, avec contre-épreuves (formes prises / non
+  prises). Mutations : une lecture de `team_side` ajoutée à `MatchPadControlSection` et un
+  `m.get(x)?.ally` ajouté à `ReplayTeamHeader` → (a) et (c) rouges. Garde `is_me` : une seule
+  exemption reste (`playerMarks.ts`, identité). Verrous de TYPE : `ReplayKill` sans `ally`
+  (`Omit<KillEvent, 'ally'>`), `ReplayModel.identity` et la prop `xuidMeta` du fil réduits au
+  gamertag. `resolveXuidMeta` revient à deux arguments (son régime « point de vue » n'avait plus
+  de lecteur) ; le modèle l'appelle comme la page Match.
 
 ## Étape E6.6 — Mesure au parc (126 artefacts, lecture seule)
 

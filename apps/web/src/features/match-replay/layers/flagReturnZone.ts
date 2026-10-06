@@ -38,10 +38,10 @@
  * drapeau neutre ne se renvoie pas, il revient tout seul.
  *
  * POURQUOI LE CALCUL EST ICI ET NON SUR LE SERVEUR. Compter les défenseurs exige de savoir à
- * quelle équipe appartient chaque joueur — et **l'équipe n'est pas dans le film** (`Track.Team`
- * vaut -1). Le constructeur du rejeu est hors ligne et n'ouvre aucune base ; la page, elle, a
- * déjà joint le tableau de bord pour colorer les camps. Le serveur publie donc la RÈGLE
- * (`doc.flagReturnZone` : un rayon et deux durées), le client compte et intègre.
+ * quelle équipe appartient chaque joueur — la VIE ne le dit pas (`Track.Team` vaut -1) ; c'est
+ * l'entrée de roster du film qui le porte, et la page l'a déjà jointe pour colorer les camps
+ * (`FilmAllegiance.membersOf`). Le serveur publie donc la RÈGLE (`doc.flagReturnZone` : un
+ * rayon et deux durées), le client compte et intègre.
  *
  * LE MODÈLE DONNE LA FORME, L'OBSERVATION DONNE LES BORNES. Quand le rejeu SAIT à quelle image le
  * drapeau est rentré (le lâcher est suivi d'un état `home`), la jauge est remise à l'échelle pour
@@ -125,7 +125,8 @@ export interface FlagReturnInput {
   frameIntervalMs: number
   posOf: (xuid: string, frame: number) => XY | null
   /**
-   * Les xuid des joueurs de l'équipe donnée, tels que le tableau de bord les nomme.
+   * Les clés des joueurs de l'équipe donnée, telles que le FILM les nomme (`ReplayPlayer.xuid`,
+   * celles des relectures de position — `FilmAllegiance.membersOf`).
    *
    * VIDE POUR UN DRAPEAU NEUTRE (équipe -1), et ce n'est pas un oubli : un drapeau que personne
    * ne possède n'a pas de défenseur. Il revient tout seul, à la minuterie, et le modèle le rend

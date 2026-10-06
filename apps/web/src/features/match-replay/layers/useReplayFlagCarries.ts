@@ -21,9 +21,9 @@
  * peint dans le MÊME `paint`, après le calque, et partage sa garde d'affichage.
  *
  * LE CAMP ALLIÉ EST UN NUMÉRO ICI, PAS UN XUID, exactement comme pour les zones : l'équipe du
- * drapeau vient du film, le point de vue de la page se lit sur la ligne « moi » du tableau de
- * bord (`team_side` écrit `t{N}`). Sans cette ligne, AUCUN camp n'est allié — le drapeau garde
- * l'encre neutre plutôt qu'une couleur devinée.
+ * drapeau vient du film, et son allégeance aussi (`FilmAllegiance.ofTeam`, comparée à l'équipe du
+ * film du joueur regardé). Quand le film ne situe pas ce joueur, AUCUN camp n'est allié — le
+ * drapeau garde l'encre neutre plutôt qu'une couleur devinée.
  *
  * L'IMAGE COURANTE EST LUE DANS UNE RÉFÉRENCE, jamais dans un état React (même règle et même
  * conséquence assumée que `useReplayWeaponPads`) : si l'état d'un drapeau change SOUS un pointeur

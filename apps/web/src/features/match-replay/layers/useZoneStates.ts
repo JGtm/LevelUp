@@ -8,9 +8,9 @@
  *
  * LE CAMP ALLIÉ EST UN NUMÉRO ICI, PAS UN XUID, et c'est ce qui rend ce hook nécessaire. Le
  * propriétaire d'une zone vient du film (`team_id` du registre, valeur du canal de propriété) ;
- * le point de vue de la page, lui, se lit sur la ligne « moi » du tableau de bord, dont le
- * `team_side` est écrit `t{N}`. Sans cette ligne, AUCUN camp n'est allié — et la zone garde son
- * encre neutre plutôt qu'une couleur devinée (même règle que `xuidMeta`).
+ * son allégeance aussi : `FilmAllegiance.ofTeam` le compare à l'équipe du film du joueur
+ * regardé. Quand le film ne situe pas ce joueur, AUCUN camp n'est allié — et la zone garde son
+ * encre neutre plutôt qu'une couleur devinée.
  *
  * LE RETOUR EST MÉMOÏSÉ, ET CE N'EST PAS DU CONFORT (revue R1, 2026-08-18). L'objet entre dans
  * les dépendances de `draw` chez l'appelant ; un littéral neuf à chaque rendu recuisait donc le

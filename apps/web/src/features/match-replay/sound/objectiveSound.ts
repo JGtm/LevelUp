@@ -36,9 +36,9 @@ export type ObjectiveSide = 'ally' | 'enemy' | 'unknown'
  * film donne pour une action d'objectif. Une statistique absente de cette table est MUETTE —
  * jamais le son d'une action voisine, même règle que partout ailleurs dans la chaîne sonore.
  *
- * CAMP INCONNU = SILENCE sur les actions qui ont deux variantes. Sans ligne « moi » au tableau
- * de score (match d'un autre joueur, tableau absent), jouer l'une des deux serait affirmer un
- * camp. Le rejeu se tait plutôt que de choisir — même règle que l'encre des calques, qui passe
+ * CAMP INCONNU = SILENCE sur les actions qui ont deux variantes. Sans allégeance du film (le
+ * film tait l'équipe de l'auteur ou celle du joueur regardé), jouer l'une des deux serait
+ * affirmer un camp. Le rejeu se tait plutôt que de choisir — même règle que l'encre des calques, qui passe
  * au neutre du thème dans ce cas.
  *
  * `flag_returns` N'A PAS DE VARIANTE D'ÉQUIPE DANS LE JEU, et c'est une mesure, pas un

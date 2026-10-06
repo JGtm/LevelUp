@@ -115801,4 +115801,6 @@ E6.3 (camps vus de la référence) — bandeau (camps du roster, côté par `ofT
 
 E6.4 (onglet Arsenal) — grille, barres et contrôle des socles encrés par l'allégeance du film vue du joueur de la page (`meXUIDOf`) ; exemptions `is_me` et entrées d'allowlist des deux sections retirées ; 295 fichiers verts.
 
-**Conclusion / prochaine étape** : E6.5 (garde-rails, régime à trois arguments de `resolveXuidMeta`, docs).
+E6.5 (garde-rails) — allowlist `team_side` réduite au helper de libellé ; règle (c) « aucune allégeance hors du film » ; `ReplayKill` sans `ally`, identité du modèle réduite aux noms ; régime à trois arguments de `resolveXuidMeta` retiré ; commentaires périmés (ligne « moi », côté de feuille qui encre) remis au vrai ; mutations rattrapées.
+
+**Conclusion / prochaine étape** : E6.6 (mesure au parc, témoins).

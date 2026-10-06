@@ -23,7 +23,6 @@ function kill(over: Partial<ReplayKill> = {}): ReplayKill {
     medals: [],
     tMs: 1_000,
     xuid: 'K',
-    ally: true,
     teamID: 0,
     weaponKey: 'hinf_br75',
     weaponLabel: 'BR75',

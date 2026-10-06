@@ -66,8 +66,15 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
  */
 export const MEDAL_ATTACH_MS = 500
 
-/** Un kill placé sur l'axe de temps du rejeu. */
-export interface ReplayKill extends KillEvent {
+/**
+ * Un kill placé sur l'axe de temps du rejeu.
+ *
+ * SANS `ally`, ET C'EST UN VERROU (2026-10-06) : le drapeau que la vue match cuit dans
+ * `KillEvent` vient de la feuille ; sur la page Rejeu, l'allégeance d'un acteur se lit dans le
+ * FILM (`FilmAllegiance.ofXuid`). Le retirer du type rend une relecture du drapeau impossible à
+ * compiler, au lieu de la laisser à la vigilance d'une relecture.
+ */
+export interface ReplayKill extends Omit<KillEvent, 'ally'> {
   /** Instant du kill sur l'AXE DU REJEU, en millisecondes depuis la frame 0 du document. */
   replayMs: number
   /** Les médailles décrochées par le tueur sur ce kill (±500 ms), dans l'ordre du fil. */

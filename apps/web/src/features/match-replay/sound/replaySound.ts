@@ -706,7 +706,7 @@ export function buildSoundTimeline(
     out.push(...abilityImpulseSoundEvents(doc))
   }
   // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
-  // résolveur de camp (appelant qui n'a pas le tableau de score), les seules actions qui
+  // résolveur de camp (appelant qui n'a pas l'allégeance du film), les seules actions qui
   // sonnent sont celles sans variante d'équipe — le rejeu ne devine jamais un camp.
   if (categories.objective) {
     out.push(...objectiveSoundEvents(doc, sideOfXuid))
