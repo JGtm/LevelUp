@@ -259,8 +259,16 @@ Chocoboflor 4 ; AUCUNE référence sans équipe du film.
     cité n'existait plus) ; signalé hors comptage et corrigé de même : doc d'`actor_team_id`
     (`lib/api/types.ts`), qui la disait encore servir à colorer le fil.
   - Écarté (inerte) : `actor_team_id: 1` dans une entrée de `killFeedLogic.test.ts`.
-- [ ] E6.7.4 Commits `fix(rejeu):`, push de `feat/rejeu-equipes-web`, CI verte.
-- [ ] E6.7.5 Entrée `.ai/thought_log.md`.
+- [x] E6.7.4 Commits `fix(rejeu):`, push de `feat/rejeu-equipes-web`, CI verte.
+  Commits du lot E6 sur `f8a14b3b9` : E6.1 à E6.6, puis `78824c8ad` (revue ronde 1) et
+  `42d0eac7d` (revue ronde 2). Après les corrections de la ronde 2 : `tsc -b` à froid 0 erreur,
+  vitest complet `--pool=forks` hors sandbox 854 fichiers / 9 102 tests verts (5 fichiers sautés :
+  `*.mesure` / `*.perf`, hors lot), eslint 0 erreur (26 avertissements préexistants), lint
+  couleurs et champs propres, knip-ratchet 0 / 0 / 0, crochets pre-push verts. Push
+  `5c931a66b..42d0eac7d` : CI `37516295615` verte (tous les jobs ; E2E Playwright sauté hors PR
+  vers `main`), gitleaks `37516294750` et Deploy Pre-Check `37516294572` verts. Pas de fusion
+  dans `feat/v75` (le superviseur s'en charge).
+- [x] E6.7.5 Entrée `.ai/thought_log.md`.
 
 ## Journal
 
