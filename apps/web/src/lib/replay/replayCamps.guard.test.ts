@@ -87,18 +87,24 @@ function code(source: string): string {
 }
 
 /**
- * (a) Une LECTURE de `team_side`, sous ses quatre formes : accès pointé (`r.team_side`,
- * `p.board?.team_side`), accès entre crochets (`r['team_side']`), déstructuration d'une variable
- * (`const { team_side } = r`) ou d'un paramètre (`({ team_side }) => …`). Une clé d'objet
- * littéral ou un `Pick<…, 'team_side'>` n'en sont pas. Limite assumée : un appel détourné du
- * helper lui-même (`campSideOf`) pour décider d'une appartenance échappe au grep — ce sont les
- * tests des surfaces (entrées muettes que la feuille connaît) qui le rattrapent.
+ * (a) Une LECTURE de `team_side`, sous ses quatre formes :
+ *   - l'accès pointé : `r.team_side`, `p.board?.team_side` ;
+ *   - l'accès entre crochets sur une VALEUR : `r['team_side']` (un type indexé
+ *     `MatchScoreboardRow['team_side']` commence par une majuscule et n'en est pas un) ;
+ *   - la déstructuration d'une variable : `const { team_side } = r`,
+ *     `for (const { xuid, team_side } of rows)` ;
+ *   - la déstructuration d'un paramètre, à n'importe quel rang : `({ team_side }) => …`,
+ *     `(n, { team_side }) => …`, `function f({ team_side }: Row) { … }`.
+ * N'en sont pas : une clé d'objet littéral (`{ team_side: 't0' }`, même passé en argument), un
+ * type (`Pick<…, 'team_side'>`, annotation `r: { team_side: string }`). Limite assumée : un appel
+ * détourné du helper lui-même (`campSideOf`) pour décider d'une appartenance échappe au grep — ce
+ * sont les tests des surfaces (entrées muettes que la feuille connaît) qui le rattrapent.
  */
 const LECTURES = [
   /\.team_side\b/g,
-  /\[\s*['"`]team_side['"`]\s*\]/g,
-  /\{[^{}]*\bteam_side\b[^{}]*\}\s*=(?!=)/g,
-  /\(\s*\{[^{}]*\bteam_side\b[^{}]*\}/g,
+  /(?<!\b[A-Z][\w$]*)\[\s*['"`]team_side['"`]\s*\]/g,
+  /\b(?:const|let|var)\s*\{[^{}]*\bteam_side\b[^{}]*\}\s*(?:=(?!=)|of\b)/g,
+  /[(,]\s*\{[^{}]*\bteam_side\b[^{}]*\}(?:\s*:[^,()]*)?\s*(?:,[^()]*)?\)\s*(?::[^=;{]*)?(?:=>|\{)/g,
 ]
 /** (b) Le retour de la section « sans équipe » dans le code : son libellé, ses clés. */
 const SANS_EQUIPE = [/sans équipe|no team/i, /\bteamUnknown\b/, /\bviewpointNoTeam\b/, /sans-equipe/]
@@ -157,9 +163,18 @@ describe('garde-rail : contre-épreuves des détecteurs', () => {
     expect(lectures("const s = row['team_side']")).toBe(1)
     expect(lectures('const { team_side } = p.board ?? {}')).toBe(1)
     expect(lectures('const { xuid, team_side: side } = row')).toBe(1)
+    expect(lectures('for (const { xuid, team_side } of scoreboard) parXuid.set(xuid, team_side)')).toBe(1)
     expect(lectures('rows.map(({ team_side }) => team_side)')).toBe(1)
+    expect(lectures('scoreboard.reduce((n, { team_side }) => n + (team_side ? 1 : 0), 0)')).toBe(1)
+    expect(lectures("function f({ team_side }: Row): string { return team_side ?? '' }")).toBe(1)
+    expect(lectures('rows.map((r) => ({ id: r.xuid, side: r.team_side }))')).toBe(1)
     expect(lectures("const r = { team_side: 't0' }")).toBe(0)
     expect(lectures("const rows = [{ xuid: 'a', team_side: 't0' }]")).toBe(0)
+    expect(lectures("rows.map((r) => ({ ...r, team_side: 't0' }))")).toBe(0)
+    expect(lectures('out.push({ xuid, team_side: side })')).toBe(0)
+    expect(lectures("type S = MatchScoreboardRow['team_side']")).toBe(0)
+    expect(lectures('const r: { team_side: string | null } = row')).toBe(0)
+    expect(lectures('const f = (r: { team_side: string }) => r')).toBe(0)
     expect(lectures("type R = Pick<MatchScoreboardRow, 'team_side'>")).toBe(0)
     expect(lectures('// le côté (`board.team_side`) ne fait que nommer\nconst x = 1')).toBe(0)
     expect(lectures('/** le côté `r.team_side` */\nconst x = 1')).toBe(0)
