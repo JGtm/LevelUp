@@ -305,6 +305,14 @@ func (pp *poseDesPlaces) placeParChainage(i, t int) *placeDeLaTable {
 	case pp.placesDeLEquipe(t) >= pp.capaciteDe(t):
 		return nil
 	}
+	return pp.siegeJamaisTenu(i)
+}
+
+// siegeJamaisTenu rend la premiere place, dans l'ordre de leurs numeros, que personne n'a tenue
+// (ni equipe ni occupation) et libre pendant les presences certaines de l'entree i ; nil : aucune.
+// C'est le dernier pas du repli de [poseDesPlaces.placeParChainage], qui ne le fait que si
+// l'equipe de l'arrivant est sous sa capacite.
+func (pp *poseDesPlaces) siegeJamaisTenu(i int) *placeDeLaTable {
 	for _, idx := range pp.ordre {
 		if p := pp.places[idx]; p.equipe == nil && len(p.occupations) == 0 && pp.libre(p, i) {
 			return p

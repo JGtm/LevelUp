@@ -28,7 +28,7 @@ func slotVacantBits(persoBits int) int { return slotVacantHorsPerso + persoBits 
 // enregistrement vacant : `sub+0xcb8` (64 bits) et le champ de 6 bits `sub+0xc35`, qui vaut brut
 // 1 (donc la valeur signee 0) la ou un slot occupe porte brut 0 (donc -1). C'est le seul champ
 // qui distingue un slot vacant d'un bloc de zeros.
-func slotVacant(d []byte, p, finBit int) bool {
+func slotVacant(d []byte, p, finBit int) bool { //nolint:gocyclo // un terme par champ de l'enregistrement de slot, lu a sa place et qui doit valoir zero : la complexite compte les champs de la grammaire, pas des chemins
 	if p < 0 || p+slotVacantHorsPerso > finBit {
 		return false
 	}

@@ -207,23 +207,18 @@ linters:
           - funlen
           - lll
 
-      # Decodeur de film : MEME exemption que `internal/analysis/` ci-dessus, transposee au
-      # nouveau chemin le 2026-09-12 (lot E.2). `filmdec` et `replay` vivaient sous
-      # `internal/analysis/` et en heritaient ; leur descente sous
-      # `internal/games/halo_infinite/film/` (ADR 0012) est un deplacement PUR, elle ne doit
-      # rien changer au regime de lint. Sans cette regle, le meme code se mettrait a rougir
-      # au seul motif d'avoir change de repertoire.
-      # LES COUCHES DE L'ADR 0034 AJOUTEES LE 2026-09-16 (lot 2.5) : `facts/`, `source/`,
-      # `grammar/` et `profile/` recueillent, par deplacements PURS, du code qui vivait sous
-      # `internal/analysis/` ou dans `filmdec` — donc sous l'une ou l'autre des deux exemptions
-      # ci-dessus. Sans cette ligne, le meme code se remettrait a rougir au seul motif d'avoir
-      # change de repertoire, exactement ce que le paragraphe precedent refuse.
-      # 2026-09-17 (lot 2.5.e) : les quatre couches passent sous `film/internal/` — meme regle,
-      # meme code, nouveau prefixe ; `replay` reste exportee au meme endroit.
+      # Decodeur de film (`replay` et les couches `facts`, `source`, `grammar` et `profile` de
+      # `film/internal/`, ADR 0034) : exempte de la SEULE longueur de ligne. Les lignes de plus
+      # de 220 caracteres y sont de la prose et non du code : les champs des registres de
+      # replis nommes (`facts/fallback/registre_*.go`, D-10 : mecanisme, cible et critere de
+      # retrait, un litteral chacun), des justifications de `//nolint` et des commentaires
+      # d'une ligne ; lll, signal contre les lignes de code pathologiques, n'y signalerait rien
+      # d'autre. La complexite (gocyclo) et la longueur des fonctions (funlen) y suivent le
+      # regime commun : l'utilisateur a decide le 2026-10-06 que le code neuf du decodeur n'en
+      # serait plus dispense, chaque fonction existante au-dessus des seuils etant simplifiee
+      # ou exemptee sur sa ligne `func` avec sa raison.
       - path: "internal/games/halo_infinite/film/(replay|internal/(facts|source|grammar|profile))/"
         linters:
-          - gocyclo
-          - funlen
           - lll
 
       # handlers : setup + sync complexes par conception (orchestration I/O)

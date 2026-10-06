@@ -112,17 +112,7 @@ func attributeSuccessions(ctx context.Context, tracks []Track, successions []Suc
 // remplaçant. -1 sinon (le second retour dit si un tir a départagé).
 func candidateIn(tracks []Track, origin, step uint64, fromUS, toUS int64,
 	filmIndex int, fire []FireEventRef) (int, bool) {
-	var cands []int
-	for i := range tracks {
-		if tracks[i].XUID != "" || tracks[i].Bot != "" {
-			continue
-		}
-		startUS := int64(origin) + int64(tracks[i].StartFrame)*int64(step)
-		if startUS < fromUS || startUS > toUS {
-			continue
-		}
-		cands = append(cands, i)
-	}
+	cands := candidatesDeLaFenetre(tracks, origin, step, fromUS, toUS)
 	if len(cands) == 1 {
 		return cands[0], false
 	}
@@ -161,6 +151,24 @@ func candidateIn(tracks []Track, origin, step uint64, fromUS, toUS int64,
 		return voted, true
 	}
 	return -1, false
+}
+
+// candidatesDeLaFenetre rend, dans l'ordre des tracks, les index des vies ANONYMES (ni xuid ni
+// bot) qui naissent dans [fromUS, toUS], en microsecondes de film — l'instant de naissance est la
+// frame de départ de la vie sur la grille `origin` + frame × `step`.
+func candidatesDeLaFenetre(tracks []Track, origin, step uint64, fromUS, toUS int64) []int {
+	var cands []int
+	for i := range tracks {
+		if tracks[i].XUID != "" || tracks[i].Bot != "" {
+			continue
+		}
+		startUS := int64(origin) + int64(tracks[i].StartFrame)*int64(step)
+		if startUS < fromUS || startUS > toUS {
+			continue
+		}
+		cands = append(cands, i)
+	}
+	return cands
 }
 
 // trackContains dit si l'instant tombe dans la fenêtre de la vie.

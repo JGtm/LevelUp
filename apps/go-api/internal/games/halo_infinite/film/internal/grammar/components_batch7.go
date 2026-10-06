@@ -108,7 +108,7 @@ func consumeTrackFrameComponent(br *Lecteur) {
 // rendre un agregat de tout cela obligerait a inventer une structure pour une donnee dont le
 // sens est inconnu. La sonde du lot F recoit donc un scalaire honnete plutot qu'un objet
 // arbitraire. Le nombre de bits consommes est INCHANGE.
-func consumeManagedSplashMessage(br *Lecteur) (r24 uint64) {
+func consumeManagedSplashMessage(br *Lecteur) (r24 uint64) { //nolint:gocyclo // transcription bit a bit de FUN_141085d50 : chaque test suit le format ecrit (bit de presence, boucle bornee par un compte lu R(3) ou R(2), etiquette R(3) de reference, champ conditionne par une valeur lue)
 	refElem := func() {
 		switch br.ReadBits(3) {
 		case 1:
