@@ -214,7 +214,7 @@ Chocoboflor 4 ; AUCUNE référence sans équipe du film.
   `MatchEquipmentUsageSection` (83 → 85 au premier relevé) et `useReplayTimeline` (86 → 87)
   resserrées sous leur dette (`filmAllegianceOf` accepte un document absent ; `teammatesOf`
   extrait).
-- [ ] E6.7.3 `adversarial-review` (contexte frais, ≤ 2 tours).
+- [x] E6.7.3 `adversarial-review` (contexte frais, ≤ 2 tours).
   Ronde 1 (2026-10-06, sur `f8a14b3b9..5c931a66b`) : deux relecteurs Opus aveugles l'un à
   l'autre, contrat du lot, lentilles « sémantique de l'allégeance + L5 » et « L3 + L6 ». 0 P0 et
   0 P1 annoncés ; 6 constats recevables, tous proposés P2, dont 1 trouvé par les deux (5
@@ -237,6 +237,28 @@ Chocoboflor 4 ; AUCUNE référence sans équipe du film.
     `ReplayCanvas.tsx`, `teamSeriesColor.ts`, `hillHoldLogic.ts`, `padSpawnSound.ts`.
   - R1-4 P2, préexistant : bots jamais localisés parmi les défenseurs d'une zone de retour →
     découverte E6-D4, non traitée.
+  Corrections : commit `78824c8ad` ; `tsc -b` à froid 0 erreur, vitest complet `--pool=forks`
+  854 fichiers verts (5 sautés : les `*.mesure` / `*.perf` hors lot), eslint 0 erreur,
+  knip-ratchet 0 / 0 / 0.
+  Ronde 2 (2026-10-06, sur `5c931a66b..78824c8ad` seulement, un relecteur Opus neuf, lecture
+  seule dans ce worktree ; lentilles L3 + L5 + L6) : 0 P0 et 0 P1 annoncés, 3 constats
+  recevables proposés P2 ; conditions vérifiées qui tiennent : 17. Tri, même règle qu'en
+  ronde 1 : 2 P1 (contre 3 en ronde 1, décroissance stricte), traités sans ronde 3 (borne du
+  skill), signalés au superviseur :
+  - R2-1 P1 (L6, test de non-régression de R1-2 non discriminant) : le cas « ANCRÉE SUR LA
+    PAGE » passait aussi si la page était lue sur la PREMIÈRE ligne de la feuille ou sur la
+    référence de l'allégeance. Remplacé par deux cas : « la PAGE est la ligne `is_me` » (film
+    qui situe `eux-1`, première ligne et point de vue, mais tait l'équipe de la page : victoire
+    en « Vainqueur », défaite muette) et « SANS SUJET » (page située, vue d'un adversaire).
+    Mutations : page = première ligne → le premier rouge ; sujet = première ligne → le second
+    (et « deux camps ») rouges ; source restaurée, `git diff` vide.
+  - R2-2 P1 (CLAUDE.md n° 17, commentaires rendus faux) : en-tête de `filmAllegiance.ts` (la
+    fin sonore ne reçoit pas une allégeance construite pour le joueur de la page : elle ne lit
+    que camps et équipes, et retrouve elle-même son joueur) ; `noIsMeOutsideViewpoint.guard`
+    (`endMatchSound.ts` ne reçoit plus son sujet : il passe la feuille à `meXUIDOf` ; le type
+    cité n'existait plus) ; signalé hors comptage et corrigé de même : doc d'`actor_team_id`
+    (`lib/api/types.ts`), qui la disait encore servir à colorer le fil.
+  - Écarté (inerte) : `actor_team_id: 1` dans une entrée de `killFeedLogic.test.ts`.
 - [ ] E6.7.4 Commits `fix(rejeu):`, push de `feat/rejeu-equipes-web`, CI verte.
 - [ ] E6.7.5 Entrée `.ai/thought_log.md`.
 

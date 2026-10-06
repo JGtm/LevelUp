@@ -143,10 +143,25 @@ describe('endMatchSoundSpec — la même lecture que l’écran de fin', () => {
     })
   })
 
-  it('ANCRÉE SUR LA PAGE : une allégeance vue d’un adversaire ne retourne pas l’issue annoncée', () => {
-    // La page (`moi`, camp 0) a gagné ; le rejeu est regardé depuis `eux-1` (camp 1), et c'est
-    // cette référence que porte l'allégeance. L'écran de fin suivrait ce point de vue ; la voix,
-    // elle, annonce l'issue de la PAGE — jamais « Défaite » sur un match qu'elle a gagné.
+  it('la PAGE est la ligne `is_me` de la feuille — ni sa première ligne, ni la référence de l’allégeance', () => {
+    // Le film situe `eux-1` (première ligne de la feuille, et point de vue que l'allégeance porte)
+    // mais tait l'équipe de la page (`moi`). Lue pour la page, la fin n'a pas de camp à habiller :
+    // seule la victoire sonne, en « Vainqueur » (`ffa`), et la défaite se tait. Lue pour `eux-1`,
+    // elle aurait deux camps et dirait « Victoire » ou « Défaite ».
+    const pageMuette = film([['moi', undefined], ['pote', 0], ['eux-1', 1], ['eux-2', 1]], 'eux-1')
+    expect(endMatchSoundSpec(pageMuette, FEUILLE, 2, 'fr')).toEqual({
+      outcome: 'win',
+      ffa: true,
+      locale: 'fr',
+    })
+    expect(endMatchSoundSpec(pageMuette, FEUILLE, 3, 'fr')).toBeNull()
+  })
+
+  it('SANS SUJET : regardée depuis un adversaire, la fin annonce toujours l’issue de la page', () => {
+    // La page (`moi`, camp 0) a gagné ; `eux-1` (camp 1) est la première ligne de la feuille et
+    // le point de vue que l'allégeance porte. Passer l'un ou l'autre en SUJET de la lecture
+    // retournerait l'issue en « Défaite » : l'harmonisation avec l'écran de fin, qui suit le
+    // point de vue, que la décision 3 interdit.
     const vuDeLAdversaire = film([['moi', 0], ['pote', 0], ['eux-1', 1], ['eux-2', 1]], 'eux-1')
     expect(endMatchSoundSpec(vuDeLAdversaire, FEUILLE, 2, 'fr')).toEqual({
       outcome: 'win',

@@ -21,8 +21,9 @@
  * # CE QU'IL DÉTECTE
  *
  * La LECTURE du drapeau (`x.is_me`, ou `is_me` déstructuré), pas sa mention. Une signature de
- * type (`Pick<MatchScoreboardRow, 'team_side' | 'is_me'>`) et un commentaire ne lisent rien :
- * `endMatchSound.ts` en porte une, et c'est très bien — il reçoit son sujet en paramètre.
+ * type (`Pick<MatchScoreboardRow, 'xuid' | 'is_me'>`) et un commentaire ne lisent rien :
+ * `endMatchSound.ts` en porte une, et c'est très bien — il passe la feuille à `meXUIDOf`, le
+ * foyer de « qui est le joueur de la page », sans relire le drapeau lui-même.
  *
  * # CE QU'IL N'INTERDIT PAS
  *

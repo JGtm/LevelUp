@@ -1833,9 +1833,9 @@ export interface MatchHighlightEvent {
   weapon_id: number | null
   /**
    * Équipe de l'acteur (le TUEUR sur un event `kill`), résolue côté backend depuis le
-   * scoreboard. Absent si l'acteur n'y figure pas. Sert à colorer le nom et l'icône avec
-   * la couleur d'IDENTITÉ de l'équipe (Eagle bleu / Cobra rouge), la même que l'en-tête
-   * du scoreboard — pas un allié/ennemi binaire.
+   * scoreboard. Absent si l'acteur n'y figure pas. Le rejeu s'en sert pour attribuer un frag
+   * à un camp (piste Dominance, `KillEvent.teamID`) ; elle ne colore rien — l'encre du fil
+   * vient de l'équipe du film.
    */
   actor_team_id?: number | null
   /**

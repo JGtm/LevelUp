@@ -16,9 +16,11 @@
  * # LA RÉFÉRENCE EST DONNÉE, JAMAIS DÉCOUVERTE ICI
  *
  * `buildFilmAllegiance` reçoit le xuid de BASE du joueur de référence : sur la page Rejeu, le point
- * de vue (`model.viewpoint`, le joueur de la page à défaut) ; pour la fin de partie sonore et les
- * tables de l'onglet Arsenal, le joueur de la page. Il le retrouve dans le film par sa ligne de
- * feuille (`board.xuid`, la jointure de `buildPlayers`) ou par sa clé.
+ * de vue (`model.viewpoint`, le joueur de la page à défaut) ; pour les tables de l'onglet Arsenal,
+ * le joueur de la page. Il le retrouve dans le film par sa ligne de feuille (`board.xuid`, la
+ * jointure de `buildPlayers`) ou par sa clé. La fin de partie sonore reçoit l'allégeance de la
+ * page Rejeu mais n'en lit que les camps et l'équipe d'un joueur (`VictoryFilm`) : son joueur,
+ * celui de la page, elle le retrouve elle-même dans la feuille (`endMatchSoundSpec`).
  *
  * # TROIS RÉPONSES : allié (`true`), adverse (`false`), SANS ENCRE DE CAMP (`null`)
  *
