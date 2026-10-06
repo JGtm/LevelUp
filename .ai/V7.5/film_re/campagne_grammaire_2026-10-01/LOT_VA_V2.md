@@ -46,6 +46,9 @@ est retirée : hors plan, non couverte par une décision (§14, correction 2).
   vérifications (a) à (g) de la représentation intermédiaire tenues.
 - Révisions : `grammar-2026-10-06.3` (`.2` pour la première version) ; `killsource`, `objectives`,
   `profile`, `source`, `SchemaVersion` constants.
+- **Base périmée** : `origin/feat/v75` a avancé à `8dfadd07e` (lot 2.7.a de la RI, canal des morts,
+  `object_deaths_march.go` supprimé) ; fusion d'essai à 19 conflits, abandonnée ; soumise au pilote
+  (§7.3). Les mesures de cette étape valent contre `65c99b669`.
 
 
 ## 1. Ce qui est lu dans le jeu
@@ -584,6 +587,31 @@ la fin de la session précédente, a été suspendu une nuit pendant le `replay-
 (`re_base_echec.log`, `re_base_tsv_echec/`) est écarté ; `replay-equiv` de la base a été relancé seul
 après la fin du script, une commande à la fois : 20 films, 0 échec (`re_base.log`).
 
+
+### 7.3 Troisième avance de `feat/v75` (`8dfadd07e`) : fusion NON faite, blocage soumis au pilote
+
+`git fetch` du 2026-10-06, après le commit de §7.2 : `origin/feat/v75` = `8dfadd07e` (« ri2(2.7.a) :
+clos après le lot vue A V1 »). Cette avance contient le lot 2.7.a de la RI (canal des morts), dont la
+consigne de l'étape disait qu'il ne serait pas fusionné avant ce lot ; l'ordre convenu entre la RI et
+la campagne le 2026-10-05 (`4cea0b0ab`) est V1, puis 2.7.a et 2.7.a0, puis LR, puis V2.
+
+Fusion d'essai (`git merge --no-commit`, puis `git merge --abort`, arbre rendu propre) : 19 conflits,
+dont `localisateur.go`, `localisateur_test.go`, `object_deaths.go`, `rev.go`, `rev_chronique.go`,
+`grammar_rev.golden`, les goldens de révision de `killsource` et `objectives`, `shapes.golden`, les
+fixtures web ; `object_deaths_march.go` est SUPPRIMÉ par `feat/v75` (la marche à huit vues, où V2 pose
+E via `DebutDeLaVueB`, est remplacée par le canal des morts, `canal_des_morts.go`, dont
+`debutRecupere` appelle `LocaliserBoucleDeRecords(…, SignaturePuisLargeurLibre)`). `feat/v75` porte
+désormais `grammar-2026-10-06.2`, la valeur de la première version de V2 (V2 est à `.3`).
+
+La fusion n'est pas mécanique : elle change le site de la vérification (d) (le canal des morts au lieu
+de la marche), les appelants permis de la lecture unique (archlint, mutation m09), les tests de V2 sur
+la marche, la révision, et la base de toutes les mesures (gate 2, `killsource`, `replay-equiv`, gate de
+corpus). Elle est soumise au pilote (séquence : V2 après 2.7.a et LR, consigne à reformuler pour le
+canal des morts). Lu dans le code, non mesuré : le canal ne récupère que les listes que la cuisson n'a
+pas localisées ; sous V2 la cuisson localise par E là où la vue A décide, et une récupération par
+`DebutDeLaVueB` y rendrait le localisateur seul (même vue A, même juge) — le canal n'aurait donc pas à
+changer de règle, seul son compte `repli_localisation_largeur_libre` baisserait. À mesurer après la
+fusion.
 
 ## 8. Mutations (`-overlay`, suite entière du paquet ; ROUGE attendu)
 
