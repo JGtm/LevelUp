@@ -86,10 +86,15 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
 
 ## Étape E4 — Garde-rail
 
-- [ ] E4.1 Test grep sous `features/match-replay` + `lib/replay` : (a) `.team_side` lu hors du
-  helper de libellé = échec, sauf allowlist explicite, justifiée, datée, comptée ; (b) retour de
-  « Sans équipe » / « No team » / `teamUnknown` / `viewpointNoTeam` / `sans-equipe` = échec.
-  Contre-épreuves.
+- [x] E4.1 `lib/replay/replayCamps.guard.test.ts` (sources hors tests de `features/match-replay`
+  + `lib/replay`, 271 fichiers ; commentaires ôtés) : (a) `.team_side` lu hors du helper de
+  libellé = échec, sauf allowlist explicite, justifiée, datée et COMPTÉE (cliquet dans les deux
+  sens) — 9 fichiers, tous de la famille encre / allégeance (point 6 du brief) ou le helper ;
+  (b) « sans équipe » / « no team » dans le code (casse ignorée, chaîne ou texte JSX),
+  `teamUnknown`, `viewpointNoTeam`, `sans-equipe` = échec, route de la page Rejeu comprise.
+  Contre-épreuves des deux détecteurs dans le fichier ; mutation sur pièces (une lecture injectée
+  dans `seatLogic.ts`, un libellé « Sans équipe » dans `i18n.ts`) : les deux tests rougissent,
+  fichiers restaurés.
 
 ## Étape E5 — Vérification et livraison
 
@@ -143,3 +148,4 @@ l'encre allié / adverse, hors périmètre). Les tuiles d'attente ont la boîte 
   `style` pour que la classe de boîte soit EXACTEMENT celle de la fiche. La hauteur de la ligne
   du nom est tenue par la même classe de nom (jsdom ne mesure pas la mise en page : contrôle
   visuel à l'utilisateur).
+- 2026-10-06 — E4 close (garde-rail 6/6 vert, eslint 0 problème, mutation vérifiée).
