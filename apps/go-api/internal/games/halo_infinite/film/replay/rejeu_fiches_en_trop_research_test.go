@@ -11,6 +11,7 @@ package replay
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -27,6 +28,7 @@ func TestRJEFichesEnTrop(t *testing.T) {
 		{"859da825", 3100, 3300, []int{2, 9}},
 		{"bf2a9f05", 950, 1900, []int{8}},
 		{"d1dfbc02", 5700, 5986, nil},
+		{"0d265ab0", 1700, 2400, []int{8}},
 	} {
 		r := rjeCharger(t, c.id, faitsDir, artDir, catalogue)
 		t.Logf("===== %s (frames %d..%d)", c.id, c.de, c.a)
@@ -260,4 +262,74 @@ func (r *rjeFilm) departProuve(entites []int) (int, bool) {
 		depart = max(depart, r.rjeFrameKF(rang))
 	}
 	return depart, depart >= 0
+}
+
+// TestRJEDepartsDeLaBase confronte, sur les films de RJE_FILMS, les departs en cours de partie que
+// la base date (`left_in_progress`, `last_leave_time` ; TSV RJE_PARTICIPATION extrait d'une COPIE de
+// la base : m, xuid, team_id, jip, lip, fin, join_ms, leave_ms, tp) aux presences publiees : combien
+// de presences d'humains courent au-dela du depart que la base date, cale sur le film par le pont
+// (`horlogeFilm = horlogeMatch + deathOffsetMs`). Mesure de D12, aucune decision.
+func TestRJEDepartsDeLaBase(t *testing.T) {
+	faitsDir, artDir := rjeEnv(t, "RJE_FAITS"), rjeEnv(t, "RJE_ARTEFACTS")
+	catalogue := rjeEnv(t, "RJE_CATALOGUE")
+	departs := rjeLireLesDeparts(t, rjeEnv(t, "RJE_PARTICIPATION"))
+	total, auDela, auDelaApresRetard := 0, 0, 0
+	for _, id := range strings.Split(rjeEnv(t, "RJE_FILMS"), ",") {
+		r := rjeCharger(t, id, faitsDir, artDir, catalogue)
+		if r.doc.Coverage == nil || r.doc.Coverage.Bridge.DeathOffsetMs == nil {
+			t.Logf("%s : calage du pont absent, film ignore", id)
+			continue
+		}
+		off := *r.doc.Coverage.Bridge.DeathOffsetMs
+		for _, e := range r.doc.Roster {
+			leave, ok := departs[id+"/"+e.XUID]
+			if !ok || len(e.Presence) == 0 {
+				continue
+			}
+			total++
+			f := frameBrute(r.h, uint64((leave+off)*1000))
+			fin := e.Presence[len(e.Presence)-1]
+			finMax := fin.To
+			if fin.ToMax != nil {
+				finMax = *fin.ToMax
+			}
+			if finMax > f {
+				auDela++
+			}
+			if finMax > f-rjeRetardDeLaBaseFrames {
+				auDelaApresRetard++
+			}
+			t.Logf("%s : %q depart de la base frame %d (avec retard %d), presence publiee jusqu'a %d (certaine %d)",
+				id, e.Name, f, f-rjeRetardDeLaBaseFrames, finMax, fin.To)
+		}
+	}
+	t.Logf("departs dates par la base : %d ; presences au-dela : %d ; au-dela apres correction du retard : %d",
+		total, auDela, auDelaApresRetard)
+}
+
+// rjeRetardDeLaBaseFrames : le retard median de la base sur le film (-22,3 s sur 45 relais,
+// successions.go), en frames de 100 ms.
+const rjeRetardDeLaBaseFrames = 223
+
+// rjeLireLesDeparts lit le TSV de participation : `film/xuid` -> leave_ms, pour les humains dont la
+// base dit le depart en cours de partie et sa date.
+func rjeLireLesDeparts(t *testing.T, chemin string) map[string]int64 {
+	t.Helper()
+	brut, err := os.ReadFile(chemin)
+	if err != nil {
+		t.Fatalf("participation : %v", err)
+	}
+	out := map[string]int64{}
+	for _, ligne := range strings.Split(string(brut), "\n") {
+		c := strings.Split(strings.TrimSpace(ligne), "\t")
+		if len(c) < 9 || c[4] != "true" || c[7] == "NULL" || strings.HasPrefix(c[1], "bid(") {
+			continue
+		}
+		var ms int64
+		if _, err := fmt.Sscan(c[7], &ms); err != nil {
+			continue
+		}
+		out[c[0]+"/"+c[1]] = ms
+	}
+	return out
 }

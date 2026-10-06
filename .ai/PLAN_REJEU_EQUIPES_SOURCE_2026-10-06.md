@@ -346,8 +346,7 @@ Relance du superviseur après la fusion du lot dans `feat/v75` (`b5c9489ef`) : m
 Cible 0 / 0 / 0 / 0 (`sansEquipe`, `sansPlace`, `placesEnTrop`, `depassements`) sur les 19 témoins, et au
 parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le film ne dit pas qui part.
 
-**État : CHECKPOINT** — prémisse de D2 contredite par le film, départ de D6 non écrit. Aucune ligne de
-production écrite.
+**État : D2 (P2) et D3 décidés, en cours ; D6 au CHECKPOINT** (l'API ne désigne aucun partant, D.6c).
 
 - [x] D.0 Départ : `git pull --ff-only` (avance rapide sur `b5c9489ef`). Compteurs de départ, 19 témoins
       en processus (faits au schéma des faits 6) : 0 / 3 / 3 / 60 ; `859da825` 0/1/1/4,
@@ -419,9 +418,30 @@ production écrite.
       parc : les faits du parc local sont au schéma des faits 5, refusés au schéma 6 ; une mesure en
       processus redécode les 126 films un par un (environ 30 min, pic proche de 1 Gio par film) : pas
       faite sans go.
-- [ ] D.6 Implémentation selon la décision du superviseur (D2, D3, D6), tests sur chaque cas, compteurs
-      sur les 19 témoins.
-- [ ] D.7 Relecture adversariale au premier plan, push, CI au premier plan, CR.
+- [x] D.5b Décisions du superviseur (2026-10-07) : D2 en P2, la cause racine au registre des reports pour
+      la session RI (constat, film, frames, aucune correction ici) ; D3 : go ; D6 : question posée à
+      l'utilisateur, puis sa décision — pas de déduction par le délai de réapparition, lire la donnée de
+      l'API (`domain.MatchPlayerFact.LeftInProgress` / `LeaveMatchMS`, calée par le pont), et CHECKPOINT
+      si elle ne désigne pas UN partant cohérent ; pas de mesure au parc ; `SchemaVersion` 81.
+- [x] D.5c Registre des reports : la cause racine de D2 (le balayage par ancrage publie des positions que la
+      marche ne contient pas) y est consignée, adressée à la session RI.
+- [x] D.6c D6, donnée de l'API vérifiée sur la COPIE de la base (racine de scratch) : pour `d1dfbc02`, les
+      8 humains ont `left_in_progress` faux, `last_leave_time` nul, `present_at_beginning` et
+      `present_at_completion` vrais, 575 s de jeu chacun (match de 606 s) ; aucune ligne pour
+      `343 Ham Sammich` (la base ne connaît pas le bot). L'API ne désigne PERSONNE : CHECKPOINT, rien
+      d'implémenté pour D6 (retour au superviseur avec les chiffres).
+- [x] D.6d D12, mesure seulement (instrument `TestRJEDepartsDeLaBase`, base copiée, 19 témoins, sans
+      redécodage) : 34 départs d'humains datés par la base ; calés par le pont, 2 présences publiées
+      courent au-delà (`9ffce8ef` Fxrdzy, et opresko sur `859da825`, par la vie fantôme de D2), 9 avec
+      la correction de -22 s des relais. Mais sur les départs, l'écart base - suppression lue par la
+      marche vaut 375 frames pour les 4 départs de `bf2a9f05` et 368 pour Witty Hole sur `859da825` :
+      le retard de la base sur un départ (environ 37 s, constant par film) n'est pas celui des arrivées.
+      Calée sans ce retard, la base place le départ de Witty Hole après la fin du film. Rien de
+      généralisé.
+- [ ] D.6a D2 (P2) : implémentation, tests, témoin.
+- [ ] D.6b D3 : implémentation, tests, témoin.
+- [ ] D.7 Compteurs des 19 témoins (attendu 0/1/1/40 sans D6), `SchemaVersion` 81, relecture adversariale
+      au premier plan, push, CI au premier plan, CR.
 
 ## Découvertes (notées, non traitées)
 
