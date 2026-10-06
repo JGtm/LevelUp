@@ -72,6 +72,9 @@ type FluxVueA struct {
 	// vue B chez l ecrivain. Vue arretee : le bit qui suit le genre du message qui l a arretee, ou
 	// la position ou le payload s est epuise.
 	Fin int
+	// PremierPresume : le rang, dans Genres, du premier genre dont la numerotation est presumee
+	// ([premierGenrePresume]) ; len(Genres) quand aucun ne l est.
+	PremierPresume int
 }
 
 // finDeTete rend le bit qui suit la tete : la continuation et, quand elle annonce un message, son
@@ -115,6 +118,7 @@ func lireLaVueA(pay []byte, debut int, bal ProfilDeBalayage, g grammaireDeLaVueA
 		}
 	}
 	out.Fin = br.BitPos()
+	out.PremierPresume = premierGenrePresume(g.classe, out.Genres)
 	return out
 }
 

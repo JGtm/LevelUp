@@ -30,6 +30,12 @@ mesure par une hypothèse écrite.
   code, les tests ou la doc, quatre soumis (constats 1, 4, 10, 13). Gate 2 tenu (+53 644 sains contre
   `fed1efed2`, aucun film en baisse) ; gate de corpus rc=1 avec un `FAUX` V-6 sur `084a804d`, non
   tranché, à admettre par le pilote ; mutations 6 / 6 ROUGES.
+- **Décisions du pilote (2026-10-06, §15.6, §16)** : `feat/v75` fusionné à `b033d30f0` ; la classe ÉGALE
+  exige la version majeure 0x29 que le jeu joue (`bcb6d393` HI_1_12_0 devient PRÉFIXE) ; D23 tenue
+  (killsource constant, mesuré sur 20 films, estimé sur le parc) ; `SchemaDesFaits` 4 → 5 ; la suite des
+  genres présumée est marquée dans `lecture.VueA` ; le `FAUX` V-6 de `084a804d` est instruit : trajet
+  vrai (pilotage puis abordage d'une Banshee), fausse alarme du banc. Gate 2 : +53 004 sains contre
+  `b033d30f0`, aucun film en baisse ; mutations 4 / 4 ROUGES.
 - **Corrections du contrôle indépendant (2026-10-06, §14)** : trois retenues sur pièces, aucune rejetée.
   Entrée de `.ai/thought_log.md` ajoutée ; trois formes Bond des écrivains (en-tête à id sur deux octets,
   fin de structure de base, borne de cinq octets de l'entier variable) désormais écrites par les
@@ -645,19 +651,18 @@ pendant les mutations), tête 128 765 ms ; pic max 321 → 315 Mio.
 | B2 saut à la fin de structure malgré un champ du chemin à lire | `TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu` |
 | RG index d'une région déclarée lu | `TestLesPositionsAIndexSeLisentSurLaRegionJouee` |
 
-### 15.6 Décisions laissées au pilote ou à l'utilisateur
+### 15.6 Décisions du pilote (2026-10-06) et leur application
 
-1. **Constat 1 (utilisateur)** — films de table ÉGALE dont la majeure n'est pas 0x29 (HI_1_12_0, 147
-   films) : (a) preuve paquet par paquet comme les PRÉFIXE, puis remesurer la carte v2 (`bcb6d393`) ; ou
-   (b) décision datée qui les couvre. La règle n'est pas changée.
-2. **Constat 10 (pilote)** — D23 : `killsource.Rev` constante sur une mesure de 20 films, le parc non
-   mesuré ; ou mesure d'un échantillon du parc à carte connue (base partagée lue sur une COPIE).
-3. **Constat 13 (pilote)** — monter `SchemaDesFaits`, ou amender sa doctrine (« une montée de
-   `GrammarRev` ou de `ProfileRev` suffit quand la section 2 s'élargit »), une fois pour V1 et V3.
-4. **Constat 4 (pilote / RI)** — marquer « présumée » la suite des genres de vue A d'un film PRÉFIXE dans
-   `lecture.VueA` (structure de la RI) ; aucun consommateur de production aujourd'hui.
-5. **Gate de corpus (pilote)** — rc=1 : `FAUX` V-6 de `084a804d` (§15.3, non tranché) et `[FILET]`.
-6. **Revue adversariale du lot** — faite (cette revue) ; aucune autre n'est lancée ici.
+Les décisions laissées ouvertes par la revue (constats 1, 4, 10, 13 et le gate de corpus) ont été
+prises par le pilote le 2026-10-06. Application : §16 (mesures, gates, pièces `scratchpad/cg3-final/`).
+
+| # | Décision du pilote | Application (fichier:ligne, tête du commit) | Preuve |
+|---|---|---|---|
+| 1 | Constat 1 : un film dont la version majeure de `chunk_00` n'est pas 0x29 suit la règle PRÉFIXE même à table égale (option (a)) ; seuls table ÉGALE **et** majeure 0x29 prennent E toujours | `grammar/vue_a_versions.go:41` (en-tête « la garde de version majeure », fondement `FUN_1428e219c`), `:88` `versionMajeureJouee = 0x29`, `:139` `tableDesGenresDuFilm` (seul site où la classe d'un film est décidée), `:152` `classeSousLaMajeure` ; `grammar/localisateur.go:40` ; ADR 0037 IR-6 (l. 235-239) ; chronique `grammar-2026-10-06.4` (`rev_chronique.go:349`). Relevé versé : `va_ghidra/FUN_1428e219c.c`, `va_ghidra/sonde_majeures_parc_2026-10-06.txt` | Lu dans le jeu : `if (*param_2 == 0x29) { … }` sinon `FUN_142988e98`. Tests : `vue_a_majeure_test.go:41` (vecteurs : table égale sous 0x28 → PRÉFIXE, sous 0x29 → ÉGALE, majeure non lue → PRÉFIXE ; bobines `bcb6d393` → PRÉFIXE, `fb1a1a72` → ÉGALE), `:80` (paquet où la marche depuis E bute : majeure 0x29 → E, majeure 0x28 → le localisateur à l'identique), `debut_par_vue_a_test.go:207` (vrai paquet 1:204 de `bcb6d393` : ÉGALE partirait de 5605, la classe du film exige la preuve). Mutations M1 (garde retirée) et M2 (majeure non lue acceptée) ROUGES (§16.6) |
+| 2 | Constat 10, D23 : `killsource.Rev` constante, « mesuré sur 20 films (19 témoins + `1c4c63c2`), estimé sur le parc » | `facts/killsource/rev_chronique.go:465` : COMPLÉMENT réécrit — « DÉCISION D23 DU PILOTE DU 2026-10-06, MESURÉE SUR 20 FILMS ET ESTIMÉE SUR LE PARC » ; classes du parc corrigées après la décision 1 (1 401 HI_1_13_0 ÉGALE, 147 HI_1_12_0 désormais PRÉFIXE, sur 1 657) | Formulation vérifiée exacte : 19 témoins comptés dans `config/replay_corpus.toml` (`[[temoin]]`) + `1c4c63c2` ; mesure refaite contre `b033d30f0` après les décisions : 19 JSON identiques à l'octet, `c75f33b8` seul `enregistrements_lus_par_les_deux_voies` 5 → 6 (non persisté) ; les quatre goldens de `TestGoldenFilms` ne changent que par des compteurs de diagnostic (§16.3) |
+| 3 | Constat 13 : la doctrine de `SchemaDesFaits` est tenue, il monte d'un cran pour la section 2 | `replay/filmfacts_fichier.go:170` (entrée SCHEMA 5 : V1 `SimulationDeLEnregistreur`, `OptionsDePartieLues`, V3 `Variante` ; justification), `:180` `SchemaDesFaits = 5` ; graines `replay/testdata/fuzz/FuzzDecodeFilmFactsFile/seed_00..03` régénérées (`-update-graines-faits`) | `TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete` et la suite `replay` vertes (G-film) ; les graines portent l'octet de schéma 5 |
+| 4 | Constat 4 : marquer « présumée » la suite des genres d'un film PRÉFIXE, si c'est un petit ajout à `lecture.VueA` | Fait : un champ `PremierPresume uint16` (`lecture/paquet.go:201-206`, logé dans le rembourrage : taille de `VueA` inchangée), calculé par `premierGenrePresume` (`vue_a_versions.go:164`) à la fin de `lireLaVueA` (`vue_a_lecture.go:121`), rangé par `rangerLaVueA` (`distribuer_tetes.go:38`). Règle : sur un film PRÉFIXE, le rang du premier genre au-delà du 107 (`dernierGenreAVersionDistinctive`, dernier genre dont la version native diffère de 1) ; `len(Genres)` sinon. Aucun bit lu ne change | `vue_a_majeure_test.go:111` (zoom puis genre 110 : rang 1 sous PRÉFIXE, 2 sous ÉGALE ; la constante 107 recalculée sur la table native). Mutations M3, M4 ROUGES. Deux fichiers de la RI touchés (`lecture/paquet.go`, `distribuer_tetes.go`) : à relire par levelup-57 |
+| 5 | Instruire le `FAUX` V-6 de `084a804d` | Rien corrigé (consigne) | Verdict : **les deux lectures sont vraies, le `FAUX` est une fausse alarme du banc** (§16.5) |
 
 ### 15.7 Fichiers
 
@@ -667,3 +672,159 @@ Production : `grammar/film_variante_de_partie.go` (constat 11), `grammar/translo
 `debut_par_vue_a_test.go` (6, 9, 12), `film_variante_de_partie_test.go` (11), `vue_a_execution_test.go`
 et `vue_a_variante_test.go` (5). Sondes : `va_v2_research_test.go` (porté), `va_v2_corr_research_test.go`
 (retirée), `va_revue_canal_research_test.go` (neuve). ADR 0037 (7). Révisions et goldens (8, 10, 14).
+
+## 16. Décisions du pilote : mesures et gates (2026-10-06, base `b033d30f0`)
+
+`git fetch` du 2026-10-06 : `origin/feat/v75` = `b033d30f0` (lot « séries temporelles, onglet Usages =
+Emprise » ; un seul fichier du film, `replay/usage_summary_families.go`), au-delà de `f8a14b3b9` :
+**fusionné d'abord** (`a01e95cdc`, sans conflit). Mesures contre `b033d30f0` (`git archive`), binaires
+des deux arbres, une commande go à la fois, films lus en place. Pièces : `scratchpad/cg3-final/`.
+
+### 16.1 Révisions
+
+- `grammar.Rev` : **`grammar-2026-10-06.4`, gardé** — rang porté par ce seul lot (grep sur toutes les
+  branches locales et distantes et sur les 23 worktrees), jamais fusionné ; l'empreinte change
+  (décisions 1 et 4), golden régénéré par `-update-grammar-rev`, entrée de chronique complétée.
+- `profile.Rev` (`profile-2026-10-06.3`) : inchangé. La version majeure est lue par le profil existant
+  (`profile.HighlightProfile`, même lecture `chunk_00 + 0`) : aucune source de `profile` ne change.
+- `killsource.Rev`, `objectives.Rev` : constantes (décision 2) ; complément de killsource réécrit.
+- `SchemaDesFaits` : 4 → **5** (décision 3). `replay.SchemaVersion` (79), `source.Rev` : inchangés.
+
+### 16.2 Carte v2 (gate 2 officiel, `-mpp-declare`, `integ2/gate2.awk`) : aucun film en baisse
+
+| Film | Sains base → tête | Net | Utiles sains base → tête | Net utiles | Sains perdus (non fermés) |
+|---|---|---|---|---|---|
+| `bcb6d393` | 5 880 → 6 479 | +599 | 35 502 → 40 624 | +5 122 | 0 |
+| `fb1a1a72` | 43 456 → 46 308 | +2 852 | 325 815 → 351 322 | +25 507 | 4 |
+| `d9781168` | 26 311 → 35 773 | +9 462 | 180 844 → 263 865 | +83 021 | 65 |
+| `c75f33b8` | 23 867 → 27 272 | +3 405 | 153 973 → 180 599 | +26 626 | 3 |
+| `bf15f7ab` | 28 602 → 29 913 | +1 311 | 216 098 → 228 132 | +12 034 | 2 |
+| `51ebbc0f` | 20 442 → 26 877 | +6 435 | 140 632 → 197 932 | +57 300 | 7 |
+| `084a804d` | 23 784 → 26 014 | +2 230 | 638 098 → 705 382 | +67 284 | 0 |
+| `0797ce72` | 19 155 → 20 772 | +1 617 | 159 929 → 176 835 | +16 906 | 4 |
+| `111fa685` | 11 955 → 13 263 | +1 308 | 244 820 → 278 281 | +33 461 | 0 |
+| `e5adf7b2` | 12 264 → 13 153 | +889 | 302 195 → 326 339 | +24 144 | 0 |
+| `60ae07c4` | 34 574 → 34 574 | 0 | 253 813 → 253 813 | 0 | 0 |
+| `a349fea8` | 427 → 427 | 0 | 3 654 → 3 654 | 0 | 0 |
+| `a521164d` | 693 → 693 | 0 | 78 → 78 | 0 | 0 |
+| `11de8353` | 13 831 → 14 893 | +1 062 | 268 308 → 294 393 | +26 085 | 0 |
+| `50247b26` | 139 → 139 | 0 | 274 → 274 | 0 | 0 |
+| `bfecd02b` | 27 667 → 31 067 | +3 400 | 239 062 → 276 442 | +37 380 | 7 |
+| `4f77afc1` | 24 607 → 31 355 | +6 748 | 623 437 → 832 298 | +208 861 | 99 |
+| `396cfc92` | 23 130 → 25 954 | +2 824 | 169 502 → 196 024 | +26 522 | 94 |
+| `f75e7053` | 23 673 → 24 517 | +844 | 162 137 → 168 248 | +6 111 | 59 |
+| `1c4c63c2` | 34 678 → 42 696 | +8 018 | 704 007 → 928 344 | +224 337 | 0 |
+| **corpus** | 399 135 → **452 139** | **+53 004** | 4 822 178 → **5 702 879** | **+880 701** | 344 |
+
+Base identique à celle de `fed1efed2` (399 135 / 4 822 178) : `feat/v75` n'a rien changé au décodage.
+Effet de la décision 1, mesuré : seul `bcb6d393` (HI_1_12_0) des 20 films a une table égale sous une
+autre majeure ; son gain passe de +1 239 (classe ÉGALE, §15.3) à **+599** (classe PRÉFIXE, E seulement
+prouvé), et ses 4 sains perdus disparaissent ; les 19 autres films sont identiques au §15.3. Les 344
+sains perdus restants sont tous « devenus non fermés », sur des films en hausse (même famille qu'au
+§15.3). `mpp_declare.tsv` et `fermeture_chunk3.tsv` identiques.
+
+Performance (gate 4, mesurée, non attribuée) : somme des durées 84 239 → 114 605 ms, pic max 327 → 493
+Mio (`a349fea8`, film sans section d'identification, dont la vue A ne se lit pas). Rejouée deux fois
+sur trois films : 1re passe 221 → 320 Mio, 2e passe 222 → 223 Mio sur `a349fea8` — bruit d'exécution.
+
+### 16.3 `killsource` (gate 3) et `TestGoldenFilms`
+
+`cmd/killsource json`, 20 films, binaire de `b033d30f0` contre binaire de la tête : rc=0 partout,
+**19 identiques à l'octet** (`bcb6d393` compris), `c75f33b8` ne diffère que par
+`enregistrements_lus_par_les_deux_voies` 5 → 6. `TestGoldenFilms`
+(`KILLSOURCE_FIXTURES=…/film_chunks`) : vert sur la base, rouge sur la tête avant régénération — les
+goldens des quatre films de référence n'avaient pas été rejoués depuis V2 (le test exige les films).
+Diff complet après `-update` : `000d5950` paquets à événements localisés 3 423 → 3 508 / 3 508,
+`78919882` 4 816 → 5 025 / 5 027, `9b191a7f` 5 525 → 5 713 / 5 714, `fccc61cd` 4 686 → 4 839 / 4 839 et
+lus par les deux voies 100 → 101 (accord 91, désaccord 0). Aucune ligne de mort, de valeur ni de voie ;
+`cumul.golden` inchangé. Suite `killsource` avec les films : `ok` (103 s).
+
+### 16.4 Gate de corpus (gate 6)
+
+`replay-corpus-gate --reference=base --base=b033d30f0 --keep-work` : **rc=1**, banc de vérité **18 / 19
+« ok », 0 `MANQUE`, 1 `FAUX`** : `084a804d` V-6 1 → 2 (`vehicule 913 passager 571 @9187`), le même qu'au
+§15.3. 688 lignes `[FILET]` (postures 604, rafales 25, couverture 53, véhicules 6). `bcb6d393` : ok,
+P-1 5 880 → 6 483. Télémétrie : `grammarRev` `.3` → `.4`, `profileRev` `.2` → `.3`.
+
+### 16.5 Le `FAUX` V-6 de `084a804d` : instruction et verdict
+
+Pièces : documents cuits par le gate (cuisson de production, `replaybuild`, profil de balayage
+calibré par killsource), `gate_work/cuisson-base/…/084a804d.json` (base) et
+`gate_work/data/cache/replays/halo_infinite/084a804d.json` (tête) ; extraction `jq`, distances `awk`
+(`cg3-final/v6/dist.tsv`). Image = 100 ms (`frameIntervalMs`) ; l'image 8868 est l'instant
+13 180,918 682 s de la lecture d'occupation.
+
+Ce qui diffère (mesuré) : les échantillons du véhicule 913 et les pistes des slots 570 et 571 sont
+**identiques** dans les deux documents ; seuls les trajets changent. Le véhicule 913 est une
+**Banshee** (`family`, `chassis c6e79dcc`, apparue à (32,57 ; −11,76 ; 93,6), détruite à 9325). Les
+lectures d'occupation du lot (parent 921, §15.3) tombent à l'image près sur les bornes des trajets ajoutés
+(13 180,92 s → 8868, 13 208,88 s → 9148, 13 212,75 s → 9187).
+
+| Trajet du véhicule 913 | Base | Tête |
+|---|---|---|
+| slot 571, siège 0, 8868 → 9148 | absent | **ajouté** (attache lue à 13 180,92 s, liste récupérée au même début qu'en base) |
+| slot 570, siège 1, 9122 → 9154 ; siège 0, 9154 → 9213 | présent | présent |
+| slot 571, siège 2, 9187 → 9219 | absent | **ajouté** (attache lue à 13 212,75 s, trame partie de E) |
+| slot 571, siège 0, 9219 → 9270 | présent | présent |
+
+Oracles (mesurés sur les documents) :
+
+1. **Le trajet 8868 → 9148 est vrai.** À 8868, la Banshee est immobile sur son point d'apparition
+   (déplacement < 0,03 m par image jusqu'à 8876) et le slot 571 est à **2,48 m** d'elle ; sa piste
+   s'arrête après 8869 et reprend à 9147 à **1,90 m** de la Banshee, l'image de sa descente lue
+   (13 208,88 s). Entre les deux, la Banshee décolle (z 93,5 → 106,8) et vole à ≈ 12,7 m/s pendant
+   25 s. Dans la base, **personne** ne la pilote de 8877 à 9122 : un aéronef qui vole sans pilote. La
+   piste d'un occupant assis s'interrompt toujours ainsi dans ces documents : celle du slot 570 se tait
+   pendant ses trajets de 9122 à 9213 et reprend à 9212 à 2,80 m.
+2. **Le trajet au siège 2, 9187 → 9219, est vrai : c'est un abordage.** La Banshee a un seul siège de
+   pilote ; les sièges 1 et 2 sont des places d'abordage. Le slot 570 l'aborde par le siège 1 à 9122
+   (à 2,62 m), y reste **32 images**, prend le siège 0 à 9154 ; le pilote 571 en descend à 9148
+   (éjecté : sa piste reprend à 1,90 m et s'éloigne jusqu'à 10,25 m à 9164). Le slot 571 revient : 2,04 m
+   à 9181, puis l'attache au siège 2 à 9187, y reste **32 images** — la même durée que l'abordage du
+   570 —, et prend le siège 0 à 9219 ; le 570 en descend à 9213 (sa piste reprend à 9212 à 2,80 m puis
+   s'éloigne). Sa piste s'arrête après 9187, comme celle de tout occupant assis.
+3. **Pourquoi le banc le juge loin.** V-6 compare la position du passager au premier échantillon du
+   trajet : à 9187, le point de la piste du 571 est à **5,50 m** de la Banshee, qui file à **11,2 m/s**
+   (1,12 m entre 9186 et 9187) ; les distances avant l'attache sont 2,04 / 2,37 / 2,36 / 3,05 / 3,43 /
+   4,39 / 5,50 m de 9181 à 9187 : le joueur court après l'aéronef qui s'éloigne, et l'abordage le
+   rattrape. Le seuil `rayonTrajetM` (3 m, « rayon d'ancrage d'un trajet mesuré par le producteur »)
+   n'a pas été mesuré sur un abordage d'aéronef en vol. Que 5,50 m soit à portée d'abordage d'une
+   Banshee est **estimé** (la portée n'est pas lue dans le jeu) ; la vérité du trajet, elle, tient aux
+   oracles 1 et 2, indépendants de ce seuil.
+
+**Verdict : les deux lectures sont vraies ; le `FAUX` V-6 est une fausse alarme du banc** (seuil de
+3 m appliqué au premier échantillon d'un abordage d'aéronef en mouvement). La base, elle, publiait un
+vol de 25 s sans pilote et un abordage manquant. Rien n'est corrigé (consigne) ; découverte
+D-VAV3-6 ci-dessous.
+
+### 16.6 Gates (sorties exactes ; pièces `cg3-final/`)
+
+1. `gofmt -l ./internal/ ./cmd/` : vide.
+2. `go vet ./...` : rc=0 ; `go vet -tags=research ./internal/games/halo_infinite/film/... ./internal/replaybuild/...` : rc=0.
+3. `go test ./internal/archlint/ -count=1` : `ok … 41.832s`.
+4. G-film (`film/...`, `replaybuild/...`, `sync/killcollector/...`, `-count=1 -timeout 30m`) : rc=0,
+   21 paquets `ok` (`grammar` 60,334 s, `replay` 32,772 s) ; puis `killsource` avec les films (après
+   régénération des goldens de `TestGoldenFilms`) : `ok` (103 s).
+5. `golangci-lint run ./internal/games/halo_infinite/film/...` : `0 issues.` ; recette CI
+   `--new-from-merge-base=origin/main ./...` : `0 issues.`
+6. Carte v2 : §16.2. `killsource` : §16.3. Gate de corpus : §16.4.
+7. Mutations (`-overlay`, suite entière du paquet `grammar`, `mutations.txt`) : **4 / 4 ROUGES**.
+
+| Mutation | Tests rouges |
+|---|---|
+| M1 garde de majeure retirée de `classeSousLaMajeure` | `TestLaClasseDUnFilmSuitLaVersionMajeureQueLeJeuJoue`, `TestUnFilmDUneAutreMajeureEstProuvePaquetParPaquet`, `TestUnVraiPaquetNePartDeLaFinDeSaVueAQueProuvee` |
+| M2 majeure non lue acceptée | `TestLaClasseDUnFilmSuitLaVersionMajeureQueLeJeuJoue` |
+| M3 `premierGenrePresume` ne présume rien | `TestLaSuiteDesGenresDitOuSaNumerotationEstPresumee` |
+| M4 rang non rangé dans `lecture.VueA` | `TestLaSuiteDesGenresDitOuSaNumerotationEstPresumee` |
+
+### 16.7 Découvertes et écarts
+
+- **D-VAV3-6** — V-6 (`replayverite/seuils.go`, `rayonTrajetM` = 3 m) juge loin le premier échantillon
+  d'un abordage d'aéronef en vol (`084a804d`, 5,50 m à 11,2 m/s). Une règle générale (portée
+  d'abordage lue dans le jeu, ou seuil qui tient compte de la vitesse du véhicule à l'attache) relève
+  d'une décision ; non traité.
+- **E-5 — `TestGoldenFilms` de killsource non rejoué par V2 et V3** : rouge sur la tête avant ce lot
+  (compteurs de diagnostic seulement, §16.3), régénéré ici. Le test exige les films (`KILLSOURCE_FIXTURES`)
+  et la CI ne le joue pas.
+- `TestUnVraiPaquetPartDeLaFinDeSaVueA` renommé `TestUnVraiPaquetNePartDeLaFinDeSaVueAQueProuvee` : sa
+  prémisse (`bcb6d393` ÉGALE) est fausse après la décision 1.

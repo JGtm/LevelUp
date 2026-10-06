@@ -198,6 +198,12 @@ type VueA struct {
 	Debut, Bits uint32
 	// Etat dit jusqu'où la marche l'a lue.
 	Etat EtatDeVue
+	// PremierPresume est le rang, dans Genres, du premier genre dont la numérotation est PRÉSUMÉE
+	// et non lue : sur un film dont la fin de vue A ne vaut que prouvée (classe PRÉFIXE), le premier
+	// genre au-delà du dernier dont la version native diffère de 1 (`grammar/vue_a_versions.go`).
+	// Ce genre et ceux qui le suivent sont lus sous cette présomption. len(Genres) quand aucun ne
+	// l'est — la valeur zéro d'une vue vide.
+	PremierPresume uint16
 	// Genres sont les sélecteurs `R(7)` des messages lus, dans l'ordre, puis celui du message qui a
 	// arrêté la lecture ; le premier est le genre de la tête.
 	Genres []uint8

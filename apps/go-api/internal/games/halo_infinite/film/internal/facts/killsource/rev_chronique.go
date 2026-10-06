@@ -464,25 +464,29 @@ package killsource
 //
 // COMPLEMENT DU 2026-10-06 (lot VA de la campagne de grammaire, etapes V2 et V3 : la fin de la vue A
 // fixe le debut de la vue B, la variante de partie du film decide les genres 85 et 116 ; fusion de
-// `feat/v75` a `fed1efed2` et corrections de la revue ; REVISION CONSTANTE SUR UNE MESURE DE 20 FILMS,
-// DECISION D23 SOUMISE AU PILOTE) : une source de la couche change (`walk.go` part de
-// [grammar.DebutDeLaVueB] ; la calibration porte la grammaire de vue A du film sous la carte du match,
+// `feat/v75` a `fed1efed2` puis `b033d30f0`, corrections de la revue et decisions du pilote du
+// 2026-10-06 ; REVISION CONSTANTE, DECISION D23 DU PILOTE DU 2026-10-06, MESUREE SUR 20 FILMS ET
+// ESTIMEE SUR LE PARC) : une source de la couche change (`walk.go` part de [grammar.DebutDeLaVueB] ;
+// la calibration porte la grammaire de vue A du film sous la carte du match,
 // [grammar.VueADuFilmSousCarte]) et les VALEURS de `grammar.Rev` (`grammar-2026-10-06.4`) et de
 // `profile.Rev` (`profile-2026-10-06.3`) montent, donc l empreinte. Sur la branche du lot seule, les
 // etapes V2 et V3 avaient porte `grammar-2026-10-06.2` a `.4` et `profile-2026-10-07` : rangs jamais
-// fusionnes, reunis a la fusion. La marche part de la fin de la vue A quand elle decide (film a table
-// EGALE ; film a table PREFIXE si la marche depuis elle ferme le paquet), sinon du localisateur,
-// inchange.
+// fusionnes, reunis a la fusion. La marche part de la fin de la vue A quand elle decide (film de
+// classe EGALE : table native sous la version majeure 0x29 que le jeu joue ; film de classe PREFIXE,
+// table prefixe ou table egale sous une autre majeure : si la marche depuis elle ferme le paquet),
+// sinon du localisateur, inchange.
 //
 // MESURE : `cmd/killsource json` sur les 19 temoins de `config/replay_corpus.toml` et `1c4c63c2`
-// (carte Refuge), binaire de `fed1efed2` contre binaire du lot : aucune mort, aucune valeur, aucune
-// voie ne change ; 19 films identiques a l octet, et sur `c75f33b8` le seul compteur de diagnostic
+// (carte Refuge), binaire de `fed1efed2` contre binaire du lot, puis binaire de `b033d30f0` contre
+// binaire du lot apres les decisions du pilote : aucune mort, aucune valeur, aucune voie ne change ;
+// 19 films identiques a l octet, et sur `c75f33b8` le seul compteur de diagnostic
 // `concordance.enregistrements_lus_par_les_deux_voies` (`Stats.Redundant`, non persiste) passe de 5 a
 // 6. CE QUI N EST PAS MESURE : l entree de la marche change bel et bien (debuts de vue B, compteur
-// ci-dessus), et le parc local compte 1 401 films HI_1_13_0 et 147 HI_1_12_0 de classe EGALE sur
-// 1 657 ; que chaque ligne de `match_kill_events` deja ecrite sous `killsource-2026-09-27` soit celle
-// que ce code ecrirait est MESURE sur 20 films et ESTIME sur le parc. Les lignes en base ne portent que
+// ci-dessus), et le parc local compte, sur 1 657 films a section d identification, 1 401 films
+// HI_1_13_0 de classe EGALE et 147 HI_1_12_0 de classe PREFIXE (table egale, majeure 0x28) ; que
+// chaque ligne de `match_kill_events` deja ecrite sous `killsource-2026-09-27` soit celle que ce code
+// ecrirait est MESURE sur 20 films et ESTIME sur le parc. Les lignes en base ne portent que
 // `decoder_rev = killsource.Rev` : une ligne que ce lot changerait ne serait jamais recalculee. La
-// revision reste et aucun backlog n est ouvert sur cette mesure ; la decision D23 (pas de montee, pas
-// de backlog) est a prendre explicitement par le pilote, en connaissance de ce risque. Golden regenere
-// a revision constante. Mesures : `campagne_grammaire_2026-10-01/LOT_VA_V2.md`, `LOT_VA_V3.md` (§15).
+// revision reste et aucun backlog n est ouvert : c est la decision D23 du pilote du 2026-10-06, prise
+// en connaissance de ce risque. Golden regenere a revision constante. Mesures :
+// `campagne_grammaire_2026-10-01/LOT_VA_V2.md`, `LOT_VA_V3.md` (§15, §16).

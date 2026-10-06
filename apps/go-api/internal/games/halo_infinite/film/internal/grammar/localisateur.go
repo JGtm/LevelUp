@@ -25,7 +25,8 @@ package grammar
 // lecteur (`FUN_142987460`) lit la vue A jusqu a ce 0 (`FUN_14076a1c4`) et commence la vue B au bit
 // suivant. Il ne cherche rien. Quand la lecture unique de la vue A ([lireLaVueA]) atteint le
 // terminateur, sa fin E EST le debut de la vue B, et [debutParLaVueA] decide, selon la classe de la
-// table des genres du film ([classeDesGenres] ; decisions de l utilisateur du 2026-10-04) :
+// table des genres du film sous sa version majeure ([tableDesGenresDuFilm] ; decisions de
+// l utilisateur du 2026-10-04 et du pilote du 2026-10-06) :
 //
 //	EGALE     E, toujours — y compris quand la signature du slot 123 trouverait une autre
 //	          position, et quand la marche depuis E bute sur un composant que le decodeur ne porte
@@ -36,11 +37,11 @@ package grammar
 //	          differe, mesure) ; sinon le chemin d avant, a l identique ;
 //	ILLISIBLE E n existe pas.
 //
-// La classe se lit sur la table des genres SEULE. Le jeu ne joue un film que sous sa version majeure
-// 0x29 (`FUN_1428e219c`) : les films HI_1_12_0 (majeure 0x28) sont EGALE sans que leur ecrivain soit
-// lu comme le lecteur porte, et la question est soumise a l utilisateur (`vue_a_versions.go`, « la
-// garde de version majeure »). Pour un film PREFIXE, la numerotation des genres au-dela du 107 est
-// presumee, pas lue (meme fichier) : la preuve de fermeture est la seule garde de E.
+// EGALE suppose la table native ET la version majeure que le jeu joue : `FUN_1428e219c` ne lit un
+// film que sous `*film == 0x29`. Un film de table egale sous une autre majeure (HI_1_12_0, 0x28) est
+// PREFIXE : E seulement prouve (`vue_a_versions.go`, « la garde de version majeure »). Pour un film
+// PREFIXE, la numerotation des genres au-dela du 107 est presumee, pas lue (meme fichier) : la
+// preuve de fermeture est la seule garde de E.
 //
 // Une vue A lue en partie (genre non porte, charge refusee, bit de configuration a 0) n est JAMAIS
 // utilisee : le paquet suit le localisateur, a l identique.
@@ -205,7 +206,7 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 
 // debutParLaVueA rend la fin E de la vue A lue `a` quand elle DECIDE du debut de la vue B d un
 // paquet a evenements, -1 sinon (cf. l en-tete) : la vue doit avoir ete lue jusqu a son
-// terminateur ; un film a table EGALE la prend telle quelle, un film a table PREFIXE seulement si
+// terminateur ; un film de classe EGALE la prend telle quelle, un film de classe PREFIXE seulement si
 // la marche depuis E ferme le paquet sans regle de l ecrivain contredite ([LectureVueC.Fermee] :
 // fermee au bit pres ne suffit pas ; [lectureDEssai], monde restaure).
 //

@@ -115943,3 +115943,28 @@ films PRÉFIXE, admission du gate de corpus (pilote).
 **Résultats observés** : test R9 vu rouge (`me = [40, 1, 2]` : repli sans décalage au lieu de 93 %), mutation « repli à 50 % » rouge ; tsc 0, ESLint 0 erreur, vitest 8 866 tests verts, couleurs 0, imports croisés 7 ≤ 7, lefthook pre-push vert.
 
 **Conclusion / prochaine étape** : lot clos côté exécuteur ; suivi de la CI et fusion vers `feat/v75` par le superviseur.
+## [2026-10-06] Campagne de grammaire — lot VA : décisions du pilote (majeure 0x29, SchemaDesFaits), V-6 instruit
+
+**Statut** : Complété (commit local sur `feat/cg3-vue-a`, non poussé ; LOT_VA_V3 §15.6 et §16)
+
+**Décision technique principale** : `feat/v75` fusionné à `b033d30f0` (sans conflit) puis cinq décisions
+du pilote appliquées. (1) La classe ÉGALE exige, outre la table native, la version majeure 0x29 que le
+jeu joue (`FUN_1428e219c` : `*film == 0x29`) ; un film de table égale sous une autre majeure (HI_1_12_0)
+suit la règle PRÉFIXE (`classeSousLaMajeure`, seul site : `tableDesGenresDuFilm`), la majeure lue par
+le profil existant (aucune source de `profile` ne change). (2) D23 : `killsource.Rev` constant, « mesuré
+sur 20 films, estimé sur le parc », complément réécrit. (3) `SchemaDesFaits` 4 → 5 (section 2 : V1 et
+V3), graines de fuzz régénérées. (4) `lecture.VueA.PremierPresume` : rang du premier genre au-delà du
+107 sur un film PRÉFIXE (deux fichiers de la RI touchés, taille de `VueA` inchangée). (5) Le `FAUX` V-6
+de `084a804d` instruit sans rien corriger.
+
+**Résultats observés** : carte v2 contre `b033d30f0` 399 135 → 452 139 sains (+53 004), utiles
++880 701, aucun film en baisse (`bcb6d393` +599 au lieu de +1 239 sous ÉGALE, 0 perdu) ; killsource
+19 / 20 identiques à l'octet, `c75f33b8` un compteur non persisté ; `TestGoldenFilms` régénéré
+(compteurs de diagnostic seuls, non rejoué depuis V2) ; gate de corpus rc=1, 18 / 19 ok, même `FAUX`
+V-6. V-6 : les deux lectures sont vraies — le slot 571 pilote la Banshee 913 depuis son point
+d'apparition (2,48 m, aéronef immobile puis en vol 25 s ; la base le faisait voler sans pilote), puis
+la ré-aborde (siège 2, 32 images comme l'abordage du 570) ; 5,50 m à 11,2 m/s au premier échantillon :
+fausse alarme du seuil de 3 m. Mutations 4 / 4 ROUGES ; vet, archlint, G-film, golangci-lint verts.
+
+**Conclusion / prochaine étape** : admission du rc=1 (V-6 instruit, découverte D-VAV3-6 sur le seuil)
+et relecture par levelup-57 des fichiers de la RI touchés ; poussée et CI à décider par le pilote.

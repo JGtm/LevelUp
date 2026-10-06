@@ -330,8 +330,9 @@ package grammar
 // que portait la tete du lot avant sa reprise, n a jamais ete fusionne.
 //
 // ENTREE `grammar-2026-10-06.4` (2026-10-06, lot VA de la campagne de grammaire, etapes V2 et V3,
-// fusion de `feat/v75` a `fed1efed2` et corrections de la revue) : LA FIN DE LA VUE A FIXE LE DEBUT
-// DE LA VUE B ; LA VARIANTE DE PARTIE DU FILM DECIDE LES GENRES 85 ET 116.
+// fusion de `feat/v75` a `fed1efed2` puis `b033d30f0`, corrections de la revue et decisions du
+// pilote du 2026-10-06) : LA FIN DE LA VUE A FIXE LE DEBUT DE LA VUE B ; LA VARIANTE DE PARTIE DU
+// FILM DECIDE LES GENRES 85 ET 116.
 //
 // Le lot portait, sur sa branche seule, trois rangs jamais fusionnes (`.2` et `.3` de l etape V2, `.4`
 // de l etape V3) ; `.2` et `.3` etaient deja pris par `feat/v75` avec d autres empreintes. Ils sont
@@ -343,7 +344,12 @@ package grammar
 //     `FUN_142987460` commence la vue B au bit qui suit ; decisions de l utilisateur du 2026-10-04 :
 //     film a table des genres EGALE a celle du jeu, E toujours, sans reprise a la signature quand la
 //     marche depuis E bute ; film a table PREFIXE, E seulement si la marche depuis E ferme le paquet
-//     sans regle de l ecrivain contredite ; vue A lue en partie : jamais ;
+//     sans regle de l ecrivain contredite ; vue A lue en partie : jamais. La table EGALE ne vaut que
+//     sous la version majeure que le jeu joue (`FUN_1428e219c` : `*film == 0x29`) : un film de table
+//     egale sous une autre majeure (HI_1_12_0, 0x28) suit la regle PREFIXE ([classeSousLaMajeure],
+//     decision du pilote du 2026-10-06) ;
+//   - la suite des genres rangee dit ou sa numerotation devient presumee
+//     (`lecture.VueA.PremierPresume`, [premierGenrePresume]) ; aucun bit lu ne change ;
 //   - la regle sert la cuisson ([debutDeLaVueBDeCuisson]), dont le canal des morts recoit les
 //     records, et la marche de `killsource` ([DebutDeLaVueB], [VueADuFilmSousCarte]) ; le canal des
 //     morts ne localise lui-meme ([debutRecupere]) que la liste que la cuisson n a pas localisee ;
@@ -361,4 +367,4 @@ package grammar
 //
 // MESURES : `campagne_grammaire_2026-10-01/LOT_VA_V2.md` (etape V2, contre `87cdfa761`),
 // `LOT_VA_V3.md` (etape V3, contre `8c83e2d3a` ; §15 : fusion et corrections de la revue, contre
-// `fed1efed2`).
+// `fed1efed2` ; §16 : decisions du pilote, contre `b033d30f0`).

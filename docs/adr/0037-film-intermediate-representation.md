@@ -231,10 +231,12 @@ above, unchanged. The object-death channel receives the cook's records, which st
 view A when it decides; it asks the locator (`grammar/localisateur.go`, order of the sites that read
 deaths) only for the lists that the cook did not locate, whose view A therefore did not decide. Only
 the `killsource` walk, which ranges no structure, reads view A itself and takes the same rule through
-`DebutDeLaVueB`, under the film's own view-A grammar and the match map. The class is read on the
-genre table alone; the executable plays a film only under major version 0x29 (`FUN_1428e219c`), and
-whether films of another major with an equal table (HI_1_12_0, 0x28) may take the end of view A
-without proof is submitted to the user. The writer puts
+`DebutDeLaVueB`, under the film's own view-A grammar and the match map. An equal table counts only
+under the major version the executable plays: `FUN_1428e219c` reads a film only when its major
+version is 0x29, so a film with an equal table under another major (HI_1_12_0, 0x28) follows the
+strict-prefix rule (pilot decision of 2026-10-06). For strict-prefix films the numbering of the genres beyond
+107, the last genre whose native version differs from 1, is presumed rather than read; the view A
+range records where that presumption starts (`lecture.VueA.PremierPresume`). The writer puts
 a zero bit (the view A terminator) before the first record of view B and nowhere else; the locator
 requires it at every position it tries, but the leading NEW-record recovery does not apply it to
 its head candidates: that rule is not decided, and the recovery keeps its candidates unchanged.
