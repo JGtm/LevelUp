@@ -16,8 +16,14 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lectur
 // Un faux NEW lie a cet endroit ecrasait l archetype d un slot pour tout le reste du chunk, et un
 // faux DEL retirait une entite vivante : les paquets suivants, eux lisibles, en perdaient leurs
 // records. Le refus d un NEW qui contredit une entite vivante reste compte comme avant
-// ([Observation.NeufsContreUnVivant]) ; la liaison par anticipation (`rejetDeVue`), qui vient
-// d une image-cle et non de cette lecture, reste posee.
+// ([Observation.NeufsContreUnVivant]) : [corpsDeRecordNeuf] juge la contradiction AVANT la marche
+// non prouvee.
+//
+// CETTE MARCHE MODIFIE ENCORE LE MONDE PAR UN CHEMIN : la liaison par anticipation. Un en-tete
+// DELTA d un slot non lie y passe par [rejetDeVue], qui lie le slot ([World.LierParRepliDAnticipation],
+// liaison `Soft` a l archetype qu une image-cle ULTERIEURE declare) et lit son corps. Cette liaison
+// n est pas un fait de la lecture non prouvee, mais elle reste posee apres elle : seuls le NEW et
+// le DEL sont geles ici.
 //
 // LE MECANISME : le monde porte l annonce de la marche suivante. [debutParFermetureRangee] la pose
 // apres ses essais ; la boucle de records de la vue B la prend a son entree
@@ -47,6 +53,12 @@ func (w *World) prendreDebutNonProuve(buf []byte, bit int) bool {
 
 // entrerDansLaVueB prepare le lecteur a une boucle de records de la vue B : sortie non atteinte,
 // aucun en-tete rejete, et la marche reste non prouvee des que son debut l est.
+//
+// Le drapeau n est jamais remis a faux : une marche non prouvee le reste jusqu au bout de son
+// lecteur, vues suivantes comprises (marche sans classes de vue, [DecodeFrameViewsCurseur]). Sous
+// le profil de production (`ClassesDeVue`), chaque trame a son lecteur ([LecteurSur] dans la
+// marche des trames) et une seule boucle de vue B : une remise a faux a l entree y serait
+// equivalente.
 func (b *Lecteur) entrerDansLaVueB(w *World, buf []byte) {
 	b.sortieVueB, b.eidRejete = lecture.SortieNonAtteinte, 0
 	if w.prendreDebutNonProuve(buf, b.BitPos()) {

@@ -11,7 +11,7 @@ package grammar
 // porte par un record NEW lisible d un paquet ferme du meme film. Un instrument : aucune sortie de
 // production ne change.
 //
-//	LR_RACINE=<film_chunks> LR_SORTIE=<dir hors data> LR_TETES=<fichier> [LT_MPP=8/3] \
+//	LR_RACINE=<film_chunks> LR_SORTIE=<dir hors data> LR_TETES=<fichier> [LR_MPP_DECLARE=1] \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestLRTetes$' \
 //	  ./internal/games/halo_infinite/film/internal/grammar/
 
@@ -124,7 +124,7 @@ func TestLRTetes(t *testing.T) {
 	utiles := cmUtiles(t)
 	lignes := []string{"film\tchunk\tpaquet\tbit\tneuf\tti\tdesync\tetat_illisible\tmot9\tmot32\tvariante\tqueue\tmot32_connu"}
 	for id, tetes := range parFilm {
-		f, ok := ltOuvrir(t, racine, id, utiles)
+		f, ok := lrOuvrir(t, racine, id, utiles)
 		if !ok {
 			continue
 		}

@@ -84,3 +84,51 @@ func TestLAnnonceNeVautQuePourLaMarcheQuiSuit(t *testing.T) {
 		t.Error("l annonce a survecu a la marche qui l a retiree")
 	}
 }
+
+// TestLAnnonceDesigneUnBitDuPayload : une annonce posee sur le MEME payload a un autre bit que le
+// debut de la marche ne la designe pas (c est le cas de D-LR-3 : un debut que la marche ne prend
+// pas tel quel) ; la marche lie et delie comme son temoin. MUTATION : ignorer le bit dans
+// [World.prendreDebutNonProuve], ROUGE.
+func TestLAnnonceDesigneUnBitDuPayload(t *testing.T) {
+	pay := listeNonProuvee()
+	w := mondeDeCarte()
+	w.marquerDebutNonProuve(pay, 1)
+	marcher(pay, w, 0)
+	if _, lie := w.ArchetypeForSlot(300); !lie {
+		t.Error("une annonce d un autre bit du meme payload a fige la marche : le NEW 300 n est pas lie")
+	}
+	if _, lie := w.ArchetypeForSlot(124); lie {
+		t.Error("une annonce d un autre bit du meme payload a fige la marche : le DEL 124 n est pas applique")
+	}
+}
+
+// TestUneMarcheNonProuveeCompteLeNeufQuiContreditUnVivant : dans une marche non prouvee, un NEW
+// qui contredit une entite vivante (slot 124, archetype 4 de l image-cle, relu en archetype 2) est
+// refuse ET compte, comme dans toute marche ; le slot garde son archetype. MUTATION : juger la
+// marche non prouvee AVANT la contradiction dans [corpsDeRecordNeuf], ROUGE (le refus n est plus
+// compte).
+func TestUneMarcheNonProuveeCompteLeNeufQuiContreditUnVivant(t *testing.T) {
+	var bw bitWriter
+	bw.neuf13(124, 2)
+	bw.neuf13(300, 2)
+	bw.finDeVueB()
+	bw.bit(0) // vue C vide
+	w := mondeDeCarte()
+	cfg := cadreDeTete
+	cfg.Obs = NouvelleObservation()
+	w.marquerDebutNonProuve(bw.buf, 0)
+	recs, _, _ := DecodeFrameViewsCurseur(bw.buf, w, cfg, MovementStateViews, 0)
+	if len(recs) != 2 {
+		t.Fatalf("%d records lus, attendu 2", len(recs))
+	}
+	if cfg.Obs.NeufsContreUnVivant != 1 || len(cfg.Obs.neufsRefuses) != 1 ||
+		cfg.Obs.neufsRefuses[0] != (neufRefuse{124, 2, 4}) {
+		t.Errorf("refus comptes %d, en attente %+v : attendu 1 et {124 2 4}", cfg.Obs.NeufsContreUnVivant, cfg.Obs.neufsRefuses)
+	}
+	if ti, lie := w.ArchetypeForSlot(124); !lie || ti != 4 {
+		t.Errorf("slot 124 : %d (%v), attendu 4 vivant", ti, lie)
+	}
+	if _, lie := w.ArchetypeForSlot(300); lie {
+		t.Error("slot 300 lie par une marche non prouvee")
+	}
+}

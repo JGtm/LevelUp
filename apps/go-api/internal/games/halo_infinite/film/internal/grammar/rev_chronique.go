@@ -471,11 +471,11 @@ package grammar
 //     marche : une vue A lue jusqu a son terminateur est TERMINEE meme quand elle porte des
 //     messages, et l ancien test (vue A arretee) les aurait comptes sans evenements et prives de la
 //     recuperation de leur liste.
-// ENTREE `grammar-2026-10-06.3` (2026-10-06, lot LR de la campagne de grammaire, vague 3 ; NON
-// RETENU a la base `87cdfa761`, `campagne_grammaire_2026-10-01/LOT_LR.md`) : UN RECORD NEW DONT LE
-// LECTEUR D ETAT DU JEU ECHOUE N EST PAS LU ; LE SECOND RANG DE LA FERMETURE NE MODIFIE PAS LE MONDE.
+// ENTREE `grammar-2026-10-06.3` (2026-10-06, lot LR de la campagne de grammaire, vague 3,
+// `campagne_grammaire_2026-10-01/LOT_LR.md`) : UN RECORD NEW DONT LE LECTEUR D ETAT DU JEU ECHOUE
+// N EST PAS LU ; LE SECOND RANG DE LA FERMETURE NE MODIFIE PAS LE MONDE.
 //
-// Ce qui change :
+// Ce qui change, contre `grammar-2026-10-06.2` :
 //   - `FUN_14080cfe8` echoue sur un compte MPP superieur a quatre (`CMP ECX,0x4 ; JA` @14080d238) ;
 //     les lecteurs d etat qui le lisent rendent alors 0, sauf `FUN_1408efb58` (`ti=41`) quand le
 //     drapeau 2 est pose et l index absent ; `FUN_1408f1aa4` ne lit pas le corps d un record NEW
@@ -485,8 +485,7 @@ package grammar
 //   - la marche qui part du second rang de [debutParFermetureRangee] ne lie aucun NEW et ne delie
 //     aucun DEL (`debut_non_prouve.go`).
 //
-// Mesure sur 20 films contre `87cdfa761`, decoupage MPP par defaut : carte v2 313 542 -> 313 801
-// paquets sains (+259), mais 14 films en baisse ; `e5adf7b2` perd 23 sains vrais par le second
-// rang (les tetes `ti=41` de 10:20 et 10:848, mal lues a 9/5). Sous le decoupage 8/3 (mesure de
-// recherche, `LT_MPP`) : 397 823 -> 399 134 (+1 311), toutes les pertes des films en baisse
-// passent par un NEW dont l etat est illisible pour le jeu.
+// Mesure sur 20 films contre `8dfadd07e`, sous le decoupage MPP que chaque film declare
+// (`-mpp-declare`) : carte v2 397 824 -> 399 135 paquets sains (+1 311) ; les 12 films en baisse
+// ne perdent que des listes ouvertes sur un NEW que le jeu ne lit pas. Le rang `.6` du 2026-10-03,
+// que portait la tete du lot avant sa reprise, n a jamais ete fusionne.

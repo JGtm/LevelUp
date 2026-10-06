@@ -115565,3 +115565,35 @@ l'utilisateur ; ensuite LR de la campagne, puis 2.7.b.
 **Résultats observés** : carte v2 au découpage par défaut +259 sains au corpus mais 14 films en baisse ; `e5adf7b2` perd 23 sains vrais par (2) (têtes `ti=41` mal lues à 9/5, cas LT §4.2) : gate 2 rouge. Mesure de recherche sous 8/3 (`LT_MPP`, sonde contrôlée à l'unité contre la carte) : +1 311 sains, toutes les pertes des films en baisse passent par un NEW illisible pour le jeu. Cas réels `1c4c63c2` 17:52 / 17:172 et 61:42 corrigés sous 8/3. killsource identique hors diagnostic `calibration` ; `objectives` identique (replay-equiv) ; gate de corpus rc 1 = la même baisse de `P-1`.
 
 **Conclusion / prochaine étape** : rejouer le gate 2 officiel sous `-mpp-declare` quand 2.7.a0 est poussé, puis intégrer LR avec ou après 2.7.a0. Détail : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_LR.md`.
+
+## [2026-10-06] Campagne de grammaire — lot LR repris sur `8dfadd07e` (découpage MPP déclaré) : gate 2 officiel tenu sous D2
+
+**Statut** : Complété (proposé au pilote ; commit sur `feat/cg3-lr`, non poussé).
+
+**Décision technique principale** : le commit WIP `e00beafdc` est rebasé sur `origin/feat/v75` =
+`8dfadd07e` (2.7.a0 : découpage MPP déclaré par le film, `-mpp-declare`). Conflits sur les seuls
+fichiers générés (la base a raison, régénération par les commandes du dépôt) ; révision
+`grammar-2026-10-03.6` (jamais fusionnée) → `grammar-2026-10-06.3` ; `killsource`, `objectives`
+constantes (D23 prouvée : killsource json identique hors `calibration` sur 19 témoins, `objectives`
+identique sur 20 films). Corrections du contrôle appliquées : table des lecteurs d'état complétée de
+`ti=42` (`FUN_1407f0c68`, décompilé : `cVar1 == 0 → 0`) ; tests qui font rougir M1
+(`TestUneMarcheNonProuveeCompteLeNeufQuiContreditUnVivant`), M2 (`TestLAnnonceDesigneUnBitDuPayload`)
+et M3 (`TestLeVerdictDEtatEstCeluiDuRecord`) ; M8 équivalente commentée (un lecteur par trame) ;
+précisions 7a (règle jamais décisive : 153 paquets, jamais première, jamais fermés au bit près) et 7b
+(l'anticipation mute encore le monde) dans `debut_non_prouve.go`. `param5` de
+`consumeDefaultStateTI41` retiré (unparam, argument toujours 1). Sondes de recherche : `LR_MPP_DECLARE=1`
+(`lrOuvrir`), contrôlées contre la carte officielle paquet par paquet.
+
+**Résultats observés** : gate 2 officiel sous `-mpp-declare`, base `8dfadd07e` contre tête : 397 824 →
+399 135 sains (+1 311), utiles sains +42 607 ; 12 films en baisse (de -1 à -8), dont TOUTES les pertes
+(34) sont de la famille A : la base ouvrait la liste sur un NEW que le jeu ne lit pas (compte MPP ≥ 5
+sous le découpage déclaré, relu). 203 pertes instruites : A 194, Ap 1 (`4f77afc1` 40:102), C 8 (liaison
+posée par un NEW du second rang, lisible : non factice), toutes Ap et C sur des films en hausse ;
+aucune perte inexpliquée. replay-corpus-gate rc 1 : `P-1` en `MANQUE` sur les 12 mêmes témoins, aucune
+mesure O-* ni V-* en défaut. Repli `repli_debut_de_liste_ferme_au_bit` 9 298 → 8 379. G-film, vet,
+vet research, archlint, golangci (0 issue ; 28 issues research toutes présentes à la base),
+`TestGoldenFilms` (une ligne de diagnostic régénérée) verts ; mutations 13 / 14 rouges (M8 équivalente).
+
+**Conclusion / prochaine étape** : LR proposé RETENU sous D2 (baisses = fermetures factices retirées,
+instruites), décision de fusion au pilote. Pièces : `LOT_LR.md` §12, `scratchpad/cg3-lr2/`. Écarts
+D-LR-7 (`vehicleDeaths` diverge, non compté) à D-LR-9.

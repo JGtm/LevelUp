@@ -112,6 +112,10 @@ func TraverseEntity(br *Lecteur, reg *Registry, defaultStateBits int) EntityTrac
 		t.EndBit = br.BitPos()
 		return t
 	}
+	// Remise a faux DEFENSIVE : le verdict est celui de CET etat. En production aucun record ne
+	// suit un etat illisible sur le meme lecteur (DesyncAt arrete la marche, `inferResyncTargets`
+	// est nil) ; elle protege un lecteur qui reprendrait apres lui, ou dont un lecteur d etat a ete
+	// appele hors de cette traversee (test `TestLeVerdictDEtatEstCeluiDuRecord`).
 	br.etatIllisible = false
 	if t.TypeIndex == bipedDefaultStateTypeIndex {
 		// VALIDÉ BIT-EXACT en live (CE breakpoint sur FUN_140f44c38 : rep biped = 166 ou 198
@@ -127,7 +131,7 @@ func TraverseEntity(br *Lecteur, reg *Registry, defaultStateBits int) EntityTrac
 	} else if t.TypeIndex == ProjectileTypeIndex && br.p.Grammaire.DeserEtatParArchetype {
 		// Le projectile : `FUN_1408efb58` depend du cinquieme argument, que le lecteur de record NEW
 		// pose a 1 (default_state_ti41.go) ; la marche d image-cle garde son cadre.
-		consumeDefaultStateTI41(br, true)
+		consumeDefaultStateTI41(br)
 	} else if t.TypeIndex == archetypeProprieteGeree && br.p.Grammaire.DeserEtatParArchetype {
 		consumeDefaultStateTI13RecordNeuf(br) // EXCEPTION DATEE (lot J6-bis) : default_state_ti13_neuf.go
 	} else if fn, ok := defaultStateDeserByTI[t.TypeIndex]; ok && br.p.Grammaire.DeserEtatParArchetype {

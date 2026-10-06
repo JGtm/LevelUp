@@ -14,11 +14,11 @@ package grammar
 //	                  rang du debut, chaque record, et la liaison des slots de LR_SLOTS apres le
 //	                  paquet.
 //
-// `LT_MPP=8/3` impose ce decoupage du bloc MPP aux films anciens ([ltOuvrir]) : une MESURE de
-// recherche, jamais un correctif.
+// `LR_MPP_DECLARE=1` pose sur chaque film le decoupage MPP que la grammaire resout ([lrOuvrir]),
+// comme `cmd_fermeture -mpp-declare` : la marche de la sonde est alors celle du gate 2 officiel.
 //
 //	LR_RACINE=<film_chunks> LR_FILMS=<id,id> LR_SORTIE=<dir hors data> [LR_PAQUETS=...] \
-//	  [LR_SLOTS=526,3331] [LT_MPP=8/3] go test -tags=research -count=1 -timeout 120m \
+//	  [LR_SLOTS=526,3331] [LR_MPP_DECLARE=1] go test -tags=research -count=1 -timeout 120m \
 //	  -run '^TestLRSecondRang$' ./internal/games/halo_infinite/film/internal/grammar/
 
 import (
@@ -100,6 +100,22 @@ func lrEntiers(t *testing.T, v string) []uint32 {
 	return out
 }
 
+// lrOuvrir ouvre un film comme [ltOuvrir] et, sous `LR_MPP_DECLARE=1`, lui pose le decoupage MPP
+// que la grammaire resout ([FilmContext.ResolutionMPP]) quand elle le decide — la regle de
+// `cmd_fermeture -mpp-declare`.
+func lrOuvrir(t *testing.T, racine, id string, utiles UsagesProduit) (*cmFilm, bool) {
+	t.Helper()
+	f, ok := ltOuvrir(t, racine, id, utiles)
+	if !ok || os.Getenv("LR_MPP_DECLARE") != "1" {
+		return f, ok
+	}
+	if res := f.fc.ResolutionMPP(); res.Decide() {
+		f.fc.PoserMPP(res.Widths)
+		f.cfg = f.fc.CadreDeBalayage()
+	}
+	return f, ok
+}
+
 // TestLRSecondRang ecrit `lr_par_film.tsv` et `lr_paquets.tsv`.
 func TestLRSecondRang(t *testing.T) {
 	t.Setenv("LT_RACINE", os.Getenv("LR_RACINE"))
@@ -113,7 +129,7 @@ func TestLRSecondRang(t *testing.T) {
 	parFilm := []string{"film\tlistes_second_rang\tneufs_lus\tdels_lus"}
 	var paquets []string
 	for _, id := range films {
-		f, ok := ltOuvrir(t, racine, id, utiles)
+		f, ok := lrOuvrir(t, racine, id, utiles)
 		if !ok {
 			continue
 		}
@@ -132,8 +148,8 @@ func TestLRSecondRang(t *testing.T) {
 }
 
 // lrCarte ecrit, paquet par paquet, le verdict de fermeture et les records utiles fermes de la
-// marche de la carte ([cmMarcher]) : de quoi rejouer le gate 2 de la campagne sous `LT_MPP`, que
-// `cmd_fermeture` ne connait pas.
+// marche de la carte ([cmMarcher]) : de quoi rejouer le gate 2 de la campagne et le comparer a la
+// carte officielle, paquet par paquet.
 type lrCarte struct {
 	film   string
 	lignes []string
@@ -155,7 +171,7 @@ func TestLRCarte(t *testing.T) {
 	utiles := cmUtiles(t)
 	lignes := []string{"film\tchunk\tpaquet\tferme\tutiles_fermes"}
 	for _, id := range films {
-		f, ok := ltOuvrir(t, racine, id, utiles)
+		f, ok := lrOuvrir(t, racine, id, utiles)
 		if !ok {
 			continue
 		}
@@ -205,14 +221,14 @@ func (e *lrJuge) paquet(c int, p *cmPaquet, w *World) {
 	}
 }
 
-// TestLRCasReelsDuSecondRang rejoue les cas reels sur `1c4c63c2` sous `LT_MPP=8/3` (MESURE : le
-// decoupage que le film declare, lot 2.7.a0 non fusionne). ROUGE sur la base du lot (87cdfa761).
+// TestLRCasReelsDuSecondRang rejoue les cas reels sur `1c4c63c2` sous le decoupage MPP qu il declare
+// (8/3, `LR_MPP_DECLARE=1`). ROUGE sur la base du lot (`8dfadd07e`).
 func TestLRCasReelsDuSecondRang(t *testing.T) {
 	racine := os.Getenv("LR_RACINE")
-	if racine == "" || os.Getenv("LT_MPP") != "8/3" {
-		t.Skip("LR_RACINE et LT_MPP=8/3 requis")
+	if racine == "" || os.Getenv("LR_MPP_DECLARE") != "1" {
+		t.Skip("LR_RACINE et LR_MPP_DECLARE=1 requis")
 	}
-	f, ok := ltOuvrir(t, racine, "1c4c63c2", cmUtiles(t))
+	f, ok := lrOuvrir(t, racine, "1c4c63c2", cmUtiles(t))
 	if !ok {
 		t.Fatal("1c4c63c2 illisible")
 	}

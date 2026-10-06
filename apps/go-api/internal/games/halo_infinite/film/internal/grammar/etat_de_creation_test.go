@@ -161,7 +161,7 @@ func TestLEtatDuProjectileSuitSonPropreVerdict(t *testing.T) {
 	}
 	for _, c := range cas {
 		br := LecteurSur(etatTI41(c.compte, c.drapeau2, c.absent))
-		consumeDefaultStateTI41(br, true)
+		consumeDefaultStateTI41(br)
 		if br.etatIllisible != c.illisible {
 			t.Errorf("%s : etat illisible %v, attendu %v", c.nom, br.etatIllisible, c.illisible)
 		}
@@ -193,5 +193,31 @@ func TestLeBlocMPPDUnEtatPasseParSonVerdict(t *testing.T) {
 		if n := len(appelDuBlocMPP.FindAll(data, -1)); n != permis[f] {
 			t.Errorf("%s : %d appel(s) du bloc MPP, attendu %d — passer par lireLeBlocMPPDeLEtat", f, n, permis[f])
 		}
+	}
+}
+
+// TestLeVerdictDEtatEstCeluiDuRecord : un lecteur dont un etat de creation a echoue HORS d une
+// traversee (le lecteur d etat appele seul, comme la marche de creation d equipement) traverse
+// ensuite un record NEW lisible : son verdict est celui de CE record. MUTATION : retirer la remise
+// a faux de `etatIllisible` dans [TraverseEntity], ROUGE.
+func TestLeVerdictDEtatEstCeluiDuRecord(t *testing.T) {
+	var bw bitWriter
+	bw.bit(0) // prefixe de version de FUN_1407f2224
+	bw.blocMPP(5)
+	bw.bits(36, 6) // le record NEW suivant : archetype 36, etat lisible
+	bw.bit(0)
+	bw.blocMPP(4)
+	bw.bit(0)     // porte du record NEW
+	bw.bit(0)     // masque clairseme
+	bw.bits(0, 3) // aucun composant
+	br := LecteurSur(bw.buf)
+	consumeDefaultStateTI36(br)
+	if !br.etatIllisible {
+		t.Fatal("l etat au compte 5 n a pas echoue : le vecteur ne teste rien")
+	}
+	tr := TraverseEntity(br, mondeAEtats().Reg, 0)
+	if tr.EtatIllisible || tr.DesyncAt != -1 {
+		t.Errorf("record lisible juge illisible (%v, desync %d) : le verdict de l etat precedent a survecu",
+			tr.EtatIllisible, tr.DesyncAt)
 	}
 }

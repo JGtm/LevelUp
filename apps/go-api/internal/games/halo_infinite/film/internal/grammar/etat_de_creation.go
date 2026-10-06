@@ -22,10 +22,16 @@ package grammar
 //	FUN_1407f2224  ti=36, et ti=37 par      rend 0 ; FUN_1407f105c   [consumeDefaultStateTI36]
 //	               FUN_1407f105c            rend 0 a son tour        [consumeDefaultStateTI37]
 //	FUN_140fe7630  ti=43                    rend 0                   (meme port que ti=36)
+//	FUN_1407f0c68  ti=42, par FUN_1407f2224 rend 0, apres avoir lu   [consumeDefaultStateTI42]
+//	               (arme au sol)            ses autres feuilles
 //	FUN_1408f0b48  ti=38 et ti=39           rend 0                   [consumeDefaultStateTI38]
 //	FUN_1410a5a74  vehicule (ti=40)         rend 0                   [consumeDefaultStateTI40]
 //	FUN_1408efb58  projectile (ti=41)       rend 0 sauf drapeau 2    [consumeDefaultStateTI41]
 //	                                        et index absent
+//
+// `FUN_1407f0c68` (ti=42), decompile le 2026-10-06 : `cVar1 = FUN_1407f2224(...)`, puis toutes
+// ses feuilles, puis `if (*(lecteur+0x18)*8 < *(lecteur+0x2c) || cVar1 == 0) -> 0`. Le port y
+// applique la regle par [consumeDefaultStateTI36], qu il appelle pour `FUN_1407f2224`.
 //
 // D ou la regle, LUE DANS LE JEU et non mesuree : un record NEW dont le bloc MPP annonce un compte
 // superieur a quatre (sous la reserve de `ti=41`) n est pas lisible par le jeu — son corps ne

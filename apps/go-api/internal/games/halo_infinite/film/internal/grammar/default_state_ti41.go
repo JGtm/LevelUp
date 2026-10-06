@@ -42,7 +42,8 @@ package grammar
 //	si version > 2 : R(1)      drapeau 0x40
 //	R(1) ; si 1 : FUN_141fcf730(lecteur)                                          @1408eff03
 
-// consumeDefaultStateTI41 lit `FUN_1408efb58` ; `param5` est le cinquieme argument du jeu.
+// consumeDefaultStateTI41 lit `FUN_1408efb58` avec son cinquieme argument a 1 : la valeur que pose
+// le lecteur de record NEW (`FUN_1408f1aa4`, `CALL [RAX+0x60]` @1408f1c0f), seule route portee.
 //
 // L ECHEC DU BLOC MPP NE FAIT PAS TOUJOURS ECHOUER CET ETAT. `FUN_1408efb58` rend 0 quand `bVar3`
 // est faux : sans le drapeau 2, `bVar3` vaut le verdict du bloc MPP (`bVar2`, le R(5) qui suit ne
@@ -50,7 +51,7 @@ package grammar
 // `bVar3` vaut alors `!bVar1` — un predicat sur `dst+0x14` (`FUN_1404785a0`, `FUN_1408ee96c`) que
 // le film ne porte pas —, sinon le verdict du bloc (l index R(2) ne depasse jamais 3). Le bloc
 // qui echoue fait donc echouer l etat, sauf drapeau 2 pose et index absent.
-func consumeDefaultStateTI41(br *Lecteur, param5 bool) {
+func consumeDefaultStateTI41(br *Lecteur) {
 	version := uint64(1)
 	if br.ReadBit() {
 		version = br.ReadBits(8)
@@ -68,9 +69,9 @@ func consumeDefaultStateTI41(br *Lecteur, param5 bool) {
 	if !mppLisible && !indexAbsent {
 		br.echouerLEtatDeCreation()
 	}
-	consume1408eff64(br, param5)
-	br.ReadBit()      // drapeau 4
-	if br.ReadBit() { // dst+0x88, dst+0x8c
+	consume1408eff64(br, true) // cinquieme argument : 1
+	br.ReadBit()               // drapeau 4
+	if br.ReadBit() {          // dst+0x88, dst+0x8c
 		br.ReadBits(largeurEchelleProjectile)
 		br.ReadBits(largeurEchelleProjectile)
 	}

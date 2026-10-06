@@ -11,7 +11,7 @@ package grammar
 // elle dit d ou venait ce que la base lisait ; elle ecrit aussi les DEL lus au second rang
 // (lignes `D`). Un instrument : aucune sortie de production ne change.
 //
-//	LR_RACINE=<film_chunks> LR_SORTIE=<dir hors data> LR_PERDUS=<fichier> [LT_MPP=8/3] \
+//	LR_RACINE=<film_chunks> LR_SORTIE=<dir hors data> LR_PERDUS=<fichier> [LR_MPP_DECLARE=1] \
 //	  go test -tags=research -count=1 -timeout 120m -run '^TestLRInstruire$' \
 //	  ./internal/games/halo_infinite/film/internal/grammar/
 
@@ -96,7 +96,7 @@ func TestLRInstruire(t *testing.T) {
 	utiles := cmUtiles(t)
 	var lignes []string
 	for id, cibles := range parFilm {
-		f, ok := ltOuvrir(t, racine, id, utiles)
+		f, ok := lrOuvrir(t, racine, id, utiles)
 		if !ok {
 			continue
 		}
