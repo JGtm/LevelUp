@@ -116273,3 +116273,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : huit mutations, toutes rouges ; tests existants des Séries temporelles, de Sessions et des lecteurs verts sans modification. Gate Go complet vert (six lots, un paquet non touché rejoué seul après un dépassement de budget sous charge), intégration DuckDB 4 ok, lint 0 issue ; ADR 0036 : nouveau garde-rail I2 cité.
 
 **Conclusion / prochaine étape** : M1 clos ; M2 (blocs de la Vue match, contrat additif).
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M2 : blocs Go de la page, contrat additif — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : la réponse de la Vue match porte `emprise` (l'Emprise d'un match, fiches = les joueurs de l'équipe présents à la fin : le joueur de la page, les profils suivis, le reste dans l'ordre du tableau ; bots et partis comptés sans fiche), `lives_near_teammate` (« Isolement » de chacun, même ordre, une lecture) et `combat_tab.weapon_tools` (« Outils de destruction » par le builder partagé) ; chaque match de l'Emprise publie ses prises sur un emplacement non identifié. Câblage dans un fichier neuf, chaque source sous sa porte.
+
+**Résultats observés** : contrat additif (openapi +115, types +39, 0 retrait) ; onze mutations rouges ; un filtre redondant (mutation verte) retiré de la projection des armes ; gate Go complet vert (six lots), lint 0 issue.
+
+**Conclusion / prochaine étape** : M2 clos ; M3 (onglet web reconstruit, suppressions web, garde des textes étendue).

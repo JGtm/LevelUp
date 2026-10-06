@@ -29,8 +29,9 @@ type MatchViewResponse struct {
 	// vide (scoreboard, events, player stats). Le front peut afficher un bandeau
 	// "Sync incomplet — certaines sections sont indisponibles" au lieu d'un
 	// crash full-page. Strict 404 reste pour les match_id totalement absents.
-	IsPartial      bool     `json:"is_partial,omitempty"`
-	PartialReasons []string `json:"partial_reasons,omitempty"`
+	IsPartial              bool     `json:"is_partial,omitempty"`
+	PartialReasons         []string `json:"partial_reasons,omitempty"`
+	MatchViewEmpriseFields          // emprise, lives_near_teammate (domain/match_emprise.go)
 }
 
 // MatchViewHeader : en-tête du match.
@@ -508,6 +509,8 @@ type MatchCombatTab struct {
 	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null). Cf.
 	// .ai/archive/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
 	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
+	// WeaponTools : « Outils de destruction » du joueur de la page (squadagg.BuildWeaponTools).
+	WeaponTools *SquadWeaponTools `json:"weapon_tools,omitempty"`
 
 	// KillDistanceByWeapon : POC (LOT G.3, 2026-08-30, plan retours-utilisateur
 	// §3bis DEC-8) — kills mesurés et distance tueur-victime moyenne par arme,

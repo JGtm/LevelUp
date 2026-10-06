@@ -572,7 +572,7 @@ Journal M1 (2026-10-07, exécuteur) — test rouge AVANT chaque code (compilatio
 - **Mutations** (toutes ROUGES, restauration vérifiée octet à octet) : exclusion de la mêlée retirée ; épée lourde écartée aussi ; `publishable_deaths` filtré comme `measured_deaths` ; liste des matchs liée en semi-jointure (fenêtres non bornées) ; liste des joueurs réduite au premier ; `lireViesDuCamp` réduite au premier joueur ; « au moins une vie lue » jamais vrai ; `Players` ignoré.
 - **ADR 0036** (EN) : `TestSoloLivesRepo_ParJoueurs_BorneEtDernierePasse` cité en I2 (liste et tableau).
 - **Gate** : `go build ./...` 0 ; `gofmt -l internal` muet ; `go vet` de `platform/duckdb`, `domain`, `port`, `service` 0 ; tests des paquets touchés 4 ok ; module en six lots couvrant `go list ./...` : cœur 67 ok, games 39 ok, platform + service 28 ok, sync + persist + migration 12 ok + `sync/skill` rejoué seul ok (`TestLUSRV2Shadow_RafalesBornees_300Candidats` a dépassé son budget sous charge dans le lot, paquet non touché, vert seul), reste 45 ok, hors internal 4 ok — 0 FAIL ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 4 ok (373 s) ; garde-rails nommés PASS ; `make go-api-lint` 0 issues. Contrat inchangé (`MatchAssistScopeRaw` est interne).
-- Seuils : `solo_lives_repo.go` 236 L, `solo_lives_block.go` 141 L, `kill_distance_repo.go` 233 L ; plus longue fonction neuve `LoadLivesNearTeammateForPlayers` ~45 L ; `bilansDesVies` 5 paramètres (ctx compris).
+- Seuils : `solo_lives_repo.go` 241 L, `solo_lives_block.go` 131 L, `kill_distance_repo.go` 233 L ; plus longue fonction neuve `LoadLivesNearTeammateForPlayers` ~45 L ; `bilansDesVies` 5 paramètres (ctx compris).
 
 ### M2 — Go : les blocs de la Vue match (contrat additif) · lourd
 
@@ -581,15 +581,15 @@ Périmètre : `domain/{match_emprise.go (NEUF), match_view.go, squad_emprise.go}
 match_view_tools.go (NEUFS), match_view_service.go, match_view_data_loaders.go}` (+ tests),
 `api/wire/{registry_pages.go, registry_pages_matchview.go (NEUF)}` (+ test de câblage), contrat.
 
-- [ ] M2.1 Types §3 (`domain/match_emprise.go`, `SquadEmpriseMatch.UnclassifiedPickups`,
+- [x] M2.1 Types §3 (`domain/match_emprise.go`, `SquadEmpriseMatch.UnclassifiedPickups`,
   `MatchCombatTab.WeaponTools`, ligne d'embarquement D20) ; commentaires de contrat courts, au présent.
-- [ ] M2.2 D6 : `tallyMatch` / `publierMatch` posent `UnclassifiedPickups`. Tests ROUGES d'abord
+- [x] M2.2 D6 : `tallyMatch` / `publierMatch` posent `UnclassifiedPickups`. Tests ROUGES d'abord
   (`analysis/squademprise/build_test.go` ou fichier neuf `unclassified_test.go`) : témoin m2407 réduit
   (lignes `non_classe` de mon camp 19, adversaire 12 → `{19, 12}`), niveaux non établis (lignes
   `non_classe` comptées quand même), match sans film → nil, camp inconnu → nil, aucune ligne non
   classée → nil ; `build_test.go` existant vert sans modification. Mutation : lignes de l'adversaire
   comptées chez nous → rouge.
-- [ ] M2.3 D2, D3, D22 : `attachMatchEmprise(ctx, &resp, matchID, d, friendsExtras)` — `matchCampPlayers`
+- [x] M2.3 D2, D3, D22 : `attachMatchEmprise(ctx, &resp, matchID, d, friendsExtras)` — `matchCampPlayers`
   (D3, pure) ; `buildSoloEmpriseBlock` avec `Page: "match_view"`, `Current` = un `squademprise.Match`
   (identifiant, heure de début de la méta), `WithMaps: false`, `Players` ; publié en
   `MatchEmpriseBlock{SquadEmpriseBlock, KillJournalPublishable}` ; section `match_emprise`. Appel par
@@ -601,29 +601,41 @@ match_view_tools.go (NEUFS), match_view_service.go, match_view_data_loaders.go}`
   bonus 5–2, râteliers 4–3, fiches JGtm / XL JACOB / Madina97294 / Chocoboflor dans l'ordre D3).
   Mutations : bot gardé en fiche → rouge ; profils suivis non remontés → rouge ; journal publiable lu
   sur `MeasuredDeaths` → rouge.
-- [ ] M2.4 D8, D22 : `attachMatchLives` — repo nil → Debug « capability absente », bloc absent ; une
+- [x] M2.4 D8, D22 : `attachMatchLives` — repo nil → Debug « capability absente », bloc absent ; une
   lecture `lireViesDuCamp` pour les joueurs de D3 ; bloc absent si aucun joueur n'a de vie lue ;
   section `match_lives` (A1 : pas de `FragsMeasured`). Tests : ordre des joueurs = D3, bilan par joueur
   (témoin m2209 à la main, portée 18 m : JGtm 11 / 2 vies, 8 / 0 frags), échec de lecture → bloc
   absent + ErrorContext, journal non publiable → vies écartées et comptées pour chaque joueur.
   Mutations : ordre du repo au lieu de D3 → rouge ; un joueur sans vie lue retiré de la liste → rouge.
-- [ ] M2.5 D9 : `matchWeaponTools(ctx, d, scoreboardRow)` → `squadagg.BuildWeaponTools` ; trace
+- [x] M2.5 D9 : `matchWeaponTools(ctx, d, scoreboardRow)` → `squadagg.BuildWeaponTools` ; trace
   `PlayersAboveSheet` (Debug, patron `teammates_squad_weapon_tools.go:323-329`). Tests ROUGES d'abord
   (`match_view_tools_test.go`) : témoin m2209 (MESURES §3 B : MK50 Sidekick 7, Mêlée 2, Grenade frag 1,
   VK78 Commando 1) ; mêlée depuis la feuille ; objet explosif du film retiré de l'arme qu'il recouvre ;
   reliquat « Non attribué » (m2407 : 10 non attribués) ; catégories absentes → reliquat ; lignes des
   autres joueurs ignorées. Mutation : `bulkWeapons` non filtré sur le joueur → rouge.
-- [ ] M2.6 D18, D19 : `matchViewEmpriseDeps` (`With*` : `WithEmpriseSheet`, `WithEmpriseUsageSummary(repo,
+- [x] M2.6 D18, D19 : `matchViewEmpriseDeps` (`With*` : `WithEmpriseSheet`, `WithEmpriseUsageSummary(repo,
   repoRoot)`, `WithEmpriseVehicles`, `WithCampLives`, `WithRadarRange`, `WithKillSourceCategories`) ;
   `cablerFilmMatchView` ; garde-rail `registry_pages_matchview_wiring_test.go` (patron
   `registry_pages_timeseries_wiring_test.go`, lecteur `appelsDansFactory`) : feuille et catégories
   inconditionnelles, résumé d'usage / véhicules / vies sous leur seule porte. Mutations : feuille sous
   condition → rouge ; vies hors porte (`if true`) → rouge.
-- [ ] M2.7 Contrat régénéré, diff ADDITIF (0 retrait dans `openapi.yaml` et `generated.ts`) ;
+- [x] M2.7 Contrat régénéré, diff ADDITIF (0 retrait dans `openapi.yaml` et `generated.ts`) ;
   `contract-surface.guard.test.ts` vert sans régénérer le snapshot ; schémas `MatchEmpriseBlock`,
   `MatchLivesNearTeammate`, `MatchLivesPlayer` aplatis comme attendu (vérifié dans `openapi.yaml`).
 - Gate : gate Go + contrat ; web : `npm ci`, `generate-types`, `tsc -b --force` 0, vitest `src/lib/api`
   vert.
+Journal M2 (2026-10-07, exécuteur) :
+- **M2.1** `domain/match_emprise.go` (`MatchViewEmpriseFields` embarqué dans `MatchViewResponse` par une ligne, `MatchEmpriseBlock`, `MatchLivesNearTeammate` sans `FragsMeasured` — A1 —, `MatchLivesPlayer`) ; `SquadEmpriseMatch.UnclassifiedPickups` ; `MatchCombatTab.WeaponTools`.
+- **M2.2** `unclassifiedOf` (`match.go`), posé par `tallyMatch` sur un match filmé au camp connu, publié par `publierMatch`. `unclassified_test.go` (témoin BTB réduit 19 / 12, niveaux non établis comptés, nil sans ligne, sans camp, sans film) vu rouge (nil) avant le code ; `build_test.go` vert inchangé.
+- **M2.3** `match_view_emprise.go` : `matchViewEmpriseDeps` embarquée par une ligne dans `MatchViewService` et ses six `With*` ; `matchCampPlayers` (Q1 : le joueur de la page, les profils suivis — clés de `friendsExtras` —, le reste, chaque groupe dans l'ordre du tableau ; bots et partis sans fiche ; sans équipe : le joueur seul) ; `matchEmpriseBlock` par `buildSoloEmpriseBlock` (`Players`, `Page: match_view`, section `match_emprise`) ; posé par une ligne du littéral de réponse de `buildMatchViewFromData`.
+- **M2.4** `matchLives` par `lireViesDuCamp` (section `match_lives`), un bilan par joueur dans l'ordre des fiches, à zéro sans vie lue.
+- **M2.5** `match_view_tools.go` : `squadagg.BuildWeaponTools` sur les frags par arme du match déjà chargés (libellé de la requête = libellé et libellé anglais), catégories par `port.KillSourceCategoryRepository` (Debug non supportées, Warn échec), feuille = la ligne du joueur au tableau, mécaniques natives par capability ; trace `PlayersAboveSheet`. Le filtre « lignes du joueur » prévu dans la projection n'a pas été gardé : le builder ne garde déjà que les joueurs qu'on lui nomme (mutation de ce filtre VERTE, donc code mort) — la projection passe toutes les lignes.
+- **M2.6** `registry_pages_matchview.go` (`cablerFilmMatchView` : distance comme avant, feuille et portée du radar sans condition, catégories par assertion sur le lecteur d'armes, résumé d'usage / vies / véhicules chacun sous sa porte) appelé par UNE ligne de la factory ; `registry_pages_matchview_wiring_test.go`.
+- **M2.7** Contrat : `openapi.yaml` +115 lignes, `generated.ts` +39, 0 retrait ; schémas `MatchEmpriseBlock`, `MatchLivesNearTeammate`, `MatchLivesPlayer` et champs `emprise` / `lives_near_teammate` aplatis dans la réponse, `weapon_tools`, `unclassified_pickups` vérifiés ; `check-generated-types-fresh` OK ; `tsc -b --force` 0, vitest `src/lib/api` 5 / 36 verts (snapshot de surface intact).
+- **Écart de méthode** (consigné comme en L2 du plan TS) : pour `matchEmpriseFields` et `matchWeaponTools`, le code a été écrit avant les tests ; le rouge a été obtenu en rejouant les tests contre un bouchon (bloc vide, outils nil). Les témoins chiffrés de MESURES §3 sont portés pour les outils (22/09 : Sidekick 7, mêlée 2, grenade 1, VK78 1 ; 24/07 : 10 non attribués) ; pour l'Emprise et les vies, les fixtures de service sont réduites (le témoin du 22/09 sert la fixture web de M3).
+- **Mutations** (ROUGES) : adversaire compté chez nous (non classées) ; bloc vide ; outils nil ; bot gardé en fiche ; profils suivis non remontés ; journal lu sur `MeasuredDeaths` ; joueur sans vie retiré ; autre joueur nommé au builder ; catégories ignorées ; feuille sous condition ; vies hors porte.
+- **Gate** : `go build ./...` 0 ; `gofmt -l internal` muet ; `go vet` des paquets touchés 0 ; tests des paquets touchés 5 ok ; module en six lots : 67 + 39 + 28 + 13 + 45 + 4 ok, 0 FAIL ; `make go-api-lint` 0 issue (un `prealloc` corrigé en cours de gate) ; garde-rails nommés PASS ; `openapi-gen -check` à jour. `-tags=integration` non requis (aucun paquet `platform/duckdb` modifié).
+- Seuils : `domain/match_view.go` 878 → 881 (D20), `match_view_service.go` 568 → 569, `match_view_data_loaders.go` 714 → 716, `registry_pages.go` 614 → 612 ; fichiers neufs ≤ 174 L ; plus longue fonction neuve `matchCampPlayers` ~32 L ; `matchEmpriseFields` 5 paramètres (ctx compris).
 
 ### M3 — Web : l'onglet reconstruit, briques étendues, suppressions web · lourd
 

@@ -8414,6 +8414,7 @@ export interface components {
             riposte?: components["schemas"]["MatchRiposteBlock"];
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
             weapon_kills: components["schemas"]["MatchWeaponKill"][] | null;
+            weapon_tools?: components["schemas"]["SquadWeaponTools"];
         };
         MatchElevationBlock: {
             kills: components["schemas"]["MatchElevationKill"][] | null;
@@ -8436,6 +8437,23 @@ export interface components {
             time_ms: number;
             weapon?: string;
             weapon_en?: string;
+        };
+        MatchEmpriseBlock: {
+            film_unavailable?: string;
+            habit?: components["schemas"]["SquadEmpriseHabit"];
+            kill_journal_publishable: boolean;
+            matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            placement?: components["schemas"]["SquadEmprisePlacement"];
+            players: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            production: components["schemas"]["SquadEmpriseProduction"][] | null;
+            resources: components["schemas"]["SquadEmpriseResource"][] | null;
+            sheet_unavailable?: string;
+            vehicles?: components["schemas"]["SquadEmpriseVehicles"];
         };
         MatchEncounterBadge: {
             color_token: string;
@@ -8728,6 +8746,24 @@ export interface components {
             killer_xuid: string;
             victim_gamertag: string;
             victim_xuid: string;
+        };
+        MatchLivesNearTeammate: {
+            players: components["schemas"]["MatchLivesPlayer"][] | null;
+        };
+        MatchLivesPlayer: {
+            alone: components["schemas"]["LivesSideCount"];
+            /** Format: int64 */
+            excluded_no_radar: number;
+            /** Format: int64 */
+            excluded_unlocated: number;
+            /** Format: int64 */
+            excluded_unpublishable: number;
+            /** Format: int64 */
+            matches_read: number;
+            /** Format: int64 */
+            matches_without_radar: number;
+            near: components["schemas"]["LivesSideCount"];
+            xuid: string;
         };
         MatchMedal: {
             /** Format: int64 */
@@ -9315,8 +9351,10 @@ export interface components {
         MatchViewResponse: {
             citations_tab: components["schemas"]["MatchCitationsTab"];
             combat_tab: components["schemas"]["MatchCombatTab"];
+            emprise?: components["schemas"]["MatchEmpriseBlock"];
             header: components["schemas"]["MatchViewHeader"];
             is_partial?: boolean;
+            lives_near_teammate?: components["schemas"]["MatchLivesNearTeammate"];
             media_tab: components["schemas"]["MatchMediaTab"];
             partial_reasons?: string[] | null;
             privacy_warning?: components["schemas"]["MatchPrivacyWarning"];
@@ -11878,6 +11916,7 @@ export interface components {
             resources: components["schemas"]["SquadEmpriseMatchResource"][] | null;
             team_known: boolean;
             tiers?: string;
+            unclassified_pickups?: components["schemas"]["SquadEmpriseCount"];
             vehicles?: string;
             vehicles_reason?: string;
         };

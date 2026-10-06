@@ -522,6 +522,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	if combat.FragDistribution != nil {
 		logFragDistribution(ctx, "match view", s.titleSlug, s.xuid, *combat.FragDistribution)
 	}
+	combat.WeaponTools = s.matchWeaponTools(ctx, matchID, d.bulkWeapons, findViewerScoreboardRow(team.Scoreboard))
 	// KillDistanceByWeapon (POC LOT G.3) : déjà agrégé par (xuid, weapon_key) côté
 	// repo (kill_positions_latest × match_kill_events_latest) — assemblage direct,
 	// contrairement à FragDistribution qui doit croiser scoreboard+bulkWeapons.
@@ -554,16 +555,17 @@ func (s *MatchViewService) buildMatchViewFromData(
 	partialReasons := detectPartialMatchData(d.stats, d.scoreboard, d.events, d.medals)
 
 	return domain.MatchViewResponse{
-		Header:         header,
-		Rank:           rank,
-		SummaryTab:     summary,
-		CombatTab:      combat,
-		TeamTab:        team,
-		MediaTab:       mediaTab,
-		CitationsTab:   buildCitationsTab(d.matchCitations, d.medals, s.titleSlug),
-		Radar:          radar,
-		IsPartial:      len(partialReasons) > 0,
-		PartialReasons: partialReasons,
+		Header:                 header,
+		Rank:                   rank,
+		SummaryTab:             summary,
+		CombatTab:              combat,
+		TeamTab:                team,
+		MediaTab:               mediaTab,
+		CitationsTab:           buildCitationsTab(d.matchCitations, d.medals, s.titleSlug),
+		Radar:                  radar,
+		IsPartial:              len(partialReasons) > 0,
+		PartialReasons:         partialReasons,
+		MatchViewEmpriseFields: s.matchEmpriseFields(ctx, matchID, meta, d, friendsExtras),
 	}
 }
 

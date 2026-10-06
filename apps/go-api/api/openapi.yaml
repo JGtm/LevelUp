@@ -17730,6 +17730,8 @@ components:
           type:
             - array
             - "null"
+        weapon_tools:
+          $ref: '#/components/schemas/SquadWeaponTools'
       required:
         - weapon_kills
         - highlight_events
@@ -17793,6 +17795,67 @@ components:
         - delta_z_m
         - time_ms
         - side
+      type: object
+    MatchEmpriseBlock:
+      additionalProperties: false
+      properties:
+        film_unavailable:
+          type: string
+        habit:
+          $ref: '#/components/schemas/SquadEmpriseHabit'
+        kill_journal_publishable:
+          type: boolean
+        matches:
+          items:
+            $ref: '#/components/schemas/SquadEmpriseMatch'
+          type:
+            - array
+            - "null"
+        matches_measured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        objects:
+          items:
+            $ref: '#/components/schemas/SquadEmpriseObject'
+          type:
+            - array
+            - "null"
+        placement:
+          $ref: '#/components/schemas/SquadEmprisePlacement'
+        players:
+          items:
+            $ref: '#/components/schemas/SessionUsageSquadPlayer'
+          type:
+            - array
+            - "null"
+        production:
+          items:
+            $ref: '#/components/schemas/SquadEmpriseProduction'
+          type:
+            - array
+            - "null"
+        resources:
+          items:
+            $ref: '#/components/schemas/SquadEmpriseResource'
+          type:
+            - array
+            - "null"
+        sheet_unavailable:
+          type: string
+        vehicles:
+          $ref: '#/components/schemas/SquadEmpriseVehicles'
+      required:
+        - kill_journal_publishable
+        - matches_total
+        - matches_measured
+        - players
+        - resources
+        - objects
+        - matches
+        - production
       type: object
     MatchEncounterBadge:
       additionalProperties: false
@@ -18504,6 +18567,52 @@ components:
         - victim_xuid
         - victim_gamertag
         - kill_count
+      type: object
+    MatchLivesNearTeammate:
+      additionalProperties: false
+      properties:
+        players:
+          items:
+            $ref: '#/components/schemas/MatchLivesPlayer'
+          type:
+            - array
+            - "null"
+      required:
+        - players
+      type: object
+    MatchLivesPlayer:
+      additionalProperties: false
+      properties:
+        alone:
+          $ref: '#/components/schemas/LivesSideCount'
+        excluded_no_radar:
+          format: int64
+          type: integer
+        excluded_unlocated:
+          format: int64
+          type: integer
+        excluded_unpublishable:
+          format: int64
+          type: integer
+        matches_read:
+          format: int64
+          type: integer
+        matches_without_radar:
+          format: int64
+          type: integer
+        near:
+          $ref: '#/components/schemas/LivesSideCount'
+        xuid:
+          type: string
+      required:
+        - xuid
+        - near
+        - alone
+        - excluded_unlocated
+        - excluded_no_radar
+        - excluded_unpublishable
+        - matches_read
+        - matches_without_radar
       type: object
     MatchMedal:
       additionalProperties: false
@@ -19785,10 +19894,14 @@ components:
           $ref: '#/components/schemas/MatchCitationsTab'
         combat_tab:
           $ref: '#/components/schemas/MatchCombatTab'
+        emprise:
+          $ref: '#/components/schemas/MatchEmpriseBlock'
         header:
           $ref: '#/components/schemas/MatchViewHeader'
         is_partial:
           type: boolean
+        lives_near_teammate:
+          $ref: '#/components/schemas/MatchLivesNearTeammate'
         media_tab:
           $ref: '#/components/schemas/MatchMediaTab'
         partial_reasons:
@@ -26217,6 +26330,8 @@ components:
           type: boolean
         tiers:
           type: string
+        unclassified_pickups:
+          $ref: '#/components/schemas/SquadEmpriseCount'
         vehicles:
           type: string
         vehicles_reason:
