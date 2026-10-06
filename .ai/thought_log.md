@@ -116103,3 +116103,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : garde ROUGE avant les textes (5 groupes : textes des cartes FR / EN, Appui reçu FR / EN, `session.toml`), verte après ; mutations « reste du camp » et « On me prépare » ROUGES. Gate : `go build`, `go vet ./...`, `gofmt` 0 ; `go test -count=1 ./...` 196 paquets ok, 0 FAIL ; intégration DuckDB 4 ok (233 s), `make go-api-lint` 0 issue ; contrat inchangé (`check-generated-types-fresh` OK) ; web : tsc purgé 0, lint 0 erreur, champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest 860 fichiers / 9 138 tests verts, knip 0 / 0 / 0 ; lefthook pre-push sortie 0. Incident : un `python3 --version` tapé par erreur (sortie jetée, aucun code exécuté), consigné au §8.
 
 **Conclusion / prochaine étape** : lot prêt à intégrer dans `feat/v75` sur accord du superviseur ; découvertes S9 au §8 (« Mes matchs » en dur dans la vue match, `ObjectiveRow.Family` sans lecteur).
+
+## [2026-10-06] Page Sessions aux formes de l'Emprise — S9, ronde 2 de revue — Complété (commit sur `feat/sessions-emprise`, poussé)
+
+**Décision technique principale** : deux constats P2 corrigés. L'aide anglaise d'« Appui reçu » dit « Parity: 1/n, n being the team’s headcount on the match. », le terme que l'infobulle de case et la légende affichent (le français dit « Parité » partout) ; plus aucun « fair share » dans `coordinationI18n.ts`. La garde `textesSansPersonne` vérifie aussi `empty` du jeu de l'Escouade, lu par l'état vide de la Répartition des frags et des Outils de destruction ; relevé par grep de `session-detail/` : `performanceCharts`, `weaponKills`, `empty`, rien d'autre.
+
+**Résultats observés** : `textesSansPersonne` + `session-detail` 26 fichiers / 182 tests verts ; tsc purgé 0 ; lint 0 erreur.
+
+**Conclusion / prochaine étape** : lot prêt à intégrer dans `feat/v75` sur accord du superviseur.

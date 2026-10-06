@@ -942,6 +942,11 @@ Journal S9 (2026-10-06) :
   élargie à « me », « je », « j’ » et « camp(s) » (règle « jamais camp »), verte sur les textes de
   `feat/v75`. Vue ROUGE avant les textes (5 groupes), verte après ; mutations « reste du camp » et
   « On me prépare » ROUGES.
+- **Ronde 2 de revue (P2)** : aide anglaise d’« Appui reçu » ramenée à « Parity: 1/n, n being the team’s
+  headcount on the match. » (le terme affiché par l’infobulle et la légende ; plus aucun « fair share »
+  dans le fichier) ; la garde vérifie aussi `empty` du jeu de l’Escouade (état vide de la Répartition
+  des frags et des Outils de destruction), seules parties lues avec `performanceCharts` et `weaponKills`
+  (relevé par grep de `session-detail/`).
 
 ## 7. Reprise de session
 

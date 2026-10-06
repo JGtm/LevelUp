@@ -72,14 +72,15 @@ function collect(v: unknown, out: string[]): void {
 }
 
 /**
- * Les textes des cartes de la page Sessions. Du jeu de l'Escouade (`squad`), la page ne lit que la
- * Répartition des frags et les Outils de destruction : seules ces deux parties sont vérifiées, le
- * reste appartient à la page Escouade.
+ * Les textes des cartes de la page Sessions. Du jeu de l'Escouade (`squad`), la page lit trois parties :
+ * `performanceCharts` (Répartition des frags, `SquadFragBreakdownCard`), `weaponKills` (Outils de
+ * destruction, `SessionToolsCard`) et `empty` (état vide de ces deux cartes) ; seules ces trois
+ * parties sont vérifiées, le reste appartient à la page Escouade.
  */
 type SessionView = (typeof SESSION_CARD_TEXT)['fr']['full']
 const sessionView = (v: SessionView) => ({
   ...v,
-  squad: { performanceCharts: v.squad.performanceCharts, weaponKills: v.squad.weaponKills },
+  squad: { performanceCharts: v.squad.performanceCharts, weaponKills: v.squad.weaponKills, empty: v.squad.empty },
 })
 const SESSION_TEXTS = Object.fromEntries(
   Object.entries(SESSION_CARD_TEXT).map(([locale, t]) => [

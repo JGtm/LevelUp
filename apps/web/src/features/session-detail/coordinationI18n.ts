@@ -123,7 +123,7 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
       'Assisted kills: the player’s kills that received an assist, over the player’s kills; share of the team’s ' +
       'assists: assists received by the player, over all of the team’s.',
     infoAppui2: 'An assist whose author the film cannot resolve enters neither denominator.',
-    infoAppui3: 'Fair share: 1/n, n being the team size on that match.',
+    infoAppui3: 'Parity: 1/n, n being the team’s headcount on the match.',
 
     lowSample: 'low sample',
     coverageMatchesFmt: (m, t) => `${m} of ${t} matches measured`,
