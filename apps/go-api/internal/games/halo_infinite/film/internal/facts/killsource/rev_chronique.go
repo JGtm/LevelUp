@@ -462,25 +462,27 @@ package killsource
 // regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/LOT_VA_V1.md`.
 //
-// COMPLEMENT DU 2026-10-05 (lot VA de la campagne de grammaire, etape V2 : la fin de la vue A fixe le
-// debut de la vue B ; REVISION CONSTANTE) : une source de la couche change (`walk.go` part de
-// [grammar.DebutDeLaVueB], la calibration porte la grammaire de la vue A du film) et la VALEUR de
-// `grammar.Rev` monte a `grammar-2026-10-06.2` puis `.3` (corrections du controle, candidats de tete
-// de la cuisson que cette marche n utilise pas), donc l empreinte. La marche part desormais de la fin
-// de la vue A quand elle decide (film a table EGALE ; film a table PREFIXE si la marche depuis elle
-// ferme le paquet), sinon du localisateur, inchange. Sortie `cmd/killsource json` sur les 19 temoins
-// de `config/replay_corpus.toml` et `1c4c63c2` (carte Refuge), binaire de `87cdfa761` contre binaire
-// du lot : AUCUNE mort, aucune valeur, aucune voie ne change ; 19 films identiques a l octet, et sur
-// `c75f33b8` le seul compteur de diagnostic `concordance.enregistrements_lus_par_les_deux_voies`
-// (`Stats.Redundant`, non persiste) passe de 5 a 6. Chaque ligne de `match_kill_events` deja ecrite
-// sous `killsource-2026-09-27` est celle que ce code ecrirait : la revision reste (D23) et aucun
-// backlog n est ouvert. Golden regenere a revision constante. Mesures :
-// `campagne_grammaire_2026-10-01/LOT_VA_V2.md`.
+// COMPLEMENT DU 2026-10-06 (lot VA de la campagne de grammaire, etapes V2 et V3 : la fin de la vue A
+// fixe le debut de la vue B, la variante de partie du film decide les genres 85 et 116 ; fusion de
+// `feat/v75` a `fed1efed2` et corrections de la revue ; REVISION CONSTANTE SUR UNE MESURE DE 20 FILMS,
+// DECISION D23 SOUMISE AU PILOTE) : une source de la couche change (`walk.go` part de
+// [grammar.DebutDeLaVueB] ; la calibration porte la grammaire de vue A du film sous la carte du match,
+// [grammar.VueADuFilmSousCarte]) et les VALEURS de `grammar.Rev` (`grammar-2026-10-06.4`) et de
+// `profile.Rev` (`profile-2026-10-06.3`) montent, donc l empreinte. Sur la branche du lot seule, les
+// etapes V2 et V3 avaient porte `grammar-2026-10-06.2` a `.4` et `profile-2026-10-07` : rangs jamais
+// fusionnes, reunis a la fusion. La marche part de la fin de la vue A quand elle decide (film a table
+// EGALE ; film a table PREFIXE si la marche depuis elle ferme le paquet), sinon du localisateur,
+// inchange.
 //
-// COMPLEMENT DU 2026-10-06 (lot VA de la campagne de grammaire, etape V3 : la variante de partie du
-// film decide les genres 85 et 116 de la vue A ; REVISION CONSTANTE) : aucune source de la couche ne
-// change ; la VALEUR de `grammar.Rev` monte a `grammar-2026-10-06.4` et celle de `profile.Rev` a
-// `profile-2026-10-07`, donc l empreinte. Sortie `cmd/killsource json` sur les 19 temoins de
-// `config/replay_corpus.toml` et `1c4c63c2` (carte Refuge), binaire de `8c83e2d3a` contre binaire du
-// lot : IDENTIQUE A L OCTET sur les 20 films. Golden regenere a revision constante. Mesures :
-// `campagne_grammaire_2026-10-01/LOT_VA_V3.md`.
+// MESURE : `cmd/killsource json` sur les 19 temoins de `config/replay_corpus.toml` et `1c4c63c2`
+// (carte Refuge), binaire de `fed1efed2` contre binaire du lot : aucune mort, aucune valeur, aucune
+// voie ne change ; 19 films identiques a l octet, et sur `c75f33b8` le seul compteur de diagnostic
+// `concordance.enregistrements_lus_par_les_deux_voies` (`Stats.Redundant`, non persiste) passe de 5 a
+// 6. CE QUI N EST PAS MESURE : l entree de la marche change bel et bien (debuts de vue B, compteur
+// ci-dessus), et le parc local compte 1 401 films HI_1_13_0 et 147 HI_1_12_0 de classe EGALE sur
+// 1 657 ; que chaque ligne de `match_kill_events` deja ecrite sous `killsource-2026-09-27` soit celle
+// que ce code ecrirait est MESURE sur 20 films et ESTIME sur le parc. Les lignes en base ne portent que
+// `decoder_rev = killsource.Rev` : une ligne que ce lot changerait ne serait jamais recalculee. La
+// revision reste et aucun backlog n est ouvert sur cette mesure ; la decision D23 (pas de montee, pas
+// de backlog) est a prendre explicitement par le pilote, en connaissance de ce risque. Golden regenere
+// a revision constante. Mesures : `campagne_grammaire_2026-10-01/LOT_VA_V2.md`, `LOT_VA_V3.md` (§15).

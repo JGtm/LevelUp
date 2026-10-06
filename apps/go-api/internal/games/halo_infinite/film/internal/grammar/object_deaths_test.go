@@ -13,8 +13,10 @@ package grammar
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -86,40 +88,47 @@ func TestScanObjectDeathsSansPaquetDelta(t *testing.T) {
 	}
 }
 
-// TestMarcheSurPayloadTronque : LA BORNE DE BOUCLE, eprouvee sur une entree coupee.
+// TestRecuperationSurPayloadTronque : LA BORNE DE BOUCLE, eprouvee sur une entree coupee.
 //
-// Le localisateur et la marche bornent leurs boucles sur `len(payload)*8`. Un payload TRONQUE —
-// un chunk coupe, un paquet dont l en-tete ment — doit rendre un resultat, jamais paniquer. Le
-// test coupe un payload REEL a toutes les longueurs d une grille, y compris zero et un octet.
-func TestMarcheSurPayloadTronque(t *testing.T) {
+// Le localisateur et la lecture de la vue B bornent leurs boucles sur `len(payload)*8`. Un payload
+// TRONQUE — un chunk coupe, un paquet dont l en-tete ment — doit rendre un resultat, jamais
+// paniquer, et laisser le monde de la marche intact. Le test coupe un payload REEL a toutes les
+// longueurs d une grille, y compris zero et un octet, et le donne a la recuperation du canal des
+// morts ([MarcheDistribuee.recupererLaListe]).
+func TestRecuperationSurPayloadTronque(t *testing.T) {
 	film, err := source.LoadDir(bobineMarcheDir(), nil)
 	if err != nil {
 		t.Fatalf("bobine illisible : %v", err)
 	}
 	fc := NewFilmContext(film)
-	reg, err := fc.Registry()
+	m, err := fc.nouveauMarcheurDesTrames(nil)
 	if err != nil {
-		t.Fatalf("registre illisible : %v", err)
+		t.Fatalf("marche des trames : %v", err)
 	}
-	_, deltas := marchPacketsOf(fc)
-	if len(deltas) == 0 {
+	var pay []byte
+	for _, c := range fc.ChunkNumbers() {
+		data, pks, ok := fc.ChunkAt(c)
+		for _, pk := range pks {
+			if ok && pay == nil && pk.Type == PacketTypeDelta && pk.Size > 0 {
+				pay = pk.Payload(data)
+			}
+		}
+	}
+	if pay == nil {
 		t.Fatalf("aucun paquet delta a tronquer")
 	}
-	pay := deltas[0].payload
-	cfg := DefaultFrameConfig()
+	avant := m.monde.Snapshot()
 	for _, n := range []int{0, 1, 2, 3, 7, 16, 64, len(pay) / 2, len(pay) - 1} {
 		if n < 0 || n > len(pay) {
 			continue
 		}
-		w := NewWorld(reg)
-		coupe := pay[:n]
-		start, _, ok := marchStartOf(coupe, w, cfg)
-		if !ok {
-			continue
-		}
-		if recs := marchRecordsOf(coupe, w, cfg, start); len(recs) < 0 {
+		md := &MarcheDistribuee{Paquet: &lecture.Paquet{Payload: pay[:n]}, marche: m}
+		if recs, _, _ := md.recupererLaListe(); len(recs) < 0 {
 			t.Fatalf("longueur negative")
 		}
+	}
+	if !reflect.DeepEqual(m.monde.Snapshot(), avant) {
+		t.Errorf("la recuperation a modifie le monde de la marche")
 	}
 }
 
@@ -191,57 +200,6 @@ func TestDedupObjectDeaths(t *testing.T) {
 	for i := 1; i < len(out); i++ {
 		if out[i-1].TimestampUS > out[i].TimestampUS {
 			t.Errorf("la sortie n est pas triee par instant : %+v", out)
-		}
-	}
-}
-
-// TestProfilDuCadreEstDomineOuDeclare — LE GARDE-FOU DE LA CALIBRATION, sur les deux bobines
-// versionnees qui portent des paquets delta.
-//
-// CE QU IL TIENT : la largeur retenue est soit DOMINANTE (elle bat son dauphin d un facteur
-// `calibDominationMin` sur les paquets a evenements LOCALISES), soit DECLAREE par defaut. Le
-// silence — retenir une largeur au departage par records propres, critere REFUTE par le lot V13 —
-// n est plus une issue possible.
-//
-// LA TABLE EST LA MESURE, et elle est collee au journal du test : le verdict n en est que la
-// conclusion.
-func TestProfilDuCadreEstDomineOuDeclare(t *testing.T) {
-	for _, cas := range []struct {
-		dir        string
-		veutDefaut bool
-		pourquoi   string
-	}{
-		{bobineMarcheDir(), false,
-			"profil franc mesure le 2026-09-16 : idLow=13 localise 142/147, le dauphin 23/147 (facteur 6,2)"},
-		{filepath.Join("..", "facts", "killsource", "testdata", "minibobine_e5adf7b2"), true,
-			"profil PLAT mesure le 2026-09-16 : les six largeurs localisent 0 paquet sur 54"},
-	} {
-		film, err := source.LoadDir(cas.dir, nil)
-		if err != nil {
-			t.Fatalf("%s : bobine illisible : %v", filepath.Base(cas.dir), err)
-		}
-		fc := NewFilmContext(film)
-		reg, err := fc.Registry()
-		if err != nil {
-			t.Fatalf("%s : registre illisible : %v", filepath.Base(cas.dir), err)
-		}
-		kfs, deltas := marchPacketsOf(fc)
-		cfg, parDefaut, meilleur, dauphin := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
-		t.Logf("%s : %d paquets delta · retenu idLow=%d amorce=%d · localises %d/%d · dauphin %d"+
-			" · cadre par defaut : %v", filepath.Base(cas.dir), len(deltas), cfg.IDLowBits,
-			cfg.PacketPreambleBits, meilleur.located, meilleur.events, dauphin.located, parDefaut)
-		if parDefaut != cas.veutDefaut {
-			t.Errorf("%s : cadreParDefaut=%v, attendu %v — %s",
-				filepath.Base(cas.dir), parDefaut, cas.veutDefaut, cas.pourquoi)
-		}
-		if cfg.PacketPreambleBits != DefaultPacketPreambleBits {
-			t.Errorf("%s : amorce=%d — l amorce est une propriete PROUVEE du format"+
-				" (DefaultPacketPreambleBits = %d), elle ne se balaye pas (D13)",
-				filepath.Base(cas.dir), cfg.PacketPreambleBits, DefaultPacketPreambleBits)
-		}
-		if parDefaut && cfg.IDLowBits != DefaultFrameConfig().IDLowBits {
-			t.Errorf("%s : profil plat mais largeur %d retenue au lieu du defaut %d — on ne devine pas",
-				filepath.Base(cas.dir), cfg.IDLowBits, DefaultFrameConfig().IDLowBits)
 		}
 	}
 }

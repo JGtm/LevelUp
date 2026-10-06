@@ -104,6 +104,17 @@ read the structure and what their hooks receive: continuous fire takes the view-
 walk's hook, and the movement-state counts (event-list frames, biped records, the readings of the
 vehicle type-physics component) are read from the ranged frame, not from the walk's trace.
 
+Since lot 2.7.a, object deaths and occupancy are a third frame channel of the same distribution,
+requested by the cook when it has scanned a vehicle layer: the dead-state of every archetype and
+the biped's parent state, harvested from each frame's view-B records under the acceptance rule of
+the former object-death walk. The eight-view object-death walk
+(its own keyframe timeline, its `IDLowBits` calibration, its eight record lists per packet) is
+removed. A channel of the grammar may read the capture trace of the frame's records — the values
+the capture layer returns — never a byte. On the twenty-film equivalence corpus, movement states
+and continuous fire are unchanged and killsource is byte-identical; the cook's vehicle death
+records go from 142 to 148 on the ten films that carry vehicles, with two films losing records the
+removed walk read under the widths calibrated on the placements (17 to 15, 1 to 0).
+
 ### IR-3 — Two phases and bounded preliminaries, not one pass (correction C2)
 
 A single forward pass is impossible as the walk stands: the anticipated table reads later keyframes
@@ -216,9 +227,14 @@ bit then stops on a component the decoder does not carry (resuming at the signat
 convention); a strict-prefix table (an older writer) only when the walk from that bit closes the
 packet with no writer rule contradicted. A view A read only in part (unported or refused message,
 configuration bit at zero, unreadable table) is never used: the packet takes the recovery mechanisms
-above, unchanged. The two walks that read deaths (object deaths, `killsource`) take the same rule
-through the locator host (`grammar/localisateur.go`, `DebutDeLaVueB`); the frame-width calibration of
-the object-death walk still scores widths by the signature, which depends on them. The writer puts
+above, unchanged. The object-death channel receives the cook's records, which start at the end of
+view A when it decides; it asks the locator (`grammar/localisateur.go`, order of the sites that read
+deaths) only for the lists that the cook did not locate, whose view A therefore did not decide. Only
+the `killsource` walk, which ranges no structure, reads view A itself and takes the same rule through
+`DebutDeLaVueB`, under the film's own view-A grammar and the match map. The class is read on the
+genre table alone; the executable plays a film only under major version 0x29 (`FUN_1428e219c`), and
+whether films of another major with an equal table (HI_1_12_0, 0x28) may take the end of view A
+without proof is submitted to the user. The writer puts
 a zero bit (the view A terminator) before the first record of view B and nowhere else; the locator
 requires it at every position it tries, but the leading NEW-record recovery does not apply it to
 its head candidates: that rule is not decided, and the recovery keeps its candidates unchanged.
@@ -251,12 +267,52 @@ copies. A creation walk is reused only under the same archetype, band, bounds an
 MPP widths included. The user's decision on lot 2.7.d applies to these scans as well: they stay
 out of the registry until the walk reads first.
 
+Since lot 2.7.a, an event list that the cook's list start does not locate is recovered for the
+object-death channel only. The unique locator looks for a start in the order of the sites that
+read deaths (the strict signature, which the walk has just searched for in vain, then the
+free-width fallback), and view B is read from there under the walk's world, restored afterwards.
+No other channel sees these records and the walk binds none of them; each list recovered by the
+fallback is counted under `repli_localisation_largeur_libre`, already registered after the
+reading.
+
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 
 A value that the payload does not carry (`IDLowBits`, the MPP widths, the i0 layout, `gate15`, the
 vehicle byte `+0x818`) is an input of the walk, with its provenance: read, calibrated, or assumed.
-`IDLowBits` has two provenances today; it is the first inconsistency the structure resolves, in
-step 2.
+`IDLowBits` had two provenances; it was the first inconsistency the structure resolved, in step 2.
+Since lot 2.7.a it has one: the walk header (13, assumed, the executable's static value). The
+object-death walk's calibration, which chose 13 on every vehicle film of the local park and never
+kept its default, is removed with that walk, and so is `repli_cadre_de_marche_par_defaut_conserve`.
+The frame walk keeps the context's MPP widths. The widths that the pads and vehicles calibrate on
+the placements of formats without read widths do not enter it: a measured width, not read in the
+game, does not enter the reading of every entity (user decision of 2026-10-02: grammar corrections
+are general and read in the game). Object deaths, read under the calibrated widths by the removed
+walk, are now read under the frame walk's.
+
+The MPP split of formats 20, 21, 24 and 25 is a parameter that the film declares (user decision of
+2026-10-05). Every keyframe record writes, before its object's creation state, the size of that
+state's structure (`n1`, the descriptor's `vtable+0x20`). The current executable reads the
+`object-multiplayer-properties` block with literal widths (9/5), and nothing in its code reads it
+differently. Old films were written with three bits fewer, and their records declare a structure
+four bytes smaller.
+
+The rule lives in `profile` (`MPPPourTailleDeclaree`): the current size gives the read split 9/5,
+and the current size minus 4 gives 8/3, assumed by measurement. `FilmContext.ResolutionMPP` takes
+the format's split when it has one, otherwise the split that every key record of the film's first
+keyframe declares; a single discordant record means nothing is declared. The cook sets that
+resolution on its context for every reading. The calibration on placements decides only for a film
+that declares nothing.
+
+The resolution stays out of the walk header: the keyframe anchor proof reads the header, and
+killsource walks anchors under that proof. Killsource keeps the default split until its alignment
+with the cook (step 2, item 2.7.c). So does the keyframe closure ratchet, which measures the
+versioned reels under the format's split; it moves to the declared split with killsource.
+
+Two independent measures back the assumed split. Read against the tag catalogue of the installed
+game, the 32-bit word of the block names a tag of the group its archetype expects on nearly every
+keyframe record of the old formats under 8/3, and on none under 9/5; format 27 gives the mirror
+image. On formats 24 and 25, 8/3 is also the split that closes the most frame packets. On formats
+20 and 21 no split closes, so the 3-bit index field rests on `n1` alone.
 
 ### IR-8 — Streamed, lazy, without copy; interpretation stays in the hooks; nothing persisted
 

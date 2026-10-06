@@ -160,7 +160,7 @@ func cmPrefixeNeuf(br *Lecteur, defaultStateBits int) uint32 {
 		consumeBipedDefaultState(br)
 		consumeBipedDefaultStateTail(br)
 	case ti == ProjectileTypeIndex && br.p.Grammaire.DeserEtatParArchetype:
-		consumeDefaultStateTI41(br, true)
+		consumeDefaultStateTI41(br)
 	case ti == archetypeProprieteGeree && br.p.Grammaire.DeserEtatParArchetype:
 		consumeDefaultStateTI13RecordNeuf(br)
 	case ok && br.p.Grammaire.DeserEtatParArchetype:

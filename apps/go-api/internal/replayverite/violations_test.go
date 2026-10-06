@@ -52,6 +52,19 @@ func TestHorsVie_ActionSurUnSlotSansVie(t *testing.T) {
 	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolHorsVie, 4) // tir @130, grenade slot 999, changement @306, capacite @225
 }
 
+// TestHorsVie_UnTrajetDuSlotFaitPartieDeSaVie : la piste du slot 512 s'arrete a l'image 100, il
+// monte a bord sur [110, 140] ; son tir @130 est dans sa vie, son tir @200 non. Le trajet d'un
+// AUTRE slot ne couvre pas le tir du 512.
+func TestHorsVie_UnTrajetDuSlotFaitPartieDeSaVie(t *testing.T) {
+	d := documentJuste()
+	d.Vehicles = []Vehicule{
+		{Slot: 700, Rides: []Trajet{{T0: 110, T1: 140, Slot: 512, XUID: "111"}}},
+		{Slot: 701, Rides: []Trajet{{T0: 190, T1: 220, Slot: 515, XUID: "222"}}},
+	}
+	d.Shots = append(d.Shots, Action{T: 130, Slot: ptr(512)}, Action{T: 200, Slot: ptr(512)})
+	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolHorsVie, 1) // tir @200 seul
+}
+
 // TestDeuxCorps_VieQuiRecouvreUneAutre : deux vies d'un meme xuid qui se recouvrent.
 func TestDeuxCorps_VieQuiRecouvreUneAutre(t *testing.T) {
 	d := documentJuste()

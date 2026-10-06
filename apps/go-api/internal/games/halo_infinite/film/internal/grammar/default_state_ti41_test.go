@@ -39,7 +39,7 @@ func TestEtatParDefautDuProjectileToutesPortesFermees(t *testing.T) {
 	w.put(0, 1)  // FUN_141fcf730 absent
 	w.put(0x2a, 8)
 	br := lecteurDInstrument(append(w.buf, make([]byte, 64)...))
-	consumeDefaultStateTI41(br, true)
+	consumeDefaultStateTI41(br)
 	if got, attendu := br.BitPos(), 1+mpp+14; got != attendu {
 		t.Fatalf("%d bits consommes, %d attendus", got, attendu)
 	}
@@ -96,7 +96,7 @@ func TestEtatParDefautDuProjectileToutesPortesOuvertes(t *testing.T) {
 	put(6, 4)
 	w.put(0x2a, 8)
 	br := lecteurDInstrument(append(w.buf, make([]byte, 64)...))
-	consumeDefaultStateTI41(br, true)
+	consumeDefaultStateTI41(br)
 	if got, attendu := br.BitPos(), n+mpp; got != attendu {
 		t.Fatalf("%d bits consommes, %d attendus", got, attendu)
 	}

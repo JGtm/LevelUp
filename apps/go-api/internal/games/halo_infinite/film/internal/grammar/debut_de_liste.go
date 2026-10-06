@@ -194,9 +194,9 @@ func pasDEssai(pay []byte, pos, extra int, w *World, essai FrameConfig) (int, bo
 // LE SECOND RANG EST UN REPLI NOMME, `repli_debut_de_liste_ferme_au_bit` (lecture non portee : un
 // tel debut porte un en-tete de record juste dont le corps est mal lu). Il garde la tete, pas la
 // fermeture : le paquet lu depuis ce debut reste NON ferme (son verdict contredit l ecrivain, le
-// tir continu y voit un trou), mais ses records sont lus et ses NEW lies, comme ceux de tout paquet
-// lu et non ferme. Chaque liste prise a ce rang est comptee
-// ([Observation.DebutsDeListeParRepliFermeAuBit]).
+// tir continu y voit un trou), et ses records sont lus SANS MODIFIER LE MONDE : ses NEW ne lient
+// pas, ses DEL ne delient pas ([World.marquerDebutNonProuve], `debut_non_prouve.go`). Chaque liste
+// prise a ce rang est comptee ([Observation.DebutsDeListeParRepliFermeAuBit]).
 func debutParFermetureRangee(pay []byte, candidats []int, w *World, cfg FrameConfig) (int, lecture.DebutDeVueB) {
 	extra := motFacultatifDEnTete(cfg)
 	auBit := -1
@@ -216,6 +216,7 @@ func debutParFermetureRangee(pay []byte, candidats []int, w *World, cfg FrameCon
 		return -1, lecture.DebutNonLocalise
 	}
 	cfg.Obs.compterDebutDeListeParRepliFermeAuBit()
+	w.marquerDebutNonProuve(pay, auBit)
 	return auBit, lecture.DebutParFermetureAuBit
 }
 

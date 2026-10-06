@@ -23,6 +23,7 @@ package grammar
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -213,26 +214,14 @@ func TestVAV2Pertes(t *testing.T) {
 	b2Ecrire(t, sortie, "va_v2_pertes.tsv", lignes)
 }
 
-// vaMarchFactsSans est [ScanMarchFacts] sous la grammaire de vue A `v` au lieu de celle du film :
-// `VueADuFilm{}` rend la marche d AVANT le lot (le localisateur seul).
-func vaMarchFactsSans(fc *FilmContext, v VueADuFilm) (MarchFacts, error) {
-	st := newObjectDeathStats()
-	reg, err := fc.Registry()
-	if err != nil {
-		return MarchFacts{}, err
+// vaMorts marche `fc` avec le canal des morts ([ScanMarcheDesTramesAvec]). Sans la vue A
+// (`sansVueA`), la grammaire de vue A du film est retiree du contexte avant la marche : la vue A ne se
+// lit pas au-dela de sa tete, la cuisson suit le localisateur (la regle d AVANT le lot).
+func vaMorts(fc *FilmContext, sansVueA bool) (MarcheDesTrames, error) {
+	if sansVueA {
+		fc.grammaireDuFilmDerivee().vueA = grammaireDeLaVueA{}
 	}
-	kfs, deltas := marchPacketsOf(fc)
-	cfg, _, _, _ := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
-	h := &objectDeathHarvest{reg: reg, idx: map[uint32]int{}, st: &st}
-	tl := newMarchTimeline(reg, kfs)
-	for _, d := range deltas {
-		w := tl.advanceTo(d.timestampUS)
-		start, _, ok, _ := marchDebut(d.payload, w, cfg, v)
-		if ok {
-			h.harvest(marchRecordsOf(d.payload, w, cfg, start), d.timestampUS)
-		}
-	}
-	return MarchFacts{Deaths: dedupObjectDeaths(h.out), Occupancy: dedupOccupancy(h.rides), Stats: st}, nil
+	return ScanMarcheDesTramesAvec(fc, LecturesDeLaMarche{Morts: true})
 }
 
 // vaDiffDesLignes rend les lignes de `a` absentes de `b`.
@@ -254,8 +243,8 @@ func vaDiffDesLignes(a, b []string) []string {
 
 // vaLignesDeVehicules rend les morts de vehicule et les lectures d occupation d une marche, une
 // ligne par lecture.
-func vaLignesDeVehicules(f MarchFacts) (morts, occupations []string) {
-	for _, d := range f.Deaths {
+func vaLignesDeVehicules(f MarcheDesTrames) (morts, occupations []string) {
+	for _, d := range f.ObjectDeaths {
 		if d.TypeIndex == uint32(VehicleTypeIndex) {
 			morts = append(morts, fmt.Sprintf("mort\t%d\t%d\t%d\t%+v", d.TimestampUS, d.Slot, d.Gen, d.Dead))
 		}
@@ -266,10 +255,36 @@ func vaLignesDeVehicules(f MarchFacts) (morts, occupations []string) {
 	return morts, occupations
 }
 
+// vaPoserLeProfilDeLaCuisson pose sur `fc`, comme `replay.poserProfilPuisCarte`, le profil que
+// `killsource` a calibre sur le film (VA_PROFILS/<id>.profil.json, ecrit par
+// `killsource/va_v2_profil_research_test.go`), puis les largeurs d objet du monde de la carte ; le
+// decoupage MPP, la marche des images-cles le pose elle-meme. Sans VA_PROFILS, le contexte garde son
+// profil.
+func vaPoserLeProfilDeLaCuisson(t *testing.T, id string, fc *FilmContext) {
+	rep := os.Getenv("VA_PROFILS")
+	if rep == "" {
+		return
+	}
+	blob, err := os.ReadFile(filepath.Join(rep, id+".profil.json"))
+	if err != nil {
+		t.Fatalf("%s : %v", id, err)
+	}
+	var p ProfilDeBalayage
+	if err := json.Unmarshal(blob, &p); err != nil {
+		t.Fatalf("%s : %v", id, err)
+	}
+	fc.PoserProfilDeBalayage(p)
+	bal := fc.ProfilDeBalayage()
+	fc.NoterReplis(bal.PoserLargeursObjetDuMondeDepuisDecoupage(fc.Profile().Map().Layout()))
+	fc.PoserProfilDeBalayage(bal)
+}
+
 // TestVAV2Vehicules : par film de CAMPAGNE_FILMS (carte par VA_CATALOGUE / VA_CARTES, contexte de
-// cuisson [NewFilmContextForMap]), la marche des morts d objet de production ([ScanMarchFacts])
-// contre la meme marche sans la fin de la vue A ; ecrit les morts de vehicule et les lectures
-// d occupation qui n appartiennent qu a l une des deux.
+// cuisson [NewFilmContextForMap], profil de la cuisson par VA_PROFILS), le canal des morts de la
+// marche des trames sous la grammaire de vue A du film contre le meme canal sans elle ; ecrit les
+// morts de vehicule et les lectures d occupation qui n appartiennent qu a l une des deux marches, et
+// journalise les paquets localises et le repli `repli_localisation_largeur_libre` des deux cotes
+// (verification (d) de la representation intermediaire, sur le canal des morts).
 func TestVAV2Vehicules(t *testing.T) {
 	racine, sortie, films := b2Env(t)
 	lignes := []string{"film\tcote\tlecture\tinstant_us\tslot\tgen\tdetail"}
@@ -284,13 +299,18 @@ func TestVAV2Vehicules(t *testing.T) {
 			t.Logf("%s : %v", id, err)
 			continue
 		}
-		fc := NewFilmContextForMap(film, &e, nil)
-		avec, err1 := ScanMarchFacts(fc)
-		sans, err2 := vaMarchFactsSans(fc, VueADuFilm{})
-		if err1 != nil || err2 != nil {
-			t.Errorf("%s : %v / %v", id, err1, err2)
-			continue
+		var marches [2]MarcheDesTrames
+		var replis [2]int
+		for i, sansVueA := range []bool{false, true} {
+			fc := NewFilmContextForMap(film, &e, DefaultScanFilmOptions().Layout)
+			vaPoserLeProfilDeLaCuisson(t, id, fc)
+			avant := fc.ComptesDesReplis().LocalisationsALargeurLibre
+			if marches[i], err = vaMorts(fc, sansVueA); err != nil {
+				t.Fatalf("%s : %v", id, err)
+			}
+			replis[i] = fc.ComptesDesReplis().LocalisationsALargeurLibre - avant
 		}
+		avec, sans := marches[0], marches[1]
 		ma, oa := vaLignesDeVehicules(avec)
 		ms, osans := vaLignesDeVehicules(sans)
 		for _, c := range []struct {
@@ -304,8 +324,9 @@ func TestVAV2Vehicules(t *testing.T) {
 				lignes = append(lignes, rnTab(id, c.cote)+"\t"+x)
 			}
 		}
-		t.Logf("%s : morts de vehicule %d -> %d, occupations %d -> %d, paquets localises %d -> %d", id, len(ms),
-			len(ma), len(osans), len(oa), sans.Stats.LocatedPackets, avec.Stats.LocatedPackets)
+		t.Logf("%s : morts de vehicule %d -> %d, occupations %d -> %d, paquets localises %d -> %d, "+
+			"repli a largeur libre %d -> %d", id, len(ms), len(ma), len(osans), len(oa),
+			sans.ObjectDeathStats.LocatedPackets, avec.ObjectDeathStats.LocatedPackets, replis[1], replis[0])
 	}
 	b2Ecrire(t, sortie, "va_v2_vehicules.tsv", lignes)
 }

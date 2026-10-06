@@ -5,7 +5,9 @@
  *   - il apparaît, en FR comme en EN, quand le titre déclare `replay` ;
  *   - il DISPARAÎT quand le titre ne le déclare pas — un onglet qui mène à une page
  *     « indisponible » est un onglet qui ment ;
- *   - les quatre onglets historiques ne bougent pas.
+ *   - les quatre onglets historiques ne bougent pas ;
+ *   - le 6e onglet « Tendances » (2026-10-05) est toujours present, sans porte de capacite,
+ *     apres Tactique.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -51,7 +53,7 @@ beforeEach(() => {
 afterEach(() => useAppShellStore.setState({ locale: 'fr', availableTitles: [] }))
 
 describe('AscensionLayout — la rangée d’onglets', () => {
-  it('titre AVEC `replay` : les cinq onglets, Tactique en dernier', () => {
+  it('titre AVEC `replay` : les six onglets, Tendances en dernier apres Tactique', () => {
     renderWithProviders(<AscensionLayout />)
     const onglets = screen.getAllByRole('tab').map((n) => n.textContent)
     expect(onglets).toEqual([
@@ -60,6 +62,7 @@ describe('AscensionLayout — la rangée d’onglets', () => {
       'Entraînement',
       'Réalisations',
       'Tactique',
+      'Tendances',
     ])
   })
 
@@ -67,7 +70,9 @@ describe('AscensionLayout — la rangée d’onglets', () => {
     poserTitre(['matchmaking'])
     renderWithProviders(<AscensionLayout />)
     expect(screen.queryByText('Tactique')).toBeNull()
-    expect(screen.getAllByRole('tab')).toHaveLength(4)
+    expect(screen.getAllByRole('tab')).toHaveLength(5)
+    // Tendances n'a pas de porte de capacite : il reste, sans Tactique.
+    expect(screen.getByText('Tendances')).toBeInTheDocument()
   })
 
   // W3 — UN SEUL ONGLET SELECTIONNE. `isProfile` se calcule par exclusion des quatre
@@ -83,6 +88,15 @@ describe('AscensionLayout — la rangée d’onglets', () => {
     expect(actifs.map((n) => n.textContent)).toEqual(['Tactique'])
   })
 
+  it('sur la route Tendances : exactement un onglet selectionne, et c’est le bon', () => {
+    routeCourante = '/ascension/tendances'
+    renderWithProviders(<AscensionLayout />)
+    const actifs = screen
+      .getAllByRole('tab')
+      .filter((n) => n.getAttribute('aria-selected') === 'true')
+    expect(actifs.map((n) => n.textContent)).toEqual(['Tendances'])
+  })
+
   it('sur la route Profil (aucune sous-route) : « Profil » seul est selectionne', () => {
     renderWithProviders(<AscensionLayout />)
     const actifs = screen
@@ -95,5 +109,6 @@ describe('AscensionLayout — la rangée d’onglets', () => {
     poserTitre(['replay'], 'en')
     renderWithProviders(<AscensionLayout />)
     expect(screen.getByText('Tactics')).toBeInTheDocument()
+    expect(screen.getByText('Trends')).toBeInTheDocument()
   })
 })

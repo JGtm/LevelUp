@@ -103,8 +103,8 @@ func TestLesEffetsDeTeleportationSuiventLeMoteurDuFilm(t *testing.T) {
 			if !c.porte {
 				larg = e.AxisWidths
 			}
-			w.ecrirePositionDeNiveau(c.porte, 1, larg)
-			w.ecrirePositionDeNiveau(c.porte, 1, larg)
+			w.ecrirePositionDeNiveau(c.porte, uint64(e.Region), larg)
+			w.ecrirePositionDeNiveau(c.porte, uint64(e.Region), larg)
 		} else {
 			w.bit(0)
 		}

@@ -16,9 +16,9 @@ type paquetDeLocalisation struct {
 	w   *World
 }
 
-// parcourirPaquetsAEvenements appelle `f` sur chaque paquet a evenements de la bobine, dans le
-// monde de la marche des morts d objet, sous le cadre qu elle calibre et la generation stricte des
-// marches qui lisent les morts.
+// parcourirPaquetsAEvenements appelle `f` sur chaque paquet a evenements de la bobine, apres sa
+// marche, dans le monde de la marche des trames et sous son cadre, la generation stricte posee
+// comme la cuisson la pose.
 func parcourirPaquetsAEvenements(t *testing.T, f func(p paquetDeLocalisation, cfg FrameConfig)) {
 	t.Helper()
 	film, err := source.LoadDir(bobineMarcheDir(), nil)
@@ -26,26 +26,25 @@ func parcourirPaquetsAEvenements(t *testing.T, f func(p paquetDeLocalisation, cf
 		t.Fatalf("bobine illisible : %v", err)
 	}
 	fc := NewFilmContext(film)
-	reg, err := fc.Registry()
+	bal := fc.ProfilDeBalayage()
+	bal.Grammaire.GenerationStricte = true
+	fc.PoserProfilDeBalayage(bal)
+	m, err := fc.nouveauMarcheurDesTrames(nil)
 	if err != nil {
-		t.Fatalf("registre illisible : %v", err)
+		t.Fatalf("marche des trames : %v", err)
 	}
-	kfs, deltas := marchPacketsOf(fc)
-	cfg, _, _, _ := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
-	cfg.Profil.Grammaire.GenerationStricte = true
-	tl := newMarchTimeline(reg, kfs)
-	for _, d := range deltas {
-		w := tl.advanceTo(d.timestampUS)
-		if marchHasEvents(d.payload) {
-			f(paquetDeLocalisation{pay: d.payload, w: w}, cfg)
+	m.parcourir(func(tr *trameLue) bool {
+		if tr.paquet.VueA.Etat == lecture.VueArretee {
+			f(paquetDeLocalisation{pay: tr.paquet.Payload, w: m.monde}, m.cfg)
 		}
-	}
+		return true
+	})
 }
 
 // TestLocaliserBoucleDeRecordsSuitLOrdreDuSite : sur chaque paquet a evenements, l ordre de la
-// cuisson rend la premiere signature stricte telle quelle, et celui des marches la rend si sa
-// generation est celle du monde, sinon le repli a largeur libre avec son verdict. La bobine porte
-// les deux cas (signature, repli) : sans eux, le test ne garderait rien.
+// cuisson rend la premiere signature stricte telle quelle, et celui des sites qui lisent les morts
+// la rend si sa generation est celle du monde, sinon le repli a largeur libre avec son verdict. La
+// bobine porte les deux cas (signature, repli) : sans eux, le test ne garderait rien.
 func TestLocaliserBoucleDeRecordsSuitLOrdreDuSite(t *testing.T) {
 	signatures, replis := 0, 0
 	parcourirPaquetsAEvenements(t, func(p paquetDeLocalisation, cfg FrameConfig) {
@@ -126,22 +125,21 @@ func TestLaCuissonNeDemarreQueSurLaSignatureStricte(t *testing.T) {
 	}
 }
 
-// TestLaMarcheDesMortsDObjetSuitLOrdreDesMarches : le site de la marche des morts d objet
-// ([marchDebut]) rend, sur chaque paquet a evenements, la position et le verdict de l ordre des
-// marches — y compris sur les paquets ou l ordre de la cuisson rend autre chose (repli a largeur
-// libre, signature d une autre generation). La bobine porte ces ecarts : sans eux, le test ne
-// garderait rien.
-func TestLaMarcheDesMortsDObjetSuitLOrdreDesMarches(t *testing.T) {
+// TestLeCanalDesMortsSuitLOrdreDesMarches : le site du canal des morts ([debutRecupere]) rend, sur
+// chaque paquet a evenements, la position et le verdict de l ordre des marches — y compris sur les
+// paquets ou l ordre de la cuisson rend autre chose (repli a largeur libre, signature d une autre
+// generation). La bobine porte ces ecarts : sans eux, le test ne garderait rien.
+// MUTATION — [debutRecupere] passe a l ordre de la cuisson : ROUGE.
+func TestLeCanalDesMortsSuitLOrdreDesMarches(t *testing.T) {
 	ecarts := 0
 	parcourirPaquetsAEvenements(t, func(p paquetDeLocalisation, cfg FrameConfig) {
 		attendu, attenduLibre := LocaliserBoucleDeRecords(p.pay, p.w, cfg, SignaturePuisLargeurLibre)
 		if strict, _ := LocaliserBoucleDeRecords(p.pay, p.w, cfg, SignatureStricte); strict != attendu {
 			ecarts++
 		}
-		s, avecEvenements, ok, libre := marchDebut(p.pay, p.w, cfg, VueADuFilm{})
-		if !avecEvenements || ok != (attendu >= 0) || libre != attenduLibre || (ok && s != attendu) {
-			t.Errorf("marche des morts d objet : (%d, %v, %v), attendu l ordre des marches (%d, %v)",
-				s, ok, libre, attendu, attenduLibre)
+		if s, libre := debutRecupere(p.pay, p.w, cfg); s != attendu || libre != attenduLibre {
+			t.Errorf("canal des morts : (%d, %v), attendu l ordre des marches (%d, %v)", s, libre, attendu,
+				attenduLibre)
 		}
 	})
 	if ecarts == 0 {

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 // zoomCourt ecrit un message `unit_zoom` (genre 21) aux trois gardes fermees, puis sa charge R(2)
@@ -74,12 +74,24 @@ func grammaireDeScript(classe classeDeLaVueA, genres int) grammaireDeLaVueA {
 	return g
 }
 
-// debutDuPaquet rend le debut de la vue B de la cuisson et celui des marches sous la grammaire `g`.
-func debutDuPaquet(pay []byte, w *World, g grammaireDeLaVueA) (int, lecture.DebutDeVueB, int) {
+// debutDuPaquet rend le debut de la vue B de la cuisson et celui de la marche de killsource sous la
+// grammaire `g`. Quand la vue A decide, la marche de killsource ne compte aucun repli a largeur
+// libre ; sinon elle rend le verdict du localisateur, a l identique (le compte du repli
+// `repli_localisation_largeur_libre` est la preuve de la verification (d) de la representation
+// intermediaire).
+func debutDuPaquet(t *testing.T, pay []byte, w *World, g grammaireDeLaVueA) (int, lecture.DebutDeVueB, int) {
+	t.Helper()
 	cfg := cadreDeCarte()
 	a := lireLaVueA(pay, 1, cfg.Profil, g)
 	d, comment := debutDeLaVueBDeCuisson(pay, &a, g.classe, w, cfg)
-	m, _ := DebutDeLaVueB(pay, w, cfg, VueADuFilm{g: g})
+	m, libre := DebutDeLaVueB(pay, w, cfg, VueADuFilm{g: g})
+	if debutParLaVueA(pay, &a, g.classe, w, cfg) >= 0 {
+		if libre {
+			t.Errorf("debut %d par la vue A compte comme un repli a largeur libre", m)
+		}
+	} else if _, libreS := LocaliserBoucleDeRecords(pay, w, cfg, SignaturePuisLargeurLibre); libre != libreS {
+		t.Errorf("repli a largeur libre %v, le localisateur rend %v", libre, libreS)
+	}
 	return d, comment, m
 }
 
@@ -95,7 +107,7 @@ func TestLaFinDeLaVueADUnFilmRecentEstLeDebutDeLaVueB(t *testing.T) {
 	if s < 0 || s >= e {
 		t.Fatalf("signature %d, fin de la vue A %d : le vecteur doit porter une signature dans la vue A", s, e)
 	}
-	d, comment, m := debutDuPaquet(pay, w, grammaireDeScript(vueAEgale, GenresVueA))
+	d, comment, m := debutDuPaquet(t, pay, w, grammaireDeScript(vueAEgale, GenresVueA))
 	if d != e || comment != lecture.DebutParVueA || m != e {
 		t.Errorf("cuisson (%d, %d), marches %d ; attendu %d par la vue A", d, comment, m, e)
 	}
@@ -127,12 +139,12 @@ func TestLaFinDeLaVueAPrimeQuandLaMarcheButeEnsuite(t *testing.T) {
 	if l := lectureDEssai(pay, w, cfg, e); l.Fermee {
 		t.Fatalf("la marche depuis E ferme le paquet : le vecteur doit la faire buter")
 	}
-	if d, comment, m := debutDuPaquet(pay, w, grammaireDeScript(vueAEgale, GenresVueA)); d != e ||
+	if d, comment, m := debutDuPaquet(t, pay, w, grammaireDeScript(vueAEgale, GenresVueA)); d != e ||
 		comment != lecture.DebutParVueA || m != e {
 		t.Errorf("film recent : cuisson (%d, %d), marches %d ; attendu %d par la vue A", d, comment, m, e)
 	}
 	mS, _ := LocaliserBoucleDeRecords(pay, w, cfg, SignaturePuisLargeurLibre)
-	if d, comment, m := debutDuPaquet(pay, w, grammaireDeScript(vueAPrefixe, 121)); d != s ||
+	if d, comment, m := debutDuPaquet(t, pay, w, grammaireDeScript(vueAPrefixe, 121)); d != s ||
 		comment != commentS || m != mS {
 		t.Errorf("film ancien non prouve : cuisson (%d, %d), marches %d ; attendu le localisateur (%d, %d), %d",
 			d, comment, m, s, commentS, mS)
@@ -145,7 +157,7 @@ func TestLaFinDeLaVueAPrimeQuandLaMarcheButeEnsuite(t *testing.T) {
 func TestUnFilmAncienPrendLaFinDeSaVueAQuandElleFermeLePaquet(t *testing.T) {
 	pay, e := paquetVueA(1, scriptPortantUneSignature, vueBFermee)
 	w := mondeDeCarte(compHighFrequency)
-	if d, comment, m := debutDuPaquet(pay, w, grammaireDeScript(vueAPrefixe, 121)); d != e ||
+	if d, comment, m := debutDuPaquet(t, pay, w, grammaireDeScript(vueAPrefixe, 121)); d != e ||
 		comment != lecture.DebutParVueA || m != e {
 		t.Errorf("cuisson (%d, %d), marches %d ; attendu %d par la vue A, prouvee", d, comment, m, e)
 	}
@@ -179,7 +191,7 @@ func TestUneVueALueEnPartieNeDecideRien(t *testing.T) {
 		if s < 0 || commentS != lecture.DebutParSignature {
 			t.Fatalf("%s : localisateur (%d, %d), attendu la signature de la vue A", c.nom, s, commentS)
 		}
-		if d, comment, m := debutDuPaquet(c.pay, w, c.g); d != s || comment != commentS || m != mS {
+		if d, comment, m := debutDuPaquet(t, c.pay, w, c.g); d != s || comment != commentS || m != mS {
 			t.Errorf("%s : cuisson (%d, %d), marches %d ; attendu le localisateur (%d, %d), %d", c.nom, d,
 				comment, m, s, commentS, mS)
 		}
@@ -232,52 +244,54 @@ func TestUnFilmAncienNePrendPasUneFinDeVueAFermeeAuBitSeulement(t *testing.T) {
 	if l := lectureDEssai(pay, w, cfg, e); !l.FermeeAuBit || l.Fermee || l.Invariant != InvariantOrdreVueB {
 		t.Fatalf("lecture depuis E = %d : %+v, attendu fermee au bit, ordre de l ecrivain contredit", e, l)
 	}
-	if d, comment, m := debutDuPaquet(pay, w, grammaireDeScript(vueAEgale, GenresVueA)); d != e ||
+	if d, comment, m := debutDuPaquet(t, pay, w, grammaireDeScript(vueAEgale, GenresVueA)); d != e ||
 		comment != lecture.DebutParVueA || m != e {
 		t.Errorf("film recent : cuisson (%d, %d), marches %d ; attendu %d par la vue A", d, comment, m, e)
 	}
 	s, commentS := localiserLaListe(pay, w, cfg)
 	mS, _ := LocaliserBoucleDeRecords(pay, w, cfg, SignaturePuisLargeurLibre)
-	d, comment, m := debutDuPaquet(pay, w, grammaireDeScript(vueAPrefixe, 121))
+	d, comment, m := debutDuPaquet(t, pay, w, grammaireDeScript(vueAPrefixe, 121))
 	if d == e || m == e || d != s || comment != commentS || m != mS {
 		t.Errorf("film ancien : cuisson (%d, %d), marches %d ; attendu le localisateur (%d, %d), %d, et pas E = %d",
 			d, comment, m, s, commentS, mS, e)
 	}
 }
 
-// TestLaMarcheDesMortsPartDeLaFinDeLaVueA : sur la bobine reelle a paquets delta, la marche des morts
-// d objet ([ScanMarchFacts]) localise exactement les paquets que [DebutDeLaVueB] localise sous la
-// grammaire de vue A du film, et plus que le localisateur seul : la fin de la vue A y decide.
-// MUTATION — la marche des morts sans la grammaire de vue A du film : ROUGE.
-func TestLaMarcheDesMortsPartDeLaFinDeLaVueA(t *testing.T) {
-	film, err := source.LoadDir(bobineMarcheDir(), nil)
-	if err != nil {
-		t.Fatalf("bobine illisible : %v", err)
+// TestKillsourceLitLaVueASousLaCarteDuMatch : la marche de killsource prend la grammaire de vue A du
+// film SOUS LA CARTE DU MATCH ([VueADuFilmSousCarte]) : un impact (genre 6) dont la position porte
+// l index de la region jouee se lit sur les tables de cette region, la vue A atteint son terminateur,
+// et sa fin est le debut de la vue B (`fb1a1a72`, HI_1_13_0, table EGALE). Le meme film sans carte
+// ne connait pas la region jouee : l impact arrete la lecture, et le paquet suit le localisateur.
+// MUTATION — la carte ignoree par [VueADuFilmSousCarte] : ROUGE.
+func TestKillsourceLitLaVueASousLaCarteDuMatch(t *testing.T) {
+	carte := carteDeTest()
+	bornes := [3][2]float32{{-100, 100}, {-50, 50}, {-10, 10}}
+	pay, e := paquetVueA(1, func(w *bitWriter) {
+		w.ecrireEnTeteDeMessage(6)
+		w.bit(1)
+		w.bits(0, 7+7+0x13) // variante, deux scalaires, direction
+		w.ecrirePositionDeNiveau(false, uint64(carte.Region), profile.LargeursAxeDuNiveau(bornes, 0xc))
+		w.bits(0, 0x13+9+1)
+	}, func(w *bitWriter) {
+		w.deltaMasque13(124)
+		w.finDeVueB()
+		w.vueCUneEntree()
+	})
+	w := mondeDeCarte(compHighFrequency)
+	cfg := cadreDeCarte()
+	film := bobineFilm(t, "fb1a1a72")
+	sousCarte, sansCarte := VueADuFilmSousCarte(film, &carte), VueADuFilmSousCarte(film, nil)
+	if sousCarte.g.classe != vueAEgale {
+		t.Fatalf("classe %d, attendu EGALE", sousCarte.g.classe)
 	}
-	fc := NewFilmContext(film)
-	f, err := ScanMarchFacts(fc)
-	if err != nil {
-		t.Fatalf("ScanMarchFacts : %v", err)
+	if d, libre := DebutDeLaVueB(pay, w, cfg, sousCarte); d != e || libre {
+		t.Errorf("sous la carte : (%d, %v), attendu (%d, faux) par la vue A", d, libre, e)
 	}
-	reg, err := fc.Registry()
-	if err != nil {
-		t.Fatalf("registre illisible : %v", err)
+	s, libreS := LocaliserBoucleDeRecords(pay, w, cfg, SignaturePuisLargeurLibre)
+	if s == e {
+		t.Fatalf("le localisateur rend E = %d : le vecteur ne distingue pas les deux chemins", e)
 	}
-	kfs, deltas := marchPacketsOf(fc)
-	cfg, _, _, _ := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
-	tl := newMarchTimeline(reg, kfs)
-	avecE, sansE := 0, 0
-	for _, d := range deltas {
-		w := tl.advanceTo(d.timestampUS)
-		if _, ev, ok, _ := marchDebut(d.payload, w, cfg, VueADuFilm{g: fc.grammaireDeLaVueA()}); ev && ok {
-			avecE++
-		}
-		if _, ev, ok, _ := marchDebut(d.payload, w, cfg, VueADuFilm{}); ev && ok {
-			sansE++
-		}
-	}
-	if f.Stats.LocatedPackets != avecE || avecE <= sansE {
-		t.Errorf("paquets localises : marche %d, sous la vue A du film %d, localisateur seul %d", f.Stats.LocatedPackets,
-			avecE, sansE)
+	if d, libre := DebutDeLaVueB(pay, w, cfg, sansCarte); d != s || libre != libreS {
+		t.Errorf("sans carte : (%d, %v), attendu le localisateur (%d, %v)", d, libre, s, libreS)
 	}
 }

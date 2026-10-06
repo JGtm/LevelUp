@@ -99,7 +99,7 @@ func TestMPPWidthsForFilmNeConsultePasLeBuild(t *testing.T) {
 		t.Error("FormatInconnu = true : le format 27 est dans la table, aucun compteur " +
 			"`filmdec_unknown_format_*` ne doit monter")
 	}
-	if !res.Relue() {
+	if !res.Decide() {
 		t.Fatal("Relue() = false : la largeur du format 27 est RELUE chez l ecrivain, la " +
 			"calibration ne doit pas decider")
 	}
@@ -119,7 +119,7 @@ func TestMPPWidthsForFilmSurEntreeTronquee(t *testing.T) {
 			t.Fatalf("chunk de %d octets : chargement %v", n, err)
 		}
 		res := MPPWidthsForFilm(f)
-		if !res.FormatInconnu || res.FormatVersion != FilmFormatVersionUnknown || res.Relue() {
+		if !res.FormatInconnu || res.FormatVersion != FilmFormatVersionUnknown || res.Decide() {
 			t.Errorf("chunk de %d octets : %+v, (0, inconnu, non relue) attendu", n, res)
 		}
 	}
@@ -140,9 +140,9 @@ func TestMPPWidthsForFilmSurLesBobines(t *testing.T) {
 			t.Fatalf("%s : chargement %v", court, err)
 		}
 		res := MPPWidthsForFilm(f)
-		if res.Relue() != relues[court] {
+		if res.Decide() != relues[court] {
 			t.Errorf("%s (format %d) : Relue() = %v, %v attendu", court, res.FormatVersion,
-				res.Relue(), relues[court])
+				res.Decide(), relues[court])
 		}
 		if res.FormatInconnu {
 			t.Errorf("%s : format %d absent de la table — les sept bobines y sont toutes",

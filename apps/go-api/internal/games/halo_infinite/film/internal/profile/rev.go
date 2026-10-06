@@ -113,6 +113,19 @@ package profile
 // absolu du bipede lisait 49 bits (5 de porte + 3x14 + 2), il en lit 47 — exactement la mesure
 // Cheat Engine du dispatch (une seule valeur distincte, 100 % de 154 158 releves).
 //
+// ENTREE `profile-2026-10-05` (2026-10-05, plan RI etape 2, item 2.7.a0 ; decision de
+// l utilisateur du meme jour) : LE DECOUPAGE MPP DES FORMATS ANCIENS EST CELUI QUE LE FILM
+// DECLARE. LE DECODAGE CHANGE pour les films des formats 20, 21, 24 et 25.
+//
+//	`mpp_declare.go`    NEUF : les tailles d etat de creation de l executable courant (RELUES,
+//	                    `vtable+0x20` des neuf descripteurs dont l etat de creation lit le bloc
+//	                    MPP) et la regle [MPPPourTailleDeclaree] : taille courante -> 9/5,
+//	                    taille courante - 4 -> 8/3 PRESUME PAR MESURE, autre -> rien.
+//	`profile_table.go`  la ligne `format=20,21,24,25` cesse d etre « indeterminee » : le format
+//	                    ne decide pas, la cle `n1` decide ; deux lignes de cette cle entrent.
+//	`build_profile.go`  le bloc qui placait les trois bits ailleurs que dans le bloc MPP est
+//	                    remplace par ce que la lecture a etabli : ils y sont, le film le declare.
+//
 // ENTREE `profile-2026-10-06` (2026-10-05, lot VA de la campagne de grammaire, etape V1) : LA
 // SIMULATION DE L ENREGISTREUR ENTRE DANS L IDENTITE DU FILM. AUCUNE LIGNE DE LA TABLE NE CHANGE.
 //
@@ -122,16 +135,22 @@ package profile
 // `FUN_142eec4d8`). Aucune largeur, borne ni provenance ne change. Le rang : `profile-2026-10-05`
 // est pris par l etape 2.7.a de la representation intermediaire.
 //
-// ENTREE `profile-2026-10-07` (2026-10-06, lot VA de la campagne de grammaire, etape V3) : LA
-// VARIANTE DE PARTIE ENTRE DANS L IDENTITE DU FILM. AUCUNE LIGNE DE LA TABLE NE CHANGE.
+// ENTREE `profile-2026-10-06.2` (2026-10-05, fusion de `feat/v75` dans l etape 2 de la
+// representation intermediaire) : LES DEUX RANGS PRECEDENTS SONT REUNIS. Le decoupage MPP declare
+// par le film (`profile-2026-10-05`) et la simulation de l enregistreur dans l identite du film
+// (`profile-2026-10-06`) cohabitent sans autre changement.
+//
+// ENTREE `profile-2026-10-06.3` (2026-10-06, lot VA de la campagne de grammaire, etape V3, rang
+// repris a la fusion de `feat/v75` a `fed1efed2`) : LA VARIANTE DE PARTIE ENTRE DANS L IDENTITE DU
+// FILM. AUCUNE LIGNE DE LA TABLE NE CHANGE.
 //
 // `identite.go` : [FilmIdentity.Variante] ([VarianteDePartie] : m_gameEngineType, killcamEnabled,
 // playOfTheGameEnabled), lue par `grammar` dans le corps de `chunk_00` (lecteur `FUN_1407ee138`). La
 // grammaire de la vue A en tire les charges des genres 85 et 116. Aucune largeur, borne ni provenance
-// ne change. Le rang : `profile-2026-10-06.2`, le seul rang sans trou du 2026-10-06, est pris par
-// `feat/v75` et le lot LR ; le premier rang libre et sans trou est celui du 2026-10-07 (meme geste que
-// l etape V1, qui prenait `profile-2026-10-06` le 2026-10-05).
-const Rev = "profile-2026-10-07"
+// ne change. Sur sa branche seule, le lot avait pris `profile-2026-10-07` (date a venir, choisie
+// parce que `profile-2026-10-06.2` etait pris par `feat/v75`) ; ce rang n a jamais ete fusionne, et
+// la fusion le reprend au premier rang libre et sans trou apres celui de `feat/v75`.
+const Rev = "profile-2026-10-06.3"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/profile_rev.golden` porte le couple (revision, empreinte) avec son historique, et

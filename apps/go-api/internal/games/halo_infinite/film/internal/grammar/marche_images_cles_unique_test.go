@@ -30,7 +30,6 @@ var pilotagesRestants = map[string]string{
 	"keyframe_datums.go":         "`LierTableDeDatums`, la liaison de la marche des naissances : lot 3.1",
 	"keyframe_ground_weapons.go": "enveloppe D2 des armes au sol, sans appelant de production",
 	"navpoint_radial_scan.go":    "l anneau de la bombe, etat complet de ti=12 : lot 3.1",
-	"object_deaths.go":           "`marchPacketsOf`, la marche des morts d objet : lot LU de la campagne de grammaire",
 	"objective_scan.go":          "les objectifs, etat complet de ti=11 : lot 3.1",
 }
 

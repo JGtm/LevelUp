@@ -20,6 +20,9 @@ package profile
 //	VERSION MAJEURE     l u32 de `chunk_00+0` ([FilmMajorVersionFromHeader]). Elle dit
 //	                    l IMPLANTATION DU GAMERTAG dans un bloc d evenement de temps fort.
 //
+// Pour les formats 20, 21, 24 et 25, le DECOUPAGE MPP se lit a la taille `n1` que chaque record
+// d image-cle declare ([MPPPourTailleDeclaree]) ; leurs lignes la portent dans leur champ.
+//
 // Une quatrieme entree n est pas une cle du film mais une donnee du MATCH — l entree de
 // catalogue de la CARTE ([MapQuantEntry]) — et elle entre au profil par le constructeur.
 //
@@ -68,6 +71,9 @@ const (
 	dateLoiLargeursAxe = "2026-09-16"
 	// dateAmorceGrenade : lot 3.3.1, mesure de l amorce et de l index auteur sur dix films.
 	dateAmorceGrenade = "2026-09-17"
+	// dateCleN1 : releve des tailles d etat de creation (vtable+0x20) et mesure du decoupage
+	// qu elles designent (`mpp_declare.go`).
+	dateCleN1 = "2026-10-05"
 )
 
 // preuveLoiLargeursAxe : la preuve de la ligne `Movement.LoiLargeursAxe`, SORTIE DE LA TABLE —
@@ -85,9 +91,6 @@ const preuveLoiLargeursAxe = "FUN_140be9a14 (le remplisseur, fin de chargement d
 	"que par ces cinq constantes : le jour ou l une d elles change, cette ligne se dedouble " +
 	"par `build` et rien d autre ne bouge"
 
-// Provenance dit d ou vient une valeur de profil. Cf. l en-tete du fichier.
-type Provenance string
-
 // Les trois provenances, et rien d autre.
 const (
 	// ProvenanceRelue : l executable est ouvert et la fonction est citee.
@@ -97,24 +100,6 @@ const (
 	// ProvenancePresumee : ni relue ni mesuree. [TestProfilPresumes] la liste.
 	ProvenancePresumee Provenance = "presumee"
 )
-
-// LigneProfil est UNE ligne de la table : une valeur, sa cle, sa provenance et sa preuve.
-type LigneProfil struct {
-	// Cle est la cle ECRITE qui selectionne cette ligne : `format=27`, `build=HI_1_13_0`,
-	// `majeure>=41`, ou `toutes` quand la valeur ne depend d aucune cle connue.
-	Cle string
-	// Champ nomme ce que la ligne pose, dans le vocabulaire du [Profile].
-	Champ string
-	// Valeur est la valeur posee, ecrite pour etre lue par un humain.
-	Valeur string
-	// Source est la provenance (cf. l en-tete).
-	Source Provenance
-	// Preuve est la fonction Ghidra (provenance relue), ou le film temoin et son oracle
-	// (provenance mesuree), ou ce qui manque (provenance presumee).
-	Preuve string
-	// Date est le jour ou cette provenance a ete etablie, `AAAA-MM-JJ`.
-	Date string
-}
 
 // TableProfil rend la table complete, dans l ordre des trois cles puis des invariants.
 //
@@ -262,13 +247,29 @@ func tableProfilFormat() []LigneProfil {
 			Date: "2026-09-15",
 		},
 		{
-			Cle: "format=20,21,24,25", Champ: "MPP", Valeur: "INDETERMINEE (aucune largeur posee)",
+			Cle: "format=20,21,24,25", Champ: "MPP", Valeur: "declare par le film : taille d etat de creation n1 (lignes suivantes)",
+			Source: ProvenanceRelue,
+			Preuve: "FUN_14080cfe8 lit des largeurs litterales et aucun lecteur de la version de " +
+				"format n a de seuil entre 25 et 27 (seuils 3, 7, 11, 13/14, 15) ; FUN_142e2d08c " +
+				"range la taille d etat de creation (vtable+0x20) dans le mot n1 de chaque record " +
+				"d image-cle",
+			Date: dateCleN1,
+		},
+		{
+			Cle: "format=20,21,24,25", Champ: "MPP si n1 = taille courante", Valeur: "lead=9 index=5",
+			Source: ProvenanceRelue,
+			Preuve: "tailles courantes en vtable+0x20 des descripteurs (35 0x98, 36 0x60, 37/38/39 " +
+				"0x68, 40 0xb0, 41 0xd4, 42 0xa8, 43 0x60 ; mpp_declare.go) ; largeurs litterales " +
+				"de FUN_14080cfe8",
+			Date: dateCleN1,
+		},
+		{
+			Cle: "format=20,21,24,25", Champ: "MPP si n1 = taille courante - 4", Valeur: "lead=8 index=3",
 			Source: ProvenanceMesuree,
-			Preuve: "les deux oracles internes se contredisent : `n2` designe 8/3 (part modale " +
-				"0,988 a 0,996 contre 0,304 a 0,522) et la fermeture designe 10/5 la ou " +
-				"l ecrivain est certain — cf. build_profile.go. La case reste VIDE : c est " +
-				"l etat reel de la connaissance",
-			Date: "2026-09-15",
+			Preuve: "oracle n2 modal a 0,974-1,000 sous 8/3 (0,02-0,54 sous 9/5) sur les cinq " +
+				"bobines des formats 21, 24 et 25, archetypes 35, 37, 38, 40, 41, 42, 43 ; " +
+				"identifiants de 32 bits un bit plus tot (champ de tete de 8 bits)",
+			Date: dateCleN1,
 		},
 	}
 }

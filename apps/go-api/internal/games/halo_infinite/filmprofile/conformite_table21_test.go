@@ -63,7 +63,7 @@ var tablesDuProfil = []struct {
 	fonction string
 	lignes   int
 }{
-	{"tableProfilFormat", 2},
+	{"tableProfilFormat", 4}, // 4 depuis le 2026-10-05 : les deux lignes de la cle n1
 	{"tableProfilBuild", 7},
 	{"tableProfilMajeure", 3},
 	{"tableProfilInvariants", 12},        // 12 depuis la fusion du lot 2.2 (2026-09-17) : `Movement.WorldObject` entre dans la table

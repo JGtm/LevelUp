@@ -24,7 +24,12 @@ mesure par une hypothèse écrite.
   `killsource` changée, carte v2 identique à l'octet (gate 2 tenu sans exception), gate de corpus rc=1
   par deux lignes `[FILET]` de `d9781168` instruites (§5) — **admission à décider par le pilote**.
 - `origin/feat/v75` a avancé (`1518e6f10`) mais porte toujours `8dfadd07e` (lot 2.7.a de la RI) :
-  **non fusionné** (§9, écart E-1).
+  **non fusionné** (§9, écart E-1). **Levé par la revue (§15)** : fusionné à `fed1efed2`, puis à
+  `f8a14b3b9`.
+- **Revue du lot (2026-10-06, §15)** : quatorze constats, tous fondés sur pièces ; dix corrigés dans le
+  code, les tests ou la doc, quatre soumis (constats 1, 4, 10, 13). Gate 2 tenu (+53 644 sains contre
+  `fed1efed2`, aucun film en baisse) ; gate de corpus rc=1 avec un `FAUX` V-6 sur `084a804d`, non
+  tranché, à admettre par le pilote ; mutations 6 / 6 ROUGES.
 - **Corrections du contrôle indépendant (2026-10-06, §14)** : trois retenues sur pièces, aucune rejetée.
   Entrée de `.ai/thought_log.md` ajoutée ; trois formes Bond des écrivains (en-tête à id sur deux octets,
   fin de structure de base, borne de cinq octets de l'entier variable) désormais écrites par les
@@ -469,3 +474,196 @@ rejoués, leurs entrées étant identiques à `a91476e3b`) :
 
 `git fetch` du 2026-10-06 : `origin/feat/v75` = `1518e6f10`, inchangé depuis V3 ; non fusionné (E-1,
 décision du pilote).
+
+## 15. Revue du lot : fusion de `feat/v75` (`fed1efed2`) et corrections (2026-10-06)
+
+Revue du lot (quatorze constats, pièces `scratchpad/cg3-revue-jeu/`, `cg3-revue-depot/`). Pièces de la
+correction : `scratchpad/cg3-revue-corr/`. `git fetch` du 2026-10-06 : `origin/feat/v75` = `fed1efed2`
+(lot 2.7.a de la RI, lot LR de la campagne, page Tendances) ; **fusionné** (feat/v75 a raison), la
+consigne du constat 6 l'annonçant comme décision du pilote. Écart E-1 levé.
+
+### 15.1 La fusion
+
+`git merge origin/feat/v75` : 21 chemins en conflit, les mêmes que la fusion d'essai de la revue
+(`cg3-revue-depot-mt.txt`) plus aucun. Résolution :
+
+- `object_deaths.go`, `localisateur_test.go` : côté `feat/v75` ; `object_deaths_march.go` : supprimé
+  (2.7.a retire la marche à huit vues ; la modification du lot n'a plus d'objet).
+- `localisateur.go` : en-tête réuni — la cuisson range la fin de la vue A, le canal des morts reçoit les
+  records de la cuisson et ne localise lui-même ([`debutRecupere`]) que la liste que la cuisson n'a pas
+  localisée, seule la marche de `killsource` appelle `DebutDeLaVueB` ; « trois appelants » corrigé en
+  deux (cuisson, `DebutDeLaVueB`).
+- Révisions (constats 8 et 14) : §15.4.
+- `shapes.golden`, goldens de révision, 8 fixtures web `replay_schema_79_*` et manifeste : régénérés ;
+  les fixtures sont identiques à celles de `fed1efed2` une fois les chaînes `grammar-…` / `profile-…`
+  neutralisées (vérifié fixture par fixture, `cg3-revue-corr/fx/`).
+- Fichier non en conflit cassé par la fusion (constat 6) : `debut_par_vue_a_test.go` citait
+  `ScanMarchFacts`, `marchPacketsOf`, `calibrateFrameConfig`, `newMarchTimeline`, `marchDebut`. Le test
+  de la marche des morts est porté sur le canal des morts (§15.2, constat 6) ; les sondes
+  `va_v2_research_test.go` (`TestVAV2Vehicules` porté sur le canal) et `va_v2_corr_research_test.go`
+  (retirée : elle comparait les débuts E et S de la marche retirée, paquet par paquet ; ses mesures
+  restent dans LOT_VA_V2) ; doc de `killsource/va_v2_profil_research_test.go` mise à jour.
+- `grammar/rev_chronique.go` passait 500 lignes : rangs `grammar-2026-09-27` à `.3` versés, mot pour
+  mot, dans `rev_chronique_archive_7.go` (geste ordinaire de rotation).
+
+### 15.2 Constats : verdict sur pièces, action
+
+| # | Gravité | Constat | Verdict sur pièces | Action |
+|---|---|---|---|---|
+| 1 | majeur | La classe ÉGALE ignore la garde de version majeure 0x29 du jeu | **Fondé.** `ghidra_1428e219c.c` : `if (*param_2 == 0x29) { … *(char *)(param_1 + 0x1ae) = (char)param_2[0x32d17]; … }` sinon `FUN_142988e98` ; `sonde_options.txt` : `147 maj=40 build=HI_1_12_0 classe=2 n=123` (et `57 maj=40 build=HI_1_11_0 classe=1`, PRÉFIXE) | Garde écrite dans l'en-tête de `vue_a_versions.go` (« la garde de version majeure ») et dans les classes de `localisateur.go`. **Règle non changée** : la décision (1) du 2026-10-04 définit la classe par la table ; options (a) et (b) de la revue **soumises à l'utilisateur** (§15.6) |
+| 2 | mineur | `FUN_1406aed00()` non instruit dans la garde du 85 | **Fondé.** `ghidra_1406aed00.c`, `ghidra_1406aed60.c` relus : état de fil `TLS + 0x238`, puis `FUN_1406aed60(options) == 2`, qui rend `options[0]` (game_mode) si `options + 0xE2EE1` vaut 0, sinon 1. Le relevé de la revue omet l'état de fil, écrit aussi | En-tête §85 de `vue_a_charges_execution.go` : ce que vaut le terme, ce que le film porte (game_mode, 2 sur 1 657 films), ce qui reste à lire (octet `+ 0xE2EE1`). Refus inchangé |
+| 3 | mineur | Doc du Script : « le lecteur d'un film rejoué lit le préfixe que l'enregistreur a écrit » | **Fondé.** `va_ghidra/FUN_1404f25f4.c` rend `uVar2 == 2`, `FUN_1404f293c.c` rend `uVar2 != 2`, même champ `options + 4` | Doc reformulée : en rejeu le lecteur lit toujours R(15) ; un enregistreur à simulation 2 n'est pas lisible par le jeu ; la règle portée (écrivain) le contredit alors ; aucun film du cache (sim = 3 sur 1 657) |
+| 4 | mineur | Numérotation des genres présumée pour les films PRÉFIXE | **Fondé.** Recalculé sur la constante : 19 positions ≠ 1 (18, 30, 35, 36, 40, 46, 48, 56, 60, 61, 69, 81, 83, 89, 90, 91, 93, 97, 107), 104 genres à 1 | Présomption écrite dans l'en-tête de `vue_a_versions.go` et rappelée dans `localisateur.go`. « Ne pas publier comme lus les genres au-delà de la tête » : **lu** qu'aucun canal de production ne lit un genre au-delà de la tête (`teteDe` prend `Genres[0]`, `listeAnnoncee` le compte, seuls consommateurs de `p.VueA.Genres` hors rangement) ; marquer la suite « présumée » dans `lecture.VueA` toucherait la structure de la RI : **soumis au pilote** (§15.6) |
+| 5 | mineur | `MapQuantEntry.Region` devient une condition de lecture de la vue A, en partie choisie à la mesure | **Fondé.** `cmd/mapquant-build` : `Region` n'est posée que par `entreeRegionExterne` (`regionExterneDeclarations` = {Live Fire : 1}) ; les 78 autres entrées sont la région 0 du bloc structure-BSP du tag de niveau (`himap.BSPQuantification`) | Provenance écrite à `tablesDeLaRegionJouee` ; **règle générale** : une région jouée autre que la 0 lue dans le tag rend tout index illisible (lecture arrêtée sur la porte, table DÉFAUT lisible). Tests : `carteDeTest` passe à la région 0, cas « index de la région déclarée » ; mutation RG ROUGE. Effet : `0797ce72`, `60ae07c4` (Live Fire) — §15.3 |
+| 6 | majeur | La fusion casse les tests par un fichier non en conflit ; le test (d) de la marche des morts disparaît | **Fondé** (reproduit : `go vet` rouge sur `debut_par_vue_a_test.go:258`) | Fusion faite (§15.1) ; `TestLeCanalDesMortsRecoitLesRecordsPartisDeLaFinDeLaVueA` (`canal_des_morts_test.go`) : sur la bobine 000d5950, 353 paquets partis de E dont 138 où le localisateur rendrait un autre début ; la récolte du canal (morts, occupation, records par archétype, paquets localisés) est celle des records de la cuisson. Mutation MG (le canal relocalise un paquet parti de E) ROUGE. Sondes portées ou retirées (§15.1). (d) refait sur le canal : §15.3 |
+| 7 | majeur | ADR 0037 IR-6 contredit 2.7.a après fusion | **Fondé** (texte fusionné relu, l. 230-232 contre l. 110 et 279-280) | Paragraphe d'IR-6 réécrit (EN) : le canal des morts reçoit les records de la cuisson, ne demande au localisateur que les listes non localisées ; seul `killsource` appelle `DebutDeLaVueB` ; phrase de la calibration supprimée ; la garde 0x29 y est dite (soumise). Ligne `marchDebut` du tableau de `localisateur.go` remplacée |
+| 8 | majeur | `grammar-2026-10-06.2` portée par deux branches avec deux empreintes | **Fondé** (goldens relus ; à la fusion, `feat/v75` porte en plus `.3`, lot LR) | Rangs `.2`, `.3`, `.4` du lot réunis en **`grammar-2026-10-06.4`**, premier rang libre après le `.3` de `feat/v75` (grep sur toutes les branches locales et distantes et les 22 worktrees : `.4` n'est porté que par ce lot). Chronique réécrite (une entrée pour le lot), COMPLEMENTs de killsource et d'objectives réunis, goldens régénérés |
+| 9 | majeur | Aucun test ne garde la vue A de killsource sous la carte (X1 VERTE) | **Fondé** | `TestKillsourceLitLaVueASousLaCarteDuMatch` (`debut_par_vue_a_test.go`) : `fb1a1a72` (ÉGALE), impact (genre 6) à l'index de la région jouée ; sous la carte, `DebutDeLaVueB` rend (E, faux) ; sans carte, le localisateur. X1 ROUGE |
+| 10 | majeur | Chronique de killsource : « chaque ligne déjà écrite est celle que ce code écrirait », mesuré sur 20 films seulement | **Fondé** | Option (1) : entrée reformulée (« mesuré sur 20 films, estimé sur le parc »), D23 **soumise au pilote** (§15.6). Mesure refaite après fusion : §15.3 |
+| 11 | mineur | Le lecteur Bond rend une valeur par défaut comme lue | **Fondé** (vecteurs de la revue reproduits : rendus `Lue: true` avant correction) | `structure` reçoit l'ensemble des champs du chemin : un champ du chemin d'un autre type arrête la lecture ; booléen et entier 32 hors chemin sont enjambés par leur forme (lue chez leurs écrivains) ; un champ d'un type non enjambable arrête la lecture tant qu'un champ du chemin reste à lire. Les deux vecteurs ajoutés à `TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu`. Mutations B1, B2 ROUGES. Parc : §15.3 |
+| 12 | mineur | Le second retour de `DebutDeLaVueB` (repli à largeur libre) non gardé (X5 VERTE) | **Fondé** | `debutDuPaquet` vérifie : faux quand E décide, celui du localisateur sinon. X5 ROUGE (5 tests) |
+| 13 | mineur | `FilmIdentity.Variante` en section 2 des faits sans montée de `SchemaDesFaits` | **Fondé** (`filmfacts_fichier.go` : `SchemaDesFaits = 4`, doctrine l. 130 ; aucun fait périmé servi : `GrammarRev` et `ProfileRev` montent, l'en-tête refuse tout fichier antérieur) | Instruit ici (même écart que V1 §7, correction 3) ; **décision au pilote** pour les deux étapes : monter `SchemaDesFaits`, ou amender la doctrine (§15.6) |
+| 14 | mineur | `profile-2026-10-07`, date à venir | **Fondé** | À la fusion : **`profile-2026-10-06.3`**, rang suivant sans trou après le `.2` de `feat/v75` (libre sur toutes les branches) ; golden régénéré |
+
+### 15.3 Mesures après fusion et corrections (base `fed1efed2`, tête = arbre du lot)
+
+Binaires des deux arbres (`cg3-revue-corr/build.sh`, base depuis `git archive fed1efed2`), table ECS
+identique, une commande go à la fois, films lus en place.
+
+**Carte v2 (gate 2 officiel, `-mpp-declare`, `gate2.awk`)** : 399 135 → **452 779 sains (+53 644)**,
+utiles sains 4 822 178 → **5 708 564 (+886 386)**. **Aucun film en baisse**, ni en sains ni en utiles
+sains (`gate2.tsv`). 348 sains perdus en brut, tous « devenus non fermés », tous sur des films en hausse
+(`4f77afc1` 99, `396cfc92` 94, `d9781168` 65, `f75e7053` 59, 2 à 7 sur six autres). Leur juge dans la
+tête : composant non porté où la marche depuis E bute (`ti=43` 148, `ti=12` 68, `ti=10` 23, `ti=45` 20,
+`ti=35` 2), vue C 56, sortie de la vue B 31. C'est la famille déjà instruite en V2 (LOT_VA_V2 §5.1,
+décision (1)). `mpp_declare.tsv` et `fermeture_chunk3.tsv` identiques. La carte ne pose pas la carte du
+match (D-VAV3-1) : les corrections 5 (région) et 11 (Bond) n'y ont pas d'effet.
+
+**`killsource` (gate 3)** : `cmd/killsource json`, 20 films (19 témoins et `1c4c63c2`), rc=0 partout :
+19 identiques à l'octet ; `c75f33b8` ne diffère que par
+`concordance.enregistrements_lus_par_les_deux_voies` 5 → 6 (`Stats.Redundant`, non persisté). Aucune
+mort, valeur ni voie ne change. Constat 10 : §15.6.
+
+**`replay-equiv`** (racine factice copiée, 20 films) : `objectives` **identique sur les 20 films**.
+Divergent : `artifact` (20, révisions) ; `killsource`, `movementStates`, `movementStates.stats`,
+`continuousFire.stats` (16) ; `continuousFire` (13) ; **`vehicleDeaths` et `vehicleDeaths.stats` sur 6
+films** (`084a804d`, `111fa685`, `11de8353`, `1c4c63c2`, `53ce4390`, `e5adf7b2`). La base de `a521164d`
+a franchi le plafond mémoire au premier passage (3,81 Gio, sous la charge des mutations) ; rejouée seule,
+seule `artifact` y diffère. L'étape `killsource` de `replay-equiv` porte les compteurs non persistés de
+la marche (`PacketsLocated`, `LocalisationsALargeurLibre`), comme en V3.
+
+**Vérification (d), sur le canal des morts.** Étapes `vehicleDeaths` de la cuisson (`TestVAV2Etapes`,
+base contre tête) ; origine des trames par la sonde `va_revue_canal_research_test.go` (base et tête, même
+profil de cuisson, `killsource/va_v2_profil_research_test.go`) :
+
+| Film | Classe | Morts base → tête (ajoutées / retirées) | Occupations base → tête (ajoutées / retirées) | Paquets localisés |
+|---|---|---|---|---|
+| `084a804d` | PRÉFIXE | 48 → 48 | 186 → 278 (92 / 0) | 16 961 → 17 059 |
+| `111fa685` | PRÉFIXE | 5 → 5 | 12 → 14 (3 / 1) | 7 758 → 7 866 |
+| `11de8353` | PRÉFIXE | 17 → 18 (1 / 0) | 33 → 53 (22 / 2) | 7 014 → 7 232 |
+| `1c4c63c2` | PRÉFIXE | 13 → 14 (1 / 0) | 57 → 148 (95 / 4) | 13 546 → 16 616 |
+| `53ce4390` | ÉGALE | 3 → 3 | 30 → 60 (30 / 0) | 7 385 → 7 457 |
+| `e5adf7b2` | PRÉFIXE | 17 → 19 (2 / 0) | 67 → 95 (28 / 0) | 7 578 → 7 697 |
+| `d9781168` | ÉGALE | identiques | identiques | identiques |
+
+Origine des 281 lectures changées, par la trame qui les porte (instant du paquet) :
+
+- **97 viennent d'une trame partie de E dans la tête** (dans la base : liste récupérée par le canal 79,
+  fermeture de la cuisson 18). Sur les films PRÉFIXE, E n'y est pris que prouvé par la fermeture
+  (décision (2)) ; sur `53ce4390` (ÉGALE), toujours (décision (1)).
+- **184 viennent d'une trame dont le début est LE MÊME dans la base et dans la tête** (liste récupérée
+  par le canal 146, fermeture de la cuisson 38) : la lecture change parce que le monde change en amont,
+  les trames parties de E liant et déliant d'autres entités.
+- Aucune ne vient d'une trame dont seul le localisateur a changé le début.
+
+Morts ajoutées : `11de8353` 1 (trame partie de E), `e5adf7b2` 2 (une trame partie de E, une liste
+récupérée au même début), `1c4c63c2` 1 : origine NON ÉTABLIE — la sonde ne localise sa trame ni dans la
+base ni dans la tête, alors que la cuisson y lit la mort ; la sonde rejoue la marche sous le profil de
+la cuisson, pas la cuisson entière, et ce cas le montre (la classification ci-dessus est celle de la
+sonde). C'est ce que l'étape V2 change explicitement : la cuisson part de E, et le canal des
+morts reçoit ses records. Les corrections de la revue n'y sont pour rien.
+
+Le compte `repli_localisation_largeur_libre` (banc du gate de corpus, R-1, base → tête) **baisse sur les
+15 films où il est publié**. ÉGALE : `bcb6d393` 189 → 3, `fb1a1a72` 495 → 7, `d9781168` 838 → 14,
+`c75f33b8` 323 → 4, `bf15f7ab` 270 → 5, `51ebbc0f` 591 → 4, `0797ce72` 494 → 148, `bfecd02b` 905 → 1,
+`4f77afc1` 4 847 → 25, `396cfc92` 713 → 3, `f75e7053` 432 → 1. PRÉFIXE : `084a804d` 4 833 → 3 729,
+`111fa685` 2 359 → 1 805, `e5adf7b2` 2 219 → 1 610, `11de8353` 1 866 → 1 444.
+
+**Gate de corpus (gate 6)** : `replay-corpus-gate --reference=base --base=fed1efed2`, parc copié au
+scratchpad : **rc=1**. Banc de vérité : 18 / 19 « ok », 0 `MANQUE`, **1 `FAUX`** : `084a804d` V-6
+« trajet loin du véhicule » 1 → 2 (`vehicule 913 passager 571 @9187`). Le slot 571 (génération 2) gagne
+dans la tête un trajet dans le véhicule 921, de 13 180,92 s à 13 208,88 s, puis une montée au siège 2 à
+13 212,75 s ; la base ne lit sa montée qu'à 13 215,99 s. La lecture de 13 180,92 s vient d'une liste
+récupérée par le canal au MÊME début qu'en base (monde changé en amont). Celle de 13 212,75 s vient d'une
+trame partie de E (PRÉFIXE, prouvée). Vraie ou fausse lecture : **non tranché** (le banc compare des
+positions que d'autres canaux publient ; aucune vérité indépendante du trajet). 701 lignes `[FILET]` :
+postures 611, rafales 25, couverture 59, véhicules 6 (les trajets de `4f77afc1`). C'est la même famille
+qu'en V2 contre `87cdfa761`, où le banc rendait 3 `FAUX` de V-3, disparus ici. Admission : §15.6.
+
+**Variante de partie (correction 11), parc** : `TestVAV3Corps` sur tout le cache (1 687 répertoires, dont
+1 657 lus par V3). **Les 1 657 lignes communes sont identiques à l'octet** à
+`cg3-V3/v3_prod_parc_final.tsv` (30 films sont neufs depuis). Le refus élargi ne retire aucune variante
+lue du parc.
+
+**Performance (gate 4, mesurée, non attribuée)** : carte v2, somme des durées base 149 994 ms (jouée
+pendant les mutations), tête 128 765 ms ; pic max 321 → 315 Mio.
+
+### 15.4 Révisions
+
+- `grammar.Rev` : `feat/v75` porte `grammar-2026-10-06.2` (fusion de 2.7.a) et `.3` (LR) ; le lot passe
+  à **`grammar-2026-10-06.4`**, une entrée de chronique qui réunit V2, V3 et la revue. Grep sur les
+  branches locales et distantes et sur les 22 worktrees : `.4` n'est porté que par ce lot.
+- `profile.Rev` : **`profile-2026-10-06.3`** (au lieu de `profile-2026-10-07`).
+- `killsource.Rev`, `objectives.Rev` : constantes ; les COMPLEMENTs V2 et V3 sont réunis en un seul ;
+  celui de killsource dit « mesuré sur 20 films, estimé sur le parc » (constat 10).
+- `source.Rev`, `replay.SchemaVersion` (79), `SchemaDesFaits` (4) : inchangés (constat 13 : §15.6).
+- `grammar/rev_chronique.go` passait 500 lignes : rangs `grammar-2026-09-27` à `.3` versés, mot pour
+  mot, dans `rev_chronique_archive_7.go` (rotation ordinaire).
+
+### 15.5 Gates (sorties exactes ; pièces `cg3-revue-corr/`)
+
+1. `gofmt -l ./internal/ ./cmd/` : vide.
+2. `go vet ./...` : rc=0 ; `go vet -tags=research ./internal/games/halo_infinite/film/... ./internal/replaybuild/...` : rc=0.
+3. `go test ./internal/archlint/ -count=1` : `ok … 44.579s`.
+4. G-film (`film/...`, `replaybuild/...`, `sync/killcollector/...`, `-count=1 -timeout 40m`) : rc=0, 21
+   paquets `ok` (`grammar` 112,957 s, `replay` 70,328 s). Tests de révision et de chronique rejoués après
+   les dernières retouches : `ok`.
+5. `golangci-lint run ./internal/games/halo_infinite/film/...` : `0 issues.` ; recette CI
+   `--new-from-merge-base=origin/main ./...` : `0 issues.` ; `--build-tags=research` : 242 issues contre
+   197 sur l'archive de base. La différence est faite de 45 `errcheck` de `research/mouvement/rapport.go`
+   et `research/reapparition/rapport.go`, fichiers identiques dans les deux arbres, que la passe sur
+   l'archive ne rapporte pas ; aucune issue dans un fichier du lot.
+6. Carte v2, `killsource`, `replay-equiv`, gate de corpus, (d) : §15.3.
+7. Mutations (`-overlay`, suite entière du paquet `grammar`, `mutations.txt`) : **6 / 6 ROUGES**.
+
+| Mutation | Tests rouges |
+|---|---|
+| X1 `VueADuFilmSousCarte` sans carte | `TestKillsourceLitLaVueASousLaCarteDuMatch` |
+| X5 `DebutDeLaVueB` rend `(E, vrai)` | `TestKillsourceLit…`, `TestLaFinDeLaVueADUnFilmRecent…`, `TestLaFinDeLaVueAPrime…`, `TestUnFilmAncienNePrendPas…`, `TestUnFilmAncienPrend…` |
+| MG le canal relocalise une trame partie de E | `TestLeCanalDesMortsRecoitLesRecordsPartisDeLaFinDeLaVueA` |
+| B1 `m_gameEngineType` d'un autre type enjambé et accepté | `TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu` |
+| B2 saut à la fin de structure malgré un champ du chemin à lire | `TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu` |
+| RG index d'une région déclarée lu | `TestLesPositionsAIndexSeLisentSurLaRegionJouee` |
+
+### 15.6 Décisions laissées au pilote ou à l'utilisateur
+
+1. **Constat 1 (utilisateur)** — films de table ÉGALE dont la majeure n'est pas 0x29 (HI_1_12_0, 147
+   films) : (a) preuve paquet par paquet comme les PRÉFIXE, puis remesurer la carte v2 (`bcb6d393`) ; ou
+   (b) décision datée qui les couvre. La règle n'est pas changée.
+2. **Constat 10 (pilote)** — D23 : `killsource.Rev` constante sur une mesure de 20 films, le parc non
+   mesuré ; ou mesure d'un échantillon du parc à carte connue (base partagée lue sur une COPIE).
+3. **Constat 13 (pilote)** — monter `SchemaDesFaits`, ou amender sa doctrine (« une montée de
+   `GrammarRev` ou de `ProfileRev` suffit quand la section 2 s'élargit »), une fois pour V1 et V3.
+4. **Constat 4 (pilote / RI)** — marquer « présumée » la suite des genres de vue A d'un film PRÉFIXE dans
+   `lecture.VueA` (structure de la RI) ; aucun consommateur de production aujourd'hui.
+5. **Gate de corpus (pilote)** — rc=1 : `FAUX` V-6 de `084a804d` (§15.3, non tranché) et `[FILET]`.
+6. **Revue adversariale du lot** — faite (cette revue) ; aucune autre n'est lancée ici.
+
+### 15.7 Fichiers
+
+Production : `grammar/film_variante_de_partie.go` (constat 11), `grammar/transloc_events.go` (5),
+`grammar/localisateur.go` (fusion, 1, 4, 7), `grammar/vue_a_versions.go` (1, 4),
+`grammar/vue_a_charges_execution.go` (2, 3). Tests : `canal_des_morts_test.go` (6),
+`debut_par_vue_a_test.go` (6, 9, 12), `film_variante_de_partie_test.go` (11), `vue_a_execution_test.go`
+et `vue_a_variante_test.go` (5). Sondes : `va_v2_research_test.go` (porté), `va_v2_corr_research_test.go`
+(retirée), `va_revue_canal_research_test.go` (neuve). ADR 0037 (7). Révisions et goldens (8, 10, 14).

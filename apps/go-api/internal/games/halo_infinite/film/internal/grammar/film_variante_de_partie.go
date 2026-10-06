@@ -46,9 +46,13 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 //	variante.1 (`FUN_141057d14`) .0 (`FUN_141025dd0`) .5   `i343.NetProtocol.GameOptions.PlaybackSettings`
 //	    .0 booleen killcamEnabled (`options + 0x260`), .2 booleen playOfTheGameEnabled (`+ 0x268`)
 //
-// Tout autre champ est enjambe par la longueur de sa structure. La marche s arrete — rien n est
-// alors lu — sur un champ d un autre type a l une de ces places, sur une structure dont la longueur
-// ne tombe pas sur son octet de fin, ou au bout du tampon.
+// Tout autre champ est enjambe : une structure par sa longueur, un booleen et un entier signe de 32
+// bits par la forme que leurs ecrivains leur donnent. La marche s arrete — rien n est alors lu — sur
+// un champ d un autre type a l une de ces places ; sur un champ d un type qu elle ne sait pas enjamber
+// quand un champ du chemin reste a lire dans la meme structure (il pourrait le suivre, et sa valeur
+// par defaut serait rendue comme lue) ; sur une structure dont la longueur ne tombe pas sur son octet
+// de fin ; ou au bout du tampon. Un champ du chemin absent d une structure lue jusqu a sa fin vaut son
+// defaut : l ecrivain omet un champ optionnel egal a son defaut.
 
 // largeurChaineDuCorps et largeurChaineLongueDuCorps sont les longueurs maximales (`R9D`) des chaines
 // du corps : `0x80` (+ 0xEA694), `0x100` (+ 0xEA810, + 0xEA910).
@@ -87,6 +91,22 @@ type lecteurDuCorps struct {
 	ok bool
 }
 
+// champsDuChemin est l ensemble des id de champ d une structure que la marche suit (bit `id`), les
+// seuls que la grammaire lit ; tout autre champ est enjambe.
+type champsDuChemin uint64
+
+// contient dit que le champ `id` est sur le chemin.
+func (c champsDuChemin) contient(id int) bool { return id >= 0 && id < 64 && c&(1<<id) != 0 }
+
+// champs rend l ensemble des id `ids`.
+func champs(ids ...int) champsDuChemin {
+	var c champsDuChemin
+	for _, id := range ids {
+		c |= 1 << id
+	}
+	return c
+}
+
 // lire lit n bits (n <= 64).
 func (l *lecteurDuCorps) lire(n uint) uint64 { return l.br.ReadBits(n) }
 
@@ -120,21 +140,30 @@ func (l *lecteurDuCorps) enTete() (int, int) {
 	return id, ty
 }
 
-// structure lit une structure Bond : sa longueur, puis ses champs, chacun passe a lireChamp ; un champ
-// que lireChamp ne prend pas est enjambe s il est une structure, et arrete la lecture des champs sinon
-// (la fin de la structure est connue par sa longueur). La structure doit finir sur son octet de fin.
-func (l *lecteurDuCorps) structure(lireChamp func(id, ty int) bool) {
+// structure lit une structure Bond : sa longueur, puis ses champs. Un champ du chemin (`chemin`) est
+// passe a lireChamp, qui le lit s il a le type que la grammaire lit ; d un autre type, la lecture
+// s arrete. Un champ hors du chemin est enjambe ([lecteurDuCorps.enjamber]) ; d un type que la marche
+// ne sait pas enjamber, elle saute a la fin de la structure, connue par sa longueur — sauf s il reste
+// un champ du chemin non lu, qui pourrait le suivre : la lecture s arrete, rien n est devine. La
+// structure doit finir sur son octet de fin.
+func (l *lecteurDuCorps) structure(chemin champsDuChemin, lireChamp func(id, ty int) bool) {
 	n := int(l.entier())
 	fin := l.br.BitPos() + 8*n
+	var lus champsDuChemin
 	for l.ok && l.br.BitPos() < fin {
 		id, ty := l.enTete()
 		switch {
 		case ty == bondFin:
 			l.ok = l.ok && l.br.BitPos() == fin
 			return
-		case ty == bondFinDeBase, lireChamp(id, ty):
-		case ty == bondStructure:
-			l.enjamberLaStructure()
+		case ty == bondFinDeBase:
+		case chemin.contient(id):
+			lu := lireChamp(id, ty) // d abord : sa lecture peut elle-meme faire tomber ok
+			l.ok = l.ok && lu
+			lus |= champs(id)
+		case l.enjamber(ty):
+		case chemin&^lus != 0:
+			l.ok = false
 		default:
 			l.allerA(fin - 8)
 			l.ok = l.ok && l.lire(8) == bondFin
@@ -142,6 +171,24 @@ func (l *lecteurDuCorps) structure(lireChamp func(id, ty int) bool) {
 		}
 	}
 	l.ok = false
+}
+
+// enjamber passe la valeur d un champ hors du chemin dont la marche connait la forme : une structure
+// par sa longueur, un booleen (`FUN_1424d6668`, un octet) et un entier signe de 32 bits
+// (`FUN_140d1a268`, entier variable) tels que leurs ecrivains les ecrivent. Rend faux pour tout autre
+// type, dont la valeur n est pas lue.
+func (l *lecteurDuCorps) enjamber(ty int) bool {
+	switch ty {
+	case bondStructure:
+		l.enjamberLaStructure()
+	case bondBooleen:
+		l.lire(8)
+	case bondEntier32:
+		l.entier()
+	default:
+		return false
+	}
+	return true
 }
 
 // enjamberLaStructure passe une structure Bond par sa longueur ; son dernier octet est sa fin.
@@ -182,7 +229,7 @@ func marcherLeCorps(chunk0 []byte, bodyBit int) (profile.VarianteDePartie, int) 
 	for _, n := range [...]uint{3, 3, 2, 7, 64, 32, 3, 32, 32, 32} {
 		l.lire(n)
 	}
-	l.structure(func(int, int) bool { return false }) // FUN_140ee5f40
+	l.structure(0, func(int, int) bool { return false }) // FUN_140ee5f40 : aucun champ suivi
 	l.chaine(largeurChaineDuCorps)
 	l.lire(32)
 	l.lire(32)
@@ -194,7 +241,7 @@ func marcherLeCorps(chunk0 []byte, bodyBit int) (profile.VarianteDePartie, int) 
 	}
 	var v profile.VarianteDePartie
 	if v.Presente = l.lire(1) == 1; v.Presente {
-		l.structure(func(_, ty int) bool { return l.listeDeVariantes(ty, &v) })
+		l.structure(champs(0, 1, 2, 3), func(_, ty int) bool { return l.listeDeVariantes(ty, &v) })
 	}
 	l.chaine(largeurChaineLongueDuCorps)
 	l.chaine(largeurChaineLongueDuCorps)
@@ -216,11 +263,11 @@ func (l *lecteurDuCorps) listeDeVariantes(ty int, v *profile.VarianteDePartie) b
 	o := l.lire(8)
 	n := int(o >> 5)
 	if o&0x1F != bondStructure || n == 0 {
-		l.ok = false
-		return true
+		return false
 	}
 	for range n - 1 {
-		l.structure(func(id, ty int) bool { return l.champDeVariante(id, ty, v) })
+		l.structure(champs(champEnTeteDeVariante, champReglagesDeVariante),
+			func(id, ty int) bool { return l.champDeVariante(id, ty, v) })
 	}
 	return true
 }
@@ -230,55 +277,48 @@ func (l *lecteurDuCorps) champDeVariante(id, ty int, v *profile.VarianteDePartie
 	if ty != bondStructure {
 		return false
 	}
-	switch id {
-	case champEnTeteDeVariante:
-		l.structure(func(id, ty int) bool {
-			if id != champTypeDeMoteur || ty != bondEntier32 {
+	if id == champEnTeteDeVariante {
+		l.structure(champs(champTypeDeMoteur), func(_, ty int) bool {
+			if ty != bondEntier32 {
 				return false
 			}
 			v.TypeDeMoteur = zigzag32(l.entier())
 			return true
 		})
-	case champReglagesDeVariante:
-		l.structure(func(id, ty int) bool {
-			if id != champReglagesGeneraux || ty != bondStructure {
-				return false
-			}
-			l.reglagesGeneraux(v)
-			return true
-		})
-	default:
-		return false
+		return true
 	}
+	l.structure(champs(champReglagesGeneraux), func(_, ty int) bool {
+		if ty != bondStructure {
+			return false
+		}
+		l.reglagesGeneraux(v)
+		return true
+	})
 	return true
 }
 
 // reglagesGeneraux lit la structure `FUN_141025dd0` jusqu a ses reglages de rejeu.
 func (l *lecteurDuCorps) reglagesGeneraux(v *profile.VarianteDePartie) {
-	l.structure(func(id, ty int) bool {
-		if id != champReglagesDeRejeu || ty != bondStructure {
+	l.structure(champs(champReglagesDeRejeu), func(_, ty int) bool {
+		if ty != bondStructure {
 			return false
 		}
-		l.structure(func(id, ty int) bool { return l.reglageDeRejeu(id, ty, v) })
+		l.structure(champs(champKillcam, champMeilleureAction),
+			func(id, ty int) bool { return l.reglageDeRejeu(id, ty, v) })
 		return true
 	})
 }
 
-// reglageDeRejeu lit un champ de `PlaybackSettings` : ses booleens et son entier.
+// reglageDeRejeu lit un booleen de `PlaybackSettings` que la marche suit.
 func (l *lecteurDuCorps) reglageDeRejeu(id, ty int, v *profile.VarianteDePartie) bool {
-	switch ty {
-	case bondBooleen:
-		b := l.lire(8) != 0
-		switch id {
-		case champKillcam:
-			v.KillcamEnabled = b
-		case champMeilleureAction:
-			v.PlayOfTheGameEnabled = b
-		}
-	case bondEntier32:
-		l.entier()
-	default:
+	if ty != bondBooleen {
 		return false
+	}
+	b := l.lire(8) != 0
+	if id == champKillcam {
+		v.KillcamEnabled = b
+	} else {
+		v.PlayOfTheGameEnabled = b
 	}
 	return true
 }

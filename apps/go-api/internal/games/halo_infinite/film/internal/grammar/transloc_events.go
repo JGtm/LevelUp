@@ -256,12 +256,31 @@ func tablesDeLEntree(e *profile.MapQuantEntry) tablesDePosition {
 }
 
 // tablesDeLaRegionJouee rend les tables de `FUN_14076e524` que l entree de catalogue de la carte du
-// match fait connaitre : celles de [tablesDeLEntree], restreintes a l index de sa region jouee.
+// match fait connaitre : celles de [tablesDeLEntree], restreintes a l index de sa region jouee. La
+// grammaire de la vue A en fait une CONDITION de lecture (un autre index arrete la lecture,
+// [lireE524Sur]) ; elle n accepte donc qu une region LUE dans le jeu.
+//
+// PROVENANCE DE [profile.MapQuantEntry.Region] (`cmd/mapquant-build`). Pour une carte dont le module
+// porte ses tags sbsp, la region est la 0 de l ordre des regions de compression du bloc
+// structure-BSP du tag de niveau (`himap.BSPQuantification`) : lue. Une region autre que 0 ne vient
+// que de `regionExterneDeclarations` (le seul site du constructeur qui pose le champ) : une carte dont
+// les regions vivent dans `ds/globals` (Live Fire, region 1 sur 4), ou la region JOUEE est tranchee
+// par mesure (ancres d objectifs du catalogue contenues dans son AABB, index des records i0 de ses
+// films), pas lue. Sous une telle entree, aucun index n est lisible : la lecture s arrete sur la porte
+// de tout index, comme sans carte, plutot que de lire des largeurs sous une region choisie a la
+// mesure. La table DEFAUT (porte a 1) reste lisible.
 func tablesDeLaRegionJouee(e profile.MapQuantEntry) tablesDePosition {
 	t := tablesDeLEntree(&e)
 	t.regionSeule, t.region = true, e.Region
+	if e.Region != regionLueDansLeTag {
+		t.indexLisible = false
+	}
 	return t
 }
+
+// regionLueDansLeTag est la seule region jouee que le catalogue tient du tag de niveau (cf.
+// [tablesDeLaRegionJouee]).
+const regionLueDansLeTag = 0
 
 // translocEntryUsable dit si l'entrée de catalogue permet une déquantification : bornes
 // ordonnées et largeurs dans l'enveloppe de la loi du moteur. Une entrée hors enveloppe est

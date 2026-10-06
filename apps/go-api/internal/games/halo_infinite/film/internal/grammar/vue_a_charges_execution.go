@@ -16,11 +16,16 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 // (`FUN_141fd07f8`) ; W(13), W(10) n, `FUN_1406d60f4(.., n)`. `game_simulation` est le champ +4 des
 // options de partie (`FUN_140be946c` le journalise sous ce nom ; enumeration `PTR_DAT_143cef4b0` :
 // none, local, dist-client, dist-server). `chunk_00` serialise les options de l enregistreur en tete
-// de son corps (`FUN_1407ec560`, [profile.FilmIdentity.SimulationDeLEnregistreur]). Le rejeu le
-// confirme : `FUN_142e33478` pose, pour le mode reseau 5, game_simulation = 2 (dist-client) ET
-// game_playback = 2 (replicated-film), le seul chemin qui pose ce playback ; le lecteur d un film
-// rejoue lit donc le prefixe que l enregistreur a ecrit. La regle portee est celle de l ECRIVAIN,
-// sur la valeur LUE dans le film ; sans options de partie lues, le Script ne se lit pas.
+// de son corps (`FUN_1407ec560`, [profile.FilmIdentity.SimulationDeLEnregistreur]). En rejeu,
+// `FUN_142e33478` pose, pour le mode reseau 5, game_simulation = 2 (dist-client) ET game_playback = 2
+// (replicated-film), le seul chemin qui pose ce playback : `FUN_1404f25f4` y est toujours vrai, et le
+// lecteur du jeu lit TOUJOURS le R(15). Un film rejoue n est donc lisible par le jeu que si son
+// enregistreur a ecrit le prefixe (simulation != 2). Pour un enregistreur a simulation 2, l ecrivain
+// n ecrit pas ces 15 bits et le lecteur de rejeu les lirait quand meme : la regle portee
+// ([scriptSansPrefixe]) est celle de l ECRIVAIN, et elle contredit alors le lecteur de rejeu. Aucun
+// film du cache n exerce cette branche (simulation 3, dist-server, sur les 1 657 films a section
+// d identification, sonde de la revue du lot VA). La valeur est LUE dans le film ; sans options de
+// partie lues, le Script ne se lit pas.
 //
 // # BIPED_THROW_INITIATE (39) : LA VALEUR SE LIT DANS LE LECTEUR LUI-MEME
 //
@@ -107,6 +112,17 @@ func chargeLancerInitie(br *Lecteur) bool {
 // vaut 1 si et seulement si m_gameEngineType vaut 1 : trois valeurs que le film porte
 // ([profile.VarianteDePartie]). Quand `(killcam && moteur != 1) || playOfTheGame` est faux, la garde
 // est fausse quels que soient les reglages : le 85 n a pas de queue. Sinon il ne se lit pas.
+//
+// Le troisieme terme, `FUN_1406aed00()`, n est PAS lu jusqu au bout. Il vaut vrai quand un etat de
+// fil (`TLS + 0x238`, deux octets non tous nuls) est pose et que `FUN_1406aed60(options)` rend 2, sur
+// les options de la partie courante (`DAT_1445c5838 * 0x1134F0 + DAT_145121d28`). `FUN_1406aed60` rend
+// `options[0]` (game_mode, le premier R(3) du corps de `chunk_00`, que le film porte) quand l octet
+// `options + 0xE2EE1` vaut 0, et 1 sinon. Le film porte game_mode (2 sur les 1 657 films du cache a
+// section d identification, mesure par la sonde de la revue) ; l octet `+ 0xE2EE1` n est pas ecrit en
+// clair par le lecteur du corps (`FUN_1407ee138`) et reste a localiser (dans la variante Bond, a
+// lire). Un film dont game_mode != 2, ou dont cet octet vaut 1, rendrait la garde fausse quels que
+// soient les reglages : son 85 se lirait par une regle lue. Tant que l octet n est pas lu, la regle
+// ci-dessus n en tient pas compte : elle refuse plus qu il ne faut, jamais moins.
 //
 // Lecteur du 116 `FUN_142ef93e0` : R(1) ; si 1 : `FUN_140c5f938(.., mode 0)` ; R(1) ; `FUN_14080d69c`
 // (rend son R(1)) ; si 1 : deux positions `FUN_1424e0e38` = `FUN_14076e494(.., 0x10, .., p6 = 0)`.

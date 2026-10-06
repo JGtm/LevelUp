@@ -115182,6 +115182,37 @@ schéma du document.
 lots de comportement et retrait des marcheurs redondants après la fusion de LU et LS ; revue
 adversariale en fin d'étape, sur le diff cumulé.
 
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — après la fusion : CI de `feat/v75` verte, schéma 78 de la campagne par-dessus — Complété (références d'équivalence à re-figer à l'ouverture du prochain lot)
+
+**Statut** : Complété ; aucun travail de code.
+
+**Décision technique principale** : `feat/ri-etape2` avancée sur `feat/v75` = `6fa631df0` (la
+campagne y a fusionné la correction des vies de bots, schéma du document 77 → 78, aucune révision de
+couche). Les références d'équivalence (ligne `artifact`, qui porte le schéma) se re-figent à
+l'ouverture du prochain lot par la passe de référence du plan (§1.2) sur la tête fusionnée du moment,
+pas maintenant : la passe serait à refaire, et la republication du parc occupe la machine.
+
+**Résultats observés** : CI de `feat/v75` verte au niveau job sur la fusion `083e1a4bc` (push et PR).
+
+**Conclusion / prochaine étape** : mesure de durée des objets du monde au signal de machine calme de
+la campagne ; ensuite, ouverture des lots après LU (passe de référence d'abord).
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — LS retiré par la campagne : les lots restants n'attendent plus que LU — Complété (plan mis à jour)
+
+**Statut** : Complété ; aucun travail de code.
+
+**Décision technique principale** : la vague 2 de la campagne retient LU (localisateur unique) et LT
+(règle de tête de liste), retire LS, n'adopte ni LP ni LN. Dans ce plan, seul 2.7.c (killsource
+devient un canal de la marche) était placé après LS, et seulement pour ne pas écrire
+`facts/killsource/*` en même temps que lui : aucune dépendance de contenu. LS retiré, 2.7 et 3.1
+n'attendent plus que la fusion de LU dans `feat/v75` (§1.3 et journal du plan mis à jour, réponse
+faite à la campagne).
+
+**Résultats observés** : sans objet (coordination).
+
+**Conclusion / prochaine étape** : à la fusion de LU, fusion de `feat/v75` dans `feat/ri-etape2`,
+passe de référence (références d'équivalence re-figées : schéma 78, `grammar-2026-10-03.5`), puis
+2.7.a ; mesure de durée des objets du monde au signal de machine calme.
 ## [2026-10-04] Campagne de grammaire — vague 2 : corrections de la revue adverse — Complété (commit local sur `feat/campagne-grammaire`, non poussé ; rc 1 du gate de corpus et sort de LS soumis au pilote)
 
 **Statut** : Complété. Les 17 constats vérifiés sur pièces : tous vrais, le 16 en partie seulement (ses citations de `movement_states.go` et `frame_harvest.go` redeviennent justes au retrait de LS) ; aucun rejeté. Correction de l'intégration précédente : la phrase « `origin/feat/v75` inchangée, `feat/ri-etape2` non fusionnée » était FAUSSE au commit `da6ecda38` (constat 9) ; `feat/v75` (`6fa631df0`) est fusionnée (`f1895d9bc`) et toutes les mesures sont refaites contre elle.
@@ -115212,6 +115243,254 @@ adversariale en fin d'étape, sur le diff cumulé.
 
 **Conclusion / prochaine étape** : recuisson du parc ; la recherche sur la localisation haute fréquence fondée sur la loi d'écriture de la vue B est en cours (reprise de LS).
 
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — ouverture du lot 2.7 : fusion de LU et LT, passe de référence, mesure des morts d'objet — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours (2.7.a, mesure).
+
+**Décision technique principale** : la vague 2 de la campagne (LU, LT ; LS retiré) fusionnée dans
+`feat/v75` (`87cdfa761`) ouvre le lot 2.7. Fusion de `feat/v75` dans `feat/ri-etape2` sans conflit ;
+passe de référence `v75w2` sur la tête fusionnée ; références d'équivalence re-figées (`0355c46ab`).
+2.7.a (les morts d'objet et l'occupation lues par la marche des trames) commence par une mesure : la
+marche à huit vues et la marche des trames diffèrent par le nombre de vues (huit contre trois), le
+monde (chronologie propre contre phase des images-clés), le localisateur (signature puis largeur
+libre contre début de liste de la cuisson), `IDLowBits` (calibré de 10 à 15 contre présumé 13) et les
+largeurs MPP (celles des véhicules contre celles du format).
+
+**Résultats observés** : passe `v75w2` : vingt films décodés depuis le film, aucun échec ; écarts tous
+venus de `feat/v75` (`artifact` ×20, `movementStates.stats` ×17, `continuousFire.stats` ×13). La
+campagne annonce un lot « lire la vue A jusqu'au bout » (décision de l'utilisateur) ; 2.7 et 3.1 ne
+touchent pas la lecture de la vue A.
+
+**Conclusion / prochaine étape** : résultats de l'instrument sur les huit films à véhicules, puis
+décisions d'exécution de 2.7.a écrites au plan avant le code.
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — lot 2.7.a : mesure des morts d'objet sur la marche des trames, décisions — En cours (`feat/ri-etape2`)
+
+**Statut** : mesure faite, décisions écrites au plan ; implémentation à suivre.
+
+**Décision technique principale** : les morts d'objet et l'occupation deviennent un canal de la marche
+des trames ; les listes d'événements qu'elle ne localise pas sont récupérées pour ce seul canal
+(localisateur unique, ordre « signature puis largeur libre », repli `repli_localisation_largeur_libre`
+après la lecture) ; la cuisson marche les trames sous les largeurs MPP des véhicules ; `IDLowBits`
+reste l'en-tête présumé (13) et la calibration disparaît avec la marche à huit vues, retirée dans le
+lot (règle 7).
+
+**Résultats observés** : une première mesure, faite sans le profil de balayage que killsource calibre
+pour la cuisson (génération stricte), était fausse — elle accusait la marche des trames de perdre 75 à
+85 % des morts. Sous le profil de la cuisson, sur les huit films à véhicules du corpus : 138 records
+de mort de véhicule à huit vues, 131 par la marche des trames, 150 sous les largeurs MPP des
+véhicules, 165 avec la récupération (2 manquent, 29 de plus ; toutes les morts propres à une marche
+sont confirmées par le recensement des images-clés, à moins d'une minute de la fin de leur vie, sauf
+quatre des 29). Occupation 543 → 688. Calibration d'`IDLowBits` : 13 sur les 48 films à véhicules du
+parc local, jamais le cadre par défaut.
+
+**Conclusion / prochaine étape** : prévenir la campagne (trois de ses fichiers citent la marche à huit
+vues : le localisateur unique, son test, un instrument), puis écrire le canal, la récupération et le
+câblage de la cuisson ; preuve au `replay-corpus-gate` et au banc de vérité.
+
+## [2026-10-04] Représentation intermédiaire du film, étape 2 — lot 2.7.a écrit, preuve d'équivalence faite, gate de corpus MIXTE — En cours (`feat/ri-etape2`, non fusionnable en l'état)
+
+**Statut** : En cours — code écrit et commité en local, décision de l'utilisateur à instruire.
+
+**Décision technique principale** : canal des morts et de l'occupation sur la marche des trames
+(récupération des listes non localisées par le localisateur unique, ordre des sites qui lisent les
+morts), marche à huit vues retirée avec sa calibration d'`IDLowBits`, `grammar-2026-10-04`. La
+décision 3 (marche des trames sous les largeurs MPP calibrées sur les poses, 8/3 sur les formats
+sans largeur relue) est RETIRÉE sur signalement de la campagne : c'est son lot LM, mis de côté par
+l'utilisateur le 2026-10-02 (« corrections d'abord, uniquement générales lues dans le jeu »).
+
+**Résultats observés** : équivalence (`ri27c`, vingt films) : états de mouvement et tir continu
+identiques, killsource identique à l'octet, records de mort de véhicule 142 → 148 (`e5adf7b2`
+17 → 15 et `60ae07c4` 1 → 0, lus jusqu'ici sous la largeur mesurée). Gate de corpus (19 témoins,
+contre `87cdfa761`) : sortie 1 — FAUX sur `084a804d` et `e5adf7b2` (une « action hors vie » de
+plus chacun), PERTE sur `60ae07c4`, `a349fea8`, `a521164d`, `11de8353`, `4f77afc1` (épisodes à
+bord, tirs posés sur un véhicule, deux rafales sur `11de8353`, morts lues), gains ailleurs (banc :
+`4f77afc1` 112 → 95 et `11de8353` 8 → 3 actions hors vie). `bfecd02b` (véhicules, build récent)
+inchangé. `4f77afc1` gagne 11 morts que le recensement n'apparie pas : à instruire. Sous la largeur
+mesurée (passe `ri27b`), la vue C de la cuisson se fermait trois à cinq fois plus souvent sur les
+films de formats anciens (découverte 11).
+
+**Conclusion / prochaine étape** : instruire les morts non appariées de `4f77afc1`, puis poser la
+décision à l'utilisateur en langage clair (garder la lecture actuelle des morts sur les formats
+anciens, accepter leurs pertes, ou autoriser la largeur mesurée pour la marche).
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — lot 2.7.a : décision posée à l'utilisateur, la campagne lance « lire la vue A jusqu'au bout » — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — attente de la décision de l'utilisateur (trois options posées ; il penche
+pour garder la lecture actuelle, explication en langage clair demandée et donnée).
+
+**Décision technique principale** : 2.7.a n'entre pas dans `feat/v75` avant le lot de la campagne
+« lire la vue A jusqu'au bout », lancé depuis `87cdfa761` (`feat/cg3-vue-a`) : ce lot n'a pas de
+canal des morts à vérifier et garde verte la marche à huit vues de production (morts et occupation
+des véhicules, killsource inchangé).
+
+**Résultats observés** : les pertes des formats anciens ont deux parts — les listes que la marche
+des trames ne localise pas (le lot de la campagne devrait les rendre) et les records de la vue B
+qui déraillent derrière un véhicule mal découpé (largeur MPP de ces versions non lisible dans le
+jeu, aucune lecture générale connue ; découverte 11 du plan). La campagne mesure en parallèle,
+sans code de production, le découpage 8/3 de ces versions par double preuve (fermeture au bit,
+châssis du jeu installé). Texte « écrit » de 2.7.a corrigé au plan : la marche des trames de la
+cuisson tourne sous les largeurs du contexte, pas sous `gwWidthsForFilm` (décision 3 retirée).
+
+**Conclusion / prochaine étape** : consigner la décision de l'utilisateur au plan. Si la lecture
+actuelle est gardée : à la fusion du lot de la campagne, fusionner `feat/v75`, brancher le canal
+des morts sur le début de vue B lu depuis la vue A, remesurer en séparant les deux parts, et
+revenir vers l'utilisateur avec le reste. Aucune passe de décodage tant que la campagne occupe la
+machine.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — lot 2.7.a : recherche Ghidra de la donnée du film qui piloterait le bloc MPP — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — recherche faite, condition non trouvée, retour à l'utilisateur.
+
+**Décision technique principale** : l'argument « le jeu actuel ne relit plus les films d'avant
+août 2025 » (tiré des notes de mise à jour de Halo Support) est retiré : l'utilisateur réaffirme
+que la version actuelle lit tous les films et que le film porte son index de décodage. Recherche
+dans l'exécutable courant (Ghidra, lecture seule), reprise de la campagne qui a arrêté la sienne.
+
+**Résultats observés** : lecteur d'état par défaut des véhicules `FUN_1410a5a74` ; descripteurs par
+type enregistrés statiquement (`FUN_140e453b4`) ; `FUN_14080cfe8` à largeurs littérales, sans
+autre lecteur du bloc ; versions par type et registre des archétypes 36 à 43 identiques entre
+`e5adf7b2` (format 25, 8/3) et le format 27 ; seuils de la version de format 3, 7, 11, 13/14, 15.
+Détail : découverte 12 du plan.
+
+**Conclusion / prochaine étape** : aucune donnée du film trouvée qui fasse lire ce bloc autrement
+entre les formats 25 et 27. Deux pistes : un écart dans notre propre lecture ailleurs, ou du code
+du jeu non encore lu. Lecture actuelle des morts gardée ; la suite de la recherche est à décider
+avec l'utilisateur.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — lot 2.7.a : agent d'enquête sur les deux écarts de 3 bits — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — enquête rendue, décision de l'utilisateur attendue.
+
+**Décision technique principale** : un agent Opus (worktree dédié, Ghidra en lecture seule) lit le
+bloc MPP de l'état de création et la boucle des composantes du tir, à la demande de l'utilisateur.
+
+**Résultats observés** : condition « non trouvée » dans l'exécutable courant pour les deux écarts,
+et notre lecture en amont n'est pas fautive : l'écrivain des anciens films a écrit 3 bits de
+moins. Le film déclare toutefois, record par record, la taille de la structure d'état de création
+(`n1`) : 4 octets de moins sur les formats 21, 24 et 25 pour chaque archétype à bloc MPP. Le jeu ne
+lit `n1` que comme garde. Pour le tir, la frontière est le format 24 (HI_1_8_0 compris). Fait lu,
+présenté sans conclusion : `FUN_1428e219c` n'installe la lecture que si la version majeure du film
+vaut 41. Détail : découverte 13 du plan.
+
+**Conclusion / prochaine étape** : présenter à l'utilisateur la clé que le film porte lui-même
+(`n1`) comme base d'une lecture générale des anciens films, et le fait du chargement. Lecture
+actuelle des morts gardée en attendant.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — décision : le bloc MPP des anciens films se lit d'après la taille que le film déclare — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — item 2.7.a0 ouvert.
+
+**Décision technique principale** : validation par l'utilisateur. La règle porte sur la taille
+d'état de création `n1` déclarée par le film :
+- `n1` égal à la taille courante (lue en `vtable+0x20`) → découpage relu 9/5 ;
+- `n1` égal à la taille courante − 4 → 8/3, présumé par mesure ;
+- autre valeur → chemin actuel, compté.
+Le découpage est posé pour toute la cuisson. killsource est aligné en 2.7.c. L'observation
+dynamique avec Cheat Engine est inscrite au backlog (`.ai/BACKLOG.md`).
+
+**Résultats observés** : tailles courantes relues — 35 : 0x98, 36 : 0x60, 37/38/39 : 0x68,
+40 : 0xb0, 41 : 0xd4, 42 : 0xa8, 43 : 0x60. La campagne confie l'implémentation à ce plan, sous
+trois conditions : son gate 2, la provenance présumée par mesure, sa double preuve comme oracle.
+
+**Conclusion / prochaine étape** : implémenter 2.7.a0 (profile, grammar, cuisson, contrôle par
+record), puis les gates de l'item, puis remesurer 2.7.a dessus.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — 2.7.a0 écrit : découpage MPP déclaré par le film, gates joués — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — non fusionnable en l'état ; instruction des pertes lancée.
+
+**Décision technique principale** : la règle `n1` (profile) et sa résolution par film (grammar)
+sont posées par la cuisson pour toutes ses lectures. killsource ne change pas (identique à
+l'octet). La campagne obtient son drapeau `-mpp-declare` dans `cmd_fermeture` pour son gate 2.
+
+**Résultats observés** :
+- sept bobines : déclaration unanime ;
+- gate 2 : +84 282 paquets sains, aucun film en baisse nette, 428 perdus en brut (347 sur
+  `1c4c63c2`) ;
+- gate de corpus : FAUX (V-3) sur `084a804d` (+4) et `e5adf7b2` (+1), pertes de métriques sur
+  les films anciens, gains P-1 ×2,5 à ×5 ;
+- `50247b26` reste sur le chemin calibré (ti=38 déclare une taille inconnue).
+
+**Conclusion / prochaine étape** : un agent cherche où sont les deux bits de fin (le premier bit
+est certain), instruit les pertes du gate 2 par famille et explique les écarts du rejeu. Ensuite,
+correction ou admission, puis retour à l'utilisateur.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — instruction du gate de corpus (2.7.a et 2.7.a0) : un correctif, une décision à prendre — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — gate de corpus sans FAUX, huit films en baisse instruits ; admission et
+une décision de règle attendues de l'utilisateur ; fusion après le lot « vue A » de la campagne.
+
+**Décision technique principale** : un épisode d'occupation lu se ferme sur la lecture suivante
+du MÊME OBJET occupant (slot et génération), plus du slot seul (`953401feb`). Banc V-3 : un trajet
+du slot fait partie de sa vie (`ced770753`). Lint CI : étiquette `research` manquante (`46b51efe7`).
+
+**Résultats observés** :
+- gate complet (19 témoins contre `87cdfa761`) : onze sans écart, huit en baisse, banc `ok`
+  partout ; le FAUX de `4f77afc1` venait d'une lecture d'occupation fausse (slot 737 en
+  génération 3) qui fermait à 8410 le trajet de son conducteur ;
+- postures (169 lignes) : corrections, invraisemblables 118 → 94, trois nouvelles (début lu, fin
+  non lue) ;
+- changements d'arme : 43 prises → échanges, deux lâchers de rien supprimés ;
+- tir continu et dotations de naissance : améliorations comptées à rebours par le gate ;
+- véhicules : trajets lus 269 → 326, repli 196 → 156, faux passagers retirés ; reste 13 tirs de
+  véhicule de `084a804d` sans tireur, par la primauté de la lecture qui nomme par corps.
+
+**Conclusion / prochaine étape** : présenter à l'utilisateur ; selon sa décision, admettre ou
+affiner la primauté (nommer par joueur). Puis, après le lot « vue A » de la campagne, fusion de
+`feat/v75` dans la branche, remesure, `make gate-push`, accord de fusion.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — décisions de l'utilisateur appliquées : baisses admises, primauté de la lecture par joueur — En cours (`feat/ri-etape2`)
+
+**Statut** : En cours — 2.7.a se clôt après le lot « vue A » de la campagne (fusion de
+`feat/v75`, remesure, gates, accord de fusion).
+
+**Décision technique principale** : la primauté de la lecture nomme les occupants d'une vie de
+véhicule par joueur (xuid), plus par corps (slot) ; sans identité, le slot reste la clé ; le
+chevauchement d'un épisode lu contredit toujours (`e127e90fb`, test rouge sans la règle).
+
+**Résultats observés** : gate complet sans FAUX, banc `ok` sur les 19 témoins ; `084a804d`
+passe de 44 à 25 lignes en baisse, toutes dans les familles admises ; tirs de véhicule rattachés
+194 → 198 (3 restent sans tireur, chevauchement de cinq images avec un trajet lu).
+
+**Conclusion / prochaine étape** : attendre le signal de la campagne (lot « vue A ») ; alors
+fusion de `feat/v75` dans la branche (`feat/v75` a raison en conflit), remesure des deux parts de
+2.7.a, gate de corpus, `make gate-push`, accord de l'utilisateur pour fusionner.
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — découpage MPP déclaré : double preuve reçue, item clos — Complété (2.7.a0, `feat/ri-etape2`)
+
+**Statut** : Complété pour 2.7.a0 ; 2.7.a reste ouvert jusqu'à la fusion du lot « vue A » de la
+campagne et la remesure.
+
+**Décision technique principale** : le découpage déclaré par `n1` est confirmé par la double
+preuve de la campagne (identités contre les tags installés, fermeture des formats 24 et 25) ; le
+ratchet de fermeture d'image-clé, qui mesure encore sous le découpage du format, s'aligne en 2.7.c
+avec killsource.
+
+**Résultats observés** : identités 1 480 366 / 1 480 374 sous 8/3, aucune sous 9/5 ; `b429a7d3`
+déclare 8/3, perd quatre faux sains de 9/5 (un NEW d'identité inconnue chacun) ; fermeture
+d'image-clé sous le découpage déclaré +107 sur les cinq archétypes objet, baisses par ligne sur
+`ti=42` à justifier record par record en 2.7.c.
+
+**Conclusion / prochaine étape** : ordre de fusion convenu — V1 de la campagne, puis 2.7.a et
+2.7.a0, puis LR, puis V2 ; chaque fusion sur accord de l'utilisateur.
+
+## [2026-10-05] Représentation intermédiaire du film — relecture du lot « vue A » V1 de la campagne avant fusion — Complété (relecture)
+
+**Statut** : Complété — relecture rendue ; la fusion est celle de la campagne.
+
+**Décision technique principale** : deux relecteurs à contexte frais (règles du projet ;
+équivalence et couverture des tests), en lecture seule, sur `87cdfa761..3bacfadeb`.
+
+**Résultats observés** : aucun P0, sortie identique confirmée ; 15 constats recevables (14
+distincts), triés : à corriger avant fusion (recopie d'un sous-lecteur existant, commentaires faux,
+nombres magiques, complexité non justifiée, champ mort, chemin sans test, tests de E qui recopient
+le code), à trancher (troisième portage de `damage_aftermath` dont une copie diverge, deux gardes
+recopiées), pour V2 (une branche atteinte par les seuls tests). La campagne corrige avant de fusionner.
+
+**Conclusion / prochaine étape** : à la fusion de V1, reprendre `feat/v75` dans `feat/ri-etape2`
+(adapter le canal des morts à `listeAnnoncee`), remesurer, gate de corpus, puis demander l'accord de
+fusion de 2.7.a et 2.7.a0. Découverte 17 (exemption de lint par chemin) à porter à l'utilisateur.
 ## [2026-10-05] Campagne de grammaire — lot VA, étape V1 : la vue A lue par une seule lecture, sortie inchangée, puis corrections du contrôle — Complété (commits locaux sur `feat/cg3-vue-a`, non poussés)
 
 **Statut** : Complété. Étape statuée **[x] retenue** (`LOT_VA_V1.md` §0). Le contrôle indépendant a tenu l'étape et demandé trois corrections mineures. Les trois sont appliquées ; aucune n'est jugée fausse sur pièces (§11).
@@ -115280,3 +115559,264 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : diff = une ligne par film (ORACLE axisW 14 -> 11 sur 78919882, 21 -> 20 sur 9b191a7f, scores 388 -> 390 sur fccc61cd) ; test vert ensuite.
 
 **Conclusion / prochaine étape** : à l'intégration d'un lot qui touche la marche, jouer aussi `TestGoldenFilms` avec `KILLSOURCE_FIXTURES` (la CI ne le voit pas).
+
+## [2026-10-05] Représentation intermédiaire du film, étape 2 — fusion de feat/v75 après le lot « vue A » V1 ; 2.7.a clos — Complété (2.7.a, `feat/ri-etape2`)
+
+**Statut** : Complété pour 2.7.a et 2.7.a0 ; fusion dans `feat/v75` en attente de la CI, de
+`make gate-push` et de l'accord de l'utilisateur.
+
+**Décision technique principale** : `feat/v75` (`5bc1fd938`, `65c99b669`) fusionné dans la
+branche ; rangs de fusion `grammar-2026-10-06.2` et `profile-2026-10-06.2` ; le canal des morts
+prend le prédicat de la marche (`listeAnnoncee`) depuis la lecture complète de la vue A.
+
+**Résultats observés** : gate de corpus contre la nouvelle base identique ligne pour ligne au gate
+admis (315 lignes, aucun FAUX, banc `ok` sur 19) ; fixtures de contrat identiques hors révisions ;
+banc killsource sur films réels trouvé rouge sur `feat/v75` (diagnostic de calibration, antérieur à
+V1), régénéré par la campagne, vert sur la branche.
+
+**Conclusion / prochaine étape** : CI, `make gate-push`, puis accord de fusion demandé à
+l'utilisateur ; ensuite LR de la campagne, puis 2.7.b.
+## [2026-10-05] Campagne de grammaire — lot LR (lecteur d'état de création, second rang sans mutation du monde) : non retenu à la base
+
+**Statut** : Complété (compte rendu) ; non commité, code laissé dans le worktree `LevelUp-wt-cg3-lr` (branche `feat/cg3-lr`).
+
+**Décision technique principale** : deux règles lues dans le jeu. (1) `FUN_14080cfe8` échoue sur un compte MPP supérieur à quatre (`CMP ECX,0x4 ; JA` @14080d238), les lecteurs d'état qui le lisent rendent 0 (sauf `ti=41`, drapeau 2 et index absent), et `FUN_1408f1aa4` ne lit pas le corps d'un record NEW dont l'état échoue : `TraverseEntity` arrête le record, le juge le contredit. (2) La marche partie du second rang de `debutParFermetureRangee` ne lie aucun NEW et ne délie aucun DEL (annonce posée sur le monde, prise par la boucle de la vue B).
+
+**Résultats observés** : carte v2 au découpage par défaut +259 sains au corpus mais 14 films en baisse ; `e5adf7b2` perd 23 sains vrais par (2) (têtes `ti=41` mal lues à 9/5, cas LT §4.2) : gate 2 rouge. Mesure de recherche sous 8/3 (`LT_MPP`, sonde contrôlée à l'unité contre la carte) : +1 311 sains, toutes les pertes des films en baisse passent par un NEW illisible pour le jeu. Cas réels `1c4c63c2` 17:52 / 17:172 et 61:42 corrigés sous 8/3. killsource identique hors diagnostic `calibration` ; `objectives` identique (replay-equiv) ; gate de corpus rc 1 = la même baisse de `P-1`.
+
+**Conclusion / prochaine étape** : rejouer le gate 2 officiel sous `-mpp-declare` quand 2.7.a0 est poussé, puis intégrer LR avec ou après 2.7.a0. Détail : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_LR.md`.
+
+## [2026-10-06] Campagne de grammaire — lot LR repris sur `8dfadd07e` (découpage MPP déclaré) : gate 2 officiel tenu sous D2
+
+**Statut** : Complété (proposé au pilote ; commit sur `feat/cg3-lr`, non poussé).
+
+**Décision technique principale** : le commit WIP `e00beafdc` est rebasé sur `origin/feat/v75` =
+`8dfadd07e` (2.7.a0 : découpage MPP déclaré par le film, `-mpp-declare`). Conflits sur les seuls
+fichiers générés (la base a raison, régénération par les commandes du dépôt) ; révision
+`grammar-2026-10-03.6` (jamais fusionnée) → `grammar-2026-10-06.3` ; `killsource`, `objectives`
+constantes (D23 prouvée : killsource json identique hors `calibration` sur 19 témoins, `objectives`
+identique sur 20 films). Corrections du contrôle appliquées : table des lecteurs d'état complétée de
+`ti=42` (`FUN_1407f0c68`, décompilé : `cVar1 == 0 → 0`) ; tests qui font rougir M1
+(`TestUneMarcheNonProuveeCompteLeNeufQuiContreditUnVivant`), M2 (`TestLAnnonceDesigneUnBitDuPayload`)
+et M3 (`TestLeVerdictDEtatEstCeluiDuRecord`) ; M8 équivalente commentée (un lecteur par trame) ;
+précisions 7a (règle jamais décisive : 153 paquets, jamais première, jamais fermés au bit près) et 7b
+(l'anticipation mute encore le monde) dans `debut_non_prouve.go`. `param5` de
+`consumeDefaultStateTI41` retiré (unparam, argument toujours 1). Sondes de recherche : `LR_MPP_DECLARE=1`
+(`lrOuvrir`), contrôlées contre la carte officielle paquet par paquet.
+
+**Résultats observés** : gate 2 officiel sous `-mpp-declare`, base `8dfadd07e` contre tête : 397 824 →
+399 135 sains (+1 311), utiles sains +42 607 ; 12 films en baisse (de -1 à -8), dont TOUTES les pertes
+(34) sont de la famille A : la base ouvrait la liste sur un NEW que le jeu ne lit pas (compte MPP ≥ 5
+sous le découpage déclaré, relu). 203 pertes instruites : A 194, Ap 1 (`4f77afc1` 40:102), C 8 (liaison
+posée par un NEW du second rang, lisible : non factice), toutes Ap et C sur des films en hausse ;
+aucune perte inexpliquée. replay-corpus-gate rc 1 : `P-1` en `MANQUE` sur les 12 mêmes témoins, aucune
+mesure O-* ni V-* en défaut. Repli `repli_debut_de_liste_ferme_au_bit` 9 298 → 8 379. G-film, vet,
+vet research, archlint, golangci (0 issue ; 28 issues research toutes présentes à la base),
+`TestGoldenFilms` (une ligne de diagnostic régénérée) verts ; mutations 13 / 14 rouges (M8 équivalente).
+
+**Conclusion / prochaine étape** : LR proposé RETENU sous D2 (baisses = fermetures factices retirées,
+instruites), décision de fusion au pilote. Pièces : `LOT_LR.md` §12, `scratchpad/cg3-lr2/`. Écarts
+D-LR-7 (`vehicleDeaths` diverge, non compté) à D-LR-9.
+
+## [2026-10-06] Campagne de grammaire — lot LR : corrections du second contrôle (C1, C2)
+
+**Statut** : Complété (commit sur `feat/cg3-lr`, non poussé).
+
+**Décision technique principale** : deux tests, aucun code de production. C1 :
+`TestLaMarcheDuPremierRangModifieLeMonde` (`debut_non_prouve_test.go`), un paquet dont le premier
+candidat FERME (rang `DebutParFermeture`) ; la marche qui suit lie ses NEW et délie ses DEL. C2 :
+`TestChaqueArchetypeAEtatMPPSuitLeVerdictDuBloc` (`etat_de_creation_test.go`), test de table sur
+35, 36, 37, 38, 39, 40, 42, 43 : bits uniformes à un (compte MPP 7, record arrêté) et à zéro (témoin).
+
+**Résultats observés** : Y20 (annonce au premier rang) ROUGE ; les huit exemptions d'archétype dans
+`TraverseEntity` ROUGES. Suite `grammar/` complète rc 0, vet (avec et sans `research`) rc 0,
+golangci-lint `grammar/...` 0 issue. Révision inchangée (`grammar-2026-10-06.3`).
+
+**Conclusion / prochaine étape** : LR proposé au pilote, RETENU sous D2 (`LOT_LR.md` §12.9, avec la
+réserve 8/3 du contrôle). À la fusion avec `origin/feat/v75` (`1518e6f10`), seul `.ai/thought_log.md`
+est un conflit probable.
+
+## [2026-10-06] Campagne de grammaire — lot LR : corrections de la revue (R1 à R4)
+
+**Statut** : Complété (commit sur `feat/cg3-lr`, non poussé).
+
+**Décision technique principale** : quatre constats mineurs vérifiés sur pièces, tous vrais ;
+commentaires et compte rendu seulement. R1 : décomposition LR.1 / LR.2 au §12.8 de `LOT_LR.md`
+(LR.1 seul, lu dans le jeu, en perte sur les trois films rejoués ; les gains viennent de LR.2, règle de
+prudence du décodeur ; LR.2 seul non mesuré). R2 : `etat_de_creation.go` dit que `FUN_1408f1aa4` rend 0
+comme un succès et que l'appelant poursuit, sépare le lu du déduit, et note les quatre places de la
+liste MPP. R3 : contrat de `TraverseEntity` complété (arrêt sur `EtatIllisible`). R4 : contrat de
+`debut_non_prouve.go` au présent ; D-LR-3 renvoyé au compte rendu.
+
+**Résultats observés** : R1 reproduit par `rv.awk` (`e5adf7b2` -3 / -50, `c75f33b8` -5 / -24,
+`4f77afc1` -16 / -92, 0 gagné, contre +501 / +15 470 pour LR complet sur `4f77afc1`). R2 relu dans le
+désassemblage (1408f1bf0, 1408f1f78, 1408f1f9e, 1408f210e) et les décompilations de `FUN_1406cbaa0`
+et `FUN_14080cfe8`. Gates : gofmt vide, vet (avec et sans `research`) rc 0, `go test` de `grammar/`
+rc 0, golangci-lint `grammar/...` 0 issue ; révision inchangée (`grammar-2026-10-06.3`).
+
+**Conclusion / prochaine étape** : LR proposé au pilote (`LOT_LR.md` §12.8 et §12.10), qui tranche
+sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
+
+## [2026-10-04] Étude « Tendances » : maquette v4 (horizons 7 / 30 / 90 / 365 j, familles d'indicateurs selon le matchmaking)
+
+**Statut** : Complété (maquette seule, aucune implémentation ; `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commitée).
+
+**Décision technique principale** : relecture du dossier d'étude (`Tendances_LevelUp_2026-10-04.zip` : étude du 30/09, maquette v3, `extraction_matchs.sql`) sur demande de l'utilisateur. (1) Le bloc « Taux de victoire selon la statistique, par horizon » est retiré : l'écart entre matchs au-dessus et en dessous de la médiane est structurel (durée de vie JGtm 67 / 33 % à 365 j, 66 / 32 % à 90 j), la médiane suit l'horizon donc une progression n'y apparaît pas, et le lien statistique ↔ victoire est déjà porté par « Moyenne par match en défaite et en victoire ». (2) Horizons : la « dernière soirée » disparaît (l'utilisateur ne l'avait pas demandée) ; retour à 7 / 30 / 90 / 365 j, chacun contre la période d'avant, seuil 10. (3) Le matchmaking règle les lobbys sur le niveau du joueur : la matrice est rangée en Niveau (MMR adverse, MMR équipe, LUSR), Par rapport au niveau du moment (taux de victoire, écart au FDA attendu, score de performance : grandeurs qui convergent), puis stats brutes (Combat, Façon de jouer, Objectifs, Activité, Soirées). Le score de performance est un rang parmi les 50 matchs précédents de la même chaîne (`sync/performance.go`, `windowSize = 50`) : il converge vers 50 par construction. (4) Lignes ajoutées : précision, assistances, meilleure série, objectifs (drapeaux capturés / ramenés, zones capturées, temps en zone, temps porteur du crâne, depuis `match_objective_stats_latest`), matchs / heures / jours joués, taux d'abandon. Groupes repliables, lignes vides masquées, lignes « ni mieux ni moins bien » en couleur neutre au lieu du gris « pas de comparaison ».
+
+**Résultats observés** : JGtm, octobre 2025 → juillet 2026 : 63 → 49 % de victoires, écart aux frags attendus +2,27 → −0,36, MMR adverse 1 091 → 1 253 : la lecture « recul à difficulté égale » de l'étude (§6.6) est un rattrapage du matchmaking, pas une régression. Maquette exécutée sous jsdom (ECharts 6.1 local) : 0 erreur hors canvas, aucun id en double, aucun conteneur vide ; matrice solo 38 lignes (dont 7 intertitres), escouade 13 ; contrôle visuel dans le volet navigateur (repli des groupes fonctionnel).
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v4. Non maquetté faute de données dans la copie : coordination (riposte, appui, isolement), score escouade, XP de carrière par horizon. L'étude (§6.7 du document du zip) n'est pas mise à jour : la maquette porte les décisions du 04/10 dans ses notes.
+
+## [2026-10-04] Étude « Tendances » : maquette v5 (petits graphiques affichés d'office)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : retour utilisateur « tout cantonner aux listes déroulantes n'est pas top », puis « je préfère qu'on affiche de base ». Le « Détail » à liste déroulante (solo et escouade) est remplacé par une section « Mois par mois » : un petit graphique par indicateur (barres autour de la moyenne des mois, valeur sur la barre, couleurs de la matrice), rangé par famille comme la matrice, grille de 3 par rangée. La matrice reste le résumé des horizons ; un clic sur une de ses lignes fait défiler jusqu'au graphique. « Niveau des lobbys et écart à l'attendu » perd son menu (écart au FDA attendu face au MMR adverse) ; les écarts aux frags et aux morts attendus deviennent des lignes de la famille « Par rapport au niveau du moment ». Le passage par clic pour déplier (proposé d'abord) est écarté par l'utilisateur.
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, aucun conteneur vide ; 33 petits graphiques en solo (7 familles), 11 en escouade ; matrice solo 40 lignes. Contrôle visuel à 1 000 px : grille en 3 colonnes, étiquettes de valeur qui se chevauchent masquées.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v5.
+
+## [2026-10-04] Étude « Tendances » : maquette v6 (graphiques regroupés par question)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : retour utilisateur « beaucoup de graphes, un compromis ? on peut en combiner certains ». Les 33 petits graphiques de la v5 deviennent 11 en solo, plus « Niveau des lobbys et écart à l'attendu » placé en tête de « Mois par mois » (le MMR d'équipe y est ajouté en pointillé sur l'axe de droite). Règle de regroupement : même unité ET même récit, aucun nouveau double axe ; une courbe par indicateur, un point par mois. Groupes : les trois LUSR ; taux de victoire et score de performance (0-100, repère 50) ; écarts aux frags et morts attendus (repère 0) ; frags, morts, assistances, meilleure série par match ; rendement et résistance (repère 1) ; précision et part à la tête ; dégâts infligés et subis ; durée de vie ; arme lourde et équipement ; objectifs ; victoire après une victoire / une défaite. Escouade : 6 graphiques (avec et sans l'escouade, écart au FDA attendu par membre aux couleurs des joueurs, part des frags de l'escouade par membre en barres empilées, part des frags de l'équipe, écart de MMR, soirées jouées). Les indicateurs sans graphique restent dans la matrice (FDA, perf fin − début de soirée, matchs par soirée, volume, abandons, temps en zone / porteur du crâne). Un clic dans la matrice amène au graphique qui trace l'indicateur (`data-keys`).
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, aucun conteneur vide ; toutes les séries ont au moins 2 mois (équipement : 4 mois, couverture `us6`). Contrôle visuel à 1 000 px : grille en 2 colonnes, légendes en bas.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v6.
+
+## [2026-10-04] Étude « Tendances » : maquette v7 (la section « Évolution » suit l'horizon, pas de temps au choix)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : retour utilisateur « pourquoi juste l'année, mois par mois ? plus fin, ou laisser le choix ». « Mois par mois » devient « Évolution » : boutons d'horizon 7 / 30 / 90 / 365 j (défaut 90 j) et de pas, proposés selon l'horizon (7 j : match, jour ; 30 j : match, jour, semaine ; 90 j : jour, semaine, mois ; 365 j : semaine, mois ; défauts match / jour / semaine / mois), minimum de matchs par point 1 / 2 / 3 / 5. Axe des temps borné à l'horizon, taille du point = nombre de matchs, moyenne de la période d'avant de même durée en pointillé de la couleur de chaque courbe (si 10 matchs de part et d'autre). Taux de victoire masqués au pas « par match » (0 ou 100 %), enchaînements de soirée et soirées jouées masqués au pas « par match » ; seuils des objectifs, de l'équipement et des enchaînements assouplis sous le pas mensuel. « Niveau des lobbys et écart à l'attendu » suit le même horizon et le même pas. La matrice garde ses 12 mois (résumé). Côté Go : `temporal.BucketByGranularity` + `ResolveAdaptive`, bornes en jours glissants.
+
+**Résultats observés** : jsdom, les 10 combinaisons horizon × pas en solo et en escouade : 0 erreur hors canvas, aucun id en double. JGtm : 7 j = une seule journée jouée (pas « par jour » vide, message affiché), 30 j = 3 jours joués, 90 j par semaine = 9 points pour le graphique de niveau, 365 j par semaine = 45. Contrôle visuel à 1 000 px.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v7.
+
+## [2026-10-05] Étude « Tendances » : maquette v8 (sans soirées ni attendus, MMR, « À difficulté égale »)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : sept questions de l'utilisateur. (1) La famille « Par rapport au niveau du moment » devient « Résultats » (taux de victoire, score de performance). (2-3) Plus rien sur les soirées : groupe de la matrice, graphique des enchaînements et « Soirées jouées » de l'escouade (remplacées par « Matchs joués ») retirés, avec leur code. (4) Valeurs attendues retirées de la page (écarts au FDA, aux frags, aux morts attendus ; écart par membre remplacé par le FDA par membre) : calculées par le jeu sur le niveau estimé, elles reviennent vers 0 quand le MMR rattrape le joueur ; elles restent dans la vue match et Sessions. Le graphique à double axe tombe avec elles. (5) Nouvelle section « À difficulté égale » : quatre tranches de MMR adverse (quartiles des matchs de l'année, bornes fixes), horizon 30 / 90 / 365 j contre la période d'avant, FDA, taux de victoire, précision, durée de vie, en barres groupées. (6) « MMR des adversaires et de l'équipe » entre dans la grille à côté du LUSR (le LUSR ne couvre pas le classé). (7) « Dégâts nets » renommé « Balance des dégâts (infligés − subis) ».
+
+**Résultats observés** : JGtm, 90 j contre 90 j d'avant, par tranche de MMR adverse (< 1 100 / 1 100-1 210 / 1 210-1 290 / > 1 290) : FDA 1,56 → 2,39, 0,63 → 1,24, −0,48 → −0,08, −1,25 → −0,79 ; morts par match plus basses dans les quatre tranches ; précision en baisse seulement dans la tranche la plus facile (42,6 → 36,6 %). Sur 365 j, le FDA passe de +0,82 à −1,78 de la tranche la plus facile à la plus dure. jsdom : 0 erreur hors canvas, aucun id en double, 20 combinaisons horizon × pas vertes ; contrôle visuel de la nouvelle section à 1 000 px.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v8.
+
+## [2026-10-05] Étude « Tendances » : maquette v9 (retour de la forme à deux axes face au MMR adverse)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : l'utilisateur redemande la forme validée le 02/10 (statistique à gauche, MMR adverse à droite, axe des temps) à la place des barres par tranche de MMR de « À difficulté égale ». Section remplacée par « Face au MMR adverse » dans « Évolution » : FDA, taux de victoire (masqué au pas « par match »), précision, durée de vie, chacun à deux axes, horizon et pas de la section. Doublons de la grille fondus : « Score de performance » seul, une courbe par part (tête, arme lourde, équipement). Code des tranches retiré. Leçon : une forme validée par l'utilisateur se réutilise ; ne pas en substituer une autre sans la lui montrer d'abord (même leçon que le 02/10 sur le double axe).
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, 20 combinaisons horizon × pas vertes (4 graphiques face au MMR, 3 au pas « par match ») ; contrôle visuel à 1 000 px.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v9.
+
+## [2026-10-05] Étude « Tendances » : maquette v10 (neuf graphiques face au MMR adverse)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, « Face au MMR adverse » ajoute frags, morts, score de performance, rendement offensif et résistance défensive (même forme à deux axes ; repères 50 pour la perf, 1 pour rendement et résistance). La grille perd les doublons (score de performance, rendement et résistance ; « par match » réduit aux assistances et à la meilleure série) : 6 graphiques restent (MMR, LUSR, assistances / série, parts, dégâts, objectifs).
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double ; 9 graphiques face au MMR adverse sur chaque combinaison horizon × pas (8 au pas « par match », taux de victoire masqué ; aucun sur « 7 j par jour », une seule journée jouée).
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v10.
+
+## [2026-10-05] Étude « Tendances » : maquette v11 (rendement et résistance en victoire / défaite)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, « Moyenne par match en défaite et en victoire » ajoute le rendement offensif et la résistance défensive au groupe « Indicateurs composés », calculés par match (formules de `analysis/combat_yield.go`, 225 PV par frag), non définis sans dégâts infligés ou sans mort.
+
+**Résultats observés** : JGtm, 365 j : résistance 1,25 en défaite contre 1,41 en victoire (r = +0,30), rendement 0,83 contre 0,93 (r = +0,19) ; 90 j : r = +0,34 et +0,25. jsdom : 0 erreur hors canvas, aucun id en double.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v11.
+
+## [2026-10-05] Étude « Tendances » : maquette v12 (rendement et résistance face au MMR adverse en un graphique)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, les deux graphiques face au MMR adverse du rendement offensif et de la résistance défensive sont réunis : deux courbes sur l'axe de gauche (ratios sans unité, repère 1 ; bleu et violet), MMR adverse à droite. `renderDuo` accepte une liste de courbes par graphique (`series`). Contrepartie notée : sur l'axe commun (≈ 0,8 à 1,5), chaque courbe paraît plus plate que seule.
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, combinaisons horizon × pas vertes (8 graphiques face au MMR, 7 au pas « par match ») ; contrôle visuel à 1 000 px.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v12.
+
+## [2026-10-05] Étude « Tendances » : maquette v13 (objectifs en Prendre / Défendre / Tenir)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, « Objectifs par match » (drapeaux, zones) remplacé par les trois rôles de la page Escouade et de Sessions, avec la même classification (`narrative/objective_roles.go` : Prendre = captures, assists de capture, vols, retourneurs abattus, zones prises, frags offensifs de zone, crâne ramassé, graines, extractions, VIP abattu ; Défendre = retours, sécurisations, porteurs abattus, frags défensifs de zone, conversions refusées, frags en VIP ; Tenir = durées ; prises de drapeau nettes de `match_flag_grabs_net_latest`). Valeur = part du joueur dans le total de son équipe (Tenir se mesure en secondes, les parts mettent les trois rôles sur la même échelle), parité = 100 % divisé par l'effectif présent à la fin, en pointillé. Même chose dans la matrice (trois lignes). Couleurs : jetons `objective-role-take / defend / hold` de l'app. Texte d'aide : la trinité en trois phrases. Extraction : `roles.sql` sur une copie de `shared_matches_v2`.
+
+**Résultats observés** : JGtm, 273 matchs à objectif : Prendre 23,8 %, Défendre 24,7 %, Tenir 23,9 % de son équipe sur l'année, parité moyenne 24,5 % ; Prendre 18,2 % sur 90 j, 28,0 % sur 30 j. jsdom : 0 erreur hors canvas, aucun id en double, combinaisons horizon × pas vertes.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v13.
+
+## [2026-10-05] Étude « Tendances » : maquette v14 (deux graphiques retirés)
+
+**Statut** : Complété (maquette seule ; même fichier `.ai/MAQUETTE_TENDANCES_2026-10-04.html`, non commité).
+
+**Décision technique principale** : demande utilisateur, retrait des graphiques « Par match : assistances et meilleure série » et « Parts : frags à la tête, à l'arme lourde, équipement utilisé ». Leurs indicateurs restent des lignes de la matrice. Grille « Niveau, combat et style » : 4 graphiques (MMR, LUSR, dégâts infligés et subis, objectifs) ; « Face au MMR adverse » : 8.
+
+**Résultats observés** : jsdom : 0 erreur hors canvas, aucun id en double, combinaisons horizon × pas vertes.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v14.
+
+## [2026-10-05] Étude « Tendances » : handoff
+
+**Statut** : Complété (non commité).
+
+**Décision technique principale** : `.ai/HANDOFF_TENDANCES_2026-10-05.md` résume l'état de la maquette v14, les décisions de l'utilisateur, les briques Go / web à réutiliser et les points ouverts ; l'extraction des rôles d'objectif est rangée dans `.ai/TENDANCES_extraction_roles_2026-10-05.sql`.
+
+**Résultats observés** : sans objet (document).
+
+**Conclusion / prochaine étape** : plan d'implémentation via `plan-review`, sur accord de l'utilisateur.
+
+## [2026-10-05] Étude « Tendances » : revue de la maquette v14, maquette v15
+
+**Statut** : Complété (maquette et documents seuls ; non commité, branche `claude/tendances-mockup-review-c21607`, qui part de `65aff8ebd`).
+
+**Décision technique principale** : revue demandée par l'utilisateur (« ai-je oublié quelque chose ? »), sept remarques et ses réponses. (1) Colonnes 7 j et 365 j grises : effet des données de la copie, sans objet pour une maquette ; reste une note d'implémentation (seuil de 10 matchs à 7 j). (2) Le CSR manquait : la consigne « un graphique LUSR va avec un graphique MMR » visait le CSR ; CSR pour le classé, LUSR pour le non classé, et le contenu s'adapte aux types de partie du joueur. (3) Tendances montre des tendances ; l'analyse poussée reste dans « Séries temporelles » (coordination et XP de carrière n'entrent pas ici). (4) Sens de « Solo » : coller à l'existant à l'implémentation. (5) Halo 5 : page plus pauvre acceptée, gérée par les capacités. (6) Un seul sélecteur d'horizon. (7) Écart chiffré dans les cases de la matrice : non compris, réexpliqué, non tranché. v15 : barre « Horizon » unique et collante qui pilote « Évolution », le calendrier, « Victoires et défaites », les médailles et les matchs par type de partie (sélecteurs propres retirés, pas de temps laissé dans « Évolution ») ; ligne « CSR (classé) » dans « Niveau » et emplacement de graphique à côté du LUSR ; barres de dégradé en légende du calendrier et de la matrice retirées (demandes en cours de route) ; résidus nettoyés (infobulles de la matrice et d'« Évolution » ramenées à trois phrases, renvois à « À difficulté égale » et au « détail » retirés, curseur de clic retiré des lignes sans graphique par `zr.setCursorStyle`, l'option `cursor` des séries heatmap étant sans effet en ECharts 6.1). Handoff réécrit : décisions corrigées, section « À régler à l'implémentation », « frags par arme » et « vies isolées » rétablis dans les points ouverts.
+
+**Résultats observés** : JGtm n'a qu'un CSR connu (667, Or 1, 06/11/2025 ; 7 de ses 8 matchs classés sont des placements) : courbe non traçable, carte en pointillé. Médailles à 7 j extraites sur une copie de la base (13 matchs) ; le même calcul reproduit les taux à 30 j déjà présents (Double frag 0,656, Revirement 0,219). Sur les données de la maquette, le mélange des types de partie n'explique que 9 des 102 points de hausse du MMR adverse entre le premier et le dernier trimestre de l'année. jsdom (ECharts local) : 20 combinaisons horizon × pas, 0 erreur hors canvas, aucun id en double, aucun conteneur vide. Contrôle visuel dans le volet navigateur : barre collante, calendrier à 7 / 30 / 90 j, curseur normal sur les lignes sans graphique.
+
+**Conclusion / prochaine étape** : retour de l'utilisateur sur la v15 et sur le point 7, puis plan d'implémentation via `plan-review`. Découverte hors périmètre : l'infobulle de « Moyenne par match en défaite et en victoire » fait quatre phrases.
+
+## [2026-10-06] Page « Tendances » : implémentation complète (API Go + onglet web), revue adversariale en deux rondes
+
+**Statut** : Complété (branche `claude/tendances-mockup-review-c21607`, rien de commité : commits à proposer à l'utilisateur ; plan `.ai/PLAN_TENDANCES_2026-10-05.md` clos ; handoff `.ai/HANDOFF_TENDANCES_2026-10-05.md` mis à jour, section « Implémentation »).
+
+**Décision technique principale** : une seule route `POST /players/{slug}/pages/trends` qui rend d'un coup la matrice (mois × horizons), les séries à tous les pas sur 365 j, le calendrier, les blocs par horizon, les types joués, les capacités et, en vue Escouade, les membres ; le web découpe par horizon et par pas sans relire. Calcul pur dans `internal/analysis/trends/` (`BuildSolo`, `BuildSquad`), dépendances injectées par le câblage (fuseau, horloge, chaîne de performance, seuil de dégâts, capacités) ; vue Escouade sur la population de la page Escouade (ADR 0033, `TeammatesService.GetSquadTrends`, une seule lecture de l'équipe alliée). Web : uniquement des briques existantes (`Heatmap2DChart` par groupe, `ChartCard`, `BarStackedChart`, haltères sur le modèle de `SessionMmrDumbbell`, `GamertagCombobox` + `useSquadPresets`), bascules au gabarit de `FilterOmnibar`. Sélection d'escouade partagée avec la page Escouade par les mêmes clés `localStorage` (lecteurs et écrivains uniques `features/squad/squadSelectionStorage.ts`, `exactComposition.ts`) ; « Enregistrer » alimenté par `members`. Référence de la maquette exportée sous jsdom et rejouée par test Go à 1e-9 (`TestReferenceMaquette`, `TestReferenceMaquetteEscouade`).
+
+**Résultats observés** : données réelles de JGtm à date égale : Solo 377 valeurs identiques aux formules de la maquette, 15 à moins de 0,5 %, 8 écarts expliqués (heures = temps joué, couverture de l'équipement, valeur d'avant du LUSR non publiée sans valeur courante) ; Escouade non stricte 171 identiques, 0 écart ; réponse Solo en 0,47 s à froid. Revue adversariale (skill `adversarial-review`) : ronde 1, trois relecteurs Opus aveugles, 72 conditions tenues, 10 constats recevables (1 P0 : filtre « Type de partie » affichant « Toutes les parties » alors qu'un type reste appliqué ; 5 P1 : doublon d'utilitaire de capacité, clé brute « ranked », « matchmaking » en français, barres empilées à un seul bâton, composant de plus de 80 lignes ; 4 P2 corrigés aussi), 0 jeté côté données ; ronde 2, un relecteur neuf sur le diff des seules corrections : 13 corrections sur 15 tiennent, 2 constats (arrondi `toFixed` ≠ Intl : 1,45 s'écrivait « 1,4 » ; deux fonctions encore au-dessus de 80 lignes), corrigés et relus par le superviseur, pas de ronde 3. Gates complets sur l'état final : Go `go vet -tags=integration ./...` et `go test ./... -count=1` (196 paquets ok), `golangci-lint --new-from-rev=65aff8ebd` 0 issue, `openapi-gen -check` à jour ; web `tsc -b --force`, eslint (0 erreur, aucun avertissement dans les dossiers touchés), couleurs, champs, imports inter-features (7, plafond 7), knip (0), vitest complet 846 fichiers / 9 035 tests, aucun test sauté dans le lot.
+
+**Conclusion / prochaine étape** : proposer les commits à l'utilisateur (un par étape du plan), puis CI de la branche ; gate visuel de l'utilisateur dans l'app après fusion (matrice par groupe, barre « Horizon » collante, filtre après bascule de vue, vue Escouade avec « Enregistrer »). Découvertes consignées au plan, non traitées : `lireComposition` vide la composition quand un gamertag se résout vers le joueur principal au milieu de vrais coéquipiers (appel direct de l'API seulement, partagé avec la page Escouade) ; `IN (?, …)` au lieu d'un paramètre `VARCHAR[]` dans deux lectures ; handler des séries temporelles sans `MapCapabilityError`.
+
+## [2026-10-06] Campagne de grammaire — lot VA : fusion de feat/v75 (fed1efed2) et corrections de la revue
+
+**Statut** : Complété (décisions soumises au pilote et à l'utilisateur)
+
+**Décision technique principale** : fusion de `origin/feat/v75` (2.7.a de la RI : canal des morts ; lot
+LR) dans `feat/cg3-vue-a`, puis traitement des quatorze constats de la revue, tous vérifiés fondés sur
+pièces. Le canal des morts reçoit les records de la cuisson, partis de E quand la vue A décide (test
+porté, mutation MG rouge) ; seule la marche de killsource appelle `DebutDeLaVueB` (test sous la carte du
+match, X1 rouge ; second retour gardé, X5 rouge). Le lecteur Bond de la variante ne rend plus une valeur
+par défaut comme lue. Une région jouée que le catalogue ne lit pas dans le tag (Live Fire) ne rend plus
+aucun index lisible. Révisions réunies : `grammar-2026-10-06.4`, `profile-2026-10-06.3`. ADR 0037 IR-6
+réécrit.
+
+**Résultats observés** : carte v2 contre `fed1efed2` 399 135 → 452 779 sains, aucun film en baisse ;
+killsource identique sur 20 films sauf un compteur non persisté ; objectives identique ; morts et
+occupation des véhicules changées sur 6 films par l'effet explicite de V2 (97 lectures sur des trames
+parties de E, 184 sur des trames de même début dont le monde a changé en amont) ; repli à largeur libre
+en baisse sur les 15 films publiés ; gate de corpus rc=1 avec un `FAUX` V-6 (`084a804d`, non tranché) ;
+variante identique sur les 1 657 films du parc déjà lus.
+
+**Conclusion / prochaine étape** : décisions demandées (LOT_VA_V3 §15.6) — garde de majeure 0x29 des
+films HI_1_12_0 (utilisateur), D23 de killsource, `SchemaDesFaits`, marquage des genres présumés des
+films PRÉFIXE, admission du gate de corpus (pilote).

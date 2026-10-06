@@ -114,7 +114,7 @@ type chargeDesMortsDObjet struct {
 	Cadre cadreSerialisable
 }
 
-// statsSansCadre : les TREIZE champs de donnees de [grammar.ObjectDeathStats]. Le quatorzieme,
+// statsSansCadre : les NEUF champs de donnees de [grammar.ObjectDeathStats]. Le dixieme,
 // `Config`, voyage sous `Cadre` — il porte l observateur, qui n est pas un fait.
 //
 // UNE LISTE ECRITE A LA MAIN, ET UN RATCHET QUI LA TIENT :
@@ -122,20 +122,16 @@ type chargeDesMortsDObjet struct {
 // nait sans entrer ici. C est la contrepartie assumee de l exclusion : sans le ratchet, cette
 // liste serait exactement la dette que ce lot repare.
 type statsSansCadre struct {
-	CadreParDefaut                                bool
-	CadreLocalises, CadreDauphin, CadreEvenements int
-	Keyframes, Deltas                             int
-	Packets, EventPackets, LocatedPackets         int
-	Records, CleanRecords                         map[uint32]int
-	MaskDeclared, MaskDeclaredDesync              map[uint32]int
+	Keyframes, Deltas                     int
+	Packets, EventPackets, LocatedPackets int
+	Records, CleanRecords                 map[uint32]int
+	MaskDeclared, MaskDeclaredDesync      map[uint32]int
 }
 
 // versStatsSansCadre / versObjectDeathStats : les deux sens de la projection, cote a cote — deux
 // conversions qui vivent loin l une de l autre se desynchronisent.
 func versStatsSansCadre(st grammar.ObjectDeathStats) statsSansCadre {
 	return statsSansCadre{
-		CadreParDefaut: st.CadreParDefaut, CadreLocalises: st.CadreLocalises,
-		CadreDauphin: st.CadreDauphin, CadreEvenements: st.CadreEvenements,
 		Keyframes: st.Keyframes, Deltas: st.Deltas,
 		Packets: st.Packets, EventPackets: st.EventPackets, LocatedPackets: st.LocatedPackets,
 		Records: st.Records, CleanRecords: st.CleanRecords,
@@ -145,9 +141,7 @@ func versStatsSansCadre(st grammar.ObjectDeathStats) statsSansCadre {
 
 func versObjectDeathStats(p statsSansCadre, cadre grammar.FrameConfig) grammar.ObjectDeathStats {
 	return grammar.ObjectDeathStats{
-		Config:         cadre,
-		CadreParDefaut: p.CadreParDefaut, CadreLocalises: p.CadreLocalises,
-		CadreDauphin: p.CadreDauphin, CadreEvenements: p.CadreEvenements,
+		Config:    cadre,
 		Keyframes: p.Keyframes, Deltas: p.Deltas,
 		Packets: p.Packets, EventPackets: p.EventPackets, LocatedPackets: p.LocatedPackets,
 		Records: p.Records, CleanRecords: p.CleanRecords,

@@ -81,6 +81,7 @@ const ASCENSION_TAB_SOURCES = [
   { suffix: '/ascension/coaching', navKey: 'common.nav.tab_coaching' },
   { suffix: '/ascension/realisations', navKey: 'common.nav.tab_realisations' },
   { suffix: '/ascension/tactique', navKey: 'common.nav.tab_tactique' },
+  { suffix: '/ascension/tendances', navKey: 'common.nav.tab_tendances' },
 ] as const
 
 describe('garde-rail : les titres de page des onglets Ascension = prefixe + common.nav.*', () => {

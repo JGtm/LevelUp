@@ -34,6 +34,33 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 // elle (`lecture.Paquet.VueA`). Ce que la marche fait de cette fin depend de la classe
 // ([debutParLaVueA]) : le debut de la vue B. Un genre au-dela du cardinal du film n existe pas chez son
 // ecrivain : le lire arrete la vue A.
+//
+// # LA GARDE DE VERSION MAJEURE, QUE LA CLASSE NE LIT PAS (revue du lot VA, 2026-10-06)
+//
+// Avant de jouer un film, le jeu lit sa version majeure, le u32 de tete de `chunk_00`
+// ([FilmMajorVersion]) : `FUN_1428e219c` (appele par `FUN_140ba23e4` @1423b9bd7) ne lit le film, et
+// ne reporte son bit de controle de corruption (`singleton + 0x1AE` <- `film + 0xCB45C`), que sous
+// `*film == 0x29` ; sinon il passe a `FUN_142988e98`. La classe EGALE ne regarde que la table des
+// genres : les films HI_1_12_0 (majeure 0x28, table de 123 genres aux versions natives ; 147 films du
+// cache) y tombent, et prennent E sans preuve alors que l executable lu ne les joue pas. Pour eux,
+// « l ecrivain du film est le lecteur porte » n est pas lu dans le jeu : c est la decision (1) de
+// l utilisateur du 2026-10-04, qui definit la classe par la table seule. La question — reserver E
+// sans preuve aux films de majeure 0x29 et soumettre les autres a la preuve paquet par paquet des
+// films PREFIXE, ou couvrir HI_1_12_0 par une decision datee — est soumise a l utilisateur ; la regle
+// n en est pas changee ici.
+//
+// # LA NUMEROTATION DES GENRES, PRESUMEE POUR LES FILMS PREFIXE
+//
+// Comparer les versions genre par genre suppose que le genre i du film est le message i de
+// l executable : des genres ajoutes en fin de table, aucun insere. Ce n est pas lu (seul l executable
+// HI_1_13_0 est lu, `FUN_140e453b4` y enregistre ses descripteurs). La colonne des versions vaut 1 sur
+// 104 genres sur 123, et la derniere version differente de 1 est au genre 107 : une insertion entre
+// 108 et 120 decalerait les genres d un film a 121 ou 122 genres sans changer sa classe. Pour un film
+// PREFIXE, les genres 108 a `genres - 1` sont donc lus sous les charges natives sur cette seule
+// presomption, et seule la preuve de fermeture ([debutParLaVueA]) protege l usage de E. Aucun canal
+// de production ne lit un genre de vue A au-dela de la tete (lu : [teteDe] prend le premier,
+// [listeAnnoncee] le compte) ; la suite des genres rangee dans `lecture.Paquet.VueA` ne dit pas
+// qu elle est presumee.
 
 // classeDeLaVueA est la classe de la table des genres que le film declare.
 type classeDeLaVueA uint8

@@ -70,9 +70,10 @@ type ComptesDesReplis struct {
 	// section d identification : la grammaire garde son invariant, UNE fois par contexte
 	// (`controle_corruption_du_film.go`).
 	ControleDeCorruptionNonDeclare int
-	// LocalisationsALargeurLibre : `repli_localisation_largeur_libre`, site de la marche des morts
-	// d objet — paquets a evenements localises par la seconde passe a largeur libre
-	// ([LocaliserBoucleDeRecords], `localisateur.go`). Le site de `killsource` se compte chez lui.
+	// LocalisationsALargeurLibre : `repli_localisation_largeur_libre`, site du canal des morts de la
+	// marche des trames ([canalDesMorts]) — listes d evenements que la cuisson n a pas localisees,
+	// recuperees par la seconde passe a largeur libre ([LocaliserBoucleDeRecords],
+	// `localisateur.go`). Le site de `killsource` se compte chez lui.
 	LocalisationsALargeurLibre int
 }
 

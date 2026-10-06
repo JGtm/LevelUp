@@ -478,3 +478,12 @@ func (d *b3Diag) dernierComposant(p *cmPaquet) string {
 	}
 	return fmt.Sprintf("%s ti=%d dernier composant %s", b3Genre(r.Type), r.TypeIndex, nom)
 }
+
+// b3Compter compte les liaisons d un oracle.
+func b3Compter(m map[[2]int][]cmLiaison) int {
+	n := 0
+	for _, l := range m {
+		n += len(l)
+	}
+	return n
+}

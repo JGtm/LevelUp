@@ -13,7 +13,10 @@ package replay
 // TROIS FERMETURES, DANS CET ORDRE, ET AUCUNE N EST UNE SUPPOSITION :
 //
 //	1. la lecture d `i10` SUIVANTE du meme occupant — le film dit lui-meme que l attachement a
-//	   cesse ;
+//	   cesse. Le MEME OCCUPANT est le meme OBJET : meme slot ET meme generation, les deux moities
+//	   du handle du record. Une lecture d une autre generation designe un autre objet (le slot a
+//	   ete reemploye) ou une lecture fausse ; elle ne dit rien de cet occupant et ne ferme pas
+//	   son episode ;
 //	2. la REAPPARITION de l occupant dans le flux de position — un bipede embarque ne replique
 //	   plus sa trajectoire (acquis V1/V4 : 1 347 instants, aucun couple sous 3 m plus de 1,6 s),
 //	   donc son premier point posterieur BORNE l episode ;
@@ -26,6 +29,12 @@ package replay
 // QU UN siege perd les episodes heuristiques de ses AUTRES sieges. Il est paye sciemment — c est
 // le defaut que le verdict Theater du 2026-09-19 a nomme (un occupant FAUX publie dans le
 // Razorback `776/1`), et le compte des episodes ecartes voyage au journal.
+//
+// UN OCCUPANT NOMME EST UN JOUEUR, PAS UN CORPS (regle de l utilisateur du 2026-10-05). Chaque vie
+// d un joueur a son propre slot de bipede : le film qui lit le joueur dans ce vehicule pendant une
+// de ses vies le nomme pour toutes. Un episode de repli d une autre de ses vies n est donc pas
+// contredit par cette lecture, seulement par un chevauchement. Sans identite connue, l occupant
+// reste designe par son slot.
 //
 // PUR : aucune I/O, aucune lecture de film.
 
@@ -42,8 +51,23 @@ import (
 // film nomme par vie, et les fenetres publiees (en frames) qui servent au test de contradiction.
 type vehicleFilmRides struct {
 	rides     map[types.LifeKey][]VehicleRide
-	occupants map[types.LifeKey]map[uint32]bool
+	occupants map[types.LifeKey]map[identiteOccupant]bool
 	fenetres  map[types.LifeKey][][2]int
+}
+
+// identiteOccupant designe l occupant d un episode : le joueur (`xuid`) quand il est connu, sinon
+// le corps (`slot`) — l un ou l autre, jamais les deux.
+type identiteOccupant struct {
+	xuid string
+	slot uint32
+}
+
+// identiteDe rend l identite de l occupant d un episode (cf. l en-tete, la primaute).
+func identiteDe(r VehicleRide) identiteOccupant {
+	if r.XUID != "" {
+		return identiteOccupant{xuid: r.XUID}
+	}
+	return identiteOccupant{slot: r.Slot}
 }
 
 // vehicleFilmTally compte ce que la lecture a rendu et ce qu elle a du ecarter.
@@ -64,14 +88,14 @@ type vehicleFilmTally struct {
 func buildVehicleFilmRides(in vehicleRideInputs) (vehicleFilmRides, vehicleFilmTally) {
 	out := vehicleFilmRides{
 		rides:     map[types.LifeKey][]VehicleRide{},
-		occupants: map[types.LifeKey]map[uint32]bool{},
+		occupants: map[types.LifeKey]map[identiteOccupant]bool{},
 		fenetres:  map[types.LifeKey][][2]int{},
 	}
 	var t vehicleFilmTally
 	if len(in.occupancy) == 0 || len(in.lives) == 0 || in.clock.step == 0 {
 		return out, t
 	}
-	lectures := vehicleOccupancyBySlot(in.occupancy)
+	lectures := vehicleOccupancyByOccupant(in.occupancy)
 	pts := vehiclePositionsBySlot(in.bipeds)
 	for _, o := range in.occupancy {
 		if !o.Attached {
@@ -88,7 +112,7 @@ func buildVehicleFilmRides(in vehicleRideInputs) (vehicleFilmRides, vehicleFilmT
 			t.nonDessinable++
 			continue
 		}
-		endUS, par := vehicleFilmRideEnd(o, lectures[o.Slot], pts[o.Slot], in.lives, key)
+		endUS, par := vehicleFilmRideEnd(o, lectures[occupantOf(o)], pts[o.Slot], in.lives, key)
 		vehicleFilmTallyEnd(&t, par)
 		out.ajouter(key, vehicleFilmRideOf(o, endUS, in))
 		t.publies++
@@ -101,9 +125,9 @@ func buildVehicleFilmRides(in vehicleRideInputs) (vehicleFilmRides, vehicleFilmT
 func (f vehicleFilmRides) ajouter(key types.LifeKey, r VehicleRide) {
 	f.rides[key] = append(f.rides[key], r)
 	if f.occupants[key] == nil {
-		f.occupants[key] = map[uint32]bool{}
+		f.occupants[key] = map[identiteOccupant]bool{}
 	}
-	f.occupants[key][r.Slot] = true
+	f.occupants[key][identiteDe(r)] = true
 	f.fenetres[key] = append(f.fenetres[key], [2]int{r.T0, r.T1})
 }
 
@@ -121,8 +145,8 @@ func (f vehicleFilmRides) trier() {
 //
 // DEUX FORMES DE DESACCORD, et la seconde est celle que le verdict Theater a nommee :
 //   - CHEVAUCHEMENT : la fenetre de l episode recouvre celle d un episode lu ;
-//   - OCCUPANT NON NOMME : le film a lu des montees a bord pour cette vie, et cet occupant n en
-//     fait pas partie.
+//   - OCCUPANT NON NOMME : le film a lu des montees a bord pour cette vie, et cet occupant — le
+//     joueur, ou le corps sans identite — n en fait pas partie.
 //
 // Une vie dont le film n a RIEN lu n est jamais contredite : l absence de lecture n est pas une
 // absence d occupant.
@@ -131,7 +155,7 @@ func (f vehicleFilmRides) contredit(key types.LifeKey, r VehicleRide) bool {
 	if len(occ) == 0 {
 		return false
 	}
-	if !occ[r.Slot] {
+	if !occ[identiteDe(r)] {
 		return true
 	}
 	for _, w := range f.fenetres[key] {
@@ -192,13 +216,22 @@ func vehicleFilmTallyEnd(t *vehicleFilmTally, par int) {
 	}
 }
 
-// vehicleOccupancyBySlot indexe les lectures par slot d OCCUPANT, triees par instant.
-func vehicleOccupancyBySlot(
+// objetOccupant est l OBJET occupant d une lecture : son slot et sa generation, le handle entier du
+// record bipede (cf. l en-tete, fermeture 1).
+type objetOccupant struct{ slot, gen uint32 }
+
+// occupantOf rend l objet occupant d une lecture.
+func occupantOf(o types.VehicleOccupancy) objetOccupant {
+	return objetOccupant{slot: o.Slot, gen: o.Gen}
+}
+
+// vehicleOccupancyByOccupant indexe les lectures par objet OCCUPANT, triees par instant.
+func vehicleOccupancyByOccupant(
 	occ []types.VehicleOccupancy,
-) map[uint32][]types.VehicleOccupancy {
-	out := map[uint32][]types.VehicleOccupancy{}
+) map[objetOccupant][]types.VehicleOccupancy {
+	out := map[objetOccupant][]types.VehicleOccupancy{}
 	for _, o := range occ {
-		out[o.Slot] = append(out[o.Slot], o)
+		out[occupantOf(o)] = append(out[occupantOf(o)], o)
 	}
 	for s := range out {
 		v := out[s]

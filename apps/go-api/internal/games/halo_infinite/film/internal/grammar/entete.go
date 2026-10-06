@@ -18,8 +18,8 @@ import (
 // idLowBitsPresume est la largeur de l identifiant bas d un record sous laquelle la marche lit les
 // trames : la valeur de l IMAGE STATIQUE du binaire (categorie 7 de `FUN_1406d3140`,
 // `DAT_144706100` = 0x1FFF, `varwidth.go`). Deux ecrivains du jeu la reecrivent au runtime : c est
-// une valeur PRESUMEE, pas une constante du format — la marche des morts d objet la calibre de 10 a
-// 15 (`object_deaths_calibrate.go`).
+// une valeur PRESUMEE, pas une constante du format ; la seule mesure qui la calibrait, celle de
+// l ancienne marche des morts d objet, ne s en est jamais ecartee (ADR 0037 IR-7).
 const idLowBitsPresume = 13
 
 // EnTete porte les parametres hors flux de la marche d un film.

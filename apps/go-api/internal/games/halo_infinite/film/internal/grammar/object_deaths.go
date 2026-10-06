@@ -1,7 +1,7 @@
 package grammar
 
 // object_deaths.go — LA MORT ÉCRITE D'UNE ENTITÉ DU MONDE, lue au composant
-// `object-dead-state-component` par la marche.
+// `object-dead-state-component` par la marche des trames ([canalDesMorts]).
 //
 // LE FAIT. Le moteur ne déclare AUCUN composant « véhicule détruit » : relu chez l'écrivain
 // (Ghidra, 2026-09-05), il ne connaît que des composants d'OBJET — `object-body-vitality`,
@@ -51,23 +51,16 @@ const deadStateComponentName = "object-dead-state-component"
 // ObjectDeathStats porte les DÉNOMINATEURS sans lesquels aucun compte ne se publie : un compte
 // faible sous une couverture faible ne conclut pas à l'absence, il conclut « sous-instrumenté ».
 type ObjectDeathStats struct {
-	// Config est le cadre RETENU par la calibration : il se publie, il ne se suppose pas.
+	// Config est le cadre de la marche des trames qui a lu les morts (`IDLowBits` de l'en-tête de
+	// la marche) : il se publie, il ne se suppose pas.
 	Config FrameConfig
-	// CadreParDefaut dit que le profil de calibration etait PLAT — aucune largeur candidate n a
-	// domine son dauphin — et que le cadre rendu est celui par defaut. La marche a tourne, mais
-	// sur une largeur que RIEN n a confirmee : c est un repli
-	// (`repli_cadre_de_marche_par_defaut_conserve`), et il se compte.
-	CadreParDefaut bool
-	// CadreLocalises / CadreDauphin / CadreEvenements sont les DENOMINATEURS de cette decision :
-	// paquets a evenements localises par le candidat retenu, par son dauphin, et leur total sur
-	// l echantillon de calibrage. Sans eux, « cadre idLow=13 » ne dit pas s il a ete choisi par
-	// une marge de six ou par une marge de rien.
-	CadreLocalises, CadreDauphin, CadreEvenements int
-	// Keyframes / Deltas : ce que le film a offert à la marche.
+	// Keyframes / Deltas : ce que le film a offert à la marche — les paquets d'image-clé qu'elle a
+	// liés au monde, les trames delta (payload non vide) qu'elle a marchées.
 	Keyframes, Deltas int
 	// Packets / EventPackets / LocatedPackets : paquets marchés, dont porteurs d'une liste
-	// d'événements, dont effectivement localisés. Un écart entre les deux derniers est la part
-	// du film que la marche n'a PAS lue.
+	// d'événements, dont effectivement localisés — par la marche ou par la récupération du canal
+	// ([canalDesMorts]). Un écart entre les deux derniers est la part du film que la marche n'a PAS
+	// lue.
 	Packets, EventPackets, LocatedPackets int
 	// Records / CleanRecords : par archétype, records atteints et records entièrement portés.
 	Records, CleanRecords map[uint32]int
@@ -88,7 +81,7 @@ func newObjectDeathStats() ObjectDeathStats {
 }
 
 // ScanFilmObjectDeaths est l'ENVELOPPE HORS PRODUCTION (charge le film depuis `dir`) ; la
-// cuisson appelle [ScanObjectDeaths].
+// cuisson lit les morts dans [ScanMarcheDesTrames].
 func ScanFilmObjectDeaths(dir string) ([]types.ObjectDeath, ObjectDeathStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -97,99 +90,17 @@ func ScanFilmObjectDeaths(dir string) ([]types.ObjectDeath, ObjectDeathStats, er
 	return ScanObjectDeaths(contexteDeBobine(film))
 }
 
-// MarchFacts porte ce qu'UNE marche du film rend. Les deux faits voyagent ensemble parce
-// qu'ils sont lus dans LA MÊME passe, record par record : les séparer en deux entrées
-// publiques ferait marcher le film DEUX FOIS pour la même cuisson.
-type MarchFacts struct {
-	// Deaths sont les morts écrites (`object-dead-state`), tous archétypes confondus.
-	Deaths []types.ObjectDeath
-	// Occupancy sont les lectures d'`object-parent-state` de la bande BIPÈDE : les montées à
-	// bord et leur siège (lot 5.10, cf. `vehicle_occupancy_march.go`).
-	Occupancy []types.VehicleOccupancy
-	// Stats porte les dénominateurs de la marche.
-	Stats ObjectDeathStats
-}
-
-// ScanObjectDeaths rend les seules MORTS de [ScanMarchFacts] — la forme qu'attendent les
-// instruments qui ne s'intéressent qu'à elles.
-func ScanObjectDeaths(fc *FilmContext) ([]types.ObjectDeath, ObjectDeathStats, error) {
-	f, err := ScanMarchFacts(fc)
-	return f.Deaths, f.Stats, err
-}
-
-// ScanMarchFacts marche les paquets delta d'un film DÉJÀ CHARGÉ et rend toutes les morts
-// écrites, TOUS archétypes confondus, triées par instant puis par slot, ET les lectures
-// d'occupation de la bande bipède.
+// ScanObjectDeaths rend les MORTS de la marche des trames ([ScanMarcheDesTrames]), tous
+// archétypes confondus, triées par instant puis par slot — la forme qu'attendent les instruments
+// qui ne s'intéressent qu'à elles.
 //
-// AUCUN FILTRE DE BANDE — et c'est un acquis de la mesure : la marche range par ARCHÉTYPE
+// AUCUN FILTRE DE BANDE — et c'est un acquis de la mesure : la récolte range par ARCHÉTYPE
 // (`FrameRecord.TypeIndex`), jamais par bande de slots dérivée des images-clés. Le filtre de
 // bande aurait perdu 2 à 5 morts de bipède par film, le film liant aussi des entités par
 // records NEW en cours de flux.
-func ScanMarchFacts(fc *FilmContext) (MarchFacts, error) {
-	st := newObjectDeathStats()
-	reg, err := fc.Registry()
-	if err != nil {
-		return MarchFacts{Stats: st}, err
-	}
-	kfs, deltas := marchPacketsOf(fc)
-	st.Keyframes, st.Deltas = len(kfs), len(deltas)
-	if len(deltas) == 0 {
-		return MarchFacts{Stats: st}, nil
-	}
-	cfg, parDefaut, meilleur, dauphin := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
-	st.Config, st.CadreParDefaut = cfg, parDefaut
-	st.CadreLocalises, st.CadreDauphin, st.CadreEvenements = meilleur.located, dauphin.located, meilleur.events
-	h := &objectDeathHarvest{reg: reg, idx: map[uint32]int{}, st: &st}
-	tl := newMarchTimeline(reg, kfs)
-	vueA := VueADuFilm{g: fc.grammaireDeLaVueA()}
-	largeurLibre := 0
-	for _, d := range deltas {
-		w := tl.advanceTo(d.timestampUS)
-		start, withEvents, ok, aLargeurLibre := marchDebut(d.payload, w, cfg, vueA)
-		if withEvents {
-			st.EventPackets++
-		}
-		if !ok {
-			continue
-		}
-		largeurLibre += unSi(aLargeurLibre) // repli `repli_localisation_largeur_libre` (lot J8.7)
-		if withEvents {
-			st.LocatedPackets++
-		}
-		st.Packets++
-		h.harvest(marchRecordsOf(d.payload, w, cfg, start), d.timestampUS)
-	}
-	fc.NoterReplis(ComptesDesReplis{LocalisationsALargeurLibre: largeurLibre})
-	return MarchFacts{
-		Deaths: dedupObjectDeaths(h.out), Occupancy: dedupOccupancy(h.rides), Stats: st,
-	}, nil
-}
-
-// marchPacketsOf relève les images-clés décodées et les paquets delta du film, TRIÉS par
-// instant — le curseur de la timeline exige des appels croissants.
-//
-// Les payloads sont des VUES sur les octets du film, déjà résidents : les retenir ne recopie
-// rien.
-func marchPacketsOf(fc *FilmContext) ([]marchKeyframe, []marchDelta) {
-	var kfs []marchKeyframe
-	var deltas []marchDelta
-	marche := fc.MarcheDImageCle()
-	for _, c := range fc.ChunkNumbers() {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			switch pk.Type {
-			case PacketTypeKeyframe:
-				kfs = append(kfs, marchKeyframe{pk.TimestampUS, marche.Records(pk.Payload(data))})
-			case PacketTypeDelta:
-				deltas = append(deltas, marchDelta{pk.TimestampUS, pk.Payload(data)})
-			}
-		}
-	}
-	slices.SortStableFunc(deltas, func(a, b marchDelta) int { return cmp.Compare(a.timestampUS, b.timestampUS) })
-	return kfs, deltas
+func ScanObjectDeaths(fc *FilmContext) ([]types.ObjectDeath, ObjectDeathStats, error) {
+	m, err := ScanMarcheDesTrames(fc)
+	return m.ObjectDeaths, m.ObjectDeathStats, err
 }
 
 // objectDeathHarvest porte ce que la récolte doit connaître (règle des 5 paramètres) : le
@@ -274,11 +185,12 @@ func (h *objectDeathHarvest) note(r *FrameRecord) {
 }
 
 // dedupObjectDeaths trie et déduplique : une entité ne meurt qu'une fois à un instant donné, et
-// plusieurs VUES de réplication d'un même paquet republient le même dead-state.
+// plusieurs lectures d'un même record dans un paquet (la marche re-parcourt un record qu'une
+// chaîne de transitoires redemande) republient le même dead-state.
 //
 // LA QUALITÉ LA MEILLEURE GAGNE : si le même instant est vu par un record entièrement porté ET
 // par un record à queue inconnue, c'est le premier qui est retenu — la marche ne doit pas
-// dégrader une lecture propre parce qu'une vue ultérieure a rompu.
+// dégrader une lecture propre parce qu'une lecture ultérieure a rompu.
 func dedupObjectDeaths(in []types.ObjectDeath) []types.ObjectDeath {
 	if len(in) == 0 {
 		return nil

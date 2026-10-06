@@ -108,33 +108,30 @@ func ti40dTemoinProduction(t *testing.T, etiquette string, fc *FilmContext) {
 	}
 	t.Logf("%s TEMOIN ScanObjectDeaths : mortsToutesEntites=%d mortsVehicules=%d "+
 		"masqueDeclareLeDeadState=%d dontDesynchronises=%d recordsAtteints=%d "+
-		"recordsEntierementPortes=%d paquetsAEvenements=%d paquetsLocalises=%d cadreParDefaut=%v",
+		"recordsEntierementPortes=%d paquetsAEvenements=%d paquetsLocalises=%d",
 		etiquette, len(morts), n, st.MaskDeclared[ti], st.MaskDeclaredDesync[ti], st.Records[ti],
-		st.CleanRecords[ti], st.EventPackets, st.LocatedPackets, st.CadreParDefaut)
+		st.CleanRecords[ti], st.EventPackets, st.LocatedPackets)
 }
 
-// ti40dBalayer deroule la MEME marche que `ScanObjectDeaths` et releve, record par record, le
-// premier composant non consomme.
+// ti40dBalayer deroule la marche des trames, celle qui lit les morts de `ScanObjectDeaths`, et
+// releve, record par record de la vue B, le premier composant non consomme.
 func ti40dBalayer(t *testing.T, fc *FilmContext) ti40dReleve {
 	t.Helper()
 	reg, err := fc.Registry()
 	if err != nil {
 		t.Fatalf("registre : %v", err)
 	}
-	kfs, deltas := marchPacketsOf(fc)
-	cfg, _, _, _ := calibrateFrameConfig(reg, kfs, deltas, fc.CadreDeBalayage())
+	m, err := fc.nouveauMarcheurDesTrames(nil)
+	if err != nil {
+		t.Fatalf("marche des trames : %v", err)
+	}
 	di := ti40dIndexDeadState(reg)
 	rel := ti40dReleve{parIndex: map[int]int{}, parIndexMasque: map[int]int{},
 		nomParIndex: map[int]string{}}
-	tl := newMarchTimeline(reg, kfs)
-	for _, d := range deltas {
-		w := tl.advanceTo(d.timestampUS)
-		start, _, ok := marchStartOf(d.payload, w, cfg)
-		if !ok {
-			continue
-		}
-		ti40dRanger(&rel, marchRecordsOf(d.payload, w, cfg, start), di)
-	}
+	m.parcourir(func(tr *trameLue) bool {
+		ti40dRanger(&rel, tr.lecture.recs, di)
+		return true
+	})
 	return rel
 }
 

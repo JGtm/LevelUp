@@ -230,9 +230,45 @@ func TestLeCorpsSeLitJusquALaTableDesJoueurs(t *testing.T) {
 	}
 }
 
+// varianteAChampInattendu ecrit une variante dont un champ n a pas la forme que la marche lit : le
+// champ du chemin m_gameEngineType en entier de 64 bits (type 0x11) au lieu de l entier de 32 bits ;
+// ou, dans `PlaybackSettings`, un octet non signe (type 3, que la marche ne sait pas enjamber) au champ
+// 1, devant playOfTheGameEnabled.
+func varianteAChampInattendu(moteurSur64Bits, octetDevantPotg bool) bondEcrit {
+	var b bondEcrit
+	b.structure(func(t *bondEcrit) {
+		t.liste(0)
+		t.liste(1, func(s *bondEcrit) {
+			s.champStructure(0, func(e *bondEcrit) {
+				if moteurSur64Bits {
+					e.enTete(0, 0x11)
+					e.entier(4) // zigzag(2)
+				} else {
+					e.entier32(0, 1)
+				}
+			})
+			s.champStructure(1, func(r *bondEcrit) {
+				r.champStructure(0, func(g *bondEcrit) {
+					g.champStructure(5, func(p *bondEcrit) {
+						if octetDevantPotg {
+							p.enTete(1, 0x3)
+							*p = append(*p, 7)
+						}
+						p.booleen(2, true)
+					})
+				})
+			})
+		})
+	})
+	return b
+}
+
 // TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu : une longueur de structure qui ne tombe pas sur son
 // octet de fin, un entier variable plus long que ce que l ecrivain forme, une chaine sans octet nul, un
-// corps coupe — rien n est rendu. MUTATION — entier variable lu sur dix octets : ROUGE.
+// corps coupe, un champ du chemin d un autre type que celui lu, un champ que la marche ne sait pas
+// enjamber devant un champ du chemin — rien n est rendu (une valeur par defaut rendue comme lue serait
+// devinee). MUTATIONS — entier variable lu sur dix octets ; champ du chemin d un autre type enjambe ;
+// saut a la fin de la structure malgre un champ du chemin a lire : ROUGES.
 func TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu(t *testing.T) {
 	for _, c := range []struct {
 		nom    string
@@ -245,6 +281,10 @@ func TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu(t *testing.T) {
 			casser: entierDeTeteSurSixOctets}, 0},
 		{"chaine de 0x80 octets sans nul", corpsEcrit{chaine: make([]byte, 0x80)}, 0},
 		{"corps coupe avant la table", corpsEcrit{variante: &varianteEcrite{moteur: 2}}, 64},
+		{"m_gameEngineType ecrit en entier de 64 bits", corpsEcrit{variante: &varianteEcrite{},
+			casser: func(bondEcrit) bondEcrit { return varianteAChampInattendu(true, false) }}, 0},
+		{"octet non signe devant playOfTheGameEnabled", corpsEcrit{variante: &varianteEcrite{},
+			casser: func(bondEcrit) bondEcrit { return varianteAChampInattendu(false, true) }}, 0},
 	} {
 		for i := range c.corps.chaine {
 			c.corps.chaine[i] = 'A'

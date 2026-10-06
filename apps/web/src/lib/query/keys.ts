@@ -269,6 +269,21 @@ export const queryKeys = {
   timeseries: (playerSlug: string, titleSlug: string, filterHash: string) =>
     ['timeseries', 'solo', playerSlug, titleSlug, filterHash] as const,
 
+  // Tendances (Ascension) — titre en 2e segment ; vue, type de partie, locale, composition
+  // (gamertags triés, joints par une virgule ; vide en vue Solo) et option stricte : une autre
+  // vue, un autre type, une autre langue de médailles, une autre escouade ou une autre règle
+  // de composition est une autre réponse.
+  trends: (
+    playerSlug: string,
+    titleSlug: string,
+    view: string,
+    gameType: string,
+    locale: string,
+    composition: string,
+    exactComposition: boolean,
+  ) =>
+    ['trends', playerSlug, titleSlug, view, gameType, locale, composition, exactComposition] as const,
+
   // Session Detail (session page revamp)
   sessionDetail: (
     playerSlug: string,

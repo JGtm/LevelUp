@@ -251,15 +251,10 @@ func MPPPourFormat(format int) (MPPWidths, bool) {
 		// L oracle `n2` le confirme independamment : part modale 1,000 sur les trois archetypes.
 		return MPPWidths{Lead: 9, Index: 5}, true
 	case formatAnciens20, formatAnciens21, formatAnciens24, formatAnciens25:
-		// INDETERMINE, ET LES DEUX ORACLES SE CONTREDISENT — voir l en-tete de section
-		// ci-dessous. La largeur N EST PAS POSEE : `MPPWidths{}` n est pas valide, donc
-		// [InstallFilmFormatMPP] n installe RIEN et le decodeur garde son defaut. Le FORMAT
-		// est CONNU (ce n est pas [ErrUnknownFormat]), c est sa largeur MPP qui ne l est pas.
-		//
-		// LE FORMAT 20 EST DANS CETTE LIGNE DEPUIS LE LOT 1.9.1 ter, ET C EST UN GAIN : les
-		// cinq films sans section d identification y entrent par la porte principale au lieu
-		// d etre refuses pour build vide. Leur largeur reste indeterminee — comme les quatre
-		// autres formats anciens — donc aucun bit lu ne change.
+		// LE FORMAT NE DECIDE PAS (cf. le bloc de fin de fichier) : le decoupage de ces films est
+		// celui que chacun DECLARE par la taille d etat de creation de ses objets
+		// ([MPPPourTailleDeclaree]). `MPPWidths{}` n est pas valide : le FORMAT est connu (ce
+		// n est pas [ErrUnknownFormat]), sa largeur MPP ne se lit pas a cette cle.
 		return MPPWidths{}, true
 	}
 	return MPPWidths{}, false
@@ -304,69 +299,17 @@ func BuildProfileFor(build string, format int) (BuildProfile, error) {
 // `50247b26`, `a349fea8`) rend [ErrUnknownBuild] avec un build VIDE — et le compteur
 // [UnknownBuildExpvarPairs] le range sous `sans_section`. Se comporter comme `HI_1_4_1` n est
 
-// POURQUOI LES CINQ BUILDS ANCIENS N ONT PAS DE LARGEUR MPP POSEE (2026-09-15).
+// LE DECOUPAGE MPP DES FORMATS 20, 21, 24 ET 25 NE SE LIT PAS AU FORMAT : LE FILM LE DECLARE.
 //
-// Les deux oracles internes au film SE CONTREDISENT, et il faut le dire plutot que de choisir.
+// L executable courant lit le bloc `object-multiplayer-properties` par des largeurs litterales
+// (9/5, `FUN_14080cfe8`), et rien ne le lui fait lire autrement : ni la version de format (ses
+// lecteurs testent les seuils 3, 7, 11, 13/14 et 15), ni les versions par type, ni le registre ne
+// separent un film du format 25 d un film du format 27, et le bit `DAT_144706104` vaut 1 dans
+// tous les paquets. Les films de ces formats ont pourtant ete ECRITS avec trois bits de moins dans
+// ce bloc : le champ de tete y fait 8 bits (les identifiants de 32 bits sortent un bit plus tot),
+// et l oracle `n2` y est modal sous 8/3, pas sous 9/5.
 //
-//	L ORACLE `n2` designe `8/3` sur ces cinq builds, nettement : part modale 0,988 a 0,996
-//	contre 0,304 a 0,522 pour `9/5`. Et il est VALIDE la ou l ecrivain est connu — sur
-//	`fb1a1a72` (HI_1_13_0, le build de l executable desassemble) il rend 1,000 a `9/5`,
-//	c est-a-dire exactement ce que `FUN_141fd72c0` ecrit.
-//
-//	L ORACLE FERMETURE dit autre chose, et il est DISQUALIFIE ICI, par sa propre mesure :
-//	sur ce meme `fb1a1a72`, la fermeture prefere `10/5` (140 records) a `9/5` (11) — donc
-//	elle contredit l ecrivain la ou l ecrivain est certain. Sur `bcb6d393` (HI_1_12_0) elle
-//	prefere `8/3` (69) a `9/5` (33), meme desaccord. A moins de 5 % de fermeture, maximiser
-//	un compte de fermetures revient a chercher des coincidences : la fermeture ne devient un
-//	oracle de largeur que pres de 100 %.
-//
-// POSER `8/3` FERAIT DESCENDRE LE RATCHET DE COUVERTURE de 246 a 182 records fermes (mesure du
-// 2026-09-15, `TestE191cPrefixeObjet`), et D14 interdit de le faire descendre. Poser `9/5`
-// partout serait affirmer une largeur que `n2` refute sur ces builds. Les deux gestes seraient
-// une decision deguisee en mesure : la table laisse donc la case VIDE, ce qui est l etat reel
-// de la connaissance, et l arbitrage remonte au pilote.
-//
-// CE QUI LEVERAIT L INDETERMINATION, par ordre de force : l executable d un build <= HI_1_11_0
-// (alors la ligne devient RELU) ; ou une fermeture qui vaille quelque chose sur ces archetypes,
-// c est-a-dire la suite du chantier — l oracle fermeture redeviendra utilisable quand la marche
-// fermera, et il tranchera alors sans ambiguite.
-
-// CORRECTION DU 2026-09-16 — LES TROIS BITS NE SONT PAS DANS LES LARGEURS MPP.
-//
-// Fait tranche par l utilisateur (mecanique de jeu, il fait autorite) : « les films sont
-// independants des builds ; ils sont enregistres a l instant T et jamais touches ensuite ; le
-// film ne depend que de lui-meme pour expliquer au mode Theater comment le lire ». L executable
-// OUVERT lit donc les films anciens, et tout ce qui varie est ECRIT DANS LE FILM.
-//
-// CE QUE LA RELECTURE A ALORS ETABLI, ET QUI CORRIGE LE PAS 3 :
-//
-//	`FUN_14080cfe8` N A AUCUNE BRANCHE DE VERSION. Toutes ses largeurs sont des litteraux
-//	(9, 32, 1[+32], 1[+18], 2, 5, 3, la boucle, la queue) et son seul `if` runtime
-//	(`DAT_145121140 == 1`) ne consomme AUCUN bit. `FUN_141fd72c0` (le champ de tete, R(9))
-//	n a qu UN SEUL appelant, ce bloc. Et `FUN_1428e1c0c`, l accesseur de version du film, n a
-//	que six sites d appel, AUCUN dans la chaine des etats par defaut.
-//
-// Le bloc MPP lit donc les MEMES bits pour tous les films. Les trois bits d ecart que l oracle
-// `n2` mesure sur les films anciens sont AILLEURS dans l etat par defaut — le balayage les avait
-// attribues a `lead`/`index` parce que c etaient les deux seules molettes qu il avait.
-//
-// CE QUI RESTE VRAI : `n2` mesure bien que l etat par defaut des films anciens est plus court de
-// trois bits, et la case de ces builds reste donc VIDE — non parce que la largeur MPP serait
-// inconnue (elle ne l est pas : 9/5, relue), mais parce que l ENDROIT des trois bits ne l est
-// pas. Poser 9/5 pour ces builds retirerait la calibration sans avoir explique l ecart.
-//
-// OU LA CLE A ETE TROUVEE (lot 1.9.1 ter, 2026-09-15) — ET LA PISTE CI-DESSUS ETAIT FAUSSE.
-// Le 1.9.1 bis designait « douze positions de la table par type, ALIGNEES PAR LA FIN ». La mesure
-// la refute : les trente premieres valeurs sont IDENTIQUES sur les sept bobines et l index 18 y
-// vaut 2 partout, comme la table NATIVE de l executable (`DAT_14474cd90`) — la table est alignee
-// PAR LE DEBUT, les types s ajoutent EN QUEUE, et les douze positions n etaient qu un artefact.
-// La vraie cle est `chunk_00+4`, la VERSION DE FORMAT (`film_format_version.go`), et c est elle
-// qui key desormais `MPPPourFormat`.
-//
-// CE QUI RESTE OUVERT, ET C EST PLUS ETROIT QU AVANT. L exécutable n a que SIX sites de branche
-// sur cette version (`FUN_1428e1c0c`), de seuils 4, 7, 12, 13/14 et 16 — aucun entre 25 et 27,
-// la frontiere mesuree — et la chaine de l etat par defaut de ti=37 n en contient aucun. Les
-// trois bits ne sont donc PAS une branche de version : ils sont ailleurs, et D2 (1.9.1 ter)
-// nomme la piste — le bit `DAT_144706104`, ecrit par le film en tete du paquet d image-cle des
-// que la version de format depasse 7 (donc sur les 1 351 films du cache), et dont la VALEUR
-// n est pas encore mesuree.
+// La version de format ne suffit donc pas a choisir, et [MPPPourFormat] rend pour eux un
+// decoupage non valide. La cle est la taille de la structure d etat de creation que chaque record
+// d image-cle declare, `n1` : [MPPPourTailleDeclaree] (`mpp_declare.go`), resolue par film dans
+// `grammar` (`FilmContext.ResolutionMPP`).

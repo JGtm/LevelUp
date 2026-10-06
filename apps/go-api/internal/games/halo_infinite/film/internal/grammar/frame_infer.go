@@ -219,6 +219,8 @@ func corpsDeRecordNeuf(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 		// le record suivant desynchronise de lui-meme ; arreter la trame ici perdait les records
 		// qui suivent une traversee tombee juste (`81c02726` : un sprint perdu a cet essai).
 		cfg.Obs.refuserUnNeuf(w, rec)
+	case br.marcheNonProuvee:
+		// NON LIE : la marche part d un debut que rien ne prouve (debut_non_prouve.go).
 	case repaired:
 		w.BindSoft(rec.ID, rec.TypeIndex)
 		rec.Liaison = lecture.LiaisonInference
@@ -277,7 +279,7 @@ func (o *Observation) refuserUnNeuf(w *World, rec *FrameRecord) {
 // il ne touche pas a cette boucle. Reexamen au lot 3.6 (ports de composants), qui la rouvre.
 func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int, bool) {
 	var out []FrameRecord
-	br.sortieVueB, br.eidRejete = lecture.SortieNonAtteinte, 0
+	br.entrerDansLaVueB(w, buf)
 	inferred := 0
 	frameLen := len(buf) * 8
 	guard := 0
@@ -329,7 +331,7 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 			}
 		case recDel:
 			br.Skip(32)
-			w.Unbind(slot)
+			br.delier(w, slot) // sauf marche non prouvee (debut_non_prouve.go)
 		case recDelta:
 			if _, bound := w.ArchetypeForSlot(slot); bound {
 				bodyStart := br.BitPos()

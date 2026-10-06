@@ -37,10 +37,10 @@ func TestOutilEcritSesQuatreSorties(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mesurerUnFilm(racineKillsource, "minibobine_000d5950", 4, rap); err != nil {
+	if err := mesurerUnFilm(racineKillsource, "minibobine_000d5950", 4, rap, nil); err != nil {
 		t.Fatalf("bobine contigue : %v", err)
 	}
-	if err := mesurerUnFilm(racineRejeu, "minifilm_bcb6d393", 4, rap); err != nil {
+	if err := mesurerUnFilm(racineRejeu, "minifilm_bcb6d393", 4, rap, nil); err != nil {
 		t.Fatalf("mini-bobine du rejeu : %v", err)
 	}
 	if err := rap.terminer(10); err != nil {

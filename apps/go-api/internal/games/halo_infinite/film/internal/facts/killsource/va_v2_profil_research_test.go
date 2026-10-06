@@ -5,10 +5,10 @@ package killsource
 // va_v2_profil_research_test.go — LOT VA, ETAPE V2, CORRECTIONS DU CONTROLE (2026-10-05) : LE
 // PROFIL DE BALAYAGE QUE LA CUISSON DU REJEU PORTE, ECRIT EN JSON.
 //
-// L etape `vehicles` du rejeu marche les morts sous le profil que `killsource` calibre sur le film
+// La cuisson du rejeu marche les trames sous le profil que `killsource` calibre sur le film
 // (`Result.ProfilCalibre`, pose par `replay.poserProfilPuisCarte` : generation stricte, traversee,
-// largeur d axe absolue). La sonde de la marche des morts (`grammar/va_v2_corr_research_test.go`)
-// le relit pour se placer dans le contexte de l etape publiee.
+// largeur d axe absolue). La sonde du canal des morts (`TestVAV2Vehicules`,
+// `grammar/va_v2_research_test.go`) le relit pour se placer dans le contexte de la cuisson publiee.
 //
 //	VA_RACINE=<film_chunks> VA_CATALOGUE=<map_quant_bounds.json> VA_CARTES="id=Carte;..." \
 //	VA_SORTIE=<dir hors data> go test -tags=research -count=1 -run '^TestVAV2ProfilCalibre$' ./internal/games/halo_infinite/film/internal/facts/killsource/

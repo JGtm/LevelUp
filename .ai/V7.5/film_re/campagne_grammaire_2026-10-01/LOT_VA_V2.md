@@ -313,6 +313,12 @@ La mini-bobine de `killsource` (`testdata/minibobine.golden`) passe de 460 / 473
 
 ### 6.1 La marche des morts d'objet (vérification (d))
 
+> **Note de la revue du lot (2026-10-06, LOT_VA_V3 §15).** La marche à huit vues décrite ici est retirée
+> par l'étape 2.7.a de la RI (`fed1efed2`, fusionné dans le lot) : les morts d'objet et l'occupation
+> sont un canal de la marche des trames, qui reçoit les records de la cuisson (partis de E quand la vue A
+> décide). La vérification (d) est refaite sur ce canal (LOT_VA_V3 §15.3) ; ce qui suit reste la mesure
+> de l'étape V2, sur la marche d'alors.
+
 La marche à huit vues (`ScanMarchFacts`, `object_deaths_march.go`) part de la fin de la vue A quand
 elle décide (V2 explicite). Elle n'utilise pas les candidats de tête : l'étape `vehicles` de
 `replay-equiv` est identique à la première version sur les 20 films.

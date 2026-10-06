@@ -86,7 +86,7 @@ const velocityComponentName = "object-translational-velocity-dynamic-precision-c
 //
 // TROIS, ET C EST CE QUE L ECRIVAIN DEROULE : `FUN_142987460` boucle exactement trois fois
 // (`do { ... } while (uVar7 < 3)`), chaque vue portant sa propre fin de trame. Le depot emploie
-// HUIT ailleurs (`marchViews`, `killsource.Options.Views`) ; la mesure du lot 5.3.3-b dit que 8
+// HUIT dans la marche de killsource (`killsource.Options.Views`) ; la mesure du lot 5.3.3-b dit que 8
 // lit au-dela de la trame — 7 000 records de plus, mais un etalon `i25` degrade de 0,8 point et
 // 1 251 records `ti=35` de MOINS. Trois rend le meilleur etalon, et trois est ce que le code
 // fait.
@@ -114,19 +114,34 @@ func ScanFilmMovementStates(dir string) ([]types.MovementStateRead, types.Moveme
 // qu elle lit aussi est simplement laisse de cote (les instruments qui n en ont pas besoin).
 func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.MovementStateStats,
 	error) {
-	m, err := ScanMarcheDesTrames(fc)
+	m, err := ScanMarcheDesTramesAvec(fc, LecturesDeLaMarche{})
 	return m.MovementStates, m.MovementStateStats, err
 }
 
+// LecturesDeLaMarche dit ce que la marche des trames lit en plus des etats de mouvement et du tir
+// continu, qu elle lit toujours.
+type LecturesDeLaMarche struct {
+	// Morts : les morts d objet et l occupation ([canalDesMorts]). Une cuisson sans calque de
+	// vehicule ne les lit pas : elle ne paie ni leur recolte ni la recuperation des listes que la
+	// marche ne localise pas.
+	Morts bool
+}
+
 // MarcheDesTrames est ce que LA marche du frame-processeur rend : les etats de mouvement du
-// Spartan (vue B) et le TIR CONTINU (vue C, lot M4b). UNE marche, deux canaux : lire la vue C
-// dans une seconde marche doublerait le cout du decodage le plus cher du film pour relire des
-// paquets que celle-ci traverse deja.
+// Spartan (vue B), le TIR CONTINU (vue C, lot M4b), les MORTS D OBJET et l OCCUPATION (vue B,
+// [canalDesMorts]). UNE marche, trois canaux : chacun lu dans une seconde marche doublerait le cout
+// du decodage le plus cher du film pour relire des paquets que celle-ci traverse deja.
 type MarcheDesTrames struct {
 	MovementStates      []types.MovementStateRead
 	MovementStateStats  types.MovementStateStats
 	ContinuousFire      []types.ContinuousFireBurst
 	ContinuousFireStats types.ContinuousFireStats
+	// ObjectDeaths sont les morts ecrites (`object-dead-state`), tous archetypes confondus, triees
+	// par instant puis par slot ; Occupancy, les lectures d `object-parent-state` de la bande
+	// bipede ; ObjectDeathStats, leurs denominateurs.
+	ObjectDeaths     []types.ObjectDeath
+	Occupancy        []types.VehicleOccupancy
+	ObjectDeathStats ObjectDeathStats
 	// LiaisonsParRepliDAnticipation : les liaisons que le repli `repli_liaison_par_anticipation`
 	// ([World.LierParRepliDAnticipation]) a posees pendant la marche, tous archetypes confondus.
 	// `replay` les verse au compteur de replis de la cuisson (lot J8.1, constat GA1-2). Ce compte
@@ -139,14 +154,22 @@ type MarcheDesTrames struct {
 	DebutsDeListeParRepliFermeAuBit int
 }
 
-// ScanMarcheDesTrames deroule la marche du frame-processeur sur un film DEJA CHARGE et rend ses
-// deux canaux, distribues sur UNE marche ([Distribuer]) : les etats de mouvement et le tir continu.
+// ScanMarcheDesTrames est [ScanMarcheDesTramesAvec] avec toutes les lectures.
+func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
+	return ScanMarcheDesTramesAvec(fc, LecturesDeLaMarche{Morts: true})
+}
+
+// ScanMarcheDesTramesAvec deroule la marche du frame-processeur sur un film DEJA CHARGE et rend ses
+// canaux, distribues sur UNE marche ([Distribuer]) : les etats de mouvement, le tir continu et, avec
+// [LecturesDeLaMarche.Morts], les morts d objet et l occupation. Les listes que le canal des morts
+// recupere par le repli a largeur libre se comptent au rapport du contexte
+// (`repli_localisation_largeur_libre`).
 //
 // UN FILM SANS ETATS DE MOUVEMENT EST MARCHE QUAND MEME depuis le lot M4b : son archetype bipede
 // ne declare aucun des composants d etat (`Absent`), mais sa vue de controle porte le tir continu.
 // Les etats de mouvement y restent EXACTEMENT ce qu ils etaient — aucune lecture, `Absent` et
 // `Scanned` poses, les compteurs de marche remis a zero.
-func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
+func ScanMarcheDesTramesAvec(fc *FilmContext, l LecturesDeLaMarche) (MarcheDesTrames, error) {
 	var m MarcheDesTrames
 	st := &m.MovementStateStats
 	st.MapWidths = fc.LargeursObjetDuMonde().AxisW
@@ -163,8 +186,18 @@ func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
 	}
 	sc := nouveauCanalDesEtats(st, reg, arch)
 	tir := nouveauCollecteurTirContinu(&m.ContinuousFireStats)
-	if err := Distribuer(fc, sc, tir); err != nil {
+	canaux := []Canal{sc, tir}
+	var morts *canalDesMorts
+	if l.Morts {
+		morts = nouveauCanalDesMorts(reg)
+		canaux = append(canaux, morts)
+	}
+	if err := Distribuer(fc, canaux...); err != nil {
 		return m, err
+	}
+	if morts != nil {
+		m.ObjectDeaths, m.Occupancy, m.ObjectDeathStats = morts.resultat()
+		fc.NoterReplis(ComptesDesReplis{LocalisationsALargeurLibre: morts.largeurLibre})
 	}
 	m.LiaisonsParRepliDAnticipation = sc.liaisonsDuRepliDAnticipation()
 	m.DebutsDeListeParRepliFermeAuBit = sc.obs.DebutsDeListeParRepliFermeAuBit
