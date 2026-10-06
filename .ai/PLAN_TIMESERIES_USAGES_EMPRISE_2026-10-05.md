@@ -468,7 +468,7 @@ Journal L2 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) :
 
 ### L3 — Go : « Mes vies : près d'un coéquipier ou seul » · moyen
 
-- [ ] L3.1 `analysis/coordination/vies_pres_ou_seul.go` (NEUF) : types de lecture (`ViesLues` :
+- [x] L3.1 `analysis/coordination/vies_pres_ou_seul.go` (NEUF) : types de lecture (`ViesLues` :
   vies, morts situées, frags avec camps, variantes) et `ViesPresOuSeul(lues, rayonParMatch)` → domaine
   (D5). `accompagnee` (`isolation.go:72-74`) délègue à une comparaison commune `aPortee(d *float64,
   rayon float64) bool` utilisée par les deux. Tests ROUGES d'abord : fenêtre `[début, début suivant)`
@@ -477,9 +477,9 @@ Journal L2 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) :
   `film_end` / `cut` ignorée, trahison et camp inconnu exclus, frags par vie. Mutations : `<` au lieu
   de `≤`, fenêtre bornée par `end_ms` → rouges. Témoin : une fixture qui reproduit 721 / 152 vies et
   604 / 168 frags n'est PAS exigée (base non lisible ici) ; un témoin à 6 vies chiffrées à la main.
-- [ ] L3.2 `port/timeseries_lives.go` : `SoloLivesRepository.LoadLivesNearTeammate(ctx, matchIDs
+- [x] L3.2 `port/timeseries_lives.go` : `SoloLivesRepository.LoadLivesNearTeammate(ctx, matchIDs
   []string, xuid string) (coordination.ViesLues, error)`.
-- [ ] L3.3 `platform/duckdb/solo_lives_repo.go` (NEUF) : trois lectures sur `match_lives_latest`,
+- [x] L3.3 `platform/duckdb/solo_lives_repo.go` (NEUF) : trois lectures sur `match_lives_latest`,
   `match_death_context_latest`, `match_kill_events_latest` (+ `match_participants`, `match_registry`
   tables ordinaires), liste des matchs liée en constante sur le `match_id` de CHAQUE vue
   (`clauseListeMatchs`, ADR 0036 I2), joueur filtré après la fenêtre, jamais `v_gamertag_lookup` ;
@@ -487,19 +487,30 @@ Journal L2 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) :
   Test `:memory:` migré (patron `squad_life_placement_repo_test.go`) : dernière passe entière par
   match, matchs et joueur demandés seulement, NULL conservés, `exigerFenetresBornees` sur les trois
   vues ; mutation : lier la liste par sous-requête → rouge.
-- [ ] L3.4 Service `service/timeseries_service_lives.go` (NEUF) : `attachLives` — repo nil →
+- [x] L3.4 Service `service/timeseries_service_lives.go` (NEUF) : `attachLives` — repo nil →
   Debug « capability absente » ; lecture ; `mappings.PorteesDuRadarParMatch` (L1.1) ; calcul ;
   journal Info du bilan (vies, écartées, frags écartés) ; section de durée `lives`. Tests mocks :
   capability absente, échec de lecture (bloc absent + ErrorContext), table des portées vide (toutes
   écartées et comptées, bloc publié avec Near/Alone à zéro ET `ExcludedNoRadar` > 0 — le web décide
   de l'afficher, voir L5.6).
-- [ ] L3.5 Câblage sous `CapFilmKillPositions` (même porte que `WithLifePlacement`,
+- [x] L3.5 Câblage sous `CapFilmKillPositions` (même porte que `WithLifePlacement`,
   `registry_pages_home.go:272-274`) + `WithRadarRange(r.radarRangeFor(pdb))` ; ajout au garde-rail de
   câblage L2.8.
-- [ ] L3.6 `TimeseriesPageResponse.LivesNearTeammate` (`json:"lives_near_teammate,omitempty"`),
+- [x] L3.6 `TimeseriesPageResponse.LivesNearTeammate` (`json:"lives_near_teammate,omitempty"`),
   contrat régénéré ; ADR 0036 (EN) : ajouter le nouveau test à la liste I2
   (`docs/adr/0036-page-reads-are-scoped.md:155-162` et tableau l. ~421).
 - Gate : gate Go + `go test -tags=integration -p 1 ./internal/platform/duckdb/...` + contrat.
+
+Journal L3 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — TDD strict (test rouge AVANT le code) :
+- **L3.1** `analysis/coordination/vies_pres_ou_seul.go` : `ViesPresOuSeul(domain.ViesLues, rayonParMatch) (domain.TimeseriesLivesNearTeammate, int)` (second retour : frags écartés). Test `vies_pres_ou_seul_test.go` écrit d'abord : rouge de compilation, puis rouge de COMPORTEMENT contre un calcul vide (3 tests), puis vert. Témoin à six vies chiffré à la main (2 près / 3 frags, 1 seule / 3 frags, 1 écartée sans coéquipier situé, 1 écartée sans portée, 3 matchs lus dont 1 sans portée, 2 frags écartés). `accompagnee` délègue à `aPortee` : `isolation_test.go` NON modifié et vert. Écart au plan imposé par un garde-rail du paquet (`no_naked_rate_test.go`, `TestAucunTauxNu` : aucun type struct exporté dans `coordination`, types de retour sur liste blanche) : les types d'entrée (`VieLue`, `MortSituee`, `FragLu`, `ViesLues`) vivent dans `domain/timeseries_lives.go` (patron de `domain.MortAExaminer`), le bilan est un `int`, et `domain.TimeseriesLivesNearTeammate` entre dans la liste blanche avec une justification DATÉE (que des comptes, aucun quotient).
+- **L3.2** `port.SoloLivesRepository` (`port/timeseries_lives.go`).
+- **L3.3** `platform/duckdb/solo_lives_repo.go` : quatre requêtes ; la liste des matchs liée en constante sur le `match_id` de CHACUNE des trois vues `_latest`, le joueur filtré après la fenêtre, variantes par `match_registry`. Test `:memory:` écrit d'abord (rouge : symbole absent) : dernière passe entière, matchs et joueur demandés, NULL conservés (distance, camp d'une victime sans participant), listes vides sans requête, table absente → `ErrCapabilityNotSupported`, `exigerFenetresBornees(…, 11, 3)`. Écart au plan : `TestCampaignExclusionGuard` (archlint) a repéré la lecture (participants + filtre joueur) ; plutôt qu'une dispense, la requête des frags pose le résolveur existant `excludeCampaignByMatchID` (défense en profondeur ; la fenêtre de la page exclut déjà la Campagne) — aucune liste agrandie.
+- **L3.4** `service/timeseries_service_lives.go` : `WithLivesNearTeammate`, `WithRadarRange`, `attachLives` (section `lives`, `mappings.PorteesDuRadarParMatch`, journaux Debug / Error / Info) ; appelé par `attachMigratedSections`. Bloc absent sans aucune vie lue (MatchesRead = 0). Tests écrits d'abord (rouge de compilation) : lecture bornée et portée courante (variante à blanc de tête résolue), sans table des portées (tout écarté et compté), quatre dégradations sans bloc, fenêtre vide sans lecture, bloc posé par la page.
+- **L3.5** Câblage dans `registry_pages_timeseries.go` : `WithRadarRange(r.radarRangeFor(pdb))` inconditionnel, `WithLivesNearTeammate(duckdb.NewSoloLivesRepo(pdb))` sous `CapFilmKillPositions` ; test `TestTimeseries_CableLesViesEtLaPorteeDuRadar`.
+- **L3.6** `TimeseriesPageResponse.LivesNearTeammate` ; contrat régénéré (openapi +42, generated.ts +19, 0 retrait) ; ADR 0036 : nouveau garde-rail I2 cité (liste §I2 et tableau).
+- **Mutations** (toutes ROUGES) : borne stricte `<` (rougit aussi `TestIsolement_LaBorneEstInclusive` — la comparaison est bien commune) ; fenêtre arrêtée avant le début suivant (frag posthume perdu) ; distance absente rangée ; trahison comptée ; vie non terminée par une mort comptée ; liste en semi-jointure sur les trois vues ; liste posée sur `pk.match_id` (autre relation de la jointure) ; frags non publiables lus ; vue brute `match_lives` au lieu de `_latest` ; exclusion de la Campagne retirée (rougit `TestCampaignExclusionGuard`) ; appel retiré de la page ; portée résolue à la main sans nettoyage ; bloc publié sans vie ; lecture bornée au gamertag au lieu du xuid ; vies sorties de leur porte (`if true`).
+- **Gate** : `go build ./...` 0 ; `go vet` des 6 paquets touchés 0 ; `gofmt -l internal` muet ; `go test -count=1` du module en lots couvrant tout `go list ./...` : 67 + 39 + 28 + 13 + 48 ok, 0 FAIL ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` : 4 ok en 288 s ; `make go-api-lint` 0 issues ; `openapi-gen -check` à jour ; archlint rejoué nommément (`TestAucunTypeAnalysisEnCorpsHuma`, `TestNoNewSlugComparison`, `TestAnalysisImporteAucunPaquetDeTitre`, `TestNoLocalRadarRangeLookup`, `TestCampaignExclusionGuard`) et duckdb (`TestNoRawAppendOnlyReads`, `TestLecturesDeLaVueDesNoms_Ratchet`) verts ; web : `generate-types`, `check-generated-types-fresh` OK, vitest `src/lib/api` 5 / 36 verts (snapshot de surface intact), `tsc -b --force` 0.
+- Seuils : fichiers neufs ≤ 162 L ; `LoadLivesNearTeammate` ~40 L ; `ViesPresOuSeul` ~32 L ; `rangerVie` 5 paramètres.
 
 ### L4 — Web : briques de l'Emprise paramétrables (Escouade inchangée) · moyen
 

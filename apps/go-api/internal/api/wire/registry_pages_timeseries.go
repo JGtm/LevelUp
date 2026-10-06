@@ -18,7 +18,15 @@ func (r *ServiceRegistry) cablerUsagesTimeseries(svc *service.TimeseriesService,
 	svc = svc.WithEmprise(duckdb.NewSquadEmpriseRepo(pdb)).
 		// Emblème de la fiche « Ma part à l'objectif » : le MEME chargeur que les fiches de
 		// medailles de l'Escouade ; degradation silencieuse (initiale) par contrat du chargeur.
-		WithEmblemLoader(duckdb.NewSquadV2LoaderAdapter(r.resolveByGT))
+		WithEmblemLoader(duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)).
+		// « Mes vies : près d'un coéquipier ou seul » : la portée COURANTE du radar de chaque
+		// match, MÊME table que l'onglet Tactique et l'Escouade (radarRangeFor).
+		WithRadarRange(r.radarRangeFor(pdb))
+	// Les vies du joueur : MÊME porte que les vies et le contexte des morts au sync,
+	// film.kill_positions (absente pour Halo 5 -> carte absente). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmKillPositions) {
+		svc = svc.WithLivesNearTeammate(duckdb.NewSoloLivesRepo(pdb))
+	}
 	// Ressource vehicules : la capability fine film.vehicle_usage, comme l'Escouade (absente pour
 	// Halo 5 -> ressource absente). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmVehicleUsage) {

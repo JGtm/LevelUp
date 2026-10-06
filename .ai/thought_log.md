@@ -115298,3 +115298,10 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : contrat purement additif (openapi +179, generated.ts +67, 0 retrait), garde `contract-surface` verte sans régénération ; test de câblage prouvé par trois mutations (feuille sous condition, résumé d'usage hors porte, câblage des Usages sous condition). 13 mutations au total, toutes rouges. Gate Go complet vert (build, vet, tests du module en lots, lint 0 issue, contrat à jour) ; premier passage web : `npm ci`, types régénérés, `tsc -b --force` 0. Écart de méthode : rouge obtenu contre un bouchon pour trois fonctions écrites avant leurs tests.
 
 **Conclusion / prochaine étape** : L2 clos ; compte rendu au superviseur, L3 sur « continue ».
+## [2026-10-06] Séries temporelles › Usages, lot L3 : « Mes vies : près d'un coéquipier ou seul » — Complété (commit local sur `feat/ts-usages-emprise`)
+
+**Décision technique principale** : calcul pur `coordination.ViesPresOuSeul` (vie close par une mort, fenêtre [début, début suivant) du décodeur, mort au contexte dans la fenêtre, portée du radar inclusive par la comparaison commune avec l'Isolement, écartées comptées par cause) ; lecture `SoloLivesRepo` bornée sur le `match_id` de chacune des trois vues `_latest` (ADR 0036 I2) ; service `attachLives` ; câblage sous `film.kill_positions`. TDD strict : chaque test vu rouge avant son code. Deux écarts imposés par des garde-rails existants, traités sans les affaiblir : types d'entrée dans `domain` et retour en liste blanche datée (`TestAucunTauxNu`), exclusion de la Campagne posée par le résolveur existant sur la requête des frags (`TestCampaignExclusionGuard`).
+
+**Résultats observés** : 15 mutations, toutes rouges (dont semi-jointure et filtre sur une autre relation de la jointure pour la lecture bornée) ; tests de l'Isolement intacts. Gate Go complet vert, intégration DuckDB 4 ok en 288 s, lint 0 issue, contrat additif (+42 / +19), garde de surface intacte.
+
+**Conclusion / prochaine étape** : L3 clos ; compte rendu au superviseur, L4 sur « continue ».

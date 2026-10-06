@@ -357,6 +357,9 @@ type TimeseriesPageResponse struct {
 	// PlayerEmblemURL : l'emblème du joueur consulté (fiche « Ma part à l'objectif ») ; vide quand
 	// il n'est pas connu — le web pose alors l'initiale.
 	PlayerEmblemURL string `json:"player_emblem_url,omitempty"`
+	// LivesNearTeammate : « Mes vies : près d'un coéquipier ou seul » (timeseries_lives.go). Nil sans
+	// `film.kill_positions`, sur lecture en échec ou sans aucune vie du joueur sur la fenêtre.
+	LivesNearTeammate *TimeseriesLivesNearTeammate `json:"lives_near_teammate,omitempty"`
 	// Coordination : le bloc « Riposte » et « Appui reçu » DANS LE TEMPS (lot N1,
 	// décisions D22) — les mêmes grandeurs que la page Sessions, groupées PAR SOIRÉE
 	// (`sessions`), sur le MÊME scope filtré que le reste de la page.

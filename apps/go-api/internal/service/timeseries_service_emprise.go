@@ -30,6 +30,10 @@ type usagesDeps struct {
 	vehicleRepo port.SquadVehicleRepository
 	// emblemLoader : l'emblème du joueur consulté ; nil = initiale côté web.
 	emblemLoader port.EmblemURLLoader
+	// livesRepo : les vies du joueur (câblé sous `film.kill_positions`) ; nil = carte absente.
+	livesRepo port.SoloLivesRepository
+	// radarRange : game_variant_name -> portée du radar en mètres (`regulation.toml [radar_range_m]`).
+	radarRange map[string]int
 }
 
 // WithEmprise injecte la feuille de match de l'Emprise. Câblage inconditionnel : la colonne est

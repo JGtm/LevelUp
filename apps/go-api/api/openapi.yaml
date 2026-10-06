@@ -17411,6 +17411,19 @@ components:
       required:
         - items
       type: object
+    LivesSideCount:
+      additionalProperties: false
+      properties:
+        kills:
+          format: int64
+          type: integer
+        lives:
+          format: int64
+          type: integer
+      required:
+        - lives
+        - kills
+      type: object
     Loadout:
       additionalProperties: false
       properties:
@@ -30575,6 +30588,33 @@ components:
         - ground_pound_kills
         - shoulder_bash_kills
       type: object
+    TimeseriesLivesNearTeammate:
+      additionalProperties: false
+      properties:
+        alone:
+          $ref: '#/components/schemas/LivesSideCount'
+        excluded_no_radar:
+          format: int64
+          type: integer
+        excluded_unlocated:
+          format: int64
+          type: integer
+        matches_read:
+          format: int64
+          type: integer
+        matches_without_radar:
+          format: int64
+          type: integer
+        near:
+          $ref: '#/components/schemas/LivesSideCount'
+      required:
+        - near
+        - alone
+        - excluded_unlocated
+        - excluded_no_radar
+        - matches_read
+        - matches_without_radar
+      type: object
     TimeseriesMatchRow:
       additionalProperties: false
       properties:
@@ -30760,6 +30800,8 @@ components:
           $ref: '#/components/schemas/TimeseriesIntensityTab'
         kill_types:
           $ref: '#/components/schemas/TimeseriesKillTypes'
+        lives_near_teammate:
+          $ref: '#/components/schemas/TimeseriesLivesNearTeammate'
         map_breakdown:
           items:
             $ref: '#/components/schemas/MapBreakdownRow'

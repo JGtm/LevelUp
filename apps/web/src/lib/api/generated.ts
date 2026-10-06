@@ -8294,6 +8294,12 @@ export interface components {
             /** Format: int64 */
             next_cursor?: number;
         };
+        LivesSideCount: {
+            /** Format: int64 */
+            kills: number;
+            /** Format: int64 */
+            lives: number;
+        };
         Loadout: {
             k?: number[] | null;
             /** Format: int32 */
@@ -13666,6 +13672,18 @@ export interface components {
             /** Format: int64 */
             total_kills: number;
         };
+        TimeseriesLivesNearTeammate: {
+            alone: components["schemas"]["LivesSideCount"];
+            /** Format: int64 */
+            excluded_no_radar: number;
+            /** Format: int64 */
+            excluded_unlocated: number;
+            /** Format: int64 */
+            matches_read: number;
+            /** Format: int64 */
+            matches_without_radar: number;
+            near: components["schemas"]["LivesSideCount"];
+        };
         TimeseriesMatchRow: {
             /** Format: double */
             accuracy: number | null;
@@ -13748,6 +13766,7 @@ export interface components {
             intensity_rows_team?: components["schemas"]["IntensityMatchRow"][] | null;
             intensity_tab: components["schemas"]["TimeseriesIntensityTab"];
             kill_types?: components["schemas"]["TimeseriesKillTypes"];
+            lives_near_teammate?: components["schemas"]["TimeseriesLivesNearTeammate"];
             map_breakdown: components["schemas"]["MapBreakdownRow"][] | null;
             match_rows: components["schemas"]["TimeseriesMatchRow"][] | null;
             objective_stats?: components["schemas"]["ObjectiveAggregate"];

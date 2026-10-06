@@ -133,6 +133,7 @@ func (s *TimeseriesService) attachMigratedSections(
 	stop()
 	s.attachEmprise(ctx, resp, filteredCanon, locale, lu)
 	s.attachEmblem(ctx, resp)
+	s.attachLives(ctx, resp, filteredCanon)
 	s.attachCoordination(ctx, resp, filteredCanon, equipes)
 	s.attachMatchRange(ctx, resp, filteredCanon, locale)
 }

@@ -72,3 +72,16 @@ func TestTimeseries_CableVehiculesEtEmbleme(t *testing.T) {
 		t.Errorf("WithEmblemLoader = %+v : attendu un appel inconditionnel au chargeur de l'Escouade", emb)
 	}
 }
+
+// Les vies du joueur : la seule porte film.kill_positions ; la table des portées : sans condition.
+func TestTimeseries_CableLesViesEtLaPorteeDuRadar(t *testing.T) {
+	vies := appelsDansUsages(t, "WithLivesNearTeammate")
+	if len(vies) != 1 || strings.Join(vies[0].args, "") != "duckdb.NewSoloLivesRepo(pdb)" ||
+		len(vies[0].portes) != 1 || !strings.Contains(vies[0].portes[0], "games.CapFilmKillPositions") {
+		t.Errorf("WithLivesNearTeammate = %+v : attendu duckdb.NewSoloLivesRepo(pdb) sous la seule porte games.CapFilmKillPositions", vies)
+	}
+	radar := appelsDansUsages(t, "WithRadarRange")
+	if len(radar) != 1 || strings.Join(radar[0].args, "") != "r.radarRangeFor(pdb)" || len(radar[0].portes) != 0 {
+		t.Errorf("WithRadarRange = %+v : attendu un appel inconditionnel WithRadarRange(r.radarRangeFor(pdb))", radar)
+	}
+}
