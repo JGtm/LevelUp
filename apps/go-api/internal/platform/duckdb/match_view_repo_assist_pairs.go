@@ -16,8 +16,8 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// Q21dAssistPairs : les paires (assistant, tueur assisté) d'un match, ET les deux
-// dénominateurs qui rendent une liste vide lisible.
+// Q21dAssistPairs : les paires (assistant, tueur assisté) d'un match, ET les dénominateurs qui
+// rendent une liste vide lisible.
 //
 // SŒUR de Q21b/Q21c (queries_match.go), mais d'une NATURE différente : celles-là rendent
 // une ligne PAR MORT pour décorer le feed et s'apparient aux events par (tueur, instant) ;
@@ -25,7 +25,7 @@ import (
 // temporelle ne sort d'ici, donc RIEN à recaler sur T0. Un agrégat par match_id ne
 // s'apparie à rien — la correction T0 n'aurait ni objet ni prise.
 //
-// ─── LES DEUX DÉNOMINATEURS, ET POURQUOI DEUX ─────────────────────────────────────────
+// ─── LES DÉNOMINATEURS ────────────────────────────────────────────────────────────────
 //
 //	match_deaths     toutes les lignes du match, portées confondues. Zéro = le match n'est
 //	                 jamais passé au décodeur de film (ou le titre n'en a pas). Le service
@@ -35,6 +35,9 @@ import (
 //	                 match_deaths > 0 = « non mesuré pour ce match » (le film est là,
 //	                 l'assistance non — ou la passe n'est pas publiable ligne à ligne,
 //	                 cas BTB). C'est un état à AFFICHER, jamais « aucune assistance ».
+//	publishable_deaths les lignes `publishable`, assistance connue ou non : le journal des
+//	                 morts se lit ligne à ligne. Lu par la Vue match (frags pendant l'effet
+//	                 d'un bonus), pas par les paires.
 //
 // ─── LA JOINTURE SUR TRUE N'EST PAS UNE COQUETTERIE ───────────────────────────────────
 //
@@ -66,15 +69,16 @@ import (
 // de plafonner que `stolen_count` (mesures jusqu'à 228) : c'est une moyenne de parts
 // mesurées, pas un dégât chiffré.
 //
-// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 8 colonnes :
-// match_deaths, measured_deaths, assist_xuid, assist_gamertag, feed_killer_xuid,
-// assist_count, stolen_count, avg_assist_pct — les six dernières NULL quand aucune paire
-// ne sort.
+// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 9 colonnes :
+// match_deaths, measured_deaths, publishable_deaths, assist_xuid, assist_gamertag,
+// feed_killer_xuid, assist_count, stolen_count, avg_assist_pct — les six dernières NULL quand
+// aucune paire ne sort.
 const Q21dAssistPairs = `
 WITH scope AS (
     SELECT
         COUNT(*)                                             AS match_deaths,
-        COUNT(*) FILTER (WHERE publishable AND assist_known)  AS measured_deaths
+        COUNT(*) FILTER (WHERE publishable AND assist_known)  AS measured_deaths,
+        COUNT(*) FILTER (WHERE publishable)                   AS publishable_deaths
     FROM ` + KillEventsCanonicalTable + `
     WHERE match_id = ?
 ),
@@ -98,6 +102,7 @@ pairs AS (
 SELECT
     s.match_deaths,
     s.measured_deaths,
+    s.publishable_deaths,
     p.assist_xuid,
     p.assist_gamertag,
     p.feed_killer_xuid,
@@ -154,14 +159,16 @@ func scanAssistPairs(rows *sql.Rows) ([]domain.MatchAssistPairRaw, domain.MatchA
 	for rows.Next() {
 		var (
 			matchDeaths, measured    int
+			publishable              int
 			ax, agt, kx              sql.NullString
 			assistN, stolenN, avgPct sql.NullInt64
 		)
-		if err := rows.Scan(&matchDeaths, &measured, &ax, &agt, &kx, &assistN, &stolenN, &avgPct); err != nil {
+		if err := rows.Scan(&matchDeaths, &measured, &publishable, &ax, &agt, &kx, &assistN, &stolenN, &avgPct); err != nil {
 			return nil, domain.MatchAssistScopeRaw{}, fmt.Errorf("MatchViewRepo.GetMatchAssistPairs scan: %w", err)
 		}
 		scope.MatchDeaths = matchDeaths
 		scope.MeasuredDeaths = measured
+		scope.PublishableDeaths = publishable
 		// Ligne de portée SEULE (aucune paire) : le LEFT JOIN ON TRUE laisse les cinq
 		// colonnes de paire à NULL. C'est l'état « mesuré, zéro assistant nommé » —
 		// on garde la portée et on n'invente pas de paire.

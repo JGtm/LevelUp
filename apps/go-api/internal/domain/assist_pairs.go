@@ -67,9 +67,13 @@ type MatchAssistPairRaw struct {
 //	MeasuredDeaths  lignes `publishable AND assist_known` : les morts dont l'assistance
 //	                est mesurée ET publiable ligne à ligne. ZÉRO avec MatchDeaths > 0 =
 //	                « non mesuré pour ce match » — un état affiché, pas un vide.
+//	PublishableDeaths lignes `publishable` : le journal des morts du match se lit ligne à ligne
+//	                (la publiabilité vaut pour la passe entière). ZÉRO = frags pendant l'effet d'un
+//	                bonus non mesurés sur la Vue match (MatchEmpriseBlock.KillJournalPublishable).
 type MatchAssistScopeRaw struct {
-	MatchDeaths    int
-	MeasuredDeaths int
+	MatchDeaths       int
+	MeasuredDeaths    int
+	PublishableDeaths int
 }
 
 // MatchAssistPair : une paire (ASSISTANT -> TUEUR ASSISTÉ) publiée pour un match.

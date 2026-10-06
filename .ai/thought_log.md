@@ -116265,3 +116265,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : rebase sans conflit ; `go build ./...` vert (second passage en `-p 2`, le premier a manqué de mémoire système) ; `npm ci` ; `tsc -b --force` 0.
 
 **Conclusion / prochaine étape** : M0 clos ; M1 (lectures Go) dans la foulée, sous le « go » du superviseur.
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M1 : lectures et calculs Go — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : la mêlée sort de « Distance par arme » dans le lecteur (classe `melee` du registre, l'épée lourde reste) ; Q21d compte les morts publiables (fait « journal des morts publiable » de la page) ; les vies de toute l'équipe se lisent en une fois (`LoadLivesNearTeammateForPlayers`, lecture d'un joueur ramenée à elle) et se rangent par joueur avec le calcul existant (`lireViesDuCamp`, aides partagées avec la lecture d'un joueur) ; l'assemblage de l'Emprise accepte une liste de joueurs fournie par la page.
+
+**Résultats observés** : huit mutations, toutes rouges ; tests existants des Séries temporelles, de Sessions et des lecteurs verts sans modification. Gate Go complet vert (six lots, un paquet non touché rejoué seul après un dépassement de budget sous charge), intégration DuckDB 4 ok, lint 0 issue ; ADR 0036 : nouveau garde-rail I2 cité.
+
+**Conclusion / prochaine étape** : M1 clos ; M2 (blocs de la Vue match, contrat additif).

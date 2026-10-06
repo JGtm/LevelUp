@@ -532,22 +532,22 @@ Périmètre : `platform/duckdb/{kill_distance_repo.go, match_view_repo_assist_pa
 solo_lives_repo.go}` (+ tests), `domain/assist_pairs.go`, `port/timeseries_lives.go`,
 `service/{solo_lives_block.go, solo_emprise_block.go}` (+ tests).
 
-- [ ] M1.1 D11 : `resolveRows` écarte les clés de classe `domain.FragClassMelee`. Test `:memory:`
+- [x] M1.1 D11 : `resolveRows` écarte les clés de classe `domain.FragClassMelee`. Test `:memory:`
   écrit d'abord (`kill_distance_repo_test.go`, patron existant) : une clé de mêlée, une épée de classe
   `heavy`, un fusil — la mêlée sort, les deux autres restent, comptes et min / moy / max intacts.
   Mutation : comparaison sur `Role` au lieu de `Class` → rouge.
-- [ ] M1.2 D7 : Q21d `publishable_deaths` + `MatchAssistScopeRaw.PublishableDeaths` + `scanAssistPairs`.
+- [x] M1.2 D7 : Q21d `publishable_deaths` + `MatchAssistScopeRaw.PublishableDeaths` + `scanAssistPairs`.
   Test `:memory:` (patron `match_view_repo_assist_pairs_test.go`) : 3 lignes dont 1 publiable sans
   assistance connue → `MatchDeaths` 3, `MeasuredDeaths` 0, `PublishableDeaths` 1 ; match sans ligne
   → 0 partout. Mutation : `FILTER (WHERE publishable AND assist_known)` recopié → rouge.
-- [ ] M1.3 D8 : `port.CampLivesRepository` (`port/timeseries_lives.go`) ; `SoloLivesRepo.LoadLivesNearTeammateForPlayers`
+- [x] M1.3 D8 : `port.CampLivesRepository` (`port/timeseries_lives.go`) ; `SoloLivesRepo.LoadLivesNearTeammateForPlayers`
   (quatre requêtes paramétrées par une liste de xuids, xuid rendu par les trois premières) ;
   `LoadLivesNearTeammate` délègue. Tests `:memory:` écrits d'abord (`solo_lives_repo_test.go`) :
   deux joueurs du même match séparés, joueur non demandé absent, liste vide sans requête,
   `exigerFenetresBornees` sur les trois vues `_latest` (nouveau `TestSoloLivesRepo_ParJoueurs_BorneEtDernierePasse`) ;
   `TestSoloLivesRepo_BorneEtDernierePasse` vert SANS modification. Mutations : liste des matchs en
   sous-requête → rouge ; filtre joueur `= ?` sur le premier xuid seulement → rouge.
-- [ ] M1.4 D8 : `lireViesDuCamp(ctx, viesCampQuery) (map[string]domain.TimeseriesLivesNearTeammate, bool)`
+- [x] M1.4 D8 : `lireViesDuCamp(ctx, viesCampQuery) (map[string]domain.TimeseriesLivesNearTeammate, bool)`
   (second retour : au moins une vie lue) — une lecture `LoadLivesNearTeammateForPlayers`, portée par
   `mappings.PorteesDuRadarParMatch`, `coordination.ViesPresOuSeul` par joueur, journaux `vies_*` +
   `page` (Debug capability absente, Error lecture en échec, Info bilan avec les frags écartés) ;
@@ -556,13 +556,23 @@ solo_lives_repo.go}` (+ tests), `domain/assist_pairs.go`, `port/timeseries_lives
   modification ; test neuf (mock enregistreur) : une lecture pour deux joueurs, un bilan par joueur.
   Mutations : un appel au repo par joueur → rouge (compteur) ; liste des joueurs ignorée (seul le
   joueur de la page lu) → rouge.
-- [ ] M1.5 D2 : `soloEmpriseQuery.Players` ; nil → `squadagg.SquadPlayers` comme aujourd'hui. Tests
+- [x] M1.5 D2 : `soloEmpriseQuery.Players` ; nil → `squadagg.SquadPlayers` comme aujourd'hui. Tests
   `timeseries_service_emprise_test.go` et ceux de Sessions S2.3 verts SANS modification ;
   test neuf : `Players` fourni → `block.Players` identique, dans l'ordre, et parts `squad` par joueur.
   Mutation : `Players` ignoré → rouge.
 - Gate : gate Go (sans contrat : aucun type de réponse ne change ; `MatchAssistScopeRaw` est interne)
   + `go test -tags=integration -p 1 ./internal/platform/duckdb/...` ; ADR 0036 (EN) : nouveau test I2
   cité (`docs/adr/0036-page-reads-are-scoped.md:155-163` et tableau l. ~421).
+Journal M1 (2026-10-07, exécuteur) — test rouge AVANT chaque code (compilation puis comportement) :
+- **M1.1** `KillDistanceRepo.resolveRows` résout libellés et classe AVANT l'agrégation et écarte les clés de classe `domain.FragClassMelee` (une seule requête de métadonnées, comme avant). Test `TestKillDistance_MeleeExclue` (classificateur local `kdMeleeClassifier` : `hinf_unarmed` classe `melee`, `hinf_energy_sword` classe `heavy` au registre réel) vu rouge (mêlée publiée), puis vert ; les neuf tests existants verts sans modification.
+- **M1.2** Q21d : `publishable_deaths` (`COUNT(*) FILTER (WHERE publishable)`), `MatchAssistScopeRaw.PublishableDeaths`, scan ; doctrine du fichier mise à jour. `TestQ21dAssistPairs_MortsPubliables` rouge de compilation puis de comportement (champ jamais rempli), puis vert.
+- **M1.3** `port.CampLivesRepository` ; `SoloLivesRepo.LoadLivesNearTeammateForPlayers` (vies, morts et frags filtrés par une liste de joueurs APRÈS la fenêtre, xuid en tête de ligne ; journal non publiable et variantes communs) ; `LoadLivesNearTeammate` l'appelle avec un joueur (une seule copie des requêtes). `TestSoloLivesRepo_ParJoueurs_BorneEtDernierePasse` rouge de compilation puis vert, `exigerFenetresBornees(…, 11, 4)` ; les cinq tests existants verts SANS modification.
+- **M1.4** `lireViesDuCamp` / `viesCampQuery` ; la lecture d'un joueur et celle de l'équipe partagent `viesLuesOK`, `viesCapabilityAbsente` et `bilansDesVies` (une seule copie de la portée du radar, du calcul et du journal ; le journal `vies` porte désormais `xuid` au lieu du gamertag, aucun test ne l'assertait). `solo_lives_block_test.go` (une lecture pour trois joueurs, bilan à zéro pour un joueur sans vie, dégradations) vu rouge contre un bouchon, puis vert ; tests des Séries temporelles et de Sessions verts sans modification.
+- **M1.5** `soloEmpriseQuery.Players` (nil = joueur seul comme avant) ; `TestBuildSoloEmpriseBlock_JoueursFournis` (fiches dans l'ordre fourni, parts P 1 / A 2 / reste) rouge (une seule fiche), puis vert ; tests `TestAttachEmprise*` et de Sessions verts sans modification.
+- **Mutations** (toutes ROUGES, restauration vérifiée octet à octet) : exclusion de la mêlée retirée ; épée lourde écartée aussi ; `publishable_deaths` filtré comme `measured_deaths` ; liste des matchs liée en semi-jointure (fenêtres non bornées) ; liste des joueurs réduite au premier ; `lireViesDuCamp` réduite au premier joueur ; « au moins une vie lue » jamais vrai ; `Players` ignoré.
+- **ADR 0036** (EN) : `TestSoloLivesRepo_ParJoueurs_BorneEtDernierePasse` cité en I2 (liste et tableau).
+- **Gate** : `go build ./...` 0 ; `gofmt -l internal` muet ; `go vet` de `platform/duckdb`, `domain`, `port`, `service` 0 ; tests des paquets touchés 4 ok ; module en six lots couvrant `go list ./...` : cœur 67 ok, games 39 ok, platform + service 28 ok, sync + persist + migration 12 ok + `sync/skill` rejoué seul ok (`TestLUSRV2Shadow_RafalesBornees_300Candidats` a dépassé son budget sous charge dans le lot, paquet non touché, vert seul), reste 45 ok, hors internal 4 ok — 0 FAIL ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 4 ok (373 s) ; garde-rails nommés PASS ; `make go-api-lint` 0 issues. Contrat inchangé (`MatchAssistScopeRaw` est interne).
+- Seuils : `solo_lives_repo.go` 236 L, `solo_lives_block.go` 141 L, `kill_distance_repo.go` 233 L ; plus longue fonction neuve `LoadLivesNearTeammateForPlayers` ~45 L ; `bilansDesVies` 5 paramètres (ctx compris).
 
 ### M2 — Go : les blocs de la Vue match (contrat additif) · lourd
 
